@@ -1,0 +1,88 @@
+:- module mercury_builtin.
+:- interface.
+:- type (mercury_builtin:c_pointer).
+:- inst ((mercury_builtin:dead)) = clobbered.
+:- inst ((mercury_builtin:mostly_dead)) = mostly_clobbered.
+:- mode ((mercury_builtin:unused)) :: (free -> free).
+:- mode ((mercury_builtin:output)) :: (free -> ground).
+:- mode ((mercury_builtin:input)) :: (ground -> ground).
+:- mode ((mercury_builtin:in)) :: (ground -> ground).
+:- mode ((mercury_builtin:out)) :: (free -> ground).
+:- mode ((mercury_builtin:in(Inst))) :: (Inst -> Inst).
+:- mode ((mercury_builtin:out(Inst))) :: (free -> Inst).
+:- mode ((mercury_builtin:di(Inst))) :: (Inst -> clobbered).
+:- mode ((mercury_builtin:mdi(Inst))) :: (Inst -> mostly_clobbered).
+:- mode ((mercury_builtin:uo)) :: (free -> unique).
+:- mode ((mercury_builtin:ui)) :: (unique -> unique).
+:- mode ((mercury_builtin:di)) :: (unique -> clobbered).
+:- mode ((mercury_builtin:muo)) :: (free -> mostly_unique).
+:- mode ((mercury_builtin:mui)) :: (mostly_unique -> mostly_unique).
+:- mode ((mercury_builtin:mdi)) :: (mostly_unique -> mostly_clobbered).
+:- pred mercury_builtin:copy(T, T).
+:- mode mercury_builtin:copy(mercury_builtin:ui, mercury_builtin:uo) is det.
+:- mode mercury_builtin:copy(mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred mercury_builtin:unsafe_promise_unique(T, T).
+:- mode mercury_builtin:unsafe_promise_unique(mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred mercury_builtin:! is det.
+:- pred mercury_builtin:!(T, T).
+:- mode mercury_builtin:!(mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode mercury_builtin:!(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:unify(T, T).
+:- mode mercury_builtin:unify(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- type (mercury_builtin:comparison_result)
+	--->	mercury_builtin:(=)
+	;	mercury_builtin:(<)
+	;	mercury_builtin:(>).
+:- pred mercury_builtin:compare((mercury_builtin:comparison_result), T, T).
+:- mode mercury_builtin:compare(mercury_builtin:uo, mercury_builtin:ui, mercury_builtin:ui) is det.
+:- mode mercury_builtin:compare(mercury_builtin:uo, mercury_builtin:ui, mercury_builtin:in) is det.
+:- mode mercury_builtin:compare(mercury_builtin:uo, mercury_builtin:in, mercury_builtin:ui) is det.
+:- mode mercury_builtin:compare(mercury_builtin:uo, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:index(T, int).
+:- mode mercury_builtin:index(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_unify_int(int, int).
+:- mode mercury_builtin:builtin_unify_int(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred mercury_builtin:builtin_index_int(int, int).
+:- mode mercury_builtin:builtin_index_int(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_compare_int((mercury_builtin:comparison_result), int, int).
+:- mode mercury_builtin:builtin_compare_int(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:builtin_unify_character(character, character).
+:- mode mercury_builtin:builtin_unify_character(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred mercury_builtin:builtin_index_character(character, int).
+:- mode mercury_builtin:builtin_index_character(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_compare_character((mercury_builtin:comparison_result), character, character).
+:- mode mercury_builtin:builtin_compare_character(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:builtin_unify_string(string, string).
+:- mode mercury_builtin:builtin_unify_string(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred mercury_builtin:builtin_index_string(string, int).
+:- mode mercury_builtin:builtin_index_string(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_compare_string((mercury_builtin:comparison_result), string, string).
+:- mode mercury_builtin:builtin_compare_string(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:builtin_unify_float(float, float).
+:- mode mercury_builtin:builtin_unify_float(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred mercury_builtin:builtin_index_float(float, int).
+:- mode mercury_builtin:builtin_index_float(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_compare_float((mercury_builtin:comparison_result), float, float).
+:- mode mercury_builtin:builtin_compare_float(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:builtin_unify_pred((pred), (pred)).
+:- mode mercury_builtin:builtin_unify_pred(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred mercury_builtin:builtin_index_pred((pred), int).
+:- mode mercury_builtin:builtin_index_pred(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_compare_pred((mercury_builtin:comparison_result), (pred), (pred)).
+:- mode mercury_builtin:builtin_compare_pred(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:builtin_index_non_canonical_type(T, int).
+:- mode mercury_builtin:builtin_index_non_canonical_type(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred mercury_builtin:builtin_compare_non_canonical_type((mercury_builtin:comparison_result), T, T).
+:- mode mercury_builtin:builtin_compare_non_canonical_type(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is det.
+:- pred mercury_builtin:unused is det.
+:- pred mercury_builtin:compare_error is erroneous.
+:- type (mercury_builtin:type_info(T))
+	--->	mercury_builtin:type_info((mercury_builtin:base_type_info(T))).
+:- type (mercury_builtin:base_type_info(T))
+	--->	mercury_builtin:base_type_info(int).
+:- pred mercury_builtin:builtin_int_lt(int, int).
+:- mode mercury_builtin:builtin_int_lt(mercury_builtin:in, mercury_builtin:in) is semidet.
+% unimplemented module declaration
+:- pred mercury_builtin:builtin_int_gt(int, int).
+:- mode mercury_builtin:builtin_int_gt(mercury_builtin:in, mercury_builtin:in) is semidet.
+% unimplemented module declaration

@@ -1,0 +1,27 @@
+
+The current implementation does not yet completely implement the
+Mercury language.  The main limitations of the current implementation
+are the following:
+
+* We do not allow definite aliasing in the mode system.
+  Without this, partially instantiated modes are unusable, 
+  and so are nested unique modes :-(
+
+* The compiler does not yet use structure reuse or compile-time
+  garbage collection to exploit unique modes :-(
+
+* Type inference and mode inference are a bit imperfect.
+
+We are working on eliminating all of these problems. 
+
+In addition, design decisions in this implementation have imposed the
+following fixed limits:
+
+* Predicates and functions can have at most about 1000 arguments.
+
+* Higher order terms are limited to arity of about 500.
+
+These limits can be lifted (with some effort), but would possibly incur
+performance penalties. Contact the Mercury team (mercury@cs.mu.oz.au) if
+you find these limits are affecting your application.
+

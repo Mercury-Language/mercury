@@ -1,0 +1,744 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+usage="\
+Usage: $0 [options]
+Options:
+	-d <dirname>, --test-dir <dirname>
+		Run the tests only in <dirname>.
+	-h, --help
+		Display this usage message.
+	-j <num-jobs>, --jobs <num-jobs>
+		Run using <num-jobs> different parallel processes.
+	-k, --keep-objs
+		Keep the stage 2 object files even if stage 2 is successful.
+	-m <mmake-args>, --mmake-args <mmake-args>
+		Pass <mmake-args> as options to \`mmake'.
+	-o <filename>, --output-file <filename>
+		Output results to <filename>.
+	-r, --copy-runtime
+		Copy the runtime directory instead of linking it.
+		This is necessary if one wants to bootcheck a grade
+		that is not compatible with the standard one.
+	-p, --copy-profiler
+		Copy the profiler directory instead of linking it.
+		This is sometimes necessary for bootstrapping
+		changes.
+	-s, --sicstus
+		As well as running the normal bootcheck, also build a SICStus
+		Prolog version of the compiler and check it against the
+		stage 2 directory.
+	-t, --no-test-suite
+		By default, bootcheck will also run the test quite.
+		This option prevents that.
+	-T, --test-suite-only
+		Do not run the bootstrap check; execute the test suite only.
+		This option requires a previous bootstrap check to have left
+		a working stage 2 directory.
+	-2, --keep-stage-2
+		Don't rebuild the stage 2 directory from scratch after
+		building stage 1.  Instead use the existing stage 2 directory.
+	-3, --keep-stage-3
+		Don't rebuild the stage 3 directory from scratch after
+		building stage 1.  Instead use the existing stage 3 directory.
+	--keep-stage-2-sicstus
+		Don't rebuild the SICStus stage 2 directory from scratch after
+		building stage 1.  Instead use the existing SICStus stage 2
+		directory.
+	--use-subdirs
+		Assume intermediate files are built in subdirectories.
+		(Same as the \`--use-subdirs' option to mmake and mmc.)
+"
+
+testdir=""
+jfactor=""
+keep_objs=false
+mmake_opts="-k"
+outfile=""
+runtests=true
+do_bootcheck=true
+copy_runtime=false
+copy_profiler=false
+keep_stage_2=false
+keep_stage_3=false
+keep_stage_2_sicstus=false
+test_sicstus=false
+use_subdirs=${MMAKE_USE_SUBDIRS=no}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+
+	-d|--test-dir)
+		testdir="$2"; shift ;;
+	-d*)
+		testdir="` expr $1 : '-d\(.*\)' `"; ;;
+
+	-h|--help)
+		echo "$usage"
+		exit 0 ;;
+
+	-j|--jobs)
+		jfactor="-j$2"; shift ;;
+	-j*)
+		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+	--jobs*)
+		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-k|--keep-objs)
+		keep_objs=true ;;
+
+	-m|--mmake)
+		mmake_opts="$mmake_opts $2"; shift ;;
+
+	-o|--output-file)
+		outfile="$2"; shift ;;
+	-o*)
+		outfile="` expr $1 : '-o\(.*\)' `"; ;;
+
+	-p|--copy-profiler)
+		copy_profiler=true ;;
+
+	-r|--copy-runtime)
+		copy_runtime=true ;;
+
+	-s|--sicstus)
+		test_sicstus=true ;;
+
+	-t|--no-test-suite)
+		runtests=false ;;
+
+	-T|--test-suite-only)
+		do_bootcheck=false ;;
+
+	-2|--keep-stage-2)
+		keep_stage_2=true ;;
+
+	-3|--keep-stage-3)
+		keep_stage_3=true ;;
+
+	--keep-stage-2-sicstus)
+		keep_stage_2_sicstus=true ;;
+
+	--use-subdirs)
+		use_subdirs=yes ;;
+	--no-use-subdirs)
+		use_subdirs=no ;;
+
+	--)	
+		shift; break ;;
+	-*)
+		echo "$0: unknown option \`$1'" 1>&2
+		echo "$usage" 1>&2
+		exit 1 ;;
+	*)
+		break ;;
+	esac
+	shift
+done
+
+if [ $# -ne 0 ]; then
+	echo "$0: unexpected argument(s) \`$*'" 1>&2
+	echo "$usage" 1>&2
+	exit 1
+fi
+
+case $use_subdirs in
+	yes)	cs_subdir=Mercury/cs/
+		;;
+	no)	cs_subdir=
+		;;
+esac
+
+MMAKE_USE_SUBDIRS=$use_subdirs
+export MMAKE_USE_SUBDIRS
+
+# Turn off the debugger, since accidentally leaving it on will result
+# in user interaction every time we any any version of the compiler
+# that wwas compiled with tracing. This has happened to me accidentally 
+# one too many times - zs.
+if echo $MERCURY_OPTIONS | grep '\-Di' > /dev/null
+then
+	MERCURY_OPTIONS=`echo $MERCURY_OPTIONS | sed -e 's/-Di//'`
+	export MERCURY_OPTIONS
+fi
+
+echo "starting at `date`"
+
+set -x
+
+root=`/bin/pwd | sed '
+s:/mount/munkora/mercury:/home/mercury:
+s:/mount/munkora/home/mercury:/home/mercury:
+s:/mount/munkora/clp/mercury:/home/mercury:'`
+PATH=$root/tools:$PATH
+export PATH
+
+# Try the command given by the environment variable RMSTAGECMD to delete
+# stage directories. Since this command may not always work due to
+# security considerations (.rhost files), we execute /bin/rm -fr afterwards
+# in any case.
+if test "$RMSTAGECMD" = ""
+then
+	RMSTAGECMD="/bin/rm -fr"
+fi
+
+if $test_sicstus
+then
+	echo "Building SICStus stage 1..." 1>&2
+	if
+		cd $root/library &&
+		mmake $mmake_opts $jfactor sicstus &&
+		cd $root/compiler &&
+		mmake $mmake_opts $jfactor sicstus &&
+		cd $root
+	then
+		echo "building of SICStus stage 1 successful"
+	else
+		echo "building of SICStus stage 1 not successful"
+		exit 1
+	fi
+
+	MERCURY_COMPILER=$root/compiler/mercury_compile.sicstus
+	export MERCURY_COMPILER
+	MERCURY_INT_DIR=$root/stage2_sicstus/library
+	export MERCURY_INT_DIR
+
+	[ -d stage2_sicstus ] || mkdir stage2_sicstus
+	if $keep_stage_2_sicstus
+	then
+		echo keeping existing stage2_sicstus
+	else
+		# We try to do the removal of the stage 2 directory in parallel
+		# since recursive rm's across NFS can be quite slow ...
+		$RMSTAGECMD $root/stage2_sicstus/compiler < /dev/null &
+		$RMSTAGECMD $root/stage2_sicstus/library < /dev/null &
+		wait
+		$RMSTAGECMD $root/stage2_sicstus/* < /dev/null
+		/bin/rm -fr $root/stage2_sicstus/* < /dev/null
+		/bin/rm -fr $root/stage2_sicstus/.[a-zA-Z]* < /dev/null
+	fi
+
+	set +x
+	echo linking SICStus stage 2... 1>&2
+	cd stage2_sicstus
+	mkdir compiler
+	cd compiler
+	# Break up the links into several chunks.
+	# This is needed to cope with small limits on the size of argument
+	# vectors.
+
+	ln -s $root/compiler/[a-h]*.m .
+	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[t-z]*.m .
+	cp $root/compiler/Mmake* .
+	cd $root/stage2_sicstus
+	mkdir library
+	cd library
+	ln -s $root/library/library.nu.nl.in .
+	ln -s $root/library/[a-l]*.m .
+	ln -s $root/library/[m-z]*.m .
+	ln -s $root/library/*.nl .
+	cp $root/library/Mmake* .
+	ln -s $root/library/libmercury.init .
+	cd $root/stage2_sicstus
+	if "$copy_runtime"
+	then
+		# Remove symbolic link to the stage 1 runtime if it's present,
+		# which it can be with the -2 option.
+		rm runtime
+		mkdir runtime
+		cd runtime
+		ln -s $root/runtime/*.h .
+		ln -s $root/runtime/*.c .
+		ln -s $root/runtime/*.in .
+		cp $root/runtime/Mmake* .
+		ln -s $root/runtime/machdeps .
+		cd $root/stage2_sicstus
+	else
+		ln -s $root/runtime .
+	fi
+	ln -s $root/boehm_gc .
+	ln -s $root/doc .
+	ln -s $root/scripts .
+	ln -s $root/util .
+	if test "$copy_profiler" = "true"
+	then
+		mkdir profiler
+		cd profiler
+		ln -s $root/profiler/*.m .
+		cp $root/profiler/Mmake* .
+		cd $root/stage2_sicstus
+	else
+		ln -s $root/profiler .
+	fi
+	ln -s $root/conf* .
+	ln -s $root/VERSION .
+	ln -s $root/.README.in .
+	ln -s $root/.INSTALL.in .
+	rm -f config*.log
+	cp $root/Mmake* .
+	if test -f $root/Mmake.stage.params
+	then
+		/bin/rm -f Mmake.params
+		cp $root/Mmake.stage.params Mmake.params
+	fi
+	cd $root
+
+	set -x
+
+	if
+		cd stage2_sicstus &&
+		mmake $mmake_opts depend_library depend_compiler \
+			depend_profiler &&
+		cd $root
+	then
+		echo "building of SICStus stage 2 dependencies successful"
+	else
+		echo "building of SICStus stage 2 dependencies not successful"
+		exit 1
+	fi
+
+	MMAKE_VPATH=.
+	export MMAKE_VPATH
+	MMAKE_DIR=$root/scripts
+	export MMAKE_DIR
+
+	if
+		cd stage2_sicstus/library &&
+		mmake $mmake_opts $jfactor all-ints &&
+		mmake $mmake_opts $jfactor cs
+	then
+		echo "building of SICStus stage 2 library successful"
+	else
+		echo "building of SICStus stage 2 library not successful"
+		exit 1
+	fi
+	cd $root
+
+	if
+		cd stage2_sicstus/compiler &&
+		mmake $mmake_opts $jfactor cs
+	then
+		echo "building of SICStus stage 2 compiler successful"
+	else
+		echo "building of SICStus stage 2 compiler not successful"
+		exit 1
+	fi
+	cd $root
+
+	sicstus_diff_status=0
+
+	exec 3>&1		# save stdout in fd 3
+	if [ -n "$outfile" ]
+	then
+		exec > "$outfile"	# redirect stdout to $outfile
+	fi
+
+	for dir in library compiler; do
+	    for file in stage2/$dir/${cs_subdir}*.c; do
+		diff -u $file \
+			stage2_sicstus/${cs_subdir}$dir/`basename $file` ||
+				sicstus_diff_status=1
+	    done
+	done
+
+	exec >&3		# restore stdout from fd 3
+	if [ $sicstus_diff_status -ne 0 ]; then
+		echo "error - SICStus stage 2 and Mercury stage 2 differ!"
+		exit 1
+	else
+		echo "SICStus stage 2 and Mercury stage 2 compare ok"
+		echo "removing SICStus stage 2..."
+		# We try to do the removal of the SICStus stage 2 directory
+		# in parallel since recursive rm's across NFS can be quite
+		# slow ...
+		$RMSTAGECMD $root/stage2_sicstus/compiler < /dev/null &
+		$RMSTAGECMD $root/stage2_sicstus/library < /dev/null &
+		wait
+		$RMSTAGECMD $root/stage2_sicstus/* < /dev/null
+		/bin/rm -fr $root/stage2_sicstus/* < /dev/null
+		/bin/rm -fr $root/stage2_sicstus/.[a-zA-Z]* < /dev/null
+		exit 0
+	fi
+
+fi
+
+if $do_bootcheck
+then
+	if mmake $mmake_opts MMAKEFLAGS=$jfactor all
+	then
+		echo "building of stage 1 successful"
+	else
+		cd $root/library;
+		mmake depend
+		cd $root/compiler;
+		mmake depend
+		cd $root/profiler;
+		mmake depend
+		cd $root
+		if mmake $mmake_opts MMAKEFLAGS=$jfactor all
+		then
+			echo "building of stage 1 successful"
+		else
+			echo "building of stage 1 not successful"
+			exit 1
+		fi
+	fi
+
+	# this is only for a transition period,
+	# until all stage1 dirs have been removed
+	/bin/rm -fr stage1
+
+	MERCURY_COMPILER=$root/compiler/mercury_compile
+	export MERCURY_COMPILER
+	MERCURY_INT_DIR=$root/stage2/library
+	export MERCURY_INT_DIR
+
+	[ -d stage2 ] || mkdir stage2
+	if $keep_stage_2
+	then
+		echo keeping existing stage2
+	else
+		# We try to do the removal of the stage 2 directory in parallel
+		# since recursive rm's across NFS can be quite slow ...
+		$RMSTAGECMD $root/stage2/compiler < /dev/null &
+		$RMSTAGECMD $root/stage2/library < /dev/null &
+		wait
+		$RMSTAGECMD $root/stage2/* < /dev/null
+		/bin/rm -fr $root/stage2/* < /dev/null
+		/bin/rm -fr $root/stage2/.[a-zA-Z]* < /dev/null
+	fi
+
+	set +x
+	echo linking stage 2... 1>&2
+	cd stage2
+	mkdir compiler
+	cd compiler
+	# Break up the links into several chunks.
+	# This is needed to cope with small limits
+	# on the size of argument vectors.
+
+	ln -s $root/compiler/[a-h]*.m .
+	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[t-z]*.m .
+	cp $root/compiler/Mmake* .
+	cd $root/stage2
+	mkdir library
+	cd library
+	ln -s $root/library/library.nu.nl.in .
+	ln -s $root/library/[a-l]*.m .
+	ln -s $root/library/[m-z]*.m .
+	ln -s $root/library/*.nl .
+	cp $root/library/Mmake* .
+	ln -s $root/library/libmercury.init .
+	cd $root/stage2
+	if test "$copy_runtime" = "true"
+	then
+		mkdir runtime
+		cd runtime
+		ln -s $root/runtime/*.h .
+		ln -s $root/runtime/*.c .
+		ln -s $root/runtime/*.in .
+		cp $root/runtime/Mmake* .
+		ln -s $root/runtime/machdeps .
+		cd $root/stage2
+	else
+		ln -s $root/runtime .
+	fi
+	ln -s $root/boehm_gc .
+	ln -s $root/doc .
+	ln -s $root/scripts .
+	ln -s $root/util .
+	if test "$copy_profiler" = "true"
+	then
+		mkdir profiler
+		cd profiler
+		ln -s $root/profiler/*.m .
+		cp $root/profiler/Mmake* .
+		cd $root/stage2
+	else
+		ln -s $root/profiler .
+	fi
+	ln -s $root/conf* .
+	ln -s $root/VERSION .
+	ln -s $root/.README.in .
+	ln -s $root/.INSTALL.in .
+	rm -f config*.log
+	cp $root/Mmake* .
+	if test -f $root/Mmake.stage.params
+	then
+		/bin/rm -f Mmake.params
+		cp $root/Mmake.stage.params Mmake.params
+	fi
+	cd $root
+
+	set -x
+
+	if (cd stage2 && mmake $mmake_opts $jfactor runtime)
+	then
+		echo "building of stage 2 runtime successful"
+	else
+		echo "building of stage 2 runtime not successful"
+		exit 1
+	fi
+
+	if (cd stage2 && mmake $mmake_opts depend_library depend_compiler \
+		depend_profiler)
+	then
+		echo "building of stage 2 dependencies successful"
+	else
+		echo "building of stage 2 dependencies not successful"
+		exit 1
+	fi
+
+	MMAKE_VPATH=.
+	export MMAKE_VPATH
+	MMAKE_DIR=$root/scripts
+	export MMAKE_DIR
+
+	# the `RM_C=:' ensures that the `.c' files do not get deleted
+
+	if (cd stage2/library && mmake $mmake_opts $jfactor RM_C=: mercury)
+	then
+		echo "building of stage 2 library successful"
+	else
+		echo "building of stage 2 library not successful"
+		exit 1
+	fi
+
+	if (cd stage2/compiler && mmake $mmake_opts $jfactor RM_C=: mercury_compile)
+	then
+		echo "building of stage 2 compiler successful"
+	else
+		echo "building of stage 2 compiler not successful"
+		exit 1
+	fi
+
+	unset MMAKE_VPATH
+	unset MMAKE_DIR
+
+	if (cd stage2 && mmake $mmake_opts MMAKEFLAGS=$jfactor all)
+	then
+		echo "building of stage 2 successful"
+	else
+		echo "building of stage 2 not successful"
+		exit 1
+	fi
+
+	if $keep_objs
+	then
+		true
+	else
+		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[i-s]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[t-z]*.o < /dev/null
+	fi
+
+	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
+	export MERCURY_COMPILER
+	MERCURY_INT_DIR=$root/stage3/library
+	export MERCURY_INT_DIR
+
+	[ -d stage3 ] || mkdir stage3
+	if $keep_stage_3
+	then
+		echo keeping existing stage3
+	else
+		# We try to do the removal of the stage 3 directory in parallel
+		# since recursive rm's across NFS can be quite slow ...
+		$RMSTAGECMD $root/stage3/compiler < /dev/null &
+		$RMSTAGECMD $root/stage3/library < /dev/null &
+		wait
+		$RMSTAGECMD $root/stage3/* < /dev/null
+		/bin/rm -fr $root/stage3/* < /dev/null
+		/bin/rm -fr $root/stage3/.[a-zA-Z]* < /dev/null
+	fi
+
+	echo linking stage 3... 1>&2
+	set +x
+	cd stage3
+	mkdir compiler
+	cd compiler
+	# Break up the links into several chunks.
+	# This is needed to cope with small limits
+	# on the size of argument vectors.
+	ln -s $root/compiler/[a-h]*.m .
+	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[t-z]*.m .
+	cp $root/compiler/Mmake* .
+	cd $root/stage3
+	mkdir library
+	cd library
+	ln -s $root/library/library.nu.nl.in .
+	ln -s $root/library/[a-l]*.m .
+	ln -s $root/library/[m-z]*.m .
+	ln -s $root/library/*.nl .
+	cp $root/library/Mmake* .
+	ln -s $root/library/libmercury.init .
+	cd $root/stage3
+	ln -s $root/boehm_gc .
+	ln -s $root/doc .
+	ln -s $root/runtime .
+	ln -s $root/scripts .
+	ln -s $root/util .
+	ln -s $root/profiler .
+	ln -s $root/conf* .
+	ln -s $root/VERSION .
+	ln -s $root/.README.in .
+	ln -s $root/.INSTALL.in .
+	rm -f config*.log
+	cp $root/Mmake* .
+	if test -f $root/Mmake.stage.params
+	then
+		/bin/rm -f Mmake.params
+		ln -s $root/Mmake.stage.params Mmake.params
+	fi
+	cd $root
+	set -x
+
+	if (cd stage3 && mmake $mmake_opts depend_library depend_compiler)
+	then
+		echo "building of stage 3 dependencies successful"
+	else
+		echo "building of stage 3 dependencies not successful"
+		exit 1
+	fi
+
+	MMAKE_VPATH=.
+	export MMAKE_VPATH
+	MMAKE_DIR=$root/scripts
+	export MMAKE_DIR
+
+	if 	(cd stage3/library &&
+		mmake $mmake_opts $jfactor all-ints &&
+		mmake $mmake_opts $jfactor cs)
+	then
+		echo "building of stage 3 library successful"
+	else
+		echo "building of stage 3 library not successful"
+		exit 1
+	fi
+
+	if (cd stage3/compiler && mmake $mmake_opts $jfactor cs)
+	then
+		echo "building of stage 3 compiler successful"
+	else
+		echo "building of stage 3 compiler not successful"
+		exit 1
+	fi
+
+	diff_status=0
+
+	exec 3>&1		# save stdout in fd 3
+	if [ -n "$outfile" ]
+	then
+		exec > "$outfile"	# redirect stdout to $outfile
+	fi
+
+	for dir in library compiler; do
+		for file in stage2/$dir/${cs_subdir}*.c; do
+		    diff -u $file stage3/$dir/${cs_subdir}`basename $file` ||
+			diff_status=1
+		done
+	done
+
+	exec >&3		# restore stdout from fd 3
+	if [ $diff_status -ne 0 ]; then
+		echo "error - stage 2 and stage 3 differ!"
+	else
+		echo "stage 2 and stage 3 compare ok"
+		echo "removing stage 3..."
+		# We try to do the removal of the stage 3 directory in parallel
+		# since recursive rm's across NFS can be quite slow ...
+		$RMSTAGECMD $root/stage3/compiler < /dev/null &
+		$RMSTAGECMD $root/stage3/library < /dev/null &
+		wait
+		$RMSTAGECMD $root/stage3/* < /dev/null
+		/bin/rm -fr $root/stage3/* < /dev/null
+		/bin/rm -fr $root/stage3/.[a-zA-Z]* < /dev/null
+	fi
+
+	echo "finishing stage3 at `date`"
+else
+	diff_status=0
+	echo "building of stages 1 and 2 skipped"
+fi
+
+if $runtests
+then
+	# use everything from stage 2
+
+	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
+	export MERCURY_COMPILER
+
+	MERCURY_INT_DIR=$root/stage2/library
+	export MERCURY_INT_DIR
+
+	MERCURY_LIBS="$root/stage2/library/libmercury.a
+                $root/stage2/runtime/libmer.a
+                $root/stage2/boehm_gc/libgc.a
+                -lm"
+	export MERCURY_LIBS
+
+	MERCURY_ALL_C_INCL_DIRS="-I$root/stage2/runtime
+		-I$root/stage2/boehm_gc
+		-I$root/stage2/boehm_gc/include"
+	export MERCURY_ALL_C_INCL_DIRS
+
+	MMAKE_DIR="$root/stage2/scripts"
+	export MMAKE_DIR
+
+	MERCURY_MOD_LIB_MODS="$root/stage2/runtime/runtime.init
+		$root/stage2/library/libmercury.init"
+	export MERCURY_MOD_LIB_MODS
+
+		# for mkinit, mmc, mgnuc, ml etc
+	PATH=$root/stage2/util:$root/stage2/scripts:$PATH
+	export PATH
+
+	if test -d ../tests
+	then
+		if test "$testdir" = ""
+		then
+			cd ../tests
+			./runtests $jfactor
+		else
+			cd ../tests/$testdir
+			./runtests $jfactor
+		fi
+		test_status=$?
+		cd $root
+	elif test -d tests
+	then
+		if test "$testdir" = ""
+		then
+			cd tests
+			./runtests $jfactor
+		else
+			cd tests/$testdir
+			./runtests $jfactor
+		fi
+		test_status=$?
+		cd $root
+	else
+		echo "cannot find test directory"
+		test_status=1
+	fi
+else
+	test_status=0
+fi
+
+echo "finishing at `date`"
+
+if test "$diff_status" = 0 -a "$test_status" = 0
+then
+	exit 0
+else
+	exit 1
+fi

@@ -1,0 +1,32 @@
+42
+42
+7
+7
+before scope ref = 0; reset to 1
+inside scope ref = 1; reset to 11
+after scope ref = 1; reset to 101
+inside scope ref = 11; reset to 31
+after scope ref = 101; reset to 201
+inside scope ref = 31; reset to 61
+after scope ref = 201; reset to 301
+before scope ref = 301; reset to 303
+inside scope ref = 303; reset to 313
+after scope ref = 303; reset to 503
+inside scope ref = 313; reset to 333
+after scope ref = 503; reset to 703
+inside scope ref = 333; reset to 363
+after scope ref = 703; reset to 903
+before scope ref = 903; reset to 906
+inside scope ref = 906; reset to 916
+after scope ref = 906; reset to 1206
+inside scope ref = 916; reset to 936
+after scope ref = 1206; reset to 1506
+inside scope ref = 936; reset to 966
+after scope ref = 1506; reset to 1806
+outside scope ref = 1806; reset to 0
+inside 1 scope ref = 0; reset to 1
+inside 2 scope ref = 1; reset to 2
+inside 1 scope ref = 1; reset to 3
+outside scope ref = 0; reset to 4
+3
+7

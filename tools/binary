@@ -1,0 +1,590 @@
+#!/bin/sh
+# This script finds miscompiled procedures.
+#
+# Given a stage2 directory that works (stage2.ok) and one that doesn't
+# (stage2.bad), both of which must have their object files, this script
+# uses binary search to try to find in stage2.bad first the C source file
+# and then the module within that C source file that, when put together
+# with everthing else from the stage2.ok directory, still causes the
+# compiler to fail.
+#
+# If the bad C source file has different numbers of modules in the bad and ok
+# versions, then the script stops after identifying only the file.
+#
+# The test for the composite stage2 compiler is either bootstrap checking
+# (the default), the successful execution of all the test cases in one or
+# more subdirectories of the tests directory, or the successful execution
+# of a single command.
+
+usage="\
+Usage: $0 [options]
+Options:
+	-b, --no-bootcheck
+		Do not perform a bootcheck; check only the tests directory
+		or the single command.
+	-c, --compile-only
+		Check the successful creation of the stage3 .c files,
+		but do not compare stage2.ok and stage3.
+	-C, --compare-to-bad
+		Compile stage3 using the parameter settings in the stage2.bad
+		directory, and compare stage3 to stage2.bad, not stage2.ok.
+	-d, --dependency-only
+		Make dependencies for stage3 only. Do not compile stage3.
+	-D <dirname>, --dir <dirname>
+		Confine the search to one directory, library or compiler.
+		(Usually useful only after a previous search.)
+	-f <modulename>, --file <modulename>
+		Confine the search to the named file(s).
+		(Usually useful only after a previous search.)
+	-h, --help
+		Display this usage message.
+	-j <num-jobs>, --jobs <num-jobs>
+		Run using <num-jobs> different parallel processes.
+	-m <mmake-args>, --mmake-args <mmake-args>
+		Pass <mmake-args> as options to \`mmake'.
+	-n, --negative-search
+		Look for the module that suppresses the bug, not causes it.
+	-o <filename>, --output-file <filename>
+		Output results to <filename>.
+	-r, --copy-runtime
+		Copy the runtime directory instead of linking it.
+		This is necessary if the test uses a compilation model option
+		that differs from the one used in the main runtime directory.
+	-s <command>, --single-command <command>
+		Execute the given command using each constructed compiler.
+	-t <testdir>, --test-dir <testdir>
+		Execute runtests from the named subdirectory of tests.
+"
+
+set -x
+
+bootcheck=""
+compile_only=""
+dependency_only=""
+jfactor=
+mmake_opts=""
+outfile=""
+copy_runtime=false
+testdirs=""
+negative=false
+alldirs=""
+allmodules=""
+compare_to_bad=""
+basis="ok"
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+
+	-b|--no-bootcheck)
+		bootcheck="-b" ;;
+
+	-c|--compile-only)
+		compile_only="-c" ;;
+
+	-C|--compare-to-bad)
+		compare_to_bad="-C"
+		basis="bad" ;;
+
+	-d|--dependency-only)
+		dependency_only="-d" ;;
+
+	-D|--dir)
+		alldirs="$2"; shift ;;
+	-D*)
+		alldirs="` expr $1 : '-d\(.*\)' `"; ;;
+
+	-f|--file)
+		allmodules="$allmodules $2"; shift ;;
+	-f*)
+		allmodules="$allmodules ` expr $1 : '-f\(.*\)' `"; ;;
+
+	-h|--help)
+		echo "$usage"
+		exit 0 ;;
+
+	-j|--jobs)
+		jfactor="-j$2"; shift ;;
+	-j*)
+		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+	--jobs*)
+		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-m|--mmake)
+		mmake_opts="$mmake_opts $2"; shift ;;
+
+	-n|--negative-search)
+		negative=true ;;
+
+	-o|--output-file)
+		outfile="-o $2"; shift ;;
+	-o*)
+		outfile="-o ` expr $1 : '-o\(.*\)' `"; ;;
+
+	-r|--copy-runtime)
+		copy_runtime=true ;;
+
+	-s|--single-command)
+		single_command="$2"; shift ;;
+	-s*)
+		single_command=` expr "$1" : '-s\(.*\)' ` ;;
+	--single-command*)
+		single_command=` expr "$1" : '--single-command\(.*\)' ` ;;
+
+	-t|--test-dir)
+		testdirs="$testdirs -t$2"; shift ;;
+	-t*)
+		testdirs="$testdirs ` expr $1 : '-t\(.*\)' `" ;;
+
+	-*)
+		echo "$0: unknown option \`$1'" 1>&2
+		echo "$usage" 1>&2
+		exit 1 ;;
+
+	*)
+		echo "$usage" 1>&2
+		exit 1 ;;
+	esac
+	shift
+done
+
+if "$negative"
+then
+	base=bad
+	trial=ok
+	expected=failure
+else
+	base=ok
+	trial=bad
+	expected=success
+fi
+
+if test -d stage2.ok -a -d stage2.bad
+then
+	echo "stage2.ok and stage2.bad both present"
+else
+	echo "at least one of stage2.ok and stage2.bad is missing"
+	exit 1
+fi
+
+if test -f stage2.ok/library/builtin.o -a -f stage2.bad/library/builtin.o
+then
+	echo "stage2.ok and stage2.bad both seem to have object files"
+else
+	echo "at least one of stage2.ok and stage2.bad is missing object files"
+	exit 1
+fi
+
+echo "starting at `date`"
+
+root=`/bin/pwd`
+trueroot=`echo $root | sed '
+s:/mount/munkora/mercury:/home/mercury:
+s:/mount/munkora/home/mercury:/home/mercury:
+s:/mount/munkora/clp/mercury:/home/mercury:'`
+PATH=$root/tools:$PATH
+export PATH
+
+if test "$RMSTAGECMD" = ""
+then
+	RMSTAGECMD="/bin/rm -fr"
+fi
+
+set +x
+[ -d stage2 ] || mkdir stage2
+$RMSTAGECMD $trueroot/stage2/compiler < /dev/null &
+$RMSTAGECMD $trueroot/stage2/library < /dev/null &
+wait
+$RMSTAGECMD $trueroot/stage2/* < /dev/null
+echo linking stage 2... 1>&2
+cd stage2
+mkdir compiler
+cd compiler
+ln -s $root/compiler/[a-h]*.m .
+ln -s $root/compiler/[i-s]*.m .
+ln -s $root/compiler/[t-z]*.m .
+cp $root/compiler/Mmake* .
+cd $root/stage2
+mkdir library
+cd library
+ln -s $root/library/[a-l]*.m .
+ln -s $root/library/[m-z]*.m .
+ln -s $root/library/libmercury.init .
+cp $root/library/Mmake* .
+cd $root/stage2
+if "$copy_runtime"
+then
+	mkdir runtime
+	cd runtime
+	ln -s $root/runtime/*.h .
+	ln -s $root/runtime/*.c .
+	ln -s $root/runtime/*.mod .
+	ln -s $root/runtime/*.in .
+	ln -s $root/runtime/machdeps .
+	cp $root/runtime/Mmake* .
+	cd $root/stage2
+else
+	ln -s $root/runtime .
+fi
+ln -s $root/boehm_gc .
+ln -s $root/doc .
+ln -s $root/scripts .
+ln -s $root/util .
+ln -s $root/profiler .
+ln -s $root/conf* .
+ln -s $root/VERSION .
+ln -s $root/.README.in .
+ln -s $root/.INSTALL.in .
+rm -f config*.log
+cp $root/stage2.ok/Mmake* .
+cd $root
+
+# We don't copy the .d files. This prevents mmake from trying to remake any
+# of the .c and .o files, which we provide in the form they should be used.
+
+# cp stage2.ok/library/*.d stage2/library
+cp stage2.ok/library/*.dep stage2/library
+cp stage2.ok/library/*.int stage2/library
+cp stage2.ok/library/*.int2 stage2/library
+cp stage2.ok/library/*.int3 stage2/library
+cp stage2.ok/library/*.date stage2/library
+cp stage2.ok/library/*.h stage2/library
+# cp stage2.ok/compiler/*.d stage2/compiler
+cp stage2.ok/compiler/*.dep stage2/compiler
+cp stage2.ok/compiler/*.int stage2/compiler
+cp stage2.ok/compiler/*.int2 stage2/compiler
+cp stage2.ok/compiler/*.int3 stage2/compiler
+cp stage2.ok/compiler/*.date stage2/compiler
+
+if test $bootcheck = ""
+then
+	cd $root
+	[ -d stage3 ] || mkdir stage3
+	$RMSTAGECMD $trueroot/stage3/compiler < /dev/null &
+	$RMSTAGECMD $trueroot/stage3/library < /dev/null &
+	wait
+	$RMSTAGECMD $trueroot/stage3/* < /dev/null
+	echo linking stage 3... 1>&2
+	cd stage3
+	mkdir compiler
+	cd compiler
+	# Break up the links into several chunks.
+	# This is needed to cope with small limits
+	# on the size of argument vectors.
+	ln -s $root/compiler/[a-h]*.m .
+	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[t-z]*.m .
+	cp $root/compiler/Mmake* .
+	cd $root/stage3
+	mkdir library
+	cd library
+	ln -s $root/library/[a-l]*.m .
+	ln -s $root/library/[m-z]*.m .
+	ln -s $root/library/libmercury.init .
+	cp $root/library/Mmake* .
+	cd $root/stage3
+	ln -s $root/boehm_gc .
+	ln -s $root/doc .
+	ln -s $root/scripts .
+	ln -s $root/profiler .
+	ln -s $root/runtime .
+	ln -s $root/util .
+	ln -s $root/conf* .
+	ln -s $root/VERSION .
+	ln -s $root/.README.in .
+	ln -s $root/.INSTALL.in .
+	rm -f config*.log
+	/bin/rm -f Mmake*
+	cp $root/stage2.$basis/Mmake* .
+	cp $root/stage2.ok/so_locations .
+	cd $root
+fi
+
+set -x
+
+if "$copy_runtime"
+then
+	if (cd stage2 ; mmake $mmake_opts $jfactor runtime)
+	then
+		echo "building of stage 2 runtime successful"
+	else
+		echo "building of stage 2 runtime not successful"
+		exit 1
+	fi
+fi
+
+if test "$alldirs" = ""
+then
+	echo testing whether the stage2.bad library works
+
+	set +x
+	echo linking stage2/library from stage2.bad/library 1>&2
+	cp stage2.bad/library/*.[co] stage2/library
+	echo linking stage2/compiler from stage2.ok/compiler 1>&2
+	cp stage2.ok/compiler/*.[co] stage2/compiler
+	set -x
+
+	if "$negative"
+	then
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		then
+			testeddir=library
+		else
+			testeddir=compiler
+		fi
+		echo "solution seems to be in the $testeddir directory"
+	else
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		then
+			testeddir=compiler
+		else
+			testeddir=library
+		fi
+		echo "problem seems to be in the $testeddir directory"
+	fi
+else
+	testeddir=$alldirs
+	if test ! -d stage2/$testeddir
+	then
+		echo $stage2/$testeddir does not exist
+		exit 1
+	fi
+fi
+
+# start out with all files in stage2 coming from stage2.$base
+
+set +x
+echo linking stage2 from stage2.$base 1>&2
+cp stage2.$base/library/*.[co] stage2/library
+cp stage2.$base/compiler/*.[co] stage2/compiler
+set -x
+
+# find the set of candidate modules
+
+if test "$allmodules" = ""
+then
+	cd stage2/$testeddir
+	allmodules=`sub X.c X *.c`
+	cd $root
+else
+	for module in $allmodules
+	do
+		if test ! -f stage2/$testeddir/$module.c
+		then
+			echo $stage2/$testeddir/$module.c does not exist
+			exit 1
+		fi
+	done
+fi
+
+doubtful="$allmodules"
+tested=`half $doubtful`
+knowngood=
+
+while test "$tested" != ""
+do
+	# at this point, all the files in stage2 should be from stage2.$base
+
+	echo "doubtful modules: $doubtful"
+	echo "testing modules:  $tested"
+
+	for module in $tested
+	do
+		cp stage2.$trial/$testeddir/$module.[co] stage2/$testeddir
+	done
+
+	if "$negative"
+	then
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		then
+			echo "test succeeded"
+			lasttest=success
+			doubtful="$tested"
+		else
+			echo "test failed"
+			lasttest=failure
+			set +x
+			newdoubtful=""
+			for module in $doubtful
+			do
+				if not appears $module $tested
+				then
+					newdoubtful="$newdoubtful $module"
+				fi
+			done
+			set -x
+			doubtful="$newdoubtful"
+		fi
+	else
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		then
+			echo "test succeeded"
+			lasttest=success
+			knowngood="$knowngood $tested"
+			set +x
+			newdoubtful=""
+			for module in $doubtful
+			do
+				if not appears $module $tested
+				then
+					newdoubtful="$newdoubtful $module"
+				fi
+			done
+			set -x
+			doubtful="$newdoubtful"
+		else
+			echo "test failed"
+			lasttest=failure
+			doubtful="$tested"
+		fi
+	fi
+
+	for module in $tested
+	do
+		cp stage2.$base/$testeddir/$module.[co] stage2/$testeddir
+	done
+
+	tested=`half $doubtful`
+	if test "$tested" = "" -a "$lasttest" = "$expected"
+	then
+		tested="$doubtful"
+	fi
+done
+
+if test "$doubtful" = ""
+then
+	echo "cannot find the problem; all modules behave as expected"
+	exit 1
+fi
+
+module=`echo $doubtful | tr -d ' '`
+
+if "$negative"
+then
+	true
+else
+	echo "the modules known to be ok are: $knowngood"
+fi
+echo "there is a problem in $testeddir/$module"
+echo
+
+basecnt=`egrep '^END_MODULE' stage2.$base/$testeddir/$module.c | wc -l`
+trialcnt=`egrep '^END_MODULE' stage2.$trial/$testeddir/$module.c | wc -l`
+
+if test $basecnt -ne $trialcnt
+then
+	basecnt=`echo $basecnt | tr -d ' '`
+	trialcnt=`echo $trialcnt | tr -d ' '`
+
+	echo "the two versions of the problem module"
+	echo "differ in the number of C modules they have"
+	echo "$base version: $basecnt vs $trial version: $trialcnt"
+	exit 1
+fi
+
+for dir in $base $trial
+do
+	cd stage2.$dir/$testeddir
+	divide $module.c $basecnt
+	cd $root
+done
+
+set +x
+doubtful=
+i=0
+while test $i -le $basecnt
+do
+	doubtful="$doubtful $i"
+	i=`expr $i + 1`
+done
+set -x
+
+tested=`half $doubtful`
+knowngood=
+
+while test "$tested" != ""
+do
+	echo "doubtful: $doubtful"
+	echo "testing:  $tested"
+
+	assemble $base $trial $testeddir $module $basecnt $tested
+	cd stage2/$testeddir
+	/bin/rm $module.o
+	mmake $module.o
+	cd $root
+
+	if "$negative"
+	then
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		then
+			echo "test succeeded"
+			lasttest=success
+			doubtful="$tested"
+		else
+			echo "test failed"
+			lasttest=failure
+			set +x
+			newdoubtful=""
+			for part in $doubtful
+			do
+				if not appears $part $tested
+				then
+					newdoubtful="$newdoubtful $part"
+				fi
+			done
+			set -x
+			doubtful="$newdoubtful"
+		fi
+	else
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		then
+			echo "test succeeded"
+			lasttest=success
+			knowngood="$knowngood $tested"
+			set +x
+			newdoubtful=""
+			for part in $doubtful
+			do
+				if not appears $part $tested
+				then
+					newdoubtful="$newdoubtful $part"
+				fi
+			done
+			set -x
+			doubtful="$newdoubtful"
+		else
+			echo "test failed"
+			lasttest=failure
+			doubtful="$tested"
+		fi
+	fi
+
+	tested=`half $doubtful`
+	if test "$tested" = "" -a "$lasttest" = "$expected"
+	then
+		tested="$doubtful"
+	fi
+done
+
+if test "$doubtful" = ""
+then
+	echo "cannot find the problem; all parts behave as expected"
+	exit 1
+fi
+
+doubtful=`echo $doubtful | tr -d ' '`
+
+if "$negative"
+then
+	true
+else
+	echo "the parts known to be ok are: $knowngood"
+fi
+echo "there is a problem in $testeddir/$module.c.part.$doubtful"
+echo "the difference is:"
+echo
+
+diff -u stage2.$base/$testeddir/$module.c.part.$doubtful stage2.$trial/$testeddir/$module.c.part.$doubtful
+
+echo
+echo "finishing at `date`"
+exit 0

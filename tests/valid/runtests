@@ -1,0 +1,32 @@
+#!/bin/sh
+# Test whether the compiler succeeds in generating code for each test.
+# Return a status of 0 (true) if everything is all right, and 1 otherwise.
+
+. ../handle_options
+. ../startup
+
+mmake $gradeopt $jfactor depend || exit 1
+eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+checkstatus=$?
+
+objs=`mmake $gradeopt printobjs`
+failed=""
+for obj in $objs
+do
+	if test ! -f "$obj"
+	then
+		failed="$failed $obj"
+	fi
+done
+
+if test "$failed" = "" -a "$checkstatus" = 0
+then
+	echo "the tests in the valid directory succeeded"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	. ../shutdown
+	exit 0
+else
+	echo "some tests in the valid directory failed: $failed"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	exit 1
+fi

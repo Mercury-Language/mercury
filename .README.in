@@ -1,0 +1,109 @@
+This directory contains the source distribution for the University of Melbourne
+Mercury compiler, version @VERSION@.
+
+	The Mercury implementation is free software, but it is Copyright
+	(C) 1993-1997 The University of Melbourne.  It is distributed
+	under the terms of the GNU General Public License.  See the file
+	COPYING for copying permission.
+
+	The Mercury library and runtime (the files in the library and
+	runtime subdirectories) are distributed under the terms of the
+	GNU Library General Public License.  See the file COPYING.LIB for
+	copying permissions for those files.
+
+	If those licencing arrangements are not satisfactory, please
+	contact us!  We are willing to offer alternative arrangements,
+	if the need should arise.
+	
+The subdirectory `boehm_gc' contains a slightly modified version 4.12 of
+the conservative garbage collector distributed by Hans Boehm:
+
+	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
+	Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
+
+	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
+	EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
+
+	Permission is hereby granted to use or copy this program for any
+	purpose, provided the above notices are retained on all copies.
+	Permission to modify the code and to distribute modified code is
+	granted, provided the above notices are retained, and a notice
+	that the code was modified is included with the above copyright
+	notice.
+
+A few files (config.guess, config.sub) are derived from code that is
+copyright by the Free Software Foundation, Inc, and are distributed
+under the GNU General Public License version 2.
+
+The program `texi2html' in the `doc' directory is copyright by CERN
+and is distributed under the GNU General Public
+License version 2:
+
+	This program is the intellectual property of the European
+	Laboratory for Particle Physics (known as CERN).  No guarantee
+	whatsoever is provided by CERN.  No liability whatsoever is
+	accepted for any loss or damage of any kind resulting from any
+	defect or inaccuracy in this information or code.
+
+The files in the `samples' directory are either public domain, or
+distributed under the GNU General Public License.
+
+Some of the files in the `extras' subdirectory have fairly restrictive
+copyright licences:  
+
+	The `Togl' library in extras/graphics/Togl-1.2 is copyright by
+	Brian Paul and Ben Bederson; see the file
+	extras/graphics/Togl-1.2/LICENCE.
+
+	The CLP(R) v1.2 implementation in extras/clpr/clpr is copyright
+	by IBM; see the file extras/clpr/clpr/README for details, in
+	particular the RESEARCH SOFTWARE DISCLAIMER and USER AGREEMENT.
+
+THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
+EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
+
+See the file INSTALL for installation instructions.
+But first read README.AIX, README.BSDI, README.IRIX-5, README.Linux,
+or README.MS-Windows if you are installing on a machine running
+AIX, BSD Unix, IRIX 5, Linux, or Microsoft Windows respectively.
+
+The documentation sources are in the `doc' subdirectory.  The installation
+process will install INFO, HTML, and DVI versions in the locations specified
+in the file Mmake.common - by default these locations are
+/usr/local/mercury-@VERSION@/info,
+/usr/local/mercury-@VERSION@/lib/mercury/html,
+and /usr/local/mercury-@VERSION@/lib/mercury/doc respectively.
+The installation process will also install Unix-style man pages -
+by default they will be installed in /usr/local/mercury-@VERSION@/man/man1.
+The files RELEASE_NOTES, NEWS, HISTORY, LIMITATIONS, and BUGS
+also contain useful information.  If you're interested in looking
+at the source code, the file compiler/notes/compiler_design.html is
+a good place to start.
+
+The `samples' directory contains some example Mercury programs.
+There are also some additional Mercury programs and libraries
+in the `extras' directory.
+
+For more information about Mercury, see the Mercury WWW home page at
+http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
+
+If you would like to join the Mercury mailing lists (there are two,
+mercury-users for general discussion, and mercury-announce for
+announcements), send mail with "subscribe" in the body to
+mercury-users-request@cs.mu.oz.au or mercury-announce-request@cs.mu.oz.au
+(respectively).
+
+Please send bug reports, enhancement requests, suggestions for improvements,
+and any other feedback to mercury-bugs@cs.mu.oz.au or mercury@cs.mu.oz.au.
+If you find something you don't like, please tell us.
+If you find something you do like, please tell the world!
+
+The Mercury distribution is available via anonymous ftp or WWW
+from the following locations:
+
+	Australia:
+		ftp://turiel.cs.mu.oz.au/pub/mercury
+	USA:
+		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+	Europe:
+		ftp://ftp.csd.uu.se/pub/Mercury

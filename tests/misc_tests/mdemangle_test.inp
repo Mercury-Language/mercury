@@ -1,0 +1,132 @@
+A collection of symbols for use in testing mdemangle.
+
+Each symbol is followed by the correct decoding.
+    
+    a common block
+mercury_data_mercury_builtin__common_21
+<shared constant number 21 for module mercury_builtin>
+
+	a base type info
+mercury_data_mercury_builtin__base_type_info_list_1
+<base type_info for type 'mercury_builtin:list'/1>
+
+	a base type layout
+mercury_data_mercury_builtin__base_type_layout_term__context_0
+<type layout for type 'mercury_builtin:term__context'/0>
+
+	a base type functors
+mercury_data_eliza__base_type_functors_message_0
+<type functors for type 'eliza:message'/0>
+
+	an unqualified base type info
+mercury_data___base_type_info_int_0
+<base type_info for type 'int'/0>
+
+	an unqualified base type layout
+mercury_data___base_type_layout_float_0
+<type layout for type 'float'/0>
+
+	a mangled name
+_entry_mercury__f_cut_0_0
+<predicate '!'/0 mode 0>
+
+	a compare predicate
+_entry_mercury____Compare___mercury_builtin__comparison_result_0_0
+<compare/3 predicate for type 'mercury_builtin:comparison_result'/0>
+
+	an index predicate
+_entry_mercury____Index___mercury_builtin__list_1_0
+<index/2 predicate for type 'mercury_builtin:list'/1>
+
+	a unify predicate
+_entry_mercury____Unify___mercury_builtin__term_0_0
+<unification predicate for type 'mercury_builtin:term'/0 mode 0>
+
+	a normal predicate
+_entry_mercury__copy_2_1
+<predicate 'copy'/2 mode 1>
+
+	a function
+_entry_mercury__fn__copy_2_1
+<function 'copy'/2 mode 1>
+
+	an internal label 
+_entry_mercury__copy_2_1_i5
+<predicate 'copy'/2 mode 1 label 5>
+
+	unused args
+_entry_mercury__copy__ua1_2_0
+<predicate 'copy'/2 mode 1 (minus unused args)>
+
+	unused args
+_entry_mercury__copy__uab1_2_0
+<predicate 'copy'/2 mode 1 (minus unused args)>
+
+	higher order specialization
+_entry_mercury__copy__ho7_2_1
+<predicate 'copy'/2 mode 1 (specialized)>
+
+	higher order specialization (regression test for 1 char pred names)
+_entry_mercury__c__ho7_2_1
+<predicate 'c'/2 mode 1 (specialized)>
+
+	higher order specialization and unused args
+_entry_mercury__copy__ho7__ua1_2_0
+<predicate 'copy'/2 mode 1 (specialized) (minus unused args)>
+
+	mangled name with unused args
+mercury__f_33_95_95_117_97_49_48_48_48_48_2_0
+<predicate '!'/2 mode 0 (minus unused args)>
+
+	some tests of symbols that should not be demangled
+	(this is a regression test: previous versions of mdemangle
+	seg faulted for this case)
+mercury_data_foo
+mercury_data_foo
+
+	some lambda goals
+mercury__lp__IntroducedFrom__pred__simplex__262__9_7_0_i5
+<pred goal (#9) from 'simplex' in module 'lp' line 262 label 5>
+mercury__lp__IntroducedFrom__func__collect_vars__153__4_3_0
+<func goal (#4) from 'collect_vars' in module 'lp' line 153>
+
+	procedures introduced by deforestation
+mercury__lp__DeforestationIn__pred__simplex__262__9_7_0_i5
+<deforestation procedure (#9) from 'simplex' in module 'lp' line 262 label 5>
+mercury__lp__DeforestationIn__pred__collect_vars__153__4_3_0
+<deforestation procedure (#4) from 'collect_vars' in module 'lp' line 153>
+
+	A realistic test
+ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
+interpreter.o -lcfloat_lib 
+Undefined			first referenced
+ symbol  			    in file
+_entry_mercury__tr_store__get_mutvar_4_0 interpreter.o
+_entry_mercury____Index___store__mutvar_2_0 interpreter.o
+_entry_mercury____Compare___store__mutvar_2_0 interpreter.o
+_entry_mercury__std_util__unsorted_aggregate_4_5 interpreter.o
+mercury_data_store__base_type_info_some_store_type_0 interpreter.o
+_entry_mercury____Unify___store__mutvar_2_0 interpreter.o
+_entry_mercury__tr_store__new_mutvar_4_0 interpreter.o
+_entry_mercury__tr_store__set_mutvar_4_0 interpreter.o
+mercury_data_store__base_type_info_mutvar_2 interpreter.o
+ld: fatal: Symbol referencing errors. No output written to interpreter
+gmake: *** [interpreter] Error 1
+
+	A realistic test
+ml -s asm_fast.gc.tr --no-demangle -o interpreter interpreter_init.o \
+interpreter.o -lcfloat_lib 
+Undefined			first referenced
+ symbol  			    in file
+<predicate 'tr_store:get_mutvar'/4 mode 0> interpreter.o
+<index/2 predicate for type 'store:mutvar'/2> interpreter.o
+<compare/3 predicate for type 'store:mutvar'/2> interpreter.o
+<predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
+<base type_info for type 'store:some_store_type'/0> interpreter.o
+<unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
+<predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
+<predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
+<base type_info for type 'store:mutvar'/2> interpreter.o
+ld: fatal: Symbol referencing errors. No output written to interpreter
+gmake: *** [interpreter] Error 1
+

@@ -1,0 +1,35 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+GRADEFLAGS += --use-trail
+
+# enable C debugging
+RM_C = :
+MGNUCFLAGS = -g -Werror
+MLFLAGS = -g
+
+# We need this to use shared libraries on Linux
+ML = ml --mercury-libs shared
+
+MAIN_TARGET = libtrailed_update
+
+depend : trailed_update.depend
+	cd samples && mmake $(MMAKEFLAGS) depend
+	cd tests && mmake $(MMAKEFLAGS) depend
+
+check : libtrailed_update
+	cd samples && mmake $(MMAKEFLAGS) check
+	cd tests && mmake $(MMAKEFLAGS) check
+
+clean :
+	cd samples && mmake $(MMAKEFLAGS) clean
+	cd tests && mmake $(MMAKEFLAGS) clean
+
+realclean :
+	cd samples && mmake $(MMAKEFLAGS) realclean
+	cd tests && mmake $(MMAKEFLAGS) realclean
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,42 @@
+#-----------------------------------------------------------------------------#
+
+#
+# Note: Mmake lets you override MCFLAGS for a particular file by setting
+# MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular
+# file by setting both GRADEFLAGS-foo and (for compiling the foo_init.c
+# file) GRADEFLAGS-foo_init.
+#
+
+# override this with `mmake HAVE_NUPROLOG=yes'
+# if you want to rebuild the `.exp' files.
+HAVE_NUPROLOG=no
+
+#-----------------------------------------------------------------------------#
+
+# .PRECIOUS: %.mod %.c %.o %_init.c %.no %.nu %_init.nl %_init.no
+
+%_init.c: Entry
+
+%.out: %
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+
+%.res: %.exp %.out
+	-rm -f $@
+	diff -c $*.exp $*.out > $@
+
+#-----------------------------------------------------------------------------#
+
+clean: clean_out clean_res
+
+clean_mc: clean_c clean_o clean_out clean_res
+
+clean_out:
+	rm -f *.out
+
+clean_exp:
+	rm -f *.exp
+
+clean_res:
+	rm -f *.res
+
+#-----------------------------------------------------------------------------#

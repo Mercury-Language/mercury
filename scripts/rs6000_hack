@@ -1,0 +1,87 @@
+#! /bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1996 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# The purpose of this file is to work around a bug in gcc and/or `as'
+# on AIX RS/6000.  The bug is that `as' complains about an offset
+# being greater than +/- 32k.  The work-around is to chop large
+# files into smaller bits.
+
+# specify the maximum number of C source lines that we think gcc/as can handle
+max_lines=10000
+
+# specify the names of the files which gcc/as can't handle
+files_to_fix="make_hlds.c prog_io.c"
+
+#-----------------------------------------------------------------------------#
+
+echo finding small files
+files_to_use="`wc -l *.c | sort -n | grep -v total | grep -v _init |
+		awk '{print $2;}'`"
+#echo files_to_use=$files_to_use
+
+# When we move bits, we need to make them external, rather than
+# static
+fixup="sed -e /^Declare_static/s//Declare_entry/ 
+-e /^Define_static/s//Define_entry/"
+
+set - $files_to_use
+for file in $files_to_fix; do
+	num_lines=`wc -l $file | awk '{print $1;}'`
+	num_extra_pieces=`expr $num_lines / $max_lines`
+	echo splitting $num_extra_pieces pieces off $file
+	piece=1
+	while [ $piece -le $num_extra_pieces ]; do
+		echo splitting piece number $piece into $1
+		first_line=`expr $piece "*" $max_lines`
+		last_line=`expr $piece "*" $max_lines + $max_lines`
+		v1='$1'
+		export v1
+		if [ $piece = 1 ]; then
+		    #
+		    # start at a Declare_... or Define_extern_entry...
+		    #
+		    begin_line=`
+			egrep -n '^(Define_extern_entry|Declare)' $file |
+			awk -F: "$v1 >= $first_line { print $v1; exit(0); }"
+			`
+		else
+		   #
+		   # start just after where we left off
+		   #
+			begin_line=`expr $end_line + 1`
+		fi
+		echo begin_line=$begin_line
+		#
+		# stop at an END_MODULE
+		#
+		end_line=`
+			grep -n '^END_MODULE' $file |
+			awk -F: "$v1 < $last_line { el = $v1; }
+				END { print el; }"
+			`
+		echo end_line=$end_line
+		len=`expr $end_line - $begin_line + 1`
+		echo len=$len
+		cp $1 $1.new
+		tail +$begin_line $file | head -$len | $fixup >> $1.new
+		mv $1 $1.old
+		mv $1.new $1
+		rm -f `basename $1 .c`.o
+		if [ $piece = 1 ]; then
+			head_count=`expr $begin_line - 1`
+		fi
+		tail_count=`expr $end_line + 1` 
+		shift
+		piece=`expr $piece + 1`
+	done
+	echo fixing $file
+	head -$head_count $file | $fixup > $file.new
+	tail +$tail_count $file | $fixup >> $file.new
+	mv $file $file.old
+	mv $file.new $file
+	rm -f `basename $file .c`.o
+done

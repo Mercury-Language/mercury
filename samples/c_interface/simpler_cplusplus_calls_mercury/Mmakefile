@@ -1,0 +1,61 @@
+#-----------------------------------------------------------------------------#
+# This source file is hereby placed in the public domain.  -fjh (the author).
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET=all
+
+depend: mercury_lib.depend
+all: cpp_main
+
+#-----------------------------------------------------------------------------#
+
+.SUFFIXES: .cc
+.cc.o:
+	$(CXX) $(HACK) $(CXXFLAGS) -c $<
+
+CXX=mgnuc
+
+# Due to a bug in g++ 2.7, global register variables don't work in C++.
+# Hence we need to ensure that we don't include the global register
+# variable declarations.  The following hack seems to do the trick.
+
+HACK=		-DALPHA_REGS_H \
+		-DMIPS_REGS_H \
+		-DSPARC_REGS_H \
+		-DI386_REGS_H \
+		-DPA_REGS_H \
+		-DRS6000_REGS_H
+
+# pass `-g' to the C compiler and linker, so we can use a debugger (e.g. gdb)
+CXXFLAGS=-g
+MGNUCFLAGS=-g
+MLFLAGS=-g
+
+# tell Mercury that this the Mercury stuff we're building is a library,
+# not a main program
+C2INITFLAGS=--library
+
+# tell Mmake not to remove the `.c' files, so we can look at them (e.g. in gdb)
+RM_C=:
+
+OBJECTS = cpp_main.o mercury_lib_init.o $(mercury_lib.os)
+
+#-----------------------------------------------------------------------------#
+
+cpp_main: $(OBJECTS)
+	$(ML) $(MLFLAGS) -o cpp_main $(OBJECTS) $(MLLIBS)
+
+cpp_main.o: mercury_lib.h
+
+# to make mercury_lib.h, just compile mercury_lib.m;
+# the Mercury compiler will create mercury_lib.h as a side-effect.
+mercury_lib.h: mercury_lib.o
+
+# make sure that `mmake clean' removes c_main.o
+clean:
+	rm -f cpp_main.o mercury_lib.h
+
+realclean:
+	rm -f cpp_main
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,122 @@
+-----------------------------------------------------------------------------
+
+INTRODUCTION
+
+Mecury has been ported to Windows 95 and Windows NT
+using the gnu-win32 Unix emulation package from Cygnus.
+
+This file documents how to build the source distribution
+of Mercury on Windows 95 or Windows NT using gnu-win32.
+
+(Note: we don't have any plans for a port to Windows 3.1.)
+
+-----------------------------------------------------------------------------
+
+PREPARATION
+
+To use or build Mercury on Windows, you need to first get gnu-win32
+from Cygnus, and install it. 
+
+If you're going to use a binary distribution of Mercury for Windows,
+you need to make sure that you get a version of gnu-win32 that is
+compatible with the one that the binary distribution was compiled with.
+For the current binary distributions, that means version b18.
+
+The version of gcc that comes with gnu-win32 version b19 (and b19.1),
+called `gcc 2.7-b19', has a bug which causes it to generate incorrect
+code when compiling Mercury.  So if you want to use gnu-win32 version b19,
+then you need to also install a version of gcc that has this bug fixed,
+such as egcs version 1.0.2 or later.  Note that Mercury has not yet
+been tested properly with b19, so currently we recommend using b18.
+
+You can download gnu-win32 from <ftp://ftp.cygnus.com/pub/gnu-win32>.
+You can download a binary distribution of egcs 1.0.2 for gnu-win32
+from <http://www.xraylith.wisc.edu/~khan/software/gnu-win32/>
+or <ftp://ftp.xraylith.wisc.edu/pub/khan/gnu-win32/cygwin32/releases/>.
+
+Once you have installed gnu-win32 and (for b19) egcs, check that
+`bash' and `gcc' work.   Make sure that `gcc --version' does not
+report `2.7-b19'.
+
+For more information on gnu-win32, see <ftp://ftp.cygnus.com/pub/gnu-win32>
+or <http://www.cygnus.com/misc/gnu-win32/>.
+
+-----------------------------------------------------------------------------
+
+RUNNING CONFIGURE
+
+Configure with
+
+	sh configure
+
+as described in the INSTALL file.
+
+You may get a few spurious error message dialogue boxes popping up,
+but so long as it keeps going, you can safely ignore them.
+
+Reportedly running configure sometimes results in permission errors,
+but apparently the errors go away if you run configure a second time.
+This is probably due to a bug in gnu-win32.
+
+-----------------------------------------------------------------------------
+
+RUNNING MAKE
+
+Due to bugs in gnu-win32, you need to apply the 
+patches which are listed at the end of this file:
+
+	patch < README.ms-windows
+
+Also, the date-stamps seem to get screwed up by gnu-win32;
+to avoid errors about `mercury_compile: Command not found',
+or `makeinfo: Command not found', you need to do the following:
+
+	touch configure
+	make touch_files
+
+Then do
+
+	make
+
+-----------------------------------------------------------------------------
+
+RUNNING MAKE INSTALL
+
+Just type
+
+	make install
+
+-----------------------------------------------------------------------------
+
+USING MERCURY
+
+Once you've finished installing, you need to add the appropriate
+directory, normally /usr/local/mercury-<VERSION>/bin, to your PATH. 
+
+You should be able to read the HTML version of the Mercury
+documentation, which by default gets installed in
+/usr/local/mercury-<VERSION>/lib/mercury/html, using Netscape
+or MS Internet Explorer.  Or you can get a copy of GNU Emacs
+for NT and use it to browse the INFO version.
+
+If you use mmake files named `Mmake' rather than `Mmakefile',
+there can be some problems with case-insensitive filenames
+and the name clash between `mmake' and `Mmake'.  If you run into any
+such problems, rename your `Mmake' file to `Mmakefile'.
+
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+--- Mmakefile	Sat Feb  7 02:48:13 1998
++++ Mmakefile.windows	Sat Feb  7 02:49:58 1998
+@@ -23,8 +23,8 @@
+ #-----------------------------------------------------------------------------#
+ 
+ # For Windows 95 or Windows NT, uncomment the following two lines:
+-# PREINSTALL_HACK = preinstall_hack_for_windows
+-# POSTINSTALL_HACK = postinstall_hack_for_windows
++PREINSTALL_HACK = preinstall_hack_for_windows
++POSTINSTALL_HACK = postinstall_hack_for_windows
+ 
+ #-----------------------------------------------------------------------------#
+ 

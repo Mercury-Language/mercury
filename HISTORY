@@ -1,0 +1,656 @@
+Prehistory
+----------
+
+We designed the Mercury execution algorithm in October 1993. We started
+working on a Mercury compiler in December 1993. Semantic analysis
+started working around May 1994. We started generating code around
+August 1994; we started work on optimizations very soon after. The
+compiler successfully compiled itself on 24 February 1995.
+
+
+Mercury 0.1, April 8 1995
+-------------------------
+Initial beta-test release. 
+Very resource-hungry, not very well documented.
+
+
+Mercury 0.2, April 18 1995
+--------------------------
+Much better error messages for determinism errors, much
+faster compilation, much lower memory requirements for bootstrapping.
+The C compilation is much faster and requires much less memory since we
+now by default compile to one C function per procedure, but we also
+improved the speed of the Mercury compiler itself by nearly 40% by
+implementing some library predicates much more efficiently.
+
+
+Mercury 0.2.5, 1 June 1995
+--------------------------
+Much better syntax error messages.
+Better documentation, now including a library reference manual.
+Added a GNU autoconf configuration script.
+Ported to IRIX 5.
+Added `multidet'.  
+Enabled the use of tag bits in combination with conservative garbage
+collection (this improved the speed of the compiler by about 20%).
+Compile directly to C rather than via the old .mod files, which were
+post-processed by a Perl script (improves compilation speed, reduces
+disk space requirements, removes dependency on Perl).
+Lots of bug fixes.
+
+
+Mercury 0.3, 18 July 1995
+-----------
+The first public release.
+Better type error messages.
+Better determinism error messages.
+Only recompiles <module>_init.c after `mmake depend', rather than after
+anything changes.
+Ported to ULTRIX (N.B. - ULTRIX's /bin/sh sucks).
+Avoid saving variables on the stack before negated contexts.
+Don't embed label names as strings in the executable.
+A few other efficiency improvements.
+Lots of bug fixes.
+Made the rule for `mmake clean' less reckless (don't do `rm -f *.c').
+Rationalized the options to `mc'.  Implemented a couple of new ones.
+Added a symbol demangler to improve linker error messages.
+Made very significant improvements to the documentation.
+Added a "Prolog to Mercury transition guide".
+
+
+Mercury 0.4, 14 September 1995
+------------------------------
+
+* Higher-order predicates and lambda expressions are now implemented.
+  (This means that `call/{1,2,3,4}' and `solutions/2' are now usable;
+  unfortunately call/{5,6,...} are still not yet implemented.)
+* Unique modes are now partially implemented (but don't use them
+  for anything except I/O, as the implementation is not yet complete).
+* Partially instantiated modes are now closer to being fully
+  implemented.
+* The installation process is more standard (basically
+  just `configure; make; make install').
+* Autoconfiguration is a bit more robust.
+* `msc' and `mnc' now produce somewhat smaller object files.
+* Error and warning messages are a little better in some cases.
+* Fixed a few code generation bugs.
+* Ported to DEC Alpha/OSF and BSDI BSD/386.
+* We've improved the efficiency of the 386 port by about 70%.
+  (50% because asm_fast.gc mode now works on the 386, the rest
+  due to better optimization).
+* We generate better code for calls to `\='.
+* We generate better code for `compare/3'.
+* A few other new optimizations.
+* The profiler now works (see the documentation in the Mercury
+  User's Guide).
+* Some new library predicates, including `string__format'
+  (like C's sprintf).
+* `set__join/2' has been renamed as `set__power_union/2'.
+* `list__sort/2' has been renamed as `list__sort_and_remove_dups/2'.
+* There is a new `list__sort/2' which does not remove duplicates.
+
+Mercury 0.5, 15 Febuary 1996
+----------------------------
+
+* We now support committed choice nondeterminism in a logical and declarative
+  fashion, using the new determinism categories `cc_nondet' and `cc_multi'.
+  Like `nondet' and `multi' respectively, they specify that a predicate
+  may have more than one solution, but they convey the additional
+  assertion that the predicate will only be used in contexts in which
+  only one solution is needed.  The compiler will check that all uses
+  of the predicate satisfy this requirement.  Having proven the
+  assertion to be correct, the compiler can then generate much more
+  efficient code for the predicate.  By pushing pruning inwards, the
+  compiler can often avoid creating choice points at all.
+
+* We now check for backtracking over unique modes.
+  (This may potentially break some programs using unique modes in ways
+  that the compiler can't prove are safe.  In such cases, replacing
+  `multi' with `cc_multi' should solve the problem.  If you have any
+  trouble with this, we'll be happy to help you.)
+  We have also added "mostly unique" modes, which provide support
+  for backtrackable destructive update.
+  See the Mercury Language Reference Manual.
+
+* We now provide genuinue arrays with destructive update.
+  See the library module `uniq_array'.  (Warning: this has not had
+  much testing.  The interface is not yet stable.)
+
+* We now support interfacing to C code.
+  See the documentation in the Mercury Language Reference Manual.
+
+* There is now an `inline' pragma which you can use as a hint to the
+  compiler to inline a particular predicate.
+
+* We've ported the system to ULTRIX (thanks to Gertjan van Noord
+  and especially Eero Pajarre).
+
+* We now support shared libraries for IRIX 5.
+
+* We now allow the use of compilers other than gcc -
+  see the user's guide for details.
+  We don't recommend the use of compilers other than gcc,
+  since the inability to use gcc's special features will
+  most likely lead to much less efficient code.
+
+* To complement our source distribution, we now also provide binary
+  distributions for a variety of platforms.  Installation should be
+  quick and easy.
+
+* Various other minor improvements:
+  - In portable C mode, we now generate better code for loops.
+  - We've made a few other minor improvements in the generated code.
+  - Unary plus and minus are now implemented.
+  - Updated the documentation to reflect changes in unique modes,
+  - Corrected a lot of typos in the documentation.
+  - Fixed quite a few bugs.
+
+* Parts of the library module `std_util' have been moved into separate
+  modules `assoc_list' and `bool'; if you have existing code which
+  used those parts of `std_util', you may need to add `import_module'
+  declarations to import `assoc_list' and/or `bool'.
+
+Mercury 0.6, 2 August 1996
+--------------------------
+
+* We now provide preliminary support for type and mode inference.
+  
+  The `:- pred' and `:- mode' declarations are now optional for
+  predicates that are local to a module; the compiler will infer
+  the types and modes automatically.
+
+  This support is not yet complete, and so type and mode inference are
+  not enabled by default.  They can be enabled using the `--infer-types'
+  and `--infer-modes' options.  The limitations of the current
+  implementation are: (1) type inference loops for certain very rare
+  type-incorrect programs; (2) mode inference doesn't support
+  reordering; (3) there are some modes which the current mode inference
+  algorithm is not capable of inferring.
+
+  Note that omitting type and mode declarations can significantly
+  reduce the quality of the compiler's error messages; if you have
+  trouble understanding an error message, then it is a good idea to add
+  explicit type and mode declarations.
+
+* We now support functional syntax.
+
+  Functions can be declared with `:- func' declarations,
+  and defined using equations or conditional equations,
+  in a similar manner to the way predicates are declared
+  with `:- pred' declarations and defined using facts and rules.
+  Terms can contain function calls and if-then-elses.
+  For example:
+
+	:- func sum(list(int)) = int.	
+	sum([]) = 0.				% unconditional equations
+	sum([X|Xs]) = X + sum(Xs).		% using function calls
+
+	:- func max(int, int) = int.
+	max(X, Y) = Max :-			% conditional equation
+		(X >= Y -> Max = X ; Max = Y).
+
+	:- func min(int, int) = int.
+	min(X, Y) = (if X >= Y then X else Y).	% unconditional equation
+						% using if-then-else expression
+
+  By default, functions are assumed to have a single det mode with
+  all arguments input and the result output, but you can override
+  this default by supplying explicit mode declarations; for example,
+  this allows you to use functions in a backwards mode to compute the
+  function inverse. 
+
+  Zero-arity functions can be used to define constants.
+
+	:- func pi = float.
+	pi = 3.14159265359.
+
+  We also support higher-order functions and function lambda expressions.
+  See the Mercury Language Reference Manual for details.
+  
+  The support for functions is not quite complete; there is one minor
+  limitation and one major one.  The minor limitation is that the C
+  interface does not yet support Mercury functions.  (Fortunately there
+  is an easy work-around - since the C interface does support predicates,
+  you can just make your Mercury function call a Mercury predicate.)
+  The major limitation is that there is currently no support for
+  debugging programs using functional syntax; obviously using a Prolog
+  system won't work, since Prolog doesn't support functions.
+
+* We now support overloading of predicates (and functions) with the
+  same name and arity defined in different modules. 
+  
+  Previously, an explicit module qualifier was required to resolve the
+  ambiguity; now, the typechecker will use the types to resolve the
+  ambiguity, if possible.  (Note that you cannot define more than one
+  predicate with the same name and arity in the same module.  Allowing
+  that would add considerable complexity to the syntax, and would be
+  of arguable utility, so we do not anticipate lifting that restriction.)
+
+* We now support defining types with the same name in different modules.
+
+  Previously this resulted in multiply defined symbol errors in certain
+  circumstances, e.g. when profiling.
+
+* We have removed the limitations on the number and order of arguments in
+  higher-order predicate calls.
+
+* Support for floating point is much improved.
+  
+  The above-mentioned support for functional syntax and overloading
+  have enabled major improvements in the interface used for floating
+  point.  You can now use the usual arithmetic and comparison
+  operators, rather than the cumbersome builtin_float_plus (etc.)
+  predicates that were used previously.  We have also improved code
+  generation for floating point operations, by avoiding many
+  unnecessary boxing/unboxing operations, and by making the
+  `--static-ground-terms' optimization apply also to floating point
+  constants.  These two optimizations improved performance on the
+  realistic "pseudoknot" benchmark by nearly a factor of four.
+  (There's still plenty of room for performance improvements, however.)
+
+* We now support reverse mode arithmetic.
+
+  This means that a goal such as `A is B + C' can be used not only to compute
+  A from B and C, but also to compute B from A and C, or to compute C from
+  A and B.
+
+* We have added some new compiler options to simplify the choice of which
+  optimization options to enable.
+
+  - You can now use `-O<n>' to select an optimization level between -1 and 6.
+    The default level is `-O2'; if you want to minimize compilation
+    time, compile with `-O0', which disables all optimizations except those
+    that actually improve overall compilation speed.
+
+  - You can now use `--optimize-space' to select optimization for space,
+    instead of optimization for time (which is the default).
+
+* We have continued to improve the compiler's optimization.
+
+  As well as the above-mentioned improvements to float-point code generation:
+
+  - We now specialize calls to higher-order predicates within the same module
+    in the case when the higher-order arguments have known values.
+    This optimization is enabled by the `--optimize-higher-order' option.
+
+  - We now specialize calls to predicates within the same module which have
+    unused arguments.  This often happens for polymorphic predicates, since
+    the compiler introduces type_info arguments which are often unused.
+    This optimization is enabled by the `--optimize-unused-args' option.
+
+  - The `--inlining' option now governs the settings of three separate options.
+    One, `--inline-simple', reproduces the previous behavior of `--inlining':
+    it inlines procedures whose definition is simple (e.g. a conjunction of
+    builtins). Another, `--inline-single-use', tells the compiler to inline
+    all procedures that are called exactly once. The compiler can also
+    inline procedures called more than once as long as they are not too
+    big; the argument of the option `--inline-threshold' sets a limit
+    on the size of the procedure definition (roughly in terms of the number
+    of logical connectives it has) multiplied by the number of calls to
+    the predicate.
+
+  - There's a new option `--optimize-dead-proc' option to eliminate unused
+    procedures within a module.  This is useful even if the original source
+    code didn't contain any unused procedures, since inlining and code
+    specialization can make a procedure unused even if there original source
+    had calls to that procedure.
+
+  - There's a new option `--split-c-files' which causes the compiler to put
+    each C function in its own C file, so that the linker can link in only
+    what is used, and a new Mmake target `foo.split' for
+    building a version of `foo' compiled with `--split-c-files'.
+    (`--split-c-files' has much the same effect as `--optimize-dead-proc',
+    except that it works globally, not just within a module.)
+    On platforms for which we don't support shared libraries, installing
+    a split version of the Mercury library fixes the problem of dumb Unix
+    linkers dragging in nearly the entire library even if most of it is
+    unused, and so reduces the size of a hello world program from >400k
+    to around 120k.
+
+  - The code generator generates special code for dense switches in
+    which all the output variables are constant terms.  Instead of
+    generating dense jump tables, it puts the answers in static constant
+    arrays, and retrieves them using array indexing, avoiding
+    an expensive jump and reducing code size.
+
+  - The code generator now emits better code for constructing deeply nested
+    terms, and avoids some unnecessary register shuffling.
+
+  - The value numbering optimization now processes code sequences
+    containing several heap allocations.
+
+  - The `--pred-value-number' option now works.  If it is given, and
+    value numbering notices that a value is available from a location
+    that is faster to access than the one from which another code
+    sequence retrieves the value, this other code sequence will be
+    reoptimized taking this into account.
+
+* We now support a C-to-Mercury interface, ie. we allow C code to call
+  Mercury predicates, using a new `pragma export' declaration.
+  (Unfortunately, this is not yet documented.  There is however a
+  fairly detailed and reasonably well-documented example in the
+  samples/c_interface/c_calls_mercury directory.)
+
+* We have added a little bit of inline assembler code for the Alpha so
+  that we can support the use of gcc non-local gotos and asm labels.
+  This improved both code size and execution speed for the Alpha port
+  by about 20-25%.
+
+* We have ported the Mercury implementation to RS/6000 systems running AIX.
+  (Thanks to Andreas Kuehlmann.)
+
+* We have made a few changes to the Mercury standard library.
+  The changes are listed here, but see the Mercury Library Reference Manual
+  for details such as documentation on the new predicates.
+
+  - The getopt library is now more flexible.  It can handle command
+    line switches (such as `-O2') that affect the values of many
+    options, and it can handle long options that specify a value after
+    an equal sign, in the GNU style (e.g. `--optimization-level=2').
+
+  - We have added a few new predicates using higher order facilities:
+	list__map/3, list__filter/3, list__filter/4, list__foldl/4,
+	list__foldr/4, list__sort/4 and list__merge/4 in list.m and
+	maybe_pred/3 in std_util.m. 
+
+  - There are a couple of new all-solutions predicates in std_util.m:
+    solutions_set/2 and unsorted_solutions/2. 
+
+  - We have added some additional predicates for handling association lists:
+    assoc_list__search/3 and assoc_list__remove/4.
+
+  - There are a few new predicates for converting floats to ints:
+    float__ceiling_to_int/2, float__floor_to_int/2
+    float__round_to_int/2, and float__truncate_to_int/2.
+
+  - There are quite a few changes to the graph module.  The interface has been
+    made more consistent with the rest of the library.  The predicate
+    graph__lookup_node/3 has been replaced by two predicates:
+    graph__search_node/3 which is nondet and returns all the nodes with
+    matching data, and graph__find_matching_nodes/3 which is det and
+    returns all the nodes with matching data.
+
+  - We have renamed the varset__lookup predicates to varset__search in order to
+    conform to our general naming convention.
+
+  - We have removed the (undocumented) library predicate list__map_maybe/3.
+
+  - The set module is now implemented using sorted lists rather than
+    unsorted lists.  (The interface is still the same.)  The old
+    unsorted lists representation is still available, in the
+    set_unordlist module.
+
+Mercury 0.7, 15 August 1997
+---------------------------
+
+* The Mercury language now supports higher-order syntax.
+
+  You can now write `P(X)' as an alternative to `call(P, X)'
+  or `F(X)' as an alternative for `apply(F, X)'.
+
+* Module qualifiers are now optional.
+
+  You can use just plain `write_string' rather than `io__write_string'.
+
+* There is a new `:- use_module' directive.
+
+  This is the same as `:- import_module', except all uses of the imported
+  items must be explicitly module qualified.
+
+  More changes to the module system are expected in the future,
+  possibly including changing the module qualifier operator to `.'.
+  Currently either `:' or `__' can be used as module qualifiers,
+  but we advise you to stick with using only `__' rather than `:',
+  to avoid problems in the future if we do change the module
+  qualifier to `.'.
+
+* We've improved the C interface.
+
+  The C interface now handles Mercury functions properly --
+  previously it only handled predicates, not functions. 
+  Also, exporting semidet predicates or functions to C now works.
+  We've improved the documentation, and we've included some examples
+  of how to use the C interface to interface with C++.
+  We also now support `main' being defined in C rather than in Mercury.
+
+  See samples/c_interface for examples of all of the above.
+
+* We now support cross-module optimizations.
+
+  The `--intermodule-optimization' option enables cross-module inlining
+  and cross-module specialization of higher-order predicates.
+  Also `--intermod-unused-args' enables cross-module elimination of
+  unused input arguments.
+
+* We've continued to improve the quality of the code we generate.
+
+  We now use a more efficient argument-passing convention, and the code
+  we generate for polymorphic predicates uses a more efficient "type-info"
+  representation than previous versions. 
+
+  (Note that this means code generated by Mercury 0.7 is not compatible
+  with code generated by earlier versions, so you will need to
+  recompile any existing Mercury object files or libraries when you
+  install the new version.)
+
+  We handle floating point code a bit better.  We don't box floating
+  point values on 64-bit architectures anymore, and on 32-bit
+  architectures we do a better job of avoiding unnecessary box/unbox
+  operations.  We also make some use of floating point registers for
+  holding temporary values.
+
+  We've made several improvements to the code generator that result in
+  better code in common situations.
+
+  There's also a new optimization option, `--inline-alloc', which can
+  speed up code that does a lot of memory allocation by inlining the
+  GC_malloc() function.  (This option is also enabled by `-O6'.)
+
+* We now support ELF shared libraries on Linux.
+
+  See README.Linux for details.
+
+  Note that using shared libraries is not yet the default,
+  so if you want to take advantage of this, you must explicitly
+  enable it as described in README.Linux.
+
+* We have added support for very large tables of facts.
+
+  See the documentation for `pragma fact_table' in the
+  "implementation-dependent pragmas" section of the Mercury
+  Language Reference Manual.
+
+* We have fixed quite a few bugs.
+
+  Mode inference now works a little bit better. 
+  
+  We now allow a function of arity N to coexist with a predicate of
+  arity N+1.
+
+  The Mercury `char' type is now 8-bit clean (previously, "for
+  compatibility with NU-Prolog" we only supported 7-bit characters).
+
+* The `mc' script has been renamed `mmc'.
+
+  This was done to avoid name clashes with the Midnight Commander
+  and the Modula Compiler.
+
+* We've added `man' pages.
+
+  The documentation now includes Unix-style `man' pages for
+  most of the development tools, including mmake, mmc, mgnuc, ml,
+  and mprof.  These supplement the existing documentation in the
+  Mercury User's Guide.
+
+  Most of the information in the man pages is also available using
+  the standard `--help' option.
+
+* We've improved the compiler's diagnostics a bit.
+
+  Some of the compiler's error messages are a bit more informative, and
+  it catches some errors that previously it missed (such as specifiying
+  modes in some but not all of the arguments of a `:- pred' declaration).
+
+* We have made quite a few changes to the Mercury standard library.
+
+  The changes are listed here, but see the Mercury Library Reference Manual
+  for details such as documentation on the new predicates.
+
+  - The std_util.m module now contains functions and predicates for
+    traversing and constructing terms of arbitrary type, and for
+    accessing types at runtime.
+
+    	+ For traversing terms: 
+    		Functions argument/3, det_argument/3, functor/3,
+		and predicate deconstruct/4.  These are similar to
+		Prolog's arg/3, functor/3, and '=..'.
+
+	+ For constructing terms:
+		Functions num_functors/1, construct/3 and
+		predicate get_functor/5.
+
+	+ For accessing and constructing types:
+		Functions type_of/1, type_ctor/1, type_args/1,
+		type_ctor_name/1, type_ctor_arity/1, make_type/2,
+		and predicates type_ctor_and_args/3 and
+		type_ctor_name_and_arity/3.
+
+    There are also some new functions for accessing values of the
+    universal type `univ', namely univ/2 and univ_type/1.
+
+  - There is a new module called `prolog' which contains some predicates that
+    may be useful for compatibility with Prolog: arg/3, functor/3,
+    `=:=', `=\=', `==', `\==', `@<', `@>', `@=<', `@>='.  We plan to
+    eventually move the definitions of cut (`!') and `is' here too.
+    
+  - We've finally implemented generic input-output predicates,
+    namely io__print/3, io__write/3, and io__read/3, using the the
+    functions and predicates described above.  These can read or write
+    data of any type.  We've also added io__nl/3 to print a newline.
+    Together with the change to make module qualifiers optional, these
+    changes make performing output quite a bit simpler; it's nice to be
+    able to write `print("Foo = "), print(Foo), nl'.
+
+  - We've also added generic predicates io__write_binary/3 and
+    io__read_binary/3, for doing binary I/O on values of any type.
+    (The current implementations actually just call io__read/3 and
+    io__write/3 respectively, though, so they're not maximally efficient.)
+
+  - The predicates term_to_type/2 and type_to_term/2, which convert
+    values of any type to or from type `term', are now implemented.
+
+  - We have a new module called benchmarking.m to make benchmarking easier.
+    The predicate report_stats, which used to be in std_util, is now
+    in this module.
+
+  - The interface to the relation.m module has been changed extensively.
+    Elements must now be explicitly added to the domain of the relation,
+    using relation__add_element/4, and relation operations such as
+    relation__add are now performed on relation_keys.  There are also
+    four new operations which convert elements to relation_keys and
+    vice versa:
+	relation__search_element/3, relation__lookup_element/3,
+	relation__search_key/3, and relation__lookup_key/3
+
+  - We changed the order of the arguments to set_bbbtree__subset,
+    for consistency with the order in set__subset and elsewhere.
+    We also changed the implementation of set__subset and
+    set_ordlist__subset to match the behaviour specified in the
+    documentation.
+
+  - We made some extensive additions to bag.m to include the standard set
+    operations (union, intersection, subtraction), and some other predicates
+    for manipulating bags.  We also changed bag__contains/2 (swapped the 
+    arguments), and bag__remove (now semidet) to be consistent with set.m 
+    and map.m. 
+
+  - There are two new predicates io__tmpnam and io__remove_file,
+    with semantics similar to the ANSI C functions tmpnam() and remove().
+
+  - There are new predicates int__max_int, int__min_int, int__bits_per_int,
+    char__min_char_value, and char__max_char_value, with semantics similar
+    to INT_MAX, INT_MIN, (CHAR_BIT * sizeof(int)), CHAR_MIN, and CHAR_MAX
+    in ANSI C (respectively).
+
+  - We've added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
+    to complete the set of list__merge and list__sort operations.
+
+  - We've added io__write_list/5 and io__write_list/6; these predicates write
+    lists using a user-specified procedure to write the elements and separating
+    the elements with a user-specified separator string.
+
+  - We've added io__read_file/{3,4} and io__read_binary_file/{3,4} which read
+    whole files (until error or eof).
+
+  - We've added a double accumulator version of list__foldl/4 called
+    list__foldl2/6, which is a convenient generalisation for accumulators
+    that also do I/O.  Also, we've added list__map_foldl/5, which is an
+    amalgam of list__map/3 and list__foldl/4.
+
+  - We've added a new constructor `maybe_string' to getopt's option_data
+    type, for parsing optional string-valued command-line arguments. 
+    See library/getopt.m for details.  Also added to getopt are some
+    missing option-lookup predicates: getopt__lookup_accumulating_option/3
+    and getopt__lookup_maybe_string_option/3.
+
+  - We've added string__foldl to the library.  It has the same semantics as
+    (string__to_char_list(String, Chars), list__foldl(Pred, Chars, Acc0, Acc))
+    but is implemented more efficiently.
+
+  - We've cleaned up the handling of integer division and modulus/remainder.
+    Previously the semantics of `//' and `mod' were not really well defined.
+    The semantics of `//' and `mod' have now been clarified and there are
+    new functions `div' and `rem'.  `//' truncates towards zero, and `rem'
+    is remainder with respect to `//', whereas `div' truncates towards minus
+    infinity, and `mod' is remainder with respect to `div'.
+
+  - The old array.m module has been renamed bt_array.m (short for
+    "backtrackable array", or "binary tree array"), and uniq_array.m
+    has been renamed array.m.  The interfaces of both modules have been
+    extended to make them closer to each other.
+
+    The following predicates have been added to array.m (formerly
+    uniq_array.m):
+
+	+ array__shrink/3: this is similar to array__resize/4 except
+	  that it's designed for cases when you only want to make an
+	  array smaller, so you don't have to supply a filler element.
+
+	+ array__min/2, array__bounds/3: find the lower bound or both
+	  bounds (respectively) of an array.  (In this implementation,
+	  the lower bound is always 0.)
+
+    The following predicates have been added to bt_array.m (formerly
+    array.m):
+
+	+ bt_array__min/2, bt_array__max/2, bt_array__size/2: find
+	  the lower bound, upper bound and size of a bt_array
+	  respectively.
+	
+	+ bt_array__in_bounds/2: check if an index is within the
+	  bounds of a bt_array.
+	
+	+ bt_array__semidet_set/4: the semidet version of bt_array__set/4.
+
+        + bt_array__from_list/3: a replacement for bt_array__from_list/2,
+	  which has been removed.  The extra argument is the lower bound
+	  for the new bt_array.
+
+	+ bt_array__shrink/4: analogous to array__shrink/3.
+
+	+ bt_array__resize/5: a replacement for bt_array__resize/4.  There
+	  was a design flaw in the previous interface, in that if the
+	  array increased in bounds, the extra slots were filled with one
+	  particular element from the old bt_array.  The extra argument is
+	  the element to use to fill these slots instead.
+
+* There is a new `extras' directory in the distribution that contains
+  some additional libraries.  These provide support for the following
+  application areas:
+
+  - graphics using Tk and OpenGL
+
+  - arithmetic on complex and imaginary numbers
+
+  - processing HTML forms using the CGI interface.
+

@@ -1,0 +1,9 @@
+if_mach
+if_not_there
+threadlibs
+base_lib
+on_sparc_sunos5
+on_sparc_sunos5_so
+gctest
+libgc_dll.h
+mercury_boehm_gc_conf.h

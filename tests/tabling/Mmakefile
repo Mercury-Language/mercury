@@ -1,0 +1,50 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+PROGS=	\
+	fib \
+	tc_loop
+
+# We don't yet pass the following tests:
+#	boyer \
+#	tc_minimal
+
+#-----------------------------------------------------------------------------#
+
+# at the moment tabling only works with conservative gc
+GRADEFLAGS		=	--gc conservative
+
+# tc_loop is expected to fail, so we need to ignore the exit status
+# (hence the leading `-')
+tc_loop.out: tc_loop
+	-./tc_loop > tc_loop.out 2>&1;
+
+#-----------------------------------------------------------------------------#
+
+DEPS=	$(PROGS:%=%.dep)
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+RESS=	$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+MMAKEFLAGS =
+
+dep:	$(DEPS)
+
+depend:	$(DEPENDS)
+
+check:	$(OUTS) $(RESS)
+
+all:	$(PROGS)
+
+clean:
+
+realclean:
+
+#-----------------------------------------------------------------------------#

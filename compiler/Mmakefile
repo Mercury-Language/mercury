@@ -1,0 +1,175 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - this is Mmake file for building the Mercury compiler 
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MAIN_TARGET=mercury
+
+VPATH=$(LIBRARY_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the compiler.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params
+
+MCD	=	MERCURY_INT_DIR=. $(MC) --generate-dependencies
+MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-interface
+MCSI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-short-interface
+MCOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) \
+			--make-optimization-interface
+MCTOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) \
+			--make-transitive-optimization-interface
+MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
+		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --compile-to-c
+MCS	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
+		MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		$(MC) --cflags -I$(BOEHM_GC_DIR) --split-c-files -c 
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
+C2INIT =	\
+MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/libmercury.init" \
+		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
+ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
+MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)
+MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/libmercury.a \
+		$(RUNTIME_DIR)/libmer.a ` \
+		    case $(GRADE) in \
+			*.gc*.prof*) echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
+			*.gc*) echo $(BOEHM_GC_DIR)/libgc.a ;; \
+		    esac \
+		` -lm
+MSC	=	MERCURY_SICSTUS_COMPILER=$(LIBRARY_DIR)/sicstus_compile \
+		$(SCRIPTS_DIR)/msc
+MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
+MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
+		$(SCRIPTS_DIR)/mnc
+MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
+MNLFLAGS =	-u 6000
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+MTAGSFLAGS =	
+
+#-----------------------------------------------------------------------------#
+
+# targets
+#
+# mercury_compile
+# mercury_compile.nu
+# mercury_compile.nu.debug
+# mercury_compile.sicstus
+# mercury_compile.sicstus.debug
+
+.PHONY: depend
+depend:		mercury_compile.depend
+
+.PHONY: all
+all:		mercury nuprolog sicstus
+
+.PHONY: mercury
+mercury:	mercury_compile
+
+.PHONY: nuprolog
+nuprolog:	mercury_compile.nu
+
+.PHONY: sicstus
+sicstus:	mercury_compile.sicstus
+
+.PHONY: debug
+debug:		mercury_compile mercury_compile.sicstus.debug
+
+#-----------------------------------------------------------------------------#
+
+# Add some additional dependencies, so that Mmake knows to remake the
+# compiler if one of the libraries changes.
+
+mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a
+# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).a, but only
+# if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
+# so just leave it out.
+
+mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
+mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
+
+mercury_compile_init.c: $(UTIL_DIR)/mkinit
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check
+check		: mercury_compile.check
+
+.PHONY: ints 
+ints		: mercury_compile.ints
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+	$(MTAGS) $(MTAGSFLAGS) $(mercury_compile.ms) $(LIBRARY_DIR)/*.m
+
+mercury_compile.stats : source_stats.awk $(mercury_compile.ms)
+	awk -f `vpath_find source_stats.awk` \
+		`vpath_find $(mercury_compile.ms)` > $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $(mercury_compile.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.o
+cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
+
+#-----------------------------------------------------------------------------#
+
+clean:
+
+realclean:
+	rm -f tags mercury_compile.stats
+
+#-----------------------------------------------------------------------------#
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install: install_mercury
+
+.PHONY: install_all
+install_all: install_mercury install_nuprolog install_sicstus
+
+.PHONY: install_mercury
+install_mercury: install_compiler
+	
+.PHONY: install_nuprolog
+install_nuprolog: install_compiler_nu
+
+.PHONY: install_sicstus
+install_sicstus: install_compiler_sicstus
+
+.PHONY: install_compiler
+install_compiler: mercury_compile
+	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
+
+.PHONY: install_compiler_nu
+install_compiler_nu: mercury_compile.nu
+	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
+	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
+		> $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
+	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
+	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
+
+.PHONY: install_compiler_sicstus
+install_compiler_sicstus: mercury_compile.sicstus
+	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
+	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
+
+#-----------------------------------------------------------------------------#

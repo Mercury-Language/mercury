@@ -1,0 +1,225 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1997-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# parse_grade_options.sh-subr:
+#	An `sh' subroutine for parsing grade-related options.
+#	Used by the `ml' and `mgnuc' scripts.
+#
+#	The code here should be inserted in the case statement in a scripts
+#	option-parsing loop.
+#
+#---------------------------------------------------------------------------#
+
+	--asm-labels)
+		asm_labels=true ;;
+	--no-asm-labels)
+		asm_labels=false ;;
+
+	--gcc-non-local-gotos)
+		non_local_gotos=true ;;
+	--no-gcc-non-local-gotos)
+		non_local_gotos=false ;;
+
+	--gcc-global-registers)
+		global_regs=true ;;
+	--no-gcc-global-registers)
+		global_regs=false ;;
+
+	--debug)
+		stack_trace=true 
+		require_tracing=true
+		;;
+	--no-debug)
+		stack_trace=false 
+		require_tracing=false
+		;;
+# The following more fine-grained options have been omitted
+# since they are not very useful and would probably only
+# confuse people.
+#	--stack-trace)
+#		stack_trace=true ;;
+#	--no-stack-trace)
+#		stack_trace=false ;;
+#	--require-tracing)
+#		require_tracing=true ;;
+#	--no-require-tracing)
+#		require_tracing=false ;;
+
+	--gc)
+		shift
+		case "$1" in
+			accurate|conservative|none)
+				gc_method=$1 ;;
+			*)
+				echo "$0: invalid gc method \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	--parallel)
+		thread_safe=true ;;
+
+	-p|--profiling|--time-profiling)
+		profile_time=true
+		profile_calls=true
+		profile_memory=false
+		;;
+	--memory-profiling)
+		profile_time=false
+		profile_calls=true
+		profile_memory=true
+		;;
+	-p-|--no-profiling)
+		profile_time=false
+		profile_calls=false
+		profile_memory=false
+		;;
+	--profile-time)
+		profile_time=true ;;
+	--no-profile-time)
+		profile_time=false ;;
+	--profile-calls)
+		profile_calls=true ;;
+	--no-profile-calls)
+		profile_calls=false ;;
+	--profile-memory)
+		profile_memory=true ;;
+	--no-profile-memory)
+		profile_memory=false ;;
+
+	--use-trail)
+		use_trail=true ;;
+	--no-use-trail)
+		use_trail=false ;;
+
+	--args)
+		shift
+		case "$1" in
+			simple|compact)
+				args_method=$1;;
+			*)
+				echo "$0: invalid arg method \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	--pic-reg)
+		pic_reg=true ;;
+	--no-pic-reg)
+		pic_reg=false ;;
+
+	-s|--grade)
+		shift
+		grade="$1";
+
+		# Convert a grade to a set of options.
+		#
+		# IMPORTANT: any changes to the handling of grades here
+		# may also require changes to
+		#	runtime/mercury_grade.h
+		#	compiler/handle_options.m
+		#	scripts/ml.in
+
+	    grade_pieces=`echo $grade | tr '.' ' '`
+	    for grade_piece in $grade_pieces
+	    do
+		case "$grade_piece" in
+			debug)
+				stack_trace=true
+				require_tracing=true
+				;;
+# The following alternatives have been omitted since
+# they're not very useful and would probably just confuse people.
+#			trace)
+#				stack_trace=false
+#				require_tracing=true
+#				;;
+#			strce)
+#				stack_trace=true
+#				require_tracing=false
+#				;;
+			sa)
+				args_method=simple
+				;;
+			tr)	use_trail=true
+				;;
+			memprof)
+				profile_time=false
+				profile_calls=true
+				profile_memory=true
+				;;
+			prof)
+				profile_time=true
+				profile_calls=true
+				profile_memory=false
+				;;
+			proftime)	
+				profile_time=true
+				profile_calls=false
+				profile_memory=false
+				;;
+			profcalls)	
+				profile_time=false
+				profile_calls=true
+				profile_memory=false
+				;;
+			profall)
+				profile_time=true
+				profile_calls=true
+				profile_memory=true
+				;;
+			agc)	gc_method=accurate
+				;;
+			gc)	gc_method=conservative
+				;;
+			nogc)	gc_method=none
+				;;
+			par)	thread_safe=true
+				;;
+			asm_fast)
+				asm_labels=true
+				non_local_gotos=true
+				global_regs=true
+				;;
+			asm_jump)
+				asm_labels=true
+				non_local_gotos=true
+				;;
+			fast)
+				asm_labels=false
+				non_local_gotos=true
+				global_regs=true
+				;;
+			jump)
+				asm_labels=false
+				non_local_gotos=true
+				global_regs=false
+				;;
+			reg)
+				asm_labels=false
+				non_local_gotos=false
+				global_regs=true
+				;;
+			none)
+				asm_labels=false
+				non_local_gotos=false
+				global_regs=false
+				;;
+		esac
+	    done
+	    ;;
+
+	-s*)
+		grade="` expr $1 : '-s\(.*\)' `"
+		# just insert it as `--grade $grade' and then reparse it
+		case $# in
+			0) set - "x --grade $grade" ;;
+			0) set - "x --grade $grade" "$@" ;;
+		esac
+		;;
+

@@ -1,0 +1,36 @@
+:- module prog_io_util.
+:- interface.
+:- import_module prog_data, (inst).
+:- import_module list, term, io.
+:- type (prog_io_util:maybe2(T1, T2))
+	--->	prog_io_util:error(string, (term:term))
+	;	prog_io_util:ok(T1, T2).
+:- type (prog_io_util:maybe1(T))
+	--->	prog_io_util:error(string, (term:term))
+	;	prog_io_util:ok(T).
+:- type (prog_io_util:maybe_functor) == (prog_io_util:maybe2((prog_data:sym_name), (list:list((term:term))))).
+:- type (prog_io_util:maybe_item_and_context) == (prog_io_util:maybe2((prog_data:item), (term:context))).
+:- pred prog_io_util:add_context((prog_io_util:maybe1((prog_data:item))), (term:context), (prog_io_util:maybe_item_and_context)).
+:- mode prog_io_util:add_context(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_io_util:convert_mode_list((list:list((term:term))), (list:list((prog_data:(mode))))).
+:- mode prog_io_util:convert_mode_list(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred prog_io_util:convert_mode((term:term), (prog_data:(mode))).
+:- mode prog_io_util:convert_mode(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred prog_io_util:convert_inst_list((list:list((term:term))), (list:list(((inst):(inst))))).
+:- mode prog_io_util:convert_inst_list(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred prog_io_util:convert_inst((term:term), ((inst):(inst))).
+:- mode prog_io_util:convert_inst(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred prog_io_util:standard_det(string, (hlds_data:determinism)).
+:- mode prog_io_util:standard_det(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred prog_io_util:disjunction_to_list((term:term), (list:list((term:term)))).
+:- mode prog_io_util:disjunction_to_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_io_util:conjunction_to_list((term:term), (list:list((term:term)))).
+:- mode prog_io_util:conjunction_to_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_io_util:sum_to_list((term:term), (list:list((term:term)))).
+:- mode prog_io_util:sum_to_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred prog_io_util:report_warning(string, (io:state), (io:state)).
+:- mode prog_io_util:report_warning(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred prog_io_util:report_warning((io:output_stream), string, (io:state), (io:state)).
+:- mode prog_io_util:report_warning(mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred prog_io_util:report_warning(string, int, string, (io:state), (io:state)).
+:- mode prog_io_util:report_warning(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.

@@ -1,0 +1,70 @@
+#! /bin/sh
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1994-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# MMC - Melbourne Mercury Compiler.
+#
+# Use `mmc -h' for help.
+#
+# Environment variables: MERCURY_INT_DIR, MERCURY_C_INCL_DIR,
+# MERCURY_COMPILER, MERCURY_C_COMPILER,
+# MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
+
+INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
+C_INCL=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
+MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+CC=${MERCURY_C_COMPILER="@CC@"}
+CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
+CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+LOW_TAG_BITS=@LOW_TAG_BITS@
+BITS_PER_WORD=@BITS_PER_WORD@
+BYTES_PER_WORD=@BYTES_PER_WORD@
+NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
+NUM_REAL_R_TEMPS=@NUM_REAL_R_TEMPS@
+HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
+HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
+DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
+MERCURY_LPSOLVE=${MERCURY_LPSOLVE=@PREFIX@/bin/lp_solve}
+export MERCURY_LPSOLVE
+
+# The default optimization level should be after
+# all the options that describe the machine configuration.
+
+case $# in
+	0) exec $MC \
+		--c-include-directory "$C_INCL" \
+		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		--cflags-for-regs "$CFLAGS_FOR_REGS" \
+		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--num-real-r-regs "$NUM_REAL_R_REGS" \
+		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
+		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		--bits-per-word "$BITS_PER_WORD" \
+		--bytes-per-word "$BYTES_PER_WORD" \
+		$HAVE_DELAY_SLOT \
+		$HAVE_BOXED_FLOATS \
+		$DEFAULT_OPT_LEVEL \
+		-I "$INTDIR"
+		;;
+	*) exec $MC \
+		--c-include-directory "$C_INCL" \
+		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		--cflags-for-regs "$CFLAGS_FOR_REGS" \
+		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--num-real-r-regs "$NUM_REAL_R_REGS" \
+		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
+		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		--bits-per-word "$BITS_PER_WORD" \
+		--bytes-per-word "$BYTES_PER_WORD" \
+		$HAVE_DELAY_SLOT \
+		$HAVE_BOXED_FLOATS \
+		$DEFAULT_OPT_LEVEL \
+		"$@" \
+		-I "$INTDIR"
+		;;
+esac

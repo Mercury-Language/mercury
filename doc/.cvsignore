@@ -1,0 +1,6 @@
+*.1
+*.text
+*.info *.info-*
+*.html
+*.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
+library-menu.texi library-chapters.texi

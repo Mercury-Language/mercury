@@ -1,0 +1,18 @@
+This directory contains the source for
+
+	The Mercury user's guide
+	The Mercury language reference manual
+	The Mercury library reference manual
+	The Prolog to Mercury transition guide
+	The Mercury frequently asked questions list
+
+The master copy of each document is stored in texinfo format, from which
+the info, dvi and html versions are derived automatically.
+
+You can create postscript versions from either the dvi or html versions.
+Due to the large spacing in texinfo-generated dvi files, the postscript file
+generated from the html (manually via a browser such as xmosaic) will be
+considerably shorter than the one derived from the dvi file.
+
+The source for the Mercury library reference manual is generated automatically
+from the library source files themselves.

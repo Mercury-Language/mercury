@@ -1,0 +1,44 @@
+The Mercury test suite is (dis)organized into several subdirectories.
+Each subdirectory has a script named "runtests" that runs the tests
+in that subdirectory; these indicate the presence of any errors by
+returning a nonzero exit status. The runtests script in this directory
+invokes the runtests scripts in all the subdirectories.
+
+Both the bootcheck script and the nightly script use the main runtests
+script to run all the tests.
+
+benchmarks
+	This directory contains Mercury versions of the benchmarks.
+	These tests work by comparing the output of the Mercury and
+	the NU-Prolog versions.
+
+general
+	This directory is for general test cases.
+	(It might be a good idea to split this into tests
+	of particular features and regression tests that check
+	for old bugs.  But for the moment, just about everything
+	goes in here.)
+	These tests work by comparing the output of the Mercury and
+	the NU-Prolog versions.
+
+hard_coded
+	This directory is for tests of features that don't work in
+	NU-Prolog.  The expected output of the program has to be
+	hard-coded in a hand-written `.exp' file, rather having the
+	`.exp' file be generated automatically using NU-Prolog.
+
+valid
+	This directory is for test cases that are not complete
+	programs. We just check that the files compile.
+
+invalid
+	This directory is for test cases that are invalid
+	programs. We check that the files do *not* compile.
+
+warnings
+	This directory is for tests of compiler warnings. These work by
+	comparing the warnings emitted by the compiler with those given
+	in the hand-written `.exp' file. 
+
+To regenerate the expected output files for the benchmark and general
+directories, execute the "generate_exp" script in this directory.

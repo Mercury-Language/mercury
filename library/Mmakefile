@@ -1,0 +1,468 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# library/Mmake - this is the main part of the Makefile
+# for building the Mercury libraries.
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MAIN_TARGET=mercury
+
+VPATH=.
+
+#-----------------------------------------------------------------------------#
+
+# If we're going to generate both `.o' files and `.pic_o' files, then
+# don't remove the intermediate `.c' files.
+RM_C	=	$(LIBRARY_RM_C)
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the library.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params.
+
+MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" \
+		$(SCRIPTS_DIR)/mnc
+MNL	=	MERCURY_NU_LIB_DIR=. \
+		MERCURY_NU_LIB_OBJS="`vpath_find $(library.nos) \
+					$(NU_LIBRARY_NOS)`" \
+		MERCURY_NU_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_NOS)" \
+		MERCURY_NU_DEBUG_LIB_OBJS="$(NU_DEBUG_LIBRARY_NOS)" \
+		$(SCRIPTS_DIR)/mnl -v
+
+MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
+MSL	=	MERCURY_SP_LIB_DIR=. \
+		MERCURY_SICSTUS_PROLOG=./sicstus_saved_state \
+		MERCURY_SP_LIB_OBJS="`vpath_find $(qls_subdir)sp_builtin.ql \
+				$(library.qls) $(NU_LIBRARY_QLS) \
+				$(qls_subdir)portray.ql`" \
+		MERCURY_SP_OVERRIDING_LIB_OBJS="$(NU_OVERRIDING_LIBRARY_QLS)" \
+		$(SCRIPTS_DIR)/msl
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+INTERMODULE_OPTS = --transitive-intermodule-optimization
+ENABLE_TERM_OPTS = --enable-termination
+CHECK_TERM_OPTS =
+# If you want to actually check termination for the library, then you need
+#	CHECK_TERM_OPTS = --check-termination
+# but that is not enabled by default because it probably just results in
+# spurious warnings.
+
+else
+
+INTERMODULE_OPTS =
+ENABLE_TERM_OPTS =
+CHECK_TERM_OPTS =
+
+endif
+
+MCD	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--generate-dependencies $(INTERMODULE_OPTS)
+MCI	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--make-interface $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCOI	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--make-opt-int $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCTOI	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--make-trans-opt $(INTERMODULE_OPTS) \
+			$(ENABLE_TERM_OPTS)
+MCG	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+			--compile-to-c $(INTERMODULE_OPTS) \
+			$(CHECK_TERM_OPTS)
+MCS	=	MERCURY_INT_DIR=. \
+		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) \
+		--split-c-files -c \
+		--cflags "-I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)" \
+		$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR)  \
+		$(DLL_CFLAGS) $(EXTRA_CFLAGS)
+LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
+LDLIBS	=	-lmer							\
+		` case "$(GRADE)" in 					\
+		    *.gc*.prof*) echo "-lgc_prof" ;;			\
+		    *.gc*)	echo "-lgc" ;;				\
+		  esac							\
+		`
+
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLS using gnu-win32
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS = -Dlibmercury_DEFINE_DLL
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+NU_LIBRARY_NLS = \
+	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl \
+	int.nu.nl float.nu.nl char.nu.nl mercury_builtin.nu.nl library.nu.nl \
+	store.nu.nl
+NU_OVERRIDING_LIBRARY_NLS = map.nu.nl assoc_list.nu.nl array.nu.nl
+NU_DEBUG_LIBRARY_NLS = portray.nl debug.nl error.nl
+
+NU_LIBRARY_NOS = $(NU_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+NU_OVERRIDING_LIBRARY_NOS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+NU_DEBUG_LIBRARY_NOS = $(NU_DEBUG_LIBRARY_NLS:%.nl=$(nos_subdir)%.no)
+
+NU_LIBRARY_QLS = $(NU_LIBRARY_NLS:%.nl=$(qls_subdir)%.ql) \
+	$(qls_subdir)sp_lib.ql
+NU_OVERRIDING_LIBRARY_QLS = $(NU_OVERRIDING_LIBRARY_NLS:%.nl=$(qls_subdir)%.ql)
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: all
+all : mercury nuprolog sicstus
+
+.PHONY: mercury
+mercury : all-ints libmercury
+
+.PHONY: nuprolog
+nuprolog : all-ints library.nu library.nu.debug \
+			$(library.nos) $(NU_LIBRARY_NOS) \
+			$(NU_OVERRIDING_LIBRARY_NOS) nc_builtin.nl
+
+.PHONY: sicstus
+sicstus : all-ints sicstus_compile library.sicstus.debug
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend		: library.depend
+
+.PHONY: check
+check		: library.check
+
+.PHONY: all-ints 
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+all-ints: ints int3s opts trans_opts
+
+else
+
+all-ints: ints int3s
+
+endif
+
+.PHONY: ints 
+ints		: library.ints
+
+.PHONY: int3s 
+int3s		: library.int3s
+
+.PHONY: opts 
+opts		: library.opts
+
+.PHONY: trans_opts 
+trans_opts		: library.trans_opts
+library.trans_opts	: $(library.trans_opts)
+
+#-----------------------------------------------------------------------------#
+
+library.nu.nl: library.nu.nl.in ../VERSION ../Mmake.common
+	sed	-e 's/@VERSION@/$(VERSION)/g' \
+		-e 's/@FULLARCH@/$(FULLARCH)/' \
+		library.nu.nl.in > library.nu.nl
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(MTAGS) $(library.ms)
+	$(MTAGS) $(library.ms)
+
+library.stats : $(COMPILER_DIR)/source_stats.awk $(library.ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk `vpath_find $(library.ms)` > $@
+	
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $(library.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(library.os)
+cs: $(library.cs)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: libmercury
+# the following dependency is just there to improve compilation speed;
+# making tree234.o first improves effective parallelism with parallel makes.
+libmercury : $(os_subdir)tree234.o
+libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) libmercury.init
+
+libmercury$(DLL_DEF_LIB).a : $(library.os)
+	rm -f libmercury$(DLL_DEF_LIB).a
+	ar cr libmercury$(DLL_DEF_LIB).a $(library.os)
+	$(RANLIB) libmercury$(DLL_DEF_LIB).a
+
+RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
+RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+
+libmercury.so : $(library.pic_os)
+	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os)		\
+		$(RPATH_1)$(RPATH_2)					\
+		$(LDFLAGS) $(LDLIBS)					\
+		$(SHARED_LIBS)
+
+libmercury.init: $(deps_subdir)library.dep
+	for file in $(library.ms); do \
+		grep '^INIT ' $$file; \
+		echo "INIT mercury__`basename $$file .m`__init"; \
+	done > libmercury.init
+
+#-----------------------------------------------------------------------------#
+
+# we need to add some manual dependencies, since the
+# automatic dependencies assume that the library
+# isn't part of the application, but in this case it is.
+
+library.nu library.nu.debug: $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS)
+library.sicstus library.sicstus.debug: $(qls_subdir)sp_builtin.ql \
+	$(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS)
+
+library.nu.debug: $(nos_subdir)error.no $(nos_subdir)debug.no \
+	$(nos_subdir)portray.no
+library.sicstus library.sicstus.debug: $(qls_subdir)portray.ql
+
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) $(NU_OVERRIDING_LIBRARY_QLS) \
+$(qls_subdir)portray.ql: sicstus_compile
+
+$(library.nos) $(NU_LIBRARY_NOS) $(NU_OVERRIDING_LIBRARY_NOS) \
+	$(nos_subdir)error.no $(nos_subdir)debug.no $(nos_subdir)portray.no: \
+	nc_builtin.nl
+
+# Ensure we recompile library__version if VERSION is changed.
+$(os_subdir)library.o \
+$(os_subdir)library.pic_o \
+	: $(RUNTIME_DIR)/mercury_conf.h
+
+#-----------------------------------------------------------------------------#
+
+sicstus_saved_state:
+	echo "save('$@')." | $(SP)
+
+sicstus_compile: sp_builtin.pl sicstus_saved_state
+	echo "\
+on_exception(Error, (						\
+	/* if we are using Sicstus 3, we need to turn off */	\
+	/* character escapes */					\
+	( prolog_flag(argv,_) ->				\
+		prolog_flag(character_escapes, _, off) 		\
+	;							\
+  		true                           			\
+	),                           				\
+	( prolog_flag(compiling, _, fastcode) -> true ; true ),	\
+	compile(sp_builtin),					\
+	garbage_collect,					\
+	save('$@', 1),						\
+	( prolog_flag(argv,Args) -> true ; unix(argv(Args)) ), 	\
+	( Args = [CompileMode|Files] ->				\
+		( prolog_flag(compiling, _, CompileMode) -> true ; true ), \
+		fcompile(Files)					\
+	;							\
+		true						\
+	)							\
+), print_message(error, Error)), halt ; halt.			\
+	" | ./sicstus_saved_state
+
+#-----------------------------------------------------------------------------#
+
+# We need to clean up the .no and .ql files for *.nu.nl, etc.
+
+clean:
+	rm -f $(nos_subdir)*.no $(qls_subdir)*.ql
+
+realclean:
+	rm -f libmercury.a libmercury.so libmercury.init
+	rm -f sicstus_saved_state sicstus_compile sp_builtin.pl
+	rm -f tags
+
+#-----------------------------------------------------------------------------#
+
+ifeq ($(LIBRARY_INTERMODULE),yes)
+
+# Installation targets
+
+# LIBRARY_INTERMODULE should be turned off only during development.
+# A full install requires the library's .opt and .trans_opt files.
+
+# If you add a new target below, please add a parallel target for the
+# case LIBRARY_INTERMODULE != yes.
+
+.PHONY: install
+install: install_mercury $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
+
+.PHONY: install_all
+install_all: install_mercury install_nuprolog install_sicstus
+
+.PHONY: install_mercury
+install_mercury: install_ints install_init install_library
+
+.PHONY: install_ints
+install_ints: $(library.ints) $(library.int3s) \
+		$(library.opts) $(library.trans_opts)
+	[ -d $(INSTALL_INT_DIR) ] || mkdir -p $(INSTALL_INT_DIR)
+	for file in $(library.ints) $(library.int3s) \
+			$(library.opts) $(library.trans_opts); \
+	do \
+		target=$(INSTALL_INT_DIR)/`basename $$file`; \
+		if cmp -s $$file $$target; then \
+			echo "$$target unchanged"; \
+		else \
+			echo "installing $$target"; \
+			cp $$file $$target; \
+		fi; \
+	done
+	# The following is needed to support the `--use-subdirs' option
+	[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+		mkdir -p $(INSTALL_INT_DIR)/Mercury
+	for dir in ints int2s int3s opts trans_opts; do \
+		rm -f $(INSTALL_INT_DIR)/Mercury/$$dir; \
+		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
+	done
+
+.PHONY: install_init
+install_init: libmercury.init
+	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	cp `vpath_find libmercury.init` $(INSTALL_MODULE_DIR)
+	# "libmercury.init" used to be called "library.init".
+	# If there is still a version with the old name lying around,
+	# then delete it; otherwise the initialization would get done twice.
+	rm -f $(INSTALL_MODULE_DIR)/library.init
+
+.PHONY: install_library
+install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
+
+# library.split.a is a version of libmercury.a that has been compiled
+# with `--split-c-files'.
+.PHONY: install_split_library
+install_split_library: library.split.a
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find library.split.a` $(INSTALL_MERC_LIB_DIR)/libmercury.a
+
+.PHONY: install_nuprolog
+install_nuprolog: install_library_nu install_interpreter_nu
+
+.PHONY: install_library_nu
+install_library_nu: $(library.nos) $(NU_LIBRARY_NOS) \
+			$(NU_OVERRIDING_LIBRARY_NOS) \
+			$(nos_subdir)error.no $(nos_subdir)debug.no \
+			$(nos_subdir)portray.no nc_builtin.nl
+	[ -d $(INSTALL_NU_DIR) ] || mkdir -p $(INSTALL_NU_DIR)
+	cp `vpath_find nc_builtin.nl` $(INSTALL_NU_DIR)
+	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
+	cp `vpath_find $(library.nos) $(NU_LIBRARY_NOS) \
+		$(NU_OVERRIDING_LIBRARY_NOS) \
+		$(nos_subdir)error.no $(nos_subdir)debug.no \
+		$(nos_subdir)portray.no` $(INSTALL_NU_ARCH_DIR)
+
+.PHONY: install_interpreter_nu
+install_interpreter_nu: library.nu
+	[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR)
+	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find library.nu` \
+		> $(INSTALL_NU_ARCH_DIR)/library.nu
+	-chmod +x $(INSTALL_NU_ARCH_DIR)/library.nu
+	cp `vpath_find library.nu.save` $(INSTALL_NU_ARCH_DIR)
+
+.PHONY: install_sicstus
+install_sicstus: install_interpreter_sicstus install_sicstus_compile
+
+.PHONY: install_interpreter_sicstus
+install_interpreter_sicstus: library.sicstus.debug
+	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
+	cp `vpath_find library.sicstus.debug` $(INSTALL_SP_ARCH_DIR)
+
+.PHONY: install_sicstus_compile
+install_sicstus_compile: sicstus_compile
+	[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR)
+	cp `vpath_find sicstus_compile` $(INSTALL_SP_ARCH_DIR)
+
+else
+
+.PHONY: install
+install:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_all
+install_all:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_mercury
+install_mercury:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_ints
+install_ints:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_init
+install_init:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_library
+install_library:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_split_library
+install_split_library:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_nuprolog
+install_nuprolog:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_library_nu
+install_library_nu:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_interpreter_nu
+install_interpreter_nu:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_sicstus
+install_sicstus:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_interpreter_sicstus
+install_interpreter_sicstus:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+.PHONY: install_sicstus_compile
+install_sicstus_compile:
+	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
+
+endif
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,45 @@
+       1:      1  1 CALL DET   interpreter:main/2-0 
+mtrace> valid commands are:
+a, EOF:			abort the current execution.
+b <module> <name>:	set a breakpoint on the predicate
+			or function <module>:<name>.
+c:			continue to end of program, not printing the trace.
+C:			continue to end of program, printing the trace.
+f:			finish this call, not printing the trace.
+F:			finish this call, printing the trace.
+<N> g:			go to event #N, not printing the trace.
+<N> G:			go to event #N, printing the trace.
+v:			list the names of the variables live at this point.
+l <n>:			set ancestor level to <n>
+p <n>:			print variable #n (or all vars if <n> is '*')
+r:			continue until forward execution is resumed.
+[<N>] [s]:		skip N events, not printing the trace (default: N=1).
+[<N>] S:		skip N events, printing the trace (default: N=1).
+?:			list all the breakpoints.
++ <N>:			enable breakpoint #N.
+- <N>:			disable breakpoint #N.
+mtrace> Pure Prolog Interpreter.
+
+Consulting file `interpreter.m'...
+      11:      6  5 SWTC DET   interpreter:consult_until_eof_2/5-0 s3;
+mtrace>         0 HeadVar__1
+        1 HeadVar__2
+        2 HeadVar__4
+mtrace>           HeadVar__1           		term(varset(0, empty, empty), functor(atom(":-"), [functor(atom("module"), [functor(atom("interpreter"), [], context("interpreter.m", 22))], context("interpreter.m", 22))], context("interpreter.m", 22)))
+          HeadVar__2           		[]
+          HeadVar__4           		state('<<c_pointer>>')
+mtrace>       30:     16 12 CALL DET   interpreter:database_assert_clause/4-0 
+mtrace>           HeadVar__1           		[clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("import_module"), [functor(atom("io"), [], context("interpreter.m", 24))], context("interpreter.m", 24))], context("interpreter.m", 24)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("interface"), [], context("interpreter.m", 23))], context("interpreter.m", 23)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("module"), [functor(atom("interpreter"), [], context("interpreter.m", 22))], context("interpreter.m", 22))], context("interpreter.m", 22)), functor(atom("true"), [], context("", 0)))]
+          HeadVar__2           		varset(0, empty, empty)
+          HeadVar__3           		functor(atom(":-"), [functor(atom("pred"), [functor(atom("main"), [functor(atom("io__state"), [], context("interpreter.m", 26)), functor(atom("io__state"), [], context("interpreter.m", 26))], context("interpreter.m", 26))], context("interpreter.m", 26))], context("interpreter.m", 26))
+mtrace>       31:     16 12 ELSE DET   interpreter:database_assert_clause/4-0 e;
+      32:     16 12 EXIT DET   interpreter:database_assert_clause/4-0 
+mtrace>           HeadVar__1           		[clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("import_module"), [functor(atom("io"), [], context("interpreter.m", 24))], context("interpreter.m", 24))], context("interpreter.m", 24)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("interface"), [], context("interpreter.m", 23))], context("interpreter.m", 23)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("module"), [functor(atom("interpreter"), [], context("interpreter.m", 22))], context("interpreter.m", 22))], context("interpreter.m", 22)), functor(atom("true"), [], context("", 0)))]
+          HeadVar__2           		varset(0, empty, empty)
+          HeadVar__3           		functor(atom(":-"), [functor(atom("pred"), [functor(atom("main"), [functor(atom("io__state"), [], context("interpreter.m", 26)), functor(atom("io__state"), [], context("interpreter.m", 26))], context("interpreter.m", 26))], context("interpreter.m", 26))], context("interpreter.m", 26))
+          HeadVar__4           		[clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("pred"), [functor(atom("main"), [functor(atom("io__state"), [], context("interpreter.m", 26)), functor(atom("io__state"), [], context("interpreter.m", 26))], context("interpreter.m", 26))], context("interpreter.m", 26))], context("interpreter.m", 26)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("import_module"), [functor(atom("io"), [], context("interpreter.m", 24))], context("interpreter.m", 24))], context("interpreter.m", 24)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("interface"), [], context("interpreter.m", 23))], context("interpreter.m", 23)), functor(atom("true"), [], context("", 0))), clause(varset(0, empty, empty), functor(atom(":-"), [functor(atom("module"), [functor(atom("interpreter"), [], context("interpreter.m", 22))], context("interpreter.m", 22))], context("interpreter.m", 22)), functor(atom("true"), [], context("", 0)))]
+mtrace>       33:     17 12 CALL DET   interpreter:consult_until_eof/4-0 
+mtrace>      677:     17 12 EXIT DET   interpreter:consult_until_eof/4-0 
+mtrace>      678:     15 11 EXIT DET   interpreter:consult_until_eof_2/5-0 
+mtrace>      679:     14 10 EXIT DET   interpreter:consult_until_eof/4-0 
+mtrace> ?- 

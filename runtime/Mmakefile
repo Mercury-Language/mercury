@@ -1,0 +1,267 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury runtime library
+
+MAIN_TARGET=lib
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+CFLAGS		= -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc -g \
+		  $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS	= --no-ansi $(EXTRA_MGNUCFLAGS) $(CFLAGS)
+MOD2C		= $(SCRIPTS_DIR)/mod2c
+
+#-----------------------------------------------------------------------------#
+
+#		  keep this list in alphabetical order, please
+HDRS		=	\
+			mercury_accurate_gc.h	\
+			mercury_agc_debug.h	\
+			mercury_calls.h		\
+			mercury_conf.h		\
+			mercury_conf_param.h	\
+			mercury_context.h	\
+			mercury_debug.h		\
+			mercury_deep_copy.h	\
+			mercury_deep_copy_body.h \
+			mercury_dummy.h		\
+			mercury_dlist.h		\
+		  	mercury_engine.h	\
+			mercury_float.h		\
+			mercury_getopt.h	\
+			mercury_goto.h		\
+			mercury_grade.h		\
+			mercury_heap.h		\
+			mercury_heap_profile.h	\
+			mercury_imp.h		\
+			mercury_init.h		\
+			mercury_label.h		\
+			mercury_library_types.h	\
+			mercury_memory.h	\
+			mercury_memory_zones.h	\
+			mercury_memory_handlers.h	\
+			mercury_misc.h		\
+			mercury_overflow.h	\
+			mercury_prof.h		\
+			mercury_prof_mem.h	\
+			mercury_regorder.h	\
+			mercury_regs.h		\
+			mercury_signal.h	\
+			mercury_std.h		\
+			mercury_stacks.h	\
+			mercury_stack_layout.h	\
+			mercury_stack_trace.h	\
+			mercury_string.h	\
+			mercury_table.h		\
+			mercury_table_any.h	\
+			mercury_table_enum.h	\
+			mercury_table_builtins.h \
+			mercury_table_type_info.h \
+			mercury_tabling.h	\
+			mercury_tags.h		\
+			mercury_thread.h	\
+			mercury_timing.h	\
+			mercury_trace.h		\
+			mercury_trace_base.h	\
+			mercury_trace_external.h \
+			mercury_trace_internal.h \
+			mercury_trace_util.h	\
+			mercury_trail.h		\
+			mercury_types.h		\
+			mercury_type_info.h	\
+			mercury_wrapper.h	\
+			$(LIBMER_DLL_H)
+
+# Note that `libmer_globals.h' cannot be part of $(HDR),
+# since it depends on libmer_def.a, and $(OBJ) : $(HDR) would create a
+# circular dependency.
+
+
+MACHHDRS	= 	machdeps/no_regs.h	\
+			machdeps/i386_regs.h	\
+			machdeps/mips_regs.h	\
+			machdeps/sparc_regs.h	\
+			machdeps/alpha_regs.h	\
+			machdeps/pa_regs.h	\
+			machdeps/rs6000_regs.h
+
+
+#		  keep this list in alphabetical order, please
+CFILES		= 	\
+			mercury_accurate_gc.c	\
+			mercury_agc_debug.c	\
+			mercury_bootstrap.c	\
+			mercury_context.c	\
+			mercury_deep_copy.c	\
+			mercury_dlist.c		\
+			mercury_dummy.c		\
+			mercury_engine.c	\
+			mercury_float.c		\
+			mercury_getopt.c	\
+			mercury_getopt1.c	\
+			mercury_grade.c		\
+			mercury_heap_profile.c	\
+			mercury_ho_call.c	\
+			mercury_label.c		\
+			mercury_memory.c	\
+			mercury_memory_zones.c	\
+			mercury_memory_handlers.c	\
+			mercury_misc.c		\
+			mercury_prof.c		\
+			mercury_prof_mem.c	\
+			mercury_regs.c		\
+			mercury_signal.c	\
+			mercury_stack_trace.c	\
+			mercury_table.c		\
+			mercury_thread.c	\
+			mercury_table_any.c	\
+			mercury_table_enum.c	\
+			mercury_table_builtins.c \
+			mercury_table_type_info.c \
+			mercury_timing.c	\
+			mercury_trace.c		\
+			mercury_trace_base.c	\
+			mercury_trace_external.c \
+			mercury_trace_internal.c \
+			mercury_trace_util.c	\
+			mercury_trail.c 	\
+			mercury_type_info.c	\
+			mercury_wrapper.c
+
+OBJS		= $(CFILES:.c=.o)
+PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
+
+LDFLAGS		= -L$(BOEHM_GC_DIR)
+LDLIBS		= \
+		` case "$(GRADE)" in 					\
+		    *.gc*.prof*) echo "-lgc_prof" ;;			\
+		    *.gc*)	echo "-lgc" ;;				\
+		  esac							\
+		`
+THREADLIBS	= \
+		` case "$(GRADE)" in					\
+		    *.par*) echo "-lpthread" ;;				\
+		  esac							\
+		`
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLs
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS	= -Dlibmer_DEFINE_DLL
+
+# the following header files are created automatically by Makefile.DLLs
+LIBMER_DLL_H	 = libmer_dll.h
+LIBMER_GLOBALS_H = libmer_globals.h
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+LIBMER_DLL_H =
+LIBMER_GLOBALS_H =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: lib
+lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB) runtime.init \
+	$(LIBMER_DLL_H) $(LIBMER_GLOBALS_H)
+
+libmer$(DLL_DEF_LIB).a: $(OBJS)
+	rm -f libmer$(DLL_DEF_LIB).a
+	ar cr libmer$(DLL_DEF_LIB).a $(OBJS)
+	$(RANLIB) libmer$(DLL_DEF_LIB).a
+
+libmer.so: $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\
+		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
+		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(SHARED_LIBS)
+
+runtime.init: $(CFILES)
+	cat `vpath_find $(CFILES)` | grep '^INIT ' > runtime.init
+
+mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
+	CONFIG_FILES= CONFIG_HEADERS=mercury_conf.h $(MERCURY_DIR)/config.status
+	echo datestamp > mercury_conf.h.date
+
+mercury_conf.h: mercury_conf.h.date
+	@true
+
+.PHONY: cs
+cs: $(CFILES)
+
+tags: $(CFILES) $(HDRS)
+	ctags $(CFILES) $(HDRS)
+
+.PHONY: check_headers
+check_headers:
+	for file in $(HDRS); do \
+		echo "$$file"; \
+		echo "#include \"$$file\"" > tmp.c; \
+		$(MGNUC) $(MGNUCFLAGS) -c tmp.c || exit 1; \
+	done
+	rm -f tmp.c
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_init install_lib
+
+.PHONY: install_headers
+install_headers: $(HDRS) $(MACHHDRS) $(LIBMER_GLOBALS_H)
+	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
+		mkdir -p $(INSTALL_INC_DIR)/machdeps
+	cp `vpath_find $(HDRS) $(LIBMER_GLOBALS_H)` $(INSTALL_INC_DIR)
+	chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
+	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
+
+.PHONY: install_init
+install_init: runtime.init
+	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	cp `vpath_find runtime.init` $(INSTALL_MODULE_DIR)
+
+.PHONY: install_lib
+install_lib: libmer.a libmer.$(EXT_FOR_SHARED_LIB)
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmer.a libmer.$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# prevent Mmake from removing C files
+RM_C=:
+
+#-----------------------------------------------------------------------------#
+
+clean: clean_o
+
+.PHONY: clean_o
+clean_o:
+	rm -f $(OBJS) $(PIC_OBJS) 
+
+realclean:
+	rm -f libmer.a libmer.so runtime.init
+	rm -f mercury_conf.h mercury_conf.h.date
+
+#-----------------------------------------------------------------------------#

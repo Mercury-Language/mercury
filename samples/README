@@ -1,0 +1,78 @@
+
+This directory contains some example Mercury programs.
+
+hello.m			"Hello World" in Mercury.
+
+cat.m                   An implementation of a simple version of the
+			standard UNIX filter `cat', which just copies
+			its input files or the standard input stream to
+			the standard output stream.
+
+sort.m                  An implementation of a simple version of the
+			standard UNIX filter `sort', which reads lines
+			from its input files or the standard input
+			stream, sorts them, and then writes the result
+			to the standard output stream.
+
+calculator.m            A simple four-function arithmetic calculator,
+			with a parser written using the Definite Clause
+			Grammar notation.
+
+committed_choice.m	An example illustrating committed-choice
+			nondeterminism in Mercury.
+
+interpreter.m		An simple interpreter for definite logic programs.
+			A demonstration of meta-programming in Mercury.
+
+expand_terms.m		Another example meta-program, showing how to
+			emulate Prolog's `expand_term' mechanism.
+
+e.m			A small program which calculates the base of
+			natural logarithms to however many digits you
+			choose.  It illustrates one way to achieve
+			lazy evaluation in Mercury.
+
+Mmake			The file used by `mmake', the Mercury Make program,
+			to build the programs in this directory.
+
+There are also some sub-directories which contain examples of multi-module
+Mercury programs.
+
+diff                    This directory contains an implementation of a
+			simple version of the standard UNIX utility
+			`diff', which prints the differences between
+			two files.
+
+diff/file.m		A module which defines a `file' abstract data type
+			to hold the lines of text in a file.
+
+diff/lcsstype.m		A module which defines the `lcss' type; used to
+			represent the longest common subsequence between
+			two files.
+
+diff/lcss.m		A module which defines a `diff' data type; it
+			exports a routine for computing the difference
+			between two `file's, represented as a `diff',
+			using the "longest common subsequence" algorithm.
+
+diff/diffs.m		Routines for printing `diff's in a couple of
+			different formats.
+
+diff/diff.m		The top-level driver for the `diff' program;
+			it contains some "glue" code which handles
+			the processing of command-line arguments
+			and calls the routines in file.m and lcss.m.
+
+diff/Mmake		An example of a very short Mmake file.
+
+c_interface		This directory contains some examples of mixed
+			Mercury/C programs using the C interface.
+
+c_interface/c_calls_mercury	This directory contains a detailed
+				example of C code calling Mercury code.
+
+c_interface/mercury_calls_c	This directory contains a detailed
+				example of Mercury code calling C code.
+
+c_interface/short_example.m	A short example of Mercury code calling C.
+

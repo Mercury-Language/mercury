@@ -1,0 +1,158 @@
+#!/bin/sh
+#
+# A program to prepare batches of versions of the compiler.
+#
+# The control and output files are all in the subdirectory batch.
+# The control files are $batch.MCFLAGS and possibly $batch.CFLAGS
+# and/or $batch.GRADE, where $batch is the last argument of makebatch.
+# $batch.CFLAGS and $batch.GRADE are consulted if they exist.
+#
+# All the control files must have the same number of lines. Each line
+# corresponds to a version of the compiler that is built with the
+# MCFLAGS, EXTRA_CFLAGS and GRADE make variables being set from that line.
+#
+# The output goes in $batch.mercury_compile.$n.gz; the size of the versions
+# are put in $batch.sizes. If a bootcheck fails, the bootcheck output goes
+# in $batch.out.$n; the compiler will be thrown away unless the -f flag is
+# given.
+#
+# The file $batch.checkpoint records which version is to be built next.
+# Reinvoking makebatch while this file exist will cause it to start from
+# that version. When makebatch exits normally, it removes the file to indicate
+# completion.
+
+usage="Usage: makebatch [-jN] [-ft] batchname"
+jfactor=-j1
+runtests=""
+failed="notwanted"
+
+while test $# -gt 0
+do
+	case $1 in
+
+	-f|--failed-compilers)
+		failed="wanted" ;;
+
+	-j|--jobs)
+		jfactor="-j$2" ; shift ;;
+	-j*)
+		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+	--jobs*)
+		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-t|--no-test-suite)
+		runtests="-t" ;;
+
+	-*)	echo "$0: unknown option \`$1'" 2>&1
+		echo $usage
+		exit 1 ;;
+
+	*)	break ;;
+
+	esac
+	shift
+done
+
+if test $# != 1
+then
+	echo $usage
+	exit 1
+fi
+
+batch=$1
+
+if test ! -r batch/$batch.MCFLAGS
+then
+	echo "batch/$batch.MCFLAGS does not exist or is not readable"
+	exit 1
+fi
+
+if test -r batch/$batch.CFLAGS
+then
+	needcflags=true
+else
+	needcflags=false
+fi
+
+if test -r batch/$batch.GRADE
+then
+	needgrade=true
+else
+	needgrade=false
+fi
+
+if test -f Mmake.stage.params
+then
+	echo moving Mmake.stage.params to Mmake.stage.params.$$
+	mv Mmake.stage.params Mmake.stage.params.$$
+fi
+
+if test -r batch/$batch.checkpoint
+then
+	n=`cat batch/$batch.checkpoint`
+else
+	n=1
+	cat /dev/null > batch/$batch.sizes
+fi
+
+maxn=`wc -l < batch/$batch.MCFLAGS`
+
+while test $n -le $maxn
+do
+	mcflags=`awk "NR == $n" batch/$batch.MCFLAGS`
+	echo "EXTRA_MCFLAGS = $mcflags" > Mmake.stage.params
+
+	if test "$needcflags" = true
+	then
+		cflags=`awk "NR == $n" batch/$batch.CFLAGS`
+		echo "EXTRA_CFLAGS = $cflags" >> Mmake.stage.params
+	fi
+
+	if test "$needgrade" = true
+	then
+		grade=`awk "NR == $n" batch/$batch.GRADE`
+		echo "GRADE = $grade" >> Mmake.stage.params
+	fi
+
+	cp Mmake.stage.params batch/$batch.params.$n
+	echo starting bootcheck of version $n
+	if tools/bootcheck -r $jfactor $runtests > batch/$batch.out.$n 2>&1
+	then
+		echo bootcheck of version $n succeeded
+		echo bootcheck succeeded > batch/$batch.out.$n
+		mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$n
+		echo -n "batch/$batch.mercury_compile.$n	" >> batch/$batch.sizes
+		size batch/$batch.mercury_compile.$n | tail -1 >> batch/$batch.sizes
+		/bin/rm -f batch/$batch.mercury_compile.$n.gz > /dev/null 2>&1
+		gzip batch/$batch.mercury_compile.$n
+	else
+		if test "$failed" = "wanted"
+		then
+			if test -x stage2/compiler/mercury_compile
+			then
+				echo bootcheck of version $n failed but produced compiler
+				mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$n
+				size batch/$batch.mercury_compile.$n | tail -1 >> batch/$batch.sizes
+				/bin/rm -f batch/$batch.mercury_compile.$n.gz > /dev/null 2>&1
+				gzip batch/$batch.mercury_compile.$n
+
+			else
+				echo bootcheck of version $n failed and did not produce compiler
+			fi
+		else
+			echo bootcheck of version $n failed
+		fi
+	fi
+	n=`expr $n + 1`
+	echo $n > batch/$batch.checkpoint
+done
+
+/bin/rm -f batch/$batch.checkpoint
+
+if test -f Mmake.stage.params.$$
+then
+	echo moving Mmake.stage.params.$$ to Mmake.stage.params
+	mv Mmake.stage.params.$$ Mmake.stage.params
+fi
+
+exit 0

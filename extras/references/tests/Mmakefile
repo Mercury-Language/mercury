@@ -1,0 +1,64 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET = all
+
+# We need to use a grade with trailing
+GRADEFLAGS += --use-trail
+
+MGNUCFLAGS= -I..
+
+# Link in the reference library from ..
+MCFLAGS += -I.. $(EXTRA_MCFLAGS)
+MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
+MLLIBS = -lglobal $(EXTRA_MLLIBS)
+VPATH = ..:$(MMAKE_VPATH)
+C2INITFLAGS = ../global.init
+%_init.c: $(C2INITFLAGS)
+
+# We need the following to use shared libraries on Linux
+#MGNUCFLAGS += -DPIC_REG
+#MLFLAGS += --shared
+
+#MLFLAGS += --static
+
+#-----------------------------------------------------------------------------#
+
+PROGS	=	ref_test
+
+DEPENDS =	$(PROGS:%=%.depend)
+CS	=	$(PROGS:%=%.c)
+RESS	=	$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+$(PROGS): ../libglobal.a
+
+%.out: %
+	./$< > $@ 2>&1;
+
+%.res: %.exp %.out
+	diff -c $*.exp $*.out > $@
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend: $(DEPENDS)
+
+.PHONY: all
+all: $(PROGS)
+
+.PHONY: check
+check: $(RESS)
+
+.PHONY: cs
+cs: $(CS)
+
+.PHONY: clean
+clean:
+	rm -f *.out *.res
+
+#-----------------------------------------------------------------------------#

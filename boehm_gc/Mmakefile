@@ -1,0 +1,89 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for Hans Boehm's conservative garbage collector.
+
+PROF=
+MAIN_TARGET=libgc$(PROF)
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: libgc$(PROF)
+libgc$(PROF): submake
+
+libgc$(PROF).a: submake
+
+libgc$(PROF).so: submake
+
+libgc$(PROF).dll: submake
+
+MMAKEFLAGS=
+
+#	We need to export MAKEFLAGS="" to avoid passing the `-r' (suppress
+#	builtin rules) supplied by Mmake to the boehm_gc Makefile, which
+#	needs the builtin rules. 
+#	We don't use `unset', since the Ultrix /bin/sh doesn't have `unset'.
+submake: force
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	$(MAKE) $(MMAKEFLAGS) GRADE=$(GRADE) PROF=$(PROF) libgc$(PROF).a \
+		libgc$(PROF).$(EXT_FOR_SHARED_LIB) $(EXT_FOR_SHARED_LIB)
+
+.PHONY: force
+force:
+
+clean:
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	$(MAKE) $(MMAKEFLAGS) clean
+	rm -f libgc.a libgc.so
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_lib
+
+# As well as installing gc.h, we also install gc_inl.h (and hence
+# private/gc_priv.h, private/gc_hdrs.h, and private/config.h),
+# for use with `-DINLINE_ALLOC'.
+# If we're using DLLs, we also want libgc_dll.h and libgc_globals.h.
+
+HEADERS=gc.h include/gc_inl.h $(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
+PRIVATE_HEADERS=gc_priv.h gc_hdrs.h config.h
+
+ifeq ($(USE_DLLS),yes)
+
+LIBGC_DLL_H = libgc_dll.h 
+LIBGC_GLOBALS_H = libgc_globals.h 
+
+else
+
+LIBGC_DLL_H =
+LIBGC_GLOBALS_H =
+
+endif
+#-----------------------------------------------------------------------------#
+
+
+.PHONY: install_headers
+install_headers:
+	-[ -d $(INSTALL_INC_DIR) ] || mkdir -p $(INSTALL_INC_DIR)
+	-[ -d $(INSTALL_INC_DIR)/private ] || \
+		mkdir -p $(INSTALL_INC_DIR)/private
+	cp $(HEADERS) $(INSTALL_INC_DIR)
+	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
+
+.PHONY: install_lib
+install_lib: libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)
+	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
+		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
+	cp `vpath_find libgc$(PROF).a libgc$(PROF).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_GC_LIB_DIR) \
+
+#-----------------------------------------------------------------------------#

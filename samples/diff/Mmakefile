@@ -1,0 +1,22 @@
+# An example of a *short* Mmake file
+# In fact you don't really need any Mmake file at all,
+# just `mmake diff.depend; mmake diff' is enough.
+# But `mmake depend; mmake' is standard, so we will
+# define a target `depend' and a default target `all'
+# to make that work.
+
+# This source file is hereby placed in the public domain.  -fjh (the author).
+
+MAIN_TARGET=all
+depend: diff.depend
+all: diff
+
+# Unfortunately, diff does not work quite properly when compiled with gcc
+# 2.7.2 under Digital Unix 3.2 due to a bug in gcc.  The bug was fixed
+# in 2.7.2.1, so feel free to comment out this line if you're using
+# an unbuggy compiler.
+#
+# BTW, the predicate which isn't compiled correctly is diff_out__show_file
+# in diff_out.m.
+MGNUCFLAGS=-O0
+

@@ -1,0 +1,82 @@
+-----------------------------------------------------------------------------
+
+INTRODUCTION
+
+Mecury has been ported to Windows 95 and Windows NT
+using the gnu-win32 Unix emulation package from Cygnus.
+
+This file documents how to install the binary distribution
+of Mercury on Windows 95 or Windows NT using gnu-win32.
+
+(Note: we don't have any plans for a port to Windows 3.1.)
+
+-----------------------------------------------------------------------------
+
+PREPARATION
+
+To use or install Mercury on Windows, you need to first get gnu-win32
+from Cygnus, and install it. 
+
+(If you're going to use a binary distribution of Mercury for Windows,
+you need to make sure that you get the same version of gnu-win32 that
+the binary distribution was compiled with.)
+
+You can download gnu-win32 from <ftp://ftp.cygnus.com/pub/gnu-win32>.
+
+To install gnu-win32, make a directory say D:\CYGNUS on a file
+system that supports long filenames, and unpack the archives
+there.  Make sure that you have C:\tmp and C:\bin directories.
+Copy sh.exe from D:\CYGNUS\H-i386-cygnus\bin to C:\bin.
+Make sure C:\bin is first in your PATH and D:\CYGNUS\H-i386-cygnus\bin
+is second.  Make sure that "." is somewhere in your path.
+Also set these environment variables:
+
+	GCC_EXEC_PREFIX=//D/CYGNUS/H-i386-cygnus/lib/gcc-lib
+	C_INCLUDE_PATH=//D/CYGNUS/H-i386-cygnus/i386-cygwin32/include
+
+Before continuing, check that `bash' and `gcc' work. 
+
+For more information on gnu-win32, see <ftp://ftp.cygnus.com/pub/gnu-win32>
+or <http://www.cygnus.com/misc/gnu-win32/>.
+
+-----------------------------------------------------------------------------
+
+RUNNING CONFIGURE
+
+Configure with either
+
+	sh configure i386-ms-win95
+
+or
+
+	sh configure i386-ms-winnt
+
+-----------------------------------------------------------------------------
+
+RUNNING MAKE INSTALL
+
+Just type
+
+	make install
+
+-----------------------------------------------------------------------------
+
+USING MERCURY
+
+Once you've finished installing, you need to add the appropriate
+directory, normally /usr/local/mercury-<VERSION>/bin, to your PATH. 
+But be careful where you add it: it is important to still make sure
+that C:\bin is first in your PATH, and that "." is last in your PATH.
+
+You should be able to read the HTML version of the Mercury
+documentation, which by default gets installed in the directory
+/usr/local/mercury-<VERSION>/lib/mercury/html,
+using Netscape or MS Internet Explorer.  Or you can get a copy
+of GNU Emacs for NT and use it to browse the INFO version in
+/usr/local/mercury-<VERSION>/lib/mercury/info.
+
+There may still be some problems with case-insensitive filenames
+and the nameclash between `mmake' and `Mmake'.  If you run into any
+such problems, rename the `Mmake' file in each subdirectory to `Mmakefile'.
+
+-----------------------------------------------------------------------------

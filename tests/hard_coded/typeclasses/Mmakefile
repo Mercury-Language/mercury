@@ -1,0 +1,80 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+TYPECLASS_PROGS=	\
+	constrained_lambda \
+	extract_typeinfo \
+	existential_type_classes \
+	ho_map \
+	implied_instance \
+	implied_instance_poly \
+	inference_test \
+	inference_test_2 \
+	lambda_multi_constraint_same_tvar \
+	multi_constraint_diff_tvar \
+	multi_constraint_same_tvar \
+	multi_parameter \
+	nondet_class_method \
+	operator_classname \
+	superclass_call \
+	test_default_func_mode \
+	typeclass_test_6
+
+# These tests are all failing in jump and fast grades b/c we can't use static
+# code initialisers.
+
+ifneq "$(findstring asm_,$(GRADE))" ""
+    PROGS=$(TYPECLASS_PROGS)
+else
+    ifneq "$(findstring jump,$(GRADE))" ""
+        PROGS=
+    else
+        ifneq "$(findstring fast,$(GRADE))" ""
+            PROGS=
+        else
+            PROGS=$(TYPECLASS_PROGS)
+        endif
+    endif
+endif
+
+
+
+# implied_instance_missing_constraint is not yet included as there is a bug
+# stopping it from working.
+# 
+# Actually, there is a bug, but it isn't in that test case. I'm trying to
+# find exactly how to trigger the bug. Oh well...
+
+# we do not yet pass the following tests:
+#       typeclass_test_5.m (this is really a WISHLIST item)
+#
+
+
+MCFLAGS-inference_test = --infer-all
+MCFLAGS-inference_test_2 = --infer-all
+MCFLAGS-existential_type_classes = --infer-all
+MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
+
+#-----------------------------------------------------------------------------#
+
+DEPS=	$(PROGS:%=%.dep)
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+RESS=	$(PROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+dep:	$(DEPS)
+
+depend:	$(DEPENDS)
+
+check:	$(OUTS) $(RESS)
+
+all:	$(PROGS)
+
+#-----------------------------------------------------------------------------#

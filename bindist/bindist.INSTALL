@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# INSTALL - installation instructions and installation script
+#	    for the binary distribution of Mercury.
+#
+# You need GNU C (2.6.3 or later) and GNU Make (3.69 or later) in order
+# to use Mercury, though you don't need them to install this distribution.
+#
+# Step 0.  Extract the files from the gzipped tar archive.
+#
+#	   Note: the mercury-*.tar.gz file itself contains
+#	   some other .tar.gz files (lib.tar.gz, info.tar.gz).
+#	   Do NOT mess with these nested .tar.gz files;
+#	   they will be extracted automatically in step 2.
+#
+# Step 1.  Run `configure'.  (Just type `sh configure'.)
+#
+#	   By default, the files will be installed in the directory
+#	   /usr/local/mercury-<VERSION>.
+#	   If you want the files to be installed someplace else,
+#	   use the `--prefix <directory>' option to `configure'.
+#
+# Step 2.  Run `make install'.
+#	   This step will copy the various files that make up the distribution
+#	   to their final places.
+#
+# Step 3.  Check the permissions on the installed files.
+#	   Add /usr/local/mercury-<VERSION>/bin to your PATH, and
+#	   add /usr/local/mercury-<VERSION>/info to your INFOPATH.
+#	   You can also add a WWW link to the Mercury documentation in
+#	   /usr/local/mercury-<VERSION>/lib/mercury/html to your WWW
+#	   home page, and you may want to print out a hard-copy of the
+#	   documentation from the DVI files in
+#	   /usr/local/mercury-<VERSION>/lib/mercury/doc.
+#
+# As a short-cut, steps 1 & 2 are listed below, so they can be replaced
+# by just executing this script.
+
+sh configure &&
+make install
+
+# De-installation:
+# ----------------
+#
+# You may eventually want to uninstall this version of Mercury
+# (to free up disk space so you can install the next version ;-).
+# If you installed in the default location, you can simply
+# use `rm -rf /usr/local/mercury-<VERSION>' to uninstall.

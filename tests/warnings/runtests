@@ -1,0 +1,26 @@
+#!/bin/sh
+# Test whether the compiler is producing the right warnings.
+# Return a status of 0 (true) if everything is all right, and 1 otherwise.
+
+. ../handle_options
+. ../startup
+
+mmake $jfactor depend || exit 1
+eval mmake -k $jfactor $gradeopt $flagsopt $cflagsopt check
+checkstatus=$?
+
+cat *.res > .allres
+if test ! -s .allres -a "$checkstatus" = 0
+then
+	echo "the tests in the warnings directory succeeded"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	rm -f .allres
+	. ../shutdown
+	exit 0
+else
+	echo "the tests in the warnings directory failed"
+	echo "gradeopt=$gradeopt, flagsopt=$flagsopt, cflagsopt=$cflagsopt"
+	echo "the differences are:"
+	cat .allres
+	exit 1
+fi

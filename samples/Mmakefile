@@ -1,0 +1,28 @@
+#-----------------------------------------------------------------------------#
+# This source file is hereby placed in the public domain.  -fjh (the author).
+#-----------------------------------------------------------------------------#
+
+# samples/Mmake - this is the main part of the Makefile
+# for building the Mercury sample programs.
+
+# To build these programs, first install the Mercury compiler,
+# type `mmake depend', and then type `mmake'.
+
+PROGS=	hello cat calculator sort eliza ultra_sub e \
+	all_solutions committed_choice interpreter expand_terms
+
+DEPENDS=$(PROGS:%=%.depend)
+
+MAIN_TARGET=all
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: all
+all : $(PROGS)
+
+.PHONY: depend
+depend: $(DEPENDS)
+
+#-----------------------------------------------------------------------------#

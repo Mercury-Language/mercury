@@ -1,0 +1,6 @@
+:- module continuation_info.
+:- interface.
+:- type (continuation_info:continuation_info).
+:- type (continuation_info:proc_layout_info).
+:- type (continuation_info:internal_layout_info).
+:- type (continuation_info:continuation_label_info).

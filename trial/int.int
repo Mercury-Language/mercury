@@ -1,0 +1,91 @@
+:- module int.
+:- interface.
+:- pred int:'<'(int, int).
+:- mode int:'<'(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred int:'>'(int, int).
+:- mode int:'>'(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred int:'=<'(int, int).
+:- mode int:'=<'(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred int:'>='(int, int).
+:- mode int:'>='(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred int:abs(int, int).
+:- mode int:abs(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred int:max(int, int, int).
+:- mode int:max(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred int:min(int, int, int).
+:- mode int:min(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred int:to_float(int, float).
+:- mode int:to_float(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred int:pow(int, int, int).
+:- mode int:pow(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred int:log2(int, int).
+:- mode int:log2(mercury_builtin:in, mercury_builtin:out) is det.
+:- func int:'+'(int, int) = int.
+:- mode int:'+'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- mode int:'+'(mercury_builtin:uo, mercury_builtin:in) = mercury_builtin:in is det.
+:- mode int:'+'(mercury_builtin:in, mercury_builtin:uo) = mercury_builtin:in is det.
+:- func int:'*'(int, int) = int.
+:- mode int:'*'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'-'(int, int) = int.
+:- mode int:'-'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- mode int:'-'(mercury_builtin:uo, mercury_builtin:in) = mercury_builtin:in is det.
+:- mode int:'-'(mercury_builtin:in, mercury_builtin:uo) = mercury_builtin:in is det.
+:- func int:div(int, int) = int.
+:- mode int:div(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'//'(int, int) = int.
+:- mode int:'//'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:mod(int, int) = int.
+:- mode int:mod(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:rem(int, int) = int.
+:- mode int:rem(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'<<'(int, int) = int.
+:- mode int:'<<'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'>>'(int, int) = int.
+:- mode int:'>>'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'/\\'(int, int) = int.
+:- mode int:'/\\'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'\\/'(int, int) = int.
+:- mode int:'\\/'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'^'(int, int) = int.
+:- mode int:'^'(mercury_builtin:in, mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'\\'(int) = int.
+:- mode int:'\\'(mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'+'(int) = int.
+:- mode int:'+'(mercury_builtin:in) = mercury_builtin:uo is det.
+:- func int:'-'(int) = int.
+:- mode int:'-'(mercury_builtin:in) = mercury_builtin:uo is det.
+:- pred int:is(T, T) is det.
+:- mode int:is(mercury_builtin:uo, mercury_builtin:di) is det.
+:- mode int:is(mercury_builtin:out, mercury_builtin:in) is det.
+:- pred int:max_int(int).
+:- mode int:max_int(mercury_builtin:out) is det.
+:- pred int:min_int(int).
+:- mode int:min_int(mercury_builtin:out) is det.
+:- pred int:bits_per_int(int).
+:- mode int:bits_per_int(mercury_builtin:out) is det.
+:- pred int:builtin_plus(int, int, int).
+:- mode int:builtin_plus(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_unary_plus(int, int).
+:- mode int:builtin_unary_plus(mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_minus(int, int, int).
+:- mode int:builtin_minus(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_unary_minus(int, int).
+:- mode int:builtin_unary_minus(mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_times(int, int, int).
+:- mode int:builtin_times(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_div(int, int, int).
+:- mode int:builtin_div(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_mod(int, int, int).
+:- mode int:builtin_mod(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_left_shift(int, int, int).
+:- mode int:builtin_left_shift(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_right_shift(int, int, int).
+:- mode int:builtin_right_shift(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_bit_or(int, int, int).
+:- mode int:builtin_bit_or(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_bit_and(int, int, int).
+:- mode int:builtin_bit_and(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_bit_xor(int, int, int).
+:- mode int:builtin_bit_xor(mercury_builtin:in, mercury_builtin:in, mercury_builtin:uo) is det.
+:- pred int:builtin_bit_neg(int, int).
+:- mode int:builtin_bit_neg(mercury_builtin:in, mercury_builtin:uo) is det.

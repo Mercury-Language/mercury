@@ -1,0 +1,33 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+GRADEFLAGS += --use-trail
+
+depend: global.depend
+	cd samples && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" depend
+	cd tests && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" depend
+
+check: libglobal
+	cd samples && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" check
+	cd tests && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" check
+
+clean: clean_subdirs
+
+.PHONY: clean_subdirs
+clean_subdirs:
+	cd samples && mmake $(MMAKEFLAGS) clean
+	cd tests && mmake $(MMAKEFLAGS) clean
+
+realclean: realclean_subdirs
+
+.PHONY: realclean_subdirs
+realclean_subdirs:
+	cd samples && mmake $(MMAKEFLAGS) realclean
+	cd tests && mmake $(MMAKEFLAGS) realclean
+
+# We need this to use shared libraries on Linux
+ML = ml --mercury-libs shared
+

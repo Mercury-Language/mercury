@@ -1,0 +1,82 @@
+#!/bin/sh
+#
+# A program to test different versions of the compiler.
+
+usage="Usage: speedtest [-c cmd] [-nN] batchname"
+limit=4
+cmd="mmc -C -O2 -I../compiler make_hlds.m"
+
+while test $# -gt 0
+do
+	case $1 in
+
+	-c|--cmd)
+		cmd="$2" ; shift ;;
+	-c*)
+		cmd="` expr $1 : '-c\(.*\)' `" ;;
+
+	-n)
+		limit="$2" ; shift ;;
+	-n*)
+		limit="` expr $1 : '-n\(.*\)' `" ;;
+
+	-*)	echo "$0: unknown option \`$1'" 2>&1
+		echo $usage
+		exit 1 ;;
+
+	*)	break ;;
+
+	esac
+	shift
+done
+
+if test $# != 1
+then
+	echo $usage
+	exit 1
+fi
+
+batch=$1
+
+root=`/bin/pwd`
+files=`ls batch/$batch.mercury_compile.*`
+
+trap 'gzip $root/batch/$batch.mercury_compile.*[0-9] > /dev/null 2>&1; exit 0' 0 1 2 3 15 
+
+if test -x /usr/ucb/echo
+then
+	ECHO=/usr/ucb/echo
+else
+	ECHO=echo
+fi
+
+for file in $files
+do
+	case $file in
+	*.gz)
+		gunzip $file
+		file=batch/`basename $file .gz`
+		;;
+	esac
+
+	paramfile=`echo $file | sed 's/mercury_compile/params/'`
+	if test -r $paramfile
+	then
+		cat $paramfile
+	fi
+
+	MERCURY_COMPILER=$root/$file
+	export MERCURY_COMPILER
+	cd trial
+	count=1
+	while test $count -le $limit
+	do
+		$ECHO -n "$file "
+		$root/tools/dotime $cmd
+		count=`expr $count + 1`
+	done
+	cd $root
+	gzip $file
+done
+
+exit 0

@@ -1,0 +1,40 @@
+:- module bintree.
+:- interface.
+:- import_module list, assoc_list.
+:- type (bintree:bintree(K, V)).
+:- pred bintree:init((bintree:bintree(K, V))).
+:- mode bintree:init(mercury_builtin:uo) is det.
+:- pred bintree:insert((bintree:bintree(K, V)), K, V, (bintree:bintree(K, V))).
+:- mode bintree:insert(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred bintree:update((bintree:bintree(K, V)), K, V, (bintree:bintree(K, V))).
+:- mode bintree:update(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred bintree:set((bintree:bintree(K, V)), K, V, (bintree:bintree(K, V))).
+:- mode bintree:set(mercury_builtin:di, mercury_builtin:di, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode bintree:set(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:search((bintree:bintree(K, V)), K, V).
+:- mode bintree:search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode bintree:search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred bintree:delete((bintree:bintree(K, V)), K, (bintree:bintree(K, V))).
+:- mode bintree:delete(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:remove((bintree:bintree(K, V)), K, V, (bintree:bintree(K, V))).
+:- mode bintree:remove(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred bintree:keys((bintree:bintree(K, _V)), (list:list(K))).
+:- mode bintree:keys(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:values((bintree:bintree(_K, V)), (list:list(V))).
+:- mode bintree:values(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:from_list((assoc_list:assoc_list(K, V)), (bintree:bintree(K, V))).
+:- mode bintree:from_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:from_sorted_list((assoc_list:assoc_list(K, V)), (bintree:bintree(K, V))).
+:- mode bintree:from_sorted_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:from_corresponding_lists((list:list(K)), (list:list(V)), (bintree:bintree(K, V))).
+:- mode bintree:from_corresponding_lists(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:to_list((bintree:bintree(K, V)), (assoc_list:assoc_list(K, V))).
+:- mode bintree:to_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:count((bintree:bintree(_K, _V)), int).
+:- mode bintree:count(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:depth((bintree:bintree(_K, _V)), int).
+:- mode bintree:depth(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred bintree:branching_factor((bintree:bintree(_K, _V)), int, int).
+:- mode bintree:branching_factor(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred bintree:balance((bintree:bintree(K, V)), (bintree:bintree(K, V))).
+:- mode bintree:balance(mercury_builtin:in, mercury_builtin:out) is det.

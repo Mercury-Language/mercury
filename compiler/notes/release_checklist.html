@@ -1,0 +1,146 @@
+<html>
+<head>
+<title>Mercury Coding Standard for the Mercury Project</title>
+</head>
+
+<body bgcolor="#ffffff" text="#000000">
+
+<hr>
+<!-------------------------->
+
+This file contains a checklist of the steps that must be
+taken when releasing a new version of Mercury.
+
+<hr>
+<!-------------------------->
+
+<ol>
+<li> Items for the next version (0.8) only:
+	<ol>
+	<li>
+	Make sure that the runtime headers contain no symbols (function names,
+	variable names, type names, struct/enum tags or macros) that do not
+	begin with MR_.
+	<li>
+	When replacing detstackvars with MR_stackvars and framevars with
+	MR_framevars, make sure that the distinction between stackvars
+	starting at 1 and framevars starting at 0 is erased.
+	<li>
+	Make sure nondet pragma C codes, tabling and the debugger
+	are documented.
+	<li>
+	Ask Philip to check in muz, preferably with documentation.
+	</ol>
+
+<li> Make sure configure.in is updated to check for new features.
+
+<li> Update the RELEASE_NOTES, NEWS, WORK_IN_PROGRESS, HISTORY,
+     LIMITATIONS and BUGS files, and the compiler/notes/todo.html file.
+     Don't forget to update the version number in RELEASE_NOTES for major
+     releases.
+     The HISTORY file should include the NEWS files from previous releases.
+
+<li> Update the WWW documentation in the `www' directory.
+     <ul>
+     <li> For minor releases, update release.html with a new entry about
+	  this release (put it at the top of the page), and provide a
+	  new link to download the release. See old-release.html for
+	  examples.
+
+     <li> For major releases, you will need to create some new web pages:<br>
+          <dl>
+          <dt> release-VERSION.html
+          <dd> The release notes for this version.
+
+	  <dt> release-VERSION-bugs.html
+	  <dd> Any outstanding bugs for this release.
+
+	  <dt> release-VERSION-contents.html
+	  <dd> The contents of this distribution.
+
+          </dl>
+	  You will also need to update release.html.   Move the old
+	  information in release.html to old-release.html. Modify
+	  release.html to refer to the new html files you have created,
+	  and change the links to download the release. 
+
+     <li> Don't commit your changes to the main branch yet, because
+	  otherwise it would be installed on the WWW pages overnight.
+     </ul>
+
+<li> Use `cvs tag' to tag all the files with a `version-x_y_z' tag.
+
+<li> Edit the tools/test_mercury script in
+     /home/mercury/public/test_mercury/scripts/mercury:
+     set the RELEASE_VERSION and CHECKOUT_OPTS variables
+     as explained in the comments there.
+
+<li> Run tools/run_all_tests_from_cron on murlibobo.
+     (Or just wait 24 hours or so.) <p>
+
+     This should have the effect of checking out a fresh copy, and doing
+
+	<pre>
+	touch Mmake.params &&
+	autoconf &&
+	mercury_cv_low_tag_bits=2 \
+	mercury_cv_bits_per_word=32 \
+	mercury_cv_unboxed_floats=no \
+	sh configure --prefix=$INSTALL_DIR &&
+	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar
+	</pre>
+	
+	<p>
+
+    If it passes all the tests, it should put the resulting tar file in
+    /home/mercury/public/test_mercury/test_dirs/mercury-latest-stable and
+    ftp://turiel.cs.mu.oz.au/pub/mercury/beta-releases.
+
+<li>  Test it on lots of architectures. <br>
+
+	<p>
+    Make sure you test all the programs in the `samples' and `extras'
+    directories.
+
+<li>  Build binary distributions for those architectures.
+
+<li>  Move the gzipped tar files from the /pub/mercury/beta-releases directory
+      to the main /pub/mercury directory on the turiel ftp site
+      ftp://turiel.cs.mu.oz.au/pub/mercury. <br>
+    Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
+    to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+    respectively. XXX Kostis is now at Leuven, so this won't work. <br>
+    The mirror on ftp://ftp.csd.uu.se/pub/Mercury is supposedly automated.
+
+<li> Prepare a new "mercury-VERSION.lsm" file for this Mercury release
+     (use the one already uploaded to
+     ftp://sunsite.unc/edu/pub/Linux/Incoming as a template). The
+     version number, date, file sizes, and file names need to be updated
+     for a new release.
+
+<li> Upload "mercury-VERSION-core.tar.gz" and "mercury-VERSION.lsm" to
+     ftp://sunsite.unc.edu/incoming/Linux. They will be moved to
+     /pub/Linux/Incoming fairly quickly, and eventually should be moved
+     to /pub/linux/devel/lang/mercury.
+
+<li> Send "mercury-VERSION.lsm" to the lsm robot at lsm@execpc.com.
+
+<li> Append "mercury-VERSION.lsm" to a release notice and send it to
+     linux-announce@news.ornl.gov. This will post to comp.os.linux.announce.
+
+<li>  Email mercury-announce@cs.mu.oz.au and cross-post announcement to
+    comp.lang.misc, comp.lang.prolog, comp.lang.functional, comp.object.logic,
+    and for major releases also to comp.compilers and gnu.announce.
+
+<li>  Update the Mercury WWW home page (/local/dept/www/mercury/mercury.html)
+      by commiting the changes you made earlier.
+
+</ol>
+
+
+<hr>
+<!-------------------------->
+
+Last update was $Date: 1998-07-20 10:02:51 $ by $Author: zs $@cs.mu.oz.au. <br>
+</body>
+</html>

@@ -1,0 +1,34 @@
+
+This directory contains the package `mercury_opengl', which is a Mercury
+binding for OpenGL, using tcl/tk.
+
+You will need:
+	- the Mercury system.
+	- Tcl/Tk (Tk 4.0 or later).
+	- the `mercury_tcltk' package.
+	- an OpenGL implementation such as Mesa.
+
+It contains the following modules:
+
+	mglu.m		- provides Mercury bindings to the GLU library.
+	mogl.m		- provides Mercury bindings to Open GL 1.1
+	mtogl.m		- provides Mercury bindings to Togl, a
+			  tcl/tk Open GL binding.
+	
+	togl.c, togl.h  - Togl 1.5 
+
+	other .c and .h - Internals of Tk.
+	files
+
+See HOWTO for details on how to link the package in with your own
+Mercury programs.
+
+	The mercury_opengl package is free software, but is Copyright
+	(C) 1997-1998 The University of Melbourne. It is distributed
+	under the terms of the GNU Library General Public License.
+	See the file COPYING.LIB for copying permission.
+
+See LICENSE.TOGL to see the licensing conditions for Togl.
+
+See LICENSE.TK to see the licensing conditions for Tk.
+

@@ -1,0 +1,47 @@
+:- module char.
+:- interface.
+:- type (char:char) == character.
+:- pred char:to_int((char:char), int).
+:- mode char:to_int(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode char:to_int(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode char:to_int(mercury_builtin:out, mercury_builtin:in) is semidet.
+:- pred char:max_char_value(int).
+:- mode char:max_char_value(mercury_builtin:out) is det.
+:- pred char:min_char_value(int).
+:- mode char:min_char_value(mercury_builtin:out) is det.
+:- pred char:to_upper((char:char), (char:char)).
+:- mode char:to_upper(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred char:to_lower((char:char), (char:char)).
+:- mode char:to_lower(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred char:lower_upper((char:char), (char:char)).
+:- mode char:lower_upper(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode char:lower_upper(mercury_builtin:out, mercury_builtin:in) is semidet.
+:- pred char:is_whitespace((char:char)).
+:- mode char:is_whitespace(mercury_builtin:in) is semidet.
+:- pred char:is_upper((char:char)).
+:- mode char:is_upper(mercury_builtin:in) is semidet.
+:- pred char:is_lower((char:char)).
+:- mode char:is_lower(mercury_builtin:in) is semidet.
+:- pred char:is_alpha((char:char)).
+:- mode char:is_alpha(mercury_builtin:in) is semidet.
+:- pred char:is_alnum((char:char)).
+:- mode char:is_alnum(mercury_builtin:in) is semidet.
+:- pred char:is_alpha_or_underscore((char:char)).
+:- mode char:is_alpha_or_underscore(mercury_builtin:in) is semidet.
+:- pred char:is_alnum_or_underscore((char:char)).
+:- mode char:is_alnum_or_underscore(mercury_builtin:in) is semidet.
+:- pred char:is_digit((char:char)).
+:- mode char:is_digit(mercury_builtin:in) is semidet.
+:- pred char:is_binary_digit((char:char)).
+:- mode char:is_binary_digit(mercury_builtin:in) is semidet.
+:- pred char:is_octal_digit((char:char)).
+:- mode char:is_octal_digit(mercury_builtin:in) is semidet.
+:- pred char:is_hex_digit((char:char)).
+:- mode char:is_hex_digit(mercury_builtin:in) is semidet.
+:- pred char:digit_to_int((char:char), int).
+:- mode char:digit_to_int(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred char:int_to_digit(int, (char:char)).
+:- mode char:int_to_digit(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode char:int_to_digit(mercury_builtin:out, mercury_builtin:in) is semidet.
+:- pred char:det_int_to_digit(int, (char:char)).
+:- mode char:det_int_to_digit(mercury_builtin:in, mercury_builtin:out) is det.

@@ -1,0 +1,112 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1996-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# This Mmake file is used to build a binary distribution.
+# You need to have already installed the Mercury compiler.
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
+
+INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
+
+LIB_FILES	= bin doc html inc ints lib modules $(NUPROLOG) $(SICSTUS)
+
+UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
+		  $(INSTALL_PREFIX)/bin/mdemangle \
+		  $(INSTALL_PREFIX)/bin/mtags
+
+README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
+		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
+		  ../VERSION
+
+SCRIPT_FILES	= ../scripts/*.in ../scripts/mdb ../scripts/*.sh-subr \
+		  ../scripts/Mmake.rules
+
+CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
+
+MISC_FILES	= INSTALL README README.Linux README.MS-Windows \
+		  build_vars Makefile.in configure configure.in
+
+#-----------------------------------------------------------------------------#
+
+DEFAULT_TARGET=bindist
+
+.PHONY: bindist
+bindist: binary_distribution
+
+.PHONY: binary_distribution
+binary_distribution: bindist.configure bindist.build_vars
+	# Make a quick check that there is a mercury installation in
+	# $(INSTALL_DIR) by looking for mmc and mercury_compile.
+	test -f $(INSTALL_BINDIR)/mmc
+	test -f $(INSTALL_MERC_BIN_DIR)/mercury_compile
+	# create a temporary directory in which to assemble the distribution
+	test -d $(MERCURY_VERSION) || mkdir $(MERCURY_VERSION)
+	# tar it up
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	(dir=`pwd` && cd $(INSTALL_LIB_DIR)/mercury && \
+		tar -cf $$dir/$(MERCURY_VERSION)/lib.tar $(LIB_FILES) && \
+		gzip $$dir/$(MERCURY_VERSION)/lib.tar)
+	(dir=`pwd` && cd $(INSTALL_INFO_DIR)/.. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/info.tar info && \
+		gzip $$dir/$(MERCURY_VERSION)/info.tar)
+	(dir=`pwd` && cd $(INSTALL_MAN_DIR)/.. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/man.tar man && \
+		gzip $$dir/$(MERCURY_VERSION)/man.tar)
+	test -d $(MERCURY_VERSION)/scripts || mkdir $(MERCURY_VERSION)/scripts
+	cp $(SCRIPT_FILES) $(MERCURY_VERSION)/scripts
+	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
+	cp $(UTILS) $(MERCURY_VERSION)/util
+	cp $(CONFIG_FILES) $(MERCURY_VERSION)
+	cp $(README_ETC) $(MERCURY_VERSION)
+	-cd ../samples; mmake realclean
+	-cd ../samples/diff; mmake realclean
+	-cd ../samples/c_interface; mmake realclean
+	-cd ../samples/c_interface/c_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/cplusplus_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/mercury_calls_c; mmake realclean
+	-cd ../samples/c_interface/simpler_c_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/simpler_cplusplus_calls_mercury; mmake realclean
+	-cd ../extras/cgi; mmake realclean
+	-cd ../extras/complex_numbers; mmake realclean
+	-cd ../extras/complex_numbers/tests; mmake realclean
+	-cd ../extras/complex_numbers/samples; mmake realclean
+	-cd ../extras/graphics; mmake realclean
+	-cd ../extras/graphics/samples/calc; mmake realclean
+	-cd ../extras/graphics/samples/maze; mmake realclean
+	-cd ../extras/trailed_update; mmake realclean
+	-cd ../extras/trailed_update/samples; mmake realclean
+	-cd ../tests; mmake realclean
+	cp -r ../samples $(MERCURY_VERSION)/samples
+	cp -r ../extras $(MERCURY_VERSION)/extras
+	cp -r ../tests $(MERCURY_VERSION)/tests
+	for file in $(MISC_FILES); do \
+		sed	-e 's/<VERSION>/$(VERSION)/g' \
+			-e 's/<FULLARCH>/$(FULLARCH)/g' \
+			bindist.$$file > $(MERCURY_VERSION)/$$file || exit 1; \
+	done
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	tar -cf ../$(MERCURY_VERSION).tar $(MERCURY_VERSION)
+	gzip ../$(MERCURY_VERSION).tar
+	rm -rf $(MERCURY_VERSION)
+
+bindist.configure: bindist.configure.in
+	autoconf bindist.configure.in > bindist.configure
+
+bindist.build_vars: bindist.build_vars.in
+	CONFIG_FILES=bindist.build_vars CONFIG_HEADERS= \
+	$(MERCURY_DIR)/config.status
+
+#-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f bindist.configure bindist.build_vars
+
+#-----------------------------------------------------------------------------#

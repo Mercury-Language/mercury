@@ -1,0 +1,118 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1997-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury bytecode utilities
+
+MAIN_TARGET=all
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+INCPATH		= -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) -I.
+LIBPATH		= -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
+CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH) -DDEBUGGING
+MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS	= $(CFLAGS) 
+
+MAKEDEPEND	= makedepend
+
+# We need VPATH so we can find getopt.h (!)
+VPATH		= $(MERCURY_DIR)/runtime
+
+#-----------------------------------------------------------------------------#
+
+MB_HDRS		= bytecode.h dict.h disasm.h mbi.h mem.h machine.h \
+		  mdis.h static_data.h template.h util.h
+
+HDRS		= $(MB_HDRS) getopt.h 
+
+ORIG_CS		= bytecode.c dict.c disasm.c machine.c mbi.c mbi_main.c \
+		  mdis.c mem.c static_data.c template.c util.c
+
+LIBS		= -lmer ` \
+                  case "$(GRADE)" in \
+                        *.gc.prof*) echo "-lgc_prof" ;; \
+                        *.gc) echo "-lgc" ;; \
+                  esac \
+                  `
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+
+all: mdb mdis mbi libmbi
+
+MDIS_OBJS = bytecode.o disasm.o mdis.o mem.o util.o
+mdis: $(MDIS_OBJS)
+	$(MGNUC) $(CFLAGS) -o mdis $(MDIS_OBJS) $(LIBPATH) $(LIBS)
+
+LIBMBI_OBJS = bytecode.o dict.o mbi.o mem.o util.o 
+LIBMBI_PIC_OBJS = $(LIBMBI_OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
+MBI_OBJS = mbi_main.o $(LIBMBI_OBJS)
+
+mbi: $(MBI_OBJS)
+	$(MGNUC) $(CFLAGS) -o mbi $(MBI_OBJS) $(LIBPATH) $(LIBS)
+
+libmbi: libmbi.a libmbi.$(EXT_FOR_SHARED_LIB)
+
+libmbi.a: $(LIBMBI_OBJS)
+	rm -f libmbi.a
+	ar cr libmbi.a $(LIBMBI_OBJS)
+
+libmbi.so: $(LIBMBI_OBJS)
+	$(LINK_SHARED_OBJ) -o libmbi.so $(LIBMBI_PIC_OBJS) \
+		$(LIBPATH) $(LIBS) $(SHARED_LIBS)
+
+mdb: libmbi.so mdb.m
+	$(MC) -o mdb mdb.m -L. -lmbi
+
+
+#-----------------------------------------------------------------------------#
+
+tags: $(ORIG_CS)
+	ctags $(ORIG_CS) $(MB_HDRS)
+
+.PHONY: check_headers
+check_headers:
+	for file in $(HDRS); do \
+		echo "$$file"; \
+		echo "#include \"$$file\"" > tmp.c; \
+		$(MGNUC) $(MGNUCFLAGS) -c tmp.c || exit 1; \
+	done
+	rm -f tmp.c
+
+# Create dependencies. 
+depend:	$(ORIG_CS) $(HDR) 
+	if test ! -f depend.mk ; then touch depend.mk ; else true ; fi
+	$(MAKEDEPEND) $(INCPATH) -f depend.mk $^
+
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+install:
+	echo "Module \"bytecode\" does not yet install anything."
+
+uninstall:
+	echo "Nothing to uninstall for module \"bytecode\""
+
+#-----------------------------------------------------------------------------#
+
+clean: 
+	rm -f *.o *.pic_o
+
+realclean: clean
+	-$(RM) mbi mdis depend.mk* libmbi.a libmbi.so \
+		mdb mdb.c mdb.d mdb_init.c
+
+#-----------------------------------------------------------------------------#
+
+-include depend.mk
+
+#-----------------------------------------------------------------------------#

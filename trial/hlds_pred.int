@@ -1,0 +1,246 @@
+:- module hlds_pred.
+:- interface.
+:- import_module hlds_data, hlds_goal, hlds_module, llds, prog_data, instmap.
+:- import_module bool, list, map, std_util, term, varset.
+:- import_module term_util.
+:- type (hlds_pred:pred_id).
+:- type (hlds_pred:proc_id).
+:- pred hlds_pred:initial_pred_id((hlds_pred:pred_id)).
+:- mode hlds_pred:initial_pred_id(mercury_builtin:out) is det.
+:- pred hlds_pred:initial_proc_id((hlds_pred:proc_id)).
+:- mode hlds_pred:initial_proc_id(mercury_builtin:out) is det.
+:- pred hlds_pred:next_pred_id((hlds_pred:pred_id), (hlds_pred:pred_id)).
+:- mode hlds_pred:next_pred_id(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:next_proc_id((hlds_pred:proc_id), (hlds_pred:proc_id)).
+:- mode hlds_pred:next_proc_id(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_id_to_int((hlds_pred:pred_id), int).
+:- mode hlds_pred:pred_id_to_int(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode hlds_pred:pred_id_to_int(mercury_builtin:out, mercury_builtin:in) is det.
+:- pred hlds_pred:proc_id_to_int((hlds_pred:proc_id), int).
+:- mode hlds_pred:proc_id_to_int(mercury_builtin:in, mercury_builtin:out) is det.
+:- mode hlds_pred:proc_id_to_int(mercury_builtin:out, mercury_builtin:in) is det.
+:- pred hlds_pred:in_in_unification_proc_id((hlds_pred:proc_id)).
+:- mode hlds_pred:in_in_unification_proc_id(mercury_builtin:out) is det.
+:- pred hlds_pred:invalid_pred_id((hlds_pred:pred_id)).
+:- mode hlds_pred:invalid_pred_id(mercury_builtin:out) is det.
+:- pred hlds_pred:invalid_proc_id((hlds_pred:proc_id)).
+:- mode hlds_pred:invalid_proc_id(mercury_builtin:out) is det.
+:- type (hlds_pred:pred_info).
+:- type (hlds_pred:proc_info).
+:- type (hlds_pred:proc_table) == (map:map((hlds_pred:proc_id), (hlds_pred:proc_info))).
+:- type (hlds_pred:pred_call_id)
+	--->	hlds_pred:'/'((prog_data:sym_name), (prog_data:arity)).
+:- type (hlds_pred:pred_proc_id)
+	--->	hlds_pred:proc((hlds_pred:pred_id), (hlds_pred:proc_id)).
+:- type (hlds_pred:pred_proc_list) == (list:list((hlds_pred:pred_proc_id))).
+:- type (hlds_pred:clauses_info)
+	--->	hlds_pred:clauses_info((varset:varset), (map:map((term:var), (prog_data:(type)))), (map:map((term:var), (prog_data:(type)))), (list:list((term:var))), (list:list((hlds_pred:clause)))).
+:- type (hlds_pred:clause)
+	--->	hlds_pred:clause((list:list((hlds_pred:proc_id))), (hlds_goal:hlds_goal), (term:context)).
+:- type (hlds_pred:goal_type)
+	--->	hlds_pred:pragmas
+	;	hlds_pred:clauses
+	;	hlds_pred:none.
+:- type (hlds_pred:liveness_info) == (set:set((term:var))).
+:- type (hlds_pred:liveness)
+	--->	hlds_pred:live
+	;	hlds_pred:dead.
+:- type (hlds_pred:arg_info)
+	--->	hlds_pred:arg_info((hlds_pred:arg_loc), (hlds_pred:arg_mode)).
+:- type (hlds_pred:arg_mode)
+	--->	hlds_pred:top_in
+	;	hlds_pred:top_out
+	;	hlds_pred:top_unused.
+:- type (hlds_pred:arg_loc) == int.
+:- type (hlds_pred:import_status)
+	--->	hlds_pred:imported
+	;	hlds_pred:opt_imported
+	;	hlds_pred:abstract_imported
+	;	hlds_pred:pseudo_imported
+	;	hlds_pred:exported
+	;	hlds_pred:abstract_exported
+	;	hlds_pred:pseudo_exported
+	;	hlds_pred:local.
+:- type (hlds_pred:pred_or_func)
+	--->	hlds_pred:predicate
+	;	hlds_pred:function.
+:- type (hlds_pred:pred_markers).
+:- type (hlds_pred:marker)
+	--->	hlds_pred:infer_type
+	;	hlds_pred:infer_modes
+	;	hlds_pred:obsolete
+	;	hlds_pred:inline
+	;	hlds_pred:no_inline
+	;	hlds_pred:dnf
+	;	hlds_pred:magic
+	;	hlds_pred:memo
+	;	hlds_pred:terminates
+	;	hlds_pred:does_not_terminate
+	;	hlds_pred:check_termination.
+:- pred hlds_pred:define_new_pred((hlds_goal:hlds_goal), (hlds_goal:hlds_goal), (list:list((term:var))), (instmap:instmap), string, (prog_data:tvarset), (map:map((term:var), (prog_data:(type)))), (varset:varset), (hlds_pred:pred_markers), (hlds_module:module_info), (hlds_module:module_info), (hlds_pred:pred_proc_id)).
+:- mode hlds_pred:define_new_pred(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_init((prog_data:module_name), (prog_data:sym_name), (prog_data:arity), (prog_data:tvarset), (list:list((prog_data:(type)))), (prog_data:condition), (term:context), (hlds_pred:clauses_info), (hlds_pred:import_status), (hlds_pred:pred_markers), (hlds_pred:goal_type), (hlds_pred:pred_or_func), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_init(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_create((prog_data:module_name), (prog_data:sym_name), (prog_data:tvarset), (list:list((prog_data:(type)))), (prog_data:condition), (term:context), (hlds_pred:import_status), (hlds_pred:pred_markers), (hlds_pred:pred_or_func), (hlds_pred:proc_info), (hlds_pred:proc_id), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_create(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set((prog_data:tvarset), (list:list((prog_data:(type)))), (prog_data:condition), (hlds_pred:clauses_info), (hlds_pred:proc_table), (term:context), (prog_data:module_name), string, (prog_data:arity), (hlds_pred:import_status), (prog_data:tvarset), (hlds_pred:goal_type), (hlds_pred:pred_markers), (hlds_pred:pred_or_func), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_module((hlds_pred:pred_info), (prog_data:module_name)).
+:- mode hlds_pred:pred_info_module(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_name((hlds_pred:pred_info), string).
+:- mode hlds_pred:pred_info_name(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_arity((hlds_pred:pred_info), (prog_data:arity)).
+:- mode hlds_pred:pred_info_arity(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_procids((hlds_pred:pred_info), (list:list((hlds_pred:proc_id)))).
+:- mode hlds_pred:pred_info_procids(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_non_imported_procids((hlds_pred:pred_info), (list:list((hlds_pred:proc_id)))).
+:- mode hlds_pred:pred_info_non_imported_procids(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_exported_procids((hlds_pred:pred_info), (list:list((hlds_pred:proc_id)))).
+:- mode hlds_pred:pred_info_exported_procids(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_arg_types((hlds_pred:pred_info), (prog_data:tvarset), (list:list((prog_data:(type))))).
+:- mode hlds_pred:pred_info_arg_types(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_arg_types((hlds_pred:pred_info), (prog_data:tvarset), (list:list((prog_data:(type)))), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_arg_types(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_clauses_info((hlds_pred:pred_info), (hlds_pred:clauses_info)).
+:- mode hlds_pred:pred_info_clauses_info(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_clauses_info((hlds_pred:pred_info), (hlds_pred:clauses_info), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_clauses_info(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_procedures((hlds_pred:pred_info), (hlds_pred:proc_table)).
+:- mode hlds_pred:pred_info_procedures(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_procedures((hlds_pred:pred_info), (hlds_pred:proc_table), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_procedures(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_context((hlds_pred:pred_info), (term:context)).
+:- mode hlds_pred:pred_info_context(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_import_status((hlds_pred:pred_info), (hlds_pred:import_status)).
+:- mode hlds_pred:pred_info_import_status(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_is_imported((hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_is_imported(mercury_builtin:in) is semidet.
+:- pred hlds_pred:pred_info_is_pseudo_imported((hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_is_pseudo_imported(mercury_builtin:in) is semidet.
+:- pred hlds_pred:pred_info_is_exported((hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_is_exported(mercury_builtin:in) is semidet.
+:- pred hlds_pred:pred_info_is_pseudo_exported((hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_is_pseudo_exported(mercury_builtin:in) is semidet.
+:- pred hlds_pred:pred_info_mark_as_external((hlds_pred:pred_info), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_mark_as_external(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_import_status((hlds_pred:pred_info), (hlds_pred:import_status), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_import_status(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_typevarset((hlds_pred:pred_info), (prog_data:tvarset)).
+:- mode hlds_pred:pred_info_typevarset(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_typevarset((hlds_pred:pred_info), (prog_data:tvarset), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_typevarset(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_get_goal_type((hlds_pred:pred_info), (hlds_pred:goal_type)).
+:- mode hlds_pred:pred_info_get_goal_type(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_goal_type((hlds_pred:pred_info), (hlds_pred:goal_type), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_goal_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_requested_inlining((hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_requested_inlining(mercury_builtin:in) is semidet.
+:- pred hlds_pred:pred_info_requested_no_inlining((hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_requested_no_inlining(mercury_builtin:in) is semidet.
+:- pred hlds_pred:pred_info_get_is_pred_or_func((hlds_pred:pred_info), (hlds_pred:pred_or_func)).
+:- mode hlds_pred:pred_info_get_is_pred_or_func(mercury_builtin:in, mercury_builtin:out) is det.
+:- type (hlds_pred:pred_markers).
+:- pred hlds_pred:pred_info_get_markers((hlds_pred:pred_info), (hlds_pred:pred_markers)).
+:- mode hlds_pred:pred_info_get_markers(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_info_set_markers((hlds_pred:pred_info), (hlds_pred:pred_markers), (hlds_pred:pred_info)).
+:- mode hlds_pred:pred_info_set_markers(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:init_markers((hlds_pred:pred_markers)).
+:- mode hlds_pred:init_markers(mercury_builtin:out) is det.
+:- pred hlds_pred:check_marker((hlds_pred:pred_markers), (hlds_pred:marker)).
+:- mode hlds_pred:check_marker(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred hlds_pred:add_marker((hlds_pred:pred_markers), (hlds_pred:marker), (hlds_pred:pred_markers)).
+:- mode hlds_pred:add_marker(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:markers_to_marker_list((hlds_pred:pred_markers), (list:list((hlds_pred:marker)))).
+:- mode hlds_pred:markers_to_marker_list(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_init((prog_data:arity), (list:list((prog_data:(mode)))), (std_util:maybe((list:list((prog_data:(mode)))))), (std_util:maybe((list:list((prog_data:is_live))))), (std_util:maybe((hlds_data:determinism))), (term:context), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_init(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set((std_util:maybe((hlds_data:determinism))), (varset:varset), (map:map((term:var), (prog_data:(type)))), (list:list((term:var))), (list:list((prog_data:(mode)))), (std_util:maybe((list:list((prog_data:is_live))))), (hlds_goal:hlds_goal), (term:context), (hlds_goal:stack_slots), (hlds_data:determinism), (bool:bool), (list:list((hlds_pred:arg_info))), (hlds_pred:liveness_info), (map:map((prog_data:tvar), (term:var))), (term_util:termination), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_create((varset:varset), (map:map((term:var), (prog_data:(type)))), (list:list((term:var))), (list:list((prog_data:(mode)))), (hlds_data:determinism), (hlds_goal:hlds_goal), (term:context), (map:map((prog_data:tvar), (term:var))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_create(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_body((hlds_pred:proc_info), (varset:varset), (map:map((term:var), (prog_data:(type)))), (list:list((term:var))), (hlds_goal:hlds_goal), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_body(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_declared_determinism((hlds_pred:proc_info), (std_util:maybe((hlds_data:determinism)))).
+:- mode hlds_pred:proc_info_declared_determinism(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_inferred_determinism((hlds_pred:proc_info), (hlds_data:determinism)).
+:- mode hlds_pred:proc_info_inferred_determinism(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_interface_determinism((hlds_pred:proc_info), (hlds_data:determinism)).
+:- mode hlds_pred:proc_info_interface_determinism(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_interface_code_model((hlds_pred:proc_info), (llds:code_model)).
+:- mode hlds_pred:proc_info_interface_code_model(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_never_succeeds((hlds_pred:proc_info), (bool:bool)).
+:- mode hlds_pred:proc_info_never_succeeds(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_variables((hlds_pred:proc_info), (varset:varset)).
+:- mode hlds_pred:proc_info_variables(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_varset((hlds_pred:proc_info), (varset:varset), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_varset(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_variables((hlds_pred:proc_info), (varset:varset), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_variables(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_vartypes((hlds_pred:proc_info), (map:map((term:var), (prog_data:(type))))).
+:- mode hlds_pred:proc_info_vartypes(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_vartypes((hlds_pred:proc_info), (map:map((term:var), (prog_data:(type)))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_vartypes(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_headvars((hlds_pred:proc_info), (list:list((term:var)))).
+:- mode hlds_pred:proc_info_headvars(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_headvars((hlds_pred:proc_info), (list:list((term:var))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_headvars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_argmodes((hlds_pred:proc_info), (list:list((prog_data:(mode))))).
+:- mode hlds_pred:proc_info_argmodes(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_argmodes((hlds_pred:proc_info), (list:list((prog_data:(mode)))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_argmodes(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_arglives((hlds_pred:proc_info), (hlds_module:module_info), (list:list((prog_data:is_live)))).
+:- mode hlds_pred:proc_info_arglives(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_maybe_arglives((hlds_pred:proc_info), (std_util:maybe((list:list((prog_data:is_live)))))).
+:- mode hlds_pred:proc_info_maybe_arglives(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_maybe_arglives((hlds_pred:proc_info), (std_util:maybe((list:list((prog_data:is_live))))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_maybe_arglives(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_goal((hlds_pred:proc_info), (hlds_goal:hlds_goal)).
+:- mode hlds_pred:proc_info_goal(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_context((hlds_pred:proc_info), (term:context)).
+:- mode hlds_pred:proc_info_context(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_stack_slots((hlds_pred:proc_info), (hlds_goal:stack_slots)).
+:- mode hlds_pred:proc_info_stack_slots(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_liveness_info((hlds_pred:proc_info), (hlds_pred:liveness_info)).
+:- mode hlds_pred:proc_info_liveness_info(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_can_process((hlds_pred:proc_info), (bool:bool)).
+:- mode hlds_pred:proc_info_can_process(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_inferred_determinism((hlds_pred:proc_info), (hlds_data:determinism), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_inferred_determinism(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_goal((hlds_pred:proc_info), (hlds_goal:hlds_goal), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_goal(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_arg_info((hlds_pred:proc_info), (list:list((hlds_pred:arg_info)))).
+:- mode hlds_pred:proc_info_arg_info(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_arg_info((hlds_pred:proc_info), (list:list((hlds_pred:arg_info))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_arg_info(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_get_initial_instmap((hlds_pred:proc_info), (hlds_module:module_info), (instmap:instmap)).
+:- mode hlds_pred:proc_info_get_initial_instmap(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_liveness_info((hlds_pred:proc_info), (hlds_pred:liveness_info), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_liveness_info(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_stack_slots((hlds_pred:proc_info), (hlds_goal:stack_slots), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_stack_slots(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_termination((hlds_pred:proc_info), (term_util:termination)).
+:- mode hlds_pred:proc_info_termination(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_termination((hlds_pred:proc_info), (term_util:termination), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_termination(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_can_process((hlds_pred:proc_info), (bool:bool), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_can_process(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_typeinfo_varmap((hlds_pred:proc_info), (map:map((prog_data:tvar), (term:var)))).
+:- mode hlds_pred:proc_info_typeinfo_varmap(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_set_typeinfo_varmap((hlds_pred:proc_info), (map:map((prog_data:tvar), (term:var))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_set_typeinfo_varmap(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_maybe_declared_argmodes((hlds_pred:proc_info), (std_util:maybe((list:list((prog_data:(mode))))))).
+:- mode hlds_pred:proc_info_maybe_declared_argmodes(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_declared_argmodes((hlds_pred:proc_info), (list:list((prog_data:(mode))))).
+:- mode hlds_pred:proc_info_declared_argmodes(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_get_typeinfo_vars_setwise((hlds_pred:proc_info), (set:set((term:var))), (set:set((term:var)))).
+:- mode hlds_pred:proc_info_get_typeinfo_vars_setwise(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_ensure_unique_names((hlds_pred:proc_info), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_ensure_unique_names(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_create_var_from_type((hlds_pred:proc_info), (prog_data:(type)), (term:var), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_create_var_from_type(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_pred:proc_info_create_vars_from_types((hlds_pred:proc_info), (list:list((prog_data:(type)))), (list:list((term:var))), (hlds_pred:proc_info)).
+:- mode hlds_pred:proc_info_create_vars_from_types(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_pred:make_n_fresh_vars(string, int, (varset:varset), (list:list((term:var))), (varset:varset)).
+:- mode hlds_pred:make_n_fresh_vars(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred hlds_pred:pred_args_to_func_args((list:list(T)), (list:list(T)), T).
+:- mode hlds_pred:pred_args_to_func_args(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.

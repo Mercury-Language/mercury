@@ -1,0 +1,5 @@
+This directory contains an example program with a C main() function
+where C calls Mercury.
+
+This interface is simpler than having a Mercury main/2 call a c_main()
+function which then calls back Mercury.

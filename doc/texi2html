@@ -1,0 +1,1622 @@
+
+# Leave the first line of this file blank!
+# This is a Perl script; the following two lines allow us to avoid
+# embedding the path of the perl interpreter in the script.
+eval "exec perl -S $0 $*"
+    if $running_under_some_shell;
+
+'di';
+'ig00';
+#+##############################################################################
+#                                                                              #
+# File: texi2html                                                              #
+#                                                                              #
+# Description: Program to transform most Texinfo documents to HTML             #
+#                                                                              #
+#-##############################################################################
+
+# @(#)texi2html	1.31 12/08/94	Written by Lionel Cons, Lionel.Cons@cern.ch
+
+# The man page for this program is included at the end of this file and can be
+# viewed using the command 'nroff -man texi2html'.
+# Please read the copyright at the end of the man page.
+
+#+++############################################################################
+#                                                                              #
+# Constants                                                                    #
+#                                                                              #
+#---############################################################################
+
+$DEBUG_TOC = 1;
+$DEBUG_INDEX = 2;
+$DEBUG_BIB = 4;
+$DEBUG_GLOSS = 8;
+$DEBUG_DEF = 16;
+
+$BIBRE = '\[[\w\/]+\]';			# RE for a bibliography reference
+$FILERE = '[\/\w.+-]+';			# RE for a file name
+$VARRE = '[^\s\{\}]+';			# RE for a variable name
+$NODERE = '[^@{}:\'`",]+';		# RE for a node name
+$NODESRE = '[^@{}:\'`"]+';		# RE for a list of node names
+$XREFRE = '[^@{}]+';			# RE for a xref (should use NODERE)
+
+$THISPROG = "texi2html 1.31";			# program name and version
+$HOMEPAGE = "http://asis01.cern.ch/infohtml/texi2html.html"; # program home page
+$TODAY = &pretty_date;			# like "20 September 1993"
+$SPLITTAG = "<!-- SPLIT HERE -->\n";	# tag to know where to split
+$PROTECTTAG = "_ThisIsProtected_";	# tag to recognize protected sections
+
+#
+# language dependent constants
+#
+$LDC_SEE = 'see';
+$LDC_SECTION = 'section';
+$LDC_IN = 'in';
+$LDC_TOC = 'Table of Contents';
+$LDC_GOTO = 'Go to the';
+$LDC_FOOT = 'Footnotes';
+# TODO: @def* shortcuts
+
+#
+# texinfo section names to level
+#
+%sec2level = (
+	      'top', 0,
+	      'chapter', 1,
+	      'unnumbered', 1,
+	      'majorheading', 1,
+	      'chapheading', 1,
+	      'appendix', 1,
+	      'section', 2,
+	      'unnumberedsec', 2,
+	      'heading', 2,
+	      'appendixsec', 2,
+	      'appendixsection', 2,
+	      'subsection', 3,
+	      'unnumberedsubsec', 3,
+	      'subheading', 3,
+	      'appendixsubsec', 3,
+	      'subsubsection', 4,
+	      'unnumberedsubsubsec', 4,
+	      'subsubheading', 4,
+	      'appendixsubsubsec', 4,
+	      );
+
+#
+# accent map, TeX command to ISO name
+#
+%accent_map = (
+	       '"', 'uml',
+	       '~', 'tilde',
+	       '^', 'circ',
+	       );
+
+#
+# texinfo "simple things" (@foo) to HTML ones
+#
+%simple_map = (
+	       # cf. makeinfo.c
+	       "*", "<BR>",		# HTML+
+	       " ", " ",
+	       "\n", "\n",
+	       "|", "",
+	       # spacing commands
+	       ":", "",
+	       "!", "!",
+	       "?", "?",
+	       ".", ".",
+	       );
+
+#
+# texinfo "things" (@foo{}) to HTML ones
+#
+%things_map = (
+	       'TeX', 'TeX',
+	       'br', '<P>',		# paragraph break
+	       'bullet', '*',
+	       'copyright', '(C)',
+	       'dots', '...',
+	       'equiv', '==',
+	       'error', 'error-->',
+	       'expansion', '==>',
+	       'minus', '-',
+	       'point', '-!-',
+	       'print', '-|',
+	       'result', '=>',
+	       'today', $TODAY,
+	       );
+
+#
+# texinfo styles (@foo{bar}) to HTML ones
+#
+%style_map = (
+	      'asis', '',
+	      'b', 'B',
+	      'cite', 'CITE',
+	      'code', 'CODE',
+	      'ctrl', '&do_ctrl',	# special case
+	      'dfn', 'DFN',
+	      'dmn', '',		# useless
+	      'emph', 'EM',
+	      'file', '"TT',		# will put quotes, cf. &apply_style
+	      'i', 'I',
+	      'kbd', 'KBD',
+	      'key', 'KBD',
+	      'r', '',			# unsupported
+	      'samp', '"SAMP',		# will put quotes, cf. &apply_style
+	      'sc', '&do_sc',		# special case
+	      'strong', 'STRONG',
+	      't', 'TT',
+	      'titlefont', '',		# useless
+	      'var', 'VAR',
+	      'w', '',			# unsupported
+	      );
+
+#
+# texinfo format (@foo/@end foo) to HTML ones
+#
+%format_map = (
+	       'display', 'PRE',
+	       'example', 'PRE',
+	       'format', 'PRE',
+	       'lisp', 'PRE',
+	       'quotation', 'BLOCKQUOTE',
+	       'smallexample', 'PRE',
+	       'smalllisp', 'PRE',
+	       # lists
+	       'itemize', 'UL',
+	       'enumerate', 'OL',
+	       # poorly supported
+	       'flushleft', 'PRE',
+	       'flushright', 'PRE',
+	       );
+
+#
+# texinfo definition shortcuts to real ones
+#
+%def_map = (
+	    # basic commands
+	    'deffn', 0,
+	    'defvr', 0,
+	    'deftypefn', 0,
+	    'deftypevr', 0,
+	    'defcv', 0,
+	    'defop', 0,
+	    'deftp', 0,
+	    # basic x commands
+	    'deffnx', 0,
+	    'defvrx', 0,
+	    'deftypefnx', 0,
+	    'deftypevrx', 0,
+	    'defcvx', 0,
+	    'defopx', 0,
+	    'deftpx', 0,
+	    # shortcuts
+	    'defun', 'deffn Function',
+	    'defmac', 'deffn Macro',
+	    'defspec', 'deffn {Special Form}',
+	    'defvar', 'defvr Variable',
+	    'defopt', 'defvr {User Option}',
+	    'deftypefun', 'deftypefn Function',
+	    'deftypevar', 'deftypevr Variable',
+	    'defivar', 'defcv {Instance Variable}',
+	    'defmethod', 'defop Method',
+	    # x shortcuts
+	    'defunx', 'deffnx Function',
+	    'defmacx', 'deffnx Macro',
+	    'defspecx', 'deffnx {Special Form}',
+	    'defvarx', 'defvrx Variable',
+	    'defoptx', 'defvrx {User Option}',
+	    'deftypefunx', 'deftypefnx Function',
+	    'deftypevarx', 'deftypevrx Variable',
+	    'defivarx', 'defcvx {Instance Variable}',
+	    'defmethodx', 'defopx Method',
+	    );
+
+#
+# things to skip
+#
+%to_skip = (
+	    # comments
+	    'c', 1,
+	    'comment', 1,
+	    # useless
+	    'contents', 1,
+	    'shortcontents', 1,
+	    'summarycontents', 1,
+	    'footnotestyle', 1,
+	    'end ifclear', 1,
+	    'end ifset', 1,
+	    'iftex', 1,
+	    'end iftex', 1,
+	    'titlepage', 1,
+	    'end titlepage', 1,
+	    # unsupported commands (formatting)
+	    'afourpaper', 1,
+	    'cropmarks', 1,
+	    'finalout', 1,
+	    'headings', 1,
+	    'need', 1,
+	    'page', 1,
+	    'setchapternewpage', 1,
+	    'everyheading', 1,
+	    'everyfooting', 1,
+	    'evenheading', 1,
+	    'evenfooting', 1,
+	    'oddheading', 1,
+	    'oddfooting', 1,
+	    'smallbook', 1,
+	    'vskip', 1,
+	    # unsupported formats
+	    'cartouche', 1,
+	    'end cartouche', 1,
+	    'group', 1,
+	    'end group', 1,
+	    # misc unsupported commands
+            'defindex', 1,
+	    );
+
+#+++############################################################################
+#                                                                              #
+# Argument parsing, initialisation                                             #
+#                                                                              #
+#---############################################################################
+
+$invisible_mark = '';
+$use_bibliography = 1;
+$usage = <<EOT;
+This is $THISPROG
+To convert a Texinfo file to HMTL: $0 [options] file
+  where options can be:
+    -glossary      : handle a glossary
+    -invisible name: use name as an invisible anchor
+    -menu          : handle menus
+    -split_chapter : split on main sections
+    -split_node    : split on nodes
+    -usage         : print usage instructions
+    -verbose       : verbose output
+To check converted files: $0 -check [-verbose] files
+EOT
+
+while ($_ = $ARGV[0], /^-/) {
+    shift;
+    if (/^-d(ebug)?(\d+)?$/) { $debug = $2 || shift; next; }
+    if (/^-c(heck)?$/)       { $check = 1; next; }
+    if (/^-g(lossary)?$/)    { $use_glossary = 1; next; }
+    if (/^-i(nvisible)?$/)   { $invisible_mark = shift; next; }
+    if (/^-iso$/)            { $use_iso = 1; next; }
+    if (/^-acc$/)            { $use_acc = 1; next; }
+    if (/^-m(enu)?$/)        { $show_menu = 1; next; }
+    if (/^-s(plit)?_?(n(ode)?|c(hapter)?)?$/) {
+	if ($2 =~ /^n/) {
+	    $split_node = 1;
+	} else {
+	    $split_chapter = 1;
+	}
+	next;
+    }
+    if (/^-v(erbose)?$/)     { $verbose = 1; next; }
+    die $usage;
+}
+
+if ($check) {
+    die $usage unless @ARGV > 0;
+    &check;
+    exit;
+}
+
+$invisible_mark = '<IMG SRC="invisible.xbm">' if $invisible_mark eq 'xbm';
+die $usage unless @ARGV == 1;
+$docu = shift(@ARGV);
+if ($docu =~ /.*\//) {
+    chop($docu_dir = $&);
+    $docu_name = $';
+} else {
+    $docu_dir = '.';
+    $docu_name = $docu;
+}
+$docu_name =~ s/\.te?x(i|info)?$//;	# basename of the document
+
+$docu_toc = $docu_doc = $docu_foot = $docu_name;
+$docu_toc  .= '_toc.html';		# document's table of contents
+$docu_doc  .= '.html';			# document's contents
+$docu_foot .= '_foot.html';		# document's footnotes
+
+#
+# variables
+#
+%value = ();				# hold texinfo variables
+$value{'html'} = 1;			# predefine html (the output format)
+$value{'texi2html'} = '1.31';		# predefine texi2html (the translator)
+%node2sec = ();				# node to section name
+%node2href = ();			# node to HREF
+%bib2href = ();				# bibliography reference to HREF
+%gloss2href = ();			# glossary term to HREF
+@sections = ();				# list of sections
+%tag2pro = ();				# protected sections
+
+#
+# initial indexes
+#
+$bib_num = 0;
+$foot_num = 0;
+$gloss_num = 0;
+$idx_num = 0;
+$sec_num = 0;
+$doc_num = 0;
+$html_num = 0;
+
+#
+# can I use ISO8879 characters? (HTML+)
+#
+if ($use_iso) {
+    $things_map{'bullet'} = "&bull;";
+    $things_map{'copyright'} = "&copy;";
+    $things_map{'dots'} = "&hellip;";
+    $things_map{'equiv'} = "&equiv;";
+    $things_map{'expansion'} = "&rarr;";
+    $things_map{'point'} = "&lowast;";
+    $things_map{'result'} = "&rArr;";
+}
+
+#
+# read texi2html extensions (if any)
+#
+$extensions = 'texi2html.ext'; # extensions in working directory
+if (-f $extensions) {
+    print "# reading extensions from $extensions\n" if $verbose;
+    require($extensions);
+}
+($progdir = $0) =~ s/[^\/]+$//;
+if ($progdir && ($progdir ne './')) {
+    $extensions = "${progdir}texi2html.ext"; # extensions in texi2html directory
+    if (-f $extensions) {
+	print "# reading extensions from $extensions\n" if $verbose;
+	require($extensions);
+    }
+}
+
+print "# reading from $docu\n" if $verbose;
+
+#+++############################################################################
+#                                                                              #
+# Pass 1: read source, handle command, variable, simple substitution           #
+#                                                                              #
+#---############################################################################
+
+@lines = ();				# whole document
+@toc_lines = ();			# table of contents
+$curlevel = 0;				# current level in TOC
+$node = '';				# current node name
+$in_table = 0;				# am I inside a table
+$table_type = '';			# type of table ('', 'f', 'v')
+@tables = ();			        # nested table support
+$in_bibliography = 0;			# am I inside a bibliography
+$in_glossary = 0;			# am I inside a glossary
+$in_top = 0;				# am I inside the top node
+$in_pre = 0;				# am I inside a preformatted section
+$in_list = 0;				# am I inside a list
+$in_html = 0;				# am I inside an HTML section
+$first_line = 1;		        # is it the first line
+$dont_html = 0;				# don't protect HTML on this line
+$split_num = 0;				# split index
+
+# build code for simple substitutions
+# the maps used (%simple_map and %things_map) MUST be aware of this
+# watch out for regexps, / and escaped characters!
+$subst_code = '';
+foreach (keys(%simple_map)) {
+    ($re = $_) =~ s/(\W)/\\$1/g; # protect regexp chars
+    $subst_code .= "s/\\\@$re/$simple_map{$_}/g && study;\n";
+}
+foreach (keys(%things_map)) {
+    $subst_code .= "s/\\\@$_\\{\\}/$things_map{$_}/g && study;\n";
+}
+if ($use_acc) {
+    # accentuated characters
+    foreach(keys(%accent_map)) {
+	$subst_code .= "s/\\\@\\$_([aeiou])/&\${1}$accent_map{$_};/g && study;\n";
+    }
+}
+
+&init_input;
+while ($_ = &next_line) {
+    #
+    # remove \input on the first lines only
+    #
+    if ($first_line) {
+	next if /^\\input/;
+	$first_line = 0;
+    }
+    #
+    # parse texinfo tags
+    #
+    $tag = '';
+    $end_tag = '';
+    if (/^\@end\s+(\w+)\b/) {
+	$end_tag = $1;
+    } elsif (/^\@(\w+)\b/) {
+	$tag = $1;
+    }
+    #
+    # handle @ifhtml / @end ifhtml
+    #
+    if ($in_html) {
+	if ($end_tag eq 'ifhtml') {
+	    $in_html = 0;
+	} else {
+	    $tag2pro{$in_html} .= $_;
+	}
+	next;
+    } elsif ($tag eq 'ifhtml') {
+	$in_html = $PROTECTTAG . ++$html_num;
+	push(@lines, $in_html);
+	next;
+    }
+    #
+    # try to skip the line
+    #
+    if ($end_tag) {
+	next if $to_skip{"end $end_tag"};
+    } elsif ($tag) {
+	next if $to_skip{$tag};
+	last if $tag eq 'bye';
+    }
+    if ($in_top) {
+	# parsing the top node
+	if ($tag eq 'node' || $tag eq 'include' || $sec2level{$tag}) {
+	    # no more in top
+	    $in_top = 0;
+	} else {
+	    # skip it
+	    next;
+	}
+    }
+    #
+    # try to remove inlined comments
+    # syntax from tex-mode.el comment-start-skip
+    #
+    s/((^|[^\@])(\@\@)*)\@c(omment)? .*/$1/;
+    # non-@ substitutions cf. texinfmt.el
+    s/``/"/g && study;
+    s/''/"/g && study;
+    s/([\w ])---([\w ])/$1--$2/g && study;
+    #
+    # analyze the tag
+    #
+    if ($tag) {
+	# skip lines
+	&skip_until($tag), next if $tag eq 'ignore';
+	&skip_until($tag), next if $tag eq 'ifinfo';
+	&skip_until($tag), next if $tag eq 'tex';
+	# handle special tables
+	if ($tag eq 'table') {
+	    $table_type = '';
+	} elsif ($tag eq 'ftable') {
+	    $tag = 'table';
+	    $table_type = 'f';
+	} elsif ($tag eq 'vtable') {
+	    $tag = 'table';
+	    $table_type = 'v';
+	}
+	# special cases
+	if (0 && ($tag eq 'top' || ($tag eq 'node' && /^\@node\s+top\s*,/i))) {
+	    $in_top = 1;
+	    @lines = (); # ignore all lines before top (title page garbage)
+	    next;
+	} elsif ($tag eq 'node') {
+	    $in_top = 0;
+	    &protect_html;	# if node contains '&' for instance
+	    warn "Bad node line: $_" unless $_ =~ /^\@node\s$NODESRE$/o;
+	    s/^\@node\s+//;
+	    ($node) = split(/,/);
+	    $node =~ s/\s+/ /g; # normalize
+	    $node =~ s/ $//;
+	    if ($split_node) {
+		&next_doc;
+		push(@lines, $SPLITTAG) if $split_num++;
+		push(@sections, $node);
+	    }
+	    next;
+	} elsif ($tag eq 'include') {
+	    if (/^\@include\s+($FILERE)\s*$/o) {
+		$file = $1;
+		$file = "$docu_dir/$file" unless -e $file;
+		if (-e $file) {
+		    &open($file);
+		    print "# including $file\n" if $verbose;
+		} else {
+		    warn "Can't find $file, skipping";
+		}
+	    } else {
+		warn "Bad include line: $_";
+	    }
+	    next;
+	} elsif ($tag eq 'ifclear') {
+	    if (/^\@ifclear\s+($VARRE)\s*$/o) {
+		next unless defined($value{$1});
+		&skip_until($tag);
+	    } else {
+		warn "Bad ifclear line: $_";
+	    }
+	    next;
+	} elsif ($tag eq 'ifset') {
+	    if (/^\@ifset\s+($VARRE)\s*$/o) {
+		next if defined($value{$1});
+		&skip_until($tag);
+	    } else {
+		warn "Bad ifset line: $_";
+	    }
+	    next;
+	} elsif ($tag eq 'menu' && ! $show_menu) {
+	    &skip_until($tag);
+	    next;
+	} elsif ($format_map{$tag}) {
+	    $in_pre = 1 if $format_map{$tag} eq 'PRE';
+	    $in_list++ if $format_map{$tag} eq 'UL' || $format_map{$tag} eq 'OL' ;
+	    push(@lines, "<$format_map{$tag}>\n");
+	    next;
+	} elsif ($tag eq 'table') {
+	    if (/^\@[fv]?table\s+\@(\w+)\s*$/) {
+		$in_table = $1;
+		unshift(@tables, join($;, $table_type, $in_table));
+		push(@lines, "<DL COMPACT>\n");
+	    } else {
+		warn "Bad table line: $_";
+	    }
+	    next;
+	} elsif ($tag eq 'synindex' || $tag eq 'syncodeindex') {
+	    if (/^\@$tag\s+(\w)\w\s+(\w)\w\s*$/) {
+		eval("*${1}index = *${2}index");
+	    } else {
+		warn "Bad syn*index line: $_";
+	    }
+	    next;
+	} elsif ($tag eq 'sp') {
+	    push(@lines, "<P>\n");
+	    next;
+	} elsif (defined($def_map{$tag})) {
+	    if ($def_map{$tag}) {
+		s/^\@$tag\s+//;
+		$tag = $def_map{$tag};
+		$_ = "\@$tag $_";
+		$tag =~ s/\s.*//;
+	    }
+	}
+	if (defined($def_map{$tag})) {
+	    s/^\@$tag\s+//;
+	    $tag =~ s/x$//;
+	    1 while s/(\{[^\}]*)\s+([^\{]*\})/$1$;9$2/; # protect spaces inside {}
+	    &protect_html;
+	    @args = split(/\s+/, $_);
+	    foreach(@args) {s/$;9/ /g;} # unprotect spaces
+	    $type = shift(@args);
+	    $type =~ s/^\{(.*)\}$/$1/;
+	    print "# def ($tag): {$type} ", join(', ', @args), "\n"
+		if $debug & $DEBUG_DEF;
+	    $type .= ':'; # it's nicer like this
+	    $name = shift(@args);
+	    $name =~ s/^\{(.*)\}$/$1/;
+	    if ($tag eq 'deffn' || $tag eq 'defvr' || $tag eq 'deftp') {
+		$_ = "<U>$type</U> <B>$name</B>";
+		$_ .= " <I>@args</I>" if @args;
+		$_ .= "<P>\n";
+	    } elsif ($tag eq 'deftypefn' || $tag eq 'deftypevr'
+		     || $tag eq 'defcv' || $tag eq 'defop') {
+		$ftype = $name;
+		$name = shift(@args);
+		$name =~ s/^\{(.*)\}$/$1/;
+		$_ = "<U>$type</U> $ftype <B>$name</B>";
+		$_ .= " <I>@args</I>" if @args;
+		$_ .= "<P>\n";
+	    } else {
+		warn "Unknown definition type: $tag\n";
+		$_ = "<U>$type</U> <B>$name</B>";
+		$_ .= " <I>@args</I>" if @args;
+		$_ .= "<P>\n";
+	    }
+	    if ($tag eq 'deffn' || $tag eq 'deftypefn' || $tag eq 'defop') {
+		unshift(@input_spool, "\@findex $name\n");
+	    } elsif ($tag eq 'defvr' || $tag eq 'deftypevr' || $tag eq 'defcv') {
+		unshift(@input_spool, "\@vindex $name\n");
+	    } else {
+		unshift(@input_spool, "\@tindex $name\n");
+	    }
+	    $dont_html = 1;
+	}
+    } elsif ($end_tag) {
+	if ($format_map{$end_tag}) {
+	    $in_pre = 0 if $format_map{$end_tag} eq 'PRE';
+	    $in_list-- if $format_map{$end_tag} eq 'UL' || $format_map{$end_tag} eq 'OL' ;
+	    push(@lines, "</$format_map{$end_tag}>\n");
+	} elsif ($end_tag eq 'table' ||
+		 $end_tag eq 'ftable' ||
+		 $end_tag eq 'vtable') {
+	    shift(@tables);
+	    if (@tables) {
+		($table_type, $in_table) = split($;, $tables[0]);
+	    } else {
+		$in_table = 0;
+	    }
+	    push(@lines, "</DL>\n");
+	} elsif (defined($def_map{$end_tag})) {
+	    push(@lines, "<P>\n");
+	} elsif ($end_tag eq 'menu') {
+	    push(@lines, $_); # must keep it for pass 2
+	}
+	next;
+    }
+    #
+    # misc things
+    #
+    # protect texi and HTML things
+    &protect_texi;
+    &protect_html unless $dont_html;
+    $dont_html = 0;
+    # substitution (unsupported things)
+    s/^\@center\s+//g && study;
+    s/^\@exdent\s+//g && study;
+    s/\@noindent\s+//g && study;
+    s/\@refill\s+//g && study;
+    # other substitutions
+    eval($subst_code);
+    s/\@value{($VARRE)}/$value{$1}/eg;
+    s/\@footnote\{/\@footnote$docu_doc\{/g; # mark footnotes, cf. pass 4
+    #
+    # analyze the tag again
+    #
+    if ($tag) {
+	if ($sec2level{$tag} > 0) {
+	    if (/^\@$tag\s+(.+)$/) {
+		$name = $1;
+		$name =~ s/\s+$//;
+		$level = $sec2level{$tag};
+		if ($tag =~ /heading$/) {
+		    $_ = "<H$level>$name</H$level>\n";
+		    print "# heading, section $name, level $level\n"
+			if $debug & $DEBUG_TOC;
+		} else {
+		    if ($split_chapter && $level == 1) {
+			&next_doc;
+			push(@lines, $SPLITTAG) if $split_num++;
+			push(@sections, $name);
+		    }
+		    $id = 'SEC' . ++$sec_num;
+		    # check biblio and glossary
+		    $in_bibliography = ($name =~ /^bibliography$/i);
+		    $in_glossary = ($name =~ /^glossary$/i);
+		    # check node
+		    if ($node) {
+			if ($node2sec{$node}) {
+			    warn "Duplicate node found: $node\n";
+			} else {
+			    $node2sec{$node} = $name;
+			    $node2href{$node} = "$docu_doc#$id";
+			    print "# node $node, section $name, level $level\n"
+				if $debug & $DEBUG_TOC;
+			}
+			$node = '';
+		    } else {
+			print "# no node, section $name, level $level\n"
+			    if $debug & $DEBUG_TOC;
+		    }
+		    # update TOC
+		    while ($level > $curlevel) {
+			$curlevel++;
+			push(@toc_lines, "<UL>\n");
+		    }
+		    while ($level < $curlevel) {
+			$curlevel--;
+			push(@toc_lines, "</UL>\n");
+		    }
+		    $_ = "<LI>" . &anchor($id, "$docu_doc#$id", $name, 1);
+		    push(@toc_lines, &substitute_style($_));
+		    # update DOC
+		    $_ =  "<H$level>" . &anchor($id, "$docu_toc#$id", $name) . "</H$level>\n";
+		}
+		# update DOC
+		push(@lines, $_);
+		next;
+	    } else {
+		warn "Bad section line: $_";
+	    }
+	} else {
+	    # track variables
+	    $value{$1} = $2, next if /^\@set\s+($VARRE)\s+(.*)$/o;
+	    delete $value{$1}, next if /^\@clear\s+($VARRE)\s*$/o;
+	    # store things
+	    $value{'filename'} = $1, next if /^\@setfilename\s+(.*)$/;
+	    $value{'author'} .= "$1\n", next if /^\@author\s+(.*)$/;
+	    $value{'subtitle'} .= "$1\n", next if /^\@subtitle\s+(.*)$/;
+	    $value{'title'} = $1, next if /^\@settitle\s+(.*)$/;
+	    $value{'title'} = $1, next if /^\@title\s+(.*)$/;
+	    # index
+	    if (/^\@(.index)\s+/) {
+		$id = 'IDX' . ++$idx_num;
+		$index = $1;
+		$what = &substitute_style($');
+		$what =~ s/\s+$//;
+		print "# found $index for '$what' id $id\n"
+		    if $debug & $DEBUG_INDEX;
+		eval("\$$index\{\$what\} = \"$docu_doc#$id\"");
+		# check last line
+		if ($lines[$#lines] =~ /^\</) {
+		    # we can safely (?) insert the index before the last line
+		    splice(@lines, -1, 0, &anchor($id, '', $invisible_mark, 1));
+		} else {
+		    # it's safer to append the index
+		    push(@lines, &anchor($id, '', $invisible_mark, !$in_pre));
+		}
+		next;
+	    }
+	    # list item
+	    if (/^\@itemx?\s+/) {
+		$what = $';
+		$what =~ s/\s+$//;
+		if ($in_bibliography && $use_bibliography) {
+		    if ($what =~ /^$BIBRE$/o) {
+			$id = 'BIB' . ++$bib_num;
+			$bib2href{$what} = "$docu_doc#$id";
+			print "# found bibliography for '$what' id $id\n"
+			    if $debug & $DEBUG_BIB;
+			$what = &anchor($id, '', $what);
+		    }
+		} elsif ($in_glossary && $use_glossary) {
+		    $id = 'GLOSS' . ++$gloss_num;
+		    $entry = $what;
+		    $entry =~ tr/A-Z/a-z/ unless $entry =~ /^[A-Z\s]+$/;
+		    $gloss2href{$entry} = "$docu_doc#$id";
+		    print "# found glossary for '$entry' id $id\n"
+			if $debug & $DEBUG_GLOSS;
+		    $what = &anchor($id, '', $what);
+		}
+		if ($in_table) {
+		    if ($things_map{$in_table} && !$what) {
+			# special case to allow @table @bullet for instance
+			push(@lines, "<DT>$things_map{$in_table}\n<DD>");
+		    } else {
+			push(@lines, "<DT>\@$in_table\{$what\}\n<DD>");
+		    }
+		    if ($table_type) { # add also an index
+			unshift(@input_spool, "\@${table_type}index $what\n");
+		    }
+		} else {
+		    push(@lines, "<LI>$what\n");
+		}
+		next;
+	    }
+	}
+    }
+    # paragraph separator
+    $_ = "<P>\n" if $_ eq "\n" && !$in_pre && !$in_list && !$in_table;
+    # otherwise
+    push(@lines, $_);
+}
+
+# finish TOC
+$level = 0;
+while ($level < $curlevel) {
+    $curlevel--;
+    push(@toc_lines, "</UL>\n");
+}
+
+print "# end of pass 1\n" if $verbose;
+
+#+++############################################################################
+#                                                                              #
+# Pass 2/3: handle style, menu, index, cross-reference                         #
+#                                                                              #
+#---############################################################################
+
+@lines2 = ();				# whole document (2nd pass)
+@lines3 = ();				# whole document (3rd pass)
+$in_menu = 0;				# am I inside a menu
+
+while (@lines) {
+    $_ = shift(@lines);
+    #
+    # special case (protected sections)
+    #
+    if (/^$PROTECTTAG/o) {
+	push(@lines2, $_);
+	next;
+    }
+    #
+    # menu
+    #
+    $in_menu = 1, push(@lines2, "<UL>\n"), next if /^\@menu\b/;
+    $in_menu = 0, push(@lines2, "</UL>\n"), next if /^\@end\s+menu\b/;
+    if ($in_menu) {
+	if (/^\*\s+($NODERE)::/o) {
+	    $descr = $';
+	    chop($descr);
+	    &menu_entry($1, $1, $descr);
+	} elsif (/^\*\s+(.+):\s+([^\t,\.\n]+)[\t,\.\n]/) {
+	    $descr = $';
+	    chop($descr);
+	    &menu_entry($1, $2, $descr);
+	} elsif (/^\*/) {
+	    warn "Bad menu line: $_";
+	} else { # description continued?
+	    push(@lines2, $_);
+	}
+	next;
+    }
+    #
+    # printindex
+    #
+    if (/^\@printindex\s+(\w)\w\b/) {
+	eval("*ary = *$1index");
+	@keys = keys(%ary);
+	foreach$key (@keys) {
+	    $_ = $key;
+	    1 while s/<(\w+)>\`(.*)\'<\/\1>/$2/; # remove HTML tags with quotes
+	    1 while s/<(\w+)>(.*)<\/\1>/$2/; # remove HTML tags
+	    &unprotect_html;
+	    &unprotect_texi;
+	    tr/A-Z/a-z/; # lowercase
+	    $key2alpha{$key} = $_;
+	    print "# index $key sorted as $_\n"
+		if $key ne $_ && $debug & $DEBUG_INDEX;
+	}
+	$last_letter = '';
+	foreach(sort(byalpha @keys)) {
+	    $letter = substr($key2alpha{$_}, 0, 1);
+	    $letter = substr($key2alpha{$_}, 0, 2) if $letter eq $;;
+	    if ($letter ne $last_letter) {
+		local($_) = $letter;
+		&protect_html;
+		push(@lines2, "</DIR>\n") if $last_letter;
+		push(@lines2, "<H2>$_</H2>\n");
+		push(@lines2, "<DIR>\n");
+		$last_letter = $letter;
+	    }
+	    push(@lines2, "<LI>" . &anchor('', $ary{$_}, $_, 1));
+	}
+	push(@lines2, "</DIR>\n") if $last_letter;
+	next;
+    }
+    #
+    # simple style substitutions
+    #
+    $_ = &substitute_style($_);
+    #
+    # xref
+    #
+    while (/\@(x|px|info|)ref{($XREFRE)(}?)/o) {
+	# note: Texinfo may accept other characters
+	($type, $nodes, $full) = ($1, $2, $3);
+	($before, $after) = ($`, $');
+	if (! $full && $after) {
+	    warn "* Bad xref (no ending } on line): $_";
+	    $_ = "$before$;0${type}ref\{$nodes$after";
+	    next; # while xref
+	}
+	if ($type eq 'x') {
+	    $type = 'See ';
+	} elsif ($type eq 'px') {
+	    $type = 'see ';
+	} elsif ($type eq 'info') {
+	    $type = 'See Info';
+	} else {
+	    $type = '';
+	}
+	unless ($full) {
+	    $next = shift(@lines);
+	    $next = &substitute_style($next);
+	    chop($nodes); # remove final newline
+	    if ($next =~ /\}/) { # splitted on 2 lines
+		$nodes .= " $`";
+		$after = $';
+	    } else {
+		$nodes .= " $next";
+		$next = shift(@lines);
+		$next = &substitute_style($next);
+		chop($nodes);
+		if ($next =~ /\}/) { # splitted on 3 lines
+		    $nodes .= " $`";
+		    $after = $';
+		} else {
+		    warn "* Bad xref (no ending }): $_";
+		    $_ = "$before$;0xref\{$nodes$after";
+		    unshift(@lines, $next);
+		    next; # while xref
+		}
+	    }
+	}
+	$nodes =~ s/\s+/ /g; # normalize
+	@args = split(/\s*,\s*/, $nodes);
+	$node = $args[0]; # the node is always the first arg
+	$sec = $node2sec{$node};
+	if (@args == 5) { # reference to another manual
+	    $sec = $args[2] || $node;
+	    $man = $args[4] || $args[3];
+	    $_ = "${before}${type}section `$sec' in \@cite{$man}$after";
+	} elsif ($type =~ /Info/) { # inforef
+	    warn "Wrong number of arguments: $_" unless @args == 3;
+	    ($nn, $rn, $in) = @args;
+	    $_ = "${before}${type} file `$in', node `$nn'$after";
+	} elsif ($sec) {
+	    $href = $node2href{$node};
+	    $_ = "${before}${type}section " . &anchor('', $href, $sec) . $after;
+	} else {
+	    warn "Undefined node ($node): $_";
+	    $_ = "$before$;0xref{$nodes}$after";
+	}
+    }
+    #
+    # try to guess bibliography references or glossary terms
+    #
+    unless (/^<H\d><A NAME=\"SEC\d/) {
+	if ($use_bibliography) {
+	    $done = '';
+	    while (/$BIBRE/o) {
+		($pre, $what, $post) = ($`, $&, $');
+		$href = $bib2href{$what};
+		if (defined($href) && $post !~ /^[^<]*<\/A>/) {
+		    $done .= $pre . &anchor('', $href, $what);
+		} else {
+		    $done .= "$pre$what";
+		}
+		$_ = $post;
+	    }
+	    $_ = $done . $_;
+	}
+	if ($use_glossary) {
+	    $done = '';
+	    while (/\b\w+\b/) {
+		($pre, $what, $post) = ($`, $&, $');
+		$entry = $what;
+		$entry =~ tr/A-Z/a-z/ unless $entry =~ /^[A-Z\s]+$/;
+		$href = $gloss2href{$entry};
+		if (defined($href) && $post !~ /^[^<]*<\/A>/) {
+		    $done .= $pre . &anchor('', $href, $what);
+		} else {
+		    $done .= "$pre$what";
+		}
+		$_ = $post;
+	    }
+	    $_ = $done . $_;
+	}
+    }
+    # otherwise
+    push(@lines2, $_);
+}
+print "# end of pass 2\n" if $verbose;
+
+#
+# splitted style substitutions
+#
+while (@lines2) {
+    $_ = shift(@lines2);
+    #
+    # special case (protected sections)
+    #
+    if (/^$PROTECTTAG/o) {
+	push(@lines3, $_);
+	next;
+    }
+    #
+    # splitted style substitutions
+    #
+    $old = '';
+    while ($old ne $_) {
+        $old = $_;
+	if (/\@(\w+)\{/) {
+	    ($before, $style, $after) = ($`, $1, $');
+	    if (defined($style_map{$style})) {
+		$_ = $after;
+		$text = '';
+		$after = '';
+		$failed = 1;
+		while (@lines2) {
+		    if (/\}/) {
+			$text .= $`;
+			$after = $';
+			$failed = 0;
+			last;
+		    } else {
+			$text .= $_;
+			$_ = shift(@lines2);
+		    }
+		}
+		if ($failed) {
+		    die "* Bad syntax (\@$style) after: $before\n";
+		} else {
+		    $text = &apply_style($style, $text);
+		    $_ = "$before$text$after";
+		}
+	    }
+	}
+    }
+    # otherwise
+    push(@lines3, $_);
+}
+print "# end of pass 3\n" if $verbose;
+
+#+++############################################################################
+#                                                                              #
+# Pass 4: foot notes, final cleanup                                            #
+#                                                                              #
+#---############################################################################
+
+@lines4 = ();				# whole document (4th pass)
+@foot_lines = ();			# footnotes
+@doc_lines = ();			# final document
+$end_of_para = 0;			# true if last line is <P>
+
+while (@lines3) {
+    $_ = shift(@lines3);
+    #
+    # special case (protected sections)
+    #
+    if (/^$PROTECTTAG/o) {
+	push(@doc_lines, $_);
+	$end_of_para = 0;
+	next;
+    }
+    #
+    # footnotes
+    #
+    while (/\@footnote([^\{\s]+)\{/) {
+	($before, $d, $after) = ($`, $1, $');
+	$_ = $after;
+	$text = '';
+	$after = '';
+	$failed = 1;
+	while (@lines3) {
+	    if (/\}/) {
+		$text .= $`;
+		$after = $';
+		$failed = 0;
+		last;
+	    } else {
+		$text .= $_;
+		$_ = shift(@lines3);
+	    }
+	}
+	if ($failed) {
+	    die "* Bad syntax (\@footnote) after: $before\n";
+	} else {
+	    $id = 'FOOT' . ++$foot_num;
+	    $foot = "($foot_num)";
+	    push(@foot_lines, "<H3>" . &anchor($id, "$d#$id", $foot) . "</H3>\n");
+	    push(@foot_lines, "$text\n");
+	    $_ = $before . &anchor($id, "$docu_foot#$id", $foot) . $after;
+	}
+    }
+    #
+    # remove unnecessary <P>
+    #
+    if ($_ eq "<P>\n") {
+	next if $end_of_para++;
+    } else {
+	$end_of_para = 0;
+    }
+    # otherwise
+    push(@doc_lines, $_);
+}
+print "# end of pass 4\n" if $verbose;
+
+#+++############################################################################
+#                                                                              #
+# Pass 5: print things                                                         #
+#                                                                              #
+#---############################################################################
+
+$header = <<EOT;
+<!-- This HTML file has been created by $THISPROG
+     from $docu on $TODAY -->
+EOT
+
+$_ = &substitute_style($value{'title'} || "Untitled Document");
+&unprotect_texi;
+$title = $_;
+
+#
+# print TOC
+#
+if (open(FILE, "> $docu_toc")) {
+    print "# creating $docu_toc...\n" if $verbose;
+    &print_header("$title - Table of Contents");
+    print FILE "<H1>$title</H1>\n";
+    if ($value{'subtitle'}) {
+	chop($value{'subtitle'}); # rmv last \n
+	foreach (split(/\n/, $value{'subtitle'})) {
+	    $_ = &substitute_style($_);
+	    &unprotect_texi;
+	    print FILE "<H2>$_</H2>\n";
+	}
+    }
+    if ($value{'author'}) {
+	chop($value{'author'}); # rmv last \n
+	foreach (split(/\n/, $value{'author'})) {
+	    $_ = &substitute_style($_);
+	    &unprotect_texi;
+	    print FILE "<ADDRESS>$_</ADDRESS>\n";
+	}
+    }
+    print FILE "<P>\n";
+    &print(*toc_lines, FILE);
+    print FILE <<EOT;
+<HR>
+This document was generated using the
+<A HREF=\"$HOMEPAGE\">texi2html</A>
+translator version 1.31.
+EOT
+    &print_footer;
+    close(FILE);
+} else {
+    warn "Can't write to $docu_toc: $!\n";
+}
+
+#
+# print document
+#
+if ($split_chapter || $split_node) {
+    $doc_num = 0;
+    $last_num = scalar(@sections);
+    $first_doc = &doc_name(1);
+    $last_doc = &doc_name($last_num);
+    while (@sections) {
+	$section = shift(@sections);
+	&next_doc;
+	if (open(FILE, "> $docu_doc")) {
+	    print "# creating $docu_doc...\n" if $verbose;
+	    &print_header("$title - $section");
+	    $prev_doc = ($doc_num == 1 ? undef : &doc_name($doc_num - 1));
+	    $next_doc = ($doc_num == $last_num ? undef : &doc_name($doc_num + 1));
+	    $navigation = "Go to the ";
+	    $navigation .= ($prev_doc ? &anchor('', $first_doc, "first") : "first");
+	    $navigation .= ", ";
+	    $navigation .= ($prev_doc ? &anchor('', $prev_doc, "previous") : "previous");
+	    $navigation .= ", ";
+	    $navigation .= ($next_doc ? &anchor('', $next_doc, "next") : "next");
+	    $navigation .= ", ";
+	    $navigation .= ($next_doc ? &anchor('', $last_doc, "last") : "last");
+	    $navigation .= " section, " . &anchor('', $docu_toc, "table of contents") . ".\n";
+	    print FILE "$navigation<HR>\n";
+	    # find corresponding lines
+            @tmp_lines = ();
+            while (@doc_lines) {
+		$_ = shift(@doc_lines);
+		last if ($_ eq $SPLITTAG);
+		push(@tmp_lines, $_);
+	    }
+            &print(*tmp_lines, FILE);
+	    print FILE "<HR>\n$navigation";
+	    &print_footer;
+	    close(FILE);
+	} else {
+	    warn "Can't write to $docu_doc: $!\n";
+	}
+    }
+} else {
+    if (open(FILE, "> $docu_doc")) {
+	print "# creating $docu_doc...\n" if $verbose;
+	&print_header($title);
+	print FILE "<H1>$title</H1>\n";
+        &print(*doc_lines, FILE);
+	&print_footer;
+	close(FILE);
+    } else {
+	warn "Can't write to $docu_doc: $!\n";
+    }
+}
+
+#
+# print footnotes
+#
+if (@foot_lines) {
+    if (open(FILE, "> $docu_foot")) {
+	print "# creating $docu_foot...\n" if $verbose;
+	&print_header("$title - Footnotes");
+	print FILE "<H1>$title</H1>\n";
+        &print(*foot_lines, FILE);
+	&print_footer;
+	close(FILE);
+    } else {
+	warn "Can't write to $docu_foot: $!\n";
+    }
+}
+
+print "# that's all folks\n" if $verbose;
+
+#+++############################################################################
+#                                                                              #
+# Low level functions                                                          #
+#                                                                              #
+#---############################################################################
+
+sub check {
+    local($_, %seen, %context, $before, $match, $after);
+
+    while (<>) {
+	if (/\@(\*|\.|\:|\@|\{|\})/) {
+	    $seen{$&}++;
+	    $context{$&} .= "> $_" if $verbose;
+	    $_ = "$`XX$'";
+	    redo;
+	}
+	if (/\@(\w+)/) {
+	    ($before, $match, $after) = ($`, $&, $');
+	    if ($before =~ /\b[\w-]+$/ && $after =~ /^[\w-.]*\b/) { # e-mail address
+		$seen{'e-mail address'}++;
+		$context{'e-mail address'} .= "> $_" if $verbose;
+	    } else {
+		$seen{$match}++;
+		$context{$match} .= "> $_" if $verbose;
+	    }
+	    $match =~ s/^\@/X/;
+	    $_ = "$before$match$after";
+	    redo;
+	}
+    }
+    
+    foreach(sort(keys(%seen))) {
+	if ($verbose) {
+	    print "$_\n";
+	    print $context{$_};
+	} else {
+	    print "$_ ($seen{$_})\n";
+	}
+    }
+}
+
+sub open {
+    local($name) = @_;
+
+    ++$fh_name;
+    if (open($fh_name, $name)) {
+	unshift(@fhs, $fh_name);
+    } else {
+	warn "Can't read file $name: $!\n";
+    }
+}
+
+sub init_input {
+    @fhs = ();			# hold the file handles to read
+    @input_spool = ();		# spooled lines to read
+    $fh_name = 'FH000';
+    &open($docu);
+}
+
+sub next_line {
+    local($fh, $line);
+
+    if (@input_spool) {
+	$line = shift(@input_spool);
+	return($line);
+    }
+    while (@fhs) {
+	$fh = $fhs[0];
+	$line = <$fh>;
+	return($line) if $line;
+	close($fh);
+	shift(@fhs);
+    }
+    return(undef);
+}
+
+# used in pass 1, use &next_line
+sub skip_until {
+    local($tag) = @_;
+    local($_);
+
+    while ($_ = &next_line) {
+	return if /^\@end\s+$tag\s*$/;
+    }
+    die "* Failed to find '$tag' after: " . $lines[$#lines];
+}
+
+sub menu_entry {
+    local($entry, $node, $descr) = @_;
+    local($href);
+
+    $href = $node2href{$node};
+    if ($href) {
+	$descr =~ s/^\s+//;
+	$descr = ": $descr" if $descr;
+	push(@lines2, "<LI>" . &anchor('', $href, $entry) . "$descr\n");
+    } else {
+	warn "Undefined node ($node): $_";
+    }
+}
+
+sub do_ctrl { "^$_[0]" }
+
+sub do_sc { "\U$_[0]\E" }
+
+sub apply_style {
+    local($texi_style, $text) = @_;
+    local($style);
+
+    $style = $style_map{$texi_style};
+    if (defined($style)) { # known style
+	if ($style =~ /^\"/) { # add quotes
+	    $style = $';
+	    $text = "\`$text\'";
+	}
+	if ($style =~ /^\&/) { # custom
+	    $style = $';
+	    $text = &$style($text);
+	} elsif ($style) { # good style
+	    $text = "<$style>$text</$style>";
+	} else { # no style
+	}
+    } else { # unknown style
+	$text = undef;
+    }
+    return($text);
+}
+
+sub substitute_style {
+    local($_) = @_;
+    local($changed, $done, $style, $text);
+
+    $changed = 1;
+    while ($changed) {
+	$changed = 0;
+	$done = '';
+	while (/\@(\w+){([^\{\}]+)}/) {
+	    $text = &apply_style($1, $2);
+	    if ($text) {
+		$_ = "$`$text$'";
+		$changed = 1;
+	    } else {
+		$done .= "$`\@$1";
+		$_ = "{$2}$'";
+	    }
+	}
+        $_ = $done . $_;
+    }
+    return($_);
+}
+
+sub anchor {
+    local($name, $href, $text, $newline) = @_;
+    local($result);
+
+    $result = "<A";
+    $result .= " NAME=\"$name\"" if $name;
+    $result .= " HREF=\"$href\"" if $href;
+    $result .= ">$text</A>";
+    $result .= "\n" if $newline;
+    return($result);
+}
+
+sub pretty_date {
+    local(@MoY, $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst);
+
+    @MoY = ('January', 'Febuary', 'March', 'April', 'May', 'June',
+	    'July', 'August', 'September', 'October', 'November', 'December');
+    ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+    $year += ($year < 70) ? 2000 : 1900;
+    return("$mday $MoY[$mon] $year");
+}
+
+sub doc_name {
+    local($num) = @_;
+
+    return("${docu_name}_$num.html");
+}
+
+sub next_doc {
+    $docu_doc = &doc_name(++$doc_num);
+}
+
+sub print {
+    local(*lines, $fh) = @_;
+    local($_);
+
+    while (@lines) {
+	$_ = shift(@lines);
+	if (/^$PROTECTTAG/o) {
+	    $_ = $tag2pro{$_};
+	} else {
+	    &unprotect_texi;
+	}
+	print $fh $_;
+    }
+}
+
+sub print_header {
+    print FILE <<EOT;
+<HTML>
+<HEAD>
+$header
+<TITLE>$_[0]</TITLE>
+</HEAD>
+<BODY>
+EOT
+}
+
+sub print_footer {
+    print FILE <<EOT;
+</BODY>
+</HTML>
+EOT
+}
+
+sub protect_texi {
+    # protect @ { } ` '
+    s/\@\@/$;0/go && study;
+    s/\@\{/$;1/go && study;
+    s/\@\}/$;2/go && study;
+    s/\@\`/$;3/go && study;
+    s/\@\'/$;4/go && study;
+}
+
+sub protect_html {
+    # protect & < >
+    s/\&/\&\#38;/g && study;
+    s/\</\&\#60;/g && study;
+    s/\>/\&\#62;/g && study;
+    s/\&\#60;\/A\&\#62;/<\/A>/g && study; # assume </A> is HTML
+    s/\&\#60;A ([^\&]+)\&\#62;/<A $1>/g && study; # assume <A [^&]+> is HTML
+}
+
+# we should use this:
+#
+#  sub unprotect_texi {
+#      s/$;0/\@/go && study;
+#      s/$;1/\{/go && study;
+#      s/$;2/\}/go && study;
+#      s/$;3/\`/go && study;
+#      s/$;4/\'/go && study;
+#  }
+#  
+#  sub unprotect_html {
+#      s/\&\#38;/\&/g && study;
+#      s/\&\#60;/\</g && study;
+#      s/\&\#62;/\>/g && study;
+#  }
+#
+# but Perl 4.036 bugs on it (Perl 5 is OK)
+
+sub unprotect_texi {
+    s/$;0/\@/go;
+    s/$;1/\{/go;
+    s/$;2/\}/go;
+    s/$;3/\`/go;
+    s/$;4/\'/go;
+}
+
+sub unprotect_html {
+    s/\&\#38;/\&/g;
+    s/\&\#60;/\</g;
+    s/\&\#62;/\>/g;
+}
+
+sub byalpha {
+    $key2alpha{$a} cmp $key2alpha{$b};
+}
+
+##############################################################################
+
+	# These next few lines are legal in both Perl and nroff.
+
+.00;			# finish .ig
+ 
+'di			\" finish diversion--previous line must be blank
+.nr nl 0-1		\" fake up transition to first page again
+.nr % 0			\" start at page 1
+'; __END__ ############# From here on it's a standard manual page ############
+.TH TEXI2HTML 1 "12/08/94"
+.AT 3
+.SH NAME
+texi2html \- a Texinfo to HTML converter
+.SH SYNOPSIS
+.B texi2html [options] file
+.PP
+.B texi2html -check [-verbose] files
+.SH DESCRIPTION
+.I Texi2html
+converts the given Texinfo file to a set of HTML files. It tries to handle
+most of Texinfo commands. It creates hypertext links for cross-references,
+footnotes...
+.PP
+It also tries to add links from a reference to its corresponding entry in the
+bibliography (if any). It may also handle a glossary (see the
+.B \-glossary
+option).
+.PP
+.I Texi2html
+creates several files depending on the contents of the Texinfo file and on
+the chosen options (see FILES).
+.PP
+The HTML files created by
+.I texi2html
+are closer to TeX than to Info, what's why
+.I texi2html
+convert @iftex sections and not @ifinfo ones.
+.SH OPTIONS
+.TP 12
+.B \-check
+Check the given file and give the list of all things that may be Texinfo commands.
+This may be used to check the output of
+.I texi2html
+to find the Texinfo commands that have been left in the HTML file.
+.TP
+.B \-glossary
+Use the section named 'Glossary' to build a list of terms and put links in the HTML
+document from each term toward its definition.
+.TP
+.B \-invisible \fIname\fP
+Use \fIname\fP to create invisible destination anchors for index links. This is a workaround
+for a known bug of many WWW browsers, including xmosaic.
+.TP
+.B \-menu
+Show the Texinfo menus; by default they are ignored.
+.TP
+.B \-split_chapter
+Split the output into several HTML files (one per main section:
+chapter, appendix...).
+.TP
+.B \-split_node
+Split the output into several HTML files (one per node).
+.TP
+.B \-usage
+Print usage instructions, listing the current available command-line options.
+.TP
+.B \-verbose
+Give a verbose output. Can be used with the
+.B \-check
+option.
+.PP
+.SH FILES
+By default
+.I texi2html
+creates the following files (foo being the name of the Texinfo file):
+.TP 16
+.B foo_toc.html
+The table of contents.
+.TP
+.B foo.html
+The document's contents.
+.TP
+.B foo_foot.html
+The footnotes (if any).
+.PP
+When used with the
+.B \-split
+option, it creates several files (one per chapter or node), named
+.B foo_n.html
+(n being the indice of the chapter or node), instead of the single
+.B foo.html
+file.
+.SH VARIABLES
+.I texi2html
+predefines the following variables: \fBhtml\fP, \fBtexi2html\fP.
+.SH ADDITIONAL COMMANDS
+.I texi2html
+implements the following non-Texinfo commands:
+.TP 16
+.B @ifhtml
+This indicates the start of an HTML section, this section will passed through
+without any modofication.
+.TP
+.B @end ifhtml
+This indcates the end of an HTML section.
+.SH VERSION
+This is \fItexi2html\fP version 1.31, 12/08/94.
+.PP
+The latest version of \fItexi2html\fP can be found in WWW, cf. URL
+http://asis01.cern.ch/infohtml/texi2html.html
+.SH AUTHOR
+Lionel Cons, CERN CN/DCI/UWS, Lionel.Cons@cern.ch
+.SH COPYRIGHT
+This program is the intellectual property of the European
+Laboratory for Particle Physics (known as CERN). No guarantee whatsoever is
+provided by CERN. No liability whatsoever is accepted for any loss or damage
+of any kind resulting from any defect or inaccuracy in this information or
+code.
+.PP
+CERN, 1211 Geneva 23, Switzerland
+.SH "SEE ALSO"
+GNU Texinfo Documentation Format,
+HyperText Markup Language (HTML),
+World Wide Web (WWW).
+.SH BUGS
+This program does not understand all Texinfo commands (yet).
+.ex

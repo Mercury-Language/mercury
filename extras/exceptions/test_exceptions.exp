@@ -1,0 +1,17 @@
+det_throw: exception(univ("det_throw" : string))
+det_succeed: succeeded("det_succeed")
+semidet_throw: exception(univ("semidet_throw" : string))
+semidet_succeed: succeeded("semidet_succeed")
+semidet_fail: failed
+cc_multi_throw: exception(univ("cc_multi_throw" : string))
+cc_multi_succeed: succeeded("cc_multi_succeed")
+cc_nondet_throw: exception(univ("cc_nondet_throw" : string))
+cc_nondet_succeed: succeeded("cc_nondet_succeed")
+cc_nondet_fail: failed
+multi_throw: exception(univ("multi_throw" : string))
+multi_succeed: succeeded(["multi_succeed 1", "multi_succeed 2"])
+multi_succeed_then_throw: exception(univ("multi_succeed_then_throw 3" : string))
+nondet_throw: exception(univ("nondet_throw" : string))
+nondet_succeed: succeeded(["nondet_succeed 1", "nondet_succeed 2"])
+nondet_fail: succeeded([])
+nondet_succeed_then_throw: exception(univ("nondet_succeed_then_throw 3" : string))

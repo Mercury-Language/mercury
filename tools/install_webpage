@@ -1,0 +1,98 @@
+#!/bin/sh
+
+# This script is used to install the Mercury WWW page.
+
+umask 002
+
+echo "install webpage starting at `date`" 1>&2
+
+DF="df -k"
+
+PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
+PATH="/home/mercury/public/mercury-latest/sparc-sun-solaris2.5/bin:$PATH"
+export PATH
+
+CVSROOT=/home/staff/zs/imp
+export CVSROOT
+
+#-----------------------------------------------------------------------------#
+
+# directories to use
+DIR=/home/mercury/public/test_mercury/www_dir
+INSTALL_DIR=/local/dept/w3/unsupported/docs/mercury
+
+INSTALL_WEBDIR=$INSTALL_DIR
+export INSTALL_WEBDIR
+
+#-----------------------------------------------------------------------------#
+
+# check we've got a reasonable amount of free disk space -- no point
+# starting if we'll only run out of disk space.
+
+[ -d $DIR ] || mkdir -p $DIR
+FREE=`$DF $DIR | awk 'NR == 2 { print $4; }'`
+if [ "$FREE" -lt 15000 ]; then
+	echo "Insufficient disk space on $DIR" 1>&2
+	$DF $DIR
+	exit 1
+fi
+
+#-----------------------------------------------------------------------------#
+
+# to make sure we don't try to run two installs in parallel,
+# we use a lock file in the install directory
+
+lockfile=$DIR/lockfile
+if [ -f $lockfile ]; then
+	echo "Directory $DIR is locked:" 1>&2
+	cat $lockfile 1>&2
+	echo "Perhaps the previous install is still running?" 1>&2
+	echo "(Remove $lockfile manually if necessary.)" 1>&2
+	exit 1
+fi
+trap 'rm -f $lockfile; exit 1' 1 2 3 13 15
+trap 'exit_status=$?; rm -f $lockfile; exit $exit_status' 0
+echo $HOST > $lockfile
+
+#-----------------------------------------------------------------------------#
+
+status=0
+
+#-----------------------------------------------------------------------------#
+
+echo "install_webpage starting cvs checkout at `date`" 1>&2
+
+set -x	# trace execution
+
+: checkout the sources and make sure the installation directory exists
+cd $DIR || { false; exit 1; }
+rm -rf mercury || { false; exit 1; }
+cvs checkout mercury/doc || { false; exit 1; }
+cvs checkout mercury/library || { false; exit 1; }
+cvs checkout -kv mercury/compiler/notes || { false; exit 1; }
+cd $DIR/mercury || { false; exit 1; }
+# checkout the www module and remove RCS keywords.
+cvs checkout -kv www || { false; exit 1; }
+
+# make sure all pages are world readable
+chmod -R a+r * || { false; exit 1; }
+
+[ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
+
+
+echo "install_webpage starting install `date`" 1>&2
+
+: install the web pages
+# We don't want to run configure, we haven't even checked it out.
+# We'll make an Mmake.common for ourselves.
+echo "LIBRARY_DIR=$DIR/mercury/library" > $DIR/mercury/Mmake.common
+
+cd $DIR/mercury/www || { false; exit 1; }
+mmake install || { false; exit 1; }
+
+cd $DIR/mercury/compiler/notes || { false; exit 1; }
+mmake install || { false; exit 1; }
+
+echo "install_webpage done" 1>&2
+
+#-----------------------------------------------------------------------------#

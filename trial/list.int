@@ -1,0 +1,145 @@
+:- module list.
+:- interface.
+:- import_module int.
+:- type (list:list(T))
+	--->	list:[]
+	;	list:'.'(T, (list:list(T))).
+:- inst ((list:list_skel(I))) = bound(.(I, list:list_skel(I)) ; []).
+:- inst ((list:list_skel)) = list:list_skel(free).
+:- inst ((list:non_empty_list)) = bound(.(ground, ground)).
+:- mode ((list:in_list_skel)) :: (list:list_skel -> list:list_skel).
+:- mode ((list:out_list_skel)) :: (free -> list:list_skel).
+:- mode ((list:list_skel_out)) :: (list:list_skel -> ground).
+:- mode ((list:input_list_skel)) :: list:in_list_skel.
+:- mode ((list:output_list_skel)) :: list:out_list_skel.
+:- mode ((list:list_skel_output)) :: list:list_skel_out.
+:- mode ((list:list_skel_in(I))) :: (list:list_skel(I) -> list:list_skel(I)).
+:- mode ((list:list_skel_out(I))) :: (free -> list:list_skel(I)).
+:- pred list:append((list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:append(mercury_builtin:di, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode list:append(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode list:append(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode list:append(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in) is semidet.
+:- mode list:append(mercury_builtin:out, mercury_builtin:out, mercury_builtin:in) is multi.
+:- pred list:remove_suffix((list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:remove_suffix(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:merge((list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:merge(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:merge_and_remove_dups((list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:merge_and_remove_dups(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:remove_adjacent_dups((list:list(T)), (list:list(T))).
+:- mode list:remove_adjacent_dups(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:remove_dups((list:list(T)), (list:list(T))).
+:- mode list:remove_dups(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:member(T, (list:list(T))).
+:- mode list:member(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode list:member(mercury_builtin:out, mercury_builtin:in) is nondet.
+:- pred list:member(T, (list:list(T)), (list:list(T))).
+:- mode list:member(mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is nondet.
+:- pred list:length((list:list(_T)), int).
+:- mode list:length(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:same_length((list:list(T1)), (list:list(T2))).
+:- mode list:same_length(mercury_builtin:in, list:output_list_skel) is det.
+:- mode list:same_length(list:output_list_skel, mercury_builtin:in) is det.
+:- mode list:same_length(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred list:split_list(int, (list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:split_list(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is semidet.
+:- pred list:take(int, (list:list(T)), (list:list(T))).
+:- mode list:take(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:drop(int, (list:list(T)), (list:list(T))).
+:- mode list:drop(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:insert(T, (list:list(T)), (list:list(T))).
+:- mode list:insert(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode list:insert(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in) is nondet.
+:- mode list:insert(mercury_builtin:out, mercury_builtin:out, mercury_builtin:in) is nondet.
+:- mode list:insert(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is multi.
+:- pred list:delete((list:list(T)), T, (list:list(T))).
+:- mode list:delete(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode list:delete(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is nondet.
+:- mode list:delete(mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is nondet.
+:- mode list:delete(mercury_builtin:out, mercury_builtin:in, mercury_builtin:in) is multi.
+:- pred list:delete_first((list:list(T)), T, (list:list(T))).
+:- mode list:delete_first(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:delete_all((list:list(T)), T, (list:list(T))).
+:- mode list:delete_all(mercury_builtin:di, mercury_builtin:in, mercury_builtin:uo) is det.
+:- mode list:delete_all(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:delete_elems((list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:delete_elems(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:replace((list:list(T)), T, T, (list:list(T))).
+:- mode list:replace(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in) is semidet.
+:- mode list:replace(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is nondet.
+:- pred list:replace_first((list:list(T)), T, T, (list:list(T))).
+:- mode list:replace_first(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:replace_all((list:list(T)), T, T, (list:list(T))).
+:- mode list:replace_all(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:sort_and_remove_dups((list:list(T)), (list:list(T))).
+:- mode list:sort_and_remove_dups(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:sort((list:list(T)), (list:list(T))).
+:- mode list:sort(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:reverse((list:list(T)), (list:list(T))).
+:- mode list:reverse(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:perm((list:list(T)), (list:list(T))).
+:- mode list:perm(mercury_builtin:in, mercury_builtin:out) is nondet.
+:- pred list:nth_member_search((list:list(T)), T, int).
+:- mode list:nth_member_search(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:index0((list:list(T)), int, T).
+:- mode list:index0(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:index1((list:list(T)), int, T).
+:- mode list:index1(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:index0_det((list:list(T)), int, T).
+:- mode list:index0_det(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:index1_det((list:list(T)), int, T).
+:- mode list:index1_det(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:zip((list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:zip(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:duplicate(int, T, (list:list(T))).
+:- mode list:duplicate(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:condense((list:list((list:list(T)))), (list:list(T))).
+:- mode list:condense(mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:chunk((list:list(T)), int, (list:list((list:list(T))))).
+:- mode list:chunk(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:sublist((list:list(T)), (list:list(T))).
+:- mode list:sublist(mercury_builtin:in, mercury_builtin:in) is semidet.
+:- pred list:all_same((list:list(T))).
+:- mode list:all_same(mercury_builtin:in) is semidet.
+:- pred list:last((list:list(T)), T).
+:- mode list:last(mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:map(pred(X, Y), (list:list(X)), (list:list(Y))).
+:- mode list:map((pred(mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:out) is det.
+:- mode list:map((pred(mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:out) is semidet.
+:- mode list:map((pred(mercury_builtin:in, mercury_builtin:out) is multi), mercury_builtin:in, mercury_builtin:out) is multi.
+:- mode list:map((pred(mercury_builtin:in, mercury_builtin:out) is nondet), mercury_builtin:in, mercury_builtin:out) is nondet.
+:- pred list:foldl(pred(X, Y, Y), (list:list(X)), Y, Y).
+:- mode list:foldl((pred(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det), mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode list:foldl((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode list:foldl((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:foldr(pred(X, Y, Y), (list:list(X)), Y, Y).
+:- mode list:foldr((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode list:foldr((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:foldl2(pred(X, Y, Y, Z, Z), (list:list(X)), Y, Y, Z, Z).
+:- mode list:foldl2((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode list:foldl2((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:mdi, mercury_builtin:muo) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:mdi, mercury_builtin:muo) is det.
+:- mode list:foldl2((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode list:foldl2((pred(mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo, mercury_builtin:di, mercury_builtin:uo) is det), mercury_builtin:in, mercury_builtin:di, mercury_builtin:uo, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred list:map_foldl(pred(X, Y, Z, Z), (list:list(X)), (list:list(Y)), Z, Z).
+:- mode list:map_foldl((pred(mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det), mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- mode list:map_foldl((pred(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is det.
+:- mode list:map_foldl((pred(mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:out, mercury_builtin:in, mercury_builtin:out) is semidet.
+:- pred list:filter((pred X), (list:list(X)), (list:list(X))).
+:- mode list:filter((pred(mercury_builtin:in) is semidet), mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:filter((pred X), (list:list(X)), (list:list(X)), (list:list(X))).
+:- mode list:filter((pred(mercury_builtin:in) is semidet), mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred list:filter_map(pred(X, Y), (list:list(X)), (list:list(Y))).
+:- mode list:filter_map((pred(mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:filter_map(pred(X, Y), (list:list(X)), (list:list(Y)), (list:list(X))).
+:- mode list:filter_map((pred(mercury_builtin:in, mercury_builtin:out) is semidet), mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred list:takewhile((pred T), (list:list(T)), (list:list(T)), (list:list(T))).
+:- mode list:takewhile((pred(mercury_builtin:in) is semidet), mercury_builtin:in, mercury_builtin:out, mercury_builtin:out) is det.
+:- pred list:sort(pred(X, X, (mercury_builtin:comparison_result)), (list:list(X)), (list:list(X))).
+:- mode list:sort((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:sort_and_remove_dups(pred(X, X, (mercury_builtin:comparison_result)), (list:list(X)), (list:list(X))).
+:- mode list:sort_and_remove_dups((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:merge(pred(X, X, (mercury_builtin:comparison_result)), (list:list(X)), (list:list(X)), (list:list(X))).
+:- mode list:merge((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred list:merge_and_remove_dups(pred(X, X, (mercury_builtin:comparison_result)), (list:list(X)), (list:list(X)), (list:list(X))).
+:- mode list:merge_and_remove_dups((pred(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det), mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

@@ -1,0 +1,343 @@
+
+<html>
+<head>
+<title>
+	Mercury Coding Standard for the Mercury Project
+</title>
+</head>
+
+<body
+	bgcolor="#ffffff"
+	text="#000000"
+>
+
+<hr>
+<!-------------------------->
+
+<h1>
+Mercury Coding Standard for the Mercury Project</h1>
+<hr>
+
+<!-------------------------->
+
+<h2> Use of language features </h2>
+
+<p>
+
+Language features that do not work in SICStus Prolog
+(including functions, reverse modes of arithmentic,
+the NU-Prolog syntax for negation and if-then-else,
+and code requiring mode reordering) should not be used
+in the Mercury compiler --- at least not until we
+have implemented a proper debugger.
+
+<p>
+
+<h2> Documentation </h2>
+
+<p>
+
+Each module should contain header comments which state
+the module's name, main author(s), and purpose, and
+give an overview of what the module does, what are the
+major algorithms and data structures it uses, etc.
+
+<p>
+
+Each type or predicate that is exported from a module should have
+sufficient documentation that it can be understood without reference
+to the module's implementation section.
+
+<p>
+
+Each predicate other than trivial access predicates should have
+a short comment describing what the predicate is supposed to do,
+and what the meaning of the arguments is.
+
+<p>
+
+There should be a comment for each field of a structure saying
+what the field represents.
+
+<p>
+
+Any user-visible changes such as new compiler options or new
+features should be documented in appropriate section
+of the Mercury documentation (usually the Mercury User's Guide
+and/or the Mercury Reference Manual).  Any major new features
+should be documented in the NEWS file, as should even small
+changes to the library interface, or anything else that might
+cause anyone's existing code to break.
+
+<p>
+
+Any new compiler modules or other major design changes should
+be documented in `compiler/notes/COMPILER_DESIGN'.
+
+<p>
+
+<h2> Naming </h2>
+
+<p>
+
+Variables should always be given meaningful names,
+unless they are irrelevant to the code in question.
+For example, it is OK to use single-character names
+in an access predicate which just sets a single
+field of a structure, such as
+
+<pre>
+
+	bar_set_foo(Foo, bar(A, B, C, _, E), bar(A, B, C, Foo, E)).
+
+</pre>
+
+Variables which represent different states or different versions
+of the same entity should be named Foo0, Foo1, Foo2, ..., Foo.
+
+<p>
+
+Predicates which get or set a field of a structure or ADT should
+be named bar_get_foo and bar_set_foo respectively, where bar
+is the name of the structure or ADT and foo is the name of the field.
+
+<p>
+
+
+<h2> Coding </h2>
+
+<p>
+
+Your code should make as much reuse of existing code as possible.
+"cut-and-paste" style reuse is highly discouraged.
+
+<p>
+
+Your code should be efficient.  Performance is a quite
+serious issue for the Mercury compiler.
+
+<p>
+
+No fixed limits please! 
+(If you really must have a fixed limit, include detailed documentation
+explaining why it was so hard to avoid.)
+
+<p>
+
+
+<h2> Error Handling </h2>
+
+<p>
+
+Code should check for both erroneous inputs from the user and also
+invalid data being passed from other parts of the Mercury compiler.
+You should also always check to make sure that the routines that you
+call have succeed; make sure you don't silently ignore failures.  (This
+last point almost goes without saying in Mercury, but is particularly
+important to bear in mind if you are writing any C code or shell
+scripts, or if you are interfacing with the OS.)
+
+<p>
+
+Calls to error/1 should always indicate an internal software error, not
+merely incorrect inputs from the user, or failure of some library routine
+or system call.
+
+<p>
+
+Error messages should follow a consistent format.  For compiler error
+messages, each line should start with the source file name and line
+line number in "%s:%03d: " format (but use prog_out__write_context --
+we may want to change this format later, e.g. to include column
+numbers).  Compiler error messages should be complete sentences; they
+should start with a capital letter and end in a full stop.  For error
+messages that are spread over more than one line (as are most of them),
+the second and subsequent lines should be indented two spaces.  If the
+`--verbose-errors' option was set, you should print out additional text
+explaining in detail what the error message means and what the likely
+causes are.
+
+<p>
+
+Error messages from the runtime system should begin with the text
+"Mercury Runtime:", preferably by using the fatal_error() routine.
+
+<p>
+
+If a system call or C library function that sets errno fails, the
+error message should be printed with perror() or should contain
+strerror(errno).  If it was a function manipulating some file, the
+error message should include the filename.
+
+<p>
+
+
+<h2> Layout </h2>
+
+Code should be indented consistently.
+Tabs should be every 8 spaces.
+Indentation should be one tab per level of indentation.
+except for highly intended code which may be
+indented at 4 spaces per level of indentation.
+Each line should not extend beyond 79 characters,
+unless this is necessary due to the use of long string literals.
+If-then-elses should always be parenthesized,
+except that an if-then-else that occurs as the else
+part of another if-then-else doesn't need to be parenthesized.
+The semicolon of a disjunction should never be at the
+end of a line -- put it at the start of the next line instead.
+The condition of an if-then-else can either be on the same
+line as the opening parenthesis and the `->',
+
+<pre>
+
+	( test1 ->
+		goal1
+	; test2 ->
+		goal2
+	;
+		goal
+	)
+
+</pre>
+
+or, if the test is complicated, it can be on a line of its own:
+
+<pre>
+
+	(
+		very_long_test_that_does_not_fit_on_one_line(VeryLongArgument1,
+			VeryLongArgument2)
+	->
+		goal1
+	;
+		test2a,
+		test2b,
+	->
+		goal2
+	;
+		test3	% would fit one one line, but separate for consistency
+	->
+		goal3
+	;
+		goal
+	).
+
+</pre>
+
+Type definitions should be formatted in the following style:
+
+<pre>
+	:- type my_type
+		--->	my_type(
+				some_other_type	% comment explaining it
+			).
+
+	:- type some_other_type == int.
+
+	:- type foo
+		--->	bar(
+				int,		% comment explaining it
+				float		% comment explaining it
+			)
+		;	baz
+		;	quux.
+
+</pre>
+
+If an individual clause is long, it should be broken into sections,
+and each section should have a "block comment" describing what it does;
+blank lines should be used to show the separation into sections.
+Comments should precede the code to which they apply, rather than
+following it.
+
+<pre>
+	%
+	% This is a block comment; it applies to the code in the next
+	% section (up to the next blank line).
+	%
+	blah,
+	blah,
+	blahblah,
+	blah,
+</pre>
+
+If a particular line or two needs explanation, a "line" comment
+
+<pre>
+	% This is a "line" comment; it applies to the next line or two
+	% of code
+	blahblah
+</pre>
+
+or an "inline" comment
+
+<pre>
+	blahblah	% This is an "inline" comment
+</pre>
+
+should be used.
+	
+At a higher level, code should be grouped into bunches of related
+predicates, functions, etc., and sections of code that are conceptually
+separate should be separated with dashed lines:
+
+<pre>
+
+%---------------------------------------------------------------------------%
+
+Double-dashed lines, i.e.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+</pre>
+
+can also be used to indicate divisions into major sections.
+
+
+<h2> Testing </h2>
+
+<p>
+
+Every change should be tested before being committed.
+The level of testing required depends on the nature of the change.
+If this change fixes an existing bug, and is not likely to introduce
+any new bugs, then just compiling it and running some tests
+by hand is sufficient.  If the change might break the compiler,
+you should run a bootstrap check (using the `bootcheck' script)
+before committing.  If the change means that old versions of
+the compiler will not be able to compile the new version of the
+compiler, you must notify all the other Mercury developers.
+
+<p>
+
+In addition to testing before a change is committed, you need to make
+sure that the code will not get broken in the future by adding tests to
+the test suite.  Every time you add a new feature, you should add some
+test cases for that new feature to the test suite.  Every time you fix
+a bug, you should add a regression test to the test suite.
+
+<p>
+
+
+<h2> Committing changes </h2>
+
+<p>
+
+Before committing a change, you should get someone else to review your
+changes. 
+
+<p>
+
+The file "REVIEWS" contains more information on review policy.
+
+
+
+
+<hr>
+<!-------------------------->
+
+Last update was $Date: 1997-04-03 05:17:34 $ by $Author: aet $@cs.mu.oz.au. <br>
+</body>
+</html>

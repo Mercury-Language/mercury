@@ -1,0 +1,187 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake.common - this is the part of the makefiles
+# for building the Mercury implementation that is shared
+# between all the subdirectories.  It also contains all
+# the parameters that might need to be modified when installing
+# Mercury on a new machine.
+
+# These parameters should all be determined automatically by `configure'.
+# Any definitions in the Mmake.params file take precedence over the
+# definitions here, so if you want to change one of the values here
+# it is best to just add a definition to Mmake.params.
+
+#-----------------------------------------------------------------------------#
+
+include $(MERCURY_DIR)/VERSION
+
+#-----------------------------------------------------------------------------#
+
+# Specify the locations for installing things.
+# These directories can all be modified independantly.
+# In particular, you might want to find a better place for the DVI and
+# HTML files.
+
+# FINAL_INSTALL_PREFIX describes the directory that the installation
+# will finally end up in. It should only be set by the configure 
+# script.  Other FINAL_INSTALL_* variables have a similar meaning.
+#
+# If you want to install to a different directory temporarily (e.g.
+# to build a package, or if you don't have the permissions to install
+# to a final directory), override INSTALL_PREFIX on the command-line.
+# If you have previously configured to the directory you want to
+# finally install to, you will then be able to move the files safely,
+# since any hard-coded paths will be set to their final destination
+# already (note that the installation in the temporary directory may
+# not work until moved into its final destination).
+# e.g.
+#      configure --prefix /usr
+#      make INSTALL_PREFIX=/some/temporary/directory/usr
+
+# If you don't intend to install to a temporary directory, rather than
+# overriding INSTALL_PREFIX you should reconfigure using the configure
+# script, since there are some hardcoded paths created by the configure
+# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
+# be updated simply by overriding INSTALL_PREFIX.
+
+INSTALL_PREFIX		= @prefix@
+FINAL_INSTALL_PREFIX	= @prefix@
+INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
+INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
+FINAL_INSTALL_LIBDIR 	= $(FINAL_INSTALL_PREFIX)/lib/mercury
+INSTALL_INFO_DIR 	= $(INSTALL_PREFIX)/info
+INSTALL_DVI_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_TEXT_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_PS_DIR 		= $(INSTALL_PREFIX)/lib/mercury/doc
+INSTALL_MAN_DIR 	= $(INSTALL_PREFIX)/man
+INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
+
+# Specify the Mercury compiler to use for bootstrapping
+MC			= @BOOTSTRAP_MC@
+
+# Specify the compilation model to use for compiling the compiler
+GRADE			= @GRADE@
+
+# Specify the additional compilation models to install the library for
+LIBGRADES  		= @LIBGRADES@
+
+# Specify the name of the Sicstus Prolog interpreter.
+SP			= @SP@
+
+# Specify EXT_FOR_SHARED_LIB as `so' if the operating system
+# supports `.so' shared libraries,
+# `.dll' if it supports DLLs,
+# or as `a' if it doesn't.
+EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
+
+# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs
+USE_DLLS		= @USE_DLLS@
+
+# Specify any special flags to pass to the C compiler when creating objects
+# for a shared library (e.g. -fpic or -fPIC for gcc).
+# For Irix 5 and Alpha/OSF, position-independent code is the default,
+# so leave this blank.
+CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+
+# Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
+# required (see above), and as `o' otherwise.  This is used to ensure that
+# we don't bother to build the .pic_o files if $(PIC) is null, since we can
+# just reuse the .o files.
+EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
+
+# Set LIBRARY_RM_C as `:' if EXT_FOR_PIC_OBJECTS is `pic_o', or `rm'
+# otherwise.  This is used to ensure that in cases when we're building
+# both `.o' and `.pic_o' files, we don't remove the intermediate `.c' files.
+# This avoids compiling things to C twice, and also avoids problems when
+# bootstrapping from the source distribution.
+LIBRARY_RM_C		= @LIBRARY_RM_C@
+
+# Specify the command to link a shared library
+# This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
+# LINK_SHARED_OBJ  	= ld -shared	# for Irix 5
+# LINK_SHARED_OBJ  	= gcc -assert nodefinitions
+#					# for SunOS 4 (completely untested)
+# LINK_SHARED_OBJ  	= gcc -shared	# for Solaris etc.
+LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
+
+# The following variables specify how to pass options to the # $(CC) or
+# $(LINK_SHARED_OBJ) command to specify directories to be searched at
+# runtime for shared libraries.
+# Normally RPATH_OPT is either "-R" or "-rpath ", but you may need to
+# do something special to get the C compiler to pass this option on
+# to the linker (e.g. with gcc you can use "-Wl,-rpath,").
+# RPATH_SEP is a path separator; normally either ":"
+# or just RPATH_OPT with a space in front of it.
+# The SHLIB_ versions are used when linking shared libraries
+# (perhaps invoking ld directly, rather than via the C compiler).
+# The EXE_ versions are used when linking executables.
+# The empty single quote pairs below are there to ensure that `make'
+# does not throw away any important trailing or leading whitespace.
+SHLIB_RPATH_OPT	= @SHLIB_RPATH_OPT@''
+SHLIB_RPATH_SEP	= ''@SHLIB_RPATH_SEP@''
+EXE_RPATH_OPT	= @EXE_RPATH_OPT@''
+EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
+
+# Specify any extra libraries that must be linked in when linking shared
+# objects.
+SHARED_LIBS		= @SHARED_LIBS@
+
+# Set NUPROLOG to `nuprolog' and set INSTALL_NUPROLOG to `install_nuprolog'
+# if you have NU-Prolog and want use it for debugging Mercury programs.
+# Otherwise, leave them blank.
+NUPROLOG		= @NUPROLOG@
+INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
+
+# Set SICSTUS to `sicstus' and set INSTALL_SICSTUS to `install_sicstus'
+# if you have SICStus Prolog and want use it for debugging Mercury programs.
+# Otherwise, leave them blank.
+SICSTUS			= @SICSTUS@
+INSTALL_SICSTUS		= @INSTALL_SICSTUS@
+
+# You should not need to modify anything below here
+
+#-----------------------------------------------------------------------------#
+
+INSTALL_MODULE_DIR	= $(INSTALL_LIBDIR)/modules
+INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
+INSTALL_INC_DIR		= $(INSTALL_LIBDIR)/inc
+INSTALL_MMAKE_DIR 	= $(INSTALL_LIBDIR)/mmake
+FULLARCH		= @FULLARCH@
+INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
+INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
+FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
+INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
+FINAL_INSTALL_MERC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
+INSTALL_NU_DIR		= $(INSTALL_LIBDIR)/nuprolog
+INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
+INSTALL_SP_DIR		= $(INSTALL_LIBDIR)/sicstus
+INSTALL_SP_ARCH_DIR 	= $(INSTALL_LIBDIR)/sicstus/$(FULLARCH)
+
+SCRIPTS_DIR = $(MERCURY_DIR)/scripts
+RUNTIME_DIR = $(MERCURY_DIR)/runtime
+LIBRARY_DIR = $(MERCURY_DIR)/library
+BOEHM_GC_DIR = $(MERCURY_DIR)/boehm_gc
+COMPILER_DIR = $(MERCURY_DIR)/compiler
+UTIL_DIR = $(MERCURY_DIR)/util
+
+# Options to pass to the Mercury compiler
+MCFLAGS	= --no-infer-all --halt-at-warn
+
+# Do we want to deal with intermodule information when building the library?
+# By default yes, since this way we note immediately when intermodule
+# optimization breaks, and always at installation time, since we must install
+# the library's .opt and .trans_opt files as well. However, during development
+# some problems are easier to track down without intermodule optimization
+# complicating things.
+LIBRARY_INTERMODULE = yes
+
+#-----------------------------------------------------------------------------#
+
+# The Mmake.params file can be used to override definitions in this file
+-include $(MERCURY_DIR)/Mmake.params
+
+#-----------------------------------------------------------------------------#

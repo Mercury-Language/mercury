@@ -1,0 +1,157 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile for the Mercury trace library, which contains the runtime
+# system components that are needed only if some procedures are traced.
+
+MAIN_TARGET=trace
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+CFLAGS		= -I$(MERCURY_DIR)/browser -I$(MERCURY_DIR)/library \
+		  -I$(MERCURY_DIR)/runtime -I$(MERCURY_DIR)/boehm_gc \
+		  -g $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+MGNUC		= MERCURY_C_INCL_DIR=. $(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS	= --no-ansi $(EXTRA_MGNUCFLAGS) $(CFLAGS)
+MOD2C		= $(SCRIPTS_DIR)/mod2c
+
+#-----------------------------------------------------------------------------#
+
+# keep this list in alphabetical order, please
+HDRS		=	\
+			mercury_trace.h			\
+			mercury_trace_alias.h		\
+			mercury_trace_external.h 	\
+			mercury_trace_help.h		\
+			mercury_trace_internal.h	\
+			mercury_trace_spy.h		\
+			mercury_trace_tables.h		\
+			mercury_trace_util.h
+
+# keep this list in alphabetical order, please
+CFILES		= 	\
+			mercury_trace.c			\
+			mercury_trace_alias.c		\
+			mercury_trace_external.c 	\
+			mercury_trace_help.c		\
+			mercury_trace_internal.c	\
+			mercury_trace_spy.c		\
+			mercury_trace_tables.c
+
+OBJS		= $(CFILES:.c=.o)
+PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
+
+LDFLAGS		= -L$(BROWSER_DIR) -L$(LIBRARY_DIR) \
+			-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
+LDLIBS		= -l$(BROWSER_LIB_NAME) -l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
+		` case "$(GRADE)" in 					\
+		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+		    *.gc*)		echo "-lgc" ;;			\
+		  esac							\
+		`
+THREADLIBS	= \
+		` case "$(GRADE)" in					\
+		    *.par*) echo "-lpthread" ;;				\
+		  esac							\
+		`
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLs
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS	= -Dlib$(TRACE_LIB_NAME)_DEFINE_DLL
+
+# the following header files are created automatically by Makefile.DLLs
+LIB_DLL_H	 = lib$(TRACE_LIB_NAME)_dll.h
+LIB_GLOBALS_H = lib$(TRACE_LIB_NAME)_globals.h
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+LIB_DLL_H =
+LIB_GLOBALS_H =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+$(OBJS) $(PIC_OBJS): $(HDRS)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: trace
+trace: lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+trace: $(LIB_DLL_H) $(LIB_GLOBALS_H)
+
+lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a: $(OBJS)
+	rm -f lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a
+	ar cr lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a $(OBJS)
+	$(RANLIB) lib$(TRACE_LIB_NAME)$(DLL_DEF_LIB).a
+
+lib$(TRACE_LIB_NAME).so: $(PIC_OBJS)
+	$(LINK_SHARED_OBJ) -o lib$(TRACE_LIB_NAME).so $(PIC_OBJS)	\
+		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
+		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
+		$(SHARED_LIBS)
+
+.PHONY: cs
+cs: $(CFILES)
+
+tags: $(CFILES) $(HDRS)
+	ctags $(CFILES) $(HDRS) ../runtime/*.c ../runtime/*.h
+
+.PHONY: check_headers
+check_headers:
+	for file in $(HDRS); do \
+		echo "$$file"; \
+		echo "#include \"$$file\"" > tmp.c; \
+		$(MGNUC) $(MGNUCFLAGS) -c tmp.c || exit 1; \
+	done
+	rm -f tmp.c
+
+#-----------------------------------------------------------------------------#
+
+# installation rules
+
+.PHONY: install
+install: install_headers install_lib
+
+.PHONY: install_headers
+install_headers: $(HDRS) $(LIB_GLOBALS_H)
+	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+
+.PHONY: install_lib
+install_lib: lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find lib$(TRACE_LIB_NAME).a \
+		lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# prevent Mmake from removing C files
+RM_C=:
+
+#-----------------------------------------------------------------------------#
+
+clean: clean_o
+
+.PHONY: clean_o
+clean_o:
+	rm -f $(OBJS) $(PIC_OBJS) 
+
+realclean:
+	rm -f lib$(TRACE_LIB_NAME).a lib$(TRACE_LIB_NAME).so
+
+#-----------------------------------------------------------------------------#

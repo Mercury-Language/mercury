@@ -1,0 +1,36 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# Given the automatically generated mdb_doc file, this script generates
+# a scripts that exercises the error messages for the improper invocations
+# of mdb commands.
+
+awk '
+$1 == "document" {
+		# the items in the "concepts" category are not commands
+		if ($2 == "concepts")
+			next;
+
+		# this line is from the "documentation" of the "document" cmd
+		if ($2 == "CATEGORY")
+			next;
+
+		# the following commands cannot be tested with xyzzy args
+		if ($4 == "alias")
+			next;
+		if ($4 == "help")
+			next;
+		if ($4 == "document")
+			next;
+		if ($4 == "document_category")
+			next;
+
+		# for all the other commands, try to execute them with
+		# illegal arguments
+		printf "%-20s xyzzy xyzzy xyzzy xyzzy xyzzy\n", $4;
+	}
+'

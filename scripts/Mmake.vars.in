@@ -1,0 +1,311 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1996-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake.vars - variables for building Mercury programs
+
+# This file gives the default values for certain variables.
+# The values here can be overridden by individual Mmake files.
+
+# Ensure that commands use /bin/sh not the user's shell
+SHELL		= /bin/sh
+
+# Set the directory search path. 
+# (See the GNU Make manual for documentation about VPATH and GPATH.)
+MMAKE_VPATH	= $(MERCURY_INT_DIR)
+VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
+#			 the above comment works around a misfeature of
+#			 autoconf which causes it to delete assignments to
+#			 VPATH unless they contain a `:'
+GPATH		= $(VPATH)
+
+DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
+GRADE		= $(DEFAULT_GRADE)
+
+ALL_GRADEFLAGS  = $(GRADEFLAGS) $(TARGET_GRADEFLAGS) $(EXTRA_GRADEFLAGS)
+GRADEFLAGS	= --grade $(GRADE)
+EXTRA_GRADEFLAGS =
+
+MC		= mmc
+ALL_MCFLAGS	= $(MCFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCFLAGS)
+MCFLAGS		=
+EXTRA_MCFLAGS	=
+
+MCS		= $(MC) --split-c-files --compile-only
+MCG		= $(MC) --compile-to-c
+MCD		= $(MC) --generate-dependencies
+MCI		= $(MC) --make-interface
+MCPI		= $(MC) --make-private-interface
+MCSI		= $(MC) --make-short-interface
+MCOI		= $(MC) --make-optimization-interface
+MCTOI		= $(MC) --make-transitive-optimization-interface
+
+ALL_MCIFLAGS	= $(MCIFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCIFLAGS)
+ALL_MCPIFLAGS	= $(MCPIFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCPIFLAGS)
+ALL_MCSIFLAGS	= $(MCSIFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCSIFLAGS)
+ALL_MCOIFLAGS	= $(MCOIFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCOIFLAGS)
+ALL_MCTOIFLAGS	= $(MCTOIFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCTOIFLAGS)
+ALL_MCDFLAGS	= $(MCDFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCDFLAGS)
+ALL_MCGFLAGS	= $(MCGFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCGFLAGS)
+ALL_MCSFLAGS	= $(MCSFLAGS) $(TARGET_MCFLAGS) $(EXTRA_MCSFLAGS)
+
+MCIFLAGS	= $(MCFLAGS)
+MCPIFLAGS	= $(MCFLAGS)
+MCSIFLAGS	= $(MCFLAGS)
+MCOIFLAGS	= $(MCFLAGS)
+MCTOIFLAGS	= $(MCFLAGS)
+MCDFLAGS	= $(MCFLAGS)
+MCGFLAGS	= $(MCFLAGS)
+MCSFLAGS	= $(MCFLAGS)
+
+EXTRA_MCIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCPIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCSIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCOIFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCTOIFLAGS= $(EXTRA_MCFLAGS)
+EXTRA_MCDFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCGFLAGS	= $(EXTRA_MCFLAGS)
+EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
+
+#
+# The following variables hold the names of various programs and
+# the options which should be passed to them.
+#
+C2INIT		= c2init
+ALL_C2INITFLAGS	= $(C2INITFLAGS) $(TARGET_C2INITFLAGS) $(EXTRA_C2INITFLAGS)
+C2INITFLAGS	=
+EXTRA_C2INITFLAGS =
+
+MGNUC		= mgnuc
+ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(TARGET_MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) \
+		  $(ALL_CFLAGS)
+MGNUCFLAGS	=
+EXTRA_MGNUCFLAGS =
+
+ALL_CFLAGS	= $(CFLAGS) $(TARGET_CFLAGS) $(EXTRA_CFLAGS)
+CFLAGS		=
+EXTRA_CFLAGS	=
+
+ML		= ml
+ALL_MLFLAGS	= $(MLFLAGS) $(TARGET_MLFLAGS) $(EXTRA_MLFLAGS)
+MLFLAGS		= $(EXTRA_MLFLAGS)
+EXTRA_MLFLAGS	=
+
+MLOBJS		=
+MLPICOBJS	= $(MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
+ALL_MLLIBS	= $(MLLIBS) $(TARGET_MLLIBS) $(EXTRA_MLLIBS)
+MLLIBS		=
+EXTRA_MLLIBS	=
+
+MNC		= mnc
+ALL_MNCFLAGS	= $(MNCFLAGS) $(TARGET_MNCFLAGS) $(EXTRA_MNCFLAGS)
+MNCFLAGS	=
+EXTRA_MNCFLAGS	=
+
+MNL		= mnl
+ALL_MNLFLAGS	= $(MNLFLAGS) $(TARGET_MNLFLAGS) $(EXTRA_MNLFLAGS)
+MNLFLAGS	=
+EXTRA_MNLFLAGS	=
+
+MNP		= mnp
+ALL_MNPFLAGS	= $(MNPFLAGS) $(TARGET_MNPFLAGS) $(EXTRA_MNPFLAGS)
+MNPFLAGS	=
+EXTRA_MNPFLAGS	=
+
+MSC		= msc
+ALL_MSCFLAGS	= $(MSCFLAGS) $(TARGET_MSCFLAGS) $(EXTRA_MSCFLAGS)
+MSCFLAGS	=
+EXTRA_MSCFLAGS	=
+
+MSL		= msl
+ALL_MSLFLAGS	= $(MSLFLAGS) $(TARGET_MSLFLAGS) $(EXTRA_MSLFLAGS)
+MSLFLAGS	=
+EXTRA_MSLFLAGS	=
+
+MSP		= msp
+ALL_MSPFLAGS	= $(MSPFLAGS) $(TARGET_MSPFLAGS) $(EXTRA_MSPFLAGS)
+MSPFLAGS	=
+EXTRA_MSPFLAGS	=
+
+AR		= ar
+ALL_ARFLAGS	= $(ARFLAGS) $(TARGET_ARFLAGS) $(EXTRA_ARFLAGS)
+ARFLAGS		= cr
+EXTRA_ARFLAGS	=
+
+RANLIB		= @RANLIB@
+ALL_RANLIBFLAGS	= $(RANLIBFLAGS) $(TARGET_RANLIBFLAGS) $(EXTRA_RANLIBFLAGS)
+RANLIBFLAGS	=
+EXTRA_RANLIBFLAGS =
+
+# $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
+# (We use `.pic_o' as the extension for `.o' files that must have
+# position-independent code.)
+CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+
+# $(EXT_FOR_PIC_OBJECTS) will be either `.o', if $(CFLAGS_FOR_PIC) is empty,
+# or `.pic_o', if special flags are required for compiling files that
+# will be put in shared libraries.
+EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
+
+# $(EXT_FOR_SHARED_LIB) will be the extension for shared libraries,
+# if the system supports them (e.g. `.so'), or the extension used
+# for non-shared libraries (e.g. `.a') if the system doesn't support
+# shared libraries.
+EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
+
+# Set `RM_C' to `:' if you want to keep the intermediate `.c' files.
+RM_C		= rm
+
+# lists of targets that depend on $(MLOBJS) and $(MLPICOBJS)
+MLOBJS_DEPS = 
+MLPICOBJS_DEPS = 
+
+#-----------------------------------------------------------------------------#
+
+# `TARGET_<prog>FLAGS' is used to pass different flags to <prog> for
+# different targets.  By setting MCFLAGS-foo, for example, you can add
+# extra values to TARGET_MCFLAGS that will used only for compiling foo.m.
+#
+# For each program <prog>, `TARGET_<prog>FLAGS' expands to
+# `$(<prog>FLAGS-$@)' and/or `$(<prog>FLAGS-$*)'.
+# $@ and $* are the builtin variables that expand to the
+# current target and (for pattern rules) the base name of the current target,
+# respectively.  So $* is used for flags variables used by pattern rules,
+# whereas $@ is used for flags variables used by hard-coded rules,
+# including the ones in the generated .dep files.
+#
+# The code below uses some tricky GNU Make hacks to avoid expanding
+# <prog>FLAGS-$* and <prog>FLAGS-$@ if these vars are not defined,
+# so that we can avoid spurious warnings if the warning about
+# undefined variables is enabled.
+
+TARGET_GRADEFLAGS = \
+  $(maybe-base-GRADEFLAGS-$(findstring undefined,$(origin GRADEFLAGS-$*))) \
+  $(maybe-target-GRADEFLAGS-$(findstring undefined,$(origin GRADEFLAGS-$@)))
+maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$*)
+maybe-base-GRADEFLAGS-undefined =
+maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$@)
+maybe-target-GRADEFLAGS-undefined =
+
+TARGET_MCFLAGS = \
+  $(maybe-base-MCFLAGS-$(findstring undefined,$(origin MCFLAGS-$*)))
+maybe-base-MCFLAGS- = $(MCFLAGS-$*)
+maybe-base-MCFLAGS-undefined =
+
+TARGET_C2INITFLAGS = \
+  $(maybe-target-C2INITFLAGS-$(findstring undefined,$(origin C2INITFLAGS-$@)))
+maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$@)
+maybe-target-C2INITFLAGS-undefined =
+
+TARGET_MGNUCFLAGS = \
+  $(maybe-base-MGNUCFLAGS-$(findstring undefined,$(origin MGNUCFLAGS-$*)))
+maybe-base-MGNUCFLAGS- = $(MGNUCFLAGS-$*)
+maybe-base-MGNUCFLAGS-undefined =
+
+TARGET_CFLAGS = \
+  $(maybe-base-CFLAGS-$(findstring undefined,$(origin CFLAGS-$*))) \
+  $(maybe-target-CFLAGS-$(findstring undefined,$(origin CFLAGS-$@)))
+maybe-base-CFLAGS- = $(CFLAGS-$*)
+maybe-base-CFLAGS-undefined =
+maybe-target-CFLAGS- = $(CFLAGS-$@)
+maybe-target-CFLAGS-undefined =
+
+TARGET_MLFLAGS = \
+  $(maybe-target-MLFLAGS-$(findstring undefined,$(origin MLFLAGS-$@)))
+maybe-target-MLFLAGS- = $(MLFLAGS-$@)
+maybe-target-MLFLAGS-undefined =
+
+TARGET_MLLIBS = \
+  $(maybe-target-MLLIBS-$(findstring undefined,$(origin MLLIBS-$@)))
+maybe-target-MLLIBS- = $(MLLIBS-$@)
+maybe-target-MLLIBS-undefined =
+
+TARGET_ARFLAGS = \
+  $(maybe-target-ARFLAGS-$(findstring undefined,$(origin ARFLAGS-$@)))
+maybe-target-ARFLAGS- = $(ARFLAGS-$@)
+maybe-target-ARFLAGS-undefined =
+
+TARGET_RANLIBFLAGS = \
+  $(maybe-target-RANLIBFLAGS-$(findstring undefined,$(origin RANLIBFLAGS-$@)))
+maybe-target-RANLIBFLAGS- = $(RANLIBFLAGS-$@)
+maybe-target-RANLIBFLAGS-undefined =
+
+# Support for compiling Mercury programs with Prolog will probably be
+# dropped one of these days, so it's probably not worth bothering with these.
+TARGET_MNCFLAGS	=
+TARGET_MNLFLAGS	=
+TARGET_MNPFLAGS	=
+TARGET_MSCFLAGS	=
+TARGET_MSLFLAGS	=
+TARGET_MSPFLAGS	=
+
+#-----------------------------------------------------------------------------#
+#
+# The following variables specify the names of the subdirectories used,
+# so that you can write code which works both with and without the
+# `--use-subdirs' option.
+#
+
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+SUBDIR=Mercury/
+
+nos_subdir=$(SUBDIR)nos/
+qls_subdir=$(SUBDIR)qls/
+deps_subdir=$(SUBDIR)deps/
+ds_subdir=$(SUBDIR)ds/
+int0s_subdir=$(SUBDIR)int0s/
+ints_subdir=$(SUBDIR)ints/
+int2s_subdir=$(SUBDIR)int2s/
+int3s_subdir=$(SUBDIR)int3s/
+opts_subdir=$(SUBDIR)opts/
+trans_opts_subdir=$(SUBDIR)trans_opts/
+date0s_subdir=$(SUBDIR)date0s/
+dates_subdir=$(SUBDIR)dates/
+date3s_subdir=$(SUBDIR)date3s/
+optdates_subdir=$(SUBDIR)optdates/
+trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
+cs_subdir=$(SUBDIR)cs/
+os_subdir=$(SUBDIR)os/
+dirs_subdir=$(SUBDIR)dirs/
+
+else
+
+SUBDIR=
+
+nos_subdir=
+qls_subdir=
+deps_subdir=
+ds_subdir=
+int0s_subdir=
+ints_subdir=
+int2s_subdir=
+int3s_subdir=
+opts_subdir=
+trans_opts_subdir=
+date0s_subdir=
+dates_subdir=
+date3s_subdir=
+optdates_subdir=
+trans_opt_dates_subdir=
+cs_subdir=
+os_subdir=
+dirs_subdir=
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+# This needs to go here so that user Mmake files can add new suffixes.
+
+.SUFFIXES: # reset sufix list to be empty
+
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET =
+
+default_target: main_target
+
+#-----------------------------------------------------------------------------#

@@ -1,0 +1,701 @@
+       1:      1  1 CALL CCMUL queens_lib:main/2-0 
+mtrace>           HeadVar__1           		state('<<c_pointer>>')
+mtrace>        2:      2  2 CALL DET   queens_lib:data/1-0 
+mtrace> mtrace: there are no live variables
+mtrace>        3:      2  2 EXIT DET   queens_lib:data/1-0 
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>        4:      3  2 CALL NON   queens_lib:queen/2-0 
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>        5:      4  3 CALL NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>        6:      4  3 SWTC NON   queens_lib:qperm/2-0 s1;
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>        7:      5  4 CALL NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__2           		[1, 2, 3, 4, 5]
+mtrace>        8:      5  4 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+mtrace>           HeadVar__2           		[1, 2, 3, 4, 5]
+          V_10                 		[2, 3, 4, 5]
+          V_11                 		1
+mtrace> Ancestor level set to 1
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace> Ancestor level set to 2
+mtrace>         0 HeadVar__1
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>        9:      5  4 EXIT NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__1           		1
+          HeadVar__2           		[1, 2, 3, 4, 5]
+          HeadVar__3           		[2, 3, 4, 5]
+mtrace>       10:      6  4 CALL NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[2, 3, 4, 5]
+mtrace>       11:      6  4 SWTC NON   queens_lib:qperm/2-0 s1;
+mtrace>           HeadVar__1           		[2, 3, 4, 5]
+mtrace>       12:      7  5 CALL NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__2           		[2, 3, 4, 5]
+mtrace>       13:      7  5 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+mtrace>           HeadVar__2           		[2, 3, 4, 5]
+          V_10                 		[3, 4, 5]
+          V_11                 		2
+mtrace>       14:      7  5 EXIT NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__1           		2
+          HeadVar__2           		[2, 3, 4, 5]
+          HeadVar__3           		[3, 4, 5]
+mtrace>       15:      8  5 CALL NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[3, 4, 5]
+mtrace>       16:      8  5 SWTC NON   queens_lib:qperm/2-0 s1;
+mtrace>           HeadVar__1           		[3, 4, 5]
+mtrace>       17:      9  6 CALL NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__2           		[3, 4, 5]
+mtrace>       18:      9  6 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+mtrace>           HeadVar__2           		[3, 4, 5]
+          V_10                 		[4, 5]
+          V_11                 		3
+mtrace>       19:      9  6 EXIT NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__1           		3
+          HeadVar__2           		[3, 4, 5]
+          HeadVar__3           		[4, 5]
+mtrace>       20:     10  6 CALL NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[4, 5]
+mtrace>       21:     10  6 SWTC NON   queens_lib:qperm/2-0 s1;
+mtrace>           HeadVar__1           		[4, 5]
+mtrace>       22:     11  7 CALL NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__2           		[4, 5]
+mtrace>       23:     11  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+mtrace>           HeadVar__2           		[4, 5]
+          V_10                 		[5]
+          V_11                 		4
+mtrace>       24:     11  7 EXIT NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__1           		4
+          HeadVar__2           		[4, 5]
+          HeadVar__3           		[5]
+mtrace>       25:     12  7 CALL NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[5]
+mtrace>       26:     12  7 SWTC NON   queens_lib:qperm/2-0 s1;
+mtrace>           HeadVar__1           		[5]
+mtrace>       27:     13  8 CALL NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__2           		[5]
+mtrace>       28:     13  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+mtrace>           HeadVar__2           		[5]
+          V_10                 		[]
+          V_11                 		5
+mtrace>       29:     13  8 EXIT NON   queens_lib:qdelete/3-0 
+mtrace>           HeadVar__1           		5
+          HeadVar__2           		[5]
+          HeadVar__3           		[]
+mtrace>       30:     14  8 CALL NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[]
+mtrace>       31:     14  8 SWTC NON   queens_lib:qperm/2-0 s2;
+mtrace> mtrace>       32:     14  8 EXIT NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[]
+          HeadVar__2           		[]
+mtrace>       33:     12  7 EXIT NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[5]
+          HeadVar__2           		[5]
+mtrace>       34:     10  6 EXIT NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[4, 5]
+          HeadVar__2           		[4, 5]
+mtrace>       35:      8  5 EXIT NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[3, 4, 5]
+          HeadVar__2           		[3, 4, 5]
+mtrace>       36:      6  4 EXIT NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[2, 3, 4, 5]
+          HeadVar__2           		[2, 3, 4, 5]
+mtrace>       37:      4  3 EXIT NON   queens_lib:qperm/2-0 
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+          HeadVar__2           		[1, 2, 3, 4, 5]
+mtrace>       38:     15  3 CALL SEMI  queens_lib:safe/1-0 
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>       39:     15  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+mtrace>           HeadVar__1           		[1, 2, 3, 4, 5]
+mtrace>       40:     16  4 CALL SEMI  queens_lib:nodiag/3-0 
+mtrace>           HeadVar__1           		1
+          HeadVar__2           		1
+          HeadVar__3           		[2, 3, 4, 5]
+mtrace>       41:     16  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+mtrace>           HeadVar__1           		1
+          HeadVar__2           		1
+          HeadVar__3           		[2, 3, 4, 5]
+mtrace>       42:     16  4 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+      43:     16  4 FAIL SEMI  queens_lib:nodiag/3-0 
+      44:     15  3 FAIL SEMI  queens_lib:safe/1-0 
+      45:     14  8 FAIL NON   queens_lib:qperm/2-0 
+      46:     13  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+      47:     17  9 CALL NON   queens_lib:qdelete/3-0 
+      48:     17  9 FAIL NON   queens_lib:qdelete/3-0 
+      49:     13  8 FAIL NON   queens_lib:qdelete/3-0 
+      50:     12  7 FAIL NON   queens_lib:qperm/2-0 
+      51:     11  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+      52:     18  8 CALL NON   queens_lib:qdelete/3-0 
+      53:     18  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+      54:     18  8 EXIT NON   queens_lib:qdelete/3-0 
+      55:     11  7 EXIT NON   queens_lib:qdelete/3-0 
+      56:     19  7 CALL NON   queens_lib:qperm/2-0 
+      57:     19  7 SWTC NON   queens_lib:qperm/2-0 s1;
+      58:     20  8 CALL NON   queens_lib:qdelete/3-0 
+      59:     20  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+      60:     20  8 EXIT NON   queens_lib:qdelete/3-0 
+      61:     21  8 CALL NON   queens_lib:qperm/2-0 
+      62:     21  8 SWTC NON   queens_lib:qperm/2-0 s2;
+      63:     21  8 EXIT NON   queens_lib:qperm/2-0 
+      64:     19  7 EXIT NON   queens_lib:qperm/2-0 
+      65:     10  6 EXIT NON   queens_lib:qperm/2-0 
+      66:      8  5 EXIT NON   queens_lib:qperm/2-0 
+      67:      6  4 EXIT NON   queens_lib:qperm/2-0 
+      68:      4  3 EXIT NON   queens_lib:qperm/2-0 
+      69:     22  3 CALL SEMI  queens_lib:safe/1-0 
+      70:     22  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+      71:     23  4 CALL SEMI  queens_lib:nodiag/3-0 
+      72:     23  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+      73:     23  4 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+      74:     23  4 FAIL SEMI  queens_lib:nodiag/3-0 
+      75:     22  3 FAIL SEMI  queens_lib:safe/1-0 
+      76:     21  8 FAIL NON   queens_lib:qperm/2-0 
+      77:     20  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+      78:     24  9 CALL NON   queens_lib:qdelete/3-0 
+      79:     24  9 FAIL NON   queens_lib:qdelete/3-0 
+      80:     20  8 FAIL NON   queens_lib:qdelete/3-0 
+      81:     19  7 FAIL NON   queens_lib:qperm/2-0 
+      82:     18  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+      83:     25  9 CALL NON   queens_lib:qdelete/3-0 
+      84:     25  9 FAIL NON   queens_lib:qdelete/3-0 
+      85:     18  8 FAIL NON   queens_lib:qdelete/3-0 
+      86:     11  7 FAIL NON   queens_lib:qdelete/3-0 
+      87:     10  6 FAIL NON   queens_lib:qperm/2-0 
+      88:      9  6 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+      89:     26  7 CALL NON   queens_lib:qdelete/3-0 
+      90:     26  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+      91:     26  7 EXIT NON   queens_lib:qdelete/3-0 
+      92:      9  6 EXIT NON   queens_lib:qdelete/3-0 
+      93:     27  6 CALL NON   queens_lib:qperm/2-0 
+      94:     27  6 SWTC NON   queens_lib:qperm/2-0 s1;
+      95:     28  7 CALL NON   queens_lib:qdelete/3-0 
+      96:     28  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+      97:     28  7 EXIT NON   queens_lib:qdelete/3-0 
+      98:     29  7 CALL NON   queens_lib:qperm/2-0 
+      99:     29  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     100:     30  8 CALL NON   queens_lib:qdelete/3-0 
+     101:     30  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     102:     30  8 EXIT NON   queens_lib:qdelete/3-0 
+     103:     31  8 CALL NON   queens_lib:qperm/2-0 
+     104:     31  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     105:     31  8 EXIT NON   queens_lib:qperm/2-0 
+     106:     29  7 EXIT NON   queens_lib:qperm/2-0 
+     107:     27  6 EXIT NON   queens_lib:qperm/2-0 
+     108:      8  5 EXIT NON   queens_lib:qperm/2-0 
+     109:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     110:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     111:     32  3 CALL SEMI  queens_lib:safe/1-0 
+     112:     32  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     113:     33  4 CALL SEMI  queens_lib:nodiag/3-0 
+     114:     33  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     115:     33  4 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     116:     33  4 FAIL SEMI  queens_lib:nodiag/3-0 
+     117:     32  3 FAIL SEMI  queens_lib:safe/1-0 
+     118:     31  8 FAIL NON   queens_lib:qperm/2-0 
+     119:     30  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     120:     34  9 CALL NON   queens_lib:qdelete/3-0 
+     121:     34  9 FAIL NON   queens_lib:qdelete/3-0 
+     122:     30  8 FAIL NON   queens_lib:qdelete/3-0 
+     123:     29  7 FAIL NON   queens_lib:qperm/2-0 
+     124:     28  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     125:     35  8 CALL NON   queens_lib:qdelete/3-0 
+     126:     35  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     127:     35  8 EXIT NON   queens_lib:qdelete/3-0 
+     128:     28  7 EXIT NON   queens_lib:qdelete/3-0 
+     129:     36  7 CALL NON   queens_lib:qperm/2-0 
+     130:     36  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     131:     37  8 CALL NON   queens_lib:qdelete/3-0 
+     132:     37  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     133:     37  8 EXIT NON   queens_lib:qdelete/3-0 
+     134:     38  8 CALL NON   queens_lib:qperm/2-0 
+     135:     38  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     136:     38  8 EXIT NON   queens_lib:qperm/2-0 
+     137:     36  7 EXIT NON   queens_lib:qperm/2-0 
+     138:     27  6 EXIT NON   queens_lib:qperm/2-0 
+     139:      8  5 EXIT NON   queens_lib:qperm/2-0 
+     140:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     141:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     142:     39  3 CALL SEMI  queens_lib:safe/1-0 
+     143:     39  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     144:     40  4 CALL SEMI  queens_lib:nodiag/3-0 
+     145:     40  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     146:     40  4 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     147:     40  4 FAIL SEMI  queens_lib:nodiag/3-0 
+     148:     39  3 FAIL SEMI  queens_lib:safe/1-0 
+     149:     38  8 FAIL NON   queens_lib:qperm/2-0 
+     150:     37  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     151:     41  9 CALL NON   queens_lib:qdelete/3-0 
+     152:     41  9 FAIL NON   queens_lib:qdelete/3-0 
+     153:     37  8 FAIL NON   queens_lib:qdelete/3-0 
+     154:     36  7 FAIL NON   queens_lib:qperm/2-0 
+     155:     35  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     156:     42  9 CALL NON   queens_lib:qdelete/3-0 
+     157:     42  9 FAIL NON   queens_lib:qdelete/3-0 
+     158:     35  8 FAIL NON   queens_lib:qdelete/3-0 
+     159:     28  7 FAIL NON   queens_lib:qdelete/3-0 
+     160:     27  6 FAIL NON   queens_lib:qperm/2-0 
+     161:     26  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     162:     43  8 CALL NON   queens_lib:qdelete/3-0 
+     163:     43  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     164:     43  8 EXIT NON   queens_lib:qdelete/3-0 
+     165:     26  7 EXIT NON   queens_lib:qdelete/3-0 
+     166:      9  6 EXIT NON   queens_lib:qdelete/3-0 
+     167:     44  6 CALL NON   queens_lib:qperm/2-0 
+     168:     44  6 SWTC NON   queens_lib:qperm/2-0 s1;
+     169:     45  7 CALL NON   queens_lib:qdelete/3-0 
+     170:     45  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     171:     45  7 EXIT NON   queens_lib:qdelete/3-0 
+     172:     46  7 CALL NON   queens_lib:qperm/2-0 
+     173:     46  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     174:     47  8 CALL NON   queens_lib:qdelete/3-0 
+     175:     47  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     176:     47  8 EXIT NON   queens_lib:qdelete/3-0 
+     177:     48  8 CALL NON   queens_lib:qperm/2-0 
+     178:     48  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     179:     48  8 EXIT NON   queens_lib:qperm/2-0 
+     180:     46  7 EXIT NON   queens_lib:qperm/2-0 
+     181:     44  6 EXIT NON   queens_lib:qperm/2-0 
+     182:      8  5 EXIT NON   queens_lib:qperm/2-0 
+     183:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     184:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     185:     49  3 CALL SEMI  queens_lib:safe/1-0 
+     186:     49  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     187:     50  4 CALL SEMI  queens_lib:nodiag/3-0 
+     188:     50  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     189:     50  4 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     190:     50  4 FAIL SEMI  queens_lib:nodiag/3-0 
+     191:     49  3 FAIL SEMI  queens_lib:safe/1-0 
+     192:     48  8 FAIL NON   queens_lib:qperm/2-0 
+     193:     47  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     194:     51  9 CALL NON   queens_lib:qdelete/3-0 
+     195:     51  9 FAIL NON   queens_lib:qdelete/3-0 
+     196:     47  8 FAIL NON   queens_lib:qdelete/3-0 
+     197:     46  7 FAIL NON   queens_lib:qperm/2-0 
+     198:     45  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     199:     52  8 CALL NON   queens_lib:qdelete/3-0 
+     200:     52  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     201:     52  8 EXIT NON   queens_lib:qdelete/3-0 
+     202:     45  7 EXIT NON   queens_lib:qdelete/3-0 
+     203:     53  7 CALL NON   queens_lib:qperm/2-0 
+     204:     53  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     205:     54  8 CALL NON   queens_lib:qdelete/3-0 
+     206:     54  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     207:     54  8 EXIT NON   queens_lib:qdelete/3-0 
+     208:     55  8 CALL NON   queens_lib:qperm/2-0 
+     209:     55  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     210:     55  8 EXIT NON   queens_lib:qperm/2-0 
+     211:     53  7 EXIT NON   queens_lib:qperm/2-0 
+     212:     44  6 EXIT NON   queens_lib:qperm/2-0 
+     213:      8  5 EXIT NON   queens_lib:qperm/2-0 
+     214:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     215:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     216:     56  3 CALL SEMI  queens_lib:safe/1-0 
+     217:     56  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     218:     57  4 CALL SEMI  queens_lib:nodiag/3-0 
+     219:     57  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     220:     57  4 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     221:     57  4 FAIL SEMI  queens_lib:nodiag/3-0 
+     222:     56  3 FAIL SEMI  queens_lib:safe/1-0 
+     223:     55  8 FAIL NON   queens_lib:qperm/2-0 
+     224:     54  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     225:     58  9 CALL NON   queens_lib:qdelete/3-0 
+     226:     58  9 FAIL NON   queens_lib:qdelete/3-0 
+     227:     54  8 FAIL NON   queens_lib:qdelete/3-0 
+     228:     53  7 FAIL NON   queens_lib:qperm/2-0 
+     229:     52  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     230:     59  9 CALL NON   queens_lib:qdelete/3-0 
+     231:     59  9 FAIL NON   queens_lib:qdelete/3-0 
+     232:     52  8 FAIL NON   queens_lib:qdelete/3-0 
+     233:     45  7 FAIL NON   queens_lib:qdelete/3-0 
+     234:     44  6 FAIL NON   queens_lib:qperm/2-0 
+     235:     43  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     236:     60  9 CALL NON   queens_lib:qdelete/3-0 
+     237:     60  9 FAIL NON   queens_lib:qdelete/3-0 
+     238:     43  8 FAIL NON   queens_lib:qdelete/3-0 
+     239:     26  7 FAIL NON   queens_lib:qdelete/3-0 
+     240:      9  6 FAIL NON   queens_lib:qdelete/3-0 
+     241:      8  5 FAIL NON   queens_lib:qperm/2-0 
+     242:      7  5 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     243:     61  6 CALL NON   queens_lib:qdelete/3-0 
+     244:     61  6 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     245:     61  6 EXIT NON   queens_lib:qdelete/3-0 
+     246:      7  5 EXIT NON   queens_lib:qdelete/3-0 
+     247:     62  5 CALL NON   queens_lib:qperm/2-0 
+     248:     62  5 SWTC NON   queens_lib:qperm/2-0 s1;
+     249:     63  6 CALL NON   queens_lib:qdelete/3-0 
+     250:     63  6 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     251:     63  6 EXIT NON   queens_lib:qdelete/3-0 
+     252:     64  6 CALL NON   queens_lib:qperm/2-0 
+     253:     64  6 SWTC NON   queens_lib:qperm/2-0 s1;
+     254:     65  7 CALL NON   queens_lib:qdelete/3-0 
+     255:     65  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     256:     65  7 EXIT NON   queens_lib:qdelete/3-0 
+     257:     66  7 CALL NON   queens_lib:qperm/2-0 
+     258:     66  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     259:     67  8 CALL NON   queens_lib:qdelete/3-0 
+     260:     67  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     261:     67  8 EXIT NON   queens_lib:qdelete/3-0 
+     262:     68  8 CALL NON   queens_lib:qperm/2-0 
+     263:     68  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     264:     68  8 EXIT NON   queens_lib:qperm/2-0 
+     265:     66  7 EXIT NON   queens_lib:qperm/2-0 
+     266:     64  6 EXIT NON   queens_lib:qperm/2-0 
+     267:     62  5 EXIT NON   queens_lib:qperm/2-0 
+     268:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     269:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     270:     69  3 CALL SEMI  queens_lib:safe/1-0 
+     271:     69  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     272:     70  4 CALL SEMI  queens_lib:nodiag/3-0 
+     273:     70  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     274:     70  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     275:     70  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     276:     71  5 CALL SEMI  queens_lib:nodiag/3-0 
+     277:     71  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     278:     71  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     279:     71  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     280:     72  6 CALL SEMI  queens_lib:nodiag/3-0 
+     281:     72  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     282:     72  6 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     283:     72  6 FAIL SEMI  queens_lib:nodiag/3-0 
+     284:     71  5 FAIL SEMI  queens_lib:nodiag/3-0 
+     285:     70  4 FAIL SEMI  queens_lib:nodiag/3-0 
+     286:     69  3 FAIL SEMI  queens_lib:safe/1-0 
+     287:     68  8 FAIL NON   queens_lib:qperm/2-0 
+     288:     67  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     289:     73  9 CALL NON   queens_lib:qdelete/3-0 
+     290:     73  9 FAIL NON   queens_lib:qdelete/3-0 
+     291:     67  8 FAIL NON   queens_lib:qdelete/3-0 
+     292:     66  7 FAIL NON   queens_lib:qperm/2-0 
+     293:     65  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     294:     74  8 CALL NON   queens_lib:qdelete/3-0 
+     295:     74  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     296:     74  8 EXIT NON   queens_lib:qdelete/3-0 
+     297:     65  7 EXIT NON   queens_lib:qdelete/3-0 
+     298:     75  7 CALL NON   queens_lib:qperm/2-0 
+     299:     75  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     300:     76  8 CALL NON   queens_lib:qdelete/3-0 
+     301:     76  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     302:     76  8 EXIT NON   queens_lib:qdelete/3-0 
+     303:     77  8 CALL NON   queens_lib:qperm/2-0 
+     304:     77  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     305:     77  8 EXIT NON   queens_lib:qperm/2-0 
+     306:     75  7 EXIT NON   queens_lib:qperm/2-0 
+     307:     64  6 EXIT NON   queens_lib:qperm/2-0 
+     308:     62  5 EXIT NON   queens_lib:qperm/2-0 
+     309:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     310:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     311:     78  3 CALL SEMI  queens_lib:safe/1-0 
+     312:     78  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     313:     79  4 CALL SEMI  queens_lib:nodiag/3-0 
+     314:     79  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     315:     79  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     316:     79  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     317:     80  5 CALL SEMI  queens_lib:nodiag/3-0 
+     318:     80  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     319:     80  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     320:     80  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     321:     81  6 CALL SEMI  queens_lib:nodiag/3-0 
+     322:     81  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     323:     81  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     324:     81  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     325:     82  7 CALL SEMI  queens_lib:nodiag/3-0 
+     326:     82  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     327:     82  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     328:     82  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     329:     83  8 CALL SEMI  queens_lib:nodiag/3-0 
+     330:     83  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     331:     83  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     332:     82  7 EXIT SEMI  queens_lib:nodiag/3-0 
+     333:     81  6 EXIT SEMI  queens_lib:nodiag/3-0 
+     334:     80  5 EXIT SEMI  queens_lib:nodiag/3-0 
+     335:     79  4 EXIT SEMI  queens_lib:nodiag/3-0 
+     336:     84  4 CALL SEMI  queens_lib:safe/1-0 
+     337:     84  4 SWTC SEMI  queens_lib:safe/1-0 s1;
+     338:     85  5 CALL SEMI  queens_lib:nodiag/3-0 
+     339:     85  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     340:     85  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     341:     85  5 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;e;t;
+     342:     85  5 FAIL SEMI  queens_lib:nodiag/3-0 
+     343:     84  4 FAIL SEMI  queens_lib:safe/1-0 
+     344:     78  3 FAIL SEMI  queens_lib:safe/1-0 
+     345:     77  8 FAIL NON   queens_lib:qperm/2-0 
+     346:     76  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     347:     86  9 CALL NON   queens_lib:qdelete/3-0 
+     348:     86  9 FAIL NON   queens_lib:qdelete/3-0 
+     349:     76  8 FAIL NON   queens_lib:qdelete/3-0 
+     350:     75  7 FAIL NON   queens_lib:qperm/2-0 
+     351:     74  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     352:     87  9 CALL NON   queens_lib:qdelete/3-0 
+     353:     87  9 FAIL NON   queens_lib:qdelete/3-0 
+     354:     74  8 FAIL NON   queens_lib:qdelete/3-0 
+     355:     65  7 FAIL NON   queens_lib:qdelete/3-0 
+     356:     64  6 FAIL NON   queens_lib:qperm/2-0 
+     357:     63  6 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     358:     88  7 CALL NON   queens_lib:qdelete/3-0 
+     359:     88  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     360:     88  7 EXIT NON   queens_lib:qdelete/3-0 
+     361:     63  6 EXIT NON   queens_lib:qdelete/3-0 
+     362:     89  6 CALL NON   queens_lib:qperm/2-0 
+     363:     89  6 SWTC NON   queens_lib:qperm/2-0 s1;
+     364:     90  7 CALL NON   queens_lib:qdelete/3-0 
+     365:     90  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     366:     90  7 EXIT NON   queens_lib:qdelete/3-0 
+     367:     91  7 CALL NON   queens_lib:qperm/2-0 
+     368:     91  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     369:     92  8 CALL NON   queens_lib:qdelete/3-0 
+     370:     92  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     371:     92  8 EXIT NON   queens_lib:qdelete/3-0 
+     372:     93  8 CALL NON   queens_lib:qperm/2-0 
+     373:     93  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     374:     93  8 EXIT NON   queens_lib:qperm/2-0 
+     375:     91  7 EXIT NON   queens_lib:qperm/2-0 
+     376:     89  6 EXIT NON   queens_lib:qperm/2-0 
+     377:     62  5 EXIT NON   queens_lib:qperm/2-0 
+     378:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     379:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     380:     94  3 CALL SEMI  queens_lib:safe/1-0 
+     381:     94  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     382:     95  4 CALL SEMI  queens_lib:nodiag/3-0 
+     383:     95  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     384:     95  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     385:     95  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     386:     96  5 CALL SEMI  queens_lib:nodiag/3-0 
+     387:     96  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     388:     96  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     389:     96  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     390:     97  6 CALL SEMI  queens_lib:nodiag/3-0 
+     391:     97  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     392:     97  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     393:     97  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     394:     98  7 CALL SEMI  queens_lib:nodiag/3-0 
+     395:     98  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     396:     98  7 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     397:     98  7 FAIL SEMI  queens_lib:nodiag/3-0 
+     398:     97  6 FAIL SEMI  queens_lib:nodiag/3-0 
+     399:     96  5 FAIL SEMI  queens_lib:nodiag/3-0 
+     400:     95  4 FAIL SEMI  queens_lib:nodiag/3-0 
+     401:     94  3 FAIL SEMI  queens_lib:safe/1-0 
+     402:     93  8 FAIL NON   queens_lib:qperm/2-0 
+     403:     92  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     404:     99  9 CALL NON   queens_lib:qdelete/3-0 
+     405:     99  9 FAIL NON   queens_lib:qdelete/3-0 
+     406:     92  8 FAIL NON   queens_lib:qdelete/3-0 
+     407:     91  7 FAIL NON   queens_lib:qperm/2-0 
+     408:     90  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     409:    100  8 CALL NON   queens_lib:qdelete/3-0 
+     410:    100  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     411:    100  8 EXIT NON   queens_lib:qdelete/3-0 
+     412:     90  7 EXIT NON   queens_lib:qdelete/3-0 
+     413:    101  7 CALL NON   queens_lib:qperm/2-0 
+     414:    101  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     415:    102  8 CALL NON   queens_lib:qdelete/3-0 
+     416:    102  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     417:    102  8 EXIT NON   queens_lib:qdelete/3-0 
+     418:    103  8 CALL NON   queens_lib:qperm/2-0 
+     419:    103  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     420:    103  8 EXIT NON   queens_lib:qperm/2-0 
+     421:    101  7 EXIT NON   queens_lib:qperm/2-0 
+     422:     89  6 EXIT NON   queens_lib:qperm/2-0 
+     423:     62  5 EXIT NON   queens_lib:qperm/2-0 
+     424:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     425:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     426:    104  3 CALL SEMI  queens_lib:safe/1-0 
+     427:    104  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     428:    105  4 CALL SEMI  queens_lib:nodiag/3-0 
+     429:    105  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     430:    105  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     431:    105  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     432:    106  5 CALL SEMI  queens_lib:nodiag/3-0 
+     433:    106  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     434:    106  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     435:    106  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     436:    107  6 CALL SEMI  queens_lib:nodiag/3-0 
+     437:    107  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     438:    107  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     439:    107  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     440:    108  7 CALL SEMI  queens_lib:nodiag/3-0 
+     441:    108  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     442:    108  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     443:    108  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     444:    109  8 CALL SEMI  queens_lib:nodiag/3-0 
+     445:    109  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     446:    109  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     447:    108  7 EXIT SEMI  queens_lib:nodiag/3-0 
+     448:    107  6 EXIT SEMI  queens_lib:nodiag/3-0 
+     449:    106  5 EXIT SEMI  queens_lib:nodiag/3-0 
+     450:    105  4 EXIT SEMI  queens_lib:nodiag/3-0 
+     451:    110  4 CALL SEMI  queens_lib:safe/1-0 
+     452:    110  4 SWTC SEMI  queens_lib:safe/1-0 s1;
+     453:    111  5 CALL SEMI  queens_lib:nodiag/3-0 
+     454:    111  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     455:    111  5 THEN SEMI  queens_lib:nodiag/3-0 s1;c4;t;
+     456:    111  5 FAIL SEMI  queens_lib:nodiag/3-0 
+     457:    110  4 FAIL SEMI  queens_lib:safe/1-0 
+     458:    104  3 FAIL SEMI  queens_lib:safe/1-0 
+     459:    103  8 FAIL NON   queens_lib:qperm/2-0 
+     460:    102  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     461:    112  9 CALL NON   queens_lib:qdelete/3-0 
+     462:    112  9 FAIL NON   queens_lib:qdelete/3-0 
+     463:    102  8 FAIL NON   queens_lib:qdelete/3-0 
+     464:    101  7 FAIL NON   queens_lib:qperm/2-0 
+     465:    100  8 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     466:    113  9 CALL NON   queens_lib:qdelete/3-0 
+     467:    113  9 FAIL NON   queens_lib:qdelete/3-0 
+     468:    100  8 FAIL NON   queens_lib:qdelete/3-0 
+     469:     90  7 FAIL NON   queens_lib:qdelete/3-0 
+     470:     89  6 FAIL NON   queens_lib:qperm/2-0 
+     471:     88  7 DISJ NON   queens_lib:qdelete/3-0 c2;d2;
+     472:    114  8 CALL NON   queens_lib:qdelete/3-0 
+     473:    114  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     474:    114  8 EXIT NON   queens_lib:qdelete/3-0 
+     475:     88  7 EXIT NON   queens_lib:qdelete/3-0 
+     476:     63  6 EXIT NON   queens_lib:qdelete/3-0 
+     477:    115  6 CALL NON   queens_lib:qperm/2-0 
+     478:    115  6 SWTC NON   queens_lib:qperm/2-0 s1;
+     479:    116  7 CALL NON   queens_lib:qdelete/3-0 
+     480:    116  7 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     481:    116  7 EXIT NON   queens_lib:qdelete/3-0 
+     482:    117  7 CALL NON   queens_lib:qperm/2-0 
+     483:    117  7 SWTC NON   queens_lib:qperm/2-0 s1;
+     484:    118  8 CALL NON   queens_lib:qdelete/3-0 
+     485:    118  8 DISJ NON   queens_lib:qdelete/3-0 c2;d1;
+     486:    118  8 EXIT NON   queens_lib:qdelete/3-0 
+     487:    119  8 CALL NON   queens_lib:qperm/2-0 
+     488:    119  8 SWTC NON   queens_lib:qperm/2-0 s2;
+     489:    119  8 EXIT NON   queens_lib:qperm/2-0 
+     490:    117  7 EXIT NON   queens_lib:qperm/2-0 
+     491:    115  6 EXIT NON   queens_lib:qperm/2-0 
+     492:     62  5 EXIT NON   queens_lib:qperm/2-0 
+     493:      6  4 EXIT NON   queens_lib:qperm/2-0 
+     494:      4  3 EXIT NON   queens_lib:qperm/2-0 
+     495:    120  3 CALL SEMI  queens_lib:safe/1-0 
+     496:    120  3 SWTC SEMI  queens_lib:safe/1-0 s1;
+     497:    121  4 CALL SEMI  queens_lib:nodiag/3-0 
+     498:    121  4 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     499:    121  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     500:    121  4 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     501:    122  5 CALL SEMI  queens_lib:nodiag/3-0 
+     502:    122  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     503:    122  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     504:    122  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     505:    123  6 CALL SEMI  queens_lib:nodiag/3-0 
+     506:    123  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     507:    123  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     508:    123  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     509:    124  7 CALL SEMI  queens_lib:nodiag/3-0 
+     510:    124  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     511:    124  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     512:    124  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     513:    125  8 CALL SEMI  queens_lib:nodiag/3-0 
+     514:    125  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     515:    125  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     516:    124  7 EXIT SEMI  queens_lib:nodiag/3-0 
+     517:    123  6 EXIT SEMI  queens_lib:nodiag/3-0 
+     518:    122  5 EXIT SEMI  queens_lib:nodiag/3-0 
+     519:    121  4 EXIT SEMI  queens_lib:nodiag/3-0 
+     520:    126  4 CALL SEMI  queens_lib:safe/1-0 
+     521:    126  4 SWTC SEMI  queens_lib:safe/1-0 s1;
+     522:    127  5 CALL SEMI  queens_lib:nodiag/3-0 
+     523:    127  5 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     524:    127  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     525:    127  5 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     526:    128  6 CALL SEMI  queens_lib:nodiag/3-0 
+     527:    128  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     528:    128  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     529:    128  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     530:    129  7 CALL SEMI  queens_lib:nodiag/3-0 
+     531:    129  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     532:    129  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     533:    129  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     534:    130  8 CALL SEMI  queens_lib:nodiag/3-0 
+     535:    130  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     536:    130  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     537:    129  7 EXIT SEMI  queens_lib:nodiag/3-0 
+     538:    128  6 EXIT SEMI  queens_lib:nodiag/3-0 
+     539:    127  5 EXIT SEMI  queens_lib:nodiag/3-0 
+     540:    131  5 CALL SEMI  queens_lib:safe/1-0 
+     541:    131  5 SWTC SEMI  queens_lib:safe/1-0 s1;
+     542:    132  6 CALL SEMI  queens_lib:nodiag/3-0 
+     543:    132  6 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     544:    132  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     545:    132  6 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     546:    133  7 CALL SEMI  queens_lib:nodiag/3-0 
+     547:    133  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     548:    133  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     549:    133  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     550:    134  8 CALL SEMI  queens_lib:nodiag/3-0 
+     551:    134  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     552:    134  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     553:    133  7 EXIT SEMI  queens_lib:nodiag/3-0 
+     554:    132  6 EXIT SEMI  queens_lib:nodiag/3-0 
+     555:    135  6 CALL SEMI  queens_lib:safe/1-0 
+     556:    135  6 SWTC SEMI  queens_lib:safe/1-0 s1;
+     557:    136  7 CALL SEMI  queens_lib:nodiag/3-0 
+     558:    136  7 SWTC SEMI  queens_lib:nodiag/3-0 s1;
+     559:    136  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;
+     560:    136  7 ELSE SEMI  queens_lib:nodiag/3-0 s1;c4;e;e;
+     561:    137  8 CALL SEMI  queens_lib:nodiag/3-0 
+     562:    137  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     563:    137  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     564:    136  7 EXIT SEMI  queens_lib:nodiag/3-0 
+     565:    138  7 CALL SEMI  queens_lib:safe/1-0 
+     566:    138  7 SWTC SEMI  queens_lib:safe/1-0 s1;
+     567:    139  8 CALL SEMI  queens_lib:nodiag/3-0 
+     568:    139  8 SWTC SEMI  queens_lib:nodiag/3-0 s2;
+     569:    139  8 EXIT SEMI  queens_lib:nodiag/3-0 
+     570:    140  8 CALL SEMI  queens_lib:safe/1-0 
+     571:    140  8 SWTC SEMI  queens_lib:safe/1-0 s2;
+     572:    140  8 EXIT SEMI  queens_lib:safe/1-0 
+     573:    138  7 EXIT SEMI  queens_lib:safe/1-0 
+     574:    135  6 EXIT SEMI  queens_lib:safe/1-0 
+     575:    131  5 EXIT SEMI  queens_lib:safe/1-0 
+     576:    126  4 EXIT SEMI  queens_lib:safe/1-0 
+     577:    120  3 EXIT SEMI  queens_lib:safe/1-0 
+     578:      3  2 EXIT NON   queens_lib:queen/2-0 
+     579:      1  1 THEN CCMUL queens_lib:main/2-0 t;
+     580:    141  2 CALL DET   queens_lib:print_list/3-0 
+     581:    141  2 ELSE DET   queens_lib:print_list/3-0 e;
+     582:    142  3 CALL DET   io:write_string/3-0 
+[     583:    142  3 EXIT DET   io:write_string/3-0 
+     584:    143  3 CALL DET   queens_lib:print_list_2/3-0 
+     585:    143  3 SWTC DET   queens_lib:print_list_2/3-0 s1;
+     586:    144  4 CALL DET   io:write_int/3-0 
+1     587:    144  4 EXIT DET   io:write_int/3-0 
+     588:    143  3 ELSE DET   queens_lib:print_list_2/3-0 s1;c3;e;
+     589:    145  4 CALL DET   io:write_string/3-0 
+,      590:    145  4 EXIT DET   io:write_string/3-0 
+     591:    146  4 CALL DET   queens_lib:print_list_2/3-0 
+     592:    146  4 SWTC DET   queens_lib:print_list_2/3-0 s1;
+     593:    147  5 CALL DET   io:write_int/3-0 
+3     594:    147  5 EXIT DET   io:write_int/3-0 
+     595:    146  4 ELSE DET   queens_lib:print_list_2/3-0 s1;c3;e;
+     596:    148  5 CALL DET   io:write_string/3-0 
+,      597:    148  5 EXIT DET   io:write_string/3-0 
+     598:    149  5 CALL DET   queens_lib:print_list_2/3-0 
+     599:    149  5 SWTC DET   queens_lib:print_list_2/3-0 s1;
+     600:    150  6 CALL DET   io:write_int/3-0 
+5     601:    150  6 EXIT DET   io:write_int/3-0 
+     602:    149  5 ELSE DET   queens_lib:print_list_2/3-0 s1;c3;e;
+     603:    151  6 CALL DET   io:write_string/3-0 
+,      604:    151  6 EXIT DET   io:write_string/3-0 
+     605:    152  6 CALL DET   queens_lib:print_list_2/3-0 
+     606:    152  6 SWTC DET   queens_lib:print_list_2/3-0 s1;
+     607:    153  7 CALL DET   io:write_int/3-0 
+2     608:    153  7 EXIT DET   io:write_int/3-0 
+     609:    152  6 ELSE DET   queens_lib:print_list_2/3-0 s1;c3;e;
+     610:    154  7 CALL DET   io:write_string/3-0 
+,      611:    154  7 EXIT DET   io:write_string/3-0 
+     612:    155  7 CALL DET   queens_lib:print_list_2/3-0 
+     613:    155  7 SWTC DET   queens_lib:print_list_2/3-0 s1;
+     614:    156  8 CALL DET   io:write_int/3-0 
+4     615:    156  8 EXIT DET   io:write_int/3-0 
+     616:    155  7 THEN DET   queens_lib:print_list_2/3-0 s1;c3;t;
+     617:    155  7 EXIT DET   queens_lib:print_list_2/3-0 
+     618:    152  6 EXIT DET   queens_lib:print_list_2/3-0 
+     619:    149  5 EXIT DET   queens_lib:print_list_2/3-0 
+     620:    146  4 EXIT DET   queens_lib:print_list_2/3-0 
+     621:    143  3 EXIT DET   queens_lib:print_list_2/3-0 
+     622:    157  3 CALL DET   io:write_string/3-0 
+]
+     623:    157  3 EXIT DET   io:write_string/3-0 
+     624:    141  2 EXIT DET   queens_lib:print_list/3-0 
+     625:      1  1 EXIT CCMUL queens_lib:main/2-0 

@@ -1,0 +1,76 @@
+The program `muz' (Melbourne University Z) is a Z syntax/type checker.
+For information on Z, see:
+
+	 http://www.comlab.ox.ac.uk/archive/z.html
+
+Muz takes as input Z source written using the zed-csp.sty latex macros
+(which are included in this distribution).  Muz recognises input
+that conforms to the Spivey Z syntax but with extensions from the
+draft Z standard (see muz_zed_syntax.txt and example.tex). 
+It accepts arguments as follows:
+
+Usage: muz [options] <filename(s)>
+Options:
+        -a-, --no-abbreviate
+                Turn off use of type abbreviations.
+        -t <toolkit>, --toolkit <toolkit>
+                Typecheck with the specified toolkit, overiding the
+                builtin default and MUZ_TOOLKIT environment variable
+                (-t- for typechecking without a toolkit).
+        -?, -h, --help
+                Print this usage message.
+        -d, --debug
+                Write debugging information to stdout.
+
+The standard Z toolkit is included as toolkit.tex.  Muz will expect
+to find it in the place indicated by the definition
+
+	default_toolkit = "/usr/local/apps/muz/lib/toolkit.tex".
+
+in the file word.m.  You can change this or use the MUZ_TOOLKIT environment
+variable.  To make muz, cd to the src directory and type:
+
+	mmake depend
+	mmake muz
+
+You can then test that its running correctly by running
+
+	./muz example.tex
+
+which should give the result
+
+	No errors detected.
+
+and running
+
+	./muz example1.tex
+
+which should give the result
+
+	example1.tex:14: Type mismatch in equation--
+		Equation: b = f 2
+		Types: CHAIR = \num.
+	example1.tex:15: Type mismatch in function application--
+		Expression: f b
+		Expected: \num
+		Found: CHAIR.
+	Errors detected.
+
+Muz was written so that I could learn (in detail!) about Z and its type
+system, learn Mercury, and ultimately as a basis for research in
+analysing and transforming formal specifications.  While it is fairly
+robust and appears to work correctly, I give no guarantees about its
+behaviour.  Further, while I wrote the code, the Mercury team developed
+both the language and the compiler:  the source to muz probably
+includes code to work around compiler bugs that have long since
+disappeared.  This, however, doesn't excuse the lack of comments in my
+code, a bad habit I haven't been able to avoid when writing code
+intended only for my own consumption (though by now I should know these
+things always escape from the lab).
+
+My thanks to the Mercury team for developing a productive programming
+language, for fixing the bugs I found promptly, and for keeping the size
+of the source down by occasionally moving some of it into Mercury libraries
+for me.  However I won't apologise to them for how I format my Mercury code.
+
+Philip Dart  3 November 1998

@@ -1,0 +1,10 @@
+best case nondet test 1 failed:      OK.
+best case nondet test 2 succeeded:   OK.
+middle case nondet test 1 failed:    OK.
+middle case nondet test 2 succeeded: OK.
+middle case nondet test 3 succeeded: OK.
+middle case nondet test 4 succeeded: OK.
+worst case nondet test 1 failed:     OK.
+worst case nondet test 2 succeeded:  OK.
+worst case nondet test 3 succeeded:  OK.
+worst case nondet test 4 succeeded:  OK.

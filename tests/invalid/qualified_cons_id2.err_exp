@@ -1,0 +1,4 @@
+qualified_cons_id2.m:015: In mode declarations for predicate `qualified_cons_id2:test/2':
+qualified_cons_id2.m:015:   error: duplicate mode declaration.
+qualified_cons_id2.m:016:   Here is the conflicting mode declaration.
+For more information, try recompiling with `-E'.

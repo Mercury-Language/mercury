@@ -1,0 +1,17 @@
+:- module unify_proc.
+:- interface.
+:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module modes, prog_data, special_pred.
+:- import_module std_util, io.
+:- type (unify_proc:unify_requests).
+:- type (unify_proc:unify_proc_id) == (std_util:pair((hlds_data:type_id), (hlds_goal:uni_mode))).
+:- pred unify_proc:init_requests((unify_proc:unify_requests)).
+:- mode unify_proc:init_requests(mercury_builtin:out) is det.
+:- pred unify_proc:request_unify((unify_proc:unify_proc_id), (hlds_data:determinism), (term:context), (hlds_module:module_info), (hlds_module:module_info)).
+:- mode unify_proc:request_unify(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred unify_proc:modecheck_unify_procs((modes:how_to_check_goal), (hlds_module:module_info), (hlds_module:module_info), (io:state), (io:state)).
+:- mode unify_proc:modecheck_unify_procs(mercury_builtin:in, mercury_builtin:in, mercury_builtin:out, mercury_builtin:di, mercury_builtin:uo) is det.
+:- pred unify_proc:lookup_mode_num((hlds_module:module_info), (hlds_data:type_id), (hlds_goal:uni_mode), (hlds_data:determinism), (hlds_pred:proc_id)).
+:- mode unify_proc:lookup_mode_num(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.
+:- pred unify_proc:generate_clause_info((special_pred:special_pred_id), (prog_data:(type)), (hlds_data:hlds_type_body), (term:context), (hlds_module:module_info), (hlds_pred:clauses_info)).
+:- mode unify_proc:generate_clause_info(mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:in, mercury_builtin:out) is det.

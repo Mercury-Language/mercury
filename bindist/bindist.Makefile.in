@@ -1,0 +1,132 @@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1996-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# @configure_input@
+#
+
+SHELL=		/bin/sh
+
+INSTALL_PREFIX	= @PREFIX@
+INSTALL_BINDIR	= $(INSTALL_PREFIX)/bin
+INSTALL_LIBDIR	= $(INSTALL_PREFIX)/lib/mercury
+INSTALL_INFODIR = $(INSTALL_PREFIX)/info
+INSTALL_MAN_DIR = $(INSTALL_PREFIX)/man
+
+INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
+			scripts/mercury_update_interface scripts/mgnuc \
+			scripts/mint scripts/ml scripts/mmake scripts/mprof \
+			scripts/mdb scripts/mkfifo_using_mknod
+
+SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
+			scripts/msp scripts/sicstus_conv
+
+NUPROLOG_SCRIPTS	= scripts/mnc scripts/mnp scripts/mnl
+
+INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
+
+LIB_PARTS		= bin doc html inc ints lib modules \
+			@NUPROLOG@ @SICSTUS@
+
+UTILS			= util/mdemangle util/mkinit util/mtags
+
+INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
+INSTALL_SICSTUS		= @INSTALL_SICSTUS@
+
+#-----------------------------------------------------------------------------#
+
+all:
+	# since this is a binary distribution, we don't need to
+	# make anything
+	@echo "-- The binary distribution does not need building."
+	@echo "-- Use \`make install' to install"
+
+.PHONY: install
+install: install_lib install_info install_man install_scripts install_mmake \
+		install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
+	@echo
+	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
+	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
+	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH."
+
+.PHONY: install_lib
+install_lib:
+	@echo "-- Installing lib in $(INSTALL_LIBDIR)..."
+	test -d $(INSTALL_LIBDIR) || mkdir -p $(INSTALL_LIBDIR)
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	gzip --decompress lib.tar.gz
+	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && \
+		tar -xf $$LIB_TAR_FILE $(LIB_PARTS)
+	gzip lib.tar # tidy up
+	@echo "-- Done."
+
+.PHONY: install_info
+install_info:
+	@echo "-- Installing info documentation in $(INSTALL_INFODIR)..."
+	test -d $(INSTALL_INFODIR) || mkdir -p $(INSTALL_INFODIR)
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	gzip --decompress info.tar.gz
+	INFO_TAR_FILE=`pwd`/info.tar &&  cd $(INSTALL_INFODIR)/.. && \
+		tar -xf $$INFO_TAR_FILE
+	gzip info.tar # tidy up
+	@echo "-- Done."
+
+.PHONY: install_man
+install_man:
+	@echo "-- Installing man pages in $(INSTALL_MAN_DIR)..."
+	test -d $(INSTALL_MAN_DIR) || mkdir -p $(INSTALL_MAN_DIR)
+	# (XXX don't use redirection or pipes, because on gnu-win32
+	# stdout defaults to text mode, which breaks tar and gzip)
+	gzip --decompress man.tar.gz
+	MAN_TAR_FILE=`pwd`/man.tar &&  cd $(INSTALL_MAN_DIR)/.. && \
+		tar -xf $$MAN_TAR_FILE
+	gzip man.tar # tidy up
+	@echo "-- Done."
+
+.PHONY: install_scripts
+install_scripts:
+	@echo "-- Installing scripts in $(INSTALL_BINDIR)"
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	cp $(INSTALL_SCRIPTS) $(INSTALL_BINDIR)
+	for file in $(INSTALL_SCRIPTS); do \
+		base=`basename $$file`; \
+		chmod +w $(INSTALL_BINDIR)/$$base ;\
+	done
+	@echo "-- Done."
+
+.PHONY: install_mmake
+install_mmake: 
+	test -d $(INSTALL_LIBDIR)/mmake || mkdir -p $(INSTALL_LIBDIR)/mmake
+	cp $(INSTALL_MMAKE_EXTRAS) $(INSTALL_LIBDIR)/mmake
+
+.PHONY: install_util
+install_util: 
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	cp $(UTILS) $(INSTALL_BINDIR)
+
+install_nuprolog:
+	@echo "-- Installing NU-Prolog scripts in $(INSTALL_BINDIR)"
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	cp $(NUPROLOG_SCRIPTS) $(INSTALL_BINDIR)
+	for file in $(NUPROLOG_SCRIPTS); do \
+		base=`basename $$file`; \
+		chmod +w $(INSTALL_BINDIR)/$$base ;\
+	done
+	@echo "-- Done."
+
+.PHONY: install_sicstus
+install_sicstus:
+	@echo "-- Installing SICStus-Prolog scripts in $(INSTALL_BINDIR)"
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	cp $(SICSTUS_SCRIPTS) $(INSTALL_BINDIR)
+	for file in $(SICSTUS_SCRIPTS); do \
+		base=`basename $$file`; \
+		chmod +w $(INSTALL_BINDIR)/$$base ;\
+	done
+	@echo "-- Done."
+
+#-----------------------------------------------------------------------------#

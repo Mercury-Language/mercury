@@ -1,0 +1,22 @@
+-----------------------------------------------------------------------------
+
+This file lists what you need to do to get Mercury to work on an
+RS/6000 running AIX using GNU C.
+
+1.  Put the following line in the file Mmake.params
+
+	EXTRA_CFLAGS=-mminimal-toc
+
+    This works around a fixed limit on the size of the TOC (Table of Contents)
+    in the RS/6000 object file format.
+
+2.  Change directory to the `compiler' directory, and run the command
+
+	sh ../scripts/rs6000_hack
+
+    This works around a fixed limit of 32k on the size of relative jumps
+    in the RS/6000 object file format.
+
+3.  Follow the instructions in the INSTALL file.
+
+-----------------------------------------------------------------------------

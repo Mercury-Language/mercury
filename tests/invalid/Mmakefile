@@ -1,0 +1,106 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+SOURCES= \
+	any_mode.m \
+	bigtest.m \
+	bind_var_errors.m \
+	circ_type.m \
+	constructor_warning.m \
+	det_errors.m \
+	duplicate_modes.m \
+	errors.m \
+	errors1.m \
+	errors2.m \
+	external.m \
+	func_errors.m \
+	funcs_as_preds.m \
+	ho_type_mode_bug.m \
+	inline_conflict.m \
+	io_in_ite_cond.m \
+	missing_det_decls.m \
+	missing_interface_import.m \
+	modes_erroneous.m \
+	mostly_uniq1.m \
+	mostly_uniq2.m \
+	multisoln_func.m \
+	nested_impl_in_int.m \
+	nullary_ho_func_error.m \
+	occurs.m \
+	pragma_c_code_and_clauses1.m \
+	pragma_c_code_and_clauses2.m \
+	pragma_c_code_no_det.m \
+	predmode.m \
+	prog_io_erroneous.m \
+	qual_basic_test2.m \
+	qualified_cons_id2.m \
+	test_nested.m \
+	type_inf_loop.m \
+	type_loop.m \
+	type_mismatch.m \
+	typeclass_test_1.m \
+	typeclass_test_2.m \
+	typeclass_test_3.m \
+	typeclass_test_4.m \
+	unbound_inst_var.m \
+	undef_lambda_mode.m \
+	undef_mode.m \
+	undef_type.m \
+	types.m	\
+	vars_in_wrong_places.m
+
+# we do not yet pass the following tests:
+#	parent.undeclared_child.m
+#	freefree.m 	(need bromage's aliasing stuff)
+#	no_exports.m	(this is really a WISHLIST item)
+#	typeclass_test_7.m (the fix is on the `existential_types' cvs branch)
+#
+# we do a very bad job on the following tests:
+#	typeclass_test_4.m (awful error message)
+
+MCFLAGS-multisoln_func	=	--infer-types
+MCFLAGS-any_mode	=	--infer-types
+MCFLAGS-duplicate_modes	=	--verbose-error-messages
+MCFLAGS-missing_interface_import = --make-interface
+
+DEPS=		$(SOURCES:%.m=%.dep)
+DEPENDS=	$(SOURCES:%.m=%.depend)
+ERRS=		$(SOURCES:%.m=%.err)
+ERR_RESS=	$(SOURCES:%.m=%.err_res)
+
+%.err: %.m
+	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
+	then false; else true; fi
+
+# Some tests have more than one possible valid output, so
+# we allow the test to pass if it matches *either* the .err_exp
+# or the .err_exp2 file. 
+%.err_res: %.err %.err_exp
+	-rm -f $@
+	diff -c $*.err_exp $*.err > $@ || \
+		{ [ -f $*.err_exp2 ] && diff -c $*.err_exp2 $*.err > $@; }
+
+all:	check
+
+check:	$(ERRS) $(ERR_RESS)
+
+errs:	$(ERRS)
+
+# We only need to make the dependencies for test cases consisting of
+# multiple modules; currently the following are the only such cases.
+depend:	test_nested.depend nested_impl_in_int.depend
+
+# The error in this file is actually reported even at make depend time,
+# so we need to ignore the return status.
+nested_impl_in_int.depend:
+	-$(MCD) $(ALL_MCDFLAGS) nested_impl_in_int
+
+clean:
+	rm -f *.err *.err_res
+
+#-----------------------------------------------------------------------------#

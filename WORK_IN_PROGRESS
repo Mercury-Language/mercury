@@ -1,0 +1,42 @@
+Work in progress
+----------------
+
+The compiler contains some code for the following features,
+which are not yet completed:
+
+* Existential types.
+
+* Thread-safe engine.
+
+* Independent AND-parallelism.
+
+* We have added support for dynamic link libraries (DLLs) on Windows.
+  This is not yet enabled by default because it has not yet been tested
+  properly.
+
+* There is a new `--generate-bytecode' option --
+  but the bytecode interpreter isn't working yet.
+
+* There is a new `--generate-prolog' option
+  which does not work yet.
+
+* There is a new `--optimize-constructor-last-call' option
+  which identifies opportunities for LCO where a call
+  is followed only by some constructor invocations.
+  However, these opportunities are not exploited yet.
+
+* We now allow programmers to give names to the arguments of constructor
+  function symbols.  (Disabled, due to lack of a suitable operator.)
+
+* There is a new garbage collector that does accurate garbage
+  collection (.agc grade).  It is currently limited to deterministic
+  code, and needs a great deal of tuning and optimization.  It also
+  needs testing.
+
+We also have some code that goes at least some part of the way towards
+implementing the features below.   However, for these features, the
+code has not yet been committed and thus is not part of the standard
+distribution.
+
+* [Currently no features in this category.]
+

@@ -1,0 +1,266 @@
+\input texinfo
+@setfilename mercury_faq.info
+@settitle The Mercury FAQ list
+
+@ignore
+@ifinfo
+@format
+START-INFO-DIR-ENTRY
+* Mercury FAQ: (mercury_faq).      The Mercury Frequently Asked Questions list
+END-INFO-DIR-ENTRY
+@end format
+@end ifinfo
+@end ignore
+
+@c failed attempt to control spacing
+@c @tex
+@c \global\chapheadingskip = 12pt plus 4pt minus 2pt
+@c \global\secheadingskip = 9pt plus 3pt minus 2pt
+@c \global\subsecheadingskip = 7pt plus 2pt minus 2pt 
+@c % 2pt parskip is better for smallbook
+@c \global\parskip 2pt plus 1pt
+@c @end tex
+
+@c @smallbook
+@c @cropmarks
+@finalout
+@setchapternewpage off
+@ifinfo
+This file is the Mercury Frequently Asked Questions list.
+It contains a list of frequently asked questions about Mercury, with answers.
+
+Copyright (C) 1995-1997 The University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this FAQ list provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed FAQ list).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+FAQ list under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this FAQ list
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@title The Mercury Frequently Asked Questions list
+@author Fergus Henderson
+@author Thomas Conway
+@author Zoltan Somogyi
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995-1997 The University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this FAQ list provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+FAQ list under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this FAQ list
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+
+@ifinfo
+@node Top,,, (mercury)
+@top The Mercury Frequently Asked Questions list
+@menu
+* Programming::     Common programming errors
+* Unimplemented::   Problems caused by unimplemented Mercury features
+* Last resort::     What to do when all else fails
+@end menu
+@end ifinfo
+
+@node Programming
+@chapter Common programming errors
+
+@enumerate
+
+@item
+@emph{What does the error message ``undefined symbol @samp{'.'/2}'' mean?}
+@sp 1
+
+You need to explicitly import the @samp{list} module
+
+@example
+:- import_module list.
+@end example
+
+@noindent
+if your code uses lists. Similarly, if your code uses arithmetic operations,
+you will need to import the @samp{int} and possibly @samp{float} modules.
+
+@sp 1
+@item
+@emph{Why doesn't @samp{X <= 3} work?}
+@sp 1
+
+In Mercury, less-than-or-equal-to is written as @samp{=<} not
+as @samp{<=}, which is used for reverse implication.
+
+@sp 1
+@item
+@emph{I defined a type like this: @samp{:- type number ---> int ; float.}
+Why doesn't this work?}
+@sp 1
+
+You tried to define a type that is an undiscriminated union of two types,
+which is not allowed by the Mercury type system.
+The declaration above defines an enumerated type with two constants,
+``int'' and ``float''.
+This is not what you want, but it is legal Mercury,
+which is why you don't get an error message on the type declaration itself.
+
+@sp 1
+@item
+@emph{I get a ``scope error'' in an if-then-else.
+I checked and both branches bind the same variables. What is the error?}
+@sp 1
+
+This error generally happens if you attempt bind non-local variables
+in the @emph{condition} of the if-then-else.  For example, the following
+code attempts to bind @samp{Value} in the call to @samp{map__search},
+but @samp{Value} occurs outside of the if-then-else --- in particular,
+it occurs in the head of the clause.
+
+@example
+:- pred map__search(map(K, V), K, V).
+:- mode map__search(in, in, out) is semidet.
+
+:- pred lookup(map(string, int), string, int).
+:- mode lookup(in, in, out) is det.
+
+lookup(Map, Key, Value) :-
+        (if map__search(Map, Key, Value) then
+                true
+        else
+                Value = -1
+        ).
+@end example
+
+Binding non-local variables in the condition of an if-then-else
+is forbidden since it would be unsound; it would lead to inconsistent
+results.  For example, @samp{(X = 1 -> Y = 1 ; Y = 2), X = 2} would fail,
+but @samp{X = 2, (X = 1 -> Y = 1 ; Y = 2)} would succeed --- breaking
+one of the fundamental laws of logic, @samp{(P, Q) <=> (Q, P)}.
+
+Mode analysis therefore rejects such programs. 
+(In certain rare circumstances, the compiler may report this as a
+``mode error'' rather than a ``scope error''.)
+The way to fix such errors is to avoid binding non-local
+variables in the @emph{condition}, and instead bind them in the @emph{then}
+part of the if-then-else.  So in the above example, you should introduce
+a new local variable, which we will call @samp{Value1}:
+
+@example
+lookup(Map, Key, Value) :-
+        (if some [Value1]
+                map__search(Map, Key, Value1)
+        then
+                Value = Value1
+        ;
+                Value = -1
+        ).
+@end example
+
+@noindent
+The explicit existential quantifier is optional; if you
+prefer a slightly more succinct style you can write this as
+
+@example
+lookup(Map, Key, Value) :-
+        ( map__search(Map, Key, Value1) ->
+                Value = Value1
+        ;
+                Value = -1
+        ).
+@end example
+
+@item
+@emph{``I keep getting a link error @samp{undefined symbol init_gc}.  Why?''}
+@sp 1
+
+If you are using @samp{mmake} to recompile your program, and you are
+overriding the default grade (e.g. by setting @samp{GRADE=asm_fast} in your
+@samp{Mmake} file), you must make sure that you do @samp{mmake clean} every
+time you change grades.
+
+@end enumerate
+
+@node Unimplemented
+@chapter Problems caused by unimplemented Mercury features
+
+@enumerate
+@item
+@emph{How can I avoid getting a compile-time error when I try to
+fill in a partially instantiated data structure?}
+@sp 1
+
+At the moment, you can create a partially instantiated data structure,
+but you can't fill in the holes.
+The reason is that the code that does the filling in
+must temporarily alias two variables together,
+and the current mode checker does not allow this.
+This limitation will go away in the future.
+
+@sp 1
+@item
+@emph{I'm getting an error from the C compiler:}
+@example
+foo.c:45: initializer is not computable at load time
+@end example
+@sp 1
+
+You're using an old version of @samp{gcc}. 
+Check that the version of @samp{gcc} in your PATH is version 2.6.3 or later.
+Mercury does not (at the current time) support versions of gcc earlier
+than 2.6.3.  (Using the @samp{--no-static-ground-terms} option may also solve
+this problem, but results in less efficient code.)
+
+@end enumerate
+
+@node Last resort
+@chapter What to do when all else fails
+
+@enumerate
+
+@item
+@emph{I'm getting an error message that I don't understand.  What can I do?}
+@sp 1
+
+Try compiling with the @samp{-E} (@samp{--verbose-error-messages}) option.
+This option causes the compiler to give even more verbose descriptions
+than usual.
+
+@sp 1
+@item
+@emph{I followed the instructions in the user's guide,
+but it still didn't work. What do I do next?}
+@sp 1
+
+Send email to @code{mercury-bugs@@cs.mu.oz.au},
+and we'll try to solve your problem.
+
+@end enumerate
+
+@contents
+@bye
+
+@c XXX
+@c ld: elf error: file .../libmer.a: unable to locate archive symbol table:
+@c Request error: offset out of range
+@c caused by linking an asm_fast.gc.prof grade program
+@c against an asm_fast.gc grade runtime system

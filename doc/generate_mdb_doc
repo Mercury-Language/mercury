@@ -1,0 +1,22 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# the info menu items that get us to the chapter on debugger commands
+cat mdb_categories > mdb_doc
+
+tmp="mdb_doc_tmp.$$"
+trap '/bin/rm -f $tmp' 0 1 2 3 15
+
+info -f ./mercury_user_guide.info -o $tmp -n "Mercury debugger concepts"
+../util/info_to_mdb concepts $tmp >> mdb_doc
+
+debug_cmd_path="debug debugger"
+for section in forward backward browsing breakpoint parameter help exp developer misc
+do
+	info -f ./mercury_user_guide.info -o $tmp $debug_cmd_path $section
+	../util/info_to_mdb $section $tmp >> mdb_doc
+done

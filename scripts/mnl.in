@@ -1,0 +1,92 @@
+#! /bin/sh
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# mnl - Mercury NU-Prolog Linker.
+#
+# Links NU-Prolog object files together with the Mercury library
+# to produce an executable binary.
+#
+# Usage: mnl [-v|--verbose] [-d|--debug] [<nc link options>] files...
+#
+# Environment variables:
+#       MERCURY_NU_LIB_DIR 
+#               the name of the directory containing the object files
+#       MERCURY_NU_LIB_OBJS
+#               the names of the object files
+#       MERCURY_NU_OVERRIDING_LIB_OBJS
+#               the names of the object files that contain definitions which
+#               should override others
+
+
+NULIBDIR=${MERCURY_NU_LIB_DIR=@LIBDIR@/nuprolog/@FULLARCH@}
+LIBRARY_OBJS=${MERCURY_NU_LIB_OBJS=" `cd $NULIBDIR; echo *.no` "}
+OVERRIDING_LIBRARY_OBJS=${MERCURY_NU_OVERRIDING_LIB_OBJS=""}
+debug_objs=${MERCURY_NU_DEBUG_LIB_OBJS="portray.no debug.no error.no"}
+
+options=
+verbose=false
+debug=false
+
+while true; do
+	case "$1" in
+		-v|--verbose)
+			verbose=true
+			shift
+			;;
+		-d|--debug)
+			debug=true
+			shift
+			;;
+		-e|-u|-o|-F)
+			options="$options $1 $2"
+			shift; shift
+			;;
+		-*)	options="$options $1"
+			shift
+			;;
+		*)	break 2
+			;;
+	esac
+done
+
+objlist=
+for obj in $LIBRARY_OBJS 'kludge for broken shells'; do
+	if [ "$obj" = 'kludge for broken shells' ]; then
+		true
+	elif echo "" "$@" "$debug_objs " | grep " $obj " > /dev/null; then
+		true
+	else
+		objlist="$objlist $NULIBDIR/$obj"
+	fi
+done
+overriding_objlist=
+for obj in $OVERRIDING_LIBRARY_OBJS 'kludge for broken shells'; do
+	if [ "$obj" = 'kludge for broken shells' ]; then
+		true
+	else
+		overriding_objlist="$overriding_objlist $NULIBDIR/$obj"
+	fi
+done
+
+if $debug; then
+	for obj in $debug_objs; do
+		if echo "" "$@" "" | grep " $obj " > /dev/null; then
+			true
+		else
+			objlist="$objlist $NULIBDIR/$obj"
+		fi
+	done
+fi
+
+if $verbose; then
+	echo nc $options $objlist "$@" $overriding_objlist
+fi
+case $# in
+	0) exec nc $options $objlist $overriding_objlist ;;
+	*) exec nc $options $objlist "$@" $overriding_objlist ;;
+esac

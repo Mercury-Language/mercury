@@ -1,0 +1,188 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1998 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# browser/Mmakefile - this is the Mmakefile for building the Mercury
+# browser library, which also includes other functionality needed
+# by Mercury debuggers.
+
+# Since the code in this directory is intended to be invoked only from
+# the trace library, which turns off tracing in the Mercury code it calls,
+# compiling the modules in this directory with tracing on only makes
+# the generated code much bigger. However, since all Mercury code
+# in an executable must be of the same grade, we need to be able to
+# compile the modules in this directory in debug grades as well.
+
+MERCURY_DIR=..
+include $(MERCURY_DIR)/Mmake.common
+
+MAIN_TARGET=library
+
+VPATH=$(LIBRARY_DIR)
+
+#-----------------------------------------------------------------------------#
+
+# If we're going to generate both `.o' files and `.pic_o' files, then
+# don't remove the intermediate `.c' files.
+RM_C	=	$(LIBRARY_RM_C)
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the library.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params.
+
+MCD	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(MC) --generate-dependencies
+MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(MC) --make-interface
+MCOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(MC) --make-opt-int
+MCTOI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(MC) --make-trans-opt
+MCG	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(MC) --compile-to-c
+MCS	=	MERCURY_INT_DIR=$(LIBRARY_DIR) \
+		MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(MC) --split-c-files -c \
+			--cflags "-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			--cflags "-I$(BOEHM_GC_DIR) $(EXTRA_CFLAGS)"
+MGNUC	=	MERCURY_ALL_C_INCL_DIRS="-I$(TRACE_DIR) -I$(RUNTIME_DIR)" \
+			$(SCRIPTS_DIR)/mgnuc
+MGNUCFLAGS =	-I$(TRACE_DIR) -I$(RUNTIME_DIR) -I$(BOEHM_GC_DIR) \
+			$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+LDFLAGS	=	-L$(LIBRARY_DIR) -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
+LDLIBS	=	-l$(STD_LIB_NAME) -l$(RT_LIB_NAME) \
+		` case "$(GRADE)" in 					\
+		    *.gc*.prof*) echo "-lgc_prof" ;;			\
+		    *.gc*)	 echo "-lgc" ;;				\
+		  esac							\
+		`
+
+MTAGS	=	$(SCRIPTS_DIR)/mtags
+
+#-----------------------------------------------------------------------------#
+
+# Stuff for Windows DLLS using gnu-win32
+
+ifeq ($(USE_DLLS),yes)
+
+DLL_CFLAGS = -Dlib$(BROWSER_LIB_NAME)_DEFINE_DLL
+
+include $(MERCURY_DIR)/Makefile.DLLs
+
+else
+
+DLL_CFLAGS =
+DLL_DEF_LIB =
+
+endif
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+.PHONY: all
+all : library browse_test
+
+.PHONY: depend
+depend		: browser_library.depend browse_test.depend
+
+.PHONY: check
+check		: browser_library.check
+
+.PHONY: all-ints 
+all-ints: ints int3s
+
+.PHONY: ints 
+ints		: browser_library.ints browse_test.ints
+
+.PHONY: int3s 
+int3s		: browser_library.int3s
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(MTAGS) $(browser_library.ms)
+	$(MTAGS) $(browser_library.ms) ../library/*.m
+
+browser_library.stats : $(COMPILER_DIR)/source_stats.awk $(browser_library.ms)
+	awk -f $(COMPILER_DIR)/source_stats.awk \
+		`vpath_find $(browser_library.ms)` > $@
+	
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $(browser_library.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(browser_library.os)
+cs: $(browser_library.cs)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: library
+library: lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+library: $(BROWSER_LIB_NAME).init
+
+lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a : $(browser_library.os)
+	rm -f lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
+	ar cr lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a $(browser_library.os)
+	$(RANLIB) lib$(BROWSER_LIB_NAME)$(DLL_DEF_LIB).a
+
+RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
+RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
+
+lib$(BROWSER_LIB_NAME).so : $(browser_library.pic_os)
+	$(LINK_SHARED_OBJ) -o lib$(BROWSER_LIB_NAME).so \
+		$(browser_library.pic_os)				\
+		$(RPATH_1)$(RPATH_2)					\
+		$(LDFLAGS) $(LDLIBS)					\
+		$(SHARED_LIBS)
+
+$(BROWSER_LIB_NAME).init: $(deps_subdir)browser_library.dep
+	for file in $(browser_library.ms); do \
+		grep '^INIT ' $$file; \
+		echo "INIT mercury__`basename $$file .m`__init"; \
+	done > $(BROWSER_LIB_NAME).init
+
+# Ensure we recompile browser_library__version if VERSION is changed.
+$(os_subdir)browser_library.o \
+$(os_subdir)browser_library.pic_o \
+        : $(RUNTIME_DIR)/mercury_conf.h
+
+#-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f lib$(BROWSER_LIB_NAME).a lib$(BROWSER_LIB_NAME).so \
+		$(BROWSER_LIB_NAME).init
+	rm -f tags
+
+#-----------------------------------------------------------------------------#
+
+# Installation targets
+
+.PHONY: install
+install: install_init install_library
+
+.PHONY: install_init
+install_init: $(BROWSER_LIB_NAME).init
+	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
+	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_MODULE_DIR)
+
+.PHONY: install_library
+install_library: lib$(BROWSER_LIB_NAME).a \
+		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)
+	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find lib$(BROWSER_LIB_NAME).a \
+		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)

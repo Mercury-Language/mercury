@@ -1,0 +1,407 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995-1998 The University of Melbourne. 
+# This file may only be copied under the terms of the GNU General
+# Public Licence - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmakefile - the top-level Mmake file for the Mercury implementation
+
+MAIN_TARGET=all
+
+MERCURY_DIR=.
+include Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
+
+MMAKEFLAGS =
+
+SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
+		MMAKE_VPATH=. \
+		MMAKE_DIR=../scripts \
+		../scripts/mmake $(MMAKEFLAGS)
+
+#-----------------------------------------------------------------------------#
+
+PREINSTALL_HACK = 
+POSTINSTALL_HACK = 
+
+# For Windows 95 or Windows NT, uncomment the following two lines:
+# PREINSTALL_HACK = preinstall_hack_for_windows
+# POSTINSTALL_HACK = postinstall_hack_for_windows
+
+#-----------------------------------------------------------------------------#
+
+# `mmake dep' ensures that the .dep files exist;
+# `mmake depend' forces them to be remade to ensure that they are up-to-date.
+
+.PHONY: dep
+dep: dep_library dep_compiler dep_profiler
+
+.PHONY: dep_library
+dep_library: library/$(deps_subdir)library.dep
+
+library/$(deps_subdir)library.dep:
+	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_compiler
+dep_compiler: compiler/$(deps_subdir)mercury_compile.dep
+
+compiler/$(deps_subdir)mercury_compile.dep: library/$(deps_subdir)library.dep
+	cd compiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_profiler
+dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
+
+profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)library.dep
+	cd profiler && $(SUBDIR_MMAKE) depend
+
+# depend_library MUST be done before depend_compiler and depend_profiler
+
+.PHONY: depend
+depend:
+	cd library && $(SUBDIR_MMAKE) depend
+	cd compiler && $(SUBDIR_MMAKE) depend
+	cd profiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_library
+depend_library:
+	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_compiler
+depend_compiler:
+	cd compiler && $(SUBDIR_MMAKE) depend
+
+.PHONY: depend_profiler
+depend_profiler:
+	cd profiler && $(SUBDIR_MMAKE) depend
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: all
+all: README INSTALL $(SUBDIRS)
+
+.PHONY: scripts
+scripts:
+	cd scripts && $(SUBDIR_MMAKE)
+
+.PHONY: runtime
+runtime: scripts boehm_gc
+	cd runtime && $(SUBDIR_MMAKE)
+
+.PHONY: boehm_gc
+boehm_gc: scripts
+	case "$$grade" in \
+	    *.prof*) \
+		prof=_prof \
+		;; \
+	    *) \
+		prof= \
+		;; \
+	esac; \
+	cd boehm_gc && $(SUBDIR_MMAKE) PROF=$$prof
+
+.PHONY: library
+library: dep_library scripts runtime boehm_gc
+	cd library && $(SUBDIR_MMAKE)
+
+.PHONY: compiler
+compiler: dep_compiler scripts util runtime boehm_gc library
+	cd compiler && $(SUBDIR_MMAKE)
+
+.PHONY: doc
+doc: scripts
+	cd doc && $(SUBDIR_MMAKE)
+
+.PHONY: util
+util: scripts
+	cd util && $(SUBDIR_MMAKE)
+
+.PHONY: profiler
+profiler: dep_profiler scripts util runtime boehm_gc library
+	cd profiler && $(SUBDIR_MMAKE)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: tags
+tags: tags_compiler tags_profiler tags_library
+
+.PHONY: tags_compiler
+tags_compiler:
+	cd compiler && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_library
+tags_library:
+	cd library && $(SUBDIR_MMAKE) tags
+
+.PHONY: tags_profiler
+tags_profiler:
+	cd profiler && $(SUBDIR_MMAKE) tags
+
+#-----------------------------------------------------------------------------#
+
+configure: configure.in
+	autoconf
+
+config.status: configure VERSION
+	if [ -f ./config.status ]; then \
+		./config.status --recheck; \
+	else \
+		echo "======> You need to run configure!"; \
+		exit 1; \
+	fi
+
+Mmake.common: Mmake.common.in config.status
+	./config.status
+
+README: .README.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .README.in > README
+
+INSTALL: .INSTALL.in VERSION
+	sed 's/@VERSION@/$(VERSION)/g' .INSTALL.in > INSTALL
+
+#-----------------------------------------------------------------------------#
+
+# Generally you should do a `mmake realclean' before doing `mmake tar'.
+
+.PHONY: tar
+tar: README INSTALL
+	touch Mmake.params
+	cd util && mmake
+	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
+	cd library && $(SUBDIR_MMAKE) depend
+	cd library && $(SUBDIR_MMAKE) all-ints cs libmercury.init tags
+	cd compiler && $(SUBDIR_MMAKE) depend
+	cd compiler && $(SUBDIR_MMAKE) cs tags
+	cd profiler && $(SUBDIR_MMAKE) depend
+	cd profiler && $(SUBDIR_MMAKE) cs tags
+	cd doc && $(SUBDIR_MMAKE) info html dvi
+	cd bindist && $(SUBDIR_MMAKE) bindist.configure
+	# the following command might fail on Windows?
+	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
+	# clean up
+	cd scripts && mmake realclean
+	cd util && mmake realclean
+	cd doc && mmake distclean
+	-rm -f errs errs2 update.log
+	-rm -f config.status config.cache config.log configure.log
+	-rm -f runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h
+	-rm -f Mmake.common
+	# Package up the mercury directory and the tests directory, 
+	# but with some subdirectories excluded, into a gzipped tar
+	# archive that will unpack into mercury-$(VERSION).
+	# Put the extras directory into a gzipped tar archive that
+	# will unpack into mercury-$(VERSION)-extras.
+	cd .. && (							\
+		mv mercury mercury-$(VERSION);				\
+		mv tests mercury-$(VERSION)/tests;			\
+		mkdir stuff-to-exclude;					\
+		mv mercury-$(VERSION)/trial	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/bytecode	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/lp_solve	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/extras mercury-$(VERSION)-extras; \
+		tar -cf - mercury-$(VERSION) |				\
+			gzip -9 > mercury-$(VERSION).tar.gz;		\
+		mv stuff-to-exclude/* mercury-$(VERSION);		\
+		rmdir stuff-to-exclude;					\
+		mv mercury-$(VERSION)-extras mercury-$(VERSION)/extras; \
+		tar -cf - mercury-$(VERSION)/extras |			\
+			gzip -9 > mercury-$(VERSION)-extras.tar.gz;	\
+		mv mercury-$(VERSION)/tests tests;			\
+		mv mercury-$(VERSION) mercury				\
+	)
+
+.PHONY: version
+version:
+	@echo $(VERSION)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: install
+install: install_main install_grades
+
+.PHONY: install_main
+install_main: all $(PREINSTALL_HACK) \
+		install_scripts install_util install_runtime install_boehm_gc \
+  		install_library install_compiler install_profiler install_doc \
+		$(POSTINSTALL_HACK)
+ 
+.PHONY: install_scripts
+install_scripts: scripts
+	cd scripts && $(SUBDIR_MMAKE) install
+
+.PHONY: install_util
+install_util: util
+	cd util && $(SUBDIR_MMAKE) install
+
+.PHONY: install_runtime
+install_runtime: runtime
+	cd runtime && $(SUBDIR_MMAKE) install
+
+.PHONY: install_boehm_gc
+install_boehm_gc: boehm_gc
+	case "$$grade" in \
+	    *.prof*) \
+		prof=_prof \
+		;; \
+	    *) \
+		prof= \
+		;; \
+	esac; \
+	cd boehm_gc && $(SUBDIR_MMAKE) install PROF=$$prof
+
+.PHONY: install_library
+install_library: dep_library library
+	cd library && $(SUBDIR_MMAKE) install
+
+.PHONY: install_compiler
+install_compiler: dep_compiler compiler
+	cd compiler && $(SUBDIR_MMAKE) install
+
+.PHONY: install_doc
+install_doc: doc
+	cd doc && $(SUBDIR_MMAKE) install
+
+.PHONY: install_profiler
+install_profiler: profiler
+	cd profiler && $(SUBDIR_MMAKE) install
+
+.PHONY: install_grades
+install_grades: scripts dep_library
+	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
+		{ mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true; }
+	for grade in x $(LIBGRADES); do \
+	    if [ "$$grade" != "x" ]; then \
+	        case "$$grade" in \
+	            *.prof*) \
+		        prof=_prof \
+		        ;; \
+		    *) \
+		        prof= \
+		        ;; \
+	        esac; \
+	        ( cd boehm_gc && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib ) && \
+		( cd runtime && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
+		( cd library && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
+		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
+		( cd library && rm -f *.c *.o *.pic_o *.a *.so ) && \
+		true \
+		|| exit 1; \
+	    fi; \
+	done
+	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd library  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+
+.PHONY: install_split_library
+install_split_library: scripts dep_library
+	cd library && \
+	rm -rf tmp_dir && \
+	mkdir tmp_dir && \
+	{ mv -f *.dir *.c *.o *.pic_o *.a *.so tmp_dir || true; } && \
+	for grade in $(GRADE) $(LIBGRADES); do \
+	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || exit 1; \
+	        rm -rf *.dir *.c *.o *.pic_o *.a *.so; \
+	done && \
+	{ mv tmp_dir/* . ; rmdir tmp_dir; true; }
+
+#-----------------------------------------------------------------------------#
+#
+# Various horrible hacks for gnu-win32 on Windows.
+#
+
+# `make touch_files' is a work-around for the broken gnu-win32 `tar'
+# that loses all the file dates.
+.PHONY: touch_files
+touch_files:
+	-find . | xargs touch
+	sleep 1
+	touch library/*.date*
+	touch library/*.optdate
+	chmod +w library/*.dep
+	touch library/*.dep
+	touch compiler/*.date*
+	chmod +w compiler/*.dep
+	touch compiler/*.dep
+	touch profiler/*.date*
+	chmod +w profiler/*.dep
+	touch profiler/*.dep
+	touch doc/*.texi configure
+	sleep 1
+	touch boehm_gc/*.c
+	touch runtime/*.c
+	touch library/*.c
+	touch compiler/*.c
+	touch profiler/*.c
+	touch doc/*.info doc/*.dvi doc/*.html config.status
+
+# Another work-around for Windows:
+# the executable files need `.exe' filenames, otherwise they won't work.
+# But the Mmake files expect them to not have `.exe' filenames.
+
+.PHONY: preinstall_hack_for_windows
+preinstall_hack_for_windows:
+	cd compiler && mv mercury_compile.exe xyzzy && mv xyzzy mercury_compile
+	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
+	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
+	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
+
+.PHONY: postinstall_hack_for_windows
+postinstall_hack_for_windows:
+	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_compile mercury_compile.exe
+	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
+	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
+	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	cd scripts; $(SUBDIR_MMAKE) uninstall
+	cd util; $(SUBDIR_MMAKE) uninstall
+	cd doc; $(SUBDIR_MMAKE) uninstall
+	-rm -r $(INSTALL_LIBDIR)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY : bindist
+bindist:
+	cd bindist; mmake binary_distribution
+
+#-----------------------------------------------------------------------------#
+
+clean: clean_subdirs
+
+.PHONY: clean_subdirs
+clean_subdirs:
+	rm -rf runtime/tmp_dir library/tmp_dir
+	for dir in $(SUBDIRS); do \
+		if [ "$$dir" = scripts ]; then continue; fi; \
+		(cd $$dir; $(SUBDIR_MMAKE) clean) \
+	done
+
+realclean: realclean_subdirs realclean_config
+
+.PHONY: realclean_subdirs
+realclean_subdirs: clean_subdirs
+	rm -rf stage[1-3]
+	for dir in $(SUBDIRS); do \
+		if [ "$$dir" = scripts ]; then continue; fi; \
+		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
+	done
+	cd scripts; $(SUBDIR_MMAKE) realclean
+
+.PHONY: realclean_config
+realclean_config:
+	rm -f config.cache config.status config.log
+
+#-----------------------------------------------------------------------------#

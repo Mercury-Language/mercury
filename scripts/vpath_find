@@ -1,0 +1,37 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 1995 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# vpath_find:
+#	Find the correct location for files based on the VPATH environment
+#	variable.
+#
+# Usage: vpath_find <files>...
+#
+exit_status=0
+VPATHS="`echo "$VPATH" | sed 's/:/ /'`"
+for file in "$@"; do
+	found=false
+	for dir in "" $VPATHS; do
+		if [ "$dir" = "" ]; then
+			f="$file"
+		else
+			f="$dir/$file"
+		fi
+		if [ -f $f ]; then
+			echo $f
+			found=true
+			break
+		fi
+	done
+	if $found; then
+		:
+	else
+		echo "`basename $0`: cannot find $file" 1>&2
+		exit_status=1
+	fi
+done
+exit $exit_status

@@ -1,0 +1,3 @@
+MAIN_TARGET = all
+depend: complex_numbers.depend
+all: libcomplex_numbers

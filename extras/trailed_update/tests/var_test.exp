@@ -1,0 +1,24 @@
+test_delaying_1: no
+test_delaying_2: yes
+var.m: warning: goal floundered.
+       1 outstanding delayed goal.
+X = alias(free(<delayed goal>)) [ground: no]
+Y = alias(free) [ground: no]
+test_delaying_1: no
+test_delaying_2: yes
+test_delaying_3: var.m: warning: goal floundered.
+       1 outstanding delayed goal.
+yes: X = alias(free(<delayed goal>)) [ground: no], Y = alias(free) [ground: no]
+test_delaying_4: var.m: warning: goal floundered.
+       1 outstanding delayed goal.
+yes: X = alias(free(<delayed goal>)) [ground: no]
+test_ground:
+Z = alias(ground(42)) [ground: yes(42)]
+Z2 = alias(alias(alias(ground(42)))) [ground: yes(42)]
+test_alias_twice:
+A = alias(free) [ground: no]
+B = alias(free) [ground: no]
+test_dup_call_bug:
+A1 = alias(ground(42)) [ground: yes(42)]
+A2 = alias(free) [ground: no]
+Done.

@@ -1,0 +1,80 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake.common
+
+RM_C=:
+
+#-----------------------------------------------------------------------------#
+
+DEBUGGER_PROGS=	\
+	debugger_regs	\
+	interpreter	\
+	queens
+
+MCFLAGS = --trace all
+C2INITFLAGS = -i
+
+# Base grades `jump' and `fast' cannot be used with
+# stack layouts (which are required for tracing).
+
+ifneq "$(findstring asm_,$(GRADE))" ""
+    PROGS=$(DEBUGGER_PROGS)
+else
+    ifneq "$(findstring jump,$(GRADE))" ""
+	PROGS=
+    else
+	ifneq "$(findstring fast,$(GRADE))" ""
+	    PROGS=
+	else
+	    PROGS=$(DEBUGGER_PROGS)
+	endif
+    endif
+endif
+
+LIBPROGS=	$(PROGS:%=%_lib)
+ALLPROGS=	$(PROGS) $(LIBPROGS)
+
+#-----------------------------------------------------------------------------#
+
+debugger_regs.out: debugger_regs debugger_regs.inp
+	mdb ./debugger_regs < debugger_regs.inp > debugger_regs.out
+
+interpreter.out: interpreter interpreter.inp
+	mdb ./interpreter interpreter.m < interpreter.inp > interpreter.out
+
+queens.out: queens queens.inp
+	mdb ./queens < queens.inp > queens.out
+
+debugger_regs_lib.out: debugger_regs_lib debugger_regs_lib.inp
+	mdb ./debugger_regs_lib < debugger_regs_lib.inp > debugger_regs_lib.out
+
+interpreter_lib.out: interpreter_lib interpreter_lib.inp
+	mdb ./interpreter_lib interpreter_lib.m < interpreter_lib.inp > interpreter_lib.out
+
+queens_lib.out: queens_lib queens_lib.inp
+	mdb ./queens_lib < queens_lib.inp > queens_lib.out
+
+#-----------------------------------------------------------------------------#
+
+DEPS=		$(ALLPROGS:%=$(deps_subdir)%.dep)
+DEPENDS=	$(ALLPROGS:%=%.depend)
+OUTS=		$(PROGS:%=%.out)
+LIBOUTS=	$(LIBPROGS:%=%.out)
+RESS=		$(PROGS:%=%.res)
+LIBRESS=	$(LIBPROGS:%=%.res)
+
+#-----------------------------------------------------------------------------#
+
+dep:		$(DEPS)
+
+depend:		$(DEPENDS)
+
+check:		$(OUTS) $(RESS)
+
+check_lib:	$(LIBOUTS) $(LIBRESS)
+
+all:		$(ALLPROGS)
+
+#-----------------------------------------------------------------------------#
