@@ -118,21 +118,24 @@
 #   define HP_PA
 #   define mach_type_known
 # endif
-# if defined(linux) && defined(i386)
-#    define I386
+# if defined(linux) || defined(__linux__)
 #    define LINUX
+# endif
+# if defined(LINUX) && defined(i386)
+#    define I386
 #    define mach_type_known
 # endif
-# if defined(linux) && defined(powerpc)
+# if defined(LINUX) && defined(powerpc)
 #    define POWERPC
-#    define LINUX
+#    define mach_type_known
+# endif
+# if defined(LINUX) && defined(__mc68000__)
+#    define M68K
 #    define mach_type_known
 # endif
 # if defined(__alpha) || defined(__alpha__)
 #   define ALPHA
-#   if defined(linux) || defined(__linux__)
-#     define LINUX
-#   else
+#   if !defined(LINUX)
 #     define OSF1	/* a.k.a Digital Unix */
 #   endif
 #   define mach_type_known
@@ -370,6 +373,29 @@
 #	define HEURISTIC2
 	extern char etext;
 #	define DATASTART ((ptr_t)(&etext))
+#   endif
+#   ifdef LINUX
+#      define OS_TYPE "LINUX"
+#      define STACKBOTTOM ((ptr_t)0xf0000000)
+#      define MPROTECT_VDB
+#       ifdef __ELF__
+#            define DYNAMIC_LOADING
+             extern char **__environ;
+#            define DATASTART ((ptr_t)(&__environ))
+                             /* hideous kludge: __environ is the first */
+                             /* word in crt0.o, and delimits the start */
+                             /* of the data segment, no matter which   */
+                             /* ld options were passed through.        */
+                             /* We could use _etext instead, but that  */
+                             /* would include .rodata, which may       */
+                             /* contain large read-only data tables    */
+                             /* that we'd rather not scan.             */
+             extern int _end;
+#            define DATAEND (&_end)
+#       else
+             extern int etext;
+#            define DATASTART ((ptr_t)((((word) (&etext)) + 0xfff) & ~0xfff))
+#       endif
 #   endif
 #   ifdef SUNOS4
 #	define OS_TYPE "SUNOS4"

@@ -1453,7 +1453,12 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
 # endif
 # if defined(LINUX)
 #   if (LINUX_VERSION_CODE >= 0x20100)
-      void GC_write_fault_handler(int sig, struct sigcontext sc)
+#     if defined(M68K)
+	void GC_write_fault_handler(int sig, int code,
+			struct sigcontext_struct sc)
+#     else
+        void GC_write_fault_handler(int sig, struct sigcontext sc)
+#     endif
 #   else
       void GC_write_fault_handler(int sig, struct sigcontext_struct sc)
 #   endif
@@ -1489,6 +1494,30 @@ SIG_PF GC_old_segv_handler;	/* Also old MSWIN32 ACCESS_VIOLATION filter */
 #   ifdef LINUX
 #     ifdef I386
 	char * addr = (char *) (sc.cr2);
+#     elif defined(M68K)
+        char * addr = NULL;
+
+	struct sigcontext *scp = (struct sigcontext *)(&sc);
+
+	int format = (scp->sc_formatvec >> 12) & 0xf;
+	unsigned long *framedata = (unsigned long *)(scp + 1); 
+	unsigned long ea;
+
+	if (format == 0xa || format == 0xb) {
+		/* 68020/030 */
+		ea = framedata[2];
+	} else if (format == 7) {
+		/* 68040 */
+		ea = framedata[3];
+	} else if (format == 4) {
+		/* 68060 */
+		ea = framedata[0];
+		if (framedata[1] & 0x08000000) {
+			/* correct addr on misaligned access */
+			ea = (ea+4095)&(~4095);
+		}
+	}	
+	addr = (char *)ea;
 #     else
         char * addr = /* As of 1.3.90 there seemed to be no way to do this. */;
 #     endif

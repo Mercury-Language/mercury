@@ -375,9 +375,9 @@ fi
 #
 # check the basics of sigcontext_struct
 #
-AC_MSG_CHECKING(for working \`sigcontext_struct')
-AC_CACHE_VAL(mercury_cv_sigcontext_struct,
-mercury_cv_sigcontext_struct=no
+AC_MSG_CHECKING(for working \`sigcontext_struct' in second arg)
+AC_CACHE_VAL(mercury_cv_sigcontext_struct_2arg,
+mercury_cv_sigcontext_struct_2arg=no
 AC_TRY_RUN([
 /* see runtime/memory.c for documentation of this code */
 
@@ -390,6 +390,8 @@ AC_TRY_RUN([
 #ifdef HAVE_ASM_SIGCONTEXT
 #include <asm/sigcontext.h>
 #endif
+
+#include "mercury_faultaddr.h"
 
 #include <stdio.h>
 
@@ -407,13 +409,80 @@ int main() {
 }
 
 void handler(int signum, struct sigcontext_struct context) {
-	if (signum == SIGSEGV && (int *) context.cr2 == FAULT_ADDRESS) {
+	int *addr;
+	addr = (int *) MR_GET_FAULT_ADDR(context);
+	if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
 		exit(0);
 	} else {
 		exit(1);
 	}
-}], [mercury_cv_sigcontext_struct=yes], [true], [true]))
-AC_MSG_RESULT($mercury_cv_sigcontext_struct)
+}], [mercury_cv_sigcontext_struct_2arg=yes], [true], [true]))
+AC_MSG_RESULT($mercury_cv_sigcontext_struct_2arg)
+
+if test $mercury_cv_sigcontext_struct_2arg = no; then
+	#
+	# check for a sigcontext_struct in the third argument of
+	# the signal handler (Linux-68k has this).
+	#
+	AC_MSG_CHECKING(for working \`sigcontext_struct' in third arg)
+	AC_CACHE_VAL(mercury_cv_sigcontext_struct_3arg,
+	mercury_cv_sigcontext_struct_3arg=no
+
+	/* see runtime/mercury_memory.c for documentation of this code */
+
+	AC_TRY_RUN([
+
+	#define sigcontext_struct sigcontext
+
+	#define __KERNEL__
+	#include <signal.h>
+	#undef __KERNEL__
+
+	#ifdef HAVE_ASM_SIGCONTEXT
+	#include <asm/sigcontext.h>
+	#endif
+
+	#include "mercury_faultaddr.h"
+
+	#include <stdio.h>
+
+	extern void handler(int signum, int code, struct
+		sigcontext_struct info);
+
+	#define FAULT_ADDRESS ((int *)112)
+
+	int main() {
+		signal(SIGSEGV, (void (*)(int))handler);
+
+		/* provoke a SIGSEGV */
+		(*FAULT_ADDRESS)++;
+
+		exit(1);
+	}
+
+	void handler(int signum, int code, struct sigcontext_struct context) {
+		int *addr;
+		addr = (int *) MR_GET_FAULT_ADDR(context);
+		if (signum == SIGSEGV && addr == FAULT_ADDRESS) {
+			exit(0);
+		} else {
+			exit(1);
+		}
+	}], [mercury_cv_sigcontext_struct_3arg=yes], [true], [true]))
+else
+	mercury_cv_sigcontext_struct_3arg=no
+fi
+
+if test $mercury_cv_sigcontext_struct_2arg = yes; then
+	mercury_cv_sigcontext_struct=yes
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT_2ARG)
+fi
+
+if test $mercury_cv_sigcontext_struct_3arg = yes; then
+	mercury_cv_sigcontext_struct=yes
+	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT_3ARG)
+fi
+
 if test $mercury_cv_sigcontext_struct = yes; then
 	AC_DEFINE(HAVE_SIGCONTEXT_STRUCT)
 	AC_DEFINE(HAVE_SIGINFO)
@@ -437,9 +506,16 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	#include <asm/sigcontext.h>
 	#endif
 
+	#include "mercury_faultaddr.h"
+
 	#include <stdio.h>
 
-	extern void handler(int signum, struct sigcontext_struct info);
+	#if HAVE_SIGCONTEXT_STRUCT_3ARG
+	extern void handler(int signum, int code, 
+			struct sigcontext_struct context);
+	#else
+	extern void handler(int signum, struct sigcontext_struct context);
+	#endif
 
 	#define FAULT_ADDRESS ((int *)112)
 
@@ -452,11 +528,16 @@ if test $mercury_cv_sigcontext_struct = yes; then
 		exit(1);
 	}
 
-	void handler(int signum, struct sigcontext_struct info) {
-		if (signum == SIGSEGV &&
-			(int *) info.cr2 == FAULT_ADDRESS &&
-			(long) info.eip != 0)
-		{
+	#if HAVE_SIGCONTEXT_STRUCT_3ARG
+	void handler(int signum, int code, struct sigcontext_struct context) {
+	#else
+	void handler(int signum, struct sigcontext_struct context) {
+	#endif
+		int *addr;
+		long pc;
+		addr = (int *) MR_GET_FAULT_ADDR(context);
+		pc = (long) context.eip;
+		if (signum == SIGSEGV && addr == FAULT_ADDRESS && pc != 0) {
 			exit(0);
 		} else {
 			exit(1);
@@ -1516,6 +1597,10 @@ USE_DLLS=no
 
 case "$host" in
 	i?86-*-linux|i?86-*-linux-gnu)
+		AC_MSG_RESULT(yes)
+		EXT_FOR_SHARED_LIB=so
+		;;
+	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)
 		EXT_FOR_SHARED_LIB=so
 		;;
