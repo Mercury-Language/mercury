@@ -447,7 +447,7 @@ while ($#ARGV >= 0)
 
 		    # Look for field names on the same line as the
 		    # constructor name
-		    while ($body =~ /^[^;%]*([a-z][a-zA-Z0-9]*)[ \t]*::/) {
+		    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
 		    	$name = $1;
 			$kind = "fld";
 			do output_name();
@@ -463,7 +463,7 @@ while ($#ARGV >= 0)
 		} else {
 		    # Look for field names that are not on the
 		    # same line as the constructor name
-		    while ($body =~ /^[^%]*([a-z][a-zA-Z0-9]*)[ \t]*::/) {
+		    while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
 			$name = $1;
 			$kind = "fld";
 			do output_name();
