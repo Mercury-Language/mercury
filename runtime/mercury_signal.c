@@ -67,15 +67,19 @@
 /*---------------------------------------------------------------------------*/
 
 void
-MR_setup_signal(int sig, void *handler, int need_info, 
+MR_setup_signal(int sig, Code *handler, int need_info, 
 		const char *error_message)
 {
-#if	defined(HAVE_SIGINFO_T)
+#if	defined(HAVE_SIGACTION)
 
 	struct sigaction	act;
 
 	if (need_info) {
+  #if 	defined(SA_SIGINFO)
 		act.sa_flags = SA_SIGINFO | SA_RESTART;
+  #else
+		act.sa_flags = SA_RESTART;
+  #endif
 	} else {
 		act.sa_flags = SA_RESTART;
 	}
