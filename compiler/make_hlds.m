@@ -175,7 +175,8 @@ split_type_and_mode(type_and_mode(T,M), T, M, R, R).
 
 preds_add(Preds0, VarSet, Name, Types, Cond, Preds) -->
 	{ length(Types, Arity),
-	  I = predicate(VarSet, Types, Cond, ) },
+	  map__init(Procs),
+	  I = predicate(VarSet, Types, Cond, Procs) },
 	(if some [I2]
 		{ map__search(Preds0, Name - Arity, I2) }
 	then
@@ -191,12 +192,38 @@ preds_add(Preds0, VarSet, Name, Types, Cond, Preds) -->
 		{ map__insert(Preds0, Name - Arity, I, Preds) }
 	).
 
+pred_is_compat(predicate(VarSet, Types, Cond, _),
+	       predicate(VarSet, Types, Cond, _)).
+
 %-----------------------------------------------------------------------------%
 
 module_add_mode(Module0, VarSet, PredName, Modes, Cond, Module) -->
-	{ Module0 = module(Name, Preds0, Types, Insts, Modes) },
-	preds_add(Preds0, VarSet, PredName, Modes, Cond, Preds),
+	{ Module0 = module(Name, Preds, Types, Insts, Modes0) },
+	modes_add(Preds0, VarSet, PredName, Modes, Cond, Preds),
 	{ Module = module(Name, Preds, Types, Insts, Modes) }.
+
+modes_add(Preds0, VarSet, PredName, Modes, Cond, Preds) --->
+	{ length(Modes, Arity) },
+	(if some [P]
+		{ map__search(Preds0, Name - Arity, P) }
+	then
+		{ P = predicate(VarSet, Types, Cond, Procs0 },
+		{ next_mode_id(Procs0, ModeId) },
+		{ map__insert(ModeId, 
+
+		(if 
+			{ map__search(Procs0, 
+		then
+			duplicate_def_warning(Name, Arity, "pred")
+		else
+			multiple_def_error(Name, Arity, "pred")
+		)
+	else
+		undefined_pred_error(PredName, Arity),
+		Preds = Preds0
+	).
+
+next_mode_id
 
 module_add_clause(Module0, VarSet, PredName, Args, Body, Module) --> ...
 
@@ -219,5 +246,13 @@ multiple_def_error(Name, Arity, DefType) -->
 	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string("' multiply defined\n").
+
+undefined_pred_error(Name, Arity) -->
+	io__write_string("error: "),
+	io__write_string("mode declaration for `"
+	prog_out__write_sym(Name),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("' without preceding pred declaration\n").
 
 %-----------------------------------------------------------------------------%
