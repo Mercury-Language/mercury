@@ -250,9 +250,11 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 		% that says so.
 	det_get_soln_context(Detism0, OldInferredSolnContext),
 	proc_info_declared_determinism(Proc0, MaybeDeclaredDetism),
-	( MaybeDeclaredDetism = yes(DeclaredDetism) ->
+	(
+		MaybeDeclaredDetism = yes(DeclaredDetism),
 		det_get_soln_context(DeclaredDetism, DeclaredSolnContext)
 	;
+		MaybeDeclaredDetism = no,
 		DeclaredSolnContext = all_solns
 	),
 	(
@@ -294,8 +296,14 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 	(
 		proc_info_has_io_state_pair(!.ModuleInfo, Proc,
 			_InArgNum, _OutArgNum),
-		determinism_to_code_model(Detism, CodeModel),
-		CodeModel \= model_det
+		(
+			MaybeDeclaredDetism = yes(CheckDetism)
+		;
+			MaybeDeclaredDetism = no,
+			CheckDetism = Detism
+		),
+		determinism_to_code_model(CheckDetism, CheckCodeModel),
+		CheckCodeModel \= model_det
 	->
 		!:Msgs = [has_io_state_but_not_det(PredId, ProcId) | !.Msgs]
 	;
