@@ -30,6 +30,10 @@ Changes to the Mercury standard library:
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
 
+* We've fixed a bug in time.m. Type `tm' didn't store the day of the month,
+  which meant that the functions which required that field (e.g. time__asctime,
+  time__mktime) did not work.
+
 Changes to the Mercury implementation:
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in

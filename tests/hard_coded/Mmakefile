@@ -113,6 +113,7 @@ ORDINARY_PROGS=	\
 	test_bitset \
 	test_imported_no_tag \
 	tim_qual1 \
+	time_test \
 	tuple_test \
 	tuple_test \
 	type_ctor_desc \
