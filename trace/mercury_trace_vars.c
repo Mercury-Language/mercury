@@ -523,7 +523,7 @@ MR_trace_list_vars(FILE *out)
 	}
 
 	for (i = 0; i < MR_point.MR_point_var_count; i++) {
-		fprintf(out, "%9d ", i);
+		fprintf(out, "%9d ", i + 1);
 		MR_trace_print_var_name(out, &MR_point.MR_point_vars[i]);
 		fprintf(out, "\n");
 	}
@@ -535,24 +535,29 @@ const char *
 MR_trace_return_var_info(int var_number, const char **name_ptr,
 	Word *type_info_ptr, Word *value_ptr)
 {
+	const MR_Var_Details *details;
+
 	if (MR_point.MR_point_problem != NULL) {
 		return MR_point.MR_point_problem;
 	}
 
-	if (var_number >= MR_point.MR_point_var_count) {
+	if (var_number < 1) {
+		return "invalid variable number";
+	}
+	if (var_number > MR_point.MR_point_var_count) {
 		return "there aren't that many variables";
 	}
 
+	details = &MR_point.MR_point_vars[var_number - 1];
+	
 	if (name_ptr != NULL) {
-		*name_ptr = MR_point.MR_point_vars[var_number].MR_var_fullname;
+		*name_ptr = details->MR_var_fullname;
 	}
-
 	if (type_info_ptr != NULL) {
-		*type_info_ptr = MR_point.MR_point_vars[var_number].MR_var_type;
+		*type_info_ptr = details->MR_var_type;
 	}
-
 	if (value_ptr != NULL) {
-		*value_ptr = MR_point.MR_point_vars[var_number].MR_var_value;
+		*value_ptr = details->MR_var_value;
 	}
 
 	return NULL;
@@ -570,13 +575,15 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 	}
 
 	if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NUMBER) {
-		if (var_spec.MR_var_spec_number < MR_point.MR_point_var_count)
+		if (var_spec.MR_var_spec_number < 1) {
+			return "invalid variable number";
+		}
+		if (var_spec.MR_var_spec_number > MR_point.MR_point_var_count)
 		{
-			MR_trace_browse_var(out, &MR_point.MR_point_vars
-				[var_spec.MR_var_spec_number], browser);
-		} else {
 			return "there aren't that many variables";
 		}
+		MR_trace_browse_var(out, &MR_point.MR_point_vars
+			[var_spec.MR_var_spec_number - 1], browser);
 	} else if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NAME) {
 		found = FALSE;
 		for (i = 0; i < MR_point.MR_point_var_count; i++) {

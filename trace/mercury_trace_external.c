@@ -842,7 +842,7 @@ MR_trace_make_var_list(void)
 		var_list = list_empty();
 	);
 
-	for (i = var_count - 1; i >= 0; i--) {
+	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, NULL,
 				&type_info, &value);
 		if (problem != NULL) {
@@ -888,7 +888,7 @@ MR_trace_make_var_names_list(void)
 		var_names_list = list_empty();
 	);
 
-	for (i = var_count - 1; i >= 0; i--) {
+	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, &name, NULL, NULL);
 		if (problem != NULL) {
 			fatal_error(problem);
@@ -926,7 +926,7 @@ MR_trace_make_type_list(void)
 		type_list = list_empty();
         );
 
-	for (i = var_count - 1; i >= 0; i--) {
+	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, NULL, &type_info, NULL);
 		if (problem != NULL) {
 			fatal_error(problem);
