@@ -18,6 +18,7 @@
 
 #include "mercury_types.h"	/* for `Code *' */
 #include <stdlib.h>		/* for `size_t' */
+#include <stdio.h>		/* for `FILE' */
 
 #ifdef MR_LOWLEVEL_DEBUG
 extern	void	mkframe_msg(const char *);
