@@ -854,7 +854,7 @@ goedel_quote_string(S0) -->
 		[]
 	).
 
-:- pred goedel_quote_char(character, character).
+:- pred goedel_quote_char(char, char).
 :- mode goedel_quote_char(in, out) is semidet.
 
 goedel_quote_char('"', '"').

@@ -2740,7 +2740,7 @@ output_c_quoted_string(S0) -->
 		[]
 	).
 
-:- pred quote_c_char(character, character).
+:- pred quote_c_char(char, char).
 :- mode quote_c_char(in, out) is semidet.
 
 quote_c_char('"', '"').

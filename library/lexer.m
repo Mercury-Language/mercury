@@ -35,7 +35,7 @@
 	;	ht_sep			% '|'
 	;	comma			% ','
 	;	end			% '.'
-	;	junk(character)		% junk character in the input stream
+	;	junk(char)		% junk character in the input stream
 	;	error(string)		% some other invalid token
 	;	io_error(io__error)	% error reading from the input stream
 	;	eof.			% end-of-file
@@ -65,7 +65,7 @@
 	% lexer__graphic_token_char(Char): true iff `Char'
 	% is "graphic token char" (ISO Prolog 6.4.2).
 	% This is exported for use by term_io__quote_atom.
-:- pred lexer__graphic_token_char(character).
+:- pred lexer__graphic_token_char(char).
 :- mode lexer__graphic_token_char(in) is semidet.
 %-----------------------------------------------------------------------------%
 
@@ -229,7 +229,7 @@ lexer__get_token_2(Token) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred lexer__special_token(character, token).
+:- pred lexer__special_token(char, token).
 :- mode lexer__special_token(in, out) is semidet.
 
 lexer__special_token('(', open).	% May get converted to open_ct
@@ -284,7 +284,7 @@ lexer__get_dot(Token) -->
 		)
 	).
 
-:- pred lexer__whitespace_after_dot(character).
+:- pred lexer__whitespace_after_dot(char).
 :- mode lexer__whitespace_after_dot(in) is semidet.
 
 lexer__whitespace_after_dot(' ').
@@ -373,7 +373,7 @@ lexer__get_comment_2(Token) -->
 
 	% quoted names and quoted strings
 
-:- pred lexer__get_quoted_name(character, list(character), token,
+:- pred lexer__get_quoted_name(char, list(char), token,
 				io__state, io__state).
 :- mode lexer__get_quoted_name(in, in, out, di, uo) is det.
 
@@ -393,7 +393,7 @@ lexer__get_quoted_name(QuoteChar, Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_quoted_name_quote(character, list(character), token,
+:- pred lexer__get_quoted_name_quote(char, list(char), token,
 				io__state, io__state).
 :- mode lexer__get_quoted_name_quote(in, in, out, di, uo) is det.
 
@@ -412,7 +412,7 @@ lexer__get_quoted_name_quote(QuoteChar, Chars, Token) -->
 		)
 	).
 
-:- pred lexer__finish_quoted_name(character, list(character), token).
+:- pred lexer__finish_quoted_name(char, list(char), token).
 :- mode lexer__finish_quoted_name(in, in, out) is det.
 
 lexer__finish_quoted_name(QuoteChar, Chars, Token) :-
@@ -425,7 +425,7 @@ lexer__finish_quoted_name(QuoteChar, Chars, Token) :-
 		error("lexer.m: unknown quote character")
 	).
 
-:- pred lexer__get_quoted_name_escape(character, list(character), token,
+:- pred lexer__get_quoted_name_escape(char, list(char), token,
 					io__state, io__state).
 :- mode lexer__get_quoted_name_escape(in, in, out, di, uo) is det.
 
@@ -451,7 +451,7 @@ lexer__get_quoted_name_escape(QuoteChar, Chars, Token) -->
 		)
 	).
 
-:- pred lexer__escape_char(character, character).
+:- pred lexer__escape_char(char, char).
 :- mode lexer__escape_char(in, out) is semidet.
 
 lexer__escape_char('a', '\a').
@@ -466,7 +466,7 @@ lexer__escape_char('''', '''').
 lexer__escape_char('"', '"').
 lexer__escape_char('`', '`').
 
-:- pred lexer__get_hex_escape(character, list(character), list(character),
+:- pred lexer__get_hex_escape(char, list(char), list(char),
 				token, io__state, io__state).
 :- mode lexer__get_hex_escape(in, in, in, out, di, uo) is det.
 
@@ -488,7 +488,7 @@ lexer__get_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		)
 	).
 
-:- pred lexer__finish_hex_escape(character, list(character), list(character),
+:- pred lexer__finish_hex_escape(char, list(char), list(char),
 				token, io__state, io__state).
 :- mode lexer__finish_hex_escape(in, in, in, out, di, uo) is det.
 
@@ -507,7 +507,7 @@ lexer__finish_hex_escape(QuoteChar, Chars, HexChars, Token) -->
 		)
 	).
 
-:- pred lexer__get_octal_escape(character, list(character), list(character),
+:- pred lexer__get_octal_escape(char, list(char), list(char),
 				token, io__state, io__state).
 :- mode lexer__get_octal_escape(in, in, in, out, di, uo) is det.
 
@@ -537,7 +537,7 @@ lexer__get_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 		)
 	).
 
-:- pred lexer__finish_octal_escape(character, list(character), list(character),
+:- pred lexer__finish_octal_escape(char, list(char), list(char),
 				token, io__state, io__state).
 :- mode lexer__finish_octal_escape(in, in, in, out, di, uo) is det.
 
@@ -560,7 +560,7 @@ lexer__finish_octal_escape(QuoteChar, Chars, OctalChars, Token) -->
 
 	% names and variables
 
-:- pred lexer__get_name(list(character), token, io__state, io__state).
+:- pred lexer__get_name(list(char), token, io__state, io__state).
 :- mode lexer__get_name(in, out, di, uo) is det.
 
 lexer__get_name(Chars, Token) -->
@@ -629,7 +629,7 @@ lexer__get_source_line_number(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_graphic(list(character), token, io__state, io__state).
+:- pred lexer__get_graphic(list(char), token, io__state, io__state).
 :- mode lexer__get_graphic(in, out, di, uo) is det.
 
 lexer__get_graphic(Chars, Token) -->
@@ -649,7 +649,7 @@ lexer__get_graphic(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_variable(list(character), token, io__state, io__state).
+:- pred lexer__get_variable(list(char), token, io__state, io__state).
 :- mode lexer__get_variable(in, out, di, uo) is det.
 
 lexer__get_variable(Chars, Token) -->
@@ -735,7 +735,7 @@ lexer__get_binary(Token) -->
 		)
 	).
 
-:- pred lexer__get_binary_2(list(character), token, io__state, io__state).
+:- pred lexer__get_binary_2(list(char), token, io__state, io__state).
 :- mode lexer__get_binary_2(in, out, di, uo) is det.
 
 lexer__get_binary_2(Chars, Token) -->
@@ -771,7 +771,7 @@ lexer__get_octal(Token) -->
 		)
 	).
 
-:- pred lexer__get_octal_2(list(character), token, io__state, io__state).
+:- pred lexer__get_octal_2(list(char), token, io__state, io__state).
 :- mode lexer__get_octal_2(in, out, di, uo) is det.
 
 lexer__get_octal_2(Chars, Token) -->
@@ -807,7 +807,7 @@ lexer__get_hex(Token) -->
 		)
 	).
 
-:- pred lexer__get_hex_2(list(character), token, io__state, io__state).
+:- pred lexer__get_hex_2(list(char), token, io__state, io__state).
 :- mode lexer__get_hex_2(in, out, di, uo) is det.
 
 lexer__get_hex_2(Chars, Token) -->
@@ -825,7 +825,7 @@ lexer__get_hex_2(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_number(list(character), token, io__state, io__state).
+:- pred lexer__get_number(list(char), token, io__state, io__state).
 :- mode lexer__get_number(in, out, di, uo) is det.
 
 lexer__get_number(Chars, Token) -->
@@ -849,7 +849,7 @@ lexer__get_number(Chars, Token) -->
 
 	% XXX the float literal syntax doesn't match ISO Prolog
 
-:- pred lexer__get_int_dot(list(character), token, io__state, io__state).
+:- pred lexer__get_int_dot(list(char), token, io__state, io__state).
 :- mode lexer__get_int_dot(in, out, di, uo) is det.
 
 lexer__get_int_dot(Chars, Token) -->
@@ -869,7 +869,7 @@ lexer__get_int_dot(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_float_decimals(list(character), token, io__state, io__state).
+:- pred lexer__get_float_decimals(list(char), token, io__state, io__state).
 :- mode lexer__get_float_decimals(in, out, di, uo) is det.
 
 	% we've read past the decimal point, so now get the decimals
@@ -891,7 +891,7 @@ lexer__get_float_decimals(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_float_exponent(list(character), token, io__state, io__state).
+:- pred lexer__get_float_exponent(list(char), token, io__state, io__state).
 :- mode lexer__get_float_exponent(in, out, di, uo) is det.
 
 lexer__get_float_exponent(Chars, Token) -->
@@ -912,7 +912,7 @@ lexer__get_float_exponent(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_float_exponent_2(list(character), token,
+:- pred lexer__get_float_exponent_2(list(char), token,
 				io__state, io__state).
 :- mode lexer__get_float_exponent_2(in, out, di, uo) is det.
 
@@ -936,7 +936,7 @@ lexer__get_float_exponent_2(Chars, Token) -->
 		)
 	).
 
-:- pred lexer__get_float_exponent_3(list(character), token,
+:- pred lexer__get_float_exponent_3(list(char), token,
 					io__state, io__state).
 :- mode lexer__get_float_exponent_3(in, out, di, uo) is det.
 
@@ -962,7 +962,7 @@ lexer__get_float_exponent_3(Chars, Token) -->
 
 	% Utility routines
 
-:- pred lexer__rev_char_list_to_int(list(character), int, token).
+:- pred lexer__rev_char_list_to_int(list(char), int, token).
 :- mode lexer__rev_char_list_to_int(in, in, out) is det.
 
 lexer__rev_char_list_to_int(RevChars, Base, Token) :-
@@ -973,7 +973,7 @@ lexer__rev_char_list_to_int(RevChars, Base, Token) :-
 		Token = error("invalid integer token")
 	).
 
-:- pred lexer__rev_char_list_to_float(list(character), token).
+:- pred lexer__rev_char_list_to_float(list(char), token).
 :- mode lexer__rev_char_list_to_float(in, out) is det.
 
 lexer__rev_char_list_to_float(RevChars, Token) :-
@@ -984,7 +984,7 @@ lexer__rev_char_list_to_float(RevChars, Token) :-
 		Token = error("invalid float token")
 	).
 
-:- pred lexer__rev_char_list_to_string(list(character), string).
+:- pred lexer__rev_char_list_to_string(list(char), string).
 :- mode lexer__rev_char_list_to_string(in, out) is det.
 
 lexer__rev_char_list_to_string(RevChars, String) :-

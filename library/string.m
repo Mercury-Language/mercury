@@ -49,7 +49,7 @@
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String.  Same as string__append(Prefix, _, String).
 
-:- pred string__char_to_string(character, string).
+:- pred string__char_to_string(char, string).
 :- mode string__char_to_string(in, out) is det.
 :- mode string__char_to_string(out, in) is semidet.
 %	string__char_to_string(Char, String).
@@ -69,7 +69,7 @@
 :- mode string__float_to_string(in, out) is det.
 %	Convert an float to a string.
 
-:- pred string__first_char(string, character, string).
+:- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
 :- mode string__first_char(in, out, in) is semidet.	% implied
 :- mode string__first_char(in, in, out) is semidet.	% implied
@@ -108,16 +108,16 @@
 :- mode string__uncapitalize_first(in, out) is det.
 %	Convert the first character (if any) of a string to lowercase.
 
-:- pred string__to_char_list(string, list(character)).
+:- pred string__to_char_list(string, list(char)).
 :- mode string__to_char_list(in, out) is det.
 
-:- pred string__from_char_list(list(character), string).
+:- pred string__from_char_list(list(char), string).
 :- mode string__from_char_list(in, out) is det.
 :- mode string__from_char_list(out, in) is semidet.
 	% XXX second mode should be det too
 	% (but this turns out to be tricky to implement)
 
-:- pred string__from_rev_char_list(list(character), string).
+:- pred string__from_rev_char_list(list(char), string).
 :- mode string__from_rev_char_list(in, out) is det.
 %	Same as string__from_char_list, except that it reverses the order
 %	of the characters.
@@ -153,37 +153,37 @@
 :- mode string__is_alnum_or_underscore(in) is semidet.
 	% True if string contains only letters, digits, and underscores.
 
-:- pred string__pad_left(string, character, int, string).
+:- pred string__pad_left(string, char, int, string).
 :- mode string__pad_left(in, in, in, out) is det.
 %	string__pad_left(String0, PadChar, Width, String):
 %	insert `PadChar's at the left of `String0' until it is at least
 %	as long as `Width', giving `String'.
 
-:- pred string__pad_right(string, character, int, string).
+:- pred string__pad_right(string, char, int, string).
 :- mode string__pad_right(in, in, in, out) is det.
 %	string__pad_right(String0, PadChar, Width, String):
 %	insert `PadChar's at the right of `String0' until it is at least
 %	as long as `Width', giving `String'.
 
-:- pred string__duplicate_char(character, int, string).
+:- pred string__duplicate_char(char, int, string).
 :- mode string__duplicate_char(in, in, out) is det.
 %	string__duplicate_char(Char, Count, String):
 %	construct a string consisting of `Count' occurrences of `Char'
 %	in sequence.
 
-:- pred string__contains_char(string, character).
+:- pred string__contains_char(string, char).
 :- mode string__contains_char(in, in) is semidet.
 %	string__contains_char(String, Char):
 %	succeed if `Char' occurs in `String'.
 
-:- pred string__index(string, int, character).
+:- pred string__index(string, int, char).
 :- mode string__index(in, in, out) is semidet.
 %	string__index(String, Index, Char):
 %	`Char' is the (`Index' + 1)-th character of `String'.
 %	Fails if `Index' is out of range (negative, or greater than or
 %	equal to the length of `String').
 
-:- pred string__index_det(string, int, character).
+:- pred string__index_det(string, int, char).
 :- mode string__index_det(in, in, out) is det.
 %	string__index_det(String, Index, Char):
 %	`Char' is the (`Index' + 1)-th character of `String'.
@@ -331,8 +331,7 @@ string__replace_all(String, SubString0, SubString1, StringOut) :-
 	% find_all_sub_charlist replaces any occurences of the second list of
 	% characters (in order) in the first list of characters with the second
 	% list of characters.
-:- pred find_all_sub_charlist(list(character), list(character), list(character),
-	list(character)).
+:- pred find_all_sub_charlist(list(char), list(char), list(char), list(char)).
 :- mode find_all_sub_charlist(in, in, in, out) is det.
 
 find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
@@ -360,8 +359,7 @@ find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
 	% find_sub_charlist(List, SubList, Before, After) is true iff SubList
 	% is a sublist of List, and Before is the list of characters before
 	% SubList in List, and After is the list after it.
-:- pred find_sub_charlist(list(character), list(character), list(character),
-	list(character)).
+:- pred find_sub_charlist(list(char), list(char), list(char), list(char)).
 :- mode find_sub_charlist(in, in, out, out) is semidet.
 
 find_sub_charlist(CharList, [], [], CharList).
@@ -389,8 +387,7 @@ find_sub_charlist([C|CharList], [S|SubCharList], Before, After) :-
 	% find_rest_of_sub_charlist(List, SubList, After) is true iff List
 	% begins with all the characters in SubList in order, and end with
 	% After.
-:- pred find_rest_of_sub_charlist(list(character), list(character), 
-	list(character)).
+:- pred find_rest_of_sub_charlist(list(char), list(char), list(char)).
 :- mode find_rest_of_sub_charlist(in, in, out) is semidet.
 
 find_rest_of_sub_charlist(CharList, SubCharList, After) :-
@@ -559,7 +556,7 @@ string__from_char_list(CharList, String) :-
 	}
 }").
 
-:- pred string__int_list_to_char_list(list(int), list(character)).
+:- pred string__int_list_to_char_list(list(int), list(char)).
 :- mode string__int_list_to_char_list(in, out) is det.
 
 string__int_list_to_char_list([], []).
@@ -571,7 +568,7 @@ string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-
 	),
 	string__int_list_to_char_list(Codes, Chars).
 
-:- pred string__char_list_to_int_list(list(character), list(int)).
+:- pred string__char_list_to_int_list(list(char), list(int)).
 :- mode string__char_list_to_int_list(in, out) is det.
 :- mode string__char_list_to_int_list(out, in) is semidet.
 
@@ -1571,7 +1568,7 @@ string__special_precision_and_width(-1).
 /*-----------------------------------------------------------------------*/
 
 /*
-:- pred string__contains_char(string, character).
+:- pred string__contains_char(string, char).
 :- mode string__contains_char(in, in) is semidet.
 */
 :- pragma(c_code, string__contains_char(Str::in, Ch::in), "
@@ -1581,7 +1578,7 @@ string__special_precision_and_width(-1).
 /*-----------------------------------------------------------------------*/
 
 /*
-:- pred string__index(string, int, character).
+:- pred string__index(string, int, char).
 :- mode string__index(in, in, out) is semidet.
 */
 :- pragma(c_code, string__index(Str::in, Index::in, Ch::out), "
@@ -1773,7 +1770,7 @@ void sys_init_string_append_module(void) {
 /*-----------------------------------------------------------------------*/
 
 /*
-:- pred string__first_char(string, character, string).
+:- pred string__first_char(string, char, string).
 :- mode string__first_char(in, in, in) is semidet.	% implied
 :- mode string__first_char(in, out, in) is semidet.	% implied
 :- mode string__first_char(in, in, out) is semidet.	% implied

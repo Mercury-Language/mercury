@@ -20,7 +20,7 @@
 :- interface.
 :- import_module io, getopt.
 
-:- pred short_option(character::in, option::out) is semidet.
+:- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
 :- pred special_handler(option::in, special_data::in, option_table::in,
