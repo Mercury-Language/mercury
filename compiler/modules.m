@@ -788,12 +788,21 @@
 :- pred check_for_no_exports(item_list, module_name, io__state, io__state).
 :- mode check_for_no_exports(in, in, di, uo) is det.
 
+%-----------------------------------------------------------------------------%
+	% Java command-line tools utilities.
+
 	% create_java_shell_script:
 	%	Create a shell script with the same name as the given module
 	%	to invoke Java with the appropriate options on the class of the
 	%	same name.
 	
 :- pred create_java_shell_script(module_name::in, bool::out,
+		io__state::di, io__state::uo) is det.
+
+	% list_class_files_for_jar:
+	%	Strip away the path prefix for a list of .class files.
+
+:- pred list_class_files_for_jar(module_name::in, string::in, string::out,
 		io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -4856,27 +4865,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 
 	{ ClassFiles = "$(" ++ MakeVarName ++ ".classes)" },
-	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
-	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
-	{ AnySubdirs = UseSubdirs `or` UseGradeSubdirs },
-	(
-		{ AnySubdirs = yes },
-		module_name_to_file_name(ModuleName, ".class", no, ClassFile),
-		{ ClassSubdir = dir.dirname(ClassFile) },
-		% Here we use the `-C' option of jar to change directory during
-		% execution, then use sed to strip away the Mercury/classs/
-		% prefix to the class files.
-		% Otherwise, the class files would be stored as
-		%	Mercury/classs/*.class
-		% within the jar file, which is not what we want.
-		% XXX It would be nice to avoid this dependency on sed.
-		{ ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
-				"\t\t`echo "" " ++ ClassFiles ++ """" ++
-				" | sed 's| '" ++ ClassSubdir ++ "/| |'`" }
-	;
-		{ AnySubdirs = no },
-		{ ListClassFiles = ClassFiles }
-	),
+	list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles),
 	io__write_strings(DepStream, [
 		JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
 		"\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName, " ",
@@ -7216,6 +7205,8 @@ report_modification_time_warning(SourceFileName, Error) -->
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% Java command-line utilities.
 
 create_java_shell_script(MainModuleName, Succeeded) -->
 	% XXX Extension should be ".bat" on Windows
@@ -7266,6 +7257,30 @@ create_java_shell_script(MainModuleName, Succeeded) -->
 		{ OpenResult = error(Message) },
 		{ error(io__error_message(Message)) },
 		{ Succeeded = no }
+	).
+
+
+list_class_files_for_jar(ModuleName, ClassFiles, ListClassFiles) -->
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	{ AnySubdirs = UseSubdirs `or` UseGradeSubdirs },
+	(
+		{ AnySubdirs = yes },
+		module_name_to_file_name(ModuleName, ".class", no, ClassFile),
+		{ ClassSubdir = dir.dirname(ClassFile) },
+		% Here we use the `-C' option of jar to change directory during
+		% execution, then use sed to strip away the Mercury/classs/
+		% prefix to the class files.
+		% Otherwise, the class files would be stored as
+		%	Mercury/classs/*.class
+		% within the jar file, which is not what we want.
+		% XXX It would be nice to avoid this dependency on sed.
+		{ ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
+				"\t\t`echo "" " ++ ClassFiles ++ """" ++
+				" | sed 's| '" ++ ClassSubdir ++ "/| |'`" }
+	;
+		{ AnySubdirs = no },
+		{ ListClassFiles = ClassFiles }
 	).
 
 %-----------------------------------------------------------------------------%

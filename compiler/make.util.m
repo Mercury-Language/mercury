@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 University of Melbourne.
+% Copyright (C) 2002-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -696,6 +696,8 @@ linked_target_file_name(ModuleName, static_library, FileName) -->
 linked_target_file_name(ModuleName, shared_library, FileName) -->
 	globals__io_lookup_string_option(shared_library_extension, Ext),
 	module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
+linked_target_file_name(ModuleName, java_archive, FileName) -->
+	module_name_to_file_name(ModuleName, ".jar", no, FileName).
 
 :- pred module_target_to_file_name(module_name::in, module_target_type::in,
 		bool::in, file_name::out, io__state::di, io__state::uo) is det.

@@ -89,6 +89,7 @@
 	--->	executable
 	;	static_library
 	;	shared_library
+	;	java_archive
 	.
 
 	% link(TargetType, MainModuleName, ObjectFileNames, Succeeded).
@@ -1065,6 +1066,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 			yes, OutputFileName),
 		create_archive(ErrorStream, OutputFileName, ObjectsList,
 			LinkSucceeded)
+	; { LinkTargetType = java_archive } ->
+		{ Ext = ".jar" },
+		module_name_to_file_name(ModuleName, Ext, yes, OutputFileName),
+		create_java_archive(ErrorStream, ModuleName, OutputFileName,
+			ObjectsList, LinkSucceeded)
 	;
 		(
 			{ LinkTargetType = shared_library },
@@ -1089,6 +1095,9 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 				Ext, yes, OutputFileName)
 		;
 			{ LinkTargetType = static_library },
+			{ error("compile_target_code__link") }
+		;
+			{ LinkTargetType = java_archive },
 			{ error("compile_target_code__link") }
 		;
 			{ LinkTargetType = executable },
@@ -1404,6 +1413,9 @@ make_link_lib(TargetType, LibName, LinkOpt) -->
 		LinkLibFlag = shlib_linker_link_lib_flag,
 		LinkLibSuffix = shlib_linker_link_lib_suffix
 	;
+		TargetType = java_archive,
+		error("make_link_lib: java_archive")
+	;
 		TargetType = static_library,
 		error("make_link_lib: static_library")
 	},
@@ -1453,6 +1465,9 @@ get_system_libs(TargetType, SystemLibs) -->
 	;
 		{ TargetType = static_library },
 		{ error("compile_target_code__get_std_libs: static library") }
+	;
+		{ TargetType = java_archive },
+		{ error("compile_target_code__get_std_libs: java archive") }
 	;
 		{ TargetType = executable },
 		globals__io_lookup_string_option(math_lib, OtherSystemLibs)
@@ -1540,6 +1555,24 @@ create_archive(ErrorStream, LibFileName, ObjectList, Succeeded) -->
 			RanLibCmd, Succeeded)
 	).
 
+:- pred create_java_archive(io__output_stream, module_name, file_name,
+		list(file_name), bool, io__state, io__state).
+:- mode create_java_archive(in, in, in, in, out, di, uo) is det.
+
+create_java_archive(ErrorStream, ModuleName, JarFileName, ObjectList,
+		Succeeded) -->
+	% XXX Maybe these should be set up as options:
+	{ Jar = "jar" },
+	{ JarCreateFlags = "cf" },
+
+	{ join_quoted_string_list(ObjectList, "", "", " ", Objects) },
+	list_class_files_for_jar(ModuleName, Objects, ListClassFiles),
+	{ Cmd = string__append_list([
+		Jar, " ", JarCreateFlags, " ", JarFileName, " ", ListClassFiles
+		]) },
+
+	invoke_system_command(ErrorStream, verbose_commands, Cmd, Succeeded).
+
 get_object_code_type(FileType, ObjectCodeType) -->
 	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
 	globals__io_lookup_string_option(link_with_pic_object_file_extension,
@@ -1563,6 +1596,9 @@ get_object_code_type(FileType, ObjectCodeType) -->
 		FileType = shared_library,
 		ObjectCodeType =
 			( if PicObjExt = ObjExt then non_pic else pic )
+	    ;
+	    	FileType = java_archive,
+		ObjectCodeType = non_pic
 	    ;
 		FileType = executable,
 		( MercuryLinkage = "shared" ->

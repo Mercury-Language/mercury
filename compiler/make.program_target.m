@@ -735,7 +735,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 	),
 	globals__io_set_globals(unsafe_promise_unique(Globals)).
 
-	% Install the `.a', `.so, `.opt' and `.mih' files
+	% Install the `.a', `.so', `.jar', `.opt' and `.mih' files
 	% for the current grade.
 :- pred install_library_grade_files(bool::in, string::in, module_name::in,
 	list(module_name)::in, bool::out, make_info::in, make_info::out,
@@ -748,18 +748,25 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
     ( { DirResult = yes } ->
 	linked_target_file_name(ModuleName, static_library, LibFileName),
 	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
+	linked_target_file_name(ModuleName, java_archive, JarFileName),
 
 	globals__io_lookup_string_option(install_prefix, Prefix),
 	globals__io_lookup_string_option(fullarch, FullArch),
-	{ GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade/FullArch },
 
-	install_file(LibFileName, GradeLibDir, LibSucceded),
-	install_file(SharedLibFileName, GradeLibDir, SharedLibSucceded),
+	( { Grade = "java" } ->
+		{ GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"java" },
+		install_file(JarFileName, GradeLibDir, LibsSucceeded)
+	;
+		{ GradeLibDir = Prefix/"lib"/"mercury"/"lib"/Grade/FullArch },
+		install_file(LibFileName, GradeLibDir, LibSuccess),
+		install_file(SharedLibFileName, GradeLibDir, SharedLibSuccess),
+		{ LibsSucceeded = LibSuccess `and` SharedLibSuccess }
+	),
 
 	list__map_foldl2(install_grade_ints_and_headers(LinkSucceeded, Grade),
-		AllModules, IntsHeadersSucceded, Info0, Info),
+		AllModules, IntsHeadersSucceeded, Info0, Info),
 	{ Succeeded = bool__and_list(
-		[LibSucceded, SharedLibSucceded | IntsHeadersSucceded]) }
+		[LibsSucceeded | IntsHeadersSucceeded]) }
     ;
 	{ Succeeded = no },
     	{ Info = Info0 }
@@ -950,6 +957,7 @@ make_main_module_realclean(ModuleName, Info0, Info) -->
 	linked_target_file_name(ModuleName, executable, ExeFileName),
 	linked_target_file_name(ModuleName, static_library, LibFileName),
 	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
+	linked_target_file_name(ModuleName, java_archive, JarFileName),
 
 	% Remove the symlinks created for `--use-grade-subdirs'.
 	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
@@ -959,12 +967,13 @@ make_main_module_realclean(ModuleName, Info0, Info) -->
 		ThisDirLibFileName),
 	linked_target_file_name(ModuleName, shared_library,
 		ThisDirSharedLibFileName),
+	linked_target_file_name(ModuleName, java_archive, ThisDirJarFileName),
 	globals__io_set_option(use_grade_subdirs, bool(UseGradeSubdirs)),
 
 	list__foldl2(remove_file,
-		[ExeFileName, LibFileName, SharedLibFileName,
+		[ExeFileName, LibFileName, SharedLibFileName, JarFileName,
 		ThisDirExeFileName, ThisDirLibFileName,
-		ThisDirSharedLibFileName],
+		ThisDirSharedLibFileName, ThisDirJarFileName],
 		Info0, Info1),
 	remove_file(ModuleName, ".init", Info1, Info2),
 	remove_init_files(ModuleName, Info2, Info).
