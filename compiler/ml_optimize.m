@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,8 +36,7 @@
 
 :- import_module io.
 
-:- pred optimize(mlds, mlds, io__state, io__state).
-:- mode optimize(in, out, di, uo) is det.
+:- pred optimize(mlds::in, mlds::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,19 +62,21 @@
 		context 	:: mlds__context
 	).
 
-optimize(MLDS0, MLDS) -->
-	globals__io_get_globals(Globals),
-	{ MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0) },
-	{ Defns = optimize_in_defns(Defns0, Globals, 
-		mercury_module_name_to_mlds(ModuleName)) },
-	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) }.
+optimize(MLDS0, MLDS, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),
+	Defns = optimize_in_defns(Defns0, Globals,
+		mercury_module_name_to_mlds(ModuleName)),
+	MLDS = mlds(ModuleName, ForeignCode, Imports, Defns).
 
-:- func optimize_in_defns(mlds__defns, globals, mlds_module_name) 
+:- func optimize_in_defns(mlds__defns, globals, mlds_module_name)
 	= mlds__defns.
-optimize_in_defns(Defns, Globals, ModuleName) = 
+
+optimize_in_defns(Defns, Globals, ModuleName) =
 	list__map(optimize_in_defn(ModuleName, Globals), Defns).
 
 :- func optimize_in_defn(mlds_module_name, globals, mlds__defn) = mlds__defn.
+
 optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
@@ -113,23 +114,23 @@ optimize_in_function_body(OptInfo, defined_here(Statement0)) =
 		defined_here(Statement) :-
 	Statement = optimize_in_statement(OptInfo, Statement0).
 
-:- func optimize_in_maybe_statement(opt_info, 
-		maybe(mlds__statement)) = maybe(mlds__statement).
+:- func optimize_in_maybe_statement(opt_info,
+	maybe(mlds__statement)) = maybe(mlds__statement).
 
 optimize_in_maybe_statement(_, no) = no.
 optimize_in_maybe_statement(OptInfo, yes(Statement0)) = yes(Statement) :-
 	Statement = optimize_in_statement(OptInfo, Statement0).
 
-:- func optimize_in_statements(opt_info, list(mlds__statement)) = 
+:- func optimize_in_statements(opt_info, list(mlds__statement)) =
 	list(mlds__statement).
 
-optimize_in_statements(OptInfo, Statements) = 
+optimize_in_statements(OptInfo, Statements) =
 	list__map(optimize_in_statement(OptInfo), Statements).
 
 :- func optimize_in_statement(opt_info, mlds__statement) =
 	 mlds__statement.
 
-optimize_in_statement(OptInfo, statement(Stmt, Context)) = 
+optimize_in_statement(OptInfo, statement(Stmt, Context)) =
 	statement(optimize_in_stmt(OptInfo ^ context := Context, Stmt),
 	Context).
 
@@ -141,25 +142,25 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 		Stmt = optimize_in_call_stmt(OptInfo, Stmt0)
 	;
 		Stmt0 = block(Defns0, Statements0),
-		maybe_convert_assignments_into_initializers(Defns0, Statements0,
-			OptInfo, Defns1, Statements1),
-		maybe_eliminate_locals(Defns1, Statements1,
-			OptInfo, Defns, Statements2),
+		maybe_convert_assignments_into_initializers(OptInfo,
+			Defns0, Defns1, Statements0, Statements1),
+		maybe_eliminate_locals(OptInfo, Defns1, Defns,
+			Statements1, Statements2),
 		Statements = optimize_in_statements(OptInfo, Statements2),
 		Stmt = block(Defns, Statements)
 	;
 		Stmt0 = while(Rval, Statement0, Once),
-		Stmt = while(Rval, optimize_in_statement(OptInfo, 
+		Stmt = while(Rval, optimize_in_statement(OptInfo,
 			Statement0), Once)
 	;
 		Stmt0 = if_then_else(Rval, Then, MaybeElse),
-		Stmt = if_then_else(Rval, 
-			optimize_in_statement(OptInfo, Then), 
+		Stmt = if_then_else(Rval,
+			optimize_in_statement(OptInfo, Then),
 			maybe_apply(optimize_in_statement(OptInfo), MaybeElse))
 	;
 		Stmt0 = switch(Type, Rval, Range, Cases0, Default0),
 		Stmt = switch(Type, Rval, Range,
-			list__map(optimize_in_case(OptInfo), Cases0), 
+			list__map(optimize_in_case(OptInfo), Cases0),
 			optimize_in_default(OptInfo, Default0))
 	;
 		Stmt0 = do_commit(_),
@@ -169,8 +170,8 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 		Stmt = Stmt0
 	;
 		Stmt0 = try_commit(Ref, TryGoal, HandlerGoal),
-		Stmt = try_commit(Ref, 
-			optimize_in_statement(OptInfo, TryGoal), 
+		Stmt = try_commit(Ref,
+			optimize_in_statement(OptInfo, TryGoal),
 			optimize_in_statement(OptInfo, HandlerGoal))
 	;
 		Stmt0 = label(_Label),
@@ -205,8 +206,8 @@ optimize_in_default(OptInfo, default_case(Statement0)) =
 :- inst g == ground.
 :- inst call ---> ml_backend__mlds__call(g, g, g, g, g, g).
 
-:- func optimize_in_call_stmt(opt_info, mlds__stmt) = mlds__stmt.
-:- mode optimize_in_call_stmt(in, in(call)) = out is det.
+:- func optimize_in_call_stmt(opt_info::in, mlds__stmt::in(call))
+	= (mlds__stmt::out) is det.
 
 optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 	Stmt0 = call(_Signature, FuncRval, _MaybeObject, CallArgs,
@@ -216,7 +217,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 	(
 		globals__lookup_bool_option(OptInfo ^ globals,
 			optimize_tailcalls, yes),
-		can_optimize_tailcall(qual(OptInfo ^ module_name, 
+		can_optimize_tailcall(qual(OptInfo ^ module_name,
 			OptInfo ^ entity_name), Stmt0)
 	->
 		CommentStatement = statement(
@@ -228,7 +229,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 		OptInfo ^ func_params = mlds__func_params(FuncArgs, _RetTypes),
 		generate_assign_args(OptInfo, FuncArgs, CallArgs,
 			AssignStatements, AssignDefns),
-		AssignVarsStatement = statement(block(AssignDefns, 
+		AssignVarsStatement = statement(block(AssignDefns,
 			AssignStatements), OptInfo ^ context),
 
 		CallReplaceStatements = [
@@ -249,10 +250,10 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 		% the --target asm back-end, whereas generating the
 		% appropriate MLDS instructions does.
 		%
-		FuncRval = const(code_addr_const(proc(qual(ModName, 
+		FuncRval = const(code_addr_const(proc(qual(ModName,
                         pred(predicate, _DefnModName, PredName, _Arity,
 				_CodeModel, _NonOutputFunc) - _ProcId),
-			_FuncSignature))), 
+			_FuncSignature))),
 		(
 			PredName = "mark_hp",
 			CallArgs = [mem_addr(Lval)],
@@ -273,6 +274,7 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 	% This specifies how we should branch to the top of the loop
 	% introduced by tailcall opptimization.
 :- func tailcall_loop_top(globals) = mlds__goto_target.
+
 tailcall_loop_top(Globals) =
 	( target_supports_break_and_continue(Globals) ->
 		% the function body has been wrapped inside
@@ -291,6 +293,7 @@ tailcall_loop_top(Globals) =
 	% The label name we use for the top of the loop introduced by
 	% tailcall optimization, when we're doing it with labels & gotos.
 :- func tailcall_loop_label_name = string.
+
 tailcall_loop_label_name = "loop_top".
 
 %----------------------------------------------------------------------------
@@ -298,9 +301,9 @@ tailcall_loop_label_name = "loop_top".
 	% Assign the specified list of rvals to the arguments.
 	% This is used as part of tail recursion optimization (see above).
 
-:- pred generate_assign_args(opt_info, mlds__arguments, list(mlds__rval),
-	list(mlds__statement), list(mlds__defn)).
-:- mode generate_assign_args(in, in, in, out, out) is det.
+:- pred generate_assign_args(opt_info::in, mlds__arguments::in,
+	list(mlds__rval)::in, list(mlds__statement)::out,
+	list(mlds__defn)::out) is det.
 
 generate_assign_args(_, [_|_], [], [], []) :-
 	error("generate_assign_args: length mismatch").
@@ -318,12 +321,12 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
 	->
 		QualVarName = qual(OptInfo ^ module_name, VarName),
 		(
-			% 
+			%
 			% don't bother assigning a variable to itself
 			%
 			ArgRval = lval(var(QualVarName, _VarType))
 		->
-			generate_assign_args(OptInfo, Args, ArgRvals, 
+			generate_assign_args(OptInfo, Args, ArgRvals,
 				Statements, TempDefns)
 		;
 
@@ -352,7 +355,7 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
 			VarName = mlds__var_name(VarNameStr, MaybeNum),
 			TempName = mlds__var_name(VarNameStr ++ "__tmp_copy",
 				MaybeNum),
-			QualTempName = qual(OptInfo ^ module_name, 
+			QualTempName = qual(OptInfo ^ module_name,
 				TempName),
 			Initializer = no_initializer,
 			% We don't need to trace the temporary variables
@@ -364,12 +367,12 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
 				OptInfo ^ context),
 			TempInitStatement = statement(
 				atomic(assign(var(QualTempName, Type),
-					ArgRval)), 
+					ArgRval)),
 				OptInfo ^ context),
 			AssignStatement = statement(
 				atomic(assign(
 					var(QualVarName, Type),
-					lval(var(QualTempName, Type)))), 
+					lval(var(QualTempName, Type)))),
 				OptInfo ^ context),
 			generate_assign_args(OptInfo, Args, ArgRvals,
 				Statements0, TempDefns0),
@@ -391,7 +394,7 @@ optimize_func(OptInfo, defined_here(Statement)) =
 
 :- func optimize_func_stmt(opt_info, mlds__statement) = (mlds__statement).
 
-optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) = 
+optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 		mlds__statement(Stmt, Context) :-
 
 		% Tailcall optimization -- if we do a self tailcall, we
@@ -402,7 +405,7 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 		stmt_contains_statement(Stmt0, Call),
 		Call = mlds__statement(CallStmt, _),
 		can_optimize_tailcall(
-			qual(OptInfo ^ module_name, OptInfo ^ entity_name), 
+			qual(OptInfo ^ module_name, OptInfo ^ entity_name),
 			CallStmt)
 	->
 		Comment = atomic(comment("tailcall optimized into a loop")),
@@ -487,7 +490,7 @@ target_supports_break_and_continue_2(java) = yes.
 %		int v2 = 2;
 %		int v3 = 3;
 %		int v4;
-%	
+%
 %		foo();
 %		v4 = 4;
 %		...
@@ -545,43 +548,38 @@ target_supports_break_and_continue_2(java) = yes.
 %		int v2 = v1 + 1;	// wrong -- v2 == 1
 %		...
 
-:- pred maybe_convert_assignments_into_initializers(
-		mlds__defns, mlds__statements, opt_info,
-		mlds__defns, mlds__statements).
-:- mode maybe_convert_assignments_into_initializers(in, in, in, out, out)
-		is det.
+:- pred maybe_convert_assignments_into_initializers(opt_info::in,
+	mlds__defns::in, mlds__defns::out,
+	mlds__statements::in, mlds__statements::out) is det.
 
-maybe_convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
-		Defns, Statements) :-
+maybe_convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 	(
 		% Check if --optimize-initializations is enabled
 		globals__lookup_bool_option(OptInfo ^ globals,
 			optimize_initializations, yes)
 	->
-		convert_assignments_into_initializers(Defns0, Statements0,
-			OptInfo, Defns, Statements)
+		convert_assignments_into_initializers(OptInfo, !Defns,
+			!Statements)
 	;
-		Defns = Defns0,
-		Statements = Statements0
+		true
 	).
 
-:- pred convert_assignments_into_initializers(mlds__defns, mlds__statements,
-		opt_info, mlds__defns, mlds__statements).
-:- mode convert_assignments_into_initializers(in, in, in, out, out) is det.
+:- pred convert_assignments_into_initializers(opt_info::in,
+	mlds__defns::in, mlds__defns::out,
+	mlds__statements::in, mlds__statements::out) is det.
 
-convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
-		Defns, Statements) :-
+convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 	(
 		% Check if the first statement in the block is
 		% an assignment to one of the variables declared in
 		% the block.
-		Statements0 = [AssignStatement | Statements1],
+		!.Statements = [AssignStatement | !:Statements],
 		AssignStatement = statement(atomic(assign(LHS, RHS)), _),
 		LHS = var(ThisVar, _ThisType),
 		ThisVar = qual(Qualifier, VarName),
 		ThisData = qual(Qualifier, var(VarName)),
 		Qualifier = OptInfo ^ module_name,
-		list__takewhile(isnt(var_defn(VarName)), Defns0, 
+		list__takewhile(isnt(var_defn(VarName)), !.Defns,
 			_PrecedingDefns, [_VarDefn | FollowingDefns]),
 
 		% We must check that the value being assigned
@@ -602,18 +600,18 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 	->
 		% Replace the assignment statement with an initializer
 		% on the variable declaration.
-		set_initializer(Defns0, VarName, RHS, Defns1),
+		set_initializer(!.Defns, VarName, RHS, !:Defns),
 
 		% Now try to apply the same optimization again
-		convert_assignments_into_initializers(Defns1, Statements1,
-			OptInfo, Defns, Statements)
+		convert_assignments_into_initializers(OptInfo, !Defns,
+			!Statements)
 	;
 		% No optimization possible -- leave the block unchanged.
-		Defns = Defns0,
-		Statements = Statements0
+		true
 	).
 
 :- pred var_defn(var_name::in, mlds__defn::in) is semidet.
+
 var_defn(VarName, Defn) :-
 	Defn = mlds__defn(data(var(VarName)), _, _, _).
 
@@ -622,15 +620,15 @@ var_defn(VarName, Defn) :-
 	%	in Defns0, and replaces the initializer of that
 	%	definition with init_obj(Rval).
 	%
-:- pred set_initializer(mlds__defns, mlds__var_name, mlds__rval, mlds__defns).
-:- mode set_initializer(in, in, in, out) is det.
+:- pred set_initializer(mlds__defns::in, mlds__var_name::in, mlds__rval::in,
+	mlds__defns::out) is det.
 
 set_initializer([], _, _, _) :-
 	unexpected(this_file, "set_initializer: var not found!").
 set_initializer([Defn0 | Defns0], VarName, Rval, [Defn | Defns]) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
-		Name = data(var(VarName)), 
+		Name = data(var(VarName)),
 		DefnBody0 = mlds__data(Type, _OldInitializer, GC_TraceCode)
 	->
 		DefnBody = mlds__data(Type, init_obj(Rval), GC_TraceCode),
@@ -655,36 +653,30 @@ set_initializer([Defn0 | Defns0], VarName, Rval, [Defn | Defns]) :-
 % out which variables could be eliminated, and then do another
 % pass to actually eliminate them.
 
-:- pred maybe_eliminate_locals(mlds__defns, mlds__statements,
-		opt_info, mlds__defns, mlds__statements).
-:- mode maybe_eliminate_locals(in, in, in, out, out) is det.
+:- pred maybe_eliminate_locals(opt_info::in, mlds__defns::in, mlds__defns::out,
+	mlds__statements::in, mlds__statements::out) is det.
 
-maybe_eliminate_locals(Defns0, Statements0, OptInfo, Defns, Statements) :-
+maybe_eliminate_locals(OptInfo, !Defns, !Statements) :-
 	globals__lookup_bool_option(OptInfo ^ globals, eliminate_local_vars,
 		EliminateLocalVars),
 	( EliminateLocalVars = yes ->
-		eliminate_locals(Defns0, Statements0, OptInfo,
-			Defns, Statements)
+		eliminate_locals(OptInfo, !Defns, !Statements)
 	;
-		Defns = Defns0,
-		Statements = Statements0
+		true
 	).
 
-:- pred eliminate_locals(mlds__defns, mlds__statements,
-		opt_info, mlds__defns, mlds__statements).
-:- mode eliminate_locals(in, in, in, out, out) is det.
+:- pred eliminate_locals(opt_info::in, mlds__defns::in, mlds__defns::out,
+	mlds__statements::in, mlds__statements::out) is det.
 
-eliminate_locals([], Statements, _OptInfo, [], Statements).
-eliminate_locals([Defn0 | Defns0], Statements0, OptInfo, Defns, Statements) :-
+eliminate_locals(_OptInfo, [], [], Statements, Statements).
+eliminate_locals(OptInfo, [Defn0 | Defns0], Defns, !Statements) :-
 	(
-		try_to_eliminate_defn(Defn0, Defns0, Statements0, OptInfo,
-			Defns1, Statements1)
+		try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns1,
+			!Statements)
 	->
-		eliminate_locals(Defns1, Statements1, OptInfo,
-			Defns, Statements)
+		eliminate_locals(OptInfo, Defns1, Defns, !Statements)
 	;
-		eliminate_locals(Defns0, Statements0, OptInfo,
-			Defns2, Statements),
+		eliminate_locals(OptInfo, Defns0, Defns2, !Statements),
 		Defns = [Defn0 | Defns2]
 	).
 
@@ -716,12 +708,11 @@ eliminate_locals([Defn0 | Defns0], Statements0, OptInfo, Defns, Statements) :-
 	% This will fail if the definition is not a variable definition,
 	% or if any of the statements or definitions take the address
 	% of the variable, or assign to it.
-:- pred try_to_eliminate_defn(mlds__defn::in, mlds__defns::in,
-		mlds__statements::in, opt_info::in,
-		mlds__defns::out, mlds__statements::out) is semidet.
+:- pred try_to_eliminate_defn(opt_info::in, mlds__defn::in, mlds__defns::in,
+	mlds__defns::out, mlds__statements::in, mlds__statements::out)
+	is semidet.
 
-try_to_eliminate_defn(Defn0, Defns0, Statements0, OptInfo,
-		Defns, Statements) :-
+try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
 	Defn0 = mlds__defn(Name, _Context, Flags, DefnBody),
 
 	% Check if this definition is a local variable definition...
@@ -732,12 +723,10 @@ try_to_eliminate_defn(Defn0, Defns0, Statements0, OptInfo,
 	% ... with a known initial value.
 	QualVarName = qual(OptInfo ^ module_name, VarName),
 	(
-		Initializer = init_obj(Rval),
-		Statements1 = Statements0
+		Initializer = init_obj(Rval)
 	;
 		Initializer = no_initializer,
-		find_initial_val_in_statements(QualVarName, Statements0,
-			Rval, Statements1)
+		find_initial_val_in_statements(QualVarName, Rval, !Statements)
 	),
 
 	% It's only safe to do this transformation if the
@@ -766,8 +755,8 @@ try_to_eliminate_defn(Defn0, Defns0, Statements0, OptInfo,
 	% Replace uses of this variable with the variable's value,
 	% checking that none of the statements or definitions took the
 	% address of the variable, or assigned to it.
-	eliminate_var(QualVarName, Rval, Defns0, Defns,
-		Statements1, Statements, Count, Invalidated),
+	eliminate_var(QualVarName, Rval, Defns0, Defns, !Statements,
+		Count, Invalidated),
 	Invalidated = no,
 
 	% Make sure that we didn't duplicate the rval,
@@ -779,6 +768,7 @@ try_to_eliminate_defn(Defn0, Defns0, Statements0, OptInfo,
 	).
 
 :- pred rval_is_cheap_enough_to_duplicate(mlds__rval::in) is semidet.
+
 rval_is_cheap_enough_to_duplicate(Rval) :-
 	( Rval = const(_)
 	; Rval = lval(var(_, _))
@@ -789,6 +779,7 @@ rval_is_cheap_enough_to_duplicate(Rval) :-
 	% Succeed only if the specified rval definitely won't change
 	% in value.
 :- pred rval_will_not_change(mlds__rval::in) is semidet.
+
 rval_will_not_change(const(_)).
 rval_will_not_change(mkword(_Tag, Rval)) :-
 	rval_will_not_change(Rval).
@@ -807,6 +798,7 @@ rval_will_not_change(mem_addr(field(_, Address, _, _, _))) :-
 	% throw an exception, or abort.
 	% We use a pretty conservative approximation...
 :- pred rval_cannot_throw(mlds__rval::in) is semidet.
+
 rval_cannot_throw(const(_)).
 rval_cannot_throw(mkword(_Tag, Rval)) :-
 	rval_cannot_throw(Rval).
@@ -818,13 +810,14 @@ rval_cannot_throw(self(_)).
 % Return the initial value, and a modified list of statements
 % with the initial assignment deleted.
 % Fail if the first value can't be determined.
-:- pred find_initial_val_in_statements(mlds__var::in, mlds__statements::in,
-		mlds__rval::out, mlds__statements::out) is semidet.
-find_initial_val_in_statements(VarName, [Statement0 | Statements0],
-		Rval, Statements) :-
+:- pred find_initial_val_in_statements(mlds__var::in, mlds__rval::out,
+	mlds__statements::in, mlds__statements::out) is semidet.
+
+find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
+		Statements) :-
 	(
-		find_initial_val_in_statement(VarName, Statement0,
-			Rval1, Statement1)
+		find_initial_val_in_statement(VarName, Rval1,
+			Statement0, Statement1)
 	->
 		Rval = Rval1,
 		( Statement1 = mlds__statement(block([], []), _) ->
@@ -846,15 +839,15 @@ find_initial_val_in_statements(VarName, [Statement0 | Statements0],
 			statement_contains_statement(Statement0, Label),
 			Label = mlds__statement(label(_), _)
 		),
-		find_initial_val_in_statements(VarName, Statements0,
-			Rval, Statements1),
+		find_initial_val_in_statements(VarName, Rval,
+			Statements0, Statements1),
 		Statements = [Statement0 | Statements1]
 	).
 
-:- pred find_initial_val_in_statement(mlds__var::in, mlds__statement::in,
-		mlds__rval::out, mlds__statement::out) is semidet.
+:- pred find_initial_val_in_statement(mlds__var::in, mlds__rval::out,
+	mlds__statement::in, mlds__statement::out) is semidet.
 
-find_initial_val_in_statement(Var, Statement0, Rval, Statement) :-
+find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
 	Statement0 = mlds__statement(Stmt0, Context),
 	Statement = mlds__statement(Stmt, Context),
 	( Stmt0 = atomic(assign(var(Var, _Type), Rval0)) ->
@@ -865,8 +858,8 @@ find_initial_val_in_statement(Var, Statement0, Rval, Statement) :-
 		Var = qual(Mod, UnqualVarName),
 		Data = qual(Mod, var(UnqualVarName)),
 		\+ defns_contains_var(Defns0, Data),
-		find_initial_val_in_statements(Var, SubStatements0,
-			Rval, SubStatements),
+		find_initial_val_in_statements(Var, Rval,
+			SubStatements0, SubStatements),
 		Stmt = block(Defns0, SubStatements)
 	;
 		fail
@@ -876,23 +869,21 @@ find_initial_val_in_statement(Var, Statement0, Rval, Statement) :-
 	% in the specified definitions and statements.
 	% This will return a count of how many occurrences
 	% of the variable there were.
-	% It will also return Invalidated = yes if 
+	% It will also return Invalidated = yes if
 	% any of the statements or definitions take the address
 	% of the variable, or assign to it; in that case,
 	% the transformation should not be performed.
 :- pred eliminate_var(mlds__var::in, mlds__rval::in,
-		mlds__defns::in, mlds__defns::out,
-		mlds__statements::in, mlds__statements::out,
-		int::out, bool::out) is det.
+	mlds__defns::in, mlds__defns::out,
+	mlds__statements::in, mlds__statements::out,
+	int::out, bool::out) is det.
 
-eliminate_var(QualVarName, VarRval, Defns0, Defns1,
-		Statements0, Statements, Count, Invalidated) :-
+eliminate_var(QualVarName, VarRval, !Defns, !Statements, Count, Invalidated) :-
 	Count0 = 0,
 	Invalidated0 = no,
 	VarElimInfo0 = var_elim_info(QualVarName, VarRval, Count0,
 		Invalidated0),
-	eliminate_var_in_block(Defns0, Defns1,
-		Statements0, Statements, VarElimInfo0, VarElimInfo),
+	eliminate_var_in_block(!Defns, !Statements, VarElimInfo0, VarElimInfo),
 	Count = VarElimInfo ^ replace_count,
 	Invalidated = VarElimInfo ^ invalidated.
 
@@ -904,331 +895,354 @@ eliminate_var(QualVarName, VarRval, Defns0, Defns1,
 %	occurs as an lvalue.
 
 :- pred eliminate_var_in_block(mlds__defns::in, mlds__defns::out,
-		mlds__statements::in, mlds__statements::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	mlds__statements::in, mlds__statements::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_block(Defns0, Defns, Statements0, Statements) -->
-	eliminate_var_in_defns(Defns0, Defns),
-	eliminate_var_in_statements(Statements0, Statements).
+eliminate_var_in_block(!Defns, !Statements, !VarElimInfo) :-
+	eliminate_var_in_defns(!Defns, !VarElimInfo),
+	eliminate_var_in_statements(!Statements, !VarElimInfo).
 
 :- pred eliminate_var_in_defns(mlds__defns::in, mlds__defns::out,
-		var_elim_info::in, var_elim_info::out) is det.
-	
-eliminate_var_in_defns(Defns0, Defns) -->
-	list__map_foldl(eliminate_var_in_defn, Defns0, Defns).
+	var_elim_info::in, var_elim_info::out) is det.
+
+eliminate_var_in_defns(!Defns, !VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_defn, !Defns, !VarElimInfo).
 
 :- pred eliminate_var_in_defn(mlds__defn::in, mlds__defn::out,
-		var_elim_info::in, var_elim_info::out) is det.
-	
-eliminate_var_in_defn(Defn0, Defn) -->
-	{ Defn0 = mlds__defn(Name, Context, Flags, DefnBody0) },
+	var_elim_info::in, var_elim_info::out) is det.
+
+eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
+	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
-		{ DefnBody0 = mlds__data(Type, Initializer0,
-			MaybeGCTraceCode) },
-		eliminate_var_in_initializer(Initializer0, Initializer),
-		{ DefnBody = mlds__data(Type, Initializer, MaybeGCTraceCode) }
+		DefnBody0 = mlds__data(Type, Initializer0,
+			MaybeGCTraceCode),
+		eliminate_var_in_initializer(Initializer0, Initializer,
+			!VarElimInfo),
+		DefnBody = mlds__data(Type, Initializer, MaybeGCTraceCode)
 	;
-		{ DefnBody0 = mlds__class(_) },
+		DefnBody0 = mlds__class(_),
 		% We assume that nested classes don't refer to local variables
 		% in the containing scope
-		{ DefnBody = DefnBody0 }
+		DefnBody = DefnBody0
 	;
-		{ DefnBody0 = mlds__function(Id, Params, Body0, Attributes) },
-		eliminate_var_in_function_body(Body0, Body),
-		{ DefnBody = mlds__function(Id, Params, Body, Attributes) }
+		DefnBody0 = mlds__function(Id, Params, Body0, Attributes),
+		eliminate_var_in_function_body(Body0, Body, !VarElimInfo),
+		DefnBody = mlds__function(Id, Params, Body, Attributes)
 	),
-	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) }.
+	Defn = mlds__defn(Name, Context, Flags, DefnBody).
 
 :- pred eliminate_var_in_function_body(
-		mlds__function_body::in, mlds__function_body::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	mlds__function_body::in, mlds__function_body::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_function_body(external, external) --> [].
-eliminate_var_in_function_body(defined_here(Stmt0), defined_here(Stmt)) -->
-	eliminate_var_in_statement(Stmt0, Stmt).
+eliminate_var_in_function_body(external, external, !VarElimInfo).
+eliminate_var_in_function_body(defined_here(Stmt0), defined_here(Stmt),
+		!VarElimInfo) :-
+	eliminate_var_in_statement(Stmt0, Stmt, !VarElimInfo).
 
 :- pred eliminate_var_in_initializer(
-		mlds__initializer::in, mlds__initializer::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	mlds__initializer::in, mlds__initializer::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_initializer(no_initializer, no_initializer) --> [].
-eliminate_var_in_initializer(init_obj(Rval0), init_obj(Rval)) -->
-	eliminate_var_in_rval(Rval0, Rval).
-eliminate_var_in_initializer(init_array(Elements0), init_array(Elements)) -->
-	list__map_foldl(eliminate_var_in_initializer, Elements0, Elements).
+eliminate_var_in_initializer(no_initializer, no_initializer, !VarElimInfo).
+eliminate_var_in_initializer(init_obj(Rval0), init_obj(Rval), !VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
+eliminate_var_in_initializer(init_array(Elements0), init_array(Elements),
+		!VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_initializer, Elements0, Elements,
+		!VarElimInfo).
 eliminate_var_in_initializer(init_struct(Type, Members0),
-		init_struct(Type, Members)) -->
-	list__map_foldl(eliminate_var_in_initializer, Members0, Members).
+		init_struct(Type, Members), !VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_initializer, Members0, Members,
+		!VarElimInfo).
 
-:- pred eliminate_var_in_rvals(
-		list(mlds__rval)::in, list(mlds__rval)::out,
-		var_elim_info::in, var_elim_info::out) is det.
+:- pred eliminate_var_in_rvals(list(mlds__rval)::in, list(mlds__rval)::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_rvals(Rvals0, Rvals) -->
-	list__map_foldl(eliminate_var_in_rval, Rvals0, Rvals).
+eliminate_var_in_rvals(!Rvals, !VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_rval, !Rvals, !VarElimInfo).
 
 :- pred eliminate_var_in_maybe_rval(
-		maybe(mlds__rval)::in, maybe(mlds__rval)::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	maybe(mlds__rval)::in, maybe(mlds__rval)::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_maybe_rval(no, no) --> [].
-eliminate_var_in_maybe_rval(yes(Rval0), yes(Rval)) -->
-	eliminate_var_in_rval(Rval0, Rval).
+eliminate_var_in_maybe_rval(no, no, !VarElimInfo).
+eliminate_var_in_maybe_rval(yes(Rval0), yes(Rval), !VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
 
 :- pred eliminate_var_in_rval(mlds__rval::in, mlds__rval::out,
-		var_elim_info::in, var_elim_info::out) is det.
-	
-eliminate_var_in_rval(Rval0, Rval) -->
+	var_elim_info::in, var_elim_info::out) is det.
+
+eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
 	(
-		{ Rval0 = lval(Lval0) },
-		VarName =^ var_name,
-		( { Lval0 = var(VarName, _) } ->
+		Rval0 = lval(Lval0),
+		VarName = !.VarElimInfo ^ var_name,
+		( Lval0 = var(VarName, _) ->
 			% we found an rvalue occurrence of the variable --
 			% replace it with the rval for the variable's value,
 			% and increment the counter for the number of
 			% occurrences that we have replaced.
-			Rval =^ var_value,
-			Count0 =^ replace_count,
-			^replace_count := Count0 + 1
+			Rval = !.VarElimInfo ^ var_value,
+			Count0 = !.VarElimInfo ^ replace_count,
+			!:VarElimInfo = !.VarElimInfo ^ replace_count
+				:= Count0 + 1
 		;
-			eliminate_var_in_lval(Lval0, Lval),
-			{ Rval = lval(Lval) }
+			eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+			Rval = lval(Lval)
 		)
 	;
-		{ Rval0 = mkword(Tag, ArgRval0) },
-		eliminate_var_in_rval(ArgRval0, ArgRval),
-		{ Rval = mkword(Tag, ArgRval) }
+		Rval0 = mkword(Tag, ArgRval0),
+		eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
+		Rval = mkword(Tag, ArgRval)
 	;
-		{ Rval0 = const(_) },
-		{ Rval = Rval0 }
+		Rval0 = const(_),
+		Rval = Rval0
 	;
-		{ Rval0 = unop(Op, ArgRval0) },
-		eliminate_var_in_rval(ArgRval0, ArgRval),
-		{ Rval = unop(Op, ArgRval) }
+		Rval0 = unop(Op, ArgRval0),
+		eliminate_var_in_rval(ArgRval0, ArgRval, !VarElimInfo),
+		Rval = unop(Op, ArgRval)
 	;
-		{ Rval0 = binop(Op, Arg1Rval0, Arg2Rval0) },
-		eliminate_var_in_rval(Arg1Rval0, Arg1Rval),
-		eliminate_var_in_rval(Arg2Rval0, Arg2Rval),
-		{ Rval = binop(Op, Arg1Rval, Arg2Rval) }
+		Rval0 = binop(Op, Arg1Rval0, Arg2Rval0),
+		eliminate_var_in_rval(Arg1Rval0, Arg1Rval, !VarElimInfo),
+		eliminate_var_in_rval(Arg2Rval0, Arg2Rval, !VarElimInfo),
+		Rval = binop(Op, Arg1Rval, Arg2Rval)
 	;
-		{ Rval0 = mem_addr(Lval0) },
-		eliminate_var_in_lval(Lval0, Lval),
-		{ Rval = mem_addr(Lval) }
+		Rval0 = mem_addr(Lval0),
+		eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+		Rval = mem_addr(Lval)
 	;
-		{ Rval0 = self(_Type) },
-		{ Rval = Rval0 }
+		Rval0 = self(_Type),
+		Rval = Rval0
 	).
 
-:- pred eliminate_var_in_lvals(
-		list(mlds__lval)::in, list(mlds__lval)::out,
-		var_elim_info::in, var_elim_info::out) is det.
+:- pred eliminate_var_in_lvals(list(mlds__lval)::in, list(mlds__lval)::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_lvals(Lvals0, Lvals) -->
-	list__map_foldl(eliminate_var_in_lval, Lvals0, Lvals).
+eliminate_var_in_lvals(!Lvals, !VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_lval, !Lvals, !VarElimInfo).
 
 :- pred eliminate_var_in_lval(mlds__lval::in, mlds__lval::out,
-		var_elim_info::in, var_elim_info::out) is det.
-	
-eliminate_var_in_lval(Lval0, Lval) -->
+	var_elim_info::in, var_elim_info::out) is det.
+
+eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
 	(
-		{ Lval0 = field(MaybeTag, Rval0, FieldId, FieldType, PtrType) },
-		eliminate_var_in_rval(Rval0, Rval),
-		{ Lval = field(MaybeTag, Rval, FieldId, FieldType, PtrType) }
+		Lval0 = field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
+		eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+		Lval = field(MaybeTag, Rval, FieldId, FieldType, PtrType)
 	;
-		{ Lval0 = mem_ref(Rval0, Type) },
-		eliminate_var_in_rval(Rval0, Rval),
-		{ Lval = mem_ref(Rval, Type) }
+		Lval0 = mem_ref(Rval0, Type),
+		eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+		Lval = mem_ref(Rval, Type)
 	;
-		{ Lval0 = var(VarName, _Type) },
-		( VarName =^ var_name ->
+		Lval0 = var(VarName, _Type),
+		( VarName = !.VarElimInfo ^ var_name ->
 			% we found an lvalue occurrence of the variable --
 			% if the variable that we are trying to eliminate
 			% has its address is taken, or is assigned to,
 			% or in general if it is used as an lvalue,
 			% then it's not safe to eliminate it
-			^invalidated := yes
+			!:VarElimInfo = !.VarElimInfo ^ invalidated := yes
 		;
-			[]
+			true
 		),
-		{ Lval = Lval0 }
+		Lval = Lval0
 	).
 
 :- pred eliminate_var_in_statements(
-		mlds__statements::in, mlds__statements::out,
-		var_elim_info::in, var_elim_info::out) is det.
-	
-eliminate_var_in_statements(Statements0, Statements) -->
-	list__map_foldl(eliminate_var_in_statement, Statements0, Statements).
+	mlds__statements::in, mlds__statements::out,
+	var_elim_info::in, var_elim_info::out) is det.
+
+eliminate_var_in_statements(!Statements, !VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_statement, !Statements, !VarElimInfo).
 
 :- pred eliminate_var_in_maybe_statement(
-		maybe(mlds__statement)::in, maybe(mlds__statement)::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	maybe(mlds__statement)::in, maybe(mlds__statement)::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_maybe_statement(no, no) --> [].
-eliminate_var_in_maybe_statement(yes(Statement0), yes(Statement)) -->
-	eliminate_var_in_statement(Statement0, Statement).
+eliminate_var_in_maybe_statement(no, no, !VarElimInfo).
+eliminate_var_in_maybe_statement(yes(Statement0), yes(Statement),
+		!VarElimInfo) :-
+	eliminate_var_in_statement(Statement0, Statement, !VarElimInfo).
 
 :- pred eliminate_var_in_statement(mlds__statement::in, mlds__statement::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_statement(Statement0, Statement) -->
-	{ Statement0 = mlds__statement(Stmt0, Context) },
-	eliminate_var_in_stmt(Stmt0, Stmt),
-	{ Statement = mlds__statement(Stmt, Context) }.
+eliminate_var_in_statement(Statement0, Statement, !VarElimInfo) :-
+	Statement0 = mlds__statement(Stmt0, Context),
+	eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo),
+	Statement = mlds__statement(Stmt, Context).
 
 :- pred eliminate_var_in_stmt(mlds__stmt::in, mlds__stmt::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_stmt(Stmt0, Stmt) -->
+eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
 	(
-		{ Stmt0 = block(Defns0, Statements0) },
-		eliminate_var_in_block(Defns0, Defns, Statements0, Statements),
-		{ Stmt = block(Defns, Statements) }
+		Stmt0 = block(Defns0, Statements0),
+		eliminate_var_in_block(Defns0, Defns, Statements0, Statements,
+			!VarElimInfo),
+		Stmt = block(Defns, Statements)
 	;
-		{ Stmt0 = while(Rval0, Statement0, Once) },
-		eliminate_var_in_rval(Rval0, Rval),
-		eliminate_var_in_statement(Statement0, Statement),
-		{ Stmt = while(Rval, Statement, Once) }
+		Stmt0 = while(Rval0, Statement0, Once),
+		eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+		eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
+		Stmt = while(Rval, Statement, Once)
 	;
-		{ Stmt0 = if_then_else(Cond0, Then0, MaybeElse0) },
-		eliminate_var_in_rval(Cond0, Cond),
-		eliminate_var_in_statement(Then0, Then),
-		eliminate_var_in_maybe_statement(MaybeElse0, MaybeElse),
-		{ Stmt = if_then_else(Cond, Then, MaybeElse) }
+		Stmt0 = if_then_else(Cond0, Then0, MaybeElse0),
+		eliminate_var_in_rval(Cond0, Cond, !VarElimInfo),
+		eliminate_var_in_statement(Then0, Then, !VarElimInfo),
+		eliminate_var_in_maybe_statement(MaybeElse0, MaybeElse,
+			!VarElimInfo),
+		Stmt = if_then_else(Cond, Then, MaybeElse)
 	;
-		{ Stmt0 = switch(Type, Val0, Range, Cases0, Default0) },
-		eliminate_var_in_rval(Val0, Val),
-		list__map_foldl(eliminate_var_in_case, Cases0, Cases),
-		eliminate_var_in_default(Default0, Default),
-		{ Stmt = switch(Type, Val, Range, Cases, Default) }
+		Stmt0 = switch(Type, Val0, Range, Cases0, Default0),
+		eliminate_var_in_rval(Val0, Val, !VarElimInfo),
+		list__map_foldl(eliminate_var_in_case, Cases0, Cases,
+			!VarElimInfo),
+		eliminate_var_in_default(Default0, Default, !VarElimInfo),
+		Stmt = switch(Type, Val, Range, Cases, Default)
 	;
-		{ Stmt0 = label(_) },
-		{ Stmt = Stmt0 }
+		Stmt0 = label(_),
+		Stmt = Stmt0
 	;
-		{ Stmt0 = goto(_) },
-		{ Stmt = Stmt0 }
+		Stmt0 = goto(_),
+		Stmt = Stmt0
 	;
-		{ Stmt0 = computed_goto(Rval0, Labels) },
-		eliminate_var_in_rval(Rval0, Rval),
-		{ Stmt = computed_goto(Rval, Labels) }
+		Stmt0 = computed_goto(Rval0, Labels),
+		eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
+		Stmt = computed_goto(Rval, Labels)
 	;
-		{ Stmt0 = call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall) },
-		eliminate_var_in_rval(Func0, Func),
-		eliminate_var_in_maybe_rval(Obj0, Obj),
-		eliminate_var_in_rvals(Args0, Args),
-		eliminate_var_in_lvals(RetLvals0, RetLvals),
-		{ Stmt = call(Sig, Func, Obj, Args, RetLvals, TailCall) }
+		Stmt0 = call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
+		eliminate_var_in_rval(Func0, Func, !VarElimInfo),
+		eliminate_var_in_maybe_rval(Obj0, Obj, !VarElimInfo),
+		eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
+		eliminate_var_in_lvals(RetLvals0, RetLvals, !VarElimInfo),
+		Stmt = call(Sig, Func, Obj, Args, RetLvals, TailCall)
 	;
-		{ Stmt0 = return(Rvals0) },
-		eliminate_var_in_rvals(Rvals0, Rvals),
-		{ Stmt = return(Rvals) }
+		Stmt0 = return(Rvals0),
+		eliminate_var_in_rvals(Rvals0, Rvals, !VarElimInfo),
+		Stmt = return(Rvals)
 	;
-		{ Stmt0 = do_commit(Ref0) },
-		eliminate_var_in_rval(Ref0, Ref),
-		{ Stmt = do_commit(Ref) }
+		Stmt0 = do_commit(Ref0),
+		eliminate_var_in_rval(Ref0, Ref, !VarElimInfo),
+		Stmt = do_commit(Ref)
 	;
-		{ Stmt0 = try_commit(Ref0, Statement0, Handler0) },
-		eliminate_var_in_lval(Ref0, Ref),
-		eliminate_var_in_statement(Statement0, Statement),
-		eliminate_var_in_statement(Handler0, Handler),
-		{ Stmt = try_commit(Ref, Statement, Handler) }
+		Stmt0 = try_commit(Ref0, Statement0, Handler0),
+		eliminate_var_in_lval(Ref0, Ref, !VarElimInfo),
+		eliminate_var_in_statement(Statement0, Statement, !VarElimInfo),
+		eliminate_var_in_statement(Handler0, Handler, !VarElimInfo),
+		Stmt = try_commit(Ref, Statement, Handler)
 	;
-		{ Stmt0 = atomic(AtomicStmt0) },
-		eliminate_var_in_atomic_stmt(AtomicStmt0, AtomicStmt),
-		{ Stmt = atomic(AtomicStmt) }
+		Stmt0 = atomic(AtomicStmt0),
+		eliminate_var_in_atomic_stmt(AtomicStmt0, AtomicStmt,
+			!VarElimInfo),
+		Stmt = atomic(AtomicStmt)
 	).
 
 :- pred eliminate_var_in_case(mlds__switch_case::in, mlds__switch_case::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_case(Conds0 - Statement0, Conds - Statement) -->
-	list__map_foldl(eliminate_var_in_case_cond, Conds0, Conds),
-	eliminate_var_in_statement(Statement0, Statement).
+eliminate_var_in_case(Conds0 - Statement0, Conds - Statement, !VarElimInfo) :-
+	list__map_foldl(eliminate_var_in_case_cond, Conds0, Conds,
+		!VarElimInfo),
+	eliminate_var_in_statement(Statement0, Statement, !VarElimInfo).
 
 :- pred eliminate_var_in_default(
-		mlds__switch_default::in, mlds__switch_default::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	mlds__switch_default::in, mlds__switch_default::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_default(default_is_unreachable, default_is_unreachable) --> [].
-eliminate_var_in_default(default_do_nothing, default_do_nothing) --> [].
-eliminate_var_in_default(default_case(Statement0), default_case(Statement)) -->
-	eliminate_var_in_statement(Statement0, Statement).
-	
+eliminate_var_in_default(default_is_unreachable, default_is_unreachable,
+		!VarElimInfo).
+eliminate_var_in_default(default_do_nothing, default_do_nothing,
+		!VarElimInfo).
+eliminate_var_in_default(default_case(Statement0), default_case(Statement),
+		!VarElimInfo) :-
+	eliminate_var_in_statement(Statement0, Statement, !VarElimInfo).
+
 :- pred eliminate_var_in_atomic_stmt(
-		mlds__atomic_statement::in, mlds__atomic_statement::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	mlds__atomic_statement::in, mlds__atomic_statement::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_atomic_stmt(comment(C), comment(C)) --> [].
-eliminate_var_in_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval)) -->
-	eliminate_var_in_lval(Lval0, Lval),
-	eliminate_var_in_rval(Rval0, Rval).
-eliminate_var_in_atomic_stmt(delete_object(Lval0), delete_object(Lval)) -->
-	eliminate_var_in_lval(Lval0, Lval).
+eliminate_var_in_atomic_stmt(comment(C), comment(C), !VarElimInfo).
+eliminate_var_in_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval),
+		!VarElimInfo) :-
+	eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
+eliminate_var_in_atomic_stmt(delete_object(Lval0), delete_object(Lval),
+		!VarElimInfo) :-
+	eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
 eliminate_var_in_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type,
 			MaybeSize, MaybeCtorName, Args0, ArgTypes),
 		new_object(Target, MaybeTag, HasSecTag, Type,
-			MaybeSize, MaybeCtorName, Args, ArgTypes)) -->
-	eliminate_var_in_lval(Target0, Target),
-	eliminate_var_in_rvals(Args0, Args).
-eliminate_var_in_atomic_stmt(gc_check, gc_check) --> [].
-eliminate_var_in_atomic_stmt(mark_hp(Lval0), mark_hp(Lval)) -->
-	eliminate_var_in_lval(Lval0, Lval).
-eliminate_var_in_atomic_stmt(restore_hp(Rval0), restore_hp(Rval)) -->
-	eliminate_var_in_rval(Rval0, Rval).
-eliminate_var_in_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp)) -->
-	eliminate_var_in_trail_op(TrailOp0, TrailOp).
+			MaybeSize, MaybeCtorName, Args, ArgTypes),
+		!VarElimInfo) :-
+	eliminate_var_in_lval(Target0, Target, !VarElimInfo),
+	eliminate_var_in_rvals(Args0, Args, !VarElimInfo).
+eliminate_var_in_atomic_stmt(gc_check, gc_check, !VarElimInfo).
+eliminate_var_in_atomic_stmt(mark_hp(Lval0), mark_hp(Lval), !VarElimInfo) :-
+	eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
+eliminate_var_in_atomic_stmt(restore_hp(Rval0), restore_hp(Rval),
+		!VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
+eliminate_var_in_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp),
+		!VarElimInfo) :-
+	eliminate_var_in_trail_op(TrailOp0, TrailOp, !VarElimInfo).
 eliminate_var_in_atomic_stmt(inline_target_code(Lang, Components0),
-		inline_target_code(Lang, Components)) -->
+		inline_target_code(Lang, Components), !VarElimInfo) :-
 	list__map_foldl(eliminate_var_in_target_code_component,
-		Components0, Components).
+		Components0, Components, !VarElimInfo).
 eliminate_var_in_atomic_stmt(outline_foreign_proc(Lang, Vs, Lvals0, Code),
-		outline_foreign_proc(Lang, Vs, Lvals, Code)) -->
-	eliminate_var_in_lvals(Lvals0, Lvals).
+		outline_foreign_proc(Lang, Vs, Lvals, Code), !VarElimInfo) :-
+	eliminate_var_in_lvals(Lvals0, Lvals, !VarElimInfo).
 
 :- pred eliminate_var_in_case_cond(
-		mlds__case_match_cond::in, mlds__case_match_cond::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	mlds__case_match_cond::in, mlds__case_match_cond::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_case_cond(match_value(Rval0), match_value(Rval)) -->
-	eliminate_var_in_rval(Rval0, Rval).
-eliminate_var_in_case_cond(match_range(Low0, High0), match_range(Low, High)) -->
-	eliminate_var_in_rval(Low0, Low),
-	eliminate_var_in_rval(High0, High).
+eliminate_var_in_case_cond(match_value(Rval0), match_value(Rval),
+		!VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
+eliminate_var_in_case_cond(match_range(Low0, High0), match_range(Low, High),
+		!VarElimInfo) :-
+	eliminate_var_in_rval(Low0, Low, !VarElimInfo),
+	eliminate_var_in_rval(High0, High, !VarElimInfo).
 
 :- pred eliminate_var_in_target_code_component(
-		target_code_component::in, target_code_component::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	target_code_component::in, target_code_component::out,
+	var_elim_info::in, var_elim_info::out) is det.
 
 eliminate_var_in_target_code_component(raw_target_code(Code, Attrs),
-		raw_target_code(Code, Attrs)) --> [].
+		raw_target_code(Code, Attrs), !VarElimInfo).
 eliminate_var_in_target_code_component(user_target_code(Code, Context, Attrs),
-		user_target_code(Code, Context, Attrs)) --> [].
+		user_target_code(Code, Context, Attrs), !VarElimInfo).
 eliminate_var_in_target_code_component(target_code_input(Rval0),
-		target_code_input(Rval)) -->
-	eliminate_var_in_rval(Rval0, Rval).
+		target_code_input(Rval), !VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
 eliminate_var_in_target_code_component(target_code_output(Lval0),
-		target_code_output(Lval)) -->
-	eliminate_var_in_lval(Lval0, Lval).
-eliminate_var_in_target_code_component(name(Name), name(Name)) --> [].
+		target_code_output(Lval), !VarElimInfo) :-
+	eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
+eliminate_var_in_target_code_component(name(Name), name(Name), !VarElimInfo).
 
 :- pred eliminate_var_in_trail_op(trail_op::in, trail_op::out,
-		var_elim_info::in, var_elim_info::out) is det.
+	var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_trail_op(store_ticket(Lval0), store_ticket(Lval)) -->
-	eliminate_var_in_lval(Lval0, Lval).
+eliminate_var_in_trail_op(store_ticket(Lval0), store_ticket(Lval),
+		!VarElimInfo) :-
+	eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
 eliminate_var_in_trail_op(reset_ticket(Rval0, Reason),
-		reset_ticket(Rval, Reason)) -->
-	eliminate_var_in_rval(Rval0, Rval).
-eliminate_var_in_trail_op(discard_ticket, discard_ticket) --> [].
-eliminate_var_in_trail_op(prune_ticket, prune_ticket) --> [].
-eliminate_var_in_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval)) -->
-	eliminate_var_in_lval(Lval0, Lval).
-eliminate_var_in_trail_op(prune_tickets_to(Rval0), prune_tickets_to(Rval)) -->
-	eliminate_var_in_rval(Rval0, Rval).
+		reset_ticket(Rval, Reason), !VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
+eliminate_var_in_trail_op(discard_ticket, discard_ticket, !VarElimInfo).
+eliminate_var_in_trail_op(prune_ticket, prune_ticket, !VarElimInfo).
+eliminate_var_in_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval),
+		!VarElimInfo) :-
+	eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
+eliminate_var_in_trail_op(prune_tickets_to(Rval0), prune_tickets_to(Rval),
+		!VarElimInfo) :-
+	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
 
 %-----------------------------------------------------------------------------%
 
-        % Maps T into V, inside a maybe .  
+        % Maps T into V, inside a maybe .
 :- func maybe_apply(func(T) = V, maybe(T)) = maybe(V).
 
 maybe_apply(_, no) = no.
@@ -1237,6 +1251,7 @@ maybe_apply(F, yes(T)) = yes(F(T)).
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "ml_optimize.m".
 
 :- end_module ml_optimize.
