@@ -50,7 +50,7 @@
 			;	eof
 			;	error(io__error).
 
-:- type io__error.	% Use io__error__message to decode it.
+:- type io__error.	% Use io__error_message to decode it.
 
 %-----------------------------------------------------------------------------%
 

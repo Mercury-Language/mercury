@@ -627,14 +627,14 @@ polymorphism__get_special_proc_list([Id | Ids],
 	PredType = term__functor(term__atom("pred"), TypeArgs, Context),
 	map__set(VarTypes0, Var, PredType, VarTypes1),
 
-	% get the address (ConsId) of the appropriate higher-order pred
-	% constant for the operation specified by Id applied to Type.
+	% get the ConsId for the address of the appropriate pred
+	% for the operation specified by Id applied to Type.
 
 	classify_type(Type, ModuleInfo, TypeCategory),
 	polymorphism__get_special_proc(TypeCategory, Id, ModuleInfo, ConsId),
 
 	% create a construction unification which unifies the fresh
-	% variable with the higher-order pred constant obtained above
+	% variable with the address constant obtained above
 
 	Unification = construct(Var, ConsId, [], []),
 
@@ -674,9 +674,7 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 		module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
 		( type_to_type_id(Type, TypeId, _TypeArgs) ->
 			map__lookup(SpecialPredMap, SpecialPredId - TypeId,
-				PredId),
-			polymorphism__get_proc_id(PredId, ModuleInfo, ProcId),
-			ConsId = pred_const(PredId, ProcId)
+				PredId)
 		;
 			error(
 		"polymorphism__get_special_proc: type_to_type_id failed")
@@ -686,8 +684,10 @@ polymorphism__get_special_proc(TypeCategory, SpecialPredId, ModuleInfo,
 		special_pred_name_arity(SpecialPredId, SpecialName, Arity),
 		string__append_list(
 			["builtin_", SpecialName, "_", CategoryName], PredName),
-		polymorphism__get_proc(PredName, Arity, ModuleInfo, ConsId)
-	).
+		polymorphism__get_pred_id(PredName, Arity, ModuleInfo, PredId)
+	),
+	polymorphism__get_proc_id(PredId, ModuleInfo, ProcId),
+	ConsId = address_const(PredId, ProcId).
 
 :- pred polymorphism__get_category_name(builtin_type, string).
 :- mode polymorphism__get_category_name(in, out) is det.
@@ -707,19 +707,18 @@ polymorphism__get_category_name(user_type(_), _) :-
 
 	% find the unification procedure with the specified name
 
-:- pred polymorphism__get_proc(string, int, module_info, cons_id).
-:- mode polymorphism__get_proc(in, in, in, out) is det.
+:- pred polymorphism__get_pred_id(string, int, module_info, pred_id).
+:- mode polymorphism__get_pred_id(in, in, in, out) is det.
 
-polymorphism__get_proc(Name, Arity, ModuleInfo, ConsId) :-
+polymorphism__get_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	(
 		predicate_table_search_name_arity(PredicateTable, Name, Arity,
-			[PredId])
+			[PredId1])
 	->
-		polymorphism__get_proc_id(PredId, ModuleInfo, ProcId),
-		ConsId = pred_const(PredId, ProcId)
+		PredId = PredId1
 	;
-		error("polymorphism__get_proc: pred_id lookup failed")
+		error("polymorphism__get_pred_id: pred_id lookup failed")
 	).
 
 :- pred polymorphism__get_proc_id(pred_id, module_info, proc_id).

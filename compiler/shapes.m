@@ -296,7 +296,12 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 		A = constant,
 		S_Tab = S_Tab0
 	;
-		C_Tag = pred_constant(_, _) 
+		C_Tag = address_constant(_, _) 
+	->
+		A = constant,
+		S_Tab = S_Tab0
+	;	
+		C_Tag = pred_closure_tag(_, _) 
 	->
 		A = constant,
 		S_Tab = S_Tab0

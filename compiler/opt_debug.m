@@ -533,7 +533,8 @@ opt_debug__dump_const(int_const(I), Str) :-
 	string__int_to_string(I, Str).
 opt_debug__dump_const(string_const(I), Str) :-
 	string__append_list(["""", I, """"], Str).
-opt_debug__dump_const(pred_const(_CodeAddress), "pred_const(<code address>)").
+opt_debug__dump_const(address_const(_CodeAddress),
+			"address_const(<code address>)").
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

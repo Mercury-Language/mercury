@@ -146,7 +146,7 @@
 			;	false
 			;	int_const(int)
 			;	string_const(string)
-			;	pred_const(code_addr).
+			;	address_const(code_addr).
 
 :- type unary_op	--->	mktag
 			;	tag
@@ -548,7 +548,7 @@ output_rval_decls(var(_)) -->
 output_rval_decls(mkword(_, Rval)) --> 
 	output_rval_decls(Rval).
 output_rval_decls(const(Const)) -->
-	( { Const = pred_const(CodeAddress) } ->
+	( { Const = address_const(CodeAddress) } ->
 		output_code_addr_decls(CodeAddress)
 	;
 		[]
@@ -948,7 +948,7 @@ output_rval_const(true) -->
 	io__write_string("TRUE").
 output_rval_const(false) -->
 	io__write_string("FALSE").
-output_rval_const(pred_const(CodeAddress)) -->
+output_rval_const(address_const(CodeAddress)) -->
 	io__write_string("(Integer) "),
 	output_code_addr(CodeAddress).
 

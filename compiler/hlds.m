@@ -307,13 +307,26 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	% This table is used by the type-checker to look
 	% up the type of functors/constants.
 
+:- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
+
 :- type cons_id		--->	cons(string, arity)	% name, arity
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
-			;	pred_const(pred_id, proc_id).
 
-:- type cons_table	==	map(cons_id, list(hlds__cons_defn)).
+			;	pred_const(pred_id, proc_id)
+				% Currently not used - preds are
+				% currently just stored as cons(Name, Arity).
+				% But that causes problems for preds
+				% that are overloaded or have multiple
+				% modes, so eventually we'l need to
+				% use `pred_const(PredId, ProcId)'.
+
+			;	address_const(pred_id, proc_id).
+				% used for constructing type_infos
+				% Note that a pred_const is for a closure
+				% whereas an address_const is just an address.
+
 
 %-----------------------------------------------------------------------------%
 
@@ -503,9 +516,14 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 	;	int_constant(int)
 			% This is used for enumerations and character
 			% constants as well as for int constants.
-	;	pred_constant(pred_id, proc_id)
-			% Higher-order pred constants
-			% (We don't handle closures yet.)
+	;	pred_closure_tag(pred_id, proc_id)
+			% Higher-order pred closures tags.
+			% The first two words of the argument vector
+			% hold the number of args and the address of
+			% the procedure respectively.
+	;	address_constant(pred_id, proc_id)
+			% Procedure address constants
+			% (used for constructing type_infos).
 	;	simple_tag(tag_bits)	
 			% This is for constants or functors which only
 			% require a simple (two-bit) tag.
@@ -548,7 +566,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type hlds__mode_body --->	eqv_mode(mode).
 
 :- type hlds__cons_defn	--->	hlds__cons_defn(
-					% maybe add varset?
+					% maybe add tvarset?
 					list(type),	% arg types
 					type_id,	% result type
 					term__context

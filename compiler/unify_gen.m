@@ -126,10 +126,13 @@ unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 	error("Sorry, float tests not implemented").
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
 	TestRval = binop(eq, Rval, const(int_const(Int))).
-unify_gen__generate_tag_rval_2(pred_constant(_, _), _Rval, _TestRval) :-
+unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
+unify_gen__generate_tag_rval_2(address_constant(_, _), _Rval, _TestRval) :-
+	% This should never happen
+	error("Attempted address unification").
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
 				unop(mktag, const(int_const(SimpleTag)))).
@@ -202,7 +205,19 @@ unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 	{ Code = empty },
 	code_info__cache_expression(Var,
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
-unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
+unify_gen__generate_construction_2(address_constant(PredId, ProcId),
+		Var, Args, _Modes, Code) -->
+	( { Args = [] } ->
+		[]
+	;
+		{ error("unify_gen: address constant has args") }
+	),
+	{ Code = empty },
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId,
+				CodeAddress) },
+	code_info__cache_expression(Var, const(address_const(CodeAddress))).
+unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_preds(ModuleInfo, Preds) },
@@ -273,7 +288,7 @@ unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 		code_info__get_next_label_number(LabelCount),
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [yes(const(int_const(NumArgs))),
-				yes(const(pred_const(CodeAddress))) | PredArgs] },
+			yes(const(address_const(CodeAddress))) | PredArgs] },
 		{ Value = create(0, Vector, LabelCount) }
 	),
 	code_info__cache_expression(Var, Value).
@@ -392,7 +407,11 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	->
 		{ Code = empty }
 	;
-		{ Tag = pred_constant(_, _) }
+		{ Tag = address_constant(_, _) }
+	->
+		{ Code = empty }
+	;
+		{ Tag = pred_closure_tag(_, _) }
 	->
 		{ Code = empty }
 	;

@@ -777,7 +777,7 @@ code_info__flush_variable(Var, Code) -->
 :- mode code_info__expr_is_constant(in, in, out) is semidet.
 
 code_info__expr_is_constant(const(Const)) -->
-	( { Const = pred_const(CodeAddress) } ->
+	( { Const = address_const(CodeAddress) } ->
 		( { CodeAddress = succip } ->
 			{ fail }
 		; { CodeAddress = label(_) } ->
@@ -1677,7 +1677,9 @@ code_info__reenter_lvals(Var, [L|Ls]) -->
 code_info__cons_id_to_tag(_Var, int_const(X), int_constant(X)) --> [].
 code_info__cons_id_to_tag(_Var, float_const(X), float_constant(X)) --> [].
 code_info__cons_id_to_tag(_Var, string_const(X), string_constant(X)) --> [].
-code_info__cons_id_to_tag(_Var, pred_const(P,M), pred_constant(P,M)) --> [].
+code_info__cons_id_to_tag(_Var, address_const(P,M), address_constant(P,M))
+	--> [].
+code_info__cons_id_to_tag(_Var, pred_const(P,M), pred_closure_tag(P,M)) --> [].
 code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		%
 		% Lookup the type of the variable
@@ -1712,7 +1714,7 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 			(
 			    ProcIds = [ProcId]
 			->
-			    Tag = pred_constant(PredId, ProcId)
+			    Tag = pred_closure_tag(PredId, ProcId)
 			;
 			    error("sorry, not implemented: taking address of predicate with multiple modes")
 			)

@@ -88,6 +88,7 @@ hlds_out__cons_id_to_string(string_const(String), S) :-
 	string__append_list(["""", String, """"], S).
 hlds_out__cons_id_to_string(float_const(_), "<float>").
 hlds_out__cons_id_to_string(pred_const(_, _), "<pred>").
+hlds_out__cons_id_to_string(address_const(_, _), "<address>").
 
 hlds_out__write_cons_id(cons(Name, Arity)) -->
 	io__write_string(Name),
@@ -103,6 +104,8 @@ hlds_out__write_cons_id(float_const(Float)) -->
 	io__write_float(Float).
 hlds_out__write_cons_id(pred_const(_PredId, _ProcId)) -->
 	io__write_string("<pred>").
+hlds_out__write_cons_id(address_const(_PredId, _ProcId)) -->
+	io__write_string("<address>").
 
 hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	% XXX module name
