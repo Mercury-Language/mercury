@@ -18,17 +18,18 @@
 	% we halt.  (abort/0 is called by error/1; see the
 	% NU-Prolog manual entry for abort/0.)
 	%
-	% `io__inhibit_user_main_predicate' is used to ensure that
-	% when the user redefines main_predicate by loading their
+	% `io__inhibit_user_main' is used to ensure that
+	% when the user redefines main/2 by loading their
 	% file into the interpreter and then does an abort, we
-	% execute io__main_predicate to invoke the NU-Prolog command loop,
+	% execute io__main to invoke the NU-Prolog command loop,
 	% rather than executing the users program.
 
 :- dynamic io__exit_on_abort/0.
-:- dynamic io__inhibit_user_main_predicate/0.
+:- dynamic io__inhibit_user_main/0.
 :- dynamic io__main_has_been_executed/0.
 
 :- dynamic io__save_progname/1.
+:- dynamic io__save_args/1.
 
 :- pred main(list(atom)).
 :- mode main(in) is det.
@@ -39,7 +40,7 @@ main(Args) :-
 		exit(1)
 	;
 		assert(io__exit_on_abort),
-		( io__inhibit_user_main_predicate ->
+		( io__inhibit_user_main ->
 			io__run(Args)
 		;
 			run(Args)
@@ -51,10 +52,11 @@ main(Args) :-
 :- mode r(in) is det.
 
 r(ArgString) :-
-	convert_args(ArgString, Args),
+	string__to_int_list(ArgString, ArgStringCodes),
+	convert_args(ArgStringCodes, Args),
 	run(Args).
 
-:- pred convert_args(string, list(atom)).
+:- pred convert_args(list(int), list(atom)).
 :- mode convert_args(in, out) is det.
 
 convert_args([], []).
@@ -70,7 +72,7 @@ convert_args([C|Cs], Args) :-
 
 isspace(0' ).
 
-:- pred convert_args_2(string, string, list(atom)).
+:- pred convert_args_2(list(int), list(int), list(atom)).
 :- mode convert_args_2(in, in, out) is det.
 
 convert_args_2([], Word, [Arg]) :-
@@ -89,31 +91,33 @@ convert_args_2([C|Cs], Word, Args) :-
 :- mode run(in) is det.
 
 run(Args) :-
-	io__init(Args, ArgStrings),
+	io__init(Args),
 	io__init_state(IOState0),
-	io__call(main_predicate(ArgStrings), IOState0, IOState),
+	io__call(main, IOState0, IOState),
 	io__final_state(IOState).
 
 :- pred io__run(list(atom)).
 :- mode io__run(in) is det.
 
 io__run(Args) :-
-	io__init(Args, ArgStrings),
+	io__init(Args),
 	io__init_state(IOState0),
-	io__call(io__main_predicate(ArgStrings), IOState0, IOState),
+	io__call(io__main, IOState0, IOState),
 	io__final_state(IOState).
 
-:- pred io__init(list(atom), list(string)).
-:- mode io__init(in, out) is det.
+:- pred io__init(list(atom)).
+:- mode io__init(in) is det.
 
-io__init(Args, ArgStrings) :-
+io__init(Args) :-
 	putprop(io__saved_state, depth, 0),
 	atoms_to_strings(Args, ArgStrings),
-	( ArgStrings = [Progname | _] ->
-		retractall(io__save_progname(_)),
-		assert(io__save_progname(Progname))
+	retractall(io__save_progname(_)),
+	retractall(io__save_args(_)),
+	( ArgStrings = [Progname | Rest] ->
+		assert(io__save_progname(Progname)),
+		assert(io__save_args(Rest))
 	;
-		true
+		assert(io__save_args([]))
 	).
 
 :- pred atoms_to_strings(list(atom), list(string)).
@@ -121,31 +125,31 @@ io__init(Args, ArgStrings) :-
 
 atoms_to_strings([],[]).
 atoms_to_strings([A|As],[S|Ss]) :-
-	name(A,S),
+	name(A,IntList),
+	string__to_int_list(S,IntList),
 	atoms_to_strings(As,Ss).
 
-	% The following definition of main_predicate/3 is a default
-	% and will normally be overridden by the users main_predicate/3.
+	% The following definition of main/2 is a default
+	% and will normally be overridden by the users main/2.
 	% It just invokes the NU-Prolog command loop.
 
-:- pred main_predicate(list(string), io__state, io__state).
-:- mode main_predicate(in, di, uo) is det.
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
 
-main_predicate(Args) -->
-	io__main_predicate(Args).
+main --> io__main.
 
-:- pred io__main_predicate(list(string), io__state, io__state).
-:- mode io__main_predicate(in, di, uo) is det.
+:- pred io__main(io__state, io__state).
+:- mode io__main(di, uo) is det.
 
-io__main_predicate(_) -->
+io__main -->
 	{ io__main_has_been_executed ->
 		true
 	;
 		write('Mercury Interpreter 0.1'), nl,
 		assert(io__main_has_been_executed)
 	},
-	{ retractall(io__inhibit_user_main_predicate) },
-	{ assert(io__inhibit_user_main_predicate) },
+	{ retractall(io__inhibit_user_main) },
+	{ assert(io__inhibit_user_main) },
 	{ retractall(io__exit_on_abort) },
 	{ '$mainloop' }.
 
@@ -344,7 +348,8 @@ io__do_open_append(FileName, Result, Stream) -->
 	io__do_open(FileName, append, Result, Stream).
 
 io__do_open(File, Mode, Result, Stream) -->
-	{ name(FileName, File) },
+	{ string__to_int_list(File, FileCodes) },
+	{ name(FileName, FileCodes) },
 	( { open(FileName, Mode, Stream0) } ->
 		{ Result = 0 },
 		{ Stream = Stream0 }
@@ -422,6 +427,9 @@ io__progname(DefaultName, Name) -->
 		Name0 = DefaultName
 	},
 	{ dir__basename(Name0, Name) }.
+
+io__command_line_arguments(Args) --> 
+	{ io__save_args(Args) }.
 	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
