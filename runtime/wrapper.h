@@ -42,8 +42,8 @@ extern	int	mercury_runtime_terminate(void);
 */
 extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
 
-extern	void		(*MR_library_initializer)(Word, Word *);
-extern	void		(*MR_library_finalizer)(Word, Word *);
+extern	void		(*MR_library_initializer)(void);
+extern	void		(*MR_library_finalizer)(void);
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);

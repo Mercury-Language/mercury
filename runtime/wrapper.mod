@@ -80,8 +80,6 @@ int		mercury_argc;	/* not counting progname */
 char **		mercury_argv;
 int		mercury_exit_status = 0;
 
-static Word	MR_io_state;
-
 /*
 ** EXTERNAL DEPENDENCIES
 **
@@ -115,9 +113,9 @@ void	(*address_of_init_gc)(void);
 
 Code	*program_entry_point;
 		/* normally mercury__main_2_0 (main/2) */
-void	(*MR_library_initializer)(Word, Word *);
+void	(*MR_library_initializer)(void);
 		/* normally ML_io_init_state (io__init_state/2)*/
-void	(*MR_library_finalizer)(Word, Word *);
+void	(*MR_library_finalizer)(void);
 		/* normally ML_io_finalize_state (io__finalize_state/2) */
 
 
@@ -226,7 +224,7 @@ mercury_runtime_init(int argc, char **argv)
 	save_registers();
 
 	/* initialize the Mercury library */
-	(*MR_library_initializer)(MR_io_state, &MR_io_state);
+	(*MR_library_initializer)();
 
 	/*
 	** Restore the callee-save registers before returning,
@@ -916,7 +914,7 @@ mercury_runtime_terminate(void)
 	*/
 	save_regs_to_mem(c_regs);
 
-	(*MR_library_finalizer)(MR_io_state, &MR_io_state);
+	(*MR_library_finalizer)();
 
 	terminate_engine();
 
