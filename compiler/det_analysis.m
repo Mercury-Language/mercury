@@ -32,17 +32,24 @@ determinism_pass(ModuleInfo0, ModuleInfo) :-
 :- type miscinfo	--->	miscinfo(moduleinfo, pred_id, pred_mode_id).
 
 :- pred determinism_declarations(moduleinfo, predproclist, predproclist).
-:- pred determinism_declarations(input, output, output).
+:- mode determinism_declarations(input, output, output).
 
 determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
 	get_all_pred_procs(ModuleInfo, PredProcs),
 	segregate_procs(ModuleInfo, PredProcs, [], DeclaredProcs,
 			[], UndeclaredProcs).
 
+:- pred get_all_pred_procs(moduleinfo, predproclist).
+:- mode get_all_pred_procs(input, output).
+
 get_all_pred_procs(ModuleInfo, PredProcs) :-
 	moduleinfo_predids(ModuleInfo, PredIds),
 	moduleinfo_preds(ModuleInfo, Preds),
 	get_all_pred_procs_2(Preds, PredIds, [], PredProcs).
+
+:- pred get_all_pred_procs_2(pred_table, list(pred_id),
+				predproclist, predproclist).
+:- mode get_all_pred_procs_2(input, input, input, output).
 
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
