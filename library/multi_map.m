@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997, 2000 The University of Melbourne.
+% Copyright (C) 1995, 1997, 2000, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -189,7 +189,7 @@
 
 :- implementation.
 
-:- import_module std_util, int.
+:- import_module std_util, int, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -321,9 +321,28 @@ multi_map__assoc_list_member(Value, [(AKey - AValues) | AList], Key) :-
 
 %-----------------------------------------------------------------------------%
 
-multi_map__from_corresponding_lists(Keys, Values0, MultiMap) :-
-	list__chunk(Values0, 1, Values),
-	map__from_corresponding_lists(Keys, Values, MultiMap).
+multi_map__from_corresponding_lists(Keys, Values, MultiMap) :-
+	multi_map__init(MultiMap0),
+	(
+		multi_map__from_corresponding_lists_2(MultiMap0, Keys, Values,
+			MultiMap1)
+	->
+		MultiMap = MultiMap1
+	;
+		error("multi_map__from_corresponding_lists: list length mismatch")
+	).
+
+:- pred multi_map__from_corresponding_lists_2(multi_map(K, V), list(K), list(V),
+	multi_map(K, V)).
+:- mode multi_map__from_corresponding_lists_2(in, in, in, out) is semidet.
+
+multi_map__from_corresponding_lists_2(MultiMap, [], [], MultiMap).
+multi_map__from_corresponding_lists_2(MultiMap0, [Key | Keys], [Value | Values],
+	MultiMap) :-
+
+	multi_map__set(MultiMap0, Key, Value, MultiMap1),
+	multi_map__from_corresponding_lists_2(MultiMap1, Keys, Values,
+		MultiMap).
 
 multi_map__from_corresponding_list_lists(Keys, Values, MultiMap) :-
 	map__from_corresponding_lists(Keys, Values, MultiMap).
