@@ -493,7 +493,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 			LayoutAddrStr),
 		string__append_list([
 			FillThreeSlots, "\n",
-			"\t\t", RedoLayoutStr, " = (Word) (const Word *) &",
+			"\t\t", RedoLayoutStr, " = (MR_Word) (const MR_Word *) &",
 			LayoutAddrStr, ";"
 		], FillFourSlots),
 		MaybeLayoutLabel = yes(RedoLayoutLabel)
@@ -527,7 +527,7 @@ trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 		trace__stackref_to_string(MaxfrLval, MaxfrLvalStr),
 		string__append_list([
 			FillSixSlots,
-			"\n\t\t", MaxfrLvalStr, " = (Word) MR_maxfr;"
+			"\n\t\t", MaxfrLvalStr, " = (MR_Word) MR_maxfr;"
 		], FillCondSlots)
 	;
 		MaybeMaxfrLval = no,
