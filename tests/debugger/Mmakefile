@@ -98,7 +98,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 endif
 
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
-ALL_NONRETRY_PROGS = $(NON_RETRY_PROGS) $(SENSITIVE_PROGS) $(SHALLOW_PROGS)
+ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) $(SHALLOW_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*), and the retry command
 # doesn't and will not work in deep profiling grades (profdeep).
