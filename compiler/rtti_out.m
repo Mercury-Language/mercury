@@ -204,8 +204,15 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
 		CtorRep, Solver, Init, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons, _Prettyprinter),
 		DeclSet0, DeclSet) -->
+	{ MaybeCodeAddrs = [Unify, Index, Compare, Solver, Init] },
+	{ list__filter_map(pred(yes(CA)::in, CA::out) is semidet,
+		MaybeCodeAddrs, CodeAddrs) },
+	output_code_addrs_decls(CodeAddrs, "", "", 0, _, DeclSet0, DeclSet1),
+	output_functors_info_decl(RttiTypeId, FunctorsInfo,
+		DeclSet1, DeclSet2),
+	output_layout_info_decl(RttiTypeId, LayoutInfo, DeclSet2, DeclSet3),
 	output_generic_rtti_data_defn_start(RttiTypeId,
-		type_ctor_info, DeclSet0, DeclSet),
+		type_ctor_info, DeclSet3, DeclSet),
 	io__write_string(" = {\n\t"),
 	{ RttiTypeId = rtti_type_id(Module, Type, TypeArity) },
 	io__write_int(TypeArity),
@@ -293,6 +300,44 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
 %	io__write_string(",\n\t"),
 %	output_maybe_code_addr(Prettyprinter),
 	io__write_string("\n};\n").
+
+:- pred output_functors_info_decl(rtti_type_id::in,
+	type_ctor_functors_info::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
+
+output_functors_info_decl(RttiTypeId, enum_functors(EnumFunctorsInfo),
+		DeclSet0, DeclSet) -->
+	output_generic_rtti_data_decl(RttiTypeId, EnumFunctorsInfo,
+		DeclSet0, DeclSet).
+output_functors_info_decl(RttiTypeId, notag_functors(NotagFunctorsInfo),
+		DeclSet0, DeclSet) -->
+	output_generic_rtti_data_decl(RttiTypeId, NotagFunctorsInfo,
+		DeclSet0, DeclSet).
+output_functors_info_decl(RttiTypeId, du_functors(DuFunctorsInfo),
+		DeclSet0, DeclSet) -->
+	output_generic_rtti_data_decl(RttiTypeId, DuFunctorsInfo,
+		DeclSet0, DeclSet).
+output_functors_info_decl(_RttiTypeId, no_functors, DeclSet, DeclSet) --> [].
+
+:- pred output_layout_info_decl(rtti_type_id::in, type_ctor_layout_info::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_layout_info_decl(RttiTypeId, enum_layout(EnumLayoutInfo),
+		DeclSet0, DeclSet) -->
+	output_generic_rtti_data_decl(RttiTypeId, EnumLayoutInfo,
+		DeclSet0, DeclSet).
+output_layout_info_decl(RttiTypeId, notag_layout(NotagLayoutInfo),
+		DeclSet0, DeclSet) -->
+	output_generic_rtti_data_decl(RttiTypeId, NotagLayoutInfo,
+		DeclSet0, DeclSet).
+output_layout_info_decl(RttiTypeId, du_layout(DuLayoutInfo),
+		DeclSet0, DeclSet) -->
+	output_generic_rtti_data_decl(RttiTypeId, DuLayoutInfo,
+		DeclSet0, DeclSet).
+output_layout_info_decl(_RttiTypeId, equiv_layout(EquivRval),
+		DeclSet0, DeclSet) -->
+	output_rval_decls(EquivRval, "", "", 0, _, DeclSet0, DeclSet).
+output_layout_info_decl(_RttiTypeId, no_layout, DeclSet, DeclSet) --> [].
 
 :- pred output_ptag_layout_decls(list(du_ptag_layout)::in, rtti_type_id::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.

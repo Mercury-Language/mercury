@@ -19,7 +19,7 @@
 
 :- import_module llds, builtin_ops, prog_data, hlds_data, rl_file.
 :- import_module globals.
-:- import_module set_bbbtree, bool, io, std_util.
+:- import_module list, set_bbbtree, bool, io, std_util.
 
 	% Given a 'c_file' structure, output the LLDS code inside it
 	% into one or more .c files, depending on the setting of the
@@ -60,6 +60,10 @@
 :- pred output_code_addr_decls(code_addr, string, string, int, int,
 	decl_set, decl_set, io__state, io__state).
 :- mode output_code_addr_decls(in, in, in, in, out, in, out, di, uo) is det.
+
+:- pred output_code_addrs_decls(list(code_addr), string, string, int, int,
+	decl_set, decl_set, io__state, io__state).
+:- mode output_code_addrs_decls(in, in, in, in, out, in, out, di, uo) is det.
 
 :- pred output_code_addr(code_addr, io__state, io__state).
 :- mode output_code_addr(in, di, uo) is det.
@@ -247,7 +251,7 @@
 :- import_module export, mercury_to_mercury, modules.
 :- import_module c_util.
 
-:- import_module int, list, char, string, std_util.
+:- import_module int, char, string, std_util.
 :- import_module map, set, bintree_set, assoc_list, require.
 :- import_module varset, term.
 :- import_module library.	% for the version number.
@@ -2690,6 +2694,14 @@ output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet).
+
+output_code_addrs_decls([], _, _, N, N, DeclSet, DeclSet) --> [].
+output_code_addrs_decls([CodeAddress | CodeAddresses], FirstIndent, LaterIndent,
+		N0, N, DeclSet0, DeclSet) -->
+	output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N1,
+		DeclSet0, DeclSet1),
+	output_code_addrs_decls(CodeAddresses, FirstIndent, LaterIndent, N1, N,
+		DeclSet1, DeclSet).
 
 output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
