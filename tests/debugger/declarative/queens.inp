@@ -1,4 +1,5 @@
 echo on
+register --quiet
 dd
 break queen
 continue
@@ -7,6 +8,17 @@ dd
 no
 no
 yes
+yes
+no
+yes
+yes
+no
+yes
+yes
+no
+yes
+yes
+no
 yes
 yes
 continue

@@ -1,9 +1,8 @@
        1:      1  1 CALL pred app:main/2-0 (det) app.m:10
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> break app
-Registering debuggable procedures... done.
-There are 67 debuggable modules, with a total of 3206 procedures.
  0: + stop  interface pred app:app/3-0 (det)
 mdb> continue
        2:      2  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:13)
@@ -37,9 +36,9 @@ wrong_answer(atom("app", [univ([3, 4, 5] : list:list(int)), univ([6, 7, 8] : lis
       19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
 mdb> continue
 append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
-      24:    347  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
+      20:      8  2 CALL pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> finish -n
-      71:    347  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+      67:      8  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> dd
 atom("app", [univ([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))])
 Valid? no
@@ -63,6 +62,6 @@ atom("app", [univ([0, 1, 2, 3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:li
 Valid? no
 Incorrect node found:
 wrong_answer(atom("app", [univ([3, 4, 5] : list:list(int)), univ([6, 7, 8] : list:list(int)), univ([3, 4, 5, 6, 7, 8] : list:list(int)), univ(int : private_builtin:type_info(int))]))
-      71:    347  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
+      67:      8  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> continue
 append([1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8]).

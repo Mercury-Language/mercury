@@ -1,9 +1,8 @@
        1:      1  1 CALL pred if_then_else:main/2-0 (det) if_then_else.m:7
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> break ite
-Registering debuggable procedures... done.
-There is one debuggable module, with 5 procedures.
  0: + stop  interface pred if_then_else:ite/2-0 (det)
 mdb> continue
        2:      2  2 CALL pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
@@ -21,9 +20,9 @@ wrong_answer(atom("ite", [univ(0 : int), univ(1 : int)]))
        9:      2  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
 mdb> continue
 ite(0, 1).
-      10:      5  2 CALL pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      16:    261  2 CALL pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> finish
-      17:      5  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      23:    261  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> dd
 atom("ite", [univ(1 : int), univ(0 : int)])
 Valid? no
@@ -32,6 +31,6 @@ Solutions:
 Complete? yes
 Incorrect node found:
 wrong_answer(atom("ite", [univ(1 : int), univ(0 : int)]))
-      17:      5  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      23:    261  2 EXIT pred if_then_else:ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
 mdb> continue
 ite(1, 0).

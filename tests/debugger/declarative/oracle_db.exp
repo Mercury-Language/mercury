@@ -1,9 +1,8 @@
        1:      1  1 CALL pred oracle_db:main/2-0 (det) oracle_db.m:12
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> break a
-Registering debuggable procedures... done.
-There are 67 debuggable modules, with a total of 3204 procedures.
  0: + stop  interface pred oracle_db:a/3-0 (semidet)
 mdb> continue
        3:      2  2 CALL pred oracle_db:a/3-0 (semidet) oracle_db.m:19 (oracle_db.m:9)

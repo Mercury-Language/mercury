@@ -381,11 +381,12 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		;
 			call_node_from_id(Store, Call, call(Prec, _, _))
 		),
-		wrong_answer_children(Store, Prec, [dynamic(NodeId) | Ns0], Ns)
+		missing_answer_children(Store, Prec, [dynamic(NodeId) | Ns0],
+				Ns)
 	;
 		Node = redo(_, Exit),
 		exit_node_from_id(Store, Exit, exit(Prec, _, _, _)),
-		wrong_answer_children(Store, Prec, Ns0, Ns)
+		missing_answer_children(Store, Prec, Ns0, Ns)
 	;
 		Node = fail(_, Call),
 		call_node_from_id(Store, Call, call(Back, Answer, _)),
@@ -422,9 +423,10 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		cond_node_from_id(Store, Cond, cond(Back, _, _)),
 		missing_answer_children(Store, Back, Ns1, Ns)
 	;
-		Node = neg_succ(_, Neg),
-		neg_node_from_id(Store, Neg, neg(Prec, _, _)),
-		missing_answer_children(Store, Prec, Ns0, Ns)
+		Node = neg_succ(Prec, Neg),
+		missing_answer_children(Store, Prec, Ns0, Ns1),
+		neg_node_from_id(Store, Neg, neg(Back, _, _)),
+		missing_answer_children(Store, Back, Ns1, Ns)
 	;
 		Node = neg_fail(Prec, Neg),
 		wrong_answer_children(Store, Prec, Ns0, Ns1),

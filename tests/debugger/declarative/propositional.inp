@@ -1,4 +1,5 @@
 echo on
+register --quiet
 break a
 break b
 continue

@@ -1,4 +1,5 @@
 echo on
+register --quiet
 break p
 continue
 finish
@@ -41,10 +42,15 @@ yes
 yes
 yes
 yes
+yes
 continue
 finish
 dd
 no
+yes
+yes
+yes
+yes
 yes
 yes
 yes

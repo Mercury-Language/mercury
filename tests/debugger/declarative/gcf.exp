@@ -1,9 +1,8 @@
        1:      1  1 CALL pred gcf:main/2-0 (cc_multi) gcf.m:8
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> break a
-Registering debuggable procedures... done.
-There are 67 debuggable modules, with a total of 3206 procedures.
  0: + stop  interface pred gcf:a/1-0 (nondet)
 mdb> continue
        3:      2  2 CALL pred gcf:a/1-0 (nondet) gcf.m:26 (gcf.m:10)

@@ -1,9 +1,8 @@
        1:      1  1 CALL pred neg_conj:main/2-0 (det) neg_conj.m:11
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> break p
-Registering debuggable procedures... done.
-There are 67 debuggable modules, with a total of 3205 procedures.
  0: + stop  interface pred neg_conj:p/1-0 (semidet)
 mdb> continue
        3:      2  2 CALL pred neg_conj:p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)

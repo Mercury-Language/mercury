@@ -1,14 +1,13 @@
        1:      1  1 CALL pred big:main/2-0 (det) big.m:9
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> break p
-Registering debuggable procedures... done.
-There is one debuggable module, with 9 procedures.
  0: + stop  interface pred big:p/1-0 (nondet)
 mdb> continue
        3:      2  2 CALL pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> finish
-      26:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      28:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> dd
 atom("p", [univ(-12 : int)])
 Valid? no
@@ -27,11 +26,11 @@ atom("f", [univ(6 : int), univ(-12 : int)])
 Valid? yes
 Incorrect node found:
 wrong_answer(atom("p", [univ(-12 : int)]))
-      26:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      28:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue
-      27:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      29:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> finish
-      33:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      35:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> dd
 atom("p", [univ(-14 : int)])
 Valid? no
@@ -41,11 +40,11 @@ atom("f", [univ(7 : int), univ(-14 : int)])
 Valid? yes
 Incorrect node found:
 wrong_answer(atom("p", [univ(-14 : int)]))
-      33:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      35:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue
-      34:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      36:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> finish
-      65:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      71:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> dd
 atom("p", [univ(-20 : int)])
 Valid? no
@@ -65,11 +64,11 @@ atom("f", [univ(10 : int), univ(-20 : int)])
 Valid? yes
 Incorrect node found:
 wrong_answer(atom("p", [univ(-20 : int)]))
-      65:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      71:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue
-      66:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      72:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> finish
-      72:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      78:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> dd
 atom("p", [univ(-22 : int)])
 Valid? no
@@ -79,11 +78,11 @@ atom("f", [univ(11 : int), univ(-22 : int)])
 Valid? yes
 Incorrect node found:
 wrong_answer(atom("p", [univ(-22 : int)]))
-      72:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      78:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue
-      73:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+      79:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> finish
-     109:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+     115:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> dd
 atom("p", [univ(2 : int)])
 Valid? no
@@ -92,6 +91,8 @@ Valid? yes
 atom("g", [univ(1 : int), univ(-1 : int)])
 Valid? yes
 atom("f", [univ(-1 : int), univ(2 : int)])
+Valid? yes
+atom("g", [univ(6 : int), univ(-10 : int)])
 Valid? yes
 atom("g", [univ(7 : int), univ(-11 : int)])
 Valid? yes
@@ -102,11 +103,11 @@ Solutions:
 Complete? yes
 Incorrect node found:
 wrong_answer(atom("p", [univ(2 : int)]))
-     109:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+     115:      2  2 EXIT pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue
-     110:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+     116:      2  2 REDO pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> finish
-     137:      2  2 FAIL pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+     143:      2  2 FAIL pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> dd
 Call atom("p", [])
 Solutions:
@@ -116,6 +117,25 @@ Solutions:
 	atom("p", [univ(-22 : int)])
 	atom("p", [univ(2 : int)])
 Complete? no
+atom("c", [univ(0 : int), univ(3 : int)])
+Valid? yes
+atom("d", [univ(3 : int), univ(9 : int)])
+Valid? yes
+Call atom("c", [univ(0 : int)])
+Solutions:
+	atom("c", [univ(0 : int), univ(2 : int)])
+	atom("c", [univ(0 : int), univ(3 : int)])
+Complete? yes
+Call atom("e", [univ(1 : int)])
+Solutions:
+	atom("e", [univ(1 : int), univ(10 : int)])
+	atom("e", [univ(1 : int), univ(11 : int)])
+Complete? yes
+Call atom("b", [univ(0 : int)])
+Solutions:
+	atom("b", [univ(0 : int), univ(0 : int)])
+	atom("b", [univ(0 : int), univ(1 : int)])
+Complete? yes
 atom("g", [univ(10 : int), univ(-2 : int)])
 Valid? yes
 atom("f", [univ(-2 : int), univ(4 : int)])
@@ -124,13 +144,8 @@ atom("c", [univ(4 : int), univ(9 : int)])
 Valid? yes
 atom("g", [univ(9 : int), univ(99 : int)])
 Valid? yes
-Call atom("b", [univ(0 : int)])
-Solutions:
-	atom("b", [univ(0 : int), univ(0 : int)])
-	atom("b", [univ(0 : int), univ(1 : int)])
-Complete? yes
 Incorrect node found:
 missing_answer(atom("p", []), [atom("p", [univ(-12 : int)]), atom("p", [univ(-14 : int)]), atom("p", [univ(-20 : int)]), atom("p", [univ(-22 : int)]), atom("p", [univ(2 : int)])])
-     137:      2  2 FAIL pred big:p/1-0 (nondet) big.m:23 (big.m:11)
+     143:      2  2 FAIL pred big:p/1-0 (nondet) big.m:23 (big.m:11)
 mdb> continue
 no.

@@ -1,0 +1,59 @@
+       1:      1  1 CALL pred aadebug:main/2-0 (det) aadebug.m:11
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred aadebug:p/2-0 (nondet)
+mdb> continue
+       3:      2  2 CALL pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> finish
+      15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> dd
+atom("p", [univ(1 : int), univ(27 : int)])
+Valid? no
+atom("q", [univ(1 : int), univ(1 : int)])
+Valid? yes
+atom("r", [univ(1 : int), univ(9 : int)])
+Valid? yes
+atom("s", [univ(9 : int), univ(27 : int)])
+Valid? yes
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(27 : int)]))
+      15:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> continue
+      16:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> finish
+      18:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> dd
+atom("p", [univ(1 : int), univ(1 : int)])
+Valid? no
+Incorrect node found:
+wrong_answer(atom("p", [univ(1 : int), univ(1 : int)]))
+      18:      2  2 EXIT pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> continue
+      19:      2  2 REDO pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> finish
+      34:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> dd
+Call atom("p", [univ(1 : int)])
+Solutions:
+	atom("p", [univ(1 : int), univ(27 : int)])
+	atom("p", [univ(1 : int), univ(1 : int)])
+Complete? no
+atom("q", [univ(1 : int), univ(2 : int)])
+Valid? yes
+Call atom("r", [univ(2 : int)])
+Solutions:
+Complete? yes
+atom("q", [univ(2 : int), univ(4 : int)])
+Valid? yes
+Call atom("q", [univ(1 : int)])
+Solutions:
+	atom("q", [univ(1 : int), univ(1 : int)])
+	atom("q", [univ(1 : int), univ(2 : int)])
+Complete? yes
+Incorrect node found:
+missing_answer(atom("p", [univ(1 : int)]), [atom("p", [univ(1 : int), univ(27 : int)]), atom("p", [univ(1 : int), univ(1 : int)])])
+      34:      2  2 FAIL pred aadebug:p/2-0 (nondet) aadebug.m:18 (aadebug.m:9)
+mdb> continue
+no
