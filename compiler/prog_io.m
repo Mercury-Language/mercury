@@ -1042,11 +1042,6 @@ process_decl(ModuleName, VarSet, "pragma", Pragma, Attributes, Result):-
 	parse_pragma(ModuleName, VarSet, Pragma, Result0),
 	check_no_attributes(Result0, Attributes, Result).
 
-	% XXX assertion bootstrap
-process_decl(ModuleName, VarSet, "assertion", Assertion, Attributes, Result):-
-	parse_assertion(ModuleName, VarSet, Assertion, Result0),
-	check_no_attributes(Result0, Attributes, Result).
-
 process_decl(ModuleName, VarSet, "promise", Assertion, Attributes, Result):-
 	parse_assertion(ModuleName, VarSet, Assertion, Result0),
 	check_no_attributes(Result0, Attributes, Result).

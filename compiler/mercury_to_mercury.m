@@ -2838,8 +2838,6 @@ mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
 mercury_unary_prefix_op("aditi_bottom_up").
 mercury_unary_prefix_op("aditi_top_down").
-	% XXX assertion bootstrap
-mercury_unary_prefix_op("assertion").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
 mercury_unary_prefix_op("end_module").

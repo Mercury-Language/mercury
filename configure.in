@@ -77,15 +77,18 @@ if test "$BOOTSTRAP_MC" != ""; then
 	cat > conftest.m << EOF
 		% this module contains features which didn't work in
 		% previous versions of the Mercury compiler
+		% Use [[ ]] for lists.
 		:- module conftest.
 		:- interface.
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		:- import_module int.
+		:- import_module list.
+		% Check that promise declarations can be parsed
+		% and that every variable in the assertion doesn't
+		% need to be explicitly quantified.
+		:- promise all [[H,T,L]] (list__last([[H|T]], L)).
 		main --> 
-			% check that we have int__xor.
-			{ _X = int__xor(2,2) },
 			print("Hello, world\n").
 EOF
 	if

@@ -369,7 +369,7 @@ The allowed declarations are:
 :- typeclass
 :- instance
 :- pragma
-:- assertion
+:- promise
 :- module
 :- interface
 :- implementation

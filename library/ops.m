@@ -172,8 +172,6 @@ ops__op_table("aditi_bottom_up", before, fx, 500). % Mercury extension
 ops__op_table("aditi_top_down", before, fx, 500). % Mercury extension
 ops__op_table("all", before, fxy, 950).		% Mercury/NU-Prolog extension
 ops__op_table("and", after, xfy, 720).		% NU-Prolog extension
-	% XXX assertion bootstrap
-ops__op_table("assertion", before, fx, 1199).	% Mercury extension
 ops__op_table("div", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("else", after, xfy, 1170).	% Mercury/NU-Prolog extension
 ops__op_table("end_module", before, fx, 1199).	% Mercury extension
