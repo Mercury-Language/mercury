@@ -72,7 +72,7 @@
 %	:- type real == float.
 %
 %    Currently references to equivalence types are expanded
-%    in a separate pass by toplevel.nl.  It would be better
+%    in a separate pass by mercury_compile.nl.  It would be better
 %    to avoid expanding them (and instead modify the type unification
 %    algorithm to handle equivalent types) because this would
 %    give better error messages.  However, this is not a high
