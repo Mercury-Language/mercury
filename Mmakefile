@@ -6,6 +6,15 @@
 
 # Mmakefile - the top-level Mmake file for the Mercury implementation
 
+# We need to explicitly include scripts/Mmake.vars here, even though `mmake'
+# includes that file automatically, to make sure that we get the right
+# version of that file.  The settings in that file include values set
+# by parameters to configure (e.g. --prefix), and we need to make sure
+# that we pick up the values from the Mmake.vars that we're going to install,
+# rather than from the old version of mmake that we're installing with,
+# which may have been configured with a different --prefix.
+include scripts/Mmake.vars
+
 MAIN_TARGET=all
 
 MERCURY_DIR=.
