@@ -24,7 +24,7 @@ typedef struct s_label
 #define	makelabel(n, a)	makeentry((n),(a))
 #endif
 
-#if defined(USE_PROFILING) || defined(DEBUG_GOTOS)
+#if defined(USE_PROFILING) || defined(DEBUG_GOTOS) || !defined(SPEED)
 #define makelocalentry(n, a)	makeentry((n),(a))
 #else 
 #define makelocalentry(n, a)	/* nothing */
