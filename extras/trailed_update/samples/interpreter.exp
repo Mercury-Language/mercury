@@ -12,14 +12,13 @@ No (more) solutions.
 ?- true ; true.
 true ; true.
 No (more) solutions.
-?- :- module interpreter.
-:- interface.
+?- :- interface.
+:- module interpreter.
 :- implementation.
 :- import_module unsafe.
 :- import_module store, tr_store, map, multi_map.
 :- import_module list, string, term, varset, term_io, require, std_util.
 :- import_module io.
-:- impure pred write_solution(varset, map(var, my_var(_2)), my_term(_2), store(_2)).
 :- mode database_lookup_pred_clause(in, in, out) is nondet.
 :- mode database_lookup_clause(in, in, out) is nondet.
 :- mode database_lookup_clause(in, in, out, out, out) is nondet.
@@ -44,9 +43,8 @@ No (more) solutions.
 :- mode consult_until_eof(in, out, di, uo) is det.
 :- mode consult(in, in, out, di, uo) is det.
 :- mode consult_list(in, in, out, di, uo) is det.
-:- mode write_solution(in, in, in, mdi) is det.
 :- mode write_solution(in, in, in, mdi, di, uo) is det.
-:- mode print_solutions(in, in, in, mdi, in, di, uo) is det.
+:- mode print_solutions(in, in, in, mdi, in, di, uo) is cc_multi.
 :- mode main_loop_2(in, in, di, uo) is cc_multi.
 :- mode main_loop(in, di, uo) is cc_multi.
 :- mode main(di, uo) is cc_multi.
@@ -79,7 +77,6 @@ No (more) solutions.
 :- pred main_loop_2(read_term, database, io__state, io__state).
 :- pred main_loop(database, io__state, io__state).
 :- pred main(io__state, io__state).
-:- pragma promise_pure(print_solutions / 7).
 :- type clause ---> clause(varset, term, term).
 :- type _2 / _3 ---> _2 / _3.
 :- type db_pred ---> db_pred(list(clause), multi_map(string / int, clause)).
@@ -88,7 +85,7 @@ No (more) solutions.
 :- type my_var(_2) == mutvar(my_term(_2), _2).
 No (more) solutions.
 ?- No (more) solutions.
-?- print_solutions(_3, _4, _5, _6, _7) --> { solve(_7, _5, _6, _8) }, { impure write_solution(_3, _4, _5, _8) }, { fail } ; io__write_string("No (more) solutions.\n").
+?- print_solutions(_3, _4, _5, _6, _7) --> unsorted_aggregate((pred (_8 :: muo)) is nondet :- solve(_7, _5, unsafe_promise_unique(_6), _8), write_solution(_3, _4, _5)), io__write_string("No (more) solutions.\n").
 consult_until_eof_2(term(_3, _4), _5, _6) --> { database_assert_clause(_5, _3, _4, _7) }, consult_until_eof(_7, _6).
 consult_until_eof_2(error(_3, _4), _5, _6) --> io__write_string("Error reading term at line "), io__write_int(_4), io__write_string(" of standard input: "), io__write_string(_3), io__write_string("\n"), consult_until_eof(_5, _6).
 consult_until_eof_2(eof, _3, _3) --> [].
