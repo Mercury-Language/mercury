@@ -33,7 +33,7 @@ do
 		 	-exec backuprevisions '{}' ';' | gzip -9 > $revisions)
 	    # If there are changes in the directory since the backup,
 	    # make a new backup.
-	    elif [ x"`find $dir/$subdir -newer $olddiff`" != x ] ; then
+	    elif [ x"`find $dir/$subdir/* -newer $olddiff`" != x ] ; then
 	    	echo "Changes in $dir/$subdir, making new backup"
 		(cd $dir/$subdir; cvs -f diff -u -N . 2> /dev/null |
 		    gzip -9 > $diff)
