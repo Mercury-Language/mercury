@@ -15,6 +15,8 @@ Changes to the Mercury language:
   required to be defined in the same module as the type.
 
 Changes to the Mercury compiler:
+* We have added optional support for a new type-accurate garbage collector
+  as an alternative to using the Boehm et al conservative collector.
 * Better support for incremental program development:
   there's two new compiler options, `--allow-stubs' and `--no-warn-stubs',
   to support execution of incomplete programs.
@@ -198,6 +200,22 @@ Changes to the extras distribution:
 * Nothing yet.
 
 Changes to the Mercury compiler:
+
+* We have added optional support for a new type-accurate garbage collector
+  as an alternative to using the Boehm et al conservative collector.
+
+  The new collector is enabled by `--grade hlc.agc'.
+  For details about how it works, see the paper
+  "Accurate garbage collection in an uncooperative environment"
+  which is available via our web page.
+
+  Note that the new collector is a very naive copying collector, and still
+  has a number of serious limitations which may make it undesirable for
+  most applications.  It only works with `--high-level-code'.  The heap
+  size is fixed at program startup; the collector does not attempt to
+  resize the heap.  It does not do cheap heap reclamation on backtracking.
+  There is no support for passing terms on the Mercury heap to C code.
+  In most cases, the Boehm et all conservative collector will perform better.
 
 * There's a new warning option `--warn-dead-procs' which can be used
   for detecting unreachable code.

@@ -659,15 +659,15 @@
 :- pred ml_gen_info_new_func_label(ml_label_func, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_new_func_label(out, in, out) is det.
 
-	% Increase the function label counter by some
-	% amount which is presumed to be sufficient
+	% Increase the function label and const sequence number counters
+	% by some amount which is presumed to be sufficient
 	% to ensure that if we start again with a fresh
 	% ml_gen_info and then call this function,
-	% we won't encounter any already-used function labels.
+	% we won't encounter any already-used function labels or constants.
 	% (This is used when generating wrapper functions
 	% for type class methods.)
-:- pred ml_gen_info_bump_func_label(ml_gen_info, ml_gen_info).
-:- mode ml_gen_info_bump_func_label(in, out) is det.
+:- pred ml_gen_info_bump_counters(ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_bump_counters(in, out) is det.
 
 	% Generate a new commit label number.
 	% This is used to give unique names to the labels
@@ -698,7 +698,8 @@
 
 	% Generate a new `const' sequence number.
 	% This is used to give unique names to the local constants
-	% generated for --static-ground-terms.
+	% generated for --static-ground-terms, closure layouts,
+	% string switch hash tables, etc.
 :- type const_seq == int.
 :- pred ml_gen_info_new_const(const_seq,
 		ml_gen_info, ml_gen_info).
@@ -2708,8 +2709,9 @@ ml_gen_info_new_label(Label, Info, Info^label := Label) :-
 ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
 	Label = Info^func_label + 1.
 
-ml_gen_info_bump_func_label(Info,
-	Info^func_label := Info^func_label + 10000).
+ml_gen_info_bump_counters(Info,
+	(Info^func_label := Info^func_label + 10000)
+	     ^const_num := Info^const_num + 10000).
 
 ml_gen_info_new_commit_label(CommitLabel, Info,
 		Info^commit_label := CommitLabel) :-

@@ -52,6 +52,11 @@ extern	void	MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs);
 ** it takes an MR_Closure rather than an MR_Label_Layout,
 ** and it gets the type_infos from a closure using the closure_layout,
 ** rather than getting them from the registers/stacks using a label_layout.
+**
+** MR_materialize_typeclass_info_type_params is the same as
+** MR_materialize_closure_type_params except that it takes
+** a typeclass_info and a closure layout (for the type class method)
+** and it gets the type_infos from the typeclass_info.
 */ 
 
 extern	MR_TypeInfoParams	MR_materialize_type_params(
@@ -63,6 +68,9 @@ extern	MR_TypeInfoParams	MR_materialize_type_params_base(
 					MR_Word *base_sp, MR_Word *base_curfr);
 extern	MR_TypeInfoParams	MR_materialize_closure_type_params(
 					MR_Closure *closure);
+extern	MR_TypeInfoParams	MR_materialize_typeclass_info_type_params(
+					MR_Word typeclass_info,
+					MR_Closure_Layout *closure_layout);
 extern	MR_TypeInfoParams	MR_materialize_answer_block_type_params(
 					const MR_Type_Param_Locns *tvar_locns,
 					MR_Word *answer_block, int block_size);

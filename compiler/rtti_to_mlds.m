@@ -994,7 +994,7 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
 	% We start off by creating a fresh MLGenInfo here,
 	% using the pred_id and proc_id of the wrapped procedure.
 	% This requires considerable care.  We need to call
-	% ml_gen_info_bump_func_label to ensure that the
+	% ml_gen_info_bump_counters to ensure that the
 	% function label allocated for the wrapper func
 	% does not overlap with any function labels used
 	% when generating code for the wrapped procedure.
@@ -1002,15 +1002,14 @@ gen_init_method(ModuleInfo, NumExtra, RttiProcId, Init,
 	PredId = RttiProcId ^ pred_id,
 	ProcId = RttiProcId ^ proc_id,
 	MLGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
-	ml_gen_info_bump_func_label(MLGenInfo0, MLGenInfo1),
+	ml_gen_info_bump_counters(MLGenInfo0, MLGenInfo1),
 
 	%
 	% Now we can safely go ahead and generate the wrapper function
 	%
-	Offset = ml_typeclass_info_arg_offset,
 	term__context_init(Context),
-	ml_gen_closure_wrapper(PredId, ProcId, Offset, NumExtra,
-		Context, WrapperFuncRval, WrapperFuncType,
+	ml_gen_closure_wrapper(PredId, ProcId, typeclass_info_closure,
+		NumExtra, Context, WrapperFuncRval, WrapperFuncType,
 		MLGenInfo1, MLGenInfo),
 	ml_gen_info_get_extra_defns(MLGenInfo, ExtraDefns1),
 	ExtraDefns = list__append(ExtraDefns1, ExtraDefns0),

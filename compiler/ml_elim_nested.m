@@ -154,13 +154,15 @@
 %	"Accurate garbage collection in an uncooperative environment".
 %	International Symposium on Memory Management, Berlin, Germany, 2002.
 %
-% XXX Accurate GC is still not yet fully implemented.
+% In theory accurate GC is now fully implemented,
+% i.e. it should support the whole Mercury language,
+% modulo the caveats below.
 % TODO:
-%	- Support type classes: currently we generate code for type class
-%	  method wrappers which calls MR_materialize_closure_type_params(),
-%	  which only works for closures, not for typeclass_infos.
+%	- XXX Need to test the GC tracing code for type class methods.
+%	  This code in theory ought to work, I think, but it has not
+%	  really been tested.
 %
-%	- The garbage collector should resize the heap if/when it fills up.
+%	- XXX The garbage collector should resize the heap if/when it fills up.
 %         We should allocate a large amount of virtual memory for each heap,
 %         but we should collect when we've allocated a small part of it.
 %
@@ -203,7 +205,7 @@
 %	  and MR_deep_copy() needs to call MR_GC_check() before each
 %	  heap allocation.
 %
-%	- We need to handle `pragma export'.
+%	- XXX We need to handle `pragma export'.
 %
 %	  The C interface in general is a bit problematic for GC.
 %	  But for code which does not call back to Mercury, 
@@ -223,7 +225,7 @@
 %	  But if Mercury code calls C code which calls back to Mercury
 %	  code, and the C code uses pointers to the Mercury heap,
 %	  then there could be serious problems (i.e. dangling pointers).
-%	  Even you just use `pragma export' to export a procedure
+%	  Even if you just use `pragma export' to export a procedure
 %	  and `pragma import' to import it back again, there may be
 %	  trouble.
 %         The code generated for the exported functions can include

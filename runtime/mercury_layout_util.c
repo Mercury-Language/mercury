@@ -17,6 +17,8 @@
 
 static MR_Word MR_lookup_closure_long_lval(MR_Long_Lval locn,
 	MR_Closure *closure, MR_bool *succeeded);
+static MR_Word MR_lookup_typeclass_info_long_lval(MR_Long_Lval locn,
+	MR_Word typeclass_info, MR_bool *succeeded);
 static MR_Word MR_lookup_answer_block_long_lval(MR_Long_Lval locn,
 	MR_Word *answer_block, int block_size, MR_bool *succeeded);
 
@@ -143,6 +145,44 @@ MR_materialize_closure_type_params(MR_Closure *closure)
 				if (! succeeded) {
 					MR_fatal_error("missing type param in "
 					  "MR_materialize_closure_type_params");
+				}
+			}
+		}
+
+		return type_params;
+	} else {
+		return NULL;
+	}
+}
+
+MR_TypeInfoParams
+MR_materialize_typeclass_info_type_params(MR_Word typeclass_info,
+	MR_Closure_Layout *closure_layout)
+{
+	const MR_Type_Param_Locns *tvar_locns;
+
+	tvar_locns = closure_layout->MR_closure_type_params;
+	if (tvar_locns != NULL) {
+		MR_TypeInfoParams	type_params;
+		MR_bool			succeeded;
+		MR_Integer		count;
+		int			i;
+
+		count = tvar_locns->MR_tp_param_count;
+		type_params = (MR_TypeInfoParams)
+			MR_NEW_ARRAY(MR_Word, count + 1);
+
+		for (i = 0; i < count; i++) {
+			if (tvar_locns->MR_tp_param_locns[i] != 0)
+			{
+				type_params[i + 1] = (MR_TypeInfo)
+					MR_lookup_typeclass_info_long_lval(
+						tvar_locns->
+							MR_tp_param_locns[i],
+						typeclass_info, &succeeded);
+				if (! succeeded) {
+					MR_fatal_error("missing type param in "
+				  "MR_materialize_typeclass_info_type_params");
 				}
 			}
 		}
@@ -321,6 +361,114 @@ MR_lookup_closure_long_lval(MR_Long_Lval locn, MR_Closure *closure,
 		default:
 			if (MR_print_locn) {
 				printf("closure DEFAULT\n");
+			}
+			break;
+	}
+
+	return value;
+}
+
+static MR_Word
+MR_lookup_typeclass_info_long_lval(MR_Long_Lval locn, MR_Word typeclass_info,
+	MR_bool *succeeded)
+{
+	int	locn_num;
+	int	offset;
+	MR_Word	value;
+	MR_Word	baseaddr;
+	MR_Word	sublocn;
+
+	*succeeded = MR_FALSE;
+	value = 0;
+
+	locn_num = (int) MR_LONG_LVAL_NUMBER(locn);
+	switch (MR_LONG_LVAL_TYPE(locn)) {
+		case MR_LONG_LVAL_TYPE_R:
+			if (MR_print_locn) {
+				printf("typeclassinfo r%d\n", locn_num);
+			}
+			if (locn_num <= 
+				MR_typeclass_info_num_extra_instance_args(
+					typeclass_info))
+			{
+				value = MR_typeclass_info_arg_typeclass_info(
+					typeclass_info, locn_num);
+				*succeeded = MR_TRUE;
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_F:
+			if (MR_print_locn) {
+				printf("typeclassinfo f%d\n", locn_num);
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_STACKVAR:
+			if (MR_print_locn) {
+				printf("typeclassinfo stackvar%d\n", locn_num);
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_FRAMEVAR:
+			if (MR_print_locn) {
+				printf("typeclassinfo framevar%d\n", locn_num);
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_SUCCIP:
+			if (MR_print_locn) {
+				printf("typeclassinfo succip\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_MAXFR:
+			if (MR_print_locn) {
+				printf("typeclassinfo maxfr\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_CURFR:
+			if (MR_print_locn) {
+				printf("typeclassinfo curfr\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_HP:
+			if (MR_print_locn) {
+				printf("typeclassinfo hp\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_SP:
+			if (MR_print_locn) {
+				printf("typeclassinfo sp\n");
+			}
+			break;
+
+		case MR_LONG_LVAL_TYPE_INDIRECT:
+			offset = MR_LONG_LVAL_INDIRECT_OFFSET(locn_num);
+			sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL(locn_num);
+			if (MR_print_locn) {
+				printf("typeclassinfo offset %d from ", offset);
+			}
+			baseaddr = MR_lookup_typeclass_info_long_lval(sublocn,
+					typeclass_info, succeeded);
+			if (! *succeeded) {
+				break;
+			}
+			value = MR_typeclass_info_type_info(baseaddr, offset);
+			*succeeded = MR_TRUE;
+			break;
+
+		case MR_LONG_LVAL_TYPE_UNKNOWN:
+			if (MR_print_locn) {
+				printf("typeclassinfo unknown\n");
+			}
+			break;
+
+		default:
+			if (MR_print_locn) {
+				printf("typeclassinfo DEFAULT\n");
 			}
 			break;
 	}

@@ -5390,9 +5390,10 @@ Specify which method of garbage collection to use.
 Grades containing @samp{.gc} use @samp{--gc boehm},
 grades containing @samp{.mps} use @samp{--gc mps},
 other grades use @samp{--gc none}.
-@samp{accurate} is not yet implemented.
 @samp{conservative} or @samp{boehm} is Hans Boehm et al's conservative
 garbage collector.
+@samp{accurate} is our own type-accurate copying collector.
+It requires @samp{--high-level-code}.
 @samp{mps} is another conservative collector based on Ravenbrook Limited's 
 MPS (Memory Pool System) kit.
 This option is ignored by the IL and Java back-ends, which always use
