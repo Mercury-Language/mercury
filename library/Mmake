@@ -25,7 +25,7 @@ MNL	=	MERCURY_NU_LIB_DIR=. \
 		$(SCRIPTS_DIR)/mnl -v
 
 MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile $(SCRIPTS_DIR)/msc
-MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
+MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=$(SP) \
 MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS)`" \
 		$(SCRIPTS_DIR)/msl
 
@@ -58,7 +58,7 @@ all : ints mercury nuprolog sicstus
 mercury : ints libmercury
 
 .PHONY: nuprolog
-nuprolog : ints library.nu $(library.nos) $(NU_LIBRARY_NOS) \
+nuprolog : ints library.nu library.nu.debug $(library.nos) $(NU_LIBRARY_NOS) \
 			nc_builtin.nl
 
 .PHONY: sicstus
@@ -137,13 +137,13 @@ $(library.nos) $(NU_LIBRARY_NOS) error.no debug.no portray.no: nc_builtin.nl
 
 sicstus_compile: sp_builtin.pl
 	{ echo "on_exception(Error, (				"; \
-	  echo "  prolog_flag(compiling, _, fastcode),		"; \
+	  echo "  (prolog_flag(compiling, _, fastcode) -> true ; true),"; \
 	  echo "  compile(sp_builtin),				"; \
 	  echo "  garbage_collect,				"; \
 	  echo "  save('$@', 1),				"; \
 	  echo "  unix(argv(Args)),				"; \
 	  echo "  ( Args = [CompileMode|Files] ->		"; \
-	  echo "      prolog_flag(compiling, _, CompileMode),	"; \
+	  echo "(prolog_flag(compiling, _, CompileMode) -> true ; true),"; \
 	  echo "      fcompile(Files)				"; \
 	  echo "  ; true )					"; \
 	  echo "), print_message(error, Error)), halt ; halt.	"; \
