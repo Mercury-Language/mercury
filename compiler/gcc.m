@@ -68,6 +68,41 @@
 
 %-----------------------------------------------------------------------------%
 
+	% gcc__run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output):
+	% 
+	% This is the top-level routine that MUST be used to invoke the
+	% GCC back-end.  It makes sure GCC has been initialized, using
+	% the specified CommandLine for GCC's command-line parameters,
+	% and then calls the specified FrontEndCallBack procedure.
+	% The FrontEndCallBack should then call the appropriate
+	% routines defined below (e.g. gcc__{start,end}_function,
+	% gcc__gen_expr_stmt, etc.) to generate code.  When it
+	% is finished, the FrontEndCallBack can return an Output.
+	% gcc__run_backend will then finish generating the assembler
+	% file and clean up.  Finally gcc__run_backend will return
+	% the Output of the FrontEndCallBack procedure back to the
+	% caller of gcc__run_backend.  ReturnValue will be the
+	% return value from the GCC backend, i.e. zero if all is OK,
+	% and non-zero if something went wrong.
+	% 
+	% WARNING: The other functions and predicates defined in this
+	% module MUST NOT be called directly; they can only be called
+	% from the FrontEndCallBack routine passed to gcc__run_backend.
+	% Otherwise the GCC back-end won't get properly initialized.
+	% 
+	% Due to limitations in the GCC back-end, this routine must
+	% not be called more than once; if it is, it will print an
+	% error message and abort execution.
+
+:- type frontend_callback(T) == pred(T, io__state, io__state).
+:- inst frontend_callback == (pred(out, di, uo) is det).
+
+:- pred gcc__run_backend(string::in, int::out, 
+		frontend_callback(T)::in(frontend_callback), T::out,
+		io__state::di, io__state::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 % The GCC `tree' type.
 :- type gcc__tree.
 :- type gcc__tree_code.
@@ -659,6 +694,215 @@
 
 ").
 
+%-----------------------------------------------------------------------------%
+
+	%
+	% For gcc__run_backend, there's two possible cases, depending on who
+	% defined main():
+	%
+	%	1. GCC main():
+	%		gcc/toplev.c gets control first.
+	%
+	%		In this case, by the time we get to here
+	%		(gcc.m), the GCC back-end has already
+	%		been initialized.  We can go ahead and directly
+	%		call the front-end callback to generate the
+	%		GCC tree and RTL.  When we return back to
+	%		main/2 in mercury_compile, and that returns,
+	% 		the gcc back-end will continue on and will
+	%		generate the asm file. 
+	%
+	%		Note that mercury_compile.m can't invoke the
+	% 		assembler to produce an object file, since
+	% 		the assembler won't get produced until
+	%		after main/2 has exited!  Instead, the gcc
+	%		driver program (`gcc') will invoke the assembler.
+	%		
+	%	2. Mercury main():
+	%		mercury_compile.m gets control first.
+	%
+	%		When we get here (gcc.m), the gcc back-end
+	%		has not been initialized. We need to save
+	%		the front-end callback in a global variable,
+	%		and then invoke the GCC toplev_main() here.
+	%		This will start the GCC back-end, which will
+	%		eventually call MC_continue_frontend().
+	%		MC_continue_frontend() will then call the front-end
+	%		callback that we saved in a global earlier.
+	%		Eventually MC_continue_frontend() will
+	%		return and the gcc back-end will continue.
+	%
+	%		It's OK for mercury_compile.m to invoke the assembler.
+	%
+	%		XXX For programs with nested modules,
+	%		we'll end up calling the gcc back-end
+	%		more than once; this will lead to an abort.
+	%		
+
+gcc__run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output) -->
+	in_gcc(InGCC),
+	( { InGCC = yes } ->
+		FrontEndCallBack(Output),
+		{ ReturnValue = 0 }
+	;
+		set_global_frontend_callback(FrontEndCallBack),
+		call_gcc_backend(CommandLine, ReturnValue),
+		get_global_frontend_callback_output(Output)
+	).
+
+	% Returns `yes' iff we've already entered the gcc back-end.
+:- pred in_gcc(bool::out, io__state::di, io__state::uo) is det.
+:- pragma import(in_gcc(out, di, uo), "MC_in_gcc").
+
+:- pred call_gcc_backend(string::in, int::out,
+		io__state::di, io__state::uo) is det.
+:- pragma import(call_gcc_backend(in, out, di, uo), "MC_call_gcc_backend").
+
+:- pragma c_header_code("
+/* We use an `MC_' prefix for C code in the mercury/compiler directory. */
+
+extern MR_Word MC_frontend_callback;
+extern MR_Word MC_frontend_callback_output;
+extern MR_Word MC_frontend_callback_type;
+
+void MC_in_gcc(MR_Word *result);
+void MC_call_gcc_backend(MR_String all_args, MR_Integer *result);
+void MC_continue_frontend(void);
+
+#include ""mercury_wrapper.h""		/* for MR_make_argv() */
+#include <stdio.h>			/* for fprintf() */
+#include <stdlib.h>			/* for exit() */
+").
+
+:- pragma c_code("
+
+/* We use an `MC_' prefix for C code in the mercury/compiler directory. */
+MR_Word MC_frontend_callback;
+MR_Word MC_frontend_callback_output;
+MR_Word MC_frontend_callback_type;
+
+extern int toplev_main(int argc, char **argv);
+
+void
+MC_in_gcc(MR_Word *result)
+{
+	/* If we've already entered gcc, then gcc will have set progname. */
+	*result = (progname != NULL);
+}
+
+void
+MC_call_gcc_backend(MR_String all_args, MR_Integer *result)
+{
+	char *args;
+	char **argv;
+	int argc;
+	const char *error_msg;
+	static int num_calls = 0;
+
+	/*
+	** The gcc back-end cannot be called more than once.
+	** If you try, it uses up all available memory.
+	** So we need to abort nicely in that case.
+	**
+	** That case will happen if (a) there were nested
+	** sub-modules or (b) the user specified more than
+	** one module on the command line.
+	*/
+	num_calls++;
+	if (num_calls > 1) {
+		fprintf(stderr, ""Sorry, not implemented: ""
+			""calling GCC back-end multiple times.\\n""
+			""This can occur if you are trying to ""
+			""compile more than one module\\n""
+			""at a time with `--target asm'.\\n""
+			""Please use separate sub-modules ""
+			""rather than nested sub-modules,\\n""
+			""i.e. put each sub-module in its own file, ""
+			""and don't specify more\\n""
+			""than one module on the command line ""
+			""(use Mmake instead).\\n""
+			""Or alternatively, just use `--target c'.\\n"");
+		exit(EXIT_FAILURE);
+	}
+
+	error_msg = MR_make_argv(all_args, &args, &argv, &argc);
+	if (error_msg) {
+		fprintf(stderr,
+			""Error parsing GCC back-end arguments:\n%s\n"",
+			error_msg);
+		exit(EXIT_FAILURE);
+	}
+
+	merc_continue_frontend = &MC_continue_frontend;
+	*result = toplev_main(argc, argv);
+
+	/*
+	** Reset GCC's progname after we return from toplev_main(),
+	** so that MC_in_gcc() knows that we're no longer in GCC. 
+	*/
+	progname = NULL;
+
+	MR_GC_free(args);
+	MR_GC_free(argv);
+}
+
+/*
+** This is called from yyparse() in mercury/mercury-gcc.c
+** in the gcc back-end.
+*/
+void
+MC_continue_frontend(void)
+{
+	MC_call_frontend_callback(MC_frontend_callback_type,
+		MC_frontend_callback, &MC_frontend_callback_output);
+}
+").
+
+:- pred call_frontend_callback(frontend_callback(T)::in(frontend_callback),
+		T::out, io__state::di, io__state::uo) is det.
+
+:- pragma export(call_frontend_callback(in(frontend_callback), out, di, uo),
+	"MC_call_frontend_callback").
+
+call_frontend_callback(FrontEndCallBack, Output) -->
+	FrontEndCallBack(Output).
+
+:- pred get_global_frontend_callback(
+		frontend_callback(T)::out(frontend_callback),
+		io__state::di, io__state::uo) is det.
+:- pred set_global_frontend_callback(
+		frontend_callback(T)::in(frontend_callback),
+		io__state::di, io__state::uo) is det.
+:- pred get_global_frontend_callback_output(T::out,
+		io__state::di, io__state::uo) is det.
+:- pred set_global_frontend_callback_output(T::in,
+		io__state::di, io__state::uo) is det.
+
+:- pragma c_code(get_global_frontend_callback(CallBack::out(frontend_callback),
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	CallBack = MC_frontend_callback;
+").
+:- pragma c_code(set_global_frontend_callback(CallBack::in(frontend_callback),
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	MC_frontend_callback = CallBack;
+	MC_frontend_callback_type = TypeInfo_for_T;
+
+").
+:- pragma c_code(get_global_frontend_callback_output(Output::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
+"
+	Output = MC_frontend_callback_output;
+").
+:- pragma c_code(set_global_frontend_callback_output(Output::in,
+	_IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	MC_frontend_callback_output = Output;
+").
+
+%-----------------------------------------------------------------------------%
 
 :- type gcc__tree ---> gcc__tree(c_pointer).
 :- type gcc__tree_code == int.

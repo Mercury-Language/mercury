@@ -110,8 +110,6 @@ CFLAGS-gcc =	-DMERCURY_BOOTSTRAP_H \
 		-I$(GCC_SRC_DIR)/gcc/config \
 		-I$(GCC_SRC_DIR)/include \
 		-I$(GCC_SRC_DIR)
-# Likewise for mlds_to_gcc.m
-CFLAGS-mlds_to_gcc = $(CFLAGS-gcc)
 
 #-----------------------------------------------------------------------------#
 
