@@ -231,8 +231,8 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	).
 
 % There can be no dependencies within a pragma_c_code
-dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _), _, DepGraph, 
-	DepGraph).
+dependency_graph__add_arcs_in_goal_2(pragma_c_code(_, _, _, _, _, _), _,
+	DepGraph, DepGraph).
 
 %-----------------------------------------------------------------------------%
 

@@ -285,8 +285,8 @@ implicitly_quantify_goal_2(unify(A, B0, X, Y, Z), Context,
 	{ set__intersect(GoalVars, OutsideVars, NonLocalVars) },
 	quantification__set_nonlocals(NonLocalVars).
 
-implicitly_quantify_goal_2(pragma_c_code(A,B,C,Vars,E), _,
-		pragma_c_code(A,B,C,Vars,E)) --> 
+implicitly_quantify_goal_2(pragma_c_code(A,B,C,D,Vars,F), _,
+		pragma_c_code(A,B,C,D,Vars,F)) --> 
 	quantification__get_outside(OutsideVars),
 	{ set__list_to_set(Vars, GoalVars) },
 	quantification__get_seen(SeenVars0),
@@ -536,7 +536,7 @@ goal_vars_2(if_then_else(Vars, A, B, C, _), Set0, Set) :-
 	goal_vars(C, Set6),
 	set__union(Set5, Set6, Set).
 
-goal_vars_2(pragma_c_code(_, _, _, ArgVars, _), Set0, Set) :-
+goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
 :- pred quantification__unify_rhs_vars(unify_rhs, set(var), set(var)).

@@ -143,6 +143,8 @@
 
 	;	pragma_c_code(
 			string,		% The C code to do the work
+			c_is_recursive, % Does the C code recursively
+					% invoke Mercury code?
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables
@@ -664,7 +666,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(higher_order_call(_,_,_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_c_code(_,_,_,_,_)).
+goal_is_atomic(pragma_c_code(_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

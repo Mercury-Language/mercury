@@ -77,8 +77,9 @@
 
 :- type pragma_type --->	c_header_code(string)
 			;	c_code(string)
-			;	c_code(sym_name, 
+			;	c_code(c_is_recursive, sym_name, 
 					list(pragma_var), varset, string)
+				% Whether or not the C code may call Mercury,
 				% PredName, Vars/Mode, VarNames, C Code
 			;	memo(sym_name, int)
 				% Predname, Arity
@@ -87,7 +88,15 @@
 			;	obsolete(sym_name, int)
 				% Predname, Arity
 			;	export(sym_name, list(mode), string).
-				% Predname, Modes, C Function
+				% Predname, Modes, C function name.
+
+	% For pragma c_code, there are two different calling conventions,
+	% one for C code that may recursively call Mercury code, and another
+	% more efficient one for the case when we know that the C code will
+	% not recursively invoke Mercury code.
+:- type c_is_recursive
+	--->	recursive	% possibly recursive
+	;	non_recursive.	% definitely not recursive
 
 :- type pragma_var    --->	pragma_var(var, string, mode).
 			  	% variable, name, mode

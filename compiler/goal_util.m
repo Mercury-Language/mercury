@@ -221,8 +221,8 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__name_apart_2(pragma_c_code(A,B,C,Vars0,ArgNameMap0), Must, Subn,
-		pragma_c_code(A,B,C,Vars,ArgNameMap)) :-
+goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,ArgNameMap0), Must, Subn,
+		pragma_c_code(A,B,C,D,Vars,ArgNameMap)) :-
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 		% also update the arg/name map since the vars have changed
 	map__keys(ArgNameMap0, NArgs0),
@@ -415,7 +415,7 @@ goal_util__goal_vars_2(if_then_else(Vars, A - _, B - _, C - _, _), Set0, Set) :-
 	goal_util__goal_vars_2(B, Set2, Set3),
 	goal_util__goal_vars_2(C, Set3, Set).
 
-goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _), Set0, Set) :-
+goal_util__goal_vars_2(pragma_c_code(_, _, _, _, ArgVars, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
 :- pred goal_util__goals_goal_vars(list(hlds__goal), set(var), set(var)).
@@ -500,7 +500,7 @@ goal_expr_size(some(_, Goal), Size) :-
 goal_expr_size(call(_, _, _, _, _, _, _), 1).
 goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(pragma_c_code(_, _, _, _, _), 1).
+goal_expr_size(pragma_c_code(_, _, _, _, _, _), 1).
 
 %-----------------------------------------------------------------------------%
 

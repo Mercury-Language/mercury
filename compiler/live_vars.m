@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module arg_info, hlds_goal, hlds_data, mode_util.
+:- import_module arg_info, prog_data, hlds_goal, hlds_data, mode_util.
 :- import_module globals, graph_colour.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
@@ -272,25 +272,29 @@ detect_live_vars_in_goal_2(unify(_,_,_,D,_), NondetLives, Liveness, LiveSets0,
 	).
 
 detect_live_vars_in_goal_2(
-		pragma_c_code(_C_Code, PredId, ProcId, Args, _ArgNameMap), 
+		pragma_c_code(_C_Code, IsRecursive, PredId, ProcId, Args,
+				_ArgNameMap), 
 		NondetLives, Liveness, LiveSets0, _Model, ModuleInfo,
 		Liveness, LiveSets) :-
 
-	% The variables which need to be saved onto the stack
-	% before the c_code execution are all the variables that are live
-	% after the c_code execution, except for the output arguments produced
-	% by the c_code, plus all the variables that are nondet
-	% live at the c_code.
-	%
-	% Note that we wouldn't need to save any variables onto the stack
-	% before a pragma_c_code if we knew that it was not going to call
-	% back Mercury code, because C code won't clobber the registers.
-	% But in general we don't know that.
+	( IsRecursive = non_recursive ->
+		% We don't need to save any variables onto the stack
+		% before a pragma_c_code if we know that it is not going to call
+		% back Mercury code, because C code won't clobber the registers.
 
-	find_output_vars(PredId, ProcId, Args, ModuleInfo, OutVars),
-	set__difference(Liveness, OutVars, LiveVars0),
-	set__union(LiveVars0, NondetLives, LiveVars),
-	set__insert(LiveSets0, LiveVars, LiveSets).
+		LiveSets = LiveSets0
+	;
+		% The variables which need to be saved onto the stack
+		% before the c_code execution are all the variables that are
+		% live after the c_code execution, except for the output
+		% arguments produced by the c_code, plus all the variables
+		% that are nondet live at the c_code.
+
+		find_output_vars(PredId, ProcId, Args, ModuleInfo, OutVars),
+		set__difference(Liveness, OutVars, LiveVars0),
+		set__union(LiveVars0, NondetLives, LiveVars),
+		set__insert(LiveSets0, LiveVars, LiveSets)
+	).
 
 %-----------------------------------------------------------------------------%
 

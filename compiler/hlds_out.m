@@ -775,7 +775,8 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 			Indent)
 	).
 
-hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, ArgNameMap), _, _, _) -->
+hlds_out__write_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNameMap), _, _, _)
+		-->
 	{ map__values(ArgNameMap, Names) },
 	io__write_string("$pragma(c_code, ["),
 	hlds_out__write_string_list(Names),

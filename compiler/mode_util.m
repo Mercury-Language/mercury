@@ -1246,7 +1246,7 @@ recompute_instmap_delta_2(unify(_, _, _, _, _), _, _) -->
 	{ error("recompute_instmap_delta: recomputing for atomic goal (unify)")
 	}.
 
-recompute_instmap_delta_2(pragma_c_code(_, _, _, _, _), _, _) -->
+recompute_instmap_delta_2(pragma_c_code(_, _, _, _, _, _), _, _) -->
 	{ error("recompute_instmap_delta: recomputing for atomic goal (pragma)")
 	}.
 

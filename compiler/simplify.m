@@ -273,8 +273,8 @@ simplify__goal_2(some(Vars1, Goal1), SomeInfo, InstMap0, DetInfo,
 		Goal = some(Vars1, NewGoal)
 	).
 
-simplify__goal_2(pragma_c_code(A, B, C, D, E), _, _, _,
-		 pragma_c_code(A, B, C, D, E), []).
+simplify__goal_2(pragma_c_code(A, B, C, D, E, F), _, _, _,
+		 pragma_c_code(A, B, C, D, E, F), []).
 
 %-----------------------------------------------------------------------------%
 

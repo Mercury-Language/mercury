@@ -194,8 +194,8 @@ constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
 
 
 constraint__propagate_goal_2(
-		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
-		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)) -->
+		pragma_c_code(A, B, C, D, E, F), 
+		pragma_c_code(A, B, C, D, E, F)) -->
 	constraint__checkpoint(enter, "pragma_c_code"),
 	constraint__checkpoint(exit, "pragma_c_code").
 

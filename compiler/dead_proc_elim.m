@@ -244,7 +244,7 @@ dead_proc_elim__traverse_expr(call(PredId, ProcId, _,_,_,_,_),
 		NewNotation = yes(1)
 	),
 	map__set(Needed0, proc(PredId, ProcId), NewNotation, Needed).
-dead_proc_elim__traverse_expr(pragma_c_code(_, PredId, ProcId, _, _),
+dead_proc_elim__traverse_expr(pragma_c_code(_, _, PredId, ProcId, _, _),
 		_CurrProc, Queue0, Queue, Needed0, Needed) :-
 	queue__put(Queue0, proc(PredId, ProcId), Queue),
 	map__set(Needed0, proc(PredId, ProcId), no, Needed).

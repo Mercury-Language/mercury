@@ -248,7 +248,7 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 	;
 		% Handle pragma c_code decls later on (when we process
 		% clauses).
-		{ Pragma = c_code(_, _, _, _) },
+		{ Pragma = c_code(_, _, _, _, _) },
 		{ Module = Module0 }
 	;
 		{ Pragma = memo(Name, Arity) },
@@ -361,10 +361,10 @@ add_item_clause(func_mode(_, _, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
 add_item_clause(pragma(Pragma), Context, Module0, Module) -->
 	(
-		{ Pragma = c_code(Pred, Vars, VarSet, C_Code) }
+		{ Pragma = c_code(IsRecursive, Pred, Vars, VarSet, C_Code) }
 	->
-		module_add_pragma_c_code(Pred, Vars, VarSet, C_Code, Context, 
-				Module0, Module)
+		module_add_pragma_c_code(IsRecursive, Pred, Vars, VarSet,
+			C_Code, Context, Module0, Module)
 	;
 		% don't worry about any pragma decs but c_code here
 		{ Module = Module0 }
@@ -1172,11 +1172,13 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 	
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(sym_name, list(pragma_var), varset, string, 
-	term__context, module_info, module_info, io__state, io__state).
-:- mode module_add_pragma_c_code(in, in, in, in, in, in, out, di, uo) is det.
+:- pred module_add_pragma_c_code(c_is_recursive, sym_name, list(pragma_var),
+		varset, string, term__context,
+		module_info, module_info, io__state, io__state).
+:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, out, di, uo)
+	is det.
 
-module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context, 
+module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Context, 
 			ModuleInfo0, ModuleInfo) --> 
 		% XXX we should allow pragma c_code for functions as well
 		% as for predicates, but currently we don't
@@ -1249,8 +1251,9 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context,
 			{ get_matching_procedure(ExistingProcs, Modes, ProcId) }
 		->
 			{ pred_info_clauses_info(PredInfo0, Clauses0) },
-			{ clauses_info_add_pragma_c_code(Clauses0, PredId, 
-					ProcId, VarSet, PVars, C_Code, Context, 
+			{ clauses_info_add_pragma_c_code(Clauses0,
+					IsRecursive, PredId, ProcId, VarSet,
+					PVars, C_Code, Context, 
 					Clauses, Goal) },
 			{ pred_info_set_clauses_info(PredInfo0, Clauses, 
 					PredInfo1) },
@@ -1514,7 +1517,7 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId).
 
-warn_singletons_in_goal_2(pragma_c_code(C_Code,_,_,Args,ArgNameMap), 
+warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, Args, ArgNameMap), 
 		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
 	{ goal_info_context(GoalInfo, Context) },
 	warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap, Context, 
@@ -1830,14 +1833,14 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 % pragma c_code declaration and the head vars of the pred. Also return the
 % hlds__goal.
 
-:- pred clauses_info_add_pragma_c_code(clauses_info, pred_id, proc_id, varset, 
-		list(pragma_var), string, term__context, clauses_info,
-		hlds__goal) is det.
-:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, out, 
+:- pred clauses_info_add_pragma_c_code(clauses_info, c_is_recursive,
+		pred_id, proc_id, varset, list(pragma_var), string,
+		term__context, clauses_info, hlds__goal) is det.
+:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, out, 
 		out) is det.
 
-clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars, 
-		C_Code, Context, ClausesInfo, HldsGoal) :-
+clauses_info_add_pragma_c_code(ClausesInfo0, IsRecursive, PredId, ModeId,
+		PVarSet, PVars, C_Code, Context, ClausesInfo, HldsGoal) :-
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_names(PVars, Names),
@@ -1852,8 +1855,8 @@ clauses_info_add_pragma_c_code(ClausesInfo0, PredId, ModeId, PVarSet, PVars,
 	map__from_corresponding_lists(Args, Names, ArgNameMap),
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
-	HldsGoal0 = pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap) - 
-		GoalInfo, 
+	HldsGoal0 = pragma_c_code(C_Code, IsRecursive, PredId, ModeId, Args,
+				ArgNameMap) - GoalInfo, 
 
 		% Insert unifications with the head args.
 	insert_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,

@@ -302,7 +302,7 @@ traverse_goal(some(Vars, Goal0) - Info, some(Vars, Goal) - Info,
 	traverse_goal(Goal0, Goal, PredProcId, Changed, GoalSize).
 
 traverse_goal(Goal, Goal, _, no, 1) -->
-	{ Goal = pragma_c_code(_,_,_,_,_) - _ }.
+	{ Goal = pragma_c_code(_, _, _, _, _, _) - _ }.
 
 traverse_goal(Goal, Goal, _, no, 1) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ }, 

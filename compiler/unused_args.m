@@ -302,7 +302,7 @@ traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma(c_code, ...) - pragma_c_code uses all its args
-traverse_goal(_, pragma_c_code(_, _, _, Args, _), UseInf0, UseInf) :-
+traverse_goal(_, pragma_c_code(_, _, _, _, Args, _), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, Args, UseInf).
 
 % cases to handle all the different types of unification
@@ -931,7 +931,7 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-        GoalExpr = pragma_c_code(_, _, _, _, _).
+        GoalExpr = pragma_c_code(_, _, _, _, _, _).
 
 
 	% Remove useless unifications from a list of conjuncts.

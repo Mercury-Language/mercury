@@ -233,11 +233,8 @@ find_follow_vars_in_goal_2(unify(A,B,C,D0,E), ArgsMethod, _ModuleInfo,
 		FollowVars = FollowVars0
 	).
 
-find_follow_vars_in_goal_2(
-	pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
-	_ArgInfo, _ModuleInfo, FollowVars, 
-	pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), FollowVars).
-	
+find_follow_vars_in_goal_2(pragma_c_code(A,B,C,D,E,F), _ArgInfo, _ModuleInfo,
+	FollowVars, pragma_c_code(A,B,C,D,E,F), FollowVars).
 
 %-----------------------------------------------------------------------------%
 

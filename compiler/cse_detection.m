@@ -200,9 +200,8 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 	cse_info, cse_info, bool, hlds__goal_expr).
 :- mode detect_cse_in_goal_2(in, in, in, in, out, out, out) is det.
 
-detect_cse_in_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
-	_, _, CseInfo, CseInfo, no,
-	pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)).
+detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
+	pragma_c_code(A,B,C,D,E,F)).
 
 detect_cse_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 	higher_order_call(A,B,C,D,E,F)).

@@ -215,7 +215,7 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 					ElseCode,
 					node([endof_else, label(N4)]))))
 	;
-		GoalExpr = pragma_c_code(_, _, _, _, _),
+		GoalExpr = pragma_c_code(_, _, _, _, _, _),
 		Code = node([not_supported]),
 		N = N0
 	).

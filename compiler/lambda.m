@@ -177,8 +177,8 @@ lambda__process_goal_2(higher_order_call(A,B,C,D,E,F), GoalInfo,
 lambda__process_goal_2(call(A,B,C,D,E,F,G), GoalInfo,
 			call(A,B,C,D,E,F,G) - GoalInfo) -->
 	[].
-lambda__process_goal_2(pragma_c_code(A,B,C,D,E), GoalInfo,
-			pragma_c_code(A,B,C,D,E) - GoalInfo) -->
+lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F), GoalInfo,
+			pragma_c_code(A,B,C,D,E,F) - GoalInfo) -->
 	[].
 
 :- pred lambda__process_goal_list(list(hlds__goal), list(hlds__goal),

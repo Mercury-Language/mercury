@@ -198,8 +198,10 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = c_code(Code) }, 
 		mercury_output_pragma_c_body_code(Code)
 	;
-		{ Pragma = c_code(Pred, Vars, VarSet, C_CodeString) }, 
-		mercury_output_pragma_c_code(Pred, Vars, VarSet, C_CodeString)
+		{ Pragma = c_code(IsRecursive, Pred, Vars, VarSet,
+				C_CodeString) }, 
+		mercury_output_pragma_c_code(IsRecursive, Pred, Vars, VarSet,
+				C_CodeString)
 	;
 		{ Pragma = export(Pred, ModeList, C_Function) },
 		mercury_output_pragma_export(Pred, ModeList, C_Function)
@@ -1073,11 +1075,17 @@ mercury_output_pragma_c_body_code(C_CodeString) -->
 %-----------------------------------------------------------------------------%
 
 	% Output the given pragma c_code declaration
-:- pred mercury_output_pragma_c_code(sym_name, list(pragma_var), varset,
-		string, io__state, io__state).
-:- mode mercury_output_pragma_c_code(in ,in, in, in, di, uo) is det.
-mercury_output_pragma_c_code(PredName, Vars, VarSet, C_CodeString) -->
+:- pred mercury_output_pragma_c_code(c_is_recursive, sym_name,
+		list(pragma_var), varset, string, io__state, io__state).
+:- mode mercury_output_pragma_c_code(in, in, in, in, in, di, uo) is det.
+mercury_output_pragma_c_code(IsRecursive, PredName, Vars, VarSet,
+		C_CodeString) -->
 	io__write_string(":- pragma c_code("),
+	(	{ IsRecursive = recursive },
+		io__write_string("recursive, ")
+	; 	{ IsRecursive = non_recursive },
+		io__write_string("non_recursive, ")
+	),
 	mercury_output_sym_name(PredName),
 	io__write_string("("),
 	mercury_output_pragma_c_code_vars(Vars, VarSet),

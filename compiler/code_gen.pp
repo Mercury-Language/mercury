@@ -71,6 +71,7 @@
 :- import_module code_util, call_gen, unify_gen, ite_gen, switch_gen.
 :- import_module disj_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec.
+:- import_module prog_data.
 
 %---------------------------------------------------------------------------%
 
@@ -765,21 +766,21 @@ code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 	).
 
 code_gen__generate_det_goal_2(
-		pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap),
-		GoalInfo, Instr) -->
-	code_gen__generate_pragma_c_code(model_det, C_Code, PredId, ModeId,
-		Args, ArgNameMap, GoalInfo, Instr).
+		pragma_c_code(C_Code, IsRecursive, PredId, ModeId, Args,
+				ArgNameMap), GoalInfo, Instr) -->
+	code_gen__generate_pragma_c_code(model_det, C_Code, IsRecursive,
+		PredId, ModeId, Args, ArgNameMap, GoalInfo, Instr).
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_pragma_c_code(code_model, string, pred_id,
-		proc_id, list(var), map(var, string), hlds__goal_info,
+:- pred code_gen__generate_pragma_c_code(code_model, string, c_is_recursive,
+		pred_id, proc_id, list(var), map(var, string), hlds__goal_info,
 		code_tree, code_info, code_info).
-:- mode code_gen__generate_pragma_c_code(in, in, in, in, in, in, in, out,
+:- mode code_gen__generate_pragma_c_code(in, in, in, in, in, in, in, in, out,
 		in, out) is det.
 
-code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
-			ArgNameMap, _GoalInfo, Instr) -->
+code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
+		PredId, ModeId, Args, ArgNameMap, _GoalInfo, Instr) -->
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgModes) },
@@ -788,14 +789,14 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 
 % The code generated for pragma_c_code is of the following form:
 %
-% <save live variables onto the stack>
+% <save live variables onto the stack> /* see note (1) below */
 % {
 %	<declaration of one local variable for each arg>
 %	<assignment of input values from registers to local variables>
-%	save_registers(); /* see note (1) below */
+%	save_registers(); /* see notes (1) and (2) below */
 %	{ <the c code itself> }
 %	#ifndef CONSERVATIVE_GC
-%	  restore_registers(); /* see note (2) below */
+%	  restore_registers(); /* see notes (1) and (3) below */
 %	#endif
 %	<assignment of the output values from local variables to registers>
 % }
@@ -807,6 +808,10 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 %	label:
 %
 % Notes:
+%
+% (1)      These parts are only emitted if the C code may be recursive.
+%	   If a pragma c_code(non_recursive, ...) declaration was used,
+%	   they will not be emitted.
 %
 % (1)	   The call to save_registers() is needed so that if the
 %	   C code calls Mercury code, we can call restore_registers()
@@ -824,14 +829,19 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 %	   will be preserved, so if we're using conservative gc,
 %	   there is nothing that needs restoring.
 
-	% the C code might call back Mercury code which clobbers the succip
-	code_info__set_succip_used(yes),
+	( { IsRecursive = non_recursive } ->
+		{ SaveVarsCode = empty }
+	;
+		% the C code might call back Mercury code which clobbers the
+		% succip
+		code_info__set_succip_used(yes),
 
-	% the C code might call back Mercury code which clobbers the other
-	% registers, so we need to save any live variables (other than the
-	% output args) onto the stack
-	{ set__list_to_set(OutArgs, OutArgsSet) },
-	call_gen__save_variables(OutArgsSet, SaveVarsCode),
+		% the C code might call back Mercury code which clobbers the
+		% other registers, so we need to save any live variables
+		% (other than the output args) onto the stack
+		{ set__list_to_set(OutArgs, OutArgsSet) },
+		call_gen__save_variables(OutArgsSet, SaveVarsCode)
+	),
 
 	make_pragma_decls(Args, ArgNameMap, Decls),
 	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, InputVarsCode),
@@ -842,8 +852,13 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 
 		% C code goes here
 
-		% the C code may called Mercury code which clobbered the regs
-		code_info__clear_all_registers,
+		( { IsRecursive = non_recursive } ->
+			[]
+		;
+			% the C code may call Mercury code which clobbers
+			% the regs
+			code_info__clear_all_registers
+		),
 
 		code_info__get_next_label(SkipLab),
 		code_info__generate_failure(FailCode),
@@ -861,8 +876,13 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 
 		% c code goes here
 
-		% the C code may called Mercury code which clobbered the regs
-		code_info__clear_all_registers,
+		( { IsRecursive = non_recursive } ->
+			[]
+		;
+			% the C code may call Mercury code which clobbers
+			% the regs
+			code_info__clear_all_registers
+		),
 
 		{ CheckFailureCode = empty },
 
@@ -870,13 +890,17 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, PredId, ModeId, Args,
 	),
 	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
 
-	{ string__append_list([
-			"\tsave_registers();\n{\n",
-			C_Code, "\n}\n",
-			"#ifndef CONSERVATIVE_GC\n",
-			"\trestore_registers();\n",
-			"#endif\n"
-		], Wrapped_C_Code) },
+	( { IsRecursive = non_recursive } ->
+		{ Wrapped_C_Code = C_Code }
+	;
+		{ string__append_list([
+				"\tsave_registers();\n{\n",
+				C_Code, "\n}\n",
+				"#ifndef CONSERVATIVE_GC\n",
+				"\trestore_registers();\n",
+				"#endif\n"
+			], Wrapped_C_Code) }
+	),
 	{ PragmaCode = node([pragma_c(Decls, Inputs, Wrapped_C_Code, Outputs) - 
 			"Pragma C inclusion"]) },
 	{ Instr = tree(tree(tree(SaveVarsCode, InputVarsCode), ShuffleR1_Code), 
@@ -1091,11 +1115,10 @@ code_gen__generate_semi_goal_2(unify(L, R, _U, Uni, _C),
 		)
 	).
 
-code_gen__generate_semi_goal_2(
-		pragma_c_code(C_Code, PredId, ModeId, Args, ArgNameMap),
-		GoalInfo, Instr) -->
-	code_gen__generate_pragma_c_code(model_semi, C_Code, PredId, ModeId,
-		Args, ArgNameMap, GoalInfo, Instr).
+code_gen__generate_semi_goal_2(pragma_c_code(C_Code, IsRecursive,
+		PredId, ModeId, Args, ArgNameMap), GoalInfo, Instr) -->
+	code_gen__generate_pragma_c_code(model_semi, C_Code, IsRecursive,
+			PredId, ModeId, Args, ArgNameMap, GoalInfo, Instr).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1239,11 +1262,11 @@ code_gen__generate_non_goal_2(
 code_gen__generate_non_goal_2(unify(_L, _R, _U, _Uni, _C),
 							_GoalInfo, _Code) -->
 	{ error("Cannot have a nondet unification.") }.
-code_gen__generate_non_goal_2(pragma_c_code(A, B, C, D, E), F, G) -->
+code_gen__generate_non_goal_2(pragma_c_code(A, B, C, D, E, F), G, H) -->
 	% it would make sense to abort, but we need to handle string__append,
 	% which is implemented using pragma c_code, and whose reverse mode
 	% is multidet (see library/string.m)
-	code_gen__generate_det_goal_2(pragma_c_code(A, B, C, D, E), F, G).
+	code_gen__generate_det_goal_2(pragma_c_code(A, B, C, D, E, F), G, H).
 
 %---------------------------------------------------------------------------%
 

@@ -198,8 +198,8 @@ store_alloc_in_goal_2(call(A, B, C, D, E, F, G), Liveness, _, _,
 store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, _,
 		unify(A,B,C,D,E), Liveness).
 
-store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E), Liveness, _, _,
-		pragma_c_code(A, B, C, D, E), Liveness).
+store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F), Liveness, _, _,
+		pragma_c_code(A, B, C, D, E, F), Liveness).
 
 %-----------------------------------------------------------------------------%
 

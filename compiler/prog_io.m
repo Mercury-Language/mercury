@@ -1500,33 +1500,28 @@ parse_pragma_type("c_code", PragmaTerms, ErrorTerm, VarSet, Result) :-
 	;
     	    PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
 	->
-	    (
-    	        PredAndVarsTerm = term__functor(term__atom(PredName), VarList,
-			_)
-	    ->
-		(
-                    C_CodeTerm = term__functor(term__string(C_Code), [], _)
-		->
-	                parse_pragma_c_code_varlist(VarSet, 
-				VarList, PragmaVars, Error),
-		    (
-			Error = no,
-    	                Result = ok(pragma(c_code(unqualified(PredName), 
-				PragmaVars, VarSet, C_Code)))
-		    ;
-			Error = yes(ErrorMessage),
-			Result = error(ErrorMessage, PredAndVarsTerm)
-		    )
-		;
-		    Result = 
-			error("Expected string for C code", C_CodeTerm)
-		)
+	    % XXX temporary for bootstrapping
+	    Recursiveness = non_recursive,
+	    /***
+	    % XXX temporarily disabled for bootstrapping
+	    % By default we assume that pragma c_codes may be recursive.
+	    Recursiveness = recursive,
+	    ***/
+	    parse_pragma_c_code(Recursiveness, PredAndVarsTerm, C_CodeTerm,
+			VarSet, Result)
+	;
+    	    PragmaTerms = [RecursivenessTerm, PredAndVarsTerm, C_CodeTerm]
+	->
+	    ( parse_c_code_recursiveness(RecursivenessTerm, Recursiveness) ->
+	        parse_pragma_c_code(Recursiveness, PredAndVarsTerm, C_CodeTerm,
+			VarSet, Result)
 	    ;
-		Result = error("Term is not a predicate", PredAndVarsTerm)
+		Result = error("invalid first argument in `:- pragma c_code(..., ..., ...)' declaration -- expecting either `recursive' or `non_recursive'",
+			RecursivenessTerm)
 	    )
 	;
 	    Result = error(
-	    "wrong number of arguments in pragma(c_code, ...) declaration.", 
+	    "wrong number of arguments in `:- pragma c_code' declaration.", 
 		    ErrorTerm)
 	).
 
@@ -1618,6 +1613,49 @@ parse_simple_pragma(PragmaType, MakePragma, PragmaTerms, ErrorTerm, Result) :-
        ).
 
 %-----------------------------------------------------------------------------%
+
+% parse a term which is either the atom `recursive' or the atom `non_recursive'.
+% if the term doesn't match either, then fail.
+
+:- pred parse_c_code_recursiveness(term, c_is_recursive).
+:- mode parse_c_code_recursiveness(in, out) is semidet.
+
+parse_c_code_recursiveness(term__functor(term__atom("recursive"), [], _),
+	recursive).
+parse_c_code_recursiveness(term__functor(term__atom("non_recursive"), [], _),
+	non_recursive).
+
+% parse a pragma c_code declaration
+
+:- pred parse_pragma_c_code(c_is_recursive, term, term, varset, maybe1(item)).
+:- mode parse_pragma_c_code(in, in, in, in, out) is det.
+
+parse_pragma_c_code(Recursiveness, PredAndVarsTerm, C_CodeTerm, VarSet,
+			Result) :-
+	(
+    	        PredAndVarsTerm = term__functor(term__atom(PredName), VarList,
+			_)
+	->
+		(
+                	C_CodeTerm = term__functor(term__string(C_Code), [], _)
+		->
+	                parse_pragma_c_code_varlist(VarSet, 
+				VarList, PragmaVars, Error),
+		        (
+				Error = no,
+				Result = ok(pragma(c_code(Recursiveness,
+					unqualified(PredName), 
+					PragmaVars, VarSet, C_Code)))
+		        ;
+				Error = yes(ErrorMessage),
+				Result = error(ErrorMessage, PredAndVarsTerm)
+		        )
+		;
+		        Result = error("Expected string for C code", C_CodeTerm)
+		)
+	;
+		Result = error("Term is not a predicate", PredAndVarsTerm)
+	).
 
 	% parse the variable list in the pragma c code declaration.
 	% The final argument is 'no' for no error, or 'yes(ErrorMessage)'.

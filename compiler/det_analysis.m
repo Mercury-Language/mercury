@@ -525,10 +525,12 @@ det_infer_goal_2(some(Vars, Goal0), _, InstMap0, SolnContext, DetInfo, _, _,
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 		Goal, Det, Msgs).
 
-	% pragma_c_code must be deterministic.
-det_infer_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap), 
+	% pragma c_codes are handled in the same way as predicate calls
+det_infer_goal_2(pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
+			ArgNameMap), 
 		GoalInfo, _, SolnContext, DetInfo, _, _,
-		pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap),
+		pragma_c_code(C_Code, IsRecursive, PredId, ProcId, Args,
+			ArgNameMap),
 		Detism, Msgs) :-
 	det_lookup_detism(DetInfo, PredId, ProcId, Detism),
 	determinism_components(Detism, _, NumSolns),
