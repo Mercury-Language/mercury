@@ -8,6 +8,11 @@
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #
+#	   Note: the mercury-*.tar.gz file itself contains
+#	   some other .tar.gz files (lib.tar.gz, info.tar.gz).
+#	   Do NOT mess with these nested .tar.gz files;
+#	   they will be extracted automatically in step 2.
+#
 # Step 1.  Run `configure'.  (Just type `sh configure'.)
 #
 #	   By default, the files will be installed in the directory
