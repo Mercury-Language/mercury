@@ -1,0 +1,18 @@
+#!/bin/bash
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2004 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+#
+# This script invokes build_rpm (which builds RPMs for the stable and
+# unstable release-of-the-day distributions), and mails the output.
+#
+# This script should be run by root, from a root crontab.
+
+export HOME=/root
+/home/aral/root_cron/build_rpm "$@" >& /tmp/invoke_build_rpm$$
+mutt -s "output from build_rpm $*" fjh@cs.mu.oz.au < /tmp/invoke_build_rpm$$
+rm -f /tmp/invoke_build_rpm$$
+
+#-----------------------------------------------------------------------------#
