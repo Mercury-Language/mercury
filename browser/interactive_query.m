@@ -33,8 +33,8 @@
 :- type options == string.
 
 :- implementation.
-:- import_module std_util, bool, string, term, varset, term_io.
-:- import_module dl, name_mangle.
+:- import_module std_util, bool, string, term, varset, term_io, parser.
+:- import_module dl, name_mangle, util.
 
 :- pragma export(query(in, in, in, in, in, di, uo), "ML_query").
 
@@ -42,17 +42,33 @@
 
 query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout) -->
 	% write_import_list(Imports),
-	print(MDB_Stdout, query_prompt(QueryType)),
-	io__flush_output(MDB_Stdout),
-	io__set_input_stream(MDB_Stdin, OldStdin),
-	term_io__read_term(Result),
-	io__set_input_stream(OldStdin, _),
+	util__trace_getline(query_prompt(QueryType), Result,
+			MDB_Stdin, MDB_Stdout),
 	( { Result = eof },
 		io__nl(MDB_Stdout)
-	; { Result = error(Msg, _Line) },
+	; { Result = error(Error) },
+		{ io__error_message(Error, Msg) },
 		io__write_string(MDB_Stdout, Msg), io__nl(MDB_Stdout),
 		query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout)
-	; { Result = term(VarSet, Term) },
+	; { Result = ok(Line) },
+		{ parser__read_term_from_string("", Line, _, ReadTerm) },
+		query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout,
+				ReadTerm)
+	).
+
+
+:- pred query_2(query_type::in, imports::in, options::in,
+		io__input_stream::in, io__output_stream::in,
+		read_term(generic)::in, state::di, state::uo) is det.
+
+query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, ReadTerm) -->
+	( { ReadTerm = eof },
+		io__nl(MDB_Stdout)
+	; { ReadTerm = error(Msg, _Line) },
+		io__write_string(MDB_Stdout, Msg),
+		io__nl(MDB_Stdout),
+		query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout)
+	; { ReadTerm = term(VarSet, Term) },
 		% io__write_string("Read term: "),
 		% term_io__write_term(Term, VarSet),
 		% io__write_string("\n"),

@@ -41,7 +41,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, list, char, require, std_util.
+:- import_module bool, list, char, require, std_util, string.
+:- import_module util.
 
 :- type oracle_data == unit.
 
@@ -58,9 +59,7 @@ oracle_data_init(unit).
 
 
 query_oracle(Node, Valid, Oracle0, Oracle) -->
-	query_user(Node),
-	io__flush_output,
-	get_command(Answer),
+	query_user(Node, Answer),
 	(
 		{ Answer = yes },
 		{ Valid = yes },
@@ -96,34 +95,38 @@ query_oracle(Node, Valid, Oracle0, Oracle) -->
 	).
 
 
-:- pred query_user(edt_node, io__state, io__state).
-:- mode query_user(in, di, uo) is det.
+:- pred query_user(edt_node, debugger_command, io__state, io__state).
+:- mode query_user(in, out, di, uo) is det.
 
-query_user(Node) -->
+query_user(Node, Answer) -->
 	write_node(Node),
 	io__nl,
-	io__write_string("Valid? ").
+	get_command("Valid? ", Answer).
 
 
-:- pred get_command(debugger_command, io__state, io__state).
-:- mode get_command(out, di, uo) is det.
+:- pred get_command(string, debugger_command, io__state, io__state).
+:- mode get_command(in, out, di, uo) is det.
 
-get_command(Command) -->
-	io__read_line(Res),
-	{ 
-		Res = ok(Line)
-	->
-		(
+get_command(Prompt, Command) -->
+	util__trace_getline(Prompt, Result),
+	( { Result = ok(String) },
+		{ string__to_char_list(String, Line) },
+		{
 			command_chars(Line, Command0)
 		->
 			Command = Command0
 		;
 			Command = illegal_command
-		)
-	;
+		}
+	; { Result = error(Error) },
+		{ io__error_message(Error, Msg) },
+		io__write_string(Msg),
+		io__nl,
+		get_command(Prompt, Command)
+	; { Result = eof },
 		% XXX this should definitely be handled better.
-		Command = illegal_command
-	}.
+		{ Command = illegal_command }
+	).
 
 
 :- pred command_chars(list(char), debugger_command).

@@ -69,8 +69,9 @@
 	"ML_BROWSE_browse_external").
 
 %---------------------------------------------------------------------------%
-% If the term browser is called from the internal debugger, Input/Output are 
-% done via MR_mdb_in/MR_mdb_out. If it is called from the external debugger,
+% If the term browser is called from the internal debugger, input is
+% done via a call to the readline library (if available), using streams
+% MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
 % Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out. 
 % In the latter case we need to output terms; their type is 
 % term_browser_response.
@@ -205,6 +206,7 @@ browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
 :- pred browse_common(debugger, T, io__input_stream, io__output_stream,
 			browser_state, browser_state, io__state, io__state).
 :- mode browse_common(in, in, in, in, in, out, di, uo) is det.
+
 browse_common(Debugger, Object, InputStream, OutputStream, State0, State) -->
 	{ type_to_univ(Object, Univ) },
 	{ set_term(Univ, State0, State1) },
@@ -219,18 +221,21 @@ browse_common(Debugger, Object, InputStream, OutputStream, State0, State) -->
 	io__state, io__state).
 :- mode browse_main_loop(in, in, out, di, uo) is det.
 browse_main_loop(Debugger, State0, State) -->
-	{ prompt(Prompt) },
-	( { Debugger = internal } ->
+	(
+		{ Debugger = internal },
+		{ prompt(Prompt) },
 		parse__read_command(Prompt, Command)
 	;
+		{ Debugger = external },
 		parse__read_command_external(Command)
 	),
 	( { Command = quit } ->
 		% write_string_debugger(Debugger, "quitting...\n")
-		( { Debugger = external } ->
+		(
+			{ Debugger = external },
 			send_term_to_socket(browser_quit)
 		;
-			{ true }
+			{ Debugger = internal }
 		),
 		{ State = State0 }
 	;
@@ -1002,30 +1007,24 @@ simplify([child(Dir1), child(Dir2) | Dirs], [child(Dir1) | Rest]) :-
 
 :- pred write_string_debugger(debugger, string, io__state, io__state).
 :- mode write_string_debugger(in, in, di, uo) is det.
-write_string_debugger(Debugger, String) -->
-	( { Debugger = internal } ->
-		io__write_string(String)
-	;
-		send_term_to_socket(browser_str(String))
-	).
+write_string_debugger(internal, String) -->
+	io__write_string(String).
+write_string_debugger(external, String) -->
+	send_term_to_socket(browser_str(String)).
 
 :- pred nl_debugger(debugger, io__state, io__state).
 :- mode nl_debugger(in, di, uo) is det.
-nl_debugger(Debugger) -->
-	( { Debugger = internal } ->
-		io__nl
-	;
-		send_term_to_socket(browser_nl)
-	).
+nl_debugger(internal) -->
+	io__nl.
+nl_debugger(external) -->
+	send_term_to_socket(browser_nl).
 
 :- pred write_int_debugger(debugger, int, io__state, io__state).
 :- mode write_int_debugger(in, in, di, uo) is det.
-write_int_debugger(Debugger, Int) -->
-	( { Debugger = internal } ->
-		io__write_int(Int)
-	;
-		send_term_to_socket(browser_int(Int))
-	).
+write_int_debugger(internal, Int) -->
+	io__write_int(Int).
+write_int_debugger(external, Int) -->
+	send_term_to_socket(browser_int(Int)).
 
 
 :- pred print_format_debugger(debugger, portray_format, io__state, io__state).

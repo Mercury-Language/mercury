@@ -233,7 +233,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	jumpaddr = NULL;
 
 	do {
-		line = MR_trace_getline("mdb> ");
+		line = MR_trace_getline("mdb> ", MR_mdb_in, MR_mdb_out);
 		res = MR_trace_debug_cmd(line, cmd, event_info, &event_details,
 				&jumpaddr);
 	} while (res == KEEP_INTERACTING);
@@ -1356,7 +1356,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				char	*line2;
 
 				line2 = MR_trace_getline("mdb: "
-					"are you sure you want to quit? ");
+					"are you sure you want to quit? ",
+					MR_mdb_in, MR_mdb_out);
 				if (line2 == NULL) {
 					/* This means the user input EOF. */
 					confirmed = TRUE;
@@ -1672,7 +1673,8 @@ MR_trace_read_help_text(void)
 	int	i;
 
 	next_char_slot = 0;
-	while ((text = MR_trace_getline("cat> ")) != NULL) {
+	while ((text = MR_trace_getline("cat> ", MR_mdb_in, MR_mdb_out))
+			!= NULL) {
 		if (streq(text, "end")) {
 			free(text);
 			break;
@@ -1932,7 +1934,7 @@ MR_trace_source_from_open_file(FILE *fp)
 
 /*
 ** If there any lines waiting in the queue, return the first of these.
-** If not, print the prompt to MR_mdb_out, read a line from MR_mdb_in,
+** If not, print the prompt to mdb_out, read a line from mdb_in,
 ** and return it in a malloc'd buffer holding the line (without the final
 ** newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
@@ -1940,7 +1942,7 @@ MR_trace_source_from_open_file(FILE *fp)
 */
 
 char *
-MR_trace_getline(const char *prompt)
+MR_trace_getline(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 {
 	char	*line;
 
@@ -1951,13 +1953,13 @@ MR_trace_getline(const char *prompt)
 
 	MR_trace_internal_interacting = TRUE;
 
-	line = MR_trace_readline(prompt, MR_mdb_in, MR_mdb_out);
+	line = MR_trace_readline(prompt, mdb_in, mdb_out);
 
 	/* if we're using readline, then readline does the echoing */
 #ifdef MR_NO_USE_READLINE
 	if (MR_echo_commands) {
-		fputs(line, MR_mdb_out);
-		putc('\n', MR_mdb_out);
+		fputs(line, mdb_out);
+		putc('\n', mdb_out);
 	}
 #endif
 
@@ -2038,7 +2040,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 	/* We try to leave one line for the prompt itself. */
 	if (MR_scroll_control && MR_scroll_next >= MR_scroll_limit - 1) {
 	try_again:
-		buf = MR_trace_getline("--more-- ");
+		buf = MR_trace_getline("--more-- ", MR_mdb_in, MR_mdb_out);
 		if (buf != NULL) {
 			for (i = 0; buf[i] != '\0' && MR_isspace(buf[i]); i++)
 				;
