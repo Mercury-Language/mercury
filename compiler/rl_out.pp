@@ -373,21 +373,23 @@ rl_out__generate_update_procs(PredId) -->
 		{ ModuleName = PredModule },
 		{ hlds_pred__pred_info_is_base_relation(PredInfo) }
 	->
+		rl_out__generate_update_proc(insert, PredId, PredInfo),
 		rl_out__generate_update_proc(delete, PredId, PredInfo),
 		rl_out__generate_update_proc(modify, PredId, PredInfo)
 	;
 		[]
 	).
 
-:- type delete_or_modify
-	--->	delete
+:- type update_type
+	--->	insert
+	;	delete
 	;	modify
 	.
 
-:- pred rl_out__generate_update_proc(delete_or_modify::in, pred_id::in,
+:- pred rl_out__generate_update_proc(update_type::in, pred_id::in,
 		pred_info::in, rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
+rl_out__generate_update_proc(UpdateType, PredId, PredInfo) -->
 	{ map__init(Relations) },
 	rl_out_info_init_proc(Relations),
 
@@ -402,10 +404,13 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 		PermanentAddr, OpenPermanentCode, UnsetPermanentCode),
 
 	{ 
-		DeleteOrModify = delete,
+		UpdateType = insert,
 		InputRelTypes = ArgTypes
 	;
-		DeleteOrModify = modify,
+		UpdateType = delete,
+		InputRelTypes = ArgTypes
+	;
+		UpdateType = modify,
 		list__append(ArgTypes, ArgTypes, InputRelTypes)
 	},
 
@@ -421,7 +426,22 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 
 	{ LockSpec = 0 }, % default lock spec
 	(
-		{ DeleteOrModify = delete },
+		{ UpdateType = insert },
+		{ rl__get_insert_proc_name(ModuleInfo, PredId, ProcName) },
+		rl_out_info_get_next_materialise_id(MaterialiseId),
+		{ InsertCode =
+			node([
+				rl_PROC_materialise(MaterialiseId),
+				rl_PROC_stream,
+				rl_PROC_var(InputRelAddr, LockSpec),
+				rl_PROC_stream_end,
+
+				rl_PROC_var_list_cons(PermanentAddr, LockSpec),
+				rl_PROC_var_list_nil
+			]) },
+		{ DeleteCode = empty }
+	;
+		{ UpdateType = delete },
 		{ rl__get_delete_proc_name(ModuleInfo, PredId, ProcName) },
 		{ DeleteInputStream =
 			node([
@@ -429,9 +449,11 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 				rl_PROC_var(InputRelAddr, LockSpec),
 				rl_PROC_stream_end
 			]) },
-		{ InsertCode = empty }
+		{ InsertCode = empty },
+		rl_out__generate_delete_code(PermanentAddr, Indexes, ArgTypes,
+			PermSchemaOffset, DeleteInputStream, DeleteCode)
 	;
-		{ DeleteOrModify = modify },
+		{ UpdateType = modify },
 		{ rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) },
 		rl_out__generate_modify_project_exprn(ArgTypes,
 			PermSchemaOffset, one, DeleteProjectExpr),
@@ -459,7 +481,10 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 
 				rl_PROC_stream_end
 		]) },
+		rl_out__generate_delete_code(PermanentAddr, Indexes, ArgTypes,
+			PermSchemaOffset, DeleteInputStream, DeleteCode),
 
+		rl_out_info_get_next_materialise_id(MaterialiseId),
 		{ InsertCode =
 			node([
 				%
@@ -468,7 +493,7 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 				% inserting the result into the base
 				% relation.
 				% 
-				rl_PROC_materialise(1),
+				rl_PROC_materialise(MaterialiseId),
 				rl_PROC_stream,
 
 				rl_PROC_project_tee,
@@ -486,8 +511,6 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 			]) }
 	),
 
-	rl_out__generate_delete_code(PermanentAddr, Indexes, ArgTypes,
-		PermSchemaOffset, DeleteInputStream, DeleteCode),
 
 	{ Codes = tree(
 		%
@@ -501,7 +524,8 @@ rl_out__generate_update_proc(DeleteOrModify, PredId, PredInfo) -->
 		tree(DeleteCode,
 
 		%
-		% Do the insertion for an `aditi_bulk_modify' goal.
+		% Do the insertion for an `aditi_bulk_modify'
+		% or `aditi_bulk_insert' goal.
 		%
 		tree(InsertCode,	
 

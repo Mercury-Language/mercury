@@ -478,7 +478,10 @@ call_gen__aditi_builtin_setup(
 		in, out) is det.
 
 call_gen__aditi_insert_delete_modify_setup(bulk_insert, PredId, SetupCode) -->
-	call_gen__setup_base_relation_name(PredId, SetupCode).
+	call_gen__setup_base_relation_name(PredId, RelNameCode),
+	call_gen__setup_update_proc_name(rl__get_insert_proc_name,
+		PredId, reg(r, 2), ProcNameCode),
+	{ SetupCode = tree(RelNameCode, ProcNameCode) }.
 call_gen__aditi_insert_delete_modify_setup(delete(_), PredId, SetupCode) -->
 	call_gen__setup_base_relation_name(PredId, RelNameCode),
 	call_gen__setup_update_proc_name(rl__get_delete_proc_name,

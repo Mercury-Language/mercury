@@ -593,11 +593,11 @@
 :- pred rl__get_entry_proc_name(module_info::in, pred_proc_id::in,
 		rl_proc_name::out) is det.
 
-	% rl__get_modify_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	% rl__get_insert_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
 	%
-	% Get the name of the RL procedure used to apply a modification
+	% Get the name of the RL procedure used to apply a bulk insertion
 	% to a base relation.
-:- pred rl__get_modify_proc_name(module_info::in,
+:- pred rl__get_insert_proc_name(module_info::in,
 		pred_id::in, rl_proc_name::out) is det.
 
 	% rl__get_delete_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
@@ -605,6 +605,13 @@
 	% Get the name of the RL procedure used to apply a deletion
 	% to a base relation.
 :- pred rl__get_delete_proc_name(module_info::in,
+		pred_id::in, rl_proc_name::out) is det.
+
+	% rl__get_modify_proc_name(ModuleInfo, BaseRelationPredId, ProcName).
+	%
+	% Get the name of the RL procedure used to apply a modification
+	% to a base relation.
+:- pred rl__get_modify_proc_name(module_info::in,
 		pred_id::in, rl_proc_name::out) is det.
 
 	% rl__get_c_interface_proc_name(ModuleInfo, PredProcId, ProcName).
@@ -1071,13 +1078,17 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
 	prog_out__sym_name_to_string(PredModule, PredModuleStr),
 	ProcName = rl_proc_name(Owner, PredModuleStr, ProcLabelStr, 2).
 
-rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) :-
+rl__get_insert_proc_name(ModuleInfo, PredId, ProcName) :-
 	rl__get_update_proc_name(ModuleInfo, PredId,
-		"Aditi_Modify_Proc_For_", ProcName).
+		"Aditi_Insert_Proc_For_", ProcName).
 
 rl__get_delete_proc_name(ModuleInfo, PredId, ProcName) :-
 	rl__get_update_proc_name(ModuleInfo, PredId,
 		"Aditi_Delete_Proc_For_", ProcName).
+
+rl__get_modify_proc_name(ModuleInfo, PredId, ProcName) :-
+	rl__get_update_proc_name(ModuleInfo, PredId,
+		"Aditi_Modify_Proc_For_", ProcName).
 
 :- pred rl__get_update_proc_name(module_info::in,
 		pred_id::in, string::in, rl_proc_name::out) is det.
