@@ -71,6 +71,16 @@ init_thread(MR_when_to_use when_to_use)
 {
 	MercuryEngine *eng;
 
+#ifdef MR_THREAD_SAFE
+		/* 
+		** Check to see whether there is already an engine 
+		** that is initialized in this thread.  If so we just
+		** return, there's nothing for us to do.
+		*/
+	if (pthread_getspecific(MR_engine_base_key)) {
+		return;
+	}
+#endif
 	eng = create_engine();
 
 #ifdef MR_THREAD_SAFE

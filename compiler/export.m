@@ -127,10 +127,24 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%		/* save the registers that our C caller may be using */
 	%	save_regs_to_mem(c_regs);
 	%
-	%		/* restore Mercury's registers that were saved as */
-	%		/* we entered C from Mercury (the process must    */
-	%		/* always start in Mercury so that we can 	  */
-	%		/* init_engine() etc.)				  */
+	%		/* 
+	%		** start a new Mercury engine inside this POSIX 
+	%		** thread, if necessary (the C code may be 
+	%		** multi-threaded itself).
+	%		*/
+	%
+	% #if MR_THREAD_SAFE
+	% 	init_thread(MR_use_now);
+	% #endif 
+	%
+	%		/* 
+	%		** restore Mercury's registers that were saved as
+	%		** we entered C from Mercury.  For single threaded
+	%		** programs the process must always start in Mercury
+	%		** so that we can init_engine() etc.  For
+	%		** multi-threaded init_thread (above) takes care
+	%		** of making a new engine if required.
+	%		*/
 	%	restore_registers();
 	%	<copy input arguments from Mercury__Arguments into registers>
 	%		/* save the registers which may be clobbered      */
@@ -196,6 +210,9 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				MaybeDeclareRetval,
 				"\n",
 				"\tsave_regs_to_mem(c_regs);\n", 
+				"#if MR_THREAD_SAFE\n",
+				"\tinit_thread(MR_use_now);\n", 
+				"#endif\n",
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
