@@ -921,14 +921,17 @@ touch_interface_datestamp(ModuleName, Ext) -->
 	maybe_write_string(Verbose, "'... "),
 	maybe_flush_output(Verbose),
 	io__open_output(OutputFileName, Result),
-	( { Result = ok(OutputStream) } ->
+	( { Result = ok(OutputStream) },
 		io__write_string(OutputStream, "\n"),
 		io__close_output(OutputStream),
 		maybe_write_string(Verbose, " done.\n")
-	;
+	; { Result = error(IOError) },
+		{ io__error_message(IOError, IOErrorMessage) },
 		io__write_string("\nError opening `"),
 		io__write_string(OutputFileName),
-		io__write_string("' for output\n")
+		io__write_string("'for output: "),
+		io__write_string(IOErrorMessage),
+		io__write_string(".\n")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1256,7 +1259,15 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
 	io__open_output(TmpDependencyFileName, Result),
-	( { Result = ok(DepStream) } ->
+	( { Result = error(IOError) },
+		maybe_write_string(Verbose, " failed.\n"),
+		maybe_flush_output(Verbose),
+		{ io__error_message(IOError, IOErrorMessage) },
+		{ string__append_list(["error opening temporary file `",
+			TmpDependencyFileName, "' for output: ",
+			IOErrorMessage], Message) },
+		report_error(Message)
+	; { Result = ok(DepStream) },
 		{ list__append(IntDeps, ImplDeps, LongDeps0) },
 		{ ShortDeps0 = IndirectDeps },
 		{ set__list_to_set(LongDeps0, LongDepsSet0) },
@@ -1494,6 +1505,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		io__rename_file(TmpDependencyFileName, DependencyFileName,
 			Result3),
 		( { Result3 = error(Error) } ->
+			maybe_write_string(Verbose, " failed.\n"),
+			maybe_flush_output(Verbose),
 			{ io__error_message(Error, ErrorMsg) },
 			{ string__append_list(["can't rename file `",
 				TmpDependencyFileName, "' as `",
@@ -1503,10 +1516,6 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		;
 			maybe_write_string(Verbose, " done.\n")
 		)
-	;
-		{ string__append_list(["can't open file `",
-			TmpDependencyFileName, "' for output."], Message) },
-		report_error(Message)
 	).
 
 maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
@@ -1520,7 +1529,7 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 		maybe_write_string(Verbose, "'..."),
 		maybe_flush_output(Verbose),
 		io__open_input(DependencyFileName, OpenResult),
-		( { OpenResult = ok(Stream) } ->
+		( { OpenResult = ok(Stream) },
 			io__set_input_stream(Stream, OldStream),
 			module_name_to_file_name(ModuleName, ".trans_opt_date",
 				no, TransOptDateFileName0),
@@ -1538,15 +1547,18 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 				{ MaybeTransOptDeps = no }
 			),
 			io__set_input_stream(OldStream, _),	
-			io__close_input(Stream)
-		;
-			{ string__append_list(["can't open file `", 
-				DependencyFileName,
-				"' for input."], Message) },
-			{ MaybeTransOptDeps = no },
-			report_error(Message)
-		),
-		maybe_write_string(Verbose, " done.\n")
+			io__close_input(Stream),
+			maybe_write_string(Verbose, " done.\n")
+		; { OpenResult = error(IOError) },
+			maybe_write_string(Verbose, " failed.\n"),
+			maybe_flush_output(Verbose),
+			{ io__error_message(IOError, IOErrorMessage) },
+			{ string__append_list(["error opening file `", 
+				DependencyFileName, "' for input: ",
+				IOErrorMessage], Message) },
+			report_error(Message),
+			{ MaybeTransOptDeps = no }
+		)
 	;
 		{ MaybeTransOptDeps = no }
 	).
@@ -1745,16 +1757,20 @@ maybe_output_module_order(Module, DepsOrdering) -->
 		module_name_to_file_name(Module, ".order", yes, OrdFileName),
 		maybe_write_string(Verbose, "% Creating module order file `"),
 		maybe_write_string(Verbose, OrdFileName),
-		maybe_write_string(Verbose, "'...\n"),
+		maybe_write_string(Verbose, "'..."),
 		io__open_output(OrdFileName, OrdResult),
-		( { OrdResult = ok(OrdStream) } ->
+		( { OrdResult = ok(OrdStream) },
 			io__write_list(OrdStream, DepsOrdering, "\n\n", 
 					write_module_scc(OrdStream)),
 			io__close_output(OrdStream),
-			maybe_write_string(Verbose, "% done.\n")
-		;
-			{ string__append_list(["can't open file `", 
-	    			OrdFileName, "' for output."], OrdMessage) },
+			maybe_write_string(Verbose, " done.\n")
+		; { OrdResult = error(IOError) },
+			maybe_write_string(Verbose, " failed.\n"),
+			maybe_flush_output(Verbose),
+			{ io__error_message(IOError, IOErrorMessage) },
+			{ string__append_list(["error opening file `", 
+	    			OrdFileName, "' for output: ", IOErrorMessage],
+				OrdMessage) },
 			report_error(OrdMessage)
 		)
 	;
@@ -1930,14 +1946,17 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap) -->
 	maybe_write_string(Verbose, DepFileName),
 	maybe_write_string(Verbose, "'...\n"),
 	io__open_output(DepFileName, DepResult),
-	( { DepResult = ok(DepStream) } ->
+	( { DepResult = ok(DepStream) },
 		generate_dep_file(SourceFileName, ModuleName, DepsMap,
 			DepStream),
 		io__close_output(DepStream),
 		maybe_write_string(Verbose, "% done.\n")
-	;
-		{ string__append_list(["can't open file `", DepFileName,
-			"' for output."], DepMessage) },
+	; { DepResult = error(IOError) },
+		maybe_write_string(Verbose, " failed.\n"),
+		maybe_flush_output(Verbose),
+		{ io__error_message(IOError, IOErrorMessage) },
+		{ string__append_list(["error opening file `", DepFileName,
+			"' for output: ", IOErrorMessage], DepMessage) },
 		report_error(DepMessage)
 	).
 

@@ -92,7 +92,7 @@ trans_opt__write_optfile(Module) -->
 		io__progname_base("trans_opt.m", ProgName),
 		io__write_string(ProgName),
 		io__write_string(
-			": cannot open transitive optimisation file '"),
+			": cannot open transitive optimisation file `"),
 		io__write_string(TmpOptName),
 		io__write_string("' \n"),
 		io__write_string(ProgName),

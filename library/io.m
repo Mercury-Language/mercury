@@ -1113,38 +1113,38 @@ io__read_char(Result) -->
 	io__input_stream(Stream),
 	io__read_char(Stream, Result).
 
-io__read_char(Stream, Result, IO_0, IO) :-
-	io__read_char_code(Stream, Code, IO_0, IO),
+io__read_char(Stream, Result) -->
+	io__read_char_code(Stream, Code),
 	(
-		Code = -1
+		{ Code = -1 }
 	->
-		Result = eof
+		{ Result = eof }
 	;
-		char__to_int(Char, Code)
+		{ char__to_int(Char, Code) }
 	->
-		Result = ok(Char)
+		{ Result = ok(Char) }
 	;
-		% XXX improve error message
-		Result = error("read error")
+		io__make_err_msg("read failed: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__read_byte(Result) -->
 	io__binary_input_stream(Stream),
 	io__read_byte(Stream, Result).
 
-io__read_byte(Stream, Result, IO_0, IO) :-
-	io__read_char_code(Stream, Code, IO_0, IO),
+io__read_byte(Stream, Result) -->
+	io__read_char_code(Stream, Code),
 	(
-		Code = -1
+		{ Code >= 0 }
 	->
-		Result = eof
+		{ Result = ok(Code) }
 	;
-		Code = -2
+		{ Code = -1 }
 	->
-		% XXX improve error message
-		Result = error("read error")
+		{ Result = eof }
 	;
-		Result = ok(Code)
+		io__make_err_msg("read failed: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__read_word(Result) -->
@@ -1347,6 +1347,19 @@ io__check_err(Stream, Res) -->
 	MercuryFile *f = (MercuryFile *) Stream;
 	RetVal = ferror(f->file);
 	ML_maybe_make_err_msg(RetVal != 0, ""read failed: "", RetStr);
+}").
+
+% io__make_err_msg(MessagePrefix, Message):
+%	`Message' is an error message obtained by looking up the
+%	message for the current value of errno and prepending
+%	`MessagePrefix'.
+:- pred io__make_err_msg(string, string, io__state, io__state).
+:- mode io__make_err_msg(in, out, di, uo) is det.
+
+:- pragma c_code(make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
+		will_not_call_mercury,
+"{
+	ML_maybe_make_err_msg(TRUE, Msg0, Msg);
 }").
 
 %-----------------------------------------------------------------------------%
@@ -1952,8 +1965,8 @@ io__open_input(FileName, Result) -->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
 	;
-		% XXX improve error message
-		{ Result = error("can't open input file") }
+		io__make_err_msg("can't open input file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__open_output(FileName, Result) -->
@@ -1962,8 +1975,8 @@ io__open_output(FileName, Result) -->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
 	;
-		% XXX improve error message
-		{ Result = error("can't open output file") }
+		io__make_err_msg("can't open output file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__open_append(FileName, Result) -->
@@ -1972,8 +1985,8 @@ io__open_append(FileName, Result) -->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
 	;
-		% XXX improve error message
-		{ Result = error("can't append to file") }
+		io__make_err_msg("can't append to file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__open_binary_input(FileName, Result) -->
@@ -1982,8 +1995,8 @@ io__open_binary_input(FileName, Result) -->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
 	;
-		% XXX improve error message
-		{ Result = error("can't open input file") }
+		io__make_err_msg("can't open input file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__open_binary_output(FileName, Result) -->
@@ -1992,8 +2005,8 @@ io__open_binary_output(FileName, Result) -->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
 	;
-		% XXX improve error message
-		{ Result = error("can't open output file") }
+		io__make_err_msg("can't open output file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__open_binary_append(FileName, Result) -->
@@ -2002,8 +2015,8 @@ io__open_binary_append(FileName, Result) -->
 		{ Result = ok(NewStream) },
 		io__insert_stream_name(NewStream, FileName)
 	;
-		% XXX improve error message
-		{ Result = error("can't append to file") }
+		io__make_err_msg("can't append to file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2059,8 +2072,8 @@ io__tell(File, Result) -->
 		io__set_output_stream(Stream, _),
 		{ Result = ok }
 	;
-		% XXX improve error message
-		{ Result = error("can't open output file") }
+		io__make_err_msg("can't open output file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 io__told_binary -->
@@ -2074,8 +2087,8 @@ io__tell_binary(File, Result) -->
 		io__set_binary_output_stream(Stream, _),
 		{ Result = ok }
 	;
-		% XXX improve error message
-		{ Result = error("can't open output file") }
+		io__make_err_msg("can't open output file: ", Msg),
+		{ Result = error(Msg) }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2339,6 +2352,7 @@ extern MercuryFile *mercury_current_binary_output;
 
 void 		mercury_init_io(void);
 MercuryFile*	mercury_open(const char *filename, const char *type);
+void		mercury_fatal_io_error(void);
 int		mercury_output_error(MercuryFile* mf);
 void		mercury_print_string(MercuryFile* mf, const char *s);
 void		mercury_print_binary_string(MercuryFile* mf, const char *s);
@@ -2386,13 +2400,23 @@ mercury_open(const char *filename, const char *type)
 
 :- pragma(c_code, "
 
+void
+mercury_fatal_io_error(void)
+{
+	fatal_error(""cannot recover from I/O error -- execution terminated"");
+}
+
+").
+
+:- pragma(c_code, "
+
 int
 mercury_output_error(MercuryFile* mf)
 {
 	fprintf(stderr,
 		""Mercury runtime: error writing to output file: %s\\n"",
 		strerror(errno));
-	exit(1);
+	mercury_fatal_io_error();
 }
 
 ").
@@ -2453,7 +2477,7 @@ mercury_close(MercuryFile* mf)
 			fprintf(stderr,
 				""Mercury runtime: error closing file: %s\\n"",
 				strerror(errno));
-			exit(1);
+			mercury_fatal_io_error();
 		}
 		oldmem(mf);
 	}
@@ -2465,7 +2489,7 @@ mercury_close(MercuryFile* mf)
 
 :- pragma(c_code, io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
 "
-	CharCode = mercury_getc((MercuryFile*)File);
+	CharCode = mercury_getc((MercuryFile *) File);
 	update_io(IO0, IO);
 ").
 
@@ -2973,7 +2997,7 @@ io__make_temp(Name) -->
 	** Uses `open(..., O_CREATE | O_EXCL, ...)' to create the file,
 	** checking that there was no existing file with that name.
 	*/
-	int	len, err, num_tries;
+	int	len, err, fd, num_tries;
 	char	countstr[256];
 
 	len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
@@ -2985,20 +3009,30 @@ io__make_temp(Name) -->
 	}
 	num_tries = 0;
 	do {
-		sprintf(countstr, ""%06X"", ML_io_tempnam_counter & 0xffffff);
+		sprintf(countstr, ""%06lX"", ML_io_tempnam_counter & 0xffffffL);
 		strcpy(FileName, Dir);
 		strcat(FileName, ""/"");
 		strncat(FileName, Prefix, 5);
 		strncat(FileName, countstr, 3);
 		strcat(FileName, ""."");
 		strncat(FileName, countstr + 3, 3);
-		err = open(FileName, O_WRONLY | O_CREAT | O_EXCL, 0600);
+		fd = open(FileName, O_WRONLY | O_CREAT | O_EXCL, 0600);
 		num_tries++;
 		ML_io_tempnam_counter += (1 << num_tries);
-	} while (err == -1 && errno == EEXIST &&
+	} while (fd == -1 && errno == EEXIST &&
 		num_tries < MAX_TEMPNAME_TRIES);
-	if (err == -1) {
-		fatal_error(""unable to create temporary file"");
+	if (fd == -1) {
+		fprintf(stderr, ""Mercury runtime: ""
+			""error opening temporary file: %s\\n"",
+			strerror(errno));
+		mercury_fatal_io_error();
+	} 
+	err = close(fd);
+	if (err != 0) {
+		fprintf(stderr, ""Mercury runtime: ""
+			""error closing temporary file: %s\\n"",
+			strerror(errno));
+		mercury_fatal_io_error();
 	}
 	update_io(IO0, IO);
 }").

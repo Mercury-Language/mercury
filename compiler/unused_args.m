@@ -101,11 +101,12 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 		module_name_to_file_name(ModuleName, ".opt.tmp", no,
 				OptFileName),
 		io__open_append(OptFileName, OptFileRes),
-		( { OptFileRes = ok(OptFile) } ->
+		( { OptFileRes = ok(OptFile) },
 			{ MaybeOptFile = yes(OptFile) }
-		;
-			io__write_strings(["Cannot open `",
-				OptFileName, "' for output\n"]),
+		; { OptFileRes = error(IOError) },
+			{ io__error_message(IOError, IOErrorMessage) },
+			io__write_strings(["Cannot open `", OptFileName,
+				"' for output: ", IOErrorMessage]),
 			io__set_exit_status(1),
 			{ MaybeOptFile = no }
 		)
