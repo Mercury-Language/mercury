@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,32 +36,35 @@
 :- module lcss.
 
 :- interface.
-:- import_module lcsstype.
+:- import_module difftype, file.
 
-:- pred lcss__find_lcss(list(A) :: in, list(A) :: in, int :: in, int :: in,
-			lcss :: out) is det.
+:- pred diff_by_lcss(file, file, diff).
+:- mode diff_by_lcss(in, in, out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module map, require, std_util, int, list, char, array.
 
+diff_by_lcss(File1, File2, Diff) :-
+	file__to_list(File1, File1list),
+	file__to_list(File2, File2list),
+	file__get_numlines(File1, Length1),
+	file__get_numlines(File2, Length2),
+	lcss__find_diff(File1list, File2list, Length1, Length2, Diff).
+
 %-----------------------------------------------------------------------------%
 
-:- import_module io.
+	% The longest common subsequence of two lists can be
+	% represented as an ordered list of "matches".  A match is a
+	% pair of the form I-J where I is the number of an item in
+	% item 1 and J is the number of an item in list 2.  (Note that
+	% an item is numbered by the position immediately preceding
+	% it, i.e., numbering starts at 0.)
+:- type lcss == list(pair(pos,pos)).
 
-	% For debugging only.  Will be removed in the
-	% final version.
-:- pred lcss__show_lcss(lcss :: in, io__state :: di, io__state :: uo) is det.
-lcss__show_lcss([]) -->
-	io__write_string("[]").
-lcss__show_lcss([X - Y | Lcss]) -->
-	io__write_int(X),
-	io__write_char('-'),
-	io__write_int(Y),
-	io__write_char(','),
-	lcss__show_lcss(Lcss).
-
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Find a longest common subsequence.  The algorithm
@@ -91,12 +94,15 @@ lcss__show_lcss([X - Y | Lcss]) -->
 	% reverse, and Thresh[I] contains its 'end' (see above).
 	% Otherwise, Thresh[I] contains 'infinity.'
 
-lcss__find_lcss(List1, List2, L1, L2, Lcss) :-
+:- pred lcss__find_diff(list(string) :: in, list(string) :: in,
+			int :: in, int :: in, diff :: out) is det.
+
+lcss__find_diff(List1, List2, L1, L2, Diff) :-
 
 	% The original version swapped List1 and List2, so that the
 	% first was the largest.  Is this swapping really worthwile?
 	% It doesn't seem to be faster, nor does it consume less
-	% memory.  Therefore I removed it.
+	% memory.  Therefore I removed it.  -- MK
 
 	% The consequence is that build_thresh and build_lcss need a
 	% value representing 'infinity'; previously we could use the
@@ -122,7 +128,7 @@ lcss__find_lcss(List1, List2, L1, L2, Lcss) :-
 
 	lcss__build_matchlist(List1, List2, MatchList),
 	lcss__build_thresh(N, MatchList, Inf, Thresh, Link),
-	lcss__build_lcss(N, Inf, Thresh, Link, L1, L2, Lcss).
+	lcss__build_diff(N, Inf, Thresh, Link, L1, L2, Diff).
 
 %-----------------------------------------------------------------------------%
 
@@ -133,7 +139,7 @@ lcss__find_lcss(List1, List2, L1, L2, Lcss) :-
 	% in increasing order, since this is required by build_thresh
 	% to go through the matches in lexicographical order.
 
-:- pred lcss__build_matchlist(list(A), list(A), list(list(int))).
+:- pred lcss__build_matchlist(list(string), list(string), list(list(int))).
 :- mode lcss__build_matchlist(in, in, out) is det.
 lcss__build_matchlist(List1, List2, MatchList) :-
 
@@ -150,7 +156,7 @@ lcss__build_matchlist(List1, List2, MatchList) :-
 
 	lcss__match_map_to_matchlist(List1, Map, MatchList).
 
-:- pred lcss__build_match_map(int, list(A), map(A,list(int))).
+:- pred lcss__build_match_map(int, list(string), map(string,list(int))).
 :- mode lcss__build_match_map(in, in, out) is det.
 lcss__build_match_map(_, [], Map) :-
 	map__init(Map).
@@ -164,7 +170,7 @@ lcss__build_match_map(N, [S | Ss], MapOut) :-
 	),
 	map__set(MapIn, S, Ns1, MapOut).
 
-:- pred lcss__match_map_to_matchlist(list(A), map(A,list(int)), 
+:- pred lcss__match_map_to_matchlist(list(string), map(string,list(int)), 
 		list(list(int))).
 :- mode lcss__match_map_to_matchlist(in, in, out) is det.
 lcss__match_map_to_matchlist([], _, []).
@@ -196,7 +202,9 @@ lcss__build_thresh(N, MatchList, Inf, Thresh, Link) :-
 	N1 is N + 1,	% Why this size?  Suppose we have two identical
 			% files of length N.  Then the links will be
 			% [], [0-0], [0-0,1-1], ... [0-0..N-N], which
-			% makes N+1 links in total.
+			% makes N+1 links in total.  We could use N
+			% if we pre-screened the files to see if they
+			% were identical or not.
 
 	array__init(N1, Inf, Thresh0),		% Thresh[0..N] := Inf
 	array__set(Thresh0, 0, -1, Thresh1),	% Thresh[0] := -1
@@ -207,8 +215,7 @@ lcss__build_thresh(N, MatchList, Inf, Thresh, Link) :-
 
 
 :- pred lcss__build_thresh2(int, int, list(list(int)),
-		array(int), array(lcss),
-		array(int), array(lcss)).
+		array(int), array(lcss), array(int), array(lcss)).
 :- mode lcss__build_thresh2(in, in, in,
 		array_di, array_di, array_uo, array_uo) is det.
 lcss__build_thresh2(_N, _I, [], Thresh0, Link0, Thresh0, Link0).
@@ -286,15 +293,12 @@ lcss__build_thresh4(Lo, Hi, J, K, Thresh) :-
 	% that Thresh[K]<Inf, and Link[K] should be the Lcss in
 	% reverse.
 
-	% Note that it is here that we add the 'end-of-list match'
-	% L1-L2 to the Lcss.
-
-:- pred lcss__build_lcss(int, int, array(int), array(lcss), int, int, lcss).
-:- mode lcss__build_lcss(in, in, in, in, in, in, out) is det.
-lcss__build_lcss(N, Inf, Thresh, Link, L1, L2, Lcss) :-
+:- pred lcss__build_diff(int, int, array(int), array(lcss), int, int, diff).
+:- mode lcss__build_diff(in, in, in, in, in, in, out) is det.
+lcss__build_diff(N, Inf, Thresh, Link, L1, L2, Diff) :-
 	lcss__build_lcss2(N, Inf, Thresh, K),
-	array__lookup(Link, K, Lcss1),
-	list__reverse([L1 - L2 | Lcss1], Lcss).
+	array__lookup(Link, K, Lcss),
+	lcss__to_diff(L1, L2, Lcss, [], Diff).
 
 
 	% Find the largest K<=N for which Thresh[K]<Inf.
@@ -315,6 +319,29 @@ lcss__build_lcss2(N, Inf, Thresh, K) :-
 	;
 		K = N
 	).
+
+	% lcss__to_diff turns the (reversed) longest common subsequence
+	% of two lists into a list of edits.
+:- pred lcss__to_diff(int, int, lcss, diff, diff).
+:- mode lcss__to_diff(in, in, in, in, out) is det.
+lcss__to_diff(_X, _Y, [], Diff, Diff).
+lcss__to_diff(X, Y, [X1 - Y1 | Lcss], Diff0, Diff) :-
+	X2 is X - 1, Y2 is Y - 1,
+	X3 is X1 + 1, Y3 is Y1 + 1,
+	( X1 = X2 ->
+		( Y1 = Y2 ->
+			Diff1 = Diff0
+		;
+			Diff1 = [add(X, Y3 - Y) | Diff0]
+		)
+	;
+		( Y1 = Y2 ->
+			Diff1 = [delete(X3 - X, Y) | Diff0]
+		;
+			Diff1 = [change(X3 - X, Y3 - Y) | Diff0]
+		)
+	),
+	lcss__to_diff(X1, Y1, Lcss, Diff1, Diff).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
