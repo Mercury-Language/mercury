@@ -673,13 +673,14 @@
 %	- RTTI
 %	- high level data representation
 %	  (i.e. generate MLDS type declarations for user-defined types)
+%	- support trailing
 %
 % BUGS:
 %	- XXX parameter passing problem for abstract equivalence types
 %         that are defined as float (or anything which doesn't map to `Word')
 %
 % TODO:
-%	- XXX define compare & unify preds RTTI types
+%	- XXX define compare & unify preds for RTTI types
 %	- XXX need to generate correct layout information for closures
 %	      so that tests/hard_coded/copy_pred works.
 %	- XXX fix ANSI/ISO C conformance of the generated code (i.e. port to lcc)
@@ -693,7 +694,6 @@
 %	- support fact tables
 %	- support --split-c-files
 %	- support aditi
-%	- support trailing
 %	- support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
