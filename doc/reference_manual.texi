@@ -1218,7 +1218,7 @@ A field selection is transformed using the following rules:
 @example
 transform(Term ^ Field(Arg1, @dots{})) = Field(Arg1, @dots{}, Term).
 transform(Term ^ Field(Arg1, @dots{}) ^ Rest) =
-                transform(Field(Arg1, @dots{}) ^ Rest).
+                transform(Field(Arg1, @dots{}, Term) ^ Rest).
 @end example
 
 Examples:
