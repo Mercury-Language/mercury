@@ -12,15 +12,14 @@ include Mmake.common
 SUBDIRS = scripts runtime boehm_gc library compiler doc
 
 SUBDIR_MMAKE =	PATH=../scripts:$$PATH \
-		MERCURY_INT_DIR=../library \
 		$(MMAKE) $(MMAKEFLAGS)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
 depend:
-	cd library && $(SUBDIR_MMAKE) depend
-	cd compiler && $(SUBDIR_MMAKE) depend
+	cd library && MERCURY_INT_DIR=. $(SUBDIR_MMAKE) depend
+	cd compiler && MERCURY_INT_DIR=../library $(SUBDIR_MMAKE) depend
 
 #-----------------------------------------------------------------------------#
 
@@ -41,11 +40,11 @@ boehm_gc: scripts
 
 .PHONY: library
 library: scripts
-	cd library && $(SUBDIR_MMAKE)
+	cd library && MERCURY_INT_DIR=. $(SUBDIR_MMAKE)
 
 .PHONY: compiler
 compiler: scripts runtime boehm_gc library 
-	cd compiler && $(SUBDIR_MMAKE)
+	cd compiler && MERCURY_INT_DIR=../library $(SUBDIR_MMAKE)
 
 .PHONY: doc
 doc: scripts
@@ -59,8 +58,8 @@ doc: scripts
 tar: ../mercury.tar.gz
 
 ../mercury.tar.gz:
-	cd library && $(SUBDIR_MMAKE) cs
-	cd compiler && $(SUBDIR_MMAKE) cs
+	cd library && MERCURY_INT_DIR=. $(SUBDIR_MMAKE) cs
+	cd compiler && MERCURY_INT_DIR=../library $(SUBDIR_MMAKE) cs
 	cd .. && (tar -cf - mercury | gzip > mercury.tar.gz)
 
 #-----------------------------------------------------------------------------#
@@ -79,9 +78,13 @@ stage_1: all
 .PHONY: stage_2
 stage_2:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" $(SUBDIR_MMAKE)
+	MERCURY_INT_DIR=. \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" $(SUBDIR_MMAKE)
+	MERCURY_INT_DIR=../library \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	$(SUBDIR_MMAKE)
 	[ -d stage_2 ] || mkdir stage2
 	cp compiler/mercury_compile compiler/*.c library/*.c stage2
 	cd compiler && rm -f *.mod *.c *.o mercury_compile
@@ -90,9 +93,13 @@ stage_2:
 .PHONY: stage_3
 stage_3:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" $(SUBDIR_MMAKE)
+	MERCURY_INT_DIR=. \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" $(SUBDIR_MMAKE)
+	MERCURY_INT_DIR=../library \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	$(SUBDIR_MMAKE)
 	[ -d stage_3 ] || mkdir stage3
 	cp compiler/mercury_compile compiler/*.c library/*.c stage3
 	cd compiler && rm -f *.mod *.c *.o mercury_compile
@@ -101,9 +108,13 @@ stage_3:
 .PHONY: stage_4
 stage_4:
 	cd library && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" $(SUBDIR_MMAKE)
+	MERCURY_INT_DIR=. \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	$(SUBDIR_MMAKE)
 	cd compiler && \
-	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" $(SUBDIR_MMAKE)
+	MERCURY_INT_DIR=../library \
+	MERCURY_COMPILER="`pwd`/stage1/mercury_compile --" \
+	$(SUBDIR_MMAKE)
 	[ -d stage_4 ] || mkdir stage4
 	cp compiler/mercury_compile compiler/*.c library/*.c stage4
 	cd compiler && rm -f *.mod *.c *.o mercury_compile
@@ -131,11 +142,11 @@ install_boehm_gc: boehm_gc
 
 .PHONY: install_library
 install_library: library
-	cd library && $(SUBDIR_MMAKE) install
+	cd library && MERCURY_INT_DIR=. $(SUBDIR_MMAKE) install
 
 .PHONY: install_compiler
 install_compiler: compiler
-	cd compiler && $(SUBDIR_MMAKE) install
+	cd compiler && MERCURY_INT_DIR=../library $(SUBDIR_MMAKE) install
 
 .PHONY: install_doc
 install_doc: doc
@@ -146,24 +157,25 @@ install_runtime_grades:
 	cd runtime && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	mv -f *.o *.a *.so tmp_dir && \
+	(mv -f *.o *.a *.so tmp_dir || true) && \
 	for grade in $(LIBGRADES); do \
 		$(SUBDIR_MMAKE) GRADE=$$grade install_lib || exit 1; \
 		rm -f *.o *.a *.so; \
 	done && \
-	mv tmp_dir/* .
+	(mv tmp_dir/* . || true)
 
 .PHONY: install_library_grades
 install_library_grades:
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	mv -f *.o *.a *.so tmp_dir && \
+	(mv -f *.o *.a *.so tmp_dir || true) && \
 	for grade in $(LIBGRADES); do \
+		MERCURY_INT_DIR=. \
 		$(SUBDIR_MMAKE) GRADE=$$grade install_library || exit 1; \
 		rm -f *.mod *.c *.o *.a *.so; \
 	done && \
-	mv tmp_dir/* .
+	(mv tmp_dir/* . || true)
 
 #-----------------------------------------------------------------------------#
 
@@ -171,6 +183,7 @@ clean: clean_subdirs
 
 .PHONY: clean_subdirs
 clean_subdirs:
+	rm -rf runtime/tmp_dir library/tmp_dir
 	for dir in $(SUBDIRS); do \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
@@ -179,7 +192,7 @@ realclean: realclean_subdirs
 
 .PHONY: realclean_subdirs
 realclean_subdirs:
-	-rm -rf stage[1-4]
+	rm -rf stage[1-4]
 	for dir in $(SUBDIRS); do \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
