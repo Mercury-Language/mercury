@@ -8,7 +8,6 @@ ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
 	bidirectional \
-	bigtest \
 	boyer \
 	c_write_string \
 	cc_and_non_cc_test \
@@ -123,7 +122,6 @@ ORDINARY_PROGS=	\
 	reorder_di \
 	rev_arith \
 	reverse_arith \
-	rnd \
 	rtc_bug \
 	rtti_strings \
 	setjmp_test \
@@ -159,6 +157,15 @@ ORDINARY_PROGS=	\
 	write \
 	write_reg1 \
 	write_reg2
+
+# These tests trigger a bug in lcc
+ifeq "$(findstring lcc,$(shell $(MGNUC) -v))" "lcc"
+  BROKEN_FOR_LCC_PROGS =
+else
+  BROKEN_FOR_LCC_PROGS = \
+		bigtest \
+		rnd
+endif
 
 # These tests require the implementation to support closure layouts
 CLOSURE_LAYOUT_PROGS = \
@@ -248,8 +255,8 @@ else
   endif
 endif
 
-PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
-	$(BACKEND_PROGS) $(NONDET_C_PROGS)
+PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) $(CLOSURE_LAYOUT_PROGS) \
+	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
