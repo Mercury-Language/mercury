@@ -1,3 +1,13 @@
+%------------------------------------------------------------------------------
+%
+% file: globals.m
+% author: conway, June 1997
+%
+% This source file is hereby placed in the public domain. -conway (the author).
+%
+%------------------------------------------------------------------------------
+%
+
 :- module globals.
 
 :- interface.
