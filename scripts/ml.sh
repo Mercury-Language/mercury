@@ -10,7 +10,7 @@
 
 LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
 
-case "$1" in)
+case "$1" in
 	-v|--verbose)
 		verbose=true
 		shift;;

@@ -29,7 +29,7 @@ CHECKOPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
       -Wstrict-prototypes -Wmissing-prototypes"
 
-case "$1" in)
+case "$1" in
 	-v|--verbose)
 		verbose=true
 		shift;;
