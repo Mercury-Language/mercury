@@ -27,8 +27,12 @@ MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/library.init" \
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--no-libs  $(EXTRA_MLFLAGS)
 MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/libmercury.a \
-		$(RUNTIME_DIR)/libmer.a $(BOEHM_GC_DIR)/libgc.a -lm
-
+		$(RUNTIME_DIR)/libmer.a ` \
+		    case $(GRADE) in \
+			*.gc.prof) echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
+			*.gc) echo $(BOEHM_GC_DIR)/libgc.a ;; \
+		    esac \
+		` -lm
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
 MNLFLAGS =	-u 6000
 
@@ -45,8 +49,10 @@ all : mercury_profile
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-mercury_profile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
-	$(BOEHM_GC_DIR)/libgc.a
+mercury_profile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a
+# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).a, but only
+# if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
+# so just leave it out.
 
 mercury_profile_init.c: $(UTIL_DIR)/mkinit
 
