@@ -76,6 +76,7 @@
 		;	debug_data
 		;	tags
 		;	num_tag_bits
+		;	word_size
 		;	conf_low_tag_bits
 				% The undocumented conf_low_tag_bits option
 				% is used by the `mc' script to pass the
@@ -118,7 +119,8 @@
 		;	optimize_dead_procs
 	%	- HLDS->LLDS
 		;	smart_indexing
-		;	  req_density
+		;	  dense_switch_req_density
+		;	  lookup_switch_req_density
 		;	  dense_switch_size
 		;	  lookup_switch_size
 		;	  string_switch_size
@@ -241,6 +243,10 @@ option_defaults_2(compilation_model_option, [
 					% -1 is a special value which means
 					% use the value of conf_low_tag_bits
 					% instead
+	word_size               -       int(32),
+					% A good default for the number of
+					% bits in a word for the current
+					% generation of architectures.
 	conf_low_tag_bits	-	int(2),
 					% the `mc' script will override the
 					% above default with a value determined
@@ -297,7 +303,10 @@ option_defaults_2(optimization_option, [
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(yes),
-	req_density		-	int(25),
+	dense_switch_req_density -	int(25),
+		% Minimum density before using a dense switch
+	lookup_switch_req_density -	int(25),
+		% Minimum density before using a lookup switch
 	dense_switch_size	-	int(4),
 	lookup_switch_size	-	int(4),
 	string_switch_size	-	int(8),
@@ -428,6 +437,7 @@ long_option("profiling",		profiling).
 long_option("debug",			debug).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
+long_option("word-size",		word_size).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
@@ -478,7 +488,8 @@ long_option("optimise-dead-procs",	optimize_dead_procs).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
-long_option("req-density",		req_density).
+long_option("dense-switch-req-density",	dense_switch_req_density).
+long_option("lookup-switch-req-density",lookup_switch_req_density).
 long_option("dense-switch-size",	dense_switch_size).
 long_option("lookup-switch-size",	lookup_switch_size).
 long_option("string-switch-size",	string_switch_size).
@@ -880,6 +891,10 @@ options_help -->
 		% The --conf-low-tag-bits option is reserved for use
 		% by the `mc' script; it is deliberately not documented.
 		%
+		%
+		% The --word-size option is intended for use
+		% by the `mc' script; it is deliberately not documented.
+		%
 	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
@@ -961,8 +976,12 @@ options_help -->
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate switches as a simple if-then-else chains;\n"),
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
-	io__write_string("\t--req-density <percentage>\n"),
+	io__write_string("\t--dense-switch-req-density <percentage>\n"),
 	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
+	io__write_string("\t\tmust have at least this percentage of full slots (default: 25).\n"),
+	io__write_string("\t--lookup-switch-req-density <percentage>\n"),
+	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
+	io__write_string("\t\tin which all the outputs are constant terms\n"),
 	io__write_string("\t\tmust have at least this percentage of full slots (default: 25).\n"),
 	io__write_string("\t--dense-switch-size <n>\n"),
 	io__write_string("\t\tThe jump table generated for an atomic switch\n"),

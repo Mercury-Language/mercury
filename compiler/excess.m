@@ -42,7 +42,7 @@
 :- implementation.
 
 :- import_module hlds_goal, goal_util.
-:- import_module varset, list, map, set, std_util.
+:- import_module varset, list, bool, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -201,8 +201,8 @@ excess_assignments_in_conj([Goal0 | Goals0], RevGoals0, ElimVars0, NonLocals,
 	->
 		map__init(Subn0),
 		map__set(Subn0, LocalVar, ReplacementVar, Subn),
-		goal_util__rename_vars_in_goals(Goals0, Subn, Goals1),
-		goal_util__rename_vars_in_goals(RevGoals0, Subn, RevGoals1),
+		goal_util__rename_vars_in_goals(Goals0, no, Subn, Goals1),
+		goal_util__rename_vars_in_goals(RevGoals0, no, Subn, RevGoals1),
 		ElimVars1 = [LocalVar | ElimVars0]
 	;
 		Goals1 = Goals0,

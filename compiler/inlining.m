@@ -157,8 +157,10 @@ inlining__inlining_in_goal_2(
 		varset__vars(PVarset, Vars0),
 		map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
 		goal_util__create_variables(Vars0, Varset0,
-			VarTypes0, Subn0, CVarTypes, Varset, VarTypes, Subn),
-		goal_util__rename_vars_in_goal(CalledGoal, Subn, Goal - _GInfo)
+			VarTypes0, Subn0, CVarTypes, PVarset,
+				Varset, VarTypes, Subn),
+		goal_util__must_rename_vars_in_goal(CalledGoal, Subn,
+			Goal - _GInfo)
 	;
 		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym,
 			Follow),

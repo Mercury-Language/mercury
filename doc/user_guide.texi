@@ -1374,13 +1374,25 @@ Generate switches as a simple if-then-else chains;
 disable string hashing and integer table-lookup indexing.
 
 @sp 1
-@item --req-density @var{percentage}
+@item --dense-switch-req-density @var{percentage}
 The jump table generated for an atomic switch
 must have at least this percentage of full slots (default: 25).
 
 @sp 1
 @item --dense-switch-size @var{size}
 The jump table generated for an atomic switch
+must have at least this many entries (default: 4).
+
+@sp 1
+@item --lookup-switch-req-density @var{percentage}
+The lookup tables generated for an atomic switch
+in which all the outputs are constant terms
+must have at least this percentage of full slots (default: 25).
+
+@sp 1
+@item --lookup-switch-size @var{size}
+The lookup tables generated for an atomic switch
+in which all the outputs are constant terms
 must have at least this many entries (default: 4).
 
 @sp 1

@@ -304,11 +304,83 @@
 :- mode list__chunk(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% The following group of predicates use higher-order terms to simplify
+% various list processing tasks. They implement pretty much standard
+% sorts of operations provided by standard libraries for functional languages.
+%
+% Most of this code was originally by philip, modified and reformatted
+% by conway.
+%
+%-----------------------------------------------------------------------------%
+:- import_module std_util.
+
+	% list__map_det(T, L, M) uses the closure T
+	% to transform the elements of L into the elements of L.
+:- pred list__map(pred(X, Y), list(X), list(Y)).
+:- mode list__map(pred(in, out) is det, in, out) is det.
+:- mode list__map(pred(in, out) is semidet, in, out) is semidet.
+:- mode list__map(pred(in, out) is multi, in, out) is multi.
+:- mode list__map(pred(in, out) is nondet, in, out) is nondet.
+
+	% list__foldl(Pred, List, Start, End) calls Pred with each
+	% element of List (working left-to-right) and an accumulator
+	% (with the initial value of Start), and returns the final
+	% value in End.
+:- pred list__foldl(pred(X, Y, Y), list(X), Y, Y).
+:- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
+:- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+
+	% list__foldr(Pred, List, Start, End) calls Pred with each
+	% element of List (working right-to-left) and an accumulator
+	% (with the initial value of Start), and returns the final
+	% value in End.
+:- pred list__foldr(pred(X, Y, Y), list(X), Y, Y).
+:- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+
+	% list__filter(Pred, List, TrueList) takes a closure with one
+	% input argument and for each member of List `X', calls the closure.
+	% Iff call(Pred, X) is true, then X is included in TrueList.
+:- pred list__filter(pred(X), list(X), list(X)).
+:- mode list__filter(pred(in) is semidet, in, out) is det.
+
+	% list__filter(Pred, List, TrueList, FalseList) takes a closure with one
+	% input argument and for each member of List `X', calls the closure.
+	% Iff call(Pred, X) is true, then X is included in TrueList.
+	% Iff call(Pred, X) is false, then X is included in FalseList.
+:- pred list__filter(pred(X), list(X), list(X), list(X)).
+:- mode list__filter(pred(in) is semidet, in, out, out) is det.
+
+	% list__filter_map(Transformer, List, TrueList) takes a predicate
+	% with one input argument and one output argument. It is called
+	% with each element of List. If a call succeeds, then the output is
+	% included in TrueList.
+:- pred list__filter_map(pred(X, Y), list(X), list(Y)).
+:- mode list__filter_map(pred(in, out) is semidet, in, out) is det.
+
+	% list__sort(Compare, Unsorted, Sorted) is true iff Sorted is a
+	% list containing the same elements as Unsorted, where Sorted is
+	% a sorted list, wrt the ordering defined by the predicate term
+	% Compare.
+	% (implementation due to Philip Dart)
+:- pred list__sort(pred(X, X, comparison_result), list(X), list(X)).
+:- mode list__sort(pred(in, in, out) is det, in, out) is det.
+
+	% list__merge(Compare, As, Bs, Sorted) is true iff Sorted is a
+	% list containing the elements of As and Bs in the order implied
+	% by their sorted merge. The ordering of elements is defined by
+	% the higher order comparison predicate Compare.
+	% (implementation due to Philip Dart)
+:- pred list__merge(pred(X, X, comparison_result), list(X), list(X), list(X)).
+:- mode list__merge(pred(in, in, out) is det, in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bintree_set, require, std_util.
+:- import_module bintree_set, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -715,51 +787,122 @@ list__perm([X|Xs], Ys) :-
 	list__insert(X, Ys0, Ys).
 
 %-----------------------------------------------------------------------------%
-%
-% The following group of predicates use higher-order terms to simplify
-% various list processing tasks. They implement pretty much standard
-% sorts of operations provided by standard libraries for functional languages.
-%
-% Most of this code was originally by philip, modified and reformatted
-% by conway.
-%
+
+list__map(_, [],  []).
+list__map(P, [H0|T0], [H|T]) :-
+	call(P, H0, H),
+	list__map(P, T0, T).
+
+list__foldl(_, [], Acc, Acc).
+list__foldl(P, [H|T], Acc0, Acc) :-
+	call(P, H, Acc0, Acc1),
+	list__foldl(P, T, Acc1, Acc).
+
+list__foldr(_, [], Acc, Acc).
+list__foldr(P, [H|T], Acc0, Acc) :-
+	list__foldr(P, T, Acc0, Acc1),
+	call(P, H, Acc1, Acc).
+
+list__filter(P, Xs, Ys) :-
+	list__filter(P, Xs, Ys, _).
+
+list__filter(_, [],  [], []).
+list__filter(P, [H|T], L, M) :-
+	( call(P, H) ->
+		L = [H|L1],
+		M = M1
+	;
+		L = L1,
+		M = [H|M1]
+	),
+	list__filter(P, T, L1, M1).
+
+list__filter_map(_, [],  []).
+list__filter_map(P, [H0|T0], L) :-
+	( call(P, H0, H) ->
+		L = [H|L1]
+	;
+		L = L1
+	),
+	list__filter_map(P, T0, L1).
+
+
+list__sort(P, L0, L) :-
+        list__length(L0, N),
+        (
+		N = 0
+	->
+                L = []
+        ;
+		list__hosort(P, N, L0, L1, [])
+	->
+                L = L1
+        ;
+		error("hosort failed")
+        ).
+
+% list__hosort is actually det but the compiler can't confirm it
+:- pred list__hosort(pred(X, X, comparison_result), int, list(X), list(X), list(X)).
+:- mode list__hosort(pred(in, in, out) is det, in, in, out, out) is semidet.
+
+	% list__hosort is a Mercury implementation of the mergesort described in
+	% The Craft of Prolog.
+	% N denotes the length of the part of L0 that this call is sorting.
+	% 		(require((length(L0, M), M >= N)))
+	% Since we have redundant information about the list (N, and the
+	% length implicit in the list itself), we get a semidet unification
+	% when we deconstruct the list.
+list__hosort(P, N, L0, L, Rest) :-
+        (
+		N = 1
+	->
+                L0 = [X|Rest],
+		L = [X]
+        ;
+		N = 2
+	->
+		L0 = [X,Y|Rest],
+		call(P, X, Y, C),
+		(
+			C = (<),
+			L = [X,Y]
+		; 
+			C = (=),
+			L = [X,Y]
+		;
+			C = (>),
+			L = [Y,X]
+		)
+        ;      
+		N1 is N//2,
+		list__hosort(P, N1, L0, L1, Middle),
+                N2 is N-N1,
+		list__hosort(P, N2, Middle, L2, Rest),
+		list__merge(P, L1, L2, L)
+        ).
+
+list__merge(P, [], [], []).
+list__merge(P, [], [Y|Ys], [Y|Ys]).
+list__merge(P, [X|Xs], [], [X|Xs]).
+list__merge(P, [H1|T1], [H2|T2], L) :-
+	call(P, H1, H2, C),
+	(
+		C = (<),
+		L = [H1|T],   
+		list__merge(P, T1, [H2|T2], T)
+	;
+		C = (=),
+		L = [H1,H2|T],
+		list__merge(P, T1, T2, T)
+	;
+		C = (>),
+		L = [H2|T],   
+		list__merge(P, [H1|T1], T2, T)
+	).
+
 %-----------------------------------------------------------------------------%
+
 :- interface.
-
-:- import_module std_util.
-
-	% list__map_det(T, L, M) uses the closure T
-	% to transform the elements of L into the elements of L.
-:- pred list__map(pred(X, Y), list(X), list(Y)).
-:- mode list__map(pred(in, out) is det, in, out) is det.
-:- mode list__map(pred(in, out) is semidet, in, out) is semidet.
-:- mode list__map(pred(in, out) is multi, in, out) is multi.
-:- mode list__map(pred(in, out) is nondet, in, out) is nondet.
-
-
-	% list__map_maybe(T, L, M) uses the semidet closure T
-	% to transform the elements of the list L. If T fails,
-	% for some member of L, the correpsonding element of M
-	% is 'no'. Otherwise the corresponding element of M is
-	% 'yes(Y)' where Y is the output argument of T.
-:- pred list__map_maybe(pred(X, Y), list(X), list(maybe(Y))).
-:- mode list__map_maybe(pred(in, out) is semidet, in, out) is det.
-
-	% list__foldl(Pred, List, Start, End) calls Pred with each
-	% element of List (working left-to-right) and an accumulator
-	% (with the initial value of Start), and returns the final
-	% value in End.
-:- pred list__foldl(pred(X, Y, Y), list(X), Y, Y).
-:- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
-:- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
-
-	% list__foldr(Pred, List, Start, End) calls Pred with each
-	% element of List (working right-to-left) and an accumulator
-	% (with the initial value of Start), and returns the final
-	% value in End.
-:- pred list__foldr(pred(X, Y, Y), list(X), Y, Y).
-:- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
-:- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
 
 	% list__apply(Cs, Bs) takes a list of closures with one
 	% output argument Cs, and calls the closures, returning
@@ -771,32 +914,6 @@ list__perm([X|Xs], Ys) :-
 :- mode list__apply(list_skel_in(pred(out) is nondet), out) is nondet.
 
 :- implementation.
-
-list__map(_, [],  []).
-list__map(P, [H0|T0], [H|T]) :-
-	call(P, H0, H),
-	list__map(P, T0, T).
-
-list__map_maybe(_, [],  []).
-list__map_maybe(P, [H0|T0], [H|T]) :-
-	(
-		call(P, H0, H1)
-	->
-		H = yes(H1)
-	;
-		H = no
-	),
-	list__map_maybe(P, T0, T).
-
-list__foldl(_, [], Acc, Acc).
-list__foldl(P, [H|T], Acc0, Acc) :-
-	call(P, H, Acc0, Acc1),
-	list__foldl(P, T, Acc1, Acc).
-
-list__foldr(_, [], Acc, Acc).
-list__foldr(P, [H|T], Acc0, Acc) :-
-	list__foldr(P, T, Acc0, Acc1),
-	call(P, H, Acc1, Acc).
 
 list__apply([], []).
 list__apply([C|Cs], [B|Bs]) :-

@@ -39,6 +39,27 @@ NEWS for Mercury release 0.6
 * We have renamed the varset__lookup predicates to varset__search in order to
   conform to our general naming convention.
 
+* We have removed (the undocumented) list__map_maybe/3.
+
+* We have added a few new predicates using higher order facilities:
+	list__map/3, list__filter/3, list__filter/4, list__foldl/4,
+	list__foldr/4, list__sort/4 and list__merge/4 in list.m
+	and maybe_pred/3 in std_util.m.
+	See the library reference manual for details.
+
+* There are quite a few changes to the graph module. The interface has been
+  made more consistent with the rest of the library. The predicate
+  graph__lookup_node/3 has been replaced by two predicates: graph__search_node/3
+  which is nondet and returns all the nodes with matching data, and
+  graph__find_matching_nodes/3 which is det and returns all the nodes with
+  matching data.
+
+* The code generator generates special code for dense switches in which all
+  the output variables are constant terms. Instead of generating a dense jump
+  table, it now generates an set of arrays of answers (one array for each output
+  variable). For predicates that convert between enumerations and integers,
+  etc, this is a significant improvement.
+
 * Various other minor improvements:
 
   - You can now use `-O <n>' to select an optimization level between 0 and 5.

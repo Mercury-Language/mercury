@@ -29,13 +29,9 @@
 % since putting the values produced for each tag value side-by-side in
 % memory will tend to lead to fewer cache misses.
 
-% The number of bits per word is hard coded in a single place:
-%	lookup_switch__bits_per_word/1.
-% Ideally this should be inherited from some part of the configuration
-% process. Since having a "conf.m" doesn't really work becuase of boot-
-% strapping problems, the number of bits per word should come from a
-% command line parameter with a default value of 32, and have it configured
-% in the mc script to an appropriate system specific value if necessary.
+% The number of bits per word is taken from the word_size option which
+% uses a flag in the mc script with a value from configuration. This is
+% used when generating bit-vectors.
 
 % Author: conway.
 
@@ -74,10 +70,6 @@
 :- import_module set, code_gen, type_util, map, tree, int, std_util, require.
 :- import_module dense_switch, bool, assoc_list, globals, options, mode_util.
 :- import_module exprn_aux, getopt, prog_io.
-
-:- pred lookup_switch__bits_per_word(int::out) is det.
-
-lookup_switch__bits_per_word(32).
 
 	% Most of this predicate is taken from dense_switch.m
 
@@ -163,10 +155,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 	% Figure out which variables are bound in the switch.
 	% We do this by using the current instmap and the instmap delta in
 	% the goal info to work out which variables are [further] bound by
-	%
-	% the variables that changed in instantiation during the switch.
-	% If they were not live at the start of the switch, then they must
-	% have been bound during the switch.
+	% the switch.
 
 lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 	{ goal_info_get_instmap_delta(GoalInfo, InstMap) },
@@ -187,12 +176,11 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 				CurrentInstMap = reachable(InstMapping),
 				map__search(InstMapping, Var, Initial)
 			->
-				mode_is_output(ModuleInfo, (Initial -> Final))
+				ModeInitial = Initial
 			;
-				% If the variable's initial inst was free then
-				% then it is obviously output.
-				true
-			)
+				ModeInitial = free
+			),
+			mode_is_output(ModuleInfo, (ModeInitial -> Final))
 		)) },
 		{ solutions(Lambda, OutVars) }
 	).
@@ -350,7 +338,9 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		CheckCode) -->
 	generate_bit_vec(CaseVals, Start, BitVec),
-	{ lookup_switch__bits_per_word(WordBits) },
+	code_info__get_globals(Globals),
+	{ globals__get_options(Globals, Options) },
+	{ getopt__lookup_int_option(Options, word_size, WordBits) },
 	{ UIndex = unop(cast_to_unsigned, Index) },
 	{ Word = lval(field(0, BitVec,
 			binop(/, UIndex,const(int_const(WordBits)))))},
@@ -369,19 +359,21 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 	% for that word.
 generate_bit_vec(CaseVals, Start, BitVec) -->
 	{ map__init(Empty) },
-	{ generate_bit_vec_2(CaseVals, Start, Empty, BitMap) },
+	code_info__get_globals(Globals),
+	{ globals__get_options(Globals, Options) },
+	{ getopt__lookup_int_option(Options, word_size, WordBits) },
+	{ generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap) },
 	{ map__to_assoc_list(BitMap, WordVals) },
 	{ generate_bit_vec_args(WordVals, 0, Args) },
 	code_info__get_next_label_number(Label),
 	{ BitVec = create(0, Args, Label) }.
 
-:- pred generate_bit_vec_2(case_consts, int,
+:- pred generate_bit_vec_2(case_consts, int, int,
 		map(int, int), map(int, int)).
-:- mode generate_bit_vec_2(in, in, in, out) is det.
+:- mode generate_bit_vec_2(in, in, in, in, out) is det.
 
-generate_bit_vec_2([], _, Bits, Bits).
-generate_bit_vec_2([Tag-_|Rest], Start, Bits0, Bits) :-
-	lookup_switch__bits_per_word(WordBits),
+generate_bit_vec_2([], _, _, Bits, Bits).
+generate_bit_vec_2([Tag-_|Rest], Start, WordBits, Bits0, Bits) :-
 	Val is Tag - Start,
 	Word is Val // WordBits,
 	Offset is Val mod WordBits,
@@ -393,7 +385,7 @@ generate_bit_vec_2([Tag-_|Rest], Start, Bits0, Bits) :-
 		X1 is (1 << Offset)
 	),
 	map__set(Bits0, Word, X1, Bits1),
-	generate_bit_vec_2(Rest, Start, Bits1, Bits).
+	generate_bit_vec_2(Rest, Start, WordBits, Bits1, Bits).
 
 :- pred generate_bit_vec_args(list(pair(int)), int, list(maybe(rval))).
 :- mode generate_bit_vec_args(in, in, out) is det.

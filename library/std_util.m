@@ -73,6 +73,15 @@
 
 %-----------------------------------------------------------------------------%
 
+	% maybe_pred(Pred, X, Y) takes a closure Pred which transfroms an
+	% input semideterministically. If calling the closure with the input
+	% X succeeds, Y is bound to `yes(Z)' where Z is the output of the
+	% call, or to `no' if the call fails.
+:- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
+:- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 % Declaratively, `report_stats' is the same as `true'.
 % It has the side-effect of reporting some memory and time usage statistics
 % to stdout.  (Technically, every Mercury implementation must offer
@@ -98,6 +107,25 @@
 :- implementation.
 
 :- import_module require, set.
+
+/****
+	Is this really useful?
+% for use in lambda expressions where the type of functor '-' is ambiguous
+:- pred pair(X, Y, pair(X, Y)).
+:- mode pair(in, in, out) is det.
+:- mode pair(out, out, in) is det.
+
+pair(X, Y, X-Y).
+****/
+
+maybe_pred(Pred, X, Y) :-
+	(
+		call(Pred, X, Z)
+	->
+		Y = yes(Z)
+	;
+		Y = no
+	).
 
 :- pred builtin_solutions(pred(T), set(T)).
 :- mode builtin_solutions(pred(out) is multi, out) is det.

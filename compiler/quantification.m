@@ -60,7 +60,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, map, goal_util, require.
+:- import_module std_util, bool, map, goal_util, require.
 
 	% The outside vars and quant vars are essentially inputs,
 	% nonlocals output, and seen so far, the varset and the
@@ -164,7 +164,7 @@ implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some(Vars, Goal)) -->
 		quantification__warn_overlapping_scope(RenameVars, Context),
 		quantification__rename_apart(RenameVars, RenameMap,
 			Goal0, Goal1),
-		{ goal_util__rename_var_list(Vars0, RenameMap, Vars) }
+		{ goal_util__rename_var_list(Vars0, no, RenameMap, Vars) }
 	),
 	{ set__union(SeenVars0, QVars, SeenVars) },
 	quantification__set_seen(SeenVars),
@@ -228,7 +228,7 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0), Context,
 		quantification__rename_apart(RenameVars, RenameMap,
 						Cond0, Cond1),
 		{ goal_util__rename_vars_in_goal(Then0, RenameMap, Then1) },
-		{ goal_util__rename_var_list(Vars0, RenameMap, Vars) }
+		{ goal_util__rename_var_list(Vars0, no, RenameMap, Vars) }
 	),
 	{ set__insert_list(QuantVars, Vars, QuantVars1) },
 	{ goal_vars(Then1, VarsThen) },
@@ -310,7 +310,7 @@ implicitly_quantify_unify_rhs(lambda_goal(LambdaVars0, Modes, Det, Goal0),
 		quantification__warn_overlapping_scope(RenameVars, Context),
 		quantification__rename_apart(RenameVars, RenameMap,
 			Goal0, Goal1),
-		{ goal_util__rename_var_list(LambdaVars0, RenameMap,
+		{ goal_util__rename_var_list(LambdaVars0, no, RenameMap,
 			LambdaVars) }
 	),
 		% Quantified variables cannot be pushed inside a lambda goal,
@@ -557,8 +557,8 @@ quantification__rename_apart(RenameSet, RenameMap, Goal0, Goal) -->
 	quantification__get_vartypes(VarTypes0),
 	{ map__init(RenameMap0) },
 	{ goal_util__create_variables(RenameList,
-		Varset0, VarTypes0, RenameMap0, VarTypes0,
-			% ^ Accumulator		^ Reference
+		Varset0, VarTypes0, RenameMap0, VarTypes0, Varset0,
+			% ^ Accumulator		^ Reference ^Var names
 		Varset, VarTypes, RenameMap) },
 	{ goal_util__rename_vars_in_goal(Goal0, RenameMap, Goal) },
 	quantification__set_varset(Varset),
