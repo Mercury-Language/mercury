@@ -350,12 +350,12 @@
 %-----------------------------------------------------------------------------%
 
 	% commutivity and associativity of +
-:- promise all [A,B,C] ( C = B + A <=> C = A + B ).
-:- promise all [A,B,C,ABC] ( ABC = (A + B) + C <=> ABC = A + (B + C) ).
+:- promise all [A, B, C] 	( C = B + A <=> C = A + B ).
+:- promise all [A, B, C, ABC]	( ABC = (A + B) + C <=> ABC = A + (B + C) ).
 
 	% commutivity and associativity of *
-:- promise all [A,B,C] ( C = B * A <=> C = A * B ).
-:- promise all [A,B,C,ABC] ( ABC = (A * B) * C <=> ABC = A * (B * C) ).
+:- promise all [A, B, C] 	( C = B * A <=> C = A * B ).
+:- promise all [A, B, C, ABC]	( ABC = (A * B) * C <=> ABC = A * (B * C) ).
 
 %-----------------------------------------------------------------------------%
 
@@ -414,7 +414,10 @@ X div Y = Div :-
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-	( domain_checks, Y = 0 ->
+	(
+		domain_checks,
+		Y = 0
+	->
 		throw(math__domain_error("int.'//'"))
 	;
 		Div = unchecked_quotient(X, Y)
@@ -425,22 +428,26 @@ X / Y = X // Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-	( domain_checks, Y = 0 ->
+	(
+		domain_checks,
+		Y = 0
+	->
 		throw(math__domain_error("int.rem"))
 	;
 		Rem = unchecked_rem(X, Y)
 	).
 
-	% This code is included here rather than just calling
-	% the version in math.m because we currently don't do
-	% transitive inter-module inlining, so code which uses
-	% `//'/2 but doesn't import math.m couldn't have the
-	% domain check optimized away.
+	% This code is included here rather than just calling the version
+	% in math.m because we currently don't do transitive inter-module
+	% inlining, so code which uses `//'/2 but doesn't import math.m
+	% couldn't have the domain check optimized away.
 :- pred domain_checks is semidet.
 :- pragma inline(domain_checks/0).
 
-:- pragma foreign_proc("C", domain_checks,
-		[will_not_call_mercury, promise_pure, thread_safe], "
+:- pragma foreign_proc("C",
+	domain_checks,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 #ifdef ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = MR_FALSE;
 #else
@@ -448,20 +455,25 @@ X rem Y = Rem :-
 #endif
 ").
 
-:- pragma foreign_proc("C#", domain_checks,
-		[thread_safe, promise_pure], "
+:- pragma foreign_proc("C#",
+	domain_checks,
+	[thread_safe, promise_pure],
+"
 #if ML_OMIT_MATH_DOMAIN_CHECKS
 	SUCCESS_INDICATOR = false;
 #else
 	SUCCESS_INDICATOR = true;
 #endif
 ").
-:- pragma foreign_proc("Java", domain_checks,
-		[thread_safe, promise_pure], "
+:- pragma foreign_proc("Java",
+	domain_checks,
+	[thread_safe, promise_pure],
+"
 	succeeded = true;
 ").
 
 :- pragma inline(floor_to_multiple_of_bits_per_int/1).
+
 floor_to_multiple_of_bits_per_int(X) = Floor :-
 	Trunc = quot_bits_per_int(X),
 	Floor0 = times_bits_per_int(Trunc),
@@ -519,9 +531,7 @@ int__abs(Num) = Abs :-
 	int__abs(Num, Abs).
 
 int__abs(Num, Abs) :-
-	(
-		Num < 0
-	->
+	( Num < 0 ->
 		Abs = 0 - Num
 	;
 		Abs = Num
@@ -531,9 +541,7 @@ int__max(X, Y) = Max :-
 	int__max(X, Y, Max).
 
 int__max(X, Y, Max) :-
-	(
-		X > Y
-	->
+	( X > Y ->
 		Max = X
 	;
 		Max = Y
@@ -543,9 +551,7 @@ int__min(X, Y) = Min :-
 	int__min(X, Y, Min).
 
 int__min(X, Y, Min) :-
-	(
-		X < Y
-	->
+	( X < Y ->
 		Min = X
 	;
 		Min = Y
@@ -643,24 +649,26 @@ is(X, X).
 	int__max_int(Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if (sizeof(MR_Integer) == sizeof(int))
+	if (sizeof(MR_Integer) == sizeof(int)) {
 		Max = INT_MAX;
-	else if (sizeof(MR_Integer) == sizeof(long))
+	} else if (sizeof(MR_Integer) == sizeof(long)) {
 		Max = LONG_MAX;
-	else
+	} else {
 		MR_fatal_error(""Unable to figure out max integer size"");
+	}
 ").
 
 :- pragma foreign_proc("C",
 	int__min_int(Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	if (sizeof(MR_Integer) == sizeof(int))
+	if (sizeof(MR_Integer) == sizeof(int)) {
 		Min = INT_MIN;
-	else if (sizeof(MR_Integer) == sizeof(long))
+	} else if (sizeof(MR_Integer) == sizeof(long)) {
 		Min = LONG_MIN;
-	else
+	} else {
 		MR_fatal_error(""Unable to figure out min integer size"");
+	}
 ").
 
 :- pragma foreign_proc("C",
@@ -730,7 +738,7 @@ is(X, X).
 
 :- pragma foreign_proc("Java",
         int__bits_per_int(Bits::out),
-	        [will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	// Java ints are 32 bits.
 	Bits = 32;
