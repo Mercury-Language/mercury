@@ -52,6 +52,12 @@ extern FILE *MR_mdb_in;
 extern FILE *MR_mdb_out;
 extern FILE *MR_mdb_err;
 
+/*
+** This just prints to MR_mdb_out a message telling the user
+** that the debugger caught an interrupt.
+*/
+extern	void	MR_trace_interrupt_message(void);
+
 extern	char	*MR_trace_getline(const char *prompt, FILE *mdb_in,
 				FILE *mdb_out);
 

@@ -148,6 +148,7 @@ extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
 
 /* in trace/mercury_trace.c */
 extern	Code	*MR_trace_real(const MR_Stack_Layout_Label *);
+extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */
 extern	void	MR_register_module_layout_real(const MR_Module_Layout *);

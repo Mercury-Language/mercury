@@ -187,7 +187,10 @@ void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 
 Code	*MR_library_trace_browser;
 
-Code	*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
+Code	*(*volatile MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
+
+void	(*MR_address_of_trace_interrupt_handler)(void);
+
 void	(*MR_register_module_layout)(const MR_Module_Layout *);
 
 #ifdef USE_GCC_NONLOCAL_GOTOS

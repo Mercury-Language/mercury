@@ -22,6 +22,8 @@ ENDINIT
 #include "mercury_engine.h"
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
+#include "mercury_signal.h"	/* for MR_setup_signal() */
+#include <signal.h>		/* for SIGINT */
 #include <stdio.h>
 #include <unistd.h>		/* for the write system call */
 #include <errno.h>
@@ -36,7 +38,7 @@ MR_Trace_Type	MR_trace_handler = MR_TRACE_INTERNAL;
 
 /*
 ** Compiler generated tracing code will check whether MR_trace_enabled is true,
-** before calling MR_trace. For now, and until we implement interface tracing,
+** before calling MR_trace.
 ** MR_trace_enabled should keep the same value throughout the execution of
 ** the entire program after being set in mercury_wrapper.c. There is one
 ** exception to this: the Mercury routines called as part of the functionality
@@ -190,6 +192,22 @@ MR_trace_start(bool enabled)
 	MR_trace_call_depth = 0;
 	MR_trace_from_full = TRUE;
 	MR_trace_enabled = enabled;
+
+	/*
+	** Install the SIGINT signal handler.
+	** We only do this if tracing is enabled, and only
+	** for the internal debugger.  (This is a bit conservative:
+	** it might work fine for the external debugger too,
+	** but I'm just not certain of that.)
+	*/
+	if (enabled &&
+		MR_address_of_trace_interrupt_handler != NULL &&
+		MR_trace_handler == MR_TRACE_INTERNAL)
+	{
+		MR_setup_signal(SIGINT,
+			(Code *) MR_address_of_trace_interrupt_handler,
+			FALSE, "mdb: cannot install SIGINT signal handler");
+	}
 }
 
 void

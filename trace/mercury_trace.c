@@ -45,6 +45,7 @@
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
 #include "mercury_array_macros.h"
+#include "mercury_init.h"
 #include <stdio.h>
 
 static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
@@ -249,6 +250,61 @@ check_stop_print:
 	}
 
 	return NULL;
+}
+
+/*
+** MR_trace_interrupt() is called via a function pointer from MR_trace()
+** in runtime/mercury_trace_base.c, which in turn is called from
+** compiled code whenever an event to be traced occurs.
+** It is called whenever the user pressed control-C to interrupt the
+** program.
+** This is like MR_trace_real(), except that it _always_ calls
+** MR_trace_event().
+*/
+
+static Code *
+MR_trace_interrupt(const MR_Stack_Layout_Label *layout)
+{
+	Unsigned	seqno;
+	Unsigned	depth;
+	MR_Trace_Port	port;
+
+	/* restore the original MR_trace_func_ptr value */
+	MR_trace_func_ptr = MR_trace_real;
+
+	if (MR_trace_handler == MR_TRACE_INTERNAL) {
+		MR_trace_interrupt_message();
+	}
+
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
+		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+	} else {
+		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+	}
+	port = (MR_Trace_Port) layout->MR_sll_port;
+
+	MR_trace_event_number++;
+
+	return MR_trace_event(&MR_trace_ctrl, TRUE, layout, port,
+		seqno, depth);
+}
+
+void
+MR_trace_interrupt_handler(void)
+{
+	/*
+	** This function is a signal handler, so there is not
+	** much that we can safely do here.  We just set the volatile
+	** variable MR_trace_func_ptr; the real work will be done
+	** by MR_trace_interrupt(), which will be called by MR_trace()
+	** at the next debugger event.
+	*/ 
+	MR_trace_func_ptr = MR_trace_interrupt;
 }
 
 static Code *

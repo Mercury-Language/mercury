@@ -2505,3 +2505,9 @@ MR_trace_valid_command(const char *word)
 
 	return FALSE;
 }
+
+void
+MR_trace_interrupt_message(void)
+{
+	fprintf(MR_mdb_out, "\nmdb: got interrupt signal\n");
+}

@@ -96,10 +96,29 @@ extern	Code		*MR_library_trace_browser;
 ** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
 ** or MR_trace_fake (runtime/mercury_trace_base.c),
 ** depending on whether tracing was enabled when creating the _init.c
-** file.  It is called from MR_trace (runtime/mercury_trace_base.c).
+** file.  It is also temporarily set to MR_trace_interrupt by
+** MR_trace_interrupt_handler if tracing was enabled and the
+** process receives a SIGINT signal.
+** It is called from MR_trace (runtime/mercury_trace_base.c).
+**
+** Since it is set from a signal handler, it must be declared `volatile'.
 */
 
-extern	Code		*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
+extern	Code		*(*volatile MR_trace_func_ptr)(
+				const MR_Stack_Layout_Label *);
+
+/*
+** If the init file was built with tracing enabled, then
+** MR_address_of_trace_interrupt_handler points to
+** MR_trace_interrupt_handler, otherwise it is NULL.
+*/
+extern	void		(*MR_address_of_trace_interrupt_handler)(void);
+
+/*
+** If the init file was built with tracing enabled, then
+** MR_register_module_layout points to MR_register_module_layout_real,
+** otherwise it is NULL.
+*/
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
 extern	void		do_init_modules(void);
