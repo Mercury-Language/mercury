@@ -64,6 +64,9 @@
 :- mode io__write_variable(input, input, di, uo).
 %		Writes a variable to stdout.
 
+:- pred mercury_quote_string(string, io__state, io__state).
+:- mode mercury_quote_string(input, di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -201,16 +204,15 @@ io__write_constant(term_integer(I)) -->
 io__write_constant(term_float(F)) -->
 	io__write_float(F).
 io__write_constant(term_atom(A))  -->
-	io__write_string(A).
+	io__write_char('\''),
+	mercury_quote_string(A),
+	io__write_char('\'').
 io__write_constant(term_string(S)) -->
 	io__write_char('"'),
 	mercury_quote_string(S),
 	io__write_char('"').
 
 %-----------------------------------------------------------------------------%
-
-:- pred mercury_quote_string(string, io__state, io__state).
-:- mode mercury_quote_string(input, di, uo).
 
 mercury_quote_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->

@@ -24,11 +24,11 @@
 
 :- type univ.
 
-:- pred type_to_univ(T, univ).
+:- pred type_to_univ(_T, univ).
 :- mode type_to_univ(input, output).
 :- mode type_to_univ(output, input).
 
-:- pred univ_to_type(univ, T).
+:- pred univ_to_type(univ, _T).
 :- mode univ_to_type(input, output).
 :- mode univ_to_type(output, input).
 

@@ -93,7 +93,10 @@ process_files_2([File | Files], Progname, Items0) -->
 	io__write_string(StdErr, File),
 	io__write_string(StdErr, "..."),
 	io__flush_output(StdErr),
-	io__gc_call(prog_io__read_module(File, Result, Messages, Items)),
+	{ string__append(File, ".nl", FileName) },
+	io__gc_call(
+		prog_io__read_module(FileName, File, Result, Messages, Items)
+	),
 	process_files_3(Result, Messages, Items, Files, Progname, Items0).
 
 :- pred process_files_3(bool, message_list, list(item_and_context), 

@@ -15,12 +15,6 @@
 			;	string(string)	% not yet implemented
 			;	accumulating(list(string)). % not yet imp.
 		
-:- type option		--->	verbose
-			;	very_verbose
-			;	dump_hlds
-			;	generate_code
-			;	builtin_module.
-
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(list(pair(option, option_data))::output) is det.
@@ -31,6 +25,13 @@
 :- pred maybe_write_string(bool::input, string::input,
 			io__state::di, io__state::uo).
 
+:- type option		--->	verbose
+			;	very_verbose
+			;	dump_hlds
+			;	generate_code
+			;	builtin_module
+			;	make_interface.
+
 :- implementation.
 
 option_defaults([
@@ -38,7 +39,8 @@ option_defaults([
 	very_verbose	-	bool(no),
 	dump_hlds	-	bool(no),
 	generate_code	-	bool(no),
-	builtin_module	-	string("mercury_builtin")
+	builtin_module	-	string("mercury_builtin"),
+	make_interface	-	bool(no)
 ]).
 
 short_option('v', 		verbose).
@@ -46,12 +48,14 @@ short_option('w', 		very_verbose).
 short_option('d', 		dump_hlds).
 short_option('g', 		generate_code).
 short_option('b', 		builtin_module).
+short_option('i', 		make_interface).
 
 long_option("verbose",		verbose).
 long_option("very-verbose",	very_verbose).
 long_option("dump-hlds",	dump_hlds).
 long_option("generate-code",	generate_code).
 long_option("builtin-module",	builtin_module).
+long_option("make-interface",	make_interface).
 
 maybe_report_stats(yes) --> io__report_stats.
 maybe_report_stats(no) --> [].

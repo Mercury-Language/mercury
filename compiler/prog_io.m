@@ -250,9 +250,9 @@
 	% Messages is a list of warning/error messages,
 	% and Program is the parse tree.
 
-:- pred prog_io__read_module(string, bool, message_list, item_list,
+:- pred prog_io__read_module(string, string, bool, message_list, item_list,
 				io__state, io__state).
-:- mode prog_io__read_module(input, output, output, output, di, uo).
+:- mode prog_io__read_module(input, input, output, output, output, di, uo).
 
 %-----------------------------------------------------------------------------%
 
@@ -287,10 +287,7 @@
 % and then reverse them afterwards.  (Using difference lists would require
 % late-input modes.)
 
-prog_io__read_module(Module, Error, Messages, Items) -->
-	% io__op(1199, fx, "rule"),
-	% io__op(1179, xfy, "--->"),		% XXX should be automatic
-	{ string__append(Module, ".nl", FileName) },
+prog_io__read_module(FileName, ModuleName, Error, Messages, Items) -->
 	io__see(FileName, R),
 	( { R = ok } ->
 		read_all_items(RevMessages, RevItems0, Error0),
@@ -298,7 +295,8 @@ prog_io__read_module(Module, Error, Messages, Items) -->
 		  get_end_module(RevItems0, RevItems, EndModule),
 		  reverse(RevMessages, Messages0),
 		  reverse(RevItems, Items0),
-		  check_begin_module(Messages0, Items0, Error0, EndModule,
+		  check_begin_module(ModuleName,
+				Messages0, Items0, Error0, EndModule,
 				FileName, Messages, Items, Error)
 		},
 		io__seen
@@ -344,12 +342,12 @@ get_end_module(RevItems0, RevItems, EndModule) :-
 	% and that the end_module declaration (if any) is correct,
 	% and construct the final parsing result.
 
-:- pred check_begin_module(message_list, item_list, bool,
+:- pred check_begin_module(string, message_list, item_list, bool,
 			   module_end, string, message_list, item_list, bool).
-:- mode check_begin_module(input, input, input, input, input,
+:- mode check_begin_module(input, input, input, input, input, input,
 				output, output, output).
 
-check_begin_module(Messages0, Items0, Error0, EndModule, FileName,
+check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
 		Messages, Items, Error) :-
 
     % check that the first item is a `:- module ModuleName'
@@ -376,6 +374,18 @@ check_begin_module(Messages0, Items0, Error0, EndModule, FileName,
 	    Items = Items1,
             Error = yes
         ;
+	% check that the begin module declaration matches the expected name
+	% of the module
+	    ModuleName1 \= ModuleName
+	->
+	    dummy_term_with_context(Context, Term2),
+            ThisError =
+	        "warning: incorrect module name in `:- module' declaration"
+		    - Term2,
+            Messages = [ThisError | Messages0],
+	    Items = Items1,
+	    Error = Error0
+	;
 	    Messages = Messages0,
 	    Items = Items1,
 	    Error = Error0
@@ -781,7 +791,7 @@ parse_dcg_goal_2(term_functor(term_atom("->"),[A0,B0],_), VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
 				A, VarSet1, N1, Var1),
-	parse_dcg_goal(B0, VarSet1, N1, Var0, B, VarSet, N, Var),
+	parse_dcg_goal(B0, VarSet1, N1, Var1, B, VarSet, N, Var),
 	Goal = if_then_else(SomeVars, A, B,
 		unify(term_variable(Var), term_variable(Var0))).
 
@@ -1288,7 +1298,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	( %%%	some [Arg]
 		(
 			member(Arg, Args),
-			all [Var] Arg \= term_variable(Var)
+			\+ Arg = term_variable(_)
 		)
 	->
 		Result = error("Type parameters must be variables", Arg)
@@ -1502,7 +1512,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	( %%%	some [Arg]
 		(
 			member(Arg, Args),
-			all [Var] Arg \= term_variable(Var)
+			\+ Arg = term_variable(_)
 		)
 	->
 		Result = error("Inst parameters must be variables", Arg)
@@ -1624,7 +1634,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	( %%% some [Arg]
 		(
 			member(Arg, Args),
-			all [Var] Arg \= term_variable(Var)
+			\+ Arg = term_variable(_)
 		)
 	->
 		Result = error("Mode parameters must be variables", Arg)
