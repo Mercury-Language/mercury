@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2004 The University of Melbourne.
+** Copyright (C) 1997-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -192,20 +192,33 @@
   #endif /* ! MR_MPROF_PROFILE_TIME */
 #endif /* MR_DEEP_PROFILING */
 
-#ifdef MR_USE_TRAIL
-  #define MR_GRADE_PART_6	MR_PASTE2(MR_GRADE_PART_5, _tr)
-  #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5 ".tr"
+#ifdef MR_RECORD_TERM_SIZES
+  #ifdef MR_RECORD_TERM_SIZES_AS_CELLS
+    #define MR_GRADE_PART_6		MR_PASTE2(MR_GRADE_PART_5, _tsc)
+    #define MR_GRADE_OPT_PART_6		MR_GRADE_OPT_PART_5 ".tsc"
+  #else
+    #define MR_GRADE_PART_6 		MR_PASTE2(MR_GRADE_PART_5, _tsw)
+    #define MR_GRADE_OPT_PART_6 	MR_GRADE_OPT_PART_5 ".tsw"
+  #endif
 #else
-  #define MR_GRADE_PART_6	MR_GRADE_PART_5
-  #define MR_GRADE_OPT_PART_6	MR_GRADE_OPT_PART_5
+  #define MR_GRADE_PART_6 	MR_GRADE_PART_5 
+  #define MR_GRADE_OPT_PART_6 	MR_GRADE_OPT_PART_5 
 #endif
 
-#ifdef MR_RESERVE_TAG
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, _rt)
-  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6 ".rt"
+#ifdef MR_USE_TRAIL
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, _tr)
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6 ".tr"
 #else
   #define MR_GRADE_PART_7	MR_GRADE_PART_6
   #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6
+#endif
+
+#ifdef MR_RESERVE_TAG
+  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _rt)
+  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".rt"
+#else
+  #define MR_GRADE_PART_8	MR_GRADE_PART_7
+  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7
 #endif
 
 #ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
@@ -216,23 +229,23 @@
 
 #ifdef MR_USE_MINIMAL_MODEL_STACK_COPY
   #ifdef MR_MINIMAL_MODEL_DEBUG
-    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _dmmsc)
-    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".dmmsc"
+    #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _dmmsc)
+    #define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8 ".dmmsc"
   #else
-    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mmsc)
-    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mmsc"
+    #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _mmsc)
+    #define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8 ".mmsc"
   #endif
 #elif MR_USE_MINIMAL_MODEL_OWN_STACKS
   #ifdef MR_MINIMAL_MODEL_DEBUG
-    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _dmmos)
-    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".dmmos"
+    #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _dmmos)
+    #define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8 ".dmmos"
   #else
-    #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _mmos)
-    #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7 ".mmos"
+    #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _mmos)
+    #define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8 ".mmos"
   #endif
 #else
-  #define MR_GRADE_PART_8	MR_GRADE_PART_7
-  #define MR_GRADE_OPT_PART_8	MR_GRADE_OPT_PART_7
+  #define MR_GRADE_PART_9	MR_GRADE_PART_8
+  #define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8
 #endif
 
 /*
@@ -301,80 +314,68 @@
 #endif
 
 /*
-** Parts 9-10 (i.e. tag bits, and (un)boxed float) are documented as
+** Parts 10-11 (i.e. tag bits, and (un)boxed float) are documented as
 ** "not for general use", and can't be set via the `--grade' option;
 ** we therefore can't make them part of the grade option string.
 **
-** Likewise part 11 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
+** Likewise part 12 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
 ** by the `--grade' option; it is intended to be set by the configure script
 ** at configuration time. So we don't include it in the grade option string.
 */
 
 #if MR_TAGBITS == 0
-  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _notags)
+  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _notags)
 #elif defined(MR_HIGHTAGS)
-  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, \
+  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, \
   					MR_PASTE2(_hightags, MR_TAGBITS))
 #else
-  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, \
+  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, \
   					MR_PASTE2(_tags, MR_TAGBITS))
-#endif
-#define MR_GRADE_OPT_PART_9	MR_GRADE_OPT_PART_8
-
-#ifdef MR_BOXED_FLOAT
-  #define MR_GRADE_PART_10	MR_GRADE_PART_9
-#else				/* "ubf" stands for "unboxed float" */
-  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _ubf)
 #endif
 #define MR_GRADE_OPT_PART_10	MR_GRADE_OPT_PART_9
 
-#ifdef MR_NEW_MERCURYFILE_STRUCT
-  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _file)
-#else
+#ifdef MR_BOXED_FLOAT
   #define MR_GRADE_PART_11	MR_GRADE_PART_10
+#else				/* "ubf" stands for "unboxed float" */
+  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _ubf)
 #endif
 #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_10
 
-#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
-  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _regparm)
-  #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".regparm"
-#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
-					defined(__i386__)
-  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _picreg)
-  #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11 ".picreg"
+#ifdef MR_NEW_MERCURYFILE_STRUCT
+  #define MR_GRADE_PART_12	MR_PASTE2(MR_GRADE_PART_11, _file)
 #else
   #define MR_GRADE_PART_12	MR_GRADE_PART_11
-  #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
+#endif
+#define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
+
+#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
+  #define MR_GRADE_PART_13	MR_PASTE2(MR_GRADE_PART_12, _regparm)
+  #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".regparm"
+#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
+					defined(__i386__)
+  #define MR_GRADE_PART_13	MR_PASTE2(MR_GRADE_PART_12, _picreg)
+  #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".picreg"
+#else
+  #define MR_GRADE_PART_13	MR_GRADE_PART_12
+  #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12
 #endif
 
 #if defined(MR_DECL_DEBUG)
-  #define MR_GRADE_PART_13		MR_PASTE3(MR_GRADE_PART_12, _decldebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
-  #define MR_GRADE_OPT_PART_13		MR_GRADE_OPT_PART_12 ".decldebug"
+  #define MR_GRADE_PART_14		MR_PASTE3(MR_GRADE_PART_13, _decldebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
+  #define MR_GRADE_OPT_PART_14		MR_GRADE_OPT_PART_13 ".decldebug"
   #if ! defined(MR_EXEC_TRACE)
     #error "declarative debugging require execution tracing"
   #endif
 #else
   #if defined(MR_EXEC_TRACE)
-    #define MR_GRADE_PART_13		MR_PASTE3(MR_GRADE_PART_12, _debug, MR_GRADE_EXEC_TRACE_VERSION_NO)
-    #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".debug"
+    #define MR_GRADE_PART_14		MR_PASTE3(MR_GRADE_PART_13, _debug, MR_GRADE_EXEC_TRACE_VERSION_NO)
+    #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13 ".debug"
     #else
-      #define MR_GRADE_PART_13		MR_GRADE_PART_12
-      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12
+      #define MR_GRADE_PART_14		MR_GRADE_PART_13
+      #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13
     #endif
 #endif
 
-#ifdef MR_RECORD_TERM_SIZES
-  #ifdef MR_RECORD_TERM_SIZES_AS_CELLS
-    #define MR_GRADE_PART_14		MR_PASTE2(MR_GRADE_PART_13, _tsc)
-    #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13 ".tsc"
-  #else
-    #define MR_GRADE_PART_14		MR_PASTE2(MR_GRADE_PART_13, _tsw)
-    #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13 ".tsw"
-  #endif
-#else
-  #define MR_GRADE_PART_14	MR_GRADE_PART_13
-  #define MR_GRADE_OPT_PART_14	MR_GRADE_OPT_PART_13
-#endif
 
 #define MR_GRADE		MR_GRADE_PART_14
 #define MR_GRADE_OPT		MR_GRADE_OPT_PART_14
