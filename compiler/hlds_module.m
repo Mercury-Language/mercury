@@ -111,11 +111,14 @@
 	% Various predicates for manipulating the module_info data structure
 
 	% Create an empty module_info for a given module name (and the
-	% global options).
-
-:- pred module_info_init(module_name, globals, partial_qualifier_info,
-		module_info).
-:- mode module_info_init(in, in, in, out) is det.
+	% global options).  The item_list is passed so that we can
+	% call get_implicit_dependencies to figure out whether to
+	% import `table_builtin', but the items are not inserted into
+	% the module_info.
+	%
+:- pred module_info_init(module_name, item_list, globals,
+		partial_qualifier_info, module_info).
+:- mode module_info_init(in, in, in, in, out) is det.
 
 :- pred module_info_get_predicate_table(module_info, predicate_table).
 :- mode module_info_get_predicate_table(in, out) is det.
@@ -502,7 +505,7 @@
 
 	% A predicate which creates an empty module
 
-module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
+module_info_init(Name, Items, Globals, QualifierInfo, ModuleInfo) :-
 	predicate_table_init(PredicateTable),
 	unify_proc__init_requests(Requests),
 	map__init(UnifyPredMap),
@@ -525,9 +528,8 @@ module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 	map__init(SuperClassTable),
 
 	% the builtin modules are automatically imported
-	mercury_public_builtin_module(PublicBuiltin),
-	mercury_private_builtin_module(PrivateBuiltin),
-	set__list_to_set([PublicBuiltin, PrivateBuiltin], ImportedModules),
+	get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
+	set__list_to_set(ImportDeps `list__append` UseDeps, ImportedModules),
 	set__init(IndirectlyImportedModules),
 
 	assertion_table_init(AssertionTable),

@@ -108,7 +108,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		UndefTypes, UndefModes) -->
 	globals__io_get_globals(Globals),
 	{ mq_info_get_partial_qualifier_info(MQInfo0, PQInfo) },
-	{ module_info_init(Name, Globals, PQInfo, Module0) },
+	{ module_info_init(Name, Items, Globals, PQInfo, Module0) },
 	add_item_list_decls_pass_1(Items,
 		item_status(local, may_be_unqualified), Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),

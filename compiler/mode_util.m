@@ -1506,9 +1506,7 @@ strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
 strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
 	(
 		SymName0 = qualified(Module, Name),
-		( mercury_public_builtin_module(Module)
-		; mercury_private_builtin_module(Module)
-		)
+		mercury_public_builtin_module(Module)
 	->
 		SymName = unqualified(Name)
 	;

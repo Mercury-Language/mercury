@@ -9,7 +9,8 @@
 %
 % This module transforms HLDS code to implement loop detection, memoing
 % or minimal model evaluation. The transformation involves adding calls to
-% predicates defined in private_builtin.m and in mercury_tabling.c.
+% predicates defined in library/table_builtin.m and in
+% runtime/mercury_tabling.c.
 %
 % The loop detection transformation adds code to a procedure that allows
 % early detection of infinite loops. If such loops are detected the program
@@ -1196,7 +1197,7 @@ generate_new_table_var(Name, VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
 generate_call(PredName, Args, Detism, Feature, InstMap, Module, Context,
 		CallGoal) :-
 	list__length(Args, Arity),
-	mercury_private_builtin_module(BuiltinModule),
+	mercury_table_builtin_module(BuiltinModule),
 	module_info_get_predicate_table(Module, PredTable),
 	(
 		predicate_table_search_pred_m_n_a(PredTable,

@@ -1870,9 +1870,12 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
 	;
 		ModuleNameType = private_builtin,
 		mercury_private_builtin_module(ModuleName)
+	;
+		ModuleNameType = table_builtin,
+		mercury_table_builtin_module(ModuleName)
 	).
 
-:- type builtin_mod ---> builtin ; private_builtin.
+:- type builtin_mod ---> builtin ; private_builtin ; table_builtin.
 
 :- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
 	is semidet.
@@ -1885,8 +1888,8 @@ no_type_info_builtin_2(private_builtin,
 no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
 			"unconstrained_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin, "table_restore_any_ans", 3).
-no_type_info_builtin_2(private_builtin, "table_lookup_insert_enum", 4).
+no_type_info_builtin_2(table_builtin, "table_restore_any_ans", 3).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 
 %-----------------------------------------------------------------------------%
 

@@ -39,6 +39,8 @@
 :- import_module time.
 :- import_module pprint.
 
+:- import_module builtin, private_builtin, table_builtin.
+
 % library__version must be implemented using pragma c_code,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in

@@ -1093,6 +1093,7 @@
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module int, parser, exception.
+:- use_module table_builtin.
 
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
@@ -2539,7 +2540,7 @@ io__report_stats(Selector) -->
 	; Selector = "full_memory_stats" ->
 		impure report_full_memory_stats
 	; Selector = "tabling" ->
-		impure private_builtin__table_report_statistics
+		impure table_builtin__table_report_statistics
 	;
 		string__format(
 			"io__report_stats: selector `%s' not understood",
