@@ -16,15 +16,11 @@ libgc.a: gc.a
 	rm -f libgc.a
 	ln -s gc.a libgc.a
 
-libgc.so: gc.so
-	rm -f libgc.so
-	ln -s gc.so libgc.so
-
-gc.so: force
-	$(MAKE) gc.so
+libgc.so: force
+	unset MAKEFLAGS; $(MAKE) libgc.so
 
 gc.a: force
-	$(MAKE) gc.a
+	unset MAKEFLAGS; $(MAKE) gc.a
 
 .PHONY: force
 force:
@@ -48,8 +44,9 @@ install_lib: libgc.a libgc.so
 
 #-----------------------------------------------------------------------------#
 
-# suppress the Mmake default rules for cleaning .c and .mod files.
+# suppress the Mmake default rules for cleaning .c and .s files.
 CLEAN_C=
+CLEAN_S=
 CLEAN_MOD=
 
 #-----------------------------------------------------------------------------#

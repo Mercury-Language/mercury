@@ -11,7 +11,8 @@ CXX=g++ -ansi
 # Needed only for "make c++", which adds the c++ interface
 AS=as
 
-CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
+# CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
+CFLAGS= -O2 -fomit-frame-pointer -g -DNO_SIGNALS -DSILENT
 # Setjmp_test may yield overly optimistic results when compiled
 # without optimization.
 # -DSILENT disables statistics printing, and improves performance.
