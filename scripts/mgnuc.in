@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne.
+# Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -394,8 +394,10 @@ esac
 # compiler/bytecode.c.  As a work-around, we compile those file with -O1.
 # Similarly library/bag.c needs to be compiled with -O0.
 # Similarly for gcc-2.6.3 on alpha with compiler/modules.c.
+# Similarly for gcc-2.7.0 on i386 with compiler/call_gen.c.
 # Similarly for egcs-1.1 on sparc with library/lexer.c, library/string.c,
 # and compiler/{deforest,dupelim,mercury_to_mercury,modules}.c.
+# Similarly for egcs-1.1.2 on i386 with library/table_builtin.c.
 #
 case $COMPILER in gcc)
 	case "$FULLARCH" in
@@ -424,6 +426,8 @@ case $COMPILER in gcc)
 		i?86*)
 			case "$*" in
 			*" call_gen.c "*|*" modules.dir/call_gen"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O0" ;;
+			*" table_builtin.c "*|*" modules.dir/table_builtin"*".c "*)
 				ARCH_OPTS="$ARCH_OPTS -O0" ;;
 			esac ;;
 		sparc*)
