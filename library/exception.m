@@ -506,7 +506,7 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 		Code 				*MR_jumpaddr;
 		MR_Stack_Walk_Step_Result	result;
 		const char			*problem;
-		MR_Stack_Layout_Label		exception_layout;
+		MR_Exception_Layout		exception_layout;
 
 		/*
 		** check if we've reached a frame with an exception handler
@@ -528,15 +528,16 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 		** module-wide string table; the string at index 0 will
 		** always be the empty string.
 		*/
-		MR_memcpy(&exception_layout, return_label_layout,
+		MR_memcpy(&exception_layout.MR_el_layout, return_label_layout,
 			sizeof(exception_layout));
-		exception_layout.MR_sll_port = MR_PORT_EXCEPTION;
-		exception_layout.MR_sll_goal_path = 0;
+		exception_layout.MR_el_layout.MR_sll_port = MR_PORT_EXCEPTION;
+		exception_layout.MR_el_layout.MR_sll_goal_path = 0;
+		exception_layout.MR_el_return_layout = return_label_layout;
 
 		/*
 		** invoke MR_trace() to trace the exception
 		*/
-		MR_jumpaddr = MR_trace(&exception_layout);
+		MR_jumpaddr = MR_trace(&exception_layout.MR_el_layout);
 		if (MR_jumpaddr != NULL) {
 			return MR_jumpaddr;
 		}

@@ -216,6 +216,20 @@ check_stop_print:
 		*/
 
 		port = (MR_Trace_Port) layout->MR_sll_port;
+		if (port == MR_PORT_EXCEPTION) {
+			/*
+			** `layout' has the correct values, but the wrong
+			** address -- its address won't be in the module
+			** layout table, so MR_event_matches_spy_point()
+			** won't find it.  Now that we've already
+			** extracted the port, we can use the return
+			** layout, which does have the correct address
+			** (but the wrong port and path; the path is
+			** not used here).
+			*/
+			layout = ((const MR_Exception_Layout *) layout)
+				->MR_el_return_layout;
+		}
 		match = MR_event_matches_spy_point(layout, port, &action);
 		if (! match) {
 			if (MR_trace_ctrl.MR_trace_print_level ==
@@ -265,9 +279,25 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	event_info.MR_call_seqno = seqno;
 	event_info.MR_call_depth = depth;
 	event_info.MR_trace_port = port;
-	event_info.MR_event_sll = layout;
+
 	event_info.MR_event_path = layout->MR_sll_entry->MR_sle_module_layout
 			->MR_ml_string_table + layout->MR_sll_goal_path;
+
+	if (port == MR_PORT_EXCEPTION) {
+		/*
+		** `layout' has the correct values, but the
+		** wrong address -- its address won't be in the
+		** module layout table, so MR_find_context() etc.
+		** won't find it.  Now that we've already
+		** extracted the port and path, we can use the return
+		** layout, which does have the correct address
+		** (but the wrong port and path).
+		*/
+		layout = ((const MR_Exception_Layout *) layout)
+			->MR_el_return_layout;
+	}
+
+	event_info.MR_event_sll = layout;
 
 	max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
 	if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {

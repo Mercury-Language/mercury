@@ -555,6 +555,20 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 
 /*-------------------------------------------------------------------------*/
 /*
+** Definitions for MR_Exception_Layout
+**
+** The first field will be a copy of the stack layout for the return label,
+** with the port changed to `MR_PORT_EXCEPTION', and with an empty goal path.
+** The second field will hold the address of the original return label layout.
+*/
+
+typedef	struct MR_Exception_Layout_Struct {
+	MR_Stack_Layout_Label	MR_el_layout;
+	MR_Stack_Layout_Label	*MR_el_return_layout;
+} MR_Exception_Layout;
+
+/*-------------------------------------------------------------------------*/
+/*
 ** Definitions for MR_Module_Layout
 **
 ** The layout struct for a module contains three main components.
