@@ -40,9 +40,6 @@
 :- pred lookup_main_target(options_variables::in, maybe(list(string))::out,
 	io__state::di, io__state::uo) is det.
 
-	% Quote any strings containing whitespace.
-:- func quote_args(list(string)) = list(string).
-
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -828,11 +825,7 @@ convert_to_mmc_options(VariableType - VariableValue) = OptionsStrings :-
 		MMCOptionType = mmc_flags,
 		OptionsStrings = VariableValue
 	;
-		MMCOptionType = option(not_split, InitialOptions, OptionName),
-		OptionsStrings = InitialOptions ++ [OptionName,
-					string__join_list(" ", VariableValue)]
-	;
-		MMCOptionType = option(split, InitialOptions, OptionName),
+		MMCOptionType = option(InitialOptions, OptionName),
 		OptionsStrings = list__condense([InitialOptions |
 				list__map((func(Word) = [OptionName, Word]),
 					VariableValue)])
@@ -841,8 +834,7 @@ convert_to_mmc_options(VariableType - VariableValue) = OptionsStrings :-
 :- type mmc_option_type
 	--->	mmc_flags	% The options can be passed directly to mmc.
 
-	;	option(split_into_words, initial_options :: list(string),
-				option_name :: string)
+	;	option(initial_options :: list(string), option_name :: string)
 			% The options need to be passed as an
 			% argument of an option to mmc.
 			% The `initial_options' will be passed before
@@ -850,36 +842,25 @@ convert_to_mmc_options(VariableType - VariableValue) = OptionsStrings :-
 			% This is useful for clearing an accumulating option.
 	.
 
-	% The split_into_words type specifies whether there should be
-	% one mmc option per word in a variable's value, or just a single
-	% mmc option.
-	% The value of CFLAGS is converted into a single `--cflags' option.
-	% The value of MLOBJS is converted into multiple `--link-object'
-	% options.
-:- type split_into_words
-	--->	split
-	;	not_split
-	.
-
 :- func mmc_option_type(options_variable_type) = mmc_option_type.
 
 mmc_option_type(grade_flags) = mmc_flags.
 mmc_option_type(mmc_flags) = mmc_flags.
-mmc_option_type(c_flags) = option(not_split, [], "--cflags").
-mmc_option_type(java_flags) = option(not_split, [], "--java-flags").
-mmc_option_type(ilasm_flags) = option(not_split, [], "--ilasm-flags").
-mmc_option_type(mcpp_flags) = option(not_split, [], "--mcpp-flags").
-mmc_option_type(csharp_flags) = option(not_split, [], "--csharp-flags").
-mmc_option_type(ml_flags) = option(not_split, [], "--link-flags").
-mmc_option_type(ml_objs) = option(split, [], "--link-object").
+mmc_option_type(c_flags) = option([], "--cflag").
+mmc_option_type(java_flags) = option([], "--java-flag").
+mmc_option_type(ilasm_flags) = option([], "--ilasm-flag").
+mmc_option_type(mcpp_flags) = option([], "--mcpp-flag").
+mmc_option_type(csharp_flags) = option([], "--csharp-flag").
+mmc_option_type(ml_flags) = option([], "--link-flag").
+mmc_option_type(ml_objs) = option([], "--link-object").
 mmc_option_type(ml_libs) = mmc_flags.
-mmc_option_type(ld_flags) = option(not_split, [], "--ld-flags").
-mmc_option_type(ld_libflags) = option(not_split, [], "--ld-libflags").
-mmc_option_type(c2init_args) = option(split, [], "--init-file").
-mmc_option_type(libraries) = option(split, [], "--mercury-library").
-mmc_option_type(lib_dirs) = option(split, [], "--mercury-library-directory").
-mmc_option_type(lib_grades) = option(split, ["--no-libgrade"], "--libgrade").
-mmc_option_type(install_prefix) = option(not_split, [], "--install-prefix").
+mmc_option_type(ld_flags) = option([], "--ld-flag").
+mmc_option_type(ld_libflags) = option([], "--ld-libflag").
+mmc_option_type(c2init_args) = option([], "--init-file").
+mmc_option_type(libraries) = option([], "--mercury-library").
+mmc_option_type(lib_dirs) = option([], "--mercury-library-directory").
+mmc_option_type(lib_grades) = option(["--no-libgrade"], "--libgrade").
+mmc_option_type(install_prefix) = option([], "--install-prefix").
 
 %-----------------------------------------------------------------------------%
 
@@ -990,41 +971,6 @@ lookup_variable_chars(Variables, Var, Value, Undef0, Undef) -->
 			Undef = [Var | Undef0]
 		)
 	}.
-
-%-----------------------------------------------------------------------------%
-
-quote_args(Args) = list__map(quote_arg, Args).
-
-:- func quote_arg(string) = string.
-
-quote_arg(Arg0) = Arg :-
-	ArgList = quote_arg_2(string__to_char_list(Arg0)),
-	(
-		list__member(Char, ArgList),
-		( char__is_whitespace(Char)
-		; Char = ('\\')
-		; Char = '"'
-		)
-	->
-		Arg = "'" ++ string__from_char_list(ArgList) ++ "'"
-	;
-		Arg = string__from_char_list(ArgList)
-	).
-
-:- func quote_arg_2(list(char)) = list(char).
-
-quote_arg_2([]) = [].
-quote_arg_2([Char | Chars0]) = Chars :-
-	Chars1 = quote_arg_2(Chars0),
-	( Char = ('\\') ->
-		Chars = [Char, Char | Chars1]
-	; Char = '\n' ->
-		Chars = [('\\'), 'n' | Chars1]
-	; Char = '"' ->
-		Chars = [('\\'), '"' | Chars1]
-	;
-		Chars = [Char | Chars1]	
-	).	
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

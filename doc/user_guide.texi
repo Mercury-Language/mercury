@@ -5834,9 +5834,13 @@ is not set or if the C compiler is not GNU C.
 
 @sp 1
 @item --cflags @var{options}
+@item --cflag @var{option}
 @findex --cflags
+@findex --cflag
 @cindex C compiler options
 Specify options to be passed to the C compiler.
+@samp{--cflag} should be used for single words which need
+to be quoted when passed to the shell.
 
 @sp 1
 @item --javac @var{compiler-name}
@@ -5848,9 +5852,13 @@ Specify which Java compiler to use.  The default is @samp{javac}.
 
 @sp 1
 @item --java-flags @var{options}
+@itemx --java-flag @var{option}
 @findex --java-flags
+@findex --java-flag
 @cindex Java compiler options
 Specify options to be passed to the Java compiler.
+@samp{--java-flag} should be used for single words which need
+to be quoted when passed to the shell.
 
 @sp 1
 @item --java-classpath @var{dir}
@@ -5884,29 +5892,41 @@ first module on the command line, but without the @samp{.m} extension.)
 This option is ignored by @samp{mmc --make}.
 
 @sp 1
-@item --link-flags @var{options}
-@itemx --ml-flags @var{options}
+@item --ml-flags @var{options}
+@itemx --link-flags @var{options}
+@itemx --ml-flag @var{option}
 @findex --link-flags
 @findex --ml-flags
+@findex --ml-flag
 @cindex Link options
 @cindex Linker options
 Specify options to be passed to @samp{ml}, the Mercury linker.
+@samp{--ml-flag} should be used for single words which need
+to be quoted when passed to the shell.
 
 @sp 1
 @item --ld-flags @var{options}
+@item --ld-flags @var{option}
 @findex --ld-flags
+@findex --ld-flag
 Specify options to be passed to the command
 invoked by ml to link an executable.
 Use @code{ml --print-link-command} to find out
 which command is used.
+@samp{--ld-flag} should be used for single words which need
+to be quoted when passed to the shell.
 
 @sp 1
 @item --ld-libflags @var{options}
+@item --ld-libflag @var{option}
 @findex --ld-libflags
+@findex --ld-libflag
 Specify options to be passed to the command
 invoked by ml to link a shared library.
 Use @code{ml --print-shared-lib-link-command}
 to find out which command is used.
+@samp{--ld-libflag} should be used for single words which need
+to be quoted when passed to the shell.
 
 @sp 1
 @item -L @var{directory}

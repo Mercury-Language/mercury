@@ -245,7 +245,7 @@ build_target_2(ModuleName, process_module(ModuleTask), _Imports,
 		{ AllArgs = list__append(AllOptionArgs, [ModuleArg]) },
 		io__write_string("Invoking command `mmc "),
 		% XXX Don't write the default options.
-		io__write_list(quote_args(AllArgs), " ",
+		io__write_list(list__map(quote_arg, AllArgs), " ",
 			io__write_string),
 		io__write_string("'"),
 		io__nl
@@ -369,7 +369,8 @@ call_mercury_compile_main(Args, Succeeded) -->
 
 invoke_mmc(ErrorStream, Args, Succeeded) -->
 	{ CommandVerbosity = verbose }, % We've already written the command.
-	{ Command = string__join_list(" ", ["mmc" | quote_args(Args)]) },
+	{ Command = string__join_list(" ",
+			["mmc" | list__map(quote_arg, Args)]) },
 	invoke_shell_command(ErrorStream, CommandVerbosity,
 		Command, Succeeded).
 

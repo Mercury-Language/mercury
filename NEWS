@@ -322,6 +322,10 @@ Changes to the Mercury compiler:
   only optimize using information from directly imported modules, use the
   option `--no-read-opt-files-transitively'.
 
+* For each `--Xflags' option there is now a `--Xflag' option which allows a
+  single quoted argument to be passed to the invoked program.  This is useful
+  where the argument is a directory name containing spaces.
+
 * The `--convert-to-goedel' option has been removed.
   It never really worked anyway.
 

@@ -588,7 +588,7 @@ compile_java_file(ErrorStream, ModuleName, Succeeded) -->
 		{ join_string_list(Java_Incl_Dirs, "", "",
 			PathSeparator, ClassPath) },
 		{ InclOpt = string__append_list([
-			"-classpath ", ClassPath, " "]) }
+			"-classpath ", quote_arg(ClassPath), " "]) }
 	),
 	globals__io_lookup_bool_option(target_debug, Target_Debug),
 	{ Target_Debug = yes ->
@@ -821,14 +821,16 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 
 	globals__io_lookup_accumulating_option(init_file_directories,
 		InitFileDirsList),
-	{ join_string_list(InitFileDirsList, "-I ", "", " ", InitFileDirs) },
+	{ join_quoted_string_list(InitFileDirsList,
+		"-I ", "", " ", InitFileDirs) },
 
 	globals__io_lookup_accumulating_option(init_files, InitFileNamesList),
-	{ join_string_list(InitFileNamesList, "", "", " ", InitFileNames) },
+	{ join_quoted_string_list(InitFileNamesList,
+		"", "", " ", InitFileNames) },
 
 	globals__io_lookup_accumulating_option(trace_init_files,
 		TraceInitFileNamesList),
-	{ join_string_list(TraceInitFileNamesList, "--trace-init-file ",
+	{ join_quoted_string_list(TraceInitFileNamesList, "--trace-init-file ",
 		"", " ", TraceInitFileNames) },
 
 	{ TmpInitCFileName = InitCFileName ++ ".tmp" },
@@ -950,11 +952,11 @@ link(ErrorStream, LinkTargetType, ModuleName,
 		globals__io_lookup_accumulating_option(
 				link_library_directories,
 				LinkLibraryDirectoriesList),
-		{ join_string_list(LinkLibraryDirectoriesList, "-L", "",
+		{ join_quoted_string_list(LinkLibraryDirectoriesList, "-L", "",
 				" ", LinkLibraryDirectories) },
 		globals__io_lookup_accumulating_option(link_libraries,
 				LinkLibrariesList),
-		{ join_string_list(LinkLibrariesList, "-l", "", " ",
+		{ join_quoted_string_list(LinkLibrariesList, "-l", "", " ",
 				LinkLibraries) },
 
 		% Note that LDFlags may contain `-l' options
@@ -1028,6 +1030,16 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
 		string__append_list([Prefix, String, Suffix, Separator,
 			Result0], Result)
 	).
+
+	% As above, but quote the strings first.
+	% Note that the strings in values of the *flags options are
+	% already quoted.
+:- pred join_quoted_string_list(list(string), string, string, string, string).
+:- mode join_quoted_string_list(in, in, in, in, out) is det.
+
+join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
+	join_string_list(map(quote_arg, Strings),
+		Prefix, Suffix, Separator, Result).
 
 	% join_module_list(ModuleNames, Extension, Terminator, Result)
 	%

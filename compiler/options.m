@@ -49,6 +49,9 @@
 :- func option_table_add_mercury_library_directory(option_table,
 		string) = option_table.
 
+	% Quote an argument to a shell command.
+:- func quote_arg(string) = string.
+
 :- type option	
 	% Warning options
 		--->	inhibit_warnings
@@ -480,6 +483,7 @@
 			% C
 		;	cc
 		;	cflags
+		;	quoted_cflag
 		;	c_include_directory
 		;	c_optimize
 		;	inline_alloc
@@ -496,28 +500,35 @@
 			% Java
 		;	java_compiler
 		;	java_flags
+		;	quoted_java_flag
 		;	java_classpath
 		;	java_object_file_extension
 
 			% IL
 		;	il_assembler
 		;	ilasm_flags
+		;	quoted_ilasm_flag
 		;	dotnet_library_version
 		;	support_ms_clr
 
 			% Managed C++
 		;	mcpp_compiler
 		;	mcpp_flags
+		;	quoted_mcpp_flag
 
 			% C#
 		;	csharp_compiler
 		;	csharp_flags
+		;	quoted_csharp_flag
 
 	% Link options
 		;	output_file_name
 		;	link_flags
+		;	quoted_link_flag
 		;	ld_flags
+		;	quoted_ld_flag
 		;	ld_libflags
+		;	quoted_ld_libflag
 		;	link_library_directories
 		;	link_libraries
 		;	link_objects
@@ -1010,6 +1021,7 @@ option_defaults_2(target_code_compilation_option, [
 	c_optimize		-	bool(no),
 	inline_alloc		-	bool(no),
 	cflags			-	accumulating([]),
+	quoted_cflag		-	string_special,
 
 					% the `mmc' script will override the
 					% following seven defaults with values
@@ -1025,12 +1037,14 @@ option_defaults_2(target_code_compilation_option, [
 % Java
 	java_compiler		-	string("javac"),
 	java_flags		-	accumulating([]),
+	quoted_java_flag	-	string_special,
 	java_classpath  	-	accumulating([]),
 	java_object_file_extension -	string(".class"),
 
 % IL
 	il_assembler		-	string("ilasm"),
 	ilasm_flags		-	accumulating([]),
+	quoted_ilasm_flag	-	string_special,
 		% We default to the version of the library that came
 		% with Beta2.
 	dotnet_library_version	-	string("1.0.3300.0"),
@@ -1039,10 +1053,12 @@ option_defaults_2(target_code_compilation_option, [
 % Managed C++
 	mcpp_compiler		-	string("cl"),
 	mcpp_flags		-	accumulating([]),
+	quoted_mcpp_flag	-	string_special,
 
 % C#
 	csharp_compiler		-	string("csc"),
-	csharp_flags		-	accumulating([])
+	csharp_flags		-	accumulating([]),
+	quoted_csharp_flag	-	string_special
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -1051,8 +1067,11 @@ option_defaults_2(link_option, [
 					% string, we use the name of the first
 					% module on the command line
 	link_flags		-	accumulating([]),
+	quoted_link_flag	-	string_special,
 	ld_flags		-	accumulating([]),
+	quoted_ld_flag		-	string_special,
 	ld_libflags		-	accumulating([]),
+	quoted_ld_libflag	-	string_special,
 	link_library_directories -	accumulating([]),
 	link_libraries		-	accumulating([]),
 	link_objects		-	accumulating([]),
@@ -1604,6 +1623,7 @@ long_option("c-optimize",		c_optimize).
 long_option("c-debug",			target_debug).
 long_option("c-include-directory",	c_include_directory).
 long_option("cflags",			cflags).
+long_option("cflag",			quoted_cflag).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("cflags-for-threads",	cflags_for_threads).
@@ -1615,6 +1635,7 @@ long_option("pic-object-file-extension", pic_object_file_extension).
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
 long_option("java-flags",		java_flags).
+long_option("java-flag",		quoted_java_flag).
 	% XXX we should consider the relationship between java_debug and
 	% target_debug more carefully.  Perhaps target_debug could imply
 	% Java debug if the target is Java.  However for the moment they are
@@ -1625,21 +1646,28 @@ long_option("java-object-file-extension", java_object_file_extension).
 
 long_option("il-assembler",		il_assembler).
 long_option("ilasm-flags",		ilasm_flags).
+long_option("ilasm-flag",		quoted_ilasm_flag).
 long_option("dotnet-library-version",	dotnet_library_version).
 long_option("support-ms-clr",		support_ms_clr).
 
 long_option("mcpp-compiler",		mcpp_compiler).
 long_option("mcpp-flags",		mcpp_flags).
+long_option("mcpp-flag",		quoted_mcpp_flag).
 
 long_option("csharp-compiler",		csharp_compiler).
 long_option("csharp-flags",		csharp_flags).
+long_option("csharp-flag",		quoted_csharp_flag).
 
 % link options
 long_option("output-file",		output_file_name).
 long_option("link-flags",		link_flags).
+long_option("link-flag",		quoted_link_flag).
 long_option("ml-flags",			link_flags).
+long_option("ml-flag",			quoted_link_flag).
 long_option("ld-flags",			ld_flags).
+long_option("ld-flag",			quoted_ld_flag).
 long_option("ld-libflags",		ld_libflags).
+long_option("ld-libflag",		quoted_ld_libflag).
 long_option("library-directory",	link_library_directories).
 long_option("library",			link_libraries).
 long_option("link-object",		link_objects).
@@ -1820,6 +1848,32 @@ special_handler(mercury_library_special, string(Lib),
 		mercury_libraries - Lib,
 		init_files - (Lib ++ ".init")
 		], OptionTable0).
+special_handler(quoted_cflag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(cflags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_java_flag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(java_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_ilasm_flag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(ilasm_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_mcpp_flag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(mcpp_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_csharp_flag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(csharp_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_link_flag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(link_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_ld_flag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(ld_flags, Flag, OptionTable0, OptionTable).
+special_handler(quoted_ld_libflag, string(Flag),
+			OptionTable0, ok(OptionTable)) :-
+	handle_quoted_flag(ld_libflags, Flag, OptionTable0, OptionTable).
+
+%-----------------------------------------------------------------------------%
 
 option_table_add_mercury_library_directory(OptionTable0, Dir) =
 	% The link_library_directories for Mercury libraries are grade
@@ -2049,6 +2103,54 @@ opt_level(6, _, [
 %	optimize_rl_cse:
 %	optimize_constructor_last_call:
 %		Not implemented yet.
+
+%-----------------------------------------------------------------------------%
+
+:- pred handle_quoted_flag(option::in, string::in, option_table::in,
+		option_table::out) is det.
+
+handle_quoted_flag(Option, Flag, Table,
+	append_to_accumulating_option(Option - quote_arg(Flag), Table)).
+
+quote_arg(Arg0) = Arg :-
+	ArgList = quote_arg_2(string__to_char_list(Arg0)),
+	(
+		ArgList = []
+	->
+		Arg = """"""
+	;
+		list__member(Char, ArgList),
+		\+ ( char__is_alnum_or_underscore(Char)
+		; Char = ('-')
+		; Char = ('/')
+		; Char = ('.')
+		; Char = (',')
+		; Char = (':')
+		)
+	->
+		Arg = """" ++ string__from_char_list(ArgList) ++ """"
+	;
+		Arg = string__from_char_list(ArgList)
+	).
+
+:- func quote_arg_2(list(char)) = list(char).
+
+quote_arg_2([]) = [].
+quote_arg_2([Char | Chars0]) = Chars :-
+	Chars1 = quote_arg_2(Chars0),
+	( quote_char(Char) ->
+		Chars = [('\\'), Char | Chars1]
+	;
+		Chars = [Char | Chars1]	
+	).	
+
+
+:- pred quote_char(char::in) is semidet.
+
+quote_char('\\').
+quote_char('"').
+quote_char('`').
+quote_char('$').
 
 %-----------------------------------------------------------------------------%
 
@@ -3309,8 +3411,10 @@ options_help_target_code_compilation -->
 		"\tThis option has no effect if `--gc conservative'",
 		"\tis not set or if the C compiler is not GNU C.",
 
-		"--cflags <options>",
+		"--cflags <options>, --cflag <option>",
 		"\tSpecify options to be passed to the C compiler.",
+		"\t`--cflag' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
 
 		% The --cflags-for-regs, --cflags-for-gotos,
 		% --cflags-for-threads, --cflags-for-pic options,
@@ -3323,8 +3427,10 @@ options_help_target_code_compilation -->
 		"--java-compiler",
 		"\tSpecify which Java compiler to use.  The default is javac.",
 		
-		"--java-flags <options>",
+		"--java-flags <options>, --java-flag <option>",
 		"\tSpecify options to be passed to the Java compiler.",
+		"\t`--java-flag' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
 
 		"--java-classpath <path>",
 		"\tSet the classpath for the Java compiler.",
@@ -3335,17 +3441,23 @@ options_help_target_code_compilation -->
 
 		"--il-assembler <ilasm>",
 		"\tThe Microsoft IL Assembler.",
-		"--ilasm-flags <options>",
+		"--ilasm-flags <options>, --ilasm-flag <options>",
 		"\tSpecify options to be passed to the IL assembler.",
+		"\t`--ilasm-flag' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
 		"--mcpp-compiler <cl>",
 		"\tSpecify the name of the Microsoft Managed C++ Compiler.",
-		"--mcpp-flags <options>",
-		"\tSpecify options to be passed to the Managed C++ Compiler.",
+		"--mcpp-flags <options>, --mcpp-flag <option>",
+		"\tSpecify options to be passed to the Managed C++ compiler.",
+		"\t`--mcpp-flag' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
 
 		"--csharp-compiler <csc>",
 		"\tSpecify the name of the Microsoft C# Compiler.",
-		"--csharp-flags <options>",
-		"\tSpecify options to be passed to the C# Compiler."
+		"--csharp-flags <options>, --csharp-flag <option>",
+		"\tSpecify options to be passed to the C# compiler.",
+		"\t`--csharp-flag' should be used for single words which need",
+		"\tto be quoted when passed to the shell."
 	]).
 
 :- pred options_help_link(io__state::di, io__state::uo) is det.
@@ -3359,17 +3471,24 @@ options_help_link -->
 		"\tof the first module on the command line.)",
 		"\tThis option is ignored by `mmc --make'.",
 		"--link-flags <options>, --ml-flags <options>",
+		"--link-flag <option>, --ml-flag <option>",
 		"\tSpecify options to be passed to ml, the Mercury linker.",
-		"--ld-flags <options>",
+		"\t`--ml-flag' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
+		"--ld-flags <options>, --ld-flags <option>",
 		"\tSpecify options to be passed to the linker command",
 		"\tinvoked by ml to link an executable.",
 		"\tUse `ml --print-link-command' to find out which",
 		"\tcommand is used.",
-		"--ld-libflags <options>",
+		"\t`--ld-flag' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
+		"--ld-libflags <options>, --ld-libflag <option>",
 		"\tSpecify options to be passed to the linker command",
 		"\tinvoked by ml to link a shared library.",
 		"\tUse `ml --print-shared-lib-link-command' to find out",
 		"\twhich command is used.",
+		"\t`--ld-libflags' should be used for single words which need",
+		"\tto be quoted when passed to the shell.",
 		"-L <directory>, --library-directory <directory>",
 		"\tAppend <directory> to the list of directories in which",
 		"\tto search for libraries.",
