@@ -434,8 +434,8 @@
 			% branches we expect to join at the end of the
 			% parallel conjunction.
 			% (See the documentation in par_conj_gen.m and
-			% runtime/context.{c,h} for further information about
-			% synchronisation terms.)
+			% runtime/mercury_context.{c,h} for further
+			% information about synchronisation terms.)
 
 	;	fork(label, label, int)
 			% Create a new context.
@@ -444,15 +444,15 @@
 			% execution in the child, control branches to Parent.
 			% NumSlots is the number of stack slots that need to
 			% be copied to the child's stack (see comments in
-			% runtime/context.{h,c}).
+			% runtime/mercury_context.{h,c}).
 
 	;	join_and_terminate(lval)
 			% Signal that this thread of execution has finished in
 			% the current parallel conjunction, then terminate it.
 			% The synchronisation term is specified by the
 			% given lval. (See the documentation in par_conj_gen.m
-			% and runtime/context.{c,h} for further information
-			% about synchronisation terms.)
+			% and runtime/mercury_context.{c,h} for further
+			% information about synchronisation terms.)
 
 	;	join_and_continue(lval, label)
 			% Signal that this thread of execution has finished
