@@ -10,7 +10,7 @@ funcs_as_preds.m:027:   without preceding `func' declaration.
 funcs_as_preds.m:030: Error: clause for function `funcs_as_preds:ap/2'
 funcs_as_preds.m:030:   without preceding `func' declaration.
 funcs_as_preds.m:017: In clause for function `funcs_as_preds:null/1':
-funcs_as_preds.m:017:   in argument 2 of clause head:
+funcs_as_preds.m:017:   in function result term of clause head:
 funcs_as_preds.m:017:   error: the language construct =/2 should be
 funcs_as_preds.m:017:   used as a goal, not as an expression.
 funcs_as_preds.m:030: In clause for function `funcs_as_preds:ap/2':
