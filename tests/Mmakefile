@@ -4,6 +4,7 @@ TESTS=
 SUBDIRS = \
 	benchmarks \
 	debugger \
+	dppd \
 	general \
 	grade_subdirs \
 	hard_coded \
@@ -14,5 +15,6 @@ SUBDIRS = \
 	term \
 	valid \
 	warnings
+
 TESTS_DIR=.
 include $(TESTS_DIR)/Mmake.common
