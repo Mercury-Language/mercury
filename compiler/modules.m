@@ -1595,13 +1595,14 @@ process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 		globals__io_lookup_bool_option(statistics, Statistics),
 		maybe_report_stats(Statistics),
 
-		{ get_dependencies(Items1, Imports1, _Uses1) },
+		{ get_dependencies(Items1, Imports1, Uses1) },
 		{ list__append(Imports, Imports1, Imports2) },
+		{ list__append(Imports2, Uses1, Imports3) },
 		{ list__append(Items0, Items1, Items2) },
 		{ IndirectImports1 = [Import | IndirectImports0] },
 		{ Module1 = module_imports(ModuleName, DirectImports,
 			IndirectImports1, Items2, Error2) },
-		process_module_short_interfaces(Imports2, Ext, Module1, Module)
+		process_module_short_interfaces(Imports3, Ext, Module1, Module)
 	).
 
 %-----------------------------------------------------------------------------%

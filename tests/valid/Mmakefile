@@ -58,6 +58,10 @@ OTHER_SOURCES= \
 	loop_in_disj.m \
 	middle_rec_labels.m \
 	modes_bug.m \
+	module_a.m \
+	module_b.m \
+	module_c.m \
+	module_d.m \
 	mostly_uniq_mode_inf.m \
 	multidet_prune1.m \
 	multidet_test.m \
