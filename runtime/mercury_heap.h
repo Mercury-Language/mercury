@@ -82,7 +82,7 @@
 		MR_hp += (count),					\
 		(void)0							\
 	)
-  #define hp_alloc_atomic(count)					\
+  #define hp_alloc_atomic(count) (					\
 		incr_hp_atomic(LVALUE_CAST(Word, MR_hp), (count)), 	\
 		MR_hp += (count),					\
 		(void)0							\
