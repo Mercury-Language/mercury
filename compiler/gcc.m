@@ -589,14 +589,20 @@
 
 :- pragma c_header_code("
 
-#include ""config.h""
-#include ""system.h""
-#include ""gansidecl.h""
-#include ""tree.h""
-/* XXX we should eliminate the dependency on the C front-end */
-#include ""c-tree.h""
+#ifndef MC_GUARD_GCC_HEADERS
+#define MC_GUARD_GCC_HEADERS
 
-#include ""mercury-gcc.h""
+#include ""gcc/config.h""
+#include ""gcc/system.h""
+#include ""gcc/gansidecl.h""
+#include ""gcc/toplev.h""
+#include ""gcc/tree.h""
+/* XXX we should eliminate the dependency on the C front-end */
+#include ""gcc/c-tree.h""
+
+#include ""gcc/mercury/mercury-gcc.h""
+
+#endif
 
 ").
 

@@ -250,12 +250,21 @@ void MC_continue_frontend(void);
 ").
 
 :- pragma c_code("
-#include ""config.h""
-#include ""system.h""
-#include ""gansidecl.h""
-#include ""toplev.h""
-#include ""tree.h""
-#include ""mercury-gcc.h""
+
+#ifndef MC_GUARD_GCC_HEADERS
+#define MC_GUARD_GCC_HEADERS
+
+#include ""gcc/config.h""
+#include ""gcc/system.h""
+#include ""gcc/gansidecl.h""
+#include ""gcc/toplev.h""
+#include ""gcc/tree.h""
+/* XXX we should eliminate the dependency on the C front-end */
+#include ""gcc/c-tree.h""
+
+#include ""gcc/mercury/mercury-gcc.h""
+
+#endif /* MC_GUARD_GCC_HEADERS */
 
 /* We use an `MC_' prefix for C code in the mercury/compiler directory. */
 MR_Word MC_mlds;
