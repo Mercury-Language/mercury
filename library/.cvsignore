@@ -1,6 +1,6 @@
 sicstus_compile sicstus_saved_state
-io.h
+io.h std_util.h
 *.c
 *.prof
 library.nu.nl
-library.init
+mer_std.init
