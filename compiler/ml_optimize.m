@@ -146,7 +146,8 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 			Defns0, Defns1, Statements0, Statements1),
 		maybe_eliminate_locals(OptInfo, Defns1, Defns,
 			Statements1, Statements2),
-		Statements = optimize_in_statements(OptInfo, Statements2),
+		maybe_flatten_block(Statements2, Statements3),
+		Statements = optimize_in_statements(OptInfo, Statements3),
 		Stmt = block(Defns, Statements)
 	;
 		Stmt0 = while(Rval, Statement0, Once),
@@ -461,6 +462,28 @@ target_supports_break_and_continue_2(asm) = no. % asm means via gnu back-end
 target_supports_break_and_continue_2(il) = no.
 target_supports_break_and_continue_2(java) = yes.
 % target_supports_break_and_continue_2(c_sharp) = yes.
+
+%-----------------------------------------------------------------------------%
+
+%
+% If the list of statements contains a block with no local variables,
+% then bring the block up one level.  This optimization is needed to avoid
+% a compiler limit in the Microsoft C compiler (version 13.10.3077) for
+% too deeply nested blocks.
+%
+:- pred maybe_flatten_block(mlds__statements::in, mlds__statements::out) is det.
+
+maybe_flatten_block(!Stmts) :-
+	!:Stmts = list__condense(list__map(flatten_block, !.Stmts)).
+
+:- func flatten_block(mlds__statement) = mlds__statements.
+
+flatten_block(Statement) =
+	( Statement = mlds__statement(block([], BlockStatements), _) ->
+		BlockStatements
+	;
+		[Statement]
+	).
 
 %-----------------------------------------------------------------------------%
 
