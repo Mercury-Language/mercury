@@ -318,6 +318,7 @@
 		;	follow_vars
 		;	allow_hijacks
 	%	- LLDS
+		;	common_data
 		;	optimize
 		;	optimize_peep
 		;	optimize_jumps
@@ -660,6 +661,7 @@ option_defaults_2(optimization_option, [
 	allow_hijacks		-	bool(yes),
 
 % LLDS
+	common_data		-	bool(no),
 	optimize		-	bool(no),
 	optimize_peep		-	bool(no),
 	optimize_jumps		-	bool(no),
@@ -1017,6 +1019,7 @@ long_option("follow-vars",		follow_vars).
 long_option("allow-hijacks",		allow_hijacks).
 
 % LLDS optimizations
+long_option("common-data",		common_data).
 long_option("llds-optimize",		optimize).
 long_option("llds-optimise",		optimize).
 long_option("optimize-peep",		optimize_peep).
@@ -1248,6 +1251,7 @@ opt_space([
 % XXX I just guessed.  We should run lots of experiments.
 
 opt_level(0, _, [
+	common_data		-	bool(yes),
 	optimize		-	bool(yes),
 	optimize_repeat		-	int(1),
 	optimize_peep		-	bool(yes),
@@ -2112,6 +2116,8 @@ options_help_hlds_llds_optimization -->
 options_help_llds_llds_optimization -->
 	io__write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
 	write_tabbed_lines([
+		"--no-common-data",
+		"\tDisable optimization of common data structures.",
 		"--no-llds-optimize",
 		"\tDisable the low-level optimization passes.",
 		"--optimize-dead-procs",

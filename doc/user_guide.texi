@@ -3567,6 +3567,9 @@ These optimizations are transformations that are applied to our
 low-level intermediate code before emitting C code.
 
 @table @code
+@item --no-common-data
+Disable optimization of common data structures.
+
 @item --no-llds-optimize
 Disable the low-level optimization passes.
 

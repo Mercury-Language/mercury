@@ -2059,6 +2059,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 		ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+	globals__io_lookup_bool_option(common_data, CommonData),
 	{ base_type_info__generate_llds(HLDS0, TypeCtorInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, TypeCtorLayouts) },
 	{ stack_layout__generate_llds(HLDS1, HLDS, GlobalData,
@@ -2068,7 +2069,13 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
 	{ list__append(StaticLayouts, TypeCtorLayouts, StaticData0) },
-	{ llds_common(Procs0, StaticData0, ModuleName, Procs1, StaticData1) },
+	(  { CommonData = yes } ->
+		{ llds_common(Procs0, StaticData0, ModuleName, Procs1,
+			StaticData1) }
+	;
+		{ StaticData1 = StaticData0 },
+		{ Procs1 = Procs0 }
+	),
 	{ list__append(StaticData1, NonCommonStaticData, StaticData) },
 	{ list__condense([TypeCtorInfos, PossiblyDynamicLayouts, StaticData],
 		AllData) },
