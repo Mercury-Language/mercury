@@ -1208,10 +1208,6 @@ output_data_name(tabling_pointer(ProcLabel)) -->
 output_type(mercury_type(Type, TypeCategory)) -->
 	output_mercury_type(Type, TypeCategory).
 
-	% XXX array types need to be output as
-	% 	MLDSType varname[]
-	% not 
-	% 	MLDSType[] varname
 output_type(mercury_array_type(MLDSType)) -->
 	output_type(MLDSType),
 	io__write_string("[]").
@@ -1234,10 +1230,6 @@ output_type(mlds__ptr_type(Type)) -->
 	;
 		output_type(Type)
 	).
-	% XXX array types need to be output as
-	% 	MLDSType varname[]
-	% not 
-	% 	MLDSType[] varname
 output_type(mlds__array_type(Type)) -->
 	output_type(Type),
 	io__write_string("[]").
