@@ -103,7 +103,7 @@ This improves reliability,
 since many kinds of errors simply cannot happen
 in successfully compiled Mercury programs.
 It also improves productivity,
-since the compiler pinoints many errors
+since the compiler pinpoints many errors
 that would otherwise require manual debugging to locate.
 The fact that declarations are checked by the compiler
 makes them much more useful than comments

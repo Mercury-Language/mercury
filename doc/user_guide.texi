@@ -87,8 +87,10 @@ into another language, under the above conditions for modified versions.
 @node Filenames, Using Mmake,, Top
 @section File naming conventions
 
-Each Mercury module should be in its source file.
 Mercury source files should be named @file{*.m}.
+Each Mercury source file must contain a single Mercury module
+whose name should be the same as the filename without
+the @samp{.m} extension.
 
 Files ending in @file{.int} and @file{.int2} are interface files;
 these are generated automatically by the compiler,
@@ -104,7 +106,7 @@ To avoid unnecessary recompilations of the clients of the module,
 the timestamps on the @file{.int} and @file{.int2} files
 are updated only if their contents change.
 A @file{.date} file associated with the module is used as a date stamp;
-it is used in deciding whether the interface files need to be regenerated.
+it is used when deciding whether the interface files need to be regenerated.
 
 Files ending in @file{.d} are automatically-generated Makefile fragments
 which contain the dependencies for a module.
@@ -126,7 +128,9 @@ As usual, @file{.c} files are C source code, @file{.o} files are object code,
 
 Mmake, short for ``Mercury Make'',
 is a tool for building Mercury programs
-that is built on top of ordinary or GNU Make.
+that is built on top of ordinary or GNU Make @footnote{
+We aim to eventually add support for ordinary `Make' programs,
+but currently only GNU Make is supported.}.
 With Mmake, building even a complicated Mercury program
 consisting of a number of modules is as simple as
 
@@ -143,14 +147,15 @@ so they are never out-of-date.
 A little bit of the dependency information is stored in @file{.dep} files
 which are more expensive to recompute. 
 The @samp{mmake @var{main-module}.depend} command
-that recreates the @file{@var{main-module}.dep} file
+which recreates the @file{@var{main-module}.dep} file
 needs to be repeated only when you add or remove a module from your program,
 and there is no danger of getting an inconsistent executable
-if you forget this step --- instead you will get a link error.
+if you forget this step --- instead you will get a compile or link error.
 
 @samp{mmake} allows you to build more than one program in the same directory.
 Each program must have its own @file{.dep} file,
-and therefore you must run 
+and therefore you must run @samp{mmake @var{program}.depend}
+for each program.
 
 If there is a file called @samp{Mmake} in the current directory,
 Mmake will include that file in its automatically-generated Makefile.
