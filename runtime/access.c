@@ -7,6 +7,9 @@
 #include	"imp.h"
 #include	"access.h"
 
+#if 0
+/* this old junk is not used */
+
 void reset(void)
 {
 	abort();
@@ -16,6 +19,7 @@ void help(void)
 {
 	printf("help text\n");
 }
+#endif	/* old junk */
 
 Word get_reg(int num)
 {
@@ -108,6 +112,9 @@ Word set_reg(int num, Word val)
 	abort();
 	return 0;
 }
+
+#if 0
+/* this old junk is not used */
 
 Word get_mem(Word *addr)
 {
@@ -202,3 +209,5 @@ getflexline(const char *prompt, FILE *file, char **line, int *line_max)
 	buf[i] = '\0';
 	return i;
 }
+
+#endif /* old junk */
