@@ -102,11 +102,11 @@
 ** the set_min_heap_reclamation_point() macro.
 */
 #define	restore_hp(src)	(						\
-				LVALUE_CAST(Word,hp) =			\
-				  ( min_heap_reclamation_point < (src) ? \
-				  (src) : min_heap_reclamation_point ), \
-				(void)0					\
-			)
+			LVALUE_CAST(Word,hp) =				\
+			  ( (Word) min_heap_reclamation_point < (src) ?	\
+			  (src) : (Word) min_heap_reclamation_point ),	\
+			(void)0						\
+		)
 
 #define hp_alloc(count)  incr_hp(hp,count)
 #define hp_alloc_atomic(count) incr_hp_atomic(count)
