@@ -23,7 +23,15 @@ export CVSROOT
 
 #-----------------------------------------------------------------------------#
 
-TEST_MCFLAGS="-O2 --opt-space --args compact --type-info default"
+case $HOST in
+	# test things at different optimization levels...
+	murlibobo)	OPTIMIZE=-O5 ;;
+	kryten) 	OPTIMIZE=-O4 ;;
+	mercury) 	OPTIMIZE=-O3 ;;
+	muse)		OPTIMIZE=-O0 ;;
+esac
+
+TEST_MCFLAGS="$OPTIMIZE --opt-space"
 TEST_CFLAGS=""
 
 # directories to use
@@ -181,9 +189,9 @@ mmake realclean $PARALLEL || status=1
 cd .. || { false; exit 1; }
 
 : install the compiler
-# XXX should check status
-cd mercury/stage2 || { false; exit 1; }
-case $ARCH in
+case $status in 0)
+    cd mercury/stage2 || { false; exit 1; }
+    case $ARCH in
 	sgi)
 		# see README.IRIX for an explanation of these contortions
 		
@@ -233,8 +241,9 @@ case $ARCH in
 		mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
 			|| status=1
 		;;
+    esac
+    cd ../.. || status=1
 esac
-cd ../.. || status=1
 
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
