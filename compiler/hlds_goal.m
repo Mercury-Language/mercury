@@ -385,26 +385,55 @@
 
 		determinism, 	% the overall determinism of the goal
 				% (computed during determinism analysis)
+				% [because true determinism is undecidable,
+				% this may be a conservative approximation]
+
 		instmap_delta,	% the change in insts over this goal
 				% (computed during mode analysis)
+				% [because true unreachability is undecidable,
+				% the instmap_delta may be reachable even
+				% when the goal really never succeeds]
+				%
+				% The following invariant is required
+				% by the code generator and is enforced
+				% by the final simplification pass:
+				% the determinism specifies at_most_zero solns
+				% iff the instmap_delta is unreachable.
+				%
+				% Before the final simplification pass,
+				% the determinism and instmap_delta
+				% might not be consistent with regard to
+				% unreachability, but both will be
+				% conservative approximations, so if either
+				% says a goal is unreachable then it is.
+
 		term__context,
-		set(var),	% the non-local vars in the goal
+
+		set(var),	% the non-local vars in the goal,
+				% i.e. the variables that occur both inside
+				% and outside of the goal.
 				% (computed by quantification.m)
+				% [in some circumstances, this may be a
+				% conservative approximation: it may be
+				% a superset of the real non-locals]
+
 		maybe(follow_vars),
 				% advisory information about where variables
 				% ought to be put next. The legal range
 				% includes the nonexistent register r(-1),
 				% which indicates any available register.
+
 		set(goal_feature),
 				% The set of used-defined "features" of
 				% this goal, which optimisers may wish
 				% to know about.
+
 		resume_point
 				% If this goal establishes a resumption point,
 				% state what variables need to be saved for
 				% that resumption point, and which entry
 				% labels of the resumption point will be
-				% needed.
+				% needed. (See compiler/notes/allocation.html)
 	).
 
 get_pragma_c_var_names(MaybeVarNames, VarNames) :-

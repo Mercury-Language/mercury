@@ -200,11 +200,39 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 	;
 		Goal1 = Goal0
 	),
-	simplify_info_maybe_clear_structs(before, Goal1,
-		Info0, Info1),
+	simplify_info_maybe_clear_structs(before, Goal1, Info0, Info1),
 	Goal1 = GoalExpr1 - GoalInfo1,
-	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo, Info1, Info2),
-	simplify_info_maybe_clear_structs(after, Goal - GoalInfo, Info2, Info).
+	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo2, Info1, Info2),
+	simplify_info_maybe_clear_structs(after, Goal - GoalInfo2, Info2, Info),
+	simplify__enforce_invariant(GoalInfo2, GoalInfo).
+
+
+:- pred simplify__enforce_invariant(hlds_goal_info, hlds_goal_info).
+:- mode simplify__enforce_invariant(in, out) is det.
+	%
+	% Ensure that the mode information and the determinism
+	% information say consistent things about unreachability.
+	%
+simplify__enforce_invariant(GoalInfo0, GoalInfo) :-
+	goal_info_get_determinism(GoalInfo0, Determinism0),
+	goal_info_get_instmap_delta(GoalInfo0, DeltaInstmap0),
+	determinism_components(Determinism0, CanFail0, NumSolns0),
+	(
+		NumSolns0 = at_most_zero,
+		instmap_delta_is_reachable(DeltaInstmap0)
+	->
+		instmap_delta_init_unreachable(UnreachableInstMapDelta),
+		goal_info_set_instmap_delta(GoalInfo0, UnreachableInstMapDelta,
+			GoalInfo)
+	;
+		instmap_delta_is_unreachable(DeltaInstmap0),
+		NumSolns0 \= at_most_zero
+	->
+		determinism_components(Determinism, CanFail0, at_most_zero),
+		goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo)
+	;
+		GoalInfo = GoalInfo0
+	).
 
 %-----------------------------------------------------------------------------%
 
