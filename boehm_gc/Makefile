@@ -1,3 +1,5 @@
+include ../Mmake.common
+
 # Primary targets:
 # gc.a - builds basic library
 # c++ - adds C++ interface to library
@@ -156,7 +158,7 @@ dyn_load_sunos53.o: dyn_load.c
 
 # SunOS5 shared library version of the collector
 libgc.so: $(OBJS) dyn_load_sunos53.o
-	$(CC) -G -o libgc.so $(OBJS) dyn_load_sunos53.o -ldl
+	$(LINK_SHARED_OBJ) -o libgc.so $(OBJS) dyn_load_sunos53.o -ldl
 
 mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_mach_dep.s $(srcdir)/rs6000_mach_dep.s if_mach if_not_there
 	rm -f mach_dep.o
