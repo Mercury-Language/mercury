@@ -118,7 +118,7 @@ long_usage -->
         io__progname_base("mprof", ProgName),
 	{ library__version(Version) },
         io__write_strings(["Mercury Profiler, version ", Version, "\n"]),
-        io__write_string("Copyright (C) 1995-2002 The University of Melbourne\n"),
+        io__write_string("Copyright (C) 1995-2004 The University of Melbourne\n"),
 	io__write_string("\n"),
         io__write_string("Usage: "),
         io__write_string(ProgName),
