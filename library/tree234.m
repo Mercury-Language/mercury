@@ -513,7 +513,8 @@ tree234__delete(Tree0, K, Tree) :-
 
 %------------------------------------------------------------------------------%
 
-tree234__remove(empty, _K, _V, empty) :- fail.
+% tree234__remove(empty, _K, _V, empty) :- fail.
+tree234__remove(empty, _K, _V, _Tree) :- fail.
 
 tree234__remove(two(K0, V0, T0, T1), K, V, Tree) :-
 	compare(Result0, K, K0),

@@ -92,8 +92,7 @@
 	% all the elements of `Set0' except `X'.
 
 :- pred set__delete(set(T), T, set(T)).
-:- mode set__delete(in, in, out) is semidet.
-:- mode set__delete(in, out, out) is nondet.
+:- mode set__delete(in, in, out) is det.
 
 	% `set__delete_list(Set0, Xs, Set)' is true iff Xs does not
 	% contain any duplicates, `Set0' contains every member of `Xs',
@@ -101,7 +100,7 @@
 	% containing only the members of `Xs'.
 
 :- pred set__delete_list(set(T), list(T), set(T)).
-:- mode set__delete_list(in, in, out) is semidet.
+:- mode set__delete_list(in, in, out) is det.
 
 	% `set__remove(Set0, X, Set)' is true iff `Set' is the relative
 	% complement of `Set0' and the set containing only `X', i.e.
@@ -109,14 +108,14 @@
 	% except `X'.
 
 :- pred set__remove(set(T), T, set(T)).
-:- mode set__remove(in, in, out) is det.
+:- mode set__remove(in, in, out) is semidet.
 
 	% `set__remove_list(Set0, Xs, Set)' is true iff `Set' is the relative
 	% complement of `Set0' and the set containing only the members of
 	% `Xs'.
 
 :- pred set__remove_list(set(T), list(T), set(T)).
-:- mode set__remove_list(in, in, out) is det.
+:- mode set__remove_list(in, in, out) is semidet.
 
 :- pred set__remove_least(set(T), T, set(T)).
 :- mode set__remove_least(in, out, out) is semidet.
@@ -211,8 +210,7 @@ set__delete_list(S0, [X | Xs], S) :-
 	set__delete_list(S1, Xs, S).
 
 set__delete(S0, E, S) :-
-	list__member(E, S0),
-	set__remove(S0, E, S).
+	list__delete_all(S0, E, S).
 
 :- set__remove_list(_, Xs, _) when Xs.
 
@@ -221,8 +219,9 @@ set__remove_list(S0, [X | Xs], S) :-
 	set__remove(S0, X, S1),
 	set__remove_list(S1, Xs, S).
 
-set__remove(Set0, Elem, Set) :-
-	list__delete_all(Set0, Elem, Set).
+set__remove(S0, E, S) :-
+	list__member(E, S0),
+	set__delete(S0, E, S).
 
 set__remove_least(Set0, E, Set) :-
 	Set0 = [_|_],	% fail early on an empty set
@@ -282,7 +281,7 @@ set__difference(A, B, C) :-
 
 set__difference_2([], C, C).
 set__difference_2([E|Es], A, C) :-
-	set__remove(A, E, B),
+	set__delete(A, E, B),
 	set__difference_2(Es, B, C).
 
 %--------------------------------------------------------------------------%
