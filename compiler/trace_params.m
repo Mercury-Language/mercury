@@ -383,7 +383,7 @@ trace_port_category(nondet_pragma_later)	= internal.
 
 trace_level_port_categories(none) = [].
 trace_level_port_categories(shallow) = [interface].
-trace_level_port_categories(deep) = [interface, internal].
+trace_level_port_categories(deep) = [interface, internal, context].
 trace_level_port_categories(decl) = [interface, internal, context].
 trace_level_port_categories(decl_rep) = [interface, internal, context].
 
