@@ -1,4 +1,4 @@
-%------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------
 % Copyright (C) 1995 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -69,6 +69,10 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 		{ map__keys(NewPredsForThisPass, SpecializedPreds) },
 		{ map__merge(NewPreds0, NewPredsForThisPass, NewPreds1) },
 		{ set__to_sorted_list(PredProcsToFix, PredProcs) },
+		{ set__init(NewRequests0) },
+		{ create_specialized_versions(SpecializedPreds, NewPreds1,
+				NewRequests0, NewRequests, GoalSizes0,
+				GoalSizes, ModuleInfo2, ModuleInfo3) },
 			% The dependencies have changed, so the
 			% dependency graph needs to rebuilt for
 			% inlining to work properly.
@@ -76,17 +80,13 @@ process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 			% here completely rebuilding it later? (it's only
 			% necessary in profiling grades, since otherwise
 			% the dependency graph isn't built before here). 
-		{ fixup_preds(PredProcs, NewPreds1, ModuleInfo2, ModuleInfo3) },
+		{ fixup_preds(PredProcs, NewPreds1, ModuleInfo3, ModuleInfo4) },
 		{ SpecializedPreds = [] ->
-			module_info_clobber_dependency_info(ModuleInfo3,
-				ModuleInfo4)
+			module_info_clobber_dependency_info(ModuleInfo4,
+				ModuleInfo5)
 		;
-			ModuleInfo4 = ModuleInfo3
+			ModuleInfo5 = ModuleInfo4
 		},
-		{ set__init(NewRequests0) },
-		{ create_specialized_versions(SpecializedPreds, NewPreds1,
-				NewRequests0, NewRequests, GoalSizes0,
-				GoalSizes, ModuleInfo4, ModuleInfo5) },
 		process_requests(NewRequests, GoalSizes, NextHOid1,
 			NextHOid, NewPreds1, NewPreds, ModuleInfo5, ModuleInfo)
 	).
@@ -581,69 +581,93 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 	;
 		error("higher_order.m: call expected")
 	),
-	find_higher_order_args(Args0, PredVars, 1,
-			[], HigherOrderArgs, Args0, Args1),
+	module_info_pred_info(Module, CalledPred, PredInfo),
 	(
-		HigherOrderArgs = []
+		pred_info_is_imported(PredInfo)
 	->
 		Requests = Requests0,
 		Changed = unchanged,
 		Goal = Goal0
-	;
-		% Check to see if any of the specialized
-		% versions of the called pred apply here.
-		map__search(NewPreds,
-			proc(CalledPred, CalledProc),
-			NewPredSet),
-		set__to_sorted_list(NewPredSet, NewPredList),	% NOP
-		list__filter(lambda([X::in] is semidet, (
-			X = new_pred(_,_,_, HigherOrderArgs)
-			)), NewPredList, Matches),
+	;	
+		pred_info_arg_types(PredInfo, _, ArgTypes),
+		find_higher_order_args(Module, Args0, ArgTypes, PredVars, 1,
+				[], HigherOrderArgs, Args0, Args1),
 		(
-			Matches = [Match],
-			Match = new_pred(NewCalledPred,
-					NewCalledProc, NewName,
-					_HOArgs)
+			HigherOrderArgs = [] 
+		->
+			Requests = Requests0,
+			Changed = unchanged,
+			Goal = Goal0
 		;
-			Matches = [_,_|_],
-			error("multiple specializations")
-		)
-	->
-		remove_listof_higher_order_args(Args1, 1,
-				HigherOrderArgs, Args2),
-		Goal = call(NewCalledPred, NewCalledProc,
-				Args2, IsBuiltin, MaybeContext, NewName),
-		Changed = changed,
-		Requests = Requests0
-	;
-		% There is a known higher order variable in the
-		% call, so we put in a request for a specialized
-		% version of the pred.
-		Goal = Goal0,
-		Request = request(PredProcId,
+			% Check to see if any of the specialized
+			% versions of the called pred apply here.
+			map__search(NewPreds,
 				proc(CalledPred, CalledProc),
-				HigherOrderArgs), 
-		set__insert(Requests0, Request, Requests),
-		Changed = request
+				NewPredSet),
+			set__to_sorted_list(NewPredSet, NewPredList),	% NOP
+			list__filter(lambda([X::in] is semidet, (
+				X = new_pred(_,_,_, HigherOrderArgs)
+				)), NewPredList, Matches),
+			(
+				Matches = [Match],
+				Match = new_pred(NewCalledPred,
+						NewCalledProc, NewName,
+						_HOArgs)
+			;
+				Matches = [_,_|_],
+				error("multiple specializations")
+			)
+		->
+			remove_listof_higher_order_args(Args1, 1,
+					HigherOrderArgs, Args2),
+			Goal = call(NewCalledPred, NewCalledProc,
+				Args2, IsBuiltin, MaybeContext, NewName),
+			Changed = changed,
+			Requests = Requests0
+		;
+			% There is a known higher order variable in the
+			% call, so we put in a request for a specialized
+			% version of the pred.
+			Goal = Goal0,
+			Request = request(PredProcId,
+					proc(CalledPred, CalledProc),
+					HigherOrderArgs), 
+			set__insert(Requests0, Request, Requests),
+			Changed = request
+		)
 	),
 	Info = info(PredVars, Requests, NewPreds, Module).
 
 	% Returns a list of the higher-order arguments in a call that have
 	% a known value. Also update the argument list to now include
 	% curried arguments that need to be explicitly passed.
-:- pred find_higher_order_args(list(var)::in, pred_vars::in, int::in,
-		list(higher_order_arg)::in, list(higher_order_arg)::out,
+	% The order of the argument list must match that generated
+	% by construct_higher_order terms.
+:- pred find_higher_order_args(module_info::in, list(var)::in, list(type)::in,
+		pred_vars::in, int::in, list(higher_order_arg)::in,
+		list(higher_order_arg)::out,
 		list(var)::in, list(var)::out) is det.
 
-find_higher_order_args([], _, _, HOArgs, HOArgs, NewArgs, NewArgs).
-find_higher_order_args([Arg | Args], PredVars, ArgNo,
-			HOArgs0, HOArgs, NewArgs0, NewArgs) :-
+find_higher_order_args(_, [], _, _, _, HOArgs, HOArgs, NewArgs, NewArgs).
+find_higher_order_args(_, [_|_], [], _, _, _, _, _, _) :-
+	error("find_higher_order_args: length mismatch").
+find_higher_order_args(ModuleInfo, [Arg | Args], [ArgType | ArgTypes],
+		PredVars, ArgNo, HOArgs0, HOArgs, NewArgs0, NewArgs) :-
 	NextArg is ArgNo + 1,
 	(
+		% We don't specialize arguments whose declared type is
+		% polymorphic. The closure they pass cannot possibly
+		% be called within the called predicate, since that predicate 
+		% doesn't know it's a closure (without some dodgy use of
+		% type_to_univ and univ_to_type).
+		type_is_higher_order(ArgType, _, _),
 		map__search(PredVars, Arg, yes(PredId, ProcId, CurriedArgs))
 	->
-		find_higher_order_args(CurriedArgs, PredVars, 1,
-			[], HOCurriedArgs, CurriedArgs, NewExtraArgs0),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_arg_types(PredInfo, _, CurriedArgTypes),
+		find_higher_order_args(ModuleInfo, CurriedArgs,
+			CurriedArgTypes, PredVars, 1, [], HOCurriedArgs,
+			CurriedArgs, NewExtraArgs0),
 		list__length(CurriedArgs, NumArgs),
 		remove_listof_higher_order_args(NewExtraArgs0, 1, HOCurriedArgs,
 								NewExtraArgs),
@@ -654,7 +678,7 @@ find_higher_order_args([Arg | Args], PredVars, ArgNo,
 		HOArgs1 = HOArgs0,
 		NewArgs1 = NewArgs0
 	),
-	find_higher_order_args(Args, PredVars, NextArg,
+	find_higher_order_args(ModuleInfo, Args, ArgTypes, PredVars, NextArg,
 			HOArgs1, HOArgs, NewArgs1, NewArgs).
 		
 		% if the right argument of an assignment is a higher order
