@@ -375,13 +375,35 @@ static	MR_Trace_Call_Info	MR_retry_trace_call_info =
 						MR_PORT_REDO
 					};
 
-Define_extern_entry(MR_do_trace_redo_fail);
+Define_extern_entry(MR_do_trace_redo_fail_shallow);
+Define_extern_entry(MR_do_trace_redo_fail_deep);
 
 BEGIN_MODULE(MR_trace_labels_module)
-	init_entry_ai(MR_do_trace_redo_fail);
+	init_entry_ai(MR_do_trace_redo_fail_shallow);
+	init_entry_ai(MR_do_trace_redo_fail_deep);
 BEGIN_CODE
 
-Define_entry(MR_do_trace_redo_fail);
+Define_entry(MR_do_trace_redo_fail_shallow);
+	/*
+	** If this code ever needs changing, you may also need to change
+	** the code in extras/exceptions/exception.m similarly.
+	*/
+	if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr)))
+	{
+		Code	*MR_jumpaddr;
+		MR_retry_trace_call_info.MR_trace_sll = 
+			(const MR_Stack_Layout_Label *)
+			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr));
+		save_transient_registers();
+		MR_jumpaddr = MR_trace_struct(&MR_retry_trace_call_info);
+		restore_transient_registers();
+		if (MR_jumpaddr != NULL) {
+			GOTO(MR_jumpaddr);
+		}
+	}
+	fail();
+
+Define_entry(MR_do_trace_redo_fail_deep);
 #if 0
 	/* For use in case this ever needs to be debugged again. */
 	printf("MR_curfr = %p\n", MR_curfr);

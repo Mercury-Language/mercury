@@ -24,12 +24,15 @@ DEBUGGER_PROGS=	\
 	interpreter			\
 	mdb_command_test		\
 	multi_parameter			\
-	queens
+	queens				\
+	shallow
 
 # The following tests are disabled, since currently they get some spurious
 # failures if readline support is enabled:
 #	interactive
+# Note that some of the make rules for interactive are disabled too.
 
+MCFLAGS-shallow = --trace shallow
 MCFLAGS = --trace deep
 MLFLAGS = --trace
 C2INITFLAGS = --trace
@@ -84,11 +87,18 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
 
+shallow.out: shallow shallow.inp
+	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
+
 # Note that interactive.out.orig depends on $(interactive.ints) because
 # interactive.inp contains interactive queries that require interactive.ints
 # to have been built.
-interactive.out.orig: interactive interactive.inp $(interactive.ints)
-	$(MDB) ./interactive < interactive.inp > interactive.out.orig 2>&1
+
+# This rule is commented out while the interactive test case is disabled,
+# because otherwise we get an undefined variable warning from make.
+
+# interactive.out.orig: interactive interactive.inp $(interactive.ints)
+# 	$(MDB) ./interactive < interactive.inp > interactive.out.orig 2>&1
 
 # We pipe the output through sed to remove some spurious warnings that
 # `ld' issues.

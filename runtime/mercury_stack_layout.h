@@ -470,19 +470,20 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 #define MR_call_depth_stackvar(base_sp)	     MR_based_stackvar(base_sp, 3)
 
 /*
-** In model_non procedures compiled with an execution trace options that
-** require REDO events, one other item is stored in a fixed stack slot.
-** This is
+** In model_non procedures compiled with --trace-redo, one or two other items
+** are stored in fixed stack slots. These are
 **
 **	the address of the layout structure for the redo event
+**	the saved copy of the from-full flag (only if trace level is shallow)
 **
-** The following macro will access it. This macro should be used only from
+** The following macros will access these slots. They should be used only from
 ** within the code that calls MR_trace for the REDO event.
 **
 ** This macros have to be kept in sync with compiler/trace.m.
 */
 
-#define MR_redo_layout_framevar(base_curfr)  MR_based_framevar(base_curfr, 4)
+#define MR_redo_layout_framevar(base_curfr)   MR_based_framevar(base_curfr, 4)
+#define MR_redo_fromfull_framevar(base_curfr) MR_based_framevar(base_curfr, 5)
 
 /*-------------------------------------------------------------------------*/
 /*
