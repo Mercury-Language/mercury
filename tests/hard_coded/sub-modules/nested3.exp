@@ -2,6 +2,7 @@ nested3:child:hello
 nested3:child:hello
 nested3:child:hello
 nested3:child2:hello
+nested3:child2:hello
 t1 = nested3:child:foo
 t2 = nested3:child:foo
 t3 = nested3:child:foo

@@ -2,6 +2,7 @@ parent:child:hello
 parent:child:hello
 parent:child:hello
 parent:child2:hello
+parent:child2:hello
 t1 = parent:child:foo
 t2 = parent:child:foo
 t3 = parent:child:foo

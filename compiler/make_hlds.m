@@ -71,7 +71,8 @@
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, 
 		UndefTypes, UndefModes) -->
 	globals__io_get_globals(Globals),
-	{ module_info_init(Name, Globals, Module0) },
+	{ mq_info_get_partial_qualifier_info(MQInfo0, PQInfo) },
+	{ module_info_init(Name, Globals, PQInfo, Module0) },
 	add_item_list_decls_pass_1(Items,
 		item_status(local, may_be_unqualified), Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -930,7 +931,7 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 			Procs, NewPredInfo),
 		module_info_get_predicate_table(ModuleInfo2, PredTable0),
 		predicate_table_insert(PredTable0, NewPredInfo,
-			must_be_qualified, NewPredId, PredTable),
+			NewPredId, PredTable),
 		module_info_set_predicate_table(ModuleInfo2,
 			PredTable, ModuleInfo3),
 
@@ -1712,8 +1713,10 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			{ Body = du_type(ConsList, _, _, _) }
 		->
 			{ module_info_ctors(Module0, Ctors0) },
-			ctors_add(ConsList, TypeId, NeedQual, 
-				Context, Ctors0, Ctors),
+			{ module_info_get_partial_qualifier_info(Module0,
+				PQInfo) },
+			ctors_add(ConsList, TypeId, NeedQual, PQInfo, Context,
+				Ctors0, Ctors),
 			{ module_info_set_ctors(Module0, Ctors, Module1) }
 		;
 			{ Module1 = Module0 }
@@ -1891,17 +1894,24 @@ convert_type_defn(uu_type(Name, Args, Body), _, Name, Args, uu_type(Body)).
 convert_type_defn(eqv_type(Name, Args, Body), _, Name, Args, eqv_type(Body)).
 convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
 
-:- pred ctors_add(list(constructor), type_id, need_qualifier, prog_context, 
-			cons_table, cons_table, io__state, io__state).
-:- mode ctors_add(in, in, in, in, in, out, di, uo) is det.
+:- pred ctors_add(list(constructor), type_id, need_qualifier,
+		partial_qualifier_info, prog_context, cons_table, cons_table,
+		io__state, io__state).
+:- mode ctors_add(in, in, in, in, in, in, out, di, uo) is det.
 
-ctors_add([], _TypeId, _NeedQual, _Context, Ctors, Ctors) --> [].
-ctors_add([Ctor | Rest], TypeId, NeedQual, Context, Ctors0, Ctors) -->
+ctors_add([], _, _, _, _, Ctors, Ctors) --> [].
+ctors_add([Ctor | Rest], TypeId, NeedQual, PQInfo, Context, Ctors0, Ctors) -->
 	{ Ctor = ctor(ExistQVars, Constraints, Name, Args) },
 	{ make_cons_id(Name, Args, TypeId, QualifiedConsId) },
 	{ assoc_list__values(Args, Types) },
 	{ ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Types, TypeId,
 				Context) },
+	%
+	% Insert the fully-qualified version of this cons_id into the
+	% cons_table.
+	% Also check that there is at most one definition of a given
+	% cons_id in each type.
+	%
 	(
 		{ map__search(Ctors0, QualifiedConsId, QualifiedConsDefns0) }
 	->
@@ -1930,29 +1940,29 @@ ctors_add([Ctor | Rest], TypeId, NeedQual, Context, Ctors0, Ctors) -->
 	),
 	{ map__set(Ctors0, QualifiedConsId, QualifiedConsDefns, Ctors1) },
 
-	% XXX the code below does the wrong thing if you mix
-	% `import_module' and `use_module' declarations for
-	% parent and child modules.
-	% It assumes that all parents of an imported module were imported,
-	% and that all parents of a used module were used.
-
-	{
-		QualifiedConsId = cons(qualified(Module, ConsName), Arity),
-		NeedQual = may_be_unqualified
-	->
-		% Add unqualified version of the cons_id to the cons_table.
-		UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-		multi_map__set(Ctors1, UnqualifiedConsId, ConsDefn, Ctors2),
+	{ QualifiedConsId = cons(qualified(Module, ConsName), Arity) ->
+		% Add unqualified version of the cons_id to the
+		% cons_table, if appropriate.
+		(
+			NeedQual = may_be_unqualified
+		->
+			UnqualifiedConsId = cons(unqualified(ConsName), Arity),
+			multi_map__set(Ctors1, UnqualifiedConsId, ConsDefn,
+				Ctors2)
+		;
+			Ctors2 = Ctors1
+		),
 
 		% Add partially qualified versions of the cons_id
-		get_partial_qualifiers(Module, PartialQuals),
+		get_partial_qualifiers(Module, PQInfo, PartialQuals),
 		list__map_foldl(add_ctor(ConsName, Arity, ConsDefn),
 			PartialQuals, _PartiallyQualifiedConsIds,
 			Ctors2, Ctors3)
 	;
-		Ctors3 = Ctors1
+		error("ctors_add: cons_id not qualified")
 	},
-	ctors_add(Rest, TypeId, NeedQual, Context, Ctors3, Ctors).
+
+	ctors_add(Rest, TypeId, NeedQual, PQInfo, Context, Ctors3, Ctors).
 
 :- pred add_ctor(string::in, int::in, hlds_cons_defn::in, module_name::in,
 		cons_id::out, cons_table::in, cons_table::out) is det.
@@ -2373,8 +2383,10 @@ add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 				{ Module = Module0 }
 			)
 		;
+			{ module_info_get_partial_qualifier_info(Module1,
+				PQInfo) },
 			{ predicate_table_insert(PredicateTable0, PredInfo0, 
-				NeedQual, PredId, PredicateTable1) },
+				NeedQual, PQInfo, PredId, PredicateTable1) },
 			( 
 				{ code_util__predinfo_is_builtin(PredInfo0) }
 			->
@@ -2545,7 +2557,7 @@ add_special_pred_decl(SpecialPredId,
 		_),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
-	predicate_table_insert(PredicateTable0, PredInfo, may_be_unqualified, 
+	predicate_table_insert(PredicateTable0, PredInfo,
 		PredId, PredicateTable),
 	module_info_set_predicate_table(Module0, PredicateTable,
 		Module1),
@@ -2708,8 +2720,10 @@ preds_add_implicit(ModuleInfo, PredicateTable0, ModuleName, PredName, Arity,
 		\+ predicate_table_search_pf_sym_arity(PredicateTable0,
 			PredOrFunc, PredName, Arity, _)
 	->
+		module_info_get_partial_qualifier_info(ModuleInfo,
+			MQInfo),
 		predicate_table_insert(PredicateTable0, PredInfo, 
-			may_be_unqualified, PredId, PredicateTable)
+			may_be_unqualified, MQInfo, PredId, PredicateTable)
 	;	
 		error("preds_add_implicit")
 	).

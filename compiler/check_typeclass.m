@@ -578,8 +578,11 @@ produce_auxiliary_procs(ClassVars,
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
+	module_info_get_partial_qualifier_info(ModuleInfo0, PQInfo),
+	% XXX why do we need to pass may_be_unqualified here,
+	%     rather than passing must_be_qualified or calling the /4 version?
 	predicate_table_insert(PredicateTable0, PredInfo,
-		may_be_unqualified, PredId, PredicateTable),
+		may_be_unqualified, PQInfo, PredId, PredicateTable),
 	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo),
 

@@ -59,8 +59,7 @@ main -->
 	child:hello,
 	hello,
 	nested:child2:hello,
-	% child2:hello,		% XXX mixing of use_module and import_module
-				% is not yet supported.
+	child2:hello,
 
 	print("t1 = "), print(type_of(has_type_t1)), nl,
 	print("t2 = "), print(type_of(has_type_t2)), nl,
@@ -86,8 +85,6 @@ has_type_t1 = nested:child:bar.
 has_type_t2 = child:bar.
 has_type_t3 = bar.
 has_type_t4 = nested:child2:bar.
-% has_type_t5 = child2:bar.  % XXX mixing of use_module and import_module
-			     % is not yet supported.
-has_type_t5 = nested:child2:bar.
+has_type_t5 = child2:bar.
 
 :- end_module nested.

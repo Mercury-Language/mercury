@@ -2878,10 +2878,6 @@ limitations.
 
 @itemize @bullet
 @item
-If you mix an @samp{import_module} declaration for a parent module
-with a @samp{use_module} declaration for the child, or vice versa,
-then the compiler may report some spurious errors.
-@item
 The compiler sometimes reports spurious errors if you
 define an equivalence type in a sub-module and export it
 as abstract type.

@@ -51,6 +51,8 @@
 :- mode module_qual__qualify_type_qualification(in, out, in, in,
 		out, di, uo) is det.
 
+	% The type mq_info holds information needed for doing module
+	% qualification.
 :- type mq_info.
 
 :- pred mq_info_get_num_errors(mq_info::in, int::out) is det.
@@ -59,6 +61,40 @@
 :- pred mq_info_set_need_qual_flag(mq_info::in, 
 		need_qualifier::in, mq_info::out) is det.
 :- pred mq_info_get_need_qual_flag(mq_info::in, need_qualifier::out) is det.
+:- pred mq_info_get_partial_qualifier_info(mq_info::in,
+		partial_qualifier_info::out) is det.
+
+	% The type partial_qualifier_info holds info need for computing which
+	% partial quantifiers are visible -- see get_partial_qualifiers/3.
+:- type partial_qualifier_info.
+
+% Suppose we are processing a definition which defines the symbol
+% foo:bar:baz:quux/1.  Then we insert the following symbols
+% into the symbol table:
+%	- if the current value of the NeedQual flag at this point
+%		is `may_be_unqualified',
+%		i.e. module `foo:bar:baz' was imported
+%		then we insert the fully unqualified symbol quux/1;
+%	- if module `foo:bar:baz' occurs in the "imported" section,
+%		i.e. if module `foo:bar' was imported,
+%		then we insert the partially qualified symbol baz:quux/1;
+%	- if module `foo:bar' occurs in the "imported" section,
+%		i.e. if module `foo' was imported,
+%		then we insert the partially qualified symbol bar:baz:quux/1;
+%	- we always insert the fully qualified symbol foo:bar:baz:quux/1.
+%
+% The predicate `get_partial_qualifiers' returns all of the
+% partial qualifiers for which we need to insert definitions,
+% i.e. all the ones which are visible.  For example,
+% given as input `foo:bar:baz', it returns a list containing
+%	(1) `baz', iff `foo:bar' is imported
+% and 	(2) `bar:baz', iff `foo' is imported.
+% Note that the caller will still need to handle the fully-qualified
+% and fully-unqualified versions separately.
+
+:- pred get_partial_qualifiers(module_name, partial_qualifier_info,
+		list(module_name)).
+:- mode get_partial_qualifiers(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -119,13 +155,20 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 				% explicitly module qualified.
 	).
 
+:- type partial_qualifier_info --->
+	partial_qualifier_info(module_id_set).
+
+mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
+	mq_info_get_modules(MQInfo, ModuleIdSet),
+	QualifierInfo = partial_qualifier_info(ModuleIdSet).
+
 	% We only need to keep track of what is exported and what isn't,
 	% so we use a simpler data type here than hlds_pred__import_status.
 :- type import_status
 	--->	exported
 	;	not_exported.
 		
-	% The `module_eqv_map' field is unused junk -- feel free to replace it.
+	% The `junk' field is unused junk -- feel free to replace it.
 :- type junk == unit.
 
 	% Pass over the item list collecting all defined module, type, mode and
@@ -1423,5 +1466,78 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
 	;
 		MatchingModules = []
 	).
+
+%-----------------------------------------------------------------------------%
+
+get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
+	PartialQualInfo = partial_qualifier_info(ModuleIdSet),
+	(
+		ModuleName = unqualified(_),
+		PartialQualifiers = []
+	;
+		ModuleName = qualified(Parent, Child),
+		get_partial_qualifiers_2(Parent, unqualified(Child),
+			ModuleIdSet, [], PartialQualifiers)
+	).
+
+:- pred get_partial_qualifiers_2(module_name, module_name, module_id_set,
+		list(module_name), list(module_name)).
+:- mode get_partial_qualifiers_2(in, in, in, in, out) is det.
+
+get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
+		Qualifiers0, Qualifiers) :-
+	%
+	% if the ImplicitPart module was imported, rather than just being
+	% used, then insert the ExplicitPart module into the list of
+	% valid partial qualifiers.
+	%
+	( parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet) ->
+		Qualifiers1 = [ExplicitPart | Qualifiers0]
+	;
+		Qualifiers1 = Qualifiers0
+	),
+	%
+	% recursively try to add the other possible partial qualifiers
+	%
+	( ImplicitPart = qualified(Parent, Child) ->
+		NextImplicitPart = Parent,
+		insert_module_qualifier(Child, ExplicitPart, NextExplicitPart),
+		get_partial_qualifiers_2(NextImplicitPart, NextExplicitPart,
+			ModuleIdSet, Qualifiers1, Qualifiers)
+	;
+		Qualifiers = Qualifiers1
+	).
+
+	% Check whether the parent module was imported, given the name of a
+	% child (or grandchild, etc.) module occurring in that parent module.
+	%
+:- pred parent_module_is_imported(module_name, module_name, module_id_set).
+:- mode parent_module_is_imported(in, in, in) is semidet.
+
+parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
+	% Find the module name at the start of the ChildModule;
+	% this sub-module will be a direct sub-module of ParentModule
+	get_first_module_name(ChildModule, DirectSubModuleName),
+
+	% Check that the ParentModule was imported.
+	% We do this by looking up the definitions for the direct sub-module
+	% and checking that the one in ParentModule came from an
+	% imported module.
+	Arity = 0,
+	map__search(ModuleIdSet, DirectSubModuleName - Arity,
+			ImportModules - _UseModules),
+	set__member(ParentModule, ImportModules).
+
+	% Given a module name, possibly module-qualified,
+	% return the name of the first module in the qualifier list.
+	% e.g. given `foo:bar:baz', this returns `foo',
+	% and given just `baz', it returns `baz'.
+	%
+:- pred get_first_module_name(module_name, string).
+:- mode get_first_module_name(in, out) is det.
+
+get_first_module_name(unqualified(ModuleName), ModuleName).
+get_first_module_name(qualified(Parent, _), ModuleName) :-
+	get_first_module_name(Parent, ModuleName).
 
 %----------------------------------------------------------------------------%
