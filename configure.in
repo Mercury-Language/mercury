@@ -170,11 +170,21 @@ if test "$BOOTSTRAP_MC" != ""; then
         
 		main(!IO) :-
 			return_rtti_version(Version),
-			( Version >= 6 ->
+			(
+				Version >= 6,
+				ac(2) ^ elem(3, 5) = 17
+			->
 				io.print("Hello, world\n", !IO)
 			;
 				io.print("Nope.\n", !IO)
 			).
+
+		:- type a    ---> ac(int).
+
+		:- func a ^ elem(int, int) = int.
+		:- mode in ^ elem(in,  in ) = out is det.
+
+		ac(T) ^ elem(I, J) = T + I * J.
 
 		:- pred return_rtti_version(int::out) is det.
 
