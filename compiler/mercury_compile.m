@@ -294,9 +294,7 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	;
 		split_into_submodules(ModuleName, Items, SubModuleList),
 		(
-			{ mercury_private_builtin_module(ModuleName)
-			; mercury_public_builtin_module(ModuleName)
-			}
+			{ any_mercury_builtin_module(ModuleName) }
 		->
 			% Some predicates in the builtin modules are missing
 			% typeinfo arguments, which means that execution
