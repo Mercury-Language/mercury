@@ -1021,7 +1021,7 @@ mercury_compile(module(Module, _, _, _, _)) -->
 #endif
 
 	( { DoCodeGen = yes } ->
-		mercury_compile__generate_code(HLDS12, HLDS13, LLDS1),
+		mercury_compile__generate_code(HLDS12, _HLDS13, LLDS1),
 #if NU_PROLOG
 		[]
 	;

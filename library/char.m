@@ -37,9 +37,20 @@
 :- mode char__to_lower(in, out) is det.
 	% Convert a character to lowercase.
 
+:- pred char__lower_upper(character, character).
+:- mode char__lower_upper(in, out) is semidet.
+:- mode char__lower_upper(out, in) is semidet.
+	% char__lower_upper(Lower, Upper) is true iff
+	% Lower is a lower-case letter and Upper is the corresponding
+	% upper-case letter.
+
 :- pred char__is_upper(character).
 :- mode char__is_upper(in) is semidet.
 	% True iff the character is an uppercase letter.
+
+:- pred char__is_lower(character).
+:- mode char__is_lower(in) is semidet.
+	% True iff the character is a lowercase letter.
 
 :- pred char__is_alpha(character).
 :- mode char__is_alpha(in) is semidet.
@@ -59,18 +70,19 @@
 
 :- pred char__is_digit(character).
 :- mode char__is_digit(in) is semidet.
-	% True iff the character is a decimal digit.
+	% True iff the character is a decimal digit (0-9).
 
-:- pred char__is_lower(character).
-:- mode char__is_lower(in) is semidet.
-	% True iff the character is a lowercase letter.
+:- pred char__is_binary_digit(character).
+:- mode char__is_binary_digit(in) is semidet.
+	% True iff the character is a binary digit (0 or 1).
 
-:- pred char__lower_upper(character, character).
-:- mode char__lower_upper(in, out) is semidet.
-:- mode char__lower_upper(out, in) is semidet.
-	% char__lower_upper(Lower, Upper) is true iff
-	% Lower is a lower-case letter and Upper is the corresponding
-	% upper-case letter.
+:- pred char__is_octal_digit(character).
+:- mode char__is_octal_digit(in) is semidet.
+	% True iff the character is a octal digit (0-7).
+
+:- pred char__is_hex_digit(character).
+:- mode char__is_hex_digit(in) is semidet.
+	% True iff the character is a hexadecimal digit (0-9, a-f, A-F).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -148,6 +160,18 @@ char__to_upper(Char, Upper) :-
 
 %-----------------------------------------------------------------------------%
 
+char__is_binary_digit('0').
+char__is_binary_digit('1').
+
+char__is_octal_digit('0').
+char__is_octal_digit('1').
+char__is_octal_digit('2').
+char__is_octal_digit('3').
+char__is_octal_digit('4').
+char__is_octal_digit('5').
+char__is_octal_digit('6').
+char__is_octal_digit('7').
+
 char__is_digit('0').
 char__is_digit('1').
 char__is_digit('2').
@@ -158,6 +182,29 @@ char__is_digit('6').
 char__is_digit('7').
 char__is_digit('8').
 char__is_digit('9').
+
+char__is_hex_digit('0').
+char__is_hex_digit('1').
+char__is_hex_digit('2').
+char__is_hex_digit('3').
+char__is_hex_digit('4').
+char__is_hex_digit('5').
+char__is_hex_digit('6').
+char__is_hex_digit('7').
+char__is_hex_digit('8').
+char__is_hex_digit('9').
+char__is_hex_digit('a').
+char__is_hex_digit('b').
+char__is_hex_digit('c').
+char__is_hex_digit('d').
+char__is_hex_digit('e').
+char__is_hex_digit('f').
+char__is_hex_digit('A').
+char__is_hex_digit('B').
+char__is_hex_digit('C').
+char__is_hex_digit('D').
+char__is_hex_digit('E').
+char__is_hex_digit('F').
 
 %%% char_to_int('\000', 0).	% not supported by NU-Prolog
 char_to_int('\001', 1).

@@ -89,6 +89,11 @@
 %	Convert a string (of digits) to an int. If the string contains
 %	non-digit characters, string__to_int fails.
 
+:- pred string__base_string_to_int(int, string, int).
+:- mode string__base_string_to_int(in, in, out) is semidet.
+%	Convert a string of digits in the specified base (2-36) to an int.
+%	If the string contains invalid characters, the predicate fails.
+
 :- pred string__to_float(string, float).
 :- mode string__to_float(in, out) is semidet.
 %	Convert a string to an float. If the string is not
@@ -194,6 +199,13 @@
 :- external(string__to_float/2).
 :- external(string__to_int/2).
 :- external(string__to_int_list/2).
+
+string__base_string_to_int(Base, String, Int) :-
+	( Base = 10 ->
+		string__to_int(String, Int)
+	;
+		error("string__base_string_to_int not implemented")
+	).
 
 string__index(String, Int, Char) :-
 	string__to_int_list(String, CodeList),

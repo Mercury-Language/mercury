@@ -81,7 +81,7 @@
 %		Reads a line from specified stream.
 
 :- pred io__putback_char(io__input_stream, character, io__state, io__state).
-:- mode io__putback_char(in, out, di, uo) is det.
+:- mode io__putback_char(in, in, di, uo) is det.
 %		Un-reads a character from specified stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
@@ -352,9 +352,17 @@
 :- implementation.
 :- import_module map.
 
-:- type io__state	---> 	io__state(io__stream_names, univ, io__state_2).
+:- type io__state
+	---> 	io__state(
+			io__stream_names,
+			io__stream_putback,
+			univ,
+			io__state_2
+		).
 
 :- type io__stream_names ==	map(io__stream, string).
+
+:- type io__stream_putback ==	map(io__stream, list(character)).
 
 :- type io__state_2	---> 	old
 			;	current.
@@ -453,19 +461,32 @@ io__read_char(Result) -->
 	io__input_stream(Stream),
 	io__read_char(Stream, Result).
 
-io__read_char(Stream, Result) -->
-	io__read_char_code(Stream, Code),
-	{
-		Code = -1
-	->
-		Result = eof
-	;
-		char_to_int(Char, Code)
-	->
+io__read_char(Stream, Result, IO_0, IO) :-
+	IO_0 = io__state(A, PutBack0, C, D),
+		% XXX inefficient
+	( map__search(PutBack0, Stream, [Char | Chars]) ->
+		( Chars = [] ->
+			map__det_remove(PutBack0, Stream, _, PutBack)
+		;
+			map__det_update(PutBack0, Stream, Chars, PutBack)
+		),
+		IO = io__state(A, PutBack, C, D),
 		Result = ok(Char)
 	;
-		Result = error("read error")	% XXX improve error message
-	}.
+		io__read_char_code(Stream, Code, IO_0, IO),
+		(
+			Code = -1
+		->
+			Result = eof
+		;
+			char_to_int(Char, Code)
+		->
+			Result = ok(Char)
+		;
+			% XXX improve error message
+			Result = error("read error")
+		)
+	).
 
 io__read_line(Result) -->
 	io__input_stream(Stream),
@@ -502,7 +523,14 @@ io__putback_char(Char) -->
 	io__input_stream(Stream),
 	io__putback_char(Stream, Char).
 
-:- external(io__putback_char/4).
+io__putback_char(Stream, Char, IO_0, IO) :-
+	IO_0 = io__state(A, PutBack0, C, D),
+	( map__search(PutBack0, Stream, Chars) ->
+		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
+	;
+		map__det_insert(PutBack0, Stream, [Char], PutBack)
+	),
+	IO = io__state(A, PutBack, C, D).
 
 %-----------------------------------------------------------------------------%
 
@@ -602,7 +630,7 @@ io__output_stream_name(Stream, Name) -->
 :- mode io__stream_name(in, out, di, uo) is det.
 
 io__stream_name(Stream, Name, IOState, IOState) :-
-	IOState = io__state(StreamNames, _, _),
+	IOState = io__state(StreamNames, _, _, _),
 	( map__search(StreamNames, Stream, Name1) ->
 		Name = Name1
 	;
@@ -612,15 +640,16 @@ io__stream_name(Stream, Name, IOState, IOState) :-
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
 :- mode io__delete_stream_name(in, di, uo) is det.
 
-io__delete_stream_name(Stream, io__state(StreamNames0, Globals, S),
-		io__state(StreamNames, Globals, S)) :-
+io__delete_stream_name(Stream, io__state(StreamNames0, PutBack, Globals, S),
+		io__state(StreamNames, PutBack, Globals, S)) :-
 	map__delete(StreamNames0, Stream, StreamNames).
 
 :- pred io__insert_stream_name(io__stream, string, io__state, io__state).
 :- mode io__insert_stream_name(in, in, di, uo) is det.
 
-io__insert_stream_name(Stream, Name, io__state(StreamNames0, Globals, S),
-		io__state(StreamNames, Globals, S)) :-
+io__insert_stream_name(Stream, Name,
+		io__state(StreamNames0, PutBack, Globals, S),
+		io__state(StreamNames, PutBack, Globals, S)) :-
 	map__set(StreamNames0, Stream, Name, StreamNames).
 
 %-----------------------------------------------------------------------------%
@@ -629,10 +658,10 @@ io__insert_stream_name(Stream, Name, io__state(StreamNames0, Globals, S),
 % global state predicates
 
 io__get_globals(Globals, IOState, IOState) :-
-	IOState = io__state(_StreamNames, Globals, _S).
+	IOState = io__state(_StreamNames, _PutBack, Globals, _S).
 
-io__set_globals(Globals, io__state(StreamNames, _, S),
-		io__state(StreamNames, Globals, S)).
+io__set_globals(Globals, io__state(StreamNames, PutBack, _, S),
+		io__state(StreamNames, PutBack, Globals, S)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

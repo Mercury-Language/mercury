@@ -85,7 +85,16 @@
 
 % PREDICATES.
 
-% Inequality.
+% We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
+% backwards compatibility with Prolog systems.  But of course it only works
+% if all your cuts are green cuts.
+
+:- pred ! is det.
+!.
+
+:- pred !(T, T).
+:- mode !(in, out) is det.
+!(X, X).
 
 % The call/N family.  Note that the compiler (make_hlds.nl) will transform
 % goals which are not atoms (e.g. goals which are free variables) into

@@ -360,9 +360,10 @@ io__get_line_number(LineNumber) -->
 	% used again.
 
 :- pred io__init_state(io__state).
-io__init_state(io__state(Names, Globals, current)) :-
-	map__init(Names0),
+io__init_state(io__state(Names, PutBack, Globals, current)) :-
+	map__init(PutBack),
 	type_to_univ("<globals>", Globals),
+	map__init(Names0),
 	map__insert(Names0, user_input, "<standard input>", Names1),
 	map__insert(Names1, user_output, "<standard output>", Names2),
 	map__insert(Names2, user_error, "<standard error>", Names).

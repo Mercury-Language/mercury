@@ -981,12 +981,14 @@ parse_dcg_goal_2(";", [A0,B0], _, VarSet0, N0, Var0,
 			Goal = (A ; B)
 		; VarA = Var0 ->
 			Var = VarB,
-			Goal = (A, unify(term__variable(Var),
-					term__variable(VarA)) ; B)
+			append_to_disjunct(A, unify(term__variable(Var),
+					term__variable(VarA)), A1),
+			Goal = (A1 ; B)
 		;
 			Var = VarA,
-			Goal = (A ; B, unify(term__variable(Var),
-					term__variable(VarB)))
+			append_to_disjunct(B, unify(term__variable(Var),
+					term__variable(VarB)), B1),
+			Goal = (A ; B1)
 		)
 	).
 
@@ -1037,6 +1039,18 @@ parse_dcg_goal_2("some", [Vars0,A0], _,
 		VarSet0, N0, Var0, some(Vars,A), VarSet, N, Var) :-
 	term__vars(Vars0, Vars),
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
+
+:- pred append_to_disjunct(goal, goal, goal).
+:- mode append_to_disjunct(in, in, out) is det.
+
+append_to_disjunct(Disjunct0, Goal, Disjunct) :-
+	( Disjunct0 = (A0 ; B0) ->
+		append_to_disjunct(A0, Goal, A),
+		append_to_disjunct(B0, Goal, B),
+		Disjunct = (A ; B)
+	;
+		Disjunct = (Disjunct0, Goal)
+	).
 
 :- pred parse_some_vars_dcg_goal(term, vars, varset, int, var,
 				goal, varset, int, var).
