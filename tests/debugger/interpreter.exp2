@@ -1,0 +1,40 @@
+       1:      1  1 CALL pred interpreter:main/2-0 (det) 
+mdb> mdb> Command echo enabled.
+mdb> 10 step
+Pure Prolog Interpreter.
+
+      11:      6  3 CALL pred interpreter:consult/5-0 (det) 
+mdb> vars
+        0 HeadVar__1
+        1 HeadVar__2
+        2 HeadVar__4
+mdb> print *
+       HeadVar__1           		interpreter.m
+       HeadVar__2           		[]
+       HeadVar__4           		state('<<c_pointer>>')
+mdb> goto 30
+Consulting file `interpreter.m'...
+      30:     17  9 CALL pred tree234:set2/4-1 (det) 
+mdb> print *
+       HeadVar__1           		two('<<c_pointer>>', "<standard input>", empty, empty)
+       HeadVar__2           		'<<c_pointer>>'
+       HeadVar__3           		interpreter.m
+mdb> finish -a
+      31:     17  9 THEN pred tree234:set2/4-1 (det) c2;t;
+      32:     17  9 SWTC pred tree234:set2/4-1 (det) c2;t;c2;s1;
+      33:     17  9 EXIT pred tree234:set2/4-1 (det) 
+mdb> print *
+       HeadVar__1           		two('<<c_pointer>>', "<standard input>", empty, empty)
+       HeadVar__2           		'<<c_pointer>>'
+       HeadVar__3           		interpreter.m
+       HeadVar__4           		three('<<c_pointer>>', "interpreter.m", '<<c_pointer>>', "<standard input>", empty, empty, empty)
+mdb> 
+      34:     16  8 EXIT pred tree234:set/4-1 (det) 
+mdb> finish -n
+This command is a no-op from this port.
+mdb> 
+      35:     15  7 EXIT pred map:set/4-1 (det) 
+mdb> 
+      36:     18  7 CALL pred io:set_stream_names/3-0 (det) 
+mdb> continue
+?- 

@@ -1,0 +1,35 @@
+       1:      1  1 CALL pred multi_parameter:main/2-0 (det) 
+mdb> Command echo enabled.
+mdb> 
+       2:      2  2 CALL pred multi_parameter:foo/2-0 (det) 
+mdb> print *
+       HeadVar__1           		z
+mdb> 
+       3:      3  3 CALL pred multi_parameter:a/2-0 (det) 
+mdb> print *
+       HeadVar__1           		z
+mdb> 
+       4:      4  4 CALL pred multi_parameter:Introduced_pred_for_multi_parameter__m__character_0_int_0_____multi_parameter__a_2/2-0 (det) 
+mdb> print *
+       HeadVar__1           		z
+mdb> 
+       5:      5  5 CALL pred char:to_int/2-0 (det) 
+mdb> print *
+       Character            		z
+mdb> 
+       6:      5  5 EXIT pred char:to_int/2-0 (det) 
+mdb> print *
+       Character            		z
+       Int                  		122
+mdb> 
+       7:      4  4 EXIT pred multi_parameter:Introduced_pred_for_multi_parameter__m__character_0_int_0_____multi_parameter__a_2/2-0 (det) 
+mdb> print *
+       HeadVar__1           		z
+       HeadVar__2           		122
+mdb> 
+       8:      3  3 EXIT pred multi_parameter:a/2-0 (det) 
+mdb> print *
+       HeadVar__1           		z
+       HeadVar__2           		122
+mdb> continue -S
+122
