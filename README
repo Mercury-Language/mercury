@@ -7,13 +7,15 @@ of the GNU General Public License.  See the file COPYING for copying
 permission.  The Mercury library and runtime (the files in the library
 and runtime subdirectories) are distributed under the terms of the GNU
 Library General Public License.  See the file COPYING.LIB for copying
-permissions for those files.  The subdirectory `boehm_gc' contains a
-conservative garbage collector distributed by Hans Boehm - see the file
-README in that directory for copyright information about those files.
-A few files (config*, runtime/timing.c) are derived from
-code that is copyright by the Free Software Foundation, Inc.
-The program `texi2html' in the doc directory is copyright by CERN; see
-the copyright notice at the end of that file.
+permissions for those files.  (If those licencing arrangements are not
+satisfactory, please contact us!  We are willing to offer alternative
+arrangements, if the need should arise.)  The subdirectory `boehm_gc'
+contains a conservative garbage collector distributed by Hans Boehm -
+see the file README in that directory for copyright information about
+those files.  A few files (config*, runtime/timing.c) are derived from
+code that is copyright by the Free Software Foundation, Inc.  The
+program `texi2html' in the doc directory is copyright by CERN; see the
+copyright notice at the end of that file.
 
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
@@ -24,8 +26,9 @@ installing on a machine running IRIX 5 or BSD Unix.
 
 The documentation sources are in the `doc' subdirectory.  The installation
 process will install INFO, HTML, and DVI versions in the locations specified
-in the file Mmake.common - by default these locations are /usr/local/info,
-/usr/local/lib/mercury/html, and /usr/local/lib/mercury/doc respectively.
+in the file Mmake.common - by default these locations are
+/usr/local/mercury-0.5/info, /usr/local/mercury-0.5/lib/mercury/html, and
+/usr/local/mercury-0.5/lib/mercury/doc respectively.
 
 For more information about Mercury, see the Mercury WWW home page at
 http://www.cs.mu.oz.au/~zs/mercury.html, or send mail to mercury@cs.mu.oz.au.
