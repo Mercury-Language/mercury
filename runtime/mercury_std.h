@@ -14,6 +14,7 @@
 
 #include <stdlib.h>	/* for size_t */
 #include <assert.h>	/* for assert() */
+#include <ctype.h>	/* for isalnum(), etc. */
 
 #ifndef	reg
 #define	reg		register
@@ -28,6 +29,16 @@
 #ifndef min
 #define	min(a, b)	((a) < (b) ? (a) : (b))
 #endif
+
+/*
+** The ANSI C isalnum(), etc. macros require that the argument be cast to
+** `unsigned char'; if you pass a signed char, the behaviour is undefined.
+** Hence we define `MR_' versions of these that do the cast -- you should
+** make sure to always use the `MR_' versions rather than the standard ones.
+*/
+#define	MR_isalnum(c)	isdigit((unsigned char) (c))
+#define	MR_isdigit(c)	isdigit((unsigned char) (c))
+#define	MR_isspace(c)	isspace((unsigned char) (c))
 
 #define streq(s1, s2)		(strcmp(s1, s2) == 0)
 #define strdiff(s1, s2)		(strcmp(s1, s2) != 0)

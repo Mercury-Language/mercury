@@ -31,7 +31,6 @@ ENDINIT
 #include	"mercury_imp.h"
 
 #include	<stdio.h>
-#include	<ctype.h>
 #include	<string.h>
 
 #include	"mercury_timing.h"
@@ -340,7 +339,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 
 	for (;;) {
 		/* skip leading whitespace */
-		while(isspace((unsigned char)*s)) {
+		while(MR_isspace(*s)) {
 			s++;
 		}
 
@@ -369,7 +368,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			s++;
 		} else {
 			/* ordinary white-space delimited arg */
-			while(*s != '\0' && !isspace((unsigned char)*s)) {
+			while(*s != '\0' && !MR_isspace(*s)) {
 				if (*s == '\\')
 					s++;
 				args_len++; s++;
@@ -392,7 +391,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 	d = args;
 	for(i = 0; i < argc; i++) {
 		/* skip leading whitespace */
-		while(isspace((unsigned char)*s)) {
+		while(MR_isspace(*s)) {
 			s++;
 		}
 
@@ -416,7 +415,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			s++;
 		} else {
 			/* ordinary white-space delimited arg */
-			while(*s != '\0' && !isspace((unsigned char)*s)) {
+			while(*s != '\0' && !MR_isspace(*s)) {
 				if (*s == '\\')
 					s++;
 				*d++ = *s++;

@@ -14,11 +14,8 @@
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_util.h"
+#include "mercury_std.h"
 #include <stdio.h>
-#include <ctype.h>
-
-#define	MR_isdigit(c)	isdigit((unsigned char) (c))
-#define	MR_isspace(c)	isspace((unsigned char) (c))
 
 #define	MR_NAME_LEN		80
 #define	MR_MAX_SPY_POINTS	100
