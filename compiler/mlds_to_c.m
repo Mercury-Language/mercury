@@ -34,8 +34,8 @@
 
 mlds_to_c__output_mlds(MLDS) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	module_name_to_file_name(ModuleName, ".h", no, HeaderFile),
-	module_name_to_file_name(ModuleName, ".c", no, SourceFile),
+	module_name_to_file_name(ModuleName, ".h", yes, HeaderFile),
+	module_name_to_file_name(ModuleName, ".c", yes, SourceFile),
 	{ Indent = 0 },
 	mlds_output_to_file(HeaderFile, mlds_output_hdr_file(Indent, MLDS)),
 	mlds_output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)).
@@ -376,7 +376,7 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 	io__write_string(", proc_id: "),
 	{ proc_id_to_int(ProcId, ProcIdNum) },
 	io__write_int(ProcIdNum),
-	io__write_string("*/").
+	io__write_string(" */\n").
 
 :- pred mlds_output_func(int, entity_name, func_params, maybe(statement),
 			io__state, io__state).
@@ -389,6 +389,7 @@ mlds_output_func(Indent, Name, Signature, MaybeBody) -->
 		io__write_string(";\n")
 	;
 		{ MaybeBody = yes(Body) },
+		io__write_string("\n"),
 		% require Body0 = statement(block(_, _), _)
 		mlds_output_statement(Indent, Body)
 	).
@@ -490,12 +491,16 @@ mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity)) -->
 	;
 		[]
 	).
-mlds_output_pred_label(special_pred(PredName, TypeModule, TypeName, TypeArity))
-		-->
+mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
+		TypeName, TypeArity)) -->
 	io__write_string(PredName),
 	io__write_string("__"),
-	mlds_output_module_name(TypeModule),
-	io__write_string("__"),
+	( { MaybeTypeModule = yes(TypeModule) } ->
+		mlds_output_module_name(TypeModule),
+		io__write_string("__")
+	;
+		[]
+	),
 	io__write_string(TypeName),
 	io__write_string("_"),
 	io__write_int(TypeArity).
@@ -1091,18 +1096,28 @@ mlds_output_tag(Tag) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mlds_output_code_addr(mlds__code_addr, io__state, io__state).
-:- mode mlds_output_code_addr(in, di, uo) is erroneous.
+:- mode mlds_output_code_addr(in, di, uo) is det.
 
-mlds_output_code_addr(proc(_Label)) -->
-	{ error("NYI 1") }.
-mlds_output_code_addr(internal(_Label, _SeqNum)) -->
-	{ error("NYI 2") }.
+mlds_output_code_addr(proc(Label)) -->
+	mlds_output_fully_qualified_name(Label, mlds_output_proc_label).
+mlds_output_code_addr(internal(Label, SeqNum)) -->
+	mlds_output_fully_qualified_name(Label, mlds_output_proc_label),
+	io__write_string("_"),
+	io__write_int(SeqNum).
+
+:- pred mlds_output_proc_label(mlds__proc_label, io__state, io__state).
+:- mode mlds_output_proc_label(in, di, uo) is det.
+
+mlds_output_proc_label(PredLabel - ProcId) -->
+	mlds_output_pred_label(PredLabel),
+	{ proc_id_to_int(ProcId, ModeNum) },
+	io__format("_%d", [i(ModeNum)]).
 
 :- pred mlds_output_data_addr(mlds__data_addr, io__state, io__state).
 :- mode mlds_output_data_addr(in, di, uo) is det.
 
 mlds_output_data_addr(data_addr(_ModuleName, DataName)) -->
-	% XXX ModuleName
+	io__write_string("/* XXX ModuleName */"),
 	mlds_output_data_name(DataName).
 
 %-----------------------------------------------------------------------------%

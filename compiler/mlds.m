@@ -214,7 +214,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, prog_data, builtin_ops.
+:- import_module hlds_pred, hlds_data, prog_data, builtin_ops.
 
 % To avoid duplication, we use a few things from the LLDS.
 % It would be nice to avoid this dependency...
@@ -485,6 +485,8 @@
 :- func mlds__get_prog_context(mlds__context) = prog_context.
 
 %-----------------------------------------------------------------------------%
+
+:- type mlds__statements == list(mlds__statement).
 
 :- type mlds__statement
 	--->	mlds__statement(
@@ -841,7 +843,7 @@
 	%
 	;	type_ctor(mlds__base_data, string, arity)
 			% base_data, type name, type arity
-	;	base_typeclass_info(class_id, string)
+	;	base_typeclass_info(hlds_data__class_id, string)
 			% class name & class arity, names and arities of the
 			% types
 	%
@@ -930,9 +932,12 @@
 			
 	;	special_pred(
 			string,			% pred name
-			mercury_module_name,	% type module
-			string,			% type name
-			arity			% type arity
+			maybe(mercury_module_name),
+				% The module declaring the type,
+				% if this is different to module defining
+				% the special_pred.
+			string,			% the type name
+			arity			% the type arity
 		).
 
 %-----------------------------------------------------------------------------%
@@ -1124,7 +1129,7 @@ abstractness_bits(abstract) 	= 0x00.
 abstractness_bits(concrete)	= 0x80.
 
 :- func abstractness_mask = int.
-abstractness_mask = abstractness_bits(abstract).
+abstractness_mask = abstractness_bits(concrete).
 
 %
 % Here we define the functions to lookup a member of the set.

@@ -44,9 +44,11 @@
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
 
+:- import_module mlds, ml_code_gen, mlds_to_c.
+
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
-:- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
+:- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, passes_aux.
 
@@ -424,11 +426,12 @@ mercury_compile(Module) -->
 		    ( { AditiOnly = yes } ->
 		    	[]
 		    ; { HighLevelC = yes } ->
-			module_name_to_file_name(ModuleName, ".c", no, C_File),
-			mercury_compile__gen_hlds(C_File, HLDS50),
+			mercury_compile__mlds_backend(HLDS50),
 			globals__io_lookup_bool_option(compile_to_c, 
 				CompileToC),
 			( { CompileToC = no } ->
+				module_name_to_file_name(ModuleName, ".c", no,
+					C_File),
 				module_name_to_file_name(ModuleName, ".o", yes,
 					O_File),
 				mercury_compile__single_c_to_obj(
@@ -2204,30 +2207,25 @@ mercury_compile__output_llds(ModuleName, LLDS0, StackLayoutLabels, MaybeRLFile,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% The `--high-level-C' alternative backend
+% The `--high-level-C' MLDS-based alternative backend
 
-:- pred mercury_compile__gen_hlds(string, module_info, io__state, io__state).
-:- mode mercury_compile__gen_hlds(in, in, di, uo) is det.
+:- pred mercury_compile__mlds_backend(string, module_info,
+		io__state, io__state).
+:- mode mercury_compile__mlds_backend(in, in, di, uo) is det.
 
-mercury_compile__gen_hlds(DumpFile, HLDS) -->
+mercury_compile__mlds_backend(HLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-	maybe_write_string(Verbose, "% Dumping out HLDS to `"),
-	maybe_write_string(Verbose, DumpFile),
-	maybe_write_string(Verbose, "'..."),
-	maybe_flush_output(Verbose),
-	io__tell(DumpFile, Res),
-	( { Res = ok } ->
-		mercury_to_c__gen_hlds(0, HLDS),
-		io__told,
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		maybe_write_string(Verbose, "\n"),
-		{ string__append_list(["can't open file `",
-			DumpFile, "' for output."], ErrorMessage) },
-		report_error(ErrorMessage)
-	).
+
+	maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n"),
+	ml_code_gen(HLDS, MLDS),
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats),
+
+	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
+	mlds_to_c__output_mlds(MLDS),
+	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
+	maybe_report_stats(Stats).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
