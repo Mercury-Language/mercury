@@ -47,7 +47,7 @@
 #endif
 
 #ifndef bool
-#define bool			MR_bool
+#define bool			char
 #endif
 
 #ifndef TRUE
