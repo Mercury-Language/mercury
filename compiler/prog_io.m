@@ -682,9 +682,14 @@ parse_goal(Term, Goal) :-
 parse_goal_2("true", [], true).
 parse_goal_2("fail", [], fail).
 parse_goal_2("=", [A,B], unify(A,B)).
+/******
+	Since (A -> B) has different semantics in standard Prolog
+	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
+	for the moment we'll just disallow it.
 parse_goal_2("->", [A0,B0], if_then(Vars,A,B)) :-
 	parse_some_vars_goal(A0, Vars, A),
 	parse_goal(B0, B).
+******/
 parse_goal_2(",", [A0,B0], (A,B)) :-
 	parse_goal(A0, A),
 	parse_goal(B0, B).
