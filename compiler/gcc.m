@@ -156,16 +156,25 @@
 :- pred build_extern_var_decl(var_name::in, gcc__type::in, gcc__var_decl::out,
 		io__state::di, io__state::uo) is det.
 
-	% build an initialized global variable definition
-:- pred build_global_var_decl(var_name::in, gcc__type::in, gcc__expr::in,
+	% build an initialized static variable definition
+	% This can be used for either global variables
+	% or local static variables.
+	%
+	% After calling this, the caller should call set_var_decl_public
+	% and/or set_var_decl_readonly, if appropriate,
+	% and then finish_static_var_decl.
+:- pred build_static_var_decl(var_name::in, gcc__type::in, gcc__expr::in,
 		gcc__var_decl::out, io__state::di, io__state::uo) is det.
 
-	% build a local variable definition
+	% Finish off the definition of a static variable that
+	% was begun with build_static_var_decl, above.
+:- pred finish_static_var_decl(gcc__var_decl::in, io__state::di, io__state::uo)
+		is det.
+
+	% build an ordinary local variable definition
+	% i.e. one with automatic (rather than static) storage duration
 :- pred build_local_var_decl(var_name::in, gcc__type::in, gcc__var_decl::out,
 		io__state::di, io__state::uo) is det.
-
-	% mark a variable as being allocated in static storage
-:- pred set_var_decl_static(gcc__var_decl::in, io__state::di, io__state::uo) is det.
 
 	% mark a variable as being accessible from outside this
 	% translation unit
@@ -744,11 +753,17 @@
 	Decl = (MR_Word) merc_build_extern_var_decl(Name, (tree) Type);
 ").
 
-:- pragma c_code(build_global_var_decl(Name::in, Type::in, Init::in, Decl::out,
+:- pragma c_code(build_static_var_decl(Name::in, Type::in, Init::in, Decl::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	Decl = (MR_Word) merc_build_global_var_decl(Name, (tree) Type,
+	Decl = (MR_Word) merc_build_static_var_decl(Name, (tree) Type,
 		(tree) Init);
+").
+
+:- pragma c_code(finish_static_var_decl(Decl::in, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"
+	merc_finish_static_var_decl((tree) Decl);
 ").
 
 :- pragma c_code(build_local_var_decl(Name::in, Type::in, Decl::out,
@@ -761,12 +776,6 @@
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	TREE_PUBLIC((tree) Decl) = 1;
-").
-
-:- pragma c_code(set_var_decl_static(Decl::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
-"
-	TREE_STATIC((tree) Decl) = 1;
 ").
 
 :- pragma c_code(set_var_decl_readonly(Decl::in,
@@ -1186,14 +1195,6 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 "
 	Expr = (MR_Word) build(CONSTRUCTOR, (tree) Type, NULL_TREE,
 		(tree) InitList);
-#if 0
-	/* XXX do we need this?
-	** Are MLDS initializers only used for static initializers?
-	** Does GCC require initializers for static variables to be
-	** marked with TREE_STATIC() = 1?
-	*/
-	TREE_STATIC ((tree) Expr) = 1;
-#endif
 ").
 
 %-----------------------------------------------------------------------------%

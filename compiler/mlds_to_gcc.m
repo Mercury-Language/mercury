@@ -34,10 +34,6 @@
 % it will end up compiling everything via C.
 
 % TODO:
-%	Fix bugs:
-%	- calling convention for semidet code not binary compatible
-%	  with C; need to promote boolean return type to int
-%
 %	Fix configuration issues:
 %	- mmake support for foreign code
 %	- document installation procedure
@@ -56,6 +52,8 @@
 %	Implement implementation-specific features that are supported
 %	by other gcc front-ends:
 %	- generate gcc trees rather than expanding as we go
+%		This should probably wait until the GCC back-end
+%		has a language-independent representation for switches.
 %	- support gdb
 %		- improve accuracy of line numbers (e.g. for decls).
 %		- make variable names match what's in the original source
@@ -864,9 +862,10 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 			GlobalInfo0, GCC_Type),
 		build_initializer(Initializer, GCC_Type, DefnInfo,
 			GCC_Initializer),
-		gcc__build_global_var_decl(GCC_Name, GCC_Type, GCC_Initializer,
+		gcc__build_static_var_decl(GCC_Name, GCC_Type, GCC_Initializer,
 			GCC_Defn),
 		add_var_decl_flags(Flags, GCC_Defn),
+		gcc__finish_static_var_decl(GCC_Defn),
 		%
 		% insert the definition in our symbol table
 		%
@@ -892,8 +891,8 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 	(
 		{ DefnBody = mlds__data(Type, Initializer) },
-		build_local_data_defn(Name, Type, Initializer, DefnInfo, GCC_Defn),
-		add_var_decl_flags(Flags, GCC_Defn)
+		build_local_data_defn(Name, Flags, Type,
+			Initializer, DefnInfo, GCC_Defn)
 	;
 		{ DefnBody = mlds__function(_, _, _) },
 		% nested functions should get eliminated by ml_elim_nested,
@@ -943,7 +942,8 @@ build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
 
 add_var_decl_flags(Flags, GCC_Defn) -->
 	add_var_access_flag(		access(Flags),		GCC_Defn),
-	add_var_per_instance_flag(	per_instance(Flags),	GCC_Defn),
+	% note that the per_instance flag is handled separately,
+	% by calling build_local_var or build_static_var
 	add_var_virtuality_flag(	virtuality(Flags),	GCC_Defn),
 	add_var_finality_flag(		finality(Flags),	GCC_Defn),
 	add_var_constness_flag(		constness(Flags),	GCC_Defn),
@@ -961,16 +961,6 @@ add_var_access_flag(protected, _GCC_Defn) -->
 	{ sorry(this_file, "`protected' access") }.
 add_var_access_flag(default, _GCC_Defn) -->
 	{ sorry(this_file, "`default' access") }.
-
-:- pred add_var_per_instance_flag(mlds__per_instance, gcc__var_decl,
-	io__state, io__state).
-:- mode add_var_per_instance_flag(in, in, di, uo) is det.
-
-add_var_per_instance_flag(per_instance, _GCC_Defn) -->
-	% this is the default
-	[].
-add_var_per_instance_flag(one_copy, GCC_Defn) -->
-	gcc__set_var_decl_static(GCC_Defn).
 
 :- pred add_var_virtuality_flag(mlds__virtuality, gcc__var_decl,
 	io__state, io__state).
@@ -1183,28 +1173,46 @@ add_func_abstractness_flag(concrete, _GCC_Defn) -->
 	% Handle an MLDS data definition that is nested inside a
 	% function definition (or inside a block within a function),
 	% and which is hence local to that function.
-:- pred build_local_data_defn(mlds__qualified_entity_name, mlds__type,
-		mlds__initializer, defn_info, gcc__var_decl,
+:- pred build_local_data_defn(mlds__qualified_entity_name, mlds__decl_flags,
+		mlds__type, mlds__initializer, defn_info, gcc__var_decl,
 		io__state, io__state).
-:- mode build_local_data_defn(in, in, in, in, out, di, uo) is det.
+:- mode build_local_data_defn(in, in, in, in, in, out, di, uo) is det.
 
-build_local_data_defn(Name, Type, Initializer, DefnInfo, GCC_Defn) -->
+build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		DefnInfo ^ global_info, GCC_Type),
 	{ Name = qual(_ModuleName, UnqualName) },
-	( { UnqualName = data(var(VarName)) } ->
-		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn)
+	( { UnqualName = data(var(VarName0)) } ->
+		{ VarName = VarName0 }
 	;
 		% var/1 should be the only kind of mlds__data_name for which
 		% the MLDS code generator generates local definitions
 		% (within functions)
 		{ unexpected(this_file, "build_local_data_defn: non-var") }
 	),
-	( { Initializer = no_initializer } ->
-		[]
+	{ PerInstance = per_instance(Flags) },
+	(
+		{ PerInstance = per_instance },
+		% an ordinary local variable
+		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn),
+		add_var_decl_flags(Flags, GCC_Defn),
+		( { Initializer = no_initializer } ->
+			[]
+		;
+			build_initializer(Initializer, GCC_Type, DefnInfo,
+				GCC_InitExpr),
+			gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_InitExpr)
+		)
 	;
-		build_initializer(Initializer, GCC_Type, DefnInfo, GCC_Expr),
-		gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_Expr)
+		{ PerInstance = one_copy },
+		% a local static variable
+		% these must always have initializers
+		build_initializer(Initializer, GCC_Type, DefnInfo,
+			GCC_InitExpr),
+		gcc__build_static_var_decl(VarName, GCC_Type, GCC_InitExpr,
+			GCC_Defn),
+		add_var_decl_flags(Flags, GCC_Defn),
+		gcc__finish_static_var_decl(GCC_Defn)
 	).
 
 	% Handle an MLDS data definition that is nested inside a type,
