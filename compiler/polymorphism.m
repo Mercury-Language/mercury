@@ -1030,7 +1030,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ error("polymorphism: type_to_type_id failed") }
 		)
 	; 
-		{ Y = lambda_goal(PredOrFunc, ArgVars, Vars,
+		{ Y = lambda_goal(PredOrFunc, ArgVars, LambdaVars,
 			Modes, Det, LambdaGoal0) }
 	->
 		% for lambda expressions, we must recursively traverse the
@@ -1041,8 +1041,9 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% existentially typed
 		{ ExistQVars = [] },
 		polymorphism__fixup_lambda_quantification(LambdaGoal1,
-				ExistQVars, LambdaGoal, NonLocalTypeInfos),
-		polymorphism__process_lambda(PredOrFunc, Vars, Modes,
+				ArgVars, LambdaVars, ExistQVars,
+				LambdaGoal, NonLocalTypeInfos),
+		polymorphism__process_lambda(PredOrFunc, LambdaVars, Modes,
 				Det, ArgVars, NonLocalTypeInfos, LambdaGoal,
 				Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
@@ -1533,20 +1534,27 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
-:- pred polymorphism__fixup_lambda_quantification(hlds_goal, existq_tvars,
+:- pred polymorphism__fixup_lambda_quantification(hlds_goal,
+		list(var), list(var), existq_tvars,
 		hlds_goal, set(var), poly_info, poly_info).
-:- mode polymorphism__fixup_lambda_quantification(in, in, out, out, in, out)
-		is det.
+:- mode polymorphism__fixup_lambda_quantification(in, in, in, in, out, out,
+		in, out) is det.
 
 %
 % If the lambda goal we are processing is polymorphically typed,
 % may need to fix up the quantification (non-local variables)
 % so that it includes the type-info variables and type-class-info
-% variables for any polymorphically typed variables in the non-locals set.
+% variables for any polymorphically typed variables in the non-locals set
+% or in the arguments (either the lambda vars or the implicit curried
+% argument variables).  Including typeinfos for arguments which are
+% not in the non-locals set of the goal, i.e. unused arguments, is
+% necessary only if typeinfo_liveness is set, but we do it always,
+% since we don't have the options available here, and the since
+% cost is pretty minimal.
 %
 
-polymorphism__fixup_lambda_quantification(Goal0, ExistQVars, Goal,
-		NewOutsideVars, Info0, Info) :-
+polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
+		ExistQVars, Goal, NewOutsideVars, Info0, Info) :-
 	poly_info_get_type_info_map(Info0, TypeVarMap),
 	poly_info_get_typeclass_info_map(Info0, TypeClassVarMap),
 	( map__is_empty(TypeVarMap) ->
@@ -1558,9 +1566,12 @@ polymorphism__fixup_lambda_quantification(Goal0, ExistQVars, Goal,
 		poly_info_get_var_types(Info0, VarTypes0),
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		set__insert_list(NonLocals, ArgVars, NonLocalsPlusArgs0),
+		set__insert_list(NonLocalsPlusArgs0, LambdaVars,
+			NonLocalsPlusArgs),
 		goal_util__extra_nonlocal_typeinfos(TypeVarMap,
 			TypeClassVarMap, VarTypes0, ExistQVars,
-			NonLocals, NewOutsideVars),
+			NonLocalsPlusArgs, NewOutsideVars),
 		set__union(NonLocals, NewOutsideVars, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
