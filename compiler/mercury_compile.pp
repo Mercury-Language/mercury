@@ -1312,10 +1312,11 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS8, Proceed0, Proceed) -->
 		{ bool__not(FoundModeError, Proceed2) },
 
 		mercury_compile__maybe_write_dependency_graph(HLDS3, HLDS3a),
+		mercury_compile__maybe_output_prof_call_graph(HLDS3a, HLDS3b),
 
 		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->
-			mercury_compile__maybe_polymorphism(HLDS3a, HLDS4),
+			mercury_compile__maybe_polymorphism(HLDS3b, HLDS4),
 			maybe_report_stats(Statistics),
 			mercury_compile__maybe_dump_hlds(HLDS4, "4", "polymorphism"),
 
@@ -1415,11 +1416,11 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 
         % Output's the file <module_name>.prof, which contains the static
         % call graph in terms of label names, if the profiling flag enabled.
-:- pred mercury_compile__maybe_output_prof_call_graph(module_info,
+:- pred mercury_compile__maybe_output_prof_call_graph(module_info, module_info,
 						        io__state, io__state).
-:- mode mercury_compile__maybe_output_prof_call_graph(in, di, uo) is det.
+:- mode mercury_compile__maybe_output_prof_call_graph(in, out, di, uo) is det.
 
-mercury_compile__maybe_output_prof_call_graph(ModuleInfo) -->
+mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, ModuleInfo) -->
         globals__io_lookup_bool_option(profiling, Profiling),
         (
                 { Profiling = yes }
@@ -1427,20 +1428,22 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo) -->
                 globals__io_lookup_bool_option(verbose, Verbose),
                 maybe_write_string(Verbose, "% Output profiling call graph..."),
                 maybe_flush_output(Verbose),
-                { module_info_name(ModuleInfo, Name) },
+                { module_info_name(ModuleInfo0, Name) },
                 { string__append(Name, ".prof", WholeName) },
                 io__tell(WholeName, Res),
                 (
                         { Res = ok }
                 ->
-                        dependency_graph__write_prof_dependency_graph(ModuleInfo),
+                        dependency_graph__write_prof_dependency_graph(
+						ModuleInfo0, ModuleInfo),
                         io__told
                ;
-                        report_error("unable to write profiling static call graph")
+                        report_error("unable to write profiling static call graph"),
+			{ ModuleInfo = ModuleInfo0 }
                 ),
                 maybe_write_string(Verbose, "done.\n")
         ;
-                []
+		{ ModuleInfo = ModuleInfo0 }
         ).
 
 

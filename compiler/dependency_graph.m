@@ -28,9 +28,9 @@
 
 	% Output a form of the static call graph to a file for use by the
 	% profiler.
-:- pred dependency_graph__write_prof_dependency_graph(module_info,
+:- pred dependency_graph__write_prof_dependency_graph(module_info, module_info,
 						io__state, io__state).
-:- mode dependency_graph__write_prof_dependency_graph(in, di, uo) is det.
+:- mode dependency_graph__write_prof_dependency_graph(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -378,7 +378,8 @@ dependency_graph__write_clique([PredId - ProcId | Rest], ModuleInfo) -->
 %	Output's the static call graph of the current module in the form of
 %		CallerLabel (\t) CalleeLabel
 %
-dependency_graph__write_prof_dependency_graph(ModuleInfo) -->
+dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
+	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
 	{ dependency_info__get_dependency_graph(DepInfo, DepGraph) },
 	{ relation__effective_domain(DepGraph, DomSet) },
