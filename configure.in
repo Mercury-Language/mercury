@@ -1189,6 +1189,20 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		mercury_cv_asm_labels=no
 		mercury_cv_gcc_labels=no
 		;;
+	sparc*)
+		case "`$CC --version`" in
+		    egcs*)
+		    	# I don't know if _both_ of these are needed
+			CFLAGS_FOR_GOTOS="-fno-gcse -fno-function-cse"
+			;;
+		    gcc-2.8*)
+			AC_MSG_WARN(*** Mercury might not work with " \
+				"gcc 2.8 on sparc!)
+			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
+			CFLAGS_FOR_GOTOS="-fno-function-cse"
+			;;
+		esac
+		;;
 esac
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)

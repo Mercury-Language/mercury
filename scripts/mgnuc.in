@@ -354,6 +354,8 @@ esac
 # compiler/bytecode.c.  As a work-around, we compile those file with -O1.
 # Similarly library/bag.c needs to be compiled with -O0.
 # Similarly for gcc-2.6.3 on alpha with compiler/modules.c.
+# Similarly for egcs-1.1 on sparc with library/lexer.c, library/string.c,
+# and compiler/{deforest,dupelim,mercury_to_mercury,modules}.c.
 #
 case $COMPILER in gcc)
 	case "$FULLARCH" in
@@ -384,6 +386,21 @@ case $COMPILER in gcc)
 			*" call_gen.c "*|*" modules.dir/call_gen"*".c "*)
 				ARCH_OPTS="$ARCH_OPTS -O0" ;;
 			esac ;;
+		sparc*)
+			case "$*" in
+			*" lexer.c "*|*" modules.dir/lexer"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			*" string.c "*|*" modules.dir/string"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			*" deforest.c "*|*" modules.dir/deforest"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			*" dupelim.c "*|*" modules.dir/dupelim"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			*" mercury_to_mercury.c "*|*" modules.dir/mercury_to_mercury"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			*" modules.c "*|*" modules.dir/modules"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			esac
 	esac ;;
 esac
 
