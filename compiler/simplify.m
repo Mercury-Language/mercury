@@ -439,15 +439,23 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
 			LambdaGoal0)
 	->
-		simplify_info_get_common_info(Info0, Common),
+		simplify_info_get_common_info(Info0, Common0),
 		simplify_info_get_module_info(Info0, ModuleInfo),
 		simplify_info_get_instmap(Info0, InstMap0),
 		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
 			InstMap0, InstMap1),
 		simplify_info_set_instmap(Info0, InstMap1, Info1),
-		simplify__goal(LambdaGoal0, LambdaGoal, Info1, Info2),
-		simplify_info_set_common_info(Info2, Common, Info3),
-		simplify_info_set_instmap(Info3, InstMap0, Info),
+
+		% Don't attempt to pass structs into lambda_goals,
+		% since that could change the curried non-locals of the 
+		% lambda_goal, and that would be difficult to fix up.
+		common_info_init(Common1),
+		simplify_info_set_common_info(Info1, Common1, Info2),
+
+		% Don't attempt to pass structs out of lambda_goals.
+		simplify__goal(LambdaGoal0, LambdaGoal, Info2, Info3),
+		simplify_info_set_common_info(Info3, Common0, Info4),
+		simplify_info_set_instmap(Info4, InstMap0, Info),
 		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
 			LambdaGoal),
 		Goal = unify(LT0, RT, M, U0, C),
