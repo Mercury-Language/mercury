@@ -161,24 +161,22 @@ map__delete(Map0, Key, Map) :-
 
 map__inverse_search(Map, V, K) :-
 	bintree__to_list(Map, AssocList),
-		% XXX a quick hack - until the mode system improves
-	Pair = K - _,
-	assoc_list_member(Pair, AssocList),
-	Pair = K - V.
+	assoc_list_member(K, V, AssocList).
 
 %-----------------------------------------------------------------------------%
 
-	% This is just a version of member/2 with a complicated mode.
+	% The code here is deliberately written using very simple
+	% modes.
 	% The reason we don't just use member/2 is that we want to
-	% bootstrap this thing before we implement polymorphic modes.
+	% bootstrap this thing ASAP.
 
-:- pred assoc_list_member(pair(K,V), list(pair(K,V))).
-:- mode assoc_list_member(bound(ground - free) -> ground, in).
-:- mode assoc_list_member(bound(free - ground) -> ground, in).
-:- mode assoc_list_member(bound(free - free) -> ground, in).
-assoc_list_member(X, [X|_]).
-assoc_list_member(X, [_|Xs]) :-
-	assoc_list_member(X, Xs).
+:- pred assoc_list_member(K, V, list(pair(K,V))).
+:- mode assoc_list_member(in, out, in).
+:- mode assoc_list_member(out, in, in).
+:- mode assoc_list_member(in, in, in).
+assoc_list_member(K, V, [K - V | _]).
+assoc_list_member(K, V, [_ | Xs]) :-
+	assoc_list_member(K, V, Xs).
 
 %-----------------------------------------------------------------------------%
 
