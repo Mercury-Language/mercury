@@ -141,4 +141,7 @@ exec >$PIPE 2>&1
 rm -f $PIPE
 	# finally execute $CC;
 	# stdout & stderr will go via the pipe to $DEMANGLER and then to stderr
-exec $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS
+case $# in
+	0) exec $CC $STRIP_OPTS $ARCH_OPTS $LIBDIR_OPTS $LIBS ;;
+	*) exec $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS ;;
+esac

@@ -17,4 +17,7 @@
 INTERPRETER=\
 ${MERCURY_SICSTUS_INTERPRETER=@LIBDIR@/sicstus/@FULLARCH@/library.sicstus}
 
-exec $INTERPRETER "$@"
+case $# in
+	0) exec $INTERPRETER ;;
+	*) exec $INTERPRETER "$@" ;;
+esac

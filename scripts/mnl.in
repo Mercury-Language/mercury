@@ -66,4 +66,7 @@ fi
 if $verbose; then
 	echo nc $options $objlist "$@"
 fi
-exec nc $options $objlist "$@"
+case $# in
+	0) exec nc $options $objlist ;;
+	*) exec nc $options $objlist "$@" ;;
+esac

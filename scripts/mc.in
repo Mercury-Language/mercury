@@ -19,5 +19,9 @@ MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
 
-exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
-	--cc "$CC" --grade "$DEFAULT_GRADE" "$@"
+case $# in
+	0) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
+		--cc "$CC" --grade "$DEFAULT_GRADE" ;;
+	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
+		--cc "$CC" --grade "$DEFAULT_GRADE" "$@" ;;
+esac

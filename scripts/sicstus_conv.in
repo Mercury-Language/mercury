@@ -13,9 +13,9 @@
 
 for file in "$@"; do
 	case $file in
-		*.m) base=`basename $file .m` ;;
-		*.nl) base=`basename $file .nl` ;;
-		*) base=`basename $file` ;;
+		*.m) base=`basename "$file" .m` ;;
+		*.nl) base=`basename "$file" .nl` ;;
+		*) base=`basename "$file"` ;;
 	esac
 	sed -e '
 		/ is /s/\^/#/g
@@ -30,5 +30,5 @@ for file in "$@"; do
 		/\\n/s//\
 /g
 		/\\v/s///g
-		' $file > $base.pl
+		' "$file" > "$base".pl
 done

@@ -16,4 +16,7 @@
 
 INTERPRETER=${MERCURY_INTERPRETER=@LIBDIR@/nuprolog/@FULLARCH@/library.nu}
 
-exec $INTERPRETER "$@"
+case $# in
+	0) exec $INTERPRETER
+	*) exec $INTERPRETER "$@"
+esac

@@ -37,11 +37,11 @@ while true; do
 done
 
 for file in "$@"; do
-	dir="`dirname $file`"
-	case $file in
-		*.m)	base="`basename $file .m`" ;;
-		*.nl)	base="`basename $file .nl`" ;;
-		*)	base="`basename $file`" ;;
+	dir=`dirname "$file"`
+	case "$file" in
+		*.m)	base=`basename "$file" .m` ;;
+		*.nl)	base=`basename "$file" .nl` ;;
+		*)	base=`basename "$file"` ;;
 	esac
 	rootname="$dir/$base"
 	tmp=/tmp/mnc$$
@@ -55,7 +55,7 @@ for file in "$@"; do
 			"$rootname.pp" >> $tmp.nl
 	else
 		echo "mnc: compiling \`$file'"
-		cat $file >> $tmp.nl
+		cat "$file" >> $tmp.nl
 	fi
 	nc -c $options $tmp.nl
 	rm $tmp.nl $tmp.ns

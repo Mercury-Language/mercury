@@ -93,7 +93,10 @@ if $debug; then
 	mercury_do_save.
 
 EOF
-	$SP $objlist "$@" $sp_lib < $tmp 2>&1 
+	case $# in
+		0) $SP $objlist $sp_lib < $tmp 2>&1 ;;
+		*) $SP $objlist "$@" $sp_lib < $tmp 2>&1 ;;
+	esac
 else
 	cat > $tmp << EOF
 	on_exception(Error, (
@@ -108,7 +111,10 @@ else
 	e
 	e
 EOF
-	$SP $objlist "$@" $sp_lib < $tmp 2>&1 
+	case $# in
+		0) $SP $objlist $sp_lib < $tmp 2>&1 ;;
+		*) $SP $objlist "$@" $sp_lib < $tmp 2>&1 ;;
+	esac
 fi # grep -v 'DOMAIN ERROR.*when_condition' 
 # We pipe the output through grep -v to suppress some spurious warnings
 # caused by the NU-Prolog when declarations not matching Sicstus syntax.

@@ -45,4 +45,9 @@ while true; do
 	esac
 done
 
-exec $MKINIT -w"$defentry" -c"$maxcalls" "$@" $MERCURY_MOD_LIB_MODS
+case $# in
+	0) exec $MKINIT -w"$defentry" -c"$maxcalls" $MERCURY_MOD_LIB_MODS
+	   ;;
+	*) exec $MKINIT -w"$defentry" -c"$maxcalls" "$@" $MERCURY_MOD_LIB_MODS
+	   ;;
+esac
