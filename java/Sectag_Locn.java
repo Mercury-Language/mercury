@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2001 The University of Melbourne.
+// Copyright (C) 2001-2002 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -14,8 +14,8 @@ public class Sectag_Locn {
 
 	public int value;
 
-	public Sectag_locn(int arg) {
-		this.value = arg
+	public Sectag_Locn(int arg) {
+		this.value = arg;
 	}
 }
 
