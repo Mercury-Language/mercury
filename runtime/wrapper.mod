@@ -9,7 +9,7 @@
 ** main authors: zs, fjh
 **
 **	This file contains the startup code for the Mercury runtime.
-**	It defines main().  The code initializes various things,
+**	It defines mercury_main().  The code initializes various things,
 **	processes options (which are specified via an environment variable)
 **	and then invokes call_engine() to start execution.
 */
@@ -82,7 +82,7 @@ static	void	print_register_usage_counts(void);
 
 Declare_entry(do_interpreter);
 
-int main(int argc, char **argv)
+int mercury_main(int argc, char **argv)
 {
 #ifndef	SPEED
 	/*
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 
 	/* call the init_gc() function defined in <foo>_init.c - */
 	/* this is to work around a Solaris 2.X (X <= 4) linker bug */
-	init_gc();
+	(*address_of_init_gc)();
 
 	/* The following code is necessary to tell the conservative */
 	/* garbage collector that we are using tagged pointers */
@@ -145,7 +145,7 @@ void do_init_modules(void)
 	static	bool	done = FALSE;
 
 	if (! done) {
-		init_modules();
+		(*address_of_init_modules)();
 		done = TRUE;
 	}
 }

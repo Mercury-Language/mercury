@@ -213,7 +213,7 @@ int length(const List *list)
 **	and maybe the data.
 */
 
-void delete(List *list, List *item, void (* func)(void *))
+void dlist_delete(List *list, List *item, void (* func)(void *))
 {
 	if (list == NULL)
 		return;

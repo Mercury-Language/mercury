@@ -66,7 +66,7 @@ extern	List	*addndlist(List *, List *);
 extern	void	list_insert_before(List *, List *, void *);
 extern	void	list_insert_after(List *, List *, void *);
 extern	int	length(const List *);
-extern	void	delete(List *, List *, void (*)(void *));
+extern	void	dlist_delete(List *, List *, void (*)(void *));
 extern	void	oldlist(List *, void (*)(void *));
 
 #endif /* LIST_H */

@@ -7,10 +7,12 @@
 #ifndef	WRAPPER_H
 #define	WRAPPER_H
 
-extern	const	char	*progname;
-extern	int	mercury_argc;
-extern	char **	mercury_argv;
-extern	int	mercury_exit_status;
+extern	void		do_init_modules(void);
+
+extern	const char *	progname;
+extern	int		mercury_argc;
+extern	char **		mercury_argv;
+extern	int		mercury_exit_status;
 
 extern	unsigned	heap_size;
 extern	unsigned	detstack_size;
@@ -22,10 +24,10 @@ extern	unsigned	nondstack_zone_size;
 
 extern	unsigned	pcache_size;
 
-extern	int	r1val;
-extern	int	r2val;
-extern	int	r3val;
+extern	int		r1val;
+extern	int		r2val;
+extern	int		r3val;
 
-extern	bool	check_space;
+extern	bool		check_space;
 
 #endif

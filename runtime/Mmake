@@ -57,7 +57,8 @@ libmer.a: $(OBJS)
 	$(RANLIB) libmer.a
 
 libmer.so: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) # -L$(BOEHM_GC_DIR) -lgc
+	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) -L$(BOEHM_GC_DIR) -lgc \
+		$(SHARED_LIBS)
 
 runtime.init: $(MOD_CS)
 	cat `vpath_find $(MOD_CS)` | grep '^INIT ' > runtime.init

@@ -132,9 +132,22 @@ compare_type_info(Word type_info_1, Word type_info_2)
 	return COMPARE_EQUAL;
 }
 
-Declare_entry(mercury__io__init_state_2_0);
-Declare_entry(mercury__parser__read_term_3_0);
-Declare_entry(mercury__main_2_0);
+/*
+** io__run_0_0 calls io__init_state_2_0 and main_2_0.
+** But to enable Quickstart of shared libraries on Irix 5,
+** we need to make sure that we don't have any undefined
+** external references when building the shared library.
+** Hence the statically linked init file saves the addresses of those
+** procedures in the following global variables.
+*/
+void (*address_of_init_modules)(void);
+#ifdef CONSERVATIVE_GC
+void (*address_of_init_gc)(void);
+#endif
+Code *address_of_io__init_state_2_0;
+Code *address_of_main_2_0;
+Code *entry_point;	/* normally io__run_0_0 */
+
 Declare_entry(mercury__unify_2_0);
 Declare_entry(mercury__compare_3_0);
 Declare_entry(mercury__index_3_0);
@@ -147,12 +160,12 @@ BEGIN_CODE
 mercury__io__run_0_0:
         mkframe("mercury__io__run_0_0", 0, ENTRY(do_fail));
 	r1 = initial_external_state();
-	call(ENTRY(mercury__io__init_state_2_0),
+	call(address_of_io__init_state_2_0,
 		LABEL(mercury__io__run_0_0_i1),
 		LABEL(mercury__io__run_0_0));
 mercury__io__run_0_0_i1:
 	r1 = r2;
-	call(ENTRY(mercury__main_2_0),
+	call(address_of_main_2_0,
 		LABEL(mercury__io__run_0_0_i2),
 		LABEL(mercury__io__run_0_0));
 mercury__io__run_0_0_i2:
@@ -1044,12 +1057,6 @@ mercury__int__to_float_2_0:
 	}
 
 /*-----------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------*/
-
-mercury__term_io__read_term_3_0:
-	tailcall(ENTRY(mercury__parser__read_term_3_0),
-	  	LABEL(mercury__term_io__read_term_3_0));
-
 /*-----------------------------------------------------------------------*/
 
 /* XXX The following predicates have not yet been implemented! */
