@@ -108,23 +108,6 @@
   #define MR_MODULE_STATIC_OR_EXTERN static
 #endif
 
-/*
-** For LLDS native GC, we need to record the addresses of the end of modules
-** in the entry table, so that we know where each procedure finishes when
-** mapping from instruction pointer values to stack layout entries.
-** Without this, we might think that the following C function was
-** actually part of the preceding Mercury procedure, and then incorrectly
-** use the stack layout of the Mercury procedure if we happened to
-** get a heap overflow signal (SIGSEGV) while in that C function.
-*/
-#ifdef MR_NATIVE_GC
-  #define MR_MAYBE_DEFINE_MODULE_END_LABEL MR_define_local(module_end_label)
-  #define MR_MAYBE_INIT_MODULE_END_LABEL() MR_init_local(module_end_label)
-#else
-  #define MR_MAYBE_DEFINE_MODULE_END_LABEL /* nothing */
-  #define MR_MAYBE_INIT_MODULE_END_LABEL() /* nothing */
-#endif
-
 /*---------------------------------------------------------------------------*/
 
 /* MACHINE SPECIFIC STUFF REQUIRED FOR NON-LOCAL GOTOS */
@@ -555,8 +538,7 @@
 		goto *MR_dummy_identify_function(			\
 			&&MR_PASTE2(module_name,_dummy_label));		\
 		MR_PASTE2(module_name,_dummy_label):			\
-		{							\
-			MR_MAYBE_INIT_MODULE_END_LABEL();
+		{
   #else /* gcc version <= egcs 1.1.2 */
     #define MR_BEGIN_MODULE(module_name)				\
 	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\
@@ -565,14 +547,13 @@
 		MR_PRETEND_ADDRESS_IS_USED(				\
 			&&MR_PASTE2(module_name,_dummy_label));		\
 		MR_PASTE2(module_name,_dummy_label):			\
-		{							\
-			MR_MAYBE_INIT_MODULE_END_LABEL();
+		{
   #endif /* gcc version <= egcs 1.1.2 */
   /* initialization code for module goes between MR_BEGIN_MODULE */
   /* and MR_BEGIN_CODE */
   #define MR_BEGIN_CODE } return; {
   /* body of module goes between MR_BEGIN_CODE and MR_END_MODULE */
-  #define MR_END_MODULE MR_MAYBE_DEFINE_MODULE_END_LABEL; } }
+  #define MR_END_MODULE } }
 
 
   #if defined(MR_USE_ASM_LABELS)
@@ -704,10 +685,9 @@
 
   #define MR_BEGIN_MODULE(module_name)	\
 	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void); \
-	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void) { \
-		MR_MAYBE_INIT_MODULE_END_LABEL();
+	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void) {
   #define MR_BEGIN_CODE			return 0;
-  #define MR_END_MODULE			MR_MAYBE_DEFINE_MODULE_END_LABEL; }
+  #define MR_END_MODULE			}
 
   #define MR_declare_entry(label)		extern MR_Code *label(void)
   #define MR_declare_static(label)		static MR_Code *label(void)

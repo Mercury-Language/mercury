@@ -16,6 +16,9 @@
 % down to smaller computed gotos.  This avoids a limitation in the lcc
 % compiler.
 %
+% If accurate GC is enabled, we also append a module containing an end label
+% to the list of comp_gen_c_modules.
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend__transform_llds.
@@ -32,6 +35,7 @@
 
 :- implementation.
 
+:- import_module hlds__hlds_pred.
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__proc_label.
 :- import_module libs__globals.
@@ -39,17 +43,10 @@
 :- import_module ll_backend__opt_util.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, int, list, require, std_util, counter.
+:- import_module bool, int, string, list, require, std_util, counter.
 
 transform_llds(LLDS0, LLDS) -->
-	globals__io_lookup_int_option(max_jump_table_size, Size),
-	(
-		{ Size = 0 }
-	->
-		{ LLDS = LLDS0 }
-	;
-		transform_c_file(LLDS0, LLDS)
-	).
+	transform_c_file(LLDS0, LLDS).
 
 %-----------------------------------------------------------------------------%
 
@@ -58,7 +55,60 @@ transform_llds(LLDS0, LLDS) -->
 
 transform_c_file(c_file(ModuleName, HeaderInfo, A, B, C, D, Modules0),
 		c_file(ModuleName, HeaderInfo, A, B, C, D, Modules)) -->
-	transform_c_module_list(Modules0, Modules).
+	% split up large computed gotos
+	globals__io_lookup_int_option(max_jump_table_size, MaxJumpTableSize),
+	( { MaxJumpTableSize = 0 } ->
+		{ Modules1 = Modules0 }
+	;
+		transform_c_module_list(Modules0, Modules1)
+	),
+	% append an end label for accurate GC
+	globals__io_get_gc_method(GC),
+	{ GC = accurate, Modules1 \= [] ->
+		list__last_det(Modules1, LastModule),
+		LastModule = comp_gen_c_module(LastModuleName, _),
+		Modules = Modules1 ++
+			[gen_end_label_module(ModuleName, LastModuleName)]
+	;
+		Modules = Modules1
+	}.
+
+%
+% For LLDS native GC, we need to add a dummy comp_gen_c_module at the end of
+% the list.  This dummy module contains only a single dummy procedure which
+% in turn contains only a single label, for which there is no stack layout
+% structure.  The point of this is to ensure that the address of this label
+% gets inserted into the entry table, so that we know where the preceding
+% procedure finishes when mapping from instruction pointer values to stack
+% layout entries.
+%
+% Without this, we might think that the following C function was
+% actually part of the last Mercury procedure in the preceding module,
+% and then incorrectly use the stack layout of the Mercury procedure
+% if we happened to get a heap overflow signal (SIGSEGV) while in that
+% C function.
+%
+% Note that it is not sufficient to generate a label at end of the module,
+% because GCC (e.g. GCC 3.2) sometimes reorders code within a single C
+% function, so that a label declared at the end of the module might not
+% be actually have highest address.  So we generate a new module (which
+% corresponds to a new C function).  XXX Hopefully GCC won't mess with the
+% order of the functions...
+%
+:- func gen_end_label_module(module_name, string) = comp_gen_c_module.
+gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
+	Arity = 0,
+	ProcId = hlds_pred__initial_proc_id,
+	PredId = hlds_pred__initial_pred_id,
+	PredName = "ACCURATE_GC_END_LABEL",
+	ProcLabel = proc(ModuleName, predicate, ModuleName, PredName,
+		Arity, ProcId),
+	Instrs = [label(local(ProcLabel)) -
+		"label to indicate end of previous procedure"],
+	DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId),
+				Instrs, ProcLabel,
+				counter__init(0), must_not_alter_rtti),
+	EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
 
 %-----------------------------------------------------------------------------%
 
@@ -132,6 +182,7 @@ transform_instructions_2([Instr0 | Instrs0], ProcLabel, C0, C, Instrs) -->
 transform_instruction(Instr0, ProcLabel, C0, Instrs, C) -->
 	globals__io_lookup_int_option(max_jump_table_size, Size),
 	(
+		{ Size \= 0 },
 		{ Instr0 = computed_goto(_Rval, Labels) - _},
 		{ list__length(Labels, L) },
 		{ L > Size }
