@@ -5,8 +5,7 @@
 # The control and output files are all in the dubdirectory batch.
 # The control files are $batch.MCFLAGS and possibly $batch.CFLAGS
 # and/or $batch.GRADE, where $batch is the last argument of makebatch.
-# $batch.CFLAGS and $batch.GRADE are consulted if the respective options
-# (-c and -g) are given.
+# $batch.CFLAGS and $batch.GRADE are consulted if they exist.
 #
 # All the control files must have the same number of lines. Each line
 # corresponds to a version of the compiler that is built with the
@@ -21,21 +20,13 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-c] [-g] [-jN] [-t] batchname"
-needgrade=false
-needcflags=false
+usage="Usage: makebatch [-jN] [-t] batchname"
 jfactor=-j5
 runtests=""
 
 while test $# -gt 0
 do
 	case $1 in
-
-	-c|--cflags)
-		needcflags=true ;;
-
-	-g|--grade)
-		needgrade=true ;;
 
 	-j|--jobs)
 		jfactor="-j$2" ; shift ;;
@@ -70,6 +61,20 @@ then
 	echo "batch/$batch.MCFLAGS does not exist or is not readable"
 	exit 1
 fi
+
+if test -r batch/$batch.CFLAGS
+then
+	needcflags=true
+else
+	needcflags=false
+endif
+
+if test -r batch/$batch.GRADE
+then
+	needgrade=true
+else
+	needgrade=false
+endif
 
 if test -f Mmake.stage.params
 then
