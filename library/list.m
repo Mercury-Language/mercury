@@ -159,9 +159,9 @@
 :- pred list__take(int, list(T), list(T)).
 :- mode list__take(in, in, out) is semidet.
 
-	% list__take(Len, List, End):
+	% list__drop(Len, List, End):
 	%	`End' is the remainder of `List' after removing the
-	%	first `End' elements.
+	%	first `Len' elements.
 	%	See also: list__split_list.
 	%
 :- pred list__drop(int, list(T), list(T)).
