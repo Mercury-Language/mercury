@@ -22,7 +22,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, map, set, std_util.
+:- import_module list, map, set, std_util, require.
 :- import_module mode_util, type_util, term.
 
 %-----------------------------------------------------------------------------%
@@ -148,6 +148,9 @@ detect_switches_in_goal_2(some(Vars, Goal0), _GoalInfo, InstMap0, _InstMapDelta,
 detect_switches_in_goal_2(call(A,B,C,D,E,F), _, _, _, _, _, call(A,B,C,D,E,F)).
 
 detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, _, unify(A,B,C,D,E)).
+
+detect_switches_in_goal_2(switch(_,_,_), _, _, _, _, _, _) :-
+	error("detect_switches run twice?").
 
 %-----------------------------------------------------------------------------%
 

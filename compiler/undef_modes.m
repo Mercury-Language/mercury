@@ -174,6 +174,9 @@ find_undef_inst(defined_inst(InstName), ErrorContext, InstDefns) -->
 	find_undef_inst_name(InstName, ErrorContext, InstDefns).
 find_undef_inst(abstract_inst(Name, Args), ErrorContext, InstDefns) -->
 	find_undef_inst_name(user_inst(Name, Args), ErrorContext, InstDefns).
+find_undef_inst(not_reached, _, _) --> [].
+find_undef_inst(free(_), _, _) --> 
+	{ error("compiler generated inst unexpected") }.
 
 :- pred find_undef_inst_name(inst_name, mode_error_context, user_inst_table,
 				io__state, io__state).
@@ -195,6 +198,10 @@ find_undef_inst_name(unify_inst(_, _, _), _, _) -->
 find_undef_inst_name(merge_inst(_, _), _, _) -->
 	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(ground_inst(_), _, _) -->
+	{ error("compiler generated inst unexpected") }.
+find_undef_inst_name(typed_ground(_), _, _) -->
+	{ error("compiler generated inst unexpected") }.
+find_undef_inst_name(typed_inst(_,_), _, _) -->
 	{ error("compiler generated inst unexpected") }.
 
 :- pred find_undef_bound_insts(list(bound_inst), mode_error_context,
