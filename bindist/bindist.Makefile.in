@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -60,7 +60,7 @@ install: install_lib install_info install_man install_scripts install_mmake \
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
 	@echo "	(setq load-path (cons (expand-file-name "
-	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))
+	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))"
 	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_lib
