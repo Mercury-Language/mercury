@@ -29,7 +29,7 @@
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
-typedef void			Code; /* should be `typedef function_t Code' */
+typedef void			Code;	/* code addresses are `void *' */
 
 /* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */
 /* this is assured by the autoconfiguration script */
@@ -65,6 +65,12 @@ typedef void			Code; /* should be `typedef function_t Code' */
 
 #ifdef PROFILE_TIME
 #include "prof.h"
+
+/*
+** the following two macros are used to ensure that the profiler can
+** use `prof_current_proc' to determine what procedure is currently
+** being executed when a profiling interrupt occurs
+*/
 
 #define set_prof_current_proc(target)		(prof_current_proc = (target))
 #define update_prof_current_proc(target)	(prof_current_proc = (target))	
