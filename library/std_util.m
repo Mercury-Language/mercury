@@ -1458,7 +1458,7 @@ __Compare____type_desc_0_0(
 		result, x, y);
 }
 
-static int
+static bool
 __Unify____type_desc_0_0(MR_Word x, MR_Word y)
 {
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
@@ -1472,7 +1472,7 @@ special___Compare___type_desc_0_0(
 		result, x, y);
 }
 
-static int
+static bool
 special___Unify___type_desc_0_0(MR_Word x, MR_Word y)
 {
 	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);

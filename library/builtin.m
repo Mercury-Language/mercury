@@ -486,7 +486,7 @@ void copy_2_m1(MR_TypeInfo TypeInfo_for_T,
 
 :- pragma foreign_code("MC++", "
 
-static MR_Integer unify_2_p(MR_TypeInfo ti, MR_Box X, MR_Box Y) 
+static bool unify_2_p(MR_TypeInfo ti, MR_Box X, MR_Box Y) 
 {
 	return mercury::builtin::mercury_code::call_rtti_generic_unify_2_p(
 			ti, X, Y);
