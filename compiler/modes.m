@@ -1416,9 +1416,16 @@ modecheck_conj_list(Goals0, Goals) -->
 
 mode_info_add_goals_live_vars([]) --> [].
 mode_info_add_goals_live_vars([Goal | Goals]) -->
+	% We add the live vars for the goals in the goal list
+	% in reverse order, because this ensures that in the
+	% common case (where there is no delaying), when we come
+	% to remove the live vars for the first goal
+	% they will have been added last and will thus be
+	% at the start of the list of live vars sets, which
+	% makes them cheaper to remove.
+	mode_info_add_goals_live_vars(Goals),
 	{ goal_get_nonlocals(Goal, Vars) },
-	mode_info_add_live_vars(Vars),
-	mode_info_add_goals_live_vars(Goals).
+	mode_info_add_live_vars(Vars).
 
 mode_info_remove_goals_live_vars([]) --> [].
 mode_info_remove_goals_live_vars([Goal | Goals]) -->
