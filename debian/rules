@@ -11,7 +11,7 @@ package=mercury
 
 MERCURY_DOCS = 	BUGS HISTORY LIMITATIONS NEWS README RELEASE_NOTES \
 		README.Linux WORK_IN_PROGRESS
-MERCURY_MANS =	doc/c2init.1 doc/mmc.1 doc/mgnuc.1 doc/ml.1 doc/msc.1 \
+MERCURY_MANS =	doc/c2init.1 doc/mmc.1 doc/mgnuc.1 doc/ml.1 \
 		doc/mprof.1 
 DEBIAN_DOCS =	debian/README.debian debian/copyright 
 
