@@ -22,45 +22,41 @@
 #include "mercury_conf.h"
 
 /*
-** This section defines the relevant types from C9X's
-** <stdint.h> header, either by including that header,
-** or if necessary by emulating it ourselves, with some
-** help from the autoconfiguration script.
+** This section defines types similar to C9X's <stdint.h> header.
+** We do not use <stdint.h>, or the <inttypes.h> or <sys/types.h> files
+** that substitute for it on some systems because (a) some such files
+** do not define the types we need, and (b) some such files include
+** inline function definitions. The latter is a problem because we want to
+** reserve some real machine registers for Mercury abstract machine registers.
+** To be effective, the definitions of these global register variables
+** must precede all function definitions, and we want to put their
+** definitions after mercury_types.h.
 */
 
-#ifdef HAVE_STDINT
-  #include <stdint.h>
-#endif
-#ifdef HAVE_INTTYPES
-  #include <inttypes.h>
-#endif
-#ifdef HAVE_SYS_TYPES
-  #include <sys/types.h>
+typedef unsigned MR_WORD_TYPE		MR_uintptr_t;
+typedef MR_WORD_TYPE			MR_intptr_t;
+
+#ifdef	MR_INT_LEAST64_TYPE
+typedef unsigned MR_INT_LEAST64_TYPE	MR_uint_least64_t;
+typedef MR_INT_LEAST64_TYPE		MR_int_least64_t;
 #endif
 
-#ifndef MR_HAVE_INTPTR_T
-  typedef unsigned MR_WORD_TYPE		uintptr_t;
-  typedef MR_WORD_TYPE			intptr_t;
-#endif
-
-#ifndef MR_HAVE_INT_LEASTN_T
-  typedef unsigned MR_INT_LEAST32_TYPE	uint_least32_t;
-  typedef MR_INT_LEAST32_TYPE		int_least32_t;
-  typedef unsigned MR_INT_LEAST16_TYPE	uint_least16_t;
-  typedef MR_INT_LEAST16_TYPE		int_least16_t;
-  typedef unsigned char			uint_least8_t;
-  typedef signed char			int_least8_t;
-#endif
+typedef unsigned MR_INT_LEAST32_TYPE	MR_uint_least32_t;
+typedef MR_INT_LEAST32_TYPE		MR_int_least32_t;
+typedef unsigned MR_INT_LEAST16_TYPE	MR_uint_least16_t;
+typedef MR_INT_LEAST16_TYPE		MR_int_least16_t;
+typedef unsigned char			MR_uint_least8_t;
+typedef signed char			MR_int_least8_t;
 
 /* 
 ** This section defines the basic types that we use.
 ** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*).
 */
 
-typedef	uintptr_t		Word;
-typedef	intptr_t		Integer;
-typedef	uintptr_t		Unsigned;
-typedef	intptr_t		Bool;
+typedef	MR_uintptr_t		Word;
+typedef	MR_intptr_t		Integer;
+typedef	MR_uintptr_t		Unsigned;
+typedef	MR_intptr_t		Bool;
 
 /*
 ** `Code *' is used as a generic pointer-to-label type that can point

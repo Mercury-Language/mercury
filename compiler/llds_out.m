@@ -2367,12 +2367,12 @@ llds_out__rval_type_as_arg(Rval, ArgType) -->
 
 :- pred output_llds_type(llds_type::in, io__state::di, io__state::uo) is det.
 
-output_llds_type(int_least8)   --> io__write_string("int_least8_t").
-output_llds_type(uint_least8)  --> io__write_string("uint_least8_t").
-output_llds_type(int_least16)  --> io__write_string("int_least16_t").
-output_llds_type(uint_least16) --> io__write_string("uint_least16_t").
-output_llds_type(int_least32)  --> io__write_string("int_least32_t").
-output_llds_type(uint_least32) --> io__write_string("uint_least32_t").
+output_llds_type(int_least8)   --> io__write_string("MR_int_least8_t").
+output_llds_type(uint_least8)  --> io__write_string("MR_uint_least8_t").
+output_llds_type(int_least16)  --> io__write_string("MR_int_least16_t").
+output_llds_type(uint_least16) --> io__write_string("MR_uint_least16_t").
+output_llds_type(int_least32)  --> io__write_string("MR_int_least32_t").
+output_llds_type(uint_least32) --> io__write_string("MR_uint_least32_t").
 output_llds_type(bool)         --> io__write_string("Integer").
 output_llds_type(integer)      --> io__write_string("Integer").
 output_llds_type(unsigned)     --> io__write_string("Unsigned").

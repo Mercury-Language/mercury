@@ -675,262 +675,197 @@ else
 	fi
 fi
 #-----------------------------------------------------------------------------#
-AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
-AC_CHECK_HEADER(inttypes.h, HAVE_INTTYPES_H=1)
-AC_CHECK_HEADER(stdint.h, HAVE_STDINT_H=1)
+AC_MSG_CHECKING(for an integer type with the same size as a pointer)
+AC_CACHE_VAL(mercury_cv_word_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	int main() {
+		FILE *fp;
 
-# On some systems, e.g. SGI IRIX 5.2, you can include
-# <inttypes.h>, or <sys/types.h>, but not both!
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
 
-if test "$HAVE_INTTYPES_H" = 1 && test "$HAVE_SYS_TYPES_H" = 1; then
-	AC_CACHE_VAL(mercury_cv_inttypes_compat,
-	AC_MSG_CHECKING(whether inttypes.h is compatible with sys/types.h)
-	AC_TRY_COMPILE([
-		#include <inttypes.h>
-		#include <sys/types.h>
-	],
-	[],
-	[mercury_cv_inttypes_compat=yes], [mercury_cv_inttypes_compat=no]))
-	AC_MSG_RESULT($mercury_cv_inttypes_compat)
+		if (sizeof(int) == sizeof(void *))
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
 
-	# If <inttypes.h> is not compatible with <sys/types.h>, then
-	# don't use it.
-	if test "$mercury_cv_inttypes_compat" = no; then
-		HAVE_INTTYPES_H=0
-	fi
-fi
+		if (sizeof(long) == sizeof(void *))
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
 
-if test "$HAVE_SYS_TYPES_H" = 1; then
-	AC_DEFINE(HAVE_SYS_TYPES)
-fi
-if test "$HAVE_INTTYPES_H" = 1; then
-	AC_DEFINE(HAVE_INTTYPES)
-fi
-if test "$HAVE_STDINT_H" = 1; then
-	AC_DEFINE(HAVE_STDINT)
-fi
-
-#-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for intptr_t)
-AC_CACHE_VAL(mercury_cv_have_intptr_t,
-	AC_TRY_COMPILE([
-		#ifdef HAVE_STDINT
-		  #include <stdint.h>
-		#endif
-		#ifdef HAVE_INTTYPES
-		  #include <inttypes.h>
-		#endif
-		#ifdef HAVE_SYS_TYPES
-		  #include <sys/types.h>
-		#endif
-	], [
-		changequote(<<,>>) 
-
-		/* test the existence of the types */
-		intptr_t foo;
-		uintptr_t bar;
-
-		/* check that they have the right size */
-		#define ASSERTION \
-			(sizeof(intptr_t) == sizeof(void *) && \
-			 sizeof(uintptr_t) == sizeof(void *))
-
-		/* this forces a compile error if ASSERTION is false */
-		int array[ASSERTION ? 1 : -1];
-
-		changequote([,]) 
-	],
-	[mercury_cv_have_intptr_t=yes],
-	[mercury_cv_have_intptr_t=no])
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
 )
-AC_MSG_RESULT($mercury_cv_have_intptr_t)
-if test "$mercury_cv_have_intptr_t" = yes; then
-	AC_DEFINE(MR_HAVE_INTPTR_T)
+if test "$mercury_cv_word_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(long long) == sizeof(void *))
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
 fi
+AC_MSG_RESULT($mercury_cv_word_type)
+AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
+MR_WORD_TYPE=$mercury_cv_word_type
+AC_SUBST(MR_WORD_TYPE)
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for int_leastN_t)
-AC_CACHE_VAL(mercury_cv_have_int_leastN_t,
-	AC_TRY_COMPILE([
-		#ifdef HAVE_STDINT
-		  #include <stdint.h>
-		#endif
-		#ifdef HAVE_INTTYPES
-		  #include <inttypes.h>
-		#endif
-		#ifdef HAVE_SYS_TYPES
-		  #include <sys/types.h>
-		#endif
-		#include <limits.h> /* for CHAR_BIT */
-	], [
-		changequote(<<,>>) 
+AC_MSG_CHECKING(for an integer type of at least 64 bits)
+AC_CACHE_VAL(mercury_cv_int_least64_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
 
-		/* test the existence of the types */
-		int_least8_t foo8;
-		uint_least8_t bar8;
-		int_least16_t foo16;
-		uint_least16_t bar16;
-		int_least32_t foo32;
-		uint_least32_t bar32;
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
 
-		/* check that they have the right size */
-		#define ASSERTION \
-			(sizeof(int_least8_t) * CHAR_BIT >= 8 && \
-			 sizeof(uint_least8_t) * CHAR_BIT >= 8 && \
-			 sizeof(int_least16_t) * CHAR_BIT >= 16 && \
-			 sizeof(uint_least16_t) * CHAR_BIT >= 16 && \
-			 sizeof(int_least32_t) * CHAR_BIT >= 32 && \
-			 sizeof(uint_least32_t) * CHAR_BIT >= 32)
+		if (sizeof(int) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
 
-		/* this forces a compile error if ASSERTION is false */
-		int array[ASSERTION ? 1 : -1];
+		if (sizeof(long) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
 
-		changequote([,]) 
-	],
-	[mercury_cv_have_int_leastN_t=yes],
-	[mercury_cv_have_int_leastN_t=no])
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least64_type=`cat conftest.tags`],
+	[mercury_cv_int_least64_type=unknown],
+	[mercury_cv_int_least64_type=unknown])
 )
-AC_MSG_RESULT($mercury_cv_have_int_leastN_t)
-if test "$mercury_cv_have_int_leastN_t" = yes; then
-	AC_DEFINE(MR_HAVE_INT_LEASTN_T)
+if test "$mercury_cv_int_least64_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(long long) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least64_type=`cat conftest.tags`],
+	[mercury_cv_int_least64_type=unknown],
+	[mercury_cv_int_least64_type=unknown])
+fi
+AC_MSG_RESULT($mercury_cv_int_least64_type)
+if test "$mercury_cv_int_least64_type" != unknown; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST64_TYPE, $mercury_cv_int_least64_type)
+	MR_INT_LEAST64_TYPE=$mercury_cv_int_least64_type
+	AC_SUBST(MR_INT_LEAST64_TYPE)
 fi
 #-----------------------------------------------------------------------------#
-if test "$mercury_cv_have_intptr_t" = yes; then
-	true
-else
-	AC_MSG_CHECKING(for an integer type with the same size as a pointer)
-	AC_CACHE_VAL(mercury_cv_word_type,
-		AC_TRY_RUN([
-		#include <stdio.h>
-		int main() {
-			FILE *fp;
+AC_MSG_CHECKING(for an integer type of at least 32 bits)
+AC_CACHE_VAL(mercury_cv_int_least32_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
-
-			if (sizeof(int) == sizeof(void *))
-			{
-				fprintf(fp, "int\n");
-				exit(0);
-			}
-
-			if (sizeof(long) == sizeof(void *))
-			{
-				fprintf(fp, "long\n");
-				exit(0);
-			}
-
-			fprintf(fp, "unknown\n");
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
 			exit(1);
-		}],
-		[mercury_cv_word_type=`cat conftest.tags`],
-		[mercury_cv_word_type=unknown],
-		[mercury_cv_word_type=unknown])
-	)
-	if test "$mercury_cv_word_type" = unknown; then
-		AC_TRY_RUN([
-		#include <stdio.h>
-		int main() {
-			FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
+		if (sizeof(int) * CHAR_BIT >= 32)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
 
-			if (sizeof(long long) == sizeof(void *))
-			{
-				fprintf(fp, "long long\n");
-				exit(0);
-			}
+		if (sizeof(long) * CHAR_BIT >= 32)
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
 
-			fprintf(fp, "unknown\n");
-			exit(1);
-		}],
-		[mercury_cv_word_type=`cat conftest.tags`],
-		[mercury_cv_word_type=unknown],
-		[mercury_cv_word_type=unknown])
-	fi
-	AC_MSG_RESULT($mercury_cv_word_type)
-	AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
-	MR_WORD_TYPE=$mercury_cv_word_type
-	AC_SUBST(MR_WORD_TYPE)
-fi # ! have_int_ptr_t
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least32_type=`cat conftest.tags`],
+	[mercury_cv_int_least32_type=unknown],
+	[mercury_cv_int_least32_type=unknown])
+)
+AC_MSG_RESULT($mercury_cv_int_least32_type)
+AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
+MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
+AC_SUBST(MR_INT_LEAST32_TYPE)
 #-----------------------------------------------------------------------------#
-if test "$mercury_cv_have_int_leastN_t" = yes; then
-	true
-else
-	AC_MSG_CHECKING(for an integer type of at least 32 bits)
-	AC_CACHE_VAL(mercury_cv_int_least32_type,
-		AC_TRY_RUN([
-		#include <stdio.h>
-		#include <limits.h>
-		int main() {
-			FILE *fp;
+AC_MSG_CHECKING(for an integer type of at least 16 bits)
+AC_CACHE_VAL(mercury_cv_int_least16_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
-
-			if (sizeof(int) * CHAR_BIT >= 32)
-			{
-				fprintf(fp, "int\n");
-				exit(0);
-			}
-
-			if (sizeof(long) * CHAR_BIT >= 32)
-			{
-				fprintf(fp, "long\n");
-				exit(0);
-			}
-
-			fprintf(fp, "unknown\n");
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
 			exit(1);
-		}],
-		[mercury_cv_int_least32_type=`cat conftest.tags`],
-		[mercury_cv_int_least32_type=unknown],
-		[mercury_cv_int_least32_type=unknown])
-	)
-	AC_MSG_RESULT($mercury_cv_int_least32_type)
-	AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
-	MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
-	AC_SUBST(MR_INT_LEAST32_TYPE)
-#-----------------------------------------------------------------------------#
-	AC_MSG_CHECKING(for an integer type of at least 16 bits)
-	AC_CACHE_VAL(mercury_cv_int_least16_type,
-		AC_TRY_RUN([
-		#include <stdio.h>
-		#include <limits.h>
-		int main() {
-			FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
+		if (sizeof(short) * CHAR_BIT >= 16)
+		{
+			fprintf(fp, "short\n");
+			exit(0);
+		}
 
-			if (sizeof(short) * CHAR_BIT >= 16)
-			{
-				fprintf(fp, "short\n");
-				exit(0);
-			}
+		if (sizeof(int) * CHAR_BIT >= 16)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
 
-			if (sizeof(int) * CHAR_BIT >= 16)
-			{
-				fprintf(fp, "int\n");
-				exit(0);
-			}
-
-			fprintf(fp, "unknown\n");
-			exit(1);
-		}],
-		[mercury_cv_int_least16_type=`cat conftest.tags`],
-		[mercury_cv_int_least16_type=unknown],
-		[mercury_cv_int_least16_type=unknown])
-	)
-	AC_MSG_RESULT($mercury_cv_int_least16_type)
-	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
-	MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
-	AC_SUBST(MR_INT_LEAST16_TYPE)
-fi # ! have_int_leastN_t
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least16_type=`cat conftest.tags`],
+	[mercury_cv_int_least16_type=unknown],
+	[mercury_cv_int_least16_type=unknown])
+)
+AC_MSG_RESULT($mercury_cv_int_least16_type)
+AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
+MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
+AC_SUBST(MR_INT_LEAST16_TYPE)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,

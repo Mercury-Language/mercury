@@ -15,6 +15,17 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+#define	uintptr_t		MR_uintptr_t
+#define	intptr_t		MR_intptr_t
+#define	uint_least64_t		MR_uint_least64_t
+#define	int_least64_t		MR_int_least64_t
+#define	uint_least32_t		MR_uint_least32_t
+#define	int_least32_t		MR_int_least32_t
+#define	uint_least16_t		MR_uint_least16_t
+#define	int_least16_t		MR_int_least16_t
+#define	uint_least8_t		MR_uint_least8_t
+#define	int_least8_t		MR_int_least8_t
+
 #ifndef	MR_NO_BACKWARDS_COMPAT
 
 /*

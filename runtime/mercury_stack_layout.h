@@ -42,7 +42,7 @@ typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
 ** that we do not set the 1 bit unless we also set the 2 bit.
 */
 
-typedef	int_least16_t	 MR_Determinism;
+typedef	MR_int_least16_t	MR_Determinism;
 
 #define	MR_DETISM_DET		6
 #define	MR_DETISM_SEMI		2
@@ -70,10 +70,11 @@ typedef	int_least16_t	 MR_Determinism;
 */
 
 /*
-** MR_Long_Lval is a uint_least32_t which describes an location. This includes
-** lvals such as stack slots, general registers, and special registers
-** such as succip, hp, etc, as well as locations whose address is given
-** as a typeinfo inside the type class info structure pointed to by an lval.
+** MR_Long_Lval is a MR_uint_least32_t which describes an location.
+** This includes lvals such as stack slots, general registers, and special
+** registers such as succip, hp, etc, as well as locations whose address is
+** given as a typeinfo inside the type class info structure pointed to by an
+** lval.
 **
 ** What kind of location an MR_Long_Lval refers to is encoded using
 ** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_Lval_Type describes
@@ -104,7 +105,7 @@ typedef	int_least16_t	 MR_Determinism;
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef uint_least32_t	MR_Long_Lval;
+typedef MR_uint_least32_t	MR_Long_Lval;
 
 typedef enum {
 	MR_LONG_LVAL_TYPE_R,
@@ -149,9 +150,9 @@ typedef enum {
 	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
 /*
-** MR_Short_Lval is a uint_least8_t which describes an location. This includes
-** lvals such as stack slots and general registers that have small numbers,
-** and special registers such as succip, hp, etc.
+** MR_Short_Lval is a MR_uint_least8_t which describes an location. This
+** includes lvals such as stack slots and general registers that have small
+** numbers, and special registers such as succip, hp, etc.
 **
 ** What kind of location an MR_Long_Lval refers to is encoded using
 ** a low tag with 2 bits; the type MR_Short_Lval_Type describes
@@ -168,7 +169,7 @@ typedef enum {
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef uint_least8_t	MR_Short_Lval;
+typedef MR_uint_least8_t	MR_Short_Lval;
 
 typedef enum {
 	MR_SHORT_LVAL_TYPE_R,
@@ -213,7 +214,7 @@ typedef enum {
 */
 
 typedef	struct MR_Type_Param_Locns_Struct {
-	uint_least32_t		MR_tp_param_count;
+	MR_uint_least32_t	MR_tp_param_count;
 	MR_Long_Lval		MR_tp_param_locns[MR_VARIABLE_SIZED];
 } MR_Type_Param_Locns;
 
@@ -230,8 +231,8 @@ typedef	struct MR_Type_Param_Locns_Struct {
 */
 
 typedef	struct MR_Var_Name_Struct {
-	uint_least16_t		MR_var_num;
-	uint_least16_t		MR_var_name_offset;
+	MR_uint_least16_t	MR_var_num;
+	MR_uint_least16_t	MR_var_name_offset;
 } MR_Var_Name;
 
 /*
@@ -265,11 +266,12 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 #define	MR_end_of_var_ptis(slvs)					    \
 		(&MR_var_pti((slvs), MR_all_desc_var_count(slvs)))
 #define	MR_long_desc_var_locn(slvs, i)					    \
-		(((uint_least32_t *) MR_end_of_var_ptis(slvs))[(i)])
+		(((MR_uint_least32_t *) MR_end_of_var_ptis(slvs))[(i)])
 #define	MR_end_of_long_desc_var_locns(slvs)				    \
 		(&MR_long_desc_var_locn((slvs), MR_long_desc_var_count(slvs)))
 #define	MR_short_desc_var_locn(slvs, i)					    \
-		(((uint_least8_t *) MR_end_of_long_desc_var_locns(slvs))[(i)])
+		(((MR_uint_least8_t *)					    \
+			MR_end_of_long_desc_var_locns(slvs))[(i)])
 
 #define	MR_name_if_present(module_layout, vars, i)			    \
 		(((vars)->MR_slvs_names == NULL) ? "" :			    \
@@ -351,7 +353,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
 	Code			*MR_sle_code_addr;
 	MR_Long_Lval		MR_sle_succip_locn;
-	int_least16_t		MR_sle_stack_slots;
+	MR_int_least16_t	MR_sle_stack_slots;
 	MR_Determinism		MR_sle_detism;
 
 	/* proc id group */
@@ -362,8 +364,8 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 				*MR_sle_call_label;
 	struct MR_Module_Layout_Struct
 				*MR_sle_module_layout;
-	int_least16_t		MR_sle_maybe_from_full;
-	int_least16_t		MR_sle_maybe_decl_debug;
+	MR_int_least16_t	MR_sle_maybe_from_full;
+	MR_int_least16_t	MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
