@@ -119,23 +119,32 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeId | TypeIds], TypeTable,
 type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 		ModuleName, ModuleInfo, TypeCtorGenInfo) :-
 	hlds_data__get_type_defn_status(TypeDefn, Status),
-	module_info_get_special_pred_map(ModuleInfo, SpecMap),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, special_preds, SpecialPreds),
+	(
+		SpecialPreds = yes,
+		module_info_get_special_pred_map(ModuleInfo, SpecMap),
 
-	map__lookup(SpecMap, unify - TypeId, UnifyPredId),
-	special_pred_mode_num(unify, UnifyProcInt),
-	proc_id_to_int(UnifyProcId, UnifyProcInt),
-	MaybeUnify = yes(proc(UnifyPredId, UnifyProcId)),
+		map__lookup(SpecMap, unify - TypeId, UnifyPredId),
+		special_pred_mode_num(unify, UnifyProcInt),
+		proc_id_to_int(UnifyProcId, UnifyProcInt),
+		MaybeUnify = yes(proc(UnifyPredId, UnifyProcId)),
 
-	map__lookup(SpecMap, index - TypeId, IndexPredId),
-	special_pred_mode_num(index, IndexProcInt),
-	proc_id_to_int(IndexProcId, IndexProcInt),
-	MaybeIndex = yes(proc(IndexPredId, IndexProcId)),
+		map__lookup(SpecMap, index - TypeId, IndexPredId),
+		special_pred_mode_num(index, IndexProcInt),
+		proc_id_to_int(IndexProcId, IndexProcInt),
+		MaybeIndex = yes(proc(IndexPredId, IndexProcId)),
 
-	map__lookup(SpecMap, compare - TypeId, ComparePredId),
-	special_pred_mode_num(compare, CompareProcInt),
-	proc_id_to_int(CompareProcId, CompareProcInt),
-	MaybeCompare = yes(proc(ComparePredId, CompareProcId)),
-
+		map__lookup(SpecMap, compare - TypeId, ComparePredId),
+		special_pred_mode_num(compare, CompareProcInt),
+		proc_id_to_int(CompareProcId, CompareProcInt),
+		MaybeCompare = yes(proc(ComparePredId, CompareProcId))
+	;
+		SpecialPreds = no,
+		MaybeUnify = no,
+		MaybeIndex = no,
+		MaybeCompare = no
+	),
 	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName,
 		TypeName, TypeArity, Status, TypeDefn,
 		MaybeUnify, MaybeIndex, MaybeCompare,

@@ -1794,25 +1794,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			{ Module2 = Module0 }
 		),
 		{ construct_qualified_term(Name, Args, Type) },
-		(
-			( 
-				{ Body = abstract_type }
-			;
-				{ Body = uu_type(_) }
-			;
-				{ type_id_has_hand_defined_rtti(TypeId) }
-			)
-		->
-			{ special_pred_list(SpecialPredIds) },
-			{ add_special_pred_decl_list(SpecialPredIds,
-					Module2, TVarSet, Type, TypeId,
-					Context, Status, Module3) }
-		;
-			{ special_pred_list(SpecialPredIds) },
-			{ add_special_pred_list(SpecialPredIds,
-					Module2, TVarSet, Type, TypeId,
-					Body, Context, Status, Module3) }
-		),
+		{ add_special_preds(Module2, TVarSet, Type, TypeId,
+			Body, Context, Status, Module3) },
 		{ module_info_set_types(Module3, Types, Module) },
 		( { Body = uu_type(_) } ->
 			io__stderr_stream(StdErr),
@@ -1941,21 +1924,6 @@ combine_status_abstract_imported(Status2, Status) :-
 		Status = abstract_imported
 	).
 
-:- pred add_special_preds(module_info, tvarset, type, type_id, 
-		hlds_type_body, prog_context, import_status, module_info).
-:- mode add_special_preds(in, in, in, in, in, in, in, out) is det.
-
-add_special_preds(Module0, TVarSet, Type, TypeId,
-			Body, Context, Status, Module) :-
-	special_pred_list(SpecialPredIds),
-	( Body = abstract_type ->
-		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
-				Type, TypeId, Context, Status, Module)
-	;
-		add_special_pred_list(SpecialPredIds, Module0, TVarSet, Type,
-				TypeId, Body, Context, Status, Module)
-	).
-	
 :- pred convert_type_defn(type_defn, globals,
 			sym_name, list(type_param), hlds_type_body).
 :- mode convert_type_defn(in, in, out, out, out) is det.
@@ -2758,6 +2726,29 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred add_special_preds(module_info, tvarset, type, type_id, 
+	hlds_type_body, prog_context, import_status, module_info).
+:- mode add_special_preds(in, in, in, in, in, in, in, out) is det.
+
+add_special_preds(Module0, TVarSet, Type, TypeId,
+			Body, Context, Status, Module) :-
+	special_pred_list(SpecialPredIds),
+	(
+		(
+			Body = abstract_type
+		;
+			Body = uu_type(_)
+		;
+			type_id_has_hand_defined_rtti(TypeId)
+		)
+	->
+		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
+			Type, TypeId, Context, Status, Module)
+	;
+		add_special_pred_list(SpecialPredIds, Module0, TVarSet,
+			Type, TypeId, Body, Context, Status, Module)
+	).
+
 :- pred add_special_pred_list(list(special_pred_id),
 			module_info, tvarset, type, type_id, hlds_type_body,
 			prog_context, import_status, module_info).
@@ -2776,7 +2767,27 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], Module0,
 			prog_context, import_status, module_info).
 :- mode add_special_pred(in, in, in, in, in, in, in, in, out) is det.
 
-add_special_pred(SpecialPredId,
+add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
+		Context, Status0, Module) :-
+	module_info_globals(Module0, Globals),
+	globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
+	( GenSpecialPreds = yes ->
+		add_special_pred_for_real(SpecialPredId, Module0, TVarSet,
+			Type, TypeId, TypeBody, Context, Status0, Module)
+	; SpecialPredId = unify ->
+		add_special_pred_for_real(SpecialPredId, Module0, TVarSet,
+			Type, TypeId, TypeBody, Context, pseudo_imported,
+			Module)
+	;
+		Module = Module0
+	).
+
+:- pred add_special_pred_for_real(special_pred_id,
+			module_info, tvarset, type, type_id, hlds_type_body,
+			prog_context, import_status, module_info).
+:- mode add_special_pred_for_real(in, in, in, in, in, in, in, in, out) is det.
+
+add_special_pred_for_real(SpecialPredId,
 		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status0,
 		Module) :-
 	adjust_special_pred_status(Status0, SpecialPredId, Status),
@@ -2784,7 +2795,7 @@ add_special_pred(SpecialPredId,
 	( map__contains(SpecialPredMap0, SpecialPredId - TypeId) ->
 		Module1 = Module0
 	;
-		add_special_pred_decl(SpecialPredId,
+		add_special_pred_decl_for_real(SpecialPredId,
 			Module0, TVarSet, Type, TypeId, Context, Status,
 			Module1)
 	),
@@ -2823,7 +2834,27 @@ add_special_pred_decl_list([SpecialPredId | SpecialPredIds], Module0,
 		import_status, module_info).
 :- mode add_special_pred_decl(in, in, in, in, in, in, in, out) is det.
 
-add_special_pred_decl(SpecialPredId,
+add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId,
+		Context, Status0, Module) :-
+	module_info_globals(Module0, Globals),
+	globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
+	( GenSpecialPreds = yes ->
+		add_special_pred_decl_for_real(SpecialPredId, Module0,
+			TVarSet, Type, TypeId, Context, Status0, Module)
+	; SpecialPredId = unify ->
+		add_special_pred_decl_for_real(SpecialPredId, Module0,
+			TVarSet, Type, TypeId, Context, pseudo_imported,
+			Module)
+	;
+		Module = Module0
+	).
+
+:- pred add_special_pred_decl_for_real(special_pred_id,
+		module_info, tvarset, type, type_id, prog_context,
+		import_status, module_info).
+:- mode add_special_pred_decl_for_real(in, in, in, in, in, in, in, out) is det.
+
+add_special_pred_decl_for_real(SpecialPredId,
 			Module0, TVarSet, Type, TypeId, Context, Status0,
 			Module) :-
 	module_info_name(Module0, ModuleName),
