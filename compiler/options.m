@@ -133,9 +133,11 @@
 		;	profiling		% profile_time + profile_calls
 		;	time_profiling		% profile_time + profile_calls
 		;	memory_profiling	% profime_mem + profile_calls
+		;	deep_profiling	% profile_time + profile_deep
 		;	profile_calls
 		;	profile_time
 		;	profile_memory
+		;	profile_deep
 		;	debug
 		;	stack_trace
 		;	require_tracing
@@ -494,9 +496,11 @@ option_defaults_2(compilation_model_option, [
 	profiling		-	bool_special,
 	time_profiling		-	special,
 	memory_profiling	-	special,
+	deep_profiling		-	special,
 	profile_calls		-	bool(no),
 	profile_time		-	bool(no),
 	profile_memory		-	bool(no),
+	profile_deep		-	bool(no),
 	debug			-	bool_special,
 	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
@@ -853,9 +857,11 @@ long_option("parallel",			parallel).
 long_option("profiling",		profiling).
 long_option("time-profiling",		time_profiling).
 long_option("memory-profiling",		memory_profiling).
+long_option("deep-profiling",		deep_profiling).
 long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
+long_option("profile-deep",		profile_deep).
 long_option("debug",			debug).
 % The following options are not allowed, because they're
 % not very useful and would probably only confuse people.
@@ -1090,15 +1096,23 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(Value), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(Value), OptionTable2),
-        map__set(OptionTable2, profile_memory, bool(no), OptionTable).
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(time_profiling, none, OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-        map__set(OptionTable2, profile_memory, bool(no), OptionTable).
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, profile_time, bool(no), OptionTable1),
 	map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-        map__set(OptionTable2, profile_memory, bool(yes), OptionTable).
+        map__set(OptionTable2, profile_memory, bool(yes), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(no), OptionTable).
+special_handler(deep_profiling, none, OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
+	map__set(OptionTable1, profile_calls, bool(no), OptionTable2),
+        map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
+        map__set(OptionTable3, profile_deep, bool(yes), OptionTable).
 special_handler(debug, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, stack_trace, bool(Value), OptionTable1),
 	map__set(OptionTable1, require_tracing, bool(Value), OptionTable).

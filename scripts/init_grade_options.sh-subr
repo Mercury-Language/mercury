@@ -20,6 +20,7 @@ gc_method=conservative
 profile_time=false
 profile_calls=false
 profile_memory=false
+profile_deep=false
 use_trail=false
 use_minimal_model=false
 stack_trace=false

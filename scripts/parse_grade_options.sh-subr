@@ -67,16 +67,25 @@
 		profile_time=true
 		profile_calls=true
 		profile_memory=false
+		profile_deep=false
 		;;
 	--memory-profiling)
 		profile_time=false
 		profile_calls=true
 		profile_memory=true
+		profile_deep=false
+		;;
+	--deep-profiling)
+		profile_time=true
+		profile_calls=false
+		profile_memory=false
+		profile_deep=true
 		;;
 	-p-|--no-profiling)
 		profile_time=false
 		profile_calls=false
 		profile_memory=false
+		profile_deep=false
 		;;
 	--profile-time)
 		profile_time=true ;;
@@ -90,6 +99,10 @@
 		profile_memory=true ;;
 	--no-profile-memory)
 		profile_memory=false ;;
+	--profile-deep)
+		profile_deep=true ;;
+	--no-profile-deep)
+		profile_deep=false ;;
 
 	--use-trail)
 		use_trail=true ;;
@@ -158,26 +171,37 @@
 				profile_time=false
 				profile_calls=true
 				profile_memory=true
+				profile_deep=false
 				;;
 			prof)
 				profile_time=true
 				profile_calls=true
 				profile_memory=false
+				profile_deep=false
 				;;
 			proftime)	
 				profile_time=true
 				profile_calls=false
 				profile_memory=false
+				profile_deep=false
 				;;
 			profcalls)	
 				profile_time=false
 				profile_calls=true
 				profile_memory=false
+				profile_deep=false
 				;;
 			profall)
 				profile_time=true
 				profile_calls=true
 				profile_memory=true
+				profile_deep=false
+				;;
+			profdeep)
+				profile_time=true
+				profile_calls=false
+				profile_memory=false
+				profile_deep=true
 				;;
 			agc)	gc_method=accurate
 				;;

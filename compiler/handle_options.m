@@ -356,6 +356,9 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 		[]
 	),
 
+	% Deep profiling requires `procid' stack layouts
+	option_neg_implies(profile_deep, procid_stack_layout, bool(yes)),
+
 	% --no-reorder-conj implies --no-deforestation.
 	option_neg_implies(reorder_conj, deforestation, bool(no)),
 
@@ -671,15 +674,23 @@ grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
 
 	% Profiling components
 grade_component_table("prof", prof, [profile_time - bool(yes),
-	profile_calls - bool(yes), profile_memory - bool(no)]).
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(no)]).
+grade_component_table("profdeep", prof, [profile_time - bool(yes),
+	profile_deep - bool(yes), profile_calls - bool(no),
+	profile_memory - bool(no)]).
 grade_component_table("proftime", prof, [profile_time - bool(yes),
-	profile_calls - bool(no), profile_memory - bool(no)]).
+	profile_deep - bool(no), profile_calls - bool(no),
+	profile_memory - bool(no)]).
 grade_component_table("profcalls", prof, [profile_time - bool(no),
-	profile_calls - bool(yes), profile_memory - bool(no)]).
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(no)]).
 grade_component_table("memprof", prof, [profile_time - bool(no),
-	profile_calls - bool(yes), profile_memory - bool(yes)]).
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(yes)]).
 grade_component_table("profall", prof, [profile_time - bool(yes),
-	profile_calls - bool(yes), profile_memory - bool(yes)]).
+	profile_deep - bool(no), profile_calls - bool(yes),
+	profile_memory - bool(yes)]).
 
 	% Debugging/Tracing components
 grade_component_table("debug", trace,
@@ -716,6 +727,7 @@ grade_start_values(gcc_global_registers - bool(no)).
 grade_start_values(gc - string("none")).
 grade_start_values(parallel - bool(no)).
 grade_start_values(pic_reg - bool(no)).
+grade_start_values(profile_deep - bool(no)).
 grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
