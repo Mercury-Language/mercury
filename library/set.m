@@ -129,6 +129,13 @@
 :- pred set__intersect(set(T), set(T), set(T)).
 :- mode set__intersect(in, in, out).
 
+	% `set__difference(SetA, SetB, Set)' is true iff `Set' is the
+	% set containing all the elements of `SetA' except those that
+	% occur in `SetB'
+
+:- pred set__difference(set(T), set(T), set(T)).
+:- mode set__difference(in, in, out) is det.
+
 %--------------------------------------------------------------------------%
 
 :- implementation.
@@ -223,5 +230,18 @@ set__intersect_2([E|S0], S1, S2, S) :-
 		S3 = S2
 	),
 	set__intersect_2(S0, S1, S3, S).
+
+%--------------------------------------------------------------------------%
+
+set__difference(A, B, C) :-
+	set__difference_2(B, A, C).
+
+:- pred set__difference_2(set(T), set(T), set(T)).
+:- mode set__difference_2(in, in, out) is det.
+
+set__difference_2([], C, C).
+set__difference_2([E|Es], A, C) :-
+	set__remove(A, E, B),
+	set__difference_2(Es, B, C).
 
 %--------------------------------------------------------------------------%
