@@ -2033,14 +2033,16 @@ check_warn_too_much_overloading(TypeCheckInfo0, TypeCheckInfo) :-
 :- mode checkpoint(in, typecheck_info_di, typecheck_info_uo) is det.
 
 checkpoint(Msg, T0, T) :-
-	typecheck_info_get_io_state(T0, I0),
-	globals__io_lookup_bool_option(debug_types, DoCheckPoint, I0, I1),
+	typecheck_info_get_module_info(T0, ModuleInfo),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, debug_types, DoCheckPoint),
 	( DoCheckPoint = yes ->
-		checkpoint_2(Msg, T0, I1, I)
+		typecheck_info_get_io_state(T0, I0),
+		checkpoint_2(Msg, T0, I0, I),
+		typecheck_info_set_io_state(T0, I, T)
 	;
-		I = I1
-	),
-	typecheck_info_set_io_state(T0, I, T).
+		T = T0
+	).
 
 :- pred checkpoint_2(string, typecheck_info, io__state, io__state).
 :- mode checkpoint_2(in, typecheck_info_no_io, di, uo) is det.
