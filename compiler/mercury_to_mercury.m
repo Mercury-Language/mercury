@@ -38,6 +38,9 @@
 :- pred mercury_output_inst_list(list(inst), varset, io__state, io__state).
 :- mode mercury_output_inst_list(in, in, di, uo) is det.
 
+:- pred mercury_output_mode(mode, varset, io__state, io__state).
+:- mode mercury_output_mode(in, in, di, uo) is det.
+
 :- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
 :- mode mercury_output_mode_list(in, in, di, uo) is det.
 
@@ -370,9 +373,6 @@ mercury_output_mode_list([Mode | Modes], VarSet) -->
 		io__write_string(", "),
 		mercury_output_mode_list(Modes, VarSet)
 	).
-
-:- pred mercury_output_mode(mode, varset, io__state, io__state).
-:- mode mercury_output_mode(in, in, di, uo) is det.
 
 mercury_output_mode((InstA -> InstB), VarSet) -->
 	io__write_string("("),

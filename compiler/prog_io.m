@@ -321,6 +321,19 @@
 :- pred parse_goal(term, varset, goal, varset).
 :- mode parse_goal(in, in, out, out) is det.
 
+	% parse_lambda_args/3 converts the first argument to a lambda/2
+	% expression into a list of variables and their corresponding modes.
+	% The valid syntaxes are
+	%
+	% 1.	[Var1::Mode1, ..., VarN::ModeN]
+	% 2.	Var::Mode 		(if there is only one variable,
+	%				the brackets are optional)
+	% 3.	[Var1, ..., VarN]	(mode defaults to `in')
+	% 4.	Var
+
+:- pred parse_lambda_args(term, list(var), list(mode)).
+:- mode parse_lambda_args(in, out, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -857,6 +870,35 @@ parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 	;
 		Vars = [],
 		parse_goal(A0, VarSet0, A, VarSet)
+	).
+
+%-----------------------------------------------------------------------------%
+
+parse_lambda_args(Term, Vars, Modes) :-
+	( Term = term__functor(term__atom("."), [Head, Tail], _Context) ->
+		parse_lambda_arg(Head, Var, Mode),
+		Vars = [Var | Vars1],
+		Modes = [Mode | Modes1],
+		parse_lambda_args(Tail, Vars1, Modes1)
+	; Term = term__functor(term__atom("[]"), [], _) ->
+		Vars = [],
+		Modes = []
+	;
+		Vars = [Var],
+		Modes = [Mode],
+		parse_lambda_arg(Term, Var, Mode)
+	).
+
+:- pred parse_lambda_arg(term, var, mode).
+:- mode parse_lambda_arg(in, out, out) is semidet.
+
+parse_lambda_arg(Term, Var, Mode) :-
+	( Term = term__functor(term__atom("::"), [VarTerm, ModeTerm], _) ->
+		VarTerm = term__variable(Var),
+		convert_mode(ModeTerm, Mode)
+	;
+		Term = term__variable(Var),
+		Mode = user_defined_mode(unqualified("in"), [])
 	).
 
 %-----------------------------------------------------------------------------%

@@ -611,10 +611,10 @@ hlds_out__write_unify_rhs(var(Var), _, VarSet, _) -->
 	mercury_output_var(Var, VarSet).
 hlds_out__write_unify_rhs(functor(Functor, ArgVars), _, VarSet, _) -->
 	hlds_out__write_functor(Functor, ArgVars, VarSet).
-hlds_out__write_unify_rhs(lambda_goal(Vars, Goal), ModuleInfo, VarSet, Indent)
-		-->
+hlds_out__write_unify_rhs(lambda_goal(Vars, Modes, Goal),
+			ModuleInfo, VarSet, Indent) -->
 	io__write_string("lambda ["),
-	mercury_output_vars(Vars, VarSet),
+	hlds_out__write_var_modes(Vars, Modes, VarSet),
 	io__write_string("] (\n"),
 	{ Indent1 is Indent + 1 },
 	hlds_out__write_indent(Indent1),
@@ -627,6 +627,26 @@ hlds_out__write_functor(Functor, ArgVars, VarSet) -->
 	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
 	{ Term = term__functor(Functor, ArgTerms, Context) },
 	mercury_output_term(Term, VarSet).
+
+:- pred hlds_out__write_var_modes(list(var), list(mode), varset,
+					io__state, io__state).
+:- mode hlds_out__write_var_modes(in, in, in, di, uo) is det.
+
+hlds_out__write_var_modes([], [], _) --> [].
+hlds_out__write_var_modes([Var|Vars], [Mode|Modes], VarSet) -->
+	mercury_output_var(Var, VarSet),
+	io__write_string("::"),
+	mercury_output_mode(Mode, VarSet),
+	( { Vars \= [] } ->
+		io__write_string(", ")
+	;
+		[]
+	),
+	hlds_out__write_var_modes(Vars, Modes, VarSet).
+hlds_out__write_var_modes([], [_|_], _) -->
+	{ error("hlds_out__write_var_modes: length mis-match") }.
+hlds_out__write_var_modes([_|_], [], _) -->
+	{ error("hlds_out__write_var_modes: length mis-match") }.
 
 :- pred hlds_out__write_conj(list(hlds__goal), module_info, varset, int,
 				io__state, io__state).

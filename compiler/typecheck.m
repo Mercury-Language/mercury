@@ -825,7 +825,8 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 		type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
-		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet,
+						TypeInfo)
 	).
 
 	% Given a type assignment set and a variable id,
@@ -1079,11 +1080,10 @@ typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
 typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	typecheck_unify_var_functor(X, F, As).
-typecheck_unification(_X, lambda_goal(Vars, Goal0), lambda_goal(Vars, Goal)) -->
-	typecheck_goal(Goal0, Goal),
-	{ error("type checking of lambda terms not implemented") }.
-	% LambdaType = term__functor("pred", VarTypes, _)
- 	% typecheck_var_has_type(X, LambdaType).
+typecheck_unification(X, lambda_goal(Vars, Modes, Goal0),
+			 lambda_goal(Vars, Modes, Goal)) -->
+ 	typecheck_lambda_var_has_type(X, Vars),
+	typecheck_goal(Goal0, Goal).
 
 :- pred typecheck_unify_var_var(var, var, type_info, type_info).
 :- mode typecheck_unify_var_var(in, in, type_info_di, type_info_uo) is det.
@@ -1418,6 +1418,79 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	;
 		error("get_cons_stuff: type_assign_rename_apart failed")
 	).
+	
+%-----------------------------------------------------------------------------%
+
+	% typecheck_lambda_var_has_type(Var, ArgVars, ...)
+	% checks that `Var' has type `pred(T1, T2, ...)' where
+	% T1, T2, ... are the types of the `ArgVars'.
+
+:- pred typecheck_lambda_var_has_type(var, list(var), type_info, type_info).
+:- mode typecheck_lambda_var_has_type(in, in, type_info_di, type_info_uo)
+	is det.
+
+typecheck_lambda_var_has_type(Var, ArgVars, TypeInfo0, TypeInfo) :-
+	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+	type_info_get_head_type_params(TypeInfo0, HeadTypeParams),
+	typecheck_lambda_var_has_type_2(TypeAssignSet0, HeadTypeParams,
+			Var, ArgVars, [], TypeAssignSet),
+	(
+		TypeAssignSet = [],
+		TypeAssignSet0 \= []
+	->
+		type_info_get_io_state(TypeInfo0, IOState0),
+		report_error_lambda_var(TypeInfo0, Var, ArgVars, TypeAssignSet0,
+					IOState0, IOState),
+		type_info_set_io_state(TypeInfo0, IOState, TypeInfo1),
+		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
+	;
+		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet,
+						TypeInfo)
+	).
+
+:- pred typecheck_lambda_var_has_type_2(type_assign_set, headtypes,
+				var, list(var),
+				type_assign_set, type_assign_set).
+:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, out) is det.
+
+typecheck_lambda_var_has_type_2([], _, _, _) --> [].
+typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0],
+				HeadTypeParams, Var, ArgVars) -->
+	{ type_assign_get_types_of_vars(ArgVars, TypeAssign0, ArgVarTypes,
+					TypeAssign1) },
+	{ term__context_init(Context) },
+	{ LambdaType = term__functor(term__atom("pred"), ArgVarTypes,
+					Context) },
+	type_assign_var_has_type(TypeAssign1, HeadTypeParams, Var, LambdaType),
+	typecheck_lambda_var_has_type_2(TypeAssignSet0, HeadTypeParams,
+					Var, ArgVars).
+
+:- pred type_assign_get_types_of_vars(list(var), type_assign, list(type),
+					type_assign).
+:- mode type_assign_get_types_of_vars(in, in, out, out) is det.
+
+type_assign_get_types_of_vars([], TypeAssign, [], TypeAssign).
+type_assign_get_types_of_vars([Var|Vars], TypeAssign0,
+				[Type|Types], TypeAssign) :-
+	% check whether the variable already has a type
+	type_assign_get_var_types(TypeAssign0, VarTypes0),
+	( map__search(VarTypes0, Var, VarType) ->
+		% if so, use that type
+		Type = VarType,
+		TypeAssign2 = TypeAssign0
+	;
+		% otherwise, introduce a fresh type variable to
+		% use as the type of that variable
+		type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
+		varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
+		type_assign_set_typevarset(TypeAssign0, TypeVarSet,
+						TypeAssign1),
+		Type = term__variable(TypeVar),
+		map__det_insert(VarTypes0, Var, Type, VarTypes1),
+		type_assign_set_var_types(TypeAssign1, VarTypes1, TypeAssign2)
+	),
+	% recursively process the rest of the variables.
+	type_assign_get_types_of_vars(Vars, TypeAssign2, Types, TypeAssign).
 
 %-----------------------------------------------------------------------------%
 
@@ -2122,6 +2195,51 @@ report_error_functor_type(TypeInfo, Var, ConsDefnList, Functor, Arity,
 	write_functor_name(Functor, Arity),
 	write_type_of_functor(Functor, Arity, Context, ConsDefnList),
 	io__write_string(".\n"),
+
+	write_type_assign_set_msg(TypeAssignSet, VarSet).
+
+:- pred report_error_lambda_var(type_info, var, list(var), type_assign_set,
+					io__state, io__state).
+:- mode report_error_lambda_var(type_info_no_io, in, in, in, di, uo) is det.
+
+report_error_lambda_var(TypeInfo, Var, ArgVars, TypeAssignSet) -->
+
+	{ type_info_get_context(TypeInfo, Context) },
+	{ type_info_get_varset(TypeInfo, VarSet) },
+	{ type_info_get_unify_context(TypeInfo, UnifyContext) },
+
+	write_context_and_pred_id(TypeInfo),
+	hlds_out__write_unify_context(UnifyContext, Context),
+
+	prog_out__write_context(Context),
+	io__write_string("  type error in unification of "),
+	write_argument_name(VarSet, Var),
+	io__write_string("\n"),
+	prog_out__write_context(Context),
+	io__write_string("  and `lambda ["),
+	mercury_output_vars(ArgVars, VarSet),
+	io__write_string("] ...':\n"),
+
+	prog_out__write_context(Context),
+	io__write_string("  "),
+	write_argument_name(VarSet, Var),
+	write_type_of_var(TypeInfo, TypeAssignSet, Var),
+	io__write_string(",\n"),
+
+	prog_out__write_context(Context),
+	io__write_string("  lambda expression has type `pred"),
+	( { ArgVars = [] } ->
+		[]
+	; { ArgVars = [_] } ->
+		io__write_string("(_)")
+	; { ArgVars = [_, _] } ->
+		io__write_string("(_, _)")
+	; { ArgVars = [_, _, _] } ->
+		io__write_string("(_, _, _)")
+	;
+		io__write_string("(...)")
+	),
+	io__write_string("'.\n"),
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 

@@ -406,7 +406,7 @@ interpret_unify(X, functor(Functor, ArgVars), Subst0, Subst) :-
 	term__unify(term__variable(X),
 		term__functor(Functor, ArgTerms, Context),
 		Subst0, Subst).
-interpret_unify(_X, lambda_goal(_LambdaVars, _Goal), Subst0, Subst) :-
+interpret_unify(_X, lambda_goal(_LambdaVars, _Modes, _Goal), Subst0, Subst) :-
 		% For ease of implementation we just ignore unifications with
 		% lambda terms.  This is a safe approximation, it just
 		% prevents us from optimizing them as well as we would like.

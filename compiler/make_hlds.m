@@ -1364,17 +1364,30 @@ unravel_unification(term__variable(X), term__variable(Y), MainContext,
 	%	NewVar3 = A3.
 	% In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification(term__variable(X), term__functor(F, Args, C), MainContext,
-			SubContext, VarSet0, Goal, VarSet) :-
-	( Args = [] ->
+unravel_unification(term__variable(X), term__functor(F, Args, Context),
+			MainContext, SubContext, VarSet0, Goal, VarSet) :-
+	(
+		% handle lambda expressions
+		F = term__atom("lambda"),
+		Args = [VarsAndModesTerm, GoalTerm],
+		parse_lambda_args(VarsAndModesTerm, Vars, Modes)
+	->
+		parse_goal(GoalTerm, VarSet0, ParsedGoal, VarSet1),
+		map__init(Substitution),
+		transform_goal(ParsedGoal, VarSet1, Substitution,
+				HLDS_Goal, VarSet),
+		create_atomic_unification(X,
+				lambda_goal(Vars, Modes, HLDS_Goal),
+				Context, MainContext, SubContext, Goal)
+	; Args = [] ->
 		create_atomic_unification(X, functor(F, []),
-				C, MainContext, SubContext, Goal),
+				Context, MainContext, SubContext, Goal),
 		VarSet = VarSet0
 	;
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		create_atomic_unification(X,
 				functor(F, HeadVars),
-				C, MainContext, SubContext, Goal0),
+				Context, MainContext, SubContext, Goal0),
 		list__length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
 		ArgContext = functor(ConsId, MainContext, SubContext),
@@ -1390,38 +1403,26 @@ unravel_unification(term__functor(F, As, C), term__variable(Y), MC, SC,
 			VarSet0, Goal, VarSet).
 
 	% If we find a unification of the form `f1(...) = f2(...)',
-	% then we replace it with `Tmp = f1(NewVars1), Tmp = f2(NewVars2),
-	% NewVars1 = ..., NewVars2 = ...'. 
+	% then we replace it with `Tmp = f1(...), Tmp = f2(...)',
+	% and then process it according to the rule above.
 	% Note that we can't simplify it yet, because we might simplify
 	% away type errors.
 
 unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 			term__functor(RightF, RightAs, RightC),
 			MainContext, SubContext, VarSet0, Goal, VarSet) :-
-	make_fresh_arg_vars(LeftAs, VarSet0, LeftHeadVars, VarSet1),
-	make_fresh_arg_vars(RightAs, VarSet1, RightHeadVars, VarSet2),
-	list__length(LeftAs, LeftArity),
-	list__length(RightAs, RightArity),
-	make_functor_cons_id(LeftF, LeftArity, LeftConsId),
-	make_functor_cons_id(RightF, RightArity, RightConsId),
-	LeftArgContext = functor(LeftConsId, MainContext, SubContext),
-	RightArgContext = functor(RightConsId, MainContext, SubContext),
-	varset__new_var(VarSet2, TmpVar, VarSet3),
-	create_atomic_unification(TmpVar,
-			functor(LeftF, LeftHeadVars),
-			LeftC, MainContext, SubContext, Goal0),
-	create_atomic_unification(TmpVar,
-			functor(RightF, RightHeadVars),
-			RightC, MainContext, SubContext, Goal1),
+	varset__new_var(VarSet0, TmpVar, VarSet1),
+	unravel_unification(
+		term__variable(TmpVar), term__functor(LeftF, LeftAs, LeftC),
+		MainContext, SubContext, VarSet1, Goal0, VarSet2),
+	unravel_unification(
+		term__variable(TmpVar), term__functor(RightF, RightAs, RightC),
+		MainContext, SubContext, VarSet2, Goal1, VarSet),
 	goal_info_init(GoalInfo),
 	goal_to_conj_list(Goal0, ConjList0),
 	goal_to_conj_list(Goal1, ConjList1),
 	list__append(ConjList0, ConjList1, ConjList),
-	conj_list_to_goal(ConjList, GoalInfo, Goal2),
-	append_arg_unifications(RightHeadVars, RightAs, RightArgContext,
-				Goal2, VarSet3, Goal3, VarSet4),
-	append_arg_unifications(LeftHeadVars, LeftAs, LeftArgContext, Goal3,
-				VarSet4, Goal, VarSet).
+	conj_list_to_goal(ConjList, GoalInfo, Goal).
 
 	% create the hlds__goal for a unification which cannot be
 	% further simplified, filling in all the as yet

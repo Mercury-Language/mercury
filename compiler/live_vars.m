@@ -319,7 +319,7 @@ detect_initial_live_vars(ProcInfo, ModuleInfo, Liveness) :-
 	set__init(Liveness0),
 	detect_initial_live_vars_2(VarArgs, ModuleInfo, Liveness0, Liveness).
 
-:- pred detect_initial_live_vars_2(assoc_list(var,mode), module_info,
+:- pred detect_initial_live_vars_2(assoc_list(var, (mode)), module_info,
 							set(var), set(var)).
 :- mode detect_initial_live_vars_2(in, in, in, out) is det.
 

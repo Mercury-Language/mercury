@@ -165,9 +165,10 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars),
 				_OutsideVars, _QuantVars,
 				functor(Functor, ArgVars), Vars) :-
 	set__list_to_set(ArgVars, Vars).
-implicitly_quantify_unify_rhs(lambda_goal(LambdaVars, Goal0),
+implicitly_quantify_unify_rhs(lambda_goal(LambdaVars, Modes, Goal0),
 				OutsideVars, QuantVars,
-				lambda_goal(LambdaVars, Goal), NonLocals) :-
+				lambda_goal(LambdaVars, Modes, Goal),
+				NonLocals) :-
 	% quantified variables cannot be pushed inside a lambda goal,
 	% so we insert the quantified vars into the outside vars set,
 	% and initialize the new quantified vars set to be empty
@@ -369,7 +370,7 @@ unify_rhs_vars(var(X), Set0, Set) :-
 	set__insert(Set0, X, Set).
 unify_rhs_vars(functor(_Functor, ArgVars), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
-unify_rhs_vars(lambda_goal(LambdaVars, Goal), Set0, Set) :-
+unify_rhs_vars(lambda_goal(LambdaVars, _Modes, Goal), Set0, Set) :-
 	goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(Set0, GoalVars1, Set).

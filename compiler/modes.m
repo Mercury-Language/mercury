@@ -509,7 +509,7 @@ modecheck_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 
 unify_rhs_vars(var(Var), [Var]).
 unify_rhs_vars(functor(_Functor, Vars), Vars).
-unify_rhs_vars(lambda_goal(LambdaVars, _Goal - GoalInfo), Vars) :-
+unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Goal - GoalInfo), Vars) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, LambdaVars, NonLocals),
 	set__to_sorted_list(NonLocals, Vars).
@@ -810,7 +810,9 @@ modecheck_case_list([Case0 | Cases0], Var,
 			bound(unique, [functor(Const, ArgInsts)]))
 	;
 		% cons_id_to_const will fail for pred_consts and
-		% address_consts; we don't worry about them.
+		% address_consts; we don't worry about them,
+		% since you can't have a switch on a higher-order
+		% pred term anyway.
 		[]
 	),
 
@@ -1583,7 +1585,7 @@ write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
 
 :- pred modecheck_unification(var, unify_rhs, unification,
 			var, unify_rhs, pair(list(hlds__goal)),
-			pair(mode, mode), unification, mode_info, mode_info).
+			pair(mode), unification, mode_info, mode_info).
 :- mode modecheck_unification(in, in, in, out, out,
 			out, out, out, mode_info_di, mode_info_uo) is det.
 
@@ -1640,6 +1642,79 @@ modecheck_unification(X, var(Y), _Unification0, X, var(Y),
 modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 			X, functor(Name, ArgVars),
 			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
+	DoSplit = yes,
+	modecheck_unify_functor(X, Name, ArgVars0, Unification0, DoSplit,
+				ExtraGoals, Mode, ArgVars, Unification,
+				ModeInfo0, ModeInfo).
+
+modecheck_unification(X, lambda_goal(Vars, Modes, Goal0), Unification0,
+			X, lambda_goal(Vars, Modes, Goal), 
+			ExtraGoals, Mode, Unification, ModeInfo0, ModeInfo) :-
+	%
+	% first modecheck the lambda goal itself:
+	%
+	% initialize the initial insts of the lambda variables,
+	% lock the non-local vars,
+	% mark the non-clobbered lambda variables as live,
+	% modecheck the goal,
+	% check that the final insts are correct,
+	% unmark the live vars,
+	% unlock the non-local vars.
+	%
+
+	% initialize the initial insts of the lambda variables
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_list_get_initial_insts(Modes, ModuleInfo0, VarInitialInsts),
+	map__from_corresponding_lists(Vars, VarInitialInsts, VarInstMapping),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	( InstMap0 = reachable(InstMapping0) ->
+		map__overlay(InstMapping0, VarInstMapping, InstMapping1),
+		InstMap1 = reachable(InstMapping1)
+	;
+		InstMap1 = unreachable
+	),
+	mode_info_set_instmap(InstMap1, ModeInfo0, ModeInfo1),
+
+	% mark the non-clobbered lambda variables as live
+	mode_list_get_final_insts(Modes, ModuleInfo0, FinalInsts),
+	get_live_vars(Vars, FinalInsts, ModuleInfo0, LiveVarsList),
+	set__list_to_set(LiveVarsList, LiveVars),
+	mode_info_add_live_vars(LiveVars, ModeInfo1, ModeInfo2),
+
+	% lock the non-locals
+	% (a lambda goal is not allowed to bind any of the non-local
+	% variables, since it could get called more than once)
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	mode_info_lock_vars(NonLocals, ModeInfo2, ModeInfo3),
+
+	modecheck_goal(Goal0, Goal, ModeInfo3, ModeInfo4),
+	modecheck_final_insts(Vars, FinalInsts, ModeInfo4, ModeInfo5),
+	mode_info_remove_live_vars(LiveVars, ModeInfo5, ModeInfo6),
+
+	mode_info_unlock_vars(NonLocals, ModeInfo6, ModeInfo7),
+
+	%
+	% Now modecheck the unification of X with the lambda-expression.
+	%
+
+	Name = term__atom("$lambda_goal"),
+	DoSplit = no,
+	set__to_sorted_list(NonLocals, ArgVars0),
+	modecheck_unify_functor(X, Name, ArgVars0, Unification0, DoSplit,
+				ExtraGoals, Mode, _ArgVars, Unification,
+				ModeInfo7, ModeInfo).
+
+:- pred modecheck_unify_functor(var, const, list(var), unification, bool,
+			pair(list(hlds__goal)), pair(mode), list(var),
+			unification,
+			mode_info, mode_info).
+:- mode modecheck_unify_functor(in, in, in, in, in, out, out, out, out,
+			mode_info_di, mode_info_uo) is det.
+
+modecheck_unify_functor(X, Name, ArgVars0, Unification0, DoSplit,
+			ExtraGoals, Mode, ArgVars, Unification,
+			ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstX),
@@ -1705,9 +1780,9 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 		categorize_unify_var_functor(ModeX, ModeArgs, X, Name, ArgVars0,
 				VarTypes, Unification0, ModeInfo1,
 				Unification1, ModeInfo2),
-		split_complicated_subunifies(Unification1, ArgVars0,
-				Unification, ArgVars, ExtraGoals,
-				ModeInfo2, ModeInfo3),
+		split_complicated_subunifies(DoSplit, Unification1, ArgVars0,
+					Unification, ArgVars, ExtraGoals,
+					ModeInfo2, ModeInfo3),
 		modecheck_set_var_inst(X, Inst, ModeInfo3, ModeInfo4),
 		( bind_args(Inst, ArgVars, ModeInfo4, ModeInfo5) ->
 			ModeInfo = ModeInfo5
@@ -1747,9 +1822,6 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 		ExtraGoals = [] - []
 	).
 
-modecheck_unification(_, lambda_goal(_Vars, _Goal), _, _, _, _, _, _, _, _) :-
-	error("modechecking of lambda expressions not implemented").
-
 %-----------------------------------------------------------------------------%
 
 	% The argument unifications in a construction or deconstruction
@@ -1757,15 +1829,16 @@ modecheck_unification(_, lambda_goal(_Vars, _Goal), _, _, _, _, _, _, _, _) :-
 	% complicated unifications.  If they are, we split them out
 	% into separate unifications by introducing fresh variables here.
 
-:- pred split_complicated_subunifies(unification, list(var),
+:- pred split_complicated_subunifies(bool, unification, list(var),
 			unification, list(var), pair(list(hlds__goal)),
 			mode_info, mode_info).
-:- mode split_complicated_subunifies(in, in, out, out, out,
+:- mode split_complicated_subunifies(in, in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.
 
-split_complicated_subunifies(Unification0, ArgVars0,
+split_complicated_subunifies(DoSplit, Unification0, ArgVars0,
 				Unification, ArgVars, ExtraGoals) -->
 	(
+		{ DoSplit = yes },
 		{ Unification0 = deconstruct(X, ConsId, ArgVars0, ArgModes0,
 			Det) }
 	->
@@ -2683,16 +2756,29 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 		Unification0, ModeInfo0, Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	list__length(ArgVars, Arity),
+	map__lookup(VarTypes, X, TypeX),
 	( Unification0 = construct(_, ConsId0, _, _) ->
 		ConsId = ConsId0
 	; Unification0 = deconstruct(_, ConsId1, _, _, _) ->
 		ConsId = ConsId1
 	;
-		make_functor_cons_id(Name, Arity, ConsId)
+/**** this is not necessary yet
+		% we handle higher order pred constants specially here
+	 	(
+			TypeX = term__functor(term__atom("pred"),
+						PredArgTypes, _),
+			Name = term__atom(PredName),
+			PredName \= "$lambda_goal"
+		->
+			make_pred_cons_id(PredName, Arity, PredArgTypes,
+						ModuleInfo, ConsId)
+		;
+****/
+			make_functor_cons_id(Name, Arity, ConsId)
+%		)
 	),
 	mode_util__modes_to_uni_modes(ModeX, ArgModes0,
 						ModuleInfo, ArgModes),
-	map__lookup(VarTypes, X, TypeX),
 	(
 		mode_is_output(ModuleInfo, ModeX)
 	->
@@ -2738,6 +2824,43 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 			)
 		),
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
+	).
+
+:- pred make_pred_cons_id(string, arity, list(type), module_info, cons_id).
+:- mode make_pred_cons_id(in, in, in, in, out) is det.
+
+make_pred_cons_id(Name, Arity, PredArgTypes, ModuleInfo, ConsId) :-
+	list__length(PredArgTypes, PredArity),
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	TotalArity is Arity + PredArity,
+	(
+	    predicate_table_search_name_arity(PredicateTable,
+		Name, TotalArity, PredIds)
+	->
+	    (
+		PredIds = [PredId]
+	    ->
+		predicate_table_get_preds(PredicateTable, Preds),
+		map__lookup(Preds, PredId, PredInfo),
+		pred_info_procedures(PredInfo, Procs),
+		map__keys(Procs, ProcIds),
+		(
+		    ProcIds = [ProcId]
+		->
+		    ConsId = pred_const(PredId, ProcId)
+		;
+		    error("sorry, not implemented: taking address of predicate with multiple modes")
+		)
+	    ;
+		% cons_id ought to include the module prefix, so
+		% that we could use predicate_table__search_m_n_a to 
+		% prevent this from happening
+		string__append("make_pred_cons_id: ambiguous pred ", Name, Msg),
+		error(Msg)
+	    )
+	;
+	    % the type-checker should ensure that this never happens
+	    error("make_pred_cons_id: invalid pred")
 	).
 
 %-----------------------------------------------------------------------------%
