@@ -197,6 +197,10 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				{ \+ check_marker(Markers,
 					class_instance_method) },
 
+				% Don't report warnings for procedures with
+				% no clauses.
+				{ \+ check_marker(Markers, stub) },
+
 				% Don't report warnings for compiler-generated
 				% Unify, Compare or Index procedures, since the
 				% user has no way to shut these up. These can
