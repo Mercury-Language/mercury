@@ -55,6 +55,7 @@ the rest of the stuff in this directory and to get it to actually work.
 %			all [X,Y1,Y2] (Func(X,Y1),Func(X,Y2) => Y1 = Y2)).
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred typecheck(module_info, module_info, io__state, io__state).
 :- mode typecheck(input, output, di, uo).
@@ -71,30 +72,132 @@ typecheck(Module0, Module) -->
 	*******/
 
 %-----------------------------------------------------------------------------%
+	
+	% Type-check the code for all the predicates in a module.
 
 :- pred check_pred_types(module_info, module_info, io__state, io__state).
 :- mode check_pred_types(input, output, di, uo).
 
-check_pred_types(Module0, Module) -->
-	{ moduleinfo_types(Module0, Types0) },
-	check_pred_types_2(Types0, Types),
-	{ moduleinfo_set_types(Module0, Types, Module) }.
+check_pred_types(Module, Module) -->
+	{ moduleinfo_predids(Module, PredIds) },
+	check_pred_types_2(PredIds, Module).
 
-check_pred_types([], _) --> [].
-check_pred_types(clause(VarSet,Head,Body).Clauses, Types) -->
-	{ check_clause(Types, VarSet, Head, Body, Result) },
-	check_pred_types_2(Result),
-	check_pred_types(Clauses, Types).
+%-----------------------------------------------------------------------------%
 
-check_pred_types_2(ok) --> [].
-check_pred_types_2(error(Error)) --> print_error(Error).
+	% Iterate over the list of pred_ids in a module.
 
-check_clause(Types, VarSet, Head, Body, Result) :-
-	(if some [Error] check_clause_2(Types, VarSet, Head, Body, Error) then
-		Result = error(Error)
-	else
-		Result = ok
-	).
+:- pred check_pred_types_2(list(pred_id), module_info, io__state, io__state).
+:- mode check_pred_types_2(input, input, di, uo).
+
+check_pred_types_2([], _ModuleInfo) --> [].
+check_pred_types_2([PredId | PredIds], ModuleInfo) -->
+	{ map__search(Preds, PredId, PredInfo) },
+	{ predinfo_argtypes(PredInfo, TypeVarSet, ArgTypes) },
+	{ predinfo_clauses(Clauses0) },
+	check_clause_list(Clauses0, PredId, TypeVarSet, ArgTypes, ModuleInfo,
+				Clauses),
+	{ predinfo_set_clauses(Clauses) },
+	check_pred_types_2(PredIds, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% Iterate over the list of clauses for a predicate.
+
+:- pred check_clause_list(list(clause), pred_id, varset, list(type),
+			module_info, list(clause), io__state, io__state).
+:- mode check_clause_list(input, input, input, input, input, input, output,
+			di, uo).
+
+check_clause_list([], _PredId, _TypeVarSet, _ArgTypes, _ModuleInfo, []) --> [].
+check_clause_list([Clause0|Clauses0], PredId, TypeVarSet, ArgTypes, ModuleInfo,
+		[Clause|Clauses]) -->
+	check_clause(Clause0, PredId, TypeVarSet, ArgTypes, ModuleInfo, Clause),
+	check_clause_list(Clauses0, PredId, TypeVarSet, ArgTypes, ModuleInfo,
+			Clauses).
+
+%-----------------------------------------------------------------------------%
+
+	% Type-check a single clause.
+
+:- pred check_clause(clause, pred_id, varset, list(type), module_info, clause,
+			io__state, io__state).
+:- mode check_clause(input, input, input, input, input, output, di, uo).
+
+check_clause(Clause0, PredId, TypeVarSet, ArgTypes, ModuleInfo, Clause,
+		IOState0, IOState) :-
+	Clause0 = clause(Modes, VarSet, _DummyVarTypes, HeadVars, Body0),
+	typeinfo_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
+		TypeInfo0),
+	typeinfo_set_list(TypeInfo0, HeadVars, ArgTypes, TypeInfo1),
+	check_body(Body0, Body, TypeInfo1, TypeInfo),
+	typeinfo_get_var_types(TypeInfo, VarTypes),
+	typeinfo_get_io_state(TypeInfo, IOState),
+	Clause = clause(Modes, VarSet, VarTypes, HeadVars, Body).
+
+%-----------------------------------------------------------------------------%
+
+typeinfo_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet, TypeInfo) :-
+	moduleinfo_preds(ModuleInfo, Preds),
+	moduleinfo_types(ModuleInfo, Types),
+	moduleinfo_ctors(ModuleInfo, Ctors),
+	map__init(TypeBindings),
+	map__init(VarTypes),
+	TypeInfo = typecheck_info(IOState, Preds, Types, Ctors, PredId,
+		[type_assign(VarSet, VarTypes, TypeVarSet, TypeBindings)]).
+
+typeinfo_get_var_types(
+
+
+
+:- type typecheck_info 	--->	typecheck_info(
+					io__state,
+					pred_table,
+					type_table,
+					cons_table,
+					pred_id,
+					type_assign_set
+				).
+
+:- type type_assign_set	==	list(type_assignment).
+
+:- type type_assignment	-->	type_assign(
+					varset,		% var names
+					map(var, type),	% var types
+					varset,		% type names
+					map(type_param, type)	% type bindings
+				).
+
+	% As we go through a clause, we determine the possible
+	% type assignments for the clause.  A type assignment
+	% is an assignment of a type to each variable in the
+	% clause.
+	%
+	% Note that this may cause exponential time & space usage
+	% in the presence of overloading of predicates and/or
+	% functors.  This is a potentially very serious problem, but
+	% there's no easy solution apparent.
+	%
+	% It would be more natural to use non-determinism to write
+	% this code, and perhaps even more efficient.
+	% But doing it deterministically would make bootstrapping more
+	% difficult, and most importantly would make good error
+	% messages very difficult.
+	%
+	% XXX - Todo:
+	%	* we need a symbol table for constructors
+	%	* need to resolve how to deal with overloading/ambiguity
+	%	* need to bridge the gap between code above and
+	%	* code below.
+
+%-----------------------------------------------------------------------------%
+
+:- pred set_types_list(list(var), list(type), var_types, var_types).
+:- mode set_types_list(input, input, input, output).
+
+typeset_set_list([], [], VarTypes, VarTypes).
+typeset_set_list([Var|Vars], [Type|Types], VarTypes0, VarTypes) :-
+	map__set(VarTypes0, Var, Type, VarTypes1),
+	typeset_set_list(Vars, Types, VarTypes1, VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -127,10 +230,23 @@ type_check_goal_2(some(_Vs,G)) -->
 	type_check_goal(G).
 type_check_goal_2(all(_Vs,G)) -->
 	type_check_goal(G).
-type_check_goal_2(call(PredName,_Mode,Args,_Builtin)) -->
-	type_check_call_pred(PredName,Args).
+type_check_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
+	type_check_call_pred(PredId, Args).
 type_check_goal_2(unify(A,B,_Info)) -->
 	type_check_unify(A,B).
+
+type_check_call_pred(PredId, Args, TypeCheckInfo0, TypeCheckInfo) :-
+	get_pred_types(TypeCheckInfo, PredTypes),
+
+
+
+type_check_unify(term_variable(X), term_variable(Y)) --> 
+	type_unify(X, Y).
+type_check_unify(term_functor(F, As, _), term_variable(Y)) --> 
+	{ length(As, Arity) },
+	lookup_functor_type(F, Arity, Type),
+
+	
 
 %-----------------------------------------------------------------------------%
 
@@ -350,7 +466,7 @@ types_type_template(Types, Name, VarSet, Args, Template, Cond) :-
 	types_type_template_2(TypeDecl, Name, Args, Template).
 types_type_template(_, Name, VarSet, [], Template, true) :-
 	builtin_type(Const, Name),
-	Template = functor(term_functor(Const,[]),_), 	% XXX
+	Template = functor(term_functor(Const, [], _)), 
 	varset_init(VarSet).
 
 :- pred types_type_template_2(type_defn, string, list(variable), type_template).
@@ -367,17 +483,23 @@ types_pred_type(Types, Functor, VarSet, ArgTypes, Cond) :-
 
 %-----------------------------------------------------------------------------%
 
+:- mode types_lookup_type(input, input, output, output, output).
+
     % builtin types
-:- mode types_lookup_type(input, output, output, output, input, output).
-types_lookup_type(_, BuiltInType, VarSet, [], term_functor(Const,[],_), true) :-
+types_lookup_type(_, term_functor(Const,[],_), BuiltInType, TypeVarSet, []) :-
 	builtin_type(Const, BuiltInType),
-	varset_init(VarSet).
+	varset_init(TypeVarSet).
+
+	% XXX possible efficiency problems
+
     % user-defined types
-types_lookup_type(Types, Functor, VarSet, Args, term_functor(F1,As1,_), Cond) :-
-	bag_contains(Types, type(VarSet, du_type(Functor, Args, RHS), Cond)),
-	length(As1,Arity),
-	length(As2,Arity),
-	member(term_functor(F1, As2, _), RHS).
+types_lookup_type(TypeDefns, term_functor(F, Args, _), TypeId, TVarSet,
+		ArgTypes) :-
+	map__member(TypeId - Defn, TypeDefns),		% nondeterministic
+	Defn = hlds__typedefn(TVarSet, Params, _Body, Cond),
+	Body = du_type(Constructors),			% may fail
+	same_length(Args, ArgTypes),
+	member(unqualified(F) - ArgTypes), Constructors).  % nondeterministic
 
 %-----------------------------------------------------------------------------%
 
@@ -392,25 +514,5 @@ builtin_type(term_float(_), "float").
 builtin_type(term_string(_), "string").
 builtin_type(term_atom(String), "char") :-
 	char_to_string(_, String).
-
-%-----------------------------------------------------------------------------%
-
-/* This version of member uses first-argument indexing to avoid creating
-   a choice point when a the item matches with the _last_ element in the list.
-   So this version will sometimes create fewer choice points than the
-   original.
-*/
-:- pred my_member(T, list(T)).
-:- mode my_member(output, input).
-my_member(X, H.T) :-
-	my_member_2(T, H, X).
-
-:- pred my_member_2(list(T), T, T).
-:- mode my_member_2(input, input, output).
-
-my_member_2([], X, X).
-my_member_2(_._, X, X).
-my_member_2(H.T, _, X) :-
-	my_member_2(T, H, X).
 
 %-----------------------------------------------------------------------------%

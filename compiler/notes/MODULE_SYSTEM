@@ -1,3 +1,47 @@
+1.  Let S be the set of modules interfaces on which
+    the current module (directly or indirectly) depends.
+    For each module in S, read in the module and write out the
+    full interface of that module (i.e. copy the type and mode
+    declarations for the predicates into the interface and add
+    `:- adt' declarations for types which are exported as
+    opaque abstract data types.
+
+2.  For each module in S, read in the full interface
+    and resolve all the types, insts, and modes in the bodies
+    of the symbols defined in the interface (add explicit module
+    qualifiers).  This gives us a "resolved full interface" file.
+    Write this out.
+
+3.  Read in the resolved full interface files for each module in S.
+    Resolve all the types, insts, and modes in the bodies
+    of the symbols defined in the current module.
+    Resolve all the preds and constructors in the current module.
+    Generate code for the current module.
+
+/* file t1.nl */
+
+:- module t1.
+:- use_module t2.
+:- type t1 ---> g(t2) ; x.
+:- export_type t1/0.
+:- end_module t1.
+
+/* full interface file for module t1 */
+:- module t1.
+:- use_module t2.
+:- type t1 ---> g(t2:t2) ; x.
+:- export_type t1/0.
+:- export_adt t2/0.
+:- end_module t1.
+
+/* file t2.nl */
+
+:- module t2.
+:- use_module t1.
+:- type t2 ---> f(t1:t1) ; y.
+:- export_type t2/0.
+:- end_module t2.
+
 %-----------------------------------------------------------------------------%
 
 I've designed my module system.  It's based on a Prolog-syntax (but
@@ -26,7 +70,16 @@ used by other modules.
 
 %-----------------------------------------------------------------------------%
 
-The module system has the following high-level constructs.
+Each module must consist of
+
+	:- module ModuleName.
+	:- interface.
+	...
+	:- implementation.
+	...
+	:- end_module ModuleName.	% optional
+
+The semantics of these declarations is as follows.
 
 :- module ModuleName.
 
@@ -66,19 +119,19 @@ The module system has the following high-level constructs.
 :- export_module Module1, Module2, ..., ModuleN.
 
 	All exported symbols in the specified modules are re-exported
-	from this module.
+	from this module.  This declaration can only occur in the
+	interface section.
 	[Warning! The semantics of this might change if/when 
 	nested modules are introduced.]
 
 :- interface.
-	
 	All exportable declarations (ie. all type, predicate, constructor, and
-	operator declarations) up to the next `implementation' declaration
-	are exported.
+	operator declarations) in the interface section
+	are automatically exported.
 
 :- implementation.
-	
-	See `interface'.
+	Declarations and definitions in the implementation section
+	are by default private.
 
 :- end_module ModuleName.
 
@@ -94,6 +147,8 @@ which allow you to import, use, or export individual symbols rather
 than entire modules.
 They can be used instead of (or in conjunction with) the higher-level
 declarations.
+All of the export declarations can only occur in the interface
+section.
 
 :- export_sym Sym1, Sym2, ..., SumN.
 	Sym1, Sym2, ..., SymN may be any symbol specifiers.
@@ -238,9 +293,11 @@ SOME EXAMPLE MODULES
 	% Implemented as unsorted lists.
 
 :- module bag.
-:- import_module list.
+:- interface.
 :- export_pred init, insert, contains.
 
+:- implementation.
+:- import_module list.
 :- type bag(T) = list(T).
 
 :- pred init(bag(_)).
@@ -256,14 +313,12 @@ contains(Bag, Item) :-
 :- end_module bag.
 %-----------------------------------------------------------------------------%
 
-	% Version using `interface'/`implementation' declarations.
+	% Version using pred declarations in the interface section.
 
 	% Bag ADT.
 	% Implemented as unsorted lists.
 
 :- module bag.
-:- import_module list.
-
 :- interface.
 
 :- pred init(bag(_)).
@@ -271,6 +326,7 @@ contains(Bag, Item) :-
 :- pred contains(bag(T), T).
 
 :- implementation.
+:- import_module list.
 
 :- type bag(T) = list(T).
 
