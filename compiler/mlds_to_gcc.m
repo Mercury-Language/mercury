@@ -1217,7 +1217,7 @@ build_initializer(Initializer, GCC_Type, DefnInfo, GCC_Expr) -->
 		{ Initializer = init_obj(Rval) },
 		build_rval(Rval, DefnInfo, GCC_Expr)
 	;
-		{ Initializer = init_struct(InitList) },
+		{ Initializer = init_struct(_Type, InitList) },
 		gcc__get_struct_field_decls(GCC_Type, GCC_FieldDecls),
 		build_struct_initializer(InitList, GCC_FieldDecls, DefnInfo,
 			GCC_InitList),
@@ -1938,7 +1938,7 @@ build_sized_array_type(GCC_Type, ArraySize, GCC_ArrayType) -->
 :- func initializer_array_size(mlds__initializer) = initializer_array_size.
 initializer_array_size(no_initializer) = no_size.
 initializer_array_size(init_obj(_)) = no_size.
-initializer_array_size(init_struct(_)) = no_size.
+initializer_array_size(init_struct(_, _)) = no_size.
 initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 
 %-----------------------------------------------------------------------------%
@@ -1972,6 +1972,8 @@ build_rtti_type(tc_rtti_id(TCRttiName), Size, GCC_Type) -->
 build_rtti_type_name(exist_locns(_), Size, GCC_Type) -->
 	build_du_exist_locn_type(MR_DuExistLocn),
 	build_sized_array_type(MR_DuExistLocn, Size, GCC_Type).
+build_rtti_type_name(exist_locn, _, GCC_Type) -->
+	build_du_exist_locn_type(GCC_Type).
 build_rtti_type_name(exist_info(_), _, MR_DuExistInfo) -->
 	build_du_exist_info_type(MR_DuExistInfo).
 build_rtti_type_name(field_names(_), Size, GCC_Type) -->
@@ -2056,6 +2058,9 @@ build_rtti_type_name(du_stag_ordered_table(_), Size, GCC_Type) -->
 	{ MR_DuFunctorDescPtr = gcc__ptr_type_node },
 	build_sized_array_type(MR_DuFunctorDescPtr, Size, GCC_Type).
 build_rtti_type_name(du_ptag_ordered_table, Size, GCC_Type) -->
+	build_rtti_type_name(du_ptag_layout(0), Size, MR_DuPtagLayout),
+	build_sized_array_type(MR_DuPtagLayout, Size, GCC_Type).
+build_rtti_type_name(du_ptag_layout(_), _, GCC_Type) -->
 	% typedef struct {
 	%     MR_int_least32_t        MR_sectag_sharers;
 	%     MR_Sectag_Locn          MR_sectag_locn;
@@ -2065,8 +2070,7 @@ build_rtti_type_name(du_ptag_ordered_table, Size, GCC_Type) -->
 		['MR_int_least32_t'	- "MR_sectag_sharers",
 		 'MR_Sectag_Locn'	- "MR_sectag_locn",
 		 gcc__ptr_type_node	- "MR_sectag_alternatives"],
-		MR_DuPtagLayout),
-	build_sized_array_type(MR_DuPtagLayout, Size, GCC_Type).
+		GCC_Type).
 build_rtti_type_name(res_value_ordered_table, _, GCC_Type) -->
 	% typedef struct {
 	%     MR_int_least16_t    MR_ra_num_res_numeric_addrs;
@@ -2082,7 +2086,11 @@ build_rtti_type_name(res_value_ordered_table, _, GCC_Type) -->
 		 gcc__ptr_type_node	- "MR_ra_constants",
 		 gcc__ptr_type_node	- "MR_ra_other_functors"
 		], GCC_Type).
-build_rtti_type_name(res_name_ordered_table, _, GCC_Type) -->
+build_rtti_type_name(res_name_ordered_table, Size, GCC_Type) -->
+	build_rtti_type_name(maybe_res_addr_functor_desc, Size,
+		MR_MaybeResAddrFunctorDesc),
+	build_sized_array_type(MR_MaybeResAddrFunctorDesc, Size, GCC_Type).
+build_rtti_type_name(maybe_res_addr_functor_desc, _, GCC_Type) -->
 	% typedef union {
     	%	MR_DuFunctorDesc            *MR_maybe_res_du_ptr;
     	%	MR_ReservedAddrFunctorDesc  *MR_maybe_res_res_ptr;
@@ -2094,16 +2102,24 @@ build_rtti_type_name(res_name_ordered_table, _, GCC_Type) -->
     	%	MR_bool                     MR_maybe_res_is_res;
     	%	MR_MaybeResFunctorDescPtr   MR_maybe_res_ptr;
 	% } MR_MaybeResAddrFunctorDesc;
-	build_struct_type("MR_MaybeResAddrFunctorDesc",
+	build_struct_type("MR_MaybeResFunctorDesc",
 		[gcc__ptr_type_node	- "MR_maybe_res_init"],
-		MR_MaybeResAddrFunctorDesc),
-	build_struct_type("MR_ReservedAddrFunctorDesc",
+		MR_MaybeResFunctorDescPtr),
+	build_struct_type("MR_MaybeResAddrFunctorDesc",
 		['MR_ConstString'	- "MR_maybe_res_name",
 		 'MR_Integer'		- "MR_maybe_res_arity",
 		 'MR_bool'		- "MR_maybe_res_is_res",
-		 MR_MaybeResAddrFunctorDesc	- "MR_maybe_res_ptr"
+		 MR_MaybeResFunctorDescPtr	- "MR_maybe_res_ptr"
 		], GCC_Type).
-build_rtti_type_name(type_ctor_info, _, GCC_Type) -->
+build_rtti_type_name(type_functors, _, GCC_Type) -->
+	build_struct_type("MR_TypeFunctors",
+		[gcc__ptr_type_node	- "MR_functors_init"],
+		GCC_Type).
+build_rtti_type_name(type_layout, _, GCC_Type) -->
+	build_struct_type("MR_TypeLayout",
+		[gcc__ptr_type_node	- "MR_layout_init"],
+		GCC_Type).
+build_rtti_type_name(type_ctor_info, Size, GCC_Type) -->
 	% MR_Integer          MR_type_ctor_arity;
 	% MR_int_least8_t     MR_type_ctor_version;
 	% MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
@@ -2116,14 +2132,9 @@ build_rtti_type_name(type_ctor_info, _, GCC_Type) -->
 	% MR_TypeLayout       MR_type_ctor_layout;
 	% MR_int_least32_t    MR_type_ctor_num_functors;
 	% MR_int_least16_t    MR_type_ctor_flags;
-
 	{ MR_ProcAddr = gcc__ptr_type_node },
-	build_struct_type("MR_TypeFunctors",
-		[gcc__ptr_type_node	- "MR_functors_init"],
-		MR_TypeFunctors),
-	build_struct_type("MR_TypeLayout",
-		[gcc__ptr_type_node	- "MR_layout_init"],
-		MR_TypeLayout),
+	build_rtti_type_name(type_functors, Size, MR_TypeFunctors),
+	build_rtti_type_name(type_layout, Size, MR_TypeLayout),
 	build_struct_type("MR_TypeCtorInfo_Struct",
 		['MR_Integer'		- "MR_type_ctor_arity",
 		 'MR_int_least8_t'	- "MR_type_ctor_version",

@@ -1028,7 +1028,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 	% rather than relying on initializers like this.
 	%
 	StackChain = ml_stack_chain_var,
-	EnvInitializer = init_struct([
+	EnvInitializer = init_struct(EnvTypeName, [
 		init_obj(lval(StackChain)),
 		init_obj(const(code_addr_const(GCTraceFuncAddr)))
 	]),
@@ -1865,7 +1865,7 @@ elim_info_add_and_flatten_local_data(Defn0) -->
 fixup_initializer(no_initializer, no_initializer) --> [].
 fixup_initializer(init_obj(Rval0), init_obj(Rval)) -->
 	fixup_rval(Rval0, Rval).
-fixup_initializer(init_struct(Members0), init_struct(Members)) -->
+fixup_initializer(init_struct(Type, Members0), init_struct(Type, Members)) -->
 	list__map_foldl(fixup_initializer, Members0, Members).
 fixup_initializer(init_array(Elements0), init_array(Elements)) -->
 	list__map_foldl(fixup_initializer, Elements0, Elements).

@@ -383,6 +383,8 @@ opt_debug__dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity),
 opt_debug__dump_rtti_name(exist_locns(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("exist_locns_", Ordinal_str, Str).
+opt_debug__dump_rtti_name(exist_locn, Str) :-
+	Str = "exist_loc".
 opt_debug__dump_rtti_name(exist_info(Ordinal), Str) :-
 	string__int_to_string(Ordinal, Ordinal_str),
 	string__append("exist_info_", Ordinal_str, Str).
@@ -418,10 +420,19 @@ opt_debug__dump_rtti_name(du_stag_ordered_table(Ptag), Str) :-
 	string__append("du_stag_ordered_table_", Ptag_str, Str).
 opt_debug__dump_rtti_name(du_ptag_ordered_table, Str) :-
 	Str = "du_ptag_ordered_table".
+opt_debug__dump_rtti_name(du_ptag_layout(Ptag), Str) :-
+	string__int_to_string(Ptag, Ptag_str),
+	string__append("du_ptag_layout", Ptag_str, Str).
 opt_debug__dump_rtti_name(res_value_ordered_table, Str) :-
 	Str = "res_value_ordered_table".
 opt_debug__dump_rtti_name(res_name_ordered_table, Str) :-
 	Str = "res_name_ordered_table".
+opt_debug__dump_rtti_name(maybe_res_addr_functor_desc, Str) :-
+	Str = "maybe_res_addr_functor_desc".
+opt_debug__dump_rtti_name(type_layout, Str) :-
+	Str = "type_layout".
+opt_debug__dump_rtti_name(type_functors, Str) :-
+	Str = "type_functors".
 opt_debug__dump_rtti_name(type_ctor_info, Str) :-
 	Str = "type_ctor_info".
 opt_debug__dump_rtti_name(type_info(_TypeInfo), Str) :-

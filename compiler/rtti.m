@@ -595,6 +595,7 @@
 
 :- type ctor_rtti_name
 	--->	exist_locns(int)		% functor ordinal
+	;	exist_locn
 	;	exist_info(int)			% functor ordinal
 	;	field_names(int)		% functor ordinal
 	;	field_types(int)		% functor ordinal
@@ -609,8 +610,12 @@
 	;	du_name_ordered_table
 	;	du_stag_ordered_table(int)	% primary tag
 	;	du_ptag_ordered_table
+	;	du_ptag_layout(int)		% primary tag
 	;	res_value_ordered_table
 	;	res_name_ordered_table
+	;	maybe_res_addr_functor_desc
+	;	type_functors
+	;	type_layout
 	;	type_ctor_info
 	;	type_info(rtti_type_info)
 	;	pseudo_type_info(rtti_pseudo_type_info)
@@ -874,28 +879,33 @@ rtti_id_is_exported(tc_rtti_id(TCRttiName)) =
 	tc_rtti_name_is_exported(TCRttiName).
 
 ctor_rtti_name_is_exported(exist_locns(_))		= no.
-ctor_rtti_name_is_exported(exist_info(_))            = no.
-ctor_rtti_name_is_exported(field_names(_))           = no.
-ctor_rtti_name_is_exported(field_types(_))           = no.
+ctor_rtti_name_is_exported(exist_locn)			= no.
+ctor_rtti_name_is_exported(exist_info(_))       	= no.
+ctor_rtti_name_is_exported(field_names(_))      	= no.
+ctor_rtti_name_is_exported(field_types(_))      	= no.
 ctor_rtti_name_is_exported(res_addrs)           	= no.
 ctor_rtti_name_is_exported(res_addr_functors)   	= no.
-ctor_rtti_name_is_exported(enum_functor_desc(_))     = no.
-ctor_rtti_name_is_exported(notag_functor_desc)       = no.
-ctor_rtti_name_is_exported(du_functor_desc(_))       = no.
+ctor_rtti_name_is_exported(enum_functor_desc(_))	= no.
+ctor_rtti_name_is_exported(notag_functor_desc)  	= no.
+ctor_rtti_name_is_exported(du_functor_desc(_))  	= no.
 ctor_rtti_name_is_exported(res_functor_desc(_)) 	= no.
-ctor_rtti_name_is_exported(enum_name_ordered_table)  = no.
-ctor_rtti_name_is_exported(enum_value_ordered_table) = no.
-ctor_rtti_name_is_exported(du_name_ordered_table)    = no.
-ctor_rtti_name_is_exported(du_stag_ordered_table(_)) = no.
-ctor_rtti_name_is_exported(du_ptag_ordered_table)    = no.
-ctor_rtti_name_is_exported(res_value_ordered_table)  = no.
-ctor_rtti_name_is_exported(res_name_ordered_table)   = no.
-ctor_rtti_name_is_exported(type_ctor_info)           = yes.
+ctor_rtti_name_is_exported(enum_name_ordered_table)     = no.
+ctor_rtti_name_is_exported(enum_value_ordered_table)    = no.
+ctor_rtti_name_is_exported(du_name_ordered_table)       = no.
+ctor_rtti_name_is_exported(du_stag_ordered_table(_))    = no.
+ctor_rtti_name_is_exported(du_ptag_ordered_table)       = no.
+ctor_rtti_name_is_exported(du_ptag_layout(_))   	= no.
+ctor_rtti_name_is_exported(res_value_ordered_table)     = no.
+ctor_rtti_name_is_exported(res_name_ordered_table)      = no.
+ctor_rtti_name_is_exported(maybe_res_addr_functor_desc) = no.
+ctor_rtti_name_is_exported(type_functors)       	= no.
+ctor_rtti_name_is_exported(type_layout)         	= no.
+ctor_rtti_name_is_exported(type_ctor_info)      	= yes.
 ctor_rtti_name_is_exported(type_info(TypeInfo)) =
 	type_info_is_exported(TypeInfo).
 ctor_rtti_name_is_exported(pseudo_type_info(PseudoTypeInfo)) =
 	pseudo_type_info_is_exported(PseudoTypeInfo).
-ctor_rtti_name_is_exported(type_hashcons_pointer)    = no.
+ctor_rtti_name_is_exported(type_hashcons_pointer)       = no.
 
 tc_rtti_name_is_exported(base_typeclass_info(_, _, _)) = yes.
 tc_rtti_name_is_exported(type_class_id(_)) = no.
@@ -969,6 +979,10 @@ rtti__name_to_string(RttiTypeCtor, RttiName, Str) :-
 		string__append_list([ModuleName, "__exist_locns_",
 			TypeName, "_", A_str, "_", O_str], Str)
 	;
+		RttiName = exist_locn,
+		string__append_list([ModuleName, "__exist_locn_",
+			TypeName, "_", A_str], Str)
+	;
 		RttiName = exist_info(Ordinal),
 		string__int_to_string(Ordinal, O_str),
 		string__append_list([ModuleName, "__exist_info_",
@@ -1033,12 +1047,31 @@ rtti__name_to_string(RttiTypeCtor, RttiName, Str) :-
 		string__append_list([ModuleName, "__du_ptag_ordered_",
 			TypeName, "_", A_str], Str)
 	;
+		RttiName = du_ptag_layout(Ptag),
+		string__int_to_string(Ptag, P_str),
+		string__append_list([ModuleName,
+			"__du_ptag_layout_",
+			TypeName, "_", A_str, "_", P_str], Str)
+	;
 		RttiName = res_value_ordered_table,
 		string__append_list([ModuleName, "__res_layout_ordered_table_",
 			TypeName, "_", A_str], Str)
 	;
 		RttiName = res_name_ordered_table,
 		string__append_list([ModuleName, "__res_name_ordered_table_",
+			TypeName, "_", A_str], Str)
+	;
+		RttiName = maybe_res_addr_functor_desc,
+		string__append_list([ModuleName,
+			"__maybe_res_addr_functor_desc_",
+			TypeName, "_", A_str], Str)
+	;
+		RttiName = type_functors,
+		string__append_list([ModuleName, "__type_functors",
+			TypeName, "_", A_str], Str)
+	;
+		RttiName = type_layout,
+		string__append_list([ModuleName, "__type_layout",
 			TypeName, "_", A_str], Str)
 	;
 		RttiName = type_ctor_info,
@@ -1511,6 +1544,7 @@ rtti_id_would_include_code_addr(tc_rtti_id(TCRttiName)) =
 	tc_rtti_name_would_include_code_addr(TCRttiName).
 
 ctor_rtti_name_would_include_code_addr(exist_locns(_)) =		no.
+ctor_rtti_name_would_include_code_addr(exist_locn) 	=		no.
 ctor_rtti_name_would_include_code_addr(exist_info(_)) =			no.
 ctor_rtti_name_would_include_code_addr(field_names(_)) =		no.
 ctor_rtti_name_would_include_code_addr(field_types(_)) =		no.
@@ -1525,9 +1559,13 @@ ctor_rtti_name_would_include_code_addr(enum_value_ordered_table) =	no.
 ctor_rtti_name_would_include_code_addr(du_name_ordered_table) =		no.
 ctor_rtti_name_would_include_code_addr(du_stag_ordered_table(_)) =	no.
 ctor_rtti_name_would_include_code_addr(du_ptag_ordered_table) =		no.
+ctor_rtti_name_would_include_code_addr(du_ptag_layout(_)) =		no.
 ctor_rtti_name_would_include_code_addr(res_value_ordered_table) =	no.
 ctor_rtti_name_would_include_code_addr(res_name_ordered_table) =	no.
+ctor_rtti_name_would_include_code_addr(maybe_res_addr_functor_desc) =	no.
 ctor_rtti_name_would_include_code_addr(type_hashcons_pointer) =		no.
+ctor_rtti_name_would_include_code_addr(type_functors) =			no.
+ctor_rtti_name_would_include_code_addr(type_layout) =			no.
 ctor_rtti_name_would_include_code_addr(type_ctor_info) =		yes.
 ctor_rtti_name_would_include_code_addr(type_info(TypeInfo)) =
 	type_info_would_incl_code_addr(TypeInfo).
@@ -1607,6 +1645,7 @@ tc_rtti_name_java_type(_TCRttiName, JavaTypeName, IsArray) :-
 :- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, bool::out) is det.
 
 ctor_rtti_name_type(exist_locns(_),             "DuExistLocn", yes).
+ctor_rtti_name_type(exist_locn,                 "DuExistLocn", no).
 ctor_rtti_name_type(exist_info(_),              "DuExistInfo", no).
 ctor_rtti_name_type(field_names(_),             "ConstString", yes).
 ctor_rtti_name_type(field_types(_),             "PseudoTypeInfo", yes).
@@ -1622,8 +1661,13 @@ ctor_rtti_name_type(enum_value_ordered_table,   "EnumFunctorDescPtr", yes).
 ctor_rtti_name_type(du_name_ordered_table,      "DuFunctorDescPtr", yes).
 ctor_rtti_name_type(du_stag_ordered_table(_),   "DuFunctorDescPtr", yes).
 ctor_rtti_name_type(du_ptag_ordered_table,      "DuPtagLayout", yes).
+ctor_rtti_name_type(du_ptag_layout(_),      	"DuPtagLayout", no).
 ctor_rtti_name_type(res_value_ordered_table,    "ReservedAddrTypeLayout", no).
 ctor_rtti_name_type(res_name_ordered_table,     "MaybeResAddrFunctorDesc", yes).
+ctor_rtti_name_type(maybe_res_addr_functor_desc,
+						"MaybeResAddrFunctorDesc", no).
+ctor_rtti_name_type(type_functors,              "TypeFunctors", no).
+ctor_rtti_name_type(type_layout,                "TypeLayout", no).
 ctor_rtti_name_type(type_ctor_info,             "TypeCtorInfo_Struct", no).
 ctor_rtti_name_type(type_hashcons_pointer,      "TrieNodePtr", no).
 ctor_rtti_name_type(type_info(TypeInfo), TypeName, no) :-

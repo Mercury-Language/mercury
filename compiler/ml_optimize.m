@@ -956,7 +956,8 @@ eliminate_var_in_initializer(init_obj(Rval0), init_obj(Rval)) -->
 	eliminate_var_in_rval(Rval0, Rval).
 eliminate_var_in_initializer(init_array(Elements0), init_array(Elements)) -->
 	list__map_foldl(eliminate_var_in_initializer, Elements0, Elements).
-eliminate_var_in_initializer(init_struct(Members0), init_struct(Members)) -->
+eliminate_var_in_initializer(init_struct(Type, Members0),
+		init_struct(Type, Members)) -->
 	list__map_foldl(eliminate_var_in_initializer, Members0, Members).
 
 :- pred eliminate_var_in_rvals(

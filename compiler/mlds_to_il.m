@@ -544,8 +544,8 @@ rename_field_id(named_field(Name, Type)) = named_field(Name, Type).
 :- func rename_initializer(mlds__initializer) = mlds__initializer.
 
 rename_initializer(init_obj(Rval)) = init_obj(rename_rval(Rval)).
-rename_initializer(init_struct(Inits))
-	= init_struct(list__map(rename_initializer, Inits)).
+rename_initializer(init_struct(Type, Inits))
+	= init_struct(Type, list__map(rename_initializer, Inits)).
 rename_initializer(init_array(Inits))
 	= init_array(list__map(rename_initializer, Inits)).
 rename_initializer(no_initializer) = no_initializer.
@@ -1431,7 +1431,7 @@ data_initializer_to_instrs(init_obj(Rval), _Type, node([]), InitInstrs) -->
 	% (this may have to be re-visited if used to initialise high-level
 	% data).
 
-data_initializer_to_instrs(init_struct(InitList0), Type,
+data_initializer_to_instrs(init_struct(_StructType, InitList0), Type,
 		AllocInstrs, InitInstrs) -->
 
 	{ InitList = flatten_inits(InitList0) },
@@ -1510,7 +1510,7 @@ maybe_box_initializer(no_initializer, no_initializer) --> [].
 	% array already boxed
 maybe_box_initializer(init_array(X), init_array(X)) --> [].
 	% struct already boxed
-maybe_box_initializer(init_struct(X), init_struct(X)) --> [].
+maybe_box_initializer(init_struct(Type, X), init_struct(Type, X)) --> [].
 	% single items need to be boxed
 maybe_box_initializer(init_obj(Rval), init_obj(NewRval)) -->
 	{ rval_to_type(Rval, BoxType) },
@@ -1523,7 +1523,7 @@ flatten_inits(Inits) = list__condense(list__map(flatten_init, Inits)).
 
 :- func flatten_init(mlds__initializer) = list(mlds__initializer).
 flatten_init(I) = Inits :-
-	( I = init_struct(Inits0) ->
+	( I = init_struct(_Type, Inits0) ->
 		Inits = flatten_inits(Inits0)
 	; I = init_array(Inits0) ->
 		Inits = flatten_inits(Inits0)

@@ -1435,8 +1435,8 @@ mlds_output_initializer(_Type, Initializer) -->
 
 mlds_needs_initialization(no_initializer) = no.
 mlds_needs_initialization(init_obj(_)) = yes.
-mlds_needs_initialization(init_struct([])) = no.
-mlds_needs_initialization(init_struct([_|_])) = yes.
+mlds_needs_initialization(init_struct(_Type, [])) = no.
+mlds_needs_initialization(init_struct(_Type, [_|_])) = yes.
 mlds_needs_initialization(init_array(_)) = yes.
 
 :- pred mlds_output_initializer_body(mlds__initializer, io__state, io__state).
@@ -1445,7 +1445,7 @@ mlds_needs_initialization(init_array(_)) = yes.
 mlds_output_initializer_body(no_initializer) --> [].
 mlds_output_initializer_body(init_obj(Rval)) -->
 	mlds_output_rval(Rval).
-mlds_output_initializer_body(init_struct(FieldInits)) -->
+mlds_output_initializer_body(init_struct(_Type, FieldInits)) -->
 	% Note that standard ANSI/ISO C does not allow empty structs.
 	% But it is the responsibility of the MLDS code generator
 	% to not generate any.  So we don't need to handle empty
@@ -2015,7 +2015,7 @@ mlds_output_type_suffix(Type) -->
 :- func initializer_array_size(mlds__initializer) = initializer_array_size.
 initializer_array_size(no_initializer) = no_size.
 initializer_array_size(init_obj(_)) = no_size.
-initializer_array_size(init_struct(_)) = no_size.
+initializer_array_size(init_struct(_, _)) = no_size.
 initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
 
 :- pred mlds_output_type_suffix(mlds__type, initializer_array_size,

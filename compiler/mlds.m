@@ -510,9 +510,11 @@
 
 	% Note that `one_copy' variables *must* have an initializer
 	% (the GCC back-end relies on this).
+	% XXX Currently we only record the type for structs.
+	%     We should do the same for objects and arrays.
 :- type mlds__initializer
 	--->	init_obj(mlds__rval)
-	;	init_struct(list(mlds__initializer))
+	;	init_struct(mlds__type, list(mlds__initializer))
 	;	init_array(list(mlds__initializer))
 	;	no_initializer
 	.

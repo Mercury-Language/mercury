@@ -726,7 +726,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		{ ConstType = mlds__array_type(_) ->
 			Initializer = init_array(ArgInits)
 		;
-			Initializer = init_struct(ArgInits)
+			Initializer = init_struct(ConstType, ArgInits)
 		},
 		{ ConstDefn = ml_gen_static_const_defn(ConstName, ConstType,
 			local, Initializer, Context) },

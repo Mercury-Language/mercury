@@ -569,7 +569,7 @@ function_body_contains_var(defined_here(Statement), Name) :-
 % initializer_contains_var(no_initializer, _) :- fail.
 initializer_contains_var(init_obj(Rval), Name) :-
 	rval_contains_var(Rval, Name).
-initializer_contains_var(init_struct(Inits), Name) :-
+initializer_contains_var(init_struct(_Type, Inits), Name) :-
 	list__member(Init, Inits),
 	initializer_contains_var(Init, Name).
 initializer_contains_var(init_array(Inits), Name) :-

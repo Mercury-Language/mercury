@@ -614,7 +614,7 @@ method_ptrs_in_defn(mlds__defn(_Name, _Context, _Flags, Body)) -->
 :- mode method_ptrs_in_initializer(in, in, out) is det.
 
 method_ptrs_in_initializer(mlds__no_initializer) --> [].
-method_ptrs_in_initializer(mlds__init_struct(Initializers)) -->
+method_ptrs_in_initializer(mlds__init_struct(_Type, Initializers)) -->
 	method_ptrs_in_initializers(Initializers).
 method_ptrs_in_initializer(mlds__init_array(Initializers)) -->
 	method_ptrs_in_initializers(Initializers).
@@ -1408,8 +1408,8 @@ output_initializer(ModuleName, Type, Initializer) -->
 
 needs_initialization(no_initializer) = no.
 needs_initialization(init_obj(_)) = yes.
-needs_initialization(init_struct([])) = no.
-needs_initialization(init_struct([_|_])) = yes.
+needs_initialization(init_struct(_Type, [])) = no.
+needs_initialization(init_struct(_Type, [_|_])) = yes.
 needs_initialization(init_array(_)) = yes.
 
 :- pred output_initializer_body(mlds__initializer, maybe(mlds__type),
@@ -1451,34 +1451,30 @@ output_initializer_body(init_obj(Rval), MaybeType, ModuleName) -->
 	;
 		output_rval_maybe_with_enum(Rval, ModuleName)
 	).
-output_initializer_body(init_struct(FieldInits), MaybeType, ModuleName) --> 
+output_initializer_body(init_struct(StructType, FieldInits), _MaybeType,
+		ModuleName) --> 
+	io__write_string("new "),
+	output_type(StructType),
 	(
-		{ MaybeType = yes(Type) },
-		{ not ( Type = mercury_type(MercuryType, _, _),
-		        hand_defined_type(MercuryType, _, yes) ) }
+		{ StructType = mercury_type(MercuryType, _, _) },
+		{ hand_defined_type(MercuryType, _, IsArray0) }
 	->
-		io__write_string("new "),
-		output_type(Type),
-		io__write_char('('),
-		io__write_list(FieldInits, ",\n\t\t",
-			(pred(FieldInit::in, di, uo) is det -->
-			output_initializer_body(FieldInit, no, ModuleName))),
-		io__write_char(')')
+		{ IsArray = IsArray0 }
 	;
-		% XXX we need to know the type here
-		io__write_string("new Object[] {"),
-		io__write_list(FieldInits, ",\n\t\t",
-			(pred(FieldInit::in, di, uo) is det -->
-			output_initializer_body(FieldInit, no, ModuleName))),
-		io__write_string("}")
-	).
+		{ IsArray = no }
+	),
+	io__write_string(if IsArray = yes then " {" else "("),
+	io__write_list(FieldInits, ",\n\t\t",
+		(pred(FieldInit::in, di, uo) is det -->
+		output_initializer_body(FieldInit, no, ModuleName))),
+	io__write_char(if IsArray = yes then '}' else ')').
 output_initializer_body(init_array(ElementInits), MaybeType, ModuleName) -->
 	io__write_string("new "),
 	( { MaybeType = yes(Type) } ->
 		output_type(Type)
 	;
 		% XXX we need to know the type here
-		io__write_string("Object[]")
+		io__write_string("/* XXX init_array */ Object[]")
 	),
 	io__write_string(" {\n\t\t"),
 	io__write_list(ElementInits, ",\n\t\t",
@@ -2695,7 +2691,13 @@ output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	%
 	% Generate class constructor name.
 	%
-	( { MaybeCtorName = yes(QualifiedCtorId) } ->
+	(
+		{ MaybeCtorName = yes(QualifiedCtorId) },
+		{ \+ (
+			Type = mlds__mercury_type(MercuryType, _, _),
+			hand_defined_type(MercuryType, _, yes)
+		) }
+	->
 		output_type(Type),
 		io__write_char('.'),
 		{ QualifiedCtorId = qual(_ModuleName, CtorDefn) },
@@ -3124,14 +3126,13 @@ output_binop(Op, X, Y, ModuleName) -->
 	;
 		{ java_util__string_compare_op(Op, OpStr) }
 	->
+		io__write_string("("),
 		output_rval(X, ModuleName),
 		io__write_string(".compareTo("),
 		output_rval(Y, ModuleName),
-		io__write_string(")"),
-		io__write_string(" "),
+		io__write_string(") "),
 		io__write_string(OpStr),
-		io__write_string(" "),
-		io__write_string("0")
+		io__write_string(" 0)")
 	;
 		( { java_util__float_compare_op(Op, OpStr1) } ->
 			{ OpStr = OpStr1 }
