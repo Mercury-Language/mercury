@@ -6188,6 +6188,7 @@ make, rather than source files.  Create the specified files,
 if they are not already up-to-date.
 (Note that this option also enables @samp{--use-subdirs}.)
 
+@sp 1
 @item -r
 @itemx --rebuild
 @findex -r
@@ -6195,6 +6196,7 @@ if they are not already up-to-date.
 Same as @samp{--make}, but always rebuild the target files
 even if they are up to date.
 
+@sp 1
 @item --pre-link-command @var{command}
 @findex --pre-link-command
 Specify a command to run before linking with @samp{mmc --make}.
@@ -6207,12 +6209,14 @@ replaced with the list of modules making up the library.
 Occurrences of @samp{@@@@} and @samp{%%} will be replaced
 with @samp{@@} and @samp{%} respectively.
 
+@sp 1
 @item --extra-init-command @var{command}
 @findex --extra-init-command
 Specify a command to produce extra entries in the @file{.init} file
 for a library. Occurrences of @samp{@@} and @samp{%} in the command
 are substituted as for the @samp{--pre-link-command} option.
 
+@sp 1
 @item -k
 @itemx --keep-going
 @findex -k
@@ -6220,10 +6224,12 @@ are substituted as for the @samp{--pre-link-command} option.
 With @samp{--make} keep going as far as
 possible even if an error is detected.
 
+@sp 1
 @item --install-prefix @var{dir}
 @findex --install-prefix
 Specify the directory under which to install Mercury libraries.
 
+@sp 1
 @item --install-command @var{command}
 @findex --install-command
 Specify the command to use to install the files in Mercury
@@ -6232,11 +6238,13 @@ libraries. The given command will be invoked as
 to install each file in a Mercury library.
 The default command is @samp{cp}.
 
+@sp 1
 @item --libgrade @var{grade}
 @findex --libgrade
 Add @var{grade} to the list of compilation grades in
 which a library to be installed should be built.
 
+@sp 1
 @item --options-file @var{file}
 @findex --options-file
 Add @var{file} to the list of options files to be processed.
@@ -6244,10 +6252,20 @@ If @var{file} is @samp{-}, an options file will be read from the
 standard input.  By default the file @file{Mercury.options}
 in the current directory will be read.
 
+@sp 1
 @item --options-search-directory @var{dir}
+@findex --options-search-directory
 Add @var{dir} to the list of directories to be searched for
 options files.
 
+@sp 1
+@item --mercury-configuration-directory @var{dir}
+@itemx --mercury-config-dir @var{dir}
+@findex --mercury-configuration-directory
+@findex --mercury-config-dir
+Search @var{dir} for Mercury system's configuration files.
+
+@sp 1
 @item -I @var{dir}
 @itemx --search-directory @var{dir}
 @findex -I
@@ -6257,6 +6275,7 @@ options files.
 Append @var{dir} to the list of directories to be searched for
 imported modules.
 
+@sp 1
 @item --intermod-directory @var{dir}
 @findex --intermod-directory
 @cindex Directories
@@ -6264,6 +6283,7 @@ imported modules.
 Append @var{dir} to the list of directories to be searched for
 @samp{.opt} files.
 
+@sp 1
 @item --use-search-directories-for-intermod
 @findex --use-search-directories-for-intermod
 @cindex Directories
@@ -6271,6 +6291,7 @@ Append @var{dir} to the list of directories to be searched for
 Append the arguments of all -I options to the list of directories
 to be searched for @samp{.opt} files.
 
+@sp 1
 @item --use-subdirs
 @findex --use-subdirs
 @cindex File names
@@ -6280,6 +6301,7 @@ to be searched for @samp{.opt} files.
 Create intermediate files in a @file{Mercury} subdirectory,
 rather than in the current directory.
 
+@sp 1
 @item --use-grade-subdirs
 @findex --use-grade-subdirs
 @cindex File names
@@ -6549,12 +6571,15 @@ Link with the specified Mercury library.  @xref{Using libraries}.
 @findex --mercury-standard-library-directory
 @findex --mercury-stdlib-dir
 Search @var{directory} for the Mercury standard library.
+Implies @samp{--mercury-library-directory @var{directory}}
+and @samp{--mercury-configuration-directory @var{directory}}.
 
 @item --no-mercury-standard-library-directory
 @itemx --no-mercury-stdlib-dir
 @findex --no-mercury-standard-library-directory
 @findex --no-mercury-stdlib-dir
 Don't use the Mercury standard library.
+Implies @samp{--no-mercury-configuration-directory}.
 
 @item --init-file-directory @var{directory}
 @findex --init-file-directory
@@ -6894,19 +6919,16 @@ However, if for some reason you wish to use another compiler,
 it is possible to do so.  Here's what you need to do.
 
 @itemize @bullet
-@item You must specify the name of the new compiler.
-You can do this either by setting the @samp{MERCURY_C_COMPILER}
-environment variable, by adding
-@samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
-or by using the @samp{--cc} option to @samp{mmc}.
-You may need to specify some option(s) to the C compiler
-to ensure that it uses an ANSI preprocessor (e.g.@: if you
-are using the DEC Alpha/OSF 3.2 C compiler, you would need to
-pass @samp{--cc="cc -std"} to @samp{mmc} so that it will pass the
-@samp{-std} option to @samp{cc}).
+@item Create a new configuration for the Mercury system using the
+@samp{mercury_config} script, specifying the different C compiler, e.g.@:
+@samp{mercury_config --output-prefix=/usr/local/mercury-cc --with-cc=cc}.
+
+@item Add the @samp{bin} directory of the new configuration to the beginning
+of your PATH.
 
 @item
-You must use the grade @samp{none} or @samp{none.gc}.
+You must use a grade beginning with @samp{none}, @samp{hlc} or @samp{hl}
+(e.g.@: @samp{hlc.gc}).
 You can specify the grade in one of three ways: by setting the
 @samp{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
 @vindex MERCURY_DEFAULT_GRADE

@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001-2002 The University of Melbourne.
+# Copyright (C) 2001-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -17,6 +17,8 @@
 #---------------------------------------------------------------------------#
 
 # initialize common options
+mercury_config_dir=${MERCURY_STDLIB_DIR-@CONFIG_LIBDIR@}
+mercury_config_dir=${MERCURY_CONFIG_DIR=$mercury_config_dir}
 mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
 
 # initialize ml options
@@ -124,6 +126,10 @@ Directory options:
 		The directory in which to find the Mercury standard library.
 	--no-mercury-standard-library-directory, --no-mercury-stdlib-dir
 		Same as \`--mercury-libs none'.
+	--mercury-config-directory <directory>
+	--mercury-config-dir <directory>
+		The location of an alternative configuration
+		(created with mercury_config) to use.
 	-L <directory>, --lib-dir <directory>
 		Include <directory> in the list of directories that the
 		linker will use to search for libraries.
@@ -311,11 +317,18 @@ EOF
 
 	--mercury-standard-library-directory|--mercury-stdlib-dir)
 		mercury_stdlib_dir="$2"
+		mercury_config_dir="$2"
 		shift
 		;;
 	--no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
 		mercury_libs=none
 		unset mercury_stdlib_dir
+		unset mercury_config_dir
+		;;
+
+	--mercury-config-directory|--mercury-config-dir)
+		mercury_config_dir="$2"
+		shift
 		;;
 
 	-L|--lib-dir)

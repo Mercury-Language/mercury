@@ -1,0 +1,174 @@
+#! /bin/sh
+# @configure_input@
+#---------------------------------------------------------------------------#
+# Copyright (C) 2003 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# IMPORTANT: the manpage is produced automatically from this help
+# message, so if you change the help message, don't forget to check
+# that the manpage still looks OK.
+                
+Help="\
+Name:   mercury_config - generate new configurations for a Mercury installation
+Usage:  mercury_config [<options>] [-- <configure options>]
+Options:
+	--output-prefix <dir>
+		Generate the new copies of the Mercury scripts and
+		configuration files into the given directory.
+		By default mercury_config overwrites the configuration in
+		the installation hierarchy containing the mercury_config
+		script.
+
+Description:
+	Generates an alternative configuration for a Mercury
+	installation, for example to use a different C compiler.
+
+	The <configure options> must result in a configuration
+	which is compatible with the configuration used to build
+	the installed libraries, or else linking using the new
+	configuration will fail.  For example, both configurations
+	must agree on the use of boxed or unboxed floats.
+
+	To use the new configuration, put \`<dir>/bin' at the
+	beginning of your PATH.
+
+Environment variables:
+        MERCURY_DEFAULT_GRADE.
+
+Configure options:
+@CONFIGURE_HELP@
+"
+#---------------------------------------------------------------------------#
+
+input_prefix=@prefix@
+output_prefix=@CONFIG_PREFIX@
+exe_ext=@EXT_FOR_EXE@
+unset MERCURY_STDLIB_DIR
+unset MERCURY_CONFIG_DIR
+recursive=no
+
+while : ; do
+	case $1 in 
+		# This option is only for use by
+		# bindist/bindist.INSTALL.in
+		--input-prefix=*)
+			input_prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
+			;;
+		--input-prefix)
+			input_prefix="$2"
+			shift
+			;;
+
+		--output-prefix=*)
+			output_prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
+			;;
+		--output-prefix)
+			output_prefix="$2"
+			shift
+			;;
+
+		--recursive)
+			recursive=yes
+			;;
+
+		-h|--help|"-?")
+			echo "$Help"
+			exit 0
+			;;
+
+		--)
+			shift
+			break
+			;;
+
+		*)
+			break
+			;;
+	esac
+	shift
+done
+
+input_libdir="$input_prefix/lib/mercury"
+output_libdir="$output_prefix/lib/mercury"
+
+# mercury_config regenerates itself, so we can't just execute it in place.
+case $recursive in
+    no)
+	if [ -d "$TMPDIR" ]; then
+		:
+	elif [ -d /tmp ]; then
+		TMPDIR="/tmp"
+	else
+		TMPDIR="."
+	fi
+	TMPDIR=$TMPDIR/mercury_config.$$
+	trap 'rm -rf $TMPDIR; exit 1' 1 2 3 13 15 
+	[ -d $TMPDIR ] || mkdir -p $TMPDIR || \
+		{ echo mercury_config: invalid TMPDIR: $TMPDIR; exit 1; }
+	export TMPDIR
+
+	cp $input_prefix/bin/mercury_config $TMPDIR
+	case $# in
+	0)
+		exec $TMPDIR/mercury_config --recursive \
+			--input-prefix "$input_prefix" \
+			--output-prefix "$output_prefix" ;;
+	*)
+		exec $TMPDIR/mercury_config --recursive \
+			--input-prefix "$input_prefix" \
+			--output-prefix "$output_prefix" "$@" ;;
+	esac
+esac
+
+cp -r $input_libdir/reconf/* $TMPDIR || exit 1
+mkdir $TMPDIR/bindist || exit 1
+
+# The configure script tries to process these files, but they won't be used.
+touch $TMPDIR/Mmake.common.in $TMPDIR/bindist/bindist.INSTALL.in || exit 1
+touch $TMPDIR/bindist/bindist.Makefile.in || exit 1
+
+cd $TMPDIR
+case $# in
+	0)
+		./configure @RECONFIGURE_ARGS@ \
+			--cache-file=/dev/null \
+			--prefix="$input_prefix" \
+			--enable-reconfigure="$output_prefix" || exit 1
+		;;
+	*)
+		./configure @RECONFIGURE_ARGS@ "$@" \
+			--cache-file=/dev/null \
+			--prefix="$input_prefix" \
+			--enable-reconfigure="$output_prefix" || exit 1
+		;;
+esac
+
+[ -d $output_libdir/conf ] || mkdir -p $output_libdir/conf || exit 1
+[ -d $output_libdir/mmake ] || mkdir -p $output_libdir/mmake || exit 1
+[ -d $output_prefix/bin ] || mkdir -p $output_prefix/bin || exit 1
+
+#
+# Copy the new configuration into place.
+#
+cp runtime/mercury_conf.h $output_libdir/conf || exit 1
+cp scripts/Mmake.vars $output_libdir/mmake || exit 1
+if [ "$input_prefix" != "$output_prefix" ]; then
+	cp $input_prefix/bin/mdemangle${exe_ext} \
+		$input_prefix/bin/mkinit${exe_ext} \
+		$input_prefix/bin/info_to_mdb${exe_ext} $output_prefix/bin
+	cp $input_libdir/mmake/Mmake.rules $output_libdir/mmake
+fi
+cd scripts
+echo *
+for file in *; do
+	case "$file" in
+		*.in|Mmake.*|mdbrc|*.sh-subr) ;;
+		*)
+			cp $file $output_prefix/bin || exit 1
+			chmod u+w $output_prefix/bin/$file || exit 1
+			;;
+	esac
+done
+rm -rf $TMPDIR

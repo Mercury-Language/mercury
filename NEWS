@@ -1,5 +1,5 @@
-NEWS since Mercury release 0.11:
---------------------------------
+NEWS since Mercury release 0.11.0:
+----------------------------------
 
 HIGHLIGHTS
 ==========
@@ -13,6 +13,9 @@ Changes to the Mercury language:
 Changes to the Mercury compiler:
 * It's now easier to use shared libraries on Linux/x86 systems
   with `mmc --make'.
+
+Changes to the Mercury standard library:
+* Nothing yet.
 
 Portability improvements:
 * Nothing yet.
@@ -52,6 +55,8 @@ Changes to the Mercury standard library:
   `is_nan_or_inf/1' to float.m.  These predicates are for use only on
   systems which support IEEE floating point arithmetic.
 
+* getopt.m now accepts a `maybe_string_special' option type.
+
 * We've fixed some problems with the use of `cc_nondet'.
 
   The incorrect cc_nondet modes of the following predicates have been removed:
@@ -75,6 +80,10 @@ Changes to the Mercury compiler:
   `mmc --make'.  See the documentation for the `--mercury-linkage'
   and `--linkage' options and the `MERCURY_LINKAGE' Mmake variable
   in the Mercury User's Guide.
+
+* It is now possible to reconfigure an existing Mercury installation
+  to use a different C compiler.  See the "C compilers" chapter
+  of the Mercury User's Guide for details.
 
 * The Mercury compiler now uses `.' and not `:' as the module separator
   in all output.

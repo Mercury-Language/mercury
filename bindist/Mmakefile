@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-2002 The University of Melbourne.
+# Copyright (C) 1996-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,7 +14,7 @@ MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
 
 INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
-LIB_FILES	= bin doc html inc ints lib mdb/mdb_doc modules
+LIB_FILES	= bin conf doc html inc ints lib mdb/mdb_doc modules reconf
 
 # Miscellaneous scripts and utilities not processed by configure
 UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
@@ -28,7 +28,14 @@ README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
 		  ../TODO ../VERSION ../README.*
 
-SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
+INSTALL_SCRIPTS	= ../scripts/c2init ../scripts/mmc \
+		../scripts/mercury_update_interface ../scripts/mgnuc \
+		../scripts/ml ../scripts/mmake ../scripts/mprof \
+		../scripts/mdb ../scripts/mkfifo_using_mknod \
+		../scripts/mercury_config ../scripts/Mmake.vars \
+		../scripts/mdbrc
+
+SCRIPT_FILES	= $(INSTALL_SCRIPTS) ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules \
 		  ../scripts/canonical_grade \
 		  ../scripts/gud.el
@@ -41,8 +48,14 @@ CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
 
 # These files have a local version bindist.$filename which will be
 # preprocessed to create the final version.
-MISC_FILES	= INSTALL README \
-		  build_vars Makefile.in configure configure.in
+MISC_FILES	= INSTALL README Makefile
+
+.SUFFIXES: .in
+
+.in:
+	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
+	# check to ensure there were no mispelt autoconf variable names
+	if grep -n '[^$$]@.*@' $@; then false; else true; fi
 
 #-----------------------------------------------------------------------------#
 
@@ -52,7 +65,7 @@ DEFAULT_TARGET=bindist
 bindist: binary_distribution
 
 .PHONY: binary_distribution
-binary_distribution: bindist.configure bindist.build_vars
+binary_distribution: bindist.Makefile bindist.INSTALL
 	# Make a quick check that there is a mercury installation in
 	# $(INSTALL_PREFIX) by looking for mmc and mercury_compile.
 	test -f $(INSTALL_BINDIR)/mmc
@@ -129,27 +142,17 @@ binary_distribution: bindist.configure bindist.build_vars
 			-e 's/<FULLARCH>/$(FULLARCH)/g'			\
 			bindist.$$file > $(MERCURY_VERSION)/$$file || exit 1; \
 	done
-	# Ensure the configure file is executable.
-	chmod +x $(MERCURY_VERSION)/configure
+	# Ensure the install file is executable.
+	chmod +x $(MERCURY_VERSION)/INSTALL
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	tar -cf ../$(MERCURY_VERSION).tar $(MERCURY_VERSION)
 	gzip ../$(MERCURY_VERSION).tar
 	rm -rf $(MERCURY_VERSION)
 
-bindist.configure: bindist.configure.in ../aclocal.m4
-	autoconf -l .. bindist.configure.in > bindist.configure
-
-bindist.build_vars: bindist.build_vars.in
-	CONFIG_FILES=bindist.build_vars CONFIG_HEADERS= \
-	$(MERCURY_DIR)/config.status
-
 #-----------------------------------------------------------------------------#
 
 clean_local:
 	rm -rf mercury-rotd* mercury-DEV*
-
-realclean_local:
-	rm -f bindist.configure bindist.build_vars
 
 #-----------------------------------------------------------------------------#

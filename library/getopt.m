@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999,2001-2002 The University of Melbourne.
+% Copyright (C) 1994-1999,2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General 
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,6 +46,7 @@
 %	- bool_special
 %	- int_special
 %	- string_special
+%	- maybe_string_special
 %
 % For the "simple" option types, if there are multiple occurrences
 % of the same option on the command-line, then the last (right-most)
@@ -165,13 +166,15 @@
 	;	special
 	;	bool_special
 	;	int_special
-	;	string_special.
+	;	string_special
+	;	maybe_string_special.
 
 :- type special_data
 	--->	none
 	;	bool(bool)
 	;	int(int)
-	;	string(string).
+	;	string(string)
+	;	maybe_string(maybe(string)).
 
 :- type option_table(OptionType)
 	==	map(OptionType, option_data).
@@ -592,6 +595,15 @@ getopt__process_option(string_special, Option, Flag, MaybeArg, OptionOps,
 	;
 		error("string_special argument expected in getopt__process_option")
 	).
+getopt__process_option(maybe_string_special, Option, Flag, MaybeArg, OptionOps,
+		OptionTable0, Result) :-
+	( MaybeArg = yes(_) ->
+		getopt__process_special(Option, Flag, maybe_string(MaybeArg),
+			OptionOps, OptionTable0, Result)
+	;
+		error("maybe_string_special argument expected in getopt__process_option")
+	).
+
 
 :- pred process_negated_option(string, OptionType, option_ops(OptionType),
 	option_table(OptionType), maybe_option_table(OptionType)).
@@ -616,6 +628,9 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result) :-
 			Result = ok(OptionTable)
 		; OptionData = bool_special ->
 			getopt__process_special(Option, Flag, bool(no),
+				OptionOps, OptionTable0, Result)
+		; OptionData = maybe_string_special ->
+			getopt__process_special(Option, Flag, maybe_string(no),
 				OptionOps, OptionTable0, Result)
 		;
 			string__append_list(["cannot negate option `", Option,
@@ -667,6 +682,7 @@ getopt__need_arg(special, no).
 getopt__need_arg(bool_special, no).
 getopt__need_arg(int_special, yes).
 getopt__need_arg(string_special, yes).
+getopt__need_arg(maybe_string_special, yes).
 
 :- pred getopt__numeric_argument(string::in, string::in,
 	maybe_option_table(OptionType)::out) is det.

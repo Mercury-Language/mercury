@@ -963,6 +963,20 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	),
 
 	%
+	% Add the path to mercury_conf.h.
+	%
+	globals__io_lookup_maybe_string_option(
+		mercury_configuration_directory, MaybeConfDir),
+	( { MaybeConfDir = yes(ConfDir) } ->
+		globals__io_lookup_accumulating_option(c_include_directory,
+			CIncludeDirs0),
+		globals__io_set_option(c_include_directory,
+			accumulating([ConfDir/"lib"/"conf" | CIncludeDirs0]))
+	;
+		[]
+	),
+
+	%
 	% Handle the `.opt', C header and library search directories.
 	% These couldn't be handled by options.m because they are grade
 	% dependent.

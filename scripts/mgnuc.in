@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne.
+# Copyright (C) 1995-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -88,6 +88,8 @@ c_debug=false
 c_optimize=true
 use_activation_counts=false
 preserve_tail_recursion=true
+mercury_config_dir=${MERCURY_STDLIB_DIR-@LIBDIR@}
+mercury_config_dir=${MERCURY_CONFIG_DIR=$mercury_config_dir}
 mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
 
 # include the file `init_grade_options.sh-subr'
@@ -201,10 +203,20 @@ while : ; do
 
 	--mercury-standard-library-directory|--mercury-stdlib-dir)
 		mercury_stdlib_dir="$2"
+		mercury_config_dir="$2"
 		shift
 		;;
 	--no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
-		unset mercury_stdlib_dir ;;
+		unset mercury_stdlib_dir
+		unset mercury_config_dir
+		;;
+
+	--mercury-config-directory|--mercury-config-dir)
+		mercury_config_dir="$2"
+		shift
+		;;
+	# We don't allow `MERCURY_CONFIG_DIR' to be unset
+	# without `MERCURY_STDLIB_DIR' also being unset.
 
 	# include the file `parse_grade_options.sh-subr'
 	@PARSE_GRADE_OPTIONS@
@@ -232,7 +244,11 @@ done
 case "$mercury_stdlib_dir" in
     "")	MERC_ALL_C_INCL_DIRS=$MERCURY_ALL_C_INCL_DIRS
     	;;
-    *)  MERC_ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS="-I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/$FULLARCH/inc"}
+    *) 
+	# The option setting code above guarantees that if
+	# `--mercury-stdlib-dir' is set, `--mercury-config-dir'
+	# is also set.
+    	MERC_ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS="-I$mercury_config_dir/conf -I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/$FULLARCH/inc"}
 	;;
 esac
 

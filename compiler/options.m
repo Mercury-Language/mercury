@@ -573,6 +573,7 @@
 		;	mercury_libraries
 		;	mercury_library_special
 		;	mercury_standard_library_directory
+		;	mercury_standard_library_directory_special
 		;	init_file_directories
 		;	init_files
 		;	trace_init_files
@@ -626,6 +627,8 @@
 		;	extra_init_command
 		;	pre_link_command
 		;	install_prefix
+		;	mercury_configuration_directory
+		;	mercury_configuration_directory_special
 		;	install_command
 		;	libgrades
 		;	options_files
@@ -1169,6 +1172,7 @@ option_defaults_2(link_option, [
 					% The mmc script will set the default
 					% standard library directory.
 	mercury_standard_library_directory - maybe_string(no),
+	mercury_standard_library_directory_special - maybe_string_special,
 	init_file_directories -		accumulating([]),
 	init_files -			accumulating([]),
 	trace_init_files -		accumulating([]),
@@ -1226,6 +1230,12 @@ option_defaults_2(build_system_option, [
 	pre_link_command	-	maybe_string(no),
 	extra_init_command	-	maybe_string(no),
 	install_prefix		-	string("/usr/local/"),
+
+	% If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
+	% must also be set.  This invariant is maintained by the
+	% `special' variants of the options.
+	mercury_configuration_directory_special - string_special,
+	mercury_configuration_directory - maybe_string(no),
 	install_command		-	string("cp"),
 	libgrades		-	accumulating([]),
 	options_files		-	accumulating(["Mercury.options"]),
@@ -1817,8 +1827,9 @@ long_option("ml",			mercury_library_special).
 long_option("mercury-library-directory", mercury_library_directory_special).
 long_option("mld",			mercury_library_directory_special).
 long_option("mercury-standard-library-directory",
-					mercury_standard_library_directory).
-long_option("mercury-stdlib-dir",	mercury_standard_library_directory).
+				mercury_standard_library_directory_special).
+long_option("mercury-stdlib-dir",
+				mercury_standard_library_directory_special).
 long_option("init-file-directory",	init_file_directories).
 long_option("init-file",		init_files).
 long_option("trace-init-file",		trace_init_files).
@@ -1870,6 +1881,8 @@ long_option("rebuild",			rebuild).
 long_option("invoked-by-mmc-make",	invoked_by_mmc_make).
 long_option("pre-link-command",		pre_link_command).
 long_option("extra-init-command",	extra_init_command).
+long_option("mercury-configuration-directory",
+				mercury_configuration_directory_special).
 long_option("install-prefix",		install_prefix).
 long_option("install-command",		install_command).
 long_option("library-grade",		libgrades).
@@ -2025,6 +2038,18 @@ special_handler(mercury_library_special, string(Lib),
 		mercury_libraries - Lib,
 		init_files - (Lib ++ ".init")
 		], OptionTable0).
+special_handler(mercury_standard_library_directory_special,
+		maybe_string(MaybeStdLibDir), OptionTable0, ok(OptionTable)) :-
+	OptionTable =
+	    map__set(map__set(OptionTable0,
+		mercury_standard_library_directory,
+			maybe_string(MaybeStdLibDir)),
+		mercury_configuration_directory,
+			maybe_string(MaybeStdLibDir)).
+special_handler(mercury_configuration_directory_special,
+		string(ConfDir), OptionTable0, ok(OptionTable)) :-
+	OptionTable = map__set(OptionTable0, mercury_configuration_directory,
+			maybe_string(yes(ConfDir))).
 special_handler(quoted_cflag, string(Flag),
 			OptionTable0, ok(OptionTable)) :-
 	handle_quoted_flag(cflags, Flag, OptionTable0, OptionTable).
@@ -3771,9 +3796,12 @@ options_help_link -->
 		"--mercury-standard-library-directory <directory>",
 		"--mercury-stdlib-dir <directory>",
 		"\tSearch <directory> for the Mercury standard library.",
+		"\tImplies `--mercury-library-directory <directory>'",
+		"\tand `--mercury-configuration-directory <directory>'.",
 		"--no-mercury-standard-library-directory",
 		"--no-mercury-stdlib-dir",
 		"\tDon't use the Mercury standard library.",
+		"\tImplies `--no-mercury-configuration-directory'.",
 		"--ml <library>, --mercury-library <library>",
 		"\tLink with the specified Mercury library.",
 
@@ -3887,15 +3915,14 @@ options_help_build_system -->
 		"--options-search-directory <dir>",
 		"\tAdd <dir> to the list of directories to be searched for",
 		"\toptions files.",
-
-		/* NYI
+		"--mercury-configuration-directory <directory>",
+		"--mercury-config-dir <directory>",
+		"\tSearch <directory> for Mercury system's configuration files.",
 		"--config-file <file>",
 		"\tRead the Mercury compiler's configuration information",
 		"\tfrom <file>.  If the `--config-file' option is not set,",
 		"\ta default configuration will be used, unless",
 		"\t`--no-mercury-stdlib-dir' is passed to mmc.",
-		*/
-
 		"-I <dir>, --search-directory <dir>",
 		"\tAppend <dir> to the list of directories to be searched for",
 		"\timported modules.",

@@ -1263,10 +1263,18 @@ get_object_code_type(FileType, ObjectCodeType) -->
 standard_library_directory_option(Opt) -->
 	globals__io_lookup_maybe_string_option(
 		mercury_standard_library_directory, MaybeStdLibDir),
+	globals__io_lookup_maybe_string_option(
+		mercury_configuration_directory, MaybeConfDir),
 	{
 		MaybeStdLibDir = yes(StdLibDir),
-		Opt = "--mercury-standard-library-directory "
-				++ StdLibDir ++ " "
+		Opt0 = "--mercury-standard-library-directory "
+				++ StdLibDir ++ " ",
+		( MaybeConfDir = yes(ConfDir), ConfDir \= StdLibDir ->
+			Opt = Opt0 ++ "--mercury-configuration-directory "
+					++ ConfDir ++ " "
+		;
+			Opt = Opt0
+		)
 	;
 		MaybeStdLibDir = no,
 		Opt = "--no-mercury-standard-library-directory "

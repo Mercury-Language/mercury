@@ -307,9 +307,9 @@ tar: $(GENERATED_DOCS)
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 	+cd deep_profiler && $(SUBDIR_MMAKE) cs tags
 	+cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
-	+cd bindist && $(SUBDIR_MMAKE) bindist.configure
-	# the following command might fail on Windows?
-	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
+	# the following commands might fail on Windows?
+	-cd bindist && $(SUBDIR_MMAKE) bindist.Makefile
+	-cd bindist && $(SUBDIR_MMAKE) bindist.INSTALL
 	+cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
 	# clean up
 	cd scripts && mmake realclean
@@ -400,7 +400,7 @@ install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
   		install_library install_browser install_trace \
 		install_compiler install_profiler install_deep_profiler \
-		install_doc 
+		install_doc install_config
  
 .PHONY: install_scripts
 install_scripts: scripts
@@ -409,6 +409,11 @@ install_scripts: scripts
 .PHONY: install_util
 install_util: util
 	+cd util && $(SUBDIR_MMAKE) install
+
+.PHONY: install_config
+install_config:
+	cp VERSION aclocal.m4 configure configure.in config.guess \
+		config.sub install-sh $(INSTALL_RECONF_DIR)
 
 .PHONY: install_runtime
 install_runtime: runtime
@@ -602,7 +607,8 @@ uninstall:
 
 .PHONY : bindist
 bindist: WORK_IN_PROGRESS TODO
-	cd bindist; mmake binary_distribution
+	cd bindist; \
+		PATH="$(INSTALL_PREFIX)/bin:$$PATH" mmake binary_distribution
 
 #-----------------------------------------------------------------------------#
 
@@ -642,7 +648,7 @@ realclean_docs:
 
 .PHONY: realclean_config
 realclean_config:
-	rm -f config.cache config.status config.log configure.log
+	rm -f config.cache config.status config.log configure.log configure.help
 
 .PHONY: realclean_tests
 realclean_tests:

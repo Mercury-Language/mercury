@@ -9,14 +9,6 @@
 # This file is automatically processed by `autoconf' to produce the
 # `configure' script.
 #
-# IMPORTANT NOTE: any changes here will usually also require changes in
-# bindist/bindist.configure.in and/or bindist/bindist.build_vars.in.
-#
-# XXX Much of the code here is duplicated in bindist/bindist.configure.in.
-#     We should abstract it out into macros defined in aclocal.m4,
-#     so that the same code can be shared between both this file and
-#     bindist/bindist.configure.in.
-#
 #-----------------------------------------------------------------------------#
 #
 # Define a macro MERCURY_MSG, similar to AC_MSG_RESULT, for displaying output.
@@ -25,7 +17,7 @@ dnl MERCURY_MSG(MESSAGE)
 define(MERCURY_MSG,
 [echo $1 1>&AC_FD_MSG])
 #-----------------------------------------------------------------------------#
-AC_INIT(runtime/mercury_wrapper.c)
+AC_INIT(scripts/mmc.in)
 TMPDIR=${TMPDIR=/tmp}
 #-----------------------------------------------------------------------------#
 #
@@ -43,8 +35,11 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 		0) ${CONFIG_SHELL-/bin/sh} "$0"      ;;
 		*) ${CONFIG_SHELL-/bin/sh} "$0" "$@" ;;
 	esac; echo $? > configure.exit_status; } | exec tee configure.log
-	exit `cat configure.exit_status`
+	status=`cat configure.exit_status`
+	rm -f configure.exit_status
+	exit $status
 fi
+
 #-----------------------------------------------------------------------------#
 remake_dependencies=false
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
@@ -72,6 +67,7 @@ esac
 LIBDIR="$PREFIX/lib/mercury"
 WINDOWS_LIBDIR="`cygpath -w $LIBDIR 2>/dev/null`"
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
+AC_SUBST(VERSION)
 AC_SUBST(PREFIX)
 AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
@@ -87,6 +83,65 @@ case "$host" in
 		AC_MSG_WARN(*** Read README.BSDI before proceeding!)
 		;;
 esac
+#-----------------------------------------------------------------------------#
+# Work out the default arguments to configure when reconfiguring,
+# for example when installing a binary distribution.
+# Strip out --no-create and --no-recursion added by config.status.
+# Remove any --prefix and --enable-reconfigure arguments passed by
+# mercury_config.
+# Also quote any args containing shell metacharacters.
+prefix_arg=false
+RECONFIGURE_ARGS=
+for arg
+do
+    if test $prefix_arg = true
+    then
+        prefix_arg=false
+    else
+        case "$arg" in
+            --no-create | --no-recursion) ;;
+            --prefix) prefix_arg=true ;;
+            --prefix=*) ;;
+            --enable-reconfigure=*) ;;
+            *" "*|*"	"*|*[[\[\]\~\#\$\^\&\*\(\)\{\}\\\|\;\<\>\?]]*)
+		# The argument needs to be quoted.
+                RECONFIGURE_ARGS="$RECONFIGURE_ARGS '$arg'"
+                ;;
+            *)
+                RECONFIGURE_ARGS="$RECONFIGURE_ARGS $arg"
+                ;;
+       esac
+    fi
+done
+AC_SUBST(RECONFIGURE_ARGS)
+#-----------------------------------------------------------------------------#
+
+# Don't document this -- it's only used by the mercury_config script
+# to generate a new configuration for an already installed system.
+# CONFIG_PREFIX is the PREFIX for a partial installation generated
+# by mercury_config containing only the scripts and the configuration
+# files, which uses the libraries and executables from a previous
+# installation.
+AC_ARG_ENABLE(reconfigure,
+[],
+[reconfiguring=yes
+CONFIG_PREFIX="$enableval"
+CONFIG_LIBDIR="$CONFIG_PREFIX/lib/mercury"],
+[reconfiguring=no
+CONFIG_PREFIX="$PREFIX"
+CONFIG_LIBDIR="$LIBDIR"]
+)
+
+case "$CONFIG_PREFIX" in
+	yes)	AC_MSG_ERROR(missing argument to --enable-reconfigure=... option)
+		exit 1
+		;;
+	no)	AC_MSG_ERROR(invalid option --no-enable-reconfigure)
+		exit 1
+		;;
+esac
+AC_SUBST(CONFIG_PREFIX)
+AC_SUBST(CONFIG_LIBDIR)
 #-----------------------------------------------------------------------------#
 
 case "$host" in 
@@ -401,7 +456,16 @@ CFLAGS="-O"
 
 # we also need to add the appropriate `-I' options so that the test programs
 # can #include various Mercury runtime headers.
-CPPFLAGS="-Iruntime -Iruntime/machdeps $CPPFLAGS"
+case "$MERCURY_CONF_RECONFIGURE" in
+	"")
+		CPPFLAGS="-Iruntime -Iruntime/machdeps -Itrace $CPPFLAGS"
+		;;
+	*)
+		# We're generating a new configuration for
+		# an existing installation.
+		CPPFLAGS="-I$PREFIX/lib/mercury/inc $CPPFLAGS"
+		;;
+esac
 
 # Make sure we search /usr/local/include and /usr/local/lib for
 # header files and libraries.  GNU C normally searches /usr/local/include
@@ -2542,7 +2606,7 @@ changequote(<<,>>)
 #define	MR_USE_GCC_GLOBAL_REGISTERS
 #define MR_USE_GCC_NONLOCAL_GOTOS
 #include "mercury_imp.h"
-#include "trace/mercury_trace_spy.h"
+#include "mercury_trace_spy.h"
 
 MR_Spy_Point	spied_procs[2];
 
@@ -2866,6 +2930,12 @@ AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_ML_OPTIONS)
 AC_SUBST_FILE(CANONICAL_GRADE)
+
+# mercury_config includes configure.help to include the help for configure
+# in its `--help' output and man page.
+${CONFIG_SHELL-/bin/sh} "$0" --help | sed -e 's/`/\\`/g' > configure.help
+CONFIGURE_HELP=$top/configure.help
+AC_SUBST_FILE(CONFIGURE_HELP)
 
 #-----------------------------------------------------------------------------#
 #
@@ -3262,33 +3332,44 @@ if test "$BOOTSTRAP_MC" != "" ; then
     rm -f confscratch $to_delete
 fi
 #-----------------------------------------------------------------------------#
-AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mercury.bat
-scripts/mprof scripts/mercury_update_interface scripts/mgnuc
-scripts/parse_ml_options.sh-subr scripts/ml scripts/c2init
-scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
-scripts/mkfifo_using_mknod bindist/bindist.build_vars
-,
-for header in $CONFIG_HEADERS ; do
-	if test "$header" = "runtime/mercury_conf.h"; then
-		touch runtime/mercury_conf.h.date
-	fi
-done
-# conftest.junk is used to avoid a warning if there
-# are no files in the list passed to chmod
-touch conftest.junk
-chmod +x `echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' ` conftest.junk
-rm -f conftest.junk
 
-# The --prefix is hard-coded in the scripts, which are regenerated every
-# time you run configure, and also (unfortunately) in the .so files.
-# The following rm commands are here to ensure that things will work correctly
-# if you rerun configure with a new --prefix and then don't do a `make clean'
-# before running `make'.
-rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
-rm -f trace/libmer_trace.so browser/libmer_browse.so
+# Any new entries here may need to be handled by scripts/mercury_config.
+AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc
+scripts/mercury.bat scripts/mprof scripts/mercury_update_interface
+scripts/mgnuc scripts/parse_ml_options.sh-subr scripts/ml
+scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
+scripts/mkfifo_using_mknod bindist/bindist.INSTALL bindist/bindist.Makefile
+scripts/mercury_config
+,
+[
+# Only do this when compiling the source, not when reconfiguring
+# an installation.
+case $reconfiguring in no)
+	for header in $CONFIG_HEADERS ; do
+		if test "$header" = "runtime/mercury_conf.h"; then
+			touch runtime/mercury_conf.h.date
+		fi
+	done
+	# conftest.junk is used to avoid a warning if there
+	# are no files in the list passed to chmod
+	touch conftest.junk
+	chmod +x `echo $CONFIG_FILES | \
+		sed -e 's/[[^ ]]*Mmake.common//' ` conftest.junk
+	rm -f conftest.junk
+
+	# The --prefix is hard-coded in the scripts, which are regenerated
+	# every time you run configure, and also (unfortunately) in the .so
+	# files.  The following rm commands are here to ensure that things
+	# will work correctly if you rerun configure with a new --prefix and
+	# then don't do a `make clean' before running `make'.
+	rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
+	rm -f trace/libmer_trace.so browser/libmer_browse.so
+	;;
+esac],
+[reconfiguring=$reconfiguring]
 )
 
-case $remake_dependencies in true)
+case "$remake_dependencies.$reconfiguring" in "true.no")
 	MERCURY_MSG(
 "regenerating dependencies to enable GCC backend
 	and/or disable Aditi backend.")
@@ -3296,4 +3377,5 @@ case $remake_dependencies in true)
 	MMAKE_DIR=`pwd`/scripts scripts/mmake depend || exit 1
 	;;
 esac
+
 #-----------------------------------------------------------------------------#

@@ -17,7 +17,8 @@ include $(MERCURY_DIR)/Mmake.common
 # which runs the program with `--help' and then munges the result.
 # This variable specifies which programs to create man pages for.
 
-MANPAGE_PROGS = c2init mmc mgnuc ml mmake mdb mprof mprof_merge_runs mtags
+MANPAGE_PROGS = c2init mmc mgnuc ml mmake mdb mprof \
+		mprof_merge_runs mtags mercury_config
 
 # This variable specifies the (top-level) TexInfo files.
 # The mapping of these names to `.info' file names is not regular,

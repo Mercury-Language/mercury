@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2002 The University of Melbourne.
+# Copyright (C) 1999,2001-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -8,8 +8,7 @@
 #
 # This file contains Mercury-specific autoconf tests.
 #
-# We ought to move most of the code in configure.in and
-# bindist/bindist.configure.in into this file...
+# We ought to move most of the code in configure.in into this file...
 #
 #-----------------------------------------------------------------------------#
 AC_DEFUN(MERCURY_CHECK_FOR_HEADERS,

@@ -1,0 +1,112 @@
+#!/bin/sh
+#-----------------------------------------------------------------------------#
+# INSTALL - installation instructions and installation script
+#	    for the binary distribution of Mercury.
+#
+# You need GNU C (2.6.3 or later) and GNU Make (3.69 or later) in order
+# to use Mercury, though you don't need them to install this distribution.
+# To use the Mercury debugger, you may also need GNU Readline.
+#
+# Step 0.  Extract the files from the gzipped tar archive.
+#
+#	   Note: the mercury-*.tar.gz file itself contains
+#	   some other .tar.gz files (lib.tar.gz, info.tar.gz).
+#	   Do NOT mess with these nested .tar.gz files;
+#	   they will be extracted automatically in step 2.
+#
+# Step 1.  Run this script.  (Just type `sh INSTALL'.)
+#
+#	   By default, the files will be installed in the directory
+#	   /usr/local/mercury-@VERSION@.
+#	   If you want the files to be installed someplace else,
+#	   use the `--prefix <directory>' option to `INSTALL'.
+#
+#	   For a list of other configuration options, use
+#	   `sh INSTALL --help'.
+#	   `--prefix <directory>', if specified, must precede any
+# 	   other options.
+#
+# Step 3.  Check the permissions on the installed files.
+#	   Add /usr/local/mercury-@VERSION@/bin to your PATH, and
+#	   add /usr/local/mercury-@VERSION@/man to your MANPATH.
+#	   add /usr/local/mercury-@VERSION@/info to your INFOPATH.
+#	   You can also add a WWW link to the Mercury documentation in
+#	   /usr/local/mercury-@VERSION@/lib/mercury/html to your WWW
+#	   home page, and you may want to print out a hard-copy of the
+#	   documentation from the DVI files in
+#	   /usr/local/mercury-@VERSION@/lib/mercury/doc.
+#
+#	   If the binary distribution includes the deep profiler, then check
+#	   whether "make install" was able to copy scripts/mdprof to the web
+#	   server's CGI directory (normally /usr/lib/cgi-bin). This directory
+#	   is often writeable only by root or by the web server administrator,
+#	   so you may need more than your usual set of privileges to do the
+#	   copy (i.e. you may need to "su" to the appropriate user).
+#
+#	   To use the emacs debugger interface ("M-x mdb"), you also need to
+#	   add the following lines to the `.emacs' file in your home directory:
+#
+#	   	(setq load-path (cons (expand-file-name
+#		  "/usr/local/mercury-@VERSION@/lib/mercury/elisp") load-path))
+#		(autoload 'mdb "gud" "Invoke the Mercury debugger" t)
+#
+#-----------------------------------------------------------------------------#
+#
+# De-installation:
+# ----------------
+#
+# You may eventually want to uninstall this version of Mercury
+# (to free up disk space so you can install the next version ;-).
+# If you installed in the default location, you can simply
+# use `rm -rf /usr/local/mercury-@VERSION@' to uninstall.
+#-----------------------------------------------------------------------------#
+
+prefix=/usr/local/mercury-@VERSION@
+
+while : ; do
+	case "$1" in
+		-h|--help|"-?")
+			scripts/mercury_config --help
+			exit 0
+			;;
+
+		--prefix)
+			prefix=$2
+			shift
+			;;
+		--prefix=*)
+			prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
+			;;
+
+		--)
+			shift
+			break
+			;;
+		*)
+			break
+			;;
+	esac
+	shift
+done
+
+# Install the files.
+make INSTALL_PREFIX=$prefix install || { echo Installation failed; exit 1; }
+
+# Reconfigure the installation.
+# This is needed because the installation directory and C compiler
+# may be different than on the machine on which the distribution
+# was built.
+case $# in
+	0) scripts/mercury_config --input-prefix $prefix \
+			--output-prefix $prefix || \
+			{ echo Configuration failed; exit 1; } ;;
+	*) scripts/mercury_config --input-prefix $prefix \
+			--output-prefix $prefix -- "$@" || \
+			{ echo Configuration failed; exit 1; } ;;
+esac
+
+# Perform parts of the installation which use
+# values determined by the configuration.
+make MMAKE_VARS=$prefix/lib/mercury/mmake/Mmake.vars post_install || \
+		{ echo Post-installation failed; exit 1; }
+

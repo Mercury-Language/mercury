@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1999,2001-2002 The University of Melbourne.
+# Copyright (C) 1995-1999,2001-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -72,6 +72,7 @@ Targets:
 "
 
 MERCURY_STDLIB_DIR=${MERCURY_STDLIB_DIR=@LIBDIR@}
+MERCURY_CONFIG_DIR=${MERCURY_CONFIG_DIR=@CONFIG_LIBDIR@}
 MMAKE_MAKE=${MMAKE_MAKE=@GNU_MAKE@}
 MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 MKTEMP=@MKTEMP@
@@ -165,10 +166,20 @@ while [ $# -gt 0 ]; do
 
 		--mercury-standard-library-directory|--mercury-stdlib-dir)
 			MERCURY_STDLIB_DIR="$2"
+			MERCURY_CONFIG_DIR="$2"
 			shift
 			;;
 		--no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
-			unset MERCURY_STDLIB_DIR ;;
+			unset MERCURY_STDLIB_DIR
+			unset MERCURY_CONFIG_DIR
+			;;
+
+		--mercury-config-directory-directory|--mercury-config-dir)
+			MERCURY_CONFIG_DIR="$2"
+			shift
+			;;
+		# We don't allow `MERCURY_CONFIG_DIR' to be unset
+		# without `MERCURY_STDLIB_DIR' also being unset.
 
 		--)	
 			MMAKE="$MMAKE $1"
@@ -187,9 +198,10 @@ case $use_mmc_make in
 	yes)	use_subdirs=yes ;;		
 esac
 
-if [ "$MERCURY_STDLIB_DIR" != "" ]
+if [ "$MERCURY_CONFIG_DIR" != "" ]
 then
-	MMAKE_DIR=${MMAKE_DIR=$MERCURY_STDLIB_DIR/mmake}
+	MMAKE_DIR=${MMAKE_DIR=$MERCURY_CONFIG_DIR/mmake}
+	export MERCURY_CONFIG_DIR
 	export MERCURY_STDLIB_DIR
 fi
 

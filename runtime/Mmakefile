@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2002 The University of Melbourne.
+# Copyright (C) 1998-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -334,6 +334,9 @@ install_dirs:
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
 	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
 	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	-[ -d $(INSTALL_CONF_DIR) ] || mkdir -p $(INSTALL_CONF_DIR)
+	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
+		mkdir -p $(INSTALL_RECONF_DIR)/runtime
 
 ifeq ($(findstring il,$(GRADE)),il)        
 
@@ -352,10 +355,15 @@ install_lib: $(DOTNET_DLLS) install_headers install_dirs
 
 else
 
+# mercury_conf.h needs to be in a separate directory so it can be 
+# overridden by a different configuration.
 .PHONY: install_headers
 install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
 	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
-	-chmod u+w $(INSTALL_INC_DIR)/mercury_conf.h
+	rm -f $(INSTALL_INC_DIR)/mercury_conf.h
+	cp `vpath_find mercury_conf.h` $(INSTALL_CONF_DIR)
+	-chmod u+w $(INSTALL_CONF_DIR)/mercury_conf.h
+	cp `vpath_find mercury_conf.h.in` $(INSTALL_RECONF_DIR)/runtime
 	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
