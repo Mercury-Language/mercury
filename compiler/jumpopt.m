@@ -665,6 +665,8 @@ jumpopt__short_labels_const(false, _, false).
 jumpopt__short_labels_const(int_const(I), _, int_const(I)).
 jumpopt__short_labels_const(float_const(F), _, float_const(F)).
 jumpopt__short_labels_const(string_const(S), _, string_const(S)).
+jumpopt__short_labels_const(multi_string_const(L, S), _,
+		multi_string_const(L, S)).
 jumpopt__short_labels_const(label_entry(Label0), Instrmap,
 		label_entry(Label)) :-
 	jumpopt__short_label(Label0, Instrmap, Label).

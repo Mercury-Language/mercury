@@ -546,7 +546,11 @@ continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo,
 		LiveValueType, TypeVars) :-
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	varset__lookup_name(VarSet, Var, "V_", Name),
+	( varset__search_name(VarSet, Var, GivenName) ->
+		Name = GivenName
+	;
+		Name = ""
+	),
 	instmap__lookup_var(InstMap, Var, Inst),
 	map__lookup(VarTypes, Var, Type),
 	LiveValueType = var(Var, Name, Type, Inst),

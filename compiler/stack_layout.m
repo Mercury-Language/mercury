@@ -66,9 +66,12 @@
 % The meanings of the fields in both forms are the same as in procedure labels.
 %
 % If the option trace_stack_layout is set, i.e. if we are doing execution
-% tracing, the structure will also include three extra fields:
+% tracing, the structure will also include some extra fields:
 %
-%	call trace info		(Word *) - pointer to label stack layout
+%	call trace info		(MR_Stack_Layout_Label *) - points to the
+%				layout structure of the call event
+%	module layout		(MR_Module_Layout *) - points to the layout
+%				struct of the containing module.
 %	maybe from full		(int_least16_t) - number of the stack slot of
 %				the from_full flag, if the procedure is
 %				shallow traced
@@ -84,14 +87,14 @@
 % (If trace_stack_layout is not set, this field will be present,
 % but it will be set to NULL.)
 %
-% If the procedure is compiled with deep tracing, the second field will contain
+% If the procedure is compiled with deep tracing, the third field will contain
 % a negative number. If it is compiled with shallow tracing, it will contain
 % the number of the stack slot that holds the flag that says whether this
 % incarnation of the procedure was called from deeply traced code or not.
 % (The determinism of the procedure decides whether the stack slot refers
 % to a stackvar or a framevar.)
 %
-% If --trace-decl is not set, the third field will contain a negative number.
+% If --trace-decl is not set, the fourth field will contain a negative number.
 % If it is set, it will contain the number of the first of two stack slots
 % used by the declarative debugger; the other slot is the next higher numbered
 % one. (The determinism of the procedure decides whether the stack slot refers
@@ -109,8 +112,9 @@
 % 	live data types locns 	(void *) - pointer to an area of memory
 %				containing information about where the live
 %				data items are and what their types are
-% 	live data names	 	(String *) - pointer to vector of String
-%				giving the names of the data items, if any
+% 	live data names	 	(MR_Var_Name *) - pointer to vector of
+%				MR_Var_Name structs giving the HLDS var numbers
+%				as well as the names of live data items.
 %	type parameters		(MR_Long_Lval *) - pointer to vector of
 %			 	MR_Long_Lval giving the locations of the
 %				typeinfos for the type parameters that may
@@ -151,13 +155,25 @@
 % otherwise.
 %
 % The live data pair vector will have an entry for each live variable.
-% The entry will give the location of the variable and its type. (It also
-% has room for its instantiation state, but this is not filled in yet.)
+% The entry will give the location of the variable and its type.
 %
 % The live data name vector pointer may be NULL. If it is not, the vector
-% will have an entry for each live variable, with each entry giving the name
-% of the variable (it is either a pointer to a string, or a NULL pointer,
-% which means that the variable has no name).
+% will have an entry consisting of two 16-bit numbers for each live data item.
+% The first is the live data item's HLDS variable number, or one of two
+% special values. Zero means that the live data item is not a variable
+% (e.g. it is a saved copy of succip). The largest possible 16-bit number
+% on the other hand means "the number of this variable does not fit into
+% 16 bits". With the exception of these special values, the value in this
+% slot uniquely identifies the variable. The second 16-bit number is an offset
+% into the module-wide string table; the string at that offset is the
+% variable's name. If the variable or data item has no name, the offset
+% will be zero (at which offset one will find an empty string). The string
+% table is restricted to be small enough to be addressed with 16 bits;
+% a string is reserved near the start for a string that says "too many
+% variables". Stack_layout.m will generate a reference to this string
+% instead of generating an offset that does not fit into 16 bits.
+% Therefore using the stored offset to index into the string table
+% is always safe.
 %
 % If the number of type parameters is not zero, we store the number,
 % so that the code that needs the type parameters can materialize
@@ -235,7 +251,7 @@
 	% converting it into LLDS data structures.
 
 stack_layout__generate_llds(ModuleInfo0, ModuleInfo,
-		ProcLayouts, InternalLayouts, LayoutLabels) :-
+		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) :-
 	module_info_get_global_data(ModuleInfo0, GlobalData),
 	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList),
 
@@ -249,15 +265,82 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo,
 	globals__have_static_code_addresses(Globals, StaticCodeAddr),
 	set_bbbtree__init(LayoutLabels0),
 
+	map__init(StringMap0),
+	StringTable0 = string_table(StringMap0, [], 0),
 	LayoutInfo0 = stack_layout_info(ModuleName, CellCount, AgcLayout,
 		TraceLayout, ProcInfoLayout, StaticCodeAddr,
-		[], [], LayoutLabels0),
+		[], [], LayoutLabels0, [], StringTable0),
+	stack_layout__lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
+	stack_layout__lookup_string_in_table("<too many variables>", _,
+		LayoutInfo1, LayoutInfo2),
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
-		LayoutInfo0, LayoutInfo),
+		LayoutInfo2, LayoutInfo3),
+	stack_layout__get_next_cell_number(ProcVectorCellNum,
+		LayoutInfo3, LayoutInfo),
+	LayoutInfo  = stack_layout_info(_, FinalCellCount, _, _, _, _,
+		ProcLayouts, InternalLayouts, LayoutLabels, ProcLayoutArgs,
+		StringTable),
+	StringTable = string_table(_, RevStringList, StringOffset),
+	list__reverse(RevStringList, StringList),
+	stack_layout__concat_string_list(StringList, StringOffset,
+		ConcatStrings),
 
-	LayoutInfo  = stack_layout_info(_, FinalCellCount, _,
-		_, _, _, ProcLayouts, InternalLayouts, LayoutLabels),
+	( TraceLayout = yes ->
+		Exported = no,	% ignored; see linkage/2 in llds_out.m
+		list__length(ProcLayoutList, NumProcLayouts),
+		llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+		ProcLayoutVector = create(0, ProcLayoutArgs,
+			uniform(yes(data_ptr)), must_be_static, 
+			ProcVectorCellNum, "proc_layout_vector"),
+		Rvals = [yes(const(string_const(ModuleNameStr))),
+			yes(const(int_const(StringOffset))),
+			yes(const(multi_string_const(StringOffset,
+				ConcatStrings))),
+			yes(const(int_const(NumProcLayouts))),
+			yes(ProcLayoutVector)],
+		ModuleLayouts = comp_gen_c_data(ModuleName, module_layout,
+			Exported, Rvals, uniform(no), []),
+		StaticLayouts = [ModuleLayouts | InternalLayouts]
+	;
+		StaticLayouts = InternalLayouts
+	),
+	PossiblyDynamicLayouts = ProcLayouts,
 	module_info_set_cell_count(ModuleInfo0, FinalCellCount, ModuleInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred stack_layout__concat_string_list(list(string)::in, int::in,
+	string::out) is det.
+
+:- pragma c_code(stack_layout__concat_string_list(StringList::in,
+		ArenaSize::in, Arena::out),
+		[will_not_call_mercury, thread_safe], "{
+	Word	cur_node;
+	Integer	cur_offset;
+	Word	tmp;
+
+	incr_hp_atomic(tmp, (ArenaSize + sizeof(Word)) / sizeof(Word));
+	Arena = (char *) tmp;
+
+	cur_offset = 0;
+	cur_node = StringList;
+
+	while (! MR_list_is_empty(cur_node)) {
+		(void) strcpy(&Arena[cur_offset],
+			(char *) MR_list_head(cur_node));
+		cur_offset += strlen((char *) MR_list_head(cur_node)) + 1;
+		cur_node = MR_list_tail(cur_node);
+	}
+
+	if (cur_offset != ArenaSize) {
+		char	msg[256];
+
+		sprintf(msg, ""internal error in creating string table;\n""
+			""cur_offset = %ld, ArenaSize = %ld\n"",
+			(long) cur_offset, (long) ArenaSize);
+		fatal_error(msg);
+	}
+}").
 
 %---------------------------------------------------------------------------%
 
@@ -341,7 +424,7 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	{ stack_layout__represent_determinism(Detism, DetismRval) },
 	{ TraversalRvals = [yes(CodeAddrRval), yes(SuccipRval),
 		yes(StackSlotsRval), yes(DetismRval)] },
-	{ TraversalArgTypes = [1 - yes(code_ptr), 1 - yes(uint_least32), 
+	{ TraversalArgTypes = [1 - yes(code_ptr), 1 - yes(uint_least32),
 		2 - yes(uint_least16)] },
 
 	stack_layout__get_procid_stack_layout(ProcIdLayout0),
@@ -371,9 +454,10 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	{ list__append(TraversalRvals, IdTraceRvals, Rvals) },
 	{ ArgTypes = initial(TraversalArgTypes, IdTraceArgTypes) },
 	stack_layout__get_module_name(ModuleName),
-	{ CData = comp_gen_c_data(ModuleName, proc_layout(EntryLabel),
-		Exported, Rvals, ArgTypes, []) },
-	stack_layout__add_proc_layout_data(CData, EntryLabel).
+	{ CDataName = proc_layout(EntryLabel) },
+	{ CData = comp_gen_c_data(ModuleName, CDataName, Exported,
+		Rvals, ArgTypes, []) },
+	stack_layout__add_proc_layout_data(CData, CDataName, EntryLabel).
 
 :- pred stack_layout__construct_trace_layout(maybe(label)::in,
 	trace_slot_info::in, list(maybe(rval))::out, create_arg_types::out,
@@ -393,6 +477,8 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 		;
 			error("stack_layout__construct_trace_layout: call label not present")
 		),
+		ModuleRval = yes(const(data_addr_const(
+				data_addr(ModuleName, module_layout)))),
 		TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 			MaybeDeclSlots),
 		( MaybeFromFullSlot = yes(FromFullSlot) ->
@@ -405,8 +491,8 @@ stack_layout__construct_trace_layout(MaybeCallLabel, TraceSlotInfo,
 		;
 			DeclRval = yes(const(int_const(-1)))
 		),
-		Rvals = [CallRval, FromFullRval, DeclRval],
-		ArgTypes = initial([1 - yes(data_ptr), 2 - yes(int_least16)],
+		Rvals = [CallRval, ModuleRval, FromFullRval, DeclRval],
+		ArgTypes = initial([2 - yes(data_ptr), 2 - yes(int_least16)],
 			none)
 	;
 		% Indicate the absence of the trace layout fields.
@@ -710,11 +796,18 @@ stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 			rval,	% Rval describing the type of a live value.
 			llds_type, % The llds type of the rval describing the
 				% type.
-			rval	% Rval describing the name of a live value.
-				% Always of llds type string.
+			rval,	% Rval describing the variable number of a
+				% live value. Always of llds uint_least16.
+				% Contains zero if the live value is not
+				% a variable. Contains the hightest possible
+				% uint_least16 value if the variable number
+				% does not fit in 16 bits.
+			rval	% Rval describing the variable name of a
+				% live value. Always of llds uint_least16.
+				% Contains zero if the live value is not
+				% a variable, or if it is a variable with
+				% no name.
 		).
-		% Rvals describing the location, type (eventually: shape)
-		% and name of a live value.
 
 	% Construct a vector of (locn, live_value_type) pairs,
 	% and a corresponding vector of variable names.
@@ -738,20 +831,21 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 	{ LengthRval = const(int_const(EncodedLength)) },
 
 	{ SelectLocns = lambda([ArrayInfo::in, MaybeLocnRval::out] is det, (
-		ArrayInfo = live_array_info(LocnRval, _, _, _),
+		ArrayInfo = live_array_info(LocnRval, _, _, _, _),
 		MaybeLocnRval = yes(LocnRval)
 	)) },
 	{ SelectTypes = lambda([ArrayInfo::in, MaybeTypeRval::out] is det, (
-		ArrayInfo = live_array_info(_, TypeRval, _, _),
+		ArrayInfo = live_array_info(_, TypeRval, _, _, _),
 		MaybeTypeRval = yes(TypeRval)
 	)) },
 	{ SelectTypeTypes = lambda([ArrayInfo::in, CountTypeType::out] is det,(
-		ArrayInfo = live_array_info(_, _, TypeType, _),
+		ArrayInfo = live_array_info(_, _, TypeType, _, _),
 		CountTypeType = 1 - yes(TypeType)
 	)) },
-	{ SelectNames = lambda([ArrayInfo::in, MaybeNameRval::out] is det, (
-		ArrayInfo = live_array_info(_, _, _, NameRval),
-		MaybeNameRval = yes(NameRval)
+	{ AddRevNumsNames = lambda([ArrayInfo::in, NumNameRvals0::in,
+			NumNameRvals::out] is det, (
+		ArrayInfo = live_array_info(_, _, _, NumRval, NameRval),
+		NumNameRvals = [yes(NameRval), yes(NumRval) | NumNameRvals0]
 	)) },
 
 	{ list__map(SelectTypes, AllArrayInfo, AllTypes) },
@@ -770,14 +864,16 @@ stack_layout__construct_liveval_arrays(VarInfos, LengthRval,
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout),
 	( { TraceStackLayout = yes } ->
-		{ list__map(SelectNames, AllArrayInfo, AllNames) },
+		{ list__foldl(AddRevNumsNames, AllArrayInfo,
+			[], RevVarNumNameRvals) },
+		{ list__reverse(RevVarNumNameRvals, VarNumNameRvals) },
 		stack_layout__get_next_cell_number(CNum2),
-		{ NameVector = create(0, AllNames, uniform(yes(string)),
-			must_be_static, CNum2, "stack_layout_name_vector") }
+		{ NameVector = create(0, VarNumNameRvals,
+			uniform(yes(uint_least16)), must_be_static,
+			CNum2, "stack_layout_num_name_vector") }
 	;
 		{ NameVector = const(int_const(0)) }
 	).
-
 
 :- pred stack_layout__construct_liveval_array_infos(list(var_info)::in,
 	int::in, int::in,
@@ -790,48 +886,48 @@ stack_layout__construct_liveval_array_infos([VarInfo | VarInfos],
 	{ VarInfo = var_info(Locn, LiveValueType) },
 	stack_layout__represent_live_value_type(LiveValueType, TypeRval,
 		TypeRvalType),
-	{ stack_layout__construct_liveval_name(VarInfo, NameRval) },
+	stack_layout__construct_liveval_name_rvals(VarInfo,
+		VarNumRval, VarNameRval),
 	(
 		{ BytesSoFar < BytesLimit },
 		{ stack_layout__represent_locn_as_byte(Locn, LocnByteRval) }
 	->
 		{ Var = live_array_info(LocnByteRval, TypeRval, TypeRvalType,
-			NameRval) },
+			VarNumRval, VarNameRval) },
 		stack_layout__construct_liveval_array_infos(VarInfos,
 			BytesSoFar + 1, BytesLimit, IntVars, ByteVars0),
 		{ ByteVars = [Var | ByteVars0] }
 	;
 		{ stack_layout__represent_locn_as_int(Locn, LocnRval) },
 		{ Var = live_array_info(LocnRval, TypeRval, TypeRvalType,
-			NameRval) },
+			VarNumRval, VarNameRval) },
 		stack_layout__construct_liveval_array_infos(VarInfos,
 			BytesSoFar, BytesLimit, IntVars0, ByteVars),
 		{ IntVars = [Var | IntVars0] }
 	).
 
-:- pred stack_layout__construct_liveval_name(var_info::in, rval::out)
-	is det.
+:- pred stack_layout__construct_liveval_name_rvals(var_info::in, rval::out,
+	rval::out, stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_liveval_name(var_info(_, LiveValueType), Rval) :-
-	(
-		LiveValueType = var(Var, Name, _, _),
-		Name \= ""
-	->
-		% We include a representation of the variable number at the
-		% start of the variable name, because some functions of the
-		% debugger (e.g. restart) require it to be able to distinguish
-		% between distinct variables that happen to have the same name.
-		% We represent the number as a string, because most variable
-		% numbers are so small that this is a very compact
-		% representation.
-		term__var_to_int(Var, Int),
-		string__int_to_string(Int, IntStr),
-		string__append_list([IntStr, ":", Name], NumberedName),
-		Rval = const(string_const(NumberedName))
+stack_layout__construct_liveval_name_rvals(var_info(_, LiveValueType),
+		VarNumRval, VarNameRval, SLI0, SLI) :-
+	( LiveValueType = var(Var, Name, _, _) ->
+		term__var_to_int(Var, VarNum0),
+			% The variable number has to fit into two bytes.
+			% We reserve the largest such number (Limit)
+			% to mean that the variable number is too large
+			% to be represented. This ought not to happen,
+			% since compilation would be glacial at best
+			% for procedures with that many variables.
+		Limit = (1 << (2 * stack_layout__byte_bits)) - 1,
+		int__min(VarNum0, Limit, VarNum),
+		VarNumRval = const(int_const(VarNum)),
+		stack_layout__lookup_string_in_table(Name, Offset, SLI0, SLI),
+		VarNameRval = const(int_const(Offset))
 	;
-		% We prefer a null pointer to a pointer to an empty string,
-		% since this way we don't need many copies of the empty string.
-		Rval = const(int_const(0))
+		VarNumRval = const(int_const(0)),
+		VarNameRval = const(int_const(0)),
+		SLI = SLI0
 	).
 
 %---------------------------------------------------------------------------%
@@ -1079,7 +1175,7 @@ stack_layout__long_lval_offset_bits = 6.
 	is semidet.
 
 stack_layout__represent_locn_as_byte(LayoutLocn, Rval) :-
-	LayoutLocn = direct(Lval), 
+	LayoutLocn = direct(Lval),
 	stack_layout__represent_lval_as_byte(Lval, Byte),
 	Rval = const(int_const(Byte)).
 
@@ -1114,8 +1210,8 @@ stack_layout__represent_lval_as_byte(sp, Byte) :-
 :- pred stack_layout__make_tagged_byte(int::in, int::in, int::out) is semidet.
 
 stack_layout__make_tagged_byte(Tag, Value, TaggedValue) :-
-	int__pow(2, stack_layout__byte_bits
-		- stack_layout__short_lval_tag_bits, Limit),
+	Limit = 1 << (stack_layout__byte_bits -
+		stack_layout__short_lval_tag_bits),
 	Value < Limit,
 	TaggedValue is unchecked_left_shift(Value,
 		stack_layout__short_lval_tag_bits) + Tag.
@@ -1186,8 +1282,13 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 		bool,		% have static code addresses?
 		list(comp_gen_c_data),	% generated proc layouts
 		list(comp_gen_c_data),	% generated label layouts
-		set_bbbtree(label)
-				% the set of labels with layouts
+		set_bbbtree(label),
+				% the set of labels (both entry and internal)
+				% with layouts
+		list(maybe(rval)),
+				% the list of proc_layouts in the module,
+				% represented as create args
+		string_table
 	).
 
 :- pred stack_layout__get_module_name(module_name::out,
@@ -1217,62 +1318,115 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 :- pred stack_layout__get_label_set(set_bbbtree(label)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__get_module_name(A, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(A, _, _, _, _, _, _, _, _).
-
-stack_layout__get_cell_number(B, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, B, _, _, _, _, _, _, _).
-
-stack_layout__get_agc_stack_layout(C, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, C, _, _, _, _, _, _).
-
-stack_layout__get_trace_stack_layout(D, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, D, _, _, _, _, _).
-
-stack_layout__get_procid_stack_layout(E, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, E, _, _, _, _).
-
-stack_layout__get_static_code_addresses(F, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, F, _, _, _).
-
-stack_layout__get_proc_layout_data(G, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, G, _, _).
-
-stack_layout__get_internal_layout_data(H, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, H, _).
-
-stack_layout__get_label_set(I, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, _, I).
-
-:- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in, label::in,
+:- pred stack_layout__get_string_table(string_table::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__add_proc_layout_data(NewG, NewI, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G0, H, I0),
+stack_layout__get_module_name(A, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(A, _, _, _, _, _, _, _, _, _, _).
+
+stack_layout__get_cell_number(B, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, B, _, _, _, _, _, _, _, _, _).
+
+stack_layout__get_agc_stack_layout(C, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, C, _, _, _, _, _, _, _, _).
+
+stack_layout__get_trace_stack_layout(D, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, D, _, _, _, _, _, _, _).
+
+stack_layout__get_procid_stack_layout(E, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, E, _, _, _, _, _, _).
+
+stack_layout__get_static_code_addresses(F, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, _, F, _, _, _, _, _).
+
+stack_layout__get_proc_layout_data(G, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, _, _, G, _, _, _, _).
+
+stack_layout__get_internal_layout_data(H, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, H, _, _, _).
+
+stack_layout__get_label_set(I, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, _, I, _, _).
+
+stack_layout__get_string_table(K, LayoutInfo, LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, _, _, _, K).
+
+:- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in, data_name::in,
+	label::in, stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__add_proc_layout_data(NewG, NewJ, NewI, LayoutInfo0, LayoutInfo) :-
+	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G0, H, I0, J0, K),
 	G = [NewG | G0],
 	set_bbbtree__insert(I0, NewI, I),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G , H, I).
+	J = [yes(const(data_addr_const(data_addr(A, NewJ)))) | J0],
+	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G , H, I , J , K).
 
 :- pred stack_layout__add_internal_layout_data(comp_gen_c_data::in, label::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__add_internal_layout_data(NewH, NewI, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G, H0, I0),
+	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G, H0, I0, J, K),
 	H = [NewH | H0],
 	set_bbbtree__insert(I0, NewI, I),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H , I ).
+	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H , I , J, K).
 
 :- pred stack_layout__get_next_cell_number(int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_next_cell_number(B, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B0, C, D, E, F, G, H, I),
+	LayoutInfo0 = stack_layout_info(A, B0, C, D, E, F, G, H, I, J, K),
 	B is B0 + 1,
-	LayoutInfo  = stack_layout_info(A, B,  C, D, E, F, G, H, I).
+	LayoutInfo  = stack_layout_info(A, B,  C, D, E, F, G, H, I, J, K).
 
 :- pred stack_layout__set_cell_number(int::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__set_cell_number(B, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, _, C, D, E, F, G, H, I),
-	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H, I).
+	LayoutInfo0 = stack_layout_info(A, _, C, D, E, F, G, H, I, J, K),
+	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H, I, J, K).
+
+:- pred stack_layout__set_string_table(string_table::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__set_string_table(K, LayoutInfo0, LayoutInfo) :-
+	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F, G, H, I, J, _),
+	LayoutInfo  = stack_layout_info(A, B, C, D, E, F, G, H, I, J, K).
+
+%---------------------------------------------------------------------------%
+
+	% Access to the string_table data structure.
+
+:- type string_table 	--->
+	string_table(
+		map(string, int),	% Maps strings to their offsets.
+		list(string),		% List of strings so far,
+					% in reverse order.
+		int			% Next available offset
+	).
+
+:- pred stack_layout__lookup_string_in_table(string::in, int::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__lookup_string_in_table(String, Offset) -->
+	stack_layout__get_string_table(StringTable0),
+	{ StringTable0 = string_table(TableMap0, TableList0, TableOffset0) },
+	(
+		{ map__search(TableMap0, String, OldOffset) }
+	->
+		{ Offset = OldOffset }
+	;
+		{ string__length(String, Length) },
+		{ TableOffset is TableOffset0 + Length + 1 },
+		{ TableOffset < (1 << (2 * stack_layout__byte_bits)) }
+	->
+		{ Offset = TableOffset0 },
+		{ map__det_insert(TableMap0, String, TableOffset0,
+			TableMap) },
+		{ TableList = [String | TableList0] },
+		{ StringTable = string_table(TableMap, TableList,
+			TableOffset) },
+		stack_layout__set_string_table(StringTable)
+	;
+		% Says that the name of the variable is "TOO_MANY_VARIABLES".
+		{ Offset = 1 }
+	).

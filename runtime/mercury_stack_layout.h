@@ -218,6 +218,23 @@ typedef	struct MR_Type_Param_Locns_Struct {
 } MR_Type_Param_Locns;
 
 /*
+** This structure describes the name of a live value, if it has any.
+**
+** The MR_var_num field is zero if the live value is not a variable;
+** if it is, it gives the HLDS number of the variable.
+**
+** The MR_var_name_offset field gives the offset, within the string
+** table of the module containing the layout structure, of the name
+** of the variable. If the variable has no name, or if the live value
+** is not a variable, the offset will be zero.
+*/
+
+typedef	struct MR_Var_Name_Struct {
+	uint_least16_t		MR_var_num;
+	uint_least16_t		MR_var_name_offset;
+} MR_Var_Name;
+
+/*
 ** The MR_slvs_var_count field should be set to a negative number
 ** if there is no information about the variables live at the label.
 */
@@ -226,7 +243,7 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 	void			*MR_slvs_var_count;
 	/* the remaining fields are present only if MR_sll_var_count > 0 */
 	void			*MR_slvs_locns_types;
-	String			*MR_slvs_names;
+	MR_Var_Name		*MR_slvs_names;
 	MR_Type_Param_Locns	*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
 
@@ -254,17 +271,16 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 #define	MR_short_desc_var_locn(slvs, i)					    \
 		(((uint_least8_t *) MR_end_of_long_desc_var_locns(slvs))[(i)])
 
-#define	MR_name_if_present(vars, i)					    \
-				((vars->MR_slvs_names != NULL		    \
-				&& vars->MR_slvs_names[(i)] != NULL)	    \
-				? strchr(vars->MR_slvs_names[(i)], ':') + 1 \
-				: "")
+#define	MR_name_if_present(module_layout, vars, i)			    \
+		(((vars)->MR_slvs_names == NULL) ? "" :			    \
+		((module_layout)->MR_ml_string_table +			    \
+			(vars)->MR_slvs_names[(i)].MR_var_name_offset))
 
-#define	MR_numbered_name_if_present(vars, i)				    \
-				((vars->MR_slvs_names != NULL	 	    \
-				&& vars->MR_slvs_names[(i)] != NULL)	    \
-				? vars->MR_slvs_names[(i)]		    \
-				: "")
+#define	MR_name_if_present_from_label(label_layout, i)			    \
+		MR_name_if_present(					    \
+			(label_layout)->MR_sll_entry->MR_sle_module_layout, \
+			&((label_layout)->MR_sll_var_info),		    \
+			(i))
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -344,6 +360,8 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* exec trace group */
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
+	struct MR_Module_Layout_Struct
+				*MR_sle_module_layout;
 	int_least16_t		MR_sle_maybe_from_full;
 	int_least16_t		MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
@@ -520,5 +538,27 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 
 #define MR_MAKE_INTERNAL_LAYOUT(e, n)					\
 	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(e##_i##n, e)
+
+/*-------------------------------------------------------------------------*/
+/*
+** Definitions for MR_Module_Layout
+**
+** The layout struct for a module contains two main components.
+**
+** The first is a string table, which contains strings referred to by other
+** layout structures in the module (initially only the tables containing
+** variables names, referred to from label layout structures).
+**
+** The second is a table containing pointers to the proc layout structures
+** of all the procedures in the module.
+*/
+
+typedef	struct MR_Module_Layout_Struct {
+	String			MR_ml_name;
+	Integer			MR_ml_string_table_size;
+	char			*MR_ml_string_table;
+	Integer			MR_ml_proc_count;
+	MR_Stack_Layout_Entry	**MR_ml_procs;
+} MR_Module_Layout;
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

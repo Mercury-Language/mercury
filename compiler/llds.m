@@ -729,6 +729,10 @@
 	;	int_const(int)
 	;	float_const(float)
 	;	string_const(string)
+	;	multi_string_const(int, string)
+			% a string containing embedded NULLs,
+			% whose real length is given by the integer,
+			% and not the location of the first NULL
 	;	code_addr_const(code_addr)
 	;	data_addr_const(data_addr)
 	;	label_entry(label).
@@ -745,6 +749,8 @@
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
+	;	module_layout
+			% Layout information for the current module.
 	;	proc_layout(label)
 			% Layout structure for the procedure with the given
 			% entry label.
@@ -1006,6 +1012,7 @@ llds__const_type(false, bool).
 llds__const_type(int_const(_), integer).
 llds__const_type(float_const(_), float).
 llds__const_type(string_const(_), data_ptr).
+llds__const_type(multi_string_const(_, _), data_ptr).
 llds__const_type(code_addr_const(_), code_ptr).
 llds__const_type(data_addr_const(_), data_ptr).
 llds__const_type(label_entry(_), code_ptr).

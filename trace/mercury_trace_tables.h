@@ -18,25 +18,6 @@
 #include	<stdio.h>
 
 /*
-** The module info table is an array with one element for each module
-** that has procedures with execution tracing information. This element
-** gives the module's name and points to a list of the procedure layouts
-** of the traceable procedures of the module.
-*/
-
-typedef struct MR_Proc_Node_Struct	MR_Proc_Node;
-
-struct MR_Proc_Node_Struct {
-	const MR_Stack_Layout_Entry	*MR_proc_layout;
-	MR_Proc_Node			*MR_proc_next;
-};
-
-typedef struct {
-	const char 			*MR_module_name;
-	MR_Proc_Node			*MR_module_procs;
-} MR_Module_Info;
-
-/*
 ** MR_register_all_modules_and_procs gathers all available debugging info
 ** about the modules and procedures of the program into the module info table.
 ** If verbose is TRUE, print progress and summary messages.
@@ -44,6 +25,16 @@ typedef struct {
 
 extern	void		MR_register_all_modules_and_procs(FILE *fp,
 				bool verbose);
+
+/*
+** MR_register_module_layout_real registers a module layout structure.
+** It is called indirectly, through the function pointer
+** MR_register_module_layout, by the module initialization code
+** of modules compiled with debugging.
+*/
+
+extern	void		MR_register_module_layout_real(const MR_Module_Layout
+				*module);
 
 /*
 ** These functions print (parts of) the module info table.
@@ -120,7 +111,6 @@ extern	const MR_Stack_Layout_Entry *MR_search_for_matching_procedure(
 extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
 			void f(void *, const MR_Stack_Layout_Entry *), 
 			void *data);
-
 
 extern	void	MR_print_proc_id_for_debugger(FILE *fp,
 			const MR_Stack_Layout_Entry *entry);
