@@ -78,13 +78,13 @@ create_hash_table(Word table_size)
 {
    	Word i;
 	TableRoot * table =
-		table_allocate(sizeof(Word) * 2 + table_size * 
-			sizeof(TableNode *));
+		table_allocate_bytes(sizeof(Word) * 2 +
+				table_size * sizeof(TableNode *));
 	
 	table->size = table_size;
 	table->used_elements = 0;
 
-	for (i=0; i<table_size; i++) {
+	for (i = 0; i < table_size; i++) {
 		BUCKET(table, i) = NULL;
 	}
 
@@ -146,7 +146,7 @@ MR_int_hash_lookup_or_add(TrieNode t, Integer key)
 		p = BUCKET(table, bucket);
 	}
 
-	p = table_allocate(sizeof(TableNode));
+	p = table_allocate_bytes(sizeof(TableNode));
 	p->key = key;
 	p->data = NULL;
 
@@ -220,7 +220,7 @@ MR_float_hash_lookup_or_add(TrieNode t, Float key)
 		p = BUCKET(table, bucket);
 	}
 
-	p = table_allocate(sizeof(TableNode));
+	p = table_allocate_bytes(sizeof(TableNode));
 	p->key = float_to_word(key);
 	p->data = NULL;
 	
@@ -298,7 +298,7 @@ MR_string_hash_lookup_or_add(TrieNode t, String key)
 		p = BUCKET(table, bucket);
 	}
 
-	p = table_allocate(sizeof(TableNode));
+	p = table_allocate_bytes(sizeof(TableNode));
 	p->key = (Word) key;
 	p->data = NULL;
 	

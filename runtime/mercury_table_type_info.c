@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,7 +25,7 @@ MR_type_info_lookup_or_add(TrieNode table, Word * type_info)
 	int i;
 
 	if (*table == NULL) {
-		p = table_allocate(sizeof(TreeNode));
+		p = table_allocate_bytes(sizeof(TreeNode));
 
 		p->key = type_info;
 		p->value = (Word) NULL;
@@ -37,13 +37,13 @@ MR_type_info_lookup_or_add(TrieNode table, Word * type_info)
 		return (Word**) &p->value;
 	}
 	
-	p = (TreeNode*) *table;
+	p = (TreeNode *) *table;
 
 	while (p != NULL) {
 		i = MR_compare_type_info((Word) p->key, (Word) type_info);
 
 		if (i == COMPARE_EQUAL) {
-			return (Word**) &p->value;
+			return (Word **) &p->value;
 		} 
 		
 		q = p;
@@ -55,7 +55,7 @@ MR_type_info_lookup_or_add(TrieNode table, Word * type_info)
 		}
 	}
 
-	p = table_allocate(sizeof(TreeNode));
+	p = table_allocate_bytes(sizeof(TreeNode));
 	p->key = type_info;
 	p->value = (Word) NULL; 
 	p->left = NULL;
@@ -67,5 +67,5 @@ MR_type_info_lookup_or_add(TrieNode table, Word * type_info)
 		q ->right = p;
 	}
 	
-	return (Word**) &p->value;
+	return (Word **) &p->value;
 }

@@ -103,7 +103,7 @@
 						/*, ... */). 
 :- type base_typeclass_info(_) ---> typeclass_info(int /*, ... */). 
 
-	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)  
+	% type_info_from_typeclass_info(TypeClassInfo, Index, TypeInfo)
 	% extracts TypeInfo from TypeClassInfo, where TypeInfo is the Indexth
 	% type_info in the typeclass_info
 	% 
@@ -112,7 +112,7 @@
 :- pred type_info_from_typeclass_info(typeclass_info(_), int, type_info(T)).
 :- mode type_info_from_typeclass_info(in, in, out) is det.
 
-	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)  
+	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)
 	% extracts SuperClass from TypeClassInfo where TypeInfo is the Indexth
 	% superclass of the class.
 :- pred superclass_from_typeclass_info(typeclass_info(_),
@@ -233,7 +233,7 @@
 	% not being evaluated (working on an answer).
 :- impure pred table_mark_done_working(ml_subgoal_table_node).
 :- mode table_mark_done_working(in) is det.
-	
+
 	% Report an error message about the current subgoal looping. 
 :- pred table_loopcheck_error(string).
 :- mode table_loopcheck_error(in) is erroneous.
@@ -336,7 +336,7 @@
 :- semipure pred table_restore_int_ans(ml_answer_block, int, int).
 :- mode table_restore_int_ans(in, in, out) is det.
 
-	% Restore a character answer from the given answer block at the     
+	% Restore a character answer from the given answer block at the   
 	% given offset.
 :- semipure pred table_restore_char_ans(ml_answer_block, int, character).
 :- mode table_restore_char_ans(in, in, out) is det.
@@ -525,7 +525,7 @@ compare_error :-
 
 #include ""mercury_deep_copy.h""
 #include ""mercury_type_info.h""
-	
+
 	/* Used to mark the status of the table */
 #define ML_UNINITIALIZED	0
 #define ML_WORKING_ON_ANS	1
@@ -536,25 +536,25 @@ compare_error :-
 	** succeeded. */
 
 ").
-	
+
 	% This is a dummy procedure that never actually gets called.
 	% See the comments in table_gen.m for its purpose.
 :- pragma c_code(get_table(_T::out), will_not_call_mercury, "").
 
 :- pragma c_code(table_working_on_ans(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) == ML_WORKING_ON_ANS);
+	SUCCESS_INDICATOR = (*((Word *) T) == ML_WORKING_ON_ANS);
 ").
 
 :- pragma c_code(table_not_working_on_ans(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) != ML_WORKING_ON_ANS);
+	SUCCESS_INDICATOR = (*((Word *) T) != ML_WORKING_ON_ANS);
 ").
 
 :- pragma c_code(table_mark_as_working(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_WORKING_ON_ANS;
+	*((Word *) T) = ML_WORKING_ON_ANS;
 ").
 
 :- pragma c_code(table_mark_done_working(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_UNINITIALIZED;
+	*((Word *) T) = ML_UNINITIALIZED;
 ").
 
 table_loopcheck_error(Message) :-
@@ -598,7 +598,7 @@ table_loopcheck_error(Message) :-
 ").
 
 :- pragma c_code(table_have_ans(T::in), will_not_call_mercury, "
-	if (*((Word*) T) == ML_FAILED || *((Word*) T) >= ML_SUCCEEDED) {
+	if (*((Word *) T) == ML_FAILED || *((Word *) T) >= ML_SUCCEEDED) {
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
@@ -606,11 +606,11 @@ table_loopcheck_error(Message) :-
 ").
 
 :- pragma c_code(table_has_succeeded(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) >= ML_SUCCEEDED)
+	SUCCESS_INDICATOR = (*((Word *) T) >= ML_SUCCEEDED)
 ").
 
 :- pragma c_code(table_has_failed(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) == ML_FAILED);
+	SUCCESS_INDICATOR = (*((Word *) T) == ML_FAILED);
 ").
 
 :- pragma c_code(table_create_ans_block(T0::in, Size::in, T::out) ,"
@@ -665,11 +665,11 @@ extern MR_STATIC_CODE_CONST struct
 ").
 
 :- pragma c_code(table_mark_as_succeeded(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_SUCCEEDED;
+	*((Word *) T) = ML_SUCCEEDED;
 ").
 
 :- pragma c_code(table_mark_as_failed(T::in), will_not_call_mercury, "
-	*((Word*) T) = ML_FAILED;
+	*((Word *) T) = ML_FAILED;
 ").
 
 :- pragma c_code(table_restore_int_ans(T::in, Offset::in, I::out), 
@@ -729,7 +729,7 @@ typedef enum {
 	have_all_ans
 } TableStatus;
 
-/* Used to save info about a single subgoal in the table */  
+/* Used to save info about a single subgoal in the table */
 typedef struct {
 	TableStatus status;		/* Status of subgoal */
 	Word answer_table;		/* Table of answers returned by the
@@ -750,7 +750,7 @@ typedef struct {
 					   copy */
 	Word *det_stack_bottom;		/* Pointer to the bottom point of
 					   the det stack from which to copy */
-					   
+					 
 } NondetTable;
 
 	/* Flag used to indicate the answer has been returned */
@@ -761,25 +761,24 @@ typedef struct {
 	** Cast a Word to a NondetTable*: saves on typing and improves 
 	** readability. 
 	*/
-#define NON_TABLE(T)  (*(NondetTable **)T)
+#define NON_TABLE(T)  (*(NondetTable **) T)
 ").
 
 :- pragma c_code(table_setup(T0::in, T::out), will_not_call_mercury, "
 	/* Init the table if this is the first time me see it */
 	if (NON_TABLE(T0) == NULL) {
-		NON_TABLE(T0) = (NondetTable *) table_allocate(
+		NondetTable *table = (NondetTable *) table_allocate_bytes(
 			sizeof(NondetTable));
-		NON_TABLE(T0)->status = have_no_ans;
-		NON_TABLE(T0)->answer_table = (Word) NULL;
-		NON_TABLE(T0)->num_ans = 0;
-		NON_TABLE(T0)->answer_list = list_empty();
-		NON_TABLE(T0)->answer_list_tail =
-			&NON_TABLE(T0)->answer_list;
-		NON_TABLE(T0)->suspend_list = list_empty();
-		NON_TABLE(T0)->suspend_list_tail =
-			&NON_TABLE(T0)->suspend_list;
-		NON_TABLE(T0)->non_stack_bottom = curprevfr;
-		NON_TABLE(T0)->det_stack_bottom = MR_sp;
+		table->status = have_no_ans;
+		table->answer_table = (Word) NULL;
+		table->num_ans = 0;
+		table->answer_list = list_empty();
+		table->answer_list_tail = &table->answer_list;
+		table->suspend_list = list_empty();
+		table->suspend_list_tail = &table->suspend_list;
+		table->non_stack_bottom = MR_prevfr_slot(MR_curfr);
+		table->det_stack_bottom = MR_sp;
+		NON_TABLE(T0) = table;
 	}
 	T = T0;
 ").
@@ -794,7 +793,7 @@ table_return_all_ans(T, A) :-
 
 :- pragma c_code(table_return_all_ans_list(T::in, A::out),
 		 will_not_call_mercury, "
-	A = NON_TABLE(T)->answer_list;
+	A = (Word) NON_TABLE(T)->answer_list;
 ").
 
 :- semipure pred table_return_all_ans_2(ml_table, ml_table).
@@ -802,7 +801,7 @@ table_return_all_ans(T, A) :-
 
 :- pragma c_code(table_return_all_ans_2(P::in, A::out), 
 		will_not_call_mercury, "
-	A = (Word) &((AnswerListNode*) P)->ans;
+	A = (Word) &((AnswerListNode *) P)->ans;
 ").
 
 :- pragma c_code(table_get_ans_table(T::in, AT::out), 
@@ -819,7 +818,7 @@ table_return_all_ans(T, A) :-
 ").
 
 :- pragma c_code(table_has_not_returned(T::in), will_not_call_mercury, "
-	SUCCESS_INDICATOR = (*((Word*) T) == ML_ANS_NOT_RET);
+	SUCCESS_INDICATOR = (*((Word *) T) == ML_ANS_NOT_RET);
 ").
 
 :- pragma c_code(table_mark_have_all_ans(T::in), will_not_call_mercury, "
@@ -851,8 +850,8 @@ table_return_all_ans(T, A) :-
 ** It is also important to note that the answers are returned not from the 
 ** procedure that was originally called (table_suspend) but from the procedure
 ** table_resume. So essentially what is below is the code to do the initial 
-** fail; the code to return the answers is in table_resume.  
-*/ 	
+** fail; the code to return the answers is in table_resume.
+*/ 
 Define_extern_entry(mercury__table_suspend_2_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_suspend_2_0);
 BEGIN_MODULE(table_suspend_module)
@@ -860,27 +859,33 @@ BEGIN_MODULE(table_suspend_module)
 BEGIN_CODE
 
 Define_entry(mercury__table_suspend_2_0);
+	/*
+	** This frame is not used in table_suspend, but it is copied
+	** to the suspend list as part of the saved nondet stack fragment,
+	** and it *will* be used when table_resume copies back the nondet
+	** stack fragment.
+	*/
 	mkframe(mercury__table_suspend/2, 0, ENTRY(do_fail));
 {
+	NondetTable *table = NON_TABLE(r1);
 	Word *non_stack_top =  MR_maxfr;
 	Word *det_stack_top =  MR_sp;
-	Word *non_stack_bottom = NON_TABLE(r1)->non_stack_bottom;
-	Word *det_stack_bottom = NON_TABLE(r1)->det_stack_bottom;
+	Word *non_stack_bottom = table->non_stack_bottom;
+	Word *det_stack_bottom = table->det_stack_bottom;
 	Word non_stack_delta = non_stack_top - non_stack_bottom;
 	Word det_stack_delta = det_stack_top - det_stack_bottom;
 	Word ListNode;
-	SuspendListNode *Node = table_allocate(sizeof(SuspendListNode));
+	SuspendListNode *Node = table_allocate_bytes(sizeof(SuspendListNode));
+	Node->last_ret_ans = &table->answer_list;
 
-	Node->last_ret_ans = &(NON_TABLE(r1)->answer_list);
-	
 	Node->non_stack_block_size = non_stack_delta;
-	Node->non_stack_block = table_allocate(non_stack_delta);
-	table_copy_mem((void *)Node->non_stack_block, (void *)non_stack_bottom, 
-		non_stack_delta);	
-		
+	Node->non_stack_block = table_allocate_words(non_stack_delta);
+	table_copy_words(Node->non_stack_block, non_stack_bottom,
+		non_stack_delta);
+
 	Node->det_stack_block_size = det_stack_delta;
-	Node->det_stack_block = table_allocate(det_stack_delta);
-	table_copy_mem((void *)Node->det_stack_block, (void *)det_stack_bottom, 
+	Node->det_stack_block = table_allocate_words(det_stack_delta);
+	table_copy_words(Node->det_stack_block, det_stack_bottom,
 		det_stack_delta);
 
 	Node->succ_ip = MR_succip;
@@ -888,11 +893,27 @@ Define_entry(mercury__table_suspend_2_0);
 	Node->cur_fr = MR_curfr;
 	Node->max_fr = MR_maxfr;
 
-	ListNode = MR_table_list_cons(Node, *NON_TABLE(r1)->suspend_list_tail);
-	*NON_TABLE(r1)->suspend_list_tail = ListNode;
-	NON_TABLE(r1)->suspend_list_tail = &list_tail(ListNode);
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""suspension saves consumer stack: %d non, %d det\n"",
+			non_stack_delta, det_stack_delta);
+		printf(""non region from %p to %p, det region from %p to %p\n"",
+			(void *) non_stack_bottom,
+			(void *) MR_maxfr,
+			(void *) det_stack_bottom,
+			(void *) MR_sp);
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
+	assert(list_is_empty(*table->suspend_list_tail));
+	ListNode = MR_table_list_cons(Node, list_empty());
+	*table->suspend_list_tail = ListNode;
+	table->suspend_list_tail = &list_tail(ListNode);
 }
-	fail();	
+	fail();
 END_MODULE
 
 /*
@@ -908,14 +929,15 @@ typedef struct {
 	Word *non_stack_block;
 	Word det_stack_block_size;
 	Word *det_stack_block;
-	
+
 	Code *succ_ip;
 	Word *s_p;
 	Word *cur_fr;
 	Word *max_fr;
 
 	Word changed;
-	Word num_ans, new_num_ans;
+	Word num_ans;
+	Word new_num_ans;
 	Word suspend_list;
 	SuspendListNode *suspend_node;
 	Word ans_list;
@@ -926,7 +948,7 @@ Integer ML_resumption_sp = -1;
 Word ML_resumption_stack_size = 4;	/* Half the initial size of 
 					   the stack in ResumeStackNode's */
 
-ResumeStackNode** ML_resumption_stack = NULL;
+ResumeStackNode **ML_resumption_stack = NULL;
 
 #define ML_RESUME_PUSH()						\\
 	do {								\\
@@ -935,16 +957,16 @@ ResumeStackNode** ML_resumption_stack = NULL;
 				ML_resumption_stack == NULL) 		\\
 		{							\\
 			ML_resumption_stack_size =			\\
-				ML_resumption_stack_size*2;		\\
-			ML_resumption_stack = table_reallocate(		\\
+				ML_resumption_stack_size * 2;		\\
+			ML_resumption_stack = table_reallocate_bytes(	\\
 				ML_resumption_stack,			\\
-				ML_resumption_stack_size*sizeof(	\\
-					ResumeStackNode*));		\\
+				ML_resumption_stack_size * sizeof(	\\
+					ResumeStackNode *));		\\
 		}							\\
-		ML_resumption_stack[ML_resumption_sp] = table_allocate(	\\
-			sizeof(ResumeStackNode));			\\
+		ML_resumption_stack[ML_resumption_sp] = 		\\
+			table_allocate_bytes(sizeof(ResumeStackNode));	\\
 	} while (0)
-	
+
 #define ML_RESUME_POP()							\\
 	do {								\\
 		if (ML_resumption_sp < 0) {				\\
@@ -957,6 +979,29 @@ ResumeStackNode** ML_resumption_stack = NULL;
 #define ML_RESUME_VAR							\\
 	ML_resumption_stack[ML_resumption_sp]
 
+#ifdef	MR_DEBUG_RESUME
+  /*
+  ** The ML_RESUME_DEBUG_VAR variable is not actually used.
+  ** Its only purpose is to provide something that can be put
+  ** onto a gdb command line without making it overflow :-(.
+  **
+  ** Therefore MR_DEBUG_RESUME should never be enabled except when
+  ** debugging table_resume.
+  */
+
+  ResumeStackNode	*ML_RESUME_DEBUG_VAR;
+
+  #define	ML_SET_RESUME_DEBUG_VARS()				\\
+	do {								\\
+		ML_RESUME_DEBUG_VAR = ML_resumption_stack[ML_resumption_sp];\\
+	} while (0)
+
+#else
+
+  #define	ML_SET_RESUME_DEBUG_VARS()
+
+#endif
+
 /*
 ** The procedure defined below restores answers to suspended nodes. It 
 ** works by restoring the states saved when calls to table_suspend were
@@ -966,7 +1011,7 @@ ResumeStackNode** ML_resumption_stack = NULL;
 ** This procedure iterates until it has returned all answers to all
 ** suspend nodes. The iteration is a fixpoint type as each time an answer
 ** is returned to a suspended node it has the chance of introducing more
-** answers and/or suspended nodes.  
+** answers and/or suspended nodes.
 */
 Define_extern_entry(mercury__table_resume_1_0);
 Declare_label(mercury__table_resume_1_0_ChangeLoop);
@@ -975,7 +1020,6 @@ Declare_label(mercury__table_resume_1_0_SolutionsListLoop);
 Declare_label(mercury__table_resume_1_0_AnsListLoop);
 Declare_label(mercury__table_resume_1_0_AnsListLoopDone1);
 Declare_label(mercury__table_resume_1_0_AnsListLoopDone2);
-Declare_label(mercury__table_resume_1_0_SkipAns);
 Declare_label(mercury__table_resume_1_0_RedoPoint);
 
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury__table_resume_1_0);
@@ -992,8 +1036,6 @@ MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
 MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
 	mercury__table_resume_1_0_AnsListLoopDone2, mercury__table_resume_1_0);
 MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
-	mercury__table_resume_1_0_SkipAns, mercury__table_resume_1_0);
-MR_MAKE_STACK_LAYOUT_INTERNAL_WITH_ENTRY(
 	mercury__table_resume_1_0_RedoPoint, mercury__table_resume_1_0);
 
 BEGIN_MODULE(table_resume_module)
@@ -1004,28 +1046,32 @@ BEGIN_MODULE(table_resume_module)
 	init_label_sl(mercury__table_resume_1_0_AnsListLoop);
 	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone1);
 	init_label_sl(mercury__table_resume_1_0_AnsListLoopDone2);
-	init_label_sl(mercury__table_resume_1_0_SkipAns);
 	init_label_sl(mercury__table_resume_1_0_RedoPoint);
 BEGIN_CODE
 
 Define_entry(mercury__table_resume_1_0);
 	/* Check that we have answers to return and nodes to return 
 	   them to. */
-	if (list_is_empty(NON_TABLE(r1)->answer_list) ||
-			list_is_empty(NON_TABLE(r1)->suspend_list)) 
+	if (list_is_empty(NON_TABLE(r1)->answer_list))
+		/* we should free the suspend list */
 		proceed(); 
-	
-	/* Save the current state. */	
+
+	if (list_is_empty(NON_TABLE(r1)->suspend_list)) 
+		proceed(); 
+
+	/* Save the current state. */
 	ML_RESUME_PUSH();
 	ML_RESUME_VAR->table = NON_TABLE(r1);
-	ML_RESUME_VAR->non_stack_block_size = (char *) MR_maxfr -
-		(char *) ML_RESUME_VAR->table->non_stack_bottom;
-	ML_RESUME_VAR->det_stack_block_size = (char *) MR_sp - 
-		(char *) ML_RESUME_VAR->table->det_stack_bottom;
+	ML_RESUME_VAR->non_stack_block_size =
+		MR_maxfr - ML_RESUME_VAR->table->non_stack_bottom;
+	ML_RESUME_VAR->det_stack_block_size =
+		MR_sp - ML_RESUME_VAR->table->det_stack_bottom;
 	ML_RESUME_VAR->succ_ip = MR_succip;
 	ML_RESUME_VAR->s_p = MR_sp;
 	ML_RESUME_VAR->cur_fr = MR_curfr;
 	ML_RESUME_VAR->max_fr = MR_maxfr;
+
+	ML_SET_RESUME_DEBUG_VARS();
 
 #ifdef MR_USE_TRAIL
 	/*
@@ -1037,44 +1083,63 @@ Define_entry(mercury__table_resume_1_0);
 #endif
 
 	ML_RESUME_VAR->changed = 1;
-	
-	ML_RESUME_VAR->non_stack_block = (Word *) table_allocate(
+
+	ML_RESUME_VAR->non_stack_block = (Word *) table_allocate_words(
 		ML_RESUME_VAR->non_stack_block_size);
-	table_copy_mem(ML_RESUME_VAR->non_stack_block, 
+	table_copy_words(ML_RESUME_VAR->non_stack_block, 
 		ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->non_stack_block_size);
-	
-	ML_RESUME_VAR->det_stack_block = (Word *) table_allocate(
+
+	ML_RESUME_VAR->det_stack_block = (Word *) table_allocate_words(
 		ML_RESUME_VAR->det_stack_block_size);
-	table_copy_mem(ML_RESUME_VAR->det_stack_block, 
+	table_copy_words(ML_RESUME_VAR->det_stack_block, 
 		ML_RESUME_VAR->table->det_stack_bottom, 
 		ML_RESUME_VAR->det_stack_block_size);
 
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""resumption saves generator stack: %d non, %d det\n"",
+			ML_RESUME_VAR->non_stack_block_size,
+			ML_RESUME_VAR->det_stack_block_size);
+		printf(""non region from %p to %p, det region from %p to %p\n"",
+			(void *) ML_RESUME_VAR->table->non_stack_bottom,
+			(void *) MR_maxfr,
+			(void *) ML_RESUME_VAR->table->det_stack_bottom,
+			(void *) MR_sp);
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
 	/* If the number of ans or suspended nodes has changed. */
 Define_label(mercury__table_resume_1_0_ChangeLoop);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	if (! ML_RESUME_VAR->changed)
 		GOTO_LABEL(mercury__table_resume_1_0_ChangeLoopDone);
-		
+
 	ML_RESUME_VAR->suspend_list = ML_RESUME_VAR->table->suspend_list;
 
 	ML_RESUME_VAR->changed = 0;
 	ML_RESUME_VAR->num_ans = ML_RESUME_VAR->table->num_ans;
 
-	/* For each of the suspended nodes */	
+	/* For each of the suspended nodes */
 Define_label(mercury__table_resume_1_0_SolutionsListLoop);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	if (list_is_empty(ML_RESUME_VAR->suspend_list))
 		GOTO_LABEL(mercury__table_resume_1_0_ChangeLoop);
 
-	ML_RESUME_VAR->suspend_node = (SuspendListNode *)list_head(
+	ML_RESUME_VAR->suspend_node = (SuspendListNode *) list_head(
 		ML_RESUME_VAR->suspend_list);
-	
-	ML_RESUME_VAR->ans_list = *ML_RESUME_VAR->suspend_node->
-			last_ret_ans;
-	
+
+	ML_RESUME_VAR->ans_list = *ML_RESUME_VAR->suspend_node->last_ret_ans;
+
 	if (list_is_empty(ML_RESUME_VAR->ans_list))
 		GOTO_LABEL(mercury__table_resume_1_0_AnsListLoopDone2);
-			
-	ML_RESUME_VAR->ansNode = (AnswerListNode *)list_head(
+
+	ML_RESUME_VAR->ansNode = (AnswerListNode *) list_head(
 		ML_RESUME_VAR->ans_list);
 
 	/* 
@@ -1082,12 +1147,12 @@ Define_label(mercury__table_resume_1_0_SolutionsListLoop);
 	** through the redoip we saved when the node was originally 
 	** suspended 
 	*/ 
-	
-	table_copy_mem(ML_RESUME_VAR->table->non_stack_bottom, 
+
+	table_copy_words(ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->suspend_node->non_stack_block,
 		ML_RESUME_VAR->suspend_node->non_stack_block_size);
-				
-	table_copy_mem(ML_RESUME_VAR->table->det_stack_bottom, 
+
+	table_copy_words(ML_RESUME_VAR->table->det_stack_bottom, 
 		ML_RESUME_VAR->suspend_node->det_stack_block,
 		ML_RESUME_VAR->suspend_node->det_stack_block_size);
 
@@ -1096,64 +1161,90 @@ Define_label(mercury__table_resume_1_0_SolutionsListLoop);
 	MR_curfr = ML_RESUME_VAR->suspend_node->cur_fr;
 	MR_maxfr = ML_RESUME_VAR->suspend_node->max_fr;
 
-	bt_redoip(maxfr) = LABEL(mercury__table_resume_1_0_RedoPoint);
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""resumption restores consumer stack: %d non, %d det\n"",
+			ML_RESUME_VAR->suspend_node->non_stack_block_size,
+			ML_RESUME_VAR->suspend_node->det_stack_block_size);
+		printf(""non region from %p to %p, det region from %p to %p\n"",
+			(void *) ML_RESUME_VAR->table->non_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->non_stack_bottom
+				+ ML_RESUME_VAR->suspend_node->
+				non_stack_block_size),
+			(void *) ML_RESUME_VAR->table->det_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->det_stack_bottom
+				+ ML_RESUME_VAR->suspend_node->
+				det_stack_block_size));
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
+	MR_redoip_slot(MR_maxfr) = LABEL(mercury__table_resume_1_0_RedoPoint);
+	MR_redofr_slot(MR_maxfr) = MR_maxfr;
 
 	/* 
-	** For each answer not returned to the node whose state we are
-	** currently in.
+	** Return each answer not previously returned to the node
+	** whose state we are currently in.
 	*/
 Define_label(mercury__table_resume_1_0_AnsListLoop);
-#ifdef COMPACT_ARGS	
+	ML_SET_RESUME_DEBUG_VARS();
+
+#ifdef COMPACT_ARGS
 	r1 = (Word) &ML_RESUME_VAR->ansNode->ans;
 #else
 	r2 = (word) &ML_RESUME_VAR->ansNode->ans;
 #endif
 
 	/* 
-	** Return the answer though the point where suspend should have
+	** Return the answer through the point where suspend should have
 	** returned.
 	*/
 	succeed();
 
 Define_label(mercury__table_resume_1_0_RedoPoint);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	update_prof_current_proc(LABEL(mercury__table_resume_1_0));
-	
+
 	ML_RESUME_VAR->ans_list = list_tail(ML_RESUME_VAR->ans_list);
 
 	if (list_is_empty(ML_RESUME_VAR->ans_list))
 		GOTO_LABEL(mercury__table_resume_1_0_AnsListLoopDone1);
 
-	ML_RESUME_VAR->ansNode = (AnswerListNode *)list_head(
+	ML_RESUME_VAR->ansNode = (AnswerListNode *) list_head(
 		ML_RESUME_VAR->ans_list);
 
 	GOTO_LABEL(mercury__table_resume_1_0_AnsListLoop);
 
 Define_label(mercury__table_resume_1_0_AnsListLoopDone1);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	if (ML_RESUME_VAR->num_ans == ML_RESUME_VAR->table->num_ans)
 		ML_RESUME_VAR->changed = 0;
 	else 
 		ML_RESUME_VAR->changed = 1;
-	
-	ML_RESUME_VAR->suspend_node->last_ret_ans =
-		 &ML_RESUME_VAR->ans_list;
+
+	ML_RESUME_VAR->suspend_node->last_ret_ans = &ML_RESUME_VAR->ans_list;
 
 Define_label(mercury__table_resume_1_0_AnsListLoopDone2);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	ML_RESUME_VAR->suspend_list = list_tail(ML_RESUME_VAR->suspend_list);
 	GOTO_LABEL(mercury__table_resume_1_0_SolutionsListLoop);
 
-Define_label(mercury__table_resume_1_0_SkipAns);
-	ML_RESUME_VAR->ans_list = list_tail(ML_RESUME_VAR->ans_list);
-	GOTO_LABEL(mercury__table_resume_1_0_AnsListLoop);
-	
 Define_label(mercury__table_resume_1_0_ChangeLoopDone);
+	ML_SET_RESUME_DEBUG_VARS();
+
 	/* Restore the original state we had when this proc was called */ 
-	
-	table_copy_mem(ML_RESUME_VAR->table->non_stack_bottom, 
+
+	table_copy_words(ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->non_stack_block,
 		ML_RESUME_VAR->non_stack_block_size);
 	table_free(ML_RESUME_VAR->non_stack_block);
 
-	table_copy_mem(ML_RESUME_VAR->table->det_stack_bottom, 
+	table_copy_words(ML_RESUME_VAR->table->det_stack_bottom, 
 		ML_RESUME_VAR->det_stack_block,
 		ML_RESUME_VAR->det_stack_block_size);
 	table_free(ML_RESUME_VAR->det_stack_block);
@@ -1163,10 +1254,31 @@ Define_label(mercury__table_resume_1_0_ChangeLoopDone);
 	MR_curfr = ML_RESUME_VAR->cur_fr;
 	MR_maxfr = ML_RESUME_VAR->max_fr;
 
+#ifdef	MR_TABLE_DEBUG
+	if (MR_tabledebug) {
+		printf(""resumption restores generator stack:""
+				"" %d non, %d det\n"",
+			ML_RESUME_VAR->non_stack_block_size,
+			ML_RESUME_VAR->det_stack_block_size);
+		printf(""non region from %p to %p, det region from %p to %p\n"",
+			(void *) ML_RESUME_VAR->table->non_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->non_stack_bottom +
+				ML_RESUME_VAR->non_stack_block_size),
+			(void *) ML_RESUME_VAR->table->det_stack_bottom,
+			(void *) (ML_RESUME_VAR->table->det_stack_bottom +
+				ML_RESUME_VAR->det_stack_block_size));
+		printf(""succip = %p, sp = %p, maxfr = %p, curfr = %p\n"",
+			(void *) MR_succip, (void *) MR_sp,
+			(void *) MR_maxfr, (void *) MR_curfr);
+	}
+#endif
+
 	ML_RESUME_POP();
-	
+
 	proceed();
 END_MODULE
+
+#undef	ML_SET_RESUME_DEBUG_VARS
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
@@ -1192,15 +1304,16 @@ void sys_init_table_resume_module(void) {
 		will_not_call_mercury, "
 	Word ListNode;
 	Word ans_num;
-	AnswerListNode *n = table_allocate(sizeof(AnswerListNode));
-	
-	++(NON_TABLE(T)->num_ans);
-	ans_num = NON_TABLE(T)->num_ans;
+	NondetTable *table = NON_TABLE(T);
+	AnswerListNode *n = table_allocate_bytes(sizeof(AnswerListNode));
+
+	++table->num_ans;
+	ans_num = table->num_ans;
 	n->ans_num = ans_num;
 	n->ans = 0;
-	ListNode = MR_table_list_cons(n, *NON_TABLE(T)->answer_list_tail);
-	*NON_TABLE(T)->answer_list_tail = ListNode; 
-	NON_TABLE(T)->answer_list_tail = &list_tail(ListNode);
+	ListNode = MR_table_list_cons(n, *table->answer_list_tail);
+	*table->answer_list_tail = ListNode; 
+	table->answer_list_tail = &list_tail(ListNode);
 
 	Slot = (Word) &n->ans;
 ").

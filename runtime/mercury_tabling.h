@@ -66,8 +66,8 @@ typedef Word	**AnswerBlock;
 					(type_info), (value));		\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: any %x type %p => %p\n",	\
-				(table), (value), (type_info),		\
-				prev_table);				\
+				prev_table, (value), (type_info),	\
+				(table));				\
 		}							\
 	} while (0)
 
@@ -86,8 +86,8 @@ typedef Word	**AnswerBlock;
 		TrieNode prev_table = (table);				\
 		(table) = (Word **) MR_RAW_TABLE_TAG((table), (value));	\
 		if (MR_tabledebug) {					\
-			printf("TABLE %p: tag %d => %p\n", (table), 	\
-				(value), prev_table);			\
+			printf("TABLE %p: tag %d => %p\n", prev_table,	\
+				(value), (table));			\
 		}							\
 	} while (0)
 
@@ -108,7 +108,7 @@ typedef Word	**AnswerBlock;
 					(value));			\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: enum %d of %d => %p\n", 	\
-				(table), (value), (count), prev_table);	\
+				prev_table, (value), (count), (table));	\
 		}							\
 	} while (0)
 
@@ -128,7 +128,7 @@ typedef Word	**AnswerBlock;
 		(table) = (Word **) MR_RAW_TABLE_WORD((table), (value));\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: word %d => %p\n",		\
-				(table), (value), prev_table);		\
+				prev_table, (value), (table));		\
 		}							\
 	} while (0)
 
@@ -148,7 +148,7 @@ typedef Word	**AnswerBlock;
 		(table) = (Word **) MR_RAW_TABLE_INT((table), (value));	\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: int %d => %p\n",		\
-				(table), (value), prev_table);		\
+				prev_table, (value), (table));		\
 		}							\
 	} while (0)
 
@@ -168,8 +168,8 @@ typedef Word	**AnswerBlock;
 		(table) = (Word **) MR_RAW_TABLE_CHAR((table), (value));\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: char `%c'/%d => %p\n",	\
-				(table), (int) (value), (int) (value),	\
-				prev_table);				\
+				prev_table, (int) (value), 		\
+				(int) (value), (table));		\
 		}							\
 	} while (0)
 
@@ -189,8 +189,8 @@ typedef Word	**AnswerBlock;
 		(table) = (Word **) MR_RAW_TABLE_FLOAT((table), (value));\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: float %f => %p\n",		\
-				(table), (double) word_to_float(value),	\
-				prev_table);				\
+				prev_table, (double) word_to_float(value),\
+				(table));				\
 		}							\
 	} while (0)
 
@@ -210,7 +210,7 @@ typedef Word	**AnswerBlock;
 		(table) = (Word **) MR_RAW_TABLE_STRING((table), (value));\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: string `%s' => %p\n",		\
-				(table), (char *) (value), prev_table);	\
+				prev_table, (char *) (value), (table));	\
 		}							\
 	} while (0)
 
@@ -230,7 +230,7 @@ typedef Word	**AnswerBlock;
 		(table) = (Word **) MR_RAW_TABLE_TYPE_INFO((table), (value));\
 		if (MR_tabledebug) {					\
 			printf("TABLE %p: typeinfo %p => %p\n",		\
-				(table), (value), prev_table);		\
+				prev_table, (value), (table));		\
 		}							\
 	} while (0)
 
@@ -335,7 +335,7 @@ typedef Word	**AnswerBlock;
 #define MR_TABLE_CREATE_ANSWER_BLOCK(ABlock, Elements)	 		\
 	do {								\
 		*((AnswerBlock) ABlock) = 				\
-			(Word *) table_allocate(sizeof(Word)*Elements);	\
+			(Word *) table_allocate_words(Elements);	\
 	} while(0)
 
 #define MR_TABLE_GET_ANSWER(Offset, ABlock)				\
@@ -365,11 +365,17 @@ typedef Word	**AnswerBlock;
 
 #ifdef CONSERVATIVE_GC
 
-  #define table_allocate(size)						\
+  #define table_allocate_bytes(size)					\
 	GC_MALLOC(size)
 
-  #define table_reallocate(pointer, size)				\
+  #define table_reallocate_bytes(pointer, size)				\
 	GC_REALLOC(pointer, size)
+
+  #define table_allocate_words(size)					\
+	GC_MALLOC(sizeof(Word) * size)
+
+  #define table_reallocate_words(pointer, size)				\
+	GC_REALLOC(pointer, sizeof(Word) * size)
 
   #define table_free(pointer)						\
 	GC_FREE(pointer)
@@ -378,10 +384,16 @@ typedef Word	**AnswerBlock;
 
 #else /* not CONSERVATIVE_GC */
 
-  #define table_allocate(Size)						\
+  #define table_allocate_bytes(Size)					\
 	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
 	(void *) NULL)
-  #define table_reallocate(Pointer, Size)				\
+  #define table_reallocate_bytes(Pointer, Size)				\
+	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(void *) NULL)
+  #define table_allocate_words(Size)					\
+	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
+	(void *) NULL)
+  #define table_reallocate_words(Pointer, Size)				\
 	(fatal_error("Sorry, not implemented: tabling in non-GC grades"), \
 	(void *) NULL)
   #define table_free(Pointer)						\
@@ -393,7 +405,10 @@ typedef Word	**AnswerBlock;
 
 #endif /* CONSERVATIVE_GC */
 
-#define table_copy_mem(Dest, Source, Size)				\
+#define table_copy_bytes(Dest, Source, Size)				\
 	memcpy(Dest, Source, Size)
+
+#define table_copy_words(Dest, Source, Size)				\
+	memcpy((char *) Dest, (char *) Source, sizeof(Word) * Size)
 
 #endif /* not MERCURY_TABLING_H */

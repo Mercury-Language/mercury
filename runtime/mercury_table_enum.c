@@ -29,7 +29,7 @@ MR_int_index_lookup_or_add(TrieNode t, Integer range, Integer key)
 #endif
 
 	if (table == NULL) {
-		*t = table = table_allocate(sizeof(Word *) * range);
+		*t = table = table_allocate_words(range);
 		memset(table, 0, sizeof(Word *) * range);
 	}
 
