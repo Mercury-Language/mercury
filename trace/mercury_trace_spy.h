@@ -15,8 +15,10 @@
 #define	MERCURY_TRACE_SPY_H
 
 #include "mercury_stack_layout.h"	/* for MR_Proc_Layout etc */
+#include "mercury_trace_term.h"		/* for MR_CTerm */
 #include "mercury_trace_base.h"		/* for MR_Trace_Port etc  */
 #include "mercury_trace_browse.h"	/* for MR_Browse_Format */
+#include "mercury_trace_vars.h"		/* for MR_Var_Spec */
 
 typedef enum {
 	MR_SPY_PRINT, MR_SPY_STOP
@@ -46,6 +48,10 @@ typedef	struct MR_Spy_Print_Struct	*MR_Spy_Print;
 typedef	struct MR_Spy_Print_List_Struct	*MR_Spy_Print_List;
 
 typedef enum {
+	MR_SPY_TEST_EQUAL, MR_SPY_TEST_NOT_EQUAL
+} MR_Spy_Test;
+
+typedef enum {
 	MR_SPY_PRINT_GOAL,
 	MR_SPY_PRINT_ALL,
 	MR_SPY_PRINT_ONE,
@@ -65,6 +71,17 @@ struct MR_Spy_Print_List_Struct {
 
 typedef struct MR_Spy_Point_Struct MR_Spy_Point;
 
+typedef struct {
+	MR_Var_Spec		cond_var_spec;
+	char			*cond_path;
+	MR_Spy_Test		cond_test;
+	MR_CTerm		cond_term;
+	MR_bool			cond_require_var;
+	MR_bool			cond_require_path;
+	char			*cond_what_string;
+	char			*cond_term_string;
+} MR_Spy_Cond;
+
 struct MR_Spy_Point_Struct {
 	MR_bool			spy_exists;	/* MR_FALSE if deleted */
 	MR_bool			spy_enabled;
@@ -72,6 +89,7 @@ struct MR_Spy_Point_Struct {
 	MR_Spy_Action		spy_action;
 	MR_Spy_Ignore_When	spy_ignore_when;
 	int			spy_ignore_count;
+	MR_Spy_Cond		*spy_cond;
 	MR_Spy_Print_List	spy_print_list;
 	const MR_Proc_Layout	*spy_proc;      /* if not LINENO */
 	const MR_Label_Layout	*spy_label;	/* if SPECIFIC */
@@ -90,6 +108,9 @@ extern	int		MR_spy_point_next;
 extern	int		MR_spy_point_max;
 
 extern	int		MR_most_recent_spy_point;
+
+extern	MR_Spy_Cond	*MR_spy_point_cond_bad;
+extern	const char	*MR_spy_point_cond_problem;
 
 /*
 ** Check whether the event described by the given label layout and port
@@ -169,6 +190,12 @@ extern	void		MR_delete_spy_point(int point_table_slot);
 */
 
 extern	void		MR_print_spy_point(FILE *fp, int i, MR_bool verbose);
+
+/*
+** Print the given spy point condition in a user-friendly manner.
+*/
+
+extern	void		MR_print_spy_cond(FILE *fp, MR_Spy_Cond *cond);
 
 /*
 ** Print the set of current spy points (including those that are currently

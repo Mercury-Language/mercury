@@ -18,6 +18,7 @@
 :- include_module browser_info.
 :- include_module browser_term.
 :- include_module collect_lib.
+:- include_module cterm.
 :- include_module debugger_interface.
 :- include_module declarative_debugger.
 :- include_module declarative_execution.

@@ -74,8 +74,9 @@
 #endif
 
 /* Special characters used in mdb commands. */
-#define MR_MDB_QUOTE_CHAR   '\''
-#define MR_MDB_ESCAPE_CHAR  '\\'
+#define DOUBLE_QUOTE_CHAR    '"'
+#define SINGLE_QUOTE_CHAR    '\''
+#define ESCAPE_CHAR          '\\'
 
 /* The initial size of arrays of words. */
 #define MR_INIT_WORD_COUNT  20
@@ -433,6 +434,7 @@ static  MR_TraceCmdFunc MR_trace_cmd_set;
 static  MR_TraceCmdFunc MR_trace_cmd_view;
 static  MR_TraceCmdFunc MR_trace_cmd_save_to_file;
 static  MR_TraceCmdFunc MR_trace_cmd_break;
+static  MR_TraceCmdFunc MR_trace_cmd_condition;
 static  MR_TraceCmdFunc MR_trace_cmd_ignore;
 static  MR_TraceCmdFunc MR_trace_cmd_break_print;
 static  MR_TraceCmdFunc MR_trace_cmd_enable;
@@ -528,6 +530,10 @@ static  MR_bool     MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
                         MR_Spy_Print_List *print_list,
                         char ***words, int *word_count,
                         const char *cat, const char *item);
+static  MR_bool     MR_trace_options_condition(int *break_num,
+                        MR_bool *require_var, MR_bool *require_path,
+                        char ***words, int *word_count, const char *cat,
+                        const char *item);
 static  MR_bool     MR_trace_options_ignore_count(
                         MR_Spy_Ignore_When *ignore_when,
                         int *ignore_count, char ***words, int *word_count,
@@ -693,7 +699,8 @@ static  MR_bool     MR_trace_source(const char *filename,
                         MR_bool ignore_errors);
 static  void        MR_trace_source_from_open_file(FILE *fp);
 static  char        *MR_trace_getline_queue(void);
-static  MR_bool     MR_trace_continue_line(char *ptr, MR_bool *quoted);
+static  MR_bool     MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
+                        MR_bool *double_quoted);
 static  MR_Code     *MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
                         MR_Spy_Print_List print_list,
                         MR_Event_Info *event_info);
@@ -744,6 +751,14 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
     MR_trace_internal_ensure_init();
 
+    if (MR_spy_point_cond_problem != NULL) {
+        fprintf(MR_mdb_err, "mdb: couldn't evaluate break point condition\n");
+        MR_print_spy_cond(MR_mdb_err, MR_spy_point_cond_bad);
+        fprintf(MR_mdb_err, ": %s.\n", MR_spy_point_cond_problem);
+        MR_spy_point_cond_bad = NULL;
+        MR_spy_point_cond_problem = NULL;
+    }
+
     MR_trace_event_print_internal_report(event_info);
     MR_trace_maybe_sync_source_window(event_info, MR_FALSE);
 
@@ -772,6 +787,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
         line = MR_trace_get_command("mdb> ", MR_mdb_in, MR_mdb_out);
         res = MR_trace_debug_cmd(line, cmd, event_info, &event_details,
             &jumpaddr);
+        fflush(MR_mdb_err);
     } while (res == KEEP_INTERACTING);
 
     cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
@@ -2638,6 +2654,119 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
+MR_trace_cmd_condition(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+    MR_Event_Info *event_info, MR_Event_Details *event_details,
+    MR_Code **jumpaddr)
+{
+    int             break_num;
+    MR_bool         require_var;
+    MR_bool         require_path;
+    int             i;
+    const char      *problem;
+    MR_CTerm        term;
+    MR_Spy_Test     test;
+    char            *what_str;
+    char            *term_str;
+    int             len;
+    char            *rest;
+    MR_Spy_Cond     *cond;
+    MR_Var_Spec     var_spec;
+    char            *path;
+
+    break_num = MR_most_recent_spy_point;
+    require_var = MR_TRUE;
+    require_path = MR_TRUE;
+    if (! MR_trace_options_condition(&break_num, &require_var, &require_path,
+        &words, &word_count, "breakpoint", "condition"))
+    {
+        /* the usage message has already been printed */
+        return KEEP_INTERACTING;
+    } else if (word_count < 4) {
+        MR_trace_usage("breakpoint", "condition");
+        return KEEP_INTERACTING;
+    }
+
+    if (break_num < 0) {
+        fprintf(MR_mdb_err, "There is no breakpoint.\n");
+        return KEEP_INTERACTING;
+    }
+
+    if (! (0 <= break_num && break_num < MR_spy_point_next)) {
+        fprintf(MR_mdb_err, "There is no breakpoint %d.\n", break_num);
+        return KEEP_INTERACTING;
+    }
+
+    if (! MR_spy_points[break_num]->spy_exists) {
+        fprintf(MR_mdb_err, "Breakpoint %d has been deleted.\n", break_num);
+        return KEEP_INTERACTING;
+    }
+
+    cond = MR_malloc(sizeof(MR_Spy_Cond));
+
+    what_str = MR_malloc(strlen(words[1]) + 1);
+    strcpy(what_str, words[1]);
+
+    problem = MR_trace_parse_var_path(what_str, &var_spec, &path);
+    if (problem != NULL) {
+        fprintf(MR_mdb_err, "mdb: %s: %s.\n", what_str, problem);
+        return KEEP_INTERACTING;
+    }
+
+    if (MR_streq(words[2], "=") || MR_streq(words[2], "==")) {
+        test = MR_SPY_TEST_EQUAL;
+    } else if (MR_streq(words[2], "!=") || MR_streq(words[2], "\\=")) {
+        test = MR_SPY_TEST_NOT_EQUAL;
+    } else {
+        fprintf(MR_mdb_err, "invalid condition: should be = or !=\n");
+        return KEEP_INTERACTING;
+    }
+
+    len = 0;
+    for (i = 3; i < word_count; i++) {
+        len += strlen(words[i]);
+    }
+
+    term_str = MR_malloc(len + 1);
+    len = 0;
+    for (i = 3; i < word_count; i++) {
+        strcpy(term_str + len, words[i]);
+        len += strlen(words[i]);
+    }
+
+    term = MR_create_cterm(term_str, &rest);
+    if (term == NULL) {
+        fprintf(MR_mdb_out, "syntax error in term\n");
+        return KEEP_INTERACTING;
+    }
+
+    if (*rest != '\0') {
+        fprintf(MR_mdb_out, "syntax error after term\n");
+        return KEEP_INTERACTING;
+    }
+
+    if (MR_spy_points[break_num]->spy_cond != NULL) {
+        MR_delete_cterm(MR_spy_points[break_num]->spy_cond->cond_term);
+        MR_free(MR_spy_points[break_num]->spy_cond->cond_what_string);
+        MR_free(MR_spy_points[break_num]->spy_cond->cond_term_string);
+        MR_free(MR_spy_points[break_num]->spy_cond);
+    }
+
+    cond->cond_var_spec = var_spec;
+    cond->cond_path = path;
+    cond->cond_test = test;
+    cond->cond_term = term;
+    cond->cond_term_string = term_str;
+    cond->cond_what_string = what_str;
+    cond->cond_require_var = require_var;
+    cond->cond_require_path = require_path;
+
+    MR_spy_points[break_num]->spy_cond = cond;
+
+    MR_print_spy_point(MR_mdb_out, break_num, MR_TRUE);
+    return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_ignore(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Event_Details *event_details,
     MR_Code **jumpaddr)
@@ -2894,6 +3023,7 @@ MR_trace_cmd_delete(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         if (0 <= n && n < MR_spy_point_next && MR_spy_points[n]->spy_exists) {
             MR_spy_points[n]->spy_exists = MR_FALSE;
             MR_print_spy_point(MR_mdb_out, n, MR_FALSE);
+            MR_spy_points[n]->spy_exists = MR_TRUE;
             MR_delete_spy_point(n);
         } else {
             fflush(MR_mdb_out);
@@ -2908,6 +3038,7 @@ MR_trace_cmd_delete(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             if (MR_spy_points[i]->spy_exists) {
                 MR_spy_points[i]->spy_exists = MR_FALSE;
                 MR_print_spy_point(MR_mdb_out, i, MR_FALSE);
+                MR_spy_points[i]->spy_exists = MR_TRUE;
                 MR_delete_spy_point(i);
                 count++;
             }
@@ -2925,8 +3056,9 @@ MR_trace_cmd_delete(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             int slot;
 
             slot = MR_most_recent_spy_point;
-            MR_spy_points[slot]-> spy_exists = MR_FALSE;
+            MR_spy_points[slot]->spy_exists = MR_FALSE;
             MR_print_spy_point(MR_mdb_out, slot, MR_FALSE);
+            MR_spy_points[slot]->spy_exists = MR_TRUE;
             MR_delete_spy_point(slot);
         } else {
             fflush(MR_mdb_out);
@@ -6085,6 +6217,61 @@ MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
     return MR_TRUE;
 }
 
+static struct MR_option MR_trace_condition_opts[] =
+{
+    { "break-num",          MR_required_argument,   NULL,   'n' },
+    { "dont-require-var",   MR_no_argument,         NULL,   'v' },
+    { "dont-require-path",  MR_no_argument,         NULL,   'p' },
+    { NULL,                 MR_no_argument,         NULL,   0 }
+};
+
+static MR_bool
+MR_trace_options_condition(int *break_num, MR_bool *require_var,
+    MR_bool *require_path, char ***words, int *word_count,
+    const char *cat, const char *item)
+{
+    int c;
+    int n;
+
+    MR_optind = 0;
+    while ((c = MR_getopt_long(*word_count, *words, "n:vp",
+        MR_trace_condition_opts, NULL)) != EOF)
+    {
+        switch (c) {
+
+            case 'n':
+                if (! MR_trace_is_natural_number(MR_optarg, &n)) {
+                    MR_trace_usage(cat, item);
+                    return MR_FALSE;
+                }
+                *break_num = n;
+                break;
+
+            case 'p':
+                *require_path = MR_FALSE;
+                break;
+
+            case 'v':
+                /*
+                ** If a variable is missing, then the path inside
+                ** is missing as well.
+                */
+
+                *require_path = MR_FALSE;
+                *require_var = MR_FALSE;
+                break;
+
+            default:
+                MR_trace_usage(cat, item);
+                return MR_FALSE;
+        }
+    }
+
+    *words = *words + MR_optind - 1;
+    *word_count = *word_count - MR_optind + 1;
+    return MR_TRUE;
+}
+
 static struct MR_option MR_trace_ignore_count_opts[] =
 {
     { "ignore-entry",       MR_required_argument,   NULL,   'E' },
@@ -7015,20 +7202,28 @@ static const char *
 MR_trace_break_off_one_word(char *line, int char_pos, int *new_char_pos_ptr)
 {
     int         lag = 0;
-    MR_bool     quoted = MR_FALSE;
+    MR_bool     single_quoted = MR_FALSE;
+    MR_bool     double_quoted = MR_FALSE;
     MR_bool     another = MR_FALSE;
 
     while (line[char_pos] != '\0') {
-        if (! quoted && MR_isspace(line[char_pos])) {
+        if (! single_quoted && ! double_quoted && MR_isspace(line[char_pos])) {
             another = MR_TRUE;
             break;
         }
-        if (line[char_pos] == MR_MDB_QUOTE_CHAR) {
+
+        if (! double_quoted && line[char_pos] == SINGLE_QUOTE_CHAR) {
             lag++;
             char_pos++;
-            quoted = !quoted;
+            single_quoted = ! single_quoted;
+        } else if (! single_quoted && line[char_pos] == DOUBLE_QUOTE_CHAR) {
+            if (lag != 0) {
+                line[char_pos - lag] = line[char_pos];
+            }
+            char_pos++;
+            double_quoted = ! double_quoted;
         } else {
-            if (line[char_pos] == MR_MDB_ESCAPE_CHAR) {
+            if (line[char_pos] == ESCAPE_CHAR) {
                 lag++;
                 char_pos++;
                 if (line[char_pos] == '\0') {
@@ -7036,15 +7231,19 @@ MR_trace_break_off_one_word(char *line, int char_pos, int *new_char_pos_ptr)
                 }
             }
 
-            if (lag) {
+            if (lag != 0) {
                 line[char_pos - lag] = line[char_pos];
             }
             char_pos++;
         }
     }
 
-    if (quoted) {
-        return "unmatched quote";
+    if (single_quoted) {
+        return "unmatched single quote";
+    }
+
+    if (double_quoted) {
+        return "unmatched double quote";
     }
 
     line[char_pos - lag] = '\0';
@@ -7140,7 +7339,8 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
     char        *ptr;
     char        *cmd_chars;
     int         cmd_char_max;
-    MR_bool     quoted;
+    MR_bool     single_quoted;
+    MR_bool     double_quoted;
     int         len, extra_len;
 
     line = MR_trace_getline(prompt, mdb_in, mdb_out);
@@ -7159,8 +7359,9 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
     ptr = line;
     cmd_chars = line;
     cmd_char_max = len + 1;
-    quoted = MR_FALSE;
-    while (MR_trace_continue_line(ptr, &quoted)) {
+    single_quoted = MR_FALSE;
+    double_quoted = MR_FALSE;
+    while (MR_trace_continue_line(ptr, &single_quoted, &double_quoted)) {
         /*
         ** We were inside quotes when the end of the line was
         ** reached, or the newline was escaped, so input continues
@@ -7295,7 +7496,8 @@ MR_insert_line_at_tail(const char *contents)
 */
 
 static MR_bool
-MR_trace_continue_line(char *ptr, MR_bool *quoted)
+MR_trace_continue_line(char *ptr, MR_bool *single_quoted,
+    MR_bool *double_quoted)
 {
     MR_bool     escaped = MR_FALSE;
 
@@ -7303,11 +7505,13 @@ MR_trace_continue_line(char *ptr, MR_bool *quoted)
         if (escaped) {
             /* do nothing special */
             escaped = MR_FALSE;
-        } else if (*ptr == MR_MDB_ESCAPE_CHAR) {
+        } else if (*ptr == ESCAPE_CHAR) {
             escaped = MR_TRUE;
-        } else if (*ptr == MR_MDB_QUOTE_CHAR) {
-            *quoted = !(*quoted);
-        } else if (!(*quoted) && *ptr == ';') {
+        } else if (! (*double_quoted) && *ptr == SINGLE_QUOTE_CHAR) {
+            *single_quoted = ! (*single_quoted);
+        } else if (! (*single_quoted) && *ptr == DOUBLE_QUOTE_CHAR) {
+            *double_quoted = ! (*double_quoted);
+        } else if (! (*single_quoted) && ! (*double_quoted) && *ptr == ';') {
             /*
             ** The line contains at least two commands.
             ** Return only the first command now; put the
@@ -7328,7 +7532,7 @@ MR_trace_continue_line(char *ptr, MR_bool *quoted)
         *(ptr - 1) = ' ';
     }
 
-    return (*quoted || escaped);
+    return (*single_quoted || *double_quoted || escaped);
 }
 
 static MR_Code *
@@ -7591,6 +7795,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
 
     { "breakpoint", "break", MR_trace_cmd_break,
         MR_trace_break_cmd_args, MR_trace_breakpoint_completer },
+    { "breakpoint", "condition", MR_trace_cmd_condition,
+        NULL, MR_trace_null_completer },
     { "breakpoint", "ignore", MR_trace_cmd_ignore,
         MR_trace_ignore_cmd_args, MR_trace_null_completer },
     { "breakpoint", "break_print", MR_trace_cmd_break_print,

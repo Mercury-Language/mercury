@@ -138,7 +138,6 @@ static  const char *    MR_lookup_var_spec(MR_Var_Spec var_spec,
                             int *var_index_ptr, MR_bool *is_ambiguous_ptr);
 static  char *          MR_trace_var_completer_next(const char *word,
                             size_t word_len, MR_Completer_Data *data);
-static  const char *    MR_trace_bad_path(const char *path);
 static  int             MR_trace_print_var_name(FILE *out,
                             MR_Var_Details *var);
 static  const char *    MR_trace_valid_var_number(int var_number);
@@ -398,7 +397,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
     type_params = MR_materialize_type_params_base(level_layout,
         valid_saved_regs, base_sp, base_curfr);
 
-    MR_ensure_big_enough(var_count, MR_point.MR_point_var, 
+    MR_ensure_big_enough(var_count, MR_point.MR_point_var,
         MR_Var_Details, MR_INIT_VAR_DETAIL_COUNT);
 
     for (slot = 0; slot < MR_point.MR_point_var_count; slot++) {
@@ -727,7 +726,7 @@ MR_trace_return_var_info(int var_number, const char **name_ptr,
     }
 
     details = &MR_point.MR_point_vars[var_number - 1];
-    
+
     if (name_ptr != NULL) {
         *name_ptr = details->MR_var_fullname;
     }
@@ -935,21 +934,17 @@ MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
 }
 
 const char *
-MR_trace_parse_browse_one(FILE *out, MR_bool print_var_name, char *word_spec,
-    MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
-    MR_bool must_be_unique)
+MR_trace_parse_var_path(char *word_spec, MR_Var_Spec *var_spec, char **path)
 {
-    MR_Var_Spec var_spec;
-    char        *path;
-    char        *s;
-    int         n;
+    char    *s;
+    char    *start;
 
     s = strpbrk(word_spec, "^/");
 
     if (s == NULL) {
-        path = NULL;
+        *path = NULL;
     } else {
-        path = s;
+        start = s;
 
         do {
             if (*s == '^' || *s == '/') {
@@ -973,16 +968,32 @@ MR_trace_parse_browse_one(FILE *out, MR_bool print_var_name, char *word_spec,
             }
         } while (*s != '\0');
 
-        *path = '\0';
-        path++;
+        *start = '\0';
+        *path = start+1;
     }
 
-    MR_convert_arg_to_var_spec(word_spec, &var_spec);
+    MR_convert_arg_to_var_spec(word_spec, var_spec);
+    return NULL;
+}
+
+const char *
+MR_trace_parse_browse_one(FILE *out, MR_bool print_var_name, char *word_spec,
+    MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
+    MR_bool must_be_unique)
+{
+    MR_Var_Spec var_spec;
+    char        *path;
+    const char  *problem;
+
+    problem = MR_trace_parse_var_path(word_spec, &var_spec, &path);
+    if (problem != NULL) {
+        return problem;
+    }
 
     return MR_trace_browse_one_path(out, print_var_name, var_spec, path,
         browser, caller, format, must_be_unique);
 }
- 
+
 const char *
 MR_trace_browse_one(FILE *out, MR_bool print_var_name, MR_Var_Spec var_spec,
     MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
@@ -992,25 +1003,47 @@ MR_trace_browse_one(FILE *out, MR_bool print_var_name, MR_Var_Spec var_spec,
         browser, caller, format, must_be_unique);
 }
 
+const char *
+MR_lookup_unambiguous_var_spec(MR_Var_Spec var_spec,
+    MR_TypeInfo *type_info, MR_Word *value)
+{
+    int         var_num;
+    MR_bool     is_ambiguous;
+    const char  *problem;
+
+    problem = MR_lookup_var_spec(var_spec, &var_num, &is_ambiguous);
+    if (problem != NULL) {
+        return problem;
+    }
+
+    if (is_ambiguous) {
+        return "variable name is not unique";
+    }
+
+    *type_info = MR_point.MR_point_vars[var_num].MR_var_type;
+    *value = MR_point.MR_point_vars[var_num].MR_var_value;
+    return NULL;
+}
+
 static const char *
 MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
     MR_Var_Spec var_spec, char *path, MR_Browser browser,
     MR_Browse_Caller_Type caller, MR_Browse_Format format,
     MR_bool must_be_unique)
 {
-    int         i;
+    int         var_num;
     MR_bool     is_ambiguous;
     const char  *problem;
     char        *bad_path;
 
-    problem = MR_lookup_var_spec(var_spec, &i, &is_ambiguous);
+    problem = MR_lookup_var_spec(var_spec, &var_num, &is_ambiguous);
     if (problem != NULL) {
         return problem;
     }
 
     if (! is_ambiguous) {
         bad_path = MR_trace_browse_var(out, print_var_name,
-            &MR_point.MR_point_vars[i], path, browser, caller, format);
+            &MR_point.MR_point_vars[var_num], path, browser, caller, format);
         if (bad_path != NULL) {
             return MR_trace_bad_path(bad_path);
         }
@@ -1024,16 +1057,17 @@ MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
         success_count = 0;
         do {
             bad_path = MR_trace_browse_var(out, print_var_name,
-                &MR_point.MR_point_vars[i], path, browser, caller, format);
+                &MR_point.MR_point_vars[var_num], path, browser, caller,
+                format);
 
             if (bad_path == NULL) {
                 success_count++;
             }
 
-            i++;
-        } while (i < MR_point.MR_point_var_count &&
+            var_num++;
+        } while (var_num < MR_point.MR_point_var_count &&
             MR_streq(var_spec.MR_var_spec_name,
-            MR_point.MR_point_vars[i].MR_var_fullname));
+            MR_point.MR_point_vars[var_num].MR_var_fullname));
 
         if (success_count == 0) {
             return "the selected path does not exist "
@@ -1053,13 +1087,13 @@ MR_trace_print_size_one(FILE *out, char *word_spec)
 
 #else
 
-    int         i;
+    int         var_num;
     MR_bool     is_ambiguous;
     const char  *problem;
     MR_Var_Spec var_spec;
 
     MR_convert_arg_to_var_spec(word_spec, &var_spec);
-    problem = MR_lookup_var_spec(var_spec, &i, &is_ambiguous);
+    problem = MR_lookup_var_spec(var_spec, &var_num, &is_ambiguous);
     if (problem != NULL) {
         return problem;
     }
@@ -1067,18 +1101,18 @@ MR_trace_print_size_one(FILE *out, char *word_spec)
     if (is_ambiguous) {
         do {
             fprintf(out, "%20s: %6u\n",
-                MR_point.MR_point_vars[i].MR_var_fullname,
-                MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
-                    MR_point.MR_point_vars[i].MR_var_value));
-            i++;
-        } while (i < MR_point.MR_point_var_count &&
+                MR_point.MR_point_vars[var_num].MR_var_fullname,
+                MR_term_size(MR_point.MR_point_vars[var_num].MR_var_type,
+                    MR_point.MR_point_vars[var_num].MR_var_value));
+            var_num++;
+        } while (var_num < MR_point.MR_point_var_count &&
             MR_streq(var_spec.MR_var_spec_name,
-            MR_point.MR_point_vars[i].MR_var_fullname));
+            MR_point.MR_point_vars[var_num].MR_var_fullname));
     } else {
         fprintf(out, "%20s: %6u\n",
-            MR_point.MR_point_vars[i].MR_var_fullname,
-            MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
-                MR_point.MR_point_vars[i].MR_var_value));
+            MR_point.MR_point_vars[var_num].MR_var_fullname,
+            MR_term_size(MR_point.MR_point_vars[var_num].MR_var_type,
+                MR_point.MR_point_vars[var_num].MR_var_value));
     }
 
     return NULL;
@@ -1092,18 +1126,18 @@ MR_trace_print_size_all(FILE *out)
 #ifndef MR_RECORD_TERM_SIZES
     return "term sizes not available in this grade";
 #else
-    int         i;
+    int         var_num;
     const char  *problem;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
-    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+    for (var_num = 0; var_num < MR_point.MR_point_var_count; var_num++) {
         fprintf(out, "%-20s %6u\n",
-            MR_point.MR_point_vars[i].MR_var_fullname,
-            MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
-                MR_point.MR_point_vars[i].MR_var_value));
+            MR_point.MR_point_vars[var_num].MR_var_fullname,
+            MR_term_size(MR_point.MR_point_vars[var_num].MR_var_type,
+                MR_point.MR_point_vars[var_num].MR_var_value));
     }
 
     return NULL;
@@ -1114,7 +1148,7 @@ MR_trace_print_size_all(FILE *out)
 #define BAD_PATH_MSG_PREFIX     "the path "
 #define BAD_PATH_MSG_SUFFIX     " does not exist"
 
-static const char *
+const char *
 MR_trace_bad_path(const char *path)
 {
     static  char    buffer[BAD_PATH_BUFFER_SIZE];
@@ -1133,7 +1167,7 @@ MR_trace_bad_path(const char *path)
 const char *
 MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
 {
-    int i;
+    int var_num;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
@@ -1143,9 +1177,10 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
         fprintf(out, "mdb: there are no live variables.\n");
     }
 
-    for (i = 0; i < MR_point.MR_point_var_count; i++) {
-        (void) MR_trace_browse_var(out, MR_TRUE, &MR_point.MR_point_vars[i],
-            NULL, browser, MR_BROWSE_CALLER_PRINT_ALL, format);
+    for (var_num = 0; var_num < MR_point.MR_point_var_count; var_num++) {
+        (void) MR_trace_browse_var(out, MR_TRUE,
+            &MR_point.MR_point_vars[var_num], NULL, browser,
+            MR_BROWSE_CALLER_PRINT_ALL, format);
     }
 
     return NULL;
@@ -1167,72 +1202,92 @@ MR_trace_browse_all_on_level(FILE *out, const MR_Label_Layout *level_layout,
     return MR_trace_browse_all(out, MR_trace_print, MR_BROWSE_DEFAULT_FORMAT);
 }
 
+char *
+MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
+    MR_TypeInfo *sub_type_info, MR_Word **sub_value)
+{
+    MR_TypeInfo new_type_info;
+    MR_Word     *new_value;
+    char        *old_path;
+    int         arg_num;
+    int         len;
+
+    if (path == NULL) {
+        *sub_value = value;
+        *sub_type_info = type_info;
+        return NULL;
+    }
+
+    while (*path != '\0') {
+        old_path = path;
+
+        if (MR_isdigit(*path)) {
+            /* we have a field number */
+
+            arg_num = 0;
+            while (MR_isdigit(*path)) {
+                arg_num = arg_num * 10 + *path - '0';
+                path++;
+            }
+
+            /* MR_arg numbers fields from 0, not 1 */
+            --arg_num;
+        } else {
+            /* we have a field name */
+            char    saved_char;
+
+            while (MR_isalnumunder(*path)) {
+                path++;
+            }
+
+            saved_char = *path;
+            *path = '\0';
+
+            if (! MR_named_arg_num(type_info, value, old_path, &arg_num))
+            {
+                *path = saved_char;
+                return old_path;
+            }
+
+            *path = saved_char;
+        }
+
+        if (*path != '\0') {
+            MR_assert(*path == '^' || *path == '/');
+            path++; /* step over / or ^ */
+        }
+
+        if (MR_arg(type_info, value, arg_num, &new_type_info, &new_value,
+            MR_NONCANON_CC))
+        {
+            type_info = new_type_info;
+            value = new_value;
+        } else {
+            return old_path;
+        }
+    }
+
+    *sub_value = value;
+    *sub_type_info = type_info;
+    return NULL;
+}
+
 static char *
 MR_trace_browse_var(FILE *out, MR_bool print_var_name, MR_Var_Details *var,
     char *path, MR_Browser browser, MR_Browse_Caller_Type caller,
     MR_Browse_Format format)
 {
-    MR_TypeInfo typeinfo;
-    MR_TypeInfo new_typeinfo;
+    MR_TypeInfo type_info;
     MR_Word     *value;
-    MR_Word     *new_value;
-    char        *old_path;
-    int         arg_num;
     int         len;
     MR_bool     saved_io_tabling_enabled;
+    char        *bad_path;
 
-    typeinfo = var->MR_var_type;
-    value = &var->MR_var_value;
+    bad_path = MR_select_specified_subterm(path, var->MR_var_type,
+        &var->MR_var_value, &type_info, &value);
 
-    if (path != NULL) {
-        while (*path != '\0') {
-            old_path = path;
-
-            if (MR_isdigit(*path)) {
-                /* we have a field number */
-
-                arg_num = 0;
-                while (MR_isdigit(*path)) {
-                    arg_num = arg_num * 10 + *path - '0';
-                    path++;
-                }
-
-                /* MR_arg numbers fields from 0, not 1 */
-                --arg_num;
-            } else {
-                /* we have a field name */
-                char    saved_char;
-
-                while (MR_isalnumunder(*path)) {
-                    path++;
-                }
-
-                saved_char = *path;
-                *path = '\0';
-
-                if (! MR_named_arg_num(typeinfo, value, old_path, &arg_num))
-                {
-                    *path = saved_char;
-                    return old_path;
-                }
-
-                *path = saved_char;
-            }
-
-            if (*path != '\0') {
-                MR_assert(*path == '^' || *path == '/');
-                path++; /* step over / or ^ */
-            }
-
-            if (MR_arg(typeinfo, value, arg_num, &new_typeinfo,
-                &new_value, MR_NONCANON_CC))
-            {
-                typeinfo = new_typeinfo;
-                value = new_value;
-            } else {
-                return old_path;
-            }
-        }
+    if (bad_path != NULL) {
+        return bad_path;
     }
 
     if (print_var_name) {
@@ -1262,7 +1317,7 @@ MR_trace_browse_var(FILE *out, MR_bool print_var_name, MR_Var_Details *var,
 
     saved_io_tabling_enabled = MR_io_tabling_enabled;
     MR_io_tabling_enabled = MR_FALSE;
-    (*browser)((MR_Word) typeinfo, *value, caller, format);
+    (*browser)((MR_Word) type_info, *value, caller, format);
     MR_io_tabling_enabled = saved_io_tabling_enabled;
     return NULL;
 }
@@ -1397,7 +1452,7 @@ MR_trace_var_completer_next(const char *word, size_t word_len,
         var_name = MR_point.MR_point_vars[slot].MR_var_fullname;
         slot++;
         if (MR_strneq(var_name, word, word_len)) {
-            *data = (MR_Completer_Data) slot; 
+            *data = (MR_Completer_Data) slot;
             return MR_copy_string(var_name);
         }
     }
