@@ -101,6 +101,7 @@ ORDINARY_PROGS=	\
 	nondet_ctrl_vn \
 	nondet_copy_out \
 	nullary_ho_func \
+	null_char \
 	pprint_test \
 	pragma_c_code \
 	pragma_export \
@@ -127,6 +128,7 @@ ORDINARY_PROGS=	\
 	shift_test \
 	solve_quadratic \
 	space \
+	special_char \
 	split_c_files \
 	string_alignment \
 	string_alignment_bug \

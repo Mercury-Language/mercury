@@ -966,14 +966,7 @@ output_module_string_table_chars(CurIndex, MaxIndex, String) -->
 	),
 	{ string__unsafe_index(String, CurIndex, Char) },
 	io__write_char(''''),
-	( { char__to_int(Char, 0) } ->
-		io__write_string("\\0")
-	; { c_util__quote_char(Char, QuoteChar) } ->
-		io__write_char('\\'),
-		io__write_char(QuoteChar)
-	;
-		io__write_char(Char)
-	),
+	c_util__output_quoted_char(Char),
 	io__write_char(''''),
 	( { CurIndex < MaxIndex } ->
 		io__write_string(", "),

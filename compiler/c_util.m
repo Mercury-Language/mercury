@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,12 @@
 		io__state, io__state).
 :- mode c_util__output_quoted_multi_string(in, in, di, uo) is det.
 
+	% Print out a char suitably escaped for use as a C char literal.
+	% This doesn't actually print out the enclosing single quotes --
+	% that is the caller's responsibility.
+:- pred c_util__output_quoted_char(char, io__state, io__state).
+:- mode c_util__output_quoted_char(in, di, uo) is det.
+
 	% Convert a string to a form that is suitably escaped for use as a
 	% C string literal.  This doesn't actually add the enclosing double
 	% quotes -- that is the caller's responsibility.
@@ -56,10 +62,10 @@
 :- mode c_util__quote_string(in, out) is det.
 
 	% Convert a character to a form that is suitably escaped for use as a
-	% C character literal.  This doesn't actually add the enclosing double
+	% C character literal.  This doesn't actually add the enclosing single
 	% quotes -- that is the caller's responsibility.
-:- pred c_util__quote_char(char, char).
-:- mode c_util__quote_char(in, out) is semidet.
+:- pred c_util__quote_char(char, string).
+:- mode c_util__quote_char(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -176,34 +182,80 @@ c_util__output_quoted_multi_string_2(Cur, Len, S) -->
 			% we must use unsafe index, because we want to be able
 			% to access chars beyond the first NUL
 		{ string__unsafe_index(S, Cur, Char) },
-		( { char__to_int(Char, 0) } ->
-			io__write_string("\\0")
-		; { c_util__quote_char(Char, QuoteChar) } ->
-			io__write_char('\\'),
-			io__write_char(QuoteChar)
-		;
-			io__write_char(Char)
-		),
+		c_util__output_quoted_char(Char),
 		output_quoted_multi_string_2(Cur + 1, Len, S)
 	;
 		[]
 	).
 
+c_util__output_quoted_char(Char) -->
+	{ c_util__quote_char(Char, EscapedChars) },
+	io__write_string(EscapedChars).
+
+c_util__quote_char(Char, QuotedChar) :-
+	c_util__quote_one_char(Char, [], RevQuotedChar),
+	string__from_rev_char_list(RevQuotedChar, QuotedChar).
+
 c_util__quote_string(String, QuotedString) :-
-	QuoteOneChar = (pred(Char::in, RevChars0::in, RevChars::out) is det :-
-		( c_util__quote_char(Char, QuoteChar) ->
-			RevChars = [QuoteChar, '\\' | RevChars0]
-		;
-			RevChars = [Char | RevChars0]
-		)),
-	string__foldl(QuoteOneChar, String, [], RevQuotedChars),
+	string__foldl(c_util__quote_one_char, String, [], RevQuotedChars),
 	string__from_rev_char_list(RevQuotedChars, QuotedString).
 
-c_util__quote_char('"', '"').
-c_util__quote_char('\\', '\\').
-c_util__quote_char('\n', 'n').
-c_util__quote_char('\t', 't').
-c_util__quote_char('\b', 'b').
+:- pred c_util__quote_one_char(char::in, list(char)::in, list(char)::out)
+	is det.
+c_util__quote_one_char(Char, RevChars0, RevChars) :-
+	( c_util__escape_special_char(Char, EscapeChar) ->
+		RevChars = [EscapeChar, '\\' | RevChars0]
+	; c_util__is_c_source_char(Char) ->
+		RevChars = [Char | RevChars0]
+	; char__to_int(Char, 0) ->
+		RevChars = ['0', '\\' | RevChars0]
+	;
+		c_util__escape_any_char(Char, EscapeChars),
+		reverse_append(EscapeChars, RevChars0, RevChars)
+	).
+
+:- pred c_util__escape_special_char(char::in, char::out) is semidet.
+c_util__escape_special_char('"', '"').
+c_util__escape_special_char('\\', '\\').
+c_util__escape_special_char('\n', 'n').
+c_util__escape_special_char('\t', 't').
+c_util__escape_special_char('\b', 'b').
+c_util__escape_special_char('\a', 'a').
+c_util__escape_special_char('\v', 'v').
+c_util__escape_special_char('\r', 'r').
+c_util__escape_special_char('\f', 'f').
+
+% This succeeds iff the specified character is allowed as an (unescaped)
+% character in standard-conforming C source code.
+:- pred c_util__is_c_source_char(char::in) is semidet.
+c_util__is_c_source_char(Char) :-
+	( char__is_alnum(Char)
+	; string__contains_char(c_graphic_chars, Char)
+	).
+
+% This returns a string containing all the characters that the C standard
+% specifies as being included in the "basic execution character set",
+% except for the letters (a-z A-Z) and digits (0-9).
+:- func c_graphic_chars = string.
+c_graphic_chars = " !\"#%&'()*+,-./:;<=>?[\\]^_{|}~".
+
+
+	% reverse_append(Xs, Ys, Zs) <=> Zs = list__reverse(Xs) ++ Ys.
+:- pred reverse_append(list(T), list(T), list(T)).
+:- mode reverse_append(in, in, out) is det.
+reverse_append([], L, L).
+reverse_append([X|Xs], L0, L) :-
+	reverse_append(Xs, [X|L0], L).
+
+:- pred escape_any_char(char, list(char)).
+:- mode escape_any_char(in, out) is det.
+
+        % Convert a character to the corresponding C octal escape code.
+escape_any_char(Char, EscapeCodeChars) :-
+        char__to_int(Char, Int),
+        string__int_to_base_string(Int, 8, OctalString0),
+        string__pad_left(OctalString0, '0', 3, OctalString),
+        EscapeCodeChars = ['\\' | string__to_char_list(OctalString)].
 
 %-----------------------------------------------------------------------------%
 
