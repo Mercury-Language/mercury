@@ -96,19 +96,28 @@
 	;	float(float)
 	;	time(string).	% Time string: "YYYY-MM-DD hh:mm:ss.mmm"
 
-	% The odbc__state arguments threaded through odbc__execute/4 and
-	% odbc__execute/3 enforce the restriction that database activity can
-	% only occur within a transaction, since odbc__states are only 
-	% available to the closure called by odbc__transaction/5.
-
-	% Execute a command, returning a list of results. 
-:- pred odbc__execute(string, list(odbc__row), odbc__state, odbc__state).
-:- mode odbc__execute(in, out, di, uo) is det.
+	% The odbc__state arguments threaded through these predicates
+	% enforce the restriction that database activity can only occur 
+	% within a transaction, since odbc__states are only available 
+	% to the closure called by odbc__transaction/5.
 
 	% Execute an SQL statement which doesn't return any results, such
 	% as DELETE.
 :- pred odbc__execute(string, odbc__state, odbc__state).
 :- mode odbc__execute(in, di, uo) is det.
+
+	% Execute an SQL statement, returning a list of results in the 
+	% order they are returned from the database. 
+:- pred odbc__solutions(string, list(odbc__row), odbc__state, odbc__state).
+:- mode odbc__solutions(in, out, di, uo) is det.
+
+	% Execute an SQL statement, applying the accumulator predicate
+	% to each element of the result set as it is returned from
+	% the database.
+:- pred odbc__aggregate(string, pred(odbc__row, T, T), T, T, 
+		odbc__state, odbc__state).
+:- mode odbc__aggregate(in, pred(in, in, out) is det, in, out, di, uo) is det.
+:- mode odbc__aggregate(in, pred(in, di, uo) is det, di, uo, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -708,49 +717,75 @@ odbc__execute(SQLString) -->
 	odbc__execute_statement(SQLString, Statement0, Statement),
 	odbc__cleanup_statement_check_error(Statement).
 	
-odbc__execute(SQLString, Results) -->
-	odbc__get_result_set(odbc__execute_statement(SQLString), Results).
+odbc__solutions(SQLString, Results) -->
+	% XXX optimize this when we have better support 
+	% for last call optimization.
+	odbc__do_aggregate(odbc__execute_statement(SQLString), 
+		cons, [], Results0),
+	{ list__reverse(Results0, Results) }.
+
+odbc__aggregate(SQLString, Accumulator, Acc0, Acc) -->
+	odbc__do_aggregate(odbc__execute_statement(SQLString), 
+		Accumulator, Acc0, Acc).
+
+:- pred cons(T, list(T), list(T)).
+:- mode cons(in, in, out) is det.
+
+cons(H, T, [H|T]).
 
 %-----------------------------------------------------------------------------%
 
-:- pred odbc__get_result_set(pred(odbc__statement, odbc__statement, 
-			odbc__state, odbc__state), 
-			list(odbc__row), odbc__state, odbc__state).
-:- mode odbc__get_result_set(pred(di, uo, di, uo) is det, out, di, uo) is det.
+:- pred odbc__do_aggregate(pred(odbc__statement, odbc__statement, 
+			odbc__state, odbc__state), pred(odbc__row, T, T),
+			T, T, odbc__state, odbc__state).
+:- mode odbc__do_aggregate(pred(di, uo, di, uo) is det, 
+			pred(in, in, out) is det,
+			in, out, di, uo) is det.
+:- mode odbc__do_aggregate(pred(di, uo, di, uo) is det, 
+			pred(in, di, uo) is det,
+			di, uo, di, uo) is det.
 
-odbc__get_result_set(Execute, Results) -->
+odbc__do_aggregate(Execute, Accumulate, Result0, Result) -->
 	odbc__alloc_statement(Statement0),
 	call(Execute, Statement0, Statement1),
 	odbc__bind_columns(Statement1, Statement2),
-	odbc__get_rows(Results, Statement2, Statement),
+	odbc__get_rows(Accumulate, Result0, Result, Statement2, Statement),
 	odbc__cleanup_statement_check_error(Statement).
 
 %-----------------------------------------------------------------------------%
 
 	% Get the set of result rows from the statement.
-:- pred odbc__get_rows(list(odbc__row), odbc__statement, odbc__statement, 
-		odbc__state, odbc__state).
-:- mode odbc__get_rows(out, di, uo, di, uo) is det.
+:- pred odbc__get_rows(pred(odbc__row, T, T), T, T, 
+		odbc__statement, odbc__statement, odbc__state, odbc__state).
+:- mode odbc__get_rows(pred(in, in, out) is det, in, out, 
+		di, uo, di, uo) is det.
+:- mode odbc__get_rows(pred(in, di, uo) is det, di, uo, di, uo, di, uo) is det.
 
-odbc__get_rows(Rows, Statement0, Statement) -->
+odbc__get_rows(Accumulate, Result0, Result, Statement0, Statement) -->
 	odbc__get_number_of_columns(NumColumns, Statement0, Statement1),
-	odbc__get_rows_2(NumColumns, Rows, Statement1, Statement).
+	odbc__get_rows_2(NumColumns, Accumulate, Result0, Result, 
+		Statement1, Statement).
 
-:- pred odbc__get_rows_2(int, list(odbc__row), odbc__statement,
-		odbc__statement, odbc__state, odbc__state).
-:- mode odbc__get_rows_2(in, out, di, uo, di, uo) is det.
+:- pred odbc__get_rows_2(int, pred(odbc__row, T, T), T, T,
+		odbc__statement, odbc__statement, odbc__state, odbc__state).
+:- mode odbc__get_rows_2(in, pred(in, in, out) is det, in, out,
+		di, uo, di, uo) is det.
+:- mode odbc__get_rows_2(in, pred(in, di, uo) is det, di, uo,
+		di, uo, di, uo) is det.
 
-odbc__get_rows_2(NumColumns, Rows, Statement0, Statement) -->
+odbc__get_rows_2(NumColumns, Accumulate, Result0, Result,
+		Statement0, Statement) -->
 	% Try to fetch a new row.
 	odbc__fetch(Statement0, Statement1, Status),
 	( { odbc__no_data(Status) } ->
-		{ Rows = [] },
+		{ Result = Result0 },	
 		{ Statement = Statement1 }
 	;
 		odbc__get_attributes(1, NumColumns, Row, 
 			Statement1, Statement2),
-		odbc__get_rows_2(NumColumns, Rows1, Statement2, Statement),
-		{ Rows = [Row | Rows1] }
+		{ Accumulate(Row, Result0, Result1) },
+		odbc__get_rows_2(NumColumns, Accumulate, 
+			Result1, Result, Statement2, Statement)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1960,35 +1995,35 @@ odbc__tables(Qualifier, Owner, TableName, Tables) -->
 		QualifierStatus) },
 	{ odbc__convert_pattern_argument(Owner, OwnerStr, OwnerStatus) },
 	{ odbc__convert_pattern_argument(TableName, TableStr, TableStatus) },
-	odbc__get_result_set(odbc__sql_tables(QualifierStr, QualifierStatus,
-		OwnerStr, OwnerStatus, TableStr, TableStatus), Results),
-	list__map_foldl(odbc__convert_table_desc, Results, Tables).
+	odbc__do_aggregate(odbc__sql_tables(QualifierStr, QualifierStatus,
+		OwnerStr, OwnerStatus, TableStr, TableStatus), 
+		cons, [], Results0),
+	{ list__reverse(Results0, Results) },
+	( { list__map(odbc__convert_table_desc, Results, Tables0) } ->
+		{ Tables = Tables0 }
+	;
+		odbc__add_message(error(internal_error) - 
+			"[Mercury][odbc.m]Invalid results from SQLTables."),
+		odbc__throw
+	).
 
-:- pred odbc__convert_table_desc(odbc__row, odbc__table_desc, 
-		odbc__state, odbc__state).
-:- mode odbc__convert_table_desc(in, out, di, uo) is det.
+:- pred odbc__convert_table_desc(odbc__row, odbc__table_desc).
+:- mode odbc__convert_table_desc(in, out) is semidet.
 
-odbc__convert_table_desc(Row0, Table) -->
-	{ NullToEmptyStr = 
+odbc__convert_table_desc(Row0, Table) :-
+	NullToEmptyStr = 
 		lambda([Data0::in, Data::out] is det, (
 			( Data0 = null ->
 				Data = string("")
 			;
 				Data = Data0
 			)
-		)) },
-	{ list__map(NullToEmptyStr, Row0, Row) },
-	(
-		{ Row = [string(Qualifier), string(Owner), string(Name), 
-			string(Type), string(Description) | DriverColumns] } 
-	->
-		{ Table = odbc__table_desc(Qualifier, Owner, Name, 
-			Type, Description, DriverColumns) }
-	;
-		odbc__add_message(error(internal_error) - 
-			"[Mercury][odbc.m]Invalid results from SQLTables."),
-		odbc__throw
-	).
+		)),
+	list__map(NullToEmptyStr, Row0, Row),
+	Row = [string(Qualifier), string(Owner), string(Name), 
+		string(Type), string(Description) | DriverColumns],
+	Table = odbc__table_desc(Qualifier, Owner, Name, 
+		Type, Description, DriverColumns).
 
 %-----------------------------------------------------------------------------%
 

@@ -72,7 +72,7 @@ main -->
 		odbc__state::di, odbc__state::uo) is det.
 
 test_trans(Results) -->
-	odbc__execute("select * from test", Results).
+	odbc__solutions("select * from test", Results).
 
 :- pred output_results(list(odbc__row)::in,
 		io__state::di, io__state::uo) is det.
