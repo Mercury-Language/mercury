@@ -163,20 +163,19 @@ alloc_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
 
 allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
 		MaybeReservedVarInfo, StackSlots) :-
-	map__init(StackSlots0),
 		% The reserved slots are referred to by fixed number
 		% (e.g. framevar(1)) in trace__setup.
 	FirstVarSlot = NumReservedSlots + 1,
 	allocate_stack_slots_2(ColourList, CodeModel, FirstVarSlot,
-		MaybeReservedVarInfo, StackSlots0, StackSlots).
+		MaybeReservedVarInfo, map__init, StackSlots).
 
 :- pred allocate_stack_slots_2(list(set(prog_var))::in, code_model::in,
 	int::in, maybe(pair(prog_var, int))::in,
 	stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_2([], _, _, _, StackSlots, StackSlots).
+allocate_stack_slots_2([], _, _, _, !StackSlots).
 allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
-		StackSlots0, StackSlots) :-
+		!StackSlots) :-
 	(
 		MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
 		set__member(ResVar, Vars)
@@ -187,22 +186,22 @@ allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
 		SlotNum = N0,
 		N1 = N0 + 1
 	),
-	( CodeModel = model_non ->
-		Slot = framevar(SlotNum)
-	;
-		Slot = stackvar(SlotNum)
-	),
 	set__to_sorted_list(Vars, VarList),
-	allocate_same_stack_slot(VarList, Slot, StackSlots0, StackSlots1),
+	allocate_same_stack_slot(VarList, CodeModel, SlotNum, !StackSlots),
 	allocate_stack_slots_2(VarSets, CodeModel, N1, MaybeReservedVarInfo,
-		StackSlots1, StackSlots).
+		!StackSlots).
 
-:- pred allocate_same_stack_slot(list(prog_var)::in, lval::in, stack_slots::in,
-	stack_slots::out) is det.
+:- pred allocate_same_stack_slot(list(prog_var)::in, code_model::in, int::in,
+	stack_slots::in, stack_slots::out) is det.
 
-allocate_same_stack_slot([], _Slot, StackSlots, StackSlots).
-allocate_same_stack_slot([Var | Vars], Slot, StackSlots0, StackSlots) :-
-	map__det_insert(StackSlots0, Var, Slot, StackSlots1),
-	allocate_same_stack_slot(Vars, Slot, StackSlots1, StackSlots).
+allocate_same_stack_slot([], _CodeModel, _Slot, !StackSlots).
+allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
+	( CodeModel = model_non ->
+		Locn = nondet_slot(Slot)
+	;
+		Locn = det_slot(Slot)
+	),
+	map__det_insert(!.StackSlots, Var, Locn, !:StackSlots),
+	allocate_same_stack_slot(Vars, CodeModel, Slot, !StackSlots).
 
 %-----------------------------------------------------------------------------%

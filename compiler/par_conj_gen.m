@@ -113,6 +113,7 @@
 
 :- import_module check_hlds__mode_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
 :- import_module hlds__instmap.
 :- import_module libs__globals.
@@ -191,7 +192,8 @@ par_conj_gen__generate_det_par_conj_2([Goal | Goals], N, SyncTerm, SpSlot,
 	code_info__get_stack_slots(!.CI, AllSlots),
 	code_info__get_known_variables(!.CI, Variables),
 	set__list_to_set(Variables, LiveVars),
-	map__select(AllSlots, LiveVars, StoreMap),
+	map__select(AllSlots, LiveVars, StoreMap0),
+	StoreMap = map__map_values(key_stack_slot_to_abs_locn, StoreMap0),
 	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
 		SaveCode, !CI),
 	Goal = _GoalExpr - GoalInfo,

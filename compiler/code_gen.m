@@ -253,7 +253,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 	;
 		MaybeFollowVars = no,
 		map__init(FollowVarsMap),
-		FollowVars = follow_vars(FollowVarsMap, 1)
+		FollowVars = abs_follow_vars(FollowVarsMap, 1)
 	),
 	module_info_globals(ModuleInfo, Globals),
 	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,

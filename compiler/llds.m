@@ -22,6 +22,7 @@
 :- import_module backend_libs__rtti.
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_pred.
 :- import_module libs__tree.
 :- import_module ll_backend__layout.
@@ -657,6 +658,21 @@
 	--->	ground
 	;	partial((inst)).
 
+:- func stack_slot_to_lval(stack_slot) = lval.
+:- func key_stack_slot_to_lval(_, stack_slot) = lval.
+
+:- type lval_or_any_reg
+	--->	lval(lval)
+	;	any_reg.
+
+:- func abs_locn_to_lval_or_any_reg(abs_locn) = lval_or_any_reg.
+
+:- func abs_locn_to_lval(abs_locn) = lval.
+
+:- func key_abs_locn_to_lval(_, abs_locn) = lval.
+
+:- func stack_slot_num_to_lval(code_model, int) = lval.
+
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.
 :- type lval --->
@@ -923,8 +939,6 @@
 
 :- pred break_up_local_label(label::in, proc_label::out, int::out) is det.
 
-:- func llds__stack_slot_num_to_lval(code_model, int) = lval.
-
 :- pred llds__wrap_rtti_data(rtti_data::in, comp_gen_c_data::out) is det.
 
 	% given a non-var rval, figure out its type
@@ -956,19 +970,39 @@
 
 :- import_module require.
 
+stack_slot_to_lval(det_slot(N)) = stackvar(N).
+stack_slot_to_lval(nondet_slot(N)) = framevar(N).
+
+key_stack_slot_to_lval(_, Slot) =
+	stack_slot_to_lval(Slot).
+
+abs_locn_to_lval_or_any_reg(any_reg) = any_reg.
+abs_locn_to_lval_or_any_reg(abs_reg(N)) = lval(reg(r, N)).
+abs_locn_to_lval_or_any_reg(abs_stackvar(N)) = lval(stackvar(N)).
+abs_locn_to_lval_or_any_reg(abs_framevar(N)) = lval(framevar(N)).
+
+abs_locn_to_lval(any_reg) = _ :-
+	error("abs_locn_to_lval: any_reg").
+abs_locn_to_lval(abs_reg(N)) = reg(r, N).
+abs_locn_to_lval(abs_stackvar(N)) = stackvar(N).
+abs_locn_to_lval(abs_framevar(N)) = framevar(N).
+
+key_abs_locn_to_lval(_, AbsLocn) =
+	abs_locn_to_lval(AbsLocn).
+
+stack_slot_num_to_lval(CodeModel, SlotNum) =
+	(if CodeModel = model_non then
+		framevar(SlotNum)
+	else
+		stackvar(SlotNum)
+	).
+
 break_up_local_label(Label, ProcLabel, LabelNum) :-
 	( Label = local(LabelNumPrime, ProcLabelPrime) ->
 		LabelNum = LabelNumPrime,
 		ProcLabel = ProcLabelPrime
 	;
 		error("break_up_local_label: bad label")
-	).
-
-llds__stack_slot_num_to_lval(CodeModel, SlotNum) =
-	(if CodeModel = model_non then
-		framevar(SlotNum)
-	else
-		stackvar(SlotNum)
 	).
 
 llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -564,9 +564,9 @@ continuation_info__find_return_var_lvals([Var | Vars], StackSlots,
 		% On return, output arguments are in their registers.
 		code_util__arg_loc_to_register(ArgLoc, Lval),
 		VarLvals = [Var - Lval | TailVarLvals]
-	; map__search(StackSlots, Var, Lval) ->
+	; map__search(StackSlots, Var, Slot) ->
 		% On return, other live variables are in their stack slots.
-		VarLvals = [Var - Lval | TailVarLvals]
+		VarLvals = [Var - stack_slot_to_lval(Slot) | TailVarLvals]
 	; OkToDeleteAny = yes ->
 		VarLvals = TailVarLvals
 	;

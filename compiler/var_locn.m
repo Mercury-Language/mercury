@@ -47,8 +47,8 @@
 %		are considered constants.
 
 :- pred init_state(assoc_list(prog_var, lval)::in, set(prog_var)::in,
-	prog_varset::in, stack_slots::in, follow_vars::in, option_table::in,
-	var_locn_info::out) is det.
+	prog_varset::in, stack_slots::in, abs_follow_vars::in,
+	option_table::in, var_locn_info::out) is det.
 
 %	reinit_state(VarLocs, !VarLocnInfo)
 %		Produces a new state of the VarLocnInfo in which the static
@@ -298,8 +298,7 @@
 %		Returns the table mapping each variable to the lval (if any)
 %		where it is desired next.
 
-:- pred get_follow_var_map(var_locn_info::in, follow_vars_map::out)
-	is det.
+:- pred get_follow_var_map(var_locn_info::in, abs_follow_vars_map::out) is det.
 
 %	get_next_non_reserved(VarLocnInfo, NonRes)
 %		Returns the number of the first register which is free for
@@ -312,7 +311,7 @@
 %		where it is desired next, and the number of the first
 %		non-reserved register.
 
-:- pred set_follow_vars(follow_vars::in,
+:- pred set_follow_vars(abs_follow_vars::in,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	max_reg_in_use(MaxReg)
@@ -400,13 +399,13 @@
 	var_locn_info(
 		varset		:: prog_varset,	% The varset from the
 						% proc_info.
-		stack_slots 	:: stack_slots,	% Maps each var to its stack
+		stack_slots 	:: stack_slots, % Maps each var to its stack
 						% slot, if it has one.
 		exprn_opts	:: exprn_opts,	% The values of the options
 						% that are relevant to
 						% decisions about which rvals
 						% are constants.
-		follow_vars_map	:: follow_vars_map,
+		follow_vars_map	:: abs_follow_vars_map,
 						% Where vars are needed next.
 		next_non_res	:: int,		% Next register that is not
 						% reserved in follow_vars_map.
@@ -445,7 +444,7 @@ init_state(VarLocs, Liveness, Varset, StackSlots, FollowVars, Options,
 	init_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
 		LocVarMap0, LocVarMap),
 	exprn_aux__init_exprn_opts(Options, ExprnOpts),
-	FollowVars = follow_vars(FollowVarMap, NextNonReserved),
+	FollowVars = abs_follow_vars(FollowVarMap, NextNonReserved),
 	set__init(AcquiredRegs),
 	VarLocnInfo = var_locn_info(Varset, StackSlots, ExprnOpts,
 		FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
@@ -1605,11 +1604,14 @@ select_preferred_reg(VLI, Var, Lval) :-
 select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
 	get_follow_var_map(VLI, FollowVarMap),
 	(
-		map__search(FollowVarMap, Var, PrefLval),
-		PrefLval = reg(_, _)
+		map__search(FollowVarMap, Var, PrefLocn),
+		( PrefLocn = abs_reg(_)
+		; PrefLocn = any_reg
+		)
 	->
 		(
-			real_lval(PrefLval),
+			PrefLocn = abs_reg(N),
+			PrefLval = reg(r, N),
 			( CheckInUse = yes ->
 				\+ lval_in_use(VLI, PrefLval)
 			;
@@ -1647,11 +1649,14 @@ select_preferred_reg_or_stack_check(VLI, Var, Lval) :-
 select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
 	get_follow_var_map(VLI, FollowVarMap),
 	(
-		map__search(FollowVarMap, Var, PrefLval),
-		PrefLval = reg(_, _)
+		map__search(FollowVarMap, Var, PrefLocn),
+		( PrefLocn = abs_reg(_)
+		; PrefLocn = any_reg
+		)
 	->
 		(
-			real_lval(PrefLval),
+			PrefLocn = abs_reg(N),
+			PrefLval = reg(r, N),
 			( CheckInUse = yes ->
 				\+ lval_in_use(VLI, PrefLval)
 			;
@@ -1665,7 +1670,8 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
 	;
 		(
 			get_stack_slots(VLI, StackSlots),
-			map__search(StackSlots, Var, StackSlot),
+			map__search(StackSlots, Var, StackSlotLocn),
+			StackSlot = stack_slot_to_lval(StackSlotLocn),
 			( CheckInUse = yes ->
 				\+ lval_in_use(VLI, StackSlot)
 			;
@@ -2182,7 +2188,7 @@ args_depend_on_search_lval([Arg | Args], SearchLval) :-
 
 %----------------------------------------------------------------------------%
 
-set_follow_vars(follow_vars(FollowVarMap, NextNonReserved), !VLI) :-
+set_follow_vars(abs_follow_vars(FollowVarMap, NextNonReserved), !VLI) :-
 	set_follow_var_map(FollowVarMap, !VLI),
 	set_next_non_reserved(NextNonReserved, !VLI).
 
@@ -2218,8 +2224,7 @@ nonempty_state(State) :-
 
 :- pred set_varset(prog_varset::in,
 	var_locn_info::in, var_locn_info::out) is det.
-
-:- pred set_follow_var_map(follow_vars_map::in,
+:- pred set_follow_var_map(abs_follow_vars_map::in,
 	var_locn_info::in, var_locn_info::out) is det.
 :- pred set_next_non_reserved(int::in,
 	var_locn_info::in, var_locn_info::out) is det.

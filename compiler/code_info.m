@@ -84,69 +84,69 @@
 
 :- type code_info.
 
-		% Create a new code_info structure. Also return the
-		% outermost resumption point, and info about the non-fixed
-		% stack slots used for tracing purposes.
+	% Create a new code_info structure. Also return the
+	% outermost resumption point, and info about the non-fixed
+	% stack slots used for tracing purposes.
 :- pred code_info__init(bool::in, globals::in, pred_id::in, proc_id::in,
-	pred_info::in, proc_info::in, follow_vars::in, module_info::in,
+	pred_info::in, proc_info::in, abs_follow_vars::in, module_info::in,
 	static_cell_info::in, resume_point_info::out, trace_slot_info::out,
 	code_info::out) is det.
 
-		% Get the globals table.
+	% Get the globals table.
 :- pred code_info__get_globals(code_info::in, globals::out) is det.
 
-		% Get the HLDS of the entire module.
+	% Get the HLDS of the entire module.
 :- pred code_info__get_module_info(code_info::in, module_info::out) is det.
 
-		% Get the id of the predicate we are generating code for.
+	% Get the id of the predicate we are generating code for.
 :- pred code_info__get_pred_id(code_info::in, pred_id::out) is det.
 
-		% Get the id of the procedure we are generating code for.
+	% Get the id of the procedure we are generating code for.
 :- pred code_info__get_proc_id(code_info::in, proc_id::out) is det.
 
-		% Get the HLDS of the procedure we are generating code for.
+	% Get the HLDS of the procedure we are generating code for.
 :- pred code_info__get_proc_info(code_info::in, proc_info::out) is det.
 
-		% Get the HLDS of the predicate containing the procedure
-		% we are generating code for.
+	% Get the HLDS of the predicate containing the procedure
+	% we are generating code for.
 :- pred code_info__get_pred_info(code_info::in, pred_info::out) is det.
 
-		% Get the variables for the current procedure.
+	% Get the variables for the current procedure.
 :- pred code_info__get_varset(code_info::in, prog_varset::out) is det.
 
 :- pred code_info__get_maybe_trace_info(code_info::in, maybe(trace_info)::out)
 	is det.
 
-		% Get the set of currently forward-live variables.
+	% Get the set of currently forward-live variables.
 :- pred code_info__get_forward_live_vars(code_info::in, set(prog_var)::out)
 	is det.
 
-		% Set the set of currently forward-live variables.
+	% Set the set of currently forward-live variables.
 :- pred code_info__set_forward_live_vars(set(prog_var)::in,
 	code_info::in, code_info::out) is det.
 
-		% Get the table mapping variables to the current
-		% instantiation states.
+	% Get the table mapping variables to the current
+	% instantiation states.
 :- pred code_info__get_instmap(code_info::in, instmap::out) is det.
 
-		% Set the table mapping variables to the current
-		% instantiation states.
+	% Set the table mapping variables to the current
+	% instantiation states.
 :- pred code_info__set_instmap(instmap::in,
 	code_info::in, code_info::out) is det.
 
-		% The number of the last local label allocated.
+	% The number of the last local label allocated.
 :- pred code_info__get_label_counter(code_info::in, counter::out) is det.
 
-		% Get the flag that indicates whether succip is used or not.
+	% Get the flag that indicates whether succip is used or not.
 :- pred code_info__get_succip_used(code_info::in, bool::out) is det.
 
-		% Get the label layout information created by tracing
-		% during code generation.
+	% Get the label layout information created by tracing
+	% during code generation.
 :- pred code_info__get_layout_info(code_info::in,
 	map(label, internal_layout_info)::out) is det.
 
-		% Get the global static data structures that have
-		% been created during code generation for closure layouts.
+	% Get the global static data structures that have
+	% been created during code generation for closure layouts.
 :- pred code_info__get_closure_layouts(code_info::in,
 	list(comp_gen_c_data)::out) is det.
 
@@ -155,8 +155,8 @@
 :- pred code_info__set_max_reg_in_use_at_trace(int::in,
 	code_info::in, code_info::out) is det.
 
-		% Get the flag which is true iff the procedure has so far
-		% emitted code that creates a temporary nondet stack frame.
+	% Get the flag which is true iff the procedure has so far
+	% emitted code that creates a temporary nondet stack frame.
 :- pred code_info__get_created_temp_frame(code_info::in, bool::out) is det.
 
 :- pred code_info__get_static_cell_info(code_info::in, static_cell_info::out)
@@ -375,8 +375,8 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 		MaybeFailVars = no,
 		EffLiveness = Liveness
 	),
-	var_locn__init_state(ArgList, EffLiveness, VarSet,
-		StackSlots, FollowVars, Options, VarLocnInfo),
+	var_locn__init_state(ArgList, EffLiveness, VarSet, StackSlots,
+		FollowVars, Options, VarLocnInfo),
 	stack__init(ResumePoints),
 	globals__lookup_bool_option(Globals, allow_hijacks, AllowHijack),
 	(
@@ -551,21 +551,21 @@ code_info__set_static_cell_info(SCI, CI,
 
 :- interface.
 
-		% Get the hlds mapping from variables to stack slots
+	% Get the hlds mapping from variables to stack slots
 :- pred code_info__get_stack_slots(code_info::in, stack_slots::out) is det.
 
-		% Get the table that contains advice about where
-		% variables should be put.
-:- pred code_info__get_follow_var_map(code_info::in, follow_vars_map::out)
+	% Get the table that contains advice about where
+	% variables should be put.
+:- pred code_info__get_follow_var_map(code_info::in, abs_follow_vars_map::out)
 	is det.
 
-		% Get the integer that gives the number of the next
-		% non-reserved register.
+	% Get the integer that gives the number of the next
+	% non-reserved register.
 :- pred code_info__get_next_non_reserved(code_info::in, int::out) is det.
 
-		% Set the table that contains advice about where
-		% variables should be put.
-:- pred code_info__set_follow_vars(follow_vars::in,
+	% Set the table that contains advice about where
+	% variables should be put.
+:- pred code_info__set_follow_vars(abs_follow_vars::in,
 	code_info::in, code_info::out) is det.
 
 	% code_info__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
@@ -930,10 +930,10 @@ code_info__add_static_cell_natural_types(Rvals, DataAddr, !CI) :-
 :- pred code_info__reset_resume_known(position_info::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__generate_branch_end(store_map::in, branch_end::in,
+:- pred code_info__generate_branch_end(abs_store_map::in, branch_end::in,
 	branch_end::out, code_tree::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__after_all_branches(store_map::in, branch_end::in,
+:- pred code_info__after_all_branches(abs_store_map::in, branch_end::in,
 	code_info::in, code_info::out) is det.
 
 :- pred code_info__save_hp_in_branch(code_tree::out, lval::out,
@@ -977,14 +977,16 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
 		% afterwards, since every goal following a branched
 		% control structure must in any case be annotated with
 		% its own follow_var set.
-	map__to_assoc_list(StoreMap, VarLocs),
-	map__from_assoc_list(VarLocs, FollowVarsMap),
-	assoc_list__values(VarLocs, Locs),
-	code_util__max_mentioned_reg(Locs, MaxMentionedReg),
+	map__to_assoc_list(StoreMap, AbsVarLocs),
+	map__from_assoc_list(AbsVarLocs, FollowVarsMap),
+	assoc_list__values(AbsVarLocs, AbsLocs),
+	code_util__max_mentioned_abs_reg(AbsLocs, MaxMentionedReg),
 	code_info__set_follow_vars(
-		follow_vars(FollowVarsMap, MaxMentionedReg + 1), !CI),
+		abs_follow_vars(FollowVarsMap, MaxMentionedReg + 1), !CI),
 	code_info__get_instmap(!.CI, InstMap),
 	( instmap__is_reachable(InstMap) ->
+		VarLocs = assoc_list__map_values(key_abs_locn_to_lval,
+			AbsVarLocs),
 		code_info__place_vars(VarLocs, Code, !CI)
 	;
 		% With --opt-no-return-call, the variables that we would have
@@ -1074,11 +1076,12 @@ code_info__after_all_branches(StoreMap, MaybeEnd, !CI) :-
 	% in the store map, and will believe they are where the store map
 	% says they are.
 
-:- pred code_info__remake_with_store_map(store_map::in,
+:- pred code_info__remake_with_store_map(abs_store_map::in,
 	code_info::in, code_info::out) is det.
 
 code_info__remake_with_store_map(StoreMap, !CI) :-
-	map__to_assoc_list(StoreMap, VarLvals),
+	map__to_assoc_list(StoreMap, VarLocns),
+	VarLvals = assoc_list__map_values(key_abs_locn_to_lval, VarLocns),
 	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
 	var_locn__reinit_state(VarLvals, VarLocnInfo0, VarLocnInfo),
 	code_info__set_var_locn_info(VarLocnInfo, !CI).
@@ -2337,8 +2340,10 @@ code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
 	),
 	( MaybeFailVars = yes(FailVars) ->
 		code_info__get_stack_slots(!.CI, StackSlots),
-		map__select(StackSlots, FailVars, StackMap0),
-		map__to_assoc_list(StackMap0, StackList0),
+		map__select(StackSlots, FailVars, AbsStackMap),
+		map__to_assoc_list(AbsStackMap, AbsStackList),
+		StackList0 = assoc_list__map_values(key_stack_slot_to_lval,
+			AbsStackList),
 		code_info__make_singleton_sets(StackList0, StackList),
 		map__from_assoc_list(StackList, StackMap)
 	;
@@ -2366,15 +2371,15 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint,
 		ResumePoint = orig_only(OrigMap, OrigAddr)
 	;
 		ResumeLocs = stack_only,
-		code_info__make_stack_resume_map(ResumeVars,
-			StackSlots, StackMap),
+		code_info__make_stack_resume_map(ResumeVars, StackSlots,
+			StackMap),
 		code_info__get_next_label(StackLabel, !CI),
 		StackAddr = label(StackLabel),
 		ResumePoint = stack_only(StackMap, StackAddr)
 	;
 		ResumeLocs = orig_and_stack,
-		code_info__make_stack_resume_map(ResumeVars,
-			StackSlots, StackMap),
+		code_info__make_stack_resume_map(ResumeVars, StackSlots,
+			StackMap),
 		code_info__get_next_label(OrigLabel, !CI),
 		OrigAddr = label(OrigLabel),
 		code_info__get_next_label(StackLabel, !CI),
@@ -2383,8 +2388,8 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint,
 			StackMap, StackAddr)
 	;
 		ResumeLocs = stack_and_orig,
-		code_info__make_stack_resume_map(ResumeVars,
-			StackSlots, StackMap),
+		code_info__make_stack_resume_map(ResumeVars, StackSlots,
+			StackMap),
 		code_info__get_next_label(StackLabel, !CI),
 		StackAddr = label(StackLabel),
 		code_info__get_next_label(OrigLabel, !CI),
@@ -2398,7 +2403,9 @@ code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint,
 
 code_info__make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
 	map__select(StackSlots, ResumeVars, StackMap0),
-	map__to_assoc_list(StackMap0, StackList0),
+	map__to_assoc_list(StackMap0, AbsStackList),
+	StackList0 = assoc_list__map_values(key_stack_slot_to_lval,
+		AbsStackList),
 	code_info__make_singleton_sets(StackList0, StackList),
 	map__from_assoc_list(StackList, StackMap).
 
@@ -2715,8 +2722,8 @@ code_info__make_vars_forward_live(Vars, !CI) :-
 code_info__make_vars_forward_live_2([], _, _, !VarLocnInfo).
 code_info__make_vars_forward_live_2([Var | Vars], StackSlots, N0,
 		!VarLocnInfo) :-
-	( map__search(StackSlots, Var, Lval0) ->
-		Lval = Lval0,
+	( map__search(StackSlots, Var, Slot) ->
+		Lval = stack_slot_to_lval(Slot),
 		N1 = N0
 	;
 		code_info__find_unused_reg(!.VarLocnInfo, N0, N1),
@@ -3246,13 +3253,13 @@ code_info__acquire_reg_for_var(Var, Lval, !CI) :-
 	code_info__get_next_non_reserved(!.CI, NextNonReserved),
 	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
 	(
-		map__search(FollowVarsMap, Var, PrefLval),
-		PrefLval = reg(PrefRegType, PrefRegNum),
+		map__search(FollowVarsMap, Var, PrefLocn),
+		PrefLocn = abs_reg(PrefRegNum),
+		% ZZZ
 		PrefRegNum >= 1
 	->
-			require(unify(PrefRegType, r), "acquire non-r reg"),
-			var_locn__acquire_reg_prefer_given(PrefRegNum, Lval,
-			VarLocnInfo0, VarLocnInfo)
+		var_locn__acquire_reg_prefer_given(PrefRegNum, Lval,
+		VarLocnInfo0, VarLocnInfo)
 	;
 		% XXX We should only get a register if the map__search
 		% succeeded; otherwise we should put the var in its stack slot.
@@ -3640,8 +3647,8 @@ code_info__release_temp_slot(StackVar, !CI) :-
 
 code_info__get_variable_slot(CI, Var, Slot) :-
 	code_info__get_stack_slots(CI, StackSlots),
-	( map__search(StackSlots, Var, SlotPrime) ->
-		Slot = SlotPrime
+	( map__search(StackSlots, Var, SlotLocn) ->
+		Slot = stack_slot_to_lval(SlotLocn)
 	;
 		Name = code_info__variable_to_string(CI, Var),
 		term__var_to_int(Var, Num),
@@ -3663,18 +3670,19 @@ code_info__max_var_slot(StackSlots, SlotCount) :-
 	map__values(StackSlots, StackSlotList),
 	code_info__max_var_slot_2(StackSlotList, 0, SlotCount).
 
-:- pred code_info__max_var_slot_2(list(lval)::in, int::in, int::out) is det.
+:- pred code_info__max_var_slot_2(list(stack_slot)::in, int::in, int::out)
+	is det.
 
-code_info__max_var_slot_2([], Max, Max).
-code_info__max_var_slot_2([L | Ls], Max0, Max) :-
-	( L = stackvar(N) ->
-		int__max(N, Max0, Max1)
-	; L = framevar(N) ->
-		int__max(N, Max0, Max1)
+code_info__max_var_slot_2([], !Max).
+code_info__max_var_slot_2([L | Ls], !Max) :-
+	(
+		L = det_slot(N),
+		int__max(N, !Max)
 	;
-		Max1 = Max0
+		L = nondet_slot(N),
+		int__max(N, !Max)
 	),
-	code_info__max_var_slot_2(Ls, Max1, Max).
+	code_info__max_var_slot_2(Ls, !Max).
 
 :- pred code_info__stack_variable(code_info::in, int::in, lval::out) is det.
 

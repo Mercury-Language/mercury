@@ -257,12 +257,6 @@
 :- import_module aditi_backend.
 :- import_module aditi_backend__rl.
 
-% LLDS back-end modules (XXX should avoid using those here).
-:- import_module ll_backend.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds.
-:- import_module ll_backend__llds_out.
-
 % Misc
 :- import_module backend_libs.
 :- import_module backend_libs__foreign.
@@ -1828,13 +1822,13 @@ hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarnums,
 		goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
 		(
 			MaybeFollowVars = yes(FollowVars),
-			FollowVars = follow_vars(FollowVarsMap, NextReg),
+			FollowVars = abs_follow_vars(FollowVarsMap, NextReg),
 			map__to_assoc_list(FollowVarsMap, FVlist),
 			hlds_out__write_indent(Indent, !IO),
 			io__write_string("% follow vars: ", !IO),
 			io__write_int(NextReg, !IO),
 			io__write_string("\n", !IO),
-			hlds_out__write_var_to_lvals(FVlist, VarSet,
+			hlds_out__write_var_to_abs_locns(FVlist, VarSet,
 				AppendVarnums, Indent, !IO)
 		;
 			MaybeFollowVars = no
@@ -1874,12 +1868,12 @@ hlds_out__write_llds_code_gen_info(GoalInfo, VarSet, AppendVarnums,
 	(
 		string__contains_char(Verbose, 's'),
 		goal_info_get_store_map(GoalInfo, StoreMap),
-		map__to_assoc_list(StoreMap, StoreMaplist),
-		StoreMaplist \= []
+		map__to_assoc_list(StoreMap, StoreMapList),
+		StoreMapList \= []
 	->
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% store map:\n", !IO),
-		hlds_out__write_var_to_lvals(StoreMaplist, VarSet,
+		hlds_out__write_var_to_abs_locns(StoreMapList, VarSet,
 			AppendVarnums, Indent, !IO)
 	;
 		true
@@ -2853,28 +2847,25 @@ hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarnums, VarSet, TVarSet,
 	bool::in, io::di, io::uo) is det.
 
 hlds_out__write_stack_slots(Indent, StackSlots, VarSet, AppendVarnums, !IO) :-
-	map__to_assoc_list(StackSlots, VarSlotList),
-	hlds_out__write_var_to_lvals(VarSlotList, VarSet, AppendVarnums,
+	map__to_assoc_list(StackSlots, VarSlotList0),
+	VarSlotList = assoc_list__map_values(key_stack_slot_to_abs_locn,
+		VarSlotList0),
+	hlds_out__write_var_to_abs_locns(VarSlotList, VarSet, AppendVarnums,
 		Indent, !IO).
 
-:- pred hlds_out__write_var_to_lvals(assoc_list(prog_var, lval)::in,
+:- pred hlds_out__write_var_to_abs_locns(assoc_list(prog_var, abs_locn)::in,
 	prog_varset::in, bool::in, int::in, io::di, io::uo) is det.
 
-hlds_out__write_var_to_lvals([], _, _, _, !IO).
-hlds_out__write_var_to_lvals([Var - Loc | VarLocs], VarSet, AppendVarnums,
+hlds_out__write_var_to_abs_locns([], _, _, _, !IO).
+hlds_out__write_var_to_abs_locns([Var - Loc | VarLocs], VarSet, AppendVarnums,
 		Indent, !IO) :-
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string("%\t", !IO),
 	mercury_output_var(Var, VarSet, AppendVarnums, !IO),
 	io__write_string("\t-> ", !IO),
-	( llds_out__lval_to_string(Loc, LocStrPrime) ->
-		LocStr = LocStrPrime
-	;
-		LocStr = "unknown location"
-	),
-	io__write_string(LocStr, !IO),
+	io__write_string(abs_locn_to_string(Loc), !IO),
 	io__write_string("\n", !IO),
-	hlds_out__write_var_to_lvals(VarLocs, VarSet, AppendVarnums, Indent,
+	hlds_out__write_var_to_abs_locns(VarLocs, VarSet, AppendVarnums, Indent,
 		!IO).
 
 %-----------------------------------------------------------------------------%

@@ -20,6 +20,7 @@
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
 :- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module ll_backend__llds.
@@ -69,6 +70,7 @@
 :- pred code_util__arg_loc_to_register(arg_loc::in, lval::out) is det.
 
 :- pred code_util__max_mentioned_reg(list(lval)::in, int::out) is det.
+:- pred code_util__max_mentioned_abs_reg(list(abs_locn)::in, int::out) is det.
 
 :- pred code_util__goal_may_alloc_temp_frame(hlds_goal::in) is semidet.
 
@@ -90,6 +92,7 @@
 
 	% Given a procedure that already has its arg_info field filled in,
 	% return a list giving its input variables and their initial locations.
+
 :- pred build_input_arg_list(proc_info::in,
 	assoc_list(prog_var, lval)::out) is det.
 
@@ -104,8 +107,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, char, int, string, set, map, term, varset.
-:- import_module require, std_util.
+:- import_module bool, char, int, string, set, term, varset, require.
 
 %---------------------------------------------------------------------------%
 
@@ -222,14 +224,29 @@ code_util__max_mentioned_reg(Lvals, MaxRegNum) :-
 :- pred code_util__max_mentioned_reg_2(list(lval)::in, int::in, int::out)
 	is det.
 
-code_util__max_mentioned_reg_2([], MaxRegNum, MaxRegNum).
-code_util__max_mentioned_reg_2([Lval | Lvals], MaxRegNum0, MaxRegNum) :-
+code_util__max_mentioned_reg_2([], !MaxRegNum).
+code_util__max_mentioned_reg_2([Lval | Lvals], !MaxRegNum) :-
 	( Lval = reg(r, N) ->
-		int__max(MaxRegNum0, N, MaxRegNum1)
+		int__max(N, !MaxRegNum)
 	;
-		MaxRegNum1 = MaxRegNum0
+		true
 	),
-	code_util__max_mentioned_reg_2(Lvals, MaxRegNum1, MaxRegNum).
+	code_util__max_mentioned_reg_2(Lvals, !MaxRegNum).
+
+code_util__max_mentioned_abs_reg(Lvals, MaxRegNum) :-
+	code_util__max_mentioned_abs_reg_2(Lvals, 0, MaxRegNum).
+
+:- pred code_util__max_mentioned_abs_reg_2(list(abs_locn)::in,
+	int::in, int::out) is det.
+
+code_util__max_mentioned_abs_reg_2([], !MaxRegNum).
+code_util__max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegNum) :-
+	( Lval = abs_reg(N) ->
+		int__max(N, !MaxRegNum)
+	;
+		true
+	),
+	code_util__max_mentioned_abs_reg_2(Lvals, !MaxRegNum).
 
 %-----------------------------------------------------------------------------%
 
@@ -449,3 +466,5 @@ build_input_arg_list_2([V - Arg | Rest0], VarArgs) :-
 		VarArgs = VarArgs0
 	),
 	build_input_arg_list_2(Rest0, VarArgs0).
+
+%-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,11 +30,11 @@
 	% conjunction or not.
 
 	% XXX should avoid the dependency on code_info here
-:- pred code_aux__contains_simple_recursive_call(hlds_goal, code_info, bool).
-:- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
+:- pred code_aux__contains_simple_recursive_call(hlds_goal::in, code_info::in,
+	bool::out) is semidet.
 
-:- pred code_aux__explain_stack_slots(stack_slots, prog_varset, string).
-:- mode code_aux__explain_stack_slots(in, in, out) is det.
+:- pred code_aux__explain_stack_slots(stack_slots::in, prog_varset::in,
+	string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -72,8 +72,8 @@ code_aux__contains_simple_recursive_call_expr([Goal|Goals], CodeInfo, Last) :-
 		)
 	).
 
-:- pred code_aux__is_recursive_call(hlds_goal_expr, code_info).
-:- mode code_aux__is_recursive_call(in, in) is semidet.
+:- pred code_aux__is_recursive_call(hlds_goal_expr::in, code_info::in)
+	is semidet.
 
 code_aux__is_recursive_call(Goal, CodeInfo) :-
 	Goal = call(CallPredId, CallProcId, _, BuiltinState, _, _),
@@ -92,20 +92,22 @@ code_aux__explain_stack_slots(StackSlots, VarSet, Explanation) :-
 	string__append("\nStack slot assignments (if any):\n", Explanation1,
 		Explanation).
 
-:- pred code_aux__explain_stack_slots_2(assoc_list(prog_var, lval), prog_varset,
-		string, string).
-:- mode code_aux__explain_stack_slots_2(in, in, in, out) is det.
+:- pred code_aux__explain_stack_slots_2(assoc_list(prog_var, stack_slot)::in,
+	prog_varset::in, string::in, string::out) is det.
 
-code_aux__explain_stack_slots_2([], _, String, String).
-code_aux__explain_stack_slots_2([Var - Lval | Rest], VarSet, String0, String) :-
-	code_aux__explain_stack_slots_2(Rest, VarSet, String0, String1),
-	( llds_out__lval_to_string(Lval, LvalString0) ->
-		LvalString = LvalString0
+code_aux__explain_stack_slots_2([], _, !Explanation).
+code_aux__explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
+	code_aux__explain_stack_slots_2(Rest, VarSet, !Explanation),
+	(
+		Slot = det_slot(SlotNum),
+		StackStr = "stackvar"
 	;
-		LvalString = "some lval"
+		Slot = nondet_slot(SlotNum),
+		StackStr = "framevar"
 	),
+	int_to_string(SlotNum, SlotStr),
 	varset__lookup_name(VarSet, Var, VarName),
-	string__append_list([VarName, "\t ->\t", LvalString, "\n", String1],
-		String).
+	string__append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
+		!.Explanation], !:Explanation).
 
 %---------------------------------------------------------------------------%

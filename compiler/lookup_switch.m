@@ -57,7 +57,7 @@
 :- type rval_map == map(prog_var, list(pair(int, rval))).
 
 :- pred lookup_switch__is_lookup_switch(prog_var::in, cases_list::in,
-	hlds_goal_info::in, can_fail::in, int::in, store_map::in,
+	hlds_goal_info::in, can_fail::in, int::in, abs_store_map::in,
 	branch_end::in, branch_end::out, code_model::in, int::out, int::out,
 	can_fail::out, can_fail::out, list(prog_var)::out, case_consts::out,
 	maybe(set(prog_var))::out, code_info::in, code_info::out) is semidet.
@@ -66,7 +66,7 @@
 
 :- pred lookup_switch__generate(prog_var::in, list(prog_var)::in,
 	case_consts::in, int::in, int::in, can_fail::in, can_fail::in,
-	maybe(set(prog_var))::in, store_map::in, branch_end::in,
+	maybe(set(prog_var))::in, abs_store_map::in, branch_end::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -205,7 +205,7 @@ lookup_switch__figure_out_output_vars(CI, GoalInfo, OutVars) :-
 %---------------------------------------------------------------------------%
 
 :- pred lookup_switch__generate_constants(cases_list::in, list(prog_var)::in,
-	store_map::in, branch_end::in, branch_end::out, code_model::in,
+	abs_store_map::in, branch_end::in, branch_end::out, code_model::in,
 	case_consts::out, maybe(set(prog_var))::out,
 	code_info::in, code_info::out) is semidet.
 

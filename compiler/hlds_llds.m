@@ -14,9 +14,6 @@
 :- interface.
 
 :- import_module hlds__hlds_goal.
-:- import_module ll_backend.		% XXX should make specialized types
-					% to avoid these imports
-:- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, map, set, std_util.
@@ -26,36 +23,43 @@
 % that are used only by the LLDS back-end.
 %
 
-:- type stack_slots	==	map(prog_var, lval).
+:- type stack_slot
+	--->	det_slot(int)
+	;	nondet_slot(int).
+
+:- type stack_slots	==	map(prog_var, stack_slot).
 				% Maps variables to their stack slots.
-				% The only legal lvals in the range are
-				% stackvars and framevars.
 
-:- type follow_vars_map	==	map(prog_var, lval).
+:- type abs_locn
+	--->	any_reg
+	;	abs_reg(int)
+	;	abs_stackvar(int)
+	;	abs_framevar(int).
 
-:- type follow_vars	--->	follow_vars(follow_vars_map, int).
+:- type abs_follow_vars_map	==	map(prog_var, abs_locn).
+
+:- type abs_follow_vars	--->	abs_follow_vars(abs_follow_vars_map, int).
 				% Advisory information about where variables
 				% ought to be put next. Variables may or may
 				% not appear in the map. If they do, then the
-				% associated lval says where the value of that
+				% associated locn says where the value of that
 				% variable ought to be put when it is computed,
-				% or, if the lval refers to the nonexistent
-				% register r(-1), it says that it should be
-				% put into an available register. The integer
-				% in the second half of the pair gives the
-				% number of the first register that is
-				% not reserved for other purposes, and is
+				% or, if the locn is any_reg, it says that it
+				% should be put into any available register.
+				% The integer in the second half of the pair
+				% gives the number of the first register that
+				% is not reserved for other purposes, and is
 				% free to hold such variables.
 
-:- type store_map	==	map(prog_var, lval).
+:- type abs_store_map	==	map(prog_var, abs_locn).
 				% Authoritative information about where
 				% variables must be put at the ends of
 				% branches of branched control structures.
 				% However, between the follow_vars and
 				% and store_alloc passes, these fields
 				% temporarily hold follow_vars information.
-				% Apart from this, the legal range is
-				% the set of legal lvals.
+				% The final value is not allowed to map any
+				% variable to any_reg.
 
 	% see compiler/notes/allocation.html for what these alternatives mean
 :- type resume_point	--->	resume_point(set(prog_var), resume_locs)
@@ -137,10 +141,10 @@
 	set(prog_var)::out) is det.
 
 :- pred goal_info_get_follow_vars(hlds_goal_info::in,
-	maybe(follow_vars)::out) is det.
+	maybe(abs_follow_vars)::out) is det.
 
 :- pred goal_info_get_store_map(hlds_goal_info::in,
-	store_map::out) is det.
+	abs_store_map::out) is det.
 
 :- pred goal_info_get_resume_point(hlds_goal_info::in,
 	resume_point::out) is det.
@@ -169,10 +173,10 @@
 	set(prog_var)::out) is semidet.
 
 :- pred goal_info_maybe_get_follow_vars(hlds_goal_info::in,
-	maybe(follow_vars)::out) is semidet.
+	maybe(abs_follow_vars)::out) is semidet.
 
 :- pred goal_info_maybe_get_store_map(hlds_goal_info::in,
-	store_map::out) is semidet.
+	abs_store_map::out) is semidet.
 
 :- pred goal_info_maybe_get_resume_point(hlds_goal_info::in,
 	resume_point::out) is semidet.
@@ -210,10 +214,10 @@
 :- pred goal_info_set_post_deaths(hlds_goal_info::in, set(prog_var)::in,
 	hlds_goal_info::out) is det.
 
-:- pred goal_info_set_follow_vars(hlds_goal_info::in, maybe(follow_vars)::in,
-	hlds_goal_info::out) is det.
+:- pred goal_info_set_follow_vars(hlds_goal_info::in,
+	maybe(abs_follow_vars)::in, hlds_goal_info::out) is det.
 
-:- pred goal_info_set_store_map(hlds_goal_info::in, store_map::in,
+:- pred goal_info_set_store_map(hlds_goal_info::in, abs_store_map::in,
 	hlds_goal_info::out) is det.
 
 :- pred goal_info_set_resume_point(hlds_goal_info::in, resume_point::in,
@@ -230,7 +234,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_set_follow_vars(hlds_goal::in, maybe(follow_vars)::in,
+:- pred goal_set_follow_vars(hlds_goal::in, maybe(abs_follow_vars)::in,
 	hlds_goal::out) is det.
 
 :- pred goal_set_resume_point(hlds_goal::in, resume_point::in,
@@ -253,11 +257,18 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func stack_slot_to_abs_locn(stack_slot) = abs_locn.
+:- func key_stack_slot_to_abs_locn(_, stack_slot) = abs_locn.
+
+:- func abs_locn_to_string(abs_locn) = string.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds__goal_util.
 
-:- import_module list, assoc_list, require.
+:- import_module string, list, assoc_list, require.
 
 	% For the meaning of this type, see the documentation of the
 	% maybe_need field of llds_code_gen_details below.
@@ -277,7 +288,7 @@
 			% For atomic goals, the post-deadness should be applied
 			% _before_ the goal.
 
-		follow_vars		:: maybe(follow_vars),
+		follow_vars		:: maybe(abs_follow_vars),
 			% Initially set to `no' for all goals, which
 			% means the absence of the advisory
 			% information. Can be set to `yes' by the
@@ -287,7 +298,7 @@
 			% For the semantics of the value inside a `yes',
 			% see the documentation of the follow_vars type.
 
-		store_map		:: store_map,
+		store_map		:: abs_store_map,
 			% This annotation is meaningful only after the
 			% store_alloc pass, and even then only if
 			% attached to a goal representing a branched
@@ -581,7 +592,7 @@ goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
 		Resume = resume_point(Vars, Locs)
 	;
 		Resume = no_resume_point,
-		error("goal_info__get_resume_vars_and_loc: no resume point")
+		error("goal_info_resume_vars_and_loc: no resume point")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -612,13 +623,13 @@ rename_vars_in_llds_code_gen_info(Details0, Must, Subn, Details) :-
 		MaybeFollowVars = no
 	;
 		MaybeFollowVars0 = yes(FollowVars0),
-		FollowVars0 = follow_vars(FollowVarsMap0, FirstFreeReg),
-		rename_vars_in_var_lval_map(FollowVarsMap0, Must, Subn,
+		FollowVars0 = abs_follow_vars(FollowVarsMap0, FirstFreeReg),
+		rename_vars_in_var_locn_map(FollowVarsMap0, Must, Subn,
 			FollowVarsMap),
-		FollowVars = follow_vars(FollowVarsMap, FirstFreeReg),
+		FollowVars = abs_follow_vars(FollowVarsMap, FirstFreeReg),
 		MaybeFollowVars = yes(FollowVars)
 	),
-	rename_vars_in_var_lval_map(StoreMap0, Must, Subn, StoreMap),
+	rename_vars_in_var_locn_map(StoreMap0, Must, Subn, StoreMap),
 	(
 		ResumePoint0 = no_resume_point,
 		ResumePoint = no_resume_point
@@ -666,39 +677,36 @@ rename_vars_in_llds_code_gen_info(Details0, Must, Subn, Details) :-
 		PreDeaths, PostDeaths, MaybeFollowVars, StoreMap,
 		ResumePoint, MaybeNeed).
 
-:- pred rename_vars_in_var_lval_map(map(prog_var, lval)::in,
-	bool::in, map(prog_var, prog_var)::in, map(prog_var, lval)::out)
+:- pred rename_vars_in_var_locn_map(map(prog_var, abs_locn)::in,
+	bool::in, map(prog_var, prog_var)::in, map(prog_var, abs_locn)::out)
 	is det.
 
-rename_vars_in_var_lval_map(VarLvalMap0, Must, Subn, VarLvalMap) :-
-	map__to_assoc_list(VarLvalMap0, VarLvalList0),
-	rename_vars_in_var_lval_list(VarLvalList0, Must, Subn, VarLvalList),
-	map__from_assoc_list(VarLvalList, VarLvalMap).
+rename_vars_in_var_locn_map(VarLocnMap0, Must, Subn, VarLocnMap) :-
+	map__to_assoc_list(VarLocnMap0, VarLocnList0),
+	rename_vars_in_var_locn_list(VarLocnList0, Must, Subn, VarLocnList),
+	map__from_assoc_list(VarLocnList, VarLocnMap).
 
-:- pred rename_vars_in_var_lval_list(assoc_list(prog_var, lval)::in,
-	bool::in, map(prog_var, prog_var)::in, assoc_list(prog_var, lval)::out)
-	is det.
+:- pred rename_vars_in_var_locn_list(assoc_list(prog_var, abs_locn)::in,
+	bool::in, map(prog_var, prog_var)::in,
+	assoc_list(prog_var, abs_locn)::out) is det.
 
-rename_vars_in_var_lval_list([], _Must, _Subn, []).
-rename_vars_in_var_lval_list([Var0 - Lval0 | VarLvals0], Must, Subn,
-		[Var - Lval | VarLvals]) :-
+rename_vars_in_var_locn_list([], _Must, _Subn, []).
+rename_vars_in_var_locn_list([Var0 - Locn | VarLocns0], Must, Subn,
+		[Var - Locn | VarLocns]) :-
 	rename_var(Var0, Must, Subn, Var),
-	rename_vars_in_lval(Lval0, Must, Subn, Lval),
-	rename_vars_in_var_lval_list(VarLvals0, Must, Subn, VarLvals).
+	rename_vars_in_var_locn_list(VarLocns0, Must, Subn, VarLocns).
 
-:- pred rename_vars_in_lval(lval::in, bool::in, map(prog_var, prog_var)::in,
-	lval::out) is det.
+%-----------------------------------------------------------------------------%
 
-rename_vars_in_lval(Lval0, _Must, _Subn, Lval) :-
-	(
-		( Lval0 = stackvar(_)
-		; Lval0 = framevar(_)
-		; Lval0 = reg(_, _)
-		)
-	->
-		Lval = Lval0
-	;
-		error("rename_vars_in_lval: unexpected lval")
-	).
+stack_slot_to_abs_locn(det_slot(N)) = abs_stackvar(N).
+stack_slot_to_abs_locn(nondet_slot(N)) = abs_framevar(N).
+
+key_stack_slot_to_abs_locn(_, Slot) =
+	stack_slot_to_abs_locn(Slot).
+
+abs_locn_to_string(any_reg) = "any_reg".
+abs_locn_to_string(abs_reg(N)) = "r" ++ int_to_string(N).
+abs_locn_to_string(abs_stackvar(N)) = "stackvar" ++ int_to_string(N).
+abs_locn_to_string(abs_framevar(N)) = "framevar" ++ int_to_string(N).
 
 %-----------------------------------------------------------------------------%
