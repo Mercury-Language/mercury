@@ -183,12 +183,12 @@ vn__process_parallel_tuple(tuple(_, Ctrlmap, _, _, Parmap)) -->
 :- mode vn__process_parallel_nodes(in, in, di, uo) is det.
 
 vn__process_parallel_nodes([], _) --> [].
-vn__process_parallel_nodes([VnInstr | VnInstrs], Par) -->
+vn__process_parallel_nodes([_VnInstr | VnInstrs], Par) -->
 	( { Par = [Parallels | MoreParallels] } ->
-		{ opt_debug__dump_vninstr(VnInstr, I_str) },
-		io__write_string("parallels at node "),
-		io__write_string(I_str),
-		io__write_string("\n"),
+		% { opt_debug__dump_vninstr(VnInstr, I_str) },
+		% io__write_string("parallels at node "),
+		% io__write_string(I_str),
+		% io__write_string("\n"),
 		vn__process_parallels(Parallels),
 		vn__process_parallel_nodes(VnInstrs, MoreParallels)
 	;
@@ -206,27 +206,27 @@ vn__process_parallels([Parallel | Parallels]) -->
 :- pred vn__process_parallel(parallel, io__state, io__state).
 :- mode vn__process_parallel(in, di, uo) is det.
 
-vn__process_parallel(parallel(OldLabel, NewLabel, ParEntries)) -->
-	{ opt_debug__dump_label(OldLabel, O_str) },
-	{ opt_debug__dump_label(NewLabel, N_str) },
-	io__write_string("parallel from "),
-	io__write_string(O_str),
-	io__write_string(" to "),
-	io__write_string(N_str),
-	io__write_string("\n"),
+vn__process_parallel(parallel(_OldLabel, _NewLabel, ParEntries)) -->
+	% { opt_debug__dump_label(OldLabel, O_str) },
+	% { opt_debug__dump_label(NewLabel, N_str) },
+	% io__write_string("parallel from "),
+	% io__write_string(O_str),
+	% io__write_string(" to "),
+	% io__write_string(N_str),
+	% io__write_string("\n"),
 	vn__process_parentries(ParEntries).
 
 :- pred vn__process_parentries(list(parentry), io__state, io__state).
 :- mode vn__process_parentries(in, di, uo) is det.
 
 vn__process_parentries([]) --> [].
-vn__process_parentries([Lval - Rvals | ParEntries]) -->
-	{ opt_debug__dump_lval(Lval, L_str) },
-	{ opt_debug__dump_rvals(Rvals, R_str) },
-	io__write_string(L_str),
-	io__write_string(" -> "),
-	io__write_string(R_str),
-	io__write_string("\n"),
+vn__process_parentries([_Lval - _Rvals | ParEntries]) -->
+	% { opt_debug__dump_lval(Lval, L_str) },
+	% { opt_debug__dump_rvals(Rvals, R_str) },
+	% io__write_string(L_str),
+	% io__write_string(" -> "),
+	% io__write_string(R_str),
+	% io__write_string("\n"),
 	vn__process_parentries(ParEntries).
 
 %-----------------------------------------------------------------------------%
