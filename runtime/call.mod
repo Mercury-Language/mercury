@@ -309,15 +309,11 @@ mercury__unify_2_0:
 	tailcall(unify_pred, LABEL(mercury__unify_2_0));
 }
 
+
+mercury__term_to_type_2_0:
 #if OFFSET_FOR_ARG_TYPE_INFOS != 6
-
-mercury__term_to_type_2_0:
-mercury__type_to_term_2_0:
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
-
 #else
-
-mercury__term_to_type_2_0:
 {
 	/* we get called as 'term_to_type(TypeInfo, Term, X)' */
 	/* in the mode 'term_to_type(in, in, out) is semidet'. */
@@ -369,8 +365,12 @@ mercury__term_to_type_2_0_i1:
 	r4 = virtual_reg(type_arity + 3);
 	proceed();
 }
+#endif
 
 mercury__type_to_term_2_0:
+#if OFFSET_FOR_ARG_TYPE_INFOS != 6
+	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
+#else
 {
 	Word type_info;
 	Code *type_to_term_pred;
