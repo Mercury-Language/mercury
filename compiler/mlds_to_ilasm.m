@@ -243,9 +243,11 @@ generate_foreign_code(_ModuleName,
 			_ExportDefns)) -->
 	{ BodyCode = list__reverse(RevBodyCode) },
 	io__write_list(BodyCode, "\n", 
-		(pred(llds__user_foreign_code(Lang, Code, _Context)::in,
+		(pred(llds__user_foreign_code(Lang, Code, Context)::in,
 				di, uo) is det -->
 			( { Lang = managed_cplusplus } ->
+				mlds_to_c__output_context(mlds__make_context(
+					Context)),
 				io__write_string(Code)
 			;
 				{ sorry(this_file, 

@@ -25,6 +25,13 @@
 :- pred mlds_to_c__output_mlds(mlds, io__state, io__state).
 :- mode mlds_to_c__output_mlds(in, di, uo) is det.
 
+	% output an MLDS context in C #line format. 
+	% this is useful for other foreign language interfaces such as
+	% managed extensions for C++.
+:- pred mlds_to_c__output_context(mlds__context, io__state, io__state).
+:- mode mlds_to_c__output_context(in, di, uo) is det.
+
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -519,7 +526,7 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode) -->
 mlds_output_c_hdr_decl(_Indent, foreign_decl_code(Lang, Code, Context)) -->
 		% only output C code in the C header file.
 	( { Lang = c } ->
-		mlds_output_context(mlds__make_context(Context)),
+		mlds_to_c__output_context(mlds__make_context(Context)),
 		io__write_string(Code)
 	;
 		{ sorry(this_file, "foreign code other than C") }
@@ -550,7 +557,7 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode) -->
 :- mode mlds_output_c_defn(in, in, di, uo) is det.
 
 mlds_output_c_defn(_Indent, user_foreign_code(c, Code, Context)) -->
-	mlds_output_context(mlds__make_context(Context)),
+	mlds_to_c__output_context(mlds__make_context(Context)),
 	io__write_string(Code).
 mlds_output_c_defn(_Indent, user_foreign_code(managed_cplusplus, _, _)) -->
 	{ sorry(this_file, "foreign code other than C") }.
@@ -1863,7 +1870,7 @@ mlds_output_statements(Indent, FuncInfo, Statements) -->
 :- mode mlds_output_statement(in, in, in, di, uo) is det.
 
 mlds_output_statement(Indent, FuncInfo, mlds__statement(Statement, Context)) -->
-	mlds_output_context(Context),
+	mlds_to_c__output_context(Context),
 	mlds_output_stmt(Indent, FuncInfo, Statement, Context).
 
 :- pred mlds_output_stmt(indent, func_info, mlds__stmt, mlds__context,
@@ -2491,28 +2498,28 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, target_code(TargetLang, Components),
 mlds_output_target_code_component(Context,
 		user_target_code(CodeString, MaybeUserContext)) -->
 	( { MaybeUserContext = yes(UserContext) } ->
-		mlds_output_context(mlds__make_context(UserContext))
+		mlds_to_c__output_context(mlds__make_context(UserContext))
 	;
-		mlds_output_context(Context)
+		mlds_to_c__output_context(Context)
 	),
 	io__write_string(CodeString),
 	io__write_string("\n").
 mlds_output_target_code_component(Context, raw_target_code(CodeString)) -->
-	mlds_output_context(Context),
+	mlds_to_c__output_context(Context),
 	io__write_string(CodeString).
 mlds_output_target_code_component(Context, target_code_input(Rval)) -->
-	mlds_output_context(Context),
+	mlds_to_c__output_context(Context),
 	mlds_output_rval(Rval),
 	io__write_string("\n").
 mlds_output_target_code_component(Context, target_code_output(Lval)) -->
-	mlds_output_context(Context),
+	mlds_to_c__output_context(Context),
 	mlds_output_lval(Lval),
 	io__write_string("\n").
 mlds_output_target_code_component(_Context, name(Name)) -->
 	% Note: `name(Name)' target_code_components are used to
 	% generate the #define for `MR_PROC_LABEL'.
 	% The fact that they're used in a #define means that we can't do
-	% an mlds_output_context(Context) here, since #line directives
+	% an mlds_to_c__output_context(Context) here, since #line directives
 	% aren't allowed inside #defines.
 	mlds_output_fully_qualified_name(Name),
 	io__write_string("\n").
@@ -3026,10 +3033,7 @@ mlds_output_data_var_name(ModuleName, DataName) -->
 % source context annotations (#line directives).
 %
 
-:- pred mlds_output_context(mlds__context, io__state, io__state).
-:- mode mlds_output_context(in, di, uo) is det.
-
-mlds_output_context(Context) -->
+mlds_to_c__output_context(Context) -->
 	{ ProgContext = mlds__get_prog_context(Context) },
 	{ term__context_file(ProgContext, FileName) },
 	{ term__context_line(ProgContext, LineNumber) },
@@ -3039,7 +3043,7 @@ mlds_output_context(Context) -->
 :- mode mlds_indent(in, in, di, uo) is det.
 
 mlds_indent(Context, N) -->
-	mlds_output_context(Context),
+	mlds_to_c__output_context(Context),
 	mlds_indent(N).
 
 % A value of type `indent' records the number of levels
