@@ -314,31 +314,39 @@ update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
 	hlds__goal, determinism, list(det_msg)).
 :- mode det_infer_goal(in, in, in, in, out, out, out) is det.
 
-det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext, MiscInfo,
+det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, MiscInfo,
 		Goal - GoalInfo, Detism, Msgs) :-
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
+
+	% If a goal has no output variables, then the goal is in
+	% single-solution context
+
+	( no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, MiscInfo) ->
+		OutputVars = no,
+		SolnContext = first_soln
+	;
+		OutputVars = yes,
+		SolnContext = SolnContext0
+	),
+
 	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, SolnContext, MiscInfo,
 		NonLocalVars, DeltaInstMap, Goal1, InternalDetism, Msgs1),
 
-	% If a goal with possibly multiple solutions doesn't have any
-	% output variables, then it really has at most one solution.
-	% If such a goal occurs in a context where we only want the
-	% first solution, then we also make it succeed at most once.
-
-	( no_output_vars(NonLocalVars, InstMap0, DeltaInstMap, MiscInfo) ->
-		OutputVars = no
-	;
-		OutputVars = yes
-	),
-
 	determinism_components(InternalDetism, InternalCanFail, InternalSolns),
 	(
+		% If a goal with multiple solutions has no output variables,
+		% then it really it has only one solution
+		% (we will need to do pruning)
+
 		InternalSolns = at_most_many,
 		OutputVars = no
 	->
 		determinism_components(Detism, InternalCanFail, at_most_one)
 	;
+		% If a goal with multiple solutions occurs in a single-solution
+		% context, then we will need to do pruning
+
 		InternalSolns = at_most_many,
 		SolnContext = first_soln
 	->

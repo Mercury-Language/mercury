@@ -296,11 +296,18 @@
 							code_info, code_info).
 :- mode code_info__generate_test_and_fail(in, out, in, out) is det.
 
-:- pred code_info__generate_pre_commit(label, code_tree, code_info, code_info).
-:- mode code_info__generate_pre_commit(out, out, in, out) is det.
+:- pred code_info__generate_det_pre_commit(code_tree, code_info, code_info).
+:- mode code_info__generate_det_pre_commit(out, in, out) is det.
 
-:- pred code_info__generate_commit(label, code_tree, code_info, code_info).
-:- mode code_info__generate_commit(in, out, in, out) is det.
+:- pred code_info__generate_det_commit(code_tree, code_info, code_info).
+:- mode code_info__generate_det_commit(out, in, out) is det.
+
+:- pred code_info__generate_semi_pre_commit(label, code_tree,
+					code_info, code_info).
+:- mode code_info__generate_semi_pre_commit(out, out, in, out) is det.
+
+:- pred code_info__generate_semi_commit(label, code_tree, code_info, code_info).
+:- mode code_info__generate_semi_commit(in, out, in, out) is det.
 
 :- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
 :- mode code_info__save_maxfr(out, out, in, out) is det.
@@ -1400,12 +1407,14 @@ code_info__variable_locations(Locations) -->
 
 %---------------------------------------------------------------------------%
 
-	% `pre_commit' and `commit' should be generated as a pair
-	% surrounding a non-det goal.
+	% `semi_pre_commit' and `semi_commit' should be generated as a pair
+	% surrounding a nondet goal.
+	% `generate_semi_pre_commit' returns a label (a failure cont label)
+	% which should be passed to `generate_semi_commit'.
 	% If the goal succeeds, the `commit' will cut any choice points
 	% generated in the goal.
 
-code_info__generate_pre_commit(RedoLab, PreCommit) -->
+code_info__generate_semi_pre_commit(RedoLab, PreCommit) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
 		% the pushes and pops on the det stack below will cause
@@ -1448,7 +1457,7 @@ code_info__generate_pre_commit(RedoLab, PreCommit) -->
 	]) },
 	{ PreCommit = tree(tree(PushCode, SaveCode), HijackCode) }.
 
-code_info__generate_commit(RedoLab, Commit) -->
+code_info__generate_semi_commit(RedoLab, Commit) -->
 	code_info__get_next_label(SuccLabel),
 	{ GotoSuccLabel = node([
 		goto(label(SuccLabel)) - "Jump to success continuation"
@@ -1492,7 +1501,7 @@ code_info__generate_commit(RedoLab, Commit) -->
 	]) },
 	{ RestoreCurfr = node([
 		assign(curfr, lval(CurfrSlot)) -
-			"Prune nondet frame pointer"
+			"Restore nondet frame pointer"
 	]) },
 	{ SuccessCode = tree(
 		RestoreMaxfr,
@@ -1504,6 +1513,77 @@ code_info__generate_commit(RedoLab, Commit) -->
 	) },
 	{ Commit = tree(tree(SuccessCode, tree(GotoSuccLabel, FailCode)),
 			SuccLabelCode) }.
+
+	% `det_pre_commit' and `det_commit' should be generated as a pair
+	% surrounding a multidet goal.
+	% After the goal succeeds, the `commit' will cut any choice points
+	% generated in the goal.
+
+code_info__generate_det_pre_commit(PreCommit) -->
+	code_info__get_proc_model(CodeModel),
+	( { CodeModel = model_non } ->
+		% the pushes and pops on the det stack below will cause
+		% problems for accurate garbage collection. Hence we 
+		% make sure the commit vals are made live, so gc
+		% can figure out what is going on later.
+		{ PushCode = node([
+			incr_sp(3) - 
+			"push space for curfr, maxfr, and redoip" 
+		]) },
+		{ CurfrSlot = stackvar(1) },
+		{ MaxfrSlot = stackvar(2) },
+		{ RedoipSlot = stackvar(3) },
+		code_info__add_commit_val(curfr, CurfrSlot),
+		code_info__add_commit_val(maxfr, MaxfrSlot),
+		code_info__add_commit_val(redoip(lval(maxfr)), RedoipSlot)
+	;
+		{ PushCode = empty },
+		code_info__push_temp(curfr, CurfrSlot),
+		code_info__push_temp(maxfr, MaxfrSlot),
+		code_info__push_temp(redoip(lval(maxfr)), RedoipSlot)
+	),
+	{ SaveCode = node([
+		assign(CurfrSlot, lval(curfr)) -
+				"Save current nondet frame pointer",
+		assign(MaxfrSlot, lval(maxfr)) -
+				"Save top of nondet stack",
+		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
+				"Save the top redoip"
+	]) },
+	{ PreCommit = tree(PushCode, SaveCode) }.
+
+code_info__generate_det_commit(Commit) -->
+	code_info__get_proc_model(CodeModel),
+	( { CodeModel = model_non } ->
+		{ PopCode = node([decr_sp(3) - 
+			"pop redoip, maxfr & curfr"]) },
+		{ RedoipSlot = stackvar(3) },
+		{ MaxfrSlot = stackvar(2) },
+		{ CurfrSlot = stackvar(1) },
+		code_info__rem_commit_val,
+		code_info__rem_commit_val,
+		code_info__rem_commit_val
+	;
+		{ PopCode = empty },
+		code_info__pop_temp(RedoipSlot),
+		code_info__pop_temp(MaxfrSlot),
+		code_info__pop_temp(CurfrSlot)
+	),
+	{ RestoreMaxfr = node([
+		assign(maxfr, lval(MaxfrSlot)) -
+			"Prune away unwanted choice-points"
+	]) },
+	{ RestoreRedoip = node([
+		assign(redoip(lval(maxfr)), lval(RedoipSlot)) -
+			"Restore the top redoip"
+	]) },
+	{ RestoreCurfr = node([
+		assign(curfr, lval(CurfrSlot)) -
+			"Restore nondet frame pointer"
+	]) },
+	{ Commit = tree( RestoreMaxfr,
+		tree(tree(RestoreRedoip, RestoreCurfr), PopCode)
+	) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1712,7 +1792,7 @@ code_info__restore_failure_cont(Code) -->
 			{ NewCont = known(NondetCont) },
 			(
 				{ NondetCont = no },
-				{ error("code_info__restore_failure_cont: semidet code calls nondet code") }
+				{ ResetCode = empty }
 			;
 				{ NondetCont = yes },
 				(

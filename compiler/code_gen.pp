@@ -684,7 +684,10 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 		{ error("semidet model in det context") }
 	;
 		{ CodeModel = model_non },
-		{ error("unimplemented: nondet model in det context") }
+		code_info__generate_det_pre_commit(PreCommit),
+		code_gen__generate_goal(model_non, Goal, GoalCode),
+		code_info__generate_det_commit(Commit),
+		{ Instr = tree(PreCommit, tree(GoalCode, Commit)) }
 	).
 code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
 	{ error("Disjunction cannot occur in deterministic code.") }.
@@ -922,9 +925,9 @@ code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 		code_gen__generate_goal(model_semi, Goal, Code)
 	;
 		{ CodeModel = model_non },
-		code_info__generate_pre_commit(Label, PreCommit),
+		code_info__generate_semi_pre_commit(Label, PreCommit),
 		code_gen__generate_goal(model_non, Goal, GoalCode),
-		code_info__generate_commit(Label, Commit),
+		code_info__generate_semi_commit(Label, Commit),
 		{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
 	).
 code_gen__generate_semi_goal_2(disj(Goals), GoalInfo, Code) -->
@@ -1104,16 +1107,7 @@ code_gen__generate_non_goal_2(conj(Goals), _GoalInfo, Code) -->
 code_gen__generate_non_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
-	(
-		{ CodeModel = model_det },
-		code_gen__generate_goal(model_det, Goal, Code)
-	;
-		{ CodeModel = model_semi },
-		code_gen__generate_goal(model_semi, Goal, Code)
-	;
-		{ CodeModel = model_non },
-		code_gen__generate_goal(model_non, Goal, Code)
-	).
+	code_gen__generate_goal(CodeModel, Goal, Code).
 code_gen__generate_non_goal_2(disj(Goals), GoalInfo, Code) -->
 	{ goal_info_store_map(GoalInfo, StoreMap0) },
 	(
