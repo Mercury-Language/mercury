@@ -792,6 +792,9 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 	mercury.runtime.LowLevelData.set_MR_Word_field(Pair, 2, B);
 }").
 
+make_bitset_elem(_, _) = _ :-
+	private_builtin__sorry("make_bitset_elem").
+
 %-----------------------------------------------------------------------------%
 
 init(init).

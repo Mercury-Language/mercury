@@ -1603,14 +1603,8 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 	update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__read_line_as_string_2(_File::in, _Res :: out, _RetString::out,
-		IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure,thread_safe],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	update_io(IO0, IO);
-").
+io__read_line_as_string_2(_, _, _) -->
+	{ private_builtin__sorry("io__read_line_as_string_2") }.
 
 io__read_file(Result) -->
 	io__input_stream(Stream),
@@ -1763,7 +1757,7 @@ io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
 :- mode io__clear_err(in, di, uo) is det.
 % same as ANSI C's clearerr().
 
-:- pragma foreign_proc("C", io__clear_err(Stream::in, _IO0::di, _IO::uo),
+:- pragma foreign_proc("C", io__clear_err(Stream::in, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure,
 			tabled_for_io, thread_safe],
 "{
@@ -1774,6 +1768,7 @@ io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
 	} else {
 		/* Not a file stream so do nothing */
 	}
+	update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("MC++", io__clear_err(_Stream::in, IO0::di, IO::uo),
@@ -1784,6 +1779,9 @@ io__input_stream_foldl2_io(Stream, Pred, T0, Res) -->
 	// for compatibility)
 	update_io(IO0, IO);
 }").
+
+io__clear_err(_) -->
+	{ private_builtin__sorry("io__clear_err") }.
 
 
 :- pred io__check_err(stream, io__res, io__state, io__state).
@@ -1802,7 +1800,7 @@ io__check_err(Stream, Res) -->
 % similar to ANSI C's ferror().
 
 :- pragma foreign_proc("C", ferror(Stream::in, RetVal::out, RetStr::out,
-		_IO0::di, _IO::uo),
+		IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure,
 			tabled_for_io, thread_safe],
 "{
@@ -1816,6 +1814,8 @@ io__check_err(Stream, Res) -->
 
 	ML_maybe_make_err_msg(RetVal != 0, ""read failed: "",
 		MR_PROC_LABEL, RetStr);
+
+	update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("MC++", ferror(_Stream::in, RetVal::out, _RetStr::out,
@@ -1827,6 +1827,9 @@ io__check_err(Stream, Res) -->
 	update_io(IO0, IO);
 }").
 
+ferror(_, _, _) -->
+	{ private_builtin__sorry("ferror") }.
+
 
 % io__make_err_msg(MessagePrefix, Message):
 %	`Message' is an error message obtained by looking up the
@@ -1836,18 +1839,23 @@ io__check_err(Stream, Res) -->
 :- mode io__make_err_msg(in, out, di, uo) is det.
 
 :- pragma foreign_proc("C",
-	make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
+	make_err_msg(Msg0::in, Msg::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	ML_maybe_make_err_msg(MR_TRUE, Msg0, MR_PROC_LABEL, Msg);
+	update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("MC++", 
-	make_err_msg(Msg0::in, Msg::out, _IO0::di, _IO::uo),
+	make_err_msg(Msg0::in, Msg::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure],
 "{
 	Msg = System::String::Concat(Msg0, MR_io_exception->Message);
+	update_io(IO0, IO);
 }").
+
+make_err_msg(_, _) -->
+	{ private_builtin__sorry("io__make_err_msg") }.
 
 
 %-----------------------------------------------------------------------------%
@@ -1868,7 +1876,7 @@ io__check_err(Stream, Res) -->
 ").
 
 :- pragma foreign_proc("C", io__stream_file_size(Stream::in, Size::out,
-		_IO0::di, _IO::uo),
+		IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe],
 "{
@@ -1891,6 +1899,7 @@ io__check_err(Stream, Res) -->
 #else
 	Size = -1;
 #endif
+	update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("MC++", io__stream_file_size(Stream::in, Size::out,
@@ -1906,6 +1915,10 @@ io__check_err(Stream, Res) -->
 	}
 	update_io(IO0, IO);
 }").
+
+io__stream_file_size(_, _) -->
+	{ private_builtin__sorry("io__stream_file_size") }.
+	
 
 io__file_modification_time(File, Result) -->
 	io__file_modification_time_2(File, Status, Msg, Time),
@@ -1944,12 +1957,8 @@ io__file_modification_time(File, Result) -->
 
 }").
 
-:- pragma foreign_proc("MC++", io__file_modification_time_2(_FileName::in,
-		_Status::out, _Msg::out, _Time::out, _IO0::di, _IO::uo),
-		[will_not_call_mercury, promise_pure, thread_safe],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
+io__file_modification_time_2(_, _, _, _) -->
+	{ private_builtin__sorry("io__file_modification_time_2") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1969,6 +1978,9 @@ io__file_modification_time(File, Result) -->
 			/ sizeof(MR_Word),
 		MR_PROC_LABEL, ""io:buffer/0"");
 }").
+
+io__alloc_buffer(_, _) :-
+	private_builtin__sorry("io__alloc_buffer").
 
 :- pred io__resize_buffer(buffer::di, int::in, int::in, buffer::uo) is det.
 :- pragma foreign_proc("C",
@@ -2009,6 +2021,9 @@ io__file_modification_time(File, Result) -->
 	Buffer = (MR_Word) buffer;
 }").
 
+io__resize_buffer(_, _, _, _) :-
+	private_builtin__sorry("io__resize_buffer").
+
 :- pred io__buffer_to_string(buffer::di, int::in, string::uo) is det.
 :- pragma foreign_proc("C", 
 	io__buffer_to_string(Buffer::di, Len::in, Str::uo),
@@ -2018,6 +2033,8 @@ io__file_modification_time(File, Result) -->
 	Str[Len] = '\\0';
 }").
 
+io__buffer_to_string(_, _, _) :-
+	private_builtin__sorry("io__buffer_to_string/3").
 
 :- pred io__buffer_to_string(buffer::di, string::uo) is det.
 :- pragma foreign_proc("C",
@@ -2027,13 +2044,15 @@ io__file_modification_time(File, Result) -->
 	Str = (MR_String) Buffer;
 }").
 
+io__buffer_to_string(_, _) :-
+	private_builtin__sorry("io__buffer_to_string/2").
 
 :- pred io__read_into_buffer(stream::in, buffer::di, int::in, int::in,
 		    buffer::uo, int::out, io__state::di, io__state::uo) is det.
 
 :- pragma foreign_proc("C",
 	io__read_into_buffer(Stream::in, Buffer0::di, Pos0::in, Size::in,
-		    Buffer::uo, Pos::out, _IO0::di, _IO::uo),
+		    Buffer::uo, Pos::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe],
 "{
@@ -2045,49 +2064,12 @@ io__file_modification_time(File, Result) -->
 
 	Buffer = (MR_Word) buffer;
 	Pos = Pos0 + items_read;
+
+	update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__alloc_buffer(_Size::in, _Buffer::uo),
-		[will_not_call_mercury, promise_pure, thread_safe,
-			tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
-
-:- pragma foreign_proc("MC++",
-	io__resize_buffer(_Buffer0::di, _OldSize::in,
-		_NewSize::in, _Buffer::uo),
-	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
-
-:- pragma foreign_proc("MC++", 
-	io__buffer_to_string(_Buffer::di, _Len::in, _Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe,
-			tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
-
-:- pragma foreign_proc("MC++",
-	io__buffer_to_string(_Buffer::di, _Str::uo),
-		[will_not_call_mercury, promise_pure, thread_safe,
-			tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
-
-:- pragma foreign_proc("MC++",
-	io__read_into_buffer(_Stream::in, _Buffer0::di, _Pos0::in, _Size::in,
-		    _Buffer::uo, _Pos::out, _IO0::di, _IO::uo),
-		[will_not_call_mercury, promise_pure, thread_safe,
-			tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-}").
-
+io__read_into_buffer(_, _, _, _, _, _) -->
+	{ private_builtin__sorry("io__read_into_buffer") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -2995,6 +2977,12 @@ io__stream_name(Stream, Name) -->
 	update_io(IO0, IO);
 ").
 
+io__get_stream_names(_) -->
+	{ private_builtin__sorry("io__get_stream_names") }.
+
+io__set_stream_names(_) -->
+	{ private_builtin__sorry("io__set_stream_names") }.
+
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
 :- mode io__delete_stream_name(in, di, uo) is det.
 
@@ -3052,6 +3040,12 @@ io__insert_stream_name(Stream, Name) -->
 	update_io(IOState0, IOState);
 ").
 
+io__set_globals(_) -->
+	{ private_builtin__sorry("io__set_globals") }.
+
+io__get_globals(_) -->
+	{ private_builtin__sorry("io__get_globals") }.
+
 io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
 	{ dir__basename(Progname, PrognameBase) }.
@@ -3093,7 +3087,8 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 	Id = mf->id;
 ").
 
-
+io__get_stream_id(_, _) :-
+	private_builtin__sorry("io__get_stream_id").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3212,8 +3207,17 @@ io__finalize_state -->
 	ascii_encoder =	new System::Text::ASCIIEncoding();
 ").
 
+io__gc_init(_, _) -->
+	{ private_builtin__sorry("io__gc_init") }.
+
 :- pred io__stream_init(io__state, io__state).
 :- mode io__stream_init(di, uo) is det.
+
+:- pragma foreign_proc("C", 
+		io__stream_init(IO0::di, IO::uo), [will_not_call_mercury,
+			promise_pure], "
+	update_io(IO0, IO);
+").
 
 :- pragma foreign_proc("MC++", 
 		io__stream_init(IO0::di, IO::uo), [will_not_call_mercury,
@@ -3222,11 +3226,8 @@ io__finalize_state -->
 	update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C", 
-		io__stream_init(IO0::di, IO::uo), [will_not_call_mercury,
-			promise_pure], "
-	update_io(IO0, IO);
-").
+io__stream_init -->
+	{ private_builtin__sorry("io__stream_init") }.
 
 :- pred io__insert_std_stream_names(io__state, io__state).
 :- mode io__insert_std_stream_names(di, uo) is det.
@@ -3967,6 +3968,14 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	update_io(IO0, IO);
 }").
 
+io__read_char_code(_, _) -->
+	{ private_builtin__sorry("io__read_char_code") }.
+
+io__putback_char(_, _) -->
+	{ private_builtin__sorry("io__putback_char") }.
+
+io__putback_byte(_, _) -->
+	{ private_builtin__sorry("io__putback_byte") }.
 
 /* output predicates - with output to mercury_current_text_output */
 
@@ -4126,6 +4135,29 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 	update_io(IO0, IO);
 ").
 
+io__write_string(_) -->
+	{ private_builtin__sorry("io__write_string") }.
+
+io__write_char(_) -->
+	{ private_builtin__sorry("io__write_char") }.
+
+io__write_int(_) -->
+	{ private_builtin__sorry("io__write_int") }.
+
+io__write_float(_) -->
+	{ private_builtin__sorry("io__write_float") }.
+
+io__write_byte(_) -->
+	{ private_builtin__sorry("io__write_byte") }.
+
+io__write_bytes(_) -->
+	{ private_builtin__sorry("io__write_bytes") }.
+
+io__flush_output -->
+	{ private_builtin__sorry("io__flush_output") }.
+
+io__flush_binary_output -->
+	{ private_builtin__sorry("io__flush_binary_output") }.
 
 /* moving about binary streams */
 
@@ -4158,8 +4190,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		mercury_io_error(stream,
 				""io__seek_binary_2: unseekable stream"");
 	}
-
-	IO = IO0;
+	update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("C",
@@ -4177,29 +4208,14 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		mercury_io_error(stream,
 			""io__binary_stream_offset: untellable stream"");
 	}
-	IO = IO0;
+	update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__seek_binary_2(_Stream::in, _Flag::in, _Off::in,
-		IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, thread_safe,
-			tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	IO = IO0;
-}").
+io__seek_binary_2(_, _, _) -->
+	{ private_builtin__sorry("io__seek_binary_2") }.
 
-:- pragma foreign_proc("MC++",
-	io__binary_stream_offset(_Stream::in, _Offset::out,
-		IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, thread_safe,
-			tabled_for_io],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	IO = IO0;
-}").
-
+io__binary_stream_offset(_, _) -->
+	{ private_builtin__sorry("io__binary_stream_offset") }.
 
 /* output predicates - with output to the specified stream */
 
@@ -4385,6 +4401,29 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
+io__write_string(_, _) -->
+	{ private_builtin__sorry("io__write_string") }.
+
+io__write_char(_, _) -->
+	{ private_builtin__sorry("io__write_char") }.
+
+io__write_int(_, _) -->
+	{ private_builtin__sorry("io__write_int") }.
+
+io__write_float(_, _) -->
+	{ private_builtin__sorry("io__write_float") }.
+
+io__write_byte(_, _) -->
+	{ private_builtin__sorry("io__write_byte") }.
+
+io__write_bytes(_, _) -->
+	{ private_builtin__sorry("io__write_bytes") }.
+
+io__flush_output(_) -->
+	{ private_builtin__sorry("io__flush_output") }.
+
+io__flush_binary_output(_) -->
+	{ private_builtin__sorry("io__flush_binary_output") }.
 
 /* stream predicates */
 
@@ -4510,7 +4549,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	LineNum = MR_line_number(*mercury_current_text_output);
 	update_io(IO0, IO);
 ").
-	
+
 :- pragma foreign_proc("C",
 	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
@@ -4799,6 +4838,80 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	update_io(IO0, IO);
 ").
 
+io__stdin_stream(_) -->
+	{ private_builtin__sorry("io__stdin_stream") }.
+
+io__stdout_stream(_) -->
+	{ private_builtin__sorry("io__stdout_stream") }.
+
+io__stderr_stream(_) -->
+	{ private_builtin__sorry("io__stderr_stream") }.
+
+io__stdin_binary_stream(_) -->
+	{ private_builtin__sorry("io__stdin_binary_stream") }.
+
+io__stdout_binary_stream(_) -->
+	{ private_builtin__sorry("io__stdout_binary_stream") }.
+
+io__input_stream(_) -->
+	{ private_builtin__sorry("io__input_stream") }.
+
+io__output_stream(_) -->
+	{ private_builtin__sorry("io__output_stream") }.
+
+io__binary_input_stream(_) -->
+	{ private_builtin__sorry("io__binary_input_stream") }.
+
+io__binary_output_stream(_) -->
+	{ private_builtin__sorry("io__binary_output_stream") }.
+
+io__get_line_number(_) -->
+	{ private_builtin__sorry("io__get_line_number") }.
+
+io__get_line_number(_, _) -->
+	{ private_builtin__sorry("io__get_line_number") }.
+
+io__set_line_number(_) -->
+	{ private_builtin__sorry("io__set_line_number") }.
+
+io__set_line_number(_, _) -->
+	{ private_builtin__sorry("io__set_line_number") }.
+
+io__get_output_line_number(_) -->
+	{ private_builtin__sorry("io__get_output_line_number") }.
+	
+io__get_output_line_number(_, _) -->
+	{ private_builtin__sorry("io__get_output_line_number") }.
+	
+io__set_output_line_number(_) -->
+	{ private_builtin__sorry("io__set_output_line_number") }.
+	
+io__set_output_line_number(_, _) -->
+	{ private_builtin__sorry("io__set_output_line_number") }.
+	
+io__current_input_stream(_) -->
+	{ private_builtin__sorry("io__current_input_stream") }.
+
+io__current_output_stream(_) -->
+	{ private_builtin__sorry("io__current_output_stream") }.
+
+io__current_binary_input_stream(_) -->
+	{ private_builtin__sorry(io__current_binary_input_stream) }.
+
+io__current_binary_output_stream(_) -->
+	{ private_builtin__sorry(io__current_binary_output_stream) }.
+
+io__set_input_stream(_, _) -->
+	{ private_builtin__sorry("io__set_input_stream") }.
+
+io__set_output_stream(_, _) -->
+	{ private_builtin__sorry("io__set_output_stream") }.
+
+io__set_binary_input_stream(_, _) -->
+	{ private_builtin__sorry("io__set_binary_input_stream") }.
+
+io__set_binary_output_stream(_, _) -->
+	{ private_builtin__sorry("io__set_binary_output_stream") }.
 
 /* stream open/close predicates */
 
@@ -4827,6 +4940,9 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	ResultCode = (mf ? 0 : -1);
 	update_io(IO0, IO);
 ").
+
+io__do_open(_, _, _, _) -->
+	{ private_builtin__sorry("io__do_open") }.
 
 io__close_input(Stream) -->
 	io__delete_stream_name(Stream),
@@ -4860,12 +4976,10 @@ io__close_binary_output(Stream) -->
 	update_io(IO0, IO);
 ").
 
-/* miscellaneous predicates */
+io__close_stream(_) -->
+	{ private_builtin__sorry("io__close_stream") }.
 
-io__progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
-	% This is a fall-back for back-ends which don't support the
-	% C interface.
-	ProgName = DefaultProgName.
+/* miscellaneous predicates */
 
 :- pragma foreign_proc("C",
 	io__progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
@@ -4889,6 +5003,62 @@ io__progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
 	}
 	update_io(IO0, IO);
 ").
+
+io__progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
+	% This is a fall-back for back-ends which don't support the
+	% C interface.
+	ProgName = DefaultProgName.
+
+io__handle_system_command_exit_status(Code0) = Status :-
+	Code = io__handle_system_command_exit_code(Code0),
+	( Code = 127 ->
+		Status = error(
+			io_error("unknown result code from system command"))
+	; Code < 0 ->
+		Status = ok(signalled(-Code))
+	;
+		Status = ok(exited(Code))
+	).
+
+	% Interpret the child process exit status returned by
+	% system() or wait(): return negative for `signalled',
+	% non-negative for `exited', or 127 for anything else
+	% (e.g. an error invoking the command).
+:- func io__handle_system_command_exit_code(int) = int.
+
+:- pragma foreign_proc("C",
+	io__handle_system_command_exit_code(Status0::in) = (Status::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+            defined (WIFSIGNALED) && defined (WTERMSIG)
+		if (WIFEXITED(Status0)) {
+			Status = WEXITSTATUS(Status0);
+		} else if (WIFSIGNALED(Status0)) {
+			Status = -WTERMSIG(Status0);
+		} else {
+			Status = 127;
+		}
+	#else
+		if (Status0 & 0xff != 0) {
+			/* the process was killed by a signal */
+			Status = -(Status0 & 0xff);
+		} else {
+			/* the process terminated normally */
+			Status = (Status0 & 0xff00) >> 8;
+		}
+	#endif
+").
+
+% This is a fall-back for back-ends that don't support the C interface.
+io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
+	( (Status0 /\ 0xff) \= 0 ->
+		/* the process was killed by a signal */
+		Status = -(Status0 /\ 0xff)
+	;
+		/* the process terminated normally */
+		Status = (Status0 /\ 0xff00) >> 8
+	).
 
 :- pragma foreign_proc("C",
 	io__command_line_arguments(Args::out, IO0::di, IO::uo),
@@ -4944,58 +5114,6 @@ io__progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
 	update_io(IO0, IO);
 ").
 
-
-io__handle_system_command_exit_status(Code0) = Status :-
-	Code = io__handle_system_command_exit_code(Code0),
-	( Code = 127 ->
-		Status = error(
-			io_error("unknown result code from system command"))
-	; Code < 0 ->
-		Status = ok(signalled(-Code))
-	;
-		Status = ok(exited(Code))
-	).
-
-	% Interpret the child process exit status returned by
-	% system() or wait(): return negative for `signalled',
-	% non-negative for `exited', or 127 for anything else
-	% (e.g. an error invoking the command).
-:- func io__handle_system_command_exit_code(int) = int.
-
-% This is a fall-back for back-ends that don't support the C interface.
-io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
-	( (Status0 /\ 0xff) \= 0 ->
-		/* the process was killed by a signal */
-		Status = -(Status0 /\ 0xff)
-	;
-		/* the process terminated normally */
-		Status = (Status0 /\ 0xff00) >> 8
-	).
-
-:- pragma foreign_proc("C",
-	io__handle_system_command_exit_code(Status0::in) = (Status::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
-            defined (WIFSIGNALED) && defined (WTERMSIG)
-		if (WIFEXITED(Status0)) {
-			Status = WEXITSTATUS(Status0);
-		} else if (WIFSIGNALED(Status0)) {
-			Status = -WTERMSIG(Status0);
-		} else {
-			Status = 127;
-		}
-	#else
-		if (Status0 & 0xff != 0) {
-			/* the process was killed by a signal */
-			Status = -(Status0 & 0xff);
-		} else {
-			/* the process terminated normally */
-			Status = (Status0 & 0xff00) >> 8;
-		}
-	#endif
-").
-
 :- pragma foreign_proc("MC++",
 	io__command_line_arguments(Args::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
@@ -5026,6 +5144,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	update_io(IO0, IO);
 ").
 
+/*
 :- pragma foreign_proc("MC++",
 	io__call_system_code(Command::in, Status::out, _Msg::out,
 			IO0::di, IO::uo),
@@ -5041,25 +5160,27 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	Status = NULL;
 	update_io(IO0, IO);
 ").
+*/
 
-io__current_input_stream(_::out, _::di, _::uo) :- 
-	private_builtin__sorry("io__current_input_stream/3").
+io__command_line_arguments(_) -->
+	{ private_builtin__sorry("io__command_line_arguments") }.
 
-io__current_output_stream(_::out, _::di, _::uo) :- 
-	private_builtin__sorry("io__current_output_stream/3").
+io__get_exit_status(_) -->
+	{ private_builtin__sorry("io__get_exit_status") }.
 
-io__current_binary_input_stream(_::out, _::di, _::uo) :- 
-	private_builtin__sorry("io__current_binary_input_stream/3").
+io__set_exit_status(_) -->
+	{ private_builtin__sorry("io__set_exit_status") }.
 
-io__current_binary_output_stream(_::out, _::di, _::uo) :- 
-	private_builtin__sorry("io__current_binary_output_stream/3").
+io__call_system_code(_, _, _) -->
+	{ private_builtin__sorry("io__call_system_code") }.
 
 /*---------------------------------------------------------------------------*/
 
 /* io__getenv and io__putenv, from io.m */
 
+:- pragma promise_semipure(io__getenv/2).
 :- pragma foreign_proc("C", io__getenv(Var::in, Value::out),
-		[will_not_call_mercury, promise_semipure, tabled_for_io],
+		[will_not_call_mercury, tabled_for_io],
 "{
 	Value = getenv(Var);
 	SUCCESS_INDICATOR = (Value != 0);
@@ -5072,7 +5193,7 @@ io__current_binary_output_stream(_::out, _::di, _::uo) :-
 ").
 
 :- pragma foreign_proc("MC++", io__getenv(Var::in, Value::out),
-		[will_not_call_mercury, promise_semipure, tabled_for_io],
+		[will_not_call_mercury, tabled_for_io],
 "{
 	Value = System::Environment::GetEnvironmentVariable(Var);
 	SUCCESS_INDICATOR = (Value != 0);
@@ -5086,6 +5207,13 @@ io__current_binary_output_stream(_::out, _::di, _::uo) :-
 	SUCCESS_INDICATOR = 0;
 ").
 
+io__getenv(_, _) :-
+	impure private_builtin__imp,
+	private_builtin__sorry("io__getenv").
+
+io__putenv(_) :-
+	impure private_builtin__imp,
+	private_builtin__sorry("io__putenv").
 
 /*---------------------------------------------------------------------------*/
 
@@ -5203,15 +5331,8 @@ io__make_temp(Dir, Prefix, Name) -->
 	update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__do_make_temp(_Dir::in, _Prefix::in, _FileName::out,
-		_Error::out, _ErrorMessage::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, thread_safe],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	update_io(IO0, IO);
-}").
-
+io__do_make_temp(_, _, _, _, _) -->
+	{ private_builtin__sorry("io__do_make_temp") }.
 
 /*---------------------------------------------------------------------------*/
 
@@ -5282,6 +5403,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
+/*
 :- pragma foreign_proc("MC++",
 	io__remove_file_2(FileName::in, RetVal::out, RetStr::out,
 		IO0::di, IO::uo),
@@ -5294,7 +5416,10 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	RetStr = """";
 	update_io(IO0, IO);
 }").
+*/
 
+io__remove_file_2(_, _, _) -->
+	{ private_builtin__sorry("io__remove_file_2") }.
 
 io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 	io__rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
@@ -5319,16 +5444,8 @@ io__rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 	update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-		io__rename_file_2(_OldFileName::in, _NewFileName::in,
-			_RetVal::out, _RetStr::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io,
-			thread_safe],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	update_io(IO0, IO);
-}").
-
+io__rename_file_2(_, _, _, _) -->
+	{ private_builtin__sorry("io__rename_file_2") }.
 
 /*---------------------------------------------------------------------------*/
 

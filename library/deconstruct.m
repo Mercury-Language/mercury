@@ -816,12 +816,8 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++", 
-	get_notag_functor_info(_Univ::in, _ExpUniv::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_notag_functor_info"");
-").
+get_notag_functor_info(_, _) :-
+	private_builtin__sorry("deconstruct__get_notag_functor_info").
 
     % Given a value of an arbitrary type, succeed if its type is defined
     % as an equivalence type, and return a univ which bundles up the value
@@ -862,12 +858,8 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++",
-	get_equiv_functor_info(_Univ::in, _ExpUniv::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_equiv_functor_info"");
-").
+get_equiv_functor_info(_, _) :-
+	private_builtin__sorry("get_equiv_functor_info").
 
     % Given a value of an arbitrary type, succeed if it is an enum type,
     % and return the integer value corresponding to the value.
@@ -896,12 +888,8 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++",
-	get_enum_functor_info(_Univ::in, _Enum::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"{
-	mercury::runtime::Errors::SORRY(""foreign code for get_enum_functor_info"");
-}").
+get_enum_functor_info(_, _) :-
+	private_builtin__sorry("deconstruct__get_enum_functor_info").
 
     % Given a value of an arbitrary type, succeed if it is a general du type
     % (i.e. non-enum, non-notag du type), and return the top function symbol's
@@ -1001,10 +989,5 @@ get_functor_info(Univ, FunctorInfo) :-
     }
 }").
 
-:- pragma foreign_proc("MC++",
-	get_du_functor_info(_Univ::in, _Where::out, _Ptag::out, _Sectag::out,
-		_Args::out),
-	[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for get_du_functor_info"");
-").
+get_du_functor_info(_, _, _, _, _) :-
+	private_builtin__sorry("get_du_functor_info").

@@ -343,6 +343,9 @@ X rem Y = Rem :-
 #endif
 ").
 
+domain_checks :-
+	private_builtin__sorry("domain_checks").
+
 :- pragma inline(floor_to_multiple_of_bits_per_int/1).
 floor_to_multiple_of_bits_per_int(X) = Floor :-
 	Trunc = quot_bits_per_int(X),
@@ -504,6 +507,8 @@ is(X, X).
 "
 	FloatVal = (MR_Float) IntVal;
 ").
+int__to_float(_, _) :-
+	private_builtin__sorry("int__to_float").
 
 %-----------------------------------------------------------------------------%
 
@@ -558,6 +563,7 @@ is(X, X).
 	Result = Int * ML_BITS_PER_INT;
 ").
 
+
 :- pragma foreign_proc("C", int__rem_bits_per_int(Int::in) = (Rem::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Rem = Int % ML_BITS_PER_INT;
@@ -579,6 +585,15 @@ is(X, X).
 	Bits = ML_BITS_PER_INT;
 ").
 
+int__max_int(_) :-
+	private_builtin__sorry("int__max_int").
+
+int__min_int(_) :-
+	private_builtin__sorry("int__min_int").
+
+int__bits_per_int(_) :-
+	private_builtin__sorry("int__bits_per_int").
+
 int__quot_bits_per_int(Int::in) = (Result::out) :-
 	Result = Int // int__bits_per_int.
 
@@ -587,6 +602,7 @@ int__times_bits_per_int(Int::in) = (Result::out) :-
 
 int__rem_bits_per_int(Int::in) = (Result::out) :-
 	Result = Int rem int__bits_per_int.
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
