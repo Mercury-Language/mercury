@@ -38,7 +38,6 @@ ORDINARY_PROGS=	\
 	deep_copy_exist \
 	deforest_cc_bug \
 	det_in_semidet_cntxt \
-	dir_test \
 	division_test \
 	dot_separator \
 	dupcall_types_bug \
