@@ -65,7 +65,7 @@
 %		Reads a line from the current input stream.
 
 :- pred io__putback_char(character, io__state, io__state).
-:- mode io__putback_char(out, di, uo) is det.
+:- mode io__putback_char(in, di, uo) is det.
 %		Un-reads a character from the current input stream.
 %		You can put back as many characters as you like.
 %		You can even put back something that you didn't actually read.
@@ -474,6 +474,12 @@ io__read_line(Result) -->
 io__read_line(Stream, Result) -->
 	io__read_char(Stream, CharResult),
 	(
+		{ CharResult = error(Error) },
+		{ Result = error(Error) }
+	;
+		{ CharResult = eof },
+		{ Result = eof }
+	;
 		{ CharResult = ok(Char) },
 		( { Char = '\n' } ->
 			{ Result = ok([Char]) }
@@ -490,12 +496,6 @@ io__read_line(Stream, Result) -->
 				{ Result = ok([Char]) }
 			)
 		)
-	;
-		{ CharResult = error(Error) },
-		{ Result = error(Error) }
-	;
-		{ CharResult = eof },
-		{ Result = eof }
 	).
 
 io__putback_char(Char) -->
