@@ -471,6 +471,8 @@ static	MR_TraceCmdFunc	MR_trace_cmd_quit;
 static	MR_TraceCmdFunc	MR_trace_cmd_dd;
 static	MR_TraceCmdFunc	MR_trace_cmd_dd_dd;
 static	MR_TraceCmdFunc	MR_trace_cmd_trust;
+static	MR_TraceCmdFunc	MR_trace_cmd_untrust;
+static	MR_TraceCmdFunc	MR_trace_cmd_trusted;
 
 static	void	MR_maybe_print_spy_point(int slot, const char *problem);
 static	void	MR_print_unsigned_var(FILE *fp, const char *var,
@@ -5252,6 +5254,8 @@ MR_trace_cmd_save(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					"invalid default scope");
 		}
 
+		MR_decl_print_all_trusted(fp, MR_TRUE);
+
 		if (found_error) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: could not save "
@@ -5395,14 +5399,134 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {	
+	MR_Proc_Spec		spec;
+	MR_Matches_Info		matches;
+
 	if (word_count == 2) {
-		MR_decl_add_trusted_module(words[1]);
+		spec.MR_proc_module = NULL;
+		spec.MR_proc_name   = NULL;
+		spec.MR_proc_arity  = -1;
+		spec.MR_proc_mode   = -1;
+		spec.MR_proc_prefix = (MR_Proc_Prefix) -1;
+
+		MR_register_all_modules_and_procs(MR_mdb_out, MR_TRUE);
+		
+		/* First see if the argument is a module name */
+		spec.MR_proc_module = words[1];
+		matches = MR_search_for_matching_procedures(&spec);
+		if (matches.match_proc_next > 0) {
+			MR_decl_add_trusted_module(words[1]);
+			fprintf(MR_mdb_out, "Trusting module %s\n", words[1]);
+		} else if (MR_parse_proc_spec(words[1], &spec)){
+			/* Check to see if the argument is a pred/func */
+			matches = MR_search_for_matching_procedures(&spec);
+			MR_filter_user_preds(&matches);
+			if (matches.match_proc_next == 0) {
+				fprintf(MR_mdb_err, "mdb: there is no such "
+					"module, predicate or function.\n");
+			} else if (matches.match_proc_next == 1) {
+				MR_decl_add_trusted_pred_or_func(
+					matches.match_procs[0]);
+				fprintf(MR_mdb_out, "Trusting ");
+				MR_print_pred_id_and_nl(MR_mdb_out,
+					matches.match_procs[0]);
+			} else {
+				int i;
+				char buf[80];
+				char *line2;
+
+				fprintf(MR_mdb_out, "Ambiguous predicate or "
+					"function specification. The matches "
+					"are:\n");
+				for (i = 0; i < matches.match_proc_next; i++)
+				{
+					fprintf(MR_mdb_out, "%d: ", i);
+					MR_print_pred_id_and_nl(MR_mdb_out,
+						matches.match_procs[i]);
+				}
+				sprintf(buf, "\nWhich predicate or function "
+					"do you want to trust (0-%d or *)? ",
+					matches.match_proc_next - 1);
+				line2 = MR_trace_getline(buf,
+					MR_mdb_in, MR_mdb_out);
+				if (line2 == NULL) {
+					/* This means the user input EOF. */
+					fprintf(MR_mdb_out, "none of them\n");
+				} else if (MR_streq(line2, "*")) {
+					for (i = 0;
+						i < matches.match_proc_next;
+						i++)
+					{
+					    MR_decl_add_trusted_pred_or_func(
+						matches.match_procs[i]);
+					    
+					    fprintf(MR_mdb_out, "Trusting ");
+					    MR_print_pred_id_and_nl(MR_mdb_out,
+						matches.match_procs[i]);
+					}
+					MR_free(line2);
+				}else if(MR_trace_is_natural_number(line2, &i))
+					{
+					if (0 <= i &&
+						i < matches.match_proc_next)
+					{
+					    MR_decl_add_trusted_pred_or_func(
+						matches.match_procs[i]);
+					    
+					    fprintf(MR_mdb_out, "Trusting ");
+					    MR_print_pred_id_and_nl(MR_mdb_out,
+						matches.match_procs[i]);
+					} else {
+						fprintf(MR_mdb_out,
+							"no such match\n");
+					}
+					MR_free(line2);
+				} else {
+					fprintf(MR_mdb_out, "none of them\n");
+					MR_free(line2);
+				}
+			}
+		}
 	} else {
 		MR_trace_usage("dd", "trust");
 	}
 	return KEEP_INTERACTING;
 }
 
+static MR_Next
+MR_trace_cmd_untrust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	int i;
+	
+	if (word_count == 2) {
+		if (MR_trace_is_natural_number(words[1], &i)) {
+			if (!MR_decl_remove_trusted(i)) {
+				fprintf(MR_mdb_err, "mdb: no such trusted "
+					"object\n");
+			}
+		} else {
+			MR_trace_usage("dd", "untrust");
+		}
+	} else {
+		MR_trace_usage("dd", "untrust");
+	}
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
+MR_trace_cmd_trusted(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	if (word_count == 1) {
+		MR_decl_print_all_trusted(MR_mdb_out, MR_FALSE);
+	} else {
+		MR_trace_usage("dd", "trusted");
+	}
+	return KEEP_INTERACTING;
+}
 
 static void
 MR_maybe_print_spy_point(int slot, const char *problem)
@@ -7181,17 +7305,22 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "help", "help", MR_trace_cmd_help,
 		NULL, MR_trace_help_completer },
 
+	{ "dd", "dd", MR_trace_cmd_dd,
+		NULL, MR_trace_null_completer },
+	{ "dd", "trust", MR_trace_cmd_trust, NULL, 
+		MR_trace_null_completer },
+	{ "dd", "untrust", MR_trace_cmd_untrust, NULL,
+		MR_trace_null_completer },
+	{ "dd", "trusted", MR_trace_cmd_trusted, NULL,
+		MR_trace_null_completer },
+
 	{ "misc", "source", MR_trace_cmd_source,
 		MR_trace_source_cmd_args, MR_trace_filename_completer },
 	{ "misc", "save", MR_trace_cmd_save,
 		NULL, MR_trace_filename_completer },
-	{ "misc", "dd", MR_trace_cmd_dd,
-		NULL, MR_trace_null_completer },
 	{ "misc", "quit", MR_trace_cmd_quit,
 		MR_trace_quit_cmd_args, NULL },
-	{ "misc", "trust", MR_trace_cmd_trust, NULL, 
-		MR_trace_null_completer },
-
+	
 	{ "exp", "histogram_all", MR_trace_cmd_histogram_all,
 		NULL, MR_trace_filename_completer },
 	{ "exp", "histogram_exp", MR_trace_cmd_histogram_exp,

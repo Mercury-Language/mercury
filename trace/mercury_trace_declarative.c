@@ -1032,6 +1032,48 @@ MR_decl_add_trusted_module(const char *module_name)
 	);
 }
 
+void
+MR_decl_add_trusted_pred_or_func(const MR_Proc_Layout *entry)
+{
+	MR_trace_decl_ensure_init();
+	MR_TRACE_CALL_MERCURY(
+		MR_DD_decl_add_trusted_pred_or_func(entry,
+			MR_trace_front_end_state,
+			&MR_trace_front_end_state);
+	);
+}
+
+MR_bool
+MR_decl_remove_trusted(int n)
+{
+	MR_bool success;
+	MR_Word new_diagnoser;
+	
+	MR_trace_decl_ensure_init();
+	MR_TRACE_CALL_MERCURY(
+		success = MR_DD_decl_remove_trusted(n,
+			MR_trace_front_end_state,
+			&new_diagnoser);
+	);
+	if (success) {
+		MR_trace_front_end_state = new_diagnoser;
+	}
+	return success;
+}
+
+void 
+MR_decl_print_all_trusted(FILE *fp, MR_bool mdb_command_format)
+{
+	MR_String	trusted_list;
+	
+	MR_trace_decl_ensure_init();
+	MR_TRACE_CALL_MERCURY(
+		MR_DD_decl_get_trusted_list(MR_trace_front_end_state, 
+			mdb_command_format, &trusted_list);
+	);
+	fprintf(fp, trusted_list);
+}
+
 MR_bool
 MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,

@@ -242,6 +242,13 @@ extern	void	MR_maybe_print_call_trace_info(FILE *fp,
 extern	void	MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry);
 
 /*
+** MR_print_pred_id prints everything that MR_print_proc_id does, except
+** the mode number and determinism.
+*/
+
+extern	void	MR_print_pred_id(FILE *fp, const MR_Proc_Layout *entry);
+
+/*
 ** MR_print_proc_spec prints a string that uniquely specifies the given
 ** procedure to the debugger.
 */

@@ -146,6 +146,9 @@ typedef struct {
 
 extern	MR_Matches_Info	MR_search_for_matching_procedures(MR_Proc_Spec *spec);
 
+/* filter out UCI procs and keep only mode number 0 */
+extern	void MR_filter_user_preds(MR_Matches_Info *matches);
+
 /*
 ** MR_process_matching_procedures(spec, f, data):
 **	For each procedure that matches the specification given by `spec',
@@ -164,6 +167,14 @@ extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
 */
 
 extern	void	MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
+
+/*
+** MR_print_pred_id_and_nl(fp, proc):
+** 	Print the id of the predicate/function identified by proc, 
+**	followed by a newline.
+*/
+
+extern	void	MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
 
 /*
 ** MR_proc_layout_stats(fp):

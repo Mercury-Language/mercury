@@ -5,37 +5,38 @@ Command echo enabled.
 mdb> register --quiet
 register --quiet
 mdb> 
-?                  disable            level              save_to_file
-P                  document           maxdepth           scope
-alias              document_category  mindepth           scroll
-all_class_decls    down               mm_stacks          set
-all_regs           e                  mmc_options        source
-all_type_ctors     echo               modules            stack
-b                  enable             next               stack_regs
-break              exception          nondet_stack       step
-browse             excp               p                  subgoal
-c                  f                  pneg_stack         table
-cc_query           finish             print              table_io
-class_decl         flag               print_optionals    term_size
-clear_histogram    forward            printlevel         type_ctor
-consumer           g                  proc_stats         unalias
-context            gen_stack          procedures         unhide_events
-continue           goto               query              up
-current            h                  quit               v
-cut_stack          help               r                  var_name_stats
-d                  histogram_all      register           vars
-dd                 histogram_exp      retry              view
-dd_dd              ignore             return             
-debug_vars         io_query           s                  
-delete             label_stats        save               
-mdb> h
+?                  document           maxdepth           scroll
+P                  document_category  mindepth           set
+alias              down               mm_stacks          source
+all_class_decls    e                  mmc_options        stack
+all_regs           echo               modules            stack_regs
+all_type_ctors     enable             next               step
+b                  exception          nondet_stack       subgoal
+break              excp               p                  table
+browse             f                  pneg_stack         table_io
+c                  finish             print              term_size
+cc_query           flag               print_optionals    trust
+class_decl         forward            printlevel         trusted
+clear_histogram    g                  proc_stats         type_ctor
+consumer           gen_stack          procedures         unalias
+context            goal_paths         query              unhide_events
+continue           goto               quit               untrust
+current            h                  r                  up
+cut_stack          help               register           v
+d                  histogram_all      retry              var_details
+dd                 histogram_exp      return             var_name_stats
+dd_dd              ignore             s                  vars
+debug_vars         io_query           save               view
+delete             label_stats        save_to_file       
+disable            level              scope              
+mdb>  h
 h              help           histogram_all  histogram_exp  
-mdb> help v
-var_name_stats  vars            view            
-mdb> help va
-var_name_stats  vars            
-mdb> help vars 
-help vars 
+mdb>  help v
+var_details     var_name_stats  vars            view
+mdb>  help va
+var_details     var_name_stats  vars            
+mdb>  help vars 
+ help vars 
 vars
      Prints the names of all the known variables in the current
      environment, together with an ordinal number for each variable.

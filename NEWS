@@ -41,6 +41,8 @@ Changes to the Mercury debugger:
 * Users can now limit the output from stack traces.
 * Users can now put breakpoints on unify and compare predicates.
 * Users can now save runtime values to files.
+* Ability to tell the declarative debugger to trust entire modules or 
+  individual predicates or functions.
 
 Changes to the compiler back-ends:
 * The .NET CLR back-end now bootstraps.

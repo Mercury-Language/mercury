@@ -54,10 +54,15 @@ help       - Commands that let users access and control the help system.
              For help on the `help' command, type `help help help'.
 
 end
+document_category 850 dd
+dd         - Commands related to declarative debugging.  These are `dd', 
+             `trust', `trusted' and `untrust'.
+
+end
 document_category 900 misc
 misc       - Commands that are of interest to most users but do not fit into
-             other categories. The misc commands are `source', `save', `dd',
-             `trust' and `quit'.
+             other categories. The misc commands are `source', `save' and 
+	     `quit'.
 
 end
 document_category 1000 exp

@@ -1,9 +1,64 @@
       E1:     C1  1 CALL pred trust.main/2-0 (cc_multi) trust.m:13
-mdb> Contexts will not be printed.
+mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
-mdb> trust trust_1
+mdb> trust trust_1.
+Ambiguous predicate or function specification. The matches are:
+0: pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+1: pred trust_1.w_cmp/3
+
+Which predicate or function do you want to trust (0-1 or *)? *
+Trusting pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+Trusting pred trust_1.w_cmp/3
+mdb> trusted
+Trusted Objects:
+0: pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+1: pred trust_1.w_cmp/3
+mdb> untrust 1
+mdb> trusted
+Trusted Objects:
+0: pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+mdb> untrust 0
+mdb> trusted
+There are no trusted modules, predicates or functions.
 mdb> trust trust_2
+Trusting module trust_2
+mdb> trust trust.
+Ambiguous predicate or function specification. The matches are:
+0: pred trust.dostuff/2
+1: pred trust.main/2
+
+Which predicate or function do you want to trust (0-1 or *)? 1
+Trusting pred trust.main/2
+mdb> trusted
+Trusted Objects:
+0: module trust_2
+1: pred trust.main/2
+mdb> trust trust_2
+Trusting module trust_2
+mdb> trusted
+Trusted Objects:
+0: module trust_2
+1: pred trust.main/2
+mdb> untrust 0
+mdb> trust trust_1
+Trusting module trust_1
+mdb> trust no_such_module
+mdb: there is no such module, predicate or function.
+mdb> trust trust_2.
+Trusting pred trust_2.concat/3
+mdb> trusted
+Trusted Objects:
+0: module trust_1
+1: pred trust.main/2
+2: pred trust_2.concat/3
+mdb> untrust 1
+mdb> trusted
+Trusted Objects:
+0: module trust_1
+1: pred trust_2.concat/3
+mdb> untrust 99
+mdb: no such trusted object
 mdb> step
       E2:     C2  2 CALL pred trust.dostuff/2-0 (cc_multi)
 mdb> finish

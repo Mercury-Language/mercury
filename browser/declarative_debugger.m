@@ -252,6 +252,7 @@
 :- import_module mdb__declarative_analyser.
 :- import_module mdb__declarative_oracle.
 :- import_module mdb__declarative_tree.
+:- import_module mdb__util.
 
 :- import_module exception, int, map.
 
@@ -519,14 +520,51 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
 :- pred add_trusted_module(string::in, diagnoser_state(trace_node_id)::in, 
 		diagnoser_state(trace_node_id)::out) is det.
 
-:- pragma export(add_trusted_module(in, in, out),
+:- pragma export(mdb.declarative_debugger.add_trusted_module(in, in, out),
 		"MR_DD_decl_add_trusted_module").
 		
-add_trusted_module(ModuleName, OldDiagnoserState,
-	OldDiagnoserState ^ oracle_state := 
-		mdb.declarative_oracle.add_trusted_module(ModuleName, 
-			OldDiagnoserState ^ oracle_state)
-).
+add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
+	add_trusted_module(ModuleName, Diagnoser0 ^ oracle_state, Oracle),
+	Diagnoser = Diagnoser0 ^ oracle_state := Oracle.
+
+	% Adds a trusted predicate/function to the given diagnoser.
+	%  
+:- pred add_trusted_pred_or_func(proc_layout::in, 
+	diagnoser_state(trace_node_id)::in,
+	diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma export(mdb.declarative_debugger.add_trusted_pred_or_func(in, in, 
+	out), "MR_DD_decl_add_trusted_pred_or_func").
+		
+add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
+	add_trusted_pred_or_func(ProcLayout, !.Diagnoser ^ oracle_state, 
+		Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+
+:- pred remove_trusted(int::in, diagnoser_state(trace_node_id)::in,
+	diagnoser_state(trace_node_id)::out) is semidet.
+	
+:- pragma export(mdb.declarative_debugger.remove_trusted(in, in, out),
+	"MR_DD_decl_remove_trusted").
+
+remove_trusted(N, !Diagnoser) :-
+	remove_trusted(N, !.Diagnoser ^ oracle_state, Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+
+	% get_trusted_list(Diagnoser, MDBCommandFormat, String).
+	% Return a string listing the trusted objects for Diagnoser.
+	% If MDBCommandFormat is true then returns the list so that it can be
+	% run as a series of mdb `trust' commands.  Otherwise returns them
+	% in a format suitable for display only.
+	%
+:- pred get_trusted_list(diagnoser_state(trace_node_id)::in, bool::in,
+	string::out) is det.
+
+:- pragma export(mdb.declarative_debugger.get_trusted_list(in, in, out),
+	"MR_DD_decl_get_trusted_list").
+
+get_trusted_list(Diagnoser, MDBCommandFormat, List) :-
+	get_trusted_list(Diagnoser ^ oracle_state, MDBCommandFormat, List).
 
 %-----------------------------------------------------------------------------%
 

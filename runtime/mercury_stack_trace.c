@@ -76,7 +76,8 @@ static  void        MR_dump_stack_record_flush(FILE *fp,
                         MR_Print_Stack_Record print_stack_record);
 
 static  void        MR_print_proc_id_internal(FILE *fp,
-                        const MR_Proc_Layout *entry, MR_bool spec);
+                        const MR_Proc_Layout *entry, MR_bool spec, 
+                        MR_bool print_mode);
 
 static  void        MR_maybe_print_context(FILE *fp,
                         const char *filename, int lineno);
@@ -1255,17 +1256,24 @@ MR_print_call_trace_info(FILE *fp, const MR_Proc_Layout *entry,
 void
 MR_print_proc_id(FILE *fp, const MR_Proc_Layout *entry)
 {
-    MR_print_proc_id_internal(fp, entry, MR_FALSE);
+    MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_TRUE);
+}
+
+void
+MR_print_pred_id(FILE *fp, const MR_Proc_Layout *entry)
+{
+    MR_print_proc_id_internal(fp, entry, MR_FALSE, MR_FALSE);
 }
 
 void
 MR_print_proc_spec(FILE *fp, const MR_Proc_Layout *entry)
 {
-    MR_print_proc_id_internal(fp, entry, MR_TRUE);
+    MR_print_proc_id_internal(fp, entry, MR_TRUE, MR_TRUE);
 }
 
 static void
-MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
+MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec,
+    MR_bool print_mode)
 {
     const MR_User_Proc_Id *user;
     const MR_UCI_Proc_Id  *uci;
@@ -1288,18 +1296,21 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
                 MR_fatal_error("uci procedure is not unify, compare or index");
             }
 
-            fprintf(fp, "%s.%s/%ld-%ld",
+            fprintf(fp, "%s.%s/%ld",
                 uci->MR_uci_type_module,
                 uci->MR_uci_type_name,
-                (long) uci->MR_uci_type_arity,
-                (long) uci->MR_uci_mode);
+                (long) uci->MR_uci_type_arity);
+
         } else {
-            fprintf(fp, "%s for %s.%s/%ld-%ld",
+            fprintf(fp, "%s for %s.%s/%ld",
                 uci->MR_uci_pred_name,
                 uci->MR_uci_type_module,
                 uci->MR_uci_type_name,
-                (long) uci->MR_uci_type_arity,
-                (long) uci->MR_uci_mode);
+                (long) uci->MR_uci_type_arity);
+        }
+
+        if (print_mode) {
+            fprintf(fp, "-%ld", (long) uci->MR_uci_mode);
         }
 
         if (strcmp(uci->MR_uci_type_module,
@@ -1324,11 +1335,14 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
             fprintf(fp, " ");
         }
 
-        fprintf(fp, "%s.%s/%ld-%ld",
+        fprintf(fp, "%s.%s/%ld",
             user->MR_user_decl_module,
             user->MR_user_name,
-            (long) MR_sle_user_adjusted_arity(entry),
-            (long) user->MR_user_mode);
+            (long) MR_sle_user_adjusted_arity(entry));
+
+        if (print_mode) {
+            fprintf(fp, "-%ld", (long) user->MR_user_mode);
+        }
 
         if (!spec && strcmp(user->MR_user_decl_module,
             user->MR_user_def_module) != 0)
@@ -1337,7 +1351,7 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
         }
     }
 
-    if (! spec) {
+    if (! spec && print_mode) {
         fprintf(fp, " (%s)", MR_detism_names[entry->MR_sle_detism]);
     }
 }

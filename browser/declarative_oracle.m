@@ -27,8 +27,9 @@
 :- interface.
 
 :- import_module mdb__declarative_debugger.
+:- import_module mdb__declarative_execution.
 
-:- import_module list, io.
+:- import_module list, io, bool, string.
 
 	% A response that the oracle gives to a query about the
 	% truth of an EDT node.
@@ -51,7 +52,31 @@
 
 	% Add a module to the set of modules trusted by the oracle
 	%
-:- func add_trusted_module(string, oracle_state) = oracle_state. 
+:- pred add_trusted_module(string::in, oracle_state::in, oracle_state::out) 
+	is det. 
+
+	% Add a predicate/function to the set of predicates/functions trusted 
+	% by the oracle.
+	%
+:- pred add_trusted_pred_or_func(proc_layout::in, oracle_state::in, 
+	oracle_state::out) is det. 
+
+	% remove_trusted(N, !Oracle).
+	% Removes the (N-1)th trusted object from the set of trusted objects.
+	% Fails if there are fewer than N-1 trusted modules (or N < 0).
+	% The trusted set is turned into a sorted list before finding the
+	% (N-1)th element.
+	%
+:- pred remove_trusted(int::in, oracle_state::in, oracle_state::out)
+	is semidet.
+
+	% get_trusted_list(Oracle, MDBCommandFormat, String).
+	% Return a string listing the trusted objects.
+	% If MDBCommandFormat is true then returns the list so that it can be
+	% run as a series of mdb `trust' commands.  Otherwise returns them
+	% in a format suitable for display only.
+	%
+:- pred get_trusted_list(oracle_state::in, bool::in, string::out) is det.
 
 	% Query the oracle about the program being debugged.  The first
 	% argument is a queue of nodes in the evaluation tree, the second
@@ -75,13 +100,12 @@
 
 :- implementation.
 
-:- import_module mdb__declarative_execution.
 :- import_module mdb__declarative_user.
 :- import_module mdb__tree234_cc.
 :- import_module mdb__set_cc.
 :- import_module mdb__util.
 
-:- import_module bool, std_util, set.
+:- import_module bool, std_util, set, int.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
 	{ query_oracle_list(Oracle0, Questions, Answers) },
@@ -190,11 +214,9 @@ revise_oracle(Question, Oracle0, Oracle) :-
 			user_state	:: user_state,
 				% User interface.
 				
-			trusted_modules :: set(string)
-				% If a module name is in this set then the 
-				% oracle will report any calls to predicates 
-				% or functions in that module as valid.
-		
+			trusted :: set(trusted_module_or_predicate)
+				% Modules and predicates/functions trusted
+				% by the oracle.
 		).
 
 oracle_state_init(InStr, OutStr, Oracle) :-
@@ -204,10 +226,95 @@ oracle_state_init(InStr, OutStr, Oracle) :-
 	set.init(TrustedModules),
 	Oracle = oracle(Current, Old, User, TrustedModules).
 	
-add_trusted_module(ModuleName, OracleState) = 
-	OracleState ^ trusted_modules := 
-		insert(OracleState ^ trusted_modules, ModuleName). 
+%-----------------------------------------------------------------------------%
 
+:- type trusted_module_or_predicate
+	--->	all(string) % all predicates/functions in a module
+	;	specific(
+			pred_or_func,	
+			string,		% module name
+			string,		% pred or func name
+			int		% arity
+		).
+
+add_trusted_module(ModuleName, !Oracle) :-
+	insert(!.Oracle ^ trusted, all(ModuleName), Trusted),
+	!:Oracle = !.Oracle ^ trusted := Trusted.
+
+add_trusted_pred_or_func(ProcLayout, !Oracle) :-
+	ProcId = get_proc_id_from_layout(ProcLayout),
+	(
+		ProcId = proc(ModuleName, PredOrFunc, _, Name, Arity, _)
+	;
+		ProcId = uci_proc(ModuleName, _, _, Name, Arity, _),
+		PredOrFunc = predicate
+	),
+	insert(!.Oracle ^ trusted, specific(PredOrFunc, ModuleName, Name, 
+		Arity), Trusted),
+	!:Oracle = !.Oracle ^ trusted := Trusted.
+
+remove_trusted(N, !Oracle) :-
+	TrustedList = to_sorted_list(!.Oracle ^ trusted),
+	index0(TrustedList, N, ObjectToDelete),
+	delete_all(TrustedList, ObjectToDelete, NewTrustedList),
+	!:Oracle = !.Oracle ^ trusted := sorted_list_to_set(NewTrustedList). 
+
+get_trusted_list(Oracle, CommandFormat, List) :-
+	Trusted = to_sorted_list(Oracle ^ trusted),
+	(
+		CommandFormat = yes,
+		foldl(format_trust_command, Trusted, "", List)
+	;
+		CommandFormat = no,
+		foldl(format_trust_display, Trusted, {0, "Trusted Objects:\n"}, 
+			{I, List0}),
+		(
+			I = 0
+		->
+			List = "There are no trusted modules, predicates "++
+				"or functions.\n"
+		;
+			List = List0
+		)
+	).
+
+:- pred format_trust_command(trusted_module_or_predicate::in, string::in,
+	string::out) is det.
+
+format_trust_command(all(ModuleName), S, S++"trust "++ModuleName++"\n").
+format_trust_command(specific(PredOrFunc, ModuleName, Name, Arity), S, 
+		S++Command) :-
+	(
+		PredOrFunc = predicate,
+		PredOrFuncStr = "pred*",
+		ArityStr = int_to_string(Arity)
+	;
+		PredOrFunc = function,
+		PredOrFuncStr = "func*",
+		ArityStr = int_to_string(Arity - 1)
+	),
+	Command = "trust "++PredOrFuncStr++ModuleName++"."++Name++"/"++
+		ArityStr++ "\n".
+		
+:- pred format_trust_display(trusted_module_or_predicate::in, {int,string}::in,
+	{int,string}::out) is det.
+
+format_trust_display(all(ModuleName), {I, S}, 
+	{I + 1, S++int_to_string(I)++": module "++ModuleName++"\n"}).
+format_trust_display(specific(PredOrFunc, ModuleName, Name, Arity), {I, S}, 
+		{I + 1, S++Display}) :-
+	(
+		PredOrFunc = predicate,
+		PredOrFuncStr = "pred",
+		ArityStr = int_to_string(Arity)
+	;
+		PredOrFunc = function,
+		PredOrFuncStr = "func",
+		ArityStr = int_to_string(Arity - 1)
+	),
+	Display = int_to_string(I)++": "++PredOrFuncStr++" "++ModuleName++"."++
+		Name++"/"++ArityStr++"\n".
+		
 %-----------------------------------------------------------------------------%
 
 	%
@@ -306,10 +413,7 @@ query_oracle_list(OS, [Q | Qs0], As) :-
 	query_oracle_list(OS, Qs0, As0),
 	Atom = get_decl_question_atom(Q),
 	(
-		% do we trust the correctness of the procedure?
-		ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
-		ProcId = proc(Module, _, _, _, _, _),
-		set__member(Module, OS ^ trusted_modules)
+		trusted(Atom ^ proc_layout, OS)
 	->
 		As = [truth_value(get_decl_question_node(Q), yes) | As0]
 	;
@@ -322,6 +426,22 @@ query_oracle_list(OS, [Q | Qs0], As) :-
 			As = As0
 		)
 	).	
+
+:- pred trusted(proc_layout::in, oracle_state::in) is semidet.
+
+trusted(ProcLayout, Oracle) :-
+	ProcId = get_proc_id_from_layout(ProcLayout),
+	(
+		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _),
+		(
+			member(all(Module), Oracle ^ trusted)
+		;
+			member(specific(PredOrFunc, Module, Name, Arity),
+				Oracle ^ trusted)
+		)
+	;
+		ProcId = uci_proc(_, _, _, _, _, _)
+	).
 
 :- pred query_oracle_kb(oracle_kb::in, decl_question(T)::in,
 	maybe(decl_answer(T))::out) is cc_multi.

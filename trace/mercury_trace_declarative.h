@@ -50,14 +50,24 @@ extern	MR_bool	MR_trace_start_decl_debug(MR_Trace_Mode trace_mode,
 extern	MR_bool	MR_trace_decl_assume_all_io_is_tabled;
 
 /*
-** This function adds a module to the set of trusted modules in the 
-** oracle_state inside the current diagnoser_state.  It will call 
-** MR_trace_decl_ensure_init to ensure the diagnoser_state is initialised 
-** first.
+** These functions add(or remove) a module, pred or func to(or from) the set of 
+** trusted objects in the oracle_state inside the current diagnoser_state.
+** They will call MR_trace_decl_ensure_init to ensure the diagnoser_state is
+** initialised first.
 */
 
 extern	void	MR_decl_add_trusted_module(const char *module_name);
+extern	void	MR_decl_add_trusted_pred_or_func(const MR_Proc_Layout *entry);
+extern	MR_bool	MR_decl_remove_trusted(int n);
 
+/*
+** Prints a list of the trusted objects.  If mdb_command_format is true it
+** prints the list as a series of mdb `trust' commands.  Otherwise it 
+** prints the list in a format suitable for display.
+*/
+
+extern	void	MR_decl_print_all_trusted(FILE *fp, 
+			MR_bool mdb_command_format);
 /*
 ** The following macros are provided to help C code manipulate the
 ** Mercury data structure.  The values here must match the corresponding

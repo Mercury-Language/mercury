@@ -3256,12 +3256,24 @@ Starts declarative debugging
 using the current event as the initial symptom.
 For details, see @ref{Declarative debugging}.
 @sp 1
-@item trust @var{module-name}
+@item trust [@var{module-name}|@var{proc-spec}]
 @kindex trust (mdb command)
-The declarative debugger will assume that all predicates and functions in the
-given module are correct.  Use this command with modules you are confident do
-not contain any bugs to reduce the number of questions the declarative
-debugger needs to ask to find a bug.
+Tells the declarative debugger to trust the given module, predicate or 
+function.  Individual predicates or functions can be trusted by just giving
+the predicate or function name.  If there is more than one predicate or 
+function with the given name then a list of alternatives will be shown.
+See also `trusted' and `untrust'.
+@sp 1
+@item trusted
+@kindex trusted (mdb command)
+Lists all the trusted modules, predicates and functions.  See also `trust'
+and `untrust'.
+@sp 1
+@item untrust @var{num}
+@kindex untrust (mdb command)
+Removes the object from the list of trusted objects.  @var{num} should 
+correspond with the number shown the the list produced by issuing a `trusted'
+command.  See also `trust' and `trusted'.
 @sp 1
 @item quit [-y]
 @kindex quit (mdb command)

@@ -671,6 +671,25 @@ MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 	}
 }
 
+void
+MR_filter_user_preds(MR_Matches_Info *matches)
+{
+	int filter_pos = 0;
+	int i;
+	const MR_Proc_Layout *entry;
+
+	for(i = 0; i < matches->match_proc_next; i++) {
+		entry = matches->match_procs[i];
+    		if (!MR_PROC_LAYOUT_IS_UCI(entry) && 
+			(entry->MR_sle_user).MR_user_mode == 0) 
+		{
+			matches->match_procs[filter_pos] = entry;
+			filter_pos++;
+		}
+	}
+	matches->match_proc_next = filter_pos;
+}
+
 MR_Completer_List *
 MR_trace_module_completer(const char *word, size_t word_len)
 {
@@ -1003,6 +1022,13 @@ void
 MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
 {
 	MR_print_proc_id(fp, entry_layout);
+	fprintf(fp, "\n");
+}
+
+void
+MR_print_pred_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
+{
+	MR_print_pred_id(fp, entry_layout);
 	fprintf(fp, "\n");
 }
 

@@ -1,7 +1,27 @@
+register --quiet
 context none
 echo on
-trust trust_1
+trust trust_1.
+*
+trusted
+untrust 1
+trusted
+untrust 0
+trusted
 trust trust_2
+trust trust.
+1
+trusted
+trust trust_2
+trusted
+untrust 0
+trust trust_1
+trust no_such_module
+trust trust_2.
+trusted
+untrust 1
+trusted
+untrust 99
 step
 finish
 dd
