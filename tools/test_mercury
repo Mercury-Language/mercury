@@ -236,6 +236,18 @@ case $status in
     0)
 	: if we get this far, then it worked.
 	date >> /home/mercury/public/test_mercury/logs/successful_tests.$HOST
+
+
+	case $HOST in murlibobo)
+		cd $DIR/mercury &&
+		mmake realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; } &&
+		autoconf &&
+		mercury_cv_num_low_tag_bits=2 sh configure \
+			--prefix=$INSTALL_DIR &&
+		mmake MMAKEFLAGS='MCFLAGS="-O5 --num-tag-bits 2" -j4' tar
+		;;
+	esac
+
 	true
 	exit 0
 	;;
