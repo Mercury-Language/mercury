@@ -2378,6 +2378,9 @@ mlds_output_rval_const(float_const(FloatVal)) -->
 	io__write_string("(Float) "),
 	io__write_float(FloatVal).
 mlds_output_rval_const(string_const(String)) -->
+	% the cast avoids the following gcc warning
+	% "assignment discards qualifiers from pointer target type"
+	io__write_string("(MR_String) "),
 	io__write_string(""""),
 	c_util__output_quoted_string(String),
 	io__write_string("""").
