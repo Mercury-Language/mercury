@@ -923,6 +923,9 @@ case $fullname in
 	alpha*-dec-osf3.2)
 		fullname=alpha-dec-osf3.2
 		;;
+	alpha*-dec-osf5.1)
+		fullname=alpha-dec-osf5.1
+		;;
 esac
 
 case "$C_COMPILER" in
