@@ -207,7 +207,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 
 	% An `hlds_type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
-	% eqv_type = equivalence type (a type defined to be equivalen
+	% eqv_type = equivalence type (a type defined to be equivalent
 	% to some other type)
 
 :- type hlds_type_body

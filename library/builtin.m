@@ -362,6 +362,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___type_ctor_info_int_0 = {
 	((Integer) 0),
@@ -371,7 +372,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_int_0,
 	(const Word *) & mercury_data___type_ctor_functors_int_0,
-	(const Word *) string_const(""builtin"", 15),
+	(const Word *) & mercury_data___type_ctor_layout_int_0,
+	(const Word *) string_const(""builtin"", 7),
 	(const Word *) string_const(""int"", 3)
 #endif
 };
@@ -392,6 +394,7 @@ mercury_data___type_ctor_info_character_0_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___type_ctor_info_character_0 = {
 	((Integer) 0),
@@ -401,7 +404,8 @@ mercury_data___type_ctor_info_character_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_character_0,
 	(const Word *) & mercury_data___type_ctor_functors_character_0,
-	(const Word *) string_const(""builtin"", 15),
+	(const Word *) & mercury_data___type_ctor_layout_character_0,
+	(const Word *) string_const(""builtin"", 7),
 	(const Word *) string_const(""character"", 9)
 #endif
 };
@@ -421,6 +425,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___type_ctor_info_string_0 = {
 	((Integer) 0),
@@ -430,7 +435,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_string_0,
 	(const Word *) & mercury_data___type_ctor_functors_string_0,
-	(const Word *) string_const(""builtin"", 15),
+	(const Word *) & mercury_data___type_ctor_layout_string_0,
+	(const Word *) string_const(""builtin"", 7),
 	(const Word *) string_const(""string"", 6)
 #endif
 };
@@ -450,6 +456,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___type_ctor_info_float_0 = {
 	((Integer) 0),
@@ -459,7 +466,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_float_0,
 	(const Word *) & mercury_data___type_ctor_functors_float_0,
-	(const Word *) string_const(""builtin"", 15),
+	(const Word *) & mercury_data___type_ctor_layout_float_0,
+	(const Word *) string_const(""builtin"", 7),
 	(const Word *) string_const(""float"", 5)
 #endif
 };
@@ -477,6 +485,7 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___type_ctor_info_void_0 = {
 	((Integer) 0),
@@ -486,7 +495,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_void_0,
 	(const Word *) & mercury_data___type_ctor_functors_void_0,
-	(const Word *) string_const(""builtin"", 15),
+	(const Word *) & mercury_data___type_ctor_layout_void_0,
+	(const Word *) string_const(""builtin"", 7),
 	(const Word *) string_const(""void"", 4)
 #endif
 };

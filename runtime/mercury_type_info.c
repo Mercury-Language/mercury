@@ -55,11 +55,9 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
 	const Word *f8;
 	const Word *f9;
@@ -72,6 +70,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_pred_0,
 	(const Word *) & mercury_data___type_ctor_functors_pred_0,
+	(const Word *) & mercury_data___type_ctor_layout_pred_0,
+	(const Word *) string_const("builtin", 7),
 	(const Word *) string_const("func", 4)
 #endif
 };
@@ -89,11 +89,9 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_pred_0_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-#ifdef USE_TYPE_TO_TERM
-	Code *f5;
-	Code *f6;
-#endif
 #ifdef USE_TYPE_LAYOUT
+	const Word *f5;
+	const Word *f6;
 	const Word *f7;
 	const Word *f8;
 	const Word *f9;
@@ -106,6 +104,8 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_pred_0_struct {
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_pred_0,
 	(const Word *) & mercury_data___type_ctor_functors_pred_0,
+	(const Word *) & mercury_data___type_ctor_layout_pred_0,
+	(const Word *) string_const("builtin", 7),
 	(const Word *) string_const("pred", 4)
 #endif
 };

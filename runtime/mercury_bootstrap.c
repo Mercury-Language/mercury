@@ -49,6 +49,7 @@ mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 } mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
@@ -61,6 +62,8 @@ mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1_struct {
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
 	(const Word *) &
 	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
 	(const Word *) string_const("private_builtin", 15),
 	(const Word *) string_const("base_typeclass_info", 19)
 };
@@ -75,6 +78,7 @@ mercury_data_private_builtin__type_ctor_info_typeclass_info_1_struct {
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 } mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
@@ -87,6 +91,8 @@ mercury_data_private_builtin__type_ctor_info_typeclass_info_1_struct {
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
 	(const Word *) &
 	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
+	(const Word *) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
 	(const Word *) string_const("private_builtin", 15),
 	(const Word *) string_const("typeclass_info", 14)
 };

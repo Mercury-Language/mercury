@@ -96,7 +96,8 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 				Elim = yes(NumSpecials)
 			),
 			Info = base_gen_info(TypeId, ModuleName,
-				TypeName, TypeArity, Status, Elim, Procs),
+				TypeName, TypeArity, Status, Elim, Procs,
+				TypeDefn),
 			BaseGenInfos = [Info | BaseGenInfos1]
 		;
 			BaseGenInfos = BaseGenInfos1
@@ -138,7 +139,7 @@ base_type_info__construct_type_ctor_infos([], _, []).
 base_type_info__construct_type_ctor_infos([BaseGenInfo | BaseGenInfos],
 		ModuleInfo, [CModule | CModules]) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName, TypeArity,
-		_Status, Elim, Procs),
+		_Status, Elim, Procs, HldsDefn),
 	base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
 		PredAddrArgs),
 	ArityArg = yes(const(int_const(TypeArity))),
@@ -161,11 +162,20 @@ from the data_name, for use in forward declarations.
 			TypeArity, LayoutArg),
 		base_type_info__construct_functors(ModuleInfo, TypeName,
 			TypeArity, FunctorsArg),
+		base_type_info__construct_type_ctor_representation(HldsDefn,
+			_TypeCtorArg),
+			% XXX we put the layout argument twice.
+			% this is just temporary for bootstrapping
+			% purposes.  We will replace the LayoutArg with
+			% TypeCtorArg when the installed compiler
+			% generates the layout in a later slot, and
+			% change the #defines runtime/mercury_type_info.h
+			% to use the later slot.
 		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		NameArg = yes(const(string_const(TypeName))),
 		ModuleArg = yes(const(string_const(ModuleNameString))),
-		list__append(PredAddrArgs, [LayoutArg, FunctorsArg, ModuleArg,
-			NameArg], FinalArgs)
+		list__append(PredAddrArgs, [LayoutArg, FunctorsArg, LayoutArg,
+			ModuleArg, NameArg], FinalArgs)
 	;
 		FinalArgs = PredAddrArgs
 	),
@@ -235,3 +245,79 @@ base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, PredAddr),
 	PredAddrArg = yes(const(code_addr_const(PredAddr))),
 	base_type_info__construct_pred_addrs2(Procs, ModuleInfo, PredAddrArgs).
+
+
+:- type type_ctor_representation 
+	--->	enum
+	;	du
+	;	notag
+	;	equiv
+	;	int
+	;	char
+	;	float
+	;	string
+	;	(pred)
+	;	univ
+	;	void
+	;	c_pointer
+	;	typeinfo
+	;	typeclassinfo
+	;	array
+	;	unknown.
+
+:- pred base_type_info__type_ctor_rep_to_int(type_ctor_representation::in,
+	int::out) is det.
+base_type_info__type_ctor_rep_to_int(enum, 0).
+base_type_info__type_ctor_rep_to_int(du, 1).
+base_type_info__type_ctor_rep_to_int(notag, 2).
+base_type_info__type_ctor_rep_to_int(equiv, 3).
+base_type_info__type_ctor_rep_to_int(int, 4).
+base_type_info__type_ctor_rep_to_int(char, 5).
+base_type_info__type_ctor_rep_to_int(float, 6).
+base_type_info__type_ctor_rep_to_int(string, 7).
+base_type_info__type_ctor_rep_to_int(pred, 8).
+base_type_info__type_ctor_rep_to_int(univ, 9).
+base_type_info__type_ctor_rep_to_int(void, 10).
+base_type_info__type_ctor_rep_to_int(c_pointer, 11).
+base_type_info__type_ctor_rep_to_int(typeinfo, 12).
+base_type_info__type_ctor_rep_to_int(typeclassinfo, 13).
+base_type_info__type_ctor_rep_to_int(array, 14).
+base_type_info__type_ctor_rep_to_int(unknown, 15).
+
+
+:- pred base_type_info__construct_type_ctor_representation(hlds_type_defn,
+		maybe(rval)).
+:- mode base_type_info__construct_type_ctor_representation(in, out) is det.
+
+base_type_info__construct_type_ctor_representation(HldsType, Rvals) :-
+	hlds_data__get_type_defn_body(HldsType, TypeBody),
+	(
+		TypeBody = uu_type(_Alts),
+		error("base_type_info__construct_type_ctor_representation: sorry, undiscriminated union unimplemented\n")
+	;
+		TypeBody = eqv_type(_Type),
+		TypeCtorRep = equiv
+	;
+		TypeBody = abstract_type,
+		TypeCtorRep = unknown
+	;
+		TypeBody = du_type(Ctors, _ConsTagMap, Enum, _EqualityPred),
+		(
+			Enum = yes,
+			TypeCtorRep = enum
+		;
+			Enum = no,
+			( 
+				type_is_no_tag_type(Ctors, _Name, _TypeArg)
+			->
+				TypeCtorRep = notag
+			;
+				TypeCtorRep = du
+			)
+		)
+	),
+	base_type_info__type_ctor_rep_to_int(TypeCtorRep, TypeCtorRepInt),
+	Rvals = yes(const(int_const(TypeCtorRepInt))).
+
+
+

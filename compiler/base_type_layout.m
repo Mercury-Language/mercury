@@ -234,6 +234,7 @@
 :- pred base_type_layout__construct_pseudo_type_info(type, rval, int, int).
 :- mode base_type_layout__construct_pseudo_type_info(in, out, in, out) is det.
 
+
 :- implementation.
 
 :- import_module hlds_data, hlds_pred, hlds_out, type_util.
