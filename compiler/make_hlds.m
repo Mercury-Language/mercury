@@ -5452,7 +5452,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, VarSet0,
 			FieldValueTerm = RHSTerm
 		}
 	->
-		{ parse_field_name_list(FieldNameTerm, MaybeFieldNames) },
+		{ parse_field_list(FieldNameTerm, MaybeFieldNames) },
 		(
 			{ MaybeFieldNames = ok(FieldNames) },
 			{ ArgTerms = [FieldValueTerm, TermInputTerm,
@@ -5503,7 +5503,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, VarSet0,
 	).
 
 :- pred transform_dcg_record_syntax_2(field_access_type,
-		list(ctor_field_name), list(prog_term), prog_context,
+		field_list, list(prog_term), prog_context,
 		prog_varset, hlds_goal, prog_varset,
 		transform_info, transform_info, io__state, io__state).
 :- mode transform_dcg_record_syntax_2(in, in, in, in, in, out, out,
@@ -5518,7 +5518,8 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 			expand_set_field_function_call(Context, explicit, [],
 				FieldNames, FieldValueVar, TermInputVar,
 				TermOutputVar, VarSet1, VarSet2, Functor,
-				InnermostFunctor - InnermostSubContext, Goal0),
+				InnermostFunctor - InnermostSubContext, Goal0,
+				Info0, Info1, IO0, IO1),
 
 
 			FieldArgNumber = 2,
@@ -5545,13 +5546,14 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 			],
 			insert_arg_unifications_with_supplied_contexts(ArgVars,
 				ArgTerms, ArgContexts, Context, Goal0, VarSet2,
-				Goal, VarSet, Info0, Info, IO0, IO)
+				Goal, VarSet, Info1, Info, IO1, IO)
 		;
 			AccessType = get,
 			expand_dcg_field_extraction_goal(Context, explicit,
 				[], FieldNames, FieldValueVar, TermInputVar,
 				TermOutputVar, VarSet1, VarSet2, Functor,
-				InnermostFunctor - _InnerSubContext, Goal0),
+				InnermostFunctor - _InnerSubContext, Goal0,
+				Info0, Info1, IO0, IO1),
 			InputTermArgNumber = 1,
 			InputTermArgContext = functor(Functor, explicit, []),
 
@@ -5576,7 +5578,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 			],
 			insert_arg_unifications_with_supplied_contexts(ArgVars,
 				ArgTerms, ArgContexts, Context, Goal0, VarSet2,
-				Goal, VarSet, Info0, Info, IO0, IO)
+				Goal, VarSet, Info1, Info, IO1, IO)
 		)
 	;
 		error("make_hlds__do_transform_dcg_record_syntax")
@@ -5594,69 +5596,85 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 	%
 :- pred expand_set_field_function_call(prog_context,
 		unify_main_context, unify_sub_contexts,
-		list(ctor_field_name), prog_var, prog_var,
+		field_list, prog_var, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), hlds_goal).
+		pair(cons_id, unify_sub_contexts), hlds_goal,
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_set_field_function_call(in, in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
 expand_set_field_function_call(Context, MainContext, SubContext0,
 		FieldNames, FieldValueVar, TermInputVar,
 		TermOutputVar, VarSet0, VarSet,
-		Functor, FieldSubContext, Goal) :-
+		Functor, FieldSubContext, Goal, Info0, Info) -->
 	expand_set_field_function_call_2(Context, MainContext,
 		SubContext0, FieldNames, FieldValueVar, TermInputVar,
 		TermOutputVar, VarSet0, VarSet,
-		Functor, FieldSubContext, Goals),
-	wrap_field_access_goals(Context, Goals, Goal).
+		Functor, FieldSubContext, Goals, Info0, Info),
+	{ wrap_field_access_goals(Context, Goals, Goal) }.
 
 :- pred expand_set_field_function_call_2(prog_context,
 		unify_main_context, unify_sub_contexts,
-		list(ctor_field_name), prog_var, prog_var,
+		field_list, prog_var, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), list(hlds_goal)).
+		pair(cons_id, unify_sub_contexts), list(hlds_goal),
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_set_field_function_call_2(in, in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
-expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _) :-
-	error("expand_set_field_function_call_2: empty list of field names").
+expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _, _, _) -->
+	{ error(
+	"expand_set_field_function_call_2: empty list of field names") }.
 expand_set_field_function_call_2(Context, MainContext, SubContext0,
-		[FieldName | FieldNames], FieldValueVar, TermInputVar,
-		TermOutputVar, VarSet0, VarSet, Functor, FieldSubContext,
-		Goals) :-
-	( FieldNames = [_|_] ->
-		varset__new_var(VarSet0, SubTermInputVar, VarSet1),
-		varset__new_var(VarSet1, SubTermOutputVar, VarSet2),
-
-		construct_field_access_function_call(set, Context,
+		[FieldName - FieldArgs | FieldNames], FieldValueVar,
+		TermInputVar, TermOutputVar, VarSet0, VarSet, Functor,
+		FieldSubContext, Goals, Info0, Info) -->
+	{ make_fresh_arg_vars(FieldArgs, VarSet0, FieldArgVars, VarSet1) },
+	( { FieldNames = [_|_] } ->
+		{ varset__new_var(VarSet1, SubTermInputVar, VarSet2) },
+		{ varset__new_var(VarSet2, SubTermOutputVar, VarSet3) },
+		{ SetArgs = list__append(FieldArgVars,
+				[TermInputVar, SubTermOutputVar]) },
+		{ construct_field_access_function_call(set, Context,
 			MainContext, SubContext0, FieldName,
-			TermOutputVar, [TermInputVar, SubTermOutputVar],
-			Functor, UpdateGoal),
+			TermOutputVar, SetArgs,
+			Functor, UpdateGoal) },
 
 		% extract the field containing the field to update.
-		construct_field_access_function_call(get, Context, MainContext,
-			SubContext0, FieldName, SubTermInputVar,
-			[TermInputVar], _, GetSubFieldGoal),
+		{ construct_field_access_function_call(get, Context,
+			MainContext, SubContext0, FieldName, SubTermInputVar,
+			list__append(FieldArgVars, [TermInputVar]), _,
+			GetSubFieldGoal) },
 
 		% recursively update the field.
-		SubTermInputArgNumber = 2,
-		TermInputContext = Functor - SubTermInputArgNumber,
-		SubContext = [TermInputContext | SubContext0],
+		{ SubTermInputArgNumber = 2 + list__length(FieldArgs) },
+		{ TermInputContext = Functor - SubTermInputArgNumber },
+		{ SubContext = [TermInputContext | SubContext0] },
 		expand_set_field_function_call_2(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, SubTermInputVar,
-			SubTermOutputVar, VarSet2, VarSet, _,
-			FieldSubContext, Goals0),
+			SubTermOutputVar, VarSet3, VarSet4, _,
+			FieldSubContext, Goals0, Info0, Info1),
 
-		list__append([GetSubFieldGoal | Goals0], [UpdateGoal], Goals)
+		{ list__append([GetSubFieldGoal | Goals0],
+			[UpdateGoal], Goals1) }
 	;
-		VarSet = VarSet0,
-		construct_field_access_function_call(set, Context,
-			MainContext, SubContext0, FieldName,
-			TermOutputVar, [TermInputVar, FieldValueVar],
-			Functor, Goal),
-		FieldSubContext = Functor - SubContext0,
-		Goals = [Goal]
-	).
+		{ VarSet4 = VarSet1 },
+		{ SetArgs = list__append(FieldArgVars,
+				[TermInputVar, FieldValueVar]) },
+		{ construct_field_access_function_call(set, Context,
+			MainContext, SubContext0, FieldName, TermOutputVar,
+			SetArgs, Functor, Goal) },
+		{ FieldSubContext = Functor - SubContext0 },
+		{ Info1 = Info0 },
+		{ Goals1 = [Goal] }
+
+	),
+	{ ArgContext = functor(Functor, MainContext, SubContext0) },
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals1, GoalInfo, Conj0) },
+	append_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
+		Conj0, VarSet4, Conj, VarSet, Info1, Info),
+	{ goal_to_conj_list(Conj, Goals) }.
 
 	% Expand a field extraction goal into a list of goals which
 	% each get one level of the structure.
@@ -5671,26 +5689,28 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
 	%	ModuleName = V_2 ^ module_name.
 	%
 :- pred expand_dcg_field_extraction_goal(prog_context, unify_main_context,
-		unify_sub_contexts, list(ctor_field_name), prog_var, prog_var,
+		unify_sub_contexts, field_list, prog_var, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), hlds_goal).
+		pair(cons_id, unify_sub_contexts), hlds_goal,
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_dcg_field_extraction_goal(in, in, in, in, in,
-		in, in, in, out, out, out, out) is det.
+		in, in, in, out, out, out, out, in, out, di, uo) is det.
 
 expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 		FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goal) :-
+		VarSet0, VarSet, Functor, FieldSubContext,
+		Goal, Info0, Info) -->
 	% unify the DCG input and output variables
-	create_atomic_unification(TermOutputVar, var(TermInputVar),
-			Context, MainContext, SubContext, UnifyDCG),
+	{ create_atomic_unification(TermOutputVar, var(TermInputVar),
+			Context, MainContext, SubContext, UnifyDCG) },
 
 	% process the access function as a get function on
 	% the output DCG variable
 	expand_get_field_function_call_2(Context, MainContext, SubContext,
-		FieldNames, FieldValueVar, TermOutputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goals1),
-	Goals = [UnifyDCG | Goals1],
-	wrap_field_access_goals(Context, Goals, Goal).
+		FieldNames, FieldValueVar, TermOutputVar, VarSet0, VarSet,
+		Functor, FieldSubContext, Goals1, Info0, Info),
+	{ Goals = [UnifyDCG | Goals1] },
+	{ wrap_field_access_goals(Context, Goals, Goal) }.
 	
 	% Expand a field extraction function call into a list of goals which
 	% each get one level of the structure.
@@ -5703,54 +5723,68 @@ expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 	%	ModuleName = V_2 ^ module_name.
 	%
 :- pred expand_get_field_function_call(prog_context, unify_main_context,
-		unify_sub_contexts, list(ctor_field_name), prog_var,
+		unify_sub_contexts, field_list, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), hlds_goal).
+		pair(cons_id, unify_sub_contexts), hlds_goal,
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_get_field_function_call(in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
 expand_get_field_function_call(Context, MainContext, SubContext0,
-		FieldNames, FieldValueVar, TermInputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goal) :-
+		FieldNames, FieldValueVar, TermInputVar, VarSet0, VarSet,
+		Functor, FieldSubContext, Goal, Info0, Info) -->
 	expand_get_field_function_call_2(Context, MainContext, SubContext0,
 		FieldNames, FieldValueVar, TermInputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goals),
-	wrap_field_access_goals(Context, Goals, Goal).
+		VarSet0, VarSet, Functor, FieldSubContext, Goals, Info0, Info),
+	{ wrap_field_access_goals(Context, Goals, Goal) }.
 
 :- pred expand_get_field_function_call_2(prog_context, unify_main_context,
-		unify_sub_contexts, list(ctor_field_name), prog_var,
+		unify_sub_contexts, field_list, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), list(hlds_goal)).
+		pair(cons_id, unify_sub_contexts), list(hlds_goal),
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_get_field_function_call_2(in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
-expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _) :-
-	error("expand_get_field_function_call_2: empty list of field names").
+expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _, _) -->
+	{ error(
+	"expand_get_field_function_call_2: empty list of field names") }.
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
-		[FieldName | FieldNames], FieldValueVar, TermInputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goals) :-
-	( FieldNames = [_|_] ->
-		varset__new_var(VarSet0, SubTermInputVar, VarSet1),
-		construct_field_access_function_call(get, Context, MainContext,
-			SubContext0, FieldName, SubTermInputVar,
-			[TermInputVar], Functor, Goal),
+		[FieldName - FieldArgs | FieldNames], FieldValueVar,
+		TermInputVar, VarSet0, VarSet, Functor,
+		FieldSubContext, Goals, Info0, Info) -->
+	{ make_fresh_arg_vars(FieldArgs, VarSet0, FieldArgVars, VarSet1) },
+	{ GetArgVars = list__append(FieldArgVars, [TermInputVar]) },
+	( { FieldNames = [_|_] } ->
+		{ varset__new_var(VarSet1, SubTermInputVar, VarSet2) },
+		{ construct_field_access_function_call(get, Context,
+			MainContext, SubContext0, FieldName, SubTermInputVar,
+			GetArgVars, Functor, Goal) },
 
 		% recursively extract until we run out of field names
-		TermInputArgNumber = 1,
-		TermInputContext = Functor - TermInputArgNumber,
-		SubContext = [TermInputContext | SubContext0],
+		{ TermInputArgNumber = 1 + list__length(FieldArgVars) },
+		{ TermInputContext = Functor - TermInputArgNumber },
+		{ SubContext = [TermInputContext | SubContext0] },
 		expand_get_field_function_call_2(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, SubTermInputVar,
-			VarSet1, VarSet, _, FieldSubContext, Goals1),
-		Goals = [Goal | Goals1]
+			VarSet2, VarSet3, _, FieldSubContext,
+			Goals1, Info0, Info1),
+		{ Goals2 = [Goal | Goals1] }
 	;
-		VarSet = VarSet0,
-		FieldSubContext = Functor - SubContext0,
-		construct_field_access_function_call(get, Context, MainContext,
-			SubContext0, FieldName, FieldValueVar,
-			[TermInputVar], Functor, Goal),
-		Goals = [Goal]
-	).
+		{ VarSet3 = VarSet1 },
+		{ FieldSubContext = Functor - SubContext0 },
+		{ construct_field_access_function_call(get, Context,
+			MainContext, SubContext0, FieldName, FieldValueVar,
+			GetArgVars, Functor, Goal) },
+		{ Info1 = Info0 },
+		{ Goals2 = [Goal] }
+	),
+	{ ArgContext = functor(Functor, MainContext, SubContext0) },
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals2, GoalInfo, Conj0) },
+	append_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
+		Conj0, VarSet3, Conj, VarSet, Info1, Info),
+	{ goal_to_conj_list(Conj, Goals) }.
 
 :- pred construct_field_access_function_call(field_access_type, prog_context,
 		unify_main_context, unify_sub_contexts, ctor_field_name,
@@ -5785,11 +5819,13 @@ wrap_field_access_goals(Context, Goals, Goal) :-
 		Goal = some([], can_remove, Conj) - GoalInfo
 	).
 
-:- pred parse_field_name_list(prog_term,
-		maybe1(list(ctor_field_name), prog_var_type)).
-:- mode parse_field_name_list(in, out) is det.
+:- type field_list == assoc_list(ctor_field_name, list(prog_term)).
 
-parse_field_name_list(Term, MaybeFieldNames) :-
+:- pred parse_field_list(prog_term,
+		maybe1(field_list, prog_var_type)).
+:- mode parse_field_list(in, out) is det.
+
+parse_field_list(Term, MaybeFieldNames) :-
 	(
 		Term = term__functor(term__atom("^"),
 			[FieldNameTerm, OtherFieldNamesTerm], _)
@@ -5797,9 +5833,9 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 		(
 			parse_qualified_term(FieldNameTerm, FieldNameTerm,
 				"field name", Result),
-			Result = ok(FieldName, [])
+			Result = ok(FieldName, Args)
 		->
-			parse_field_name_list(OtherFieldNamesTerm,
+			parse_field_list(OtherFieldNamesTerm,
 				MaybeFieldNames1),
 			(
 				MaybeFieldNames1 = error(_, _),
@@ -5807,7 +5843,7 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 			;
 				MaybeFieldNames1 = ok(FieldNames1),
 				MaybeFieldNames =
-					ok([FieldName | FieldNames1])
+					ok([FieldName - Args | FieldNames1])
 			)
 		;
 			MaybeFieldNames = error("expected field name",
@@ -5816,9 +5852,9 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 	;
 		(
 			parse_qualified_term(Term, Term, "field name", Result),
-			Result = ok(FieldName, [])
+			Result = ok(FieldName, Args)
 		->
-			MaybeFieldNames = ok([FieldName])
+			MaybeFieldNames = ok([FieldName - Args])
 		;	
 			MaybeFieldNames = error("expected field name",
 				Term)
@@ -6832,27 +6868,27 @@ unravel_unification(term__variable(X), RHS,
 		% handle field extraction expressions
 		{ F = term__atom("^") },
 		{ Args = [InputTerm, FieldNameTerm] },
-		{ parse_field_name_list(FieldNameTerm, FieldNameResult) },
+		{ parse_field_list(FieldNameTerm, FieldNameResult) },
 		{ FieldNameResult = ok(FieldNames) }
 	->
 		check_expr_purity(Purity, Context, Info0, Info1),
 		{ make_fresh_arg_var(InputTerm, InputTermVar, [],
 			VarSet0, VarSet1) },
-		{ expand_get_field_function_call(Context, MainContext,
+		expand_get_field_function_call(Context, MainContext,
 			SubContext, FieldNames, X, InputTermVar,
-			VarSet1, VarSet2, Functor, _, Goal0) },
+			VarSet1, VarSet2, Functor, _, Goal0, Info1, Info2),
 
 		{ ArgContext = functor(Functor, MainContext, SubContext) },
 		append_arg_unifications([InputTermVar], [InputTerm],
 			FunctorContext, ArgContext, Goal0,
-			VarSet2, Goal, VarSet, Info1, Info)
+			VarSet2, Goal, VarSet, Info2, Info)
 	;
 		% handle field update expressions
 		{ F = term__atom(":=") },
 		{ Args = [FieldDescrTerm, FieldValueTerm] },
 		{ FieldDescrTerm = term__functor(term__atom("^"),
 			[InputTerm, FieldNameTerm], _) },
-		{ parse_field_name_list(FieldNameTerm, FieldNameResult) },
+		{ parse_field_list(FieldNameTerm, FieldNameResult) },
 		{ FieldNameResult = ok(FieldNames) }
 	->
 		check_expr_purity(Purity, Context, Info0, Info1),
@@ -6861,23 +6897,23 @@ unravel_unification(term__variable(X), RHS,
 		{ make_fresh_arg_var(FieldValueTerm, FieldValueVar,
 			[InputTermVar], VarSet1, VarSet2) },
 
-		{ expand_set_field_function_call(Context, MainContext,
+		expand_set_field_function_call(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, InputTermVar, X,
 			VarSet2, VarSet3, Functor,
-			InnerFunctor - FieldSubContext, Goal0) },
+			InnerFunctor - FieldSubContext, Goal0, Info1, Info2),
 
 		{ TermArgContext = functor(Functor, MainContext, SubContext) },
 		{ TermArgNumber = 1 },
 		append_arg_unification(InputTermVar, InputTerm,
 			FunctorContext, TermArgContext, TermArgNumber,
-			TermUnifyConj, VarSet3, VarSet4, Info1, Info2),
+			TermUnifyConj, VarSet3, VarSet4, Info2, Info3),
 
 		{ FieldArgContext = functor(InnerFunctor,
 			MainContext, FieldSubContext) },
 		{ FieldArgNumber = 2 },
 		append_arg_unification(FieldValueVar, FieldValueTerm,
 			FunctorContext, FieldArgContext, FieldArgNumber,
-			FieldUnifyConj, VarSet4, VarSet, Info2, Info),
+			FieldUnifyConj, VarSet4, VarSet, Info3, Info),
 
 		{ Goal0 = _ - GoalInfo0 },
 		{ goal_to_conj_list(Goal0, GoalList0) },

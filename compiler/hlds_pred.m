@@ -2230,11 +2230,11 @@ field_update_function_args(Args, TermInputArg, FieldArg) :-
 
 field_access_function_name(get, FieldName, FieldName).
 field_access_function_name(set, FieldName, FuncName) :-
-	add_sym_name_suffix(FieldName, ":=", FuncName).
+	add_sym_name_suffix(FieldName, " :=", FuncName).
 
 is_field_access_function_name(ModuleInfo, FuncName, Arity,
 		AccessType, FieldName) :-
-	( remove_sym_name_suffix(FuncName, ":=", FieldName0) ->
+	( remove_sym_name_suffix(FuncName, " :=", FieldName0) ->
 		Arity = 2,
 		AccessType = set,
 		FieldName = FieldName0

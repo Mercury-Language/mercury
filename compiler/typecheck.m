@@ -760,7 +760,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	%
 	% For a field access function for which the user has supplied
 	% a declaration but no clauses, add a clause
-	% 'foo:='(X, Y) = 'foo:='(X, Y).
+	% 'foo :='(X, Y) = 'foo :='(X, Y).
 	% As for the default clauses added for builtins, this is not a
 	% recursive call -- post_typecheck.m will expand the body into
 	% unifications.
@@ -2804,7 +2804,7 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	% builtin_field_access_function_type(TypeCheckInfo, Functor,
 	%	Arity, ConsTypeInfos):
 	% Succeed if Functor is the name of one the automatically
-	% generated field access functions (fieldname, '<fieldname>:=').
+	% generated field access functions (fieldname, '<fieldname> :=').
 :- pred builtin_field_access_function_type(typecheck_info, cons_id, arity,
 		list(cons_type_info), list(invalid_field_update)).
 :- mode builtin_field_access_function_type(typecheck_info_ui, in, in,
@@ -2924,7 +2924,7 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 	AccessType = set,
 
 	%
-	% A `'field:='/2' function has no existentially
+	% A `'field :='/2' function has no existentially
 	% quantified type variables - the values of all
 	% type variables in the field are supplied by
 	% the caller, all the others are supplied by
@@ -3019,7 +3019,7 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 			% Rename the class constraints, projecting
 			% the constraints onto the set of type variables
 			% occuring in the types of the arguments of
-			% the call to `'field:='/2'. 
+			% the call to `'field :='/2'. 
 			%
 			term__vars_list([FunctorType, FieldType],
 				CallTVars0),

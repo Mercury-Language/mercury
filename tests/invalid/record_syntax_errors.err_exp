@@ -24,13 +24,13 @@ record_syntax_errors.m:014:   predicate `record_syntax_errors:dcg_syntax/2'.
 record_syntax_errors.m:016: Error: no clauses for
 record_syntax_errors.m:016:   predicate `record_syntax_errors:dcg_syntax_2/2'.
 record_syntax_errors.m:042: In clause for predicate `record_syntax_errors:construct_exist_cons/1':
-record_syntax_errors.m:042:   error: invalid field update `field2:=/2':
+record_syntax_errors.m:042:   error: invalid field update `field2 :=/2':
 record_syntax_errors.m:005:   existentially quantified type variable `T' occurs
 record_syntax_errors.m:005:   in the types of field `field2' and some other field
 record_syntax_errors.m:005:   in definition of constructor `record_syntax_errors:exist_cons/3 '.
 record_syntax_errors.m:046: In clause for predicate `record_syntax_errors:arg_type_error/1':
-record_syntax_errors.m:046:   in argument 2 of functor `field6:=/2':
-record_syntax_errors.m:046:   in argument 2 of functor `field7:=/2':
+record_syntax_errors.m:046:   in argument 2 of functor `field6 :=/2':
+record_syntax_errors.m:046:   in argument 2 of functor `field7 :=/2':
 record_syntax_errors.m:046:   type error in unification of argument
 record_syntax_errors.m:046:   and constant `"invalid value"'.
 record_syntax_errors.m:046:   argument has type `int',
@@ -49,10 +49,10 @@ record_syntax_errors.m:046:   constant `"invalid value"' has type `string'.
 	V_11 :: int
 
 record_syntax_errors.m:050: In clause for predicate `record_syntax_errors:term_type_error/1':
-record_syntax_errors.m:050:   in argument 2 of functor `field6:=/2':
+record_syntax_errors.m:050:   in argument 2 of functor `field6 :=/2':
 record_syntax_errors.m:050:   in unification of argument
-record_syntax_errors.m:050:   and term `'field4:='(V_5, V_4)':
-record_syntax_errors.m:050:   type error in argument(s) of functor `field4:=/2'.
+record_syntax_errors.m:050:   and term `'field4 :='(V_5, V_4)':
+record_syntax_errors.m:050:   type error in argument(s) of functor `field4 :=/2'.
 record_syntax_errors.m:050:   Argument 1 has type `(record_syntax_errors:cons2)',
 record_syntax_errors.m:050:   expected type was `(record_syntax_errors:cons)'.
 record_syntax_errors.m:023: Inferred :- func field8((record_syntax_errors:cons2)) = int.

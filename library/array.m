@@ -188,6 +188,19 @@
 :- mode array__semidet_slow_set(array_ui, in, in, array_uo) is semidet.
 :- mode array__semidet_slow_set(in, in, in, array_uo) is semidet.
 
+	% Field selection for arrays.
+	% Array ^ elem(Index) = array__lookup(Array, Index).
+:- func array__elem(int, array(T)) = T.
+:- mode array__elem(in, array_ui) = out is det.
+:- mode array__elem(in, in) = out is det.
+
+	% Field update for arrays.
+	% (Array ^ elem(Index) := Value) = array__set(Array, Index, Value).
+:- func 'array__elem :='(int, array(T), T) = array(T).
+:- mode 'array__elem :='(in, array_ui, in) = array_uo is det.
+
+%-----------------------------------------------------------------------------%
+
 	% array__copy(Array0, Array):
 	% Makes a new unique copy of an array.
 :- pred array__copy(array(T), array(T)).
@@ -892,3 +905,6 @@ array__map(F, A1) = A2 :-
 array_compare(A1, A2) = C :-
 	array_compare(C, A1, A2).
 
+array__elem(Index, Array) = array__lookup(Array, Index).
+
+'array__elem :='(Index, Array, Value) = array__set(Array, Index, Value).

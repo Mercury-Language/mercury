@@ -331,6 +331,24 @@
 :- func map__det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode map__det_union(func(in, in) = out is semidet, in, in) = out is det.
 
+
+	% Field selection for maps.
+
+	% Map ^ elem(Key) = map__search(Map, Key).
+:- func map__elem(K, map(K, V)) = V is semidet.
+
+	% Map ^ det_elem(Key) = map__lookup(Map, Key).
+:- func map__det_elem(K, map(K, V)) = V. 
+
+
+	% Field update for maps.
+
+	% (Map ^ elem(Key) := Value) = map__set(Map, Key, Value).
+:- func 'map__elem :='(K, map(K, V), V) = map(K, V).
+
+	% (Map ^ elem(Key) := Value) = map__det_update(Map, Key, Value).
+:- func 'map__det_elem :='(K, map(K, V), V) = map(K, V).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -836,3 +854,11 @@ map__union(F, M1, M2) = M3 :-
 map__det_union(F, M1, M2) = M3 :-
 	P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
 	map__det_union(P, M1, M2, M3).
+
+map__elem(Key, Map) = map__search(Map, Key).
+
+map__det_elem(Key, Map) = map__lookup(Map, Key).
+
+'map__elem :='(Key, Map, Value) = map__set(Map, Key, Value).
+
+'map__det_elem :='(Key, Map, Value) = map__det_update(Map, Key, Value).

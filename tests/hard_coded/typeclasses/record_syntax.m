@@ -49,12 +49,12 @@
 
 :- func fst(my_pair(T, U)) = T.
 :- func snd(my_pair(T, U)) = U.
-:- func 'fst:='(my_pair(T, U), V) = my_pair(V, U).
-:- func 'snd:='(my_pair(T, U), V) = my_pair(T, V).
+:- func 'fst :='(my_pair(T, U), V) = my_pair(V, U).
+:- func 'snd :='(my_pair(T, U), V) = my_pair(T, V).
 
 :- implementation.
 
-:- import_module list.
+:- import_module list, map, std_util.
 
 :- type my_pair(T, U) ---> (fst::T) - (snd::U).
 
@@ -97,12 +97,17 @@ main -->
 
 	% Test taking the address of an update function
 	% for which a mode declaration has been supplied.
-	{ Pairs = list__map('fst:='(Pair), [4, 5, 6]) },
-	write_arg("'fst:=' [4,5,6]", Pairs),
+	{ Pairs = list__map('fst :='(Pair), [4, 5, 6]) },
+	write_arg("'fst :=' [4,5,6]", Pairs),
 
 	=(IO0),
 	{ dcg_syntax(IO0, IO, X, _) },
-	:=(IO).
+	:=(IO),
+	
+	{ Map0 = map__from_assoc_list(['a' - "a", 'b' - "b", 'd' - "D"]) },
+	write_arg("Map0 ^ det_elem('a')", Map0 ^ det_elem('a')),
+	{ Map = Map0 ^ elem('c') := "c" },
+	write_arg("Map ^ det_elem('c')", Map ^ det_elem('c')).
 
 
 :- instance has_size(int) where [
@@ -110,7 +115,7 @@ main -->
 	].
 
 :- instance has_size(string) where [
-		func(size/1) is length_of_string
+		func(size/1) is string__length
 	].
 
 :- instance has_size(char) where [
@@ -120,14 +125,6 @@ main -->
 :- instance has_size(type_and_size(T)) where [
 		func(size/1) is data_size
 	].
-
-:- func id(T) = T.
-id(T) = T.
-
-	% XXX this should be in the library.
-:- func length_of_string(string) = int.
-length_of_string(String) = Length :-
-	string__length(String, Length).	
 
 :- pred dcg_syntax(io__state::di, io__state::uo, foo::in, foo::out) is det.
 

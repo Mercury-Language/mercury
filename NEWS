@@ -14,6 +14,11 @@ Changes to the Mercury language:
   See the "Explicit type quantification" and "Variable scoping"
   sections of the language reference manual for details.
 
+* We've added support for tuple types, similar to those in most
+  other functional languages. Tuples use the syntax `{A, B, ...}'.
+  See the "Builtin types" section of the "Types" chapter of the
+  Mercury Language Reference Manual for details.
+
 * We've added support for record syntax, so that fields of
   constructors can be conveniently extracted and updated
   without writing lots of trivial access predicates.
@@ -23,17 +28,17 @@ Changes to the Mercury language:
   Note that the syntax has changed slightly since the version
   that appeared in the release of the day in early January 2000.
   `Value =^ field' is now the syntax for DCG field selection,
-  rather than `Value := ^ field'.
+  rather than `Value := ^ field'. Field update functions are
+  named 'field :=' rather than 'field:='. We also allow field
+  access functions to take extra arguments.
 
-* We've added support for tuple types, similar to those in most
-  other functional languages. Tuples use the syntax `{A, B, ...}'.
-  See the "Builtin types" section of the "Types" chapter of the
-  Mercury Language Reference Manual for details.
+* The behaviour of the Mercury parser (parser__read_term) applied
+  to terms with functor `{}/N' has been changed. The parser from
+  Mercury 0.9 parsed "{1, 2, 3}" as `{}(','(1, ','(2, 3)))'.
+  It is now parsed as `{}(1, 2, 3)'.
 
-* The behaviour of the parser__read_term applied to terms with
-  functor `{}/N' has been changed. The parser from Mercury 0.9
-  parsed "{1, 2, 3}" as `{}(','(1, ','(2, 3)))'. It is now
-  parsed as `{}(1, 2, 3)'.
+* The operator `^' is now used for record syntax, and cannot be
+  used for user-defined functions or constructors.
 
 * You can now declare functions by giving a determinism but without
   supplying the modes.  The default function modes will be assumed.
@@ -72,6 +77,13 @@ Changes to the standard library:
 * We've added function versions of std_util__solutions,
   std_util__solutions_set, std_util__aggregate, map__search,
   map__insert and map__update.
+
+* We've added functions to allow record syntax to be used
+  with some of the types in the standard library:
+	array__elem/2, 'array__elem :='/3,
+	bt_array__elem/2, 'bt_array__elem :='/3,
+	map__elem/2, 'map__elem :='/3,
+	map__det_elem/2, 'map__det_elem :='/3.
 
 * We've added a pretty printing module, `pprint', to the standard library.
 

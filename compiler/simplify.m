@@ -2089,7 +2089,8 @@ simplify_info_get_simplifications(SI, SI^simplifications).
 simplify_info_get_common_info(SI, SI^common_info).
 simplify_info_get_instmap(SI, SI^instmap).
 simplify_info_get_varset(SI, SI^varset).
-simplify_info_get_var_types(SI, SI^det_info^vartypes).
+simplify_info_get_var_types(SI, VarTypes) :-
+	det_info_get_vartypes(SI^det_info, VarTypes).
 simplify_info_requantify(SI) :-
 	SI^requantify = yes.
 simplify_info_recompute_atomic(SI) :-
@@ -2163,7 +2164,8 @@ simplify_info_set_simplifications(SI, Simp, SI^simplifications := Simp).
 simplify_info_set_instmap(SI, InstMap, SI^instmap := InstMap). 
 simplify_info_set_common_info(SI, Common, SI^common_info := Common). 
 simplify_info_set_varset(SI, VarSet, SI^varset := VarSet). 
-simplify_info_set_var_types(SI, VarTypes, SI^det_info^vartypes := VarTypes).
+simplify_info_set_var_types(SI, VarTypes, SI^det_info := DetInfo) :-
+	det_info_set_vartypes(SI ^ det_info, VarTypes, DetInfo).
 simplify_info_set_requantify(SI, SI^requantify := yes).
 simplify_info_set_recompute_atomic(SI, SI^recompute_atomic := yes).
 simplify_info_set_rerun_det(SI, SI^rerun_det := yes).

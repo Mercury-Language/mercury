@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -172,6 +172,14 @@
 	% the first occurrence is returned.
 :- pred bt_array__bsearch(bt_array(T), T, pred(T, T, comparison_result), int).
 :- mode bt_array__bsearch(in, in, pred(in, in, out) is det, out) is semidet.
+
+	% Field selection for arrays.
+	% Array ^ elem(Index) = bt_array__lookup(Array, Index).
+:- func bt_array__elem(int, bt_array(T)) = T.
+
+	% Field update for arrays.
+	% (Array ^ elem(Index) := Value) = bt_array__set(Array, Index, Value).
+:- func 'bt_array__elem :='(int, bt_array(T), T) = bt_array(T).
 
 %-----------------------------------------------------------------------------%
 
@@ -690,3 +698,6 @@ bt_array__to_list(BTA) = Xs :-
 bt_array__fetch_items(BTA, N1, N2) = Xs :-
 	bt_array__fetch_items(BTA, N1, N2, Xs).
 
+bt_array__elem(Index, Array) = bt_array__lookup(Array, Index).
+
+'bt_array__elem :='(Index, Array, Value) = bt_array__set(Array, Index, Value).
