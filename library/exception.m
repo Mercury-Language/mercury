@@ -507,13 +507,13 @@ wrap_exception(Exception, exception(Exception)).
 
 	void mercury__exception__builtin_throw_1_p_0(MR_Univ exception);
 	void mercury__exception__builtin_catch_model_det(
-		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Mercury_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
 		MR_Box *output);
 	bool mercury__exception__builtin_catch_model_semi(
-		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Mercury_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
 		MR_Box *output);
 	void mercury__exception__builtin_catch_model_non(
-		MR_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
+		MR_Mercury_Type_Info type_info, MR_Pred pred, MR_Pred handler_pred,
 		MR_Box *output,
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 		MR_NestedCont cont
@@ -530,7 +530,8 @@ wrap_exception(Exception, exception(Exception)).
 /*---------------------------------------------------------------------------*/
 
 static void
-ML_call_goal_det(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
+ML_call_goal_det(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result)
 {
 	typedef void FuncType(void *, MR_Box *);
 	FuncType *code = (FuncType *)
@@ -539,7 +540,8 @@ ML_call_goal_det(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
 }
 
 static bool
-ML_call_goal_semi(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
+ML_call_goal_semi(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result)
 {
 	typedef bool FuncType(void *, MR_Box *);
 	FuncType *code = (FuncType *)
@@ -550,8 +552,8 @@ ML_call_goal_semi(MR_Type_Info type_info, MR_Pred closure, MR_Box *result)
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 
 static void
-ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
-	MR_NestedCont cont)
+ML_call_goal_non(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result, MR_NestedCont cont)
 {
 	typedef void FuncType(void *, MR_Box *, MR_NestedCont);
 	FuncType *code = (FuncType *)
@@ -562,8 +564,8 @@ ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
 #else
 
 static void
-ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
-	MR_Cont cont, void *cont_env)
+ML_call_goal_non(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Box *result, MR_Cont cont, void *cont_env)
 {
 	typedef void FuncType(void *, MR_Box *, MR_Cont, void *);
 	FuncType *code = (FuncType *)
@@ -576,8 +578,8 @@ ML_call_goal_non(MR_Type_Info type_info, MR_Pred closure, MR_Box *result,
 /*---------------------------------------------------------------------------*/
 
 static void
-ML_call_handler_det(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
-	MR_Box *result)
+ML_call_handler_det(MR_Mercury_Type_Info type_info,
+	MR_Pred closure, MR_Univ exception, MR_Box *result)
 {
 	typedef void FuncType(void *, MR_Box, MR_Box *);
 	FuncType *code = (FuncType *)
@@ -615,7 +617,7 @@ mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 }
 
 void
-mercury__exception__builtin_catch_model_det(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
 	ML_ExceptionHandler this_handler;
@@ -643,7 +645,7 @@ mercury__exception__builtin_catch_model_det(MR_Type_Info type_info,
 }
 
 bool
-mercury__exception__builtin_catch_model_semi(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output)
 {
 	ML_ExceptionHandler this_handler;
@@ -675,7 +677,7 @@ mercury__exception__builtin_catch_model_semi(MR_Type_Info type_info,
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 
 void
-mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
 	MR_NestedCont cont)
 {
@@ -755,7 +757,7 @@ ML_catch_success_cont(void *env_ptr) {
 }
 
 void
-mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
+mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	MR_Pred pred, MR_Pred handler_pred, MR_Box *output,
 	MR_Cont cont, void *cont_env)
 {
