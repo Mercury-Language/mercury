@@ -438,7 +438,7 @@ call(G0, X, Y, Z) :-
 	G =.. L,
 	call(G).
 
-char_to_int(C, N) :-
+char__to_int(C, N) :-
 	atom_chars(C, [N]).
 
 
