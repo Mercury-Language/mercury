@@ -63,7 +63,7 @@
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
-:- type read_term ---> eof ; term(varset, term).
+:- type read_term ---> eof ; error(string) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
 
 %	io__read_term(Result, IO0, IO1).
@@ -196,9 +196,9 @@ io__told -->
 :- io__read_term(_, IO0, _) when IO0.
 io__read_term(Result) -->
 	{
-		getTokenList(Tokens0),
-		convert_tokens(Tokens0, Tokens),
-		treadTerm(Tokens, Term0, NameList, VarList),
+	    getTokenList(Tokens0),
+	    convert_tokens(Tokens0, Tokens),
+	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
 		expandTerm(Term0, Term1),
 		( nonvar(Term1), eof(Term1) ->
 			Result = eof
@@ -206,6 +206,11 @@ io__read_term(Result) -->
 			convert_term(Term1, NameList, VarList, VarSet, Term),
 			Result = term(VarSet, Term)
 		)
+	    ;
+		% NU-Prolog just dumps to error message to stderr.
+		% This is the best we can do:
+		Result = error("syntax error")
+	    )
 	},
 	io__update_state.
 
@@ -224,6 +229,8 @@ convert_tokens(Tok0.Toks0, Toks) :-
 	convert_tokens(Toks0, Toks1).
 
 %-----------------------------------------------------------------------------%
+
+% XXX nested module
 
 :- module varmap.
 :- export_pred varmap__init, varmap__set_id, varmap__lookup.
