@@ -1,4 +1,7 @@
 /*
+** vim:sw=4 ts=4 expandtab
+*/
+/*
 ** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -40,36 +43,36 @@
 
 #ifdef MR_HIGHLEVEL_CODE
 
-void		MR_garbage_collect(void);
-static void	traverse_stack(struct MR_StackChain *top);
+void            MR_garbage_collect(void);
+static void     traverse_stack(struct MR_StackChain *top);
 
 #else /* !MR_HIGHLEVEL_CODE */
 
 MR_define_extern_entry(mercury__garbage_collect_0_0);
 
-static	void	garbage_collect(MR_Code *saved_success,
-			MR_Word *stack_pointer,
-			MR_Word *max_frame, MR_Word *current_frame);
-static	void	copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
-			MR_bool copy_regs, MR_Word *stack_pointer,
-			MR_Word *current_frame);
-static	void	copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-			MR_bool copy_regs, MR_Word *stack_pointer,
-			MR_Word *current_frame);
+static  void    garbage_collect(MR_Code *saved_success,
+                        MR_Word *stack_pointer,
+                        MR_Word *max_frame, MR_Word *current_frame);
+static  void    copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
+                        MR_bool copy_regs, MR_Word *stack_pointer,
+                        MR_Word *current_frame);
+static  void    copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
+                        MR_bool copy_regs, MR_Word *stack_pointer,
+                        MR_Word *current_frame);
 
 #endif
 
-static	void	garbage_collect_roots(void);
+static  void    garbage_collect_roots(void);
 
 /*
 ** Global variables (only used in this module, however).
 */
 
 #ifndef MR_HIGHLEVEL_CODE
-static MR_Code	*saved_success = NULL;
+static MR_Code  *saved_success = NULL;
 static MR_Code **saved_success_location = NULL;
-static MR_bool	gc_scheduled = MR_FALSE;
-static MR_bool	gc_running = MR_FALSE;
+static MR_bool  gc_scheduled = MR_FALSE;
+static MR_bool  gc_running = MR_FALSE;
 #endif
 
 /* The list of roots */
@@ -85,20 +88,20 @@ static MR_RootList last_root = NULL;
 static void
 init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
 {
-    size_t			    heap_size_in_words;
-    size_t			    num_words_for_bitmap;
-    size_t			    num_bytes_for_bitmap;
-    static size_t		    prev_num_bytes_for_bitmap;
+    size_t                          heap_size_in_words;
+    size_t                          num_words_for_bitmap;
+    size_t                          num_bytes_for_bitmap;
+    static size_t                   prev_num_bytes_for_bitmap;
 
     heap_size_in_words = old_hp - old_heap->min;
     num_words_for_bitmap = (heap_size_in_words + MR_WORDBITS - 1) / MR_WORDBITS;
     num_bytes_for_bitmap = num_words_for_bitmap * sizeof(MR_Word);
     if (MR_has_forwarding_pointer == NULL
-	|| num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
+        || num_bytes_for_bitmap > prev_num_bytes_for_bitmap)
     {
-	MR_has_forwarding_pointer = MR_realloc(MR_has_forwarding_pointer,
-					num_bytes_for_bitmap);
-	prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
+        MR_has_forwarding_pointer =
+                MR_realloc(MR_has_forwarding_pointer, num_bytes_for_bitmap);
+        prev_num_bytes_for_bitmap = num_bytes_for_bitmap;
     }
     memset(MR_has_forwarding_pointer, 0, num_bytes_for_bitmap);
 }
@@ -107,9 +110,9 @@ init_forwarding_pointer_bitmap(const MR_MemoryZone *old_heap, MR_Word *old_hp)
 
 /*
 ** Perform a garbage collection:
-**	swap the two heaps;
-**	traverse the roots, copying data from the old heap to the new heap;
-**	reset the old heap;
+**      swap the two heaps;
+**      traverse the roots, copying data from the old heap to the new heap;
+**      reset the old heap;
 **
 ** This is the version for the MLDS back-end.  Beware that there is some
 ** code duplication with the version for the LLDS back-end, which is below.
@@ -130,9 +133,9 @@ MR_garbage_collect(void)
         fprintf(stderr, "\ngarbage_collect() called.\n");
 
         fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
-            (long) old_heap->min, (long) old_heap->hardmax);
-	fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
-            (long) new_heap->min, (long) new_heap->hardmax);
+                (long) old_heap->min, (long) old_heap->hardmax);
+        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
+                (long) new_heap->min, (long) new_heap->hardmax);
 
         fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
     }
@@ -183,21 +186,21 @@ MR_garbage_collect(void)
         fprintf(stderr, "Clearing old heap:\n");
 
         {
-	    MR_Word *tmp_hp;
+            MR_Word *tmp_hp;
 
-	    for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
-		*tmp_hp = 0xDEADBEAF;
-	    }
+            for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
+                *tmp_hp = 0xDEADBEAF;
+            }
         }
 
         fprintf(stderr, "AFTER:\n");
 
-    	/* XXX save this, it appears to get clobbered */
+        /* XXX save this, it appears to get clobbered */
         new_hp = MR_virtual_hp;
 
         MR_agc_dump_roots(root_list);
 
-    	/* XXX restore this, it appears to get clobbered */
+        /* XXX restore this, it appears to get clobbered */
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
         MR_virtual_hp = new_hp;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
@@ -216,31 +219,31 @@ MR_garbage_collect(void)
 static void
 traverse_stack(struct MR_StackChain *stack_chain)
 {
-	/*
-	** The trace() routines themselves should not allocate heap space;
-	** they should use stack allocation.
-	*/
-	while (stack_chain != NULL) {
-		(*stack_chain->trace)(stack_chain);
-		stack_chain = stack_chain->prev;
-	}
+    /*
+    ** The trace() routines themselves should not allocate heap space;
+    ** they should use stack allocation.
+    */
+    while (stack_chain != NULL) {
+        (*stack_chain->trace)(stack_chain);
+        stack_chain = stack_chain->prev;
+    }
 }
 
 #else /* !MR_HIGHLEVEL_CODE */
 
 /*
 ** MR_schedule_agc:
-** 	Schedule garbage collection.  
-** 	
-** 	We do this by replacing the succip that is saved in
-** 	the current procedure's stack frame with the address
-** 	of the garbage collector.  When the current procedure
-** 	returns, it will call the garbage collectior.
+**      Schedule garbage collection.  
+**      
+**      We do this by replacing the succip that is saved in
+**      the current procedure's stack frame with the address
+**      of the garbage collector.  When the current procedure
+**      returns, it will call the garbage collectior.
 **
-** 	(We go to this trouble because then the stacks will
-** 	be in a known state -- each stack frame is described
-** 	by information associated with the continuation label
-** 	that the code will return to).
+**      (We go to this trouble because then the stacks will
+**      be in a known state -- each stack frame is described
+**      by information associated with the continuation label
+**      that the code will return to).
 */
 
 /*
@@ -250,153 +253,150 @@ traverse_stack(struct MR_StackChain *stack_chain)
 **/
 
 void
-MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal, 
-	MR_Word *curfr_at_signal)
+MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
+                MR_Word *curfr_at_signal)
 {
-	MR_Label_Layout		*layout;
-	const MR_Proc_Layout	*proc_layout;
-	MR_Long_Lval_Type	type;
-	MR_Long_Lval		location;
-	const char		*reason;
-	MR_Entry		*entry_label = NULL;
-	int			number;
-	MR_Determinism		determinism;
+    MR_Label_Layout *layout;
+    const MR_Proc_Layout *proc_layout;
+    MR_Long_Lval_Type type;
+    MR_Long_Lval location;
+    const char *reason;
+    MR_Entry *entry_label = NULL;
+    int number;
+    MR_Determinism determinism;
 
-	if (gc_running) {
-		/*
-		** This is bad news, but it can happen if you don't
-		** collect any garbage.  We should try to avoid it by
-		** resizing the heaps so they don't become too full.
-		**
-		** It might also be worthwhile eventually turning off
-		** the redzone in the destination heap (but only when
-		** the large problem of handling collections with little
-		** garbage has been solved).
-		*/
+    if (gc_running) {
+        /*
+        ** This is bad news, but it can happen if you don't
+        ** collect any garbage.  We should try to avoid it by
+        ** resizing the heaps so they don't become too full.
+        **
+        ** It might also be worthwhile eventually turning off
+        ** the redzone in the destination heap (but only when
+        ** the large problem of handling collections with little
+        ** garbage has been solved).
+        */
 
-		fprintf(stderr, "Mercury runtime: Garbage collection scheduled"
-				" while collector is already running\n");
-		fprintf(stderr, "Mercury_runtime: Trying to continue...\n");
-		return;
-	}
-
+        fprintf(stderr, "Mercury runtime: Garbage collection scheduled"
+                " while collector is already running\n");
+        fprintf(stderr, "Mercury_runtime: Trying to continue...\n");
+        return;
+    }
 #ifdef MR_DEBUG_AGC_SCHEDULING
-	fprintf(stderr, "PC at signal: %ld (%lx)\n",
-		(long) pc_at_signal, (long) pc_at_signal);
-	fprintf(stderr, "SP at signal: %ld (%lx)\n",
-		(long) sp_at_signal, (long) sp_at_signal);
-	fprintf(stderr, "curfr at signal: %ld (%lx)\n",
-		(long) curfr_at_signal, (long) curfr_at_signal);
-	fflush(NULL);
+    fprintf(stderr, "PC at signal: %ld (%lx)\n",
+            (long) pc_at_signal, (long) pc_at_signal);
+    fprintf(stderr, "SP at signal: %ld (%lx)\n",
+            (long) sp_at_signal, (long) sp_at_signal);
+    fprintf(stderr, "curfr at signal: %ld (%lx)\n",
+            (long) curfr_at_signal, (long) curfr_at_signal);
+    fflush(NULL);
 #endif
 
-	/* Search for the entry label */
+    /* Search for the entry label */
 
-	entry_label = MR_prev_entry_by_addr(pc_at_signal);
-	proc_layout = (entry_label != NULL ? entry_label->e_layout : NULL);
+    entry_label = MR_prev_entry_by_addr(pc_at_signal);
+    proc_layout = (entry_label != NULL ? entry_label->e_layout : NULL);
 
-	determinism = (proc_layout != NULL ? proc_layout->MR_sle_detism : -1);
+    determinism = (proc_layout != NULL ? proc_layout->MR_sle_detism : -1);
 
-	if (determinism < 0) {
-		/*
-		** This means we have reached some handwritten code that has
-		** no further information about the stack frame.
-		*/
-		fprintf(stderr, "Mercury runtime: "
-			"attempt to schedule garbage collection failed\n");
-		if (entry_label != NULL) {
-			fprintf(stderr, "Mercury runtime: the label ");
-			if (entry_label->e_name != NULL) {
-				fprintf(stderr, "%s has no stack layout info\n",
-					entry_label->e_name);
-			} else {
-				fprintf(stderr, "at address %p "
-					"has no stack layout info\n",
-					entry_label->e_addr);
-			}
-		} else {
-			fprintf(stderr, "Mercury runtime: no entry label ");
-			fprintf(stderr, "for PC address %p\n", pc_at_signal);
-		}
+    if (determinism < 0) {
+        /*
+        ** This means we have reached some handwritten code that has
+        ** no further information about the stack frame.
+        */
+        fprintf(stderr, "Mercury runtime: "
+                "attempt to schedule garbage collection failed\n");
+        if (entry_label != NULL) {
+            fprintf(stderr, "Mercury runtime: the label ");
+            if (entry_label->e_name != NULL) {
+                fprintf(stderr, "%s has no stack layout info\n",
+                        entry_label->e_name);
+            } else {
+                fprintf(stderr, "at address %p "
+                        "has no stack layout info\n", entry_label->e_addr);
+            }
+        } else {
+            fprintf(stderr, "Mercury runtime: no entry label ");
+            fprintf(stderr, "for PC address %p\n", pc_at_signal);
+        }
 
-		fprintf(stderr, "Mercury runtime: Trying to continue...\n");
-		return;
-	}
-
+        fprintf(stderr, "Mercury runtime: Trying to continue...\n");
+        return;
+    }
 #ifdef MR_DEBUG_AGC_SCHEDULING
-	if (entry_label->e_name != NULL) {
-		fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
-			entry_label->e_name, (long) entry_label->e_addr,
-			(long) entry_label->e_addr);
-	} else {
-		fprintf(stderr, "scheduling called at: (%ld %lx)\n",
-			(long) entry_label->e_addr,
-			(long) entry_label->e_addr);
-	}
-	fflush(NULL);
+    if (entry_label->e_name != NULL) {
+        fprintf(stderr, "scheduling called at: %s (%ld %lx)\n",
+                entry_label->e_name, (long) entry_label->e_addr,
+                (long) entry_label->e_addr);
+    } else {
+        fprintf(stderr, "scheduling called at: (%ld %lx)\n",
+                (long) entry_label->e_addr, (long) entry_label->e_addr);
+    }
+    fflush(NULL);
 #endif
 
-	/* 
-	** If we have already scheduled a garbage collection, undo the
-	** last change, and do a new one.
-	*/
-	if (gc_scheduled) {
+    /* 
+    ** If we have already scheduled a garbage collection, undo the
+    ** last change, and do a new one.
+    */
+    if (gc_scheduled) {
 #ifdef MR_DEBUG_AGC_SCHEDULING
-		fprintf(stderr, "GC scheduled again. Replacing old scheduling,"
-			" and trying to schedule again.\n");
+        fprintf(stderr, "GC scheduled again. Replacing old scheduling,"
+                " and trying to schedule again.\n");
 #endif
-		*saved_success_location = saved_success;
-	}
-	gc_scheduled = MR_TRUE;
+        *saved_success_location = saved_success;
+    }
+    gc_scheduled = MR_TRUE;
 
-	location = proc_layout->MR_sle_succip_locn;
-	type = MR_LONG_LVAL_TYPE(location);
-	number = MR_LONG_LVAL_NUMBER(location);
-	if (MR_DETISM_DET_STACK(determinism)) {
+    location = proc_layout->MR_sle_succip_locn;
+    type = MR_LONG_LVAL_TYPE(location);
+    number = MR_LONG_LVAL_NUMBER(location);
+    if (MR_DETISM_DET_STACK(determinism)) {
 
-		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-			MR_fatal_error("can only handle stackvars");
-		}
+        if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
+            MR_fatal_error("can only handle stackvars");
+        }
 
-		/*
-		** Save the old succip and its location.
-		*/
-		saved_success_location = (MR_Code **)
-			&MR_based_stackvar(sp_at_signal, number);
-		saved_success = *saved_success_location;
-	} else {
-		/*
-		** XXX we ought to also overwrite the redoip,
-		**     otherwise we might miss failure-driven loops
-		**     which don't contain any returns.
-		*/
-		/*
-		** Save the old succip and its location.
-		*/
-		/*
-		** XXX The code below is wrong for temp frames,
-		**     which do not have the succip or succfr slots!
-		*/
-		assert(location == -1); /* succip is saved in succip_slot */
-		saved_success_location = MR_succip_slot_addr(curfr_at_signal);
-		saved_success = *saved_success_location;
-	}
+        /*
+        ** Save the old succip and its location.
+        */
+        saved_success_location = (MR_Code **)
+                & MR_based_stackvar(sp_at_signal, number);
+        saved_success = *saved_success_location;
+    } else {
+        /*
+        ** XXX we ought to also overwrite the redoip,
+        **     otherwise we might miss failure-driven loops
+        **     which don't contain any returns.
+        */
+        /*
+        ** Save the old succip and its location.
+        **
+        ** Note that curfr always points to an ordinary procedure
+        ** frame, never to a temp frame, so it is safe to access
+        ** the succip slot of that frame without checking what kind
+        ** of frame it is.
+        */
+        assert(location == -1); /* succip is saved in succip_slot */
+        saved_success_location = MR_succip_slot_addr(curfr_at_signal);
+        saved_success = *saved_success_location;
+    }
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
-	fprintf(stderr, "old succip: %ld (%lx) new: %ld (%lx)\n", 
-		(long) saved_success, (long) saved_success,
-		(long) MR_ENTRY(mercury__garbage_collect_0_0),
-		(long) MR_ENTRY(mercury__garbage_collect_0_0));
+    fprintf(stderr, "old succip: %ld (%lx) new: %ld (%lx)\n",
+            (long) saved_success, (long) saved_success,
+            (long) MR_ENTRY(mercury__garbage_collect_0_0),
+            (long) MR_ENTRY(mercury__garbage_collect_0_0));
 #endif
 
-	/*
-	** Replace the old succip with the address of the
-	** garbage collector.
-	*/
-	*saved_success_location = MR_ENTRY(mercury__garbage_collect_0_0);
+    /*
+    ** Replace the old succip with the address of the
+    ** garbage collector.
+    */
+    *saved_success_location = MR_ENTRY(mercury__garbage_collect_0_0);
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
-	fprintf(stderr, "Accurate GC scheduled.\n");
+    fprintf(stderr, "Accurate GC scheduled.\n");
 #endif
 }
 
@@ -411,18 +411,18 @@ MR_BEGIN_CODE
 */
 MR_define_entry(mercury__garbage_collect_0_0);
 
-        /* record that the collector is running */
-	gc_running = MR_TRUE;
+    /* record that the collector is running */
+    gc_running = MR_TRUE;
 
-	MR_save_registers();
-	garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
-	MR_restore_registers();
-	gc_scheduled = MR_FALSE;
-	gc_running = MR_FALSE;
+    MR_save_registers();
+    garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
+    MR_restore_registers();
+    gc_scheduled = MR_FALSE;
+    gc_running = MR_FALSE;
 
-	MR_succip = saved_success;
-	MR_proceed();
-	MR_fatal_error("Unreachable code reached");
+    MR_succip = saved_success;
+    MR_proceed();
+    MR_fatal_error("Unreachable code reached");
 
 MR_END_MODULE
 
@@ -431,7 +431,7 @@ MR_END_MODULE
 /*
 ** garbage_collect:
 **
-** 	The main garbage collection routine.
+**      The main garbage collection routine.
 **
 ** This is the version for the LLDS back-end.  Beware that there is some
 ** code duplication with the version for the MLDS back-end, which is above.
@@ -440,18 +440,18 @@ MR_END_MODULE
 */
 static void
 garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, 
-	MR_Word *max_frame, MR_Word *current_frame)
+        MR_Word *max_frame, MR_Word *current_frame)
 {
     MR_Internal                     *label, *first_label;
     int                             i, count;
-    const MR_Label_Layout	    *label_layout;
+    const MR_Label_Layout           *label_layout;
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_TypeInfoParams               type_params;
     MR_bool                            succeeded;
     MR_bool                            top_frame = MR_TRUE;
     MR_MemoryList                   allocated_memory_cells = NULL;
     MR_Word                         *old_hp, *new_hp;
-    const MR_Proc_Layout	    *proc_layout;
+    const MR_Proc_Layout            *proc_layout;
     MR_Word                         *first_stack_pointer;
     MR_Word                         *first_current_frame;
     MR_Word                         *first_max_frame;
@@ -464,7 +464,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
         fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
             (long) old_heap->min, (long) old_heap->hardmax);
-	fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
+        fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
             (long) new_heap->min, (long) new_heap->hardmax);
 
         fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
@@ -508,9 +508,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         first_max_frame = max_frame;
         fprintf(stderr, "BEFORE:\n");
         MR_agc_dump_stack_frames(first_label, old_heap, first_stack_pointer,
-            first_current_frame);
+                first_current_frame);
         MR_agc_dump_nondet_stack_frames(first_label, old_heap,
-	    first_stack_pointer, first_current_frame, first_max_frame);
+                first_stack_pointer, first_current_frame, first_max_frame);
         MR_agc_dump_roots(root_list);
 
         /* 
@@ -537,25 +537,25 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         MR_Stack_Walk_Step_Result       result;
         const char                      *problem;
         const MR_Label_Layout           *return_label_layout;
-	int				short_var_count, long_var_count;
+        int                             short_var_count, long_var_count;
 
-	if (MR_agc_debug) {
-	    MR_printlabel(stderr, (MR_Code *) (MR_Word) label->i_addr);
-       	    fflush(NULL);
-	}
+        if (MR_agc_debug) {
+            MR_printlabel(stderr, (MR_Code *) (MR_Word) label->i_addr);
+            fflush(NULL);
+        }
 
         short_var_count = MR_short_desc_var_count(label_layout);
         long_var_count = MR_long_desc_var_count(label_layout);
 
         /* Get the type parameters from the stack frame. */
 
-	/*
-	** We must pass NULL here since the registers have not been saved;
-	** This should be OK, because none of the values used by a procedure
-	** will be stored in registers across a call, since we have no
-	** caller-save registers (they are all callee-save).
-	** XXX except for the topmost frame!
-	*/
+        /*
+        ** We must pass NULL here since the registers have not been saved;
+        ** This should be OK, because none of the values used by a procedure
+        ** will be stored in registers across a call, since we have no
+        ** caller-save registers (they are all callee-save).
+        ** XXX except for the topmost frame!
+        */
         type_params = MR_materialize_type_params_base(label_layout,
             NULL, stack_pointer, current_frame);
         
@@ -566,13 +566,13 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
             MR_PseudoTypeInfo pseudo_type_info;
             MR_TypeInfo type_info;
 
-	    locn = MR_long_desc_var_locn(label_layout, i);
+            locn = MR_long_desc_var_locn(label_layout, i);
             pseudo_type_info = MR_var_pti(label_layout, i);
 
             type_info = MR_make_type_info(type_params, pseudo_type_info,
-                &allocated_memory_cells);
+                    &allocated_memory_cells);
             copy_long_value(locn, type_info, top_frame,
-                stack_pointer, current_frame);
+                    stack_pointer, current_frame);
             MR_deallocate(allocated_memory_cells);
             allocated_memory_cells = NULL;
         }
@@ -582,13 +582,13 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
             MR_PseudoTypeInfo pseudo_type_info;
             MR_TypeInfo type_info;
 
-	    locn = MR_short_desc_var_locn(label_layout, i);
+            locn = MR_short_desc_var_locn(label_layout, i);
             pseudo_type_info = MR_var_pti(label_layout, i);
 
             type_info = MR_make_type_info(type_params, pseudo_type_info,
-                &allocated_memory_cells);
+                    &allocated_memory_cells);
             copy_short_value(locn, type_info, top_frame,
-                stack_pointer, current_frame);
+                    stack_pointer, current_frame);
             MR_deallocate(allocated_memory_cells);
             allocated_memory_cells = NULL;
         }
@@ -597,38 +597,42 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
         proc_layout = label_layout->MR_sll_entry;
 
-	{
-		MR_Long_Lval            location;
-		MR_Long_Lval_Type       type;
-		int                     number;
+        {
+            MR_Long_Lval            location;
+            MR_Long_Lval_Type       type;
+            int                     number;
 
-		location = proc_layout->MR_sle_succip_locn;
-		if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
-			type = MR_LONG_LVAL_TYPE(location);
-			number = MR_LONG_LVAL_NUMBER(location);
-			if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-				MR_fatal_error("can only handle stackvars");
-			}
-			success_ip = (MR_Code *)
-				MR_based_stackvar(stack_pointer, number);
-			stack_pointer = stack_pointer - 
-				proc_layout->MR_sle_stack_slots;
-		} else {
-			/*
-			** XXX The code below is wrong for temp frames,
-			**     which do not have the succip or succfr slots!
-			*/
-			/* succip is saved in succip_slot */
-			assert(location == -1);
-			success_ip = MR_succip_slot(current_frame);
-			current_frame = MR_succfr_slot(current_frame);
-		}
-		label = MR_lookup_internal_by_addr(success_ip);
-	}
+            location = proc_layout->MR_sle_succip_locn;
+            if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
+                type = MR_LONG_LVAL_TYPE(location);
+                number = MR_LONG_LVAL_NUMBER(location);
+                if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
+                    MR_fatal_error("can only handle stackvars");
+                }
+                success_ip = (MR_Code *)
+                        MR_based_stackvar(stack_pointer, number);
+                stack_pointer = stack_pointer - 
+                        proc_layout->MR_sle_stack_slots;
+            } else {
+                /*
+                ** Note that curfr always points to an ordinary
+                ** procedure frame, never to a temp frame, and
+                ** this property continues to hold while we traverse
+                ** the nondet stack via the succfr slot.  So it is
+                ** safe to access the succip and succfr slots
+                ** without checking what kind of frame it is.
+                */
+                /* succip is saved in succip_slot */
+                assert(location == -1);
+                success_ip = MR_succip_slot(current_frame);
+                current_frame = MR_succfr_slot(current_frame);
+            }
+            label = MR_lookup_internal_by_addr(success_ip);
+        }
 
 /*
-	we should use this code eventually, but it requires a bit of
-	a redesign of the code around here.
+        we should use this code eventually, but it requires a bit of
+        a redesign of the code around here.
  
         result = MR_stack_walk_step(proc_layout, &label_layout,
             (MR_Word **) &stack_pointer, &current_frame, &problem);
@@ -641,7 +645,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         if (label == NULL) {
             break;
         }
-	return_label_layout = label->i_layout;
+        return_label_layout = label->i_layout;
         label_layout = return_label_layout;
         top_frame = MR_FALSE;
     } while (label_layout != NULL); /* end for each stack frame... */
@@ -656,89 +660,89 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     
     while (max_frame > MR_nondet_stack_trace_bottom) {
 #if 0
-	MR_bool registers_valid;
-	int frame_size;
+        MR_bool registers_valid;
+        int frame_size;
 
-	registers_valid = (max_frame == current_frame);
-	frame_size = max_frame - MR_prevfr_slot(max_frame);
+        registers_valid = (max_frame == current_frame);
+        frame_size = max_frame - MR_prevfr_slot(max_frame);
 
-	if (frame_size == MR_NONDET_TEMP_SIZE) {
-	    if (MR_agc_debug) {
-		MR_printlabel(stderr, MR_redoip_slot(max_frame));
-		fflush(NULL);
-	    }
-	} else if (frame_size == MR_DET_TEMP_SIZE) {
-	    if (MR_agc_debug) {
-		MR_printlabel(stderr, MR_redoip_slot(max_frame));
-		fflush(NULL);
-	    }
-	    stack_pointer = MR_tmp_detfr_slot(max_frame); /* XXX ??? */
-	} else {
-	    if (MR_agc_debug) {
-		MR_printlabel(stderr, MR_redoip_slot(max_frame));
-		fflush(NULL);
-	    }
-	}
+        if (frame_size == MR_NONDET_TEMP_SIZE) {
+            if (MR_agc_debug) {
+                MR_printlabel(stderr, MR_redoip_slot(max_frame));
+                fflush(NULL);
+            }
+        } else if (frame_size == MR_DET_TEMP_SIZE) {
+            if (MR_agc_debug) {
+                MR_printlabel(stderr, MR_redoip_slot(max_frame));
+                fflush(NULL);
+            }
+            stack_pointer = MR_tmp_detfr_slot(max_frame); /* XXX ??? */
+        } else {
+            if (MR_agc_debug) {
+                MR_printlabel(stderr, MR_redoip_slot(max_frame));
+                fflush(NULL);
+            }
+        }
 #endif
-	label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
-	stack_pointer = NULL; /* XXX ??? */
+        label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
+        stack_pointer = NULL; /* XXX ??? */
 
-	if (label != NULL) {
-		int short_var_count, long_var_count;
+        if (label != NULL) {
+            int short_var_count, long_var_count;
 
-		label_layout = label->i_layout;
-		short_var_count = MR_short_desc_var_count(label_layout);
-		long_var_count = MR_long_desc_var_count(label_layout);
-		/* var_count = label_layout->MR_sll_var_count; */
+            label_layout = label->i_layout;
+            short_var_count = MR_short_desc_var_count(label_layout);
+            long_var_count = MR_long_desc_var_count(label_layout);
+            /* var_count = label_layout->MR_sll_var_count; */
 
-		/*
-		** We must pass NULL here since the registers have not been
-		** saved; This should be OK, because none of the values used
-		** by a procedure will be stored in registers across a call,
-		** since we have no caller-save registers (they are all
-		** callee-save).  XXX except for frame which was active
-		** when we entered the garbage collector!
-		**
-		** XXX Is it right to pass MR_redofr_slot(max_frame) here?
-		**     Why not just max_frame?
-		*/
-		type_params = MR_materialize_type_params_base(label_layout,
-		    NULL, stack_pointer, MR_redofr_slot(max_frame));
-        
-		/* Copy each live variable */
-		for (i = 0; i < long_var_count; i++) {
-		    MR_Long_Lval locn;
-		    MR_PseudoTypeInfo pseudo_type_info;
-		    MR_TypeInfo type_info;
+            /*
+            ** We must pass NULL here since the registers have not been
+            ** saved; This should be OK, because none of the values used
+            ** by a procedure will be stored in registers across a call,
+            ** since we have no caller-save registers (they are all
+            ** callee-save).  XXX except for frame which was active
+            ** when we entered the garbage collector!
+            **
+            ** XXX Is it right to pass MR_redofr_slot(max_frame) here?
+            **     Why not just max_frame?
+            */
+            type_params = MR_materialize_type_params_base(label_layout,
+                    NULL, stack_pointer, MR_redofr_slot(max_frame));
+    
+            /* Copy each live variable */
+            for (i = 0; i < long_var_count; i++) {
+                MR_Long_Lval locn;
+                MR_PseudoTypeInfo pseudo_type_info;
+                MR_TypeInfo type_info;
 
-		    locn = MR_long_desc_var_locn(label_layout, i);
-		    pseudo_type_info = MR_var_pti(label_layout, i);
+                locn = MR_long_desc_var_locn(label_layout, i);
+                pseudo_type_info = MR_var_pti(label_layout, i);
 
-		    type_info = MR_make_type_info(type_params, pseudo_type_info,
-			&allocated_memory_cells);
-		    copy_long_value(locn, type_info, top_frame,
-			stack_pointer, current_frame);
-		    MR_deallocate(allocated_memory_cells);
-		    allocated_memory_cells = NULL;
-		}
+                type_info = MR_make_type_info(type_params, pseudo_type_info,
+                        &allocated_memory_cells);
+                copy_long_value(locn, type_info, top_frame,
+                        stack_pointer, current_frame);
+                MR_deallocate(allocated_memory_cells);
+                allocated_memory_cells = NULL;
+            }
 
-		for (; i < short_var_count; i++) {
-		    MR_Short_Lval locn;
-		    MR_PseudoTypeInfo pseudo_type_info;
-		    MR_TypeInfo type_info;
+            for (; i < short_var_count; i++) {
+                MR_Short_Lval locn;
+                MR_PseudoTypeInfo pseudo_type_info;
+                MR_TypeInfo type_info;
 
-		    locn = MR_short_desc_var_locn(label_layout, i);
-		    pseudo_type_info = MR_var_pti(label_layout, i);
+                locn = MR_short_desc_var_locn(label_layout, i);
+                pseudo_type_info = MR_var_pti(label_layout, i);
 
-		    type_info = MR_make_type_info(type_params, pseudo_type_info,
-			&allocated_memory_cells);
-		    copy_short_value(locn, type_info, top_frame,
-			stack_pointer, current_frame);
-		    MR_deallocate(allocated_memory_cells);
-		    allocated_memory_cells = NULL;
-		}
-	}
-	max_frame = MR_prevfr_slot(max_frame);
+                type_info = MR_make_type_info(type_params, pseudo_type_info,
+                        &allocated_memory_cells);
+                copy_short_value(locn, type_info, top_frame,
+                        stack_pointer, current_frame);
+                MR_deallocate(allocated_memory_cells);
+                allocated_memory_cells = NULL;
+            }
+        }
+        max_frame = MR_prevfr_slot(max_frame);
     }
     
     /*
@@ -750,25 +754,25 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         fprintf(stderr, "Clearing old heap:\n");
 
         {
-	    MR_Word *tmp_hp;
+            MR_Word *tmp_hp;
 
-	    for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
-		*tmp_hp = 0xDEADBEAF;
-	    }
+            for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
+                *tmp_hp = 0xDEADBEAF;
+            }
         }
 
         fprintf(stderr, "AFTER:\n");
 
-    	/* XXX save this, it appears to get clobbered */
+        /* XXX save this, it appears to get clobbered */
         new_hp = MR_virtual_hp;
 
         MR_agc_dump_stack_frames(first_label, new_heap, first_stack_pointer,
             first_current_frame);
         MR_agc_dump_roots(root_list);
         MR_agc_dump_nondet_stack_frames(first_label, new_heap,
-	    first_stack_pointer, first_current_frame, first_max_frame);
+            first_stack_pointer, first_current_frame, first_max_frame);
 
-    	/* XXX restore this, it appears to get clobbered */
+        /* XXX restore this, it appears to get clobbered */
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
         MR_virtual_hp = new_hp;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
@@ -785,9 +789,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     {
       /* These counts include some wasted space between ->min and ->bottom. */
       size_t old_heap_space =
-	      	(char *) old_heap->redzone_base - (char *) old_heap->bottom;
+            (char *) old_heap->redzone_base - (char *) old_heap->bottom;
       size_t new_heap_usage =
-	      	(char *) MR_virtual_hp - (char *) new_heap->bottom;
+            (char *) MR_virtual_hp - (char *) new_heap->bottom;
       size_t gc_heap_size;
 
       /*
@@ -796,13 +800,13 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
       ** or the size at which we GC'd last time, whichever is larger.
       */
       gc_heap_size = MR_round_up(
-	      	(size_t) (MR_heap_expansion_factor * new_heap_usage),
-		MR_unit);
+            (size_t) (MR_heap_expansion_factor * new_heap_usage),
+            MR_unit);
       if (gc_heap_size < old_heap_space) {
-	      gc_heap_size = old_heap_space;
+          gc_heap_size = old_heap_space;
       }
       old_heap->redzone_base = (MR_Word *)
-	      	((char *) old_heap->bottom + gc_heap_size);
+            ((char *) old_heap->bottom + gc_heap_size);
       MR_reset_redzone(old_heap);
     }
 
@@ -814,172 +818,170 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 
 /*
 ** copy_long_value:
-** 	Copies a value in a register or stack frame,
-** 	replacing the original with the new copy.
+**      Copies a value in a register or stack frame,
+**      replacing the original with the new copy.
 **
-** 	The copying is done using MR_agc_deep_copy, which is
-** 	the accurate GC version of MR_deep_copy (it leaves
-** 	forwarding pointers in the old copy of the data, if
-** 	it is on the old heap).
+**      The copying is done using MR_agc_deep_copy, which is
+**      the accurate GC version of MR_deep_copy (it leaves
+**      forwarding pointers in the old copy of the data, if
+**      it is on the old heap).
 */
 
 static void
 copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
-	MR_Word *stack_pointer, MR_Word *current_frame)
+                MR_Word *stack_pointer, MR_Word *current_frame)
 {
-	int	locn_num;
+    int locn_num;
 
-	locn_num = MR_LONG_LVAL_NUMBER(locn);
-	switch (MR_LONG_LVAL_TYPE(locn)) {
-		case MR_LONG_LVAL_TYPE_R:
-			if (copy_regs) {
-				MR_virtual_reg(locn_num) = MR_agc_deep_copy(
-					MR_virtual_reg(locn_num), type_info,
-					MR_ENGINE(MR_eng_heap_zone2->min),
-					MR_ENGINE(MR_eng_heap_zone2->hardmax));
-			}
-			break;
+    locn_num = MR_LONG_LVAL_NUMBER(locn);
+    switch (MR_LONG_LVAL_TYPE(locn)) {
+    case MR_LONG_LVAL_TYPE_R:
+        if (copy_regs) {
+            MR_virtual_reg(locn_num) = MR_agc_deep_copy(
+                    MR_virtual_reg(locn_num), type_info,
+                    MR_ENGINE(MR_eng_heap_zone2->min),
+                    MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        }
+        break;
 
-		case MR_LONG_LVAL_TYPE_F:
-			break;
+    case MR_LONG_LVAL_TYPE_F:
+        break;
 
-		case MR_LONG_LVAL_TYPE_STACKVAR:
-			MR_based_stackvar(stack_pointer, locn_num) =
-				MR_agc_deep_copy(MR_based_stackvar(
-						stack_pointer,locn_num),
-					type_info,
-					MR_ENGINE(MR_eng_heap_zone2->min),
-					MR_ENGINE(MR_eng_heap_zone2->hardmax));
-			break;
+    case MR_LONG_LVAL_TYPE_STACKVAR:
+        MR_based_stackvar(stack_pointer, locn_num) =
+                MR_agc_deep_copy(MR_based_stackvar(stack_pointer, locn_num),
+                        type_info,
+                        MR_ENGINE(MR_eng_heap_zone2->min),
+                        MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        break;
 
-		case MR_LONG_LVAL_TYPE_FRAMEVAR:
-			MR_based_framevar(current_frame, locn_num) =
-				MR_agc_deep_copy(
-				MR_based_framevar(current_frame, locn_num),
-				type_info,
-				MR_ENGINE(MR_eng_heap_zone2->min),
-				MR_ENGINE(MR_eng_heap_zone2->hardmax));
-			break;
+    case MR_LONG_LVAL_TYPE_FRAMEVAR:
+        MR_based_framevar(current_frame, locn_num) =
+                MR_agc_deep_copy(MR_based_framevar(current_frame, locn_num),
+                        type_info,
+                        MR_ENGINE(MR_eng_heap_zone2->min),
+                        MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        break;
 
-		case MR_LONG_LVAL_TYPE_SUCCIP:
-			break;
+    case MR_LONG_LVAL_TYPE_SUCCIP:
+        break;
 
-		case MR_LONG_LVAL_TYPE_MAXFR:
-			break;
+    case MR_LONG_LVAL_TYPE_MAXFR:
+        break;
 
-		case MR_LONG_LVAL_TYPE_CURFR:
-			break;
+    case MR_LONG_LVAL_TYPE_CURFR:
+        break;
 
-		case MR_LONG_LVAL_TYPE_HP:
-			break;
+    case MR_LONG_LVAL_TYPE_HP:
+        break;
 
-		case MR_LONG_LVAL_TYPE_SP:
-			break;
+    case MR_LONG_LVAL_TYPE_SP:
+        break;
 
-		case MR_LONG_LVAL_TYPE_INDIRECT:
-			/* XXX Tyson will have to write the code for this */
-			break;
+    case MR_LONG_LVAL_TYPE_INDIRECT:
+        /* XXX Tyson will have to write the code for this */
+        break;
 
-		case MR_LONG_LVAL_TYPE_UNKNOWN:
-			break;
+    case MR_LONG_LVAL_TYPE_UNKNOWN:
+        break;
 
-		default:
-			MR_fatal_error("Unknown MR_Long_Lval_Type in copy_long_value");
-			break;
-	}
+    default:
+        MR_fatal_error("Unknown MR_Long_Lval_Type in copy_long_value");
+        break;
+    }
 }
 
 static void
-copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
-	MR_Word *stack_pointer, MR_Word *current_frame)
+copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
+                 MR_bool copy_regs, MR_Word *stack_pointer,
+                 MR_Word *current_frame)
 {
-	int	locn_num;
+    int locn_num;
 
-	switch (MR_SHORT_LVAL_TYPE(locn)) {
-		case MR_SHORT_LVAL_TYPE_R:
-			if (copy_regs) {
-				locn_num = MR_SHORT_LVAL_NUMBER(locn);
-				MR_virtual_reg(locn_num) = MR_agc_deep_copy(
-					MR_virtual_reg(locn_num), type_info,
-					MR_ENGINE(MR_eng_heap_zone2->min),
-					MR_ENGINE(MR_eng_heap_zone2->hardmax));
-			}
-			break;
+    switch (MR_SHORT_LVAL_TYPE(locn)) {
+    case MR_SHORT_LVAL_TYPE_R:
+        if (copy_regs) {
+            locn_num = MR_SHORT_LVAL_NUMBER(locn);
+            MR_virtual_reg(locn_num) =
+                    MR_agc_deep_copy(
+                            MR_virtual_reg(locn_num),
+                            type_info,
+                            MR_ENGINE(MR_eng_heap_zone2->min),
+                            MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        }
+        break;
 
-		case MR_SHORT_LVAL_TYPE_STACKVAR:
-			locn_num = MR_SHORT_LVAL_NUMBER(locn);
-			MR_based_stackvar(stack_pointer, locn_num) =
-				MR_agc_deep_copy(MR_based_stackvar(
-						stack_pointer,locn_num),
-					type_info,
-					MR_ENGINE(MR_eng_heap_zone2->min),
-					MR_ENGINE(MR_eng_heap_zone2->hardmax));
-			break;
+    case MR_SHORT_LVAL_TYPE_STACKVAR:
+        locn_num = MR_SHORT_LVAL_NUMBER(locn);
+        MR_based_stackvar(stack_pointer, locn_num) =
+                MR_agc_deep_copy(
+                        MR_based_stackvar(stack_pointer, locn_num),
+                        type_info,
+                        MR_ENGINE(MR_eng_heap_zone2->min),
+                        MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        break;
 
-		case MR_SHORT_LVAL_TYPE_FRAMEVAR:
-			locn_num = MR_SHORT_LVAL_NUMBER(locn);
-			MR_based_framevar(current_frame, locn_num) =
-				MR_agc_deep_copy(
-					MR_based_framevar(current_frame,
-						locn_num),
-					type_info,
-					MR_ENGINE(MR_eng_heap_zone2->min),
-					MR_ENGINE(MR_eng_heap_zone2->hardmax));
-				break;
+    case MR_SHORT_LVAL_TYPE_FRAMEVAR:
+        locn_num = MR_SHORT_LVAL_NUMBER(locn);
+        MR_based_framevar(current_frame, locn_num) =
+                MR_agc_deep_copy(
+                        MR_based_framevar(current_frame, locn_num),
+                        type_info,
+                        MR_ENGINE(MR_eng_heap_zone2->min),
+                        MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        break;
 
-		default:
-			MR_fatal_error("Unknown MR_Short_Lval_Type "
-				"in copy_short_value");
-			break;
-	}
+    default:
+        MR_fatal_error("Unknown MR_Short_Lval_Type "
+                       "in copy_short_value");
+        break;
+    }
 }
-
 #endif /* !MR_HIGHLEVEL_CODE */
 
 /*
 ** garbage_collect_roots:
 ** 
-** 	Copies the extra roots.  The roots are overwritten
-** 	with the new data.
+**      Copies the extra roots.  The roots are overwritten
+**      with the new data.
 */
 
 static void
 garbage_collect_roots(void) 
 {
-	MR_RootList current = root_list;
+    MR_RootList current = root_list;
 
-	while (current != NULL) {
-		*current->root = MR_agc_deep_copy(*current->root,
-			current->type_info, MR_ENGINE(MR_eng_heap_zone2->min), 
-			MR_ENGINE(MR_eng_heap_zone2->hardmax));
-		current = current->next;
-	}
-
+    while (current != NULL) {
+        *current->root = MR_agc_deep_copy(
+                *current->root, current->type_info,
+                MR_ENGINE(MR_eng_heap_zone2->min), 
+                MR_ENGINE(MR_eng_heap_zone2->hardmax));
+        current = current->next;
+    }
 }
 
 /*
 ** MR_agc_add_root_internal:
 ** 
-** 	Adds a new root to the extra roots.
+**      Adds a new root to the extra roots.
 */
 
 void
 MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
 {
-	MR_RootList node;
+    MR_RootList node;
 
-	node = MR_malloc(sizeof(*node));
-	node->root = root_addr;
-	node->type_info = type_info;
+    node = MR_malloc(sizeof(*node));
+    node->root = root_addr;
+    node->type_info = type_info;
 
-	if (root_list == NULL) {
-		root_list = node;
-		last_root = node;
-		last_root->next = NULL;
-	} else {
-		last_root->next = node;
-		last_root = node;
-	}
+    if (root_list == NULL) {
+        root_list = node;
+        last_root = node;
+        last_root->next = NULL;
+    } else {
+        last_root->next = node;
+        last_root = node;
+    }
 }
-
 #endif /* MR_NATIVE_GC */
