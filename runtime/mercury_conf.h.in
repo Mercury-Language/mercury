@@ -266,8 +266,15 @@
 **	readline library for the command-line prompt.
 **	The autoconfiguration script sets this if it can't find a termcap
 **	library.
+**
+** HAVE_READLINE_READLINE
+** HAVE_READLINE_HISTORY
+**	Defined if the header files readline/readline.h and
+**	readline/history.h are available.
 */
 #undef  MR_NO_USE_READLINE
+#undef  HAVE_READLINE_READLINE
+#undef  HAVE_READLINE_HISTORY
 
 /*---------------------------------------------------------------------------*/
 
