@@ -17,13 +17,20 @@ STRING_FORMAT_PROGS=	\
 		string_format_u \
 		string_format_x 
 
+	# On taifun there is a buggy version of sprintf which gives
+	# incorrect output for string_format_o so don't test this.
+ifneq "$(findstring taifun,$(HOST))" ""
+	PROGS0=$(filter-out string_format_o,$(STRING_FORMAT_PROGS))
+else
+	PROGS0=$(STRING_FORMAT_PROGS)
+endif
 
 	# The tests don't work in the *.agc grades, because I think they
 	# take too long to finsih and the CPU time limit is breached.
 ifneq "$(findstring .agc,$(GRADE))" ""
 	PROGS=
 else
-	PROGS=$(STRING_FORMAT_PROGS)
+	PROGS=$(PROGS0)
 endif
 
 SUBDIRS = 
