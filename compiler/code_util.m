@@ -16,6 +16,10 @@
 :- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
 :- mode code_util__make_local_entry_label(in, in, in, out) is det.
 
+:- pred code_util__make_nonlocal_entry_label(module_info,
+						pred_id, proc_id, code_addr).
+:- mode code_util__make_nonlocal_entry_label(in, in, in, out) is det.
+
 :- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
 :- mode code_util__make_local_label(in, in, in, in, out) is det.
 
@@ -32,7 +36,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list.
+:- import_module list, hlds, map.
 
 %---------------------------------------------------------------------------%
 
@@ -42,6 +46,12 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
 	predicate_arity(ModuleInfo, PredId, Arity),
 	Label = entrylabel(ModuleName, PredName, Arity, ProcId).
 
+code_util__make_nonlocal_entry_label(ModuleInfo, PredId, ProcId, Label) :-
+	predicate_module(ModuleInfo, PredId, ModuleName),
+	predicate_name(ModuleInfo, PredId, PredName),
+	predicate_arity(ModuleInfo, PredId, Arity),
+	Label = nonlocal(ModuleName, PredName, Arity, ProcId).
+
 code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
 	predicate_name(ModuleInfo, PredId, PredName),
@@ -49,8 +59,18 @@ code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 	Label = label(ModuleName, PredName, Arity, ProcId, LabelNum).
 
 code_util__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) :-
-	code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label),
-	PredAddress = local(Label).
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	(
+		pred_info_is_imported(PredInfo)
+	->
+		code_util__make_nonlocal_entry_label(ModuleInfo,
+						PredId, ProcId, PredAddress)
+	;
+		code_util__make_local_entry_label(ModuleInfo,
+							PredId, ProcId, Label),
+		PredAddress = local(Label)
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -57,7 +57,13 @@
 	% variable. No immediate code is generated.
 
 unify_gen__generate_assignment(VarA, VarB, empty) -->
-	code_info__cache_expression(VarA, var(VarB)).
+	(
+		code_info__variable_is_live(VarA)
+	->
+		code_info__cache_expression(VarA, var(VarB))
+	;
+		{ true }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -405,10 +411,22 @@ unify_gen__generate_sub_assign(lval(Lval), ref(Var), Code) -->
 	) }.
 	% assignment to a variable, so cache it.
 unify_gen__generate_sub_assign(ref(Var), lval(Rval), empty) -->
-	code_info__cache_expression(Var, lval(Rval)).
+	(
+		code_info__variable_is_live(Var)
+	->
+		code_info__cache_expression(Var, lval(Rval))
+	;
+		{ true }
+	).
 	% assignment to a variable, so cache it.
 unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
-	code_info__cache_expression(Lvar, var(Rvar)).
+	(
+		code_info__variable_is_live(Lvar)
+	->
+		code_info__cache_expression(Lvar, var(Rvar))
+	;
+		{ true }
+	).
 
 %---------------------------------------------------------------------------%
 

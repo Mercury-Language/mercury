@@ -48,10 +48,20 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
-	{ CodeC = node([
-		call(Label, ReturnLabel) - "branch to procedure",
-		label(ReturnLabel) - "Continutation label"
-	]) },
+	(
+		call_gen__is_imported(PredId)
+	->
+		{ CodeC = node([
+			entrycall(Label, ReturnLabel) -
+					"branch to non-local procedure",
+			label(ReturnLabel) - "Continutation label"
+		]) }
+	;
+		{ CodeC = node([
+			call(Label, ReturnLabel) - "branch to procedure",
+			label(ReturnLabel) - "Continutation label"
+		]) }
+	),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
 	call_gen__rebuild_registers(Args).
 
@@ -78,11 +88,21 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_fall_through(FallThrough),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
-	{ CodeC = node([
-		call(Label, ReturnLabel) - "branch to procedure",
-		label(ReturnLabel) - "Continutation label",
-		if_not_val(lval(reg(r(1))), FallThrough) - "Test result"
-	]) },
+	(
+		call_gen__is_imported(PredId)
+	->
+		{ CodeC = node([
+			entrycall(Label, ReturnLabel) - "branch to procedure",
+			label(ReturnLabel) - "Continutation label",
+			if_not_val(lval(reg(r(1))), FallThrough) - "Test result"
+		]) }
+	;
+		{ CodeC = node([
+			call(Label, ReturnLabel) - "branch to procedure",
+			label(ReturnLabel) - "Continutation label",
+			if_not_val(lval(reg(r(1))), FallThrough) - "Test result"
+		]) }
+	),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) },
 	call_gen__rebuild_registers(Args).
 
@@ -111,8 +131,7 @@ call_gen__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Args, Code) -->
 			{ CodeA = empty }
 		;
 			code_info__shuffle_register(Var, Args, Reg, CodeA)
-		),
-		code_info__reserve_register(Reg)
+		)
 	;
 		{ CodeA = empty }
 	),
@@ -207,6 +226,17 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 	;
 		{ error("Unknown builtin predicate") }
 	).
+
+%---------------------------------------------------------------------------%
+
+:- pred call_gen__is_imported(pred_id, code_info, code_info).
+:- mode call_gen__is_imported(in, in, out) is semidet.
+
+call_gen__is_imported(PredId) -->
+	code_info__get_module_info(Module),
+	{ module_info_preds(Module, PredTable) },
+	{ map__lookup(PredTable, PredId, PredInfo) },
+	{ pred_info_is_imported(PredInfo) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

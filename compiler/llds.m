@@ -30,6 +30,7 @@
 :- type instr		--->	comment(string)
 			;	assign(lval, rval)
 			;	call(code_addr, label)  % pred, continuation
+			;	entrycall(code_addr, label) % pred, continuation
 			;	unicall(unilabel, label)  % pred, continuation
 			;	tailcall(code_addr)
 			;	proceed
@@ -228,6 +229,14 @@ output_instruction(call(CodeAddress, ContLabel)) -->
 	output_label(ContLabel),
 	io__write_string("));").
 
+output_instruction(entrycall(CodeAddress, ContLabel)) -->
+	io__write_string("\t"),
+	io__write_string("callentry("),
+	output_code_address(CodeAddress),
+	io__write_string(", LABEL("),
+	output_label(ContLabel),
+	io__write_string("));").
+
 output_instruction(unicall(Label, ContLabel)) -->
 	io__write_string("\t"),
 	io__write_string("call(LABEL("),
@@ -321,7 +330,7 @@ output_code_address(local(Label)) -->
 
 output_code_address(nonlocal(_Module, Pred, Arity, Mode)) -->
 	io__write_string("\t"),
-	io__write_string("ENTRY("),
+	%%% io__write_string("ENTRY("),
 	%%% io__write_string(Module),
 	io__write_string("mercury"),
 	io__write_string("__"),
@@ -329,8 +338,8 @@ output_code_address(nonlocal(_Module, Pred, Arity, Mode)) -->
 	io__write_string("_"),
 	io__write_int(Arity),
 	io__write_string("_"),
-	io__write_int(Mode),
-	io__write_string(")").
+	io__write_int(Mode).
+	%%% io__write_string(")").
 
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo) is det.
