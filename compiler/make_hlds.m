@@ -1460,8 +1460,8 @@ report_recursive_subst(PredInfo0, Context, TVarSet, RecursiveVars) -->
 	prog_out__write_context(Context),
 	io__write_string("  on both sides of the substitution.\n").
 
-:- pred report_multiple_subst_vars(pred_info::in, prog_context::in, tvarset::in,
-	list(tvar)::in, io::di, io::uo) is det.
+:- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
+	tvarset::in, list(tvar)::in, io::di, io::uo) is det.
 
 report_multiple_subst_vars(PredInfo0, Context, TVarSet, MultiSubstVars) -->
 	report_pragma_type_spec(PredInfo0, Context),
@@ -4527,10 +4527,11 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
 %	NB. Any changes here might also require similar changes to the
 %	handling of `pragma export' declarations, in export.m.
 
-:- pred module_add_pragma_import(sym_name::in, pred_or_func::in, list(mode)::in,
-	pragma_foreign_proc_attributes::in, string::in, import_status::in,
-	prog_context::in, module_info::in, module_info::out,
-	qual_info::in, qual_info::out, io::di, io::uo) is det.
+:- pred module_add_pragma_import(sym_name::in, pred_or_func::in,
+	list(mode)::in, pragma_foreign_proc_attributes::in, string::in,
+	import_status::in, prog_context::in,
+	module_info::in, module_info::out, qual_info::in, qual_info::out,
+	io::di, io::uo) is det.
 
 module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
 		Status, Context, !ModuleInfo, !Info, !IO) :-
@@ -6214,7 +6215,7 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
 	;
 		prepare_for_call(!SInfo),
 		term__apply_substitution_to_list(Args1, Subst, Args),
-		make_fresh_arg_vars(Args, HeadVars, !VarSet),
+		make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !IO),
 		list__length(Args, Arity),
 		(
 			% check for a higher-order call,
@@ -6323,7 +6324,8 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
 				!VarSet, !Info, !SInfo, !IO)
 		;
 			MaybeFieldNames = error(Msg, ErrorTerm),
-			invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet),
+			invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet,
+				!SInfo, !IO),
 			qual_info_set_found_syntax_error(yes,
 				!.Info ^ qual_info, QualInfo),
 			!:Info = !.Info ^ qual_info := QualInfo,
@@ -6346,7 +6348,8 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
 			io__write_string("'.\n", !IO)
 		)
 	;
-		invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet),
+		invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet,
+			!SInfo, !IO),
 		qual_info_set_found_syntax_error(yes, !.Info ^ qual_info,
 			QualInfo),
 		!:Info = !.Info ^ qual_info := QualInfo,
@@ -6369,7 +6372,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
 
 transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
 		!VarSet, !Info, !SInfo, !IO) :-
-	make_fresh_arg_vars(ArgTerms, ArgVars, !VarSet),
+	make_fresh_arg_vars(ArgTerms, ArgVars, !VarSet, !SInfo, !IO),
 	( ArgVars = [FieldValueVar, TermInputVar, TermOutputVar] ->
 		(
 			AccessType = set,
@@ -6484,7 +6487,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
 		[FieldName - FieldArgs | FieldNames], FieldValueVar,
 		TermInputVar, TermOutputVar, !VarSet, Functor,
 		FieldSubContext, Goals, !Info, !SInfo, !IO) :-
-	make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet),
+	make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SInfo, !IO),
 	( FieldNames = [_ | _] ->
 		varset__new_var(!.VarSet, SubTermInputVar, !:VarSet),
 		varset__new_var(!.VarSet, SubTermOutputVar, !:VarSet),
@@ -6603,7 +6606,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
 		[FieldName - FieldArgs | FieldNames], FieldValueVar,
 		TermInputVar, !VarSet, Functor, FieldSubContext, Goals,
 		!Info, !SInfo, !IO) :-
-	make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet),
+	make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SInfo, !IO),
 	GetArgVars = list__append(FieldArgVars, [TermInputVar]),
 	( FieldNames = [_ | _] ->
 		varset__new_var(!.VarSet, SubTermInputVar, !:VarSet),
@@ -6757,11 +6760,11 @@ transform_aditi_tuple_update(UpdateStr, Update, Args0, Context,
 			% to insert and the `aditi__state' arguments.
 			%
 			make_fresh_arg_var(AditiState0Term, AditiState0Var, [],
-				!VarSet),
+				!VarSet, !SInfo, !IO),
 			make_fresh_arg_var(AditiStateTerm, AditiStateVar, [],
-				!VarSet),
+				!VarSet, !SInfo, !IO),
 			make_fresh_arg_vars(TupleArgTerms, TupleArgVars,
-				!VarSet),
+				!VarSet, !SInfo, !IO),
 			list__append(TupleArgVars,
 				[AditiState0Var, AditiStateVar], AllArgs),
 			list__length(TupleArgVars, InsertArity),
@@ -6786,7 +6789,7 @@ transform_aditi_tuple_update(UpdateStr, Update, Args0, Context,
 				!VarSet, !Info, !SInfo, !IO)
 		;
 			invalid_goal(UpdateStr, Args0, GoalInfo,
-				Goal, !VarSet),
+				Goal, !VarSet, !SInfo, !IO),
 			qual_info_set_found_syntax_error(yes,
 				!.Info ^ qual_info, QualInfo),
 			!:Info = !.Info ^ qual_info := QualInfo,
@@ -6799,7 +6802,8 @@ transform_aditi_tuple_update(UpdateStr, Update, Args0, Context,
 			io__write_string("'.\n", !IO)
 		)
 	;
-		invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet),
+		invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet,
+			!SInfo, !IO),
 		qual_info_set_found_syntax_error(yes, !.Info ^ qual_info,
 			QualInfo),
 		!:Info = !.Info ^ qual_info := QualInfo,
@@ -6823,7 +6827,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 		Arity \= 4
 	->
 		invalid_goal(Descr, Args0, GoalInfo,
-			UpdateGoal, !VarSet),
+			UpdateGoal, !VarSet, !SInfo, !IO),
 		qual_info_set_found_syntax_error(yes, !.Info ^ qual_info,
 			QualInfo),
 		!:Info = !.Info ^ qual_info := QualInfo,
@@ -6875,7 +6879,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 		%
 		% Parse the modification goal as for a lambda expression.
 		%
-		make_fresh_arg_vars(HeadArgs1, HeadArgs, !VarSet),
+		make_fresh_arg_vars(HeadArgs1, HeadArgs, !VarSet, !SInfo, !IO),
 		term__coerce(GoalTerm1, GoalTerm),
 		parse_goal(GoalTerm, ParsedGoal, !VarSet),
 
@@ -6933,9 +6937,9 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 			Context, MainContext, [], LambdaConstruct, !Info),
 
 		make_fresh_arg_var(AditiState0Term, AditiState0Var, [],
-			!VarSet),
+			!VarSet, !SInfo, !IO),
 		make_fresh_arg_var(AditiStateTerm, AditiStateVar, [],
-			!VarSet),
+			!VarSet, !SInfo, !IO),
 		AllArgs = [LambdaVar, AditiState0Var, AditiStateVar],
 
 		% post_typecheck.m will fill this in.
@@ -6983,7 +6987,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 		Syntax = sym_name_and_closure,
 
 		make_fresh_arg_vars(OtherArgs0,
-			OtherArgs, !VarSet),
+			OtherArgs, !VarSet, !SInfo, !IO),
 		PredId = invalid_pred_id,
 
 		Builtin = aditi_bulk_update(Update, PredId, Syntax),
@@ -7003,7 +7007,7 @@ transform_aditi_bulk_update(Descr, Update, Args0, Context, UpdateGoal,
 			Call, UpdateGoal, !VarSet, !Info, !SInfo, !IO)
 	;
 		invalid_goal(Descr, Args0, GoalInfo,
-			UpdateGoal, !VarSet),
+			UpdateGoal, !VarSet, !SInfo, !IO),
 		qual_info_set_found_syntax_error(yes, !.Info ^ qual_info,
 			QualInfo),
 		!:Info = !.Info ^ qual_info := QualInfo,
@@ -7149,10 +7153,11 @@ aditi_update_arity_error(Context, UpdateStr, Arity, ExpectedArities) -->
 
 	% Produce an invalid goal when parsing of an Aditi update fails.
 :- pred invalid_goal(string::in, list(prog_term)::in, hlds_goal_info::in,
-	hlds_goal::out, prog_varset::in, prog_varset::out) is det.
+	hlds_goal::out, prog_varset::in, prog_varset::out,
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet) :-
-	make_fresh_arg_vars(Args0, HeadVars, !VarSet),
+invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SInfo, !IO) :-
+	make_fresh_arg_vars(Args0, HeadVars, !VarSet, !SInfo, !IO),
 	MaybeUnifyContext = no,
 	Goal = call(invalid_pred_id, invalid_proc_id, HeadVars, not_builtin,
 		MaybeUnifyContext, unqualified(UpdateStr)) - GoalInfo.
@@ -7164,7 +7169,7 @@ invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet) :-
 	% inserts the appropriate unifications onto the front of
 	% the goal.  It calls `unravel_unification' to ensure
 	% that each unification gets reduced to superhomogeneous form.
-	% It also gets passed a `arg_context', which indicates
+	% It also gets passed an `arg_context', which indicates
 	% where the terms came from.
 
 	% We never insert unifications of the form X = X.
@@ -7187,8 +7192,8 @@ invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet) :-
 :- pred insert_arg_unifications(list(prog_var)::in, list(prog_term)::in,
 	prog_context::in, arg_context::in, hlds_goal::in, hlds_goal::out,
 	prog_varset::in, prog_varset::out,
-	transform_info::in, transform_info::out, svar_info::in, svar_info::out,
-	io::di, io::uo) is det.
+	transform_info::in, transform_info::out,
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
 insert_arg_unifications(HeadVars, Args0, Context, ArgContext,
 		!Goal, !VarSet, !Info, !SInfo, !IO) :-
@@ -7384,7 +7389,7 @@ arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), ArgNum,
 
 %-----------------------------------------------------------------------------%
 
-	% make_fresh_arg_vars(Args, VarSet0, Vars, VarSet):
+	% make_fresh_arg_vars(Args, VarSet0, Vars, VarSet, !SInfo, !IO):
 	%	`Vars' is a list of distinct variables corresponding to
 	%	the terms in `Args'.  For each term in `Args', if
 	%	the term is a variable V which is distinct from the
@@ -7392,37 +7397,41 @@ arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), ArgNum,
 	%	variable in `Vars' is just V, otherwise a fresh variable
 	%	is allocated from `VarSet0'.   `VarSet' is the resulting
 	%	varset after all the necessary variables have been allocated.
+	%	!SInfo and !IO are required to handle state variables.
 	%
 	%	For efficiency, the list `Vars' is constructed backwards
 	%	and then reversed to get the correct order.
 
 :- pred make_fresh_arg_vars(list(prog_term)::in, list(prog_var)::out,
-	prog_varset::in, prog_varset::out) is det.
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+	io::di, io::uo) is det.
 
-make_fresh_arg_vars(Args, Vars, !VarSet) :-
-	make_fresh_arg_vars_2(Args, [], Vars1, !VarSet),
+make_fresh_arg_vars(Args, Vars, !VarSet, !SInfo, !IO) :-
+	make_fresh_arg_vars_2(Args, [], Vars1, !VarSet, !SInfo, !IO),
 	list__reverse(Vars1, Vars).
 
 :- pred make_fresh_arg_vars_2(list(prog_term)::in, list(prog_var)::in,
-	list(prog_var)::out, prog_varset::in,prog_varset::out) is det.
+	list(prog_var)::out, prog_varset::in,prog_varset::out,
+	svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-make_fresh_arg_vars_2([], Vars, Vars, !VarSet).
-make_fresh_arg_vars_2([Arg | Args], Vars0, Vars, !VarSet) :-
-	make_fresh_arg_var(Arg, Var, Vars0, !VarSet),
-	make_fresh_arg_vars_2(Args, [Var | Vars0], Vars, !VarSet).
+make_fresh_arg_vars_2([], Vars, Vars, !VarSet, !SInfo, !IO).
+make_fresh_arg_vars_2([Arg | Args], Vars0, Vars, !VarSet, !SInfo, !IO) :-
+	make_fresh_arg_var(Arg, Var, Vars0, !VarSet, !SInfo, !IO),
+	make_fresh_arg_vars_2(Args, [Var | Vars0], Vars, !VarSet, !SInfo, !IO).
 
 :- pred make_fresh_arg_var(prog_term::in, prog_var::out, list(prog_var)::in,
-	prog_varset::in, prog_varset::out) is det.
+	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+	io::di, io::uo) is det.
 
-make_fresh_arg_var(Arg, Var, Vars0, VarSet0, VarSet) :-
+make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SInfo, !IO) :-
+	substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO),
 	(
 		Arg = term__variable(ArgVar),
 		\+ list__member(ArgVar, Vars0)
 	->
-		Var = ArgVar,
-		VarSet = VarSet0
+		Var = ArgVar
 	;
-		varset__new_var(VarSet0, Var, VarSet)
+		varset__new_var(!.VarSet, Var, !:VarSet)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -7632,7 +7641,8 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 		FieldNameResult = ok(FieldNames)
 	->
 		check_expr_purity(Purity, Context, !Info, !IO),
-		make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet),
+		make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet,
+			!SInfo, !IO),
 		expand_get_field_function_call(Context, MainContext,
 			SubContext, FieldNames, X, InputTermVar,
 			!VarSet, Functor, _, Goal0, !Info, !SInfo, !IO),
@@ -7651,9 +7661,10 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 		FieldNameResult = ok(FieldNames)
 	->
 		check_expr_purity(Purity, Context, !Info, !IO),
-		make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet),
+		make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet,
+			!SInfo, !IO),
 		make_fresh_arg_var(FieldValueTerm, FieldValueVar,
-			[InputTermVar], !VarSet),
+			[InputTermVar], !VarSet, !SInfo, !IO),
 
 		expand_set_field_function_call(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, InputTermVar, X,
@@ -7694,7 +7705,8 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 				GoalInfo),
 			Goal = GoalExpr - GoalInfo
 		;
-			make_fresh_arg_vars(FunctorArgs, HeadVars, !VarSet),
+			make_fresh_arg_vars(FunctorArgs, HeadVars, !VarSet,
+				!SInfo, !IO),
 			make_atomic_unification(X,
 				functor(ConsId, no, HeadVars), Context,
 				MainContext, SubContext, Goal0,
@@ -8517,11 +8529,14 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context) -->
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		io__write_string("  (This is an error because you specified the `--no-infer-det'"),
+		io__write_string("  (This is an error because " ++
+			"you specified the `--no-infer-det'"),
 		prog_out__write_context(Context),
-		io__write_string("  option.  Use the `--infer-det' option if you want the"),
+		io__write_string("  option.  Use the `--infer-det' option " ++
+			"if you want the"),
 		prog_out__write_context(Context),
-		io__write_string("  compiler to automatically infer the determinism of"),
+		io__write_string("  compiler to automatically infer " ++
+			"the determinism of"),
 		prog_out__write_context(Context),
 		io__write_string("  local predicates.)")
 	;
@@ -8902,7 +8917,7 @@ promise_ex_error(PromiseType, Context, Message, !IO) :-
 
 this_file = "make_hlds.m".
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% This synonym improves code legibility.
 	%
@@ -8923,14 +8938,16 @@ this_file = "make_hlds.m".
 :- type svar_ctxt
 	--->	in_head		% In the head of a clause or lambda.
 	;	in_body		% In the body of a clause or lambda.
-	;	in_atom(svar_set, svar_info).
-				% In the context of an atomic goal at the
-				% level of the source code (the 1st argument
-				% is the set of state variables X that have
-				% been referenced as !:X in the arguments of
-				% the atomic goal; the 2nd argument is the
-				% "parent" svar_info, used to keep track of
-				% nesting in subterms of an atomic formula.)
+	;	in_atom(	% In the context of an atomic goal at the
+				% level of the source code.
+			had_colon_reference :: svar_set,
+				% The set of state variables X that have been
+				% referenced as !:X in the parameters of the
+				% atomic goal.
+			parent_svar_info    :: svar_info
+				% The parent svar_info, used to keep track of
+				% nesting in subterms of an atomic formula.
+		).
 
 :- type svar_info
 	--->	svar_info(
@@ -8965,7 +8982,7 @@ this_file = "make_hlds.m".
 
 new_svar_info = svar_info(in_head, 0, map__init, map__init, map__init).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Obtain the mapping for a !.X state variable reference and
 	% update the svar_info.
@@ -9017,7 +9034,7 @@ SInfo `has_svar_colon_mapping_for` StateVar :-
 	SInfo ^ ctxt = in_atom(_, ParentSInfo),
 	ParentSInfo `has_svar_colon_mapping_for` StateVar.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Obtain the mapping for a !:X state variable reference.
 	%
@@ -9067,7 +9084,7 @@ SInfo `with_updated_svar` StateVar =
 		SInfo
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Construct the initial and final mappings for a state variable.
 	%
@@ -9113,7 +9130,7 @@ new_final_state_var(StateVar, VarC, !VarSet, !SInfo) :-
 	varset__new_named_var(!.VarSet, NameC, VarC, !:VarSet),
 	!:SInfo = ( !.SInfo ^ colon ^ elem(StateVar) := VarC ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Prepare for the head of a new clause.
 	%
@@ -9121,7 +9138,7 @@ new_final_state_var(StateVar, VarC, !VarSet, !SInfo) :-
 
 prepare_for_head(new_svar_info).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We need to make the current !.Xs external
 	% ("read-only") and clear the !.Xs and !:Xs.
@@ -9135,7 +9152,7 @@ prepare_for_head(new_svar_info).
 prepare_for_lambda(!SInfo) :-
 	!:SInfo = ( new_svar_info ^ external_dot := !.SInfo ^ dot ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Having processed the head of a clause, prepare for the first
 	% (source-level) atomic conjunct.  We return the final !:
@@ -9154,7 +9171,7 @@ prepare_for_body(FinalMap, !VarSet, !SInfo) :-
 			       ^ num   := N       )
 			       ^ colon := Colon   ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We have to conjoin the head and body and add unifiers to tie up all
 	% the final values of the state variables to the head variables.
@@ -9185,7 +9202,7 @@ add_svar_unifier(RHSMap, Context, StateVar, Var, Unifiers0) = Unifiers :-
 		Unifiers = Unifiers0
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func svar_unification(prog_context, prog_var, prog_var) = hlds_goal.
 
@@ -9193,7 +9210,7 @@ svar_unification(Context, SVar, Var) = Unification :-
 	hlds_goal__create_atomic_unification(SVar, var(Var), Context,
 		implicit("state variable"), [], Unification).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Add some local state variables.
 	%
@@ -9212,7 +9229,7 @@ prepare_for_local_state_vars(StateVars, !VarSet, !SInfo) :-
 add_new_local_state_var(StateVar, !VarSet, !SInfo) :-
 	new_colon_state_var(StateVar, _, !VarSet, !SInfo).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Remove some local state variables.
 	%
@@ -9253,7 +9270,7 @@ del_locals(StateVars, MapBefore, Map) =
 		Map
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We have to add unifiers to the Then and Else arms of an
 	% if-then-else to make sure all the state variables match up.
@@ -9332,7 +9349,7 @@ add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
 	add_then_arm_specific_unifiers(Context, StateVars,
 		SInfo0, SInfoC, !SInfoT, !Thens, !VarSet).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred next_svar_mappings(int::in, svars::in,
 	prog_varset::in, prog_varset::out, svar_map::out) is det.
@@ -9348,7 +9365,7 @@ next_svar_mappings_2(N, [StateVar | StateVars], !VarSet, !Map) :-
 	next_svar_mapping(N, StateVar, _, !VarSet, !Map),
 	next_svar_mappings_2(N, StateVars, !VarSet, !Map).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We assume that a negation updates all state variables in scope,
 	% so we construct new mappings for the state variables and then
@@ -9360,7 +9377,7 @@ finish_negation(SInfoBefore, SInfoNeg, SInfo) :-
 	SInfo = (( SInfoBefore ^ num   := SInfoNeg ^ num   )
 	                       ^ colon := SInfoNeg ^ colon ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We have to make sure that all arms of a disjunction produce the
 	% same state variable bindings by adding unifiers as necessary.
@@ -9520,7 +9537,7 @@ add_disj_unifier(Context, SInfo, SInfoX, StateVar, Unifiers) =
 	  	Unifiers
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We implement a special purpose comparison for state variable
 	% names that compares the numbers appended at the right hand
@@ -9558,7 +9575,7 @@ int_suffix_2(S, I, R, N) =
 	  	N
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We treat equivalence goals as if they were negations (they are
 	% in a negated context after all.)
@@ -9569,7 +9586,7 @@ int_suffix_2(S, I, R, N) =
 finish_equivalence(SInfoBefore, SInfoEqv, SInfo) :-
 	finish_negation(SInfoBefore, SInfoEqv, SInfo).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We prepare for a call by setting the ctxt to in_atom.  If we're
 	% already in an atom then we inherit the parent's set of "updated"
@@ -9578,15 +9595,17 @@ finish_equivalence(SInfoBefore, SInfoEqv, SInfo) :-
 :- pred prepare_for_call(svar_info::in, svar_info::out) is det.
 
 prepare_for_call(ParentSInfo, SInfo) :-
-	UpdatedStateVars =
-		( ParentSInfo ^ ctxt = in_atom(UpdatedStateVars0, _) ->
-			UpdatedStateVars0
-		;
-			set__init
-		),
-	SInfo = ( ParentSInfo ^ ctxt := in_atom(UpdatedStateVars,ParentSInfo) ).
+	(
+		ParentSInfo ^ ctxt =
+			in_atom(UpdatedStateVars, _GrandparentSInfo)
+	->
+		Ctxt = in_atom(UpdatedStateVars, ParentSInfo)
+	;
+		Ctxt = in_atom(set__init, ParentSInfo)
+	),
+	SInfo = ParentSInfo ^ ctxt := Ctxt.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% When we finish a call, we're either still inside the
 	% atomic formula, in which case we simply propagate the set of
@@ -9614,7 +9633,7 @@ finish_call(!VarSet, !SInfo) :-
 	  	error("make_hlds__finish_call: ctxt is not in_atom")
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred prepare_for_if_then_else_goal(svars::in,
 	prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
@@ -9623,7 +9642,7 @@ finish_call(!VarSet, !SInfo) :-
 prepare_for_if_then_else_goal(StateVars, !VarSet, !SInfo) :-
 	prepare_for_local_state_vars(StateVars, !VarSet, !SInfo).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred finish_if_then_else_goal_condition(svars::in,
 	svar_info::in, svar_info::in, svar_info::out, svar_info::out) is det.
@@ -9633,7 +9652,7 @@ finish_if_then_else_goal_condition(StateVars, SInfoBefore, SInfoA0, SInfoA,
 	SInfoB = SInfoA0,
 	finish_local_state_vars(StateVars, _, SInfoBefore, SInfoA0, SInfoA).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred finish_if_then_else_goal_then_goal(svars::in,
 	svar_info::in, svar_info::in, svar_info::out) is det.
@@ -9641,7 +9660,7 @@ finish_if_then_else_goal_condition(StateVars, SInfoBefore, SInfoA0, SInfoA,
 finish_if_then_else_goal_then_goal(StateVars, SInfoBefore, SInfoB0, SInfoB) :-
 	finish_local_state_vars(StateVars, _, SInfoBefore, SInfoB0, SInfoB).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% The condition of an if-then-else expression is a goal in which
 	% only !.X state variables in scope are visible (although the goal
@@ -9659,7 +9678,7 @@ prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo) :-
 				   ^ num          := !.SInfo ^ num ),
 	prepare_for_local_state_vars(StateVars, !VarSet, !SInfo).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred finish_if_then_else_expr_condition(svar_info::in,
 	svar_info::in, svar_info::out) is det.
@@ -9672,7 +9691,7 @@ finish_if_then_else_expr_condition(SInfoBefore, SInfo0, SInfo) :-
 		 	                         (SInfoBefore ^ colon)  )
 	                    ^ ctxt         := SInfoBefore ^ ctxt         ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred finish_if_then_else_expr_then_goal(svars::in,
 	svar_info::in, svar_info::in, svar_info::out) is det.
@@ -9680,7 +9699,7 @@ finish_if_then_else_expr_condition(SInfoBefore, SInfo0, SInfo) :-
 finish_if_then_else_expr_then_goal(StateVars, SInfoBefore, SInfo0, SInfo) :-
 	finish_local_state_vars(StateVars, _, SInfoBefore, SInfo0, SInfo).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Having finished processing one source-level atomic conjunct, prepare
 	% for the next.  Note that if !:X was not seen in the conjunct we've
@@ -9765,7 +9784,7 @@ next_svar_mapping(N, StateVar, Var, !VarSet, !Map) :-
 	varset__new_named_var(!.VarSet, Name, Var, !:VarSet),
 	!:Map  = ( !.Map ^ elem(StateVar) := Var ).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Replace !X args with two args !.X, !:X in that order.
 	%
@@ -9787,7 +9806,7 @@ expand_bang_state_var(T @ functor(Const, Args, Ctxt), Ts) =
 	  	[ T | Ts ]
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func expand_bang_state_var_args_in_instance_method_heads(instance_body) =
 	instance_body.
@@ -9826,7 +9845,7 @@ expand_item_bsvs(Item) =
 		Item
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% Given a list of argument terms, substitute !.X and !:X with
 	% the corresponding state variable mappings.  Any !X should
@@ -9850,17 +9869,21 @@ substitute_state_var_mappings([Arg0 | Args0], [Arg | Args],
 	io::di, io::uo) is det.
 
 substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO) :-
-	( Arg0 = functor(atom("!."), [variable(StateVar)], Context) ->
+	(
+		Arg0 = functor(atom("!."), [variable(StateVar)], Context)
+	->
 		dot(Context, StateVar, Var, !VarSet, !SInfo, !IO),
 		Arg  = variable(Var)
-	; Arg0 = functor(atom("!:"), [variable(StateVar)], Context) ->
+	;
+		Arg0 = functor(atom("!:"), [variable(StateVar)], Context)
+	->
 		colon(Context, StateVar, Var, !VarSet, !SInfo, !IO),
 		Arg  = variable(Var)
 	;
-	  	Arg    = Arg0
+	  	Arg  = Arg0
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred illegal_state_var_func_result(pred_or_func::in, list(prog_term)::in,
 	svar::out) is semidet.
@@ -9868,7 +9891,7 @@ substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO) :-
 illegal_state_var_func_result(function, Args, StateVar) :-
 	list__last(Args, functor(atom("!"), [variable(StateVar)], _Ctxt)).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 	% We do not allow !X to appear as a lambda head argument.
 	% We might extend the syntax still further to accommodate
@@ -9884,7 +9907,7 @@ lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
 		lambda_args_contain_bang_state_var(Args, StateVar)
 	).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred report_illegal_state_var_update(prog_context::in, prog_varset::in,
 	svar::in, io::di, io::uo) is det.
@@ -9898,7 +9921,7 @@ cannot use !:%s in this context;", [s(Name)]), !IO),
 	io__format("\
   however !.%s may be used here.\n", [s(Name)], !IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred report_non_visible_state_var(string::in, prog_context::in,
 	prog_varset::in, svar::in, io::di, io::uo) is det.
@@ -9910,7 +9933,7 @@ report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
 state variable !%s%s is not visible in this context.",
 		[s(DorC), s(Name)]), !IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred report_unitialized_state_var(prog_context::in, prog_varset::in,
 	svar::in, io::di, io::uo) is det.
@@ -9922,7 +9945,7 @@ report_unitialized_state_var(Context, VarSet, StateVar, !IO) :-
 Warning: reference to unitialized state variable !.%s.\n",
 		[s(Name)]), !IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred report_illegal_func_svar_result(prog_context::in, prog_varset::in,
 	svar::in, io::di, io::uo) is det.
@@ -9937,7 +9960,7 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
   You probably meant !.%s or !:%s.\n", [s(Name), s(Name)],
   		!IO).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred report_illegal_bang_svar_lambda_arg(prog_context::in, prog_varset::in,
 	svar::in, io::di, io::uo) is det.
@@ -9951,5 +9974,5 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
 	io__format("\
   Perhaps you meant !.%s or !:%s.\n", [s(Name), s(Name)], !IO).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
