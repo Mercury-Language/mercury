@@ -54,19 +54,17 @@ The semantics of these declarations is as follows.
 	The mapping is used by the implementation so that it
 	can determine where to find the required modules.)
 
-:- import_module Module1, Module2, ..., ModuleN.
-
-	The listed modules are imported into the current module.
-	The exported symbols in the listed modules are thereby made
-	available to the current module.  Symbols must still be
-	qualified with a module name, for example
-		list:append(A,B,C)
-	before they can be used, *with the exception of operators used
-	in an operator context*.
-
 :- use_module Module1, Module2, ..., ModuleN.
+
+	The exported symbols in the listed modules are made
+	available for use in the current module.  These symbols must
+	still be qualified with a module name, for example
+		list:append(A,B,C)
+	in order to be used.
+
+:- import_module Module1, Module2, ..., ModuleN.
 	
-	As for `import_module', except that symbols are imported into the
+	As for `use_module', except that symbols are imported into the
 	current namespace and do not need to be qualified with a module name
 	except to avoid ambiguities.
 	(Use of this declaration in large programs is probably a bad idea,
@@ -81,8 +79,6 @@ The semantics of these declarations is as follows.
 	All exported symbols in the specified modules are re-exported
 	from this module.  This declaration can only occur in the
 	interface section.
-	[Warning! The semantics of this might change if/when 
-	nested modules are introduced.]
 
 :- interface.
 	All exportable declarations (ie. all type, predicate, constructor, and
@@ -135,7 +131,12 @@ section.
 		op(OpSpecifier)
 			Matches any operators matched by OpSpecifier.
 		module(ModuleSpecifier)
-			Matches all symbols in the specified module.
+			Matches all symbols exported from the specified module.
+		module_ops(ModuleSpecifier)
+			Matches all operators exported from the specified
+			module.  (This includes any entity exported from
+			the module which has the same name as an operator
+			declared in the module.)
 
 	A ConstructorSpecifier is one of
 		SymbolSpecifier
@@ -219,6 +220,20 @@ section.
 		:- export_sym type(Type1), ..., type(TypeN).
 	The listed types and all the constructors for the listed types
 	are exported.
+
+:- export_module_ops 
+	This is just an abbreviation for
+		:- export_sym module_ops(Op1), ..., op(OpN).
+
+:- import_module_ops Module1, ..., ModuleN.
+	This is just an abbreviation for
+		:- export_sym module_ops(Module1), ..., module_ops(ModuleN).
+
+:- export_module_ops Module1, Module2, ..., ModuleN.
+	All exported operators in the specified modules are re-exported
+	from this module.  This declaration can only occur in the
+	interface section.
+
 
 :- import_sym Sym1, Sym2, ..., SumN.
 	The listed symbols are imported, ie. made available for use
