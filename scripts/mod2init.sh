@@ -11,7 +11,7 @@
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR:-@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*.mod}
 
-defentry=mercury__run_0_0
+defentry=mercury__io__run_0_0
 while getopts w: c
 do
 	case $c in
