@@ -176,7 +176,7 @@
 
 :- implementation.
 
-:- import_module int, exception.
+:- import_module int, exception, list, require, string.
 
 :- pragma foreign_decl("C",
 "
@@ -212,6 +212,10 @@
 :- pragma foreign_type("C", time_t_rep, "time_t")
 	where comparison is compare_time_t_reps.
 
+	% The System.DateTime will hold the value in UTC.
+:- pragma foreign_type(il, time_t_rep, "valuetype [mscorlib]System.DateTime")
+	where comparison is compare_time_t_reps.
+
 :- pred compare_time_t_reps(comparison_result::uo,
 		time_t_rep::in, time_t_rep::in) is det.
 compare_time_t_reps(Result, X, Y) :-
@@ -239,6 +243,14 @@ time__clock(Result, IO0, IO) :-
 	Ret = (MR_Integer) clock();
 	MR_update_io(IO0, IO);
 }").
+/* XXX need to add System.dll to the references list.
+:- pragma foreign_proc("C#", time__c_clock(Ret::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+	// XXX Ticks is long in .NET!
+	Ret = (int) System.Diagnostics.Process.GetCurrentProcess.UserProcessorTime.Ticks;
+}").
+*/
 
 %-----------------------------------------------------------------------------%
 
@@ -254,6 +266,12 @@ time__clocks_per_sec = Val :-
 	[will_not_call_mercury, promise_pure],
 "{
 	Ret = (MR_Integer) CLOCKS_PER_SEC;
+}").
+:- pragma foreign_proc("C#", time__c_clocks_per_sec(Ret::out),
+	[will_not_call_mercury, promise_pure],
+"{
+	// XXX TicksPerSecond is long in .NET!
+	Ret = (int) System.TimeSpan.TicksPerSecond;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -344,6 +362,12 @@ time__time(Result, IO0, IO) :-
 	Ret = time(NULL);
 	MR_update_io(IO0, IO);
 }").
+:- pragma foreign_proc("C#",
+	time__c_time(Ret::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+	Ret = System.DateTime.UtcNow;
+}").
 
 :- pred time__time_t_is_invalid(time_t_rep).
 :- mode time__time_t_is_invalid(in) is semidet.
@@ -353,6 +377,12 @@ time__time(Result, IO0, IO) :-
 	[will_not_call_mercury, promise_pure],
 "{
 	SUCCESS_INDICATOR = (Val == -1);
+}").
+:- pragma foreign_proc("C#",
+	time__time_t_is_invalid(_Val::in),
+	[will_not_call_mercury, promise_pure],
+"{
+	SUCCESS_INDICATOR = false;
 }").
 
 
@@ -372,6 +402,14 @@ time__difftime(time_t(T1), time_t(T0)) = Diff :-
 	[will_not_call_mercury, promise_pure],
 "{
 	Diff = (MR_Float) difftime(T1, T0);
+}").
+:- pragma foreign_proc("C#",
+	time__c_difftime(T1::in, T0::in, Diff::out),
+	[will_not_call_mercury, promise_pure],
+"{
+	System.TimeSpan span;
+	span = T1 - T0;
+	Diff = span.TotalSeconds;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -411,6 +449,28 @@ time__localtime(time_t(Time)) = TM :-
 	YD = (MR_Integer) p->tm_yday;
 	N = (MR_Integer) p->tm_isdst;
 }").
+:- pragma foreign_proc("C#",
+	time__c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+		Min::out, Sec::out, YD::out, WD::out, N::out),
+	[will_not_call_mercury, promise_pure],
+"{
+	System.DateTime t = Time.ToLocalTime();
+
+	// we don't handle leap seconds
+	Sec = t.Second;
+	Min = t.Minute;
+	Hrs = t.Hour;
+	Mnt = t.Month - 1;
+	Yr = t.Year - 1900;
+	WD = (int) t.DayOfWeek;
+	MD = t.Day;
+	YD = t.DayOfYear - 1;
+	if (System.TimeZone.CurrentTimeZone.IsDaylightSavingTime(t)) {
+		N = 1;
+	} else {
+		N = 0;
+	}
+}").
 
 
 %:- func time__gmtime(time_t) = tm.
@@ -447,6 +507,25 @@ time__gmtime(time_t(Time)) = TM :-
 	MD = (MR_Integer) p->tm_mday;
 	YD = (MR_Integer) p->tm_yday;
 	N = (MR_Integer) p->tm_isdst;
+}").
+:- pragma foreign_proc("C#",
+	time__c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
+		Min::out, Sec::out, YD::out, WD::out, N::out),
+	[will_not_call_mercury, promise_pure],
+"{
+	System.DateTime t = Time;
+
+	// we don't handle leap seconds
+	Sec = t.Second;
+	Min = t.Minute;
+	Hrs = t.Hour;
+	Mnt = t.Month - 1;
+	Yr = t.Year - 1900;
+	WD = (int) t.DayOfWeek;
+	MD = t.Day;
+	YD = t.DayOfYear - 1;
+	// UTC time can never have daylight savings.
+	N = 0;
 }").
 
 :- func int_to_maybe_dst(int) = maybe(dst).
@@ -491,6 +570,19 @@ time__mktime(TM) = time_t(Time) :-
 
 	Time = mktime(&t);
 }").
+:- pragma foreign_proc("C#",
+	time__c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+		_YD::in, _WD::in, _N::in, Time::out),
+	[will_not_call_mercury, promise_pure],
+ "{
+	// We don't use YD, WD and N.
+	// XXX Ignoring N the daylight savings time indicator is bad
+	// On the day when you switch back to standard time from daylight
+	// savings time, the time '2:30am' occurs twice, once during daylight
+	// savings time (N = 1), and then again an hour later, during standard
+	// time (N = 0).
+ 	Time = new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
+}").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
 
@@ -508,59 +600,71 @@ maybe_dst_to_int(M) = N :-
 %:- func time__asctime(tm) = string.
 
 time__asctime(TM) = Str :-
-	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
-	time__c_asctime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
-		maybe_dst_to_int(DST), Str).
+	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, _YD, WD, _DST),
+	Str = string__format("%.3s %.3s%3d %.2d:%.2d:%.2d %d\n",
+			[s(wday_name(WD)), s(mon_name(Mnt)), i(MD), i(Hrs),
+				i(Min), i(Sec), i(1900 + Yr)]).
 
-:- pred time__c_asctime(int, int, int, int, int, int, int, int, int, string).
-:- mode time__c_asctime(in, in, in, in, in, in, in, in, in, out) is det.
+:- func wday_name(int) = string.
 
-:- pragma foreign_proc("C",
-	time__c_asctime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-		YD::in, WD::in, N::in, Str::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	struct tm t;
-	char* s;
+wday_name(N) = Name :-
+	( wday_name(N, Name0) ->
+		Name = Name0
+	;
+		error("time: wday_name")
+	).
 
-	t.tm_sec = Sec;
-	t.tm_min = Min;
-	t.tm_hour = Hrs;
-	t.tm_mon = Mnt;
-	t.tm_year = Yr;
-	t.tm_wday = WD;
-	t.tm_mday = MD;
-	t.tm_yday = YD;
-	t.tm_isdst = N;
+:- pred wday_name(int::in, string::out) is semidet.
 
-	s = asctime(&t);
+wday_name(0, "Mon").
+wday_name(1, "Tue").
+wday_name(2, "Wed").
+wday_name(3, "Thu").
+wday_name(4, "Fri").
+wday_name(5, "Sat").
+wday_name(6, "Sun").
 
-	MR_make_aligned_string_copy(Str, s);
-}").
+:- func mon_name(int) = string.
+
+mon_name(N) = Name :-
+	( mon_name(N, Name0) ->
+		Name = Name0
+	;
+		error("time: mon_name")
+	).
+
+:- pred mon_name(int::in, string::out) is semidet.
+
+mon_name(0, "Jan").
+mon_name(1, "Feb").
+mon_name(2, "Mar").
+mon_name(3, "Apr").
+mon_name(4, "May").
+mon_name(5, "Jun").
+mon_name(6, "Jul").
+mon_name(7, "Aug").
+mon_name(8, "Sep").
+mon_name(9, "Oct").
+mon_name(10, "Nov").
+mon_name(11, "Dec").
+
 
 %-----------------------------------------------------------------------------%
 
 %:- func time__ctime(time_t) = string.
 
-time__ctime(time_t(Time)) = Str :-
-	time__c_ctime(Time, Str).
+time__ctime(Time) = asctime(localtime(Time)).
 
-:- pred time__c_ctime(time_t_rep, string).
-:- mode time__c_ctime(in, out) is det.
+%-----------------------------------------------------------------------------%
 
-:- pragma foreign_proc("C",
-	time__c_ctime(Time::in, Str::out),
-	[will_not_call_mercury, promise_pure],
-"{
-	char *s;
-	time_t t;
-
-	t = Time;
-
-	s = ctime(&t);
-
-	MR_make_aligned_string_copy(Str, s);
-}").
+% XXX This needs to be in the interface because pragma export doesn't work yet
+% on the .NET backend and io.m needs to access this.
+:- interface.
+:- type time_t_rep.
+:- func construct_time_t(time_t_rep) = time_t.
+:- implementation.
+:- pragma export(construct_time_t(in) = out, "ML_construct_time_t").
+construct_time_t(T) = time_t(T).
 
 %-----------------------------------------------------------------------------%
 :- end_module time.

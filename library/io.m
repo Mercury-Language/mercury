@@ -2394,7 +2394,25 @@ io__file_modification_time(File, Result) -->
 	MR_update_io(IO0, IO);
 
 }").
- 
+:- pragma foreign_proc("C#",
+	io__file_modification_time_2(FileName::in, Status::out, Msg::out,
+		Time::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"{
+	try {
+		System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
+		Time = mercury.time.mercury_code.construct_time_t_2(t);
+		Msg = """";
+		Status = 1;
+
+	} catch (System.Exception e) {
+		Msg = ""GetLastWriteTime() failed: "" + e.Message;
+		Status = 0;
+	}
+}").
+
+
+
 %-----------------------------------------------------------------------------%
 
 io__file_type(FollowSymLinks, FileName, MaybeType) -->
