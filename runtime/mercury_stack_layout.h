@@ -31,6 +31,7 @@
 
 #include "mercury_types.h"
 #include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
+#include "mercury_tags.h"
 
 /* forward declarations */
 typedef	struct MR_Proc_Layout_Struct	MR_Proc_Layout;
@@ -850,11 +851,11 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 */
 
 typedef enum {
-	MR_TRACE_LEVEL_NONE,
-	MR_TRACE_LEVEL_SHALLOW,
-	MR_TRACE_LEVEL_DEEP,
-	MR_TRACE_LEVEL_DECL,
-	MR_TRACE_LEVEL_DECL_REP
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL),
+	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
 } MR_Trace_Level;
 
 typedef struct MR_Module_File_Layout_Struct {

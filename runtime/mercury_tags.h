@@ -137,4 +137,40 @@
 
 #endif
 
+/*
+** Convert an enumeration declaration into one which assigns the same
+** values to the enumeration constants as Mercury's tag allocation scheme
+** assigns. (This is necessary because in .rt grades Mercury enumerations are
+** not assigned the same values as 'normal' C enumerations).
+** 
+*/
+
+#ifdef MR_RESERVE_TAG
+
+	#define MR_CONVERT_C_ENUM_CONSTANT(x) \
+		MR_mkword(MR_mktag(MR_FIRST_UNRESERVED_RAW_TAG), MR_mkbody(x))
+
+		/*
+		** We generate three enumeration constants:
+		** 	- the first one, with '_val' pasted at the end of its
+		**	  name, to give us a name for the current *unconverted*
+		**	  enumeration value
+		**	- the converted enumeration value
+		**	- a '_dummy' value to reset the unconverted enumeration
+		**	  value
+		*/
+	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	\
+		MR_PASTE2(x, _val),	\
+		x = MR_CONVERT_C_ENUM_CONSTANT(MR_PASTE2(x, _val)), \
+		MR_PASTE2(x, _dummy) = MR_PASTE2(x, _val)
+
+#else
+
+	#define MR_CONVERT_C_ENUM_CONSTANT(x)   (x)
+
+	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	x
+
+#endif
+
+
 #endif	/* not MERCURY_TAGS_H */
