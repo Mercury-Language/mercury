@@ -82,7 +82,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_data.
+:- import_module hlds_goal, prog_data, quantification.
 :- import_module hlds_data, globals, options, type_util.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
@@ -105,7 +105,8 @@
 			pred_or_func,
 			string,			% pred/func name
 			aditi_owner,
-			module_info
+			module_info,
+			bool	% true iff we need to recompute the nonlocals
 		).
 
 %-----------------------------------------------------------------------------%
@@ -171,19 +172,33 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 	pred_info_get_markers(PredInfo0, Markers),
 	pred_info_get_class_context(PredInfo0, Constraints0),
 	pred_info_get_aditi_owner(PredInfo0, Owner),
+	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_varset(ProcInfo0, VarSet0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap0),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0),
+	MustRecomputeNonLocals0 = no,
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
 		TVarMap0, TCVarMap0, Markers, PredOrFunc, 
-		PredName, Owner, ModuleInfo0),
-	lambda__process_goal(Goal0, Goal, Info0, Info),
-	Info = lambda_info(VarSet, VarTypes, Constraints, TypeVarSet, 
-		TVarMap, TCVarMap, _, _, _, _, ModuleInfo),
+		PredName, Owner, ModuleInfo0, MustRecomputeNonLocals0),
+	lambda__process_goal(Goal0, Goal1, Info0, Info1),
+	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet, 
+		TVarMap, TCVarMap, _, _, _, _, ModuleInfo,
+		MustRecomputeNonLocals),
+
+	% check if we need to requantify
+	( MustRecomputeNonLocals = yes ->
+		implicitly_quantify_clause_body(HeadVars,
+			Goal1, VarSet1, VarTypes1, Goal, VarSet, VarTypes,
+			_Warnings)
+	;
+		Goal = Goal1,
+		VarSet = VarSet1,
+		VarTypes = VarTypes1
+	),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
@@ -290,7 +305,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, _PredConstraints, TVarSet,
 		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
-		ModuleInfo0),
+		ModuleInfo0, MustRecomputeNonLocals0),
 
 		% Calculate the constraints which apply to this lambda
 		% expression. 
@@ -327,7 +342,17 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 	% We need all the typeinfos, including the ones that are not used,
 	% for the layout structure describing the closure.
-	set__union(NonLocals1, ExtraTypeInfos, NonLocals),
+	NewTypeInfos = ExtraTypeInfos `set__difference` NonLocals1,
+	NonLocals = NonLocals1 `set__union` NewTypeInfos,
+
+	% If we added variables to the nonlocals of the lambda goal,
+	% then we need to recompute the nonlocals for the procedure
+	% that contains it.
+	( \+ set__empty(NewTypeInfos) ->
+		MustRecomputeNonLocals = yes
+	;
+		MustRecomputeNonLocals = MustRecomputeNonLocals0
+	),
 
 	set__to_sorted_list(NonLocals, ArgVars1),
 
@@ -530,7 +555,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		VarToReuse, cell_is_unique, RLExprnId),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
 		TVarMap, TCVarMap, Markers, POF, OrigPredName, Owner,
-		ModuleInfo).
+		ModuleInfo, MustRecomputeNonLocals).
 
 :- pred lambda__constraint_contains_vars(list(tvar), class_constraint).
 :- mode lambda__constraint_contains_vars(in, in) is semidet.
