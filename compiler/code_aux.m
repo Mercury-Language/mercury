@@ -166,7 +166,9 @@ code_aux__pre_goal_update(GoalInfo) -->
 code_aux__post_goal_update(GoalInfo) -->
 	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
 	code_info__update_liveness_info(PostDelta),
-	code_info__reduce_variables_and_registers.
+	code_info__reduce_variables_and_registers,
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	code_info__apply_instmap_delta(InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 

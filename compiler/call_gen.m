@@ -97,11 +97,7 @@ call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
 		call_gen__generate_semidet_call_2(PredId, ProcId, Arguments,
 			Code)
 	;
-		code_info__generate_pre_commit(PreCommit, FailLabel),
-		call_gen__generate_nondet_call(PredId, ProcId, Arguments,
-			CallCode),
-		code_info__generate_commit(FailLabel, Commit),
-		{ Code = tree(PreCommit, tree(CallCode, Commit)) }
+		call_gen__generate_nondet_call(PredId, ProcId, Arguments, Code)
 	).
 
 :- pred call_gen__generate_semidet_call_2(pred_id, proc_id, list(var),

@@ -67,8 +67,9 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 
 	detect_initial_live_vars(ProcInfo0, ModuleInfo0, Liveness0),
 	set__init(LiveSets0),
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-				ModuleInfo0, _Liveness, LiveSets),
+	set__init(ExtraLives0),
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+			Category,ModuleInfo0, _ExtraLives, _Liveness, LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
 	live_vars__allocate_call_info(ColourList, Category, CallInfo),
@@ -88,12 +89,14 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 % of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-:- pred detect_live_vars_in_goal(hlds__goal, liveness_info, set(set(var)),
-		module_info, liveness_info, set(set(var))).
-:- mode detect_live_vars_in_goal(in, in, in, in, out, out) is det.
+:- pred detect_live_vars_in_goal(hlds__goal, set(var),
+		liveness_info, set(set(var)), category, module_info,
+				set(var), liveness_info, set(set(var))).
+:- mode detect_live_vars_in_goal(in, in, in, in, in, in, out, out, out) is det.
 
-detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveSets0, ModuleInfo,
-					Liveness, LiveSets) :-
+detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
+		LiveSets0, Category, ModuleInfo,
+			ExtraLives, Liveness, LiveSets) :-
 	goal_info_pre_delta_liveness(GoalInfo, PreDelta),
 	PreDelta = PreBirths - PreDeaths,
 	goal_info_post_delta_liveness(GoalInfo, PostDelta),
@@ -102,9 +105,23 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveSets0, ModuleInfo,
 	set__union(Liveness1, PreBirths, Liveness2),
 	set__difference(Liveness2, PostDeaths, Liveness3),
 
-	detect_live_vars_in_goal_2(Goal0, Liveness3, LiveSets0,
-					ModuleInfo, Liveness4, LiveSets),
+	goal_info_get_internal_determinism(GoalInfo, GoalCategory),
+	detect_live_vars_in_goal_2(Goal0, ExtraLives0, Liveness3, LiveSets0,
+				GoalCategory, ModuleInfo, ExtraLives1,
+							Liveness4, LiveSets),
 
+	(
+		(
+			Category = deterministic
+		;
+			Category = semideterministic
+		),
+		GoalCategory = nondeterministic
+	->
+		ExtraLives = ExtraLives0
+	;
+		ExtraLives = ExtraLives1
+	),
         set__union(Liveness4, PostBirths, Liveness).
 
 %-----------------------------------------------------------------------------%
@@ -112,131 +129,156 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, Liveness0, LiveSets0, ModuleInfo,
 	% `Liveness' is the set of live variables, i.e. vars which
 	% have been referenced and will be referenced again.
 
-:- pred detect_live_vars_in_goal_2(hlds__goal_expr, liveness_info, set(set(var)),
-				module_info, liveness_info, set(set(var))).
-:- mode detect_live_vars_in_goal_2(in, in, in, in, out, out) is det.
+:- pred detect_live_vars_in_goal_2(hlds__goal_expr, set(var), liveness_info,
+			set(set(var)), category, module_info,
+			set(var), liveness_info, set(set(var))).
+:- mode detect_live_vars_in_goal_2(in, in, in, in, in, in, out, out, out) is det.
 
-detect_live_vars_in_goal_2(conj(Goals0), Liveness0, LiveSets0, ModuleInfo,
-							Liveness, LiveSets) :-
-	detect_live_vars_in_conj(Goals0, Liveness0, LiveSets0, ModuleInfo,
-							Liveness, LiveSets).
+detect_live_vars_in_goal_2(conj(Goals0), ExtraLives0, Liveness0, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_conj(Goals0, ExtraLives0, Liveness0, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(disj(Goals0), Liveness0, LiveSets0,
-					ModuleInfo, Liveness, LiveSets) :-
+detect_live_vars_in_goal_2(disj(Goals0), ExtraLives0, Liveness0, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	set__insert(LiveSets0, Liveness0, LiveSets1),
-	detect_live_vars_in_disj(Goals0, Liveness0, LiveSets1,
-					ModuleInfo, Liveness, LiveSets).
+	detect_live_vars_in_disj(Goals0, ExtraLives0, Liveness0, LiveSets1,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(not(Goal0), Liveness0, LiveSets0, ModuleInfo,
-					Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-					ModuleInfo, Liveness, LiveSets).
-
-detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), Liveness0, LiveSets0,
-			ModuleInfo, Liveness, LiveSets) :-
-	detect_live_vars_in_cases(Cases0, Liveness0, LiveSets0,
-				ModuleInfo, Liveness, LiveSets).
+detect_live_vars_in_goal_2(switch(_Var, _Det, Cases0), ExtraLives0, Liveness0,
+		LiveSets0, Category, ModuleInfo,
+			ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_cases(Cases0, ExtraLives0, Liveness0, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0),
-			Liveness0, LiveSets0, ModuleInfo, Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Cond0, Liveness0, LiveSets0,
-					ModuleInfo, Liveness1, LiveSets1),
-	detect_live_vars_in_goal(Then0, Liveness1, LiveSets1,
-					ModuleInfo, _Liveness2, LiveSets2),
-	detect_live_vars_in_goal(Else0, Liveness0, LiveSets2,
-					ModuleInfo, Liveness, LiveSets).
+		ExtraLives0, Liveness0, LiveSets0, Category,
+			ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_goal(Cond0, ExtraLives0, Liveness0, LiveSets0,
+			Category,ModuleInfo, ExtraLives1, Liveness1, LiveSets1),
+	detect_live_vars_in_goal(Then0, ExtraLives1, Liveness1, LiveSets1,
+			Category,ModuleInfo,ExtraLives2, _Liveness2, LiveSets2),
+	detect_live_vars_in_goal(Else0, ExtraLives2, Liveness0, LiveSets2,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
-detect_live_vars_in_goal_2(some(_Vars, Goal0), Liveness0, LiveSets0,
-			ModuleInfo, Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-					ModuleInfo, Liveness, LiveSets).
+detect_live_vars_in_goal_2(not(Goal0), ExtraLives0, Liveness0, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+
+detect_live_vars_in_goal_2(some(_Vs, Goal0), ExtraLives0, Liveness0, LiveSets0,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(
 		call(PredId, ProcId, ArgTerms, Builtin, _SymName, _Follow),
-		Liveness, LiveSets0, ModuleInfo,
-			Liveness, LiveSets) :-
+		ExtraLives0, Liveness, LiveSets0,
+		Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
 		Builtin = is_builtin
 	->
-		LiveSets = LiveSets0
+		LiveSets = LiveSets0,
+		ExtraLives = ExtraLives0
 	;
 		term__vars_list(ArgTerms, ArgVars),
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
-		set__difference(Liveness, OutVars, LiveVars),
-		set__insert(LiveSets0, LiveVars, LiveSets)
+		set__difference(Liveness, OutVars, LiveVars0),
+		set__union(LiveVars0, ExtraLives0, LiveVars),
+		set__insert(LiveSets0, LiveVars, LiveSets),
+		(
+			Category = nondeterministic
+		->
+			ExtraLives = LiveVars
+		;
+			ExtraLives = ExtraLives0
+		)
 	).
 
-detect_live_vars_in_goal_2(unify(_,_,_,D,_), Liveness, LiveSets0,
-				_ModuleInfo, Liveness, LiveSets) :-
+detect_live_vars_in_goal_2(unify(_,_,_,D,_), ExtraLives0, Liveness, LiveSets0,
+		Category, _ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
 		D = complicated_unify(_, _, _)
 	->
 			% we have to save all live variables
-			% across complicated unifications.
-		set__insert(LiveSets0, Liveness, LiveSets)
+			% across complicated unifications. 
+		set__union(Liveness, ExtraLives0, LiveVars),
+		set__insert(LiveSets0, LiveVars, LiveSets),
+		(
+			Category = nondeterministic
+		->
+			ExtraLives = LiveVars
+		;
+			ExtraLives = ExtraLives0
+		)
 	;
-		LiveSets = LiveSets0
+		LiveSets = LiveSets0,
+		ExtraLives = ExtraLives0
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_conj(list(hlds__goal), liveness_info, set(set(var)),
-					module_info, liveness_info, set(set(var))).
-:- mode detect_live_vars_in_conj(in, in, in, in, out, out) is det.
+:- pred detect_live_vars_in_conj(list(hlds__goal), set(var), liveness_info, set(set(var)),
+					category, module_info, set(var), liveness_info, set(set(var))).
+:- mode detect_live_vars_in_conj(in, in, in, in, in, in, out, out, out) is det.
 
-detect_live_vars_in_conj([], Liveness, LiveVars, _M, Liveness, LiveVars).
-detect_live_vars_in_conj([Goal0|Goals0], Liveness0, LiveVars0,
-			ModuleInfo, Liveness, LiveVars) :-
+detect_live_vars_in_conj([], ExtraLives, Liveness, LiveVars,
+		_Category, _ModuleInfo, ExtraLives, Liveness, LiveVars).
+detect_live_vars_in_conj([Goal0|Goals0], ExtraLives0, Liveness0, LiveVars0,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveVars) :-
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->
-		detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness, LiveVars)
+		detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0,
+			LiveVars0, Category, ModuleInfo,
+				ExtraLives, Liveness, LiveVars)
 	;
-		detect_live_vars_in_goal(Goal0, Liveness0, LiveVars0,
-					ModuleInfo, Liveness1, LiveVars1),
-		detect_live_vars_in_conj(Goals0, Liveness1, LiveVars1,
-					ModuleInfo, Liveness, LiveVars)
+		detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0,
+			LiveVars0, Category, ModuleInfo,
+				ExtraLives1, Liveness1, LiveVars1),
+		detect_live_vars_in_conj(Goals0, ExtraLives1, Liveness1,
+			LiveVars1, Category, ModuleInfo,
+				ExtraLives, Liveness, LiveVars)
 	).
 
 %-----------------------------------------------------------------------------%
 
-% The current implementation simply threads the call_info through each of the
-% disjuncts to ensure that variables don't get allocated different slots
-% in different branches. This is not an *optimal* solution, but it is a
-% simple one.
-
-:- pred detect_live_vars_in_disj(list(hlds__goal), liveness_info, set(set(var)),
-					module_info, liveness_info,
+:- pred detect_live_vars_in_disj(list(hlds__goal), set(var), liveness_info, set(set(var)),
+					category, module_info, set(var), liveness_info,
 						set(set(var))).
-:- mode detect_live_vars_in_disj(in, in, in, in, out, out) is det.
+:- mode detect_live_vars_in_disj(in, in, in, in, in, in, out, out, out) is det.
 
-detect_live_vars_in_disj([], Liveness, LiveSets,
-					_ModuleInfo, Liveness, LiveSets).
-detect_live_vars_in_disj([Goal0|Goals0], Liveness0, LiveSets0,
-					ModuleInfo, Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-				ModuleInfo, Liveness1, LiveSets1),
-	detect_live_vars_in_disj(Goals0, Liveness0, LiveSets1,
-				ModuleInfo, Liveness2, LiveSets),
-	set__union(Liveness1, Liveness2, Liveness).
-
+detect_live_vars_in_disj([], ExtraLives, Liveness, LiveSets,
+			_Category, _ModuleInfo, ExtraLives, Liveness, LiveSets).
+detect_live_vars_in_disj([Goal0|Goals0], ExtraLives0, Liveness0, LiveSets0,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+			Category,ModuleInfo, ExtraLives1, _Liveness1, LiveSets1),
+	detect_live_vars_in_disj(Goals0, ExtraLives1, Liveness0, LiveSets1,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+	% set__union(Liveness1, Liveness2, Liveness).
+	% This predicate call is unnecessary because the post-deaths and
+	% pre-births sets *should* be taking care of everything.
 %-----------------------------------------------------------------------------%
 
-:- pred detect_live_vars_in_cases(list(case), liveness_info, set(set(var)),
-					module_info, liveness_info, set(set(var))).
-:- mode detect_live_vars_in_cases(in, in, in, in, out, out) is det.
+:- pred detect_live_vars_in_cases(list(case), set(var), liveness_info,
+		set(set(var)), category, module_info,
+			set(var), liveness_info, set(set(var))).
+:- mode detect_live_vars_in_cases(in, in, in, in, in, in, out, out, out) is det.
 
-detect_live_vars_in_cases([], Liveness, LiveSets,
-				_ModuleInfo, Liveness, LiveSets).
-detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], Liveness0, LiveSets0,
-					ModuleInfo, Liveness, LiveSets) :-
-	detect_live_vars_in_goal(Goal0, Liveness0, LiveSets0,
-			ModuleInfo, Liveness1, LiveSets1),
-	detect_live_vars_in_cases(Goals0, Liveness0, LiveSets1,
-			ModuleInfo, Liveness2, LiveSets),
-	set__union(Liveness1, Liveness2, Liveness).
+detect_live_vars_in_cases([], ExtraLives, Liveness, LiveSets,
+			_Category, _ModuleInfo, ExtraLives, Liveness, LiveSets).
+detect_live_vars_in_cases([case(_Cons, Goal0)|Goals0], ExtraLives0, Liveness0,
+		LiveSets0, Category, ModuleInfo,
+			ExtraLives, Liveness, LiveSets) :-
+	detect_live_vars_in_goal(Goal0, ExtraLives0, Liveness0, LiveSets0,
+			Category,ModuleInfo, ExtraLives1, _Liveness1, LiveSets1),
+	detect_live_vars_in_cases(Goals0, ExtraLives1, Liveness0, LiveSets1,
+			Category, ModuleInfo, ExtraLives, Liveness, LiveSets).
+	% set__union(Liveness1, Liveness2, Liveness).
+	% This predicate call is unnecessary because the post-deaths and
+	% pre-births sets *should* be taking care of everything.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

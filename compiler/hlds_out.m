@@ -698,6 +698,30 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, VarTypes, TypeVarSet)
 	io__write_string("\n"),
 	hlds_out__write_var_types_2(Vars, Indent, VarSet, VarTypes, TypeVarSet).
 	
+:- pred hlds_out__write_call_info(int, call_info, varset,
+					io__state, io__state).
+:- mode hlds_out__write_call_info(in, in, in, di, uo) is det.
+
+hlds_out__write_call_info(Indent, CallInfo, VarSet) -->
+	{ map__to_assoc_list(CallInfo, VarSlotList) },
+	hlds_out__write_call_info_2(VarSlotList, Indent, VarSet).
+
+:- pred hlds_out__write_call_info_2(assoc_list(var, lval), int, varset,
+						io__state, io__state).
+:- mode hlds_out__write_call_info_2(in, in, in, di, uo) is det.
+
+hlds_out__write_call_info_2([], _, _) --> [].
+hlds_out__write_call_info_2([Var - Slot | Vars], Indent, VarSet) -->
+	hlds_out__write_indent(Indent),
+	io__write_string("% "),
+	mercury_output_var(Var, VarSet),
+	io__write_string(" ("),
+	io__write_anything(Var),
+	io__write_string(") <- "),
+	io__write_anything(Slot),
+	io__write_string("\n"),
+	hlds_out__write_call_info_2(Vars, Indent, VarSet).
+	
 :- pred hlds_out__write_types(int, type_table, io__state, io__state).
 :- mode hlds_out__write_types(in, in, in, out) is det.
 
@@ -761,6 +785,7 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 	{ proc_info_variables(Proc, VarSet) },
 	{ proc_info_headvars(Proc, HeadVars) },
 	{ proc_info_argmodes(Proc, HeadModes) },
+	{ proc_info_call_info(Proc, CallInfo) },
 	{ proc_info_goal(Proc, Goal) },
 	{ proc_info_context(Proc, ModeContext) },
 	{ Indent1 is Indent + 1 },
@@ -781,6 +806,8 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, IsImported, Proc) -->
 		DeclaredDeterminism, ModeContext),
 
 	( { IsImported = no } ->
+		hlds_out__write_indent(Indent),
+		hlds_out__write_call_info(Indent, CallInfo, VarSet),
 		hlds_out__write_indent(Indent),
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
 						HeadVars),
@@ -845,7 +872,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 		io__write_string("\n"),
 		io__write_string(",\n"),
 		hlds_out__write_varnames_2(Indent, VarNameList)
-	->
+	;
 		{ error("This cannot happen") }
 	).
 

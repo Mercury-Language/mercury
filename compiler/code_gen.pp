@@ -234,6 +234,7 @@ generate_category_code(ModuleInfo, PredId, ProcId, ProcInfo, Determinism,
 	{ proc_info_liveness_info(ProcInfo, Liveness) },
 	{ proc_info_follow_vars(ProcInfo, FollowVars) },
 	{ proc_info_call_info(ProcInfo, CallInfo) },
+	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst) },
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = accurate ->
 		SaveSuccip = yes
@@ -241,11 +242,10 @@ generate_category_code(ModuleInfo, PredId, ProcId, ProcInfo, Determinism,
 		SaveSuccip = no
 	},
 	globals__io_get_globals(Globals),
-	{ module_info_get_unify_requests(ModuleInfo, UnifyRequests) },
 		% initialise the code_info structure 
 	{ code_info__init(VarInfo, Liveness, CallInfo, SaveSuccip,
 				Globals, PredId, ProcId, ProcInfo, Determinism,
-				UnifyRequests, FollowVars, ModuleInfo,
+				InitialInst, FollowVars, ModuleInfo,
 				CodeInfo0) },
 		% generate code for the procedure
 	{ generate_category_code_2(Determinism, Goal, Instrs, SUsed, CodeInfo0,
@@ -338,20 +338,28 @@ code_gen__generate_forced_non_goal(Goal, Code) -->
 code_gen__generate_det_goal(Goal - GoalInfo, Instr) -->
 		% Make any changes to liveness before Goal
 	code_aux__pre_goal_update(GoalInfo),
-		% generate goal
-	code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0),
-		% Make live any variables which subsequent goals
-		% will expect to be live, but were not generated
-	code_aux__post_goal_update(GoalInfo),
-	code_info__get_globals(Options),
+	code_info__get_instmap(InstMap),
 	(
-		{ globals__lookup_bool_option(Options, lazy_code, yes) }
+		{ InstMap \= unreachable }
 	->
-		{ Instr1 = empty }
+			% generate goal
+		code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0),
+			% Make live any variables which subsequent goals
+			% will expect to be live, but were not generated
+		code_info__set_instmap(InstMap),
+		code_aux__post_goal_update(GoalInfo),
+		code_info__get_globals(Options),
+		(
+			{ globals__lookup_bool_option(Options, lazy_code, yes) }
+		->
+			{ Instr1 = empty }
+		;
+			code_info__generate_eager_flush(Instr1)
+		),
+		{ Instr = tree(Instr0, Instr1) }
 	;
-		code_info__generate_eager_flush(Instr1)
-	),
-	{ Instr = tree(Instr0, Instr1) }.
+		{ Instr = empty }
+	).
 
 :- pred code_gen__generate_det_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).
@@ -443,8 +451,7 @@ code_gen__generate_det_goals([], empty) --> [].
 code_gen__generate_det_goals([Goal | Goals], Instr) -->
 		% generate this goal
 	code_gen__generate_det_goal(Goal, Instr1),
-	{ Goal = _ - GoalInfo },
-	{ goal_info_get_instmap_delta(GoalInfo, InstMap) },
+	code_info__get_instmap(InstMap),
 	(
 		{ InstMap = unreachable }
 	->
@@ -727,31 +734,39 @@ code_gen__generate_non_epilog(Instr) -->
 
 code_gen__generate_semi_goal(Goal - GoalInfo, Instr) -->
 	code_aux__pre_goal_update(GoalInfo),
-	{ goal_info_determinism(GoalInfo, Category) },
+	code_info__get_instmap(InstMap),
 	(
-		{ Category = deterministic }
+		{ InstMap \= unreachable }
 	->
-		code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0)
+		{ goal_info_get_internal_determinism(GoalInfo, Category) },
+		(
+			{ Category = deterministic }
+		->
+			code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0)
+		;
+			{ Category = semideterministic }
+		->
+			code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
+		;
+			code_info__generate_pre_commit(PreCommit, FailLabel),
+			code_gen__generate_non_goal_2(Goal, GoalInfo, GoalCode),
+			code_info__generate_commit(FailLabel, Commit),
+			{ Instr0 = tree(PreCommit, tree(GoalCode, Commit)) }
+		),
+		code_info__set_instmap(InstMap),
+		code_aux__post_goal_update(GoalInfo),
+		code_info__get_globals(Options),
+		(
+			{ globals__lookup_bool_option(Options, lazy_code, yes) }
+		->
+			{ Instr1 = empty }
+		;
+			code_info__generate_eager_flush(Instr1)
+		),
+		{ Instr = tree(Instr0, Instr1) }
 	;
-		{ Category = semideterministic }
-	->
-		code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
-	;
-		code_info__generate_pre_commit(PreCommit, FailLabel),
-		code_gen__generate_non_goal_2(Goal, GoalInfo, GoalCode),
-		code_info__generate_commit(FailLabel, Commit),
-		{ Instr0 = tree(PreCommit, tree(GoalCode, Commit)) }
-	),
-	code_aux__post_goal_update(GoalInfo),
-	code_info__get_globals(Options),
-	(
-		{ globals__lookup_bool_option(Options, lazy_code, yes) }
-	->
-		{ Instr1 = empty }
-	;
-		code_info__generate_eager_flush(Instr1)
-	),
-	{ Instr = tree(Instr0, Instr1) }.
+		{ Instr = empty }
+	).
 
 :- pred code_gen__generate_semi_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).
@@ -854,8 +869,7 @@ code_gen__generate_semi_goals([Goal | Goals], Instr) -->
 		% generate this goal
 	code_gen__generate_semi_goal(Goal, Instr1),
 		% generate the rest of the goals
-	{ Goal = _ - GoalInfo },
-	{ goal_info_get_instmap_delta(GoalInfo, InstMap) },
+	code_info__get_instmap(InstMap),
 	(
 		{ InstMap = unreachable }
 	->
@@ -904,28 +918,36 @@ code_gen__generate_negation(Goal, Code) -->
 
 code_gen__generate_non_goal(Goal - GoalInfo, Instr) -->
 	code_aux__pre_goal_update(GoalInfo),
-	{ goal_info_determinism(GoalInfo, Category) },
+	code_info__get_instmap(InstMap),
 	(
-		{ Category = deterministic }
+		{ InstMap \= unreachable }
 	->
-		code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0)
+		{ goal_info_determinism(GoalInfo, Category) },
+		(
+			{ Category = deterministic }
+		->
+			code_gen__generate_det_goal_2(Goal, GoalInfo, Instr0)
+		;
+			{ Category = semideterministic }
+		->
+			code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
+		;
+			code_gen__generate_non_goal_2(Goal, GoalInfo, Instr0)
+		),
+		code_info__set_instmap(InstMap),
+		code_aux__post_goal_update(GoalInfo),
+		code_info__get_globals(Options),
+		(
+			{ globals__lookup_bool_option(Options, lazy_code, yes) }
+		->
+			{ Instr1 = empty }
+		;
+		       code_info__generate_eager_flush(Instr1)
+		),
+		{ Instr = tree(Instr0, Instr1) }
 	;
-		{ Category = semideterministic }
-	->
-		code_gen__generate_semi_goal_2(Goal, GoalInfo, Instr0)
-	;
-		code_gen__generate_non_goal_2(Goal, GoalInfo, Instr0)
-	),
-	code_aux__post_goal_update(GoalInfo),
-	code_info__get_globals(Options),
-	(
-		{ globals__lookup_bool_option(Options, lazy_code, yes) }
-	->
-		{ Instr1 = empty }
-	;
-	       code_info__generate_eager_flush(Instr1)
-	),
-	{ Instr = tree(Instr0, Instr1) }.
+		{ Instr = empty }
+	).
 
 :- pred code_gen__generate_non_goal_2(hlds__goal_expr, hlds__goal_info,
 					code_tree, code_info, code_info).
@@ -1001,8 +1023,7 @@ code_gen__generate_non_goals([Goal | Goals], Instr) -->
 		% generate this goal
 	code_gen__generate_non_goal(Goal, Instr1),
 		% generate the rest of the goals
-	{ Goal = _ - GoalInfo },
-	{ goal_info_get_instmap_delta(GoalInfo, InstMap) },
+	code_info__get_instmap(InstMap),
 	(
 		{ InstMap = unreachable }
 	->
