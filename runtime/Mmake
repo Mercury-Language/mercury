@@ -55,10 +55,10 @@ libmer.a: $(OBJS)
 	$(RANLIB) libmer.a
 
 libmer.so: $(PIC_OBJS)
-	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) -L$(BOEHM_GC) -lgc
+	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) -L$(BOEHM_GC) # -lgc
 
 runtime.init: $(MOD_CS)
-	cat $(MOD_CS) | grep '^INIT ' > runtime.init
+	cat `vpath_find $(MOD_CS)` | grep '^INIT ' > runtime.init
 
 conf.h.date: $(MERCURY_DIR)/config.status conf.h.in
 	CONFIG_FILES= CONFIG_HEADERS=conf.h $(MERCURY_DIR)/config.status
