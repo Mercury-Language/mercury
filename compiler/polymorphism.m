@@ -1204,7 +1204,7 @@ polymorphism__process_unify(XVar, Y, Mode, Unification0, UnifyContext,
 		{ Goal = unify(XVar, Y, Mode, Unification,
 		 		UnifyContext) - GoalInfo }
 	; 
-		{ Y = functor(ConsId, Args) },
+		{ Y = functor(ConsId, _, Args) },
 		polymorphism__process_unify_functor(XVar, ConsId, Args, Mode,
 			Unification0, UnifyContext, GoalInfo0, Goal)
 	;
@@ -1416,8 +1416,8 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		polymorphism__unification_typeinfos(TypeOfX, Unification0,
 			GoalInfo1, Unification, GoalInfo, PolyInfo1, PolyInfo),
 
-		Unify = unify(X0, functor(ConsId, ArgVars), Mode0,
-				Unification, UnifyContext) - GoalInfo,
+		Unify = unify(X0, functor(ConsId, IsConstruction, ArgVars),
+				Mode0, Unification, UnifyContext) - GoalInfo,
 		list__append(ExtraGoals, [Unify], GoalList),
 		conj_list_to_goal(GoalList, GoalInfo0, Goal)
 	;
@@ -1428,7 +1428,7 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		%
 		polymorphism__unification_typeinfos(TypeOfX, Unification0,
 			GoalInfo0, Unification, GoalInfo, PolyInfo0, PolyInfo),
-		Goal = unify(X0, functor(ConsId0, ArgVars0), Mode0,
+		Goal = unify(X0, functor(ConsId0, no, ArgVars0), Mode0,
 			Unification, UnifyContext) - GoalInfo
 	).
 
@@ -1456,7 +1456,7 @@ convert_pred_to_lambda_goal(EvalMethod, X0, PredId, ProcId,
 
 	CallUnifyContext = call_unify_context(X0,
 			functor(cons(QualifiedPName, list__length(ArgVars0)),
-				ArgVars0),
+				no, ArgVars0),
 			UnifyContext),
 	LambdaGoalExpr = call(PredId, ProcId, Args, not_builtin,
 			yes(CallUnifyContext), QualifiedPName),
@@ -2475,7 +2475,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 		InstanceString),
 	ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
 		InstanceNum, InstanceString),
-	BaseTypeClassInfoTerm = functor(ConsId, []),
+	BaseTypeClassInfoTerm = functor(ConsId, no, []),
 
 		% create the construction unification to initialize the variable
 	RLExprnId = no,
@@ -2501,7 +2501,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	mercury_private_builtin_module(PrivateBuiltin),
 	NewConsId = cons(qualified(PrivateBuiltin, "typeclass_info"), 1),
 	NewArgVars = [BaseVar|ArgVars],
-	TypeClassInfoTerm = functor(NewConsId, NewArgVars),
+	TypeClassInfoTerm = functor(NewConsId, no, NewArgVars),
 
 		% introduce a new variable
 	polymorphism__new_typeclass_info_var(VarSet1, VarTypes1,
@@ -2875,7 +2875,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 	CountUnification = construct(CountVar, CountConsId, [], [],
 		construct_dynamically, cell_is_shared, RLExprnId),
 
-	CountTerm = functor(CountConsId, []),
+	CountTerm = functor(CountConsId, no, []),
 	CountInst = bound(unique, [functor(int_const(Num), [])]),
 	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
@@ -2976,7 +2976,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 
 	mercury_private_builtin_module(PrivateBuiltin),
 	ConsId = cons(qualified(PrivateBuiltin, Symbol), 1),
-	TypeInfoTerm = functor(ConsId, ArgVars),
+	TypeInfoTerm = functor(ConsId, no, ArgVars),
 
 	% introduce a new variable
 	polymorphism__new_type_info_var_raw(Type, Symbol, typeinfo_prefix,
@@ -3035,7 +3035,7 @@ polymorphism__init_const_type_ctor_info_var(Type, TypeCtor,
 	type_util__type_ctor_name(ModuleInfo, TypeCtor, TypeName),
 	TypeCtor = _ - Arity,
 	ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
-	TypeInfoTerm = functor(ConsId, []),
+	TypeInfoTerm = functor(ConsId, no, []),
 
 	% introduce a new variable
 	polymorphism__new_type_info_var_raw(Type, "type_ctor_info",

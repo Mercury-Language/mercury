@@ -1917,7 +1917,7 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	UnifyContext = unify_context(explicit, []),
 	Unification = deconstruct(Var, ConsId,
 		ArgVars, UniModes, can_fail, no),
-	ExtraGoal = unify(Var, functor(ConsId, ArgVars),
+	ExtraGoal = unify(Var, functor(ConsId, no, ArgVars),
 		UniMode, Unification, UnifyContext),
 	set__singleton_set(NonLocals, Var),
 

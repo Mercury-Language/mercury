@@ -575,7 +575,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			ModuleInfo)
 	),
 	ConsId = pred_const(PredId, ProcId, EvalMethod),
-	Functor = functor(ConsId, ArgVars),
+	Functor = functor(ConsId, no, ArgVars),
 
 	RLExprnId = no,
 	Unification = construct(Var, ConsId, ArgVars, UniModes,

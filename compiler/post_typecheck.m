@@ -1246,7 +1246,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		invalid_proc_id(ProcId),
 		list__append(ArgVars0, [X0], ArgVars),
 		FuncCallUnifyContext = call_unify_context(X0,
-			functor(ConsId0, ArgVars0), UnifyContext),
+			functor(ConsId0, no, ArgVars0), UnifyContext),
 		FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
 			yes(FuncCallUnifyContext), QualifiedFuncName),
 
@@ -1281,7 +1281,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 	->
 		get_proc_id(ModuleInfo, PredId, ProcId),
 		ConsId = pred_const(PredId, ProcId, EvalMethod),
-		Goal = unify(X0, functor(ConsId, ArgVars0), Mode0,
+		Goal = unify(X0, functor(ConsId, no, ArgVars0), Mode0,
 			Unification0, UnifyContext) - GoalInfo0,
 		PredInfo = PredInfo0,
 		VarTypes = VarTypes0,
@@ -1338,7 +1338,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		;
 			ConsId = ConsId0
 		),
-		Goal = unify(X0, functor(ConsId, ArgVars0), Mode0,
+		Goal = unify(X0, functor(ConsId, no, ArgVars0), Mode0,
 				Unification0, UnifyContext) - GoalInfo0
 	).
 
@@ -1461,7 +1461,7 @@ post_typecheck__translate_get_function(ModuleInfo, PredInfo0, PredInfo,
 
 	goal_info_get_nonlocals(OldGoalInfo, RestrictNonLocals),
 	create_atomic_unification_with_nonlocals(TermInputVar,
-		functor(ConsId, ArgVars), OldGoalInfo,
+		functor(ConsId, no, ArgVars), OldGoalInfo,
 		RestrictNonLocals, [FieldVar, TermInputVar],
 		UnifyContext, FunctorGoal),
 	FunctorGoal = GoalExpr - _.
@@ -1505,7 +1505,7 @@ post_typecheck__translate_set_function(ModuleInfo, PredInfo0, PredInfo,
 		DeconstructRestrictNonLocals),
 
 	create_atomic_unification_with_nonlocals(TermInputVar,
-		functor(ConsId0, DeconstructArgs), OldGoalInfo,
+		functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
 		DeconstructRestrictNonLocals, [TermInputVar | DeconstructArgs],
 		UnifyContext, DeconstructGoal),
 
@@ -1532,7 +1532,7 @@ post_typecheck__translate_set_function(ModuleInfo, PredInfo0, PredInfo,
 	),
 
 	create_atomic_unification_with_nonlocals(TermOutputVar,
-		functor(ConsId, ConstructArgs), OldGoalInfo,
+		functor(ConsId, no, ConstructArgs), OldGoalInfo,
 		ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
 		UnifyContext, ConstructGoal),
 	

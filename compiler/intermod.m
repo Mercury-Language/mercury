@@ -706,8 +706,8 @@ intermod__module_qualify_unify_rhs(_LVar,
 	% Fully module-qualify the right-hand-side of a unification.
 	% For function calls and higher-order terms, call intermod__add_proc
 	% so that the predicate or function will be exported if necessary.
-intermod__module_qualify_unify_rhs(_LVar, functor(Functor, Vars),
-				functor(Functor, Vars), DoWrite) -->
+intermod__module_qualify_unify_rhs(_LVar, functor(Functor, E, Vars),
+				functor(Functor, E, Vars), DoWrite) -->
 	(
 		%
 		% Is this a higher-order predicate or higher-order function
@@ -1593,7 +1593,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
 			RHS = var(RHSVar),
 			RHSTerm = term__variable(RHSVar)
 		;
-			RHS = functor(ConsId, Args),
+			RHS = functor(ConsId, _, Args),
 			term__context_init(Context),
 			(
 				ConsId = int_const(Int),

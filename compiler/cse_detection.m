@@ -601,7 +601,7 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, CseInfo0, CseInfo,
 	->
 		Unif = deconstruct(Var, Consid, Args, Submodes, CanFail,
 			CanCGC),
-		( Term = functor(_, _) ->
+		( Term = functor(_, _, _) ->
 			GoalExpr1 = unify(Var, Term, Umode, Unif, Ucontext)
 		;
 			error("non-functor unify in construct_common_unify")

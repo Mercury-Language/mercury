@@ -5178,8 +5178,8 @@ warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId, _)
 	warn_singletons([X, Y], NonLocals, QuantVars, VarSet,
 			Context, CallPredId).
 
-warn_singletons_in_unify(X, functor(_ConsId, Vars), GoalInfo, QuantVars, VarSet,
-				CallPredId, _) -->
+warn_singletons_in_unify(X, functor(_ConsId, _, Vars), GoalInfo,
+			QuantVars, VarSet, CallPredId, _) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_get_context(GoalInfo, Context) },
 	warn_singletons([X | Vars], NonLocals, QuantVars, VarSet,
@@ -6583,7 +6583,7 @@ construct_field_access_function_call(AccessType, Context,
 	field_access_function_name(AccessType, FieldName, FuncName),
 	list__length(Args, Arity),
 	Functor = cons(FuncName, Arity),
-	make_atomic_unification(RetArg, functor(Functor, Args),
+	make_atomic_unification(RetArg, functor(Functor, no, Args),
 		Context, MainContext, SubContext, Goal, Info0, Info).
 
 :- type field_list == assoc_list(ctor_field_name, list(prog_term)).
@@ -7765,7 +7765,7 @@ unravel_unification_2(term__variable(X), RHS,
 			{ FunctorArgs = Args }
 		),
 		( { FunctorArgs = [] } ->
-			{ make_atomic_unification(X, functor(ConsId, []),
+			{ make_atomic_unification(X, functor(ConsId, no, []),
 				Context, MainContext, SubContext, Goal0,
 				Info0, Info) },
 			{ Goal0 = GoalExpr - GoalInfo0 },
@@ -7778,7 +7778,7 @@ unravel_unification_2(term__variable(X), RHS,
 			{ make_fresh_arg_vars(FunctorArgs, VarSet1,
 				HeadVars, VarSet2) },
 			{ make_atomic_unification(X,
-				functor(ConsId, HeadVars), Context,
+				functor(ConsId, no, HeadVars), Context,
 				MainContext, SubContext, Goal0,
 				Info0, Info1) },
 			{ ArgContext = functor(ConsId,
@@ -8056,7 +8056,7 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
 		ConsId = cons(SymName, Arity),
 		goal_info_get_context(GoalInfo, Context),
 		hlds_goal__create_atomic_unification(RetArg,
-			functor(ConsId, FuncArgs), Context,
+			functor(ConsId, no, FuncArgs), Context,
 			explicit, [], GoalExpr - _),
 		Goal = GoalExpr - GoalInfo
 	).
@@ -8075,7 +8075,7 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
 		Rhs = lambda_goal(_, _, _, _, _, _, _, _),
 		Info = Info0
 	;
-		Rhs = functor(ConsId, _),
+		Rhs = functor(ConsId, _, _),
 		record_used_functor(ConsId, Info0, Info)
 	),
 	hlds_goal__create_atomic_unification(Var, Rhs, Context,

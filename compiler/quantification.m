@@ -605,8 +605,8 @@ implicitly_quantify_unify_rhs(var(X), _, Unification, _,
 		var(X), Unification) -->
 	{ singleton_set(Vars, X) },
 	quantification__set_nonlocals(Vars).
-implicitly_quantify_unify_rhs(functor(Functor, ArgVars), Reuse, Unification, _,
-				functor(Functor, ArgVars), Unification) -->
+implicitly_quantify_unify_rhs(functor(_, _, ArgVars) @ RHS, Reuse,
+		Unification, _, RHS, Unification) -->
 	quantification__get_nonlocals_to_recompute(NonLocalsToRecompute),
 	{
 		NonLocalsToRecompute = code_gen_nonlocals,
@@ -1029,7 +1029,7 @@ quantification__unify_rhs_vars(_, var(Y), _,
 		Set0, LambdaSet, Set, LambdaSet) :-
 	insert(Set0, Y, Set).
 quantification__unify_rhs_vars(NonLocalsToRecompute,
-		functor(_Functor, ArgVars), Reuse,
+		functor(_Functor, _, ArgVars), Reuse,
 		Set0, LambdaSet, Set, LambdaSet) :-
 	(
 		NonLocalsToRecompute = code_gen_nonlocals,

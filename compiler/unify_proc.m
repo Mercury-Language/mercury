@@ -986,10 +986,10 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
-		H1, functor(FunctorConsId, Vars1), Context, explicit, [], 
+		H1, functor(FunctorConsId, no, Vars1), Context, explicit, [], 
 		UnifyH1_Goal) },
 	{ create_atomic_unification(
-		H2, functor(FunctorConsId, Vars2), Context, explicit, [], 
+		H2, functor(FunctorConsId, no, Vars2), Context, explicit, [], 
 		UnifyH2_Goal) },
 	unify_proc__unify_var_lists(ArgTypes, ExistQTVars, Vars1, Vars2,
 		UnifyArgs_Goal),
@@ -1035,10 +1035,10 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
 	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, ArgVars),
 	{ create_atomic_unification(
-		X, functor(FunctorConsId, ArgVars), Context, explicit, [], 
+		X, functor(FunctorConsId, no, ArgVars), Context, explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
-		Index, functor(int_const(N), []), Context, explicit, [], 
+		Index, functor(int_const(N), no, []), Context, explicit, [], 
 		UnifyIndex_Goal) },
 	{ GoalList = [UnifyX_Goal, UnifyIndex_Goal] },
 	{ goal_info_init(GoalInfo0) },
@@ -1245,12 +1245,12 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 		Call_Greater_Than),
 
 	{ create_atomic_unification(
-		Res, functor(cons(unqualified("<"), 0), []),
+		Res, functor(cons(unqualified("<"), 0), no, []),
 			Context, explicit, [], 
 		Return_Less_Than) },
 
 	{ create_atomic_unification(
-		Res, functor(cons(unqualified(">"), 0), []),
+		Res, functor(cons(unqualified(">"), 0), no, []),
 			Context, explicit, [], 
 		Return_Greater_Than) },
 
@@ -1322,10 +1322,10 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
 	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
-		X, functor(FunctorConsId, Vars1), Context, explicit, [], 
+		X, functor(FunctorConsId, no, Vars1), Context, explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
-		Y, functor(FunctorConsId, Vars2), Context, explicit, [], 
+		Y, functor(FunctorConsId, no, Vars2), Context, explicit, [], 
 		UnifyY_Goal) },
 	unify_proc__compare_args(ArgTypes, ExistQTVars, Vars1, Vars2,
 		R, Context, CompareArgs_Goal),
@@ -1350,13 +1350,13 @@ unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y,
 	unify_proc__make_fresh_vars(ArgTypes1, ExistQTVars1, Vars1),
 	unify_proc__make_fresh_vars(ArgTypes2, ExistQTVars2, Vars2),
 	{ create_atomic_unification(
-		X, functor(FunctorConsId1, Vars1), Context, explicit, [], 
+		X, functor(FunctorConsId1, no, Vars1), Context, explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
-		Y, functor(FunctorConsId2, Vars2), Context, explicit, [], 
+		Y, functor(FunctorConsId2, no, Vars2), Context, explicit, [], 
 		UnifyY_Goal) },
 	{ create_atomic_unification(
-		R, functor(cons(unqualified(CompareOp), 0), []),
+		R, functor(cons(unqualified(CompareOp), 0), no, []),
 			Context, explicit, [], 
 		ReturnResult) },
 	{ GoalList = [UnifyX_Goal, UnifyY_Goal, ReturnResult] },
@@ -1411,7 +1411,7 @@ unify_proc__compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal) -->
 
 unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal) -->
 	{ create_atomic_unification(
-		R, functor(cons(unqualified("="), 0), []),
+		R, functor(cons(unqualified("="), 0), no, []),
 		Context, explicit, [], 
 		Return_Equal) }.
 unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
@@ -1446,7 +1446,7 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 			Do_Comparison),
 
 		{ create_atomic_unification(
-			R1, functor(cons(unqualified("="), 0), []),
+			R1, functor(cons(unqualified("="), 0), no, []),
 			Context, explicit, [],
 			Check_Equal) },
 		{ Check_Not_Equal = not(Check_Equal) - GoalInfo },

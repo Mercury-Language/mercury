@@ -441,7 +441,7 @@ assertion__is_construction_equivalence_assertion(AssertId, Module,
 
 single_construction(unify(_, UnifyRhs, _, _, _) - _,
 		cons(QualifiedSymName, Arity)) :-
-	UnifyRhs = functor(cons(UnqualifiedSymName, Arity), _),
+	UnifyRhs = functor(cons(UnqualifiedSymName, Arity), _, _),
 	match_sym_name(UnqualifiedSymName, QualifiedSymName).
 
 	%
@@ -461,7 +461,7 @@ predicate_call(Goal, PredId) :-
 		P = (pred(G::in) is semidet :-
 			not (
 				G = unify(_, UnifyRhs, _, _, _) - _,
-				UnifyRhs = functor(_, _)
+				UnifyRhs = functor(_, _, _)
 			)
 		),
 		list__filter(P, Unifications, [])
@@ -599,7 +599,7 @@ equal_vars([VA | VAs], [VB | VBs], Subst0, Subst) :-
 
 equal_unification(var(A), var(B), Subst0, Subst) :-
 	equal_vars([A], [B], Subst0, Subst).
-equal_unification(functor(ConsId, VarsA), functor(ConsId, VarsB),
+equal_unification(functor(ConsId, E, VarsA), functor(ConsId, E, VarsB),
 		Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst).
 equal_unification(lambda_goal(PredOrFunc, EvalMethod, FixModes, NLVarsA, LVarsA,
@@ -812,7 +812,7 @@ assertion__in_interface_check_shorthand(bi_implication(LHS, RHS), PredInfo,
 		module_info::out, io__state::di, io__state::uo) is det.
 
 assertion__in_interface_check_unify_rhs(var(_), _, _, _, Module, Module) --> [].
-assertion__in_interface_check_unify_rhs(functor(ConsId, _), Var, Context,
+assertion__in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
 		PredInfo, Module0, Module) -->
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ clauses_info_vartypes(ClausesInfo, VarTypes) },

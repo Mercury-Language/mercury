@@ -691,7 +691,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, InClosure,
 		{ GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext) },
 		{ ActualPurity = pure }
 	;
-		{ RHS0 = functor(ConsId, Args) } 
+		{ RHS0 = functor(ConsId, _, Args) } 
 	->
 		RunPostTypecheck =^ run_post_typecheck,
 		(

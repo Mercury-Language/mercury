@@ -890,7 +890,7 @@ pre_modecheck_examine_goal(shorthand(_) - _) -->
 		dead_pred_info::in, dead_pred_info::out) is det.
 
 pre_modecheck_examine_unify_rhs(var(_)) --> [].
-pre_modecheck_examine_unify_rhs(functor(Functor, _)) -->
+pre_modecheck_examine_unify_rhs(functor(Functor, _, _)) -->
 	( { Functor = cons(Name, _) } ->
 		dead_pred_info_add_pred_name(Name)
 	;

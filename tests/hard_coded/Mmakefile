@@ -147,6 +147,7 @@ ORDINARY_PROGS=	\
 	type_to_term_bug \
 	unify_expression \
 	unify_typeinfo_bug \
+	unify_existq_cons \
 	unused_float_box_test \
 	user_defined_equality2 \
 	write \

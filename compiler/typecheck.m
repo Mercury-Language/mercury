@@ -828,7 +828,7 @@ maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
 		adjust_func_arity(function, FuncArity, PredArity),
 		FuncSymName = qualified(FuncModule, FuncName),
 		create_atomic_unification(FuncRetVal,
-			functor(cons(FuncSymName, FuncArity), FuncArgs),
+			functor(cons(FuncSymName, FuncArity), no, FuncArgs),
 			Context, explicit, [], Goal0),
 		Goal0 = GoalExpr - GoalInfo0,
 		set__list_to_set(HeadVars, NonLocals),
@@ -2389,7 +2389,7 @@ checkpoint_tree_stats(Description, Tree) -->
 
 typecheck_unification(X, var(Y), var(Y)) -->
 	typecheck_unify_var_var(X, Y).
-typecheck_unification(X, functor(F, As), functor(F, As)) -->
+typecheck_unification(X, functor(F, E, As), functor(F, E, As)) -->
 	=(OrigTypeCheckInfo),
 	{ typecheck_info_get_type_assign_set(OrigTypeCheckInfo,
 		OrigTypeAssignSet) },

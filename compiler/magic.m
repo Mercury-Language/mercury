@@ -1281,7 +1281,7 @@ magic__make_const(Type, ConsId, Var, Goal, ProcInfo0, ProcInfo) :-
 		construct_dynamically, cell_is_unique, RLExprnId),
 	Context = unify_context(explicit, []),
 	goal_info_init(NonLocals, Delta, det, GoalInfo),
-	Goal = unify(Var, functor(ConsId, []), UnifyMode, Uni, Context) -
+	Goal = unify(Var, functor(ConsId, no, []), UnifyMode, Uni, Context) -
 			GoalInfo.
 		
 %-----------------------------------------------------------------------------%

@@ -290,7 +290,17 @@
 	% simple_test/complicated_unify).
 :- type unify_rhs
 	--->	var(prog_var)
-	;	functor(cons_id, list(prog_var))
+	;	functor(
+			cons_id,
+			is_existential_construction,
+					% The `is_existential_construction'
+					% field is only used after
+					% polymorphism.m strips off
+					% the `new ' prefix from
+					% existentially typed constructions.
+					
+			list(prog_var)
+		)
 	;	lambda_goal(
 			pred_or_func,
 			lambda_eval_method,
@@ -305,6 +315,9 @@
 			determinism,
 			hlds_goal
 		).
+
+	% Was the constructor originally of the form 'new ctor'(...).
+:- type is_existential_construction == bool.
 
 :- type unification
 		% A construction unification is a unification with a functor
@@ -1657,7 +1670,7 @@ make_char_const_construction(Var, Char, Goal) :-
 	make_const_construction(Var, cons(unqualified(String), 0), Goal).
 
 make_const_construction(Var, ConsId, Goal - GoalInfo) :-
-	RHS = functor(ConsId, []),
+	RHS = functor(ConsId, no, []),
 	Inst = bound(unique, [functor(ConsId, [])]),
 	Mode = (free -> Inst) - (Inst -> Inst),
 	RLExprnId = no,
