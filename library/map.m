@@ -161,7 +161,10 @@ map__delete(Map0, Key, Map) :-
 
 map__inverse_search(Map, V, K) :-
 	bintree__to_list(Map, AssocList),
-	assoc_list_member(K-V, AssocList).
+		% XXX a quick hack - until the mode system improves
+	Pair = K - _,
+	assoc_list_member(Pair, AssocList),
+	Pair = K - V.
 
 %-----------------------------------------------------------------------------%
 
