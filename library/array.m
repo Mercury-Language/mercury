@@ -35,12 +35,17 @@
 :- mode array__bounds(in, out, out) is det.
 
 	% array__lookup returns the Nth element of an array 
-	% or fails if the index is out of bounds.
+	% or aborts if the index is out of bounds.
 :- pred array__lookup(array(T), int, T).
 :- mode array__lookup(in, in, out) is det.
 
+	% array__semidet_lookup is like array__lookup except that
+	% it fails if the index is out of bounds.
+:- pred array__semidet_lookup(array(T), int, T).
+:- mode array__semidet_lookup(in, in, out) is semidet.
+
 	% array__set sets the nth element of an array, and returns the resulting
-	% array (good oppertunity for destructive update ;-). It fails if the
+	% array (good oppertunity for destructive update ;-). It aborts if the
 	% index is out of bounds.
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(in, in, in, out) is det.
@@ -99,8 +104,12 @@ array__lookup(array(Low, High, Map), Index, Item) :-
 	( ( Low =< Index, Index =< High ) ->
 	    map__lookup(Map, Index, Item)
 	;
-	    error("Array subscript out of bounds")
+	    error("array__lookup: Array subscript out of bounds")
 	).
+
+array__semidet_lookup(array(Low, High, Map), Index, Item) :-
+	Low =< Index, Index =< High,
+	map__lookup(Map, Index, Item).
 
 %-----------------------------------------------------------------------------%
 
@@ -108,7 +117,7 @@ array__set(array(Low, High, MapIn), Index, Item, array(Low, High, MapOut)) :-
 	( ( Low =< Index, Index =< High ) ->
 	    map__set(MapIn, Index, Item, MapOut)
 	;
-	    error("Array subscript out of bounds")
+	    error("array__set: Array subscript out of bounds")
 	).
 
 %-----------------------------------------------------------------------------%
