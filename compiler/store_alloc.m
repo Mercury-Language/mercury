@@ -48,14 +48,16 @@ store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 		find_final_follow_vars(ProcInfo0, FollowVars0),
 		find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo,
 			FollowVars0, Goal1, FollowVars),
-		proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1)
+		Goal1 = GoalExpr1 - GoalInfo1,
+		goal_info_set_follow_vars(GoalInfo1, yes(FollowVars),
+			GoalInfo2),
+		Goal2 = GoalExpr1 - GoalInfo2
 	;
-		ProcInfo1 = ProcInfo0,
-		proc_info_goal(ProcInfo1, Goal1)
+		proc_info_goal(ProcInfo0, Goal2)
 	),
-	initial_liveness(ProcInfo1, ModuleInfo, Liveness1),
-	store_alloc_in_goal(Goal1, Liveness1, ModuleInfo, Goal, _Liveness),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo).
+	initial_liveness(ProcInfo0, ModuleInfo, Liveness1),
+	store_alloc_in_goal(Goal2, Liveness1, ModuleInfo, Goal, _Liveness),
+	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -43,7 +43,7 @@
 
 :- import_module hlds_goal, hlds_data, llds, mode_util.
 :- import_module code_util, quantification, arg_info, globals.
-:- import_module list, map, set, std_util, term, require.
+:- import_module bool, list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -62,7 +62,7 @@ find_final_follow_vars(ProcInfo, Follow) :-
 :- mode find_final_follow_vars_2(in, in, in, out) is semidet.
 
 find_final_follow_vars_2([], [], Follow, Follow).
-find_final_follow_vars_2([arg_info(Loc, Mode)|Args], [Var|Vars],
+find_final_follow_vars_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 							Follow0, Follow) :-
 	code_util__arg_loc_to_register(Loc, Reg),
 	(
@@ -91,7 +91,11 @@ find_follow_vars_in_goal(Goal0 - GoalInfo, ArgsMethod, ModuleInfo, FollowVars0,
 find_follow_vars_in_goal_2(conj(Goals0), ArgsMethod, ModuleInfo, FollowVars0,
 		conj(Goals), FollowVars) :-
 	find_follow_vars_in_conj(Goals0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goals, FollowVars).
+		no, Goals, FollowVars).
+
+	% We record that at the end of each disjunct, live variables should
+	% be in the locations given by the initial follow_vars, which reflects
+	% the requirements of the code following the disjunction.
 
 find_follow_vars_in_goal_2(disj(Goals0, _), ArgsMethod, ModuleInfo, FollowVars0,
 		disj(Goals, FollowVars0), FollowVars) :-
@@ -103,23 +107,46 @@ find_follow_vars_in_goal_2(not(Goal0), ArgsMethod, ModuleInfo, FollowVars0,
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
 		Goal, FollowVars).
 
+	% We record that at the end of each arm of the switch, live variables
+	% should be in the locations given by the initial follow_vars, which
+	% reflects the requirements of the code following the switch.
+
 find_follow_vars_in_goal_2(switch(Var, Det, Cases0, _), ArgsMethod, ModuleInfo,
 		FollowVars0,
 		switch(Var, Det, Cases, FollowVars0), FollowVars) :-
 	find_follow_vars_in_cases(Cases0, ArgsMethod, ModuleInfo, FollowVars0,
 		Cases, FollowVars).
 
+	% Set the follow_vars field for the condition, the then-part and the
+	% else-part, since in general they have requirements about where
+	% variables should be.
+
+	% We use the requirement of the condition as the requirement of
+	% the if-then-else itself, since the condition will definitely
+	% be entered first. Since part of the condition may fail early,
+	% taking into account the preferences of the else part may be
+	% worthwhile. The preferences of the then part are already taken
+	% into account, since they are an input to the computation of
+	% the follow_vars for the condition.
+
+	% We record that at the end of both the then-part and the else-part,
+	% live variables should be in the locations given by the initial
+	% follow_vars, which reflects the requirements of the code
+	% following the if-then-else.
+
 find_follow_vars_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, _),
 		ArgsMethod, ModuleInfo, FollowVars0,
 		if_then_else(Vars, Cond, Then, Else, FollowVars0),
-		FollowVars) :-
+		FollowVarsCond) :-
 	find_follow_vars_in_goal(Then0, ArgsMethod, ModuleInfo, FollowVars0,
-		Then, FollowVars1),
-	find_follow_vars_in_goal(Cond0, ArgsMethod, ModuleInfo, FollowVars1,
-		Cond, FollowVars),
-		% To a first approximation, ignore the else branch.
+		Then1, FollowVarsThen),
+	goal_set_follow_vars(Then1, yes(FollowVarsThen), Then),
+	find_follow_vars_in_goal(Cond0, ArgsMethod, ModuleInfo, FollowVarsThen,
+		Cond1, FollowVarsCond),
+	goal_set_follow_vars(Cond1, yes(FollowVarsCond), Cond),
 	find_follow_vars_in_goal(Else0, ArgsMethod, ModuleInfo, FollowVars0,
-		Else, _FollowVars1A).
+		Else1, FollowVarsElse),
+	goal_set_follow_vars(Else1, yes(FollowVarsElse), Else).
 
 find_follow_vars_in_goal_2(some(Vars, Goal0), ArgsMethod, ModuleInfo,
 		FollowVars0, some(Vars, Goal), FollowVars) :-
@@ -214,20 +241,50 @@ find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 
 %-----------------------------------------------------------------------------%
 
+	% We attach a follow_vars to each arm of a switch, since inside
+	% each arm the preferred locations for variables will in general
+	% be different.
+
+	% For the time being, we return the follow_vars computed from
+	% the first arm as the preferred requirements of the switch as
+	% a whole. This is close to right, since the first disjunct will
+	% definitely be the first to be entered. However, the follow_vars
+	% computed for the disjunction as a whole can profitably mention
+	% variables that are not live in the first disjunct, but may be
+	% needed in the second and later disjuncts. In general, we may
+	% wish to take into account the requirements of all disjuncts
+	% up to the first non-failing disjunct. (The requirements of
+	% later disjuncts are not relevant. For model_non disjunctions,
+	% they can only be entered with everything in stack slots; for
+	% model_det and model_semi disjunctions, they will never be
+	% entered at all.)
+
 :- pred find_follow_vars_in_disj(list(hlds__goal), args_method, module_info,
 				follow_vars, list(hlds__goal), follow_vars).
 :- mode find_follow_vars_in_disj(in, in, in, in, out, out) is det.
 
 find_follow_vars_in_disj([], _ArgsMethod, _ModuleInfo, FollowVars,
 			[], FollowVars).
-find_follow_vars_in_disj([Goal0|Goals0], ArgsMethod, ModuleInfo, FollowVars0,
-						[Goal|Goals], FollowVars) :-
+find_follow_vars_in_disj([Goal0 | Goals0], ArgsMethod, ModuleInfo, FollowVars0,
+						[Goal | Goals], FollowVars) :-
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goal, FollowVars),
+		Goal1, FollowVars),
+	goal_set_follow_vars(Goal1, yes(FollowVars), Goal),
 	find_follow_vars_in_disj(Goals0, ArgsMethod, ModuleInfo, FollowVars0,
 		Goals, _FollowVars1).
 
 %-----------------------------------------------------------------------------%
+
+	% We attach a follow_vars to each arm of a switch, since inside
+	% each arm the preferred locations for variables will in general
+	% be different.
+
+	% For the time being, we return the follow_vars computed from
+	% the first arm as the preferred requirements of the switch as
+	% a whole. This can be improved, both to include variables that
+	% are not live in that branch (and therefore don't appear in
+	% its follow_vars) and to let different branches "vote" on
+	% what should be in registers.
 
 :- pred find_follow_vars_in_cases(list(case), args_method, module_info,
 				follow_vars, list(case), follow_vars).
@@ -235,27 +292,53 @@ find_follow_vars_in_disj([Goal0|Goals0], ArgsMethod, ModuleInfo, FollowVars0,
 
 find_follow_vars_in_cases([], _ArgsMethod, _ModuleInfo, FollowVars,
 			[], FollowVars).
-find_follow_vars_in_cases([case(Cons, Goal0)|Goals0], ArgsMethod, ModuleInfo,
-			FollowVars0, [case(Cons, Goal)|Goals], FollowVars) :-
+find_follow_vars_in_cases([case(Cons, Goal0) | Goals0], ArgsMethod, ModuleInfo,
+			FollowVars0, [case(Cons, Goal) | Goals], FollowVars) :-
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goal, FollowVars),
+		Goal1, FollowVars),
+	goal_set_follow_vars(Goal1, yes(FollowVars), Goal),
 	find_follow_vars_in_cases(Goals0, ArgsMethod, ModuleInfo, FollowVars0,
 		Goals, _FollowVars1).
 
 %-----------------------------------------------------------------------------%
 
+	% We attach the follow_vars to each goal that follows a goal
+	% that is not cachable by the code generator.
+
 :- pred find_follow_vars_in_conj(list(hlds__goal), args_method, module_info,
-			follow_vars, list(hlds__goal), follow_vars).
-:- mode find_follow_vars_in_conj(in, in, in, in, out, out) is det.
+			follow_vars, bool, list(hlds__goal), follow_vars).
+:- mode find_follow_vars_in_conj(in, in, in, in, in, out, out) is det.
 
 find_follow_vars_in_conj([], _ArgsMethod, _ModuleInfo, FollowVars,
-			[], FollowVars).
+		_AttachToFirst, [], FollowVars).
 find_follow_vars_in_conj([Goal0 | Goals0], ArgsMethod, ModuleInfo, FollowVars0,
-			[Goal | Goals], FollowVars) :-
+		AttachToFirst, [Goal | Goals], FollowVars) :-
+	(
+		Goal0 = GoalExpr0 - _,
+		(
+			GoalExpr0 = call(_, _, _, Builtin, _, _),
+			hlds__is_builtin_is_internal(Builtin),
+			hlds__is_builtin_is_inline(Builtin)
+		;
+			GoalExpr0 = unify(_, _, _, Unification, _),
+			Unification \= complicated_unify(_, _)
+		)
+	->
+		AttachToNext = no
+	;
+		AttachToNext = yes
+	),
 	find_follow_vars_in_conj(Goals0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goals, FollowVars1),
+		AttachToNext, Goals, FollowVars1),
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars1,
-		Goal, FollowVars).
+		Goal1, FollowVars),
+	(
+		AttachToFirst = yes,
+		goal_set_follow_vars(Goal1, yes(FollowVars), Goal)
+	;
+		AttachToFirst = no,
+		Goal = Goal1
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

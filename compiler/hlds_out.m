@@ -672,6 +672,18 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
+		{ goal_info_follow_vars(GoalInfo, MaybeFollowVars) },
+		(
+			{ MaybeFollowVars = yes(FollowVars) }
+		->
+			{ map__to_assoc_list(FollowVars, FVlist) },
+			hlds_out__write_indent(Indent),
+			io__write_string("% follow vars:\n"),
+			hlds_out__write_var_to_lvals(FVlist,
+				VarSet, Indent)
+		;
+			[]
+		),
 		hlds_out__write_indent(Indent),
 		io__write_string("% determinism: "),
 		{ goal_info_get_determinism(GoalInfo, Determinism) },
@@ -715,15 +727,15 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			[]
 		),
 		(
-			( { Goal = disj(_, FV) }
-			; { Goal = switch(_, _, _, FV) }
-			; { Goal = if_then_else(_, _, _, _, FV) }
-			),
-			{ map__to_assoc_list(FV, FVList) }
+			( { Goal = disj(_, SM) }
+			; { Goal = switch(_, _, _, SM) }
+			; { Goal = if_then_else(_, _, _, _, SM) }
+			)
 		->
+			{ map__to_assoc_list(SM, SMlist) },
 			hlds_out__write_indent(Indent),
-			io__write_string("% follow vars map:\n"),
-			hlds_out__write_var_to_lvals(FVList,
+			io__write_string("% store map:\n"),
+			hlds_out__write_var_to_lvals(SMlist,
 				VarSet, Indent)
 		;
 			[]
@@ -796,6 +808,7 @@ hlds_out__write_goal_2(if_then_else(Vars, Cond, Then, Else, _), ModuleInfo,
 		hlds_out__write_goal_a(Else, ModuleInfo, VarSet, Indent1, "",
 			TypeQual)
 	),
+	hlds_out__write_indent(Indent),
 	io__write_string(")"),
 	io__write_string(Follow),
 	io__write_string("\n").
@@ -1337,9 +1350,9 @@ hlds_out__write_stack_slots(Indent, StackSlots, VarSet) -->
 hlds_out__write_var_to_lvals([], _, _) --> [].
 hlds_out__write_var_to_lvals([Var - Loc | VarLocs], VarSet, Indent) -->
 	hlds_out__write_indent(Indent),
-	io__write_string("% "),
+	io__write_string("%\t"),
 	mercury_output_var(Var, VarSet),
-	io__write_string(" -> "),
+	io__write_string("\t-> "),
 	{ llds_out__lval_to_string(Loc, LocStrPrime) ->
 		LocStr = LocStrPrime
 	;

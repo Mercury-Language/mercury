@@ -171,9 +171,16 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		% get the information about this procedure that we need.
 	{ proc_info_variables(ProcInfo, VarInfo) },
 	{ proc_info_liveness_info(ProcInfo, Liveness) },
-	{ proc_info_follow_vars(ProcInfo, FollowVars) },
 	{ proc_info_stack_slots(ProcInfo, StackSlots) },
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst) },
+	{ Goal = _ - GoalInfo },
+	{ goal_info_follow_vars(GoalInfo, MaybeFollowVars) },
+	{
+		MaybeFollowVars = yes(FollowVars)
+	;
+		MaybeFollowVars = no,
+		map__init(FollowVars)
+	},
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = accurate ->
 		SaveSuccip = yes

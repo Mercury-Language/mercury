@@ -33,8 +33,6 @@
 		% are filled in. Type analysis fills in the
 		% pred_id. Mode analysis fills in the
 		% proc_id and the is_builtin field.
-		% `follow_vars.m' fills in
-		% the follow_vars field.
 
 	;	call(
 			pred_id,	% which predicate are we calling?
@@ -58,7 +56,7 @@
 		)
 
 		% Deterministic disjunctions are converted
-		% into case statements by the switch detection pass.
+		% into switches by the switch detection pass.
 
 	;	switch(
 			var,		% the variable we are switching on
@@ -66,9 +64,13 @@
 					% can fail (i.e. whether or not it
 					% covers all the possible cases)
 			list(case),
-			follow_vars	% advisory storage locations for
-					% placing variables at the end of
-					% each arm of the switch
+			store_map	% a map saying where each live variable
+					% should be at the end of each arm of
+					% the switch. This field is filled in
+					% with advisory information by the
+					% follow_vars pass, while store_alloc
+					% fills it with authoritative
+					% information.
 		)
 
 		% A unification.
@@ -94,9 +96,13 @@
 
 	;	disj(
 			hlds__goals,
-			follow_vars	% advisory storage locations for
-					% placing variables at the end of
-					% each arm of the disjunction
+			store_map	% a map saying where each live variable
+					% should be at the end of each arm of
+					% the disj. This field is filled in
+					% with advisory information by the
+					% follow_vars pass, while store_alloc
+					% fills it with authoritative
+					% information.
 		)
 
 		% A negation
@@ -122,9 +128,13 @@
 			hlds__goal,	% The <Condition>
 			hlds__goal,	% The <Then> part
 			hlds__goal,	% The <Else> part
-			follow_vars	% advisory storage locations for
-					% placing variables at the end of
-					% each arm of the ite
+			store_map	% a map saying where each live variable
+					% should be at the end of each arm of
+					% the disj. This field is filled in
+					% with advisory information by the
+					% follow_vars pass, while store_alloc
+					% fills it with authoritative
+					% information.
 		)
 	
 		% C code from a pragma(c_code, ...) decl.
@@ -156,13 +166,30 @@
 
 :- type is_builtin.
 
-:- type stack_slots	==	map(var, lval).
-
 :- type case		--->	case(cons_id, hlds__goal).
 			%	functor to match with,
 			%	goal to execute if match succeeds.
 
+:- type stack_slots	==	map(var, lval).
+				% Maps variables to their stack slots.
+				% The only legal lvals in the range are
+				% stackvars and framevars.
+
 :- type follow_vars	==	map(var, lval).
+				% Advisory information about where variables
+				% ought to be put next. The legal range
+				% includes the nonexistent register r(-1),
+				% which indicates any available register.
+
+:- type store_map	==	map(var, lval).
+				% Authoritative information about where
+				% variables must be put at the ends of
+				% branches of branched control structures.
+				% However, between the follow_vars and
+				% and store_alloc passes, these fields
+				% temporarily hold follow_vars information.
+				% Apart from this, the legal range is
+				% the set of legal lvals.
 
 	% Initially all unifications are represented as
 	% unify(var, unify_rhs, _, _, _), but mode analysis replaces
@@ -330,7 +357,11 @@
 		term__context,
 		set(var),	% the non-local vars in the goal
 				% (computed by quantification.m)
-		unit,		% junk
+		maybe(follow_vars),
+				% advisory information about where variables
+				% ought to be put next. The legal range
+				% includes the nonexistent register r(-1),
+				% which indicates any available register.
 		maybe(set(var)),
 				% The `cont lives' -
 				% maybe the set of variables that are
@@ -476,6 +507,13 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
 :- mode goal_info_set_context(in, in, out) is det.
 
+:- pred goal_info_follow_vars(hlds__goal_info, maybe(follow_vars)).
+:- mode goal_info_follow_vars(in, out) is det.
+
+:- pred goal_info_set_follow_vars(hlds__goal_info, maybe(follow_vars),
+				hlds__goal_info).
+:- mode goal_info_set_follow_vars(in, in, out) is det.
+
 :- pred goal_info_cont_lives(hlds__goal_info, maybe(set(var))).
 :- mode goal_info_cont_lives(in, out) is det.
 
@@ -486,9 +524,12 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_info_nondet_lives(hlds__goal_info, set(var)).
 :- mode goal_info_nondet_lives(in, out) is det.
 
-:- pred goal_info_set_nondet_lives(hlds__goal_info,
-				set(var), hlds__goal_info).
+:- pred goal_info_set_nondet_lives(hlds__goal_info, set(var), hlds__goal_info).
 :- mode goal_info_set_nondet_lives(in, in, out) is det.
+
+:- pred goal_set_follow_vars(hlds__goal, maybe(follow_vars),
+				hlds__goal).
+:- mode goal_set_follow_vars(in, in, out) is det.
 
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
@@ -544,8 +585,24 @@ goal_info_init(GoalInfo) :-
 	term__context_init(Context),
 	set__init(Features),
 	GoalInfo = goal_info(PreBirths, PostBirths, PreDeaths, PostDeaths,
-		ExternalDetism, InstMapDelta, Context, NonLocals, unit, no,
-		Features, NondetLives).
+		ExternalDetism, InstMapDelta, Context, NonLocals, no,
+		no, Features, NondetLives).
+
+% :- type hlds__goal_info
+% 	--->	goal_info(
+% 		A	set(var),	% the pre-birth set
+% 		B	set(var),	% the post-birth set
+% 		C	set(var),	% the pre-death set
+% 		D	set(var),	% the post-death set
+% 		E	determinism, 	% the overall determinism of the goal
+% 		F	instmap_delta,	% the change in insts over this goal
+% 		G	term__context,
+% 		H	set(var),	% the non-local vars in the goal
+% 		I	maybe(follow_vars),
+% 		J	maybe(set(var)),% The `cont lives'
+% 		K	set(goal_feature),
+% 		L	set(var)	% The "nondet lives"
+% 	).
 
 goal_info_pre_births(GoalInfo, PreBirths) :-
 	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _).
@@ -593,22 +650,6 @@ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L),
 	GoalInfo = goal_info(A, B, C, D, E, InstMapDelta, G, H, I, J, K, L).
 
-% :- type hlds__goal_info
-% 	--->	goal_info(
-% 		A	set(var),	% the pre-birth set
-% 		B	set(var),	% the post-birth set
-% 		C	set(var),	% the pre-death set
-% 		D	set(var),	% the post-death set
-% 		E	determinism, 	% the overall determinism of the goal
-% 		F	instmap_delta,	% the change in insts over this goal
-% 		G	term__context,
-% 		H	set(var),	% the non-local vars in the goal
-% 		I	unit,		% junk
-% 		J	maybe(set(var)),% The `cont lives'
-% 		K	set(goal_feature),
-% 		L	set(var)	% The "nondet lives"
-% 	).
-
 goal_info_context(GoalInfo, Context) :-
 	GoalInfo = goal_info(_, _, _, _, _, _, Context, _, _, _, _, _).
 
@@ -622,6 +663,13 @@ goal_info_get_nonlocals(GoalInfo, NonLocals) :-
 goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
 	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L),
 	GoalInfo  = goal_info(A, B, C, D, E, F, G, NonLocals, I, J, K, L).
+
+goal_info_follow_vars(GoalInfo, FollowVars) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, FollowVars, _, _, _).
+
+goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, FollowVars, J, K, L).
 
 goal_info_cont_lives(GoalInfo, ContLives) :-
 	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, ContLives, _, _).
@@ -657,6 +705,9 @@ goal_info_remove_feature(GoalInfo0, Feature, GoalInfo) :-
 goal_info_has_feature(GoalInfo, Feature) :-
 	goal_info_get_features(GoalInfo, Features),
 	set__member(Feature, Features).
+
+goal_set_follow_vars(Goal - GoalInfo0, FollowVars, Goal - GoalInfo) :-
+	goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
