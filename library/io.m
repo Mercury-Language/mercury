@@ -3857,7 +3857,7 @@ mercury_close(MercuryFile* mf)
 		** io_streams, since the io__stream type is defined
 		** as a foreign_type.
 		*/
-  		MR_GC_FREE(mf);
+  		MR_GC_free(mf);
 #endif /* !MR_CONSERVATIVE_GC */
 
 	}
