@@ -10,7 +10,6 @@
 /* this can be changed at will */
 #define MAX_VIRTUAL_REG	1024	/* r(33) .. r(1024) */
 
-/* 
 #define MAX_FAKE_REG	(NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
 				/* mr0 .. mr36, mr(37) ... mr(1028) */
 
