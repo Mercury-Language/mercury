@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,8 +167,9 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io, parse_tree__prog_io_goal, libs__options.
-:- import_module libs__globals.
+:- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_util.
+:- import_module libs__options, libs__globals.
 
 % XXX we should not need to import hlds*.m here.
 % But currently we need to import hlds_data.m for the `cons_id' type
@@ -358,34 +359,11 @@ convert_inst_list(AllowConstrainedInstVar, [H0|T0], [H|T]) :-
 convert_inst(_, term__variable(V0), inst_var(V)) :-
 	term__coerce_var(V0, V).
 convert_inst(AllowConstrainedInstVar, Term, Result) :-
-	Term = term__functor(Name, Args0, _Context),
-	% `free' insts
-	( Name = term__atom("free"), Args0 = [] ->
-		Result = free
-
-	% `any' insts
-	; Name = term__atom("any"), Args0 = [] ->
-		Result = any(shared)
-	; Name = term__atom("unique_any"), Args0 = [] ->
-		Result = any(unique)
-	; Name = term__atom("mostly_unique_any"), Args0 = [] ->
-		Result = any(mostly_unique)
-	; Name = term__atom("clobbered_any"), Args0 = [] ->
-		Result = any(clobbered)
-	; Name = term__atom("mostly_clobbered_any"), Args0 = [] ->
-		Result = any(mostly_clobbered)
-
-	% `ground' insts
-	; Name = term__atom("ground"), Args0 = [] ->
-		Result = ground(shared, none)
-	; Name = term__atom("unique"), Args0 = [] ->
-		Result = ground(unique, none)
-	; Name = term__atom("mostly_unique"), Args0 = [] ->
-		Result = ground(mostly_unique, none)
-	; Name = term__atom("clobbered"), Args0 = [] ->
-		Result = ground(clobbered, none)
-	; Name = term__atom("mostly_clobbered"), Args0 = [] ->
-		Result = ground(mostly_clobbered, none)
+	Term = term__functor(term__atom(Name), Args0, _Context),
+	(
+		convert_simple_builtin_inst(Name, Args0, Result0)
+	->
+		Result = Result0
 	;
 		% The syntax for a higher-order pred inst is
 		%
@@ -394,7 +372,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 		% where <Mode1>, <Mode2>, ... are a list of modes,
 		% and <Detism> is a determinism.
 
-		Name = term__atom("is"), Args0 = [PredTerm, DetTerm],
+		Name = "is", Args0 = [PredTerm, DetTerm],
 		PredTerm = term__functor(term__atom("pred"), ArgModesTerm, _)
 	->
 		DetTerm = term__functor(term__atom(DetString), [], _),
@@ -412,7 +390,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 		% where <Mode1>, <Mode2>, ... are a list of modes,
 		% <RetMode> is a mode, and <Detism> is a determinism.
 
-		Name = term__atom("is"), Args0 = [EqTerm, DetTerm],
+		Name = "is", Args0 = [EqTerm, DetTerm],
 		EqTerm = term__functor(term__atom("="),
 					[FuncTerm, RetModeTerm], _),
 		FuncTerm = term__functor(term__atom("func"), ArgModesTerm, _)
@@ -426,25 +404,21 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 		FuncInst = pred_inst_info(function, ArgModes, Detism),
 		Result = ground(shared, higher_order(FuncInst))
 
-	% `not_reached' inst
-	; Name = term__atom("not_reached"), Args0 = [] ->
-		Result = not_reached
-
 	% `bound' insts
-	; Name = term__atom("bound"), Args0 = [Disj] ->
+	; Name = "bound", Args0 = [Disj] ->
 		parse_bound_inst_list(AllowConstrainedInstVar, Disj, shared,
 			Result)
 /* `bound_unique' is for backwards compatibility - use `unique' instead */
-	; Name = term__atom("bound_unique"), Args0 = [Disj] ->
+	; Name = "bound_unique", Args0 = [Disj] ->
 		parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique,
 			Result)
-	; Name = term__atom("unique"), Args0 = [Disj] ->
+	; Name = "unique", Args0 = [Disj] ->
 		parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique,
 			Result)
-	; Name = term__atom("mostly_unique"), Args0 = [Disj] ->
+	; Name = "mostly_unique", Args0 = [Disj] ->
 		parse_bound_inst_list(AllowConstrainedInstVar, Disj,
 			mostly_unique, Result)
-	; Name = term__atom("=<"), Args0 = [VarTerm, InstTerm] ->
+	; Name = "=<", Args0 = [VarTerm, InstTerm] ->
 		AllowConstrainedInstVar = allow_constrained_inst_var,
 		VarTerm = term__variable(Var),
 		% Do not allow nested constrained_inst_vars.
@@ -455,9 +429,60 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 	;
 		parse_qualified_term(Term, Term, "inst",
 			ok(QualifiedName, Args1)),
-		convert_inst_list(AllowConstrainedInstVar, Args1, Args),
-		Result = defined_inst(user_inst(QualifiedName, Args))
+		(
+			mercury_public_builtin_module(BuiltinModule),
+			sym_name_get_module_name(QualifiedName, unqualified(""),
+				BuiltinModule),
+			% If the term is qualified with the `builtin' module
+			% then it may be one of the simple builtin insts.
+			% We call convert_inst recursively to check for this.
+			unqualify_name(QualifiedName, UnqualifiedName),
+			convert_simple_builtin_inst(UnqualifiedName, Args1,
+				Result0),
+
+			% However, if the inst is a user_inst defined inside
+			% the `builtin' module then we need to make sure it is
+			% properly module-qualified.
+			Result0 \= defined_inst(user_inst(_, _))
+		->
+			Result = Result0
+		;
+			convert_inst_list(AllowConstrainedInstVar, Args1, Args),
+			Result = defined_inst(user_inst(QualifiedName, Args))
+		)
 	).
+
+	% A "simple" builtin inst is one that has no arguments and no special
+	% syntax.
+:- pred convert_simple_builtin_inst(string, list(term), inst).
+:- mode convert_simple_builtin_inst(in, in, out) is semidet.
+
+convert_simple_builtin_inst(Name, [], Inst) :-
+	convert_simple_builtin_inst_2(Name, Inst).
+
+:- pred convert_simple_builtin_inst_2(string, inst).
+:- mode convert_simple_builtin_inst_2(in, out) is semidet.
+
+	% `free' insts
+convert_simple_builtin_inst_2("free", free).
+
+	% `any' insts
+convert_simple_builtin_inst_2("any",			any(shared)).
+convert_simple_builtin_inst_2("unique_any",		any(unique)).
+convert_simple_builtin_inst_2("mostly_unique_any",	any(mostly_unique)).
+convert_simple_builtin_inst_2("clobbered_any",		any(clobbered)).
+convert_simple_builtin_inst_2("mostly_clobbered_any",	any(mostly_clobbered)).
+
+	% `ground' insts
+convert_simple_builtin_inst_2("ground",		ground(shared, none)).
+convert_simple_builtin_inst_2("unique",		ground(unique, none)).
+convert_simple_builtin_inst_2("mostly_unique",	ground(mostly_unique, none)).
+convert_simple_builtin_inst_2("clobbered",	ground(clobbered, none)).
+convert_simple_builtin_inst_2("mostly_clobbered",
+						ground(mostly_clobbered, none)).
+
+	% `not_reached' inst
+convert_simple_builtin_inst_2("not_reached", not_reached).
 
 standard_det("det", det).
 standard_det("cc_nondet", cc_nondet).

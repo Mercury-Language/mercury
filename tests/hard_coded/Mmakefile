@@ -8,6 +8,7 @@ ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
 	bidirectional \
+	builtin_inst_rename \
 	boyer \
 	c_write_string \
 	cc_and_non_cc_test \

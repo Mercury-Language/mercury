@@ -353,11 +353,12 @@
 :- implementation.
 
 :- import_module parse_tree__prog_out, parse_tree__prog_util, hlds__hlds_pred.
+:- import_module parse_tree__prog_io_util.
 :- import_module hlds__hlds_out, hlds__instmap.
 :- import_module recompilation__version.
 :- import_module check_hlds__purity, check_hlds__mode_util.
 :- import_module transform_hlds__term_util.
-:- import_module libs__options, transform_hlds__termination.
+:- import_module libs__globals, libs__options, transform_hlds__termination.
 :- import_module backend_libs__foreign.
 
 :- import_module assoc_list, char, int, string, set, lexer, ops, require.
@@ -435,7 +436,15 @@ mercury_output_item(UnqualifiedItemNames,
 mercury_output_item(UnqualifiedItemNames,
 		inst_defn(VarSet, Name0, Args, InstDefn, _Cond),
 		Context) -->
-	{ maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name) },
+	{ maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name1) },
+	% If the unqualified name is a builtin inst, then output the qualified
+	% name.  This prevents the compiler giving an error about redefining
+	% builtin insts when an interface file is read back in.
+	{ builtin_inst_name(Name1, Args) ->
+		Name = Name0
+	;
+		Name = Name1
+	},
 	maybe_output_line_number(Context),
 	mercury_output_inst_defn(VarSet, Name, Args, InstDefn, Context).
 
@@ -3964,5 +3973,17 @@ output_list([Item | Items], Sep, Pred, Str0, Str) :-
 		output_string(Sep, Str1, Str2),
 		output_list(Items, Sep, Pred, Str2, Str)
 	).
+
+%-----------------------------------------------------------------------------%
+
+% Succeed if the sym_name describes a builtin inst.
+
+:- pred builtin_inst_name(sym_name::in, list(inst_var)::in) is semidet.
+
+builtin_inst_name(unqualified(Name), Args0) :-
+	Args1 = list__map(func(V) = term__variable(term__coerce_var(V)), Args0),
+	Term = term__functor(term__atom(Name), Args1, term__context_init),
+	convert_inst(no_allow_constrained_inst_var, Term, Inst),
+	Inst \= defined_inst(user_inst(_, _)).
 
 %-----------------------------------------------------------------------------%
