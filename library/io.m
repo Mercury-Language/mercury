@@ -473,7 +473,8 @@
 %	For stdout this is the string "<standard output>".
 %	For stderr this is the string "<standard error>".
 
-:- pred io__output_stream_name(io__output_stream, string, io__state, io__state).
+:- pred io__output_stream_name(io__output_stream, string,
+				io__state, io__state).
 :- mode io__output_stream_name(in, out, di, uo) is det.
 %	Retrieves the human-readable name associated with the specified stream.
 %	For file streams, this is the filename.
@@ -541,7 +542,7 @@
 %		until eof or error.
 
 :- pred io__read_binary_file(io__input_stream, io__result(list(int)),
-							io__state, io__state).
+						io__state, io__state).
 :- mode io__read_binary_file(in, out, di, uo) is det.
 %		Reads all the bytes from the given binary input stream until
 %		eof or error.
@@ -593,7 +594,8 @@
 %		Writes several bytes to the current binary output stream.
 %		The bytes are taken from a string.
 
-:- pred io__write_bytes(io__binary_output_stream, string, io__state, io__state).
+:- pred io__write_bytes(io__binary_output_stream, string,
+				io__state, io__state).
 :- mode io__write_bytes(in, in, di, uo) is det.
 %		Writes several bytes to the specified binary output stream.
 %		The bytes are taken from a string.
@@ -602,18 +604,20 @@
 :- mode io__flush_binary_output(di, uo) is det.
 %	Flush the output buffer of the current binary output stream.
 
-:- pred io__flush_binary_output(io__binary_output_stream, io__state, io__state).
+:- pred io__flush_binary_output(io__binary_output_stream,
+				io__state, io__state).
 :- mode io__flush_binary_output(in, di, uo) is det.
 %	Flush the output buffer of the specified binary output stream.
 
 :- pred io__seek_binary(io__binary_stream, io__whence, int,
-		io__state, io__state).
+				io__state, io__state).
 :- mode io__seek_binary(in, in, in, di, uo) is det.
 %	Seek to an offset relative to Whence (documented above)
 %	on a specified binary stream. Attempting to seek on a
 %	pipe or tty results in implementation dependent behaviour.
 
-:- pred io__binary_stream_offset(io__binary_stream, int, io__state, io__state).
+:- pred io__binary_stream_offset(io__binary_stream, int,
+				io__state, io__state).
 :- mode io__binary_stream_offset(in, out, di, uo) is det.
 %	Returns the offset (in bytes) into the specified binary stream.
 
@@ -645,7 +649,8 @@
 %	io__close_binary_input(File, IO0, IO1).
 %		Closes an open binary input stream.
 
-:- pred io__binary_input_stream(io__binary_input_stream, io__state, io__state).
+:- pred io__binary_input_stream(io__binary_input_stream,
+			io__state, io__state).
 :- mode io__binary_input_stream(out, di, uo) is det.
 %		Retrieves the current binary input stream.
 %		Does not modify the IO state.
@@ -657,7 +662,8 @@
 %		Changes the current input stream to the stream specified.
 %		Returns the previous stream.
 
-:- pred io__stdin_binary_stream(io__binary_input_stream, io__state, io__state).
+:- pred io__stdin_binary_stream(io__binary_input_stream,
+			io__state, io__state).
 :- mode io__stdin_binary_stream(out, di, uo) is det.
 %		Retrieves the standard binary input stream.
 %		Does not modify the IO state.
@@ -708,19 +714,20 @@
 %		Attempts to open a file for binary appending.
 %		Result is either 'ok(Stream)' or 'error(ErrorCode)'.
 
-:- pred io__close_binary_output(io__binary_output_stream, io__state, io__state).
+:- pred io__close_binary_output(io__binary_output_stream,
+				io__state, io__state).
 :- mode io__close_binary_output(in, di, uo) is det.
 %	io__close_binary_output(File, IO0, IO1).
 %		Closes an open binary output stream.
 
 :- pred io__binary_output_stream(io__binary_output_stream,
-			io__state, io__state).
+				io__state, io__state).
 :- mode io__binary_output_stream(out, di, uo) is det.
 %		Retrieves the current binary output stream.
 %		Does not modify the IO state.
 
-:- pred io__stdout_binary_stream(io__binary_output_stream, io__state,
-				io__state).
+:- pred io__stdout_binary_stream(io__binary_output_stream,
+				io__state, io__state).
 :- mode io__stdout_binary_stream(out, di, uo) is det.
 %		Retrieves the standard binary output stream.
 %		Does not modify the IO state.
@@ -772,9 +779,10 @@
 %		
 %		Does not modify the IO state.
 
-% The io__state contains an integer used to record the program's exit status.
-% When the program finishes, it will return this exit status to the operating
-% system.  The following predicates can be used to get and set the exit status.
+% The io__state contains an integer used to record the program's exit
+% status.  When the program finishes, it will return this exit status to
+% the operating system.  The following predicates can be used to get and
+% set the exit status.
 
 :- pred io__get_exit_status(int, io__state, io__state).
 :- mode io__get_exit_status(out, di, uo) is det.

@@ -367,8 +367,10 @@
 	% InList into OutList.  The final value of the acumulator is
 	% returned in End.
 :- pred list__map_foldl(pred(X, Y, Z, Z), list(X), list(Y), Z, Z).
-:- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo) is det.
-:- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out) is det.
+:- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
+								is det.
+:- mode list__map_foldl(pred(in, out, in, out) is det, in, out, in, out)
+								is det.
 :- mode list__map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
                                                                 is semidet.
 

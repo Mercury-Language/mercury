@@ -14,9 +14,8 @@
 % (These variables are object-level variables, and are represented
 % as ground terms, so it might help to think of them as "variable ids"
 % rather than variables.)
-% Associated with each variable there can be both a name and a value (binding).
-% [But at the moment, the rest of the code is only using varsets to store
-% names, not values.]
+% Associated with each variable there can be both a name and a value
+% (binding).
 %
 % There may be some design flaws in the relationship between varset.m,
 % term.m, and graph.m.  Once we have implemented unique modes and

@@ -33,7 +33,8 @@
 
 	% Zip together two lists; abort if they are of different lengths.
 
-:- pred assoc_list__from_corresponding_lists(list(K), list(V), assoc_list(K,V)).
+:- pred assoc_list__from_corresponding_lists(list(K), list(V),
+						assoc_list(K,V)).
 :- mode assoc_list__from_corresponding_lists(in, in, out) is det.
 
 	% Return the first member of each pair.

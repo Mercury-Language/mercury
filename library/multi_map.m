@@ -146,7 +146,8 @@
 
 	% Convert a pair of lists (which must be of the same length)
 	% to a multi_map.
-:- pred multi_map__from_corresponding_lists(list(K), list(V), multi_map(K, V)).
+:- pred multi_map__from_corresponding_lists(list(K), list(V),
+				multi_map(K, V)).
 :- mode multi_map__from_corresponding_lists(in, in, out) is det.
 
 	% Convert a pair of lists (which must be of the same length)

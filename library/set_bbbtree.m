@@ -212,7 +212,8 @@
 	% `set_bbbtree__intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
 
-:- pred set_bbbtree__intersect(set_bbbtree(T), set_bbbtree(T), set_bbbtree(T)).
+:- pred set_bbbtree__intersect(set_bbbtree(T), set_bbbtree(T),
+					set_bbbtree(T)).
 :- mode set_bbbtree__intersect(in, in, out) is det.
 
 
@@ -220,7 +221,7 @@
 	% interscetion of the sets in `Sets'.
 
 :- pred set_bbbtree__power_intersect(set_bbbtree(set_bbbtree(T)),
-								set_bbbtree(T)).
+					set_bbbtree(T)).
 :- mode set_bbbtree__power_intersect(in, out) is det.
 
 
@@ -228,7 +229,8 @@
 	%  set containing all the elements of `SetA' except those that
 	% occur in `SetB'.
 
-:- pred set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T), set_bbbtree(T)).
+:- pred set_bbbtree__difference(set_bbbtree(T), set_bbbtree(T),
+					set_bbbtree(T)).
 :- mode set_bbbtree__difference(in, in, out) is det.
 
 
@@ -247,6 +249,10 @@
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module int, require.
 
 % Implementation based on "Functional Pearls: Efficient sets - a balancing act"
 % by Stephen Adams, J. Functional Programming 3 (4): 553-561, Oct 1993.
@@ -287,10 +293,6 @@
 % use of other set operations.
 %
 %------------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module int, require.
 
 :- type set_bbbtree(T) --->
 				empty

@@ -54,7 +54,8 @@
 
 :- pred tree234__remove_smallest(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__remove_smallest(di, uo, uo, uo) is semidet.
-% :- mode tree234__remove_smallest(di_tree234, out, out, uo_tree234) is semidet.
+% :- mode tree234__remove_smallest(di_tree234, out, out, uo_tree234)
+%	is semidet.
 :- mode tree234__remove_smallest(in, out, out, out) is semidet.
 
 :- pred tree234__keys(tree234(K, V), list(K)).

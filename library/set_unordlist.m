@@ -94,7 +94,8 @@
 	% `set_unordlist__insert_list(Set0, Xs, Set)' is true iff `Set' is the
 	% union of `Set0' and the set containing only the members of `Xs'.
 
-:- pred set_unordlist__insert_list(set_unordlist(T), list(T), set_unordlist(T)).
+:- pred set_unordlist__insert_list(set_unordlist(T), list(T),
+					set_unordlist(T)).
 :- mode set_unordlist__insert_list(in, in, out) is det.
 
 	% `set_unordlist__delete(Set0, X, Set)' is true iff `Set' is the
@@ -110,7 +111,8 @@
 	% relative complement of `Set0' and the set containing only the members
 	% of `Xs'.
 
-:- pred set_unordlist__delete_list(set_unordlist(T), list(T), set_unordlist(T)).
+:- pred set_unordlist__delete_list(set_unordlist(T), list(T),
+					set_unordlist(T)).
 :- mode set_unordlist__delete_list(in, in, out) is det.
 
 	% `set_unordlist__remove(Set0, X, Set)' is true iff `Set0' contains `X',
@@ -126,7 +128,8 @@
 	% and `Set' is the relative complement of `Set0' and the set
 	% containing only the members of `Xs'.
 
-:- pred set_unordlist__remove_list(set_unordlist(T), list(T), set_unordlist(T)).
+:- pred set_unordlist__remove_list(set_unordlist(T), list(T),
+					set_unordlist(T)).
 :- mode set_unordlist__remove_list(in, in, out) is semidet.
 
 	% `set_unordlist__remove_least(Set0, X, Set)' is true iff `X' is the

@@ -141,7 +141,8 @@
 	% `set_intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'.
 
-:- pred bintree_set__intersect(bintree_set(T), bintree_set(T), bintree_set(T)).
+:- pred bintree_set__intersect(bintree_set(T), bintree_set(T),
+				bintree_set(T)).
 :- mode bintree_set__intersect(in, in, out) is det.
 
 %--------------------------------------------------------------------------%

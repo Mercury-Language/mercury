@@ -171,7 +171,8 @@
 %	term__apply_substitution(Term0, Substitution, Term) :
 %		apply substitution to Term0 and return the result in Term.
 
-:- pred term__apply_substitution_to_list(list(term), substitution, list(term)).
+:- pred term__apply_substitution_to_list(list(term), substitution,
+						list(term)).
 :- mode term__apply_substitution_to_list(in, in, out) is det.
 %	term__apply_substitution_to_list(TermList0, Substitution, TermList) :
 %		as above, except for a list of terms rather than a single term

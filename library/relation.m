@@ -65,7 +65,8 @@
 :- mode relation__add_assoc_list(in, in, out) is det.
 
 	% relation__remove removes an element from the relation.
-:- pred relation__remove(relation(T), relation_key, relation_key, relation(T)).
+:- pred relation__remove(relation(T), relation_key, relation_key,
+		relation(T)).
 :- mode relation__remove(in, in, in, out) is det.
 
 	% relation__remove_assoc_list removes a list of elements
@@ -168,8 +169,9 @@
 	% providing we have already visited Visit0 nodes, 
 	% ie the reverse of Dfs from relation__dfs/5.
 	% Visit is Visit0 + DfsRev.
-:- pred relation__dfsrev(relation(T), relation_key,  set_bbbtree(relation_key), 
-		set_bbbtree(relation_key), list(relation_key)).
+:- pred relation__dfsrev(relation(T), relation_key,
+		set_bbbtree(relation_key), set_bbbtree(relation_key),
+		list(relation_key)).
 :- mode relation__dfsrev(in, in, in, out, out) is det.
 
 	% relation__is_dag(R) is true iff R is a directed acyclic graph.
