@@ -722,28 +722,28 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 :- pragma foreign_proc("MC++",
 	semidet_call_3(Pred::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_3(Pred, X, Y);
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_4(Pred::in, A::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_4(Pred, A, X, Y);
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_5(Pred, A, B, X, Y);
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_6(Pred, A, B, C,
@@ -751,7 +751,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 ").
 :- pragma foreign_proc("MC++",
 	semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_7(Pred, A, B, C, D,
@@ -760,7 +760,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 :- pragma foreign_proc("MC++",
 	semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in,
 		X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	SUCCESS_INDICATOR =
 		mercury::runtime::GenericCall::semidet_call_8(Pred, A, B, C, D,
@@ -769,32 +769,32 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 
 :- pragma foreign_proc("C#",
 	result_call_4(Pred::in, Res::out, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_4(Pred, ref Res, X, Y);
 ").
 
 :- pragma foreign_proc("C#",
 	result_call_5(Pred::in, Res::out, A::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_5(Pred, A, ref Res, X, Y);
 ").
 :- pragma foreign_proc("C#",
 	result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_6(Pred, A, B, ref Res, X, Y);
 ").
 :- pragma foreign_proc("C#",
 	result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_7(Pred, A, B, C, ref Res, X, Y);
 ").
 :- pragma foreign_proc("C#",
 	result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_8(Pred, A, B, C, D,
 		ref Res, X, Y);
@@ -802,7 +802,7 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 :- pragma foreign_proc("C#",
 	result_call_9(Pred::in, Res::out, A::in, B::in, C::in, D::in, E::in,
 		X::in, Y::in), 
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	mercury.runtime.GenericCall.result_call_9(Pred, 
 		A, B, C, D, E, ref Res, X, Y);
@@ -1348,8 +1348,10 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 
 :- pred high_level_data is semidet.
 :- pragma promise_pure(high_level_data/0).
-:- pragma foreign_proc("MC++", high_level_data,
-		[will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc("MC++",
+	high_level_data,
+	[will_not_call_mercury, thread_safe],
+"
 #ifdef MR_HIGHLEVEL_DATA
 	SUCCESS_INDICATOR = MR_TRUE;
 #else
@@ -1444,7 +1446,8 @@ new_type_info(TypeInfo::in, _::in) = (NewTypeInfo::uo) :-
 
 :- pragma foreign_proc("C#",
 	new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::uo),
-		[promise_pure], "
+	[promise_pure],
+"
 	NewTypeInfo = new object[Arity + 1];
 	System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
 ").
@@ -1471,7 +1474,8 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
 
 :- pragma foreign_proc("C#",
 	get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out),
-		[promise_pure], "
+	[promise_pure],
+"
 	PTI = TypeInfo[Index];
 ").
 
@@ -1777,11 +1781,10 @@ typeinfo_locns_index(X::in, _::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
 	typeinfo_locns_index(X::in, ExistInfo::in) = (TypeInfoLocn::out),
-		[promise_pure], "
-
+	[promise_pure],
+"
 	TypeInfoLocn = (object[]) ((object[]) ExistInfo[(int)
 			exist_info_field_nums.typeinfo_locns])[X];
-		
 ").
 
 :- func exist_info_typeinfos_plain(exist_info) = int.
@@ -1791,7 +1794,8 @@ exist_info_typeinfos_plain(X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
 	exist_info_typeinfos_plain(ExistInfo::in) = (TypeInfosPlain::out),
-		[promise_pure], "
+	[promise_pure],
+"
 	TypeInfosPlain = (int)
 		ExistInfo[(int)
 			exist_info_field_nums.typeinfos_plain];
@@ -1838,7 +1842,8 @@ get_typeinfo_from_term(_::in, X::in) = (unsafe_cast(X)::out) :-
 
 :- pragma foreign_proc("C#",
 	get_typeinfo_from_term(Term::in, Index::in) = (TypeInfo::out),
-		[promise_pure], "
+	[promise_pure],
+"
 	try {
 		TypeInfo = (object[]) ((object[]) Term)[Index];
 	} catch (System.InvalidCastException) {
@@ -1875,7 +1880,8 @@ type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :-
 
 :- pragma foreign_proc("C#",
 	type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out),
-		[will_not_call_mercury, promise_pure], "
+	[will_not_call_mercury, promise_pure],
+"
 	TypeInfoAtIndex = (object[]) TypeInfo[X];
 ").
 
@@ -2100,13 +2106,13 @@ type_ctor_num_functors(_) = _ :-
 
 :- pragma foreign_proc("C",
 	unsafe_cast(VarIn::in) = (VarOut::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	VarOut = VarIn;
 ").
 :- pragma foreign_proc("C#",
 	unsafe_cast(VarIn::in) = (VarOut::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	VarOut = VarIn;
 ").
@@ -2210,8 +2216,10 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 %-----------------------------------------------------------------------------%
 
 :- func unsafe_index(int, T) = U.
-:- pragma foreign_proc("C#", unsafe_index(Num::in, Array::in) = (Item::out),
-		[will_not_call_mercury, thread_safe, promise_pure], "
+:- pragma foreign_proc("C#",
+	unsafe_index(Num::in, Array::in) = (Item::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
 	Item = ((object []) Array)[Num];
 ").
 unsafe_index(_, _) = _ :-
@@ -2221,7 +2229,8 @@ unsafe_index(_, _) = _ :-
 
 :- func unsafe_make_enum(int) = T.
 :- pragma foreign_proc("C#", unsafe_make_enum(Num::in) = (Enum::out),
-		[will_not_call_mercury, thread_safe, promise_pure], "
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
 	Enum = mercury.runtime.LowLevelData.make_enum(Num);
 ").
 unsafe_make_enum(_) = _ :-
@@ -2230,13 +2239,15 @@ unsafe_make_enum(_) = _ :-
  %--------------------------%
 
 :- pred null(T::in) is semidet.
-:- pragma foreign_proc("C", null(S::in),
-		[will_not_call_mercury, thread_safe, promise_pure],
+:- pragma foreign_proc("C",
+	null(S::in),
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	SUCCESS_INDICATOR = ((void *)S == NULL);
 ").
-:- pragma foreign_proc("MC++", null(S::in),
-		[will_not_call_mercury, thread_safe, promise_pure],
+:- pragma foreign_proc("MC++",
+	null(S::in),
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	SUCCESS_INDICATOR = (S == 0);
 ").
@@ -2248,13 +2259,15 @@ null(_) :-
  %--------------------------%
 
 :- func null = T.
-:- pragma foreign_proc("C", null = (T::out),
-		[will_not_call_mercury, thread_safe, promise_pure],
+:- pragma foreign_proc("C",
+	null = (T::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	T = (MR_Word) NULL;
 ").
-:- pragma foreign_proc("MC++", null = (T::out),
-		[will_not_call_mercury, thread_safe, promise_pure],
+:- pragma foreign_proc("MC++",
+	null = (T::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 	T = 0;
 ").

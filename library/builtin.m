@@ -220,7 +220,7 @@
 :- type compare(T) == pred(comparison_result, T, T).
 :- inst compare == (pred(uo, in, in) is det).
 
-	% ordering(X, Y) = R  <=>  compare(R, X, Y)
+	% ordering(X, Y) = R <=> compare(R, X, Y)
 	%
 :- func ordering(T, T) = comparison_result.
 
@@ -256,8 +256,8 @@
 	% by predicates and functions which depend on an ordering on a given
 	% type, where this ordering is not necessarily the standard ordering.
 	% In addition to the type, mode and determinism constraints, a
-	% comparison predicate C is expected to obey two other laws.  For
-	% all X, Y and Z of the appropriate type, and for all
+	% comparison predicate C is expected to obey two other laws.
+	% For all X, Y and Z of the appropriate type, and for all
 	% comparison_results R:
 	%	1) C(X, Y, (>)) if and only if C(Y, X, (<))
 	%	2) C(X, Y, R) and C(Y, Z, R) implies C(X, Z, R).
@@ -327,16 +327,16 @@
 % non-canonical terms.
 %
 % The declarative semantics of compare_representation for unequal
-% non-canonical terms is that the result is either (<) or (>).  For
-% equal non-canonical terms the result can be anything.
+% non-canonical terms is that the result is either (<) or (>).
+% For equal non-canonical terms the result can be anything.
 %
 % Operationally, the result of compare_representation for
 % non-canonical terms is the same as that for comparing the internal
 % representations of the terms, where the internal representation is
 % that which would be produced by deconstruct__cc.
 %
-% XXX This predicate is not yet implemented for highlevel code.  This
-% is the reason it is not in the official part of the interface.
+% XXX This predicate is not yet implemented for highlevel code.
+% This is the reason it is not in the official part of the interface.
 
 :- pred compare_representation(comparison_result, T, T).
 :- mode compare_representation(uo, in, in) is cc_multi.
@@ -372,22 +372,32 @@ get_one_solution(CCPred) = OutVal :-
 :- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
 :- mode cc_cast(pred(out) is cc_multi) = out(pred(out) is det) is det.
 
-:- pragma foreign_proc("C", cc_cast(X :: (pred(out) is cc_multi)) =
-                        (Y :: out(pred(out) is det)),
-                [will_not_call_mercury, thread_safe],
-                "Y = X;").
-:- pragma foreign_proc("C", cc_cast(X :: (pred(out) is cc_nondet)) =
-                        (Y :: out(pred(out) is semidet)),
-                [will_not_call_mercury, thread_safe],
-                "Y = X;").
-:- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_multi)) =
-                        (Y :: out(pred(out) is det)),
-                [will_not_call_mercury, thread_safe],
-                "Y = X;").
-:- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_nondet)) =
-                        (Y :: out(pred(out) is semidet)),
-                [will_not_call_mercury, thread_safe],
-                "Y = X;").
+:- pragma foreign_proc("C",
+	cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
+:- pragma foreign_proc("C",
+	cc_cast(X :: (pred(out) is cc_nondet)) =
+		(Y :: out(pred(out) is semidet)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
+:- pragma foreign_proc("C#",
+	cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
+:- pragma foreign_proc("C#",
+	cc_cast(X :: (pred(out) is cc_nondet)) =
+		(Y :: out(pred(out) is semidet)),
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
 
 :- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X) -->
@@ -404,13 +414,17 @@ get_one_solution_io(Pred, X) -->
 :- pragma foreign_proc("C",
 	cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) = 
 		(Y :: out(pred(out, di, uo) is det)),
-                [will_not_call_mercury, thread_safe],
-                "Y = X;").
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
 :- pragma foreign_proc("C#", 
-		cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
+	cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
 		(Y :: out(pred(out, di, uo) is det)),
-                [will_not_call_mercury, thread_safe],
-                "Y = X;").
+	[will_not_call_mercury, thread_safe],
+"
+	Y = X;
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -476,7 +490,6 @@ static void compare_3_m3(MR_TypeInfo TypeInfo_for_T,
 {
 	compare_3(TypeInfo_for_T, Res, X, Y);
 }
-
 ").
 
 :- pragma foreign_code("C#", "
@@ -525,11 +538,11 @@ public static object deep_copy(object o)
 public static void deep_copy_fields(
 		System.Reflection.FieldInfo[] fields, object dest, object src)
 {
-        // XXX We don't handle init-only fields, but I can't think of a way.
-        foreach (System.Reflection.FieldInfo f in fields)
-        {
-            f.SetValue(dest, deep_copy(f.GetValue(src)));
-        }
+	// XXX We don't handle init-only fields, but I can't think of a way.
+	foreach (System.Reflection.FieldInfo f in fields)
+	{
+		f.SetValue(dest, deep_copy(f.GetValue(src)));
+	}
 }
 
 ").
