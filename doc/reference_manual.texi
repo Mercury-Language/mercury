@@ -3277,17 +3277,25 @@ The exact mechanism for linking with C object files is
 implementation-dependent.  The following text describes how
 it is done for the University of Melbourne Mercury implementation.
 
-To link an existing object file or library into the Mercury executable,
-set the @samp{Mmake} variable @samp{MLLIBS} in the
-@samp{Mmake} file in the directory in which you are working.  For
-example add the following line to the @samp{Mmake} file:
+To link an existing object file into your Mercury code,
+set the @samp{Mmake} variable @samp{MLOBJS} in the
+@samp{Mmake} file in the directory in which you are working.
+To link an existing library into your Mercury code,
+set the @samp{Mmake} variable @samp{MLLIBS}.
+For example, the following will link in the object file
+@samp{my_functions.o} from the current directory and
+the library file @samp{libfancy_library.a}, or perhaps its
+shared version @samp{fancy_library.so}, from the directory
+@samp{/usr/local/contrib/lib}.
 
 @example
-MLLIBS = my_functions.o -L/usr/local/contrib/lib -lfancy_library
+MLOBJS = my_functions.o
+MLFLAGS = -R/usr/local/contrib/lib -L/usr/local/contrib/lib
+MLLIBS = -lfancy_library
 @end example
 
-As illustrated by the example, the values for @samp{MLLIBS} are similar to
-those taken by the Unix linker.
+As illustrated by the example, the values for @samp{MLFLAGS} and
+@samp{MLLIBS} variables are similar to those taken by the Unix linker.
 
 For more information, see the ``Libraries'' chapter of the
 Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
