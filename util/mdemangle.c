@@ -292,7 +292,7 @@ demangle(char *name) {
 			module, start, arity);
 		break;
 	case INDEX:
-		printf("index/3 predicate for type '%s:%s'/%d", module,
+		printf("index/2 predicate for type '%s:%s'/%d", module,
 			start, arity);
 		break;
 	default:
