@@ -118,9 +118,16 @@ If you find something you do like, please tell the world!
 The Mercury distribution is available via anonymous ftp or WWW
 from the following locations:
 
-	Australia:
-		ftp://turiel.cs.mu.oz.au/pub/mercury/
-	USA:
-		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury/
-	Europe:
-		ftp://ftp.csd.uu.se/pub/Mercury/
+	Home site:
+	    Australia:	ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/
+
+	Mirrors:
+	    Sweden:	ftp://ftp.csd.uu.se/pub/Mercury/
+	    Greece:	ftp://ftp.ntua.gr/pub/lang/mercury/
+
+	Other sites (these may be less complete and/or out-of-date):
+	    USA:	ftp://ftp.cs.sunysb.edu/pub/XSB/mercury/
+	    USA:	ftp://sunsite.unc.edu/pub/Linux/devel/lang/mercury/
+	    Sunsite also has many other mirrors, see
+			http://sunsite.unc.edu/pub/Linux/MIRRORS.html.
+
