@@ -11,6 +11,7 @@ include ../Mmake
 SOURCES= \
 	bigtest.m \
 	det_errors.m \
+	funcs_as_preds.m \
 	errors.m \
 	errors1.m \
 	errors2.m \
