@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -369,9 +369,9 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 			io__close_output(StdOut),
 			io__stderr_stream(StdErr),
 			io__close_output(StdErr),
-			io__current_binary_input_stream(BinaryStdIn),
+			io__binary_input_stream(BinaryStdIn),
 			io__close_binary_input(BinaryStdIn),
-			io__current_binary_output_stream(BinaryStdOut),
+			io__binary_output_stream(BinaryStdOut),
 			io__close_binary_output(BinaryStdOut)
 		;
 			{ ChildHasParent = child_has_no_parent },

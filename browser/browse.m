@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 The University of Melbourne.
+% Copyright (C) 1998-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -528,11 +528,11 @@ portray_flat(Debugger, BrowserTerm, Params) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 portray_flat_write_browser_term(plain_term(Univ)) -->
-	io__current_output_stream(Stream),
+	io__output_stream(Stream),
 	io__write_univ(Stream, include_details_cc, Univ).
 portray_flat_write_browser_term(synthetic_term(Functor, Args, MaybeReturn)) -->
 	io__write_string(Functor),
-	io__current_output_stream(Stream),
+	io__output_stream(Stream),
 	( { Args = [] } ->
 		[]
 	;

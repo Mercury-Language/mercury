@@ -92,6 +92,9 @@ Changes to the Mercury standard library:
 
 * getopt.m now accepts a `maybe_string_special' option type.
 
+* builtin.m now contains types and insts `unify' and `compare' for use
+  in defining user-defined equality and comparison predicates.
+
 * We've fixed some problems with the use of `cc_nondet'.
 
   The incorrect cc_nondet modes of the following predicates have been removed:
@@ -105,8 +108,17 @@ Changes to the Mercury standard library:
   These have been replaced by cc_multi versions in which success or failure
   is indicated by returning a maybe type.
 
-* builtin.m now contains types and insts `unify' and `compare' for use
-  in defining user-defined equality and comparison predicates.
+* The following predicates, which were added in 0.11.0, have been deprecated:
+	io.current_input_stream/3
+	io.current_output_stream/3
+	io.current_binary_input_stream/3
+	io.current_binary_output_stream/3
+  They were identical to the following long-existing predicates with
+  similar names:
+	io.input_stream/3
+	io.output_stream/3
+	io.binary_input_stream/3
+	io.binary_output_stream/3
 
 Changes to the extras distribution:
 
