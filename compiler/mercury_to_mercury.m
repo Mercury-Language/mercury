@@ -1598,6 +1598,10 @@ mercury_format_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
 	),
 	add_format(", instance number %d (%s)>",
 		[i(InstanceNum), s(InstanceString)]).
+mercury_format_cons_id(type_info_cell_constructor, _) -->
+	add_string("<type_info_cell_constructor>").
+mercury_format_cons_id(typeclass_info_cell_constructor, _) -->
+	add_string("<typeclass_info_cell_constructor>").
 mercury_format_cons_id(tabling_pointer_const(_, _), _) -->
 	add_string("<tabling pointer>").
 mercury_format_cons_id(deep_profiling_proc_static(_), _) -->

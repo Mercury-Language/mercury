@@ -50,6 +50,8 @@
 		% class instance, a string encoding the type
 		% names and arities of the arguments to the
 		% instance declaration
+	;	type_info_cell_constructor
+	;	typeclass_info_cell_constructor
 	;	tabling_pointer_const(pred_id, proc_id)
 		% The address of the static variable
 		% that points to the table that implements
@@ -199,6 +201,10 @@ cons_id_arity(type_ctor_info_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of type_ctor_info_const").
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
+cons_id_arity(type_info_cell_constructor, _) :-
+	error("cons_id_arity: can't get arity of type_info_cell_constructor").
+cons_id_arity(typeclass_info_cell_constructor, _) :-
+	error("cons_id_arity: can't get arity of typeclass_info_cell_constructor").
 cons_id_arity(tabling_pointer_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of tabling_pointer_const").
 cons_id_arity(deep_profiling_proc_static(_), _) :-
@@ -213,6 +219,8 @@ cons_id_maybe_arity(float_const(_), yes(0)).
 cons_id_maybe_arity(pred_const(_, _, _), no) .
 cons_id_maybe_arity(type_ctor_info_const(_, _, _), no) .
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _), no).
+cons_id_maybe_arity(type_info_cell_constructor, no) .
+cons_id_maybe_arity(typeclass_info_cell_constructor, no) .
 cons_id_maybe_arity(tabling_pointer_const(_, _), no).
 cons_id_maybe_arity(deep_profiling_proc_static(_), no).
 cons_id_maybe_arity(table_io_decl(_), no).

@@ -666,7 +666,10 @@ check_unify(assign(Var1, Var2)) -->
 check_unify(deconstruct(_, _, _, _, _, _)) --> [].
 
 check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :-
-	( is_interesting_cons_id(Info0 ^ global_info ^ ho_params, ConsId) ->
+	(
+		is_interesting_cons_id(Info0 ^ global_info ^ ho_params, ConsId)
+			= yes
+	->
 		( map__search(Info0 ^ pred_vars, LVar, Specializable) ->
 			(
 				% we can't specialize calls involving
@@ -695,28 +698,28 @@ check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :-
 check_unify(complicated_unify(_, _, _)) -->
 	{ error("higher_order:check_unify - complicated unification") }.
 
-:- pred is_interesting_cons_id(ho_params::in, cons_id::in) is semidet.
+:- func is_interesting_cons_id(ho_params, cons_id) = bool.
 
-is_interesting_cons_id(Params, cons(qualified(Module, Name), _)) :-
-	yes = Params ^ user_type_spec,
-	mercury_private_builtin_module(Module),
-	( Name = "type_info"
-	; Name = "typeclass_info"
-	).
-is_interesting_cons_id(Params, pred_const(_, _, _)) :-
-	yes = Params ^ optimize_higher_order.
-is_interesting_cons_id(Params,
-		type_ctor_info_const(_, _, _)) :-
-	yes = Params ^ user_type_spec.
-is_interesting_cons_id(Params,
-		base_typeclass_info_const(_, _, _, _)) :-
-	yes = Params ^ user_type_spec.
-
+is_interesting_cons_id(_Params, cons(_, _)) = no.
 	% We need to keep track of int_consts so we can interpret
 	% superclass_info_from_typeclass_info and typeinfo_from_typeclass_info.
 	% We don't specialize based on them.
-is_interesting_cons_id(Params, int_const(_)) :-
-	yes = Params ^ user_type_spec.
+is_interesting_cons_id(Params, int_const(_)) = Params ^ user_type_spec.
+is_interesting_cons_id(_Params, string_const(_)) = no.
+is_interesting_cons_id(_Params, float_const(_)) = no.
+is_interesting_cons_id(Params, pred_const(_, _, _)) =
+	Params ^ optimize_higher_order.
+is_interesting_cons_id(Params, type_ctor_info_const(_, _, _)) =
+	Params ^ user_type_spec.
+is_interesting_cons_id(Params, base_typeclass_info_const(_, _, _, _)) =
+	Params ^ user_type_spec.
+is_interesting_cons_id(Params, type_info_cell_constructor) =
+	Params ^ user_type_spec.
+is_interesting_cons_id(Params, typeclass_info_cell_constructor) =
+	Params ^ user_type_spec.
+is_interesting_cons_id(_Params, tabling_pointer_const(_, _)) = no.
+is_interesting_cons_id(_Params, deep_profiling_proc_static(_)) = no.
+is_interesting_cons_id(_Params, table_io_decl(_)) = no.
 
 	% Process a higher-order call or class_method_call to see if it
 	% could possibly be specialized.
@@ -745,9 +748,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 			% A typeclass_info variable should consist of
 			% a known base_typeclass_info and some argument
 			% typeclass_infos.
-			ConsId = cons(TypeClassInfo, _),
-			mercury_private_builtin_module(Module),
-			TypeClassInfo = qualified(Module, "typeclass_info"),
+			ConsId = typeclass_info_cell_constructor,
 			CurriedArgs = [BaseTypeClassInfo | OtherTypeClassArgs],
 			map__search(Info0 ^ pred_vars, BaseTypeClassInfo,
 				constant(BaseConsId, _)),

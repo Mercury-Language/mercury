@@ -302,8 +302,7 @@
 
 	% Check whether a type is a no_tag type
 	% (i.e. one with only one constructor, and
-	% whose one constructor has only one argument,
-	% and which is not private_builtin:type_info/1),
+	% whose one constructor has only one argument),
 	% and if so, return its constructor symbol and argument type.
 
 :- pred type_is_no_tag_type(module_info, type, sym_name, type).
@@ -311,8 +310,7 @@
 
 	% Check whether some constructors are a no_tag type
 	% (i.e. one with only one constructor, and
-	% whose one constructor has only one argument,
-	% and which is not private_builtin:type_info/1),
+	% whose one constructor has only one argument),
 	% and if so, return its constructor symbol, argument type,
 	% and the argument's name (if it has one).
 	%
@@ -510,6 +508,16 @@
 
 :- pred maybe_get_higher_order_arg_types(maybe(type), arity, list(maybe(type))).
 :- mode maybe_get_higher_order_arg_types(in, in, out) is det.
+
+:- type polymorphism_cell
+	--->	type_info_cell
+	;	typeclass_info_cell.
+
+:- func cell_cons_id(polymorphism_cell) = cons_id.
+
+:- func cell_inst_cons_id(polymorphism_cell, int) = cons_id.
+
+:- func cell_type_name(polymorphism_cell) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1161,25 +1169,19 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
 		unqualify_name(Name0, UnqualName),
 		Name = qualified(TypeModule, UnqualName),
 		ConsId = cons(Name, OrigArity),
-		%
-		% Fix up the cons_id arity for type(class)_info constructions.
-		% The cons_id for type(class)_info constructions always has
-		% arity 1, to match the arity in the declaration in
-		% library/private_builtin.m,
-		% but for the inst we need the arity of the cons_id
-		% to match the number of arguments.
-		%
-		(
-			mercury_private_builtin_module(TypeModule),
-			( UnqualName = "typeclass_info"
-			; UnqualName = "type_info"
-			)
-		->
-			list__length(Args, InstArity),
-			InstConsId = cons(Name, InstArity)
-		;
-			InstConsId = ConsId
-		)
+		InstConsId = ConsId
+	;
+		ConsId0 = type_info_cell_constructor
+	->
+		ConsId = type_info_cell_constructor,
+		InstConsId = cell_inst_cons_id(type_info_cell,
+			list__length(Args))
+	;
+		ConsId0 = typeclass_info_cell_constructor
+	->
+		ConsId = typeclass_info_cell_constructor,
+		InstConsId = cell_inst_cons_id(typeclass_info_cell,
+			list__length(Args))
 	;
 		ConsId = ConsId0,
 		InstConsId = ConsId
@@ -1200,20 +1202,8 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 		term__apply_substitution(ArgType0, Subn, ArgType)
 	).
 
-	% The checks for type_info and type_ctor_info
-	% are needed because those types lie about their
-	% arity; it might be cleaner to change that in
-	% private_builtin.m, but that would cause some
-	% bootstrapping difficulties.
-	% It might be slightly better to check for private_builtin:type_info
-	% etc. rather than just checking the unqualified type name,
-	% but I found it difficult to verify that the constructors
-	% would always be fully module-qualified at points where
-	% type_constructors_are_no_tag_type/3 is called.
-
 type_constructors_are_no_tag_type(Ctors, Ctor, ArgType, MaybeArgName) :-
 	type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName0, ArgType),
-	\+ ctor_is_type_info(Ctor),
 
 	% We don't handle unary tuples as no_tag types --
 	% they are rare enough that it's not worth
@@ -1895,5 +1885,26 @@ maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
 	;
 		list__duplicate(Arity, no, MaybeTypes)
 	).
+
+%-----------------------------------------------------------------------------%
+
+cell_cons_id(type_info_cell) = type_info_cell_constructor.
+cell_cons_id(typeclass_info_cell) = typeclass_info_cell_constructor.
+
+cell_inst_cons_id(Which, Arity) = InstConsId :-
+	% Soon neither of these function symbols will exist,
+	% even with fake arity, but they do not need to.
+	(
+		Which = type_info_cell,
+		Symbol = "type_info"
+	;
+		Which = typeclass_info_cell,
+		Symbol = "typeclass_info"
+	),
+	PrivateBuiltin = mercury_private_builtin_module,
+	InstConsId = cons(qualified(PrivateBuiltin, Symbol), Arity).
+
+cell_type_name(type_info_cell) = "type_info".
+cell_type_name(typeclass_info_cell) = "typeclass_info".
 
 %-----------------------------------------------------------------------------%

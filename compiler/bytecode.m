@@ -93,6 +93,8 @@
 					int)
 			;	base_typeclass_info_const(byte_module_id,
 					class_id, string)
+			;	type_info_cell_constructor
+			;	typeclass_info_cell_constructor
 			;	char_const(char)
 			.
 
@@ -791,11 +793,16 @@ output_cons_id(char_const(Char)) -->
 	output_byte(7),
 	{ char__to_int(Char, Byte) },
 	output_byte(Byte).
-
 	% XXX
 output_cons_id(base_typeclass_info_const(_, _, _)) -->
 	{ error("Sorry, bytecode for typeclass not yet implemented") },
 	output_byte(8).
+output_cons_id(type_info_cell_constructor) -->
+	{ error("Sorry, bytecode for type_info_cell_constructor not yet implemented") },
+	output_byte(9).
+output_cons_id(typeclass_info_cell_constructor) -->
+	{ error("Sorry, bytecode for typeclass_info_cell_constructor not yet implemented") },
+	output_byte(10).
 
 :- pred debug_cons_id(byte_cons_id, io__state, io__state).
 :- mode debug_cons_id(in, di, uo) is det.
@@ -840,6 +847,10 @@ debug_cons_id(char_const(Char)) -->
 	debug_string("char_const"),
 	{ string__from_char_list([Char], String) },
 	debug_string(String).
+debug_cons_id(type_info_cell_constructor) -->
+	debug_string("type_info_cell_constructor").
+debug_cons_id(typeclass_info_cell_constructor) -->
+	debug_string("typeclass_info_cell_constructor").
 
 %---------------------------------------------------------------------------%
 

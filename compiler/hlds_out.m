@@ -331,6 +331,10 @@ hlds_out__cons_id_to_string(pred_const(_, _, _), "<pred>").
 hlds_out__cons_id_to_string(type_ctor_info_const(_, _, _), "<type_ctor_info>").
 hlds_out__cons_id_to_string(base_typeclass_info_const(_, _, _, _),
 	"<base_typeclass_info>").
+hlds_out__cons_id_to_string(type_info_cell_constructor,
+	"<type_info_cell_constructor>").
+hlds_out__cons_id_to_string(typeclass_info_cell_constructor,
+	"<typeclass_info_cell_constructor>").
 hlds_out__cons_id_to_string(tabling_pointer_const(_, _),
 	"<tabling_pointer>").
 hlds_out__cons_id_to_string(deep_profiling_proc_static(_),
@@ -351,6 +355,10 @@ hlds_out__write_cons_id(type_ctor_info_const(_, _, _)) -->
 	io__write_string("<type_ctor_info>").
 hlds_out__write_cons_id(base_typeclass_info_const(_, _, _, _)) -->
 	io__write_string("<base_typeclass_info>").
+hlds_out__write_cons_id(type_info_cell_constructor) -->
+	io__write_string("<type_info_cell_constructor>").
+hlds_out__write_cons_id(typeclass_info_cell_constructor) -->
+	io__write_string("<typeclass_info_cell_constructor>").
 hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
 	io__write_string("<tabling_pointer>").
 hlds_out__write_cons_id(deep_profiling_proc_static(_)) -->
@@ -2480,6 +2488,16 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		io__write_string("), "),
 		io__write_string(Instance),
 		io__write_string(")")
+	;
+		{ ConsId = type_info_cell_constructor },
+		hlds_out__write_functor(
+			term__atom("type_info_cell_constructor"),
+			ArgVars, VarSet, AppendVarnums, next_to_graphic_token)
+	;
+		{ ConsId = typeclass_info_cell_constructor },
+		hlds_out__write_functor(
+			term__atom("typeclass_info_cell_constructor"),
+			ArgVars, VarSet, AppendVarnums, next_to_graphic_token)
 	;
 		{ ConsId = tabling_pointer_const(PredId, ProcId) },
 		io__write_string("tabling_pointer_const("),

@@ -108,11 +108,7 @@ assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
 	globals__lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
 	ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
 
-		% We do not bother reserving a tag for type_infos --- these
-		% types are implemented in C, and there is no way (at present)
-		% to have a type become bound to a (HAL Herbrand solver) 
-		% variable.
-	( ReserveTag = yes, \+ type_constructors_are_type_info(Ctors) ->
+	( ReserveTag = yes ->
 		InitTag = 1
 	;
 		InitTag = 0

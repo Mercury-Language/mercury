@@ -105,6 +105,10 @@ prog_rep__represent_cons_id(type_ctor_info_const(_, _, _), Rep) :-
 	Rep = "$type_ctor_info_const".
 prog_rep__represent_cons_id(base_typeclass_info_const(_, _, _, _), Rep) :-
 	Rep = "$base_typeclass_info_const".
+prog_rep__represent_cons_id(type_info_cell_constructor, Rep) :-
+	Rep = "$type_info_cell_constructor".
+prog_rep__represent_cons_id(typeclass_info_cell_constructor, Rep) :-
+	Rep = "$typeclass_info_cell_constructor".
 prog_rep__represent_cons_id(tabling_pointer_const(_, _), Rep) :-
 	Rep = "$tabling_pointer_const".
 prog_rep__represent_cons_id(deep_profiling_proc_static(_), Rep) :-

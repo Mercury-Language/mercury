@@ -746,6 +746,12 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ByteConsId = base_typeclass_info_const(ModuleName, ClassId,
 			Instance)
 	;
+		ConsId = type_info_cell_constructor,
+		ByteConsId = type_info_cell_constructor
+	;
+		ConsId = typeclass_info_cell_constructor,
+		ByteConsId = typeclass_info_cell_constructor
+	;
 		ConsId = tabling_pointer_const(_, _),
 		sorry(this_file, "bytecode cannot implement tabling")
 	;

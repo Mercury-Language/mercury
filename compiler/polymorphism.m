@@ -295,9 +295,6 @@
 :- mode convert_pred_to_lambda_goal(in, in, in, in, in, in, in, in, 
 		in, in, in, in, in, out, out, out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 :- implementation.
 
 :- import_module backend_libs__base_typeclass_info.
@@ -2460,8 +2457,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 
 		% build a unification to add the argvars to the
 		% base_typeclass_info
-	NewConsId = cons(qualified(mercury_private_builtin_module,
-			"typeclass_info"), 1),
+	NewConsId = typeclass_info_cell_constructor,
 	NewArgVars = [BaseVar|ArgVars],
 	TypeClassInfoTerm = functor(NewConsId, no, NewArgVars),
 
@@ -2492,9 +2488,7 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons(qualified(mercury_private_builtin_module,
-			"typeclass_info"), 
-		NumArgVars),
+	InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgVars),
 	instmap_delta_from_assoc_list(
 		[NewVar - 
 			bound(unique, [functor(InstConsId, ArgInsts)])],
@@ -2789,7 +2783,7 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 			ArityGoal, ArityVar, VarTypes0, VarTypes1,
 			VarSet0, VarSet1),
 		polymorphism__init_type_info_var(Type,
-			[BaseVar, ArityVar | ArgTypeInfoVars], "type_info",
+			[BaseVar, ArityVar | ArgTypeInfoVars], type_info_cell,
 			VarSet1, VarTypes1, Var, TypeInfoGoal,
 			VarSet, VarTypes),
 		list__append([ArityGoal |  ArgTypeInfoGoals], [TypeInfoGoal],
@@ -2797,7 +2791,7 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 		list__append(ExtraGoals0, ExtraGoals1, ExtraGoals)
 	; ArgTypeInfoVars = [_ | _] ->
 		polymorphism__init_type_info_var(Type,
-			[BaseVar | ArgTypeInfoVars], "type_info",
+			[BaseVar | ArgTypeInfoVars], type_info_cell,
 			VarSet0, VarTypes0, Var, TypeInfoGoal,
 			VarSet, VarTypes),
 		list__append(ArgTypeInfoGoals, [TypeInfoGoal], ExtraGoals1),
@@ -2874,22 +2868,21 @@ polymorphism__get_category_name(user_type, _) :-
 	% These unifications WILL lead to the creation of cells on the
 	% heap at runtime.
 
-:- pred polymorphism__init_type_info_var(type, list(prog_var), string,
-	prog_varset, map(prog_var, type), prog_var, hlds_goal, prog_varset,
-	map(prog_var, type)).
+:- pred polymorphism__init_type_info_var(type, list(prog_var),
+	polymorphism_cell, prog_varset, map(prog_var, type), prog_var,
+	hlds_goal, prog_varset, map(prog_var, type)).
 :- mode polymorphism__init_type_info_var(in, in, in, in, in, out, out, out, out)
 	is det.
 
-polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
-			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
-
-	PrivateBuiltin = mercury_private_builtin_module,
-	ConsId = cons(qualified(PrivateBuiltin, Symbol), 1),
+polymorphism__init_type_info_var(Type, ArgVars, WhichCell, VarSet0, VarTypes0,
+		TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
+	ConsId = cell_cons_id(WhichCell),
 	TypeInfoTerm = functor(ConsId, no, ArgVars),
 
 	% introduce a new variable
-	polymorphism__new_type_info_var_raw(Type, Symbol, typeinfo_prefix,
-		VarSet0, VarTypes0, TypeInfoVar, VarSet, VarTypes),
+	polymorphism__new_type_info_var_raw(Type, cell_type_name(WhichCell),
+		typeinfo_prefix, VarSet0, VarTypes0, TypeInfoVar,
+		VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
 	UniMode = (free - ground(shared, none) ->
@@ -2912,7 +2905,7 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		% note that we could perhaps be more accurate than
 		% `ground(shared)', but it shouldn't make any
 		% difference.
-	InstConsId = cons(qualified(PrivateBuiltin, Symbol), NumArgVars),
+	InstConsId = cell_inst_cons_id(WhichCell, NumArgVars),
 	instmap_delta_from_assoc_list(
 		[TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
 		InstMapDelta),
