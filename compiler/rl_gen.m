@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -289,9 +289,20 @@ rl_gen__sccs([SCC | SCCs], InputMap, Code0, Code) -->
 		map(int, relation_id)::in, rl_tree::out, 
 		rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
-rl_gen__scc(SCC, SCCs, InputMap, SCCCode) -->
-	rl_info_set_scc(SCC),
+rl_gen__scc(SCC0, SCCs, InputMap, SCCCode) -->
 	rl_info_get_module_info(ModuleInfo),
+
+	% Make sure predicates with `generate_inline' markers (used to
+	% create input relations for calls) do not have code generated for
+	% them, and are not considered to be entry points to the SCC.
+	{ list__filter(lambda([PredProcId::in] is semidet, (
+		PredProcId = proc(PredId, _),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		pred_info_get_markers(PredInfo, Markers),
+		\+ check_marker(Markers, generate_inline)
+	)), SCC0, SCC) },
+ 
+	rl_info_set_scc(SCC),
 	{ dependency_graph__get_scc_entry_points(SCC, SCCs, 
 		ModuleInfo, EntryPoints) },
 	rl_info_set_scc_entry_points(EntryPoints),
