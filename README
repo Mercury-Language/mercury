@@ -39,7 +39,9 @@ http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
 
 If you would like to join the Mercury mailing lists (there are two,
 mercury-users for general discussion, and mercury-announce for
-announcements), send mail to mercury@cs.mu.oz.au.
+announcements), send mail with "subscribe" in the body to
+mercury-users-request@cs.mu.oz.au or mercury-announce-request@cs.mu.oz.au
+(respectively).
 
 Please send bug reports, enhancement requests, suggestions for improvements,
 and any other feedback to mercury-bugs@cs.mu.oz.au or mercury@cs.mu.oz.au.
