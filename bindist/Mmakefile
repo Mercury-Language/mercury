@@ -34,6 +34,7 @@ README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 
 SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules \
+		  ../scripts/canonical_grade \
 		  ../scripts/gud.el
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh

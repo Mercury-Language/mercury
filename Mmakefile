@@ -215,6 +215,7 @@ tar: README INSTALL
 	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
 	# clean up
 	cd scripts && mmake realclean
+	cd scripts && mmake canonical_grade
 	cd util && mmake realclean
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
