@@ -729,7 +729,8 @@ copy_type_info(MR_TypeInfo type_info,
         MR_TypeInfo     *new_type_info_args;
         int             arity;
         int             i;
-
+        int             forwarding_pointer_size;
+        
         /*
         ** Note that we assume type_ctor_infos will always be
         ** allocated statically, so we never copy them.
@@ -747,21 +748,27 @@ copy_type_info(MR_TypeInfo type_info,
             return (MR_TypeInfo) type_ctor_info;
         }
 
+        /* compute how many words to reserve for the forwarding pointer */
+        forwarding_pointer_size = (use_forwarding_pointers() ? 1 : 0);
+
         if (MR_type_ctor_has_variable_arity(type_ctor_info)) {
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
             MR_offset_incr_saved_hp(
-                MR_LVALUE_CAST(MR_Word, new_type_info_arena), 0,
-                MR_var_arity_type_info_size(arity));
+                MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+                forwarding_pointer_size,
+                MR_var_arity_type_info_size(arity) + forwarding_pointer_size);
             MR_fill_in_var_arity_type_info(new_type_info_arena,
                 type_ctor_info, arity, new_type_info_args);
         } else {
             arity = type_ctor_info->MR_type_ctor_arity;
             type_info_args = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
             MR_offset_incr_saved_hp(
-                MR_LVALUE_CAST(MR_Word, new_type_info_arena), 0,
-                MR_fixed_arity_type_info_size(arity));
+                MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+                forwarding_pointer_size,
+                MR_fixed_arity_type_info_size(arity) + forwarding_pointer_size
+            );
             MR_fill_in_fixed_arity_type_info(new_type_info_arena,
                 type_ctor_info, new_type_info_args);
         }
@@ -794,6 +801,7 @@ copy_typeclass_info(MR_Word typeclass_info_param,
         int     num_instance_constraints;
         int     num_unconstrained;
         int     i;
+        int     forwarding_pointer_size;
 
         /*
         ** Note that we assume base_typeclass_infos will always be
@@ -802,6 +810,9 @@ copy_typeclass_info(MR_Word typeclass_info_param,
 
         base_typeclass_info = (MR_Word *) *typeclass_info;
 
+        /* compute how many words to reserve for the forwarding pointer */
+        forwarding_pointer_size = (use_forwarding_pointers() ? 1 : 0);
+
         num_instance_constraints =
             MR_typeclass_info_num_instance_constraints(typeclass_info);
         num_unconstrained =
@@ -809,8 +820,10 @@ copy_typeclass_info(MR_Word typeclass_info_param,
                 - num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
         num_arg_typeinfos = MR_typeclass_info_num_type_infos(typeclass_info);
-        MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info), 0,
-            num_instance_constraints + num_super + num_arg_typeinfos + 1);
+        MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info),
+            forwarding_pointer_size,
+            forwarding_pointer_size + 1 /* for basetypeclass_info */
+            + num_instance_constraints + num_super + num_arg_typeinfos);
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;
 
