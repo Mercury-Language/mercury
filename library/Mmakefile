@@ -415,6 +415,7 @@ realclean_local:
 	rm -f liblibrary.$A liblibrary.so library.init
 	rm -f $($(STD_LIB_NAME).mods:%=%.h)
 	rm -f tags
+	rm -f mercury runtime
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class
 	rm -f $(JARS) $(NATIVE_SO)
