@@ -49,8 +49,8 @@ make install
 #
 #	   If your system supports shared libraries, but `configure' says
 #	   Mercury does not support shared libraries on this system,
-#	   you can try setting the LINK_SHARED_OBJECT, SO, PIC, and PIC_O
-#	   variables in the Mmake.common file.
+#	   contact us and we'll see if we can add support for shared libraries
+#	   on that system.
 #
 #	   Efficiency will be much improved if Mercury can use gcc global
 #	   register variables.  Currently these are supported for mips,
