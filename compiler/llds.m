@@ -258,7 +258,9 @@
 				% addresses inside it (i.e. Word or Word *)?
 
 :- type data_name	--->	common(int)
-			;	base_type_info(string, arity).
+			;	base_type_info(string, arity)
+				% type name, type arity
+			;	base_type_layout(string, arity).
 				% type name, type arity
 
 :- type unary_op	--->	mktag

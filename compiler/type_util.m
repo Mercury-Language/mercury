@@ -55,6 +55,11 @@
 :- pred type_to_type_id(type, type_id, list(type)).
 :- mode type_to_type_id(in, out, out) is semidet.
 
+	% Given a variable type, return its type variable.
+	
+:- pred type_util__var(type, var).
+:- mode type_util__var(in, out) is semidet.
+
 	% Given a type_id, a list of argument types and maybe a context,
 	% construct a type.
 
@@ -154,6 +159,8 @@ type_is_atomic(Type, ModuleInfo) :-
 	BuiltinType \= polymorphic_type,
 	BuiltinType \= pred_type,
 	BuiltinType \= user_type(_).
+
+type_util__var(term__variable(Var), Var).
 
 %-----------------------------------------------------------------------------%
 

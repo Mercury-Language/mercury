@@ -1872,6 +1872,13 @@ output_data_addr(BaseName0, VarName) -->
 		io__write_string(TypeName),
 		io__write_string("_"),
 		io__write_int(TypeArity)
+	;
+		{ VarName = base_type_layout(TypeName0, TypeArity) },
+		io__write_string("__base_type_layout_"),
+		{ llds_out__name_mangle(TypeName0, TypeName) },
+		io__write_string(TypeName),
+		io__write_string("_"),
+		io__write_int(TypeArity)
 	).
 
 :- pred output_label_as_code_addr(label, io__state, io__state).

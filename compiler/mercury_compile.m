@@ -37,7 +37,7 @@
 :- import_module constraint, unused_args, dead_proc_elim, excess, saved_vars.
 :- import_module lco, liveness, stratify.
 :- import_module follow_code, live_vars, arg_info, store_alloc.
-:- import_module code_gen, optimize, export, base_type_info.
+:- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module llds_common, llds_out.
 
 	% miscellaneous compiler modules
@@ -545,9 +545,12 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
 	mercury_compile__maybe_dump_hlds(HLDS29, "29", "base_type_infos"),
 
-	mercury_compile__maybe_bytecodes(HLDS29, ModuleName, Verbose, Stats),
+	mercury_compile__maybe_base_type_layouts(HLDS29, Verbose, Stats,HLDS30),
+	mercury_compile__maybe_dump_hlds(HLDS30, "30", "base_type_layouts"),
 
-	mercury_compile__maybe_higher_order(HLDS29, Verbose, Stats, HLDS31),
+	mercury_compile__maybe_bytecodes(HLDS30, ModuleName, Verbose, Stats),
+
+	mercury_compile__maybe_higher_order(HLDS30, Verbose, Stats, HLDS31),
 	mercury_compile__maybe_dump_hlds(HLDS31, "31", "higher_order"),
 
 	mercury_compile__maybe_do_inlining(HLDS31, Verbose, Stats, HLDS34),
@@ -978,9 +981,26 @@ mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_get_type_info_method(TypeInfoMethod),
 	( { TypeInfoMethod = shared_one_or_two_cell } ->
 		maybe_write_string(Verbose,
-			"% Generating base_type_info structures...\n"),
+			"% Generating base_type_info structures..."),
 		maybe_flush_output(Verbose),
 		{ base_type_info__generate_hlds(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
+
+:- pred mercury_compile__maybe_base_type_layouts(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_base_type_layouts(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_base_type_layouts(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_get_type_info_method(TypeInfoMethod),
+	( { TypeInfoMethod = shared_one_or_two_cell } ->
+		maybe_write_string(Verbose,
+			"% Generating base_type_layout structures..."),
+		maybe_flush_output(Verbose),
+		{ base_type_layout__generate_hlds(HLDS0, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1314,8 +1334,12 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
-	{ llds_common(LLDS0, ModuleName, LLDS1, CommonData) },
-	mercury_compile__chunk_llds(HLDS0, LLDS1, BaseTypeInfos, CommonData,
+	{ base_type_layout__generate_llds(HLDS0, BaseTypeLayouts0) },
+
+	{ llds_common(LLDS0, BaseTypeLayouts0, ModuleName, LLDS1, 
+		BaseTypeLayouts, CommonData) },
+	{ list__append(BaseTypeInfos, BaseTypeLayouts, BaseTypeData) },
+	mercury_compile__chunk_llds(HLDS0, LLDS1, BaseTypeData, CommonData,
 		LLDS2, NumChunks),
 	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
 
@@ -1342,7 +1366,7 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 % :- mode mercury_compile__chunk_llds(in, di, di, uo, out, di, uo) is det.
 :- mode mercury_compile__chunk_llds(in, in, in, in, out, out, di, uo) is det.
 
-mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeInfos, CommonDataModules,
+mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 		c_file(Name, C_HeaderCode, ModuleList), NumChunks) -->
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
@@ -1360,7 +1384,7 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeInfos, CommonDataModules,
 			ProcModules) }
 	),
 	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
-	{ list__condense([C_BodyCode, BaseTypeInfos, CommonDataModules,
+	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
 		ProcModules, [c_export(PragmaExports)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
 

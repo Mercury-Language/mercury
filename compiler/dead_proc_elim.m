@@ -159,7 +159,7 @@ dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, Status, _Procs),
+		Arity, Status, _Elim, _Procs),
 	(
 		( Status = exported
 		; Status = abstract_exported
@@ -238,7 +238,7 @@ dead_proc_elim__find_base_gen_info(ModuleName, TypeName, TypeArity,
 		[BaseGenInfo | BaseGenInfos], Refs) :-
 	(
 		BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-			TypeArity, _Status, Refs0)
+			TypeArity, _Status, _Elim, Refs0)
 	->
 		Refs = Refs0
 	;
@@ -523,15 +523,18 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 		BaseGenInfos) :-
 	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,	
 		BaseGenInfos1),
-	BaseGenInfo0 = base_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, _Status, _Procs),
+	BaseGenInfo0 = base_gen_info(TypeId, ModuleName, TypeName,
+		Arity, Status, _Elim, Procs),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		map__search(Needed, Entity, _)
 	->
 		BaseGenInfos = [BaseGenInfo0 | BaseGenInfos1]
 	;
-		BaseGenInfos = BaseGenInfos1
+		list__length(Procs, ProcsLength),
+		NeuteredBaseGenInfo = base_gen_info(TypeId, ModuleName, 
+			TypeName, Arity, Status, yes(ProcsLength), []),
+		BaseGenInfos = [NeuteredBaseGenInfo | BaseGenInfos1]
 	).
 
 %-----------------------------------------------------------------------------%

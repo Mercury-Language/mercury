@@ -642,6 +642,9 @@ opt_debug__dump_data_name(common(N), Str) :-
 opt_debug__dump_data_name(base_type_info(TypeName, TypeArity), Str) :-
 	string__int_to_string(TypeArity, A_str),
 	string__append_list(["base_type_info_", TypeName, "_", A_str], Str).
+opt_debug__dump_data_name(base_type_layout(TypeName, TypeArity), Str) :-
+	string__int_to_string(TypeArity, A_str),
+	string__append_list(["base_type_layout_", TypeName, "_", A_str], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

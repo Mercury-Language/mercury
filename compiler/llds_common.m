@@ -7,6 +7,10 @@
 % This module looks for static data structures in create rvals so that
 % it can make them global, in the hope of replacing multiple local definitions
 % by a single global one.
+%
+% Processes a list of procedures, and a list of c_modules, intended
+% to contain any extra c_data structures the compiler generates.
+% Any other contents of the c_modules list will be untouched.
 
 % Main author: zs.
 
@@ -18,9 +22,9 @@
 
 :- import_module llds, string.
 
-:- pred llds_common(list(c_procedure), string, list(c_procedure),
-	list(c_module)).
-:- mode llds_common(in, in, out, out) is det.
+:- pred llds_common(list(c_procedure), list(c_module), string, 
+	list(c_procedure), list(c_module), list(c_module)).
+:- mode llds_common(in, in, in, out, out, out) is det.
 
 :- implementation.
 
@@ -42,10 +46,11 @@
 					% information
 		).
 
-llds_common(Procedures0, BaseName, Procedures, DataModules) :-
+llds_common(Procedures0, Data0, BaseName, Procedures, Data, DataModules) :-
 	map__init(CellMap0),
 	Info0 = common_info(BaseName, 0, CellMap0),
-	llds_common__process_procs(Procedures0, Info0, Info, Procedures),
+	llds_common__process_procs(Procedures0, Info0, Info1, Procedures),
+	llds_common__process_modules(Data0, Info1, Info, Data),
 	Info = common_info(_, _, CellMap),
 	map__to_assoc_list(CellMap, CellPairs0),
 	list__sort(lambda([CellPairA::in, CellPairB::in, Compare::out] is det, 
@@ -99,6 +104,31 @@ llds_common__process_create(Tag, Args0, LabelNo, Info0, Info, Rval) :-
 
 	% The rest of the file is quite boring. Its only job is to traverse
 	% the various components of c_modules to arrive at the creates.
+
+
+	% Only c_data elements are processed, all other elements are ignored.
+	
+:- pred llds_common__process_modules(list(c_module), common_info, common_info,
+	list(c_module)).
+:- mode llds_common__process_modules(in, in, out, out) is det.
+
+llds_common__process_modules([], Info, Info, []).
+llds_common__process_modules([Module0 | Modules0], Info0, Info, 
+		[Module | Modules]) :-
+	llds_common__process_module(Module0, Info0, Info1, Module),
+	llds_common__process_modules(Modules0, Info1, Info, Modules).
+
+:- pred llds_common__process_module(c_module, common_info, common_info,
+	c_module).
+:- mode llds_common__process_module(in, in, out, out) is det.
+
+llds_common__process_module(c_module(Name, Ps), Info, Info, c_module(Name, Ps)).
+llds_common__process_module(c_code(Cde, Ctxt), Info, Info, c_code(Cde, Ctxt)).
+llds_common__process_module(c_export(Exports), Info, Info, c_export(Exports)).
+llds_common__process_module(
+		c_data(Name, DataName, NeedPtr, Export, Args0, Refs), Info0, 
+		Info, c_data(Name, DataName, NeedPtr, Export, Args, Refs)) :-
+	llds_common__process_maybe_rvals(Args0, Info0, Info, Args).
 
 :- pred llds_common__process_procs(list(c_procedure), common_info, common_info,
 	list(c_procedure)).

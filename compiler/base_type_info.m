@@ -74,7 +74,7 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 			base_type_info__gen_proc_list(Specials, SpecMap,
 				TypeId, Procs),
 			Info = base_gen_info(TypeId, ModuleName, TypeName,
-				TypeArity, Status, Procs),
+				TypeArity, Status, no, Procs),
 			BaseGenInfos = [Info | BaseGenInfos1]
 		;
 			BaseGenInfos = BaseGenInfos1
@@ -112,26 +112,57 @@ base_type_info__construct_base_type_infos([], _, []).
 base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 		ModuleInfo, [CModule | CModules]) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName, TypeArity,
-		Status, Procs),
-	base_type_info__construct_pred_addrs(Procs, ModuleInfo, PredAddrArgs),
+		Status, Elim, Procs),
+	base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, 
+		PredAddrArgs),
 	ArityArg = yes(const(int_const(TypeArity))),
 	( Status = exported ->
 		Exported = yes
 	;
 		Exported = no
 	),
+	base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, 
+		LayoutArg),
+	list__append(PredAddrArgs, [LayoutArg], FinalArgs),
 	CModule = c_data(ModuleName, base_type_info(TypeName, TypeArity),
-		yes, Exported, [ArityArg | PredAddrArgs], Procs),
+		yes, Exported, [ArityArg | FinalArgs], Procs),
 	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
 		CModules).
 
-:- pred base_type_info__construct_pred_addrs(list(pred_proc_id), module_info,
-	list(maybe(rval))).
-:- mode base_type_info__construct_pred_addrs(in, in, out) is det.
+:- pred	base_type_info__construct_layout(module_info, string, int, maybe(rval)).
+:- mode	base_type_info__construct_layout(in, in, in, out) is det.
+base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
+	module_info_name(ModuleInfo, ModuleName),
+	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
+		base_type_layout(TypeName, TypeArity), yes)))).
 
-base_type_info__construct_pred_addrs([], _, []).
-base_type_info__construct_pred_addrs([proc(PredId, ProcId) | Procs],
+:- pred base_type_info__construct_pred_addrs(list(pred_proc_id), maybe(int), 
+	module_info, list(maybe(rval))).
+:- mode base_type_info__construct_pred_addrs(in, in, in, out) is det.
+
+base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, PredAddrArgs) :-
+	( 
+		% dead_proc_elim has eliminated the procs, we
+		% should just put some padding in.
+	
+		Elim = yes(ProcsLength)
+	->
+		PredAddrArg = yes(const(code_addr_const(
+			imported(proc("mercury_builtin", predicate, "unused", 
+				0, 0))))),
+		list__duplicate(ProcsLength, PredAddrArg, PredAddrArgs)
+	;
+		base_type_info__construct_pred_addrs2(Procs, ModuleInfo, 
+			PredAddrArgs)
+	).
+
+:- pred base_type_info__construct_pred_addrs2(list(pred_proc_id), module_info,
+	list(maybe(rval))).
+:- mode base_type_info__construct_pred_addrs2(in, in, out) is det.
+
+base_type_info__construct_pred_addrs2([], _, []).
+base_type_info__construct_pred_addrs2([proc(PredId, ProcId) | Procs],
 		ModuleInfo, [PredAddrArg | PredAddrArgs]) :-
 	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, PredAddr),
 	PredAddrArg = yes(const(code_addr_const(PredAddr))),
-	base_type_info__construct_pred_addrs(Procs, ModuleInfo, PredAddrArgs).
+	base_type_info__construct_pred_addrs2(Procs, ModuleInfo, PredAddrArgs).

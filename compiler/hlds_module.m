@@ -57,10 +57,32 @@
 					string,		% type name
 					int,		% type arity
 					import_status,	% of the type
+					maybe(int),	% eliminated procs?
+							% and how many if so
 					list(pred_proc_id)
 							% the ids of the procs
 							% referred to from the
 							% base_type_info
+				).
+
+	% This structure contains the information we need to generate
+	% a base_type_layout structure for a type defined in this module.
+	
+:- type base_gen_layout	--->	base_gen_layout(
+					type_id,
+					string,		% module name
+					string,		% type name
+					int,		% type arity
+					import_status,	% of the type
+					hlds__type_defn % defn of type
+				).
+
+	% This structure contains information needed to create
+	% base_type_* structures.
+
+:- type base_gen_data ---> 	base_gen_data(
+					list(base_gen_info),
+					list(base_gen_layout)
 				).
 
 	% Various predicates for manipulating the module_info data structure
@@ -266,6 +288,13 @@
 	module_info).
 :- mode module_info_set_base_gen_infos(in, in, out) is det.
 
+:- pred module_info_base_gen_layouts(module_info, list(base_gen_layout)).
+:- mode module_info_base_gen_layouts(in, out) is det.
+
+:- pred module_info_set_base_gen_layouts(module_info, list(base_gen_layout),
+	module_info).
+:- mode module_info_set_base_gen_layouts(in, in, out) is det.
+
 :- pred module_info_globals(module_info, globals).
 :- mode module_info_globals(in, out) is det.
 
@@ -300,14 +329,13 @@
 						% list of the procs for which
 						% there is a pragma(export, ...)
 						% declaration
-					list(base_gen_info),
-						% info about the base_type_infos
-						% for the types defined here
-						% global options
-					globals,
+					base_gen_data,
+						% info about the the types 
+						% defined here
+					globals, % global options
+					set(pred_id)
 						% list of preds which 
 						% must be stratified
-					set(pred_id)
 				).
 
 	% A predicate which creates an empty module
@@ -327,11 +355,11 @@ module_info_init(Name, Globals, Module_Info) :-
 	map__init(Ctors),
 	DepInfo = no,
 	PragmaExports = [],
-	BaseTypeInfos = [],
+	BaseTypeData = base_gen_data([], []),
 	set__init(StratPreds),
 	Module_Info = module(Name, C_Code_Info, PredicateTable, Requests, 
 		UnifyPredMap, Shapes, Types, Insts, Modes, Ctors, DepInfo, 
-		0, 0, PragmaExports, BaseTypeInfos, Globals, StratPreds).
+		0, 0, PragmaExports, BaseTypeData, Globals, StratPreds).
 
 	% Various access predicates which extract different pieces
 	% of info from the module_info data structure.
@@ -470,7 +498,11 @@ module_info_num_errors(ModuleInfo, NumErrors) :-
 
 module_info_base_gen_infos(ModuleInfo, BaseGenInfos) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		BaseGenInfos, _, _).
+		base_gen_data(BaseGenInfos, _), _, _).
+
+module_info_base_gen_layouts(ModuleInfo, BaseGenLayouts) :-
+	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		base_gen_data(_, BaseGenLayouts), _, _).
 
 module_info_globals(ModuleInfo, Globals) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
@@ -599,10 +631,16 @@ module_info_set_pragma_exported_procs(ModuleInfo0, Procs, ModuleInfo) :-
 		O, P, Q).
 
 module_info_set_base_gen_infos(ModuleInfo0, BaseGenInfos, ModuleInfo) :-
-	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, 
-		P, Q),
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
+		base_gen_data(_, BaseGenLayouts), P, Q),
 	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		BaseGenInfos, P, Q).
+		base_gen_data(BaseGenInfos, BaseGenLayouts), P, Q).
+
+module_info_set_base_gen_layouts(ModuleInfo0, BaseGenLayouts, ModuleInfo) :-
+	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
+		base_gen_data(BaseGenInfos, _), P, Q),
+	ModuleInfo = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
+		base_gen_data(BaseGenInfos, BaseGenLayouts), P, Q).
 
 module_info_set_stratified_preds(ModuleInfo0, StratPreds, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
