@@ -57,6 +57,7 @@ OTHER_SOURCES= \
 	inhibit_warn_test.m \
 	inlining_bug.m \
 	int64.m \
+	intermod_impure.m \
 	intermod_lambda.m \
 	intermod_quote.m \
 	intermod_test.m \
@@ -173,6 +174,8 @@ MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-intermod_impure		= --intermodule-optimization
+MCFLAGS-intermod_impure2	= --intermodule-optimization
 MCFLAGS-intermod_lambda		= --intermodule-optimization
 MCFLAGS-intermod_lambda2	= --intermodule-optimization
 MCFLAGS-intermod_quote		= --intermodule-optimization
