@@ -51,8 +51,7 @@
 
 :- pred convert_args_method(string::in, args_method::out) is semidet.
 
-:- pred convert_type_info_method(string::in, option_table::in,
-	type_info_method::out) is semidet.
+:- pred convert_type_info_method(string::in, type_info_method::out) is semidet.
 
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
 
@@ -96,6 +95,15 @@
 	is det.
 :- pred globals__lookup_accumulating_option(globals::in, option::in,
 	list(string)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% More complex options
+
+	% Check if static code addresses are available in the
+	% current grade of compilation
+
+:- pred globals__have_static_code_addresses(globals::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -167,33 +175,10 @@ convert_tags_method("high", high).
 convert_args_method("simple", simple).
 convert_args_method("compact", compact).
 
-convert_type_info_method("one-cell", _, one_cell).
-convert_type_info_method("one-or-two-cell", _, one_or_two_cell).
-convert_type_info_method("shared-one-or-two-cell", OptionTable,
-		Method) :-
-	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
-		NonLocalGotos),
-	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
-	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst),
-	(
-		IsConst = yes,
-		Method = shared_one_or_two_cell
-	;
-		IsConst = no,
-		error("shared_one_or_two_cell requires static code addresses")
-	).
-convert_type_info_method("default", OptionTable, Method) :-
-	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
-		NonLocalGotos),
-	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
-	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst),
-	(
-		IsConst = yes,
-		Method = shared_one_or_two_cell
-	;
-		IsConst = no,
-		Method = one_cell
-	).
+convert_type_info_method("one-cell", one_cell).
+convert_type_info_method("one-or-two-cell", one_or_two_cell).
+convert_type_info_method("shared-one-or-two-cell", shared_one_or_two_cell).
+convert_type_info_method("default", shared_one_or_two_cell).
 
 convert_prolog_dialect("default", default).
 convert_prolog_dialect("nu", nu).
@@ -285,6 +270,21 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
 	;
 		error("globals__lookup_accumulating_option: invalid accumulating option")
 	).
+
+%-----------------------------------------------------------------------------%
+
+globals__have_static_code_addresses(Globals, IsConst) :-
+	globals__get_options(Globals, OptionTable),
+	globals__have_static_code_addresses_2(OptionTable, IsConst).
+
+:- pred globals__have_static_code_addresses_2(option_table::in, 
+	bool::out) is det.
+
+globals__have_static_code_addresses_2(OptionTable, IsConst) :-
+	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
+		NonLocalGotos),
+	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
+	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

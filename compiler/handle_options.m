@@ -118,7 +118,7 @@ postprocess_options(ok(OptionTable0), Error) -->
                         (
                             { TypeInfoMethod0 = string(TypeInfoMethodStr) },
                             { convert_type_info_method(TypeInfoMethodStr,
-                                OptionTable, TypeInfoMethod) }
+                                TypeInfoMethod) }
                         ->
                             { map__lookup(OptionTable, prolog_dialect,
                                 PrologDialect0) },

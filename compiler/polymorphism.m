@@ -108,6 +108,7 @@
 %			'__Compare__'<list/1>,
 %			'__Term_To_Type__'<list/1>,
 %			'__Type_To_Term__'<list/1>,
+%			<base_type_layout for list/1>,
 %			TypeInfoT1),
 %		q(TypeInfoT2, [X]),
 %		TypeInfoT3 = type_info(
@@ -116,7 +117,8 @@
 %			builtin_index_int,
 %			builtin_compare_int,
 %			builtin_term_to_type_int,
-%			builtin_type_to_term_int),
+%			builtin_type_to_term_int,
+%			<base_type_layout for int/0>),
 %		r(TypeInfoT3, 0).
 %
 % With the one_or_two_cell representation, we transform the body of p to this:
@@ -128,7 +130,8 @@
 %			'__Index__'<list/1>,
 %			'__Compare__'<list/1>,
 %			'__Term_To_Type__'<list/1>,
-%			'__Type_To_Term__'<list/1>),
+%			'__Type_To_Term__'<list/1>,
+%			<base_type_layout for int/0>),
 %		TypeInfoT2 = type_info(
 %			BaseTypeInfoT2,
 %			TypeInfoT1),
@@ -139,36 +142,15 @@
 %			builtin_index_int,
 %			builtin_compare_int,
 %			builtin_term_to_type_int,
-%			builtin_type_to_term_int),
+%			builtin_type_to_term_int,
+%			<base_type_layout for int/0>),
 %		r(TypeInfoT3, 0).
 %
 % With the shared_one_or_two_cell representation, we transform the body of p
-% to this: 
-%
-%	p(TypeInfoT1, X) :-
-%		BaseTypeInfoT2 = base_type_info(
-%			1,
-%			'__Unify__'<list/1>,
-%			'__Index__'<list/1>,
-%			'__Compare__'<list/1>,
-%			'__Term_To_Type__'<list/1>,
-%			'__Type_To_Term__'<list/1>),
-%		TypeInfoT2 = type_info(
-%			BaseTypeInfoT2,
-%			TypeInfoT1),
-%		q(TypeInfoT2, [X]),
-%		TypeInfoT3 = base_type_info(
-%			0,
-%			builtin_unify_int,
-%			builtin_index_int,
-%			builtin_compare_int,
-%			builtin_term_to_type_int,
-%			builtin_type_to_term_int),
-%		r(TypeInfoT3, 0).
-%
-% Actually, the unifications with base_type_info(...) are generated
-% as references to the single definition of base_type_info, however,
-% conceptually this transformation is correct.
+% to the same as one_or_two_cell, but the unifications with
+% base_type_info(...) are generated as references to the single
+% definition of base_type_info (which is generated in the module that
+% defines it).
 
 %-----------------------------------------------------------------------------%
 

@@ -159,11 +159,26 @@ dead_proc_elim__initialize_base_gen_infos([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_base_gen_infos([BaseGenInfo | BaseGenInfos],
 		Queue0, Queue, Needed0, Needed) :-
 	BaseGenInfo = base_gen_info(_TypeId, ModuleName, TypeName,
-		Arity, Status, _Elim, _Procs),
+		Arity, _Status, _Elim, _Procs),
 	(
-		( Status = exported
-		; Status = abstract_exported
-		)
+		% XXX: We'd like to do this, but there are problems.
+		% ( Status = exported
+		% ; Status = abstract_exported
+		% )
+		% We need to do more thorough analysis of the
+		% reachability of the special predicates, in general,
+		% because using arg/3 allows us to get at base_type_info
+		% via the base_type_layout. The base_type_infos of
+		% arguments of functors may have had their special preds
+		% eliminated, but they can still be called. In addition,
+		% it would be nice for pragma C code to have some
+		% support for using compiler generated data structures
+		% and preds, so that they aren't just eliminated.
+		%
+		% So presently, all base_type_infos will be treated
+		% as exported, and hence no special preds will be
+		% eliminated.
+		semidet_succeed
 	->
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		queue__put(Queue0, Entity, Queue1),
@@ -524,7 +539,7 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,	
 		BaseGenInfos1),
 	BaseGenInfo0 = base_gen_info(TypeId, ModuleName, TypeName,
-		Arity, Status, _Elim, Procs),
+		Arity, Status, Elim0, Procs),
 	(
 		Entity = base_gen_info(ModuleName, TypeName, Arity),
 		map__search(Needed, Entity, _)
@@ -532,8 +547,18 @@ dead_proc_elim__eliminate_base_gen_infos([BaseGenInfo0 | BaseGenInfos0], Needed,
 		BaseGenInfos = [BaseGenInfo0 | BaseGenInfos1]
 	;
 		list__length(Procs, ProcsLength),
+
+			% Procs may have been eliminated elsewhere, if so
+			% we sum the eliminated procs together.
+		(
+			Elim0 = yes(NumProcs0)
+		->
+			NumProcs is ProcsLength + NumProcs0
+		;
+			NumProcs = ProcsLength
+		),
 		NeuteredBaseGenInfo = base_gen_info(TypeId, ModuleName, 
-			TypeName, Arity, Status, yes(ProcsLength), []),
+			TypeName, Arity, Status, yes(NumProcs), []),
 		BaseGenInfos = [NeuteredBaseGenInfo | BaseGenInfos1]
 	).
 

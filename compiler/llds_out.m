@@ -237,7 +237,9 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
 	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
 	output_c_module_init_list_3(0, BaseName, InitFuncs),
-	io__write_string("#endif\n}\n").
+	io__write_string("#endif\n"),
+	output_c_data_init_list(Modules),
+	io__write_string("}\n").
 
 :- pred output_c_module_init_list_2(list(c_module), string, int, int, int, int,
 	io__state, io__state).
@@ -293,6 +295,44 @@ output_c_module_init_list_3(InitFunc0, BaseName, MaxInitFunc) -->
 		{ InitFunc1 is InitFunc0 + 1},
 		output_c_module_init_list_3(InitFunc1, BaseName, MaxInitFunc)
 	).
+
+
+	% Output MR_INIT_BASE_TYPE_INFO(BaseTypeInfo, TypeId);
+	% for each base_type_info defined in this module.
+
+:- pred output_c_data_init_list(list(c_module), io__state, io__state).
+:- mode output_c_data_init_list(in, di, uo) is det.
+
+output_c_data_init_list([]) --> [].
+output_c_data_init_list([c_export(_) | Ms]) -->
+	output_c_data_init_list(Ms).
+output_c_data_init_list([c_code(_, _) | Ms]) -->
+	output_c_data_init_list(Ms).
+output_c_data_init_list([c_module(_, _) | Ms]) -->
+	output_c_data_init_list(Ms).
+output_c_data_init_list([c_data(BaseName, DataName, _, _, _) | Ms])  -->
+	(
+		{ DataName = base_type_info(TypeName, Arity) }
+	->
+		io__write_string("\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
+		output_data_addr(BaseName, DataName),
+		io__write_string(",\n\t\t"),
+		{ string__append(BaseName, "__", UnderscoresModule) },
+		( 
+			{ string__append(UnderscoresModule, _, TypeName) } 
+		->
+			[]
+		;
+			io__write_string(UnderscoresModule)
+		),
+		io__write_string(TypeName),
+		io__write_string("_"),
+		io__write_int(Arity),
+		io__write_string("_0);\n")
+	;
+		[]
+	),
+	output_c_data_init_list(Ms).
 
 :- pred output_init_name(string, io__state, io__state).
 :- mode output_init_name(in, di, uo) is det.
@@ -1425,6 +1465,11 @@ llds_out__float_op_name(float_divide, "divide").
 	%		...
 	%	};
 	%
+	% Unless the term contains code addresses, and we don't have
+	% static code addresses available, in which case we'll have
+	% to initialize them dynamically, so we must omit `const'
+	% from the above structure.
+
 :- pred output_const_term_decl(list(maybe(rval)), decl_id, bool, string, string,
 	int, int, io__state, io__state).
 :- mode output_const_term_decl(in, in, in, in, in, in, out, di, uo) is det.
@@ -1438,7 +1483,17 @@ output_const_term_decl(ArgVals, DeclId, Exported, FirstIndent, LaterIndent,
 	;
 		io__write_string("static ")
 	),
-	io__write_string("const struct "),
+	globals__io_get_globals(Globals),
+	{ globals__have_static_code_addresses(Globals, StaticCode) },
+	(
+		{ StaticCode = no },
+		{ DeclId = data_addr(data_addr(_, base_type_info(_, _))) }
+	->
+		[]
+	;
+		io__write_string("const ")
+	),
+	io__write_string("struct "),
 	output_decl_id(DeclId),
 	io__write_string("_struct {\n"),
 	output_cons_arg_types(ArgVals, "\t", 1),
@@ -1729,7 +1784,20 @@ output_data_addr_decls(data_addr(BaseName, VarName),
 		FirstIndent, LaterIndent, N0, N) -->
 	output_indent(FirstIndent, LaterIndent, N0),
 	{ N is N0 + 1 },
-	io__write_string("extern const struct "),
+	io__write_string("extern "),
+	globals__io_get_globals(Globals),
+
+		% Don't make decls of base_type_infos `const' if we
+		% don't have static code addresses.
+	(
+		{ VarName = base_type_info(_, _) },
+		{ globals__have_static_code_addresses(Globals, no) }
+	->
+		[]
+	;
+		io__write_string("const ")
+	),
+	io__write_string("struct "),
 	output_data_addr(BaseName, VarName), 
 	io__write_string("_struct\n"),
 	io__write_string(LaterIndent),

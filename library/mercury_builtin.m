@@ -472,6 +472,7 @@ unused :-
 
 :- pragma(c_code, "
 
+
 #ifdef	SHARED_ONE_OR_TWO_CELL_TYPE_INFO
 
 #ifdef  USE_TYPE_LAYOUT
@@ -518,7 +519,7 @@ Declare_entry(mercury__builtin_index_int_2_0);
 Declare_entry(mercury__builtin_compare_int_3_0);
 Declare_entry(mercury__builtin_term_to_type_int_2_0);
 Declare_entry(mercury__builtin_type_to_term_int_2_0);
-const struct mercury_data___base_type_info_int_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -532,12 +533,12 @@ const struct mercury_data___base_type_info_int_0_struct {
 #endif
 } mercury_data___base_type_info_int_0 = {
 	((Integer) 0),
-	ENTRY(mercury__builtin_unify_int_2_0),
-	ENTRY(mercury__builtin_index_int_2_0),
-	ENTRY(mercury__builtin_compare_int_3_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_int_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_int_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_int_3_0)),
 #ifdef USE_TYPE_TO_TERM
-	ENTRY(mercury__builtin_term_to_type_int_2_0),
-	ENTRY(mercury__builtin_type_to_term_int_2_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_term_to_type_int_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_int_2_0)),
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_int_0
@@ -550,7 +551,8 @@ Declare_entry(mercury__builtin_index_character_2_0);
 Declare_entry(mercury__builtin_compare_character_3_0);
 Declare_entry(mercury__builtin_term_to_type_character_2_0);
 Declare_entry(mercury__builtin_type_to_term_character_2_0);
-const struct mercury_data___base_type_info_character_0_struct {
+MR_STATIC_CODE_CONST struct 
+mercury_data___base_type_info_character_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -564,12 +566,14 @@ const struct mercury_data___base_type_info_character_0_struct {
 #endif
 } mercury_data___base_type_info_character_0 = {
 	((Integer) 0),
-	ENTRY(mercury__builtin_unify_character_2_0),
-	ENTRY(mercury__builtin_index_character_2_0),
-	ENTRY(mercury__builtin_compare_character_3_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_character_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_character_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_character_3_0)),
 #ifdef USE_TYPE_TO_TERM
-	ENTRY(mercury__builtin_term_to_type_character_2_0),
-	ENTRY(mercury__builtin_type_to_term_character_2_0),
+	MR_MAYBE_STATIC_CODE(
+		ENTRY(mercury__builtin_term_to_type_character_2_0)),
+	MR_MAYBE_STATIC_CODE(
+		ENTRY(mercury__builtin_type_to_term_character_2_0)),
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_character_0
@@ -582,7 +586,7 @@ Declare_entry(mercury__builtin_index_string_2_0);
 Declare_entry(mercury__builtin_compare_string_3_0);
 Declare_entry(mercury__builtin_term_to_type_string_2_0);
 Declare_entry(mercury__builtin_type_to_term_string_2_0);
-const struct mercury_data___base_type_info_string_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -596,12 +600,12 @@ const struct mercury_data___base_type_info_string_0_struct {
 #endif
 } mercury_data___base_type_info_string_0 = {
 	((Integer) 0),
-	ENTRY(mercury__builtin_unify_string_2_0),
-	ENTRY(mercury__builtin_index_string_2_0),
-	ENTRY(mercury__builtin_compare_string_3_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_string_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_string_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_string_3_0)),
 #ifdef USE_TYPE_TO_TERM
-	ENTRY(mercury__builtin_term_to_type_string_2_0),
-	ENTRY(mercury__builtin_type_to_term_string_2_0)
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_term_to_type_string_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_string_2_0))
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_string_0
@@ -614,7 +618,7 @@ Declare_entry(mercury__builtin_index_float_2_0);
 Declare_entry(mercury__builtin_compare_float_3_0);
 Declare_entry(mercury__builtin_term_to_type_float_2_0);
 Declare_entry(mercury__builtin_type_to_term_float_2_0);
-const struct mercury_data___base_type_info_float_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -628,12 +632,12 @@ const struct mercury_data___base_type_info_float_0_struct {
 #endif
 } mercury_data___base_type_info_float_0 = {
 	((Integer) 0),
-	ENTRY(mercury__builtin_unify_float_2_0),
-	ENTRY(mercury__builtin_index_float_2_0),
-	ENTRY(mercury__builtin_compare_float_3_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_float_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_float_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_float_3_0)),
 #ifdef USE_TYPE_TO_TERM
-	ENTRY(mercury__builtin_term_to_type_float_2_0),
-	ENTRY(mercury__builtin_type_to_term_float_2_0)
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_term_to_type_float_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_float_2_0))
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_float_0
@@ -646,7 +650,7 @@ Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
 Declare_entry(mercury__builtin_term_to_type_pred_2_0);
 Declare_entry(mercury__builtin_type_to_term_pred_2_0);
-const struct mercury_data___base_type_info_pred_0_struct {
+MR_STATIC_CODE_CONST struct mercury_data___base_type_info_pred_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
@@ -660,19 +664,57 @@ const struct mercury_data___base_type_info_pred_0_struct {
 #endif
 } mercury_data___base_type_info_pred_0 = {
 	((Integer) 0),
-	ENTRY(mercury__builtin_unify_pred_2_0),
-	ENTRY(mercury__builtin_index_pred_2_0),
-	ENTRY(mercury__builtin_compare_pred_3_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 #ifdef USE_TYPE_TO_TERM
-	ENTRY(mercury__builtin_term_to_type_pred_2_0),
-	ENTRY(mercury__builtin_type_to_term_pred_2_0)
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_term_to_type_pred_2_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_type_to_term_pred_2_0))
 #endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_pred_0
 #endif
 };
 
+BEGIN_MODULE(builtin_types_module)
+
+BEGIN_CODE
+
+END_MODULE
+
+/*
+INIT sys_init_builtin_types_module
+*/
+void sys_init_builtin_types_module(void);
+void sys_init_builtin_types_module(void) {
+	extern ModuleFunc builtin_types_module;
+	extern ModuleFunc mercury__mercury_builtin__init;
+
+	builtin_types_module();
+
+	/* 
+	** We had better call this init() because we use the
+	** labels for the special preds of int, float, pred, 
+	** character and string. If they aren't initialized,
+	** we might initialize the base_type_info with
+	** garbage
+	*/
+	mercury__mercury_builtin__init();
+
+	MR_INIT_BUILTIN_BASE_TYPE_INFO(
+		mercury_data___base_type_info_int_0, _int_);
+	MR_INIT_BUILTIN_BASE_TYPE_INFO(
+		mercury_data___base_type_info_float_0, _float_);
+	MR_INIT_BUILTIN_BASE_TYPE_INFO(
+		mercury_data___base_type_info_pred_0, _pred_);
+	MR_INIT_BUILTIN_BASE_TYPE_INFO(
+		mercury_data___base_type_info_character_0, _character_);
+	MR_INIT_BUILTIN_BASE_TYPE_INFO(
+		mercury_data___base_type_info_string_0, _string_);
+}
+
 #endif /* SHARED_ONE_OR_TWO_CELL_TYPE_INFO */
+
 ").
 
 	% This is used by the code that the compiler generates for compare/3.

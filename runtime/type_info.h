@@ -16,6 +16,8 @@
 
 #include "mercury_types.h"	/* for `Word' */
 
+/*---------------------------------------------------------------------------*/
+
 /*
 ** Decide which type_info representation we will use.
 **
@@ -37,18 +39,13 @@
     #undef		ONE_OR_TWO_CELL_TYPE_INFO
     /* #define		ONE_CELL_TYPE_INFO */
 #else
-    /* use the default type_info representation: */
-    /* shared_one_or_two_cell if addresses are constants, otherwise one_cell */
-    #if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)
-	#undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-	#undef		ONE_OR_TWO_CELL_TYPE_INFO
-	#define		ONE_CELL_TYPE_INFO
-    #else
-	#define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-	#define		ONE_OR_TWO_CELL_TYPE_INFO
-	#undef		ONE_CELL_TYPE_INFO
-    #endif
+    /* use the default type_info representation: shared-one-or-two-cell */
+    #define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+    #define		ONE_OR_TWO_CELL_TYPE_INFO
+    #undef		ONE_CELL_TYPE_INFO
 #endif
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Define offsets of fields in the type_info structure.
@@ -98,6 +95,12 @@
 	#define TYPEINFO_OFFSET_FOR_PRED_ARGS 2
 #endif
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** Definitions for handwritten code, mostly for mercury_compare_typeinfo.
+*/
+
 #define COMPARE_EQUAL 0
 #define COMPARE_LESS 1
 #define COMPARE_GREATER 2
@@ -146,6 +149,7 @@
 #define index_output    r2
 #endif
 
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Definitions and macros for base_type_layout definition.
@@ -160,6 +164,8 @@
 */
 
 /*
+** Conditionally define USE_TYPE_LAYOUT.
+**
 ** All code using type_layout structures should check to see if
 ** USE_TYPE_LAYOUT is defined, and give a fatal error otherwise.
 ** For USE_TYPE_LAYOUT to be defined, we need to be using
@@ -174,6 +180,12 @@
 	#undef USE_TYPE_LAYOUT
 #endif
 
+
+/*
+** Code intended for defining type_layouts for handwritten code.
+**
+** See library/io.m or library/mercury_builtin.m for details.
+*/
 #if TAGBITS >= 2
 	typedef const Word *TypeLayoutField;
 	#define TYPE_LAYOUT_FIELDS \
@@ -191,11 +203,24 @@
 #endif
 
 /*
-** Typelayouts for builtins often defined as 8 indentical
-** values (8 because that's the highest number of tag values
-** we use at the moment). 
+** Typelayouts for builtins are often defined as X identical
+** values, where X is the number of possible tag values.
 */
 
+#if TAGBITS == 0
+#define make_typelayout_for_all_tags(Tag, Value) \
+	make_typelayout(Tag, Value)
+#elif TAGBITS == 1
+#define make_typelayout_for_all_tags(Tag, Value) \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value)
+#elif TAGBITS == 2
+#define make_typelayout_for_all_tags(Tag, Value) \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value), \
+	make_typelayout(Tag, Value)
+#elif TAGBITS == 3
 #define make_typelayout_for_all_tags(Tag, Value) \
 	make_typelayout(Tag, Value), \
 	make_typelayout(Tag, Value), \
@@ -205,6 +230,13 @@
 	make_typelayout(Tag, Value), \
 	make_typelayout(Tag, Value), \
 	make_typelayout(Tag, Value)
+#endif
+
+#if !defined(make_typelayout_for_all_tags)
+#error "make_typelayout_for_all_tags is not defined for this number of tags"
+#endif
+
+/*---------------------------------------------------------------------------*/
 
 /* 
 ** Tags in type_layout structures.
@@ -226,7 +258,7 @@
 ** Values in type_layout structures,
 ** presently the values of CONST_TAG words.
 **
-** Also indended for use in handwritten C code.
+** Also intended for use in handwritten C code.
 **
 ** Note that TYPELAYOUT_UNASSIGNED_VALUE is not yet
 ** used for anything.
@@ -249,7 +281,6 @@
 
 #define TYPELAYOUT_MAX_VARINT		1024
 
-
 /*
 ** Offsets for functors and arities.
 **
@@ -268,6 +299,8 @@
 #define TYPELAYOUT_SIMPLE_ARITY_OFFSET  	0
 #define TYPELAYOUT_SIMPLE_ARGS_OFFSET       	1
 
+/*---------------------------------------------------------------------------*/
+
 /* 
 ** Offsets for dealing with `univ' types.
 **
@@ -278,5 +311,124 @@
 
 #define UNIV_OFFSET_FOR_TYPEINFO 		0
 #define UNIV_OFFSET_FOR_DATA			1
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Code for dealing with the static code addresses stored in
+** base_type_infos. 
+*/
+
+/*
+** Static code addresses are available, unless using gcc non-local gotos,
+** without assembler labels.
+*/
+
+#if	(defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS))
+	#undef MR_STATIC_CODE_ADDRESSES
+#else
+	#define MR_STATIC_CODE_ADDRESSES
+#endif
+
+/*
+** Definitions for initialization of base_type_infos. If
+** MR_STATIC_CODE_ADDRESSES are not available, we need to initialize
+** the special predicates in the base_type_infos.
+*/
+
+/*
+** A fairly generic static code address initializer.
+*/
+#define MR_INIT_CODE_ADDR(Base, PredAddr, Offset)			\
+	((Word *) (Word) &Base)[Offset]	= (Word) ENTRY(PredAddr)
+
+#define MR_SPECIAL_PRED_INIT(Base, TypeId, Offset, Pred)	\
+	MR_INIT_CODE_ADDR(Base, mercury____##Pred##___##TypeId, Offset)
+
+/*
+** Macros are provided here to initialize base_type_infos, both for
+** builtin types (such as in library/mercury_builtin.m) and user
+** defined C types (like library/uniq_array.m). Also, the automatically
+** generated code uses these initializers.
+**
+** Examples of use:
+**
+** MR_INIT_BUILTIN_BASE_TYPE_INFO(
+** 	mercury_data__base_type_info_string_0, _string_);
+**
+** note we use _string_ to avoid the redefinition of string via #define
+**
+** MR_INIT_BASE_TYPE_INFO(
+** 	mercury_data_group__base_type_info_group_1, group__group_1_0);
+**
+*/
+
+#ifndef MR_STATIC_CODE_ADDRESSES
+
+  #define MR_MAYBE_STATIC_CODE(X)	((Integer) 0)
+
+  #define MR_STATIC_CODE_CONST
+
+  #ifdef USE_TYPE_TO_TERM
+
+    #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+    do {								\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
+		OFFSET_FOR_UNIFY_PRED);					\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 	\
+		OFFSET_FOR_INDEX_PRED);					\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		OFFSET_FOR_COMPARE_PRED);				\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,\
+		OFFSET_FOR_TYPE_TO_TERM_PRED);				\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_term_to_type##T##2_0,\
+		OFFSET_FOR_TERM_TO_TYPE_PRED);				\
+    } while (0)
+
+    #define	MR_INIT_BASE_TYPE_INFO(B, T) \
+    do {								\
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);	\
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);	\
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare);	\
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TERM_TO_TYPE_PRED, Term_To_Type);\
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_TYPE_TO_TERM_PRED, Type_To_Term);\
+    } while (0)
+
+  #else /* not USE_TYPE_TO_TERM */ 
+
+    #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+    do {								\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
+		OFFSET_FOR_UNIFY_PRED);					\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 	\
+		OFFSET_FOR_INDEX_PRED);					\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+		OFFSET_FOR_COMPARE_PRED);				\
+    } while (0)
+
+    #define	MR_INIT_BASE_TYPE_INFO(B, T) \
+    do {	\
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_UNIFY_PRED, Unify);     \
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_INDEX_PRED, Index);     \
+	MR_SPECIAL_PRED_INIT(B, T, OFFSET_FOR_COMPARE_PRED, Compare); \
+    } while (0)
+
+    #endif /* not USE_TYPE_TO_TERM */
+
+#else	/* MR_STATIC_CODE_ADDRESSES */
+
+  #define MR_MAYBE_STATIC_CODE(X)	(X)
+
+  #define MR_STATIC_CODE_CONST const
+
+  #define MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
+	do { } while (0)
+
+  #define MR_INIT_BASE_TYPE_INFO(B, T) \
+	do { } while (0)
+
+#endif /* MR_STATIC_CODE_ADDRESSES */
+
+/*---------------------------------------------------------------------------*/
 
 #endif /* not TYPEINFO_H */

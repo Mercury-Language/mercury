@@ -70,11 +70,26 @@ base_type_info__gen_base_gen_infos([TypeId | TypeIds], TypeTable, ModuleName,
 			map__lookup(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_status(TypeDefn, Status),
 			special_pred_list(Specials),
+			module_info_globals(ModuleInfo, Globals),
+			globals__have_static_code_addresses(Globals, 
+				StaticCode),
 			module_info_get_special_pred_map(ModuleInfo, SpecMap),
 			base_type_info__gen_proc_list(Specials, SpecMap,
-				TypeId, Procs),
-			Info = base_gen_info(TypeId, ModuleName, TypeName,
-				TypeArity, Status, no, Procs),
+					TypeId, Procs),
+
+			% If we can't store static code addresses,
+			% replace the code addresses with null pointers.
+			% later code will do this if we tell it they
+			% have been eliminiated.
+
+			( StaticCode = yes ->
+				Elim = no
+			;
+				list__length(Specials, NumSpecials),
+				Elim = yes(NumSpecials)
+			),
+			Info = base_gen_info(TypeId, ModuleName,
+				TypeName, TypeArity, Status, Elim, Procs),
 			BaseGenInfos = [Info | BaseGenInfos1]
 		;
 			BaseGenInfos = BaseGenInfos1
@@ -157,9 +172,21 @@ base_type_info__construct_pred_addrs(Procs, Elim, ModuleInfo, PredAddrArgs) :-
 	
 		Elim = yes(ProcsLength)
 	->
-		PredAddrArg = yes(const(code_addr_const(
-			imported(proc("mercury_builtin", predicate,
-				"mercury_builtin", "unused", 0, 0))))),
+		module_info_globals(ModuleInfo, Globals),
+		
+			% If eliminated, make procs point to
+			% mercury_builtin__unused.  (Or, if static code
+			% addresses are not available, use NULL
+			% pointers).
+		(
+			globals__have_static_code_addresses(Globals, yes)
+		->
+			PredAddrArg = yes(const(code_addr_const(
+				imported(proc("mercury_builtin", predicate,
+					"mercury_builtin", "unused", 0, 0)))))
+		;
+			PredAddrArg = yes(const(int_const(0)))
+		),
 		list__duplicate(ProcsLength, PredAddrArg, PredAddrArgs)
 	;
 		base_type_info__construct_pred_addrs2(Procs, ModuleInfo, 
