@@ -466,7 +466,9 @@ non  26: ordinary, 12 words
  succip: unnamed label
  succfr: non  10
  on main nondet branch non  26
-       HeadVar__1             [1, 2, 3, 4, 5]
+       Data (arg 1)           [1, 2, 3, 4, 5]
+       Out (arg 2)            [1, 2, 3, 4, 5]
+       TypeCtorInfo_5         int
 non  14: temp
  redoip: label UNKNOWN
  redofr: non  10
