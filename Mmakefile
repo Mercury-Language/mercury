@@ -471,7 +471,7 @@ bindist:
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_subdirs
+clean: clean_subdirs clean_tests
 
 .PHONY: clean_subdirs
 clean_subdirs:
@@ -481,7 +481,13 @@ clean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
-realclean: realclean_subdirs realclean_local
+.PHONY: clean_tests
+clean_tests:
+	if test -d tests; then \
+		(cd tests; $(MMAKE) clean) \
+	fi
+
+realclean: realclean_subdirs realclean_local realclean_tests
 
 .PHONY: realclean_local
 realclean_local: realclean_config
@@ -498,5 +504,11 @@ realclean_subdirs: clean_subdirs
 .PHONY: realclean_config
 realclean_config:
 	rm -f config.cache config.status config.log configure.log
+
+.PHONY: realclean_tests
+realclean_tests:
+	if test -d tests; then \
+		(cd tests; $(MMAKE) realclean) \
+	fi
 
 #-----------------------------------------------------------------------------#
