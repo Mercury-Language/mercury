@@ -2100,46 +2100,49 @@ MERCURY_CHECK_READLINE
 to_keep=""
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
-	MERCURY_MSG("checking whether any C files need to be rebuilt...")
-	for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
-	do
-		case $c_file in
-		*/'*.c')
-			;;
-		*)
-			sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
-			if grep "TAG_BITS=$mercury_cv_low_tag_bits" confscratch > /dev/null 2>&1
-			then
-				if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" confscratch > /dev/null 2>&1
-				then
-					to_keep="$to_keep $c_file"
-				else
-					to_delete="$to_delete $c_file"
-				fi
-			else
-				to_delete="$to_delete $c_file"
-			fi
-			;;
-		esac
-	done
-	if test "$to_delete" = "" ; then
-		if test "$to_keep" != "" ; then
-			MERCURY_MSG("no - they are compatible with autoconfigured settings")
-		else
-			MERCURY_MSG("there are no existing Mercury-generated C files")
-		fi
-	else
-		if test "$to_keep" != "" ; then
-			MERCURY_MSG("the following C files must be rebuilt in a grade")
-			MERCURY_MSG("that is consistent with autoconfigured settings")
-			MERCURY_MSG("$to_delete")
-		else
-			MERCURY_MSG("all Mercury generated C files must be rebuilt in a grade")
-			MERCURY_MSG("that is consistent with autoconfigured settings")
-		fi
-		MERCURY_MSG("installation may take longer than usual")
-	fi
-	rm -f confscratch $to_delete
+    MERCURY_MSG("checking whether any C files need to be rebuilt...")
+    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
+    do
+        case $c_file in
+        */'*.c')
+            ;;
+        *)
+            sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
+            if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
+	    	confscratch > /dev/null 2>&1
+            then
+                if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
+			confscratch > /dev/null 2>&1
+                then
+                    to_keep="$to_keep $c_file"
+                else
+                    to_delete="$to_delete $c_file"
+                fi
+            else
+                to_delete="$to_delete $c_file"
+            fi
+            ;;
+        esac
+    done
+    if test "$to_delete" = "" ; then
+        if test "$to_keep" != "" ; then
+            MERCURY_MSG("no, they are compatible with autoconfigured settings")
+        else
+            MERCURY_MSG("there are no existing Mercury-generated C files")
+        fi
+    else
+        if test "$to_keep" != "" ; then
+            MERCURY_MSG("the following C files must be rebuilt in a grade")
+            MERCURY_MSG("that is consistent with autoconfigured settings")
+            MERCURY_MSG("$to_delete")
+        else
+            MERCURY_MSG("all Mercury generated C files must be rebuilt")
+            MERCURY_MSG("in a grade that is consistent with the")
+            MERCURY_MSG("autoconfigured settings")
+        fi
+        MERCURY_MSG("installation may take longer than usual")
+    fi
+    rm -f confscratch $to_delete
 fi
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
