@@ -138,8 +138,9 @@
 
 	% type_list_matches_exactly(TypesA, TypesB) succeeds iff TypesA and
 	% TypesB are exactly the same modulo variable renaming. 
-:- pred type_list_matches_exactly(list(type), list(type)).
-:- mode type_list_matches_exactly(in, in) is semidet.
+:- pred type_and_constraint_list_matches_exactly(list(type),
+	list(class_constraint), list(type), list(class_constraint)).
+:- mode type_and_constraint_list_matches_exactly(in, in, in, in) is semidet.
 
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
@@ -450,9 +451,14 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 
 	% If this becomes a performance bottleneck, it can probably be coded
 	% more efficiently.
-type_list_matches_exactly(TypesA, TypesB) :-
-	type_list_subsumes(TypesA, TypesB, _),
-	type_list_subsumes(TypesB, TypesA, _).
+type_and_constraint_list_matches_exactly(TypesA, ConstraintsA0, 
+		TypesB, ConstraintsB) :-
+	type_list_subsumes(TypesA, TypesB, Subst),
+	type_list_subsumes(TypesB, TypesA, _),
+	apply_subst_to_constraints(Subst, ConstraintsA0, ConstraintsA),
+	list__sort(ConstraintsA, SortedA),
+	list__sort(ConstraintsB, SortedB),
+	SortedA = SortedB.
 
 %-----------------------------------------------------------------------------%
 

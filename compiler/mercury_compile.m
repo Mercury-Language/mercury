@@ -493,11 +493,17 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    "% Program contains undefined type error(s).\n"),
 	    io__set_exit_status(1)
 	;
+		
+	    maybe_write_string(Verbose, 
+		"% Checking typeclass instances...\n"),
+	    check_typeclass__check_instance_decls(HLDS1, HLDS2,
+		FoundTypeclassError),
+	    mercury_compile__maybe_dump_hlds(HLDS2, "2", "typeclass"), !,
 
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS1, HLDS3, FoundUndefModeError, FoundTypeError), !,
+	    typecheck(HLDS2, HLDS3, FoundUndefModeError, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -514,7 +520,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
 	    ( { TypecheckOnly = yes } ->
 		{ HLDS = HLDS3 },
-		{ FoundError = FoundTypeError }
+		{ bool__or(FoundTypeError, FoundTypeclassError, FoundError) }
 	    ;
 		% only write out the `.opt' file if there are no type errors
 		globals__io_lookup_bool_option(make_optimization_interface,
@@ -528,7 +534,8 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		% if our job was to write out the `.opt' file, then we're done
 		( { MakeOptInt = yes } ->
 		    	{ HLDS = HLDS4 },
-		    	{ FoundError = FoundTypeError }
+			{ bool__or(FoundTypeError, FoundTypeclassError,
+				FoundError) }
 		;
 			%
 			% We can't continue after an undefined inst/mode
@@ -548,7 +555,9 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 			    mercury_compile__frontend_pass_2_by_phases(HLDS4,
 			    		HLDS, FoundModeOrDetError),
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
-					FoundError) }
+					FoundError0) },
+			    { bool__or(FoundError0, FoundTypeclassError,
+				FoundError) }
 			)
 		)
 	    )
@@ -674,14 +683,8 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			HLDS9, FoundUniqError), !,
 		mercury_compile__maybe_dump_hlds(HLDS9, "09", "unique_modes"),
 		!,
-		
-		maybe_write_string(Verbose, 
-			"% Mode and type checking typeclass instances...\n"),
-		check_typeclass__check_instance_decls(HLDS9, HLDS10,
-			FoundTypeclassError),
-		mercury_compile__maybe_dump_hlds(HLDS10, "10", "typeclass"), !,
 
-		mercury_compile__check_stratification(HLDS10, Verbose, Stats, 
+		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
 			HLDS11, FoundStratError), !,
 		mercury_compile__maybe_dump_hlds(HLDS11, "11",
 			"stratification"), !,
@@ -699,7 +702,6 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			{ FoundDetError = no },
 			{ FoundUniqError = no },
 			{ FoundStratError = no },
-			{ FoundTypeclassError = no },
 			% Strictly speaking, we shouldn't need to check
 			% the exit status.  But the values returned for
 			% FoundModeError etc. aren't always correct.
