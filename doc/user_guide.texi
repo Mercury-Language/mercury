@@ -1175,9 +1175,13 @@ contains more detailed documentation.
 To use the debugger, you must
 first compile your program with debugging enabled.
 You can do this by using
-one of the @samp{--debug} and @samp{--decl-debug} options
+@c XXX .decldebug isn't usefull different from .debug
+@c one of the @samp{--debug} and @samp{--decl-debug} options
+the @samp{--debug} option
 when invoking @samp{mmc},
-or by including @samp{GRADEFLAGS = --debug} or @samp{GRADEFLAGS = --decl-debug}
+or by including @samp{GRADEFLAGS = --debug}
+@c XXX .decldebug isn't usefull different from .debug
+@c or @samp{GRADEFLAGS = --decl-debug}
 in your @file{Mmakefile}.
 
 @findex --debug
@@ -1607,8 +1611,11 @@ Mercury supports two broad ways of preparing a program for debugging.
 The simpler way is to compile a program in a debugging grade,
 which you can do directly by specifying a grade
 that includes the word ``debug'' (e.g.@: @samp{asm_fast.gc.debug}),
-or indirectly by specifying one of the @samp{--debug} or @samp{--decl-debug}
-grade options to the compiler, linker, and other tools
+@c XXX .decldebug isn't usefull different from .debug
+@c or indirectly by specifying one of the @samp{--debug} or @samp{--decl-debug}
+@c grade options to the compiler, linker, and other tools
+or indirectly by specifying the @samp{--debug}
+grade option to the compiler, linker, and other tools
 (in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
 If you follow this way,
 and accept the default settings of the various compiler options
@@ -1625,8 +1632,8 @@ This is why Mercury also supports another way
 to prepare a program for debugging,
 one that does not require the use of a debugging grade.
 With this way, you can decide, individually for each module,
-which of five trace levels,
-@samp{none}, @samp{shallow}, @samp{deep}, @samp{decl} and @samp{rep}
+which of four trace levels,
+@samp{none}, @samp{shallow}, @samp{deep}, and @samp{rep}
 you want to compile them with:
 
 @cindex debugger trace level
@@ -1640,27 +1647,20 @@ will never generate any events.
 @item deep
 A procedure compiled with trace level @samp{deep}
 will always generate all the events requested by the user.
-By default, this is all the usual events,
+By default, this is all possible events,
 but you can tell the compiler that
 you are not interested in some kinds of events
 via compiler options (see below).
-@item decl
-A procedure compiled with trace level @samp{decl}
-will always generate all possible events,
-including all the events generated at trace level @samp{deep}
-as well as other events which describe
-the entry into and exit from negations.
-These events are required for the declarative debugging feature
-to operate properly,
-so the @samp{dd} command will only be available under @samp{mdb}
-at trace levels that generate all events,
-i.e. at trace levels decl and rep.
+However, declarative debugging requires all events to be generated
+if it is to operate properly,
+so do not disable the generation of any event types
+if you want to use declarative debugging.
 For more details see @ref{Declarative debugging}.
 @item rep
-This trace level is the same as trace level @samp{decl},
+This trace level is the same as trace level @samp{deep},
 except that a representation of the module is stored in the executable
 along with the usual debugging information.
-The declarative debugger is able to use this extra information
+The declarative debugger can use this extra information
 to help it avoid asking unnecessary questions,
 so this trace level has the effect of better declarative debugging
 at the cost of increased executable size.
@@ -1689,10 +1689,6 @@ You should compile a module with trace level @samp{deep}
 if you suspect there may be a bug in the module,
 or if you think that being able to examine what happens inside that module
 can help you locate a bug.
-@item decl
-You should compile a module with trace level @samp{decl}
-if you suspect there may be a bug in the module,
-and you wish to use the declarative debugger to help locate it.
 @item rep
 You should compile a module with trace level @samp{rep}
 if you suspect there may be a bug in the module,
@@ -1713,7 +1709,7 @@ would not significantly benefit you in your debugging.
 
 In general, it is a good idea for most or all modules
 that can be called from modules compiled with trace level
-@samp{deep}, @samp{decl} or @samp{rep}
+@samp{deep} or @samp{rep}
 to be compiled with at least trace level @samp{shallow}.
 
 You can control what trace level a module is compiled with
@@ -1724,8 +1720,6 @@ by giving one of the following compiler options:
 This always sets the trace level to @samp{shallow}.
 @item --trace deep
 This always sets the trace level to @samp{deep}.
-@item --trace decl
-This always sets the trace level to @samp{decl}.
 @item --trace rep
 This always sets the trace level to @samp{rep}.
 @item --trace minimum
@@ -4847,8 +4841,9 @@ and grade modifier; they are followed by descriptions of those options.
 @item @samp{.debug}
 @code{--debug}.
 
-@item @samp{.decldebug}
-@code{--decl-debug}.
+@c XXX .decldebug isn't usefull different from .debug
+@c @item @samp{.decldebug}
+@c @code{--decl-debug}.
 
 @end table
 
@@ -4977,14 +4972,16 @@ Enables the inclusion in the executable of code and data structures
 that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
 This option is not yet supported for the @samp{--high-level-code} back-ends.
 
-@sp 1
-@item @code{--decl-debug} (grades: any grade containing @samp{.decldebug})
-@findex --decl-debug
-@cindex Debugging
-Enables the inclusion in the executable of code and data structures
-that allow the program to be debugged
-with the declarative debugging facilities of @samp{mdb} (see @ref{Debugging}).
-This option is not yet supported for the @samp{--high-level-code} back-ends.
+@c XXX .decldebug isn't usefull different from .debug
+@c @sp 1
+@c @item @code{--decl-debug} (grades: any grade containing @samp{.decldebug})
+@c @findex --decl-debug
+@c @cindex Debugging
+@c Enables the inclusion in the executable of code and data structures
+@c that allow the program to be debugged
+@c with the declarative debugging facilities of @samp{mdb}
+@c (see @ref{Debugging}).
+@c This option is not yet supported for the @samp{--high-level-code} back-ends.
 
 @sp 1
 @item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})

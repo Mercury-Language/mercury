@@ -186,7 +186,7 @@ llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
 	LayoutData0 = closure_proc_id_data(_, _, _, _, _, _, _),
 	LayoutData = LayoutData0.
 llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
-	LayoutData0 = module_layout_data(_, _, _, _, _, _),
+	LayoutData0 = module_layout_data(_, _, _, _, _, _, _),
 	LayoutData = LayoutData0.
 llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
 	LayoutData0 = proc_static_data(_, _, _, _, _),

@@ -98,11 +98,11 @@ output_layout_data_defn(closure_proc_id_data(CallerProcLabel, SeqNo,
 	output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ProcLabel,
 		ModuleName, FileName, LineNumber, GoalPath, DeclSet0, DeclSet).
 output_layout_data_defn(module_layout_data(ModuleName, StringTableSize,
-		StringTable, ProcLayoutNames, FileLayouts, TraceLevel),
-		DeclSet0, DeclSet) -->
+		StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
+		SuppressedEvents), DeclSet0, DeclSet) -->
 	output_module_layout_data_defn(ModuleName, StringTableSize,
 		StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
-		DeclSet0, DeclSet).
+		SuppressedEvents, DeclSet0, DeclSet).
 output_layout_data_defn(proc_static_data(RttiProcLabel, FileName, LineNumber,
 		IsInInterface, CallSites), DeclSet0, DeclSet) -->
 	output_proc_static_data_defn(RttiProcLabel, FileName, LineNumber,
@@ -146,7 +146,7 @@ extract_layout_name(proc_layout_data(ProcLabel, _, MaybeRest), LayoutName) :-
 extract_layout_name(closure_proc_id_data(CallerProcLabel, SeqNo,
 		ClosureProcLabel, _, _, _, _),
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)).
-extract_layout_name(module_layout_data(ModuleName, _,_,_,_,_), LayoutName) :-
+extract_layout_name(module_layout_data(ModuleName, _,_,_,_,_,_), LayoutName) :-
 	LayoutName = module_layout(ModuleName).
 extract_layout_name(proc_static_data(RttiProcLabel, _, _, _, _), LayoutName) :-
 	LayoutName = proc_static(RttiProcLabel).
@@ -884,12 +884,12 @@ output_proc_id(ProcLabel) -->
 
 :- pred output_module_layout_data_defn(module_name::in, int::in,
 	string::in, list(layout_name)::in, list(file_layout_data)::in,
-	trace_level::in, decl_set::in, decl_set::out,
+	trace_level::in, int::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
 output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
-		ProcLayoutNames, FileLayouts, TraceLevel, DeclSet0, DeclSet)
-		-->
+		ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
+		DeclSet0, DeclSet) -->
 	output_module_string_table(ModuleName, StringTableSize, StringTable,
 		DeclSet0, DeclSet1),
 	output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
@@ -922,6 +922,8 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
 	output_layout_name(FileVectorName),
 	io__write_string(",\n\t"),
 	io__write_string(trace_level_rep(TraceLevel)),
+	io__write_string(",\n\t"),
+	io__write_int(SuppressedEvents),
 	io__write_string("\n};\n"),
 	{ decl_set_insert(DeclSet4, data_addr(layout_addr(ModuleLayoutName)),
 		DeclSet) }.

@@ -1,5 +1,5 @@
 
-MCFLAGS-deep_sub=--trace deep
+MCFLAGS-deep_sub=--trace deep --suppress-trace context
 MCFLAGS-dependency=--trace rep
 MCFLAGS-dependency2=--trace rep
 MCFLAGS-input_term_dep=--trace rep

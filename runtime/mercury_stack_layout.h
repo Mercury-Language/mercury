@@ -892,13 +892,17 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 ** The MR_ml_trace_level field gives the trace level that the module was
 ** compiled with.  If the MR_Trace_Level enum is modified, then the
 ** corresponding function in compiler/trace_params.m must also be updated.
+**
+** The MR_ml_suppressed_events events field encodes the set of event types
+** (ports) that were suppressed when generating code for this module. The bit
+** given by the expression (1 << MR_PORT_XXX) will be set in this integer
+** iff trace port MR_PORT_XXX is suppressed.
 */
 
 typedef enum {
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_NONE),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_SHALLOW),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DEEP),
-	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_TRACE_LEVEL_DECL_REP)
 } MR_Trace_Level;
 
@@ -919,6 +923,7 @@ struct MR_Module_Layout_Struct {
 	MR_Integer			MR_ml_filename_count;
 	const MR_Module_File_Layout	**MR_ml_module_file_layout;
 	MR_Trace_Level			MR_ml_trace_level;
+	MR_int_least32_t		MR_ml_suppressed_events;
 };
 
 /*-------------------------------------------------------------------------*/

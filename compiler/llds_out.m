@@ -769,7 +769,7 @@ output_debugger_init_list_decls([], DeclSet, DeclSet) --> [].
 output_debugger_init_list_decls([Data | Datas], DeclSet0, DeclSet) -->
 	(
 		{ Data = layout_data(LayoutData) },
-		{ LayoutData = module_layout_data(ModuleName, _, _, _, _, _) }
+		{ LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_) }
 	->
 		output_data_addr_decls(layout_addr(module_layout(ModuleName)),
 			"", "", 0, _, DeclSet0, DeclSet1)
@@ -789,7 +789,7 @@ output_debugger_init_list([]) --> [].
 output_debugger_init_list([Data | Datas]) -->
 	(
 		{ Data = layout_data(LayoutData) },
-		{ LayoutData = module_layout_data(ModuleName, _, _, _, _, _) }
+		{ LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_) }
 	->
 		io__write_string("\tif (MR_register_module_layout != NULL) {\n"),
 		io__write_string("\t\t(*MR_register_module_layout)("),

@@ -239,7 +239,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Unsigned		depth;
 	MR_Trace_Node		trace;
 	MR_Event_Details	event_details;
-	MR_Trace_Level		trace_level;
+	MR_Integer		trace_suppress;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
@@ -301,8 +301,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		return NULL;
 	}
 
-	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
-	if (trace_level == MR_TRACE_LEVEL_DEEP) {
+	trace_suppress = entry->MR_sle_module_layout->MR_ml_suppressed_events;
+	if (trace_suppress != 0) {
 		/*
 		** We ignore events from modules that were not compiled
 		** with the necessary information.  Procedures in those
@@ -1070,27 +1070,39 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	if (!MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
 		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
-				"because this procedure was not\n"
-				"compiled with execution tracing enabled.\n");
+		fprintf(MR_mdb_err,
+			"mdb: cannot start declarative debugging, "
+			"because this procedure was not\n"
+			"compiled with execution tracing enabled.\n");
 		return MR_FALSE;
 	}
 
 	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging "
-				"at compiler generated procedures.\n");
+		fprintf(MR_mdb_err,
+			"mdb: cannot start declarative debugging "
+			"at compiler generated procedures.\n");
 		return MR_FALSE;
 	}
 
 	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
-	if (trace_level != MR_TRACE_LEVEL_DECL &&
-		trace_level != MR_TRACE_LEVEL_DECL_REP)
+	if (trace_level != MR_TRACE_LEVEL_DEEP
+		&& trace_level != MR_TRACE_LEVEL_DECL_REP)
 	{
 		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
-				"because this procedure was not\n"
-				"compiled with trace level `decl'.\n");
+		fprintf(MR_mdb_err,
+			"mdb: cannot start declarative debugging, "
+			"because this procedure was not\n"
+			"compiled with trace level `deep' or `rep'.\n");
+		return MR_FALSE;
+	}
+
+	if (entry->MR_sle_module_layout->MR_ml_suppressed_events != 0) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err,
+			"mdb: cannot start declarative debugging, "
+			"because some event types were\n"
+			"suppressed when this procedure was compiled.\n");
 		return MR_FALSE;
 	}
 

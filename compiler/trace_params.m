@@ -92,15 +92,16 @@
 	% This is used to represent the trace level in the module layout.
 :- func trace_level_rep(trace_level) = string.
 
+:- func encode_suppressed_events(trace_suppress_items) = int.
+
 :- implementation.
 
-:- import_module char, string, list, set.
+:- import_module int, char, string, list, set.
 
 :- type trace_level
 	--->	none
 	;	shallow
 	;	deep
-	;	decl
 	;	decl_rep.
 
 :- type trace_suppress_item
@@ -115,16 +116,16 @@ trace_level_none = none.
 
 convert_trace_level("minimum", no,  no,  yes(none)).
 convert_trace_level("minimum", yes, no,  yes(shallow)).
-convert_trace_level("minimum", _,   yes, yes(decl)).
+convert_trace_level("minimum", _,   yes, yes(deep)).
 convert_trace_level("shallow", _,   no,  yes(shallow)).
 convert_trace_level("shallow", _,   yes, no).
 convert_trace_level("deep",    _,   no,  yes(deep)).
 convert_trace_level("deep",    _,   yes, no).
-convert_trace_level("decl",    _,   _,   yes(decl)).
+convert_trace_level("decl",    _,   _,   yes(deep)).
 convert_trace_level("rep",     _,   _,   yes(decl_rep)).
 convert_trace_level("default", no,  no,  yes(none)).
 convert_trace_level("default", yes, no,  yes(deep)).
-convert_trace_level("default", _,   yes, yes(decl)).
+convert_trace_level("default", _,   yes, yes(deep)).
 
 eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 	(
@@ -176,37 +177,31 @@ eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel, SuppressItems, Port) =
 trace_level_is_none(none) = yes.
 trace_level_is_none(shallow) = no.
 trace_level_is_none(deep) = no.
-trace_level_is_none(decl) = no.
 trace_level_is_none(decl_rep) = no.
 
 trace_level_needs_input_vars(none) = no.
 trace_level_needs_input_vars(shallow) = yes.
 trace_level_needs_input_vars(deep) = yes.
-trace_level_needs_input_vars(decl) = yes.
 trace_level_needs_input_vars(decl_rep) = yes.
 
 trace_level_needs_fixed_slots(none) = no.
 trace_level_needs_fixed_slots(shallow) = yes.
 trace_level_needs_fixed_slots(deep) = yes.
-trace_level_needs_fixed_slots(decl) = yes.
 trace_level_needs_fixed_slots(decl_rep) = yes.
 
 trace_level_needs_from_full_slot(none) = no.
 trace_level_needs_from_full_slot(shallow) = yes.
 trace_level_needs_from_full_slot(deep) = no.
-trace_level_needs_from_full_slot(decl) = no.
 trace_level_needs_from_full_slot(decl_rep) = no.
 
 trace_level_allows_delay_death(none) = no.
 trace_level_allows_delay_death(shallow) = no.
 trace_level_allows_delay_death(deep) = yes.
-trace_level_allows_delay_death(decl) = yes.
 trace_level_allows_delay_death(decl_rep) = yes.
 
 trace_level_needs_meaningful_var_names(none) = no.
 trace_level_needs_meaningful_var_names(shallow) = no.
 trace_level_needs_meaningful_var_names(deep) = yes.
-trace_level_needs_meaningful_var_names(decl) = yes.
 trace_level_needs_meaningful_var_names(decl_rep) = yes.
 
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
@@ -246,19 +241,16 @@ trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
 trace_level_has_return_info(none) = no.
 trace_level_has_return_info(shallow) = yes.
 trace_level_has_return_info(deep) = yes.
-trace_level_has_return_info(decl) = yes.
 trace_level_has_return_info(decl_rep) = yes.
 
 trace_level_has_all_var_names(none) = no.
 trace_level_has_all_var_names(shallow) = no.
 trace_level_has_all_var_names(deep) = no.
-trace_level_has_all_var_names(decl) = yes.
 trace_level_has_all_var_names(decl_rep) = yes.
 
 trace_level_has_proc_body_reps(none) = no.
 trace_level_has_proc_body_reps(shallow) = no.
 trace_level_has_proc_body_reps(deep) = no.
-trace_level_has_proc_body_reps(decl) = no.
 trace_level_has_proc_body_reps(decl_rep) = yes.
 
 convert_trace_suppress(SuppressString, SuppressItemSet) :-
@@ -346,7 +338,6 @@ wrap_port(Port, port(Port)).
 trace_level_rep(none)	  = "MR_TRACE_LEVEL_NONE".
 trace_level_rep(shallow)  = "MR_TRACE_LEVEL_SHALLOW".
 trace_level_rep(deep)	  = "MR_TRACE_LEVEL_DEEP".
-trace_level_rep(decl)	  = "MR_TRACE_LEVEL_DECL".
 trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
 
 %-----------------------------------------------------------------------------%
@@ -384,7 +375,6 @@ trace_port_category(nondet_pragma_later)	= internal.
 trace_level_port_categories(none) = [].
 trace_level_port_categories(shallow) = [interface].
 trace_level_port_categories(deep) = [interface, internal, context].
-trace_level_port_categories(decl) = [interface, internal, context].
 trace_level_port_categories(decl_rep) = [interface, internal, context].
 
 :- func trace_level_allows_port_suppression(trace_level) = bool.
@@ -392,7 +382,6 @@ trace_level_port_categories(decl_rep) = [interface, internal, context].
 trace_level_allows_port_suppression(none) = no.		% no ports exist
 trace_level_allows_port_suppression(shallow) = yes.
 trace_level_allows_port_suppression(deep) = yes.
-trace_level_allows_port_suppression(decl) = no.
 trace_level_allows_port_suppression(decl_rep) = no.
 
 trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
@@ -409,3 +398,37 @@ trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
 	;
 		NeedsPort = no
 	).
+
+encode_suppressed_events(SuppressedEvents) = SuppressedEventsInt :-
+	set__fold(maybe_add_suppressed_event, SuppressedEvents,
+		0, SuppressedEventsInt).
+
+:- pred maybe_add_suppressed_event(trace_suppress_item::in, int::in, int::out)
+	is det.
+
+maybe_add_suppressed_event(SuppressItem, SuppressedEventsInt0,
+		SuppressedEventsInt) :-
+	( SuppressItem = port(Port) ->
+		SuppressedEventsInt = SuppressedEventsInt0 \/
+			(1 << port_number(Port))
+	;
+		SuppressedEventsInt = SuppressedEventsInt0
+	).
+
+:- func port_number(trace_port) = int.
+
+port_number(call) = 1.
+port_number(exit) = 2.
+port_number(redo) = 3.
+port_number(fail) = 4.
+port_number(exception) = 5.
+port_number(ite_cond) = 6.
+port_number(ite_then) = 7.
+port_number(ite_else) = 8.
+port_number(neg_enter) = 9.
+port_number(neg_success) = 10.
+port_number(neg_failure) = 11.
+port_number(disj) = 12.
+port_number(switch) = 13.
+port_number(nondet_pragma_first) = 14.
+port_number(nondet_pragma_later) = 15.

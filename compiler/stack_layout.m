@@ -78,6 +78,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	globals__lookup_bool_option(Globals, procid_stack_layout,
 		ProcIdLayout),
 	globals__get_trace_level(Globals, TraceLevel),
+	globals__get_trace_suppress(Globals, TraceSuppress),
 	globals__have_static_code_addresses(Globals, StaticCodeAddr),
 	map__init(LayoutLabels0),
 
@@ -121,9 +122,10 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		),
 		stack_layout__format_label_tables(EffLabelTables,
 			SourceFileLayouts),
+		SuppressedEvents = encode_suppressed_events(TraceSuppress),
 		ModuleLayout = layout_data(module_layout_data(ModuleName,
 			StringOffset, ConcatStrings, ProcLayoutNames,
-			SourceFileLayouts, TraceLevel)),
+			SourceFileLayouts, TraceLevel, SuppressedEvents)),
 		StaticLayouts = [ModuleLayout | StaticLayouts0]
 	;
 		StaticLayouts = StaticLayouts0

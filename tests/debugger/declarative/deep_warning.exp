@@ -28,6 +28,6 @@ mdb> continue
 mdb> finish
        7:      3  3 EXIT pred deep_sub:q/1-0 (multi) deep_sub.m:5 (deep_warning.m:29)
 mdb> dd
-mdb: cannot start declarative debugging, because this procedure was not
-compiled with trace level `decl'.
+mdb: cannot start declarative debugging, because some event types were
+suppressed when this procedure was compiled.
 mdb> quit -y

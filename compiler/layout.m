@@ -56,7 +56,8 @@
 			string_table		:: string,
 			proc_layout_names	:: list(layout_name),
 			file_layouts		:: list(file_layout_data),
-			trace_level		:: trace_level
+			trace_level		:: trace_level,
+			suppressed_events	:: int
 		)
 	;	closure_proc_id_data(		% defines MR_Closure_Id
 			caller_proc_label	:: proc_label,
