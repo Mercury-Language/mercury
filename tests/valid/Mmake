@@ -28,6 +28,7 @@ SOURCES= \
 	error.m \
 	fail_ite.m \
 	followcode_det_problem.m \
+	func_int_bug_main.m \
 	headvar_not_found.m \
 	higher_order.m \
 	higher_order2.m \
