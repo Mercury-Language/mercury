@@ -66,7 +66,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 	Word *type_params, type_info, value;
 	MR_Stack_Layout_Entry *entry_layout;
 	const MR_Stack_Layout_Label *layout;
-	Code *success_ip;
+	const Code *success_ip;
 	bool top_frame = TRUE;
 
 	layout = label->i_layout;
