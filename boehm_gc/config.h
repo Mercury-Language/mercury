@@ -114,7 +114,8 @@
 #   define SYSV
 #   define mach_type_known
 # endif
-# if defined(_PA_RISC1_0) || defined(_PA_RISC1_1)
+# if defined(_PA_RISC1_0) || defined(_PA_RISC1_1) \
+	|| defined(hppa) || defined(__hppa__)
 #   define HP_PA
 #   define mach_type_known
 # endif
