@@ -176,6 +176,42 @@
   #define MR_GRADE_PART_7	MR_GRADE_PART_6b
 #endif
 
+/*
+** Minimal model tabling works by saving and restoring segments of the nondet
+** stack. Since in high level code grades we don't have a nondet stack that
+** we can save and restore, minimal model tabling is fundamentally incompatible
+** with high level code.
+*/
+
+#if  defined(MR_USE_MINIMAL_MODEL) && defined(MR_HIGHLEVEL_CODE)
+  #error "high level code and minimal model tabling are not compatible"
+#endif
+
+/*
+** Saving and restoring the trail state would not be sufficient
+** to handle the combination of trailing and minimal model tabling.
+** Consider the following sequence of events:
+**
+**	execution enters a goal being committed across
+**	a new entry is pushed on the trail
+**	a tabled goal suspends,
+**		causing the saving of a trail segment
+**		and then a failure
+**	the goal being committed across fails,
+**		which invokes a failed commit on the trail entry
+**	...
+**	the tabled goal is resumed,
+**		causing the restoring of the saved trail segment
+**		and then a success
+**	the goal being committed across now succeeds,
+**		which invokes a successful commit on the trail entry
+**
+** The trail handler will be thoroughly confused by such a sequence.
+**
+** Until we can figure out (and implement) a fix for this problem,
+** minimal model tabling and trailing cannot be used together.
+*/
+
 #if defined(MR_USE_TRAIL) && defined(MR_USE_MINIMAL_MODEL)
   #error "trailing and minimal model tabling are not compatible"
 #endif
