@@ -1039,7 +1039,11 @@ EXT_FOR_PIC_OBJECTS=pic_o
 EXT_FOR_SHARED_LIB=a
 
 case "$host" in
-	i386-*-freebsd*)
+	i?86-*-linux)
+		AC_MSG_RESULT(yes)
+		EXT_FOR_SHARED_LIB=so
+		;;
+	i?86-*-freebsd*)
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"
@@ -1048,12 +1052,36 @@ case "$host" in
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
-		# for some reason, using -fpic doesn't seem to work on
-		# Solaris - probably because of problems with the global
-		# pointer register
 		LINK_SHARED_OBJ="$CC -G"
-		CFLAGS_FOR_PIC=
+		CFLAGS_FOR_PIC=-fpic -DPIC	# used only for libgc.{a,so}
 		EXT_FOR_PIC_OBJECTS=o
+		#
+		# Note that despite the above definition of CFLAGS_FOR_PIC,
+		# we don't use `-fpic' for shared libraries on Solaris
+		# (the definition of EXT_FOR_PIC_OBJECTS=o means that
+		# CFLAGS_FOR_PIC will be used only for building libgc.a
+		# and libgc.so.)
+		#
+		# The reason for this is that shared libraries work without
+		# it (well, at least they are shared on disk -- although the
+		# code is not shared at runtime), and using `-fpic' would
+		# reduce efficiency.
+		#
+		# It works because the Solaris dynamic linker will
+		# actually do the fixups at runtime for non-PIC code.
+		# (The code is mapped copy-on-write, and when the linker
+		# does the fixups, it gets copied.  Hence the lack of
+		# runtime sharing.)  We need to link with `gcc -G'
+		# rather than `gcc -shared', because `gcc -shared'
+		# reports an error if any runtime fixups would be needed.
+		#
+		# If you *do* use `-fpic', you must also use `-DPIC'.
+		#
+		# See runtime/goto.h for the code that handles PIC on SPARCs.
+		# Note that mixing PIC and non-PIC code is fine on SPARCs
+		# (though it doesn't work on x86s, due to the use of `ebx'
+		# in runtime/machdeps/i386_regs.h).
+
 		EXT_FOR_SHARED_LIB=so
 		;;
 	alpha-dec-osf*)
@@ -1082,6 +1110,10 @@ case "$host" in
 		fi
 		;;
 	*)
+		# CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
+		# libgc.a.  If the system doesn't support shared libraries,
+		# then we should set it to empty, not `-fpic'.
+		CFLAGS_FOR_PIC=
 		AC_MSG_RESULT(no)
 		;;
 esac

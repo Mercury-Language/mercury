@@ -67,6 +67,14 @@ DRAFT NEWS for Mercury release 0.7
   speed up code that does a lot of memory allocation by inlining the
   GC_malloc() function.  (This option is also enabled by `-O6'.)
 
+* We now support ELF shared libraries on Linux.
+
+  See README.Linux for details.
+
+  Note that using shared libraries is not yet the default,
+  so if you want to take advantage of this, you must explicitly
+  enable it as described in README.Linux.
+
 * We have fixed quite a few bugs.
 
   Mode inference now works a little bit better. 
