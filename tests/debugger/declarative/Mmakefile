@@ -24,6 +24,7 @@ DECLARATIVE_PROGS=		\
 	ho2			\
 	ho3			\
 	ho4			\
+	ho5			\
 	if_then_else		\
 	input_term_dep		\
 	ite_2			\
@@ -47,12 +48,7 @@ DECLARATIVE_PROGS=		\
 NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
 
-# XXX 'ho5' fails due to an attempt to compare higher order terms.  This
-# happens because thrown exceptions are stored in a set, which uses builtin
-# comparison, and exceptions are not necessarily first order terms.
-#
 NONWORKING_DECLARATIVE_PROGS=	\
-	ho5
 
 # Some of the test cases require a different input in debug grades,
 # so we set INP to the appropriate extension to use for those tests.
@@ -171,8 +167,12 @@ ho3.out: ho3 ho3.inp
 ho4.out: ho4 ho4.inp
 	$(MDB) ./ho4 < ho4.inp > ho4.out 2>&1
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 ho5.out: ho5 ho5.inp
-	$(MDB) ./ho5 < ho5.inp > ho5.out 2>&1
+	$(MDB) ./ho5 < ho5.inp 2>&1 | \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> ho5.out 2>&1
 
 if_then_else.out: if_then_else if_then_else.inp
 	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1

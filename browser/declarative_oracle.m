@@ -65,7 +65,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_user, mdb__tree234_cc, mdb__util.
+:- import_module mdb__declarative_user, mdb__tree234_cc, mdb__set_cc, mdb__util.
 :- import_module bool, std_util, set.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
@@ -179,8 +179,8 @@ set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 
 :- type known_exceptions
 	--->	known_excp(
-			set(univ),		% Possible exceptions.
-			set(univ)		% Impossible exceptions.
+			set_cc(univ),		% Possible exceptions.
+			set_cc(univ)		% Impossible exceptions.
 		).
 
 :- pred oracle_kb_init(oracle_kb).
@@ -280,16 +280,20 @@ query_oracle_kb(KB, Question, Result) :-
 		Result = no
 	;
 		MaybeX = yes(known_excp(Possible, Impossible)),
+		set_cc__member(Exception, Possible, PossibleBool),
 		(
-			set__member(Exception, Possible)
-		->
+			PossibleBool = yes,
 			Result = yes(truth_value(Node, yes))
 		;
-			set__member(Exception, Impossible)
-		->
-			Result = yes(truth_value(Node, no))
-		;
-			Result = no
+			PossibleBool = no,
+			set_cc__member(Exception, Impossible, ImpossibleBool),
+			(
+				ImpossibleBool = yes,
+				Result = yes(truth_value(Node, no))
+			;
+				ImpossibleBool = no,
+				Result = no
+			)
 		)
 	).
 
@@ -322,17 +326,17 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
 		MaybeX = yes(known_excp(Possible0, Impossible0))
 	;
 		MaybeX = no,
-		set__init(Possible0),
-		set__init(Impossible0)
+		set_cc__init(Possible0),
+		set_cc__init(Impossible0)
 	),
 	(
 		Truth = yes,
-		set__insert(Possible0, Exception, Possible),
+		set_cc__insert(Possible0, Exception, Possible),
 		Impossible = Impossible0
 	;
 		Truth = no,
 		Possible = Possible0,
-		set__insert(Impossible0, Exception, Impossible)
+		set_cc__insert(Impossible0, Exception, Impossible)
 	),
 	tree234_cc__set(Map0, Call, known_excp(Possible, Impossible), Map),
 	set_kb_exceptions_map(KB0, Map, KB).

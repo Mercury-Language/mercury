@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred ho5:p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred ho5:p/2-0 (det) ho5.m:18
+       3:      3  3 CALL pred ho5:p/2-0 (det) ho5.m:18 (exception.m:NNNN)
 mdb> finish
-       9:      2  2 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18
+      12:      3  3 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> dd
 Call p(1, _)
 Throws zero
@@ -21,15 +21,12 @@ Found unhandled exception:
 p(1, _)
 zero
 Is this a bug? yes
-       9:      2  2 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18
+      12:      3  3 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> continue
-mdb: warning: reached unknown label
-This may result in some exception events
-being omitted from the trace.
 exception(univ_cons('<<function>>'))
-      10:      5  2 CALL pred ho5:p/2-0 (det) ho5.m:18
+      19:     10  3 CALL pred ho5:p/2-0 (det) ho5.m:18 (exception.m:NNNN)
 mdb> finish
-      17:      5  2 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18
+      28:     10  3 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> dd
 Call p(2, _)
 Throws zero
@@ -40,9 +37,6 @@ Found unhandled exception:
 p(2, _)
 zero
 Is this a bug? yes
-      17:      5  2 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18
+      28:     10  3 EXCP pred ho5:p/2-0 (det) c2; ho5.m:18 (exception.m:NNNN)
 mdb> continue
-mdb: warning: reached unknown label
-This may result in some exception events
-being omitted from the trace.
 exception(univ_cons('<<function>>'))
