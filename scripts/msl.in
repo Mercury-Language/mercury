@@ -140,7 +140,7 @@ else
 	  garbage_collect,
 	  save('$target', 1),
 	  ( prolog_flag(argv, Args) -> true ; unix(argv(Args)) ),
-	  run([mc|Args])
+	  run([mmc|Args])
 	), print_message(error, Error)), halt ; halt.
 	e
 	e

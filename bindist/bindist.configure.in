@@ -154,7 +154,7 @@ AC_PROG_CC
 AC_SUBST(CC)
 #-----------------------------------------------------------------------------#
 
-AC_OUTPUT(Makefile scripts/mc scripts/mprof
+AC_OUTPUT(Makefile scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv

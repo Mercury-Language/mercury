@@ -22,7 +22,7 @@ VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
 DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
 
-MC		= mc
+MC		= mmc
 MCS		= $(MC) --split-c-files --compile-only
 MCG		= $(MC) --compile-to-c
 MCD		= $(MC) --generate-dependencies

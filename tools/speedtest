@@ -4,7 +4,7 @@
 
 usage="Usage: speedtest [-c cmd] [-nN] batchname"
 limit=4
-cmd="mc -C -O2 -I../compiler make_hlds.m"
+cmd="mmc -C -O2 -I../compiler make_hlds.m"
 
 while test $# -gt 0
 do

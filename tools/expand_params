@@ -13,7 +13,7 @@
 #	opt <integer>			meaning that optimization level
 #
 # Other arguments are also allowed; these are expected to be other arguments
-# to mc.
+# to mmc.
 
 usage="$0 [grade g] [args {s,c}] [typeinfo {1,2,s,d}] [opt N] mcflags ..."
 
@@ -83,7 +83,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-echo "MC = ../scripts/mc"
+echo "MC = ../scripts/mmc"
 echo "GRADE = $GRADE"
 echo "MCFLAGS = $MCFLAGS"
 echo "EXTRA_CFLAGS = $CFLAGS"

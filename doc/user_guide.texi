@@ -76,7 +76,7 @@ how to build and debug Mercury programs.
 @menu
 * Introduction::    General overview
 * Filenames::       File naming conventions
-* Using mc::        Compiling and linking programs with the Mercury compiler
+* Using mmc::        Compiling and linking programs with the Mercury compiler
 * Using Prolog::    Building and debugging Mercury programs with Prolog
 * Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
@@ -91,14 +91,14 @@ how to build and debug Mercury programs.
 @chapter Introduction
 
 This document describes the compilation environment of Mercury.
-It describes how to use @samp{mc}, the Mercury compiler;
+It describes how to use @samp{mmc}, the Mercury compiler;
 how to use @samp{mmake}, the ``Mercury make'' program,
 a tool built on top of ordinary or GNU make
 to simplify the handling of Mercury programs;
 and how to use Prolog to debug Mercury programs.
 
 We strongly recommend that programmers use @samp{mmake} rather
-than invoking @samp{mc} directly, because @samp{mmake} is generally
+than invoking @samp{mmc} directly, because @samp{mmake} is generally
 easier to use and avoids unnecessary recompilation.
 
 Since the Mercury implementation is essentially a native-code compiler
@@ -162,26 +162,27 @@ As usual, @file{.c} files are C source code,
 @file{.no} files are NU-Prolog object code, and
 @file{.ql} files are SICStus Prolog object code.
 
-@node Using mc
+@node Using mmc
 @chapter Using the Mercury compiler
 
 Following a long Unix tradition,
-the Mercury compiler is called @samp{mc}.
+the Mercury compiler is called @samp{mmc}
+(for ``Melbourne Mercury Compiler'').
 Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other Unix compilers.
 
-Arguments to @samp{mc} that name Mercury source files
+Arguments to @samp{mmc} that name Mercury source files
 may omit the @samp{.m} suffix.
 
 To compile a program which consists of just a single module,
 use the command
 
 @example
-mc @var{module}.m
+mmc @var{module}.m
 @end example
 
 Unlike traditional Unix compilers, however,
-@samp{mc} will put the executable into a file called @file{@var{module}},
+@samp{mmc} will put the executable into a file called @file{@var{module}},
 not @file{a.out}.
 
 For programs that consist of more than one module, we recommend
@@ -194,10 +195,10 @@ To compile a module to object code without creating an executable,
 use the command
 
 @example
-mc -c @var{module}.m
+mmc -c @var{module}.m
 @end example
 
-@samp{mc} will put the object code into a file called @file{@var{module}.o}.
+@samp{mmc} will put the object code into a file called @file{@var{module}.o}.
 It also will leave the intermediate C code in a file called
 @file{@var{module}.c}.
 
@@ -207,15 +208,15 @@ for the modules that it imports (directly or indirectly).
 You can create the interface files for one or more modules using the commands
 
 @example
-mc --make-short-int @var{module1}.m @var{module2}.m ...
-mc --make-int @var{module1}.m @var{module2}.m ...
+mmc --make-short-int @var{module1}.m @var{module2}.m ...
+mmc --make-int @var{module1}.m @var{module2}.m ...
 @end example
 
 If you are going to compile with @samp{--intermodule-optimization} enabled,
 then you also need to create the optimization interface files.
 
 @example
-mc --make-opt-int @var{module1}.m @var{module2}.m ...
+mmc --make-opt-int @var{module1}.m @var{module2}.m ...
 @end example
 
 Given that you have made all the interface files,
@@ -224,7 +225,7 @@ is to compile all the modules at the same time
 using the command
 
 @example
-mc @var{module1}.m @var{module2}.m ...
+mmc @var{module1}.m @var{module2}.m ...
 @end example
 
 This will by default put the resulting executable in @file{@var{module1}},
@@ -232,7 +233,7 @@ but you can use the @samp{-o @var{filename}} option to specify a different
 name for the output file, if you so desire.
 
 The other way to create an executable for a multi-module program
-is to compile each module separately using @samp{mc -c},
+is to compile each module separately using @samp{mmc -c},
 and then link the resulting object files together.
 The linking is a two stage process.
 
@@ -274,9 +275,9 @@ The above command puts the executable in the file @file{@var{main_module}}.
 The same command line without the @samp{-o} option
 would put the executable into the file @file{a.out}.
 
-@samp{mc} and @samp{ml} both accept a @samp{-v} (verbose) option.
+@samp{mmc} and @samp{ml} both accept a @samp{-v} (verbose) option.
 You can use that option to see what is actually going on.
-For the full set of options of @samp{mc}, see @ref{Invocation}.
+For the full set of options of @samp{mmc}, see @ref{Invocation}.
 
 Once you have created an executable for a Mercury program,
 you can go ahead and execute it.  You may however wish to specify
@@ -316,7 +317,7 @@ that can be detected statically by the Mercury compiler.
 The command
 
 @example
-mc -e @var{module1}.m ...
+mmc -e @var{module1}.m ...
 @end example
 
 causes the Mercury compiler
@@ -923,9 +924,9 @@ each call contributes equally to the total time of the current procedure.
 @chapter Invocation
 
 This section contains a brief description of all the options
-available for @samp{mc}, the Mercury compiler.
+available for @samp{mmc}, the Mercury compiler.
 Sometimes this list is a little out-of-date;
-use @samp{mc --help} to get the most up-to-date list.
+use @samp{mmc --help} to get the most up-to-date list.
 
 @menu
 * Invocation overview::
@@ -944,9 +945,9 @@ use @samp{mc --help} to get the most up-to-date list.
 @node Invocation overview
 @section Invocation overview
 
-@code{mc} is invoked as
+@code{mmc} is invoked as
 @example
-mc [@var{options}] @var{modules}
+mmc [@var{options}] @var{modules}
 @end example
 
 For module names, the trailing @file{.m} is optional.
@@ -2000,11 +2001,11 @@ it is possible to do so.  Here's what you need to do.
 You can do this either by setting the @samp{MERCURY_C_COMPILER}
 environment variable, by adding a line
 @samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
-or by using the @samp{--cc} option to @samp{mc}.
+or by using the @samp{--cc} option to @samp{mmc}.
 You may need to specify some option(s) to the C compiler
 to ensure that it uses an ANSI preprocessor (e.g. if you
 are using the DEC Alpha/OSF 3.2 C compiler, you would need to
-pass @samp{--cc="cc -std"} to @samp{mc} so that it will pass the
+pass @samp{--cc="cc -std"} to @samp{mmc} so that it will pass the
 @samp{-std} option to @samp{cc}).
 
 @item
@@ -2012,7 +2013,7 @@ You must use the grade @samp{none} or @samp{none.gc}.
 You can specify the grade in one of three ways: by setting the
 @samp{MERCURY_DEFAULT_GRADE} environment variable, by adding a line
 @samp{GRADE=@dots{}} to your @samp{Mmake} file, or by using the
-@samp{--grade} option to @samp{mc}.  (You will also need to install
+@samp{--grade} option to @samp{mmc}.  (You will also need to install
 those grades of the Mercury library, if you have not already done so.)
 
 @item

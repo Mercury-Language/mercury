@@ -148,7 +148,7 @@ cd mercury || { false; exit 1; }
 # if [ -s tools/list.$HOST ]; then
 # 	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 # else
-	echo "MC = ../scripts/mc" > Mmake.params
+	echo "MC = ../scripts/mmc" > Mmake.params
 	echo "EXTRA_MCFLAGS = $TEST_MCFLAGS" >> Mmake.params
 	echo "EXTRA_CFLAGS = $TEST_CFLAGS" >> Mmake.params
 # fi
