@@ -145,12 +145,6 @@
 #undef	MR_HAVE_SYS_STROPTS_H
 
 /*
-** MR_HAVE_DEV_PTMX is defined if /dev/ptmx (used to allocate
-** pseudo-terminals) exists.
-*/
-#undef MR_HAVE_DEV_PTMX
-
-/*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
 ** `struct tms' struct and times() function.
 */
@@ -182,22 +176,22 @@
 **	MR_HAVE_WAIT		we have the wait() function.
 **	MR_HAVE_KILL		we have the kill() function.
 ** 	MR_HAVE_GETHOSTNAME	we have the gethostname() function.
-**	MR_HAVE_SNPRINTF 		we have the snprintf() function.
-**	MR_HAVE_VSNPRINTF 		we have the vsnprintf() function.
+**	MR_HAVE_SNPRINTF 	we have the snprintf() function.
+**	MR_HAVE_VSNPRINTF 	we have the vsnprintf() function.
 **	MR_HAVE__VSNPRINTF 	we have the _vsnprintf() function.
 **	MR_HAVE_SYSCONF     	we have the sysconf() system call.
-**	MR_HAVE_SIGACTION		we have the sigaction() system call.
+**	MR_HAVE_SIGACTION	we have the sigaction() system call.
 **	MR_HAVE_GETPAGESIZE 	we have the getpagesize() system call.
 **	MR_HAVE_MPROTECT    	we have the mprotect() system call.
 **	MR_HAVE_MEMALIGN    	we have the memalign() function.
 **	MR_HAVE_STRERROR    	we have the strerror() function.
 **	MR_HAVE_SIGINTERRUPT	we have the siginterrupt() function.
 **	MR_HAVE_SETITIMER   	we have the setitimer() function.
-**	MR_HAVE_MEMMOVE   		we have the memmove() function.
-**	MR_HAVE_DLOPEN   		we have the dlopen() function.
-**	MR_HAVE_DLCLOSE   		we have the dlclose() function.
-**	MR_HAVE_DLSYM   		we have the dlsym() function.
-**	MR_HAVE_DLERROR   		we have the dlerror() function.
+**	MR_HAVE_MEMMOVE   	we have the memmove() function.
+**	MR_HAVE_DLOPEN   	we have the dlopen() function.
+**	MR_HAVE_DLCLOSE   	we have the dlclose() function.
+**	MR_HAVE_DLSYM   	we have the dlsym() function.
+**	MR_HAVE_DLERROR   	we have the dlerror() function.
 **	MR_HAVE_STAT 		we have the stat() function.
 **	MR_HAVE_FSTAT 		we have the fstat() function.
 **	MR_HAVE_FDOPEN 		we have the fdopen() function.
@@ -211,11 +205,12 @@
 **				#if defined(fileno) || defined(MR_HAVE_FILENO)
 **	MR_HAVE_ISATTY 		we have the isatty() function.
 **	MR_HAVE_GRANTPT		we have the grantpt() function.
-**	MR_HAVE_UNLOCKPT		we have the unlockpt() function.
+**	MR_HAVE_UNLOCKPT	we have the unlockpt() function.
 **	MR_HAVE_PTSNAME		we have the ptsname() function.
-**	MR_HAVE_TCGETATTR		we have the tcgetattr() function.
-**	MR_HAVE_TCSETATTR		we have the tcsetattr() function.
+**	MR_HAVE_TCGETATTR	we have the tcgetattr() function.
+**	MR_HAVE_TCSETATTR	we have the tcsetattr() function.
 **	MR_HAVE_IOCTL		we have the ioctl() function.
+**	MR_HAVE_ACCESS		we have the access() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -255,6 +250,7 @@
 #undef	MR_HAVE_TCGETATTR
 #undef	MR_HAVE_TCSETATTR
 #undef	MR_HAVE_IOCTL
+#undef	MR_HAVE_ACCESS
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

@@ -470,7 +470,8 @@ mercury_check_for_functions \
 		snprintf vsnprintf _vsnprintf strerror \
 		open close dup dup2 fdopen fileno fstat stat isatty \
 		getpid setpgid fork execlp wait kill \
-		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl
+		grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
+		access
 
 #-----------------------------------------------------------------------------#
 # This is also used by MERCURY_CHECK_READLINE in aclocal.m4.
@@ -495,8 +496,6 @@ mercury_check_for_headers \
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
 	mercury_check_for_headers sys/ucontext.h
 fi
-#-----------------------------------------------------------------------------#
-AC_CHECK_FILE(/dev/ptmx, AC_DEFINE(MR_HAVE_DEV_PTMX))
 #-----------------------------------------------------------------------------#
 #
 # check the basics of sigaction

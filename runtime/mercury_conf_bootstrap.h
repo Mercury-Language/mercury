@@ -287,9 +287,6 @@
 #ifdef MR_PC_ACCESS
   #define PC_ACCESS MR_PC_ACCESS
 #endif
-#ifdef MR_HAVE_DEV_PTMX
-  #define HAVE_DEV_PTMX 1
-#endif
 
 #endif /* !MR_NO_CONF_BACKWARDS_COMPAT && !MR_NO_BACKWARDS_COMPAT */
 

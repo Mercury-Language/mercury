@@ -724,9 +724,9 @@ MR_trace_internal_create_mdb_window(void)
 #if defined(MR_HAVE_OPEN) && defined(O_RDWR) && defined(MR_HAVE_FDOPEN) && \
 	defined(MR_HAVE_CLOSE) && defined(MR_HAVE_DUP) && \
 	defined(MR_HAVE_DUP2) && defined(MR_HAVE_FORK) && \
-	defined(MR_HAVE_EXECLP) && defined(MR_HAVE_DEV_PTMX) && \
+	defined(MR_HAVE_EXECLP) && \
 	defined(MR_HAVE_GRANTPT) && defined(MR_HAVE_UNLOCKPT) && \
-	defined(MR_HAVE_PTSNAME)
+	defined(MR_HAVE_PTSNAME) && defined(MR_HAVE_ACCESS) && defined(F_OK)
 
 	int master_fd = -1;
 	int slave_fd = -1;
@@ -736,13 +736,26 @@ MR_trace_internal_create_mdb_window(void)
 		defined(MR_HAVE_TCSETATTR) && defined(ECHO) && defined(TCSADRAIN)
 	struct termios termio;
 #endif
+
+	/*
+	** first check whether /dev/ptmx even exists, so that we can give
+	** a slightly better error message if it doesn't.
+	*/
+	if (access("/dev/ptmx", F_OK) != 0) {
+		MR_mdb_perror("can't access /dev/ptmx");
+		MR_mdb_warning(
+		    "Sorry, `mdb --window' not supported on this platform.\n");
+		return MR_FALSE;
+	}
+
+	/* OK, /dev/ptmx exists; now go ahead and open it. */
 	master_fd = open("/dev/ptmx", O_RDWR);
 	if (master_fd == -1 || grantpt(master_fd) == -1
 			|| unlockpt(master_fd) == -1)
 	{
-		close(master_fd);
 		MR_mdb_perror(
 		    "error opening master pseudo-terminal for mdb window");
+		close(master_fd);
 		return MR_FALSE;
 	}
 	if ((slave_name = ptsname(master_fd)) == NULL) {
