@@ -119,7 +119,9 @@ case "$C_COMPILER" in
 esac
 
 mv -f $tm_dir/logs/old/$logname $tm_dir/logs/old2 2>/dev/null
+mv -f $tm_dir/logs/old/$logname.errs $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/$logname $tm_dir/logs/old 2>/dev/null
+mv -f $tm_dir/logs/$logname.errs $tm_dir/logs/old 2>/dev/null
 logfile="$tm_dir/logs/$logname"
 
 tmpfile=/tmp/run_test$$
@@ -130,7 +132,14 @@ echo
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
 		> $logfile 2>&1
 then
-	echo test passed
+	fgrep '**' $logfile > $logfile.errs
+	if [ -s $logfile.errs ]; then
+		echo "test passed (with some errors supressed/ignored)"
+		echo "log file summary in $logfile.errs"
+	else
+		rm -f $logfile.errs
+		echo "test passed"
+	fi
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
@@ -149,8 +158,10 @@ then
 		echo
 	} >> $tm_dir/logs/sizes
 else
+	fgrep '**' $logfile > $logfile.errs
 	echo test FAILED
 	echo log file in $logfile
+	echo log file summary in $logfile.errs
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
