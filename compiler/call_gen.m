@@ -113,14 +113,8 @@ call_gen__save_variables(Code) -->
 
 call_gen__save_variables_2([], empty) --> [].
 call_gen__save_variables_2([Var|Vars], Code) -->
-        (
-                code_info__variable_is_live(Var)
-        ->
-                code_info__save_variable_on_stack(Var, Code0),
-                { CodeA = node(Code0) }
-        ;
-                { CodeA = empty }
-        ),
+	code_info__save_variable_on_stack(Var, Code0),
+	{ CodeA = node(Code0) },
         call_gen__save_variables_2(Vars, CodeB),
         { Code = tree(CodeA, CodeB) }.
 

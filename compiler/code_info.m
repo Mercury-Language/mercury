@@ -30,7 +30,7 @@
 :- interface.
 
 :- import_module hlds, llds.
-:- import_module code_util, tree.
+:- import_module code_util, tree, set.
 
 :- type code_info.
 
@@ -436,7 +436,7 @@ code_info__flush_variable(Var, Code) -->
 	(
 		{ VarStat = cashed(Exprn, Target) }
 	->
-		code_info__target_to_lvalue(Target, TargetReg),
+		code_info__target_to_lvalue(Target, Exprn, TargetReg),
 			% Generate code to evaluate the expression.
 		code_info__generate_expression(Exprn, TargetReg, Code),
 			% Mark the register as taken, so that
@@ -595,7 +595,7 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 	;
 		{ VarStat = cashed(Exprn, Target) }
 	->
-		code_info__target_to_lvalue(Target, TargetReg),
+		code_info__target_to_lvalue(Target, Exprn, TargetReg),
 		code_info__generate_expression(Exprn, TargetReg, Code),
 		{ Result = lval(TargetReg) }
 	;
@@ -634,14 +634,40 @@ code_info__generate_expression_vars_2([R0|Rs0], [R|Rs], Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__target_to_lvalue(target_register, lval, code_info,
+:- pred code_info__target_to_lvalue(target_register, rval, lval, code_info,
 								code_info).
-:- mode code_info__target_to_lvalue(in, out, in, out) is det.
+:- mode code_info__target_to_lvalue(in, in, out, in, out) is det.
 
-code_info__target_to_lvalue(target(Lvalue), Lvalue) --> [].
-code_info__target_to_lvalue(none, Lvalue) -->
-	code_info__get_free_register(Reg),
-	{ Lvalue = reg(Reg) }.
+code_info__target_to_lvalue(target(Lvalue), _Exprn, Lvalue) --> [].
+code_info__target_to_lvalue(none, Exprn, Lvalue) -->
+	(
+		code_info__evaluated_expression(Exprn, Lval0)
+	->
+		{ Lvalue = Lval0 }
+	;
+		code_info__get_free_register(Reg),
+		{ Lvalue = reg(Reg) }
+	).
+
+:- pred code_info__evaluated_expression(rval, lval, code_info, code_info).
+:- mode code_info__evaluated_expression(in, out, in, out) is semidet.
+
+
+code_info__evaluated_expression(lval(Lval), Lval) --> [].
+code_info__evaluated_expression(var(Var), Lval) -->
+	code_info__get_variables(Variables),
+	{ map__lookup(Variables, Var, VarStat) },
+	(
+		{ VarStat = evaluated(Lval0) }
+	->
+		{ Lval = Lval0 }
+	;
+		{ VarStat = cashed(Exprn,_) }
+	->
+		code_info__evaluated_expression(Exprn, Lval)
+	;
+		{ fail }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -740,7 +766,7 @@ code_info__save_variable_on_stack(Var, Code) -->
 	;
 		{ VarStat = cashed(Exprn, Target) }
 	->
-		code_info__target_to_lvalue(Target, TargetReg1),
+		code_info__target_to_lvalue(Target, Exprn, TargetReg1),
 		code_info__generate_expression(Exprn, TargetReg1, Code0),
 		code_info__get_variables(Variables1),
 		{ map__set(Variables1, Var, evaluated(TargetReg1),
@@ -889,9 +915,9 @@ code_info__cons_id_to_abstag(_ConsId, AbsTag) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__variable_is_live(Var) --> [].
-%	code_info__get_liveness_info(Liveness),
-%	{ map__search(Liveness, Var, live) }.
+code_info__variable_is_live(Var) -->
+	code_info__get_liveness_info(Liveness),
+	{ set__member(Var, Liveness) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1020,26 +1046,11 @@ code_info__remake_code_info_2([V - S|VSs], Variables0, Variables) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__update_liveness_info(Delta0) -->
-	{ map__to_assoc_list(Delta0, Delta) },
+code_info__update_liveness_info(Births - Deaths) -->
 	code_info__get_liveness_info(Liveness0),
-	{ code_info__update_liveness_2(Delta, Liveness0, Liveness) },
+	{ set__difference(Liveness0, Deaths, Liveness1) },
+	{ set__union(Liveness1, Births, Liveness) },
 	code_info__set_liveness_info(Liveness).
-
-:- pred code_info__update_liveness_2(assoc_list(var, delta_life),
-						liveness_info, liveness_info).
-:- mode code_info__update_liveness_2(in, in, out) is det.
-
-code_info__update_liveness_2([], Liveness, Liveness).
-code_info__update_liveness_2([Var - DL|VDLs], Liveness0, Liveness) :-
-	(
-		DL = birth
-	->
-		map__insert(Liveness0, Var, live, Liveness1)
-	;
-		map__delete(Liveness0, Var, Liveness1)
-	),
-	code_info__update_liveness_2(VDLs, Liveness1, Liveness).
 
 %---------------------------------------------------------------------------%
 

@@ -16,12 +16,12 @@
 
 :- type globals.
 
-:- pred globals__init(option_table::in, globals::out).
+:- pred globals__init(option_table::in, globals::out) is det.
 
-:- pred globals__get_options(globals::in, option_table::out).
+:- pred globals__get_options(globals::in, option_table::out) is det.
 
 :- pred globals__lookup_option(option::in, option_data::out,
-			io__state::di, io__state::uo).
+			io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 

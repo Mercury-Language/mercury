@@ -17,69 +17,69 @@
 :- import_module char.
 
 :- pred string__length(string, int).
-:- mode string__length(in, out).
+:- mode string__length(in, out) is det.
 
 :- pred string__append(string, string, string).
-:- mode string__append(in, in, out).
-:- mode string__append(out, out, in).
+:- mode string__append(in, in, out) is det.
+:- mode string__append(out, out, in) is nondet.
 	% append two strings together
 
 :- pred string__prefix(string, string).
-:- mode string__prefix(in, in).
-:- mode string__prefix(in, out).
+:- mode string__prefix(in, in) is semidet.
+:- mode string__prefix(in, out) is nondet.
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String
 
 :- pred string__char_to_string(character, string).
-:- mode string__char_to_string(in, out).
-:- mode string__char_to_string(out, in).
+:- mode string__char_to_string(in, out) is det.
+:- mode string__char_to_string(out, in) is det.
 %	string__char_to_string(Char, String).
 %		Converts a character (single-character atom) to a string
 %		or vice versa.
 
 :- pred string__int_to_string(int, string).
-:- mode string__int_to_string(in, out).
+:- mode string__int_to_string(in, out) is det.
 %	Convert an integer to a string.
 
 :- pred string__int_to_base_string(int, int, string).
-:- mode string__int_to_base_string(in, in, out).
+:- mode string__int_to_base_string(in, in, out) is det.
 %	string__int_to_base_string(Int, Base, String):
 %	Convert an integer to a string in a given Base (between 2 and 36).
 
 :- pred string__first_char(string, character, string).
-:- mode string__first_char(in, out, out).
-:- mode string__first_char(out, in, in).
+:- mode string__first_char(in, out, out) is semidet.
+:- mode string__first_char(out, in, in) is det.
 %	string__first_char(String, Char, Rest) is true iff
 %		Char is the first character of String, and Rest is the
 %		remainder.
 
 :- pred string__capitalize_first(string, string).
-:- mode string__capitalize_first(in, out).
+:- mode string__capitalize_first(in, out) is det.
 %	Convert the first character (if any) of a string to uppercase.
 
 :- pred string__uncapitalize_first(string, string).
-:- mode string__uncapitalize_first(in, out).
+:- mode string__uncapitalize_first(in, out) is det.
 %	Convert the first character (if any) of a string to lowercase.
 
 :- pred string__to_char_list(string, list(character)).
-:- mode string__to_char_list(in, out).
-:- mode string__to_char_list(out, in).
+:- mode string__to_char_list(in, out) is det.
+:- mode string__to_char_list(out, in) is det.
 
 :- pred string__to_int(string, int).
-:- mode string__to_int(in, out).
+:- mode string__to_int(in, out) is semidet.
 %	Convert a string (of digits) to an int. If the string contains
 %	non-digit characters, string__to_int fails.
 
 :- pred string__is_alpha(string).
-:- mode string__is_alpha(in).
+:- mode string__is_alpha(in) is semidet.
 	% True if string contains only alphabetic characters (letters).
 
 :- pred string__is_alpha_or_underscore(string).
-:- mode string__is_alpha_or_underscore(in).
+:- mode string__is_alpha_or_underscore(in) is semidet.
 	% True if string contains only alphabetic characters and underscores.
 
 :- pred string__is_alnum_or_underscore(string).
-:- mode string__is_alnum_or_underscore(in).
+:- mode string__is_alnum_or_underscore(in) is semidet.
 	% True if string contains only letters, digits, and underscores.
 
 :- pred string__pad_left(string, character, int, string).
