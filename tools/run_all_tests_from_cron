@@ -30,7 +30,7 @@ case $HOST in
 	kryten) 	ARCH=sparc	FULLARCH=sparc-sun-solaris2.5 ;;
 	murlibobo) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
 	mundook) 	ARCH=alpha	FULLARCH=alpha-dec-osf3.2 ;;
-	mercury) 	ARCH=i586	FULLARCH=i586-unknown-linux ;;
+	mercury) 	ARCH=i586	FULLARCH=i586-pc-linux-gnu ;;
 	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
 esac
 
