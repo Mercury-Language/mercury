@@ -755,7 +755,7 @@ opt_level(3, _, [
 	optimize_dead_procs	-	bool(yes),
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
-	optimize_higher_order	-	bool(yes),
+	optimize_higher_order	-	bool(no),	% it loops on prog_io
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1)
 ]).

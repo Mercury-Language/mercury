@@ -22,7 +22,7 @@
 
 :- implementation.
 
-:- import_module prog_io, hlds_pred, hlds_goal, globals, options.
+:- import_module hlds_pred, hlds_goal, globals, options.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
 :- import_module passes_aux, code_aux.
 

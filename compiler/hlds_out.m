@@ -1297,49 +1297,49 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 		io__write_string(".\n")
 	).
 
-:- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
-:- mode hlds_out__write_varnames(in, in, di, uo) is det.
-
-hlds_out__write_varnames(Indent, VarNames) -->
-	{ map__to_assoc_list(VarNames, VarNameList) },
-	(
-		{ VarNameList = [] }
-	->
-		hlds_out__write_indent(Indent),
-		io__write_string("[]\n")
-	;
-		hlds_out__write_indent(Indent),
-		io__write_string("[\n"),
-		{Indent1 is Indent + 1},
-		hlds_out__write_varnames_2(Indent1, VarNameList),
-		hlds_out__write_indent(Indent),
-		io__write_string("]\n")
-	).
-
-:- pred hlds_out__write_varnames_2(int, list(pair(var, string)),
-							io__state, io__state).
-:- mode hlds_out__write_varnames_2(in, in, di, uo) is det.
-
-hlds_out__write_varnames_2(Indent, VarNameList0) -->
-	(
-		{ VarNameList0 = [VarId - Name|VarNameList] }
-	->
-		{ Indent1 is Indent + 1 },
-		hlds_out__write_indent(Indent1),
-		{ term__var_to_int(VarId, VarNum) },
-		io__write_int(VarNum),
-		io__write_string(" - "),
-		io__write_string(Name),
-		io__write_string("\n"),
-		( { VarNameList = [] } ->
-			[]
-		;
-			io__write_string(",\n"),
-			hlds_out__write_varnames_2(Indent, VarNameList)
-		)
-	;
-		{ error("This cannot happen") }
-	).
+% :- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
+% :- mode hlds_out__write_varnames(in, in, di, uo) is det.
+% 
+% hlds_out__write_varnames(Indent, VarNames) -->
+% 	{ map__to_assoc_list(VarNames, VarNameList) },
+% 	(
+% 		{ VarNameList = [] }
+% 	->
+% 		hlds_out__write_indent(Indent),
+% 		io__write_string("[]\n")
+% 	;
+% 		hlds_out__write_indent(Indent),
+% 		io__write_string("[\n"),
+% 		{Indent1 is Indent + 1},
+% 		hlds_out__write_varnames_2(Indent1, VarNameList),
+% 		hlds_out__write_indent(Indent),
+% 		io__write_string("]\n")
+% 	).
+% 
+% :- pred hlds_out__write_varnames_2(int, list(pair(var, string)),
+% 							io__state, io__state).
+% :- mode hlds_out__write_varnames_2(in, in, di, uo) is det.
+% 
+% hlds_out__write_varnames_2(Indent, VarNameList0) -->
+% 	(
+% 		{ VarNameList0 = [VarId - Name|VarNameList] }
+% 	->
+% 		{ Indent1 is Indent + 1 },
+% 		hlds_out__write_indent(Indent1),
+% 		{ term__var_to_int(VarId, VarNum) },
+% 		io__write_int(VarNum),
+% 		io__write_string(" - "),
+% 		io__write_string(Name),
+% 		io__write_string("\n"),
+% 		( { VarNameList = [] } ->
+% 			[]
+% 		;
+% 			io__write_string(",\n"),
+% 			hlds_out__write_varnames_2(Indent, VarNameList)
+% 		)
+% 	;
+% 		{ error("This cannot happen") }
+% 	).
 
 :- pred hlds_out__write_vartypes(int, map(var, type), io__state, io__state).
 :- mode hlds_out__write_vartypes(in, in, di, uo) is det.

@@ -383,33 +383,39 @@ goal_size(GoalExpr - _, Size) :-
 :- mode goals_size(in, out) is det.
 
 goals_size([], 0).
-goals_size([Goal | Goals], Size1 + Size2) :-
+goals_size([Goal | Goals], Size) :-
 	goal_size(Goal, Size1),
-	goals_size(Goals, Size2).
+	goals_size(Goals, Size2),
+	Size is Size1 + Size2.
 
 :- pred cases_size(list(case), int).
 :- mode cases_size(in, out) is det.
 
 cases_size([], 0).
-cases_size([case(_, Goal) | Cases], Size1 + Size2) :-
+cases_size([case(_, Goal) | Cases], Size) :-
 	goal_size(Goal, Size1),
-	cases_size(Cases, Size2).
+	cases_size(Cases, Size2),
+	Size is Size1 + Size2.
 
 goal_expr_size(conj(Goals), Size) :-
 	goals_size(Goals, Size).
-goal_expr_size(disj(Goals, _), Size + 1) :-
-	goals_size(Goals, Size).
-goal_expr_size(switch(_, _, Goals, _), Size + 1) :-
-	cases_size(Goals, Size).
+goal_expr_size(disj(Goals, _), Size) :-
+	goals_size(Goals, Size1),
+	Size is Size1 + 1.
+goal_expr_size(switch(_, _, Goals, _), Size) :-
+	cases_size(Goals, Size1),
+	Size is Size1 + 1.
 goal_expr_size(if_then_else(_, Cond, Then, Else, _), Size) :-
 	goal_size(Cond, Size1),
 	goal_size(Then, Size2),
 	goal_size(Else, Size3),
 	Size is Size1 + Size2 + Size3 + 1.
-goal_expr_size(not(Goal), Size + 1) :-
-	goal_size(Goal, Size).
-goal_expr_size(some(_, Goal), Size + 1) :-
-	goal_size(Goal, Size).
+goal_expr_size(not(Goal), Size) :-
+	goal_size(Goal, Size1),
+	Size is Size1 + 1.
+goal_expr_size(some(_, Goal), Size) :-
+	goal_size(Goal, Size1),
+	Size is Size1 + 1.
 goal_expr_size(call(_, _, _, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _), 1).
