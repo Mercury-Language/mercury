@@ -35,6 +35,11 @@
   #include <sys/siginfo.h>
 #endif 
 
+#ifdef HAVE_SYS_SIGNAL
+  /* on FREEBSD we need to include <sys/signal.h> before <ucontext.h> */
+  #include <sys/signal.h>
+#endif
+
 #ifdef	HAVE_MPROTECT
   #include <sys/mman.h>
 #endif

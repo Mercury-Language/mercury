@@ -59,6 +59,11 @@
   #include <sys/siginfo.h>
 #endif 
 
+#ifdef HAVE_SYS_SIGNAL
+  /* on FREEBSD we need to include <sys/signal.h> before <ucontext.h> */
+  #include <sys/signal.h>
+#endif
+
 #ifdef	HAVE_MPROTECT
   #include <sys/mman.h>
 #endif
@@ -425,17 +430,47 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
 		fprintf(stderr, "cause: ");
 		switch (info->si_code)
 		{
+#ifdef BUS_ADRALN
 		case BUS_ADRALN:
 			fprintf(stderr, "invalid address alignment\n");
 			break;
+#endif
 
+#ifdef BUS_ADRERR
 		case BUS_ADRERR:
 			fprintf(stderr, "non-existent physical address\n");
 			break;
+#endif
 
+#ifdef BUS_OBJERR
 		case BUS_OBJERR:
 			fprintf(stderr, "object specific hardware error\n");
 			break;
+#endif
+
+#ifdef BUS_PAGE_FAULT
+		case BUS_PAGE_FAULT:
+			fprintf(stderr, "page fault protection base\n");
+			break;
+#endif
+
+#ifdef BUS_SEGNP_FAULT
+		case BUS_SEGNP_FAULT:
+			fprintf(stderr, "segment not present\n");
+			break;
+#endif
+
+#ifdef BUS_STK_FAULT
+		case BUS_STK_FAULT:
+			fprintf(stderr, "stack segment\n");
+			break;
+#endif
+
+#ifdef BUS_SEGM_FAULT
+		case BUS_SEGM_FAULT:
+			fprintf(stderr, "segment protection base\n");
+			break;
+#endif
 
 		default:
 			fprintf(stderr, "unknown\n");
@@ -471,13 +506,17 @@ explain_segv(siginfo_t *info, void *context)
 		fprintf(stderr, "cause: ");
 		switch (info->si_code)
 		{
+#ifdef SEGV_MAPERR
 		case SEGV_MAPERR:
 			fprintf(stderr, "address not mapped to object\n");
 			break;
+#endif
 
+#ifdef SEGV_ACCERR
 		case SEGV_ACCERR:
 			fprintf(stderr, "bad permissions for mapped object\n");
 			break;
+#endif
 
 		default:
 			fprintf(stderr, "unknown\n");

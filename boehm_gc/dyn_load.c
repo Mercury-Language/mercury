@@ -50,7 +50,7 @@
 #if !defined(SUNOS4) && !defined(SUNOS5DL) && !defined(IRIX5) && \
     !defined(MSWIN32) && !(defined(ALPHA) && defined(OSF1)) && \
     !defined(HPUX) && !(defined(LINUX) && defined(__ELF__)) && \
-    !defined(RS6000) && !defined(SCO_ELF)
+    !defined(RS6000) && !defined(SCO_ELF) && !defined(FREEBSD)
  --> We only know how to find data segments of dynamic libraries for the
  --> above.  Additional SVR4 variants might not be too
  --> hard to add.
@@ -297,7 +297,7 @@ void GC_register_dynamic_libraries()
 # endif /* !USE_PROC ... */
 # endif /* SUNOS */
 
-#if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF)
+#if defined(LINUX) && defined(__ELF__) || defined(SCO_ELF) || defined(FREEBSD)
 
 /* Dynamic loading code for Linux running ELF. Somewhat tested on
  * Linux/x86, untested but hopefully should work on Linux/Alpha. 

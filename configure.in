@@ -474,6 +474,11 @@ if test "$HAVE_SYS_SIGINFO_H" = 1; then
 	AC_DEFINE(HAVE_SYS_SIGINFO)
 fi
 #-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/signal.h, HAVE_SYS_SIGNAL_H=1)
+if test "$HAVE_SYS_SIGNAL_H" = 1; then
+	AC_DEFINE(HAVE_SYS_SIGNAL)
+fi
+#-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(ucontext.h, HAVE_UCONTEXT_H=1)
 if test "$HAVE_UCONTEXT_H" = 1; then
 	AC_DEFINE(HAVE_UCONTEXT)
@@ -749,6 +754,9 @@ else
 	#ifdef HAVE_SYS_SIGINFO
 	#include <sys/siginfo.h>
 	#endif
+	#ifdef HAVE_SYS_SIGNAL
+	#include <sys/signal.h>
+	#endif
 	#ifdef HAVE_UCONTEXT
 	#include <ucontext.h>
 	#endif
@@ -775,20 +783,6 @@ else
 	}
 	void handler(int signum, siginfo_t *info, void *context) {
 		save_signum = signum;
-		switch (info->si_code) {
-		case SEGV_MAPERR:	save_cause = info->si_code;
-					break;
-		case SEGV_ACCERR:	save_cause = info->si_code;
-					break;
-		}
-		switch (info->si_code) {
-		case BUS_ADRALN:	save_cause = info->si_code;
-					break;
-		case BUS_ADRERR:	save_cause = info->si_code;
-					break;
-		case BUS_OBJERR:	save_cause = info->si_code;
-					break;
-		}
 		save_cause = info->si_code;
 	}], [mercury_cv_siginfo_t=yes], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_siginfo_t)
