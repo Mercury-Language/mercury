@@ -20,39 +20,41 @@ MLFLAGS = --static
 MAIN_TARGET = all
 
 .PHONY: all
-all:	$(PROG).$(ENABLE).$(ONR).$(ANR)
+all:	$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
 
 .PHONY: depend
 depend: $(PROG).depend
 
-$(PROG).$(ENABLE).$(ONR).$(ANR): $(PROG)
-	cp $(PROG) $(PROG).$(ENABLE).$(ONR).$(ANR)
+$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR): $(PROG)
+	cp $(PROG) $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+	mkdir -p cfiles.$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
+	cp *.c cfiles.$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
 
 .PHONY: times
-times:	$(PROG).$(ENABLE).$(ONR).$(ANR)
+times:	$(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR)
 	( \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	echo -n "$(NAME).$(ENABLE).$(ONR).$(ANR) " ; \
-	../dotime $(PROG).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
-	true ) > TIMES.$(ENABLE).$(ONR).$(ANR) 2>&1
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	echo -n "$(NAME).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) " ; \
+	../dotime $(PROG).$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) $(ARGS) ; \
+	true ) > TIMES.$(OPTLEVEL).$(ENABLE).$(ONR).$(ANR) 2>&1

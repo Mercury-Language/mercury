@@ -6,20 +6,23 @@ export PATH
 set -x
 for dir in compress icfp2000 icfp2001 nuc
 do
-	while read enable onr anr
+	for optlevel in O2 O5
 	do
-		cd $dir
+		while read enable onr anr
+		do
+			cd $dir
 
-		echo "GRADE = asm_fast.gc" > Mmakefile.grade
-		echo "OPTLEVEL = O5" > Mmakefile.optlevel
-		echo "ENABLE = $enable" > Mmakefile.flags
-		echo "ONR = $onr" >> Mmakefile.flags
-		echo "ANR = $anr" >> Mmakefile.flags
-		mmake realclean
-		mmake depend
-		mmake
-		mmake times
+			echo "GRADE = asm_fast.gc" > Mmakefile.grade
+			echo "OPTLEVEL = $optlevel" > Mmakefile.optlevel
+			echo "ENABLE = $enable" > Mmakefile.flags
+			echo "ONR = $onr" >> Mmakefile.flags
+			echo "ANR = $anr" >> Mmakefile.flags
+			mmake realclean
+			mmake depend
+			mmake
+			mmake times
 
-		cd ..
-	done < FLAGS.stackopt
+			cd ..
+		done < FLAGS.stackopt
+	done
 done
