@@ -59,7 +59,7 @@
 % Out main predicate, it just collects and outputs the garbage.
 % Note, we don't yet get the exported abstract type table.
 %-----------------------------------------------------------------------------%
-garbage_out__do_garbage_out(ShapeInfo, c_file(Name, Modules)) -->
+garbage_out__do_garbage_out(ShapeInfo, c_file(Name, _C_Header, Modules)) -->
 	{ ShapeInfo = shape_info(ShapeTable, Abs_Exports) },
 	{ string__append(Name, ".garb", FileName) },
 	io__tell(FileName, Result),

@@ -128,6 +128,10 @@ add_item_decl(mode(VarSet, PredName, Modes, MaybeDet, Cond), Context, Status,
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
 		Context, Module).
 
+add_item_decl(pragma_verbatim(C_Header), Context, Status, Module0, Status,
+		Module) -->
+	{ module_add_c_header(C_Header, Context, Module0, Module) }.
+
 add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 		Status, Module) -->
 	( { ModuleDefn = interface } ->
@@ -197,6 +201,8 @@ add_item_type_defn(pred(_, _, _, _, _), _, Status, Module, Status, Module) -->
 	[].
 add_item_type_defn(mode(_, _, _, _, _), _, Status, Module, Status, Module) -->
 	[].
+add_item_type_defn(pragma_verbatim(_), _, Status, Module, Status, Module) -->
+	[].
 add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -217,6 +223,7 @@ add_item_clause(mode_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(pred(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(mode(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
+add_item_clause(pragma_verbatim(_), _, Module, Module) --> [].
 add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -830,6 +837,21 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 	} ),
 		% Warn about singleton variables in the clauses.
 	maybe_warn_singletons(VarSet, PredName/Arity, Args, Body, Context).
+
+%-----------------------------------------------------------------------------%
+
+:- pred module_add_c_header(string, term__context, module_info, module_info).
+	
+:- mode module_add_c_header(in, in, in, out) is det.
+
+module_add_c_header(C_Header, Context, Module0, Module) :-
+	module_info_get_c_header(Module0, C_HeaderIndex0),
+	list__append(C_HeaderIndex0, [C_Header - Context], C_HeaderIndex1),
+	module_info_set_c_header(Module0, C_HeaderIndex1, Module).
+	
+
+
+
 
 %-----------------------------------------------------------------------------%
 

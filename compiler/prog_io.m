@@ -97,6 +97,8 @@
 					maybe(determinism), condition)
 				%       VarNames, PredName, ArgModes,
 				%	Deterministicness, Cond
+			;	pragma_verbatim(c_header_code)
+				% added by dgj - 1/7/95
 			;	nothing.
 				% used for items that should be ignored
 				% (currently only NU-Prolog `when' declarations,
@@ -112,6 +114,8 @@
 			;	multidet
 			;	erroneous
 			;	failure.
+
+:- type c_header_code == string.
 
 %-----------------------------------------------------------------------------%
 
@@ -1334,6 +1338,9 @@ process_decl(VarSet, "end_module", [ModuleName], Result) :-
 	% backwards compatibility.
 process_decl(_VarSet, "when", [_Goal, _Cond], Result) :-
 	Result = ok(nothing).
+
+process_decl(_VarSet,"pragma", [HeaderTerm], ok(pragma_verbatim(HeaderCode))) :-
+	HeaderTerm = term__functor(term__string(HeaderCode), [], _Context).
 
 :- pred parse_type_decl(varset, term, maybe1(item)).
 :- mode parse_type_decl(in, in, out) is det.

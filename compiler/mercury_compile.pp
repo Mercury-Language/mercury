@@ -1908,10 +1908,13 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName) -->
 	io__state, io__state).
 :- mode mercury_compile__chunk_llds(in, di, uo, di, uo) is det.
 
-mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, ModuleList)) -->
+mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
+		ModuleList)) -->
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
+	{ module_info_get_c_header(HLDS, C_Header0) },
+	{ get_c_header_code(C_Header0, C_HeaderCode) },
 	( { ProcsPerFunc = 0 } ->
 		% ProcsPerFunc = 0 really means infinity -
 		% we store all the procs in a single function.
@@ -1921,6 +1924,19 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, ModuleList)) -->
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
 			ModuleList) }
 	).
+
+
+
+
+%XXX This should probably go in another module - dgj 3/7/95
+:- pred get_c_header_code(c_header_info, list(string)).
+:- mode get_c_header_code(in, out) is det.
+
+get_c_header_code([], []).
+get_c_header_code((X - _X0).Xs, X.Ys):-
+	get_c_header_code(Xs, Ys).
+
+
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,
 	list(c_module)).

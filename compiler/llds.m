@@ -24,8 +24,8 @@
 			;	model_semi		% just functional
 			;	model_non.		% not functional
 
-:- type c_file		--->	c_file(string, list(c_module)).
-			%	filename, modules
+:- type c_file		--->	c_file(string, list(string), list(c_module)).
+			%	filename, c header code, modules
 
 :- type c_module	--->	c_module(string, list(c_procedure)).
 			%	module name, code
@@ -288,7 +288,7 @@
 
 %-----------------------------------------------------------------------------%
 
-output_c_file(c_file(BaseName, Modules)) -->
+output_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
 	{ string__append(BaseName, ".c", FileName) },
 	io__tell(FileName, Result),
 	(
@@ -302,6 +302,7 @@ output_c_file(c_file(BaseName, Modules)) -->
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
 		io__write_string("#include ""imp.h""\n"),
+		output_c_header_include_lines(C_HeaderLines),
 		output_c_module_list(Modules),
 		io__write_string("\n"),
 		output_c_module_init_list(BaseName, Modules),
@@ -423,6 +424,16 @@ output_c_module(c_module(ModuleName, Procedures)) -->
 	io__write_string("\n"),
 	output_c_procedure_list(Procedures),
 	io__write_string("END_MODULE\n").
+
+:- pred output_c_header_include_lines(list(string), io__state, io__state).
+:- mode output_c_header_include_lines(in, di, uo) is det.
+
+output_c_header_include_lines([]) --> 
+	[].
+output_c_header_include_lines(H.Hs) -->
+	io__write_string(H),
+	io__write_string("\n"),
+	output_c_header_include_lines(Hs).
 
 :- pred output_c_label_decl_list(list(label), io__state, io__state).
 :- mode output_c_label_decl_list(in, di, uo) is det.

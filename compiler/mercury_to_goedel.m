@@ -164,6 +164,10 @@ goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 	maybe_write_line_number(Context),
 	goedel_output_clause(VarSet, PredName, Args, Body, Context).
 
+goedel_output_item(pragma_verbatim(_C_Header), _Context) -->
+	{ error("Cannot convert to Goedel: C code present") }.
+	% fix this to take the Context into account.
+
 goedel_output_item(nothing, _) --> [].
 
 %-----------------------------------------------------------------------------%
