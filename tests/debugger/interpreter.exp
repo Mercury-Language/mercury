@@ -14,23 +14,23 @@ mdb> vars
         2 HeadVar__2
         3 HeadVar__4
 mdb> print *
-       HeadVar__1             	term(varset(var_supply(0), empty, empty), functor(atom(":-"), .(functor/3, []), context("interpreter.m", 22)))
+       HeadVar__1             	term(varset(var_supply(0), empty, empty), functor(atom(":-"), [|](functor/3, []), context("interpreter.m", 22)))
        HeadVar__2             	[]
        HeadVar__4             	state('<<c_pointer>>')
 mdb> goto 30
       30:     16 12 CALL pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
-       HeadVar__1             	.(clause(varset(var_supply/1, empty, empty), functor(atom/1, ./2, context/2), functor(atom/1, [], context/2)), .(clause(varset/3, functor/3, functor/3), .(clause/3, [])))
+       HeadVar__1             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [|](clause(varset/3, functor/3, functor/3), [|](clause/3, [])))
        HeadVar__2             	varset(var_supply(0), empty, empty)
-       HeadVar__3             	functor(atom(":-"), .(functor(atom/1, ./2, context/2), []), context("interpreter.m", 26))
+       HeadVar__3             	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 26))
 mdb> finish -a
       31:     16 12 ELSE pred interpreter:database_assert_clause/4-0 (det) e;
       32:     16 12 EXIT pred interpreter:database_assert_clause/4-0 (det)
 mdb> print *
-       HeadVar__1             	.(clause(varset(var_supply/1, empty, empty), functor(atom/1, ./2, context/2), functor(atom/1, [], context/2)), .(clause(varset/3, functor/3, functor/3), .(clause/3, [])))
+       HeadVar__1             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [|](clause(varset/3, functor/3, functor/3), [|](clause/3, [])))
        HeadVar__2             	varset(var_supply(0), empty, empty)
-       HeadVar__3             	functor(atom(":-"), .(functor(atom/1, ./2, context/2), []), context("interpreter.m", 26))
-       HeadVar__4             	.(clause(varset(var_supply/1, empty, empty), functor(atom/1, ./2, context/2), functor(atom/1, [], context/2)), .(clause(varset/3, functor/3, functor/3), .(clause/3, ./2)))
+       HeadVar__3             	functor(atom(":-"), [|](functor(atom/1, [|]/2, context/2), []), context("interpreter.m", 26))
+       HeadVar__4             	[|](clause(varset(var_supply/1, empty, empty), functor(atom/1, [|]/2, context/2), functor(atom/1, [], context/2)), [|](clause(varset/3, functor/3, functor/3), [|](clause/3, [|]/2)))
 mdb> 
       33:     17 12 CALL pred interpreter:consult_until_eof/4-0 (det)
 mdb> finish -n

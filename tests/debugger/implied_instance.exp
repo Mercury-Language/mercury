@@ -33,7 +33,7 @@ mdb>
 mdb> P
        HeadVar__1             	[42, 24, 1, 2, 3]
 mdb> continue -a
-      11:      7  4 SWTC pred implied_instance:sum_int_list/2-0 (det) s1;
+      11:      7  4 SWTC pred implied_instance:sum_int_list/2-0 (det) s2;
       12:      8  5 CALL pred implied_instance:p/2-0 (det)
 mdb> P
        HeadVar__1             	42

@@ -26,6 +26,6 @@ split_c_files:(app(Z76,Ys,A77)) :-
         =(Z76,[]),
         =(A77,Ys).
 split_c_files:(app(Z76,A77,B77)) :-
-        =(B77,'.'(X,Zs)),
+        =(B77,[X|Zs]),
         split_c_files:(app(Xs,A77,Zs)),
-        =(Z76,'.'(X,Xs)).
+        =(Z76,[X|Xs]).

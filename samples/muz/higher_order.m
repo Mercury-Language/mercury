@@ -45,7 +45,7 @@
 % const(S) = term__functor(term__atom(S), [], C) :- term__context_init(C).
 % 
 % term_from_list(_, []) = const("[]").
-% term_from_list(P, [H|L]) = univ(".", [apply(P, H), term_from_list(P, L)]).
+% term_from_list(P, [H|L]) = univ("[|]", [apply(P, H), term_from_list(P, L)]).
 % 
 % term_from_string(S) = term__functor(term__string(S), [], C) :-
 %         term__context_init(C).

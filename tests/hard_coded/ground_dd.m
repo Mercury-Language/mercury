@@ -63,9 +63,9 @@
 
 append_w([], Bs, Bs, node(Node, assumed)) :-
 	type_to_term(n_append([], Bs, Bs), Node).
-append_w(A.As, Bs, A.Cs, node(Node, Proof)) :-
+append_w([A|As], Bs, [A|Cs], node(Node, Proof)) :-
 	append_w(As, Bs, Cs, Proof),
-	type_to_term(n_append(A.As, Bs, A.Cs), Node).
+	type_to_term(n_append([A|As], Bs, [A|Cs]), Node).
 
 
 :- pred length_w(list(T), int, proof).
@@ -73,9 +73,9 @@ append_w(A.As, Bs, A.Cs, node(Node, Proof)) :-
 
 length_w([], 0, node(N, assumed)) :-
 	type_to_term(n_length([], 0), N).
-length_w(A.As, N+1, node(Node, Proof)) :-
+length_w([A|As], N+1, node(Node, Proof)) :-
 	length_w(As, N, Proof),
-	type_to_term(n_length(A.As, N+1), Node).
+	type_to_term(n_length([A|As], N+1), Node).
 
 
 :- pred isort_w(list(int), list(int), proof).
@@ -83,10 +83,10 @@ length_w(A.As, N+1, node(Node, Proof)) :-
 
 isort_w([], [], node(Node, assumed)) :-
 	type_to_term(n_isort([], []), Node).
-isort_w(A.As, Ss, node(Node, conj([Proof_1, Proof_2]))) :-
+isort_w([A|As], Ss, node(Node, conj([Proof_1, Proof_2]))) :-
 	isort_w(As, Ss0, Proof_1),
 	insert_w(A, Ss0, Ss, Proof_2),
-	type_to_term(n_isort(A.As, Ss), Node).
+	type_to_term(n_isort([A|As], Ss), Node).
 
 
 :- pred insert_w(int, list(int), list(int), proof).
@@ -94,16 +94,16 @@ isort_w(A.As, Ss, node(Node, conj([Proof_1, Proof_2]))) :-
 
 insert_w(N, [], [N], node(Node, assumed)) :-
 	type_to_term(n_insert(N, [], [N]), Node).
-insert_w(N, A.As, Ss, node(Node, Proof)) :-
+insert_w(N, [A|As], Ss, node(Node, Proof)) :-
 	( N =< A ->
-		Ss = N.A.As,
+		Ss = [N,A|As],
 		Proof = if_then(assumed, assumed)
 	;
 		insert_w(N, As, Ss0, Proof_1),
-		Ss = A.Ss0,
+		Ss = [A|Ss0],
 		Proof = else(failed, Proof_1)
 	),
-	type_to_term(n_insert(N, A.As, Ss), Node).
+	type_to_term(n_insert(N, [A|As], Ss), Node).
 	
 
 %------------------------------------------------------------

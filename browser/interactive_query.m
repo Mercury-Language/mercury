@@ -158,7 +158,7 @@ query_prompt(io_query) = "run <-- ".
 :- pred term_to_list(term, list(string)).
 :- mode term_to_list(in, out) is semidet.
 term_to_list(term__functor(term__atom("[]"), [], _), []).
-term_to_list(term__functor(term__atom("."),
+term_to_list(term__functor(term__atom("[|]"),
 		[term__functor(term__atom(Module), [], _C1), Rest], _C2),
 		[Module | Modules]) :-
 	term_to_list(Rest, Modules).

@@ -625,7 +625,7 @@ contains_2([Data | Rest], Index) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func rest(bitset_impl::in(bound('.'(ground, ground)))) =
+:- func rest(bitset_impl::in(bound([ground | ground]))) =
 		(bitset_impl::out) is det.
 rest([_ | Rest]) = Rest.
 

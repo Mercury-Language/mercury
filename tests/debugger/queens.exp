@@ -22,7 +22,7 @@ mdb>
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
-       6:      4  3 SWTC pred queens:qperm/2-0 (nondet) s1; queens.m:46
+       6:      4  3 SWTC pred queens:qperm/2-0 (nondet) s2; queens.m:46
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> 
@@ -85,7 +85,7 @@ mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
       11:      6  4 SWTC queens.m:46
-                         pred queens:qperm/2-0 (nondet) s1;
+                         pred queens:qperm/2-0 (nondet) s2;
 mdb> print *
        HeadVar__1             	[2, 3, 4, 5]
 mdb> 
@@ -110,7 +110,7 @@ mdb>
                          pred queens:qperm/2-0 (nondet)
 mdb> goto -a 20
       16:      8  5 SWTC queens.m:46
-                         pred queens:qperm/2-0 (nondet) s1;
+                         pred queens:qperm/2-0 (nondet) s2;
       17:      9  6 CALL queens.m:51 (from queens.m:47)
                          pred queens:qdelete/3-0 (nondet)
       18:      9  6 DISJ queens.m:51
@@ -125,16 +125,16 @@ mdb> stack
    5       pred queens:main/2-0 (cc_multi) (queens.m:15)
 mdb> stack -d
    0      20      10    6 pred queens:qperm/2-0 (nondet) (queens.m:45) (empty)
-   1      15       8    5 pred queens:qperm/2-0 (nondet) (queens.m:49) s1;c2;
-   2      10       6    4 pred queens:qperm/2-0 (nondet) (queens.m:49) s1;c2;
-   3       5       4    3 pred queens:qperm/2-0 (nondet) (queens.m:49) s1;c2;
+   1      15       8    5 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c2;
+   2      10       6    4 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c2;
+   3       5       4    3 pred queens:qperm/2-0 (nondet) (queens.m:49) s2;c2;
    4       4       3    2 pred queens:queen/2-0 (nondet) (queens.m:42) c2;
    5       1       1    1 pred queens:main/2-0 (cc_multi) (queens.m:15) ?;c2;q!;
 mdb> print *
        HeadVar__1             	[4, 5]
 mdb> 
       21:     10  6 SWTC queens.m:46
-                         pred queens:qperm/2-0 (nondet) s1;
+                         pred queens:qperm/2-0 (nondet) s2;
 mdb> retry
       20:     10  6 CALL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
@@ -142,7 +142,7 @@ mdb> print *
        HeadVar__1             	[4, 5]
 mdb> finish -a
       21:     10  6 SWTC queens.m:46
-                         pred queens:qperm/2-0 (nondet) s1;
+                         pred queens:qperm/2-0 (nondet) s2;
       22:     11  7 CALL queens.m:51 (from queens.m:47)
                          pred queens:qdelete/3-0 (nondet)
       23:     11  7 DISJ queens.m:51
@@ -152,7 +152,7 @@ mdb> finish -a
       25:     12  7 CALL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
       26:     12  7 SWTC queens.m:46
-                         pred queens:qperm/2-0 (nondet) s1;
+                         pred queens:qperm/2-0 (nondet) s2;
       27:     13  8 CALL queens.m:51 (from queens.m:47)
                          pred queens:qdelete/3-0 (nondet)
       28:     13  8 DISJ queens.m:51
@@ -162,7 +162,7 @@ mdb> finish -a
       30:     14  8 CALL queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
       31:     14  8 SWTC queens.m:45
-                         pred queens:qperm/2-0 (nondet) s2;
+                         pred queens:qperm/2-0 (nondet) s1;
       32:     14  8 EXIT queens.m:45 (from queens.m:49)
                          pred queens:qperm/2-0 (nondet)
       33:     12  7 EXIT queens.m:45 (from queens.m:49)
@@ -184,13 +184,13 @@ mdb> continue -a
       38:     15  3 CALL queens.m:55 (from queens.m:43)
                          pred queens:safe/1-0 (semidet)
       39:     15  3 SWTC queens.m:56
-                         pred queens:safe/1-0 (semidet) s1;
+                         pred queens:safe/1-0 (semidet) s2;
       40:     16  4 CALL queens.m:60 (from queens.m:57)
                          pred queens:nodiag/3-0 (semidet)
       41:     16  4 SWTC queens.m:61
-                         pred queens:nodiag/3-0 (semidet) s1;
+                         pred queens:nodiag/3-0 (semidet) s2;
       42:     16  4 THEN queens.m:65
-                         pred queens:nodiag/3-0 (semidet) s1;c4;t;
+                         pred queens:nodiag/3-0 (semidet) s2;c4;t;
       43:     16  4 FAIL queens.m:60 (from queens.m:57)
                          pred queens:nodiag/3-0 (semidet)
       44:     15  3 FAIL queens.m:55 (from queens.m:43)

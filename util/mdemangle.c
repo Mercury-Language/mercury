@@ -1026,7 +1026,9 @@ fix_mangled_special_case(char *str, char **real_end)
 		{ "f_comma", "," },
 		{ "f_semicolon", ";" },
 		{ "f_cut", "!" },
-		{ "f_tuple", "{}" }
+		{ "f_tuple", "{}" },
+		{ "f_cons", "[|]" },
+		{ "f_nil", "[]" }
 	};
 	const int num_translations =
 		sizeof(translations) / sizeof(translations[0]);

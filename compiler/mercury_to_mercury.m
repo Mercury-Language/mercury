@@ -2953,7 +2953,7 @@ mercury_format_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
 		mercury_format_remaining_terms(Xs, VarSet, AppendVarnums),
 		add_string(")")
 	;
-	    	{ Functor = term__atom(".") },
+	    	{ Functor = term__atom("[|]") },
 		{ Args = [X, Xs] }
 	->
 		add_string("["),
@@ -3036,7 +3036,7 @@ mercury_format_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
 
 mercury_format_list_args(Term, VarSet, AppendVarnums) -->
 	(
-	    	{ Term = term__functor(term__atom("."), Args, _) },
+	    	{ Term = term__functor(term__atom("[|]"), Args, _) },
 		{ Args = [X, Xs] }
 	->
 		add_string(", "),

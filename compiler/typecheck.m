@@ -5761,6 +5761,9 @@ report_error_undef_cons(TypeCheckInfo, InvalidFieldUpdates, Functor, Arity) -->
 	; { Functor = cons(unqualified("-->"), 2) } ->
 		io__write_string(
 		  "  syntax error in DCG lambda expression (`-->').\n")
+	; { Functor = cons(unqualified("."), 2) } ->
+		io__write_string(
+		  "  error: the list constructor is now `[|]/2', not `./2'.\n")
 	; { InvalidFieldUpdates = [_ | _] } ->
 		io__write_string(
 			"  error: invalid field update `"),
@@ -5792,6 +5795,11 @@ report_error_undef_cons(TypeCheckInfo, InvalidFieldUpdates, Functor, Arity) -->
 			->
 				maybe_report_missing_import(TypeCheckInfo,
 					ModQual)
+			;
+				{ Functor = cons(unqualified("[|]"), 2) }
+			->
+				maybe_report_missing_import(TypeCheckInfo,
+					unqualified("list"))
 			;
 				io__write_string(".\n")
 			)

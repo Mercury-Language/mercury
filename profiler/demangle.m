@@ -551,6 +551,10 @@ fix_mangled_ascii -->
 		insert_prefix("!")
 	; remove_prefix("f_tuple") ->
 		insert_prefix("{}")
+	; remove_prefix("f_cons") ->
+		insert_prefix("[|]")
+	; remove_prefix("f_nil") ->
+		insert_prefix("[]")
 	; remove_prefix("f_") ->
 		fix_mangled_ascii_chars
 	;

@@ -24,5 +24,5 @@ main -->
 :- mode app(in, in, out) is det.
 
 app([], Bs, Bs).
-app(A.As, Bs, A.Cs) :-
+app([A|As], Bs, [A|Cs]) :-
 	app(As, Bs, Cs).

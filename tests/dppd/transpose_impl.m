@@ -14,8 +14,8 @@
 			ground, ground]).
 
 
-:- inst '.'(A, B)
-	--->	'.'(A, B).
+:- inst [A | B]
+	--->	[A | B].
 :- inst []
 	--->	[].
 

@@ -30,7 +30,10 @@ p([1, 2, 7, 8, 9])
 Valid? no
 s2([7, 8, 9])
 Valid? yes
-my_append([1, 2], [7, 8, 9], [1, 2, 7, 8, 9])
+pred my_append
+	[1, 2]
+	[7, 8, 9]
+	[1, 2, 7, 8, 9]
 Valid? yes
 Found incorrect contour:
 p([1, 2, 7, 8, 9])
@@ -45,7 +48,10 @@ p([1, 2, 3, 9])
 Valid? no
 s1([1, 2, 3])
 Valid? yes
-my_append([1, 2, 3], [9], [1, 2, 3, 9])
+pred my_append
+	[1, 2, 3]
+	[9]
+	[1, 2, 3, 9]
 Valid? yes
 Found incorrect contour:
 p([1, 2, 3, 9])

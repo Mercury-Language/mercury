@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -622,8 +622,8 @@ parser__parse_list(List) -->
 		( { Token = comma } ->
 		    parser__parse_list(Tail0),
 		    ( { Tail0 = ok(Tail) } ->
-		        { List = ok(term__functor(term__atom("."), [Arg, Tail],
-						TermContext)) }
+		        { List = ok(term__functor(term__atom("[|]"),
+					[Arg, Tail], TermContext)) }
 		    ;
 			% propagate error
 			{ List = Tail0 }
@@ -632,7 +632,7 @@ parser__parse_list(List) -->
 		    parser__parse_arg(Tail0),
 		    ( { Tail0 = ok(Tail) } ->
 			( parser__get_token(close_list) ->
-		            { List = ok(term__functor(term__atom("."),
+		            { List = ok(term__functor(term__atom("[|]"),
 					[Arg, Tail], TermContext)) }
 			;
 			    parser__unexpected("expecting ']' or operator",
@@ -644,7 +644,7 @@ parser__parse_list(List) -->
 		    )
 		; { Token = close_list } ->
 		    { Tail = term__functor(term__atom("[]"), [], TermContext) },
-		    { List = ok(term__functor(term__atom("."), [Arg, Tail],
+		    { List = ok(term__functor(term__atom("[|]"), [Arg, Tail],
 				TermContext)) }
 		;
 		    parser__unexpected_tok(Token, Context,

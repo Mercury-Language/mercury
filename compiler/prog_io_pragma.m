@@ -1239,7 +1239,7 @@ parse_pragma_foreign_proc_attributes_term0(Term, Flags) :-
 			Term = term__functor(term__atom("[]"), [], _),
 			Flags = []
 		;
-			Term = term__functor(term__atom("."), [Hd, Tl], _),
+			Term = term__functor(term__atom("[|]"), [Hd, Tl], _),
 			Flags = [Flag|Flags0],
 			parse_single_pragma_foreign_proc_attribute(Hd, Flag),
 			parse_pragma_foreign_proc_attributes_term0(Tl, Flags0)
@@ -1506,24 +1506,15 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 
 :- pred convert_bool_list(term::in, list(bool)::out) is semidet.
 
-convert_bool_list(term__functor(Functor, Args, _), Bools) :-
-	(
-		Functor = term__atom("."),
-		Args = [term__functor(AtomTerm, [], _), RestTerm],
-		( 
-			AtomTerm = term__atom("yes"),
-			Bool = yes
-		;
-			AtomTerm = term__atom("no"),
-			Bool = no
+convert_bool_list(ListTerm, Bools) :-
+	convert_list(ListTerm,
+		(pred(Term::in, Bool::out) is semidet :-
+			Term = term__functor(term__atom(Name), [], _),
+			( Name = "yes", Bool = yes
+			; Name = "no", Bool = no
+			)
 		),
-		convert_bool_list(RestTerm, RestList),
-		Bools = [ Bool | RestList ]
-	;
-		Functor = term__atom("[]"),
-		Args = [],
-		Bools = []
-	).
+		ok(Bools)).
 
 :- pred convert_int_list(term::in, maybe1(list(int))::out) is det.
 
@@ -1546,7 +1537,7 @@ convert_int_list(ListTerm, Result) :-
 convert_list(term__variable(V),_, error("variable in list", term__variable(V))).
 convert_list(term__functor(Functor, Args, Context), Pred, Result) :-
 	( 
-		Functor = term__atom("."),
+		Functor = term__atom("[|]"),
 		Args = [Term, RestTerm],
 		call(Pred, Term, Element)
 	->	

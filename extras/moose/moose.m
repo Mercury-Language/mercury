@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -801,8 +801,8 @@ write_reductions(Rules, TT, Xfns) -->
 		{ append(Actions, [Red], AllActions0) },
 		{ reverse(AllActions0, AllActions) },
 		{ ConsStack = functor(atom(","), [
-			functor(atom("="), [Sy, functor(atom("."), [ResS, Sy1],
-				Ctxt)], Ctxt),
+			functor(atom("="), [Sy, functor(atom("[|]"),
+				[ResS, Sy1], Ctxt)], Ctxt),
 			functor(atom("="), [St, St1], Ctxt)], Ctxt) },
 		{ mkactions(AllActions, ConsStack, Then0) },
 		(
@@ -851,8 +851,8 @@ mkstacks([E0|Es], St0, St, Sy0, Sy, VS0, VS) :-
 		E0 = nonterminal(EN),
 		E = functor(atom("n"), [EN], Ctxt)
 	),
-	Sy1 = functor(atom("."), [E, Sy0], Ctxt),
-	St1 = functor(atom("."), [variable(U), St0], Ctxt),
+	Sy1 = functor(atom("[|]"), [E, Sy0], Ctxt),
+	St1 = functor(atom("[|]"), [variable(U), St0], Ctxt),
 	mkstacks(Es, St1, St, Sy1, Sy, VS1, VS).
 
 :- pred mkactions(list(term), term, term).

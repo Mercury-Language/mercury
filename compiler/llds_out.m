@@ -4346,6 +4346,8 @@ llds_out__name_conversion_table(",", "f_comma").
 llds_out__name_conversion_table(";", "f_semicolon").
 llds_out__name_conversion_table("!", "f_cut").
 llds_out__name_conversion_table("{}", "f_tuple").
+llds_out__name_conversion_table("[|]", "f_cons").
+llds_out__name_conversion_table("[]", "f_nil").
 
 	% This is the fall-back method.
 	% Given a string, produce a C identifier

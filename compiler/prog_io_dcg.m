@@ -164,10 +164,10 @@ parse_dcg_goal_2("[]", [], Context, VarSet0, N0, Var0,
 	% Non-empty list of terminals.  Append the DCG output arg
 	% as the new tail of the list, and unify the result with
 	% the DCG input arg.
-parse_dcg_goal_2(".", [X, Xs], Context, VarSet0, N0, Var0,
+parse_dcg_goal_2("[|]", [X, Xs], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	new_dcg_var(VarSet0, N0, VarSet, N, Var),
-	ConsTerm0 = term__functor(term__atom("."), [X, Xs], Context),
+	ConsTerm0 = term__functor(term__atom("[|]"), [X, Xs], Context),
 	term__coerce(ConsTerm0, ConsTerm),
 	term_list_append_term(ConsTerm, term__variable(Var), Term), 
 	Goal = unify(term__variable(Var0), Term, pure) - Context.
@@ -450,8 +450,10 @@ term_list_append_term(List0, Term, List) :-
 	( List0 = term__functor(term__atom("[]"), [], _Context) ->
 		List = Term
 	;
-		List0 = term__functor(term__atom("."), [Head, Tail0], Context2),
-		List = term__functor(term__atom("."), [Head, Tail], Context2),
+		List0 = term__functor(term__atom("[|]"),
+				[Head, Tail0], Context2),
+		List = term__functor(term__atom("[|]"),
+				[Head, Tail], Context2),
 		term_list_append_term(Tail0, Term, Tail)
 	).
 

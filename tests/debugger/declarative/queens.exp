@@ -17,9 +17,15 @@ Complete? no
 Call qperm([1, 2, 3, 4, 5], _)
 No solutions.
 Complete? no
-qdelete(1, [1, 2, 3, 4, 5], [2, 3, 4, 5])
+pred qdelete
+	1
+	[1, 2, 3, 4, 5]
+	[2, 3, 4, 5]
 Valid? yes
-qdelete(2, [1, 2, 3, 4, 5], [1, 3, 4, 5])
+pred qdelete
+	2
+	[1, 2, 3, 4, 5]
+	[1, 3, 4, 5]
 Valid? yes
 Call qperm([1, 3, 4, 5], _)
 No solutions.

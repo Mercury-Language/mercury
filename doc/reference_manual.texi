@@ -316,25 +316,52 @@ except that as extensions we permit higher-order terms and the
 introduction of infix operators by the use of grave accents (backquotes),
 as described below,
 and we support an extended set of builtin operators. @xref{Builtin Operators}.
-However, the meaning of some terms in Mercury is different to that
-in Prolog.  @xref{Data-terms}.
+Also, the constructor for list terms in Mercury is @code{[|]/2}, not
+@code{./2} as in Prolog.
+
+Note, however, that the meaning of some terms in Mercury is
+different to that in Prolog.  @xref{Data-terms}.
 
 A term is either a variable or a functor.
 
 A functor is an integer, a float, a string, a name, a compound term,
 or a higher-order term.
 
-A compound term is a simple compound term, a tuple term, an operator term,
-or a parenthesized term.
+A compound term is a simple compound term, a list term, a tuple term,
+an operator term, or a parenthesized term.
 
 A simple compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  
 
+A list term is an open square bracket (i.e. an open_list token)
+followed by a sequence of argument terms separated by commas,
+optionally followed by a vertical bar (i.e. a close_list token)
+followed by a term, followed by a close square bracket (i.e. a
+close_list token).  An empty list term is an open_list token
+followed by a close_list token.  List terms are parsed as follows:
+@example
+parse('[' ']') = [].
+parse('[' List) = parse_list(List).
+parse_list(Head ',' Tail) = '[|]'(parse_term(Head), parse_list(Tail)).
+parse_list(Head '|' Tail ']') = '[|]'(parse_term(Head), parse_term(Tail)).
+parse_list(Head ']') = '[|]'(parse_term(Head), []).
+@end example
+
+The following terms are all equivalent:
+@example
+[1, 2, 3]
+[1, 2, 3 | []]
+[1, 2 | [3]]
+[1 | [2, 3]]
+'[|]'(1, '[|]'(2, '[|]'(3, [])))
+@end example
+
 A tuple term is a left curly bracket (i.e. an open_curly token)
 followed by a sequence of argument terms separated by commas,
-and a right curly bracket.
+and a right curly bracket.  For example, @code{@{1, '2', "three"@}}
+is a valid tuple term.
 
 An operator term is a term specified using operator notation, as in Prolog.
 Operators can also be formed by enclosing a variable or name between grave

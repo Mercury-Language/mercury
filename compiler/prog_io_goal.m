@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -283,7 +283,7 @@ parse_lambda_expression(LambdaExpressionTerm, Args, Modes, Det) :-
 :- mode parse_lambda_args(in, out, out) is semidet.
 
 parse_lambda_args(Term, Args, Modes) :-
-	( Term = term__functor(term__atom("."), [Head, Tail], _Context) ->
+	( Term = term__functor(term__atom("[|]"), [Head, Tail], _Context) ->
 		parse_lambda_arg(Head, Arg, Mode),
 		Args = [Arg | Args1],
 		Modes = [Mode | Modes1],

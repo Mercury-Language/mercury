@@ -518,7 +518,7 @@
 	%
 	% 	- for user defined types, the functor that is given
 	% 	  in the type definition. For lists, this
-	% 	  means the functors ./2 and []/0 are used, even if
+	% 	  means the functors [|]/2 and []/0 are used, even if
 	% 	  the list uses the [....] shorthand.
 	%	- for integers, the string is a base 10 number,
 	%	  positive integers have no sign.

@@ -2189,7 +2189,7 @@ io__write_ordinary_term(Univ, Priority) -->
 	{ deconstruct(Term, Functor, _Arity, Args) },
 	io__get_op_table(OpTable),
 	(
-		{ Functor = "." },
+		{ Functor = "[|]" },
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
@@ -2319,7 +2319,7 @@ adjust_priority(Priority, x, Priority - 1).
 io__write_list_tail(Univ) -->
 	{ Term = univ_value(Univ) },
 	( 
-		{ deconstruct(Term, ".", _Arity, [ListHead, ListTail]) }
+		{ deconstruct(Term, "[|]", _Arity, [ListHead, ListTail]) }
 	->
 		io__write_string(", "),
 		io__write_arg(ListHead),

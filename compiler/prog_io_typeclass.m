@@ -204,7 +204,7 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 
 list_term_to_term_list(Methods, MethodList) :-
 	(
-		Methods = term__functor(term__atom("."), [Head, Tail0], _),
+		Methods = term__functor(term__atom("[|]"), [Head, Tail0], _),
 		list_term_to_term_list(Tail0, Tail),
 		MethodList = [Head|Tail]
 	;

@@ -233,7 +233,8 @@ parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
 	).
 
 parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
-parse_list_of_vars(term__functor(term__atom("."), [Head, Tail], _), [V|Vs]) :-
+parse_list_of_vars(term__functor(term__atom("[|]"),
+		[Head, Tail], _), [V|Vs]) :-
 	Head = term__variable(V),
 	parse_list_of_vars(Tail, Vs).
 

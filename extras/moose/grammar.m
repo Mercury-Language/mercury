@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -189,7 +189,7 @@ term_to_prod(functor(Atom, Args, Ctxt), Prod) :-
 			Goals, action(Goal), Prod)
 	; Atom = atom("[]"), Args = [] ->
 		Prod = []
-	; Atom = atom("."), Args = [Head, Tail] ->
+	; Atom = atom("[|]"), Args = [Head, Tail] ->
 		terminals(Tail, terminal(Head), Prod)
 	;
 		Prod = nonterminal(functor(Atom, Args, Ctxt))
@@ -201,7 +201,7 @@ term_to_prod(functor(Atom, Args, Ctxt), Prod) :-
 terminals(functor(Atom, Args, _), Prod0, Prod) :-
 	( Atom = atom("[]"), Args = [] ->
 		Prod = Prod0
-	; Atom = atom("."), Args = [Head, Tail] ->
+	; Atom = atom("[|]"), Args = [Head, Tail] ->
 		terminals(Tail, (Prod0, terminal(Head)), Prod)
 	;
 		fail

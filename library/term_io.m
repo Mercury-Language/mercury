@@ -230,7 +230,7 @@ term_io__write_term_3(term__functor(Functor, Args, _), Priority,
 			VarSet0, N0, VarSet, N) -->
 	io__get_op_table(OpTable),
 	(
-		{ Functor = term__atom(".") },
+		{ Functor = term__atom("[|]") },
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
@@ -391,7 +391,8 @@ term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	->
 		term_io__write_list_tail(Val, VarSet0, N0, VarSet, N)
 	;
-		{ Term = term__functor(term__atom("."), [ListHead, ListTail], _) }
+		{ Term = term__functor(term__atom("[|]"),
+				[ListHead, ListTail], _) }
 	->
 		io__write_string(", "),
 		term_io__write_arg_term(ListHead, VarSet0, N0, VarSet1, N1),

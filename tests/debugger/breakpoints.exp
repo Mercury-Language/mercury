@@ -55,7 +55,7 @@ mdb> break nodiag
 mdb> continue
        7:      5  3 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:47)
 mdb> continue
-       8:      5  3 SWTC pred breakpoints:qperm/2-0 (nondet) s1; breakpoints.m:51
+       8:      5  3 SWTC pred breakpoints:qperm/2-0 (nondet) s2; breakpoints.m:51
 mdb> finish -N
       12:      7  4 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
 mdb> finish -n

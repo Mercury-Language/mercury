@@ -199,7 +199,7 @@ is_a_constructor("\\+", 1).
 
 
 :- pred ignore_call(string::in) is semidet.
-ignore_call(".").   % Corresponds to the var list of `all' and `some' 
+ignore_call("[|]"). % Corresponds to the var list of `all' and `some' 
 		    % quantifiers.
 ignore_call("[]").  % Null DCG goal.
 

@@ -2,6 +2,11 @@ NEWS since Mercury release 0.10.1:
 ----------------------------------
 
 Changes to the Mercury language:
+* The constructor for lists is now called '[|]' rather than '.'.
+  `./2' will eventually become the module qualification operator.
+  This change only affects programs which use `./2' explicitly.
+  Programs which only use the `[H | T]' syntax will be unaffected.
+
 * We've extended the language to allow you to specify different clauses
   for different modes of a predicate or function.  This is done by
   putting mode annotations in the head of each clause.
@@ -22,6 +27,16 @@ Changes to the Mercury language:
   Reference Manual.
 
 Changes to the Mercury standard library:
+* As mentioned above, the constructor for lists has changed from './2'
+  to `[|]/2'. This change affects the behaviour of the term manipulation
+  predicates in the standard library when dealing with values of
+  type `term__term/1' representing lists. The affected predicates are
+  parser__read_term, parser__read_term_from_string, term__type_to_term,
+  term__term_to_type, term_io__read_term and term_io__write_term.
+  Also beware that std_util__functor and std_util__deconstruct now
+  return `[|]' rather than `.' for lists, and calls to std_util__construct
+  which construct lists may need to be updated.
+
 * The predicates and functions in int.m, float, math.m and array.m now 
   generate exceptions rather than program aborts on domain errors and
   out-of-bounds array accesses.
