@@ -53,6 +53,8 @@
 			;	tags
 			;	follow_code
 			;	follow_vars
+			;	save_hp
+			;	lazy_code
 			;	reclaim_heap_on_failure
 			;	num_tag_bits
 			;	gc
@@ -92,6 +94,8 @@ option_defaults([
 	tags			-	string("low"),
 	follow_code		-	bool(yes),
 	follow_vars		-	bool(yes),
+	lazy_code		-	bool(yes),
+	save_hp			-	bool(no),
 	reclaim_heap_on_failure	-	bool(no),
 	num_tag_bits		-	int(2),
 	gc			-	string("none"),
@@ -153,6 +157,8 @@ long_option("generate-dependencies",	generate_dependencies).
 long_option("tags",			tags).
 long_option("follow-code",		follow_code).
 long_option("follow-vars",		follow_vars).
+long_option("lazy-code",		lazy_code).
+long_option("save-hp",			save_hp).
 long_option("reclaim-heap-on-failure",	reclaim_heap_on_failure).
 long_option("num-tag-bits",		num_tag_bits).
 long_option("gc",			gc).

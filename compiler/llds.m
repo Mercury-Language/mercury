@@ -206,7 +206,7 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 	->
 		io__write_string("\n")
 	;
-		io__write_string("\t/* "),
+		io__write_string("\n\t\t/* "),
 		io__write_string(Comment),
 		io__write_string(" */\n")
 	),

@@ -28,21 +28,24 @@
 
 :- interface.
 
-:- import_module hlds, llds.
+:- import_module hlds, llds, options.
 :- import_module code_util, tree, set, std_util.
 
 :- type code_info.
 
 :- type code_option	--->
-		save_hp.
+		save_hp
+	;	lazy_code.
 
 :- type code_tree	==	tree(list(instruction)).
 
 		% Create a new code_info structure.
-:- pred code_info__init(int, varset, liveness_info, call_info, bool,
+:- pred code_info__init(varset, liveness_info, call_info, bool,
+			map(option, option_data),
 				pred_id, proc_id, proc_info, category,
 					follow_vars, module_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, out) is det.
+:- mode code_info__init(in, in, in, in, in,
+					in, in, in, in, in, in, out) is det.
 
 		% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
@@ -135,10 +138,23 @@
 :- mode code_info__reserve_register(in, in, out) is det.
 
 		% Generate code to store the value of
-		% a given variable on the det stack
+		% a given variable on the stack
 :- pred code_info__save_variable_on_stack(var, code_tree,
 							code_info, code_info).
 :- mode code_info__save_variable_on_stack(in, out, in, out) is det.
+
+		% Save a variable. If there is a known register for
+		% this variable, save it there. Else, if there is a
+		% stack slot for it, save it there. Else error.
+:- pred code_info__save_variable_somewhere_definite(var, code_tree,
+							code_info, code_info).
+:- mode code_info__save_variable_somewhere_definite(in, out, in, out) is det.
+
+		% Save a variable. Use a known reg if one exists, else use
+		% J. Random register.
+:- pred code_info__save_variable_somewhere(var, code_tree,
+							code_info, code_info).
+:- mode code_info__save_variable_somewhere(in, out, in, out) is det.
 
 		% Succeed if the given variable is live at the
 		% end of this goal.
@@ -191,9 +207,11 @@
 :- pred code_info__get_live_variables(list(var), code_info, code_info).
 :- mode code_info__get_live_variables(out, in, out) is det.
 
-:- pred code_info__generate_forced_saves(assoc_list(var, int), code_tree,
-						code_info, code_info).
-:- mode code_info__generate_forced_saves(in, out, in, out) is det.
+:- pred code_info__generate_forced_saves(code_tree, code_info, code_info).
+:- mode code_info__generate_forced_saves(out, in, out) is det.
+
+:- pred code_info__generate_eager_flush(code_tree, code_info, code_info).
+:- mode code_info__generate_eager_flush(out, in, out) is det.
 
 :- pred code_info__grab_code_info(code_info, code_info, code_info).
 :- mode code_info__grab_code_info(out, in, out) is det.
@@ -227,9 +245,6 @@
 
 :- pred code_info__add_lvalue_to_variable(lval, var, code_info, code_info).
 :- mode code_info__add_lvalue_to_variable(in, in, in, out) is det.
-
-:- pred code_info__set_follow_vars(follow_vars, code_info, code_info).
-:- mode code_info__set_follow_vars(in, in, out) is det.
 
 :- pred code_info__get_module_info(module_info, code_info, code_info).
 :- mode code_info__get_module_info(out, in, out) is det.
@@ -297,6 +312,15 @@
 :- pred code_info__set_options(set(code_option), code_info, code_info).
 :- mode code_info__set_options(in, in, out) is det.
 
+:- pred code_info__push_store_map(map(var, lval), code_info, code_info).
+:- mode code_info__push_store_map(in, in, out) is det.
+
+:- pred code_info__pop_store_map(code_info, code_info).
+:- mode code_info__pop_store_map(in, out) is det.
+
+:- pred code_info__current_store_map(map(var, lval), code_info, code_info).
+:- mode code_info__current_store_map(out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -329,7 +353,8 @@
 					% never know when you might need it.
 			liveness_info,	% Variables that are live
 					% after this goal
-			follow_vars,	% Follow Vars - where to put things
+			stack(map(var, lval)),
+					% Store Map - where to put things
 			category,	% The category of the current procedure
 			maybe(label),	% The first failure continuation for
 					% nondet code
@@ -358,15 +383,17 @@
 
 %---------------------------------------------------------------------------%
 
-code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
+code_info__init(Varset, Liveness, CallInfo, SaveSuccip, CMDOptions,
 					PredId, ProcId, ProcInfo, Category,
-						FollowVars, ModuleInfo, C) :-
+						_FollowVars, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
 					ModuleInfo, RegisterInfo),
 	code_info__init_variable_info(PredId, ProcId,
 					ModuleInfo, VariableInfo),
 	stack__init(Continue),
-	set__init(Options),
+	stack__init(StoreMap),
+	code_info__make_options(CMDOptions, Options),
+	code_info__max_slot(CallInfo, SlotCount),
 	C = code_info(
 		SlotCount,
 		0,
@@ -381,12 +408,43 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
 		Continue,
 		ModuleInfo,
 		Liveness,
-		FollowVars,
+		StoreMap,
 		Category,
 		no,
 		0,
 		Options
 	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__make_options(map(option, option_data), set(code_option)).
+:- mode code_info__make_options(in, out) is det.
+
+code_info__make_options(CMDOptions, Options) :-
+	set__init(Options0),
+	(
+		map__search(CMDOptions, lazy_code, bool(yes))
+	->
+		set__insert(Options0, lazy_code, Options1)
+	;
+		Options1 = Options0
+	),
+	(
+		map__search(CMDOptions, save_hp, bool(yes))
+	->
+		set__insert(Options1, save_hp, Options)
+	;
+		Options = Options1
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__max_slot(call_info, int).
+:- mode code_info__max_slot(in, out) is det.
+
+code_info__max_slot(CallInfo, SlotCount) :-
+	map__to_assoc_list(CallInfo, CallList),
+	list__length(CallList, SlotCount).
 
 %---------------------------------------------------------------------------%
 
@@ -840,8 +898,8 @@ code_info__target_to_lvalue(none, Exprn, Var, Lvalue) -->
 	->
 		{ Lvalue = Lval0 }
 	;
-		code_info__get_follow_vars(Follow),
-		{ map__search(Follow, Var, Lval1) },
+		code_info__current_store_map(StoreMap),
+		{ map__search(StoreMap, Var, Lval1) },
 		code_info__lval_is_free_reg(Lval1)
 	->
 		{ Lvalue = Lval1 },
@@ -1096,29 +1154,17 @@ code_info__save_variable_on_stack(Var, Code) -->
 	;
 		{ VarStat = evaluated(_) }
 	->
-		code_info__get_variable_slot(Var, Slot1),
-		code_info__stack_variable(Slot1, StackThing),
-		code_info__generate_expression(
-					var(Var), StackThing, Code),
-		code_info__add_lvalue_to_variable(StackThing, Var)
+		code_info__save_variable_in_slot(Var, Code)
 	;
-		{ VarStat = cached(Exprn, none) }
+		{ VarStat = cached(_Exprn, none) }
 	->
-		code_info__get_variable_slot(Var, Slot1),
-		code_info__stack_variable(Slot1, StackThing),
-		code_info__generate_expression(Exprn,
-						StackThing, Code),
-		code_info__add_lvalue_to_variable(StackThing, Var)
+		code_info__save_variable_in_slot(Var, Code)
 	;
 		{ VarStat = cached(Exprn, target(TargetReg)) }
 	->
 		code_info__generate_expression(Exprn, TargetReg, Code0),
 		code_info__add_lvalue_to_variable(TargetReg, Var),
-		code_info__get_variable_slot(Var, Slot1),
-		code_info__stack_variable(Slot1, StackThing),
-		code_info__generate_expression(var(Var),
-						StackThing, Code1),
-		code_info__add_lvalue_to_variable(StackThing, Var),
+		code_info__save_variable_in_slot(Var, Code1),
 		{ Code = tree(Code0, Code1) }
 	;
 		{ error("This should never happen") }
@@ -1212,7 +1258,17 @@ code_info__reset_variable_target(Var, Lval) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__get_variable_slot(var, int, code_info, code_info).
+:- pred code_info__save_variable_in_slot(var, code_tree, code_info, code_info).
+:- mode code_info__save_variable_in_slot(in, out, in, out) is det.
+
+code_info__save_variable_in_slot(Var, Code) -->
+	code_info__get_variable_slot(Var, Slot),
+	code_info__generate_expression(var(Var), Slot, Code),
+	code_info__add_lvalue_to_variable(Slot, Var).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__get_variable_slot(var, lval, code_info, code_info).
 :- mode code_info__get_variable_slot(in, out, in, out) is det.
 
 code_info__get_variable_slot(Var, Slot) -->
@@ -1385,28 +1441,40 @@ code_info__get_live_variables_2([Var|Vars0], Vars) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_forced_saves([], empty) --> [].
-code_info__generate_forced_saves([Var - Slot|VarSlots], Code) --> 
+code_info__generate_forced_saves(Code) --> 
+	code_info__get_variables(Variables),
+	{ map__keys(Variables, Vars) },
+	code_info__generate_forced_saves_2(Vars, Code).
+
+:- pred code_info__generate_forced_saves_2(list(var), code_tree,
+						code_info, code_info).
+:- mode code_info__generate_forced_saves_2(in, out, in, out) is det.
+
+code_info__generate_forced_saves_2([], empty) --> [].
+code_info__generate_forced_saves_2([Var|Vars], Code) -->
 	(
 		code_info__variable_is_live(Var),
 		code_info__get_variables(Variables),
 		{ map__contains(Variables, Var) }
 	->
-		code_info__get_follow_vars(Follow),
+		code_info__current_store_map(Store),
 		(
-			{ map__search(Follow, Var, Lval) }
-			% XXX Should do something about clobbers....
+			{ map__search(Store, Var, Lval) },
+			{ Lval = reg(Reg) }	% XXX semidet!
 		->
+			% if the target location is not free
+			% then we better swap the live value to
+			% a spare register
 			(
 				code_info__lval_is_free_reg(Lval)
 			->
 				{ CodeA = empty }
 			;
+				% unless of course, it is already there...
 				code_info__variable_has_register(Var, Lval)
 			->
 				{ CodeA = empty }
 			;
-				{ Lval = reg(Reg) },	% XXX semidet!
 				code_info__swap_out_reg(Reg, CodeA)
 			),
 			code_info__generate_expression(var(Var), Lval, CodeB),
@@ -1420,12 +1488,24 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 			),
 			{ Code0 = tree(CodeA, CodeB) }
 		;
-			code_info__stack_variable(Slot, StackThing),
-			code_info__generate_expression(var(Var), StackThing,
-								Code0),
-			code_info__add_lvalue_to_variable(StackThing, Var)
+			% If it wasn't in the store-map, then
+			% check the call info to see if it has
+			% a stack location assigned to it.
+			code_info__get_call_info(CallInfo),
+			(
+				{ map__search(CallInfo, Var, StackThing) }
+			->
+				code_info__generate_expression(var(Var),
+							StackThing, Code0),
+				code_info__add_lvalue_to_variable(StackThing,
+									Var)
+			;
+				% if it wasn't there, then flush the
+				% variable, and let it land where-ever
+				code_info__flush_variable(Var, Code0)
+			)
 		),
-		code_info__generate_forced_saves(VarSlots, RestCode),
+		code_info__generate_forced_saves_2(Vars, RestCode),
 		{ Code = tree(Code0, RestCode) }
 	;
 			% This case should only occur in the presence
@@ -1433,9 +1513,9 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 			% procedures which never succeed.
 		code_info__variable_is_live(Var)
 	->
-		code_info__get_follow_vars(Follow),
+		code_info__current_store_map(StoreMap),
 		(
-			{ map__search(Follow, Var, Lval) }
+			{ map__search(StoreMap, Var, Lval) }
 		->
 			code_info__add_lvalue_to_variable(Lval, Var),
 			(
@@ -1446,12 +1526,22 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 				{ true }
 			)
 		;
-			code_info__stack_variable(Slot, StackThing),
-			code_info__add_lvalue_to_variable(StackThing, Var)
+			% If it wasn't in the followvars, then
+			% check the call info to see if it has
+			% a stack location assigned to it.
+			code_info__get_call_info(CallInfo),
+			(
+				{ map__search(CallInfo, Var, StackThing) }
+			->
+				code_info__add_lvalue_to_variable(StackThing,
+									Var)
+			;
+				{ error("Panic!") }
+			)
 		),
-		code_info__generate_forced_saves(VarSlots, Code)
+		code_info__generate_forced_saves_2(Vars, Code)
 	;
-		code_info__generate_forced_saves(VarSlots, Code)
+		code_info__generate_forced_saves_2(Vars, Code)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1462,18 +1552,17 @@ code_info__generate_nondet_saves(Code) -->
 	code_info__generate_nondet_saves_2(CallList, Code),
 	code_info__remake_code_info.
 
-:- pred code_info__generate_nondet_saves_2(assoc_list(var, int), code_tree,
+:- pred code_info__generate_nondet_saves_2(assoc_list(var, lval), code_tree,
 							code_info, code_info).
 :- mode code_info__generate_nondet_saves_2(in, out, in, out) is det.
 
 code_info__generate_nondet_saves_2([], empty) --> [].
-code_info__generate_nondet_saves_2([Var - Slot|VarSlots], Code) --> 
+code_info__generate_nondet_saves_2([Var - StackThing|VarSlots], Code) --> 
 	(
 		code_info__variable_is_live(Var),
 		code_info__get_variables(Variables),
 		{ map__contains(Variables, Var) }
 	->
-		code_info__stack_variable(Slot, StackThing),
 		code_info__generate_expression(var(Var), StackThing, Code0),
 		code_info__add_lvalue_to_variable(StackThing, Var),
 		code_info__generate_nondet_saves_2(VarSlots, RestCode),
@@ -1484,7 +1573,6 @@ code_info__generate_nondet_saves_2([Var - Slot|VarSlots], Code) -->
 			% procedures which never succeed.
 		code_info__variable_is_live(Var)
 	->
-		code_info__stack_variable(Slot, StackThing),
 		code_info__add_lvalue_to_variable(StackThing, Var),
 		code_info__generate_nondet_saves_2(VarSlots, Code)
 	;
@@ -1523,11 +1611,11 @@ code_info__get_headvars(HeadVars) -->
 %---------------------------------------------------------------------------%
 
 code_info__remake_code_info -->
-	code_info__get_call_info(CallInfo0),
-	{ map__to_assoc_list(CallInfo0, CallInfo) },
+	code_info__current_store_map(StoreMap),
+	{ map__to_assoc_list(StoreMap, StoreList) },
 	{ map__init(Variables0) },
 	code_info__set_variables(Variables0),
-	code_info__remake_code_info_2(CallInfo),
+	code_info__remake_code_info_2(StoreList),
 	code_info__get_variables(Variables1),
 	{ map__to_assoc_list(Variables1, VarList) },
 	{ map__init(Registers) },
@@ -1536,18 +1624,18 @@ code_info__remake_code_info -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__remake_code_info_2(assoc_list(var, int),
+:- pred code_info__remake_code_info_2(assoc_list(var, lval),
 						code_info, code_info).
 :- mode code_info__remake_code_info_2(in, in, out) is det.
 
 code_info__remake_code_info_2([]) --> [].
-code_info__remake_code_info_2([V - S|VSs]) -->
+code_info__remake_code_info_2([V - ST|VSs]) -->
 	(
 		code_info__variable_is_live(V)
 	->
-		code_info__get_follow_vars(Follow),
+		code_info__current_store_map(StoreMap),
 		(
-			{ map__search(Follow, V, L0) }
+			{ map__search(StoreMap, V, L0) }
 		->
 			code_info__add_lvalue_to_variable(L0, V),
 			(
@@ -1558,7 +1646,6 @@ code_info__remake_code_info_2([V - S|VSs]) -->
 				{ true }
 			)
 		;
-			code_info__stack_variable(S, ST),
 			code_info__add_lvalue_to_variable(ST, V)
 		)
 	;
@@ -1822,6 +1909,8 @@ code_info__remap_variable(Var, Lval0, Lval) -->
 							code_info, code_info).
 :- mode code_info__reenter_lvalues(in, in, in, in, in, out) is det.
 
+:- code_info__reenter_lvalues(_,_,_,L) when L.
+
 code_info__reenter_lvalues(_Var, _Lval0, _Lval, []) --> [].
 code_info__reenter_lvalues(Var, Lval0, Lval, [L|Ls]) -->
 	(
@@ -2043,6 +2132,28 @@ code_info__unset_failure_cont -->
 
 %---------------------------------------------------------------------------%
 
+code_info__push_store_map(Map) -->
+	code_info__get_store_map(Maps0),
+	{ stack__push(Maps0, Map, Maps) },
+	code_info__set_store_map(Maps).
+
+code_info__pop_store_map -->
+	code_info__get_store_map(Maps0),
+	{ stack__pop_det(Maps0, _, Maps) },
+	code_info__set_store_map(Maps).
+
+code_info__current_store_map(Map) -->
+	code_info__get_store_map(Maps0),
+	(
+		{ stack__top(Maps0, Map0) }
+	->
+		{ Map = Map0 }
+	;
+		{ error("No store map on stack") }
+	).
+
+%---------------------------------------------------------------------------%
+
 :- pred code_info__set_stackslot_count(int, code_info, code_info).
 :- mode code_info__set_stackslot_count(in, in, out) is det.
 
@@ -2078,9 +2189,6 @@ code_info__unset_failure_cont -->
 :- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
 :- mode code_info__set_liveness_info(in, in, out) is det.
 
-:- pred code_info__get_follow_vars(follow_vars, code_info, code_info).
-:- mode code_info__get_follow_vars(out, in, out) is det.
-
 :- pred code_info__get_category(category, code_info, code_info).
 :- mode code_info__get_category(out, in, out) is det.
 
@@ -2092,6 +2200,12 @@ code_info__unset_failure_cont -->
 
 :- pred code_info__set_push_count(int, code_info, code_info).
 :- mode code_info__set_push_count(in, in, out) is det.
+
+:- pred code_info__get_store_map(stack(map(var, lval)), code_info, code_info).
+:- mode code_info__get_store_map(out, in, out) is det.
+
+:- pred code_info__set_store_map(stack(map(var, lval)), code_info, code_info).
+:- mode code_info__set_store_map(in, in, out) is det.
 
 code_info__get_stackslot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _).
@@ -2180,10 +2294,10 @@ code_info__set_liveness_info(M, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q, R),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
-code_info__get_follow_vars(N, CI, CI) :-
+code_info__get_store_map(N, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _).
 
-code_info__set_follow_vars(N, CI0, CI) :-
+code_info__set_store_map(N, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
@@ -2224,8 +2338,8 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_label_count(L, C0, C2),
 	code_info__get_succip_used(S, C1, _),
 	code_info__set_succip_used(S, C2, C3),
-	code_info__get_follow_vars(F, C1, _),
-	code_info__set_follow_vars(F, C3, C4),
+	code_info__get_store_map(F, C1, _),
+	code_info__set_store_map(F, C3, C4),
 	code_info__get_fall_through(J, C1, _),
 	code_info__set_fall_through(J, C4, C).
 

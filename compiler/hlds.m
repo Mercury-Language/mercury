@@ -292,7 +292,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- type is_builtin	--->	not_builtin
 			;	is_builtin.
 
-:- type call_info	==	map(var, int).
+:- type call_info	==	map(var, lval).
 
 :- type case		--->	case(cons_id, hlds__goal).
 			%	functor(s) to match with,
@@ -357,7 +357,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 		instmap_delta,
 		term__context,
 		set(var),	% the non-local vars in the goal
-		delta_liveness	% the changes in liveness before goal
+		delta_liveness,	% the changes in liveness before goal
+		maybe(map(var, lval))
+				% the [maybe] new advisory register mapping
 	).
 
 :- type unify_mode	==	pair(mode, mode).
@@ -1176,6 +1178,9 @@ pred_info_is_imported(PredInfo) :-
 :- pred proc_info_set_follow_vars(proc_info, follow_vars, proc_info).
 :- mode proc_info_set_follow_vars(in, in, out) is det.
 
+:- pred proc_info_set_call_info(proc_info, call_info, proc_info).
+:- mode proc_info_set_call_info(in, in, out) is det.
+
 :- implementation.
 
 	% Some parts of the procedure aren't known yet.  We initialize
@@ -1252,6 +1257,10 @@ proc_info_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
 proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L),
 	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J, K, L).
+
+proc_info_set_call_info(ProcInfo0, CallInfo, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, _, I, J, K, L),
+	ProcInfo = procedure(A, B, C, D, E, F, G, CallInfo, I, J, K, L).
 
 proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L),
@@ -1351,6 +1360,13 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 :- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
 :- mode goal_info_set_context(in, in, out) is det.
 
+:- pred goal_info_store_map(hlds__goal_info, maybe(map(var, lval))).
+:- mode goal_info_store_map(in, out) is det.
+
+:- pred goal_info_set_store_map(hlds__goal_info,
+				maybe(map(var, lval)), hlds__goal_info).
+:- mode goal_info_set_store_map(in, in, out) is det.
+
 :- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
 :- mode goal_to_conj_list(in, out) is det.
 
@@ -1382,56 +1398,65 @@ goal_info_init(GoalInfo) :-
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
 	GoalInfo = goal_info(DeltaLiveness, LocalDet, Det,
-			InstMapDelta, Context, NonLocals, DeltaLiveness).
+			InstMapDelta, Context, NonLocals, DeltaLiveness, no).
 
 goal_info_pre_delta_liveness(GoalInfo, DeltaLiveness) :-
-	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _, _).
+	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _, _, _).
 
 goal_info_set_pre_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G),
-	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F, G).
+	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H),
+	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F, G, H).
 
 goal_info_post_delta_liveness(GoalInfo, DeltaLiveness) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, DeltaLiveness).
+	GoalInfo = goal_info(_, _, _, _, _, _, DeltaLiveness, _).
 
 goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _),
-	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H),
+	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H).
 
 goal_info_get_local_determinism(GoalInfo, LocalDeterminism) :-
-	GoalInfo = goal_info(_, LocalDeterminism, _, _, _, _, _).
+	GoalInfo = goal_info(_, LocalDeterminism, _, _, _, _, _, _).
 
 goal_info_set_local_determinism(GoalInfo0, LocalDeterminism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G),
-	GoalInfo = goal_info(A, LocalDeterminism, C, D, E, F, G).
+	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H),
+	GoalInfo = goal_info(A, LocalDeterminism, C, D, E, F, G, H).
 
 goal_info_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, Determinism, _, _, _, _).
+	GoalInfo = goal_info(_, _, Determinism, _, _, _, _, _).
 
 goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G),
-	GoalInfo = goal_info(A, B, Determinism, D, E, F, G).
+	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H),
+	GoalInfo = goal_info(A, B, Determinism, D, E, F, G, H).
 
 goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _).
+	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _, _).
 
 goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G),
-	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F, G).
+	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H),
+	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F, G, H).
 
 goal_info_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, Context, _, _).
+	GoalInfo = goal_info(_, _, _, _, Context, _, _, _).
 
 goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G),
-	GoalInfo = goal_info(A, B, C, D, Context, F, G).
+	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H),
+	GoalInfo = goal_info(A, B, C, D, Context, F, G, H).
 
 goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, NonLocals, _).
+	GoalInfo = goal_info(_, _, _, _, _, NonLocals, _, _).
 
 goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G),
-	GoalInfo  = goal_info(A, B, C, D, E, NonLocals, G).
+	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H),
+	GoalInfo  = goal_info(A, B, C, D, E, NonLocals, G, H).
+
+goal_info_store_map(GoalInfo, H) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, H).
+
+goal_info_set_store_map(GoalInfo0, H, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H).
+
+%-----------------------------------------------------------------------------%
 
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjuntion, then return it's conjuncts,
