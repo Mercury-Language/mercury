@@ -20,6 +20,26 @@ public class TypeClassConstraint {
 	}
 
 	public TypeClassConstraint(TypeClassDeclStruct type_class,
+		PseudoTypeInfo[] ptis)
+	{
+		tc_constr_type_class = type_class;
+		tc_constr_arg_ptis = ptis;
+	}
+
+	public TypeClassConstraint(TypeClassDeclStruct type_class,
+		// XXX Object[] should be mercury.runtime.PseudoTypeInfo[],
+		//     but mlds_to_java.m generates Object[] since
+		//     init_array/1 doesn't give type info
+		Object[] ptis)
+	{
+		tc_constr_type_class = type_class;
+		tc_constr_arg_ptis = new PseudoTypeInfo[ptis.length];
+		for (int i = 0; i < ptis.length; i++) {
+			tc_constr_arg_ptis[i] = (PseudoTypeInfo) ptis[i];
+		}
+	}
+
+	public TypeClassConstraint(TypeClassDeclStruct type_class,
 		PseudoTypeInfo pti1)
 	{
 		tc_constr_type_class = type_class;
