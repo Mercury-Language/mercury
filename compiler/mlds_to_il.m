@@ -1539,13 +1539,10 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 			),
 			{ ByRefTailCalls = no }
 		),
-		% if --verifiable-code is enabled, then we must not output
-		% the "tail." prefix unless the callee return type is
-		% compatible with the caller return type
-		\+ (
-			{ VerifiableCode = yes },
-			{ ReturnParam \= CallerReturnParam }
-		)
+		% We must not output the "tail." prefix unless the
+		% callee return type is compatible with the caller
+		% return type
+		{ ReturnParam = CallerReturnParam }
 	->
 		{ TailCallInstrs = [tailcall] },
 		% For calls marked with "tail.", we need a `ret'
