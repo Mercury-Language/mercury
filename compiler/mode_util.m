@@ -83,7 +83,7 @@
 :- pred mode_list_get_final_insts(list(mode), module_info, list(inst)).
 :- mode mode_list_get_final_insts(in, in, out) is det.
 
-:- pred mode_util__modes_to_uni_modes(mode, list(mode), module_info,
+:- pred mode_util__modes_to_uni_modes(list(mode), list(mode), module_info,
 							list(uni_mode)).
 :- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
 
@@ -200,12 +200,19 @@ mode_is_unused(ModuleInfo, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_util__modes_to_uni_modes(_X, [], _ModuleInfo, []).
-mode_util__modes_to_uni_modes(X, [M|Ms], ModuleInfo, [A|As]) :-
-	mode_get_insts(ModuleInfo, X, Initial0, Final0),
-	mode_get_insts(ModuleInfo, M, Initial1, Final1),
-	A = ((Initial0 - Initial1) -> (Final0 - Final1)),
-	mode_util__modes_to_uni_modes(X, Ms, ModuleInfo, As).
+	% Given two lists of modes (inst mappings) of equal length,
+	% convert them into a single list of inst pair mappings.
+
+mode_util__modes_to_uni_modes([], [], _ModuleInfo, []).
+mode_util__modes_to_uni_modes([], [_|_], _, _) :-
+	error("mode_util__modes_to_uni_modes: length mismatch").
+mode_util__modes_to_uni_modes([_|_], [], _, _) :-
+	error("mode_util__modes_to_uni_modes: length mismatch").
+mode_util__modes_to_uni_modes([X|Xs], [Y|Ys], ModuleInfo, [A|As]) :-
+	mode_get_insts(ModuleInfo, X, InitialX, FinalX),
+	mode_get_insts(ModuleInfo, Y, InitialY, FinalY),
+	A = ((InitialX - InitialY) -> (FinalX - FinalY)),
+	mode_util__modes_to_uni_modes(Xs, Ys, ModuleInfo, As).
 
 %-----------------------------------------------------------------------------%
 

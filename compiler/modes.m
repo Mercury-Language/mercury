@@ -1818,8 +1818,18 @@ modecheck_unify_functor(X, Name, ArgVars0, Unification0,
 		;
 			error("get_mode_of_args failed")
 		),
+		(
+			list__length(ArgVars0, Arity),
+			inst_expand(ModuleInfo1, InstOfX, InstOfX1),
+			get_arg_insts(InstOfX1, Name, Arity, InstOfXArgs),
+			get_mode_of_args(Inst, InstOfXArgs, ModeOfXArgs0)
+		->
+			ModeOfXArgs = ModeOfXArgs0
+		;
+			error("get_(inst/mode)_of_args failed")
+		),
 		mode_info_get_var_types(ModeInfo1, VarTypes),
-		categorize_unify_var_functor(ModeOfX, ModeArgs,
+		categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
 				X, Name, ArgVars0, VarTypes,
 				Unification0, ModeInfo1,
 				Unification1, ModeInfo2),
@@ -2021,6 +2031,41 @@ ground_args(Uniq, [Arg | Args]) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred get_arg_insts(inst, const, arity, list(inst)).
+:- mode get_arg_insts(in, in, in, out) is semidet.
+
+get_arg_insts(not_reached, _Name, Arity, ArgInsts) :-
+	list__duplicate(Arity, not_reached, ArgInsts).
+get_arg_insts(ground(Uniq, _PredInst), _Name, Arity, ArgInsts) :-
+	list__duplicate(Arity, ground(Uniq, no), ArgInsts).
+get_arg_insts(bound(_Uniq, List), Name, Arity, ArgInsts) :-
+	( get_arg_insts_2(List, Name, ArgInsts0) ->
+		ArgInsts = ArgInsts0
+	;
+		% the code is unreachable
+		list__duplicate(Arity, not_reached, ArgInsts)
+	).
+get_arg_insts(free, _Name, Arity, ArgInsts) :-
+	list__duplicate(Arity, free, ArgInsts).
+get_arg_insts(free(_Type), _Name, Arity, ArgInsts) :-
+	list__duplicate(Arity, free, ArgInsts).
+
+:- pred get_arg_insts_2(list(bound_inst), const, list(inst)).
+:- mode get_arg_insts_2(in, in, out) is semidet.
+
+get_arg_insts_2([BoundInst | BoundInsts], Name, ArgInsts) :-
+	( BoundInst = functor(Name, ArgInsts0) ->
+		ArgInsts = ArgInsts0
+	;
+		get_arg_insts_2(BoundInsts, Name, ArgInsts)
+	).
+
+% get_mode_of_args(FinalInst, InitialArgInsts, ArgModes):
+%	for a var-functor unification,
+% 	given the final inst of the var
+%	and the initial insts of the functor arguments,
+%	compute the modes of the functor arguments
+
 :- pred get_mode_of_args(inst, list(inst), list(mode)).
 :- mode get_mode_of_args(in, in, out) is semidet.
 
@@ -2158,7 +2203,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 		ConsId = cons("__LambdaGoal__", Arity)
 	),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_util__modes_to_uni_modes(ModeOfX, ArgModes0,
+	mode_util__modes_to_uni_modes(ArgModes0, ArgModes0,
 						ModuleInfo, ArgModes),
 	(
 		mode_is_output(ModuleInfo, ModeOfX)
@@ -2179,14 +2224,15 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 % unification or a deconstruction.  It also works out whether it will
 % be deterministic or semideterministic.
 
-:- pred categorize_unify_var_functor(mode, list(mode), var, const,
+:- pred categorize_unify_var_functor(mode, list(mode), list(mode), var, const,
 			list(var), map(var, type), unification, mode_info,
 			unification, mode_info).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, mode_info_di,
-			out, mode_info_uo) is det.
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in,
+			mode_info_di, out, mode_info_uo) is det.
 
-categorize_unify_var_functor(ModeOfX, ArgModes0, X, Name, ArgVars, VarTypes,
-		Unification0, ModeInfo0, Unification, ModeInfo) :-
+categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
+		X, Name, ArgVars, VarTypes, Unification0, ModeInfo0,
+		Unification, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	list__length(ArgVars, Arity),
 	map__lookup(VarTypes, X, TypeOfX),
@@ -2198,7 +2244,7 @@ categorize_unify_var_functor(ModeOfX, ArgModes0, X, Name, ArgVars, VarTypes,
 	;
 		make_functor_cons_id(Name, Arity, ConsId)
 	),
-	mode_util__modes_to_uni_modes(ModeOfX, ArgModes0,
+	mode_util__modes_to_uni_modes(ModeOfXArgs, ArgModes0,
 						ModuleInfo, ArgModes),
 	(
 		mode_is_output(ModuleInfo, ModeOfX)
