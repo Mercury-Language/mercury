@@ -117,13 +117,8 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		]) },
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_globals(Globals),
-		{	globals__lookup_bool_option(Globals,
-				reclaim_heap_on_nondet_failure, yes)
-		->
-			ReclaimHeap = yes
-		;
-			ReclaimHeap = no
-		},
+		{ globals__lookup_bool_option(Globals,
+				reclaim_heap_on_nondet_failure, ReclaimHeap) },
 		code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
