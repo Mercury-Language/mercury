@@ -12,7 +12,7 @@
 #
 #-----------------------------------------------------------------------------#
 
-MAKE=${MMAKE_MAKE=make}
+MAKE=${MMAKE_MAKE=@GNU_MAKE@}
 MMAKE_VARS=${MMAKE_VARS=@LIBDIR@/mmake/Mmake.vars}
 MMAKE_RULES=${MMAKE_RULES=@LIBDIR@/mmake/Mmake.rules}
 MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
