@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2002 The University of Melbourne.
+# Copyright (C) 1998-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -125,8 +125,8 @@ $(OBJS) $(PIC_OBJS): $(HDRS) $(RUNTIME_HDRS)
 #-----------------------------------------------------------------------------#
 
 .PHONY: trace
-ifeq ($(findstring il,$(GRADE)),il)        
-# there is no tracing in the .NET backend
+ifneq ("$(filter il% java%,$(GRADE))","")        
+# there is no tracing in the .NET and Java backends
 trace:
 else
 trace: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
@@ -162,9 +162,9 @@ tags: $(CFILES) $(HDRS)
 .PHONY: install
 install: install_headers install_lib
 
-ifeq ($(findstring il,$(GRADE)),il)        
+ifneq ("$(filter il% java%,$(GRADE))","")        
 
-# there is no tracing in the .NET backend
+# there is no tracing in the .NET and Java backends
 
 .PHONY: install_headers
 install_headers:

@@ -177,9 +177,9 @@ install_dirs:
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
 
-ifeq ($(findstring il,$(GRADE)),il)                                     
+ifneq ("$(filter il% java%,$(GRADE))","")
 
-# there is no browser in the .NET backend
+# there is no browser in the .NET and Java backends
 
 .PHONY: install_init
 install_init: 

@@ -35,7 +35,7 @@ all : mercury_profile
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifneq ($(findstring il,$(GRADE)),il)        
+ifeq ("$(filter il% java%,$(GRADE))","")        
 mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only

@@ -219,7 +219,7 @@ mercury_compile_init.$O: $(MC_PROG)_init.$O
 # (We used to just build mlds_to_gcc.err, but that caused bootstrapping problems
 # with the source distribution; using the .c files is little more robust.)
 
-ifneq ($(findstring il,$(GRADE)),il)        
+ifeq ("$(filter il% java%,$(GRADE))","")
 
 .PHONY: depend
 depend:		mlds_to_gcc.depend

@@ -52,7 +52,7 @@ all:	mdprof_cgi mdprof_test
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifneq ($(findstring il,$(GRADE)),il)        
+ifeq ("$(filter il% java%,$(GRADE))","")
 mdprof_cgi:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mdprof_cgi:	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mdprof_test:	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A

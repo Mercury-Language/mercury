@@ -19,6 +19,15 @@ include $(MERCURY_DIR)/Mmake.common
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib$(GC_GRADE)
+
+ifneq ("$(filter il% java%,$(GRADE))","")        
+
+# no need to build a garbage collector for the .NET or Java backends.
+
+lib$(GC_GRADE):
+
+else
+
 lib$(GC_GRADE): submake
 
 lib$(GC_GRADE).$A: submake
@@ -26,6 +35,8 @@ lib$(GC_GRADE).$A: submake
 lib$(GC_GRADE).so: submake
 
 lib$(GC_GRADE).dll: submake
+
+endif
 
 MMAKEFLAGS=
 
@@ -128,9 +139,9 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
 		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
 
-ifeq ($(findstring il,$(GRADE)),il)        
+ifneq ("$(filter il% java%,$(GRADE))","")        
 
-# no need to build a garbage collector for the .NET backend.
+# no need to build a garbage collector for the .NET or Java backends.
 
 .PHONY: install_headers
 install_headers:
