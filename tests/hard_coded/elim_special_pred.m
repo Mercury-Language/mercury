@@ -28,8 +28,8 @@
 main -->
 	{ X = banana(three) },
 	{ Y = banana(two) },
-	{ det_arg(X, 1, XArg) },
-	{ det_arg(Y, 1, YArg) },
+	{ det_arg(1, X, XArg) },
+	{ det_arg(1, Y, YArg) },
 	( 
 		{ XArg = YArg }
 	->

@@ -139,7 +139,7 @@
 
 :- pred functor(T::in, string::out, int::out) is det.
 
-	% arg(Data, ArgumentIndex, Argument), given a data item (Data)
+	% arg(ArgumentIndex, Data, Argument), given a data item (Data)
 	% and an argument index (ArgumentIndex), starting at 1 for the
 	% first argument, binds Argument to that argument of the functor
 	% of the data item. If the argument index is out of range -
@@ -147,16 +147,16 @@
 	% arg/3 fails.
 	% The argument has the type univ. 
 
-:- pred arg(T::in, int::in, univ::out) is semidet.
+:- pred arg(int::in, T::in, univ::out) is semidet.
 
-	% det_arg(Data, ArgumentIndex, Argument), given a data item (Data)
+	% det_arg(ArgumentIndex, Data, Argument), given a data item (Data)
 	% and an argument index (ArgumentIndex), starting at 1 for the
 	% first argument, binds Argument to that argument of the functor
 	% of the data item. If the argument index is out of range -
 	% that is higher than the arity of the functor or lower than 1,
 	% det_arg/3 aborts. 
 
-:- pred det_arg(T::in, int::in, univ::out) is det.
+:- pred det_arg(int::in, T::in, univ::out) is det.
 
 	% expand(Data, Functor, Arity, Arguments), given a data item (Data),
 	% binds Functor to a string representation of the functor,
@@ -1362,7 +1362,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
-:- pragma(c_code, arg(Type::in, ArgumentIndex::in, Argument::out), " 
+:- pragma(c_code, arg(ArgumentIndex::in, Type::in, Argument::out), " 
 {
 	expand_info info;
 	Word arg_pseudo_type_info;
@@ -1404,9 +1404,9 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 }").
 
-det_arg(Type, ArgumentIndex, Argument) :-
+det_arg(ArgumentIndex, Type, Argument) :-
 	(
-		arg(Type, ArgumentIndex, Argument0)
+		arg(ArgumentIndex, Type, Argument0)
 	->
 		Argument = Argument0
 	;

@@ -84,7 +84,7 @@ test_functor(T) -->
 test_arg(T) -->
 	{ functor(T, Functor, Arity) },
 	( 
-		{ arg(T, Arity, Argument) }
+		{ arg(Arity, T, Argument) }
 	->
 		{ string__format("argument %d of functor %s was:", [i(Arity),
 			s(Functor)], Str) },
