@@ -1,5 +1,19 @@
-NEWS for Mercury release 0.9.1
-------------------------------
+
+NEWS since Mercury release 0.9:
+-------------------------------
+
+* We've added support for record syntax, so that fields of
+  constructors can be conveniently extracted and updated
+  without writing lots of trivial access predicates.
+  See the "Field access functions" section of the "Types" chapter
+  of the Mercury Language Reference Manual for details.
+ 
+* Functions `int:^/2' and `integer:^/2' have been removed.
+  Use `int__xor/2' and `integer__xor/2' instead.
+  The operator `^' is now used for record syntax.
+
+NEWS for Mercury release 0.9.1:
+-------------------------------
 
 This release is primarily a bug-fix release.  
 It fixes some bugs with the binary distribution of 0.9,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,13 +151,6 @@
 	% bitwise exclusive or (xor)
 :- func int__xor(int, int) = int.
 :- mode int__xor(in, in) = uo is det.
-
-	% bitwise exclusive or (xor)
-	% This version will be removed soon - the operator
-	% is needed for record syntax.
-:- func int ^ int = int.
-:- mode in  ^ in  = uo  is det.
-:- pragma obsolete(('^')/2).
 
 	% bitwise complement
 :- func \ int = int.
