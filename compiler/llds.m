@@ -216,11 +216,12 @@ output_instruction(call(local(Label), ContLabel)) -->
 	io__write_string("));").
 
 	% XXX we need to do something with the module name and arity.
-
-output_instruction(call(nonlocal(_Module, Pred, _Arity, Mode), ContLabel)) -->
+output_instruction(call(nonlocal(_Module, Pred, Arity, Mode), ContLabel)) -->
 	io__write_string("\t"),
 	io__write_string("callentry("),
 	io__write_string(Pred),
+	io__write_string("_"),
+	io__write_int(Arity),
 	io__write_string("_"),
 	io__write_int(Mode),
 	io__write_string("), LABEL("),
@@ -275,7 +276,7 @@ output_instruction(if_val(Rval, Label)) -->
 	output_label(Label),
 	io__write_string("));").
 
-output_instruction(if_val(Rval, Label)) -->
+output_instruction(if_not_val(Rval, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if(!( "),
 	output_rval(Rval),
