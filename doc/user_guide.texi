@@ -1360,7 +1360,7 @@ The three variants differ in what kind of goals they allow.
 For goals which perform I/O, you need to use @samp{io_query};
 this lets you type in the goal using DCG syntax.
 For goals which don't do I/O, but which have determinism
-@samp{cc_nondet} or @samp{cc_multi}, you you need to use @samp{cc_query};
+@samp{cc_nondet} or @samp{cc_multi}, you need to use @samp{cc_query};
 this finds only one solution to the specified goal.
 For all other goals, you can use plain @samp{query}, which
 finds all the solutions to the goal.
@@ -1372,7 +1372,7 @@ otherwise you will get a mode error.
 @sp 1
 The current implementation works by compiling the queries on-the-fly
 and then dynamically linking them into the program being debugged.
-Thus it make take a little while for your query to be executed.
+Thus it may take a little while for your query to be executed.
 Each query will be written to a file named @file{query.m} in the current
 directory, so make sure you don't name your source file @file{query.m}.
 Note that dynamic linking may not be supported on some systems;
