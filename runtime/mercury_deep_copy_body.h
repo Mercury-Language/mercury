@@ -84,6 +84,7 @@ try_again:
 **              if (in_range(data_value)) {
 **                  const MR_DuFunctorDesc  *functor_desc;
 **                  const MR_DuExistInfo    *exist_info;
+**                  bool                    have_sectag;
 **                  int                     sectag;
 **                  int                     cell_size;
 **                  int                     cur_slot;
@@ -92,7 +93,9 @@ try_again:
 **                  int                     num_tci;
 **                  int                     i;
 **
-**                  if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
+**                  have_sectag =
+**			(ptag_layout->MR_sectag_locn != MR_SECTAG_NONE);
+**                  if (!have_sectag) {
 **                      sectag = 0;
 **                  } else {
 **                      sectag = data_value[0];
@@ -102,7 +105,7 @@ try_again:
 **                  arity = functor_desc->MR_du_functor_orig_arity;
 **                  exist_info = functor_desc->MR_du_functor_exist_info;
 **
-**                  if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
+**                  if (!have_sectag) {
 **                      cell_size = arity;
 **                  } else {
 **                      cell_size = 1 + arity;
@@ -119,7 +122,7 @@ try_again:
 **
 **                  MR_incr_saved_hp(new_data, cell_size);
 **
-**                  if (ptag_layout->MR_sectag_locn == MR_SECTAG_NONE) {
+**                  if (!have_sectag) {
 **                      cur_slot = 0;
 **                  } else {
 **                      MR_field(0, new_data, 0) = sectag;
@@ -143,8 +146,13 @@ try_again:
 **
 **                  for (i = 0; i < arity; i++) {
 **                      if (MR_arg_type_may_contain_var(functor_desc, i)) {
+**                          MR_Word *parent_data = (MR_Word *) new_data;
+**			    if (have_sectag) {
+**				// skip past the secondary tag
+**				parent_data++;
+**			    }
 **                          MR_field(0, new_data, cur_slot) =
-**                              copy_arg(data_value, &data_value[cur_slot],
+**                              copy_arg(parent_data, &data_value[cur_slot],
 **                                  functor_desc,
 **                                  MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
 **                                      type_info),
@@ -176,6 +184,7 @@ try_again:
 #define MR_DC_decl                                                      \
                     const MR_DuFunctorDesc  *functor_desc;              \
                     const MR_DuExistInfo    *exist_info;                \
+                    bool                    have_sectag;                \
                     int                     sectag;                     \
                     int                     cell_size;                  \
                     int                     cur_slot;                   \
@@ -214,8 +223,13 @@ try_again:
 #define MR_DC_copy_plain_args                                               \
                     for (i = 0; i < arity; i++) {                           \
                         if (MR_arg_type_may_contain_var(functor_desc, i)) { \
+                            MR_Word *parent_data = (MR_Word *) new_data;    \
+			    if (have_sectag) {				    \
+				/* skip past the secondary tag */	    \
+				parent_data++;				    \
+			    }						    \
                             MR_field(0, new_data, cur_slot) =               \
-                                copy_arg(data_value, &data_value[cur_slot], \
+                                copy_arg(parent_data, &data_value[cur_slot],\
                                     functor_desc,                           \
 			            MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR( \
                                         type_info),                         \
@@ -240,6 +254,7 @@ try_again:
                 data_value = (MR_Word *) MR_body(data, ptag);
                 if (in_range(data_value)) {
                     MR_DC_decl
+		    have_sectag = TRUE;
                     sectag = data_value[0];
                     MR_DC_functor_desc
                     cell_size = 1 + arity;
@@ -273,6 +288,7 @@ try_again:
                 data_value = (MR_Word *) MR_body(data, ptag);
                 if (in_range(data_value)) {
                     MR_DC_decl
+		    have_sectag = FALSE;
                     sectag = 0;
                     MR_DC_functor_desc
                     cell_size = arity;

@@ -712,8 +712,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                         arg_type_info = MR_make_type_info_maybe_existq(
                             MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                             functor_desc->MR_du_functor_arg_types[i],
-                            (MR_Word *) MR_body(data, ptag),
-                            functor_desc, &allocated_memory_cells);
+                            arg_vector, functor_desc, &allocated_memory_cells);
                     } else {
                         arg_type_info = MR_pseudo_type_info_is_ground(
                             functor_desc->MR_du_functor_arg_types[i]);

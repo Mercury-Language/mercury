@@ -1599,10 +1599,12 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 			PolyInfo3, PolyInfo),
 
 	%
-	% the type_class_info variables go before the type_info variables
+	% the type_class_info variables go AFTER the type_info variables
+	% (for consistency with the order for argument passing,
+	% and because the RTTI support in the runtime system relies on it)
 	%
-	list__append(ExtraTypeClassGoals, ExtraTypeInfoGoals, ExtraGoals),
-	list__append(ExtraTypeClassVars, ExtraTypeInfoVars, ExtraVars).
+	list__append(ExtraTypeInfoGoals, ExtraTypeClassGoals, ExtraGoals),
+	list__append(ExtraTypeInfoVars, ExtraTypeClassVars, ExtraVars).
 
 %-----------------------------------------------------------------------------%
 
