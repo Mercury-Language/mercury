@@ -132,6 +132,18 @@
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
+	% int__max_int(Max) binds Max to the maximum value of an int
+	% on this machine.
+:- pred int__max_int(int::out) is det.
+
+	% int__min_int(Max) binds Min to the minimum value of an int
+	% on this machine.
+:- pred int__min_int(int::out) is det.
+
+	% int__bits_per_int(Bits) binds Bits to the number of bits in an int
+	% on this machine.
+:- pred int__bits_per_int(int::out) is det.
+
 /* The following routines are builtins that the compiler knows about.
    Don't use them; use the functions above.
    These will go away in some future release.
@@ -176,18 +188,6 @@
 
 :- pred builtin_bit_neg(int, int).
 :- mode builtin_bit_neg(in, uo) is det.
-
-	% int__int_max(Max) binds Max to the maximum value of an int
-	% on this machine.
-:- pred int__int_max(int::out) is det.
-
-	% int__int_min(Max) binds Min to the minimum value of an int
-	% on this machine.
-:- pred int__int_min(int::out) is det.
-
-	% int__int_bits(Bits) binds Bits to the number of bits in an int
-	% on this machine.
-:- pred int__int_bits(int::out) is det.
 
 :- implementation.
 :- import_module require.
@@ -289,7 +289,7 @@ int__log2_2(X, N0, N) :-
 ").
 
 
-:- pragma c_code(int__int_max(Max::out), "
+:- pragma c_code(int__max_int(Max::out), "
 	if (sizeof(Integer) == sizeof(int))
 		Max = INT_MAX;
 	else if (sizeof(Integer) == sizeof(long))
@@ -298,7 +298,7 @@ int__log2_2(X, N0, N) :-
 		fatal_error(""Unable to figure out max integer size"");
 ").
 
-:- pragma c_code(int__int_min(Min::out), "
+:- pragma c_code(int__min_int(Min::out), "
 	if (sizeof(Integer) == sizeof(int))
 		Min = INT_MIN;
 	else if (sizeof(Integer) == sizeof(long))
@@ -307,7 +307,7 @@ int__log2_2(X, N0, N) :-
 		fatal_error(""Unable to figure out min integer size"");
 ").
 
-:- pragma c_code(int__int_bits(Bits::out), "
+:- pragma c_code(int__bits_per_int(Bits::out), "
 	Bits = sizeof(Integer) * CHAR_BIT;
 ").
 
