@@ -541,6 +541,7 @@
 	% element of List (working left-to-right) and an accumulator
 	% (with the initial value of Start), and returns the final
 	% value in End.
+	%
 :- pred list__foldl(pred(L, A, A), list(L), A, A).
 :- mode list__foldl(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list__foldl(pred(in, in, out) is det, in, in, out) is det.
@@ -555,6 +556,7 @@
 	% element of List (working right-to-left) and an accumulator
 	% (with the initial value of Start), and returns the final
 	% value in End.
+	% 
 :- pred list__foldr(pred(L, A, A), list(L), A, A).
 :- mode list__foldr(pred(in, di, uo) is det, in, di, uo) is det.
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
@@ -569,6 +571,7 @@
 	% Does the same job as list__foldl, but with two accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	% 
 :- pred list__foldl2(pred(L, A, A, Z, Z), list(L), A, A, Z, Z).
 :- mode list__foldl2(pred(in, in, out, in, out) is det,
 	in, in, out, in, out) is det.
@@ -595,6 +598,7 @@
 	% Does the same job as list__foldl, but with three accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	% 
 :- pred list__foldl3(pred(L, A, A, B, B, C, C), list(L),
 	A, A, B, B, C, C).
 :- mode list__foldl3(pred(in, in, out, in, out, in, out) is det,
@@ -614,6 +618,7 @@
 	% Does the same job as list__foldl, but with four accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	% 
 :- pred list__foldl4(pred(L, A, A, B, B, C, C, D, D), list(L),
 	A, A, B, B, C, C, D, D).
 :- mode list__foldl4(pred(in, in, out, in, out, in, out, in, out) is det,
@@ -633,6 +638,7 @@
 	% Does the same job as list__foldl, but with five accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	% 
 :- pred list__foldl5(pred(L, A, A, B, B, C, C, D, D, E, E), list(L),
 	A, A, B, B, C, C, D, D, E, E).
 :- mode list__foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
@@ -655,9 +661,10 @@
 	in, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
 	% list__foldl6(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6)
-	% Does the same job as list__foldl, but with five accumulators.
+	% Does the same job as list__foldl, but with six accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
+	%
 :- pred list__foldl6(pred(L, A, A, B, B, C, C, D, D, E, E, F, F), list(L),
 	A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode list__foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
@@ -684,6 +691,7 @@
 	% each element of InList (working left-to-right) to transform
 	% InList into OutList.  The final value of the accumulator is
 	% returned in End.
+	% 
 :- pred list__map_foldl(pred(L, M, A, A), list(L), list(M), A, A).
 :- mode list__map_foldl(pred(in, out, di, uo) is det, in, out, di, uo)
 	is det.
@@ -699,6 +707,7 @@
 	is nondet.
 
 	% Same as list__map_foldl, but with two mapped outputs.
+	% 
 :- pred list__map2_foldl(pred(L, M, N, A, A), list(L), list(M), list(N),
 	A, A).
 :- mode list__map2_foldl(pred(in, out, out, di, uo) is det, in, out, out,
@@ -715,6 +724,7 @@
 	in, out) is nondet.
 
 	% Same as list__map_foldl, but with two accumulators.
+	%
 :- pred list__map_foldl2(pred(L, M, A, A, B, B), list(L), list(M), A, A, B, B).
 :- mode list__map_foldl2(pred(in, out, in, out, di, uo) is det,
 	in, out, in, out, di, uo) is det.
@@ -730,6 +740,7 @@
 	in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with three accumulators.
+	%
 :- pred list__map_foldl3(pred(L, M, A, A, B, B, C, C), list(L), list(M),
 	A, A, B, B, C, C).
 :- mode list__map_foldl3(pred(in, out, in, out, in, out, di, uo) is det,
@@ -746,6 +757,7 @@
 	in, out, in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with four accumulators.
+	%
 :- pred list__map_foldl4(pred(L, M, A, A, B, B, C, C, D, D), list(L), list(M),
 	A, A, B, B, C, C, D, D).
 :- mode list__map_foldl4(pred(in, out, in, out, in, out, in, out, di, uo)
@@ -768,6 +780,7 @@
 	in, out, in, out, in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with five accumulators.
+	%
 :- pred list__map_foldl5(pred(L, M, A, A, B, B, C, C, D, D, E, E),
 	list(L), list(M), A, A, B, B, C, C, D, D, E, E).
 :- mode list__map_foldl5(pred(in, out, in, out, in, out, in, out, in, out,
@@ -790,6 +803,7 @@
 	in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
 	% Same as list__map_foldl, but with six accumulators.
+	%
 :- pred list__map_foldl6(pred(L, M, A, A, B, B, C, C, D, D, E, E, F, F),
 	list(L), list(M), A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode list__map_foldl6(pred(in, out, in, out, in, out, in, out, in, out,
@@ -818,18 +832,21 @@
 	% list__all_true(Pred, List) takes a closure with one input argument.
 	% If Pred succeeds for every member of List, all_true succeeds.
 	% If Pred fails for any member of List, all_true fails.
+	%
 :- pred list__all_true(pred(X)::in(pred(in) is semidet), list(X)::in)
 	is semidet.
 
 	% list__all_false(Pred, List) takes a closure with one input argument.
 	% If Pred fails for every member of List, all_false succeeds.
 	% If Pred succeeds for any member of List, all_false fails.
+	%
 :- pred list__all_false(pred(X)::in(pred(in) is semidet), list(X)::in)
 	is semidet.
 
 	% list__filter(Pred, List, TrueList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
+	%
 :- pred list__filter(pred(X)::in(pred(in) is semidet), list(X)::in,
 	list(X)::out) is det.
 :- func list__filter(pred(X)::in(pred(in) is semidet), list(X)::in)
@@ -839,6 +856,7 @@
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
 	% Iff call(Pred, X) is false, then X is included in FalseList.
+	%
 :- pred list__filter(pred(X)::in(pred(in) is semidet), list(X)::in,
 	list(X)::out, list(X)::out) is det.
 
@@ -846,6 +864,7 @@
 	% with one input argument and one output argument. It is called
 	% with each element of List. If a call succeeds, then the output is
 	% included in TrueList.
+	%
 :- pred list__filter_map(pred(X, Y)::in(pred(in, out) is semidet),
 	list(X)::in, list(Y)::out) is det.
 
@@ -857,6 +876,7 @@
 	% It is called with each element of List. If a call succeeds,
 	% then the output is included in TrueList; otherwise, the failing
 	% input is included in FalseList.
+	%
 :- pred list__filter_map(pred(X, Y)::in(pred(in, out) is semidet),
 	list(X)::in, list(Y)::out, list(X)::out) is det.
 
@@ -866,6 +886,7 @@
 	% the call succeeds are placed in UptoList and the first element for
 	% which the call fails, and all the remaining elements of List are
 	% placed in AfterList.
+	%
 :- pred list__takewhile(pred(T)::in(pred(in) is semidet), list(T)::in,
 	list(T)::out, list(T)::out) is det.
 
@@ -877,6 +898,7 @@
 	% term Compare, and the elements that are equivalent in this ordering
 	% appear in the same sequence in Sorted as they do in Unsorted
 	% (that is, the sort is stable).
+	%
 :- pred list__sort(comparison_pred(X)::in(comparison_pred), list(X)::in,
 	list(X)::out) is det.
 :- func list__sort(comparison_func(X), list(X)) = list(X).
@@ -887,6 +909,7 @@
 	% predicate term Compare, except that if two elements in Unsorted
 	% are equivalent with respect to this ordering only the one which
 	% occurs first will be in Sorted.
+	%
 :- pred list__sort_and_remove_dups(comparison_pred(X)::in(comparison_pred),
 	list(X)::in, list(X)::out) is det.
 
@@ -894,6 +917,7 @@
 	% of replacing every sequence of elements in L0 which are equivalent
 	% with respect to the ordering, with the first occurrence in L0 of
 	% such an element.
+	%
 :- pred list__remove_adjacent_dups(comparison_pred(X)::in(comparison_pred),
 	list(X)::in, list(X)::out) is det.
 
@@ -904,6 +928,7 @@
 	% if they come from the same list then they appear in the same
 	% sequence in Sorted as they do in that list, otherwise the elements
 	% from As appear before the elements from Bs.
+	%
 :- pred list__merge(comparison_pred(X)::in(comparison_pred),
 	list(X)::in, list(X)::in, list(X)::out) is det.
 
@@ -916,6 +941,7 @@
 	% contains no duplicates.  If an element from As is duplicated in
 	% Bs (that is, they are equivalent in the ordering), then the element
 	% from As is the one that appears in Sorted.
+	%
 :- pred list__merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
 	list(X)::in, list(X)::in, list(X)::out) is det.
 

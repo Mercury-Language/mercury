@@ -154,7 +154,7 @@
 
     % `set_ctree234__union_list(A, B)' is true iff `B' is the union of
     % all the sets in `A'
-
+    %
 :- pred set_ctree234__union_list(list(set_ctree234(T))::in,
     set_ctree234(T)::out) is det.
 :- func set_ctree234__union_list(list(set_ctree234(T))) = set_ctree234(T).
