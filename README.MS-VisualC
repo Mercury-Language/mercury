@@ -2,10 +2,10 @@
 
 INTRODUCTION
 
-Mercury is in the process of being ported to use the Microsoft Visual
-C++ 6
-compiler.  However not all dependencies on Cygwin have been removed and
-cygwin is still required for installation (see README.MS-Windows).
+Mercury has been ported to use the Microsoft Visual C++ compiler.  It
+has been tested with both version 6.0 and 7.0.  However not all
+dependencies on Cygwin have been removed and cygwin is still required
+for installation (see README.MS-Windows).
 
 -----------------------------------------------------------------------------
 
@@ -13,10 +13,7 @@ CONFIGURATION
 
 To use MSVC to build the compiler issue the following configure command.
 
-CC='CL /nologo' CPP='CL /nologo /E' configure
-
-configure defaults to using the hlc.gc grade as this is the only grade
-currently supported.
+CC='CL /nologo' CPP='CL /nologo /E' ./configure
 
 Also ensure that the environment variable TMPDIR points to a valid directory.
 
@@ -59,8 +56,8 @@ which is incompatible with hlc.gc.  In order to alleviate this problem:
 4. make install
 
 DO NOT USE THE SOURCE DISTRIBUTION TO BUILD THE MS-VisualC VERSION OF
-THE COMPILER!!  CONFIGURE DOES NOT DETERMINE THAT THE PRE-BUILT C FILES
-ARE INCOMPATIBLE IT JUST TRIES TO USE THEM ANYWAY.
+THE COMPILER!!  CONFIGURE DOES NOT DETERMINE THAT THE PRE-BUILT C
+FILES ARE INCOMPATIBLE IT JUST TRIES TO USE THEM ANYWAY.
 
 -----------------------------------------------------------------------------
 
@@ -88,11 +85,9 @@ fails.
 
 NONE.* GRADES
 
-Are not supported yet! But if they were and you have a file with
-a large
-switch in it you need to pass the following flag to mmc
+The following flag needs to be passed to the compiler, when compiling
+in the none.* grades to avoid a limitation in the C compiler.
 
 --max-jump-table-size 512
-
 
 -----------------------------------------------------------------------------

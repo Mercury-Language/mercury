@@ -62,6 +62,8 @@ MR_DEFINE_PROC_STATICS(type_desc, type_desc, 0);
 ** Define MR_TypeCtorInfos for the builtin types
 */
 
+#undef VOID 
+
 MR_DEFINE_TYPE_CTOR_INFO(builtin, int, 0, INT);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, character, 0, CHAR);
 MR_DEFINE_TYPE_CTOR_INFO(builtin, string, 0, STRING);
@@ -144,6 +146,8 @@ MR_bool MR_CALL
 mercury__builtin____Unify____void_0_0(MR_Void x, MR_Void y)
 {
 	MR_fatal_error("called unify/2 for `void' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -158,24 +162,32 @@ mercury__private_builtin____Unify____heap_pointer_0_0(MR_Heap_Pointer x,
 {
 	MR_fatal_error(
 		"called unify/2 for `private_builtin:heap_pointer' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
 mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y)
 {
 	MR_fatal_error("called unify/2 for `func' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
 mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y)
 {
 	MR_fatal_error("called unify/2 for `pred' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
 mercury__builtin____Unify____tuple_0_0(MR_Tuple x, MR_Tuple y)
 {
 	MR_fatal_error("called unify/2 for `tuple' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -215,6 +227,8 @@ mercury__private_builtin____Unify____typeclass_info_1_0(
 	MR_Mercury_TypeClass_Info x, MR_Mercury_TypeClass_Info y)
 {
 	MR_fatal_error("called unify/2 for `typeclass_info' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -223,6 +237,8 @@ mercury__private_builtin____Unify____base_typeclass_info_1_0(
 	MR_Mercury_Base_TypeClass_Info x, MR_Mercury_Base_TypeClass_Info y)
 {
 	MR_SORRY("unify for base_typeclass_info");
+
+    return MR_TRUE;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -405,6 +421,8 @@ MR_bool MR_CALL
 mercury__builtin__do_unify__void_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify/2 for `void' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
@@ -425,12 +443,16 @@ MR_bool MR_CALL
 mercury__builtin__do_unify__func_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify/2 for `func' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL
 mercury__builtin__do_unify__pred_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify/2 for `pred' type");
+
+    return MR_TRUE;
 }
 
 MR_bool MR_CALL

@@ -40,15 +40,23 @@ MMAKEFLAGS=
 
 ifeq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
 
+ifeq ("$(GC_GRADE)", "par_gc")
+submake: force
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	TMP=. nmake -f "gc.mak" CFG="gc - Win32 Release"
+	mv Release/libpar_gc.dll Release/libpar_gc.lib .
+else
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	nmake -f NT_MAKEFILE nodebug=1 gc.lib; \
 	cp gc.lib libgc.lib 
+endif
 
 clean_local:
-	rm -f *.obj gc.lib libgc.$A libpar_gc.$A libpar_gc.dll
+	rm -rf Release/ Debug/
+	rm -f *.obj gc.lib libgc.lib libpar_gc.lib libpar_gc.dll
 
-else
+else 
 
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \

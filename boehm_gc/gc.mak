@@ -55,7 +55,7 @@ NULL=nul
 OUTDIR=.\Release
 INTDIR=.\Release
 
-ALL : ".\Release\gc.dll" ".\Release\gc.bsc"
+ALL : ".\Release\libpar_gc.dll" ".\Release\libpar_gc.bsc"
 
 CLEAN : 
 	-@erase ".\Release\allchblk.obj"
@@ -72,12 +72,12 @@ CLEAN :
 	-@erase ".\Release\dyn_load.sbr"
 	-@erase ".\Release\finalize.obj"
 	-@erase ".\Release\finalize.sbr"
-	-@erase ".\Release\gc.bsc"
+	-@erase ".\Release\libpar_gc.bsc"
 	-@erase ".\Release\gc_cpp.obj"
 	-@erase ".\Release\gc_cpp.sbr"
-	-@erase ".\Release\gc.dll"
-	-@erase ".\Release\gc.exp"
-	-@erase ".\Release\gc.lib"
+	-@erase ".\Release\libpar_gc.dll"
+	-@erase ".\Release\libpar_gc.exp"
+	-@erase ".\Release\libpar_gc.lib"
 	-@erase ".\Release\headers.obj"
 	-@erase ".\Release\headers.sbr"
 	-@erase ".\Release\mach_dep.obj"
@@ -149,7 +149,7 @@ RSC=rc.exe
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-BSC32_FLAGS=/nologo /o"$(OUTDIR)/gc.bsc" 
+BSC32_FLAGS=/nologo /o"$(OUTDIR)/libpar_gc.bsc" 
 BSC32_SBRS= \
 	".\Release\allchblk.sbr" \
 	".\Release\alloc.sbr" \
@@ -175,7 +175,7 @@ BSC32_SBRS= \
 	".\Release\typd_mlc.sbr" \
 	".\Release\win32_threads.sbr"
 
-".\Release\gc.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
+".\Release\libpar_gc.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
   $(BSC32_FLAGS) $(BSC32_SBRS)
 <<
@@ -186,8 +186,8 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib\
  advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib\
  odbccp32.lib /nologo /subsystem:windows /dll /incremental:no\
- /pdb:"$(OUTDIR)/gc.pdb" /machine:I386 /out:"$(OUTDIR)/gc.dll"\
- /implib:"$(OUTDIR)/gc.lib" 
+ /pdb:"$(OUTDIR)/libpar_gc.pdb" /machine:I386 /out:"$(OUTDIR)/libpar_gc.dll"\
+ /implib:"$(OUTDIR)/libpar_gc.lib" 
 LINK32_OBJS= \
 	".\Release\allchblk.obj" \
 	".\Release\alloc.obj" \
@@ -213,7 +213,7 @@ LINK32_OBJS= \
 	".\Release\typd_mlc.obj" \
 	".\Release\win32_threads.obj"
 
-".\Release\gc.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+".\Release\libpar_gc.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
   $(LINK32_FLAGS) $(LINK32_OBJS)
 <<
@@ -233,7 +233,7 @@ LINK32_OBJS= \
 OUTDIR=.\Debug
 INTDIR=.\Debug
 
-ALL : ".\Debug\gc.dll" ".\Debug\gc.bsc"
+ALL : ".\Debug\libpar_gc.dll" ".\Debug\libpar_gc.bsc"
 
 CLEAN : 
 	-@erase ".\Debug\allchblk.obj"
@@ -252,12 +252,12 @@ CLEAN :
 	-@erase ".\Debug\finalize.sbr"
 	-@erase ".\Debug\gc_cpp.obj"
 	-@erase ".\Debug\gc_cpp.sbr"
-	-@erase ".\Debug\gc.bsc"
-	-@erase ".\Debug\gc.dll"
-	-@erase ".\Debug\gc.exp"
-	-@erase ".\Debug\gc.lib"
-	-@erase ".\Debug\gc.map"
-	-@erase ".\Debug\gc.pdb"
+	-@erase ".\Debug\libpar_gc.bsc"
+	-@erase ".\Debug\libpar_gc.dll"
+	-@erase ".\Debug\libpar_gc.exp"
+	-@erase ".\Debug\libpar_gc.lib"
+	-@erase ".\Debug\libpar_gc.map"
+	-@erase ".\Debug\libpar_gc.pdb"
 	-@erase ".\Debug\headers.obj"
 	-@erase ".\Debug\headers.sbr"
 	-@erase ".\Debug\mach_dep.obj"
@@ -332,7 +332,7 @@ RSC=rc.exe
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-BSC32_FLAGS=/nologo /o"$(OUTDIR)/gc.bsc" 
+BSC32_FLAGS=/nologo /o"$(OUTDIR)/libpar_gc.bsc" 
 BSC32_SBRS= \
 	".\Debug\allchblk.sbr" \
 	".\Debug\alloc.sbr" \
@@ -358,7 +358,7 @@ BSC32_SBRS= \
 	".\Debug\typd_mlc.sbr" \
 	".\Debug\win32_threads.sbr"
 
-".\Debug\gc.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
+".\Debug\libpar_gc.bsc" : "$(OUTDIR)" $(BSC32_SBRS)
     $(BSC32) @<<
   $(BSC32_FLAGS) $(BSC32_SBRS)
 <<
@@ -369,8 +369,8 @@ LINK32=link.exe
 LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib\
  advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib\
  odbccp32.lib /nologo /subsystem:windows /dll /incremental:no\
- /pdb:"$(OUTDIR)/gc.pdb" /map:"$(INTDIR)/gc.map" /debug /machine:I386\
- /out:"$(OUTDIR)/gc.dll" /implib:"$(OUTDIR)/gc.lib" 
+ /pdb:"$(OUTDIR)/libpar_gc.pdb" /map:"$(INTDIR)/libpar_gc.map" /debug /machine:I386\
+ /out:"$(OUTDIR)/libpar_gc.dll" /implib:"$(OUTDIR)/libpar_gc.lib" 
 LINK32_OBJS= \
 	".\Debug\allchblk.obj" \
 	".\Debug\alloc.obj" \
@@ -396,7 +396,7 @@ LINK32_OBJS= \
 	".\Debug\typd_mlc.obj" \
 	".\Debug\win32_threads.obj"
 
-".\Debug\gc.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
+".\Debug\libpar_gc.dll" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
   $(LINK32_FLAGS) $(LINK32_OBJS)
 <<
@@ -477,7 +477,7 @@ LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib\
  /pdb:"$(OUTDIR)/gctest.pdb" /machine:I386 /out:"Release/gctest.exe" 
 LINK32_OBJS= \
 	".\gctest\Release\test.obj" \
-	".\Release\gc.lib"
+	".\Release\libpar_gc.lib"
 
 ".\Release\gctest.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -569,7 +569,7 @@ LINK32_FLAGS=kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib\
  /pdb:"$(OUTDIR)/gctest.pdb" /map:"$(INTDIR)/gctest.map" /debug /machine:I386\
  /out:"Debug/gctest.exe" 
 LINK32_OBJS= \
-	".\Debug\gc.lib" \
+	".\Debug\libpar_gc.lib" \
 	".\gctest\Debug\test.obj"
 
 ".\Debug\gctest.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
@@ -658,7 +658,7 @@ LINK32_OBJS= \
 	".\cord\Release\de.obj" \
 	".\cord\Release\de_win.obj" \
 	".\cord\Release\de_win.res" \
-	".\Release\gc.lib"
+	".\Release\libpar_gc.lib"
 
 ".\Release\de.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
@@ -751,7 +751,7 @@ LINK32_OBJS= \
 	".\cord\Debug\de.obj" \
 	".\cord\Debug\de_win.obj" \
 	".\cord\Debug\de_win.res" \
-	".\Debug\gc.lib"
+	".\Debug\libpar_gc.lib"
 
 ".\Debug\de.exe" : "$(OUTDIR)" $(DEF_FILE) $(LINK32_OBJS)
     $(LINK32) @<<
