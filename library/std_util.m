@@ -189,10 +189,6 @@
 	% A type_info represents a type, e.g. `list(int)'.
 	% A type_ctor_info represents a type constructor, e.g. `list/1'.
 
-	% XXX The facilities here don't yet work for higher-order types.
-	%     If you try, there is a good chance that you will get a core
-	%     dump or worse.
- 
 :- type type_info.
 :- type type_ctor_info.
 
@@ -1164,10 +1160,9 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 ").
 
 
-	% A type_ctor_info is represented as a pointer to a base_type_info.
-	% XXX what about higher-order types?
-	%     For them the type_ctor_info should include the arity, but
-	%     the arity is stored in the type_info, not the base_type_info.
+	% A type_ctor_info is represented as a pointer to a base_type_info,
+	% except for higher-order types, which are represented using
+	% small integers.  See runtime/type_info.h.
 :- type type_ctor_info == c_pointer.  
 
 :- pragma c_code(type_of(Value::unused) = (TypeInfo::out),
@@ -1759,10 +1754,8 @@ ML_make_type(int arity, Word *type_ctor, Word arg_types_list)
 	Word base_type_info;
 
 	/*
-	** XXX: do we need to treat higher-order predicates as
-	**      a special case here?
+	** We need to treat higher-order predicates as a special case here.
 	*/
-
 	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
 		base_type_info = MR_TYPECTOR_GET_HOT_BASE_TYPE_INFO(type_ctor);
 		extra_args = 2;
