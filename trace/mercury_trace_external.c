@@ -228,9 +228,17 @@ MR_trace_init_external(void)
 			"environment variables");
 	}
 	if (unix_socket) {
-	
+		/*
+		** We use `(memset)(...)' rather than `memset'
+		** to prevent macro expansion; this is needed because
+		** with GNU libc 2.1.2 and gcc 2.95, gcc barfs on the latter,
+		** with an error message about impossible asm due to a conflict
+		** between our use of global register variables and the inline
+		** assembler macro definition of memset.
+		*/
+		 
 		addr_family = AF_UNIX;
-		memset(&unix_address, 0, sizeof(unix_address));
+		(memset)(&unix_address, 0, sizeof(unix_address));
 		unix_address.sun_family = AF_UNIX;
 		strcpy(unix_address.sun_path, unix_socket);
 		addr = (struct sockaddr *) &unix_address;
