@@ -2179,10 +2179,10 @@ hlds_out__write_instance_defns(Indent, ClassId - InstanceDefns) -->
 
 hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 
-	{ InstanceDefn = hlds_instance_defn(_, Constraints, Types, Interface,
+	{ InstanceDefn = hlds_instance_defn(_, Context,
+		Constraints, Types, Interface,
 		_MaybeClassInterface, VarSet, Proofs) },
 
-	/*
 	{ term__context_file(Context, FileName) },
 	{ term__context_line(Context, LineNumber) },
 	( { FileName \= "" } ->
@@ -2195,7 +2195,6 @@ hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 	;
 		[]
 	),
-	*/
 
 		% curry the varset for term_io__write_variable/4
 	{ PrintTerm = lambda([TypeName::in, IO0::di, IO::uo] is det,

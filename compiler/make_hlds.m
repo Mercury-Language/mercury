@@ -1493,8 +1493,8 @@ module_add_instance_defn(Module0, Constraints, Name, Types, Interface, VarSet,
 		{ map__search(Classes, Key, _) }
 	->
 		{ map__init(Empty) },
-		{ NewValue = hlds_instance_defn(Status, Constraints, Types,
-			Interface, no, VarSet, Empty) },
+		{ NewValue = hlds_instance_defn(Status, Context, Constraints, 
+			Types, Interface, no, VarSet, Empty) },
 		{ map__lookup(Instances0, Key, Values) },
 		{ map__det_update(Instances0, Key, [NewValue|Values], 
 			Instances) },

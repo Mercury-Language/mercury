@@ -3394,8 +3394,9 @@ find_matching_instance_rule(Instances, ClassName, Types, TVarSet,
 
 find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 		NewTVarSet, Proofs0, Proofs, NewConstraints) :-
-	I = hlds_instance_defn(_ModuleName, NewConstraints0, InstanceTypes0,
-		_Interface, _PredProcIds, InstanceNames, _SuperClassProofs),
+	I = hlds_instance_defn(_Status, _Context, NewConstraints0, 
+		InstanceTypes0, _Interface, _PredProcIds, InstanceNames,
+		_SuperClassProofs),
 	(
 		varset__merge_subst(TVarSet, InstanceNames, NewTVarSet0,
 			RenameSubst),

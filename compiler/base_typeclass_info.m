@@ -72,7 +72,7 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		ModuleName, ModuleInfo, CModules) :-
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
 		ModuleName, ModuleInfo, CModules1),
-	InstanceDefn = hlds_instance_defn(ImportStatus,
+	InstanceDefn = hlds_instance_defn(ImportStatus, _TermContext,
 				InstanceConstraints, InstanceTypes, _Interface,
 				PredProcIds, _Varset, _SuperClassProofs),
 	(

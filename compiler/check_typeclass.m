@@ -59,8 +59,12 @@
 
 :- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
 :- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
-:- import_module term, varset, typecheck, int, globals, make_hlds. 
+:- import_module term, varset, typecheck, int, globals, make_hlds, error_util. 
 :- import_module base_typeclass_info, string, hlds_goal, set, prog_out.
+:- import_module mercury_to_mercury.
+
+:- type error_message == pair(term__context, list(format_component)).
+:- type error_messages == list(error_message).
 
 check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError, 
 		IO0, IO) :-
@@ -80,9 +84,14 @@ check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError,
 	;
 		ModuleInfo = ModuleInfo1,
 		list__reverse(Errors, ErrorList),
-		io__write_list(ErrorList, "\n", io__write_string, IO0, IO1),
-		io__write_string("\n", IO1, IO2),
-		io__set_exit_status(1, IO2, IO),
+		WriteError = lambda([E::in, TheIO0::di, TheIO::uo] is det,
+			(
+				E = ErrorContext - ErrorPieces,
+				write_error_pieces(ErrorContext, 0, 
+					ErrorPieces, TheIO0, TheIO)
+			)),
+		list__foldl(WriteError, ErrorList, IO0, IO1),
+		io__set_exit_status(1, IO1, IO),
 		FoundError = yes
 	).  
 		
@@ -90,8 +99,8 @@ check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError,
 :- pred check_one_class(class_table,
 	pair(class_id, list(hlds_instance_defn)), 
 	pair(class_id, list(hlds_instance_defn)), 
-	pair(list(string), module_info), 
-	pair(list(string), module_info)).
+	pair(error_messages, module_info), 
+	pair(error_messages, module_info)).
 :- mode check_one_class(in, in, out, in, out) is det.
 
 check_one_class(ClassTable, ClassId - InstanceDefns0, 
@@ -118,8 +127,8 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 :- pred check_class_instance(class_id, list(class_constraint), list(var),
 	hlds_class_interface, varset, list(pred_id), 
 	hlds_instance_defn, hlds_instance_defn, 
-	pair(list(string), module_info), 
-	pair(list(string), module_info)).
+	pair(error_messages, module_info), 
+	pair(error_messages, module_info)).
 :- mode check_class_instance(in, in, in, in, in, in, in, out, in, out) is det.
 
 check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
@@ -136,17 +145,17 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 			ModuleInfo0, ModuleInfo1)
 	;
 		% there are no methods for this class
-		InstanceDefn0 = hlds_instance_defn(A, B, C, D, 
-				_MaybeInstancePredProcs, F, G),
-		InstanceDefn1 = hlds_instance_defn(A, B, C, D, 
-				yes([]), F, G),
+		InstanceDefn0 = hlds_instance_defn(A, B, C, D, E,
+				_MaybeInstancePredProcs, G, H),
+		InstanceDefn1 = hlds_instance_defn(A, B, C, D, E,
+				yes([]), G, H),
 		ModuleInfo1 = ModuleInfo0
 	),
 
 
 		% check that the superclass constraints are satisfied for the
 		% types in this instance declaration
-	check_superclass_conformance(SuperClasses, Vars, ClassVarSet,
+	check_superclass_conformance(ClassId, SuperClasses, Vars, ClassVarSet,
 		InstanceDefn1, InstanceDefn, ModuleInfo1, ModuleInfo).
 
 %----------------------------------------------------------------------------%
@@ -168,7 +177,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		list(pair(list(mode), determinism)),	% Modes and 
 							% determinisms of the
 							% required procs.
-		list(string),				% Error messages
+		error_messages,				% Error messages
 							% that have been
 							% generated.
 		tvarset,		
@@ -183,7 +192,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 	% check one pred in one instance of one class
 :- pred check_instance_pred(class_id, list(var), hlds_class_interface, 
 	pred_id, hlds_instance_defn, hlds_instance_defn,
-	pair(list(string), module_info), pair(list(string), module_info)).
+	pair(error_messages, module_info), pair(error_messages, module_info)).
 :- mode check_instance_pred(in,in, in, in, in, out, in, out) is det.
 
 check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
@@ -231,7 +240,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ProcIds, 
 		ArgModes),
 	
-	InstanceDefn0 = hlds_instance_defn(Status, _, InstanceTypes, 
+	InstanceDefn0 = hlds_instance_defn(Status, _, _, InstanceTypes, 
 		_, _, _, _),
 
 		% Work out the name of the predicate that we will generate
@@ -243,23 +252,24 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
 
-	check_instance_pred_procs(ClassVars, MethodName,
+	check_instance_pred_procs(ClassId, ClassVars, MethodName,
 		InstanceDefn0, InstanceDefn, Info0, Info),
 
 	Info = instance_method_info(ModuleInfo, _PredName, _PredArity, 
 		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
 		_ArgTypeVars, _Status, _PredOrFunc).
 
-:- pred check_instance_pred_procs(list(var), sym_name,
+:- pred check_instance_pred_procs(class_id, list(var), sym_name,
 	hlds_instance_defn, hlds_instance_defn, 
 	instance_method_info, instance_method_info).
-:- mode check_instance_pred_procs(in, in, in, out, in, out) is det.
+:- mode check_instance_pred_procs(in, in, in, in, out, in, out) is det.
 
-check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn, 
-		Info0, Info) :-
-	InstanceDefn0 = hlds_instance_defn(A, InstanceConstraints,
-				InstanceTypes, InstanceInterface,
-				MaybeInstancePredProcs, InstanceVarSet, F),
+check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
+		InstanceDefn, Info0, Info) :-
+	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
+				InstanceConstraints, InstanceTypes,
+				InstanceInterface, MaybeInstancePredProcs,
+				InstanceVarSet, H),
 	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
@@ -289,40 +299,71 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 			MaybeInstancePredProcs = no,
 			InstancePredProcs = InstancePredProcs1
 		),
-		InstanceDefn = hlds_instance_defn(A, InstanceConstraints,
-			InstanceTypes, InstanceInterface,
-			yes(InstancePredProcs), InstanceVarSet, F)
+		InstanceDefn = hlds_instance_defn(A, Context, 
+			InstanceConstraints, InstanceTypes, InstanceInterface,
+			yes(InstancePredProcs), InstanceVarSet, H)
 	;
-		InstanceNames = [_,_|_]
+		InstanceNames = [I1, I2 | Is]
 	->
 			% one kind of error
-			% XXX still room for improvement in the error message
 		InstanceDefn = InstanceDefn0,
+		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(MethodName, MethodNameString),
+		prog_out__sym_name_to_string(ClassName, ClassNameString),
 		string__int_to_string(PredArity, PredArityString),
+		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
+			InstanceTypesString),
 		string__append_list([
-			"Multiple implementations of type class method ",
+			"In instance declaration for ",
+			ClassNameString,
+			"(",
+			InstanceTypesString,
+			"): ",
+			"multiple implementations of type class method ",
 			MethodNameString,
 			"/",
-			PredArityString],
-			NewError),
-		Errors = [NewError|Errors0],
+			PredArityString,
+			"."],
+			ErrorHeader),
+		I1 = _ - I1Context, 
+		Heading = 
+			[I1Context - [words("First definition appears here.")],
+			InstanceContext - [words(ErrorHeader)]],
+		list__map(lambda([Definition::in, ContextAndError::out] is det,
+		(
+			Definition = _ - TheContext,
+			Error = [words("Subsequent definition appears here.")],
+			ContextAndError = TheContext - Error
+		)), [I2|Is], SubsequentErrors),
+			
+			% errors are built up in reverse.
+		list__append(SubsequentErrors, Heading, NewErrors),
+		list__append(NewErrors, Errors0, Errors),
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
 			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
 			ArgTypeVars, Status, PredOrFunc)
 	;
-			 % another kind of error
-			 % XXX still room for improvement in the error message
+			% another kind of error
 		InstanceDefn = InstanceDefn0,
+		ClassId = class_id(ClassName, _ClassArity),
 		prog_out__sym_name_to_string(MethodName, MethodNameString),
+		prog_out__sym_name_to_string(ClassName, ClassNameString),
 		string__int_to_string(PredArity, PredArityString),
+		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
+			InstanceTypesString),
 		string__append_list([
-			"No implementation for type class method ",
+			"In instance declaration for ",
+			ClassNameString,
+			"(",
+			InstanceTypesString,
+			"): ",
+			"no implementation for type class method ",
 			MethodNameString,
 			"/",
-			PredArityString],
+			PredArityString,
+			"."],
 			NewError),
-		Errors = [NewError|Errors0],
+		Errors = [InstanceContext - [words(NewError)] | Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
 			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
 			ArgTypeVars, Status, PredOrFunc)
@@ -535,17 +576,17 @@ make_introduced_pred_name(ClassId, MethodName, PredArity,
 % check that the superclass constraints are satisfied for the
 % types in this instance declaration
 
-:- pred check_superclass_conformance(list(class_constraint), list(var),
-	varset, hlds_instance_defn, hlds_instance_defn, 
-	pair(list(string), module_info), pair(list(string), module_info)).
-:- mode check_superclass_conformance(in, in, in, in, out, in, out) is det.
+:- pred check_superclass_conformance(class_id, list(class_constraint), 
+	list(var), varset, hlds_instance_defn, hlds_instance_defn, 
+	pair(error_messages, module_info), pair(error_messages, module_info)).
+:- mode check_superclass_conformance(in, in, in, in, in, out, in, out) is det.
 
-check_superclass_conformance(SuperClasses0, ClassVars0, ClassVarSet, 
+check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet, 
 		InstanceDefn0, InstanceDefn, 
 		Errors0 - ModuleInfo, Errors - ModuleInfo) :-
 
-	InstanceDefn0 = hlds_instance_defn(A, InstanceConstraints,
-		InstanceTypes, D, E, InstanceVarSet0, Proofs0),
+	InstanceDefn0 = hlds_instance_defn(A, Context, InstanceConstraints,
+		InstanceTypes, E, F, InstanceVarSet0, Proofs0),
 	varset__merge_subst(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
 		Subst),
 
@@ -568,24 +609,58 @@ check_superclass_conformance(SuperClasses0, ClassVars0, ClassVarSet,
 	module_info_instances(ModuleInfo, InstanceTable),
 	module_info_superclasses(ModuleInfo, SuperClassTable),
 
+		% Try to reduce the superclass constraints,
+		% using the declared instance constraints
+		% and the usual context reduction rules.
+	typecheck__reduce_context_by_rule_application(InstanceTable, 
+		SuperClassTable, InstanceConstraints, TypeSubst,
+		InstanceVarSet1, InstanceVarSet2, Proofs0, Proofs1,
+		SuperClasses, UnprovenConstraints),
+
 	(
-			% Try to reduce the superclass constraints,
-			% using the declared instance constraints
-			% and the usual context reduction rules.
-		typecheck__reduce_context_by_rule_application(InstanceTable, 
-			SuperClassTable, InstanceConstraints, TypeSubst,
-			InstanceVarSet1, InstanceVarSet2,
-			Proofs0, Proofs1, SuperClasses, 
-			[])
+		UnprovenConstraints = []
 	->
 		Errors = Errors0,
-		InstanceDefn = hlds_instance_defn(A, InstanceConstraints,
-			InstanceTypes, D, E, InstanceVarSet2, Proofs1)
+		InstanceDefn = hlds_instance_defn(A, Context, 
+			InstanceConstraints, InstanceTypes, E, F, 
+			InstanceVarSet2, Proofs1)
 	;
-			% XXX improve the error message
-		NewError = "superclass constraint unsatisfied",
-		Errors = [NewError|Errors0],
+		ClassId = class_id(ClassName, _ClassArity),
+		prog_out__sym_name_to_string(ClassName, ClassNameString),
+		mercury_type_list_to_string(InstanceVarSet2, InstanceTypes,
+			InstanceTypesString),
+		constraint_list_to_string(ClassVarSet, UnprovenConstraints, 
+			ConstraintsString),
+		string__append_list([
+			"In instance declaration for ",
+			ClassNameString,
+			"(",
+			InstanceTypesString,
+			"): ",
+			"superclass constraint(s) not satisfied: ",
+			ConstraintsString,
+			"."],
+			NewError),
+		Errors = [Context - [words(NewError)] | Errors0],
 		InstanceDefn = InstanceDefn0
 	).
+
+:- pred constraint_list_to_string(varset, list(class_constraint), string).
+:- mode constraint_list_to_string(in, in, out) is det.
+
+constraint_list_to_string(_, [], "").
+constraint_list_to_string(VarSet, [C|Cs], String) :-
+	mercury_constraint_to_string(VarSet, C, String0),
+	constraint_list_to_string_2(VarSet, Cs, String1),
+	string__append(String0, String1, String).
+
+:- pred constraint_list_to_string_2(varset, list(class_constraint), string).
+:- mode constraint_list_to_string_2(in, in, out) is det.
+
+constraint_list_to_string_2(_VarSet, [], "").
+constraint_list_to_string_2(VarSet, [C|Cs], String) :-
+	mercury_constraint_to_string(VarSet, C, String0),
+	constraint_list_to_string_2(VarSet, Cs, String1),
+	string__append_list([", ", String0, String1], String).
 
 %---------------------------------------------------------------------------%

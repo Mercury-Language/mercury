@@ -737,6 +737,7 @@ determinism_to_code_model(failure,     model_semi).
 	--->	hlds_instance_defn(
 			import_status,		% import status of the instance
 						% declaration
+			term__context,		% context of declaration
 			list(class_constraint), % Constraints
 			list(type), 		% ClassTypes 
 			instance_interface, 	% Methods
