@@ -36,7 +36,7 @@
 ** mr0, mr1, etc. as the physical machine registers, and defines an
 ** array fake_regs[n] of pseudo registers.
 **
-** The next level defines macroes mr0 through mr36 and also mr(n) for
+** The next level defines macros mr0 through mr36 and also mr(n) for
 ** n>36.  The lower the number,
 ** the greater the probability that the storage referred to will be
 ** a real machine register, and not a simulated one. The number of
@@ -81,7 +81,7 @@
 
 /* The machdeps header defines mr0 .. mr36; now define mr(n) for n > 36 */
 
-#define mr(n) LVALUE_SEQ(assert((n) >= MAX_REAL_REG + NUM_SPECIAL_REG && \
+#define mr(n) LVALUE_SEQ(MR_assert((n) >= MAX_REAL_REG + NUM_SPECIAL_REG && \
 				(n) < MAX_FAKE_REG),\
 		fake_reg[n])
 

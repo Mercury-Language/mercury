@@ -8,7 +8,6 @@
 
 #include "imp.h"
 
-#include <assert.h>
 #include <unistd.h>		/* for getpid() and fork() */
 #ifdef PARALLEL
 #include <signal.h>
@@ -124,7 +123,7 @@ new_context(void)
 
 	get_lock(free_context_list_lock);
 
-	assert(free_context_list_ptr != NULL);
+	MR_assert(free_context_list_ptr != NULL);
 	if (*free_context_list_ptr == NULL) {
 		fatal_error("no free contexts");
 	} else {
@@ -169,7 +168,7 @@ void
 delete_context(Context *c)
 {
 	get_lock(free_context_list_lock);
-	assert(free_context_list_ptr != NULL);
+	MR_assert(free_context_list_ptr != NULL);
 	c->next = *free_context_list_ptr;
 	*free_context_list_ptr = c;
 	release_lock(free_context_list_lock);
@@ -319,7 +318,7 @@ do_join_and_terminate:
 
 	get_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
 	if (--(sync_term[SYNC_TERM_COUNTER]) == 0) {
-		assert(sync_term[SYNC_TERM_PARENT] != NULL);
+		MR_assert(sync_term[SYNC_TERM_PARENT] != NULL);
 		release_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
 		ctxt = (Context *) sync_term[SYNC_TERM_PARENT];
 		delete_context(this_context);
@@ -349,7 +348,7 @@ do_join_and_continue:
 
 	get_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
 	if (--(sync_term[SYNC_TERM_COUNTER]) == 0) {
-		assert(sync_term[SYNC_TERM_PARENT] == NULL);
+		MR_assert(sync_term[SYNC_TERM_PARENT] == NULL);
 		release_lock((SpinLock *)&sync_term[SYNC_TERM_LOCK]);
 		GOTO(do_join_and_continue_where_to);
 	} else {

@@ -709,7 +709,7 @@ run_code(void)
 		int i;
 
 		for (i = 0; i < SAFETY_BUFFER_SIZE; i++)
-			assert(safety_buffer[i] == MAGIC_MARKER_2);
+			MR_assert(safety_buffer[i] == MAGIC_MARKER_2);
 	}
 #endif
 

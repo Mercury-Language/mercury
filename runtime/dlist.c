@@ -9,7 +9,6 @@
 */
 
 #include	<stdio.h>
-#include	<assert.h>
 #include	"std.h"
 #include	"dlist.h"
 
@@ -39,7 +38,7 @@ list_makelist(void * data)
 {
 	reg	List	*list;
 
-	assert(data != NULL);
+	MR_assert(data != NULL);
 	list = makelist0();
 	addhead(list, data);
 	return list;

@@ -19,14 +19,7 @@
 #ifndef IMP_H
 #define IMP_H
 
-#ifdef SPEED
-/* turn off `assert()'s */
-#define NDEBUG
-#endif
-
 #include	"regs.h"	/* must come before system headers */
-
-#include	<assert.h>
 
 #include	"conf.h"
 

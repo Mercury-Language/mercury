@@ -13,6 +13,7 @@
 #define STD_H
 
 #include <stdlib.h>	/* for size_t */
+#include <assert.h>	/* for assert() */
 
 #ifndef	reg
 #define	reg		register
@@ -48,6 +49,16 @@
 #ifndef	FALSE
 #define	FALSE		0
 #endif
+
+/*
+** turn assertions off for speed
+*/
+#ifdef SPEED
+#define MR_assert(ASSERTION)	((void)0)
+#else
+#define	MR_assert(ASSERTION)	assert(ASSERTION)
+#endif
+
 
 /* XXX these should go in memory.h or heap.h */
 extern	void	*newmem(size_t);

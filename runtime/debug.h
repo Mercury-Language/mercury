@@ -25,7 +25,7 @@
 #else
 
 #define	debuggoto(label) \
-	(assert(label), \
+	(MR_assert(label), \
 	IF (gotodebug, (save_transient_registers(), goto_msg(label))))
 
 #define	debugsreg() \
