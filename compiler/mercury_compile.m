@@ -66,6 +66,8 @@ main_2(yes(ErrorMessage), _, _) -->
 main_2(no, Args, Link) -->
 	globals__io_lookup_bool_option(help, Help),
 	globals__io_lookup_bool_option(output_grade_string, OutputGrade),
+	globals__io_lookup_bool_option(filenames_from_stdin,
+		FileNamesFromStdin),
 	( { Help = yes } ->
 		long_usage
 	; { OutputGrade = yes } ->
@@ -73,11 +75,9 @@ main_2(no, Args, Link) -->
 		{ compute_grade(Globals, Grade) },
 		io__write_string(Grade),
 		io__write_string("\n")
-	; { Args = [] } ->
+	; { Args = [], FileNamesFromStdin = no } ->
 		usage
 	;
-		globals__io_lookup_bool_option(filenames_from_stdin,
-			FileNamesFromStdin),
 		( { FileNamesFromStdin = yes } ->
 			process_stdin_arg_list([], ModulesToLink)
 		;
@@ -124,10 +124,14 @@ process_arg_list(Args, Modules) -->
 :- mode process_stdin_arg_list(in, out, di, uo) is det.
 
 process_stdin_arg_list(Modules0, Modules) -->
-	io__read_line(FileResult),
+	io__read_line_as_string(FileResult),
 	( 
-		{ FileResult = ok(Arg0) },
-		{ string__from_char_list(Arg0, Arg) },
+		{ FileResult = ok(Line) },
+		{ string__remove_suffix(Line, "\n", Arg0) ->
+			Arg = Arg0
+		;
+			Arg = Line
+		},
 		process_arg(Arg, Module), !,
 		{ list__append(Module, Modules0, Modules1) },
 		process_stdin_arg_list(Modules1, Modules)
