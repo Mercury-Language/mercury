@@ -1263,7 +1263,7 @@
 :- mode io__read_from_string_with_int_instead_of_char(in, in, in,
 			out, in, out) is det.
 
-% For use by compiler/make.util.m:
+% For use by compiler/process_util.m:
 
 	% Interpret the child process exit status returned by
 	% system() or wait().
@@ -4850,6 +4850,11 @@ io__close_binary_output(Stream) -->
 
 /* miscellaneous predicates */
 
+io__progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
+	% This is a fall-back for back-ends which don't support the
+	% C interface.
+	ProgName = DefaultProgName.
+
 :- pragma foreign_proc("C",
 	io__progname(DefaultProgname::in, PrognameOut::out, IO0::di, IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
@@ -4939,39 +4944,44 @@ io__handle_system_command_exit_status(Code0) = Status :-
 		Status = ok(exited(Code))
 	).
 
+	% Interpret the child process exit status returned by
+	% system() or wait(): return negative for `signalled',
+	% non-negative for `exited', or 127 for anything else
+	% (e.g. an error invoking the command).
 :- func io__handle_system_command_exit_code(int) = int.
+
+% This is a fall-back for back-ends that don't support the C interface.
+io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
+	( (Status0 /\ 0xff) \= 0 ->
+		/* the process was killed by a signal */
+		Status = -(Status0 /\ 0xff)
+	;
+		/* the process terminated normally */
+		Status = (Status0 /\ 0xff00) >> 8
+	).
 
 :- pragma foreign_proc("C",
 	io__handle_system_command_exit_code(Status0::in) = (Status::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-		Status = Status0;
-		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
-			defined (WIFSIGNALED) && defined (WTERMSIG)
-		if (WIFEXITED(Status))
-			Status = WEXITSTATUS(Status);
-		else if (WIFSIGNALED(Status))
-			Status = -WTERMSIG(Status);
-		else
+	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+            defined (WIFSIGNALED) && defined (WTERMSIG)
+		if (WIFEXITED(Status0)) {
+			Status = WEXITSTATUS(Status0);
+		} else if (WIFSIGNALED(Status0)) {
+			Status = -WTERMSIG(Status0);
+		} else {
 			Status = 127;
-
-		#else
-		if (Status & 0xff != 0) 
+		}
+	#else
+		if (Status0 & 0xff != 0) {
 			/* the process was killed by a signal */
-			Status = -(Status & 0xff);
-		else 
+			Status = -(Status0 & 0xff);
+		} else {
 			/* the process terminated normally */
-			Status = (Status & 0xff00) >> 8;
-
-		#endif
-").
-
-:- pragma foreign_proc("MC++",
-	io__progname(_DefaultProgname::in, _PrognameOut::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io,
-			thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	update_io(IO0, IO);
+			Status = (Status0 & 0xff00) >> 8;
+		}
+	#endif
 ").
 
 :- pragma foreign_proc("MC++",
@@ -5018,14 +5028,6 @@ io__handle_system_command_exit_status(Code0) = Status :-
 //	Diagnostics::Process::Start(commandstr, argstr);
 	Status = NULL;
 	update_io(IO0, IO);
-").
-
-:- pragma foreign_proc("MC++",
-		io__handle_system_command_exit_code(Status0::in)
-			= (Status::out),
-		[will_not_call_mercury, thread_safe, promise_pure],
-"
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 io__current_input_stream(_::out, _::di, _::uo) :- 
