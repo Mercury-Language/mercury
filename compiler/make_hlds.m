@@ -35,51 +35,14 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	add_item_list_decls(Items, Module0, Module1),
 	globals__lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
-	{ module_balance(Module1, Module2) },
+		% balance the binary trees
+	{ module_info_optimize(Module1, Module2) },
 	globals__lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
 		% effiency, so we return it to the correct order here.
-	{ module_info_predids(Module3, RevPredIds) },
-	{ list__reverse(RevPredIds, PredIds) },
-	{ module_info_set_predids(Module3, PredIds, Module) }.
-
-	% After we have finished constructing the symbol tables,
-	% we balance all the binary trees, to improve performance
-	% in later stages of the compiler.
-
-:- pred module_balance(module_info, module_info).
-:- mode module_balance(in, out).
-
-module_balance(ModuleInfo0, ModuleInfo) :-
-
-	module_info_preds(ModuleInfo0, Preds0),
-	map__optimize(Preds0, Preds),
-	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
-
-	module_info_pred_name_index(ModuleInfo1, PredNameIndex0),
-	map__optimize(PredNameIndex0, PredNameIndex),
-	module_info_set_pred_name_index(ModuleInfo1, PredNameIndex,
-		ModuleInfo2),
-
-	module_info_types(ModuleInfo2, Types0),
-	map__optimize(Types0, Types),
-	module_info_set_types(ModuleInfo2, Types, ModuleInfo3),
-
-	module_info_insts(ModuleInfo3, InstTable0),
-	inst_table_get_user_insts(InstTable0, Insts0),
-	map__optimize(Insts0, Insts),
-	inst_table_set_user_insts(InstTable0, Insts, InstTable),
-	module_info_set_insts(ModuleInfo3, InstTable, ModuleInfo4),
-
-	module_info_modes(ModuleInfo4, Modes0),
-	map__optimize(Modes0, Modes),
-	module_info_set_modes(ModuleInfo4, Modes, ModuleInfo5),
-
-	module_info_ctors(ModuleInfo5, Ctors0),
-	map__optimize(Ctors0, Ctors),
-	module_info_set_ctors(ModuleInfo5, Ctors, ModuleInfo).
+	{ module_info_reverse_predids(Module3, Module) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -431,59 +394,24 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 :- mode preds_add(in, in, in, in, in, in, out,
 		di, uo).
 
-preds_add(Module0, VarSet, Name, Types, Cond, Context, Module) -->
+preds_add(Module0, VarSet, PredName, Types, Cond, Context, Module) -->
 	{ module_info_name(Module0, ModuleName) },
-	{ module_info_preds(Module0, Preds0) },
-	{ list__length(Types, Arity),
-	  map__init(Procs),
-	  make_predid(ModuleName, Name, Arity, PredId),
-	  clauses_info_init(Arity, ClausesInfo),
-	  PredContainsError = no,
-	  P = predicate(VarSet, Types, Cond, ClausesInfo, Procs, Context,
-			PredContainsError) },
+	{ module_info_get_predicate_table(Module0, PredicateTable0) },
+	{ list__length(Types, Arity) },
+	{ clauses_info_init(Arity, ClausesInfo) },
+	{ pred_info_init(ModuleName, PredName, Arity, VarSet, Types, Cond,
+		Context, ClausesInfo, PredInfo) },
 	(
-		% some [P2]
-		{ map__search(Preds0, PredId, P2) }
+		{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
+			PredicateTable) }
 	->
-		{ Module = Module0 },
-		(
-			{ pred_is_compat(P, P2) }
-		->
-			duplicate_def_warning(Name, Arity, "pred", Context)
-		;
-			multiple_def_error(Name, Arity, "pred", Context)
-		)
+		{ module_info_set_predicate_table(Module0, PredicateTable,
+			Module) }
 	;
-		{ map__insert(Preds0, PredId, P, Preds) },
-		{ module_info_set_preds(Module0, Preds, Module1) },
-		{ module_info_predids(Module1, PredIds0) },
-		{ module_info_set_predids(Module1, [PredId | PredIds0],
-				Module2) },
-		{ module_info_pred_name_index(Module2, PredNameIndex0) },
-		{ unqualify_name(Name, UnqualifiedName) },
-		{
-			map__search(PredNameIndex0, UnqualifiedName, PredIdList)
-		->
-			map__set(PredNameIndex0, UnqualifiedName,
-				[PredId | PredIdList], PredNameIndex)
-		;
-			map__insert(PredNameIndex0, UnqualifiedName,
-				[PredId], PredNameIndex)
-		},
-		{ module_info_set_pred_name_index(Module2, PredNameIndex,
-				Module) }
+		{ Module = Module0 },
+		multiple_def_error(PredName, Arity, "pred", Context)
 	).
 
-	% XXX This doesn't work.
-
-:- pred pred_is_compat(pred_info, pred_info).
-:- mode pred_is_compat(in, in).
-
-pred_is_compat(PredInfo1, PredInfo2) :-
-	pred_info_arg_types(PredInfo1, _, ArgTypes1),
-	pred_info_arg_types(PredInfo2, _, ArgTypes2),
-	ArgTypes1 = ArgTypes2.
- 
 %-----------------------------------------------------------------------------%
 
 	% Add a mode declaration for a predicate.
@@ -494,67 +422,87 @@ pred_is_compat(PredInfo1, PredInfo2) :-
 :- mode module_add_mode(in, in, in, in, in, in, in, out,
 			di, uo).
 
-module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
-		-->
-	{ module_info_preds(Module0, Preds0) },
-	{ module_info_name(Module0, ModuleName) },
-	pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
-			Context, Preds),
-	{ module_info_set_preds(Module0, Preds, Module) }.
+	% We should store the mode varset and the mode condition
+	% in the hlds - at the moment we just ignore those two arguments.
 
-:- pred pred_modes_add(pred_table, module_name, varset, sym_name, list(mode),
-		determinism, condition, term__context, pred_table,
-		io__state, io__state).
-:- mode pred_modes_add(in, in, in, in, in, in, in,
-		in, out, di, uo).
-
-	% XXX we should store the mode varset and the mode condition
-	% in the hlds - at the moment we just ignore those two arguments
-
-pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
-		MContext, Preds) -->
+module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
+			ModuleInfo) -->
+		%
+		% check that the determinism was specified
+		%
 	{ list__length(Modes, Arity) },
 	( { Det = unspecified } ->
 		unspecified_det_warning(PredName, Arity, MContext)
 	;
 		[]
 	),
-	{ make_predid(ModuleName, PredName, Arity, PredId) },
+		%
+		% Lookup the pred declaration in the predicate table.
+		% (if it's not there, print an error message and insert
+		% a dummy declaration for the predicate.)
+		%
+	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
+	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
-		% some [P0]
-		{ map__search(Preds0, PredId, P0) }
+		{ predicate_table_search_m_n_a(PredicateTable0,
+			ModuleName, PName, Arity, PredId0) }
 	->
-		{ pred_info_procedures(P0, Procs0) },
-			% XXX we should check that this mode declaration
-			% isn't the same as an existing one
-		{ next_mode_id(Procs0, ModeId) },
-		{ proc_info_init(Modes, Det, MContext, NewProc) },
-		{ map__insert(Procs0, ModeId, NewProc, Procs) },
-		{ pred_info_set_procedures(P0, Procs, P) },
-		{ map__set(Preds0, PredId, P, Preds) }
+		{ PredicateTable1 = PredicateTable0 },
+		{ PredId = PredId0 }
 	;
 		undefined_pred_error(PredName, Arity, MContext,	
 			"mode declaration"),
-		{ preds_add_implicit(Preds0, PredId, MContext, Preds1) },
-		pred_modes_add(Preds1, ModuleName, VarSet, PredName,
-				Modes, Det, Cond, MContext, Preds)
-	).
+		{ preds_add_implicit(PredicateTable0,
+				ModuleName, PredName, Arity, MContext,
+				PredId, PredicateTable1) }
+		
+	),
+		% Lookup the pred_info for this predicate, and
+		% add the mode declaration to the proc_info for
+		% procedure.
+	{ predicate_table_get_preds(PredicateTable1, Preds0) },
+	{ map__lookup(Preds0, PredId, PredInfo0) },
+	{ pred_info_procedures(PredInfo0, Procs0) },
+		% XXX we should check that this mode declaration
+		% isn't the same as an existing one
+	{ next_mode_id(Procs0, ModeId) },
+	{ proc_info_init(Modes, Det, MContext, NewProc) },
+	{ map__insert(Procs0, ModeId, NewProc, Procs) },
+	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
+	{ map__set(Preds0, PredId, PredInfo, Preds) },
+	{ predicate_table_set_preds(PredicateTable0, Preds, PredicateTable) },
+	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+		ModuleInfo) }.
 
 	% Whenever there is a clause or mode declaration for an undeclared
-	% predicate, we add an implicit declaration for that predicate.
+	% predicate, we add an implicit declaration
+	%	:- pred p(_, _, ..., _).
+	% for that predicate.
 
-:- pred preds_add_implicit(pred_table, pred_id, term__context, pred_table).
-:- mode preds_add_implicit(in, in, in, out).
+:- pred preds_add_implicit(predicate_table, module_name, sym_name, arity,
+				term__context, pred_id, predicate_table).
+:- mode preds_add_implicit(in, in, in, in, in, out, out).
 
-preds_add_implicit(Preds0, PredId, Context, Preds) :-
-	predicate_arity(PredId, Arity),
-	clauses_info_init(Arity, ClausesInfo),
-	map__init(Procs),
+preds_add_implicit(PredicateTable0,
+			ModuleName, PredName, Arity, Context,
+			PredId, PredicateTable) :-
 	varset__init(TVarSet0),
 	make_n_fresh_vars(Arity, TVarSet0, TypeVars, TVarSet),
 	var_list_to_term_list(TypeVars, Types),
-	P = predicate(TVarSet, Types, true, ClausesInfo, Procs, Context, no),
-	map__set(Preds0, PredId, P, Preds).
+	Cond = true,
+	clauses_info_init(Arity, ClausesInfo),
+	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
+		Context, ClausesInfo, PredInfo),
+	(
+		predicate_table_insert(PredicateTable0, PredInfo, PredId0,
+			PredicateTable1)
+	->
+		PredId = PredId0,
+		PredicateTable = PredicateTable1
+	;	
+		error("preds_add_implicit")
+	).
 
 :- pred var_list_to_term_list(list(var), list(term)).
 :- mode var_list_to_term_list(in, out) is det.
@@ -579,87 +527,102 @@ next_mode_id(Procs, ModeId) :-
 
 :- pred module_add_clause(module_info, varset, sym_name, list(term), goal,
 			term__context, module_info, io__state, io__state).
-:- mode module_add_clause(in, in, in, in, in, in, out,
-			di, uo).
+:- mode module_add_clause(in, in, in, in, in, in, out, di, uo).
 
-module_add_clause(Module0, VarSet, PredName, Args, Body, Context, Module) -->
-	{ module_info_preds(Module0, Preds0) },
-	{ module_info_name(Module0, ModuleName) },
-	clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
-		Preds),
-	{ module_info_set_preds(Module0, Preds, Module) }.
-
-:- pred clauses_add(pred_table, module_name, varset, sym_name, list(term),
-			goal, term__context, pred_table, io__state, io__state).
-:- mode clauses_add(in, in, in, in, in, in, in, out,
-			di, uo).
-
-clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
-		Preds) -->
+module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
+			ModuleInfo) -->
+		%
+		% print out a progress message
+		%
+	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ list__length(Args, Arity) },
-	{ make_predid(ModuleName, PredName, Arity, PredId) },
 	globals__lookup_option(very_verbose, bool(VeryVerbose)),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Processing clause for pred `"),
-		{ predicate_name(PredId, PName) },
-		io__write_string(PName),
-		io__write_string("/"),
-		io__write_int(Arity),
+		hlds_out__write_pred_call_id(PredName/Arity),
 		io__write_string("'...\n")
 	;
 		[]
 	),
-	maybe_warn_singletons(VarSet, PredId, Args, Body, Context),
+		%
+		% Lookup the pred declaration in the predicate table.
+		% (if it's not there, print an error message and insert
+		% a dummy declaration for the predicate.)
+		%
+	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
+	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
-		% some [PredInfo0]
-		{ map__search(Preds0, PredId, PredInfo0) }
+		{ predicate_table_search_m_n_a(PredicateTable0,
+			ModuleName, PName, Arity, PredId0) }
 	->
-			% XXX abstract predicate/4
-		{ pred_info_clauses_info(PredInfo0, Clauses0), 
-		  pred_info_procedures(PredInfo0, Procs),
-		  map__keys(Procs, ModeIds),
-		  clauses_info_add_clause(Clauses0, ModeIds, VarSet, Args,
-				Body, Context, Clauses),
-		  pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo),
-		  map__set(Preds0, PredId, PredInfo, Preds) }
+		{ PredId = PredId0 },
+		{ PredicateTable1 = PredicateTable0 }
 	;
 		undefined_pred_error(PredName, Arity, Context, "clause"),
-		{ preds_add_implicit(Preds0, PredId, Context, Preds1) },
-		clauses_add(Preds1, ModuleName, VarSet, PredName, Args,
-			Body, Context, Preds)
-	).
+		{ preds_add_implicit(PredicateTable0,
+				ModuleName, PredName, Arity, Context,
+				PredId, PredicateTable1) }
+	),
+		%
+		% Lookup the pred_info for this pred,
+		% add the clause to the clauses_info in the pred_info,
+		% and save the pred_info.
+		%
+	{
+		predicate_table_get_preds(PredicateTable1, Preds0),
+		map__lookup(Preds0, PredId, PredInfo0),
+		pred_info_clauses_info(PredInfo0, Clauses0), 
+		pred_info_procedures(PredInfo0, Procs),
+		map__keys(Procs, ModeIds),
+		clauses_info_add_clause(Clauses0, ModeIds, VarSet, Args,
+				Body, Context, Clauses),
+		pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo),
+		map__set(Preds0, PredId, PredInfo, Preds),
+		predicate_table_set_preds(PredicateTable1, Preds,
+			PredicateTable),
+		module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+			ModuleInfo)
+	},
+		%
+		% Warn about singleton variables in the clauses.
+		%
+	maybe_warn_singletons(VarSet, PredName/Arity, Args, Body, Context).
 
-%-----------------------------------------------------------------------------
+%-----------------------------------------------------------------------------%
 
 	% Warn about variables which occur only once but don't start with
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
 	%
-	% XXX We shouldn't warn about variables which start with '_'
+	% XXX This should be based on scopes, not over the entire clause.
+	%     We shouldn't warn about variables which start with '_'
 	%     unless they occur more than once *in the same scope*.
+	%     We should also warn about variables which occur twice
+	%     but only occur once in a particular scope.
 	%
 	% XXX This is O(N*N) in the number of vars per clause
 
-:- pred maybe_warn_singletons(varset, pred_id, list(term), goal, term__context,
-					io__state, io__state).
+:- pred maybe_warn_singletons(varset, pred_call_id, list(term), goal,
+				term__context, io__state, io__state).
 :- mode maybe_warn_singletons(in, in, in, in, in, di, uo).
 
-maybe_warn_singletons(VarSet, PredId, Args, Body, Context) -->
+maybe_warn_singletons(VarSet, PredCallId, Args, Body, Context) -->
 	globals__lookup_option(warn_singleton_vars, bool(WarnSingletonVars)),
 	( { WarnSingletonVars = yes } ->
 		{ term__vars_list(Args, VarList0) },
 		{ vars_in_goal(Body, VarList0, VarList) },
-		warn_singletons(VarList, VarSet, PredId, Context)
+		warn_singletons(VarList, VarSet, PredCallId, Context)
 	;	
 		[]
 	).
 
-:- pred warn_singletons(list(var), varset, pred_id, term__context,
+:- pred warn_singletons(list(var), varset, pred_call_id, term__context,
 			io__state, io__state).
 :- mode warn_singletons(in, in, in, in, di, uo).
 
 warn_singletons([], _, _, _) --> [].
-warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
+warn_singletons([Var | Vars0], VarSet, PredCallId, Context) -->
 	{ delete_all(Vars0, Var, Vars1, Found) },
 	( { varset__lookup_name(VarSet, Var, Name) } ->
 		(
@@ -670,7 +633,7 @@ warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
 			->
 				prog_out__write_context(Context),
 				io__write_string("In clause for predicate `"),
-				hlds_out__write_pred_id(PredId),
+				hlds_out__write_pred_call_id(PredCallId),
 				io__write_string("':\n"),
 				prog_out__write_context(Context),
 				io__write_string("  Warning: variable `"),
@@ -685,7 +648,7 @@ warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
 			->
 				prog_out__write_context(Context),
 				io__write_string("In clause for predicate `"),
-				hlds_out__write_pred_id(PredId),
+				hlds_out__write_pred_call_id(PredCallId),
 				io__write_string("':\n"),
 				prog_out__write_context(Context),
 				io__write_string("  Warning: variable `"),
@@ -698,7 +661,7 @@ warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
 	;
 		[]
 	),
-	warn_singletons(Vars1, VarSet, PredId, Context).
+	warn_singletons(Vars1, VarSet, PredCallId, Context).
 
 
 	% delete_all(List0, Elem, List, Found) is true iff
@@ -724,9 +687,6 @@ delete_all([X | Xs], Y, L, Found) :-
 vars_in_goal(true) --> [].
 vars_in_goal(fail) --> [].
 vars_in_goal((A,B)) -->
-	vars_in_goal(A),
-	vars_in_goal(B).
-vars_in_goal((A;B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
 vars_in_goal((A;B)) -->
@@ -822,12 +782,6 @@ transform_goal(some(Vars0, Goal0), VarSet0, Subst,
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goal_info_init(GoalInfo).
 
-transform_goal(all(Vars0, Goal0), VarSet0, Subst,
-		all(Vars, Goal) - GoalInfo, VarSet) :-
-	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
-	goal_info_init(GoalInfo).
-
 transform_goal(if_then_else(Vars0, A0, B0, C0), VarSet0, Subst,
 		if_then_else(Vars, A, B, C) - GoalInfo, VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
@@ -868,10 +822,6 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 		ModeId = 0,
 		Builtin = not_builtin,
 
-		% the module name will be determined by typecheck.nl
-		% when it resolves predicate overloading
-		ModuleName = "",
-
 		term__apply_substitution(Goal0, Subst, Goal1),
 		( Goal1 = term__functor(term__atom(PredName0), Args0, _) ->
 			PredName = PredName0,
@@ -888,13 +838,17 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 			Args = [Goal1]
 		),
 		list__length(Args, Arity),
-		make_predid(ModuleName, unqualified(PredName), Arity, PredId),
+			% XXX we should handle module qualifiers properly
+		SymName = unqualified(PredName),
+		PredCallId = SymName/Arity,
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		var_list_to_term_list(HeadVars, HeadArgs),
-		Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
+		invalid_pred_id(PredId),
+		Goal2 = call(PredId, ModeId, HeadArgs, Builtin, SymName) -
+				GoalInfo,
 		goal_info_init(GoalInfo),
-		insert_arg_unifications(HeadVars, Args, call(PredId), Goal2,
-			VarSet1, Goal, VarSet)
+		insert_arg_unifications(HeadVars, Args, call(PredCallId),
+			Goal2, VarSet1, Goal, VarSet)
 	).
 
 transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
@@ -914,7 +868,7 @@ transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 
 :- type arg_context
 	--->	head		% the arguments in the head of the clause
-	;	call(pred_id)	% the arguments in a call to a predicate
+	;	call(pred_call_id) % the arguments in a call to a predicate
 	;	functor(	% the arguments in a functor
 			cons_id,
 			unify_main_context,
@@ -1104,12 +1058,6 @@ implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, Goal, NonLocals) :-
 	Goal = G - GoalInfo.
 *********/
 
-implicitly_quantify_goal_2(all(Vars, Goal0), OutsideVars,
-			   all(Vars, Goal), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals).
-
 implicitly_quantify_goal_2(conj(List0), OutsideVars,
 			   conj(List), NonLocalVars) :-
 	implicitly_quantify_conj(List0, OutsideVars, List, NonLocalVars).
@@ -1137,16 +1085,16 @@ implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0), OutsideVars,
 	set__union(NonLocalsSuccess, NonLocalsC, NonLocalsIfThenElse),
 	set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals).
 
-implicitly_quantify_goal_2(call(PredId, ModeId, HeadArgs, Builtin), OutsideVars,
-		call(PredId, ModeId, HeadArgs, Builtin), NonLocalVars) :-
+implicitly_quantify_goal_2(call(A, B, HeadArgs, D, E), OutsideVars,
+		call(A, B, HeadArgs, D, E), NonLocalVars) :-
 	term__vars_list(HeadArgs, HeadVars),
 	set__list_to_set(HeadVars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 
-implicitly_quantify_goal_2(unify(A, B, X, Y, Z), OutsideVars,
-			unify(A, B, X, Y, Z), NonLocalVars) :-
-	term__vars(A, VarsA),
-	term__vars(B, VarsB),
+implicitly_quantify_goal_2(unify(TermA, TermB, X, Y, Z), OutsideVars,
+			unify(TermA, TermB, X, Y, Z), NonLocalVars) :-
+	term__vars(TermA, VarsA),
+	term__vars(TermB, VarsB),
 	list__append(VarsA, VarsB, Vars),
 	set__list_to_set(Vars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
@@ -1214,19 +1162,20 @@ implicitly_quantify_disj([Goal0 | Goals0], OutsideVars,
 :- pred get_vars(list(hlds__goal), list(set(var))).
 :- mode get_vars(in, out) is det.
 
-:- get_vars([], _) when ever.
-:- get_vars([_], _) when ever.
-:- get_vars([_,_|_], _) when ever.
-
 get_vars([], []).
-get_vars([_Goal], [Set]) :-
+get_vars([_Goal|Goals], [Set|Sets]) :-
+	get_vars_2(Goals, Set, Sets).
+
+:- pred get_vars_2(list(hlds__goal), set(var), list(set(var))).
+:- mode get_vars_2(in, out, out) is det.
+
+get_vars_2([], Set, []) :-
 	set__init(Set).
-get_vars([_Goal1, Goal2 | Goals], SetList) :-
-	get_vars([Goal2 | Goals], SetList0),
-	SetList0 = [Set0 | _],
-	goal_vars(Goal2, Set1),
+get_vars_2([Goal | Goals], Set, SetList) :-
+	get_vars_2(Goals, Set0, SetList0),
+	goal_vars(Goal, Set1),
 	set__union(Set0, Set1, Set),
-	SetList = [Set | SetList0].
+	SetList = [Set0 | SetList0].
 
 	% `goal_list_vars(Goal, Vars)' is true iff 
 	% `Vars' is the set of unquantified variables in Goal.
@@ -1263,7 +1212,7 @@ goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
 	term__vars(B, VarsB),
 	set__insert_list(Set1, VarsB, Set).
 
-goal_vars_2(call(_, _, Args, _), Set0, Set) :-
+goal_vars_2(call(_, _, Args, _, _), Set0, Set) :-
 	term__vars_list(Args, Vars),
 	set__insert_list(Set0, Vars, Set).
 
@@ -1274,11 +1223,6 @@ goal_vars_2(disj(Goals), Set0, Set) :-
 	goal_list_vars_2(Goals, Set0, Set).
 
 goal_vars_2(some(Vars, Goal), Set0, Set) :-
-	goal_vars(Goal, Set1),
-	set__remove_list(Set1, Vars, Set2),
-	set__union(Set0, Set2, Set).
-
-goal_vars_2(all(Vars, Goal), Set0, Set) :-
 	goal_vars(Goal, Set1),
 	set__remove_list(Set1, Vars, Set2),
 	set__union(Set0, Set2, Set).

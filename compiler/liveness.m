@@ -143,11 +143,7 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness, ModuleInfo,
 		some(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Goal).
 
-detect_liveness_in_goal_2(all(Vars, Goal0), Liveness, ModuleInfo,
-							all(Vars, Goal)) :-
-	detect_liveness_in_goal(Goal0, Liveness, ModuleInfo, Goal).
-
-detect_liveness_in_goal_2(call(A,B,C,D), _, _, call(A,B,C,D)).
+detect_liveness_in_goal_2(call(A,B,C,D,E), _, _, call(A,B,C,D,E)).
 
 detect_liveness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
 
@@ -260,11 +256,7 @@ detect_deadness_in_goal_2(some(Vars, Goal0), Deadness, ModuleInfo,
 		some(Vars, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal).
 
-detect_deadness_in_goal_2(all(Vars, Goal0), Deadness, ModuleInfo,
-						all(Vars, Goal)) :-
-	detect_deadness_in_goal(Goal0, Deadness, ModuleInfo, Goal).
-
-detect_deadness_in_goal_2(call(A,B,C,D), _, _, call(A,B,C,D)).
+detect_deadness_in_goal_2(call(A,B,C,D,E), _, _, call(A,B,C,D,E)).
 
 detect_deadness_in_goal_2(unify(A,B,C,D,E), _, _, unify(A,B,C,D,E)).
 
@@ -392,8 +384,8 @@ stuff_liveness_residue_into_goal_2(switch(Var, Cases0, FollowVars),
 			GoalInfo, Residue,
 				switch(Var, Cases, FollowVars), GoalInfo) :-
 	stuff_liveness_residue_into_cases(Cases0, Residue, Cases).
-stuff_liveness_residue_into_goal_2(call(A, B, C, D), GoalInfo0, Residue,
-						call(A, B, C, D), GoalInfo) :-
+stuff_liveness_residue_into_goal_2(call(A, B, C, D, E), GoalInfo0, Residue,
+					call(A, B, C, D, E), GoalInfo) :-
 	goal_info_delta_liveness(GoalInfo0, Delta0),
 	Delta0 = Births0 - Deaths,
 	set__union(Births0, Residue, Births),
@@ -412,9 +404,6 @@ stuff_liveness_residue_into_goal_2(if_then_else(A, B, C0, D0), GoalInfo,
 	stuff_liveness_residue_into_goal(D0, Residue, D).
 stuff_liveness_residue_into_goal_2(not(A, B0), GoalInfo, Residue,
 							not(A, B), GoalInfo) :-
-	stuff_liveness_residue_into_goal(B0, Residue, B).
-stuff_liveness_residue_into_goal_2(all(A, B0), GoalInfo, Residue,
-							all(A, B), GoalInfo) :-
 	stuff_liveness_residue_into_goal(B0, Residue, B).
 stuff_liveness_residue_into_goal_2(some(A, B0), GoalInfo, Residue,
 							some(A, B), GoalInfo) :-
@@ -490,8 +479,8 @@ stuff_deadness_residue_into_goal_2(disj(Goals0), GoalInfo, Residue,
 stuff_deadness_residue_into_goal_2(switch(Var, Cases0, FollowVars), GoalInfo, Residue,
 				switch(Var, Cases, FollowVars), GoalInfo) :-
 		stuff_deadness_residue_into_cases(Cases0, Residue, Cases).
-stuff_deadness_residue_into_goal_2(call(A, B, C, D), GoalInfo0, Residue,
-						call(A, B, C, D), GoalInfo) :-
+stuff_deadness_residue_into_goal_2(call(A, B, C, D, E), GoalInfo0, Residue,
+					call(A, B, C, D, E), GoalInfo) :-
 	goal_info_delta_liveness(GoalInfo0, Delta0),
 	Delta0 = Births - Deaths0,
 	set__union(Deaths0, Residue, Deaths),
@@ -509,8 +498,6 @@ stuff_deadness_residue_into_goal_2(if_then_else(A, B, C0, D0), GoalInfo, Residue
 	stuff_deadness_residue_into_goal(C0, Residue, C),
 	stuff_deadness_residue_into_goal(D0, Residue, D).
 stuff_deadness_residue_into_goal_2(not(A, B0), GoalInfo, Residue, not(A, B), GoalInfo) :-
-	stuff_deadness_residue_into_goal(B0, Residue, B).
-stuff_deadness_residue_into_goal_2(all(A, B0), GoalInfo, Residue, all(A, B), GoalInfo) :-
 	stuff_deadness_residue_into_goal(B0, Residue, B).
 stuff_deadness_residue_into_goal_2(some(A, B0), GoalInfo, Residue,
 						some(A, B), GoalInfo) :-
@@ -562,7 +549,7 @@ stuff_deadness_residue_into_cases([case(Cons, Goal0)|Goals0], Residue,
 :- pred detect_liveness_is_atomic(hlds__goal_expr).
 :- mode detect_liveness_is_atomic(in) is semidet.
 
-detect_liveness_is_atomic(call(_,_,_,_)).
+detect_liveness_is_atomic(call(_,_,_,_,_)).
 detect_liveness_is_atomic(unify(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%

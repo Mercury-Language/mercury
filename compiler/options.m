@@ -19,14 +19,14 @@
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(list(pair(option, option_data))::output) is det.
 
-:- pred options_help(io__state::di, io__state::uo).
+:- pred options_help(io__state::di, io__state::uo) is det.
 
 % A couple of misc utilities
 
-:- pred maybe_report_stats(bool::in, io__state::di, io__state::uo).
+:- pred maybe_report_stats(bool::in, io__state::di, io__state::uo) is det.
 :- pred maybe_write_string(bool::input, string::input,
-			io__state::di, io__state::uo).
-:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo).
+			io__state::di, io__state::uo) is det.
+:- pred maybe_flush_output(bool::in, io__state::di, io__state::uo) is det.
 
 :- type option		--->	verbose
 			;	very_verbose

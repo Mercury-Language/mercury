@@ -38,7 +38,8 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__clear_reserved_registers,
 	call_gen__setup_call(Args, CodeB),
 	code_info__get_next_label(ReturnLabel),
-	{ code_util__make_entry_label(PredId, ModeId, Label) },
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
 	{ CodeC = node([
 		call(Label, ReturnLabel) - "branch to procedure",
 		label(ReturnLabel) - "Continutation label"
@@ -56,7 +57,8 @@ call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__setup_call(Args, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_fall_through(FallThrough),
-	{ code_util__make_entry_label(PredId, ModeId, Label) },
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Label) },
 	{ CodeC = node([
 		call(Label, ReturnLabel) - "branch to procedure",
 		label(ReturnLabel) - "Continutation label",
@@ -148,7 +150,8 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode)|Args]) -->
 %---------------------------------------------------------------------------%
 
 call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
-	{ predicate_name(PredId, OpStr) },
+	code_info__get_module_info(ModuleInfo),
+	{ predicate_name(ModuleInfo, PredId, OpStr) },
 	(
 		{ atom_to_operator(OpStr, Op) },
 		{ Args = [ X, Y, Var ] }
@@ -161,7 +164,8 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, empty) -->
 %---------------------------------------------------------------------------%
 
 call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
-	{ predicate_name(PredId, OpStr) },
+	code_info__get_module_info(ModuleInfo),
+	{ predicate_name(ModuleInfo, PredId, OpStr) },
 	(
 		{ atom_to_operator(OpStr, Op) },
 		{ Args = [ X, Y ] }

@@ -25,12 +25,12 @@
 :- type univ.
 
 :- pred type_to_univ(_T, univ).
-:- mode type_to_univ(in, out).
-:- mode type_to_univ(out, in).
+:- mode type_to_univ(in, out) is det.
+:- mode type_to_univ(out, in) is semidet.
 
 :- pred univ_to_type(univ, _T).
-:- mode univ_to_type(in, out).
-:- mode univ_to_type(out, in).
+:- mode univ_to_type(in, out) is semidet.
+:- mode univ_to_type(out, in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -49,7 +49,7 @@
 :- type comparison_result ---> (=) ; (<) ; (>).
 
 :- pred compare(comparison_result, T, T).
-:- mode compare(out, in, in).
+:- mode compare(out, in, in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -72,7 +72,7 @@
 :- pred gc_call(pred).
 
 :- pred solutions(pred(T), list(T)).
-:- mode solutions(complicated_mode, out).
+:- mode solutions(complicated_mode, out) is det.
 
 % The following is a temporary hack until we implement higher-order
 % modes.
@@ -125,7 +125,7 @@ assoc_list__from_corresponding_lists(As, Bs, ABs) :-
 
 :- pred assoc_list__from_corresponding_lists_2(list(K), list(V), 
 							assoc_list(K, V)).
-:- mode assoc_list__from_corresponding_lists_2(in, in, out).
+:- mode assoc_list__from_corresponding_lists_2(in, in, out) is det.
 
 assoc_list__from_corresponding_lists_2([], [], []).
 assoc_list__from_corresponding_lists_2([A|As], [B|Bs], [A - B|ABs]) :-

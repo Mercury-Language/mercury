@@ -197,10 +197,12 @@ array__set(three(Low, High, Left, Middle, Right), Index, Item, A) :-
 		A = three(Low, High, Left, Middle, Right1)
 	).
 
-array__from_list([], _Array) :-
-	error("Cannot create an array with zero elements").
-
 array__from_list(List, Array) :-
+	( List = [] ->
+		error("Cannot create an array with zero elements")
+	;
+		true
+	),
 	list__length(List, Len),
 	Len1 is Len - 1,
 	List = [Head | Tail],

@@ -19,9 +19,9 @@
 :- type c_module	--->	c_module(string, list(c_procedure)).
 			%	module name, code
 
-:- type c_procedure	--->	c_procedure(string, int, llds__pred_mode_id,
+:- type c_procedure	--->	c_procedure(string, int, llds__proc_id,
 						list(instruction)).
-:- type llds__pred_mode_id == int.
+:- type llds__proc_id == int.
 
 			%	predicate name, arity, mode, code
 :- type instruction	==	pair(instr, string).

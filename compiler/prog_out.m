@@ -18,16 +18,16 @@
 :- import_module prog_io, io, term.
 
 :- pred prog_out__write_messages(message_list, io__state, io__state).
-:- mode prog_out__write_messages(in, di, uo).
+:- mode prog_out__write_messages(in, di, uo) is det.
 
 :- pred prog_out__write_context(term__context, io__state, io__state).
-:- mode prog_out__write_context(in, di, uo).
+:- mode prog_out__write_context(in, di, uo) is det.
 
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
-:- mode prog_out__write_sym_name(in, di, uo).
+:- mode prog_out__write_sym_name(in, di, uo) is det.
 
 :- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
-:- mode prog_out__write_module_spec(in, in, out).
+:- mode prog_out__write_module_spec(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -47,7 +47,7 @@ prog_out__write_messages([Message | Messages]) -->
 	prog_out__write_messages(Messages).
 
 :- pred prog_out__write_message(pair(string, term), io__state, io__state).
-:- mode prog_out__write_message(in, di, uo).
+:- mode prog_out__write_message(in, di, uo) is det.
 
 prog_out__write_message(Msg - Term) -->
 	(
@@ -132,7 +132,7 @@ prog_out__writeDCGClause(Head, Body, VarSet) -->
 :- type context ---> '(' ; (';') ; (then) ; (else) ; ','.
 
 :- pred prog_out__write_goal(goal, int, context, varset, io__state, io__state).
-:- mode prog_out__write_goal(in, in, in, in, di, uo).
+:- mode prog_out__write_goal(in, in, in, in, di, uo) is det.
 
 prog_out__write_goal(fail, I0, T, _VarSet) -->
 	prog_out__beforelit(T, I0),
@@ -258,7 +258,7 @@ prog_out__write_some_vars(_VarSet, Vars) -->
 	io__write_anything(Vars).		% XXX
 
 :- pred prog_out__beforelit(context, int, io__state, io__state).
-:- mode prog_out__beforelit(in, in, di, uo).
+:- mode prog_out__beforelit(in, in, di, uo) is det.
 
 prog_out__beforelit('(', _) -->
 	io__write_string("\t").
@@ -280,7 +280,7 @@ prog_out__beforelit(',', I) -->
 	prog_out__indent(I).
 
 :- pred prog_out__indent(int, io__state, io__state).
-:- mode prog_out__indent(int, di, uo).
+:- mode prog_out__indent(int, di, uo) is det.
 prog_out__indent(N) -->
 	(if {N > 0} then
 		io__write_string("\t"),
@@ -291,7 +291,7 @@ prog_out__indent(N) -->
 	).
 
 :- pred prog_out__qwrite(int, varset, term, io__state, io__state).
-:- mode prog_out__qwrite(in, in, in, di, uo).
+:- mode prog_out__qwrite(in, in, in, di, uo) is det.
 
 	% XXX problems with precedence
 
@@ -299,7 +299,7 @@ prog_out__qwrite(_Prec, VarSet, X) -->
 	term_io__write_term(VarSet, X).
 
 :- pred prog_out__get_op_prec(string, int, int, io__state, io__state).
-:- mode prog_out__get_op_prec(in, in, out, di, uo).
+:- mode prog_out__get_op_prec(in, in, out, di, uo) is det.
 
 prog_out__get_op_prec(Op, Pos, Prec) -->
 	term_io__current_ops(Ops),
@@ -319,7 +319,7 @@ get_prec_and_type(ThisOp, [Op|Ops], Prec, Type) :-
 	).
 
 :- pred prog_out__op_adj(int, op_type, int).
-:- mode prog_out__op_adj(in, in, out).
+:- mode prog_out__op_adj(in, in, out) is det.
 
 prog_out__op_adj(1, xfx, 1).
 prog_out__op_adj(1, xfy, 1).

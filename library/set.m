@@ -87,8 +87,8 @@
 	% all the elements of `Set0' except `X'.
 
 :- pred set__delete(set(T), T, set(T)).
-:- mode set__delete(in, out, out) is nondet.
 :- mode set__delete(in, in, out) is semidet.
+:- mode set__delete(in, out, out) is nondet.
 
 	% `set__delete_list(Set0, Xs, Set)' is true iff Xs does not
 	% contain any duplicates, `Set0' contains every member of `Xs',

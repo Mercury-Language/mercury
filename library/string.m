@@ -106,11 +106,11 @@
 :- import_module list, int, require.
 
 :- pred string__to_int_list(string, list(int)).
-:- mode string__to_int_list(in, out).
-:- mode string__to_int_list(out, in).
+:- mode string__to_int_list(in, out) is det.
+:- mode string__to_int_list(out, in) is semidet.
 
 :- pred intToString(int, string).
-:- mode intToString(out, in).
+:- mode intToString(out, in) is semidet.
 
 /*
 :- external("NU-Prolog", string__to_int_list).

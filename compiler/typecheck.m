@@ -195,7 +195,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 		Error1 = Error0,
 		IOState1 = IOState0
 	;
-		write_progress_message(PredId, IOState0, IOState1),
+		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
 		type_info_init(IOState0, ModuleInfo0, PredId,
 				TypeVarSet, VarSet, VarTypes0, HeadTypeParams,
@@ -220,14 +220,14 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	typecheck_pred_types_2(PredIds, ModuleInfo2, Error1, ModuleInfo, Error,
 		IOState1, IOState).
 
-:- pred write_progress_message(pred_id, io__state, io__state).
-:- mode write_progress_message(in, di, uo) is det.
+:- pred write_progress_message(pred_id, module_info, io__state, io__state).
+:- mode write_progress_message(in, in, di, uo) is det.
 
-write_progress_message(PredId) -->
+write_progress_message(PredId, ModuleInfo) -->
 	globals__lookup_option(very_verbose, bool(VeryVerbose)),
 	( { VeryVerbose = yes } ->
 		io__write_string("% Type-checking predicate "),
-		hlds_out__write_pred_id(PredId),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
 		io__write_string("\n")
 	;
 		[]
@@ -450,13 +450,10 @@ typecheck_goal_2(not(Vs, A0), not(Vs, A)) -->
 typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->
 	checkpoint("some"),
 	typecheck_goal(G0, G).
-typecheck_goal_2(all(Vs, G0), all(Vs, G)) -->
-	checkpoint("all"),
-	typecheck_goal(G0, G).
-typecheck_goal_2(call(PredId0, Mode, Args, Builtin),
-			call(PredId, Mode, Args, Builtin)) -->
+typecheck_goal_2(call(_, Mode, Args, Builtin, PredName),
+			call(PredId, Mode, Args, Builtin, PredName)) -->
 	checkpoint("call"),
-	typecheck_call_pred(PredId0, Args, PredId).
+	typecheck_call_pred(PredName, Args, PredId).
 typecheck_goal_2(unify(A, B, Mode, Info, UnifyContext),
 		unify(A, B, Mode, Info, UnifyContext)) -->
 	checkpoint("unify"),
@@ -477,24 +474,36 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_call_pred(pred_id, list(term), pred_id, type_info, type_info).
+:- pred typecheck_call_pred(sym_name, list(term), pred_id, type_info,
+				type_info).
 :- mode typecheck_call_pred(in, in, out, type_info_di, type_info_uo) is det.
 
 	% WISHLIST - we should handle overloading of predicates
 
-typecheck_call_pred(PredId0, Args, PredId, TypeInfo0, TypeInfo) :-
+typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		% repair the module name in the PredId
 		% (make_hlds.nl doesn't set it up correctly)
-	type_info_get_module_name(TypeInfo0, ModuleName),
-	PredId0 = pred(_, Name, Arity),
-	PredId = pred(ModuleName, Name, Arity),
+	list__length(Args, Arity),
+	unqualify_name(PredName, Name),
+
+	PredCallId = PredName/Arity,
+	type_info_set_called_predid(TypeInfo0, PredCallId, TypeInfo1),
 
 		% look up the called predicate's arg types
-	type_info_set_called_predid(TypeInfo0, PredId, TypeInfo1),
-	type_info_get_preds(TypeInfo1, Preds),
-	( % if some [PredInfo]
-		map__search(Preds, PredId, PredInfo)
+	type_info_get_module_info(TypeInfo1, ModuleInfo),
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	( 
+		predicate_table_search_sym_arity(PredicateTable,
+			PredName, Arity, PredIdList)
 	->
+		( PredIdList = [PredId0] ->
+			PredId = PredId0
+		;
+			error("sorry, predicate overloading not implemented")
+		),
+
+		predicate_table_get_preds(PredicateTable, Preds),
+		map__lookup(Preds, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 
 			% rename apart the type variables in called
@@ -512,15 +521,15 @@ typecheck_call_pred(PredId0, Args, PredId, TypeInfo0, TypeInfo) :-
 			% called predicates' arg types
 		typecheck_term_has_type_list(Args, PredArgTypes, 0, TypeInfo2,
 				TypeInfo)
+	
 	;
+		invalid_pred_id(PredId),
 		type_info_get_io_state(TypeInfo1, IOState0),
-		type_info_get_pred_name_index(TypeInfo0, PredNameIndex),
-		predicate_name(PredId, PredName),
-		( map__contains(PredNameIndex, PredName) ->
-			report_error_pred_num_args(TypeInfo1, PredId,
+		( predicate_table_search_name(PredicateTable, Name, _) ->
+			report_error_pred_num_args(TypeInfo1, PredCallId,
 				IOState0, IOState)
 		;
-			report_error_undef_pred(TypeInfo1, PredId,
+			report_error_undef_pred(TypeInfo1, PredCallId,
 				IOState0, IOState)
 		),
 		type_info_set_io_state(TypeInfo1, IOState, TypeInfo2),
@@ -1502,33 +1511,35 @@ builtin_atomic_type(term__atom(String), "character") :-
 
 builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :-
 	Functor = term__atom(Name),
-	type_info_get_preds(TypeInfo, PredTable),
-	type_info_get_pred_name_index(TypeInfo, PredNameIndex),
-	( map__search(PredNameIndex, Name, PredIdList) ->
-		make_pred_cons_info_list(PredIdList, PredTable, Arity, [],
-			PredConsInfoList)
+	type_info_get_module_info(TypeInfo, ModuleInfo),
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
+	( predicate_table_search_name(PredicateTable, Name, PredIdList) ->
+		predicate_table_get_preds(PredicateTable, Preds),
+		make_pred_cons_info_list(PredIdList, Preds, Arity,
+			ModuleInfo, [], PredConsInfoList)
 	;
 		PredConsInfoList = []
 	).
 
-:- pred make_pred_cons_info_list(list(pred_id), pred_table, int,
+:- pred make_pred_cons_info_list(list(pred_id), pred_table, int, module_info,
 				list(cons_type_info), list(cons_type_info)).
-:- mode make_pred_cons_info_list(in, in, in, in, out) is det.
+:- mode make_pred_cons_info_list(in, in, in, in, in, out) is det.
 
-make_pred_cons_info_list([], _PredTable, _Arity, L, L).
-make_pred_cons_info_list([PredId|PredIds], PredTable, Arity, L0, L) :-
-	make_pred_cons_info(PredId, PredTable, Arity, L0, L1),
-	make_pred_cons_info_list(PredIds, PredTable, Arity, L1, L).
+make_pred_cons_info_list([], _PredTable, _Arity, _ModuleInfo, L, L).
+make_pred_cons_info_list([PredId|PredIds], PredTable, Arity, ModuleInfo,
+		L0, L) :-
+	make_pred_cons_info(PredId, PredTable, Arity, ModuleInfo, L0, L1),
+	make_pred_cons_info_list(PredIds, PredTable, Arity, ModuleInfo, L1, L).
 
 :- type cons_type_info ---> cons_type_info(tvarset, type, list(type)).
 
-:- pred make_pred_cons_info(pred_id, pred_table, int,
+:- pred make_pred_cons_info(pred_id, pred_table, int, module_info,
 				list(cons_type_info), list(cons_type_info)).
-:- mode make_pred_cons_info(in, in, in, in, out) is det.
+:- mode make_pred_cons_info(in, in, in, in, in, out) is det.
 
-make_pred_cons_info(PredId, PredTable, FuncArity, L0, L) :-
+make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 	map__lookup(PredTable, PredId, PredInfo),
-	predicate_arity(PredId, PredArity),
+	predicate_arity(ModuleInfo, PredId, PredArity),
 	(
 		PredArity >= FuncArity
 	->
@@ -1561,9 +1572,9 @@ make_pred_cons_info(PredId, PredTable, FuncArity, L0, L) :-
 				% The global symbol tables
 			module_info, 
 
-				% The pred_id of the pred
+				% The pred_call_id of the pred
 				% being called (if any)
-			pred_id,
+			pred_call_id,
 
 				% The argument number within
 				% a pred call 
@@ -1636,10 +1647,11 @@ make_pred_cons_info(PredId, PredTable, FuncArity, L0, L) :-
 
 type_info_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
 		VarTypes, HeadTypeParams, TypeInfo) :-
+	CallPredId = unqualified("") / 0,
 	term__context_init(0, Context),
 	map__init(TypeBindings),
 	TypeInfo = type_info(
-		IOState, ModuleInfo, PredId, 0, PredId, Context,
+		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
 		unify_context(explicit, []),
 		VarSet, [type_assign(VarTypes, TypeVarSet, TypeBindings)],
 		no, HeadTypeParams
@@ -1670,20 +1682,19 @@ type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Name) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_get_preds(type_info, pred_table).
-:- mode type_info_get_preds(in, out) is det.
+:- pred type_info_get_module_info(type_info, module_info).
+:- mode type_info_get_module_info(in, out) is det.
 
-type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Preds) :-
-	module_info_preds(ModuleInfo, Preds).
+type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_),
+			ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_get_pred_name_index(type_info, map(string, list(pred_id))).
-:- mode type_info_get_pred_name_index(in, out) is det.
+:- pred type_info_get_preds(type_info, predicate_table).
+:- mode type_info_get_preds(in, out) is det.
 
-type_info_get_pred_name_index(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), 
-		PredNameIndex) :-
-	module_info_pred_name_index(ModuleInfo, PredNameIndex).
+type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Preds) :-
+	module_info_get_predicate_table(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
 
@@ -1703,18 +1714,18 @@ type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Ctors) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_get_called_predid(type_info, pred_id).
+:- pred type_info_get_called_predid(type_info, pred_call_id).
 :- mode type_info_get_called_predid(in, out) is det.
 
 type_info_get_called_predid(type_info(_,_,PredId,_,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_set_called_predid(type_info, pred_id, type_info).
+:- pred type_info_set_called_predid(type_info, pred_call_id, type_info).
 :- mode type_info_set_called_predid(type_info_di, in, type_info_uo) is det.
 
-type_info_set_called_predid(type_info(A,B,_     ,D,E,F,G,H,I,J,K), PredId,
-			   type_info(A,B,PredId,D,E,F,G,H,I,J,K)).
+type_info_set_called_predid(type_info(A,B,_     ,D,E,F,G,H,I,J,K), PredCallId,
+			   type_info(A,B,PredCallId,D,E,F,G,H,I,J,K)).
 
 %-----------------------------------------------------------------------------%
 
@@ -2327,23 +2338,25 @@ write_type_stuff_list_2([type_stuff(T, TVarSet, TBinding) | Ts]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_undef_pred(type_info,  pred_id, io__state, io__state).
+:- pred report_error_undef_pred(type_info, pred_call_id, io__state, io__state).
 :- mode report_error_undef_pred(type_info_no_io, in, di, uo) is det.
 
 report_error_undef_pred(TypeInfo, PredId) -->
 	write_type_info_context(TypeInfo),
 	io__write_string("  error: undefined predicate `"),
-	hlds_out__write_pred_id(PredId),
+	hlds_out__write_pred_call_id(PredId),
 	io__write_string("'.\n").
 
-:- pred report_error_pred_num_args(type_info, pred_id, io__state, io__state).
+:- pred report_error_pred_num_args(type_info, pred_call_id,
+					io__state, io__state).
 :- mode report_error_pred_num_args(type_info_no_io, in, di, uo) is det.
 
-report_error_pred_num_args(TypeInfo, PredId) -->
+report_error_pred_num_args(TypeInfo, Name / _Arity) -->
 	write_type_info_context(TypeInfo),
-	io__write_string("  error: wrong number of arguments in call to pred `"),
-	{ predicate_name(PredId, PredName) },
-	io__write_string(PredName),
+	io__write_string(
+		"  error: wrong number of arguments in call to pred `"
+	),
+	prog_out__write_sym_name(Name),
 	io__write_string("'.\n").
 
 :- pred report_error_undef_cons(type_info, const, int, io__state, io__state).
@@ -2363,11 +2376,11 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
-:- pred write_call_context(term__context, pred_id, int, unify_context,
+:- pred write_call_context(term__context, pred_call_id, int, unify_context,
 				io__state, io__state).
 :- mode write_call_context(in, in, in, in, di, uo) is det.
 
-write_call_context(Context, PredId, ArgNum, UnifyContext) -->
+write_call_context(Context, PredCallId, ArgNum, UnifyContext) -->
 	( { ArgNum = 0 } ->
 		hlds_out__write_unify_context(UnifyContext, Context)
 	;
@@ -2375,7 +2388,7 @@ write_call_context(Context, PredId, ArgNum, UnifyContext) -->
 		io__write_string("  in argument "),
 		io__write_int(ArgNum),
 		io__write_string(" of call to pred `"),
-		hlds_out__write_pred_id(PredId),
+		hlds_out__write_pred_call_id(PredCallId),
 		io__write_string("':\n")
 	).
 
@@ -2427,11 +2440,12 @@ write_type_info_context(TypeInfo) -->
 :- mode write_context_and_pred_id(type_info_no_io, di, uo).
 
 write_context_and_pred_id(TypeInfo) -->
+	{ type_info_get_module_info(TypeInfo, ModuleInfo) },
 	{ type_info_get_context(TypeInfo, Context) },
 	{ type_info_get_predid(TypeInfo, PredId) },
 	prog_out__write_context(Context),
 	io__write_string("In clause for predicate `"),
-	hlds_out__write_pred_id(PredId),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string("':\n").
 
 %-----------------------------------------------------------------------------%

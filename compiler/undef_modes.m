@@ -6,7 +6,7 @@
 :- import_module hlds, io.
 
 :- pred check_undefined_modes(module_info, module_info, io__state, io__state).
-:- mode check_undefined_modes(in, out, di, uo).
+:- mode check_undefined_modes(in, out, di, uo) is det.
 
 :- implementation.
 :- import_module prog_io, prog_out, hlds_out, list, map, std_util, require.
@@ -30,7 +30,7 @@ check_undefined_modes(Module, Module) -->
 
 :- pred find_undef_pred_modes(list(pred_id), pred_table, mode_table,
 				user_inst_table, io__state, io__state).
-:- mode find_undef_pred_modes(in, in, in, in, di, uo).
+:- mode find_undef_pred_modes(in, in, in, in, di, uo) is det.
 
 find_undef_pred_modes([], _Preds, _ModeDefns, _InstDefns) --> [].
 find_undef_pred_modes([PredId | PredIds], Preds, ModeDefns, InstDefns) -->
@@ -42,7 +42,7 @@ find_undef_pred_modes([PredId | PredIds], Preds, ModeDefns, InstDefns) -->
 
 :- pred find_undef_proc_modes(list(proc_id), pred_id, proc_table, mode_table,
 				user_inst_table, io__state, io__state).
-:- mode find_undef_proc_modes(in, in, in, in, in, di, uo).
+:- mode find_undef_proc_modes(in, in, in, in, in, di, uo) is det.
 
 find_undef_proc_modes([], _PredId, _Procs, _ModeDefns, _InstDefns) --> [].
 find_undef_proc_modes([ProcId | ProcIds], PredId, Procs, ModeDefns,
@@ -61,7 +61,7 @@ find_undef_proc_modes([ProcId | ProcIds], PredId, Procs, ModeDefns,
 
 :- pred find_undef_mode_bodies(list(mode_id), mode_table, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_mode_bodies(in, in, in, di, uo).
+:- mode find_undef_mode_bodies(in, in, in, di, uo) is det.
 
 find_undef_mode_bodies([], _, _) --> [].
 find_undef_mode_bodies([ModeId | ModeIds], ModeDefns, InstDefns) -->
@@ -76,7 +76,7 @@ find_undef_mode_bodies([ModeId | ModeIds], ModeDefns, InstDefns) -->
 
 :- pred find_undef_mode_body(hlds__mode_body, mode_error_context,
 			mode_table, user_inst_table, io__state, io__state).
-:- mode find_undef_mode_body(in, in, in, in, di, uo).
+:- mode find_undef_mode_body(in, in, in, in, di, uo) is det.
 
 find_undef_mode_body(eqv_mode(Mode), ErrorContext, ModeDefns, InstDefns) -->
 	find_undef_mode(Mode, ErrorContext, ModeDefns, InstDefns).
@@ -85,7 +85,7 @@ find_undef_mode_body(eqv_mode(Mode), ErrorContext, ModeDefns, InstDefns) -->
 
 :- pred find_undef_mode_list(list(mode), mode_error_context,
 			mode_table, user_inst_table, io__state, io__state).
-:- mode find_undef_mode_list(in, in, in, in, di, uo).
+:- mode find_undef_mode_list(in, in, in, in, di, uo) is det.
 
 find_undef_mode_list([], _, _, _) --> [].
 find_undef_mode_list([Mode|Modes], ErrorContext, ModeDefns, InstDefns) -->
@@ -99,7 +99,7 @@ find_undef_mode_list([Mode|Modes], ErrorContext, ModeDefns, InstDefns) -->
 
 :- pred find_undef_mode(mode, mode_error_context, mode_table, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_mode(in, in, in, in, di, uo).
+:- mode find_undef_mode(in, in, in, in, di, uo) is det.
 
 find_undef_mode((InstA -> InstB), ErrorContext, _ModeDefns, InstDefns) -->
 	find_undef_inst(InstA, ErrorContext, InstDefns),
@@ -125,7 +125,7 @@ find_undef_mode(user_defined_mode(Name, Args), ErrorContext, ModeDefns,
 
 :- pred find_undef_inst_bodies(list(inst_id), user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_bodies(in, in, di, uo).
+:- mode find_undef_inst_bodies(in, in, di, uo) is det.
 
 find_undef_inst_bodies([], _) --> [].
 find_undef_inst_bodies([InstId | InstIds], InstDefns) -->
@@ -139,7 +139,7 @@ find_undef_inst_bodies([InstId | InstIds], InstDefns) -->
 
 :- pred find_undef_inst_body(hlds__inst_body, mode_error_context,
 				user_inst_table, io__state, io__state).
-:- mode find_undef_inst_body(in, in, in, di, uo).
+:- mode find_undef_inst_body(in, in, in, di, uo) is det.
 
 find_undef_inst_body(eqv_inst(Inst), ErrorContext, InstDefns) -->
 	find_undef_inst(Inst, ErrorContext, InstDefns).
@@ -149,7 +149,7 @@ find_undef_inst_body(abstract_inst, _, _) --> [].
 
 :- pred find_undef_inst_list(list(inst), mode_error_context, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_list(in, in, in, di, uo).
+:- mode find_undef_inst_list(in, in, in, di, uo) is det.
 
 find_undef_inst_list([], _ErrorContext, _InstDefns) --> [].
 find_undef_inst_list([Inst|Insts], ErrorContext, InstDefns) -->
@@ -163,7 +163,7 @@ find_undef_inst_list([Inst|Insts], ErrorContext, InstDefns) -->
 
 :- pred find_undef_inst(inst, mode_error_context, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst(in, in, in, di, uo).
+:- mode find_undef_inst(in, in, in, di, uo) is det.
 
 find_undef_inst(free, _, _) --> [].
 find_undef_inst(ground, _, _) --> [].
@@ -177,7 +177,7 @@ find_undef_inst(abstract_inst(Name, Args), ErrorContext, InstDefns) -->
 
 :- pred find_undef_inst_name(inst_name, mode_error_context, user_inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_name(in, in, in, di, uo).
+:- mode find_undef_inst_name(in, in, in, di, uo) is det.
 
 find_undef_inst_name(user_inst(Name, Args), ErrorContext, InstDefns) -->
 	{ list__length(Args, Arity) },
@@ -199,7 +199,7 @@ find_undef_inst_name(ground_inst(_), _, _) -->
 
 :- pred find_undef_bound_insts(list(bound_inst), mode_error_context,
 				user_inst_table, io__state, io__state).
-:- mode find_undef_bound_insts(in, in, in, di, uo).
+:- mode find_undef_bound_insts(in, in, in, di, uo) is det.
 
 find_undef_bound_insts([], _, _) --> [].
 find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
@@ -218,7 +218,7 @@ find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
 	% in the specified context.
 
 :- pred report_undef_mode(mode_id, mode_error_context, io__state, io__state).
-:- mode report_undef_mode(in, in, di, uo).
+:- mode report_undef_mode(in, in, di, uo) is det.
 report_undef_mode(ModeId, ErrorContext - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("In "),
@@ -233,7 +233,8 @@ report_undef_mode(ModeId, ErrorContext - Context) -->
 	% in the specified context.
 
 :- pred report_undef_inst(inst_id, mode_error_context, io__state, io__state).
-:- mode report_undef_inst(in, in, di, uo).
+:- mode report_undef_inst(in, in, di, uo) is det.
+
 report_undef_inst(InstId, ErrorContext - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("In "),
@@ -248,11 +249,11 @@ report_undef_inst(InstId, ErrorContext - Context) -->
 	% used.
 
 :- pred write_mode_error_context(mode_error_context_2, io__state, io__state).
-:- mode write_mode_error_context(in, di, uo).
+:- mode write_mode_error_context(in, di, uo) is det.
 
-write_mode_error_context(pred(PredId)) -->
-	io__write_string("mode declaration for predicate "),
-	hlds_out__write_pred_id(PredId).
+write_mode_error_context(pred(_PredId)) -->
+	io__write_string("mode declaration for predicate").
+	% XXX hlds_out__write_pred_id(PredId).
 write_mode_error_context(mode(ModeId)) -->
 	io__write_string("definition of mode "),
 	write_mode_id(ModeId).
@@ -266,7 +267,7 @@ write_mode_error_context(inst(InstId)) -->
 	% XXX inst_ids and mode_ids should include the module.
 
 :- pred write_mode_id(mode_id, io__state, io__state).
-:- mode write_mode_id(in, di, uo).
+:- mode write_mode_id(in, di, uo) is det.
 
 write_mode_id(F - N) -->
 	prog_out__write_sym_name(F),
@@ -276,7 +277,7 @@ write_mode_id(F - N) -->
 	% XXX inst_ids should include the module.
 
 :- pred write_inst_id(inst_id, io__state, io__state).
-:- mode write_inst_id(in, di, uo).
+:- mode write_inst_id(in, di, uo) is det.
 
 write_inst_id(F - N) -->
 	prog_out__write_sym_name(F),

@@ -266,10 +266,10 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 		{ max_category(DeclaredCategory, InferredCategory, Category) },
 		( { Category = DeclaredCategory } ->
 			report_determinism_warning(PredId, ModeId,
-				Category, DeclaredCategory, ModuleInfo)
+				InferredCategory, DeclaredCategory, ModuleInfo)
 		;
 			report_determinism_error(PredId, ModeId,
-				Category, DeclaredCategory, ModuleInfo)
+				InferredCategory, DeclaredCategory, ModuleInfo)
 		)
 	),
 	global_checking_pass_2(Rest, ModuleInfo).
@@ -391,8 +391,8 @@ det_infer_goal_2(switch(Var, Cases0, Follow), MiscInfo, _, _,
 	% compilation becomes a bottleneck before worrying about
 	% this.
 
-det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn), MiscInfo, _, _,
-		call(PredId, ModeId, Args, BuiltIn), Category) :-
+det_infer_goal_2(call(PredId, ModeId, Args, BuiltIn, Name), MiscInfo, _, _,
+		call(PredId, ModeId, Args, BuiltIn, Name), Category) :-
 	detism_lookup(MiscInfo, PredId, ModeId, Category).
 
 	% unifications are either deterministic or semideterministic.
@@ -432,14 +432,6 @@ det_infer_goal_2(not(Vars, Goal0), MiscInfo, _, _, not(Vars, Goal), D) :-
 
 det_infer_goal_2(some(Vars, Goal0), MiscInfo, _, _, some(Vars, Goal), D) :-
 	det_infer_goal(Goal0, MiscInfo, Goal, D).
-
-	% XXX need to think about `all'.
-	% For the moment just make the safe assumption
-	% that they're all non-deterministic.
-
-det_infer_goal_2(all(Vars, Goal0), MiscInfo, _, _, all(Vars, Goal), D) :-
-	D = nondeterministic,
-	det_infer_goal(Goal0, MiscInfo, Goal, _D1).
 
 :- pred no_output_vars(set(var), instmap_delta, misc_info).
 :- mode no_output_vars(in, in, in) is semidet.

@@ -41,7 +41,7 @@
 :- mode delay_info__delay_goal(in, in, in, out) is det.
 
 :- pred delay_info__bind_var_list(list(var), delay_info, delay_info).
-:- mode delay_info__bind_var_list(in, in, out).
+:- mode delay_info__bind_var_list(in, in, out) is det.
 
 :- pred delay_info__bind_var(delay_info, var, delay_info).
 :- mode delay_info__bind_var(in, in, out) is det.
@@ -222,7 +222,7 @@ delay_info__leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
 
 :- pred remove_delayed_goals(list(seq_num), map(seq_num, delayed_goal),
 			depth_num, waiting_goals_table, waiting_goals_table).
-:- mode remove_delayed_goals(in, in, in, in, out).
+:- mode remove_delayed_goals(in, in, in, in, out) is det.
 
 remove_delayed_goals([], _, _, WaitingGoalsTable, WaitingGoalsTable).
 remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
@@ -277,7 +277,7 @@ delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 
 :- pred add_waiting_vars(list(var), goal_num, list(var), waiting_goals_table,
 				waiting_goals_table).
-:- mode add_waiting_vars(in, in, in, in, out).
+:- mode add_waiting_vars(in, in, in, in, out) is det.
 
 add_waiting_vars([], _, _, WaitingGoalsTable, WaitingGoalsTable).
 add_waiting_vars([Var | Vars], Goal, AllVars, WaitingGoalsTable0,

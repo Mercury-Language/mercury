@@ -78,7 +78,7 @@
 	% print an error message describing a mode error
 
 :- pred report_mode_error(mode_error, mode_info, io__state, io__state).
-:- mode report_mode_error(in, mode_info_no_io, di, uo).
+:- mode report_mode_error(in, mode_info_no_io, di, uo) is det.
 
 	% initialize the mode_context.
 
@@ -91,7 +91,7 @@
 :- implementation.
 :- import_module list, mode_info, io, prog_out, mercury_to_mercury, std_util.
 :- import_module map, hlds, term_io, term, hlds_out.
-:- import_module options, globals.
+:- import_module options, globals, require.
 
 	% just dispatch on the diffferent sorts of mode errors
 
@@ -121,37 +121,85 @@ report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
 
 :- pred report_mode_error_conj(mode_info, list(delayed_goal),
 				io__state, io__state).
-:- mode report_mode_error_conj(mode_info_no_io, in, di, uo).
+:- mode report_mode_error_conj(mode_info_no_io, in, di, uo) is det.
 
 report_mode_error_conj(ModeInfo, Errors) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
-	mode_info_write_context(ModeInfo),
-	prog_out__write_context(Context),
-	io__write_string("  mode error in conjunction. The next "),
-	{ list__length(Errors, NumErrors) },
-	io__write_int(NumErrors),
-	io__write_string(" error messages\n"),
-	prog_out__write_context(Context),
-	io__write_string("  indicate possible causes of this error.\n"),
-	report_mode_error_conj_2(Errors, VarSet, Context, ModeInfo).
+	{ find_important_errors(Errors, ImportantErrors, OtherErrors) },
+	globals__lookup_option(very_verbose, bool(VeryVerbose)),
+	( { VeryVerbose = yes } ->
+		mode_info_write_context(ModeInfo),
+		prog_out__write_context(Context),
+		io__write_string("  mode error in conjunction. The next "),
+		{ list__length(Errors, NumErrors) },
+		io__write_int(NumErrors),
+		io__write_string(" error messages\n"),
+		prog_out__write_context(Context),
+		io__write_string("  indicate possible causes of this error.\n"),
+		report_mode_error_conj_2(ImportantErrors, VarSet, Context,
+			ModeInfo),
+		report_mode_error_conj_2(OtherErrors, VarSet, Context, ModeInfo)
+	;
+		% in the normal case, only report the first error
+		{ ImportantErrors = [FirstImportantError | _] }
+	->
+		report_mode_error_conj_2([FirstImportantError], VarSet, Context,
+			ModeInfo)
+	;
+		{ OtherErrors = [FirstOtherError | _] }
+	->
+		report_mode_error_conj_2([FirstOtherError], VarSet, Context,
+			ModeInfo)
+	;
+		{ error("report_mode_error_conj: impossible") }
+	).
+
+:- pred find_important_errors(list(delayed_goal), list(delayed_goal),
+			list(delayed_goal)).
+:- mode find_important_errors(in, out, out) is det.
+
+find_important_errors([], [], []).
+find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
+	Error = delayed_goal(_, mode_error_info(_, _, _, ModeContext), _),
+	(
+		% an error is important iff it is not a head unification
+		(
+		  ModeContext = unify_arg(unify_context(head(_), _), _, _, _)
+		;
+		  ModeContext = unify(unify_context(head(_), _), _)
+		)
+	->
+		ImportantErrors1 = ImportantErrors,
+		OtherErrors = [Error | OtherErrors1]
+	;
+		ImportantErrors = [Error | ImportantErrors1],
+		OtherErrors1 = OtherErrors
+	),
+	find_important_errors(Errors, ImportantErrors1, OtherErrors1).
 
 :- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
 				mode_info, io__state, io__state).
-:- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo).
+:- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo) is det.
 
 report_mode_error_conj_2([], _, _, _) --> [].
 report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 			VarSet, Context, ModeInfo) -->
-	prog_out__write_context(Context),
-	io__write_string("Floundered goal, waiting on { "),
-	{ set__to_sorted_list(Vars, VarList) },
-	mercury_output_vars(VarList, VarSet),
-	io__write_string(" } :\n"),
+	globals__lookup_option(debug, bool(Debug)),
+	( { Debug = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("Floundered goal, waiting on { "),
+		{ set__to_sorted_list(Vars, VarList) },
+		mercury_output_vars(VarList, VarSet),
+		io__write_string(" } :\n")
+	;
+		[]
+	),
 	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
 	( { VerboseErrors = yes } ->
 		io__write_string("\t\t"),
-		hlds_out__write_goal(Goal, VarSet, 2),
+		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+		hlds_out__write_goal(Goal, ModuleInfo, VarSet, 2),
 		io__write_string(".\n")
 	;
 		[]
@@ -166,7 +214,7 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 
 :- pred report_mode_error_disj(mode_info, merge_context, merge_errors,
 				io__state, io__state).
-:- mode report_mode_error_disj(mode_info_no_io, in, in, di, uo).
+:- mode report_mode_error_disj(mode_info_no_io, in, in, di, uo) is det.
 
 report_mode_error_disj(ModeInfo, MergeContext, ErrorList) -->
 	{ mode_info_get_context(ModeInfo, Context) },
@@ -178,7 +226,7 @@ report_mode_error_disj(ModeInfo, MergeContext, ErrorList) -->
 	write_merge_error_list(ErrorList, ModeInfo).
 
 :- pred write_merge_error_list(merge_errors, mode_info, io__state, io__state).
-:- mode write_merge_error_list(in, mode_info_no_io, di, uo).
+:- mode write_merge_error_list(in, mode_info_no_io, di, uo) is det.
 
 write_merge_error_list([], _) --> [].
 write_merge_error_list([Var - Insts | Errors], ModeInfo) -->
@@ -194,7 +242,7 @@ write_merge_error_list([Var - Insts | Errors], ModeInfo) -->
 	write_merge_error_list(Errors, ModeInfo).
 
 :- pred write_merge_context(merge_context, io__state, io__state).
-:- mode write_merge_context(in, di, uo).
+:- mode write_merge_context(in, di, uo) is det.
 
 write_merge_context(disj) -->
 	io__write_string("disjunction").
@@ -205,7 +253,7 @@ write_merge_context(if_then_else) -->
 
 :- pred report_mode_error_bind_var(mode_info, var, inst, inst,
 					io__state, io__state).
-:- mode report_mode_error_bind_var(in, in, in, in, di, uo).
+:- mode report_mode_error_bind_var(in, in, in, in, di, uo) is det.
 
 report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
@@ -259,7 +307,7 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	prog_out__write_context(Context),
 	io__write_string("  which does not match any of the modes for `"),
 	{ mode_info_get_mode_context(ModeInfo, call(PredId, _)) },
-	hlds_out__write_pred_id(PredId),
+	hlds_out__write_pred_call_id(PredId),
 	io__write_string("'.\n").
 
 :- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,
@@ -358,7 +406,7 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_write_context(mode_info, io__state, io__state).
-:- mode mode_info_write_context(mode_info_no_io, di, uo).
+:- mode mode_info_write_context(mode_info_no_io, di, uo) is det.
 
 mode_info_write_context(ModeInfo) -->
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
@@ -370,7 +418,7 @@ mode_info_write_context(ModeInfo) -->
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
-	{ predicate_name(PredId, PredName) },
+	{ pred_info_name(PredInfo, PredName) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 
 	prog_out__write_context(Context),
@@ -434,7 +482,7 @@ mode_context_init(uninitialized).
 	% XXX some parts of the mode context never get set up
 
 :- pred write_mode_context(mode_context, term__context, io__state, io__state).
-:- mode write_mode_context(in, in, di, uo).
+:- mode write_mode_context(in, in, di, uo) is det.
 
 write_mode_context(uninitialized, _Context) -->
 	[].
@@ -442,7 +490,7 @@ write_mode_context(uninitialized, _Context) -->
 write_mode_context(call(PredId, _ArgNum), Context) -->
 	prog_out__write_context(Context),
 	io__write_string("  in call to predicate `"),
-	hlds_out__write_pred_id(PredId),
+	hlds_out__write_pred_call_id(PredId),
 	io__write_string("':\n").
 
 write_mode_context(unify(UnifyContext, _Side), Context) -->

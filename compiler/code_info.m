@@ -840,7 +840,8 @@ code_info__get_next_label(Label) -->
 	code_info__get_proc_id(ProcId),
 	code_info__get_label_count(N0),
 	{ N is N0 + 1 },
-	{ code_util__make_local_label(PredId, ProcId, N, Label) },
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) },
 	code_info__set_label_count(N).
 
 %---------------------------------------------------------------------------%
@@ -849,7 +850,8 @@ code_info__get_current_label(Label) -->
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
 	code_info__get_label_count(N),
-	{ code_util__make_local_label(PredId, ProcId, N, Label) }.
+	code_info__get_module_info(ModuleInfo),
+	{ code_util__make_local_label(ModuleInfo, PredId, ProcId, N, Label) }.
 
 %---------------------------------------------------------------------------%
 

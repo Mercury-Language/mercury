@@ -63,10 +63,20 @@
 % Higher-order predicate modes.
 % This needs to be builtin - the following is just a temporary hack.
 
-:- mode pred_call :: output.
-:- mode pred_call(_, _) :: output.
-:- mode pred_call(_, _, _, _) :: output.
-:- mode pred_call(_, _, _, _, _, _) :: output.
+:- mode det_pred :: output.
+:- mode det_pred(_, _) :: output.
+:- mode det_pred(_, _, _, _) :: output.
+:- mode det_pred(_, _, _, _, _, _) :: output.
+
+:- mode semidet_pred :: output.
+:- mode semidet_pred(_, _) :: output.
+:- mode semidet_pred(_, _, _, _) :: output.
+:- mode semidet_pred(_, _, _, _, _, _) :: output.
+
+:- mode nondet_pred :: output.
+:- mode nondet_pred(_, _) :: output.
+:- mode nondet_pred(_, _, _, _) :: output.
+:- mode nondet_pred(_, _, _, _, _, _) :: output.
 
 %-----------------------------------------------------------------------------%
 
@@ -82,15 +92,17 @@
 % calls to call/1.
 
 :- pred call(pred).
-:- mode call(pred_call) is nondet.
+:- mode call(det_pred) is det.
+:- mode call(semidet_pred) is semidet.
+:- mode call(nondet_pred) is nondet.
 
 % Logical connectives.
 % We need to implement mode segments before we can give these predicates
 % useful modes.
 
-:- pred '=>'((pred)::pred_call, (pred)::pred_call) is nondet.
-:- pred '<='((pred)::pred_call, (pred)::pred_call) is nondet.
-:- pred '<=>'((pred)::pred_call, (pred)::pred_call) is nondet.
+:- pred '=>'((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
+:- pred '<='((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
+:- pred '<=>'((pred)::nondet_pred, (pred)::nondet_pred) is nondet.
 
 %-----------------------------------------------------------------------------%
 

@@ -12,10 +12,10 @@
 
 	% The mode_info data structure and access predicates.
 
-	% XXX
+	% XXX `side' is not used
 :- type mode_context
 	--->	call(	
-			pred_id,	% pred name
+			pred_call_id,	% pred name / arity
 			int		% argument number
 		)
 	;	unify(
@@ -34,7 +34,7 @@
 
 :- type call_context
 	--->	unify(unify_context)
-	;	call(pred_id).
+	;	call(pred_call_id).
 
 :- type instmap
 	--->	reachable(map(var, inst))

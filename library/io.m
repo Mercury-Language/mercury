@@ -33,7 +33,7 @@
 % External interface: exported predicates
 
 :- pred io__progname(string, string, io__state, io__state).
-:- mode io__progname(in, out, di, uo).
+:- mode io__progname(in, out, di, uo) is det.
 % 	io__progname(DefaultProgname, Progname)
 %		Returns the name that the program was invoked with,
 %		if available, or DefaultProgname if the name is not
@@ -42,161 +42,161 @@
 %		Does not modify the IO state.
 
 :- pred io__write_string(string, io__state, io__state).
-:- mode io__write_string(in, di, uo).
+:- mode io__write_string(in, di, uo) is det.
 %		Writes a string to the current output stream.
 
 :- pred io__write_string(io__stream, string, io__state, io__state).
-:- mode io__write_string(in, in, di, uo).
+:- mode io__write_string(in, in, di, uo) is det.
 %		Writes a string to the specified stream.
 
 :- pred io__write_strings(list(string), io__state, io__state).
-:- mode io__write_strings(in, di, uo).
-%		Writes a string to the current output stream.
+:- mode io__write_strings(in, di, uo) is det.
+%		Writes a list of strings to the current output stream.
 
 :- pred io__write_strings(io__stream, list(string), io__state, io__state).
-:- mode io__write_strings(in, in, di, uo).
+:- mode io__write_strings(in, in, di, uo) is det.
 %		Writes a string to the specified stream.
 
 :- pred io__read_char(character, io__result, io__state, io__state).
-:- mode io__read_char(out, out, di, uo).
+:- mode io__read_char(out, out, di, uo) is det.
 %		Reads a character from the current input stream.
 
 :- pred io__read_line(list(character), io__result, io__state, io__state).
-:- mode io__read_line(out, out, di, uo).
+:- mode io__read_line(out, out, di, uo) is det.
 %		Reads a character from the current input stream.
 
 :- pred io__write_char(character, io__state, io__state).
-:- mode io__write_char(in, di, uo).
+:- mode io__write_char(in, di, uo) is det.
 %		Writes a character to the current output stream.
 
 :- pred io__read_char(io__stream, character, io__result, io__state, io__state).
-:- mode io__read_char(in, out, out, di, uo).
+:- mode io__read_char(in, out, out, di, uo) is det.
 %		Reads a character from specified stream.
 
 :- pred io__read_line(io__stream, list(character), io__result,
 							io__state, io__state).
-:- mode io__read_line(in, out, out, di, uo).
+:- mode io__read_line(in, out, out, di, uo) is det.
 %		Reads a character from specified stream.
 
 :- pred io__write_char(io__stream, character, io__state, io__state).
-:- mode io__write_char(in, in, di, uo).
+:- mode io__write_char(in, in, di, uo) is det.
 %		Writes a character to the specified stream.
 
 :- pred io__write_int(int, io__state, io__state).
-:- mode io__write_int(in, di, uo).
+:- mode io__write_int(in, di, uo) is det.
 %		Writes an integer to the current output stream.
 
 :- pred io__write_int(io__stream, int, io__state, io__state).
-:- mode io__write_int(in, in, di, uo).
+:- mode io__write_int(in, in, di, uo) is det.
 %		Writes an integer to the specified stream.
 
 :- pred io__write_float(float, io__state, io__state).
-:- mode io__write_float(in, di, uo).
+:- mode io__write_float(in, di, uo) is det.
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to the current output stream.
 
 :- pred io__write_float(io__stream, float, io__state, io__state).
-:- mode io__write_float(in, in, di, uo).
+:- mode io__write_float(in, in, di, uo) is det.
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to the specified stream.
 
 :- pred io__write_anything(_T, io__state, io__state).
-:- mode io__write_anything(in, di, uo).
+:- mode io__write_anything(in, di, uo) is det.
 %		Writes it's argument to the current output stream.
 %		The argument may be of any type.
 
 :- pred io__write_anything(io__stream, _T, io__state, io__state).
-:- mode io__write_anything(in, in, di, uo).
+:- mode io__write_anything(in, in, di, uo) is det.
 %		Writes it's argument to the specified stream.
 %		The argument may be of any type.
 
 :- type res ---> ok ; error.
 :- pred io__see(string, res, io__state, io__state).
-:- mode io__see(in, out, di, uo).
+:- mode io__see(in, out, di, uo) is det.
 %	io__see(File, Result, IO0, IO1).
 %		Attempts to open a file for input, and if successful
 %		sets the current input stream to the newly opened stream.
 %		Result is either 'ok' or 'error'.
 
 :- pred io__seen(io__state, io__state).
-:- mode io__seen(di, uo).
+:- mode io__seen(di, uo) is det.
 %		Closes the current input stream.
 %		The current input stream reverts to standard input.
 
 :- pred io__tell(string, res, io__state, io__state).
-:- mode io__tell(in, out, di, uo).
+:- mode io__tell(in, out, di, uo) is det.
 %	io__tell(File, Result, IO0, IO1).
 %		Attempts to open a file for output, and if successful
 %		sets the current output stream to the newly opened stream.
 %		As per Prolog tell/1. Result is either 'ok' or 'error'.
 
 :- pred io__told(io__state, io__state).
-:- mode io__told(di, uo).
+:- mode io__told(di, uo) is det.
 %	io__told(IO0, IO1).
 %		Closes the current output stream.
 %		The default output stream reverts to standard output.
 %		As per Prolog told/0.
 
 :- pred io__output_stream(io__stream, io__state, io__state).
-:- mode io__output_stream(out, di, uo).
+:- mode io__output_stream(out, di, uo) is det.
 %		Retrieves the current output stream.
 %		Does not modify the IO state.
 
 :- pred io__set_output_stream(io__stream, io__stream, io__state, io__state).
-:- mode io__set_output_stream(in, out, di, uo).
+:- mode io__set_output_stream(in, out, di, uo) is det.
 %	io__set_output_stream(NewStream, OldStream, IO0, IO)
 %		Changes the current output stream to the stream specified.
 %		Returns the previous stream.
 
 :- pred io__input_stream(io__stream, io__state, io__state).
-:- mode io__input_stream(out, di, uo).
+:- mode io__input_stream(out, di, uo) is det.
 %		Retrieves the current input stream.
 %		Does not modify the IO state.
 
 :- pred io__set_input_stream(io__stream, io__stream, io__state, io__state).
-:- mode io__set_input_stream(in, out, di, uo).
+:- mode io__set_input_stream(in, out, di, uo) is det.
 %       io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %		Changes the current input stream to the stream specified.
 %		Returns the previous stream.
 
 :- pred io__stdin_stream(io__stream, io__state, io__state).
-:- mode io__stdin_stream(out, di, uo).
+:- mode io__stdin_stream(out, di, uo) is det.
 %		Retrieves the standard input stream.
 %		Does not modify the IO state.
 
 :- pred io__stdout_stream(io__stream, io__state, io__state).
-:- mode io__stdout_stream(out, di, uo).
+:- mode io__stdout_stream(out, di, uo) is det.
 %		Retrieves the standard output stream.
 %		Does not modify the IO state.
 
 :- pred io__stderr_stream(io__stream, io__state, io__state).
-:- mode io__stderr_stream(out, di, uo).
+:- mode io__stderr_stream(out, di, uo) is det.
 %		Retrieves the standard error stream.
 %		Does not modify the IO state.
 
 :- pred io__get_line_number(int, io__state, io__state).
-:- mode io__get_line_number(out, di, uo).
+:- mode io__get_line_number(out, di, uo) is det.
 %	Return the line number of the current stream
 %	(as per NU-Prolog lineCount/1).
 
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
 :- mode io__gc_call(
-		pred_call(ground_unique, dead, free_unique, ground_unique),
-		di, uo).
+		det_pred(ground_unique, dead, free_unique, ground_unique),
+		di, uo) is det.
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
 
 :- pred io__flush_output(io__state, io__state).
-:- mode io__flush_output(di, uo).
+:- mode io__flush_output(di, uo) is det.
 %	Flush the output buffer of the current output stream.
 
 :- pred io__flush_output(io__stream, io__state, io__state).
-:- mode io__flush_output(in, di, uo).
+:- mode io__flush_output(in, di, uo) is det.
 %	Flush the output buffer of the specified output stream.
 
 :- pred io__stream_name(io__stream, string, io__state, io__state).
-:- mode io__stream_name(in, out, di, uo).
+:- mode io__stream_name(in, out, di, uo) is det.
 %	Retrieves the human-readable name associated with a stream.
 %	For file streams, this is the filename.
 %	For stdin this is the string "<standard input>" (and similarly
@@ -208,21 +208,21 @@
 % The following predicates can be used to access this global state.
 
 :- pred io__get_globals(univ, io__state, io__state).
-:- mode io__get_globals(out, di, uo).
+:- mode io__get_globals(out, di, uo) is det.
 	% Doesn't modify the io__state.
 
 :- pred io__set_globals(univ, io__state, io__state).
-:- mode io__set_globals(in, di, uo).
+:- mode io__set_globals(in, di, uo) is det.
 
 	% Write some memory/time usage statistics to stdout.
 
 :- pred io__report_stats(io__state, io__state).
-:- mode io__report_stats(di, uo).
+:- mode io__report_stats(di, uo) is det.
 
 	% Preallocate heap space (to avoid NU-Prolog panic).
 
 :- pred io__preallocate_heap_space(int, io__state, io__state).
-:- mode io__preallocate_heap_space(in, di, uo).
+:- mode io__preallocate_heap_space(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

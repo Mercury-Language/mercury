@@ -10,14 +10,14 @@
 
 :- import_module hlds, llds, code_info.
 
-:- pred code_util__make_entry_label(pred_id, proc_id, code_addr).
-:- mode code_util__make_entry_label(in, in, out) is det.
+:- pred code_util__make_entry_label(module_info, pred_id, proc_id, code_addr).
+:- mode code_util__make_entry_label(in, in, in, out) is det.
 
-:- pred code_util__make_local_entry_label(pred_id, proc_id, label).
-:- mode code_util__make_local_entry_label(in, in, out) is det.
+:- pred code_util__make_local_entry_label(module_info, pred_id, proc_id, label).
+:- mode code_util__make_local_entry_label(in, in, in, out) is det.
 
-:- pred code_util__make_local_label(pred_id, proc_id, int, label).
-:- mode code_util__make_local_label(in, in, in, out) is det.
+:- pred code_util__make_local_label(module_info, pred_id, proc_id, int, label).
+:- mode code_util__make_local_label(in, in, in, in, out) is det.
 
 :- pred code_util__uni_mode_to_unilabel(uni_mode, unilabel).
 :- mode code_util__uni_mode_to_unilabel(in, out) is det.
@@ -32,16 +32,20 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-code_util__make_local_entry_label(PredId, ProcId, Label) :-
-	PredId = pred(ModuleName, PredName, Arity),
+code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label) :-
+	predicate_module(ModuleInfo, PredId, ModuleName),
+	predicate_name(ModuleInfo, PredId, PredName),
+	predicate_arity(ModuleInfo, PredId, Arity),
 	Label = entrylabel(ModuleName, PredName, Arity, ProcId).
 
-code_util__make_local_label(PredId, ProcId, LabelNum, Label) :-
-	PredId = pred(ModuleName, PredName, Arity),
+code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
+	predicate_module(ModuleInfo, PredId, ModuleName),
+	predicate_name(ModuleInfo, PredId, PredName),
+	predicate_arity(ModuleInfo, PredId, Arity),
 	Label = label(ModuleName, PredName, Arity, ProcId, LabelNum).
 
-code_util__make_entry_label(PredId, ProcId, PredAddress) :-
-	code_util__make_local_entry_label(PredId, ProcId, Label),
+code_util__make_entry_label(ModuleInfo, PredId, ProcId, PredAddress) :-
+	code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Label),
 	PredAddress = local(Label).
 
 %-----------------------------------------------------------------------------%

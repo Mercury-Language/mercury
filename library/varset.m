@@ -30,47 +30,47 @@
 
 	% construct an empty varset.
 :- pred varset__init(varset).
-:- mode varset__init(out).
+:- mode varset__init(out) is det.
 
 	% check whether a varset is empty.
 :- pred varset__is_empty(varset).
-:- mode varset__is_empty(in).
+:- mode varset__is_empty(in) is semidet.
 
 	% create a new variable
 :- pred varset__new_var(varset, var, varset).
-:- mode varset__new_var(in, out, out).
+:- mode varset__new_var(in, out, out) is det.
 
 	% return a list of all the variables in a varset
 :- pred varset__vars(varset, list(var)).
-:- mode varset__vars(in, out).
+:- mode varset__vars(in, out) is det.
 
 	% set the name of a variable
 	% (if there is already a variable with the same name "Foo",
 	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
 	% an unused name is found.)
 :- pred varset__name_var(varset, var, string, varset).
-:- mode varset__name_var(in, in, in, out).
+:- mode varset__name_var(in, in, in, out) is det.
 
 	% lookup the name of a variable, or the variable with a given name.
 :- pred varset__lookup_name(varset, var, string).
-:- mode varset__lookup_name(in, in, out).
-:- mode varset__lookup_name(in, out, in).
+:- mode varset__lookup_name(in, in, out) is semidet.
+:- mode varset__lookup_name(in, out, in) is semidet.
 
 	% bind a value to a variable
 :- pred varset__bind_var(varset, var, term, varset).
-:- mode varset__bind_var(in, in, in, out).
+:- mode varset__bind_var(in, in, in, out) is det.
 
 	% bind a a set of terms to a set of variables.
 :- pred varset__bind_vars(varset, substitution, varset).
-:- mode varset__bind_vars(in, in, out).
+:- mode varset__bind_vars(in, in, out) is det.
 
 	% lookup the value of a variable
 :- pred varset__lookup_var(varset, var, term).
-:- mode varset__lookup_var(in, in, out).
+:- mode varset__lookup_var(in, in, out) is semidet.
 
 	% get the bindings for all the bound variables.
 :- pred varset__lookup_vars(varset, substitution).
-:- mode varset__lookup_vars(in, out).
+:- mode varset__lookup_vars(in, out) is det.
 
 	% Combine two different varsets, renaming apart:
 	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms) is
@@ -80,21 +80,21 @@
 	% (Any bindings in NewVarSet are ignored.)
 
 :- pred varset__merge(varset, varset, list(term), varset, list(term)).
-:- mode varset__merge(in, in, in, out, out).
+:- mode varset__merge(in, in, in, out, out) is det.
 
 	% As above, except return the substitution directly
 	% rather than applying it to a list of terms.
 
 :- pred varset__merge_subst(varset, varset, varset, substitution).
-:- mode varset__merge_subst(in, in, out, out).
+:- mode varset__merge_subst(in, in, out, out) is det.
 
 	% get the bindings for all the bound variables.
 :- pred varset__get_bindings(varset, substitution).
-:- mode varset__get_bindings(in, out).
+:- mode varset__get_bindings(in, out) is det.
 
 	% set the bindings for all the bound variables.
 :- pred varset__set_bindings(varset, substitution, varset).
-:- mode varset__set_bindings(in, in, out).
+:- mode varset__set_bindings(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -133,7 +133,7 @@ varset__vars(varset(MaxId0,_,_), L) :-
 
 :- pred varset__vars_2(var_supply, var_supply, list(var),
 			list(var)).
-:- mode varset__vars_2(in, in, in, out).
+:- mode varset__vars_2(in, in, in, out) is det.
 
 varset__vars_2(N, Max, L0, L) :-
 	(N = Max ->
@@ -178,7 +178,7 @@ varset__bind_vars(Varset0, Subst, Varset) :-
 	varset__bind_vars_2(VarTermList, Varset0, Varset).
 
 :- pred varset__bind_vars_2(assoc_list(var, term), varset, varset).
-:- mode varset__bind_vars_2(in, in, out).
+:- mode varset__bind_vars_2(in, in, out) is det.
 
 varset__bind_vars_2([], Varset, Varset).
 varset__bind_vars_2([V - T | Rest], Varset0, Varset) :-

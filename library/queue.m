@@ -91,10 +91,16 @@ queue__put(On - Off, Elem, [Elem | On] - Off).
 
 queue__first(_On - [Elem | _Off], Elem).
 
-:- queue__get(_ - B, _, _) when B.
+queue__get(On0 - Off0, Elem, On - Off) :-
+	queue__get_2(On0, Off0, Elem, On, Off).
 
-queue__get(On - [Elem | Off], Elem, On - Off).
-queue__get(On - [], Elem, [] - Off) :-
+:- pred queue__get_2(list(T), list(T), T, list(T), list(T)).
+:- mode queue__get_2(in, in, out, out, out) is semidet.
+
+:- queue__get_2(_, X, _, _, _) when X.	% NU-Prolog indexing
+
+queue__get_2(On, [Elem | Off], Elem, On, Off).
+queue__get_2(On, [], Elem, [], Off) :-
 	list__reverse(On, [Elem | Off]).
 
 queue__length(On - Off, Length) :-

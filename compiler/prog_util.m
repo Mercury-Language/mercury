@@ -37,6 +37,9 @@
 :- pred unqualify_name(sym_name, string).
 :- mode unqualify_name(in, out) is det.
 
+:- pred sym_name_get_module_name(sym_name, module_name, module_name).
+:- mode sym_name_get_module_name(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% A pred declaration may contains just types, as in
@@ -232,8 +235,11 @@ goedel_replace_eqv_type_tm(type_and_mode(Type0, Mode), Name, Args, Body, Found0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-unqualify_name(unqualified(Name), Name).
-unqualify_name(qualified(_Module, Name), Name).
+unqualify_name(unqualified(PredName), PredName).
+unqualify_name(qualified(_ModuleName, PredName), PredName).
+
+sym_name_get_module_name(unqualified(_), ModuleName, ModuleName).
+sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -75,7 +75,7 @@ a local variable, then report the error [this idea not yet implemented].
 :- import_module hlds, io.
 
 :- pred modecheck(module_info, module_info, io__state, io__state).
-:- mode modecheck(in, out, di, uo).
+:- mode modecheck(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -112,7 +112,7 @@ modecheck(Module0, Module) -->
 	% Mode-check the code for all the predicates in a module.
 
 :- pred check_pred_modes(module_info, module_info, io__state, io__state).
-:- mode check_pred_modes(in, out, di, uo).
+:- mode check_pred_modes(in, out, di, uo) is det.
 
 check_pred_modes(Module0, Module) -->
 	{ module_info_predids(Module0, PredIds) },
@@ -124,7 +124,7 @@ check_pred_modes(Module0, Module) -->
 
 :- pred modecheck_pred_modes_2(list(pred_id), module_info, 
 			module_info, io__state, io__state).
-:- mode modecheck_pred_modes_2(in, in, out, di, uo).
+:- mode modecheck_pred_modes_2(in, in, out, di, uo) is det.
 
 modecheck_pred_modes_2([], ModuleInfo, ModuleInfo) --> [].
 modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
@@ -138,7 +138,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 		globals__lookup_option(very_verbose, bool(VeryVerbose)),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Mode-checking predicate "),
-			hlds_out__write_pred_id(PredId),
+			hlds_out__write_pred_id(ModuleInfo0, PredId),
 			io__write_string("\n")
 		;
 			[]
@@ -173,7 +173,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	% and save this in the proc_info.
 
 :- pred copy_clauses_to_procs(pred_info, pred_info).
-:- mode copy_clauses_to_procs(in, out).
+:- mode copy_clauses_to_procs(in, out) is det.
 
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	pred_info_clauses_info(PredInfo0, ClausesInfo),
@@ -201,16 +201,12 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 		Goal = disj(GoalList) - GoalInfo
 	),
 	map__lookup(Procs0, ProcId, Proc0),
-	Proc0 = procedure(DeclaredDet, _, _, _, ArgModes, _, Context, CallInfo,
-			InferredDet, ArgInfo, Liveness),
-	Proc = procedure(DeclaredDet, VarSet, VarTypes, HeadVars, ArgModes,
-			Goal, Context, CallInfo, InferredDet,
-			ArgInfo, Liveness),
+	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc),
 	map__set(Procs0, ProcId, Proc, Procs1),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 :- pred select_matching_clauses(list(clause), proc_id, list(clause)).
-:- mode select_matching_clauses(in, in, out).
+:- mode select_matching_clauses(in, in, out) is det.
 
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
@@ -233,7 +229,7 @@ get_clause_goals([Clause | Clauses], [Goal | Goals]) :-
 
 :- pred modecheck_procs(pred_id, module_info, pred_info, pred_info, int,
 			io__state, io__state).
-:- mode modecheck_procs(in, in, in, out, out, di, uo).
+:- mode modecheck_procs(in, in, in, out, out, di, uo) is det.
 
 modecheck_procs(PredId, ModuleInfo, PredInfo0, PredInfo, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
@@ -246,7 +242,7 @@ modecheck_procs(PredId, ModuleInfo, PredInfo0, PredInfo, NumErrors) -->
 
 :- pred modecheck_procs_2(list(proc_id), pred_id, module_info,
 		proc_table, int, proc_table, int, io__state, io__state).
-:- mode modecheck_procs_2(in, in, in, in, in, out, out, di, uo).
+:- mode modecheck_procs_2(in, in, in, in, in, out, out, di, uo) is det.
 
 modecheck_procs_2([], _PredId, _ModuleInfo, Procs, Errs, Procs, Errs) --> [].
 modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo, Procs0, Errs0,
@@ -269,7 +265,7 @@ modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo, Procs0, Errs0,
 
 :- pred modecheck_proc(proc_id, pred_id, module_info, proc_info,
 				proc_info, int, io__state, io__state).
-:- mode modecheck_proc(in, in, in, in, out, out, di, uo).
+:- mode modecheck_proc(in, in, in, in, out, out, di, uo) is det.
 
 modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 			IOState0, IOState) :-
@@ -298,7 +294,7 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 	proc_info_set_goal(ProcInfo1, Body, ProcInfo).
 
 :- pred modecheck_final_insts(list(var), list(mode), mode_info, mode_info).
-:- mode modecheck_final_insts(in, in, in, out).
+:- mode modecheck_final_insts(in, in, in, out) is det.
 
 modecheck_final_insts(HeadVars, ArgModes, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
@@ -446,17 +442,11 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(all(Vs, G0), NonLocals, all(Vs, G)) -->
-	mode_checkpoint(enter, "all"),
-	mode_info_lock_vars(NonLocals),
-	modecheck_goal(G0, G),
-	mode_info_unlock_vars(NonLocals),
-	mode_checkpoint(exit, "all").
-
-modecheck_goal_2(call(PredId, _, Args, Builtin), _,
-		 call(PredId, Mode, Args, Builtin)) -->
+modecheck_goal_2(call(PredId, _, Args, Builtin, PredName), _,
+		 call(PredId, Mode, Args, Builtin, PredName)) -->
 	mode_checkpoint(enter, "call"),
-	mode_info_set_call_context(call(PredId)),
+	{ list__length(Args, Arity) },
+	mode_info_set_call_context(call(PredName/Arity)),
 	modecheck_call_pred(PredId, Args, Mode),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
@@ -731,11 +721,13 @@ instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 :- get_reachable_instmaps([X|_], _) when X.
 
 get_reachable_instmaps([], []).
-get_reachable_instmaps([reachable(InstMapping) | InstMaps], Reachables) :-
-	Reachables = [InstMapping | Reachables1],
-	get_reachable_instmaps(InstMaps, Reachables1).
-get_reachable_instmaps([unreachable | InstMaps], Reachables) :-
-	get_reachable_instmaps(InstMaps, Reachables).
+get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
+	( InstMap = reachable(InstMapping) ->
+		Reachables = [InstMapping | Reachables1],
+		get_reachable_instmaps(InstMaps, Reachables1)
+	;
+		get_reachable_instmaps(InstMaps, Reachables)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1515,6 +1507,12 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	mode_info_var_list_is_live(ArgVars, ModeInfo0, LiveArgs),
 	InstY = bound([functor(Name, InstArgs)]),
 	(
+		% the occur check: X = f(X) will always fail
+		list__member(X, ArgVars)
+	->
+		ModeInfo1 = ModeInfo0,
+		Inst = not_reached
+	;
 		abstractly_unify_inst_functor(LiveX, InstX, Name,
 			InstArgs, LiveArgs, ModuleInfo0, UnifyInst, ModuleInfo1)
 	->

@@ -9,7 +9,7 @@
 :- import_module hlds, io.
 
 :- pred check_undefined_types(module_info, module_info, io__state, io__state).
-:- mode check_undefined_types(in, out, di, uo).
+:- mode check_undefined_types(in, out, di, uo) is det.
 
 :- implementation.
 :- import_module std_util, map, list, term.
@@ -30,7 +30,7 @@ check_undefined_types(Module, Module) -->
 
 :- pred find_undef_pred_types(list(pred_id), pred_table, type_table,
 				io__state, io__state).
-:- mode find_undef_pred_types(in, in, in, di, uo).
+:- mode find_undef_pred_types(in, in, in, di, uo) is det.
 
 find_undef_pred_types([], _Preds, _TypeDefns) --> [].
 find_undef_pred_types([PredId | PredIds], Preds, TypeDefns) -->
@@ -44,7 +44,7 @@ find_undef_pred_types([PredId | PredIds], Preds, TypeDefns) -->
 	% declarations.
 
 :- pred find_undef_type_bodies(list(type_id), type_table, io__state, io__state).
-:- mode find_undef_type_bodies(in, in, di, uo).
+:- mode find_undef_type_bodies(in, in, di, uo) is det.
 
 find_undef_type_bodies([], _) --> [].
 find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
@@ -58,7 +58,7 @@ find_undef_type_bodies([TypeId | TypeIds], TypeDefns) -->
 
 :- pred find_undef_type_body(hlds__type_body, error_context, type_table,
 				io__state, io__state).
-:- mode find_undef_type_body(in, in, in, di, uo).
+:- mode find_undef_type_body(in, in, in, di, uo) is det.
 
 find_undef_type_body(eqv_type(Type), ErrorContext, TypeDefns) -->
 	find_undef_type(Type, ErrorContext, TypeDefns).
@@ -72,7 +72,7 @@ find_undef_type_body(abstract_type, _ErrorContext, _TypeDefns) --> [].
 
 :- pred find_undef_type_list(list(type), error_context, type_table,
 				io__state, io__state).
-:- mode find_undef_type_list(in, in, in, di, uo).
+:- mode find_undef_type_list(in, in, in, di, uo) is det.
 
 find_undef_type_list([], _ErrorContext, _TypeDefns) --> [].
 find_undef_type_list([Type|Types], ErrorContext, TypeDefns) -->
@@ -84,7 +84,7 @@ find_undef_type_list([Type|Types], ErrorContext, TypeDefns) -->
 
 :- pred find_undef_type_du_body(list(constructor), error_context, type_table,
 				io__state, io__state).
-:- mode find_undef_type_du_body(in, in, in, di, uo).
+:- mode find_undef_type_du_body(in, in, in, di, uo) is det.
 
 find_undef_type_du_body([], _ErrorContext, _TypeDefns) --> [].
 find_undef_type_du_body([Constructor | Constructors], ErrorContext,
@@ -100,7 +100,7 @@ find_undef_type_du_body([Constructor | Constructors], ErrorContext,
 
 :- pred find_undef_type(type, error_context, type_table,
 				io__state, io__state).
-:- mode find_undef_type(in, in, in, di, uo).
+:- mode find_undef_type(in, in, in, di, uo) is det.
 
 find_undef_type(term__variable(_), _ErrorContext, _TypeDefns) --> [].
 find_undef_type(term__functor(F, As, _), ErrorContext, TypeDefns) -->
@@ -135,7 +135,7 @@ find_undef_type(term__functor(F, As, _), ErrorContext, TypeDefns) -->
 	% in the specified context.
 
 :- pred report_undef_type(type_id, error_context, io__state, io__state).
-:- mode report_undef_type(in, in, di, uo).
+:- mode report_undef_type(in, in, di, uo) is det.
 
 report_undef_type(TypeId, ErrorContext - Context) -->
 	prog_out__write_context(Context),
@@ -151,11 +151,11 @@ report_undef_type(TypeId, ErrorContext - Context) -->
 	% used.
 
 :- pred write_error_context(error_context_2, io__state, io__state).
-:- mode write_error_context(in, di, uo).
+:- mode write_error_context(in, di, uo) is det.
 
-write_error_context(pred(PredId)) -->
-	io__write_string("predicate "),
-	hlds_out__write_pred_id(PredId).
+write_error_context(pred(_PredId)) -->
+	io__write_string("predicate").
+	% XXX hlds_out__write_pred_id(PredId).
 write_error_context(type(TypeId)) -->
 	io__write_string("type "),
 	hlds_out__write_type_id(TypeId).
