@@ -10,6 +10,35 @@
 # It does three things: delete the `:- module' line,
 # expand backslash escapes, and replace the use
 # of `^' for xor in calls to is/2 with `#'.
+# The expansion of backslash escapes includes support for
+# "\c" line continuation sequences, whereby the sequence
+#	backslash, "c", whitespace
+# acts merely as layout text and is deleted from string literals;
+# this allows string literals to extend over multiple lines, as in
+#	X = "foo\c
+#		bar".
+# which is the same as X = "foobar".
+
+# The commands for expanding \c are a bit complicated;
+# here's an explanation.  
+#
+#       % this is the start of loop
+#	:l
+#		% if we see \c followed by any number of
+#		% spaces, tabs, or embedded newlines (\n), and then finally
+#		% followed by a non-embedded newline ($), we use the `N'
+#		% command to read in the next line; we then branch to
+#		% label `l' to start the loop again.
+#		/\\c\( *	*\n*\)*$/{
+#			N
+#			b l
+#		}
+#		% at this point, we've read in all the lines of the \c
+#		% command, so we replace the \c followed by any number of
+#		% spaces, tabs, or embedded newlines (\n) with an empty
+#		% string.
+#		% 
+#		/\\c\( *	*\n*\)*/s///g
 
 for file in "$@"; do
 	case $file in
@@ -17,6 +46,7 @@ for file in "$@"; do
 		*.nl) base=`basename "$file" .nl` ;;
 		*) base=`basename "$file"` ;;
 	esac
+	# see comments above for explanation of this `sed' command
 	sed -e '
 		/ is /s/\^/#/g
 		/^:- *module/d
@@ -30,5 +60,12 @@ for file in "$@"; do
 		/\\n/s//\
 /g
 		/\\v/s///g
+	:l
+		/\\c\( *	*\n*\)*$/{
+			N
+			b l
+		}
+		/\\c\( *	*\n*\)*/s///g
 		' "$file" > "$base".pl
+		# see comments above for explanation of this `sed' command
 done
