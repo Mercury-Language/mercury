@@ -337,4 +337,11 @@ typedef Unsigned MR_ChoicepointId;
 */
 #define MR_current_choicepoint_id() ((const MR_ChoicepointId)MR_ticket_counter)
 
+/*
+** MR_ChoicepointId MR_null_choicepoint_id(void);
+**
+** A macro defining a "null" ChoicepointId.
+*/
+#define MR_null_choicepoint_id() ((const MR_ChoicepointId)0)
+
 #endif /* not MERCURY_TRAIL_H */
