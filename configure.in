@@ -777,6 +777,37 @@ else
 	mercury_cv_gcc_model_fast=no
 fi
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether we can support profiling on this system)
+AC_CACHE_VAL(mercury_cv_profiling,
+AC_TRY_CPP([
+/* The following code comes from runtime/prof.c */
+#include	<unistd.h>
+#include	<errno.h>
+#include	<string.h>
+#include	<signal.h>
+
+#ifdef HAVE_SYS_PARAM
+#include	<sys/param.h>
+#endif
+
+#ifdef HAVE_SYS_TIME
+#include	<sys/time.h>
+#endif
+
+/* 
+** if HZ is not defined, we may be able to use sysconf(_SC_CLK_TCK) instead
+*/
+#if !defined(HZ) && defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+#define HZ ((int)sysconf(_SC_CLK_TCK))
+#endif
+
+#if !defined(HZ) || !defined(SIGPROF) || !defined(HAVE_SETITIMER)
+#error "Time profiling not supported on this system"
+#endif
+], [mercury_cv_profiling=yes], [mercury_cv_profiling=no]))
+AC_MSG_RESULT($mercury_cv_profiling)
+
+#-----------------------------------------------------------------------------#
 #
 # Restore env vars modified by Irix 5 hack above
 #
@@ -905,10 +936,13 @@ fi
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
-LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
-`echo $DEFAULT_GRADE|sed 's/\.gc$//'`.prof"
-if test $GRADE != $DEFAULT_GRADE; then
-	LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
+
+if test $mercury_cv_profiling = yes; then
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
+	`echo $DEFAULT_GRADE|sed 's/\.gc$//'`.prof"
+	if test $GRADE != $DEFAULT_GRADE; then
+		LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
+	fi
 fi
 #
 # on the alpha, the grades that use non-local gotos are a bit
@@ -918,7 +952,10 @@ fi
 case "$host" in
 	alpha-dec-*)
 		if test $enable_all_grades != yes; then
-			LIBGRADES="$LIBGRADES reg.gc reg.gc.prof"
+			LIBGRADES="$LIBGRADES reg.gc"
+			if test $mercury_cv_profiling = yes; then
+				LIBGRADES="$LIBGRADES reg.gc.prof"
+			fi
 		fi
 		;;
 esac
