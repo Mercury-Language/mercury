@@ -1189,6 +1189,12 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
 		{ GenericCall = class_method(_, _, _, _) },
 		{ error("modecheck_goal_expr: class_method_call") }
 	;
+		{ GenericCall = unsafe_cast },
+		modecheck_builtin_cast(Args0, Modes0, Det, Args, ExtraGoals),
+		{ Modes = Modes0 },
+		{ AllArgs0 = Args0 },
+		{ AllArgs = Args }
+	;
 		{ GenericCall = aditi_builtin(AditiBuiltin, UpdatedCallId) },
 		modecheck_aditi_builtin(AditiBuiltin, UpdatedCallId,
 			Args0, Modes0, Det, Args, ExtraGoals),

@@ -230,6 +230,11 @@
 			simple_call_id	% name of the called method
 		)
 
+		% unsafe_cast(Input, Output).
+		% Assigns `Input' to `Output', performing a type
+		% and/or inst cast.
+	;	unsafe_cast
+
 	;	aditi_builtin(
 			aditi_builtin,
 			simple_call_id
@@ -1005,41 +1010,44 @@
 		list(string)).
 :- mode get_pragma_foreign_var_names(in, out) is det.
 
+	%
+	% Produce a goal to construct or deconstruct a
+	% tuple containing the given list of arguments,
+	% filling in the non-locals, instmap_delta and
+	% determinism fields of the goal_info.
+	%
+
+:- pred construct_tuple(prog_var, list(prog_var), hlds_goal).
+:- mode construct_tuple(in, in, out) is det.
+
+:- pred deconstruct_tuple(prog_var, list(prog_var), hlds_goal).
+:- mode deconstruct_tuple(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Stuff specific to Aditi.
 %
 
-	% Builtin Aditi operations.
+	% Builtin Aditi operations. 
+	% These are transformed into ordinary Mercury calls
+	% by aditi_builtin_ops.m before code generation.
 :- type aditi_builtin
 	--->
-		% Call an Aditi predicate from Mercury compiled to C.
-		% This is introduced by magic.m.
-		% Arguments:
-		%   type-infos for the input arguments
-		%   the input arguments
-		%   type-infos for the output arguments
-		%   the output arguments
-		aditi_call(
-			pred_proc_id,	% procedure to call
-			int,		% number of inputs
-			list(type),	% types of input arguments
-			int		% number of outputs
-		)
-
 		% Insert or delete a single tuple into/from a base relation.
 		% Arguments:
-		%   type-infos for the arguments of the tuple to insert
 		%   the arguments of tuple to insert
-		% aditi__state::di, aditi__state::uo
-	;	aditi_tuple_insert_delete(
+		%   aditi__state::di, aditi__state::uo
+		aditi_tuple_insert_delete(
 			aditi_insert_delete,
 			pred_id		% base relation to insert into
 		)
 
 		% Insert/delete/modify operations which take
 		% an input closure.
-		% These operations all have two variants.
+		% Arguments:
+		%   the closure producing the tuples to insert/delete/modify
+		%   aditi__state::di, aditi__state::uo
+		% These operations all have two variants. 
 		%
 		% A pretty syntax:
 		%
@@ -1136,9 +1144,11 @@
 :- implementation.
 
 :- import_module check_hlds__det_analysis.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
 :- import_module parse_tree__prog_util.
+:- import_module assoc_list, require, string, term, varset.
 
 :- import_module require, string, term, varset.
 
@@ -1152,12 +1162,14 @@ hlds_goal__generic_call_id(higher_order(_, Purity, PorF, Arity),
 hlds_goal__generic_call_id(
 		class_method(_, _, ClassId, MethodId),
 		generic_call(class_method(ClassId, MethodId))).
+hlds_goal__generic_call_id(unsafe_cast, generic_call(unsafe_cast)).
 hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 		generic_call(aditi_builtin(Builtin, Name))).
 
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
 	simple_call_id_pred_or_func(CallId).
+generic_call_pred_or_func(unsafe_cast) = predicate.
 generic_call_pred_or_func(aditi_builtin(_, CallId)) =
 	simple_call_id_pred_or_func(CallId).
 
@@ -1836,6 +1848,42 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	instmap_delta_init_reachable(InstMapDelta0),
 	instmap_delta_insert(InstMapDelta0, Var, Inst, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo).
+
+construct_tuple(Tuple, Args, Goal) :-
+	list__length(Args, Arity),
+	ConsId = cons(unqualified("{}"), Arity),
+	Rhs = functor(ConsId, no, Args),
+	UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
+	UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
+	list__duplicate(Arity, UniMode, UniModes),
+	ExprnId = no,
+	Unification = construct(Tuple, ConsId, Args, UniModes,
+			construct_dynamically, cell_is_unique, ExprnId),
+	UnifyContext = unify_context(explicit, []),
+	Unify = unify(Tuple, Rhs, UnifyMode, Unification, UnifyContext),
+	set__list_to_set([Tuple | Args], NonLocals),
+	instmap_delta_from_assoc_list([Tuple - ground_inst], InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
+	Goal = Unify - GoalInfo.
+
+deconstruct_tuple(Tuple, Args, Goal) :-
+	list__length(Args, Arity),
+	ConsId = cons(unqualified("{}"), Arity),
+	Rhs = functor(ConsId, no, Args),
+	UnifyMode = (ground_inst -> free_inst) - (ground_inst -> ground_inst),
+	UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst)),
+	list__duplicate(Arity, UniMode, UniModes),
+	UnifyContext = unify_context(explicit, []),
+	CanGC = no,
+	Unification = deconstruct(Tuple, ConsId, Args,
+			UniModes, cannot_fail, CanGC),
+	Unify = unify(Tuple, Rhs, UnifyMode, Unification, UnifyContext),
+	set__list_to_set([Tuple | Args], NonLocals),
+	list__duplicate(Arity, ground_inst, DeltaValues),
+	assoc_list__from_corresponding_lists(Args, DeltaValues, DeltaAL),
+	instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
+	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
+	Goal = Unify - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 

@@ -931,14 +931,6 @@
 					% on entry to the given procedure.
 	;	do_call_closure
 	;	do_call_class_method
-	;	do_det_aditi_call
-	;	do_semidet_aditi_call
-	;	do_nondet_aditi_call
-	;	do_aditi_insert
-	;	do_aditi_delete
-	;	do_aditi_bulk_insert
-	;	do_aditi_bulk_delete
-	;	do_aditi_bulk_modify
 	;	do_not_reached.		% We should never jump to this address.
 
 	% A tag (used in mkword, create and field expressions

@@ -410,6 +410,8 @@ so that the compiler does the right thing for options such as
 	and to check for unbound type variables.
 	Elimination of double negation is also done here; that needs to
 	be done after quantification analysis and before mode analysis.
+	Calls to `private_builtin__unsafe_type_cast/2' are converted
+	into `generic_call(unsafe_cast, ...)' goals here.
 
 <dt> polymorphism transformation
 
@@ -664,6 +666,9 @@ specialized versions without them (unused_args.m); type_infos are often unused.
 <li> conversion of Aditi procedures into disjunctive normal form (dnf.m).
   The supplementary magic sets and context transformations are only defined
   for predicates in DNF.
+
+<li> transformation of Aditi builtins into normal calls to predicates
+  in extras/aditi/aditi_private_builtin.m (aditi_builtin_ops.m).
 
 <li> supplementary magic sets or supplementary context transformation of
 	Aditi procedures (magic.m, magic_util.m, context.m).
@@ -1266,6 +1271,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2003-02-22 13:54:43 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-03-18 02:43:47 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -743,6 +743,7 @@
 
 :- implementation.
 
+:- import_module backend_libs__c_util.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
 :- import_module hlds__passes_aux.
@@ -1999,6 +2000,7 @@ add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
 	mercury_private_builtin_module(MercuryPrivateBuiltin),
 	mercury_table_builtin_module(MercuryTableBuiltin),
 	mercury_profiling_builtin_module(MercuryProfilingBuiltin),
+	aditi_private_builtin_module(AditiPrivateBuiltin),
 	ImportDeps = [MercuryPublicBuiltin | ImportDeps0],
 	UseDeps1 = [MercuryPrivateBuiltin | UseDeps0],
 	(
@@ -2017,11 +2019,15 @@ add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
 		UseDeps2 = UseDeps1
 	),
 	( globals__lookup_bool_option(Globals, profile_deep, yes) ->
-		UseDeps = [MercuryProfilingBuiltin|UseDeps2]
+		UseDeps3 = [MercuryProfilingBuiltin | UseDeps2]
 	;
-		UseDeps = UseDeps2
+		UseDeps3 = UseDeps2
+	),
+	( globals__lookup_bool_option(Globals, aditi, yes) ->
+		UseDeps = [AditiPrivateBuiltin | UseDeps3]
+	;
+		UseDeps = UseDeps3
 	).
-
 
 :- pred contains_tabling_pragma(item_list::in) is semidet.
 
@@ -4870,7 +4876,10 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 	Info = module_foreign_info(LangSet0, LangMap,
 			ForeignImports, ContainsPragmaExport),
 	ForeignProcLangs = map__values(LangMap),
-	LangSet = set__insert_list(LangSet0, ForeignProcLangs).
+	LangSet1 = set__insert_list(LangSet0, ForeignProcLangs),
+	globals__lookup_bool_option(Globals, aditi, Aditi),
+	% We generate a C constant containing the Aditi-RL code.
+	LangSet = ( Aditi = yes -> set__insert(LangSet1, c) ; LangSet1 ).
 
 :- pred get_item_foreign_code(globals::in, item_and_context::in,
 		module_foreign_info::in, module_foreign_info::out) is det.

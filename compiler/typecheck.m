@@ -1397,6 +1397,11 @@ typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
 		{ GenericCall0 = class_method(_, _, _, _) },
 		{ error("typecheck_goal_2: unexpected class method call") }
 	;
+		{ GenericCall0 = unsafe_cast },
+		% A cast imposes no restrictions on its argument types,
+		% so nothing needs to be done here.
+		{ GenericCall = GenericCall0 }
+	;
 		{ GenericCall0 = aditi_builtin(AditiBuiltin0, PredCallId) },
 		checkpoint("aditi builtin"),
 		typecheck_aditi_builtin(PredCallId, Args,
@@ -1559,9 +1564,6 @@ typecheck_aditi_builtin(CallId, Args, Builtin0, Builtin) -->
 :- mode typecheck_aditi_builtin_2(in, in, in, out,
 		typecheck_info_di, typecheck_info_uo) is det.
 
-typecheck_aditi_builtin_2(_, _, aditi_call(_, _, _, _), _) -->
-	% There are only added by magic.m.
-	{ error("typecheck_aditi_builtin: unexpected aditi_call") }.
 typecheck_aditi_builtin_2(CallId, Args,
 		aditi_tuple_insert_delete(InsertDelete, _),
 		aditi_tuple_insert_delete(InsertDelete, PredId)) -->
@@ -1653,8 +1655,6 @@ typecheck_aditi_state_args(Builtin, CallId, AditiState0Var, AditiStateVar) -->
 	% `aditi__state' DCG argument.
 :- func aditi_builtin_first_state_arg(aditi_builtin, simple_call_id) = int.
 
-aditi_builtin_first_state_arg(aditi_call(_, _, _, _), _) = _ :-
-	error("aditi_builtin_first_state_arg: unexpected_aditi_call").
 aditi_builtin_first_state_arg(aditi_tuple_insert_delete(_, _),
 		_ - _/Arity) = Arity + 1.
 	% XXX removing the space between the 2 and the `.' will possibly

@@ -229,26 +229,28 @@ find_follow_vars_in_goal_expr(shorthand(_), _, _, _, _, _, _, _, _, _) :-
 	error("find_follow_vars_in_goal_2: unexpected shorthand").
 
 find_follow_vars_in_goal_expr(
-		generic_call(GenericCall, Args, Modes, Det), GoalInfo,
-		VarTypes, ModuleInfo, _FollowVarsMap0, _NextNonReserved0,
-		generic_call(GenericCall, Args, Modes, Det), GoalInfo,
-		FollowVarsMap, NextNonReserved) :-
-	determinism_to_code_model(Det, CodeModel),
-	map__apply_to_list(Args, VarTypes, Types),
-	call_gen__maybe_remove_aditi_state_args(GenericCall,
-		Args, Types, Modes, EffArgs, EffTypes, EffModes),
-	make_arg_infos(EffTypes, EffModes, CodeModel, ModuleInfo, EffArgInfos),
-	assoc_list__from_corresponding_lists(EffArgs, EffArgInfos,
-		EffArgsInfos),
-	arg_info__partition_args(EffArgsInfos, EffInVarInfos, _),
-	assoc_list__keys(EffInVarInfos, EffInVars),
-	call_gen__generic_call_info(CodeModel, GenericCall, _,
-		SpecifierArgInfos, FirstInput),
-	map__init(FollowVarsMap0),
-	find_follow_vars_from_arginfo(SpecifierArgInfos, FollowVarsMap0, 1,
-		FollowVarsMap1, _),
-	find_follow_vars_from_sequence(EffInVars, FirstInput, FollowVarsMap1,
-		FollowVarsMap, NextNonReserved).
+		Call @ generic_call(GenericCall, Args, Modes, Det), GoalInfo,
+		VarTypes, ModuleInfo, FollowVarsMap0, NextNonReserved0,
+		Call, GoalInfo, FollowVarsMap, NextNonReserved) :-
+	% unsafe_casts are generated inline.
+	( GenericCall = unsafe_cast ->
+		FollowVarsMap = FollowVarsMap0,
+		NextNonReserved = NextNonReserved0
+	;
+		determinism_to_code_model(Det, CodeModel),
+		map__apply_to_list(Args, VarTypes, Types),
+		make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos),
+		assoc_list__from_corresponding_lists(Args,
+			ArgInfos, ArgsInfos),
+		arg_info__partition_args(ArgsInfos, InVarInfos, _),
+		assoc_list__keys(InVarInfos, InVars),
+		call_gen__generic_call_info(CodeModel, GenericCall, _,
+			SpecifierArgInfos, FirstInput),
+		find_follow_vars_from_arginfo(SpecifierArgInfos,
+			map__init, 1, FollowVarsMap1, _),
+		find_follow_vars_from_sequence(InVars, FirstInput,
+			FollowVarsMap1, FollowVarsMap, NextNonReserved)
+	).
 
 find_follow_vars_in_goal_expr(call(PredId, ProcId, Args, State, E, F),
 		GoalInfo, _, ModuleInfo, FollowVarsMap0, NextNonReserved0,

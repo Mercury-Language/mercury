@@ -60,6 +60,14 @@
 :- mode ml_gen_builtin(in, in, in, in, in, out, out, in, out) is det.
 
 	%
+	% Generate MLDS code for a cast. The list of argument variables
+	% must have only two elements, the input and the output.
+	%
+:- pred ml_gen_cast(prog_context, list(prog_var),
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_cast(in, in, out, out, in, out) is det.
+
+	%
 	% Generate an rval containing the address of the specified procedure.
 	%
 :- pred ml_gen_proc_addr_rval(pred_id, proc_id, mlds__rval,
@@ -139,7 +147,26 @@
 	% XXX For typeclass method calls, we do some unnecessary
 	% boxing/unboxing of the arguments.
 	%
-ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
+ml_gen_generic_call(higher_order(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
+		Determinism, Context, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism,
+		Context, MLDS_Decls, MLDS_Statements).
+ml_gen_generic_call(class_method(_, _, _, _) @ GenericCall, ArgVars, ArgModes,
+		Determinism, Context, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism,
+		Context, MLDS_Decls, MLDS_Statements).
+ml_gen_generic_call(unsafe_cast, ArgVars, _ArgModes, _Determinism, Context,
+		MLDS_Decls, MLDS_Statements) -->
+	ml_gen_cast(Context, ArgVars, MLDS_Decls, MLDS_Statements).
+ml_gen_generic_call(aditi_builtin(_, _), _, _, _, _, _, _) -->
+	{ error("ml_gen_generic_call: aditi_builtin") }.
+
+:- pred ml_gen_generic_call_2(generic_call, list(prog_var), list(mode),
+		determinism, prog_context, mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_generic_call_2(in, in, in, in, in, out, out, in, out) is det.
+
+ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
 		MLDS_Decls, MLDS_Statements) -->
 	%
 	% allocate some fresh type variables to use as the Mercury types
@@ -221,8 +248,11 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 		{ FuncType = mlds__func_type(Params) },
 		{ FuncRval = unop(unbox(FuncType), lval(FuncLval)) }
 	;
+		{ GenericCall = unsafe_cast },
+		{ error("ml_gen_generic_call_2: unsafe_cast") }
+	;
 		{ GenericCall = aditi_builtin(_, _) },
-		{ sorry(this_file, "Aditi builtins") }
+		{ error("ml_gen_generic_call_2: aditi_builtin") }
 	),
 
 	%
@@ -301,6 +331,29 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 	),
 	{ MLDS_Decls = [FuncVarDecl | MLDS_Decls0] },
 	{ MLDS_Statements = [AssignFuncVar | MLDS_Statements0] }.
+
+ml_gen_cast(Context, ArgVars, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_var_list(ArgVars, ArgLvals),
+	ml_variable_types(ArgVars, ArgTypes),
+	(
+		{ ArgLvals = [SrcLval, DestLval] },
+		{ ArgTypes = [SrcType, DestType] }
+	->
+		( { type_util__is_dummy_argument_type(DestType) } ->
+			{ MLDS_Statements = [] }
+		;
+			ml_gen_box_or_unbox_rval(SrcType, DestType,
+				lval(SrcLval), CastRval),
+			{ Assign = ml_gen_assign(DestLval, CastRval,
+				Context) },
+			{ MLDS_Statements = [Assign] }
+		),
+		{ MLDS_Decls = [] }
+	;
+		{ error("ml_gen_cast: wrong number of args for cast") }
+	).
+
+%-----------------------------------------------------------------------------%
 
 	%
 	% Generate code for the various parts that are needed for

@@ -17,15 +17,9 @@
 %  This includes treating procedures with different clauses for
 %  different modes as impure, unless promised pure.
 %
-%  This module also does two final parts of type analysis:
-%	- it resolves predicate overloading
-%	  (perhaps it ought to also resolve function overloading,
-%	  converting unifications that are function calls into
-%	  HLDS call instructions, but currently that is done
-%	  in polymorphism.m)
-%	- it checks for unbound type variables and if there are any,
-%	  it reports an error (or a warning, binding them to the type `void');
-%	  similarly it checks for unsatisfied type class constraints.
+%  This module also calls post_typecheck.m to perform the final parts of
+%  type analysis, including resolution of predicate and function overloading
+%  (see the comments in that file).
 %
 %  These actions cannot be done until after type inference is complete,
 %  so they need to be a separate "post-typecheck pass"; they are done
@@ -35,6 +29,10 @@
 %  It needs to be done somewhere after quantification analysis and
 %  before mode analysis, and this is convenient place to do it.
 %
+%  This pass also converts calls to `private_builtin.unsafe_type_cast'
+%  into `generic_call(unsafe_cast, ...)' goals.
+%
+%-----------------------------------------------------------------------------%
 %
 %  The aim of Mercury's purity system is to allow one to declare certain parts
 %  of one's program to be impure, thereby forbidding the compiler from making
@@ -113,8 +111,7 @@
 %	It may also be nice to allow semipure function calls to occur
 %	inline (since ordering is not an issue for them).
 %
-
-
+%-----------------------------------------------------------------------------%
 :- module check_hlds__purity.
 :- interface.
 
@@ -130,7 +127,8 @@
 % 			;	(impure).
 
 %  Purity check a whole module.  Also do the post-typecheck stuff
-%  described above, and eliminate double negations.
+%  described above, and eliminate double negations and calls
+%  to `private_builtin.unsafe_type_cast/2'.
 %  The first argument specifies whether there were any type
 %  errors (if so, we suppress some diagnostics in post_typecheck.m
 %  because they are usually spurious).
@@ -200,6 +198,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module map, varset, term, string, require, std_util.
 :- import_module assoc_list, bool, int, list, set.
@@ -523,20 +522,35 @@ compute_expr_purity(conj(Goals0), conj(Goals), _, Purity) -->
 compute_expr_purity(par_conj(Goals0), par_conj(Goals), _,
 		Purity) -->
 	compute_goals_purity(Goals0, Goals, pure, Purity).
-compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
-		call(PredId,ProcId,Vars,BIState,UContext,Name),
-		GoalInfo, ActualPurity) -->
+compute_expr_purity(
+		Goal0 @ call(PredId0, ProcId, Vars, BIState, UContext, Name0),
+		Goal, GoalInfo, ActualPurity) -->
 	RunPostTypecheck =^ run_post_typecheck,
 	PredInfo =^ pred_info,
 	ModuleInfo =^ module_info,
 	{
 		RunPostTypecheck = yes,
 		post_typecheck__resolve_pred_overloading(PredId0,
-			Vars, PredInfo, ModuleInfo, Name0, Name, PredId)
+			Vars, PredInfo, ModuleInfo, Name0, Name, PredId),
+		(
+			% Convert any calls to private_builtin.unsafe_type_cast
+			% into unsafe_cast goals.
+			Name = qualified(
+				mercury_private_builtin_module,
+				"unsafe_type_cast"),
+			Vars = [InputArg, OutputArg]
+		->
+			Goal = generic_call(unsafe_cast,
+					[InputArg, OutputArg],
+					[in_mode, out_mode], det)
+		;
+			Goal = call(PredId, ProcId, Vars,
+					BIState, UContext, Name)
+		)
 	;	
 		RunPostTypecheck = no,
 		PredId = PredId0,
-		Name = Name0
+		Goal = Goal0
 	},
 	{ infer_goal_info_purity(GoalInfo, DeclaredPurity) },
 	{ goal_info_get_context(GoalInfo, CallContext) },
@@ -552,6 +566,10 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
 	;
 		{ GenericCall0 = class_method(_, _, _, _) },
 		{ Purity = pure }, % XXX this is wrong!
+		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
+	;
+		{ GenericCall0 = unsafe_cast },
+		{ Purity = pure },
 		{ GoalExpr = generic_call(GenericCall0, Args, Modes0, Det) }
 	;
 		{ GenericCall0 = aditi_builtin(Builtin0, CallId0) },

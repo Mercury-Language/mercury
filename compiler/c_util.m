@@ -18,8 +18,11 @@
 :- module backend_libs__c_util.
 :- interface.
 
+:- import_module aditi_backend.
+:- import_module aditi_backend__rl_file.
 :- import_module backend_libs__builtin_ops.
-:- import_module io, char, string, int.
+:- import_module parse_tree__prog_data.
+:- import_module io, char, string, int, std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -136,6 +139,15 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Currently the `.rlo' files are stored as static data in the
+	% executable. It may be better to store them in separate files
+	% in a known location and load them at runtime.
+:- pred c_util__output_rl_file(module_name, maybe(rl_file),
+		io__state, io__state).
+:- mode c_util__output_rl_file(in, in, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% output_c_file_intro_and_grade(SourceFileName, Version)
 	% outputs a comment which includes the settings used to generate
 	% the C file.  This is used by configure to check the any
@@ -153,6 +165,7 @@
 
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module backend_libs__name_mangle.
 
 :- import_module list, bool.
 
@@ -384,6 +397,48 @@ c_util__binary_infix_op(<, "<").
 c_util__binary_infix_op(>, ">").
 c_util__binary_infix_op(<=, "<=").
 c_util__binary_infix_op(>=, ">=").
+
+%-----------------------------------------------------------------------------%
+
+c_util__output_rl_file(ModuleName, MaybeRLFile) -->
+	globals__io_lookup_bool_option(aditi, Aditi),
+	( { Aditi = no } ->
+		[]
+	;
+		io__write_string("\n\n/* Aditi-RL code for this module. */\n"),
+		{ RLDataConstName = make_rl_data_name(ModuleName) },
+		io__write_string("const char "),
+		io__write_string(RLDataConstName),
+		io__write_string("[] = {"),
+		(
+			{ MaybeRLFile = yes(RLFile) },
+			rl_file__write_binary(c_util__output_rl_byte,
+				RLFile, Length),
+			io__write_string("0};\n")
+		;
+			{ MaybeRLFile = no },
+			io__write_string("};\n"),
+			{ Length = 0 }
+		),
+
+		% Store the length of the data in
+		% mercury__aditi_rl_data__<module>__length.
+
+		{ string__append(RLDataConstName, "__length",
+			RLDataConstLength) },
+		io__write_string("const int "),
+		io__write_string(RLDataConstLength),
+		io__write_string(" = "),
+		io__write_int(Length),
+		io__write_string(";\n\n")
+	).
+
+:- pred c_util__output_rl_byte(int, io__state, io__state).
+:- mode c_util__output_rl_byte(in, di, uo) is det.
+
+c_util__output_rl_byte(Byte) -->
+	io__write_int(Byte),
+	io__write_string(", ").
 
 %-----------------------------------------------------------------------------%
 

@@ -468,14 +468,6 @@ livemap__special_code_addr(do_trace_redo_fail_deep, no).
 livemap__special_code_addr(do_fail, no).
 livemap__special_code_addr(do_call_closure, no).
 livemap__special_code_addr(do_call_class_method, no).
-livemap__special_code_addr(do_det_aditi_call, no).
-livemap__special_code_addr(do_semidet_aditi_call, no).
-livemap__special_code_addr(do_nondet_aditi_call, no).
-livemap__special_code_addr(do_aditi_insert, no).
-livemap__special_code_addr(do_aditi_delete, no).
-livemap__special_code_addr(do_aditi_bulk_insert, no).
-livemap__special_code_addr(do_aditi_bulk_delete, no).
-livemap__special_code_addr(do_aditi_bulk_modify, no).
 livemap__special_code_addr(do_not_reached, no).
 
 %-----------------------------------------------------------------------------%

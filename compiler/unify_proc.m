@@ -835,10 +835,8 @@ generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses) -->
 		"Cast_HeadVar", 1, CastVar1),
 	unify_proc__make_fresh_named_var_from_type(EqvType,
 		"Cast_HeadVar", 2, CastVar2),
-	unify_proc__build_call("unsafe_type_cast", [H1, CastVar1],
-		Context, Cast1Goal),
-	unify_proc__build_call("unsafe_type_cast", [H2, CastVar2],
-		Context, Cast2Goal),
+	unify_proc__build_cast(H1, CastVar1, Context, Cast1Goal),
+	unify_proc__build_cast(H2, CastVar2, Context, Cast2Goal),
 	{ create_atomic_unification(CastVar1, var(CastVar2), Context,
 		explicit, [], UnifyGoal) },
 
@@ -927,10 +925,10 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 				"Cast_HeadVar", 1, CastVar1),
 			unify_proc__make_fresh_named_var_from_type(IntType,
 				"Cast_HeadVar", 2, CastVar2),
-			unify_proc__build_call("unsafe_type_cast",
-				[H1, CastVar1], Context, Cast1Goal),
-			unify_proc__build_call("unsafe_type_cast",
-				[H2, CastVar2], Context, Cast2Goal),
+			unify_proc__build_cast(H1, CastVar1, Context,
+				Cast1Goal),
+			unify_proc__build_cast(H2, CastVar2, Context,
+				Cast2Goal),
 			unify_proc__build_call("builtin_compare_int",
 				[Res, CastVar1, CastVar2], Context,
 				CompareGoal),
@@ -1009,10 +1007,8 @@ generate_compare_clauses_eqv_type(EqvType, Res, H1, H2, Context, Clauses) -->
 		"Cast_HeadVar", 1, CastVar1),
 	unify_proc__make_fresh_named_var_from_type(EqvType,
 		"Cast_HeadVar", 2, CastVar2),
-	unify_proc__build_call("unsafe_type_cast", [H1, CastVar1],
-		Context, Cast1Goal),
-	unify_proc__build_call("unsafe_type_cast", [H2, CastVar2],
-		Context, Cast2Goal),
+	unify_proc__build_cast(H1, CastVar1, Context, Cast1Goal),
+	unify_proc__build_cast(H2, CastVar2, Context, Cast2Goal),
 	unify_proc__build_call("compare", [Res, CastVar1, CastVar2],
 		Context, CompareGoal),
 
@@ -1556,6 +1552,15 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred unify_proc__build_cast(prog_var, prog_var, prog_context, hlds_goal,
+			unify_proc_info, unify_proc_info).
+:- mode unify_proc__build_cast(in, in, in, out, in, out) is det.
+
+unify_proc__build_cast(InArg, OutArg, Context, Goal) -->
+	{ goal_info_init(Context, GoalInfo) },
+	{ Goal = generic_call(unsafe_cast, [InArg, OutArg],
+			[in_mode, out_mode], det) - GoalInfo }.
 
 :- pred unify_proc__build_call(string, list(prog_var), prog_context, hlds_goal,
 			unify_proc_info, unify_proc_info).

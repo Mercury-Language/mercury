@@ -36,6 +36,7 @@
 
 :- import_module hlds__hlds_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module string, set, std_util, require, term.
 
@@ -205,6 +206,12 @@ prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 		GenericCall = class_method(Var, MethodNum, _, _),
 		term__var_to_int(Var, VarRep),
 		AtomicGoalRep = method_call_rep(VarRep, MethodNum, ArgsRep)
+	;
+		GenericCall = unsafe_cast,
+		mercury_private_builtin_module(ModuleSymName),
+		prog_out__sym_name_to_string(ModuleSymName, ModuleName),
+		AtomicGoalRep = plain_call_rep(ModuleName,
+			"unsafe_type_cast", ArgsRep)
 	;
 		GenericCall = aditi_builtin(_, _),
 		error("Sorry, not yet implemented\n\

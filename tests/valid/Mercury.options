@@ -25,6 +25,7 @@ GRADEFLAGS-foreign_type_spec.foreign	= --grade il
 MCFLAGS-aditi_error_bug		= --aditi
 MCFLAGS-aditi_error_bug2	= --aditi
 MCFLAGS-aditi_error_bug3	= --aditi
+MCFLAGS-aditi_private_builtin	= --allow-stubs
 MCFLAGS-aditi_query		= --aditi-only
 MCFLAGS-aditi_update		= --aditi
 MCFLAGS-base_relation		= --aditi

@@ -671,23 +671,19 @@ common__create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs,
 		hlds_goal_info, hlds_goal, simplify_info, simplify_info).
 :- mode common__generate_assign(in, in, in, in, out, in, out) is det.
 	
-common__generate_assign(ToVar, FromVar, UniMode,
-		GoalInfo0, Goal, Info0, Info) :-
-	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
+common__generate_assign(ToVar, FromVar, UniMode, _, Goal, Info0, Info) :-
 	simplify_info_get_var_types(Info0, VarTypes),
 	map__lookup(VarTypes, ToVar, ToVarType),
 	map__lookup(VarTypes, FromVar, FromVarType),
 
 	set__list_to_set([ToVar, FromVar], NonLocals),
+	UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
 	( common__types_match_exactly(ToVarType, FromVarType) ->
-		UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
-		UnifyContext = unify_context(explicit, []),
 		UnifyMode = (ToVarInst0 -> ToVarInst) -
 				(ToVarInst -> ToVarInst),
+		UnifyContext = unify_context(explicit, []),
 		GoalExpr = unify(ToVar, var(FromVar), UnifyMode,
-			assign(ToVar, FromVar), UnifyContext),
-		instmap_delta_from_assoc_list([ToVar - ToVarInst],
-			InstMapDelta)
+			assign(ToVar, FromVar), UnifyContext)
 	;	
 		% If the cells we are optimizing don't have exactly the same
 		% type, we insert explicit type casts to ensure type
@@ -696,13 +692,17 @@ common__generate_assign(ToVar, FromVar, UniMode,
 		% Unfortunately this loses information for other optimizations,
 		% since the call to the type cast hides the equivalence of
 		% the input and output.
-		simplify_info_get_module_info(Info0, ModuleInfo),
-		goal_info_get_context(GoalInfo0, Context),
-		goal_util__generate_simple_call(mercury_private_builtin_module,
-			"unsafe_type_cast", [FromVar, ToVar], only_mode,
-			det, no, [], ModuleInfo, Context, GoalExpr - _),
-		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta)
+		Modes = [(ToVarInst -> ToVarInst),
+				(free -> ToVarInst)],
+		GoalExpr = generic_call(unsafe_cast, [FromVar, ToVar],
+				Modes, det)
 	),
+
+	% `ToVar' may not appear in the original instmap_delta,
+	% so we can't just use instmap_delta_restrict on the
+	% original instmap_delta here.
+	instmap_delta_from_assoc_list([ToVar - ToVarInst], InstMapDelta),
+
 	goal_info_init(NonLocals, InstMapDelta, det, pure, GoalInfo),
 	Goal = GoalExpr - GoalInfo,	
 	common__record_equivalence(ToVar, FromVar, Info0, Info).

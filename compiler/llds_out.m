@@ -345,7 +345,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		{ decl_set_init(DeclSet0) },
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels, DeclSet0, _DeclSet),
-		output_rl_file(ModuleName, MaybeRLFile),
+		c_util__output_rl_file(ModuleName, MaybeRLFile),
 		io__set_output_stream(OutputStream, _),
 		io__close_output(FileStream)
 	;
@@ -434,7 +434,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 			output_c_module_init_list(ModuleName, Modules, Datas,
 				StackLayoutLabels, DeclSet5, _DeclSet)
 		),
-		output_rl_file(ModuleName, MaybeRLFile),
+		c_util__output_rl_file(ModuleName, MaybeRLFile),
 		io__set_output_stream(OutputStream, _),
 		io__close_output(FileStream)
 	;
@@ -2823,14 +2823,6 @@ need_code_addr_decls(do_trace_redo_fail_shallow, yes) --> [].
 need_code_addr_decls(do_trace_redo_fail_deep, yes) --> [].
 need_code_addr_decls(do_call_closure, yes) --> [].
 need_code_addr_decls(do_call_class_method, yes) --> [].
-need_code_addr_decls(do_det_aditi_call, yes) --> [].
-need_code_addr_decls(do_semidet_aditi_call, yes) --> [].
-need_code_addr_decls(do_nondet_aditi_call, yes) --> [].
-need_code_addr_decls(do_aditi_insert, yes) --> [].
-need_code_addr_decls(do_aditi_delete, yes) --> [].
-need_code_addr_decls(do_aditi_bulk_insert, yes) --> [].
-need_code_addr_decls(do_aditi_bulk_delete, yes) --> [].
-need_code_addr_decls(do_aditi_bulk_modify, yes) --> [].
 need_code_addr_decls(do_not_reached, yes) --> [].
 
 :- pred output_code_addr_decls(code_addr, io__state, io__state).
@@ -2872,24 +2864,6 @@ output_code_addr_decls(do_call_closure) -->
 	io__write_string("MR_declare_entry(mercury__do_call_closure);\n").
 output_code_addr_decls(do_call_class_method) -->
 	io__write_string("MR_declare_entry(mercury__do_call_class_method);\n").
-% XXX The do_*_aditi_call and do_aditi_* entry point names
-% should start with an `MADITI_' prefix.
-output_code_addr_decls(do_det_aditi_call) -->
-	io__write_string("MR_declare_entry(do_det_aditi_call);\n").
-output_code_addr_decls(do_semidet_aditi_call) -->
-	io__write_string("MR_declare_entry(do_semidet_aditi_call);\n").
-output_code_addr_decls(do_nondet_aditi_call) -->
-	io__write_string("MR_declare_entry(do_nondet_aditi_call);\n").
-output_code_addr_decls(do_aditi_insert) -->
-	io__write_string("MR_declare_entry(do_aditi_insert);\n").
-output_code_addr_decls(do_aditi_delete) -->
-	io__write_string("MR_declare_entry(do_aditi_delete);\n").
-output_code_addr_decls(do_aditi_bulk_insert) -->
-	io__write_string("MR_declare_entry(do_aditi_bulk_insert);\n").
-output_code_addr_decls(do_aditi_bulk_delete) -->
-	io__write_string("MR_declare_entry(do_aditi_bulk_delete);\n").
-output_code_addr_decls(do_aditi_bulk_modify) -->
-	io__write_string("MR_declare_entry(do_aditi_bulk_modify);\n").
 output_code_addr_decls(do_not_reached) -->
 	io__write_string("MR_declare_entry(MR_do_not_reached);\n").
 
@@ -3146,40 +3120,6 @@ output_goto(do_call_class_method, CallerLabel) -->
 	io__write_string(");\n\t\t"),
 	io__write_string(
 		"MR_noprof_tailcall(MR_ENTRY(mercury__do_call_class_method));\n").
-% XXX The do_*_aditi_call and do_aditi_* entry point names
-% should start with an `MADITI_' prefix.
-output_goto(do_det_aditi_call, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_det_aditi_call),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_semidet_aditi_call, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_semidet_aditi_call),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_nondet_aditi_call, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_nondet_aditi_call),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_aditi_insert, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_aditi_insert),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_aditi_delete, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_aditi_delete),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_aditi_bulk_insert, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_aditi_bulk_insert),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_aditi_bulk_delete, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_aditi_bulk_delete),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_aditi_bulk_modify, CallerLabel) -->
-	io__write_string("MR_tailcall(MR_ENTRY(do_aditi_bulk_modify),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
 output_goto(do_not_reached, CallerLabel) -->
 	io__write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -3278,22 +3218,6 @@ output_code_addr(do_call_closure) -->
 	io__write_string("MR_ENTRY(mercury__do_call_closure)").
 output_code_addr(do_call_class_method) -->
 	io__write_string("MR_ENTRY(mercury__do_call_class_method)").
-output_code_addr(do_det_aditi_call) -->
-	io__write_string("MR_ENTRY(do_det_aditi_call)").
-output_code_addr(do_semidet_aditi_call) -->
-	io__write_string("MR_ENTRY(do_semidet_aditi_call)").
-output_code_addr(do_nondet_aditi_call) -->
-	io__write_string("MR_ENTRY(do_nondet_aditi_call)").
-output_code_addr(do_aditi_insert) -->
-	io__write_string("MR_ENTRY(do_aditi_insert)").
-output_code_addr(do_aditi_delete) -->
-	io__write_string("MR_ENTRY(do_aditi_delete)").
-output_code_addr(do_aditi_bulk_insert) -->
-	io__write_string("MR_ENTRY(do_aditi_bulk_insert)").
-output_code_addr(do_aditi_bulk_delete) -->
-	io__write_string("MR_ENTRY(do_aditi_bulk_delete)").
-output_code_addr(do_aditi_bulk_modify) -->
-	io__write_string("MR_ENTRY(do_aditi_bulk_modify)").
 output_code_addr(do_not_reached) -->
 	io__write_string("MR_ENTRY(MR_do_not_reached)").
 
@@ -4101,52 +4025,5 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
 		Labels1 = Labels0
 	),
 	gather_labels_from_instrs(Instrs, Labels1, Labels).
-
-%-----------------------------------------------------------------------------%
-
-	% Currently the `.rlo' files are stored as static data in the
-	% executable. It may be better to store them in separate files
-	% in a known location and load them at runtime.
-:- pred output_rl_file(module_name, maybe(rl_file), io__state, io__state).
-:- mode output_rl_file(in, in, di, uo) is det.
-
-output_rl_file(ModuleName, MaybeRLFile) -->
-	globals__io_lookup_bool_option(aditi, Aditi),
-	( { Aditi = no } ->
-		[]
-	;
-		io__write_string("\n\n/* Aditi-RL code for this module. */\n"),
-		{ RLDataConstName = make_rl_data_name(ModuleName) },
-		io__write_string("const char "),
-		io__write_string(RLDataConstName),
-		io__write_string("[] = {"),
-		(
-			{ MaybeRLFile = yes(RLFile) },
-			rl_file__write_binary(output_rl_byte, RLFile, Length),
-			io__write_string("0};\n")
-		;
-			{ MaybeRLFile = no },
-			io__write_string("};\n"),
-			{ Length = 0 }
-		),
-
-		% Store the length of the data in
-		% mercury__aditi_rl_data__<module>__length.
-
-		{ string__append(RLDataConstName, "__length",
-			RLDataConstLength) },
-		io__write_string("const int "),
-		io__write_string(RLDataConstLength),
-		io__write_string(" = "),
-		io__write_int(Length),
-		io__write_string(";\n\n")
-	).
-
-:- pred output_rl_byte(int, io__state, io__state).
-:- mode output_rl_byte(in, di, uo) is det.
-
-output_rl_byte(Byte) -->
-	io__write_int(Byte),
-	io__write_string(", ").
 
 %-----------------------------------------------------------------------------%

@@ -73,12 +73,12 @@
 %
 %	% The aditi__state is not needed (it contains no information),
 %	% so it is not passed.
-% 	% aditi_call(PredName, Number of inputs, Input relation schema,
-%	% 	Number of Outputs)
-%	generic_call(
-%		aditi_call("stayl/a/a__anc__c_interface_2_0/2", 1, "(:I)", 1),
-%		TypeInfo_13, HeadVar__2,
-% 		TypeInfo_14, HeadVar__3).
+% 	% aditi_private_builtin__do_nondet_call(PredName,
+%	%	InputSchema, InputTuple, OutputTuple)
+%	aditi_private_builtin__do_nondet_call(
+%		TypeInfo_13, TypeInfo_14,
+%		"stayl/a/a__anc__c_interface_2_0/2", "(:I)",
+%		{HeadVar__2}, {HeadVar__3}).
 %
 % :- pred anc__c_interface(pred(int)::(pred(out) is nondet),
 % 		 int::out) is nondet.
@@ -172,6 +172,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
+:- import_module aditi_backend__aditi_builtin_ops.
 :- import_module aditi_backend__context.
 :- import_module aditi_backend__magic_util.
 :- import_module aditi_backend__rl.
@@ -1026,14 +1027,15 @@ magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 		magic_info_set_module_info(ModuleInfo)
 	;
 		{ magic__create_input_join_proc(CPredProcId, AditiPredProcId,
-			JoinPredProcId, ModuleInfo1, ModuleInfo) },
-		magic_info_set_module_info(ModuleInfo),
+			_JoinPredProcId, ModuleInfo1, ModuleInfo2) },
 		
 		%
-		% Create a procedure which is just a synonym
-		% for do_*_aditi_call.
+		% Change the goal for the original procedure to
+		% call the database procedure.
 		%
-		magic__create_aditi_call_proc(CPredProcId, JoinPredProcId)
+		{ aditi_builtin_ops__create_aditi_call_proc(CPredProcId,
+			ModuleInfo2, ModuleInfo) }, 
+		magic_info_set_module_info(ModuleInfo)
 	).
 
 	% Make a procedure which calls the Aditi predicate, then joins
@@ -1168,120 +1170,6 @@ magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
 	predicate_table_insert(Preds0, JoinPredInfo1, JoinPredId, Preds),
 	JoinPredProcId = proc(JoinPredId, JoinProcId),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo).
-
-	% The new procedure consists of a `aditi_call' goal,
-	% which call_gen.m generates as a call to do_*_aditi_call in
-	% extras/aditi/aditi.m.
-	% This procedure must use the `compact' argument convention.
-	% The arguments are:
-	% 	1 -> RL procedure name
-	% 	2 -> number of input arguments
-	% 	3 -> input schema
-	% 	4 -> number of output arguments
-	%	type_infos for input arguments
-	% 	input arguments
-	%	type_infos for output arguments
-	%	output arguments
-:- pred magic__create_aditi_call_proc(pred_proc_id::in, pred_proc_id::in,
-		magic_info::in, magic_info::out) is det.		
-
-magic__create_aditi_call_proc(CPredProcId, AditiPredProcId) -->
-	magic_info_get_module_info(ModuleInfo0),
-	{ module_info_pred_proc_info(ModuleInfo0, CPredProcId,
-		CPredInfo0, CProcInfo0) },
-	{ pred_info_arg_types(CPredInfo0, ArgTypes) },
-	{ proc_info_argmodes(CProcInfo0, ArgModes) },
-	{ proc_info_headvars(CProcInfo0, HeadVars) },
-
-	% Base relations will have an empty vartypes field, so fill it in here.
-	{ map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes0) },
-	{ proc_info_set_vartypes(CProcInfo0, VarTypes0, CProcInfo1) },
-
-	%
-	% Build type-infos for the arguments so do_*_aditi_call
-	% can do the required data conversions.
-	%
-
-	{ type_util__remove_aditi_state(ArgTypes, ArgTypes, ArgTypes1) },
-	{ type_util__remove_aditi_state(ArgTypes, ArgModes, ArgModes1) },
-	{ type_util__remove_aditi_state(ArgTypes, HeadVars, HeadVars1) },
-
-	magic__make_type_info_vars(ArgTypes1, TypeInfoVars, TypeInfoGoals,
-		CPredInfo0, CPredInfo1, CProcInfo1, CProcInfo2),
-
-	magic_info_get_module_info(ModuleInfo1),
-
-	{ partition_args(ModuleInfo1, ArgModes1, ArgTypes1,
-		InputArgTypes, _OutputArgTypes) },
-	{ partition_args(ModuleInfo1, ArgModes1, ArgModes1,
-		InputArgModes, OutputArgModes) },
-	{ partition_args(ModuleInfo1, ArgModes1, TypeInfoVars,
-		InputTypeInfoVars, OutputTypeInfoVars) },
-	{ partition_args(ModuleInfo1, ArgModes1,
-		HeadVars1, InputArgs, OutputArgs) },
-
-	%
-	% Build up some other information that do_*_aditi_call needs.
-	% 
-
-	% Argument variables.
-	{ list__condense([InputTypeInfoVars, InputArgs,
-		OutputTypeInfoVars, OutputArgs], DoCallAditiArgs) },
-
-	% Argument modes.
-	{ in_mode(InMode) },
-	{ list__length(InputArgs, NumInputArgs) },
-	{ list__length(OutputArgs, NumOutputArgs) },
-	{ list__duplicate(NumInputArgs, InMode, InputTypeInfoModes) },
-	{ list__duplicate(NumOutputArgs, InMode, OutputTypeInfoModes) },
-	{ list__condense([InputTypeInfoModes, InputArgModes,
-		OutputTypeInfoModes, OutputArgModes], DoCallAditiArgModes) },
-
-	%
-	% Build the `aditi_call' goal.
-	%
-	{ set__list_to_set(DoCallAditiArgs, CallNonLocals) },
-	{ instmap_delta_from_mode_list(DoCallAditiArgs, DoCallAditiArgModes,
-		ModuleInfo1, GoalDelta) },
-	{ proc_info_inferred_determinism(CProcInfo2, Detism) },
-	{ goal_info_init(CallNonLocals, GoalDelta,
-		Detism, pure, CallGoalInfo) },
-	{ pred_info_get_is_pred_or_func(CPredInfo1, CPredOrFunc) },
-	{ pred_info_module(CPredInfo1, CPredModule) },
-	{ pred_info_name(CPredInfo1, CPredName) },
-	{ pred_info_arity(CPredInfo1, Arity) },
-	{ DoCallAditiGoal =
-		generic_call(aditi_builtin(
-			aditi_call(AditiPredProcId, NumInputArgs,
-				InputArgTypes, NumOutputArgs),
-			CPredOrFunc - qualified(CPredModule, CPredName)/Arity),
-		DoCallAditiArgs, DoCallAditiArgModes, Detism) - CallGoalInfo },
-	{ list__append(TypeInfoGoals, [DoCallAditiGoal], Goals) },
-	{ set__list_to_set(HeadVars, GoalNonLocals) },
-	{ goal_list_determinism(Goals, GoalDetism) },
-	{ goal_info_init(GoalNonLocals, GoalDelta, GoalDetism,
-		pure, GoalInfo) },
-	{ Goal = conj(Goals) - GoalInfo },
-	{ proc_info_set_goal(CProcInfo2, Goal, CProcInfo) },
-
-	{ module_info_set_pred_proc_info(ModuleInfo1, CPredProcId,
-		CPredInfo1, CProcInfo, ModuleInfo) },
-	magic_info_set_module_info(ModuleInfo).
-
-:- pred magic__make_type_info_vars(list(type)::in, list(prog_var)::out,
-	list(hlds_goal)::out, pred_info::in, pred_info::out,
-	proc_info::in, proc_info::out, magic_info::in, magic_info::out) is det.
-
-magic__make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals,
-		PredInfo0, PredInfo, ProcInfo0, ProcInfo) -->
-	magic_info_get_module_info(ModuleInfo0),
-	{ create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0) },
-	{ term__context_init(Context) },
-	{ polymorphism__make_type_info_vars(Types, Context,
-		TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo) },
-	{ poly_info_extract(PolyInfo, PredInfo0, PredInfo,
-		ProcInfo0, ProcInfo, ModuleInfo) },
-	magic_info_set_module_info(ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

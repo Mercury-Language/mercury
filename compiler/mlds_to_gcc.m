@@ -92,6 +92,8 @@
 :- interface.
 
 :- import_module ml_backend.
+:- import_module aditi_backend.
+:- import_module aditi_backend__rl_file.
 :- import_module ml_backend__maybe_mlds_to_gcc.
 :- import_module ml_backend__mlds.
 
@@ -137,8 +139,9 @@
 	%     which foreign language compilers it needs to invoke,
 	%     and which object files to link into the executable.
 
-:- pred mlds_to_gcc__compile_to_asm(mlds__mlds, bool, io__state, io__state).
-:- mode mlds_to_gcc__compile_to_asm(in, out, di, uo) is det.
+:- pred mlds_to_gcc__compile_to_asm(mlds__mlds, maybe(rl_file), bool,
+		io__state, io__state).
+:- mode mlds_to_gcc__compile_to_asm(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -232,7 +235,7 @@ mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 		maybe_write_string(Verbose, "% GCC back-end done.\n")
 	).
 
-mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
+mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode) -->
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0) },
 
 	%
@@ -270,7 +273,8 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% file if there are foreign_decls that were defined in the
 		% module that we're compiling.
 		{ ForeignCode = mlds__foreign_code(_Decls, _Imports, [], []) },
-		{ ForeignDefns = [] }
+		{ ForeignDefns = [] },
+		{ MaybeRLFile = no }
 	->
 		{ ContainsCCode = no },
 		{ NeedInitFn = yes }
@@ -286,7 +290,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% to create the .mih file, and if necessary the .c file.
 		{ ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
 			list__map(make_public, ForeignDefns)) },
-		mlds_to_c__output_c_file(ForeignMLDS, "")
+		mlds_to_c__output_c_file(ForeignMLDS, MaybeRLFile, "")
 	),
 	%
 	% Generate the .mih C header file for this module.

@@ -1947,10 +1947,10 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
 			;
 				NeedIntCast = yes,
 				goal_info_get_context(OrigGoalInfo, Context),
-				generate_unsafe_type_cast(ModuleInfo, Context,
+				generate_unsafe_type_cast(Context,
 					CompareType, Arg1, CastArg1, CastGoal1,
 					ProcInfo0, ProcInfo1),
-				generate_unsafe_type_cast(ModuleInfo, Context,
+				generate_unsafe_type_cast(Context,
 					CompareType, Arg2, CastArg2, CastGoal2,
 					ProcInfo1, ProcInfo),
 				NewCallArgs = [ComparisonResult,
@@ -2054,10 +2054,10 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
 				Info = Info0 ^ proc_info := ProcInfo2
 			;
 				NeedIntCast = yes,
-				generate_unsafe_type_cast(ModuleInfo, Context,
+				generate_unsafe_type_cast(Context,
 					CompareType, UnwrappedArg1, CastArg1,
 					CastGoal1, ProcInfo2, ProcInfo3),
-				generate_unsafe_type_cast(ModuleInfo, Context,
+				generate_unsafe_type_cast(Context,
 					CompareType, UnwrappedArg2, CastArg2,
 					CastGoal2, ProcInfo3, ProcInfo4),
 				NewCallArgs = [ComparisonResult,
@@ -2195,32 +2195,21 @@ specializeable_special_call(SpecialId, CalledProc) :-
 		SpecialId = compare
 	).
 
-:- pred generate_unsafe_type_cast(module_info::in, prog_context::in,
+:- pred generate_unsafe_type_cast(prog_context::in,
 	(type)::in, prog_var::in, prog_var::out, hlds_goal::out,
 	proc_info::in, proc_info::out) is det.
 
-generate_unsafe_type_cast(ModuleInfo, Context, ToType, Arg, CastArg, Goal,
+generate_unsafe_type_cast(Context, ToType, Arg, CastArg, Goal,
 		ProcInfo0, ProcInfo) :-
-	module_info_get_predicate_table(ModuleInfo, PredicateTable),
-	mercury_private_builtin_module(MercuryBuiltin),
-	(
-		predicate_table_search_pred_m_n_a(PredicateTable,
-			is_fully_qualified, MercuryBuiltin,
-			"unsafe_type_cast", 2, [PredIdPrime])
-	->
-		PredId = PredIdPrime
-	;
-		error("generate_unsafe_type_cast: pred table lookup failed")
-	),
-	hlds_pred__initial_proc_id(ProcId),
 	proc_info_create_var_from_type(ProcInfo0, ToType, no,
 		CastArg, ProcInfo),
 	set__list_to_set([Arg, CastArg], NonLocals),
-	instmap_delta_from_assoc_list([CastArg - ground(shared, none)],
+	instmap_delta_from_assoc_list([CastArg - ground_inst],
 		InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det, pure, Context, GoalInfo),
-	Goal = call(PredId, ProcId, [Arg, CastArg], inline_builtin,
-		no, qualified(MercuryBuiltin, "unsafe_type_cast")) - GoalInfo.
+	goal_info_init(NonLocals, InstMapDelta, det, pure,
+		Context, GoalInfo),
+	Goal = generic_call(unsafe_cast, [Arg, CastArg],
+		[in_mode, out_mode], det) - GoalInfo.
 
 :- pred unwrap_no_tag_arg((type)::in, prog_context::in, sym_name::in,
 	prog_var::in, prog_var::out, hlds_goal::out,

@@ -17,9 +17,10 @@
 :- module ml_backend__maybe_mlds_to_gcc.
 :- interface.
 
+:- import_module aditi_backend__rl_file.
 :- import_module ml_backend__mlds.
 
-:- import_module bool.
+:- import_module bool, std_util.
 :- use_module io.
 
 :- type frontend_callback(T) == pred(T, io__state, io__state).
@@ -37,9 +38,9 @@
 	% message, depending on whether the gcc back-end interface has
 	% been enabled.  In the former case,
 	% the bool returned is `yes' iff the module contained C code.
-:- pred maybe_mlds_to_gcc__compile_to_asm(mlds__mlds, bool,
+:- pred maybe_mlds_to_gcc__compile_to_asm(mlds__mlds, maybe(rl_file), bool,
 		io__state, io__state).
-:- mode maybe_mlds_to_gcc__compile_to_asm(in, out, di, uo) is det.
+:- mode maybe_mlds_to_gcc__compile_to_asm(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -52,8 +53,8 @@
 maybe_mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 	mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput).
 
-maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
-	mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode).
+maybe_mlds_to_gcc__compile_to_asm(MLDS, RLFile, ContainsCCode) -->
+	mlds_to_gcc__compile_to_asm(MLDS, RLFile, ContainsCCode).
 
 #else
 
@@ -63,7 +64,7 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 maybe_mlds_to_gcc__run_gcc_backend(_ModuleName, CallBack, CallBackOutput) -->
 	CallBack(CallBackOutput).
 
-maybe_mlds_to_gcc__compile_to_asm(_MLDS, no) -->
+maybe_mlds_to_gcc__compile_to_asm(_MLDS, _, no) -->
 	report_error(
 "Sorry, `--target asm' not supported: this installation of the Mercury\n" ++
 "compiler was built without support for the GCC back-end interface.").

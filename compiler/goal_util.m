@@ -514,6 +514,7 @@ goal_util__rename_generic_call(higher_order(Var0, Purity, PredOrFunc, Arity),
 goal_util__rename_generic_call(class_method(Var0, Method, ClassId, MethodId),
 		Must, Subn, class_method(Var, Method, ClassId, MethodId)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var).
+goal_util__rename_generic_call(unsafe_cast, _, _, unsafe_cast).
 goal_util__rename_generic_call(aditi_builtin(Builtin, PredCallId),
 		_Must, _Subn, aditi_builtin(Builtin, PredCallId)).
 
@@ -685,6 +686,7 @@ goal_util__rhs_goal_vars(
 
 goal_util__generic_call_vars(higher_order(Var, _, _, _), [Var]).
 goal_util__generic_call_vars(class_method(Var, _, _, _), [Var]).
+goal_util__generic_call_vars(unsafe_cast, []).
 goal_util__generic_call_vars(aditi_builtin(_, _), []).
 
 %-----------------------------------------------------------------------------%

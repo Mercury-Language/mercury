@@ -23,19 +23,22 @@
 :- module ml_backend__mlds_to_c.
 :- interface.
 
+:- import_module aditi_backend.
+:- import_module aditi_backend__rl_file.
 :- import_module ml_backend__mlds.
 
-:- import_module io.
+:- import_module io, std_util.
 
-	% output_mlds(MLDS, Suffix):
+	% output_mlds(MLDS, MaybeRLFile, Suffix):
 	%	Output C code the the appropriate C file and
 	%	C declarations to the appropriate header file.
 	%	The file names are determined by the module name,
 	%	with the specified Suffix appended at the end.
 	%	(The suffix is used for debugging dumps.  For normal
 	%	output, the suffix should be the empty string.)
-:- pred mlds_to_c__output_mlds(mlds, string, io__state, io__state).
-:- mode mlds_to_c__output_mlds(in, in, di, uo) is det.
+:- pred mlds_to_c__output_mlds(mlds, maybe(rl_file),
+		string, io__state, io__state).
+:- mode mlds_to_c__output_mlds(in, in, in, di, uo) is det.
 
 	% output_header_file(MLDS, Suffix):
 	%	Output C declarations for the procedures (etc.) in the
@@ -44,12 +47,13 @@
 :- pred mlds_to_c__output_header_file(mlds, string, io__state, io__state).
 :- mode mlds_to_c__output_header_file(in, in, di, uo) is det.
 
-	% output_c_file(MLDS, Suffix):
+	% output_c_file(MLDS, MaybeRLFile, Suffix):
 	%	Output C code for the specified MLDS module to the
 	%	appropriate C file.
 	%	See output_mlds for the meaning of Suffix.
-:- pred mlds_to_c__output_c_file(mlds, string, io__state, io__state).
-:- mode mlds_to_c__output_c_file(in, in, di, uo) is det.
+:- pred mlds_to_c__output_c_file(mlds, maybe(rl_file),
+		string, io__state, io__state).
+:- mode mlds_to_c__output_c_file(in, in, in, di, uo) is det.
 
 	% output an MLDS context in C #line format. 
 	% this is useful for other foreign language interfaces such as
@@ -95,7 +99,7 @@
 
 %-----------------------------------------------------------------------------%
 
-mlds_to_c__output_mlds(MLDS, Suffix) -->
+mlds_to_c__output_mlds(MLDS, MaybeRLFile, Suffix) -->
 	% We output the source file before outputting the header,
 	% since the Mmake dependencies say the header file depends
 	% on the source file, and so if we wrote them out in the
@@ -105,14 +109,15 @@ mlds_to_c__output_mlds(MLDS, Suffix) -->
 	% XXX at some point we should also handle output of any non-C
 	%     foreign code (Ada, Fortran, etc.) to appropriate files.
 	%
-	output_c_file(MLDS, Suffix),
+	output_c_file(MLDS, MaybeRLFile, Suffix),
 	output_header_file(MLDS, Suffix).
 
-mlds_to_c__output_c_file(MLDS, Suffix) -->
+mlds_to_c__output_c_file(MLDS, MaybeRLFile, Suffix) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
 	module_name_to_file_name(ModuleName, ".c" ++ Suffix, yes, SourceFile),
 	{ Indent = 0 },
-	output_to_file(SourceFile, mlds_output_src_file(Indent, MLDS)).
+	output_to_file(SourceFile,
+		mlds_output_src_file(Indent, MLDS, MaybeRLFile)).
 
 	%
 	% Generate the header file
@@ -227,10 +232,11 @@ mlds_output_src_import(_Indent, Import) -->
 	% but there's no obvious alternative term to use which
 	% also has a clear and concise abbreviation, so never mind...)
 	%
-:- pred mlds_output_src_file(indent, mlds, io__state, io__state).
-:- mode mlds_output_src_file(in, in, di, uo) is det.
+:- pred mlds_output_src_file(indent, mlds, maybe(rl_file),
+		io__state, io__state).
+:- mode mlds_output_src_file(in, in, in, di, uo) is det.
 
-mlds_output_src_file(Indent, MLDS) -->
+mlds_output_src_file(Indent, MLDS, MaybeRLFile) -->
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
 		% Get the foreign code for C
 	{ ForeignCode = mlds_get_c_foreign_code(AllForeignCode) },
@@ -273,6 +279,7 @@ mlds_output_src_file(Indent, MLDS) -->
 	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
 	mlds_output_init_fn_defns(MLDS_ModuleName, FuncDefns,
 		TypeCtorInfoDefns), io__nl,
+	c_util__output_rl_file(ModuleName, MaybeRLFile), io__nl,
 	mlds_output_grade_var, io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
@@ -2347,7 +2354,7 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 	) },
 	list__foldl2(OutputLabel, Labels, 0, _FinalCount),
 	mlds_indent(Context, Indent + 1),
-	io__write_string("default: /*NOTREACHED*/ assert(0);\n"),
+	io__write_string("default: /*NOTREACHED*/ MR_assert(0);\n"),
 	mlds_indent(Context, Indent),
 	io__write_string("}\n").
 

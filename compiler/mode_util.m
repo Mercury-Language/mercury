@@ -217,9 +217,16 @@
 	% Construct a mode corresponding to the standard `in',
 	% `out', `uo' or `unused' mode.
 :- pred in_mode((mode)::out) is det.
+:- func in_mode = (mode).
 :- pred out_mode((mode)::out) is det.
+:- func out_mode = (mode).
 :- pred uo_mode((mode)::out) is det.
+:- func uo_mode = (mode).
 :- pred unused_mode((mode)::out) is det.
+:- func unused_mode = (mode).
+
+:- func ground_inst = (inst).
+:- func free_inst = (inst).
 
 	% Construct the modes used for `aditi__state' arguments.
 	% XXX These should be unique, but are not yet because that
@@ -1879,23 +1886,29 @@ fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-in_mode(Mode) :- make_std_mode("in", [], Mode).
+in_mode(in_mode).
+out_mode(out_mode).
+uo_mode(uo_mode).
+unused_mode(unused_mode).
 
-out_mode(Mode) :- make_std_mode("out", [], Mode).
-
-uo_mode(Mode) :- make_std_mode("uo", [], Mode).
-
-unused_mode(Mode) :- make_std_mode("unused", [], Mode).
+in_mode = make_std_mode("in", []).
+out_mode = make_std_mode("out", []).
+uo_mode = make_std_mode("uo", []).
+unused_mode = make_std_mode("unused", []).
 
 aditi_mui_mode = Mode :- in_mode(Mode). 
-
 aditi_di_mode = Mode :- in_mode(Mode).
-
 aditi_uo_mode = Mode :- out_mode(Mode).
 
-:- pred make_std_mode(string::in, list(inst)::in, (mode)::out) is det.
+ground_inst = ground(shared, none).
+free_inst = free.
 
-make_std_mode(Name, Args, Mode) :-
+:- pred make_std_mode(string, list(inst), mode).
+:- mode make_std_mode(in, in, out) is det.
+make_std_mode(Name, Args, make_std_mode(Name, Args)).
+
+:- func make_std_mode(string, list(inst)) = (mode).
+make_std_mode(Name, Args) = Mode :-
 	mercury_public_builtin_module(MercuryBuiltin),
 	QualifiedName = qualified(MercuryBuiltin, Name),
 	Mode = user_defined_mode(QualifiedName, Args).

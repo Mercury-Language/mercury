@@ -503,8 +503,13 @@ intermod__traverse_goal(Goal, Goal, DoWrite) -->
 	%
 	intermod__add_proc(PredId, DoWrite).
 
-intermod__traverse_goal(generic_call(A,B,C,D) - Info,
-			generic_call(A,B,C,D) - Info, yes) --> [].
+intermod__traverse_goal(generic_call(CallType, B,C,D) - Info,
+			generic_call(CallType, B,C,D) - Info, DoWrite) -->
+	{ CallType = higher_order(_, _, _, _), DoWrite = yes
+	; CallType = class_method(_, _, _, _), DoWrite = no
+	; CallType = unsafe_cast, DoWrite = no
+	; CallType = aditi_builtin(_, _), DoWrite = yes
+	}.
 
 intermod__traverse_goal(switch(A, B, Cases0) - Info,
 		switch(A, B, Cases) - Info, DoWrite) -->

@@ -488,11 +488,6 @@ get_qualified_pred_name(ModuleInfo, PredId, qualified(PredModule, PredName)) :-
 
 %-----------------------------------------------------------------------------%
 
-post_typecheck__finish_aditi_builtin(_, _, _, _, aditi_call(_, _, _, _),
-               _, _, _, _, _) :-
-	% These are only added by magic.m.
-	error("post_typecheck__finish_aditi_builtin: aditi_call").
-
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		aditi_tuple_insert_delete(InsertDelete, PredId0), Builtin,
 		PredOrFunc - SymName0/Arity, InsertCallId,

@@ -48,6 +48,11 @@
 :- mode modecheck_aditi_builtin(in, in, in, in, out, out, out,
 		mode_info_di, mode_info_uo) is det.
 
+:- pred modecheck_builtin_cast(list(prog_var), list(mode), determinism,
+		list(prog_var), extra_goals, mode_info, mode_info).
+:- mode modecheck_builtin_cast(in, in, out, out, out,
+		mode_info_di, mode_info_uo) is det.
+
 	%
 	% Given two modes of a predicate, figure out whether
 	% they are indistinguishable; that is, whether any valid call to
@@ -148,32 +153,26 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,
 		ExtraGoals = no_extra_goals
 	).
 
-modecheck_aditi_builtin(AditiBuiltin, CallId,
-		Args0, Modes, Det, Args, ExtraGoals) -->
+modecheck_aditi_builtin(AditiBuiltin, _, Args0, Modes, Det,
+		Args, ExtraGoals) -->
 	{ aditi_builtin_determinism(AditiBuiltin, Det) },
-
-	% `aditi_insert' and `aditi_delete' goals have type_info
-	% arguments for each of the arguments of the tuple to
-	% insert added to the start of the argument list by polymorphism.m.
-	( { AditiBuiltin = aditi_tuple_insert_delete(_, _) } ->
-		{ CallId = _ - _/Arity },
-		{ ArgOffset = -Arity }
-	;
-		{ ArgOffset = 0 }
-	),
 
 	% The argument modes are set by post_typecheck.m, so all
 	% that needs to be done here is to check that they match.
+	{ ArgOffset = 0 },
 	modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args).
 
 :- pred aditi_builtin_determinism(aditi_builtin, determinism).
 :- mode aditi_builtin_determinism(in, out) is det.
 
-aditi_builtin_determinism(aditi_call(_, _, _, _), _) :-
-	error(
-	"modecheck_call__aditi_builtin_determinism: unexpected Aditi call"). 
 aditi_builtin_determinism(aditi_tuple_insert_delete(_, _), det).
 aditi_builtin_determinism(aditi_insert_delete_modify(_, _, _), det).
+
+modecheck_builtin_cast(Args0, Modes, Det, Args, ExtraGoals) -->
+	{ Det = det },
+	% These should always be mode correct.
+	{ ArgOffset = 0 },
+	modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args).
 
 :- pred modecheck_arg_list(int, list(mode), extra_goals,
 		list(prog_var), list(prog_var), mode_info, mode_info).

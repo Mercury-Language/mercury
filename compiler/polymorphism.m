@@ -1010,47 +1010,8 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 	% We don't need to add type-infos for higher-order calls,
 	% since the type-infos are added when the closures are
 	% constructed, not when they are called.
-polymorphism__process_goal_expr(GoalExpr0, GoalInfo0, Goal) -->
-	{ GoalExpr0 = generic_call(GenericCall, Args0, Modes0, Det) },
-
-	%
-	% For `aditi_insert' and `aditi_delete' calls, we need to add
-	% type-infos for the tuple to insert.
-	% 
-	(
-		{ GenericCall = aditi_builtin(
-				aditi_tuple_insert_delete(_, _), _) }
-	->
-		% Aditi base relations must be monomorphic. 
-		{ term__context_init(Context) },
-		
-		=(PolyInfo),
-		{ poly_info_get_var_types(PolyInfo, VarTypes) },
-
-		{ get_state_args_det(Args0, TupleArgs, _, _) },
-		{ map__apply_to_list(TupleArgs, VarTypes, TupleTypes) },
-
-		polymorphism__make_type_info_vars(TupleTypes,
-			Context, TypeInfoVars, TypeInfoGoals),	
-
-		{ list__append(TypeInfoVars, Args0, Args) },
-
-		{ in_mode(InMode) },
-		{ list__length(TypeInfoVars, NumTypeInfos) },
-		{ list__duplicate(NumTypeInfos, InMode, TypeInfoModes) },
-		{ list__append(TypeInfoModes, Modes0, Modes) },
-
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
-		{ set__insert_list(NonLocals0, TypeInfoVars, NonLocals) },
-		{ goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) },
-
-		{ Call = generic_call(GenericCall, Args, Modes, Det)
-			- GoalInfo },
-		{ list__append(TypeInfoGoals, [Call], Goals) },
-		{ conj_list_to_goal(Goals, GoalInfo0, Goal) }
-	;
-		{ Goal = GoalExpr0 - GoalInfo0 }
-	).
+polymorphism__process_goal_expr(GoalExpr, GoalInfo, GoalExpr - GoalInfo) -->
+	{ GoalExpr = generic_call(_, _, _, _) }.
 
 polymorphism__process_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ Goal0 = call(PredId, ProcId, ArgVars0, Builtin,

@@ -4,6 +4,7 @@
 
 MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+MCFLAGS-aditi_private_builtin = --allow-stubs
 MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization \

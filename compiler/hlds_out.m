@@ -484,6 +484,9 @@ hlds_out__write_generic_call_id(higher_order(Purity, PredOrFunc, _)) -->
 hlds_out__write_generic_call_id(class_method(_ClassId, MethodId)) -->
 	hlds_out__write_simple_call_id(MethodId).
 
+hlds_out__write_generic_call_id(unsafe_cast) -->
+	io__write_string("unsafe_cast").
+
 hlds_out__write_generic_call_id(
 		aditi_builtin(AditiBuiltin, CallId)) -->
 	{ hlds_out__aditi_builtin_name(AditiBuiltin, Name) },
@@ -508,14 +511,11 @@ hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers) -->
 	(
 		(
 			% The text printed for generic calls other than
-			% `aditi_call' and `class__method' does not need
-			% the "call to" prefix ("in call to higher-order
-			% call" is redundant, it's much better to just say
-			% "in higher-order call").
+			% `class__method' does not need the "call to"
+			% prefix ("in call to higher-order call" is redundant,
+			% it's much better to just say "in higher-order call").
 			{ CallId = generic_call(GenericCall) },
-			\+ { GenericCall = class_method(_, _) },
-			\+ { GenericCall = aditi_builtin(aditi_call(_, _,
-				_, _), _) }
+			\+ { GenericCall = class_method(_, _) }
 		;
 			% For calls from type class instance implementations
 			% that were defined using the named syntax rather
@@ -571,6 +571,10 @@ hlds_out__write_arg_number(generic_call(class_method(_, _)), ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
 
+hlds_out__write_arg_number(generic_call(unsafe_cast), ArgNum) -->
+	io__write_string("argument "),
+	io__write_int(ArgNum).
+
 hlds_out__write_arg_number(generic_call(aditi_builtin(Builtin, CallId)),
 		ArgNum) -->
 	hlds_out__write_aditi_builtin_arg_number(Builtin, CallId, ArgNum).
@@ -578,10 +582,6 @@ hlds_out__write_arg_number(generic_call(aditi_builtin(Builtin, CallId)),
 :- pred hlds_out__write_aditi_builtin_arg_number(aditi_builtin, simple_call_id,
 		int, io__state, io__state).
 :- mode hlds_out__write_aditi_builtin_arg_number(in, in, in, di, uo) is det.
-
-hlds_out__write_aditi_builtin_arg_number(aditi_call(_, _, _, _), _, ArgNum) -->
-	io__write_string("argument "),
-	io__write_int(ArgNum).
 
 hlds_out__write_aditi_builtin_arg_number(
 		aditi_tuple_insert_delete(InsertDelete, _),
@@ -945,6 +945,38 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 				Clauses, no)
 			% globals__io_set_option(dump_hlds_options,
 			% 	string(Verbose))
+		;
+			[]
+		),
+
+		{ pred_info_get_maybe_instance_method_constraints(PredInfo,
+			MaybeCs) },
+		( { MaybeCs = yes(MethodConstraints) } ->
+			{ MethodConstraints = instance_method_constraints(
+				ClassId, InstanceTypes, InstanceConstraints,
+				ClassMethodConstraints) },
+			io__write_string("% instance method constraints:\n"),
+			{ ClassId = class_id(ClassName, _) },
+			mercury_output_constraint(TVarSet, AppendVarnums,
+				constraint(ClassName, InstanceTypes)),
+			io__nl,
+			io__write_string("instance constraints: "),
+			io__write_list(InstanceConstraints, ", ",
+			    mercury_output_constraint(TVarSet, AppendVarnums)),
+			io__nl,
+
+			{ ClassMethodConstraints = constraints(
+					MethodUnivConstraints,
+					MethodExistConstraints) },
+			io__write_string("method univ constraints: "),	
+			io__write_list(MethodUnivConstraints, ", ",
+			    mercury_output_constraint(TVarSet, AppendVarnums)),
+			io__nl,
+			io__write_string("method exist constraints: "),	
+			io__write_list(MethodExistConstraints, ", ",
+			    mercury_output_constraint(TVarSet, AppendVarnums)),
+			io__nl
+
 		;
 			[]
 		)
@@ -1505,7 +1537,7 @@ hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, AppendVarnums,
 		io__write_string(Follow)
 	).
 
-hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, _, _),
+hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
 		ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
 		% XXX we should print more info here
     ( 
@@ -1561,6 +1593,32 @@ hlds_out__write_goal_2(generic_call(GenericCall, ArgVars, _, _),
 	{ Term = term__functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
 			Context) },
 	mercury_output_term(Term, VarSet, AppendVarnums),
+	io__write_string(Follow)
+    ;
+	{ GenericCall = unsafe_cast },
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
+	hlds_out__write_indent(Indent),
+	( { string__contains_char(Verbose, 'l') } ->
+		io__write_string("% unsafe_cast\n"),
+		hlds_out__write_indent(Indent)
+	;
+		[]
+	),
+	( { string__contains_char(Verbose, 'i') } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% modes: "),
+		{ varset__init(InstVarSet) },
+		mercury_output_mode_list(Modes, InstVarSet),
+		io__nl,
+		hlds_out__write_indent(Indent)
+	;
+		[]
+	),
+	{ Functor = term__atom("unsafe_cast") },
+    	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
+    	{ term__context_init(Context) }, 
+	{ Term = term__functor(Functor, ArgTerms, Context) },
+    	mercury_output_term(Term, VarSet, AppendVarnums),
 	io__write_string(Follow)
     ;
 	{ GenericCall = aditi_builtin(AditiBuiltin, CallId) },
@@ -2009,21 +2067,6 @@ hlds_out__write_string_list([Name1, Name2 | Names]) -->
 :- mode hlds_out__write_aditi_builtin(in, in, in, in, in, in, in, in,
 	di, uo) is det.
 
-hlds_out__write_aditi_builtin(ModuleInfo,
-		aditi_call(PredProcId, _NumInputs, _InputTypes, _NumOutputs),
-		_CallId, ArgVars, VarSet, AppendVarnums,
-		Indent, Follow) -->
-	hlds_out__write_indent(Indent),	
-	io__write_string("aditi_call "),
-	% XXX should avoid dependency on rl.m here
-	{ rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) },
-	io__write(ProcName),
-	io__write_string("("),
-	mercury_output_vars(ArgVars, VarSet, AppendVarnums),
-	io__write_string(")"),
-	io__write_string(Follow),
-	io__nl.
-
 hlds_out__write_aditi_builtin(_ModuleInfo,
 		aditi_tuple_insert_delete(InsertDelete, PredId), CallId,
 		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
@@ -2090,7 +2133,6 @@ hlds_out__write_aditi_builtin_pred_id(Indent, PredId) -->
 	io__write_int(PredInt),
 	io__write_string(".\n").
 
-hlds_out__aditi_builtin_name(aditi_call(_, _, _, _), "aditi_call").
 hlds_out__aditi_builtin_name(aditi_tuple_insert_delete(_, _), "aditi_insert").
 hlds_out__aditi_builtin_name(aditi_insert_delete_modify(InsertDelMod, _, _),
 		Name) :-

@@ -466,18 +466,13 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 		GenericCall = class_method(_, _, _, _),
 		ArgOffset = 0
 	;
-		% `aditi_insert' and `aditi_delete' goals have type_info
-		% arguments for each of the arguments of the tuple to insert
-		% added to the start of the argument list by polymorphism.m.
-		GenericCall = aditi_builtin(Builtin, UpdatedCallId),
-		(
-			Builtin = aditi_tuple_insert_delete(_, _),
-			UpdatedCallId = _ - _/Arity
-		->
-			ArgOffset = -Arity
-		;
-			ArgOffset = 0
-		)
+		% Casts are introduced by the compiler
+		% and should be mode correct.
+		GenericCall = unsafe_cast,
+		ArgOffset = 0
+	;
+		GenericCall = aditi_builtin(_, _),
+		ArgOffset = 0
 	},
 
 	unique_modes__check_call_modes(Args, Modes, ArgOffset,

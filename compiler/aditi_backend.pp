@@ -18,6 +18,7 @@
 %
 %:- module aditi_hlds.
 %   :- interface.
+   :- include_module aditi_builtin_ops.
    :- include_module dnf.
    :- include_module context.
    :- include_module magic.

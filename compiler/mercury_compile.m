@@ -71,6 +71,7 @@
 :- import_module transform_hlds__inlining.
 :- import_module transform_hlds__loop_inv.
 :- import_module transform_hlds__deforest.
+:- import_module aditi_backend__aditi_builtin_ops.
 :- import_module aditi_backend__dnf.
 :- import_module aditi_backend__magic.
 :- import_module transform_hlds__dead_proc_elim.
@@ -1385,7 +1386,7 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 			{ HLDS = HLDS50 },
 			mercury_compile__mlds_backend(HLDS, MLDS),
 			mercury_compile__maybe_mlds_to_gcc(MLDS,
-				ContainsCCode),
+				MaybeRLFile, ContainsCCode),
 			( { TargetCodeOnly = yes } ->
 				[]
 			;
@@ -1431,7 +1432,8 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 		    ; { HighLevelCode = yes } ->
 			{ HLDS = HLDS50 },
 			mercury_compile__mlds_backend(HLDS, MLDS),
-			mercury_compile__mlds_to_high_level_c(MLDS),
+			mercury_compile__mlds_to_high_level_c(MLDS,
+				MaybeRLFile),
 			( { TargetCodeOnly = yes } ->
 				[]
 			;
@@ -2136,8 +2138,12 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 	mercury_compile__maybe_lco(HLDS41, Verbose, Stats, HLDS43),
 	mercury_compile__maybe_dump_hlds(HLDS43, "43", "lco"),
 
+	mercury_compile__maybe_transform_aditi_builtins(HLDS43,
+		Verbose, Stats, HLDS44),
+	mercury_compile__maybe_dump_hlds(HLDS43, "44", "aditi_builtins"),
+	
 	% DNF transformations should be after inlining.
-	mercury_compile__maybe_transform_dnf(HLDS41, Verbose, Stats, HLDS45),
+	mercury_compile__maybe_transform_dnf(HLDS44, Verbose, Stats, HLDS45),
 	mercury_compile__maybe_dump_hlds(HLDS45, "45", "dnf"),
 
 	% Magic sets should be the last thing done to Aditi procedures
@@ -3252,6 +3258,25 @@ mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS0 = HLDS }
 	).
 
+:- pred mercury_compile__maybe_transform_aditi_builtins(module_info,
+	bool, bool, module_info, io__state, io__state).
+:- mode mercury_compile__maybe_transform_aditi_builtins(in, in, in, out,
+	di, uo) is det.
+
+mercury_compile__maybe_transform_aditi_builtins(HLDS0,
+		Verbose, Stats, HLDS) -->
+	{ module_info_get_do_aditi_compilation(HLDS0, Aditi) },
+	( { Aditi = do_aditi_compilation } ->
+		maybe_write_string(Verbose,
+			"% Transforming away RL builtins...\n"),
+		maybe_flush_output(Verbose),
+		transform_aditi_builtins(HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+                maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
+
 %-----------------------------------------------------------------------------%
 
 % The backend passes
@@ -3882,15 +3907,16 @@ mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
 
 % The `--high-level-C' MLDS output pass
 
-:- pred mercury_compile__mlds_to_high_level_c(mlds, io__state, io__state).
-:- mode mercury_compile__mlds_to_high_level_c(in, di, uo) is det.
+:- pred mercury_compile__mlds_to_high_level_c(mlds, maybe(rl_file),
+		io__state, io__state).
+:- mode mercury_compile__mlds_to_high_level_c(in, in, di, uo) is det.
 
-mercury_compile__mlds_to_high_level_c(MLDS) -->
+mercury_compile__mlds_to_high_level_c(MLDS, MaybeRLFile) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
-	mlds_to_c__output_mlds(MLDS, ""),
+	mlds_to_c__output_mlds(MLDS, MaybeRLFile, ""),
 	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
 	maybe_report_stats(Stats).
 
@@ -3906,16 +3932,17 @@ mercury_compile__mlds_to_java(MLDS) -->
 	maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n"),
 	maybe_report_stats(Stats).
 
-:- pred mercury_compile__maybe_mlds_to_gcc(mlds, bool, io__state, io__state).
-:- mode mercury_compile__maybe_mlds_to_gcc(in, out, di, uo) is det.
+:- pred mercury_compile__maybe_mlds_to_gcc(mlds, maybe(rl_file),
+		bool, io__state, io__state).
+:- mode mercury_compile__maybe_mlds_to_gcc(in, in, out, di, uo) is det.
 
-mercury_compile__maybe_mlds_to_gcc(MLDS, ContainsCCode) -->
+mercury_compile__maybe_mlds_to_gcc(MLDS, MaybeRLFile, ContainsCCode) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
 	maybe_write_string(Verbose,
 		"% Passing MLDS to GCC and compiling to assembler...\n"),
-	maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode),
+	maybe_mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode),
 	maybe_write_string(Verbose, "% Finished compiling to assembler.\n"),
 	maybe_report_stats(Stats).
 
@@ -4006,7 +4033,7 @@ mercury_compile__maybe_dump_mlds(MLDS, StageNum, StageName) -->
 		maybe_flush_output(Verbose),
 		{ string__append_list(["_dump.", StageNum, "-", StageName],
 			DumpSuffix) },
-		mlds_to_c__output_mlds(MLDS, DumpSuffix),
+		mlds_to_c__output_mlds(MLDS, no, DumpSuffix),
 		maybe_write_string(Verbose, "% done.\n")
 	;
 		[]

@@ -1035,9 +1035,24 @@ transform_goal(Path, Goal0 - Info0, GoalAndInfo, yes) -->
 		{ GoalAndInfo = Goal0 - Info0 }
 	).
 
-transform_goal(Path, Goal0 - Info0, GoalAndInfo, yes) -->
-	{ Goal0 = generic_call(_, _, _, _) },
-	wrap_call(Path, Goal0 - Info0, GoalAndInfo).
+transform_goal(Path, Goal0 - Info0, GoalAndInfo, AddedImpurity) -->
+	{ Goal0 = generic_call(GenericCall, _, _, _) },
+	(
+		{ GenericCall = higher_order(_, _, _, _) },
+		wrap_call(Path, Goal0 - Info0, GoalAndInfo),
+		{ AddedImpurity = yes }
+	;
+		{ GenericCall = class_method(_, _, _, _) },
+		wrap_call(Path, Goal0 - Info0, GoalAndInfo),
+		{ AddedImpurity = yes }
+	;
+		{ GenericCall = unsafe_cast },
+		{ GoalAndInfo = Goal0 - Info0 },
+		{ AddedImpurity = no }
+	;
+		{ GenericCall = aditi_builtin(_, _) },
+		{ error("deep_profiling__transform_call: aditi_builtin") }
+	).	
 
 :- pred transform_conj(int::in, goal_path::in,
 	list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
@@ -1184,8 +1199,11 @@ wrap_call(GoalPath, Goal0, Goal, DeepInfo0, DeepInfo) :-
 			]) - PrepareCallGoalInfo,
 			CallSite = method_call(FileName, LineNumber, GoalPath)
 		;
+			Generic = unsafe_cast,
+			error("deep_profiling__wrap_call: unsafe_cast")
+		;
 			Generic = aditi_builtin(_, _),
-			error("deep profiling and aditi do not mix")
+			error("deep_profiling__wrap_call: aditi_builtin")
 		),
 		goal_info_get_code_model(GoalInfo0, GoalCodeModel),
 		module_info_globals(ModuleInfo, Globals),

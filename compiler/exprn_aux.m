@@ -163,14 +163,6 @@ exprn_aux__addr_is_constant(do_trace_redo_fail_shallow, _, no).
 exprn_aux__addr_is_constant(do_trace_redo_fail_deep, _, no).
 exprn_aux__addr_is_constant(do_call_closure, _, no).
 exprn_aux__addr_is_constant(do_call_class_method, _, no).
-exprn_aux__addr_is_constant(do_det_aditi_call, _, no).
-exprn_aux__addr_is_constant(do_semidet_aditi_call, _, no).
-exprn_aux__addr_is_constant(do_nondet_aditi_call, _, no).
-exprn_aux__addr_is_constant(do_aditi_insert, _, no).
-exprn_aux__addr_is_constant(do_aditi_delete, _, no).
-exprn_aux__addr_is_constant(do_aditi_bulk_insert, _, no).
-exprn_aux__addr_is_constant(do_aditi_bulk_delete, _, no).
-exprn_aux__addr_is_constant(do_aditi_bulk_modify, _, no).
 exprn_aux__addr_is_constant(do_not_reached, _, no).
 
 :- pred exprn_aux__label_is_constant(label::in, bool::in, bool::in, bool::out)

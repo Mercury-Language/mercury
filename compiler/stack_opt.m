@@ -442,22 +442,27 @@ optimize_live_sets_in_goal(some(_Vars, _CanRemove, Goal) - _GoalInfo) -->
 
 optimize_live_sets_in_goal(Goal - GoalInfo) -->
 	OptParams =^ opt_params,
-	{ Goal = generic_call(GenericCall, ArgVars0, ArgModes0, Detism) },
+	{ Goal = generic_call(GenericCall, ArgVars, ArgModes, Detism) },
 	{ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall) },
 	{ VarTypes = OptParams ^ var_types },
-	{ list__map(map__lookup(VarTypes), ArgVars0, ArgTypes0) },
-	{ call_gen__maybe_remove_aditi_state_args(GenericCall,
-		ArgVars0, ArgTypes0, ArgModes0,
-		ArgVars, ArgTypes, ArgModes) },
+	{ list__map(map__lookup(VarTypes), ArgVars, ArgTypes) },
 	{ ModuleInfo = OptParams ^ module_info },
 	{ arg_info__compute_in_and_out_vars(ModuleInfo, ArgVars,
 		ArgModes, ArgTypes, InputArgs, _OutputArgs) },
 	{ determinism_to_code_model(Detism, CodeModel) },
-	{ call_gen__generic_call_info(CodeModel, GenericCall, _,
-		GenericVarsArgInfos, _) },
-	{ assoc_list__keys(GenericVarsArgInfos, GenericVars) },
-	{ list__append(GenericVars, InputArgs, Inputs) },
-	optimize_live_sets_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo).
+
+	% unsafe_casts are generated inline.
+	( { GenericCall = unsafe_cast } ->
+		require_in_regs(InputArgs),
+		require_access(InputArgs)
+	;	
+		{ call_gen__generic_call_info(CodeModel, GenericCall, _,
+			GenericVarsArgInfos, _) },
+		{ assoc_list__keys(GenericVarsArgInfos, GenericVars) },
+		{ list__append(GenericVars, InputArgs, Inputs) },
+		optimize_live_sets_at_call(Inputs,
+			MaybeNeedAcrossCall, GoalInfo)
+	).
 
 optimize_live_sets_in_goal(Goal - GoalInfo) -->
 	{ Goal = call(PredId, ProcId, ArgVars, Builtin, _, _) },

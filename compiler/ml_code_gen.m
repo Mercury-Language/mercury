@@ -699,7 +699,6 @@
 %	- support genuine parallel conjunction
 %	- support fact tables
 %	- support --split-c-files
-%	- support aditi
 %	- support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
@@ -802,6 +801,7 @@
 :- import_module ml_backend__ml_type_gen.
 :- import_module ml_backend__ml_unify_gen.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_util.
 
 :- import_module assoc_list, bool, string, list.
 :- import_module int, set, term, require, std_util.
@@ -972,7 +972,11 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, MLDS_Defns0, MLDS_Defns) -->
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
 		{ pred_info_import_status(PredInfo, ImportStatus) },
-		( { ImportStatus = imported(_) } ->
+		(
+			{ ImportStatus = imported(_)
+			; pred_info_is_aditi_relation(PredInfo)
+			}
+		->
 			{ MLDS_Defns1 = MLDS_Defns0 }
 		;
 			ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
@@ -2092,7 +2096,7 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 	ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
+ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
 		{ BuiltinState = not_builtin }
@@ -2104,34 +2108,6 @@ ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		ml_variable_types(ArgVars, ActualArgTypes),
 		ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 			CodeModel, Context, no, MLDS_Decls, MLDS_Statements)
-	;
-		% For the MLDS back-end, we can't treat
-		% private_builtin:unsafe_type_cast as an
-		% ordinary builtin, since the code that
-		% builtin_ops__translate_builtin generates
-		% for it is not type-correct.  Instead,
-		% we handle it separately here.
-		{ PredName = qualified(_, "unsafe_type_cast") }
-	->
-		ml_gen_var_list(ArgVars, ArgLvals),
-		ml_variable_types(ArgVars, ArgTypes),
-		(
-			{ ArgLvals = [SrcLval, DestLval] },
-			{ ArgTypes = [SrcType, DestType] }
-		->
-			( { type_util__is_dummy_argument_type(DestType) } ->
-				{ MLDS_Statements = [] }
-			;
-				ml_gen_box_or_unbox_rval(SrcType, DestType,
-					lval(SrcLval), CastRval),
-				{ Assign = ml_gen_assign(DestLval, CastRval,
-					Context) },
-				{ MLDS_Statements = [Assign] }
-			),
-			{ MLDS_Decls = [] }
-		;
-			{ error("wrong number of args for unsafe_type_cast") }
-		)
 	;
 		ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
 			MLDS_Decls, MLDS_Statements)
