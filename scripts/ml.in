@@ -85,8 +85,8 @@ SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 
-# If you change these, you will also need to change Mmake.common.in
-# and tools/bootcheck.
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/c2init.in and tools/bootcheck.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace

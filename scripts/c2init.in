@@ -52,11 +52,18 @@ Environment variables:
 	MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS, MERCURY_MKINIT.
 "
 
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/ml.in and tools/bootcheck.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
-				$MERCURY_MOD_LIB_DIR/mer_rt.init \
-				$MERCURY_MOD_LIB_DIR/mer_std.init \
-				$MERCURY_MOD_LIB_DIR/mer_browser.init \
+				$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
+				$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init \
+				$MERCURY_MOD_LIB_DIR/$BROWSER_LIB_NAME.init \
 			"}
 MKINIT=${MERCURY_MKINIT=mkinit}
 

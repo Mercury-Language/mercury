@@ -74,8 +74,8 @@ keep_stage_2_sicstus=false
 test_sicstus=false
 use_subdirs=${MMAKE_USE_SUBDIRS=no}
 
-# If you change these, you will also need to change script/ml.in
-# and Mmake.common.in.
+# If you change these, you will also need to change scripts/ml.in,
+# scripts/c2init.in and Mmake.common.in.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
