@@ -180,7 +180,7 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 			VarSet2 = VarSet1
 		),
 		map__insert(Subst0, VarN, term_variable(VarId), Subst1),
-		varset__merge_2(N1, Max, Names, Vals, VarSet2, Subst1,
+		varset__merge_subst_2(N1, Max, Names, Vals, VarSet2, Subst1,
 				VarSet, Subst)
 	).
 
