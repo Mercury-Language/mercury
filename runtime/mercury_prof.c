@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -21,6 +21,7 @@
 #include	"mercury_heap_profile.h" /* for MR_prof_output_mem_tables() */
 #include	"mercury_prof_mem.h"	 /* for prof_malloc() */
 
+#include	"mercury_signal.h"
 #include        "mercury_std.h"
 #include	"mercury_timing.h"
 
@@ -204,6 +205,8 @@ checked_atexit(void (*func)(void))
 
 #endif /* PROFILE_TIME or PROFILE_CALLS or PROFILE_MEMORY */
 
+/* ======================================================================== */
+
 #ifdef	PROFILE_TIME
 
 static void
@@ -215,46 +218,6 @@ checked_setitimer(int which, struct itimerval *value)
 		exit(1);
 	}
 }
-
-static void
-checked_signal(int sig, void (*handler)(int))
-{
-	/*
-	** We really need sigaction and SA_RESTART, otherwise profiling signals
-	** might interrupt I/O, causing a profiled program to get I/O errors.
-	** But if we haven't got it, I guess we just have to punt...
-	*/
-#ifndef SA_RESTART
-#define SA_RESTART 0
-#endif
-
-#ifdef HAVE_SIGACTION
-	struct sigaction	act;
-	act.sa_flags = SA_RESTART;
-	if (sigemptyset(&act.sa_mask) != 0) {
-		perror("Mercury runtime: cannot set clear signal mask");
-		exit(1);
-	}
-	act.sa_handler = handler;
-#endif /* HAVE_SIGACTION */
-	errno = 0;
-
-#ifdef HAVE_SIGACTION
-	if (sigaction(sig, &act, NULL) != 0)
-#else
-	if (signal(sig, handler) == SIG_ERR)
-#endif /* HAVE_SIGACTION */
-	{
-		perror("Mercury runtime: cannot install signal handler");
-		exit(1);
-	}
-}
-
-#endif /* PROFILE_TIME */
-
-/* ======================================================================== */
-
-#ifdef PROFILE_TIME
 
 /*
 **	prof_turn_on_time_profiling:
@@ -282,7 +245,8 @@ MR_prof_turn_on_time_profiling(void)
 	itime.it_interval.tv_sec = 0;
 	itime.it_interval.tv_usec = prof_sig_interval_in_usecs;
 
-	checked_signal(MR_itimer_sig, prof_time_profile);
+	MR_setup_signal(MR_itimer_sig, prof_time_profile, 
+		"Mercury runtime: cannot install signal handler");
 	checked_setitimer(MR_itimer_type, &itime);
 }
 

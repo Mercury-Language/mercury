@@ -15,6 +15,10 @@
 
 #include "mercury_imp.h"
 
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+
 #ifdef HAVE_SIGCONTEXT_STRUCT
   /*
   ** Some versions of Linux call it struct sigcontext_struct, some call it
@@ -43,10 +47,6 @@
   #include <signal.h>
 #endif
 
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-
 #ifdef HAVE_SYS_SIGINFO
   #include <sys/siginfo.h>
 #endif 
@@ -64,6 +64,7 @@
 #endif
 
 #include "mercury_imp.h"
+#include "mercury_signal.h"
 #include "mercury_trace.h"
 #include "mercury_memory_zones.h"
 #include "mercury_memory_handlers.h"
@@ -82,6 +83,23 @@
 #else
   static	void	simple_sighandler(int);
 #endif
+
+
+#ifdef HAVE_SIGINFO
+  #if defined(HAVE_SIGCONTEXT_STRUCT)
+    #define     bus_handler	complex_sighandler
+    #define     segv_handler	complex_sighandler
+  #elif defined(HAVE_SIGINFO_T)
+    #define     bus_handler	complex_bushandler
+    #define     segv_handler	complex_segvhandler
+  #else
+    #error "HAVE_SIGINFO defined but don't know how to get it"
+  #endif
+#else
+    #define     bus_handler	simple_sighandler
+    #define     segv_handler	simple_sighandler
+#endif
+
 
 /*
 ** round_up(amount, align) returns `amount' rounded up to the nearest
@@ -224,56 +242,12 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 } 
 
 void
-setup_signal(void)
+setup_signals(void)
 {
-#if defined(HAVE_SIGCONTEXT_STRUCT)
-	if (signal(SIGBUS, (void(*)(int)) complex_sighandler) == SIG_ERR)
-	{
-		perror("cannot set SIGBUS handler");
-		exit(1);
-	}
-
-	if (signal(SIGSEGV, (void(*)(int)) complex_sighandler) == SIG_ERR)
-	{
-		perror("cannot set SIGSEGV handler");
-		exit(1);
-	}
-
-#elif defined(HAVE_SIGINFO_T)
-
-	struct sigaction	act;
-
-	act.sa_flags = SA_SIGINFO | SA_RESTART;
-	if (sigemptyset(&act.sa_mask) != 0) {
-		perror("Mercury runtime: cannot set clear signal mask");
-		exit(1);
-	}
-
-	act.SIGACTION_FIELD = complex_bushandler;
-	if (sigaction(SIGBUS, &act, NULL) != 0) {
-		perror("Mercury runtime: cannot set SIGBUS handler");
-		exit(1);
-	}
-
-	act.SIGACTION_FIELD = complex_segvhandler;
-	if (sigaction(SIGSEGV, &act, NULL) != 0) {
-		perror("Mercury runtime: cannot set SIGSEGV handler");
-		exit(1);
-	}
-
-#else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
-
-	if (signal(SIGBUS, simple_sighandler) == SIG_ERR) {
-		perror("cannot set SIGBUS handler");
-		exit(1);
-	}
-
-	if (signal(SIGSEGV, simple_sighandler) == SIG_ERR) {
-		perror("cannot set SIGSEGV handler");
-		exit(1);
-	}
-
-#endif
+	MR_setup_signal(SIGBUS, bus_handler, TRUE,
+		"Mercury runtime: cannot set SIGBUS handler");
+	MR_setup_signal(SIGSEGV, segv_handler, TRUE,
+		"Mercury runtime: cannot set SIGSEGV handler");
 }
 
 static char *

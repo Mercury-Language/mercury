@@ -51,6 +51,7 @@ HDRS		=	\
 			mercury_prof_mem.h	\
 			mercury_regorder.h	\
 			mercury_regs.h		\
+			mercury_signal.h	\
 			mercury_spinlock.h	\
 			mercury_std.h		\
 			mercury_stacks.h	\
@@ -99,6 +100,7 @@ CFILES		= 	mercury_context.c	\
 			mercury_prof.c		\
 			mercury_prof_mem.c	\
 			mercury_regs.c		\
+			mercury_signal.c	\
 			mercury_spinlock.c	\
 			mercury_stack_trace.c	\
 			mercury_table.c		\

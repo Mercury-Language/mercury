@@ -186,7 +186,7 @@ init_memory(void)
 
 	init_memory_arena();
 	init_zones();
-	setup_signal();
+	setup_signals();
 	if (memdebug) debug_memory();
 } /* end init_memory() */
 

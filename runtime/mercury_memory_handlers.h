@@ -31,10 +31,10 @@ ZoneHandler null_handler;
 
 /*
 **
-** setup_signal() will setup the default signal handlers.
+** setup_signals() will setup the default signal handlers.
 **
 */
 
-void	setup_signal(void);
+void	setup_signals(void);
 
 #endif /* not MERCURY_MEMORY_HANDLERS_H */

@@ -1,0 +1,101 @@
+/*
+** Copyright (C) 1998 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** This module defines functions for setting up signal handlers.
+*/
+
+/*---------------------------------------------------------------------------*/
+
+#include "mercury_imp.h"
+
+#ifdef HAVE_SIGCONTEXT_STRUCT
+  /*
+  ** Some versions of Linux call it struct sigcontext_struct, some call it
+  ** struct sigcontext.  The following #define eliminates the differences.
+  */
+  #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
+
+  /*
+  ** On some systems (e.g. most versions of Linux) we need to #define
+  ** __KERNEL__ to get sigcontext_struct from <signal.h>.
+  ** This stuff must come before anything else that might include <signal.h>,
+  ** otherwise the #define __KERNEL__ may not work.
+  */
+  #define __KERNEL__
+  #include <signal.h>	/* must come third */
+  #undef __KERNEL__
+
+  /*
+  ** Some versions of Linux define it in <signal.h>, others define it in
+  ** <asm/sigcontext.h>.  We try both.
+  */
+  #ifdef HAVE_ASM_SIGCONTEXT
+    #include <asm/sigcontext.h>
+  #endif 
+#else
+  #include <signal.h>
+#endif
+
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+
+#ifdef HAVE_SYS_SIGINFO
+  #include <sys/siginfo.h>
+#endif 
+
+#ifdef	HAVE_MPROTECT
+  #include <sys/mman.h>
+#endif
+
+#ifdef	HAVE_UCONTEXT
+  #include <ucontext.h>
+#endif
+
+#ifdef	HAVE_SYS_UCONTEXT
+  #include <sys/ucontext.h>
+#endif
+
+#include "mercury_imp.h"
+#include "mercury_signal.h"
+
+/*---------------------------------------------------------------------------*/
+
+void
+MR_setup_signal(int sig, void *handler, int need_info, 
+		const char *error_message)
+{
+#if	defined(HAVE_SIGINFO_T)
+
+	struct sigaction	act;
+
+	if (need_info) {
+		act.sa_flags = SA_SIGINFO | SA_RESTART;
+	} else {
+		act.sa_flags = SA_RESTART;
+	}
+	if (sigemptyset(&act.sa_mask) != 0) {
+		perror("Mercury runtime: cannot set clear signal mask");
+		exit(1);
+	}
+	errno = 0;
+
+	act.SIGACTION_FIELD = handler;
+	if (sigaction(sig, &act, NULL) != 0) {
+		perror(error_message);
+		exit(1);
+	}
+
+#else /* not HAVE_SIGINFO_T */
+
+	if (signal(sig, handler) == SIG_ERR) {
+		perror(error_message);
+		exit(1);
+	}
+#endif /* not HAVE_SIGINFO_T */
+}
+
