@@ -299,9 +299,11 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 	( inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) ->
 		functors_to_cons_ids(Functors, ConsIds0),
 		list__sort(ConsIds0, ConsIds),
-		delete_unreachable_cases(Cases0, ConsIds, Cases1)
+		delete_unreachable_cases(Cases0, ConsIds, Cases1),
+		MaybeConsIds = yes(ConsIds)
 	;
-		Cases1 = Cases0
+		Cases1 = Cases0,
+		MaybeConsIds = no
 	),
 	( Cases1 = [] ->
 		% An empty switch always fails.
@@ -316,12 +318,15 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, SM),
 		% a possibly can_fail unification with the functor on the front.
 		(
 			SwitchCanFail = can_fail,
-			cons_id_to_const(ConsId, _, Arity)
+			cons_id_to_const(ConsId, _, Arity),
+			MaybeConsIds \= yes([ConsId])
 		->
 			simplify__create_test_unification(Var, ConsId, Arity,
 				UnifyGoal, Info0, Info1),
 			conjoin_goals(UnifyGoal, SingleGoal0, Goal1)
 		;
+			% The var can only be bound to this cons_id, so
+			% a test is unnecessary.
 			Goal1 = SingleGoal0,
 			Info1 = Info0
 		),
