@@ -56,7 +56,7 @@
     #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, jump)
   #endif
 #else
-  #ifdef USE_GCC_GLOBAL_REGS
+  #ifdef USE_GCC_GLOBAL_REGISTERS
     #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, reg)
   #else
     #define MR_GRADE_PART_2	MR_PASTE2(MR_GRADE_PART_1, none)
