@@ -3,6 +3,8 @@ Usage: $0 [options]
 Options:
 	-f <mcflags>, --flags <mcflags>
 		Pass EXTRA_MCFLAGS=<mcflags> as an option to \`mmake check'.
+	-m <mgnucflags>, --mgnucflags <mgnucflags>
+		Pass EXTRA_MGNUCFLAGS=<mgnucflags> as an option to \`mmake check'.
 	-c <cflags>, --cflags <cflags>
 		Pass EXTRA_CFLAGS=<cflags> as an option to \`mmake check'.
 	-l <mlflags>, --mlflags <mlflags>
@@ -15,15 +17,28 @@ Options:
 
 jfactor=""
 flagsopt=""
+mgnucflagsopt=""
 cflagsopt=""
 mlflagsopt=""
 gradeopt=""
 fflag=""
+mflag=""
 cflag=""
+lflag=""
 gflag=""
 
 while [ $# -gt 0 ]; do
 	case "$1" in
+
+	-f|--flags)
+		fflag="-f '$2'"
+		flagsopt="EXTRA_MCFLAGS='$2'"
+		shift ;;
+
+	-m|--mgnucflags)
+		mflag="-m '$2'"
+		mgnucflagsopt="EXTRA_MGNUCFLAGS='$2'"
+		shift ;;
 
 	-c|--cflags)
 		cflag="-c '$2'"
@@ -33,11 +48,6 @@ while [ $# -gt 0 ]; do
 	-l|--mlflags)
 		lflag="-l '$2'"
 		mlflagsopt="EXTRA_MLFLAGS='$2'"
-		shift ;;
-
-	-f|--flags)
-		fflag="-f '$2'"
-		flagsopt="EXTRA_MCFLAGS='$2'"
 		shift ;;
 
 	-g|--grade)
@@ -70,5 +80,5 @@ if [ $# -ne 0 ]; then
 	exit 1
 fi
 
-mmakeopts="$jfactor $flagsopt $cflagsopt $mlflagsopt $gradeopt"
-runtestopts="$jfactor $cflag $lflag $fflag $gflag"
+mmakeopts="$jfactor $flagsopt $mgnucflagsopt $cflagsopt $mlflagsopt $gradeopt"
+runtestopts="$jfactor $mflag $cflag $lflag $fflag $gflag"
