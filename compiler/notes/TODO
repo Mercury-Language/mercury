@@ -1,38 +1,58 @@
+*******************************************************************************
+
+TODO LIST:
+----------
+
+followvars.nl
+-------------
+
+- Make it work.
+
 codegen.nl
 ----------
 
-- semideterministic and nondeterministic code generation
+- Look at liveness problems
+
+- semideterministic code generation (calls, switches, etc.)
+
+- nondeterministic code generation
+
+- handle string equality, string constants, etc.
 
 - types with constants only (enumerations) should be handled as ints.
 
-- The generated code should include some profiling hooks.
-  In particular, we should add a version of the heap allocation
-  macro which takes an extra string parameter identifying which
-  routine allocated the memory.  Then we can do heap-allocation
-  profiling to identify which routines use up all the bloody memory.
-
-- Generate constant compound terms at compile time rather than at runtime.
-
-mercury_to_goedel.nl
---------------------
-
-- see comments at the start of that file
+- test generation of all builtins
 
 typecheck.nl
 ------------
 
-- fix bug with synchronization of typevarsets
+- improve error messages for unification of var & functor
 
-- improve error messages
+- see also wish list comments at the start of that file
 
-other
------
+modes.nl
+--------
+
+- handle functors
+
+- handle reordering
+
+- handle multiple modes per pred
+
+- detect incorrect usage of `bound(...)' insts.
+
+- handle undefined insts/modes gracefully
+
+- handle polymorphic modes
+
+general
+-------
 
 - warn about predicates with no clauses.
 
 - warn about predicates with no modes.
 
-- handle abstract modes in the same way abstract types are handled
+- handle abstract insts in the same way abstract types are handled
 
 - report an error if there are clauses in the interface section
   of a module
@@ -41,14 +61,7 @@ other
   term_int, term_variable with term__functor, term__atom, term__string,
   term__float, term__variable respectively.
 
-- mode anaylsis (see ~fjh/thesis/strep/ for details)
-
 - determinism analysis 
-
-- warn about singleton variables
-
-- warn about multiple occurrences of variables whose name starts with
-  underscore.
 
 - improve efficiency of implicit quantification
 
@@ -58,29 +71,53 @@ other
 
 - optimization of various sorts
 
-- write a pass over hlds to recognize the builtin predicates,
-  including arithmetic predicates such as "+" and arithmetic tests
-  such as "<", and ensure that codegen outputs the correct code
-  for these builtins.
-
 - generate code for complicated_unify's (there are some comments about
   this in the paper.)
 
 - array.nl: write a predicate to resize arrays.
 
-- better error handling
+- garbage collection
 
-- fix all the `XXX's, `xxx's, `YYY's and `%%%'s.
+mercury_to_goedel.nl
+--------------------
+
+- see comments at the start of that file
+
+*******************************************************************************
 
 WISH LIST
 ---------
 
+codegen.nl
+----------
+
+- The generated code should include some profiling hooks.
+  In particular, we should add a version of the heap allocation
+  macro which takes an extra string parameter identifying which
+  routine allocated the memory.  Then we can do heap-allocation
+  profiling to identify which routines use up all the bloody memory.
+
+- Generate constant compound terms at compile time rather than at runtime.
+
+- Add a peephole optimization pass
+
+general
+-------
+
 - handle module qualifiers properly
 
-- more work on module system & seperate compilation
+- more work on module system, separate compilation, and the multiple
+  specialization problem
 
 - implement user-defined operators:
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
 	change prog_io.nl to parse this construct and call io__op
 	accordingly.
 
+- better error handling
+
+- fix all the `XXX's, `xxx's, `YYY's and `%%%'s.
+
+- implement a debugger and a profiler
+
+*******************************************************************************
