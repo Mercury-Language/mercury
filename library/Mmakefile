@@ -330,7 +330,7 @@ ifneq (,$(findstring il,$(GRADE)))
 
 .PHONY: install_library
 install_library: mercury.dll install_grade_dirs install_gac
-	cp `vpath_find $(library.foreign_dlls) mercury_all.dll \
+	cp `vpath_find $(library.foreign_dlls) $(library.dlls) \
 		mercury.dll` $(INSTALL_MERC_LIB_DIR)
 
 .PHONY: install_gac
