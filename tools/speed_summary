@@ -85,7 +85,7 @@ END	{
 
 			printf "%s", texts[variant];
 
-			for (ignore = 0; ignore <= 2 && ignore * 2 < count;
+			for (ignore = 1; ignore <= 1 && ignore * 2 < count;
 				ignore++)
 			{
 				num = 0;
