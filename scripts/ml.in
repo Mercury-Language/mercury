@@ -14,7 +14,7 @@
 # Options:
 # 	-v, --verbose
 #		Echo gcc command line before executing it
-#	-s <grade>
+#	-s <grade>, --grade <grade>
 #		Specify which grade of the Mercury library to link with.
 #		Defaults to `asm_fast.gc'.
 #
@@ -33,7 +33,7 @@ while true; do
 	-v|--verbose)
 		verbose=true
 		shift ;;
-	-s)
+	-s|--grade)
 		shift
 		GRADE="$1"
 		shift ;;
@@ -91,6 +91,7 @@ esac
 
 if $verbose; then
 	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC \
-		"2>&1 | $DEMANGLER"
+		"2>&1 | $DEMANGLER 1>&2"
 fi
-exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC 2>&1 | $DEMANGLER
+exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC 2>&1 |
+exec $DEMANGLER 1>&2
