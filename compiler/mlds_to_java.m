@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -212,9 +212,14 @@ rval_is_int_const(Rval) :-
 :- mode rval_is_enum_object(in) is semidet.
 
 rval_is_enum_object(Rval) :-
-		Rval = lval(Lval),
+	Rval = lval(Lval),
+	(
 		Lval = var(_, VarType),
-		type_is_enum(VarType).
+		type_is_enum(VarType)
+	;
+		Lval = field(_, _, _, FieldType, _),
+		type_is_enum(FieldType)
+	).
 
 	% Succeeds iff a given string matches the unqualified
 	% interface name of a interface in Mercury's Java runtime system.
@@ -1471,10 +1476,11 @@ output_initializer_body(init_obj(Rval), MaybeType, ModuleName) -->
 		io__write_string("("),
 		output_type(Type),
 		io__write_string(") "),
-		output_rval_maybe_with_enum(Rval, ModuleName)
+		output_rval(Rval, ModuleName)
 	;
 		output_rval_maybe_with_enum(Rval, ModuleName)
 	).
+
 output_initializer_body(init_struct(StructType, FieldInits), _MaybeType,
 		ModuleName) --> 
 	io__write_string("new "),
@@ -3219,6 +3225,13 @@ output_binop(Op, X, Y, ModuleName) -->
 	% Output an Rval and if the Rval is an enumeration object
 	% append the string ".value", so we can access its value
 	% field.
+	% XXX	Note that this is necessary in some places, but not in others.
+	%	For example, it is important to do so for switch statements, as
+	%	the argument of a switch _must_ be an integer in Java. However,
+	%	adding the .value to assignments breaks some casting...
+	%	At some point, we need to go through all the places where
+	%	output_rval and output_rval_maybe_with_enum are called and make
+	%	sure the correct one is being used.
 	%
 :- pred output_rval_maybe_with_enum(mlds__rval, mlds_module_name,
 		io__state, io__state).
