@@ -138,20 +138,6 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	ExportedProcsCode = [Code|TheRest].
 
 
-	% Match the arg_info with the type of the corresponding variable
-:- pred make_arg_info_type_list(list(var), list(arg_info), map(var, type), 
-		assoc_list(arg_info, type)).
-:- mode make_arg_info_type_list(in, in, in, out) is det.
-make_arg_info_type_list([], [], _VarTypes, []).
-make_arg_info_type_list([_|_], [], _VarTypes, []) :-
-	error("list length mismatch in make_var_arg_info_type_list/4").
-make_arg_info_type_list([], [_|_], _VarTypes, []) :-
-	error("list length mismatch in make_var_arg_info_type_list/4").
-make_arg_info_type_list([V|Vs], [A|As], VarTypes, [AT|ATs]) :-
-	map__lookup(VarTypes, V, Type),
-	AT =  A - Type,
-	make_arg_info_type_list(Vs, As, VarTypes, ATs).
-
 	% get_export_info(Preds, PredId, ProcId,
 	%		C_RetType, MaybeFail, MaybeSuccess, ArgInfoTypes):
 	%	Figure out the C return type, the actions on success
@@ -168,10 +154,9 @@ get_export_info(Preds, PredId, ProcId,
 	pred_info_procedures(PredInfo, ProcTable),
 	map__lookup(ProcTable, ProcId, ProcInfo),
 	proc_info_arg_info(ProcInfo, ArgInfos),
-	proc_info_headvars(ProcInfo, HeadVars), 
-	proc_info_vartypes(ProcInfo, VarTypes),
+	pred_info_arg_types(PredInfo, _TVarSet, ArgTypes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
-	make_arg_info_type_list(HeadVars, ArgInfos, VarTypes, 
+	assoc_list__from_corresponding_lists(ArgInfos, ArgTypes,
 		ArgInfoTypes0),
 
 	% figure out what the C return type should be,

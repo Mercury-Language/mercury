@@ -150,7 +150,7 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 		    ErrorTerm)
 	).
 
-parse_pragma_type(ModuleName, "export", PragmaTerms,
+parse_pragma_type(_ModuleName, "export", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
        (
 	    PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
@@ -163,7 +163,7 @@ parse_pragma_type(ModuleName, "export", PragmaTerms,
 		    PredAndModesTerm = term__functor(term__atom("="),
 				[FuncAndArgModesTerm, RetModeTerm], _)
 		->
-		    parse_qualified_term(ModuleName, FuncAndArgModesTerm,
+		    parse_qualified_term(FuncAndArgModesTerm,
 			"pragma export declaration", FuncAndArgModesResult),  
 		    (
 		        FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
@@ -185,7 +185,7 @@ parse_pragma_type(ModuleName, "export", PragmaTerms,
 		        Result = error(Msg, Term)
 		    )
 		;
-		    parse_qualified_term(ModuleName, PredAndModesTerm,
+		    parse_qualified_term(PredAndModesTerm,
 			"pragma export declaration", PredAndModesResult),  
 		    (
 		        PredAndModesResult = ok(PredName, ModeTerms),
