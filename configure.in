@@ -146,7 +146,7 @@ AC_SUBST(CONFIG_LIBDIR)
 
 case "$host" in 
 	i386-pc-solaris2.8)	link_static_opt= ;;
-	*)			link_static_opt="--link-flags --static" ;;
+	*)			link_static_opt="--linkage static" ;;
 esac
 
 MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
