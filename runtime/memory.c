@@ -566,13 +566,17 @@ static void setup_signal(void)
 
 static void complex_bushandler(int sig, siginfo_t *info, void *context)
 {
+	fflush(stdout);
+
 	if (sig != SIGBUS || info->si_signo != SIGBUS)
 	{
-		fprintf(stderr, "\n*** Mercury runtime: caught strange bus error ***\n");
+		fprintf(stderr, "\n*** Mercury runtime: ");
+		fprintf(stderr, "caught strange bus error ***\n");
 		exit(1);
 	}
 
-	fprintf(stderr, "\n*** Mercury runtime: caught bus error ***\n");
+	fprintf(stderr, "\n*** Mercury runtime: ");
+	fprintf(stderr, "caught bus error ***\n");
 
 	if (info->si_code > 0)
 	{
@@ -580,17 +584,27 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 		switch (info->si_code)
 		{
 
-	case BUS_ADRALN:	fprintf(stderr, "invalid address alignment\n");
-				break;
-	case BUS_ADRERR:	fprintf(stderr, "non-existent physical address\n");
-				break;
-	case BUS_OBJERR:	fprintf(stderr, "object specific hardware error\n");
-				break;
-	default:		fprintf(stderr, "unknown\n");
-				break;
+	case BUS_ADRALN:
+			fprintf(stderr, "invalid address alignment\n");
+			break;
+
+	case BUS_ADRERR:
+			fprintf(stderr, "non-existent physical address\n");
+			break;
+
+	case BUS_OBJERR:
+			fprintf(stderr, "object specific hardware error\n");
+			break;
+
+	default:
+			fprintf(stderr, "unknown\n");
+			break;
 
 		}
 
+		fprintf(stderr, "PC at signal: %d (%x)\n",
+			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
+			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 	}
@@ -600,8 +614,10 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 static void explain_segv(siginfo_t *info, void *context)
 {
-	fprintf(stderr,
-		"\n*** Mercury runtime: caught segmentation violation ***\n");
+	fflush(stdout);
+
+	fprintf(stderr, "\n*** Mercury runtime: ");
+	fprintf(stderr, "caught segmentation violation ***\n");
 
 	if (info->si_code > 0)
 	{
@@ -609,21 +625,25 @@ static void explain_segv(siginfo_t *info, void *context)
 		switch (info->si_code)
 		{
 
-	case SEGV_MAPERR:	fprintf(stderr,
-				    "address not mapped to object\n");
-				break;
-	case SEGV_ACCERR:	fprintf(stderr,
-				    "invalid permissions for mapped object\n");
-				break;
-	default:		fprintf(stderr, "unknown\n");
-				break;
+	case SEGV_MAPERR:
+			fprintf(stderr, "address not mapped to object\n");
+			break;
+
+	case SEGV_ACCERR:
+			fprintf(stderr, "bad permissions for mapped object\n");
+			break;
+
+	default:
+			fprintf(stderr, "unknown\n");
+			break;
 
 		}
 
 		fprintf(stderr, "PC at signal: %d (%x)\n",
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
-		fprintf(stderr, "address involved: %p\n", (void *) info->si_addr);
+		fprintf(stderr, "address involved: %p\n",
+			(void *) info->si_addr);
 
 	}
 }
@@ -632,7 +652,8 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 {
 	if (sig != SIGSEGV || info->si_signo != SIGSEGV)
 	{
-		fprintf(stderr, "\n*** Mercury runtime: caught strange segmentation violation ***\n");
+		fprintf(stderr, "\n*** Mercury runtime: ");
+		fprintf(stderr, "caught strange segmentation violation ***\n");
 		exit(1);
 	}
 
@@ -642,7 +663,9 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 	** only print them if try_munprotect fails.
 	*/
 
-	if (memdebug) explain_segv(info, context);
+	if (memdebug)
+		explain_segv(info, context);
+
 	if (try_munprotect(info->si_addr))
 	{
 		if (memdebug)
@@ -677,19 +700,20 @@ static void setup_signal(void)
 
 static void simple_sighandler(int sig)
 {
+	fflush(stdout);
+	fprintf(stderr, "*** Mercury runtime: ");
+
 	switch (sig)
 	{
 
-case SIGBUS: 	fprintf(stderr,
-			"*** Mercury runtime: caught bus error ***\n");
+case SIGBUS:
+		fprintf(stderr, "caught bus error ***\n");
 		break;
 
-case SIGSEGV: 	fprintf(stderr,
-			"*** Mercury runtime: caught segmentation violation ***\n");
+case SIGSEGV: 	fprintf(stderr, "caught segmentation violation ***\n");
 		break;
 
-default:	fprintf(stderr,
-			"*** Mercury runtime: caught unknown signal %d ***\n", sig);
+default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
 		break;
 
 	}

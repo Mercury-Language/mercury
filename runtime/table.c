@@ -10,8 +10,10 @@
 **	This file supplies data manipulation routines to other modules;
 **	it does not store any data itself. Its routines are generic,
 **	applicable to the storage of any kind of data structure with
-**	primary key and a hash function on it.
+**	a primary key and a hash function on it.
 */
+
+#define	HASHDEBUG
 
 #include	<stdio.h>
 #include	<assert.h>
@@ -43,7 +45,11 @@ void *tab_lookup_table(const Table *table, const void *key)
 	reg	int	h;
 
 	h = tablehash(table)(key);
-	assert(0 <= h && h < table->ta_size);
+
+#ifdef	HASHDEBUG
+	if (! (0 <= h && h < table->ta_size))
+		fprintf(stderr, "internal error: bad hash index in lookup_table: %d, table size %d\n", h, table->ta_size);
+#endif
 
 	for_list (ptr, table->ta_store[h])
 		if (tableequal(table)(key, tablekey(table)(ldata(ptr))))
@@ -68,7 +74,7 @@ bool tab_insert_table(const Table *table, void *entry)
 
 #ifdef	HASHDEBUG
 	if (! (0 <= h && h < table->ta_size))
-		fprintf(stderr, "internal error: bad hash index in insert_table: 0x%x\n", h);
+		fprintf(stderr, "internal error: bad hash index in lookup_table: %d, table size %d\n", h, table->ta_size);
 #endif
 
 	for_list (ptr, table->ta_store[h])

@@ -36,7 +36,7 @@ void init_engine(void)
 }
 
 /*
-** initialize the virtual machine registers
+** Initialize the virtual machine registers
 */
 
 static void init_registers(void)
@@ -97,7 +97,8 @@ void call_engine(Code *entry_point)
 #ifndef SPEED
 {
 	/* ensure that we only make the label once */
-	static bool initialized = FALSE;
+	static	bool	initialized = FALSE;
+
 	if (!initialized)
 	{
 		makelabel("engine_done", LABEL(engine_done));
@@ -110,7 +111,8 @@ void call_engine(Code *entry_point)
 call_engine_label:
 {
 	/* ensure that we only make the label once */
-	static bool prof_initialized = FALSE;
+	static	bool	prof_initialized = FALSE;
+
 	if (!prof_initialized)
 	{
 		insert_entry("call_engine_label", LABEL(call_engine_label));
@@ -141,6 +143,7 @@ call_engine_label:
 	/*
 	** Now just call the entry point
 	*/
+
 	call(entry_point, LABEL(engine_done), LABEL(call_engine_label));
 
 engine_done:
@@ -174,8 +177,8 @@ engine_done:
 
 	if (check_space)
 	{
-		int low = 0, high = LOCALS_SIZE;
-		int used_low, used_high;
+		int	low = 0, high = LOCALS_SIZE;
+		int	used_low, used_high;
 
 		while (low < high && locals[low] == MAGIC_MARKER)
 			low++;
@@ -240,22 +243,27 @@ static Code *engine_init_registers(void)
 	return NULL;
 }
 
-/* For debugging purposes, we keep a circular buffer of
-   the last 40 locations that we jumped to.  This is
-   very useful for determining the cause of a crash,
-   since it runs a lot faster than -dg.
+/*
+** For debugging purposes, we keep a circular buffer of
+** the last 40 locations that we jumped to.  This is
+** very useful for determining the cause of a crash,
+** since it runs a lot faster than -dg.
 */
-#define NUM_PREV_FPS 40
-typedef void (*FuncPtr)(void);
-FuncPtr prev_fps[NUM_PREV_FPS];
-int prev_fp_index = 0;
+
+#define NUM_PREV_FPS	40
+
+typedef	void	(*FuncPtr)(void);
+typedef Code	*Func(void);
+
+FuncPtr		prev_fps[NUM_PREV_FPS];
+int		prev_fp_index = 0;
 
 void call_engine(Code *entry_point)
 {
-	typedef Code *Func(void);
-	reg Func *fp;
-	jmp_buf curr_jmp_buf;
-	jmp_buf * volatile prev_jmp_buf;
+
+	reg	Func	*fp;
+	jmp_buf		curr_jmp_buf;
+	jmp_buf		* volatile prev_jmp_buf;
 
 	/*
 	** Preserve the value of engine_jmp_buf on the C stack.
@@ -272,10 +280,11 @@ void call_engine(Code *entry_point)
 	** exit.
 	*/
 
-	if (setjmp(curr_jmp_buf)) {
-	    debugmsg0("...caught longjmp\n");
-	    engine_jmp_buf = prev_jmp_buf;
-	    return;
+	if (setjmp(curr_jmp_buf))
+	{
+		debugmsg0("...caught longjmp\n");
+		engine_jmp_buf = prev_jmp_buf;
+		return;
 	}
 
 	/*
@@ -288,7 +297,8 @@ void call_engine(Code *entry_point)
 	fp = entry_point;
 
 #if defined(SPEED) && !defined(DEBUG_GOTOS)
-	for(;;) {
+	for (;;)
+	{
 		fp = (*fp)();
 		fp = (*fp)();
 		fp = (*fp)();
@@ -299,11 +309,13 @@ void call_engine(Code *entry_point)
 		fp = (*fp)();
 	}
 #else
-	for(;;) {
-		prev_fps[prev_fp_index++] = (FuncPtr) fp;
-		if (prev_fp_index >= NUM_PREV_FPS) {
+	for (;;)
+	{
+		prev_fps[prev_fp_index] = (FuncPtr) fp;
+
+		if (++prev_fp_index >= NUM_PREV_FPS)
 			prev_fp_index = 0;
-		}
+
 		debuggoto(fp);
 		debugsreg();
 		fp = (*fp)();
@@ -320,10 +332,6 @@ do_redo:
 	redo();
 
 do_fail:
-	fail();
-
-do_reset_framevar0_fail:
-	hp = (Word *) framevar(0);
 	fail();
 
 do_succeed:

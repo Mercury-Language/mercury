@@ -29,9 +29,14 @@ MACHHDRS	= machdeps/no_regs.h machdeps/i386_regs.h \
 		  machdeps/mips_regs.h machdeps/sparc_regs.h
 MODS		= engine.mod io_rt.mod wrapper.mod call.mod solutions.mod
 MOD_CS		= engine.c io_rt.c wrapper.c call.c solutions.c
-OBJS		= engine.o io_rt.o wrapper.o call.o solutions.o \
-		  access.o aux.o dlist.o dummy.o label.o \
-		  memory.o table.o timing.o
+MOD_OS		= $(MOD_CS:.c=.o)
+ORIG_CS		= access.c aux.c dlist.c dummy.c label.c \
+		  memory.c table.c timing.c
+ORIG_OS		= $(ORIG_CS:.c=.o)
+OBJS		= $(MOD_OS) $(ORIG_OS)
+# OBJS		= engine.o io_rt.o wrapper.o call.o solutions.o \
+# 		  access.o aux.o dlist.o dummy.o label.o \
+# 		  memory.o table.o timing.o
 PIC_OBJS	= $(OBJS:.o=.$(PIC_O))
 
 #-----------------------------------------------------------------------------#
@@ -55,6 +60,9 @@ runtime.init: $(MOD_CS)
 
 .PHONY: cs
 cs: $(MOD_CS)
+
+tags:
+	ctags $(MODS) $(ORIG_CS)
 
 #-----------------------------------------------------------------------------#
 

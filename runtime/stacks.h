@@ -50,7 +50,7 @@
 #define	NONDET_FIXED_SIZE_0	4	/* units: words */
 #else
 #define	PREDNM		(-4)	/* for debugging, set up at call 	*/
-#define	bt_prednm(fr)	LVALUE_CAST(const char *, fr[PREDNM])
+#define	bt_prednm(fr)	LVALUE_CAST(const char *, ((Word *) fr)[PREDNM])
 #define	NONDET_FIXED_SIZE_0	5	/* units: words */
 #endif
 
@@ -59,11 +59,11 @@
 #define	SAVEVAL		(-NONDET_FIXED_SIZE)
 			/* saved values start at this offset	*/
 
-#define	bt_redoip(fr)	LVALUE_CAST(Code *, fr[REDOIP])
-#define	bt_prevfr(fr)	LVALUE_CAST(Word *, fr[PREVFR])
-#define	bt_succip(fr)	LVALUE_CAST(Code *, fr[SUCCIP])
-#define	bt_succfr(fr)	LVALUE_CAST(Word *, fr[SUCCFR])
-#define	bt_var(fr,n)	fr[SAVEVAL-n]
+#define	bt_redoip(fr)	LVALUE_CAST(Code *, ((Word *) fr)[REDOIP])
+#define	bt_prevfr(fr)	LVALUE_CAST(Word *, ((Word *) fr)[PREVFR])
+#define	bt_succip(fr)	LVALUE_CAST(Code *, ((Word *) fr)[SUCCIP])
+#define	bt_succfr(fr)	LVALUE_CAST(Word *, ((Word *) fr)[SUCCFR])
+#define	bt_var(fr,n)	((Word *) fr)[SAVEVAL-n]
 
 #define	curprednm	bt_prednm(curfr)
 #define	curredoip	bt_redoip(curfr)

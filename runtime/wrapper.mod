@@ -3,6 +3,7 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
+
 #include	"imp.h"
 #include	"timing.h"
 #include	"getopt.h"
@@ -71,9 +72,9 @@ int main(int argc, char **argv)
 {
 #ifndef	SPEED
 	/*
-	** ensure stdio & stderr are unbuffered even if redirected
-	** using setvbuf() is more complicated than using setlinebuf(),
-	** but also more portable
+	** Ensure stdio & stderr are unbuffered even if redirected.
+	** Using setvbuf() is more complicated than using setlinebuf(),
+	** but also more portable.
 	*/
 
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -82,22 +83,27 @@ int main(int argc, char **argv)
 
 #ifdef CONSERVATIVE_GC
 	GC_quiet = TRUE;
-	/* call the init_gc() function defined in <foo>_init.c -
-	   this is to work around a Solaris 2.X (X <= 4) linker bug */
+	/* call the init_gc() function defined in <foo>_init.c - */
+	/* this is to work around a Solaris 2.X (X <= 4) linker bug */
 	init_gc();
+
+	/* The following code is necessary to tell the conservative */
+	/* garbage collector that we are using tagged pointers */
 	{
-	  /* The following code is necessary to tell the conservative
-	     garbage collector that we are using tagged pointers */
-	  int i;
-	  for (i = 1; i < (1 << TAGBITS); i++) {
-	  	GC_register_displacement(i);
-	  }
+		int i;
+
+		for (i = 1; i < (1 << TAGBITS); i++) {
+			GC_register_displacement(i);
+		}
 	}
 #endif
+
+	do_init_entries();
 
 #if defined(USE_GCC_GLOBAL_REGISTERS) && !defined(USE_ASM_LABELS)
 	do_init_modules();
 #endif
+
 	mercury_init_io();
 
 	/* process the command line options, save results in global vars */
@@ -110,11 +116,23 @@ int main(int argc, char **argv)
 	return mercury_exit_status;
 }
 
+void do_init_entries(void)
+{
+	static	bool	done = FALSE;
+
+	if (! done)
+	{
+		init_entries();
+		done = TRUE;
+	}
+}
+
 void do_init_modules(void)
 {
-	static bool done = FALSE;
-	if (!done) {
-		init_entries();
+	static	bool	done = FALSE;
+
+	if (! done)
+	{
 		init_modules();
 		done = TRUE;
 	}
@@ -134,9 +152,7 @@ static void process_options(int argc, char **argv)
 		debugflag[i] = FALSE;
 
 	if (default_entry != NULL)
-	{
 		which = default_entry;
-	}
 
 	while ((c = getopt(argc, argv, "xhcltp:d:r:w:s:z:1:2:3:")) != EOF)
 	{
@@ -317,7 +333,7 @@ static void process_options(int argc, char **argv)
 
 static void usage(void)
 {
-	printf("Usage: %s [-hclt] [-d[abcdghs]] [-[sz][hdn]#] [-p#] [-r#] [-1#] [-2#] [-3#] -w name\n",
+	printf("Usage: %s [-hclt] [-d[abcdghs]] [-[sz][hdn]#] [-p#] [-r#] [-1#] [-2#] [-3#] [-w name]\n",
 		progname);
 	printf("-h \t\tprint this usage message\n");
 	printf("-c \t\tcheck cross-function stack usage\n");

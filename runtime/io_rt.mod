@@ -379,6 +379,7 @@ mercury____Index___io__external_state_0_0:
 /* error/1, from require.nl */
 
 mercury__error_1_0:
+	fflush(stdout);
 	fprintf(stderr, "Software error: %s\n", (char *) r1);
 	abort();
 #ifndef	USE_GCC_NONLOCAL_GOTOS
