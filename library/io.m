@@ -171,6 +171,18 @@
 %	For stdin this is the string "<standard input>" (and similarly
 %	for stdout, stderr).
 
+% The io__state includes a `globals' field which is not used by the I/O
+% library, but can be used by the application.  The globals field is
+% of type `univ' so that the application can store any data it wants there.
+% The following predicates can be used to access this global state.
+
+:- pred io__get_globals(univ, io__state, io__state).
+:- mode io__get_globals(output, di, uo).
+	% Doesn't modify the io__state.
+
+:- pred io__set_globals(univ, io__state, io__state).
+:- mode io__set_globals(input, di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

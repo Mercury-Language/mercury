@@ -164,15 +164,15 @@ io__told -->
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
 :- mode io__delete_stream_name(input, di, uo).
 
-io__delete_stream_name(Stream, io__state(StreamNames0, S),
-		io__state(StreamNames, S)) :-
+io__delete_stream_name(Stream, io__state(StreamNames0, Globals, S),
+		io__state(StreamNames, Globals, S)) :-
 	map__delete(StreamNames0, Stream, StreamNames).
 
 :- pred io__insert_stream_name(io__stream, string, io__state, io__state).
 :- mode io__insert_stream_name(input, string, di, uo).
 
-io__insert_stream_name(Stream, Name, io__state(StreamNames0, S),
-		io__state(StreamNames, S)) :-
+io__insert_stream_name(Stream, Name, io__state(StreamNames0, Globals, S),
+		io__state(StreamNames, Globals, S)) :-
 	map__insert(StreamNames0, Stream, Name, StreamNames).
 
 %-----------------------------------------------------------------------------%
@@ -221,8 +221,9 @@ io__flush_output(Stream) -->
 	% used again.
 
 :- pred io__init_state(io__state).
-io__init_state(io__state(Names, current)) :-
+io__init_state(io__state(Names, Globals, current)) :-
 	map__init(Names0),
+	type_to_univ("<globals>", Globals),
 	map__insert(Names0, user_input, "<standard input>", Names1),
 	map__insert(Names1, user_output, "<standard output>", Names2),
 	map__insert(Names2, user_error, "<standard error>", Names).
@@ -236,19 +237,34 @@ io__update_state(IOState0, IOState) :-
 	;
 		true
 	),
-	%%% ( IOState0 = io__state(_, current) ->
+	%%% ( IOState0 = io__state(_, _, current) ->
 	%%% 	true
 	%%% ;
 	%%% 	error("\nio.nl: cannot retry I/O operation")
 	%%% ),
-	%%% IOState0 = io__state(Names, _),
+	%%% IOState0 = io__state(Names, Globals, _),
 	%%% $replacn(2, IOState0, old),
-	%%% IOState = io__state(Names, current).
+	%%% IOState = io__state(Names, Globals, current).
 	IOState = IOState0.
 
 :- pred io__final_state(io__state).
 io__final_state(IOState) :-
 	io__update_state(IOState, _).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred io__get_globals(univ, io__state, io__state).
+:- mode io__get_globals(output, di, uo).
+
+io__get_globals(Globals, IOState, IOState) :-
+	IOState = io__state(StreamNames, Globals, S).
+
+:- pred io__set_globals(univ, io__state, io__state).
+:- mode io__set_globals(input, di, uo).
+
+io__set_globals(Globals, io__state(StreamNames, _, S),
+		io__state(StreamNames, Globals, S)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
