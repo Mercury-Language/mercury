@@ -131,13 +131,8 @@
 		% (except to recompute the goal_info quantification).
 		% `all Vs' gets converted to `not some Vs not'.
 		% The second argument is `can_remove' if the quantification
-		% is allowed to be removed. A non-removable explicit
-		% quantification may be introduced to keep related goals
-		% together where optimizations that separate the goals
-		% can only result in worse behaviour. An example is the
-		% closures for the builtin aditi update predicates -
-		% they should be kept close to the update call where
-		% possible to make it easier to use indexes for the update.
+		% is allowed to be removed; see the docs for the can_remove
+		% type.
 	;	{ some(
 			some_exist_vars	:: list(prog_var),
 			some_can_remove	:: can_remove,
@@ -251,6 +246,19 @@
 % Information for quantifications
 %
 
+	% The second argument of explicit quantification goals
+	% is `can_remove' if the quantification is allowed to
+	% be removed.  A non-removable explicit
+	% quantification may be introduced to keep related goals
+	% together where optimizations that separate the goals
+	% can only result in worse behaviour. An example is the
+	% closures for the builtin aditi update predicates -
+	% they should be kept close to the update call where
+	% possible to make it easier to use indexes for the update.
+	%
+	% See also the closely related `keep_this_commit' goal_feature.
+	% XXX Why do we have both cannot_remove and keep_this_commit?
+	%     Do we really need both?
 :- type can_remove
 	--->	can_remove
 	;	cannot_remove.
