@@ -37,7 +37,7 @@ esac
 
 case $HOST in
 	kryten) 	mail="rsh munta /bin/mail" ;;
-	hydra)		mail=/usr/bin/main ;;
+	hydra)		mail=/usr/bin/mail ;;
 	*)		mail=/bin/mail ;;
 esac
 
