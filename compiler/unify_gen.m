@@ -57,7 +57,7 @@
 :- implementation.
 
 :- import_module string, tree, int, map, require, std_util.
-:- import_module prog_io, mode_util, hlds_out.
+:- import_module prog_io, mode_util, hlds_out, term.
 
 :- type uni_val		--->	ref(var)
 			;	lval(lval).
@@ -92,8 +92,14 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 	code_info__produce_variable(VarA, Code0, ValA),
 	code_info__produce_variable(VarB, Code1, ValB),
 	{ CodeA = tree(Code0, Code1) },
+	code_info__variable_type(VarA, Type),
+	{ Type = term__functor(term__atom("string"), [], _) ->
+		Op = str_eq
+	;
+		Op = eq
+	},
 	code_info__generate_test_and_fail(
-			binop(eq, ValA, ValB), FailCode),
+			binop(Op, ValA, ValB), FailCode),
 	{ Code = tree(CodeA, FailCode) }.
 
 %---------------------------------------------------------------------------%
