@@ -1034,7 +1034,7 @@ find_type_info_index(Constraints, ClassTable, NUn, Tvar, Locns0, Locns) :-
 	FirstConstraint = constraint(ClassName, Args),
 	list__length(Args, ClassArity),
 	map__lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
-	ClassDefn = hlds_class_defn(SuperClasses, _, _, _, _, _, _),
+	ClassDefn = hlds_class_defn(_, SuperClasses, _, _, _, _, _),
 	list__length(SuperClasses, NumSuperClasses),
 	RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
 	make_indirect_typeinfo_index(ThisN, RealTypeInfoIndex, Rval),
