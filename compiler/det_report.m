@@ -676,7 +676,7 @@ det_output_consid_list([ConsId | ConsIds], First) -->
 	( { First = yes } ->
 		[]
 	; { ConsIds = [] } ->
-		io__write_string(" and ")
+		io__write_string(" and/or ")
 	;
 		io__write_string(", ")
 	),
