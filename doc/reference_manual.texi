@@ -5095,9 +5095,26 @@ and @code{string} are mapped to the Common Language Runtime types
 @code{System.Int32}, @code{System.Double}, @code{System.Char} and
 @code{System.String} respectively.
 
-Mercury variables which are polymorphically typed (e.g. whose type is a 
-type variables) will be passed as @code{System.Object} while all other
-Mercury variables are passed as @code{System.Object[]}.
+Mercury variables whose type is a type variable will be passed as
+@code{System.Object}.
+Mercury array types are mapped to CLR array types.
+When compiling with --no-high-level-data, all other Mercury variables
+are passed as @code{System.Object[]}.
+When compiling with --high-level-data,
+Mercury variables whose type is a Mercury discriminated union type
+will be passed as a CLR type whose type name is determined from
+the Mercury type name (ignoring any type parameters) followed by
+an underscore and then the type arity,
+expressed as a decimal integer.
+Mercury module qualifiers are converted to CLR namespace qualifiers.
+For example the Mercury type `foo__bar__baz/1' will be passed as the CLR
+type `foo.bar.baz_1'.
+Note an extra namespace qualifier, `mercury', will be prepended to the
+beginning of names residing in the Mercury standard library.
+Mercury variables whose type is a Mercury equivalence type
+will be passed as the representation of the right hand side of the
+equivalence type.
+
 This mapping is subject to change and you should try to avoid writing
 code that relies heavily upon a particular representation of Mercury
 terms.
