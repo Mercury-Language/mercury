@@ -101,10 +101,8 @@ MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *tex
 		error = ML_HELP_result_is_error(result, &msg);
 	);
 
-	MR_TRACE_USE_HP(
-		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
-				MR_trace_help_system_type);
-	);
+	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
+			MR_trace_help_system_type);
 
 	return (error ? msg : NULL);
 }
@@ -186,19 +184,13 @@ MR_trace_help_ensure_init(void)
 			ML_io_stdout_stream(&MR_trace_help_stdout);
 		);
 
-		MR_TRACE_USE_HP(
-			MR_trace_help_system_type = (MR_TypeInfo)
-				MR_make_permanent(
+		MR_trace_help_system_type = (MR_TypeInfo) MR_make_permanent(
 					(MR_Word) MR_trace_help_system_type,
 					(MR_TypeInfo) typeinfo_type);
-			MR_trace_help_system =
-				MR_make_permanent(
-					MR_trace_help_system,
+		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 					MR_trace_help_system_type);
-			MR_trace_help_stdout =
-				MR_make_permanent(MR_trace_help_stdout,
+		MR_trace_help_stdout = MR_make_permanent(MR_trace_help_stdout,
 					(MR_TypeInfo) output_stream_type);
-		);
 
 		done = TRUE;
 	}
