@@ -138,7 +138,6 @@
 				% `--tags high' and doesn't specify
 				% `--num-tag-bits'.
 		;	args
-		;	type_info
 		;	type_layout
 				% XXX stack_layout is a development only 
 				% option. It will eventually be replaced
@@ -398,7 +397,6 @@ option_defaults_2(compilation_model_option, [
 					% above default with a value determined
 					% at configuration time
 	args			-	string("compact"),
-	type_info		-	string("default"),
 	type_layout		-	bool(yes),
 	stack_layout		-	bool(no),
 	highlevel_c		-	bool(no),
@@ -692,8 +690,6 @@ long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
-long_option("type-info",		type_info).
-long_option("type-info-convention",	type_info).
 long_option("type-layout",		type_layout).
 long_option("stack-layout",		type_layout).
 long_option("highlevel-C",		highlevel_c).
@@ -1471,16 +1467,6 @@ your program compiled with different options.
 	io__write_string("\t\tregister r<n>. The compact convention generally leads to\n"),
 	io__write_string("\t\tmore efficient code. Use of the simple convention requires the\n"),
 	io__write_string("\t\tC code to be compiled with -UCOMPACT_ARGS.\n"),
-
-		% Until other type-info options are added, we don't
-		% really need this option.
-%	io__write_string("\t--type-info {default, shared-one-or-two-cell}\n"),
-%	io__write_string("\t--type-info-convention {default, shared-one-or-two-cell}\n"),
-%	io__write_string("\t(This option is not for general use.)\n"),
-%	io__write_string("\t\tUse the specified format for the automatically generated\n"),
-%	io__write_string("\t\ttype_info structures. Only one option, shared-one-or-two-cell,\n"),
-%	io__write_string("\t\tis presently available.\n"),
-
 
 	io__write_string("\t--no-type-layout\n"),
 	io__write_string("\t(This option is not for general use.)\n"),

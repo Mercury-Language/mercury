@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,17 +20,6 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Decide which type_info representation we will use.
-**
-** At present, only SHARED_ONE_OR_TWO_CELL_TYPE_INFO is available.
-**
-*/
-
-#define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-
-/*---------------------------------------------------------------------------*/
-
-/*
 ** Define offsets of fields in the base_type_info or type_info structure.
 ** See polymorphism.m for explanation of these offsets and how the
 ** type_info and base_type_info structures are laid out.
@@ -38,8 +27,7 @@
 ** ANY CHANGES HERE MUST BE MATCHED BY CORRESPONDING CHANGES
 ** TO THE DOCUMENTATION IN compiler/polymorphism.m.
 **
-** The one_or_two_cell type_info representation
-** *depends* on OFFSET_FOR_COUNT being 0.
+** The current type_info representation *depends* on OFFSET_FOR_COUNT being 0.
 */
 
 #define OFFSET_FOR_COUNT 0
@@ -59,11 +47,9 @@
 
 /*
 ** Where the predicate arity and args are stored in the type_info.
-** For one-or-two-cell, they are stored in the type_info (*not* the
-** base_type_info).
+** They are stored in the type_info (*not* the base_type_info).
 ** This is brought about by higher-order predicates all using the
 ** same base_type_info - pred/0.
-** For one-cell, the arity is at the same offset as the count.
 */
 
 #define TYPEINFO_OFFSET_FOR_PRED_ARITY 1
@@ -142,13 +128,10 @@
 **
 ** All code using type_layout structures should check to see if
 ** USE_TYPE_LAYOUT is defined, and give a fatal error otherwise.
-** For USE_TYPE_LAYOUT to be defined, we need to be using
-** shared one-or-two cell type_infos (since the type_layouts refer
-** to base_type_layouts). USE_TYPE_LAYOUT can be explicitly turned
-** off with NO_TYPE_LAYOUT.
+** USE_TYPE_LAYOUT can be explicitly turned off with NO_TYPE_LAYOUT.
 **
 */
-#if defined(SHARED_ONE_OR_TWO_CELL_TYPE_INFO) && !defined(NO_TYPE_LAYOUT)
+#if !defined(NO_TYPE_LAYOUT)
 	#define USE_TYPE_LAYOUT
 #else
 	#undef USE_TYPE_LAYOUT
@@ -770,7 +753,6 @@ typedef MR_TypeLayout_part1 MR_TypeLayout;
 
 #endif
 
-/*---------------------------------------------------------------------------*/
 
 /*
 ** definitions for accessing the representation of the

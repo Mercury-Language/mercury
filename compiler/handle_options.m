@@ -125,13 +125,6 @@ postprocess_options(ok(OptionTable), Error) -->
                         { ArgsMethod0 = string(ArgsMethodStr) },
                         { convert_args_method(ArgsMethodStr, ArgsMethod) }
                     ->
-                        { map__lookup(OptionTable, type_info,
-                            TypeInfoMethod0) },
-                        (
-                            { TypeInfoMethod0 = string(TypeInfoMethodStr) },
-                            { convert_type_info_method(TypeInfoMethodStr,
-                                TypeInfoMethod) }
-                        ->
                             { map__lookup(OptionTable, prolog_dialect,
                                 PrologDialect0) },
                             (
@@ -156,8 +149,7 @@ postprocess_options(ok(OptionTable), Error) -->
 				    ->
 				    	postprocess_options_2(OptionTable,
 				    	    GC_Method, TagsMethod, ArgsMethod,
-				    	    TypeInfoMethod, PrologDialect,
-					    TermNorm),
+				    	    PrologDialect, TermNorm),
 				        { Error = no }
 				    ;
 				    	{ Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
@@ -168,9 +160,6 @@ postprocess_options(ok(OptionTable), Error) -->
                             ;
                                 { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                             )
-                        ;
-                            { Error = yes("Invalid type-info option (must be `shared-one-or-two-cell' or `default')") }
-                        )
                     ;
                         { Error = yes("Invalid args option (must be `simple' or `compact')") }
                     )
@@ -182,12 +171,12 @@ postprocess_options(ok(OptionTable), Error) -->
             ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method, 
-	args_method, type_info_method, prolog_dialect, termination_norm,
+	args_method, prolog_dialect, termination_norm,
 	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
+:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect, TermNorm) -->
+		PrologDialect, TermNorm) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -198,7 +187,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		TypeInfoMethod, PrologDialect, TermNorm),
+		PrologDialect, TermNorm),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->

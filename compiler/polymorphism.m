@@ -46,7 +46,7 @@
 %			"map" for `map(K,V)'
 %	word 7		<string name of module>
 %
-% The other cell is the new type_info structure, laid out like this:
+% The other cell is the type_info structure, laid out like this:
 %
 %	word 0		<pointer to the base_type_info structure>
 %	word 1+		<the type_infos for the type params, at least one>
@@ -55,7 +55,7 @@
 %
 %-----------------------------------------------------------------------------%
 %
-% Optimization of common case for one-or-two cells:
+% Optimization of common case (zero arity types):
 %
 % The type_info structure itself is redundant if the type has no type
 % parameters (i.e. its arity is zero). Therefore if the arity is zero,
@@ -81,25 +81,20 @@
 %
 %-----------------------------------------------------------------------------%
 %
-% Sharing one-or-two-cell structures:
+% Sharing base_type_info structures:
 %
 % For compilation models that can put code addresses in static ground terms,
 % we can arrange to create one copy of the base_type_info structure statically,
 % avoiding the need to create other copies at runtime. For compilation models
-% that cannot put code addresses in static ground terms, we have several
-% options:
+% that cannot put code addresses in static ground terms, there are a couple
+% of things we could do:
 %
-% 	1. use a one or two cell representation, but allocate all cells 
-% 	   at runtime.
-%	2. use another representation, allocating all cells at
-%	   runtime.
-%	3. use a shared static base_type_info, but initialize its code
+% 	1. allocate all cells at runtime.
+%	2. use a shared static base_type_info, but initialize its code
 %	   addresses during startup (that is, during the module
 %	   initialization code).
 %
-% Presently, shared-one-or-two cells are the default, with grades that
-% cannot use static code addresses using option 3.  Support for older
-% type_info representations has been dropped. 
+% Currently we use option 2.
 %
 %-----------------------------------------------------------------------------%
 %
@@ -295,7 +290,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda), globals.
+:- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
 :- import_module prog_data, type_util, mode_util, quantification, instmap.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
 :- import_module (inst), hlds_out, base_typeclass_info.
@@ -1570,19 +1565,13 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 
 	Info1 = poly_info(VarSet1, VarTypes1, C, D, E, F, G, ModuleInfo),
 
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_type_info_method(Globals, TypeInfoMethod),
-	(
-		TypeInfoMethod = shared_one_or_two_cell,
-
-		polymorphism__init_const_base_type_info_var(Type,
-			TypeId, ModuleInfo, VarSet1, VarTypes1, 
-			BaseVar, BaseGoal, VarSet2, VarTypes2),
-		polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
-			ArgTypeInfoGoals, Type, IsHigherOrder,
-			BaseVar, VarSet2, VarTypes2, [BaseGoal],
-			Var, VarSet, VarTypes, ExtraGoals)
-	),
+	polymorphism__init_const_base_type_info_var(Type,
+		TypeId, ModuleInfo, VarSet1, VarTypes1, 
+		BaseVar, BaseGoal, VarSet2, VarTypes2),
+	polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
+		ArgTypeInfoGoals, Type, IsHigherOrder,
+		BaseVar, VarSet2, VarTypes2, [BaseGoal],
+		Var, VarSet, VarTypes, ExtraGoals),
 
 	Info = poly_info(VarSet, VarTypes, C, D, E, F, G, ModuleInfo).
 
