@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,6 +160,19 @@ type_is_object(Type) :-
 	( Builtin = enum_type 
 	; Builtin = polymorphic_type
 	; Builtin = user_type 
+	).
+
+	% Given an lval, return its type.
+	% 
+:- func mlds_lval_type(mlds__lval) = mlds__type.
+
+mlds_lval_type(var(_, VarType)) = VarType.
+mlds_lval_type(field(_, _, _, FieldType, _)) = FieldType.
+mlds_lval_type(mem_ref(_, PtrType)) =
+	( PtrType = mlds__ptr_type(Type) ->
+		Type
+	;
+		func_error("mlds_lval_type: mem_ref of non-pointer")
 	).
 
 	% Succeeds iff the Rval represents an integer constant.  
@@ -2448,15 +2461,14 @@ output_atomic_stmt(Indent, _FuncInfo, assign(Lval, Rval), _) -->
 	output_lval(Lval),
 	io__write_string(" = "),
 	( 
-		{ Lval = var(_, VarType) }, 
-	    	{ type_is_object(VarType) } 
-	    
+		{ LvalType = mlds_lval_type(Lval) },
+	    	{ type_is_object(LvalType) }
 	->
 		% If the Lval is a an object.	
 		
 		( { rval_is_int_const(Rval) } ->
 			io__write_string("new "),
-			output_type(VarType),
+			output_type(LvalType),
 			io__write_string("("),
 			output_rval(Rval),
 			io__write_string(")")
