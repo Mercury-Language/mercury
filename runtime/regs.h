@@ -67,7 +67,7 @@
     #include "machdeps/alpha_regs.h"
   #elif defined(__hppa__)
     #include "machdeps/pa_regs.h"
-  #elif defined(__rs6000__)
+  #elif defined(_POWER)
     #include "machdeps/rs6000_regs.h"
   #else
     #error "USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
