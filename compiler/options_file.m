@@ -1037,7 +1037,7 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result, !IO) :-
 		OptionsVariableClass = module_specific(ModuleName),
 		options_variable_type_is_target_specific(FlagsVar) = yes
 	->
-		prog_out__sym_name_to_string(ModuleName, ".",
+		mdbcomp__prim_data__sym_name_to_string(ModuleName, ".",
 			ModuleFileNameBase),
 		ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
 		lookup_variable_words_report_error(Vars, ModuleVarName,

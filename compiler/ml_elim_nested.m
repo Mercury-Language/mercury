@@ -1392,7 +1392,8 @@ ml_pred_label_name(special_pred(PredName, MaybeTypeModule,
 
 ml_module_name_string(ModuleName) = ModuleNameString :-
 	Separator = "__",
-	prog_out__sym_name_to_string(ModuleName, Separator, ModuleNameString).
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, Separator, 
+		ModuleNameString).
 
 %-----------------------------------------------------------------------------%
 

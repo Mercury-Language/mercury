@@ -51,27 +51,13 @@
 	% The output should be a syntactically valid Mercury term.
 :- pred prog_out__write_quoted_sym_name(sym_name::in, io::di, io::uo) is det.
 
-	% sym_name_to_string(SymName, String):
-	%	convert a symbol name to a string,
-	%	with module qualifiers separated by
-	%	the standard Mercury module qualifier operator.
-:- pred prog_out__sym_name_to_string(sym_name::in, string::out) is det.
-:- func prog_out__sym_name_to_string(sym_name) = string.
-
-	% sym_name_to_string(SymName, String):
+	% sym_name_and_arity_to_string(SymName, String):
 	%	convert a symbol name and arity to a "<Name>/<Arity>" string,
 	%	with module qualifiers separated by
 	%	the standard Mercury module qualifier operator.
 :- pred prog_out__sym_name_and_arity_to_string(sym_name_and_arity::in,
 	string::out) is det.
 :- func prog_out__sym_name_and_arity_to_string(sym_name_and_arity) = string.
-
-	% sym_name_to_string(SymName, Separator, String):
-	%	convert a symbol name to a string,
-	%	with module qualifiers separated by Separator.
-:- pred prog_out__sym_name_to_string(sym_name::in, string::in, string::out)
-	is det.
-:- func prog_out__sym_name_to_string(sym_name, string) = string.
 
 :- pred prog_out__write_module_spec(module_specifier::in, io::di, io::uo)
 	is det.
@@ -123,6 +109,8 @@
 
 :- import_module term, varset, term_io.
 :- import_module require, string, std_util, term, term_io, varset, int.
+
+:- import_module mdbcomp__prim_data.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -230,23 +218,8 @@ prog_out__write_quoted_sym_name(SymName, !IO) :-
 	prog_out__write_sym_name(SymName, !IO),
 	io__write_string("'", !IO).
 
-prog_out__sym_name_to_string(SymName, String) :-
-	prog_out__sym_name_to_string(SymName, ".", String).
-
-prog_out__sym_name_to_string(SymName) = String :-
-	prog_out__sym_name_to_string(SymName, String).
-
-prog_out__sym_name_to_string(SymName, Separator) = String :-
-	prog_out__sym_name_to_string(SymName, Separator, String).
-
-prog_out__sym_name_to_string(unqualified(Name), _Separator, Name).
-prog_out__sym_name_to_string(qualified(ModuleSym, Name), Separator,
-		QualName) :-
-	prog_out__sym_name_to_string(ModuleSym, Separator, ModuleName),
-	string__append_list([ModuleName, Separator, Name], QualName).
-
 prog_out__sym_name_and_arity_to_string(SymName/Arity, String) :-
-	prog_out__sym_name_to_string(SymName, SymNameString),
+	mdbcomp__prim_data__sym_name_to_string(SymName, SymNameString),
 	string__int_to_string(Arity, ArityString),
 	string__append_list([SymNameString, "/", ArityString], String).
 

@@ -102,6 +102,13 @@
 	;	compare
 	;	initialise.
 
+	% special_pred_name_arity(SpecialPredType, GenericPredName, Arity):
+	%	true iff there is a special predicate of category
+	%	SpecialPredType, called builtin:GenericPredName/Arity.
+:- pred special_pred_name_arity(special_pred_id, string, int).
+:- mode special_pred_name_arity(in, out, out) is det.
+:- mode special_pred_name_arity(out, in, out) is semidet.
+
 % was in compiler/prog_util.m
 
 	% string_to_sym_name(String, Separator, SymName):
@@ -110,6 +117,26 @@
 	%	into a symbol name.
 	%
 :- pred string_to_sym_name(string::in, string::in, sym_name::out) is det.
+
+	% sym_name_to_string(SymName, Separator, String):
+	%	convert a symbol name to a string,
+	%	with module qualifiers separated by Separator.
+:- pred sym_name_to_string(sym_name::in, string::in, string::out)
+	is det.
+:- func sym_name_to_string(sym_name, string) = string.
+
+	% sym_name_to_string(SymName, String):
+	%	convert a symbol name to a string,
+	%	with module qualifiers separated by
+	%	the standard Mercury module qualifier operator.
+:- pred sym_name_to_string(sym_name::in, string::out) is det.
+:- func sym_name_to_string(sym_name) = string.
+
+	% is_submodule(SymName1, SymName2).
+	% True iff SymName1 is a submodule of SymName2.
+	% For example mod1.mod2.mod3 is a submodule of mod1.mod2.
+	%
+:- pred is_submodule(module_name::in, module_name::in) is semidet.
 
 	% insert_module_qualifier(ModuleName, SymName0, SymName):
 	%	prepend the specified ModuleName onto the module
@@ -121,7 +148,7 @@
 
 :- implementation.
 
-:- import_module int, string. 
+:- import_module int, string, list. 
 
 % This would be simpler if we had a string__rev_sub_string_search/3 pred.
 % With that, we could search for underscores right-to-left,
@@ -150,3 +177,27 @@ insert_module_qualifier(ModuleName, unqualified(PlainName),
 insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName),
 		qualified(ModuleQual, PlainName)) :-
 	insert_module_qualifier(ModuleName, ModuleQual0, ModuleQual).
+
+sym_name_to_string(SymName, String) :-
+	sym_name_to_string(SymName, ".", String).
+
+sym_name_to_string(SymName) = String :-
+	sym_name_to_string(SymName, String).
+
+sym_name_to_string(SymName, Separator) = String :-
+	sym_name_to_string(SymName, Separator, String).
+
+sym_name_to_string(unqualified(Name), _Separator, Name).
+sym_name_to_string(qualified(ModuleSym, Name), Separator,
+		QualName) :-
+	sym_name_to_string(ModuleSym, Separator, ModuleName),
+	string__append_list([ModuleName, Separator, Name], QualName).
+
+is_submodule(SymName, SymName).
+is_submodule(qualified(SymNameA, _), SymNameB) :-
+	is_submodule(SymNameA, SymNameB).
+
+special_pred_name_arity(unify, "unify", 2).
+special_pred_name_arity(index, "index", 2).
+special_pred_name_arity(compare, "compare", 3).
+special_pred_name_arity(initialise, "initialise", 1).

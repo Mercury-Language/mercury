@@ -77,6 +77,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module mdbcomp__prim_data.
 
 :- import_module term, varset.
 :- import_module assoc_list, bag, int, list, map.
@@ -476,7 +477,7 @@ unique_modes__check_goal_2(generic_call(GenericCall, Args, Modes, Det),
 
 unique_modes__check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
 		PredName), _GoalInfo0, Goal, !ModeInfo, !IO) :-
-	prog_out__sym_name_to_string(PredName, PredNameString),
+	mdbcomp__prim_data__sym_name_to_string(PredName, PredNameString),
 	string__append("call ", PredNameString, CallString),
 	mode_checkpoint(enter, CallString, !ModeInfo, !IO),
 	mode_info_get_call_id(!.ModeInfo, PredId, CallId),

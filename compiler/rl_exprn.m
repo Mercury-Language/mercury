@@ -156,6 +156,7 @@
 :- import_module parse_tree__prog_type.
 :- import_module transform_hlds__inlining.
 :- import_module backend_libs__name_mangle.
+:- import_module mdbcomp__prim_data.
 
 :- import_module assoc_list, bool, char, counter, int, map.
 :- import_module require, set, std_util, string, term, varset.
@@ -2182,7 +2183,8 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 			{ Code = tree(RvalCode, PopCode) }
 		)
 	;
-		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
+		{ mdbcomp__prim_data__sym_name_to_string(PredModule0, 
+			PredModule) },
 		{ Arity = pred_info_orig_arity(PredInfo) },
 		{ string__format("Sorry, not implemented in Aditi: %s.%s/%i",
 			[s(PredModule), s(PredName), i(Arity)], Msg) },

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -301,7 +301,7 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
 build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
 		_Imports, AllOptionArgs, ErrorStream,
 		Succeeded, Info, Info) -->
-	{ prog_out__sym_name_to_string(ModuleName, ".", ModuleArg) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", ModuleArg) },
 
 	globals__io_lookup_bool_option(verbose_commands, Verbose),
 	( { Verbose = yes } ->

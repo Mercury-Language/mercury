@@ -47,6 +47,7 @@
 :- import_module parse_tree__prog_type.
 :- import_module transform_hlds__dependency_graph.
 :- import_module transform_hlds__inlining.
+:- import_module mdbcomp__prim_data.
 
 :- import_module assoc_list, bool, char, int, list, map, queue.
 :- import_module relation, require, set, std_util, string, term, varset.
@@ -151,7 +152,8 @@ rl_gen__proc_name(EntryPoints, RLProcId, ProcName) -->
 			EntryPredId, EntryPredInfo) },
 		{ pred_info_get_aditi_owner(EntryPredInfo, Owner) },
 		{ module_info_name(ModuleInfo, ModuleName0) },
-		{ prog_out__sym_name_to_string(ModuleName0, ModuleName) },
+		{ mdbcomp__prim_data__sym_name_to_string(ModuleName0, 
+			ModuleName) },
 		{ string__int_to_string(RLProcId, ProcStr) },
 		{ string__append("rl_proc_", ProcStr, Name) },
 		{ list__length(EntryPoints, NumEntries) },
@@ -1523,7 +1525,7 @@ rl_gen__lower_scc_call(called_pred(CalledProc),
 	rl_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ Module0 = pred_info_module(PredInfo) },
-	{ prog_out__sym_name_to_string(Module0, Module) },
+	{ mdbcomp__prim_data__sym_name_to_string(Module0, Module) },
 	{ Name = pred_info_name(PredInfo) },
 	{ Arity = pred_info_orig_arity(PredInfo) },
 	rl_info_write_message("Generating call to %s.%s/%i\n",

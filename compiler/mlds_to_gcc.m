@@ -407,7 +407,7 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 init_fn_name(ModuleName, Suffix) = InitFnName :-
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
-	prog_out__sym_name_to_string(
+	mdbcomp__prim_data__sym_name_to_string(
 			mlds_module_name_to_sym_name(ModuleName), "__",
 			ModuleNameString0),
 	(
@@ -493,7 +493,7 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns) -->
 output_init_fn_name(ModuleName, Suffix) -->
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
-	{ prog_out__sym_name_to_string(
+	{ mdbcomp__prim_data__sym_name_to_string(
 			mlds_module_name_to_sym_name(ModuleName), "__",
 			ModuleNameString0) },
 	{

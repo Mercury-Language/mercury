@@ -385,7 +385,7 @@ output_import(Import, !IO) :-
 	),
 	SymName = mlds_module_name_to_sym_name(ImportName),
 	JavaSafeSymName = valid_module_name(SymName),
-	prog_out__sym_name_to_string(JavaSafeSymName, ".", File),
+	mdbcomp__prim_data__sym_name_to_string(JavaSafeSymName, ".", File),
 	% XXX Name mangling code should be put here when we start enforcing
 	%     Java's naming conventions.
 	ClassFile = File,
@@ -999,7 +999,7 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
 output_package_info(unqualified(_), !IO).
 output_package_info(qualified(Module, _), !IO) :-
 	io__write_string("package ", !IO),
-	prog_out__sym_name_to_string(Module, ".", Package),
+	mdbcomp__prim_data__sym_name_to_string(Module, ".", Package),
 	io__write_string(Package, !IO),
 	io__write_string(";\n", !IO).
 

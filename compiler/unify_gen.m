@@ -63,6 +63,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
+:- import_module mdbcomp__prim_data.
 
 :- import_module term, bool, string, int, list, map, require, std_util.
 
@@ -1074,7 +1075,7 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty, !CI) :-
 unify_gen__var_type_msg(Type, Msg) :-
 	( type_to_ctor_and_args(Type, TypeCtor, _) ->
 		TypeCtor = TypeSym - TypeArity,
-		prog_out__sym_name_to_string(TypeSym, TypeSymStr),
+		mdbcomp__prim_data__sym_name_to_string(TypeSym, TypeSymStr),
 		string__int_to_string(TypeArity, TypeArityStr),
 		string__append_list([TypeSymStr, "/", TypeArityStr], Msg)
 	;

@@ -1464,13 +1464,13 @@ mercury_format_cons_id(pred_const(ShroudedPredProcId, EvalMethod), _) -->
 	add_lambda_eval_method(EvalMethod),
 	add_string(")>").
 mercury_format_cons_id(type_ctor_info_const(Module, Type, Arity), _) -->
-	{ prog_out__sym_name_to_string(Module, ModuleString) },
+	{ mdbcomp__prim_data__sym_name_to_string(Module, ModuleString) },
 	{ string__int_to_string(Arity, ArityString) },
 	add_strings(["<type_ctor_info for ",
 		ModuleString, ".", Type, "/", ArityString, ">"]).
 mercury_format_cons_id(base_typeclass_info_const(Module, Class, InstanceNum,
 		InstanceString), _) -->
-	{ prog_out__sym_name_to_string(Module, ModuleString) },
+	{ mdbcomp__prim_data__sym_name_to_string(Module, ModuleString) },
 	add_string("<base_typeclass_info for "),
 	add_class_id(Class),
 	( { ModuleString \= "some bogus module name" } ->

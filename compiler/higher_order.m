@@ -2557,7 +2557,7 @@ add_new_pred(CalledPredProcId, NewPred, !Info) :-
 maybe_write_request(no, _, _, _, _, _, _, _, _, !IO).
 maybe_write_request(yes, ModuleInfo, Msg, SymName, Arity, ActualArity,
 		MaybeNewName, HOArgs, Context, !IO) :-
-	prog_out__sym_name_to_string(SymName, OldName),
+	mdbcomp__prim_data__sym_name_to_string(SymName, OldName),
 	string__int_to_string(Arity, ArStr),
 	io__write_string("% ", !IO),
 	prog_out__write_context(Context, !IO),

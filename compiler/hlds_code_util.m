@@ -137,7 +137,8 @@ make_instance_string(InstanceTypes, InstanceString) :-
 
 type_to_string(Type, String) :-
 	( sym_name_and_args(Type, TypeName, TypeArgs) ->
-		prog_out__sym_name_to_string(TypeName, "__", TypeNameString),
+		mdbcomp__prim_data__sym_name_to_string(TypeName, "__", 
+			TypeNameString),
 		list__length(TypeArgs, TypeArity),
 		string__int_to_string(TypeArity, TypeArityString),
 		string__append_list(

@@ -55,7 +55,7 @@ lookup_module_source_file(ModuleName, FileName, !IO) :-
 	).
 
 default_source_file(ModuleName) = BaseFileName ++ ".m" :-
-	prog_out__sym_name_to_string(ModuleName, ".", BaseFileName).
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", BaseFileName).
 
 have_source_file_map(HaveMap, !IO) :-
 	get_source_file_map(_, !IO),

@@ -687,6 +687,7 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
+:- import_module mdbcomp__prim_data.
 
 :- import_module bool, int, require, string.
 
@@ -1090,7 +1091,7 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
 	ProcLabel = make_user_proc_label(ModuleName, IsImported,
 		PredOrFunc, PredModule, PredName, Arity, ProcId),
 	ProcLabelStr = proc_label_to_c_string(ProcLabel, no),
-	prog_out__sym_name_to_string(PredModule, PredModuleStr),
+	mdbcomp__prim_data__sym_name_to_string(PredModule, PredModuleStr),
 	ProcName = rl_proc_name(Owner, PredModuleStr, ProcLabelStr, 2).
 
 rl__get_insert_proc_name(ModuleInfo, PredId, ProcName) :-
@@ -1154,7 +1155,7 @@ rl__get_permanent_relation_info(ModuleInfo, PredId, Owner, PredModule,
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredName = pred_info_name(PredInfo),
 	PredModule0 = pred_info_module(PredInfo),
-	prog_out__sym_name_to_string(PredModule0, PredModule),
+	mdbcomp__prim_data__sym_name_to_string(PredModule0, PredModule),
 	pred_info_get_aditi_owner(PredInfo, Owner),
 	PredArity = pred_info_orig_arity(PredInfo),
 	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
@@ -1425,7 +1426,7 @@ rl__mangle_type_name(TypeCtor, Args, MangledTypeName) :-
 rl__mangle_type_name_2(TypeCtor, Args, MangledTypeName0, MangledTypeName) :-
 	(
 		TypeCtor = qualified(Module0, Name) - Arity,
-		prog_out__sym_name_to_string(Module0, Module),
+		mdbcomp__prim_data__sym_name_to_string(Module0, Module),
 		string__append_list([MangledTypeName0, Module, "__", Name],
 			MangledTypeName1)
 	;

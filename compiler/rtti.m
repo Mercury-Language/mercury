@@ -1279,8 +1279,8 @@ rtti__encode_tc_instance_type(TCType) = Str :-
 		% XXX We may wish to check that all arguments are variables.
 	),
 	RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, _CtorArity),
-	prog_out__sym_name_to_string(qualified(ModuleName, TypeName), "__",
-		TypeStr),
+	mdbcomp__prim_data__sym_name_to_string(qualified(ModuleName, 
+		TypeName), "__", TypeStr),
 	string__int_to_string(Arity, ArityStr),
 	% XXX This naming scheme is the same as for base_typeclass_infos.
 	% We should think about
