@@ -48,7 +48,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Ross
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1999 The University of Melbourne.
+Copyright @copyright{} 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -2619,6 +2619,9 @@ Note that @samp{mprof} can take quite a while to execute, and will
 usually produce quite a lot of output, so you will usually want to
 redirect the output into a file with a command such as
 @samp{mprof > mprof.out}.
+
+For programs built with @samp{--high-level-code}, you need to also
+pass the @samp{--no-demangle} option to @samp{mprof}.
 
 @node Analysis of results
 @section Analysis of results

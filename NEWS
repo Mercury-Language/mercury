@@ -239,6 +239,7 @@ Changes to the Mercury implementation:
 	- calling copy/2 on higher-order terms
   It also does not support the following implemention-specific
   features that the old back-end supports:
+	- demangling of symbol names in the profiler
 	- fact tables for procedures with determinism `nondet' or `multi'
   	- the Mercury debugger (mdb)
   	- the Morphine trace analysis system
