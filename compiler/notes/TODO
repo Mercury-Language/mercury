@@ -6,7 +6,8 @@ TODO LIST:
 Required to bootstrap:
 ----------------------
 
-- generate code for complicated unifications
+- avoid problems with complicated unifications inside
+  construction/deconstruction unification arguments
 - polymorphic unifications
 - compare/3
 - term_io__read_term etc.
@@ -135,7 +136,7 @@ general
 	accordingly.
 
 - optional warning for any implicit quantifiers whose scope is not
-  the entire clause
+  the entire clause (the "John Lloyd" option :-).
 
 - warn about multiple calls to a predicate with the same input arguments,
   because this is likely to be a programming mistake.
