@@ -1725,7 +1725,7 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 
 hlds_out__write_vartypes(Indent, X) -->
 	hlds_out__write_indent(Indent),
-	io__write_anything(X),
+	io__write(X),
 	io__write_string("\n").
 
 hlds_out__write_determinism(det) -->
