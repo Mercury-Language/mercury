@@ -5,7 +5,7 @@
 %------------------------------------------------------------------------------%
 %
 % file: relation.m.
-% main author: bromage.
+% main author: bromage, petdr.
 % stability: low.
 %
 % This module defines a data type for binary relations over reflexive
@@ -18,7 +18,7 @@
 :- module relation.
 
 :- interface.
-:- import_module list, set, std_util, assoc_list.
+:- import_module list, set, set_bbbtree, std_util, assoc_list.
 
 :- type relation(T).
 
@@ -96,8 +96,18 @@
 	% set of elements in the list Dfs is exactly equal
 	% to the set of elements y such that xR*y, where
 	% R* is the reflexive transitive closure of R.
+	% Returns the elements in visited order.
 :- pred relation__dfs(relation(T), T, list(T)).
 :- mode relation__dfs(in, in, out) is det.
+
+	% relation__dfsrev(Rel, X, Dfs) is true if Dfs is a
+	% depth-first sorting of Rel starting at X.  The
+	% set of elements in the list Dfs is exactly equal
+	% to the set of elements y such that xR*y, where
+	% R* is the reflexive transitive closure of R.
+	% Returns the elements in reverse visited order.
+:- pred relation__dfsrev(relation(T), T, list(T)).
+:- mode relation__dfsrev(in, in, out) is det.
 
 	% relation__components(R, Comp) is true if Comp
 	% is the set of the connected components of R.
@@ -344,44 +354,63 @@ relation__compose_3([Y | Ys], R2, CX0, CX) :-
 
 %------------------------------------------------------------------------------%
 
-	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
-	% first sorting of Rel.
-:- pred relation__dfs(relation(T), list(T)).
-:- mode relation__dfs(in, out) is det.
-relation__dfs(Rel, Dfs) :-
-	relation__effective_domain(Rel, DomSet),
-	set__to_sorted_list(DomSet, DomList),
-	list__reverse(DomList, DomRev),
-	stack__init(S0),
-	stack__push_list(S0, DomRev, S1),
-	set__init(Vis),
-	relation__dfs_2(Rel, S1, Vis, [], Dfs).
-
 	% relation__dfs/3 performs a depth-first search of
 	% a relation.  It returns the elements in visited
 	% order.
 relation__dfs(Rel, X, Dfs) :-
-	set__init(Vis0),
+	relation__dfsrev(Rel, X, DfsRev),
+	list__reverse(DfsRev, Dfs).
+
+	% relation__dfsrev/3 performs a depth-first search of
+	% a relation.  It returns the elements in reverse visited
+	% order.
+relation__dfsrev(Rel, X, DfsRev) :-
+	set_bbbtree__init(Vis0),
 	stack__init(S0),
 	stack__push(S0, X, S1),
-	relation__dfs_2(Rel, S1, Vis0, [], Dfs).
+	relation__dfs_2(Rel, S1, Vis0, [], _, DfsRev).
 
-:- pred relation__dfs_2(relation(T), stack(T), set(T), list(T), list(T)).
-:- mode relation__dfs_2(in, in, in, in, out) is det.
-relation__dfs_2(Rel, S0, Vis, DfsIn, DfsOut) :-
+	% relation__dfs(Rel, Dfs) is true if Dfs is a depth-
+	% first sorting of Rel.  Where the nodes are in the
+	% order visited.
+:- pred relation__dfs(relation(T), list(T)).
+:- mode relation__dfs(in, out) is det.
+relation__dfs(Rel, Dfs) :-
+	relation__dfsrev(Rel, DfsRev),
+	list__reverse(DfsRev, Dfs).
+
+	% relation__dfsrev(Rel, Dfs) is true if Dfs is a depth-
+	% first sorting of Rel.  Where the nodes are in the reverse
+	% order visited.
+:- pred relation__dfsrev(relation(T), list(T)).
+:- mode relation__dfsrev(in, out) is det.
+relation__dfsrev(Rel, DfsRev) :-
+	relation__effective_domain(Rel, DomSet),
+	set__to_sorted_list(DomSet, DomList),
+	stack__init(S0),
+	stack__push_list(S0, DomList, S1),
+	set_bbbtree__init(Vis),
+	relation__dfs_2(Rel, S1, Vis, [], _, DfsRev).
+
+
+:- pred relation__dfs_2(relation(T), stack(T), set_bbbtree(T), list(T), 
+							set_bbbtree(T),list(T)).
+:- mode relation__dfs_2(in, in, in, in, out, out) is det.
+relation__dfs_2(Rel, S0, VisIn, DfsIn, VisOut, DfsOut) :-
 	( stack__pop(S0, X, S1) ->
-	    ( set__member(X, Vis) ->
-		relation__dfs_2(Rel, S1, Vis, DfsIn, DfsOut)
+	    ( set_bbbtree__member(X, VisIn) ->
+		relation__dfs_2(Rel, S1, VisIn, DfsIn, VisOut, DfsOut)
 	    ;
 		Dfs1 = [ X | DfsIn ],
 		relation__lookup_from(Rel, X, AdjSet),
 		set__to_sorted_list(AdjSet, AdjList),
-		set__insert(Vis, X, Vis1),
+		set_bbbtree__insert(VisIn, X, Vis1),
 		stack__push_list(S1, AdjList, S2),
-		relation__dfs_2(Rel, S2, Vis1, Dfs1, DfsOut)
+		relation__dfs_2(Rel, S2, Vis1, Dfs1, VisOut, DfsOut)
 	    )
 	;
-	    DfsOut = DfsIn
+	    DfsOut = DfsIn,
+	    VisOut = VisIn
 	).
 
 %------------------------------------------------------------------------------%
@@ -429,49 +458,46 @@ relation__reachable_from(Rel, Set0, Q0, Set) :-
 
 %------------------------------------------------------------------------------%
 
-	% relation__cliques takes a relation and returns
-	% a set of the strongly connected cliques.
+	% relation cliques
+	%	take a relation and return the set of strongly connected
+	%	components
+	%
+	%	Works using the following algorith
+	%		1. Using a DFS number all nodes in the order visited.
+	%		2. Reverse the relation ie R'
+	%		3. Starting from the highest numbered node do a DFS on
+	%		   R'.  All the nodes visited are a member of the cycle.
+	%		4. From the next highest non-visited node do a DFS on
+	%		   R' (not including visited nodes).  This is the next
+	%		   cycle.
+	%		5. Repeat step 4 until all nodes visited.
 relation__cliques(Rel, Cliques) :-
-	relation__effective_domain(Rel, DomSet),
-	set__to_sorted_list(DomSet, DomList),
-	set__init(Vis),
-	relation__c_dfs(Rel, DomList, Vis, _VisOut, [], Dfs),
+		% Effectively assigns a numbering to the nodes.
+	relation__dfsrev(Rel, DfsRev),
+	relation__inverse(Rel, RelInv),
 	set__init(Cliques0),
-	relation__inverse(Rel, InvRel),
-	relation__cliques_2(InvRel, Dfs, Vis, Cliques0, Cliques).
+	set_bbbtree__init(Visit),
+	relation__cliques_2(DfsRev, RelInv, Visit, Cliques0, Cliques).
 
-:- pred relation__cliques_2(relation(T), list(T), set(T),
-		set(set(T)), set(set(T))).
+:- pred relation__cliques_2(list(T), relation(T), set_bbbtree(T), 
+						set(set(T)), set(set(T))).
 :- mode relation__cliques_2(in, in, in, in, out) is det.
-relation__cliques_2(_Rel, [], _Vis, Cliques, Cliques).
-relation__cliques_2(Rel, [X | Xs], Vis, Cliques0, Cliques) :-
-	relation__dfs(Rel, X, FromX),
-	list__delete_elems(Xs, FromX, XsRest),
-	set__list_to_set(FromX, Clique0),
-	set__difference(Clique0, Vis, Clique),
-	set__insert(Cliques0, Clique, Cliques1),
-	set__union(Vis, Clique, Vis1),
-	relation__cliques_2(Rel, XsRest, Vis1, Cliques1, Cliques).
 
-:- pred relation__c_dfs(relation(T), list(T), set(T), set(T), list(T), list(T)).
-:- mode relation__c_dfs(in, in, in, out, in, out) is det.
-relation__c_dfs(_Rel, [], Vis, Vis, Dfs, Dfs).
-relation__c_dfs(Rel, [X | Xs], VisIn, VisOut, DfsIn, DfsOut) :-
-	( set__member(X, VisIn) ->
-	    VisIn = Vis1, DfsIn = Dfs1
-	;
-	    relation__c_dfs_2(Rel, X, VisIn, Vis1, DfsIn, Dfs1)
-	),
-	relation__c_dfs(Rel, Xs, Vis1, VisOut, Dfs1, DfsOut).
+relation__cliques_2([], _, _, Cliques, Cliques).
+relation__cliques_2([H | T0], RelInv, Visit0, Cliques0, Cliques) :-
+		% Do a DFS on R'
+	stack__init(S0),
+	stack__push(S0, H, S),
+	relation__dfs_2(RelInv, S, Visit0, [], Visit, StrongComponent),
 
-:- pred relation__c_dfs_2(relation(T), T, set(T), set(T), list(T), list(T)).
-:- mode relation__c_dfs_2(in, in, in, out, in, out) is det.
-relation__c_dfs_2(Rel, X, VisIn, VisOut, DfsIn, DfsOut) :-
-	set__insert(VisIn, X, Vis1),
-	relation__lookup_from(Rel, X, RelX),
-	set__to_sorted_list(RelX, RelXList),
-	relation__c_dfs(Rel, RelXList, Vis1, VisOut, DfsIn, Dfs1),
-	DfsOut = [X | Dfs1].
+		% Insert the cycle into the clique set.
+	set__list_to_set(StrongComponent, StrongComponentSet),
+	set__insert(Cliques0, StrongComponentSet, Cliques1),
+
+		% Delete all the visited elements, so first element of the
+		% list is the next highest number node.
+	list__delete_elems(T0, StrongComponent, T),
+	relation__cliques_2(T, RelInv, Visit, Cliques1, Cliques).
 
 %------------------------------------------------------------------------------%
 
@@ -567,6 +593,26 @@ relation__check_tsort(Rel, Vis, [X | Xs]) :-
 	set__intersect(Vis1, RX, BackPointers),
 	set__empty(BackPointers),
 	relation__check_tsort(Rel, Vis1, Xs).
+
+:- pred relation__c_dfs(relation(T), list(T), set(T), set(T), list(T), list(T)).
+:- mode relation__c_dfs(in, in, in, out, in, out) is det.
+relation__c_dfs(_Rel, [], Vis, Vis, Dfs, Dfs).
+relation__c_dfs(Rel, [X | Xs], VisIn, VisOut, DfsIn, DfsOut) :-
+        ( set__member(X, VisIn) ->
+            VisIn = Vis1, DfsIn = Dfs1
+        ;
+            relation__c_dfs_2(Rel, X, VisIn, Vis1, DfsIn, Dfs1)
+        ),
+        relation__c_dfs(Rel, Xs, Vis1, VisOut, Dfs1, DfsOut).
+
+:- pred relation__c_dfs_2(relation(T), T, set(T), set(T), list(T), list(T)).
+:- mode relation__c_dfs_2(in, in, in, out, in, out) is det.
+relation__c_dfs_2(Rel, X, VisIn, VisOut, DfsIn, DfsOut) :-
+        set__insert(VisIn, X, Vis1),
+        relation__lookup_from(Rel, X, RelX),
+        set__to_sorted_list(RelX, RelXList),
+        relation__c_dfs(Rel, RelXList, Vis1, VisOut, DfsIn, Dfs1),
+        DfsOut = [X | Dfs1].
 
 %------------------------------------------------------------------------------%
 
