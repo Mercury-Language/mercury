@@ -20,7 +20,7 @@ mdb> P
        HeadVar__1             	42
 mdb> 
        4:      4  4 CALL existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	42
 mdb> continue -a
@@ -29,7 +29,7 @@ mdb> continue -a
        6:      5  5 EXIT existential_type_classes.m:44 (from existential_type_classes.m:21)
                          pred existential_type_classes:int_foo/2-0 (det)
        7:      4  4 EXIT existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
        8:      3  3 EXIT (from existential_type_classes.m:68)
                          pred existential_type_classes:foo/2-0 (det)
        9:      2  2 EXIT existential_type_classes.m:68 (from existential_type_classes.m:51)
@@ -49,7 +49,7 @@ mdb> P
        HeadVar__1             	"blah"
 mdb> 
       12:      8  4 CALL existential_type_classes.m:25
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__string__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____string__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	"blah"
 mdb> continue -a
@@ -62,7 +62,7 @@ mdb> continue -a
       16:      9  5 EXIT existential_type_classes.m:47 (from existential_type_classes.m:25)
                          pred existential_type_classes:string_foo/2-0 (det)
       17:      8  4 EXIT existential_type_classes.m:25
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__string__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____string__arity0______existential_type_classes__foo_2/2-0 (det)
       18:      7  3 EXIT (from existential_type_classes.m:68)
                          pred existential_type_classes:foo/2-0 (det)
       19:      6  2 EXIT existential_type_classes.m:68 (from existential_type_classes.m:52)
@@ -86,7 +86,7 @@ mdb> P
        HeadVar__1             	43
 mdb> 
       24:     14  4 CALL existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	43
 mdb> continue -a
@@ -95,7 +95,7 @@ mdb> continue -a
       26:     15  5 EXIT existential_type_classes.m:44 (from existential_type_classes.m:21)
                          pred existential_type_classes:int_foo/2-0 (det)
       27:     14  4 EXIT existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
       28:     13  3 EXIT (from existential_type_classes.m:68)
                          pred existential_type_classes:foo/2-0 (det)
       29:     12  2 EXIT existential_type_classes.m:68 (from existential_type_classes.m:53)
@@ -123,7 +123,7 @@ mdb> P
        HeadVar__1             	43
 mdb> 
       36:     20  4 CALL existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	43
 mdb> continue -a
@@ -132,7 +132,7 @@ mdb> continue -a
       38:     21  5 EXIT existential_type_classes.m:44 (from existential_type_classes.m:21)
                          pred existential_type_classes:int_foo/2-0 (det)
       39:     20  4 EXIT existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
       40:     19  3 EXIT (from existential_type_classes.m:68)
                          pred existential_type_classes:foo/2-0 (det)
       41:     18  2 EXIT existential_type_classes.m:68 (from existential_type_classes.m:54)
@@ -160,7 +160,7 @@ mdb> P
        HeadVar__1             	45
 mdb> 
       48:     26  4 CALL existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	45
 mdb> continue -a
@@ -169,7 +169,7 @@ mdb> continue -a
       50:     27  5 EXIT existential_type_classes.m:44 (from existential_type_classes.m:21)
                          pred existential_type_classes:int_foo/2-0 (det)
       51:     26  4 EXIT existential_type_classes.m:21
-                         pred existential_type_classes:Introduced_pred_for_existential_type_classes__fooable__int__arity0______existential_type_classes__foo_2/2-0 (det)
+                         pred existential_type_classes:ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
       52:     25  3 EXIT (from existential_type_classes.m:68)
                          pred existential_type_classes:foo/2-0 (det)
       53:     24  2 EXIT existential_type_classes.m:68 (from existential_type_classes.m:55)

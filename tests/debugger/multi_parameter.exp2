@@ -14,7 +14,7 @@ mdb>
 mdb> print *
        HeadVar__1             	'z'
 mdb> 
-       4:      4  4 CALL pred multi_parameter:Introduced_pred_for_multi_parameter__m__character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
+       4:      4  4 CALL pred multi_parameter:ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
                          multi_parameter.m:20
 mdb> print *
        HeadVar__1             	'z'
@@ -30,7 +30,7 @@ mdb> print *
        Character              	'z'
        Int                    	122
 mdb> 
-       7:      4  4 EXIT pred multi_parameter:Introduced_pred_for_multi_parameter__m__character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
+       7:      4  4 EXIT pred multi_parameter:ClassMethod_for_multi_parameter__m____character__arity0__int__arity0______multi_parameter__a_2/2-0 (det)
                          multi_parameter.m:20
 mdb> print *
        HeadVar__1             	'z'
