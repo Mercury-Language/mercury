@@ -1472,19 +1472,8 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, HeadVarTypes, VarTypes)
 		OutputVars = []
 	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
 		map__lookup(VarTypes, Var, VarType),
-		map__lookup(HeadVarTypes, Var, HeadType),
 		(
-			\+ mode_to_arg_mode(ModuleInfo, Mode, VarType, top_in),
-			%
-			% if this argument is an existentially typed output
-			% that we need to box, then don't include it in the
-			% output_vars; ml_gen_box_existential_outputs
-			% will handle these outputs separately.
-			%
-			\+ (
-				HeadType = term__variable(_),
-				VarType = term__functor(_, _, _)
-			)
+			\+ mode_to_arg_mode(ModuleInfo, Mode, VarType, top_in)
 		->
 			OutputVars1 = select_output_vars(ModuleInfo,
 					Vars, Modes, HeadVarTypes, VarTypes),
