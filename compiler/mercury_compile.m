@@ -206,8 +206,6 @@ mercury_compile(Module) -->
 		Verbose, Stats, HLDS21),
 	    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly),
 	    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly),
-	    globals__io_lookup_bool_option(make_optimization_interface,
-							MakeOptInt),
 	    ( { TypeCheckOnly = yes } ->
 		[]
 	    ; { ErrorCheckOnly = yes } ->
@@ -215,12 +213,6 @@ mercury_compile(Module) -->
 		% the appropriate warnings
 		globals__io_set_option(optimize_unused_args, bool(no)),
 		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _)
-	    ; { MakeOptInt = yes } ->
-		% we may still want to run `unused_args' so that we get
-		% the appropriate warnings
-		globals__io_set_option(optimize_unused_args, bool(no)),
-		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _),
-		intermod__write_optfile(HLDS21)
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
