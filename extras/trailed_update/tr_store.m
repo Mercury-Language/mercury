@@ -97,8 +97,7 @@
 	% Given a reference to a term (Ref), and a value (Value),
 	% update the store so that the term referred to by Ref
 	% is replaced with Value.
-	% (Argument numbers start from zero).
-:- pred tr_store__set_ref_value(ref(T, S), ArgT, store(S), store(S)).
+:- pred tr_store__set_ref_value(ref(T, S), T, store(S), store(S)).
 :- mode tr_store__set_ref_value(in, mdi, mdi, muo) is det.
 
 	% Given a reference to a term, return that term.
