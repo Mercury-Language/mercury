@@ -1,12 +1,13 @@
-# COMPLEX_NUMBER_DIR specifies the location of the complex number library,
+# COMPLEX_NUMBERS_DIR specifies the location of the complex number library,
 # e.g. `/foo/bar/mercury-<version>/extra/complex_numbers'.
-COMPLEX_NUMBER_DIR = ..
+COMPLEX_NUMBERS_DIR = ..
 
 # The following stuff tells Mmake to use the complex number library
-VPATH = $(COMPLEX_NUMBER_DIR):$(MMAKE_VPATH)
-MCFLAGS = -I$(COMPLEX_NUMBER_DIR)
-MLFLAGS = -R$(COMPLEX_NUMBER_DIR) -L$(COMPLEX_NUMBER_DIR)
-MLLIBS = -lmercomplex
+VPATH = $(COMPLEX_NUMBERS_DIR):$(MMAKE_VPATH)
+MCFLAGS = -I$(COMPLEX_NUMBERS_DIR)
+MLFLAGS = -R$(COMPLEX_NUMBERS_DIR) -L$(COMPLEX_NUMBERS_DIR)
+MLLIBS = -lcomplex_numbers
+C2INITFLAGS = $(COMPLEX_NUMBERS_DIR)/complex_numbers.init
 
 MAIN_TARGET = fft
 depend : fft.depend

@@ -7,9 +7,11 @@
 :- pred main(state::di, state::uo) is det.
 
 :- implementation.
-:- import_module complex, float, imag.
-:- import_module complex_imag, imag_complex.
-:- import_module float_imag, imag_float.
+:- import_module float.
+:- import_module complex_numbers.
+:- import_module complex_numbers:complex, complex_numbers:imag.
+:- import_module complex_numbers:complex_imag, complex_numbers:imag_complex.
+:- import_module complex_numbers:float_imag, complex_numbers:imag_float.
 
 main -->
 	print("tests of (complex op complex)"), nl,

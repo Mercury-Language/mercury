@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,9 +15,9 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module complex_float.
+:- module complex_numbers:complex_float.
 :- interface.
-:- import_module complex, float.
+:- import_module complex_numbers:complex, float.
 
 	% addition
 :- func complex + float = complex.
@@ -50,7 +50,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module complex_float.
+:- import_module complex_numbers:complex_float.
 
 cmplx(XR, XI) + YR = cmplx(XR + YR, XI).
 cmplx(XR, XI) - YR = cmplx(XR - YR, XI).
