@@ -158,7 +158,7 @@ ln -s $root/stage2/doc stage3/doc
 ln -s $root/stage2/runtime stage3/runtime
 ln -s $root/stage2/scripts stage3/scripts
 ln -s $root/stage2/util stage3/util
-ln -s $root/stage2/profiler stage3/util
+ln -s $root/stage2/profiler stage3/profiler
 ln -s $root/stage2/Mmake* stage3
 ln -s $root/stage2/conf* stage3
 
