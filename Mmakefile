@@ -658,7 +658,7 @@ realclean_local: realclean_config realclean_docs
 
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs
-	rm -rf stage[1-3]
+	rm -rf stage[1-3] stage[1-3].*
 	+for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
