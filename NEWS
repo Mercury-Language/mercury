@@ -1,12 +1,35 @@
 NEWS for Mercury release 0.6
 ----------------------------
 
-* XXX higher_order
+* We now specialize calls to higher-order predicates within the same module
+  in the case when the higher-order arguments have known values.
+  This optimization is enabled by the `--optimize-higher-order' option.
+  (XXX Unfortunately, this optimization has some bugs, so it is not
+  enabled by default.)
 
-* XXX unused_args
+* We now specialize calls to predicates within the same module which have
+  unused arguments.  This often happens for polymorphic predicates, since
+  the compiler introduces type_info arguments which are often unused.
+  This optimization is enabled by the `--optimize-unused-args' option.
+  (XXX Unfortunately, this optimization has some bugs, so it is not
+  enabled by default.)
 
-* A new optimization, --optimize-dead-procs, removes unused procedures from
-  the generated code. XXX
+* There's a new option `--optimize-dead-proc' option to eliminate unused
+  procedures within a module.  This is useful even if the original source
+  code didn't contain any unused procedures, since inlining and specialization
+  can mean that the original version of a procedure is no longer used.
+
+* There's a new option `--split-c-files' which causes the compiler to put
+  each C function in its own C file, so that the linker can link in only
+  what is used, and a new Mmake target `foo.split' for
+  building a version of `foo' compiled with `--split-c-files'.
+  (`--split-c-files' has much the same effect as `--optimize-dead-proc',
+  except that it works globally, not just within a module.)
+  On platforms for which we don't support shared libraries, installing
+  a split version of the Mercury library fixes the problem of dumb Unix
+  linkers dragging in nearly the entire library even if most of it is
+  unused, and so reduces the size of a hello world program from >400k
+  to around 120k.
 
 * The getopt library is now more flexible. It can handle command line switches
   (such as -O2) that affect the values of many options, and it can handle
@@ -18,18 +41,20 @@ NEWS for Mercury release 0.6
 
 * Various other minor improvements:
 
-  - You can now use -O <n> to select an optimization level between 0 and 5.
+  - You can now use `-O <n>' to select an optimization level between 0 and 5.
 
-  - You can now use --optimize-space to select optimization for space, instead
+  - You can now use `--optimize-space' to select optimization for space, instead
     of optimization for time (which is the default).
 
-  - The code generator now emits better code for constructing deep
-    nonground terms.
+  - The code generator now emits better code for constructing deeply nested
+    terms.
 
-  - Value numbering now processes even code sequences containing several
-    heap allocations.
+  - The value numbering optimization now processes even code sequences
+    containing several heap allocations.
 
-  - --pred-value-number now works. If it is given, and value numbering notices
-    that a value is available from a location that is faster to access than the
-    one from which another code sequence retrieves the value, this other code
-    sequence will be reoptimized taking this into account.
+  - The `--pred-value-number' option now works. If it is given, and
+    value numbering notices that a value is available from a location
+    that is faster to access than the one from which another code
+    sequence retrieves the value, this other code sequence will be
+    reoptimized taking this into account.
+
