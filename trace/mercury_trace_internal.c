@@ -137,6 +137,7 @@ static	MR_bool			MR_echo_commands = MR_FALSE;
 /*
 ** The details of the source server, if any.
 */
+
 static	MR_Trace_Source_Server	MR_trace_source_server =
 	{ NULL, NULL, MR_FALSE };
 
@@ -145,6 +146,12 @@ static	MR_Trace_Source_Server	MR_trace_source_server =
 */
 
 static	MR_bool			MR_trace_internal_interacting = MR_FALSE;
+
+/*
+** The saved value of MR_io_tabling_enabled. We set that variable to MR_FALSE
+** when executing Mercury code from within the debugger, to avoid tabling I/O
+** primitives that aren't part of the user's program.
+*/
 
 static	MR_bool			MR_saved_io_tabling_enabled;
 
