@@ -77,15 +77,15 @@ operating systems or particular architectures, so first read the
 README file for your particular platform, if there is one:
 
 	README.AIX		RS/6000 systems running AIX
-	README.BSDI		The BSDI version of BSD Unix on Intel x86
 	README.FreeBSD		The FreeBSD version of BSD Unix on Intel x86
+	README.HPUX		HPPA systems running HPUX
 	README.IRIX-5		SGI IRIX version 5.x
 	README.Linux		Linux on Intel x86
 	README.Linux-Alpha	Linux on DEC Alpha
 	README.Linux-PPC	Linux on PowerPC
 	README.Linux-m68k	Linux on Motorola 68000
+	README.MacOS		Apple PowerPC Mac systems running MacOS 10
 	README.MS-Windows	Microsoft Windows
-	README.HPUX		HPPA systems running HPUX
 	README.OSF1		DEC Alpha systems running OSF/1 version 3.x
 	README.Solaris		Solaris (SunOS) on SPARC or Intel x86.
 
