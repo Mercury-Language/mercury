@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 The University of Melbourne.
+% Copyright (C) 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %
@@ -657,6 +657,8 @@ write_parser(Where, NT, Decl, _TT, InAtom, OutAtom, !IO) :-
 		true	
 	),
 	io__format("\
+:- import_module list.
+
 parse(Result, Toks0, Toks) :-
 	parse(Toks0, Toks, [0], [], Result).
 
