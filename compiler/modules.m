@@ -2094,7 +2094,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			% Also add the variable ILASM_KEYFLAG-<module> which
 			% is used to build the command line for ilasm.
 		( { Target = il, SignAssembly = yes } ->
-			{ prog_out__sym_name_to_string(ModuleName,
+			{ prog_out__sym_name_to_string(ModuleName, ".",
 					ModuleNameString) },
 			module_name_to_file_name(ModuleName, ".il",
 					no, IlFileName),

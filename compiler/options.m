@@ -122,6 +122,7 @@
 		;	dump_rl
 		;	dump_rl_bytecode
 		;	sign_assembly
+		;	separate_assemblies
 	% Language semantics options
 		;	reorder_conj
 		;	reorder_disj
@@ -578,6 +579,7 @@ option_defaults_2(aux_output_option, [
 	dump_rl			-	bool(no),
 	dump_rl_bytecode	-	bool(no),
 	sign_assembly		-	bool(no),
+	separate_assemblies	-	bool(no),
 	generate_schemas	-	bool(no)
 ]).
 option_defaults_2(language_semantics_option, [
@@ -1021,6 +1023,7 @@ long_option("dump-mlds",		dump_mlds).
 long_option("dump-rl",			dump_rl).
 long_option("dump-rl-bytecode",		dump_rl_bytecode).
 long_option("sign-assembly",		sign_assembly).
+long_option("separate-assemblies",	separate_assemblies).
 long_option("generate-schemas",		generate_schemas).
 
 % language semantics options
@@ -1953,7 +1956,11 @@ options_help_aux_output -->
 		"\tTo use assemblies created with this command all the Mercury",
 		"\tmodules must be compiled with this option enabled.",
 		"\tThis option is specific to the IL backend, and is likely",
-		"\tto be deprecated at a later date."
+		"\tto be deprecated at a later date.",
+
+		"--separate-assemblies",
+		"\tPlace sub-modules in separate assemblies.",
+		"\tThis option is specific to the IL backend."
 	]).
 
 :- pred options_help_semantics(io__state::di, io__state::uo) is det.
@@ -2122,7 +2129,7 @@ options_help_compilation_model -->
 XXX The following options are not documented,
 because they are currently not useful.
 The idea was for you to be able to use --profile-calls
-and --profile-time seperately, but that doesn't work
+and --profile-time separately, but that doesn't work
 because compiling with --profile-time instead of
 --profile-calls results in different code addresses, 
 so you can't combine the data from versions of

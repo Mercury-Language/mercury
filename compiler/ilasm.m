@@ -1428,17 +1428,26 @@ output_class_member_name(class_member_name(StructuredName, MemberName),
 	ilasm_info::out, io__state::di, io__state::uo) is det.
 output_structured_name(structured_name(Asm, DottedName, NestedClasses),
 		Info, Info) -->
+	globals__io_lookup_bool_option(separate_assemblies, SeparateAssemblies),
 	( { Asm = assembly(Assembly) },
 		maybe_output_quoted_assembly_name(Assembly, Info)
 	; { Asm = module(Module, Assembly) },
-		(
-			{ Info ^ current_assembly \= "" },
-			{ string__prefix(Module, Info ^ current_assembly) }
-		->
-			{ quote_id(Module ++ ".dll", QuotedModuleName) },
-			io__format("[.module %s]", [s(QuotedModuleName)])
-		;
-			maybe_output_quoted_assembly_name(Assembly, Info)
+		( { SeparateAssemblies = yes },
+			maybe_output_quoted_assembly_name(Module, Info)
+		; { SeparateAssemblies = no },
+			(
+				{ Info ^ current_assembly \= "" },
+				{ string__prefix(Module,
+						Info ^ current_assembly) }
+			->
+				{ quote_id(Module ++ ".dll",
+						QuotedModuleName) },
+				io__format("[.module %s]",
+						[s(QuotedModuleName)])
+			;
+				maybe_output_quoted_assembly_name(Assembly,
+						Info)
+			)
 		)
 	),
 	output_dotted_name(DottedName),

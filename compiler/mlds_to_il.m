@@ -206,7 +206,9 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	globals__io_lookup_bool_option(il_byref_tailcalls, ByRefTailCalls,
 			IO3, IO4),
 	globals__io_lookup_bool_option(sign_assembly, SignAssembly,
-			IO4, IO),
+			IO4, IO5),
+	globals__io_lookup_bool_option(separate_assemblies, SeparateAssemblies,
+			IO5, IO),
 
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
 			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls),
@@ -232,11 +234,15 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	;
 			% If the package name is qualified then the
 			% we have a sub-module which shouldn't be placed
-			% in its own assembly.
-		( PackageName = unqualified(_) ->
-			ThisAssembly = [assembly(AssemblyName)]
-		;
+			% in its own assembly provided we have
+			% --no-separate-assemblies
+		(
+			PackageName = qualified(_, _),
+			SeparateAssemblies = no
+		->
 			ThisAssembly = []
+		;
+			ThisAssembly = [assembly(AssemblyName)]
 		),
 
 			% XXX at a later date we should make foreign
@@ -250,7 +256,7 @@ generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 			ForeignCodeAssemblerRefs),
 		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
 	),
-	generate_extern_assembly(AssemblyName, SignAssembly,
+	generate_extern_assembly(AssemblyName, SignAssembly, SeparateAssemblies,
 			AssemblerRefs, ExternAssemblies),
 	Namespace = [namespace(NamespaceName, ILDecls)],
 	ILAsm = list__condense([ThisAssembly, ExternAssemblies, Namespace]).
@@ -3560,11 +3566,11 @@ il_system_namespace_name = "System".
 %-----------------------------------------------------------------------------
 
 	% Generate extern decls for any assembly we reference.
-:- pred mlds_to_il__generate_extern_assembly(string::in, bool::in,
+:- pred mlds_to_il__generate_extern_assembly(string::in, bool::in, bool::in,
 		mlds__imports::in, list(decl)::out) is det.
 
 mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
-		Imports, AllDecls) :-
+		SeparateAssemblies, Imports, AllDecls) :-
 	( SignAssembly = yes,
 		AsmDecls = mercury_strong_name_assembly_decls
 	; SignAssembly = no,
@@ -3576,13 +3582,19 @@ mlds_to_il__generate_extern_assembly(CurrentAssembly, SignAssembly,
 			Assembly \= "mercury",
 			Decl = [extern_assembly(Assembly, AsmDecls)]
 		; AsmName = module(ModuleName, Assembly),
-			( Assembly = CurrentAssembly ->
-				ModuleStr = ModuleName ++ ".dll",
-				Decl = [file(ModuleStr),
-					extern_module(ModuleStr)]
-			;
-				Assembly \= "mercury",
-				Decl = [extern_assembly(Assembly, AsmDecls)]
+			( SeparateAssemblies = no,
+				( Assembly = CurrentAssembly ->
+					ModuleStr = ModuleName ++ ".dll",
+					Decl = [file(ModuleStr),
+						extern_module(ModuleStr)]
+				;
+					Assembly \= "mercury",
+					Decl = [extern_assembly(Assembly,
+							AsmDecls)]
+				)
+			; SeparateAssemblies = yes,
+				Decl = [extern_assembly(ModuleName,
+						AsmDecls)]
 			)
 		)
 	),
