@@ -154,6 +154,11 @@ case $HOST in
 		CONFIG_OPTS=--enable-all-grades ;;
 	kryten)		
 		CONFIG_OPTS=--enable-all-grades ;;
+	taifun)		
+		# On taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from
+		# a file.
+		CONFIG_OPTS=--without-readline ;;
 	munta)		
 		# On munta, we need to disable the external debugger,
 		# because it uses sockets, and munta doesn't have
