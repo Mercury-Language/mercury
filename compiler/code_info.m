@@ -107,6 +107,11 @@
 :- pred code_info__flush_variable(var, code_tree, code_info, code_info).
 :- mode code_info__flush_variable(in, out, in, out) is det.
 
+		% Flush the expression cache for the generation
+		% of eager code.
+:- pred code_info__generate_eager_flush(code_tree, code_info, code_info).
+:- mode code_info__generate_eager_flush(out, in, out) is det.
+
 		% Enter the expression for a variable into the cache
 :- pred code_info__cache_expression(var, rval, code_info, code_info).
 :- mode code_info__cache_expression(in, in, in, out) is det.
@@ -324,12 +329,9 @@
 :- pred code_info__get_requests(unify_requests, code_info, code_info).
 :- mode code_info__get_requests(out, in, out) is det.
 
-:- pred code_info__generate_livevals(code_tree, code_info, code_info).
-:- mode code_info__generate_livevals(out, in, out) is det.
-
-:- pred code_info__generate_call_livevals(list(var), code_tree,
+:- pred code_info__generate_stack_livevals(bintree_set(lval),
 						code_info, code_info).
-:- mode code_info__generate_call_livevals(in, out, in, out) is det.
+:- mode code_info__generate_stack_livevals(out, in, out) is det.
 
 
 %---------------------------------------------------------------------------%
@@ -628,6 +630,13 @@ code_info__flush_exp_cache_2([Var|Vars], Code) -->
 	code_info__flush_exp_cache_2(Vars, Code0),
 	code_info__flush_variable(Var, Code1),
 	{ Code = tree(Code0, Code1) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_eager_flush(Code) -->
+		% There's probably a more efficient way to do
+		% this if we know we are flushing between every goal
+	code_info__flush_expression_cache(Code).
 
 %---------------------------------------------------------------------------%
 
@@ -2425,43 +2434,35 @@ code_info__current_store_map(Map) -->
 
 %---------------------------------------------------------------------------%
 
-	% XXX generate_livevals is broken
+	% XXX generate_livevals is less broken than it used to be
 
-code_info__generate_call_livevals(ArgVars, Code) -->
+code_info__generate_stack_livevals(LiveVals) -->
 	code_info__get_live_variables(LiveVars),
-	{ set__list_to_set(ArgVars, VarSet0) },
-	{ set__list_to_set(LiveVars, VarSet1) },
-	{ set__union(VarSet0, VarSet1, VarSet) },
-	{ set__to_sorted_list(VarSet, VarList) },
-	code_info__generate_call_livevals_2(VarList, VarSet0, LiveVals),
-	{ Code = node([livevals(LiveVals) - ""]) }.
+	{ bintree_set__init(LiveVals0) },
+	code_info__generate_stack_livevals_2(LiveVars, LiveVals0, LiveVals).
 
-:- pred code_info__generate_call_livevals_2(list(var), set(var),
+:- pred code_info__generate_stack_livevals_2(list(var), bintree_set(lval),
 					bintree_set(lval),
 						code_info, code_info).
-:- mode code_info__generate_call_livevals_2(in, in, out, in, out) is det.
+:- mode code_info__generate_stack_livevals_2(in, in, out, in, out) is det.
 
-code_info__generate_call_livevals_2([], _Args, Vals) -->
-	{ bintree_set__init(Vals) }.
-code_info__generate_call_livevals_2([V|Vs], Args, Vals) -->
-	code_info__generate_call_livevals_2(Vs, Args, Vals1),
+code_info__generate_stack_livevals_2([], Vals, Vals) --> [].
+code_info__generate_stack_livevals_2([V|Vs], Vals0, Vals) -->
 	(
 		code_info__get_variables(Variables),
-		{ map__search(Variables, V, evaluated(Vals0)) }
+		{ map__search(Variables, V, evaluated(ValsSet)) }
 	->
-		(
-			{ set__member(V, Args) }
-		->
-			{ set__to_sorted_list(Vals0, ValsList) },
-			{ bintree_set__sorted_list_to_set(ValsList, Vals2) }
-		;
-			{ set__to_sorted_list(Vals0, ValsList) },
-			{ code_info__filter_out_registers(ValsList, Vals2) }
-		),
-		{ bintree_set__union(Vals1, Vals2, Vals) }
+			% When 'set' becomes 'bintree_set' (RSN)
+			% this code should be modified to make better
+			% use of the accumulator.
+
+		{ set__to_sorted_list(ValsSet, ValsList) },
+		{ code_info__filter_out_registers(ValsList, Vals1) },
+		{ bintree_set__union(Vals0, Vals1, Vals2) }
 	;
-		{ Vals = Vals1 }
-	).
+		{ Vals2 = Vals0 }
+	),
+	code_info__generate_stack_livevals_2(Vs, Vals2, Vals).
 
 %---------------------------------------------------------------------------%
 
@@ -2481,6 +2482,9 @@ code_info__filter_out_registers([V|Vs], Vals) :-
 	).
 
 %---------------------------------------------------------------------------%
+
+:- pred code_info__generate_livevals(code_tree, code_info, code_info).
+:- mode code_info__generate_livevals(out, in, out) is det.
 
 code_info__generate_livevals(Code) -->
 	code_info__get_live_variables(LiveVars),

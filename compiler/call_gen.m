@@ -42,7 +42,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require.
+:- import_module tree, list, map, std_util, require, bintree_set.
 :- import_module prog_io, arg_info, type_util, unify_proc.
 
 	% To generate a call to a deterministic predicate, first
@@ -61,8 +61,8 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
-	{ call_gen__input_args(Args, InputArguments) },
-	code_info__generate_call_livevals(InputArguments, CodeC0),
+	{ call_gen__input_args(ArgInfo, InputArguments) },
+	call_gen__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) - "branch to det procedure",
@@ -120,8 +120,8 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
-	{ call_gen__input_args(Args, InputArguments) },
-	code_info__generate_call_livevals(InputArguments, CodeC0),
+	{ call_gen__input_args(ArgInfo, InputArguments) },
+	call_gen__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) -
@@ -148,8 +148,8 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__setup_call(Args, Arguments, caller, CodeB),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
-	{ call_gen__input_args(Args, InputArguments) },
-	code_info__generate_call_livevals(InputArguments, CodeC0),
+	{ call_gen__input_args(ArgInfo, InputArguments) },
+	call_gen__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_entry_label(ModuleInfo, PredId, ModeId, Address) },
 	{ CodeC1 = node([
 		call(Address, label(ReturnLabel)) -
@@ -280,8 +280,8 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	code_info__request_unify(VarTypeId, UniMode),
 	code_info__get_requests(Requests),
 	{ unify_proc__lookup_num(Requests, VarTypeId, UniMode, ModeNum) },
-	{ call_gen__input_args(Args, InputArguments) },
-	code_info__generate_call_livevals(InputArguments, CodeC0),
+	{ call_gen__input_args(ArgInfo, InputArguments) },
+	call_gen__generate_call_livevals(InputArguments, CodeC0),
 	{ code_util__make_uni_label(ModuleInfo, VarTypeId, ModeNum, UniLabel) },
 	{ Address = label(local(UniLabel)) },
 	{ CodeC1 = node([
@@ -307,19 +307,42 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__input_args(assoc_list(var, arg_info), list(var)).
+:- pred call_gen__input_args(list(arg_info), list(arg_loc)).
 :- mode call_gen__input_args(in, out) is det.
 
 call_gen__input_args([], []).
-call_gen__input_args([V - arg_info(_Loc, Mode)|Args], Vs) :-
+call_gen__input_args([arg_info(Loc, Mode)|Args], Vs) :-
 	(
 		Mode = top_in
 	->
-		Vs = [V|Vs0]
+		Vs = [Loc|Vs0]
 	;
 		Vs = Vs0
 	),
 	call_gen__input_args(Args, Vs0).
+
+%---------------------------------------------------------------------------%
+
+:- pred call_gen__generate_call_livevals(list(arg_loc), code_tree,
+						code_info, code_info).
+:- mode call_gen__generate_call_livevals(in, out, in, out) is det.
+
+call_gen__generate_call_livevals(InputArgs, Code) -->
+	code_info__generate_stack_livevals(LiveVals0),
+	{ call_gen__insert_arg_livevals(InputArgs, LiveVals0, LiveVals) },
+	{ Code = node([
+		livevals(LiveVals) - ""
+	]) }.
+
+:- pred call_gen__insert_arg_livevals(list(arg_loc),
+					bintree_set(lval), bintree_set(lval)).
+:- mode call_gen__insert_arg_livevals(in, in, out) is det.
+
+call_gen__insert_arg_livevals([], LiveVals, LiveVals).
+call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
+	code_util__arg_loc_to_register(L, R),
+	bintree_set__insert(LiveVals0, reg(R), LiveVals1),
+	call_gen__insert_arg_livevals(As, LiveVals1, LiveVals).
 
 %---------------------------------------------------------------------------%
 
