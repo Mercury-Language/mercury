@@ -2333,25 +2333,25 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	% Note that if this pass is done, it will also invokes dead_proc_elim
 	% (XXX which means dead_proc_elim may get done twice).
 	mercury_compile__maybe_magic(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "47", "magic", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, "46", "magic", !IO),
 
 	mercury_compile__maybe_eliminate_dead_procs(Verbose, Stats, !HLDS,
 		!IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "48", "dead_procs", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, "47", "dead_procs", !IO),
 
 	% The term size profiling transformation should be after all
 	% transformations that construct terms of non-zero size. (Deep
 	% profiling does not construct non-zero size terms.)
 	mercury_compile__maybe_term_size_prof(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "49", "term_size_prof", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, "48", "term_size_prof", !IO),
 
 	% Deep profiling transformation should be done late in the piece
 	% since it munges the code a fair amount and introduces strange
 	% disjunctions that might confuse other hlds->hlds transformations.
 	mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, "50", "deep_profiling", !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, "49", "deep_profiling", !IO),
 
-	mercury_compile__maybe_dump_hlds(!.HLDS, "51", "middle_pass", !IO).
+	mercury_compile__maybe_dump_hlds(!.HLDS, "50", "middle_pass", !IO).
 
 %-----------------------------------------------------------------------------%
 
