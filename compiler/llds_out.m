@@ -1832,7 +1832,9 @@ llds_out__float_compare_op(float_gt, ">").
 :- mode output_rval_const(in, di, uo) is det.
 
 output_rval_const(int_const(N)) -->
-	io__write_int(N).
+	io__write_string("((Integer) "),
+	io__write_int(N),
+	io__write_string(")").
 output_rval_const(float_const(Float)) -->
 	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
 	globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms),
