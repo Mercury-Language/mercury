@@ -20,10 +20,10 @@
 :- type bar == (func(int) = int).
 :- inst bar = (func(in) = out is det).
 
-:- func foo(bar, int) = int is det.
+:- func foo(bar, int) = int.
 :- mode foo(in(bar), in) = out is det.
 
-:- func next(int) = int is det.
+:- func next(int) = int. 
 
 :- implementation.
 
