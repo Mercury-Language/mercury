@@ -1132,9 +1132,9 @@ polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 	{ polymorphism__c_code_add_typeinfos(
 			PredTypeVars, PredTypeVarSet, ExistQVars, 
 			ArgModes0, ArgModes1) },
-	{ ArgInfo1 = pragma_c_code_arg_info(ArgInstTable, ArgModes1) },
 	{ polymorphism__c_code_add_typeclass_infos(
-			UnivCs, ExistCs, PredTypeVarSet, ArgInfo1, ArgInfo) },
+			UnivCs, ExistCs, PredTypeVarSet, ArgModes1, ArgModes) },
+	{ ArgInfo = pragma_c_code_arg_info(ArgInstTable, ArgModes) },
 
 	%
 	% insert type_info/typeclass_info types for all the inserted 
