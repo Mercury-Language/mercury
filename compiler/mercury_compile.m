@@ -3272,9 +3272,7 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	( { NestedFuncs = no } ->
 		maybe_write_string(Verbose,
 			"% Flattening nested functions...\n"),
-		% XXX this version of ml_elim_nested doesn't exist
-		% ml_elim_nested(hoist_nested_funcs, MLDS20, MLDS30),
-		ml_elim_nested(MLDS20, MLDS30),
+		ml_elim_nested(hoist_nested_funcs, MLDS20, MLDS30),
 		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ MLDS30 = MLDS20 }
@@ -3282,7 +3280,6 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS30, "30", "nested_funcs"),
 
-	/* XXX the version of ml_elim_nested doesn't exist.
 	globals__io_get_gc_method(GC),
 	( { GC = accurate } ->
 		maybe_write_string(Verbose,
@@ -3294,8 +3291,6 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS35, "35", "gc_frames"),
-	*/
-	{ MLDS35 = MLDS30 },
 
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->

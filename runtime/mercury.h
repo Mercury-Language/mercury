@@ -273,10 +273,28 @@ typedef struct MR_FO_PseudoTypeInfo_Struct18 MR_FO_PseudoTypeInfo_Struct18;
 typedef struct MR_FO_PseudoTypeInfo_Struct19 MR_FO_PseudoTypeInfo_Struct19;
 typedef struct MR_FO_PseudoTypeInfo_Struct20 MR_FO_PseudoTypeInfo_Struct20;
 
+/* The chain of stack frames, used for accurate GC. */
+struct MR_StackChain {
+	struct MR_StackChain *prev;
+	void (*trace)(void *this_frame);
+};
+
 /*---------------------------------------------------------------------------*/
 /*
 ** Declarations of contants and variables
 */
+
+#ifdef NATIVE_GC
+  /*
+  ** This points to the start of the MR_StackChain frame list.
+  ** XXX Using a global variable for this is not thread-safe.
+  **     We should probably use a GNU C global register variable.
+  */
+  #ifdef MR_THREAD_SAFE
+    #error "Sorry, not supported: --high-level-code --gc accurate --thread-safe"
+  #endif
+  extern void *mercury__private_builtin__stack_chain;
+#endif
 
 /* declare MR_TypeCtorInfo_Structs for the builtin types */
 extern const MR_TypeCtorInfo_Struct
