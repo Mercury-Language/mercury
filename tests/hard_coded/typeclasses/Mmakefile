@@ -9,10 +9,13 @@ include ../../Mmake.common
 PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
+	existential_type_classes \
 	ho_map \
 	implied_instance \
 	implied_instance_poly \
 	inference_test \
+	inference_test_2 \
+	lambda_multi_constraint_same_tvar \
 	multi_constraint_diff_tvar \
 	multi_constraint_same_tvar \
 	multi_parameter \
@@ -34,6 +37,9 @@ PROGS=	\
 
 
 MCFLAGS-inference_test = --infer-all
+MCFLAGS-inference_test_2 = --infer-all
+MCFLAGS-existential_type_classes = --infer-all
+MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
 
 #-----------------------------------------------------------------------------#
 

@@ -159,9 +159,11 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 							% introduced pred
 							% should be given.
 		arity,					% Arity of the method.
+		existq_tvars,				% Existentially quant.
+							% type variables
 		list(type),				% Expected types of
 							% arguments.
-		list(class_constraint),			% Constraints from
+		class_constraints,			% Constraints from
 							% class method.
 		list(pair(list(mode), determinism)),	% Modes and 
 							% determinisms of the
@@ -197,7 +199,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 			)),
 		ProcIds),
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-	pred_info_arg_types(PredInfo, ArgTypeVars, ArgTypes),
+	pred_info_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
 	pred_info_get_class_context(PredInfo, ClassContext0),
 		% The first constraint in the class context of a class method
 		% is always the constraint for the class of which it is
@@ -205,9 +207,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		% declaration, we don't check that constraint... the instance
 		% declaration itself satisfies it!
 	(
-		ClassContext0 = [_|Tail]
+		ClassContext0 = constraints([_|OtherUnivCs], ExistCs)
 	->
-		ClassContext = Tail
+		UnivCs = OtherUnivCs,
+		ClassContext = constraints(UnivCs, ExistCs)
 	;
 		error("check_instance_pred: no constraint on class method")
 	),
@@ -243,15 +246,15 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		InstanceTypes, PredName),
 	
 	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
-		ArgTypes, ClassContext, ArgModes, Errors0, ArgTypeVars,
-		Status, PredOrFunc, Context),
+		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
+		ArgTypeVars, Status, PredOrFunc, Context),
 
 	check_instance_pred_procs(ClassVars, MethodName,
 		InstanceDefn0, InstanceDefn, Info0, Info),
 
 	Info = instance_method_info(ModuleInfo, _PredName, _PredArity, 
-		_ArgTypes, _ClassContext, _ArgModes, Errors, _ArgTypeVars,
-		_Status, _PredOrFunc, _Context).
+		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
+		_ArgTypeVars, _Status, _PredOrFunc, _Context).
 
 :- pred check_instance_pred_procs(list(var), sym_name,
 	hlds_instance_defn, hlds_instance_defn, 
@@ -264,8 +267,8 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 				InstanceTypes, InstanceInterface,
 				MaybeInstancePredProcs, InstanceVarSet, F),
 	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
-		ArgTypes, ClassContext, ArgModes, Errors0, ArgTypeVars,
-		Status, PredOrFunc, Context),
+		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
+		ArgTypeVars, Status, PredOrFunc, Context),
 	get_matching_instance_names(InstanceInterface, PredOrFunc, MethodName,
 		PredArity, InstanceNames),
 	(
@@ -311,8 +314,8 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 			NewError),
 		Errors = [NewError|Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
-			ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
-			Status, PredOrFunc, Context)
+			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
+			ArgTypeVars, Status, PredOrFunc, Context)
 	;
 			 % another kind of error
 			 % XXX still room for improvement in the error message
@@ -327,8 +330,8 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 			NewError),
 		Errors = [NewError|Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
-			ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
-			Status, PredOrFunc, Context)
+			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
+			ArgTypeVars, Status, PredOrFunc, Context)
 	).
 
 :- pred get_matching_instance_names(list(instance_method), pred_or_func,
@@ -375,15 +378,15 @@ produce_auxiliary_procs(ClassVars,
 		InstanceProcIds, Info0, Info) :-
 
 	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
-		ArgTypes0, ClassContext0, ArgModes, Errors, ArgTypeVars0,
-		Status, PredOrFunc, Context),
+		ExistQVars0, ArgTypes0, ClassContext0, ArgModes, Errors,
+		ArgTypeVars0, Status, PredOrFunc, Context),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
 		InstanceTypes),
-	apply_subst_to_constraints(RenameSubst, InstanceConstraints0,
+	apply_subst_to_constraint_list(RenameSubst, InstanceConstraints0,
 		InstanceConstraints),
 
 		% Work out what the type variables are bound to for this
@@ -394,18 +397,21 @@ produce_auxiliary_procs(ClassVars,
 
 		% Add the constraints from the instance declaration to the 
 		% constraints from the class method. This allows an instance
-		% method to have constraints on it which are part of the
+		% method to have constraints on it which are not part of the
 		% instance declaration as a whole.
-	list__append(InstanceConstraints, ClassContext1, ClassContext2),
+	ClassContext1 = constraints(UnivConstraints1, ExistConstraints),
+	list__append(InstanceConstraints, UnivConstraints1, UnivConstraints),
+	ClassContext2 = constraints(UnivConstraints, ExistConstraints),
 
 		% Get rid of any unwanted type variables
-	term__vars_list(ArgTypes1, VarsToKeep),
+	term__vars_list(ArgTypes1, VarsToKeep0),
+	list__sort_and_remove_dups(VarsToKeep0, VarsToKeep),
 	varset__squash(ArgTypeVars1, VarsToKeep, ArgTypeVars, SquashSubst),
 	term__apply_variable_renaming_to_list(ArgTypes1, SquashSubst, 
 		ArgTypes),
-
-	list__map(apply_variable_renaming_to_constraint(SquashSubst),
+	apply_variable_renaming_to_constraints(SquashSubst,
 		ClassContext2, ClassContext),
+	apply_partial_map_to_list(ExistQVars0, SquashSubst, ExistQVars),
 
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.
@@ -425,9 +431,8 @@ produce_auxiliary_procs(ClassVars,
 	DummyClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
 		DummyClause),
 
-
 	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
-		ArgTypes, Cond, Context, DummyClausesInfo, Status,
+		ExistQVars, ArgTypes, Cond, Context, DummyClausesInfo, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs,
 		PredInfo0),
 
@@ -481,8 +486,16 @@ produce_auxiliary_procs(ClassVars,
 		ModuleInfo),
 
 	Info = instance_method_info(ModuleInfo, PredName, PredArity,
-		ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
-		Status, PredOrFunc, Context).
+		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
+		ArgTypeVars, Status, PredOrFunc, Context).
+
+:- pred apply_substitution_to_var_list(list(var), map(var, term), list(var)).
+:- mode apply_substitution_to_var_list(in, in, out) is det.
+
+apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
+	term__var_list_to_term_list(Vars0, Terms0),
+	term__apply_substitution_to_list(Terms0, RenameSubst, Terms),
+	term__term_list_to_var_list(Terms, Vars).
 
 %---------------------------------------------------------------------------%
 	% Make the name of the introduced pred used to check a particular
@@ -534,7 +547,7 @@ check_superclass_conformance(SuperClasses0, ClassVars0, ClassVarSet,
 		Subst),
 
 		% Make the constraints in terms of the instance variables
-	apply_subst_to_constraints(Subst, SuperClasses0, SuperClasses),
+	apply_subst_to_constraint_list(Subst, SuperClasses0, SuperClasses),
 
 		% Now handle the class variables
 	map__apply_to_list(ClassVars0, Subst, ClassVarTerms),

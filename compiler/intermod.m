@@ -908,20 +908,20 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
-	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
+	{ pred_info_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
 	(
 		{ PredOrFunc = predicate },
-		mercury_output_pred_type(TVarSet, qualified(Module, Name),
-					ArgTypes, no, Purity, ClassContext,
-					Context)
+		mercury_output_pred_type(TVarSet, ExistQVars,
+			qualified(Module, Name), ArgTypes, no, Purity,
+			ClassContext, Context)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
-		mercury_output_func_type(TVarSet,
+		mercury_output_func_type(TVarSet, ExistQVars,
 			qualified(Module, Name), FuncArgTypes,
 			FuncRetType, no, Purity, ClassContext, Context)
 	),
@@ -977,7 +977,7 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 intermod__write_preds(_, []) --> [].
 intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_arg_types(PredInfo, _, ArgTypes) },
+	{ pred_info_arg_types(PredInfo, ArgTypes) },
 	{ list__length(ArgTypes, Arity) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },

@@ -138,8 +138,8 @@ collect_mq_info_2(mode_defn(_, ModeDefn, _), Info0, Info) :-
 	add_mode_defn(ModeDefn, Info0, Info).
 collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
-collect_mq_info_2(pred(_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(func(_,_,_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred(_,_,_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(func(_,_,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_mode(_,_,_,_,_), Info, Info).
 collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
@@ -281,8 +281,10 @@ module_qualify_item(module_defn(A, ModuleDefn) - Context,
 	{ update_import_status(ModuleDefn, Info0, Info, Continue) }.
 
 module_qualify_item(
-		pred(A, SymName, TypesAndModes0, D,E,F, Constraints0) - Context,
-		pred(A, SymName, TypesAndModes, D,E,F, Constraints) - Context,
+		pred(A, B, SymName, TypesAndModes0, C, D, E,
+			Constraints0) - Context,
+		pred(A, B, SymName, TypesAndModes,  C, D, E,
+			Constraints) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
 	{ mq_info_set_error_context(Info0, pred(SymName - Arity) - Context,
@@ -291,9 +293,9 @@ module_qualify_item(
 	qualify_class_constraints(Constraints0, Constraints, Info2, Info).
 
 module_qualify_item(
-		func(A,SymName, TypesAndModes0, TypeAndMode0, D, E, F
-			,Constraints0) - Context,
-		func(A, SymName, TypesAndModes, TypeAndMode, D, E, F,
+		func(A, B, SymName, TypesAndModes0, TypeAndMode0, F, G, H,
+			Constraints0) - Context,
+		func(A, B, SymName, TypesAndModes, TypeAndMode, F, G, H,
 			Constraints) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
@@ -334,7 +336,7 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 	{ list__length(Vars, Arity) },
 	{ Id = Name - Arity },
 	{ mq_info_set_error_context(Info0, class(Id) - Context, Info1) },
-	qualify_class_constraints(Constraints0, Constraints, Info1, Info2),
+	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_interface(Interface0, Interface, Info2, Info).
 
 module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
@@ -347,7 +349,7 @@ module_qualify_item(instance(Constraints0, Name0, Types0, Interface0, VarSet) -
 	{ mq_info_set_error_context(Info0, instance(Id) - Context, Info1) },
 		% We don't qualify the implementation yet, since that requires
 		% us to resolve overloading.
-	qualify_class_constraints(Constraints0, Constraints, Info1, Info2),
+	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_name(Id, Name - _, Info2, Info3),
 	qualify_type_list(Types0, Types, Info3, Info),
 	{ qualify_instance_interface(Name, Interface0, Interface) }.
@@ -415,10 +417,12 @@ qualify_type_defn(abstract_type(SymName, Params),
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 				
 qualify_constructors([], [], Info, Info) --> [].
-qualify_constructors([SymName - Args0 | Ctors0], [SymName - Args | Ctors],
-					Info0, Info) -->
+qualify_constructors([Ctor0 | Ctors0], [Ctor | Ctors], Info0, Info) -->
+	{ Ctor0 = ctor(ExistQVars, Constraints0, SymName, Args0) },
+	{ Ctor = ctor(ExistQVars, Constraints, SymName, Args) },
 	qualify_constructor_arg_list(Args0, Args, Info0, Info1),
-	qualify_constructors(Ctors0, Ctors, Info1, Info).
+	qualify_constructors(Ctors0, Ctors, Info1, Info2),
+	qualify_class_constraint_list(Constraints0, Constraints, Info2, Info).
 
 	% Qualify the inst parameters of an inst definition.
 :- pred qualify_inst_defn(inst_defn::in, inst_defn::out, mq_info::in,
@@ -700,14 +704,23 @@ qualify_pragma_vars([pragma_var(Var, Name, Mode0) | PragmaVars0],
 	qualify_mode(Mode0, Mode, Info0, Info1),
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info1, Info).
 
-:- pred qualify_class_constraints(list(class_constraint)::in,
+:- pred qualify_class_constraints(class_constraints::in,
+	class_constraints::out, mq_info::in, mq_info::out, io__state::di,
+	io__state::uo) is det. 
+
+qualify_class_constraints(constraints(UnivCs0, ExistCs0),
+			constraints(UnivCs, ExistCs), MQInfo0, MQInfo) -->
+	qualify_class_constraint_list(UnivCs0, UnivCs, MQInfo0, MQInfo1),
+	qualify_class_constraint_list(ExistCs0, ExistCs, MQInfo1, MQInfo).
+
+:- pred qualify_class_constraint_list(list(class_constraint)::in,
 	list(class_constraint)::out, mq_info::in, mq_info::out, io__state::di,
 	io__state::uo) is det. 
 
-qualify_class_constraints([], [], MQInfo, MQInfo) --> [].
-qualify_class_constraints([C0|C0s], [C|Cs], MQInfo0, MQInfo) -->
+qualify_class_constraint_list([], [], MQInfo, MQInfo) --> [].
+qualify_class_constraint_list([C0|C0s], [C|Cs], MQInfo0, MQInfo) -->
 	qualify_class_constraint(C0, C, MQInfo0, MQInfo1),
-	qualify_class_constraints(C0s, Cs, MQInfo1, MQInfo).
+	qualify_class_constraint_list(C0s, Cs, MQInfo1, MQInfo).
 
 :- pred qualify_class_constraint(class_constraint::in, class_constraint::out,
 	mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
@@ -741,9 +754,9 @@ qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
 	% There is no need to qualify the method name, since that is
 	% done when the item is parsed.
 qualify_class_method(
-		pred(Varset, Name, TypesAndModes0, MaybeDet, Cond,
+		pred(Varset, ExistQVars, Name, TypesAndModes0, MaybeDet, Cond,
 			ClassContext0, Context), 
-		pred(Varset, Name, TypesAndModes, MaybeDet, Cond, 
+		pred(Varset, ExistQVars, Name, TypesAndModes, MaybeDet, Cond, 
 			ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
@@ -752,10 +765,10 @@ qualify_class_method(
 	qualify_class_constraints(ClassContext0, ClassContext, 
 		MQInfo1, MQInfo).
 qualify_class_method(
-		func(Varset, Name, TypesAndModes0, ReturnMode0, MaybeDet, Cond,
-			ClassContext0, Context), 
-		func(Varset, Name, TypesAndModes, ReturnMode, MaybeDet, Cond,
-			ClassContext, Context), 
+		func(Varset, ExistQVars, Name, TypesAndModes0, ReturnMode0,
+			MaybeDet, Cond, ClassContext0, Context), 
+		func(Varset, ExistQVars, Name, TypesAndModes, ReturnMode,
+			MaybeDet, Cond, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 

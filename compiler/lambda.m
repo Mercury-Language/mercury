@@ -30,9 +30,38 @@
 %	'__LambdaGoal__1'(X, Y) :- q(Y, X).
 %
 %
+% Note that the mode checker requires that a lambda expression
+% not bind any of the non-local variables such as `X' in the above
+% example.
 %
-%	Note: Support for lambda expressions which involve class constraints
-%	      is not yet complete.
+% Similarly, a lambda expression may not bind any of the type_infos for
+% those variables; that is, none of the non-local variables
+% should be existentially typed (from the perspective of the lambda goal).
+% When we run the polymorphism.m pass before mode checking, this will
+% be checked by mode analysis.  XXX But currently it is not checked.
+%
+% It might be OK to allow the parameters of the lambda goal to be
+% existentially typed, but currently that is not supported.
+% One difficulty is that it's hard to determine here which type variables
+% should be existentially quantified.  The information is readily
+% available during type inference, and really type inference should save
+% that information in a field in the lambda_goal struct, but currently it
+% doesn't; it saves the head_type_params field in the pred_info, which
+% tells us which type variables where produced by the body, but for
+% any given lambda goal we don't know whether the type variable was
+% produced by something outside the lambda goal or by something inside
+% the lambda goal (only in the latter case should it be existentially
+% quantified).
+% The other difficulty is that taking the address of a predicate with an
+% existential type would require second-order polymorphism:  for a predicate
+% declared as `:- some [T] pred p(int, T)', the expression `p' must have
+% type `some [T] pred(int, T)', which is quite a different thing to saying
+% that there is some type `T' for which `p' has type `pred(int, T)' --
+% we don't know what `T' is until the predicate is called, and it might
+% be different for each call.
+% Currently we don't support second-order polymorphism, so we
+% don't support existentially typed lambda expressions either.
+% 
 
 %-----------------------------------------------------------------------------%
 
@@ -48,7 +77,7 @@
 
 :- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
 		determinism, list(var), set(var), hlds_goal, unification,
-		varset, map(var, type), list(class_constraint), tvarset,
+		varset, map(var, type), class_constraints, tvarset,
 		map(tvar, type_info_locn), map(class_constraint, var),
 		module_info, unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
@@ -68,7 +97,7 @@
 		lambda_info(
 			varset,			% from the proc_info
 			map(var, type),		% from the proc_info
-			list(class_constraint),	% from the pred_info
+			class_constraints,	% from the pred_info
 			tvarset,		% from the proc_info
 			map(tvar, type_info_locn),	
 						% from the proc_info 
@@ -241,8 +270,11 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 		Unification0, Functor, Unification, LambdaInfo0, LambdaInfo) :-
 	LambdaInfo0 = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
 			TVarMap, TCVarMap, POF, PredName, ModuleInfo0),
-	goal_util__extra_nonlocal_typeinfos(TVarMap, VarTypes,
-		LambdaGoal, ExtraTypeInfos),
+	% XXX existentially typed lambda expressions are not yet supported
+	% (see the documentation at top of this file)
+	ExistQVars = [],
+	goal_util__extra_nonlocal_typeinfos(TVarMap, TCVarMap, VarTypes,
+		ExistQVars, LambdaGoal, ExtraTypeInfos),
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, Modes, Det,
 		OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
 		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
@@ -356,8 +388,11 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			PredOrFunc, OrigPredName, OrigLine,
 			LambdaCount, PredName),
 		goal_info_get_context(LambdaGoalInfo, LambdaContext),
-		% the TVarSet is a superset of what it really ought be,
-		% but that shouldn't matter
+		% The TVarSet is a superset of what it really ought be,
+		% but that shouldn't matter.
+		% XXX existentially typed lambda expressions are not
+		% yet supported (see the documentation at top of this file)
+		ExistQVars = [],
 		lambda__uni_modes_to_modes(UniModes1, OrigArgModes),
 
 		% We have to jump through hoops to work out the mode
@@ -405,9 +440,9 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 			TVarMap, TCVarMap, ArgsMethod, ProcInfo),
 
 		init_markers(Markers),
-		pred_info_create(ModuleName, PredName, TVarSet, ArgTypes,
-			true, LambdaContext, local, Markers, PredOrFunc,
-			Constraints, ProcInfo, ProcId, PredInfo),
+		pred_info_create(ModuleName, PredName, TVarSet, ExistQVars,
+			ArgTypes, true, LambdaContext, local, Markers,
+			PredOrFunc, Constraints, ProcInfo, ProcId, PredInfo),
 
 		% save the new predicate in the predicate table
 

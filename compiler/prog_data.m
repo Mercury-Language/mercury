@@ -51,16 +51,20 @@
 	; 	mode_defn(varset, mode_defn, condition)
 	; 	module_defn(varset, module_defn)
 
-	; 	pred(varset, sym_name, list(type_and_mode),
+	; 	pred(tvarset, existq_tvars, sym_name, list(type_and_mode),
 			maybe(determinism), condition, purity,
-			list(class_constraint))
-		%     VarNames, PredName, ArgTypes, Deterministicness, Cond
+			class_constraints)
+		%       VarNames, ExistentiallyQuantifiedTypeVars,
+		%	PredName, ArgTypes, Deterministicness, Cond,
+		%	Purity, TypeClassContext
 
-	; 	func(varset, sym_name, list(type_and_mode), type_and_mode,
-			maybe(determinism), condition, purity,
-			list(class_constraint))
-		%       VarNames, PredName, ArgTypes, ReturnType,
-		%       Deterministicness, Cond
+	; 	func(tvarset, existq_tvars, sym_name, list(type_and_mode),
+			type_and_mode, maybe(determinism), condition, purity,
+			class_constraints)
+		%       VarNames, ExistentiallyQuantifiedTypeVars,
+		%       PredName, ArgTypes, ReturnType,
+		%       Deterministicness, Cond,
+		%	Purity, TypeClassContext
 
 	; 	pred_mode(varset, sym_name, list(mode), maybe(determinism),
 			condition)
@@ -239,41 +243,48 @@
 :- type class_constraint
 	---> constraint(class_name, list(type)).
 
+:- type class_constraints
+	---> constraints(
+		list(class_constraint),	% ordinary (universally quantified)
+		list(class_constraint)	% existentially quantified constraints
+	).
+
 :- type class_name == sym_name.
 
 :- type class_interface  == list(class_method).	
 
-:- type class_method	--->	pred(varset, sym_name, list(type_and_mode),
-					maybe(determinism), condition,
-					list(class_constraint), term__context)
-				%       VarNames, PredName, ArgTypes,
-				%	Determinism, Cond
-				%	ClassContext, Context
+:- type class_method
+	--->	pred(tvarset, existq_tvars, sym_name, list(type_and_mode),
+			maybe(determinism), condition,
+			class_constraints, term__context)
+		%       VarNames, ExistentiallyQuantifiedTypeVars,
+		%	PredName, ArgTypes, Determinism, Cond
+		%	ClassContext, Context
 
-			; 	func(varset, sym_name, list(type_and_mode),
-					type_and_mode,
-					maybe(determinism), condition,
-					list(class_constraint), term__context)
-				%       VarNames, PredName, ArgTypes,
-				%	ReturnType,
-				%	Determinism, Cond
-				%	ClassContext, Context
+	; 	func(tvarset, existq_tvars, sym_name, list(type_and_mode),
+			type_and_mode,
+			maybe(determinism), condition,
+			class_constraints, term__context)
+		%       VarNames, ExistentiallyQuantfiedTypeVars,
+		%	PredName, ArgTypes, ReturnType,
+		%	Determinism, Cond
+		%	ClassContext, Context
 
-			; 	pred_mode(varset, sym_name, list(mode),
-					maybe(determinism), condition,
-					term__context)
-				%       VarNames, PredName, ArgModes,
-				%	Determinism, Cond
-				%	Context
+	; 	pred_mode(varset, sym_name, list(mode),
+			maybe(determinism), condition,
+			term__context)
+		%       VarNames, PredName, ArgModes,
+		%	Determinism, Cond
+		%	Context
 
-			; 	func_mode(varset, sym_name, list(mode), mode,
-					maybe(determinism), condition,
-					term__context)
-				%       VarNames, PredName, ArgModes,
-				%	ReturnValueMode,
-				%	Determinism, Cond
-				%	Context
-			.
+	; 	func_mode(varset, sym_name, list(mode), mode,
+			maybe(determinism), condition,
+			term__context)
+		%       VarNames, PredName, ArgModes,
+		%	ReturnValueMode,
+		%	Determinism, Cond
+		%	Context
+	.
 
 :- type instance_method	--->	func_instance(sym_name, sym_name, arity)
 			;	pred_instance(sym_name, sym_name, arity)
@@ -308,20 +319,33 @@
 :- type goal		==	pair(goal_expr, term__context).
 
 :- type goal_expr	
-	--->	(goal,goal)
-	;	true	
-			% could use conj(goals) instead 
-	;	(goal &  goal)	% &/2 ie parallel-conj
-	;	{goal;goal}	% {...} quotes ';'/2.
-	;	fail	
-			% could use disj(goals) instead
+	% conjunctions
+	--->	(goal , goal)	% (non-empty) conjunction
+	;	true		% empty conjunction
+	;	{goal & goal}	% parallel conjunction
+				% (The curly braces just quote the '&'/2.)
+
+	% disjunctions
+	;	{goal ; goal}	% (non-empty) disjunction
+				% (The curly braces just quote the ';'/2.)
+	;	fail		% empty disjunction
+
+	% quantifiers
+	;	{ some(vars,goal) }
+				% existential quantification
+				% (The curly braces just quote the 'some'/2.)
+	;	all(vars,goal)	% universal quantification
+
+	% implications
+	;	implies(goal,goal)	% A => B
+	;	equivalent(goal,goal)	% A <=> B
+
+	% negation and if-then-else
 	;	not(goal)
-	;	some(vars,goal)
-	;	all(vars,goal)
-	;	implies(goal,goal)
-	;	equivalent(goal,goal)
 	;	if_then(vars,goal,goal)
 	;	if_then_else(vars,goal,goal,goal)
+
+	% atomic goals
 	;	call(sym_name, list(term), purity)
 	;	unify(term, term).
 
@@ -345,7 +369,13 @@
 	;	eqv_type(sym_name, list(type_param), type)
 	;	abstract_type(sym_name, list(type_param)).
 
-:- type constructor	==	pair(sym_name, list(constructor_arg)).
+:- type constructor	
+	--->	ctor(
+			existq_tvars,
+			list(class_constraint),	% existential constraints
+			sym_name,
+			list(constructor_arg)
+		).
 
 :- type constructor_arg	==	pair(string, type).
 
@@ -367,6 +397,10 @@
 :- type tvar		==	var.	% used for type variables
 :- type tvarset		==	varset. % used for sets of type variables
 :- type tsubst		==	map(tvar, type). % used for type substitutions
+
+	% existq_tvars is used to record the set of type variables which are
+	% existentially quantified
+:- type existq_tvars	==	list(tvar).
 
 	% Types may have arbitrary assertions associated with them
 	% (eg. you can define a type which represents sorted lists).

@@ -1218,9 +1218,9 @@ base_type_layout__get_cons_args(LayoutInfo, ConsId, TypeArgs) :-
 	(
 		map__search(ConsTable, ConsId, HldsConsList),
 		list__filter(lambda([X::in] is semidet, (
-				X = hlds_cons_defn(_, TypeId, _))),
+				X = hlds_cons_defn(_, _, _, TypeId, _))),
 			HldsConsList,
-			[hlds_cons_defn(TypeArgs0, _, _)])
+			[hlds_cons_defn(_, _, TypeArgs0, _, _)])
 	->
 		TypeArgs = TypeArgs0
 	;

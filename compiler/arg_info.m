@@ -89,7 +89,7 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
-	pred_info_arg_types(PredInfo0, _TVarSet, ArgTypes),
+	pred_info_arg_types(PredInfo0, ArgTypes),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	generate_proc_arg_info(ProcInfo0, ArgTypes, ModuleInfo0,

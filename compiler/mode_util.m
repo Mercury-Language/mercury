@@ -761,7 +761,7 @@ default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
 constructors_to_bound_insts([], _, _, []).
 constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 		[BoundInst | BoundInsts]) :-
-	Ctor = Name - Args,
+	Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
 	ctor_arg_list_to_inst_list(Args, Uniq, Insts),
 	list__length(Insts, Arity),
 	BoundInst = functor(cons(Name, Arity), Insts),
@@ -819,12 +819,12 @@ propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
 	(
 		ConsId = cons(ConsName, Arity),
 		GetCons = lambda([Ctor::in] is semidet, (
-				Ctor = ConsName - CtorArgs,
+				Ctor = ctor(_, _, ConsName, CtorArgs),
 				list__length(CtorArgs, Arity)
 			)),
 		list__filter(GetCons, Constructors, [Constructor])
 	->
-		Constructor = _ - Args,
+		Constructor = ctor(_ExistQVars, _Constraints, _Name, Args),
 		GetArgTypes = lambda([CtorArg::in, ArgType::out] is det, (
 				CtorArg = _ArgName - ArgType
 			)),
