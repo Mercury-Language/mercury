@@ -1,5 +1,5 @@
 /*
-INIT mercury_scheduler_wrapper
+INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
@@ -370,7 +370,7 @@ Define_entry(do_runnext);
 
 END_MODULE
 
-void mercury_scheduler_wrapper(void); /* suppress gcc warning */
-void mercury_scheduler_wrapper(void) {
+void mercury_sys_init_scheduler_wrapper(void); /* suppress gcc warning */
+void mercury_sys_init_scheduler_wrapper(void) {
 	scheduler_module();
 }

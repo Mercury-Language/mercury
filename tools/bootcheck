@@ -775,10 +775,12 @@ then
 	export MMAKE_DIR
 
 	MERCURY_MOD_LIB_MODS="
-		$root/${stage2_insert}browser/$BROWSER_LIB_NAME.init
 		$root/${stage2_insert}library/$STD_LIB_NAME.init
 		$root/${stage2_insert}runtime/$RT_LIB_NAME.init"
 	export MERCURY_MOD_LIB_MODS
+	MERCURY_TRACE_LIB_MODS="
+		$root/${stage2_insert}browser/$BROWSER_LIB_NAME.init"
+	export MERCURY_TRACE_LIB_MODS
 
 		# for mkinit, mmc, mgnuc, ml etc
 	PATH=$root/${stage2_insert}util:$root/${stage2_insert}scripts:$PATH

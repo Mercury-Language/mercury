@@ -340,6 +340,23 @@ void sys_init_builtin_types_module(void) {
 		mercury_data___type_ctor_info_tuple_0, _tuple_);
 	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
 		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
+
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_int_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_float_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_character_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_string_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_pred_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_func_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_tuple_0);
+	MR_register_type_ctor_info(
+		&mercury_data___type_ctor_info_void_0);
 }
 
 #endif /* ! HIGHLEVEL_CODE */
@@ -509,9 +526,13 @@ void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_unify_c_pointer_module(void) {
 	unify_c_pointer_module();
+
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_builtin__type_ctor_info_c_pointer_0,
 		builtin__c_pointer_0_0);
+
+	MR_register_type_ctor_info(
+		&mercury_data_builtin__type_ctor_info_c_pointer_0);
 }
 
 #endif /* ! MR_HIGHLEVEL_CODE */

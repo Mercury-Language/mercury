@@ -314,6 +314,8 @@ void sys_init_array_module_builtins(void) {
 	MR_INIT_TYPE_CTOR_INFO(
 		mercury_data_array__type_ctor_info_array_1,
 		array__array_1_0);
+	MR_register_type_ctor_info(
+		&mercury_data_array__type_ctor_info_array_1);
 }
 
 #endif /* ! MR_HIGHLEVEL_CODE */

@@ -1240,10 +1240,17 @@ void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module(void) {
 	unify_univ_module();
 
-	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_univ_0,
+	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_std_util__type_ctor_info_univ_0,
 		std_util__univ_0_0);
-	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_type_desc_0,
+	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_std_util__type_ctor_info_type_desc_0,
 		std_util__type_desc_0_0);
+
+	MR_register_type_ctor_info(
+		&mercury_data_std_util__type_ctor_info_univ_0);
+	MR_register_type_ctor_info(
+		&mercury_data_std_util__type_ctor_info_type_desc_0);
 }
 
 #endif /* ! MR_HIGHLEVEL_CODE */

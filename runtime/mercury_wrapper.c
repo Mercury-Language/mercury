@@ -437,6 +437,14 @@ do_init_modules_type_tables(void)
 	if (! done) {
 		(*address_of_init_modules_type_tables)();
 		done = TRUE;
+
+		/*
+		** Some system-defined types have the code to register
+		** their type_ctor_infos in the initialization function
+		** invoked by do_init_modules.
+		*/
+
+		do_init_modules();
 	}
 }
 
