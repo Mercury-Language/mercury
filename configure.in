@@ -628,7 +628,7 @@ if test $HAVE_ASM_LABELS = 1; then
 	AC_DEFINE(HAVE_ASM_LABELS)
 fi
 #-----------------------------------------------------------------------------#
-if test $mercury_cv_gcc_labels = yes || test mercury_cv_asm_labels = yes; then
+if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	AC_MSG_CHECKING(whether we can use gcc labels and global registers)
 	AC_CACHE_VAL(mercury_cv_gcc_model_fast,
 	AC_TRY_RUN([
