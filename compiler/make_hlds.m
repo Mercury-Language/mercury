@@ -3,15 +3,15 @@
 % File: make_hlds.nl.
 % Main author: fjh.
 
-% This module converts from the parse tree structure which is
-% read in by prog_io.nl, into the simplified high level data structure
-% defined in hlds.nl.  In the parse tree, the program is represented
-% as a list of items; we insert each item into the appropriate symbol
-% table, and report any duplicate definition errors.  We also
-% transform clause bodies from (A,B,C) into conj([A,B,C]) form.
-%
-% XXX we should return a flag indicating whether any errors
-% occurred.
+% This module converts from the parse tree structure which is read in by
+% prog_io.nl, into the simplified high level data structure defined in
+% hlds.nl.  In the parse tree, the program is represented as a list of
+% items; we insert each item into the appropriate symbol table, and report
+% any duplicate definition errors.  We also transform clause bodies from
+% (A,B,C) into conj([A,B,C]) form, convert all unifications into
+% super-homogenous form, and introduce implicit quantification.
+% 
+% XXX we should record each error using moduleinfo_incr_errors.
 
 :- module make_hlds.
 :- interface.
@@ -24,7 +24,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_util, prog_out, require, globals, options.
+:- import_module prog_util, prog_out, set, require, globals, options.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
@@ -32,9 +32,11 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
 	add_item_list_clauses(Items, Module1, Module2),
-	{ moduleinfo_predids(Module2, RevPredIds),
-	  reverse(RevPredIds, PredIds),
-	  moduleinfo_set_predids(Module2, PredIds, Module) }.
+		% the predid list is constructed in reverse order, for
+		% effiency, so we return it to the correct order here.
+	{ moduleinfo_predids(Module2, RevPredIds) },
+	{ reverse(RevPredIds, PredIds) },
+	{ moduleinfo_set_predids(Module2, PredIds, Module) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -57,7 +59,8 @@ add_item_list_decls([Item - Context | Items], Module0, Module) -->
 		io__write_string("Failed to process the following item:\n"),
 		io__write_anything(Item),
 		io__write_string("\n"),
-		io__set_output_stream(OldStream, _)
+		io__set_output_stream(OldStream, _),
+		{ moduleinfo_incr_errors(Module0, Module1) }
 	),
 	add_item_list_decls(Items, Module1, Module).
 
@@ -80,7 +83,8 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 		io__write_string("Failed to process the following clause:\n"),
 		io__write_anything(Item),
 		io__write_string("\n"),
-		io__set_output_stream(OldStream, _)
+		io__set_output_stream(OldStream, _),
+		{ moduleinfo_incr_errors(Module0, Module1) }
 	),
 	add_item_list_clauses(Items, Module1, Module).
 
@@ -204,17 +208,6 @@ inst_is_compat(hlds__inst_defn(_, Args, Body, _, _),
 
 make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
 make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
-
-:- pred make_functor_cons_id(const, int, cons_id).
-:- mode make_functor_cons_id(in, in, out).
-
-make_functor_cons_id(Constant, Arity, ConsId) :-
-	( Constant = term_atom(Name) ->
-		ConsId = cons(Name, Arity)
-	;
-		% The cons_id produced here will never actually be used
-		ConsId = cons("", 0)
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -588,6 +581,17 @@ clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Context,
 		Preds) -->
 	{ length(Args, Arity) },
 	{ make_predid(ModuleName, PredName, Arity, PredId) },
+	lookup_option(very_verbose, bool(VeryVerbose)),
+	( { VeryVerbose = yes } ->
+		io__write_string("% Processing clause for pred `"),
+		{ predicate_name(PredId, PName) },
+		io__write_string(PName),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string("'...\n")
+	;
+		[]
+	),
 	(
 		% some [PredInfo0]
 		{ map__search(Preds0, PredId, PredInfo0) }
@@ -630,6 +634,8 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 	append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, ClauseList).
 
+%-----------------------------------------------------------------------------
+
 :- pred transform(substitution, list(var), list(term), goal, varset,
 			hlds__goal, varset).
 :- mode transform(input, input, input, input, input, output, output) is det.
@@ -638,107 +644,18 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Goal, VarSet) :-
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1),
 	term__apply_substitution_to_list(Args0, Subst, Args),
 	insert_arg_unifications(HeadVars, Args, head, Goal1, VarSet1,
-		Goal, VarSet).
+		Goal2, VarSet),
+	implicitly_quantify_clause_body(HeadVars, Goal2, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_n_fresh_vars(int, varset, list(var), varset).
-:- mode make_n_fresh_vars(input, input, output, output).
-
-make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
-	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
-
-:- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
-:- mode make_n_fresh_vars_2(input, input, input, output, output).
-
-make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
-	(N = Max ->
-		VarSet = VarSet0,
-		Vars = []
-	;
-		N1 is N + 1,
-		varset__new_var(VarSet0, Var, VarSet1),
-		%%% string__int_to_string(N1, Num),
-		%%% string__append("HeadVar__", Num, VarName),
-		%%% varset__name_var(VarSet1, Var, VarName, VarSet2),
-		Vars = [Var | Vars1],
-		make_n_fresh_vars_2(N1, Max, VarSet1, Vars1, VarSet)
-	).
-
-%-----------------------------------------------------------------------------
-
-	% `insert_arg_unifications' takes a list of variables,
-	% a list of terms to unify them with, and a goal, and
-	% inserts the appropriate unifications onto the front of
-	% the goal.  It calls `unravel_unification' to ensure
-	% that each unification gets reduced to superhomogeneous form.
-	% It also gets passed a `arg_context', which indicates
-	% where the terms came from.
-
-:- type arg_context
-	--->	head		% the arguments in the head of the clause
-	;	call(pred_id)	% the arguments in a call to a predicate
-	;	functor(cons_id, unify_main_context, unify_sub_contexts).
-				% the arguments in a functor
-
-:- pred insert_arg_unifications(list(var), list(term), arg_context,
-				hlds__goal, varset, hlds__goal, varset).
-:- mode insert_arg_unifications(input, input, input, input, input, 
-				output, output).
-
-insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
-			Goal, VarSet) :-
-	( HeadVars = [] ->
-		Goal = Goal0,
-		VarSet = VarSet0
-	;
-		goal_to_conj_list(Goal0, List0),
-		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
-			List0, VarSet0, List, VarSet),
-		goalinfo_init(GoalInfo),
-		Goal = conj(List) - GoalInfo
-	).
-
-:- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
-:- mode goal_to_conj_list(in, out).
-
-goal_to_conj_list(Goal, ConjList) :-
-	( Goal = (conj(List) - _) ->
-		ConjList = List
-	;
-		ConjList = [Goal]
-	).
-
-:- pred insert_arg_unifications_2(list(var), list(term), arg_context, int,
-				list(hlds__goal), varset,
-				list(hlds__goal), varset).
-:- mode insert_arg_unifications_2(input, input, input, input, input, input,
-				output, output) is det.
-
-insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
-insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
-				List, VarSet) :-
-	N1 is N0 + 1,
-	arg_context_to_unify_context(Context, N1,
-			UnifyMainContext, UnifySubContext),
-	unravel_unification(term_variable(Var), Arg, UnifyMainContext,
-			UnifySubContext, VarSet0, Goal, VarSet1),
-	( Goal = (conj(ConjList) - _) ->
-		append(ConjList, List1, List)
-	;
-		List = [Goal | List1]
-	),
-	insert_arg_unifications_2(Vars, Args, Context, N1, List0, VarSet1,
-				List1, VarSet).
-
-:- pred arg_context_to_unify_context(arg_context, int,
-				unify_main_context, unify_sub_contexts).
-:- mode arg_context_to_unify_context(input, input, output, output) is det.
-
-arg_context_to_unify_context(head, N, head(N), []).
-arg_context_to_unify_context(call(PredId), N, call(PredId, N), []).
-arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
-			MainContext, [ConsId - N | SubContexts]).
+	% Convert goals from the prog_io `goal' structure into the
+	% hlds `hlds__goal' structure.  At the same time, convert
+	% it to super-homogeneous form by unravelling all the complex
+	% unifications, and annotate those unifications with a unify_context
+	% so that we can still give good error messages.
+	% And also at the same time, apply the given substitution to
+	% the goal, to rename it apart from the other clauses.
 
 :- pred transform_goal(goal, varset, substitution, hlds__goal, varset).
 :- mode transform_goal(input, input, input, output, output).
@@ -826,6 +743,322 @@ transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 	term__apply_substitution(A0, Subst, A),
 	term__apply_substitution(B0, Subst, B),
 	unravel_unification(A, B, explicit, [], VarSet0, Goal, VarSet).
+
+%-----------------------------------------------------------------------------
+
+	% `insert_arg_unifications' takes a list of variables,
+	% a list of terms to unify them with, and a goal, and
+	% inserts the appropriate unifications onto the front of
+	% the goal.  It calls `unravel_unification' to ensure
+	% that each unification gets reduced to superhomogeneous form.
+	% It also gets passed a `arg_context', which indicates
+	% where the terms came from.
+
+:- type arg_context
+	--->	head		% the arguments in the head of the clause
+	;	call(pred_id)	% the arguments in a call to a predicate
+	;	functor(cons_id, unify_main_context, unify_sub_contexts).
+				% the arguments in a functor
+
+:- pred insert_arg_unifications(list(var), list(term), arg_context,
+				hlds__goal, varset, hlds__goal, varset).
+:- mode insert_arg_unifications(input, input, input, input, input, 
+				output, output).
+
+insert_arg_unifications(HeadVars, Args, ArgContext, Goal0, VarSet0,
+			Goal, VarSet) :-
+	( HeadVars = [] ->
+		Goal = Goal0,
+		VarSet = VarSet0
+	;
+		goal_to_conj_list(Goal0, List0),
+		insert_arg_unifications_2(HeadVars, Args, ArgContext, 0,
+			List0, VarSet0, List, VarSet),
+		goalinfo_init(GoalInfo),
+		Goal = conj(List) - GoalInfo
+	).
+
+:- pred insert_arg_unifications_2(list(var), list(term), arg_context, int,
+				list(hlds__goal), varset,
+				list(hlds__goal), varset).
+:- mode insert_arg_unifications_2(input, input, input, input, input, input,
+				output, output) is det.
+
+insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
+insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
+				List, VarSet) :-
+	N1 is N0 + 1,
+	arg_context_to_unify_context(Context, N1,
+			UnifyMainContext, UnifySubContext),
+	unravel_unification(term_variable(Var), Arg, UnifyMainContext,
+			UnifySubContext, VarSet0, Goal, VarSet1),
+	( Goal = (conj(ConjList) - _) ->
+		append(ConjList, List1, List)
+	;
+		List = [Goal | List1]
+	),
+	insert_arg_unifications_2(Vars, Args, Context, N1, List0, VarSet1,
+				List1, VarSet).
+
+:- pred arg_context_to_unify_context(arg_context, int,
+				unify_main_context, unify_sub_contexts).
+:- mode arg_context_to_unify_context(input, input, output, output) is det.
+
+arg_context_to_unify_context(head, N, head(N), []).
+arg_context_to_unify_context(call(PredId), N, call(PredId, N), []).
+arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
+			MainContext, [ConsId - N | SubContexts]).
+
+%-----------------------------------------------------------------------------%
+
+:- pred make_n_fresh_vars(int, varset, list(var), varset).
+:- mode make_n_fresh_vars(input, input, output, output).
+
+make_n_fresh_vars(N, VarSet0, Vars, VarSet) :-
+	make_n_fresh_vars_2(0, N, VarSet0, Vars, VarSet).
+
+:- pred make_n_fresh_vars_2(int, int, varset, list(var), varset).
+:- mode make_n_fresh_vars_2(input, input, input, output, output).
+
+make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
+	(N = Max ->
+		VarSet = VarSet0,
+		Vars = []
+	;
+		N1 is N + 1,
+		varset__new_var(VarSet0, Var, VarSet1),
+		%%% string__int_to_string(N1, Num),
+		%%% string__append("HeadVar__", Num, VarName),
+		%%% varset__name_var(VarSet1, Var, VarName, VarSet2),
+		Vars = [Var | Vars1],
+		make_n_fresh_vars_2(N1, Max, VarSet1, Vars1, VarSet)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
+:- mode goal_to_conj_list(in, out).
+
+goal_to_conj_list(Goal, ConjList) :-
+	( Goal = (conj(List) - _) ->
+		ConjList = List
+	;
+		ConjList = [Goal]
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Make implicit quantification explicit.
+	% For the rules on implicit quantification, see the
+	% file compiler/notes/IMPLICIT_QUANTIFICATION.
+	%
+	% Rather than making implicit quantification explicit by
+	% inserting additional existential quantifiers in the form of
+	% `some/2' goals, we instead record existential quantification
+	% in the goalinfo for each goal.  In fact we could (should?)
+	% even remove any explicit existential quantifiers that were
+	% present in the source code, since the information they convey
+	% will be stored in the goalinfo, although currently we don't
+	% do that.
+	% 
+	% The important piece of information that later stages of the
+	% compilation process want to know is "Does this goal bind any
+	% of its non-local variables?".  So, rather than storing a list
+	% of the variables which _are_ existentially quantified in the
+	% goalinfo, we store the set of variables which are _not_
+	% quantified.
+	%
+	% XXX we ought to rename variables with overlapping scopes
+	% caused by explicit quantifiers here (and issue a warning
+	% at the same time).
+
+:- pred implicitly_quantify_clause_body(list(var), hlds__goal, hlds__goal).
+:- mode implicitly_quantify_clause_body(input, input, output).
+
+implicitly_quantify_clause_body(HeadVars, Goal0, Goal) :-
+	set__init(Set0),
+	set__insert_list(Set0, HeadVars, Set),
+	implicitly_quantify_goal(Goal0, Set, Goal, _).
+
+:- pred implicitly_quantify_goal(hlds__goal, set(var), hlds__goal, set(var)).
+:- mode implicitly_quantify_goal(in, in, out, out).
+
+implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars,
+			Goal - GoalInfo, NonLocalVars) :-
+	implicitly_quantify_goal_2(Goal0, OutsideVars, Goal, NonLocalVars),
+	goalinfo_set_nonlocals(GoalInfo0, NonLocalVars, GoalInfo).
+
+:- pred implicitly_quantify_goal_2(hlds__goal_expr, set(var),
+				   hlds__goal_expr, set(var)).
+:- mode implicitly_quantify_goal_2(in, in, out, out).
+
+implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars,
+			   some(Vars, Goal), NonLocals) :-
+	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
+	set__remove_list(NonLocals0, Vars, NonLocals).
+
+/********
+	% perhaps we should instead remove explicit quantifiers
+	% as follows (and also for not/2):
+implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, Goal, NonLocals) :-
+	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, Goal1, NonLocals0),
+	set__remove_list(NonLocals0, Vars, NonLocals),
+	Goal1 = G - GoalInfo1,
+	goalinfo_set_nonlocals(GoalInfo1, NonLocals, GoalInfo).
+	Goal = G - GoalInfo.
+*********/
+
+implicitly_quantify_goal_2(all(Vars, Goal0), OutsideVars,
+			   all(Vars, Goal), NonLocals) :-
+	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
+	set__remove_list(NonLocals0, Vars, NonLocals).
+
+implicitly_quantify_goal_2(conj(List0), OutsideVars,
+			   conj(List), NonLocalVars) :-
+	implicitly_quantify_conj(List0, OutsideVars, List, NonLocalVars).
+
+implicitly_quantify_goal_2(disj(Goals0), OutsideVars,
+			   disj(Goals), NonLocalVars) :-
+	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars).
+
+implicitly_quantify_goal_2(not(Vars, Goal0), OutsideVars,
+		    not(Vars, Goal), NonLocals) :-
+	set__remove_list(OutsideVars, Vars, OutsideVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
+	set__remove_list(NonLocals0, Vars, NonLocals).
+
+implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0), OutsideVars,
+		if_then_else(Vars, A, B, C), NonLocals) :-
+	goal_vars(B0, VarsB),
+	set__union(OutsideVars, VarsB, OutsideVars1),
+	implicitly_quantify_goal(A0, OutsideVars1, A, NonLocalsA),
+	set__union(OutsideVars, NonLocalsA, OutsideVars2),
+	implicitly_quantify_goal(B0, OutsideVars2, B, NonLocalsB),
+	implicitly_quantify_goal(C0, OutsideVars, C, NonLocalsC),
+	set__union(NonLocalsA, NonLocalsB, NonLocalsSuccess),
+	set__union(NonLocalsSuccess, NonLocalsC, NonLocals).
+
+implicitly_quantify_goal_2(call(PredId, ModeId, HeadArgs, Builtin), OutsideVars,
+		call(PredId, ModeId, HeadArgs, Builtin), NonLocalVars) :-
+	term__vars_list(HeadArgs, HeadVars),
+	set__list_to_set(HeadVars, GoalVars),
+	set__intersect(GoalVars, OutsideVars, NonLocalVars).
+
+implicitly_quantify_goal_2(unify(A, B, X, Y, Z), OutsideVars,
+			unify(A, B, X, Y, Z), NonLocalVars) :-
+	term__vars(A, VarsA),
+	term__vars(B, VarsB),
+	append(VarsA, VarsB, Vars),
+	set__list_to_set(Vars, GoalVars),
+	set__intersect(GoalVars, OutsideVars, NonLocalVars).
+
+:- pred implicitly_quantify_conj(list(hlds__goal), set(var),
+				 list(hlds__goal), set(var)).
+:- mode implicitly_quantify_conj(in, in, out, out).
+
+implicitly_quantify_conj([], _, [], NonLocalVars) :-
+	set__init(NonLocalVars).
+implicitly_quantify_conj([Goal0 | Goals0], OutsideVars,
+			[Goal | Goals], NonLocalVars) :-
+	goal_list_vars(Goals0, FollowingVars),
+	set__union(OutsideVars, FollowingVars, OutsideVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocalVars1),
+	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
+	implicitly_quantify_conj(Goals0, OutsideVars2, Goals, NonLocalVars2),
+	set__union(NonLocalVars1, NonLocalVars2, NonLocalVars).
+
+:- pred implicitly_quantify_disj(list(hlds__goal), set(var),
+				 list(hlds__goal), set(var)).
+:- mode implicitly_quantify_disj(in, in, out, out).
+
+implicitly_quantify_disj([], _, [], NonLocalVars) :-
+	set__init(NonLocalVars).
+implicitly_quantify_disj([Goal0 | Goals0], OutsideVars,
+			[Goal | Goals], NonLocalVars) :-
+	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocalVars0),
+	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars1),
+	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
+
+%-----------------------------------------------------------------------------%
+
+	% `goal_list_vars(Goal, Vars)' is true iff 
+	% `Vars' is the set of unquantified variables in Goal.
+
+:- pred goal_list_vars(list(hlds__goal), set(var)).
+:- mode goal_list_vars(in, out) is det.
+
+goal_list_vars(Goals, S) :-	
+	set__init(S0),
+	goal_list_vars_2(Goals, S0, S).
+
+
+:- pred goal_list_vars_2(list(hlds__goal), set(var), set(var)).
+:- mode goal_list_vars_2(in, in, out) is det.
+
+goal_list_vars_2([], Set, Set).
+goal_list_vars_2([Goal - _GoalInfo| Goals], Set0, Set) :-
+	goal_vars_2(Goal, Set0, Set1),
+	goal_list_vars_2(Goals, Set1, Set).
+
+:- pred goal_vars(hlds__goal, set(var)).
+:- mode goal_vars(in, out) is det.
+
+goal_vars(Goal - _GoalInfo, Set) :-
+	set__init(Set0),
+	goal_vars_2(Goal, Set0, Set).
+
+:- pred goal_vars_2(hlds__goal_expr, set(var), set(var)).
+:- mode goal_vars_2(in, in, out) is det.
+
+goal_vars_2(unify(A, B, _, _, _), Set0, Set) :-
+	term__vars(A, VarsA),
+	set__insert_list(Set0, VarsA, Set1),
+	term__vars(B, VarsB),
+	set__insert_list(Set1, VarsB, Set).
+
+goal_vars_2(call(_, _, Args, _), Set0, Set) :-
+	term__vars_list(Args, Vars),
+	set__insert_list(Set0, Vars, Set).
+
+goal_vars_2(conj(Goals), Set0, Set) :-
+	goal_list_vars_2(Goals, Set0, Set).
+
+goal_vars_2(disj(Goals), Set0, Set) :-
+	goal_list_vars_2(Goals, Set0, Set).
+
+goal_vars_2(some(Vars, Goal), Set0, Set) :-
+	goal_vars(Goal, Set1),
+	set__remove_list(Set1, Vars, Set2),
+	set__union(Set0, Set2, Set).
+
+goal_vars_2(all(Vars, Goal), Set0, Set) :-
+	goal_vars(Goal, Set1),
+	set__remove_list(Set1, Vars, Set2),
+	set__union(Set0, Set2, Set).
+
+goal_vars_2(not(Vars, Goal), Set0, Set) :-
+	goal_vars(Goal, Set1),
+	set__remove_list(Set1, Vars, Set2),
+	set__union(Set0, Set2, Set).
+
+goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
+		% Let
+		%	Set = Set0 + ( (vars(A) + vars(B)) \ Vars ) + vars(C)
+		%
+		% where `+' is set union and `-' is relative complement.
+		%
+		% (It's times like this you wish you had a functional
+		% notation ;-)
+	goal_vars(A, Set1),
+	goal_vars(B, Set2),
+	set__union(Set1, Set2, Set3),
+	set__remove_list(Set3, Vars, Set4),
+	set__union(Set0, Set4, Set5),
+	goal_vars(C, Set6),
+	set__union(Set5, Set6, Set).
 
 %-----------------------------------------------------------------------------%
 
@@ -917,6 +1150,17 @@ create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goalinfo_init(GoalInfo),
 	Goal = unify(A, B, Mode, UnifyInfo, UnifyC) - GoalInfo.
+
+:- pred make_functor_cons_id(const, int, cons_id).
+:- mode make_functor_cons_id(in, in, out).
+
+make_functor_cons_id(Constant, Arity, ConsId) :-
+	( Constant = term_atom(Name) ->
+		ConsId = cons(Name, Arity)
+	;
+		% The cons_id produced here will never actually be used
+		ConsId = cons("", 0)
+	).
 
 %-----------------------------------------------------------------------------%
 

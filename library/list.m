@@ -67,6 +67,7 @@
 :- external("NU-Prolog", append/3).
 :- external("NU-Prolog", member/2).
 :- external("NU-Prolog", member/3).
+:- external("NU-Prolog", delete/3).
 :- external("NU-Prolog", length/2).
 :- external("NU-Prolog", reverse/2).
 */

@@ -12,9 +12,9 @@
 
 :- import_module list, string, io, prog_io.
 
-:- pred convert_to_mercury(string, list(item_and_context),
+:- pred convert_to_mercury(string, string, list(item_and_context),
 				io__state, io__state).
-:- mode convert_to_mercury(input, input, di, uo).
+:- mode convert_to_mercury(input, input, input, di, uo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -25,9 +25,8 @@
 
 %-----------------------------------------------------------------------------%
 
-convert_to_mercury(ProgName, Items) -->
+convert_to_mercury(ProgName, OutputFileName, Items) -->
 	io__stderr_stream(StdErr),
-	{ string__append(ProgName, ".int", OutputFileName) },
 	io__tell(OutputFileName, Res),
 	( { Res = ok } ->
 		lookup_option(verbose, bool(Verbose)),

@@ -21,7 +21,7 @@
 
 :- module hlds.
 :- interface.
-:- import_module int, string, list, varset, term, map, prog_io.
+:- import_module int, string, list, set, varset, term, map, prog_io.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -184,9 +184,9 @@
 				% Variable, functor-args-goal, followvars
 			;	switch(var, list(case), follow_vars)
 
-				% Initially only the two terms are filled
-				% in.  Mode analysis fills in the last
-				% two fields.
+				% Initially only the terms and the context
+				% are know.  Mode analysis fills in the
+				% missing information.
 			;	unify(term, term, unify_mode, unification,
 								unify_context)
 			;	disj(hlds__goals)
@@ -261,16 +261,18 @@
 %%% :- export_type hlds__goals.
 :- type hlds__goals		==	list(hlds__goal).
 
-:- type hlds__goal_info	--->	goalinfo(
-					map(var, is_live), % XXX this is O(N*N)
-					determinism, % the declared determinism
+:- type hlds__goal_info
+	---> goalinfo(
+		map(var, is_live),	% XXX this is O(N*N)
+		determinism,	% the declared determinism
 				% (current always unspecified, since
 				% there's no way to declare the determinism
 				% of a goal.)
-					category, % the inferred determinism
-					instmap,	   % XXX this is O(N*N)
-					term__context
-				).
+		category, 	% the inferred determinism
+		instmap,		% XXX this is O(N*N)
+		term__context,
+		set(var)	% the non-local vars in the goal
+	).
 
 %%% :- export_type is_live.
 :- type is_live		--->	live ; dead.
@@ -729,11 +731,12 @@ procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
 :- pred goalinfo_init(hlds__goal_info).
 :- mode goalinfo_init(output).
 
-:- pred goalinfo_liveness(hlds__goal_info, map(var, is_live)).
+:- type liveness == map(var, is_live).
+
+:- pred goalinfo_liveness(hlds__goal_info, liveness).
 :- mode goalinfo_liveness(input, output).
 
-:- pred goalinfo_set_liveness(hlds__goal_info, map(var, is_live),
-				hlds__goal_info).
+:- pred goalinfo_set_liveness(hlds__goal_info, liveness, hlds__goal_info).
 :- mode goalinfo_set_liveness(input, input, output).
 
 :- pred goalinfo_declared_determinism(hlds__goal_info, determinism).
@@ -745,6 +748,12 @@ procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
 :- pred goalinfo_set_inferred_determinism(hlds__goal_info, category,
 					  hlds__goal_info).
 :- mode goalinfo_set_inferred_determinism(input, input, output).
+
+:- pred goalinfo_get_nonlocals(hlds__goal_info, set(var)).
+:- mode goalinfo_get_nonlocals(input, output).
+
+:- pred goalinfo_set_nonlocals(hlds__goal_info, set(var), hlds__goal_info).
+:- mode goalinfo_set_nonlocals(input, input, output).
 
 :- type instmap == map(var, inst).
 
@@ -770,36 +779,39 @@ procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
 
 :- implementation.
 
-goalinfo_init(goalinfo(Liveness, DeclaredDet, InferredDet, InstMap, Context)) :-
+goalinfo_init(GoalInfo) :-
 	DeclaredDet = unspecified,
 	InferredDet = nondeterministic, 
 	map__init(Liveness),
 	map__init(InstMap),
-	term__context_init("", 0, Context).
+	set__init(NonLocals),
+	term__context_init("", 0, Context),
+	GoalInfo = goalinfo(Liveness, DeclaredDet, InferredDet,
+				InstMap, Context, NonLocals).
 
 goalinfo_liveness(GoalInfo, Liveness) :-
-	GoalInfo = goalinfo(Liveness, _, _, _, _).
+	GoalInfo = goalinfo(Liveness, _, _, _, _, _).
 
 goalinfo_set_liveness(GoalInfo0, Liveness, GoalInfo) :-
-	GoalInfo0 = goalinfo(_, B, C, D, E),
-	GoalInfo = goalinfo(Liveness, B, C, D, E).
+	GoalInfo0 = goalinfo(_, B, C, D, E, F),
+	GoalInfo = goalinfo(Liveness, B, C, D, E, F).
 
 goalinfo_declared_determinism(GoalInfo, DeclaredDeterminism) :-
-	GoalInfo = goalinfo(_, DeclaredDeterminism, _, _, _).
+	GoalInfo = goalinfo(_, DeclaredDeterminism, _, _, _, _).
 
 goalinfo_inferred_determinism(GoalInfo, InferredDeterminism) :-
-	GoalInfo = goalinfo(_, _, InferredDeterminism, _, _).
+	GoalInfo = goalinfo(_, _, InferredDeterminism, _, _, _).
 
 goalinfo_set_inferred_determinism(GoalInfo0, InferredDeterminism, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, _, D, E),
-	GoalInfo = goalinfo(A, B, InferredDeterminism, D, E).
+	GoalInfo0 = goalinfo(A, B, _, D, E, F),
+	GoalInfo = goalinfo(A, B, InferredDeterminism, D, E, F).
 
 goalinfo_instmap(GoalInfo, InstMap) :-
-	GoalInfo = goalinfo(_, _, _, InstMap, _).
+	GoalInfo = goalinfo(_, _, _, InstMap, _, _).
 
 goalinfo_set_instmap(GoalInfo0, InstMap, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, C, _, E),
-	GoalInfo = goalinfo(A, B, C, InstMap, E).
+	GoalInfo0 = goalinfo(A, B, C, _, E, F),
+	GoalInfo = goalinfo(A, B, C, InstMap, E, F).
 
 /*** This is a specification, not an implementation.
      It's not mode-correct.
@@ -808,11 +820,18 @@ liveness_livevars(Liveness, LiveVars) :-
 ***/
 
 goalinfo_context(GoalInfo, Context) :-
-	GoalInfo = goalinfo(_, _, _, _, Context).
+	GoalInfo = goalinfo(_, _, _, _, Context, _).
 
 goalinfo_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goalinfo(A, B, C, D, _),
-	GoalInfo = goalinfo(A, B, C, D, Context).
+	GoalInfo0 = goalinfo(A, B, C, D, _, F),
+	GoalInfo = goalinfo(A, B, C, D, Context, F).
+
+goalinfo_get_nonlocals(GoalInfo, NonLocals) :-
+	GoalInfo = goalinfo(_, _, _, _, _, NonLocals).
+
+goalinfo_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
+	GoalInfo0 = goalinfo(A, B, C, D, E, _),
+	GoalInfo  = goalinfo(A, B, C, D, E, NonLocals).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -191,7 +191,7 @@ io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 
 	% write the remaining arguments
 io__write_term_args([], VarSet, N, VarSet, N) --> [].
-io__write_term_args(X.Xs, VarSet0, N0, VarSet, N) -->
+io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 	io__write_string(", "),
 	io__write_term_2(X, VarSet0, N0, VarSet1, N1),
 	io__write_term_args(Xs, VarSet1, N1, VarSet, N).

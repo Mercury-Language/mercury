@@ -26,11 +26,17 @@
 :- interface.
 :- import_module list.
 
-:- type set(T).
+:- type set(_T).
+
+	% `set__list_to_set(List, Set)' is true iff `Set' is the set 
+	% containing only the members of `List'.
+
+:- pred set__list_to_set(list(T), set(T)).
+:- mode set__list_to_set(in, out) is det.
 
 	% `set__init(Set)' is true iff `Set' is an empty set.
 
-:- pred set__init(set(T)).
+:- pred set__init(set(_T)).
 :- mode set__init(out) is det.
 
 	% `set__equal(SetA, SetB)' is true iff
@@ -65,7 +71,7 @@
 	% `set__insert_list(Set0, Xs, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only the members of `Xs'.
 
-:- pred set__insert_list(set(T), T, set(T)).
+:- pred set__insert_list(set(T), list(T), set(T)).
 :- mode set__insert_list(in, in, out) is det.
 
 	% `set__delete(Set0, X, Set)' is true iff `Set0' contains `X',
@@ -117,13 +123,24 @@
 
 :- type set(T)		  ==	  list(T).
 
+set__list_to_set(List, Set) :-
+	set__init(Set0),
+	set__insert_list(Set0, List, Set).
+
+:- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
+
+set__insert_list(Set, [], Set).
+set__insert_list(Set0, [X | Xs], Set) :-
+	set__insert(Set0, X, Set1),
+	set__insert_list(Set1, Xs, Set).
+
 set__init([]).
 
 set__equal(S1, S2) :-
 	set__subset(S1, S2),
 	set__subset(S2, S1).
 
-set__subset([], S).
+set__subset([], _).
 set__subset([E|S0], S1) :-
 	set__member(E, S1),
 	set__subset(S0, S1).
@@ -157,11 +174,11 @@ set__remove_list(S0, [X | Xs], S) :-
 set__remove([], _, []).
 set__remove([E|Es], X, S) :-
 	( E = X ->
-		Es1 = Es
+		S = S1
 	;
-		Es1 = [E|Es]
+		S = [E | S1]
 	),
-	set__remove(Es1, X, S).
+	set__remove(Es, X, S1).
 
 set__union([], S, S).
 set__union([E|S0], S1, S) :-
@@ -180,7 +197,7 @@ set__intersect(S0, S1, S) :-
 :- pred set__intersect_2(set(T), set(T), set(T), set(T)).
 :- mode set__intersect_2(in, in, in, out).
 
-set__intersect_2([], S1, S, S).
+set__intersect_2([], _, S, S).
 set__intersect_2([E|S0], S1, S2, S) :-
 	(
 		member(E, S1)
