@@ -86,11 +86,12 @@ goedel_replace_all_eqv_types([Item - Context | Items0], ItemList0, ItemList) :-
 goedel_replace_eqv_type_list([], _, _, _, _, []).
 goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 				Body, [Item - Context| Items]) :-
-	(if some [Item1]
+	(
+		%some [Item1]
 		goedel_replace_eqv_type(Item0, VarSet, Name, Args, Body, Item1)
-	then
+	->
 		Item = Item1
-	else
+	;
 		Item = Item0
 	),
 	goedel_replace_eqv_type_list(Items0, VarSet, Name, Args, Body, Items).
@@ -231,9 +232,11 @@ unqualify_name(qualified(_Module, Name), Name).
 
 split_types_and_modes(TypesAndModes, Types, MaybeModes) :-
 	split_types_and_modes_2(TypesAndModes, no, Types, Modes, Result),
-	(if Result = yes then
+	(
+		Result = yes
+	->
 		MaybeModes = yes(Modes)
-	else
+	;
 		MaybeModes = no
 	).
 

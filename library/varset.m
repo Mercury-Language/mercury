@@ -172,11 +172,12 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 	;
 		varset__new_var(VarSet0, VarId, VarSet1),
 		term__create_var(N, VarN, N1),
-		(if some [Name]
+		(
+			%some [Name]
 			map__search(Names, VarN, Name)
-		then
+		->
 			varset__name_var(VarSet1, VarId, Name, VarSet2)
-		else
+		;
 			VarSet2 = VarSet1
 		),
 		map__insert(Subst0, VarN, term_variable(VarId), Subst1),

@@ -87,17 +87,17 @@ string__char_to_string(Char, String) :-
 	char_to_int(Char, Code).
 
 string__int_to_string(N, Str) :-
-	(if
+	(
 		N < 0
-	then
+	->
 		N1 is 0 - N,
 		string__int_to_string(N1, Str1),
 		string__append("-", Str1, Str)
-	else if
+	;
 		N < 10
-	then
+	->
 		digit_to_string(N,Str)
-	else
+	;
 		N10 is N mod 10,
 		N1 is N // 10,
 		digit_to_string(N10, Digit),

@@ -254,6 +254,7 @@ term__context_file(term__context(FileName, _), FileName).
 	% (or otherwise constructing) a term.
 	% term__context_init/3 is for old code; use
 	% term__context_init/4 if possible.
+	% XXX should this be /2?
 
 term__context_init(LineNumber, term__context("", LineNumber)).
 
@@ -370,11 +371,11 @@ term__unify_list([X | Xs], [Y | Ys]) -->
 	% not be mapped by the substitution.)
 
 term__occurs(term_variable(X), Y, Bindings) :-
-	(if
+	(
 		X = Y
-	then
+	->
 		true
-	else
+	;
 		map__search(Bindings, X, BindingOfX),
 		term__occurs(BindingOfX, Y, Bindings)
 	).
@@ -382,11 +383,11 @@ term__occurs(term_functor(_F, As, _), Y, Bindings) :-
 	term__occurs_list(As, Y, Bindings).
 
 term__occurs_list([Term | Terms], Y, Bindings) :-
-	(if
+	(
 		term__occurs(Term, Y, Bindings)
-	then
+	->
 		true
-	else
+	;
 		term__occurs_list(Terms, Y, Bindings)
 	).
 
@@ -397,11 +398,11 @@ term__occurs_list([Term | Terms], Y, Bindings) :-
 	%	and return the result in Term.
 
 term__substitute(term_variable(Var), SearchVar, Replacement, Term) :-
-	(if 
+	(
 		Var = SearchVar
-	then
+	->
 		Term = Replacement
-	else
+	;
 		Term = term_variable(Var)
 	).
 term__substitute(term_functor(Name, Args0, Context), Var, Replacement,
@@ -430,12 +431,13 @@ term__substitute_corresponding_2([S | Ss], [R | Rs], Subst0, Subst) :-
 %-----------------------------------------------------------------------------%
 
 term__apply_rec_substitution(term_variable(Var), Substitution, Term) :-
-	(if some [Replacement]
+	(
+		%some [Replacement]
 		map__search(Substitution, Var, Replacement)
-	then
+	->
 		% recursively apply the substition to the replacement
 		term__apply_rec_substitution(Replacement, Substitution, Term)
-	else
+	;
 		Term = term_variable(Var)
 	).
 term__apply_rec_substitution(term_functor(Name, Args0, Context), Substitution,
@@ -455,11 +457,12 @@ term__apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
 %-----------------------------------------------------------------------------%
 
 term__apply_substitution(term_variable(Var), Substitution, Term) :-
-	(if some [Replacement]
+	(
+		%some [Replacement]
 		map__search(Substitution, Var, Replacement)
-	then
+	->
 		Term = Replacement
-	else
+	;
 		Term = term_variable(Var)
 	).
 term__apply_substitution(term_functor(Name, Args0, Context), Substitution,
@@ -495,11 +498,11 @@ term__relabel_variable(term_functor(Const, Terms0, Cont), OldVar, NewVar,
 	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
 term__relabel_variable(term_variable(Var0), OldVar, NewVar,
 				term_variable(Var)) :-
-	(if
+	(
 		Var0 = OldVar
-	then
+	->
 		Var = NewVar
-	else
+	;
 		Var = Var0
 	).
 
