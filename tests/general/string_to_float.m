@@ -32,7 +32,17 @@ main -->
     test("x1.23x"),
     test(" 1.23"),
     test("1.23 "),
-    test(" 1.23 ").
+    test(" 1.23 "),
+    test("1"),
+    test("-1"),
+    test("+1"),
+    test("0"),
+    test("+0"),
+    test("-0"),
+    test("-"),
+    test("+"),
+    test(" "),
+    test("").
 
 :- pred test(string::in, io::di, io::uo) is det.
 
