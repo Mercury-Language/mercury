@@ -83,6 +83,11 @@ SINGLEMODULE_SOURCES= \
 	type_vars.m \
 	typeclass_bogus_method.m \
 	typeclass_mode.m \
+	typeclass_missing_det.m \
+	typeclass_missing_det_2.m \
+	typeclass_missing_det_3.m \
+	typeclass_missing_mode.m \
+	typeclass_missing_mode_2.m \
 	typeclass_test_1.m \
 	typeclass_test_2.m \
 	typeclass_test_3.m \
