@@ -14,11 +14,8 @@
 % Basically we just traverse each goal, keeping track of which variables
 % are nondet live.  At each procedure call, we check that any arguments
 % whose initial insts are required to be unique are not nondet live.
-% If they are, we report an error message.
-
-% XXX what if it would have matched ok with a different mode of the
-% called predicate (e.g. if a predicate is overloaded with both
-% `ui' and `in' modes)?
+% If they are, we first try selecting a different mode of the same
+% predicate, and if that fails, then we report an error message.
 
 % Variables can become nondet live in several places:
 % in negations, in the conditions of if-then-elses,
