@@ -55,8 +55,8 @@
 		in, in, in, out, out, out) is det.
 
 	% Permute the list of variables so that inputs come before outputs.
-:- pred lambda__permute_argvars(list(var), list(mode), module_info,
-			list(var), list(mode)).
+:- pred lambda__permute_argvars(list(Var), list(mode), module_info,
+			list(Var), list(mode)).
 :- mode lambda__permute_argvars(in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -460,8 +460,8 @@ lambda__permute_argvars(AllArgVars, AllArgModes, ModuleInfo,
 		error("lambda__permute_argvars: split_argvars failed")
 	).
 
-:- pred split_argvars(list(var), list(mode), module_info,
-			list(var), list(mode), list(var), list(mode)).
+:- pred split_argvars(list(Var), list(mode), module_info,
+			list(Var), list(mode), list(Var), list(mode)).
 :- mode split_argvars(in, in, in, out, out, out, out) is semidet.
 
 	% split a list of variables and a corresponding list of their modes

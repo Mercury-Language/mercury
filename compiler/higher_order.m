@@ -1055,6 +1055,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		PredInfo, Substitution0, Substitution, Goals) :-
 	HOArg = higher_order_arg(PredId, ProcId, Index, NumArgs, CurriedHOArgs),
 	list__index1_det(HeadVars0, Index, LVar),
+	list__index1_det(ArgModes0, Index, LVarMode),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 					CalledPredInfo, CalledProcInfo),
 	pred_info_arg_types(CalledPredInfo, CalledTVarset, CalledArgTypes0),
@@ -1092,19 +1093,39 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 		error("list__split failed")
 	),
 	(
-		type_is_higher_order(LVarType, _PredOrFunc, LVarArgTypes)
+		type_is_higher_order(LVarType, _PredOrFunc, LVarArgTypes0)
 	->
-		(
-			type_list_subsumes(LVarArgTypes, UnCurriedArgTypes,
-							NewSubstitution)
+		%
+		% The called pred will have had its uncurried args permuted
+		% to make input args precede output args, so
+		% we need to do the same for the argument types of the
+		% higher-order pred variable (LVar), before unifying
+		% them with the types of the called predicate (which
+		% we need to do, so that we can make appropriate type
+		% substitutions).
+		% To permute them, we need to know the modes of the LVarArgs.
+		%
+		( 
+			mode_get_insts(ModuleInfo, LVarMode,
+				LVarInitialInst, _LVarFinalInst),
+			LVarInitialInst = ground(_, yes(LVarPredInstInfo))
 		->
-			% Add the substitution found for this higher-order
-			% term to the substitution to be applied to the type
-			% map.
-			map__overlay(Substitution0, NewSubstitution,
-							Substitution1)
+			LVarPredInstInfo = pred_inst_info(_, LVarArgModes0, _),
+			lambda__permute_argvars(LVarArgTypes0, LVarArgModes0,
+				ModuleInfo, LVarArgTypes, _LVarArgModes),
+			(
+				type_unify_list(LVarArgTypes,
+						UnCurriedArgTypes, [],
+						Substitution0, Substitution1)
+			->
+				Substitution2 = Substitution1
+			;
+				error("type error in specialized higher-order argument")
+			)
 		;
-			Substitution1 = Substitution0
+			error(
+			    "mode error in specialized higher-order argument"
+			)
 		)
 	;
 		error("specialized argument not of higher-order type")
@@ -1116,8 +1137,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	% Recursively construct the curried higher-order arguments.
 	construct_higher_order_terms(ModuleInfo, NewHeadVars0, NewHeadVars1,
 		CurriedArgModes0, CurriedArgModes1, CurriedHOArgs,
-		ProcInfo2, ProcInfo3, PredInfo1, PredInfo2, Substitution1,
-		Substitution2, CurriedGoals),
+		ProcInfo2, ProcInfo3, PredInfo1, PredInfo2, Substitution2,
+		Substitution3, CurriedGoals),
 
 	% Fix up the argument lists.
 	remove_listof_higher_order_args(CurriedArgModes1, 1,
@@ -1149,7 +1170,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	goal_info_init(NonLocals, InstmapDelta, det, Info),
 	construct_higher_order_terms(ModuleInfo, HeadVars1, HeadVars, ArgModes1,
 		ArgModes, HOArgs, ProcInfo3, ProcInfo, PredInfo2, PredInfo,
-		Substitution2, Substitution, Goals1),
+		Substitution3, Substitution, Goals1),
 	list__condense([CurriedGoals, [Goal - Info], Goals1], Goals).
 
 %-----------------------------------------------------------------------------%
