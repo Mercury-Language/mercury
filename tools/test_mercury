@@ -104,7 +104,10 @@ esac
 # starting if we'll only run out of disk space.
 
 [ -d $DIR ] || mkdir -p $DIR
-FREE=`$DF $DIR | awk 'NR == 2 { print $4; }'`
+FREE=`$DF $DIR | awk '
+	NR == 2 && $NF > 4 { print $4; exit; }
+	NR == 3 { print $3; }
+'`
 if [ "$FREE" -lt 10000 ]; then
 	echo "Insufficient disk space on $DIR" 1>&2
 	$DF $DIR
@@ -213,10 +216,11 @@ echo "current directory `pwd`" 1>&2
 
 case $status in 0)
     case $install_anyway in
-        false)	cd mercury/stage2 || { false; exit 1; } ;;
+        false)	cd mercury/stage2 || { false; exit 1; }
 		# we need to use the stage1 compiler to do the install
 		MERCURY_COMPILER=$DIR/mercury/compiler/mercury_compile
 		export MERCURY_COMPILER
+		;;
         true)	cd mercury || { false; exit 1; } ;;
     esac
 
