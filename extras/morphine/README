@@ -1,30 +1,55 @@
 # Copyright (C) 1999 INRIA/INSA.
 
+* Opium-M, a trace analysis system for Mercury
 
-To install Opium-M, unzip and de-tar the file Opium-M-*.tar.gz, and run the
-script INSTALL-OPIUM-M. This will create in the scripts/ directory the
-script Opium-M that let you run Opium-M. 
+Program execution traces given by traditional debuggers provide programmers
+with useful pieces of information. However, using them requires to analyse by
+hand huge amounts of information. Opium-M is connected to the traditional
+tracer of Mercury; it allows execution trace analyses to be automated. It
+provides a relational trace query language based on Prolog which enables users
+to specify precisely what they want to see in the trace. Opium-M, then,
+automatically filters out information irrelevant for the users.
 
-Add directories scripts/ and bin/ in your PATH environment variable. Make sure
-that the executables mmc and eclipse are also accessible from your PATH.
+Opium-M provides users a langage to write their own debugging primitives
+(Prolog + 2 primitives connected to the Mercury trace system) and their own
+monitors (see the `collect' command).
+
+				-o-
+
+* Opium-M installation
+
+To install Opium-M, you just need to:
+
+1) Run the script `INSTALL-OPIUM-M' (that creates the `Opium-M' script in 
+   the `opium_m/scripts/' directory).
+2) Add directories ` opium_m/scripts/' and `opium_m/bin/' in your `PATH' 
+   environment variable. Make sure that the executables `mmc' and `eclipse' 
+   are also accessible from your `PATH'. 
 
 
-The current release of Opium-M has been tested with the following
-configurations:
-- Architecture: sparc/Solaris2.[5,6,7] and i686/Linux2.0
-- ECLiPSe: 4.1 and later (1).
-- Mercury: later than 1999-03-12 release of the day.
+Note that Opium-M requires ECLiPSe, a Prolog system which is free to
+universities and non-profit research institutions. You can download it at
+`http://www.icparc.ic.ac.uk/eclipse/'. Also make sure that the package
+eclipse_misc.tgz has been downloaded (i.e. if there exists a directory named
+`lib_pd' in the ECLiPSe installation directory); Opium-M needs it.
 
-(1) make sure that the package eclipse_misc.tgz has been downloaded (i.e. if
-there exists a directory named `lib_pd' in the ECLiPSe installation directory);
-Opium-M needs it.
+Opium-M does not require Mercury to be installed, but you might also want to
+install it ;-)
 
-(*) If you use one of those versions of ECLiPSe, you will need to add the
-following line in your .opium-m-rc file (that should be in your home
-directory): 
-":- set_parameter(socket_domain, [inet])."
+				-o-
 
-This is to work around a bug in ECLiPSe socket interface that has been fixed in
-version 4.1.
+* The current release of Opium-M has been tested with the following 
+  configurations: 
+
+o Architectures: sparc/Solaris2.[5,6,7] and i686/Linux kernel 2.0
+o ECLiPSe 4.1 or later
+o Mercury: later than 1999-15-10 release of the day.
+
+				-o-
+
+For more information about Opium-M, you can have a look at the Opium-M
+web site:
+
+http://www.irisa.fr/lande/jahier/download.html
 
 				-o-
