@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999,2001 The University of Melbourne.
+% Copyright (C) 1999,2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,8 @@ garbage_collect -->
   #endif
 
 	GC_gcollect();
+#elif defined(MR_NATIVE_GC)
+	MR_garbage_collect();
 #endif
 ").
 :- pragma foreign_proc("MC++", garbage_collect, [will_not_call_mercury], "
