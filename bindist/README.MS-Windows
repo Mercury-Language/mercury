@@ -3,9 +3,8 @@ To create a binary distribution on Windows 95 or Windows NT:
 	- first install from the source distribution (see ../README.MS-Windows)
 
 	- s/mdemangle/mdemangle.exe/ and s/mkinit/mkinit.exe/
+	  and s/info_to_mdb/info_to_mdb.exe/
 	  in bindist/Mmakefile and bindist/bindist.Makefile.in
 
 	- then just do `mmake bindist' in the bindist directory
-	  (it may go into an infinite loop, but only _after_
-	  producing the .tar.gz file, so if it does, just kill it)
 

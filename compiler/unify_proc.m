@@ -500,8 +500,11 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	is det.
 
 unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
-	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no,
-			\+ type_is_no_tag_type(Ctors, _, _) } ->
+	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no } ->
+	% We used to have the following test in the above condition as well:
+	%	\+ type_is_no_tag_type(Ctors, _, _)
+	% It was introduced to support --reserve-tag somehow, but it has
+	% broken the "normal" cases, so I've removed it for now.
 		( { MaybeEqPred = yes(PredName) } ->
 			%
 			% Just generate a call to the specified predicate,

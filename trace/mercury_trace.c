@@ -125,7 +125,10 @@ MR_trace_real(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 			}
 
 		case MR_CMD_RESUME_FORWARD:
-			if (! (port == MR_PORT_REDO || port == MR_PORT_FAIL)) {
+			if (port != MR_PORT_REDO &&
+			    port != MR_PORT_FAIL &&
+			    port != MR_PORT_EXCEPTION)
+			{
 				return MR_trace_event(&MR_trace_ctrl, TRUE,
 						layout, port, seqno, depth,
 						path, max_r_num);

@@ -271,6 +271,7 @@ optdates_subdir=$(SUBDIR)optdates/
 trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
 cs_subdir=$(SUBDIR)cs/
 os_subdir=$(SUBDIR)os/
+rlos_subdir=$(SUBDIR)rlos/
 dirs_subdir=$(SUBDIR)dirs/
 
 else
@@ -294,6 +295,7 @@ optdates_subdir=
 trans_opt_dates_subdir=
 cs_subdir=
 os_subdir=
+rlos_subdir=
 dirs_subdir=
 
 endif

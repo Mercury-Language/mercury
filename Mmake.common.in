@@ -60,6 +60,7 @@ INSTALL_PS_DIR 		= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_MAN_DIR 	= $(INSTALL_PREFIX)/man
 INSTALL_HTML_DIR 	= $(INSTALL_PREFIX)/lib/mercury/html
 INSTALL_MDB_DOC_DIR 	= $(INSTALL_PREFIX)/lib/mercury/mdb
+INSTALL_ELISP_DIR 	= $(INSTALL_PREFIX)/lib/mercury/elisp
 
 # Specify the Mercury compiler to use for bootstrapping
 MC			= @BOOTSTRAP_MC@

@@ -13,20 +13,29 @@ ENDINIT
 #include "mercury_imp.h"
 
 #include <stdio.h>
-#include <unistd.h>		/* for getpid() and fork() */
 #ifdef MR_THREAD_SAFE
   #include "mercury_thread.h"
+#endif
+#ifdef MR_CAN_DO_PENDING_IO
+  #include <sys/types.h>	/* for fd_set */
+  #include <sys/time.h>		/* for struct timeval */
 #endif
 
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
-#include "mercury_engine.h"	/* for `MR_memdebug' */
+#include "mercury_engine.h"		/* for `MR_memdebug' */
+#include "mercury_reg_workarounds.h"	/* for `MR_fd*' stuff */
 
 MR_Context	*MR_runqueue_head;
 MR_Context	*MR_runqueue_tail;
 #ifdef	MR_THREAD_SAFE
   MercuryLock	*MR_runqueue_lock;
   MercuryCond	*MR_runqueue_cond;
+#endif
+
+MR_PendingContext	*MR_pending_contexts;
+#ifdef	MR_THREAD_SAFE
+  MercuryLock		*MR_pending_contexts_lock;
 #endif
 
 /*
@@ -56,6 +65,9 @@ init_thread_stuff(void)
 	pthread_mutex_init(free_context_list_lock, MR_MUTEX_ATTR);
 
 	pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
+
+	MR_pending_contexts_lock = make(MercuryLock);
+	pthread_mutex_init(MR_pending_contexts_lock, MR_MUTEX_ATTR);
 
 	MR_KEY_CREATE(&MR_engine_base_key, NULL);
 
@@ -160,6 +172,101 @@ flounder(void)
 	fatal_error("computation floundered");
 }
 
+/*
+** Check to see if any contexts that blocked on IO have become
+** runnable. Return the number of contexts that are still blocked.
+** The parameter specifies whether or not the call to select should
+** block or not.
+*/
+static int
+check_pending_contexts(Bool block)
+{
+#ifdef	MR_CAN_DO_PENDING_IO
+
+	int	err, max_id, n_ids;
+	fd_set	rd_set, wr_set, ex_set;
+	struct timeval timeout;
+	MR_PendingContext *pctxt;
+
+	if (MR_pending_contexts == NULL) {
+		return 0;
+	}
+
+	MR_fd_zero(&rd_set); MR_fd_zero(&wr_set); MR_fd_zero(&ex_set);
+	max_id = -1;
+	for (pctxt = MR_pending_contexts ; pctxt ; pctxt = pctxt -> next) {
+		if (pctxt->waiting_mode & MR_PENDING_READ) {
+			if (max_id > pctxt->fd) max_id = pctxt->fd;
+			FD_SET(pctxt->fd, &rd_set);
+		}
+		if (pctxt->waiting_mode & MR_PENDING_WRITE) {
+			if (max_id > pctxt->fd) max_id = pctxt->fd;
+			FD_SET(pctxt->fd, &wr_set);
+		}
+		if (pctxt->waiting_mode & MR_PENDING_EXEC) {
+			if (max_id > pctxt->fd) max_id = pctxt->fd;
+			FD_SET(pctxt->fd, &ex_set);
+		}
+	}
+	max_id++;
+
+	if (max_id == 0) {
+		fatal_error("no fd's set!");
+	}
+
+	if (block) {
+		err = select(max_id, &rd_set, &wr_set, &ex_set, NULL);
+	} else {
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 0;
+		err = select(max_id, &rd_set, &wr_set, &ex_set, &timeout);
+	}
+
+	if (err < 0) {
+		fatal_error("select failed!");
+	}
+
+	n_ids = 0;
+	for (pctxt = MR_pending_contexts; pctxt; pctxt = pctxt -> next) {
+		n_ids++;
+		if (	((pctxt->waiting_mode & MR_PENDING_READ) 
+				&& FD_ISSET(pctxt->fd, &rd_set))
+		    ||	((pctxt->waiting_mode & MR_PENDING_WRITE)
+				&& FD_ISSET(pctxt->fd, &wr_set))
+		    ||	((pctxt->waiting_mode & MR_PENDING_EXEC)
+				&& FD_ISSET(pctxt->fd, &ex_set))
+		    )
+		{
+			schedule(pctxt->context);
+		}
+	}
+
+	return n_ids;
+
+#else	/* !MR_CAN_DO_PENDING_IO */
+
+	fatal_error("select() unavailable!");
+
+#endif
+}
+
+
+void
+schedule(MR_Context *ctxt)
+{
+	ctxt->next = NULL;
+	MR_LOCK(MR_runqueue_lock, "schedule");
+	if (MR_runqueue_tail) {
+		MR_runqueue_tail->next = ctxt;
+		MR_runqueue_tail = ctxt;
+	} else {
+		MR_runqueue_head = ctxt;
+		MR_runqueue_tail = ctxt;
+	}
+	MR_SIGNAL(MR_runqueue_cond);
+	MR_UNLOCK(MR_runqueue_lock, "schedule");
+}
+
 Define_extern_entry(do_runnext);
 
 BEGIN_MODULE(scheduler_module)
@@ -179,43 +286,54 @@ Define_entry(do_runnext);
 	MR_LOCK(MR_runqueue_lock, "do_runnext (i)");
 
 	while (1) {
-		if (MR_exit_now = TRUE) {
+		if (MR_exit_now == TRUE) {
 			MR_UNLOCK(MR_runqueue_lock, "do_runnext (ii)");
 			destroy_thread(MR_engine_base);
 		}
 		tmp = MR_runqueue_head;
+		/* XXX check pending io */
 		prev = NULL;
 		while(tmp != NULL) {
-			if (depth > 0 && tmp->owner_thread == thd
-					|| tmp->owner_thread == NULL)
+			if ((depth > 0 && tmp->owner_thread == thd)
+			    || (tmp->owner_thread == (MercuryThread) NULL)) {
 				break;
+			}
 			prev = tmp;
 			tmp = tmp->next;
 		}
-		if (tmp != NULL)
+		if (tmp != NULL) {
 			break;
+		}
 		MR_WAIT(MR_runqueue_cond, MR_runqueue_lock);
 	}
 	MR_ENGINE(this_context) = tmp;
-	if (prev != NULL)
+	if (prev != NULL) {
 		prev->next = tmp->next;
-	else
+	} else {
 		MR_runqueue_head = tmp->next;
-	if (MR_runqueue_tail == tmp)
+	}
+	if (MR_runqueue_tail == tmp) {
 		MR_runqueue_tail = prev;
+	}
 	MR_UNLOCK(MR_runqueue_lock, "do_runnext (iii)");
 	load_context(MR_ENGINE(this_context));
 	GOTO(MR_ENGINE(this_context)->resume);
 }
 #else /* !MR_THREAD_SAFE */
 {
-	if (MR_runqueue_head == NULL)
+	if (MR_runqueue_head == NULL && MR_pending_contexts == NULL) {
 		fatal_error("empty runqueue!");
+	}
+
+	while (MR_runqueue_head == NULL) {
+		check_pending_contexts(TRUE); /* block */
+	}
 
 	MR_ENGINE(this_context) = MR_runqueue_head;
 	MR_runqueue_head = MR_runqueue_head->next;
-	if (MR_runqueue_head == NULL)
+	if (MR_runqueue_head == NULL) {
 		MR_runqueue_tail = NULL;
+	}
 
 	load_context(MR_ENGINE(this_context));
 	GOTO(MR_ENGINE(this_context)->resume);

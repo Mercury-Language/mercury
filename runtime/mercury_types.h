@@ -65,9 +65,6 @@ typedef const Char *ConstString;
 /* continuation function type, for --high-level-C option */
 typedef void (*Cont) (void);
 
-/* spinlocks -- see mercury_spinlock.h */
-typedef Word	SpinLock;
-
 /*
 ** semidet predicates indicate success or failure by leaving nonzero or zero
 ** respectively in register r1

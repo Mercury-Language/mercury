@@ -145,7 +145,7 @@ Word	*MR_nondet_stack_trace_bottom;
 ** call sequence number and call depth of the call.
 */
 
-extern	void	MR_print_proc_id_for_debugger(
+extern	void	MR_print_proc_id_for_debugger(FILE *fp,
 			const MR_Stack_Layout_Entry *entry);
 extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
 			const char *extra, Word *base_sp, Word *base_curfr);

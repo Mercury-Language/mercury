@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -116,6 +116,10 @@
 **	the low-level code generation.
 **	Causes the generated code to become VERY big and VERY inefficient.
 **	Slows down compilation a LOT.
+**
+** MR_USE_DECLARATIVE_DEBUGGER
+**	Enable this if you want declarative debugging support in the
+**	internal debugger.
 **
 ** MR_DEBUG_GOTOS
 **	(Implied by MR_LOWLEVEL_DEBUG.)

@@ -129,8 +129,7 @@ struct MR_context_struct {
 typedef MR_Context Context;	/* for backwards compatibility */
 
 /*
-** the runqueue is a linked list of contexts that are
-** runnable.
+** The runqueue is a linked list of contexts that are runnable.
 */
 extern		MR_Context	*MR_runqueue_head;
 extern		MR_Context	*MR_runqueue_tail;
@@ -139,6 +138,40 @@ extern		MR_Context	*MR_runqueue_tail;
   extern	MercuryCond	*MR_runqueue_cond;
 #endif
 
+/*
+** As well as the runqueue, we maintain a linked list of contexts
+** and associated file descriptors that are suspended blocked for
+** reads/writes/exceptions. When the runqueue becomes empty, if
+** this list is not empty then we call select and block until one
+** or more of the file descriptors become ready for I/O, then
+** wake the appropriate context.
+** In addition, we should periodically check to see if the list of blocked
+** contexts is non-empty and if so, poll to wake any contexts that
+** can unblock. This, while not yielding true fairness (since this
+** requires the current context to perform some yield-like action),
+** ensures that it is possible for programmers to write concurrent
+** programs with continuous computation and interleaved I/O dependent
+** computation in a straight-forward manner. This polling is not
+** currently implemented.
+*/
+
+typedef enum {
+	MR_PENDING_READ  = 0x01,
+	MR_PENDING_WRITE = 0x02,
+	MR_PENDING_EXEC  = 0x04
+} MR_WaitingMode;
+
+typedef struct MR_PENDING_CONTEXT {
+	struct MR_PENDING_CONTEXT	*next;
+	MR_Context			*context;
+	int				fd;
+	MR_WaitingMode			waiting_mode;
+} MR_PendingContext;
+
+extern	MR_PendingContext	*MR_pending_contexts;
+#ifdef	MR_THREAD_SAFE
+  extern	MercuryLock	*MR_pending_contexts_lock;
+#endif
 
 /*
 ** Initializes a context structure.
@@ -179,21 +212,8 @@ void	flounder(void);
 ** schedule(MR_Context *cptr):
 **	Append a context onto the end of the run queue.
 */
-#define schedule(cptr)						\
-  	do {							\
-		MR_Context *ctxt = (MR_Context *) (cptr);	\
-		ctxt->next = NULL;				\
-		MR_LOCK(MR_runqueue_lock, "schedule");		\
-		if (MR_runqueue_tail) {				\
-			MR_runqueue_tail->next = ctxt;		\
-			MR_runqueue_tail = ctxt;		\
-		} else {					\
-			MR_runqueue_head = ctxt;		\
-			MR_runqueue_tail = ctxt;		\
-		}						\
-		MR_SIGNAL(MR_runqueue_cond);			\
-		MR_UNLOCK(MR_runqueue_lock, "schedule");	\
-	} while(0)
+
+void schedule(MR_Context *ctxt);
 
 Declare_entry(do_runnext);
 #define runnext()						\

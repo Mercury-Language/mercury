@@ -14,11 +14,14 @@ INSTALL_BINDIR	= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR	= $(INSTALL_PREFIX)/lib/mercury
 INSTALL_INFODIR = $(INSTALL_PREFIX)/info
 INSTALL_MAN_DIR = $(INSTALL_PREFIX)/man
+INSTALL_ELISP_DIR = $(INSTALL_PREFIX)/lib/mercury/elisp
 
 INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/mercury_update_interface scripts/mgnuc \
 			scripts/ml scripts/mmake scripts/mprof \
 			scripts/mdb scripts/mkfifo_using_mknod
+
+EMACS_SCRIPTS		= scripts/gud.el
 
 SICSTUS_SCRIPTS		= scripts/msc scripts/msl \
 			scripts/msp scripts/sicstus_conv
@@ -27,10 +30,14 @@ NUPROLOG_SCRIPTS	= scripts/mnc scripts/mnp scripts/mnl
 
 INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
-LIB_PARTS		= bin doc html inc ints lib modules \
-			@NUPROLOG@ @SICSTUS@
+INSTALL_MDB_EXTRAS	= scripts/mdbrc
 
-UTILS			= util/mdemangle util/mkinit util/mtags
+LIB_PARTS		= bin doc html inc ints lib mdb/mdb_doc modules
+LIB_NUPROLOG_PARTS	= @NUPROLOG@
+LIB_SICSTUS_PARTS	= @SICSTUS@
+
+UTILS			= util/mdemangle util/mkinit util/mtags \
+			  util/mprof_merge_runs
 
 INSTALL_NUPROLOG	= @INSTALL_NUPROLOG@
 INSTALL_SICSTUS		= @INSTALL_SICSTUS@
@@ -45,11 +52,16 @@ all:
 
 .PHONY: install
 install: install_lib install_info install_man install_scripts install_mmake \
-		install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
+		install_mdb install_util $(INSTALL_SICSTUS) $(INSTALL_NUPROLOG)
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
-	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH."
+	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
+	@echo "-- and to add the following lines to the \`.emacs' file"
+	@echo "-- in your home directory:"
+	@echo "	(setq load-path (cons (expand-file-name "
+	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))
+	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_lib
 install_lib:
@@ -58,8 +70,17 @@ install_lib:
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	gzip --decompress lib.tar.gz
-	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && \
-		tar -xf $$LIB_TAR_FILE $(LIB_PARTS)
+	# if the binary distribution doesn't include NU-Prolog or
+	# SICStus Prolog support, then attempting to extract them
+	# from the tar file will fail; we therefore ignore any errors
+	# in those two steps.
+	LIB_TAR_FILE=`pwd`/lib.tar && cd $(INSTALL_LIBDIR) && {		\
+		[ -n "$(LIB_NUPROLOG_PARTS)" ] &&			\
+			tar -xf $$LIB_TAR_FILE $(LIB_NUPROLOG_PARTS);	\
+		[ -n "$(LIB_SICSTUS_PARTS)" ] &&			\
+			tar -xf $$LIB_TAR_FILE $(LIB_SICSTUS_PARTS);	\
+		tar -xf $$LIB_TAR_FILE $(LIB_PARTS);			\
+	}
 	gzip lib.tar # tidy up
 	@echo "-- Done."
 
@@ -98,10 +119,20 @@ install_scripts:
 	done
 	@echo "-- Done."
 
+install_emacs_scripts:
+	@echo "-- Installing Emacs lisp scripts in $(INSTALL_ELISP_DIR)"
+	test -d $(INSTALL_ELISP_DIR) || mkdir -p $(INSTALL_ELISP_DIR)
+	cp $(INSTALL_EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
+
 .PHONY: install_mmake
 install_mmake: 
 	test -d $(INSTALL_LIBDIR)/mmake || mkdir -p $(INSTALL_LIBDIR)/mmake
 	cp $(INSTALL_MMAKE_EXTRAS) $(INSTALL_LIBDIR)/mmake
+
+.PHONY: install_mdb
+install_mdb: 
+	test -d $(INSTALL_LIBDIR)/mdb || mkdir -p $(INSTALL_LIBDIR)/mdb
+	cp $(INSTALL_MDB_EXTRAS) $(INSTALL_LIBDIR)/mdb
 
 .PHONY: install_util
 install_util: 

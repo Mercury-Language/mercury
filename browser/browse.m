@@ -31,12 +31,14 @@
 :- mode browse__init_state(out, di, uo) is det.
 
 	% The interactive term browser.
-:- pred browse__browse(T, browser_state, browser_state, io__state, io__state).
-:- mode browse__browse(in, in, out, di, uo) is det.
+:- pred browse__browse(T, io__input_stream, io__output_stream,
+			browser_state, browser_state, io__state, io__state).
+:- mode browse__browse(in, in, in, in, out, di, uo) is det.
 
 	% The non-interactive term browser.
-:- pred browse__print(T, browser_state, io__state, io__state).
-:- mode browse__print(in, in, di, uo) is det.
+:- pred browse__print(T, io__output_stream, browser_state,
+			io__state, io__state).
+:- mode browse__print(in, in, in, di, uo) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -50,11 +52,14 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__init_state(out, di, uo), "ML_BROWSE_init_state").
-:- pragma export(browse__browse(in, in, out, di, uo), "ML_BROWSE_browse").
-:- pragma export(browse__print(in, in, di, uo), "ML_BROWSE_print").
+:- pragma export(browse__init_state(out, di, uo),
+	"ML_BROWSE_init_state").
+:- pragma export(browse__browse(in, in, in, in, out, di, uo),
+	"ML_BROWSE_browse").
+:- pragma export(browse__print(in, in, in, di, uo),
+	"ML_BROWSE_print").
 :- pragma export(browse__browser_state_type(out),
-					"ML_BROWSE_browser_state_type").
+	"ML_BROWSE_browser_state_type").
 
 %---------------------------------------------------------------------------%
 
@@ -74,9 +79,11 @@ browse__browser_state_type(Type) :-
 % Non-interactive display
 %
 
-browse__print(Term, State0) -->
+browse__print(Term, OutputStream, State0) -->
 	{ set_term(Term, State0, State) },
-	browse__print(State).
+	io__set_output_stream(OutputStream, OldStream),
+	browse__print(State),
+	io__set_output_stream(OldStream, _).
 
 :- pred browse__print(browser_state, io__state, io__state).
 :- mode browse__print(in, di, uo) is det.
@@ -125,11 +132,15 @@ term_size(Univ, TotalSize) :-
 % Interactive display
 %
 
-browse__browse(Object, State0, State) -->
+browse__browse(Object, InputStream, OutputStream, State0, State) -->
 	{ type_to_univ(Object, Univ) },
 	{ set_term(Univ, State0, State1) },
+	io__set_input_stream(InputStream, OldInputStream),
+	io__set_output_stream(OutputStream, OldOutputStream),
 	% startup_message,
-	browse_main_loop(State1, State).
+	browse_main_loop(State1, State),
+	io__set_input_stream(OldInputStream, _),
+	io__set_output_stream(OldOutputStream, _).
 
 :- pred browse_main_loop(browser_state, browser_state, io__state, io__state).
 :- mode browse_main_loop(in, out, di, uo) is det.

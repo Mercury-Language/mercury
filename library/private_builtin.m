@@ -192,12 +192,6 @@
 	% This type is used in contexts where an answer block is expected.
 :- type ml_answer_block.
 
-	% This is a dummy predicate: its pred_proc_id, but not its code, 
-	% is used. See the comment in compiler/table_gen.m for more 
-	% information. 
-:- impure pred get_table(ml_table).
-:- mode get_table(out) is det.
-
 	% Save important information in nondet table and initialise all of
 	% its fields. If called on an already initialised table do nothing.
 :- impure pred table_setup(ml_subgoal_table_node, ml_subgoal_table_node).
@@ -569,10 +563,6 @@ compare_error :-
 	** succeeded. */
 
 ").
-
-	% This is a dummy procedure that never actually gets called.
-	% See the comments in table_gen.m for its purpose.
-:- pragma c_code(get_table(_T::out), will_not_call_mercury, "").
 
 :- pragma c_code(table_working_on_ans(T::in), will_not_call_mercury, "
 	SUCCESS_INDICATOR = (*((Word *) T) == ML_WORKING_ON_ANS);
@@ -1489,7 +1479,7 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	*/
 	int comp;
 	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(compare_input1, compare_input2);
 	restore_transient_registers();
 	compare_output = comp;
 	proceed();

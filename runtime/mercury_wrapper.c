@@ -38,6 +38,7 @@ ENDINIT
 #include	"mercury_dummy.h"
 #include	"mercury_stack_layout.h"
 #include	"mercury_trace_base.h"
+#include	"mercury_memory.h"	/* for MR_copy_string() */
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
@@ -73,6 +74,11 @@ size_t		debug_heap_zone_size =	   16;
 
 /* primary cache size to optimize for, in bytes */
 size_t		pcache_size =	         8192;
+
+/* file names for mdb's debugger I/O streams */
+const char *MR_mdb_in_filename = NULL;
+const char *MR_mdb_out_filename = NULL;
+const char *MR_mdb_err_filename = NULL;
 
 /* other options */
 
@@ -510,7 +516,11 @@ enum MR_long_option {
 	MR_HEAP_REDZONE_SIZE,
 	MR_DETSTACK_REDZONE_SIZE,
 	MR_NONDETSTACK_REDZONE_SIZE,
-	MR_TRAIL_REDZONE_SIZE
+	MR_TRAIL_REDZONE_SIZE,
+	MR_MDB_TTY,
+	MR_MDB_IN,
+	MR_MDB_OUT,
+	MR_MDB_ERR
 };
 
 struct MR_option MR_long_opts[] = {
@@ -522,6 +532,10 @@ struct MR_option MR_long_opts[] = {
 	{ "detstack-redzone-size", 	1, 0, MR_DETSTACK_REDZONE_SIZE },
 	{ "nondetstack-redzone-size", 	1, 0, MR_NONDETSTACK_REDZONE_SIZE },
 	{ "trail-redzone-size", 	1, 0, MR_TRAIL_REDZONE_SIZE },
+	{ "mdb-tty", 			1, 0, MR_MDB_TTY },
+	{ "mdb-in", 			1, 0, MR_MDB_IN },
+	{ "mdb-out", 			1, 0, MR_MDB_OUT },
+	{ "mdb-err", 			1, 0, MR_MDB_ERR }
 };
 
 static void
@@ -531,7 +545,7 @@ process_options(int argc, char **argv)
 	int		c;
 	int		long_index;
 
-	while ((c = MR_getopt_long(argc, argv, "acC:d:D:P:pr:tT:x",
+	while ((c = MR_getopt_long(argc, argv, "acC:d:e:D:i:m:o:P:pr:tT:x",
 		MR_long_opts, &long_index)) != EOF)
 	{
 		switch (c)
@@ -591,6 +605,28 @@ process_options(int argc, char **argv)
 				usage();
 
 			trail_zone_size = size;
+			break;
+
+		case 'i':
+		case MR_MDB_IN:
+			MR_mdb_in_filename = MR_copy_string(MR_optarg);
+			break;
+
+		case 'o':
+		case MR_MDB_OUT:
+			MR_mdb_out_filename = MR_copy_string(MR_optarg);
+			break;
+
+		case 'e':
+		case MR_MDB_ERR:
+			MR_mdb_err_filename = MR_copy_string(MR_optarg);
+			break;
+
+		case 'm':
+		case MR_MDB_TTY:
+			MR_mdb_in_filename = MR_copy_string(MR_optarg);
+			MR_mdb_out_filename = MR_copy_string(MR_optarg);
+			MR_mdb_err_filename = MR_copy_string(MR_optarg);
 			break;
 
 		case 'a':

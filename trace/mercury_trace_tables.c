@@ -35,7 +35,8 @@ static	MR_Module_Info	*MR_ensure_module_info_is_present(const char *name);
 
 static	void		MR_process_matching_procedures_in_module(
 				MR_Module_Info *module, MR_Proc_Spec *spec,
-				void f(const MR_Stack_Layout_Entry *));
+				void f(void *, const MR_Stack_Layout_Entry *),
+				void *);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, bool verbose)
@@ -297,34 +298,41 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	return TRUE;
 }
 
-/* These two variables are for communication between */
-/* MR_register_match and MR_search_for_matching_procedure. */
-static	const MR_Stack_Layout_Entry	*matching_entry;
-static	bool	 			match_unique;
+/*
+** This struct is for communication between
+** MR_register_match and MR_search_for_matching_procedure.
+*/
+typedef struct {
+	const MR_Stack_Layout_Entry	*matching_entry;
+	bool	 			match_unique;
+} MR_match_info;
 
 static void
-MR_register_match(const MR_Stack_Layout_Entry *entry)
+MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
 {
-	if (matching_entry == NULL) {
-		matching_entry = entry;
+	MR_match_info *m = data;
+	if (m->matching_entry == NULL) {
+		m->matching_entry = entry;
 	} else {
-		match_unique = FALSE;
+		m->match_unique = FALSE;
 	}
 }
 
 const MR_Stack_Layout_Entry *
 MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
 {
-	matching_entry = NULL;
-	match_unique = TRUE;
-	MR_process_matching_procedures(spec, MR_register_match);
-	*unique = match_unique;
-	return matching_entry;
+	MR_match_info m;
+	m.matching_entry = NULL;
+	m.match_unique = TRUE;
+	MR_process_matching_procedures(spec, MR_register_match, &m);
+	*unique = m.match_unique;
+	return m.matching_entry;
 }
 
 void
 MR_process_matching_procedures(MR_Proc_Spec *spec,
-	void f(const MR_Stack_Layout_Entry *))
+	void f(void *, const MR_Stack_Layout_Entry *),
+	void *data)
 {
 	if (spec->MR_proc_module != NULL) {
 		MR_Module_Info			*module;
@@ -332,14 +340,14 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 		module = MR_search_module_info(spec->MR_proc_module);
 		if (module != NULL) {
 			MR_process_matching_procedures_in_module(
-				module, spec, f);
+				module, spec, f, data);
 		}
 	} else {
 		int	i;
 
 		for (i = 0; i < MR_module_info_next; i++) {
 			MR_process_matching_procedures_in_module(
-				&MR_module_infos[i], spec, f);
+				&MR_module_infos[i], spec, f, data);
 		}
 	}
 }
@@ -362,7 +370,8 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 static void
 MR_process_matching_procedures_in_module(MR_Module_Info *module,
-	MR_Proc_Spec *spec, void f(const MR_Stack_Layout_Entry *))
+	MR_Proc_Spec *spec, void f(void *, const MR_Stack_Layout_Entry *),
+	void *data)
 {
 	MR_Proc_Node			*cur;
 	const MR_Stack_Layout_Entry	*cur_entry;
@@ -375,7 +384,7 @@ MR_process_matching_procedures_in_module(MR_Module_Info *module,
 				match_mode(spec, cur_entry) &&
 				match_pf(spec, cur_entry))
 		{
-			f(cur_entry);
+			f(data, cur_entry);
 		}
 	}
 }

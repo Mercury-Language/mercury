@@ -144,7 +144,7 @@ compiler: dep_compiler scripts util boehm_gc runtime library browser trace
 	cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
-doc: scripts
+doc: scripts util
 	cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
@@ -237,6 +237,7 @@ tar: README INSTALL
 		mv mercury/trial	stuff-to-exclude;		\
 		mv mercury/bytecode	stuff-to-exclude;		\
 		mv mercury/lp_solve	stuff-to-exclude;		\
+		mv mercury/extras/aditi stuff-to-exclude;		\
 		mv mercury/extras	mercury-extras-$(VERSION);	\
 		mv mercury		mercury-compiler-$(VERSION);	\
 		mv tests		mercury-tests-$(VERSION);	\
@@ -249,6 +250,7 @@ tar: README INSTALL
 		mv mercury-compiler-$(VERSION)	mercury;		\
 		mv mercury-extras-$(VERSION)	mercury/extras;		\
 		mv mercury-tests-$(VERSION)	tests;			\
+		mv stuff-to-exclude/aditi	mercury/extras/aditi;	\
 		mv stuff-to-exclude/*		mercury;		\
 		rmdir stuff-to-exclude;					\
 	)
@@ -426,6 +428,7 @@ preinstall_hack_for_windows:
 	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
 	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
 	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
+	cd util && mv info_to_mdb.exe xyzzy && mv xyzzy info_to_mdb
 
 .PHONY: postinstall_hack_for_windows
 postinstall_hack_for_windows:
@@ -433,6 +436,7 @@ postinstall_hack_for_windows:
 	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
 	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
 	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
+	cd $(INSTALL_BINDIR) && mv info_to_mdb info_to_mdb.exe
 
 #-----------------------------------------------------------------------------#
 

@@ -401,16 +401,18 @@ char__lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(char__to_int(Character::in, Int::out), will_not_call_mercury, "
+:- pragma c_code(char__to_int(Character::in, Int::out),
+               [will_not_call_mercury, thread_safe] , "
 	Int = (UnsignedChar) Character;
 ").
 
-:- pragma c_code(char__to_int(Character::in, Int::in), will_not_call_mercury, "
+:- pragma c_code(char__to_int(Character::in, Int::in),
+               [will_not_call_mercury, thread_safe] , "
 	SUCCESS_INDICATOR = ((UnsignedChar) Character == Int);
 ").
 
-:- pragma c_code(char__to_int(Character::out, Int::in), will_not_call_mercury,
-"
+:- pragma c_code(char__to_int(Character::out, Int::in),
+               [will_not_call_mercury, thread_safe] , "
 	/*
 	** If the integer doesn't fit into a char, then
 	** the assignment `Character = Int' below will truncate it.
@@ -427,7 +429,8 @@ char__lower_upper('z', 'Z').
 char__min_char_value(0).
 
 :- pragma c_header_code("#include <limits.h>").
-:- pragma c_code(char__max_char_value(Max::out), will_not_call_mercury, "
+:- pragma c_code(char__max_char_value(Max::out),
+               [will_not_call_mercury, thread_safe], "
 	Max = UCHAR_MAX;
 ").
 	

@@ -15,7 +15,7 @@
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_MUTEX_ATTR		pthread_mutexattr_default
     #define MR_COND_ATTR		pthread_condattr_default
-    #define MR_THREAD_ATTR	pthread_attr_default
+    #define MR_THREAD_ATTR		pthread_attr_default
   #else
     #define MR_MUTEX_ATTR		NULL
     #define MR_COND_ATTR		NULL
@@ -27,7 +27,7 @@
   typedef pthread_mutex_t	MercuryLock;
   typedef pthread_cond_t	MercuryCond;
 
-  #if 0
+  #ifndef MR_DEBUG_THREADS
 	/*
 	** The following macros should be used once the
 	** use of locking in the generated code is considered
@@ -57,11 +57,8 @@
 	** predicates which are not thread-safe.
 	** See the comments below.
 	*/
-  #define MR_OBTAIN_GLOBAL_C_LOCK()	MR_mutex_lock(&MR_global_lock, \
-						"pragma c code");
-
-  #define MR_RELEASE_GLOBAL_C_LOCK()	MR_mutex_unlock(&MR_global_lock, \
-						"pragma c code");
+  #define MR_OBTAIN_GLOBAL_LOCK(where)	MR_LOCK(&MR_global_lock, (where))
+  #define MR_RELEASE_GLOBAL_LOCK(where)	MR_UNLOCK(&MR_global_lock, (where))
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_GETSPECIFIC(key) 	({		\
@@ -113,9 +110,8 @@
   #define MR_SIGNAL(nothing)		do { } while (0)
   #define MR_WAIT(no, thing)		do { } while (0)
 
-  #define MR_OBTAIN_GLOBAL_C_LOCK()	do { } while (0)
-
-  #define MR_RELEASE_GLOBAL_C_LOCK()	do { } while (0)
+  #define MR_OBTAIN_GLOBAL_LOCK(where)	do { } while (0)
+  #define MR_RELEASE_GLOBAL_LOCK(where)	do { } while (0)
 
 #endif
 

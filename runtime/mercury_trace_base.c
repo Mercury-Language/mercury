@@ -144,11 +144,12 @@ MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 {
 	fatal_error("This executable is not set up for debugging.\n"
 		"Rebuild the <main>_init.c file, "
-		"and give the -t flag to c2init when you do so.\n"
+		"and give the `-t' flag to c2init when you do so.\n"
 		"If you are using mmake, you can do this by including "
-		"-t in C2INIT_FLAGS.\n"
-		"For further details, please see the Debugging chapter"
-		"of the Mercury User's Guide.\n");
+		"`-t' in C2INIT_FLAGS.\n"
+		"For further details, please see the \"Debugging\" chapter "
+		"of the\n"
+		"Mercury User's Guide.\n");
 	/*NOTREACHED*/
 	return NULL;
 }
@@ -282,6 +283,10 @@ Define_entry(MR_do_trace_redo_fail);
 	printf("MR_redo_layout_framevar(MR_redofr_slot(MR_curfr) = %p\n",
 		MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 #endif
+	/*
+	** If this code ever needs changing, you may also need to change
+	** the code in extras/exceptions/exception.m similarly.
+	*/
 	{
 		Code *MR_jumpaddr;
 		save_transient_registers();
