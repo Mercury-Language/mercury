@@ -38,9 +38,16 @@
 % specify how many times Pred should be called inside the timed interval.
 % The number of milliseconds required to execute Pred with input In this
 % many times is returned as Time.
+%
+% benchmark_func(Func, In, Out, Repeats, Time) does for functions exactly
+% what benchmark_det does for predicates.
 
 :- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
 :- mode benchmark_det(pred(in, out) is det, in, out, in, out) is cc_multi.
+:- mode benchmark_det(pred(in, out) is cc_multi, in, out, in, out) is cc_multi.
+
+:- pred benchmark_func(func(T1) = T2, T1, T2, int, int).
+:- mode benchmark_func(func(in) = out is det, in, out, in, out) is cc_multi.
 
 % benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
 % the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
@@ -574,6 +581,7 @@ benchmark_det(Pred, In, Out, Repeats, Time) :-
 
 :- impure pred benchmark_det_loop(pred(T1, T2), T1, T2, int).
 :- mode benchmark_det_loop(pred(in, out) is det, in, out, in) is det.
+:- mode benchmark_det_loop(pred(in, out) is cc_multi, in, out, in) is cc_multi.
 
 benchmark_det_loop(Pred, In, Out, Repeats) :-
 	% The call to do_nothing/1 here is to make sure the compiler
@@ -582,6 +590,28 @@ benchmark_det_loop(Pred, In, Out, Repeats) :-
 	impure do_nothing(Out0),
 	( Repeats > 1 ->
 		impure benchmark_det_loop(Pred, In, Out, Repeats - 1)
+	;
+		Out = Out0
+	).
+
+:- pragma promise_pure(benchmark_func/5).
+benchmark_func(Func, In, Out, Repeats, Time) :-
+	impure get_user_cpu_miliseconds(StartTime),
+	impure benchmark_func_loop(Func, In, Out, Repeats),
+	impure get_user_cpu_miliseconds(EndTime),
+	Time0 = EndTime - StartTime,
+	cc_multi_equal(Time0, Time).
+
+:- impure pred benchmark_func_loop(func(T1) = T2, T1, T2, int).
+:- mode benchmark_func_loop(func(in) = out is det, in, out, in) is det.
+
+benchmark_func_loop(Func, In, Out, Repeats) :-
+	% The call to do_nothing/1 here is to make sure the compiler
+	% doesn't optimize away the call to `Func'.
+	Out0 = Func(In),
+	impure do_nothing(Out0),
+	( Repeats > 1 ->
+		impure benchmark_func_loop(Func, In, Out, Repeats - 1)
 	;
 		Out = Out0
 	).
