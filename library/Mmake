@@ -1,0 +1,154 @@
+#-----------------------------------------------------------------------------#
+
+# Makefile.main - this is the main part of the Makefile
+# for building the Mercury libraries.
+
+include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+# Specify which compilers to use to compile the library.
+# Don't change these without good reason - if you want to
+# do a temporary change, change ../Mmake.params.
+
+MNC	=	MERCURY_NC_BUILTIN="`vpath_find nc_builtin.nl`" mnc
+MNL	=	MERCURY_LIB_DIR=. \
+	MERCURY_LIB_OBJS="`vpath_find $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS)`" \
+		mnl
+MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mc
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
+		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
+		mod2init
+# ML and MLFLAGS should not be needed here, but just in case...
+# (we use -static to avoid problems with relative paths to shared libraries)
+ML	=	MERCURY_C_LIB_DIR=$(RUNTIME_DIR) ml
+MLFLAGS =	-- -static
+
+#-----------------------------------------------------------------------------#
+
+LIBRARY_SRCS = $(library.srcs)
+LIBRARY_OBJS = $(library.objs) $(library.nos)
+LIBRARY_INTS = $(library.ints)
+
+NU_LIBRARY_SRCS = \
+	io.nu.nl require.nu.nl std_util.nu.nl string.nu.nl term_io.nu.nl \
+	opt_debug.nu.nl mercury_builtin.nu.nl
+NU_LIBRARY_OBJS = \
+	io.nu.no require.nu.no std_util.nu.no string.nu.no term_io.nu.no \
+	opt_debug.nu.no
+
+#-----------------------------------------------------------------------------#
+
+# targets
+
+MAIN_TARGET=libmercury
+
+.PHONY: main_target
+main_target : $(MAIN_TARGET)
+
+.PHONY: all
+all : libmercury
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: check
+check		: library.check
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: ints 
+ints		: library.ints
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: mods library.mods
+mods		: library.mods
+library.mods	: $(library.mods)
+
+#-----------------------------------------------------------------------------#
+
+tags		: $(library.srcs)
+	mtags $(library.srcs)
+
+library.stats : source_stats.awk $(library.srcs)
+	awk -f `vpath_find source_stats.awk` \
+		`vpath_find $(library.srcs)` > $@
+	
+#-----------------------------------------------------------------------------#
+
+.PHONY: dates
+dates		:
+	touch $(library.dates)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: os cs
+os: $(library.os)
+cs: $(library.cs)
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: libmercury
+libmercury : libmercury.a libmercury.so
+
+libmercury.a : $(library.os)
+	ar cr libmercury.a $(library.os)
+	$(RANLIB) libmercury.a
+
+libmercury.so : $(library.os)
+	$(MGNUC) $(MGNUCFLAGS) -- -shared -o libmercury.so $(library.os)
+
+#-----------------------------------------------------------------------------#
+
+# we need to add some manual dependencies, since the
+# automatic dependencies assume that the library
+# isn't part of the application, but in this case it is.
+
+library.nu : $(NU_LIBRARY_OBJS) $(library.nos)
+
+#-----------------------------------------------------------------------------#
+
+CHGRP=mercury
+CHMOD=go+w
+
+# Installation targets
+
+.PHONY: install
+install: install_ints install_library install_nuprolog
+	-chgrp -R $CHGRP $(LIBDIR) 2>/dev/null
+	-chmod -R $CHMOD $(LIBDIR) 2>/dev/null
+
+.PHONY: install_ints
+install_ints: $(LIBRARY_INTS)
+	mkdir -p $(INSTALL_INT_DIR)
+	cp `vpath_find $(LIBRARY_INTS)` $(INSTALL_INT_DIR)
+
+.PHONY: install_library
+install_library: libmercury.a libmercury.so
+	mkdir -p $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmercury.a libmercury.so` $(INSTALL_MERC_LIB_DIR)
+
+.PHONY: install_nuprolog
+install_nuprolog: install_library_nu install_interpreter_nu
+
+.PHONY: install_library_nu
+install_library_nu: $(LIBRARY_OBJS) $(NU_LIBRARY_OBJS) \
+			nc_builtin.nl np_builtin.nl
+	mkdir -p $(INSTALL_NU_DIR)
+	cp `vpath_find nc_builtin.nl np_builtin.nl` $(INSTALL_NU_DIR)
+	mkdir -p $(INSTALL_NU_ARCH_DIR)
+	cp `vpath_find $(LIBRARY_OBJS)` $(INSTALL_NU_ARCH_DIR)
+	mkdir -p $(INSTALL_NU_ARCH_DIR)
+	cp `vpath_find $(NU_LIBRARY_OBJS)` \
+		$(INSTALL_NU_ARCH_DIR)
+
+.PHONY: install_interpreter_nu
+install_interpreter_nu: library.nu
+	mkdir -p $(INSTALL_NU_ARCH_DIR)
+	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find library.nu` \
+		> $(INSTALL_NU_ARCH_DIR)/library.nu
+	-chmod +x $(INSTALL_NU_ARCH_DIR)/library.nu
+	cp library.nu.save $(INSTALL_NU_ARCH_DIR)/library.nu.save
+
+#-----------------------------------------------------------------------------#

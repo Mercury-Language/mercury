@@ -1,0 +1,31 @@
+#-----------------------------------------------------------------------------#
+
+# Mmake - the top-level Mmake file for the Mercury implementation
+
+include Mmake.common
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: install_scripts
+install_scripts:
+	cd scripts; \
+	$(MMAKE) install
+
+.PHONY: install_doc
+install_doc:
+	cd doc; \
+	$(MMAKE) $(MMAKEFLAGS) install
+
+.PHONY: install_library
+install_library:
+	cd library; \
+	MERCURY_INT_DIR=.; \
+	export MERCURY_INT_DIR; \
+	$(MMAKE) $(MMAKEFLAGS) install_ints install_nuprolog || exit 1; \
+	for grade in $(GRADES); do \
+		rm -f *.mod *.c *.o *.a *.so; \
+		$(MMAKE) $(MMAKEFLAGS) GRADE=$$grade install_library || exit 1; \
+	done; \
+	rm -f *.mod *.c *.o *.a *.so;
+
+#-----------------------------------------------------------------------------#

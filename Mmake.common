@@ -1,0 +1,70 @@
+#-----------------------------------------------------------------------------#
+
+# Makefile.common - this is the part of the Makefile
+# for building the Mercury implementation that is shared
+# between all the subdirectories.
+
+#-----------------------------------------------------------------------------#
+
+# Specify the locations for installing things.
+
+INSTALL_PREFIX		= /usr/local/contrib
+INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
+INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
+INSTALL_INT_DIR		= $(INSTALL_LIBDIR)/ints
+INSTALL_MMAKE_DIR 	= $(INSTALL_LIBDIR)/mmake
+FULLARCH		= `fullarch`
+INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
+INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
+INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
+INSTALL_NU_DIR		= $(INSTALL_LIBDIR)/nuprolog
+INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
+INSTALL_SP_DIR		= $(INSTALL_LIBDIR)/sicstus
+INSTALL_SP_ARCH_DIR 	= $(INSTALL_LIBDIR)/sicstus/$(FULLARCH)
+
+# Specify the compilation model to use for compiling the compiler
+GRADE	=	asm_fast.gc
+
+# Specify the compilation models for which we want to install the library
+GRADES  =	asm_fast.gc asm_fast debug.gc debug fast
+
+RANLIB			= :
+
+# Specify the location of the scripts which get installed
+
+SCRIPTS_DIR = ../scripts
+RUNTIME_DIR = ../runtime
+
+# Specify the location of the system .mod files 
+
+SYS_MODS = \
+	$(RUNTIME_DIR)/engine.mod \
+	$(RUNTIME_DIR)/io.mod \
+	$(RUNTIME_DIR)/wrapper.mod \
+	$(RUNTIME_DIR)/call.mod
+
+SCRIPTS = \
+	$(SCRIPTS_DIR)/mc.sh \
+	$(SCRIPTS_DIR)/mcn.sh \
+	$(SCRIPTS_DIR)/mcs.sh \
+	$(SCRIPTS_DIR)/mod2init.sh \
+	$(SCRIPTS_DIR)/mgnuc.sh \
+	$(SCRIPTS_DIR)/ml.sh \
+	$(SCRIPTS_DIR)/mercury_update_interface.sh \
+	$(SCRIPTS_DIR)/mint.sh \
+	$(SCRIPTS_DIR)/mnc.sh \
+	$(SCRIPTS_DIR)/mnl.sh \
+	$(SCRIPTS_DIR)/mnp.sh
+
+EXTRA_SCRIPTS = \
+	$(SCRIPTS_DIR)/mtags \
+	$(SCRIPTS_DIR)/mod2c \
+	$(SCRIPTS_DIR)/vpath_find
+
+#-----------------------------------------------------------------------------#
+
+.PHONY:
+
+-include Mmake.params
+
+#-----------------------------------------------------------------------------#
