@@ -63,8 +63,8 @@ Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout);
 static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth);
-static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
-			Word *saved_regs, MR_uint_least16_t var_num,
+static	MR_Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
+			MR_Word *saved_regs, MR_uint_least16_t var_num,
 			bool *succeeded);
 
 /*
@@ -82,7 +82,7 @@ static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
 Code *
 MR_trace_real(const MR_Stack_Layout_Label *layout)
 {
-	Integer		maybe_from_full;
+	MR_Integer		maybe_from_full;
 	Unsigned	seqno;
 	Unsigned	depth;
 	MR_Spy_Action	action;
@@ -325,7 +325,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 {
 	Code		*jumpaddr;
 	MR_Event_Info	event_info;
-	Word		*saved_regs = event_info.MR_saved_regs;
+	MR_Word		*saved_regs = event_info.MR_saved_regs;
 	int		max_r_num;
 
 	event_info.MR_event_number = MR_trace_event_number;
@@ -390,14 +390,14 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	const MR_Stack_Layout_Entry	*entry;
 	const MR_Stack_Layout_Label	*call_label;
 	const MR_Stack_Layout_Vars	*input_args;
-	Word				*args;
+	MR_Word				*args;
 	int				arg_max;
 	int				arg_num;
-	Word				arg_value;
+	MR_Word				arg_value;
 	int				i;
 	bool				succeeded;
 	const char			*message;
-	Word 				*saved_regs;
+	MR_Word 				*saved_regs;
 
 	saved_regs = event_info->MR_saved_regs;
 	entry = event_info->MR_event_sll->MR_sll_entry;
@@ -447,7 +447,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		}
 
 		if (arg_num > 0) {
-			MR_ensure_big_enough(arg_num, arg, Word,
+			MR_ensure_big_enough(arg_num, arg, MR_Word,
 				MR_INIT_ARG_COUNT);
 			args[arg_num] = arg_value;
 		} else {
@@ -460,7 +460,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 		MR_Long_Lval	location;
-		Word		*this_frame;
+		MR_Word		*this_frame;
 
 		/*
 		** We are at a final port, so both curfr and maxfr
@@ -476,7 +476,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		}
 
 		this_frame = MR_saved_sp(saved_regs);
-		MR_saved_succip(saved_regs) = (Word *)
+		MR_saved_succip(saved_regs) = (MR_Word *)
 				MR_based_stackvar(this_frame,
 				MR_LONG_LVAL_NUMBER(location));
 		MR_saved_sp(saved_regs) -= entry->MR_sle_stack_slots;
@@ -484,8 +484,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 #ifdef	MR_USE_TRAIL
 		if (entry->MR_sle_maybe_trail >= 0) {
-			Word	ticket_counter;
-			Word	trail_ptr;
+			MR_Word	ticket_counter;
+			MR_Word	trail_ptr;
 
 			trail_ptr = MR_based_stackvar(this_frame,
 					entry->MR_sle_maybe_trail);
@@ -498,7 +498,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		}
 #endif
 	} else {
-		Word	*this_frame;
+		MR_Word	*this_frame;
 
 		/*
 		** We are at a final port, so sp must already have been reset
@@ -516,8 +516,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 #ifdef	MR_USE_TRAIL
 		if (entry->MR_sle_maybe_trail >= 0) {
-			Word	ticket_counter;
-			Word	trail_ptr;
+			MR_Word	ticket_counter;
+			MR_Word	trail_ptr;
 
 			trail_ptr = MR_based_framevar(this_frame,
 					entry->MR_sle_maybe_trail);
@@ -556,8 +556,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 }
 
 
-static Word
-MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
+static MR_Word
+MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, MR_Word *saved_regs,
 	MR_uint_least16_t var_num, bool *succeeded)
 {
 	const MR_Stack_Layout_Vars	*vars;

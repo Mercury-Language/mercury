@@ -168,8 +168,8 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 	MR_Spy_Action			action;
 	const MR_Stack_Layout_Label	*parent;
 	const char			*problem;
-	Word				*base_sp;
-	Word				*base_curfr;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
 
 	enabled = FALSE;
 	action = MR_SPY_PRINT;
@@ -400,8 +400,8 @@ MR_compare_spied_labels(const void *l1, const void *l2)
 	label1 = (const MR_Spied_Label *) l1;
 	label2 = (const MR_Spied_Label *) l2;
 
-	return (int) ((Integer) label1->spy_label
-		- (Integer) label2->spy_label);
+	return (int) ((MR_Integer) label1->spy_label
+		- (MR_Integer) label2->spy_label);
 }
 
 void

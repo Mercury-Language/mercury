@@ -120,8 +120,8 @@ bool		MR_profiling = TRUE;
 #include	"mercury_array_macros.h"
 
 typedef struct {
-	ConstString	type_stat_module;
-	ConstString	type_stat_name;
+	MR_ConstString	type_stat_module;
+	MR_ConstString	type_stat_name;
 	int		type_stat_ctor_rep;
 	long		type_stat_count;
 } MR_TypeNameStat;
@@ -189,7 +189,7 @@ void	(*address_of_init_gc)(void);
 void	(*program_entry_point)(void);
 		/* normally main_2_p_0 (main/2) */
 #else
-Code	*program_entry_point;
+MR_Code	*program_entry_point;
 		/* normally mercury__main_2_0 (main/2) */
 #endif
 
@@ -198,19 +198,19 @@ void	(*MR_library_initializer)(void);
 void	(*MR_library_finalizer)(void);
 		/* normally ML_io_finalize_state (io__finalize_state/2) */
 
-void	(*MR_io_stderr_stream)(Word *);
-void	(*MR_io_stdout_stream)(Word *);
-void	(*MR_io_stdin_stream)(Word *);
-void	(*MR_io_print_to_cur_stream)(Word, Word);
-void	(*MR_io_print_to_stream)(Word, Word, Word);
+void	(*MR_io_stderr_stream)(MR_Word *);
+void	(*MR_io_stdout_stream)(MR_Word *);
+void	(*MR_io_stdin_stream)(MR_Word *);
+void	(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
+void	(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
-void	(*MR_DI_output_current_ptr)(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, Word, String, Word, Word);
+void	(*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String,
+		MR_String, MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word, MR_Word);
 		/* normally ML_DI_output_current (output_current/13) */
-bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
-		Integer, Integer, Integer, Word, String, Word);
+bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_String,
+		MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word);
 		/* normally ML_DI_found_match (output_current/12) */
-void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
+void	(*MR_DI_read_request_from_socket)(MR_Word, MR_Word *, MR_Integer *);
 
 /*
 ** This variable has been replaced by MR_io_print_to_*_stream,
@@ -219,9 +219,9 @@ void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 ** been retired.
 */
 
-Code	*MR_library_trace_browser;
+MR_Code	*MR_library_trace_browser;
 
-Code	*(*volatile MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
+MR_Code	*(*volatile MR_trace_func_ptr)(const MR_Stack_Layout_Label *);
 
 void	(*MR_address_of_trace_interrupt_handler)(void);
 
@@ -263,7 +263,7 @@ mercury_runtime_init(int argc, char **argv)
 	bool	saved_trace_enabled;
 
 #if NUM_REAL_REGS > 0
-	Word c_regs[NUM_REAL_REGS];
+	MR_Word c_regs[NUM_REAL_REGS];
 #endif
 
 	/*
@@ -893,7 +893,7 @@ void
 mercury_runtime_main(void)
 {
 #if NUM_REAL_REGS > 0
-	Word c_regs[NUM_REAL_REGS];
+	MR_Word c_regs[NUM_REAL_REGS];
 #endif
 
 #if defined(MR_LOWLEVEL_DEBUG) && defined(USE_GCC_NONLOCAL_GOTOS)
@@ -1034,7 +1034,7 @@ mercury_runtime_main(void)
 
 #ifdef	MR_TYPE_CTOR_STATS
 
-static	ConstString	MR_ctor_rep_name[] = {
+static	MR_ConstString	MR_ctor_rep_name[] = {
 	MR_CTOR_REP_NAMES
 };
 
@@ -1229,10 +1229,10 @@ BEGIN_CODE
 
 Define_entry(do_interpreter);
 	MR_incr_sp(4);
-	MR_stackvar(1) = (Word) MR_hp;
-	MR_stackvar(2) = (Word) MR_succip;
-	MR_stackvar(3) = (Word) MR_maxfr;
-	MR_stackvar(4) = (Word) MR_curfr;
+	MR_stackvar(1) = (MR_Word) MR_hp;
+	MR_stackvar(2) = (MR_Word) MR_succip;
+	MR_stackvar(3) = (MR_Word) MR_maxfr;
+	MR_stackvar(4) = (MR_Word) MR_curfr;
 
 	MR_mkframe("interpreter", 1, LABEL(global_fail));
 
@@ -1281,10 +1281,10 @@ Define_label(all_done);
 	if (MR_profiling) MR_prof_turn_off_time_profiling();
 #endif
 
-	MR_hp     = (Word *) MR_stackvar(1);
-	MR_succip = (Code *) MR_stackvar(2);
-	MR_maxfr  = (Word *) MR_stackvar(3);
-	MR_curfr  = (Word *) MR_stackvar(4);
+	MR_hp     = (MR_Word *) MR_stackvar(1);
+	MR_succip = (MR_Code *) MR_stackvar(2);
+	MR_maxfr  = (MR_Word *) MR_stackvar(3);
+	MR_curfr  = (MR_Word *) MR_stackvar(4);
 	MR_decr_sp(4);
 
 #ifdef MR_LOWLEVEL_DEBUG
@@ -1308,7 +1308,7 @@ int
 mercury_runtime_terminate(void)
 {
 #if NUM_REAL_REGS > 0
-	Word c_regs[NUM_REAL_REGS];
+	MR_Word c_regs[NUM_REAL_REGS];
 #endif
 	/*
 	** Save the callee-save registers; we're going to start using them

@@ -128,10 +128,10 @@ typedef enum {
 
 #define MR_LONG_LVAL_TYPE(Locn) 					\
 	((MR_Long_Lval_Type)						\
-		(((Word) Locn) & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
+		(((MR_Word) Locn) & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
 
 #define MR_LONG_LVAL_NUMBER(Locn) 					\
-	((int) ((Word) Locn) >> MR_LONG_LVAL_TAGBITS)
+	((int) ((MR_Word) Locn) >> MR_LONG_LVAL_TAGBITS)
 
 /* This must be in sync with stack_layout__offset_bits */
 #define MR_LONG_LVAL_OFFSETBITS	6
@@ -140,16 +140,16 @@ typedef enum {
 	((int) ((LocnNumber) & ((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
 
 #define MR_LONG_LVAL_INDIRECT_BASE_LVAL(LocnNumber)			\
-	(((Word) (LocnNumber)) >> MR_LONG_LVAL_OFFSETBITS)
+	(((MR_Word) (LocnNumber)) >> MR_LONG_LVAL_OFFSETBITS)
 
 #define	MR_LONG_LVAL_STACKVAR(n)					\
-	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
+	((MR_Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
 
 #define	MR_LONG_LVAL_FRAMEVAR(n)					\
-	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
+	((MR_Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_FRAMEVAR)
 
 #define	MR_LONG_LVAL_R_REG(n)						\
-	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
+	((MR_Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
 /*
 ** MR_Short_Lval is a MR_uint_least8_t which describes an location. This
@@ -185,7 +185,7 @@ typedef enum {
 
 #define MR_SHORT_LVAL_TYPE(Locn) 					\
 	((MR_Short_Lval_Type)						\
-		(((Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
+		(((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
 
 #define	MR_SHORT_LVAL_STACKVAR(n)					\
 	((MR_Short_Lval) (((n) << MR_SHORT_LVAL_TAGBITS)		\
@@ -258,7 +258,7 @@ typedef	struct MR_Var_Name_Struct {
 */
 
 typedef	struct MR_Stack_Layout_Vars_Struct {
-	Integer			MR_slvs_var_count;
+	MR_Integer			MR_slvs_var_count;
 	void			*MR_slvs_locns_types;
 	MR_Var_Name		*MR_slvs_names;
 	MR_Type_Param_Locns	*MR_slvs_tvars;
@@ -345,18 +345,18 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 
 typedef struct MR_Stack_Layout_User_Proc_Struct {
 	MR_PredFunc		MR_user_pred_or_func;
-	ConstString		MR_user_decl_module;
-	ConstString		MR_user_def_module;
-	ConstString		MR_user_name;
+	MR_ConstString		MR_user_decl_module;
+	MR_ConstString		MR_user_def_module;
+	MR_ConstString		MR_user_name;
 	MR_int_least16_t	MR_user_arity;
 	MR_int_least16_t	MR_user_mode;
 } MR_Stack_Layout_User_Proc;
 
 typedef struct MR_Stack_Layout_Compiler_Proc_Struct {
-	ConstString		MR_comp_type_name;
-	ConstString		MR_comp_type_module;
-	ConstString		MR_comp_def_module;
-	ConstString		MR_comp_pred_name;
+	MR_ConstString		MR_comp_type_name;
+	MR_ConstString		MR_comp_type_module;
+	MR_ConstString		MR_comp_def_module;
+	MR_ConstString		MR_comp_pred_name;
 	MR_int_least16_t	MR_comp_arity;
 	MR_int_least16_t	MR_comp_mode;
 } MR_Stack_Layout_Compiler_Proc;
@@ -368,7 +368,7 @@ typedef union MR_Stack_Layout_Proc_Id_Union {
 
 typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
-	Code			*MR_sle_code_addr;
+	MR_Code			*MR_sle_code_addr;
 	MR_Long_Lval		MR_sle_succip_locn;
 	MR_int_least16_t	MR_sle_stack_slots;
 	MR_Determinism		MR_sle_detism;
@@ -391,14 +391,14 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 #define	MR_sle_comp	MR_sle_proc_id.MR_proc_comp
 
 #define	MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)			\
-		((Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
+		((MR_Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
 
 #define	MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)			\
 		(MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)		\
 		&& entry->MR_sle_call_label != NULL)
 
 #define	MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)		\
-		((Unsigned) entry->MR_sle_user.MR_user_pred_or_func \
+		((MR_Unsigned) entry->MR_sle_user.MR_user_pred_or_func \
 		> MR_FUNCTION)
 
 /*
@@ -431,7 +431,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
  #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		STATIC(entry)
  #define	MR_INIT_PROC_LAYOUT_ADDR(entry)		do { } while (0)
 #else
- #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((Code *) NULL)
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((MR_Code *) NULL)
  #define	MR_INIT_PROC_LAYOUT_ADDR(entry)				\
 		do {							\
 			((MR_Stack_Layout_Entry *) &			\
@@ -578,20 +578,20 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 */
 
 typedef struct MR_Module_File_Layout_Struct {
-	String			MR_mfl_filename;
-	Integer			MR_mfl_label_count;
+	MR_String			MR_mfl_filename;
+	MR_Integer			MR_mfl_label_count;
 	/* the following fields point to arrays of size MR_mfl_label_count */
 	MR_int_least16_t	*MR_mfl_label_lineno;
 	MR_Stack_Layout_Label	**MR_mfl_label_layout;
 } MR_Module_File_Layout;
 
 typedef	struct MR_Module_Layout_Struct {
-	String			MR_ml_name;
-	Integer			MR_ml_string_table_size;
+	MR_String			MR_ml_name;
+	MR_Integer			MR_ml_string_table_size;
 	char			*MR_ml_string_table;
-	Integer			MR_ml_proc_count;
+	MR_Integer			MR_ml_proc_count;
 	MR_Stack_Layout_Entry	**MR_ml_procs;
-	Integer			MR_ml_filename_count;
+	MR_Integer			MR_ml_filename_count;
 	MR_Module_File_Layout	**MR_ml_module_file_layout;
 } MR_Module_Layout;
 

@@ -4335,7 +4335,7 @@ Mercury arguments declared with input modes are passed by value to the
 C function.  For output arguments, the Mercury implementation will pass
 to the C function an address in which to store the result. 
 If the Mercury procedure can fail, then its C function should return a
-truth value of type @samp{Integer} indicating success or failure:
+truth value of type @samp{MR_Integer} indicating success or failure:
 non-zero indicates success, and zero indicates failure.
 If the Mercury procedure is a Mercury function that cannot fail, and
 the function result has an output mode, then the C function should
@@ -4838,19 +4838,20 @@ Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 For each of the Mercury types @code{int}, @code{float}, @code{char},
 and @code{string}, there is a C typedef for the corresponding type in C:
-@code{Integer}, @code{Float}, @code{Char}, and @code{String} respectively.
+@code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
+and @code{MR_String} respectively.
 
-In the current implementation, @samp{Integer} is a typedef for an
-integral type whose size is the same size as a pointer; @samp{Float} is
+In the current implementation, @samp{MR_Integer} is a typedef for an
+integral type whose size is the same size as a pointer; @samp{MR_Float} is
 a typedef for @samp{double} (unless the program and the Mercury library
 was compiled with @samp{-DUSE_SINGLE_PREC_FLOAT}, in which case it is
-a typedef for @samp{float}); @samp{Char} is a typedef for @samp{char};
-and @samp{String} is a typedef for @samp{Char *}.
+a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
+and @samp{MR_String} is a typedef for @samp{MR_Char *}.
 
 Mercury variables of type @code{int}, @code{float}, @code{char}, or
 @code{string} are passed to and from C as C variables whose type is
 given by the corresponding typedef.  Mercury variables of any other
-type are passed as a @samp{Word}, which in the current implementation
+type are passed as a @samp{MR_Word}, which in the current implementation
 is a typedef for an unsigned type whose size is the same size as a pointer.
 (Note: it would in fact be better for each Mercury type to map to a distinct
 abstract type in C, since that would be more type-safe, and thus we may
@@ -5019,7 +5020,7 @@ on backtracking.
 @item @bullet{} @code{MR_trail_value()}
 Prototype:
 @example
-void MR_trail_value(Word *@var{address}, Word @var{value});
+void MR_trail_value(MR_Word *@var{address}, MR_Word @var{value});
 @end example
 
 Ensures that if future execution backtracks to the
@@ -5028,7 +5029,7 @@ current choice point, then @var{value} will be placed in @var{address}.
 @item @bullet{} @code{MR_trail_current_value()}
 Prototype:
 @example
-void MR_trail_current_value(Word *@var{address});
+void MR_trail_current_value(MR_Word *@var{address});
 @end example
 
 Ensures that if future execution backtracks to the
@@ -5068,7 +5069,7 @@ typedef enum @{
 @} MR_untrail_reason;
 
 void MR_trail_function(
-        void (*@var{untrail_func})(Word, MR_untrail_reason),
+        void (*@var{untrail_func})(MR_Word, MR_untrail_reason),
         void *@var{value}
 );
 @end example
@@ -5269,20 +5270,20 @@ outweigh these costs will depend on your application.
 	"update_int_ref").
 
 :- pragma c_header_code("
-typedef Word Mercury_IntRef;
-void new_int_ref(Mercury_IntRef *ref, Integer value);
+typedef MR_Word Mercury_IntRef;
+void new_int_ref(Mercury_IntRef *ref, MR_Integer value);
 void update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
-    Integer *old_value, Integer new_value);
+    MR_Integer *old_value, MR_Integer new_value);
 ").
 
 :- pragma c_code("
 typedef struct @{
     MR_ChoicepointId prev_choicepoint;
-    Integer data;
+    MR_Integer data;
 @} C_IntRef;
 
 void
-new_int_ref(Mercury_IntRef *ref, Integer value)
+new_int_ref(Mercury_IntRef *ref, MR_Integer value)
 @{
     C_IntRef *x = malloc(sizeof(C_IntRef));
     x->prev_choicepoint = MR_current_choicepoint_id();
@@ -5292,7 +5293,7 @@ new_int_ref(Mercury_IntRef *ref, Integer value)
 
 void
 update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
-    Integer *old_value, Integer new_value)
+    MR_Integer *old_value, MR_Integer new_value)
 @{
     C_IntRef *x = (C_IntRef *) ref0;
     *old_value = x->data;
@@ -5303,10 +5304,10 @@ update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
     @{
         /* trail both x->data and x->prev_choicepoint,
 	   since we're about to update them both*/
-        assert(sizeof(x->data) == sizeof(Word));
-        assert(sizeof(x->prev_choicepoint) == sizeof(Word));
-        MR_trail_current_value((Word *)&x->data);
-        MR_trail_current_value((Word *)&x->prev_choicepoint);
+        assert(sizeof(x->data) == sizeof(MR_Word));
+        assert(sizeof(x->prev_choicepoint) == sizeof(MR_Word));
+        MR_trail_current_value((MR_Word *)&x->data);
+        MR_trail_current_value((MR_Word *)&x->prev_choicepoint);
 
         /* update x->prev_choicepoint to indicate that
            x->data's previous value has been trailed
@@ -5576,7 +5577,7 @@ and so is not useful as is.  It is meant only as an example.
 
 @example
 :- pragma c_header_code("#include <limits.h>").
-:- pragma c_header_code("Integer max;").
+:- pragma c_header_code("MR_Integer max;").
 
 :- impure pred init_max is det.
 :- pragma c_code(init_max,

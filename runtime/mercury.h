@@ -20,7 +20,7 @@
 
 #include "mercury_conf.h"
 #include "mercury_types.h" 
-#include "mercury_float.h"	/* for the `Float' type */
+#include "mercury_float.h"	/* for the `MR_Float' type */
 #include "mercury_tags.h"
 #include "mercury_grade.h"
 #include "mercury_thread.h"	/* for the MR_*_GLOBAL_LOCK() macros */
@@ -56,30 +56,26 @@
 */
 
 /*
-** The following types are used to represent the Mercury builtin types.
-** See mercury_types.h and mercury_float.h.
+** The types uses to represent the Mercury builtin types,
+** MR_Char, MR_Float, MR_Integer, MR_String, and MR_ConstString,
+** are defined in mercury_types.h and mercury_float.h.
 */
-typedef Char	MR_Char;
-typedef Float	MR_Float;
-typedef Integer	MR_Integer;
-typedef String	MR_String;
-typedef ConstString MR_ConstString;
 
 /*
-** The MR_Box type is used for representing polymorphic types.
+** The MR_Word type, which is used for representing user-defined
+** types when we're using the low-level data representation,
+** is defined in runtime/mercury_types.h.
 */
-typedef void 	*MR_Box;
+
+/*
+** The MR_Box type, which is used for representing polymorphic 
+** types, is defined in runtime/mercury_types.h.
+*/
 
 /*
 ** The MR_ClosurePtr type is used for representing higher-order types.
 */
 typedef const MR_Closure *MR_ClosurePtr;
-
-/*
-** With the low-level data representation, the MR_Word type
-** is used for representing user-defined types.
-*/
-typedef Word	MR_Word;
 
 /*
 ** Define some names for types that differ depending
@@ -124,7 +120,7 @@ typedef Word	MR_Word;
 */
 typedef struct MR_TypeCtorInfo_Struct	MR_TypeCtorInfo_Struct;
 typedef MR_DuExistLocn			MR_DuExistLocnArray[];
-typedef ConstString			MR_ConstStringArray[];
+typedef MR_ConstString			MR_ConstStringArray[];
 typedef MR_PseudoTypeInfo		MR_PseudoTypeInfoArray[];
 typedef const MR_EnumFunctorDesc *	MR_EnumFunctorDescPtrArray[];
 typedef const MR_DuFunctorDesc *	MR_DuFunctorDescPtrArray[];
@@ -245,7 +241,7 @@ extern const MR_TypeCtorInfo_Struct
 ** that passes one of these, then we need to generate a reference to
 ** a dummy variable.  We use this variable for that purpose.
 */
-extern	Word	mercury__private_builtin__dummy_var;
+extern	MR_Word	mercury__private_builtin__dummy_var;
 
 /*---------------------------------------------------------------------------*/
 /*

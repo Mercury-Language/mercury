@@ -28,11 +28,11 @@ ENDINIT
 
 #endif
 
-static	void	call_engine_inner(Code *entry_point) NO_RETURN;
+static	void	call_engine_inner(MR_Code *entry_point) NO_RETURN;
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-  static Code	*engine_done(void);
-  static Code	*engine_init_registers(void);
+  static MR_Code	*engine_done(void);
+  static MR_Code	*engine_init_registers(void);
 #endif
 
 bool	MR_debugflag[MR_MAXFLAG];
@@ -152,8 +152,8 @@ destroy_engine(MercuryEngine *eng)
 /*---------------------------------------------------------------------------*/
 
 /*
-** Word *
-** MR_call_engine(Code *entry_point, bool catch_exceptions)
+** MR_Word *
+** MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 **
 **	This routine calls a Mercury routine from C.
 **
@@ -203,14 +203,14 @@ destroy_engine(MercuryEngine *eng)
 **	and another portable version that works on standard ANSI C compilers.
 */
 
-Word *
-MR_call_engine(Code *entry_point, bool catch_exceptions)
+MR_Word *
+MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 {
 
 	jmp_buf		curr_jmp_buf;
 	jmp_buf		* volatile prev_jmp_buf;
 #if defined(PROFILE_TIME)
-	Code		* volatile prev_proc;
+	MR_Code		* volatile prev_proc;
 #endif
 
 	/*
@@ -242,8 +242,8 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 #endif
 
 	if (setjmp(curr_jmp_buf)) {
-		Word	* this_frame;
-		Word	* exception;
+		MR_Word	* this_frame;
+		MR_Word	* exception;
 
 #ifdef	MR_DEBUG_JMPBUFS
 		printf("engine caught jmp %p %p\n",
@@ -343,7 +343,7 @@ MR_call_engine(Code *entry_point, bool catch_exceptions)
 /* The gcc-specific version */
 
 static void 
-call_engine_inner(Code *entry_point)
+call_engine_inner(MR_Code *entry_point)
 {
 	/*
 	** Allocate some space for local variables in other
@@ -544,7 +544,7 @@ dump_prev_locations(void) {}
 ** would get mucked up because of the function call from call_engine_inner().
 */
 
-static Code *
+static MR_Code *
 engine_done(void)
 {
 	MR_ENGINE(e_exception) = NULL;
@@ -553,11 +553,11 @@ engine_done(void)
 	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 }
 
-static Code *
+static MR_Code *
 engine_init_registers(void)
 {
 	restore_transient_registers();
-	MR_succip = (Code *) engine_done;
+	MR_succip = (MR_Code *) engine_done;
 	return NULL;
 }
 
@@ -570,9 +570,9 @@ engine_init_registers(void)
 
 #define NUM_PREV_FPS	40
 
-typedef Code	*Func(void);
+typedef MR_Code	*Func(void);
 
-static Code 	*prev_fps[NUM_PREV_FPS];
+static MR_Code 	*prev_fps[NUM_PREV_FPS];
 static int	prev_fp_index = 0;
 
 void 
@@ -593,7 +593,7 @@ dump_prev_locations(void)
 }
 
 static void 
-call_engine_inner(Code *entry_point)
+call_engine_inner(MR_Code *entry_point)
 {
 	reg	Func	*fp;
 
@@ -623,7 +623,7 @@ if (!MR_tracedebug) {
 #endif
 	for (;;)
 	{
-		prev_fps[prev_fp_index] = (Code *) fp;
+		prev_fps[prev_fp_index] = (MR_Code *) fp;
 
 		if (++prev_fp_index >= NUM_PREV_FPS)
 			prev_fp_index = 0;

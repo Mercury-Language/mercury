@@ -333,7 +333,7 @@
 
 #define MR_TABLE_CREATE_ANSWER_BLOCK(table, num_slots)	 		\
 	do {								\
-		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(Word,	\
+		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word,	\
 						(num_slots));		\
 		if (MR_tabledebug)					\
 			printf("allocated answer block %p -> %p, %d words\n",\
@@ -354,7 +354,7 @@
 
 #define MR_TABLE_CREATE_ANSWER_BLOCK(table, num_slots)	 		\
 	do {								\
-		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(Word,	\
+		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word,	\
 						(num_slots));		\
 	} while(0)
 

@@ -126,13 +126,13 @@ typedef	MR_ConsumerListNode			*MR_ConsumerList;
 */
 
 union MR_TableNode_Union {
-	Integer		MR_integer;
+	MR_Integer		MR_integer;
 	MR_HashTable	*MR_hash_table;
 	MR_TableNode	*MR_fix_table;
 	MR_TableNode	*MR_start_table;
-	Unsigned	MR_simpletable_status;
+	MR_Unsigned	MR_simpletable_status;
 	MR_Subgoal	*MR_subgoal;
-	Word		*MR_answerblock;
+	MR_Word		*MR_answerblock;
 };
 
 #define	MR_SIMPLETABLE_UNINITIALIZED	0
@@ -147,7 +147,7 @@ typedef enum {
 } MR_SubgoalStatus;
 
 struct MR_AnswerListNode_Struct {
-	Integer		answer_num;
+	MR_Integer		answer_num;
 	MR_TableNode	answer_data; /* always uses the MR_answerblock member */
 	MR_AnswerList	next_answer;
 };
@@ -182,19 +182,19 @@ struct MR_AnswerListNode_Struct {
 */
 
 typedef struct {
-	Code	*succ_ip;
-	Word	*s_p;
-	Word	*cur_fr;
-	Word	*max_fr;
-	Word	*non_stack_block_start;
-	Word	non_stack_block_size;
-	Word	*non_stack_block;
-	Word	*det_stack_block_start;
-	Word	det_stack_block_size;
-	Word	*det_stack_block;
-	Integer	gen_next;
+	MR_Code	*succ_ip;
+	MR_Word	*s_p;
+	MR_Word	*cur_fr;
+	MR_Word	*max_fr;
+	MR_Word	*non_stack_block_start;
+	MR_Word	non_stack_block_size;
+	MR_Word	*non_stack_block;
+	MR_Word	*det_stack_block_start;
+	MR_Word	det_stack_block_size;
+	MR_Word	*det_stack_block;
+	MR_Integer	gen_next;
 	char	*generator_stack_block;
-	Integer	cut_next;
+	MR_Integer	cut_next;
 	char	*cut_stack_block;
 } MR_SavedState;
 
@@ -236,11 +236,11 @@ struct MR_Subgoal_Struct {
 	MR_SubgoalList		followers;
 	MR_SubgoalList		*followers_tail;
 	MR_ResumeInfo		*resume_info;
-	Word			answer_table;	/* Table of answers returned */
+	MR_Word			answer_table;	/* Table of answers returned */
 						/* by the subgoal */
-	Integer			num_ans;	/* # of answers returned */
+	MR_Integer			num_ans;	/* # of answers returned */
 						/* by the subgoal */
-	Integer			num_committed_ans;
+	MR_Integer			num_committed_ans;
 						/* # of answers our leader */
 						/* is committed to returning */
 						/* to every consumer. */
@@ -254,10 +254,10 @@ struct MR_Subgoal_Struct {
 						/* to the subgoal */
 	MR_ConsumerList		*consumer_list_tail;
 						/* As for answer_list_tail */
-	Word			*generator_maxfr;
+	MR_Word			*generator_maxfr;
 						/* MR_maxfr at the time of */
 						/* the call to the generator */
-	Word			*generator_sp;
+	MR_Word			*generator_sp;
 						/* MR_sp at the time of the */
 						/* call to the generator */
 };
@@ -279,11 +279,11 @@ struct MR_Subgoal_Struct {
 */
 
 extern	MR_TrieNode	MR_int_hash_lookup_or_add(MR_TrieNode table,
-				Integer key);
+				MR_Integer key);
 extern	MR_TrieNode	MR_float_hash_lookup_or_add(MR_TrieNode table,
-				Float key);
+				MR_Float key);
 extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
-				String key);
+				MR_String key);
 
 /*
 ** This function assumes that the table is a statically sized array,
@@ -291,7 +291,7 @@ extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_int_fix_index_lookup_or_add(MR_TrieNode table,
-				Integer range, Integer key);
+				MR_Integer range, MR_Integer key);
 
 /*
 ** This function assumes that the table is an expandable array,
@@ -299,7 +299,7 @@ extern	MR_TrieNode	MR_int_fix_index_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_int_start_index_lookup_or_add(MR_TrieNode table,
-				Integer start, Integer key);
+				MR_Integer start, MR_Integer key);
 
 /*
 ** This function tables type_infos in a hash table.
@@ -313,7 +313,7 @@ extern	MR_TrieNode	MR_type_info_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
-				Word *type_class_info);
+				MR_Word *type_class_info);
 
 /*
 ** This function tables values of arbitrary types; the form of the data
@@ -321,7 +321,7 @@ extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_table_type(MR_TrieNode table,
-				MR_TypeInfo type_info, Word data_value);
+				MR_TypeInfo type_info, MR_Word data_value);
 
 /*
 ** This function prints statistics about the operation of tabling, if the
@@ -350,10 +350,10 @@ extern	void		MR_table_report_statistics(FILE *fp);
 	MR_GC_realloc((pointer), (size))
 
   #define table_allocate_words(size)					\
-	MR_GC_malloc(sizeof(Word) * (size))
+	MR_GC_malloc(sizeof(MR_Word) * (size))
 
   #define table_reallocate_words(pointer, size)				\
-	MR_GC_realloc((pointer), sizeof(Word) * (size))
+	MR_GC_realloc((pointer), sizeof(MR_Word) * (size))
 
   #define table_free(pointer)						\
 	MR_GC_free((pointer))
@@ -388,7 +388,7 @@ extern	void		MR_table_report_statistics(FILE *fp);
 	fatal_error("Sorry, not implemented: tabling in native gc grades")
   #define MR_table_list_cons(h, t)					\
 	(fatal_error("Sorry, not implemented: tabling in native gc grades"), \
-	(Word) 0)
+	(MR_Word) 0)
 
 #endif /* NATIVE_GC */
 
@@ -396,7 +396,7 @@ extern	void		MR_table_report_statistics(FILE *fp);
 	MR_memcpy((dest), (source), (size))
 
 #define table_copy_words(dest, source, size)				\
-	MR_memcpy((char *) (dest), (char *) (source), sizeof(Word) * (size))
+	MR_memcpy((char *) (dest), (char *) (source), sizeof(MR_Word) * (size))
 
 /*---------------------------------------------------------------------------*/
 

@@ -34,7 +34,7 @@ typedef struct MR_Event_Info_Struct {
 	MR_Trace_Port			MR_trace_port;
 	const MR_Stack_Layout_Label	*MR_event_sll;
 	const char 			*MR_event_path;
-	Word				MR_saved_regs[MAX_FAKE_REG];
+	MR_Word				MR_saved_regs[MAX_FAKE_REG];
 	int				MR_max_mr_num;
 } MR_Event_Info;
 

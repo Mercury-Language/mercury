@@ -22,7 +22,7 @@
 
 #include <stdlib.h>		/* for size_t */
 
-#include "mercury_types.h"	/* for Word */
+#include "mercury_types.h"	/* for MR_Word */
 #include "mercury_std.h"		/* for bool */
 
 
@@ -40,7 +40,7 @@
 				/* mr0 .. mr37, mr(38) ... mr(1000) ... */
 
 /* used to lookup the fake_reg for a given real reg */
-extern	Word	virtual_reg_map[MAX_REAL_REG];
+extern	MR_Word	virtual_reg_map[MAX_REAL_REG];
 
 /* used for counting register usage */
 extern	unsigned long 	num_uses[MAX_RN];
@@ -84,7 +84,7 @@ extern	unsigned long 	num_uses[MAX_RN];
 
 typedef struct MEMORY_ZONE	MemoryZone;
 
-typedef bool ZoneHandler(Word *addr, struct MEMORY_ZONE *zone, void *context);
+typedef bool ZoneHandler(MR_Word *addr, struct MEMORY_ZONE *zone, void *context);
 
 struct MEMORY_ZONE {
 	struct MEMORY_ZONE *next; /* the memory zones are organized as a
@@ -95,19 +95,19 @@ struct MEMORY_ZONE {
 				  */
 	const char *name;	/* name identifier */
 	int	id;		/* number */
-	Word	*bottom;	/* beginning of the allocated area */
-	Word	*top;		/* end of the allocated area */
-	Word	*min;		/* lowest word of the area to be used */
-	Word	*max;		/* highest word of the area to be used;
+	MR_Word	*bottom;	/* beginning of the allocated area */
+	MR_Word	*top;		/* end of the allocated area */
+	MR_Word	*min;		/* lowest word of the area to be used */
+	MR_Word	*max;		/* highest word of the area to be used;
 				   computed only if MR_LOWLEVEL_DEBUG is
 				   enabled */
 #ifdef MR_PROTECTPAGE
-	Word	*hardmax;	/* last page of the zone which can't be
+	MR_Word	*hardmax;	/* last page of the zone which can't be
 				   unprotected */
 #endif	/* MR_PROTECTPAGE */
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
-	Word	*redzone_base;	/* beginning of the original redzone */
-	Word	*redzone;	/* beginning of the current redzone */
+	MR_Word	*redzone_base;	/* beginning of the original redzone */
+	MR_Word	*redzone;	/* beginning of the current redzone */
 	ZoneHandler *handler;   /* handler for page faults in the redzone */
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
@@ -205,7 +205,7 @@ MemoryZone	*create_zone(const char *name, int id,
 ** [*] unit is a global variable containing the page size in bytes
 */
 
-MemoryZone	*construct_zone(const char *name, int Id, Word *base,
+MemoryZone	*construct_zone(const char *name, int Id, MR_Word *base,
 			size_t size, size_t offset, size_t redsize,
 			ZoneHandler *handler);
 

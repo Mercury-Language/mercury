@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1997 The University of Melbourne.
+** Copyright (C) 1993-1997, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,14 +18,14 @@
 
 #define NUM_REAL_REGS 8
 
-register	Word	mr0 __asm__("s0");
-register	Word	mr1 __asm__("s1");
-register	Word	mr2 __asm__("s2");
-register	Word	mr3 __asm__("s3");
-register	Word	mr4 __asm__("s4");
-register	Word	mr5 __asm__("s5");
-register	Word	mr6 __asm__("s6");
-register	Word	mr7 __asm__("s7");
+register	MR_Word	mr0 __asm__("s0");
+register	MR_Word	mr1 __asm__("s1");
+register	MR_Word	mr2 __asm__("s2");
+register	MR_Word	mr3 __asm__("s3");
+register	MR_Word	mr4 __asm__("s4");
+register	MR_Word	mr5 __asm__("s5");
+register	MR_Word	mr6 __asm__("s6");
+register	MR_Word	mr7 __asm__("s7");
 
 #define save_regs_to_mem(save_area)	(	\
 	save_area[0] = mr0,			\

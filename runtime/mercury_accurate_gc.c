@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,17 +19,17 @@
 /*
 ** Function prototypes.
 */
-static	void	garbage_collect(Code *saved_success, Word *stack_pointer,
-			Word *current_frame);
+static	void	garbage_collect(MR_Code *saved_success, MR_Word *stack_pointer,
+			MR_Word *current_frame);
 static	void	garbage_collect_roots(void);
-static	void	copy_value(MR_Live_Lval locn, Word *type_info, bool copy_regs,
-			Word *stack_pointer, Word *current_frame);
+static	void	copy_value(MR_Live_Lval locn, MR_Word *type_info, bool copy_regs,
+			MR_Word *stack_pointer, MR_Word *current_frame);
 
 /*
 ** Global variables (only used in this module, however).
 */
-static Code	*saved_success = (Code *) NULL;
-static Word	*saved_success_location = (Word *) NULL;
+static MR_Code	*saved_success = (MR_Code *) NULL;
+static MR_Word	*saved_success_location = (MR_Word *) NULL;
 static bool	gc_scheduled = FALSE;
 static bool	gc_running = FALSE;
 
@@ -58,7 +58,7 @@ Define_extern_entry(mercury__garbage_collect_0_0);
 ** 	that the code will return to).
 */
 void
-MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
+MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal)
 {
 	MR_Stack_Layout_Label		*layout;
 	const MR_Stack_Layout_Entry	*entry_layout;
@@ -143,7 +143,7 @@ MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 		fprintf(stderr, "GC scheduled again. Replacing old scheduling,"
 			" and trying to schedule again.\n");
 #endif
-		*saved_success_location = (Word) saved_success;
+		*saved_success_location = (MR_Word) saved_success;
 	}
 	gc_scheduled = TRUE;
 
@@ -161,7 +161,7 @@ MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 		*/
 		saved_success_location = &MR_based_stackvar(sp_at_signal,
 			number);
-		saved_success = (Code *) *saved_success_location;
+		saved_success = (MR_Code *) *saved_success_location;
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
 		fprintf(stderr, "old succip: %ld (%lx) new: %ld (%lx)", 
@@ -175,7 +175,7 @@ MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal)
 		** Replace the old succip with the address of the
 		** garbage collector.
 		*/
-		*saved_success_location = (Word) mercury__garbage_collect_0_0;
+		*saved_success_location = (MR_Word) mercury__garbage_collect_0_0;
 
 	} else {
 		/*
@@ -226,20 +226,20 @@ END_MODULE
 **  (We use 4 space tabs here because of the depth of indentation).
 */
 void
-garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
+garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     MR_Internal                     *label, *first_label;
     int                             i, var_count, count;
     const MR_Stack_Layout_Label     *internal_layout;
     const MR_Stack_Layout_Vars      *vars;
     MemoryZone                      *old_heap, *new_heap;
-    Word                            *type_params;
+    MR_Word                            *type_params;
     bool                            succeeded;
     bool                            top_frame = TRUE;
     MR_MemoryList                   allocated_memory_cells = NULL;
-    Word                            *old_hp;
+    MR_Word                            *old_hp;
     MR_Stack_Layout_Entry           *entry_layout;
-    Word                            *first_stack_pointer, *first_current_frame;
+    MR_Word                            *first_stack_pointer, *first_current_frame;
 
 
     old_heap = MR_ENGINE(heap_zone);
@@ -316,7 +316,7 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
         for (i = 0; i < var_count; i++) {
             MR_Stack_Layout_Var sl_var;
             MR_Live_Type sl_type;
-            Word *pseudo_type_info, *type_info;
+            MR_Word *pseudo_type_info, *type_info;
 
             sl_var = vars->MR_slvs_pairs[i];
             if (MR_LIVE_TYPE_IS_VAR(sl_var.MR_slv_live_type)) {
@@ -334,7 +334,7 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
         MR_free(type_params);
 
         result = MR_stack_walk_step(entry_layout, &return_label_layout,
-            (Word **) &stack_pointer, &current_frame, &problem);
+            (MR_Word **) &stack_pointer, &current_frame, &problem);
 
         if (result == STEP_ERROR_BEFORE || result == STEP_ERROR_AFTER) {
             fatal_error(problem);
@@ -388,8 +388,8 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
 ** 	it is on the old heap).
 */
 void
-copy_value(MR_Live_Lval locn, Word *type_info, bool copy_regs,
-	Word *stack_pointer, Word *current_frame)
+copy_value(MR_Live_Lval locn, MR_Word *type_info, bool copy_regs,
+	MR_Word *stack_pointer, MR_Word *current_frame)
 {
 	int	locn_num;
 
@@ -477,7 +477,7 @@ garbage_collect_roots(void)
 ** 	Adds a new root to the extra roots.
 */
 void
-MR_agc_add_root(Word *root_addr, Word *type_info)
+MR_agc_add_root(MR_Word *root_addr, MR_Word *type_info)
 {
 	MR_RootList node;
 

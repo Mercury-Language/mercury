@@ -50,31 +50,32 @@ typedef signed char			MR_int_least8_t;
 
 /* 
 ** This section defines the basic types that we use.
-** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*).
+** Note that we require 
+** 	sizeof(MR_Word) == sizeof(MR_Integer) == sizeof(MR_Code*).
 */
 
-typedef	MR_uintptr_t		Word;
-typedef	MR_intptr_t		Integer;
-typedef	MR_uintptr_t		Unsigned;
-typedef	MR_intptr_t		Bool;
+typedef	MR_uintptr_t		MR_Word;
+typedef	MR_intptr_t		MR_Integer;
+typedef	MR_uintptr_t		MR_Unsigned;
+typedef	MR_intptr_t		MR_Bool;
 
 /*
-** `Code *' is used as a generic pointer-to-label type that can point
+** `MR_Code *' is used as a generic pointer-to-label type that can point
 ** to any label defined using the Define_* macros in mercury_goto.h.
 */
-typedef void			Code;
+typedef void			MR_Code;
 
 /*
-** Float64 is required for the bytecode.
+** MR_Float64 is required for the bytecode.
 ** XXX: We should also check for IEEE-754 compliance.
 */
 
 #if	MR_FLOAT_IS_64_BIT
-	typedef	float			Float64;
+	typedef	float			MR_Float64;
 #elif	MR_DOUBLE_IS_64_BIT
-	typedef	double			Float64;
+	typedef	double			MR_Float64;
 #elif	MR_LONG_DOUBLE_IS_64_BIT
-	typedef	long double		Float64;
+	typedef	long double		MR_Float64;
 #else
 	#error	"For Mercury bytecode, we require 64-bit IEEE-754 floating point"
 #endif
@@ -85,11 +86,11 @@ typedef void			Code;
 ** If you modify them, you will need to modify mercury_string.h as well.
 */
 
-typedef char Char;
-typedef unsigned char UnsignedChar;
+typedef char MR_Char;
+typedef unsigned char MR_UnsignedChar;
 
-typedef Char *String;
-typedef const Char *ConstString;
+typedef MR_Char *MR_String;
+typedef const MR_Char *MR_ConstString;
 
 /* continuation function type, for --high-level-code option */
 typedef void (*MR_NestedCont) (void);	/* for --gcc-nested-functions */
@@ -103,5 +104,20 @@ typedef void (*MR_Cont) (void *);	/* for --no-gcc-nested-functions */
   */
   #define SUCCESS_INDICATOR r1
 #endif
+
+/*
+** The MR_Box type is used for representing polymorphic types.
+** Currently this is only used in the MLDS C backend.
+**
+** Since it is used in some C code fragments, we define it as MR_Word
+** in the low-level backend.
+*/
+#ifdef MR_HIGHLEVEL_CODE
+typedef void 	*MR_Box;
+#else
+typedef MR_Word MR_Box;
+#endif
+
+
 
 #endif /* not MERCURY_TYPES_H */

@@ -67,17 +67,17 @@ extern	int	MR_load_aditi_rl_code(void);
 #ifdef MR_HIGHLEVEL_CODE
 extern	void		(*program_entry_point)(void); /* normally main_2_p_0 */
 #else
-extern	Code 		*program_entry_point; /* normally mercury__main_2_0; */
+extern	MR_Code 		*program_entry_point; /* normally mercury__main_2_0; */
 #endif
 
 extern	void		(*MR_library_initializer)(void);
 extern	void		(*MR_library_finalizer)(void);
 
-extern	void		(*MR_io_stderr_stream)(Word *);
-extern	void		(*MR_io_stdout_stream)(Word *);
-extern	void		(*MR_io_stdin_stream)(Word *);
-extern	void		(*MR_io_print_to_cur_stream)(Word, Word);
-extern	void		(*MR_io_print_to_stream)(Word, Word, Word);
+extern	void		(*MR_io_stderr_stream)(MR_Word *);
+extern	void		(*MR_io_stdout_stream)(MR_Word *);
+extern	void		(*MR_io_stdin_stream)(MR_Word *);
+extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
+extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
 extern	void		(*address_of_mercury_init_io)(void);
 extern	void		(*address_of_init_modules)(void);
@@ -117,7 +117,7 @@ extern	void		(*MR_address_of_trace_final_external)(void);
 ** been retired.
 */
 
-extern	Code		*MR_library_trace_browser;
+extern	MR_Code		*MR_library_trace_browser;
 
 /*
 ** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
@@ -131,7 +131,7 @@ extern	Code		*MR_library_trace_browser;
 ** Since it is set from a signal handler, it must be declared `volatile'.
 */
 
-extern	Code		*(*volatile MR_trace_func_ptr)(
+extern	MR_Code		*(*volatile MR_trace_func_ptr)(
 				const MR_Stack_Layout_Label *);
 
 /*

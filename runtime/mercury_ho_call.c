@@ -22,8 +22,8 @@ ENDINIT
 #include "mercury_imp.h"
 #include "mercury_ho_call.h"
 
-static	Word	MR_generic_compare(MR_TypeInfo type_info, Word x, Word y);
-static	Word	MR_generic_unify(MR_TypeInfo type_info, Word x, Word y);
+static	MR_Word	MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y);
+static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 
 /*
 ** The called closure may contain only input arguments. The extra arguments
@@ -133,7 +133,7 @@ Define_entry(mercury__do_call_closure);
 
 Define_entry(mercury__do_call_class_method);
 {
-	Code 	*destination;
+	MR_Code 	*destination;
 	int	num_in_args;
 	int	num_extra_instance_args;
 	int	i;
@@ -181,8 +181,8 @@ Define_entry(mercury__unify_2_0);
 #define	DECLARE_LOCALS							\
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
-	Word		x, y;						\
-	Code		*saved_succip;
+	MR_Word		x, y;						\
+	MR_Code		*saved_succip;
 
 #define initialize()							\
 	do {								\
@@ -251,8 +251,8 @@ Define_entry(mercury__compare_3_3);
 #define	DECLARE_LOCALS							\
 	MR_TypeCtorInfo	type_ctor_info;					\
 	MR_TypeInfo	type_info;					\
-	Word		x, y;						\
-	Code		*saved_succip;
+	MR_Word		x, y;						\
+	MR_Code		*saved_succip;
 
 #define initialize()							\
 	do {								\
@@ -293,8 +293,8 @@ Define_entry(mercury__compare_3_3);
 }
 END_MODULE
 
-static Word
-MR_generic_unify(MR_TypeInfo type_info, Word x, Word y)
+static MR_Word
+MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 {
 
 #define	DECLARE_LOCALS							\
@@ -333,8 +333,8 @@ MR_generic_unify(MR_TypeInfo type_info, Word x, Word y)
 #undef  attempt_msg
 }
 
-static Word
-MR_generic_compare(MR_TypeInfo type_info, Word x, Word y)
+static MR_Word
+MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 {
 
 #define	DECLARE_LOCALS							\

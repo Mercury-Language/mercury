@@ -685,7 +685,7 @@ mercury__builtin__do_compare__int_0_0(
 	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
 	mercury__builtin____Compare____int_0_0(result,
-		(Integer) x, (Integer) y);
+		(MR_Integer) x, (MR_Integer) y);
 }
 
 static void
@@ -811,31 +811,31 @@ mercury__private_builtin__do_compare__base_typeclass_info_1_0(
 
 /* provide definitions for functions declared `extern inline' */
 
-Word
-create1(Word w1) 
+MR_Word
+create1(MR_Word w1) 
 {
-	Word *p = (Word *) MR_new_object(Word, 1 * sizeof(Word), "create1");
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 1 * sizeof(MR_Word), "create1");
 	p[0] = w1;
-	return (Word) p;
+	return (MR_Word) p;
 }
 
-Word
-create2(Word w1, Word w2) 
+MR_Word
+create2(MR_Word w1, MR_Word w2) 
 {
-	Word *p = (Word *) MR_new_object(Word, 2 * sizeof(Word), "create2");
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 2 * sizeof(MR_Word), "create2");
 	p[0] = w1;
 	p[1] = w2;
-	return (Word) p;
+	return (MR_Word) p;
 }
 
-Word
-create3(Word w1, Word w2, Word w3) 
+MR_Word
+create3(MR_Word w1, MR_Word w2, MR_Word w3) 
 {
-	Word *p = (Word *) MR_new_object(Word, 3 * sizeof(Word), "create3");
+	MR_Word *p = (MR_Word *) MR_new_object(MR_Word, 3 * sizeof(MR_Word), "create3");
 	p[0] = w1;
 	p[1] = w2;
 	p[2] = w3;
-	return (Word) p;
+	return (MR_Word) p;
 }
 
 #endif

@@ -90,14 +90,14 @@ start_label:
                 MR_DuPtagLayout         *x_ptaglayout;
                 MR_DuPtagLayout         *y_ptaglayout;
 #else
-                Word                    x_ptag;
-                Word                    y_ptag;
-                Word                    x_sectag;
-                Word                    y_sectag;
+                MR_Word                    x_ptag;
+                MR_Word                    y_ptag;
+                MR_Word                    x_sectag;
+                MR_Word                    y_sectag;
                 MR_DuPtagLayout         *ptaglayout;
 #endif
-                Word                    *x_data_value;
-                Word                    *y_data_value;
+                MR_Word                    *x_data_value;
+                MR_Word                    *y_data_value;
                 const MR_DuExistInfo    *exist_info;
                 int                     result;
                 int                     cur_slot;
@@ -114,7 +114,7 @@ start_label:
                                                                               \
                     ptag = MR_tag(data);                                      \
                     ptaglayout = &type_ctor_info->type_layout.layout_du[ptag];\
-                    data_value = (Word *) MR_body(data, ptag);                \
+                    data_value = (MR_Word *) MR_body(data, ptag);                \
                                                                               \
                     switch (ptaglayout->MR_sectag_locn) {                     \
                         case MR_SECTAG_LOCAL:                                 \
@@ -158,8 +158,8 @@ start_label:
                 }
 
                 ptaglayout = &type_ctor_info->type_layout.layout_du[x_ptag];
-                x_data_value = (Word *) MR_body(x, x_ptag);
-                y_data_value = (Word *) MR_body(y, y_ptag);
+                x_data_value = (MR_Word *) MR_body(x, x_ptag);
+                y_data_value = (MR_Word *) MR_body(y, y_ptag);
 
                 switch (ptaglayout->MR_sectag_locn) {
                     case MR_SECTAG_LOCAL:
@@ -316,9 +316,9 @@ start_label:
             }
 #ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
             else if (type_ctor_info->arity == 1) {
-                Word    *args_base;
+                MR_Word    *args_base;
 
-                args_base = (Word *)
+                args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
                 r1 = args_base[1];
                 r2 = x;
@@ -327,9 +327,9 @@ start_label:
 #endif
 #ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
             else if (type_ctor_info->arity == 2) {
-                Word    *args_base;
+                MR_Word    *args_base;
 
-                args_base = (Word *)
+                args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
                 r1 = args_base[1];
                 r2 = args_base[2];
@@ -340,10 +340,10 @@ start_label:
             else {
                 int     i;
                 int     type_arity;
-                Word    *args_base;
+                MR_Word    *args_base;
 
                 type_arity = type_ctor_info->arity;
-                args_base = (Word *)
+                args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
                 save_registers();
 
@@ -363,20 +363,20 @@ start_label:
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_CHAR:
 #ifdef  select_compare_code
-            if ((Integer) x == (Integer) y) {
+            if ((MR_Integer) x == (MR_Integer) y) {
                 return_answer(MR_COMPARE_EQUAL);
-            } else if ((Integer) x < (Integer) y) {
+            } else if ((MR_Integer) x < (MR_Integer) y) {
                 return_answer(MR_COMPARE_LESS);
             } else {
                 return_answer(MR_COMPARE_GREATER);
             }
 #else
-            return_answer((Integer) x == (Integer) y);
+            return_answer((MR_Integer) x == (MR_Integer) y);
 #endif
 
         case MR_TYPECTOR_REP_FLOAT:
             {
-                Float   fx, fy;
+                MR_Float   fx, fy;
 
                 fx = word_to_float(x);
                 fy = word_to_float(y);

@@ -46,7 +46,7 @@
 #define MERCURY_TYPE_INFO_H
 
 #include "mercury_std.h"    /* for `MR_STRINGIFY' and `MR_PASTEn' */
-#include "mercury_types.h"  /* for `Word' */
+#include "mercury_types.h"  /* for `MR_Word' */
 
 /*---------------------------------------------------------------------------*/
 
@@ -102,7 +102,7 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 ** only through the macros defined below; the fields of the structures should
 ** not be accessed directly, and there should be no casts involving such
 ** values, except in the interface between code written in Mercury and code
-** written in C, in which case casts to MR_(Pseudo)TypeInfo and back to Word
+** written in C, in which case casts to MR_(Pseudo)TypeInfo and back to MR_Word
 ** may be required. If this discipline is followed, the macros should catch
 ** most errors, such as passing pseudo typeinfos where typeinfos are expected.
 **
@@ -135,7 +135,7 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 #define MR_HIGHER_ORDER_TYPEINFO_STRUCT(NAME, ARITY)			\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_ti_type_ctor_info;			\
-	Integer             MR_ti_higher_order_arity;			\
+	MR_Integer             MR_ti_higher_order_arity;			\
 	MR_TypeInfo         MR_ti_higher_order_arg_typeinfos[ARITY];	\
     }
 #define MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
@@ -146,7 +146,7 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 #define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
-	Integer             MR_pti_higher_order_arity;			\
+	MR_Integer             MR_pti_higher_order_arity;			\
 	MR_PseudoTypeInfo   MR_pti_higher_order_arg_pseudo_typeinfos[ARITY]; \
     }
 
@@ -188,14 +188,14 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define MR_PSEUDO_TYPEINFO_IS_VARIABLE(T)                           \
     ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),		    \
-      (Unsigned) (T) <= MR_PSEUDOTYPEINFO_MAX_VAR )
+      (MR_Unsigned) (T) <= MR_PSEUDOTYPEINFO_MAX_VAR )
 
 #define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)                          \
     ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),		    \
-      (Word) (T) > MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
+      (MR_Word) (T) > MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
 #define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)                           \
     ( MR_CHECK_EXPR_TYPE((T), MR_PseudoTypeInfo),		    \
-      (Word) (T) <= MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
+      (MR_Word) (T) <= MR_PSEUDOTYPEINFO_EXIST_VAR_BASE )
 
 /*
 ** This macro converts a pseudo_type_info to a type_info.
@@ -331,19 +331,19 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 */
 
 #define	MR_typeclass_info_num_extra_instance_args(tci)              \
-    ((Integer)(*(Word **)(tci))[0])
+    ((MR_Integer)(*(MR_Word **)(tci))[0])
 #define MR_typeclass_info_num_instance_constraints(tci)             \
-    ((Integer)(*(Word **)(tci))[1])
+    ((MR_Integer)(*(MR_Word **)(tci))[1])
 #define MR_typeclass_info_num_superclasses(tci)                     \
-    ((Integer)(*(Word **)(tci))[2])
+    ((MR_Integer)(*(MR_Word **)(tci))[2])
 #define MR_typeclass_info_num_type_infos(tci)                       \
-    ((Integer)(*(Word **)(tci))[3])
+    ((MR_Integer)(*(MR_Word **)(tci))[3])
 #define MR_typeclass_info_num_methods(tci)                          \
-    ((Integer)(*(Word **)(tci))[4])
+    ((MR_Integer)(*(MR_Word **)(tci))[4])
 #define MR_typeclass_info_class_method(tci, n)                      \
-    ((Code *)(*(Word **)tci)[(n+4)])
+    ((MR_Code *)(*(MR_Word **)tci)[(n+4)])
 #define	MR_typeclass_info_arg_typeclass_info(tci, n)                \
-    (((Word *)(tci))[(n)])
+    (((MR_Word *)(tci))[(n)])
 
 /*
 ** The following have the same definitions. This is because
@@ -352,9 +352,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 */
 
 #define	MR_typeclass_info_superclass_info(tci, n)                   \
-    (((Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
+    (((MR_Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
 #define	MR_typeclass_info_type_info(tci, n)                         \
-    (((Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
+    (((MR_Word *)(tci))[MR_typeclass_info_num_extra_instance_args(tci) + (n)])
 
 /*---------------------------------------------------------------------------*/
 
@@ -574,7 +574,7 @@ typedef enum {
 } MR_Sectag_Locn;
 
 typedef struct {
-    ConstString             MR_du_functor_name;
+    MR_ConstString             MR_du_functor_name;
     MR_int_least16_t        MR_du_functor_orig_arity;
     MR_int_least16_t        MR_du_functor_arg_type_contains_var;
     MR_Sectag_Locn          MR_du_functor_sectag_locn;
@@ -582,7 +582,7 @@ typedef struct {
     MR_int_least32_t        MR_du_functor_secondary;
     MR_int_least32_t        MR_du_functor_ordinal;
     const MR_PseudoTypeInfo *MR_du_functor_arg_types;
-    const ConstString       *MR_du_functor_arg_names;
+    const MR_ConstString       *MR_du_functor_arg_names;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
 } MR_DuFunctorDesc;
 
@@ -617,14 +617,14 @@ typedef struct {
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
-    ConstString         MR_enum_functor_name;
+    MR_ConstString         MR_enum_functor_name;
     MR_int_least32_t    MR_enum_functor_ordinal;
 } MR_EnumFunctorDesc;
 
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
-    ConstString         MR_notag_functor_name;
+    MR_ConstString         MR_notag_functor_name;
     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
 } MR_NotagFunctorDesc;
 
@@ -715,7 +715,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
   */
   typedef	void *	MR_ProcAddr;
 #else
-  typedef	Code 	*MR_ProcAddr;
+  typedef	MR_Code 	*MR_ProcAddr;
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -778,16 +778,16 @@ typedef union {
     */
 
 struct MR_TypeCtorInfo_Struct {
-    Integer             arity;
+    MR_Integer             arity;
     MR_ProcAddr         unify_pred;
     MR_ProcAddr         new_unify_pred;
     MR_ProcAddr         compare_pred;
     MR_TypeCtorRep      type_ctor_rep;
     MR_ProcAddr         solver_pred;
     MR_ProcAddr         init_pred;
-    ConstString         type_ctor_module_name;
-    ConstString         type_ctor_name;
-    Integer             type_ctor_version;
+    MR_ConstString         type_ctor_module_name;
+    MR_ConstString         type_ctor_name;
+    MR_Integer             type_ctor_version;
     MR_TypeFunctors     type_functors;
     MR_TypeLayout       type_layout;
     MR_int_least32_t    type_ctor_num_functors;
@@ -1023,7 +1023,7 @@ extern  MR_TypeInfo MR_create_type_info(
 extern  MR_TypeInfo MR_create_type_info_maybe_existq(
                 const MR_TypeInfoParams type_info_params,
                 const MR_PseudoTypeInfo pseudo_type_info,
-                const Word *data_value,
+                const MR_Word *data_value,
                 const MR_DuFunctorDesc *functor_descriptor);
 
 struct MR_MemoryCellNode {
@@ -1040,7 +1040,7 @@ extern  MR_TypeInfo MR_make_type_info(
 extern  MR_TypeInfo MR_make_type_info_maybe_existq(
                         const MR_TypeInfoParams type_info_params,
                         const MR_PseudoTypeInfo pseudo_type_info,
-                        const Word *data_value,
+                        const MR_Word *data_value,
                         const MR_DuFunctorDesc *functor_descriptor,
                         MR_MemoryList *allocated);
 extern  void        MR_deallocate(MR_MemoryList allocated_memory_cells);

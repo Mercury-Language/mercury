@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,7 +23,7 @@
 		} while (0)
 
 /*
-** On some systems [basically those using PIC (Position Independent Code)],
+** On some systems [basically those using PIC (Position Independent MR_Code)],
 ** if we're using gcc non-local gotos to jump between functions then
 ** we need to do ASM_FIXUP_REGS after each return from a procedure call.
 ** However, if we're using asm labels, then this is done in the

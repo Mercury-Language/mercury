@@ -39,7 +39,7 @@
 #include "mercury_types.h"
 #include "mercury_stack_layout.h"
 
-typedef	void	(*MR_Browser)(Word type_info, Word value);
+typedef	void	(*MR_Browser)(MR_Word type_info, MR_Word value);
 
 typedef	enum {
 	MR_VAR_SPEC_NUMBER,
@@ -54,13 +54,13 @@ typedef struct {
 
 extern	void		MR_trace_init_point_vars(
 				const MR_Stack_Layout_Label *top_layout,
-				Word *saved_regs, MR_Trace_Port port);
+				MR_Word *saved_regs, MR_Trace_Port port);
 extern	const char	*MR_trace_set_level(int ancestor_level);
 extern	int		MR_trace_current_level(void);
 extern	void		MR_trace_current_level_details(
 				const MR_Stack_Layout_Entry **entry_ptr,
 				const char **filename_ptr, int *linenumber_ptr,
-				Word **base_sp_ptr, Word **base_curfr_ptr);
+				MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr);
 
 /*
 ** Return the number of live variables at the current point. If the required
@@ -83,7 +83,7 @@ extern	const char	*MR_trace_list_vars(FILE *out);
 */
 
 extern	const char	*MR_trace_return_var_info(int n, const char **name_ptr,
-				MR_TypeInfo *type_info_ptr, Word *value_ptr);
+				MR_TypeInfo *type_info_ptr, MR_Word *value_ptr);
 
 /*
 ** If the variable specified by n is a head variable, then store

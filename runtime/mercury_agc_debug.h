@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,7 +12,7 @@
 **	Debugging support for accurate garbage collection.
 */
 
-#include "mercury_types.h"		/* for Word */
+#include "mercury_types.h"		/* for MR_Word */
 #include "mercury_label.h"		/* for MR_Internal */
 #include "mercury_memory_zones.h"	/* for MemoryZone */
 #include "mercury_accurate_gc.h"	/* for MR_RootList */
@@ -29,7 +29,7 @@
 */
 
 extern	void	MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone
-		*heap_zone, Word *stack_pointer, Word *current_frame);
+		*heap_zone, MR_Word *stack_pointer, MR_Word *current_frame);
 
 /*
 ** MR_agc_dump_roots:

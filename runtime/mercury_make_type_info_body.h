@@ -23,13 +23,13 @@ usual_func(const MR_TypeInfoParams type_info_params,
 
 MR_TypeInfo
 exist_func(const MR_TypeInfoParams type_info_params, 
-	const MR_PseudoTypeInfo pseudo_type_info, const Word *data_value, 
+	const MR_PseudoTypeInfo pseudo_type_info, const MR_Word *data_value, 
 	const MR_DuFunctorDesc *functor_desc
 	MAYBE_DECLARE_ALLOC_ARG)
 {
 	MR_TypeCtorInfo		type_ctor_info;
 	MR_TypeInfo		expanded_type_info;
-	Word			*type_info_arena;
+	MR_Word			*type_info_arena;
 	MR_PseudoTypeInfo	*pseudo_type_info_arena;
 	int			arity;
 	int			start_region_size;
@@ -58,7 +58,7 @@ exist_func(const MR_TypeInfoParams type_info_params,
 			pseudo_type_info);
 
 	/* no arguments - optimise common case */
-	if ((Word) type_ctor_info == (Word) pseudo_type_info) {
+	if ((MR_Word) type_ctor_info == (MR_Word) pseudo_type_info) {
 		return MR_pseudo_type_info_is_ground(pseudo_type_info);
 	}
 
@@ -105,11 +105,11 @@ exist_func(const MR_TypeInfoParams type_info_params,
 				ALLOCATE_WORDS(type_info_arena,
 					arity + start_region_size);
 				memcpy(type_info_arena,
-					(Word *) pseudo_type_info,
+					(MR_Word *) pseudo_type_info,
 					(arity + start_region_size)
-						* sizeof(Word));
+						* sizeof(MR_Word));
 			}
-			type_info_arena[i] = (Word) expanded_type_info;
+			type_info_arena[i] = (MR_Word) expanded_type_info;
 		}
 	}
 

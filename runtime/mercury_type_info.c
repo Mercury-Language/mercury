@@ -22,7 +22,7 @@
 
 static MR_TypeInfo
 MR_get_arg_type_info(const MR_TypeInfoParams type_info_params, 
-	const MR_PseudoTypeInfo pseudo_type_info, const Word *data_value, 
+	const MR_PseudoTypeInfo pseudo_type_info, const MR_Word *data_value, 
 	const MR_DuFunctorDesc *functor_desc);
 
 /*---------------------------------------------------------------------------*/
@@ -35,7 +35,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 #define	ALLOCATE_WORDS(target, size)					      \
 				do {					      \
 					MR_MemoryList node;		      \
-					(target) = MR_GC_NEW_ARRAY(Word,      \
+					(target) = MR_GC_NEW_ARRAY(MR_Word,      \
 						(size));		      \
 					node = MR_GC_malloc(sizeof(*node));   \
 					node->data = (target);		      \
@@ -57,7 +57,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 #define	MAYBE_DECLARE_ALLOC_ARG
 #define	MAYBE_PASS_ALLOC_ARG
 #define	ALLOCATE_WORDS(target, size)					      \
-				incr_saved_hp(LVALUE_CAST(Word, (target)),    \
+				incr_saved_hp(LVALUE_CAST(MR_Word, (target)),    \
 					(size))
 #include "mercury_make_type_info_body.h"
 #undef	usual_func
@@ -69,17 +69,17 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 
 static MR_TypeInfo
 MR_get_arg_type_info(const MR_TypeInfoParams type_info_params, 
-	const MR_PseudoTypeInfo pseudo_type_info, const Word *data_value, 
+	const MR_PseudoTypeInfo pseudo_type_info, const MR_Word *data_value, 
 	const MR_DuFunctorDesc *functor_desc)
 {
-	Unsigned		arg_num;
+	MR_Unsigned		arg_num;
 	const MR_DuExistInfo	*exist_info;
 	MR_DuExistLocn		exist_locn;
 	int			exist_varnum;
 	int			slot;
 	int			offset;
 
-	arg_num = (Unsigned) pseudo_type_info;
+	arg_num = (MR_Unsigned) pseudo_type_info;
 
 	if (MR_TYPE_VARIABLE_IS_UNIV_QUANT(pseudo_type_info)) {
 		/*
@@ -166,16 +166,16 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 	** ANSI C doesn't guarantee much about pointer comparisons,
 	** so it is possible that this might not do the right thing
 	** on some obscure systems.
-	** The casts to (Word) here are in the hope of increasing
+	** The casts to (MR_Word) here are in the hope of increasing
 	** the chance that this will work on a segmented architecture.
 	*/
 
 	type_ctor_info_1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info_1);
 	type_ctor_info_2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info_2);
 
-	if ((Unsigned) type_ctor_info_1 < (Unsigned) type_ctor_info_2) {
+	if ((MR_Unsigned) type_ctor_info_1 < (MR_Unsigned) type_ctor_info_2) {
 		return MR_COMPARE_LESS;
-	} else if ((Unsigned) type_ctor_info_1 > (Unsigned) type_ctor_info_2) {
+	} else if ((MR_Unsigned) type_ctor_info_1 > (MR_Unsigned) type_ctor_info_2) {
 		return MR_COMPARE_GREATER;
 	}
 

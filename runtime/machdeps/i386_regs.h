@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -58,8 +58,8 @@
   #define NUM_REAL_REGS 3
 #endif
 
-register	Word	mr0 __asm__("esi");	/* sp */
-register	Word	mr1 __asm__("edi");	/* succip */
+register	MR_Word	mr0 __asm__("esi");	/* sp */
+register	MR_Word	mr1 __asm__("edi");	/* succip */
 
 #define MR_real_reg_number_mr0	esi
 #define MR_real_reg_number_mr1	edi
@@ -67,7 +67,7 @@ register	Word	mr1 __asm__("edi");	/* succip */
 #if PIC_REG
   #define mr2	MR_fake_reg[2]
 #else
-  register	Word	mr2 __asm__("ebx");	/* r1 */
+  register	MR_Word	mr2 __asm__("ebx");	/* r1 */
 
   #define MR_real_reg_number_mr2	ebx
 

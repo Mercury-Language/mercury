@@ -151,10 +151,10 @@ static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, Code **jumpaddr);
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
-static	void	MR_print_stack_regs(Word *saved_regs);
-static	void	MR_print_heap_regs(Word *saved_regs);
-static	void	MR_print_tabling_regs(Word *saved_regs);
-static	void	MR_print_succip_reg(Word *saved_regs);
+static	void	MR_print_stack_regs(MR_Word *saved_regs);
+static	void	MR_print_heap_regs(MR_Word *saved_regs);
+static	void	MR_print_tabling_regs(MR_Word *saved_regs);
+static	void	MR_print_succip_reg(MR_Word *saved_regs);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -174,8 +174,8 @@ static	void	MR_trace_do_noop(void);
 
 static	void	MR_trace_set_level_and_report(int ancestor_level,
 			bool detailed);
-static	void	MR_trace_print_var(Word type_info, Word value);
-static	void	MR_trace_browse_var(Word type_info, Word value);
+static	void	MR_trace_print_var(MR_Word type_info, MR_Word value);
+static	void	MR_trace_browse_var(MR_Word type_info, MR_Word value);
 static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
 		MR_Browser browser);
 
@@ -379,8 +379,8 @@ MR_trace_set_level_and_report(int ancestor_level, bool detailed)
 {
 	const char			*problem;
 	const MR_Stack_Layout_Entry	*entry;
-	Word				*base_sp;
-	Word				*base_curfr;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
 	const char			*filename;
 	int				lineno;
 	int				indent;
@@ -410,7 +410,7 @@ MR_trace_set_level_and_report(int ancestor_level, bool detailed)
 }
 
 static void
-MR_trace_print_var(Word type_info, Word value)
+MR_trace_print_var(MR_Word type_info, MR_Word value)
 {
 	fprintf(MR_mdb_out, "\t");
 	fflush(MR_mdb_out);
@@ -419,7 +419,7 @@ MR_trace_print_var(Word type_info, Word value)
 }
 
 static void
-MR_trace_browse_var(Word type_info, Word value)
+MR_trace_browse_var(MR_Word type_info, MR_Word value)
 {
 	/* XXX should use MR_mdb_in and MR_mdb_out */
 	MR_trace_browse(type_info, value);
@@ -428,16 +428,16 @@ MR_trace_browse_var(Word type_info, Word value)
 static const char *
 MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser)
 {
-	Word		type_info;
-	Word		value;
-	Word		exception;
+	MR_Word		type_info;
+	MR_Word		value;
+	MR_Word		exception;
 
 	if (event_info->MR_trace_port != MR_PORT_EXCEPTION) {
 		return "command only available from EXCP ports";
 	}
 
 	exception = MR_trace_get_exception_value();
-	if (exception == (Word) NULL) {
+	if (exception == (MR_Word) NULL) {
 		return "missing exception value";
 	}
 
@@ -559,7 +559,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	Code **jumpaddr)
 {
 	const MR_Stack_Layout_Label	*layout;
-	Word 				*saved_regs;
+	MR_Word 				*saved_regs;
 
 	layout = event_info->MR_event_sll;
 	saved_regs = event_info->MR_saved_regs;
@@ -1696,7 +1696,7 @@ MR_parse_source_locn(char *word, const char **file, int *line)
 }
 
 static void
-MR_print_stack_regs(Word *saved_regs)
+MR_print_stack_regs(MR_Word *saved_regs)
 {
 	fprintf(MR_mdb_out, "sp = ");
 	MR_print_detstackptr(MR_mdb_out,
@@ -1711,7 +1711,7 @@ MR_print_stack_regs(Word *saved_regs)
 }
 
 static void
-MR_print_heap_regs(Word *saved_regs)
+MR_print_heap_regs(MR_Word *saved_regs)
 {
 	fprintf(MR_mdb_out, "hp = ");
 	MR_print_heapptr(MR_mdb_out,
@@ -1729,7 +1729,7 @@ MR_print_heap_regs(Word *saved_regs)
 }
 
 static void
-MR_print_tabling_regs(Word *saved_regs)
+MR_print_tabling_regs(MR_Word *saved_regs)
 {
 	fprintf(MR_mdb_out, "gen_next = %ld\n",
 		(long) MR_saved_gen_next(saved_regs));
@@ -1738,7 +1738,7 @@ MR_print_tabling_regs(Word *saved_regs)
 }
 
 static void
-MR_print_succip_reg(Word *saved_regs)
+MR_print_succip_reg(MR_Word *saved_regs)
 {
 	fprintf(MR_mdb_out, "succip = ");
 	MR_print_label(MR_mdb_out,
@@ -2394,7 +2394,7 @@ MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 	const char			*filename, *parent_filename;
 	int				lineno, parent_lineno;
 	const char			*problem; /* not used */
-	Word				*base_sp, *base_curfr;
+	MR_Word				*base_sp, *base_curfr;
 	int				indent;
 
 	lineno = 0;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,7 +25,7 @@
 ** 	continuation pointer with the address of the garbage collector
 ** 	routine.
 */
-extern	void	MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal);
+extern	void	MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal);
 
 /*
 ** Roots apart from the stacks are stored in this data structure.
@@ -38,8 +38,8 @@ extern	void	MR_schedule_agc(Code *pc_at_signal, Word *sp_at_signal);
 */
 
 struct	MR_RootNode {
-	Word *root;
-	Word *type_info;
+	MR_Word *root;
+	MR_Word *type_info;
 	struct MR_RootNode* next;
 };
 
@@ -51,7 +51,7 @@ typedef	struct MR_RootNode	*MR_RootList;
 ** 	described by type_info to the list of additional roots.
 */
 
-extern	void	MR_agc_add_root(Word *root_addr, Word *type_info);
+extern	void	MR_agc_add_root(MR_Word *root_addr, MR_Word *type_info);
 
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_ACCURATE_GC_H */

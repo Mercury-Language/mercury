@@ -175,7 +175,7 @@ memalign(size_t unit, size_t size)
 
 /*---------------------------------------------------------------------------*/
 
-Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
+MR_Word	virtual_reg_map[MAX_REAL_REG] = VIRTUAL_REG_MAP_BODY;
 
 unsigned long	num_uses[MAX_RN];
 
@@ -227,7 +227,7 @@ init_offsets()
 
 	offset_vector = MR_GC_NEW_ARRAY(size_t, CACHE_SLICES - 1);
 
-	fake_reg_offset = (Unsigned) MR_fake_reg % pcache_size;
+	fake_reg_offset = (MR_Unsigned) MR_fake_reg % pcache_size;
 
 	for (i = 0; i < CACHE_SLICES - 1; i++) {
 		offset_vector[i] =
@@ -321,9 +321,9 @@ next_offset(void)
 MemoryZone *
 create_zone(const char *name, int id, size_t size,
 		size_t offset, size_t redsize,
-		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
+		bool ((*handler)(MR_Word *addr, MemoryZone *zone, void *context)))
 {
-	Word		*base;
+	MR_Word		*base;
 	size_t		total_size;
 
 		/*
@@ -339,7 +339,7 @@ create_zone(const char *name, int id, size_t size,
 	total_size = size + unit;
 #endif
 
-	base = (Word *) memalign(unit, total_size);
+	base = (MR_Word *) memalign(unit, total_size);
 	if (base == NULL) {
 		char buf[2560];
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
@@ -350,7 +350,7 @@ create_zone(const char *name, int id, size_t size,
 } /* end create_zone() */
 
 MemoryZone *
-construct_zone(const char *name, int id, Word *base,
+construct_zone(const char *name, int id, MR_Word *base,
 		size_t size, size_t offset, size_t redsize,
 		ZoneHandler handler)
 {
@@ -378,8 +378,8 @@ construct_zone(const char *name, int id, Word *base,
 	total_size = size;
 #endif	/* MR_PROTECTPAGE */
 
-	zone->top = (Word *) ((char *)base + total_size);
-	zone->min = (Word *) ((char *)base + offset);
+	zone->top = (MR_Word *) ((char *)base + total_size);
+	zone->min = (MR_Word *) ((char *)base + offset);
 #ifdef	MR_LOWLEVEL_DEBUG
 	zone->max = zone->min;
 #endif	/* MR_LOWLEVEL_DEBUG */
@@ -388,8 +388,8 @@ construct_zone(const char *name, int id, Word *base,
 	** setup the redzone
 	*/
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
-	zone->redzone_base = zone->redzone = (Word *)
-			round_up((Unsigned)base + size - redsize, unit);
+	zone->redzone_base = zone->redzone = (MR_Word *)
+			round_up((MR_Unsigned)base + size - redsize, unit);
 	if (MR_protect_pages((char *)zone->redzone,
 			redsize + unit, MY_PROT) < 0)
 	{
@@ -405,7 +405,7 @@ construct_zone(const char *name, int id, Word *base,
 	** setup the hardzone
 	*/
 #if	defined(MR_PROTECTPAGE)
-	zone->hardmax = (Word *) round_up((Unsigned)zone->top - unit, unit);
+	zone->hardmax = (MR_Word *) round_up((MR_Unsigned)zone->top - unit, unit);
 	if (MR_protect_pages((char *)zone->hardmax, unit, MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d hardmax\n"

@@ -12,7 +12,7 @@
 #ifndef MERCURY_PROF_H
 #define MERCURY_PROF_H
 
-#include "mercury_types.h"	/* for `Code *' */
+#include "mercury_types.h"	/* for `MR_Code *' */
 
 #include <stdio.h>
 
@@ -21,8 +21,6 @@
 ** when a profiling interrupt occurs, the profiler knows where we are,
 ** so that it can credit the time to the appropriate procedure.
 */
-
-extern	Code *	volatile	MR_prof_current_proc;
 
 /*
 ** A pointer to the "Prof.Decl" file.
@@ -58,7 +56,7 @@ extern	Code *	volatile	MR_prof_current_proc;
 #endif
 
 #ifdef PROFILE_CALLS
-  extern void	MR_prof_call_profile(Code *, Code *);
+  extern void	MR_prof_call_profile(MR_Code *, MR_Code *);
 #endif
 
 
@@ -67,7 +65,7 @@ extern	Code *	volatile	MR_prof_current_proc;
 ** mercury_label.c to record the address of each entry label.
 */
 
-extern void	MR_prof_output_addr_decl(const char *name, const Code *address);
+extern void	MR_prof_output_addr_decl(const char *name, const MR_Code *address);
 
 
 /*

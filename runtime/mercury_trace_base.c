@@ -69,8 +69,8 @@ bool		MR_trace_enabled = FALSE;
 ** variables.
 */
 
-Unsigned	MR_trace_call_seqno = 0;
-Unsigned	MR_trace_call_depth = 0;
+MR_Unsigned	MR_trace_call_seqno = 0;
+MR_Unsigned	MR_trace_call_depth = 0;
 
 /*
 ** MR_trace_event_number is a simple counter of events. This is used in
@@ -79,7 +79,7 @@ Unsigned	MR_trace_call_depth = 0;
 ** can zero in on the source of the problem more quickly.
 */
 
-Unsigned	MR_trace_event_number = 0;
+MR_Unsigned	MR_trace_event_number = 0;
 
 /*
 ** MR_trace_from_full is a boolean that is set before every call;
@@ -94,7 +94,7 @@ Unsigned	MR_trace_event_number = 0;
 ** control in the debugger when main/2 is called.
 */
 
-Bool		MR_trace_from_full = TRUE;
+MR_Bool		MR_trace_from_full = TRUE;
 
 #ifdef	MR_TRACE_HISTOGRAM
 
@@ -126,7 +126,7 @@ const char	*MR_port_names[] =
 	"LATR",
 };
 
-Code *
+MR_Code *
 MR_trace(const MR_Stack_Layout_Label *layout)
 {
 	if (! MR_trace_enabled) {
@@ -151,7 +151,7 @@ MR_tracing_not_enabled(void)
 		"Mercury User's Guide.\n");
 }
 
-Code *
+MR_Code *
 MR_trace_fake(const MR_Stack_Layout_Label *layout)
 {
 	MR_tracing_not_enabled();
@@ -230,7 +230,7 @@ MR_trace_start(bool enabled)
 		MR_trace_handler == MR_TRACE_INTERNAL)
 	{
 		MR_setup_signal(SIGINT,
-			(Code *) MR_address_of_trace_interrupt_handler,
+			(MR_Code *) MR_address_of_trace_interrupt_handler,
 			FALSE, "mdb: cannot install SIGINT signal handler");
 	}
 }
@@ -299,15 +299,15 @@ MR_trace_report_raw(int fd)
 	}
 }
 
-static	Word		MR_trace_exception_value = (Word) NULL;
+static	MR_Word		MR_trace_exception_value = (MR_Word) NULL;
 
 void
-MR_trace_set_exception_value(Word exception)
+MR_trace_set_exception_value(MR_Word exception)
 {
 	MR_trace_exception_value = exception;
 }
 
-Word
+MR_Word
 MR_trace_get_exception_value(void)
 {
 	return MR_trace_exception_value;
@@ -349,7 +349,7 @@ Define_entry(MR_do_trace_redo_fail_shallow);
 	*/
 	if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr)))
 	{
-		Code	*MR_jumpaddr;
+		MR_Code	*MR_jumpaddr;
 		save_transient_registers();
 		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
@@ -375,7 +375,7 @@ Define_entry(MR_do_trace_redo_fail_deep);
 	** the code in library/exception.m similarly.
 	*/
 	{
-		Code	*MR_jumpaddr;
+		MR_Code	*MR_jumpaddr;
 		save_transient_registers();
 		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));

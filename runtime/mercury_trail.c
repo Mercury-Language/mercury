@@ -22,8 +22,8 @@
 
 MemoryZone	*MR_trail_zone;
 MR_TrailEntry	*MR_trail_ptr_var;
-Unsigned	MR_ticket_counter_var = 1;
-Unsigned	MR_ticket_high_water_var = 1;
+MR_Unsigned	MR_ticket_counter_var = 1;
+MR_Unsigned	MR_ticket_high_water_var = 1;
 
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)

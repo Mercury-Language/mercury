@@ -23,7 +23,7 @@
 #include <setjmp.h>
 
 #include "mercury_std.h"		/* for `bool' */
-#include "mercury_types.h"		/* for `Code *' */
+#include "mercury_types.h"		/* for `MR_Code *' */
 #include "mercury_goto.h"		/* for `Define_entry()' */
 #include "mercury_thread.h"		/* for pthread types */
 #include "mercury_context.h"		/* for MR_Context, MR_IF_USE_TRAIL */
@@ -84,16 +84,16 @@ typedef struct {
 		jmp_buf env;		/* 
 					** used by calls to setjmp and longjmp 
 					*/
-		Word *saved_succip;
-		Word *saved_sp;
-		Word *saved_curfr;
-		Word *saved_maxfr;
+		MR_Word *saved_succip;
+		MR_Word *saved_sp;
+		MR_Word *saved_curfr;
+		MR_Word *saved_maxfr;
 		MR_IF_USE_TRAIL(MR_TrailEntry *saved_trail_ptr;)
-		MR_IF_USE_TRAIL(Unsigned saved_ticket_counter;)
-		MR_IF_USE_TRAIL(Unsigned saved_ticket_high_water;)
+		MR_IF_USE_TRAIL(MR_Unsigned saved_ticket_counter;)
+		MR_IF_USE_TRAIL(MR_Unsigned saved_ticket_high_water;)
 
 #if NUM_REAL_REGS > 0
-		Word regs[NUM_REAL_REGS];
+		MR_Word regs[NUM_REAL_REGS];
 #endif /* NUM_REAL_REGS > 0 */
 
 	} MR_jmp_buf;
@@ -175,14 +175,14 @@ typedef struct MR_mercury_thread_list_struct {
 */
 
 typedef struct MR_mercury_engine_struct {
-	Word		fake_reg[MAX_FAKE_REG];
+	MR_Word		fake_reg[MAX_FAKE_REG];
 		/* The fake reg vector for this engine. */
 #ifndef CONSERVATIVE_GC
-	Word		*e_hp;
+	MR_Word		*e_hp;
 		/* The heap pointer for this engine */
-	Word		*e_sol_hp;
+	MR_Word		*e_sol_hp;
 		/* The solutions heap pointer for this engine */
-	Word		*e_global_hp;
+	MR_Word		*e_global_hp;
 		/* The global heap pointer for this engine */
 #endif
 	MR_Context	*this_context;
@@ -219,7 +219,7 @@ typedef struct MR_mercury_engine_struct {
 		*/
 #endif
 	jmp_buf		*e_jmp_buf;
-	Word		*e_exception;
+	MR_Word		*e_exception;
 #ifndef	CONSERVATIVE_GC
 	MemoryZone	*heap_zone;
 	MemoryZone	*solutions_heap_zone;
@@ -325,7 +325,7 @@ extern	void	finalize_engine(MercuryEngine *engine);
 ** Functions that act on the current Mercury engine.
 ** See the comments in mercury_engine.c for documentation on MR_call_engine().
 */
-extern	Word *	MR_call_engine(Code *entry_point, bool catch_exceptions);
+extern	MR_Word *	MR_call_engine(MR_Code *entry_point, bool catch_exceptions);
 extern	void	terminate_engine(void);
 extern	void	dump_prev_locations(void);
 

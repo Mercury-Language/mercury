@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1997, 1999 The University of Melbourne.
+** Copyright (C) 1996-1997, 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,7 +24,7 @@
 #include "mercury_prof_mem.h"
 
 #include "mercury_memory.h"	/* for MR_GC_malloc() */
-#include "mercury_types.h"	/* for Word */
+#include "mercury_types.h"	/* for MR_Word */
 
 /*----------------------------------------------------------------------------*/
 
@@ -62,12 +62,12 @@ MR_prof_malloc(size_t size)
 	** up to the nearest multiple of the word size.
 	**
 	** Note that the current implementation of MR_prof_malloc only
-	** guarantees that the memory will be Word-aligned; if you want to
+	** guarantees that the memory will be MR_Word-aligned; if you want to
 	** allocate types that contain data types (e.g. `double') which might
 	** require stricter alignment than that, then you will need to
 	** change this to round the size up accordingly.
 	*/
-	size = ((size + sizeof(Word) - 1) / sizeof(Word)) * sizeof(Word);
+	size = ((size + sizeof(MR_Word) - 1) / sizeof(MR_Word)) * sizeof(MR_Word);
 
 	/* Here we waste a bit of space but hopefully not to much */
 	if (mem_left < size) {

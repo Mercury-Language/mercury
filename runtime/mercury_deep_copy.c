@@ -110,10 +110,10 @@
 ** MR_make_long_lived(): see mercury_deep_copy.h for documentation.
 */
 
-Word
-MR_make_long_lived(Word term, MR_TypeInfo type_info, Word *lower_limit)
+MR_Word
+MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 {
-	Word result;
+	MR_Word result;
 
 	restore_transient_hp();	/* Because we play with MR_hp */
 
@@ -124,7 +124,7 @@ MR_make_long_lived(Word term, MR_TypeInfo type_info, Word *lower_limit)
 
 	/* temporarily swap the heap with the global heap */
 	SWAP(MR_heap_zone, MR_global_heap_zone, MemoryZone *);
-	SWAP(MR_hp, MR_global_hp, Word *);
+	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
 	/* copy values from the heap to the global heap */
 	save_transient_hp();
@@ -134,7 +134,7 @@ MR_make_long_lived(Word term, MR_TypeInfo type_info, Word *lower_limit)
 
 	/* swap the heap and global heap back again */
 	SWAP(MR_heap_zone, MR_global_heap_zone, MemoryZone *);
-	SWAP(MR_hp, MR_global_hp, Word *);
+	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
 	save_transient_hp();	/* Because we played with MR_hp */
 

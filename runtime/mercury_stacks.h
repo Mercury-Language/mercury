@@ -68,7 +68,7 @@
 #define	MR_DETFR	(-3)	/* sp, in model_det temp frames only	*/
 
 /*
-** Code that traverses the nondet stack depends on the relationship
+** MR_Code that traverses the nondet stack depends on the relationship
 ** MR_NONDET_TEMP_SIZE < MR_DET_TEMP_SIZE < MR_NONDET_FIXED_SIZE.
 ** All three sizes are measured in words.
 */
@@ -80,22 +80,22 @@
 #define	MR_SAVEVAL		(-MR_NONDET_FIXED_SIZE)
 				/* saved values start at this offset	*/
 
-#define	MR_prevfr_addr(fr)	(&((Word *) (fr))[MR_PREVFR])
-#define	MR_redoip_addr(fr)	(&((Word *) (fr))[MR_REDOIP])
-#define	MR_redofr_addr(fr)	(&((Word *) (fr))[MR_REDOFR])
-#define	MR_succip_addr(fr)	(&((Word *) (fr))[MR_SUCCIP])
-#define	MR_succfr_addr(fr)	(&((Word *) (fr))[MR_SUCCFR])
-#define	MR_detfr_addr(fr)	(&((Word *) (fr))[MR_DETFR])
+#define	MR_prevfr_addr(fr)	(&((MR_Word *) (fr))[MR_PREVFR])
+#define	MR_redoip_addr(fr)	(&((MR_Word *) (fr))[MR_REDOIP])
+#define	MR_redofr_addr(fr)	(&((MR_Word *) (fr))[MR_REDOFR])
+#define	MR_succip_addr(fr)	(&((MR_Word *) (fr))[MR_SUCCIP])
+#define	MR_succfr_addr(fr)	(&((MR_Word *) (fr))[MR_SUCCFR])
+#define	MR_detfr_addr(fr)	(&((MR_Word *) (fr))[MR_DETFR])
 #define	MR_based_framevar_addr(fr, n) \
-				(&(((Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
+				(&(((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
 
-#define	MR_prevfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_PREVFR])
-#define	MR_redoip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_REDOIP])
-#define	MR_redofr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_REDOFR])
-#define	MR_succip_slot(fr)	LVALUE_CAST(Code *, ((Word *) (fr))[MR_SUCCIP])
-#define	MR_succfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_SUCCFR])
-#define	MR_detfr_slot(fr)	LVALUE_CAST(Word *, ((Word *) (fr))[MR_DETFR])
-#define	MR_based_framevar(fr, n) (((Word *) (fr))[MR_SAVEVAL + 1 - (n)])
+#define	MR_prevfr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_PREVFR])
+#define	MR_redoip_slot(fr)	LVALUE_CAST(MR_Code *, ((MR_Word *) (fr))[MR_REDOIP])
+#define	MR_redofr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_REDOFR])
+#define	MR_succip_slot(fr)	LVALUE_CAST(MR_Code *, ((MR_Word *) (fr))[MR_SUCCIP])
+#define	MR_succfr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_SUCCFR])
+#define	MR_detfr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_DETFR])
+#define	MR_based_framevar(fr, n) (((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
 
@@ -105,8 +105,8 @@
 
 #define	MR_mkframe(predname, numslots, redoip)				\
 			do {						\
-				reg	Word	*prevfr;		\
-				reg	Word	*succfr;		\
+				reg	MR_Word	*prevfr;		\
+				reg	MR_Word	*succfr;		\
 									\
 				prevfr = MR_maxfr;			\
 				succfr = MR_curfr;			\
@@ -122,14 +122,14 @@
 			} while (0)
 
 /* convert a size in bytes to a size in words, rounding up if necessary */
-#define MR_bytes_to_words(x) (((x) + sizeof(Word) - 1) / sizeof(Word))
+#define MR_bytes_to_words(x) (((x) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
 
 /* just like mkframe, but also reserves space for a struct     */
 /* with the given tag at the bottom of the nondet stack frame  */
 #define	MR_mkpragmaframe(predname, numslots, structname, redoip)	\
 	do {								\
-		reg	Word	*prevfr;				\
-		reg	Word	*succfr;				\
+		reg	MR_Word	*prevfr;				\
+		reg	MR_Word	*succfr;				\
 									\
 		prevfr = MR_maxfr;					\
 		succfr = MR_curfr;					\
@@ -147,8 +147,8 @@
 
 #define	MR_mktempframe(redoip)						\
 			do {						\
-				reg	Word	*prevfr;		\
-				reg	Word	*succfr;		\
+				reg	MR_Word	*prevfr;		\
+				reg	MR_Word	*succfr;		\
 									\
 				prevfr = MR_maxfr;			\
 				succfr = MR_curfr;			\
@@ -161,8 +161,8 @@
 
 #define	MR_mkdettempframe(redoip)					\
 			do {						\
-				reg	Word	*prevfr;		\
-				reg	Word	*succfr;		\
+				reg	MR_Word	*prevfr;		\
+				reg	MR_Word	*succfr;		\
 									\
 				prevfr = MR_maxfr;			\
 				succfr = MR_curfr;			\
@@ -175,7 +175,7 @@
 			} while (0)
 
 #define	MR_succeed()	do {						\
-				reg	Word	*childfr;		\
+				reg	MR_Word	*childfr;		\
 									\
 				debugsucceed();				\
 				childfr = MR_curfr;			\
@@ -185,7 +185,7 @@
 
 #define	MR_succeed_discard()						\
 			do {						\
-				reg	Word	*childfr;		\
+				reg	MR_Word	*childfr;		\
 									\
 				debugsucceeddiscard();			\
 				childfr = MR_curfr;			\
@@ -259,11 +259,11 @@ enum MR_HandlerCodeModel {
 typedef struct MR_Exception_Handler_Frame_struct {
 	/*
 	** The `code_model' field is used to identify what kind of
-	** handler it is. It holds values of type MR_HandlerCodeModel
-	** (see above), but it is declared to have type `Word' to ensure
+	** handler it is. It holds values of type MR_HandlerMR_CodeModel
+	** (see above), but it is declared to have type `MR_Word' to ensure
 	** that everything remains word-aligned.
 	*/
-	Word code_model;
+	MR_Word code_model;
 
 	/*
 	** If code_model is MR_MODEL_*_HANDLER, then
@@ -271,7 +271,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	** which will be a closure of the specified determinism.
 	** If code_model is MR_C_LONGJMP, then this field is unused.
 	*/
-	Word handler;
+	MR_Word handler;
 
 	/*
 	** The remaining fields hold stuff that must be saved in order
@@ -279,18 +279,18 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	*/
 
 	/* the det stack pointer */
-	Word *stack_ptr;
+	MR_Word *stack_ptr;
 
 	/* the trail state */
 	MR_IF_USE_TRAIL(
-		Word trail_ptr;
-		Word ticket_counter;
+		MR_Word trail_ptr;
+		MR_Word ticket_counter;
 	)
 
 	/* the heap state */
 	MR_IF_NOT_CONSERVATIVE_GC(
-		Word *heap_ptr;
-		Word *solns_heap_ptr;
+		MR_Word *heap_ptr;
+		MR_Word *solns_heap_ptr;
 		MemoryZone *heap_zone;
 	)
 } MR_Exception_Handler_Frame;
@@ -356,11 +356,11 @@ typedef struct MR_Exception_Handler_Frame_struct {
 /* DEFINITIONS FOR GENERATOR STACK FRAMES */
 
 typedef struct MR_GeneratorStackFrameStruct {
-	Word			*generator_frame;
+	MR_Word			*generator_frame;
 	MR_TrieNode		generator_table;
 } MR_GeneratorStackFrame;
 
-extern	void			MR_push_generator(Word *frame_addr,
+extern	void			MR_push_generator(MR_Word *frame_addr,
 					MR_TrieNode table_addr);
 extern	MR_Subgoal		*MR_top_generator_table(void);
 extern	void			MR_pop_generator(void);
@@ -375,8 +375,8 @@ struct MR_CutGeneratorListNode {
 };
 
 typedef struct MR_CutStackFrameStruct {
-	Word			*frame;
-	Integer			gen_next;
+	MR_Word			*frame;
+	MR_Integer			gen_next;
 	MR_CutGeneratorList	generators;
 } MR_CutStackFrame;
 

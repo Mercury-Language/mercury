@@ -85,27 +85,27 @@
 /*
 ** first, the "very special" registers -- these may go in real machine regs
 */
-#define MR_engine_base	LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
-#define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr2))
-#define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr6))
-#define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr1))
-#define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr9))
-#define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr10))
+#define MR_engine_base	LVALUE_CAST(MR_Word *, count_usage(MR_SP_RN, mr0))
+#define MR_succip	LVALUE_CAST(MR_Code *, count_usage(MR_SI_RN, mr2))
+#define MR_hp		LVALUE_CAST(MR_Word *, count_usage(MR_HP_RN, mr6))
+#define MR_sp		LVALUE_CAST(MR_Word *, count_usage(MR_SP_RN, mr1))
+#define MR_curfr	LVALUE_CAST(MR_Word *, count_usage(MR_CF_RN, mr9))
+#define MR_maxfr	LVALUE_CAST(MR_Word *, count_usage(MR_MF_RN, mr10))
 /*
 ** next, the remainder of the special registers -- these go in the
 ** fake_reg array, or in some cases in ordinary global variables.
 */
-#define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(38)))
-#define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(39)))
-#define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
+#define MR_sol_hp	LVALUE_CAST(MR_Word *, count_usage(MR_SOL_HP_RN, mr(38)))
+#define MR_min_hp_rec	LVALUE_CAST(MR_Word *, count_usage(MR_MIN_HP_REC, mr(39)))
+#define MR_min_sol_hp_rec	LVALUE_CAST(MR_Word *,	\
 			count_usage(MR_MIN_HP_REC, mr(40)))
-#define MR_global_hp	LVALUE_CAST(Word *,	\
+#define MR_global_hp	LVALUE_CAST(MR_Word *,	\
 			count_usage(MR_GLOBAL_HP_RN, mr(41)))
-#define MR_gen_next	LVALUE_CAST(Integer,	\
+#define MR_gen_next	LVALUE_CAST(MR_Integer,	\
 			count_usage(MR_GEN_NEXT_RN, mr(42)))
 #define MR_gen_stack	LVALUE_CAST(struct MR_GeneratorStackFrameStruct *, \
 			count_usage(MR_GEN_STACK_RN, mr(43)))
-#define MR_cut_next	LVALUE_CAST(Integer,	\
+#define MR_cut_next	LVALUE_CAST(MR_Integer,	\
 			count_usage(MR_CUT_NEXT_RN, mr(44)))
 #define MR_cut_stack	LVALUE_CAST(struct MR_CutStackFrameStruct *, \
 			count_usage(MR_CUT_STACK_RN, mr(45)))
@@ -135,20 +135,20 @@
 ** the real machine register.
 */
 
-#define MR_saved_succip(save_area)	LVALUE_CAST(Code *, save_area[2])
-#define MR_saved_hp(save_area)		LVALUE_CAST(Word *, save_area[6])
-#define MR_saved_sp(save_area)		LVALUE_CAST(Word *, save_area[1])
-#define MR_saved_curfr(save_area)	LVALUE_CAST(Word *, save_area[9])
-#define MR_saved_maxfr(save_area)	LVALUE_CAST(Word *, save_area[10])
-#define MR_saved_sol_hp(save_area)	LVALUE_CAST(Word *, save_area[38])
-#define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[39])
-#define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[40])
-#define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[41])
-#define MR_saved_gen_next(save_area)	LVALUE_CAST(Integer, save_area[42])
+#define MR_saved_succip(save_area)	LVALUE_CAST(MR_Code *, save_area[2])
+#define MR_saved_hp(save_area)		LVALUE_CAST(MR_Word *, save_area[6])
+#define MR_saved_sp(save_area)		LVALUE_CAST(MR_Word *, save_area[1])
+#define MR_saved_curfr(save_area)	LVALUE_CAST(MR_Word *, save_area[9])
+#define MR_saved_maxfr(save_area)	LVALUE_CAST(MR_Word *, save_area[10])
+#define MR_saved_sol_hp(save_area)	LVALUE_CAST(MR_Word *, save_area[38])
+#define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(MR_Word *, save_area[39])
+#define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(MR_Word *, save_area[40])
+#define MR_saved_global_hp(save_area)	LVALUE_CAST(MR_Word *, save_area[41])
+#define MR_saved_gen_next(save_area)	LVALUE_CAST(MR_Integer, save_area[42])
 #define MR_saved_gen_stack(save_area)	LVALUE_CAST(			      \
 					struct MR_GeneratorStackFrameStruct *,\
 					save_area[43])
-#define MR_saved_cut_next(save_area)	LVALUE_CAST(Integer, save_area[44])
+#define MR_saved_cut_next(save_area)	LVALUE_CAST(MR_Integer, save_area[44])
 #define MR_saved_cut_stack(save_area)	LVALUE_CAST(			      \
 					struct MR_CutStackFrameStruct *,      \
 					save_area[45])
@@ -243,31 +243,31 @@
 /*
 ** first, the "very special" registers -- these may go in real machine regs
 */
-#define MR_succip	LVALUE_CAST(Code *, count_usage(MR_SI_RN, mr1))
-#define MR_hp		LVALUE_CAST(Word *, count_usage(MR_HP_RN, mr5))
-#define MR_sp		LVALUE_CAST(Word *, count_usage(MR_SP_RN, mr0))
-#define MR_curfr	LVALUE_CAST(Word *, count_usage(MR_CF_RN, mr8))
-#define MR_maxfr	LVALUE_CAST(Word *, count_usage(MR_MF_RN, mr9))
+#define MR_succip	LVALUE_CAST(MR_Code *, count_usage(MR_SI_RN, mr1))
+#define MR_hp		LVALUE_CAST(MR_Word *, count_usage(MR_HP_RN, mr5))
+#define MR_sp		LVALUE_CAST(MR_Word *, count_usage(MR_SP_RN, mr0))
+#define MR_curfr	LVALUE_CAST(MR_Word *, count_usage(MR_CF_RN, mr8))
+#define MR_maxfr	LVALUE_CAST(MR_Word *, count_usage(MR_MF_RN, mr9))
 /*
 ** next, the remainder of the special registers -- these go in the
 ** fake_reg array, or in some cases in ordinary global variables.
 */
-#define MR_sol_hp	LVALUE_CAST(Word *, count_usage(MR_SOL_HP_RN, mr(37)))
-#define MR_min_hp_rec	LVALUE_CAST(Word *, count_usage(MR_MIN_HP_REC, mr(38)))
-#define MR_min_sol_hp_rec	LVALUE_CAST(Word *,	\
+#define MR_sol_hp	LVALUE_CAST(MR_Word *, count_usage(MR_SOL_HP_RN, mr(37)))
+#define MR_min_hp_rec	LVALUE_CAST(MR_Word *, count_usage(MR_MIN_HP_REC, mr(38)))
+#define MR_min_sol_hp_rec	LVALUE_CAST(MR_Word *,	\
 			count_usage(MR_MIN_HP_REC, mr(39)))
-#define MR_global_hp	LVALUE_CAST(Word *,	\
+#define MR_global_hp	LVALUE_CAST(MR_Word *,	\
 			count_usage(MR_GLOBAL_HP_RN, mr(40)))
 #define MR_trail_ptr	count_usage(MR_TRAIL_PTR_RN, MR_trail_ptr_var)
 #define MR_ticket_counter	 \
 		count_usage(MR_TICKET_COUNTER_RN, MR_ticket_counter_var)
 #define MR_ticket_high_water	 \
 		count_usage(MR_TICKET_HIGH_WATER_RN, MR_ticket_high_water_var)
-#define MR_gen_next	LVALUE_CAST(Integer,	\
+#define MR_gen_next	LVALUE_CAST(MR_Integer,	\
 			count_usage(MR_GEN_NEXT_RN, mr(41)))
 #define MR_gen_stack	LVALUE_CAST(struct MR_GeneratorStackFrameStruct *, \
 			count_usage(MR_GEN_STACK_RN, mr(42)))
-#define MR_cut_next	LVALUE_CAST(Integer,	\
+#define MR_cut_next	LVALUE_CAST(MR_Integer,	\
 			count_usage(MR_CUT_NEXT_RN, mr(43)))
 #define MR_cut_stack	LVALUE_CAST(struct MR_CutStackFrameStruct *, \
 			count_usage(MR_CUT_STACK_RN, mr(44)))
@@ -291,20 +291,20 @@
 ** the real machine register.
 */
 
-#define MR_saved_succip(save_area)	LVALUE_CAST(Code *, save_area[1])
-#define MR_saved_hp(save_area)		LVALUE_CAST(Word *, save_area[5])
-#define MR_saved_sp(save_area)		LVALUE_CAST(Word *, save_area[0])
-#define MR_saved_curfr(save_area)	LVALUE_CAST(Word *, save_area[8])
-#define MR_saved_maxfr(save_area)	LVALUE_CAST(Word *, save_area[9])
-#define MR_saved_sol_hp(save_area)	LVALUE_CAST(Word *, save_area[37])
-#define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(Word *, save_area[38])
-#define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(Word *, save_area[39])
-#define MR_saved_global_hp(save_area)	LVALUE_CAST(Word *, save_area[40])
-#define MR_saved_gen_stack(save_area)	LVALUE_CAST(Integer, save_area[41])
+#define MR_saved_succip(save_area)	LVALUE_CAST(MR_Code *, save_area[1])
+#define MR_saved_hp(save_area)		LVALUE_CAST(MR_Word *, save_area[5])
+#define MR_saved_sp(save_area)		LVALUE_CAST(MR_Word *, save_area[0])
+#define MR_saved_curfr(save_area)	LVALUE_CAST(MR_Word *, save_area[8])
+#define MR_saved_maxfr(save_area)	LVALUE_CAST(MR_Word *, save_area[9])
+#define MR_saved_sol_hp(save_area)	LVALUE_CAST(MR_Word *, save_area[37])
+#define MR_saved_min_hp_rec(save_area)	LVALUE_CAST(MR_Word *, save_area[38])
+#define MR_saved_min_sol_hp_rec(save_area) LVALUE_CAST(MR_Word *, save_area[39])
+#define MR_saved_global_hp(save_area)	LVALUE_CAST(MR_Word *, save_area[40])
+#define MR_saved_gen_stack(save_area)	LVALUE_CAST(MR_Integer, save_area[41])
 #define MR_saved_gen_next(save_area)	LVALUE_CAST(			      \
 					struct MR_GeneratorStackFrameStruct *,\
 					save_area[42])
-#define MR_saved_cut_stack(save_area)	LVALUE_CAST(Integer, save_area[43])
+#define MR_saved_cut_stack(save_area)	LVALUE_CAST(MR_Integer, save_area[43])
 #define MR_saved_cut_next(save_area)	LVALUE_CAST(			      \
 					struct MR_CutStackFrameStruct *,      \
 					save_area[44])

@@ -41,18 +41,18 @@
 
 #include <stdio.h>
 
-static	Word		MR_trace_help_system;
+static	MR_Word		MR_trace_help_system;
 static	MR_TypeInfo	MR_trace_help_system_type;
-static	Word		MR_trace_help_stdout;
+static	MR_Word		MR_trace_help_stdout;
 
-static	const char	*MR_trace_help_add_node(Word path, const char *name,
+static	const char	*MR_trace_help_add_node(MR_Word path, const char *name,
 				int slot, const char *text);
 static	void		MR_trace_help_ensure_init(void);
 
 const char *
 MR_trace_add_cat(const char *category, int slot, const char *text)
 {
-	Word	path;
+	MR_Word	path;
 
 	MR_trace_help_ensure_init();
 	MR_TRACE_USE_HP(
@@ -65,7 +65,7 @@ const char *
 MR_trace_add_item(const char *category, const char *item, int slot,
 	const char *text)
 {
-	Word	path;
+	MR_Word	path;
 	char	*category_on_heap;
 	const char *result;
 
@@ -81,9 +81,9 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 }
 
 static const char *
-MR_trace_help_add_node(Word path, const char *name, int slot, const char *text)
+MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *text)
 {
-	Word	result;
+	MR_Word	result;
 	char	*msg;
 	char	*name_on_heap;
 	char	*text_on_heap;
@@ -137,8 +137,8 @@ MR_trace_help_word(const char *word)
 void
 MR_trace_help_cat_item(const char *category, const char *item)
 {
-	Word	path;
-	Word	result;
+	MR_Word	path;
+	MR_Word	result;
 	char	*msg;
 	char	*category_on_heap;
 	char	*item_on_heap;
@@ -168,9 +168,9 @@ static void
 MR_trace_help_ensure_init(void)
 {
 	static	bool	done = FALSE;
-	Word		typeinfo_type;
-	Word		output_stream_type;
-	Word		MR_trace_help_system_type_word;
+	MR_Word		typeinfo_type;
+	MR_Word		output_stream_type;
+	MR_Word		MR_trace_help_system_type_word;
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
@@ -185,7 +185,7 @@ MR_trace_help_ensure_init(void)
 		);
 
 		MR_trace_help_system_type = (MR_TypeInfo) MR_make_permanent(
-					(Word) MR_trace_help_system_type,
+					(MR_Word) MR_trace_help_system_type,
 					(MR_TypeInfo) typeinfo_type);
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 					MR_trace_help_system_type);

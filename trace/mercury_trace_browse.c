@@ -39,7 +39,7 @@
 
 #include <stdio.h>
 
-static	Word		MR_trace_browser_state;
+static	MR_Word		MR_trace_browser_state;
 static	MR_TypeInfo	MR_trace_browser_state_type;
 
 static	void		MR_trace_browse_ensure_init(void);
@@ -52,7 +52,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 }
 
 void
-MR_trace_browse(Word type_info, Word value)
+MR_trace_browse(MR_Word type_info, MR_Word value)
 {
 	MercuryFile mdb_in, mdb_out;
 
@@ -63,7 +63,7 @@ MR_trace_browse(Word type_info, Word value)
 
 	MR_TRACE_CALL_MERCURY(
 		ML_BROWSE_browse(type_info, value,
-			(Word) &mdb_in, (Word) &mdb_out,
+			(MR_Word) &mdb_in, (MR_Word) &mdb_out,
 			MR_trace_browser_state, &MR_trace_browser_state);
 	);
 	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
@@ -81,14 +81,14 @@ MR_trace_browse(Word type_info, Word value)
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 
 void
-MR_trace_browse_external(Word type_info, Word value)
+MR_trace_browse_external(MR_Word type_info, MR_Word value)
 {
 	MR_trace_browse_ensure_init();
 
 	MR_TRACE_CALL_MERCURY(
 		ML_BROWSE_browse_external(type_info, value,
-			(Word) &MR_debugger_socket_in, 
-			(Word) &MR_debugger_socket_out,
+			(MR_Word) &MR_debugger_socket_in, 
+			(MR_Word) &MR_debugger_socket_out,
 			MR_trace_browser_state, &MR_trace_browser_state);
 	);
 	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
@@ -98,7 +98,7 @@ MR_trace_browse_external(Word type_info, Word value)
 #endif
 
 void
-MR_trace_print(Word type_info, Word value)
+MR_trace_print(MR_Word type_info, MR_Word value)
 {
 	MercuryFile mdb_out;
 
@@ -107,7 +107,7 @@ MR_trace_print(Word type_info, Word value)
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
 	MR_TRACE_CALL_MERCURY(
-		ML_BROWSE_print(type_info, value, (Word) &mdb_out,
+		ML_BROWSE_print(type_info, value, (MR_Word) &mdb_out,
 			MR_trace_browser_state);
 	);
 }
@@ -116,8 +116,8 @@ static void
 MR_trace_browse_ensure_init(void)
 {
 	static	bool	done = FALSE;
-	Word		typeinfo_type_word;
-	Word		MR_trace_browser_state_type_word;
+	MR_Word		typeinfo_type_word;
+	MR_Word		MR_trace_browser_state_type_word;
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
@@ -130,7 +130,7 @@ MR_trace_browse_ensure_init(void)
 		);
 
 		MR_trace_browser_state_type = (MR_TypeInfo) MR_make_permanent(
-					(Word) MR_trace_browser_state_type,
+					(MR_Word) MR_trace_browser_state_type,
 					(MR_TypeInfo) typeinfo_type_word);
 		MR_trace_browser_state = MR_make_permanent(
 					MR_trace_browser_state,
@@ -143,8 +143,8 @@ void
 MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 	char *imports[])
 {
-	ConstString options_on_heap;
-	Word imports_list;
+	MR_ConstString options_on_heap;
+	MR_Word imports_list;
 	MercuryFile mdb_in, mdb_out;
 	int i;
 
@@ -158,28 +158,28 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 
 		imports_list = MR_list_empty();
 		for (i = num_imports; i > 0; i--) {
-			ConstString this_import;
+			MR_ConstString this_import;
 			MR_make_aligned_string(this_import, imports[i - 1]);
 			imports_list = MR_list_cons(this_import, imports_list);
 		}
 	);
 
 	MR_TRACE_CALL_MERCURY(
-		ML_query(type, imports_list, (String) options_on_heap,
-			(Word) &mdb_in, (Word) &mdb_out);
+		ML_query(type, imports_list, (MR_String) options_on_heap,
+			(MR_Word) &mdb_in, (MR_Word) &mdb_out);
 	);
 }
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 
 void
-MR_trace_query_external(MR_Query_Type type, String options, int num_imports,
-	Word imports_list)
+MR_trace_query_external(MR_Query_Type type, MR_String options, int num_imports,
+	MR_Word imports_list)
 {
 	MR_TRACE_CALL_MERCURY(
 		ML_query_external(type, imports_list,  options,
-			(Word) &MR_debugger_socket_in, 
-			(Word) &MR_debugger_socket_out);
+			(MR_Word) &MR_debugger_socket_in, 
+			(MR_Word) &MR_debugger_socket_out);
 	);
 }
 

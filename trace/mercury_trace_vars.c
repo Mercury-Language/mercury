@@ -57,7 +57,7 @@ typedef struct {
 	bool				MR_var_is_ambiguous;
 	int				MR_var_hlds_number;
 	MR_TypeInfo			MR_var_type;
-	Word				MR_var_value;
+	MR_Word				MR_var_value;
 } MR_Var_Details;
 
 /*
@@ -92,15 +92,15 @@ typedef struct {
 
 typedef struct {
 	const MR_Stack_Layout_Label	*MR_point_top_layout;
-	Word				*MR_point_top_saved_regs;
+	MR_Word				*MR_point_top_saved_regs;
 	MR_Trace_Port			MR_point_top_port;
 	const char			*MR_point_problem;
 	int				MR_point_level;
 	const MR_Stack_Layout_Entry	*MR_point_level_entry;
 	const char			*MR_point_level_filename;
 	int				MR_point_level_linenumber;
-	Word				*MR_point_level_base_sp;
-	Word				*MR_point_level_base_curfr;
+	MR_Word				*MR_point_level_base_sp;
+	MR_Word				*MR_point_level_base_curfr;
 	int				MR_point_var_count;
 	int				MR_point_var_max;
 	MR_Var_Details			*MR_point_vars;
@@ -205,7 +205,7 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 	type_ctor_info =
 		MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pseudo_type_info);
 	ignore_type_ctor_count =
-		sizeof(MR_trace_ignored_type_ctors) / sizeof(Word *);
+		sizeof(MR_trace_ignored_type_ctors) / sizeof(MR_Word *);
 
 	for (i = 0; i < ignore_type_ctor_count; i++) {
 		if (type_ctor_info == MR_trace_ignored_type_ctors[i]) {
@@ -218,7 +218,7 @@ MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info)
 
 void
 MR_trace_init_point_vars(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, MR_Trace_Port port)
+	MR_Word *saved_regs, MR_Trace_Port port)
 {
 	MR_point.MR_point_top_layout = top_layout;
 	MR_point.MR_point_top_saved_regs = saved_regs;
@@ -231,17 +231,17 @@ const char *
 MR_trace_set_level(int ancestor_level)
 {
 	const char			*problem;
-	Word				*base_sp;
-	Word				*base_curfr;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
 	const MR_Stack_Layout_Label	*top_layout;
 	const MR_Stack_Layout_Label	*level_layout;
 	const MR_Stack_Layout_Entry	*entry;
 	const MR_Stack_Layout_Vars	*vars;
 	const MR_Var_Name		*var_info;
-	Word				*valid_saved_regs;
+	MR_Word				*valid_saved_regs;
 	int				var_count;
 	MR_TypeInfo			*type_params;
-	Word				value;
+	MR_Word				value;
 	MR_TypeInfo			type_info;
 	MR_PseudoTypeInfo		pseudo_type_info;
 	int				i;
@@ -252,7 +252,7 @@ MR_trace_set_level(int ancestor_level)
 	char				*s;
 	const char			*name;
 	const char			*string_table;
-	Integer				string_table_size;
+	MR_Integer				string_table_size;
 	const char			*filename;
 	int				linenumber;
 
@@ -524,7 +524,7 @@ MR_trace_current_level(void)
 void
 MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
 	const char **filename_ptr, int *linenumber_ptr,
-	Word **base_sp_ptr, Word **base_curfr_ptr)
+	MR_Word **base_sp_ptr, MR_Word **base_curfr_ptr)
 {
 	if (MR_point.MR_point_problem != NULL) {
 		MR_fatal_error("cannot get details about current level");
@@ -581,7 +581,7 @@ MR_trace_list_vars(FILE *out)
 
 const char *
 MR_trace_return_var_info(int var_number, const char **name_ptr,
-	MR_TypeInfo *type_info_ptr, Word *value_ptr)
+	MR_TypeInfo *type_info_ptr, MR_Word *value_ptr)
 {
 	const MR_Var_Details	*details;
 	const char		*problem;
@@ -820,8 +820,8 @@ MR_trace_browse_all(FILE *out, MR_Browser browser)
 }
 
 /* ML_arg() is defined in std_util.m */
-extern	bool 	ML_arg(MR_TypeInfo term_type_info, Word *term, int arg_index,
-			MR_TypeInfo *arg_type_info_ptr, Word **arg_ptr);
+extern	bool 	ML_arg(MR_TypeInfo term_type_info, MR_Word *term, int arg_index,
+			MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr);
 
 static char *
 MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
@@ -829,8 +829,8 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 {
 	MR_TypeInfo	typeinfo;
 	MR_TypeInfo	new_typeinfo;
-	Word		*value;
-	Word		*new_value;
+	MR_Word		*value;
+	MR_Word		*new_value;
 	char		*old_path;
 	int		arg_num;
 	int		len;
@@ -885,7 +885,7 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 		fflush(out);
 	}
 
-	(*browser)((Word) typeinfo, *value);
+	(*browser)((MR_Word) typeinfo, *value);
 	return NULL;
 }
 

@@ -46,9 +46,9 @@ typedef	enum {
 
 extern	const char 			*MR_port_names[];
 
-#define MR_trace_incr_seq()		((Word) ++MR_trace_call_seqno)
-#define MR_trace_incr_depth()		((Word) ++MR_trace_call_depth)
-#define MR_trace_reset_depth(d)		(MR_trace_call_depth = (Unsigned) (d))
+#define MR_trace_incr_seq()		((MR_Word) ++MR_trace_call_seqno)
+#define MR_trace_incr_depth()		((MR_Word) ++MR_trace_call_depth)
+#define MR_trace_reset_depth(d)		(MR_trace_call_depth = (MR_Unsigned) (d))
 
 /*
 ** MR_trace is called from Mercury modules compiled with tracing.
@@ -61,8 +61,8 @@ extern	const char 			*MR_port_names[];
 ** after the event. (NULL means it should continue as usual.)
 */
 
-extern	Code	*MR_trace(const MR_Stack_Layout_Label *);
-extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()
@@ -97,8 +97,8 @@ extern	void	MR_trace_final(void);
 ** XXX They should probably be in MercuryEngine.
 */
 
-extern	Unsigned	MR_trace_call_seqno;
-extern	Unsigned	MR_trace_call_depth;
+extern	MR_Unsigned	MR_trace_call_seqno;
+extern	MR_Unsigned	MR_trace_call_depth;
 
 typedef enum {
 	MR_TRACE_INTERNAL,
@@ -108,8 +108,8 @@ typedef enum {
 extern	MR_Trace_Type	MR_trace_handler;
 extern	bool		MR_trace_enabled;
 
-extern	Unsigned	MR_trace_event_number;
-extern	Bool		MR_trace_from_full;
+extern	MR_Unsigned	MR_trace_event_number;
+extern	MR_Bool		MR_trace_from_full;
 
 /*
 ** These functions will report the number of the last event,
@@ -132,8 +132,8 @@ extern	void	MR_tracing_not_enabled(void);
 ** which exception has been thrown.
 */
 
-extern	void	MR_trace_set_exception_value(Word exception);
-extern	Word	MR_trace_get_exception_value(void);
+extern	void	MR_trace_set_exception_value(MR_Word exception);
+extern	MR_Word	MR_trace_get_exception_value(void);
 
 /*
 ** If MR_TRACE_HISTOGRAM is defined, MR_trace maintains two arrays of integers,

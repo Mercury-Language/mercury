@@ -47,7 +47,7 @@
 
 #include <stdio.h>
 
-#include "mercury_types.h"		/* for Word */
+#include "mercury_types.h"		/* for MR_Word */
 #include "mercury_trail.h"		/* for MR_TrailEntry */
 #include "mercury_memory.h"		/* for MemoryZone */
 #include "mercury_thread.h"		/* for MercuryLock */
@@ -77,7 +77,7 @@ struct MR_context_struct {
 		** context in the runqueue.
 		*/
 
-	Code		*resume;
+	MR_Code		*resume;
 		/*
 		** a pointer to the code at which execution should resume when
 		** this context is next scheduled.
@@ -92,28 +92,28 @@ struct MR_context_struct {
 		*/
 #endif
 
-	Code		*context_succip;
+	MR_Code		*context_succip;
 		/* succip for this context */
 
 	MemoryZone	*detstack_zone;
 		/* pointer to the detstack_zone for this context */
-	Word		*context_sp;
+	MR_Word		*context_sp;
 		/* saved stack pointer for this context */
 
 	MemoryZone	*nondetstack_zone;
 		/* pointer to the nondetstack_zone for this context */
-	Word		*context_maxfr;
+	MR_Word		*context_maxfr;
 		/* saved maxfr pointer for this context */
-	Word		*context_curfr;
+	MR_Word		*context_curfr;
 		/* saved curfr pointer for this context */
 #ifdef	MR_USE_MINIMAL_MODEL
 	MemoryZone	*generatorstack_zone;
 		/* pointer to the generatorstack_zone for this context */
-	Integer		context_gen_next;
+	MR_Integer		context_gen_next;
 		/* saved generator stack index for this context */
 	MemoryZone	*cutstack_zone;
 		/* pointer to the cutstack_zone for this context */
-	Integer		context_cut_next;
+	MR_Integer		context_cut_next;
 		/* saved cut stack index for this context */
 #endif
 
@@ -128,9 +128,9 @@ struct MR_context_struct {
 		/* saved MR_ticket_high_water for this context */
 #endif
 
-	Word		*context_hp;
+	MR_Word		*context_hp;
 		/* saved hp for this context */
-	Word		*min_hp_rec;
+	MR_Word		*min_hp_rec;
 		/*
 		** this pointer marks the minimum value of MR_hp to which we can
 		** truncate the heap on backtracking. See comments before the
@@ -240,7 +240,7 @@ Declare_entry(do_runnext);
 #endif
 
 /*
-** fork_new_context(Code *child, Code *parent, int numslots):
+** fork_new_context(MR_Code *child, MR_Code *parent, int numslots):
 ** create a new context to execute the code at `child', and
 ** copy the topmost `numslots' from the current stackframe.
 ** The new context gets put on the runqueue, and the current

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,10 +14,10 @@
 #include "mercury_heap.h"	/* for incr_hp_atomic */
 
 /*
-** Mercury characters are given type `Char', which is a typedef for `char'.
-** But BEWARE: when stored in an Integer, the value must be
-** first cast to `UnsignedChar'.
-** Mercury strings are stored as pointers to '\0'-terminated arrays of Char.
+** Mercury characters are given type `MR_Char', which is a typedef for `char'.
+** But BEWARE: when stored in an MR_Integer, the value must be
+** first cast to `MR_UnsignedChar'.
+** Mercury strings are stored as pointers to '\0'-terminated arrays of MR_Char.
 **
 ** We may eventually move to using wchar_t for Mercury characters and strings,
 ** so it is important to use these typedefs.
@@ -25,27 +25,27 @@
 ** The actual typedefs are in mercury_types.h to avoid problems with
 ** circular #includes.
 **
-** typedef char Char;
-** typedef unsigned char UnsignedChar;
+** typedef char MR_Char;
+** typedef unsigned char MR_UnsignedChar;
 **
-** typedef Char *String;
-** typedef const Char *ConstString;
+** typedef MR_Char *MR_String;
+** typedef const MR_Char *MR_ConstString;
 */
 
 /*
 ** string_const("...", len):
 **	Given a C string literal and its length, returns a Mercury string.
 */
-#define MR_string_const(string, len) ((String) string)
+#define MR_string_const(string, len) ((MR_String) string)
 
 /*
-** bool string_equal(ConstString s1, ConstString s2):
+** bool string_equal(MR_ConstString s1, MR_ConstString s2):
 **	Return true iff the two Mercury strings s1 and s2 are equal.
 */
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
 
 /* 
-** void MR_make_aligned_string(ConstString & ptr, const char * string):
+** void MR_make_aligned_string(MR_ConstString & ptr, const char * string):
 **	Given a C string `string', set `ptr' to be a Mercury string
 **	with the same contents.  (`ptr' must be an lvalue.)
 **	If the resulting Mercury string is to be used by Mercury code,
@@ -63,14 +63,14 @@
 */
 #define MR_make_aligned_string(ptr, string) 				\
 	do { 								\
-	    if (MR_tag((Word) (string)) != 0) {				\
+	    if (MR_tag((MR_Word) (string)) != 0) {				\
 		MR_make_aligned_string_copy((ptr), (string));		\
 	    } else { 							\
 	    	(ptr) = (string);					\
 	    }								\
 	} while(0)
 
-/* void MR_make_aligned_string_copy(ConstString &ptr, const char * string);
+/* void MR_make_aligned_string_copy(MR_ConstString &ptr, const char * string);
 **	Same as make_aligned_string(ptr, string), except that the string
 **	is guaranteed to be copied. This is useful for copying C strings
 **	onto the Mercury heap.
@@ -82,11 +82,11 @@
 */
 #define MR_make_aligned_string_copy(ptr, string) 			\
 	do {								\
-		Word make_aligned_string_tmp;				\
+		MR_Word make_aligned_string_tmp;				\
 		char * make_aligned_string_ptr;				\
 									\
 	  	incr_hp_atomic(make_aligned_string_tmp,			\
-	    	    (strlen(string) + sizeof(Word)) / sizeof(Word));	\
+	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word));	\
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
 	    	strcpy(make_aligned_string_ptr, (string));		\
@@ -94,7 +94,7 @@
 	} while(0)
 
 /*
-** do_hash_string(int & hash, Word string):
+** do_hash_string(int & hash, MR_Word string):
 **	Given a Mercury string `string', set `hash' to the hash value
 **	for that string.  (`hash' must be an lvalue.)
 **
@@ -109,9 +109,9 @@
 	{						\
 	   int len = 0;					\
 	   hash = 0;					\
-	   while(((const Char *)(s))[len]) {		\
+	   while(((MR_ConstString)(s))[len]) {		\
 		hash ^= (hash << 5);			\
-		hash ^= ((const Char *)(s))[len];	\
+		hash ^= ((MR_ConstString)(s))[len];	\
 		len++;					\
 	   }						\
 	   hash ^= len;					\
@@ -121,7 +121,7 @@
 ** MR_hash_string(s):
 **	Given a Mercury string `s', return a hash value for that string.
 */
-int	MR_hash_string(Word);
+int	MR_hash_string(MR_Word);
 
 #ifdef __GNUC__
 #define MR_hash_string(s)						\

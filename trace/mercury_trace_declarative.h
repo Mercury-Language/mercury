@@ -35,10 +35,10 @@ extern	bool	MR_trace_start_decl_debug(const char *out,
 ** values in the definitions in browser/declarative_execution.m.
 */
 
-typedef Word MR_Trace_Node;
+typedef MR_Word MR_Trace_Node;
 
-#define MR_TRACE_STATUS_SUCCEEDED	(Word) 0
-#define MR_TRACE_STATUS_FAILED		(Word) 1
-#define MR_TRACE_STATUS_UNDECIDED	(Word) 2
+#define MR_TRACE_STATUS_SUCCEEDED	(MR_Word) 0
+#define MR_TRACE_STATUS_FAILED		(MR_Word) 1
+#define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

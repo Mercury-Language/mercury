@@ -16,7 +16,7 @@
 #include "mercury_layout_util.h"
 
 void
-MR_copy_regs_to_saved_regs(int max_mr_num, Word *saved_regs)
+MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
 {
 	/*
 	** In the process of browsing within the debugger, we call Mercury,
@@ -44,7 +44,7 @@ MR_copy_regs_to_saved_regs(int max_mr_num, Word *saved_regs)
 }
 
 void
-MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs)
+MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs)
 {
 	/*
 	** We execute the converse procedure to MR_copy_regs_to_saved_regs.
@@ -65,7 +65,7 @@ MR_copy_saved_regs_to_regs(int max_mr_num, Word *saved_regs)
 
 MR_TypeInfoParams
 MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
-	Word *saved_regs)
+	MR_Word *saved_regs)
 {
 	return MR_materialize_typeinfos_base(vars, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
@@ -73,17 +73,17 @@ MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
 
 MR_TypeInfoParams
 MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
-	Word *saved_regs, Word *base_sp, Word *base_curfr)
+	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr)
 {
 	MR_TypeInfoParams	type_params;
 	bool			succeeded;
-	Integer			count;
+	MR_Integer			count;
 	int			i;
 
 	if (vars->MR_slvs_tvars != NULL) {
 		count = vars->MR_slvs_tvars->MR_tp_param_count;
 		type_params = (MR_TypeInfoParams)
-			MR_NEW_ARRAY(Word, count + 1);
+			MR_NEW_ARRAY(MR_Word, count + 1);
 
 		for (i = 0; i < count; i++) {
 			if (vars->MR_slvs_tvars->MR_tp_param_locns[i] != 0) {
@@ -130,23 +130,23 @@ MR_get_register_number_short(MR_Short_Lval locn)
 /* if you want to debug this code, you may want to set this var to TRUE */
 static	bool	MR_print_locn = FALSE;
 
-Word
-MR_lookup_long_lval(MR_Long_Lval locn, Word *saved_regs, bool *succeeded)
+MR_Word
+MR_lookup_long_lval(MR_Long_Lval locn, MR_Word *saved_regs, bool *succeeded)
 {
 	return MR_lookup_long_lval_base(locn, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		succeeded);
 }
 
-Word
-MR_lookup_long_lval_base(MR_Long_Lval locn, Word *saved_regs,
-	Word *base_sp, Word *base_curfr, bool *succeeded)
+MR_Word
+MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
+	MR_Word *base_sp, MR_Word *base_curfr, bool *succeeded)
 {
 	int	locn_num;
 	int	offset;
-	Word	value;
-	Word	baseaddr;
-	Word	sublocn;
+	MR_Word	value;
+	MR_Word	baseaddr;
+	MR_Word	sublocn;
 
 	*succeeded = FALSE;
 	value = 0;
@@ -248,20 +248,20 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, Word *saved_regs,
 	return value;
 }
 
-Word
-MR_lookup_short_lval(MR_Short_Lval locn, Word *saved_regs, bool *succeeded)
+MR_Word
+MR_lookup_short_lval(MR_Short_Lval locn, MR_Word *saved_regs, bool *succeeded)
 {
 	return MR_lookup_short_lval_base(locn, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		succeeded);
 }
 
-Word
-MR_lookup_short_lval_base(MR_Short_Lval locn, Word *saved_regs,
-	Word *base_sp, Word *base_curfr, bool *succeeded)
+MR_Word
+MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
+	MR_Word *base_sp, MR_Word *base_curfr, bool *succeeded)
 {
 	int	locn_num;
-	Word	value;
+	MR_Word	value;
 
 	*succeeded = FALSE;
 	value = 0;
@@ -344,8 +344,8 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, Word *saved_regs,
 
 bool
 MR_get_type_and_value(const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, MR_TypeInfo *type_params, MR_TypeInfo *type_info,
-	Word *value)
+	MR_Word *saved_regs, MR_TypeInfo *type_params, MR_TypeInfo *type_info,
+	MR_Word *value)
 {
 	return MR_get_type_and_value_base(vars, i, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
@@ -354,8 +354,8 @@ MR_get_type_and_value(const MR_Stack_Layout_Vars *vars, int i,
 
 bool
 MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, Word *base_sp, Word *base_curfr,
-	MR_TypeInfo *type_params, MR_TypeInfo *type_info, Word *value)
+	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
+	MR_TypeInfo *type_params, MR_TypeInfo *type_info, MR_Word *value)
 {
 	MR_PseudoTypeInfo	pseudo_type_info;
 	bool			succeeded;
@@ -377,7 +377,7 @@ MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
 }
 
 bool
-MR_get_type(const MR_Stack_Layout_Vars *vars, int i, Word *saved_regs,
+MR_get_type(const MR_Stack_Layout_Vars *vars, int i, MR_Word *saved_regs,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
 	return MR_get_type_base(vars, i, saved_regs,
@@ -387,7 +387,7 @@ MR_get_type(const MR_Stack_Layout_Vars *vars, int i, Word *saved_regs,
 
 bool
 MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, Word *base_sp, Word *base_curfr,
+	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
 	MR_PseudoTypeInfo	pseudo_type_info;
@@ -399,9 +399,9 @@ MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
 }
 
 void
-MR_write_variable(Word type_info, Word value)
+MR_write_variable(MR_Word type_info, MR_Word value)
 {
-	Word	stdout_stream;
+	MR_Word	stdout_stream;
 
 	(*MR_io_stdout_stream)(&stdout_stream);
 	(*MR_io_print_to_stream)(type_info, stdout_stream, value);

@@ -123,8 +123,8 @@
 static	void	print_dump_stack(void);
 static	bool	try_munprotect(void *address, void *context);
 static	char	*explain_context(void *context);
-static	Code	*get_pc_from_context(void *the_context);
-static	Word	*get_sp_from_context(void *the_context);
+static	MR_Code	*get_pc_from_context(void *the_context);
+static	MR_Word	*get_sp_from_context(void *the_context);
 
 #define STDERR 2
 
@@ -135,10 +135,10 @@ try_munprotect(void *addr, void *context)
 #if !(defined(HAVE_SIGINFO) || defined(MR_WIN32_VIRTUAL_ALLOC))
 	return FALSE;
 #else
-	Word *    fault_addr;
+	MR_Word *    fault_addr;
 	MemoryZone *zone;
 
-	fault_addr = (Word *) addr;
+	fault_addr = (MR_Word *) addr;
 
 	zone = get_used_memory_zones();
 
@@ -174,7 +174,7 @@ try_munprotect(void *addr, void *context)
 } 
 
 bool 
-null_handler(Word *fault_addr, MemoryZone *zone, void *context)
+null_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
 {
 	return FALSE;
 }
@@ -203,15 +203,15 @@ fatal_abort(void *context, const char *main_msg, int dump)
 }
 
 bool 
-default_handler(Word *fault_addr, MemoryZone *zone, void *context)
+default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
 {
 #ifndef MR_CHECK_OVERFLOW_VIA_MPROTECT
 	return FALSE;
 #else
-    Word *new_zone;
+    MR_Word *new_zone;
     size_t zone_size;
 
-    new_zone = (Word *) round_up((Unsigned) fault_addr + sizeof(Word), unit);
+    new_zone = (MR_Word *) round_up((MR_Unsigned) fault_addr + sizeof(MR_Word), unit);
 
     if (new_zone <= zone->hardmax) {
 	zone_size = (char *)new_zone - (char *)zone->redzone;
@@ -269,10 +269,10 @@ setup_signals(void)
 */
 #ifndef MR_MSVC_STRUCTURED_EXCEPTIONS
   #ifdef SIGBUS
-	MR_setup_signal(SIGBUS, (Code *) bus_handler, TRUE,
+	MR_setup_signal(SIGBUS, (MR_Code *) bus_handler, TRUE,
 		"Mercury runtime: cannot set SIGBUS handler");
   #endif
-	MR_setup_signal(SIGSEGV, (Code *) segv_handler, TRUE,
+	MR_setup_signal(SIGSEGV, (MR_Code *) segv_handler, TRUE,
 		"Mercury runtime: cannot set SIGSEGV handler");
 #endif
 }
@@ -722,7 +722,7 @@ MR_dump_exception_record(EXCEPTION_RECORD *rec)
 	
 	fprintf(stderr, "\n***   Exception record at 0x%08lx:",
 			(unsigned long) rec);
-	fprintf(stderr, "\n***    Code        : 0x%08lx (%s)",
+	fprintf(stderr, "\n***    MR_Code        : 0x%08lx (%s)",
 			(unsigned long) rec->ExceptionCode,
 			MR_find_exception_name(rec->ExceptionCode));
 	fprintf(stderr, "\n***    Flags       : 0x%08lx",
@@ -836,18 +836,18 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
 ** 	Given the signal context, return the program counter at the time
 ** 	of the signal, if available.  If it is unavailable, return NULL.
 */
-static Code *
+static MR_Code *
 get_pc_from_context(void *the_context)
 {
-	Code *pc_at_signal = NULL;
+	MR_Code *pc_at_signal = NULL;
 #if defined(HAVE_SIGCONTEXT_STRUCT)
 
   #ifdef PC_ACCESS
 	struct sigcontext_struct *context = the_context;
 
-	pc_at_signal = (Code *) context->PC_ACCESS;
+	pc_at_signal = (MR_Code *) context->PC_ACCESS;
   #else
-	pc_at_signal = (Code *) NULL;
+	pc_at_signal = (MR_Code *) NULL;
   #endif
 
 #elif defined(HAVE_SIGINFO_T)
@@ -857,21 +857,21 @@ get_pc_from_context(void *the_context)
 	ucontext_t *context = the_context;
 
     #ifdef PC_ACCESS_GREG
-	pc_at_signal = (Code *) context->uc_mcontext.gregs[PC_ACCESS];
+	pc_at_signal = (MR_Code *) context->uc_mcontext.gregs[PC_ACCESS];
     #else
-	pc_at_signal = (Code *) context->uc_mcontext.PC_ACCESS;
+	pc_at_signal = (MR_Code *) context->uc_mcontext.PC_ACCESS;
     #endif
 
   #else /* not PC_ACCESS */
 
 	/* if PC_ACCESS is not set, we don't know the context */
-	pc_at_signal = (Code *) NULL;
+	pc_at_signal = (MR_Code *) NULL;
 
   #endif /* not PC_ACCESS */
 
 #else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
 
-	pc_at_signal = (Code *) NULL;
+	pc_at_signal = (MR_Code *) NULL;
 
 #endif
 
@@ -890,19 +890,19 @@ get_pc_from_context(void *the_context)
 ** machine register that is used for MR_sp.
 ** Need to fix this so it works when the register is in a fake reg too.
 */
-static Word *
+static MR_Word *
 get_sp_from_context(void *the_context)
 {
-	Word *sp_at_signal = NULL;
+	MR_Word *sp_at_signal = NULL;
 #ifdef NATIVE_GC
   #if defined(HAVE_SIGCONTEXT_STRUCT)
 
     #ifdef PC_ACCESS
 	struct sigcontext_struct *context = the_context;
 
-	sp_at_signal = (Word *) context->MR_real_reg_number_sp;
+	sp_at_signal = (MR_Word *) context->MR_real_reg_number_sp;
     #else
-	sp_at_signal = (Word *) NULL;
+	sp_at_signal = (MR_Word *) NULL;
     #endif
 
   #elif defined(HAVE_SIGINFO_T)
@@ -912,9 +912,9 @@ get_sp_from_context(void *the_context)
 	struct sigcontext *context = the_context;
 
       #ifdef PC_ACCESS_GREG
-	sp_at_signal = (Word *) context->gregs[MR_real_reg_number_sp];
+	sp_at_signal = (MR_Word *) context->gregs[MR_real_reg_number_sp];
       #else
-	sp_at_signal = (Word *) context->sc_regs[MR_real_reg_number_sp];
+	sp_at_signal = (MR_Word *) context->sc_regs[MR_real_reg_number_sp];
       #endif
 
     #else /* not PC_ACCESS */
@@ -923,17 +923,17 @@ get_sp_from_context(void *the_context)
 	** if PC_ACCESS is not set, we don't know how to get at the
 	** registers
 	*/
-	sp_at_signal = (Word *) NULL;
+	sp_at_signal = (MR_Word *) NULL;
 
     #endif /* not PC_ACCESS */
 
   #else /* not HAVE_SIGINFO_T && not HAVE_SIGCONTEXT_STRUCT */
 
-	sp_at_signal = (Word *) NULL;
+	sp_at_signal = (MR_Word *) NULL;
 
   #endif
 #else /* !NATIVE_GC */
-	sp_at_signal = (Word *) NULL;
+	sp_at_signal = (MR_Word *) NULL;
 #endif /* !NATIVE_GC */
 
 	return sp_at_signal;

@@ -34,11 +34,11 @@
 
 #ifdef	MR_USE_MINIMAL_MODEL
 
-static	void	MR_print_gen_stack_entry(FILE *fp, Integer i);
+static	void	MR_print_gen_stack_entry(FILE *fp, MR_Integer i);
 static	void	MR_cleanup_generator_ptr(MR_TrieNode generator_ptr);
 
 void
-MR_push_generator(Word *frame_addr, MR_TrieNode table_addr)
+MR_push_generator(MR_Word *frame_addr, MR_TrieNode table_addr)
 {
 	MR_gen_stack[MR_gen_next].generator_frame = frame_addr;
 	MR_gen_stack[MR_gen_next].generator_table = table_addr;
@@ -93,7 +93,7 @@ MR_print_gen_stack(FILE *fp)
 }
 
 static void
-MR_print_gen_stack_entry(FILE *fp, Integer i)
+MR_print_gen_stack_entry(FILE *fp, MR_Integer i)
 {
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {

@@ -49,6 +49,7 @@
 #include	"mercury_library_types.h"
 #include	"mercury_string.h"
 #include	"mercury_float.h"
+#include	"mercury_bootstrap.h"
 #include	"mercury_stack_trace.h"
 #include	"mercury_accurate_gc.h"
 #include	"mercury_stack_layout.h"
@@ -80,6 +81,5 @@
 
 #include	"mercury_grade.h"
 
-#include	"mercury_bootstrap.h"
 
 #endif /* not MERCURY_IMP_H */

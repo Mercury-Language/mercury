@@ -15,20 +15,20 @@
 #define MERCURY_TRACE_BROWSE_H
 
 #include "mercury_conf.h"	/* for MR_USE_EXTERNAL_DEBUGGER */
-#include "mercury_types.h"	/* for Word, String */
+#include "mercury_types.h"	/* for MR_Word, MR_String */
 
 /*
 ** Interactively browse a term.
 */
-extern 	void	MR_trace_browse(Word type_info, Word value);
+extern 	void	MR_trace_browse(MR_Word type_info, MR_Word value);
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-extern 	void	MR_trace_browse_external(Word type_info, Word value);
+extern 	void	MR_trace_browse_external(MR_Word type_info, MR_Word value);
 #endif
 
 /*
 ** Display a term (non-interactively).
 */
-extern	void	MR_trace_print(Word type_info, Word value);
+extern	void	MR_trace_print(MR_Word type_info, MR_Word value);
 
 
 /*
@@ -42,8 +42,8 @@ extern	void	MR_trace_query(MR_Query_Type type, const char *options,
 			int num_imports, /* const */ char *imports[]);
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
-extern	void	MR_trace_query_external(MR_Query_Type type, String options,
-			int num_imports, Word imports_list);
+extern	void	MR_trace_query_external(MR_Query_Type type, MR_String options,
+			int num_imports, MR_Word imports_list);
 #endif
 
 #endif	/* MERCURY_TRACE_BROWSE_H */

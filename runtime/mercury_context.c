@@ -207,7 +207,7 @@ flounder(void)
 ** block or not.
 */
 static int
-check_pending_contexts(Bool block)
+check_pending_contexts(MR_Bool block)
 {
 #ifdef	MR_CAN_DO_PENDING_IO
 

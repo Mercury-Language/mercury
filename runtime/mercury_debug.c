@@ -17,7 +17,7 @@
 /*--------------------------------------------------------------------*/
 
 static void	print_ordinary_regs(void);
-static void	MR_printdetslot_as_label(const Integer offset);
+static void	MR_printdetslot_as_label(const MR_Integer offset);
 
 /* debugging messages */
 
@@ -93,7 +93,7 @@ redo_msg(void)
 }
 
 void 
-call_msg(/* const */ Code *proc, /* const */ Code *succcont)
+call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succcont)
 {
 	printf("\ncalling      "); printlabel(proc);
 	printf("continuation "); printlabel(succcont);
@@ -101,7 +101,7 @@ call_msg(/* const */ Code *proc, /* const */ Code *succcont)
 }
 
 void 
-tailcall_msg(/* const */ Code *proc)
+tailcall_msg(/* const */ MR_Code *proc)
 {
 	restore_transient_registers();
 
@@ -118,56 +118,56 @@ proceed_msg(void)
 }
 
 void 
-cr1_msg(Word val0, const Word *addr)
+cr1_msg(MR_Word val0, const MR_Word *addr)
 {
-	printf("put value %9lx at ", (long) (Integer) val0);
+	printf("put value %9lx at ", (long) (MR_Integer) val0);
 	printheap(addr);
 }
 
 void 
-cr2_msg(Word val0, Word val1, const Word *addr)
+cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
 {
 	printf("put values %9lx,%9lx at ",	
-		(long) (Integer) val0, (long) (Integer) val1);
+		(long) (MR_Integer) val0, (long) (MR_Integer) val1);
 	printheap(addr);
 }
 
 void 
-incr_hp_debug_msg(Word val, const Word *addr)
+incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 {
 #ifdef CONSERVATIVE_GC
 	printf("allocated %ld words at %p\n", (long) val, addr);
 #else
-	printf("increment hp by %ld from ", (long) (Integer) val);
+	printf("increment hp by %ld from ", (long) (MR_Integer) val);
 	printheap(addr);
 #endif
 }
 
 void 
-incr_sp_msg(Word val, const Word *addr)
+incr_sp_msg(MR_Word val, const MR_Word *addr)
 {
-	printf("increment sp by %ld from ", (long) (Integer) val);
+	printf("increment sp by %ld from ", (long) (MR_Integer) val);
 	printdetstack(addr);
 }
 
 void 
-decr_sp_msg(Word val, const Word *addr)
+decr_sp_msg(MR_Word val, const MR_Word *addr)
 {
-	printf("decrement sp by %ld from ", (long) (Integer) val);
+	printf("decrement sp by %ld from ", (long) (MR_Integer) val);
 	printdetstack(addr);
 }
 
 void 
-push_msg(Word val, const Word *addr)
+push_msg(MR_Word val, const MR_Word *addr)
 {
-	printf("push value %9lx to ", (long) (Integer) val);
+	printf("push value %9lx to ", (long) (MR_Integer) val);
 	printdetstack(addr);
 }
 
 void 
-pop_msg(Word val, const Word *addr)
+pop_msg(MR_Word val, const MR_Word *addr)
 {
-	printf("pop value %9lx from ", (long) (Integer) val);
+	printf("pop value %9lx from ", (long) (MR_Integer) val);
 	printdetstack(addr);
 }
 
@@ -176,7 +176,7 @@ pop_msg(Word val, const Word *addr)
 #ifdef MR_DEBUG_GOTOS
 
 void 
-goto_msg(/* const */ Code *addr)
+goto_msg(/* const */ MR_Code *addr)
 {
 	printf("\ngoto ");
 	printlabel(addr);
@@ -186,14 +186,14 @@ void
 reg_msg(void)
 {
 	int	i;
-	Integer	x;
+	MR_Integer	x;
 
 	for(i=1; i<=8; i++) {
-		x = (Integer) get_reg(i);
+		x = (MR_Integer) get_reg(i);
 #ifndef CONSERVATIVE_GC
-		if ((Integer) MR_ENGINE(heap_zone)->min <= x
-				&& x < (Integer) MR_ENGINE(heap_zone)->top) {
-			x -= (Integer) MR_ENGINE(heap_zone)->min;
+		if ((MR_Integer) MR_ENGINE(heap_zone)->min <= x
+				&& x < (MR_Integer) MR_ENGINE(heap_zone)->top) {
+			x -= (MR_Integer) MR_ENGINE(heap_zone)->min;
 		}
 #endif
 		printf("%8lx ", (long) x);
@@ -210,9 +210,9 @@ reg_msg(void)
 /* debugging printing tools */
 
 void 
-printint(Word n)
+printint(MR_Word n)
 {
-	printf("int %ld\n", (long) (Integer) n);
+	printf("int %ld\n", (long) (MR_Integer) n);
 }
 
 void 
@@ -222,12 +222,12 @@ printstring(const char *s)
 }
 
 void 
-printheap(const Word *h)
+printheap(const MR_Word *h)
 {
 #ifndef CONSERVATIVE_GC
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) h,
-		(long) (Integer) (h - MR_ENGINE(heap_zone)->min));
+		(long) (MR_Integer) (h - MR_ENGINE(heap_zone)->min));
 #else
 	printf("ptr %p\n",
 		(const void *) h);
@@ -235,13 +235,13 @@ printheap(const Word *h)
 }
 
 void 
-dumpframe(/* const */ Word *fr)
+dumpframe(/* const */ MR_Word *fr)
 {
 	reg	int	i;
 
 	printf("frame at ptr %p, offset %3ld words\n",
 		(const void *) fr, 
-		(long) (Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
+		(long) (MR_Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
 	printf("\t succip    "); printlabel(MR_succip_slot(fr));
 	printf("\t redoip    "); printlabel(MR_redoip_slot(fr));
 	printf("\t succfr    "); printnondstack(MR_succfr_slot(fr));
@@ -249,7 +249,7 @@ dumpframe(/* const */ Word *fr)
 
 	for (i = 1; &MR_based_framevar(fr,i) > MR_prevfr_slot(fr); i++) {
 		printf("\t framevar(%d)  %ld 0x%lx\n",
-			i, (long) (Integer) MR_based_framevar(fr,i),
+			i, (long) (MR_Integer) MR_based_framevar(fr,i),
 			(unsigned long) MR_based_framevar(fr,i));
 	}
 }
@@ -257,7 +257,7 @@ dumpframe(/* const */ Word *fr)
 void 
 dumpnondstack(void)
 {
-	reg	Word	*fr;
+	reg	MR_Word	*fr;
 
 	printf("\nnondstack dump\n");
 	for (fr = MR_maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;
@@ -295,15 +295,15 @@ static void
 print_ordinary_regs(void)
 {
 	int	i;
-	Integer	value;
+	MR_Integer	value;
 
 	for (i = 0; i < 8; i++) {
 		printf("r%d:      ", i + 1);
-		value = (Integer) get_reg(i+1);
+		value = (MR_Integer) get_reg(i+1);
 
 #ifndef	CONSERVATIVE_GC
-		if ((Integer) MR_ENGINE(heap_zone)->min <= value &&
-				value < (Integer) MR_ENGINE(heap_zone)->top) {
+		if ((MR_Integer) MR_ENGINE(heap_zone)->min <= value &&
+				value < (MR_Integer) MR_ENGINE(heap_zone)->top) {
 			printf("(heap) ");
 		}
 #endif
@@ -321,72 +321,72 @@ print_ordinary_regs(void)
 #endif /* defined(MR_DEBUG_GOTOS) */
 
 static void 
-MR_printdetslot_as_label(const Integer offset)
+MR_printdetslot_as_label(const MR_Integer offset)
 {
 	MR_printdetstackptr(&MR_CONTEXT(detstack_zone)->min[offset]);
 	printf(" ");
-	printlabel((Code *) (MR_CONTEXT(detstack_zone)->min[offset]));
+	printlabel((MR_Code *) (MR_CONTEXT(detstack_zone)->min[offset]));
 }
 
 void 
-MR_printdetstackptr(const Word *s)
+MR_printdetstackptr(const MR_Word *s)
 {
 	MR_print_detstackptr(stdout, s);
 }
 
 void 
-MR_print_detstackptr(FILE *fp, const Word *s)
+MR_print_detstackptr(FILE *fp, const MR_Word *s)
 {
 	fprintf(fp, "det %3ld (%p)",
-		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min),
+		(long) (MR_Integer) (s - MR_CONTEXT(detstack_zone)->min),
 		(const void *) s);
 }
 
 void 
-printdetstack(const Word *s)
+printdetstack(const MR_Word *s)
 {
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) s,
-		(long) (Integer) (s - MR_CONTEXT(detstack_zone)->min));
+		(long) (MR_Integer) (s - MR_CONTEXT(detstack_zone)->min));
 }
 
 void 
-MR_printnondstackptr(const Word *s)
+MR_printnondstackptr(const MR_Word *s)
 {
 	MR_print_nondstackptr(stdout, s);
 }
 
 void 
-MR_print_nondstackptr(FILE *fp, const Word *s)
+MR_print_nondstackptr(FILE *fp, const MR_Word *s)
 {
 	fprintf(fp, "non %3ld (%p)",
-		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min),
+		(long) (MR_Integer) (s - MR_CONTEXT(nondetstack_zone)->min),
 		(const void *) s);
 }
 
 void 
-printnondstack(const Word *s)
+printnondstack(const MR_Word *s)
 {
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) s,
-		(long) (Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
+		(long) (MR_Integer) (s - MR_CONTEXT(nondetstack_zone)->min));
 }
 
 void 
-MR_print_heapptr(FILE *fp, const Word *s)
+MR_print_heapptr(FILE *fp, const MR_Word *s)
 {
 #ifdef	CONSERVATIVE_GC
 	fprintf(fp, "heap %ld (%p)",
 		(long) s, (const void *) s);
 #else
 	fprintf(fp, "heap %3ld (%p)",
-		(long) (Integer) (s - MR_ENGINE(heap_zone)->min),
+		(long) (MR_Integer) (s - MR_ENGINE(heap_zone)->min),
 		(const void *) s);
 #endif
 }
 
 void 
-MR_print_label(FILE *fp, /* const */ Code *w)
+MR_print_label(FILE *fp, /* const */ MR_Code *w)
 {
 	MR_Internal	*internal;
 
@@ -416,7 +416,7 @@ MR_print_label(FILE *fp, /* const */ Code *w)
 }
 
 void 
-printlabel(/* const */ Code *w)
+printlabel(/* const */ MR_Code *w)
 {
 	MR_print_label(stdout, w);
 	fprintf(stdout, "\n");

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998, 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,7 +18,7 @@
 #ifndef MERCURY_HEAP_PROFILE_H
 #define MERCURY_HEAP_PROFILE_H
 
-#include "mercury_types.h"	/* for `Code' */
+#include "mercury_types.h"	/* for `MR_Code' */
 
 /*---------------------------------------------------------------------------*/
 
@@ -133,7 +133,7 @@ typedef	struct MR_memprof_counter
 typedef	struct MR_memprof_record
 {
 	const char			*name; /* of the type or procedure */
-	Code				*addr; /* for procedures only */
+	MR_Code				*addr; /* for procedures only */
 	MR_memprof_counter		counter;
 	struct MR_memprof_record	*left;	/* left sub-tree */
 	struct MR_memprof_record	*right;	/* right sub-tree */
@@ -166,13 +166,13 @@ extern	MR_memprof_table	MR_memprof_types;
 **	The heap profiling information is recorded in the three global
 **	variables above.
 */
-extern void MR_record_allocation(int size, Code *proc_addr,
+extern void MR_record_allocation(int size, MR_Code *proc_addr,
 		const char *proc_name, const char *type);
 
 /*
 ** MR_prof_output_mem_tables():
 **	Write out the information recorded by MR_record_allocation()
-**	to a pair of files `Prof.MemoryWords' and `Prof.MemoryCells'.
+**	to a pair of files `Prof.MemoryMR_Words' and `Prof.MemoryCells'.
 */
 extern void MR_prof_output_mem_tables(void);
 

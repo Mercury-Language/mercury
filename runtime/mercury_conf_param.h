@@ -37,7 +37,7 @@
 */
 
 /*
-** Code generation options:
+** MR_Code generation options:
 **
 ** MR_HIGHLEVEL_CODE
 ** MR_HIGHLEVEL_DATA
@@ -68,7 +68,7 @@
 **
 ** USE_SINGLE_PREC_FLOAT:
 **	Use C's `float' rather than C's `double' for the
-**	Mercury floating point type (`Float').
+**	Mercury floating point type (`MR_Float').
 **
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
