@@ -672,20 +672,42 @@
 	% Call the shell script mercury_update_interface to update the
 	% interface file FileName if it has changed.
 
-:- pred update_interface(string, bool, io__state, io__state).
+:- pred update_interface(file_name, bool, io__state, io__state).
 :- mode update_interface(in, out, di, uo) is det.
 
-:- pred update_interface(string, io__state, io__state).
+:- pred update_interface(file_name, io__state, io__state).
 :- mode update_interface(in, di, uo) is det.
 
 	% make_directory(Dir, Succeeded)
 	%
 	% Make the directory Dir and all its parents.
-:- pred make_directory(string, bool, io__state, io__state).
+	% XXX This belongs in the standard library.
+:- pred make_directory(dir_name, bool, io__state, io__state).
 :- mode make_directory(in, out, di, uo) is det.
 
-:- pred make_directory(string, io__state, io__state).
+:- pred make_directory(dir_name, io__state, io__state).
 :- mode make_directory(in, di, uo) is det.
+
+	% make_symlink(LinkTarget, LinkName, Succeeded)
+	%
+	% Make LinkName a symlink pointing to LinkTarget.
+	% XXX This belongs in the standard library.
+:- pred make_symlink(file_name, file_name, bool, io__state, io__state).
+:- mode make_symlink(in, in, out, di, uo) is det.
+
+	% copy_file(Source, Destination, Succeeded).
+	%
+	% XXX This belongs in the standard library.
+:- pred copy_file(file_name, file_name, io__res, io__state, io__state).
+:- mode copy_file(in, in, out, di, uo) is det.
+
+	% make_symlink_or_copy_file(LinkTarget, LinkName, Succeeded).
+	%
+	% Attempt to make LinkName a symlink pointing to LinkTarget,
+	% copying LinkTarget to LinkName if that fails.
+:- pred make_symlink_or_copy_file(file_name, file_name,
+		bool, io__state, io__state).
+:- mode make_symlink_or_copy_file(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1054,6 +1076,62 @@ make_directory(DirName, Result) -->
 			[s(DirName), s(DirName)], Command) },
 		io__output_stream(ErrorStream),
 		invoke_shell_command(ErrorStream, verbose, Command, Result)
+	).
+
+make_symlink(LinkTarget, LinkName, Result) -->
+	io__output_stream(ErrorStream),
+	{ string__format("rm -f %s && ln -s %s %s",
+		[s(LinkName), s(LinkTarget), s(LinkName)], Command) },
+	invoke_shell_command(ErrorStream, verbose, Command, Result).
+
+copy_file(Source, Destination, Res) -->
+	io__open_binary_input(Source, SourceRes),
+	(
+		{ SourceRes = ok(InputStream) },
+		io__open_binary_output(Destination, DestRes),
+		(
+			{ DestRes = ok(OutputStream) },
+			% XXX Depending on file size it may be
+			% faster to call the system's cp command.
+			io__binary_input_stream_foldl_io(
+				(pred(Char::in, di, uo) is det -->
+					io__write_byte(Char)
+				),
+				Res),
+			io__close_binary_input(InputStream),
+			io__close_binary_output(OutputStream)
+		;
+			{ DestRes = error(Error) },
+			{ Res = error(Error) }
+		)
+	;
+		{ SourceRes = error(Error) },
+		{ Res = error(Error) }
+	).
+
+make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded) -->
+	make_symlink(SourceFileName, DestinationFileName, SymlinkSucceeded),
+	( { SymlinkSucceeded = yes } ->
+		{ Succeeded = yes }
+	;
+		copy_file(SourceFileName, DestinationFileName,
+			CopyRes),
+		( 
+			{ CopyRes = ok },
+			{ Succeeded = yes }
+		;
+			{ CopyRes = error(CopyError) },
+			{ Succeeded = no },
+			io__progname_base("mercury_compile",
+				ProgName),
+			io__write_string(ProgName),
+			io__write_string(": error copying `"),
+			io__write_string(SourceFileName),
+			io__write_string("' to `"),
+			io__write_string(DestinationFileName),
+			io__write_string("': "),
+			io__write_string(io__error_message(CopyError))
+		)
 	).
 
 :- pred make_file_name(dir_name, bool, bool, file_name, string,

@@ -837,15 +837,6 @@ make_install_symlink(Subdir, Ext, Result) -->
 	{ LinkName = Subdir/(Ext ++ "s") },
 	make_symlink("..", LinkName, Result).
 
-:- pred make_symlink(string::in, string::in, bool::out,
-		io__state::di, io__state::uo) is det.
-
-make_symlink(LinkTarget, LinkName, Result) -->
-	io__output_stream(ErrorStream),
-	{ string__format("rm -f %s && ln -s %s %s",
-		[s(LinkName), s(LinkTarget), s(LinkName)], Command) },
-	invoke_shell_command(ErrorStream, verbose, Command, Result).
-
 %-----------------------------------------------------------------------------%
 
 	% Clean up grade-dependent files.
@@ -864,8 +855,21 @@ make_main_module_realclean(ModuleName, Info0, Info) -->
 	linked_target_file_name(ModuleName, executable, ExeFileName),
 	linked_target_file_name(ModuleName, static_library, LibFileName),
 	linked_target_file_name(ModuleName, shared_library, SharedLibFileName),
+
+	% Remove the symlinks created for `--use-grade-subdirs'.
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	globals__io_set_option(use_grade_subdirs, bool(no)),
+	linked_target_file_name(ModuleName, executable, ThisDirExeFileName),
+	linked_target_file_name(ModuleName, static_library,
+		ThisDirLibFileName),
+	linked_target_file_name(ModuleName, shared_library,
+		ThisDirSharedLibFileName),
+	globals__io_set_option(use_grade_subdirs, bool(UseGradeSubdirs)),
+
 	list__foldl2(remove_file,
-		[ExeFileName, LibFileName, SharedLibFileName],
+		[ExeFileName, LibFileName, SharedLibFileName,
+		ThisDirExeFileName, ThisDirLibFileName,
+		ThisDirSharedLibFileName],
 		Info0, Info1),
 	remove_file(ModuleName, ".init", Info1, Info2),
 	remove_init_files(ModuleName, Info2, Info).

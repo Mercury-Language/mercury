@@ -3657,14 +3657,14 @@ options_help_build_system -->
 		"\tdirectories given by `--intermod-directory'.",
 		"--use-subdirs",
 		"\tGenerate intermediate files in a `Mercury' subdirectory,",
-		"\trather than generating them in the current directory."
-
-		% `--use-grade-subdirs' is not documented because it
-		% is only intended for use in library installation
-		% with `mmc --make' (it doesn't work at all with Mmake).
-		% Documenting it would require documenting (and setting
-		% in stone) the layout of the `Mercury' directory, which
-		% is probably a bad idea.
+		"\trather than generating them in the current directory.",
+		"--use-grade-subdirs",
+		"\tGenerate intermediate files in a `Mercury' subdirectory,",
+		"\tlaid out so that multiple grades can be built simultaneously.",
+		"\tExecutables and libraries will be symlinked or copied into",
+		"\tthe current directory.",
+		"\t`--use-grade-subdirs' does not work with Mmake (it does",
+		"\twork with `mmc --make')."
 	]).
 
 :- pred options_help_misc(io__state::di, io__state::uo) is det.

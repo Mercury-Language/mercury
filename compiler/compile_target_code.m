@@ -150,7 +150,7 @@
 :- import_module ll_backend__llds_out.	% for llds_out__make_init_name and
 					% llds_out__make_rl_data_name
 
-:- import_module char, dir, int, require, string.
+:- import_module char, dir, getopt, int, require, string.
 
 il_assemble(ErrorStream, ModuleName,
 			HasMain, Succeeded) -->
@@ -916,8 +916,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	    { Result = no }
 	).
 
-link(ErrorStream, LinkTargetType, ModuleName,
-		ObjectsList, Succeeded) -->
+link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
@@ -992,8 +991,29 @@ link(ErrorStream, LinkTargetType, ModuleName,
 			LDFlags, " ", LinkLibraries],
 			LinkCmd) },
 		invoke_shell_command(ErrorStream, verbose_commands,
-			LinkCmd, Succeeded),
-		maybe_report_stats(Stats)
+			LinkCmd, LinkSucceeded),
+		maybe_report_stats(Stats),
+		globals__io_lookup_bool_option(use_grade_subdirs,
+			UseGradeSubdirs),
+		(
+			{ LinkSucceeded = yes },
+			{ UseGradeSubdirs = yes }
+		->
+			% Link/copy the executable into the user's directory.
+			globals__io_set_option(use_subdirs, bool(no)),
+			globals__io_set_option(use_grade_subdirs, bool(no)),
+			module_name_to_file_name(ModuleName, "",
+				no, UserDirExeName),
+			globals__io_set_option(use_subdirs, bool(yes)),
+			globals__io_set_option(use_grade_subdirs, bool(yes)),
+
+			io__set_output_stream(ErrorStream, OutputStream),
+			make_symlink_or_copy_file(OutputFileName,
+				UserDirExeName, Succeeded),
+			io__set_output_stream(OutputStream, _)
+		;
+			{ Succeeded = LinkSucceeded }
+		)
 	).
 
 :- pred create_archive(io__output_stream, file_name, list(file_name),

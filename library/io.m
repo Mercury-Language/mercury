@@ -757,6 +757,67 @@
 %		Reads all the bytes from the given binary input stream until
 %		eof or error.
 
+:- pred io__binary_input_stream_foldl(pred(int, T, T),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__binary_input_stream_foldl((pred(in, in, out) is det),
+			in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl((pred(in, in, out) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		current binary input stream in turn, until eof or error.
+
+:- pred io__binary_input_stream_foldl_io(pred(int, io__state, io__state),
+			io__res, io__state, io__state).
+:- mode io__binary_input_stream_foldl_io((pred(in, di, uo) is det),
+			out, di, uo) is det.
+:- mode io__binary_input_stream_foldl_io((pred(in, di, uo) is cc_multi),
+			out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		current binary input stream in turn, until eof or error.
+
+:- pred io__binary_input_stream_foldl2_io(
+			pred(int, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__binary_input_stream_foldl2_io((pred(in, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io(
+			(pred(in, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		current binary input stream in turn, until eof or error.
+
+:- pred io__binary_input_stream_foldl(io__binary_input_stream,
+			pred(int, T, T), T, io__maybe_partial_res(T),
+			io__state, io__state).
+:- mode io__binary_input_stream_foldl(in, (pred(in, in, out) is det),
+			in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl(in, (pred(in, in, out) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		given binary input stream in turn, until eof or error.
+
+:- pred io__binary_input_stream_foldl_io(io__binary_input_stream,
+			pred(int, io__state, io__state), io__res,
+			io__state, io__state).
+:- mode io__binary_input_stream_foldl_io(in, (pred(in, di, uo) is det),
+			out, di, uo) is det.
+:- mode io__binary_input_stream_foldl_io(in, (pred(in, di, uo) is cc_multi),
+			out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		given binary input stream in turn, until eof or error.
+
+:- pred io__binary_input_stream_foldl2_io(io__binary_input_stream,
+			pred(int, T, T, io__state, io__state),
+			T, io__maybe_partial_res(T), io__state, io__state).
+:- mode io__binary_input_stream_foldl2_io(in,
+			(pred(in, in, out, di, uo) is det),
+			in, out, di, uo) is det.
+:- mode io__binary_input_stream_foldl2_io(in,
+			(pred(in, in, out, di, uo) is cc_multi),
+			in, out, di, uo) is cc_multi.
+%		Applies the given closure to each byte read from the
+%		given binary input stream in turn, until eof or error.
+
 :- pred io__putback_byte(int, io__state, io__state).
 :- mode io__putback_byte(in, di, uo) is det.
 %		Un-reads a byte from the current binary input stream.
@@ -2164,6 +2225,64 @@ io__read_binary_file_2(Stream, Bytes0, Result) -->
 		{ Result0 = ok(Byte) },
 		io__read_binary_file_2(Stream, [Byte|Bytes0], Result)
 	).
+
+%-----------------------------------------------------------------------------%
+
+io__binary_input_stream_foldl(Pred, T0, Res) -->
+	io__binary_input_stream(Stream),
+	io__binary_input_stream_foldl(Stream, Pred, T0, Res).
+
+io__binary_input_stream_foldl(Stream, Pred, T0, Res) -->
+	io__read_byte(Stream, ByteResult),
+	(
+		{ ByteResult = ok(Byte) },
+		{ Pred(Byte, T0, T1) },
+		io__binary_input_stream_foldl(Stream, Pred, T1, Res)
+	;
+		{ ByteResult = eof },
+		{ Res = ok(T0) }
+	;
+		{ ByteResult = error(Error) },
+		{ Res = error(T0, Error) }
+	).
+
+io__binary_input_stream_foldl_io(Pred, Res) -->
+	io__binary_input_stream(Stream),
+	io__binary_input_stream_foldl_io(Stream, Pred, Res).
+
+io__binary_input_stream_foldl_io(Stream, Pred, Res) -->
+	io__read_byte(Stream, ByteResult),
+	(
+		{ ByteResult = ok(Byte) },
+		Pred(Byte),
+		io__binary_input_stream_foldl_io(Stream, Pred, Res)
+	;
+		{ ByteResult = eof },
+		{ Res = ok }
+	;
+		{ ByteResult = error(Error) },
+		{ Res = error(Error) }
+	).
+
+io__binary_input_stream_foldl2_io(Pred, T0, Res) -->
+	io__binary_input_stream(Stream),
+	io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res).
+
+io__binary_input_stream_foldl2_io(Stream, Pred, T0, Res) -->
+	io__read_byte(Stream, ByteResult),
+	(
+		{ ByteResult = ok(Byte) },
+		Pred(Byte, T0, T1),
+		io__binary_input_stream_foldl2_io(Stream, Pred, T1, Res)
+	;
+		{ ByteResult = eof },
+		{ Res = ok(T0) }
+	;
+		{ ByteResult = error(Error) },
+		{ Res = error(T0, Error) }
+	).
+
+%-----------------------------------------------------------------------------%
 
 io__putback_char(Char) -->
 	io__input_stream(Stream),

@@ -5,6 +5,7 @@ SUBDIRS = \
 	benchmarks \
 	debugger \
 	general \
+	grade_subdirs \
 	hard_coded \
 	invalid \
 	misc_tests \

@@ -6214,6 +6214,19 @@ to be searched for @samp{.opt} files.
 Create intermediate files in a @file{Mercury} subdirectory,
 rather than in the current directory.
 
+@item --use-grade-subdirs
+@findex --use-grade-subdirs
+@cindex File names
+@cindex Directories
+@cindex Subdirectories
+@cindex @file{Mercury} subdirectory
+@cindex Grades
+Generate intermediate files in a @file{Mercury} subdirectory,
+laid out so that multiple grades can be built simultaneously.
+Executables and libraries will be symlinked or copied into the
+current directory.
+@samp{--use-grade-subdirs} does not work with Mmake (it does
+work with @samp{mmc --make}).
 @end table
 
 @node Miscellaneous options

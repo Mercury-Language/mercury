@@ -1,0 +1,31 @@
+#-----------------------------------------------------------------------------#
+# The tests in this directory are always run with `--use-grade-subdirs'.
+
+THIS_DIR = grade_subdirs
+
+ifndef WORKSPACE
+PROGS=\
+	hello
+else
+# We can only use a workspace if it was built with `--use-grade-subdirs',
+# which in general it won't be.
+PROGS=
+endif
+
+# `--use-grade-subdirs' doesn't work with Mmake.
+MMAKE_USE_MMC_MAKE=yes
+
+TESTS = $(PROGS)
+SUBDIRS = 
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+MCFLAGS += --use-grade-subdirs
+
+%.runtest: %.res ;
+
+#-----------------------------------------------------------------------------#

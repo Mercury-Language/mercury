@@ -149,6 +149,9 @@ Changes to the Mercury standard library:
 * We've added predicates `io__input_stream_foldl', `io__input_stream_foldl_io'
   and `io__input_stream_foldl2_io', which apply a predicate to each character
   of an input stream in turn.
+* We've added predicates `io__binary_input_stream_foldl',
+  `io__binary_input_stream_foldl_io' and `io__binary_input_stream_foldl2_io',
+  which apply a predicate to each byte of a binary input stream in turn.
 * We've added versions of `io__print', `io__write' and `io__write_univ'
   that allow the caller to specify how they should treat values of noncanonical
   types, e.g. types in which a single semantic value may have more than one
@@ -318,6 +321,11 @@ Changes to the Mercury compiler:
   dependencies the command `mmc -f SOURCES' must be run, where `SOURCES'
   is a list of the names of all of the source files.  If the names of the
   source files all match the contained module names, `mmc -f' need not be run.
+
+* There is a new `--use-grade-subdirs' option which is similar to
+  `--use-subdirs', but allows multiple grades to be built in a
+  directory at the same time.  `--use-grade-subdirs' does not
+  work with Mmake (it does work with `mmc --make').
 
 * We've added a new compiler option `--warn-non-tail-recursion', which
   causes the compiler to issue a warning about any directly recursive
