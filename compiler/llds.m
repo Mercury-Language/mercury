@@ -39,6 +39,12 @@
 			;	if_tag(lval, tag, label)
 					% branch to label if tag doesn't
 					% match reg's tag.
+			;	if_val(rval, label)
+					% if rval evaluates to TRUE
+					% then branch to label
+			;	if_not_val(rval, label)
+					% if rval evaluates to FALSE
+					% then branch to label
 			;	incr_sp(int)
 			;	decr_sp(int)
 			;	incr_hp(int).
@@ -63,7 +69,12 @@
 :- type operator	--->	(+)
 			;	(-)
 			;	(*)
-			;	(/).
+			;	(/)
+			;	and	% logical and
+			;	or	% logical or
+			;	eq	% ==
+			;	(<)
+			;	(>).
 
 :- type reg		--->	r(int)		% integer regs
 			;	f(int).		% floating point regs
@@ -253,6 +264,22 @@ output_instruction(if_tag(Reg, Tag, Label)) -->
 	output_label(Label),
 	io__write_string("));").
 
+output_instruction(if_val(Rval, Label)) -->
+	io__write_string("\t"),
+	io__write_string("if( "),
+	output_rval(Rval),
+	io__write_string(" ) GOTO(LABEL("),
+	output_label(Label),
+	io__write_string("));").
+
+output_instruction(if_val(Rval, Label)) -->
+	io__write_string("\t"),
+	io__write_string("if(!( "),
+	output_rval(Rval),
+	io__write_string(" )) GOTO(LABEL("),
+	output_label(Label),
+	io__write_string("));").
+
 output_instruction(incr_sp(N)) -->
 	io__write_string("\t"),
 	io__write_string("incr_sp("),
@@ -377,6 +404,16 @@ output_operator(*) -->
 	io__write_string("*").
 output_operator(/) -->
 	io__write_string("/").
+output_operator(eq) -->
+	io__write_string("==").
+output_operator(and) -->
+	io__write_string("&&").
+output_operator(or) -->
+	io__write_string("||").
+output_operator(<) -->
+	io__write_string("<").
+output_operator(>) -->
+	io__write_string(">").
 
 %-----------------------------------------------------------------------------%
 
