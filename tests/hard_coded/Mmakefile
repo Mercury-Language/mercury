@@ -220,11 +220,15 @@ else
 	BACKEND_PROGS =
 endif
 
-# The MLDS back-end doesn't support nondet C in trailing grades.
+# The MLDS back-end doesn't support nondet C in trailing grades,
+# or in no-GC grades (except with --no-reclaim-heap-on-failure).
 # We also don't support nondet C in deep profiling grades.
 ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
 	NONDET_C_PROGS =
 else
+   ifeq "$(findstring hl,$(GRADE))$(findstring .gc,$(GRADE))" "hl"
+	NONDET_C_PROGS =
+   else
 	ifneq "$(findstring profdeep,$(GRADE))" ""
 		NONDET_C_PROGS =
 	else
@@ -233,6 +237,7 @@ else
 			nondet_c \
 			nondet_pragma_c_bug
 	endif
+   endif
 endif
 
 PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
