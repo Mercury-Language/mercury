@@ -71,6 +71,9 @@
 % any references to types or instances defined in the dynamically loaded
 % module, as might be the case if you're using existentially quantified
 % data types, since they too can contain references to static data.
+%
+% (Note that using builtin__copy/2, to make copies rather than
+% keeping references, is *not* guaranteed to work in all cases.)
 % 
 :- pred dl__close(handle::in, dl__result::out,
 	io__state::di, io__state::uo) is det.
