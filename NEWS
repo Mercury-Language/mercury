@@ -54,6 +54,10 @@ Changes to the Mercury standard library:
 * We've removed the buggy reverse modes of the arithmetic functions in
   float.m and extras/complex_numbers (because of rounding errors the
   functions aren't actually reversible).
+
+* We've removed the buggy destructive update modes of string__set_char,
+  string__set_char_det and string__unsafe_set_char (they cause crashes when
+  applied to constant strings).
  
 * The exception module has a new predicate `try_store', which is
   like `try_io', but which works with stores rather than io__states.
