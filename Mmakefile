@@ -166,11 +166,11 @@ tar: README INSTALL
 	cd util && mmake
 	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
 	cd library && $(SUBDIR_MMAKE) depend
-	cd library && $(SUBDIR_MMAKE) ints opts cs libmercury.init tags
+	cd library && $(SUBDIR_MMAKE) all-ints cs libmercury.init tags
 	cd compiler && $(SUBDIR_MMAKE) depend
-	cd compiler && $(SUBDIR_MMAKE) ints cs tags
+	cd compiler && $(SUBDIR_MMAKE) cs tags
 	cd profiler && $(SUBDIR_MMAKE) depend
-	cd profiler && $(SUBDIR_MMAKE) ints cs tags
+	cd profiler && $(SUBDIR_MMAKE) cs tags
 	cd doc && $(SUBDIR_MMAKE) info html dvi
 	cd bindist && $(SUBDIR_MMAKE) bindist.configure
 	# the following command might fail on Windows?
