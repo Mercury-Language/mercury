@@ -237,9 +237,7 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, Cases, Code, Comment,
 		% This case didn't occur in the original case list - just
 		% generate a `fail' for it.
 		{ Comment = "compiler-introduced `fail' case of dense switch" },
-		code_info__grab_code_info(CodeInfo),
 		code_info__generate_failure(Code),
-		code_info__slap_code_info(CodeInfo),
 		{ Cases = Cases0 },
 		{ ML = no }
 	).

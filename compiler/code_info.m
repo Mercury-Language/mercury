@@ -1191,6 +1191,7 @@ code_info__get_stack_top(StackVar) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
+	code_info__grab_code_info(CodeInfo),
 	code_info__failure_cont(failure_cont(Cont, _MaybeRedoLab, FailureMap)),
 	(
 		{ Cont = known(_) },
@@ -1215,7 +1216,8 @@ code_info__generate_failure(Code) -->
 	;
 		{ Cont = unknown },
 		{ Code = node([goto(do_redo, do_redo) -"fail"]) }
-	).
+	),
+	code_info__slap_code_info(CodeInfo).
 
 %---------------------------------------------------------------------------%
 
