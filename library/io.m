@@ -2748,7 +2748,7 @@ io__remove_file(FileName, Result, IO0, IO) :-
 		buf = strerror(errno);
 		incr_hp_atomic(tmp,(strlen(buf)+sizeof(Word)) / sizeof(Word));
 		RetStr = (char *)tmp;
-		strcpy(RetStr, (char *)tmp);
+		strcpy(RetStr, buf);
 	} else {
 		RetStr = NULL;
 	}
