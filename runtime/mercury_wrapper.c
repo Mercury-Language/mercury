@@ -1505,7 +1505,7 @@ MR_do_interpreter(void)
 	}
   #endif
 
-  #if !defined(CONSERVATIVE_GC) && !defined(NATIVE_GC)
+  #if !defined(MR_CONSERVATIVE_GC) && !defined(MR_NATIVE_GC)
 	MR_hp = saved_hp;
   #endif
 }
