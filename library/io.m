@@ -53,12 +53,21 @@
 :- mode io__read_char(out, out, di, uo).
 %		Reads a character from the current input stream.
 
+:- pred io__read_line(list(character), io__result, io__state, io__state).
+:- mode io__read_line(out, out, di, uo).
+%		Reads a character from the current input stream.
+
 :- pred io__write_char(character, io__state, io__state).
 :- mode io__write_char(in, di, uo).
 %		Writes a character to the current output stream.
 
 :- pred io__read_char(io__stream, character, io__result, io__state, io__state).
 :- mode io__read_char(in, out, out, di, uo).
+%		Reads a character from specified stream.
+
+:- pred io__read_line(io__stream, list(character), io__result,
+							io__state, io__state).
+:- mode io__read_line(in, out, out, di, uo).
 %		Reads a character from specified stream.
 
 :- pred io__write_char(io__stream, character, io__state, io__state).
@@ -232,6 +241,7 @@
 :- external("NU-Prolog", io__progname/4).
 :- external("NU-Prolog", io__write_string/3).
 :- external("NU-Prolog", io__read_char/4).
+:- external("NU-Prolog", io__read_line/4).
 :- external("NU-Prolog", io__write_char/3).
 :- external("NU-Prolog", io__write_int/3).
 :- external("NU-Prolog", io__write_float/3).
@@ -257,6 +267,10 @@ io__write_string(String) -->
 io__read_char(Char, Result) -->
 	io__input_stream(Stream),
 	io__read_char(Stream, Char, Result).
+
+io__read_line(String, Result) -->
+	io__input_stream(Stream),
+	io__read_line(Stream, String, Result).
 
 io__write_char(Char) -->
 	io__output_stream(Stream),
