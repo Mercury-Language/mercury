@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module hlds_module, prog_data, llds.
-:- import_module io, list, term.
+:- import_module io, term.
 
 	% From the module_info, get a list of c_export_decls,
 	% each of which holds information about the declaration
@@ -74,7 +74,7 @@
 :- import_module code_gen, code_util, hlds_pred, llds_out, modules.
 
 :- import_module library, map, int, string, std_util, assoc_list, require.
-:- import_module bool.
+:- import_module list, bool.
 
 %-----------------------------------------------------------------------------%
 
