@@ -669,7 +669,7 @@ The second is that Mercury terms may contain function applications,
 higher-order function applications, and lambda expressions.
 
 A data-term is either a variable, a data-functor, a higher-order
-function application, or a lambda expression.
+function application, a conditional expression, or a lambda expression.
 
 A data-functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound data-term.
@@ -679,6 +679,20 @@ function application and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
+
+A conditional expression is an expression of either of the two following
+forms
+
+@example
+(if @var{Goal} then @var{Expression1} else @var{Expression1})
+(@var{Goal} -> @var{Expression1} ; @var{Expression2})
+@end example
+
+@noindent
+@var{Goal} is a goal; @var{Expression1} and @var{Expression2} are
+both data-terms. The semantics of a conditional expression is that
+if @var{Goal} is true, then the expression has the meaning of
+@var{Expression1}, else the expression has the meaning of @var{Expression2}.
 
 A lambda expression is a compound term of one of the following forms
 
