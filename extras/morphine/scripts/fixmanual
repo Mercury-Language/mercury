@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 1999 INRIA/INSA.
+# Copyright (C) 1999 INRIA/INSA de Rennes.
 # Fix the manual file
 
 ex $1 <<\EOF

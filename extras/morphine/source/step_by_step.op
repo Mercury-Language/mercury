@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999 INRIA/INSA de Rennes.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file License in the Morphine distribution.
 %
@@ -31,8 +31,8 @@ opium_command(
 	message		:
 "Command which moves forward to the next trace event according to the \
 ``traced_ports'' parameter. This is the same command as step/0 (``next'' is \
-the name used in the Prolog version of Opium, ``step'' is the name used in the \
-internal Mercury debugger)."
+the name used in Opium (The Prolog version of Morphine), ``step'' is the name \
+used in the internal Mercury debugger mdb)."
 	).
  
 

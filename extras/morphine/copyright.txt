@@ -1,4 +1,4 @@
-% Copyright (C) 1999 INRIA/INSA.
+% Copyright (C) 1999 INRIA/INSA de Rennes.
 
 The software Morphine in its 0.2 release of December 1999, hereinafter referred
 to as " the software " has been designed and produced by Erwan Jahier and
@@ -10,7 +10,7 @@ National Computer and Automatics Institute - INRIA - Rennes Research Unit.
 	Rocquencourt
 	78153 Le Chesnay Cedex.
 
-	INSA
+	INSA de Rennes
 	20, Av. des buttes de Coësmes 
 	Campus de Beaulieu,
 	F-35043 Rennes Cedex.
@@ -41,7 +41,7 @@ Rennes.
 	Rocquencourt
 	78153 Le Chesnay Cedex.
 
-	INSA
+	INSA de Rennes
 	20, Av. des buttes de Coësmes 
 	Campus de Beaulieu,
 	F-35043 Rennes Cedex.
