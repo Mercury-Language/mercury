@@ -45,7 +45,8 @@ SOURCES= \
 	two_way_unif.m \
 	undead_proc.m \
 	uniq_unify.m \
-	unreachable_code.m
+	unreachable_code.m \
+	vn_float.m
 
 # The mode system can't handle the following test cases yet:
 #	assoc_list.m
@@ -66,6 +67,9 @@ middle_rec_labels.c: middle_rec_labels.m
 
 two_way_unif.c: two_way_unif.m
 	$(MCG) $(MCGFLAGS) -O-1 two_way_unif.m
+
+vn_float.c: vn_float.m
+	$(MCG) $(MCGFLAGS) -O5 vn_float.m
 
 check:	objs
 
