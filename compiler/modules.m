@@ -108,20 +108,51 @@
 
 %-----------------------------------------------------------------------------%
 
-	% read_mod(ModuleName, Extension, Descr, Search, Items, Error):
+	% read_mod(ModuleName, Extension, Descr, Search, Items, Error,
+	%		SourceFileName):
 	%	Given a module name and a file extension (e.g. `.m',
+	%	`.int', or `int2'), read in the list of items in that file.
+	%	If Extension is ".m", and ModuleName is a nested module,
+	%	then try searching for different filenames:
+	%	for modules such as `foo.bar.baz.m' search first for
+	%	`foo.bar.baz.m', then `bar.baz.m', then `baz.m'.
+	%	If Search is yes, search all directories given by the option
+	%	search_directories for the module.
+	%	If the actual module name (as determined by the
+	%	`:- module' declaration) does not match the specified
+	%	module name, then report an error message.
+	%	Return the actual source file name found
+	%	(excluding the directory part).
+	%
+	%	N.B.  This reads a module given the module name.
+	%	If you want to read a module given the file name,
+	%	use `read_mod_from_file'.
+	%
+:- pred read_mod(module_name, string, string, bool,
+		item_list, module_error, file_name, io__state, io__state).
+:- mode read_mod(in, in, in, in, out, out, out, di, uo) is det.
+
+	% Similar to read_mod, but doesn't return error messages.
+:- pred read_mod_ignore_errors(module_name, string, string, bool,
+		item_list, module_error, file_name, io__state, io__state).
+:- mode read_mod_ignore_errors(in, in, in, in, out, out, out, di, uo) is det.
+
+	% read_mod_from_file(SourceFileName, Extension, Descr, Search, Items,
+	%		Error, ModuleName):
+	%	Given a file name and a file extension (e.g. `.m',
 	%	`.int', or `int2'), read in the list of items in that file.
 	%	If Search is yes, search all directories given by the option
 	%	search_directories for the module.
+	%	Return the module name (as determined by the
+	%	`:- module' declaration, if any).
 	%
-:- pred read_mod(module_name, string, string, bool, item_list, module_error,
-		io__state, io__state).
-:- mode read_mod(in, in, in, in, out, out, di, uo) is det.
-
-	% Same as above, but doesn't return error messages.
-:- pred read_mod_ignore_errors(module_name, string, string, bool, item_list, 
-		module_error, io__state, io__state).
-:- mode read_mod_ignore_errors(in, in, in, in, out, out, di, uo) is det.
+	%	N.B.  This reads a module given the file name.
+	%	If you want to read a module given the module name,
+	%	use `read_mod'.
+	%
+:- pred read_mod_from_file(file_name, string, string, bool,
+		item_list, module_error, module_name, io__state, io__state).
+:- mode read_mod_from_file(in, in, in, in, out, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -330,7 +361,7 @@
 
 %-----------------------------------------------------------------------------%
 
-	% generate_dependencies(ModuleName):
+	% generate_module_dependencies(ModuleName):
 	%	Generate the per-program makefile dependencies (`.dep') file
 	%	for a program whose top-level module is `ModuleName'.
 	%	This involves first transitively reading in all imported
@@ -338,8 +369,15 @@
 	%	per-module makefile dependency (`.d') files for all those
 	%	modules.
 	%
-:- pred generate_dependencies(module_name, io__state, io__state).
-:- mode generate_dependencies(in, di, uo) is det.
+:- pred generate_module_dependencies(module_name, io__state, io__state).
+:- mode generate_module_dependencies(in, di, uo) is det.
+
+	% generate_file_dependencies(FileName):
+	%	Same as generate_module_dependencies, but takes 
+	%	a file name instead of a module name.
+	%
+:- pred generate_file_dependencies(file_name, io__state, io__state).
+:- mode generate_file_dependencies(in, di, uo) is det.
 
 	% get_dependencies(Items, ImportDeps, UseDeps).
 	%	Get the list of modules that a list of items depends on.
@@ -1627,9 +1665,25 @@ get_opt_deps([Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
 
 %-----------------------------------------------------------------------------%
 
-generate_dependencies(ModuleName) -->
-	% first, build up a map of the dependencies.
+generate_module_dependencies(ModuleName) -->
 	{ map__init(DepsMap0) },
+	generate_dependencies(ModuleName, DepsMap0).
+
+generate_file_dependencies(FileName) -->
+	% read in the top-level file (to figure out its module name)
+	read_mod_from_file(FileName, ".m", "Reading file", no,
+		Items, Error, ModuleName),
+	{ string__append(FileName, ".m", SourceFileName) },
+	{ init_dependencies(SourceFileName, Error, ModuleName - Items,
+		ModuleImports) },
+	{ map__init(DepsMap0) },
+	{ insert_into_deps_map(ModuleImports, DepsMap0, DepsMap1) },
+	generate_dependencies(ModuleName, DepsMap1).
+
+:- pred generate_dependencies(module_name, deps_map, io__state, io__state).
+:- mode generate_dependencies(in, in, di, uo) is det.
+generate_dependencies(ModuleName, DepsMap0) -->
+	% first, build up a map of the dependencies.
 	generate_deps_map([ModuleName], DepsMap0, DepsMap),
 	%
 	% check whether we could read the main `.m' file
@@ -1897,6 +1951,18 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap) -->
 :- mode generate_dep_file(in, in, in, in, di, uo) is det.
 
 generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
+	%
+	% Some of the targets are based on the source file name
+	% rather than on the module name.
+	%
+	{
+		string__remove_suffix(SourceFileName, ".m", SourceFileBase)
+	->
+		file_name_to_module_name(SourceFileBase, SourceModuleName)
+	;
+		error("modules.m: source file name doesn't end in `.m'")
+	},
+	
 	io__write_string(DepStream,
 		"# Automatically generated dependencies for module `"),
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
@@ -2085,7 +2151,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, "_init.pic_o", yes,
 							InitPicObjFileName),
 
-	module_name_to_file_name(ModuleName, "", no, ExeFileName),
+	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
 		"MLOBJS_DEPS += ", ExeFileName, "\n",
 		ExeFileName, " : $(", MakeVarName, ".os) ",
@@ -2095,7 +2161,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t	$(", MakeVarName, ".os) $(MLOBJS) $(MLLIBS)\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".split", yes, SplitExeFileName),
+	module_name_to_file_name(SourceModuleName, ".split", yes,
+				SplitExeFileName),
 	module_name_to_file_name(ModuleName, ".split.a", yes, SplitLibFileName),
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
@@ -2164,8 +2231,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			InitCFileName, "\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".nu", yes, NU_ExeFileName),
-	module_name_to_file_name(ModuleName, ".nu.debug", yes,
+	module_name_to_file_name(SourceModuleName, ".nu", yes, NU_ExeFileName),
+	module_name_to_file_name(SourceModuleName, ".nu.debug", yes,
 						NU_DebugExeFileName),
 	io__write_strings(DepStream, [
 		NU_ExeFileName, " : $(", MakeVarName, ".nos)\n",
@@ -2177,9 +2244,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"$(", MakeVarName, ".nos)\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".sicstus", yes,
+	module_name_to_file_name(SourceModuleName, ".sicstus", yes,
 						SicstusExeFileName),
-	module_name_to_file_name(ModuleName, ".sicstus.debug", yes,
+	module_name_to_file_name(SourceModuleName, ".sicstus.debug", yes,
 						SicstusDebugExeFileName),
 	io__write_strings(DepStream, [
 		SicstusExeFileName, " : $(", MakeVarName, ".qls)\n",
@@ -2191,7 +2258,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			" $(", MakeVarName, ".qls)\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".check", no, CheckTargetName),
+	module_name_to_file_name(SourceModuleName, ".check", no,
+				CheckTargetName),
 	module_name_to_file_name(ModuleName, ".ints", no, IntsTargetName),
 	module_name_to_file_name(ModuleName, ".int3s", no, Int3sTargetName),
 	module_name_to_file_name(ModuleName, ".opts", no, OptsTargetName),
@@ -2211,7 +2279,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 						".trans_opt_dates)\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".clean", no, CleanTargetName),
+	module_name_to_file_name(SourceModuleName, ".clean", no,
+				CleanTargetName),
 	io__write_strings(DepStream, [
 		"clean : ", CleanTargetName, "\n"
 	]),
@@ -2234,7 +2303,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, "\n"),
 
-	module_name_to_file_name(ModuleName, ".change_clean", no,
+	module_name_to_file_name(SourceModuleName, ".change_clean", no,
 			ChangeCleanTargetName),
 	io__write_strings(DepStream, [
 		".PHONY : ", ChangeCleanTargetName, "\n",
@@ -2256,7 +2325,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			DepFileName, "\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".realclean", no,
+	module_name_to_file_name(SourceModuleName, ".realclean", no,
 			RealCleanTargetName),
 	io__write_strings(DepStream, [
 		"realclean : ", RealCleanTargetName, "\n"
@@ -2275,9 +2344,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".ds)\n",
 		"\t-rm -f $(", MakeVarName, ".hs)\n"
 	]),
-	module_name_to_file_name(ModuleName, ".nu.save", no,
+	module_name_to_file_name(SourceModuleName, ".nu.save", no,
 						NU_SaveExeFileName),
-	module_name_to_file_name(ModuleName, ".nu.debug.save", no,
+	module_name_to_file_name(SourceModuleName, ".nu.debug.save", no,
 						NU_DebugSaveExeFileName),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
@@ -2296,9 +2365,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			DepFileName, "\n\n"
 	]),
 
-	module_name_to_file_name(ModuleName, ".clean_nu", no,
+	module_name_to_file_name(SourceModuleName, ".clean_nu", no,
 						CleanNU_TargetName),
-	module_name_to_file_name(ModuleName, ".clean_sicstus", no,
+	module_name_to_file_name(SourceModuleName, ".clean_sicstus", no,
 						CleanSicstusTargetName),
 	io__write_strings(DepStream, [
 		"clean_nu : ", CleanNU_TargetName, "\n",
@@ -2482,24 +2551,26 @@ insert_into_deps_map(ModuleImports, DepsMap0, DepsMap) :-
 
 read_dependencies(ModuleName, Search, ModuleImportsList) -->
 	read_mod_ignore_errors(ModuleName, ".m",
-		"Getting dependencies for module", Search, Items0, Error),
+		"Getting dependencies for module", Search, Items0, Error,
+		FileName0),
 	( { Items0 = [], Error = fatal } ->
 		read_mod_ignore_errors(ModuleName, ".int", 
 		    "Getting dependencies for module interface", Search, 
-		    Items, _Error)
+		    Items, _Error, FileName),
+		{ SubModuleList = [ModuleName - Items] }
 	;
-		{ Items = Items0 }
+		{ FileName = FileName0 },
+		{ Items = Items0 },
+		{ split_into_submodules(ModuleName, Items, SubModuleList) }
 	),
-	module_name_to_file_name(ModuleName, ".m", no, FileName),
-	{ split_into_submodules(ModuleName, Items, SubModuleList) },
-	{ list__map(read_dependencies_2(FileName, Error), SubModuleList,
+	{ list__map(init_dependencies(FileName, Error), SubModuleList,
 		ModuleImportsList) }.
 
-:- pred read_dependencies_2(file_name, module_error,
+:- pred init_dependencies(file_name, module_error,
 		pair(module_name, item_list), module_imports).
-:- mode read_dependencies_2(in, in, in, out) is det.
+:- mode init_dependencies(in, in, in, out) is det.
 
-read_dependencies_2(FileName, Error, ModuleName - Items, ModuleImports) :-
+init_dependencies(FileName, Error, ModuleName - Items, ModuleImports) :-
 	get_ancestors(ModuleName, ParentDeps),
 
 	get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
@@ -2528,8 +2599,78 @@ read_dependencies_2(FileName, Error, ModuleName - Items, ModuleImports) :-
 
 %-----------------------------------------------------------------------------%
 
-read_mod(ModuleName, Extension, Descr, Search, Items, Error) -->
-	module_name_to_file_name(ModuleName, Extension, no, FileName),
+read_mod(ModuleName, Extension, Descr, Search, Items, Error, FileName) -->
+	read_mod_2(no, ModuleName, ModuleName, Extension, Descr, Search,
+		Items, Error, FileName).
+
+read_mod_ignore_errors(ModuleName, Extension, Descr, Search,
+		Items, Error, FileName) -->
+	read_mod_2(yes, ModuleName, ModuleName, Extension, Descr, Search,
+		Items, Error, FileName).
+
+:- pred read_mod_2(bool, module_name, module_name, string, string,
+		bool, item_list, module_error, file_name,
+		io__state, io__state).
+:- mode read_mod_2(in, in, in, in, in, in, out, out, out, di, uo)
+		is det.
+
+read_mod_2(IgnoreErrors, ModuleName, PartialModuleName,
+		Extension, Descr, Search, Items, Error, FileName) -->
+	module_name_to_file_name(PartialModuleName, Extension, no, FileName0),
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
+	maybe_write_string(VeryVerbose, "% "),
+	maybe_write_string(VeryVerbose, Descr),
+	maybe_write_string(VeryVerbose, " `"),
+	maybe_write_string(VeryVerbose, FileName0),
+	maybe_write_string(VeryVerbose, "'... "),
+	maybe_flush_output(VeryVerbose),
+	prog_io__read_module(FileName0, ModuleName, Search,
+		Error0, ActualModuleName, Messages, Items0),
+	check_module_has_expected_name(FileName0,
+		ModuleName, ActualModuleName),
+	( { IgnoreErrors = yes } ->
+		(
+			{ Error0 = fatal },
+			{ Items0 = [] }
+		->
+			maybe_write_string(VeryVerbose, "not found.\n")
+		;
+			maybe_write_string(VeryVerbose, "done.\n")
+		)
+	;
+		( { Error0 = fatal } ->
+			maybe_write_string(VeryVerbose, "fatal error(s).\n"),
+			io__set_exit_status(1)
+		; { Error0 = yes } ->
+			maybe_write_string(VeryVerbose, "parse error(s).\n"),
+			io__set_exit_status(1)
+		;
+			maybe_write_string(VeryVerbose, "successful parse.\n")
+		),
+		prog_out__write_messages(Messages)
+	),
+	%
+	% if that didn't work, and we're reading in the source (.m)
+	% file for a nested module, try again after dropping one 
+	% level of module qualifiers.
+	%
+	(
+		{ Error0 = fatal },
+		{ Items0 = [] },
+		{ Extension = ".m" },
+		{ PartialModuleName = qualified(Parent, Child) }
+	->
+		{ drop_one_qualifier(Parent, Child, PartialModuleName2) },
+		read_mod_2(IgnoreErrors, ModuleName, PartialModuleName2,
+			Extension, Descr, Search, Items, Error, FileName)
+	;
+		{ Error = Error0 },
+		{ Items = Items0 },
+		{ FileName = FileName0 }
+	).
+
+read_mod_from_file(FileName, Extension, Descr, Search,
+		Items, Error, ModuleName) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose, "% "),
 	maybe_write_string(VeryVerbose, Descr),
@@ -2537,8 +2678,11 @@ read_mod(ModuleName, Extension, Descr, Search, Items, Error) -->
 	maybe_write_string(VeryVerbose, FileName),
 	maybe_write_string(VeryVerbose, "'... "),
 	maybe_flush_output(VeryVerbose),
-	prog_io__read_module(FileName, ModuleName, Search,
-		Error, Messages, Items),
+	{ string__append(FileName, Extension, FullFileName) },
+	{ dir__basename(FileName, BaseFileName) },
+	{ file_name_to_module_name(BaseFileName, DefaultModuleName) },
+	prog_io__read_module(FullFileName, DefaultModuleName, Search,
+		Error, ModuleName, Messages, Items),
 	( { Error = fatal } ->
 		maybe_write_string(VeryVerbose, "fatal error(s).\n"),
 		io__set_exit_status(1)
@@ -2560,19 +2704,6 @@ combine_module_errors(yes, yes, yes).
 combine_module_errors(yes, no, yes).
 combine_module_errors(no, Error, Error).
 */
-
-read_mod_ignore_errors(ModuleName, Extension, Descr, Search, Items, Error) -->
-	module_name_to_file_name(ModuleName, Extension, no, FileName),
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	maybe_write_string(VeryVerbose, "% "),
-	maybe_write_string(VeryVerbose, Descr),
-	maybe_write_string(VeryVerbose, " `"),
-	maybe_write_string(VeryVerbose, FileName),
-	maybe_write_string(VeryVerbose, "'... "),
-	maybe_flush_output(VeryVerbose),
-	prog_io__read_module(FileName, ModuleName, Search,
-		Error, _Messages, Items),
-	maybe_write_string(VeryVerbose, "done.\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -2614,7 +2745,7 @@ process_module_private_interfaces([Ancestor | Ancestors],
 	;
 		read_mod(Ancestor, ".int0",
 			"Reading private interface for module", yes, 
-			PrivateIntItems, PrivateIntError),
+			PrivateIntItems, PrivateIntError, _AncestorFileName),
 		{ strip_off_interface_decl(PrivateIntItems, Items) },
 		{ maybe_add_int_error(PrivateIntError, ModError0, ModError) },
 
@@ -2664,7 +2795,7 @@ process_module_long_interfaces([Import | Imports], Ext, IndirectImports0,
 	;
 		read_mod(Import, Ext,
 			"Reading interface for module", yes, 
-			LongIntItems, LongIntError),
+			LongIntItems, LongIntError, _LongIntFileName),
 		{ strip_off_interface_decl(LongIntItems, Items) },
 		{ maybe_add_int_error(LongIntError, ModError0, ModError) },
 
@@ -2844,7 +2975,7 @@ process_module_short_interfaces([Import | Imports], Ext,
 	;
 		read_mod(Import, Ext,
 				"Reading short interface for module", yes,
-				ShortIntItems, ShortIntError),
+				ShortIntItems, ShortIntError, _ImportFileName),
 		{ strip_off_interface_decl(ShortIntItems, Items) },
 		{ maybe_add_int_error(ShortIntError, ModError0, ModError) },
 

@@ -1370,7 +1370,7 @@ read_optimization_interfaces([Import | Imports],
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
 	module_name_to_file_name(Import, ".opt", no, FileName),
-	prog_io__read_module(FileName, Import, yes,
+	prog_io__read_opt_file(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(FileName, ModuleError, Messages, Error0, Error1),
 	{ list__append(Items0, Items1, Items2) },

@@ -62,13 +62,17 @@
 
 % This module (prog_io) exports the following predicates:
 
-	% prog_io__read_module(FileName, ModuleName, Search, Error,
-	%					Messages, Program)
-	% Reads and parses the module 'ModuleName'.
+	% prog_io__read_module(FileName, DefaultModuleName, Search, Error,
+	%				ActualModuleName, Messages, Program)
+	% Reads and parses the module in file `FileName',
+	% using the default module name `DefaultModuleName'.
 	% If Search is yes, search directories given by the option
 	% search_directories.
 	% Error is `fatal' if the file coudn't be opened, `yes'
 	% if a syntax error was detected, and `no' otherwise.
+	% ActualModuleName is the module name specified in the
+	% `:- module' declaration, if any, or the DefaultModuleName
+	% if there is no `:- module' declaration.
 	% Messages is a list of warning/error messages.
 	% Program is the parse tree.
 
@@ -80,15 +84,25 @@
 :- type file_name == string.
 :- type dir_name == string.
 
-:- pred prog_io__read_module(file_name, module_name, bool, module_error,
-	message_list, item_list, io__state, io__state).
-:- mode prog_io__read_module(in, in, in, out, out, out, di, uo) is det.
+:- pred prog_io__read_module(file_name, module_name, bool,
+		module_error, module_name, message_list, item_list,
+		io__state, io__state).
+:- mode prog_io__read_module(in, in, in, out, out, out, out, di, uo) is det.
 
 	% Same as prog_io__read_module, but use intermod_directories
 	% instead of search_directories when searching for the file.
-:- pred prog_io__read_opt_file(file_name, module_name, bool, module_error,
-	message_list, item_list, io__state, io__state).
+	% Also report an error if the actual module name doesn't match
+	% the expected module name.
+:- pred prog_io__read_opt_file(file_name, module_name, bool,
+		module_error, message_list, item_list, io__state, io__state).
 :- mode prog_io__read_opt_file(in, in, in, out, out, out, di, uo) is det.
+
+	% check_module_has_expected_name(FileName, ExpectedName, ActualName):
+	%	Check that two module names are equal,
+	%	and report an error if they aren't.
+:- pred check_module_has_expected_name(file_name, module_name, module_name,
+		io__state, io__state).
+:- mode check_module_has_expected_name(in, in, in, di, uo) is det.
 
 	% search_for_file(Dirs, FileName, Found, IO0, IO)
 	%
@@ -170,21 +184,42 @@
 
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
 :- import_module prog_io_typeclass.
-:- import_module hlds_data, hlds_pred, prog_util, globals, options, (inst).
+:- import_module hlds_data, hlds_pred, prog_util, prog_out.
+:- import_module globals, options, (inst).
 :- import_module purity.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 
 %-----------------------------------------------------------------------------%
 
-prog_io__read_module(FileName, ModuleName, Search, Error, Messages, Items) -->
-	prog_io__read_module_2(FileName, ModuleName, Search,
-		search_directories, Error, Messages, Items).
+prog_io__read_module(FileName, DefaultModuleName, Search,
+		Error, ModuleName, Messages, Items) -->
+	prog_io__read_module_2(FileName, DefaultModuleName, Search,
+		search_directories, Error, ModuleName, Messages, Items).
 
-prog_io__read_opt_file(FileName, ModuleName, Search, 
+prog_io__read_opt_file(FileName, DefaultModuleName, Search, 
 		Error, Messages, Items) -->
-	prog_io__read_module_2(FileName, ModuleName, Search, 
-		intermod_directories, Error, Messages, Items).
+	prog_io__read_module_2(FileName, DefaultModuleName, Search, 
+		intermod_directories, Error, ModuleName, Messages, Items),
+	check_module_has_expected_name(FileName,
+		DefaultModuleName, ModuleName).
+
+check_module_has_expected_name(FileName, ExpectedName, ActualName) -->
+	( { ActualName \= ExpectedName } ->
+		{ prog_out__sym_name_to_string(ActualName, ActualString) },
+		{ prog_out__sym_name_to_string(ExpectedName, ExpectedString) },
+		io__stderr_stream(ErrStream),
+		io__write_strings(ErrStream, [
+			"Error: file `", FileName,
+				"' contains the wrong module.\n",
+			"Expected module `", ExpectedString,
+				"', found module `", ActualString, "'.\n"
+		]),
+		io__set_exit_status(1)
+	;
+		[]
+	).
+
 		
 % This implementation uses io__read_term to read in the program
 % term at a time, and then converts those terms into clauses and
@@ -195,11 +230,13 @@ prog_io__read_opt_file(FileName, ModuleName, Search,
 % late-input modes.)
 
 :- pred prog_io__read_module_2(file_name, module_name, bool, option,
-		module_error, message_list, item_list, io__state, io__state).
-:- mode prog_io__read_module_2(in, in, in, in, out, out, out, di, uo) is det.
+		module_error, module_name, message_list, item_list,
+		io__state, io__state).
+:- mode prog_io__read_module_2(in, in, in, in, out, out, out, out,
+		di, uo) is det.
 
 prog_io__read_module_2(FileName, DefaultModuleName, Search,
-		SearchOpt, Error, Messages, Items) -->
+		SearchOpt, Error, ModuleName, Messages, Items) -->
 	( 
 		{ Search = yes }
 	->
@@ -211,7 +248,8 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search,
 	),
 	search_for_file(Dirs, FileName, R),
 	( { R = yes } ->
-		read_all_items(DefaultModuleName, Messages, Items, Error),
+		read_all_items(DefaultModuleName, ModuleName,
+			Messages, Items, Error),
 		io__seen
 	;
 		io__progname_base("prog_io.m", Progname),
@@ -222,7 +260,8 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search,
 		  dummy_term(Term),
 		  Messages = [Message - Term],
 		  Error = fatal,
-		  Items = []
+		  Items = [],
+		  ModuleName = DefaultModuleName
 		}
 	).
 
@@ -344,17 +383,18 @@ dummy_term_with_context(Context, Term) :-
 	%
 	% We use a continuation-passing style here.
 
-:- pred read_all_items(module_name, message_list, item_list, module_error,
+:- pred read_all_items(module_name, module_name,
+			message_list, item_list, module_error,
 			io__state, io__state).
-:- mode read_all_items(in, out, out, out, di, uo) is det.
+:- mode read_all_items(in, out, out, out, out, di, uo) is det.
 
-read_all_items(ModuleName, Messages, Items, Error) -->
+read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error) -->
 	%
 	% read all the items (the first one is handled specially)
 	%
 	io__input_stream(Stream),
 	io__input_stream_name(Stream, SourceFileName),
-	read_first_item(ModuleName, SourceFileName,
+	read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		RevMessages, RevItems0, Error0),
 
 	%
@@ -382,11 +422,12 @@ read_all_items(ModuleName, Messages, Items, Error) -->
 % and then if it turns out to not be a `:- module' declaration
 % we reparse it in the default module scope.  Blecchh.
 %
-:- pred read_first_item(module_name, file_name,
+:- pred read_first_item(module_name, file_name, module_name,
 		message_list, item_list, module_error, io__state, io__state).
-:- mode read_first_item(in, in, out, out, out, di, uo) is det.
+:- mode read_first_item(in, in, out, out, out, out, di, uo) is det.
 
-read_first_item(DefaultModuleName, SourceFileName, Messages, Items, Error) -->
+read_first_item(DefaultModuleName, SourceFileName, ModuleName,
+	Messages, Items, Error) -->
 
 	globals__io_lookup_bool_option(warn_missing_module_name, WarnMissing),
 	globals__io_lookup_bool_option(warn_wrong_module_name, WarnWrong),
@@ -410,7 +451,7 @@ read_first_item(DefaultModuleName, SourceFileName, Messages, Items, Error) -->
 	    { FirstItem = pragma(source_file(NewSourceFileName)) }
 	->
 	    read_first_item(DefaultModuleName, NewSourceFileName,
-		Messages, Items, Error)
+	    	ModuleName, Messages, Items, Error)
 	;
 	    %
 	    % check if the first term was a `:- module' decl
@@ -430,18 +471,19 @@ read_first_item(DefaultModuleName, SourceFileName, Messages, Items, Error) -->
 		ModuleName = DefaultModuleName,
 		Messages0 = []
 	    ;
+	    	prog_out__sym_name_to_string(StartModuleName,
+			StartModuleNameString),
+	    	string__append_list(["source file `", SourceFileName,
+			"' contains module named `", StartModuleNameString,
+			"'"], WrongModuleWarning),
 	        maybe_add_warning(WarnWrong, MaybeFirstTerm, FirstContext,
-			"incorrect module name in `:- module' declaration",
-			[], Messages0),
+			WrongModuleWarning, [], Messages0),
 
-		% XXX Which one should we use here?
-		% Tradition says that the default module
-		% name (computed from the filename) takes
-		% precedence, but I don't know why;
-		% using the declared one might be better.
-		% For the moment I'll leave it as is,
-		% in case changing it would break something.
-		ModuleName = DefaultModuleName
+		% Which one should we use here?
+		% We used to use the default module name
+		% (computed from the filename)
+		% but now we use the declared one.
+		ModuleName = StartModuleName
 	    },
 	    { make_module_decl(ModuleName, FirstContext, FixedFirstItem) },
 	    { Items0 = [FixedFirstItem] },

@@ -123,9 +123,9 @@ using NU-Prolog or SICStus Prolog (@pxref{Using Prolog}).
 @node Filenames
 @chapter File naming conventions
 
-Mercury source files should be named @file{*.m}.
-Each Mercury source file must contain a single Mercury module
-whose name should be the same as the filename without
+Mercury source files must be named @file{*.m}.
+Each Mercury source file should contain a single Mercury module
+whose module name should be the same as the filename without
 the @samp{.m} extension.
 
 The Mercury implementation uses a variety of intermediate files, which
@@ -136,6 +136,10 @@ use the @samp{--use-subdirs} option to @samp{mmc} or @samp{mmake}, all
 these intermediate files will be created in a @file{Mercury}
 subdirectory, where you can happily ignore them.
 Thus you may wish to skip the rest of this chapter.
+
+In cases where the source file name and module name don't match,
+the names for intermediate files are based on the name of the
+module from which they are derived, not on the source file name.
 
 Files ending in @file{.int}, @file{.int0}, @file{.int2} and @file{.int3}
 are interface files; these are generated automatically by the compiler,
@@ -183,22 +187,24 @@ the Mercury compiler is called @samp{mmc}
 Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other Unix compilers.
 
-Arguments to @samp{mmc} that name Mercury source files
-may omit the @samp{.m} suffix.
+Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
+or module names.  For a module name such as @samp{foo.bar.baz},
+the compiler will look for the source in files @file{foo.bar.baz.m},
+@file{bar.baz.m}, and @file{baz.m}, in that order.
 
-To compile a program which consists of just a single module,
+To compile a program which consists of just a single source file,
 use the command
 
 @example
-mmc @var{module}.m
+mmc @var{filename}.m
 @end example
 
 Unlike traditional Unix compilers, however,
-@samp{mmc} will put the executable into a file called @file{@var{module}},
+@samp{mmc} will put the executable into a file called @file{@var{filename}},
 not @file{a.out}.
 
-For programs that consist of more than one module, we @emph{strongly} recommend
-that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
+For programs that consist of more than one source file, we @emph{strongly}
+recommend that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
 all the steps listed below, using automatic dependency analysis
 to ensure that things are done in the right order, and that
 steps are not repeated unnecessarily.
@@ -206,39 +212,45 @@ If you use Mmake, then you don't need to understand the details
 of how the Mercury implementation goes about building programs.
 Thus you may wish to skip the rest of this chapter.
 
-To compile a module to object code without creating an executable,
+To compile a source file to object code without creating an executable,
 use the command
 
 @example
-mmc -c @var{module}.m
+mmc -c @var{filename}.m
 @end example
 
-@samp{mmc} will put the object code into a file called @file{@var{module}.o}.
+@samp{mmc} will put the object code into a file called @file{@var{module}.o},
+where @var{module} is the name of the Mercury module defined in
+@file{@var{filename}.m}.
 It also will leave the intermediate C code in a file called
 @file{@var{module}.c}.
+If the source file contains nested modules, then each sub-module will get
+compiled to separate C and object files.
 
 Before you can compile a module,
 you must make the interface files
 for the modules that it imports (directly or indirectly).
-You can create the interface files for one or more modules using the commands
+You can create the interface files for one or more source files
+using the following commands:
 
 @example
-mmc --make-short-int @var{module1}.m @var{module2}.m ...
-mmc --make-int @var{module1}.m @var{module2}.m ...
+mmc --make-short-int @var{filename1}.m @var{filename2}.m ...
+mmc --make-priv-int @var{filename1}.m @var{filename2}.m ...
+mmc --make-int @var{filename1}.m @var{filename2}.m ...
 @end example
 
 If you are going to compile with @samp{--intermodule-optimization} enabled,
 then you also need to create the optimization interface files.
 
 @example
-mmc --make-opt-int @var{module1}.m @var{module2}.m ...
+mmc --make-opt-int @var{filename1}.m @var{filename2}.m ...
 @end example
 
 If you are going to compile with @samp{--transitive-intermodule-optimization}
 enabled, then you also need to create the transitive optimization files.
 
 @example
-mmc --make-trans-opt @var{module1}.m @var{module2}.m ...
+mmc --make-trans-opt @var{filename1}.m @var{filename2}.m ...
 @end example
 
 Given that you have made all the interface files,
@@ -247,10 +259,10 @@ is to compile all the modules at the same time
 using the command
 
 @example
-mmc @var{module1}.m @var{module2}.m ...
+mmc @var{filename1}.m @var{filename2}.m ...
 @end example
 
-This will by default put the resulting executable in @file{@var{module1}},
+This will by default put the resulting executable in @file{@var{filename1}},
 but you can use the @samp{-o @var{filename}} option to specify a different
 name for the output file, if you so desire.
 
@@ -342,7 +354,7 @@ that can be detected statically by the Mercury compiler.
 The command
 
 @example
-mmc -e @var{module1}.m ...
+mmc -e @var{filename1}.m ...
 @end example
 
 causes the Mercury compiler
@@ -363,10 +375,10 @@ debugging problems that the compiler could have detected for you.
 @node Using NU-Prolog
 @section Using NU-Prolog
 
-You can compile a Mercury source module using NU-Prolog via the command
+You can compile a Mercury source file using NU-Prolog via the command
 
 @example
-mnc @var{module1}.m ...
+mnc @var{filename1}.m ...
 @end example
 
 @samp{mnc} is the Mercury variant of @samp{nc}, the NU-Prolog compiler.
@@ -388,7 +400,7 @@ stored in files with a @file{.no} suffix.
 You can link these together using the command
 
 @example
-mnl -o @var{main_module} @var{module1}.no ...
+mnl -o @var{main_module} @var{filename1}.no ...
 @end example
 
 Ignore any warnings such as
@@ -421,7 +433,7 @@ Inside the interpreter, you can load your source files
 with a normal consulting command such as
 
 @example
-['@var{module}.m'].
+['@var{filename}.m'].
 @end example
 
 You can also use the @file{--debug} option to @samp{mnl} when linking.
@@ -470,7 +482,7 @@ before you can load them into the interpreter.
 The command to use is just
 
 @example
-sicstus_conv @var{module}.m
+sicstus_conv @var{filename}.m
 @end example
 
 By default, @samp{msc} compiles files to machine code using
@@ -669,10 +681,14 @@ succeeds.
 @section Hazards of using Prolog
 
 There are some Mercury programs which are not valid Prolog programs.
+Programs which make use of the more advanced features of Mercury will
+not work with NU-Prolog or SICStus Prolog.
 In particular, Mercury programs that use functions will generally not
 be valid Prolog programs (with the exception that the basic arithmetic
 functions such as @samp{+}, @samp{-}, etc., will work fine if you use
 Prolog's @samp{is} predicate).
+Also the use of features such as type classes, lambda expressions,
+non-trivial use of the module system, etc. will cause problems.
 
 Also, Mercury will always reorder goals
 to ensure that they are mode-correct
@@ -711,7 +727,7 @@ Another hazard is that NU-Prolog does not have a garbage collector.
 Mmake, short for ``Mercury Make'',
 is a tool for building Mercury programs
 that is built on top of ordinary or GNU Make @footnote{
-We aim to eventually add support for ordinary ``Make'' programs,
+We might eventually add support for ordinary ``Make'' programs,
 but currently only GNU Make is supported.}.
 With Mmake, building even a complicated Mercury program
 consisting of a number of modules is as simple as
@@ -812,7 +828,8 @@ Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 belonging to the named @var{main-module} or its imported modules.
 
 @item @var{main-module}.change_clean
-Removes files that need updating when changing garbage collection method or
+Removes files that need updating when changing compilation model
+(@pxref{Compilation model options}) or
 when enabling inter-module optimization.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
 @samp{.dep} and executable files belonging to the named @var{main-module}
@@ -924,14 +941,40 @@ and, on many platforms, it supports shared object libraries.
 @node Writing libraries
 @section Writing libraries
 
-A Mercury library is identified by a top-level module, which must
-directly or indirectly use (import) all of the modules in that
-library.  It may be as simple as this @file{mypackage.m} file:
+A Mercury library is identified by a top-level module,
+which should contain all of the modules in that library.
+It may be as simple as this @file{mypackage.m} file:
 
 @example
 :- module mypackage.
-:- import_module foo, bar, baz.
+:- interface
+:- include_module foo, bar, baz.
 @end example
+
+@noindent
+This defines a module @samp{mypackage} containing
+sub-modules @samp{mypackage:foo}, @samp{mypackage:bar},
+and @samp{mypackage:baz}.
+
+It is also possible to build libraries of unrelated
+modules, so long as the top-level module imports all
+the necessary modules.  For example:
+
+	@example
+	:- module blah.
+	:- import_module fee, fie, foe, fum.
+	@end example
+
+@noindent
+This example defines a module @samp{blah}, which has
+no functionality of its own, and which is just used
+for grouping the unrelated modules @samp{fee},
+@samp{fie}, @samp{foe}, and @samp{fum}.
+
+Generally it is better style for each library to consist
+of a single module which encapsulates its sub-modules,
+as in the first example, rather than just a group of
+unrelated modules, as in the second example.
 
 @node Building libraries
 @section Building libraries
@@ -1422,10 +1465,15 @@ use @samp{mmc --help} to get the most up-to-date list.
 
 @code{mmc} is invoked as
 @example
-mmc [@var{options}] @var{modules}
+mmc [@var{options}] @var{arguments}
 @end example
 
-For module names, the trailing @file{.m} is optional.
+Arguments can be either module names or file names.
+Arguments ending in @samp{.m} are assumed to be file names,
+while other arguments are assumed to be module names.
+If you specify a module name such as @samp{foo.bar.baz},
+the compiler will look for the source in files @file{foo.bar.baz.m},
+@file{bar.baz.m}, and @file{baz.m}, in that order.
 
 Options are either short (single-letter) options preceded by a single @samp{-},
 or long options preceded by @samp{--}.

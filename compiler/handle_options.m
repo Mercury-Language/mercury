@@ -720,27 +720,22 @@ usage_error(ErrorMessage) -->
 	usage.
 
 usage -->
-	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
 	{ library__version(Version) },
- 	io__write_strings(StdErr,
-			["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string(StdErr,
-			"Copyright (C) 1993-1998 The University of Melbourne\n"),
-	io__write_string(StdErr, "Usage: "),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " [<options>] <module(s)>\n"),
-	io__write_string(StdErr, "Use `"),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " --help' for more information.\n").
+ 	io__write_strings(StdErr, [
+		"Mercury Compiler, version ", Version, "\n",
+		"Copyright (C) 1993-1998 The University of Melbourne\n",
+		"Usage: mmc [<options>] <arguments>\n",
+		"Use `mmc --help' for more information.\n"
+	]).
 
 long_usage -->
-	io__progname_base("mercury_compile", ProgName),
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
-	io__write_string("Usage: "),
-	io__write_string(ProgName),
-	io__write_string(" [<options>] <module(s)>\n"),
+	io__write_string("Usage: mmc [<options>] <arguments>\n"),
+	io__write_string("Arguments:\n"),
+	io__write_string("\t\tArguments ending in `.m' are assumed to be source file names.\n"),
+	io__write_string("\t\tArguments that do not end in `.m' are assumed to be module names.\n"),
 	io__write_string("Options:\n"),
 	options_help.

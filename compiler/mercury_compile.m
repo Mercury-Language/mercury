@@ -68,8 +68,7 @@ main_2(no, Args, Link) -->
 	; { Args = [] } ->
 		usage
 	;
-		{ strip_module_suffixes(Args, ModuleNames) },
-		process_module_list(ModuleNames, ModulesToLink),
+		process_arg_list(Args, ModulesToLink),
 		io__get_exit_status(ExitStatus),
 		( { ExitStatus = 0 } ->
 			( { Link = yes } ->
@@ -99,91 +98,99 @@ main_2(no, Args, Link) -->
 		)
 	).
 
-	% Process a list of module names.
-	% Remove any `.m' extension before processing
-	% the module name.
+:- pred process_arg_list(list(string), list(string), io__state, io__state).
+:- mode process_arg_list(in, out, di, uo) is det.
 
-:- pred strip_module_suffixes(list(string), list(string)).
-:- mode strip_module_suffixes(in, out) is det.
+process_arg_list(Args, Modules) -->
+	process_arg_list_2(Args, ModulesList),
+	{ list__condense(ModulesList, Modules) }.
 
-strip_module_suffixes([], []).
-strip_module_suffixes([Module0 | Modules0], [Module | Modules]) :-
-	(
-		string__remove_suffix(Module0, ".m", Module1)
-	->
-		Module = Module1
-	;
-		Module = Module0
-	),
-	strip_module_suffixes(Modules0, Modules).
-
-:- pred process_module_list(list(string), list(string), io__state, io__state).
-:- mode process_module_list(in, out, di, uo) is det.
-
-process_module_list(Modules, SubModules) -->
-	process_module_list_2(Modules, SubModulesList),
-	{ list__condense(SubModulesList, SubModules) }.
-
-:- pred process_module_list_2(list(string), list(list(string)),
+:- pred process_arg_list_2(list(string), list(list(string)),
 			io__state, io__state).
-:- mode process_module_list_2(in, out, di, uo) is det.
+:- mode process_arg_list_2(in, out, di, uo) is det.
 
-process_module_list_2([], []) --> [].
-process_module_list_2([Module0 | Modules0], [Module | Modules]) -->
-	process_module(Module0, Module), !,
-	process_module_list_2(Modules0, Modules).
+process_arg_list_2([], []) --> [].
+process_arg_list_2([Arg | Args], [Modules | ModulesList]) -->
+	process_arg(Arg, Modules), !,
+	process_arg_list_2(Args, ModulesList).
 
-	% Open the file and process it.
+	% Figure out whether the argument is a module name or a file name.
+	% Open the specified file or module, and process it.
 	% Return the list of modules (including sub-modules,
 	% if they were compiled to seperate object files)
 	% that should be linked into the final executable.
 
-:- pred process_module(string, list(string), io__state, io__state).
-:- mode process_module(in, out, di, uo) is det.
+:- pred process_arg(string, list(string), io__state, io__state).
+:- mode process_arg(in, out, di, uo) is det.
 
-process_module(PathName, ModulesToLink) -->
+process_arg(Arg, ModulesToLink) -->
 	 	% All messages go to stderr
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, _),
 
-	{ dir__split_name(PathName, DirName, BaseFileName) },
-	( { dir__this_directory(DirName) } ->
-		{ file_name_to_module_name(BaseFileName, ModuleName) },
+	% If the argument name ends in `.m', then we assume it is
+	% a file name.
+	( { string__remove_suffix(Arg, ".m", FileName) } ->
+		globals__io_lookup_bool_option(generate_dependencies,
+			GenerateDeps),
+		( { GenerateDeps = yes } ->
+			generate_file_dependencies(FileName),
+			{ ModulesToLink = [] }
+		;
+			process_file_name(FileName, ModulesToLink)
+		)
+	;
+		% If it doesn't end in `.m', then we assume it is
+		% a module name.  (Is it worth checking that the
+		% name doesn't contain directory seperators, and issuing
+		% a warning or error in that case?)
+		{ file_name_to_module_name(Arg, ModuleName) },
 
 		globals__io_lookup_bool_option(generate_dependencies,
 			GenerateDeps),
 		( { GenerateDeps = yes } ->
-			generate_dependencies(ModuleName),
+			generate_module_dependencies(ModuleName),
 			{ ModulesToLink = [] }
 		;
-			process_module_2(ModuleName, ModulesToLink)
+			process_module_name(ModuleName, ModulesToLink)
 		)
-	;
-		% Currently we don't allow directory names in the
-		% command-line arguments, because it would confuse
-		% the mapping between module names and file names.
-		io__progname("mercury_compile", ProgName),
-		io__write_strings([
-			ProgName, ": Error in command-line argument `",
-			PathName, "':\n",
-			"arguments may not contain directory names.\n"]),
-		io__set_exit_status(1),
-		{ ModulesToLink = [] }
 	).
 
-:- pred process_module_2(module_name, list(string), io__state, io__state).
-:- mode process_module_2(in, out, di, uo) is det.
+:- pred process_module_name(module_name, list(string), io__state, io__state).
+:- mode process_module_name(in, out, di, uo) is det.
 
-process_module_2(ModuleName, ModulesToLink) -->
+process_module_name(ModuleName, ModulesToLink) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Parsing `"),
-	module_name_to_file_name(ModuleName, ".m", no, FileName),
-	maybe_write_string(Verbose, FileName),
+	maybe_write_string(Verbose, "% Parsing module `"),
+	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
+	maybe_write_string(Verbose, ModuleNameString),
 	maybe_write_string(Verbose, "' and imported interfaces...\n"),
-	read_mod(ModuleName, ".m", "Reading module", yes, Items0, Error), !,
+	read_mod(ModuleName, ".m", "Reading module", yes, Items, Error,
+		FileName), !,
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
+	process_module(ModuleName, FileName, Items, Error, ModulesToLink).
 
+:- pred process_file_name(file_name, list(string), io__state, io__state).
+:- mode process_file_name(in, out, di, uo) is det.
+
+process_file_name(FileName, ModulesToLink) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Parsing file `"),
+	maybe_write_string(Verbose, FileName),
+	maybe_write_string(Verbose, "' and imported interfaces...\n"),
+	read_mod_from_file(FileName, ".m", "Reading file", yes, Items, Error,
+		ModuleName), !,
+	globals__io_lookup_bool_option(statistics, Stats),
+	maybe_report_stats(Stats),
+	{ string__append(FileName, ".m", SourceFileName) },
+	process_module(ModuleName, SourceFileName, Items, Error, ModulesToLink).
+
+:- pred process_module(module_name, file_name, item_list, module_error,
+			list(string), io__state, io__state).
+:- mode process_module(in, in, in, in, out, di, uo) is det.
+
+process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(make_short_interface,
@@ -197,27 +204,27 @@ process_module_2(ModuleName, ModulesToLink) -->
 	; { Error = yes, HaltSyntax = yes } ->
 		{ ModulesToLink = [] }
 	; { MakeInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
 		list__foldl(make_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakeShortInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
 		list__foldl(make_short_interface, SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakePrivateInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
 		list__foldl(make_private_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { ConvertToMercury = yes } ->
 		module_name_to_file_name(ModuleName, ".ugly", yes,
 					OutputFileName),
-		convert_to_mercury(ModuleName, OutputFileName, Items0),
+		convert_to_mercury(ModuleName, OutputFileName, Items),
 		{ ModulesToLink = [] }
 	; { ConvertToGoedel = yes } ->
-		convert_to_goedel(ModuleName, Items0),
+		convert_to_goedel(ModuleName, Items),
 		{ ModulesToLink = [] }
 	;
-		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
 		list__foldl(compile(FileName), SubModuleList),
 		list__map_foldl(module_to_link, SubModuleList, ModulesToLink)
 
@@ -278,8 +285,8 @@ module_to_link(ModuleName - _Items, ModuleToLink) -->
 		io__state, io__state).
 :- mode compile(in, in, di, uo) is det.
 
-compile(SourceFileName, ModuleName - Items0) -->
-	grab_imported_modules(SourceFileName, ModuleName, Items0,
+compile(SourceFileName, ModuleName - Items) -->
+	grab_imported_modules(SourceFileName, ModuleName, Items,
 		Module, Error2),
 	( { Error2 \= fatal } ->
 		mercury_compile(Module)
