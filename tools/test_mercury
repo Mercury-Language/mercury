@@ -296,6 +296,8 @@ case $HOST in
 			--enable-new-mercuryfile-struct" ;;
 	roy)
 		CONFIG_OPTS=""
+		DEFAULT_GRADE="hlc.gc"
+		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
 		INSTALL_LIBGRADES="hl.gc \
 			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc \
@@ -748,10 +750,10 @@ case $status in
     0) {
     	cd $DIR &&
 	{ [ -d $STABLE ] || mkdir $STABLE; } &&
-	rm -f $STABLE/mercury-*.$fullname.tar.gz &&
+	rm -f $STABLE/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz &&
 	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz \
 		$STABLE/mercury-$version.$fullname.tar.gz &&
-	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullname.tar.gz" &&
+	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz" &&
 	rcp $STABLE/mercury-$version.$fullname.tar.gz \
 		$BETA_FTPHOST:$BETA_FTPDIR &&
 	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
@@ -775,9 +777,8 @@ case $status in
 	case $HOST in murlibobo)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
-		# XXX should remove old files
-	    echo rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
-	    echo rm -f $STABLE/mercury-*-$version.tar.gz &&
+	    rm -f $STABLE/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz &&
+	    rm -f $STABLE/mercury-*-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    $LN $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
@@ -785,10 +786,9 @@ case $status in
 	    $LN $UNSTABLE/mercury-tests-$version-unstable.tar.gz \
 	        $STABLE/mercury-tests-$version.tar.gz &&
 
-		# XXX should remove old files
 	    rsh $BETA_FTPHOST "\
-	    echo rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
-	    echo rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-*-$RELEASE_VERSION_PATTERN[0-9].tar.gz && 
+	    rm -f $BETA_FTPDIR/mercury-*-$version.tar.gz && 
 	    $LN $BETA_FTPDIR/mercury-compiler-$version-unstable.tar.gz \
 	        $BETA_FTPDIR/mercury-compiler-$version.tar.gz &&
 	    $LN $BETA_FTPDIR/mercury-extras-$version-unstable.tar.gz \
