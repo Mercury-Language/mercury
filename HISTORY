@@ -1508,16 +1508,6 @@ compiled "hello world" in September 1999.  The compiler successfully
 compiled itself using the MLDS back-end on 12 May 2000.
 
 
-Mercury 0.10.1, April 3rd, 2001
--------------------------------
-
-This is mainly a bug-fix release.
-
-There are however some new packages in the mercury-extras distribution:
-* lex: a lexical analyzer library for Mercury.
-* curs: a simplified binding to the ncurses/panel libraries for terminal I/O.
-
-
 Mercury 0.10, February 25th, 2001
 ---------------------------------
 
@@ -1854,3 +1844,13 @@ Changes to the development environment:
   enhanced features of Vim.  The command-line options to `mtags' have
   changed and Vim-style tags files are now output as the default (but
   will work with Vi as well).  Do `mtags --help' for more information.
+
+
+Mercury 0.10.1, April 3rd, 2001
+-------------------------------
+
+This is mainly a bug-fix release.
+
+There are however some new packages in the mercury-extras distribution:
+* lex: a lexical analyzer library for Mercury.
+* curs: a simplified binding to the ncurses/panel libraries for terminal I/O.
