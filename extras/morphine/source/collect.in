@@ -6,16 +6,19 @@
 :- interface.
 :- import_module char.
 
+:- type accumulator_type.
 :- type collected_type.
 
-:- pred initialize(collected_type).
+:- pred initialize(accumulator_type).
 :- mode initialize(out) is det.
 
+:- pred post_process(accumulator_type, collected_type).
+:- mode post_process(in, out) is det.
 
 :- pred filter(event_number, call_number, depth_number, trace_port_type,
         pred_or_func, declared_module_name, defined_module_name, proc_name,
         arity, mode_number, arguments, determinism, goal_path_string,
-        line_number, collected_type, collected_type, char).
+        line_number, accumulator_type, accumulator_type, char).
 
 :- mode filter(in, in, in, in, in, in, in, in, in, in, in, in, in, in, 
 	acc_in, acc_out, out) is det.
@@ -32,10 +35,11 @@
 :- pragma export(initialize(out), "ML_COLLECT_initialize").
 :- pragma export(filter(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	acc_in, acc_out, out), "ML_COLLECT_filter").
+:- pragma export(post_process(in, out), "ML_COLLECT_post_process").
 :- pragma export(send_collect_result(in, in, di, uo), 
 	"ML_COLLECT_send_collect_result").
 :- pragma export(collected_variable_type(out), 
-	"ML_COLLECT_collecting_variable_type").
+	"ML_COLLECT_collected_variable_type").
 
 :- import_module list, int, io, std_util.
 
@@ -226,6 +230,6 @@ send_collect_result(Result, OutputStream) -->
 	collected(collected_type).
 
 
-:- pred filter(event, collected_type, collected_type, stop_or_continue).
+:- pred filter(event, accumulator_type, accumulator_type, stop_or_continue).
 :- mode filter(in, acc_in, acc_out, out) is det.
 :- pragma inline(filter/4).

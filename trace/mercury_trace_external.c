@@ -125,7 +125,19 @@ static	MR_external_debugger_mode_type
 ** a collect request.
 */
 
-static  MR_Word	MR_collecting_variable;
+static  MR_Word	MR_accumulator_variable;
+
+/*
+** Global variable that is sent to collect caller.
+*/
+
+static  MR_Word	MR_collected_variable;
+
+/*
+** Function pointer used to post-process the result of the collect activity
+*/
+
+static void	(*post_process_ptr)(MR_Word, MR_Word *);
 
 /*
 ** Function pointer used to sent the collecting variable to the external 
@@ -755,7 +767,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			case MR_REQUEST_LINK_COLLECT:
 			  {
 			        MR_Char	result;
-				MR_Word	MR_collecting_variable_type;
+				MR_Word	MR_accumulator_variable_type;
 
 				if (MR_debug_socket) {
 					fprintf(stderr, "\nMercury runtime: "
@@ -768,6 +780,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			       		    MR_object_file_name,
 					    (MR_Word *) &cmd->MR_filter_ptr,
 					    (MR_Word *) &initialize_ptr,
+					    (MR_Word *) &post_process_ptr,
 					    (MR_Word *) &send_collect_result_ptr,
 					    (MR_Word *) &get_collect_var_type_ptr,
 					    &collect_lib_maybe_handle,
@@ -779,12 +792,12 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 						"link_collect_succeeded");
 					MR_TRACE_CALL_MERCURY(
 					    (*get_collect_var_type_ptr)(
-						&MR_collecting_variable_type));
-					MR_collecting_variable = 
+						&MR_accumulator_variable_type));
+					MR_accumulator_variable = 
 					    MR_make_permanent(
-						MR_collecting_variable,
+						MR_accumulator_variable,
 						(MR_TypeInfo) 
-						MR_collecting_variable_type);
+						MR_accumulator_variable_type);
 				} else {
 					MR_send_message_to_socket(
 						"link_collect_failed");
@@ -802,7 +815,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 						"collect_linked");
 					external_debugger_mode = MR_collecting;
 					MR_TRACE_CALL_MERCURY(
-					  (*initialize_ptr)(&MR_collecting_variable));
+					  (*initialize_ptr)(&MR_accumulator_variable));
 
 					/*
 					** In order to perform the collect from
@@ -1504,8 +1517,8 @@ MR_COLLECT_filter(MR_FilterFuncPtr filter_ptr, MR_Unsigned seqno,
 		layout->MR_sll_entry->MR_sle_detism,
 		(MR_String) path,
 		lineno,
-		MR_collecting_variable,
-		&MR_collecting_variable,
+		MR_accumulator_variable,
+		&MR_accumulator_variable,
 		&result));
 	*stop_collecting = (result == 'y');
 }
@@ -1548,8 +1561,12 @@ static void
 MR_send_collect_result(void)
 {
 	MR_TRACE_CALL_MERCURY(
+		(*post_process_ptr)(
+			MR_accumulator_variable, 
+			&MR_collected_variable);
+
 		(*send_collect_result_ptr)(
-			MR_collecting_variable, 
+			MR_collected_variable, 
 			(MR_Word) &MR_debugger_socket_out));
 #if defined(HAVE_DLFCN_H) && defined(HAVE_DLCLOSE)
 	MR_TRACE_CALL_MERCURY(

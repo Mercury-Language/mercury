@@ -182,7 +182,10 @@ write("\n**************************************************"),
 	rerun, 
 	set_parameter(collect_arg, [yes]),
 	collect(solutions, Result),
-	writeq(Result),
+	writeq(Result), nl, nl,
+	rerun,
+	collect(test_ln, Result2),
+	writeq(Result2),
 	write("\n*** collect: ok.\n").
 
 write("\n**************************************************"),

@@ -1,0 +1,20 @@
+% Copyright (C) 2001 INRIA/IFSIC.
+% 
+% Test case for line numbers and post_process/2
+
+:- import_module int. 
+
+:- type accumulator_type == list(int). 
+:- type collected_type == int. 
+
+initialize([]). 
+
+filter(Event, L, [line_number(Event)|L], continue).
+
+ 
+post_process(List, Int) :-
+	foldl(plus_pred, List, 0, Int).
+
+:- pred plus_pred(int::in, int::in, int::out) is det.
+plus_pred(X, Y, Z) :-
+	Z = plus(X, Y).

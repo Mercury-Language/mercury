@@ -28,13 +28,11 @@ users easily implement their own monitors with acceptable performances.\n\
 \n\
 To use it, users just need to define 4 things in a file, using the Mercury \
 syntax.\n\
-	(1) A `collected_type' which is the type of the collecting  \n\
-	   variable that will contain the result of the monitoring\n\
-	   activity.\n\
+	(1) `accumulator_type' which is the type of the accumulator. \n\
 	(2) A predicate `initialize/1' which initializes this collecting \n\
 	   variable. Predicate `initialize/1' should respect the \n\
 	   following declarations:\n\
-		:- pred initialize(collected_type).\n\
+		:- pred initialize(accumulator_type).\n\
 		:- mode initialize(out) is det.\n\
 	(3) A predicate `filter/4' which updates the collecting variable at \n\
 	   each execution event. The fourth argument of `filter/4' \n\
@@ -43,18 +41,27 @@ syntax.\n\
 	   continues. If this variable is always set to `continue', the \n\
 	   collecting processes until the last event is reached. `filter/4' \n\
 	   should respect the following declarations:\n\
-		:- pred filter(event, collected_type, collected_type, \n\
+		:- pred filter(event, accumulator_type, accumulator_type, \n\
 			stop_or_continue).\n\
 		:- mode filter(in, acc_in, acc_out, out) is det.\n\
 	   where modes `acc\_in' and `acc\_out' are equivalent to\n\
 	   `in' and `out' respectively by default.\n\
-	(4) And optionally, a mode definition for `acc_in' and `acc_out'\n\
+	(4) Optionally, a `post_process/2' function that lets one post-process\n\
+  	    the final value of the accumulator. `post_process/2' should respect\n\
+	    the following declarations:\n\
+	        :- pred post_process(accumulator_type, collected_type).\n\
+	        :- mode post_process(in, out) is det.\n\
+	    If `collected_type' is different from the `accumulator_type', \n\
+	    `collected_type' should also be defined; otherwise by default,\n\
+	    `collected_type' is automatically defined as being the same type\n\
+	    as `accumulator_type'.\n\
+	(5) And optionally, a mode definition for `acc_in' and `acc_out'\n\
 	   if one wants to override their default values.\n\
 \n\
 Then, this file is used to generate the Mercury module `collect.m', \
 which is compiled and dynamically linked with the current execution. \
 When a `collect' request is made from the external debugger, a variable \
-of type `collected_type' is first initialized (with `initialize/1') and \
+of type `accumulator_type' is first initialized (with `initialize/1') and \
 then updated (with `filter/4') for all the remaining events of the \
 execution. When the fourth argument of `filter/4' is equal to `stop', or when \
 the end of the execution is reached, the last value of \
@@ -168,7 +175,7 @@ Here is an example of a simple monitor that counts calls.\n\
 If a file `count_call' contains the following statements:\n\
 `\n\
 	:- import_module int.\n\
-	:- type collected_type == int.\n\
+	:- type accumulator_type == int.\n\
 \n\
 	initialize(0).\n\
 \n\
@@ -181,6 +188,19 @@ If a file `count_call' contains the following statements:\n\
 '\n\
 Then the goal `run(queens), collect(count_call, Result)' will unify `Result' \
 with the number of calls occurring during the execution of `queens' program.\
+You can also post-process the last value of the accumalator by defining \
+post_process(accumulator_type::in, collected_type::out) predicate. If collected_type \
+is different from accumulator_type, you should also define it. For example, \
+you can post-process the final value of the `count_call' monitor by adding \
+the following statements to `count_call' file: \n\
+`\n\
+	:- type collected_type == string.\n\
+	post_process(Int, String) :-\n\
+		if Int > 100 then \n\
+	              String = \"More than 100 calls have been done\"\n\
+		else\n\
+	              String = \"Less than 101 calls have been done\"\n\
+'\n\
 "
 	).
 
@@ -311,6 +331,18 @@ generate_collect_Op(File) :-
 	write(collect, ""),
 	write(collect, "\n\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n\n"),
 	( 
+		is_collected_type_defined(File)
+	;
+		% Add a definition for collected_type if necessary
+	        write(collect, ":- type collected_type == accumulator_type.\n")
+	),
+	( 
+		is_post_process_pred_defined(File)
+	;
+		% Add a definition for post_process/2 if necessary
+	        write(collect, "post_process(Acc, Acc).\n")
+	),
+	( 
 		is_there_any_mode_declaration(File)
 	;
 		% Add a mode definition of `acc_in' and `acc_out' if not
@@ -334,6 +366,55 @@ generate_collect_Op(File) :-
 	close(collect),
 	close(collect_in).
 
+% Check if accumulator_type is defined. 
+is_collected_type_defined(File) :-
+	open(File, read, S),
+	(
+		is_collected_type_defined_do(S),
+		close(S), 
+		!
+	;
+		close(S),
+		fail
+	).
+
+is_collected_type_defined_do(S) :-
+	read_mercury_term(S, Term),
+	(
+	        term_string(Term, String),
+		append_strings(":- type(collected_type", _,  String)
+	;
+		Term = end_of_file,
+		!,
+		fail
+	;
+		is_collected_type_defined_do(S)
+	).
+
+% Check if post_process is defined. 
+is_post_process_pred_defined(File) :-
+	open(File, read, S),
+	(
+		is_post_process_pred_defined_do(S),
+		close(S), 
+		!
+	;
+		close(S),
+		fail
+	).
+
+is_post_process_pred_defined_do(S) :-
+	read_mercury_term(S, Term),
+	(
+		term_string(Term, String),
+		append_strings("post_process", _,  String)
+	;
+		Term = end_of_file,
+		!,
+		fail
+	;
+		is_post_process_pred_defined_do(S)
+	).
 
 % Check if there is a mode definition of `acc_in' and `acc_out' in the 
 % file `File'. Those are to let users specify di and uo as modes for filter.
@@ -366,7 +447,6 @@ is_there_any_mode_declaration_do(S) :-
 	;
 		is_there_any_mode_declaration_do(S)
 	).
-
 
 %------------------------------------------------------------------------------%
 opium_primitive(
