@@ -591,6 +591,13 @@ output_c_data_init_list([Data | Datas]) -->
 		io__write_int(Arity),
 		io__write_string("_0);\n")
 	;
+		{ Data = comp_gen_c_data(ModuleName, DataName, _, ArgRvals, _, _) },
+		{ DataName = base_typeclass_info(_ClassName, _ClassArity) }
+	->
+		io__write_string("#ifndef MR_STATIC_CODE_ADDRESSES\n"),
+		output_init_method_pointers(1, ArgRvals, DataName, ModuleName),
+		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n")
+	;
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
 	->
@@ -603,6 +610,23 @@ output_c_data_init_list([Data | Datas]) -->
 		[]
 	),
 	output_c_data_init_list(Datas).
+
+:- pred output_init_method_pointers(int, list(maybe(rval)), data_name, module_name,
+	io__state, io__state).
+:- mode output_init_method_pointers(in, in, in, in, di, uo) is det.
+
+output_init_method_pointers(_, [], _, _) --> [].
+output_init_method_pointers(ArgNum, [Arg|Args], DataName, ModuleName) -->
+	( { Arg = yes(const(code_addr_const(CodeAddr))) } ->
+		io__write_string("\t\t"),
+		output_data_addr(ModuleName, DataName),
+		io__format(".f%d =\n\t\t\t", [i(ArgNum)]),
+		output_code_addr(CodeAddr),
+		io__write_string(";\n")
+	;
+		[]
+	),
+	output_init_method_pointers(ArgNum + 1, Args, DataName, ModuleName).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
@@ -2477,11 +2501,27 @@ output_uniform_cons_args([], _, _) --> [].
 output_uniform_cons_args([Arg | Args], MaybeType, Indent) -->
 	( { Arg = yes(Rval) } ->
 		io__write_string(Indent),
-		( { MaybeType = yes(_) } ->
-			output_static_rval(Rval)
+		globals__io_get_globals(Globals),
+		(
+			%
+			% Don't output code_addr_consts if they are not 
+			% actually const; instead just output `NULL' here in
+			% the static initializer.  The value will be supplied
+			% by the dynamic initialization code.
+			%
+			{ Rval = const(code_addr_const(_)) },
+			{ globals__have_static_code_addresses(Globals,
+				StaticCode) },
+			{ StaticCode = no }
+		->
+			io__write_string("NULL")
 		;
-			llds_out__rval_type_as_arg(Rval, Type),
-			output_rval_as_type(Rval, Type)
+			( { MaybeType = yes(_) } ->
+				output_static_rval(Rval)
+			;
+				llds_out__rval_type_as_arg(Rval, Type),
+				output_rval_as_type(Rval, Type)
+			)
 		),
 		( { Args \= [] } ->
 			io__write_string(",\n"),
