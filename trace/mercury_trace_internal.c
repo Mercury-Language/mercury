@@ -1995,7 +1995,7 @@ MR_trace_options_when_action_multi(MR_Spy_When *when, MR_Spy_Action *action,
 	int	c;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "PSaei",
+	while ((c = MR_getopt_long(*word_count, *words, "AOPSaei",
 			MR_trace_when_action_multi_opts, NULL)) != EOF)
 	{
 		switch (c) {
