@@ -2248,17 +2248,7 @@ your program compiled with different options.
 		"(This option is not for general use.)",
 		"\tDon't output type_ctor_layout structures or references",
 		"\tto them. (The C code also needs to be compiled with",
-		"\t`-DNO_TYPE_LAYOUT').",
-
-			% XXX is this the right place for this option???
-		"--use-foreign-language <foreign language>",
-		"\tUse the given foreign language to implement predicates",
-		"\twritten in foreign languages.  Any name that can be used",
-		"\tto specify foreign languages in pragma foreign declarations",
-		"\tis valid, but not all foreign languages are implemented",
-		"\tin all backends.",
-		"\tDefault value is `C' for the LLDS and MLDS->C backends,",
-		"\tor `ManagedC++' for the .NET backend."
+		"\t`-DNO_TYPE_LAYOUT')."
 
 		% This is a developer only option.
 %		"--basic-stack-layout",
