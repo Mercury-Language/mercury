@@ -299,14 +299,9 @@ io__write_char(Char) -->
 	io__write_char(Stream, Char).
 
 io__write_escaped_char(Char) -->
-	(
-		{ char__escape(Char, Chars) }
-	->
-		{ string__to_char_list(Str, Chars) },
-		io__write_string(Str)
-	;
-		io__write_char(Char)
-	).
+	{ char__escape(Char, Chars) },
+	{ string__to_char_list(Str, Chars) },
+	io__write_string(Str).
 
 io__write_float(Float) -->
 	io__output_stream(Stream),
