@@ -31,7 +31,7 @@
 
 	% Initialize an empty map.
 :- pred map__init(map(_,_)).
-:- mode map__init(out) is det.
+:- mode map__init(uo) is det.
 
 	% Check whether a map is empty.
 :- pred map__is_empty(map(_,_)).
@@ -81,6 +81,7 @@
 	% Update value if the key is already present, otherwise
 	% insert new key and value.
 :- pred map__set(map(K,V), K, V, map(K,V)).
+:- mode map__set(di, di, di, uo) is det.
 :- mode map__set(in, in, in, out) is det.
 
 	% Given a map, return a list of all the keys in the map
@@ -106,6 +107,7 @@
 	% delete a key-value pair from a map
 	% if the key is not present, leave the map unchanged
 :- pred map__delete(map(K,V), K, map(K,V)).
+:- mode map__delete(di, in, uo) is det.
 :- mode map__delete(in, in, out) is det.
 
 	% delete a key-value pair from a map and return the value.

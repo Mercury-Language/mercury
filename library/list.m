@@ -32,6 +32,7 @@
 	% standard append predicate
 
 :- pred list__append(list(T), list(T), list(T)).
+:- mode list__append(di, di, uo) is det.
 :- mode list__append(in, in, out) is det.
 :- mode list__append(in, in, in) is semidet.	% implied
 :- mode list__append(in, out, in) is semidet.
@@ -128,6 +129,7 @@
 	% all occurences of Elem removed
 
 :- pred list__delete_all(list(T), T, list(T)).
+:- mode list__delete_all(di, in, uo) is det.
 :- mode list__delete_all(in, in, out) is det.
 
 	% list__delete_elems(List0, Elems, List) is true iff List is List0 with

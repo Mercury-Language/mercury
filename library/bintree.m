@@ -29,7 +29,7 @@
 :- type bintree(K, V).
 
 :- pred bintree__init(bintree(K,V)).
-:- mode bintree__init(out) is det.
+:- mode bintree__init(uo) is det.
 
 :- pred bintree__insert(bintree(K,V), K, V, bintree(K,V)).
 :- mode bintree__insert(in, in, in, out) is semidet.
@@ -38,6 +38,7 @@
 :- mode bintree__update(in, in, in, out) is semidet.
 
 :- pred bintree__set(bintree(K,V), K, V, bintree(K,V)).
+:- mode bintree__set(di, di, di, uo) is det.
 :- mode bintree__set(in, in, in, out) is det.
 
 :- pred bintree__search(bintree(K,V), K, V).

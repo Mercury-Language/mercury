@@ -527,7 +527,7 @@ parser__parse_args(List) -->
 	% error message.
 
 :- pred parser__unexpected(string, parse(T), parser__state, parser__state).
-:- mode parser__unexpected(in, out, di, uo) is det.
+:- mode parser__unexpected(in, out, in, out) is det.
 
 parser__unexpected(UsualMessage, Error) -->
 	( parser__get_token(Token, Context) ->
@@ -538,7 +538,7 @@ parser__unexpected(UsualMessage, Error) -->
 
 :- pred parser__unexpected_tok(token, token_context, string, parse(T),
 				parser__state, parser__state).
-:- mode parser__unexpected_tok(in, in, in, out, di, uo) is det.
+:- mode parser__unexpected_tok(in, in, in, out, in, out) is det.
 
 parser__unexpected_tok(Token, Context, UsualMessage, Error) -->
 	% push the token back, so that the error message
@@ -561,7 +561,7 @@ parser__unexpected_tok(Token, Context, UsualMessage, Error) -->
 %-----------------------------------------------------------------------------%
 
 :- pred parser__error(string, parse(T), parser__state, parser__state).
-:- mode parser__error(in, out, di, uo) is det.
+:- mode parser__error(in, out, in, out) is det.
 
 parser__error(Message, error(Message, Tokens), ParserState, ParserState) :-
 	ParserState = parser__state(_, _, _, Tokens).

@@ -34,7 +34,7 @@
 :- type ops__priority == int.
 
 :- pred ops__init_op_table(ops__table).
-:- mode ops__init_op_table(out) is det.
+:- mode ops__init_op_table(uo) is det.
 
 :- pred ops__lookup_infix_op(ops__table, string, int, ops__assoc, ops__assoc).
 :- mode ops__lookup_infix_op(in, in, out, out, out) is semidet.

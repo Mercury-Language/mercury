@@ -39,7 +39,7 @@
 	% `set__init(Set)' is true iff `Set' is an empty set.
 
 :- pred set__init(set(_T)).
-:- mode set__init(out) is det.
+:- mode set__init(uo) is det.
 
 	% `set__singleton_set(Set, Elem)' is true iff `Set' is the set
 	% containing just the single element `Elem'.
@@ -83,6 +83,7 @@
 	% `Set0' and the set containing only `X'.
 
 :- pred set__insert(set(T), T, set(T)).
+:- mode set__insert(di, di, uo) is det.
 :- mode set__insert(in, in, out) is det.
 
 	% `set__insert_list(Set0, Xs, Set)' is true iff `Set' is the union of
@@ -97,6 +98,7 @@
 	% except `X'.
 
 :- pred set__delete(set(T), T, set(T)).
+:- mode set__delete(di, in, uo) is det.
 :- mode set__delete(in, in, out) is det.
 
 	% `set__delete_list(Set0, Xs, Set)' is true iff `Set' is the relative

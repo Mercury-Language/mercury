@@ -15,6 +15,7 @@
 % runtime.  Except that those checks prevent doing a `redo' in the debugger.
 % So we don't check at all.  Oh well.  Just don't write any programs that
 % depend on it, because they *WILL* break!)
+% Late news: unique mode checking is now implemented - well, mostly ;-).
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -395,11 +396,11 @@
 % The following predicates can be used to access this global state.
 
 :- pred io__get_globals(univ, io__state, io__state).
-:- mode io__get_globals(out, di, uo) is det.
+:- mode io__get_globals(uo, di, uo) is det.
 	% Doesn't modify the io__state.
 
 :- pred io__set_globals(univ, io__state, io__state).
-:- mode io__set_globals(in, di, uo) is det.
+:- mode io__set_globals(di, di, uo) is det.
 
 % The following predicates provide an interface to the environment list.
 % Do not attempt to put spaces or '=' signs in the names of environment
@@ -434,9 +435,7 @@
 :- mode io__preallocate_heap_space(in, di, uo) is det.
 
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
-:- mode io__gc_call(
-		det_pred(ground_unique, dead, free_unique, ground_unique),
-		di, uo) is det.
+:- mode io__gc_call(det_pred(unique, clobbered, free, unique), di, uo) is det.
 %	io__gc_call(Goal, IO0, IO1).
 %		Execute Goal, passing IO0, and IO1, and
 %		collect any garbage created during it's execution.
@@ -468,7 +467,7 @@
 :- mode io__get_op_table(out, di, uo) is det.
 
 :- pred io__set_op_table(ops__table, io__state, io__state).
-:- mode io__set_op_table(in, di, uo) is det.
+:- mode io__set_op_table(di, di, uo) is det.
 
 % For use by the Mercury runtime (io.mod):
 
@@ -868,9 +867,13 @@ io__output_stream_name(Stream, Name) -->
 :- pred io__stream_name(io__stream, string, io__state, io__state).
 :- mode io__stream_name(in, out, di, uo) is det.
 
-io__stream_name(Stream, Name, IOState, IOState) :-
-	IOState = io__state(StreamNames, _, _, _, _),
-	( map__search(StreamNames, Stream, Name1) ->
+	% XXX major design flaw with regard to unique modes
+	% means that this is very inefficient.
+io__stream_name(Stream, Name, IOState0, IOState) :-
+	IOState0 = io__state(StreamNames0, B, C, D, E),
+	copy(StreamNames0, StreamNames),
+	IOState = io__state(StreamNames, B, C, D, E),
+	( map__search(StreamNames0, Stream, Name1) ->
 		Name = Name1
 	;
 		Name = "<stream name unavailable>"
@@ -889,15 +892,28 @@ io__delete_stream_name(Stream, io__state(StreamNames0, B, C, D, E),
 io__insert_stream_name(Stream, Name,
 		io__state(StreamNames0, B, C, D, E),
 		io__state(StreamNames, B, C, D, E)) :-
-	map__set(StreamNames0, Stream, Name, StreamNames).
+	copy(Stream, Stream1),
+	copy(Name, Name1),
+	map__set(StreamNames0, Stream1, Name1, StreamNames).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % global state predicates
 
+	% XXX major design flaw with regard to unique modes
+	% and io__get_globals/3
+
+/* old definition
 io__get_globals(Globals, IOState, IOState) :-
 	IOState = io__state(_, _, _, Globals, _).
+*/
+/* new definition - horrendously inefficient! */
+io__get_globals(Globals, IOState0, IOState) :-
+	IOState0 = io__state(A, B, C, Globals0, E),
+	copy(Globals0, Globals1),
+	IOState = io__state(A, B, C, Globals1, E),
+	Globals = Globals0.
 
 io__set_globals(Globals, io__state(A, B, C, _, E),
 		io__state(A, B, C, Globals, E)).
@@ -978,8 +994,17 @@ io__error_message(Error, Error).
 
 %-----------------------------------------------------------------------------%
 
+	% XXX major design flaw with regard to unique modes and
+	% io__get_op_table
+/* old definition
 io__get_op_table(OpTable) -->
 	=(io__state(_, _, OpTable, _, _)).
+*/
+/* new definition - awfully inefficient! */
+io__get_op_table(OpTable, IOState0, IOState) :-
+	IOState0 = io__state(A, B, OpTable, D, E),
+	copy(OpTable, OpTable1),
+	IOState = io__state(A, B, OpTable1, D, E).
 
 io__set_op_table(OpTable,	io__state(A, B, _, D, E),
 				io__state(A, B, OpTable, D, E)).

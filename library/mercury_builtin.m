@@ -35,13 +35,15 @@
 % The standard insts `free', `ground', and `bound(...)' are builtin
 % and are implemented using special code in the parser and mode-checker.
 
-% Unique insts.  Currently aliased to standard insts, since unique insts
-% aren't implemented yet.  Note that `bound_unique' is aliased to `bound'
-% in the parser (prog_io.m), because it couldn't be done here.
+% Unique insts (aliases for backwards compatibility with old code).
 
-:- inst free_unique = free.
-:- inst ground_unique = ground.
+:- inst dead = clobbered.
+
+/*
 :- inst dead = ground.
+:- inst clobbered = ground.
+:- inst unique = ground.
+*/
 
 %-----------------------------------------------------------------------------%
 
@@ -62,9 +64,9 @@
 % Unique modes.  Currently aliased to standard modes, since unique modes
 % aren't implemented yet.
 
-:- mode di :: input.
-:- mode uo :: output.
-:- mode ui :: input.
+:- mode uo :: free -> unique.
+:- mode ui :: unique -> unique.
+:- mode di :: unique -> clobbered.
 
 % Higher-order predicate modes.
 % This needs to be builtin - the following is just a temporary hack.
@@ -88,6 +90,15 @@
 
 % PREDICATES.
 
+% copy/2 is used to make a `unique' copy of a data structure,
+% so that you can use destructive update.
+% At the moment it doesn't actually do any copying, since we
+% haven't implemented destructive update yet and so there is no need.
+
+:- pred copy(T, T).
+:- mode copy(ui, uo) is det.
+:- mode copy(in, uo) is det.
+
 % We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
 % backwards compatibility with Prolog systems.  But of course it only works
 % if all your cuts are green cuts.
@@ -95,9 +106,10 @@
 :- pred ! is det.
 
 :- pred !(T, T).
+:- mode !(di, uo) is det.
 :- mode !(in, out) is det.
 
-% The call/N family.  Note that the compiler (make_hlds.m) will transform
+% The call/N family.  Note that the compiler (make_hlds.nl) will transform
 % goals which are not atoms (e.g. goals which are free variables) into
 % calls to call/1.
 
@@ -165,7 +177,7 @@
 
 :- type type_info(T) ---> type_info(int /*, ... */).
 
-% These should be defined in int.m, but we define them here since
+% These should be defined in int.nl, but we define them here since
 % they're need for the implementation of compare/3.
 
 :- pred <(int, int).
@@ -188,6 +200,8 @@
 !(X, X).
 
 %-----------------------------------------------------------------------------%
+
+:- external(copy/2).
 
 :- external(unify/2).
 :- external(index/2).

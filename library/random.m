@@ -50,7 +50,7 @@
 random__params(2416, 374441, 1771875).
 
 random__init(I0, RS) :-
-	RS = I0.
+	copy(I0, RS).
 
 random__random(I, RS0, RS) :-
 	RS0 = I0,
@@ -58,7 +58,7 @@ random__random(I, RS0, RS) :-
 	I1 is I0 * A,
 	I2 is I1 + C,
 	I is I2 mod M,
-	RS = I.
+	copy(I, RS).
 
 random__randmax(M1, Rs0, Rs) :-
 	Rs0 = I,
@@ -373,7 +373,7 @@ random__test(Seed, N, Nums, Max) :-
 	random__test_2(N, Nums, RS1, _RS2).
 
 :- pred random__test_2(int, list(int), random__supply, random__supply).
-:- mode random__test_2(in, out, in, out) is det.
+:- mode random__test_2(in, out, di, uo) is det.
 
 random__test_2(N, Is, RS0, RS) :-
 	(

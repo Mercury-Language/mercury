@@ -12,6 +12,8 @@ builtin_strcmp_2(<, -1).
 builtin_strcmp_2(=, 0).
 builtin_strcmp_2(>, 1).
 
+copy(X, X).
+
 unify(X, X).
 
 index(_F, _I) :-

@@ -19,7 +19,7 @@
 :- type tree234(K, V).
 
 :- pred tree234__init(tree234(K, V)).
-:- mode tree234__init(out) is det.
+:- mode tree234__init(uo) is det.
 
 :- pred tree234__member(tree234(K, V), K, V).
 :- mode tree234__member(in, out, out) is nondet.
@@ -34,12 +34,15 @@
 :- mode tree234__insert(in, in, in, out) is semidet.
 
 :- pred tree234__set(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234__set(di, in, di, uo) is det.
 :- mode tree234__set(in, in, in, out) is det.
 
 :- pred tree234__delete(tree234(K, V), K, tree234(K, V)).
+:- mode tree234__delete(di, in, uo) is det.
 :- mode tree234__delete(in, in, out) is det.
 
 :- pred tree234__remove(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234__remove(di, in, uo, uo) is semidet.
 :- mode tree234__remove(in, in, out, out) is semidet.
 
 :- pred tree234__remove_smallest(tree234(K, V), K, V, tree234(K, V)).
@@ -582,6 +585,7 @@ tree234__set(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V, Tree) :-
 %------------------------------------------------------------------------------%
 
 :- pred tree234__four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234__four(di, uo, uo, uo, uo) is semidet.
 :- mode tree234__four(in, out, out, out, out) is semidet.
 
 tree234__four(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
@@ -744,6 +748,7 @@ tree234__remove_smallest(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 % balanced (this algorithm is not the *proper* way to join 2 234 trees).
 
 :- pred tree234__glue(tree234(K, V), tree234(K, V), tree234(K, V)).
+:- mode tree234__glue(di, di, uo) is det.
 :- mode tree234__glue(in, in, out) is det.
 
 tree234__glue(empty, T, T).

@@ -47,7 +47,7 @@
 	% `bintree_set__init(Set)' is true iff `Set' is an empty set.
 
 :- pred bintree_set__init(bintree_set(_T)).
-:- mode bintree_set__init(out) is det.
+:- mode bintree_set__init(uo) is det.
 
 :- pred bintree_set__singleton_set(bintree_set(T), T).
 :- mode bintree_set__singleton_set(out, in) is det.
@@ -85,6 +85,7 @@
 	% `Set0' and the set containing only `X'.
 
 :- pred bintree_set__insert(bintree_set(T), T, bintree_set(T)).
+:- mode bintree_set__insert(di, di, uo) is det.
 :- mode bintree_set__insert(in, in, out) is det.
 
 	% `bintree_set__insert_list(Set0, Xs, Set)' is true iff `Set'
@@ -92,6 +93,7 @@
 	% members of `Xs'.
 
 :- pred bintree_set__insert_list(bintree_set(T), list(T), bintree_set(T)).
+:- mode bintree_set__insert_list(di, di, uo) is det.
 :- mode bintree_set__insert_list(in, in, out) is det.
 
 	% `bintree_set__remove(Set0, X, Set)' is true iff `Set0' contains `X',

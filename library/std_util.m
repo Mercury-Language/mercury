@@ -30,6 +30,7 @@
 :- type univ.
 
 :- pred type_to_univ(_T, univ).
+:- mode type_to_univ(di, uo) is det.
 :- mode type_to_univ(in, out) is det.
 :- mode type_to_univ(out, in) is semidet.
 
