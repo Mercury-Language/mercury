@@ -51,52 +51,52 @@
 :- mode mode_info_set_io_state(mode_info_set_io_state, ui, mode_info_uo) is det.
 
 :- pred mode_info_get_module_info(mode_info, module_info).
-:- mode mode_info_get_module_info(in, out) is det.
+:- mode mode_info_get_module_info(mode_info_ui, out) is det.
 
 :- pred mode_info_set_module_info(mode_info, module_info, mode_info).
-:- mode mode_info_set_module_info(in, in, out) is det.
+:- mode mode_info_set_module_info(mode_info_di, in, mode_info_uo) is det.
 
 :- pred mode_info_get_preds(mode_info, pred_table).
-:- mode mode_info_get_preds(in, out) is det.
+:- mode mode_info_get_preds(mode_info_ui, out) is det.
 
 :- pred mode_info_get_modes(mode_info, mode_table).
-:- mode mode_info_get_modes(in, out) is det.
+:- mode mode_info_get_modes(mode_info_ui, out) is det.
 
 :- pred mode_info_get_insts(mode_info, inst_table).
-:- mode mode_info_get_insts(in, out) is det.
+:- mode mode_info_get_insts(mode_info_ui, out) is det.
 
 :- pred mode_info_get_predid(mode_info, pred_id).
-:- mode mode_info_get_predid(in, out) is det.
+:- mode mode_info_get_predid(mode_info_ui, out) is det.
 
 :- pred mode_info_get_procid(mode_info, proc_id).
-:- mode mode_info_get_procid(in, out) is det.
+:- mode mode_info_get_procid(mode_info_ui, out) is det.
 
 :- pred mode_info_get_context(mode_info, term__context).
-:- mode mode_info_get_context(in, out) is det.
+:- mode mode_info_get_context(mode_info_ui, out) is det.
 
 :- pred mode_info_set_context(term__context, mode_info, mode_info).
 :- mode mode_info_set_context(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_mode_context(mode_info, mode_context).
-:- mode mode_info_get_mode_context(in, out) is det.
+:- mode mode_info_get_mode_context(mode_info_ui, out) is det.
 
 :- pred mode_info_set_mode_context(mode_context, mode_info, mode_info).
 :- mode mode_info_set_mode_context(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_set_call_context(call_context, mode_info, mode_info).
-:- mode mode_info_set_call_context(in, in, out) is det.
+:- mode mode_info_set_call_context(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_unset_call_context(mode_info, mode_info).
-:- mode mode_info_unset_call_context(in, out) is det.
+:- mode mode_info_unset_call_context(mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_instmap(mode_info, instmap).
-:- mode mode_info_get_instmap(in, out) is det.
+:- mode mode_info_get_instmap(mode_info_ui, out) is det.
 
 :- pred mode_info_dcg_get_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_dcg_get_instmap(out, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_vars_instmap(mode_info, set(var), instmap).
-:- mode mode_info_get_vars_instmap(in, in, out) is det.
+:- mode mode_info_get_vars_instmap(mode_info_ui, in, out) is det.
 
 :- pred mode_info_set_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_set_instmap(in, mode_info_di, mode_info_uo) is det.
@@ -129,7 +129,7 @@
 :- mode mode_info_var_is_live(mode_info_ui, in, out) is det.
 
 :- pred mode_info_get_liveness(mode_info, set(var)).
-:- mode mode_info_get_liveness(in, out) is det.
+:- mode mode_info_get_liveness(mode_info_ui, out) is det.
 
 :- pred mode_info_get_liveness_2(list(set(var)), set(var), set(var)).
 :- mode mode_info_get_liveness_2(in, in, out) is det.
