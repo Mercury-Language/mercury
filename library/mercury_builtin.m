@@ -657,10 +657,10 @@ END_MODULE
 /*
 INIT sys_init_builtin_types_module
 */
+extern ModuleFunc builtin_types_module;
+extern void mercury__mercury_builtin__init(void);
 void sys_init_builtin_types_module(void);
 void sys_init_builtin_types_module(void) {
-	extern ModuleFunc builtin_types_module;
-	extern ModuleFunc mercury__mercury_builtin__init;
 
 	builtin_types_module();
 
@@ -726,13 +726,14 @@ Define_entry(mercury__unsafe_promise_unique_2_0);
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
+
 /*
 INIT sys_init_unsafe_promise_unique_module
 */
+extern ModuleFunc unsafe_promise_unique_module;
 void sys_init_unsafe_promise_unique_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_unsafe_promise_unique_module(void) {
-	extern ModuleFunc unsafe_promise_unique_module;
 	unsafe_promise_unique_module();
 }
 
@@ -808,13 +809,14 @@ Define_entry(mercury__copy_2_1);
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
+
 /*
 INIT sys_init_copy_module
 */
+extern ModuleFunc copy_module;
 void sys_init_copy_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_copy_module(void) {
-	extern ModuleFunc copy_module;
 	copy_module();
 }
 
