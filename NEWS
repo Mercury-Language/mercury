@@ -2,8 +2,10 @@ NEWS for Mercury release 0.4
 ----------------------------
 
 Higher-order predicates and lambda expressions are now implemented.
-(This means that `call/{1,2,3}' and `solutions/2' are now useable.)
-Unique modes are now partially implemented.
+(This means that `call/{1,2,3}' and `solutions/2' are now usable;
+unfortunately call/{4,5,6,...} are still not yet implemented.)
+Unique modes are now partially implemented (but don't use them
+for anything except I/O, as the implementation is not yet complete).
 Partially instantiated modes are now closer to being fully implemented.
 The installation process is more standard (configure; make; make install).
 Autoconfiguration is a bit more robust.
@@ -11,7 +13,7 @@ Autoconfiguration is a bit more robust.
 Error messages are a little better in some cases.
 Fixed a few code generation bugs.
 Ported to DEC Alpha/OSF and BSDI BSD/386.
-Improved efficiency of the 386 port by about 50%
+We've improved the efficiency of the 386 port by about 50%
 (the asm_fast.gc mode now works on the 386).
 We generate better code for calls to `\='.
 We generate better code for `compare/3'.
