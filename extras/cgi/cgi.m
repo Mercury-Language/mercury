@@ -12,6 +12,9 @@
 % <http://www.ncsa.uiuc.edu/SDG/Software/Mosaic/Docs/fill-out-forms/
 % overview.html>.
 
+% This is intended to conform to versions 1.0 and 1.1 of the
+% CGI specification.
+
 %-----------------------------------------------------------------------------%
 
 :- module cgi.
