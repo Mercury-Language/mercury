@@ -174,10 +174,8 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		tvarset,		
 		import_status,				% Import status of
 							% instance decl.
-		pred_or_func,				% Is method pred or
+		pred_or_func				% Is method pred or
 							% func?
-		term__context				% Context of instance
-							% decl.
 	).
 
 %----------------------------------------------------------------------------%
@@ -233,10 +231,6 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ProcIds, 
 		ArgModes),
 	
-		% XXX The correct context should be added to the
-		% XXX hlds_instance_defn
-	term__context_init(Context),
-
 	InstanceDefn0 = hlds_instance_defn(Status, _, InstanceTypes, 
 		_, _, _, _),
 
@@ -247,14 +241,14 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	
 	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
-		ArgTypeVars, Status, PredOrFunc, Context),
+		ArgTypeVars, Status, PredOrFunc),
 
 	check_instance_pred_procs(ClassVars, MethodName,
 		InstanceDefn0, InstanceDefn, Info0, Info),
 
 	Info = instance_method_info(ModuleInfo, _PredName, _PredArity, 
 		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
-		_ArgTypeVars, _Status, _PredOrFunc, _Context).
+		_ArgTypeVars, _Status, _PredOrFunc).
 
 :- pred check_instance_pred_procs(list(var), sym_name,
 	hlds_instance_defn, hlds_instance_defn, 
@@ -268,16 +262,16 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 				MaybeInstancePredProcs, InstanceVarSet, F),
 	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
-		ArgTypeVars, Status, PredOrFunc, Context),
+		ArgTypeVars, Status, PredOrFunc),
 	get_matching_instance_names(InstanceInterface, PredOrFunc, MethodName,
 		PredArity, InstanceNames),
 	(
-		InstanceNames = [InstancePredName]
+		InstanceNames = [InstancePredName - Context]
 	->
 		produce_auxiliary_procs(ClassVars, 
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, 
-			InstancePredName,
+			InstancePredName, Context,
 			InstancePredId, InstanceProcIds, Info0, Info),
 
 		MakeClassProc = 
@@ -315,7 +309,7 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 		Errors = [NewError|Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
 			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
-			ArgTypeVars, Status, PredOrFunc, Context)
+			ArgTypeVars, Status, PredOrFunc)
 	;
 			 % another kind of error
 			 % XXX still room for improvement in the error message
@@ -331,11 +325,11 @@ check_instance_pred_procs(ClassVars, MethodName, InstanceDefn0, InstanceDefn,
 		Errors = [NewError|Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
 			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
-			ArgTypeVars, Status, PredOrFunc, Context)
+			ArgTypeVars, Status, PredOrFunc)
 	).
 
 :- pred get_matching_instance_names(list(instance_method), pred_or_func,
-	sym_name, arity, list(sym_name)).
+	sym_name, arity, list(pair(sym_name, term__context))).
 :- mode get_matching_instance_names(in, in, in, in, out) is det.
 
 get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
@@ -343,22 +337,26 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 	(
 		PredOrFunc = predicate,
 		solutions(
-			lambda([SymName::out] is nondet, 
+			lambda([Pair::out] is nondet, 
 				(
 					list__member(Method, InstanceInterface),
 					Method = pred_instance(PredName, 
-							SymName, PredArity)
+							SymName, PredArity,
+							Context),
+					Pair = SymName - Context
 				)),
 			InstanceNames)
 	;
 		PredOrFunc = function,
 		FuncArity is PredArity - 1,
 		solutions(
-			lambda([SymName::out] is nondet, 
+			lambda([Pair::out] is nondet, 
 				(
 					list__member(Method, InstanceInterface),
 					Method = func_instance(PredName, 
-							SymName, FuncArity)
+							SymName, FuncArity,
+							Context),
+					Pair = SymName - Context
 				)),
 			InstanceNames)
 	).
@@ -367,19 +365,19 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
 :- pred produce_auxiliary_procs(list(var), 
-	list(type), list(class_constraint), varset, sym_name,
+	list(type), list(class_constraint), varset, sym_name, term__context,
 	pred_id, list(proc_id), instance_method_info, instance_method_info).
-:- mode produce_auxiliary_procs(in, in, in, in, in, out, out, 
+:- mode produce_auxiliary_procs(in, in, in, in, in, in, out, out, 
 	in, out) is det.
 
 produce_auxiliary_procs(ClassVars, 
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
-		InstancePredName, PredId, 
+		InstancePredName, Context, PredId,
 		InstanceProcIds, Info0, Info) :-
 
 	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
 		ExistQVars0, ArgTypes0, ClassContext0, ArgModes, Errors,
-		ArgTypeVars0, Status, PredOrFunc, Context),
+		ArgTypeVars0, Status, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
@@ -490,7 +488,7 @@ produce_auxiliary_procs(ClassVars,
 
 	Info = instance_method_info(ModuleInfo, PredName, PredArity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
-		ArgTypeVars, Status, PredOrFunc, Context).
+		ArgTypeVars, Status, PredOrFunc).
 
 :- pred apply_substitution_to_var_list(list(var), map(var, term), list(var)).
 :- mode apply_substitution_to_var_list(in, in, out) is det.

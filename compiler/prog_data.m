@@ -286,10 +286,14 @@
 		%	Context
 	.
 
-:- type instance_method	--->	func_instance(sym_name, sym_name, arity)
-			;	pred_instance(sym_name, sym_name, arity)
-				% Method, Instance, Arity
-			.
+:- type instance_method	
+	--->	func_instance(sym_name, sym_name, arity, term__context)
+				% Method, Instance, Arity, 
+				% Line number of declaration
+	;	pred_instance(sym_name, sym_name, arity, term__context)
+				% Method, Instance, Arity, 
+				% Line number of declaration
+	.
 
 :- type instance_interface ==	list(instance_method).
 

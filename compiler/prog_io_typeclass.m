@@ -496,7 +496,7 @@ parse_instance_methods(ModuleName, Methods, Result) :-
 term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 	(
 		MethodTerm = term__functor(term__atom("is"), [ClassMethodTerm,
-						InstanceMethod], _)
+						InstanceMethod], TermContext)
 	->
 		(
 			ClassMethodTerm = term__functor(term__atom("pred"),
@@ -517,7 +517,8 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					ok(InstanceMethodName, []))
 			->
 				Result = ok(pred_instance(ClassMethodName,
-					InstanceMethodName, ArityInt))
+					InstanceMethodName, ArityInt,
+					TermContext))
 			;
 				Result = error(
 				    "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
@@ -542,7 +543,8 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					ok(InstanceMethodName, []))
 			->
 				Result = ok(func_instance(ClassMethodName,
-					InstanceMethodName, ArityInt))
+					InstanceMethodName, ArityInt,
+					TermContext))
 			;
 				Result = error(
 				    "expected `func(<Name> / <Arity>) is <InstanceMethod>'",

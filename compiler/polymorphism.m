@@ -1216,7 +1216,7 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, GoalInfo0,
 				TypeSubst1) ->
 			TypeSubst = TypeSubst1
 		;
-		error("polymorphism__process_goal_expr: type unification failed")
+		error("polymorphism__process_call: type unification failed")
 		),
 
 		apply_subst_to_constraints(Subst, PredClassContext0,
