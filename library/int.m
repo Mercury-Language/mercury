@@ -254,11 +254,11 @@ int__log2_2(X, N0, N) :-
 % These are actually implemented as builtins.
 % Their explicit definitions are necessary only for bootstrapping.
 
-% - X = 0 - X.
-% + X = 0 + X.
+- X = 0 - X.
++ X = 0 + X.
 
-% builtin_unary_minus(X, Y) :- Y is 0 - X.
-% builtin_unary_plus(X, Y)  :- Y is 0 + X.
+builtin_unary_minus(X, Y) :- Y is 0 - X.
+builtin_unary_plus(X, Y)  :- Y is 0 + X.
 
 %-----------------------------------------------------------------------------%
 

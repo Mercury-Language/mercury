@@ -145,8 +145,8 @@
 % These are actually implemented as builtins.
 % Their explicit definitions are necessary only for bootstrapping.
 
-% + X = 0.0 + X.
-% - X = 0.0 - X.
++ X = 0.0 + X.
+- X = 0.0 - X.
 
 %---------------------------------------------------------------------------%
 
