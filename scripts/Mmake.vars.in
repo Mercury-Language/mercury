@@ -159,7 +159,7 @@ MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
 # The system libraries were once needed here, but are currently unnecessary.
 MS_CL_LIBS	= 
 MERC_C_INCL_DIR = @LIBDIR@/inc
-MERC_DLL_DIR    = @LIBDIR@/inc
+MERC_DLL_DIR    = @LIBDIR@/lib/ilc/@FULLARCH@
 
 # MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
 # into bytecode.

@@ -189,13 +189,11 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ss ils library.dlls dlls
+.PHONY: os cs ss ils 
 os: $(library.os)
 cs: $(library.cs)
 ss: $(library.ss)
 ils: $(library.ils)
-library.dlls = $(library.mods:%=%.dll)
-dlls: $(library.dlls)
 
 #-----------------------------------------------------------------------------#
 
@@ -204,7 +202,7 @@ dlls: $(library.dlls)
 # The ilc and il grades target Microsoft's .NET frameworks.  
 ifeq ($(findstring il,$(GRADE)),il)        
 
-lib_std: dlls mercury.dll
+lib_std: mercury.dll
 
 # Instead of generating UNIX style libraries, we general a bunch of
 # DLLs.  We have to hardcode the names of the C code files and the
@@ -214,7 +212,6 @@ RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
 # Turn this on if you wish to enable .NET debugging.
 #MS_ILASMFLAGS = /debug
 
-
 # If you do generate a new strong name, you had better update
 # compiler/mlds_to_il.m to generate references to it.  It is also hard-coded
 # in runtime/mercury_il.il.
@@ -223,13 +220,10 @@ RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
-$(os_subdir)mercury_all.dll : $(library.ils)
-	rm -f $@
-	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $(library.ils)
-
-mercury.dll: mercury_all.dll $(library.foreign_dlls) library_strong_name.sn
+mercury.dll: $(library.dlls) $(library.foreign_dlls) library_strong_name.sn
 	cp $(RUNTIME_DLLS) .
-	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll mercury_all.dll $(library.foreign_dlls) $(RUNTIME_DLLS) 
+	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
+		$(library.dlls) $(library.foreign_dlls) $(RUNTIME_DLLS) 
 
 else
 
@@ -335,9 +329,13 @@ install_init: $(STD_LIB_NAME).init install_lib_dirs
 ifneq (,$(findstring il,$(GRADE)))
 
 .PHONY: install_library
-install_library: $(library.dlls) $(library.foreign_dlls) install_grade_dirs
-	cp `vpath_find $(library.dlls) $(library.foreign_dlls) mercury.dll` \
-		$(INSTALL_MERC_LIB_DIR)
+install_library: mercury.dll install_grade_dirs install_gac
+	cp `vpath_find $(library.foreign_dlls) mercury_all.dll \
+		mercury.dll` $(INSTALL_MERC_LIB_DIR)
+
+.PHONY: install_gac
+install_gac: mercury.dll
+	gacutil -i mercury.dll
 	
 else
 

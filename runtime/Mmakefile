@@ -330,7 +330,7 @@ install_headers: $(MCPP_HDRS) install_dirs
 install_init: 
 
 .PHONY: install_lib 
-install_lib: $(DOTNET_DLLS) install_dirs
+install_lib: $(DOTNET_DLLS) install_headers install_dirs
 	cp `vpath_find $(DOTNET_DLLS)` $(INSTALL_MERC_LIB_DIR)
 
 else
