@@ -387,7 +387,14 @@ standard_det("failure", failure).
 parse_bound_inst_list(Disj, Uniqueness, bound(Uniqueness, Functors)) :-
 	disjunction_to_list(Disj, List),
 	convert_bound_inst_list(List, Functors0),
-	list__sort_and_remove_dups(Functors0, Functors).
+	list__sort(Functors0, Functors),
+	% check that the list doesn't specify the same functor twice
+	\+ (
+		list__append(_, SubList, Functors),
+		SubList = [F1, F2 | _],
+		F1 = functor(ConsId, _),
+		F2 = functor(ConsId, _)
+	).
 
 :- pred convert_bound_inst_list(list(term), list(bound_inst)).
 :- mode convert_bound_inst_list(in, out) is semidet.

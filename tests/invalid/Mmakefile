@@ -29,6 +29,7 @@ SOURCES= \
 	ho_type_mode_bug.m \
 	ho_unique_error.m \
 	inline_conflict.m \
+	inst_list_dup.m \
 	io_in_ite_cond.m \
 	missing_det_decls.m \
 	missing_interface_import.m \
