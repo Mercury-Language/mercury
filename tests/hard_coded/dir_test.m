@@ -142,7 +142,7 @@ main -->
 	testp("dir__foldl2",
 		dir__foldl2(list_files, "test_dir", []), TestDirFiles),
 	io__write_string("Files in test_dir:\n"),
-	io__write_list(reverse(TestDirFiles), ", ", io__write_string),
+	io__write_list(sort(TestDirFiles), ", ", io__write_string),
 	io__nl,
 
 	testp("dir__recursive_foldl2 (no symlinks)",
@@ -150,7 +150,7 @@ main -->
 		NoFollowFiles),
 	io__write_string(
 		"Files in test_dir (recursive, not following symlinks):\n"),
-	io__write_list(reverse(NoFollowFiles), ", ", io__write_string),
+	io__write_list(sort(NoFollowFiles), ", ", io__write_string),
 	io__nl,
 
 	testp("dir__recursive_foldl2 (symlinks)",
@@ -158,7 +158,7 @@ main -->
 		FollowFiles),
 	io__write_string(
 		"Files in test_dir (recursive, following symlinks:\n"),
-	io__write_list(reverse(FollowFiles), ", ", io__write_string),
+	io__write_list(sort(FollowFiles), ", ", io__write_string),
 	io__nl,
 	
 	dir__recursive_foldl2(list_files, "dir_test.m", yes, [], Res),
@@ -244,7 +244,7 @@ test_split_name(PathName) -->
 		io__write_string(DirName),
 		io__write_string(""", """),
 		io__write_string(FileName),
-		io__write_string(""").\n"""),
+		io__write_string(""").\n"),
 		test_make_path_name(DirName, FileName)
 	;
 		io__write_string("_, _) failed.\n")
@@ -303,11 +303,11 @@ test_path_name_is_root_directory(PathName) -->
 		io__state::di, io__state::uo) is det.
 
 test_make_path_name(DirName, FileName) -->
-	io__write_string(""""),
+	io__write_string("\""),
 	io__write_string(DirName),
-	io__write_string("""/"""),
+	io__write_string("\"/\""),
 	io__write_string(FileName),
-	io__write_string(""" "),
+	io__write_string("\""),
 	{ Res = promise_only_solution(try_det(
 		(pred(R::out) is det :- R = DirName/FileName))) },
 	(
@@ -320,7 +320,7 @@ test_make_path_name(DirName, FileName) -->
 		{ error("dir./ failed") }
 	;
 		{ Res = exception(Excp) },
-		io__write_string("threw exception: "),
+		io__write_string(" threw exception: "),
 		io__write(univ_value(Excp)),
 		io__nl
 	).
