@@ -14,6 +14,21 @@
 # Environment variables: MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
 # MERCURY_MKINIT.
 
+Usage="\
+Usage: c2init [options] modules ...
+Options: 
+-l, --library
+	Don't generate a \`main()' function.
+	Instead, generate a function
+		mercury_main(int argc, char **argv, char *stack_bottom);
+	(declared in \"init.h\") that can be called from C code.
+-c <n>, --max-calls <n>
+	Break up the initialization into groups of at most <n> function calls.
+	(Default value of <n> is 40.)
+-w <label>, --entry-point <label>
+	Set entry point to <label>.
+	(Default value is \`mercury__io__run_0_0'.)"
+
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS=$MERCURY_MOD_LIB_DIR/*}
 MKINIT=${MERCURY_MKINIT=mkinit}
@@ -21,24 +36,24 @@ MKINIT=${MERCURY_MKINIT=mkinit}
 # maximum number of calls to put in a single function
 maxcalls=40
 defentry=mercury__io__run_0_0
+library_opt=""
 while true; do
 	case "$1" in
 	-c|--max-calls)
 		maxcalls="$2"; shift; shift;;
 	-w|--entry-point)
 		defentry="$2"; shift; shift;;
+	-l|--library)
+		library_opt="-l"; shift;;
+	-l-|--no-library)
+		library_opt=""; shift;;
+	-h|--help|"-?")
+		echo "$Usage"
+		exit 0;;
 	--)
 		shift; break;;
 	-*)
-		echo "Usage: c2init [options] modules ..." 1>&2
-		echo "Options: " 1>&2
-		echo "-c <n>, --max-calls <n>" 1>&2
-		echo "	Break up the initialization into groups of at" \
-			"most <n> function calls" 1>&2
-		echo "	(Default value of <n> is 40)" 1>&2
-		echo "-w <label>, --entry-point <label>" 1>&2
-		echo "	Set entry point to <label>" 1>&2
-		echo "	(Default value is \`mercury__io__run_0_0')" 1>&2
+		echo "$Usage" 1>&2;
 		exit 1;;
 	*)
 		break;;
@@ -46,8 +61,10 @@ while true; do
 done
 
 case $# in
-	0) exec $MKINIT -w"$defentry" -c"$maxcalls" $MERCURY_MOD_LIB_MODS
+	0) exec $MKINIT -w"$defentry" -c"$maxcalls" $library_opt \
+		$MERCURY_MOD_LIB_MODS
 	   ;;
-	*) exec $MKINIT -w"$defentry" -c"$maxcalls" "$@" $MERCURY_MOD_LIB_MODS
+	*) exec $MKINIT -w"$defentry" -c"$maxcalls" $library_opt \
+		"$@" $MERCURY_MOD_LIB_MODS
 	   ;;
 esac
