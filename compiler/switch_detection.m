@@ -30,9 +30,6 @@
 	% 	Used by both switch_detection and cse_detection.
 	%	Searches through `Goal0' looking for the first deconstruction
 	%	unification with `Var' or an alias of `Var'.
-	%	`ProcessUnify' is called if a deconstruction unification with
-	%	`Var' is found, returning either the cons_id for
-	%	switch_detection or the common deconstruction for cse_detection.
 	%	If a deconstruction unification of the variable is found,
 	%	`ProcessUnify' is called to handle it and searching is stopped.
 	%	If not, `Result' is set to `Result0'.
