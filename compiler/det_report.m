@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,7 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 		PredInfo, ProcInfo) },
 	check_determinism(PredId, ProcId, PredInfo, ProcInfo,
 		ModuleInfo0, ModuleInfo1),
-	check_if_main_can_fail(PredId, ProcId, PredInfo, ProcInfo,
+	check_determinism_of_main(PredId, ProcId, PredInfo, ProcInfo,
 		ModuleInfo1, ModuleInfo2),
 	check_for_multisoln_func(PredId, ProcId, PredInfo, ProcInfo,
 		ModuleInfo2, ModuleInfo3),
@@ -243,31 +243,26 @@ print_dets([D|Rest]) -->
 	io__nl,
 	print_dets(Rest).
 	
-:- pred check_if_main_can_fail(pred_id, proc_id, pred_info, proc_info,
+:- pred check_determinism_of_main(pred_id, proc_id, pred_info, proc_info,
 		module_info, module_info, io__state, io__state).
-:- mode check_if_main_can_fail(in, in, in, in, in, out, di, uo) is det.
+:- mode check_determinism_of_main(in, in, in, in, in, out, di, uo) is det.
 
-check_if_main_can_fail(_PredId, _ProcId, PredInfo, ProcInfo,
+check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
 		ModuleInfo0, ModuleInfo) -->
+	%
+	% check that `main/2' has determinism `det' or `cc_multi',
+	% as required by the language reference manual
+	%
 	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
-	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
-	% check that `main/2' cannot fail
 	( 
 		{ pred_info_name(PredInfo, "main") },
 		{ pred_info_arity(PredInfo, 2) },
 		{ pred_info_is_exported(PredInfo) },
-		{
-		  determinism_components(InferredDetism, can_fail, _)
-		;
-		  MaybeDetism = yes(DeclaredDeterminism),
-		  determinism_components(DeclaredDeterminism, can_fail, _)
-		}
+		{ MaybeDetism = yes(DeclaredDetism) },
+		{ DeclaredDetism \= det, DeclaredDetism \= cc_multidet }
 	->
 		{ proc_info_context(ProcInfo, Context1) },
 		prog_out__write_context(Context1),
-			% The error message is actually a lie -
-			% main/2 can also be `erroneous'.  But mentioning
-			% that would probably just confuse people.
 		io__write_string(
 			"Error: main/2 must be `det' or `cc_multi'.\n"),
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }

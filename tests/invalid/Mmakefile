@@ -36,6 +36,7 @@ SOURCES= \
 	ho_unique_error.m \
 	impure_method_impl.m \
 	inline_conflict.m \
+	invalid_main.m \
 	inst_list_dup.m \
 	io_in_ite_cond.m \
 	missing_det_decls.m \

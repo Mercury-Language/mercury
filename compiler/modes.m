@@ -354,14 +354,14 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc,
 		UnsafeToContinue),
 	( { WhatToCheck = check_unique_modes },
 		write_mode_inference_messages(PredIds, yes, ModuleInfo1),
-		{ ModuleInfo2 = ModuleInfo1 }
+		check_eval_methods(ModuleInfo1, ModuleInfo2)
 	; { WhatToCheck = check_modes },
 		( { UnsafeToContinue = yes } ->
 			write_mode_inference_messages(PredIds, no, ModuleInfo1)
 		;
 			[]
 		),
-		check_eval_methods(ModuleInfo1, ModuleInfo2)
+		{ ModuleInfo2 = ModuleInfo1 }
 	),
 	{ ModuleInfo = ModuleInfo2 }.
 
@@ -2132,6 +2132,9 @@ mode_context_to_unify_context(uninitialized, _, _) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+% check that the evaluation method is OK for the given mode(s).
+% we also check the mode of main/2 here.
+
 :- pred check_eval_methods(module_info, module_info, io__state, io__state).
 :- mode check_eval_methods(in, out, di, uo) is det.
 
@@ -2158,34 +2161,15 @@ pred_check_eval_methods([PredId|Rest], ModuleInfo0, ModuleInfo) -->
 proc_check_eval_methods([], _, M, M) --> [].
 proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) --> 
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
-		_, ProcInfo) },
+		PredInfo, ProcInfo) },
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ eval_method_to_string(EvalMethod, EvalMethodS) },
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	{ proc_info_argmodes(ProcInfo, Modes) },
 	( 
 		{ eval_method_requires_ground_args(EvalMethod) = yes },
 		\+ { only_fully_in_out_modes(Modes, ModuleInfo0) } 
 	->
-		prog_out__write_context(Context),
-		io__write_string("Sorry, not implemented: `pragma "),
-		io__write_string(EvalMethodS),
-		io__write_string("'\n"),
-		prog_out__write_context(Context),
-		io__write_string(
-		    "  declaration not allowed for procedure with\n"),
-		prog_out__write_context(Context),
-		io__write_string(
-		    "  partially instantiated modes.\n"), 
-		( { VerboseErrors = yes } ->
-			io__write_string(
-"	Tabling of predicates/functions with partially instantiated modes
-	is not currently implemented.\n")
-		;
-			[]
-		),
-		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
+		report_eval_method_requires_ground_args(ProcInfo,
+			ModuleInfo0, ModuleInfo1)
 	;
 		{ ModuleInfo1 = ModuleInfo0 }	
 	),	
@@ -2193,29 +2177,23 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 		{ eval_method_destroys_uniqueness(EvalMethod) = yes },
 		\+ { only_nonunique_modes(Modes, ModuleInfo1) } 
 	->
-		prog_out__write_context(Context),
-		io__write_string("Error: `pragma "),
-		io__write_string(EvalMethodS),
-		io__write_string("'\n"),
-		prog_out__write_context(Context),
-		io__write_string(
-		    "  declaration not allowed for procedure with\n"),
-		prog_out__write_context(Context),
-		io__write_string("  unique modes.\n"), 
-		( { VerboseErrors = yes } ->
-			io__write_string(
-"	Tabling of predicates/functions with unique modes is not allowed
-	as this would lead to a copying of the unique arguments which 
-	would result in them no longer being unique.\n")
-		;
-			[]
-		),
-		{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
+		report_eval_method_destroys_uniqueness(ProcInfo,
+			ModuleInfo1, ModuleInfo2)
 	;
 		{ ModuleInfo2 = ModuleInfo1 }	
-		
 	),
-	proc_check_eval_methods(Rest, PredId, ModuleInfo2, ModuleInfo).
+	(
+		{ pred_info_name(PredInfo, "main") },
+		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_is_exported(PredInfo) },
+		{ \+ check_mode_of_main(Modes, ModuleInfo2) }
+	->
+		report_wrong_mode_for_main(ProcInfo,
+			ModuleInfo2, ModuleInfo3)
+	;
+		{ ModuleInfo3 = ModuleInfo2 }
+	),
+	proc_check_eval_methods(Rest, PredId, ModuleInfo3, ModuleInfo).
 
 :- pred only_fully_in_out_modes(list(mode), module_info).
 :- mode only_fully_in_out_modes(in, in) is semidet.
@@ -2244,6 +2222,92 @@ only_nonunique_modes([Mode|Rest], ModuleInfo) :-
 	inst_is_not_partly_unique(ModuleInfo, InitialInst),
 	inst_is_not_partly_unique(ModuleInfo, FinalInst),
 	only_nonunique_modes(Rest, ModuleInfo).
+
+:- pred check_mode_of_main(list(mode), module_info).
+:- mode check_mode_of_main(in, in) is semidet.
+
+check_mode_of_main([Di, Uo], ModuleInfo) :-
+	mode_get_insts(ModuleInfo, Di, DiInitialInst, DiFinalInst),
+	mode_get_insts(ModuleInfo, Uo, UoInitialInst, UoFinalInst),
+	%
+	% Note that we hard-code these tests,
+	% rather than using `inst_is_free', `inst_is_unique', etc.,
+	% since for main/2 we're looking for an exact match
+	% (modulo inst synonyms) with what the language reference
+	% manual specifies, rather than looking for a particular
+	% abstract property.
+	%
+	inst_expand(ModuleInfo, DiInitialInst, ground(unique, no)),
+	inst_expand(ModuleInfo, DiFinalInst, ground(clobbered, no)),
+	inst_expand(ModuleInfo, UoInitialInst, Free),
+	( Free = free ; Free = free(_Type) ),
+	inst_expand(ModuleInfo, UoFinalInst, ground(unique, no)).
+
+:- pred report_eval_method_requires_ground_args(proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode report_eval_method_requires_ground_args(in, in, out, di, uo) is det.
+
+report_eval_method_requires_ground_args(ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_eval_method(ProcInfo, EvalMethod) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	prog_out__write_context(Context),
+	io__write_string("Sorry, not implemented: `pragma "),
+	io__write_string(EvalMethodS),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+	    "  declaration not allowed for procedure with\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+	    "  partially instantiated modes.\n"), 
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"	Tabling of predicates/functions with partially instantiated modes
+	is not currently implemented.\n")
+	;
+		[]
+	),
+	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+
+:- pred report_eval_method_destroys_uniqueness(proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode report_eval_method_destroys_uniqueness(in, in, out, di, uo) is det.
+
+report_eval_method_destroys_uniqueness(ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_eval_method(ProcInfo, EvalMethod) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	prog_out__write_context(Context),
+	io__write_string("Error: `pragma "),
+	io__write_string(EvalMethodS),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+	    "  declaration not allowed for procedure with\n"),
+	prog_out__write_context(Context),
+	io__write_string("  unique modes.\n"), 
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"	Tabling of predicates/functions with unique modes is not allowed
+	as this would lead to a copying of the unique arguments which 
+	would result in them no longer being unique.\n")
+	;
+		[]
+	),
+	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+
+:- pred report_wrong_mode_for_main(proc_info,
+		module_info, module_info, io__state, io__state).
+:- mode report_wrong_mode_for_main(in, in, out, di, uo) is det.
+
+report_wrong_mode_for_main(ProcInfo, ModuleInfo0, ModuleInfo) -->
+	{ proc_info_context(ProcInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Error: main/2 must have mode `(di, uo)'.\n"),
+	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -18,7 +18,7 @@ exiting from signal handler
 :- interface.
 :- import_module io, int, list, std_util.
 
-:- pred main(io__state::di, io__state::uo) is multidet.
+:- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
 

@@ -59,6 +59,9 @@
 :- pred type_util__is_dummy_argument_type(type).
 :- mode type_util__is_dummy_argument_type(in) is semidet.
 
+:- pred type_is_io_state(type).
+:- mode type_is_io_state(in) is semidet.
+
 :- pred type_is_aditi_state(type).
 :- mode type_is_aditi_state(in) is semidet.
 
@@ -527,6 +530,10 @@ type_util__is_dummy_argument_type(Type) :-
 % XXX should we include aditi:state/0 in this list?
 type_util__is_dummy_argument_type_2("io", "state", 0).	 % io:state/0
 type_util__is_dummy_argument_type_2("store", "store", 1). % store:store/1.
+
+type_is_io_state(Type) :-
+        type_to_type_id(Type,
+		qualified(unqualified("io"), "state") - 0, []).
 
 type_is_aditi_state(Type) :-
         type_to_type_id(Type,

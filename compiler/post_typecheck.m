@@ -179,15 +179,24 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, ModuleInfo, ReportErrs,
 	),
 
 	%
+	% check that main/2 has the right type
+	%
+	( ReportErrs = yes ->
+		check_type_of_main(PredInfo, IOState2, IOState3)
+	;
+		IOState3 = IOState2
+	),
+
+	%
 	% Check that all Aditi predicates have an `aditi__state' argument.
 	% This must be done after typechecking because of type inference --
 	% the types of some Aditi predicates may not be known before.
 	%
 	pred_info_get_markers(PredInfo, Markers),
 	( ReportErrs = yes, check_marker(Markers, aditi) ->
-		check_aditi_state(ModuleInfo, PredInfo, IOState2, IOState)
+		check_aditi_state(ModuleInfo, PredInfo, IOState3, IOState)
 	;
-		IOState = IOState2
+		IOState = IOState3
 	).
 
 :- pred check_type_bindings_2(assoc_list(prog_var, (type)), list(tvar),
@@ -573,6 +582,7 @@ post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo) -->
 	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
 			PredInfo0, PredInfo).
 
+
 	%
 	% For ill-typed preds, we just need to set the modes up correctly
 	% so that any calls to that pred from correctly-typed predicates
@@ -655,6 +665,44 @@ post_typecheck__finish_assertion(Module0, PredId, Module) -->
 		% record which predicates are used in assertions
 	{ assertion__record_preds_used_in(Goal, AssertionId, Module3, Module) }.
 	
+%-----------------------------------------------------------------------------%
+
+:- pred check_type_of_main(pred_info, io__state, io__state).
+:- mode check_type_of_main(in, di, uo) is det.
+
+check_type_of_main(PredInfo) -->
+	( 
+		%
+		% Check if this predicate is the
+		% program entry point main/2.
+		%
+		{ pred_info_name(PredInfo, "main") },
+		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_is_exported(PredInfo) }
+	->
+		%
+		% Check that the arguments of main/2
+		% have type `io__state'.
+		%
+		{ pred_info_arg_types(PredInfo, ArgTypes) },
+		(
+			{ ArgTypes = [Arg1, Arg2] },
+			{ type_is_io_state(Arg1) },
+			{ type_is_io_state(Arg2) }
+		->
+			[]
+		;
+			{ pred_info_context(PredInfo, Context) },
+			error_util__write_error_pieces(Context, 0,
+				[words("Error: arguments of main/2"),
+				words("must have type `io__state'.")]),
+			io__set_exit_status(1)
+		)
+	;
+		[]
+	).
+	
+%-----------------------------------------------------------------------------%
 
 	% 
 	% Ensure that all constructors occurring in predicate mode
