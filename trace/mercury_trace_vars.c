@@ -353,7 +353,7 @@ MR_trace_set_level(int ancestor_level)
 		copy = MR_copy_string(name);
 		copylen = strlen(copy);
 		s = copy + copylen - 1;
-		while (s > copy && isdigit(*s)) {
+		while (s > copy && MR_isdigit(*s)) {
 			s--;
 		}
 
@@ -363,7 +363,7 @@ MR_trace_set_level(int ancestor_level)
 			MR_point.MR_point_vars[slot].MR_var_num_suffix = -1;
 			MR_point.MR_point_vars[slot].MR_var_basename = copy;
 		} else {
-			if (isdigit(*s)) {
+			if (MR_isdigit(*s)) {
 				fatal_error("variable name starts with digit");
 			}
 
