@@ -331,9 +331,14 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 	saved_regs = event_info->MR_saved_regs;
 	entry = event_info->MR_event_sll->MR_sll_entry;
+	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		message = "Cannot perform retry, because this procedure "
+			"was not compiled with\nexecution tracing enabled.";
+		return message;
+	}
+
 	call_label = entry->MR_sle_call_label;
 	input_args = &call_label->MR_sll_var_info;
-
 	if (input_args->MR_slvs_var_count < 0) {
 		message = "Cannot perform retry because information about "
 		          "the input arguments is not available.";
