@@ -681,6 +681,7 @@ A lambda expression is a compound term of one of the following forms
 @example
 lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
 pred(Var1::Mode1, Var2::Mode2, @dots{}) is Det :- Goal
+pred(Var1::Mode1, Var2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
 func(Var1::Mode1, Var2::Mode2, @dots{}) = (Var::Mode) is Det :- Goal
 func(Var1, Var2, @dots{}) = Var :- Goal
 @end example
@@ -688,13 +689,34 @@ func(Var1, Var2, @dots{}) = Var :- Goal
 @noindent
 where Var1, Var2, @dots{} are zero or more variables,
 Mode1, Mode2, @dots{} are zero or more modes (@pxref{Modes}),
+DCGMode0 and DCGMode1 are modes (@pxref{Modes}),
 Det is a determinism (@pxref{Determinism}),
-and Goal is a goal (@pxref{Goals}). 
+Goal is a goal (@pxref{Goals}),
+and DCGGoal is a DCG Goal (@pxref{DCG-goals}). 
 The @samp{:- Goal} part is optional;
 if it is not specified, then @samp{:- true} is assumed.
 A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
 determined by the specified goal.
+The form of lambda expression using @samp{-->} as its top level functor
+is a syntactic abbreviation: an expression of the form
+
+@example
+pred(Var1::Mode1, Var2::Mode2, @dots{}, DCGMode0, DCGMode1) is Det --> DCGGoal
+@end example
+
+@noindent
+is equivalent to
+
+@example
+pred(Var1::Mode1, Var2::Mode2, @dots{},
+    DCGVar0::DCGMode0, DCGVar1::DCGMode1) is Det :- Goal
+@end example
+
+@noindent
+where DCGVar0 and DCGVar1 are fresh variables,
+and Goal is the result of @samp{DCG-transform(DCGVar0, DCGVar1, DCGGoal)}
+where DCG-transform is the function specified in @pxref{DCG-goals}.
 @xref{Higher-order}.
 
 A higher-order function application is a compound term of one
@@ -1114,7 +1136,7 @@ the database over a network, you would need declarations such as
 For example, the following declaration 
 
 @example
-:- inst listskel(Inst) = bound( [] ; [Inst | listskel] ).
+:- inst listskel(Inst) = bound( [] ; [Inst | listskel(Inst)] ).
 @end example
 
 @noindent
@@ -1408,7 +1430,7 @@ only destructive-input and unique-output modes work.
 
 The Mercury compiler does not (yet) reuse @samp{dead}
 values.  The only destructive update in the current implementation occurs
-in the library modules for I/O and arrays.  We do however plan to
+in library modules, e.g. for I/O and arrays.  We do however plan to
 implement structure reuse and compile-time garbage collection
 in the very near future.
 
@@ -2136,6 +2158,31 @@ Double = scalar_product(2)
 @noindent
 binds @samp{Double} to a higher-order function term of type
 @samp{func(list(int)) = list(int)}.
+
+For higher-order predicate expressions that thread an accumulator
+pair, we have syntax that allows you to use DCG notation in the
+goal of the expression.  For example,
+
+@example
+Pred = (pred(Strings::in, Num::out, di, uo) is det -->
+    io__write_string("The strings are: "),
+    @{ list__length(Strings, Num) @},
+    io__write_strings(Strings),
+    io__nl
+)
+@end example
+
+@noindent
+is equivalent to
+
+@example
+Pred = (pred(Strings::in, Num::out, IO0::di, IO::uo) is det :-
+    io__write_string("The strings are: ", IO0, IO1),
+    list__length(Strings, Num),
+    io__write_strings(Strings, IO1, IO2),
+    io__nl(IO2, IO)
+)
+@end example
 
 Higher-order function terms of zero arity can only be created using
 an explicit lambda expression; you have to use e.g. @samp{(func) = foo}
@@ -3129,14 +3176,12 @@ of a C function on the trail and have the Mercury runtime call your
 function back whenever future execution backtracks to the current choice point,
 or whenever that choice point is pruned, either because execution
 commits to never backtracking over that point, or because an
-exception was thrown, or because the garbage collector determined
-that the value being trailed is no longer accessible.
+exception was thrown, or possibly during garbage collection.
 
 Note that currently Mercury does not support exception handling,
-and (as with most logic programming implementations) the garbage
-collector in the current Mercury implementation does not garbage-collect
-the trail; these two cases are mentioned only so that we can cater
-for possible future extensions.
+and the garbage collector in the current Mercury implementation
+does not garbage-collect the trail; these two cases are mentioned
+only so that we can cater for possible future extensions.
 
 @table @b
 @item @bullet{} @code{MR_trail_function()}
@@ -3146,6 +3191,7 @@ typedef enum @{
         MR_undo,
         MR_exception,
         MR_commit,
+        MR_solve,
         MR_gc
 @} MR_untrail_reason;
 
@@ -3156,12 +3202,20 @@ void MR_trail_function(
 @end example
 @noindent
 A call to @samp{MR_trail_function(@var{untrail_func}, @var{value})}
-ensures that
+adds an entry to the function trail.
+The Mercury implementation ensures that
 if future execution ever backtracks to current choicepoint,
 then @code{(*@var{untrail_func})(@var{value}, MR_undo)} will be called.
 It also ensures that if the current choice point is pruned because
 execution commits to never backtracking to it,
 then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
+It also ensures that if execution requires that the current goal be
+solvable, then @code{(*@var{untrail_func})(@var{value}, MR_solve)}
+will be called.  This happens in calls to @code{solutions/2}, for example.
+(@code{MR_commit} is used for ``hard'' commits, i.e. when we commit
+to a solution and prune away the alternative solutions; @code{MR_solve}
+is used for ``soft'' commits, i.e. when we must commit to a solution
+but do not prune away all the alternatives.)
 
 MR_exception and MR_gc are currently not used ---
 they are reserved for future use.
@@ -3172,11 +3226,12 @@ Typically if the @var{untrail_func} is called with @var{reason} being
 @samp{MR_undo} or @samp{MR_exception}, then it should undo the effects
 of the update(s) specified by @var{value}, and the free any resources
 associated with that trail entry.  If it is called with @var{reason}
-being @samp{MR_commit} then it should not undo the
-effects, instead it should merely free any resources associated with
-the trail entry.  If it is called with anything else
-(such as @samp{MR_gc}), then it should probably abort execution
-with an error message.
+being @samp{MR_commit} or @samp{MR_solve}, then it not undo the update(s);
+instead, it may check for floundering (see the next section).
+In the @samp{MR_commit} case it may, in some cases, be possible to
+also free resources associated with the trail entry.
+If it is called with anything else (such as @samp{MR_gc}),
+then it should probably abort execution with an error message.
 
 @node Delayed goals and floundering
 @subsubsection Delayed goals and floundering
@@ -3201,10 +3256,12 @@ failing even though logically speaking it ought to have succeeded.
 The check for floundering can be implemented using the function trail,
 by simply calling @samp{MR_trail_function()} to add a function trail
 entry whenever you create a delayed goal, and putting the appropriate
-check for floundering in the @samp{MR_commit} case of your function.
-(For an example of this, see the @samp{ML_cfloat_untrail_func()}
-function in the file @samp{extras/clpr/cfloat.m} in the Mercury
-distribution.)
+check for floundering in the @samp{MR_commit} and @samp{MR_solve} cases
+of your function.
+(For examples of this, see the @samp{ML_cfloat_untrail_func()}
+function in the file @samp{extras/clpr/cfloat.m} and the
+@samp{ML_var_untrail_func} function in the file
+@samp{extras/trailed_update/var.m} in the Mercury distribution.)
 If your function does detect floundering, then it should print
 an error message and then abort execution.
 
@@ -3415,11 +3472,18 @@ the Mercury language.  However, as an extension, implementations may
 also choose to support additional pragmas with implementation-dependent
 semantics.
 
-The University of Melbourne Mercury implemenation supports the following
+The University of Melbourne Mercury implementation supports the following
 additional pragmas:
 
 @menu
-* Fact tables::         Support for very large tables of facts
+* Fact tables::         	Support for very large tables of facts.
+* Termination analysis::	Information about the termination properties 
+				of a predicate or function can be given
+				to the compiler.  Pragmas are also
+				available to require the compiler to prove
+				termination of a given predicate or
+				function, or to give an error message if
+				it cannot do so.
 @end menu
 
 @node Fact tables
@@ -3456,6 +3520,88 @@ is invoked.
 The main limitation of the @samp{fact_table} pragma is that
 predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
+
+@node Termination analysis
+@subsection Termination analysis
+
+The compiler includes a termination analyser which can be used to prove 
+termination of predicates and functions.  Details of the analysis is
+available in "Termination Analysis for Mercury" by Chris Speirs, Zoltan
+Somogyi and Harald Sondergaard. In P. Van Hentenryck, editor, "Static
+Analysis: Proceedings of the 4th International Symposium", Lecture Notes
+in Computer Science. Springer, 1997.  A longer version is available for
+download from http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz
+
+The analysis is based around an algorithm proposed by Gerhard Groger
+and Lutz Plumer in their paper "Handling of mutual recursion in
+automatic termination proofs for logic programs." in K. Apt, editor,
+The Proceedings of the Joint International Conference and Symposium on
+Logic Programming, pager 336-350. MIT Press, 1992.
+
+For an introduction to termination analysis for logic programs, please
+refer to "Termination Analysis for Logic Programs" by Chris Speirs.
+Technical Report 97/23, Department of Computer Science, The University
+of Melbourne, Melbourne, Australia, 1997.  Available from
+http://www.cs.mu.oz.au/mercury/papers/mu_97_23.ps.gz
+
+The analyser is enabled by the option @samp{--enable-termination}, which
+can be abbreviated to @samp{--enable-term}.  When termination analysis
+is enabled, any predicates or functions with a @samp{check_termination}
+pragma defined on them will have their termination checked, and if
+termination cannot be proved, the compiler will emit an error message
+detailing the reason that termination could not be proved.
+
+The option @samp{--check-termination} option, which may be abbreviated
+to @samp{--check-term} or @samp{--chk-term}, forces the compiler to
+check the termination of all predicates in the module.  
+It is common for the compiler to be unable to prove termination of some
+predicates and functions because they call other predicates which could
+not be proved to terminate or because they use language features (such
+as higher order calls) which cannot be usefully analysed.  
+In this case, the compiler only emits a warning for these
+predicates and functions if the @samp{--verbose-check-termination}
+option is enabled.  For every predicate or function that the compiler
+cannot prove the termination of, a warning message is emitted, but
+compilation continues.  The @samp{--check-termination} option implies
+the @samp{--enable-termination} option.
+
+The accuracy of the termination analysis is substantially degraded if
+intermodule optimization is not enabled.  Unless intermodule
+optimization is enabled, the compiler must assume that any imported
+predicate may not terminate.  
+
+Currently the compiler assumes that all procedures defined using the C
+interface (@samp{pragma c_code}) terminate for all input.
+If this is not the case, a @samp{pragma does_not_terminate} declaration
+should be used to inform the compiler that this C code may not terminate.
+
+The following declarations can be used to inform the compiler of the
+termination properties of a predicate or function, or to force the
+compiler to prove termination of a given predicate or function. 
+
+@example
+:- pragma terminates(@var{Name}/@var{Arity}).
+@end example
+This declaration may be used to inform the compiler that this predicate
+or function is guaranteed to terminate for any input.  This is useful
+when the compiler cannot prove termination of some predicates or 
+functions which are in turn preventing the compiler from proving
+termination of other predicates or functions.
+
+@example
+:- pragma does_not_terminate(@var{Name}/@var{Arity}).
+@end example
+This declaration may be used to inform the compiler that this predicate
+does not necessarily terminate.  This is useful for procedures defined
+using the C interface, which the compiler assumes to terminate by
+default.
+
+@example
+:- pragma check_termination(@var{Name}/@var{Arity}).
+@end example
+This pragma forces the compiler to prove termination of this predicate.
+If it cannot prove the termination of the specified predicate or
+function then the compiler will quit with an error message.
 
 @contents
 @bye

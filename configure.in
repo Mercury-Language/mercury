@@ -20,7 +20,7 @@ dnl MERCURY_MSG(MESSAGE)
 define(MERCURY_MSG,
 [echo $1 1>&AC_FD_MSG])
 #-----------------------------------------------------------------------------#
-AC_INIT(runtime/wrapper.mod)
+AC_INIT(runtime/mercury_wrapper.c)
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
@@ -39,7 +39,7 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 	exit
 fi
 #-----------------------------------------------------------------------------#
-AC_CONFIG_HEADER(runtime/conf.h)
+AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 AC_CANONICAL_HOST
 FULLARCH="$host"
@@ -77,12 +77,15 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- module conftest.
 		:- interface.
 		:- import_module io.
-		:- pred main(io__state::unique->clobbered, io__state::uo)
-			is det.
+		:- pred main(io__state::di, io__state::uo) is det.
 		:- implementation.
-		:- pragma(c_code, "").
-		:- type type_containing_pred(T) ---> foo(pred(T)).
 		main --> io__write_string("Hello, world\n").
+
+		:- pred foo(int).
+		:- mode foo(out) is semidet.
+		:- mode foo(in) is semidet.
+		:- pragma c_code(foo(X::in), "").
+		:- pragma c_code(foo(X::out), "").
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
@@ -187,7 +190,7 @@ if test "$MKFIFO" = ""; then
 	fi
 fi
 if test "$MKFIFO" = ""; then
-	AC_MSG_WARN(cannot find a working mkfifo or mknod)
+	AC_MSG_WARN(cannot find a working \`mkfifo' or \`mknod')
 	MKFIFO=none
 fi
 AC_SUBST(MKFIFO)
@@ -207,7 +210,7 @@ AC_SUBST(CC)
 CFLAGS="-O"
 
 # we also need to add the appropriate `-I' options so that the test programs
-# can do #include "memory.h"
+# can #include various Mercury runtime headers.
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
 AC_PROG_CPP
 AC_C_CROSS
@@ -220,6 +223,11 @@ case "$host" in
 		ac_cv_func_mprotect=no ;;
 esac
 AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror memmove)
+#-----------------------------------------------------------------------------#
+AC_CHECK_HEADER(sys/wait.h, HAVE_SYS_WAIT_H=1)
+if test "$HAVE_SYS_WAIT_H" = 1; then
+	AC_DEFINE(HAVE_SYS_WAIT)
+fi
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/siginfo.h, HAVE_SYS_SIGINFO_H=1)
 if test "$HAVE_SYS_SIGINFO_H" = 1; then
@@ -256,7 +264,7 @@ fi
 # check the basics of sigaction
 #
 if test "$ac_cv_func_sigaction" = yes; then
-	AC_MSG_CHECKING(for sigaction field name)
+	AC_MSG_CHECKING(for \`sigaction' field name)
 	AC_CACHE_VAL(mercury_cv_sigaction_field,
 	AC_TRY_RUN([
 
@@ -303,7 +311,7 @@ fi
 #
 # check the basics of sigcontext_struct
 #
-AC_MSG_CHECKING(for working sigcontext_struct)
+AC_MSG_CHECKING(for working \`sigcontext_struct')
 AC_CACHE_VAL(mercury_cv_sigcontext_struct,
 mercury_cv_sigcontext_struct=no
 AC_TRY_RUN([
@@ -349,7 +357,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	#
 	# check for sigcontext_struct.eip
 	#
-	AC_MSG_CHECKING(for sigcontext_struct pc access at signals)
+	AC_MSG_CHECKING(for \`sigcontext_struct' pc access at signals)
 	AC_CACHE_VAL(mercury_cv_pc_access,
 	mercury_cv_pc_access=no
 	AC_TRY_RUN([
@@ -392,7 +400,7 @@ if test $mercury_cv_sigcontext_struct = yes; then
 	}], [mercury_cv_pc_access=yes], [true], [true]))
 	AC_MSG_RESULT($mercury_cv_pc_access)
 else
-	AC_MSG_CHECKING(for siginfo_t)
+	AC_MSG_CHECKING(for \`siginfo_t')
 	AC_CACHE_VAL(mercury_cv_siginfo_t,
 	mercury_cv_siginfo_t=no
 	AC_TRY_RUN([
@@ -448,7 +456,7 @@ else
 		AC_DEFINE(HAVE_SIGINFO_T)
 		AC_DEFINE(HAVE_SIGINFO)
 
-		AC_MSG_CHECKING(for siginfo pc access at signals)
+		AC_MSG_CHECKING(for \`siginfo' pc access at signals)
 		AC_CACHE_VAL(mercury_cv_pc_access,
 		mercury_cv_pc_access=no
 		AC_TRY_RUN([
@@ -623,7 +631,7 @@ AC_DEFINE_UNQUOTED(WORD_TYPE, $mercury_cv_word_type)
 WORD_TYPE=$mercury_cv_word_type
 AC_SUBST(WORD_TYPE)
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for the number of low tag bits)
+AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
 	AC_TRY_RUN([
 	#include <stdio.h>
@@ -877,6 +885,62 @@ if test "$mercury_cv_is_littleender" = yes; then
 fi
 AC_SUBST(MR_LITTLE_ENDIAN)
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(return values of system)
+AC_CACHE_VAL(mercury_cv_normal_system_retval,
+	AC_TRY_RUN([
+	#include <stdlib.h>
+	#ifdef HAVE_SYS_WAIT
+	#include <sys/wait.h>
+	#endif
+	int main() {
+		#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+			defined (WIFSIGNALED) && defined (WTERMSIG)
+		/* 
+		** All the necessary macros for handling the return values of
+		** system() are defined, so we do not need to test the return
+		** value of system()
+		*/
+		exit(0);
+	
+		#else
+		/*
+		** Normal return values from system() are considered to be
+		** when high 8 bits of the return value give the exit
+		** status, and the low 8 bits give the signal number which
+		** killed the process.
+		*/
+			if( system("exit 0") == 0 &&
+					system("exit 42") == 42 << 8 ) {
+					/* && system("kill -9 $$") == 9 */
+				exit(0);
+			} else {
+				exit(1);
+			}
+		#endif
+	}],
+	[mercury_cv_normal_system_retval=yes],
+	[mercury_cv_normal_system_retval=no],
+	AC_TRY_COMPILE([#include <sys/wait.h>], [
+	#if defined (WIFEXITED) && defined (WEXITSTATUS) && \
+		defined (WIFSIGNALED) && defined (WTERMSIG)
+
+	#else
+	/* 
+	** As these macros are not defined the compilation must fail.
+	** Unmatched brackets should do that for us.
+	*/
+		}
+	#endif
+	], 
+	[mercury_cv_normal_system_retval=yes],
+	[mercury_cv_normal_system_retval=no]))
+)
+AC_MSG_RESULT($mercury_cv_normal_system_retval)
+if test "$mercury_cv_normal_system_retval" = no; then
+	AC_MSG_ERROR(Unable to interpret return values from system)
+	exit 1
+fi
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for tempnam)
 AC_CACHE_VAL(mercury_cv_has_tempnam,
 	AC_TRY_RUN([
@@ -1015,10 +1079,10 @@ if test $HAVE_ASM_LABELS = 1; then
 	AC_DEFINE(HAVE_ASM_LABELS)
 fi
 #-----------------------------------------------------------------------------#
-# We need to ensure that runtime/conf.h exists, since some of the
+# We need to ensure that runtime/mercury_conf.h exists, since some of the
 # programs we attempt to compile below indirectly include it.
-test -f runtime/conf.h || {
-	cat > runtime/conf.h <<EOF
+test -f runtime/mercury_conf.h || {
+	cat > runtime/mercury_conf.h <<EOF
 #define WORD_TYPE $WORD_TYPE
 EOF
 }
@@ -1029,8 +1093,8 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	AC_TRY_RUN([
 	#define USE_GCC_NONLOCAL_GOTOS
 	#define USE_GCC_GLOBAL_REGISTERS
-	#include "regs.h"
-	#include "memory.h"
+	#include "mercury_regs.h"
+	#include "mercury_memory.h"
 	changequote(<<,>>) 
 	Word fake_reg[MAX_FAKE_REG];
 	changequote([,]) 
@@ -1090,8 +1154,8 @@ AC_MSG_CHECKING(whether we can use global registers without gcc labels)
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
 AC_TRY_RUN([
 #define USE_GCC_GLOBAL_REGISTERS
-#include "regs.h"
-#include "memory.h"
+#include "mercury_regs.h"
+#include "mercury_memory.h"
 changequote(<<,>>) 
 Word fake_reg[MAX_FAKE_REG];
 changequote([,]) 
@@ -1107,6 +1171,9 @@ main() {
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 #-----------------------------------------------------------------------------#
 
+#
+# figure out the most efficient base grade to use.
+#
 if test $mercury_cv_asm_labels = yes; then
 	if test $mercury_cv_gcc_model_fast = yes; then
 		BEST_GRADE=asm_fast
@@ -1173,6 +1240,9 @@ fi
 MERCURY_MSG("using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications")
 AC_SUBST(DEFAULT_GRADE)
 
+#
+# Figure out which grades to use if --enable-all-grades is specified.
+#
 ALL_LIBGRADES="none"
 if test $mercury_cv_gcc_model_reg = yes; then
 	ALL_LIBGRADES="$ALL_LIBGRADES reg"
@@ -1202,32 +1272,34 @@ else
 	LIBGRADES="$BEST_GRADE"
 fi
 
+# add `.gc' (--conservative-gc) grades
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
 
+# add `.prof' (--profiling) grades, or, if time profiling is not supported,
+# a `.profcalls' (--profile-calls) grade.
 if test $mercury_cv_profiling = yes; then
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof \
-	`echo $DEFAULT_GRADE|sed 's/\.gc$//'`.prof"
+	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
 	if test $GRADE != $DEFAULT_GRADE; then
-		LIBGRADES="$LIBGRADES $GRADE.prof `echo $GRADE|sed 's/\.gc$//'`.prof"
+		GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
+		LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
+	fi
+else
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.profcalls"
+fi
+
+# add `.tr' (--trailing) grades
+LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
+if test $enable_all_grades = yes; then
+	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
+	if test $mercury_cv_profiling = yes; then
+		LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
 	fi
 fi
-#
-# on the alpha, the grades that use non-local gotos are a bit
-# flakey, due to problems with register $15 (fp) being clobbered,
-# so always install reg.gc and reg.gc.prof
-#
-case "$host" in
-	alpha-dec-*)
-		if test $enable_all_grades != yes; then
-			LIBGRADES="$LIBGRADES reg.gc"
-			if test $mercury_cv_profiling = yes; then
-				LIBGRADES="$LIBGRADES reg.gc.prof"
-			fi
-		fi
-		;;
-esac
+
 # remove GRADE from LIBGRADES
 LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
@@ -1294,6 +1366,22 @@ AC_SUBST(NUM_REAL_R_TEMPS)
 AC_SUBST(HAVE_DELAY_SLOT)
 
 #-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(whether the assembler does not handle .type)
+AC_CACHE_VAL(mercury_cv_cannot_grok_asm_type_directive, [
+	case "$host" in
+		*-sunos4.*)
+			mercury_cv_cannot_grok_asm_type_directive=yes
+			;;
+		*)
+			mercury_cv_cannot_grok_asm_type_directive=no
+			;;
+	esac
+])
+AC_MSG_RESULT($mercury_cv_cannot_grok_asm_type_directive)
+if test $mercury_cv_cannot_grok_asm_type_directive = "yes"; then
+	AC_DEFINE(MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE)
+fi
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
@@ -1355,7 +1443,8 @@ case "$host" in
 		#
 		# If you *do* use `-fpic', you must also use `-DPIC'.
 		#
-		# See runtime/goto.h for the code that handles PIC on SPARCs.
+		# See runtime/mercury_goto.h for the code that handles PIC
+		# on SPARCs.
 		# Note that mixing PIC and non-PIC code is fine on SPARCs
 		# (though it doesn't work on x86s, due to the use of `ebx'
 		# in runtime/machdeps/i386_regs.h).
@@ -1447,19 +1536,28 @@ BOOTSTRAP_MC="$BOOTSTRAP_MC $HAVE_BOXED_FLOATS --conf-low-tag-bits $LOW_TAG_BITS
 AC_SUBST(BOOTSTRAP_MC)
 #-----------------------------------------------------------------------------#
 
+# The following allows us to share some subroutines between the
+# `ml' and `mgnuc' scripts.
+
+top=`pwd`
+INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
+PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
+AC_SUBST_FILE(INIT_GRADE_OPTIONS)
+AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
+
+#-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
-if test "$CONFIG_HEADERS" = "runtime/conf.h"; then
-	touch runtime/conf.h.date
+if test "$CONFIG_HEADERS" = "runtime/mercury_conf.h"; then
+	touch runtime/mercury_conf.h.date
 fi
 # conftest.junk is used to avoid a warning if there
 # are no files in the list passed to chmod
 touch conftest.junk
-chmod a-w $CONFIG_FILES $CONFIG_HEADERS conftest.junk
 chmod +x `echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' ` conftest.junk
 rm -f conftest.junk
 

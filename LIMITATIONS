@@ -13,9 +13,6 @@ are the following:
 * It is not possible to give both `cc_multi' and `multi' (or `cc_nondet'
   and `nondet') determinisms for the same mode of a predicate.
 
-* The order of mode declarations is significant.
-  Unique mode declarations must precede non-unique mode declarations.
-
 * Type inference and mode inference are a bit imperfect.
 
 We are working on eliminating all of these problems. 

@@ -26,17 +26,18 @@ happened to be a little bit harder to implement.  We may change this in
 a future release.)
 
 To use the shared libraries, you must compile your program with
-`mmc --cflags -DPIC_REG' and link with `ml --mercury-libs shared'
-or add `MGNUCFLAGS=-DPIC_REG' and `MLFLAGS=--mercury-libs shared'
+`mmc --pic-reg' and link with `ml --mercury-libs shared'
+or add `MGNUCFLAGS=--pic-reg' and `MLFLAGS=--mercury-libs shared'
 to your Mmake file.
 
-Mercury code compiled with `-DPIC_REG' or `-fpic' has what we shall call
-"PIC linkage", whereas Mercury code compiled without these options has
-"non-PIC linkage".  The static version of the Mercury libraries has
-non-PIC linkage, while the shared version has PIC linkage.
-Be very careful that you do not try to link Mercury code
-with PIC linkage and Mercury code with non-PIC linkage into the same
-executable, otherwise your code will *almost certainly crash*.
+Mercury code compiled with `--pic-reg' or with gcc's `-fpic' option has
+what we shall call "PIC linkage", whereas Mercury code compiled without
+these options has "non-PIC linkage".  The static version of the Mercury
+libraries has non-PIC linkage, while the shared version has PIC linkage.
+Be careful that you do not try to link Mercury code with PIC linkage and
+Mercury code with non-PIC linkage into the same executable, otherwise you
+will probably get an obscure link error about `MR_grade_...' undefined
+or `MR_runtime_grade' multiply defined.
 (The reason for this is that standard non-PIC Mercury code uses the
 `ebx' register in ways that are incompatible with its uses as the global
 offset table pointer register in PIC code.  If only the Intel
@@ -46,19 +47,17 @@ and then PIC and non-PIC code could be mixed without any problems.)
 --------------------
 
 diff -u -r1.9 os_dep.c
---- os_dep.c    1997/03/06 02:51:19     1.9
-+++ os_dep.c    1997/08/07 14:14:26
+--- os_dep.c	1997/03/06 02:51:19	1.9
++++ os_dep.c	1997/10/15 10:04:53
 @@ -23,9 +23,11 @@
-     /* for some early 1.3.X releases.  Will hopefully go away soon.  */
-     /* in some later Linux releases, asm/sigcontext.h may have to */
-     /* be included instead.  */
-+# if 0
+     /* for some early 1.3.X releases.  Will hopefully go away soon.	*/
+     /* in some later Linux releases, asm/sigcontext.h may have to	*/
+     /* be included instead.						*/
++#  if 0
  #   define __KERNEL__
  #   include <asm/signal.h>
  #   undef __KERNEL__
-+# endif
++#  endif
  # endif
- # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) &&
-!defined(MACOS)
+ # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) && !defined(MACOS)
  #   include <sys/types.h>
-

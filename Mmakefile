@@ -166,14 +166,16 @@ tar: README INSTALL
 	cd profiler && $(SUBDIR_MMAKE) depend
 	cd profiler && $(SUBDIR_MMAKE) ints cs tags
 	cd doc && $(SUBDIR_MMAKE) info html dvi
-	cd bindist && $(SUBDIR_MMAKE) bindist.configure bindist.build_vars
+	cd bindist && $(SUBDIR_MMAKE) bindist.configure
+	# the following command might fail on Windows?
+	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
 	# clean up
 	cd scripts && mmake realclean
 	cd util && mmake realclean
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
 	-rm -f config.status config.cache config.log configure.log
-	-rm -f runtime/conf.h
+	-rm -f runtime/mercury_conf.h
 	-rm -f Mmake.common
 	# Package up the mercury directory and the tests directory, 
 	# but with some subdirectories excluded, into a gzipped tar
@@ -192,9 +194,9 @@ tar: README INSTALL
 			gzip -9 > mercury-$(VERSION).tar.gz;		\
 		mv stuff-to-exclude/* mercury-$(VERSION);		\
 		rmdir stuff-to-exclude;					\
-		tar -cf - mercury-$(VERSION)-extras |			\
-			gzip -9 > mercury-$(VERSION)-extras.tar.gz;	\
 		mv mercury-$(VERSION)-extras mercury-$(VERSION)/extras; \
+		tar -cf - mercury-$(VERSION)/extras |			\
+			gzip -9 > mercury-$(VERSION)-extras.tar.gz;	\
 		mv mercury-$(VERSION)/tests tests;			\
 		mv mercury-$(VERSION) mercury				\
 	)
@@ -206,10 +208,12 @@ version:
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: all install_scripts install_util install_runtime install_boehm_gc \
-		install_library install_compiler install_profiler install_doc \
+install: all $(PREINSTALL_HACK) \
+		install_scripts install_util install_runtime install_boehm_gc \
+  		install_library install_compiler install_profiler install_doc \
+		$(POSTINSTALL_HACK) \
 		install_grades
-
+ 
 .PHONY: install_scripts
 install_scripts: scripts
 	cd scripts && $(SUBDIR_MMAKE) install
@@ -257,7 +261,7 @@ install_grades: scripts dep_library
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.a *.so tmp_dir || true; }
+		{ mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true; }
 	for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
 	        case "$$grade" in \
@@ -276,7 +280,7 @@ install_grades: scripts dep_library
 		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
 		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
 		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
-		( cd library && rm -f *.o *.pic_o *.a *.so ) && \
+		( cd library && rm -f *.c *.o *.pic_o *.a *.so ) && \
 		true \
 		|| exit 1; \
 	    fi; \
@@ -296,6 +300,60 @@ install_split_library: scripts dep_library
 	        rm -rf *.dir *.c *.o *.pic_o *.a *.so; \
 	done && \
 	{ mv tmp_dir/* . ; rmdir tmp_dir; true; }
+
+#-----------------------------------------------------------------------------#
+#
+# Various horrible hacks for gnu-win32 on Windows.
+#
+
+
+# For Windows 95 or Windows NT, uncomment the following two lines:
+# PREINSTALL_HACK = preinstall_hack_for_windows
+# POSTINSTALL_HACK = postinstall_hack_for_windows
+
+
+# `make touch_files' is a work-around for the broken gnu-win32 `tar'
+# that loses all the file dates.
+.PHONY: touch_files
+touch_files:
+	-find . | xargs touch
+	sleep 1
+	touch library/*.date*
+	touch library/*.optdate
+	chmod +w library/*.dep
+	touch library/*.dep
+	touch compiler/*.date*
+	chmod +w compiler/*.dep
+	touch compiler/*.dep
+	touch profiler/*.date*
+	chmod +w profiler/*.dep
+	touch profiler/*.dep
+	touch doc/*.texi configure
+	sleep 1
+	touch boehm_gc/*.c
+	touch runtime/*.c
+	touch library/*.c
+	touch compiler/*.c
+	touch profiler/*.c
+	touch doc/*.info doc/*.dvi doc/*.html config.status
+
+# Another work-around for Windows:
+# the executable files need `.exe' filenames, otherwise they won't work.
+# But the Mmake files expect them to not have `.exe' filenames.
+
+.PHONY: preinstall_hack_for_windows
+preinstall_hack_for_windows:
+	cd compiler && mv mercury_compile.exe xyzzy && mv xyzzy mercury_compile
+	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
+	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
+	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
+
+.PHONY: postinstall_hack_for_windows
+postinstall_hack_for_windows:
+	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_compile mercury_compile.exe
+	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
+	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
+	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
 
 #-----------------------------------------------------------------------------#
 

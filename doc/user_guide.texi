@@ -136,6 +136,9 @@ Files ending in @file{.opt} are
 interface files used in inter-module optimization,
 and are created using the @samp{--make-optimization-interface} 
 (or @samp{--make-opt-int}) option.
+@c Files ending in @file{.trans_opt} are interface files used in 
+@c transitive inter-module optimization, and are created using the 
+@c @samp{--make-transitive-optimization-interface} option.
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
@@ -150,12 +153,6 @@ Files ending in @file{.d} are automatically-generated Makefile fragments
 which contain the dependencies for a module.
 Files ending in @file{.dep} are automatically-generated Makefile fragments
 which contain the rules for an entire program.
-
-In the source code for the Mercury runtime library,
-we use a few files ending in @file{.mod};
-these are preprocessed using the perl script @samp{mod2c} to produce C files.
-(Originally the Mercury compiler also produced @file{.mod} files,
-but now we compile directly to C.)
 
 As usual, @file{.c} files are C source code,
 @file{.h} files are C header files,
@@ -222,6 +219,13 @@ then you also need to create the optimization interface files.
 mmc --make-opt-int @var{module1}.m @var{module2}.m ...
 @end example
 
+@c If you are going to compile with @samp{--transitive-intermodule-optimization}
+@c enabled, then you also need to create the transitive optimization files.
+
+@c @example
+@c mmc -make-trans-opt @var{module1}.m @var{module2}.m ...
+@c @end example
+@c 
 Given that you have made all the interface files,
 one way to create an executable for a multi-module program
 is to compile all the modules at the same time
@@ -335,9 +339,10 @@ If you do omit it, you often waste a lot of time
 debugging problems that the compiler could have detected for you.
 
 @menu
-* Using NU-Prolog:: Building and debugging Mercury programs with NU-Prolog
-* Using SICStus::   Building and debugging Mercury programs with SICStus Prolog
-* Prolog hazards::  The hazards of executing Mercury programs using Prolog
+* Using NU-Prolog::      Building and debugging Mercury programs with NU-Prolog
+* Using SICStus::        Building and debugging with SICStus Prolog
+* Controlling printout:: Controlling display of large terms during debugging
+* Prolog hazards::       The hazards of executing Mercury programs using Prolog
 @end menu
 
 @node Using NU-Prolog
@@ -427,6 +432,9 @@ For more information, see the NU-Prolog documentation.
 By default the debugger only displays the top levels of terms;
 you can use the @samp{|} command to enter an interactive term browser.
 (Within the term browser, type @samp{h.} for help.)
+See @ref{Controlling printout} for more information on controlling the
+printout of terms.
+
 Also note that in the debugger, we use a version of @code{error/1}
 which fails rather than aborting after printing the ``Software Error:''
 message.  This makes debugging easier,
@@ -455,6 +463,192 @@ SICStus Prolog's @samp{fastcode} mode. If space is more important
 than speed, you can use the @samp{--mode compactcode} option,
 which instructs @code{msc} to use SICStus Prolog's @samp{compactcode}
 mode, which compiles files to a bytecode format.
+
+@node Controlling printout
+@section Controlling printout of large terms
+
+You can control the printout of terms shown as the results of queries,
+and as shown by the debugger, to a great extent.  At the coarsest level,
+you can limit the depth to which terms are shown, and the number of
+arguments of terms (and the number of elements of lists) to be shown.
+Further, you can ``hide'' some of the arguments of a term, based upon the
+functor of that term.  And finally, you can write your own code to print
+out certain kinds of terms in a more convenient manner.
+
+@menu
+* Limiting size::  Limiting Print Depth and Length
+* Hiding terms::   Hiding terms and subterms based upon term functor
+* Customization::  Customizing printout by writing your own printout code
+@end menu
+
+@node Limiting size
+@subsection Limiting print depth and length
+
+You can limit the depth to which terms will be printed.  When a term to
+be printed appears at the depth limit, only its name and arity will be
+shown, enclosed in angle brackets, for example @samp{<foo/3>}.
+
+You can also control the number of arguments of terms, and the lengths
+of lists, to be shown.  When this length limit is reached, an ellipsis
+mark (@samp{...}) will be printed.
+
+The following predicates control the print depth and length limits.
+
+@example
+set_print_depth(@var{Depth})
+@end example
+Sets the print depth limit to @var{Depth}.  If @var{Depth} is less than 0, the
+print depth is unlimited.  The default print depth limit is 2.
+
+@example
+print_depth(@var{Depth})
+@end example
+Unifies @var{Depth} with the current print depth limit.
+
+@example
+set_print_length(@var{Length})
+@end example
+Sets the print length limit to @var{Length}.  If @var{Length} is less
+than 0, the print length is unlimited.
+
+@example
+print_length(@var{Length})
+@end example
+Unifies @var{Length} with the current print length limit.
+
+
+@node Hiding terms
+@subsection Hiding terms and subterms
+
+Sometimes you will have terms which appear frequently during debugging
+and which tend to fill up the screen with lots of uninteresting text,
+even with depth limits in force.  In such cases, you may want to hide
+terms based upon their functor, regardless of their print depth.  You
+may also occasionally want to hide just a few of the arguments of a
+term.  These predicates allow you to do that.
+
+Note that if the @emph{top level} functor of the term to be printed is
+hidden, its first level arguments will be shown anyway.  This is to
+avoid answer substitutions being wholly hidden, and to make it easier to
+use the subterm viewing facility of the SICStus Prolog debugger (using
+the @key{^} command) to view parts of a term.
+
+
+@example
+hide(@var{Spec})
+hide(@var{Spec, Args})
+@end example
+Allows you to elide certain arguments of certain terms, or whole terms,
+based on the functor.  @var{Spec} specifies a functor; it must be either
+a @var{Name}@code{/}@var{Arity} term, or just a functor name (in which
+case all arities are specified).  @var{Args} specifies which arguments
+of such terms should be hidden.  If given, @var{Args} must be a single
+integer or a list of integers specifying which arguments to hide.
+Hidden arguments will be printed as just a hash (@samp{#}) character.
+Alternatively, @var{Args} may be the atom @code{term}, in which case
+only the name and arity of the term are written within angle brackets,
+(e.g., @samp{<foo/3>}).  If Args is not specified, it defaults to
+@code{term}.
+
+Hidden arguments are cumulative.  That is, new arguments to be hidden are
+added to the set of arguments already hidden.  For example, if you hide
+argument 3 of all terms with functor name @samp{foo}, and then hide
+argument 1 of terms with functor @samp{foo/3}, then for @samp{foo/3}
+terms, arguments 1 and 3 will be hidden, while for all other terms with
+functor name @samp{foo}, only argument 3 will be hidden.
+
+@example
+show
+Show(@var{Spec})
+show(@var{Spec, Args})
+@end example
+Undoes the effect of hiding some arguments of terms or whole terms.
+@var{Spec} specifies a functor; it must be either a
+@var{Name}@code{/}@var{Arity} term, or just a functor name (in which
+case all arities are specified).  @var{Args} specifies which arguments
+to stop hiding; it must be a list of argument numbers or a single
+argument number.  Alternatively, it may be the atom @code{term},
+indicating that no arguments should be hidden (the whole term should be
+shown).  @var{Args} defaults to @code{term}.  The predicate
+@code{show/0} reenables showing all arguments of all terms.
+
+Note that these predicates will not affect the depth limit of printing.
+Even if you ask to show a term in full, if it appears at the depth limit of
+the term being printed, its arguments will not be shown.  If it appears
+below the depth limit, you won't see it at all.
+
+You may use the @code{hide/1,2} and @code{show/2} predicates in concert
+to hide most of the arguments of a term by first hiding all arguments,
+and then explicitly showing the few of interest.
+
+@example
+hidden(@var{Spec, Args})
+@end example
+@var{Spec} is a @var{Name}@code{/}@var{Arity} term, and @var{Args} is a
+list of the argument numbers of terms with that @var{Name} and
+@var{Arity} which are hidden, or the atom @code{term} if the entire term
+is hidden.  @var{Arity} may be the atom @code{all}, indicating that the
+specified arguments are hidden for all terms with that @var{Name} and
+any arity.  This predicate may be used to backtrack through all the
+predicates which are hidden or have any arguments hidden.
+
+
+@node Customization
+@subsection Customization of printout
+
+Occasionally you will have a term that is important to understand during
+debugging but is shown in an inconvenient manner or may be difficult to
+understand as printed.  Traditionally in Prolog, you can define clauses
+for the predicate @code{portray/1} to specify special code to print such
+a term.  Unfortunately, this won't work very well with the other
+features of Mercury's printout system.  For this you will need to define
+clauses for the predicate @code{portray_term/3}:
+
+@example
+portray_term(@var{Term, DepthLimit, Precedence})
+@end example
+Like the standard Prolog @code{portray/1} hook predicate, this code
+should either fail without printing anything, or succeed after printing
+out Term as the user would like to see it printed.  @var{DepthLimit}, if
+greater than or equal to -1, is the number of levels of the subterms of
+@var{Term} that should be printed without being elided.  If it is -1,
+then @var{Term} should probably not be printed; only a marker indicating
+what sort of term it is.  The standard @code{print_term/3} code will
+print the name and arity of the functor enclosed in angle brackets
+(e.g., <foo/3>) if @code{portray_term/3} fails at this depth level.  Be
+careful, though: if @var{DepthLimit} is less than -1, then there should
+be no depth limit.  @var{Precedence} is the precedence of the context in
+which the term will be printed; if you wish to write a term with
+operators, then you should parenthesize the printout if @var{Precedence}
+is smaller than the precedence of that operator.
+
+In printing subterms, you should call @code{print_term/3}, described
+below.  Note that the @var{DepthLimit} argument passed to portray_term/3 is
+the depth limit for the @emph{subterms} of @var{Term}, so you should
+usually pass this value to @code{print_term/3} for printing subterms
+without decrementing it.  Note also that @var{Term} will always be bound
+when @code{portray_term/3} is called, so you needn't worry about
+checking for unbound variables.
+
+Mercury already supplies special-purpose printout code to print out
+lists of character codes as double-quoted strings, and to print out maps
+as @var{Key}@code{->}@var{Value} pairs, surrounded by @samp{MAP@{@}}.
+This code appears in the file @file{portray.nl} in the Mercury library,
+and may serve as a useful example of how to write customized printing
+code.
+
+@example
+print_term(@var{Term, DepthLimit, Precedence})
+@end example
+Print out @var{Term} to the current output stream, limiting print depth
+to @var{DepthLimit}, and parenthesizing the term if its principle
+functor is an operator with precedence greater than @var{Precedence}.
+@code{print_term/3} also respects the current set of hidden functors,
+and uses the user-supplied @code{portray_term/3} hook predicate when it
+succeeds.
+
+
+
 
 @node Prolog hazards
 @section Hazards of using Prolog
@@ -569,7 +763,7 @@ Error messages are placed in @file{.err} files.
 @item @var{main-module}.split
 Compiles and links @var{main-module} using the Mercury compiler,
 with the Mercury compiler's @samp{--split-c-files} option enabled.
-@xref{Output-level (LLDS->C) optimization options} for more information
+@xref{Output-level (LLDS -> C) optimization options} for more information
 about @samp{--split-c-files}.
 
 @item @var{main-module}.nu
@@ -613,7 +807,8 @@ or its imported modules.
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
-@samp{.opt}, @samp{.optdate},
+@samp{.opt}, @samp{.optdate}, @samp{.date3}, 
+@c @samp{.trans_opt}, @samp{.trans_optdate}, 
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}}, 
@@ -831,7 +1026,7 @@ C2INITFLAGS = $(MYPACKAGE_DIR)/mypackage.init \
 
 Here @samp{VPATH} is a colon-separated list of path names specifying
 directories that Mmake will search for interface files.
-The @samp{-I} options in @samp{MCFLAGS} tell @samp{mc} where to find
+The @samp{-I} options in @samp{MCFLAGS} tell @samp{mmc} where to find
 the interface files.  The @samp{-R} options in @samp{MLFLAGS} tell
 the loader where to find shared libraries, and the @samp{-L}
 options tell the linker where to find libraries. 
@@ -853,6 +1048,7 @@ Mercury implementation does not require that.
 @menu
 * Profiling introduction::          What is profiling useful for?
 * Building profiled applications::  How to enable profiling.
+* Time profiling methods::          Choose user, user + system, or real time.
 * Creating the profile::            How to create profile data.
 * Displaying the profile::          How to display the profile data.
 * Analysis of results::             How to interpret the output.
@@ -879,11 +1075,12 @@ engineer's toolkit.
 @node Building profiled applications
 @section Building profiled applications
 
-To enable profiling, your program must be built in a @samp{.prof} grade.
-For example, if the default grade on your system is @samp{asm_fast.gc}, then
-to compile with profiling enabled, use grade @samp{asm_fast.gc.prof}.  You
-can do this by setting the @samp{GRADE} variable in your Mmake file, e.g. by
-adding the line @samp{GRADE=asm_fast.gc.prof}. 
+To enable profiling, your program must be built with profiling enabled.
+This can be done by passing the @samp{-p} (@samp{--profiling}) option
+to @samp{mmc} (and also to @samp{mgnuc} and @samp{ml}, if you invoke them
+seperately).  If you are using Mmake, then
+you can do this by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
+e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
 @xref{Compilation model options} for more information about the
 different grades.
 
@@ -894,6 +1091,33 @@ records the caller and callee.  Secondly, your program will be linked
 with versions of the library and runtime that were compiled with
 profiling enabled.  (It also has the effect for each source file the compiler
 generates the static call graph for that file in @samp{@var{module}.prof}.)
+
+@node Time profiling methods
+@section Time profiling methods
+
+By setting the environment variable MERCURY_OPTIONS,
+which is used for passing options to the Mercury runtime system,
+you can control how the Mercury profiler measures the time spent.
+The default (@samp{-Tp}) is to count time spent executing the process,
+including time spent by the system performing operations on behalf of
+the process, but not including time that the process was suspended
+(e.g. due to time slicing, or while waiting for input).
+Using @samp{-Tv} counts only time spent executing the process.
+Using @samp{-Tr} counts all elapsed time, even including time that
+the process was suspended.
+
+@table @asis
+@item @samp{-Tr}
+Profile real (elapsed) time (using ITIMER_REAL).
+@item @samp{-Tv}
+Profile user time (using ITIMER_VIRTUAL).
+@item @samp{-Tp}
+Profile user time plus system time (using ITIMER_PROF).
+This is the default.
+@end table
+
+Currently, the @samp{-Tv} and @samp{-Tp} options don't work on Windows,
+so on Windows you must explicitly specify @samp{-Tr}.
 
 @node Creating the profile
 @section Creating the profile
@@ -908,14 +1132,13 @@ each procedure was called by each different caller, and @samp{Prof.Counts}
 records the number of times that execution was in each procedure
 when a profiling interrupt occurred.)
 
-It would be nice if there was a way to combine profiling data from
-multiple runs of the same program, but unfortunately there is not yet
-any way to do that.
+It is also possible to combine profiling results from multiple runs of
+your program.  You can do by running your program several times, and
+typing @samp{mprof_merge_counts} after each run.
 
 Due to a known timing-related bug in our code, you may occasionally get
-segmentation violations when running your program with profiling enabled.
-If this happens, just run it again --- the problem does not occur frequently.
-This bug will hopefully be fixed soon.
+segmentation violations when running your program with time profiling enabled.
+If this happens, just run it again --- the problem occurs only very rarely.
 
 @node Displaying the profile
 @section Displaying the profile
@@ -1226,7 +1449,7 @@ Output progress messages at each stage in the compilation.
 
 @sp 1
 @item -V
-@itemx --very_verbose
+@itemx --very-verbose
 Output very verbose progress messages.
 
 @sp 1
@@ -1282,6 +1505,11 @@ an executable.
 Output ``Make''-style dependencies for the module
 and all of its dependencies to @file{@var{module}.dep}.
 
+@item --generate-module-order
+Output the strongly connected components of the module 
+dependency graph in top-down order to @file{@var{module}.order}.
+Implies @samp{--generate-dependencies}.
+
 @sp 1
 @item -i
 @itemx --make-int
@@ -1301,6 +1529,16 @@ Write the unqualified version of the short interface to
 Write information used for inter-module optimization to
 @file{@var{module}.opt}.
 
+@c @sp 1
+@c @item --make-transitive-optimization-interface
+@c @itemx --make-trans-opt
+@c Write the @file{@var{module}.trans_opt} file.  This file is used to store
+@c information used for inter-module optimization. The information is read 
+@c in when the compiler is invoked with the @samp{--transitive-optimization} 
+@c option.  The file is called ``transitive'' because a 
+@c @file{@var{module}.trans_opt} file may depend on other 
+@c @file{@var{module}.trans_opt} files.
+@c
 @sp 1
 @item -G
 @itemx --convert-to-goedel
@@ -1423,6 +1661,7 @@ n - nonlocal variables of goals,
 p - pre-birth, post-birth, pre-death and post-death sets of goals,
 r - resume points of goals,
 s - store maps of goals,
+t - results of termination analysis,
 u - unification categories,
 v - variable numbers in variable names.
 The special argument value ``all''
@@ -1464,6 +1703,13 @@ try to infer the modes, rather than just reporting an error.
 If there is no determinism declaration for a procedure,
 don't try to infer the determinism, just report an error.
 
+@sp 1
+@item --type-inference-iteration-limit @var{n}
+Perform at most @var{n} passes of mode inference (default: 60).
+
+@sp 1
+@item --mode-inference-iteration-limit @var{n}
+Perform at most @var{n} passes of mode inference (default: 30).
 @end table
 
 @node Compilation model options
@@ -1474,17 +1720,31 @@ code in such a way that the entire program must be
 compiled with the same setting of these options,
 and it must be linked to a version of the Mercury
 library which has been compiled with the same setting.
-Rather than setting them individually, you must
-specify them all at once by selecting a particular
-compilation model ("grade").
+(Attempting to link object files compiled with different
+settings of these options will generally result in an error at
+link time, typically of the form @samp{undefined symbol MR_grade_@dots{}}
+or @samp{symbol MR_runtime_grade multiply defined}.)
+
+The options below must be passed to @samp{mgnuc} and @samp{ml} as well
+as to @samp{mmc}.  If you are using Mmake, then you should specify
+these options in the @samp{GRADEFLAGS} variable rather than specifying
+them in @samp{MCFLAGS}, @samp{MGNUCFLAGS}, and @samp{MLFLAGS}.
 
 @table @asis
 @item @code{-s @var{grade}}
 @itemx @code{--grade @var{grade}}
-Select the compilation model. The @var{grade} should be one of
-@samp{debug}, @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, @samp{asm_fast},
-or one of those with @samp{.gc}, @samp{.prof} or @samp{.gc.prof} appended.
+Select the compilation model. The @var{grade} should be a base
+grade with zero or more grade modifiers appended.
+The base grades are @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
+@samp{fast}, and @samp{asm_fast}.
+The grade modifiers are @samp{.gc}, @samp{.prof}, @samp{.proftime},
+@samp{.profcalls}, @samp{.tr}, and @samp{.debug}.  The @samp{.prof},
+@samp{.proftime}, and @samp{.profcalls} grade modifiers are mutually
+exclusive; only one of those three may be specified.
+If a grade includes more than one grade modifier,
+the grade modifiers must be given in the same order as the
+order they are listed here.
+
 The default grade is system-dependent; it is chosen at installation time
 by @samp{configure}, the auto-configuration script, but can be overridden
 with the @samp{MERCURY_DEFAULT_GRADE} environment variable if desired.
@@ -1492,16 +1752,15 @@ Depending on your particular installation, only a subset
 of these possible grades will have been installed.
 Attempting to use a grade which has not been installed
 will result in an error at link time.
+(The error message will typically be something like
+@samp{ld: can't find library for -lmercury}.)
 
-The following table shows the options that are selected by each grade; it
-is followed by descriptions of those options.
+The tables below show the options that are selected by each base grade
+and grade modifier; they are followed by descriptions of those options.
 
 @table @asis
 @item @var{Grade}
 @var{Options implied}.
-
-@item @samp{debug}
-@code{--debug --no-c-optimize}.
 
 @item @samp{none}
 None.
@@ -1521,32 +1780,45 @@ None.
 @item @samp{asm_fast}
 @code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
-@item Any of the above followed by @samp{.gc}
-As above, plus @code{--gc conservative}.
+@end table
 
-@item Any of the above followed by @samp{.prof}
-As above, plus @code{--profiling}.
+@table @asis
+@item @var{Grade modifier}
+@var{Options implied}.
+
+@item @samp{.gc}
+@code{--gc conservative}.
+
+@item @samp{.prof}
+@code{--profiling}.
+
+@item @samp{.proftime}
+@code{--profile-time}.
+
+@item @samp{.profcalls}
+@code{--profile-calls}.
+
+@item @samp{.tr}
+@code{--use-trail}.
+
+@item @samp{.debug}
+@code{--debug}.
 
 @end table
 
 @sp 1
-Reminder: the following optimizations should not be set individually.
-Instead, you should use the @samp{--grade} option to change the setting of
-these options.
-
-@sp 1
 @item @code{--gcc-global-registers} (grades: reg, fast, asm_fast)
-@itemx @code{--no-gcc-global-registers} (grades: debug, none, jump, asm_jump)
+@itemx @code{--no-gcc-global-registers} (grades: none, jump, asm_jump)
 Specify whether or not to use GNU C's global register variables extension.
 
 @sp 1
 @item @code{--gcc-non-local-gotos} (grades: jump, fast, asm_jump, asm_fast)
-@item @code{--no-gcc-non-local-gotos} (grades: debug, none, reg)
+@item @code{--no-gcc-non-local-gotos} (grades: none, reg)
 Specify whether or not to use GNU C's ``labels as values'' extension.
 
 @sp 1
 @item @code{--asm-labels} (grades: asm_jump, asm_fast)
-@itemx @code{--no-asm-labels} (grades: debug, none, reg, jump, fast)
+@itemx @code{--no-asm-labels} (grades: none, reg, jump, fast)
 Specify whether or not to use GNU C's asm extensions
 for inline assembler labels.
 
@@ -1573,39 +1845,33 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
-@item @code{--have-delay-slot}
-(This option is not intended for general use.)
-Assume that branch instructions have a delay slot.
-
-@sp 1
-@item @code{--num-real-r-regs @var{n}}
-(This option is not intended for general use.)
-Assume r1 up to r@var{n} are real general purpose registers.
-
-@sp 1
-@item @code{--num-real-f-regs @var{n}}
-(This option is not intended for general use.)
-Assume f1 up to f@var{n} are real floating point registers.
-
-@sp 1
-@item @code{--num-real-r-temps @var{n}}
-(This option is not intended for general use.)
-Assume that @var{n} non-float temporaries will fit into real machine registers.
-
-@sp 1
-@item @code{--num-real-f-temps @var{n}}
-(This option is not intended for general use.)
-Assume that @var{n} float temporaries will fit into real machine registers.
-
-@sp 1
-@item @code{--profiling} (grades: any grade ending in @samp{.prof})
+@item @code{--profiling} (grades: any grade containing @samp{.prof})
 Enable profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
 @samp{@var{module}.prof}.  @xref{Profiling}.
 
 @sp 1
-@item @code{--debug} (grades: debug)
+@item @code{--profile-calls} (grades: any grade containing @samp{.profcalls})
+Similar to @samp{--profiling}, except that this option only gathers
+call counts, not timing information.  Useful on systems where time
+profiling is not supported (e.g. MS Windows).
+
+@sp 1
+@item @code{--profile-time} (grades: any grade containing @samp{.proftime})
+Similar to @samp{--profiling}, except that this option only gathers
+timing information, not call counts.  For the results to be useful,
+call counts for an identical run of your program need to be gathered
+using @samp{--profiling} or @samp{--profile-calls}. 
+The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
+to gather timing information and call counts in seperate runs,
+rather than just using @samp{--profiling} to gather them both at once,
+is that the former method can give slightly more accurate timing results.
+because with the latter method the code inserted to record call counts
+has a small effect on the execution speed.
+
+@sp 1
+@item @code{--debug} (grades: any grade containing @samp{.debug})
 Enable debugging.
 Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
 to enable debugging of the generated C code. 
@@ -1626,8 +1892,8 @@ the @var{n}th argument is passed in or out using register r@var{n}.
 With the @samp{compact} convention,
 the @var{n}th input argument is passed using register r@var{n}
 and the @var{n}th output argument is returned using register r@var{n}.
-The @samp{compact} convention generally leads to more efficient code.
-However, currently only the @samp{simple} convention is supported.
+The @samp{compact} convention, which is the default,
+generally leads to more efficient code.
 
 @sp 1
 @item @code{--no-type-layout}
@@ -1638,6 +1904,14 @@ use of code that uses the layout information (e.g. @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
 runtime. The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
+
+@sp 1
+@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
+[For Unix with intel x86 architecture only.]
+Select a register usage convention that is compatible
+with position-independent code (gcc's `-fpic' option).
+This is necessary when using shared libraries on Intel x86 systems
+running Unix.  On other systems it has no effect.
 
 @end table
 
@@ -1694,6 +1968,31 @@ default: 90).  A lower value means that the compiler will use
 larger tables, but there will generally be less hash collisions,
 so it may result in faster lookups.
 
+@sp 1
+@item @code{--have-delay-slot}
+(This option is not intended for general use.)
+Assume that branch instructions have a delay slot.
+
+@sp 1
+@item @code{--num-real-r-regs @var{n}}
+(This option is not intended for general use.)
+Assume r1 up to r@var{n} are real general purpose registers.
+
+@sp 1
+@item @code{--num-real-f-regs @var{n}}
+(This option is not intended for general use.)
+Assume f1 up to f@var{n} are real floating point registers.
+
+@sp 1
+@item @code{--num-real-r-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} non-float temporaries will fit into real machine registers.
+
+@sp 1
+@item @code{--num-real-f-temps @var{n}}
+(This option is not intended for general use.)
+Assume that @var{n} float temporaries will fit into real machine registers.
+
 @end table
 
 @node Optimization options
@@ -1701,10 +2000,11 @@ so it may result in faster lookups.
 
 @menu
 * Overall optimization options::
-* High-level (HLDS->HLDS) optimization options::
-* Medium-level (HLDS->LLDS) optimization options::
-* Low-level (LLDS->LLDS) optimization options::
-* Output-level (LLDS->C) optimization options::
+* High-level (HLDS -> HLDS) optimization options::
+* Medium-level (HLDS -> LLDS) optimization options::
+* Low-level (LLDS -> LLDS) optimization options::
+* Output-level (LLDS -> C) optimization options::
+* Object-level (C -> object code) optimization options::
 @end menu
 
 @node Overall optimization options
@@ -1740,7 +2040,7 @@ that require special treatment by @samp{mmake}.
 
 @sp 1
 @item --opt-space
-@item --optimize-space
+@itemx --optimize-space
 Turn on optimizations that reduce code size
 and turn off optimizations that significantly increase code size.
 @end table
@@ -1749,6 +2049,45 @@ and turn off optimizations that significantly increase code size.
 @item --intermodule-optimization
 Perform inlining and higher-order specialization of the code for
 predicates or functions imported from other modules.
+
+@c @sp 1
+@c @item --transitive-intermodule-optimization
+@c @item --trans-intermod-opt
+@c Use the information stored in other @file{@var{module}.trans_opt} files
+@c to make intermodule optimizations.  The @file{@var{module}.trans_opt} is
+@c different to the @file{@var{module}.opt} as @file{@var{module}.trans_opt}
+@c files may depend on other @file{@var{module}.trans_opt} files.
+@c @file{@var{module}.opt} files may only depend on the
+@c @file{@var{module}.m} file.  
+@c
+@sp 1
+@item --enable-termination
+@itemx --enable-term
+Enable termination analysis.  Termination analysis analyses each mode of
+each predicate to see whether it terminates.  @samp{pragma terminates},
+@samp{pragma does_not_terminate} and @samp{pragma check_termination}
+pragmas have no effect unless termination analysis is enabled.  When
+using termination, @samp{--intermodule-optimization} should be enabled,
+as it greatly improves the accuracy of the analysis.
+
+@sp 1
+@item --check-termination
+@itemx --check-term
+@itemx --chk-term
+Enable termination analysis, and emit warnings for some predicates or
+functions that cannot be proved to terminate.  In many cases the
+compiler is unable to prove termination the problem is either a lack of
+information about the termination properties of other predicates, or
+because the program used language constructs (such as higher order
+calls) which could not be analysed.  In these cases the compiler does
+not emit a warning of non-termination, as it is likely to be spurious.
+
+@sp 1
+@item --verbose-check-termination
+@itemx --verb-check-term
+@itemx --verb-chk-term
+Enable termination analysis, and emit warnings for all predicates or 
+functions that cannot be proved to terminate.  
 
 @sp 1
 @item --split-c-files
@@ -1771,8 +2110,8 @@ rather than @samp{mmake foo}.
 
 @end table
 
-@node High-level (HLDS->HLDS) optimization options
-@subsection High-level (HLDS->HLDS) optimization options
+@node High-level (HLDS -> HLDS) optimization options
+@subsection High-level (HLDS -> HLDS) optimization options
 
 These optimizations are high-level transformations on our HLDS (high-level
 data structure).
@@ -1874,8 +2213,8 @@ that have to be saved across calls.
 
 @end table
 
-@node Medium-level (HLDS->LLDS) optimization options
-@subsection Medium-level (HLDS->LLDS) optimization options
+@node Medium-level (HLDS -> LLDS) optimization options
+@subsection Medium-level (HLDS -> LLDS) optimization options
 
 These optimizations are applied during the process of generating
 low-level intermediate code from our high-level data structure.
@@ -1941,8 +2280,8 @@ Don't optimize the assignment of registers in branched goals.
 
 @end table
 
-@node Low-level (LLDS->LLDS) optimization options
-@subsection Low-level (LLDS->LLDS) optimization options
+@node Low-level (LLDS -> LLDS) optimization options
+@subsection Low-level (LLDS -> LLDS) optimization options
 
 These optimizations are transformations that are applied to our
 low-level intermediate code before emitting C code.
@@ -1979,9 +2318,9 @@ Enable elimination of duplicate code.
 @item --optimize-value-number
 Perform value numbering on extended basic blocks.
 
-@c @sp 1
-@c @item --pred-value-number
-@c Extend value numbering to whole procedures, rather than just basic blocks.
+@sp 1
+@item --pred-value-number
+Extend value numbering to whole procedures, rather than just basic blocks.
 
 @sp 1
 @item --no-optimize-frames
@@ -2001,8 +2340,8 @@ Iterate value numbering at most @var{n} times (default: 1).
 
 @end table
 
-@node Output-level (LLDS->C) optimization options
-@subsection Output-level (LLDS->C) optimization options
+@node Output-level (LLDS -> C) optimization options
+@subsection Output-level (LLDS -> C) optimization options
 
 These optimizations are applied during the process of generating
 C intermediate code from our low-level data structure.
@@ -2027,9 +2366,28 @@ putting all the procedures in a single function,
 which produces the most efficient code
 but tends to severely stress the C compiler.
 
-@sp 1
+@end table
+
+@node Object-level (C -> object code) optimization options
+@subsection Object-level (C -> object code) optimization options
+
+These optimizations are applied during the process of compiling
+the generated C code to machine code object files.
+
+If you are using Mmake, you need to pass these options
+to @samp{mgnuc} rather than to @samp{mmc}.
+
+@table @code
 @item --no-c-optimize
 Don't enable the C compiler's optimizations.
+
+@sp 1
+@item --inline-alloc
+Inline calls to @samp{GC_malloc()}.
+This can improve performance a fair bit,
+but may significantly increase code size.
+This option has no effect if @samp{--gc conservative}
+is not set or if the C compiler is not GNU C.
 
 @end table
 

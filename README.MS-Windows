@@ -50,6 +50,10 @@ Configure with
 
 as described in the INSTALL file.
 
+Reportedly this sometimes results in permission errors, but
+apparently the errors go away if you run configure a second time.
+This is probably due to a bug in gnu-win32.
+
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
@@ -108,84 +112,16 @@ such problems, rename your `Mmake' file to `Mmakefile'.
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 
-Index: Mmakefile
-===================================================================
-RCS file: /home/staff/zs/imp/mercury/Mmakefile,v
-retrieving revision 1.1
-diff -u -r1.1 Mmakefile
---- Mmakefile	1997/02/13 21:38:04	1.1
-+++ Mmakefile	1997/04/10 17:46:56
-@@ -17,7 +17,9 @@
+--- Mmakefile.windows	Fri Nov 21 22:55:53 1997
++++ Mmakefile	Fri Nov 21 22:55:59 1997
+@@ -308,8 +308,8 @@
  
- SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
  
--SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
-+# The `/bin:' below is a work-around for a bug in gnu-win32 version b16,
-+# which *requires* `/bin' to be first in the PATH.
-+SUBDIR_MMAKE =	PATH=/bin:../scripts:../util:$$PATH \
- 		MMAKE_VPATH=. \
- 		MMAKE_DIR=../scripts \
- 		../scripts/mmake $(MMAKEFLAGS)
-@@ -162,7 +164,7 @@
- 	cd profiler && $(SUBDIR_MMAKE) depend
- 	cd profiler && $(SUBDIR_MMAKE) ints cs tags
- 	cd doc && $(SUBDIR_MMAKE) info html dvi
--	cd bindist && $(SUBDIR_MMAKE) bindist.configure bindist.build_vars
-+	cd bindist && $(SUBDIR_MMAKE) bindist.configure
- 	# clean up
- 	cd scripts && mmake realclean
- 	cd util && mmake realclean
-@@ -181,9 +183,52 @@
- #-----------------------------------------------------------------------------#
+ # For Windows 95 or Windows NT, uncomment the following two lines:
+-PREINSTALL_HACK = preinstall_hack_for_windows
+-POSTINSTALL_HACK = postinstall_hack_for_windows
++# PREINSTALL_HACK = preinstall_hack_for_windows
++# POSTINSTALL_HACK = postinstall_hack_for_windows
  
- .PHONY: install
--install: all install_scripts install_util install_runtime install_boehm_gc \
-+install: all preinstall_hack_for_win95 \
-+		install_scripts install_util install_runtime install_boehm_gc \
- 		install_library install_compiler install_profiler install_doc \
-+		postinstall_hack_for_win95 \
- 		install_grades
-+
-+# `make touch_files' is a work-around for the broken gnu-win32 `tar'
-+# that loses all the file dates.
-+.PHONY: touch_files
-+touch_files:
-+	touch library/*.date*
-+	touch library/*.optdate
-+	chmod +w library/*.dep
-+	touch library/*.dep
-+	touch compiler/*.date*
-+	chmod +w compiler/*.dep
-+	touch compiler/*.dep
-+	touch profiler/*.date*
-+	chmod +w profiler/*.dep
-+	touch profiler/*.dep
-+	touch doc/*.texi
-+	sleep 1
-+	touch boehm_gc/*.c
-+	touch runtime/*.c
-+	touch library/*.c
-+	touch compiler/*.c
-+	touch profiler/*.c
-+	touch doc/*.info doc/*.dvi doc/*.html
-+
-+# another work-around for gnu-win32 on Windows 95:
-+# the executable files need `.exe' filenames, otherwise they won't work.
-+# But the Mmake files expect them to not have `.exe' filenames.
-+
-+.PHONY: preinstall_hack_for_win95
-+preinstall_hack_for_win95:
-+	cd compiler && mv mercury_compile.exe xyzzy && mv xyzzy mercury_compile
-+	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
-+	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
-+	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
-+
-+.PHONY: postinstall_hack_for_win95
-+postinstall_hack_for_win95:
-+	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_compile mercury_compile.exe
-+	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
-+	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
-+	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
  
- .PHONY: install_scripts
- install_scripts: scripts
+ # `make touch_files' is a work-around for the broken gnu-win32 `tar'
