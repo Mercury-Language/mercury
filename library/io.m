@@ -1626,22 +1626,21 @@
 	#endif
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 	// The ML_ prefixes here are not really needed,
-	// since the MC++ code all gets generated inside a class,
+	// since the C# code all gets generated inside a class,
 	// but we keep them for consistency with the C code.
 
-#ifdef MR_HIGHLEVEL_DATA
-	typedef mercury::tree234::tree234_2 __gc *ML_Map;
+#if MR_HIGHLEVEL_DATA
+	static mercury.tree234.tree234_2	ML_io_stream_db;
+	static object[]				ML_io_user_globals;
 #else
-	typedef MR_Word ML_Map;
+	static object[]				ML_io_stream_db;
+	static object[]				ML_io_user_globals;
 #endif
 
-	static ML_Map		ML_io_stream_db;
-	static MR_Univ		ML_io_user_globals;
-
 	// a counter used to generate unique stream ids
-	static int		ML_next_stream_id;
+	static int				ML_next_stream_id;
 
 	// This specifies the default encoding used for text files.
 	// It must be either ML_OS_text_encoding or ML_Unix_text_encoding.
@@ -1651,7 +1650,7 @@
 	//     the code which initializes mercury_stdin, etc.)
 	//
 	static ML_file_encoding_kind ML_default_text_encoding =
-		ML_OS_text_encoding;
+		ML_file_encoding_kind.ML_OS_text_encoding;
 ").
 
 
@@ -1664,7 +1663,7 @@
 
 :- type io__stream --->		io__stream(c_pointer).
 :- pragma foreign_type("C", io__stream, "MercuryFilePtr").
-:- pragma foreign_type("il", io__stream, "class [mercury]mercury.io__cpp_code.MR_MercuryFileStruct").
+:- pragma foreign_type("il", io__stream, "class [mercury]mercury.io__csharp_code.MR_MercuryFileStruct").
 
 	% a unique identifier for an IO stream
 :- type io__stream_id == int.
@@ -2154,14 +2153,13 @@ io__input_stream_foldl2_io_maybe_stop(Stream, Pred, T0, Res) -->
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__clear_err(_Stream::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__clear_err(_Stream::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	// XXX no error flag to reset as in MC++ an error throws directly an
-	// exception (we should create an error indicator in MF_Mercury_file
-	// for compatibility)
-	MR_update_io(IO0, IO);
+	// XXX no error flag to reset as in .NET an error is thrown
+	// directly as an exception (we should create an error indicator
+	// in MF_Mercury_file for compatibility)
 }").
 
 
@@ -2195,13 +2193,12 @@ io__check_err(Stream, Res) -->
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	ferror(_Stream::in, RetVal::out, _RetStr::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	ferror(_Stream::in, RetVal::out, _RetStr::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	// XXX see clearerr
 	RetVal = 0;
-	MR_update_io(IO0, IO);
 }").
 
 :- pred io__make_err_msg(string, string, io__state, io__state).
@@ -2222,12 +2219,11 @@ io__make_err_msg(Msg0, Msg) -->
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__get_system_error(Error::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__get_system_error(Error::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	Error = MR_io_exception;
-	MR_update_io(IO0, IO);
 }").
 
 :- pragma export(make_err_msg(in, in, out, di, uo), "ML_make_err_msg").
@@ -2239,11 +2235,11 @@ io__make_err_msg(Msg0, Msg) -->
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "{
-	Msg = System::String::Concat(Msg0, Error->Message);
+	Msg = System.String.Concat(Msg0, Error.Message);
 }").
 
 have_win32 :- semidet_fail.
@@ -2344,17 +2340,15 @@ make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__stream_file_size(Stream::in, Size::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
-	MR_MercuryFile mf = Stream;
-	if (mf->stream->CanSeek) {
-		Size = mf->stream->Length;
+	if (Stream.stream.CanSeek) {
+		Size = (int) Stream.stream.Length;
 	} else {
 		Size = -1;
 	}
-	MR_update_io(IO0, IO);
 }").
 
 io__file_modification_time(File, Result) -->
@@ -4189,20 +4183,18 @@ source_name(stderr) = "<standard error>".
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__get_stream_db(StreamDb::out, IO0::di, IO::uo), 
+:- pragma foreign_proc("C#", 
+	io__get_stream_db(StreamDb::out, _IO0::di, _IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	StreamDb = ML_io_stream_db;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__set_stream_db(StreamDb::in, IO0::di, IO::uo), 
+:- pragma foreign_proc("C#", 
+	io__set_stream_db(StreamDb::in, _IO0::di, _IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_stream_db = StreamDb;
-	MR_update_io(IO0, IO);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -4274,20 +4266,18 @@ io__may_delete_stream_info(1, !IO).
 	MR_update_io(IOState0, IOState);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__get_globals(Globals::uo, IOState0::di, IOState::uo), 
+:- pragma foreign_proc("C#", 
+	io__get_globals(Globals::uo, _IOState0::di, _IOState::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Globals = ML_io_user_globals;
-	MR_update_io(IOState0, IOState);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__set_globals(Globals::di, IOState0::di, IOState::uo), 
+:- pragma foreign_proc("C#", 
+	io__set_globals(Globals::di, _IOState0::di, _IOState::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	ML_io_user_globals = Globals;
-	MR_update_io(IOState0, IOState);
 ").
 
 io__progname_base(DefaultName, PrognameBase) -->
@@ -4324,12 +4314,11 @@ io__get_stream_id(Stream) = Id :- io__get_stream_id(Stream, Id).
 #endif
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__get_stream_id(Stream::in, Id::out), 
 	[will_not_call_mercury, promise_pure],
 "
-	MR_MercuryFile mf = Stream;
-	Id = mf->id;
+	Id = Stream.id;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -4437,14 +4426,6 @@ io__finalize_state -->
 #endif
 	MR_add_root(&ML_io_stream_db, (MR_TypeInfo) StreamDbType);
 	MR_add_root(&ML_io_user_globals, (MR_TypeInfo) UserGlobalsType);
-	MR_update_io(IO0, IO);
-").
-
-:- pragma foreign_proc("MC++", 
-	io__gc_init(_StreamDbType::in, _UserGlobalsType::in,
-		IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
-"
 	MR_update_io(IO0, IO);
 ").
 
@@ -4585,11 +4566,11 @@ int		ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
 
 
-:- pragma foreign_decl("MC++", "
+:- pragma foreign_decl("C#", "
 
 namespace mercury {
-  namespace io__cpp_code {
-    __value public enum ML_file_encoding_kind {
+  namespace io__csharp_code {
+    public enum ML_file_encoding_kind {
 	ML_OS_text_encoding,	// file stores characters,
 				// using the operating system's
 				// default encoding, and OS's
@@ -4604,40 +4585,29 @@ namespace mercury {
 	ML_raw_binary		// file stores bytes
     };
 
-    __gc public struct MR_MercuryFileStruct {
-    public:
+    public class MR_MercuryFileStruct {
 	// Note that stream reader and writer are initialized lazily;
 	// that is, if the stream has not yet been used for reading,
 	// the `reader' field may be null.  Any code which accesses that
 	// field must check for null and initialize it if needed.
 	// Likewise for the `writer' field.
 
-	System::IO::Stream 	*stream; // The stream itself
-	System::IO::TextReader 	*reader; // A stream reader for reading it
-	int			putback;
-			// the next character or byte to read,
-			// or -1 if no putback char/byte is stored
-	System::IO::TextWriter 	*writer; // A stream writer for writing it
-	ML_file_encoding_kind	file_encoding; // DOS, Unix, or raw binary
-	int			line_number;
-	int			id;
+	public System.IO.Stream 	stream; // The stream itself
+	public System.IO.TextReader 	reader; // The stream reader for it
+	public System.IO.TextWriter 	writer; // The stream write for it
+	public int			putback;
+				// the next character or byte to read,
+				// or -1 if no putback char/byte is stored
+
+	public ML_file_encoding_kind	file_encoding;
+				// DOS, Unix, or raw binary
+
+	public int			line_number;
+	public int			id;
 
     };
-
-    typedef __gc public struct MR_MercuryFileStruct *MR_MercuryFile;
   }
 }
-
-	// These macros aren't very safe -- they don't enforce
-	// safe casts in any way.  The point of using them is
-	// just to express the programmer's intent.
-	// Make sure you use them for good and not evil.
-#define ML_DownCast(Cast, Expr) dynamic_cast<Cast>(Expr)
-#define ML_UpCast(Cast, Expr) ((Cast) (Expr))
-
-#define MR_initial_io_state()	0	/* some random number */
-#define MR_update_io(r_src, r_dest)	(0)
-#define MR_final_io_state(r)
 ").
 
 :- pragma foreign_code("C", "
@@ -4689,21 +4659,21 @@ mercury_init_io(void)
 
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
-static MR_MercuryFile
-mercury_file_init(System::IO::Stream *stream,
-	System::IO::TextReader *reader, System::IO::TextWriter *writer,
+static MR_MercuryFileStruct
+mercury_file_init(System.IO.Stream stream,
+	System.IO.TextReader reader, System.IO.TextWriter writer,
 	ML_file_encoding_kind file_encoding)
 {
-	MR_MercuryFile mf = new MR_MercuryFileStruct();
-	mf->stream = stream;
-	mf->reader = reader;
-	mf->putback = -1;
-	mf->writer = writer;
-	mf->file_encoding = file_encoding;
-	mf->line_number = 1;
-	mf->id = ML_next_stream_id++;
+	MR_MercuryFileStruct mf = new MR_MercuryFileStruct();
+	mf.stream = stream;
+	mf.reader = reader;
+	mf.putback = -1;
+	mf.writer = writer;
+	mf.file_encoding = file_encoding;
+	mf.line_number = 1;
+	mf.id = ML_next_stream_id++;
 	return mf;
 }
 
@@ -4713,31 +4683,31 @@ mercury_file_init(System::IO::Stream *stream,
 	// I don't think it is one that the Mercury implementation should
 	// try to solve.
 
-static MR_MercuryFile mercury_stdin =
-	mercury_file_init(System::Console::OpenStandardInput(),
-	    System::Console::In, NULL, ML_default_text_encoding);
-static MR_MercuryFile mercury_stdout =
-	mercury_file_init(System::Console::OpenStandardOutput(),
-	    NULL, System::Console::Out, ML_default_text_encoding);
-static MR_MercuryFile mercury_stderr =
-	mercury_file_init(System::Console::OpenStandardError(),
-	    NULL, System::Console::Error, ML_default_text_encoding);
+static MR_MercuryFileStruct mercury_stdin =
+	mercury_file_init(System.Console.OpenStandardInput(),
+	    System.Console.In, null, ML_default_text_encoding);
+static MR_MercuryFileStruct mercury_stdout =
+	mercury_file_init(System.Console.OpenStandardOutput(),
+	    null, System.Console.Out, ML_default_text_encoding);
+static MR_MercuryFileStruct mercury_stderr =
+	mercury_file_init(System.Console.OpenStandardError(),
+	    null, System.Console.Error, ML_default_text_encoding);
 
 	// XXX should we use BufferedStreams here?
-static MR_MercuryFile mercury_stdin_binary =
-	mercury_file_init(System::Console::OpenStandardInput(),
-	    System::Console::In, NULL, ML_raw_binary);
-static MR_MercuryFile mercury_stdout_binary =
-	mercury_file_init(System::Console::OpenStandardOutput(),
-	    NULL, System::Console::Out, ML_raw_binary);
+static MR_MercuryFileStruct mercury_stdin_binary =
+	mercury_file_init(System.Console.OpenStandardInput(),
+	    System.Console.In, null, ML_file_encoding_kind.ML_raw_binary);
+static MR_MercuryFileStruct mercury_stdout_binary =
+	mercury_file_init(System.Console.OpenStandardOutput(),
+	    null, System.Console.Out, ML_file_encoding_kind.ML_raw_binary);
 
-static MR_MercuryFile mercury_current_text_input = mercury_stdin;
-static MR_MercuryFile mercury_current_text_output = mercury_stdout;
-static MR_MercuryFile mercury_current_binary_input = mercury_stdin_binary;
-static MR_MercuryFile mercury_current_binary_output = mercury_stdout_binary;
+static MR_MercuryFileStruct mercury_current_text_input = mercury_stdin;
+static MR_MercuryFileStruct mercury_current_text_output = mercury_stdout;
+static MR_MercuryFileStruct mercury_current_binary_input = mercury_stdin_binary;
+static MR_MercuryFileStruct mercury_current_binary_output = mercury_stdout_binary;
 
 // XXX not thread-safe! */
-static System::Exception *MR_io_exception;
+static System.Exception MR_io_exception;
 
 ").
 
@@ -4761,58 +4731,60 @@ mercury_open(const char *filename, const char *openmode)
 
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
-MR_MercuryFile
-static mercury_open(MR_String filename, MR_String openmode,
+static MR_MercuryFileStruct mercury_open(string filename, string openmode,
 	ML_file_encoding_kind file_encoding)
 {
-        System::IO::FileMode mode;
-        System::IO::FileAccess access;
-        System::IO::FileShare share;
-        System::IO::Stream *stream = 0;
+        System.IO.FileMode   mode;
+        System.IO.FileAccess access;
+        System.IO.FileShare  share;
+        System.IO.Stream     stream = null;
 
 	try {
-		if (System::String::op_Equality(openmode, S""r"")) {
+		if (openmode == ""r"") {
 			// Like '<' in Bourne shell.
 			// Read a file.  The file must exist already.
-			mode   = System::IO::FileMode::Open;
-			access = System::IO::FileAccess::Read;
-		} else if (System::String::op_Equality(openmode, S""w"")) {
+			mode   = System.IO.FileMode.Open;
+			access = System.IO.FileAccess.Read;
+		} else if (openmode == ""w"") {
 			// Like '>' in Bourne shell.
 			// Overwrite an existing file, or create a new file.
-			mode   = System::IO::FileMode::Create;
-			access = System::IO::FileAccess::Write;
-		} else if (System::String::op_Equality(openmode, S""a"")) {
+			mode   = System.IO.FileMode.Create;
+			access = System.IO.FileAccess.Write;
+		} else if (openmode == ""a"") {
 			// Like '>>' in Bourne shell.
 			// Append to an existing file, or create a new file.
-			mode   = System::IO::FileMode::Append;
-			access = System::IO::FileAccess::Write;
+			mode   = System.IO.FileMode.Append;
+			access = System.IO.FileAccess.Write;
 		} else {
-			mercury::runtime::Errors::SORRY(System::String::Concat(
-				S""foreign code for this function, open mode:"",
+			mercury.runtime.Errors.SORRY(System.String.Concat(
+				""foreign code for this function, open mode:"",
 				openmode));
+			// Needed to convince the C# compiler that mode and
+			// access are always initialized.
+			throw new System.Exception();
 		}
 
 		// For Unix compatibility, we allow files
 		// to be read or written by multiple processes
 		// simultaneously.  XXX Is this a good idea?
-		share = System::IO::FileShare::ReadWrite;
+		share = System.IO.FileShare.ReadWrite;
 
-		stream = System::IO::File::Open(filename, mode, access, share);
+		stream = System.IO.File.Open(filename, mode, access, share);
 
-	} catch (System::Exception* e) {
+	} catch (System.Exception e) {
 		MR_io_exception = e;
 	}
 
-        if (!stream) {
-                return 0;
+        if (stream == null) {
+                return null;
         } else {
 		// we initialize the `reader' and `writer' fields to null;
 		// they will be filled in later if they are needed.
                 return mercury_file_init(
-			new System::IO::BufferedStream(stream),
-			NULL, NULL, file_encoding);
+			new System.IO.BufferedStream(stream),
+			null, null, file_encoding);
         }
 }
 
@@ -4878,13 +4850,13 @@ mercury_print_string(MercuryFilePtr mf, const char *s)
 
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
 // Any changes here should also be reflected in the code for
 // io__write_char, which (for efficiency) uses its own inline
 // code, rather than calling this function.
 static void
-mercury_print_string(MR_MercuryFile mf, MR_String s)
+mercury_print_string(MR_MercuryFileStruct mf, string s)
 {
 	//
 	// For the .NET back-end, strings are represented as Unicode.
@@ -4906,23 +4878,23 @@ mercury_print_string(MR_MercuryFile mf, MR_String s)
 	// open time, so that we don't try to construct TextWriters for
 	// input streams.
 
-	if (mf->writer == NULL) {
-		mf->writer = new System::IO::StreamWriter(mf->stream,
-			System::Text::Encoding::Default);
+	if (mf.writer == null) {
+		mf.writer = new System.IO.StreamWriter(mf.stream,
+			System.Text.Encoding.Default);
 		
 	}
 
-	switch (mf->file_encoding) {
-	case ML_raw_binary:
-	case ML_Unix_text_encoding:
-		mf->writer->Write(s);
-		for (int i = 0; i < s->Length; i++) {
-			if (s->Chars[i] == '\\n') {
-				mf->line_number++;
+	switch (mf.file_encoding) {
+	case ML_file_encoding_kind.ML_raw_binary:
+	case ML_file_encoding_kind.ML_Unix_text_encoding:
+		mf.writer.Write(s);
+		for (int i = 0; i < s.Length; i++) {
+			if (s[i] == '\\n') {
+				mf.line_number++;
 			}
 		}
 		break;
-	case ML_OS_text_encoding:
+	case ML_file_encoding_kind.ML_OS_text_encoding:
 		//
 		// We can't just use the System.TextWriter.Write(String)
 		// method, since that method doesn't convert newline
@@ -4931,14 +4903,15 @@ mercury_print_string(MR_MercuryFile mf, MR_String s)
 		// Only the WriteLine(...) method handles those properly.
 		// So we have to output each character separately.
 		//
-		for (int i = 0; i < s->Length; i++) {
-			if (s->Chars[i] == '\\n') {
-				mf->line_number++;
-				mf->writer->WriteLine(S"""");
+		for (int i = 0; i < s.Length; i++) {
+			if (s[i] == '\\n') {
+				mf.line_number++;
+				mf.writer.WriteLine("""");
 			} else {
-				mf->writer->Write(s->Chars[i]);
+				mf.writer.Write(s[i]);
 			}
 		}
+		break;
 	}
 }
 
@@ -4971,15 +4944,15 @@ mercury_getc(MercuryFilePtr mf)
 ").
 
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
 static void
-mercury_print_binary_string(MR_MercuryFile mf, MR_String s)
+mercury_print_binary_string(MR_MercuryFileStruct mf, string s)
 {
 	// sanity check
-	if (mf->file_encoding != ML_raw_binary) {
-		mercury::runtime::Errors::fatal_error(
-	S""mercury_print_binary_string: file encoding is not raw binary"");
+	if (mf.file_encoding != ML_file_encoding_kind.ML_raw_binary) {
+		mercury.runtime.Errors.fatal_error(
+	""mercury_print_binary_string: file encoding is not raw binary"");
 	}
 
 	//
@@ -5011,26 +4984,24 @@ mercury_print_binary_string(MR_MercuryFile mf, MR_String s)
 	// just like io__write_byte takes the byte from the bottom 8 bits
 	// of the int value.
 
-#if 0
-	unsigned char byte_array __gc[] =
-		System::Text::Encoding::Default()->GetBytes(s);
-#else
-	int len = s->Length;
-	unsigned char byte_array __gc[] = new unsigned char __gc[len];
+/* XXX possible alternative implementation.
+	byte[] byte_array = System.Text.Encoding.Default().GetBytes(s);
+*/
+	int len = s.Length;
+	byte[] byte_array = new byte[len];
 	for (int i = 0; i < len; i++) {
-		byte_array[i] = s->get_Chars(i);
-		if (byte_array[i] != s->get_Chars(i)) {
-			mercury::runtime::Errors::SORRY(
-			S""write_bytes: Unicode char does not fit in a byte"");
+		byte_array[i] = (byte) s[i];
+		if (byte_array[i] != s[i]) {
+			mercury.runtime.Errors.SORRY(
+			""write_bytes: Unicode char does not fit in a byte"");
 		}
 	}
-#endif
-	mf->stream->Write(byte_array, 0, byte_array->Length);
+	mf.stream.Write(byte_array, 0, byte_array.Length);
 }
 
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
 // Read in a character.
 // This means reading in one or more bytes,
@@ -5038,38 +5009,38 @@ mercury_print_binary_string(MR_MercuryFile mf, MR_String s)
 // and possibly converting CR-LF to newline.
 // Returns -1 on error or EOF.
 static int
-mercury_getc(MR_MercuryFile mf)
+mercury_getc(MR_MercuryFileStruct mf)
 {
 	int c;
 
-	if (mf->putback != -1) {
-		c = mf->putback;
-		mf->putback = -1;
+	if (mf.putback != -1) {
+		c = mf.putback;
+		mf.putback = -1;
 		if (c == '\\n') {
-			mf->line_number++;
+			mf.line_number++;
 		}
 		return c;
 	}
 
-	if (mf->reader == NULL) {
-		mf->reader = new System::IO::StreamReader(mf->stream,
-				System::Text::Encoding::Default);
+	if (mf.reader == null) {
+		mf.reader = new System.IO.StreamReader(mf.stream,
+				System.Text.Encoding.Default);
 	}
 
-	c = mf->reader->Read();
-	switch (mf->file_encoding) {
-	case ML_raw_binary:
-	case ML_Unix_text_encoding:
+	c = mf.reader.Read();
+	switch (mf.file_encoding) {
+	case ML_file_encoding_kind.ML_raw_binary:
+	case ML_file_encoding_kind.ML_Unix_text_encoding:
 		if (c == '\\n') {
-			mf->line_number++;
+			mf.line_number++;
 		}
 		break;
-	case ML_OS_text_encoding:
+	case ML_file_encoding_kind.ML_OS_text_encoding:
 		// First, check if the character we've read matches
-		// System::Environment::NewLine.
-		// We assume that System::Environment::NewLine is non-null
-		// and that System::Environment::NewLine->Length > 0.
-		if (c != System::Environment::NewLine->get_Chars(0)) {
+		// System.Environment.NewLine.
+		// We assume that System.Environment.NewLine is non-null
+		// and that System.Environment.NewLine.Length > 0.
+		if (c != System.Environment.NewLine[0]) {
 			if (c == '\\n') {
 				// the input file was ill-formed,
 				// e.g. it contained only raw
@@ -5078,20 +5049,20 @@ mercury_getc(MR_MercuryFile mf)
 				// If not, we still need to treat
 				// this as a newline, and thus
 				// increment the line counter.
-				mf->line_number++;
+				mf.line_number++;
 			}
-		} else /* c == NewLine->get_Chars(0) */ {
-			switch (System::Environment::NewLine->Length) {
+		} else /* c == NewLine[0] */ {
+			switch (System.Environment.NewLine.Length) {
 			case 1:
-				mf->line_number++;
+				mf.line_number++;
 				c = '\\n';
 				break;
 			case 2:
-				if (mf->reader->Peek() == System::
-					Environment::NewLine->get_Chars(1))
+				if (mf.reader.Peek() ==
+					System.Environment.NewLine[1])
 				{
-					(void) mf->reader->Read();
-					mf->line_number++;
+					mf.reader.Read();
+					mf.line_number++;
 					c = '\\n';
 				} else if (c == '\\n') {
 					// the input file was ill-formed,
@@ -5101,12 +5072,13 @@ mercury_getc(MR_MercuryFile mf)
 					// If not, we still need to treat
 					// this as a newline, and thus
 					// increment the line counter.
-					mf->line_number++;
+					mf.line_number++;
 				}
 				break;
 			default:
-				mercury::runtime::Errors::SORRY(
-	S""mercury_getc: Environment::NewLine::Length is neither 1 nor 2"");
+				mercury.runtime.Errors.SORRY(
+	""mercury_getc: Environment.NewLine.Length is neither 1 nor 2"");
+				break;
 			}
 		}
 		break;
@@ -5115,15 +5087,15 @@ mercury_getc(MR_MercuryFile mf)
 }
 
 static void
-mercury_ungetc(MR_MercuryFile mf, int code)
+mercury_ungetc(MR_MercuryFileStruct mf, int code)
 {
-	if (mf->putback != -1) {
-		mercury::runtime::Errors::SORRY(
-			S""mercury_ungetc: max one character of putback"");
+	if (mf.putback != -1) {
+		mercury.runtime.Errors.SORRY(
+			""mercury_ungetc: max one character of putback"");
 	}
-	mf->putback = code;
+	mf.putback = code;
 	if (code == '\\n') {
-		mf->line_number--;
+		mf.line_number--;
 	}
 }
 ").
@@ -5299,21 +5271,21 @@ mercury_close(MercuryFilePtr mf)
 
 ").
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
 static void
-mercury_close(MR_MercuryFile mf)
+mercury_close(MR_MercuryFileStruct mf)
 {
-	if (mf->reader) {
-		mf->reader->Close();
-		mf->reader = NULL;
+	if (mf.reader != null) {
+		mf.reader.Close();
+		mf.reader = null;
 	}
-	if (mf->writer) {
-		mf->writer->Close();
-		mf->writer = NULL;
+	if (mf.writer != null) {
+		mf.writer.Close();
+		mf.writer = null;
 	}
-	mf->stream->Close();
-	mf->stream = NULL;
+	mf.stream.Close();
+	mf.stream = null;
 }
 
 ").
@@ -5381,49 +5353,45 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++", 
-	io__read_char_code(File::in, CharCode::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#", 
+	io__read_char_code(File::in, CharCode::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	MR_MercuryFile mf = File;
+	MR_MercuryFileStruct mf = File;
 	CharCode = mercury_getc(mf);
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__read_byte_val(File::in, ByteVal::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#", 
+	io__read_byte_val(File::in, ByteVal::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	MR_MercuryFile mf = File;
-	if (mf->putback != -1) {
-		ByteVal = mf->putback;
-		mf->putback = -1;
+	MR_MercuryFileStruct mf = File;
+	if (mf.putback != -1) {
+		ByteVal = mf.putback;
+		mf.putback = -1;
 	} else {
-		ByteVal = mf->stream->ReadByte();
+		ByteVal = mf.stream.ReadByte();
 	}
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#", 
+	io__putback_char(File::in, Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure],
 "{
-	MR_MercuryFile mf = File;
+	MR_MercuryFileStruct mf = File;
 	mercury_ungetc(mf, Character);
-	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__putback_byte(File::in, Byte::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__putback_byte(File::in, Byte::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure],
 "{
-	MR_MercuryFile mf = File;
-	if (mf->putback != -1) {
-		mercury::runtime::Errors::SORRY(
-			S""io__putback_byte: max one character of putback"");
+	MR_MercuryFileStruct mf = File;
+	if (mf.putback != -1) {
+		mercury.runtime.Errors.SORRY(
+			""io__putback_byte: max one character of putback"");
 	}
-	mf->putback = Byte;
-	MR_update_io(IO0, IO);
+	mf.putback = Byte;
 }").
 
 /* output predicates - with output to mercury_current_text_output */
@@ -5512,81 +5480,75 @@ ML_fprintf(MercuryFilePtr mf, const char *format, ...)
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__write_string(Message::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#", 
+	io__write_string(Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	mercury_print_string(mercury_current_text_output, Message);
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++", 
-	io__write_char(Character::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#", 
+	io__write_char(Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	/* See mercury_output_string() for comments */
-	if (mercury_current_text_output->writer == NULL) {
-		mercury_current_text_output->writer =
-			new System::IO::StreamWriter(
-				mercury_current_text_output->stream,
-				System::Text::Encoding::Default);
+	if (mercury_current_text_output.writer == null) {
+		mercury_current_text_output.writer =
+			new System.IO.StreamWriter(
+				mercury_current_text_output.stream,
+				System.Text.Encoding.Default);
 	}
-	System::IO::TextWriter *w = mercury_current_text_output->writer;
+	System.IO.TextWriter w = mercury_current_text_output.writer;
 	if (Character == '\\n') {
-		switch (mercury_current_text_output->file_encoding) {
-		case ML_raw_binary:
-		case ML_Unix_text_encoding:
-			w->Write(Character);
+		switch (mercury_current_text_output.file_encoding) {
+		case ML_file_encoding_kind.ML_raw_binary:
+		case ML_file_encoding_kind.ML_Unix_text_encoding:
+			w.Write(Character);
 			break;
-		case ML_OS_text_encoding:
-			w->WriteLine(S"""");
+		case ML_file_encoding_kind.ML_OS_text_encoding:
+			w.WriteLine("""");
 			break;
 		}
-		mercury_current_text_output->line_number++;
+		mercury_current_text_output.line_number++;
 	} else {
-		w->Write(Character);
+		w.Write(Character);
 	}
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__write_int(Val::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_int(Val::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	mercury_print_string(mercury_current_text_output, Val.ToString());
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__write_byte(Byte::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_byte(Byte::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-	mercury_current_binary_output->stream->WriteByte(Byte);
-	MR_update_io(IO0, IO);
+	mercury_current_binary_output.stream.WriteByte(
+			System.Convert.ToByte(Byte));
 ").
 
-:- pragma foreign_proc("MC++",
-	io__write_bytes(Message::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_bytes(Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
 	mercury_print_binary_string(mercury_current_binary_output, Message);
-	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++", 
-	io__flush_output(IO0::di, IO::uo),
+:- pragma foreign_proc("C#", 
+	io__flush_output(_IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-	mercury_current_text_output->stream->Flush();
-	MR_update_io(IO0, IO);
+	mercury_current_text_output.stream.Flush();
 ").
 
-:- pragma foreign_proc("MC++",
-	io__flush_binary_output(IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__flush_binary_output(_IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-	mercury_current_binary_output->stream->Flush();
-	MR_update_io(IO0, IO);
+	mercury_current_binary_output.stream.Flush();
 ").
 
 io__write_float(Float) -->
@@ -5723,86 +5685,73 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__write_string(Stream::in, Message::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_string(Stream::in, Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io], 
 "{
-	MR_MercuryFile stream = Stream;
-	mercury_print_string(stream, Message);
-	MR_update_io(IO0, IO);
+	mercury_print_string(Stream, Message);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__write_char(Stream::in, Character::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_char(Stream::in, Character::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io], 
 "{
-	MR_MercuryFile stream = Stream;
+	MR_MercuryFileStruct stream = Stream;
 	/* See mercury_output_string() for comments */
-	if (stream->writer == NULL) {
-		stream->writer = new System::IO::StreamWriter(stream->stream,
-			System::Text::Encoding::Default);
+	if (stream.writer == null) {
+		stream.writer = new System.IO.StreamWriter(stream.stream,
+			System.Text.Encoding.Default);
 	}
-	System::IO::TextWriter *w = stream->writer;
+	System.IO.TextWriter w = stream.writer;
 	if (Character == '\\n') {
-		switch (stream->file_encoding) {
-		case ML_raw_binary:
-		case ML_Unix_text_encoding:
-			w->Write(Character);
+		switch (stream.file_encoding) {
+		case ML_file_encoding_kind.ML_raw_binary:
+		case ML_file_encoding_kind.ML_Unix_text_encoding:
+			w.Write(Character);
 			break;
-		case ML_OS_text_encoding:
-			w->WriteLine(S"""");
+		case ML_file_encoding_kind.ML_OS_text_encoding:
+			w.WriteLine("""");
 			break;
 		}
-		stream->line_number++;
+		stream.line_number++;
 	} else {
-		w->Write(Character);
+		w.Write(Character);
 	}
-	MR_update_io(IO0, IO);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__write_int(Stream::in, Val::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_int(Stream::in, Val::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	mercury_print_string(stream, Val.ToString());
-	MR_update_io(IO0, IO);
+	mercury_print_string(Stream, Val.ToString());
 }").
 
-:- pragma foreign_proc("MC++",
-	io__write_byte(Stream::in, Byte::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_byte(Stream::in, Byte::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	stream->stream->WriteByte(Byte);
-	MR_update_io(IO0, IO);
+	Stream.stream.WriteByte(System.Convert.ToByte(Byte));
 }").
 
-:- pragma foreign_proc("MC++",
-	io__write_bytes(Stream::in, Message::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__write_bytes(Stream::in, Message::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	mercury_print_binary_string(stream, Message);
-	MR_update_io(IO0, IO);
+	mercury_print_binary_string(Stream, Message);
 }").
 
-:- pragma foreign_proc("MC++",
-	io__flush_output(Stream::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__flush_output(Stream::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	stream->stream->Flush();
-	MR_update_io(IO0, IO);
+	Stream.stream.Flush();
 }").
 
-:- pragma foreign_proc("MC++",
-	io__flush_binary_output(Stream::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__flush_binary_output(Stream::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	stream->stream->Flush();
-	MR_update_io(IO0, IO);
+	Stream.stream.Flush();
 }").
 
 io__write_float(Stream, Float) -->
@@ -5996,185 +5945,160 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__stdin_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__stdin_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	Stream = mercury_stdin;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__stdout_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__stdout_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	Stream = mercury_stdout;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__stderr_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__stderr_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	Stream = mercury_stderr;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__stdin_binary_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__stdin_binary_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	Stream = mercury_stdin_binary;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__stdout_binary_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__stdout_binary_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 	Stream = mercury_stdout_binary;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__input_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__input_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Stream = mercury_current_text_input;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__output_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__output_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Stream = mercury_current_text_output;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__binary_input_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__binary_input_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Stream = mercury_current_binary_input;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__binary_output_stream(Stream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__binary_output_stream(Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	Stream = mercury_current_binary_output;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__get_line_number(LineNum::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__get_line_number(LineNum::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	LineNum = mercury_current_text_input->line_number;
-	MR_update_io(IO0, IO);
+	LineNum = mercury_current_text_input.line_number;
 ").
 
-:- pragma foreign_proc("MC++",
-	io__get_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__get_line_number(Stream::in, LineNum::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	LineNum = stream->line_number;
-	MR_update_io(IO0, IO);
+	LineNum = Stream.line_number;
 }").
 
-:- pragma foreign_proc("MC++",
-	io__set_line_number(LineNum::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_line_number(LineNum::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	mercury_current_text_input->line_number = LineNum;
-	MR_update_io(IO0, IO);
+	mercury_current_text_input.line_number = LineNum;
 ").
 
-:- pragma foreign_proc("MC++",
-	io__set_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_line_number(Stream::in, LineNum::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	stream->line_number = LineNum;
-	MR_update_io(IO0, IO);
+	Stream.line_number = LineNum;
 }").
 
-:- pragma foreign_proc("MC++",
-	io__get_output_line_number(LineNum::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	LineNum = mercury_current_text_output->line_number;
-	MR_update_io(IO0, IO);
+	LineNum = mercury_current_text_output.line_number;
 ").
 
-:- pragma foreign_proc("MC++",
-	io__get_output_line_number(Stream::in, LineNum::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__get_output_line_number(Stream::in, LineNum::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	LineNum = stream->line_number;
-	MR_update_io(IO0, IO);
+	LineNum = Stream.line_number;
 }").
 
-:- pragma foreign_proc("MC++",
-	io__set_output_line_number(LineNum::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	mercury_current_text_output->line_number = LineNum;
-	MR_update_io(IO0, IO);
+	mercury_current_text_output.line_number = LineNum;
 ").
 
-:- pragma foreign_proc("MC++",
-	io__set_output_line_number(Stream::in, LineNum::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_output_line_number(Stream::in, LineNum::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	MR_MercuryFile stream = Stream;
-	stream->line_number = LineNum;
-	MR_update_io(IO0, IO);
+	Stream.line_number = LineNum;
 }").
 
 % io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %	Changes the current input stream to the stream specified.
 %	Returns the previous stream.
-:- pragma foreign_proc("MC++",
-	io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_input_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_text_input;
 	mercury_current_text_input = NewStream;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__set_output_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_output_stream(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_text_output;
 	mercury_current_text_output = NewStream;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__set_binary_input_stream(NewStream::in, OutStream::out,
-		IO0::di, IO::uo), 
+		_IO0::di, _IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_binary_input;
 	mercury_current_binary_input = NewStream;
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__set_binary_output_stream(NewStream::in, OutStream::out,
-		IO0::di, IO::uo), 
+		_IO0::di, _IO::uo), 
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 	OutStream = mercury_current_binary_output;
 	mercury_current_binary_output = NewStream;
-	MR_update_io(IO0, IO);
 ").
 
 /* stream open/close predicates */
@@ -6215,29 +6139,38 @@ current_binary_output_stream(S) --> binary_output_stream(S).
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__do_open_text(FileName::in, Mode::in, ResultCode::out,
-		StreamId::out, Stream::out, IO0::di, IO::uo),
+		StreamId::out, Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	MR_MercuryFile mf = mercury_open(FileName, Mode,
+	MR_MercuryFileStruct mf = mercury_open(FileName, Mode,
 		ML_default_text_encoding);
 	Stream = mf;
-	ResultCode = (mf ? 0 : -1);
-	StreamId = (mf ? mf->id : -1);
-	MR_update_io(IO0, IO);
+	if (mf != null) {
+		ResultCode = 0;
+		StreamId = mf.id;
+	} else {
+		ResultCode = -1;
+		StreamId = -1;
+	}
 ").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__do_open_binary(FileName::in, Mode::in, ResultCode::out,
-		StreamId::out, Stream::out, IO0::di, IO::uo),
+		StreamId::out, Stream::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	MR_MercuryFile mf = mercury_open(FileName, Mode, ML_raw_binary);
+	MR_MercuryFileStruct mf = mercury_open(FileName, Mode,
+			ML_file_encoding_kind.ML_raw_binary);
 	Stream = mf;
-	ResultCode = (mf ? 0 : -1);
-	StreamId = (mf ? mf->id : -1);
-	MR_update_io(IO0, IO);
+	if (mf != null) {
+		ResultCode = 0;
+		StreamId = mf.id;
+	} else {
+		ResultCode = -1;
+		StreamId = -1;
+	}
 ").
 
 io__close_input(Stream) -->
@@ -6266,13 +6199,11 @@ io__close_binary_output(Stream) -->
 	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__close_stream(Stream::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__close_stream(Stream::in, _IO0::di, _IO::uo),
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	MR_MercuryFile mf = Stream;
-	mercury_close(mf);
-	MR_update_io(IO0, IO);
+	mercury_close(Stream);
 ").
 
 /* miscellaneous predicates */
@@ -6410,34 +6341,32 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	#endif
 ").
 
-:- pragma foreign_proc("MC++",
-	io__command_line_arguments(Args::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__command_line_arguments(Args::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
-	MR_String arg_vector __gc[] = System::Environment::GetCommandLineArgs();
-	int i = arg_vector->Length;
-	MR_list_nil(Args);
+	string[] arg_vector = System.Environment.GetCommandLineArgs();
+	int i = arg_vector.Length;
+	Args = mercury.list.mercury_code.ML_empty_list(null);
 		// We don't get the 0th argument: it is the executable name
 	while (--i > 0) {
-		MR_list_cons(Args, arg_vector[i], Args);
+		Args = mercury.list.mercury_code.ML_cons(null,
+				arg_vector[i], Args);
 	}
-	MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("MC++",
-	io__get_exit_status(ExitStatus::out, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	ExitStatus = System::Environment::ExitCode;
-	MR_update_io(IO0, IO);
+	ExitStatus = System.Environment.ExitCode;
 ").
 
-:- pragma foreign_proc("MC++",
-	io__set_exit_status(ExitStatus::in, IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	System::Environment::ExitCode = ExitStatus;
-	MR_update_io(IO0, IO);
+	System.Environment.ExitCode = ExitStatus;
 ").
 
 :- pragma foreign_proc("C#",
@@ -6674,19 +6603,12 @@ io__make_temp(Dir, Prefix, Name) -->
 	MR_update_io(IO0, IO);
 }").
 
-/* XXX this is only needed if the problem loading the dll mentioned below
- * is resolved.
-:- pragma foreign_decl("MC++", "
-#include <windows.h>	// for GetTempFileName()
-").
-*/
-
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__do_make_temp(Dir::in, Prefix::in, _Sep::in, FileName::out,
 		Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	/* XXX For some reason this code below doesn't work.
+	/* XXX For some reason this MC++ code below doesn't work.
 	 * We get the following error message:
 	 *   Unhandled Exception: System.TypeInitializationException: The type
 	 *   initializer for ""remove_file.mercury_code"" threw an exception.
@@ -6723,15 +6645,15 @@ io__make_temp(Dir, Prefix, Name) -->
 	*/
 
 	try {
-		FileName = System::IO::Path::GetTempFileName();
+		FileName = System.IO.Path.GetTempFileName();
 		Error = 0;
-		ErrorMessage = S"""";
+		ErrorMessage = """";
 	}
-	catch (System::Exception *e)
+	catch (System.Exception e)
 	{
-		FileName = S"""";
+		FileName = """";
 		Error = -1;
-		ErrorMessage = e->Message;
+		ErrorMessage = e.Message;
 	}
 }").
 
