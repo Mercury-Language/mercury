@@ -241,12 +241,16 @@ case $COMPILER in gcc)
 	case "$FULLARCH" in
 		mips*)
 			case "$*" in *" int.c "*|*" int.dir/int_"*".c "*)
-				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+				case "`$CC --version 2>/dev/null`" in 2.6.*)
+					ARCH_OPTS="$ARCH_OPTS -O1" ;;
+				esac;;
 			esac ;;
 		alpha*)
 			case "$*" in
 			*" modules.c "*|*" modules.dir/modules_"*".c "*)
-				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+				case "`$CC --version 2>/dev/null`" in 2.6.*)
+					ARCH_OPTS="$ARCH_OPTS -O1" ;;
+				esac
 			esac ;;
 	esac ;;
 esac
