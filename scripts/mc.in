@@ -21,6 +21,7 @@ CC=${MERCURY_C_COMPILER=@CC@}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 LOW_TAG_BITS=@LOW_TAG_BITS@
+BITS_PER_WORD=@BITS_PER_WORD@
 NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
 NUM_REAL_TEMPS=@NUM_REAL_TEMPS@
 HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
@@ -37,6 +38,7 @@ case $# in
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-temps "$NUM_REAL_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		--bits-per-word "$BITS_PER_WORD" \
 		$HAVE_DELAY_SLOT $DEFAULT_OPT_LEVEL \
 		;;
 	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
