@@ -73,9 +73,7 @@ extern	Word 	num_uses[MAX_RN];
 
 typedef struct MEMORY_ZONE	MemoryZone;
 
-#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 typedef bool ZoneHandler(Word *addr, struct MEMORY_ZONE *zone, void *context);
-#endif
 
 struct MEMORY_ZONE {
 	struct MEMORY_ZONE *next; /* the memory zones are organized as a
