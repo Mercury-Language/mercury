@@ -509,6 +509,9 @@
 					% (first argument == no. 1)
 		)
 
+		% a unification in the function result term of a clause head
+	;	head_result
+
 		% a unification in an argument of a predicate call
 	;	call(
 			call_id,	% the name and arity of the predicate

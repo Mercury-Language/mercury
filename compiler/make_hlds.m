@@ -3001,7 +3001,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ map__keys(Procs, ModeIds) },
 		clauses_info_add_clause(Clauses0, PredId, ModeIds,
 			ClauseVarSet, TVarSet0, Args, Body, Context,
-			IsAssertion, Goal,
+			PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, TVarSet, Clauses, Warnings,
 			ModuleInfo0, ModuleInfo1, Info0, Info),
 		{
@@ -3258,7 +3258,7 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 	{ PragmaImpl = ordinary(C_Code, no) },
 	clauses_info_add_pragma_c_code(Clauses0, Purity, Attributes,
 		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
-		Context, Clauses, Info0, Info),
+		Context, PredOrFunc, Arity, Clauses, Info0, Info),
 
 	%
 	% Store the clauses_info etc. back into the pred_info
@@ -3486,7 +3486,7 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 			clauses_info_add_pragma_c_code(Clauses0, Purity,
 				Attributes, PredId, ProcId, VarSet,
 				PVars, ArgTypes, PragmaImpl, Context,
-				Clauses, Info0, Info),
+				PredOrFunc, Arity, Clauses, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
 			{ pred_info_set_goal_type(PredInfo2, pragmas, 
@@ -4431,22 +4431,25 @@ clauses_info_init(Arity, ClausesInfo) :-
 
 :- pred clauses_info_add_clause(clauses_info::in, pred_id::in, 
 		list(proc_id)::in, prog_varset::in, tvarset::in,
-		list(prog_term)::in, goal::in, prog_context::in, bool::in,
+		list(prog_term)::in, goal::in, prog_context::in,
+		pred_or_func::in, arity::in, bool::in,
 		hlds_goal::out, prog_varset::out, tvarset::out,
 		clauses_info::out, list(quant_warning)::out, 
 		module_info::in, module_info::out, qual_info::in,
 		qual_info::out, io__state::di, io__state::uo) is det.
 
 clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
-		Args, Body, Context, IsAssertion, Goal, VarSet, TVarSet0,
-		ClausesInfo, Warnings, Module0, Module, Info0, Info) -->
+		Args, Body, Context, PredOrFunc, Arity, IsAssertion, Goal,
+		VarSet, TVarSet0, ClausesInfo, Warnings, Module0, Module,
+		Info0, Info) -->
 	{ ClausesInfo0 = clauses_info(VarSet0, VarTypes0, VarTypes1,
 					HeadVars, ClauseList0,
 					TI_VarMap, TCI_VarMap) },
 	{ update_qual_info(Info0, TVarSet0, VarTypes0, PredId, Info1) },
 	{ varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst) },
-	transform(Subst, HeadVars, Args, Body, VarSet1, Context, IsAssertion,
-			Goal, VarSet, Warnings, Module0, Module, Info1, Info2),
+	transform(Subst, HeadVars, Args, Body, VarSet1, Context, PredOrFunc,
+			Arity, IsAssertion, Goal, VarSet, Warnings,
+			Module0, Module, Info1, Info2),
 	{ qual_info_get_found_syntax_error(Info2, FoundError) },
 	{ qual_info_set_found_syntax_error(no, Info2, Info) },
 	(
@@ -4476,13 +4479,14 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 :- pred clauses_info_add_pragma_c_code(clauses_info, purity,
 	pragma_c_code_attributes, pred_id, proc_id, prog_varset,
 	list(pragma_var), list(type), pragma_c_code_impl, prog_context,
-	clauses_info, qual_info, qual_info, io__state, io__state) is det.
+	pred_or_func, arity, clauses_info, qual_info,
+	qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
-	out, in, out, di, uo) is det.
+	in, in, out, in, out, di, uo) is det.
 
 clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		ModeId, PVarSet, PVars, OrigArgTypes, PragmaImpl, Context,
-		ClausesInfo, Info0, Info) -->
+		PredOrFunc, Arity, ClausesInfo, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
@@ -4506,8 +4510,9 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		% Since the set of head vars and the set vars in the
 		% pragma C code are disjoint, the unifications can be
 		% implemented as substitutions, and they will be.
-	insert_arg_unifications(HeadVars, TermArgs, Context, head, yes,
-		HldsGoal0, VarSet1, HldsGoal1, VarSet2, Info0, Info),
+	insert_arg_unifications(HeadVars, TermArgs, Context,
+		head(PredOrFunc, Arity), yes, HldsGoal0, VarSet1,
+		HldsGoal1, VarSet2, Info0, Info),
 	{
 	map__init(Empty),
 	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
@@ -4530,14 +4535,16 @@ allocate_vars_for_saved_vars([Name | Names], [Var - Name | VarNames],
 %-----------------------------------------------------------------------------
 
 :- pred transform(prog_substitution, list(prog_var), list(prog_term), goal,
-		prog_varset, prog_context, bool, hlds_goal, prog_varset, 
-		list(quant_warning), module_info, module_info,
-		qual_info, qual_info, io__state, io__state).
-:- mode transform(in, in, in, in, in, in, in, out, out, out,
+		prog_varset, prog_context, pred_or_func, arity, bool,
+		hlds_goal, prog_varset, list(quant_warning),
+		module_info, module_info, qual_info, qual_info,
+		io__state, io__state).
+:- mode transform(in, in, in, in, in, in, in, in, in, out, out, out,
 		in, out, in, out, di, uo) is det.
 
-transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
-		Goal, VarSet, Warnings, Module0, Module, Info0, Info) -->
+transform(Subst, HeadVars, Args0, Body, VarSet0, Context, PredOrFunc,
+		Arity, IsAssertion, Goal, VarSet, Warnings,
+		Module0, Module, Info0, Info) -->
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1, Info0, Info1),
 	{ term__apply_substitution_to_list(Args0, Subst, Args) },
 	{ map__init(Empty) },
@@ -4553,8 +4560,9 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, IsAssertion,
 		{ Info = Info0 }
 	;
 		{ Module = Module0 },
-		insert_arg_unifications(HeadVars, Args, Context, head, no,
-			Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
+		{ ArgContext = head(PredOrFunc, Arity) },
+		insert_arg_unifications(HeadVars, Args, Context, ArgContext,
+			no, Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
 	),
 	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
 				Goal, VarSet, _, Warnings) }.
@@ -4932,8 +4940,10 @@ transform_delete_or_modify(DelOrMod, Args0, Context, VarSet0,
 		{ map__init(Substitution) },
 		transform_goal(ParsedGoal, VarSet2, Substitution,
 			PredGoal0, VarSet3, Info0, Info1),
-		insert_arg_unifications(HeadArgs, HeadArgs1, Context, head, no,
-			PredGoal0, VarSet3, PredGoal, VarSet4, Info1, Info2),
+		{ ArgContext = head(PredOrFunc, PredArity) },
+		insert_arg_unifications(HeadArgs, HeadArgs1, Context,
+			ArgContext, no, PredGoal0, VarSet3, PredGoal, VarSet4,
+			Info1, Info2),
 
 		% Quantification will reduce this down to
 		% the proper set of nonlocal arguments.
@@ -5214,9 +5224,15 @@ invalid_aditi_update_goal(UpdateStr, Args0, GoalInfo, Goal, VarSet0, VarSet) :-
 	% complicate the handling of code generation for nondet pragma C codes.
 
 :- type arg_context
-	--->	head		% the arguments in the head of the clause
-	;	call(call_id)	% the arguments in a call to a predicate
-	;	functor(	% the arguments in a functor
+	--->	
+		% the arguments in the head of the clause
+		head(pred_or_func, arity)	
+	;
+		% the arguments in a call to a predicate
+		call(call_id)
+	;	
+		% the arguments in a functor
+		functor(
 			cons_id,
 			unify_main_context,
 			unify_sub_contexts
@@ -5359,10 +5375,18 @@ append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext, N0,
 				unify_main_context, unify_sub_contexts).
 :- mode arg_context_to_unify_context(in, in, out, out) is det.
 
-arg_context_to_unify_context(head, N, head(N), []).
-arg_context_to_unify_context(call(PredId), N, call(PredId, N), []).
-arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
-			MainContext, [ConsId - N | SubContexts]).
+arg_context_to_unify_context(head(PredOrFunc, Arity), ArgNum,
+		ArgContext, []) :-
+	( PredOrFunc = function, ArgNum = Arity ->
+		% it's the function result term in the head
+		ArgContext = head_result
+	;
+		% it's a head argument
+		ArgContext = head(ArgNum)
+	).
+arg_context_to_unify_context(call(PredId), ArgNum, call(PredId, ArgNum), []).
+arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), ArgNum,
+			MainContext, [ConsId - ArgNum | SubContexts]).
 
 %-----------------------------------------------------------------------------%
 
@@ -5695,8 +5719,9 @@ build_lambda_expression(X, PredOrFunc, EvalMethod, Args, Modes, Det,
 	{ map__init(Substitution) },
 	transform_goal(ParsedGoal, VarSet1, Substitution,
 			HLDS_Goal0, VarSet2, Info1, Info2),
-	insert_arg_unifications(LambdaVars, Args, Context, head, no,
-		HLDS_Goal0, VarSet2, HLDS_Goal1, VarSet, Info2, Info),
+	{ ArgContext = head(PredOrFunc, NumArgs) },
+	insert_arg_unifications(LambdaVars, Args, Context, ArgContext,
+		no, HLDS_Goal0, VarSet2, HLDS_Goal1, VarSet, Info2, Info),
 
 	%
 	% Now figure out which variables we need to explicitly existentially

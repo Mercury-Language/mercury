@@ -524,9 +524,11 @@ hlds_out__write_unify_context(First0,
 hlds_out__write_unify_main_context(First, explicit, _, First) -->
 	[].
 hlds_out__write_unify_main_context(First, head(ArgNum), Context, no) -->
-	% XXX handle function return values better.
 	hlds_out__write_in_argument(First, ArgNum, Context),
 	io__write_string(" of clause head:\n").
+hlds_out__write_unify_main_context(First, head_result, Context, no) -->
+	hlds_out__start_in_message(First, Context),
+	io__write_string("function result term of clause head:\n").
 hlds_out__write_unify_main_context(First, call(CallId, ArgNum), Context, no) -->
 	hlds_out__start_in_message(First, Context),
 	hlds_out__write_call_arg_id(CallId, ArgNum),
