@@ -13,14 +13,14 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
+:- pred main1(list(int)).
+:- mode main1(out) is det.
+
 :- implementation.
 
 :- import_module list.
 
 main --> main3(_).
-
-:- pred main1(list(int)).
-:- mode main1(out) is det.
 
 main1(Out) :-	
 	data(Data),

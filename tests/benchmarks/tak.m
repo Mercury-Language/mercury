@@ -7,6 +7,9 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
+:- pred main1(int).
+:- mode main1(out) is det.
+
 :- implementation.
 
 :- import_module int, prolog.
@@ -15,9 +18,6 @@ main -->
 	{ main1(Out) },
 	io__write_int(Out),
 	io__write_string("\n").
-
-:- pred main1(int).
-:- mode main1(out) is det.
 
 main1(Out) :-
 	tak(18, 12, 6, Out).
