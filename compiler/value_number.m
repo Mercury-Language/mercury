@@ -421,6 +421,7 @@ vn__substitute_access_vns(vn_curfr, [], curfr).
 vn__substitute_access_vns(vn_succfr(_), [R], succfr(R)).
 vn__substitute_access_vns(vn_prevfr(_), [R], prevfr(R)).
 vn__substitute_access_vns(vn_redoip(_), [R], redoip(R)).
+vn__substitute_access_vns(vn_succip(_), [R], succip(R)).
 vn__substitute_access_vns(vn_hp, [], hp).
 vn__substitute_access_vns(vn_sp, [], sp).
 vn__substitute_access_vns(vn_field(T, _, _), [R1, R2], field(T, R1, R2)).
