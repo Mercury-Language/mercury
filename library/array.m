@@ -6,14 +6,15 @@
 
 % array.m
 
-% Main author: conway.
+% Main author: bromage.
 
 % this file contains a set of predicates for generating an manipulating
-% an array data structure. The implementation uses 2-3 trees to yield
-% O(logN) performance for accesses and updates. Array creation is an
-% O(NlogN) process.
-
-% arrays are created with any two integer bounds on the indices.
+% an array data structure. It is based on the original module by conway,
+% which used 2-3 trees to store the array.  This uses the map module 
+% instead, because it's less likely to contain bugs.  :-)
+%
+% Arrays will be internal soon anyway, so it doesn't really matter how
+% efficient this code is, as long as it works.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -66,182 +67,70 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module require, map.
 
-:- type array(T)	--->	empty
-			;	node(T)
-			;	two(
-					int,
-					int,
-					array(T),
-					array(T)
-				)
-			;	three(
-					int,
-					int,
-					array(T),
-					array(T),
-					array(T)
-				).
+:- type array(T)	--->	array(int, int, map(int,T)).
 
-array__init(Low, High, Init, Array) :-
-	Size0 is High - Low,
-	Size is Size0 + 1,
-	(
-		Size = 0
-	->
-		Array = empty
+%-----------------------------------------------------------------------------%
+
+array__init(Low, High, Item, array(Low, High, MapOut)) :-
+	map__init(MapIn),
+	array__init_2(Low, High, Item, MapIn, MapOut).
+
+:- pred array__init_2(int, int, T, map(int,T), map(int,T)).
+:- mode array__init_2(in, in, in, in, out) is det.
+
+array__init_2(Low, High, Item, ArrayIn, ArrayOut) :-
+	( Low > High ->
+	    ArrayIn = ArrayOut
 	;
-		Size = 1
-	->
-		Array = node(Init)
-	;
-		Size = 2
-	->
-		Array = two(Low, High, node(Init), node(Init))
-	;
-		Size = 3
-	->
-		Array = three(Low, High, node(Init), node(Init), node(Init))
-	;
-		Mod2 is Size mod 2,
-		Mod2 = 0,
-		Mod3 is Size mod 3,
-		Mod3 \= 0
-	->
-		N is Size // 2,
-		L2 is Low + N,
-		H1 is L2 - 1,
-		array__init(Low, H1, Init, A1),
-		array__init(L2, High, Init, A2),
-		Array = two(Low, High, A1, A2)
-	;
-		N is Size // 3,
-		L2 is Low + N,
-		L3 is L2 + N,
-		H1 is L2 - 1,
-		H2 is L3 - 1,
-		array__init(Low, H1, Init, A1),
-		array__init(L2, H2, Init, A2),
-		array__init(L3, High, Init, A3),
-		Array = three(Low, High, A1, A2, A3)
+	    map__det_insert(ArrayIn, Low, Item, Array1),
+	    Low1 is Low+1,
+	    array__init_2(Low1, High, Item, Array1, ArrayOut)
 	).
 
 %-----------------------------------------------------------------------------%
 
-array__bounds(empty, 1, 0).
-array__bounds(node(_), 0, 0).
-array__bounds(two(Low, High, _, _), Low, High).
-array__bounds(three(Low, High, _, _, _), Low, High).
+array__bounds(array(Low, High, _), Low, High).
 
 %-----------------------------------------------------------------------------%
 
-array__lookup(Array, Index, Item) :-
-	array__bounds(Array, Low, High),
-	(
-		Index < Low
-	->
-		error("Array index below lower bound")
+array__lookup(array(Low, High, Map), Index, Item) :-
+	( ( Low =< Index, Index =< High ) ->
+	    map__lookup(Map, Index, Item)
 	;
-		Index > High
-	->
-		error("Array index above upper bound")
-	;
-		array__search_2(Array, Index, Item)
-	).
-
-:- pred array__search_2(array(T), int, T).
-:- mode array__search_2(in, in, out) is det.
-
-array__search_2(empty, _, _) :-
-	error("Attempt to access element of non-existent array").
-array__search_2(node(Item), _Index, Item).
-array__search_2(two(Low, High, Left, Right), Index, Item) :-
-	Size is High - Low,
-	Half is Size // 2,
-	Mid is Low + Half,
-	(
-		Index =< Mid
-	->
-		array__search_2(Left, Index, Item)
-	;
-		array__search_2(Right, Index, Item)
-	).
-array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
-	Size is High - Low,
-	Size1 is Size + 1,
-	Third is Size1 // 3,
-	Mid1 is Low + Third,
-	Mid2 is Mid1 + Third,
-	(
-		Index < Mid1
-	->
-		array__search_2(Left, Index, Item)
-	;
-		Index < Mid2
-	->
-		array__search_2(Middle, Index, Item)
-	;
-		array__search_2(Right, Index, Item)
+	    error("Array subscript out of bounds")
 	).
 
 %-----------------------------------------------------------------------------%
 
-array__set(empty, _, _, empty) :-
-	error("Attempt to access element of non-existent array").
-array__set(node(_), _Index, Item, node(Item)).
-array__set(two(Low, High, Left, Right), Index, Item, A) :-
-	Size is High - Low,
-	Half is Size // 2,
-	Mid is Low + Half,
-	(
-		Index < Mid
-	->
-		array__set(Left, Index, Item, Left1),
-		A = two(Low, High, Left1, Right)
+array__set(array(Low, High, MapIn), Index, Item, array(Low, High, MapOut)) :-
+	( ( Low =< Index, Index =< High ) ->
+	    map__set(MapIn, Index, Item, MapOut)
 	;
-		array__set(Right, Index, Item, Right1),
-		A = two(Low, High, Left, Right1)
-	).
-array__set(three(Low, High, Left, Middle, Right), Index, Item, A) :-
-	Size is High - Low,
-	Size1 is Size + 1,
-	Third is Size1 // 3,
-	Mid1 is Low + Third,
-	Mid2 is Mid1 + Third,
-	(
-		Index < Mid1
-	->
-		array__set(Left, Index, Item, Left1),
-		A = three(Low, High, Left1, Middle, Right)
-	;
-		Index < Mid2
-	->
-		array__set(Middle, Index, Item, Middle1),
-		A = three(Low, High, Left, Middle1, Right)
-	;
-		array__set(Right, Index, Item, Right1),
-		A = three(Low, High, Left, Middle, Right1)
+	    error("Array subscript out of bounds")
 	).
 
 %-----------------------------------------------------------------------------%
 
 array__resize(Array0, L, H, Array) :-
-	array__bounds(Array0, L0, H0),
-	array__lookup(Array0, L0, Item),
-	int__max(L, L0, L1),
-	int__min(H, H0, H1),
-	array__fetch_items(Array0, L1, H1, Items),
-	array__init(L, H, Item, Array1),
-	array__insert_items(Array1, L1, Items, Array).
+        array__bounds(Array0, L0, H0),
+        array__lookup(Array0, L0, Item),
+        int__max(L, L0, L1),
+        int__min(H, H0, H1),
+        array__fetch_items(Array0, L1, H1, Items),
+        array__init(L, H, Item, Array1),
+        array__insert_items(Array1, L1, Items, Array).
 
 %-----------------------------------------------------------------------------%
 
-array__from_list([], empty).
-array__from_list([Head | Tail], Array) :-
-	list__length(Tail, Len1),
-	array__init(0, Len1, Head, Array0),
-	array__insert_items(Array0, 1, Tail, Array).
+array__from_list([], array(1, 0, Map)) :-
+	map__init(Map).
+array__from_list(List, Array) :-
+        List = [ Head | Tail ],
+        list__length(List, Len),
+        array__init(1, Len, Head, Array0),
+        array__insert_items(Array0, 2, Tail, Array).
 
 %-----------------------------------------------------------------------------%
 
@@ -250,15 +139,15 @@ array__from_list([Head | Tail], Array) :-
 
 array__insert_items(Array, _N, [], Array).
 array__insert_items(Array0, N, [Head|Tail], Array) :-
-	array__set(Array0, N, Head, Array1),
-	N1 is N + 1,
-	array__insert_items(Array1, N1, Tail, Array).
+        array__set(Array0, N, Head, Array1),
+        N1 is N + 1,
+        array__insert_items(Array1, N1, Tail, Array).
 
 %-----------------------------------------------------------------------------%
 
 array__to_list(Array, List) :-
-	array__bounds(Array, Low, High),
-	array__fetch_items(Array, Low, High, List).
+        array__bounds(Array, Low, High),
+        array__fetch_items(Array, Low, High, List).
 
 %-----------------------------------------------------------------------------%
 
@@ -266,16 +155,16 @@ array__to_list(Array, List) :-
 :- mode array__fetch_items(in, in, in, out) is det.
 
 array__fetch_items(Array, Low, High, List) :-
-	(
-		Low > High
-	->
-		List = []
-	;
-		Low1 is Low + 1,
-		array__fetch_items(Array, Low1, High, List0),
-		array__search_2(Array, Low, Item),
-		List = [Item|List0]
-	).
+        (
+                Low > High
+        ->
+                List = []
+        ;
+                Low1 is Low + 1,
+                array__fetch_items(Array, Low1, High, List0),
+                array__lookup(Array, Low, Item),
+                List = [Item|List0]
+        ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
