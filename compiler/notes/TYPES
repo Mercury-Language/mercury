@@ -1,0 +1,137 @@
+%-----------------------------------------------------------------------------%
+	% OK, this is how types are represented.
+
+?- type type_defn	--->    is_type(varset, type_head, type, condition).
+?- type type_head	--->	string - list(type_param).
+?- type type_param	--->	param(variable)
+			;	val(id, type_body).
+?- type type		--->	du_type(list(constructor))
+			;	uu_type(list(type_body))
+			;	eqv_type(type_body)
+			;	pred_type(list(type_body)).
+?- type constructor	--->	string - list(typebody).
+?- type condition	--->	true ; where(goal).
+		% alternately we could just use condition == goal
+
+Obviously we don't want to just store our types as a list(type_defn),
+instead we want to use a data structure that is optimized for the particular
+accesses that we are going to make. In particular we are primarily
+going to do perform two kinds of access:
+	- given a type name and arity, find the matching type definition
+	- given a constructor name and arity, find a matching type definition
+	/********
+		lookup_type(List,Name,Arity,Type,Cond) :-
+			length(Args,Arity),
+			member(is_type(_, Name - Args, Type, Cond).
+		has_type(List,Functor,Arity,Name,Cond) :-
+			length(ArgTypes,Arity),
+			member(is_type(_,TypeHead,du_type(Constrs),Cond),
+			member(Functor - ArgTypes, Constrs).
+	********/
+
+There are several categories of fudged builtin types:
+
+Primitive types: char, integer, float, string. These are automatically
+predefined, there is a special syntax for constants of these types, and
+there are infinitely many constants for some of these types.
+
+Pred types: pred, pred(T), pred(T1, T2), ...
+These types are automatically predefined.
+There are some severe restrictions on the use of variables of these types.
+
+Builtin array type (arrays with integer indices starting from zero).
+	builtin_array(T,Len:integer) == builtin_array(T)
+		where lambda(A,length(A,Len)).
+
+	?- pred p(builtin_array(T, Len:integer)
+
+So for example,
+	?- type bool ---> false; true.
+is represented as
+	is_type(varset(0,[]), "bool" - [],
+		du_type(["false" - [], "true" - []]), true).
+	has_type(varset(0,[]), "false" - [], "bool" - [], true).
+	has_type(varset(0,[]), "true" - [], "bool" - [], true).
+
+Incidentally, the first argument (a `varset') essentially just store
+the names of the variables, so I'm just ignoring it in this discussion.
+
+Some more examples:
+-----------------------------------------------------------------------------
+
+	?- type boolean == bool.
+	is_type(varset(0,[]), "boolean" - [], eqv_type("bool" - []), true).
+
+	?- pred in_range(T,T,T).
+	has_type(varset(1,[0-"T"]), "in_range"-[],
+		pred_type([param(0),param(0),param(0)]), true).
+	has_type(varset(1,[0-"T"]), "in_range"-[param(0)],
+		pred_type([param(0),param(0)]), true).
+	has_type(varset(1,[0-"T"]), "in_range"-[param(0),param(0)],
+		pred_type([param(0)]), true).
+	has_type(varset(1,[0-"T"]), "in_range"-[param(0),param(0),param(0)],
+		pred_type([]), true).
+
+	?- type range(Min:T, Max:T) == T where in_range(Min,Max).
+	is_type(varset(2,[0-"Min",1-"T",2-"Max"]),
+		"range"-[val(0,param(1)),val(2,param(1))],
+		eqv_type(param(1)), where(call("in_range",[Min,Max])).
+
+	?- op(500,xfx,'..').
+	?- type (Min:T)..(Max:T) = range(Min,Max).
+	?- type integer(Min:integer,Max:integer) = Min..Max.
+
+Start with:
+	append([],Ys,Ys).
+	append(X.Xs,Ys,X.Zs) :-
+		append(Xs,Ys,Zs).
+Form the completion:
+	all [A,B,C,Ys,X,Xs,Ys',Zs]
+	append(A,B,C) <=>
+		A = [], B = Ys, C = Ys ;
+		A = X.Xs, B = Ys', C = X.Zs, append(Xs,Ys',Zs).
+Simplify:
+	all [A,B,C] append(A,B,C) <=>
+		A = [], C = B ;
+		some [Xs,Zs] (some [X] (A = X.Xs, C = X.Zs), append(Xs,B,Zs)).
+Infer types:
+	?- type list(T) ---> [] ; T.list(T).
+	?- type cons(A,B) ---> A.B.
+	all [A,B,C]
+		% type(A) = T1, type(B) = T2, type(C) = T3,
+	append(A,B,C) <=>
+		(
+			A = [],		% T1 = list(T4)
+			C = B		% T2 = T3
+		;
+		some [Xs,Zs] (		% type(Xs) = T5, type(Zs) = T6
+			some [X] (	% type(X) = T7, 
+			A = X.Xs,	% T1 = list(T8), T7 = T8, T5 = list(T8)
+					% ; T1 = cons(T7,T5)
+			C = X.Zs),	% T3 = list(T9), T7 = T9, T6 = list(T9)
+					% ; T3 = cons(T7,T6)
+			append(Xs,B,Zs))
+		).	% can eliminate 'cons' types here.
+Repeat inference step until fixpoint.
+
+OK, here's a fairly speculative (tricky) example:
+
+	all [X : range(Min:T, Max:T)] is_in_range(X) <=> (Min <= X, X <= Min).
+
+	?- is_in_range(1).	% error, ambiguous call:
+				% can't determine Min and Max.
+	?- some [X:range(1,10)] (X=1,is_in_range(X)).	% ok
+
+
+Here's what I want from my type system:
+	?- type natural == integer
+		where (\ X :- X >= 0).
+		% Note: ``(\ (V1,V2,...) :- Goal)'' is a lambda style
+		% notation for anonymous predicates. Could just write
+		%	?- type natural == integer where nonneg.
+		%	nonneg(X) :- X >= 0.
+		% instead.
+	?- type simple_array(T, L:natural) == list(T)
+		where (\ A :- length(A,L)).
+	
+	all [A:simple_array(T, L:natural)
