@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2002 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -249,6 +249,13 @@
 	%
 :- func set__map(func(T1) = T2, set(T1)) = set(T2).
 
+	% set__map_fold(P, S0, S, A0, A) :-
+	%	L0 = set__to_sorted_list(S0),
+	%	list__map_foldl(P, L0, L, A0, A),
+	%	S = set__list_to_set(L).
+:- pred set__map_fold(pred(T1, T2, T3, T3), set(T1), set(T2), T3, T3).
+:- mode set__map_fold(pred(in, out, in, out) is det, in, out, in, out) is det.
+
 	% set__filter(P, S) =
 	% 	sorted_list_to_set(list__filter(P, to_sorted_list(S))).
 	%
@@ -453,6 +460,11 @@ set__count(S) = N :-
 
 set__map(F, S1) = S2 :-
 	S2 = set__list_to_set(list__map(F, set__to_sorted_list(S1))).
+
+set__map_fold(P, S0, S, A0, A) :-
+	L0 = set__to_sorted_list(S0),
+	list__map_foldl(P, L0, L, A0, A),
+	S = set__list_to_set(L).
 
 set__filter(P, S1) = S2 :-
 	S2 = set__sorted_list_to_set(list__filter(P, set__to_sorted_list(S1))).

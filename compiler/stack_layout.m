@@ -39,7 +39,7 @@
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
 	global_data::in, list(comp_gen_c_data)::out,
-	list(comp_gen_c_data)::out, map(label, data_addr)::out) is det.
+	map(label, data_addr)::out) is det.
 
 :- pred stack_layout__construct_closure_layout(proc_label::in, int::in,
 	closure_layout_info::in, proc_label::in, module_name::in,
@@ -81,8 +81,8 @@
 	% Process all the continuation information stored in the HLDS,
 	% converting it into LLDS data structures.
 
-stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
-		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) :-
+stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData, Layouts,
+		LayoutLabels) :-
 	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList0),
 	list__filter(stack_layout__valid_proc_layout, ProcLayoutList0,
 		ProcLayoutList),
@@ -122,8 +122,8 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	stack_layout__concat_string_list(StringList, StringOffset,
 		ConcatStrings),
 
-	PossiblyDynamicLayouts = ProcLayouts,
-	StaticLayouts0 = list__append(TableIoDecls, InternalLayouts),
+	list__condense([TableIoDecls, ProcLayouts, InternalLayouts],
+		Layouts0),
 	( TraceLayout = yes ->
 		module_info_name(ModuleInfo0, ModuleName),
 		globals__lookup_bool_option(Globals, rtti_line_numbers,
@@ -141,9 +141,9 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		ModuleLayout = layout_data(module_layout_data(ModuleName,
 			StringOffset, ConcatStrings, ProcLayoutNames,
 			SourceFileLayouts, TraceLevel, SuppressedEvents)),
-		StaticLayouts = [ModuleLayout | StaticLayouts0]
+		Layouts = [ModuleLayout | Layouts0]
 	;
-		StaticLayouts = StaticLayouts0
+		Layouts = Layouts0
 	).
 
 :- pred stack_layout__valid_proc_layout(proc_layout_info::in) is semidet.

@@ -21,7 +21,8 @@
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
-:- import_module hlds__hlds_goal, hlds__hlds_data.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module libs__tree.
 :- import_module ll_backend__layout.
@@ -64,9 +65,6 @@
 	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
 
 :- pred global_data_add_new_closure_layouts(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-:- pred global_data_add_new_non_common_static_datas(global_data::in,
 	list(comp_gen_c_data)::in, global_data::out) is det.
 
 :- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
@@ -116,21 +114,18 @@
 	% with one exception: data containing code addresses must
 	% be initialized.
 :- type comp_gen_c_data
-	--->	comp_gen_c_data(
+	--->	common_data(
 			module_name,		% The basename of this C file.
-			data_name,		% A representation of the name
-						% of the variable; it will be
-						% qualified with the basename.
-			bool,			% Should this item be exported
-						% from this Mercury module?
-						% XXX Actually this field is
-						% redundant; see linkage/2
-						% in llds_out.m.
-			list(maybe(rval)),	% The arguments of the create.
-			create_arg_types,	% May specify the types of the
-						% arguments of the create.
-			list(pred_proc_id)	% The procedures referenced.
-						% Used by dead_proc_elim.
+			int,			% The id number of the cell.
+			int,			% The id number of the C type
+						% giving the types of the args.
+						% The data_addr referring to
+						% this common_data will be
+						% data_addr(ModuleName,
+						% common(CellNum, TypeNum)).
+			assoc_list(rval, llds_type)
+						% The arguments of the create,
+						% together with their types.
 		)
 	;	rtti_data(
 			rtti_data
@@ -884,16 +879,16 @@
 	;	layout_addr(layout_name).
 
 :- type data_name
-	--->	common(int)
+	--->	common(int, int)
+			% The first int is the cell number; the second is the
+			% cell type number.
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
-	;	tabling_pointer(proc_label)
+	;	tabling_pointer(proc_label).
 			% A variable that contains a pointer that points to
 			% the table used to implement memoization, loopcheck
 			% or minimal model semantics for the given procedure.
-	;	deep_profiling_procedure_data(proc_label)
-	.
 
 :- type reg_type	
 	--->	r		% general-purpose (integer) regs
@@ -1262,12 +1257,6 @@ global_data_add_new_closure_layouts(GlobalData0, NewClosureLayouts,
 	ClosureLayouts0 = GlobalData0 ^ closure_layouts,
 	list__append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
 	GlobalData = GlobalData0 ^ closure_layouts := ClosureLayouts.
-
-global_data_add_new_non_common_static_datas(GlobalData0, NewNonCommonStatics,
-		GlobalData) :-
-	NonCommonStatics0 = GlobalData0 ^ non_common_data,
-	list__append(NewNonCommonStatics, NonCommonStatics0, NonCommonStatics),
-	GlobalData = GlobalData0 ^ non_common_data := NonCommonStatics.
 
 global_data_maybe_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
 	ProcLayoutMap = GlobalData ^ proc_layout_map,

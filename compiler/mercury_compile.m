@@ -3513,7 +3513,6 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 		ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-	globals__io_lookup_bool_option(common_data, CommonData),
 	%
 	% Here we generate the LLDS representations for
 	% various data structures used for RTTI, type classes,
@@ -3527,7 +3526,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ list__map(llds__wrap_rtti_data, TypeClassInfoRttiData,
 		TypeClassInfos) },
 	{ stack_layout__generate_llds(HLDS0, HLDS, GlobalData,
-		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) },
+		StackLayouts, LayoutLabels) },
 	%
 	% Here we perform some optimizations on the LLDS data.
 	% XXX this should perhaps be part of backend_pass
@@ -3539,21 +3538,17 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
 	{ global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) },
-	{ CommonableData0 = StaticLayouts },
-	( { CommonData = yes } ->
-		{ llds_common(Procs0, CommonableData0, ModuleName, Procs1,
-			CommonableData) }
-	;
-		{ CommonableData = CommonableData0 },
-		{ Procs1 = Procs0 }
-	),
+	{ CommonableData0 = list__append(ClosureLayouts, StackLayouts) },
+	globals__io_lookup_bool_option(unboxed_float, UnboxFloat),
+	globals__io_lookup_bool_option(common_data, DoCommonData),
+	{ llds_common(ModuleName, UnboxFloat, DoCommonData, Procs0, Procs1,
+		CommonableData0, CommonableData) },
 
 	%
 	% Next we put it all together and output it to one or more C files.
 	%
-	{ list__condense([CommonableData, NonCommonStaticData, ClosureLayouts,
-		TypeCtorTables, TypeClassInfos, PossiblyDynamicLayouts],
-		AllData) },
+	{ list__condense([CommonableData, NonCommonStaticData,
+		TypeCtorTables, TypeClassInfos], AllData) },
 	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
 		Procs1, GlobalVars, AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,

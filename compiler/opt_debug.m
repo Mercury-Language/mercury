@@ -353,18 +353,15 @@ opt_debug__dump_data_addr(layout_addr(LayoutName), Str) :-
 	opt_debug__dump_layout_name(LayoutName, LayoutName_str),
 	string__append_list(["layout_addr(", LayoutName_str, ")"], Str).
 
-opt_debug__dump_data_name(common(N), Str) :-
-	string__int_to_string(N, N_str),
-	string__append("common", N_str, Str).
+opt_debug__dump_data_name(common(CellNum, TypeNum), Str) :-
+	string__int_to_string(CellNum, C_str),
+	string__int_to_string(TypeNum, T_str),
+	string__append_list(["common(", C_str, ", ", T_str, ")"], Str).
 opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
 	Str = make_base_typeclass_info_name(ClassId, InstanceNum).
 opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
-opt_debug__dump_data_name(deep_profiling_procedure_data(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
-	string__append_list(["deep_profiling_procedure_data(",
-				ProcLabelStr, ")"], Str).
 
 opt_debug__dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity),
 		Str) :-

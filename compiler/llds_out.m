@@ -21,6 +21,7 @@
 :- import_module backend_libs__builtin_ops.
 :- import_module libs__globals.
 :- import_module ll_backend__llds.
+:- import_module parse_tree__prog_data.
 
 :- import_module bool, std_util, list, map, io.
 
@@ -142,7 +143,7 @@
 	% The following are exported to rtti_out. It may be worthwhile
 	% to put these in a new module (maybe llds_out_util).
 
-:- type decl_id --->	create_label(int)
+:- type decl_id --->	common_type(module_name, int)
 		;	float_label(string)
 		;	code_addr(code_addr)
 		;	data_addr(data_addr)
@@ -196,7 +197,6 @@
 :- import_module ll_backend__rtti_out.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
-:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -785,40 +785,37 @@ output_c_data_type_def_list([M | Ms], DeclSet0, DeclSet) -->
 	io__state, io__state).
 :- mode output_c_data_type_def(in, in, out, di, uo) is det.
 
-output_c_data_type_def(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
-		ArgVals, ArgTypes, _Refs), DeclSet0, DeclSet) -->
-	io__write_string("\n"),
-	{ data_name_linkage(VarName, Linkage) },
-	{
-		( Linkage = extern, ExportedFromModule = yes
-		; Linkage = static, ExportedFromModule = no
-		)
-	->
-		true
-	;
-		error("linkage mismatch")
-	},
+output_c_data_type_def(common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
+		!DeclSet, !IO) :-
+	io__write_string("\n", !IO),
 
 		% The code for data local to a Mercury module
 		% should normally be visible only within the C file
 		% generated for that module. However, if we generate
 		% multiple C files, the code in each C file must be
 		% visible to the other C files for that Mercury module.
-	( { ExportedFromModule = yes } ->
-		{ ExportedFromFile = yes }
-	;
-		globals__io_lookup_bool_option(split_c_files, SplitFiles),
-		{ ExportedFromFile = SplitFiles }
-	),
+	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
+	ExportedFromFile = SplitFiles,
 
-	{ DeclId = data_addr(data_addr(ModuleName, VarName)) },
-	output_const_term_decl(ArgVals, ArgTypes, DeclId, ExportedFromFile,
-		yes, yes, no, "", "", 0, _),
-	{ decl_set_insert(DeclId, DeclSet0, DeclSet) }.
-output_c_data_type_def(rtti_data(RttiData), DeclSet0, DeclSet) -->
-	output_rtti_data_decl(RttiData, DeclSet0, DeclSet).
-output_c_data_type_def(layout_data(LayoutData), DeclSet0, DeclSet) -->
-	output_maybe_layout_data_decl(LayoutData, DeclSet0, DeclSet).
+	TypeDeclId = common_type(ModuleName, TypeNum),
+	( decl_set_is_member(TypeDeclId, !.DeclSet) ->
+		true
+	;
+		assoc_list__values(ArgsTypes, Types),
+		output_const_term_type(Types, ModuleName, TypeNum,
+			"", "", 0, _, !IO),
+		io__write_string("\n", !IO),
+		decl_set_insert(TypeDeclId, !DeclSet)
+	),
+	VarName = common(CellNum, TypeNum),
+	VarDeclId = data_addr(data_addr(ModuleName, VarName)),
+	output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
+		ExportedFromFile, no, "", "", 0, _, !IO),
+	decl_set_insert(VarDeclId, !DeclSet).
+output_c_data_type_def(rtti_data(RttiData), !DeclSet, !IO) :-
+	output_rtti_data_decl(RttiData, !DeclSet, !IO).
+output_c_data_type_def(layout_data(LayoutData), !DeclSet, !IO) :-
+	output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO).
 
 :- pred output_comp_gen_c_module_list(list(comp_gen_c_module)::in,
 	map(label, data_addr)::in, decl_set::in, decl_set::out,
@@ -884,47 +881,29 @@ output_comp_gen_c_data_list([Data | Datas], DeclSet0, DeclSet) -->
 :- pred output_comp_gen_c_data(comp_gen_c_data::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_comp_gen_c_data(comp_gen_c_data(ModuleName, VarName, ExportedFromModule,
-		ArgVals, ArgTypes, _Refs), DeclSet0, DeclSet) -->
-	io__write_string("\n"),
-	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
-
-	%
-	% sanity check: check that the (redundant) ExportedFromModule field
-	% in the c_data, which we use for the definition, matches the linkage
-	% computed by linkage/2 from the dataname, which we use for any
-	% prior declarations.
-	%
-	{ data_name_linkage(VarName, Linkage) },
-	{
-		( Linkage = extern, ExportedFromModule = yes
-		; Linkage = static, ExportedFromModule = no
-		)
-	->
-		true
-	;
-		error("linkage mismatch")
-	},
+output_comp_gen_c_data(common_data(ModuleName, CellNum, TypeNum, ArgsTypes),
+		!DeclSet, !IO) :-
+	io__write_string("\n", !IO),
+	assoc_list__keys(ArgsTypes, Args),
+	output_rvals_decls(Args, "", "", 0, _, !DeclSet, !IO),
 
 		% The code for data local to a Mercury module
 		% should normally be visible only within the C file
 		% generated for that module. However, if we generate
 		% multiple C files, the code in each C file must be
 		% visible to the other C files for that Mercury module.
-	( { ExportedFromModule = yes } ->
-		{ ExportedFromFile = yes }
-	;
-		globals__io_lookup_bool_option(split_c_files, SplitFiles),
-		{ ExportedFromFile = SplitFiles }
-	),
-	{ DeclId = data_addr(data_addr(ModuleName, VarName)) },
-	output_const_term_decl(ArgVals, ArgTypes, DeclId, ExportedFromFile,
-		no, yes, yes, "", "", 0, _),
-	{ decl_set_insert(DeclId, DeclSet1, DeclSet) }.
-output_comp_gen_c_data(rtti_data(RttiData), DeclSet0, DeclSet) -->
-	output_rtti_data_defn(RttiData, DeclSet0, DeclSet).
-output_comp_gen_c_data(layout_data(LayoutData), DeclSet0, DeclSet) -->
-	output_layout_data_defn(LayoutData, DeclSet0, DeclSet).
+	globals__io_lookup_bool_option(split_c_files, SplitFiles, !IO),
+	ExportedFromFile = SplitFiles,
+
+	VarName = common(CellNum, TypeNum),
+	VarDeclId = data_addr(data_addr(ModuleName, VarName)),
+	output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
+		ExportedFromFile, yes, "", "", 0, _, !IO),
+	decl_set_insert(VarDeclId, !DeclSet).
+output_comp_gen_c_data(rtti_data(RttiData), !DeclSet, !IO) :-
+	output_rtti_data_defn(RttiData, !DeclSet, !IO).
+output_comp_gen_c_data(layout_data(LayoutData), !DeclSet, !IO) :-
+	output_layout_data_defn(LayoutData, !DeclSet, !IO).
 
 :- pred output_user_foreign_code_list(list(user_foreign_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -2215,20 +2194,9 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 	    { N = N2 },
 	    { DeclSet = DeclSet2 }
 	).
-output_rval_decls(
-		create(_Tag, ArgVals, CreateArgTypes, _StatDyn, Label, _, _),
-		FirstIndent, LaterIndent, N0, N, DeclSet0, DeclSet) -->
-	{ CreateLabel = create_label(Label) },
-	( { decl_set_is_member(CreateLabel, DeclSet0) } ->
-		{ N = N0 },
-		{ DeclSet = DeclSet0 }
-	;
-		{ decl_set_insert(CreateLabel, DeclSet0, DeclSet1) },
-		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent,
-			N0, N1, DeclSet1, DeclSet),
-		output_const_term_decl(ArgVals, CreateArgTypes, CreateLabel,
-			no, yes, yes, yes, FirstIndent, LaterIndent, N1, N)
-	).
+output_rval_decls(create(_, _, _, _, _, _, _), _, _, _, _, _, _) -->
+	% These should have all been converted to data_addrs by llds_common.
+	{ error("output_rval_decls: create") }.
 output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	output_mem_ref_decls(MemRef, FirstIndent, LaterIndent,
@@ -2324,134 +2292,100 @@ llds_out__float_op_name(float_divide, "divide").
 
 	% We output constant terms as follows:
 	%
-	%	static const struct <foo>_struct {
-	%		MR_Word field1;			// Def
-	%		MR_Float field2;
-	%		MR_Word * field3;
+	%	struct <prefix>_common_type_<TypeNum> {		// Type
 	%		...
-	%	}
-	%	<foo> 					// Decl
-	%	= {					// Init
+	%	};
+	%
+	%	static const <prefix>_common_type_<TypeNum>
+	%		<prefix>_common_<CellNum>;		// Decl
+	%
+	%	static const <prefix>_common_type_<TypeNum>
+	%		<prefix>_common_<CellNum> = {		// Init
 	%		...
 	%	};
 	%
 	% Unless the term contains code addresses, and we don't have
 	% static code addresses available, in which case we'll have
-	% to initialize them dynamically, so we must omit `const'
-	% from the above structure.
+	% to initialize them dynamically, so we must omit both `const's
+	% above.
 	%
-	% Also we now conditionally output some parts.  The parts that
-	% are conditionally output are Def, Decl and Init.  It is an
-	% error for Init to be yes and Decl to be no.
+	% output_const_term_type outputs the first part above. The second
+	% and third parts are output by output_const_term_decl_or_defn.
 
-:- pred output_const_term_decl(list(maybe(rval)), create_arg_types, decl_id,
-	bool, bool, bool, bool, string, string, int, int, io__state, io__state).
-:- mode output_const_term_decl(in, in, in, in, in, in,
-	in, in, in, in, out, di, uo) is det.
+:- pred output_const_term_type(list(llds_type)::in, module_name::in, int::in,
+	string::in, string::in, int::in, int::out,
+	io__state::di, io__state::uo) is det.
 
-output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
-		Def, Decl, Init, FirstIndent, LaterIndent, N1, N) -->
-	(
-		{ Init = yes }, { Decl = no }
-	->
-		{ error("output_const_term_decl: Inconsistent Decl and Init") }
-	;
-		[]
-	),
-	output_indent(FirstIndent, LaterIndent, N1),
-	{ N = N1 + 1 },
-	(
-		{ Decl = yes }
-	->
-		(
-			{ Exported = yes }
-		->
-			[]
-		;
-			io__write_string("static ")
-		),
-		globals__io_get_globals(Globals),
-		{ globals__have_static_code_addresses(Globals, StaticCode) },
-		(
-				% Don't make the structure `const'
-				% if the structure will eventually include
-				% code addresses but we don't have static code
-				% addresses.
-			{ StaticCode = no },
-			{ DeclId = data_addr(DataAddr) },
-			{ data_addr_would_include_code_address(DataAddr)
-				= yes }
-		->
-			[]
-		;
-			% XXX io__write_string("const ")
-			% []
-			io__write_string("const ")
-		)
-	;
-		[]
-	),
-	io__write_string("struct "),
+output_const_term_type(Types, ModuleName, TypeNum, FirstIndent, LaterIndent,
+		!N, !IO) :-
+	output_indent(FirstIndent, LaterIndent, !.N, !IO),
+	!:N = !.N + 1,
+	io__write_string("struct ", !IO),
+	output_common_cell_type_name(ModuleName, TypeNum, !IO),
+	io__write_string(" {\n", !IO),
+	output_cons_arg_types(Types, "\t", 1, !IO),
+	io__write_string("};\n", !IO).
 
-	output_decl_id(DeclId),
-	io__write_string("_struct"),
+:- pred output_const_term_decl_or_defn(assoc_list(rval, llds_type)::in,
+	module_name::in, int::in, int::in, bool::in, bool::in,
+	string::in, string::in, int::in, int::out,
+	io__state::di, io__state::uo) is det.
+
+output_const_term_decl_or_defn(ArgsTypes, ModuleName, CellNum, TypeNum,
+		Exported, IsDefn, FirstIndent, LaterIndent, !N, !IO) :-
+	output_indent(FirstIndent, LaterIndent, !.N, !IO),
+	!:N = !.N + 1,
 	(
-		{ Def = yes }
-	->
-		io__write_string(" {\n"),
-		output_cons_arg_types(ArgVals, CreateArgTypes, "\t", 1),
-		io__write_string("} ")
+		Exported = yes,
+		io__write_string("const struct ", !IO)
 	;
-		[]
+		Exported = no,
+		io__write_string("static const struct ", !IO)
 	),
+	output_common_cell_type_name(ModuleName, TypeNum, !IO),
+	io__write_string("\n\t", !IO),
+	VarDeclId = data_addr(ModuleName, common(CellNum, TypeNum)),
+	output_decl_id(data_addr(VarDeclId), !IO),
 	(
-		{ Decl = yes }
-	->
-		io__write_string(" "),
-		output_decl_id(DeclId),
-		(
-			{ Init = yes }
-		->
-			io__write_string(" = {\n"),
-			output_cons_args(ArgVals, CreateArgTypes, "\t"),
-			io__write_string(LaterIndent),
-			io__write_string("};\n")
-		;
-			io__write_string(";\n")
-		)
+		IsDefn = no,
+		io__write_string(";\n", !IO)
 	;
-		io__write_string(";\n")
+		IsDefn = yes,
+		io__write_string(" =\n{\n", !IO),
+		output_cons_args(ArgsTypes, "\t", !IO),
+		io__write_string(LaterIndent, !IO),
+		io__write_string("};\n", !IO)
 	).
 
 	% Return true if a data structure of the given type will eventually
-	% include code addresses. Note that we can't just test the data
-	% structure itself, since in the absence of code addresses the earlier
-	% passes will have replaced any code addresses with dummy values
-	% that will have to be overridden with the real code address at
-	% initialization time.
+	% have code addresses filled in inside it. Note that we can't just
+	% test the data structure itself, since in the absence of static
+	% code addresses the earlier passes will have replaced any code
+	% addresses with dummy values that will have to be overridden with
+	% the real code address at initialization time.
 
-:- func data_addr_would_include_code_address(data_addr) = bool.
+:- func data_addr_may_include_non_static_code_address(data_addr) = bool.
 
-data_addr_would_include_code_address(data_addr(_, DataName)) =
-	data_name_would_include_code_address(DataName).
-data_addr_would_include_code_address(rtti_addr(_, RttiName)) =
+data_addr_may_include_non_static_code_address(data_addr(_, DataName)) =
+	data_name_may_include_non_static_code_address(DataName).
+data_addr_may_include_non_static_code_address(rtti_addr(_, RttiName)) =
 	rtti_name_would_include_code_addr(RttiName).
-data_addr_would_include_code_address(layout_addr(LayoutName)) =
+data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 	layout_name_would_include_code_addr(LayoutName).
 
-:- func data_name_would_include_code_address(data_name) = bool.
+:- func data_name_may_include_non_static_code_address(data_name) = bool.
 
-data_name_would_include_code_address(common(_)) =                 no.
-data_name_would_include_code_address(base_typeclass_info(_, _)) = yes.
-data_name_would_include_code_address(tabling_pointer(_)) =        no.
-data_name_would_include_code_address(deep_profiling_procedure_data(_)) =  no.
+% Common structures can include code addresses, but only in grades with
+% static code addresses.
+data_name_may_include_non_static_code_address(common(_, _)) =  no.
+data_name_may_include_non_static_code_address(base_typeclass_info(_, _)) = yes.
+data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
 
-output_decl_id(create_label(N)) -->
-	io__write_string("mercury_const_"),
-	io__write_int(N).
+output_decl_id(common_type(ModuleName, TypeNum)) -->
+	output_common_cell_type_name(ModuleName, TypeNum).
 output_decl_id(data_addr(DataAddr)) -->
 	output_data_addr(DataAddr).
 output_decl_id(code_addr(_CodeAddress)) -->
@@ -2461,88 +2395,17 @@ output_decl_id(float_label(_Label)) -->
 output_decl_id(pragma_c_struct(_Name)) -->
 	{ error("output_decl_id: pragma_c_struct unexpected") }.
 
-:- pred output_cons_arg_types(list(maybe(rval))::in, create_arg_types::in,
-	string::in, int::in, io__state::di, io__state::uo) is det.
-
-output_cons_arg_types(Args, uniform(MaybeType), Indent, ArgNum) -->
-	output_uniform_cons_arg_types(Args, MaybeType, Indent, ArgNum).
-output_cons_arg_types(Args, initial(InitialTypes, RestTypes),
-		Indent, ArgNum) -->
-	output_initial_cons_arg_types(Args, InitialTypes, RestTypes,
-		Indent, ArgNum).
-output_cons_arg_types(Args, none, _, _) -->
-	{ require(unify(Args, []), "too many args for specified arg types") }.
-
-:- pred output_uniform_cons_arg_types(list(maybe(rval))::in,
-	maybe(llds_type)::in, string::in, int::in,
+:- pred output_cons_arg_types(list(llds_type)::in, string::in, int::in,
 	io__state::di, io__state::uo) is det.
 
-output_uniform_cons_arg_types([], _, _, _) --> [].
-output_uniform_cons_arg_types([Arg | Args], MaybeType, Indent, ArgNum) -->
-	( { Arg = yes(Rval) } ->
-		io__write_string(Indent),
-		llds_arg_type(Rval, MaybeType, Type),
-		output_llds_type(Type),
-		io__write_string(" f"),
-		io__write_int(ArgNum),
-		io__write_string(";\n"),
-		{ ArgNum1 = ArgNum + 1 },
-		output_uniform_cons_arg_types(Args, MaybeType, Indent, ArgNum1)
-	;
-		{ error("output_uniform_cons_arg_types: missing arg") }
-	).
-
-:- pred output_initial_cons_arg_types(list(maybe(rval))::in,
-	initial_arg_types::in, create_arg_types::in, string::in, int::in,
-	io__state::di, io__state::uo) is det.
-
-output_initial_cons_arg_types(Args, [], RestTypes, Indent, ArgNum) -->
-	output_cons_arg_types(Args, RestTypes, Indent, ArgNum).
-output_initial_cons_arg_types(Args, [N - MaybeType | InitTypes], RestTypes,
-		Indent, ArgNum) -->
-	output_initial_cons_arg_types_2(Args, N, MaybeType, InitTypes,
-		RestTypes, Indent, ArgNum).
-
-:- pred output_initial_cons_arg_types_2(list(maybe(rval))::in, int::in,
-	maybe(llds_type)::in, initial_arg_types::in, create_arg_types::in,
-	string::in, int::in, io__state::di, io__state::uo) is det.
-
-output_initial_cons_arg_types_2([], N, _, _, _, _, _) -->
-	{ require(unify(N, 0), "not enough args for specified arg types") }.
-output_initial_cons_arg_types_2([Arg | Args], N, MaybeType, InitTypes,
-		RestTypes, Indent, ArgNum) -->
-	( { N = 0 } ->
-		output_initial_cons_arg_types([Arg | Args], InitTypes,
-			RestTypes, Indent, ArgNum)
-	;
-		( { Arg = yes(Rval) } ->
+output_cons_arg_types([], _, _) --> [].
+output_cons_arg_types([Type | Types], Indent, ArgNum) -->
 			io__write_string(Indent),
-			llds_arg_type(Rval, MaybeType, Type),
 			output_llds_type(Type),
 			io__write_string(" f"),
 			io__write_int(ArgNum),
 			io__write_string(";\n"),
-			{ ArgNum1 = ArgNum + 1 },
-			{ N1 = N - 1 },
-			output_initial_cons_arg_types_2(Args, N1, MaybeType,
-				InitTypes, RestTypes, Indent, ArgNum1)
-		;
-			{ error("output_initial_cons_arg_types: missing arg") }
-		)
-	).
-
-	% Given an rval, figure out the type it would have as an argument,
-	% if it is not explicitly specified.
-
-:- pred llds_arg_type(rval::in, maybe(llds_type)::in, llds_type::out,
-	io__state::di, io__state::uo) is det.
-
-llds_arg_type(Rval, MaybeType, Type) -->
-	( { MaybeType = yes(SpecType) } ->
-		{ Type = SpecType }
-	;
-		llds_out__rval_type_as_arg(Rval, Type)
-	).
+	output_cons_arg_types(Types, Indent, ArgNum + 1).
 
 	% Given an rval, figure out the type it would have as
 	% an argument.  Normally that's the same as its usual type;
@@ -2589,120 +2452,21 @@ output_llds_type(string)       --> io__write_string("MR_String").
 output_llds_type(data_ptr)     --> io__write_string("MR_Word *").
 output_llds_type(code_ptr)     --> io__write_string("MR_Code *").
 
-:- pred output_cons_arg_decls(list(maybe(rval))::in, string::in, string::in,
-	int::in, int::out, decl_set::in, decl_set::out,
-	io__state::di, io__state::uo) is det.
-
-output_cons_arg_decls([], _, _, N, N, DeclSet, DeclSet) --> [].
-output_cons_arg_decls([Arg | Args], FirstIndent, LaterIndent, N0, N,
-		DeclSet0, DeclSet) -->
-	( { Arg = yes(Rval) } ->
-		output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N1,
-			DeclSet0, DeclSet1)
-	;
-		{ N1 = N0 },
-		{ DeclSet1 = DeclSet0 }
-	),
-	output_cons_arg_decls(Args, FirstIndent, LaterIndent, N1, N,
-		DeclSet1, DeclSet).
-
 	% Output the arguments, each on its own line prefixing with Indent,
 	% and with a cast appropriate to its type if necessary.
 
-:- pred output_cons_args(list(maybe(rval))::in, create_arg_types::in,
-	string::in, io__state::di, io__state::uo) is det.
+:- pred output_cons_args(assoc_list(rval, llds_type)::in, string::in,
+	io__state::di, io__state::uo) is det.
 
-output_cons_args(Args, uniform(MaybeType), Indent) -->
-	output_uniform_cons_args(Args, MaybeType, Indent).
-output_cons_args(Args, initial(InitTypes, RestTypes), Indent) -->
-	output_initial_cons_args(Args, InitTypes, RestTypes, Indent).
-output_cons_args(Args, none, _) -->
-	{ require(unify(Args, []), "too many args for specified arg types") }.
-
-:- pred output_uniform_cons_args(list(maybe(rval))::in, maybe(llds_type)::in,
-	string::in, io__state::di, io__state::uo) is det.
-
-output_uniform_cons_args([], _, _) --> [].
-output_uniform_cons_args([Arg | Args], MaybeType, Indent) -->
-	( { Arg = yes(Rval) } ->
-		io__write_string(Indent),
-		globals__io_get_globals(Globals),
-		(
-			%
-			% Don't output code_addr_consts if they are not
-			% actually const; instead just output `NULL' here in
-			% the static initializer.  The value will be supplied
-			% by the dynamic initialization code.
-			%
-			{ Rval = const(code_addr_const(_)) },
-			{ globals__have_static_code_addresses(Globals,
-				StaticCode) },
-			{ StaticCode = no }
-		->
-			io__write_string("NULL")
-		;
-			( { MaybeType = yes(_) } ->
-				output_static_rval(Rval)
-			;
-				llds_out__rval_type_as_arg(Rval, Type),
-				output_rval_as_type(Rval, Type)
-			)
-		),
-		( { Args \= [] } ->
-			io__write_string(",\n"),
-			output_uniform_cons_args(Args, MaybeType, Indent)
-		;
-			io__write_string("\n")
-		)
+output_cons_args([], _Indent, !IO).
+output_cons_args([Rval - Type | RvalsTypes], Indent, !IO) :-
+	io__write_string(Indent, !IO),
+	output_rval_as_type(Rval, Type, !IO),
+	( RvalsTypes \= [] ->
+		io__write_string(",\n", !IO),
+		output_cons_args(RvalsTypes, Indent, !IO)
 	;
-		% `Arg = no' means the argument is uninitialized,
-		% but that would mean the term isn't ground
-		{ error("output_uniform_cons_args: missing argument") }
-	).
-
-:- pred output_initial_cons_args(list(maybe(rval))::in, initial_arg_types::in,
-	create_arg_types::in, string::in, io__state::di, io__state::uo) is det.
-
-output_initial_cons_args(Args, [], RestTypes, Indent) -->
-	output_cons_args(Args, RestTypes, Indent).
-output_initial_cons_args(Args, [N - MaybeType | InitTypes], RestTypes,
-		Indent) -->
-	output_initial_cons_args_2(Args, N, MaybeType, InitTypes, RestTypes,
-		Indent).
-
-:- pred output_initial_cons_args_2(list(maybe(rval))::in, int::in,
-	maybe(llds_type)::in, initial_arg_types::in, create_arg_types::in,
-	string::in, io__state::di, io__state::uo) is det.
-
-output_initial_cons_args_2([], N, _, _, _, _) -->
-	{ require(unify(N, 0), "not enough args for specified arg types") }.
-output_initial_cons_args_2([Arg | Args], N, MaybeType, InitTypes, RestTypes,
-		Indent) -->
-	( { N = 0 } ->
-		output_initial_cons_args([Arg | Args], InitTypes, RestTypes,
-			Indent)
-	;
-		( { Arg = yes(Rval) } ->
-			{ N1 = N - 1 },
-			io__write_string(Indent),
-			( { MaybeType = yes(_) } ->
-				output_static_rval(Rval)
-			;
-				llds_out__rval_type_as_arg(Rval, Type),
-				output_rval_as_type(Rval, Type)
-			),
-			( { Args \= [] } ->
-				io__write_string(",\n"),
-				output_initial_cons_args_2(Args, N1, MaybeType,
-					InitTypes, RestTypes, Indent)
-			;
-				{ require(unify(N1, 0),
-				"not enough args for specified arg types") },
-				io__write_string("\n")
-			)
-		;
-			{ error("output_initial_cons_arg: missing argument") }
-		)
+		io__write_string("\n", !IO)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2983,7 +2747,8 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 		io__write_string(LinkageStr),
 
 		{ InclCodeAddr =
-			data_name_would_include_code_address(DataVarName) },
+			data_name_may_include_non_static_code_address(
+				DataVarName) },
 		{ c_data_const_string(Globals, InclCodeAddr, ConstStr) },
 		io__write_string(ConstStr),
 
@@ -2997,10 +2762,9 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
 
-data_name_linkage(common(_),                 static).
+data_name_linkage(common(_, _),              static).
 data_name_linkage(base_typeclass_info(_, _), extern).
 data_name_linkage(tabling_pointer(_),        static).
-data_name_linkage(deep_profiling_procedure_data(_), static).
 
 %-----------------------------------------------------------------------------%
 
@@ -3273,13 +3037,12 @@ output_data_addr(layout_addr(LayoutName)) -->
 
 output_data_addr(ModuleName, VarName) -->
 	(
-		{ VarName = common(N) },
+		{ VarName = common(CellNum, _TypeNum) },
 		{ MangledModuleName = sym_name_mangle(ModuleName) },
 		io__write_string(mercury_data_prefix),
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
-		{ string__int_to_string(N, NStr) },
-		io__write_string(NStr)
+		io__write_int(CellNum)
 	;
 			% We don't want to include the module name as part
 			% of the name if it is a base_typeclass_info, since
@@ -3291,12 +3054,17 @@ output_data_addr(ModuleName, VarName) -->
 	;
 		{ VarName = tabling_pointer(ProcLabel) },
 		output_tabling_pointer_var_name(ProcLabel)
-	;
-		{ VarName = deep_profiling_procedure_data(ProcLabel) },
-		io__write_string(mercury_data_prefix),
-		io__write_string("_deep_profiling_data__"),
-		output_proc_label(ProcLabel)
 	).
+
+:- pred output_common_cell_type_name(module_name::in, int::in,
+	io__state::di, io__state::uo) is det.
+
+output_common_cell_type_name(ModuleName, TypeNum) -->
+	{ MangledModuleName = sym_name_mangle(ModuleName) },
+	io__write_string(mercury_data_prefix),
+	io__write_string(MangledModuleName),
+	io__write_string("__common_type_"),
+	io__write_int(TypeNum).
 
 :- pred output_label_as_code_addr(label, io__state, io__state).
 :- mode output_label_as_code_addr(in, di, uo) is det.
@@ -3650,15 +3418,9 @@ output_rval(lval(Lval)) -->
 	;
 		output_lval(Lval)
 	).
-output_rval(create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg, _Reuse)) -->
-		% emit a reference to the static constant which we
-		% declared in output_rval_decls.
-	io__write_string("MR_mkword(MR_mktag("),
-	io__write_int(Tag),
-	io__write_string("), "),
-	io__write_string("&mercury_const_"),
-	io__write_int(CellNum),
-	io__write_string(")").
+output_rval(create(_, _, _, _, _, _, _)) -->
+	% These should have all been converted to data_addrs by llds_common.
+	{ error("output_rval: create") }.
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
 output_rval(mem_addr(MemRef)) -->
@@ -3734,80 +3496,6 @@ output_rval_const(data_addr_const(DataAddr)) -->
 	io__write_string("&"),
 	output_data_addr(DataAddr).
 output_rval_const(label_entry(Label)) -->
-	io__write_string("MR_ENTRY("),
-	output_label(Label),
-	io__write_string(")").
-
-	% Output an rval as an initializer in a static struct.
-	% Make sure it has the C type the corresponding field would have.
-	% This is the "really" natural type of the rval, free of the
-	% Mercury abstract engine's need to shoehorn things into MR_Words.
-
-:- pred output_static_rval(rval, io__state, io__state).
-:- mode output_static_rval(in, di, uo) is det.
-
-output_static_rval(const(Const)) -->
-	output_rval_static_const(Const).
-output_static_rval(unop(_, _)) -->
-	{ error("Cannot output a unop(_, _) in a static initializer") }.
-output_static_rval(binop(_, _, _)) -->
-	{ error("Cannot output a binop(_, _, _) in a static initializer") }.
-output_static_rval(mkword(Tag, Exprn)) -->
-	output_llds_type_cast(data_ptr),
-	io__write_string("MR_mkword("),
-	output_tag(Tag),
-	io__write_string(", "),
-	output_static_rval(Exprn),
-	io__write_string(")").
-output_static_rval(lval(_)) -->
-	{ error("Cannot output an lval(_) in a static initializer") }.
-output_static_rval(
-		create(Tag, _Args, _ArgTypes, _StatDyn, CellNum, _Msg, _Reuse))
-	-->
-		% emit a reference to the static constant which we
-		% declared in output_rval_decls.
-	io__write_string("MR_mkword(MR_mktag("),
-	io__write_int(Tag),
-	io__write_string("), "),
-	io__write_string("&mercury_const_"),
-	io__write_int(CellNum),
-	io__write_string(")").
-output_static_rval(var(_)) -->
-	{ error("Cannot output a var(_) in a static initializer") }.
-output_static_rval(mem_addr(_)) -->
-	{ error("Cannot output a mem_ref(_) in a static initializer") }.
-
-:- pred output_rval_static_const(rval_const, io__state, io__state).
-:- mode output_rval_static_const(in, di, uo) is det.
-
-output_rval_static_const(int_const(N)) -->
-	io__write_int(N).
-output_rval_static_const(float_const(FloatVal)) -->
-	c_util__output_float_literal(FloatVal).
-output_rval_static_const(string_const(String)) -->
-	io__write_string("MR_string_const("""),
-	c_util__output_quoted_string(String),
-	{ string__length(String, StringLength) },
-	io__write_string(""", "),
-	io__write_int(StringLength),
-	io__write_string(")").
-output_rval_static_const(multi_string_const(Length, String)) -->
-	io__write_string("MR_string_const("""),
-	c_util__output_quoted_multi_string(Length, String),
-	io__write_string(""", "),
-	io__write_int(Length),
-	io__write_string(")").
-output_rval_static_const(true) -->
-	io__write_string("MR_TRUE").
-output_rval_static_const(false) -->
-	io__write_string("MR_FALSE").
-output_rval_static_const(code_addr_const(CodeAddress)) -->
-	output_code_addr(CodeAddress).
-output_rval_static_const(data_addr_const(DataAddr)) -->
-	output_llds_type_cast(data_ptr),
-	io__write_string("&"),
-	output_data_addr(DataAddr).
-output_rval_static_const(label_entry(Label)) -->
 	io__write_string("MR_ENTRY("),
 	output_label(Label),
 	io__write_string(")").
