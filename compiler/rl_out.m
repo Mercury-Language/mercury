@@ -1026,8 +1026,7 @@ rl_out__generate_instr(sort(Output, Input, Attrs) - _, Code) -->
 	{ list__sort_and_remove_dups(Attrs, SortedAttrs) },
 	{ list__length(SortedAttrs, NumAttrs) },
 	{ list__length(OutputSchema, NumAttrs) ->
-		% Filter = 1 XXX do we want to filter duplicates?
-		Filter = 0
+		Filter = 1
 	;
 		Filter = 0
 	},
