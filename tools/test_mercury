@@ -83,7 +83,7 @@ GCC_ROTD_HOST=hg
 
 set_status () {
 	case "$*" in
-	    "tests in grade hlc.agc"* | "tests in grade hlc_nest"*)
+	    "tests in grade asm_fast.agc"* | "tests in grade hlc_nest"*)
 	        # These grades have known bugs which mean that they
 		# do not pass all of the tests.  So we do not fail
 		# if we get errors in those grades.
