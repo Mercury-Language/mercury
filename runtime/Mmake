@@ -100,7 +100,11 @@ dont_remove: engine.c io_rt.c wrapper.c call.c solutions.c
 
 #-----------------------------------------------------------------------------#
 
-clean_c: clean_mod_c
+clean: clean_o clean_mod_c
+
+.PHONY: clean_o
+clean_o:
+	rm -f *.o
 
 .PHONY: clean_mod_c
 clean_mod_c:
