@@ -106,7 +106,7 @@ goedel_replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
 
 :- pred goedel_replace_eqv_type(item, varset, string, list(type_param), type,
 			item).
-:- mode goedel_replace_eqv_type(in, in, in, in, in, out) is det.
+:- mode goedel_replace_eqv_type(in, in, in, in, in, out) is semidet.
 
 goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
 			TVarSet, Name, Args0, Body0,
@@ -127,7 +127,7 @@ goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 	
 :- pred goedel_replace_eqv_type_defn(type_defn, string, list(type_param),
 					type, type_defn).
-:- mode goedel_replace_eqv_type_defn(in, in, in, in, out) is det.
+:- mode goedel_replace_eqv_type_defn(in, in, in, in, out) is semidet.
 
 goedel_replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0),
 				Name, Args, Body,
