@@ -52,7 +52,7 @@ into another language, under the above conditions for modified versions.
 @author David Jeffery
 @author Peter Schachte
 @author Simon Taylor
-@author Chris Spiers
+@author Chris Speirs
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995-1999 The University of Melbourne.
