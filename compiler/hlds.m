@@ -126,7 +126,7 @@
 	% user-defined mode.
 :- type proc_id		==	int.
 
-:- type liveness_info   ==      map(var, liveness).
+:- type liveness_info   ==      set(var).	% The live variables
 
 :- type liveness        --->    live
                         ;       dead.
@@ -868,7 +868,7 @@ proc_info_init(Modes, Det, MContext, NewProc) :-
 	HeadVars = [],
 	determinism_to_category(Det, Category),
 	map__init(CallInfo),
-	map__init(Liveness),
+	set__init(Liveness),
 	ArgInfo = [],
 	ClauseBody = conj([]) - GoalInfo,
 	NewProc = procedure(
@@ -952,9 +952,8 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 % part of the goal, we just keep track of the initial liveness
 % and the changes in liveness.
 
-:- type delta_life ---> birth ; death.
-
-:- type delta_liveness == map(var, delta_life).
+:- type delta_liveness == pair(set(var)).
+			% Births - Deaths.
 
 :- pred goal_info_delta_liveness(hlds__goal_info, delta_liveness).
 :- mode goal_info_delta_liveness(in, out).
@@ -1014,7 +1013,9 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 goal_info_init(GoalInfo) :-
 	DeclaredDet = unspecified,
 	InferredDet = nondeterministic, 
-	map__init(DeltaLiveness),
+	set__init(Births),
+	set__init(Deaths),
+	DeltaLiveness = Births - Deaths,
 	map__init(InstMapDelta),
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
