@@ -1187,7 +1187,7 @@ string__format_add_sign( Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
 				string__append_list( [Lstring, " ", Rstring], Ostring),
 				Mvw2 is Mvw1 + 1
 			; 
-				Ostring is Istring,
+				Ostring = Istring,
 				Mvw2 = Mvw1
 		)
 	).
@@ -1228,7 +1228,7 @@ string__format_pad_width( Istring, Width, Flags, Out_string, Mv_cs) :-
 			string__append( Pad_string, Istring,  Out_string)
 		)
 	;
-		Out_string is Istring
+		Out_string = Istring
 	).
 
 
@@ -1258,8 +1258,13 @@ string__format_get_optional_args( [A|As], Flags, Width, Precision, Mods) :-
 	->
 		string__format_string_to_ints([A|As], Bs, Numl1, Numl2, yes),
 		string__format_int_from_char_list( Numl1, Width),
-		string__format_int_from_char_list( Numl2, Precision),
-		string__format_get_optional_args( Bs, Flags, _, _, Mods)
+		string__format_int_from_char_list( Numl2, Prec),
+		string__format_get_optional_args( Bs, Flags, _, Ptemp, Mods),
+		(Num2 = [] ->
+			Precision = Ptemp
+		;
+			Precision = Prec
+		)
 	;
 		( A = 'h' ; A = 'l' ; A = 'L' )
 	->
