@@ -91,7 +91,6 @@ simplify__pred(Simplifications0, PredId, ModuleInfo0, ModuleInfo,
 	{
 		% Don't warn for compiler-generated procedures.
 		list__member(warn_simple_code, Simplifications0),
-		module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
 		code_util__compiler_generated(PredInfo0)
 	->
 		list__delete_all(Simplifications0, warn_simple_code,
