@@ -194,9 +194,26 @@ lambda(LambdaExpression, Goal0, Arg1, Arg2, Arg3, Arg4, Arg5) :-
 	),
 	call(Goal).
 
-call(P0, X1, X2, X3, X4, X5, X6, X7) :-
-	P0 =.. L0,
-	append(L0, [X1, X2, X3, X4, X5, X6, X7], L),
-	P =.. L,
-	call(P).
+% Call/N are built into NU-Prolog for N < 8, but the Mercury compiler
+% has some places where it needs N to be higher than that.
 
+call(Goal0, A, B, C, D, E, F, G) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G, H) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G, H], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G, H, I) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G, H, I], L),
+	Goal =.. L,
+	call(Goal).
+call(Goal0, A, B, C, D, E, F, G, H, I, J) :-
+	Goal0 =.. L0,
+	append(L0, [A, B, C, D, E, F, G, H, I, J], L),
+	Goal =.. L,
+	call(Goal).
