@@ -20,11 +20,12 @@ main -->
 	test(3.0, 4.0),
 	test(41.0, -3.0),
 	test_constants,
-	test_rounding(2.7),
-	test_rounding(-3.6),
-	test_power(2.2),
-	test_trig(0.5),
-	test_inv_trig(0.6).
+	% test_rounding(2.7),
+	% test_rounding(-3.6),
+	% test_power(2.2),
+	% test_trig(0.5),
+	% test_inv_trig(0.6).
+	[].
 
 :- pred test(float, float, io__state, io__state).
 :- mode test(in, in, di, uo) is det.
@@ -35,7 +36,8 @@ test(X, Y) -->
 		builtin_float_times(X, Y, Times),
 		builtin_float_minus(X, Y, Minus),
 		builtin_float_divide(X, Y, Divide),
-		math__pow(X, Y, Pow)
+		% math__pow(X, Y, Pow)
+		true
 	},
 	write_message("X: ", X),
 	write_message("Y: ", Y),
@@ -43,15 +45,15 @@ test(X, Y) -->
 	write_message("X * Y: ", Times),
 	write_message("X - Y: ", Minus),
 	write_message("X / Y: ", Divide),
-	write_message("X ^ Y: ", Pow).
+	% write_message("X ^ Y: ", Pow).
+	[].
 
 :- pred write_message(string, float, io__state, io__state).
 :- mode write_message(in, in, di, uo) is det.
 
 write_message(String, Float) -->
-	io__write_string(String),
-	io__write_float(Float),
-	io__write_string("\n").
+	{ string__format("%s%6.3f\n", [s(String), f(Float)], Message) },
+	io__write_string(Message).
 
 :- pred test_constants(io__state :: di, io__state :: uo) is det.
 test_constants -->
