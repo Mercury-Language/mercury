@@ -2864,9 +2864,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 
 		%
 		% The `.module_dep' file is made as a side effect of
-		% creating the `.c', `.s' or `.il'.
+		% creating the `.c', `.s', `.il', or `.java'.
 		%
 		module_name_to_file_name(ModuleName, ".il", no, ILFileName),
+		module_name_to_file_name(ModuleName, ".java", no, JavaFileName),
 		module_name_to_file_name(ModuleName, module_dep_file_extension,
 			no, ModuleDepFileName),
 		io__write_strings(DepStream, [
@@ -2874,11 +2875,14 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				"ifeq ($(TARGET_ASM),yes)\n",
 				ModuleDepFileName, " : ", AsmFileName, "\n",
 				"else\n",
-				"ifeq ($(findstring il,$(GRADE)),il)\n",
+				" ifeq ($(findstring il,$(GRADE)),il)\n",
 				ModuleDepFileName, " : ", ILFileName, "\n",
-				"else\n",
+				"  ifeq ($(findstring java,$(GRADE)),java)\n",
+				ModuleDepFileName, " : ", JavaFileName, "\n",
+				"  else\n",
 				ModuleDepFileName, " : ", CFileName, "\n",
-				"endif\n",
+				"  endif\n",
+				" endif\n",
 				"endif"
 		]),
 
@@ -2974,8 +2978,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		    % top level dll of a nested module hierachy depends on all
 		    % of it sub-modules dlls, as they are referenced from
 		    % inside the top level dll.
+		    % XXX Do we need to do the same for Java?
 
 		module_name_to_file_name(ModuleName, ".dll", no, DllFileName),
+		module_name_to_file_name(ModuleName, ".class", no,
+			ClassFileName),
 		{ SubModules = submodules(ModuleName, AllDeps) },
 		( { Target = il, SubModules \= [] } ->
 			io__write_strings(DepStream, [DllFileName, " : "]),
@@ -3023,10 +3030,20 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		( { ForeignImportedModules = [] } ->
 			[]
 		;
-			{ Target = il ->
+			{
+				Target = il,
 				ForeignImportTarget = DllFileName,
 				ForeignImportExt = ".dll"
 			;
+				Target = java,
+				ForeignImportTarget = ClassFileName,
+				ForeignImportExt = ".java"
+			;
+				Target = c,
+				ForeignImportTarget = ObjFileName,
+				ForeignImportExt = ".mh"
+			;
+				Target = asm,
 				ForeignImportTarget = ObjFileName,
 				ForeignImportExt = ".mh"
 			},
@@ -4651,12 +4668,17 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	module_name_to_file_name(ModuleName, "", no, ExeFileName),
 
-	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
+	{ IfIL = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
 	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
 			ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
 			"$(", MakeVarName, ".foreign_dlls)\n"] },
 	{ Else = ["else\n"] },
+	{ IfJava = [" ifeq ($(findstring java,$(GRADE)),java)\n"] },
+	{ JavaMainRule = [ExeFileName, " : $(", MakeVarName, ".classes)\n"] },
+	{ Else2 = [" else\n"] },
+	{ EndIf2 = [" endif\n"] },
 
+	% XXX the output here is GNU Make-specific
 	io__write_strings(DepStream, [
 			"ifneq ($(EXT_FOR_EXE),)\n",
 			".PHONY	: ", ExeFileName, "\n",
@@ -4679,10 +4701,14 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	globals__io_get_target(Target),
 	{ Gmake = yes,
-		Rules = If ++ ILMainRule ++ Else ++ MainRule ++ EndIf
+		Rules = IfIL ++ ILMainRule ++ Else ++ 
+			IfJava ++ JavaMainRule ++ Else2 ++
+			MainRule ++ EndIf2 ++ EndIf
 	; Gmake = no,
 		( Target = il ->
 			Rules = ILMainRule
+		; Target = java ->
+			Rules = JavaMainRule
 		;
 			Rules = MainRule
 		)
@@ -4756,16 +4782,24 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			"$(", MakeVarName, ".foreign_dlls) \\\n\t\t"
 		| AllInts
 	] },
+	{ JavaLibRule = [
+		LibTargetName, " : ", "$(", MakeVarName, ".classes) \\\n\t\t"
+		| AllInts
+	] },
 	{ LibRule = [
 		LibTargetName, " : ", LibFileName, " ",
 		MaybeSharedLibFileName, " \\\n\t\t"
 		| AllInts
 	] },
 	{ Gmake = yes,
-		LibRules = If ++ ILLibRule ++ Else ++ LibRule ++ EndIf
+		LibRules = IfIL ++ ILLibRule ++ Else ++ 
+			   IfJava ++ JavaLibRule ++ Else2 ++
+			   LibRule ++ EndIf2 ++ EndIf
 	; Gmake = no,
 		( Target = il ->
 			LibRules = ILLibRule
+		; Target = java ->
+			LibRules = JavaLibRule
 		;
 			LibRules = LibRule
 		)
