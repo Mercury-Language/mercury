@@ -11,7 +11,7 @@ error(Message) :-
 		write('Stack trace unavailable.'), nl
 	),
 	fail.
-?- spy error.
+?- spy(error).
 
 stack_trace([]).
 stack_trace([Anc|Ancs]) :-

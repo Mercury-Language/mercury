@@ -46,15 +46,15 @@
 
 % The standard modes.
 
-:- mode unused :: free -> free.
-:- mode output :: free -> ground.
-:- mode input :: ground -> ground.
+:- mode unused :: (free -> free).
+:- mode output :: (free -> ground).
+:- mode input :: (ground -> ground).
 
-:- mode in :: ground -> ground.
-:- mode out :: free -> ground.
+:- mode in :: (ground -> ground).
+:- mode out :: (free -> ground).
 
-:- mode in(Inst) :: Inst -> Inst.
-:- mode out(Inst) :: free -> Inst.
+:- mode in(Inst) :: (Inst -> Inst).
+:- mode out(Inst) :: (free -> Inst).
 
 % Unique modes.  Currently aliased to standard modes, since unique modes
 % aren't implemented yet.

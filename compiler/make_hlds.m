@@ -22,6 +22,10 @@
 :- pred parse_tree_to_hlds(program, module_info, io__state, io__state).
 :- mode parse_tree_to_hlds(in, out, di, uo) is det.
 
+:- pred create_atomic_unification(term, term, unify_main_context,
+				unify_sub_contexts, hlds__goal).
+:- mode create_atomic_unification(in, in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -31,6 +35,7 @@
 :- import_module prog_util, prog_out, hlds_out.
 :- import_module globals, options.
 :- import_module make_tags, quantification.
+:- import_module unify_proc.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
@@ -83,7 +88,8 @@ add_item_decl(clause(_, _, _, _), _, Status, Module, Status, Module) --> [].
 
 add_item_decl(type_defn(VarSet, TypeDefn, Cond), Context, Status, Module0,
 		Status, Module) -->
-	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module).
+	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
+		Module).
 
 add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Status, Module0,
 		Status, Module) -->
@@ -261,10 +267,12 @@ mode_name_args(eqv_mode(Name, Args, Body), Name, Args, eqv_mode(Body)).
 	% t which defines t as an abstract_type.
 
 :- pred module_add_type_defn(module_info, varset, type_defn, condition,
-			term__context, module_info, io__state, io__state).
-:- mode module_add_type_defn(in, in, in, in, in, out, di, uo) is det.
+				term__context, import_status, module_info,
+				io__state, io__state).
+:- mode module_add_type_defn(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
+module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
+		Module) -->
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
 	{ convert_type_defn(TypeDefn, Globals, Name, Args, Body) },
@@ -296,11 +304,16 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		->
 			{ module_info_ctors(Module0, Ctors0) },
 			ctors_add(ConsList, TypeId, Context, Ctors0, Ctors),
-			{ module_info_set_ctors(Module0, Ctors, Module1) }
+			{ module_info_set_ctors(Module0, Ctors, Module1) },
+			{ unqualify_name(Name, UnqualifiedName) },
+			{ TypeFunctor = term__atom(UnqualifiedName) },
+			{ Type = term__functor(TypeFunctor, Args, Context) },
+			add_unify_pred(Module1, VarSet, Type, ConsList, Context,
+				Status, Module2)
 		;
-			{ Module1 = Module0 }
+			{ Module2 = Module0 }
 		),
-		{ module_info_set_types(Module1, Types, Module) },
+		{ module_info_set_types(Module2, Types, Module) },
 		( { Body = uu_type(_) } ->
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
@@ -327,7 +340,6 @@ convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
 :- pred ctors_add(list(constructor), type_id, term__context, cons_table,
 			cons_table, io__state, io__state).
 :- mode ctors_add(in, in, in, in, out, di, uo) is det.
-
 
 ctors_add([], _TypeId, _Context, Ctors, Ctors) --> [].
 ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
@@ -409,6 +421,35 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 		{ module_info_incr_errors(Module0, Module) },
 		multiple_def_error(PredName, Arity, "pred", Context)
 	).
+
+:- pred add_unify_pred(module_info, varset, type, list(constructor),
+			term__context, import_status,
+			module_info, io__state, io__state).
+:- mode add_unify_pred(in, in, in, in, in, in, out, di, uo) is det.
+
+add_unify_pred(Module0, VarSet, Type, Ctors, Context, Status, Module) -->
+	{ module_info_name(Module0, ModuleName) },
+	{ PredName = unqualified("=") },
+	{ Arity = 2 },
+	{ Cond = true },
+	{ ArgTypes = [Type, Type] },
+	{ ArgModes = [ground -> ground, ground -> ground] },
+	{ Det = unspecified },	% let determinism analysis infer it
+	{ unify_proc__generate_clause_info(Type, Ctors, ClausesInfo) },
+	{ pred_info_init(ModuleName, PredName, Arity, VarSet, ArgTypes, Cond,
+		Context, ClausesInfo, Status, PredInfo0) },
+
+	{ pred_info_procedures(PredInfo0, Procs0) },
+	{ next_mode_id(Procs0, Det, ModeId) },
+	{ proc_info_init(ArgModes, Det, Context, NewProc) },
+	{ map__set(Procs0, ModeId, NewProc, Procs) },
+	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
+
+	{ module_info_get_predicate_table(Module0, PredicateTable0) },
+	{ predicate_table_insert(PredicateTable0, PredInfo, _PredId,
+		PredicateTable) },
+	{ module_info_set_predicate_table(Module0, PredicateTable,
+		Module) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1176,10 +1217,6 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 	% create the hlds__goal for a unification which cannot be
 	% further simplified, filling in all the as yet
 	% unknown slots with dummy values
-
-:- pred create_atomic_unification(term, term, unify_main_context,
-				unify_sub_contexts, hlds__goal).
-:- mode create_atomic_unification(in, in, in, in, out) is det.
 
 create_atomic_unification(A, B, UnifyMainContext, UnifySubContext, Goal) :-
 	UMode = ((free - free) -> (free - free)),

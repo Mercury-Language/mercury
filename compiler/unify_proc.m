@@ -62,13 +62,18 @@
 				unify_proc_num).
 :- mode unify_proc__lookup_num(in, in, in, out) is det.
 
+:- pred unify_proc__generate_clause_info(type, list(constructor),
+					clauses_info).
+:- mode unify_proc__generate_clause_info(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int.
+:- import_module tree, map, queue, int, require.
 :- import_module code_util, code_info, type_util, varset.
 :- import_module mercury_to_mercury, hlds_out.
+:- import_module make_hlds, term, prog_util.
 :- import_module globals, options.
 
 	% We keep track of all the complicated unification procs we need
@@ -224,4 +229,163 @@ unify_proc__write_unify_proc_id(TypeId - UniMode) -->
 	io__write_string("'").
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+/*
+:- pred unify_proc__generate_goal(module_info, hlds__goal).
+:- mode unify_proc__generate_goal(in, out) is det.
+
+unify_proc__generate_goal(ModuleInfo, TypeId, Goal) :-
+	module_info__types(ModuleInfo, TypeTable),
+	map__lookup(TypeId, TypeTable, TypeDefn),
+	(
+		TypeDefn = hlds__type_defn(TypeVars0, _, TypeBody0, _, _),
+		TypeBody0 = du_type(Ctors, _TagVals, no)
+	->
+		TypeVars = TypeVars0,
+		Ctors = Ctors0
+	;
+		error("invalid type in generate_goal")
+	),
+	unify_proc__generate_clauses(Ctors, ModuleInfo, ClausesList),
+	goal_info_init(GoalInfo),
+	disj_list_to_goal(ClausesList, GoalInfo, Body).
+*/
+
+/*
+	For a type such as
+
+		type t(X) ---> a ; b(int) ; c(X); d(int, X, t)
+	
+	we want to generate code
+
+		eq(H1, H2) :-
+			(
+				H1 = a,
+				H2 = a
+			;
+				H1 = b(X1),
+				H2 = b(X2),
+				X1 = X2,
+			;
+				H1 = c(Y1),
+				H2 = c(Y2),
+				Y1 = Y2,
+			;
+				H1 = d(A1, B1, C1),
+				H2 = c(A2, B2, C2),
+				A1 = A2,
+				B1 = B2,
+				C1 = C2
+			).
+*/
+
+
+unify_proc__generate_clause_info(Type, Ctors, ClauseInfo) :-
+	var_type_info__init(VarTypeInfo0),
+	unify_proc__generate_head_vars(Type, H1, H2,
+					VarTypeInfo0, VarTypeInfo1),
+	unify_proc__generate_clauses(Ctors, H1, H2, Clauses,
+					VarTypeInfo1, VarTypeInfo),
+	var_type_info__extract(VarTypeInfo, VarSet, Types),
+	ClauseInfo = clauses_info(VarSet, Types, [H1, H2], Clauses).
+
+:- pred unify_proc__generate_head_vars(type, var, var,
+					var_type_info, var_type_info).
+:- mode unify_proc__generate_head_vars(in, out, out, in, out) is det.
+
+unify_proc__generate_head_vars(Type, H1, H2) -->
+	var_type_info__new_var(Type, H1),
+	var_type_info__new_var(Type, H2).
+
+:- pred unify_proc__generate_clauses(list(constructor), var, var, list(clause),
+					var_type_info, var_type_info).
+:- mode unify_proc__generate_clauses(in, in, in, out, in, out) is det.
+
+unify_proc__generate_clauses([], _H1, _H2, []) --> [].
+unify_proc__generate_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
+	{ Ctor = FunctorName - ArgTypes },
+	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
+	{ Functor = term__atom(UnqualifiedFunctorName) },
+	{ term__context_init(0, Context) },
+	unify_proc__make_fresh_vars(ArgTypes, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	{ term__var_list_to_term_list(Vars1, VarTerms1) },
+	{ term__var_list_to_term_list(Vars2, VarTerms2) },
+	{ create_atomic_unification(
+		term__variable(H1), term__functor(Functor, VarTerms1, Context), 
+		explicit, [], 
+		UnifyH1_Goal) },
+	{ create_atomic_unification(
+		term__variable(H2), term__functor(Functor, VarTerms2, Context),
+		explicit, [], 
+		UnifyH2_Goal) },
+	{ unify_proc__unify_var_lists(Vars1, Vars2, UnifyArgs_Goal) },
+	{ GoalList = [UnifyH1_Goal, UnifyH2_Goal | UnifyArgs_Goal] },
+	{ goal_info_init(GoalInfo) },
+	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
+	{ Clause = clause([], Goal, Context) },
+	unify_proc__generate_clauses(Ctors, H1, H2, Clauses).
+
+:- pred unify_proc__make_fresh_vars(list(type), list(var),
+					var_type_info, var_type_info).
+:- mode unify_proc__make_fresh_vars(in, out, in, out) is det.
+
+unify_proc__make_fresh_vars([], []) --> [].
+unify_proc__make_fresh_vars([Type | Types], [Var | Vars]) -->
+	var_type_info__new_var(Type, Var),
+	unify_proc__make_fresh_vars(Types, Vars).
+
+:- pred unify_proc__unify_var_lists(list(var), list(var), list(hlds__goal)).
+:- mode unify_proc__unify_var_lists(in, in, out) is det.
+
+unify_proc__unify_var_lists([], [_|_], _) :-
+	error("unify_proc__unify_var_lists: length mismatch").
+unify_proc__unify_var_lists([_|_], [], _) :-
+	error("unify_proc__unify_var_lists: length mismatch").
+unify_proc__unify_var_lists([], [], []).
+unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
+	create_atomic_unification(
+		term__variable(Var1), term__variable(Var2),
+		explicit, [], 
+		Goal),
+	unify_proc__unify_var_lists(Vars1, Vars2, Goals).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+% It's a pity that we don't have nested modules.
+
+% :- begin_module var_type_info.
+% :- interface.
+
+:- type var_type_info.
+
+:- pred var_type_info__init(var_type_info).
+:- mode var_type_info__init(out) is det.
+
+:- pred var_type_info__new_var(type, var, var_type_info, var_type_info).
+:- mode var_type_info__new_var(in, out, in, out) is det.
+
+:- pred var_type_info__extract(var_type_info, varset, map(var, type)).
+:- mode var_type_info__extract(in, out, out) is det.
+
+%-----------------------------------------------------------------------------%
+
+% :- implementation
+
+:- type var_type_info == pair(varset, map(var, type)).
+
+var_type_info__init(VarSet - Types) :-
+	varset__init(VarSet),
+	map__init(Types).
+
+var_type_info__new_var(Type, Var, VarSet0 - Types0, VarSet - Types) :-
+	varset__new_var(VarSet0, Var, VarSet),
+	map__set(Types0, Var, Type, Types).
+
+var_type_info__extract(VarSet - Types, VarSet, Types).
+
+% :- end_module var_type_info.
+
 %-----------------------------------------------------------------------------%

@@ -62,15 +62,14 @@ term_io__read_term(Result) -->
 			Result = term(VarSet, Term)
 		)
 	    ;
-		% NU-Prolog just dumps to error message to stderr.
-		% This is the best we can do:
 		Result = error("syntax error", LineNumber)
 	    )
 	},
 	io__update_state.
 
 split_var_names([], [], []).
-split_var_names([Name=Var|Rest], [Name|Names], [Var|Vars]) :-
+split_var_names([Name=Var|Rest], [N|Names], [Var|Vars]) :-
+	name(Name, N),
 	split_var_names(Rest, Names, Vars).
 
 	% convert "double-quoted string" tokens into

@@ -1715,9 +1715,9 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 					)
 				).
 
-:- mode type_info_uo :: free -> uniq_type_info.
-:- mode type_info_ui :: uniq_type_info -> uniq_type_info.
-:- mode type_info_di :: uniq_type_info -> dead.
+:- mode type_info_uo :: (free -> uniq_type_info).
+:- mode type_info_ui :: (uniq_type_info -> uniq_type_info).
+:- mode type_info_di :: (uniq_type_info -> dead).
 
 	% Some fiddly modes used when we want to extract
 	% the io_state from a type_info struct and then put it back again.
@@ -1731,9 +1731,9 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 					)
 				).
 
-:- mode type_info_get_io_state 	:: uniq_type_info -> type_info_no_io.
-:- mode type_info_no_io 		:: type_info_no_io -> type_info_no_io.
-:- mode type_info_set_io_state 	:: type_info_no_io -> dead.
+:- mode type_info_get_io_state 	:: (uniq_type_info -> type_info_no_io).
+:- mode type_info_no_io 	:: (type_info_no_io -> type_info_no_io).
+:- mode type_info_set_io_state 	:: (type_info_no_io -> dead).
 
 %-----------------------------------------------------------------------------%
 

@@ -264,7 +264,7 @@ io__output_stream(Stream) -->
 
 io__set_input_stream(NewStream, OldStream) -->
 	{ currentInput(OldStream) },
-	{ see(NewStream) },
+	{ setInput(NewStream) },
 	io__update_state.
 
 io__set_output_stream(NewStream, OldStream) -->

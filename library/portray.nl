@@ -23,7 +23,9 @@ portray(Term) :-
 	write(F),
 	write('('),
 	portray_args(As),
-	write(')').
+	write(')'),
+	!.
+portray(Term) :- print(Term).
 
 portray_args([]).
 portray_args([X|Xs]) :-

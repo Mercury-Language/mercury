@@ -138,7 +138,8 @@ code_util__builtin_binop("builtin_mod", 3, (mod)).
 code_util__builtin_binop("builtin_left_shift", 3, (<<)).
 code_util__builtin_binop("builtin_right_shift", 3, (>>)).
 code_util__builtin_binop("builtin_bit_and", 3, (&)).
-code_util__builtin_binop("builtin_bit_or", 3, (|)).
+code_util__builtin_binop("builtin_bit_or", 3, ('|')).
+			% Need single quotes around '|' for Sicstus Prolog
 code_util__builtin_binop("builtin_bit_xor", 3, (^)).
 code_util__builtin_binop(">", 2, (>)).
 code_util__builtin_binop("<", 2, (<)).
