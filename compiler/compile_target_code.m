@@ -211,7 +211,7 @@ compile_managed_cplusplus_file(ErrorStream,
 	{ join_string_list(MCPPFlagsList, "", "", " ", MCPPFlags) },
 	globals__io_lookup_bool_option(target_debug, Debug),
 	{ Debug = yes ->
-		DebugOpt = "" % XXX
+		DebugOpt = "/Zi "
 	;
 		DebugOpt = ""
 	},
@@ -230,7 +230,7 @@ compile_managed_cplusplus_file(ErrorStream,
 
 	{ string__append_list([MCPP, " -CLR ", DebugOpt, InclOpts,
 		DLLDirOpts, MCPPFlags, " ", MCPPFileName,
-		"-link -noentry mscoree.lib -dll -out:", DLLFileName],
+		" /LD -out:", DLLFileName],
 		Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
@@ -246,7 +246,11 @@ compile_csharp_file(ErrorStream,
 	{ join_string_list(CSCFlagsList, "", "", " ", CSCFlags) },
 	globals__io_lookup_bool_option(target_debug, Debug),
 	{ Debug = yes ->
-		DebugOpt = "" % XXX
+		% XXX This needs testing before it can be enabled
+		% (see the comments for install_debug_library in
+		% library/Mmakefile).
+		% DebugOpt = "/debug+ /debug:full "
+		DebugOpt = ""
 	;
 		DebugOpt = ""
 	},
@@ -258,8 +262,8 @@ compile_csharp_file(ErrorStream,
 	 	(func(DLLDir) = ["/lib:", DLLDir, " "]), DLLDirs))) },
 
 	{ string__append_list([CSC, " -CLR ", DebugOpt,
-		" /t:library ", DLLDirOpts, CSCFlags, " ",
-		" /out:", DLLFileName, CSharpFileName], Command) },
+		"/t:library ", DLLDirOpts, CSCFlags,
+		" /out:", DLLFileName, " ", CSharpFileName], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
 
