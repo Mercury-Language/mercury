@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -158,8 +158,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, int, char.
+:- import_module require, int, char, string.
 :- import_module mdb__declarative_analyser, mdb__declarative_oracle.
+:- import_module mdb__program_representation.
 
 :- type diagnoser_state(R)
 	--->	diagnoser(
@@ -334,7 +335,8 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
 	where [
 		pred(edt_root_question/3) is trace_root_question,
 		pred(edt_root_e_bug/3) is trace_root_e_bug,
-		pred(edt_children/3) is trace_children
+		pred(edt_children/3) is trace_children,
+		pred(edt_dependency/6) is trace_dependency
 	].
 
 	% The wrap/1 around the first argument of the instance is
@@ -351,7 +353,7 @@ trace_root_question(wrap(Store), dynamic(Ref), Root) :-
 	(
 		Node = fail(_, CallId, RedoId, _),
 		call_node_from_id(Store, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _),
+		Call = call(_, _, CallAtom, _, _, _, _),
 		get_answers(Store, RedoId, [], Answers),
 		Root = missing_answer(CallAtom, Answers)
 	;
@@ -360,7 +362,7 @@ trace_root_question(wrap(Store), dynamic(Ref), Root) :-
 	;
 		Node = excp(_, CallId, _, Exception, _),
 		call_node_from_id(Store, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _),
+		Call = call(_, _, CallAtom, _, _, _, _),
 		Root = unexpected_exception(CallAtom, Exception)
 	).
 
@@ -390,12 +392,12 @@ trace_root_e_bug(wrap(S), dynamic(Ref), Bug) :-
 	;
 		Node = fail(_, CallId, _, Event),
 		call_node_from_id(S, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _),
+		Call = call(_, _, CallAtom, _, _, _, _),
 		Bug = partially_uncovered_atom(CallAtom, Event)
 	;
 		Node = excp(_, CallId, _, Exception, Event),
 		call_node_from_id(S, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _),
+		Call = call(_, _, CallAtom, _, _, _, _),
 		Bug = unhandled_exception(CallAtom, Exception, Event)
 	).
 
@@ -423,7 +425,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 :- mode not_at_depth_limit(in, in) is semidet.
 
 not_at_depth_limit(Store, Ref) :-
-	call_node_from_id(Store, Ref, call(_, _, _, _, _, no)).
+	call_node_from_id(Store, Ref, call(_, _, _, _, _, no, _)).
 
 :- pred wrong_answer_children(S, R, list(edt_node(R)), list(edt_node(R)))
 		<= annotated_trace(S, R).
@@ -432,7 +434,7 @@ not_at_depth_limit(Store, Ref) :-
 wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _)
 		; Node = neg(_, _, _)
 		; Node = cond(_, _, failed)
 		)
@@ -476,7 +478,7 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 missing_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _)
 		; Node = neg(_, _, _)
 		; Node = cond(_, _, failed)
 		)
@@ -530,7 +532,7 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 unexpected_exception_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _)
 		; Node = neg(_, _, failed)
 		; Node = cond(_, _, failed)
 		)
@@ -565,6 +567,441 @@ unexpected_exception_children(Store, NodeId, Ns0, Ns) :-
 		unexpected_exception_children(Store, Next, Ns1, Ns)
 	).
 
+%-----------------------------------------------------------------------------%
+%
+% Tracking a subterm dependency.
+%
+% We are given an EDT node, an argument position, and a path to the selected
+% subterm.  We wish to find the origin of that subterm within the body of the
+% given node, or within the body of its parent.  We can figure out the mode of
+% the top of the selected subterm; if the mode is `in', the origin could be:
+%	- a unification within the body of the parent,
+%	- an output subterm in a sibling node, or
+%	- an input subterm of the parent node.
+% In this case we look at the contour leading up to the call event associated
+% with the given node.  If the mode is `out', the origin could be:
+%	- a unification within the body of the call,
+%	- an output subterm of a child of the node, or
+%	- an input subterm of the node itself.
+% In the case we look at the contour leading up to the exit or exception event
+% associated with the given node.
+%
+% If the contour starts with a neg or cond event, then we also look at the
+% contour leading up to that event (and so on, recursively).  We eventually
+% stop when a call event is reached.  The goal representation used comes from
+% this call event.
+%
+% We first make a full pass of the contour(s), matching up the contour events
+% with atomic events in the goal representation, and constructing a list of
+% `atom_info's, information about atomic goals in the contour(s).  We then
+% traverse this list, keeping track of the variable which contains the
+% selected subterm, and the location within this variable.
+
+:- pred trace_dependency(wrap(S), edt_node(R), arg_pos, term_path,
+		subterm_mode, subterm_origin(edt_node(R)))
+		<= annotated_trace(S, R).
+:- mode trace_dependency(in, in, in, in, out, out) is det.
+
+trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
+	det_edt_node_from_id(Store, Ref, Node),
+	(
+		Node = exit(ExitPrec, CallId, _, ExitAtom, _),
+		call_node_from_id(Store, CallId, Call),
+		Call = call(CallPrec, _, CallAtom, _, _, _, _),
+		(
+			trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath)
+		->
+			Mode = subterm_in,
+			Start = CallPrec
+		;
+			trace_atom_subterm_is_ground(ExitAtom, ArgPos, TermPath)
+		->
+			Mode = subterm_out,
+			Start = ExitPrec
+		;
+			error("trace_dependency: wrong answer subterm unbound")
+		)
+	;
+		Node = fail(_, CallId, _, _),
+		call_node_from_id(Store, CallId, Call),
+		Call = call(CallPrec, _, CallAtom, _, _, _, _),
+		(
+			trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath)
+		->
+			Mode = subterm_in,
+			Start = CallPrec
+		;
+			error(
+			    "trace_dependency: missing answer subterm unbound")
+		)
+	;
+		Node = excp(_, CallId, _, _, _),
+		call_node_from_id(Store, CallId, Call),
+		Call = call(CallPrec, _, CallAtom, _, _, _, _),
+		%
+		% XXX we don't yet handle tracking of the exception value.
+		%
+		(
+			trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath)
+		->
+			Mode = subterm_in,
+			Start = CallPrec
+		;
+			error("trace_dependency: exception subterm unbound")
+		)
+	),
+
+	contour_foldl2(Store, process_trace_event, Start, next_contour(Store),
+			GoalCont, AtomInfo0),
+	(
+		GoalCont = unknown_goal
+	->
+		%
+		% There was no goal_rep to match the contour up with, so the
+		% origin cannot be found.
+		%
+		Origin = not_found
+	;
+		%
+		% Use up any remaining goals which are not associated with
+		% any events (e.g. unifications).
+		%
+		process_non_event_goals(GoalCont, MaybeCallArgs, AtomInfo,
+				AtomInfo0),
+		(
+			Mode = subterm_in,
+			MaybeCallArgs = yes(CallArgs)
+		->
+			list__index1_det(CallArgs, ArgPos, VarRep)
+		;
+			Mode = subterm_out,
+			MaybeCallArgs = no
+		->
+			%
+			% Headvars have the same number as their argument
+			% position.
+			%
+			VarRep = ArgPos
+		;
+			error("trace_dependency: contour mismatch")
+		),
+		Origin = find_subterm_origin(AtomInfo, VarRep, TermPath)
+	).
+
+	% contour_foldl2(Store, Pred, Right, Init, A, B) is analogous to
+	% other foldl2 predicates which keep track of two accumulators
+	% over a sequence.  In this case the sequence is the contour defined
+	% by Right, the rightmost event of the contour.  The main difference
+	% is that instead of supplying the initial accumulator values, the
+	% Init closure calculates them from the event at the left boundary
+	% of the contour.
+	%
+	% The mode that we have chosen has the last two arguments of the
+	% accumulator predicate (second argument) with the opposite modes to
+	% normal.  This is so the accumulator predicate can construct a
+	% list using the DCG syntax.
+	%
+:- pred contour_foldl2(S, pred(R, trace_node(R), A, A, B, B), R,
+		pred(trace_node(R), A, B), A, B) <= annotated_trace(S, R).
+:- mode contour_foldl2(in, pred(in, in, in, out, out, in) is det, in,
+		pred(in, out, out) is det, out, out) is det.
+
+contour_foldl2(Store, ProcessEvent, Ref, Init, A, B) :-
+	det_trace_node_from_id(Store, Ref, Node),
+	(
+		( Node = call(_, _, _, _, _, _, _)
+		; Node = neg(_, _, _)
+		; Node = cond(_, _, failed)
+		)
+	->
+		Init(Node, A, B)
+	;
+		Next = step_left_in_contour(Store, Node),
+		contour_foldl2(Store, ProcessEvent, Next, Init, A0, B0),
+		ProcessEvent(Ref, Node, A0, A, B, B0)
+	).
+
+	% This type represents the remainder of a goal after some of it
+	% has been executed, like a continuation.  We don't actually
+	% execute this code, but match it up with the remainder of a contour
+	% after some events have been processed.
+	%
+:- type goal_cont
+	--->	subgoal_cont(
+			goal_rep,	% A subgoal to execute.
+			goal_cont	% Code after the subgoal.
+		)
+	;	conj_cont(
+			list(goal_rep), % The rest of a conjunction to execute.
+			goal_cont	% Code after the conjunction.
+		)
+	;	ite_cont(
+			goal_rep,	% Then branch.
+			goal_rep,	% Else branch.
+			goal_cont	% Code after the if-then-else.
+		)
+	;	neg_cont(
+			goal_cont	% Code after the negation.
+		)
+	;	return			% End of the procedure.
+	;	unknown_goal.		% We don't have access to the
+					% program representation.
+
+:- type atom_info(R)
+	--->	call_info(R, goal_rep)
+	;	unify_info(goal_rep).
+
+:- pred next_contour(S, trace_node(R), goal_cont, list(atom_info(R)))
+		<= annotated_trace(S, R).
+:- mode next_contour(in, in, out, out) is det.
+
+next_contour(Store, Node, Cont, AtomInfo) :-
+	(
+		Node = call(_, _, _, _, _, _, MaybeGoal)
+	->
+		AtomInfo = [],
+		(
+			MaybeGoal = yes(Goal)
+		->
+			Cont = subgoal_cont(Goal, return)
+		;
+			Cont = unknown_goal
+		)
+	;
+		( Node = neg(Prec, _, _)
+		; Node = cond(Prec, _, _)
+		)
+	->
+		%
+		% We continue into the next contour up, since the subterm
+		% could have come from there.
+		%
+		contour_foldl2(Store, process_trace_event, Prec,
+				next_contour(Store), Cont, AtomInfo)
+	;
+		error("next_contour: not a contour boundary")
+	).
+
+	% Match the goal_cont up with one trace event, leaving a new
+	% goal_cont.
+	%
+:- pred process_trace_event(R, trace_node(R), goal_cont, goal_cont,
+		list(atom_info(R)), list(atom_info(R))).
+:- mode process_trace_event(in, in, in, out, out, in) is det.
+
+process_trace_event(Ref, Event, subgoal_cont(Goal, Cont0), Cont) -->
+	process_trace_event_goal(Ref, Event, Goal, Cont0, Cont).
+process_trace_event(Ref, Event, conj_cont([], Cont0), Cont) -->
+	process_trace_event(Ref, Event, Cont0, Cont).
+process_trace_event(Ref, Event, conj_cont([G | Gs], Cont0), Cont) -->
+	process_trace_event_goal(Ref, Event, G, conj_cont(Gs, Cont0), Cont).
+process_trace_event(_, Event, ite_cont(Then, Else, Cont0), Cont) -->
+	{
+		Event = then(_, _)
+	->
+		Cont = subgoal_cont(Then, Cont0)
+	;
+		Event = else(_, _)
+	->
+		Cont = subgoal_cont(Else, Cont0)
+	;
+		error("process_trace_event: ite mismatch")
+	}.
+process_trace_event(_, _, neg_cont(_), _) -->
+	{ error("process_trace_event: unexpected end of negation") }.
+process_trace_event(_, _, return, _) -->
+	{ error("process_trace_event: unexpected end of goal") }.
+process_trace_event(_, _, unknown_goal, unknown_goal) -->
+	[].
+
+:- pred process_trace_event_goal(R, trace_node(R), goal_rep, goal_cont,
+		goal_cont, list(atom_info(R)), list(atom_info(R))).
+:- mode process_trace_event_goal(in, in, in, in, out, out, in) is det.
+
+process_trace_event_goal(Ref, Event, conj_rep([]), Cont0, Cont) -->
+	process_trace_event(Ref, Event, Cont0, Cont).
+process_trace_event_goal(Ref, Event, conj_rep([G | Gs]), Cont0, Cont) -->
+	process_trace_event_goal(Ref, Event, G, conj_cont(Gs, Cont0), Cont).
+process_trace_event_goal(_, Event, disj_rep(Ds), Cont0, Cont) -->
+	{ list__index1_det(Ds, disj_event_branch_number(Event), D) },
+	{ Cont = subgoal_cont(D, Cont0) }.
+process_trace_event_goal(_, Event, switch_rep(As), Cont0, Cont) -->
+	{ list__index1_det(As, switch_event_branch_number(Event), A) },
+	{ Cont = subgoal_cont(A, Cont0) }.
+process_trace_event_goal(_, Event, ite_rep(Cond, Then, Else), Cont0, Cont) -->
+	{
+		Event = cond(_, _, _)
+	->
+		Cont = subgoal_cont(Cond, ite_cont(Then, Else, Cont0))
+	;
+		Event = else(_, _)
+	->
+		%
+		% The contour stepped over the (failed) condition.
+		%
+		Cont = subgoal_cont(Else, Cont0)
+	;
+		error("process_trace_event_goal: ite mismatch")
+	}.
+process_trace_event_goal(Ref, Event, negation_rep(Goal), Cont0, Cont) -->
+	(
+		{ Event = neg_succ(_, _) }
+	->
+		{ Cont = Cont0 }
+	;
+		process_trace_event_goal(Ref, Event, Goal, neg_cont(Cont0),
+				Cont)
+	).
+process_trace_event_goal(Ref, Event, some_rep(Goal), Cont0, Cont) -->
+	process_trace_event_goal(Ref, Event, Goal, Cont0, Cont).
+process_trace_event_goal(Ref, Event, GoalRep, Cont0, Cont) -->
+	{ GoalRep = atomic_goal_rep(_, _, _, _, AtomicGoal) },
+	(
+		{ atomic_goal_rep_is_call(AtomicGoal, _) }
+	->
+		{
+			Event = exit(_, _, _, _, _)
+		->
+			Cont = Cont0
+		;
+			error("process_trace_event_goal: exit mismatch")
+		},
+		[ call_info(Ref, GoalRep) ]
+	;
+		[ unify_info(GoalRep) ],
+		process_trace_event(Ref, Event, Cont0, Cont)
+	).
+
+:- pred process_non_event_goals(goal_cont, maybe(list(var_rep)),
+		list(atom_info(R)), list(atom_info(R))).
+:- mode process_non_event_goals(in, out, out, in) is det.
+
+process_non_event_goals(subgoal_cont(Goal, Cont), MaybeArgs) -->
+	process_non_event_goals_2(Goal, Cont, MaybeArgs).
+process_non_event_goals(conj_cont([], Cont), MaybeArgs) -->
+	process_non_event_goals(Cont, MaybeArgs).
+process_non_event_goals(conj_cont([G | Gs], Cont), MaybeArgs) -->
+	process_non_event_goals_2(G, conj_cont(Gs, Cont), MaybeArgs).
+process_non_event_goals(ite_cont(_, _, _), _) -->
+	{ error("process_non_event_goals: ite event expected") }.
+process_non_event_goals(neg_cont(_), _) -->
+	{ error("process_non_event_goals: neg event expected") }.
+process_non_event_goals(return, no) -->
+	[].
+process_non_event_goals(unknown_goal, _) -->
+	{ error("process_non_event_goals: goal is unknown") }.
+
+:- pred process_non_event_goals_2(goal_rep, goal_cont, maybe(list(var_rep)),
+		list(atom_info(R)), list(atom_info(R))).
+:- mode process_non_event_goals_2(in, in, out, out, in) is det.
+
+process_non_event_goals_2(conj_rep([]), Cont, MaybeArgs) -->
+	process_non_event_goals(Cont, MaybeArgs).
+process_non_event_goals_2(conj_rep([G | Gs]), Cont, MaybeArgs) -->
+	process_non_event_goals_2(G, conj_cont(Gs, Cont), MaybeArgs).
+process_non_event_goals_2(disj_rep(_), _, _) -->
+	{ error("process_non_event_goals_2: disj event expected") }.
+process_non_event_goals_2(switch_rep(_), _, _) -->
+	{ error("process_non_event_goals_2: swtc event expected") }.
+process_non_event_goals_2(ite_rep(_, _, _), _, _) -->
+	{ error("process_non_event_goals_2: cond event expected") }.
+process_non_event_goals_2(negation_rep(Goal), Cont, MaybeArgs) -->
+	process_non_event_goals_2(Goal, neg_cont(Cont), MaybeArgs).
+process_non_event_goals_2(some_rep(Goal), Cont, MaybeArgs) -->
+	process_non_event_goals_2(Goal, Cont, MaybeArgs).
+process_non_event_goals_2(Goal, Cont, MaybeArgs) -->
+	{ Goal = atomic_goal_rep(_, _, _, _, AtomicGoal) },
+	(
+		{ atomic_goal_rep_is_call(AtomicGoal, Args) }
+	->
+		{ MaybeArgs = yes(Args) }
+	;
+		[ unify_info(Goal) ],
+		process_non_event_goals(Cont, MaybeArgs)
+	).
+
+	% Scan through the information derived from the contour, and
+	% track the location of the selected subterm.
+	%
+:- func find_subterm_origin(list(atom_info(R)), var_rep, term_path)
+		= subterm_origin(edt_node(R)).
+
+find_subterm_origin([], VarRep, TermPath) = input(VarRep, TermPath).
+find_subterm_origin([unify_info(Goal) | AtomInfo], VarRep, TermPath)
+		= Origin :-
+	(
+		Goal = atomic_goal_rep(_, File, Line, BoundVars, AtomicGoal),
+		list__member(VarRep, BoundVars)
+	->
+		Origin = find_subterm_origin_unify(File, Line, AtomicGoal,
+				AtomInfo, VarRep, TermPath)
+	;
+		Origin = find_subterm_origin(AtomInfo, VarRep, TermPath)
+	).
+find_subterm_origin([call_info(Ref, Goal) | AtomInfo], VarRep, TermPath)
+		= Origin :-
+	(
+		Goal = atomic_goal_rep(_, _, _, BoundVars, AtomicGoal),
+		list__member(VarRep, BoundVars)
+	->
+		Origin = find_subterm_origin_call(Ref, AtomicGoal, VarRep,
+				TermPath)
+	;
+		Origin = find_subterm_origin(AtomInfo, VarRep, TermPath)
+	).
+
+:- func find_subterm_origin_unify(string, int, atomic_goal_rep,
+		list(atom_info(R)), var_rep, term_path)
+		= subterm_origin(edt_node(R)).
+
+find_subterm_origin_unify(File, Line, unify_construct_rep(_, _, Args),
+		AtomInfo, _, TermPath0) = Origin :-
+	(
+		TermPath0 = [ArgPos | TermPath],
+		list__index1_det(Args, ArgPos, VarRep),
+		Origin = find_subterm_origin(AtomInfo, VarRep, TermPath)
+	;
+		TermPath0 = [],
+		Origin = unification(File, Line)
+	).
+find_subterm_origin_unify(_, _, unify_deconstruct_rep(VarRep, _, Args),
+		AtomInfo, VarRep0, TermPath0) = Origin :-
+	(
+		list__nth_member_search(Args, VarRep0, ArgPos)
+	->
+		TermPath = [ArgPos | TermPath0],
+		Origin = find_subterm_origin(AtomInfo, VarRep, TermPath)
+	;
+		error("find_subterm_origin_unify: arg not found")
+	).
+find_subterm_origin_unify(_, _, unify_assign_rep(_, Source), AtomInfo, _,
+		TermPath) = find_subterm_origin(AtomInfo, Source, TermPath).
+find_subterm_origin_unify(_, _, unify_simple_test_rep(_, _), _, _, _) = _ :-
+	error("find_subterm_origin_unify: unexpected test").
+find_subterm_origin_unify(_, _, pragma_foreign_code_rep(_), _, _, _) = _ :-
+	error("find_subterm_origin_unify: unexpected pragma call").
+find_subterm_origin_unify(_, _, higher_order_call_rep(_, _), _, _, _) = _ :-
+	error("find_subterm_origin_unify: unexpected ho call").
+find_subterm_origin_unify(_, _, method_call_rep(_, _, _), _, _, _) = _ :-
+	error("find_subterm_origin_unify: unexpected method call").
+find_subterm_origin_unify(_, _, plain_call_rep(_, _), _, _, _) = _ :-
+	error("find_subterm_origin_unify: unexpected call").
+
+:- func find_subterm_origin_call(R, atomic_goal_rep, var_rep, term_path)
+		= subterm_origin(edt_node(R)).
+
+find_subterm_origin_call(Ref, Call, VarRep, TermPath) = Origin :-
+	(
+		atomic_goal_rep_is_call(Call, Args),
+		list__nth_member_search(Args, VarRep, ArgPos)
+	->
+		Origin = output(dynamic(Ref), ArgPos, TermPath)
+	;
+		error("find_subterm_origin_call: arg not found")
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number)
 		<= annotated_trace(S, R).
 :- mode edt_subtree_details(in, in, out, out) is det.
@@ -578,7 +1015,7 @@ edt_subtree_details(Store, dynamic(Ref), Event, SeqNo) :-
 	;
 		Node = excp(_, Call, _, _, Event)
 	),
-	call_node_from_id(Store, Call, call(_, _, _, SeqNo, _, _)).
+	call_node_from_id(Store, Call, call(_, _, _, SeqNo, _, _, _)).
 
 :- inst trace_node_edt_node =
 		bound(	exit(ground, ground, ground, ground, ground)
@@ -603,6 +1040,47 @@ det_edt_node_from_id(Store, Ref, Node) :-
 	;
 		error("det_edt_node_from_id: not an EXIT, FAIL or EXCP node")
 	).
+
+:- pred trace_atom_subterm_is_ground(trace_atom, arg_pos, term_path).
+:- mode trace_atom_subterm_is_ground(in, in, in) is semidet.
+
+trace_atom_subterm_is_ground(atom(_, _, Args), ArgPos, _) :-
+	list__index1_det(Args, ArgPos, yes(_)).
+
+:- func disj_event_branch_number(trace_node(R)) = int.
+
+disj_event_branch_number(Node) = N :-
+	(
+		(
+			Node = first_disj(_, Str)
+		;
+			Node = later_disj(_, Str, _)
+		),
+		list__last(string__words(is_semicolon, Str), LastStepStr),
+		path_step_from_string(LastStepStr, disj(N0))
+	->
+		N = N0
+	;
+		error("disj_event_branch_number: not a DISJ event")
+	).
+
+:- func switch_event_branch_number(trace_node(R)) = int.
+
+switch_event_branch_number(Node) = N :-
+	(
+		Node = switch(_, Str),
+		list__last(string__words(is_semicolon, Str), LastStepStr),
+		path_step_from_string(LastStepStr, switch(N0))
+	->
+		N = N0
+	;
+		error("switch_event_branch_number: not a SWTC event")
+	).
+
+:- pred is_semicolon(char).
+:- mode is_semicolon(in) is semidet.
+
+is_semicolon(';').
 
 %-----------------------------------------------------------------------------%
 

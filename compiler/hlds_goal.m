@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -713,6 +713,10 @@
 	% the root is last. (Keeping the list in reverse order makes the
 	% common operations constant-time instead of linear in the length
 	% of the list.)
+	%
+	% If any of the following three types is changed, then the
+	% corresponding types in browser/program_representation.m must be
+	% updated.
 
 :- type goal_path == list(goal_path_step).
 

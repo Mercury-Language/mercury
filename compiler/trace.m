@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -967,6 +967,10 @@ trace__path_steps_to_strings([], []).
 trace__path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
 	trace__path_step_to_string(Step, StepStr),
 	trace__path_steps_to_strings(Steps, StepStrs).
+
+	% The inverse of this procedure is implemented in
+	% browser/program_representation.m, and must be updated if this
+	% is changed.
 
 :- pred trace__path_step_to_string(goal_path_step::in, string::out) is det.
 

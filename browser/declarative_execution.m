@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 :- module mdb__declarative_execution.
 :- interface.
 :- import_module list, std_util, string, io, bool.
-:- import_module mdb__util.
+:- import_module mdb__util, mdb__program_representation.
 
 	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
@@ -34,7 +34,8 @@
 			trace_atom,		% Atom that was called.
 			sequence_number,	% Call sequence number.
 			event_number,		% Trace event number.
-			bool			% At the maximum depth?
+			bool,			% At the maximum depth?
+			maybe(goal_rep)		% Body of the called procedure.
 		)
 	;	exit(
 			R,			% Preceding event.
@@ -62,20 +63,20 @@
 		)
 	;	switch(
 			R,			% Preceding event.
-			goal_path		% Path for this event.
+			goal_path_string	% Path for this event.
 		)
 	;	first_disj(
 			R,			% Preceding event.
-			goal_path		% Path for this event.
+			goal_path_string	% Path for this event.
 		)
 	;	later_disj(
 			R,			% Preceding event.
-			goal_path,		% Path for this event.
+			goal_path_string,	% Path for this event.
 			R			% Event of the first DISJ.
 		)
 	;	cond(
 			R,			% Preceding event.
-			goal_path,		% Path for this event.
+			goal_path_string,	% Path for this event.
 			goal_status		% Whether we have reached
 						% a THEN or ELSE event.
 		)
@@ -89,7 +90,7 @@
 		)
 	;	neg(
 			R,			% Preceding event.
-			goal_path,		% Path for this event.
+			goal_path_string,	% Path for this event.
 			goal_status		% Whether we have reached
 						% a NEGS or NEGF event.
 		)
@@ -126,8 +127,6 @@
 	--->	succeeded
 	;	failed
 	;	undecided.
-
-:- type goal_path == goal_path_string.
 
 :- type sequence_number == int.
 :- type event_number == int.
@@ -179,7 +178,8 @@
 :- mode det_trace_node_from_id(in, in, out) is det.
 
 :- inst trace_node_call =
-		bound(call(ground, ground, ground, ground, ground, ground)).
+		bound(call(ground, ground, ground, ground, ground,
+				ground, ground)).
 
 :- pred call_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode call_node_from_id(in, in, out(trace_node_call)) is det.
@@ -257,9 +257,9 @@
 :- import_module map, require, store.
 
 step_left_in_contour(Store, exit(_, Call, _, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
+	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _, _)).
 step_left_in_contour(Store, excp(_, Call, _, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _)).
+	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _, _)).
 step_left_in_contour(_, switch(Prec, _)) = Prec.
 step_left_in_contour(_, first_disj(Prec, _)) = Prec.
 step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
@@ -281,7 +281,7 @@ step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
 	% The following cases are possibly at the left end of a contour,
 	% where we cannot step any further.
 	%
-step_left_in_contour(_, call(_, _, _, _, _, _)) = _ :-
+step_left_in_contour(_, call(_, _, _, _, _, _, _)) = _ :-
 	error("step_left_in_contour: unexpected CALL node").
 step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
 	(
@@ -323,7 +323,7 @@ step_left_in_contour(Store, Node) = Prec :-
 	;	neg_fail(ground, ground)).
 
 find_prev_contour(Store, fail(_, Call, _, _), OnContour) :-
-	call_node_from_id(Store, Call, call(OnContour, _, _, _, _, _)).
+	call_node_from_id(Store, Call, call(OnContour, _, _, _, _, _, _)).
 find_prev_contour(Store, redo(_, Exit), OnContour) :-
 	exit_node_from_id(Store, Exit, exit(OnContour, _, _, _, _)).
 find_prev_contour(Store, neg_fail(_, Neg), OnContour) :-
@@ -332,7 +332,7 @@ find_prev_contour(Store, neg_fail(_, Neg), OnContour) :-
 	% The following cases are at the left end of a contour,
 	% so there are no previous contours in the same stratum.
 	%
-find_prev_contour(_, call(_, _, _, _, _, _), _) :-
+find_prev_contour(_, call(_, _, _, _, _, _, _), _) :-
 	error("find_prev_contour: reached CALL node").
 find_prev_contour(_, cond(_, _, _), _) :-
 	error("find_prev_contour: reached COND node").
@@ -369,7 +369,7 @@ step_in_stratum(Store, neg_fail(_, Neg)) = Next :-
 	% The following cases mark the boundary of the stratum,
 	% so we cannot step any further.
 	%
-step_in_stratum(_, call(_, _, _, _, _, _)) = _ :-
+step_in_stratum(_, call(_, _, _, _, _, _, _)) = _ :-
 	error("step_in_stratum: unexpected CALL node").
 step_in_stratum(_, neg(_, _, _)) = _ :-
 	error("step_in_stratum: unexpected NEGE node").
@@ -382,7 +382,7 @@ step_over_redo_or_call(Store, Call, MaybeRedo) = Next :-
 	->
 		Redo = redo(Next, _)
 	;
-		call_node_from_id(Store, Call, call(Next, _, _, _, _, _))
+		call_node_from_id(Store, Call, call(Next, _, _, _, _, _, _))
 	).
 
 det_trace_node_from_id(Store, NodeId, Node) :-
@@ -397,7 +397,7 @@ det_trace_node_from_id(Store, NodeId, Node) :-
 call_node_from_id(Store, NodeId, Node) :-
 	(
 		trace_node_from_id(Store, NodeId, Node0),
-		Node0 = call(_, _, _, _, _, _)
+		Node0 = call(_, _, _, _, _, _, _)
 	->
 		Node = Node0
 	;
@@ -511,7 +511,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 
 call_node_get_last_interface(Call) = Last :-
 	(
-		Call = call(_, Last0, _, _, _, _)
+		Call = call(_, Last0, _, _, _, _, _)
 	->
 		Last = Last0
 	;
@@ -526,7 +526,7 @@ call_node_get_last_interface(Call) = Last :-
 
 call_node_set_last_interface(Call0, Last) = Call :-
 	(
-		Call0 = call(_, _, _, _, _, _)
+		Call0 = call(_, _, _, _, _, _, _)
 	->
 		Call1 = Call0
 	;
@@ -590,7 +590,7 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 :- pragma export(trace_node_port(in) = out,
 		"MR_DD_trace_node_port").
 
-trace_node_port(call(_, _, _, _, _, _))	= call.
+trace_node_port(call(_, _, _, _, _, _, _)) = call.
 trace_node_port(exit(_, _, _, _, _))	= exit.
 trace_node_port(redo(_, _))		= redo.
 trace_node_port(fail(_, _, _, _))	= fail.
@@ -610,7 +610,7 @@ trace_node_port(neg_fail(_, _))		= neg_failure.
 :- pragma export(trace_node_path(in, in) = out,
 		"MR_DD_trace_node_path").
 
-trace_node_path(_, call(_, _, _, _, _, _)) = "".
+trace_node_path(_, call(_, _, _, _, _, _, _)) = "".
 trace_node_path(_, exit(_, _, _, _, _)) = "".
 trace_node_path(_, redo(_, _)) = "".
 trace_node_path(_, fail(_, _, _, _)) = "".
@@ -637,12 +637,12 @@ trace_node_path(S, neg_fail(_, Neg)) = P :-
 
 trace_node_seqno(S, Node, SeqNo) :-
 	(
-		Node = call(_, _, _, SeqNo0, _, _)
+		Node = call(_, _, _, SeqNo0, _, _, _)
 	->
 		SeqNo = SeqNo0
 	;
 		trace_node_call(S, Node, Call),
-		call_node_from_id(S, Call, call(_, _, _, SeqNo, _, _))
+		call_node_from_id(S, Call, call(_, _, _, SeqNo, _, _, _))
 	).
 
 :- pred trace_node_call(trace_node_store, trace_node(trace_node_id),
@@ -724,7 +724,19 @@ print_trace_node(OutStr, Node) -->
 		"MR_DD_construct_call_node").
 
 construct_call_node(Preceding, Atom, SeqNo, EventNo, MaxDepth) = Call :-
-	Call = call(Preceding, Answer, Atom, SeqNo, EventNo, MaxDepth),
+	Call = call(Preceding, Answer, Atom, SeqNo, EventNo, MaxDepth, no),
+	null_trace_node_id(Answer).
+
+:- func construct_call_node_with_goal(trace_node_id, trace_atom,
+		sequence_number, event_number, bool, goal_rep)
+		= trace_node(trace_node_id).
+:- pragma export(construct_call_node_with_goal(in, in, in, in, in, in) = out,
+		"MR_DD_construct_call_node_with_goal").
+
+construct_call_node_with_goal(Preceding, Atom, SeqNo, EventNo, MaxDepth,
+		GoalRep) = Call :-
+	Call = call(Preceding, Answer, Atom, SeqNo, EventNo, MaxDepth,
+			yes(GoalRep)),
 	null_trace_node_id(Answer).
 
 
@@ -967,7 +979,7 @@ node_map(Store, NodeId, map(Map0), Map) :-
 	%
 :- func preceding_node(trace_node(T)) = T.
 
-preceding_node(call(P, _, _, _, _, _))	= P.
+preceding_node(call(P, _, _, _, _, _, _)) = P.
 preceding_node(exit(P, _, _, _, _))	= P.
 preceding_node(redo(P, _))		= P.
 preceding_node(fail(P, _, _, _))	= P.

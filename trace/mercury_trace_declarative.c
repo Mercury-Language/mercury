@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -477,6 +477,7 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Word				atom;
 	bool				at_depth_limit;
 	const MR_Stack_Layout_Label	*layout = event_info->MR_event_sll;
+	MR_Word				proc_rep;
 
 	if (event_info->MR_call_depth == MR_edt_max_depth) {
 		at_depth_limit = TRUE;
@@ -484,14 +485,24 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 		at_depth_limit = FALSE;
 	}
 
+	proc_rep = layout->MR_sll_entry->MR_sle_proc_rep;
 	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs,
 			MR_PORT_CALL);
 	MR_TRACE_CALL_MERCURY(
-		node = (MR_Trace_Node) MR_DD_construct_call_node(
+		if (proc_rep) {
+			node = (MR_Trace_Node)
+				MR_DD_construct_call_node_with_goal(
 					(MR_Word) prev, atom,
 					(MR_Word) event_info->MR_call_seqno,
 					(MR_Word) event_info->MR_event_number,
+					(MR_Word) at_depth_limit, proc_rep);
+		} else {
+			node = (MR_Trace_Node)
+				MR_DD_construct_call_node((MR_Word) prev, atom,
+					(MR_Word) event_info->MR_call_seqno,
+					(MR_Word) event_info->MR_event_number,
 					(MR_Word) at_depth_limit);
+		}
 	);
 
 #ifdef MR_USE_DECL_STACK_SLOT
