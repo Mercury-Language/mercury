@@ -49,6 +49,18 @@
 
 :- op(950, fxy, (lambda)).
 
+% In NU-Prolog, ':' has precedence 1175, whereas according to the
+% ISO Prolog modules standard it should have precedence 600.
+% Hence we need to override the original precedence for it.
+% Because ':' is both unary prefix and binary in NU-Prolog,
+% we can't simply set the precedence, since that would cause a
+% clash between the precedences of the two different forms of the
+% operator, which NU-Prolog does not allow.  Hence we must first
+% undefine the existing operator declaration for it.
+
+:- op(0, xfy, (:)).
+:- op(600, xfy, (:)).
+
 % Prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.
 % We replace all Mercury declarations with `:- fail',
