@@ -80,6 +80,7 @@ PROGS=	\
 	qual_basic_test \
 	qual_is_test \
 	quantifier \
+	quantifier2 \
 	quoting_bug_test \
 	rational_test \
 	relation_test \

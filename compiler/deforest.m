@@ -219,6 +219,10 @@ deforest__goal(Goal0, Goal) -->
 deforest__goal(Goal, Goal) -->
 	{ Goal = unify(_, _, _, _, _) - _ }.
 
+deforest__goal(bi_implication(_, _) - _, _) -->
+	% these should have been expanded out by now
+	{ error("deforest__goal: unexpected bi_implication") }.
+
 %-----------------------------------------------------------------------------%
 
 :- pred deforest__disj(list(hlds_goal)::in, list(hlds_goal)::out,

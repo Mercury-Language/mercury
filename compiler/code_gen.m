@@ -890,6 +890,9 @@ code_gen__generate_goal_2(pragma_c_code(Attributes,
 	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
 		PragmaCode, Instr).
+code_gen__generate_goal_2(bi_implication(_, _), _, _, _) -->
+	% these should have been expanded out by now
+	{ error("code_gen__generate_goal_2: unexpected bi_implication") }.
 
 %---------------------------------------------------------------------------%
 

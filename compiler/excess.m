@@ -43,7 +43,7 @@
 :- implementation.
 
 :- import_module hlds_goal, goal_util, prog_data, varset, term.
-:- import_module list, bool, map, set, std_util.
+:- import_module list, bool, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -137,6 +137,10 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
+	;
+		GoalExpr0 = bi_implication(_, _),
+		% these should have been expanded out by now
+		error("detect_cse_in_goal_2: unexpected bi_implication")
 	),
 	!.
 

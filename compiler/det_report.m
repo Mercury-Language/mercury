@@ -621,6 +621,10 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired,
 	% prog_out__write_context(Context),
 	% io__write_string("  for modes which don't succeed more than once.\n").
 
+det_diagnose_goal_2(bi_implication(_, _), _, _, _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("det_diagnose_goal_2: unexpected bi_implication") }.
+
 %-----------------------------------------------------------------------------%
 
 :- pred report_generic_call_context(prog_context::in,

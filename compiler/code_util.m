@@ -864,6 +864,10 @@ code_util__count_recursive_calls_2(if_then_else(_, Cond, Then, Else, _),
 	CTMax is CMax + TMax,
 	int__min(CTMin, EMin, Min),
 	int__max(CTMax, EMax, Max).
+code_util__count_recursive_calls_2(bi_implication(_, _),
+		_, _, _, _) :-
+	% these should have been expanded out by now
+	error("code_util__count_recursive_calls_2: unexpected bi_implication").
 
 :- pred code_util__count_recursive_calls_conj(list(hlds_goal),
 	pred_id, proc_id, int, int, int, int).

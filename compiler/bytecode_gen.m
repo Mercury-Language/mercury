@@ -252,6 +252,10 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		GoalExpr = pragma_c_code(_, _, _, _, _, _, _),
 		Code = node([not_supported]),
 		ByteInfo = ByteInfo0
+	;
+		GoalExpr = bi_implication(_, _),
+		% these should have been expanded out by now
+		error("bytecode_gen__goal_expr: unexpected bi_implication")
 	).
 
 %---------------------------------------------------------------------------%

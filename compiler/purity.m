@@ -25,6 +25,10 @@
 %  so they need to be a separate "post-typecheck pass"; they are done
 %  here in combination with the purity-analysis pass for efficiency reasons.
 %
+%  We also do elimination of double-negation in this pass.
+%  It needs to be done somewhere after quantification analysis and
+%  before mode analysis, and this is convenient place to do it.
+%
 %
 %  The aim of Mercury's purity system is to allow one to declare certain parts
 %  of one's program to be impure, thereby forbidding the compiler from making
@@ -508,10 +512,21 @@ compute_expr_purity(disj(Goals0,Store), disj(Goals,Store), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
 	compute_goals_purity(Goals0, Goals, PredInfo, ModuleInfo,
 			     InClosure, pure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(not(Goal0), not(Goal), _, PredInfo, ModuleInfo,
+compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
-	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
-			    InClosure, Purity, NumErrors0, NumErrors).
+	%
+	% eliminate double negation
+	%
+	{ negate_goal(Goal0, GoalInfo0, NotGoal0) },
+	( { NotGoal0 = not(Goal1) - _GoalInfo1 } ->
+		compute_goal_purity(Goal1, Goal, PredInfo, ModuleInfo, 
+				    InClosure, Purity, NumErrors0, NumErrors),
+		{ NotGoal = not(Goal) }
+	;
+		compute_goal_purity(NotGoal0, NotGoal1, PredInfo, ModuleInfo, 
+				    InClosure, Purity, NumErrors0, NumErrors),
+		{ NotGoal1 = NotGoal - _ }
+	).
 compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
 		_, PredInfo, ModuleInfo, InClosure, Purity,
 		NumErrors0, NumErrors) -->
@@ -534,6 +549,9 @@ compute_expr_purity(Ccode, Ccode, _, _, ModuleInfo, _, Purity,
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_get_purity(PredInfo, Purity) }.
+compute_expr_purity(bi_implication(_, _), _, _, _, _, _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("compute_expr_purity: unexpected bi_implication") }.
 
 :- pred compute_goal_purity(hlds_goal, hlds_goal, pred_info,
 	module_info, bool, purity, int, int, io__state, io__state).

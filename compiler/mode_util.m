@@ -1211,6 +1211,10 @@ recompute_instmap_delta_2(_, pragma_c_code(A, PredId, ProcId, Args, E, F,
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
 
+recompute_instmap_delta_2(_, bi_implication(_, _), _, _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("recompute_instmap_delta_2: unexpected bi_implication") }.
+	
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_conj(bool, list(hlds_goal), list(hlds_goal),

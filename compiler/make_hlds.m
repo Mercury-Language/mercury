@@ -4014,6 +4014,12 @@ warn_singletons_in_goal_2(pragma_c_code(_, _, _, _, ArgInfo, _, PragmaImpl),
 	warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, Context, 
 		PredCallId, MI).
 
+warn_singletons_in_goal_2(bi_implication(LHS, RHS), _GoalInfo, QuantVars,
+		VarSet, PredCallId, MI) -->
+	warn_singletons_in_goal_list([LHS, RHS], QuantVars, VarSet,
+		PredCallId, MI).
+
+
 :- pred warn_singletons_in_goal_list(list(hlds_goal), set(prog_var),
 		prog_varset, simple_call_id, module_info,
 		io__state, io__state).
@@ -4661,24 +4667,8 @@ transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,
 
 transform_goal_2(not(A0), _, VarSet0, Subst, Goal, VarSet, Info0, Info) -->
 	transform_goal(A0, VarSet0, Subst, A, VarSet, Info0, Info),
-	{
-		% eliminate double negations
-		A = not(Goal1) - _
-	->
-		Goal = Goal1
-	;
-		% convert negated conjunctions of negations
-		% into disjunctions
-		A = conj(NegatedGoals) - _,
-		all_negated(NegatedGoals, UnnegatedGoals)
-	->
-		goal_info_init(GoalInfo),
-		map__init(StoreMap),
-		Goal = disj(UnnegatedGoals, StoreMap) - GoalInfo
-	;
-		goal_info_init(GoalInfo),
-		Goal = not(A) - GoalInfo
-	}.
+	{ goal_info_init(GoalInfo) },
+	{ Goal = not(A) - GoalInfo }.
 
 transform_goal_2((A0,B0), _, VarSet0, Subst, Goal, VarSet, Info0, Info) -->
 	get_conj(B0, Subst, [], VarSet0, L0, VarSet1, Info0, Info1),
@@ -4705,13 +4695,19 @@ transform_goal_2(implies(P, Q), Context, VarSet0, Subst, Goal, VarSet,
 	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
 		Goal, VarSet, Info0, Info).
 
-transform_goal_2(equivalent(P, Q), Context, VarSet0, Subst, Goal, VarSet,
+transform_goal_2(equivalent(P0, Q0), _Context, VarSet0, Subst, Goal, VarSet,
 		Info0, Info) -->
-		% `P <=> Q' is defined as `(P => Q), (Q => P)'
-	{ TransformedGoal = (implies(P, Q) - Context,
-				implies(Q, P) - Context) },
-	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
-		Goal, VarSet, Info0, Info).
+	%
+	% `P <=> Q' is defined as `(P => Q), (Q => P)',
+	% but that transformation must not be done until
+	% after quantification analysis, lest the duplication of
+	% the goals concerned affect the implicit quantification
+	% of the variables inside them.
+	%
+	{ goal_info_init(GoalInfo) },
+	transform_goal(P0, VarSet0, Subst, P, VarSet1, Info0, Info1),
+	transform_goal(Q0, VarSet1, Subst, Q, VarSet, Info1, Info),
+	{ Goal = bi_implication(P, Q) - GoalInfo }.
 
 transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 		VarSet, Info0, Info) -->
@@ -4801,18 +4797,6 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 	{ term__apply_substitution(B0, Subst, B) },
 	unravel_unification(A, B, Context, explicit, [],
 			VarSet0, Goal, VarSet, Info0, Info).
-
-:- pred all_negated(list(hlds_goal), list(hlds_goal)).
-:- mode all_negated(in, out) is semidet.
-
-all_negated([], []).
-all_negated([not(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
-	all_negated(NegatedGoals, Goals).
-% nested conjunctions shouldn't occur here anyway, but just in case...
-all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
-	all_negated(NegatedConj, Goals1),
-	all_negated(NegatedGoals, Goals2),
-	list__append(Goals1, Goals2, Goals).
 
 :- inst aditi_update_str =
 	bound(	"aditi_insert"

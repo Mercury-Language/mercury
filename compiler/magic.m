@@ -1546,6 +1546,10 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap0, HOMap) -->
 		{ HOMap = HOMap0 }
 	).
 
+magic__preprocess_goal_2(bi_implication(_, _) - _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("magic__preprocess_goal_2: unexpected bi_implication") }.
+
 	% Introduce new variables and assignments to them for any
 	% duplicates in the list.
 :- pred magic__preprocess_call_args(list(prog_var)::in, list(prog_var)::out,

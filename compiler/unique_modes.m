@@ -499,6 +499,10 @@ unique_modes__check_goal_2(pragma_c_code(IsRecursive, PredId, ProcId0,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 
+unique_modes__check_goal_2(bi_implication(_, _), _, _) -->
+	% these should have been expanded out by now
+	{ error("unique_modes__check_goal_2: unexpected bi_implication") }.
+
 :- pred unique_modes__check_call(pred_id, proc_id, list(prog_var), proc_id, 
 			mode_info, mode_info).
 :- mode unique_modes__check_call(in, in, in, out,

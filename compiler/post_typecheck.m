@@ -854,6 +854,9 @@ post_typecheck__resolve_data_cons_and_funcs(if_then_else(A,If0,Then0,Else0,E)
 			ModuleInfo, PredInfo, Then),
 	post_typecheck__resolve_data_cons_and_funcs(Else0,
 			ModuleInfo, PredInfo, Else).
+post_typecheck__resolve_data_cons_and_funcs(bi_implication(_, _) - _, _, _, _) :-
+	% these should have been expanded out by now
+	error("post_typecheck__resolve_data_cons_and_funcs: unexpected bi_implication").
 	
 :- pred post_typecheck__resolve_data_cons_and_funcs_list(list(hlds_goal)::in,
 		module_info::in, pred_info::in, list(hlds_goal)::out) is det.

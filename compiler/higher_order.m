@@ -478,6 +478,10 @@ traverse_goal_2(Goal, Goal) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ }, 
 	check_unify(Unify).
 
+traverse_goal_2(bi_implication(_, _) - _, _) -->
+	% these should have been expanded out by now
+	{ error("traverse_goal_2: unexpected bi_implication") }.
+
 		% To process a disjunction, we process each disjunct with the
 		% specialization information before the goal, then merge the
 		% results to give the specialization information after the

@@ -1184,6 +1184,10 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId0, Args0,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").
 
+modecheck_goal_expr(bi_implication(_, _), _, _) -->
+	% these should have been expanded out by now
+	{ error("modecheck_goal_expr: unexpected bi_implication") }.
+
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
 

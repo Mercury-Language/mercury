@@ -676,6 +676,10 @@ det_infer_goal_2(pragma_c_code(IsRecursive, PredId, ProcId, Args,
 		Detism = erroneous
 	).
 
+det_infer_goal_2(bi_implication(_, _), _, _, _, _, _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("det_infer_goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred det_infer_conj(list(hlds_goal), instmap, soln_context, det_info,

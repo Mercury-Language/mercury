@@ -523,6 +523,10 @@ traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _, _), _),
 		error("complicated unifications should only be var-var")
 	).
 
+traverse_goal(_, bi_implication(_, _), _, _) :-
+	% these should have been expanded out by now
+	error("traverse_goal: unexpected bi_implication").
+
 	% add PredProc - HeadVar as an alias for the same element of Args.
 :- pred add_pred_call_arg_dep(pred_proc_id::in, list(prog_var)::in,
 		list(prog_var)::in, var_dep::in, var_dep::out) is det.
@@ -1286,6 +1290,10 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr = pragma_c_code(_, _, _, _, _, _, _).
+
+fixup_goal_expr(_, _, _, _, bi_implication(_, _) - _, _) :-
+	% these should have been expanded out by now
+	error("fixup_goal_expr: unexpected bi_implication").
 
 	% Remove useless unifications from a list of conjuncts.
 :- pred fixup_conjuncts(module_info::in, list(prog_var)::in, proc_call_info::in,

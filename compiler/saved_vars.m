@@ -42,7 +42,7 @@
 
 :- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
 :- import_module mode_util, prog_data, term, varset.
-:- import_module bool, list, set, map, std_util.
+:- import_module bool, list, set, map, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -137,6 +137,10 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		GoalExpr0 = pragma_c_code(_, _, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
+	;
+		GoalExpr0 = bi_implication(_, _),
+		% these should have been expanded out by now
+		error("saved_vars_in_goal: unexpected bi_implication")
 	),
 	!.
 
@@ -373,6 +377,10 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 			saved_vars_delay_goal(Goals0, Construct, Var,
 				IsNonLocal, SlotInfo3, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
+		;
+			Goal0Expr = bi_implication(_, _),
+			% these should have been expanded out by now
+			error("saved_vars_delay_goal: unexpected bi_implication")
 		)
 	;
 		saved_vars_delay_goal(Goals0, Construct, Var, IsNonLocal,

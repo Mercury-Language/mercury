@@ -515,6 +515,11 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 intermod__traverse_goal(pragma_c_code(A,B,C,D,E,F,G) - Info,
 			pragma_c_code(A,B,C,D,E,F,G) - Info, yes) --> [].
 
+intermod__traverse_goal(bi_implication(_, _) - _, _, _) -->
+	% these should have been expanded out by now
+	{ error("intermod__traverse_goal: unexpected bi_implication") }.
+
+
 :- pred intermod__traverse_list_of_goals(hlds_goals::in, hlds_goals::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
 

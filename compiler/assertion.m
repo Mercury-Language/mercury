@@ -211,6 +211,10 @@ equal_goals(pragma_c_code(Attribs, PredId, _, VarsA, _, _, _) - _,
 	equal_vars(VarsA, VarsB, Subst0, Subst).
 equal_goals(par_conj(GoalAs, _) - _, par_conj(GoalBs, _) - _, Subst0, Subst) :-
 	equal_goals_list(GoalAs, GoalBs, Subst0, Subst).
+equal_goals(bi_implication(LeftGoalA, RightGoalA) - _,
+	    bi_implication(LeftGoalB, RightGoalB) - _, Subst0, Subst) :-
+	equal_goals(LeftGoalA, LeftGoalB, Subst0, Subst1),
+	equal_goals(RightGoalA, RightGoalB, Subst1, Subst).
 
 :- pred equal_vars(prog_vars::in, prog_vars::in, subst::in,
 		subst::out) is semidet.
@@ -324,6 +328,10 @@ assertion__normalise_goal(if_then_else(A, If0, Then0, Else0, E) - GI,
 	assertion__normalise_goal(Else0, Else).
 assertion__normalise_goal(par_conj(Goal0s,B) - GI, par_conj(Goals,B) - GI) :-
 	assertion__normalise_goals(Goal0s, Goals).
+assertion__normalise_goal(bi_implication(LHS0, RHS0) - GI,
+		bi_implication(LHS, RHS) - GI) :-
+	assertion__normalise_goal(LHS0, LHS),
+	assertion__normalise_goal(RHS0, RHS).
 
 %-----------------------------------------------------------------------------%
 
@@ -409,6 +417,10 @@ assertion__in_interface_check(if_then_else(_, If, Then, Else, _) - _,
 	assertion__in_interface_check(Else, PredInfo, ModuleInfo).
 assertion__in_interface_check(par_conj(Goals,_) - _, PredInfo, ModuleInfo) -->
 	assertion__in_interface_check_list(Goals, PredInfo, ModuleInfo).
+assertion__in_interface_check(bi_implication(LHS, RHS) - _, PredInfo,
+		ModuleInfo) -->
+	assertion__in_interface_check(LHS, PredInfo, ModuleInfo),
+	assertion__in_interface_check(RHS, PredInfo, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

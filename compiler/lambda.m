@@ -255,6 +255,9 @@ lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F,G), GoalInfo,
 			pragma_c_code(A,B,C,D,E,F,G) - GoalInfo) -->
 	[].
+lambda__process_goal_2(bi_implication(_, _), _, _) -->
+	% these should have been expanded out by now
+	{ error("lambda__process_goal_2: unexpected bi_implication") }.
 
 :- pred lambda__process_goal_list(list(hlds_goal), list(hlds_goal),
 					lambda_info, lambda_info).

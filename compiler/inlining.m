@@ -544,6 +544,10 @@ inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G) - GoalInfo,
 		pragma_c_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
 
+inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
+	% these should have been expanded out by now
+	{ error("inlining__inlining_in_goal: unexpected bi_implication") }.
+
 %-----------------------------------------------------------------------------%
 
 inlining__do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo, 

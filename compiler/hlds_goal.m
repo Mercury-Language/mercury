@@ -29,7 +29,7 @@
 	--->	conj(hlds_goals)
 
 		% A predicate call.
-		% Initially only the sym_name and arguments
+		% Initially only the sym_name, arguments, and context
 		% are filled in. Type analysis fills in the
 		% pred_id. Mode analysis fills in the
 		% proc_id and the builtin_state field.
@@ -179,12 +179,28 @@
 					% pragma_c_codes; none for others.
 		)
 
+		% parallel conjunction
 	;	par_conj(hlds_goals, store_map)
-					% parallel conjunction
 					% The store_map specifies the locations
 					% in which live variables should be
 					% stored at the start of the parallel
 					% conjunction.
+
+		% bi-implication (A <=> B)
+		%
+		% These get eliminated by quantification.m,
+		% so most passes of the compiler will just call error/1
+		% if they occur.
+		%
+		% Note that ordinary implications (A => B)
+		% and reverse implications (A <= B) are expanded
+		% out before we construct the HLDS.  But we can't
+		% do that for bi-implications, because if expansion
+		% of bi-implications is done before implicit quantification,
+		% then the quantification would be wrong.
+
+	;	bi_implication(hlds_goal, hlds_goal)
+
 	.
 
 :- type generic_call
@@ -880,6 +896,11 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 :- pred conjoin_goals(hlds_goal, hlds_goal, hlds_goal).
 :- mode conjoin_goals(in, in, out) is det.
 
+	% Negate a goal, eliminating double negations as we go.
+	%
+:- pred negate_goal(hlds_goal, hlds_goal_info, hlds_goal).
+:- mode negate_goal(in, in, out) is det.
+
 	% A goal is atomic iff it doesn't contain any sub-goals
 	% (except possibly goals inside lambda expressions --
 	% but lambda expressions will get transformed into separate
@@ -1242,6 +1263,37 @@ conjoin_goals(Goal1, Goal2, Goal) :-
 	),
 	conjoin_goal_and_goal_list(Goal1, GoalList, Goal).
 	
+	% Negate a goal, eliminating double negations as we go.
+
+negate_goal(Goal, GoalInfo, NegatedGoal) :-
+	(
+		% eliminate double negations
+		Goal = not(Goal1) - _
+	->
+		NegatedGoal = Goal1
+	;
+		% convert negated conjunctions of negations
+		% into disjunctions
+		Goal = conj(NegatedGoals) - _,
+		all_negated(NegatedGoals, UnnegatedGoals)
+	->
+		map__init(StoreMap),
+		NegatedGoal = disj(UnnegatedGoals, StoreMap) - GoalInfo
+	;
+		NegatedGoal = not(Goal) - GoalInfo
+	).
+
+:- pred all_negated(list(hlds_goal), list(hlds_goal)).
+:- mode all_negated(in, out) is semidet.
+
+all_negated([], []).
+all_negated([not(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
+	all_negated(NegatedGoals, Goals).
+all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
+	all_negated(NegatedConj, Goals1),
+	all_negated(NegatedGoals, Goals2),
+	list__append(Goals1, Goals2, Goals).
+
 %-----------------------------------------------------------------------------%
 
 goal_is_atomic(conj([])).
@@ -1345,6 +1397,10 @@ set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = pragma_c_code(_, _, _, _, _, _, _).
+set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
+		bi_implication(LHS, RHS)) :-
+	set_goal_contexts(Context, LHS0, LHS),
+	set_goal_contexts(Context, RHS0, RHS).
 
 %-----------------------------------------------------------------------------%
 

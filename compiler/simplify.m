@@ -1059,6 +1059,10 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Goal = Goal0
 	).
 
+simplify__goal_2(bi_implication(_, _), _, _, _, _, _) :-
+	% these should have been expanded out by now
+	error("simplify__goal_2: unexpected bi_implication").
+
 %-----------------------------------------------------------------------------%
 
 :- pred simplify__process_compl_unify(prog_var, prog_var,

@@ -978,6 +978,10 @@ typecheck_goal_2(pragma_c_code(A, PredId, C, Args, E, F, G),
 		OrigTypeAssignSet) },
 	typecheck_call_pred_id(PredId, Args),
 	perform_context_reduction(OrigTypeAssignSet).
+typecheck_goal_2(bi_implication(LHS0, RHS0), bi_implication(LHS, RHS)) -->
+	checkpoint("<=>"),
+	typecheck_goal(LHS0, LHS),
+	typecheck_goal(RHS0, RHS).
 
 %-----------------------------------------------------------------------------%
 

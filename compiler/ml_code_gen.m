@@ -1055,6 +1055,10 @@ ml_gen_goal_expr(pragma_c_code(_, _, _, _, _ArgNames, _, _PragmaCode),
 		_, _, _, _) -->
 	{ sorry("C interface") }.
 
+ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
+	% these should have been expanded out by now
+	{ error("ml_gen_goal_expr: unexpected bi_implication") }.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for procedure calls
