@@ -836,12 +836,12 @@ is_or_are([_, _ | _], "are").
 					io__state::uo) is det.
 
 write_module_list([Import1, Import2, Import3 | Imports]) --> 
-	io__write_strings(["`", Import1, "',"]),
+	io__write_strings(["`", Import1, "', "]),
 	write_module_list([Import2, Import3 | Imports]).
 write_module_list([Import1, Import2]) -->
 	io__write_strings(["`", Import1, "' and `", Import2 ,"'"]).
 write_module_list([Import]) -->
-	io__write_strings(["`", Import, "',"]).
+	io__write_strings(["`", Import, "'"]).
 write_module_list([]) -->
 	{ error("module_qual:write_module_list") }.
 
