@@ -1000,10 +1000,11 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 			MLDS_PredLabel, _MLDS_PredModule),
 		Var = tabling_pointer(MLDS_PredLabel - ProcId),
+		Type = mlds__generic_type,
+		Initializer = init_obj(const(null(Type))),
 		proc_info_context(ProcInfo, Context),
 		TablePointerVarDefn = ml_gen_mlds_var_decl(
-			Var, mlds__generic_type,
-			mlds__make_context(Context)),
+			Var, Type, Initializer, mlds__make_context(Context)),
 		Defns = [TablePointerVarDefn | Defns0]
 	;
 		Defns = Defns0

@@ -414,6 +414,8 @@
 			mlds__class_defn
 		).
 
+	% Note that `one_copy' variables *must* have an initializer
+	% (the GCC back-end relies on this).
 :- type mlds__initializer
 	--->	init_obj(mlds__rval)
 	;	init_struct(list(mlds__initializer))
@@ -595,6 +597,9 @@
 	--->	one_copy	% i.e. "static" storage duration
 				% (but not necessarily static linkage)
 				% or static member function
+				% Note that `one_copy' variables
+				% *must* have an initializer
+				% (the GCC back-end relies on this.)
 	;	per_instance.	% i.e. "auto" local variable in function,
 				% or non-static member of class.
 
