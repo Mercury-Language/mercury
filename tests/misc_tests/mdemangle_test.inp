@@ -1,0 +1,63 @@
+A collection of symbols for use in testing mdemangle.
+
+Each symbol is followed by the correct decoding.
+    
+    a common block
+mercury_data_mercury_builtin__common_21
+<shared constant number 21 for module mercury_builtin>
+
+	a base type info
+mercury_data_mercury_builtin__base_type_info_list_1
+<base type_info for type 'mercury_builtin:list'/1>
+
+	a base type layout
+mercury_data_mercury_builtin__base_type_layout_term__context_0
+<type layout for type 'mercury_builtin:term__context'/0>
+
+	an unqualified base type info
+mercury_data___base_type_info_int_0
+<base type_info for type 'int'/0>
+
+	an unqualified base type layout
+mercury_data___base_type_layout_float_0
+<type layout for type 'float'/0>
+
+	a mangled name
+entry_mercury__f_cut_0_0
+<predicate 'cut'/0 mode 0>
+
+	a compare predicate
+entry_mercury____Compare___mercury_builtin__comparison_result_0_0
+<compare/3 predicate for type 'mercury_builtin:comparison_result'/0>
+
+	an index predicate
+entry_mercury____Index___mercury_builtin__list_1_0
+<index/3 predicate for type 'mercury_builtin:list'/1>
+
+	a unify predicate
+entry_mercury____Unify___mercury_builtin__term_0_0
+<unification predicate for type 'mercury_builtin:term'/0 mode 0>
+
+	a normal predicate
+entry_mercury__copy_2_1
+<predicate 'copy'/2 mode 1>
+
+	a function
+entry_mercury__fn__copy_2_1
+<function 'copy'/2 mode 1>
+
+	an internal label 
+entry_mercury__copy_2_1_i5
+<predicate 'copy'/2 mode 1 label 5>
+
+	unused args
+entry_mercury__copy__ua1_2_1
+<predicate 'copy'/2 mode 1 (minus unused args)>
+
+	unused args
+entry_mercury__copy__uab1_2_1
+<predicate 'copy'/2 mode 1 (minus unused args)>
+
+	higher order specialization
+entry_mercury__copy__ho7_2_1
+<predicate 'copy'/2 mode 1 (specialized)>
