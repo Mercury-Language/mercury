@@ -51,17 +51,17 @@ install: install_info install_html install_dvi
 
 .PHONY: install_info
 install_info: info
-	[ -d INSTALL_INFO_DIR ] || mkdir -p $(INSTALL_INFO_DIR)
+	-[ -d INSTALL_INFO_DIR ] || mkdir -p $(INSTALL_INFO_DIR)
 	cp *.info* $(INSTALL_INFO_DIR)
 
 .PHONY: install_html
 install_html: html
-	[ -d INSTALL_HTML_DIR ] || mkdir -p $(INSTALL_HTML_DIR)
+	-[ -d INSTALL_HTML_DIR ] || mkdir -p $(INSTALL_HTML_DIR)
 	cp *.html $(INSTALL_HTML_DIR)
 
 .PHONY: install_dvi
 install_dvi: dvi
-	[ -d INSTALL_DVI_DIR ] || mkdir -p $(INSTALL_DVI_DIR)
+	-[ -d INSTALL_DVI_DIR ] || mkdir -p $(INSTALL_DVI_DIR)
 	cp *.dvi $(INSTALL_DVI_DIR)
 
 #-----------------------------------------------------------------------------#
