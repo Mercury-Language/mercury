@@ -68,9 +68,6 @@ start_label:
                 MR_type_ctor_layout(type_ctor_info).layout_equiv;
             goto start_label;
 
-        case MR_TYPECTOR_REP_EQUIV_VAR:
-            MR_fatal_error("found type_ctor_rep MR_TYPECTOR_REP_EQUIV_VAR");
-
         case MR_TYPECTOR_REP_NOTAG:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
@@ -95,14 +92,14 @@ start_label:
   #ifdef  select_compare_code
                 const MR_DuFunctorDesc  *x_functor_desc;
                 const MR_DuFunctorDesc  *y_functor_desc;
-                MR_DuPtagLayout         *x_ptaglayout;
-                MR_DuPtagLayout         *y_ptaglayout;
+                const MR_DuPtagLayout   *x_ptaglayout;
+                const MR_DuPtagLayout   *y_ptaglayout;
   #else
                 MR_Word                 x_ptag;
                 MR_Word                 y_ptag;
                 MR_Word                 x_sectag;
                 MR_Word                 y_sectag;
-                MR_DuPtagLayout         *ptaglayout;
+                const MR_DuPtagLayout   *ptaglayout;
   #endif
                 MR_Word                 *x_data_value;
                 MR_Word                 *y_data_value;
@@ -116,7 +113,7 @@ start_label:
 
   #define MR_find_du_functor_desc(data, data_value, functor_desc)             \
                 do {                                                          \
-                    MR_DuPtagLayout         *ptaglayout;                      \
+                    const MR_DuPtagLayout   *ptaglayout;                      \
                     int                     ptag;                             \
                     int                     sectag;                           \
                                                                               \
