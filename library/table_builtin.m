@@ -1043,23 +1043,29 @@ table_mmos_save_inputs :-
 table_mmos_setup_consumer(_, _, Consumer) :-
 	impure private_builtin__imp,
 	% Required only to avoid warnings; never executed.
-	private_builtin__unsafe_type_cast(0, Consumer).
+	pretend_to_generate_value(Consumer).
 
 table_mmos_get_answer_table(_, TrieNode) :-
 	semipure private_builtin__semip,
 	% Required only to avoid warnings; never executed.
-	private_builtin__unsafe_type_cast(0, TrieNode).
+	pretend_to_generate_value(TrieNode).
 
 table_mmos_create_answer_block(_, _, AnswerBlock) :-
 	impure private_builtin__imp,
 	% Required only to avoid warnings; never executed.
-	private_builtin__unsafe_type_cast(0, AnswerBlock).
+	pretend_to_generate_value(AnswerBlock).
 
 table_mmos_return_answer(_, _) :-
 	impure private_builtin__imp.
 
 table_mmos_completion(_) :-
 	impure private_builtin__imp.
+
+	% Required only to avoid warnings; never executed.
+:- pred pretend_to_generate_value(T::out) is det.
+pretend_to_generate_value(Bogus) :-
+	% The following code will throw an exception if executed.
+	det_univ_to_type(univ(0), Bogus).
 
 %-----------------------------------------------------------------------------%
 
@@ -1183,7 +1189,7 @@ table_mmos_completion(_) :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, std_util.
 
 :- pragma foreign_decl("C", "
 
