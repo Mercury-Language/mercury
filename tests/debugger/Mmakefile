@@ -285,20 +285,24 @@ exception_cmd.out: exception_cmd exception_cmd.inp
 	fi
 
 dice.pass1: dice
+	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 1 2 3 4 && \
-	mv .mercury_trace_counts dice.pass1
+	mv .mercury_trace_counts.*dice.* dice.pass1
 
 dice.pass2: dice
+	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 5 6 7 8 && \
-	mv .mercury_trace_counts dice.pass2
+	mv .mercury_trace_counts.*dice.* dice.pass2
 
 dice.pass3: dice
+	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 10 11 100 && \
-	mv .mercury_trace_counts dice.pass3
+	mv .mercury_trace_counts.*dice.* dice.pass3
 
 dice.fail: dice
+	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 4 1 2 3 && \
-	mv .mercury_trace_counts dice.fail
+	mv .mercury_trace_counts.*dice.* dice.fail
 
 dice.out: dice dice.inp dice.pass1 dice.pass2 dice.pass3 dice.fail
 	$(MDB_STD) ./dice 4 1 2 3 < dice.inp > dice.out 2>&1

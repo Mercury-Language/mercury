@@ -264,12 +264,20 @@ export TESTS_TO_RUN
 endif
 endif
 
+ifdef SPECIFIED_TESTS
+THIS_DIR_TESTS_TO_RUN := $(SPECIFIED_TESTS)
+else
+ifdef FAILED_TESTS_ONLY
+THIS_DIR_TESTS_TO_RUN := $(shell FAILED_TESTS)
+else
 ifdef TESTS_TO_RUN
 THIS_DIR_TESTS_TO_RUN := $(shell echo $(patsubst $(THIS_DIR)/%,%,\
 		$(filter $(THIS_DIR)/%,$(TESTS_TO_RUN))) \
 		| tr ' ' '\n' | grep -v /)
 else
 THIS_DIR_TESTS_TO_RUN := $(strip $(TESTS))
+endif
+endif
 endif
 
 ifeq ($(THIS_DIR_TESTS_TO_RUN),)
@@ -303,50 +311,28 @@ start_runtests_local:
 		rm -f *.d *.dep *.int *.int2 *.int3 > /dev/null 2>&1; \
 		rm -f *.date *.date3 *.opt *.optdate > /dev/null 2>&1; \
 		rm -f *.trans_opt *.trans_opt_date > /dev/null 2>&1; \
+		rm -f .mercury_trace_counts* > /dev/null 2>&1; \
+		rm -f .date* > /dev/null 2>&1; \
 	fi
 	@> FAILED_TESTS
 
 #
-# Run a single test, cleaning up if it succeeds, or producing
-# a log file and gzipping the executable the test fails.
+# Run a single test, cleaning up if it succeeds, or producing a log file
+# and gzipping the executable if the test fails.
 #
 .PHONY: %.log
 %.log: start_runtests_local
-	+@test=$(*:%-nodepend=%); \
-	echo RUNNING TEST $(THIS_DIR)/$* $(PARAMS_MSG) | tee $@; \
-	case $* in \
-		*-nodepend) \
-			rm -f $*.failed;; \
-		*) \
-			rm -f $*.failed; \
-			{ mmake $$test.depend 2>&1 || touch $*.failed; } \
-				| tee -a $@ ;; \
-	esac; \
-	if [ -f $*.failed ]; then \
-		echo FAILED TEST $(THIS_DIR)/$* $(PARAMS_MSG) \
-			| tee -a $@; \
-		echo $* >> FAILED_TESTS; \
-		exit 1; \
-	else \
-		{ mmake $$test.runtest 2>&1 || touch $*.failed; } \
-			| tee -a $@; \
-		if [ -f $*.failed ]; then \
-			rm -f $*.failed; \
-		    	if [ -f $$test ]; then \
-				rm -f $$test.gz $$test.exe.gz; \
-				gzip $$test || gzip $$test.exe; \
-			fi; \
-			echo FAILED TEST $(THIS_DIR)/$* $(PARAMS_MSG) \
-				| tee -a $@; \
-			echo $* >> FAILED_TESTS; \
-			exit 1; \
-		else \
-			rm -f $@; \
-			rm -f $$test.out* $$test.*res*; \
-			mmake $$test.realclean > /dev/null 2>&1; \
-			echo PASSED TEST $(THIS_DIR)/$* $(PARAMS_MSG); \
-		fi; \
-	fi
+	+@test_full=$*; \
+	test=$(*:%-nodepend=%); \
+	params_msg="$(PARAMS_MSG)"; \
+	this_dir="$(THIS_DIR)"; \
+	tests_dir="$(TESTS_DIR)"; \
+	export test_full; \
+	export test; \
+	export params_msg; \
+	export this_dir; \
+	export tests_dir; \
+	$(TESTS_DIR)/run_one_test
 
 # XXX The tests cannot be run in parallel because where several test
 # cases depend on the same target, the different invocations of mmake

@@ -1,0 +1,104 @@
+#!/bin/sh
+# vim: ts=4 sw=4 expandtab
+
+set -x
+
+exitstatus=0
+echo RUNNING TEST $this_dir/$test_full $params_msg | tee $test_full.log
+echo "MERCURY_OPTIONS=$MERCURY_OPTIONS"
+trace_count=false
+case "$MERCURY_OPTIONS" in
+    *trace-count*)
+        trace_count=true
+        /bin/rm .mercury_trace_counts.* > /dev/null 2>&1
+        ;;
+esac
+
+case $test_full in
+    *-nodepend)
+        rm -f $test_full.failed
+        ;;
+    *)
+        rm -f $test_full.failed
+        ( mmake $test.depend 2>&1 || touch $test_full.failed ) \
+            | tee -a $test_full.log
+        ;;
+esac
+
+if test -f $test_full.failed
+then
+    echo FAILED TEST $this_dir/$test_full $params_msg | tee -a $test_full.log
+    echo $test_full >> FAILED_TESTS
+    echo $this_dir/$test_full $params_msg >> $tests_dir/FAILED_TESTS_SUMMARY
+    exitstatus=1
+else
+    ( mmake $test.runtest 2>&1 || touch $test_full.failed ) \
+        | tee -a $test_full.log
+    if test -f $test_full.failed
+    then
+        rm -f $test_full.failed
+        if test -f $test
+        then
+            rm -f $test.gz $test.exe.gz
+            gzip $test || gzip $test.exe
+        fi
+        echo FAILED TEST $this_dir/$test_full $params_msg \
+            | tee -a $test_full.log
+        echo $test_full >> FAILED_TESTS
+        echo $this_dir/$test_full $params_msg \
+            >> $tests_dir/FAILED_TESTS_SUMMARY
+        case "$trace_count" in
+            true)
+                name=`echo $this_dir/$test | tr '[/]' '[:]'`
+                for counts_file in .mercury_trace_counts.*
+                do
+                    if test -s "$counts_file"
+                    then
+                        name=`echo "$counts_file" | \
+                            sed -e 's/.mercury_trace_counts//'`
+                        mkdir -p $tests_dir/FAILED_TC_DIR
+                        mv $counts_file \
+                            $tests_dir/FAILED_TC_DIR/$counts_file.$name
+                        gzip $tests_dir/FAILED_TC_DIR/$counts_file.$name
+                        echo $tests_dir/FAILED_TC_DIR/$counts_file.$name \
+                            >> $tests_dir/FAILED_TC_FILES
+                    fi
+                done
+                ;;
+        esac
+        exitstatus=1
+    else
+        rm -f $test_full.log $test.out* $test.*res*
+        mmake $test.realclean > /dev/null 2>&1
+        echo PASSED TEST $this_dir/$test_full $params_msg
+        case "$trace_count" in
+            true)
+                name=`echo $this_dir/$test | tr '[/]' '[:]'`
+                for counts_file in .mercury_trace_counts.*
+                do
+                    if test -s "$counts_file"
+                    then
+                        name=`echo "$counts_file" | \
+                            sed -e 's/.mercury_trace_counts//'`
+                        mkdir -p $tests_dir/PASSED_TC_DIR
+                        mv $counts_file \
+                            $tests_dir/PASSED_TC_DIR/$counts_file.$name
+                        /bin/rm -f \
+                            $tests_dir/PASSED_TC_DIR/$counts_file.$name.gz
+                        gzip $tests_dir/PASSED_TC_DIR/$counts_file.$name
+                        echo $tests_dir/PASSED_TC_DIR/$counts_file.$name \
+                            >> $tests_dir/PASSED_TC_FILES
+                    fi
+                done
+                ;;
+        esac
+    fi
+fi
+
+case "$BOOTCHECK_TEST_PROGRESS" in
+    yes)
+        touch .date.$test
+        ;;
+esac
+
+exit $exitstatus

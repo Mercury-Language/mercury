@@ -171,6 +171,34 @@ MR_trace_count(const MR_Label_Layout *label_layout)
     if (label_number >= module_layout->MR_ml_num_label_exec_counts) {
         MR_fatal_error("MR_trace_count: invalid label number");
     }
+
+#ifdef  MR_TRACE_COUNT_DEBUG
+    {
+        const MR_Label_Layout   *call_label_layout;
+        MR_uint_least16_t       call_label_number;
+
+        call_label_layout = proc_layout->MR_sle_call_label;
+        if (label_layout != call_label_layout) {
+            /*
+            ** We should only get here if we have executed the call label,
+            ** which means its count should be nonzero.
+            */
+
+            call_label_number = call_label_layout->MR_sll_label_num_in_module;
+            if (call_label_number >=
+                module_layout->MR_ml_num_label_exec_counts)
+            {
+                MR_fatal_error("MR_trace_count: invalid call label number");
+            }
+
+            if (module_layout->MR_ml_label_exec_count[call_label_number] == 0)
+            {
+                MR_fatal_error("MR_trace_count: call label count is zero");
+            }
+        }
+    }
+#endif
+
     ++module_layout->MR_ml_label_exec_count[label_number];
     return NULL;
 }
@@ -200,26 +228,49 @@ typedef enum {
 
 static MR_PathPort MR_named_count_port[MR_PORT_NONE + 1];
 
-static void
-MR_trace_write_quoted_atom(FILE *fp, const char *atom);
+static  void    MR_trace_write_quoted_atom(FILE *fp, const char *atom);
+static  void    MR_trace_write_label_exec_counts(FILE *fp);
+
+#define MERCURY_TRACE_COUNTS_PREFIX  "mercury_trace_counts"
 
 void
 MR_trace_write_label_exec_counts_to_file(void *dummy)
 {
     FILE	*fp;
+    int     len;
+    char    *name;
+    char    *s;
 
-    fp = fopen(MERCURY_TRACE_COUNTS_FILE_NAME, "w");
+    /* 100 bytes must be enough for the process id, dots and '\0' */
+    len = strlen(MERCURY_TRACE_COUNTS_PREFIX) + strlen(MR_progname) + 100;
+    name = MR_malloc(len);
+    snprintf(name, len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX, MR_progname,
+        getpid());
+
+    /* make sure name is an acceptable filename */
+    for (s = name; *s != '\0'; s++) {
+        if (*s == '/') {
+            *s = ':';
+        }
+    }
+
+    fp = fopen(name, "w");
     if (fp != NULL) {
         MR_do_init_modules_debugger();
         MR_trace_write_label_exec_counts(fp);
         (void) fclose(fp);
     } else {
-        fprintf(stderr, "%s: %s\n",
-            MERCURY_TRACE_COUNTS_FILE_NAME, strerror(errno));
+        fprintf(stderr, "%s: %s\n", name, strerror(errno));
     }
 }
 
-void
+/*      
+** For every label reachable from the module table, write the id of the label
+** and the number of times it has been executed to the specified file, with the
+** exception of labels that haven't been executed.
+*/ 
+
+static void
 MR_trace_write_label_exec_counts(FILE *fp)
 {
     const MR_Module_Layout      *module;

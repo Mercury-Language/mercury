@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ts=4 sw=4 wm=0 tw=0
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -14,11 +15,20 @@ Options:
 		directories will be run. In the absence of any such options,
 		all tests in all directories will be run (unless testing
 		as a whole is disabled).
+    -s <testname>, --specified-test <testname>
+	    Run only the tests whose names are specified as arguments of this
+		option, which may be given more than once. The test names must include
+		the directory name component.
+	-f, --failing-tests
+		Run only the tests which failed on the last run, as recorded in the
+		FAILED_TESTS files in the various test directories. Meaningful only
+		in the absence of -s options.
+	--error-file
+		Run only the tests which failed on the last run, as recorded in the
+		tests/runtests.errs file. Meaningful only in the absence of -s and -f
+		options.
 	-e, --extras
 		Test the programs in the extras directory.
-	-f, --failing-tests
-		Run only the tests which failed on the last run. This
-		requires the tests/runtests.errs file from the previous run.
 	-h, --help
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
@@ -133,11 +143,17 @@ Options:
 		Keep the Deep.data files resulting from the bootcheck. The
 		usual behavior is to delete them in the interest of conserving
 		disk space.
+	--progress
+		Create a timestamp file when finishing the execution of each test case,
+		to allow the user to monitor the bootcheck's progress. The timestamp
+		files will have names of the form .date.<testname>.
 "
 
 unset WORKSPACE
 testdirs=""
+specified_tests_only=""
 failing_tests_only=false
+error_file_only=false
 extras=false
 jfactor=""
 keep_objs=false
@@ -146,7 +162,7 @@ make_opts="-k"
 outfile=""
 runtests=true
 do_bootcheck=true
-if [ -f /bin/cygwin1.dll ]; then
+if test -f /bin/cygwin1.dll; then
 	# Don't run check_namespace on Cygwin, unless explicitly asked,
 	# because the `-nostdinc' option doesn't work with gcc 2.95 on Cygwin.
 	# (This has been fixed in later versions of gcc, e.g. 3.2, so
@@ -171,7 +187,7 @@ stop_after_stage_2=false
 windows=false
 use_cp=false
 A=a		# the extension for libraries
-if [ -d compiler/Mercury ]; then
+if test -d compiler/Mercury; then
 	use_subdirs=${MMAKE_USE_SUBDIRS=yes}
 else
 	use_subdirs=${MMAKE_USE_SUBDIRS=no}
@@ -183,6 +199,7 @@ type_stats=""
 trace_count=false
 disable_debug_libs=false
 delete_deep_data=true
+progress=false
 
 if test -f .KEEP_OBJS
 then
@@ -208,7 +225,7 @@ BROWSER_LIB_NAME=mer_browser
 MDBCOMP_LIB_NAME=mer_mdbcomp
 ANALYSIS_LIB_NAME=mer_analysis
 
-while [ $# -gt 0 ]; do
+while test $# -gt 0; do
 	case "$1" in
 
 	-b-|--no-bootcheck)
@@ -222,8 +239,14 @@ while [ $# -gt 0 ]; do
 	-e|--extras)
 		extras=true ;;
 
+	-s|--specified-tests)
+		specified_tests_only="$specified_tests_only $2"; shift ;;
+
 	-f|--failing-tests)
 		failing_tests_only=true ;;
+
+	--error-file)
+		error_file_only=true ;;
 
 	-h|--help)
 		echo "$usage"
@@ -324,7 +347,7 @@ while [ $# -gt 0 ]; do
 	--type-stats)
 		type_stats="$2"; shift ;;
 
-	--trace-count)
+	--trace-count|--trace-counts)
 		trace_count=true ;;
 
 	-W|--windows)
@@ -342,7 +365,10 @@ while [ $# -gt 0 ]; do
 	--keep-deep-data)
 		delete_deep_data=false ;;
 
-	--)	
+	--progress)
+		progress=true ;;
+
+	--)
 		shift; break ;;
 	-*)
 		echo "$0: unknown option \`$1'" 1>&2
@@ -354,7 +380,7 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
-if [ $# -ne 0 ]; then
+if test $# -ne 0; then
 	echo "$0: unexpected argument(s) \`$*'" 1>&2
 	echo "$usage" 1>&2
 	exit 1
@@ -366,25 +392,29 @@ then
 fi
 
 case $use_subdirs in
-	yes)	cs_subdir=Mercury/cs/
+	yes)
+		cs_subdir=Mercury/cs/
 		ss_subdir=Mercury/ss/
 		ils_subdir=Mercury/ils/
 		;;
-	no)	cs_subdir=
+	no)
+		cs_subdir=
 		ss_subdir=
 		ils_subdir=
 		;;
 esac
 
 case $target in
-	c)	target_ext=c
+	c)
+		target_ext=c
 		target_subdir=$cs_subdir
 		target_opt=
 		;;
-	asm)	target_ext=s
+	asm)
+		target_ext=s
 		target_subdir=$ss_subdir
 		target_opt="--target asm"
-		# If the stage 1 directory was built without --target asm, 
+		# If the stage 1 directory was built without --target asm,
 		# but the stage 2 will be built with `--target asm',
 		# then we need to copy the profiler directory.
 		# So to be safe, we just enable this by default.
@@ -392,7 +422,8 @@ case $target in
 		;;
 esac
 case $grade in
-	il|ilc)	target_ext=il
+	il|ilc)
+		target_ext=il
 		target_subdir=$ils_subdir
 		target_opt=
 		# See comment above
@@ -439,7 +470,7 @@ fi
 
 # Turn off the debugger, since accidentally leaving it on will result
 # in user interaction every time we invoke any version of the compiler
-# that was compiled with tracing. This has happened to me accidentally 
+# that was compiled with tracing. This has happened to me accidentally
 # one too many times - zs.
 if echo $MERCURY_OPTIONS | grep '\-Di' > /dev/null
 then
@@ -478,8 +509,42 @@ else
 	stage3dir=stage3
 fi
 
+if $progress
+then
+	BOOTCHECK_TEST_PROGRESS=yes
+	export BOOTCHECK_TEST_PROGRESS
+fi
+
+ORIG_MERCURY_OPTIONS="$MERCURY_OPTIONS"
+
+if $write_out_profile_data
+then
+	true
+else
+	# Turn off the writing out of deep profiling files, since
+	# Deep.data will be overwritten many times in each directory,
+	# and thus the time spent writing them out is wasted. If deep
+	# profiling debugging is enabled, this also avoids the writing
+	# of *huge* amounts of stuff on stderr.
+	MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
+	export MERCURY_OPTIONS
+fi
+
+if $trace_count
+then
+	MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
+	export MERCURY_OPTIONS
+else
+	true
+fi
+
+NEW_MERCURY_OPTIONS="$MERCURY_OPTIONS"
+
 if $do_bootcheck
 then
+	MERCURY_OPTIONS="$ORIG_MERCURY_OPTIONS"
+	export MERCURY_OPTIONS
+
 	if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 	then
 		echo "building of stage 1 successful"
@@ -495,26 +560,8 @@ then
 		fi
 	fi
 
-	if $write_out_profile_data
-	then
-		true
-	else
-		# Turn off the writing out of deep profiling files, since
-		# Deep.data will be overwritten many times in each directory,
-		# and thus the time spent writing them out is wasted. If deep
-		# profiling debugging is enabled, this also avoids the writing
-		# of *huge* amounts of stuff on stderr.
-		MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
-		export MERCURY_OPTIONS
-	fi
-
-	if $trace_count
-	then
-		MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
-		export MERCURY_OPTIONS
-	else
-		true
-	fi
+	MERCURY_OPTIONS="$NEW_MERCURY_OPTIONS"
+	export MERCURY_OPTIONS
 
 	MERCURY_COMPILER=$root/compiler/mercury_compile
 	export MERCURY_COMPILER
@@ -522,7 +569,7 @@ then
 	MERCURY_CONFIG_FILE=$root/scripts/Mercury.config
 	export MERCURY_CONFIG_FILE
 
-	[ -d $stage2dir ] || mkdir $stage2dir
+	test -d $stage2dir || mkdir $stage2dir
 	if $keep_stage_2
 	then
 		echo keeping existing stage2
@@ -553,8 +600,8 @@ then
 		$LN_S $root/compiler/[i-o]*.m .
 		$LN_S $root/compiler/[p-s]*.m .
 		$LN_S $root/compiler/[t-z]*.m .
-		$LN_S $root/compiler/*.pp .	
-		$LN_S $root/compiler/notes .	
+		$LN_S $root/compiler/*.pp .
+		$LN_S $root/compiler/notes .
 
 		cp $root/compiler/Mmake* $root/compiler/Mercury.options .
 		cd $root/$stage2dir
@@ -937,7 +984,7 @@ then
 	MERCURY_COMPILER=$root/$stage2dir/compiler/mercury_compile
 	export MERCURY_COMPILER
 
-	[ -d $stage3dir ] || mkdir $stage3dir
+	test -d $stage3dir || mkdir $stage3dir
 	if $keep_stage_3
 	then
 		echo keeping existing stage3
@@ -965,8 +1012,8 @@ then
 	$LN_S $root/compiler/[i-o]*.m .
 	$LN_S $root/compiler/[p-s]*.m .
 	$LN_S $root/compiler/[t-z]*.m .
-	$LN_S $root/compiler/*.pp .	
-	$LN_S $root/compiler/notes .	
+	$LN_S $root/compiler/*.pp .
+	$LN_S $root/compiler/notes .
 
 	cp $root/compiler/Mmake* $root/compiler/Mercury.options .
 	cd $root/$stage3dir
@@ -1049,7 +1096,7 @@ then
 		exit 1
 	fi
 
-	if 	(cd $stage3dir/library &&
+	if (cd $stage3dir/library &&
 		$MMAKE $mmake_opts $jfactor all-ints &&
 		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
@@ -1058,7 +1105,7 @@ then
 		echo "building of stage 3 library initially not successful"
 		df .
 		# try again, in case the failure cause was transient
-		if 	(cd $stage3dir/library &&
+		if (cd $stage3dir/library &&
 			$MMAKE $mmake_opts $jfactor all-ints &&
 			$MMAKE $mmake_opts $jfactor ${target_ext}s)
 		then
@@ -1083,7 +1130,7 @@ then
 		xargs /bin/rm -f
 	fi
 
-	if (cd $stage3dir/mdbcomp && 
+	if (cd $stage3dir/mdbcomp &&
 		$MMAKE $mmake_opts $jfactor all-ints &&
 		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
@@ -1102,7 +1149,7 @@ then
 		fi
 	fi
 
-	if (cd $stage3dir/browser && 
+	if (cd $stage3dir/browser &&
 		$MMAKE $mmake_opts $jfactor all-ints &&
 		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
@@ -1121,7 +1168,7 @@ then
 		fi
 	fi
 
-	if 	(cd $stage3dir/analysis &&
+	if (cd $stage3dir/analysis &&
 		$MMAKE $mmake_opts $jfactor all-ints &&
 		$MMAKE $mmake_opts $jfactor ${target_ext}s)
 	then
@@ -1130,7 +1177,7 @@ then
 		echo "building of stage 3 analysis initially not successful"
 		df .
 		# try again, in case the failure cause was transient
-		if 	(cd $stage3dir/analysis &&
+		if (cd $stage3dir/analysis &&
 			$MMAKE $mmake_opts $jfactor all-ints &&
 			$MMAKE $mmake_opts $jfactor ${target_ext}s)
 		then
@@ -1169,7 +1216,7 @@ then
 	diff_status=0
 
 	exec 3>&1		# save stdout in fd 3
-	if [ -n "$outfile" ]
+	if test -n "$outfile"
 	then
 		exec > "$outfile"	# redirect stdout to $outfile
 	fi
@@ -1180,12 +1227,13 @@ then
 		# files present in the stage 3 directory.
 		for file in $stage3dir/$dir/${target_subdir}*.${target_ext}; do
 		    diff -u $stage2dir/$dir/${cs_subdir}`basename $file` $file \
-		    	|| diff_status=1
+			|| diff_status=1
 		done
 	done
 
 	exec >&3		# restore stdout from fd 3
-	if [ $diff_status -ne 0 ]; then
+	if test $diff_status -ne 0
+	then
 		echo "** error - stage 2 and stage 3 differ!"
 	else
 		echo "stage 2 and stage 3 compare ok"
@@ -1272,7 +1320,7 @@ then
 	fi
 
 	WORKSPACE="$root${stage2_insert}"
-	export WORKSPACE	
+	export WORKSPACE
 
 	MMAKE_DIR="$root${stage2_insert}/scripts"
 	export MMAKE_DIR
@@ -1327,47 +1375,77 @@ then
 		then
 			cp $root/$stage2dir/Mmake.params ${tests_prefix}tests
 		else
-			/bin/rm ${tests_prefix}tests/Mmake.params \
-				> /dev/null 2>&1
+			/bin/rm ${tests_prefix}tests/Mmake.params > /dev/null 2>&1
 		fi
 
 		cp $root/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
 
-		case $failing_tests_only in
+		case $error_file_only in
 			true)
-				if [ ! -f ${tests_prefix}tests/runtests.errs ]
+				if test ! -f ${tests_prefix}tests/runtests.errs
 				then
+					echo "bootcheck: \`--failing-tests' specified but" 1>&2
 					echo \
-		"bootcheck: \`--failing-tests' specified but" 1>&2
-					echo \
-		"\`${tests_prefix}tests/runtests.errs' does not exist." 1>&2
+					"\`${tests_prefix}tests/runtests.errs' does not exist." \
+						1>&2
 					exit 1
 				fi
 
 				mv ${tests_prefix}tests/runtests.errs \
 					${tests_prefix}tests/runtests.$$
-				test_log_opt=\
-			"ERROR_FILE=${tests_prefix}tests/runtests.$$"
+				test_log_opt="ERROR_FILE=$root/${tests_prefix}tests/runtests.$$"
 				;;
 			false)
 				test_log_opt=""
 				;;
 		esac
-			
-		if test "$testdirs" = ""
+
+		case $failing_tests_only in
+			true)
+				test_log_opt="FAILING_TESTS_ONLY"
+				;;
+		esac
+
+		cd $root/${tests_prefix}tests
+		/bin/rm -fr PASSED_TC_DIR PASSED_TC_FILES > /dev/null 2>&1
+		/bin/rm -fr FAILED_TC_DIR FAILED_TC_FILES > /dev/null 2>&1
+		> FAILED_TESTS_SUMMARY
+
+		if test "$specified_tests_only" != ""
 		then
-			cd ${tests_prefix}tests
-			mmake $target_opt $jfactor $test_grade_opt \
-				$test_log_opt runtests
-		else
-			for testdir in $testdirs
+			test_status=0
+			for specified_test in $specified_tests_only
 			do
-				cd $root/${tests_prefix}tests/$testdir
+				specified_test_dir=`dirname $specified_test`
+				specified_test_base=`basename $specified_test`
+				if test -d "$root/${tests_prefix}/tests/$specified_test_dir"
+				then
+					cd $root/${tests_prefix}tests/$specified_test_dir
+					mmake $target_opt $jfactor $test_grade_opt \
+						SPECIFIED_TESTS="$specified_test_base" runtests
+					if test "$?" -ne "0"
+					then
+						test_status=$?
+					fi
+				else
+					test_status=1
+				fi
+			done
+		else
+			if test "$testdirs" = ""
+			then
 				mmake $target_opt $jfactor $test_grade_opt \
 					$test_log_opt runtests
-			done
+			else
+				for testdir in $testdirs
+				do
+					cd $root/${tests_prefix}tests/$testdir
+					mmake $target_opt $jfactor $test_grade_opt \
+						$test_log_opt runtests
+				done
+			fi
+			test_status=$?
 		fi
-		test_status=$?
 
 		case $failing_tests_only in
 			true)	rm -f ${tests_prefix}tests/runtests.$$ ;;
@@ -1474,6 +1552,11 @@ if test "$check_namespace_status" != 0
 then
 	echo "error exit: some namespace isn't clean"
 	exitstatus=1
+fi
+
+if test -s $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
+then
+	cat $root/${tests_prefix}tests/FAILED_TESTS_SUMMARY
 fi
 
 echo "finishing at `date`"
