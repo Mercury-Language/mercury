@@ -90,6 +90,7 @@ type_util__type_id_arity(_ModuleInfo, _Name - Arity, Arity).
 
 type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),
+	BuiltinType \= polymorphic_type,
 	BuiltinType \= pred_type,
 	BuiltinType \= user_type(_).
 
