@@ -2104,8 +2104,14 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		hlds_out__write_functor(term__string(Str), ArgVars,
 			VarSet, AppendVarnums)
 	;
-		{ ConsId = pred_const(_, _, _) },
-		{ error("hlds_out__write_functor_cons_id: pred_const") }
+		{ ConsId = pred_const(PredId, _, _) },
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_module(PredInfo, PredModule) },
+		{ pred_info_name(PredInfo, PredName) },
+		hlds_out__write_functor_cons_id(
+			cons(qualified(PredModule, PredName),
+				list__length(ArgVars)),
+			ArgVars, VarSet, ModuleInfo, AppendVarnums)
 	;
 		{ ConsId = code_addr_const(_, _) },
 		{ error("hlds_out__write_functor_cons_id: code_addr_const") }
