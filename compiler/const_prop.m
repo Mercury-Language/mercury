@@ -1,4 +1,8 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+% Copyright (C) 1997-1998 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%---------------------------------------------------------------------------%
 %
 % file: const_prop.m
 % main author: conway.
