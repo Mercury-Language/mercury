@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000,2002 The University of Melbourne.
+** Copyright (C) 1995-2000,2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,5 +42,16 @@ extern	void	MR_register_exception_cleanup(void (*func)(void *),
 */
 
 extern	void	MR_perform_registered_exception_cleanups(void);
+
+/*
+** These macro are shorthands to allow reductions in the size of compiler
+** generated C source files.
+*/
+
+#define	MR_COMMON(cellnum)					\
+	((MR_Word *) &MR_PASTE2(mercury_common_, cellnum))
+
+#define	MR_TAG_COMMON(tag, cellnum)				\
+	(MR_mkword(MR_mktag(tag), MR_COMMON(cellnum)))
 
 #endif /* not MERCURY_MISC_H */

@@ -55,8 +55,21 @@ extern	const char 			*MR_port_names[];
 
 #define MR_trace_incr_seq()		((MR_Word) ++MR_trace_call_seqno)
 #define MR_trace_incr_depth()		((MR_Word) ++MR_trace_call_depth)
-#define MR_trace_reset_depth(d)		(MR_trace_call_depth = \
-						(MR_Unsigned) (d))
+
+#define	MR_trace_fill_std_slots(s1, s2, s3)			\
+	(((s1) = MR_trace_event_number),			\
+	((s2) = MR_trace_incr_seq()),				\
+	((s3) = MR_trace_incr_depth()))				\
+
+#define MR_trace_reset_depth(d)					\
+	(MR_trace_call_depth = (MR_Unsigned) (d))
+
+#define MR_trace_reset_depth_from_full(d)			\
+	((MR_trace_call_depth = (MR_Unsigned) (d)),		\
+	(MR_trace_from_full = MR_TRUE))
+#define MR_trace_reset_depth_from_shallow(d)			\
+	((MR_trace_call_depth = (MR_Unsigned) (d)),		\
+	(MR_trace_from_full = MR_FALSE))
 
 /*
 ** MR_trace is called from Mercury modules compiled with tracing.
@@ -396,5 +409,19 @@ MR_declare_entry(MR_do_trace_redo_fail_shallow);
 MR_declare_entry(MR_do_trace_redo_fail_deep);
 
 #endif	/* !MR_HIGHLEVEL_CODE */
+
+/*
+** The compiler emits the following macro at each trace event.
+*/
+
+#define	MR_EVENT(label)							\
+	{								\
+		MR_Code *MR_jumpaddr;					\
+		MR_save_transient_registers();				\
+		MR_jumpaddr = MR_trace((const MR_Label_Layout *)	\
+			&MR_LABEL_LAYOUT_NAME(MR_add_prefix(label)));	\
+		MR_restore_transient_registers();			\
+		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);		\
+	}
 
 #endif /* MERCURY_TRACE_BASE_H */

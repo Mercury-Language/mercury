@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,13 +16,79 @@
 #include "mercury_label.h"	/* for MR_insert_{entry,internal}_label() */
 #include "mercury_dummy.h"	/* for MR_dummy_identify_function() */
 
+/*
+** Definitions for constructing the names of entry and internal labels,
+** and the names of their layout structures.
+*/
+
 #define MR_entry(label)		MR_PASTE2(_entry_,label)
 #define MR_skip(label)		MR_PASTE2(skip_,label)
 
-#define MR_PROC_LAYOUT(label)	(const MR_Proc_Layout *) (MR_Word) \
-				&(MR_PASTE2(mercury_data__proc_layout__,label))
-#define MR_LABEL_LAYOUT(label) 	(const MR_Label_Layout *) (MR_Word) \
-				&(MR_PASTE2(mercury_data__label_layout__,label))
+#define	MR_add_prefix(label)						\
+	MR_PASTE2(mercury__, label)
+
+#define	MR_label_name(proc_label, label)				\
+	MR_PASTE3(proc_label, _i, label)
+
+#define	MR_proc_entry_user_name_base(mod, name, arity, mode)		\
+	MR_PASTE7(mod, __, name, _, arity, _, mode)
+#define	MR_proc_entry_uci_name_base(mod, name, type, arity, mode)	\
+	MR_PASTE9(name, _, mod, __, type, _, arity, _, mode)
+
+#define	MR_proc_entry_user_name(mod, name, arity, mode)			\
+	MR_PASTE2(mercury__,						\
+		MR_proc_entry_user_name_base(mod, name, arity, mode))
+#define	MR_proc_entry_uci_name(mod, name, type, arity, mode)		\
+	MR_PASTE2(mercury__,						\
+		MR_proc_entry_uci_name_base(mod, name, type, arity, mode))
+
+#define	MR_proc_entry_user_name_str(mod, name, arity, mode)		\
+	MR_STRINGIFY(MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_proc_entry_uci_name_str(mod, name, type, arity, mode)	\
+	MR_STRINGIFY(MR_proc_entry_uci_name(mod, name, type, arity, mode))
+
+#define	MR_proc_layout_user_name(mod, name, arity, mode)		\
+	MR_PASTE2(mercury_data__proc_layout__,				\
+		MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_proc_layout_uci_name(mod, name, type, arity, mode)		\
+	MR_PASTE2(mercury_data__proc_layout__,				\
+		MR_proc_entry_uci_name(mod, name, type, arity, mode))
+
+#define	MR_label_user_name_base(mod, name, a, mode, num)		\
+	MR_label_name(MR_proc_entry_user_name_base(mod, name, a, mode), \
+		num)
+#define	MR_label_uci_name_base(mod, name, type, a, mode, num)		\
+	MR_label_name(MR_proc_entry_uci_name_base(mod, name, type, a, mode), \
+		num)
+
+#define	MR_label_user_name(mod, name, a, mode, num)			\
+	MR_label_name(MR_proc_entry_user_name(mod, name, a, mode), 	\
+		num)
+#define	MR_label_uci_name(mod, name, type, a, mode, num)		\
+	MR_label_name(MR_proc_entry_uci_name(mod, name, type, a, mode), \
+		num)
+
+#define	MR_label_user_name_str(mod, name, arity, mode, num)		\
+	MR_STRINGIFY(MR_label_user_name(mod, name, arity, mode, num))
+#define	MR_label_uci_name_str(mod, name, type, arity, mode, num)	\
+	MR_STRINGIFY(MR_label_uci_name(mod, name, type, arity, mode, num))
+
+#define	MR_label_layout_user_name(mod, name, a, mode, num)		\
+	MR_PASTE2(mercury_data__label_layout__,				\
+		MR_label_user_name(mod, name, a, mode, num))
+#define	MR_label_layout_uci_name(mod, name, type, a, mode, num)		\
+	MR_PASTE2(mercury_data__label_layout__,				\
+		MR_label_uci_name(mod, name, type, a, mode, num))
+
+#define MR_PROC_LAYOUT_NAME(label)					\
+	MR_PASTE2(mercury_data__proc_layout__,label)
+#define MR_LABEL_LAYOUT_NAME(label)					\
+	MR_PASTE2(mercury_data__label_layout__,label)
+
+#define MR_PROC_LAYOUT(label)						\
+	((const MR_Proc_Layout *) (MR_Word) &MR_PROC_LAYOUT_NAME(label))
+#define MR_LABEL_LAYOUT(label) 						\
+	((const MR_Label_Layout *) (MR_Word) &MR_LABEL_LAYOUT_NAME(label))
 
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
@@ -43,19 +109,18 @@
 #endif
 
 /*
-** Taking the address of a label can inhibit gcc's optimization,
-** because it assumes that anything can jump there.
-** Therefore we want to do it only if we're debugging,
-** or if we need the label address for profiling or
+** Taking the address of a label can inhibit gcc's optimization, because it
+** assumes that anything can jump there. Therefore we want to do it only if
+** we're debugging, or if we need the label address for profiling or for
 ** accurate garbage collection.
 **
 ** The versions of the macros below with the _ai, _an or _sl suffix always
-** insert the label into the label table, the difference between them being that
-** the _ai and _an variants do not include a layout structure. If the label
-** *has* a layout structure, use the _sl variant. The difference between the
-** _ai and the _an variants is that the latter always inserts the name of the
-** label as well. This is intended for a small number of labels that are
-** frequently needed in debugging, e.g. do_fail.
+** insert the label into the label table, the difference between them being
+** that the _ai and _an variants do not include a layout structure. If the
+** label *has* a layout structure, use the _sl variant. The difference between
+** the _ai and the _an variants is that the latter always inserts the name
+** of the label as well. This is intended for a small number of labels that
+** are frequently needed in debugging, e.g. do_fail.
 */
 
 #define MR_make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
@@ -84,13 +149,13 @@
 
 #if defined(MR_INSERT_LABELS) || defined(MR_MPROF_PROFILE_CALLS)
   #define MR_make_local(n, a, l)		MR_make_local_ai(n, a, l)
-#else 
+#else
   #define MR_make_local(n, a, l)		/* nothing */
 #endif
 
 /*
 ** Note that for the MLDS back-end, the calls to MR_init_entry(),
-** which eventually expand to make_entry(), are only output if
+** which eventually expand to MR_make_entry(), are only output if
 ** the right compiler options are enabled.  So if you change the
 ** condition of this `#ifdef', and you want your changes to apply
 ** to the MLDS back-end too, you may also need to change the
@@ -198,7 +263,7 @@
 
     /*
     ** At each entry point, where we may have been jump to from
-    ** code in a difference C file, we need to set up `ebx'. 
+    ** code in a difference C file, we need to set up `ebx'.
     ** We do this by pushing the IP register using a `call'
     ** instruction whose target is the very next label.
     ** We then pop this off the stack into `ebx', and
@@ -240,7 +305,7 @@
 	/*
 	**  This piece of magic thanks to Roman Hodek
 	**  <Roman.Hodek@informatik.uni-erlangen.de>
-	*/ 
+	*/
 
       #define MR_INLINE_ASM_FIXUP_REGS \
         "       lea (%%pc,_GLOBAL_OFFSET_TABLE_@GOTPC),%%a5\n" : : : "memory"
@@ -286,7 +351,7 @@
 
     /*
     ** At each entry point, where we may have been jump to from
-    ** code in a difference C file, we need to set up `l7'. 
+    ** code in a difference C file, we need to set up `l7'.
     ** We do this by getting the value the of the IP register using a `call'
     ** instruction whose target is the very next label; this will
     ** put the address of the call instruction in register `o7'.
@@ -506,8 +571,8 @@
   	)
   */
 
-
-  /* Since we're jumping into and out of the middle of functions,
+  /*
+  ** Since we're jumping into and out of the middle of functions,
   ** we need to make sure that gcc thinks that (1) the function's address
   ** is used (otherwise it may optimize the whole function away) and
   ** (2) the `return' statement is reachable (otherwise its dataflow
@@ -555,7 +620,6 @@
   /* body of module goes between MR_BEGIN_CODE and MR_END_MODULE */
   #define MR_END_MODULE } }
 
-
   #if defined(MR_USE_ASM_LABELS)
     #define MR_declare_entry(label)		\
 	extern void label(void) __asm__("_entry_" MR_STRINGIFY(label))
@@ -575,9 +639,9 @@
 	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
 	{
     /*
-    ** The MR_PRETEND_ADDRESS_IS_USED macro is necessary to 
+    ** The MR_PRETEND_ADDRESS_IS_USED macro is necessary to
     ** prevent an over-zealous gcc from optimizing away `label'
-    ** and the code that followed. 
+    ** and the code that followed.
     */
     #define MR_init_entry(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
@@ -591,6 +655,10 @@
     #define MR_init_entry_sl(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
 	MR_make_entry_sl(MR_STRINGIFY(label), label, label)
+
+    #define MR_pretend_address_is_used(label)			\
+	MR_PRETEND_ADDRESS_IS_USED(&&label);
+    #define MR_entry_addr_wrapper(label)
 
     #define MR_ENTRY(label) 		(&label)
 
@@ -714,6 +782,7 @@
 		MR_GOTO_LABEL(label);	\
 	}				\
 	static MR_Code* label(void) {
+
   #define MR_init_local(label)		MR_make_local(MR_STRINGIFY(label),    \
 		  				label, label)
   #define MR_init_local_ai(label)	MR_make_local_ai(MR_STRINGIFY(label), \
@@ -728,6 +797,7 @@
 		MR_GOTO_LABEL(label);	\
 	}				\
 	static MR_Code* label(void) {
+
   #define MR_init_label(label)		MR_make_label(MR_STRINGIFY(label),    \
 		  				label, label)
   #define MR_init_label_ai(label)	MR_make_label_ai(MR_STRINGIFY(label), \
@@ -750,6 +820,132 @@
   #define MR_GOTO_LABEL(label) 	MR_GOTO(MR_LABEL(label))
 
 #endif /* !defined(MR_USE_GCC_NONLOCAL_GOTOS) */
+
+#define	MR_decl_user_entry(mod, name, arity, mode) \
+	MR_declare_entry(MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_decl_uci_entry(mod, name, type, arity, mode) \
+	MR_declare_entry(MR_proc_entry_uci_name(mod, name, type, arity, mode))
+#define	MR_decl_user_static(mod, name, arity, mode) \
+	MR_declare_static(MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_decl_uci_static(mod, name, type, arity, mode) \
+	MR_declare_static(MR_proc_entry_uci_name(mod, name, type, arity, mode))
+
+#define	MR_def_user_extern_entry(mod, name, arity, mode) \
+	MR_define_extern_entry( \
+		MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_def_uci_extern_entry(mod, name, type, arity, mode) \
+	MR_define_extern_entry( \
+		MR_proc_entry_uci_name(mod, name, type, arity, mode))
+#define	MR_def_user_entry(mod, name, arity, mode) \
+	MR_define_entry(MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_def_uci_entry(mod, name, type, arity, mode) \
+	MR_define_entry(MR_proc_entry_uci_name(mod, name, type, arity, mode))
+#define	MR_def_user_static(mod, name, arity, mode) \
+	MR_define_static(MR_proc_entry_user_name(mod, name, arity, mode))
+#define	MR_def_uci_static(mod, name, type, arity, mode) \
+	MR_define_static(MR_proc_entry_uci_name(mod, name, type, arity, mode))
+
+#if defined(MR_INSERT_LABELS) || defined(MR_MPROF_PROFILE_CALLS)
+  #define MR_need_insert_entry(ai)		1
+#else
+  #define MR_need_insert_entry(ai)		ai
+#endif
+
+#if defined(MR_INSERT_LABELS)
+  #define MR_need_insert_internal(ai)		1
+#else
+  #define MR_need_insert_internal(ai)		ai
+#endif
+
+#if defined(MR_INSERT_ENTRY_LABEL_NAMES)
+  #define MR_need_entry_label_names(an)		1
+#else
+  #define MR_need_entry_label_names(an)		an
+#endif
+
+#if defined(MR_INSERT_INTERNAL_LABEL_NAMES)
+  #define MR_need_internal_label_names(an)	1
+#else
+  #define MR_need_internal_label_names(an)	an
+#endif
+
+#define	MR_init_entry_select(str, addr, layout, ai, an, sl)		\
+  	( MR_need_insert_entry(ai) ?					\
+		MR_insert_entry_label(					\
+			MR_need_entry_label_names(an) ? str : NULL,	\
+			addr, sl ? layout : NULL)			\
+		: (void) 0 )
+
+#define	MR_init_internal_select(str, addr, layout, ai, an, sl)		\
+  	( MR_need_insert_internal(ai) ?					\
+		MR_insert_internal_label(				\
+			MR_need_internal_label_names(an) ? str : NULL,	\
+			addr, sl ? layout : NULL)			\
+		: (void) 0 )
+
+#define MR_init_user_entry_select(mod, name, arity, mode, ai, an, sl)	\
+  	MR_pretend_address_is_used(					\
+		MR_proc_entry_user_name(mod, name, arity, mode))	\
+  	MR_init_entry_select(						\
+		MR_proc_entry_user_name_str(mod, name, arity, mode),	\
+		MR_entry_addr_wrapper(					\
+			MR_proc_entry_user_name(mod, name, arity, mode)),\
+		MR_proc_layout_user_name(mod, name, arity, mode),	\
+		ai, an, sl)
+
+#define MR_init_uci_entry_select(mod, name, type, arity, mode, ai, an, sl) \
+  	MR_pretend_address_is_used(					\
+		MR_proc_entry_uci_name(mod, name, type, arity, mode))	\
+  	MR_init_entry_select(						\
+		MR_proc_entry_uci_name_str(mod, name, type, arity, mode), \
+		MR_entry_addr_wrapper(					\
+			MR_proc_entry_uci_name(mod, name, type, arity, mode)),\
+		MR_proc_layout_uci_name(mod, name, type, arity, mode),	\
+		ai, an, sl)
+
+#define MR_init_user_label_select(mod, name, arity, mode, num, ai, an, sl) \
+  	MR_init_label_select(						\
+		MR_label_user_name_str(mod, name, arity, mode, num),	\
+		MR_entry_addr_wrapper(					\
+			MR_label_user_name(mod, name, arity, mode, num)),\
+		MR_label_layout_user_name(mod, name, arity, mode, num),	\
+		ai, an, sl)
+
+#define MR_init_uci_label_select(mod, name, type, arity, mode, num, ai, an, sl)\
+  	MR_init_label_select(						\
+		MR_label_uci_name_str(mod, name, type, arity, mode, num), \
+		MR_entry_addr_wrapper(					\
+			MR_label_uci_name(mod, name, type, arity, mode, num)),\
+		MR_label_layout_uci_name(mod, name, type, arity, mode, num), \
+		ai, an, sl)
+
+#define	MR_init_user_entry_ai(mod, name, arity, mode)			\
+	MR_init_user_entry_select(mod, name, arity, mode, 1, 0, 0)
+#define	MR_init_user_entry_an(mod, name, arity, mode)			\
+	MR_init_user_entry_select(mod, name, arity, mode, 1, 1, 0)
+#define	MR_init_user_entry_sl(mod, name, arity, mode)			\
+	MR_init_user_entry_select(mod, name, arity, mode, 0, 0, 1)
+
+#define	MR_init_uci_entry_ai(mod, name, type, arity, mode)		\
+	MR_init_uci_entry_select(mod, name, type, arity, mode, 1, 0, 0)
+#define	MR_init_uci_entry_an(mod, name, type, arity, mode)		\
+	MR_init_uci_entry_select(mod, name, type, arity, mode, 1, 1, 0)
+#define	MR_init_uci_entry_sl(mod, name, type, arity, mode)		\
+	MR_init_uci_entry_select(mod, name, type, arity, mode, 0, 0, 1)
+
+#define	MR_init_user_local_ai(mod, name, arity, mode, num)		\
+	MR_init_user_local_select(mod, name, arity, mode, num, 1, 0, 0)
+#define	MR_init_user_local_an(mod, name, arity, mode, num)		\
+	MR_init_user_local_select(mod, name, arity, mode, num, 1, 1, 0)
+#define	MR_init_user_local_sl(mod, name, arity, mode, num)		\
+	MR_init_user_local_select(mod, name, arity, mode, num, 0, 0, 1)
+
+#define	MR_init_uci_local_ai(mod, name, type, arity, mode, num)		\
+	MR_init_uci_local_select(mod, name, type, arity, mode, num, 1, 0, 0)
+#define	MR_init_uci_local_an(mod, name, type, arity, mode, num)		\
+	MR_init_uci_local_select(mod, name, type, arity, mode, num, 1, 1, 0)
+#define	MR_init_uci_local_sl(mod, name, type, arity, mode, num)		\
+	MR_init_uci_local_select(mod, name, type, arity, mode, num, 0, 0, 1)
 
 /* definitions for computed gotos */
 

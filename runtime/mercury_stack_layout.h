@@ -34,6 +34,7 @@
 #include "mercury_tags.h"
 #include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
 #include "mercury_proc_id.h"			/* for MR_Proc_Id */
+#include "mercury_goto.h"			/* for MR_PROC_LAYOUT etc */
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -414,6 +415,43 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 
 #define MR_MAKE_INTERNAL_LAYOUT(entry, labelnum)			\
 	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(entry##_i##labelnum, entry)
+
+/*
+** These macros are used as shorthands in generated C source files.
+** The first two arguments are the entry label name and the label number;
+** the others are the fields of MR_Label_Layouts.
+*/
+
+#define	MR_DEF_LL(e, ln, port, h, path, vc, lt, vn, tv)			\
+	static const MR_Label_Layout 					\
+		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
+	= {								\
+		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
+		MR_PASTE2(MR_PORT_, port),				\
+		(h), (path), (vc),					\
+		((const void *) lt),					\
+		((const MR_uint_least16_t *) vn),			\
+		((const MR_Type_Param_Locns *) tv)			\
+	}
+
+#define	MR_DEF_LLNVI(e, ln, port, h, path)				\
+	static const MR_Label_Layout_No_Var_Info			\
+		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
+	= {								\
+		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
+		MR_PASTE2(MR_PORT_, port),				\
+		(h), (path), -1						\
+	}
+
+#define MR_DECL_LL(e, ln)						\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
+	static const MR_Label_Layout 					\
+		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
+
+#define MR_DECL_LLNVI(e, ln)						\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), ln));		\
+	static const MR_Label_Layout_No_Var_Info			\
+		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)); \
 
 /*-------------------------------------------------------------------------*/
 /*

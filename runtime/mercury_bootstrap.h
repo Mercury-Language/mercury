@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2003 The University of Melbourne.
+** Copyright (C) 1999-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -24,33 +24,6 @@
 */
 
 #ifndef MR_NO_BACKWARDS_COMPAT
-
-/*
-** bool, TRUE and FALSE appear in the generated code.
-** Once the installed compilers no longer generate these, they should
-** be moved into the `#ifndef MR_NO_BACKWARDS_COMPAT' section.
-*/
-#ifdef IN_GCC
-  /*
-  ** We need to make sure that we pick up GCC's definition of bool, 
-  ** to ensure that we don't define `bool' below.  Otherwise we get
-  ** conflicts because some declarations use the <stdbool.h> definition
-  ** of bool (an enum), and some use our definition (a #define for char)
-  */
-  #include "config.h"
-  #include "system.h"
-#endif
-
-#ifndef bool
-#define bool			char
-#endif
-
-#ifndef TRUE
-#define TRUE			MR_TRUE
-#endif
-#ifndef FALSE
-#define FALSE			MR_FALSE
-#endif
 
 /* 
 ** For a long time the Mercury C types were defined as Char, Float,
@@ -122,6 +95,31 @@ typedef MR_Bool			Bool;
 ** To enable it, you must explicitly define MR_EXTRA_BACKWARDS_COMPAT.
 */
 #ifdef	MR_EXTRA_BACKWARDS_COMPAT
+
+/*
+** bool, TRUE and FALSE used to appear in the generated code.
+*/
+#ifdef IN_GCC
+  /*
+  ** We need to make sure that we pick up GCC's definition of bool, 
+  ** to ensure that we don't define `bool' below.  Otherwise we get
+  ** conflicts because some declarations use the <stdbool.h> definition
+  ** of bool (an enum), and some use our definition (a #define for char)
+  */
+  #include "config.h"
+  #include "system.h"
+#endif
+
+#ifndef bool
+#define bool			char
+#endif
+
+#ifndef TRUE
+#define TRUE			MR_TRUE
+#endif
+#ifndef FALSE
+#define FALSE			MR_FALSE
+#endif
 
 #define	COMPARE_EQUAL		MR_COMPARE_EQUAL
 #define	COMPARE_LESS		MR_COMPARE_LESS

@@ -57,8 +57,8 @@ main -->
 	typedef MR_Integer Int;
 	void cfoo(Int, Int *, MR_Float, MR_Float *, MR_String, MR_String *);
 	Int cbar(Int, Int *);
-	bool cbaz(Int, Int *, Int *);
-	bool cquux(Int, Int *);
+	MR_bool cbaz(Int, Int *, Int *);
+	MR_bool cquux(Int, Int *);
 ").
 
 :- pragma c_code("
@@ -74,13 +74,13 @@ Int cbar(Int a1, Int *a2) {
 	return a1 + *a2;
 }
 
-bool cbaz(Int a1, Int *a2, Int *a3) {
+MR_bool cbaz(Int a1, Int *a2, Int *a3) {
 	*a2 = a1 + 1;
 	*a3 = a1 + 2;
 	return a1 + *a2 + *a3 > 0;
 }
 
-bool cquux(Int a1, Int *a2) {
+MR_bool cquux(Int a1, Int *a2) {
 	*a2 = a1 + 1;
 	return a1 + *a2 > 0;
 }

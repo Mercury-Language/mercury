@@ -1379,6 +1379,35 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
     MR_DEFINE_TYPE_CTOR_INFO_FLAG(m, n, a, cr,                          \
         MR_DEFAULT_TYPE_CTOR_INFO_FLAG)
 
+/*
+** The macros below are used to reduce the sizes of compiler-generated
+** .c files, especially in debug grades.
+*/
+
+#define MR_CTOR_ADDR(m, n, a)                                           \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(m, n, a)
+#define MR_CTOR0_ADDR(m, n)                                             \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(m, n, 0)
+#define MR_CTOR1_ADDR(m, n)                                             \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(m, n, 1)
+
+#define MR_INT_CTOR_ADDR                                                \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)
+#define MR_FLOAT_CTOR_ADDR                                              \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)
+#define MR_CHAR_CTOR_ADDR                                               \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0)
+#define MR_STRING_CTOR_ADDR                                             \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0)
+#define MR_IO_CTOR_ADDR                                                 \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(io, state, 0)
+#define MR_BOOL_CTOR_ADDR                                               \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(bool, bool, 0)
+#define MR_LIST_CTOR_ADDR                                               \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(list, list, 1)
+#define MR_TYPE_INFO_CTOR_ADDR                                          \
+    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1)
+
 /*---------------------------------------------------------------------------*/
 
 /*
