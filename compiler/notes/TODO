@@ -11,6 +11,9 @@ code generation:
 
 - generate code for higher-order predicates
 
+- generate better code for switches - use jump tables
+  rather than an if-then-else chain
+
 typechecking
 ------------
 
@@ -53,8 +56,6 @@ general
 - handle abstract insts in the same way abstract types are handled (a research
   issue)
 
-- switch detection: handle chained head unifications by abstract interpretation
-
 - improve efficiency of implicit quantification
 
 - renaming apart of different occurences
@@ -65,8 +66,6 @@ general
 
 - Combining heap pointer increments in straight-line code into
   a single increment
-
-- array.nl: write a predicate to resize arrays.
 
 - garbage collection
 
