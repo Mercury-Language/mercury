@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -55,7 +55,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, code_util, rl.
+:- import_module hlds_module, hlds_data, code_util, builtin_ops, rl.
 :- import_module arg_info, type_util, mode_util, unify_proc, instmap.
 :- import_module trace, globals, options.
 :- import_module std_util, bool, int, tree, map.
@@ -498,20 +498,19 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{
-		code_util__translate_builtin(ModuleName, PredName,
-			ProcId, Args, MaybeTestPrime, MaybeAssignPrime)
+		builtin_ops__translate_builtin(ModuleName, PredName,
+			ProcId, Args, SimpleCode0)
 	->
-		MaybeTest = MaybeTestPrime,
-		MaybeAssign = MaybeAssignPrime
+		SimpleCode = SimpleCode0
 	;
 		error("Unknown builtin predicate")
 	},
 	(
 		{ CodeModel = model_det },
 		(
-			{ MaybeTest = no },
-			{ MaybeAssign = yes(Var - Rval) }
+			{ SimpleCode = assign(Var, AssignExpr) }
 		->
+			{ Rval = convert_simple_expr(AssignExpr) },
 			code_info__cache_expression(Var, Rval),
 			{ Code = empty }
 		;
@@ -520,25 +519,11 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 	;
 		{ CodeModel = model_semi },
 		(
-			{ MaybeTest = yes(Test) }
+			{ SimpleCode = test(TestExpr) }
 		->
-			( { Test = binop(BinOp, X0, Y0) } ->
-				call_gen__generate_builtin_arg(X0, X, CodeX),
-				call_gen__generate_builtin_arg(Y0, Y, CodeY),
-				{ Rval = binop(BinOp, X, Y) },
-				{ ArgCode = tree(CodeX, CodeY) }
-			; { Test = unop(UnOp, X0) } ->
-				call_gen__generate_builtin_arg(X0, X, ArgCode),
-				{ Rval = unop(UnOp, X) }
-			;
-				{ error("Malformed semi builtin predicate") }
-			),
+			call_gen__generate_simple_test(TestExpr, Rval,
+				ArgCode),
 			code_info__fail_if_rval_is_false(Rval, TestCode),
-			( { MaybeAssign = yes(Var - AssignRval) } ->
-				code_info__cache_expression(Var, AssignRval)
-			;
-				[]
-			),
 			{ Code = tree(ArgCode, TestCode) }
 		;
 			{ error("Malformed semi builtin predicate") }
@@ -548,7 +533,34 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 		{ error("Nondet builtin predicate") }
 	).
 
-%---------------------------------------------------------------------------%
+:- func convert_simple_expr(simple_expr(prog_var)) = rval.
+convert_simple_expr(leaf(Var)) = var(Var).
+convert_simple_expr(int_const(Int)) = const(int_const(Int)).
+convert_simple_expr(float_const(Float)) = const(float_const(Float)).
+convert_simple_expr(unary(UnOp, Expr)) =
+	unop(UnOp, convert_simple_expr(Expr)).
+convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
+	binop(BinOp, convert_simple_expr(Expr1), convert_simple_expr(Expr2)).
+
+:- pred call_gen__generate_simple_test(simple_expr(prog_var), rval,
+		code_tree, code_info, code_info).
+:- mode call_gen__generate_simple_test(in(simple_test_expr), out, out, in, out)
+		is det.
+call_gen__generate_simple_test(TestExpr, Rval, ArgCode) -->
+	(
+		{ TestExpr = binary(BinOp, X0, Y0) },
+		{ X1 = convert_simple_expr(X0) },
+		{ Y1 = convert_simple_expr(Y0) },
+		call_gen__generate_builtin_arg(X1, X, CodeX),
+		call_gen__generate_builtin_arg(Y1, Y, CodeY),
+		{ Rval = binop(BinOp, X, Y) },
+		{ ArgCode = tree(CodeX, CodeY) }
+	;
+		{ TestExpr = unary(UnOp, X0) },
+		{ X1 = convert_simple_expr(X0) },
+		call_gen__generate_builtin_arg(X1, X, ArgCode),
+		{ Rval = unop(UnOp, X) }
+	).
 
 :- pred call_gen__generate_builtin_arg(rval, rval, code_tree,
 	code_info, code_info).

@@ -113,11 +113,7 @@
 :- import_module code_util, hlds_pred, hlds_data, inst_match.
 :- import_module instmap, mode_util, tree, type_util, prog_out.
 :- import_module rl_out, inlining, hlds_goal, prog_util, error_util.
-
-% Note: the reason that we need to import llds and builtin_ops here is that
-% we generate code for builtins by first converting the builtin to LLDS
-% and then converting the LLDS to RL.
-:- import_module llds, builtin_ops.
+:- import_module builtin_ops.
 
 :- import_module assoc_list, bool, char, int, map.
 :- import_module require, set, std_util, string, term, varset.
@@ -1443,11 +1439,12 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 	% Generate LLDS for the builtin, then convert that to Aditi bytecode.
 	%
 	(
-		{ code_util__translate_builtin(PredModule0, PredName, 
-			ProcId, Args, MaybeTest, MaybeAsg) } 
+		{ builtin_ops__translate_builtin(PredModule0, PredName, 
+			ProcId, Args, SimpleCode) } 
 	->
-		( { MaybeTest = yes(TestRval) } ->
-			( rl_exprn__llds_rval_to_rl_rval(TestRval, RvalCode) ->
+		(
+			{ SimpleCode = test(TestExpr) },
+			( rl_exprn__simple_expr_to_rl_rval(TestExpr, RvalCode) ->
 				rl_exprn_info_get_next_label_id(SuccLabel),
 				{ Code =
 					tree(RvalCode,
@@ -1458,16 +1455,15 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 			;
 				{ error("rl_exprn__generate_exprn_instr: invalid test") }
 			)
-		 ; { MaybeAsg = yes(OutputVar - AsgRval) } ->
+		 ;
+		 	{ SimpleCode = assign(OutputVar, AssignExpr) },
 			rl_exprn_info_lookup_var(OutputVar, OutputLoc),
 			rl_exprn_info_lookup_var_type(OutputVar, Type),
 			{ rl_exprn__type_to_aditi_type(Type, AditiType) },
-			rl_exprn__maybe_llds_rval_to_rl_rval(yes(AsgRval),
+			rl_exprn__maybe_simple_expr_to_rl_rval(yes(AssignExpr),
 				AditiType, RvalCode),
 			rl_exprn__generate_pop(reg(OutputLoc), Type, PopCode),
 			{ Code = tree(RvalCode, PopCode) }
-		;
-			{ error("rl_exprn__builtin_call: invalid builtin result") }
 		)
 	;
 		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
@@ -1477,52 +1473,40 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 		{ error(Msg) }
 	).
 
-:- pred rl_exprn__maybe_llds_rval_to_rl_rval(maybe(rval)::in, 
+:- pred rl_exprn__maybe_simple_expr_to_rl_rval(maybe(simple_expr(prog_var))::in, 
 		aditi_type::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__maybe_llds_rval_to_rl_rval(no, _, empty) --> [].
-rl_exprn__maybe_llds_rval_to_rl_rval(yes(LLDSRval), _ResultType, Code) -->
-	( rl_exprn__llds_rval_to_rl_rval(LLDSRval, RvalCode) ->
+rl_exprn__maybe_simple_expr_to_rl_rval(no, _, empty) --> [].
+rl_exprn__maybe_simple_expr_to_rl_rval(yes(LLDSRval), _ResultType, Code) -->
+	( rl_exprn__simple_expr_to_rl_rval(LLDSRval, RvalCode) ->
 		{ Code = RvalCode }
 	;
-		{ error("rl_exprn__maybe_llds_rval_to_rl_rval: invalid llds rval") }
+		{ error("rl_exprn__maybe_simple_expr_to_rl_rval: invalid simple_expr") }
 	).
 
-:- pred rl_exprn__llds_rval_to_rl_rval(rval::in, byte_tree::out,
+:- pred rl_exprn__simple_expr_to_rl_rval(simple_expr(prog_var)::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is semidet.
 
-rl_exprn__llds_rval_to_rl_rval(var(Var), Code) -->
+rl_exprn__simple_expr_to_rl_rval(leaf(Var), Code) -->
 	rl_exprn_info_lookup_var(Var, VarLoc),
 	rl_exprn_info_lookup_var_type(Var, Type),
 	rl_exprn__generate_push(reg(VarLoc), Type, Code).
-rl_exprn__llds_rval_to_rl_rval(const(RvalConst), PushCode) -->
-	{ 
-		RvalConst = true,
-		Const = int(1),
-		Type = int
-	;
-		RvalConst = false,
-		Const = int(0),
-		Type = int
-	;
-		RvalConst = int_const(Int),
-		Const = int(Int),
-		Type = int
-	;
-		RvalConst = float_const(Float),
-		Const = float(Float), 
-		Type = float
-	;
-		RvalConst = string_const(String),
-		Const = string(String),
-		Type = string
-	},
-	{ rl_exprn__aditi_type_to_type(Type, Type1) },
-	rl_exprn__generate_push(const(Const), Type1, PushCode).
-rl_exprn__llds_rval_to_rl_rval(binop(BinOp, Rval1, Rval2), Code) -->
-	rl_exprn__llds_rval_to_rl_rval(Rval1, Code1),
-	rl_exprn__llds_rval_to_rl_rval(Rval2, Code2),
+rl_exprn__simple_expr_to_rl_rval(int_const(Int), PushCode) -->
+	{ rl_exprn__aditi_type_to_type(int, Type1) },
+	rl_exprn__generate_push(const(int(Int)), Type1, PushCode).
+rl_exprn__simple_expr_to_rl_rval(float_const(Float), PushCode) -->
+	{ rl_exprn__aditi_type_to_type(float, Type1) },
+	rl_exprn__generate_push(const(float(Float)), Type1, PushCode).
+rl_exprn__simple_expr_to_rl_rval(unary(_UnOp, _Expr), _Code) -->
+	% None of the MLDS/LLDS unary builtins are implemented in Aditi.
+	% The only one which is returned by builtin_ops__translate_builtin
+	% is `bitwise_complement', for which there is no corresponding
+	% bytecode in Aditi-RL.
+	{ fail }.
+rl_exprn__simple_expr_to_rl_rval(binary(BinOp, Expr1, Expr2), Code) -->
+	rl_exprn__simple_expr_to_rl_rval(Expr1, Code1),
+	rl_exprn__simple_expr_to_rl_rval(Expr2, Code2),
 	{ rl_exprn__binop_bytecode(BinOp, Bytecode) },
 	{ Code = 
 		tree(Code1, 
