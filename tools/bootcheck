@@ -13,6 +13,8 @@ Options:
 		Output results to <filename>.
 	-r, --copy-runtime
 		Copy the runtime directory instead of linking it.
+		This is necessary if one wants to bootcheck a grade
+		that is not compatible with the standard one.
 	-2, --keep-stage-2
 		Don't rebuild the stage 2 directory from scratch after
 		building stage 1.  Instead use the existing stage 2 directory.
