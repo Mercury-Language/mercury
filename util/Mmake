@@ -1,15 +1,28 @@
+#-----------------------------------------------------------------------------#
+
+MERCURY_DIR=..
 include ../Mmake.common
+
+#-----------------------------------------------------------------------------#
 
 CC	= gcc
 CFLAGS	=
 
+#-----------------------------------------------------------------------------#
+
+all: mkinit
+
 mkinit:	mkinit.c
 	$(CC) $(CFLAGS) -o mkinit mkinit.c
+
+#-----------------------------------------------------------------------------#
 
 .PHONY: install
 install: mkinit
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp mkinit $(INSTALL_BINDIR)
+
+#-----------------------------------------------------------------------------#
 
 # suppress the default Mmake rule which removes all the .c files
 CLEAN_C =
@@ -19,3 +32,5 @@ clean:
 
 realclean:
 	-rm -f mkinit.o mkinit
+
+#-----------------------------------------------------------------------------#
