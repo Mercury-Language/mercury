@@ -267,11 +267,11 @@ move_follow_code_move_goals_disj([Goal0|Goals0], FollowGoals, [Goal|Goals]) :-
 follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 	Goal0 = GoalExpr0 - GoalInfo0,
 	goal_info_get_determinism(GoalInfo0, Detism0),
-	determinism_components(Detism0, CanFail0, MaxSolns0),
+	determinism_components(Detism0, _CanFail0, MaxSolns0),
 	( MaxSolns0 = at_most_zero ->	
 		Goal = Goal0
 	;
-		check_follow_code_detism(FollowGoals, CanFail0, MaxSolns0),
+		check_follow_code_detism(FollowGoals, Detism0),
 		( GoalExpr0 = conj(GoalList0) ->
 			list__append(GoalList0, FollowGoals, GoalList),
 			GoalExpr = conj(GoalList)
@@ -284,16 +284,14 @@ follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 	% This check is necessary to make sure that follow_code
 	% doesn't change the determinism of the goal.
 
-:- pred check_follow_code_detism(list(hlds_goal), can_fail, soln_count).
-:- mode check_follow_code_detism(in, in, in) is semidet.
+:- pred check_follow_code_detism(list(hlds_goal), determinism).
+:- mode check_follow_code_detism(in, in) is semidet.
 
-check_follow_code_detism([], _, _).
-check_follow_code_detism([_ - GoalInfo | Goals], CanFail0, MaxSolns0) :-
+check_follow_code_detism([], _).
+check_follow_code_detism([_ - GoalInfo | Goals], Detism0) :-
 	goal_info_get_determinism(GoalInfo, Detism1),
-	determinism_components(Detism1, CanFail1, MaxSolns1),
-	det_conjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns0),
-	det_conjunction_canfail(CanFail0, CanFail1, CanFail0),
-	check_follow_code_detism(Goals, CanFail0, MaxSolns0).
+	det_conjunction_detism(Detism0, Detism1, Detism0),
+	check_follow_code_detism(Goals, Detism0).
 
 %-----------------------------------------------------------------------------%
 

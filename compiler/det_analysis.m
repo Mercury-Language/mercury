@@ -76,11 +76,8 @@
 	% The tables for computing the determinism of compound goals
 	% from the determinism of their components.
 
-:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
-:- mode det_conjunction_maxsoln(in, in, out) is det.
-
-:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
-:- mode det_conjunction_canfail(in, in, out) is det.
+:- pred det_conjunction_detism(determinism, determinism, determinism).
+:- mode det_conjunction_detism(in, in, out) is det.
 
 :- pred det_disjunction_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_disjunction_maxsoln(in, in, out) is det.
@@ -508,8 +505,7 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), _GoalInfo0,
 	% Finally combine the results from the three parts
 	( CondCanFail = cannot_fail ->
 		% A -> B ; C is equivalent to A, B if A cannot fail
-		det_conjunction_maxsoln(CondMaxSoln, ThenMaxSoln, MaxSoln),
-		det_conjunction_canfail(CondCanFail, ThenCanFail, CanFail)
+		det_conjunction_detism(CondDetism, ThenDetism, Detism)
 	; CondMaxSoln = at_most_zero ->
 		% A -> B ; C is equivalent to ~A, C if A cannot succeed
 		det_negation_det(CondDetism, MaybeNegDetism),
@@ -519,16 +515,14 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM), _GoalInfo0,
 		;
 			MaybeNegDetism = yes(NegDetism)
 		),
-		determinism_components(NegDetism, NegCanFail, NegMaxSoln),
-		det_conjunction_maxsoln(NegMaxSoln, ElseMaxSoln, MaxSoln),
-		det_conjunction_canfail(NegCanFail, ElseCanFail, CanFail)
+		det_conjunction_detism(NegDetism, ElseDetism, Detism)
 	;
 		det_conjunction_maxsoln(CondMaxSoln, ThenMaxSoln, CTMaxSoln),
 		det_switch_maxsoln(CTMaxSoln, ElseMaxSoln, MaxSoln),
-		det_switch_canfail(ThenCanFail, ElseCanFail, CanFail)
+		det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
+		determinism_components(Detism, CanFail, MaxSoln)
 	),
 
-	determinism_components(Detism, CanFail, MaxSoln),
 	list__append(ThenMsgs, ElseMsgs, AfterMsgs),
 	list__append(CondMsgs, AfterMsgs, Msgs).
 
@@ -611,7 +605,7 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	update_instmap(Goal0, InstMap0, InstMap1),
 	det_infer_conj(Goals0, InstMap1, SolnContext, DetInfo,
 			Goals, DetismB, MsgsB),
-	determinism_components(DetismB, CanFailB, MaxSolnsB),
+	determinism_components(DetismB, CanFailB, _MaxSolnsB),
 
 	%
 	% Next, work out whether the first conjunct is in a first_soln context
@@ -634,14 +628,11 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	%
 	det_infer_goal(Goal0, InstMap0, SolnContextA, DetInfo,
 			Goal, DetismA, MsgsA),
-	determinism_components(DetismA, CanFailA, MaxSolnsA),
 
 	%
 	% Finally combine the results computed above.
 	%
-	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
-	det_conjunction_maxsoln(MaxSolnsA, MaxSolnsB, MaxSolns),
-	determinism_components(Detism, CanFail, MaxSolns),
+	det_conjunction_detism(DetismA, DetismB, Detism),
 	list__append(MsgsA, MsgsB, Msgs).
 
 :- pred det_infer_disj(list(hlds_goal), instmap, soln_context, det_info,
@@ -709,6 +700,22 @@ det_infer_unify(complicated_unify(_, CanFail), Detism) :-
 
 %-----------------------------------------------------------------------------%
 
+% When figuring out the determinism of a conjunction,
+% if the second goal is unreachable, then then the
+% determinism of the conjunction is just the determinism
+% of the first goal.
+
+det_conjunction_detism(DetismA, DetismB, Detism) :-
+	determinism_components(DetismA, CanFailA, MaxSolnA),
+	( MaxSolnA = at_most_zero ->
+		Detism = DetismA
+	;
+		determinism_components(DetismB, CanFailB, MaxSolnB),
+		det_conjunction_canfail(CanFailA, CanFailB, CanFail),
+		det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+		determinism_components(Detism, CanFail, MaxSoln)
+	).
+
 % For the at_most_zero, at_most_one, at_most_many,
 % we're just doing abstract interpretation to count
 % the number of solutions.  Similarly, for the can_fail
@@ -718,6 +725,9 @@ det_infer_unify(complicated_unify(_, CanFail), Detism) :-
 % the goal might have many logical solutions if there were no
 % pruning, but that the goal occurs in a single-solution
 % context, so only the first solution will be returned.
+
+:- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
+:- mode det_conjunction_maxsoln(in, in, out) is det.
 
 det_conjunction_maxsoln(at_most_zero,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_zero,    at_most_one,     at_most_zero).
@@ -741,6 +751,9 @@ det_conjunction_maxsoln(at_most_many,    at_most_zero,    at_most_zero).
 det_conjunction_maxsoln(at_most_many,    at_most_one,     at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many_cc, at_most_many).
 det_conjunction_maxsoln(at_most_many,    at_most_many,    at_most_many).
+
+:- pred det_conjunction_canfail(can_fail, can_fail, can_fail).
+:- mode det_conjunction_canfail(in, in, out) is det.
 
 det_conjunction_canfail(can_fail,    can_fail,    can_fail).
 det_conjunction_canfail(can_fail,    cannot_fail, can_fail).

@@ -698,8 +698,14 @@ simplify__conj([Goal0 | Goals0], RevGoals0, Goals, ConjInfo, Info0, Info) :-
 			ConjInfo, Info3, Info)
 	    ;
 		% Delete unreachable goals.
-		simplify_info_get_instmap(Info2, InstMap1),
-		instmap__is_unreachable(InstMap1)
+		(
+		    simplify_info_get_instmap(Info2, InstMap1),
+		    instmap__is_unreachable(InstMap1)
+		;
+		    Goal1 = _ - GoalInfo1,
+		    goal_info_get_determinism(GoalInfo1, Detism1),
+		    determinism_components(Detism1, _, at_most_zero)
+		)
 	    ->
 		Info = Info2,
 		simplify__conjoin_goal_and_rev_goal_list(Goal1,
@@ -900,11 +906,7 @@ simplify__approximate_goal_info(NewGoals, GoalInfo0, GoalInfo) :-
 		goal_info_set_nonlocals(GInfo2, NonLocals, GInfo3),
 		goal_info_get_determinism(GInfo3, Detism0),
 		goal_info_get_determinism(GInfo1, Detism1),
-		determinism_components(Detism0, CanFail0, MaxSolns0),
-		determinism_components(Detism1, CanFail1, MaxSolns1),
-		det_conjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns),
-		det_conjunction_canfail(CanFail0, CanFail1, CanFail),
-		determinism_components(Detism, CanFail, MaxSolns),
+		det_conjunction_detism(Detism0, Detism1, Detism),
 	    	goal_info_set_determinism(GInfo3, Detism, GInfo)
 	    )),
 	list__foldl(ComputeGoalInfo, NewGoals, GoalInfo0, GoalInfo).
