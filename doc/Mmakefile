@@ -340,6 +340,7 @@ realclean_local: realclean_texi realclean_manpages
 realclean_texi:
 	rm -f library*.html user_guide*.html reference_manual*.html
 	rm -f faq*.html transition_guide*.html
+	rm -f mercury.html mercury.info
 	rm -f mercury_*.info* *.dvi *.text *.ps
 
 .PHONY: realclean_manpages
