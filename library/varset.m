@@ -25,15 +25,16 @@
 :- export_pred	varset__init, varset__new_var, varset__name_var,
 		varset__lookup_name, varset__bind_var, varset__lookup_var.
 
-:- import_module integer, string, map.
+:- import_module int, string, map.
 
-:- type var_id	==	integer.
+:- type var_id	==	int.
 :- type varset	--->	varset(var_id, map(var_id, string), map(var_id, term)).
 
 %-----------------------------------------------------------------------------%
 
 	% initialize a varset
 :- pred varset__init(varset).
+:- mode varset__init(output).
 varset__init(varset(0,Names,Vals)) :-
 	map__init(Names),
 	map__init(Vals).
@@ -42,21 +43,36 @@ varset__init(varset(0,Names,Vals)) :-
 
 	% create a new variable
 :- pred varset__new_var(varset, var_id, varset).
+:- mode varset__new_var(input, output, output).
 varset__new_var(varset(MaxId0,Names,Vals), MaxId0, varset(MaxId,Names,Vals)) :-
 	MaxId is MaxId0 + 1.
 
 %-----------------------------------------------------------------------------%
 
 	% set the name of a variable
+	% (if there is already a variable with the same name "Foo",
+	% then try naming it "Foo'", or "Foo''", or "Foo'''", etc. until
+	% an unused name is found.)
+
 :- pred varset__name_var(varset, var_id, string, varset).
-varset__name_var(varset(MaxId, Names0, Vals), Id, Name,
-		varset(MaxId, Names, Vals)) :-
-	map__search_insert(Names0, Id, Name, Names).
+:- mode varset__name_var(input, input, input, output).
+varset__name_var(VarSet0, , Id, Name, VarSet) :-
+	VarSet0 = varset(MaxId, Names0, Vals),
+	(if some [OtherId]
+		map_inverse_search(Names0, Name)
+	then
+		string__append(Name, "'", Name2),
+		varset__name_var(VarSet0, Id, Name2, VarSet)
+	else
+		map__search_insert(Names0, Id, Name, Names).
+		VarSet = varset(MaxId, Names, Vals)
+	).
 
 %-----------------------------------------------------------------------------%
 
 	% lookup the name of a variable
 :- pred varset__name(varset, var_id, string).
+:- mode varset__name(input, input, output).
 varset__lookup_name(varset(_, Names, _), Id, Name) :-
 	map__search(Names, Id, Name).
 
@@ -64,6 +80,7 @@ varset__lookup_name(varset(_, Names, _), Id, Name) :-
 
 	% bind a value to a variable
 :- pred varset__bind_var(varset, var_id, term, varset).
+:- mode varset__bind_var(input, input, input, output).
 varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
 		varset(MaxId, Names, Vals)) :-
 	map__search_insert(Vals0, Id, Val, Vals).
@@ -72,8 +89,41 @@ varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
 
 	% lookup the value of a variable
 :- pred varset__lookup_var(varset, var_id, term).
+:- mode varset__lookup_var(input, input, output).
 varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	map__search(Vals, Id, Val).
+
+%-----------------------------------------------------------------------------%
+
+	% Combine two different varsets, renaming apart.
+	% For efficiency, the biggest one should be the
+	% first parameter, as this is O(size of second parameter).
+
+:- pred varset__merge(varset, varset, varset).
+:- mode varset__merge(input, input, output).
+varset__merge(VarSet0, varset(MaxId, Names, Vals),
+		VarSet) :-
+	varset__merge_2(0, MaxId, Names, Vals, VarSet0, VarSet).
+
+:- pred varset__merge(var_id, var_id, map(var_id, string), map(var_id, term),
+			varset, varset).
+:- mode varset__merge(input, input, input, input, input, output).
+
+varset__merge_2(N, Max, Names, Vals, VarSet0, VarSet) :-
+	(if N = Max then
+		VarSet = VarSet0
+	else
+		varset__new_var(VarSet0, VarId, VarSet1),
+		(if some [Name]
+			map__search(Names, N, Name)
+		then
+			varset__name_var(VarSet1, VarId, Name, VarSet2)
+		else
+			VarSet2 = VarSet1
+		),
+		N1 is N + 1,
+		varset__merge_2(N1, Max, Names, Vals, VarSet2, VarSet).
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
