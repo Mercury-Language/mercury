@@ -318,9 +318,9 @@ ML_update_counter(MR_memprof_counter *counter,
 
 /*
 ** Insert an entry into the table of the top `table_size' entries.
-** Entries are ranked according to their words_at_period_end.
+** Entries are ranked according to their words_since_period_start.
 ** (This is an arbitrary choice; we might equally well choose
-** to order them by cells_at_period_end.  I prefer words.)
+** to order them by cells_since_period_start. I prefer words (zs).)
 ** Entries that are not in the top `table_size' are discarded.
 */
 static int
@@ -329,8 +329,8 @@ ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 {
 	int slot;
 
-	/* ignore entries whose counts are zero */
-	if (new_entry->counter.words_at_period_end <= 0.0) {
+	/* ignore entries whose counts are zero (allowing for rounding) */
+	if (new_entry->counter.words_since_period_start < 1.0) {
 		return next_slot;
 	}
 
@@ -341,8 +341,8 @@ ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 	** entry which ranks higher that the new entry.
 	*/
 	slot = next_slot;
-	while (slot > 0 && table[slot - 1].counter.words_at_period_end <
-				new_entry->counter.words_at_period_end)
+	while (slot > 0 && table[slot - 1].counter.words_since_period_start <
+				new_entry->counter.words_since_period_start)
 	{
 		slot--;
 	}
@@ -354,13 +354,13 @@ ML_insert_into_table(const ML_memprof_report_entry *new_entry,
 	** (unless it is already at the end of the table).
 	*/
 	if (slot < table_size) {
-		int i;
 #if 0
 /*
 ** The following code is disabled because it causes gcc (2.7.2) internal
 ** errors (``fixed or forbidden register spilled'') on x86 machines when
 ** using gcc global register variables.
 */
+		int i;
 		for (i = table_size - 1; i > slot; i--) {
 			table[i] = table[i - 1];
 		}
@@ -442,6 +442,20 @@ ML_memory_profile_report(const ML_memprof_report_entry *table, int num_entries,
 {
 	int		i;
 	const char	*name;
+
+	if (complete) {
+		if (ML_overall_counter.cells_at_period_end < 1.0
+		||  ML_overall_counter.words_at_period_end < 1.0) {
+			fprintf(stderr, ""no allocations to report\n"");
+			return;
+		}
+	} else {
+		if (ML_overall_counter.cells_since_period_start < 1.0
+		||  ML_overall_counter.words_since_period_start < 1.0) {
+			fprintf(stderr, ""no allocations to report\n"");
+			return;
+		}
+	}
 
 	if (num_entries > MAX_REPORT_LINES && !complete) {
 		num_entries = MAX_REPORT_LINES;
