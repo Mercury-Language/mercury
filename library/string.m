@@ -75,6 +75,11 @@
 %		Char is the first character of String, and Rest is the
 %		remainder.
 
+:- pred string__to_upper(string, string).
+:- mode string__to_upper(in, out) is det.
+:- mode string__to_upper(in, in) is semidet.		% implied
+%	Converts a string to uppercase.
+
 :- pred string__capitalize_first(string, string).
 :- mode string__capitalize_first(in, out) is det.
 %	Convert the first character (if any) of a string to uppercase.
@@ -392,6 +397,18 @@ string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
 		error("string__char_list_to_int_list: char_to_int failed")
 	),
 	string__char_list_to_int_list(Chars, Codes).
+
+string__to_upper(StrIn, StrOut) :-
+        string__to_char_list(StrIn, ListLow),
+        string__char_list_to_upper(ListLow, ListUpp),
+        string__from_char_list(ListUpp, StrOut).
+
+:- pred string__char_list_to_upper(list(char), list(char)).
+:- mode string__char_list_to_upper(in, out) is det.
+string__char_list_to_upper([], []).
+string__char_list_to_upper([X|Xs], [Y|Ys]) :-
+        char__to_upper(X,Y),
+        string__char_list_to_upper(Xs,Ys).
 
 string__capitalize_first(S0, S) :-
 	( string__first_char(S0, C, S1) ->
