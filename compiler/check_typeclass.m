@@ -87,7 +87,7 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 	module_info_classes(!.ModuleInfo, ClassTable),
 	module_info_instances(!.ModuleInfo, InstanceTable0),
 	map__to_assoc_list(InstanceTable0, InstanceList0),
-	list_map_foldl2(check_one_class(ClassTable), InstanceList0,
+	list__map_foldl2(check_one_class(ClassTable), InstanceList0,
 		InstanceList, check_tc_info([], !.ModuleInfo, !.QualInfo),
 		check_tc_info(Errors, !:ModuleInfo, !:QualInfo), !IO),
 	(
@@ -115,22 +115,6 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 			qual_info :: qual_info
 		).
 
-	% list__map_foldl2(Pred, InList, OutList, StartA, EndA, StartB, EndB)
-	% calls Pred with two accumulator (with the initial values of
-	% StartA and StartB respectively) on each element of InList
-	% (working left-to-right) to transform InList into OutList.
-	% The final values of the accumulators are returned in EndA
-	% and EndB respectively.
-:- pred list_map_foldl2(pred(X, Y, Z, Z, W, W), list(X), list(Y), Z, Z, W, W).
-:- mode list_map_foldl2(pred(in, out, in, out, di, uo) is det,
-			     in, out, in, out, di, uo) is det.
-
-list_map_foldl2(_, [],  [], A, A) -->
-        [].
-list_map_foldl2(P, [H0|T0], [H|T], A0, A) -->
-        call(P, H0, H, A0, A1),
-        list_map_foldl2(P, T0, T, A1, A).
-		
 	% check all the instances of one class.
 :- pred check_one_class(class_table,
 	pair(class_id, list(hlds_instance_defn)), 
@@ -170,7 +154,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 				ClassProc = hlds_class_proc(PredId, _)
 			),
 			PredIds),
-		list_map_foldl2(
+		list__map_foldl2(
 			check_class_instance(ClassId, SuperClasses,
 				ClassVars, ClassInterface, Interface,
 				ClassVarSet, PredIds),
