@@ -2086,7 +2086,7 @@ write_unify_sub_contexts([ConsId - ArgNum | SubContexts], Context) -->
 	io__write_string(" of functor `"),
 	hlds_out__write_cons_id(ConsId),
 	io__write_string("':\n"),
-	write_unify_sub_contexts(SubContexts).
+	write_unify_sub_contexts(SubContexts, Context).
 
 :- pred write_type_of_var(type_info, type_assign_set, var,
 				io__state, io__state).

@@ -33,7 +33,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module term_io, require.
+:- import_module term_io, require, prog_out.
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),

@@ -25,6 +25,7 @@
 
 :- implementation.
 :- import_module prog_util, prog_out, set, require, globals, options.
+:- import_module hlds_out.
 
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
