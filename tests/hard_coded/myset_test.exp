@@ -1,0 +1,6 @@
+set_rep([1])
+set_rep([1, 2])
+set_rep([2, 1])
+1+set_rep([2])
+2+set_rep([1])
+yes
