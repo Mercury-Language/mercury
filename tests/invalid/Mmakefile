@@ -38,6 +38,7 @@ SINGLEMODULE_PROGS= \
 	circ_inst2 \
 	circ_inst3 \
 	circ_inst4 \
+	circ_inst5 \
 	circ_mode \
 	circ_mode2 \
 	circ_mode3 \
@@ -45,6 +46,7 @@ SINGLEMODULE_PROGS= \
 	circ_type \
 	circ_type2 \
 	circ_type3 \
+	circ_type5 \
 	constrained_poly_insts \
 	constructor_warning \
 	det_errors \
