@@ -28,6 +28,7 @@
 :- mode main1(out) is nondet.
 
 :- implementation.
+
 :- import_module require.
 
 main1(Out) :-	
@@ -42,33 +43,6 @@ main -->
 
 :- pred crypt(list(int)).
 :- mode crypt(out) is nondet.
-
-:- pred sum2(list(int), list(int), list(int)).
-:- mode sum2(in, in, out) is det.
-
-:- pred sum2(list(int), list(int), int, list(int)).
-:- mode sum2(in, in, in, out) is det.
-
-:- pred mult(list(int), int, list(int)).
-:- mode mult(in, in, out) is det.
-
-:- pred mult(list(int), int, int, list(int)).
-:- mode mult(in, in, in, out) is det.
-
-:- pred zero(list(int)).
-:- mode zero(in) is semidet.
-
-:- pred odd(int).
-:- mode odd(in) is semidet.
-:- mode odd(out) is multidet.
-
-:- pred even(int).
-:- mode even(in) is semidet.
-:- mode even(out) is multidet.
-
-:- pred lefteven(int).
-:- mode lefteven(in) is semidet.
-:- mode lefteven(out) is multidet.
 
 crypt([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P]) :-
 	crypt__odd(A), crypt__even(B), crypt__even(C), crypt__even(E),
@@ -89,8 +63,14 @@ crypt([A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P]) :-
 % language construct in NU-Prolog, and cannot be defined as a predicate.
 % If you try, nc comes up with an obscure error message.
 
+:- pred sum2(list(int), list(int), list(int)).
+:- mode sum2(in, in, out) is det.
+
 sum2(AL, BL, CL) :-
 	sum2(AL, BL, 0, CL).
+
+:- pred sum2(list(int), list(int), int, list(int)).
+:- mode sum2(in, in, in, out) is det.
 
 sum2([], [], Carry, Cs) :-
 	( Carry = 0 ->
@@ -126,7 +106,13 @@ sum2([A | AL], [B | BL], Carry, Cs) :-
 	sum2(AL, BL, NewCarry, CL),
 	Cs = [C | CL].
 
+:- pred mult(list(int), int, list(int)).
+:- mode mult(in, in, out) is det.
+
 mult(AL, D, BL) :- mult(AL, D, 0, BL).
+
+:- pred mult(list(int), int, int, list(int)).
+:- mode mult(in, in, in, out) is det.
 
 mult([A | AL], D, Carry, [B | BL] ) :-
 	X1 is A * D,
@@ -138,8 +124,15 @@ mult([], _, Carry, [C, Cend]) :-
 	C is Carry mod 10,
 	Cend is Carry // 10.
 
+:- pred zero(list(int)).
+:- mode zero(in) is semidet.
+
 zero([]).
 zero([0 | L]) :- zero(L).
+
+:- pred odd(int).
+:- mode odd(in) is semidet.
+:- mode odd(out) is multidet.
 
 odd(1).
 odd(3).
@@ -147,11 +140,19 @@ odd(5).
 odd(7).
 odd(9).
 
+:- pred even(int).
+:- mode even(in) is semidet.
+:- mode even(out) is multidet.
+
 even(0).
 even(2).
 even(4).
 even(6).
 even(8).
+
+:- pred lefteven(int).
+:- mode lefteven(in) is semidet.
+:- mode lefteven(out) is multidet.
 
 lefteven(2).
 lefteven(4).

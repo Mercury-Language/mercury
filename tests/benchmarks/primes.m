@@ -4,22 +4,22 @@
 
 :- import_module list, int, io.
 
-:- pred main1(list(int)).
-:- mode main1(out) is det.
-
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
-
-:- pred main3(list(int), io__state, io__state).
-:- mode main3(out, di, uo) is det.
 
 :- implementation.
 
 main --> main3(_).
 
+:- pred main1(list(int)).
+:- mode main1(out) is det.
+
 main1(Out) :-	
 	data(Data),
 	primes(Data, Out).
+
+:- pred main3(list(int), io__state, io__state).
+:- mode main3(out, di, uo) is det.
 
 main3(Out) -->
 	{ main1(Out) },
@@ -28,23 +28,17 @@ main3(Out) -->
 :- pred data(int).
 :- mode data(out) is det.
 
+data(98).
+
 :- pred primes(int, list(int)).
 :- mode primes(in, out) is det.
-
-:- pred integers(int, int, list(int)).
-:- mode integers(in, in, out) is det.
-
-:- pred sift(list(int), list(int)).
-:- mode sift(in, out) is det.
-
-:- pred remove(int, list(int), list(int)).
-:- mode remove(in, in, out) is det.
-
-data(98).
 
 primes(Limit, Ps) :-
 	integers(2, Limit, Is),
 	sift(Is, Ps).
+
+:- pred integers(int, int, list(int)).
+:- mode integers(in, in, out) is det.
 
 integers(Low, High, Result) :- 
 	( Low =< High ->
@@ -55,10 +49,16 @@ integers(Low, High, Result) :-
 		Result = []
 	).
 
+:- pred sift(list(int), list(int)).
+:- mode sift(in, out) is det.
+
 sift([], []).
 sift([I | Is], [I | Ps]) :-
 	remove(I, Is, New),
 	sift(New, Ps).
+
+:- pred remove(int, list(int), list(int)).
+:- mode remove(in, in, out) is det.
 
 remove(_P, [], []).
 remove(P, [I | Is], Result) :-

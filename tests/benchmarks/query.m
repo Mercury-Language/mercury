@@ -9,20 +9,16 @@
 
 :- interface.
 
-:- import_module int, io.
-
-:- type quad ---> quad(string, int, string, int).
-
-:- pred main1(quad).
-:- mode main1(out) is nondet.
+:- import_module io.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is cc_multi.
 
 :- implementation.
 
-main1(Out) :-	
-	query(Out).
+:- import_module int.
+
+:- type quad ---> quad(string, int, string, int).
 
 main -->
 	( { main1(Out), Out = quad(C1, D1, C2, D2) } ->
@@ -38,18 +34,14 @@ main -->
 		io__write_string("No solutions\n")
 	).
 
+:- pred main1(quad).
+:- mode main1(out) is nondet.
+
+main1(Out) :-	
+	query(Out).
+
 :- pred query(quad).
 :- mode query(out) is nondet.
-
-:- pred density(string, int).
-:- mode density(out, out) is nondet.
-
-:- pred pop(string, int).
-:- mode pop(out, out) is multidet.
-
-:- pred area(string, int).
-:- mode area(in, out) is semidet.
-
 
 query(quad(C1, D1, C2, D2)) :- 
 	density(C1, D1), 
@@ -59,11 +51,17 @@ query(quad(C1, D1, C2, D2)) :-
 	T2 is 21 * D2,
 	T1 < T2.
 
+:- pred density(string, int).
+:- mode density(out, out) is nondet.
+
 density(C, D) :- 
 	pop(C, P),
 	area(C, A),
 	P100 is P * 100,
 	D is P100 // A.
+
+:- pred pop(string, int).
+:- mode pop(out, out) is multidet.
 
 % populations in 100000s
 pop("china",		8250).
@@ -91,6 +89,9 @@ pop("s_korea",		 335).
 pop("iran",		 320).
 pop("ethiopia",		 272).
 pop("argentina",	 251).
+
+:- pred area(string, int).
+:- mode area(in, out) is semidet.
 
 % areas in 1000s of square miles
 area("china",		3380).
