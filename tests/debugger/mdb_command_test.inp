@@ -41,6 +41,7 @@ nondet_stack         xyzzy xyzzy xyzzy xyzzy xyzzy
 stack_regs           xyzzy xyzzy xyzzy xyzzy xyzzy
 all_regs             xyzzy xyzzy xyzzy xyzzy xyzzy
 table_io             xyzzy xyzzy xyzzy xyzzy xyzzy
+proc_stats           xyzzy xyzzy xyzzy xyzzy xyzzy
 label_stats          xyzzy xyzzy xyzzy xyzzy xyzzy
 source               xyzzy xyzzy xyzzy xyzzy xyzzy
 save                 xyzzy xyzzy xyzzy xyzzy xyzzy

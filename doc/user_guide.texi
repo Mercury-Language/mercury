@@ -2441,6 +2441,13 @@ Tells the debugger to start tabling I/O actions.
 @item table_io end
 Tells the debugger to stop tabling I/O actions.
 @sp 1
+@item proc_stats
+Prints statistics about proc layout structures in the program.
+@sp 1
+@item proc_stats @var{filename}
+Prints statistics about proc layout structures in the program
+to the file @var{filename}.
+@sp 1
 @item label_stats
 Prints statistics about label layout structures in the program.
 @sp 1

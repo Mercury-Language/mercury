@@ -14,6 +14,7 @@
 #include "mercury_imp.h"
 #include "mercury_label.h"
 #include "mercury_array_macros.h"
+#include "mercury_stack_trace.h"
 
 #include "mercury_trace_tables.h"
 #include "mercury_trace.h"
@@ -434,6 +435,50 @@ MR_print_proc_id_for_debugger(FILE *fp, const MR_Proc_Layout *entry_layout)
 }
 
 void
+MR_proc_layout_stats(FILE *fp)
+{
+	const MR_Module_Layout		*module_layout;
+	const MR_Stack_Layout_Entry	*proc_layout;
+	int				module_num, proc_num;
+	MR_Determinism			detism;
+	int				total;
+	int				histogram[MR_DETISM_MAX + 1];
+
+	total = 0;
+	for (detism = 0; detism <= MR_DETISM_MAX; detism++) {
+		histogram[detism] = 0;
+	}
+
+	for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+		module_layout = MR_module_infos[module_num];
+
+		for (proc_num = 0;
+			proc_num < module_layout->MR_ml_proc_count;
+			proc_num++)
+		{
+			proc_layout = module_layout->MR_ml_procs[proc_num];
+
+			total++;
+			if (0 <= proc_layout->MR_sle_detism &&
+				proc_layout->MR_sle_detism <= MR_DETISM_MAX)
+			{
+				histogram[proc_layout->MR_sle_detism]++;
+			}
+		}
+	}
+
+	for (detism = 0; detism <= MR_DETISM_MAX; detism++) {
+		if (histogram[detism] > 0) {
+			fprintf(fp, "%-10s %10d (%5.2f%%)\n",
+				MR_detism_names[detism],
+				histogram[detism],
+				((float) 100 * histogram[detism]) / total);
+		}
+	}
+	fprintf(fp, "%-10s %10d\n", "all ", total);
+}
+
+void
 MR_label_layout_stats(FILE *fp)
 {
 	const MR_Module_Layout		*module_layout;
@@ -478,9 +523,10 @@ MR_label_layout_stats(FILE *fp)
 	}
 
 	for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
-		fprintf(fp, "%4s %10d\n",
+		fprintf(fp, "%4s %10d (%5.2f%%)\n",
 			MR_port_names[port],
-			histogram[port]);
+			histogram[port],
+			((float) 100 * histogram[port]) / total);
 	}
 	fprintf(fp, "%s %10d\n", "all ", total);
 }

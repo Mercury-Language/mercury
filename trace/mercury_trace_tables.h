@@ -146,6 +146,13 @@ extern	void	MR_print_proc_id_for_debugger(FILE *fp,
 			const MR_Proc_Layout *entry);
 
 /*
+** MR_proc_layout_stats(fp):
+**	Prints statistics about the proc layout structures of the program.
+*/
+
+extern	void	MR_proc_layout_stats(FILE *fp);
+
+/*
 ** MR_label_layout_stats(fp):
 **	Prints statistics about the label layout structures of the program.
 */

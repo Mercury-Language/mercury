@@ -1958,6 +1958,26 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			MR_trace_usage("developer", "label_stats");
 		}
+	} else if (streq(words[0], "proc_stats")) {
+		if (word_count == 1) {
+			MR_proc_layout_stats(MR_mdb_out);
+		} else if (word_count == 2) {
+			FILE	*fp;
+
+			fp = fopen(words[1], "w");
+			if (fp == NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"mdb: error opening `%s': %s.\n",
+					words[1], strerror(errno));
+				return KEEP_INTERACTING;
+			}
+
+			MR_proc_layout_stats(fp);
+			(void) fclose(fp);
+		} else {
+			MR_trace_usage("developer", "label_stats");
+		}
 	} else if (streq(words[0], "source")) {
 		bool	ignore_errors;
 
@@ -3054,6 +3074,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "developer", "stack_regs" },
 	{ "developer", "all_regs" },
 	{ "developer", "table_io" },
+	{ "developer", "proc_stats" },
 	{ "developer", "label_stats" },
 	{ "misc", "source" },
 	{ "misc", "save" },

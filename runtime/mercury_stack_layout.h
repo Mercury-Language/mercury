@@ -70,6 +70,8 @@ typedef	MR_int_least16_t	MR_Determinism;
 #define	MR_DETISM_CCNON		10
 #define	MR_DETISM_CCMULTI	14
 
+#define	MR_DETISM_MAX		14
+
 #define MR_DETISM_AT_MOST_ZERO(d)	(((d) & 3) == 0)
 #define MR_DETISM_AT_MOST_ONE(d)	(((d) & 3) == 2)
 #define MR_DETISM_AT_MOST_MANY(d)	(((d) & 1) != 0)
@@ -804,7 +806,6 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 
 #define MR_redo_layout_framevar(base_curfr)   MR_based_framevar(base_curfr, 4)
 #define MR_redo_fromfull_framevar(base_curfr) MR_based_framevar(base_curfr, 5)
-
 
 /*-------------------------------------------------------------------------*/
 /*
