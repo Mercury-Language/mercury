@@ -347,9 +347,9 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
 		io__write_string("error: constructor `"),
-		make_hlds__write_cons_id(ConsId),
+		hlds_out__write_cons_id(ConsId),
 		io__write_string("' for type `"),
-		make_hlds__write_type_id(TypeId),
+		hlds_out__write_type_id(TypeId),
 		io__write_string("' multiply defined.\n"),
 		io__set_output_stream(OldStream, _),
 		{ ConsDefns2 = ConsDefns1 }
@@ -366,25 +366,6 @@ make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).
 make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).
-
-:- pred make_hlds__write_cons_id(cons_id, io__state, io__state).
-:- mode make_hlds__write_cons_id(input, di, uo).
-
-make_hlds__write_cons_id(cons(Name, Arity)) -->
-	io__write_string(Name),
-	io__write_string("/"),
-	io__write_int(Arity).
-
-	% XXX this is duplicated in typecheck.nl
-	% Should be in hlds_out.nl or something.
-
-:- pred make_hlds__write_type_id(type_id, io__state, io__state).
-:- mode make_hlds__write_type_id(input, di, uo).
-
-make_hlds__write_type_id(Name - Arity) -->
-	prog_out__write_sym_name(Name),
-	io__write_string("/"),
-	io__write_int(Arity).
 
 %-----------------------------------------------------------------------------%
 

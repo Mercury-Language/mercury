@@ -11,15 +11,52 @@
 :- interface.
 :- import_module int, io, hlds.
 
-% print out an hlds structure.
+%-----------------------------------------------------------------------------%
+
+:- pred hlds_out__write_type_id(type_id, io__state, io__state).
+:- mode hlds_out__write_type_id(input, di, uo).
+
+:- pred hlds_out__write_cons_id(cons_id, io__state, io__state).
+:- mode hlds_out__write_cons_id(input, di, uo).
+
+:- pred hlds_out__write_pred_id(pred_id, io__state, io__state).
+:- mode hlds_out__write_pred_id(in, di, uo).
+
+%-----------------------------------------------------------------------------%
+
+	% print out an hlds structure.
 
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
 :- mode hlds_out__write_hlds(in, in, in, out).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module term_io, require.
+
+hlds_out__write_type_id(Name - Arity) -->
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
+
+hlds_out__write_cons_id(cons(Name, Arity)) -->
+	io__write_string(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
+
+hlds_out__write_pred_id(PredId) -->
+	% XXX module name
+	%%% { predicate_module(PredId, Module) },
+	{ predicate_name(PredId, Name) },
+	{ predicate_arity(PredId, Arity) },
+	%%% io__write_string(Module),
+	%%% io__write_string(":"),
+	io__write_string(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
+
+%-----------------------------------------------------------------------------%
 
 hlds_out__write_hlds(Indent, Module) -->
 	hlds_out__write_header(Indent, Module),
