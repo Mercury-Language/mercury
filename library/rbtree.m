@@ -14,6 +14,10 @@
 % set:
 %	insert's or update's. Never fails.
 %
+% insert_duplicate:
+%	insert's duplicate keys into the tree, never fails.  Search doesn't
+%	yet support looking for duplicates.
+%
 % delete:
 %	delete's a node from the tree if it exists.
 % remove:
@@ -32,44 +36,61 @@
 
 :- import_module list, std_util.
 
-:- type rbtree(K,V)	 --->	empty
-			;	red(K, V, rbtree(K,V), rbtree(K,V))
-			;	black(K, V, rbtree(K, V), rbtree(K, V)).
+:- type rbtree(Key, Value).
 
-
+	% Initialise the data structure.
 :- pred rbtree__init(rbtree(K, V)).
 :- mode rbtree__init(out) is det.
 
+	% Insert's a new key-value pair into the tree.  Fails if key 
+	% already in the tree.
 :- pred rbtree__insert(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__insert(in, in, in, out) is semidet.
 
+	% Update's the value associated with a key.  Fails if the key 
+	% doesn't exist.
 :- pred rbtree__update(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__update(in, in, in, out) is semidet.
 
+	% Set's a value irregardless of whether key exists or not.  Never
+	% fails.
 :- pred rbtree__set(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__set(in, in, in, out) is det.
 
+	% Insert a duplicate key into the tree.  Never fails.
 :- pred rbtree__insert_duplicate(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__insert_duplicate(in, in, in, out) is det.
 
+	% Lookup a value associated with a key.  Program abort's if key
+	% doesn't exist.
 :- pred rbtree__lookup(rbtree(K, V), K, V).
 :- mode rbtree__lookup(in, in, out) is det.
 
+	% Search for a key-value pair using the key.  Fails if key doesn't
+	% exist.
 :- pred rbtree__search(rbtree(K, V), K, V).
 :- mode rbtree__search(in, in, out) is semidet.
 
+	% Delete the key value pair associated with a key.  Does nothing
+	% if the key doesn't exist.
 :- pred rbtree__delete(rbtree(K, V), K, rbtree(K, V)).
 :- mode rbtree__delete(in, in, out) is det.
 
+	% Remove the key value pair associated with a key.  Fails
+	% if the key doesn't exist.
 :- pred rbtree__remove(rbtree(K, V), K, rbtree(K, V)).
 :- mode rbtree__remove(in, in, out) is semidet.
 
+	% Return's an in-order list of all the key's in the rbtree.
 :- pred rbtree__keys(rbtree(K, V), list(K)).
 :- mode rbtree__keys(in, out) is det.
 
+	% Return's a list of values such that the key's associated with the
+	% values are in-order.
 :- pred rbtree__values(rbtree(K, V), list(V)).
 :- mode rbtree__values(in, out) is det.
 
+	% Count the number of elements in the tree
 :- pred rbtree__count(rbtree(K, V), int).
 :- mode rbtree__count(in, out) is det.
 
@@ -79,13 +100,16 @@
 :- pred rbtree__rbtree_to_assoc_list(rbtree(K, V), assoc_list(K, V)).
 :- mode rbtree__rbtree_to_assoc_list(in, out) is det.
 
-:- pred rbtree__flatten_values(rbtree(K, V), list(V)).
-:- mode rbtree__flatten_values(in, out) is det.
-
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int, require.
+
+
+:- type rbtree(K,V)	 --->	empty
+			;	red(K, V, rbtree(K,V), rbtree(K,V))
+			;	black(K, V, rbtree(K, V), rbtree(K, V)).
 
 %-----------------------------------------------------------------------------%
 
@@ -782,17 +806,5 @@ rbtree__rbtree_to_assoc_list(black(K0, V0, Left, Right), L) :-
         rbtree__rbtree_to_assoc_list(Left, L0),
         rbtree__rbtree_to_assoc_list(Right, L1),
         list__append(L0, [K0 - V0|L1], L).
-
-%-----------------------------------------------------------------------------%
-
-rbtree__flatten_values(empty, []).
-rbtree__flatten_values(red(_K0, V0, Left, Right), L) :-
-	rbtree__flatten_values(Left, L0),
-	rbtree__flatten_values(Right, L1),
-	list__append(L0, [V0|L1], L).
-rbtree__flatten_values(black(_K0, V0, Left, Right), L) :-
-	rbtree__flatten_values(Left, L0),
-	rbtree__flatten_values(Right, L1),
-	list__append(L0, [V0|L1], L).
 
 %-----------------------------------------------------------------------------%

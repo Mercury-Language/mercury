@@ -138,6 +138,25 @@
 :- pred list__delete_elems(list(T), list(T), list(T)).
 :- mode list__delete_elems(in, in, out) is det.
 
+	% list__replace(List0, D, R, List) is true iff List is List0 
+	% with an occurence of D replaced with R.
+
+:- pred list__replace(list(T), T, T, list(T)).
+:- mode list__replace(in, in, in, in) is semidet.
+:- mode list__replace(in, in, in, out) is nondet.
+
+	% list__replace_first(List0, D, R, List) is true iff List is List0 
+	% with the first occurence of D replaced with R.
+
+:- pred list__replace_first(list(T), T, T, list(T)).
+:- mode list__replace_first(in, in, in, out) is semidet.
+
+	% list__replace_all(List0, D, R, List) is true iff List is List0 
+	% with all occurences of D replaced with R.
+
+:- pred list__replace_all(list(T), T, T, list(T)).
+:- mode list__replace_all(in, in, in, out) is det.
+
 	% list__sort(List0, List):
 	%	List is List0 sorted with duplicates removed.
 
@@ -265,6 +284,30 @@ list__delete_all([X | Xs], Y, Zs) :-
 	;
 		Zs = [X | Zs1],
 		list__delete_all(Xs, Y, Zs1)
+	).
+
+list__replace([X | L], X, Z, [Z | L]).
+list__replace([X | Xs], Y, Z, [X | L]) :-
+	list__replace(Xs, Y, Z, L).
+	
+list__replace_first([X | Xs], Y, Z, List) :-
+	(
+		X = Y
+	->
+		List = [Z | Xs]
+	;
+		List = [X | L1],
+		list__replace_first(Xs, Y, Z, L1)
+	).
+
+list__replace_all([], _, _, []).
+list__replace_all([X | Xs], Y, Z, L) :-
+	( X = Y ->
+		L = [Z | L0],
+		list__replace_all(Xs, Y, Z, L0)
+	;
+		L = [X | L0],
+		list__replace_all(Xs, Y, Z, L0)
 	).
 
 list__delete_elems(Xs, [], Xs).
