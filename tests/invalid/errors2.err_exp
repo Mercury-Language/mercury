@@ -55,5 +55,10 @@ errors2.m:072: In clause for predicate `errors2:type_error_7/0':
 errors2.m:072:   in argument 1 of call to pred `expect_int/1':
 errors2.m:072:   type error: variable `C' has type `string',
 errors2.m:072:   expected type was `int'.
+errors2.m:078: In clause for predicate `errors2:type_error_8/0':
+errors2.m:078:   in argument 1 of call to predicate `from_char_list/2':
+errors2.m:078:   error: undefined symbol `[]/0'.
+errors2.m:078: In clause for predicate `errors2:type_error_8/0':
+errors2.m:078:   error: undefined predicate `from_char_list/2'.
 errors2.m:009: Inferred :- pred bind_type_param(int).
 For more information, try recompiling with `-E'.

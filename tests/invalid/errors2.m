@@ -71,5 +71,11 @@ type_error_7 :-
 	Z = bar_functor(A, B, C),
 	expect_int(C).
 
+:- use_module list, string.
+
+:- pred type_error_8.
+type_error_8 :-
+	from_char_list([], Str),
+	string__from_char_list(list:[], Str).
 
 %-----------------------------------------------------------------------------%

@@ -91,3 +91,13 @@ pred_with_type_error :-
 pred_with_singleton_vars(X).
 
 %-----------------------------------------------------------------------------%
+
+:- import_module int.
+:- use_module int.
+
+:- use_module io.
+
+:- type needs_qualification == state.
+:- type has_qualification == io__state.
+
+%-----------------------------------------------------------------------------%
