@@ -40,8 +40,8 @@ NEWS for Mercury release 0.6
 
   - You can now use `-O<n>' to select an optimization level between 0 and 5.
 
-  - You can now use `--optimize-space' to select optimization for space, instead
-    of optimization for time (which is the default).
+  - You can now use `--optimize-space' to select optimization for space,
+    instead of optimization for time (which is the default).
 
 * We have continued to improve the compiler's optimization.
 
