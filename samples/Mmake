@@ -13,7 +13,7 @@
 # You can also type `mmake strip' to strip the executables
 # (this can reduce the size of executables considerably).
 
-PROGS=	all_solutions calculator committed_choice eliza hello
+PROGS=	all_solutions calculator committed_choice eliza hello ultra_sub
 
 DEPENDS=$(PROGS:%=%.depend)
 
