@@ -9,8 +9,8 @@ include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SCRIPTS = mc mcn mcs mod2c mod2init mgnuc ml mint mnc mnl mnp msc msl msp \
-	  sicstus_conv mtags vpath_find mercury_update_interface
+SCRIPTS = mmake mc mcn mcs mod2c mod2init mgnuc ml mint mnc mnl mnp msc msl \
+	  msp sicstus_conv mtags vpath_find mercury_update_interface
 
 #-----------------------------------------------------------------------------#
 
