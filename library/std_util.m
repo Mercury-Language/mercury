@@ -657,7 +657,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	swap_heap_and_solutions_heap();
  
 	/*
-	** deep copy solution to the solutions heap, up to the saved_hp */
+	** deep copy solution to the solutions heap, up to the saved_hp
 	** Note that we need to save/restore the hp register, if it
 	** is transient, before/after calling deep_copy().
 	*/
