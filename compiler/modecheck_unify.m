@@ -458,6 +458,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
 	mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
 
 	%
 	% Fully module qualify all cons_ids
@@ -467,9 +468,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	instmap__lookup_var(InstMap0, X0, InstOfX0),
-	instmap__lookup_vars(ArgVars0, InstMap0, InstArgs),
-	mode_info_var_list_is_live(!.ModeInfo, ArgVars0, LiveArgs),
-	InstOfY = bound(unique, [functor(InstConsId, InstArgs)]),
 	(
 		% If the unification was originally of the form
 		% X = 'new f'(Y) it must be classified as a
@@ -494,6 +492,37 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		mode_info_var_is_live(!.ModeInfo, X, LiveX),
 		ExtraGoals0 = no_extra_goals
 	),
+
+	(
+		% If we are allowed to insert solver type initialisation
+		% calls and InstOfX0 is free and all ArgVars0 are either
+		% non-free or have solver types, then we know that this
+		% is going to be a construction, so we can insert the
+		% necessary initialisation calls.
+		ArgVars0 \= [],
+		HowToCheckGoal \= check_unique_modes,
+		inst_match__inst_is_free(ModuleInfo0, InstOfX),
+		mode_info_may_initialise_solver_vars(!.ModeInfo),
+		instmap__lookup_vars(ArgVars0, InstMap0, InstArgs0),
+		all_arg_vars_are_non_free_or_solver_vars(ArgVars0, InstArgs0,
+			VarTypes, ModuleInfo0, ArgVarsToInit)
+	->
+		modes__construct_initialisation_calls(ArgVarsToInit, InitGoals,
+			!ModeInfo),
+		( InitGoals = [] ->
+			ExtraGoals1 = no_extra_goals
+		;
+			ExtraGoals1 = extra_goals(InitGoals, [])
+		)
+	;
+		ExtraGoals1 = no_extra_goals
+	),
+
+	mode_info_get_instmap(!.ModeInfo, InstMap1),
+	instmap__lookup_vars(ArgVars0, InstMap1, InstArgs),
+	mode_info_var_list_is_live(!.ModeInfo, ArgVars0, LiveArgs),
+	InstOfY = bound(unique, [functor(InstConsId, InstArgs)]),
+
 	(
 
 		% The occur check: X = f(X) is considered a mode error
@@ -530,8 +559,24 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 			% return any old garbage
 		Unification = Unification0,
 		ArgVars = ArgVars0,
-		ExtraGoals1 = no_extra_goals
+		ExtraGoals2 = no_extra_goals
 	;
+			% XXX We forbid the construction of partially
+			% instantiated structures involving solver
+			% types.  We'd like to forbid all such constructions
+			% here, but that causes trouble with the current
+			% implementation of term.term_to_univ_special_case
+			% which does use partial instantiation (in a rather
+			% horrible way).  This is a hacky solution that gets
+			% us most of what we want w.r.t. solver types.
+		not (
+			inst_is_free(ModuleInfo0, InstOfX),
+			member(InstArg, InstArgs),
+			inst_is_free(ModuleInfo0, InstArg),
+			member(ArgVar, ArgVars0),
+			ArgType = VarTypes ^ elem(ArgVar),
+			type_is_solver_type(ModuleInfo0, ArgType)
+		),
 		abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
 			InstArgs, LiveArgs, real_unify, TypeOfX,
 			UnifyInst, Det1, ModuleInfo0, ModuleInfo1)
@@ -560,12 +605,11 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		;
 			error("get_(inst/mode)_of_args failed")
 		),
-		mode_info_get_var_types(!.ModeInfo, VarTypes),
 		categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
 			X, ConsId, ArgVars0, VarTypes, UnifyContext,
 			Unification0, Unification1, !ModeInfo),
 		split_complicated_subunifies(Unification1, Unification,
-			ArgVars0, ArgVars, ExtraGoals1, !ModeInfo),
+			ArgVars0, ArgVars, ExtraGoals2, !ModeInfo),
 		modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),
 		UnifyArgInsts = list__map(func(I) = yes(I), InstOfXArgs),
 		(
@@ -601,7 +645,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 			% return any old garbage
 		Unification = Unification0,
 		ArgVars = ArgVars0,
-		ExtraGoals1 = no_extra_goals
+		ExtraGoals2 = no_extra_goals
 	),
 
 	%
@@ -621,7 +665,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		% This optimisation is safe because the only way that
 		% we can analyse a unification as having no solutions
 		% is that the unification always fails.
-		%,
+		%
 		% Unifying two preds is not erroneous as far as the
 		% mode checker is concerned, but a mode _error_.
 		Goal = disj([])
@@ -637,11 +681,12 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		% (If it did in other cases, the code would be wrong since it
 		% wouldn't have the correct determinism annotations.)
 		%
-		append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals),
+		append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals01),
+		append_extra_goals(ExtraGoals01, ExtraGoals2, ExtraGoals),
 		(
 			HowToCheckGoal = check_unique_modes,
 			ExtraGoals \= no_extra_goals,
-			instmap__is_reachable(InstMap0)
+			instmap__is_reachable(InstMap1)
 		->
 			error("unique_modes.m: re-modecheck of unification " ++
 				"encountered complicated sub-unifies")
@@ -651,6 +696,33 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
 			[X0 | ArgVars0], [X | ArgVars], InstMap0, Goal,
 			!ModeInfo, !IO)
+	).
+
+
+:- pred all_arg_vars_are_non_free_or_solver_vars(list(prog_var)::in,
+	list(inst)::in, map(prog_var, type)::in, module_info::in,
+	list(prog_var)::out) is semidet.
+
+all_arg_vars_are_non_free_or_solver_vars([], [], _, _, []).
+
+all_arg_vars_are_non_free_or_solver_vars([], [_|_], _, _, _) :-
+	error("modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
+		"mismatch in list lengths").
+
+all_arg_vars_are_non_free_or_solver_vars([_|_], [], _, _, _) :-
+	error("modecheck_unify.all_arg_vars_are_non_free_or_solver_vars: " ++
+		"mismatch in list lengths").
+
+all_arg_vars_are_non_free_or_solver_vars([Arg | Args], [Inst | Insts],
+		VarTypes, ModuleInfo, ArgsToInit) :-
+	( if inst_match__inst_is_free(ModuleInfo, Inst) then
+		type_is_solver_type(ModuleInfo, VarTypes ^ elem(Arg)),
+		ArgsToInit = [Arg | ArgsToInit0],
+		all_arg_vars_are_non_free_or_solver_vars(Args, Insts,
+			VarTypes, ModuleInfo, ArgsToInit0)
+	  else
+	  	all_arg_vars_are_non_free_or_solver_vars(Args, Insts,
+			VarTypes, ModuleInfo, ArgsToInit)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -329,6 +329,11 @@
 	prog_context::in, maybe(call_unify_context)::in,
 	hlds_goal::out, mode_info::in, mode_info::out) is det.
 
+	% Construct a list of initialisation calls.
+	%
+:- pred construct_initialisation_calls(list(prog_var)::in,
+	list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1804,9 +1809,6 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 			Goals        = []
 		)
 	).
-
-:- pred construct_initialisation_calls(list(prog_var)::in,
-	list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
 
 construct_initialisation_calls([], [], !ModeInfo).
 construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-

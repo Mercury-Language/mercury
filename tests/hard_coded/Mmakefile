@@ -153,6 +153,7 @@ ORDINARY_PROGS=	\
 	setjmp_test \
 	shift_test \
 	solve_quadratic \
+	solver_construction_init_test \
 	space \
 	stable_sort \
 	string_alignment \

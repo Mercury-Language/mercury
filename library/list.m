@@ -168,8 +168,9 @@
 	%	i.e. iff they both contain the same number of elements.
 	%
 :- pred list__same_length(list(T1), list(T2)).
-:- mode list__same_length(in, output_list_skel) is det.
-:- mode list__same_length(output_list_skel, in) is det.
+	% XXX The current mode checker can't handle these modes.
+% :- mode list__same_length(in, output_list_skel) is det.
+% :- mode list__same_length(output_list_skel, in) is det.
 :- mode list__same_length(in, in) is semidet.
 % XXX The current mode checker can't handle these modes
 % :- mode list__same_length(input_list_skel, output_list_skel) is det.
