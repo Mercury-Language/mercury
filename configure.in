@@ -1558,7 +1558,6 @@ fi
 # conftest.junk is used to avoid a warning if there
 # are no files in the list passed to chmod
 touch conftest.junk
-chmod a-w $CONFIG_FILES $CONFIG_HEADERS conftest.junk
 chmod +x `echo $CONFIG_FILES | sed -e 's/[^ ]*Mmake.common//' ` conftest.junk
 rm -f conftest.junk
 

@@ -82,12 +82,10 @@ main_target: $(MAIN_TARGET)
 .m.dep:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MCD) $(MCDFLAGS) $<
-	@-chmod -w $*.dep
 
 .m.depend:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
 	$(MCD) $(MCDFLAGS) $<
-	@-chmod -w $*.dep
 	-rm -f $*_init.c
 
 .dep.doit:
