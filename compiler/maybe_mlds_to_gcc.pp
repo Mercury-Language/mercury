@@ -20,6 +20,17 @@
 :- import_module mlds, bool.
 :- use_module io.
 
+:- type frontend_callback(T) == pred(T, io__state, io__state).
+:- inst frontend_callback == (pred(out, di, uo) is det).
+
+	% Invoke the callback either via gcc__run_backend, or directly,
+	% depending on whether the gcc back-end interface has
+	% been enabled.
+:- pred maybe_mlds_to_gcc__run_gcc_backend(mercury_module_name,
+		frontend_callback(T), T, io__state, io__state).
+:- mode maybe_mlds_to_gcc__run_gcc_backend(in, in(frontend_callback), out,
+		di, uo) is det.
+
 	% Either invoke mlds_to_gcc__compile_to_asm, or report an error
 	% message, depending on whether the gcc back-end interface has
 	% been enabled.  In the former case,
@@ -36,6 +47,9 @@
 
 :- use_module mlds_to_gcc.
 
+maybe_mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
+	mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput).
+
 maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 	mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode).
 
@@ -43,6 +57,9 @@ maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 
 :- import_module passes_aux.
 :- import_module string.
+
+maybe_mlds_to_gcc__run_gcc_backend(_ModuleName, CallBack, CallBackOutput) -->
+	CallBack(CallBackOutput).
 
 maybe_mlds_to_gcc__compile_to_asm(_MLDS, no) -->
 	report_error(
