@@ -1,6 +1,6 @@
 ##########
 #
-#	$Id: Makefile,v 1.1 1997-01-24 07:09:51 aet Exp $
+#	$Id: Makefile,v 1.2 1997-01-29 06:17:05 aet Exp $
 #
 #	Makefile for Mercury bytecode interpreter.
 #
@@ -29,7 +29,7 @@ CFLAGS	=
 DEBUG_FLAGS = -g
 
 CC	= gcc 
-CFLAGS	= -Wall -ansi -Wmissing-prototypes -D_POSIX_SOURCE
+CFLAGS	= -Wall -ansi -Wmissing-prototypes -D_POSIX_SOURCE -D__STDC__
 DEBUG_FLAGS = -ggdb
 
 MAKEDEPEND=makedepend
