@@ -1288,6 +1288,9 @@ no_clauses(PredName) :-
     public static final int MR_SECTAG_REMOTE	= 2;
     public static final int MR_SECTAG_VARIABLE	= 3;
 
+    public static final int MR_PREDICATE	= 0;
+    public static final int MR_FUNCTION		= 1;
+
     // The dummy_var is used to represent io__states and other Mercury
     // parameters that are not really passed around.  Occasionally a dummy
     // variable will be used by the code generator as an lval, so we use

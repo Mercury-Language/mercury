@@ -8,8 +8,8 @@ package mercury.runtime;
 
 public class PredFunc {
 	
-	public static final int MR_PRED = 0;
-	public static final int MR_FUNC = 1;
+	public static final int MR_PREDICATE = 0;
+	public static final int MR_FUNCTION = 1;
 
 	public int value;
 

@@ -1703,11 +1703,27 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
 		JavaTypeName = string__append("mercury.runtime.", GenTypeName0)
 	).
 
-tc_rtti_name_java_type(_TCRttiName, JavaTypeName, IsArray) :-
-	JavaTypeName = "java.lang.Object",
-	IsArray = yes.
-	% tc_rtti_name_type(TCRttiName, _GenTypeName, IsArray),
-	% JavaTypeName = string__append("mercury.runtime.", GenTypeName).
+tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
+	tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
+	(
+		% BaseTypeClassInfo in C is represented using a
+		% variable-length array as the last field,
+		% so we need to handle it specially in Java
+		GenTypeName = "BaseTypeclassInfo"
+	->
+		JavaTypeName = "java.lang.Object" /* & IsArray = yes */
+	;
+		% Java doesn't have typedefs (or "const"),
+		% so we need to use "String" rather than "ConstString"
+		GenTypeName = "ConstString"
+	->
+		JavaTypeName = "java.lang.String"
+	;
+		% The rest are all defined in Mercury's Java runtime
+		% (java/runtime/*.java).
+		JavaTypeName = string__append("mercury.runtime.",
+			GenTypeName)
+	).
 
 	% ctor_rtti_name_type(RttiName, Type, IsArray):
 :- pred ctor_rtti_name_type(ctor_rtti_name::in, string::out, bool::out) is det.

@@ -1507,8 +1507,7 @@ gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
 	
 :- func gen_init_null_pointer(mlds__type) = mlds__initializer.
 
-gen_init_null_pointer(Type) =
-	init_obj(mlds__unop(cast(mlds__generic_type), const(null(Type)))).
+gen_init_null_pointer(Type) = init_obj(const(null(Type))).
 
 :- func gen_init_string(string) = mlds__initializer.
 

@@ -1,10 +1,13 @@
 //
-// Copyright (C) 2001-2003 The University of Melbourne.
+// Copyright (C) 2001-2004 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
 package mercury.runtime;
+
+// This corresponds to the C type "struct MR_TypeCtorInfo_Struct"
+// in runtime/mercury_type_info.h.
 
 public class TypeCtorInfo_Struct extends PseudoTypeInfo {
     
