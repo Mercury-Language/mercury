@@ -1057,16 +1057,17 @@ mercury_output_func_decl(VarSet, FuncName, TypesAndModes, RetTypeAndMode,
 		MaybeDet, Context) -->
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
 	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
-	mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet,
-			Context),
 	(
 		{ MaybeModes = yes(Modes) },
 		{ MaybeRetMode = yes(RetMode) }
 	->
+		mercury_output_func_type(VarSet, FuncName, Types, RetType,
+				no, Context),
 		mercury_output_func_mode_decl(VarSet, FuncName, Modes, RetMode,
 				MaybeDet, Context)
 	;
-		[]
+		mercury_output_func_type(VarSet, FuncName, Types, RetType,
+				MaybeDet, Context),
 	).
 
 mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, _Context)
@@ -1081,11 +1082,11 @@ mercury_output_func_type(VarSet, FuncName, Types, RetType, MaybeDet, _Context)
 		mercury_output_remaining_terms(Rest, VarSet, no),
 		io__write_string(")")
 	;
-		mercury_output_bracketed_sym_name(FuncName),
-		mercury_output_det_annotation(MaybeDet)
+		mercury_output_bracketed_sym_name(FuncName)
 	),
 	io__write_string(" = "),
 	mercury_output_term(RetType, VarSet, no),
+	mercury_output_det_annotation(MaybeDet),
 	io__write_string(".\n").
 
 %-----------------------------------------------------------------------------%
