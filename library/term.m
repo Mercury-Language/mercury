@@ -337,7 +337,9 @@ term__type_to_term_2(Univ, Term) :-
 			string__char_to_string(Character, String),
 			Term = term__functor(term__string(String), [], Context)
 		;
-			error("term__type_to_term: unknown type")
+			string__append("term__type_to_term: unknown type ",
+				type_name(univ_type(Univ)), Message),
+			error(Message)
 		)
 	;
 		deconstruct(Univ, FunctorString, _FunctorArity, FunctorArgs),
