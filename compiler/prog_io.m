@@ -103,7 +103,7 @@
 
 :- type mode_defn	--->	mode_defn(string, list(term), mode).
 
-:- type mode		--->	((inst) -> (inst))
+:- type (mode)		--->	((inst) -> (inst))
 			;	user_defined_mode(term).
 
 %-----------------------------------------------------------------------------%
