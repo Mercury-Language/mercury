@@ -344,7 +344,12 @@ insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
         pred_info_set_procedures(PredInfo1, Procs, PredInfo),
         map__det_update(Preds0, PredId, PredInfo, Preds),
         module_info_set_preds(ModuleInfo0, Preds, ModuleInfo),
-        mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo).
+        mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+
+	% Since we've created a new inferred mode for this predicate,
+	% things have changed, so we will need to do at least one more
+	% pass of the fixpoint analysis.
+	mode_info_set_changed_flag(yes, ModeInfo1, ModeInfo).
 
 :- pred get_var_insts_and_lives(list(var), mode_info,
                                 list(inst), list(is_live)).

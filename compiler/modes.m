@@ -198,8 +198,8 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_set_var_inst_list(in, in, in, out, out,
 					mode_info_di, mode_info_uo) is det.
 
-	% check that the final insts of the head vars matches their
-	% expected insts
+	% check that the final insts of the head vars of a lambda
+	% goal matches their expected insts
 	%
 :- pred modecheck_final_insts(list(var), list(inst), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
@@ -498,11 +498,19 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	set__list_to_set(LiveVarsList, LiveVars),
 	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId,
 			Context, LiveVars, InstMap0, ModeInfo0),
-	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
-	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo1, Changed0,
-			ArgFinalInsts, ModeInfo2, Changed),
+	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
+	modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2),
+	pred_info_get_marker_list(PredInfo, Markers),
+	( list__member(request(infer_modes), Markers) ->
+		InferModes = yes
+	;
+		InferModes = no
+	),
+	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo2,
+			InferModes, ArgFinalInsts, ModeInfo3),
 	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
-	report_mode_errors(ModeInfo2, ModeInfo),
+	report_mode_errors(ModeInfo3, ModeInfo),
+	mode_info_get_changed_flag(ModeInfo, Changed),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
@@ -513,54 +521,53 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
 	proc_info_set_argmodes(ProcInfo3, ArgModes, ProcInfo).
 
+	% modecheck_final_insts for a lambda expression
 modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
-	modecheck_final_insts_2(HeadVars, ArgFinalInsts, ModeInfo0, no,
-				_NewFinalInsts, ModeInfo, _Changed).
+		% for lambda expressions, modes must always be
+		% declared, we never infer them.
+	InferModes = no,
+	modecheck_final_insts_2(HeadVars, ArgFinalInsts, ModeInfo0,
+			InferModes, _NewFinalInsts, ModeInfo).
 
 :- pred modecheck_final_insts_2(list(var), list(inst), mode_info, bool,
-					list(inst), mode_info, bool).
+					list(inst), mode_info).
 :- mode modecheck_final_insts_2(in, in, mode_info_di, in,
-					out, mode_info_uo, out) is det.
+					out, mode_info_uo) is det.
 
 	% check that the final insts of the head vars matches their
 	% expected insts
 	%
-modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, Changed0,
-			FinalInsts, ModeInfo, Changed) :-
+modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
+			FinalInsts, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	instmap_lookup_vars(HeadVars, InstMap, VarFinalInsts1),
 
-	mode_info_get_predid(ModeInfo0, PredId),
-	mode_info_get_preds(ModeInfo0, Preds),
-	map__lookup(Preds, PredId, PredInfo),
-	pred_info_get_marker_list(PredInfo, Markers),
-	( list__member(request(infer_modes), Markers) ->
-		InferModes = yes
-	;
-		InferModes = no
-	),
 	( InferModes = yes ->
 		normalise_insts(VarFinalInsts1, ModuleInfo, VarFinalInsts2),
 		%
 		% make sure we set the final insts of any variables which
 		% we assumed were dead to `clobbered'.
 		%
-		mode_info_get_procid(ModeInfo0, ProcId),
+		mode_info_get_preds(ModeInfo0, Preds),
+		mode_info_get_predid(ModeInfo0, PredId),
+		map__lookup(Preds, PredId, PredInfo),
 		pred_info_procedures(PredInfo, Procs),
+		mode_info_get_procid(ModeInfo0, ProcId),
 		map__lookup(Procs, ProcId, ProcInfo),
 		proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
 		maybe_clobber_insts(VarFinalInsts2, ArgLives, FinalInsts),
 		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
 			InferModes, 1, ModuleInfo, no, Changed1,
-			ModeInfo0, ModeInfo),
-		bool__or(Changed0, Changed1, Changed)
+			ModeInfo0, ModeInfo1),
+		mode_info_get_changed_flag(ModeInfo1, Changed0),
+		bool__or(Changed0, Changed1, Changed),
+		mode_info_set_changed_flag(Changed, ModeInfo1, ModeInfo)
 	;
 		check_final_insts(HeadVars, FinalInsts0, VarFinalInsts1,
 			InferModes, 1, ModuleInfo, no, _Changed1,
 			ModeInfo0, ModeInfo),
-		FinalInsts = FinalInsts0,
-		Changed = Changed0
+		FinalInsts = FinalInsts0
 	).
 
 :- pred maybe_clobber_insts(list(inst), list(is_live), list(inst)).

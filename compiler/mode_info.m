@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module mode_errors, delay_info.
-:- import_module map, list, varset, set.
+:- import_module map, list, varset, set, bool.
 
 :- interface.
 
@@ -197,6 +197,12 @@
 :- pred mode_info_set_nondet_live_vars(list(set(var)), mode_info, mode_info).
 :- mode mode_info_set_nondet_live_vars(in, mode_info_di, mode_info_uo) is det.
 
+:- pred mode_info_get_changed_flag(mode_info, bool).
+:- mode mode_info_get_changed_flag(mode_info_no_io, out) is det.
+
+:- pred mode_info_set_changed_flag(bool, mode_info, mode_info).
+:- mode mode_info_set_changed_flag(in, mode_info_di, mode_info_uo) is det.
+
 /*
 :- inst uniq_mode_info	=	bound_unique(
 					mode_info(
@@ -290,7 +296,9 @@
 	% execution point, since those variables will *already* have
 	% been marked as mostly_unique rather than unique.)
 
-			unit
+			bool		% Changed flag
+					% If `yes', then we may need
+					% to repeat mode inference.
 		).
 
 	% The normal inst of a mode_info struct: ground, with
@@ -318,10 +326,12 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	LiveVarsList = [LiveVars],
 	NondetLiveVarsList = [LiveVars],
 
+	Changed = no,
+
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
-		ErrorList, LiveVarsList, NondetLiveVarsList, unit 
+		ErrorList, LiveVarsList, NondetLiveVarsList, Changed
 	).
 
 %-----------------------------------------------------------------------------%
@@ -628,6 +638,13 @@ mode_info_get_nondet_live_vars(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,
 mode_info_set_nondet_live_vars(NondetLiveVars,
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,_,O),
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,NondetLiveVars,O)).
+
+mode_info_get_changed_flag(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,Changed),
+				Changed).
+
+mode_info_set_changed_flag(Changed,
+			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,_),
+			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,Changed)).
 
 %-----------------------------------------------------------------------------%
 
