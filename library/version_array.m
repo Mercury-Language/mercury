@@ -239,7 +239,7 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 % Note: this code is not thread safe, hence the absence of `thread_safe'
 % attributes!
 
-:- pragma foreign_type("C", version_array(T), "struct va *")
+:- pragma foreign_type("C", version_array(T), "struct ML_va *")
             where equality   is eq_version_array,
                   comparison is cmp_version_array.
 
@@ -295,14 +295,14 @@ cmp_version_array_2(I, VAa, VAb, R) :-
 :- pragma foreign_proc("C", version_array.empty = (VA::out),
     [will_not_call_mercury, promise_pure],
     "
-        VA = va_new_empty();
+        VA = ML_va_new_empty();
     ").
 
 
 :- pragma foreign_proc("C", version_array.new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure],
     "
-        VA = va_new(N, X);
+        VA = ML_va_new(N, X);
     ").
 
 
@@ -310,7 +310,7 @@ cmp_version_array_2(I, VAa, VAb, R) :-
     resize(VA0::in, N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure],
     "
-        VA = va_resize(VA0, N, X);
+        VA = ML_va_resize(VA0, N, X);
     ").
 
 
@@ -320,7 +320,7 @@ resize(N, X, VA, resize(VA, N, X)).
 :- pragma foreign_proc("C", size(VA::in) = (N::out),
     [will_not_call_mercury, promise_pure],
     "
-        N = va_size(VA);
+        N = ML_va_size(VA);
     ").
 
 
@@ -329,7 +329,7 @@ resize(N, X, VA, resize(VA, N, X)).
 :- pragma foreign_proc("C", get_if_in_range(VA::in, I::in, X::out),
     [will_not_call_mercury, promise_pure],
     "
-        SUCCESS_INDICATOR = va_get(VA, I, &X);
+        SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
     ").
 
 
@@ -339,14 +339,14 @@ resize(N, X, VA, resize(VA, N, X)).
 :- pragma foreign_proc("C", set_if_in_range(VA0::in, I::in, X::in, VA::out),
     [will_not_call_mercury, promise_pure],
     "
-        SUCCESS_INDICATOR = va_set(VA0, I, X, &VA);
+        SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
     ").
 
 
 :- pragma foreign_proc("C", unsafe_rewind(VA0::in) = (VA::out),
     [will_not_call_mercury, promise_pure],
     "
-        VA = va_rewind(VA0);
+        VA = ML_va_rewind(VA0);
     ").
 
 
@@ -358,75 +358,75 @@ resize(N, X, VA, resize(VA, N, X)).
         ** Otherwise value is the overwritten value at index and rest is
         ** a pointer to the next version in the chain.
         */
-    struct va {
+    struct ML_va {
         MR_Integer index;               /* -1 for latest, >= 0 for older */
         MR_Word    value;               /* Valid if index >= 0           */
         union {
             MR_ArrayPtr           array;/* Valid if index == -1          */
-            struct va            *next; /* Valid if index >= 0           */
+            struct ML_va         *next; /* Valid if index >= 0           */
         } rest;
     };
 
         /*
         ** Constructs a new empty version array.
         */
-    struct va *
-    va_new_empty(void);
+    struct ML_va *
+    ML_va_new_empty(void);
 
         /*
         ** Constructs a new populated version array.
         */
-    struct va *
-    va_new(MR_Integer, MR_Word);
+    struct ML_va *
+    ML_va_new(MR_Integer, MR_Word);
 
         /*
         ** Resizes a version array, populating new items with the
         ** given default value.  The result is always a `latest'
         ** version.
         */
-    struct va *
-    va_resize(struct va *, MR_Integer, MR_Word);
+    struct ML_va *
+    ML_va_resize(struct ML_va *, MR_Integer, MR_Word);
 
         /*
         ** Returns the number of items in a version array.
         */
     MR_Integer
-    va_size(struct va *);
+    ML_va_size(struct ML_va *);
 
         /*
-        ** If I is in range then va_get(VA, I, &X) sets X to the Ith item
+        ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
         ** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
         ** returns MR_FALSE.
         */
     int
-    va_get(struct va *, MR_Integer, MR_Word *);
+    ML_va_get(struct ML_va *, MR_Integer, MR_Word *);
 
         /*
-        ** If I is in range then va_set(VA0, I, X, VA) sets VA to be VA0
+        ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
         ** updated with the Ith item as X (counting from zero) and
         returns MR_TRUE.  Otherwise it returns MR_FALSE.
         */
     int
-    va_set(struct va *, MR_Integer, MR_Word, struct va **);
+    ML_va_set(struct ML_va *, MR_Integer, MR_Word, struct ML_va **);
 
         /*
         ** `Rewinds' a version array, invalidating all extant successors
         ** including the argument.
         */
-    struct va*
-    va_rewind(struct va *);
+    struct ML_va*
+    ML_va_rewind(struct ML_va *);
 
 ").
 
 :- pragma foreign_code("C", "
 
-    #define va_latest_version(VA)   ((VA)->index == -1)
+    #define ML_va_latest_version(VA)   ((VA)->index == -1)
 
 
-    struct va *
-    va_new_empty(void) {
+    struct ML_va *
+    ML_va_new_empty(void) {
 
-        struct va *VA        = MR_GC_NEW(struct va);
+        struct ML_va *VA        = MR_GC_NEW(struct ML_va);
 
         VA->index            = -1;
         VA->value            = (MR_Word) NULL;
@@ -437,11 +437,11 @@ resize(N, X, VA, resize(VA, N, X)).
     }
 
 
-    struct va *
-    va_new(MR_Integer N, MR_Word X) {
+    struct ML_va *
+    ML_va_new(MR_Integer N, MR_Word X) {
 
         MR_Integer  i;
-        struct va  *VA       = MR_GC_NEW(struct va);
+        struct ML_va  *VA       = MR_GC_NEW(struct ML_va);
 
         VA->index            = -1;
         VA->value            = (MR_Word) NULL;
@@ -456,13 +456,13 @@ resize(N, X, VA, resize(VA, N, X)).
     }
 
 
-    struct va *
-    va_resize(struct va *VA0, MR_Integer N, MR_Word X) {
+    struct ML_va *
+    ML_va_resize(struct ML_va *VA0, MR_Integer N, MR_Word X) {
 
         MR_Integer i;
-        MR_Integer size_VA0 = va_size(VA0);
+        MR_Integer size_VA0 = ML_va_size(VA0);
         MR_Integer min      = (N <= size_VA0 ? N : size_VA0);
-        struct va *VA       = MR_GC_NEW(struct va);
+        struct ML_va *VA       = MR_GC_NEW(struct ML_va);
 
         VA->index            = -1;
         VA->value            = (MR_Word) NULL;
@@ -470,7 +470,7 @@ resize(N, X, VA, resize(VA, N, X)).
         VA->rest.array->size = N;
 
         for (i = 0; i < min; i++) {
-            (void) va_get(VA0, i, &VA->rest.array->elements[i]);
+            (void) ML_va_get(VA0, i, &VA->rest.array->elements[i]);
         }
 
         for (i = min; i < N; i++) {
@@ -482,9 +482,9 @@ resize(N, X, VA, resize(VA, N, X)).
 
 
     MR_Integer
-    va_size(struct va *VA) {
+    ML_va_size(struct ML_va *VA) {
 
-        while (!va_latest_version(VA)) {
+        while (!ML_va_latest_version(VA)) {
             VA = VA->rest.next;
         }
         return VA->rest.array->size;
@@ -493,9 +493,9 @@ resize(N, X, VA, resize(VA, N, X)).
 
 
     int
-    va_get(struct va *VA, MR_Integer I, MR_Word *Xptr) {
+    ML_va_get(struct ML_va *VA, MR_Integer I, MR_Word *Xptr) {
 
-        while (!va_latest_version(VA)) {
+        while (!ML_va_latest_version(VA)) {
             if(I == VA->index) {
                 *Xptr = VA->value;
                 return MR_TRUE;
@@ -513,11 +513,12 @@ resize(N, X, VA, resize(VA, N, X)).
 
 
     int
-    va_set(struct va *VA0, MR_Integer I, MR_Word X, struct va **VAptr) {
+    ML_va_set(struct ML_va *VA0, MR_Integer I, MR_Word X,
+            struct ML_va **VAptr) {
 
-        struct va *VA1 = MR_GC_NEW(struct va);
+        struct ML_va *VA1 = MR_GC_NEW(struct ML_va);
 
-        if(va_latest_version(VA0)) {
+        if(ML_va_latest_version(VA0)) {
 
             if(I < 0 || I >= VA0->rest.array->size) {
                 return MR_FALSE;
@@ -535,7 +536,7 @@ resize(N, X, VA, resize(VA, N, X)).
 
         } else {
 
-            if(I >= va_size(VA0)) {
+            if(I >= ML_va_size(VA0)) {
                 return MR_FALSE;
             }
 
@@ -550,19 +551,19 @@ resize(N, X, VA, resize(VA, N, X)).
     }
 
 
-    struct va*
-    va_rewind(struct va *VA) {
+    struct ML_va*
+    ML_va_rewind(struct ML_va *VA) {
 
         MR_Integer I;
         MR_Word    X;
 
-        if(va_latest_version(VA)) {
+        if(ML_va_latest_version(VA)) {
             return VA;
         }
 
         I         = VA->index;
         X         = VA->value;
-        VA        = va_rewind(VA->rest.next);
+        VA        = ML_va_rewind(VA->rest.next);
         VA->index = I;
         VA->value = X;
 
