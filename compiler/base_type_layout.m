@@ -229,9 +229,18 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 		TypeData = []
 	;
 		TypeBody = du_type(Ctors, ConsTagMap, Enum),
+
+			% sort list on tags, so that 
+			% enums, complicated constants and
+			% complicated tags have their shared
+			% functors in the right order.
+		map__to_assoc_list(ConsTagMap, ConsTags0),
+		assoc_list__reverse_members(ConsTags0, RevConsList),
+		list__sort(RevConsList, SortedRevConsList), 
+		assoc_list__reverse_members(SortedRevConsList, ConsTags),
 		(
 			Enum = yes,
-			base_type_layout__construct_enum(Ctors,
+			base_type_layout__construct_enum(ConsTags,
 				LayoutInfo1, LayoutInfo2, TypeData)
 		;
 			Enum = no,
@@ -242,7 +251,6 @@ base_type_layout__construct_base_type_layouts([BaseGenInfo | BaseGenInfos],
 					TypeArg, LayoutInfo1, LayoutInfo2,
 					TypeData)
 			;
-				map__to_assoc_list(ConsTagMap, ConsTags),
 				base_type_layout__construct_du_type(ConsTags, 
 					LayoutInfo1, LayoutInfo2, TypeData)
 			)
@@ -405,38 +413,35 @@ base_type_layout__construct_special_tagged(_ConsId - ConsTag, LayoutInfo,
 	% 	- S, the number of constants in this enum
 	% 	- S strings of constant names
 	
-:- pred base_type_layout__construct_enum(list(constructor),
+:- pred base_type_layout__construct_enum(assoc_list(cons_id, cons_tag),
 	layout_info, layout_info, list(maybe(rval))).
 :- mode base_type_layout__construct_enum(in, in, out, out) is det.
-base_type_layout__construct_enum(Ctors, LayoutInfo0, LayoutInfo, Rvals) :-
-	list__length(Ctors, NumCtors),
-	( 
-		NumCtors > 0
-	->
-		list__map(
-			lambda([Ctor::in, CtorRval::out] is det, (
-				Ctor = (SymName - _Args),
-				unqualify_name(SymName, CtorName),
-				CtorRval = yes(const(string_const(CtorName)))
-				)),
-			Ctors, CtorNameRvals),
+base_type_layout__construct_enum(ConsList, LayoutInfo0, LayoutInfo, Rvals) :-
+	list__map(
+		lambda([ConsId::in, CtorRval::out] is det, (
+		    ( ConsId = cons(SymName, _Arity) - _ConsTag ->
+			unqualify_name(SymName, CtorName),
+			CtorRval = yes(const(string_const(CtorName)))
+		    ;
+			error("base_type_layout: constant has no constructor")
+		    )
+		)),
+		ConsList, CtorNameRvals),
 
-		base_type_layout__enum_indicator(yes, EnumIndicator),
-		Rval0 = yes(const(int_const(EnumIndicator))),
+	base_type_layout__enum_indicator(yes, EnumIndicator),
+	Rval0 = yes(const(int_const(EnumIndicator))),
 
-		Rval1 = yes(const(int_const(NumCtors))),
+	list__length(ConsList, NumCtors),
+	Rval1 = yes(const(int_const(NumCtors))),
 
-		base_type_layout__get_next_label(LayoutInfo0, NextLabel),
-		base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo),
-		base_type_layout__tag_value_const(Tag),
-		base_type_layout__encode_create(LayoutInfo, Tag, 
-			[Rval0, Rval1 | CtorNameRvals], no, NextLabel, Rval),
-		base_type_layout__get_max_tags(LayoutInfo, MaxTags),
-		list__duplicate(MaxTags, Rval, RvalList),
-		list__condense(RvalList, Rvals)
-	; 
-		error("base_type_layout: too few constructors for enum")
-	).
+	base_type_layout__get_next_label(LayoutInfo0, NextLabel),
+	base_type_layout__incr_next_label(LayoutInfo0, LayoutInfo),
+	base_type_layout__tag_value_const(Tag),
+	base_type_layout__encode_create(LayoutInfo, Tag, 
+		[Rval0, Rval1 | CtorNameRvals], no, NextLabel, Rval),
+	base_type_layout__get_max_tags(LayoutInfo, MaxTags),
+	list__duplicate(MaxTags, Rval, RvalList),
+	list__condense(RvalList, Rvals).
 	
 
 	% For equivalences:
@@ -564,7 +569,7 @@ base_type_layout__handle_comp_const([C | Cs], LayoutInfo0, LayoutInfo, Rval) :-
 	list__length([C | Cs], NumCtors), 		% Number of sharers
 	Rval1 = yes(const(int_const(NumCtors))),
 
-	base_type_layout__enum_indicator(yes, EnumIndicator),
+	base_type_layout__enum_indicator(no, EnumIndicator),
 	Rval0 = yes(const(int_const(EnumIndicator))),
 
 	list__map(
