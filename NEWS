@@ -157,6 +157,8 @@ NEWS for Mercury release 0.6
   (Thanks to Andreas Kuehlmann.)
 
 * We have made a few changes to the Mercury standard library.
+  The changes are listed here, but see the library reference manual for
+  details such as documentation on the new predicates.
 
   - The getopt library is now more flexible.  It can handle command
     line switches (such as `-O2') that affect the values of many
@@ -166,12 +168,13 @@ NEWS for Mercury release 0.6
   - We have added a few new predicates using higher order facilities:
 	list__map/3, list__filter/3, list__filter/4, list__foldl/4,
 	list__foldr/4, list__sort/4 and list__merge/4 in list.m and
-	maybe_pred/3 in std_util.m.  See the library reference manual
-    for details.
+	maybe_pred/3 in std_util.m. 
+
+  - There are a couple of new all-solutions predicates in std_util.m:
+    solutions_set/2 and unsorted_solutions/2. 
 
   - We have added some additional predicates for handling association lists:
-    assoc_list__search and assoc_list__remove. See the library reference
-    manual for details.
+    assoc_list__search/3 and assoc_list__remove/4.
 
   - There are quite a few changes to the graph module.  The interface has been
     made more consistent with the rest of the library.  The predicate
