@@ -9,7 +9,7 @@
 
 Summary:      The logic/functional programming language Mercury
 Name:         mercury-compiler
-Version:      0.8
+Version:      0.8.1
 Release:      1
 Packager:     Red Hat Contrib|Net <rhcn-bugs@redhat.com>
 Distribution: Red Hat Contrib|Net
@@ -18,7 +18,7 @@ Copyright:    GPL and LGPL
 Group: 	      Development/Languages
 Provides:     mercury 
 Requires:     gcc make
-Source:       turiel.cs.mu.oz.au:/pub/mercury/mercury-compiler-0.8.tar.gz
+Source:       ftp.mercury.cs.mu.oz.au:/pub/mercury/mercury-compiler-0.8.1.tar.gz
 URL:	      http://www.cs.mu.oz.au/mercury/
 
 %description
@@ -40,7 +40,7 @@ from <http://www.cs.mu.oz.au/mercury/download/release.html>.
 - Initial version.
 
 %prep
-%setup -n mercury-compiler-0.8
+%setup -n mercury-compiler-0.8.1
 
 %build
 sh configure --prefix=/usr
