@@ -12,6 +12,11 @@ complex_numbers
 		A Mercury library package containing support for
 		complex and imaginary numbers.
 
+curs		A Mercury library providing a somewhat more complete
+		and more faithful binding to the curses and panel
+		libraries (the latter is used to provide elementary
+		windowing facilities, rather than doing so in Mercury).
+
 curses		A Mercury library providing a (partial) binding to 
 		curses; a package that provides methods for manipulating
 		the text screen (creating windows, placing characters, etc).
@@ -32,6 +37,11 @@ lazy_evaluation
 		lazy evaluation in Mercury, together with some examples
 		of its use, including a module `lazy_list' that defines
 		a lazy list data type.
+
+lex		A lexer package for Mercury that works over io__states,
+		strings, and so forth.  It comes with a rich set of
+		standard regular expressions and the user is free to add
+		their own.                                                      
 
 moose		A parser generator for Mercury.  Moose works much like
 		yacc or bison, it takes a grammar and generates a table
