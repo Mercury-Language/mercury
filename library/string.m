@@ -1091,7 +1091,7 @@ string__do_conversion_0(Conversion, Poly_t, Ostring, Precision, Flags,
 	;
 	Conversion = 'f' ,
 		Poly_t = f(F),
-		string__float_to_string(F, Fstring),
+		string__float_to_f_string(F, Fstring),
 		string__format_calc_prec(Fstring, Ostring, Precision),
 		(builtin_float_lt(F, 0.0)-> Mv_width = 1 ; Mv_width = 0)
 	;	
@@ -1523,6 +1523,17 @@ string__special_precision_and_width(-1).
 	char buf[500];
 	Word tmp;
 	sprintf(buf, ""%g"", FloatVal);
+	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
+	FloatString = (char *)tmp;
+	strcpy(FloatString, buf);
+}").
+
+:- pred string__float_to_f_string(float::in, string::out) is det.
+
+:- pragma(c_code, string__float_to_f_string(FloatVal::in, FloatString::out), "{
+	char buf[500];
+	Word tmp;
+	sprintf(buf, ""%f"", FloatVal);
 	incr_hp_atomic(tmp, (strlen(buf) + sizeof(Word)) / sizeof(Word));
 	FloatString = (char *)tmp;
 	strcpy(FloatString, buf);
