@@ -6,6 +6,11 @@ This release of Mercury contains an incomplete port to the Microsoft.NET
 Common Language Runtime (CLR).  This port is very new, and the target
 platform is still in beta, so there are many unimplemented features.
 
+In addition the port is currently targetted at .NET Beta 2 SDK, which is not
+yet released as of the time of writing this documentation.  If you want to
+try out a version of Mercury which works with a released SDK (such as Beta 1)
+we recommend you try Mercury 0.10.x.
+
 The Mercury compiler will generate code in Microsoft's Intermediate
 Language (IL) that can be assembled into bytecode suitable for running
 in the .NET runtime system.  In addition, a small part of the Mercury library
@@ -13,10 +18,12 @@ has been ported to use the .NET Frameworks.
 
 In order to try this system you will need 
 
-	- The Microsoft .NET Beta 1 SDK, see
+	- The Microsoft .NET Beta 2 SDK, see
 		<http://msdn.microsoft.com/net/>
 	  to download.  If you are an MSDN Universal subscriber you can
 	  also order CDs as part of your subscription.
+	  (at the time of writing Beta 2 is unreleased, so this information
+	  may vary).
 
 	- A windows system suitable for development with Microsoft .NET
 	  (Windows 2000 is the most likely).  Microsoft advises not to
@@ -53,8 +60,8 @@ is still somewhat rudimentary.
 
 To run a Mercury program using the ilc grade, you need to build the
 library and runtime in the ilc grade, using the Mercury source distribution.
-After unpacking the Mercury source distribution,
-run the following commands in a Cygwin shell:
+After unpacking the Mercury source distribution, run the following commands in
+a Cygwin shell:
 
 	cd mercury
 	autoconf
@@ -66,6 +73,7 @@ run the following commands in a Cygwin shell:
 	cd library
 	mmake depend
 	MMAKE_DIR=../scripts mmake GRADE=ilc
+	gacutil -i mercury.dll
 	cd ..
 
 You can now build programs such as hello.m or eliza.m in the samples
@@ -76,17 +84,9 @@ directory.
 	mmake hello.il
 	ilasm hello.il
 
-Currently, to run executables, you also need to create a corresponding
-.cfg file which describes where to find the library.  So create a file
-called hello.cfg which contains the following XML fragment:
+or for single file programs, simply:
 
-	<configuration>
-	<assemblies>
-	</assemblies>
-	<AppDomain 
-		PrivatePath="../library/"
-	/>
-	</configuration>
+	mmc --grade ilc hello.m
 
 Now you can finally run hello
 
