@@ -53,26 +53,16 @@
 :- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
 	is det.
 
-% The following types are exported to the modules that implement
-% specialized kinds of switches.
-
-:- type extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
-:- type cases_list == list(extended_case).
-
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module dense_switch, string_switch, tag_switch, lookup_switch.
-:- import_module code_gen, unify_gen, code_aux, type_util, code_util.
+:- import_module code_gen, unify_gen, code_aux, code_util.
+:- import_module switch_util, type_util.
 :- import_module trace, globals, options.
-:- import_module bool, int, string, map, tree, std_util, require.
 
-:- type switch_category
-	--->	atomic_switch
-	;	string_switch
-	;	tag_switch
-	;	other_switch.
+:- import_module bool, int, string, map, tree, std_util, require.
 
 %---------------------------------------------------------------------------%
 
@@ -168,20 +158,7 @@ switch_gen__determine_category(CaseVar, SwitchCategory) -->
 	code_info__variable_type(CaseVar, Type),
 	code_info__get_module_info(ModuleInfo),
 	{ classify_type(Type, ModuleInfo, TypeCategory) },
-	{ switch_gen__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
-
-:- pred switch_gen__type_cat_to_switch_cat(builtin_type, switch_category).
-:- mode switch_gen__type_cat_to_switch_cat(in, out) is det.
-
-switch_gen__type_cat_to_switch_cat(enum_type, atomic_switch).
-switch_gen__type_cat_to_switch_cat(int_type,  atomic_switch).
-switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
-switch_gen__type_cat_to_switch_cat(float_type, other_switch).
-switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
-switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
-switch_gen__type_cat_to_switch_cat(user_type, tag_switch).
-switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
-switch_gen__type_cat_to_switch_cat(tuple_type, other_switch).
+	{ switch_util__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
 
 %---------------------------------------------------------------------------%
 
@@ -193,29 +170,9 @@ switch_gen__lookup_tags([], _, []) --> [].
 switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
 	{ Case = case(ConsId, Goal) },
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	{ switch_gen__priority(Tag, Priority) },
+	{ switch_util__switch_priority(Tag, Priority) },
 	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
 	switch_gen__lookup_tags(Cases, Var, TaggedCases).
-
-%---------------------------------------------------------------------------%
-
-:- pred switch_gen__priority(cons_tag, int).
-:- mode switch_gen__priority(in, out) is det.
-
-	% prioritize tag tests - the most efficient ones first.
-
-switch_gen__priority(no_tag, 0).			% should never occur
-switch_gen__priority(int_constant(_), 1).
-switch_gen__priority(shared_local_tag(_, _), 1).
-switch_gen__priority(unshared_tag(_), 2).
-switch_gen__priority(float_constant(_), 3).
-switch_gen__priority(shared_remote_tag(_, _), 4).
-switch_gen__priority(string_constant(_), 5).
-switch_gen__priority(pred_closure_tag(_, _, _), 6).	% should never occur
-switch_gen__priority(code_addr_constant(_, _), 6).	% should never occur
-switch_gen__priority(type_ctor_info_constant(_, _, _), 6).% should never occur
-switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur
-switch_gen__priority(tabling_pointer_constant(_, _), 6). % shouldn't occur
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

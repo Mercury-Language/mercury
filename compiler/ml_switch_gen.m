@@ -84,12 +84,6 @@
 		prog_context::in, switch_default::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-% An ml_extended_case is an HLDS case annotated with some additional info.
-% XXX this is duplicated from switch_gen.m and should be moved to a new
-% module switch_util.m
-:- type ml_extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
-:- type ml_cases_list == list(ml_extended_case).
-
 	% Succeed iff the target supports the specified construct.
 :- pred target_supports_int_switch(globals::in) is semidet.
 :- pred target_supports_string_switch(globals::in) is semidet.
@@ -103,18 +97,11 @@
 % These ones are not yet implemented yet:
 % :- import_module ml_lookup_switch.
 :- import_module ml_tag_switch, ml_dense_switch, ml_string_switch.
-:- import_module ml_code_gen, ml_unify_gen, ml_code_util, type_util.
+:- import_module ml_code_gen, ml_unify_gen, ml_code_util.
+:- import_module switch_util, type_util.
 :- import_module options.
 
 :- import_module bool, int, string, map, tree, std_util, require.
-
-% XXX this is duplicated from switch_gen.m and should be moved to a new
-% module switch_util.m
-:- type ml_switch_category
-	--->	atomic_switch	% a switch on int/char/enum
-	;	string_switch
-	;	tag_switch
-	;	other_switch.
 
 %-----------------------------------------------------------------------------%
 
@@ -228,8 +215,8 @@ XXX Lookup switches are NYI
 		{ NumCases >= TagSize },
 		{ target_supports_int_switch(Globals) }
 	->
-		ml_tag_switch__generate(TaggedCases, CaseVar, CodeModel, CanFail,
-			Context, MLDS_Decls, MLDS_Statements)
+		ml_tag_switch__generate(TaggedCases, CaseVar, CodeModel,
+			CanFail, Context, MLDS_Decls, MLDS_Statements)
 	;
 		%
 		% Try using a "direct-mapped" switch
@@ -252,7 +239,7 @@ XXX Lookup switches are NYI
 
 %-----------------------------------------------------------------------------%
 
-:- pred target_supports_switch(ml_switch_category::in, globals::in)
+:- pred target_supports_switch(switch_category::in, globals::in)
 	is semidet.
 target_supports_switch(SwitchCategory, Globals) :-
 	(
@@ -310,7 +297,7 @@ target_supports_goto_2(java) = no.
 	% being switched on is an atomic type, a string, or
 	% something more complicated.
 
-:- pred ml_switch_gen__determine_category(prog_var, ml_switch_category,
+:- pred ml_switch_gen__determine_category(prog_var, switch_category,
 	ml_gen_info, ml_gen_info).
 :- mode ml_switch_gen__determine_category(in, out, in, out) is det.
 
@@ -319,30 +306,14 @@ ml_switch_gen__determine_category(CaseVar, SwitchCategory) -->
 	=(MLGenInfo),
 	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
 	{ type_util__classify_type(Type, ModuleInfo, TypeCategory) },
-	{ ml_switch_gen__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
-
-:- pred ml_switch_gen__type_cat_to_switch_cat(builtin_type, ml_switch_category).
-:- mode ml_switch_gen__type_cat_to_switch_cat(in, out) is det.
-
-% XXX this is duplicated from switch_gen.m and should be moved to a new
-% module switch_util.m
-
-ml_switch_gen__type_cat_to_switch_cat(enum_type, atomic_switch).
-ml_switch_gen__type_cat_to_switch_cat(int_type,  atomic_switch).
-ml_switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
-ml_switch_gen__type_cat_to_switch_cat(float_type, other_switch).
-ml_switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
-ml_switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
-ml_switch_gen__type_cat_to_switch_cat(user_type, tag_switch).
-ml_switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
-ml_switch_gen__type_cat_to_switch_cat(tuple_type, other_switch).
+	{ switch_util__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
 
 %-----------------------------------------------------------------------------%
 
 	% Look up the representation (tag) for the cons_id in each case.
 	% Also look up the priority of each tag test.
 	%
-:- pred ml_switch_lookup_tags(list(case), prog_var, ml_cases_list,
+:- pred ml_switch_lookup_tags(list(case), prog_var, cases_list,
 				ml_gen_info, ml_gen_info).
 :- mode ml_switch_lookup_tags(in, in, out, in, out) is det.
 
@@ -351,40 +322,15 @@ ml_switch_lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
 	{ Case = case(ConsId, Goal) },
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
-	{ ml_switch_priority(Tag, Priority) },
+	{ switch_util__switch_priority(Tag, Priority) },
 	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
 	ml_switch_lookup_tags(Cases, Var, TaggedCases).
-
-	% Return the priority of a tag test.
-	% A low number here indicates a high priority.
-	% We prioritize the tag tests so that the cheapest
-	% (most efficient) ones come first.
-	%
-:- pred ml_switch_priority(cons_tag, int).
-:- mode ml_switch_priority(in, out) is det.
-
-% XXX this is duplicated from switch_gen.m and should be moved to a new
-% module switch_util.m
-
-ml_switch_priority(no_tag, 0).			% should never occur
-ml_switch_priority(int_constant(_), 1).
-ml_switch_priority(shared_local_tag(_, _), 1).
-ml_switch_priority(unshared_tag(_), 2).
-ml_switch_priority(float_constant(_), 3).
-ml_switch_priority(shared_remote_tag(_, _), 4).
-ml_switch_priority(string_constant(_), 5).
-	% The following tags should all never occur in switches.
-ml_switch_priority(pred_closure_tag(_, _, _), 6).
-ml_switch_priority(code_addr_constant(_, _), 6).
-ml_switch_priority(type_ctor_info_constant(_, _, _), 6).
-ml_switch_priority(base_typeclass_info_constant(_, _, _), 6).
-ml_switch_priority(tabling_pointer_constant(_, _), 6).
 
 %-----------------------------------------------------------------------------%
 
 	% Generate a chain of if-then-elses to test each case in turn.
 	%
-:- pred ml_switch_generate_if_else_chain(list(ml_extended_case), prog_var,
+:- pred ml_switch_generate_if_else_chain(list(extended_case), prog_var,
 	code_model, can_fail, prog_context, mlds__defns, mlds__statements,
 	ml_gen_info, ml_gen_info).
 :- mode ml_switch_generate_if_else_chain(in, in, in, in, in, out, out,
@@ -426,7 +372,7 @@ ml_switch_generate_if_else_chain([Case | Cases], Var, CodeModel, CanFail,
 	% This is used for "direct-mapped" switches, where we map a
 	% Mercury switch directly to a switch in the target language.
 	%
-:- pred ml_switch_generate_mlds_switch(list(ml_extended_case), prog_var,
+:- pred ml_switch_generate_mlds_switch(list(extended_case), prog_var,
 	code_model, can_fail, prog_context, mlds__defns, mlds__statements,
 	ml_gen_info, ml_gen_info).
 :- mode ml_switch_generate_mlds_switch(in, in, in, in, in, out, out,
@@ -446,7 +392,7 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
 	{ MLDS_Decls = [] },
 	{ MLDS_Statements = [SwitchStatement] }.
 
-:- pred ml_switch_generate_mlds_cases(list(ml_extended_case),
+:- pred ml_switch_generate_mlds_cases(list(extended_case),
 		code_model, list(mlds__switch_case), ml_gen_info, ml_gen_info).
 :- mode ml_switch_generate_mlds_cases(in, in, out, in, out) is det.
 
@@ -456,7 +402,7 @@ ml_switch_generate_mlds_cases([Case | Cases], CodeModel,
 	ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case),
 	ml_switch_generate_mlds_cases(Cases, CodeModel, MLDS_Cases).
 
-:- pred ml_switch_generate_mlds_case(ml_extended_case, code_model,
+:- pred ml_switch_generate_mlds_case(extended_case, code_model,
 		mlds__switch_case, ml_gen_info, ml_gen_info).
 :- mode ml_switch_generate_mlds_case(in, in, out, in, out) is det.
 

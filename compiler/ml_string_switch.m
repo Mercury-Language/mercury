@@ -20,11 +20,11 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module hlds_data.
-:- import_module mlds, ml_code_util, ml_switch_gen.
+:- import_module hlds_data, switch_util.
+:- import_module mlds, ml_code_util.
 :- import_module llds. % XXX for code_model.
 
-:- pred ml_string_switch__generate(ml_cases_list::in, prog_var::in,
+:- pred ml_string_switch__generate(cases_list::in, prog_var::in,
 		code_model::in, can_fail::in, prog_context::in,
 		mlds__defns::out, mlds__statements::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
@@ -33,7 +33,7 @@
 
 :- implementation.
 
-:- import_module ml_code_gen, builtin_ops, type_util.
+:- import_module ml_code_gen, ml_switch_gen, builtin_ops, type_util.
 :- import_module globals, options.
 
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
@@ -87,9 +87,9 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 
 		% Compute the hash table
 		%
-		ml_string_switch__hash_cases(Cases, HashMask, HashValsMap),
+		switch_util__string_hash_cases(Cases, HashMask, HashValsMap),
 		map__to_assoc_list(HashValsMap, HashValsList),
-		ml_string_switch__calc_hash_slots(HashValsList, HashValsMap,
+		switch_util__calc_hash_slots(HashValsList, HashValsMap,
 			HashSlotsMap)
 	},
 
@@ -279,122 +279,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 			[EndLabelStatement, EndComment]
 	}.
 
-:- pred ml_string_switch__hash_cases(ml_cases_list, int,
-		map(int, ml_cases_list)).
-:- mode ml_string_switch__hash_cases(in, in, out) is det.
-
-ml_string_switch__hash_cases([], _, Map) :-
-	map__init(Map).
-ml_string_switch__hash_cases([Case | Cases], HashMask, Map) :-
-	ml_string_switch__hash_cases(Cases, HashMask, Map0),
-	( Case = case(_, string_constant(String0), _, _) ->
-		String = String0
-	;
-		error("ml_string_switch__hash_cases: non-string case?")
-	),
-	string__hash(String, HashVal0),
-	HashVal is HashVal0 /\ HashMask,
-	( map__search(Map0, HashVal, CaseList0) ->
-		map__det_update(Map0, HashVal, [Case | CaseList0], Map)
-	;
-		map__det_insert(Map0, HashVal, [Case], Map)
-	).
-
-:- type hash_slot ---> hash_slot(ml_extended_case, int).
-
-:- pred ml_string_switch__calc_hash_slots(assoc_list(int, ml_cases_list),
-	map(int, ml_cases_list), map(int, hash_slot)).
-:- mode ml_string_switch__calc_hash_slots(in, in, out) is det.
-
-	% ml_string_switch__calc_hash_slots(AssocList, HashMap, Map) :-
-	%	For each (HashVal - Case) pair in AssocList,
-	%	allocate a hash slot in Map for the case, as follows.
-	%	If the hash slot corresponding to HashVal is not
-	%	already used, then use that one.  Otherwise, find
-	%	the next spare slot (making sure that we don't
-	%	use slots which can be used for a direct match with
-	%	the hash value for one of the other cases), and
-	%	use it instead.  Keep track of the hash chains
-	%	as we do this.
-
-ml_string_switch__calc_hash_slots(HashValList, HashMap, Map) :-
-	map__init(Map0),
-	ml_string_switch__calc_hash_slots_1(HashValList, HashMap, Map0, 0,
-		Map, _).
-
-:- pred ml_string_switch__calc_hash_slots_1(assoc_list(int, ml_cases_list),
-	map(int, ml_cases_list), map(int, hash_slot), int,
-	map(int, hash_slot), int).
-:- mode ml_string_switch__calc_hash_slots_1(in, in, in, in, out, out) is det.
-
-ml_string_switch__calc_hash_slots_1([], _, Map, LastUsed, Map, LastUsed).
-ml_string_switch__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0,
-		LastUsed0, Map, LastUsed) :-
-	ml_string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
-		LastUsed0, Map1, LastUsed1),
-	ml_string_switch__calc_hash_slots_1(Rest, HashMap, Map1,
-		LastUsed1, Map, LastUsed).
-
-:- pred ml_string_switch__calc_hash_slots_2(ml_cases_list, int,
-		map(int, ml_cases_list), map(int, hash_slot), int,
-		map(int, hash_slot), int).
-:- mode ml_string_switch__calc_hash_slots_2(in, in, in, in, in, out, out) is det.
-
-ml_string_switch__calc_hash_slots_2([], _HashVal, _HashMap, Map, LastUsed,
-		Map, LastUsed).
-ml_string_switch__calc_hash_slots_2([Case | Cases], HashVal, HashMap, Map0,
-		LastUsed0, Map, LastUsed) :-
-	ml_string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
-		LastUsed0, Map1, LastUsed1),
-	( map__contains(Map1, HashVal) ->
-		ml_string_switch__follow_hash_chain(Map1, HashVal, ChainEnd),
-		ml_string_switch__next_free_hash_slot(Map1, HashMap, LastUsed1,
-			Next),
-		map__lookup(Map1, ChainEnd, hash_slot(PrevCase, _)),
-		map__det_update(Map1, ChainEnd, hash_slot(PrevCase, Next),
-			Map2),
-		map__det_insert(Map2, Next, hash_slot(Case, -1), Map),
-		LastUsed = Next
-	;
-		map__det_insert(Map1, HashVal, hash_slot(Case, -1), Map),
-		LastUsed = LastUsed1
-	).
-
-:- pred ml_string_switch__follow_hash_chain(map(int, hash_slot), int, int).
-:- mode ml_string_switch__follow_hash_chain(in, in, out) is det.
-
-ml_string_switch__follow_hash_chain(Map, Slot, LastSlot) :-
-	map__lookup(Map, Slot, hash_slot(_, NextSlot)),
-	(
-		NextSlot >= 0,
-		map__contains(Map, NextSlot)
-	->
-		ml_string_switch__follow_hash_chain(Map, NextSlot, LastSlot)
-	;
-		LastSlot = Slot
-	).
-
-	% next_free_hash_slot(M, H_M, LastUsed, FreeSlot) :-
-	%	Find the next available slot FreeSlot in the hash table
-	%	which is not already used (contained in M) and which is not
-	%	going to be used a primary slot (contained in H_M),
-	%	starting at the slot after LastUsed.
-
-:- pred ml_string_switch__next_free_hash_slot(map(int, hash_slot),
-	map(int, ml_cases_list), int, int).
-:- mode ml_string_switch__next_free_hash_slot(in, in, in, out) is det.
-
-ml_string_switch__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
-	NextSlot is LastUsed + 1,
-	(
-		\+ map__contains(Map, NextSlot),
-		\+ map__contains(H_Map, NextSlot)
-	->
-		FreeSlot = NextSlot
-	;
-		ml_string_switch__next_free_hash_slot(Map, H_Map, NextSlot,
-			FreeSlot)
-	).
+%-----------------------------------------------------------------------------%
 
 :- pred ml_string_switch__gen_hash_slots(int::in, int::in,
 		map(int, hash_slot)::in, code_model::in, prog_context::in,

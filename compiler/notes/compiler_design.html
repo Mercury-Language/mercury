@@ -686,6 +686,7 @@ for high-level optimizations (but which is not yet used).
 			<li> lookup_switch.m
 			<li> string_switch.m
 			<li> tag_switch.m
+			<li> switch_util.m (also used by MLDS back-end)
 			</ul>
 		<li> commit_gen.m (commits)
 		<li> pragma_c_gen.m (embedded C code)
@@ -924,9 +925,13 @@ information used for code generation:
 		<dl>
 		<dt> ml_unify_gen.m
 		<dt> ml_call_gen.m
-		<dt> ml_switch_gen.m
-		<dt> ml_string_switch.m
-		<dt> ml_dense_switch.m
+		<dt> ml_switch_gen.m, which in turn has sub-modules
+			<ul>
+			<li> ml_dense_switch.m
+			<li> ml_string_switch.m
+			<li> ml_tag_switch.m
+			<li> switch_util.m (also used by MLDS back-end)
+			</ul>
 		<dl>
 	  The module ml_code_util.m provides utility routines for
 	  MLDS code generation.  The module ml_util.m provides some
@@ -1158,6 +1163,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-11-09 04:08:31 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-11-16 08:45:48 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
