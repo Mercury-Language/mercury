@@ -63,7 +63,8 @@ Changes to the Mercury standard library:
 
 * We've added some new predicates to the Mercury standard library:
 	array__map/3,
-	bag__count_value/3.
+	bag__count_value/3,
+	std_util__do_while/4.
 
 * The following predicates have been replaced by functions with
   the same names, and will be removed in a future release.
