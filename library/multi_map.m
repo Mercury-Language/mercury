@@ -201,8 +201,13 @@
 :- pred multi_map__from_corresponding_list_lists(list(K)::in, list(list(V))::in,
 	multi_map(K, V)::out) is det.
 
-	% For multi_map__merge(MultiMapA, MultiMapB, MultiMap). 
-	%
+	% multi_map__merge(MultiMapA, MultiMapB, MultiMap). 
+	% Merge `MultiMapA' and `MultiMapB' so that if a key occurs in
+	% both `MultiMapA' and `MultiMapB' then the values corresponding
+	% to that key in `MultiMap' will be the concatenation of
+	% the values corresponding to that key from `MultiMapA' and
+	% `MultiMapB'. 
+	% 
 :- func multi_map__merge(multi_map(K, V), multi_map(K, V))
 	= multi_map(K, V).
 :- pred multi_map__merge(multi_map(K, V)::in, multi_map(K, V)::in,
@@ -224,7 +229,7 @@
 	list(V)::out) is det.
 
 	% Declaratively, a NOP.
-	% Operationally, a suggestion that the implemention
+	% Operationally, a suggestion that the implementation
 	% optimize the representation of the multi_map in the expectation
 	% of a number of lookups but few or no modifications.
 	%
