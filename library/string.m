@@ -667,6 +667,30 @@
 	;	c(char).
 
 %-----------------------------------------------------------------------------%
+
+:- type justified_column
+	--->	left(list(string))
+	;	right(list(string)).
+
+	% format_table(Columns, Separator) = Table
+	% format_table/2 takes a list of columns and a column separator
+	% and returns a formatted table, where each field in each column
+	% has been aligned and fields are seperated with Separator.
+	% A newline character is inserted between each row.
+	% If the columns are not all the same length then an exception is
+	% thrown.
+	%
+	% For example:
+	%
+	% format_table([right(["a", "bb", "ccc"]), left(["1", "22", "333"])], 
+	%   " * ")
+	% would return the table:
+	%   a * 1
+	%  bb * 22
+	% ccc * 333
+	%
+:- func string__format_table(list(justified_column), string) = string.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -4616,6 +4640,61 @@ char_list_equal([X | Xs], [X | Ys]) :-
 	char_list_equal(Xs, Ys).
 
 %------------------------------------------------------------------------------%
+
+string__format_table(Columns, Seperator) = Table :-
+	MaxWidths = list.map(find_max_length, Columns),
+	PaddedColumns = list.map_corresponding(pad_column, MaxWidths, Columns),
+	(
+		PaddedColumns = [PaddedHead | PaddedTail],
+		Rows = list.foldl(list.map_corresponding(
+			string.join_rev_columns(
+				Seperator)), PaddedTail, PaddedHead)
+	;
+		PaddedColumns = [],
+		Rows = []
+	),
+	Table = string.join_list("\n", Rows).
+
+:- func join_rev_columns(string, string, string) = string.
+
+join_rev_columns(Seperator, Col1, Col2) = Col2 ++ Seperator ++ Col1.
+
+:- func find_max_length(justified_column) = int.
+
+find_max_length(left(Strings)) = MaxLength :-
+	list.foldl2(max_str_length, Strings, 0, MaxLength, "", _).
+find_max_length(right(Strings)) = MaxLength :-
+	list.foldl2(max_str_length, Strings, 0, MaxLength, "", _).
+
+:- func pad_column(int, justified_column) = list(string).
+
+pad_column(Width, left(Strings)) = list.map(string.rpad(' ', Width), Strings).
+pad_column(Width, right(Strings)) = list.map(string.lpad(' ', Width), Strings).
+
+:- func rpad(char, int, string) = string.
+
+rpad(Chr, N, Str) = string.pad_right(Str, Chr, N).
+
+:- func lpad(char, int, string) = string.
+
+lpad(Chr, N, Str) = string.pad_left(Str, Chr, N).
+
+:- pred max_str_length(string::in, int::in, int::out, string::in, string::out)
+	is det.
+
+max_str_length(Str, PrevMaxLen, MaxLen, PrevMaxStr, MaxStr) :-
+	Length = string.length(Str),
+	(
+		Length > PrevMaxLen
+	->
+		MaxLen = Length,
+		MaxStr = Str
+	;
+		MaxLen = PrevMaxLen,
+		MaxStr = PrevMaxStr
+	).
+
+%-----------------------------------------------------------------------------%
 
 :- end_module string.
 

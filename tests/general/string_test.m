@@ -56,7 +56,12 @@ test(X, Y) -->
 	{ string__pad_right(FiveFs, '.', 10, FsAndDots) },
 	write_message("Five f's and five dots: ", FsAndDots),
 	{ string__pad_left(FsAndDots, '-', 15, DashesFsAndDots) },
-	write_message("Five dashes, five f's and five dots: ", DashesFsAndDots),
+	write_message("Five dashes, five f's and five dots: ", 
+		DashesFsAndDots),
+	{ Table = string__format_table([left(["aaa", "b", "cc"]), 
+		right(["1111111", "", "333"]), right(["1,300,000.00", 
+		"9,999.00", "123,456,789.99"])], "|") ++ "\n" },
+	write_string(Table),
 	[].
 
 :- pred write_message(string, string, io__state, io__state).

@@ -14,3 +14,6 @@ string_to_int 5678: 5678
 Five f's: fffff
 Five f's and five dots: fffff.....
 Five dashes, five f's and five dots: -----fffff.....
+aaa|1111111|  1,300,000.00
+b  |       |      9,999.00
+cc |    333|123,456,789.99
