@@ -4,13 +4,14 @@
 
 % Main authors: conway, fjh.
 
-:- module llds.		
-
-:- import_module io, list, term, string, int, require. % and float, eventually.
-
 %-----------------------------------------------------------------------------%
 
+:- module llds.		
 :- interface.
+:- import_module io, std_util, list, term, string, int.
+		% and float, eventually.
+
+%-----------------------------------------------------------------------------%
 
 :- type c_file		--->	c_file(string, list(c_module)).
 			%	filename, modules
@@ -23,7 +24,7 @@
 :- type llds__pred_mode_id == int.
 
 			%	predicate name, arity, mode, code
-:- type instruction	==	pair(inst, string).
+:- type instruction	==	pair(instr, string).
 			%	 instruction, comment
 
 :- type instr		--->	assign(lval, rval)
@@ -93,6 +94,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 	% The following code is very straightforward and
 	% unremarkable.  The only thing of note is that is
