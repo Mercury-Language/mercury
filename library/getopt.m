@@ -394,7 +394,7 @@ getopt__process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
 			map__set(OptionTable0, Flag, int(IntArg), OptionTable),
 			Result = ok(OptionTable)
 		;
-			getopt__numeric_argument(Option, Result)
+			getopt__numeric_argument(Option, Arg, Result)
 		)
 	;
 		error("integer argument expected in getopt__process_option")
@@ -440,7 +440,7 @@ getopt__process_option(int_special, Option, Flag, MaybeArg, OptionOps,
 			getopt__process_special(Option, Flag, int(IntArg),
 				OptionOps, OptionTable0, Result)
 		;
-			getopt__numeric_argument(Option, Result)
+			getopt__numeric_argument(Option, Arg, Result)
 		)
 	;
 		error("int_special argument expected in getopt__process_option")
@@ -508,12 +508,13 @@ getopt__need_arg(bool_special, no).
 getopt__need_arg(int_special, yes).
 getopt__need_arg(string_special, yes).
 
-:- pred getopt__numeric_argument(string::in,
+:- pred getopt__numeric_argument(string::in, string::in,
 	maybe_option_table(OptionType)::out) is det.
 
-getopt__numeric_argument(Option, Result) :-
+getopt__numeric_argument(Option, Arg, Result) :-
 	string__append_list(["option `", Option,
-		"' requires a numeric argument"], ErrorMsg),
+		"' requires a numeric argument; `", Arg,
+		"' is not numeric"], ErrorMsg),
 	Result = error(ErrorMsg).
 
 %-----------------------------------------------------------------------------%
