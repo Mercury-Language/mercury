@@ -202,6 +202,16 @@ fi
 MMAKE_USE_SUBDIRS=$use_subdirs
 export MMAKE_USE_SUBDIRS
 
+#-----------------------------------------------------------------------------#
+
+# on hg, the file system we're using does not support links
+case `hostname` in
+	hg*)	LN="cp -r"; LN_S="cp -r" ;;
+	*)	LN="ln"; LN_S="ln -s" ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
 # Turn off the debugger, since accidentally leaving it on will result
 # in user interaction every time we invoke any version of the compiler
 # that was compiled with tracing. This has happened to me accidentally 
@@ -289,28 +299,28 @@ then
 	# This is needed to cope with small limits
 	# on the size of argument vectors.
 
-	ln -s $root/compiler/[a-h]*.m .
-	ln -s $root/compiler/[i-o]*.m .
-	ln -s $root/compiler/[p-s]*.m .
-	ln -s $root/compiler/[t-z]*.m .
-	ln -s $root/compiler/*.pp .	
+	$LN_S $root/compiler/[a-h]*.m .
+	$LN_S $root/compiler/[i-o]*.m .
+	$LN_S $root/compiler/[p-s]*.m .
+	$LN_S $root/compiler/[t-z]*.m .
+	$LN_S $root/compiler/*.pp .	
 
 	cp $root/compiler/Mmake* .
 	cd $root/stage2
 	mkdir library
 	cd library
-	ln -s $root/library/library.nu.nl.in .
-	ln -s $root/library/[a-l]*.m .
-	ln -s $root/library/[m-z]*.m .
-	ln -s $root/library/*.nl .
+	$LN_S $root/library/library.nu.nl.in .
+	$LN_S $root/library/[a-l]*.m .
+	$LN_S $root/library/[m-z]*.m .
+	$LN_S $root/library/*.nl .
 	cp $root/library/Mmake* .
-	ln -s $root/library/$STD_LIB_NAME.init .
+	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage2
 	mkdir browser
 	cd browser
-	ln -s $root/browser/*.m .
+	$LN_S $root/browser/*.m .
 	cp $root/browser/Mmake* .
-	ln -s $root/browser/$BROWSER_LIB_NAME.init .
+	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage2
 	if $copy_runtime
 	then
@@ -319,22 +329,22 @@ then
 		rm runtime
 		mkdir runtime
 		cd runtime
-		ln -s $root/runtime/*.h .
-		ln -s $root/runtime/*.c .
-		ln -s $root/runtime/*.in .
+		$LN_S $root/runtime/*.h .
+		$LN_S $root/runtime/*.c .
+		$LN_S $root/runtime/*.in .
 		cp $root/runtime/Mmake* .
-		ln -s $root/runtime/machdeps .
+		$LN_S $root/runtime/machdeps .
 		cd $root/stage2
 		rm trace
 		mkdir trace
 		cd trace
-		ln -s $root/trace/*.h .
-		ln -s $root/trace/*.c .
+		$LN_S $root/trace/*.h .
+		$LN_S $root/trace/*.c .
 		cp $root/trace/Mmake* .
 		cd $root/stage2
 	else
-		ln -s $root/runtime .
-		ln -s $root/trace .
+		$LN_S $root/runtime .
+		$LN_S $root/trace .
 	fi
 	if $copy_boehm_gc
 	then
@@ -343,34 +353,34 @@ then
 		rm boehm_gc
 		mkdir boehm_gc
 		cd boehm_gc
-		ln -s $root/boehm_gc/*.h .
-		ln -s $root/boehm_gc/*.c .
-		ln -s $root/boehm_gc/*.s .
-		ln -s $root/boehm_gc/include .
+		$LN_S $root/boehm_gc/*.h .
+		$LN_S $root/boehm_gc/*.c .
+		$LN_S $root/boehm_gc/*.s .
+		$LN_S $root/boehm_gc/include .
 		cp $root/boehm_gc/Mmake* .
 		cp $root/boehm_gc/Makefile .
-		ln -s $root/boehm_gc/machdeps .
+		$LN_S $root/boehm_gc/machdeps .
 		cd $root/stage2
 	else
-		ln -s $root/boehm_gc .
+		$LN_S $root/boehm_gc .
 	fi
-	ln -s $root/doc .
-	ln -s $root/scripts .
-	ln -s $root/util .
+	$LN_S $root/doc .
+	$LN_S $root/scripts .
+	$LN_S $root/util .
 	if $copy_profiler
 	then
 		mkdir profiler
 		cd profiler
-		ln -s $root/profiler/*.m .
+		$LN_S $root/profiler/*.m .
 		cp $root/profiler/Mmake* .
 		cd $root/stage2
 	else
-		ln -s $root/profiler .
+		$LN_S $root/profiler .
 	fi
-	ln -s $root/conf* .
-	ln -s $root/aclocal.m4 .
-	ln -s $root/VERSION .
-	ln -s $root/.*.in .
+	$LN_S $root/conf* .
+	$LN_S $root/aclocal.m4 .
+	$LN_S $root/VERSION .
+	$LN_S $root/.*.in .
 	rm -f config*.log
 	cp $root/Mmake* .
 	if test -f $root/Mmake.stage.params
@@ -498,40 +508,40 @@ then
 	# Break up the links into several chunks.
 	# This is needed to cope with small limits
 	# on the size of argument vectors.
-	ln -s $root/compiler/[a-h]*.m .
-	ln -s $root/compiler/[i-o]*.m .
-	ln -s $root/compiler/[p-s]*.m .
-	ln -s $root/compiler/[t-z]*.m .
-	ln -s $root/compiler/*.pp .	
+	$LN_S $root/compiler/[a-h]*.m .
+	$LN_S $root/compiler/[i-o]*.m .
+	$LN_S $root/compiler/[p-s]*.m .
+	$LN_S $root/compiler/[t-z]*.m .
+	$LN_S $root/compiler/*.pp .	
 
 	cp $root/compiler/Mmake* .
 	cd $root/stage3
 	mkdir library
 	cd library
-	ln -s $root/library/library.nu.nl.in .
-	ln -s $root/library/[a-l]*.m .
-	ln -s $root/library/[m-z]*.m .
-	ln -s $root/library/*.nl .
+	$LN_S $root/library/library.nu.nl.in .
+	$LN_S $root/library/[a-l]*.m .
+	$LN_S $root/library/[m-z]*.m .
+	$LN_S $root/library/*.nl .
 	cp $root/library/Mmake* .
-	ln -s $root/library/$STD_LIB_NAME.init .
+	$LN_S $root/library/$STD_LIB_NAME.init .
 	cd $root/stage3
 	mkdir browser
 	cd browser
-	ln -s $root/browser/*.m .
+	$LN_S $root/browser/*.m .
 	cp $root/browser/Mmake* .
-	ln -s $root/browser/$BROWSER_LIB_NAME.init .
+	$LN_S $root/browser/$BROWSER_LIB_NAME.init .
 	cd $root/stage3
-	ln -s $root/boehm_gc .
-	ln -s $root/doc .
-	ln -s $root/runtime .
-	ln -s $root/trace .
-	ln -s $root/scripts .
-	ln -s $root/util .
-	ln -s $root/profiler .
-	ln -s $root/conf* .
-	ln -s $root/aclocal.m4 .
-	ln -s $root/VERSION .
-	ln -s $root/.*.in .
+	$LN_S $root/boehm_gc .
+	$LN_S $root/doc .
+	$LN_S $root/runtime .
+	$LN_S $root/trace .
+	$LN_S $root/scripts .
+	$LN_S $root/util .
+	$LN_S $root/profiler .
+	$LN_S $root/conf* .
+	$LN_S $root/aclocal.m4 .
+	$LN_S $root/VERSION .
+	$LN_S $root/.*.in .
 	rm -f config*.log
 	cp $root/stage2/Mmake* .
 	cd $root
