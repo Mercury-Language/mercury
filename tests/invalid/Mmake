@@ -7,6 +7,7 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 SOURCES= \
+	any_mode.m \
 	bigtest.m \
 	circ_type.m \
 	constructor_warning.m \
@@ -43,6 +44,7 @@ SOURCES= \
 #	types.m
 
 MCFLAGS-multisoln_func	=	--infer-types
+MCFLAGS-any_mode	=	--infer-types
 
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)
