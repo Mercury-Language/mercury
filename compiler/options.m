@@ -24,11 +24,12 @@
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
 :- pred special_handler(option::in, special_data::in, option_table::in,
-	option_table::out) is semidet.
+	maybe_option_table::out) is semidet.
 
 :- pred options_help(io__state::di, io__state::uo) is det.
 
 :- type option_table == option_table(option).
+:- type maybe_option_table == maybe_option_table(option).
 
 :- type option	
 	% Warning options
@@ -64,6 +65,11 @@
 		;	show_dependency_graph
 		;	dump_hlds
 		;	verbose_dump_hlds
+	% Language semantics options
+		;	reorder_conj
+		;	reorder_disj
+		;	fully_strict
+		;	strict_sequential
 	% Compilation Model options
 		;	grade
 		;	gcc_non_local_gotos
@@ -94,6 +100,7 @@
 	% Code generation options
 		;	trad_passes
 		;	polymorphism
+		;	reclaim_heap_on_failure
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	lazy_code
@@ -147,6 +154,7 @@
 	%	- C
 		;	emit_c_loops
 		;	procs_per_c_function
+		;	everything_in_one_c_function
 		;	split_c_files
 		;	c_optimize
 	% Link options
@@ -163,14 +171,12 @@
 
 :- implementation.
 
-	% I've split up option_defaults into several different clauses
-	% purely in order to reduce compilation time/memory usage.
-
 :- type option_category
 	--->	warning_option
 	;	verbosity_option
 	;	output_option
 	;	aux_output_option
+	;	language_semantics_option
 	;	compilation_model_option
 	;	code_gen_option
 	;	optimization_option
@@ -178,11 +184,26 @@
 	;	miscellaneous_option.
 
 option_defaults(Option, Default) :-
-	option_defaults_2(_Category, OptionsList),
+	%
+	% for non-optimization options, we just look up the default
+	% value in the table
+	%
+	option_defaults_2(Category, OptionsList),
+	Category \= optimization_option,
 	list__member(Option - Default, OptionsList).
+option_defaults(Option, Default) :-
+	%
+	% for optimization options, we get the defaults from
+	% use the default optimization level
+	% of two.
+	%
+	map__init(OptionTable0),
+	set_opt_level(2, OptionTable0, OptionTable),
+	map__member(OptionTable, Option, Default).
 
-:- pred option_defaults_2(option_category::out,
-	list(pair(option, option_data))::out) is multidet.
+:- pred option_defaults_2(option_category, list(pair(option, option_data))).
+:- mode option_defaults_2(out, out) is multidet.
+:- mode option_defaults_2(in(bound(optimization_option)), out) is det.
 
 option_defaults_2(warning_option, [
 		% Warning Options
@@ -225,6 +246,12 @@ option_defaults_2(aux_output_option, [
 	dump_hlds		-	accumulating([]),
 	verbose_dump_hlds	-	bool(no)
 ]).
+option_defaults_2(language_semantics_option, [
+	strict_sequential	-	special,
+	reorder_conj		-	bool(yes),
+	reorder_disj		-	bool(yes),
+	fully_strict		-	bool(yes)
+]).
 option_defaults_2(compilation_model_option, [
 		% Compilation model options (ones that affect binary
 		% compatibility).
@@ -244,7 +271,7 @@ option_defaults_2(compilation_model_option, [
 					% -1 is a special value which means
 					% use the value of conf_low_tag_bits
 					% instead
-	word_size               -       int(32),
+	word_size		-	int(32),
 					% A good default for the number of
 					% bits in a word for the current
 					% generation of architectures.
@@ -261,6 +288,7 @@ option_defaults_2(code_gen_option, [
 	trad_passes		-	bool(yes),
 	polymorphism		-	bool(yes),
 	lazy_code		-	bool(yes),
+	reclaim_heap_on_failure	-	bool_special,
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	use_macro_for_redo_fail	-	bool(no),
@@ -285,16 +313,23 @@ option_defaults_2(code_gen_option, [
 ]).
 option_defaults_2(optimization_option, [
 		% Optimization options
+		%
+		% IMPORTANT: the default here should be all optimizations OFF.
+		% Optimizations should be enabled by the appropriate
+		% optimization level in the opt_level table.
+		%
 	opt_level		-	int_special,
 	opt_space		-	special,
 % HLDS
-	inlining		-	bool(yes),
-	common_struct		-	bool(yes),
+	inlining		-	bool(no),
+	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
+		% commmon_goal is not really an optimization, since
+		% it affects the semantics
 	constraint_propagation	-	bool(no),
-	excess_assign		-	bool(yes),
+	excess_assign		-	bool(no),
 	prev_code		-	bool(no),
-	follow_code		-	bool(yes),
+	follow_code		-	bool(no),
 	optimize_unused_args	-	bool(no),
 		% unused_args is disabled by default since it is broken
 		% (see David Kemp's bug report)
@@ -304,7 +339,7 @@ option_defaults_2(optimization_option, [
 	optimize_dead_procs	-	bool(no),
 
 % HLDS -> LLDS
-	smart_indexing		-	bool(yes),
+	smart_indexing		-	bool(no),
 	dense_switch_req_density -	int(25),
 		% Minimum density before using a dense switch
 	lookup_switch_req_density -	int(25),
@@ -313,31 +348,32 @@ option_defaults_2(optimization_option, [
 	lookup_switch_size	-	int(4),
 	string_switch_size	-	int(8),
 	tag_switch_size		-	int(3),
-	static_ground_terms	-	bool(yes),
-	middle_rec		-	bool(yes),
-	simple_neg		-	bool(yes),
-	follow_vars		-	bool(yes),
+	static_ground_terms	-	bool(no),
+	middle_rec		-	bool(no),
+	simple_neg		-	bool(no),
+	follow_vars		-	bool(no),
 
 % LLDS
-	optimize		-	bool(yes),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(yes),
-	optimize_labels		-	bool(yes),
+	optimize		-	bool(no),
+	optimize_peep		-	bool(no),
+	optimize_jumps		-	bool(no),
+	optimize_fulljumps	-	bool(no),
+	optimize_labels		-	bool(no),
 	optimize_dups		-	bool(no),
-%%%	optimize_copyprop	-	bool(yes),
+%%%	optimize_copyprop	-	bool(no),
 	optimize_value_number	-	bool(no),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
-	optimize_repeat		-	int(3),
-	optimize_vnrepeat	-	int(1),
+	optimize_frames		-	bool(no),
+	optimize_delay_slot	-	bool(no),
+	optimize_repeat		-	int(0),
+	optimize_vnrepeat	-	int(0),
 	pred_value_number	-	bool(no),
 
 % LLDS -> C
-	emit_c_loops		-	bool(yes),
+	emit_c_loops		-	bool(no),
 	procs_per_c_function	-	int(1),
+	everything_in_one_c_function -	special,
 	split_c_files		-	bool(no),
-	c_optimize		-	bool(yes)
+	c_optimize		-	bool(no)
 ]).
 option_defaults_2(link_option, [
 		% Link Options
@@ -428,6 +464,12 @@ long_option("show-dependency-graph",	show_dependency_graph).
 long_option("dump-hlds",		dump_hlds).
 long_option("verbose-dump-hlds",	verbose_dump_hlds).
 
+% language semantics options
+long_option("reorder-conj",		reorder_conj).
+long_option("reorder-disj",		reorder_disj).
+long_option("fully-strict",		fully_strict).
+long_option("strict-sequential",	strict_sequential).
+
 % compilation model options
 long_option("grade",			grade).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
@@ -454,6 +496,7 @@ long_option("unboxed-float",		unboxed_float).
 long_option("polymorphism",		polymorphism).
 long_option("trad-passes",		trad_passes).
 long_option("lazy-code",		lazy_code).
+long_option("reclaim-heap-on-failure",	reclaim_heap_on_failure).
 long_option("reclaim-heap-on-semidet-failure",
 					reclaim_heap_on_semidet_failure).
 long_option("reclaim-heap-on-nondet-failure",
@@ -534,6 +577,8 @@ long_option("pred-value-number",	pred_value_number).
 long_option("emit-c-loops",		emit_c_loops).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
+long_option("everything-in-one-c-function",	everything_in_one_c_function).
+long_option("everything-in-one-C-function",	everything_in_one_c_function).
 long_option("split-c-files",		split_c_files).
 long_option("split-C-files",		split_c_files).
 long_option("c-optimise",		c_optimize).
@@ -552,19 +597,63 @@ long_option("heap-space",		heap_space).
 long_option("builtin-module",		builtin_module).
 long_option("search-directory",		search_directories).
 
-special_handler(opt_space, none, OptionTable0, OptionTable) :-
+%-----------------------------------------------------------------------------%
+
+special_handler(everything_in_one_c_function, none, OptionTable0,
+		ok(OptionTable)) :-
+	map__set(OptionTable0, procs_per_c_function, int(0),
+		OptionTable).
+special_handler(reclaim_heap_on_failure, bool(Value), OptionTable0,
+			ok(OptionTable)) :-
+	map__set(OptionTable0, reclaim_heap_on_semidet_failure, bool(Value),
+		OptionTable1),
+	map__set(OptionTable1, reclaim_heap_on_nondet_failure, bool(Value),
+		OptionTable).
+special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
+	override_options([
+			reorder_conj 	-	bool(no),
+			reorder_disj 	-	bool(no),
+			fully_strict 	-	bool(yes)
+		], OptionTable0, OptionTable).
+special_handler(opt_space, none, OptionTable0, ok(OptionTable)) :-
 	opt_space(OptionSettingsList),
 	override_options(OptionSettingsList, OptionTable0, OptionTable).
-special_handler(opt_level, int(N0), OptionTable0, OptionTable) :-
-	( N0 > 5 ->
-		N = 5
-	; N0 < 0 ->
-		N = 0
+special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
+	( N0 > 6 ->
+		N = 6
+	; N0 < -1 ->
+		N = -1
 	;
 		N = N0
 	),
-	( opt_level(N, OptionSettingsList) ->
-		override_options(OptionSettingsList, OptionTable0, OptionTable)
+	set_opt_level(N, OptionTable0, OptionTable).
+
+:- pred set_opt_level(int, option_table, option_table).
+:- mode set_opt_level(in, in, out) is det.
+
+set_opt_level(N, OptionTable0, OptionTable) :-
+	%
+	% first reset all optimizations to their default
+	% (the default should be all optimizations off)
+	%
+	option_defaults_2(optimization_option, OptimizationDefaults),
+	override_options(OptimizationDefaults, OptionTable0, OptionTable1),
+	%
+	% next enable the optimization levels from 0 up to N.
+	%
+	enable_opt_levels(0, N, OptionTable1, OptionTable).
+
+:- pred enable_opt_levels(int, int, option_table, option_table).
+:- mode enable_opt_levels(in, in, in, out) is det.
+
+enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
+	( N0 > N ->
+		OptionTable = OptionTable0
+	; opt_level(N0, OptionSettingsList) ->
+		override_options(OptionSettingsList, OptionTable0,
+			OptionTable1),
+		N1 is N + 1,
+		enable_opt_levels(N1, N, OptionTable1, OptionTable)
 	;
 		error("Unknown optimization level")
 	).
@@ -578,6 +667,8 @@ override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
 	map__set(OptionTable0, Option, Value, OptionTable1),
 	override_options(Settings, OptionTable1, OptionTable).
 
+%-----------------------------------------------------------------------------%
+
 :- pred opt_space(list(pair(option, option_data))::out) is det.
 
 opt_space([
@@ -587,146 +678,104 @@ opt_space([
 	optimize_dups		-	bool(yes)
 ]).
 
+%-----------------------------------------------------------------------------%
+
 :- pred opt_level(int::in, list(pair(option, option_data))::out) is semidet.
 
+% Optimization level -1:
+% Generate totally unoptimized code; turns off ALL optimizations that
+% can be turned off, including HLDS->HLDS, HLDS->LLDS, LLDS->LLDS, LLDS->C,
+% and C->object optimizations.  
+% (However, there are some optimizations that can't be disabled.)
+
+% Optimization level 0: aim to minimize overall compilation time.
+% XXX I just guessed.  We should run lots of experiments.
+
 opt_level(0, [
-	c_optimize		-	bool(no),
-	optimize		-	bool(no),
-	optimize_repeat		-	int(0),
-	optimize_vnrepeat	-	int(0),
-	static_ground_terms	-	bool(no),
-	smart_indexing		-	bool(no),
-	middle_rec		-	bool(no),
-	inlining		-	bool(no),
-	common_struct		-	bool(no),
-	constraint_propagation	-	bool(no),
-	excess_assign		-	bool(no)
-]).
-opt_level(1, [
-	c_optimize		-	bool(yes),
 	optimize		-	bool(yes),
-	optimize_dead_procs	-	bool(no),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(no),
-	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(no),
-%%%	optimize_copyprop	-	bool(no),
-	optimize_value_number	-	bool(no),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
-	optimize_unused_args	-	bool(no),
-	optimize_higher_order	-	bool(no),
 	optimize_repeat		-	int(1),
-	optimize_vnrepeat	-	int(0),
+	optimize_peep		-	bool(yes),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
-	middle_rec		-	bool(yes),
-	inlining		-	bool(no),
-	common_struct		-	bool(yes),
-	constraint_propagation	-	bool(no),
-	excess_assign		-	bool(no)
+	excess_assign		-	bool(yes)	% ???
+	% jumps?
+	% labels?
 ]).
+
+% Optimization level 1: apply optimizations which are cheap and
+% have a good payoff while still keeping compilation time small
+
+opt_level(1, [
+	c_optimize		-	bool(yes),	% XXX we want `gcc -O1'
+	optimize_jumps		-	bool(yes),
+	optimize_labels		-	bool(yes),
+	optimize_frames		-	bool(yes),
+	optimize_delay_slot	-	bool(yes),
+	middle_rec		-	bool(yes),
+	follow_code		-	bool(yes),
+	emit_c_loops		-	bool(yes)
+	% dups?
+]).
+
+% Optimization level 2: apply optimizations which have a good
+% payoff relative to their cost; but include optimizations
+% which are more costly than with -O1
+
 opt_level(2, [
-	c_optimize		-	bool(yes),
-	optimize		-	bool(yes),
-	optimize_dead_procs	-	bool(no),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(yes),
-	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(no),
-%%%	optimize_copyprop	-	bool(no),
-	optimize_value_number	-	bool(no),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
-	optimize_unused_args	-	bool(no),
-	optimize_higher_order	-	bool(no),
 	optimize_repeat		-	int(3),
-	optimize_vnrepeat	-	int(0),
-	pred_value_number	-	bool(no),
-	static_ground_terms	-	bool(yes),
-	smart_indexing		-	bool(yes),
-	middle_rec		-	bool(yes),
+	optimize_dups		-	bool(yes),
+	follow_code		-	bool(yes),
 	inlining		-	bool(yes),
 	common_struct		-	bool(yes),
-	constraint_propagation	-	bool(no)
+	simple_neg		-	bool(yes)
 ]).
+
+% Optimization level 3: apply optimizations which usually have a good
+% payoff even if they increase compilation time quite a bit
+
 opt_level(3, [
-	c_optimize		-	bool(yes),
-	optimize		-	bool(yes),
-	optimize_dead_procs	-	bool(yes),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(yes),
-	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(yes),
-%%%	optimize_copyprop	-	bool(yes),
 	optimize_value_number	-	bool(yes),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
+	optimize_dead_procs	-	bool(yes),
+%%%	optimize_copyprop	-	bool(yes),
 %%%	optimize_unused_args	-	bool(yes),	% currently broken
 %%%	optimize_higher_order	-	bool(yes),	% currently broken
 	optimize_repeat		-	int(4),
-	optimize_vnrepeat	-	int(1),
-	pred_value_number	-	bool(no),
-	static_ground_terms	-	bool(yes),
-	smart_indexing		-	bool(yes),
-	middle_rec		-	bool(yes),
-	inlining		-	bool(yes),
-	common_struct		-	bool(yes),
-	constraint_propagation	-	bool(no)
+	optimize_vnrepeat	-	int(1)
 ]).
+
+% Optimization level 4: apply optimizations which may have some
+% payoff even if they increase compilation time quite a bit
+
+% Currently this just enables pred_value_number
+
 opt_level(4, [
-	c_optimize		-	bool(yes),
-	optimize		-	bool(yes),
-	optimize_dead_procs	-	bool(yes),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(yes),
-	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(yes),
-%%%	optimize_copyprop	-	bool(yes),
-	optimize_value_number	-	bool(yes),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
-%%%	optimize_unused_args	-	bool(yes),	% currently broken
-%%%	optimize_higher_order	-	bool(yes),	% currently broken
-	optimize_repeat		-	int(4),
-	optimize_vnrepeat	-	int(1),
-	pred_value_number	-	bool(yes),
-	static_ground_terms	-	bool(yes),
-	smart_indexing		-	bool(yes),
-	middle_rec		-	bool(yes),
-	inlining		-	bool(yes),
-	common_struct		-	bool(yes),
-	constraint_propagation	-	bool(no)	% yes when it works
+	pred_value_number	-	bool(yes)
 ]).
+
+% Optimization level 5: apply optimizations which may have some
+% payoff even if they increase compilation time a lot
+
+% Currently this just runs a second pass of value numbering
+
 opt_level(5, [
-	c_optimize		-	bool(yes),
-	optimize		-	bool(yes),
-	optimize_dead_procs	-	bool(yes),
-	optimize_peep		-	bool(yes),
-	optimize_jumps		-	bool(yes),
-	optimize_fulljumps	-	bool(yes),
-	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(yes),
-%%%	optimize_copyprop	-	bool(yes),
-	optimize_value_number	-	bool(yes),
-	optimize_frames		-	bool(yes),
-	optimize_delay_slot	-	bool(yes),
-%%%	optimize_unused_args	-	bool(yes),	% currently broken
-%%%	optimize_higher_order	-	bool(yes),	% currently broken
 	optimize_repeat		-	int(5),
-	optimize_vnrepeat	-	int(2),
-	pred_value_number	-	bool(yes),
-	static_ground_terms	-	bool(yes),
-	smart_indexing		-	bool(yes),
-	middle_rec		-	bool(yes),
-	inlining		-	bool(yes),
-	common_struct		-	bool(yes),
-	constraint_propagation	-	bool(no)	% yes when it works
+	optimize_vnrepeat	-	int(2)
 ]).
+
+% Optimization level 6: apply optimizations which may have any
+% payoff even if they increase compilation time to completely
+% unreasonable levels
+
+% Currently this just sets `everything_in_one_c_function', which causes
+% the compiler to put everything in the one C function and treat
+% calls to predicates in the same module as local.
+
+opt_level(6, [
+	procs_per_c_function	-	int(0)	% everything in one C function
+]).
+
+%-----------------------------------------------------------------------------%
 
 options_help -->
 	io__write_string("\t-?, -h, --help\n"),
@@ -829,6 +878,16 @@ options_help -->
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
 	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
+
+	io__write_string("\nLanguage semantics options:\n"),
+	io__write_string("(See the Mercury language reference manual for detailed explanations.)\n"),
+	io__write_string("\t--no-reorder-conj\n"),
+	io__write_string("\t\tExecute conjunctions left-to-right except where the modes imply\n"),
+	io__write_string("\t\tthat reordering is unavoidable.\n"),
+	io__write_string("\t\tno-reorder-disj\n"),
+	io__write_string("\t\tExecute disjunctions strictly left-to-right.\n"),
+	io__write_string("\t\tfully-strict\n"),
+	io__write_string("\t\tDon't optimize away loops or calls to error/1.\n"),
 
 	io__write_string("\nCompilation model options:\n"),
 	io__write_string("\tThe following compilation options affect the generated\n"),
@@ -938,6 +997,8 @@ options_help -->
 	io__write_string("\t\tDon't reclaim heap on backtracking in nondet code.\n"),
 	io__write_string("\t--no-reclaim-heap-on-semidet-failure\n"),
 	io__write_string("\t\tDon't reclaim heap on backtracking in semidet code.\n"),
+	io__write_string("\t--no-reclaim-heap-on-failure\n"),
+	io__write_string("\t\tCombines the effect of the two options above.\n"),
 	io__write_string("\t--use-macro-for-redo-fail\n"),
 	io__write_string("\t\tEmit the fail or redo macro instead of a branch\n"),
 	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
@@ -952,7 +1013,7 @@ options_help -->
 	io__write_string("\t-O <n>, --opt-level <n>, --optimization-level <n>\n"),
 	io__write_string("\t\tSet optimization level to <n>.\n"),
 	io__write_string("\t\tOptimization level 0 means no optimization\n"),
-	io__write_string("\t\twhile optimization level 5 means full optimization.\n"),
+	io__write_string("\t\twhile optimization level 6 means full optimization.\n"),
 	% io__write_string("\t\tFor a full description of each optimization level,\n"),
 	% io__write_string("\t\tsee the Mercury User's Guide.\n"),
 	io__write_string("\t--opt-space, --optimize-space\n"),
@@ -1057,8 +1118,9 @@ options_help -->
 	io__write_string("\t\tprocedures in a single C function.  The default\n"),
 	io__write_string("\t\tvalue of <n> is one.  Increasing <n> can produce\n"),
 	io__write_string("\t\tslightly more efficient code, but makes compilation slower.\n"),
-	io__write_string("\t\tSetting <n> to the special value zero has the effect of\n"),
-	io__write_string("\t\tputting all the procedures in a single function,\n"),
+	io__write_string("\t--everything-in-one-c-function\n"),
+	io__write_string("\t\tThis option has the effect of putting the code for all\n"),
+	io__write_string("\t\tthe Mercury procedures in a single C function,\n"),
 	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
 	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
 	io__write_string("\t--split-c-files\n"),
