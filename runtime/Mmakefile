@@ -93,7 +93,7 @@ libmer$(DLL_DEF_LIB).a: $(OBJS)
 
 libmer.so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS)			\
-		$(SHLIB_RPATH_OPT)$(INSTALL_MERC_GC_LIB_DIR) 		\
+		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
 		$(LDFLAGS) $(LDLIBS)					\
 		$(SHARED_LIBS)
 

@@ -165,8 +165,8 @@ libmercury$(DLL_DEF_LIB).a : $(library.os)
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
 
-RPATH_1=$(SHLIB_RPATH_OPT)$(INSTALL_MERC_LIB_DIR)
-RPATH_2=$(SHLIB_RPATH_SEP)$(INSTALL_MERC_GC_LIB_DIR)
+RPATH_1=$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_LIB_DIR)
+RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 
 libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os)		\
