@@ -96,7 +96,7 @@ MCFLAGS += --strict-sequential $(LIBRARY_TRACE_LEVEL) --generate-mmc-deps \
 # so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("","$(findstring il,$(GRADE))$(findstring java, $(GRADE))")
+ifneq ("$(filter il% java%,$(GRADE)))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -226,8 +226,19 @@ JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
 # rather than compiling them separately.  This is needed because
 # otherwise javac doesn't handle cyclic dependencies between different
 # modules.
-classes: javas
+classes: javas java_symlinks
 	$(JAVAC) $(JAVACFLAGS) $(JAVAS)
+
+# javac expects to find the sources for symbols named mercury.* in
+# files mercury/*, and likewise for symbols named mercury.runtime.*
+# in mercury/runtime/*.  But in our sources, those symbols actually
+# come from this directory (library/*) and from java/runtime/*,
+# respectively.  So we set up some symbolic links to help
+# javac find the way to the sources.
+.PHONY: java_symlinks
+java_symlinks:
+	[ -d mercury ] || ln -s . mercury
+	[ -d runtime ] || ln -s $(MERCURY_DIR)/java/runtime .
 
 #-----------------------------------------------------------------------------#
 

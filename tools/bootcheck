@@ -587,6 +587,7 @@ then
 		else
 			$LN_S $root/boehm_gc .
 		fi
+		$LN_S $root/java .
 		$LN_S $root/mps_gc .
 		$LN_S $root/bindist .
 		$LN_S $root/doc .
@@ -863,6 +864,7 @@ then
 	$LN_S $root/analysis/$ANALYSIS_LIB_NAME.init .
 	cd $root/stage3
 	$LN_S $root/boehm_gc .
+	$LN_S $root/java .
 	$LN_S $root/mps_gc .
 	$LN_S $root/bindist .
 	$LN_S $root/doc .
