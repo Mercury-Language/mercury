@@ -3465,7 +3465,7 @@ additional pragmas:
 
 @menu
 * Fact tables::         	Support for very large tables of facts.
-* Termination properties::	Information about the termination properties 
+* Termination analysis::	Information about the termination properties 
 				of a predicate or function can be given
 				to the compiler.  Pragmas are also
 				available to require the compiler to prove
@@ -3509,8 +3509,8 @@ The main limitation of the @samp{fact_table} pragma is that
 predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
 
-@node Termination Analysis
-@subsection Termination Analysis
+@node Termination analysis
+@subsection Termination analysis
 
 The compiler includes a termination analyser which can be used to prove 
 termination of predicates and functions.  Details of the analysis is
