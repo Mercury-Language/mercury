@@ -996,11 +996,12 @@ integer__det_from_string(S) =
 
 :- func string_to_integer(list(char)::in) = (integer::out) is semidet.
 
-string_to_integer(CCs @ [C | Cs]) =
+string_to_integer(CCs0 @ [C | Cs]) = Integer :-
 	( C = ('-') ->
-		big_sign(-1, string_to_integer(Cs))
+		Integer = big_sign(-1, string_to_integer(Cs))
 	;
-		string_to_integer_acc(CCs, integer__zero)
+		CCs = ( C = ('+') -> Cs ; CCs0),
+		Integer = string_to_integer_acc(CCs, integer__zero)
 	).
 
 :- func string_to_integer_acc(list(char)::in, integer::in) = (integer::out)

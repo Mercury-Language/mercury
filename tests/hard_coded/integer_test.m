@@ -11,7 +11,7 @@
 :- import_module integer, string, list, int, require.
 
 main -->
-	{ X = integer.det_from_string("1234567890987654321") },
+	{ X = integer.det_from_string("+1234567890987654321") },
 	{ Y = integer.det_from_string(
 		"98765432101234567890123400000009999111") },
 	{ Z = integer(200) },
