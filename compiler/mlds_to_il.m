@@ -2738,19 +2738,16 @@ rval_to_type(unop(Unop, _), Type) :-
 	; 
 		Unop = std_unop(StdUnop),
 		functor(StdUnop, StdUnopStr, _Arity),
-		unexpected(this_file, "rval_to_type: unop: " ++ StdUnopStr)
+		sorry(this_file, "rval_to_type: unop: " ++ StdUnopStr)
 	).
 
 rval_to_type(binop(_, _, _), _) :- 
-	unexpected(this_file, "rval_to_type: binop").
+	sorry(this_file, "rval_to_type: binop").
 
 rval_to_type(mem_addr(_), _) :-
-	unexpected(this_file, "rval_to_type: mem_addr").
+	sorry(this_file, "rval_to_type: mem_addr").
 
-rval_to_type(self(_), Type) :-
-	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
-	Type = mlds__class_type(qual(ModuleName, "invalid"),
-		0, mlds__class).
+rval_to_type(self(Type), Type).
 
 rval_to_type(const(Const), Type) :- 
 	Type = rval_const_to_type(Const).
