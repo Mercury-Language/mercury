@@ -24,6 +24,7 @@
 #include	<ctype.h>
 #include	<errno.h>
 #include	"getopt.h"
+#include	"conf.h"
 
 /* --- adjustable limits --- */
 #define	MAXCALLS	40	/* maximum number of calls per function */
@@ -102,6 +103,32 @@ static	void process_file(char *filename);
 static	void process_init_file(const char *filename);
 static	void output_init_function(const char *func_name);
 static	int getline(FILE *file, char *line, int line_max);
+
+/*---------------------------------------------------------------------------*/
+
+#ifndef HAVE_STRERROR
+
+/*
+** Apparently SunOS 4.1.3 doesn't have strerror()
+**	(!%^&!^% non-ANSI systems, grumble...)
+**
+** This code is duplicated in runtime/prof.c.
+*/
+
+extern int sys_nerr;
+extern char *sys_errlist[];
+
+char *strerror(int errnum) {
+	if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
+		return sys_errlist[errnum];
+	} else {
+		static char buf[30];
+		sprintf(buf, "Error %d", errnum);
+		return buf;
+	}
+}
+
+#endif
 
 /*---------------------------------------------------------------------------*/
 
