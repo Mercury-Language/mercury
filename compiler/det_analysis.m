@@ -52,6 +52,7 @@
 
 :- interface.
 
+:- import_module prog_data.
 :- import_module hlds_goal, hlds_module, hlds_pred, hlds_data, instmap.
 :- import_module det_report, det_util, globals.
 :- import_module list, std_util, io.
@@ -119,7 +120,7 @@
 
 :- implementation.
 
-:- import_module prog_data, det_report, purity.
+:- import_module det_report, purity.
 :- import_module type_util, modecheck_call, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury.
 :- import_module assoc_list, bool, map, set, require, term.
