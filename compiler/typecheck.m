@@ -4708,6 +4708,9 @@ maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
 	{ module_info_get_imported_module_specifiers(ModuleInfo,
 		ImportedModules) },
 	(
+		% the visible modules are the current module, any
+		% imported modules, and any ancestor modules.
+		{ ModuleQualifier \= ThisModule },
 		{ \+ set__member(ModuleQualifier, ImportedModules) },
 		{ get_ancestors(ThisModule, ParentModules) },
 		{ \+ list__member(ModuleQualifier, ParentModules) }
