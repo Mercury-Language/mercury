@@ -1,4 +1,4 @@
-NEWS since Mercury release 0.7
+NEWS for Mercury release 0.7.2
 ------------------------------
 
 We have split the distribution into two parts, a `core' part and an
@@ -181,4 +181,11 @@ Changes to the Mercury compiler:
 * The compiler does a better job of constant-propagation optimization.
 
 * We have fixed a few minor bugs.
+
+
+NEWS since Mercury release 0.7.2
+--------------------------------
+
+* We've fixed one of the limitations: unique mode declarations
+  no longer have to precede non-unique mode declarations.
 

@@ -92,6 +92,13 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type det_comparison	--->	tighter ; sameas ; looser.
+
+:- pred compare_determinisms(determinism, determinism, det_comparison).
+:- mode compare_determinisms(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds_data, type_util, mode_util, inst_match.
@@ -295,11 +302,6 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 	io__write_string("'.\n").
 
 %-----------------------------------------------------------------------------%
-
-:- type det_comparison	--->	tighter ; sameas ; looser.
-
-:- pred compare_determinisms(determinism, determinism, det_comparison).
-:- mode compare_determinisms(in, in, out) is det.
 
 compare_determinisms(DeclaredDetism, InferredDetism, CmpDetism) :-
 	determinism_components(DeclaredDetism, DeclaredCanFail, DeclaredSolns),
