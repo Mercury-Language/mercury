@@ -54,7 +54,7 @@ bar(X) :- X = 1.
 	static int counter = 0;
 
 	if (++counter > 100) {
-		fatal_error(""the bug is back"");
+		MR_fatal_error(""the bug is back"");
 	}
 
 	SUCCESS_INDICATOR = FALSE;
