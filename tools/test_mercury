@@ -720,6 +720,19 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+# The stage2 compiler got installed, so we don't need to set
+# MERCURY_COMPILER now.
+# In fact, we should unset it, so it isn't set to something
+# inappropriate by some other part of this script.
+# Instead we just need to make sure that the compiler that we
+# just installed is first in the PATH.
+# From here-on in, we use the compiler that we just built and
+# installed, not the bootstrap compiler.
+
+unset MERCURY_COMPILER
+
+PATH="$INSTALL_DIR/bin:$PATH"
+
 GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
 case $HOST in
    hg)
@@ -727,7 +740,10 @@ case $HOST in
 	;;
 esac
 
+#-----------------------------------------------------------------------------#
+
 : test and install the CLPR interface
+
 # CLPR requires trailing, so here we only test the trailing grades.
 # XXX The CLPR interface currently also requires GCC (see the #error in
 # extras/clpr/cfloat.m), so we test it only if we're using GCC.
@@ -775,8 +791,6 @@ esac
 
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
-MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
-export MERCURY_COMPILER
 case $HOST in $ROTD_HOST)
 	# The tests on earth are run with `--intermodule-optimization',
 	# so we need to do a `mmake realclean' before building the C files
@@ -827,16 +841,9 @@ case $HOST in $GCC_ROTD_HOST)
 	;;
 esac
 
-: run the regression tests on the stage2 compiler
+#-----------------------------------------------------------------------------#
 
-# The stage2 compiler got installed, so we don't need to set this.
-# In fact, we should unset it, so it isn't set to something
-# inappropriate by some other part of this script.
-
-unset MERCURY_COMPILER
-
-#MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
-#export MERCURY_COMPILER
+: run the regression tests on the installed compiler
 
 cd tests || { false; exit 1; }
 
