@@ -1,6 +1,6 @@
 % Test case for elimination of special predicates in base_type_infos.
 %
-% We can use arg/3 and det_arg/3 to retrieve arguments of types, and 
+% We can use argument/3 and det_argument/3 to retrieve arguments of types, and 
 % unify them. Analysis procedures may incorrectly conclude that
 % we cannot call the unification procedure (or other procedures), and
 % so eliminate it.
@@ -28,8 +28,8 @@
 main -->
 	{ X = banana(three) },
 	{ Y = banana(two) },
-	{ det_arg(1, X, XArg) },
-	{ det_arg(1, Y, YArg) },
+	{ XArg = det_argument(X, 0) },
+	{ YArg = det_argument(Y, 0) },
 	( 
 		{ XArg = YArg }
 	->
