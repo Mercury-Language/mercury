@@ -1246,7 +1246,7 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 	{ bool__not(FoundTypeError, Proceed1) },
 
 	globals__io_lookup_bool_option(modecheck, DoModeCheck),
-	( { DoModeCheck = yes } ->
+	( { DoModeCheck = yes, FoundTypeError = no } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
