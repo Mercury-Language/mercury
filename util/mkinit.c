@@ -433,14 +433,6 @@ static void
 process_file(const char *filename)
 {
 	int len = strlen(filename);
-	/*
-	** XXX the following three lines are needed only for bootstrapping;
-	** they should be deleted once the new compiler has been installed
-	** everywhere.
-	*/
-	if (len >= 2 && strcmp(filename + len - 2, ".m") == 0) {
-		process_c_file(filename);
-	} else
 	if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
 		if (c_files_contain_extra_inits) {
 			process_init_file(filename);
