@@ -4949,6 +4949,17 @@ io__close_binary_output(Stream) -->
 	update_io(IO0, IO);
 ").
 
+io__current_input_stream(_::out, _::di, _::uo) :- 
+	private_builtin__sorry("io__current_input_stream/3").
+
+io__current_output_stream(_::out, _::di, _::uo) :- 
+	private_builtin__sorry("io__current_output_stream/3").
+
+io__current_binary_input_stream(_::out, _::di, _::uo) :- 
+	private_builtin__sorry("io__current_binary_input_stream/3").
+
+io__current_binary_output_stream(_::out, _::di, _::uo) :- 
+	private_builtin__sorry("io__current_binary_output_stream/3").
 
 /*---------------------------------------------------------------------------*/
 
