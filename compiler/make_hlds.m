@@ -10020,7 +10020,12 @@ prepare_for_if_then_else_expr(StateVars, VarSet0, VarSet, SInfo0, SInfo) :-
 :- mode finish_if_then_else_expr_condition(in, in, out) is det.
 
 finish_if_then_else_expr_condition(SInfoBefore, SInfo0, SInfo) :-
-	SInfo = ( SInfo0 ^ ctxt := SInfoBefore ^ ctxt ).
+	SInfo = (((( SInfo0 ^ external_dot := SInfoBefore ^ external_dot )
+	                   ^ dot          := (SInfo0 ^ dot) `overlay`
+	                                        (SInfoBefore ^ dot)  )
+	                   ^ colon        := (SInfo0 ^ colon) `overlay`
+	                                        (SInfoBefore ^ colon)  )
+	                   ^ ctxt         := SInfoBefore ^ ctxt         ).
 
 %------------------------------------------------------------------------------%
 
