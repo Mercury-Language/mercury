@@ -89,7 +89,7 @@
 :- mode in  mod in  = uo  is det.
 
 	% truncating integer division
-	% should round toward zero
+	% should truncate toward zero
 	% (if it doesn't, file a bug report)
 :- func int // int = int.
 :- mode in  // in  = uo  is det.
