@@ -1534,9 +1534,10 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		{ list__length(PredArgTypes, PredArity) },
 		code_info__get_module_info(ModuleInfo),
 		{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
+		{ TotalArity is Arity + PredArity },
 		{
 		    predicate_table_search_name_arity(PredicateTable,
-			Name, PredArity, PredIds)
+			Name, TotalArity, PredIds)
 		->
 		    (
 			PredIds = [PredId]
