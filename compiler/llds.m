@@ -670,15 +670,15 @@ maybe_output_update_prof_counter(Label) -->
 		{ Label2 = exported(ProcLabel) },
 		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
 		output_label(Label2),
-		io__write_string("))\n"),
+		io__write_string("));\n"),
 		io__write_string("\t\t/* restore prof_current_proc */\n")
 	;
 		{ Label = local(ProcLabel, _, local) }
 	->
 		{ Label2 = local(ProcLabel) },
-		io__write_string("\n\tupdate_prof_current_proc((LABEL"),
+		io__write_string("\n\tupdate_prof_current_proc(LABEL("),
 		output_label(Label2),
-		io__write_string("))\n"),
+		io__write_string("));\n"),
 		io__write_string("\t\t/* restore prof_current_proc */\n")
 	;
 		{ true }
