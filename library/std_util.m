@@ -1369,11 +1369,7 @@ type_name(Type) = TypeName :-
 	( Arity = 0 ->
 		UnqualifiedTypeName = Name
 	;
-		% XXX the test for mercury_builtin is for bootstrapping
-		% only; it should eventually be deleted.
-		( ModuleName = "mercury_builtin", Name = "func" -> 
-			IsFunc = yes 
-		; ModuleName = "builtin", Name = "func" -> 
+		( ModuleName = "builtin", Name = "func" -> 
 			IsFunc = yes 
 		;
 		 	IsFunc = no 
@@ -1392,9 +1388,7 @@ type_name(Type) = TypeName :-
 				UnqualifiedTypeName)
 		)
 	),
-		% XXX the test for mercury_builtin is for bootstrapping
-		% only; it should eventually be deleted.
-	( (ModuleName = "mercury_builtin" ; ModuleName = "builtin") ->
+	( ModuleName = "builtin" ->
 		TypeName = UnqualifiedTypeName
 	;
 		string__append_list([ModuleName, ":", 
