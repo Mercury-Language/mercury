@@ -17,7 +17,8 @@
 		
 :- type option		--->	verbose
 			;	very_verbose
-			;	dump_hlds.
+			;	dump_hlds
+			;	generate_code.
 
 :- pred short_option(character::i, option::output) is semidet.
 :- pred long_option(string::i, option::output) is semidet.
@@ -34,16 +35,19 @@
 option_defaults([
 	verbose		-	bool(no),
 	very_verbose	-	bool(no),
-	dump_hlds	-	bool(no)
+	dump_hlds	-	bool(no),
+	generate_code	-	bool(no)
 ]).
 
 short_option('v', 		verbose).
 short_option('w', 		very_verbose).
 short_option('d', 		dump_hlds).
+short_option('g', 		generate_code).
 
 long_option("verbose",		verbose).
 long_option("very-verbose",	very_verbose).
 long_option("dump-hlds",	dump_hlds).
+long_option("generate-code",	generate_code).
 
 maybe_report_stats(yes) --> io__report_stats.
 maybe_report_stats(no) --> [].
