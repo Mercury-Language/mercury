@@ -9,21 +9,18 @@
 % Main authors: conway, zs.
 %
 % This file defines the code_info type and various operations on it.
+% The code_info structure is the 'state' of the code generator.
 %
-% The code_info structure is a 'state' used by the code generator.
+% This file is organized indo eight submodules:
 %
-% The following assumptions are made about the state of the high-level
-% data structure:
-%
-%	o  Variables can be stored in any number of distinct places.
-%	o  Registers may contain a value corresponding to more than
-%		one variable.
-%	o  Procedures are in superhomogeneous form. This means that
-%		construction unifications and builtins are not nested.
-%	o  Evaluation of arguments in construction and deconstruction
-%		unifications is lazy. This means that arguments in a
-%		`don't care' mode are ignored, and that assignments
-%		are cached.
+%	- the code_info structure and its access predicates
+%	- simple wrappers around access predicates
+%	- handling failure continuations
+%	- handling liveness issues
+%	- saving and restoring heap pointers, tickets etc
+%	- interfacing to code_exprn
+%	- managing the info required by garbage collection and value numbering
+%	- managing stack slots
 %
 % Note: Any new "state" arguments (eg counters) that should be strictly
 % threaded (for example the counter used for allocating new labels) will
@@ -67,7 +64,7 @@
 :- type code_info.
 
 		% Create a new code_info structure.
-:- pred code_info__init(varset, liveness_info, stack_slots, bool, globals,
+:- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
 	shape_table, code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
@@ -102,12 +99,12 @@
 :- mode code_info__get_module_info(out, in, out) is det.
 
 		% Get the set of currently forward-live variables.
-:- pred code_info__get_liveness_info(liveness_info, code_info, code_info).
-:- mode code_info__get_liveness_info(out, in, out) is det.
+:- pred code_info__get_forward_live_vars(set(var), code_info, code_info).
+:- mode code_info__get_forward_live_vars(out, in, out) is det.
 
 		% Set the set of currently forward-live variables.
-:- pred code_info__set_liveness_info(liveness_info, code_info, code_info).
-:- mode code_info__set_liveness_info(in, in, out) is det.
+:- pred code_info__set_forward_live_vars(set(var), code_info, code_info).
+:- mode code_info__set_forward_live_vars(in, in, out) is det.
 
 		% Get the table mapping variables to the current
 		% instantiation states.
@@ -241,7 +238,7 @@
 			module_info,	% The module_info structure - you just
 					% never know when you might need it.
 					% It should be read-only.
-			liveness_info,	% Variables that are live
+			set(var),	% Variables that are forward live
 					% after this goal
 			instmap,	% insts of variables
 			int,		% The current number of extra
@@ -399,7 +396,7 @@ code_info__get_module_info(L, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, _, _, _,
 		_, _, _, _).
 
-code_info__get_liveness_info(M, CI, CI) :-
+code_info__get_forward_live_vars(M, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _, _, _, _,
 		_, _, _, _).
 
@@ -467,7 +464,7 @@ code_info__get_commit_vals(W, CI, CI) :-
 % 	L		module_info,	% The module_info structure - you just
 % 					% never know when you might need it.
 % 					% It should be read-only.
-% 	M		liveness_info,	% Variables that are live
+% 	M		set(var),	% Variables that are forward live
 % 					% after this goal
 % 	N		instmap,	% insts of variables
 % 	O		int,		% The current number of extra
@@ -544,7 +541,7 @@ code_info__set_fail_stack(K, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, W).
 
-code_info__set_liveness_info(M, CI0, CI) :-
+code_info__set_forward_live_vars(M, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q,
 		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
@@ -756,12 +753,12 @@ code_info__pre_goal_update(GoalInfo, Atomic) -->
 	),
 	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
 	{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
-	code_info__update_liveness_info(PreBirths),
-	code_info__update_deadness_info(PreDeaths),
-	code_info__make_vars_dead(PreDeaths),
+	code_info__add_forward_live_vars(PreBirths),
+	code_info__rem_forward_live_vars(PreDeaths),
+	code_info__make_vars_forward_dead(PreDeaths),
 	( { Atomic = yes } ->
 		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-		code_info__update_deadness_info(PostDeaths)
+		code_info__rem_forward_live_vars(PostDeaths)
 	;
 		[]
 	).
@@ -771,10 +768,10 @@ code_info__pre_goal_update(GoalInfo, Atomic) -->
 code_info__post_goal_update(GoalInfo) -->
 	{ goal_info_get_post_births(GoalInfo, PostBirths) },
 	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-	code_info__update_liveness_info(PostBirths),
-	code_info__update_deadness_info(PostDeaths),
-	code_info__make_vars_dead(PostDeaths),
-	code_info__make_vars_live(PostBirths),
+	code_info__add_forward_live_vars(PostBirths),
+	code_info__rem_forward_live_vars(PostDeaths),
+	code_info__make_vars_forward_dead(PostDeaths),
+	code_info__make_vars_forward_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	code_info__apply_instmap_delta(InstMapDelta).
 
@@ -1996,26 +1993,14 @@ code_info__clone_resume_maps(ResumeMaps0, ResumeMaps) -->
 
 :- interface.
 
-:- pred code_info__variable_is_live(var, code_info, code_info).
-:- mode code_info__variable_is_live(in, in, out) is semidet.
+:- pred code_info__get_known_variables(list(var), code_info, code_info).
+:- mode code_info__get_known_variables(out, in, out) is det.
 
-:- pred code_info__get_live_variables(list(var), code_info, code_info).
-:- mode code_info__get_live_variables(out, in, out) is det.
+:- pred code_info__variable_is_forward_live(var, code_info, code_info).
+:- mode code_info__variable_is_forward_live(in, in, out) is semidet.
 
-:- pred code_info__update_liveness_info(set(var), code_info, code_info).
-:- mode code_info__update_liveness_info(in, in, out) is det.
-
-:- pred code_info__update_deadness_info(set(var), code_info, code_info).
-:- mode code_info__update_deadness_info(in, in, out) is det.
-
-	% Make these variables appear magically live.
-	% We don't care where they are put.
-
-:- pred code_info__make_vars_live(set(var), code_info, code_info).
-:- mode code_info__make_vars_live(in, in, out) is det.
-
-:- pred code_info__make_vars_dead(set(var), code_info, code_info).
-:- mode code_info__make_vars_dead(in, in, out) is det.
+:- pred code_info__make_vars_forward_dead(set(var), code_info, code_info).
+:- mode code_info__make_vars_forward_dead(in, in, out) is det.
 
 :- pred code_info__pickup_zombies(set(var), code_info, code_info).
 :- mode code_info__pickup_zombies(out, in, out) is det.
@@ -2024,44 +2009,51 @@ code_info__clone_resume_maps(ResumeMaps0, ResumeMaps) -->
 
 :- implementation.
 
-code_info__get_live_variables(VarList) -->
-	code_info__get_liveness_info(ForwardLiveVars),
+:- pred code_info__add_forward_live_vars(set(var), code_info, code_info).
+:- mode code_info__add_forward_live_vars(in, in, out) is det.
+
+:- pred code_info__rem_forward_live_vars(set(var), code_info, code_info).
+:- mode code_info__rem_forward_live_vars(in, in, out) is det.
+
+	% Make these variables appear magically live.
+	% We don't care where they are put.
+
+:- pred code_info__make_vars_forward_live(set(var), code_info, code_info).
+:- mode code_info__make_vars_forward_live(in, in, out) is det.
+
+code_info__get_known_variables(VarList) -->
+	code_info__get_forward_live_vars(ForwardLiveVars),
 	code_info__current_resume_point_vars(ResumeVars),
 	{ set__union(ForwardLiveVars, ResumeVars, Vars) },
 	{ set__to_sorted_list(Vars, VarList) }.
 
-code_info__variable_is_live(Var) -->
-	code_info__get_liveness_info(Liveness),
-	code_info__current_resume_point_vars(ResumeVars),
-	(
-		{ set__member(Var, Liveness) }
-	;
-		{ set__member(Var, ResumeVars) }
-	).
+code_info__variable_is_forward_live(Var) -->
+	code_info__get_forward_live_vars(Liveness),
+	{ set__member(Var, Liveness) }.
 
-code_info__update_liveness_info(Births) -->
-	code_info__get_liveness_info(Liveness0),
+code_info__add_forward_live_vars(Births) -->
+	code_info__get_forward_live_vars(Liveness0),
 	{ set__union(Liveness0, Births, Liveness) },
-	code_info__set_liveness_info(Liveness).
+	code_info__set_forward_live_vars(Liveness).
 
-code_info__update_deadness_info(Deaths) -->
-	code_info__get_liveness_info(Liveness0),
+code_info__rem_forward_live_vars(Deaths) -->
+	code_info__get_forward_live_vars(Liveness0),
 	{ set__difference(Liveness0, Deaths, Liveness) },
-	code_info__set_liveness_info(Liveness).
+	code_info__set_forward_live_vars(Liveness).
 
-code_info__make_vars_live(Vars) -->
+code_info__make_vars_forward_live(Vars) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_exprn_info(Exprn0),
 	{ set__to_sorted_list(Vars, VarList) },
-	{ code_info__make_vars_live_2(VarList, StackSlots, 1, Exprn0, Exprn) },
+	{ code_info__make_vars_forward_live_2(VarList, StackSlots, 1, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
-:- pred code_info__make_vars_live_2(list(var), stack_slots, int,
+:- pred code_info__make_vars_forward_live_2(list(var), stack_slots, int,
 	exprn_info, exprn_info).
-:- mode code_info__make_vars_live_2(in, in, in, in, out) is det.
+:- mode code_info__make_vars_forward_live_2(in, in, in, in, out) is det.
 
-code_info__make_vars_live_2([], _, _, Exprn, Exprn).
-code_info__make_vars_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
+code_info__make_vars_forward_live_2([], _, _, Exprn, Exprn).
+code_info__make_vars_forward_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
 	( map__search(StackSlots, V, Lval0) ->
 		Lval = Lval0,
 		N1 = N0
@@ -2070,7 +2062,7 @@ code_info__make_vars_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
 		Lval = reg(r(N1))
 	),
 	code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn1),
-	code_info__make_vars_live_2(Vs, StackSlots, N1, Exprn1, Exprn).
+	code_info__make_vars_forward_live_2(Vs, StackSlots, N1, Exprn1, Exprn).
 
 :- pred code_info__find_unused_reg(int, exprn_info, int).
 :- mode code_info__find_unused_reg(in, in, out) is det.
@@ -2083,7 +2075,7 @@ code_info__find_unused_reg(N0, Exprn0, N) :-
 		N = N0
 	).
 
-code_info__make_vars_dead(Vars0) -->
+code_info__make_vars_forward_dead(Vars0) -->
 	code_info__current_resume_point_vars(ResumeVars),
 	{ set__intersect(Vars0, ResumeVars, FlushVars) },
 	code_info__get_zombies(Zombies0),
@@ -2091,17 +2083,17 @@ code_info__make_vars_dead(Vars0) -->
 	code_info__set_zombies(Zombies),
 	{ set__difference(Vars0, Zombies, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
-	code_info__make_vars_dead_2(VarList).
+	code_info__make_vars_forward_dead_2(VarList).
 
-:- pred code_info__make_vars_dead_2(list(var), code_info, code_info).
-:- mode code_info__make_vars_dead_2(in, in, out) is det.
+:- pred code_info__make_vars_forward_dead_2(list(var), code_info, code_info).
+:- mode code_info__make_vars_forward_dead_2(in, in, out) is det.
 
-code_info__make_vars_dead_2([]) --> [].
-code_info__make_vars_dead_2([V | Vs]) -->
+code_info__make_vars_forward_dead_2([]) --> [].
+code_info__make_vars_forward_dead_2([V | Vs]) -->
 	code_info__get_exprn_info(Exprn0),
 	{ code_exprn__var_becomes_dead(V, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn),
-	code_info__make_vars_dead_2(Vs).
+	code_info__make_vars_forward_dead_2(Vs).
 
 code_info__pickup_zombies(Zombies) -->
 	code_info__get_zombies(Zombies),
@@ -2544,7 +2536,7 @@ code_info__setup_call([V - arg_info(Loc,Mode) | Rest], Direction, Code) -->
 			% causes some compiler generated code to violate
 			% superhomogeneous form
 		(
-			code_info__variable_is_live(V)
+			code_info__variable_is_forward_live(V)
 		->
 			{ IsLive = yes }
 		;
@@ -2574,7 +2566,7 @@ code_info__setup_call([V - arg_info(Loc,Mode) | Rest], Direction, Code) -->
 			{ code_exprn__lock_reg(Reg, Exprn1, Exprn2) },
 			code_info__set_exprn_info(Exprn2),
 			{ set__singleton_set(Vset, V) },
-			code_info__make_vars_dead(Vset),
+			code_info__make_vars_forward_dead(Vset),
 			code_info__setup_call(Rest, Direction, Code1),
 			code_info__get_exprn_info(Exprn4),
 			{ code_exprn__unlock_reg(Reg, Exprn4, Exprn) },
@@ -2624,7 +2616,7 @@ code_info__save_variables_on_stack([Var | Vars], Code) -->
 :- implementation.
 
 code_info__generate_stack_livevals(Args, LiveVals) -->
-	code_info__get_live_variables(LiveVars),
+	code_info__get_known_variables(LiveVars),
 	{ set__list_to_set(LiveVars, Vars0) },
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
@@ -2662,7 +2654,7 @@ code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
 %---------------------------------------------------------------------------%
 
 code_info__generate_stack_livelvals(Args, LiveVals) -->
-	code_info__get_live_variables(LiveVars),
+	code_info__get_known_variables(LiveVars),
 	{ set__list_to_set(LiveVars, Vars0) },
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },

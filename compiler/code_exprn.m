@@ -11,6 +11,18 @@
 % abstract 'exprn_info' structure which maintains information about
 % the contents of registers, and manages the cached expressions for
 % variables.
+%
+% We make the following assumptions:
+%
+%	o  Variables can be stored in any number of distinct places.
+%	o  Registers may contain a value corresponding to more than
+%		one variable.
+%	o  Procedures are in superhomogeneous form. This means that
+%		construction unifications and builtins are not nested.
+%	o  Evaluation of arguments in construction and deconstruction
+%		unifications is lazy. This means that arguments in a
+%		`don't care' mode are ignored, and that assignments
+%		are cached.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

@@ -106,7 +106,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 
 		% Kill again any variables that have become zombies
 	code_info__pickup_zombies(Zombies),
-	code_info__make_vars_dead(Zombies),
+	code_info__make_vars_forward_dead(Zombies),
 
 	code_info__pop_failure_cont,
 
@@ -230,7 +230,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 
 		% Kill again any variables that have become zombies
 	code_info__pickup_zombies(Zombies),
-	code_info__make_vars_dead(Zombies),
+	code_info__make_vars_forward_dead(Zombies),
 
 		% Discard hp and maybe solver ticket if the condition succeeded
 	code_info__maybe_discard_hp(MaybeHpSlot),

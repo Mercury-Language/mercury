@@ -164,7 +164,7 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	(
 		{ MLiveness = yes(Liveness) }
 	->
-		code_info__set_liveness_info(Liveness)
+		code_info__set_forward_live_vars(Liveness)
 	;
 		{ error("dense_switch__generate: no liveness!") }
 	),
@@ -232,7 +232,7 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ Code = tree(GoalCode, SaveCode) },
-		code_info__get_liveness_info(L),
+		code_info__get_forward_live_vars(L),
 		code_info__slap_code_info(CodeInfo),
 		{ Cases = Cases1 },
 		{ ML = yes(L) }

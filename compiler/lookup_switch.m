@@ -197,7 +197,7 @@ lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 	{ Case = case(_, int_constant(CaseTag), _, Goal) },
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_goal(CodeModel, Goal, Code),
-	code_info__get_liveness_info(Liveness),
+	code_info__get_forward_live_vars(Liveness),
 	{ tree__is_empty(Code) },
 	lookup_switch__get_case_rvals(Vars, CaseRvals),
 	{ CaseVal = CaseTag - CaseRvals },
@@ -297,7 +297,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		% wrong liveness.
 	(
 		{ MLiveness = yes(Liveness) },
-		code_info__set_liveness_info(Liveness)
+		code_info__set_forward_live_vars(Liveness)
 	;
 		{ MLiveness = no },
 		{ error("lookup_switch__generate: no liveness!") }

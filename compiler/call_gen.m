@@ -213,7 +213,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 %---------------------------------------------------------------------------%
 
 call_gen__save_variables(Args, Code) -->
-	code_info__get_live_variables(Variables0),
+	code_info__get_known_variables(Variables0),
 	{ set__list_to_set(Variables0, Vars0) },
 	{ set__difference(Vars0, Args, Vars1) },
 	code_info__get_globals(Globals),
