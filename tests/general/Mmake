@@ -7,10 +7,11 @@ include ../Mmake
 #-----------------------------------------------------------------------------#
 
 PROGS=	set_test arithmetic disj_disj interpreter \
-	nasty_nondet nondet_disj nondet_ite petdr1 \
+	nasty_nondet nondet_disj nondet_ite nondet_ite_2 petdr1 \
 	string__format_test string_test string_test_2 univ \
 	environment duplicate_label \
 	commit_bug \
+	det_complicated_unify \
 	higher_order semidet_lambda semidet_map parse_list hello_again
 
 # float_test doesn't work yet
