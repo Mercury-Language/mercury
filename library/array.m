@@ -342,7 +342,7 @@
 :- mode array__foldl(func(in, di) = uo is det, array_ui, di) = uo is det.
 :- mode array__foldl(func(in, di) = uo is det, in, di) = uo is det.
 
-	% array__foldr(Fn, Array, X) is equivalent to
+			printf("%15s: %% array__foldr(Fn, Array, X) is equivalent tod", "% array__foldr(Fn, Array, X) is \nequivalent to", a[i]);
 	% 	list__foldr(Fn, array__to_list(Array), X)
 	% but more efficient.
 	%
@@ -783,6 +783,11 @@ array__init(Size, Item, Array) :-
 		Array.SetValue(Item, i);
 	}
 ").
+:- pragma foreign_proc("C#", 
+		array__make_empty_array(Array::array_uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	Array = null;
+").
 
 array__init_2(_, _, _) :-
 	% This version is only used for back-ends for which there is no
@@ -842,12 +847,20 @@ array__min(_, _) :-
 :- pragma foreign_proc("C#", 
 		array__max(Array::array_ui, Max::out), 
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	Max = Array.Length - 1;
+	if (Array != null) {
+		Max = Array.Length - 1;
+	} else {
+		Max = -1;
+	}
 ").
 :- pragma foreign_proc("C#",
 		array__max(Array::in, Max::out), 
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	Max = Array.Length - 1;
+	if (Array != null) {
+		Max = Array.Length - 1;
+	} else {
+		Max = -1;
+	}
 ").
 
 array__max(_, _) :-
@@ -875,12 +888,20 @@ array__bounds(Array, Min, Max) :-
 :- pragma foreign_proc("C#",
 		array__size(Array::array_ui, Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	Max = Array.Length;
+	if (Array != null) {
+		Max = Array.Length;
+	} else {
+		Max = 0;
+	}
 ").
 :- pragma foreign_proc("C#",
 		array__size(Array::in, Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	Max = Array.Length;
+	if (Array != null) {
+		Max = Array.Length;
+	} else {
+		Max = 0;
+	}
 ").
 
 :- pragma promise_pure(array__size/2).
@@ -1051,7 +1072,13 @@ ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
 		Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
 
-	if (Array0.Length == Size) {
+	if (Array0 == null) {
+		Array = System.Array.CreateInstance(Item.GetType(), Size);
+		for (int i = 0; i < Size; i++) {
+			Array.SetValue(Item, i);
+		}
+	}
+	else if (Array0.Length == Size) {
 		Array = Array0;
 	} else if (Array0.Length > Size) {
 		Array = System.Array.CreateInstance(Item.GetType(), Size);
