@@ -2,7 +2,7 @@ This directory contains the source distribution for the University of Melbourne
 Mercury compiler, version @VERSION@.
 
 	The Mercury implementation is free software, but it is Copyright
-	(C) 1993-1998 The University of Melbourne.  It is distributed
+	(C) 1993-1999 The University of Melbourne.  It is distributed
 	under the terms of the GNU General Public License.  See the file
 	COPYING for copying permission.
 
@@ -83,6 +83,7 @@ README file for your particular platform, if there is one:
 	README.Linux-PPC	Linux on PowerPC
 	README.MS-Windows	Microsoft Windows
 	README.HPUX		HPPA systems running HPUX
+	README.OSF1		DEC Alpha systems running OSF/1 version 3.x
 
 The documentation sources are in the `doc' subdirectory.  The installation
 process will install INFO, HTML, and DVI versions in the locations specified

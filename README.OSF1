@@ -1,0 +1,7 @@
+The sed utility supplied with DEC OSF/1 V3.2 has a fixed limit
+which causes the Mercury autoconfiguration script to fail with a
+message such as:
+"sed: There are too many commands for the
+	s%@READLINE_LIBRARIES@%-lreadline -ltermcap%g function."
+
+The work-around is to install GNU sed.
