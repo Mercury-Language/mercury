@@ -276,13 +276,6 @@ X div Y = Div :-
 
 X mod Y = X - (X div Y) * Y.
 
-	% XXX This definition is here for bootstrapping.
-	% After the corresponding change to the compiler is installed,
-	% the compiler will ignore this clause, and will internally replace
-	% the body of unchecked_left_shift with a `recursive' call.
-	% See make_hlds:add_builtin.
-unchecked_left_shift(X, Y) = X << Y.
-
 X << Y = Z :-
 	int__bits_per_int(IntBits),
 	( Y >= 0 ->
@@ -298,10 +291,6 @@ X << Y = Z :-
 			Z = unchecked_right_shift(X, -Y)
 		)
 	).
-
-	% XXX This definition is here for bootstrapping.
-	% See the comment for unchecked_left_shift.
-unchecked_right_shift(X, Y) = X >> Y.
 
 	% Note: this assumes two's complement arithmetic.
 	% tests/hard_coded/shift_test.m will fail if this is not the case.
