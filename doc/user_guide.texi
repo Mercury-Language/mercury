@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-1999 The University of Melbourne.
+Copyright (C) 1995-2000 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -470,12 +470,6 @@ and also the various possible executables, libraries and dependency files
 for the program as a whole ---
 @samp{@var{main-module}},
 @samp{@var{main-module}.split},
-@samp{@var{main-module}.nu},
-@samp{@var{main-module}.nu.save},
-@samp{@var{main-module}.nu.debug},
-@samp{@var{main-module}.nu.debug.save},
-@samp{@var{main-module}.sicstus},
-@samp{@var{main-module}.sicstus.debug},
 @samp{lib@var{main-module}.a},
 @samp{lib@var{main-module}.so},
 @samp{@var{main-module}.split.a},

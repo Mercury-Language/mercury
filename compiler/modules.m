@@ -537,10 +537,6 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% executable files
 		; Ext = ""
 		; Ext = ".split"
-		; Ext = ".nu"
-		; Ext = ".nu.debug"
-		; Ext = ".sicstus"
-		; Ext = ".sicstus.debug"
 		% library files
 		; Ext = ".a"
 		; Ext = ".so"
@@ -560,8 +556,6 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".rl_dump"
 		% Mmake targets
 		; Ext = ".clean"
-		; Ext = ".clean_nu"
-		; Ext = ".clean_sicstus"
 		; Ext = ".realclean"
 		; Ext = ".depend"
 		; Ext = ".install_ints"
@@ -2445,18 +2439,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	{ get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
 
 	io__write_string(DepStream, MakeVarName),
-	io__write_string(DepStream, ".nos = "),
-	write_compact_dependencies_list(Modules, "$(nos_subdir)", ".no",
-					Basis, DepStream),
-	io__write_string(DepStream, "\n"),
-
-	io__write_string(DepStream, MakeVarName),
-	io__write_string(DepStream, ".qls = "),
-	write_compact_dependencies_list(Modules, "$(qls_subdir)", ".ql",
-					Basis, DepStream),
-	io__write_string(DepStream, "\n"),
-
-	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".init_cs = "),
 	write_compact_dependencies_list(Modules, "$(cs_subdir)", ".c",
 					Basis, DepStream),
@@ -2783,33 +2765,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			InitCFileName, "\n\n"
 	]),
 
-	module_name_to_file_name(SourceModuleName, ".nu", yes, NU_ExeFileName),
-	module_name_to_file_name(SourceModuleName, ".nu.debug", yes,
-						NU_DebugExeFileName),
-	io__write_strings(DepStream, [
-		NU_ExeFileName, " : $(", MakeVarName, ".nos)\n",
-		"\t$(MNL) $(ALL_MNLFLAGS) -o ", NU_ExeFileName, " ",
-			"$(", MakeVarName, ".nos)\n\n",
-
-		NU_DebugExeFileName, " : $(", MakeVarName, ".nos)\n",
-		"\t$(MNL) --debug $(ALL_MNLFLAGS) -o ", NU_DebugExeFileName,
-			" $(", MakeVarName, ".nos)\n\n"
-	]),
-
-	module_name_to_file_name(SourceModuleName, ".sicstus", yes,
-						SicstusExeFileName),
-	module_name_to_file_name(SourceModuleName, ".sicstus.debug", yes,
-						SicstusDebugExeFileName),
-	io__write_strings(DepStream, [
-		SicstusExeFileName, " : $(", MakeVarName, ".qls)\n",
-		"\t$(MSL) $(ALL_MSLFLAGS) -o ", SicstusExeFileName, " ",
-			"$(", MakeVarName, ".qls)\n\n",
-
-		SicstusDebugExeFileName, " : $(", MakeVarName, ".qls)\n",
-		"\t$(MSL) --debug $(ALL_MSLFLAGS) -o ", SicstusDebugExeFileName,
-			" $(", MakeVarName, ".qls)\n\n"
-	]),
-
 	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
 				LibInstallIntsTargetName),
 	{ InstallIntsRuleBody =
@@ -2891,8 +2846,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
 									"\n",
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
-		"\t-rm -f $(", MakeVarName, ".nos)\n",
-		"\t-rm -f $(", MakeVarName, ".qls)\n",
 		"\t-rm -f $(", MakeVarName, ".errs)\n",
 		"\t-rm -f $(", MakeVarName, ".schemas)\n"
 	]),
@@ -2921,10 +2874,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".hs)\n",
 		"\t-rm -f $(", MakeVarName, ".rlos)\n"
 	]),
-	module_name_to_file_name(SourceModuleName, ".nu.save", no,
-						NU_SaveExeFileName),
-	module_name_to_file_name(SourceModuleName, ".nu.debug.save", no,
-						NU_DebugSaveExeFileName),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
 			ExeFileName, " ",
@@ -2933,30 +2882,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 			InitFileName, " ",
 			LibFileName, " ",
 			SharedLibFileName, " ",
-			NU_ExeFileName, " ",
-			NU_SaveExeFileName, " ",
-			NU_DebugExeFileName, " ",
-			NU_DebugSaveExeFileName, " ",
-			SicstusExeFileName, " ",
-			SicstusDebugExeFileName, " ",
 			DepFileName, " ",
 			DvFileName, "\n\n"
-	]),
-
-	module_name_to_file_name(SourceModuleName, ".clean_nu", no,
-						CleanNU_TargetName),
-	module_name_to_file_name(SourceModuleName, ".clean_sicstus", no,
-						CleanSicstusTargetName),
-	io__write_strings(DepStream, [
-		"clean_nu : ", CleanNU_TargetName, "\n",
-		".PHONY : ", CleanNU_TargetName, "\n",
-		CleanNU_TargetName, " :\n",
-		"\t-rm -f $(", MakeVarName, ".nos)\n\n",
-
-		"clean_sicstus : ", CleanSicstusTargetName, "\n",
-		".PHONY : ", CleanSicstusTargetName, "\n",
-		CleanSicstusTargetName, " :\n",
-		"\t-rm -f $(", MakeVarName, ".qls)\n\n"
 	]).
 
 :- pred get_source_file(deps_map, module_name, file_name).
