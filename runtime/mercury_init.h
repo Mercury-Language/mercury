@@ -112,7 +112,7 @@ void	ML_DI_output_current_slots(Integer, Integer, Integer, Word, String,
 bool	ML_DI_found_match(Integer, Integer, Integer, Word, String, String,
 		Integer, Integer, Integer, Word, String, Word);
 		/* normally ML_DI_found_match (found_match/12) */
-int	ML_DI_get_var_number(Word);
+Integer	ML_DI_get_var_number(Word);
 void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
 
 /* in library/std_util.m  */
