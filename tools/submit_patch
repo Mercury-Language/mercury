@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2002 The University of Melbourne.
+# Copyright (C) 2002-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -186,7 +186,7 @@ parse_options() {
 
     if [ $# -ne 2 ]; then
 	echo "$0: wrong number of arguments" 1>&2
-	echo "usage: $0 <log message file> <patch file>" 1>&2
+	echo "usage: $0 [options] <log message file> <patch file>" 1>&2
 	echo "Use \`--help' for help." 1>&2
 	exit 1
     fi
