@@ -2246,7 +2246,11 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs], ModuleInfo,
 				Index0::in, Index::out] is det,
 		(
 			Elem = Elem0 - Index0,
-			Index is Index0 + 1
+			Index is Index0 + 1,
+			% the following call is a work-around for a compiler
+			% bug with intermodule optimization: it is needed to
+			% resolve a type ambiguity
+			is_pair(Elem)
 		)),
 	list__map_foldl(MakeIndex, ClassTypeVars0, ClassTypeVars, First, _),
 		
@@ -2278,6 +2282,9 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs], ModuleInfo,
 		VarTypes1, VarTypes,
 		ExtraHeadVars1, ExtraHeadVars,
 		TypeClassInfoMap1, TypeClassInfoMap).
+
+:- pred is_pair(pair(_, _)::in) is det.
+is_pair(_).
 
 :- pred polymorphism__new_typeclass_info_var(varset, map(var, type), 
 		string, var, 
