@@ -26,7 +26,11 @@ timeout=20
 retries=0
 until mkdir $LOCKDIR; do
 	case $retries in
-	    $timeout) 	echo "** $0: timed out" 1>&2; exit 1 ;;
+	    $timeout) 
+	    	echo "** $0: creating lock directory `pwd`/$LOCKDIR failed" 1>&2
+		echo "** $0: remove it manually if it is stale" 1>&2
+		exit 1
+		;;
 	esac
 	sleep 5
 	retries=`expr $retries + 1`
