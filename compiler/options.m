@@ -177,18 +177,19 @@ option_defaults_2(verbosity_option, [
 	vndebug			- 	int(0)
 ]).
 option_defaults_2(output_option, [
-		% Output Options
+		% Output Options (mutually exclusive)
 	generate_dependencies	-	bool(no),
 	make_interface		-	bool(no),
-	show_dependency_graph	-	bool(no),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
 	modecheck		-	bool(yes),
-	dump_hlds		-	accumulating([]),
-	verbose_dump_hlds	-	bool(no),
 	errorcheck_only		-	bool(no),
 	compile_to_c		-	bool(no),
 	compile_only		-	bool(no),
+		% Auxiliary Output Options
+	show_dependency_graph	-	bool(no),
+	dump_hlds		-	accumulating([]),
+	verbose_dump_hlds	-	bool(no),
 	line_numbers		-	bool(no),
 	auto_comments		-	bool(no),
 	profiling		-	bool(no)
@@ -298,6 +299,7 @@ long_option("heap-space",		heap_space).
 long_option("search-directory",		search_directories).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury).
+long_option("pretty-print", 		convert_to_mercury).
 long_option("convert-to-goedel", 	convert_to_goedel).
 long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("help",			help).
@@ -370,7 +372,7 @@ long_option("procs-per-C-function",	procs_per_c_function).
 long_option("constraint-propagation",	constraint_propagation).
 
 options_help -->
-	io__write_string("\t-?, --help\n"),
+	io__write_string("\t-?, -h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
 
 	io__write_string("\nWarning Options:\n"),
@@ -406,35 +408,28 @@ options_help -->
 	io__write_string("\t\toptimization pass. The different bits in the number\n"),
 	io__write_string("\t\targument of this option control the printing of\n"),
 	io__write_string("\t\tdifferent types of tracing messages.\n"),
+
 	io__write_string("\nOutput Options:\n"),
+	io__write_string("\tThese options are mutually exclusive.\n"),
+	io__write_string("\tOnly the first one specified will apply.\n"),
+	io__write_string("\tIf none of these options are specified, the default action\n"),
+	io__write_string("\tis to link the named modules to produce an executable.\n\n"),
 	io__write_string("\t-M, --generate-dependencies\n"),
 	io__write_string("\t\tOutput `Make'-style dependencies for the module\n"),
 	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
-	io__write_string("\t\tOnly syntax analysis will be performed - this option\n"),
-	io__write_string("\t\tdisables all the later phases of compilation.\n"),
 	io__write_string("\t-i, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
 	io__write_string("\t\tAlso write the short interface to `<module>.int2'.\n"),
-	io__write_string("\t\tAs with -M, this disables type-checking, etc.\n"),
-	io__write_string("\t--show-dependency-graph\n"),
-	io__write_string("\t\tWrite out the dependency graph to <module>.dependency_graph.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
-	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'\n"),
-	io__write_string("\t\tAs with -M, this disables type-checking, etc.\n"),
+	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
+	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
+	io__write_string("\t\t(easily) be translated into Goedel.\n"),
 	io__write_string("\t-P, --convert-to-mercury\n"),
 	io__write_string("\t\tConvert to Mercury. Output to file `<module>.ugly'\n"),
 	io__write_string("\t\tThis option acts as a Mercury ugly-printer.\n"),
-	io__write_string("\t\tAs with -M, it disables type-checking, etc.\n"),
 	io__write_string("\t-m-, --no-modecheck\n"),
 	io__write_string("\t\tDon't invoke the mode analysis pass of the compiler. Just\n"),
 	io__write_string("\t\tcheck that the code is syntactically correct and type-correct.\n"),
-	io__write_string("\t-d <n>, --dump-hlds <stage number or name>\n"),
-	io__write_string("\t\tDump the HLDS (intermediate representation) after\n"),
-	io__write_string("\t\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.\n"),
-	io__write_string("\t\tStage numbers range from 0-17.\n"),
-	io__write_string("\t\tMultiple dump options accumulate.\n"),
-	io__write_string("\t-D, --verbose-dump-hlds\n"),
-	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
 	io__write_string("\t-e, --errorcheck-only\n"),
 	io__write_string("\t\tCheck the module for errors, but do not generate any code.\n"),
 	io__write_string("\t-C, --compile-to-c\n"),
@@ -442,13 +437,25 @@ options_help -->
 	io__write_string("\t-c, --compile-only\n"),
 	io__write_string("\t\tGenerate C code in `<module>.c' and object code in `<module>.o'\n"),
 	io__write_string("\t\tbut do not attempt to link the named modules.\n"),
+
+	io__write_string("\n Auxiliary Output Options:\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
-	io__write_string("\t\tOnly works with the -G and -M options.\n"),
+	io__write_string("\t\tOnly works with the -G and -P options.\n"),
+	io__write_string("\t--show-dependency-graph\n"),
+	io__write_string("\t\tWrite out the dependency graph to <module>.dependency_graph.\n"),
+	io__write_string("\t-d <n>, --dump-hlds <stage number or name>\n"),
+	io__write_string("\t\tDump the HLDS (intermediate representation) after\n"),
+	io__write_string("\t\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.\n"),
+	io__write_string("\t\tStage numbers range from 0-17.\n"),
+	io__write_string("\t\tMultiple dump options accumulate.\n"),
+	io__write_string("\t-D, --verbose-dump-hlds\n"),
+	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
 	% io__write_string("\t--profiling\n"),
 	% io__write_string("\t\tOutput to file <module>.prof the profiling info.\n"),
+
 	io__write_string("\nCode generation options\n"),
 	io__write_string("\t--no-trad-passes\n"),
 	io__write_string("\t\tGenerate code by phases, not by predicates.\n"),
@@ -559,7 +566,7 @@ options_help -->
 	io__write_string("\t--procs-per-c-function <n>\n"),
 	io__write_string("\t\tDon't put the code for more than <n> Mercury\n"),
 	io__write_string("\t\tprocedures in a single C function.  The default\n"),
-	io__write_string("\t\t value of <n> is one.  Increasing <n> can produce\n"),
+	io__write_string("\t\tvalue of <n> is one.  Increasing <n> can produce\n"),
 	io__write_string("\t\tslightly more efficient code, but makes compilation slower.\n"),
 	io__write_string("\t\tSetting <n> to the special value zero has the effect of\n"),
 	io__write_string("\t\tputting all the procedures in a single function,\n"),
