@@ -42,7 +42,7 @@ extern Word mr5, mr6, mr7, mr8, mr9;
 #endif
 
 
-#define NUM_REAL_REGS 11
+#define NUM_REAL_REGS 10
 
 extern Word saved_regs[];
 
