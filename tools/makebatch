@@ -25,11 +25,12 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-cost] [--compile-times] [--test-params] batchname"
+usage="Usage: makebatch [-jN] [-cdeost] [--compile-times] [--test-params] batchname"
 jfactor=-j1
 runtests=""
 objects=""
 cfiles="false"
+save_stage2="false"
 errfiles="false"
 compile_times=""
 testparams=""
@@ -40,6 +41,9 @@ do
 
 	-c|--c-files)
 		cfiles="true" ;;
+
+	-d|--save-stage2-dirs)
+		save_stage2="true" ;;
 
 	-e|--err-files)
 		errfiles="true" ;;
@@ -246,6 +250,11 @@ do
 		/bin/rm -fr batch/errfiles/$batch.compiler.$visn/*
 		cp stage2/compiler/*.err batch/errfiles/$batch.compiler.$visn
 		# gzip batch/errfiles/$batch.compiler.$visn/*
+	fi
+
+	if $save_stage2
+	then
+		mv stage2 stage2.batch.$visn
 	fi
 
 	n=`expr $n + 1`
