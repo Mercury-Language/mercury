@@ -155,9 +155,8 @@
 	;	nothing(
 			nothing_maybe_warning	:: maybe(item_warning)
 		).
-		% used for items that should be ignored (e.g.
-		% NU-Prolog `when' declarations, which are silently
-		% ignored for backwards compatibility).
+		% used for items that should be ignored (for the
+		% purposes of backwards compatibility etc)
 
 	% indicates the type of information the compiler should get from the
 	% declaration's clause

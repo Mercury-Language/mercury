@@ -543,8 +543,6 @@ lazy_list__zip(lazy(P0), Bs, lazy(P)) :-
 :- pred lazy_list__zip2(lazy_list(T), lazy_list(T), lazy_list(T)).
 :- mode lazy_list__zip2(in(lazy_list), in(lazy_list), out(lazy_list)) is det.
 
-:- lazy_list__zip2(_, Bs, _) when Bs. % NU-Prolog indexing
-
 lazy_list__zip2(As, [], As).
 lazy_list__zip2(As, [B|Bs], [B|Cs]) :-
 	lazy_list__zip(As, Bs, Cs).

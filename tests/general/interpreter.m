@@ -192,8 +192,6 @@ rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
 :- pred unify(term, term, varset, varset).
 :- mode unify(in, in, in, out) is semidet.
 
-:- unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
-
 unify(term__variable(X), term__variable(Y), VarSet0, VarSet) :-
 	(
 		varset__search_var(VarSet0, X, BindingOfX)

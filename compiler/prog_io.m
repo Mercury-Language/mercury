@@ -1279,24 +1279,6 @@ process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
 	),
 	check_no_attributes(Result1, Attributes, Result).
 
-	% NU-Prolog `when' declarations used to be silently ignored for
-	% backwards compatibility.  We now issue a warning that they
-	% are deprecated.  We should eventually drop support for them
-	% entirely.
-process_decl(_ModuleName, _VarSet, "when", [Goal, _Cond], Attributes,
-		Result) :-
-	( Goal = term__functor(_, _, Context0) ->
-		Context = Context0
-	;
-		term__context_init(Context)
-	),
-	dummy_term_with_context(Context, DummyTerm),
-	Result0 = ok(nothing(yes(item_warning(no,
-			"NU-Prolog `when' declarations are deprecated",
-			DummyTerm
-		)))),
-	check_no_attributes(Result0, Attributes, Result).
-
 process_decl(ModuleName, VarSet, "pragma", Pragma, Attributes, Result):-
 	parse_pragma(ModuleName, VarSet, Pragma, Result0),
 	check_no_attributes(Result0, Attributes, Result).
