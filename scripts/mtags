@@ -108,6 +108,7 @@ Options:
 		\`func' for function declarations
 		\`type' for type definitions
 		\`cons' for type constructors
+		\`fld'  for field names
 		\`inst' for inst definitions
 		\`mode' for mode definitions
 		\`tc'   for typeclass declarations
@@ -444,14 +445,32 @@ while ($#ARGV >= 0)
 		    $kind = "cons";
 		    do output_name();
 
+		    # Look for field names on the same line as the
+		    # constructor name
+		    while ($body =~ /^[^;%]*([a-z][a-zA-Z0-9]*)[ \t]*::/) {
+		    	$name = $1;
+			$kind = "fld";
+			do output_name();
+			$body =~ s/^[^:]*:://;
+		    }
+
 		    # if there are more constructor definitions on the
 		    # same line, process the next one
 		    if ($body =~ /;/) {
 			    $body =~ s/[^;]*;/;/;
 			    next;
 		    }
+		} else {
+		    # Look for field names that are not on the
+		    # same line as the constructor name
+		    while ($body =~ /^[^%]*([a-z][a-zA-Z0-9]*)[ \t]*::/) {
+			$name = $1;
+			$kind = "fld";
+			do output_name();
+			$body =~ s/^[^:]*:://;
+		   }
 		}
-		    
+
 		last if $_ =~ /\.[ \t]*$/ || $_ =~ /\.[ \t]*%.*$/;
 		$_ = <srcfile> || last;
 		chop;
