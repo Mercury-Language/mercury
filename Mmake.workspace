@@ -12,6 +12,13 @@
 # for the Mercury libraries will be included in MLLIBS, otherwise
 # `-l' options will be included.
 #
+# By default, if LINK_STATIC is unset or set to `no', `-R' options
+# will be passed to ml for each of the directories containing the
+# Mercury libraries. If SET_RPATH is set to `no', these options will
+# not be passed. This is useful for building the Mercury libraries,
+# for which the rpath must be set in each Mmakefile to point to 
+# the installed library directory.
+#
 # Setting LINK_BOEHM_GC_ONLY to `yes' causes only the boehm_gc directory
 # to be included in MLFLAGS, MLLIBS and CFLAGS.
 
@@ -23,6 +30,7 @@
 
 #-----------------------------------------------------------------------------#
 LINK_STATIC ?= no
+SET_RPATH ?= yes
 LINK_BOEHM_GC_ONLY ?= no
 LINK_RUNTIME_ONLY ?= no
 LINK_STDLIB_ONLY ?= no
@@ -132,25 +140,28 @@ MC_MAKE_FLAGS += $(patsubst %,--link-object %,$(STATIC_LIBS))
 else # LINK_STATIC != yes
 
 NON_STATIC_LIBS := $(SHARED_GC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(BOEHM_GC_DIR) -R$(BOEHM_GC_DIR)
+NON_STATIC_LIB_DIRS := -L$(BOEHM_GC_DIR)
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
 NON_STATIC_LIBS := -l$(RT_LIB_NAME) $(NON_STATIC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(RUNTIME_DIR) -R$(RUNTIME_DIR) $(NON_STATIC_LIB_DIRS)
+NON_STATIC_LIB_DIRS := -L$(RUNTIME_DIR) $(NON_STATIC_LIB_DIRS)
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 NON_STATIC_LIBS := -l$(STD_LIB_NAME) $(NON_STATIC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(LIBRARY_DIR) -R$(LIBRARY_DIR) $(NON_STATIC_LIB_DIRS)
+NON_STATIC_LIB_DIRS := -L$(LIBRARY_DIR) $(NON_STATIC_LIB_DIRS)
 ifneq ($(LINK_STDLIB_ONLY),yes)
 NON_STATIC_LIBS := -l$(TRACE_LIB_NAME) -l$(BROWSER_LIB_NAME) $(NON_STATIC_LIBS)
-NON_STATIC_LIB_DIRS := -L$(TRACE_DIR) -R$(TRACE_DIR) -L$(BROWSER_DIR) \
-			-R$(BROWSER_DIR) $(NON_STATIC_LIB_DIRS)
+NON_STATIC_LIB_DIRS := -L$(TRACE_DIR) -L$(BROWSER_DIR) $(NON_STATIC_LIB_DIRS)
 endif
 endif
 endif
 
 MLFLAGS +=	$(NON_STATIC_LIB_DIRS)
 MLLIBS +=	$(NON_STATIC_LIBS)
-MC_MAKE_FLAGS += $(patsubst -R%,--link-flags -R%,$(NON_STATIC_LIB_DIRS)) \
-			$(NON_STATIC_LIBS)
+MC_MAKE_FLAGS += $(NON_STATIC_LIB_DIRS) $(NON_STATIC_LIBS)
+
+ifeq ($(SET_RPATH),yes)
+MLFLAGS += $(NON_STATIC_LIB_DIRS:-L%,-R%)
+MC_MAKE_FLAGS += $(NON_STATIC_LIB_DIRS:-L%,--link-flags -R%)
+endif
 
 endif # LINK_STATIC != yes
 

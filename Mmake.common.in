@@ -19,6 +19,10 @@
 
 include $(MERCURY_DIR)/VERSION
 
+# The rpath for the libraries needs to be set to the final installation
+# directory, not $(MERCURY_DIR)/runtime etc.
+SET_RPATH=no
+
 WORKSPACE=$(MERCURY_DIR)
 include $(MERCURY_DIR)/Mmake.workspace
 
