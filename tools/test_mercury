@@ -464,10 +464,25 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-: check for success
-
 STABLE=mercury-latest-stable
 UNSTABLE=mercury-latest-unstable
+
+: build the binary distribution
+
+case $status in
+    0) {
+    	cd $DIR/mercury &&
+    	mmake bindist &&
+	cd .. &&
+	( [ -d $STABLE ] || mkdir $STABLE ) &&
+	mv mercury-$version*.tar.gz $STABLE
+       } || status=1
+    ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
+: check for success
 
 case $status in
     0)
