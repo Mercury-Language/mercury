@@ -867,7 +867,7 @@ vn__flush_hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 				MaybeRval2 = yes(Rval2),
 				MaybeRval = yes(binop(Op, Rval1, Rval2))
 			;
-				MaybeRval1 = yes(Rval2),
+				MaybeRval1 = yes(_Rval1),
 				MaybeRval2 = no,
 				( Op = (+) ->
 					MaybeRval = MaybeRval1
@@ -876,7 +876,7 @@ vn__flush_hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 				)
 			;
 				MaybeRval1 = no,
-				MaybeRval2 = yes(Rval2),
+				MaybeRval2 = yes(_Rval2),
 				( Op = (+) ->
 					MaybeRval = MaybeRval2
 				;
