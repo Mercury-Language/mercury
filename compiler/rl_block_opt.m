@@ -248,8 +248,6 @@ rl_block_opt__set_relation_output_id(Relation, OutputId) -->
 rl_block_opt__set_output_rel_id(output_rel(Relation, Indexes),
 		OutputId) -->
 	rl_block_opt__unset_relation_node(Relation),
-	dag_get_relation_info(Relation, RelationInfo),
-	{ RelationInfo = relation_info(_, _, _, _) },
 	dag_get_node_info_map(NodeInfoMap0),
 	dag_get_rel_node_map(RelNodeMap0),
 	dag_get_output_loc_map(Locs),
@@ -1176,14 +1174,10 @@ rl_block_opt__deconstruct_dag(Instrs) -->
 	% Find out which of the non-locals are evaluated by this block.
 	dag_get_rel_node_map(RelNodeMap),
 	dag_get_output_loc_map(Locs),
-	dag_get_node_info_map(NodeInfoMap),
 	{ IsProducedNonLocal =
 		lambda([Rel::in, Node::out] is semidet, (
 			map__search(RelNodeMap, Rel, OutputId),
-			map__lookup(Locs, OutputId, input_node(Node, _)),
-			map__lookup(NodeInfoMap, Node, NodeInfo),
-			NodeInfo = node_info(NodeInstr, _),
-			NodeInstr \= input(Rel)
+			map__lookup(Locs, OutputId, input_node(Node, _))
 		)) },
 
 	{ list__filter_map(IsProducedNonLocal, LiveAtEnd,
@@ -1243,7 +1237,9 @@ rl_block_opt__get_required_nodes([Node | Nodes0], Required0, Required,
 			list__foldl(AddDep, SubNodes, NodeRel0, NodeRel1)
 		;
 			Nodes1 = Nodes0,
-			NodeRel1 = NodeRel0
+			% Make sure this node is in the topological
+			% sort of the required nodes.
+			relation__add_element(NodeRel0, Node, _, NodeRel1)
 		}
 	),
 	rl_block_opt__get_required_nodes(Nodes1, Required1, Required,
@@ -1277,27 +1273,10 @@ rl_block_opt__evaluate_node(Node, NonLocalRels, NodeRels0, NodeRels,
 	dag_get_node_info_map(NodeInfoMap),
 	{ map__lookup(NodeInfoMap, Node, NodeInfo) },
 	{ NodeInfo = node_info(Instr0, OutputRels) },
-
-	( { Instr0 = input(InputRel) } ->
-		{ rl_block_opt__one_output(OutputRels, OutputNode) },
-		{ OutputNode = output_node(Schema, Index, AllOutputs) },
-		{ set__delete(AllOutputs, InputRel, Outputs0) },
-		{ set__intersect(Outputs0, NonLocalRels, NonLocalOutputs) },
-		( { set__empty(NonLocalOutputs) } ->
-			{ NodeInstrs = [] },
-			{ NodeOutputs = [output_rel(InputRel, [])] }
-		;
-			rl_block_opt__handle_node_outputs(Schema, Index,
-				NonLocalOutputs, OutputRel, NodeInstrs),
-			{ NodeOutputs = [OutputRel] }
-		),
-		{ AssignInstrs1 = [] }
-	;
-		rl_block_opt__get_node_outputs(NonLocalRels,
-			OutputRels, NodeOutputs, [], AssignInstrs1),
-		rl_block_opt__generate_instr(OutputRels, NodeOutputs,
-			NodeRels0, Instr0, NodeInstrs)
-	),
+	rl_block_opt__get_node_outputs(Instr0, NonLocalRels,
+		OutputRels, NodeOutputs, [], AssignInstrs1),
+	rl_block_opt__generate_instr(OutputRels, NodeOutputs,
+		NodeRels0, Instr0, NodeInstrs),
 	{ map__det_insert(NodeRels0, Node, NodeOutputs, NodeRels) },
 	{ list__reverse(NodeInstrs, RevNodeInstrs) },
 	{ list__append(RevNodeInstrs, RevInstrs0, RevInstrs) },
@@ -1306,34 +1285,53 @@ rl_block_opt__evaluate_node(Node, NonLocalRels, NodeRels0, NodeRels,
 	% Select a relation variable to collect the output for each
 	% output argument of the node. Create `ref' instructions
 	% for each of the other relations produced by the position.
-:- pred rl_block_opt__get_node_outputs(set(relation_id)::in,
+:- pred rl_block_opt__get_node_outputs(instr::in, set(relation_id)::in,
 	list(output_node)::in, list(output_rel)::out, list(rl_instruction)::in,
 	list(rl_instruction)::out, dag::in, dag::out) is det.
 
-rl_block_opt__get_node_outputs(_, [], [], Instrs, Instrs) --> [].
-rl_block_opt__get_node_outputs(NonLocalRels, [OutputRel | OutputRels],
-		[RelationId | RelationIds], RefInstrs0, RefInstrs) -->
-	{ OutputRel = output_node(Schema, Index, AllOutputs0) },
-	{ set__intersect(AllOutputs0, NonLocalRels, NonLocalOutputs) },
-	rl_block_opt__handle_node_outputs(Schema,
-		Index, NonLocalOutputs, RelationId, NewRefInstrs),
-	{ list__append(NewRefInstrs, RefInstrs0, RefInstrs1) },
-	rl_block_opt__get_node_outputs(NonLocalRels, OutputRels,
-		RelationIds, RefInstrs1, RefInstrs).
+rl_block_opt__get_node_outputs(_, _, [], [], Instrs, Instrs) --> [].
+rl_block_opt__get_node_outputs(Instr, NonLocalRels, [OutputNode | OutputNodes],
+		[OutputRel | OutputRels], RefInstrs0, RefInstrs) -->
+	{ OutputNode = output_node(Schema, Index, AllOutputs0) },
+	{ set__intersect(AllOutputs0, NonLocalRels, NonLocalOutputs0) },
+	{ Instr = input(InputRel1) ->
+		% Don't assigning the input relation to itself. 
+		set__delete(NonLocalOutputs0, InputRel1, NonLocalOutputs)
+	;
+		NonLocalOutputs = NonLocalOutputs0
+	},
+	(
+		{
+		% If an input relation is passed through without change,
+		% we don't need to generate any code for the instruction.
+		Instr = input(InputRel2),
+		Index = [],
 
-:- pred rl_block_opt__handle_node_outputs(list(type)::in, list(index_spec)::in,
-	set(relation_id)::in, output_rel::out, list(rl_instruction)::out,
-	dag::in, dag::out) is det.
-
-rl_block_opt__handle_node_outputs(Schema, Index, NonLocalOutputs,
-		output_rel(RelationId, Index), NewRefInstrs) -->
+		% If the input relation is not an output of the `input'
+		% instruction, another instruction has overwritten its value.
+		set__member(InputRel2, NonLocalOutputs0)
+		}
+	->	
+		{ RelationId = InputRel2 }
+	;
+		dag_add_relation(Schema, RelationId)
+	),
+	{ OutputRel = output_rel(RelationId, Index) },
 	{ set__to_sorted_list(NonLocalOutputs, OutputList) },
-	dag_add_relation(Schema, RelationId),
-	{ GetRefInstr =
+	{ rl_block_opt__get_ref_instrs(RelationId, OutputList, NewRefInstrs) },
+	{ list__append(NewRefInstrs, RefInstrs0, RefInstrs1) },
+	rl_block_opt__get_node_outputs(Instr, NonLocalRels, OutputNodes,
+		OutputRels, RefInstrs1, RefInstrs).
+
+:- pred rl_block_opt__get_ref_instrs(relation_id::in, list(relation_id)::in,
+		list(rl_instruction)::out) is det.
+
+rl_block_opt__get_ref_instrs(RelationId, OutputList, RefInstrs) :-
+	GetRefInstr =
 	    lambda([OtherOutput::in, Instr::out] is det, (
 		Instr = ref(OtherOutput, RelationId) - ""
-	    )) },
-	{ list__map(GetRefInstr, OutputList, NewRefInstrs) }.
+	    )),
+	list__map(GetRefInstr, OutputList, RefInstrs).
 
 %-----------------------------------------------------------------------------%
 
@@ -1439,7 +1437,21 @@ rl_block_opt__generate_instr(_, NodeOutputs, _NodeRels,
 		init(_), [init(Output) - ""]) -->
 	{ rl_block_opt__one_output(NodeOutputs, Output) }.
 	
-rl_block_opt__generate_instr(_, _, _, input(_), []) --> [].
+rl_block_opt__generate_instr(_, NodeOutputs, _, input(Input), Instrs) -->
+	{ rl_block_opt__one_output(NodeOutputs, OutputRel) },
+	{ OutputRel = output_rel(Output, Indexes) },
+
+	{ Indexes = [] ->
+		IndexInstrs = []
+	;
+		IndexInstrs = [add_index(OutputRel) - ""]
+	},
+
+	{ Output = Input ->
+		Instrs = IndexInstrs
+	;
+		Instrs = [ref(Output, Input) - "" | IndexInstrs]
+	}.
 
 %-----------------------------------------------------------------------------%
 
@@ -1455,7 +1467,7 @@ rl_block_opt__get_relation_id(NodeRels, OutputId, RelationId) -->
 %-----------------------------------------------------------------------------%
 
 	% Produce a new relation to hold a copy of the destructively updated
-	% input to union_diff or insert instruction.
+	% input to a union_diff or insert instruction.
 :- pred rl_block_opt__get_copy_info(output_id::in, relation_id::in,
 		output_rel::out, dag::in, dag::out) is det.
 

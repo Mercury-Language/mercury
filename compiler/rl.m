@@ -541,7 +541,7 @@ rl__instr_relations(sort(output_rel(Output, _), Input, _) - _,
 rl__instr_relations(init(output_rel(Rel, _)) - _, [], [Rel]).
 rl__instr_relations(insert_tuple(output_rel(Output, _), Input, _) - _,
 		[Input], [Output]).
-rl__instr_relations(add_index(output_rel(Rel, _)) - _, [], [Rel]).
+rl__instr_relations(add_index(output_rel(Rel, _)) - _, [Rel], [Rel]).
 rl__instr_relations(clear(Rel) - _, [], [Rel]).
 rl__instr_relations(unset(Rel) - _, [], [Rel]).
 rl__instr_relations(label(_) - _, [], []).
