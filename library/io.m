@@ -1809,6 +1809,29 @@ io__write_many( Stream, [ f(F) | Rest ]) -->
 
 :- pragma export(io__print(in, in, di, uo), "ML_io_print_to_stream").
 
+:- pragma c_code("
+/*
+** XXX this is a hack to work-around the current lack of
+** support for `pragma export'.
+*/
+#ifdef MR_HIGHLEVEL_CODE
+ #ifndef MR_BOOTSTRAPPED_PRAGMA_EXPORT
+  extern void mercury__io__print_3_p_0(MR_Word ti, MR_Box x);
+  extern void mercury__io__print_4_p_0(MR_Word ti, MR_Word stream, MR_Box x);
+
+  void
+  ML_io_print_to_cur_stream(MR_Word ti, MR_Word x) {
+	mercury__io__print_3_p_0(ti, (MR_Box) x);
+  }
+
+  void
+  ML_io_print_to_stream(MR_Word ti, MR_Word stream, MR_Word x) {
+	mercury__io__print_4_p_0(ti, stream, (MR_Box) x);
+  }
+ #endif
+#endif
+").
+
 io__print(Stream, Term) -->
 	io__set_output_stream(Stream, OrigStream),
 	io__print(Term),

@@ -626,7 +626,6 @@
 %		- most cases of `pragma c_code'
 %	- RTTI
 % TODO:
-%	- `pragma export'
 %	- complicated `pragma c_code'
 %	- high level data representation
 %	  (i.e. generate MLDS type declarations for user-defined types)
@@ -662,13 +661,14 @@
 
 :- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_code_util.
 :- import_module llds. % XXX needed for `code_model'.
-:- import_module export, llds_out. % XXX needed for pragma C code
+:- import_module arg_info, export, llds_out. % XXX needed for pragma C code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
 :- import_module passes_aux, modules.
 :- import_module globals, options.
 
-:- import_module bool, string, list, map, set, term, require, std_util.
+:- import_module assoc_list, bool, string, list, map.
+:- import_module int, set, term, require, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -691,12 +691,9 @@ ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
 	{ module_info_get_c_body_code(ModuleInfo, C_Body_Info) },
 	{ ConvBody = (func(S - C) = user_c_code(S, C)) },
 	{ User_C_Code = list__map(ConvBody, C_Body_Info) },
-	%
-	% XXX not yet implemented -- this is just a stub
-	%
-	{ C_Exports = [] },
+	{ ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) },
 	{ MLDS_ForeignCode = mlds__foreign_code(C_Header_Info, User_C_Code,
-			C_Exports) }.
+			MLDS_PragmaExports) }.
 
 :- pred ml_gen_imports(module_info, mlds__imports).
 :- mode ml_gen_imports(in, out) is det.
@@ -713,6 +710,68 @@ ml_gen_defns(ModuleInfo, MLDS_Defns) -->
 	ml_gen_types(ModuleInfo, MLDS_TypeDefns),
 	ml_gen_preds(ModuleInfo, MLDS_PredDefns),
 	{ MLDS_Defns = list__append(MLDS_TypeDefns, MLDS_PredDefns) }.
+
+%-----------------------------------------------------------------------------%
+%
+% For each pragma export declaration we associate with it the 
+% information used to generate the function prototype for the MLDS
+% entity.
+%
+
+:- pred ml_gen_pragma_export(module_info, list(mlds__pragma_export)).
+:- mode ml_gen_pragma_export(in, out) is det.
+
+ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) :-
+	module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
+	list__map(ml_gen_pragma_export_proc(ModuleInfo),
+			PragmaExports, MLDS_PragmaExports).
+
+:- pred ml_gen_pragma_export_proc(module_info::in,
+		pragma_exported_proc::in, mlds__pragma_export::out) is det.
+
+ml_gen_pragma_export_proc(ModuleInfo,
+		pragma_exported_proc(PredId, ProcId, C_Name, ProgContext),
+		ML_Defn) :-
+
+	MLDS_Name = ml_gen_proc_label(ModuleInfo, PredId, ProcId),
+	MLDS_FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+	MLDS_Context = mlds__make_context(ProgContext),
+
+	(
+		is_output_det_function(ModuleInfo, PredId, ProcId)
+	->
+		IsOutDetFunc = yes
+	;
+		IsOutDetFunc = no
+	),
+
+	ML_Defn = ml_pragma_export(C_Name, MLDS_Name, MLDS_FuncParams,
+			MLDS_Context, IsOutDetFunc).
+
+
+	%
+	% Test to see if the procedure is of the following form
+	%   :- func <name>(...) = V::out is det.
+	% as these need to handled specially.
+	%
+:- pred is_output_det_function(module_info, pred_id, proc_id).
+:- mode is_output_det_function(in, in, in) is semidet.
+
+is_output_det_function(ModuleInfo, PredId, ProcId) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
+			ProcInfo),
+	
+	pred_info_get_is_pred_or_func(PredInfo, function),
+	proc_info_interface_code_model(ProcInfo, model_det),
+
+	proc_info_argmodes(ProcInfo, Modes),
+	pred_info_arg_types(PredInfo, ArgTypes),
+	modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
+	pred_args_to_func_args(ArgModes, _InputArgModes, RetArgMode),
+	pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
+
+	RetArgMode = top_out,
+	\+ type_util__is_dummy_argument_type(RetArgType).
 
 %-----------------------------------------------------------------------------%
 %

@@ -163,7 +163,7 @@ dead_proc_elim__initialize_procs(PredId, [ProcId | ProcIds],
 dead_proc_elim__initialize_pragma_exports([], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_pragma_exports([PragmaProc | PragmaProcs],
 		Queue0, Queue, Needed0, Needed) :-
-	PragmaProc = pragma_exported_proc(PredId, ProcId, _CFunction),
+	PragmaProc = pragma_exported_proc(PredId, ProcId, _CFunction, _Ctxt),
 	queue__put(Queue0, proc(PredId, ProcId), Queue1),
 	map__set(Needed0, proc(PredId, ProcId), no, Needed1),
 	dead_proc_elim__initialize_pragma_exports(PragmaProcs,

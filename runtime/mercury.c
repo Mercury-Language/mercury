@@ -842,24 +842,4 @@ create3(Word w1, Word w2, Word w3)
 
 /*---------------------------------------------------------------------------*/
 
-/*
-** XXX this is a hack to work-around the current lack of
-** support for `pragma export'.
-*/
-
-extern void mercury__io__print_3_p_0(MR_Word ti, MR_Box x);
-extern void mercury__io__print_4_p_0(MR_Word ti, MR_Word stream, MR_Box x);
-
-void
-ML_io_print_to_cur_stream(MR_Word ti, MR_Word x) {
-	mercury__io__print_3_p_0(ti, (MR_Box) x);
-}
-
-void
-ML_io_print_to_stream(MR_Word ti, MR_Word stream, MR_Word x) {
-	mercury__io__print_4_p_0(ti, stream, (MR_Box) x);
-}
-
-/*---------------------------------------------------------------------------*/
-
 #endif /* MR_HIGHLEVEL_CODE */

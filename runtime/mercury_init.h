@@ -115,8 +115,9 @@ extern	void	ML_io_finalize_state(void);
 extern	void	ML_io_stderr_stream(Word *);
 extern	void	ML_io_stdout_stream(Word *);
 extern	void	ML_io_stdin_stream(Word *);
-extern	void	ML_io_print_to_cur_stream(Word, Word);
+
 extern	void	ML_io_print_to_stream(Word, Word, Word);
+extern	void	ML_io_print_to_cur_stream(Word, Word);
 
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);
@@ -138,8 +139,8 @@ extern	void	ML_DI_output_current_slots(Integer, Integer, Integer, Word,
 extern	bool	ML_DI_found_match(Integer, Integer, Integer, Word, String,
 		String, Integer, Integer, Integer, Word, String, Word);
 		/* found_match/12 */
-extern	Integer	ML_DI_get_var_number(Word);
 extern	void	ML_DI_read_request_from_socket(Word, Word *, Integer *);
+extern	Integer	ML_DI_get_var_number(Word);
 
 /* in library/std_util.m  */
 extern	String	ML_type_name(Word);
@@ -153,9 +154,6 @@ extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */
 extern	void	MR_register_module_layout_real(const MR_Module_Layout *);
-
-/* in library/std_util.h  */
-extern	String	ML_type_name(Word);
 
 /*---------------------------------------------------------------------------*/
 

@@ -371,6 +371,7 @@
 				% for additional information.
 			pred_id			% Specifies the HLDS pred_id.
 		)
+	;	export(string)	% A pragma export name.
 	.
 
 :- type mlds__func_sequence_num == int.
@@ -607,10 +608,23 @@
 	---> mlds__foreign_code(
 		c_header_info,
 		list(user_c_code),
-		list(c_export)		% XXX we will need to modify
-					% export.m to handle different
-					% target languages
+		list(mlds__pragma_export)
 	).
+
+	%
+	% Information required to generate code for each
+	% `pragma export'.
+	%
+:- type mlds__pragma_export
+	---> ml_pragma_export(
+		string,			% Exported name
+		mlds__entity_name,	% MLDS name for exported entity
+		mlds__func_params,	% MLDS function parameters
+		mlds__context,
+		bool			% is a det function with the
+					% final args mode top_out.
+	).
+
 
 %-----------------------------------------------------------------------------%
 

@@ -41,12 +41,18 @@
 :- import_module ml_code_util.	% for ml_gen_mlds_var_decl, which is used by
 				% the code that handles tail recursion.
 :- import_module ml_type_gen.	% for ml_gen_type_name
+:- import_module export.	% for export__type_to_type_string
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
 :- import_module prog_data, prog_out, type_util.
 
 :- import_module bool, int, string, library, list.
 :- import_module assoc_list, term, std_util, require.
+
+%-----------------------------------------------------------------------------%
+
+:- type output_type == pred(mlds__type, io__state, io__state).
+:- inst output_type = (pred(in, di, uo) is det).
 
 %-----------------------------------------------------------------------------%
 
@@ -120,10 +126,13 @@ mlds_output_to_file(FileName, Action) -->
 :- mode mlds_output_hdr_file(in, in, di, uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS) -->
+	% XXX for bootstrapping the use of pragma export.
+	io__write_string("#define MR_BOOTSTRAPPED_PRAGMA_EXPORT\n"),
+
 	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
 	mlds_output_hdr_start(Indent, ModuleName), io__nl,
 	mlds_output_hdr_imports(Indent, Imports), io__nl,
-	mlds_output_c_hdr_decls(Indent, ForeignCode), io__nl,
+	mlds_output_c_hdr_decls(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	%
 	% The header file must contain _definitions_ of all public types,
 	% but only _declarations_ of all public variables, constants,
@@ -206,7 +215,6 @@ mlds_output_src_file(Indent, MLDS) -->
 	mlds_output_src_start(Indent, ModuleName), io__nl,
 	mlds_output_src_imports(Indent, Imports), io__nl,
 	mlds_output_c_decls(Indent, ForeignCode), io__nl,
-	mlds_output_c_defns(Indent, ForeignCode), io__nl,
 	%
 	% The public types have already been defined in the
 	% header file, and the public vars, consts, and functions
@@ -232,6 +240,8 @@ mlds_output_src_file(Indent, MLDS) -->
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	mlds_output_defns(Indent, MLDS_ModuleName, PrivateTypeDefns), io__nl,
 	mlds_output_decls(Indent, MLDS_ModuleName, PrivateNonTypeDefns), io__nl,
+
+	mlds_output_c_defns(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
@@ -308,16 +318,18 @@ mlds_output_src_end(Indent, ModuleName) -->
 % C interface stuff
 %
 
-:- pred mlds_output_c_hdr_decls(indent, mlds__foreign_code,
+:- pred mlds_output_c_hdr_decls(mlds_module_name, indent, mlds__foreign_code,
 		io__state, io__state).
-:- mode mlds_output_c_hdr_decls(in, in, di, uo) is det.
+:- mode mlds_output_c_hdr_decls(in, in, in, di, uo) is det.
 
-mlds_output_c_hdr_decls(Indent, ForeignCode) -->
-	% XXX we don't yet handle `pragma export' decls
+mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode) -->
 	{ ForeignCode = mlds__foreign_code(RevHeaderCode, _RevBodyCode,
-		_ExportDefns) },
+		ExportDefns) },
 	{ HeaderCode = list__reverse(RevHeaderCode) },
-	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)).
+	io__write_list(HeaderCode, "\n", mlds_output_c_hdr_decl(Indent)),
+	io__write_string("\n"),
+	io__write_list(ExportDefns, "\n",
+			mlds_output_pragma_export_decl(ModuleName, Indent)).
 
 :- pred mlds_output_c_hdr_decl(indent, c_header_code, io__state, io__state).
 :- mode mlds_output_c_hdr_decl(in, in, di, uo) is det.
@@ -332,15 +344,18 @@ mlds_output_c_hdr_decl(_Indent, Code - Context) -->
 % all of the declarations go in the header file or as c_code
 mlds_output_c_decls(_, _) --> [].
 
-:- pred mlds_output_c_defns(indent, mlds__foreign_code, io__state, io__state).
-:- mode mlds_output_c_defns(in, in, di, uo) is det.
+:- pred mlds_output_c_defns(mlds_module_name, indent, mlds__foreign_code,
+		io__state, io__state).
+:- mode mlds_output_c_defns(in, in, in, di, uo) is det.
 
-mlds_output_c_defns(Indent, ForeignCode) -->
-	% XXX export decls
+mlds_output_c_defns(ModuleName, Indent, ForeignCode) -->
 	{ ForeignCode = mlds__foreign_code(_RevHeaderCode, RevBodyCode,
-		_ExportDefns) },
+		ExportDefns) },
 	{ BodyCode = list__reverse(RevBodyCode) },
-	io__write_list(BodyCode, "\n", mlds_output_c_defn(Indent)).
+	io__write_list(BodyCode, "\n", mlds_output_c_defn(Indent)),
+	io__write_string("\n"),
+	io__write_list(ExportDefns, "\n",
+			mlds_output_pragma_export_defn(ModuleName, Indent)).
 
 :- pred mlds_output_c_defn(indent, user_c_code, io__state, io__state).
 :- mode mlds_output_c_defn(in, in, di, uo) is det.
@@ -349,6 +364,209 @@ mlds_output_c_defn(_Indent, user_c_code(Code, Context)) -->
 	mlds_output_context(mlds__make_context(Context)),
 	io__write_string(Code).
 
+:- pred mlds_output_pragma_export_decl(mlds_module_name, indent,
+		mlds__pragma_export, io__state, io__state).
+:- mode mlds_output_pragma_export_decl(in, in, in, di, uo) is det.
+
+mlds_output_pragma_export_decl(ModuleName, Indent, PragmaExport) -->
+	mlds_output_pragma_export_func_name(ModuleName, Indent, PragmaExport),
+	io__write_string(";").
+
+:- pred mlds_output_pragma_export_defn(mlds_module_name, indent,
+		mlds__pragma_export, io__state, io__state).
+:- mode mlds_output_pragma_export_defn(in, in, in, di, uo) is det.
+
+mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport) -->
+	{ PragmaExport = ml_pragma_export(_C_name, MLDS_Name, MLDS_Signature,
+			Context, IsFunc) },
+	mlds_output_pragma_export_func_name(ModuleName, Indent, PragmaExport),
+	io__write_string("{\n"),
+	mlds_indent(Context, Indent),
+	(
+		{ IsFunc = yes },
+		mlds_output_pragma_export_func_defn_body(ModuleName, MLDS_Name,
+				MLDS_Signature)
+	;
+		{ IsFunc = no },
+		mlds_output_pragma_export_defn_body(ModuleName, MLDS_Name,
+				MLDS_Signature)
+	),
+	io__write_string("}\n").
+
+:- pred mlds_output_pragma_export_func_name(mlds_module_name, indent,
+		mlds__pragma_export, io__state, io__state).
+:- mode mlds_output_pragma_export_func_name(in, in, in, di, uo) is det.
+
+mlds_output_pragma_export_func_name(ModuleName, Indent,
+		ml_pragma_export(C_name, _MLDS_Name, Signature0, Context,
+			IsFunc)) -->
+	(
+		{ IsFunc = yes }
+	->
+		{ Signature = det_func_signature(Signature0) }
+	;
+		{ Signature = Signature0 }
+	),
+	{ Name = qual(ModuleName, export(C_name)) },
+	mlds_indent(Context, Indent),
+	mlds_output_func_decl_ho(Indent, Name, Context, Signature,
+			mlds_output_pragma_export_type(prefix),
+			mlds_output_pragma_export_type(suffix)).
+
+:- type locn ---> prefix ; suffix.
+:- pred mlds_output_pragma_export_type(locn, mlds__type, io__state, io__state).
+:- mode mlds_output_pragma_export_type(in, in, di, uo) is det.
+
+mlds_output_pragma_export_type(suffix, _Type) --> [].
+mlds_output_pragma_export_type(prefix, mercury_type(Type, _)) -->
+	{ export__type_to_type_string(Type, String) },
+	io__write_string(String).
+mlds_output_pragma_export_type(prefix, mlds__cont_type) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__commit_type) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__native_bool_type) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__native_int_type) -->
+	io__write_string("Integer").
+mlds_output_pragma_export_type(prefix, mlds__native_float_type) -->
+	io__write_string("Float").
+mlds_output_pragma_export_type(prefix, mlds__native_char_type) -->
+	io__write_string("Char").
+mlds_output_pragma_export_type(prefix, mlds__class_type(_, _, _)) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__array_type(_)) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__ptr_type(Type)) -->
+	mlds_output_pragma_export_type(prefix, Type),
+	io__write_string(" *").
+mlds_output_pragma_export_type(prefix, mlds__func_type(_)) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__generic_type) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__generic_env_ptr_type) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__pseudo_type_info_type) -->
+	io__write_string("Word").
+mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
+	io__write_string("Word").
+	
+
+	%
+	% Output the definition body for a pragma export when it is
+	% *NOT* a det function whose last arg is top_out.
+	%
+:- pred mlds_output_pragma_export_defn_body(mlds_module_name, mlds__entity_name,
+		func_params, io__state, io__state).
+:- mode mlds_output_pragma_export_defn_body(in, in, in, di, uo) is det.
+
+mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
+	{ Signature = mlds__func_params(_Parameters, RetTypes) },
+	{ QualNames = argument_names(ModuleName, Signature) },
+
+	( { RetTypes = [] } ->
+		io__write_string("\t")
+	; { RetTypes = [_] } ->
+		io__write_string("\treturn ")
+	;
+		{ error("mlds_output_pragma_export: multiple return types") }
+	),
+
+	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
+	io__write_string("("),
+	io__write_list(QualNames, ",", mlds_output_fully_qualified_name),
+	io__write_string(");\n").
+
+	%
+	% Output the definition body for a pragma export when it is
+	% det function whose last arg is top_out.
+	%
+:- pred mlds_output_pragma_export_func_defn_body(mlds_module_name,
+		mlds__entity_name, func_params, io__state, io__state).
+:- mode mlds_output_pragma_export_func_defn_body(in, in, in, di, uo) is det.
+
+mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
+	{ ExportedSignature = det_func_signature(Signature) },
+	{ ExportedSignature = mlds__func_params(_Parameters, RetTypes) },
+	{ QualNames = argument_names(ModuleName, Signature) },
+
+	( { RetTypes = [RetType0] } ->
+		{ RetType = RetType0 }
+	;
+		{ error("mlds_output_pragma_export_func_defn_body") }
+	),
+
+		% Define a variable to hold the function result.
+	io__write_string("\t"),
+	mlds_output_type_prefix(RetType),
+	io__write_string(" arg"),
+	mlds_output_type_suffix(RetType),
+	io__write_string(";\n"),
+
+		% Call the MLDS function.
+	io__write_string("\t"),
+	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
+	io__write_string("("),
+	write_func_args(QualNames),
+	io__write_string(");\n"),
+
+		% return the function result.
+	io__write_string("\t"),
+	io__write_string("return arg;\n").
+
+	%
+	% Write out the arguments to the MLDS function.  Note the last
+	% in the list of the arguments is the return value, so it must
+	% be "&arg"
+	%
+:- pred write_func_args(list(mlds__qualified_entity_name)::in,
+		io__state::di, io__state::uo) is det.
+
+write_func_args([]) -->
+	{ error("write_func_args: empty list") }.
+write_func_args([_Arg]) -->
+	io__write_string("&arg").
+write_func_args([Arg | Args]) -->
+	{ Args = [_|_] },
+	mlds_output_fully_qualified_name(Arg),
+	io__write_string(", "),
+	write_func_args(Args).
+
+	%
+	% Generate a list of entity_names corresponding to each function
+	% parameter.
+	%
+:- func argument_names(mlds_module_name, mlds__func_params)
+		= list(mlds__qualified_entity_name).
+
+argument_names(ModuleName, mlds__func_params(Parameters, _RetTypes))
+		= QualNames :-
+	Names = list__map(fst, Parameters),
+	QualNames = list__map((func(Name) = qual(ModuleName, Name)), Names).
+
+	%
+	% Generates the signature for det functions in the forward mode.
+	%
+:- func det_func_signature(mlds__func_params) = mlds__func_params.
+
+det_func_signature(mlds__func_params(Args, _RetTypes)) = Params :-
+	list__length(Args, NumArgs),
+	NumFuncArgs is NumArgs - 1,
+	( list__split_list(NumFuncArgs, Args, InputArgs0, [ReturnArg0]) ->
+		InputArgs = InputArgs0,
+		ReturnArg = ReturnArg0
+	;
+		error("det_func_signature: function missing return value?")
+	),
+	(
+		ReturnArg = _ReturnArgName - mlds__ptr_type(ReturnArgType0)
+	->
+		ReturnArgType = ReturnArgType0
+	;
+		error("det_func_signature: function return type!")
+	),
+	Params = mlds__func_params(InputArgs, [ReturnArgType]).
+	
 %-----------------------------------------------------------------------------%
 %
 % Code to output declarations and definitions
@@ -728,10 +946,19 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 :- mode mlds_output_data_decl(in, in, di, uo) is det.
 
 mlds_output_data_decl(Name, Type) -->
-	mlds_output_type_prefix(Type),
+	mlds_output_data_decl_ho(mlds_output_type_prefix,
+			mlds_output_type_suffix, Name, Type).
+
+:- pred mlds_output_data_decl_ho(output_type, output_type,
+		mlds__qualified_entity_name, mlds__type, io__state, io__state).
+:- mode mlds_output_data_decl_ho(in(output_type), in(output_type),
+		in, in, di, uo) is det.
+
+mlds_output_data_decl_ho(OutputPrefix, OutputSuffix, Name, Type) -->
+	OutputPrefix(Type),
 	io__write_char(' '),
 	mlds_output_fully_qualified_name(Name),
-	mlds_output_type_suffix(Type).
+	OutputSuffix(Type).
 
 :- pred mlds_output_data_defn(mlds__qualified_entity_name, mlds__type,
 			mlds__initializer, io__state, io__state).
@@ -900,7 +1127,17 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		func_params, io__state, io__state).
 :- mode mlds_output_func_decl(in, in, in, in, di, uo) is det.
 
-mlds_output_func_decl(Indent, Name, Context, Signature) -->
+mlds_output_func_decl(Indent, QualifiedName, Context, Signature) -->
+	mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
+			mlds_output_type_prefix, mlds_output_type_suffix).
+
+:- pred mlds_output_func_decl_ho(indent, qualified_entity_name, mlds__context,
+		func_params, output_type, output_type, io__state, io__state).
+:- mode mlds_output_func_decl_ho(in, in, in, in, in(output_type),
+		in(output_type), di, uo) is det.
+
+mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
+		OutputPrefix, OutputSuffix) -->
 	{ Signature = mlds__func_params(Parameters, RetTypes) },
 	( { RetTypes = [] } ->
 		io__write_string("void")
@@ -910,37 +1147,47 @@ mlds_output_func_decl(Indent, Name, Context, Signature) -->
 		{ error("mlds_output_func: multiple return types") }
 	),
 	io__write_char(' '),
-	mlds_output_fully_qualified_name(Name),
-	mlds_output_params(Indent, Name, Context, Parameters),
+	mlds_output_fully_qualified_name(QualifiedName),
+	{ QualifiedName = qual(ModuleName, _) },
+	mlds_output_params(OutputPrefix, OutputSuffix,
+			Indent, ModuleName, Context, Parameters),
 	( { RetTypes = [RetType2] } ->
 		mlds_output_type_suffix(RetType2)
 	;
 		[]
 	).
 
-:- pred mlds_output_params(indent, qualified_entity_name, mlds__context,
+:- pred mlds_output_params(output_type, output_type,
+		indent, mlds_module_name, mlds__context,
 		mlds__arguments, io__state, io__state).
-:- mode mlds_output_params(in, in, in, in, di, uo) is det.
+:- mode mlds_output_params(in(output_type), in(output_type),
+		in, in, in, in, di, uo) is det.
 
-mlds_output_params(Indent, FuncName, Context, Parameters) -->
+mlds_output_params(OutputPrefix, OutputSuffix, Indent, ModuleName,
+		Context, Parameters) -->
 	io__write_char('('),
 	( { Parameters = [] } ->
 		io__write_string("void")
 	;
 		io__nl,
 		io__write_list(Parameters, ",\n",
-			mlds_output_param(Indent + 1, FuncName, Context))
+			mlds_output_param(OutputPrefix, OutputSuffix,
+				Indent + 1, ModuleName, Context))
 	),
 	io__write_char(')').
 
-:- pred mlds_output_param(indent, qualified_entity_name, mlds__context,
+:- pred mlds_output_param(output_type, output_type,
+		indent, mlds_module_name, mlds__context,
 		pair(mlds__entity_name, mlds__type), io__state, io__state).
-:- mode mlds_output_param(in, in, in, in, di, uo) is det.
+:- mode mlds_output_param(in(output_type), in(output_type),
+		in, in, in, in, di, uo) is det.
 
-mlds_output_param(Indent, qual(ModuleName, _FuncName), Context,
-		Name - Type) -->
+
+mlds_output_param(OutputPrefix, OutputSuffix, Indent,
+		ModuleName, Context, Name - Type) -->
 	mlds_indent(Context, Indent),
-	mlds_output_data_decl(qual(ModuleName, Name), Type).
+	mlds_output_data_decl_ho(OutputPrefix, OutputSuffix,
+			qual(ModuleName, Name), Type).
 
 :- pred mlds_output_func_type_prefix(func_params, io__state, io__state).
 :- mode mlds_output_func_type_prefix(in, di, uo) is det.
@@ -1015,6 +1262,9 @@ mlds_output_fully_qualified_name(QualifiedName) -->
 			% module
 			%
 			{ Name = data(base_typeclass_info(_, _)) }
+		;
+			% We don't module qualify pragma export names.
+			{ Name = export(_) }
 		)
 	->
 		mlds_output_name(Name)
@@ -1080,6 +1330,8 @@ mlds_output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId)) -->
 	;
 		[]
 	).
+mlds_output_name(export(Name)) -->
+	io__write_string(Name).
 
 :- pred mlds_output_pred_label(mlds__pred_label, io__state, io__state).
 :- mode mlds_output_pred_label(in, di, uo) is det.

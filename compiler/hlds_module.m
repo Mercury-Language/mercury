@@ -48,7 +48,8 @@
 	--->	pragma_exported_proc(
 			pred_id,
 			proc_id,
-			string	% the name of the C function
+			string,	% the name of the C function
+			prog_context
 		).
 
 	% This structure contains the information we need to generate

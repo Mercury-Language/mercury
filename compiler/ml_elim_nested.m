@@ -489,6 +489,8 @@ ml_env_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId)) = ClassName :-
 			[s(PredLabelString), i(ModeNum)],
 			ClassName)
 	).
+ml_env_name(export(_)) = _ :-
+	error("ml_env_name: expected function, got export").
 
 :- func ml_pred_label_name(mlds__pred_label) = string.
 

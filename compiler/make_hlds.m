@@ -786,7 +786,7 @@ add_pragma_export(Name, PredOrFunc, Modes, C_Function, Context,
 			{ module_info_get_pragma_exported_procs(Module0,
 				PragmaExportedProcs0) },
 			{ NewExportedProc = pragma_exported_proc(PredId,
-				ProcId, C_Function) },
+				ProcId, C_Function, Context) },
 			{ PragmaExportedProcs = 
 				[NewExportedProc|PragmaExportedProcs0]},
 			{ module_info_set_pragma_exported_procs(Module0,

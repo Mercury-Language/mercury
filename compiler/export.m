@@ -84,7 +84,7 @@ export__get_c_export_decls(HLDS, C_ExportDecls) :-
 
 export__get_c_export_decls_2(_Preds, [], []).
 export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
-	E = pragma_exported_proc(PredId, ProcId, C_Function),
+	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
@@ -164,7 +164,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
-	E = pragma_exported_proc(PredId, ProcId, C_Function),
+	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	get_export_info(Preds, PredId, ProcId, Exported,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
