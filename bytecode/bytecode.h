@@ -1,6 +1,6 @@
 
 /*
- *	$Id: bytecode.h,v 1.4 1997-01-31 04:23:41 aet Exp $
+ *	$Id: bytecode.h,v 1.5 1997-02-01 09:21:04 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -8,22 +8,54 @@
 #if	! defined(BYTECODE_H)
 #define	BYTECODE_H
 
+/*
+ * XXX: We should make bytecode portable from platform to platform.
+ *
+ * Hence we assume the following:
+ *	sizeof(byte) = 1
+ *	sizeof(short) = 2
+ *	sizeof(int) = 4
+ *	sizeof(long) = 8
+ *	sizeof(float) = 4 (IEEE)
+ *	sizeof(double) = 8 (IEEE)
+ *
+ * We should have platform-dependent #defines to ensure that each of
+ * these types has identical size on all platforms.
+ */
+typedef unsigned char
+	Byte;
+typedef int
+	Word;
+typedef int
+	Int;
+typedef	short
+	Short;
+typedef long
+	Long;
+typedef float
+	Float;
+typedef double
+	Double;
+typedef char*
+	CString;
+typedef unsigned short
+	ushort;
 
 typedef struct Tag {
-		Byte	tag_type;	/* XXX: use shorter name. id? */
-		union {
+	Byte	id;
+	union {
+		Byte	primary;
+		struct {
 			Byte	primary;
-			struct {
-				Byte	primary;
-				Word	secondary; 
-			} pair;
-			Word	enum_tag;
-		} opt;
+			Word	secondary; 
+		} pair;
+		Word	enum_tag;
+	} opt;
 } Tag;
 
 
 /* 
- *	tag_type 
+ *	Possible values for Tag.id ...
  */
 #define	SIMPLE_TAG			0
 #define	COMPLICATED_TAG			1
@@ -32,13 +64,10 @@ typedef struct Tag {
 #define	NO_TAG				4
 
 
-typedef unsigned short
-	ushort;
-
 typedef Byte
 	Determinism;
 /*
- *	Determinism
+ *	Possible values for Determinism ...
  */
 #define	DET		0
 #define	SEMIDET		1
@@ -50,7 +79,7 @@ typedef Byte
 #define	FAILURE		7
 
 typedef struct Op_arg {
-	Byte	arg_type;	/* XXX: use shorter name. id? */
+	Byte	id;
 	union {
 		ushort	var;
 		Int	int_const;
@@ -58,27 +87,32 @@ typedef struct Op_arg {
 	} opt;
 } Op_arg;
 
+/*
+ *	Possible values for Op_arg.id
+ */
 #define	ARG_VAR	0
 #define	ARG_INT_CONST	1
 #define	ARG_FLOAT_CONST	2
 
+
 typedef Byte
 	Direction;
-/*
- *	Direction
- */
-#define	TO_ARG		0
-#define	TO_VAR		1
-#define	TO_NONE		2
-
 
 typedef struct Var_dir {
 	ushort		var;
 	Direction	dir;
 } Var_dir;
 
+/*
+ *	Possible values for Direction ...
+ */
+#define	TO_ARG		0
+#define	TO_VAR		1
+#define	TO_NONE		2
+
+
 typedef struct Cons_id {
-	Byte	cons_id_type;	/* XXX: use shorter name: id? */
+	Byte	id;
 	union {
 		struct {
 			CString		string;
@@ -108,6 +142,9 @@ typedef struct Cons_id {
 	} opt;
 } Cons_id;
 
+/*
+ *	Possible values for Cons_id.id ...
+ */
 #define	CONSID_CONS		0
 #define	CONSID_INT_CONST	1
 #define	CONSID_STRING_CONST	2
@@ -118,8 +155,7 @@ typedef struct Cons_id {
 
 
 typedef struct Bytecode {
-	Byte	bc;	/* Which bytecode instruction. e.g. BC_fail */
-			/* XXX: use better name than bc. id? */
+	Byte	id;	/* Which bytecode instruction. e.g. BC_fail */
 	union {
 		struct {
 			CString		pred_name;	/* XXX: malloc */
@@ -303,64 +339,9 @@ typedef struct Bytecode {
 	} opt;
 } Bytecode;
 
-CString
-bytecode_to_name(Byte bytecode_id);
-
-CString
-determinism_to_name(Byte determinism_id);
-
-CString
-binop_to_name(Byte binop);
-
-CString
-unop_to_name(Byte binop);
-
-Bool
-read_bytecode_version_number(FILE *fp, ushort *version_number_p);
-
-Bool
-read_tag(FILE *fp, Tag *tag_p);
-
-Bool
-read_cons_id(FILE *fp, Cons_id *cons_id_p);
-
-Bool
-read_var_dir(FILE *fp, Var_dir *var_dir_p);
-
-Bool
-read_op_arg(FILE *fp, Op_arg *op_arg_p);
-
-Bool
-read_determinism(FILE *fp, Determinism *det_p);
-
-Bool
-read_ushort(FILE *fp, ushort *ushort_p);
-
-Bool
-read_float(FILE *fp, float *float_p);
-
-Bool
-read_cstring(FILE *fp, CString *cstr_p);
-
-Bool
-read_int(FILE *fp, Int *int_p);
-
-Bool
-read_word(FILE *fp, Word *word_p);
-
-Bool
-read_byte(FILE *fp, Byte *byte_p);
-
-Bool
-read_cstring(FILE *fp, CString *str);
-
-Bool
-read_ushort(FILE *fp, ushort *ushort_p);
-
-Bool
-read_bytecode(FILE *fp, struct Bytecode *bc_p);
-
 /*
+ *	Possible values for Bytecode.id ...
+ *
  *	We use #defines rather than an enumeration here since
  *	C enumeration constant must be of type int whereas we
  *	want byte (unsigned char).
@@ -405,8 +386,22 @@ read_bytecode(FILE *fp, struct Bytecode *bc_p);
 #define	BC_semidet_success_check	36
 #define	BC_fail				37
 #define	BC_context			38
-	/* NOTE: BC_not_supported must be the last bytecode */
 #define	BC_not_supported		39
 
+/*
+ *	Read the next bytecode from the stream fp.
+ *	If no bytecode can be read, return FALSE.
+ *	Otherwise, return TRUE.
+ */
+Bool
+read_bytecode(FILE *fp, Bytecode *bc_p);
+
+/*
+ *	Read the bytecode version number from the stream fp.
+ *	If the version number cannot be read, return FALSE.
+ *	Otherwise, return TRUE.
+ */
+Bool
+read_bytecode_version_number(FILE *fp, ushort *version_number_p);
 
 #endif	/* BYTECODE_H */
