@@ -490,7 +490,7 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredId, PredInfo0, ModuleInfo0,
 	(
 		( pred_info_is_imported(PredInfo0)
 		; pred_info_is_pseudo_imported(PredInfo0),
-		  in_in_unification_proc_id(ProcId)
+		  hlds_pred__in_in_unification_proc_id(ProcId)
 		)
 	->
 		Goal = Goal0,
