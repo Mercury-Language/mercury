@@ -200,6 +200,8 @@ code_util__builtin_binop("int", "builtin_bit_xor", 3, (^)).
 code_util__builtin_binop("int", "^", 3, (^)).
 code_util__builtin_binop("int", ">", 2, (>)).
 code_util__builtin_binop("int", "<", 2, (<)).
+code_util__builtin_binop("mercury_builtin", "builtin_int_gt", 2, (>)).
+code_util__builtin_binop("mercury_builtin", "builtin_int_lt", 2, (<)).
 code_util__builtin_binop("mercury_builtin", ">", 2, (>)).
 code_util__builtin_binop("mercury_builtin", "<", 2, (<)).
 code_util__builtin_binop("int", ">=", 2, (>=)).
