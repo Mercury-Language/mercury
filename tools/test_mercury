@@ -142,12 +142,15 @@ case $BRANCH in
 esac
 case "$C_COMPILER" in
 	gcc)	TEST_ID=$BRANCH.$HOST
-        	TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs" ;;
+        	TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs"
+        	FAILED_TESTS_FILE="$TESTDIR/logs/test-$BRANCH-$HOST.failed_tests"
+		;;
 	*)	TEST_ID=$BRANCH.$HOST.$C_COMPILER
-		TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs" ;;
+		TEST_ERROR_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.test_errs"
+		FAILED_TESTS_FILE="$TESTDIR/logs/test-$BRANCH-$HOST-$C_COMPILER.failed_tests"
+		;;
 esac
-rm -f $TEST_ERROR_FILE
-touch $TEST_ERROR_FILE
+rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 
 #-----------------------------------------------------------------------------#
 
@@ -837,6 +840,7 @@ do
 			$PARALLEL runtests || \
 			set_status "tests in grade $grade"
 		if [ -f runtests.errs ]; then
+			touch $TEST_ERROR_FILE
 			cat runtests.errs >> $TEST_ERROR_FILE
 		fi
 		;;
@@ -898,12 +902,16 @@ case $HOST in hg)
 			EXTRA_MLFLAGS="$TEST_MLFLAGS" \
 			$PARALLEL runtests
 		if [ -f runtests.errs ]; then
+			touch $TEST_ERROR_FILE
 			cat runtest.errs >> $TEST_ERROR_FILE
 		fi
 		;;
 	esac
 	;;
 esac
+if [ -s $TEST_ERROR_FILE ]; then
+	fgrep "FAILED TEST" $TEST_ERROR_FILE > $FAILED_TESTS_FILE
+fi
 echo "test_mercury finished tests at `date`" 1>&2
 
 cd ..
@@ -914,8 +922,12 @@ cd ..
 
 case $HOST in $ROTD_HOST)
 	if [ -s $TEST_ERROR_FILE ]; then
-		cp $TEST_ERROR_FILE \
-			$UNSTABLE/mercury-test-failures-$version-unstable.txt
+		{ cat $FAILED_TESTS_FILE;
+		  echo "";
+		  echo "Test logs for the failed test cases:";
+		  echo "";
+		  cat $TEST_ERROR_FILE;
+		} > $UNSTABLE/mercury-test-failures-$version-unstable.txt
 	else 
 		rm -f $UNSTABLE/mercury-test-failures-$version-unstable.txt
 	fi &&
@@ -1023,8 +1035,12 @@ ulimit -S -t unlimited
 	cp mercury/bindist/bindist.INSTALL \
 		$UNSTABLE/mercury-INSTALL-$version.$fullname.txt &&
 	if [ -s $TEST_ERROR_FILE ]; then
-		cp $TEST_ERROR_FILE \
-			$UNSTABLE/mercury-test-failures-$version.$fullname.txt
+		{ cat $FAILED_TESTS_FILE;
+		  echo "";
+		  echo "Test logs for the failed test cases:";
+		  echo "";
+		  cat $TEST_ERROR_FILE;
+		} > $UNSTABLE/mercury-test-failures-$version.$fullname.txt
 	else 
 		rm -f $UNSTABLE/mercury-test-failures-$version.$fullname.txt
 	fi &&
