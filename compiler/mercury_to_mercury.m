@@ -1292,7 +1292,7 @@ mercury_output_pred_type_2(VarSet, ExistQVars, PredName, Types, MaybeDet,
 		Purity, ClassContext, _Context, StartString, Separator) -->
 	io__write_string(StartString),
 	mercury_output_quantifier(VarSet, ExistQVars),
-	( { ExistQVars = [] } -> 
+	( { ExistQVars = [], ClassContext = constraints(_, []) } -> 
 		[] 
 	; 
 		io__write_string("(")
@@ -1307,10 +1307,10 @@ mercury_output_pred_type_2(VarSet, ExistQVars, PredName, Types, MaybeDet,
 		mercury_output_term(Type, VarSet, no),
 		mercury_output_remaining_terms(Rest, VarSet, no),
 		io__write_string(")"),
-		mercury_output_class_context(ClassContext, VarSet)
+		mercury_output_class_context(ClassContext, ExistQVars, VarSet)
 	;
 		mercury_output_bracketed_sym_name(PredName),
-		mercury_output_class_context(ClassContext, VarSet),
+		mercury_output_class_context(ClassContext, ExistQVars, VarSet),
 		mercury_output_det_annotation(MaybeDet)
 	),
 
@@ -1385,7 +1385,7 @@ mercury_output_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
 		Separator) -->
 	io__write_string(StartString),
 	mercury_output_quantifier(VarSet, ExistQVars),
-	( { ExistQVars = [] } -> 
+	( { ExistQVars = [], ClassContext = constraints(_, []) } -> 
 		[] 
 	; 
 		io__write_string("(")
@@ -1405,7 +1405,7 @@ mercury_output_func_type_2(VarSet, ExistQVars, FuncName, Types, RetType,
 	),
 	io__write_string(" = "),
 	mercury_output_term(RetType, VarSet, no),
-	mercury_output_class_context(ClassContext, VarSet),
+	mercury_output_class_context(ClassContext, ExistQVars, VarSet),
 	mercury_output_det_annotation(MaybeDet),
 	io__write_string(Separator).
 
@@ -1422,14 +1422,14 @@ mercury_output_quantifier(VarSet, ExistQVars) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_class_context(class_constraints, varset, 
+:- pred mercury_output_class_context(class_constraints, existq_tvars, varset, 
 	io__state, io__state).
-:- mode mercury_output_class_context(in, in, di, uo) is det.
+:- mode mercury_output_class_context(in, in, in, di, uo) is det.
 
-mercury_output_class_context(ClassContext, VarSet) -->
+mercury_output_class_context(ClassContext, ExistQVars, VarSet) -->
 	{ ClassContext = constraints(UnivCs, ExistCs) },
 	mercury_output_class_constraint_list(ExistCs, VarSet, "&"),
-	( { ExistCs = [] } -> 
+	( { ExistQVars = [], ExistCs = [] } -> 
 		[] 
 	; 
 		io__write_string(")")
