@@ -80,7 +80,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
 		{ list__length(TaggedCases, NumCases) },
 		{ globals__lookup_int_option(Globals, dense_switch_size,
 			DenseSize) },
-		{ NumCases > DenseSize },
+		{ NumCases >= DenseSize },
 		{ globals__lookup_int_option(Globals, req_density,
 			ReqDensity) },
 		dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail,
@@ -95,7 +95,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
 		{ list__length(TaggedCases, NumCases) },
 		{ globals__lookup_int_option(Globals, string_switch_size,
 			StringSize) },
-		{ NumCases > StringSize }
+		{ NumCases >= StringSize }
 	->
 		string_switch__generate(TaggedCases, CaseVar, CodeModel,
 			CanFail, EndLabel, Code)
@@ -105,7 +105,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, Code) -->
 		{ list__length(TaggedCases, NumCases) },
 		{ globals__lookup_int_option(Globals, tag_switch_size,
 			TagSize) },
-		{ NumCases > TagSize }
+		{ NumCases >= TagSize }
 	->
 		tag_switch__generate(TaggedCases,
 			CaseVar, CodeModel, CanFail, EndLabel, Code)
