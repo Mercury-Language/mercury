@@ -23,15 +23,6 @@
 					list(item_and_context)).
 :- mode prog_util__expand_eqv_types(in, out) is det.
 
-	% The following predicate prog_util__replace_eqv_type_list
-	% performs substititution of a single type on a list
-	% of items.  It is used in mercury_to_goedel to rename
-	% type `int' as `integer'.
-
-:- pred prog_util__replace_eqv_type_list(list(item_and_context), varset,
-		string, list(type_param), type, list(item_and_context)).
-:- mode prog_util__replace_eqv_type_list(in, in, in, in, in, out) is det.
-
 %-----------------------------------------------------------------------------%
 
 	% Convert a (possibly module-qualified) sym_name into a string.
@@ -66,195 +57,207 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, std_util, term.
+:- import_module bool, std_util, map, term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 prog_util__expand_eqv_types(Items0, Items) :-
-	prog_util__replace_all_eqv_types(Items0, [], Items1),
+	map__init(EqvMap0),
+	prog_util__build_eqv_map(Items0, EqvMap0, EqvMap),
+	prog_util__replace_eqv_type_item_list(Items0, EqvMap, [], Items1),
 	list__reverse(Items1, Items).
 
-:- pred prog_util__replace_all_eqv_types(list(item_and_context),
-		list(item_and_context), list(item_and_context)).
-:- mode prog_util__replace_all_eqv_types(in, in, out) is det.
+:- type eqv_type_id == pair(string, arity).
+:- type eqv_type_body ---> eqv_type_body(tvarset, list(type_param), type).
+:- type eqv_map == map(eqv_type_id, eqv_type_body).
 
-prog_util__replace_all_eqv_types([], Items, Items).
-prog_util__replace_all_eqv_types([ItemContext | Items0], ItemList0,
-		ItemList) :-
-	ItemContext = Item - _Context,
+:- pred prog_util__build_eqv_map(list(item_and_context), eqv_map, eqv_map).
+:- mode prog_util__build_eqv_map(in, in, out) is det.
+
+prog_util__build_eqv_map([], EqvMap, EqvMap).
+prog_util__build_eqv_map([Item - _Context | Items], EqvMap0, EqvMap) :-
 	( Item = type_defn(VarSet, eqv_type(Name, Args, Body), _Cond) ->
 		unqualify_name(Name, Name2),
-		prog_util__replace_eqv_type_list(ItemList0, VarSet, Name2,
-				Args, Body, ItemList1),
-		prog_util__replace_eqv_type_list(Items0, VarSet, Name2, Args,
-				Body, Items1)
+		list__length(Args, Arity),
+		map__set(EqvMap0, Name2 - Arity,
+			eqv_type_body(VarSet, Args, Body), EqvMap1)
 	;
-		Items1 = Items0,
-		ItemList1 = ItemList0
+		EqvMap1 = EqvMap0
 	),
-	ItemList2 = [ItemContext | ItemList1],
-	prog_util__replace_all_eqv_types(Items1, ItemList2, ItemList).
+	prog_util__build_eqv_map(Items, EqvMap1, EqvMap).
 
-prog_util__replace_eqv_type_list([], _, _, _, _, []).
-prog_util__replace_eqv_type_list([Item0 - Context| Items0], VarSet, Name, Args,
-				Body, [Item - Context| Items]) :-
-	% Attempting to replace an equivalence type can cause
-	% quite a bit of memory allocation.  If it turns out that
-	% we don't need to replace anything, then we fail so that
-	% we can quickly reclaim this memory.
-	(
-		%some [Item1]
-		prog_util__replace_eqv_type(Item0, VarSet, Name, Args, Body,
-			Item1)
-	->
-		Item = Item1
+	% The following predicate prog_util__replace_eqv_type_list
+	% performs substititution of a single type on a list
+	% of items.
+
+:- pred prog_util__replace_eqv_type_item_list(list(item_and_context), eqv_map,
+			list(item_and_context), list(item_and_context)).
+:- mode prog_util__replace_eqv_type_item_list(in, in, in, out) is det.
+
+prog_util__replace_eqv_type_item_list([], _, Items, Items).
+prog_util__replace_eqv_type_item_list([Item0 - Context | Items0], EqvMap,
+				Items1, Items) :-
+	( prog_util__replace_eqv_type(Item0, EqvMap, Item) ->
+		Items2 = [Item - Context | Items1]
 	;
-		Item = Item0
+		Items2 = [Item0 - Context | Items1]
 	),
-	prog_util__replace_eqv_type_list(Items0, VarSet, Name, Args, Body,
-		Items).
+	prog_util__replace_eqv_type_item_list(Items0, EqvMap, Items2, Items).
 
-:- pred prog_util__replace_eqv_type(item, varset, string, list(type_param),
-					type, item).
-:- mode prog_util__replace_eqv_type(in, in, in, in, in, out) is semidet.
+:- pred prog_util__replace_eqv_type(item, eqv_map, item).
+:- mode prog_util__replace_eqv_type(in, in, out) is semidet.
 
 prog_util__replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
-			TVarSet, Name, Args0, Body0,
-			type_defn(VarSet0, TypeDefn, Cond)) :-
-	varset__merge_subst(VarSet0, TVarSet, _, Subst),
-	term__apply_substitution_to_list(Args0, Subst, Args),
-	term__apply_substitution(Body0, Subst, Body),
-	prog_util__replace_eqv_type_defn(TypeDefn0, Name, Args, Body, TypeDefn).
+		EqvMap, type_defn(VarSet, TypeDefn, Cond)) :-
+	prog_util__replace_eqv_type_defn(TypeDefn0, VarSet0, EqvMap,
+				TypeDefn, VarSet).
 
 prog_util__replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
-			TVarSet, Name, Args0, Body0,
-			pred(VarSet0, PredName, TypesAndModes, Det, Cond)) :-
-	varset__merge_subst(VarSet0, TVarSet, _, Subst),
-	term__apply_substitution_to_list(Args0, Subst, Args),
-	term__apply_substitution(Body0, Subst, Body),
-	prog_util__replace_eqv_type_tms(TypesAndModes0, Name, Args, Body,
-		no, TypesAndModes, yes).
+		EqvMap, pred(VarSet, PredName, TypesAndModes, Det, Cond)) :-
+	prog_util__replace_eqv_type_tms(TypesAndModes0, VarSet0, EqvMap, 
+					no, TypesAndModes, VarSet, yes).
 
 prog_util__replace_eqv_type(
 			func(VarSet0, PredName, TypesAndModes0, 
 				RetTypeAndMode0, Det, Cond),
-			TVarSet, Name, Args0, Body0,
-			func(VarSet0, PredName, TypesAndModes, RetTypeAndMode,
+			EqvMap,
+			func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
 				Det, Cond)) :-
-	varset__merge_subst(VarSet0, TVarSet, _, Subst),
-	term__apply_substitution_to_list(Args0, Subst, Args),
-	term__apply_substitution(Body0, Subst, Body),
-	prog_util__replace_eqv_type_tms(TypesAndModes0, Name, Args, Body,
-		no, TypesAndModes, Found),
-	prog_util__replace_eqv_type_tm(RetTypeAndMode0, Name, Args, Body,
-		Found, RetTypeAndMode, yes).
+	prog_util__replace_eqv_type_tms(TypesAndModes0, VarSet0, EqvMap,
+				no, TypesAndModes, VarSet, Found),
+	prog_util__replace_eqv_type_tm(RetTypeAndMode0, VarSet0, EqvMap,
+				Found, RetTypeAndMode, VarSet, yes).
 
-:- pred prog_util__replace_eqv_type_defn(type_defn, string, list(type_param),
-					type, type_defn).
-:- mode prog_util__replace_eqv_type_defn(in, in, in, in, out) is semidet.
+:- pred prog_util__replace_eqv_type_defn(type_defn, tvarset, eqv_map,
+					type_defn, tvarset).
+:- mode prog_util__replace_eqv_type_defn(in, in, in, out, out) is semidet.
 
-prog_util__replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0),
-				Name, Args, Body,
-				eqv_type(TName, TArgs, TBody)) :-
-	prog_util__replace_eqv_type_type(TBody0, Name, Args, Body, no,
-						TBody, yes).
+prog_util__replace_eqv_type_defn(eqv_type(TName, TArgs, TBody0), VarSet0,
+			EqvMap, eqv_type(TName, TArgs, TBody), VarSet) :-
+	prog_util__replace_eqv_type_type(TBody0, VarSet0, EqvMap, no,
+				TBody, VarSet, yes).
 
-prog_util__replace_eqv_type_defn(uu_type(TName, TArgs, TBody0),
-				Name, Args, Body,
-				uu_type(TName, TArgs, TBody)) :-
-	prog_util__replace_eqv_type_uu(TBody0, Name, Args, Body, no,
-				TBody, yes).
+prog_util__replace_eqv_type_defn(uu_type(TName, TArgs, TBody0), VarSet0,
+			EqvMap, uu_type(TName, TArgs, TBody), VarSet) :-
+	prog_util__replace_eqv_type_uu(TBody0, VarSet0, EqvMap, no,
+				TBody, VarSet, yes).
 
-prog_util__replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
-				Name, Args, Body,
-				du_type(TName, TArgs, TBody)) :-
-	prog_util__replace_eqv_type_du(TBody0, Name, Args, Body, no,
-				TBody, yes).
+prog_util__replace_eqv_type_defn(du_type(TName, TArgs, TBody0), VarSet0,
+			EqvMap, du_type(TName, TArgs, TBody), VarSet) :-
+	prog_util__replace_eqv_type_du(TBody0, VarSet0, EqvMap, no,
+				TBody, VarSet, yes).
 
-:- pred prog_util__replace_eqv_type_uu(list(type), string, list(type_param),
-					type, bool, list(type), bool).
-:- mode prog_util__replace_eqv_type_uu(in, in, in, in, in, out, out) is det.
+:- pred prog_util__replace_eqv_type_uu(list(type), tvarset, eqv_map,
+					bool, list(type), tvarset, bool).
+:- mode prog_util__replace_eqv_type_uu(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_uu([], _Name, _Args, _Body, Found, [], Found).
-prog_util__replace_eqv_type_uu([T0|Ts0], Name, Args, Body, Found0, [T|Ts],
-		Found) :-
-	prog_util__replace_eqv_type_type(T0, Name, Args, Body, Found0,
-					T, Found1),
-	prog_util__replace_eqv_type_uu(Ts0, Name, Args, Body, Found1,
-					Ts, Found).
+prog_util__replace_eqv_type_uu(Ts0, VarSet0, EqvMap, Found0,
+				Ts, VarSet, Found) :-
+	prog_util__replace_eqv_type_list(Ts0, VarSet0, EqvMap, Found0,
+					Ts, VarSet, Found).
 
-:- pred prog_util__replace_eqv_type_du(list(constructor), string,
-		list(type_param), type, bool, list(constructor), bool).
-:- mode prog_util__replace_eqv_type_du(in, in, in, in, in, out, out) is det.
+:- pred prog_util__replace_eqv_type_du(list(constructor), tvarset, eqv_map,
+				bool, list(constructor), tvarset, bool).
+:- mode prog_util__replace_eqv_type_du(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_du([], _Name, _Args, _Body, Found, [], Found).
-prog_util__replace_eqv_type_du([T0|Ts0], Name, Args, Body, Found0,
-				[T|Ts], Found) :-
-	prog_util__replace_eqv_type_ctor(T0, Name, Args, Body, Found0,
-					T, Found1),
-	prog_util__replace_eqv_type_du(Ts0, Name, Args, Body, Found1,
-					Ts, Found).
+prog_util__replace_eqv_type_du([], VarSet, _EqvMap, Found, [], VarSet, Found).
+prog_util__replace_eqv_type_du([T0|Ts0], VarSet0, EqvMap, Found0,
+				[T|Ts], VarSet, Found) :-
+	prog_util__replace_eqv_type_ctor(T0, VarSet0, EqvMap, Found0,
+					T, VarSet1, Found1),
+	prog_util__replace_eqv_type_du(Ts0, VarSet1, EqvMap, Found1,
+					Ts, VarSet, Found).
 
-:- pred prog_util__replace_eqv_type_ctor(constructor, string, list(type_param),
-				type, bool, constructor, bool).
-:- mode prog_util__replace_eqv_type_ctor(in, in, in, in, in, out, out) is det.
+:- pred prog_util__replace_eqv_type_ctor(constructor, tvarset, eqv_map,
+				bool, constructor, tvarset, bool).
+:- mode prog_util__replace_eqv_type_ctor(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_ctor(TName - Targs0, Name, Args, Body, Found0,
-		TName - Targs, Found) :-
-	prog_util__replace_eqv_type_uu(Targs0, Name, Args, Body, Found0,
-		Targs, Found).
+prog_util__replace_eqv_type_ctor(TName - Targs0, VarSet0, EqvMap, Found0,
+		TName - Targs, VarSet, Found) :-
+	prog_util__replace_eqv_type_list(Targs0, VarSet0, EqvMap, Found0,
+		Targs, VarSet, Found).
 
-:- pred prog_util__replace_eqv_type_type(type, string, list(type_param),
-				type, bool, type, bool).
-:- mode prog_util__replace_eqv_type_type(in, in, in, in, in, out, out) is det.
+:- pred prog_util__replace_eqv_type_list(list(type), tvarset, eqv_map,
+					bool, list(type), tvarset, bool).
+:- mode prog_util__replace_eqv_type_list(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_type(term__variable(V), _Name, _Args, _Body, Found,
-		term__variable(V), Found).
-prog_util__replace_eqv_type_type(term__functor(F, TArgs0, Context), Name, Args,
-		Body, Found0, Type, Found) :- 
-	prog_util__replace_eqv_type_uu(TArgs0, Name, Args, Body, Found0,
-		TArgs1, Found1),
+prog_util__replace_eqv_type_list([], VarSet, _EqvMap, Found, [], VarSet, Found).
+prog_util__replace_eqv_type_list([T0|Ts0], VarSet0, EqvMap, Found0,
+				[T|Ts], VarSet, Found) :-
+	prog_util__replace_eqv_type_type(T0, VarSet0, EqvMap, Found0,
+					T, VarSet1, Found1),
+	prog_util__replace_eqv_type_list(Ts0, VarSet1, EqvMap, Found1,
+					Ts, VarSet, Found).
+
+:- pred prog_util__replace_eqv_type_type(type, tvarset, eqv_map, bool,
+					type, tvarset, bool).
+:- mode prog_util__replace_eqv_type_type(in, in, in, in, out, out, out) is det.
+
+prog_util__replace_eqv_type_type(Type0, VarSet0, EqvMap, Found0,
+		Type, VarSet, Found) :-
+	prog_util__replace_eqv_type_type_2(Type0, VarSet0, EqvMap, Found0,
+			[], Type, VarSet, Found).
+
+:- pred prog_util__replace_eqv_type_type_2(type, tvarset, eqv_map, bool,
+					list(eqv_type_id),
+					type, tvarset, bool).
+:- mode prog_util__replace_eqv_type_type_2(in, in, in, in, in, out, out, out)
+		is det.
+
+prog_util__replace_eqv_type_type_2(term__variable(V), VarSet, _EqvMap, Found,
+		_Seen, term__variable(V), VarSet, Found).
+prog_util__replace_eqv_type_type_2(term__functor(F, TArgs0, Context), VarSet0,
+		EqvMap, Found0, TypeIdsAlreadyExpanded, Type, VarSet, Found) :- 
+	prog_util__replace_eqv_type_list(TArgs0, VarSet0, EqvMap, Found0,
+		TArgs1, VarSet1, Found1),
 	(	
 		F = term__atom(Name),
-		list__same_length(TArgs1, Args)
+		list__length(TArgs1, Arity),
+		EqvTypeId = Name - Arity,
+		\+ list__member(EqvTypeId, TypeIdsAlreadyExpanded),
+		map__search(EqvMap, EqvTypeId,
+			eqv_type_body(EqvVarSet, Args0, Body0)),
+		varset__merge(VarSet1, EqvVarSet, [Body0 | Args0],
+				VarSet2, [Body | Args])
 	->
 		term__term_list_to_var_list(Args, Args2),
-		term__substitute_corresponding(Args2, TArgs1, Body, Type),
-		Found = yes
+		term__substitute_corresponding(Args2, TArgs1, Body, Type1),
+		prog_util__replace_eqv_type_type_2(Type1, VarSet2,
+				EqvMap, yes,
+				[EqvTypeId | TypeIdsAlreadyExpanded],
+				Type, VarSet, Found)
 	;
-		% could we improve efficiency here by reclaiming
-		% garbage (or avoiding allocating it in the first place)?
+		VarSet = VarSet1,
 		Found = Found1,
 		Type = term__functor(F, TArgs1, Context)
 	).
 
-:- pred prog_util__replace_eqv_type_tms(list(type_and_mode), string,
-	list(type_param), type, bool, list(type_and_mode), bool).
-:- mode prog_util__replace_eqv_type_tms(in, in, in, in, in, out, out) is det.
+:- pred prog_util__replace_eqv_type_tms(list(type_and_mode), tvarset, eqv_map,
+			bool, list(type_and_mode), tvarset, bool).
+:- mode prog_util__replace_eqv_type_tms(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_tms([], _Name, _Args, _Body, Found, [], Found).
-prog_util__replace_eqv_type_tms([TM0|TMs0], Name, Args, Body, Found0,
-				[TM|TMs], Found) :-
-	prog_util__replace_eqv_type_tm(TM0, Name, Args, Body, Found0,
-				TM, Found1),
-	prog_util__replace_eqv_type_tms(TMs0, Name, Args, Body, Found1,
-					TMs, Found).
+prog_util__replace_eqv_type_tms([], VarSet, _EqvMap, Found, [], VarSet, Found).
+prog_util__replace_eqv_type_tms([TM0|TMs0], VarSet0, EqvMap, Found0,
+				[TM|TMs], VarSet, Found) :-
+	prog_util__replace_eqv_type_tm(TM0, VarSet0, EqvMap, Found0,
+				TM, VarSet1, Found1),
+	prog_util__replace_eqv_type_tms(TMs0, VarSet1, EqvMap, Found1,
+					TMs, VarSet, Found).
 
-:- pred prog_util__replace_eqv_type_tm(type_and_mode, string, list(type_param),
-				type, bool, type_and_mode, bool).
-:- mode prog_util__replace_eqv_type_tm(in, in, in, in, in, out, out) is det.
+:- pred prog_util__replace_eqv_type_tm(type_and_mode, tvarset, eqv_map,
+				bool, type_and_mode, tvarset, bool).
+:- mode prog_util__replace_eqv_type_tm(in, in, in, in, out, out, out) is det.
 
-prog_util__replace_eqv_type_tm(type_only(Type0), Name, Args, Body, Found0,
-				type_only(Type), Found) :-
-	prog_util__replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
-		Found).
+prog_util__replace_eqv_type_tm(type_only(Type0), VarSet0, EqvMap, Found0,
+				type_only(Type), VarSet, Found) :-
+	prog_util__replace_eqv_type_type(Type0, VarSet0, EqvMap, Found0, Type,
+		VarSet, Found).
 
-prog_util__replace_eqv_type_tm(type_and_mode(Type0, Mode), Name, Args,
-				Body, Found0,
-				type_and_mode(Type, Mode), Found) :-
-	prog_util__replace_eqv_type_type(Type0, Name, Args, Body, Found0, Type,
-		Found).
+prog_util__replace_eqv_type_tm(type_and_mode(Type0, Mode), VarSet0, EqvMap,
+			Found0, type_and_mode(Type, Mode), VarSet, Found) :-
+	prog_util__replace_eqv_type_type(Type0, VarSet0, EqvMap, Found0,
+			Type, VarSet, Found).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
