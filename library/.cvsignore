@@ -1,0 +1,3 @@
+sicstus_compile
+*.c
+library.init
