@@ -27,6 +27,10 @@
 %
 % Representation of type information:
 %
+% IMPORTANT: ANY CHANGES TO THE DOCUMENTATION HERE MUST BE REFLECTED BY
+% SIMILAR CHANGES TO THE #defines IN "runtime/type_info.h"
+% AND VICE VERSA.
+%
 % We can use one of two ways to represent the type information.
 %
 % The old way has one cell, the type_info structure, laid out like this:
@@ -36,6 +40,10 @@
 %	word 1		<=/2 predicate for type>
 %	word 2		<index/2 predicate for type>
 %	word 3		<compare/3 predicate for type>
+%	word 4+		<the type_infos for the type params, if any>
+%
+%	or if using type_to_term predicates:
+%
 %	word 4		<term_to_type/2 predicate for type>
 %	word 5		<type_to_term/2 predicate for type>
 %	word 6+		<the type_infos for the type params, if any>
@@ -51,8 +59,8 @@
 %	word 4		<base_type_layout for type>
 %	word 5		<base_type_functors for type>
 %	word 6		<string name of type>
-%			e.g. "int" for 'int', "list" for 'list(T),
-%			"map" for 'map(K,V)'
+%			e.g. "int" for `int', "list" for `list(T)',
+%			"map" for `map(K,V)'
 %
 %	or if using type_to_term predicates:
 %
@@ -67,7 +75,7 @@
 %	word 0		<pointer to the base_type_info structure>
 %	word 1+		<the type_infos for the type params, at least one>
 %
-%	(seen note below for how higher order types differ)
+%	(but see note below for how higher order types differ)
 %
 %-----------------------------------------------------------------------------%
 %
@@ -816,7 +824,7 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		% predicate for type T.  We just pass a dummy value (0).
 		%
 		%	:- pred p.
-		%	:- pred q(T, pred(T, T)).
+		%	:- pred q(type_info(T), list(T)).
 		%	p :- q(0, []).
 		%
 		% (This isn't really type-correct, but we're already past
