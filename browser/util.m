@@ -113,7 +113,7 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 :- pragma foreign_proc("C",
 	call_trace_getline(MdbIn::in, MdbOut::in, Prompt::in, Line::out,
 		Success::out, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure, tabled_for_io],
+	[may_call_mercury, promise_pure, tabled_for_io],
 "
 	char		*line;
 	MercuryFile	*mdb_in = (MercuryFile *) MdbIn;
