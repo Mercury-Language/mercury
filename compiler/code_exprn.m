@@ -1043,7 +1043,28 @@ code_exprn__place_exprn(MaybeLval, MaybeVar, Rval0, StandAlone, IsConst,
 	),
 	code_exprn__release_arglocs(CreateArgLocs),
 	code_exprn__maybe_add_evaled(MaybeVar, lval(Lval)),
-	{ Code = tree(ArgCode, tree(ClearCode, ExprnCode)) }.
+	code_exprn__maybe_fix_clearcode(ClearCode, ExprnCode, ClearExprnCode),
+	{ Code = tree(ArgCode, ClearExprnCode) }.
+
+:- pred code_exprn__maybe_fix_clearcode(code_tree, code_tree, code_tree,
+	exprn_info, exprn_info).
+:- mode code_exprn__maybe_fix_clearcode(in, in, out, in, out) is det.
+
+code_exprn__maybe_fix_clearcode(ClearCode, ExprnCode, Code) -->
+	(
+		{ ClearCode = node([assign(reg(Reg), lval(Lval)) - _]) },
+		{ tree__flatten(ExprnCode, ExprnListList) },
+		{ list__condense(ExprnListList, ExprnList) },
+		{ ExprnList = [assign(Target, Rval0) - Comment] },
+		code_exprn__clear_lval_of_synonyms(reg(Reg)),
+		\+ code_exprn__lval_in_use(reg(Reg))
+	->
+		{ exprn_aux__substitute_rval_in_rval(lval(reg(Reg)), lval(Lval),
+			Rval0, Rval) },
+		{ Code = node([assign(Target, Rval) - Comment]) }
+	;
+		{ Code = tree(ClearCode, ExprnCode) }
+	).
 
 %------------------------------------------------------------------------------%
 
