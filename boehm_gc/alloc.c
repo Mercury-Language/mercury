@@ -82,7 +82,7 @@ extern signed_word GC_mem_found;  /* Number of reclaimed longwords	*/
 
 GC_bool GC_dont_expand = 0;
 
-word GC_free_space_divisor = 3;
+word GC_free_space_divisor = 4;
 
 extern GC_bool GC_collection_in_progress();
 		/* Collection is in progress, or was abandoned.	*/
@@ -130,22 +130,18 @@ static word min_words_allocd()
         int dummy;
         register signed_word stack_size = (ptr_t)(&dummy) - GC_stackbottom;
 #   endif
-    word total_root_size;  	    /* includes double stack size,	*/
+    register word total_root_size;  /* includes double stack size,	*/
     				    /* since the stack is expensive	*/
     				    /* to scan.				*/
-    word scan_size;		/* Estimate of memory to be scanned 	*/
-				/* during normal GC.			*/
     
     if (stack_size < 0) stack_size = -stack_size;
     total_root_size = 2 * stack_size + GC_root_size;
-    scan_size = BYTES_TO_WORDS(GC_heapsize - GC_large_free_bytes
-			       + (GC_large_free_bytes >> 2)
-				   /* use a bit more of large empty heap */
-			       + total_root_size);
     if (GC_incremental) {
-        return scan_size / (2 * GC_free_space_divisor);
+        return(BYTES_TO_WORDS(GC_heapsize + total_root_size)
+               / (2 * GC_free_space_divisor));
     } else {
-        return scan_size / GC_free_space_divisor;
+        return(BYTES_TO_WORDS(GC_heapsize + total_root_size)
+               / GC_free_space_divisor);
     }
 }
 
@@ -553,16 +549,12 @@ void GC_finish_collection()
 
 #   ifdef PRINTSTATS
 	GC_printf2(
-		  "Immediately reclaimed %ld bytes in heap of size %lu bytes",
+		  "Immediately reclaimed %ld bytes in heap of size %lu bytes\n",
 	          (long)WORDS_TO_BYTES(GC_mem_found),
 	          (unsigned long)GC_heapsize);
-#	ifdef USE_MUNMAP
-	  GC_printf1("(%lu unmapped)", GC_unmapped_bytes);
-#	endif
-	GC_printf2(
-		"\n%lu (atomic) + %lu (composite) collectable bytes in use\n",
-	        (unsigned long)WORDS_TO_BYTES(GC_atomic_in_use),
-	        (unsigned long)WORDS_TO_BYTES(GC_composite_in_use));
+	GC_printf2("%lu (atomic) + %lu (composite) collectable bytes in use\n",
+	           (unsigned long)WORDS_TO_BYTES(GC_atomic_in_use),
+	           (unsigned long)WORDS_TO_BYTES(GC_composite_in_use));
 #   endif
 
       GC_n_attempts = 0;
@@ -573,9 +565,6 @@ void GC_finish_collection()
       GC_words_wasted = 0;
       GC_mem_freed = 0;
       
-#   ifdef USE_MUNMAP
-      GC_unmap_old();
-#   endif
 #   ifdef PRINTTIMES
 	GET_TIME(done_time);
 	GC_printf2("Finalize + initiate sweep took %lu + %lu msecs\n",
@@ -619,7 +608,7 @@ void GC_gcollect GC_PROTO(())
 word GC_n_heap_sects = 0;	/* Number of sections currently in heap. */
 
 /*
- * Use the chunk of memory starting at p of size bytes as part of the heap.
+ * Use the chunk of memory starting at p of syze bytes as part of the heap.
  * Assumes p is HBLKSIZE aligned, and bytes is a multiple of HBLKSIZE.
  */
 void GC_add_to_heap(p, bytes)
@@ -627,7 +616,6 @@ struct hblk *p;
 word bytes;
 {
     word words;
-    hdr * phdr;
     
     if (GC_n_heap_sects >= MAX_HEAP_SECTS) {
     	ABORT("Too many heap sections: Increase MAXHINCR or MAX_HEAP_SECTS");
@@ -642,10 +630,7 @@ word bytes;
     GC_heap_sects[GC_n_heap_sects].hs_bytes = bytes;
     GC_n_heap_sects++;
     words = BYTES_TO_WORDS(bytes - HDR_BYTES);
-    phdr = HDR(p);
-    phdr -> hb_sz = words;
-    phdr -> hb_map = (char *)1;   /* A value != GC_invalid_map	*/
-    phdr -> hb_flags = 0;
+    HDR(p) -> hb_sz = words;
     GC_freehblk(p);
     GC_heapsize += bytes;
     if ((ptr_t)p <= GC_least_plausible_heap_addr
@@ -828,6 +813,7 @@ GC_bool GC_collect_or_expand(needed_blocks, ignore_off_page)
 word needed_blocks;
 GC_bool ignore_off_page;
 {
+    
     if (!GC_incremental && !GC_dont_gc && GC_should_collect()) {
       GC_notify_full_gc();
       GC_gcollect_inner();

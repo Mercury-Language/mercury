@@ -427,8 +427,11 @@ void GC_init_inner()
 #   ifdef MSWIN32
  	GC_init_win32();
 #   endif
-#   if defined(LINUX) && (defined(POWERPC) || defined(ALPHA) || defined(SPARC))
-	GC_init_linux_data_start();
+#   if defined(LINUX) && defined(POWERPC)
+	GC_init_linuxppc();
+#   endif
+#   if defined(LINUX) && defined(SPARC)
+	GC_init_linuxsparc();
 #   endif
 #   ifdef SOLARIS_THREADS
 	GC_thr_init();

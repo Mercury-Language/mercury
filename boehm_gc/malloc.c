@@ -93,16 +93,8 @@ register ptr_t *opp;
           if(GC_incremental && !GC_dont_gc)
 		GC_collect_a_little_inner((int)n_blocks);
 	lw = ROUNDED_UP_WORDS(lb);
-        h = GC_allochblk(lw, k, 0);
-#       ifdef USE_MUNMAP
-	  if (0 == h) {
-	    GC_merge_unmapped();
-	    h = GC_allochblk(lw, k, 0);
-	  }
-#	endif
-	while (0 == h && GC_collect_or_expand(n_blocks, FALSE)) {
-	  h = GC_allochblk(lw, k, 0);
-	}
+	while ((h = GC_allochblk(lw, k, 0)) == 0
+		&& GC_collect_or_expand(n_blocks, FALSE));
 	if (h == 0) {
 	    op = 0;
 	} else {
