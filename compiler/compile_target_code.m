@@ -944,8 +944,8 @@ link(ErrorStream, LinkTargetType, ModuleName,
 		% so it should come after Objects.
 		{ string__append_list(
 			["ml --grade ", Grade, " ", SharedLibOpt,
-			Target_Debug_Opt, TraceOpt, StdLibOpt, LinkFlags,
-			LinkLibraryDirectories,
+			Target_Debug_Opt, TraceOpt, StdLibOpt,
+			LinkFlags, " ", LinkLibraryDirectories,
 			" -- -o ", OutputFileName, " ", Objects, " ",
 			LDFlags, " ", LinkLibraries],
 			LinkCmd) },
