@@ -37,6 +37,11 @@
 #
 # Environment variables: MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
 
+# *************************************************************************
+# *** IMPORTANT NOTE: any changes to this file may also require similar ***
+# *** changes to compiler/mercury_compile.pp                            ***
+# *************************************************************************
+
 FULLARCH=@FULLARCH@
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
