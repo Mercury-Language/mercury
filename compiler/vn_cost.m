@@ -91,9 +91,17 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		->
 			Cost = RvalCost
 		;
-			% Tagging a value has the same cost as the assignment
+			% Some operations have the same cost as the assignment
 			% itself, so don't count this cost twice.
-			Rval = mkword(_, _)
+			(
+				Rval = mkword(_, _)
+			;
+				Rval = unop(Unop, _),
+				vn_cost__assign_cost_unop(Unop)
+			;
+				Rval = binop(Binop, _, _),
+				vn_cost__assign_cost_binop(Binop)
+			)
 		->
 			Cost is RvalCost + LvalCost
 		;
@@ -318,6 +326,32 @@ vn_cost__mem_ref_cost(MemRef, Params, Cost) :-
 		vn_type__costof_intops(Params, OpsCost),
 		Cost is RvalCost + OpsCost
 	).
+
+:- pred vn_cost__assign_cost_unop(unary_op).
+:- mode vn_cost__assign_cost_unop(in) is semidet.
+
+vn_cost__assign_cost_unop(mktag).
+vn_cost__assign_cost_unop(tag).
+vn_cost__assign_cost_unop(unmktag).
+vn_cost__assign_cost_unop(mkbody).
+vn_cost__assign_cost_unop(body).
+vn_cost__assign_cost_unop(unmkbody).
+vn_cost__assign_cost_unop(bitwise_complement).
+
+:- pred vn_cost__assign_cost_binop(binary_op).
+:- mode vn_cost__assign_cost_binop(in) is semidet.
+
+vn_cost__assign_cost_binop(+).
+vn_cost__assign_cost_binop(-).
+vn_cost__assign_cost_binop(*).
+vn_cost__assign_cost_binop(/).
+vn_cost__assign_cost_binop(mod).
+vn_cost__assign_cost_binop(<<).
+vn_cost__assign_cost_binop(>>).
+vn_cost__assign_cost_binop(&).
+vn_cost__assign_cost_binop('|').
+vn_cost__assign_cost_binop(and).
+vn_cost__assign_cost_binop(or).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
