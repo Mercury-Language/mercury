@@ -4408,9 +4408,13 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% within the original .java file.  The filenames of all
 	% these can be matched with `module\$*.class', hence the
 	% "\\$$*.class" below.
+	% If no such files exist, Make will use the pattern verbatim,
+	% so we enclose the pattern in a `wildcard' function to prevent this.
+	% XXX This relies on GNU Make.
+	io__write_string(DepStream, "$(wildcard "),
 	write_compact_dependencies_list(Modules, "$(classes_subdir)",
 					"\\$$*.class", Basis, DepStream),
-	io__write_string(DepStream, "\n"),
+	io__write_string(DepStream, ")\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dirs = "),
