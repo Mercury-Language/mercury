@@ -304,6 +304,8 @@
 
 % mode/4 defined above
 
+:- type argument_modes	--->	argument_modes(inst_key_table, list(mode)).
+
 %-----------------------------------------------------------------------------%
 
 	% This is how module-system declarations (such as imports

@@ -1837,7 +1837,7 @@ apply_inst_key_sub_2(Sub, DeadKeys0, InstMap0, InstMap, IKT0, IKT) :-
 				(instmap__lookup_dependent_vars(InstMap0, V,
 					Vs1),
 				set__insert_list(Vs0, Vs1, Vs))
-			), KeysToChangeList, VarsToChange0, VarsToChange),
+			), SubDomain, VarsToChange0, VarsToChange),
 		set__to_sorted_list(VarsToChange, VarsToChangeList),
 
 		apply_inst_key_sub_instmap(VarsToChangeList, Sub,

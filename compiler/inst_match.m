@@ -381,6 +381,7 @@ inst_matches_initial_3(not_reached, _, _, _, _).
 :- mode maybe_pred_inst_matches_initial(in, in, in, in) is semidet.
 
 maybe_pred_inst_matches_initial(no, no, _, _).
+maybe_pred_inst_matches_initial(yes(_), no, _, _).
 maybe_pred_inst_matches_initial(yes(PredInstA), yes(PredInstB), IKT,
 		ModuleInfo) :-
 	pred_inst_matches(PredInstA, PredInstB, IKT, ModuleInfo).

@@ -1037,25 +1037,39 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	implicitly_quantify_clause_body(HeadVars, Goal2, Varset0, VarTypes1,
 					Goal3, Varset, VarTypes, _),
 	proc_info_get_initial_instmap(NewProcInfo1, ModuleInfo0, InstMap0),
-	% YYY Change for local inst_key_tables
-	module_info_inst_key_table(ModuleInfo0, IKT0),
-	recompute_instmap_delta(no, Goal3, Goal4, InstMap0,
-		IKT0, IKT1, ModuleInfo0, ModuleInfo1a),
-	% YYY Change for local inst_key_tables
-	module_info_set_inst_key_table(ModuleInfo1a, IKT1, ModuleInfo1),
-	proc_info_set_goal(NewProcInfo1, Goal4, NewProcInfo1a),
-	proc_info_set_variables(NewProcInfo1a, Varset, NewProcInfo2),
+	proc_info_set_variables(NewProcInfo1, Varset, NewProcInfo2),
 	proc_info_set_vartypes(NewProcInfo2, VarTypes, NewProcInfo3),
 	proc_info_set_argmodes(NewProcInfo3, ArgModes, NewProcInfo4),
-	proc_info_set_headvars(NewProcInfo4, HeadVars, NewProcInfo),
-	map__det_insert(NewProcs0, NewProcId, NewProcInfo, NewProcs),
+	proc_info_set_headvars(NewProcInfo4, HeadVars, NewProcInfo5),
+
+	% YYY Change for local inst_key_tables
+	module_info_inst_key_table(ModuleInfo0, IKT0),
+
+	% Temporarily put the ProcInfo into the ModuleInfo just in case
+	% the new pred calls itself recursively.
+	map__det_insert(NewProcs0, NewProcId, NewProcInfo5, NewProcs5),
+	pred_info_set_procedures(NewPredInfo2, NewProcs5, NewPredInfo5),
+	map__det_update(Preds0, NewPredId, NewPredInfo5, Preds5),
+	predicate_table_set_preds(PredTable0, Preds5, PredTable5),
+	module_info_set_predicate_table(ModuleInfo0, PredTable5, ModuleInfo5),
+
+	% YYY NewProcInfo1 is not in the ModuleInfo here!  What to do
+	%     about it?
+	recompute_instmap_delta(no, Goal3, Goal4, InstMap0,
+		IKT0, IKT1, ModuleInfo5, ModuleInfo6),
+	% YYY Change for local inst_key_tables
+	proc_info_set_goal(NewProcInfo5, Goal4, NewProcInfo),
+	module_info_set_inst_key_table(ModuleInfo6, IKT1, ModuleInfo7),
+
+	map__det_insert(NewProcs0, NewProcId, NewProcInfo5, NewProcs),
 	pred_info_set_procedures(NewPredInfo2, NewProcs, NewPredInfo),
 	map__det_update(Preds0, NewPredId, NewPredInfo, Preds),
 	predicate_table_set_preds(PredTable0, Preds, PredTable),
-	module_info_set_predicate_table(ModuleInfo1, PredTable, ModuleInfo2),
-	create_specialized_versions_2(NewPreds, NewPredMap, NewProcInfo0,
+	module_info_set_predicate_table(ModuleInfo7, PredTable, ModuleInfo8),
+
+	create_specialized_versions_2(NewPreds, NewPredMap, NewProcInfo,
 			Requests1, Requests, GoalSizes1, GoalSizes,
-			ModuleInfo2, ModuleInfo).
+			ModuleInfo8, ModuleInfo).
 
 	
 		% Returns a list of hlds_goals which construct the list of
