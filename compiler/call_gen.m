@@ -303,7 +303,7 @@ call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 		;
 			{ error("Unknown builtin predicate") }
 		),
-		code_info__generate_test_and_fail(Rval, TestCode),
+		code_info__fail_if_rval_is_false(Rval, TestCode),
 		( { Assign = yes(Var - AssignRval) } ->
 			code_info__cache_expression(Var, AssignRval)
 		;
@@ -612,10 +612,22 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 	code_info__succip_is_used,
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
-	( { CodeModel = model_non } ->
-		code_info__unset_failure_cont(FlushCode)
-	;
+	(
+		{ CodeModel = model_det },
+		{ CallModel = det },
+		{ RuntimeAddr = do_det_closure },
 		{ FlushCode = empty }
+	;
+		{ CodeModel = model_semi },
+		{ CallModel = semidet },
+		{ RuntimeAddr = do_semidet_closure },
+		{ FlushCode = empty }
+	;
+		{ CodeModel = model_non },
+		code_info__may_use_nondet_tailcall(TailCall),
+		{ CallModel = nondet(TailCall) },
+		{ RuntimeAddr = do_nondet_closure },
+		code_info__unset_failure_cont(FlushCode)
 	),
 		% place the immediate input arguments in registers
 		% starting at r4.
@@ -653,20 +665,6 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 		])
 	) },
 	code_info__get_next_label(ReturnLabel),
-	(
-		{ CodeModel = model_det },
-		{ CallModel = det },
-		{ RuntimeAddr = do_det_closure }
-	;
-		{ CodeModel = model_semi },
-		{ CallModel = semidet },
-		{ RuntimeAddr = do_semidet_closure }
-	;
-		{ CodeModel = model_non },
-		code_info__may_use_nondet_tailcall(TailCall),
-		{ CallModel = nondet(TailCall) },
-		{ RuntimeAddr = do_nondet_closure }
-	),
 	{ TryCallCode = node([
 		livevals(LiveVals) - "",
 		call(RuntimeAddr, label(ReturnLabel), OutLiveVals, CallModel)

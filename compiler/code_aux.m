@@ -41,55 +41,8 @@
 :- pred code_aux__contains_simple_recursive_call(hlds__goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
-	% code_aux__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
-	% updates OldCodeInfo to produce NewCodeInfo with the changes
-	% specified by GoalInfo. The components that change are:
-	%	- The set of live variables has the predeath set from
-	%	  GoalInfo removed (by set difference)
-	%	- The set of live variable has the prebirth set from GoalInfo
-	%	  added (set union)
-	%	- If (and only if) `Atomic' is yes, then
-	%	  the set of live variables has the postdeath set from GoalInfo
-	%	  removed (by set difference). These variables are removed so
-	%	  that they do not get saved across calls and positioned where
-	%	  branched computations join unnecessarily.
-	%	- The variables that die before a goal (The predeath set)
-	%	  are removed from the exprn_info structure.
-	%	- If the goal establishes a resume_point, its variables are
-	%	  pushed onto the resume point variable stack.
-	%	- The advisory information about where variables will be
-	%	  needed next is updated if GoalInfo has new information.
-	% If any of the variables that have died wrt forward execution are
-	% nevertheless needed at a resume point, we need to flush them to
-	% their stack slots. The returned code does this.
-:- pred code_aux__pre_goal_update(hlds__goal_info, bool, code_info, code_info).
-:- mode code_aux__pre_goal_update(in, in, in, out) is det.
-
-	% code_aux__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
-	% updates OldCodeInfo to produce NewCodeInfo with the changes described
-	% by GoalInfo. These are:
-	%	- The set of live variables has the postdeath set from GoalInfo
-	%	  removed (by set difference).
-	%	- The variables that died during the goal are removed from the
-	%	  exprn_info structure (from the post-death set).
-	%	- Variables that became live at the end of the goal (the post-
-	%	  birth set) are added to the exprn_info structure and to the
-	%	  set of live variables.
-	%	- The instmap delta is applied to the current instmap.
-	%	- If the goal established a resume_point, its variables are
-	%	  popped off the resume point variable stack.
-	% If any of the variables that have died wrt forward execution are
-	% nevertheless needed at a resume point, we need to flush them to
-	% their stack slots. The returned code does this.
-:- pred code_aux__post_goal_update(hlds__goal_info, code_info, code_info).
-:- mode code_aux__post_goal_update(in, in, out) is det.
-
 :- pred code_aux__explain_stack_slots(stack_slots, varset, string).
 :- mode code_aux__explain_stack_slots(in, in, out) is det.
-
-:- pred code_aux__lookup_type_defn(type, hlds__type_defn, code_info, code_info).
-% :- mode code_aux__lookup_type_defn(in, out, di, uo) is det.
-:- mode code_aux__lookup_type_defn(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -217,54 +170,6 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Update the code info structure to be consistent
-	% immediately prior to generating a goal
-code_aux__pre_goal_update(GoalInfo, Atomic) -->
-	% The liveness pass puts resume_point annotations on some kinds
-	% of goals. The parts of the code generator that handle those kinds
-	% of goals should handle the resume point annotation as well;
-	% when they do, they remove the annotation. The following code
-	% is a sanity check to make sure that this has in fact been done.
-	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
-	(
-		{ ResumePoint = no_resume_point }
-	;
-		{ ResumePoint = resume_point(_, _) },
-		{ error("pre_goal_update with resume point") }
-	),
-	{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
-	(
-		{ MaybeFollowVars = yes(FollowVars) },
-		code_info__set_follow_vars(FollowVars)
-	;
-		{ MaybeFollowVars = no }
-	),
-	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
-	{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
-	code_info__update_liveness_info(PreBirths),
-	code_info__update_deadness_info(PreDeaths),
-	code_info__make_vars_dead(PreDeaths),
-	( { Atomic = yes } ->
-		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-		code_info__update_deadness_info(PostDeaths)
-	;
-		[]
-	).
-
-	% Update the code info structure to be consistent
-	% immediately after generating a goal
-code_aux__post_goal_update(GoalInfo) -->
-	{ goal_info_get_post_births(GoalInfo, PostBirths) },
-	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-	code_info__update_liveness_info(PostBirths),
-	code_info__update_deadness_info(PostDeaths),
-	code_info__make_vars_dead(PostDeaths),
-	code_info__make_vars_live(PostBirths),
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	code_info__apply_instmap_delta(InstMapDelta).
-
-%-----------------------------------------------------------------------------%
-
 code_aux__explain_stack_slots(StackSlots, VarSet, Explanation) :-
 	map__to_assoc_list(StackSlots, StackSlotsList),
 	code_aux__explain_stack_slots_2(StackSlotsList, VarSet, "",
@@ -287,17 +192,5 @@ code_aux__explain_stack_slots_2([Var - Lval | Rest], VarSet, String0, String) :-
 	varset__lookup_name(VarSet, Var, VarName),
 	string__append_list([VarName, "\t ->\t", LvalString, "\n", String1],
 		String).
-
-%---------------------------------------------------------------------------%
-
-code_aux__lookup_type_defn(Type, TypeDefn) -->
-	code_info__get_module_info(ModuleInfo),
-	{ type_to_type_id(Type, TypeIdPrime, _) ->
-		TypeId = TypeIdPrime
-	;
-		error("unknown type in code_aux__lookup_type_defn")
-	},
-	{ module_info_types(ModuleInfo, TypeTable) },
-	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
 %---------------------------------------------------------------------------%

@@ -274,7 +274,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 	(
 		{ NeedRangeCheck = can_fail },
 		{ Difference is EndVal - StartVal },
-		code_info__generate_test_and_fail(
+		code_info__fail_if_rval_is_false(
 			binop(<=, unop(cast_to_unsigned, Index),
 				const(int_const(Difference))), RangeCheck)
 	;
@@ -336,7 +336,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 	{ HasBit = binop((&), binop((<<),
 			const(int_const(1)),
 			binop(mod, UIndex, const(int_const(WordBits)))),Word) },
-	code_info__generate_test_and_fail(HasBit, CheckCode).
+	code_info__fail_if_rval_is_false(HasBit, CheckCode).
 
 :- pred generate_bit_vec(case_consts, int, rval,
 		code_info, code_info).

@@ -66,18 +66,18 @@ disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
 	{ globals__lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
 		ReclaimHeap) },
 	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+		MaybeTicketSlot),
 
 		% Rather than saving the heap pointer here,
 		% we delay saving it until we get to the first
 		% disjunct that might allocate some heap space.
-	{ SavedHP = no },	% we haven't yet saved the heap pointer
-	{ MustRestoreHP = no },	% we won't need to restore yet
+	{ MaybeHpSlot = no },
 
 		% Generate all the disjuncts
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_pruned_disjuncts(Goals, StoreMap, EndLabel, no,
-		SavedHP, MustRestoreHP, ReclaimHeap, Constraints, GoalsCode),
+		ReclaimHeap, MaybeHpSlot, MaybeTicketSlot, no, GoalsCode),
 
 		% Remake the code_info using the store map for the
 		% variable locations at the end of the disjunction.
@@ -88,9 +88,10 @@ disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
 %---------------------------------------------------------------------------%
 
 :- pred disj_gen__generate_pruned_disjuncts(list(hlds__goal), store_map,
-	label, bool, bool, bool, bool, bool, code_tree, code_info, code_info).
-:- mode disj_gen__generate_pruned_disjuncts(in, in, in, in, in, in, in, in, out,
-	in, out) is det.
+	label, bool, bool, maybe(lval), maybe(lval), bool, code_tree,
+	code_info, code_info).
+:- mode disj_gen__generate_pruned_disjuncts(in, in, in, in, in, in, in, in,
+	out, in, out) is det.
 
 	% To generate code for a det or semidet disjunction,
 	% we generate a chain of goals if-then-else style
@@ -108,8 +109,8 @@ disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
 disj_gen__generate_pruned_disjuncts([], _, _, _, _, _, _, _, _) -->
 	{ error("Empty pruned disjunction!") }.
 disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
-		HaveTempFrame0, SavedHP, MustRestoreHP, ReclaimHeap,
-		Constraints, Code) -->
+		HaveTempFrame0, ReclaimHeap,
+		MaybeHpSlot0, MaybeTicketSlot, First, Code) -->
 	{ Goal0 = GoalExpr0 - GoalInfo0 },
 	{ goal_info_get_code_model(GoalInfo0, CodeModel) },
 	{ goal_info_get_resume_point(GoalInfo0, Resume) },
@@ -128,32 +129,34 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			GoalInfo) },
 		{ Goal = GoalExpr0 - GoalInfo },
 
-			% Reset the heap pointer to recover memory allocated
-			% by the previous disjunct, if necessary
-		code_info__maybe_get_old_hp(MustRestoreHP, RestoreHPCode),
+		( { First = no } ->
+				% Reset the heap pointer to recover memory
+				% allocated by the previous disjunct(s),
+				% if necessary
+			code_info__maybe_restore_hp(MaybeHpSlot0,
+				RestoreHPCode),
 
-			% If this disjunct might allocate heap space, then
-			% we must restore the HP on entry to the next one.
-		{ ReclaimHeap = yes, code_util__goal_may_allocate_heap(Goal) ->
-			MustRestoreHP_Next = yes
+				% Reset the solver state if necessary
+			code_info__maybe_restore_ticket(MaybeTicketSlot,
+				RestoreTicketCode)
 		;
-			MustRestoreHP_Next = no
-		},
-
-			% If we are going to need to restore the HP,
-			% and we haven't saved it already, then we must
-			% save it now.
-		( { MustRestoreHP_Next = yes, SavedHP = no } ->
-			code_info__save_hp(SaveHPCode),
-			{ SavedHP_Next = yes }
-		;
-			{ SaveHPCode = empty },
-			{ SavedHP_Next = SavedHP }
+			{ RestoreHPCode = empty },
+			{ RestoreTicketCode = empty }
 		),
 
-			% Reset the solver state if necessary
-		code_info__maybe_restore_ticket(Constraints,
-			RestoreTicketCode),
+			% Save hp if it needs to be saved and hasn't been
+			% saved previously
+		(
+			{ ReclaimHeap = yes },
+			{ code_util__goal_may_allocate_heap(Goal) },
+			{ MaybeHpSlot0 = no }
+		->
+			code_info__save_hp(SaveHPCode, HpSlot),
+			{ MaybeHpSlot = yes(HpSlot) }
+		;
+			{ SaveHPCode = empty },
+			{ MaybeHpSlot = MaybeHpSlot0 }
+		),
 
 		code_info__grab_code_info(CodeInfo),
 
@@ -176,8 +179,8 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__restore_failure_cont(RestoreContCode),
 
 		disj_gen__generate_pruned_disjuncts(Goals, StoreMap, EndLabel,
-			HaveTempFrame, SavedHP_Next, MustRestoreHP_Next,
-			ReclaimHeap, Constraints, RestCode),
+			HaveTempFrame, ReclaimHeap,
+			MaybeHpSlot, MaybeTicketSlot, no, RestCode),
 
 		{ Code = tree(ModContCode, 
 			 tree(RestoreHPCode,
@@ -191,14 +194,12 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 	;
 		% Emit code for the last disjunct
 
-			% Restore the heap pointer if necessary,
-			% and pop the temp stack that we saved it on
-			% if we saved it
-		code_info__maybe_get_old_hp(MustRestoreHP, RestoreHPCode),
-		code_info__maybe_pop_stack(SavedHP, UnSaveHPCode),
+			% Restore the heap pointer if necessary
+		code_info__maybe_restore_and_discard_hp(MaybeHpSlot0,
+			RestoreHPCode),
 
 			% Restore the solver state if necessary
-		code_info__maybe_restore_ticket_and_pop(Constraints, 
+		code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot, 
 			RestorePopTicketCode),
 
 			% Generate the goal
@@ -209,11 +210,10 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			label(EndLabel) - "End of pruned disj"
 		]) },
 		{ Code = tree(RestoreHPCode,
-			 tree(UnSaveHPCode,
 			 tree(RestorePopTicketCode,
 			 tree(GoalCode,
 			 tree(SaveCode,
-			      EndCode))))) }
+			      EndCode)))) }
 	).
 
 %---------------------------------------------------------------------------%
@@ -235,18 +235,19 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 		% before the first disjunct.
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+		MaybeTicketSlot),
 
 		% With nondet disjunctions, we must recover memory across
 		% all disjuncts, since we can backtract to disjunct N
 		% even after control leaves disjunct N-1.
 	{ globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
 		ReclaimHeap) },
-	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
+	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot),
 
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_non_disjuncts(Goals, StoreMap, EndLabel, no,
-		ReclaimHeap, Constraints, GoalsCode),
+		MaybeHpSlot, MaybeTicketSlot, no, GoalsCode),
 
 		% since we don't know which disjunct we have come from
 		% we must set the current failure continuation to unkown.
@@ -263,14 +264,14 @@ disj_gen__generate_non_disj(Goals, StoreMap, Code) -->
 	% XXX We ought not to restore anything in the first disjunct.
 
 :- pred disj_gen__generate_non_disjuncts(list(hlds__goal), store_map, label,
-	bool, bool, bool, code_tree, code_info, code_info).
-:- mode disj_gen__generate_non_disjuncts(in, in, in, in, in, in, out, in, out)
-	is det.
+	bool, maybe(lval), maybe(lval), bool, code_tree, code_info, code_info).
+:- mode disj_gen__generate_non_disjuncts(in, in, in, in, in, in, in,
+	out, in, out) is det.
 
-disj_gen__generate_non_disjuncts([], _, _, _, _, _, _) -->
+disj_gen__generate_non_disjuncts([], _, _, _, _, _, _, _) -->
 	{ error("empty nondet disjunction!") }.
 disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
-		HaveTempFrame0, ReclaimHeap, Constraints, Code) -->
+		HaveTempFrame0, MaybeHpSlot, MaybeTicketSlot, First, Code) -->
 
 	{ Goal0 = GoalExpr0 - GoalInfo0 },
 	{ goal_info_get_resume_point(GoalInfo0, Resume) },
@@ -289,13 +290,20 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			GoalInfo) },
 		{ Goal = GoalExpr0 - GoalInfo },
 
-			% Reset the heap pointer to recover memory allocated
-			% by the previous disjunct, if necessary
-		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHPCode),
+		( { First = no } ->
+				% Reset the heap pointer to recover memory
+				% allocated by the previous disjunct(s),
+				% if necessary
+			code_info__maybe_restore_hp(MaybeHpSlot,
+				RestoreHPCode),
 
-			% Reset the solver state if necessary
-		code_info__maybe_restore_ticket(Constraints,
-			RestoreTicketCode),
+				% Reset the solver state if necessary
+			code_info__maybe_restore_ticket(MaybeTicketSlot,
+				RestoreTicketCode)
+		;
+			{ RestoreHPCode = empty },
+			{ RestoreTicketCode = empty }
+		),
 
 		code_info__grab_code_info(CodeInfo),
 
@@ -320,7 +328,8 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__restore_failure_cont(RestoreContCode),
 
 		disj_gen__generate_non_disjuncts(Goals, StoreMap, EndLabel,
-			HaveTempFrame, ReclaimHeap, Constraints, RestCode),
+			HaveTempFrame, MaybeHpSlot, MaybeTicketSlot, no,
+			RestCode),
 
 		{ Code = tree(ModContCode, 
 			 tree(RestoreHPCode,
@@ -340,14 +349,12 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			error("disj_gen__generate_non_disjuncts: last disjunct followed by others")
 		},
 
-			% Restore the heap pointer if necessary,
-			% and pop the temp stack that we saved it on
-			% if we saved it
-		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHPCode),
-		code_info__maybe_pop_stack(ReclaimHeap, UnSaveHPCode),
+			% Restore the heap pointer if necessary
+		code_info__maybe_restore_and_discard_hp(MaybeHpSlot,
+			RestoreHPCode),
 
 			% Restore the solver state if necessary
-		code_info__maybe_restore_ticket_and_pop(Constraints,
+		code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
 			RestorePopTicketCode),
 
 		code_gen__generate_goal(model_non, Goal0, GoalCode),
@@ -357,11 +364,10 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			label(EndLabel) - "End of pruned disj"
 		]) },
 		{ Code = tree(RestoreHPCode,
-			 tree(UnSaveHPCode,
 			 tree(RestorePopTicketCode,
 			 tree(GoalCode,
 			 tree(SaveCode,
-			      EndCode))))) }
+			      EndCode)))) }
 	).
 
 %---------------------------------------------------------------------------%

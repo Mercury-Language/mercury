@@ -90,11 +90,12 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	;
 		ReclaimHeap = no
 	},
-	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode),
+	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode, MaybeHpSlot),
 
 		% Maybe save the solver state current before the condition
 	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+		MaybeTicketSlot),
 
 	code_info__grab_code_info(CodeInfo),
 
@@ -110,8 +111,8 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 	code_info__pop_failure_cont,
 
 		% Discard hp and solver ticket if the condition succeeded
-	code_info__maybe_pop_stack(ReclaimHeap, PopHPCode),
-	code_info__maybe_discard_ticket(Constraints, PopTicketCode),
+	code_info__maybe_discard_ticket(MaybeTicketSlot, DiscardTicketCode),
+	code_info__maybe_discard_hp(MaybeHpSlot),
 
 		% Generate the then branch
 	code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
@@ -120,8 +121,9 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 		% Generate the entry to the else branch
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_hp(ReclaimHeap, RestoreHPCode),
-	code_info__maybe_restore_ticket_and_pop(Constraints, RestoreTicketCode),
+	code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
+		RestoreTicketCode),
+	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
 
 		% Generate the else branch
 	code_gen__generate_goal(CodeModel, ElseGoal, ElseCode),
@@ -135,8 +137,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 		 tree(SaveHPCode,
 		 tree(SaveTicketCode,
 		 tree(CondCode,
-		 tree(PopHPCode,
-		 tree(PopTicketCode,
+		 tree(DiscardTicketCode,
 		 tree(ThenCode,
 		 tree(ThenSaveCode,
 		 tree(JumpToEndCode,
@@ -145,7 +146,7 @@ ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
 		 tree(RestoreTicketCode,
 		 tree(ElseCode,
 		 tree(ElseSaveCode,
-		      EndLabelCode))))))))))))))
+		      EndLabelCode)))))))))))))
 	},
 	code_info__remake_with_store_map(StoreMap).
 
@@ -202,11 +203,12 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	;
 		ReclaimHeap = no
 	},
-	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode),
+	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode, MaybeHpSlot),
 
 		% Maybe save the current solver state before the condition
 	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
-	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+		MaybeTicketSlot),
 
 	code_info__grab_code_info(CodeInfo),
 
@@ -231,15 +233,17 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 	code_info__make_vars_dead(Zombies),
 
 		% Discard hp and maybe solver ticket if the condition succeeded
-	code_info__maybe_pop_stack(ReclaimHeap, PopHPCode),
+	code_info__maybe_discard_hp(MaybeHpSlot),
 	( { NondetCond = yes } ->
 			% We cannot discard the solver ticket if the 
 			% condition can be backtracked into.
-		code_info__maybe_pop_stack(Constraints, PopTicketCode)
+		% code_info__maybe_pop_stack(MaybeTicketSlot, DiscardTicketCode)
+		{ DiscardTicketCode = empty }
 	;
 			% Discard the solver ticket if the condition succeeded
 			% and we will not backtrack into the condition
-		code_info__maybe_discard_ticket(Constraints, PopTicketCode)
+		code_info__maybe_discard_ticket(MaybeTicketSlot,
+			DiscardTicketCode)
 	),
 
 		% Generate the then branch
@@ -249,8 +253,9 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		% Generate the entry to the else branch
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_hp(ReclaimHeap, RestoreHPCode),
-	code_info__maybe_restore_ticket_and_pop(Constraints, RestoreTicketCode),
+	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHPCode),
+	code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
+		RestoreTicketCode),
 
 		% Generate the else branch
 	code_gen__generate_goal(model_non, ElseGoal, ElseCode),
@@ -268,8 +273,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		 tree(CondCode,
 		 tree(SoftCutCode,
 		 tree(FlushCode,
-		 tree(PopHPCode,
-		 tree(PopTicketCode,
+		 tree(DiscardTicketCode,
 		 tree(ThenCode,
 		 tree(ThenSaveCode,
 		 tree(JumpToEndCode,
@@ -278,7 +282,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		 tree(RestoreTicketCode,
 		 tree(ElseCode,
 		 tree(ElseSaveCode,
-		      EndLabelCode))))))))))))))))))
+		      EndLabelCode)))))))))))))))))
 	},
 	code_info__remake_with_store_map(StoreMap).
 

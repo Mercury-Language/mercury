@@ -108,7 +108,7 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 	;
 		Op = eq
 	},
-	code_info__generate_test_and_fail(binop(Op, ValA, ValB), FailCode),
+	code_info__fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode),
 	{ Code = tree(CodeA, FailCode) }.
 
 %---------------------------------------------------------------------------%
@@ -120,7 +120,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 		{ Arity > 0 }
 	->
 		code_info__variable_type(Var, Type),
-		code_aux__lookup_type_defn(Type, TypeDefn),
+		code_info__lookup_type_defn(Type, TypeDefn),
 		{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
 		{
 			TypeBody = du_type(_, ConsTable, _)

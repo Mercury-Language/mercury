@@ -612,10 +612,26 @@ code_info__set_commit_vals(W, CI0, CI) :-
 
 :- interface.
 
+	% code_info__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
+	% updates OldCodeInfo to produce NewCodeInfo with the changes
+	% specified by GoalInfo.
+:- pred code_info__pre_goal_update(hlds__goal_info, bool, code_info, code_info).
+:- mode code_info__pre_goal_update(in, in, in, out) is det.
+
+	% code_info__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
+	% updates OldCodeInfo to produce NewCodeInfo with the changes described
+	% by GoalInfo.
+:- pred code_info__post_goal_update(hlds__goal_info, code_info, code_info).
+:- mode code_info__post_goal_update(in, in, out) is det.
+
 	% Find out the type of the given variable.
 
 :- pred code_info__variable_type(var, type, code_info, code_info).
 :- mode code_info__variable_type(in, out, in, out) is det.
+
+:- pred code_info__lookup_type_defn(type, hlds__type_defn,
+	code_info, code_info).
+:- mode code_info__lookup_type_defn(in, out, in, out) is det.
 
 	% Given a list of type variables, find the lvals where the
 	% corresponding type_infos are being stored.
@@ -714,12 +730,70 @@ code_info__set_commit_vals(W, CI0, CI) :-
 :- pred code_info__rem_commit_val(code_info, code_info).
 :- mode code_info__rem_commit_val(in, out) is det.
 
+%-----------------------------------------------------------------------------%
+
+	% Update the code info structure to be consistent
+	% immediately prior to generating a goal
+code_info__pre_goal_update(GoalInfo, Atomic) -->
+	% The liveness pass puts resume_point annotations on some kinds
+	% of goals. The parts of the code generator that handle those kinds
+	% of goals should handle the resume point annotation as well;
+	% when they do, they remove the annotation. The following code
+	% is a sanity check to make sure that this has in fact been done.
+	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
+	(
+		{ ResumePoint = no_resume_point }
+	;
+		{ ResumePoint = resume_point(_, _) },
+		{ error("pre_goal_update with resume point") }
+	),
+	{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
+	(
+		{ MaybeFollowVars = yes(FollowVars) },
+		code_info__set_follow_vars(FollowVars)
+	;
+		{ MaybeFollowVars = no }
+	),
+	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
+	{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
+	code_info__update_liveness_info(PreBirths),
+	code_info__update_deadness_info(PreDeaths),
+	code_info__make_vars_dead(PreDeaths),
+	( { Atomic = yes } ->
+		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
+		code_info__update_deadness_info(PostDeaths)
+	;
+		[]
+	).
+
+	% Update the code info structure to be consistent
+	% immediately after generating a goal
+code_info__post_goal_update(GoalInfo) -->
+	{ goal_info_get_post_births(GoalInfo, PostBirths) },
+	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
+	code_info__update_liveness_info(PostBirths),
+	code_info__update_deadness_info(PostDeaths),
+	code_info__make_vars_dead(PostDeaths),
+	code_info__make_vars_live(PostBirths),
+	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+	code_info__apply_instmap_delta(InstMapDelta).
+
 %---------------------------------------------------------------------------%
 
 code_info__variable_type(Var, Type) -->
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__lookup(VarTypes, Var, Type) }.
+
+code_info__lookup_type_defn(Type, TypeDefn) -->
+	code_info__get_module_info(ModuleInfo),
+	{ type_to_type_id(Type, TypeIdPrime, _) ->
+		TypeId = TypeIdPrime
+	;
+		error("unknown type in code_aux__lookup_type_defn")
+	},
+	{ module_info_types(ModuleInfo, TypeTable) },
+	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
 code_info__find_type_infos([], []) --> [].
 code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) -->
@@ -932,8 +1006,8 @@ code_info__succip_is_used -->
 
 	% XXX
 
-:- pred code_info__can_generate_direct_branch(code_addr, code_info, code_info).
-:- mode code_info__can_generate_direct_branch(out, in, out) is semidet.
+:- pred code_info__failure_is_direct_branch(code_addr, code_info, code_info).
+:- mode code_info__failure_is_direct_branch(out, in, out) is semidet.
 
 	% XXX
 
@@ -942,9 +1016,9 @@ code_info__succip_is_used -->
 
 	% XXX
 
-:- pred code_info__generate_test_and_fail(rval, code_tree,
+:- pred code_info__fail_if_rval_is_false(rval, code_tree,
 	code_info, code_info).
-:- mode code_info__generate_test_and_fail(in, out, in, out) is det.
+:- mode code_info__fail_if_rval_is_false(in, out, in, out) is det.
 
 	% Set the topmost failure cont to `unknown' (e.g. after
 	% a nondet call or after a disjunction).
@@ -1472,7 +1546,7 @@ code_info__flatten_varlval_list_2([R | Rs], V, [V - R | Rest]) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__can_generate_direct_branch(CodeAddr) -->
+code_info__failure_is_direct_branch(CodeAddr) -->
 	code_info__top_failure_cont(FailureCont),
 	{ FailureCont = failure_cont(ContInfo, FailureMap) },
 	{ code_info__fail_cont_is_known(ContInfo) },
@@ -1504,7 +1578,7 @@ code_info__generate_failure(Code) -->
 		{ Code = node([goto(do_redo) - "fail"]) }
 	).
 
-code_info__generate_test_and_fail(Rval0, Code) -->
+code_info__fail_if_rval_is_false(Rval0, Code) -->
 	code_info__top_failure_cont(FailureCont),
 	{ FailureCont = failure_cont(ContInfo, FailureMap) },
 	(
@@ -2029,26 +2103,62 @@ code_info__pickup_zombies(Zombies) -->
 
 :- interface.
 
-:- pred code_info__save_hp(code_tree, code_info, code_info).
-:- mode code_info__save_hp(out, in, out) is det.
+:- pred code_info__save_hp(code_tree, lval, code_info, code_info).
+:- mode code_info__save_hp(out, out, in, out) is det.
 
-:- pred code_info__get_old_hp(code_tree, code_info, code_info).
-:- mode code_info__get_old_hp(out, in, out) is det.
+:- pred code_info__restore_hp(lval, code_tree, code_info, code_info).
+:- mode code_info__restore_hp(in, out, in, out) is det.
 
-:- pred code_info__restore_hp(code_tree, code_info, code_info).
-:- mode code_info__restore_hp(out, in, out) is det.
+:- pred code_info__restore_and_discard_hp(lval, code_tree,
+	code_info, code_info).
+:- mode code_info__restore_and_discard_hp(in, out, in, out) is det.
 
-:- pred code_info__save_ticket(code_tree, code_info, code_info).
-:- mode code_info__save_ticket(out, in, out) is det.
+:- pred code_info__discard_hp(lval, code_info, code_info).
+:- mode code_info__discard_hp(in, in, out) is det.
 
-:- pred code_info__restore_ticket(code_tree, code_info, code_info).
-:- mode code_info__restore_ticket(out, in, out) is det.
+:- pred code_info__maybe_save_hp(bool, code_tree, maybe(lval),
+	code_info, code_info).
+:- mode code_info__maybe_save_hp(in, out, out, in, out) is det.
 
-:- pred code_info__restore_ticket_and_pop(code_tree, code_info, code_info).
-:- mode code_info__restore_ticket_and_pop(out, in, out) is det.
+:- pred code_info__maybe_restore_hp(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_restore_hp(in, out, in, out) is det.
 
-:- pred code_info__discard_ticket(code_tree, code_info, code_info).
-:- mode code_info__discard_ticket(out, in, out) is det.
+:- pred code_info__maybe_restore_and_discard_hp(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_restore_and_discard_hp(in, out, in, out) is det.
+
+:- pred code_info__maybe_discard_hp(maybe(lval), code_info, code_info).
+:- mode code_info__maybe_discard_hp(in, in, out) is det.
+
+:- pred code_info__save_ticket(code_tree, lval, code_info, code_info).
+:- mode code_info__save_ticket(out, out, in, out) is det.
+
+:- pred code_info__restore_ticket(lval, code_tree, code_info, code_info).
+:- mode code_info__restore_ticket(in, out, in, out) is det.
+
+:- pred code_info__restore_and_discard_ticket(lval, code_tree,
+	code_info, code_info).
+:- mode code_info__restore_and_discard_ticket(in, out, in, out) is det.
+
+:- pred code_info__discard_ticket(lval, code_tree, code_info, code_info).
+:- mode code_info__discard_ticket(in, out, in, out) is det.
+
+:- pred code_info__maybe_save_ticket(bool, code_tree, maybe(lval),
+	code_info, code_info).
+:- mode code_info__maybe_save_ticket(in, out, out, in, out) is det.
+
+:- pred code_info__maybe_restore_ticket(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_restore_ticket(in, out, in, out) is det.
+
+:- pred code_info__maybe_restore_and_discard_ticket(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_restore_and_discard_ticket(in, out, in, out) is det.
+
+:- pred code_info__maybe_discard_ticket(maybe(lval), code_tree,
+	code_info, code_info).
+:- mode code_info__maybe_discard_ticket(in, out, in, out) is det.
 
 :- pred code_info__save_redoip(code_tree, code_info, code_info).
 :- mode code_info__save_redoip(out, in, out) is det.
@@ -2059,62 +2169,118 @@ code_info__pickup_zombies(Zombies) -->
 :- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
 :- mode code_info__save_maxfr(out, out, in, out) is det.
 
-:- pred code_info__maybe_save_hp(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_save_hp(in, out, in, out) is det.
-
-:- pred code_info__maybe_get_old_hp(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_get_old_hp(in, out, in, out) is det.
-
-:- pred code_info__maybe_restore_hp(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_restore_hp(in, out, in, out) is det.
-
-:- pred code_info__maybe_save_ticket(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_save_ticket(in, out, in, out) is det.
-
-:- pred code_info__maybe_restore_ticket(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_restore_ticket(in, out, in, out) is det.
-
-:- pred code_info__maybe_restore_ticket_and_pop(bool, code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_ticket_and_pop(in, out, in, out) is det.
-
-:- pred code_info__maybe_discard_ticket(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_discard_ticket(in, out, in, out) is det.
-
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__save_hp(Code) -->
+code_info__save_hp(Code, HpSlot) -->
 	code_info__push_temp(lval(hp), HpSlot),
 	{ Code = node([mark_hp(HpSlot) - "Save heap pointer"]) }.
 
-code_info__get_old_hp(Code) -->
+code_info__restore_hp(HpSlot, Code) -->
+	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) }.
+
+code_info__discard_hp(HpSlot) -->
 	code_info__get_stack_top(Lval),
-	{ Code = node([restore_hp(lval(Lval)) - "Reset heap pointer"]) }.
+	( { Lval = HpSlot } ->
+		code_info__pop_temp(_)
+	;
+		{ error("improperly nested temp, used for hp") }
+	).
 
-code_info__restore_hp(Code) -->
-	code_info__pop_temp(Lval),
-	{ Code = node([restore_hp(lval(Lval)) - "Restore heap pointer"]) }.
+code_info__restore_and_discard_hp(HpSlot, Code) -->
+	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) },
+	code_info__discard_hp(HpSlot).
 
-code_info__save_ticket(Code) -->
-	code_info__push_temp(ticket, Lval),
-	{ Code = node([store_ticket(Lval) - "Save ticket"]) }.
+code_info__maybe_save_hp(Maybe, Code, MaybeHpSlot) -->
+	( { Maybe = yes } ->
+		code_info__save_hp(Code, HpSlot),
+		{ MaybeHpSlot = yes(HpSlot) }
+	;
+		{ Code = empty },
+		{ MaybeHpSlot = no }
+	).
 
-code_info__restore_ticket(Code) -->
+code_info__maybe_restore_hp(MaybeHpSlot, Code) -->
+	( { MaybeHpSlot = yes(HpSlot) } ->
+		code_info__restore_hp(HpSlot, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_restore_and_discard_hp(MaybeHpSlot, Code) -->
+	( { MaybeHpSlot = yes(HpSlot) } ->
+		code_info__restore_and_discard_hp(HpSlot, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_discard_hp(MaybeHpSlot) -->
+	( { MaybeHpSlot = yes(HpSlot) } ->
+		code_info__discard_hp(HpSlot)
+	;
+		[]
+	).
+
+% ZZZ
+
+code_info__save_ticket(Code, TicketSlot) -->
+	code_info__push_temp(ticket, TicketSlot),
+	{ Code = node([store_ticket(TicketSlot) - "Save solver state"]) }.
+
+code_info__restore_ticket(TicketSlot, Code) -->
+	{ Code = node([restore_ticket(lval(TicketSlot)) - "Restore solver state"]) }.
+
+code_info__restore_and_discard_ticket(TicketSlot, Code) -->
 	code_info__get_stack_top(Lval),
-	{ Code = node([restore_ticket(lval(Lval)) - "Restore solver state"]) }.
-
-code_info__restore_ticket_and_pop(Code) -->
-	code_info__pop_temp(Lval),
+	( { Lval = TicketSlot } ->
+		code_info__pop_temp(_)
+	;
+		{ error("improperly nested temp, used for ticket") }
+	),
 	{ Code = tree(
-		node([restore_ticket(lval(Lval)) - "Restore solver state"]),
+		node([restore_ticket(lval(TicketSlot)) - "Restore solver state"]),
 		node([discard_ticket - "Pop ticket stack"]) )
 	}.
 
-code_info__discard_ticket(Code) -->
-	code_info__pop_temp(_),
-	{ Code = node([discard_ticket - "Restore ticket"]) }.
+code_info__discard_ticket(TicketSlot, Code) -->
+	code_info__get_stack_top(Lval),
+	( { Lval = TicketSlot } ->
+		code_info__pop_temp(_)
+	;
+		{ error("improperly nested temp, used for ticket") }
+	),
+	{ Code = node([discard_ticket - "Pop ticket stack"]) }.
+
+code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot) -->
+	( { Maybe = yes } ->
+		code_info__save_ticket(Code, TicketSlot),
+		{ MaybeTicketSlot = yes(TicketSlot) }
+	;
+		{ Code = empty },
+		{ MaybeTicketSlot = no }
+	).
+
+code_info__maybe_restore_ticket(MaybeTicketSlot, Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__restore_ticket(TicketSlot, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot, Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__restore_and_discard_ticket(TicketSlot, Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_discard_ticket(MaybeTicketSlot, Code) -->
+	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		code_info__discard_ticket(TicketSlot, Code)
+	;
+		{ Code = empty }
+	).
 
 code_info__save_redoip(Code) -->
 	code_info__push_temp(lval(redoip(lval(maxfr))), RedoIpSlot),
@@ -2129,55 +2295,6 @@ code_info__restore_redoip(Code) -->
 code_info__save_maxfr(MaxfrSlot, Code) -->
 	code_info__push_temp(lval(maxfr), MaxfrSlot),
 	{ Code = node([assign(MaxfrSlot, lval(maxfr)) - "Save maxfr"]) }.
-
-code_info__maybe_save_hp(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__save_hp(Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_get_old_hp(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__get_old_hp(Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_restore_hp(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__restore_hp(Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_save_ticket(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__save_ticket(Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_restore_ticket(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__restore_ticket(Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_restore_ticket_and_pop(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__restore_ticket_and_pop(Code)
-	;
-		{ Code = empty }
-	).
-
-code_info__maybe_discard_ticket(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__discard_ticket(Code)
-	;
-		{ Code = empty }
-	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2669,9 +2786,6 @@ code_info__get_shape_num(ticket, ticket).
 :- pred code_info__get_total_stackslot_count(int, code_info, code_info).
 :- mode code_info__get_total_stackslot_count(out, in, out) is det.
 
-:- pred code_info__maybe_pop_stack(bool, code_tree, code_info, code_info).
-:- mode code_info__maybe_pop_stack(in, out, in, out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -2741,13 +2855,6 @@ code_info__get_stack_top(StackVar) -->
 	code_info__get_stackslot_count(NumSlots),
 	{ Slot is Count + NumSlots },
 	code_info__stack_variable(Slot, StackVar).
-
-code_info__maybe_pop_stack(Maybe, Code) -->
-	( { Maybe = yes } ->
-		code_info__pop_stack(Code)
-	;
-		{ Code = empty }
-	).
 
 %---------------------------------------------------------------------------%
 

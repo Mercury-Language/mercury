@@ -147,7 +147,7 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 	(
 		{ CanFail = can_fail },
 		{ Difference is EndVal - StartVal },
-		code_info__generate_test_and_fail(
+		code_info__fail_if_rval_is_false(
 			binop(<=, unop(cast_to_unsigned, Index),
 				const(int_const(Difference))), RangeCheck)
 	;

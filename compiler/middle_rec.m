@@ -118,7 +118,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		EntryLabel) },
 
-	code_aux__pre_goal_update(SwitchGoalInfo, no),
+	code_info__pre_goal_update(SwitchGoalInfo, no),
 	unify_gen__generate_tag_test(Var, BaseConsId, branch_on_success,
 		BaseLabel, EntryTestCode),
 	{ tree__flatten(EntryTestCode, EntryTestListList) },
@@ -131,7 +131,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	code_gen__generate_goal(model_det, Recursive, RecGoalCode),
 	code_info__generate_branch_end(model_det, StoreMap, RecSaveCode),
 
-	code_aux__post_goal_update(SwitchGoalInfo),
+	code_info__post_goal_update(SwitchGoalInfo),
 	code_info__remake_with_store_map(StoreMap),
 
 	code_info__get_arginfo(ArgModes),

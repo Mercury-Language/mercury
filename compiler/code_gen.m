@@ -583,7 +583,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 	;
 		IsAtomic = no
 	},
-	code_aux__pre_goal_update(GoalInfo, IsAtomic),
+	code_info__pre_goal_update(GoalInfo, IsAtomic),
 	code_info__get_instmap(Instmap),
 	(
 		{ instmap__is_reachable(Instmap) }
@@ -612,7 +612,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
 		code_info__set_instmap(Instmap),
-		code_aux__post_goal_update(GoalInfo),
+		code_info__post_goal_update(GoalInfo),
 		code_info__get_globals(Options),
 		(
 			{ globals__lookup_bool_option(Options, lazy_code, yes) }
@@ -1128,7 +1128,7 @@ code_gen__generate_negation(CodeModel, Goal0, Code) -->
 	(
 		{ CodeModel = model_semi },
 		{ GoalExpr = unify(_, _, _, simple_test(L, R), _) },
-		code_info__can_generate_direct_branch(CodeAddr),
+		code_info__failure_is_direct_branch(CodeAddr),
 		code_info__get_globals(Globals),
 		{ globals__lookup_bool_option(Globals, simple_neg, yes) }
 	->
@@ -1136,7 +1136,7 @@ code_gen__generate_negation(CodeModel, Goal0, Code) -->
 			% (special-cased, though it may be)
 			% we need to apply the pre- and post-
 			% updates.
-		code_aux__pre_goal_update(GoalInfo, yes),
+		code_info__pre_goal_update(GoalInfo, yes),
 		code_info__produce_variable(L, CodeL, ValL),
 		code_info__produce_variable(R, CodeR, ValR),
 		code_info__variable_type(L, Type),
@@ -1151,7 +1151,7 @@ code_gen__generate_negation(CodeModel, Goal0, Code) -->
 			if_val(binop(Op, ValL, ValR), CodeAddr) -
 				"test inequality"
 		]) },
-		code_aux__post_goal_update(GoalInfo),
+		code_info__post_goal_update(GoalInfo),
 		{ Code = tree(tree(CodeL, CodeR), TestCode) }
 	;
 		code_gen__generate_negation_general(CodeModel, Goal,
@@ -1186,7 +1186,11 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 	;
 		ReclaimHeap = no
 	},
-	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
+	code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot),
+
+	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode,
+		MaybeTicketSlot),
 
 		% Generate the condition as a semi-deterministic goal;
 		% it cannot be nondet, since mode correctness requires it
@@ -1202,13 +1206,17 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		code_info__slap_code_info(CodeInfo)
 	),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
+	code_info__maybe_restore_and_discard_ticket(MaybeTicketSlot,
+		RestoreTicketCode),
+	code_info__maybe_restore_and_discard_hp(MaybeHpSlot, RestoreHpCode),
 	{ Code = tree(ModContCode,
-		 tree(SaveHeapCode,
+		 tree(SaveHpCode,
+		 tree(SaveTicketCode,
 		 tree(GoalCode,
 		 tree(FailCode,
 		 tree(RestoreContCode,
-		      RestoreHeapCode))))) }.
+		 tree(RestoreTicketCode,
+		      RestoreHpCode))))))) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
