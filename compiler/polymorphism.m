@@ -882,7 +882,7 @@ polymorphism__setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
 
 	% Make a map of the locations of the typeclass_infos
 	poly_info_get_typeclass_info_map(PolyInfo5, TypeClassInfoMap0),
-	map__det_insert_from_corresponding_lists(TypeClassInfoMap0,
+	map__set_from_corresponding_lists(TypeClassInfoMap0,
 		UnivConstraints, UnivHeadTypeClassInfoVars, TypeClassInfoMap),
 	poly_info_set_typeclass_info_map(TypeClassInfoMap,
 		PolyInfo5, PolyInfo).

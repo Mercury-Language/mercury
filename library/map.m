@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -104,6 +104,19 @@
 :- mode map__det_insert_from_assoc_list(in, in, out) is det.
 
 :- func map__det_insert_from_assoc_list(map(K,V), assoc_list(K, V)) = map(K,V).
+
+	% Apply map__set to key - value pairs from corresponding lists.
+:- pred map__set_from_corresponding_lists(map(K,V), list(K),
+						list(V), map(K,V)).
+:- mode map__set_from_corresponding_lists(in, in, in, out) is det.
+
+:- func map__set_from_corresponding_lists(map(K,V), list(K), list(V)) =
+		map(K,V).
+
+:- pred map__set_from_assoc_list(map(K,V), assoc_list(K, V), map(K,V)).
+:- mode map__set_from_assoc_list(in, in, out) is det.
+
+:- func map__set_from_assoc_list(map(K,V), assoc_list(K, V)) = map(K,V).
 
 	% Update the value corresponding to a given key
 	% Fail if the key doesn't already exist.
@@ -467,6 +480,24 @@ map__det_insert_from_assoc_list(Map0, [K - V | KVs], Map) :-
 	map__det_insert(Map0, K, V, Map1),
 	map__det_insert_from_assoc_list(Map1, KVs, Map).
 
+map__set_from_corresponding_lists(Map0, Ks, Vs, Map) :-
+	( Ks = [Key | Keys], Vs = [Value | Values] ->
+		map__set(Map0, Key, Value, Map1),
+		map__set_from_corresponding_lists(Map1, Keys,
+							Values, Map)
+	;
+		Ks = [], Vs = []
+	->
+		Map = Map0
+	;
+		error("map__set_from_corresponding_lists - lists do not correspond")
+	).
+
+map__set_from_assoc_list(Map, [], Map).
+map__set_from_assoc_list(Map0, [K - V | KVs], Map) :-
+	map__set(Map0, K, V, Map1),
+	map__set_from_assoc_list(Map1, KVs, Map).
+
 map__update(Map0, K, V, Map) :-
 	tree234__update(Map0, K, V, Map).
 
@@ -773,6 +804,12 @@ map__det_insert_from_corresponding_lists(M1, Ks, Vs) = M2 :-
 
 map__det_insert_from_assoc_list(M1, AL) = M2 :-
 	map__det_insert_from_assoc_list(M1, AL, M2).
+
+map__set_from_corresponding_lists(M1, Ks, Vs) = M2 :-
+	map__set_from_corresponding_lists(M1, Ks, Vs, M2).
+
+map__set_from_assoc_list(M1, AL) = M2 :-
+	map__set_from_assoc_list(M1, AL, M2).
 
 map__update(M1, K, V) = M2 :-
 	map__update(M1, K, V, M2).
