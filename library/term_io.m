@@ -27,17 +27,20 @@
 
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
 :- pred io__op(integer, op_type, string, io__state, io__state).
+:- mode io__op(input, input, input, di, uo).
 %	io__op(Prec, Type, OpName, IOState0, IOState1).
 %		Define an operator as per Prolog op/3 for future calls to
 %		io__read_term.
 
 :- type op_details ---> op(integer, op_type, string).
 :- pred io__current_ops(list(op_details), io__state, io__state).
+:- mode io__current_ops(output, di, uo).
 %	io__current_ops(Ops, IOState0, IOState1).
 %		Return a list containing all the current operator definitions.
 
 :- type read_term ---> eof ; error(string) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
+:- mode io__read_term(output, di, uo).
 
 %	io__read_term(Result, IO0, IO1).
 %		Read a term from standard input. Similar to NU-Prolog
@@ -46,14 +49,17 @@
 %		'term(VarSet, Term)'.
 
 :- pred io__write_term(varset, term, io__state, io__state).
+:- mode io__write_term(input, input, di, uo).
 %	io__write_term(VarSet, Term, IO0, IO1).
 %		Writes a term to standard output.
 
 :- pred io__write_term_nl(varset, term, io__state, io__state).
+:- mode io__write_term_nl(input, input, di, uo).
 %	io__write_term_nl(VarSet, Term, IO0, IO1).
 %		As above, except it appends a period and new-line.
 
 :- pred io__write_constant(const, io__state, io__state).
+:- mode io__write_constant(input, di, uo).
 %	io__write_constant(Const, IO0, IO1).
 %		Writes a constant (integer, float, or atom) to stdout.
 

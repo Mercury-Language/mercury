@@ -49,13 +49,15 @@ io__call_2(Goal, Solutions) :-
 	(Solutions = [] ->
 		write('\nio.nl: error: goal "'),
 		print(Goal),
-		write('." failed.\n')
+		write('." failed.\n'),
+		abort
 	; Solutions = [SingleSolution] ->
 		Goal = SingleSolution
 	;
 		write('\nio.nl: error: goal "'),
 		print(Goal),
-		write('." not deterministic.\n')
+		write('." not deterministic.\n'),
+		abort
 	).
 
 :- pred atoms_to_strings(list(atom), list(string)).

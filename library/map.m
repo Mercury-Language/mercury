@@ -8,37 +8,32 @@
 % of (Key,Data) pairs which allows you to look up any Data item given the
 % Key.
 %
-% The implementation is using an association list, which gives
-% O(1) insert but O(n) update and search. Should provide a more
-% efficient implementation someday...
+% The implementation is using balanced binary trees, as provided by
+% bintree.nl.  Virtually all the predicates in this file just
+% forward the work to the corresponding predicate in bintree.nl.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module map.
-:- import_module list, pair.
+:- interface.
 :- export_pred	map__init/1, map__search/3, map__search_insert/4,
 		map__update/4, map__set/3, map__keys/2, map__to_assoc_list/2,
 		map__contains/2, map__inverse_search/3, map__member/3.
 
 %-----------------------------------------------------------------------------%
 
-:- type map(K,V)	==	list(pair(K,V)).
+:- implementation.
+:- import_module bintree, list, std_util.
 
-%	where
-%	(L : all [K]
-%		if some [V1,R] delete(K-V1,L,R) then
-%			not some V member(K-V,R)).
-%
-
-:- type found(X)	--->	found(X) ; not_found.
+:- type map(K,V)	==	bintree(K,V).
 
 %-----------------------------------------------------------------------------%
 
 	% Initialize an empty map.
 :- pred map__init(map(_,_)).
 :- mode map__init(output).
-map__init([]).
+map__init(M) :- bintree__init(M).
 
 %-----------------------------------------------------------------------------%
 
@@ -46,7 +41,7 @@ map__init([]).
 :- pred map__contains(map(K,_V), K).
 :- mode map__contains(input, input).
 map__contains(Map, K) :-
-	some [V] assoc_list_member(K-V, Map).
+	some [V] map_search(Map, K, V).
 
 %-----------------------------------------------------------------------------%
 
@@ -54,31 +49,18 @@ map__contains(Map, K) :-
 :- pred map__search(map(K,V), K, V).
 :- mode map__search(input, input, output).
 map__search(Map, K, V) :-
-	assoc_list_member(K-V, Map).
+	bintree__search(Map, K, V).
 
 %-----------------------------------------------------------------------------%
 
 	% Search map for data.
-	% This could be just a different mode of map__search, but
-	% with some data structures that would require mode-dependant
-	% code, and we don't want to rely on that feature (at least
-	% until we've implemented it) so we can bootstrap.
+	% XXX innefficient
 
 :- pred map__inverse_search(map(K,V), V, K).
 :- mode map__inverse_search(input, input, output).
 map__inverse_search(Map, V, K) :-
-	assoc_list_member(K-V, Map).
-
-%-----------------------------------------------------------------------------%
-
-	% Nondeterministically return all the different key-value
-	% pairs contained in the map.
-	% The same as map__search except with a different mode.
-
-:- pred map__member(map(K,V), K, V).
-:- mode map__member(input, output, output).
-map__member(Map, K, V) :-
-	assoc_list_member(K-V, Map).
+	bintree__to_list(Map, AssocList),
+	assoc_list_member(K-V, AssocList).
 
 %-----------------------------------------------------------------------------%
 
@@ -97,52 +79,51 @@ assoc_list_member(X, [_|Xs]) :-
 %-----------------------------------------------------------------------------%
 
 	% Insert a new key and corresponding value into a map.
+
 :- pred map__insert(map(K,V), K, V, map(K,V)).
 :- mode map__insert(input, input, input, output).
-map__insert(Map, K, V, (K - V).Map).
+map__insert(Map0, K, V, Map) :-
+	bintree__insert(Map0, K, V, Map).
  
 %-----------------------------------------------------------------------------%
 
- 	% Search map for key. If found, unify old value with new val.
-	% otherwise insert key and new val.
 :- pred map__search_insert(map(K,V), K, V, map(K,V)).
 :- mode map__search_insert(input, input, input, output).
 map__search_insert(Map0, K, V, Map) :-
- 	(if some [Val] map__search(Map0, K, Val) then
- 		V = Val,
-		Map = Map0
-	else
- 		map__insert(Map0, K, V, Map)
-	).
+	bintree__search_insert(Map0, K, V, Map).
 
 %-----------------------------------------------------------------------------%
 
 	% Update the value corresponding to a given key
+
 :- pred map__update(map(K,V), K, V, map(K,V)).
 :- mode map__update(input, input, input, output).
-map__update((K - _).Map, K, V, (K - V).Map).
-map__update(KV.Map0, K, V, KV.Map) :-
-	map__update(Map0, K, V, Map).
+map__update(Map0, K, V, Map) :-
+	bintree__update(Map0, K, V, Map).
 
 %-----------------------------------------------------------------------------%
 
 	% Update value if it's already there, otherwise insert it
+
 :- pred map__set(map(K,V), K, V, map(K,V)).
 :- mode map__set(input, input, input, output).
 map__set(Map0, K, V, Map) :-
-	(if some [Map1] map__update(Map0, K, V, Map1) then
-		Map = Map1
-	else
-		map__insert(Map0, K, V, Map)
-	).
+	bintree__set(Map0, K, V, Map).
+
+%-----------------------------------------------------------------------------%
+
+	% XXX efficiency
 
 :- pred map__keys(map(K, _V), list(K)).
 :- mode map__keys(input, output).
+
 map__keys(Map, KeyList) :-
-	map__keys_2(Map, [], KeyList).
+	bintree__to_list(Map, List),
+	map__keys_2(List, [], KeyList).
 
 :- pred map__keys_2(map(K, _V), list(K), list(K)).
 :- mode map__keys_2(input, input, output).
+
 map__keys_2([], Keys, Keys).
 map__keys_2([Key - _ | Rest], Keys0, Keys) :-
 	map__keys_2(Rest, [Key | Keys0], Keys).
@@ -153,7 +134,9 @@ map__keys_2([Key - _ | Rest], Keys0, Keys) :-
 
 :- pred map__to_assoc_list(map(K,V), list(pair(K,V))).
 :- mode map__to_assoc_list(input, output).
-map__to_assoc_list(M, M).
+
+map__to_assoc_list(M, L) :-
+	bintree__to_list(M, L).
 
 %-----------------------------------------------------------------------------%
 
@@ -162,15 +145,8 @@ map__to_assoc_list(M, M).
 :- pred map__delete(map(K,V), K, map(K,V)).
 :- mode map__delete(input, input, output).
 
-map__delete([K-V | Map0], Key, Map) :-
-	(if
-		K = Key
-	then
-		Map = Map0
-	else
-		map__delete(Map0, Key, Map1),
-		Map = [K-V|Map1]
-	).
+map__delete(Map0, Key, Map) :-
+	bintree__delete(Map0, Key, Map).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
