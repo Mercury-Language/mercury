@@ -9,7 +9,7 @@
 
 % XXX we need to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is 
-%     dead.
+%     dead (causes problems handling e.g. `same_length').
 
 % XXX break unifications into "micro-unifications"
 
@@ -187,20 +187,30 @@ copy_clauses_to_procs(PredInfo0, PredInfo) :-
 
 copy_clauses_to_procs_2([], _, Procs, Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
+	map__lookup(Procs0, ProcId, Proc0),
 	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
 	get_clause_goals(MatchingClauses, GoalList),
-	(GoalList = [SingleGoal] ->
+	( GoalList = [SingleGoal] ->
 		Goal = SingleGoal
 	;
-		% XXX we should initialize the goal_info context
-		% XXX we should avoid creating nested disjunctions
+		% Construct a goal_info for the disjunction.
+		% We use the context of the first clause, unless
+		% there weren't any clauses at all, in which case
+		% we use the context of the mode declaration.
+		% The non-local vars are just the head variables.
 		goal_info_init(GoalInfo0),
+		( GoalList = [FirstGoal | _] ->
+			FirstGoal = _ - FirstGoalInfo,
+			goal_info_context(FirstGoalInfo, Context)
+		;
+			proc_info_context(Proc0, Context)
+		),
+		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 		set__list_to_set(HeadVars, NonLocalVars),
-		goal_info_set_nonlocals(GoalInfo0, NonLocalVars, GoalInfo),
+		goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo),
 		Goal = disj(GoalList) - GoalInfo
 	),
-	map__lookup(Procs0, ProcId, Proc0),
 	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc),
 	map__set(Procs0, ProcId, Proc, Procs1),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
@@ -221,9 +231,11 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 :- pred get_clause_goals(list(clause)::in, list(hlds__goal)::out) is det.
 
 get_clause_goals([], []).
-get_clause_goals([Clause | Clauses], [Goal | Goals]) :-
+get_clause_goals([Clause | Clauses], Goals) :-
 	Clause = clause(_, Goal, _),
-	get_clause_goals(Clauses, Goals).
+	goal_to_disj_list(Goal, GoalList),
+	list__append(GoalList, Goals1, Goals),
+	get_clause_goals(Clauses, Goals1).
 
 %-----------------------------------------------------------------------------%
 
@@ -574,6 +586,13 @@ mode_info_add_goals_live_vars([Goal | Goals]) -->
 				mode_info, mode_info).
 :- mode modecheck_conj_list_2(in, out, mode_info_di, mode_info_uo) is det.
 
+	% Schedule a conjunction.
+	% If it's empty, then there is nothing to do.
+	% For non-empty conjunctions, we attempt to schedule the first
+	% goal in the conjunction.  If successful, we wakeup a newly
+	% pending goal (if any), and if not, we delay the goal.  Then we
+	% continue attempting to schedule all the rest of the goals.
+
 modecheck_conj_list_2([], []) --> [].
 modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 
@@ -644,13 +663,6 @@ get_all_waiting_vars_2([], Vars, Vars).
 get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 	set__union(Vars0, Vars1, Vars2),
 	get_all_waiting_vars_2(Rest, Vars2, Vars).
-
-	% Schedule a conjunction.
-	% If it's empty, then there is nothing to do.
-	% For non-empty conjunctions, we attempt to schedule the first
-	% goal in the conjunction.  If successful, we wakeup a newly
-	% pending goal (if any), and if not, we delay the goal.  Then we
-	% continue attempting to schedule all the rest of the goals.
 
 %-----------------------------------------------------------------------------%
 

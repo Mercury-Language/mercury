@@ -419,14 +419,17 @@ END JUNK ***************************/
 :- mode typecheck_goal(in, out, type_info_di, type_info_uo) is det.
 
 typecheck_goal(Goal0 - GoalInfo, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
-	% XXX prog_io.nl and make_hlds.nl don't set up the
-	%     goal_info context, so we have to just use the clause
-	%     context
-	% goal_info_context(GoalInfo, Context),
-	% type_info_set_context(Context, TypeInfo0, TypeInfo1),
-	TypeInfo1 = TypeInfo0,
-	typecheck_goal_2(Goal0, Goal, TypeInfo1, TypeInfo).
+		% XXX prog_io.nl and make_hlds.nl don't set up the
+		%     goal_info context, so we have to just use the clause
+		%     context.
+	% { goal_info_context(GoalInfo, Context) },
+	% type_info_set_context(Context),
 
+		% type-check the goal
+	typecheck_goal_2(Goal0, Goal, TypeInfo0, TypeInfo1),
+
+	check_warn_too_much_overloading(TypeInfo1, TypeInfo).
+	
 :- pred typecheck_goal_2(hlds__goal_expr, hlds__goal_expr,
 				type_info, type_info).
 :- mode typecheck_goal_2(in, out, type_info_di, type_info_uo) is det.
@@ -872,6 +875,36 @@ type_assign_term_has_type(term__functor(F, Args, _Context), Type, TypeAssign,
 	{ type_info_get_ctor_list(TypeInfo, F, Arity, ConsDefnList) },
 	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type,
 		TypeInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% Because we allow overloading, type-checking is NP-complete.
+	% Rather than disallow it completely, we issue a warning
+	% whenever "too much" overloading is used.  "Too much"
+	% is arbitrarily defined as anthing which results in
+	% more than 50 possible type assignments.
+
+:- pred check_warn_too_much_overloading(type_info, type_info).
+:- mode check_warn_too_much_overloading(type_info_di, type_info_uo) is det.
+
+check_warn_too_much_overloading(TypeInfo0, TypeInfo) :-
+	(
+		type_info_get_warned_about_overloading(TypeInfo0,
+			AlreadyWarned),
+		AlreadyWarned = no,
+		type_info_get_type_assign_set(TypeInfo0, TypeAssignSet),
+		list__length(TypeAssignSet, Count),
+		Count > 50
+	->
+		type_info_get_io_state(TypeInfo0, IOState0),
+		report_warning_too_much_overloading(TypeInfo0,
+			IOState0, IOState1),
+		type_info_set_io_state(TypeInfo0, IOState1, TypeInfo1),
+		type_info_set_warned_about_overloading(TypeInfo1, yes,
+			TypeInfo)
+	;
+		TypeInfo = TypeInfo0
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1564,46 +1597,40 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 
 :- type tsubst		==	map(var, type).
 
-:- type type_info 
-	--->	type_info(
-				% The io state
-			io__state, 
+:- type type_info
+	---> type_info(
+			io__state, 	% The io state
+			
+			module_info, 	% The global symbol tables
 
-				% The global symbol tables
-			module_info, 
+			pred_call_id,	% The pred_call_id of the pred
+					% being called (if any)
 
-				% The pred_call_id of the pred
-				% being called (if any)
-			pred_call_id,
+			int,		% The argument number within
+					% a pred call 
 
-				% The argument number within
-				% a pred call 
-			int,		
+			pred_id,	% The pred we're checking
 
-				% The pred we're checking
-			pred_id,
+			term__context,	% The context of the goal
+					% we're checking
 
-				% The context of the goal
-				% we're checking
-			term__context,
+			unify_context,	% The original source of the
+					% unification we're checking
 
-				% The original source of the unification
-				% we're checking
-			unify_context,	
+			varset,		% Variable names
 
-				% Variable names
-			varset,	
-				% This is the main piece of
-				% information that we are
-				% computing and which gets
-				% updated as we go along
 			type_assign_set,
+					% This is the main piece of
+					% information that we are
+					% computing and which gets
+					% updated as we go along
 
-				% did we find any type errors?
-			bool,
+			bool,		% did we find any type errors?
 
-				% Head type params
-			headtypes
+			headtypes,	% Head type params
+
+			bool		% Have we already warned about
+					% highly ambiguous overloading?
 		).
 
 	% The normal inst of a type_info struct: ground, with
@@ -1615,7 +1642,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 						ground_unique, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
-						ground
+						ground, ground
 					)
 				).
 
@@ -1631,7 +1658,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 						dead, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
-						ground
+						ground, ground
 					)
 				).
 
@@ -1650,11 +1677,13 @@ type_info_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
 	CallPredId = unqualified("") / 0,
 	term__context_init(0, Context),
 	map__init(TypeBindings),
+	FoundTypeError = no,
+	WarnedAboutOverloading = no,
 	TypeInfo = type_info(
 		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
 		unify_context(explicit, []),
 		VarSet, [type_assign(VarTypes, TypeVarSet, TypeBindings)],
-		no, HeadTypeParams
+		FoundTypeError, HeadTypeParams, WarnedAboutOverloading
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1662,22 +1691,22 @@ type_info_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
 :- pred type_info_get_io_state(type_info, io__state).
 :- mode type_info_get_io_state(type_info_get_io_state, uo) is det.
 
-type_info_get_io_state(type_info(IOState,_,_,_,_,_,_,_,_,_,_), IOState).
+type_info_get_io_state(type_info(IOState,_,_,_,_,_,_,_,_,_,_,_), IOState).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_io_state(type_info, io__state, type_info).
 :- mode type_info_set_io_state(type_info_set_io_state, ui, type_info_uo) is det.
 
-type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K), IOState,
-			type_info(IOState,B,C,D,E,F,G,H,I,J,K)).
+type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L), IOState,
+			type_info(IOState,B,C,D,E,F,G,H,I,J,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_module_name(type_info, string).
 :- mode type_info_get_module_name(in, out) is det.
 
-type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Name) :-
+type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Name) :-
 	module_info_name(ModuleInfo, Name).
 
 %-----------------------------------------------------------------------------%
@@ -1685,7 +1714,7 @@ type_info_get_module_name(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Name) :-
 :- pred type_info_get_module_info(type_info, module_info).
 :- mode type_info_get_module_info(in, out) is det.
 
-type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_),
+type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_),
 			ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1693,7 +1722,7 @@ type_info_get_module_info(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_),
 :- pred type_info_get_preds(type_info, predicate_table).
 :- mode type_info_get_preds(in, out) is det.
 
-type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Preds) :-
+type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Preds) :-
 	module_info_get_predicate_table(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
@@ -1701,7 +1730,7 @@ type_info_get_preds(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Preds) :-
 :- pred type_info_get_types(type_info, type_table).
 :- mode type_info_get_types(in, out) is det.
 
-type_info_get_types(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Types) :-
+type_info_get_types(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Types) :-
 	module_info_types(ModuleInfo, Types).
 
 %-----------------------------------------------------------------------------%
@@ -1709,7 +1738,7 @@ type_info_get_types(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Types) :-
 :- pred type_info_get_ctors(type_info, cons_table).
 :- mode type_info_get_ctors(in, out) is det.
 
-type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Ctors) :-
+type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_,_), Ctors) :-
 	module_info_ctors(ModuleInfo, Ctors).
 
 %-----------------------------------------------------------------------------%
@@ -1717,59 +1746,59 @@ type_info_get_ctors(type_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Ctors) :-
 :- pred type_info_get_called_predid(type_info, pred_call_id).
 :- mode type_info_get_called_predid(in, out) is det.
 
-type_info_get_called_predid(type_info(_,_,PredId,_,_,_,_,_,_,_,_), PredId).
+type_info_get_called_predid(type_info(_,_,PredId,_,_,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_called_predid(type_info, pred_call_id, type_info).
 :- mode type_info_set_called_predid(type_info_di, in, type_info_uo) is det.
 
-type_info_set_called_predid(type_info(A,B,_     ,D,E,F,G,H,I,J,K), PredCallId,
-			   type_info(A,B,PredCallId,D,E,F,G,H,I,J,K)).
+type_info_set_called_predid(type_info(A,B,_,D,E,F,G,H,I,J,K,L), PredCallId,
+			   type_info(A,B,PredCallId,D,E,F,G,H,I,J,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_arg_num(type_info, int).
 :- mode type_info_get_arg_num(in, out) is det.
 
-type_info_get_arg_num(type_info(_,_,_,ArgNum,_,_,_,_,_,_,_), ArgNum).
+type_info_get_arg_num(type_info(_,_,_,ArgNum,_,_,_,_,_,_,_,_), ArgNum).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_arg_num(int, type_info, type_info).
 :- mode type_info_set_arg_num(in, type_info_di, type_info_uo) is det.
 
-type_info_set_arg_num(ArgNum, type_info(A,B,C,_,     E,F,G,H,I,J,K),
-			     type_info(A,B,C,ArgNum,E,F,G,H,I,J,K)).
+type_info_set_arg_num(ArgNum, type_info(A,B,C,_,     E,F,G,H,I,J,K,L),
+			     type_info(A,B,C,ArgNum,E,F,G,H,I,J,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_predid(type_info, pred_id).
 :- mode type_info_get_predid(in, out) is det.
 
-type_info_get_predid(type_info(_,_,_,_,PredId,_,_,_,_,_,_), PredId).
+type_info_get_predid(type_info(_,_,_,_,PredId,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_context(type_info, term__context).
 :- mode type_info_get_context(in, out) is det.
 
-type_info_get_context(type_info(_,_,_,_,_,Context,_,_,_,_,_), Context).
+type_info_get_context(type_info(_,_,_,_,_,Context,_,_,_,_,_,_), Context).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_context(term__context, type_info, type_info).
 :- mode type_info_set_context(in, type_info_di, type_info_uo) is det.
 
-type_info_set_context(Context, type_info(A,B,C,D,E,_,G,H,I,J,K),
-			type_info(A,B,C,D,E,Context,G,H,I,J,K)).
+type_info_set_context(Context, type_info(A,B,C,D,E,_,G,H,I,J,K,L),
+			type_info(A,B,C,D,E,Context,G,H,I,J,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_unify_context(type_info, unify_context).
 :- mode type_info_get_unify_context(in, out) is det.
 
-type_info_get_unify_context(type_info(_,_,_,_,_,_,UnifyContext,_,_,_,_),
+type_info_get_unify_context(type_info(_,_,_,_,_,_,UnifyContext,_,_,_,_,_),
 				UnifyContext).
 
 %-----------------------------------------------------------------------------%
@@ -1777,22 +1806,22 @@ type_info_get_unify_context(type_info(_,_,_,_,_,_,UnifyContext,_,_,_,_),
 :- pred type_info_set_unify_context(unify_context, type_info, type_info).
 :- mode type_info_set_unify_context(in, type_info_di, type_info_uo) is det.
 
-type_info_set_unify_context(UnifyContext, type_info(A,B,C,D,E,F,_,H,I,J,K),
-			type_info(A,B,C,D,E,F,UnifyContext,H,I,J,K)).
+type_info_set_unify_context(UnifyContext, type_info(A,B,C,D,E,F,_,H,I,J,K,L),
+			type_info(A,B,C,D,E,F,UnifyContext,H,I,J,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_varset(type_info, varset).
 :- mode type_info_get_varset(in, out) is det.
 
-type_info_get_varset(type_info(_,_,_,_,_,_,_,VarSet,_,_,_), VarSet).
+type_info_get_varset(type_info(_,_,_,_,_,_,_,VarSet,_,_,_,_), VarSet).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_type_assign_set(type_info, type_assign_set).
 :- mode type_info_get_type_assign_set(in, out) is det.
 
-type_info_get_type_assign_set(type_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_),
+type_info_get_type_assign_set(type_info(_,_,_,_,_,_,_,_,TypeAssignSet,_,_,_),
 			TypeAssignSet).
 
 %-----------------------------------------------------------------------------%
@@ -1813,15 +1842,15 @@ type_info_get_vartypes(TypeInfo, VarTypes) :-
 :- pred type_info_set_type_assign_set(type_info, type_assign_set, type_info).
 :- mode type_info_set_type_assign_set(type_info_di, in, type_info_uo) is det.
 
-type_info_set_type_assign_set( type_info(A,B,C,D,E,F,G,H,_,J,K), TypeAssignSet,
-			type_info(A,B,C,D,E,F,G,H,TypeAssignSet,J,K)).
+type_info_set_type_assign_set( type_info(A,B,C,D,E,F,G,H,_,J,K,L),
+		TypeAssignSet, type_info(A,B,C,D,E,F,G,H,TypeAssignSet,J,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_found_error(type_info, bool).
 :- mode type_info_get_found_error(type_info_ui, out) is det.
 
-type_info_get_found_error(type_info(_,_,_,_,_,_,_,_,_,FoundError,_),
+type_info_get_found_error(type_info(_,_,_,_,_,_,_,_,_,FoundError,_,_),
 			FoundError).
 
 %-----------------------------------------------------------------------------%
@@ -1829,15 +1858,15 @@ type_info_get_found_error(type_info(_,_,_,_,_,_,_,_,_,FoundError,_),
 :- pred type_info_set_found_error(type_info, bool, type_info).
 :- mode type_info_set_found_error(type_info_di, in, type_info_uo) is det.
 
-type_info_set_found_error( type_info(A,B,C,D,E,F,G,H,I,_,K), FoundError,
-			type_info(A,B,C,D,E,F,G,H,I,FoundError,K)).
+type_info_set_found_error( type_info(A,B,C,D,E,F,G,H,I,_,K,L), FoundError,
+			type_info(A,B,C,D,E,F,G,H,I,FoundError,K,L)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_get_head_type_params(type_info, headtypes).
 :- mode type_info_get_head_type_params(type_info_ui, out) is det.
 
-type_info_get_head_type_params( type_info(_,_,_,_,_,_,_,_,_,_,HeadTypeParams),
+type_info_get_head_type_params( type_info(_,_,_,_,_,_,_,_,_,_,HeadTypeParams,_),
 				HeadTypeParams).
 
 %-----------------------------------------------------------------------------%
@@ -1845,9 +1874,27 @@ type_info_get_head_type_params( type_info(_,_,_,_,_,_,_,_,_,_,HeadTypeParams),
 :- pred type_info_set_head_type_params(type_info, headtypes, type_info).
 :- mode type_info_set_head_type_params(type_info_di, in, type_info_uo) is det.
 
-type_info_set_head_type_params( type_info(A,B,C,D,E,F,G,H,I,J,_),
+type_info_set_head_type_params( type_info(A,B,C,D,E,F,G,H,I,J,_,L),
 			HeadTypeParams,
-			type_info(A,B,C,D,E,F,G,H,I,J,HeadTypeParams)).
+			type_info(A,B,C,D,E,F,G,H,I,J,HeadTypeParams,L)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred type_info_get_warned_about_overloading(type_info, bool).
+:- mode type_info_get_warned_about_overloading(type_info_ui, out) is det.
+
+type_info_get_warned_about_overloading(type_info(_,_,_,_,_,_,_,_,_,_,_,Warned),
+				Warned).
+
+%-----------------------------------------------------------------------------%
+
+:- pred type_info_set_warned_about_overloading(type_info, bool, type_info).
+:- mode type_info_set_warned_about_overloading(type_info_di, in, type_info_uo)
+	is det.
+
+type_info_set_warned_about_overloading( type_info(A,B,C,D,E,F,G,H,I,J,K,_),
+			Warned,
+			type_info(A,B,C,D,E,F,G,H,I,J,K,Warned)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1984,6 +2031,30 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 %-----------------------------------------------------------------------------%
 
 % The next section contains predicates for writing error diagnostics.
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_warning_too_much_overloading(type_info, io__state, io__state).
+:- mode report_warning_too_much_overloading(type_info_no_io, di, uo) is det.
+
+report_warning_too_much_overloading(TypeInfo) -->
+	{ type_info_get_context(TypeInfo, Context) },
+	write_context_and_pred_id(TypeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  warning: highly ambiguous overloading.\n"),
+	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  This may cause type-checking to be very slow.\n"
+		),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  It may also make your code difficult to understand.\n"
+		)
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
