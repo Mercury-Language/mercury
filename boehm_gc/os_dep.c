@@ -1548,6 +1548,7 @@ word len;
     	      ((ptr_t)end_block - (ptr_t)start_block) + HBLKSIZE);
 }
 
+#ifndef DONT_DEFINE_READ
 #ifndef MSWIN32
 /* Replacement for UNIX system call.	 */
 /* Other calls that write to the heap	 */
@@ -1587,6 +1588,7 @@ int nbyte;
     return(result);
 }
 #endif /* !MSWIN32 */
+#endif
 
 /*ARGSUSED*/
 bool GC_page_was_ever_dirty(h)

@@ -29,7 +29,7 @@ CXX=g++ -ansi
 AS=../scripts/mgnuc --grade $(GRADE) --assemble
 
 # CFLAGS= -O -DALL_INTERIOR_POINTERS -DNO_SIGNALS -DSILENT
-CFLAGS= -DSILENT $(EXTRA_CFLAGS)
+CFLAGS= -DSILENT -DDONT_DEFINE_READ $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
 # profiling was enabled.
 
@@ -184,12 +184,16 @@ dyn_load_sunos53.o: dyn_load.c
 	$(CC) $(CFLAGS) -DSUNOS53_SHARED_LIB -c $(srcdir)/dyn_load.c -o $@
 
 # shared library version of the collector
-libgc$(PROF).so: $(OBJS) # dyn_load_sunos53.o
-	./if_mach ALPHA "" \
+libgc$(PROF).so: $(OBJS) if_mach if_not_there # dyn_load_sunos53.o
+	rm -f on_sparc_sunos5
+	./if_mach SPARC SUNOS5 touch on_sparc_sunos5
+	./if_mach SPARC SUNOS5 $(MAKE) dyn_load_sunos53.o
+	./if_mach SPARC SUNOS5 \
+	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load_sunos53.o \
+		-ldl
+	./if_not_there on_sparc_sunos5 $(MAKE) dyn_load.o
+	./if_not_there on_sparc_sunos5 \
 	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load.o -lc
-	./if_not_there libgc$(PROF).so $(MAKE) dyn_load_sunos53.o
-	./if_not_there libgc$(PROF).so \
-	$(LINK_SHARED_OBJ) -o libgc$(PROF).so $(OBJS) dyn_load_sunos53.o -ldl
 
 mach_dep.o: $(srcdir)/mach_dep.c $(srcdir)/mips_mach_dep.s $(srcdir)/rs6000_mach_dep.s if_mach if_not_there
 	rm -f mach_dep.o
