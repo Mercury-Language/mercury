@@ -114,6 +114,12 @@
 :- pred list__delete_all(list(T), T, list(T)).
 :- mode list__delete_all(in, in, out) is det.
 
+	% list__delete_elems(List0, Elems, List) is true iff List is List0 with
+	% all occurences of all elements of Elems removed
+
+:- pred list__delete_elems(list(T), list(T), list(T)).
+:- mode list__delete_elems(in, in, out) is det.
+
 	% list__sort(List0, List):
 	%	List is List0 sorted with duplicates removed.
 
@@ -219,6 +225,11 @@ list__delete_all([X | Xs], Y, Zs) :-
 		Zs = [X | Zs1],
 		list__delete_all(Xs, Y, Zs1)
 	).
+
+list__delete_elems(Xs, [], Xs).
+list__delete_elems(Xs, [E | Es], Zs) :-
+	list__delete_all(Xs, E, Ys),
+	list__delete_elems(Ys, Es, Zs).
 
 list__append([], Ys, Ys).
 list__append([X | Xs], Ys, [X | Zs]) :-

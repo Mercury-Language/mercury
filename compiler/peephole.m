@@ -2,8 +2,7 @@
 
 % Peephole.nl - LLDS to LLDS peephole optimization.
 
-% Original author: fjh.
-% Jump to jump optimizations and label elimination by zs.
+% Main authors: zs, fjh.
 
 %-----------------------------------------------------------------------------%
 
@@ -18,12 +17,13 @@
 
 :- type instmap == map(label, instruction).
 :- type tailmap == map(label, list(instruction)).
+:- type redoipmap == map(label, list(maybe(code_addr))).
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module value_number, opt_debug, opt_util, code_util, map.
-:- import_module bintree_set, string, list, require, std_util.
+:- import_module bintree_set, string, list, require, int, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,50 +63,77 @@ peephole__opt_proc_list(Options, [P0|Ps0], [P|Ps]) :-
 
 peephole__opt_proc(Options, c_procedure(Name, Arity, Mode, Instructions0),
 		   c_procedure(Name, Arity, Mode, Instructions)) :-
-	peephole__repeat_opts(Options, Instructions0, Instructions1),
+	peephole__repeat_opts(Options, 0, no, Instructions0, Instructions1),
 	peephole__nonrepeat_opts(Options, Instructions1, Instructions).
 
-:- pred peephole__repeat_opts(option_table, list(instruction),
+:- pred peephole__repeat_opts(option_table, int, bool, list(instruction),
 	list(instruction)).
-:- mode peephole__repeat_opts(in, in, out) is det.
+:- mode peephole__repeat_opts(in, in, in, in, out) is det.
 
-peephole__repeat_opts(Options, Instructions0, Instructions) :-
-	options__lookup_bool_option(Options, peephole_jump_opt, Jumpopt),
-	( Jumpopt = yes ->
-		peephole__short_circuit(Instructions0, Instructions1, Mod0)
+peephole__repeat_opts(Options, Iter, DoneValueNumber,
+		Instructions0, Instructions) :-
+	options__lookup_int_option(Options, peephole_repeat, Repeat),
+	( Iter < Repeat ->
+		options__lookup_bool_option(Options, peephole_jump_opt, Jumpopt),
+		( Jumpopt = yes ->
+			% write('short circuit'), nl,
+			peephole__short_circuit(Instructions0, Instructions1, Mod1)
+		;
+			Instructions1 = Instructions0,
+			Mod1 = no
+		),
+		options__lookup_bool_option(Options, peephole_local, Local),
+		( Local = yes ->
+			% write('local'), nl,
+			peephole__local_opt(Instructions1, Instructions2, Mod2)
+		;
+			Instructions2 = Instructions1,
+			Mod2 = no
+		),
+		options__lookup_bool_option(Options, peephole_label_elim, LabelElim),
+		( LabelElim = yes ->
+			% write('label elim'), nl,
+			peephole__label_elim(Instructions2, Instructions3, Mod3)
+		;
+			Instructions3 = Instructions2,
+			Mod3 = no
+		),
+		options__lookup_bool_option(Options, peephole_opt_redoip, OptRedoip),
+		( OptRedoip = yes ->
+			% write('redoip'), nl,
+			peephole__opt_redoip(Instructions3, Instructions4, Mod4)
+		;
+			Instructions4 = Instructions3,
+			Mod4 = no
+		),
+		options__lookup_bool_option(Options, peephole_value_number, ValueNumber),
+		( ValueNumber = yes, DoneValueNumber = no ->
+			% write('value number'), nl,
+			value_number__optimize(Instructions4, Instructions5)
+		;
+			Instructions5 = Instructions4
+		),
+		% value_number does not open up possibilities for other opts
+		% and is not profitable to repeat again
+		( Mod1 = no, Mod2 = no, Mod3 = no, Mod4 = no ->
+			Instructions = Instructions5
+		;
+			Iter1 is Iter + 1,
+			peephole__repeat_opts(Options, Iter1, ValueNumber,
+				Instructions5, Instructions)
+		)
 	;
-		Instructions1 = Instructions0,
-		Mod0 = no
-	),
-	options__lookup_bool_option(Options, peephole_local, Local),
-	( Local = yes ->
-		peephole__local_opt(Instructions1, Instructions2, Mod1)
-	;
-		Instructions2 = Instructions1,
-		Mod1 = no
-	),
-	options__lookup_bool_option(Options, peephole_label_elim, LabelElim),
-	( LabelElim = yes ->
-		peephole__label_elim(Instructions2, Instructions3, Mod2)
-	;
-		Instructions3 = Instructions2,
-		Mod2 = no
-	),
-	( Mod0 = no, Mod1 = no, Mod2 = no ->
-		Instructions = Instructions3
-	;
-		peephole__repeat_opts(Options, Instructions3, Instructions)
+		Instructions = Instructions0
 	).
 
-:- pred peephole__nonrepeat_opts(option_table, list(instruction),
-	list(instruction)).
+:- pred peephole__nonrepeat_opts(option_table,
+	list(instruction), list(instruction)).
 :- mode peephole__nonrepeat_opts(in, in, out) is det.
 
 peephole__nonrepeat_opts(Options, Instructions0, Instructions) :-
-	options__lookup_bool_option(Options, peephole_value_number,
-		ValueNumber),
-	( ValueNumber = yes ->
-		value_number__optimize(Instructions0, Instructions)
+	options__lookup_bool_option(Options, peephole_frame_opt, FrameOpt),
+	( FrameOpt = yes ->
+		peephole__frame_opt(Instructions0, Instructions, _Mod)
 	;
 		Instructions = Instructions0
 	).
@@ -243,14 +270,24 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Previnstr,
 				)
 			)
 		;
-			Newinstrs = [Instr0],
-			Mod0 = no
+			error("target label not in instmap")
+			% Newinstrs = [Instr0],
+			% Mod0 = no
+		)
+	; Uinstr0 = computed_goto(Index, LabelList0) ->
+		peephole__short_labels(LabelList0, Instmap, LabelList, Mod0),
+		( Mod0 = yes ->
+			string__append(Comment0, " (some shortciruits)",
+				Shorted),
+			Newinstrs = [computed_goto(Index, LabelList) - Shorted]
+		;
+			Newinstrs = [Instr0]
 		)
 	;
 		Newinstrs = [Instr0],
 		Mod0 = no
 	),
-	( ( Uinstr0 = comment(_) ; Uinstr0 = livevals(_) ) ->
+	( ( Uinstr0 = comment(_) ; Uinstr0 = livevals(_, _) ) ->
 		Newprevinstr = Previnstr
 	;
 		Newprevinstr = Uinstr0
@@ -262,6 +299,37 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Previnstr,
 		Mod = no
 	;
 		Mod = yes
+	).
+
+:- pred peephole__short_labels(list(label), instmap, list(label), bool).
+:- mode peephole__short_labels(in, in, out, out) is det.
+
+% XXX these uses of the Mod argument should be replaced by accumulator passing
+
+peephole__short_labels([], _Instmap, [], no).
+peephole__short_labels([Label0 | Labels0], Instmap, [Label | Labels], Mod) :-
+	peephole__short_label(Label0, Instmap, Label, Mod1),
+	peephole__short_labels(Labels0, Instmap, Labels, Mod2),
+	( Mod1 = no, Mod2 = no ->
+		Mod = no
+	;
+		Mod = yes
+	).
+
+:- pred peephole__short_label(label, instmap, label, bool).
+:- mode peephole__short_label(in, in, out, out) is det.
+
+peephole__short_label(Label0, Instmap, Label, Mod) :-
+	( map__search(Instmap, Label0, Instr0) ->
+		peephole__jumpopt_final_dest(Label0, Instr0, Instmap,
+			Label, _Instr),
+		( Label = Label0 ->
+			Mod = no
+		;
+			Mod = yes
+		)
+	;
+		error("target label not in instmap")
 	).
 
 :- pred peephole__jumpopt_final_dest(label, instruction, instmap,
@@ -380,7 +448,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
 	%
 	%					succip = ...
 	%					decr_sp(N)
-	%	livevals(L1)			livevals(L1)
+	%	livevals(T1, L1)		livevals(T1, L1)
 	%	call(Foo, &&ret);		tailcall(Foo)
 	%       <comments, labels>		<comments, labels>
 	%	...				...
@@ -390,7 +458,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
 	%       <comments, labels>		<comments, labels>
 	%	decr_sp(N)			decr_sp(N)
 	%       <comments, labels>		<comments, labels>
-	%	livevals(L2)			livevals(L2)
+	%	livevals(T2, L2)		livevals(T2, L2)
 	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 	%
@@ -400,14 +468,15 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Instructions0, Instructions,
 	%
 	% I have some doubt about the validity of using L1 unchanged.
 
-peephole__opt_instr_2(livevals(Livevals), Comment, Procmap, Instrs0, Instrs) :-
+peephole__opt_instr_2(livevals(yes, Livevals), Comment, Procmap,
+		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [call(CodeAddress, label(ContLabel)) - Comment2 | _],
 	map__search(Procmap, ContLabel, Instrs_to_proceed),
 	opt_util__filter_out_livevals(Instrs_to_proceed, Instrs_to_insert),
 	string__append(Comment, " (redirected return)", Redirect),
 	list__append(Instrs_to_insert,
-		[livevals(Livevals) - Comment2,
+		[livevals(yes, Livevals) - Comment2,
 		goto(CodeAddress) - Redirect | Instrs0], Instrs).
 
 	% a `goto' can be deleted if the target of the jump is the very
@@ -532,9 +601,10 @@ peephole__label_elim(Instructions0, Instructions, Mod) :-
 :- mode peephole__label_elim_build_usemap(in, di, uo) is det.
 
 peephole__label_elim_build_usemap([], Usemap, Usemap).
-peephole__label_elim_build_usemap([Instr - _Comment|Instructions],
-		Usemap0, Usemap) :-
-	opt_util__instr_labels(Instr, Labels, CodeAddresses),
+peephole__label_elim_build_usemap([Instr | Instructions], Usemap0, Usemap) :-
+	Instr = Uinstr - _Comment,
+	% format("looking at instr ~w", [Instr]), nl,
+	opt_util__instr_labels(Uinstr, Labels, CodeAddresses),
 	peephole__label_list_build_usemap(Labels, Usemap0, Usemap1),
 	peephole__code_addr_list_build_usemap(CodeAddresses, Usemap1, Usemap2),
 	peephole__label_elim_build_usemap(Instructions, Usemap2, Usemap).
@@ -637,6 +707,220 @@ peephole__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment, Mod) :-
 		),
 		Comment = Comment0,
 		Mod = yes
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Turn goto(do_redo) into goto(label(...)) or goto(do_fail).
+	% After this optimize away redundant modframes.
+
+:- pred peephole__opt_redoip(list(instruction), list(instruction), bool).
+:- mode peephole__opt_redoip(in, out, out) is det.
+
+peephole__opt_redoip(Instrs0, Instrs, Mod) :-
+	map__init(Redoipmap0),
+	peephole__build_redoip_map(Instrs0, no, Redoipmap0, Redoipmap),
+	% opt_debug__print_redoipmap(Redoipmap),
+	peephole__do_redoip_opt(Instrs0, Instrs, no, Redoipmap, no, Mod).
+
+:- pred peephole__build_redoip_map(list(instruction), maybe(code_addr),
+	redoipmap, redoipmap).
+:- mode peephole__build_redoip_map(in, in, di, uo) is det.
+
+peephole__build_redoip_map([], _, Redoipmap, Redoipmap).
+peephole__build_redoip_map([Instr | Instrs], Curredoip,
+		Redoipmap0, Redoipmap) :-
+	Instr = Uinstr - _,
+	( Uinstr = mkframe(_, _, Newredoip) ->
+		Newcurredoip = yes(Newredoip),
+		Redoipmap1 = Redoipmap0
+	; Uinstr = modframe(Newredoip) ->
+		Newcurredoip = yes(Newredoip),
+		Redoipmap1 = Redoipmap0
+	; Uinstr = label(Label) ->
+		Newcurredoip = Curredoip,
+		peephole__add_to_redoip_map(Redoipmap0, Label, Curredoip,
+			Redoipmap1)
+	; Uinstr = goto(label(Label)) ->
+		Newcurredoip = Curredoip,
+		peephole__add_to_redoip_map(Redoipmap0, Label, Curredoip,
+			Redoipmap1)
+	; Uinstr = computed_goto(_, Labels) ->
+		Newcurredoip = Curredoip,
+		peephole__add_list_to_redoip_map(Redoipmap0, Labels, Curredoip,
+			Redoipmap1)
+	; Uinstr = if_val(_, label(Label)) ->
+		Newcurredoip = Curredoip,
+		peephole__add_to_redoip_map(Redoipmap0, Label, Curredoip,
+			Redoipmap1)
+	; Uinstr = call(_, label(Label)) ->
+		Newcurredoip = Curredoip,
+		peephole__add_to_redoip_map(Redoipmap0, Label, Curredoip,
+			Redoipmap1)
+	;
+		Newcurredoip = Curredoip,
+		Redoipmap1 = Redoipmap0
+	),
+	peephole__build_redoip_map(Instrs, Newcurredoip, Redoipmap1, Redoipmap).
+
+:- pred peephole__add_to_redoip_map(redoipmap, label,
+	maybe(code_addr), redoipmap).
+:- mode peephole__add_to_redoip_map(di, in, in, uo) is det.
+
+peephole__add_to_redoip_map(Redoipmap0, Label, Maybe_redoip, Redoipmap) :-
+	( map__search(Redoipmap0, Label, Curlist) ->
+		( list__member(Maybe_redoip, Curlist) ->
+			Redoipmap = Redoipmap0
+		;
+			map__set(Redoipmap0, Label, [Maybe_redoip | Curlist],
+				Redoipmap)
+		)
+	;
+		map__set(Redoipmap0, Label, [Maybe_redoip], Redoipmap)
+	).
+
+:- pred peephole__add_list_to_redoip_map(redoipmap, list(label),
+	maybe(code_addr), redoipmap).
+:- mode peephole__add_list_to_redoip_map(di, in, in, uo) is det.
+
+peephole__add_list_to_redoip_map(Redoipmap, [], _Maybe_redoip, Redoipmap).
+peephole__add_list_to_redoip_map(Redoipmap0, [Label | Labels], Maybe_redoip,
+		Redoipmap) :-
+	peephole__add_to_redoip_map(Redoipmap0, Label, Maybe_redoip,
+		Redoipmap1),
+	peephole__add_list_to_redoip_map(Redoipmap1, Labels, Maybe_redoip,
+		Redoipmap).
+
+:- pred peephole__do_redoip_opt(list(instruction), list(instruction),
+	maybe(code_addr), redoipmap, bool, bool).
+:- mode peephole__do_redoip_opt(di, uo, in, in, in, out) is det.
+
+peephole__do_redoip_opt([], [], _Curredoip, _Redoipmap, Mod, Mod).
+peephole__do_redoip_opt([Instr0 | Instrs0], [Instr | Instrs],
+		Curredoip, Redoipmap, Mod0, Mod) :-
+	Instr0 = Uinstr0 - Comment,
+	( Uinstr0 = mkframe(_, _, Newredoip) ->
+		Newcurredoip = yes(Newredoip),
+		Instr = Instr0,
+		Mod1 = Mod0
+	; Uinstr0 = modframe(Newredoip) ->
+		Newcurredoip = yes(Newredoip),
+		Instr = Instr0,
+		Mod1 = Mod0
+	; Uinstr0 = label(Label) ->
+		( map__search(Redoipmap, Label, Redoips) ->
+			( Redoips = [yes(label(Realredoip))] ->
+				Newcurredoip = yes(label(Realredoip))
+			;
+				Newcurredoip = no
+			)
+		;
+			Newcurredoip = no
+		),
+		Instr = Instr0,
+		Mod1 = Mod0
+	; Uinstr0 = call(Proc, Target) ->
+		peephole__replace_curredoip(Target, Curredoip, Newtarget,
+			Mod0, Mod1),
+		Instr = call(Proc, Newtarget) - Comment,
+		Newcurredoip = Curredoip
+	; Uinstr0 = goto(Target) ->
+		peephole__replace_curredoip(Target, Curredoip, Newtarget,
+			Mod0, Mod1),
+		Instr = goto(Newtarget) - Comment,
+		Newcurredoip = Curredoip
+	; Uinstr0 = if_val(Test, Target) ->
+		peephole__replace_curredoip(Target, Curredoip, Newtarget,
+			Mod0, Mod1),
+		Instr = if_val(Test, Newtarget) - Comment,
+		Newcurredoip = Curredoip
+	;
+		Instr = Instr0,
+		Newcurredoip = Curredoip,
+		Mod1 = Mod0
+	),
+	peephole__do_redoip_opt(Instrs0, Instrs, Newcurredoip, Redoipmap,
+		Mod1, Mod).
+
+:- pred peephole__replace_curredoip(code_addr, maybe(code_addr), code_addr,
+	bool, bool).
+:- mode peephole__replace_curredoip(in, in, out, in, out) is det.
+
+peephole__replace_curredoip(Target, Curredoip, Newtarget, Mod0, Mod) :-
+	(
+		Target = do_redo,
+		Curredoip = yes(Redoip)		% could be label or do_fail
+	->
+		Newtarget = Redoip,
+		Mod = yes
+	;
+		Newtarget = Target,
+		Mod = Mod0
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Turn the code into a list of order-independent <label, block> pairs.
+	% For each block find out whether it needs a stack frame. If not,
+	% try to delay the construction until after the jump to that block,
+	% and remove the frame building and removing code.
+
+:- pred peephole__frame_opt(list(instruction), list(instruction), bool).
+:- mode peephole__frame_opt(in, out, out) is det.
+
+peephole__frame_opt(Instrs0, Instrs, Mod) :-
+	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
+	(
+		Instrs1 = [Instr1prime | Instrs2prime],
+		Instr1prime = label(Firstlabel) - _
+	->
+		Instr1 = Instr1prime,
+		Instrs2 = Instrs2prime,
+		( Firstlabel = exported(ProclabelPrime) ->
+			Proclabel = ProclabelPrime
+		; Firstlabel = local(ProclabelPrime) ->
+			Proclabel = ProclabelPrime
+		;
+			error("procedure begins with bad label type")
+		)
+	;
+		error("procedure does not begin with label")
+	),
+	opt_util__gather_comments(Instrs2, Comments2, Instrs3),
+	(
+		opt_util__first_base_case(Instrs3, SetupSp, _SetupSuccip,
+			Test, After, Teardown, Follow),
+		Test = [if_val(Cond, Addr) - _]
+	->
+		opt_util__new_label_no(Instrs2, 1, Label_no),
+		opt_util__filter_in_livevals(Teardown, Livevals),
+		Label = local(Proclabel, Label_no),
+		% The reason why we keep the saving of succip before the test
+		% is to occupy the delay slot of the branch. Without this,
+		% the transformation loses performance.
+		%
+		% This pass is after the value numbering pass because this
+		% access to a det stack slot before incr_sp violates the
+		% assumptions made by value_number.
+		list__condense([
+			Comments1,
+			[Instr1],
+			Comments2,
+			[assign(stackvar(0), lval(succip)) - "new setup"],
+			[if_val(Cond, label(Label)) - "promoted test"],
+			After,
+			Livevals,
+			[goto(succip) - "proceed without teardown"],
+			[label(Label) - "new stack building code"],
+			SetupSp,
+			[comment("this goto should be optimized away") - ""],
+			[goto(Addr) - "clauses after first base clause"],
+			Follow
+		], Instrs),
+		Mod = yes
+	;
+		Instrs = Instrs0,
+		Mod = no
 	).
 
 :- end_module peephole.

@@ -2491,7 +2491,7 @@ code_info__filter_out_registers([V|Vs], Vals) :-
 code_info__generate_livevals(Code) -->
 	code_info__get_live_variables(LiveVars),
 	code_info__generate_livevals_2(LiveVars, LiveVals),
-	{ Code = node([livevals(LiveVals) - ""]) }.
+	{ Code = node([livevals(yes, LiveVals) - ""]) }.
 
 :- pred code_info__generate_livevals_2(list(var), bintree_set(lval),
 						code_info, code_info).

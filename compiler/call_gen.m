@@ -334,7 +334,7 @@ call_gen__generate_call_livevals(InputArgs, Code) -->
 	code_info__generate_stack_livevals(LiveVals0),
 	{ call_gen__insert_arg_livevals(InputArgs, LiveVals0, LiveVals) },
 	{ Code = node([
-		livevals(LiveVals) - ""
+		livevals(yes, LiveVals) - ""
 	]) }.
 
 :- pred call_gen__insert_arg_livevals(list(arg_loc),

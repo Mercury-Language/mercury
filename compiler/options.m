@@ -84,7 +84,10 @@
 		;	peephole_local
 		;	peephole_jump_opt
 		;	peephole_label_elim
+		;	peephole_opt_redoip
 		;	peephole_value_number
+		;	peephole_frame_opt
+		;	peephole_repeat
 		;	static_ground_terms
 		;	smart_indexing
 		;	optimize
@@ -179,7 +182,10 @@ option_defaults_2(optimization_option, [
 	peephole_local		-	bool(yes),
 	peephole_jump_opt	-	bool(yes),
 	peephole_label_elim	-	bool(yes),
+	peephole_opt_redoip	-	bool(yes),
 	peephole_value_number	-	bool(no),
+	peephole_frame_opt	-	bool(yes),
+	peephole_repeat		-	int(2),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes)
 ]).
@@ -269,7 +275,10 @@ long_option("peephole",			peephole).
 long_option("peephole-local",		peephole_local).
 long_option("peephole-jump-opt",	peephole_jump_opt).
 long_option("peephole-label-elim",	peephole_label_elim).
+long_option("peephole-opt-redoip",	peephole_opt_redoip).
 long_option("peephole-value-number",	peephole_value_number).
+long_option("peephole-frame-opt",	peephole_frame_opt).
+long_option("peephole-repeat",		peephole_repeat).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
 
@@ -380,8 +389,14 @@ options_help -->
 	io__write_string("\t\tDisable elimination of jumps to jumps.\n"),
 	io__write_string("\t--no-peephole-label-elim\n"),
 	io__write_string("\t\tDisable elimination of useless labels\n"),
+	io__write_string("\t--no-peephole-opt-redoip\n"),
+	io__write_string("\t\tDisable optimizations of redoips\n"),
 	io__write_string("\t--peephole-value-number\n"),
 	io__write_string("\t\tPerform value numbering\n"),
+	io__write_string("\t--no-peephole-frame-opt\n"),
+	io__write_string("\t\tDisable stack frame optimizations\n"),
+	io__write_string("\t--peephole-repeat <n>\n"),
+	io__write_string("\t\tIterate peephole optimizations at most <n> times\n"),
 	io__write_string("\t--no-static-ground-terms\n"),
 	io__write_string("\t\tConstruct all terms at runtime; disable the optimization\n"),
 	io__write_string("\t\tof constructing constant ground terms at compile time\n"),

@@ -14,7 +14,7 @@
 %	The general scheme for generating semideterministic code is
 %	to treat it as deterministic code, and have a fall-through
 %	point for failure.  Semideterministic procedures leave a 'true'
-%	in register r(1) to inidcate success, and 'fail' to indicate
+%	in register r(1) to indicate success, and 'fail' to indicate
 %	failure.
 %
 %---------------------------------------------------------------------------%
@@ -536,7 +536,7 @@ code_gen__generate_det_epilog(ExitCode) -->
 	),
 	{ code_gen__output_args(Args, LiveArgs) },
 	{ LiveValCode = node([
-		livevals(LiveArgs) - ""
+		livevals(yes, LiveArgs) - ""
 	]) },
 	{ CodeB = tree(CodeB0, tree(LiveValCode, CodeB1)) },
 	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
@@ -607,7 +607,7 @@ code_gen__generate_semi_epilog(Instr) -->
 	code_info__failure_cont(FailCont),
 	{ code_gen__output_args(Args, LiveArgs) },
 	{ LiveValCode = node([
-		livevals(LiveArgs) - ""
+		livevals(yes, LiveArgs) - ""
 	]) },
 	{ FailCont = known(FallThrough0) ->
 		FallThrough = FallThrough0
@@ -710,7 +710,7 @@ code_gen__generate_non_epilog(Instr) -->
 	code_info__setup_call(Args, HeadVars, callee, CodeA),
 	{ code_gen__output_args(Args, LiveArgs) },
 	{ LiveValCode = node([
-		livevals(LiveArgs) - ""
+		livevals(yes, LiveArgs) - ""
 	]) },
 	{ ExitCode = tree(LiveValCode, node([
 		goto(do_succeed) - "Succeed"
@@ -1049,11 +1049,13 @@ code_gen__output_args([_V - arg_info(Loc, Mode)|Args], Vs) :-
 code_gen__add_saved_succip([], _N, []).
 code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
 	(
-		I0 = livevals(L0),
+		I0 = livevals(yes, L0),
 		Is0 \= [goto(succip) - _|_]
+		% XXX we should also test for tailcalls
+		% once we start generating them directly
 	->
 		bintree_set__insert(L0, stackvar(N), L1),
-		I = livevals(L1)
+		I = livevals(yes, L1)
 	;
 		I = I0
 	),

@@ -13,9 +13,9 @@
 
 	% predicates to isolate system dependencies 
 
-:- pred dir__directory_seperator(character).
-:- mode dir__directory_seperator(out) is det.
-:- mode dir__directory_seperator(in) is semidet.
+:- pred dir__directory_separator(character).
+:- mode dir__directory_separator(out) is det.
+:- mode dir__directory_separator(in) is semidet.
 	% Returns '/'.
 
 :- pred dir__this_directory(string).
@@ -35,7 +35,7 @@
 :- implementation.
 :- import_module int, require.
 
-dir__directory_seperator('/').
+dir__directory_separator('/').
 
 dir__this_directory(".").
 
@@ -53,8 +53,8 @@ dir__split_name_2(FileName, N, DirName, BaseName) :-
 		dir__this_directory(DirName),
 		BaseName = FileName
 	;
-		string__index_det(FileName, N1, Seperator),
-		dir__directory_seperator(Seperator)
+		string__index_det(FileName, N1, Separator),
+		dir__directory_separator(Separator)
 	->
 		string__split(FileName, N1, DirName, Rest),
 		( string__first_char(Rest, _Sep, BaseName0) ->

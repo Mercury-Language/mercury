@@ -9,7 +9,15 @@
 :- module opt_util.
 
 :- interface.
-:- import_module llds, list, std_util.
+:- import_module llds, value_number, list, int, std_util.
+
+:- pred opt_util__gather_comments(list(instruction),
+	list(instruction), list(instruction)).
+:- mode opt_util__gather_comments(in, out, out) is det.
+
+:- pred opt_util__gather_comments_livevals(list(instruction),
+	list(instruction), list(instruction)).
+:- mode opt_util__gather_comments_livevals(in, out, out) is det.
 
 :- pred opt_util__skip_comments(list(instruction), list(instruction)).
 :- mode opt_util__skip_comments(in, out) is det.
@@ -63,7 +71,12 @@
 	% opt_util__is_proceed_next.
 
 :- pred opt_util__filter_out_livevals(list(instruction), list(instruction)).
-:- mode opt_util__filter_out_livevals(in, out) is semidet.
+:- mode opt_util__filter_out_livevals(in, out) is det.
+
+	% Get just the livevals instructions from a list of instructions.
+
+:- pred opt_util__filter_in_livevals(list(instruction), list(instruction)).
+:- mode opt_util__filter_in_livevals(in, out) is det.
 
 	% Check whether an instruction can possibly branch away.
 
@@ -75,6 +88,11 @@
 
 :- pred opt_util__can_instr_fall_through(instr, bool).
 :- mode opt_util__can_instr_fall_through(in, out) is det.
+
+	% Find out what vn, if any, is needed to access a vn_lval.
+
+:- pred opt_util__vnlval_access_vn(vn_lval, maybe(vn)).
+:- mode opt_util__vnlval_access_vn(in, out) is det.
 
 	% Check whether a code_addr, when the target of a goto, represents
 	% either a call or a proceed/succeed; if so, it is the end of an
@@ -89,11 +107,59 @@
 :- pred opt_util__instr_labels(instr, list(label), list(code_addr)).
 :- mode opt_util__instr_labels(in, out, out) is det.
 
+	% See whether an instruction lists contains the first base case
+	% of a det or semidet predicate, a base case that does not need
+	% any stack space. If yes, return the instruction sequences
+	% setting up sp, saving succip, testing the base case (jump away),
+	% the base case code itself, the stack frame teardown code,
+	% and the code following the base case's proceed.
+
+:- pred opt_util__first_base_case(list(instruction),
+	list(instruction), list(instruction), list(instruction),
+	list(instruction), list(instruction), list(instruction)).
+:- mode opt_util__first_base_case(in, out, out, out, out, out, out) is semidet.
+
+	% Find a label number that does not occur in the instruction list,
+	% starting the search at a given number.
+
+:- pred opt_util__new_label_no(list(instruction), int, int).
+:- mode opt_util__new_label_no(in, in, out) is det.
+
+	% Find the maximum temp variable number used.
+
+:- pred opt_util__count_temps_instr_list(list(instruction), int, int).
+:- mode opt_util__count_temps_instr_list(in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 % :- import_module opt_util, map, bintree_set.
 % :- import_module string, require.
+:- import_module require.
+
+opt_util__gather_comments(Instrs0, Comments, Instrs) :-
+	(
+		Instrs0 = [Instr0 | Instrs1],
+		Instr0 = comment(_) - _
+	->
+		opt_util__gather_comments(Instrs1, Comments0, Instrs),
+		Comments = [Instr0 | Comments0]
+	;
+		Instrs = Instrs0,
+		Comments = []
+	).
+
+opt_util__gather_comments_livevals(Instrs0, Comments, Instrs) :-
+	(
+		Instrs0 = [Instr0 | Instrs1],
+		( Instr0 = comment(_) - _ ; Instr0 = livevals(_, _) - _ )
+	->
+		opt_util__gather_comments_livevals(Instrs1, Comments0, Instrs),
+		Comments = [Instr0 | Comments0]
+	;
+		Instrs = Instrs0,
+		Comments = []
+	).
 
 	% Given a list of instructions, skip past any comment instructions
 	% at the start and return the remaining instructions.
@@ -110,7 +176,7 @@ opt_util__skip_comments(Instrs0, Instrs) :-
 opt_util__skip_comments_livevals(Instrs0, Instrs) :-
 	( Instrs0 = [comment(_) - _ | Instrs1] ->
 		opt_util__skip_comments(Instrs1, Instrs)
-	; Instrs0 = [livevals(_) - _ | Instrs1] ->
+	; Instrs0 = [livevals(_, _) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals(Instrs1, Instrs)
 	;
 		Instrs = Instrs0
@@ -128,7 +194,7 @@ opt_util__skip_comments_labels(Instrs0, Instrs) :-
 opt_util__skip_comments_livevals_labels(Instrs0, Instrs) :-
 	( Instrs0 = [comment(_) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
-	; Instrs0 = [livevals(_) - _ | Instrs1] ->
+	; Instrs0 = [livevals(_, _) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
 	; Instrs0 = [label(_) - _ | Instrs1] ->
 		opt_util__skip_comments_livevals_labels(Instrs1, Instrs)
@@ -158,7 +224,7 @@ opt_util__is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
 	Instr = Uinstr - _Comment,
 	( Uinstr = comment(_) ->
 		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
-	; Uinstr = livevals(_) ->
+	; Uinstr = livevals(_, _) ->
 		% this is questionable
 		opt_util__is_this_label_next(Label, Moreinstr, Remainder)
 	; Uinstr = label(NextLabel) ->
@@ -191,7 +257,7 @@ opt_util__is_proceed_next(Instrs0, Instrs_between) :-
 		Instrs5 = Instrs3
 	),
 	Instrs5 = [Instr5 | Instrs6],
-	( Instr5 = livevals(_) - _ ->
+	( Instr5 = livevals(_, _) - _ ->
 		Instr5use = Instr5,
 		opt_util__skip_comments_labels(Instrs6, Instrs7)
 	;
@@ -224,7 +290,7 @@ opt_util__is_sdproceed_next(Instrs0, Instrs_between) :-
 	Instr5 = assign(reg(r(1)), const(_)) - _,
 	opt_util__skip_comments_labels(Instrs6, Instrs7),
 	Instrs7 = [Instr7 | Instrs8],
-	( Instr7 = livevals(_) - _ ->
+	( Instr7 = livevals(_, _) - _ ->
 		Instr7use = Instr7,
 		opt_util__skip_comments_labels(Instrs8, Instrs9)
 	;
@@ -238,7 +304,7 @@ opt_util__is_sdproceed_next(Instrs0, Instrs_between) :-
 opt_util__is_succeed_next(Instrs0, Instrs_between) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
-	( Instr1 = livevals(_) - _ ->
+	( Instr1 = livevals(_, _) - _ ->
 		Instr1use = Instr1,
 		opt_util__skip_comments_labels(Instrs2, Instrs3)
 	;
@@ -249,18 +315,177 @@ opt_util__is_succeed_next(Instrs0, Instrs_between) :-
 	Instr3 = goto(do_succeed) - _,
 	Instrs_between = [Instr1use].
 
+opt_util__first_base_case(Instrs0, SetupSp, SetupSuccip,
+		Test, After, Teardown, Follow) :-
+	opt_util__gather_comments_livevals(Instrs0, Comments0, Instrs1),
+	Instrs1 = [Instr1 | Instrs2],
+	Instr1 = incr_sp(Framesize) - _,
+
+	opt_util__gather_comments_livevals(Instrs2, Comments1, Instrs3),
+	Instrs3 = [Instr3 | Instrs4],
+	Instr3 = assign(stackvar(Framesize), lval(succip)) - _,
+
+	opt_util__gather_comments_livevals(Instrs4, Comments2, Instrs5),
+	Instrs5 = [Instr5 | Instrs6],
+	Instr5 = if_val(_, label(_)) - _,
+
+	opt_util__no_stack_straight_line(Instrs6, [], RevAfter, Instrs7),
+	Instrs7 = [Instr7 | Instrs8],
+	Instr7 = assign(succip, lval(stackvar(Framesize))) - _,
+
+	opt_util__gather_comments_livevals(Instrs8, Comments3, Instrs9),
+	Instrs9 = [Instr9 | Instrs10],
+	Instr9 = decr_sp(Framesize) - _,
+
+	opt_util__gather_comments_livevals(Instrs10, Comments4, Instrs11),
+	Instrs11 = [Instr11 | Instrs12],
+	( Instr11 = assign(reg(r(1)), const(_)) - _ ->
+		Instr11use = Instr11,
+		opt_util__gather_comments_livevals(Instrs12, Comments5, Instrs13)
+	;
+		Instr11use = comment("no semidet assign to r1") - "",
+		Comments5 = [],
+		Instrs13 = Instrs11
+	),
+
+	Instrs13 = [Instr13 | Instrs14],
+	Instr13 = goto(succip) - _,
+
+	list__condense([Comments0, [Instr1], Comments1], SetupSp),
+	list__condense([[Instr3], Comments2], SetupSuccip),
+	Test = [Instr5],
+	list__reverse(RevAfter, After0),
+	list__condense([After0, Comments3, [Instr11use],
+		Comments4, Comments5], After),
+	Teardown = [Instr7, Instr9],
+	Follow = Instrs14.
+
+:- pred opt_util__no_stack_straight_line(list(instruction),
+	list(instruction), list(instruction), list(instruction)).
+:- mode opt_util__no_stack_straight_line(in, in, out, out) is det.
+
+opt_util__no_stack_straight_line([], After, After, []).
+opt_util__no_stack_straight_line([Instr0 | Instrs0], After0, After, Instrs) :-
+	Instr0 = Uinstr - _,
+	(
+		(
+			Uinstr = comment(_)
+		;
+			Uinstr = livevals(_, _)
+		;
+			Uinstr = assign(Lval, Rval),
+			opt_util__lval_refers_stackvars(Lval, LvalRefer),
+			opt_util__rval_refers_stackvars(Rval, RvalRefer),
+			LvalRefer = no,
+			RvalRefer = no
+		)
+	->
+		After1 = [Instr0 | After0],
+		opt_util__no_stack_straight_line(Instrs0, After1, After, Instrs)
+	;
+		After = After0,
+		Instrs = [Instr0 | Instrs0]
+	).
+
+	% See whether an lval references any stackvars.
+
+:- pred opt_util__lval_refers_stackvars(lval, bool).
+:- mode opt_util__lval_refers_stackvars(in, out) is det.
+
+opt_util__lval_refers_stackvars(reg(_), no).
+opt_util__lval_refers_stackvars(stackvar(_), yes).
+opt_util__lval_refers_stackvars(framevar(_), _) :-
+	error("found framevar in lval_refers_stackvars").
+opt_util__lval_refers_stackvars(succip, no).
+opt_util__lval_refers_stackvars(maxfr, no).
+opt_util__lval_refers_stackvars(curredoip, no).
+opt_util__lval_refers_stackvars(hp, no).
+opt_util__lval_refers_stackvars(sp, no).
+opt_util__lval_refers_stackvars(field(_, Baselval, _), Refers) :-
+	opt_util__lval_refers_stackvars(Baselval, Refers).
+opt_util__lval_refers_stackvars(lvar(_), _) :-
+	error("found lvar in lval_refers_stackvars").
+opt_util__lval_refers_stackvars(temp(_), no).
+
+	% See whether an rval references any stackvars.
+
+:- pred opt_util__rval_refers_stackvars(rval, bool).
+:- mode opt_util__rval_refers_stackvars(in, out) is det.
+
+opt_util__rval_refers_stackvars(lval(Lval), Refers) :-
+	opt_util__lval_refers_stackvars(Lval, Refers).
+opt_util__rval_refers_stackvars(var(_), _) :-
+	error("found var in rval_refers_stackvars").
+opt_util__rval_refers_stackvars(create(_, Rvals, _), Refers) :-
+	opt_util__rvals_refer_stackvars(Rvals, Refers).
+opt_util__rval_refers_stackvars(mkword(_, Baserval), Refers) :-
+	opt_util__rval_refers_stackvars(Baserval, Refers).
+opt_util__rval_refers_stackvars(const(_), no).
+opt_util__rval_refers_stackvars(field(_, Baserval, _), Refers) :-
+	opt_util__rval_refers_stackvars(Baserval, Refers).
+opt_util__rval_refers_stackvars(unop(_, Baserval), Refers) :-
+	opt_util__rval_refers_stackvars(Baserval, Refers).
+opt_util__rval_refers_stackvars(binop(_, Baserval1, Baserval2), Refers) :-
+	opt_util__rval_refers_stackvars(Baserval1, Refers1),
+	opt_util__rval_refers_stackvars(Baserval2, Refers2),
+	( ( Refers1 = yes ; Refers2 = yes ) ->
+		Refers = yes
+	;
+		Refers = no
+	).
+
+:- pred opt_util__rvals_refer_stackvars(list(maybe(rval)), bool).
+:- mode opt_util__rvals_refer_stackvars(in, out) is det.
+
+opt_util__rvals_refer_stackvars([], no).
+opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
+	(
+		(
+			MaybeRval = no
+		;
+			MaybeRval = yes(Rval),
+			opt_util__rval_refers_stackvars(Rval, no)
+		)
+	->
+		opt_util__rvals_refer_stackvars(Tail, Refers)
+	;
+		Refers = yes
+	).
+
 opt_util__filter_out_livevals([], []).
 opt_util__filter_out_livevals([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_out_livevals(Instrs0, Instrs1),
-	( Instr0 = livevals(_) - _Comment ->
+	( Instr0 = livevals(_, _) - _Comment ->
 		Instrs = Instrs1
 	;
 		Instrs = [Instr0 | Instrs1]
 	).
 
+opt_util__filter_in_livevals([], []).
+opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
+	opt_util__filter_in_livevals(Instrs0, Instrs1),
+	( Instr0 = livevals(_, _) - _Comment ->
+		Instrs = [Instr0 | Instrs1]
+	;
+		Instrs = Instrs1
+	).
+
+opt_util__new_label_no([], N, N).
+opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-
+	( Instr0 = label(local(_, K)) - _Comment ->
+		( K < N0 ->
+			N1 = N0
+		;
+			N1 is K + 1
+		)
+	;
+		N1 = N0
+	),
+	opt_util__new_label_no(Instrs0, N1, N).
+
 opt_util__can_instr_branch_away(comment(_), no).
-opt_util__can_instr_branch_away(livevals(_), no).
-opt_util__can_instr_branch_away(block(_, _), no).
+opt_util__can_instr_branch_away(livevals(_, _), no).
+opt_util__can_instr_branch_away(block(_, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _, _), no).
@@ -275,7 +500,7 @@ opt_util__can_instr_branch_away(decr_sp(_), no).
 opt_util__can_instr_branch_away(incr_hp(_), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
-opt_util__can_instr_fall_through(livevals(_), yes).
+opt_util__can_instr_fall_through(livevals(_, _), yes).
 opt_util__can_instr_fall_through(block(_, _), yes).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _), no).
@@ -291,7 +516,7 @@ opt_util__can_instr_fall_through(decr_sp(_), yes).
 opt_util__can_instr_fall_through(incr_hp(_), yes).
 
 opt_util__instr_labels(comment(_), [], []).
-opt_util__instr_labels(livevals(_), [], []).
+opt_util__instr_labels(livevals(_, _), [], []).
 opt_util__instr_labels(block(_, _), [], []).
 opt_util__instr_labels(assign(_,_), [], []).
 opt_util__instr_labels(call(Target, Ret), [], [Target, Ret]).
@@ -306,6 +531,17 @@ opt_util__instr_labels(incr_hp(_), [], []).
 opt_util__instr_labels(incr_sp(_), [], []).
 opt_util__instr_labels(decr_sp(_), [], []).
 
+opt_util__vnlval_access_vn(vn_reg(_), no).
+opt_util__vnlval_access_vn(vn_stackvar(_), no).
+opt_util__vnlval_access_vn(vn_framevar(_), no).
+opt_util__vnlval_access_vn(vn_succip, no).
+opt_util__vnlval_access_vn(vn_maxfr, no).
+opt_util__vnlval_access_vn(vn_curredoip, no).
+opt_util__vnlval_access_vn(vn_hp, no).
+opt_util__vnlval_access_vn(vn_sp, no).
+opt_util__vnlval_access_vn(vn_field(_, Vn, _), yes(Vn)).
+opt_util__vnlval_access_vn(vn_temp(_), no).
+
 opt_util__livevals_addr(label(Label), Result) :-
 	( Label = local(_,_) ->
 		Result = no
@@ -317,6 +553,53 @@ opt_util__livevals_addr(succip, yes).
 opt_util__livevals_addr(do_succeed, yes).
 opt_util__livevals_addr(do_redo, no).
 opt_util__livevals_addr(do_fail, no).
+
+opt_util__count_temps_instr_list([], N, N).
+opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], N0, N) :-
+	opt_util__count_temps_instr(Uinstr, N0, N1),
+	opt_util__count_temps_instr_list(Instrs, N1, N).
+
+:- pred opt_util__count_temps_instr(instr, int, int).
+:- mode opt_util__count_temps_instr(in, in, out) is det.
+
+opt_util__count_temps_instr(comment(_), N, N).
+opt_util__count_temps_instr(livevals(_, _), N, N).
+opt_util__count_temps_instr(block(_, _), N, N).
+opt_util__count_temps_instr(assign(Lval, Rval), N0, N) :-
+	opt_util__count_temps_lval(Lval, N0, N1),
+	opt_util__count_temps_rval(Rval, N1, N).
+opt_util__count_temps_instr(call(_, _), N, N).
+opt_util__count_temps_instr(mkframe(_, _, _), N, N).
+opt_util__count_temps_instr(modframe(_), N, N).
+opt_util__count_temps_instr(label(_), N, N).
+opt_util__count_temps_instr(goto(_), N, N).
+opt_util__count_temps_instr(computed_goto(Rval, _), N0, N) :-
+	opt_util__count_temps_rval(Rval, N0, N).
+opt_util__count_temps_instr(if_val(Rval, _), N0, N) :-
+	opt_util__count_temps_rval(Rval, N0, N).
+opt_util__count_temps_instr(c_code(_), N, N).
+opt_util__count_temps_instr(incr_hp(_), N, N).
+opt_util__count_temps_instr(incr_sp(_), N, N).
+opt_util__count_temps_instr(decr_sp(_), N, N).
+
+:- pred opt_util__count_temps_lval(lval, int, int).
+:- mode opt_util__count_temps_lval(in, in, out) is det.
+
+opt_util__count_temps_lval(Lval, N0, N) :-
+	( Lval = temp(T) ->
+		int__max(N0, T, N)
+	; Lval = field(_, Sub_lval, _) ->
+		opt_util__count_temps_lval(Sub_lval, N0, N)
+	;
+		N = N0
+	).
+
+:- pred opt_util__count_temps_rval(rval, int, int).
+:- mode opt_util__count_temps_rval(in, in, out) is det.
+
+% XXX assume that we don't generate code
+% that uses a temp var without defining it.
+opt_util__count_temps_rval(_, N, N).
 
 :- end_module opt_util.
 

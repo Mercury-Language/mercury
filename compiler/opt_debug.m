@@ -56,11 +56,20 @@
 :- pred opt_debug__dump_label(label, string).
 :- mode opt_debug__dump_label(in, out) is det.
 
+:- pred opt_debug__dump_maybe_rvals(list(maybe(rval)), string).
+:- mode opt_debug__dump_maybe_rvals(in, out) is det.
+
+:- pred opt_debug__dump_rval(rval, string).
+:- mode opt_debug__dump_rval(in, out) is det.
+
 :- pred opt_debug__print_tailmap(tailmap).
 :- mode opt_debug__print_tailmap(in) is det.
 
 :- pred opt_debug__print_instmap(tailmap).
 :- mode opt_debug__print_instmap(in) is det.
+
+:- pred opt_debug__print_redoipmap(redoipmap).
+:- mode opt_debug__print_redoipmap(in) is det.
 
 :- pred opt_debug__print_proclist(list(pair(label, list(instruction)))).
 :- mode opt_debug__print_proclist(in) is det.
@@ -69,6 +78,13 @@
 
 :- implementation.
 :- import_module map, string.
+
+:- external(opt_debug__dump_label/2).
+:- external(opt_debug__dump_rval/2).
+:- external(opt_debug__print_tailmap/1).
+:- external(opt_debug__print_instmap/1).
+:- external(opt_debug__print_redoipmap/1).
+:- external(opt_debug__print_proclist/1).
 
 opt_debug__dump_lval_to_vn([], "").
 opt_debug__dump_lval_to_vn([Vn_lval - Vn | Lval_to_vn_list], Str) :-
@@ -187,6 +203,12 @@ opt_debug__dump_vn_rval(vn_mkword(T, N), Str) :-
 opt_debug__dump_vn_rval(vn_const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["vn_const(", C_str, ")"], Str).
+opt_debug__dump_vn_rval(vn_create(T, MA, L), Str) :-
+	string__int_to_string(T, T_str),
+	opt_debug__dump_maybe_rvals(MA, MA_str),
+	string__int_to_string(L, L_str),
+	string__append_list(["vn_create(", T_str, ", ", MA_str, ", ",
+		L_str, ")"], Str).
 opt_debug__dump_vn_rval(vn_field(T, N, F), Str) :-
 	string__int_to_string(T, T_str),
 	string__int_to_string(N, N_str),
@@ -224,3 +246,12 @@ opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 opt_debug__dump_binop(Op, String) :-
 	llds__binary_op_to_string(Op, String).
 
+opt_debug__dump_maybe_rvals([], "").
+opt_debug__dump_maybe_rvals([MR | MRs], Str) :-
+	( MR = yes(R) ->
+		opt_debug__dump_rval(R, MR_str)
+	;
+		MR_str = "no"
+	),
+	opt_debug__dump_maybe_rvals(MRs, MRs_str),
+	string__append_list([MR_str, ", ", MRs_str], Str).

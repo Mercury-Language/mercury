@@ -31,9 +31,10 @@
 	--->	comment(string)
 			% Insert a comment into the output code.
 
-	;	livevals(bintree_set(lval))
+	;	livevals(bool, bintree_set(lval))
 			% A list of which registers and stack locations
-			% are currently live.
+			% are currently live; the bool is true if this is
+			% at the end of an extended basic block
 
 	;	block(int, list(instruction))
 			% a list of instructions that make use of
@@ -313,12 +314,17 @@ output_instruction(comment(Comment)) -->
 		[]
 	).
 
-output_instruction(livevals(LiveVals)) -->
+output_instruction(livevals(Terminate, LiveVals)) -->
 	globals__io_lookup_bool_option(mod_comments, PrintModComments),
 	(
 		{ PrintModComments = yes }
 	->
-		io__write_string("/*\n * Live Lvalues:\n"),
+		io__write_string("/*\n * Live lvalues "),
+		( { Terminate = yes } ->
+			io__write_string("at end of block:\n")
+		;
+			io__write_string("at start or middle of block:\n")
+		),
 		{ bintree_set__to_sorted_list(LiveVals, LiveValsList) },
 		output_livevals(LiveValsList),
 		io__write_string(" */")
@@ -743,7 +749,7 @@ output_rval(mkword(Tag, Exprn)) -->
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(field(Tag, Rval, Field)) -->
-	io__write_string("(int)field("),
+	io__write_string("(int) field("),
 	output_tag(Tag),
 	io__write_string(","),
 	output_rval(Rval),
@@ -811,7 +817,7 @@ output_rval_const(true) -->
 output_rval_const(false) -->
 	io__write_string("FALSE").
 output_rval_const(pred_const(CodeAddress)) -->
-	io__write_string("(int)"),
+	io__write_string("(int) "),
 	output_code_addr(CodeAddress).
 
 :- pred output_lval(lval, io__state, io__state).
@@ -865,7 +871,7 @@ output_lval(temp(N)) -->
 :- mode output_rval_lval(in, di, uo) is det.
 
 output_rval_lval(reg(R)) -->
-	io__write_string("(int)"),
+	io__write_string("(int) "),
 	output_reg(R).
 output_rval_lval(stackvar(N)) -->
 	{ (N < 0) ->
@@ -873,7 +879,7 @@ output_rval_lval(stackvar(N)) -->
 	;
 		true
 	},
-	io__write_string("(int)detstackvar("),
+	io__write_string("(int) detstackvar("),
 	io__write_int(N),
 	io__write_string(")").
 output_rval_lval(framevar(N)) -->
@@ -882,21 +888,21 @@ output_rval_lval(framevar(N)) -->
 	;
 		true
 	},
-	io__write_string("(int)framevar("),
+	io__write_string("(int) framevar("),
 	io__write_int(N),
 	io__write_string(")").
 output_rval_lval(succip) -->
-	io__write_string("(int)succip").
+	io__write_string("(int) succip").
 output_rval_lval(sp) -->
-	io__write_string("(int)sp").
+	io__write_string("(int) sp").
 output_rval_lval(hp) -->
-	io__write_string("(int)hp").
+	io__write_string("(int) hp").
 output_rval_lval(maxfr) -->
-	io__write_string("(int)maxfr").
+	io__write_string("(int) maxfr").
 output_rval_lval(curredoip) -->
-	io__write_string("(int)curredoip").
+	io__write_string("(int) curredoip").
 output_rval_lval(field(Tag, Lval, FieldNum)) -->
-	io__write_string("(int)field("),
+	io__write_string("(int) field("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval_lval(Lval),

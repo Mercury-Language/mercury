@@ -348,8 +348,8 @@ search_for_file([Dir | Dirs], FileName, R) -->
 	{ dir__this_directory(Dir) ->
 		ThisFileName = FileName
 	;
-		dir__directory_seperator(Seperator),
-		string__first_char(Tmp1, Seperator, FileName),
+		dir__directory_separator(Separator),
+		string__first_char(Tmp1, Separator, FileName),
 		string__append(Dir, Tmp1, ThisFileName)
 	},
 	io__see(ThisFileName, R0),
