@@ -1,0 +1,19 @@
+echo on
+register --quiet
+break p
+continue
+finish
+dd
+no
+yes
+no
+yes
+yes
+no
+yes
+yes
+no
+
+no
+yes
+quit -y

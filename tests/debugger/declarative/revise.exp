@@ -1,0 +1,40 @@
+       1:      1  1 CALL pred revise.main/2-0 (cc_multi) revise.m:8
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred revise.p/2-0 (multi)
+mdb> continue
+       2:      2  2 CALL pred revise.p/2-0 (multi) revise.m:21 (revise.m:9)
+mdb> finish
+      14:      2  2 EXIT pred revise.p/2-0 (multi) revise.m:21 (revise.m:9)
+mdb> dd
+p("foo", "foo")
+Valid? no
+q("foo", "foo")
+Valid? yes
+r("foo", "foo")
+Valid? no
+a("foo", "foo")
+Valid? yes
+b("foo", "foo")
+Valid? yes
+Found incorrect contour:
+r("foo", "foo")
+Is this a bug? no
+r("foo", "foo")
+Valid? [no] yes
+s("foo", "foo")
+Valid? yes
+Found incorrect contour:
+p("foo", "foo")
+Is this a bug? no
+p("foo", "foo")
+Valid? [no] 
+q("foo", "foo")
+Valid? [yes] no
+Found incorrect contour:
+q("foo", "foo")
+Is this a bug? yes
+       4:      3  3 EXIT pred revise.q/2-0 (det) revise.m:23 (revise.m:21)
+mdb> quit -y

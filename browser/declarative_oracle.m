@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,11 +56,13 @@
 	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-	% Confirm that the node found is indeed an e_bug or an i_bug.
+	% Confirm that the node found is indeed an e_bug or an i_bug.  If
+	% the bug is overruled, force the oracle to forget everything
+	% it knows about the evidence that led to that bug.
 	%
-:- pred oracle_confirm_bug(decl_bug::in, decl_confirmation::out,
-	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
-	is cc_multi.
+:- pred oracle_confirm_bug(decl_bug::in, decl_evidence(T)::in,
+	decl_confirmation::out, oracle_state::in, oracle_state::out,
+	io__state::di, io__state::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -69,74 +71,118 @@
 :- import_module bool, std_util, set.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
-	{ get_oracle_kb(Oracle0, KB0) },
-	{ query_oracle_kb_list(KB0, Questions, Answers) },
+	{ query_oracle_kb_list(Oracle0 ^ kb_current, Questions, Answers) },
 	(
 		{ Answers = [] }
 	->
-		{ get_oracle_user(Oracle0, User0) },
-		query_user(Questions, UserResponse, User0, User),
-		{
-			UserResponse = user_answer(Question, Answer),
-			assert_oracle_kb(Question, Answer, KB0, KB),
-			Response = oracle_answers([Answer])
-		;
-			UserResponse = no_user_answer,
-			Response = no_oracle_answers,
-			KB = KB0
-		;
-			UserResponse = exit_diagnosis(Node),
-			Response = exit_diagnosis(Node),
-			KB = KB0
-		;
-			UserResponse = abort_diagnosis,
-			Response = abort_diagnosis,
-			KB = KB0
-		},
-		{ set_oracle_kb(Oracle0, KB, Oracle1) },
-		{ set_oracle_user(Oracle1, User, Oracle) }
+		{ list__map(make_user_question(Oracle0 ^ kb_revised),
+			Questions, UserQuestions) },
+		query_oracle_user(UserQuestions, Response, Oracle0, Oracle)
 	;
 		{ Response = oracle_answers(Answers) },
 		{ Oracle = Oracle0 }
 	).
 
-oracle_confirm_bug(Bug, Confirmation, Oracle0, Oracle) -->
-	{ get_oracle_user(Oracle0, User0) },
+:- pred make_user_question(oracle_kb::in, decl_question(T)::in,
+	user_question(T)::out) is cc_multi.
+
+make_user_question(Revised, DeclQuestion, UserQuestion) :-
+	query_oracle_kb(Revised, DeclQuestion, MaybeDeclAnswer),
+	(
+		MaybeDeclAnswer = yes(truth_value(_, DeclTruth))
+	->
+		UserQuestion = question_with_default(DeclQuestion, DeclTruth)
+	;
+		UserQuestion = plain_question(DeclQuestion)
+	).
+
+:- pred query_oracle_user(list(user_question(T))::in, oracle_response(T)::out,
+	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
+	is cc_multi.
+
+query_oracle_user(Questions, OracleResponse, Oracle0, Oracle) -->
+	{ User0 = Oracle0 ^ user_state },
+	query_user(Questions, UserResponse, User0, User),
+	{
+		UserResponse = user_answer(Question, Answer),
+		OracleResponse = oracle_answers([Answer]),
+		Current0 = Oracle0 ^ kb_current,
+		Revised0 = Oracle0 ^ kb_revised,
+		retract_oracle_kb(Question, Revised0, Revised),
+		assert_oracle_kb(Question, Answer, Current0, Current),
+		Oracle1 = (Oracle0
+				^ kb_current := Current)
+				^ kb_revised := Revised
+	;
+		UserResponse = no_user_answer,
+		OracleResponse = no_oracle_answers,
+		Oracle1 = Oracle0
+	;
+		UserResponse = exit_diagnosis(Node),
+		OracleResponse = exit_diagnosis(Node),
+		Oracle1 = Oracle0
+	;
+		UserResponse = abort_diagnosis,
+		OracleResponse = abort_diagnosis,
+		Oracle1 = Oracle0
+	},
+	{ Oracle = Oracle1 ^ user_state := User }.
+
+oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle) -->
+	{ User0 = Oracle0 ^ user_state },
 	user_confirm_bug(Bug, Confirmation, User0, User),
-	{ set_oracle_user(Oracle0, User, Oracle) }.
+	{ Oracle1 = Oracle0 ^ user_state := User },
+	{
+		Confirmation = overrule_bug
+	->
+		list__foldl(revise_oracle, Evidence, Oracle1, Oracle)
+	;
+		Oracle = Oracle1
+	}.
+
+:- pred revise_oracle(decl_question(T)::in, oracle_state::in, oracle_state::out)
+	is cc_multi.
+
+revise_oracle(Question, Oracle0, Oracle) :-
+	Current0 = Oracle0 ^ kb_current,
+	query_oracle_kb(Current0, Question, MaybeAnswer),
+	(
+		MaybeAnswer = yes(Answer),
+		retract_oracle_kb(Question, Current0, Current),
+		Revised0 = Oracle0 ^ kb_revised,
+		assert_oracle_kb(Question, Answer, Revised0, Revised),
+		Oracle = (Oracle0
+				^ kb_revised := Revised)
+				^ kb_current := Current
+	;
+		MaybeAnswer = no,
+		Oracle = Oracle0
+	).
 
 %-----------------------------------------------------------------------------%
 		
 :- type oracle_state
 	--->	oracle(
-			oracle_kb,		% Knowledge base.
-			user_state		% User interface.
+			kb_current	:: oracle_kb,
+				% Current information about the intended
+				% interpretation.  These answers have been
+				% given, but have not since been revised.
+
+			kb_revised	:: oracle_kb,
+				% Old information about the intended
+				% interpretation.  These answers were given
+				% and subsequently revised, but new answers
+				% to the questions have not yet been given.
+
+			user_state	:: user_state
+				% User interface.
 		).
 
 oracle_state_init(InStr, OutStr, Oracle) :-
+	oracle_kb_init(Current),
+	oracle_kb_init(Old),
 	user_state_init(InStr, OutStr, User),
-	oracle_kb_init(KB),
-	Oracle = oracle(KB, User).
-
-:- pred get_oracle_kb(oracle_state, oracle_kb).
-:- mode get_oracle_kb(in, out) is det.
-
-get_oracle_kb(oracle(KB, _), KB).
-
-:- pred set_oracle_kb(oracle_state, oracle_kb, oracle_state).
-:- mode set_oracle_kb(in, in, out) is det.
-
-set_oracle_kb(oracle(_, UI), KB, oracle(KB, UI)).
-
-:- pred get_oracle_user(oracle_state, user_state).
-:- mode get_oracle_user(in, out) is det.
-
-get_oracle_user(oracle(_, UI), UI).
-
-:- pred set_oracle_user(oracle_state, user_state, oracle_state).
-:- mode set_oracle_user(in, in, out) is det.
-
-set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
+	Oracle = oracle(Current, Old, User).
 
 %-----------------------------------------------------------------------------%
 
@@ -179,8 +225,8 @@ set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 
 :- type known_exceptions
 	--->	known_excp(
-			set_cc(univ),		% Possible exceptions.
-			set_cc(univ)		% Impossible exceptions.
+			set_cc(decl_exception),	% Possible exceptions.
+			set_cc(decl_exception)	% Impossible exceptions.
 		).
 
 :- pred oracle_kb_init(oracle_kb).
@@ -340,4 +386,33 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
 	),
 	tree234_cc__set(Map0, Call, known_excp(Possible, Impossible), Map),
 	set_kb_exceptions_map(KB0, Map, KB).
+
+:- pred retract_oracle_kb(decl_question(T), oracle_kb, oracle_kb).
+:- mode retract_oracle_kb(in, in, out) is cc_multi.
+
+retract_oracle_kb(wrong_answer(_, FinalAtom), KB0, KB) :-
+	Map0 = KB0 ^ kb_ground_map,
+	tree234_cc__delete(Map0, FinalAtom, Map),
+	KB = KB0 ^ kb_ground_map := Map.
+
+retract_oracle_kb(missing_answer(_, InitAtom, _), KB0, KB) :-
+	CompleteMap0 = KB0 ^ kb_complete_map,
+	tree234_cc__delete(CompleteMap0, InitAtom, CompleteMap),
+	KB = KB0 ^ kb_complete_map := CompleteMap.
+
+retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), KB0, KB) :-
+	ExceptionsMap0 = KB0 ^ kb_exceptions_map,
+	tree234_cc__search(ExceptionsMap0, InitAtom, MaybeKnownExceptions0),
+	(
+		MaybeKnownExceptions0 = yes(known_excp(Possible0, Impossible0))
+	->
+		set_cc__delete(Possible0, Exception, Possible),
+		set_cc__delete(Impossible0, Exception, Impossible),
+		KnownExceptions = known_excp(Possible, Impossible),
+		tree234_cc__set(ExceptionsMap0, InitAtom, KnownExceptions,
+			ExceptionsMap)
+	;
+		ExceptionsMap = ExceptionsMap0
+	),
+	KB = KB0 ^ kb_exceptions_map := ExceptionsMap.
 

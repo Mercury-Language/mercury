@@ -17,6 +17,7 @@ DECLARATIVE_PROGS=		\
 	deep_warning		\
 	dependency		\
 	dependency2		\
+	empty_command		\
 	family			\
 	filter			\
 	func_call		\
@@ -37,6 +38,8 @@ DECLARATIVE_PROGS=		\
 	pd			\
 	propositional		\
 	queens			\
+	revise			\
+	revise_2		\
 	shallow			\
 	small			\
 	solutions		\
@@ -148,6 +151,9 @@ dependency.out: dependency dependency.inp
 dependency2.out: dependency2 dependency2.inp
 	$(MDB) ./dependency2 < dependency2.inp > dependency2.out 2>&1
 
+empty_command.out: empty_command empty_command.inp
+	$(MDB) ./empty_command < empty_command.inp > empty_command.out 2>&1
+
 family.out: family family.inp
 	$(MDB) ./family < family.inp > family.out 2>&1
 
@@ -213,6 +219,12 @@ propositional.out: propositional propositional.inp
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+revise.out: revise revise.inp
+	$(MDB) ./revise < revise.inp > revise.out 2>&1
+
+revise_2.out: revise_2 revise_2.inp
+	$(MDB) ./revise_2 < revise_2.inp > revise_2.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1

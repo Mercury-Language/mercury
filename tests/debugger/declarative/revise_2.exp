@@ -1,0 +1,27 @@
+       1:      1  1 CALL pred revise_2.main/2-0 (det) revise_2.m:7
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred revise_2.p/1-0 (det)
+mdb> continue
+       2:      2  2 CALL pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
+mdb> finish
+       3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
+mdb> dd
+p(41)
+Valid? no
+Found incorrect contour:
+p(41)
+Is this a bug? no
+p(41)
+Valid? [no] no
+Found incorrect contour:
+p(41)
+Is this a bug? no
+p(41)
+Valid? [no] yes
+No bug found.
+       3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
+mdb> continue
+41

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,6 +17,10 @@
 :- import_module mdb__declarative_debugger.
 :- import_module list, io.
 
+:- type user_question(T)
+	--->	plain_question(decl_question(T))
+	;	question_with_default(decl_question(T), decl_truth).
+
 :- type user_response(T)
 	--->	user_answer(decl_question(T), decl_answer(T))
 	;	no_user_answer
@@ -29,11 +33,11 @@
 :- mode user_state_init(in, in, out) is det.
 
 	% This predicate handles the interactive part of the declarative
-	% debugging process.  The user is presented with an EDT node,
-	% and is asked to respond about the truth of the node in the
-	% intended interpretation.
+	% debugging process.  The user is presented with a question,
+	% possibly with a default answer, and is asked to respond about the
+	% truth of it in the intended interpretation.
 	%
-:- pred query_user(list(decl_question(T))::in, user_response(T)::out,
+:- pred query_user(list(user_question(T))::in, user_response(T)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
@@ -66,101 +70,155 @@ user_state_init(InStr, OutStr, User) :-
 query_user(Questions, Response, User0, User) -->
 	query_user_2(Questions, [], Response, User0, User).
 
-:- pred query_user_2(list(decl_question(T))::in, list(decl_question(T))::in,
+:- pred query_user_2(list(user_question(T))::in, list(user_question(T))::in,
 	user_response(T)::out, user_state::in, user_state::out,
 	io__state::di, io__state::uo) is cc_multi.
 
 query_user_2([], _, no_user_answer, User, User) -->
 	[].
-query_user_2([Question | Questions], Skipped, Response, User0, User) -->
+query_user_2([UserQuestion | UserQuestions], Skipped, Response, User0, User) -->
+	{ Question = get_decl_question(UserQuestion) },
 	write_decl_question(Question, User0),
-	{ Node = get_decl_question_node(Question) },
-	{ decl_question_prompt(Question, Prompt) },
+	{ user_question_prompt(UserQuestion, Prompt) },
 	get_command(Prompt, Command, User0, User1),
+	handle_command(Command, UserQuestion, UserQuestions, Skipped, Response,
+		User1, User).
+
+:- pred handle_command(user_command::in, user_question(T)::in,
+	list(user_question(T))::in, list(user_question(T))::in,
+	user_response(T)::out, user_state::in, user_state::out,
+	io__state::di, io__state::uo) is cc_multi.
+
+handle_command(yes, UserQuestion, _, _, Response, User, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ Node = get_decl_question_node(Question) },
+	{ Response = user_answer(Question, truth_value(Node, yes)) }.
+
+handle_command(no, UserQuestion, _, _, Response, User, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ Node = get_decl_question_node(Question) },
+	{ Response = user_answer(Question, truth_value(Node, no)) }.
+
+handle_command(inadmissible, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User) -->
+	io__write_string("Sorry, not implemented,\n"),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response, User0,
+		User).
+
+handle_command(skip, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User) -->
+	query_user_2(UserQuestions, [UserQuestion | Skipped], Response, User0,
+		User).
+
+handle_command(restart, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User) -->
+	{ reverse_and_append(Skipped, [UserQuestion | UserQuestions],
+		RestartedQuestions) },
+	query_user(RestartedQuestions, Response, User0, User).
+
+handle_command(browse_arg(ArgNum), UserQuestion, UserQuestions, Skipped,
+		Response, User0, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ edt_node_trace_atom(Question, TraceAtom) },
+	browse_atom_argument(TraceAtom, ArgNum, MaybeMark, User0, User1),
 	(
-		{ Command = yes },
-		{ Response = user_answer(Question, truth_value(Node, yes)) },
-		{ User = User1 }
+		{ MaybeMark = no },
+		query_user_2([UserQuestion | UserQuestions], Skipped, Response,
+			User1, User)
 	;
-		{ Command = no },
-		{ Response = user_answer(Question, truth_value(Node, no)) },
-		{ User = User1 }
-	;
-		{ Command = inadmissible },
-		io__write_string("Sorry, not implemented,\n"),
-		query_user_2([Question | Questions], Skipped, Response,
-				User1, User)
-	;
-		{ Command = skip },
-		query_user_2(Questions, [Question | Skipped], Response,
-				User1, User)
-	;
-		{ Command = restart },
-		{ reverse_and_append(Skipped, [Question | Questions],
-				RestartedQuestions) },
-		query_user(RestartedQuestions, Response, User1, User)
-	;
-		{ Command = browse_arg(ArgNum) },
-		{ edt_node_trace_atom(Question, TraceAtom) },
-		browse_atom_argument(TraceAtom, ArgNum, MaybeMark,
-			User1, User2),
-		(
-			{ MaybeMark = no },
-			query_user_2([Question | Questions], Skipped, Response,
-					User2, User)
+		{ MaybeMark = yes(Mark) },
+		{ Which = chosen_head_vars_presentation },
+		{
+			Which = only_user_headvars,
+			ArgPos = user_head_var(ArgNum)
 		;
-			{ MaybeMark = yes(Mark) },
-			{ Which = chosen_head_vars_presentation },
-			{
-				Which = only_user_headvars,
-				ArgPos = user_head_var(ArgNum)
-			;
-				Which = all_headvars,
-				ArgPos = any_head_var(ArgNum)
-			},
-			{ Answer = suspicious_subterm(Node, ArgPos, Mark) },
-			{ Response = user_answer(Question, Answer) },
-			{ User = User2 }
-		)
-	;
-		{ Command = print_arg(From, To) },
-		{ edt_node_trace_atom(Question, TraceAtom) },
-		print_atom_arguments(TraceAtom, From, To, User1),
-		query_user_2([Question | Questions], Skipped, Response,
-			User1, User)
-	;
-		{ Command = browse_io(ActionNum) },
-		{ edt_node_io_actions(Question, IoActions) },
-		% We don't have code yet to trace a marked I/O action.
-		browse_chosen_io_action(IoActions, ActionNum, _MaybeMark,
-			User1, User2),
-		query_user_2([Question | Questions], Skipped, Response,
-			User2, User)
-	;
-		{ Command = print_io(From, To) },
-		{ edt_node_io_actions(Question, IoActions) },
-		print_chosen_io_actions(IoActions, From, To, User1),
-		query_user_2([Question | Questions], Skipped, Response,
-			User1, User)
-	;
-		{ Command = pd },
-		{ Response = exit_diagnosis(Node) },
+			Which = all_headvars,
+			ArgPos = any_head_var(ArgNum)
+		},
+		{ Node = get_decl_question_node(Question) },
+		{ Answer = suspicious_subterm(Node, ArgPos, Mark) },
+		{ Response = user_answer(Question, Answer) },
 		{ User = User1 }
-	;
-		{ Command = abort },
-		{ Response = abort_diagnosis },
-		{ User = User1 }
-	;
-		{ Command = help },
-		user_help_message(User1),
-		query_user_2([Question | Questions], Skipped, Response,
-				User1, User)
-	;
-		{ Command = illegal_command },
-		io__write_string("Unknown command, 'h' for help.\n"),
-		query_user_2([Question | Questions], Skipped, Response,
-				User1, User)
 	).
+
+handle_command(print_arg(From, To), UserQuestion, UserQuestions, Skipped,
+		Response, User0, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ edt_node_trace_atom(Question, TraceAtom) },
+	print_atom_arguments(TraceAtom, From, To, User0),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
+		User0, User).
+
+handle_command(browse_io(ActionNum), UserQuestion, UserQuestions, Skipped,
+		Response, User0, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ edt_node_io_actions(Question, IoActions) },
+	% We don't have code yet to trace a marked I/O action.
+	browse_chosen_io_action(IoActions, ActionNum, _MaybeMark, User0, User1),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
+		User1, User).
+
+handle_command(print_io(From, To), UserQuestion, UserQuestions, Skipped,
+		Response, User0, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ edt_node_io_actions(Question, IoActions) },
+	print_chosen_io_actions(IoActions, From, To, User0),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
+		User0, User).
+
+handle_command(pd, UserQuestion, _, _, Response, User, User) -->
+	{ Question = get_decl_question(UserQuestion) },
+	{ Node = get_decl_question_node(Question) },
+	{ Response = exit_diagnosis(Node) }.
+
+handle_command(abort, _, _, _, Response, User, User) -->
+	{ Response = abort_diagnosis }.
+
+handle_command(help, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User) -->
+	user_help_message(User0),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
+		User0, User).
+
+handle_command(empty_command, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User) -->
+	{
+		UserQuestion = plain_question(_),
+		Command = skip
+	;
+		UserQuestion = question_with_default(_, Truth),
+		(
+			Truth = yes,
+			Command = yes
+		;
+			Truth = no,
+			Command = no
+		)
+	},
+	handle_command(Command, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User).
+
+handle_command(illegal_command, UserQuestion, UserQuestions, Skipped, Response,
+		User0, User) -->
+	io__write_string("Unknown command, 'h' for help.\n"),
+	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
+		User0, User).
+
+:- func get_decl_question(user_question(T)) = decl_question(T).
+
+get_decl_question(plain_question(Q)) = Q.
+get_decl_question(question_with_default(Q, _)) = Q.
+
+:- pred user_question_prompt(user_question(T), string).
+:- mode user_question_prompt(in, out) is det.
+
+user_question_prompt(plain_question(Question), Prompt) :-
+	decl_question_prompt(Question, Prompt).
+
+user_question_prompt(question_with_default(Question, DefaultTruth), Prompt) :-
+	decl_question_prompt(Question, QuestionPrompt),
+	default_prompt(DefaultTruth, DefaultPrompt),
+	string__append(QuestionPrompt, DefaultPrompt, Prompt).
 
 :- pred decl_question_prompt(decl_question(T), string).
 :- mode decl_question_prompt(in, out) is det.
@@ -168,6 +226,12 @@ query_user_2([Question | Questions], Skipped, Response, User0, User) -->
 decl_question_prompt(wrong_answer(_, _), "Valid? ").
 decl_question_prompt(missing_answer(_, _, _), "Complete? ").
 decl_question_prompt(unexpected_exception(_, _, _), "Expected? ").
+
+:- pred default_prompt(decl_truth, string).
+:- mode default_prompt(in, out) is det.
+
+default_prompt(yes, "[yes] ").
+default_prompt(no, "[no] ").
 
 :- pred edt_node_trace_atom(decl_question(T)::in, trace_atom::out) is det.
 
@@ -346,6 +410,7 @@ reverse_and_append([A | As], Bs, Cs) :-
 					% this point.
 	;	abort			% Abort this diagnosis session.
 	;	help			% Request help before answering.
+	;	empty_command		% User just pressed return.
 	;	illegal_command.	% None of the above.
 
 :- pred user_help_message(user_state, io__state, io__state).
@@ -397,12 +462,17 @@ get_command(Prompt, Command, User, User) -->
 		{ Words = string__words(char__is_whitespace, String) },
 		{
 			Words = [CmdWord | CmdArgs],
-			cmd_handler(CmdWord, CmdHandler),
-			CommandPrime = CmdHandler(CmdArgs)
-		->
-			Command = CommandPrime
+			(
+				cmd_handler(CmdWord, CmdHandler),
+				CommandPrime = CmdHandler(CmdArgs)
+			->
+				Command = CommandPrime
+			;
+				Command = illegal_command
+			)
 		;
-			Command = illegal_command
+			Words = [],
+			Command = empty_command
 		}
 	;
 		{ Result = error(Error) },

@@ -1,0 +1,38 @@
+       1:      1  1 CALL pred empty_command.main/2-0 (det) empty_command.m:7
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred empty_command.p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
+mdb> finish
+       9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
+mdb> dd
+p(53, 53)
+Valid? no
+q(53, 53)
+Valid? yes
+r(53, 53)
+Valid? 
+s(53, 53)
+Valid? yes
+r(53, 53)
+Valid? yes
+Found incorrect contour:
+p(53, 53)
+Is this a bug? no
+p(53, 53)
+Valid? [no] 
+q(53, 53)
+Valid? [yes] 
+r(53, 53)
+Valid? [yes] 
+s(53, 53)
+Valid? [yes] 
+Found incorrect contour:
+p(53, 53)
+Is this a bug? yes
+       9:      2  2 EXIT pred empty_command.p/2-0 (det) empty_command.m:17 (empty_command.m:8)
+mdb> continue
+53

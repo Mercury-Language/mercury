@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,9 +100,10 @@
 			%
 	--->	no_suspects
 	
-			% A suspect who is guilty.
+			% A suspect who is guilty, along with the evidence
+			% against the suspect.
 			%
-	;	bug_found(decl_bug)
+	;	bug_found(decl_bug, decl_evidence(T))
 
 			% The analyser desires answers to any of a list
 			% of queries.
@@ -134,6 +135,12 @@
 	%
 :- pred continue_analysis(S::in, list(decl_answer(T))::in,
 	analyser_response(T)::out, analyser_state(T)::in,
+	analyser_state(T)::out) is det <= mercury_edt(S, T).
+
+	% Revise the current analysis.  This is done when a bug determined
+	% by the analyser has been overruled by the oracle.
+	%
+:- pred revise_analysis(S::in, analyser_response(T)::out, analyser_state(T)::in,
 	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
 	% Return information within the analyser state that is intended for
@@ -277,6 +284,48 @@ process_answer(Store, Answer, Analyser0, Analyser) :-
 		Analyser = Analyser2
 	).
 
+revise_analysis(Store, Response, Analyser0, Analyser) :-
+	IoActionMap = Analyser0 ^ io_action_map,
+	(
+		Analyser0 ^ maybe_prime = yes(Prime0)
+	->
+		prime_suspect_get_suspect(Prime0, Suspect0),
+		edt_root_question(IoActionMap, Store, Suspect0, Question)
+	;
+		throw(internal_error("revise_analysis", "no prime suspect"))
+	),
+	Previous0 = Analyser0 ^ previous,
+	(
+		Previous0 = [],
+		Previous = [],
+		MaybePrime = no,
+		SuspectRoots = [Question],
+		SuspectParents = [],
+		PrioritySuspects = []
+	;
+		Previous0 = [MostRecent | Previous],
+		create_prime_suspect(MostRecent, Prime),
+		MaybePrime = yes(Prime),
+		(
+			edt_children(Store, MostRecent, Children)
+		->
+			list__map(edt_root_question(IoActionMap, Store),
+				Children, SuspectRoots),
+			SuspectParents = []
+		;
+			SuspectRoots = [],
+			SuspectParents = [MostRecent]
+		),
+		PrioritySuspects = [Question]
+	),
+	Analyser = ((((Analyser0
+			^ maybe_prime := MaybePrime)
+			^ previous := Previous)
+			^ suspect_roots := SuspectRoots)
+			^ suspect_parents := SuspectParents)
+			^ priority_suspects := PrioritySuspects,
+	decide_analyser_response(Store, Analyser, Response).
+
 %-----------------------------------------------------------------------------%
 
 :- pred assert_suspect_is_correct(S::in, T::in, analyser_state(T)::in,
@@ -288,7 +337,8 @@ assert_suspect_is_correct(_Store, Suspect, Analyser0, Analyser) :-
 	Analyser1 = Analyser0 ^ suspect_roots := Suspects,
 	PrioritySuspects0 = Analyser1 ^ priority_suspects,
 	delete_suspect(PrioritySuspects0, Suspect, PrioritySuspects),
-	Analyser = Analyser1 ^ priority_suspects := PrioritySuspects.
+	Analyser2 = Analyser1 ^ priority_suspects := PrioritySuspects,
+	add_correct_evidence(Suspect, Analyser2, Analyser).
 
 :- pred assert_suspect_is_wrong(S::in, T::in, analyser_state(T)::in,
 	analyser_state(T)::out) is det <= mercury_edt(S, T).
@@ -349,7 +399,9 @@ decide_analyser_response(Store, Analyser, Response) :-
 			IoActionMap = Analyser ^ io_action_map,
 			prime_suspect_get_e_bug(IoActionMap, Store, Prime,
 				EBug),
-			Response = bug_found(e_bug(EBug))
+			prime_suspect_get_evidence(IoActionMap, Store, Prime,
+				Evidence),
+			Response = bug_found(e_bug(EBug), Evidence)
 		;
 			Response = no_suspects
 		)
@@ -383,6 +435,21 @@ delete_suspect(Suspects0, Target, Suspects) :-
 			Target \= get_decl_question_node(S)
 		),
 	list__filter(Filter, Suspects0, Suspects).
+
+:- pred add_correct_evidence(T, analyser_state(T), analyser_state(T)).
+:- mode add_correct_evidence(in, in, out) is det.
+
+add_correct_evidence(Suspect, Analyser0, Analyser) :-
+	MaybePrime0 = Analyser0 ^ maybe_prime,
+	(
+		MaybePrime0 = yes(Prime0),
+		prime_suspect_add_evidence(Prime0, Suspect, yes, Prime),
+		MaybePrime = yes(Prime)
+	;
+		MaybePrime0 = no,
+		MaybePrime = no
+	),
+	Analyser = Analyser0 ^ maybe_prime := MaybePrime.
 
 %-----------------------------------------------------------------------------%
 
@@ -425,14 +492,16 @@ prime_suspect_get_e_bug(IoActionMap, Store, Prime, EBug) :-
 	prime_suspect_get_suspect(Prime, Suspect),
 	edt_root_e_bug(IoActionMap, Store, Suspect, EBug).
 
-	% Get all the suspects who are children of the prime suspect,
-	% and who are deemed correct or inadmissible.  Maybe get
-	% the earliest inadmissible child (if there was one).
+	% Get the evidence that implicates the prime suspect.
 	%
-:- pred prime_suspect_get_evidence(prime_suspect(T), list(T), maybe(T)).
-:- mode prime_suspect_get_evidence(in, out, out) is det.
+:- pred prime_suspect_get_evidence(io_action_map, S, prime_suspect(T),
+	decl_evidence(T)) <= mercury_edt(S, T).
+:- mode prime_suspect_get_evidence(in, in, in, out) is det.
 
-prime_suspect_get_evidence(prime_suspect(_, E, M), E, M).
+prime_suspect_get_evidence(IoActionMap, Store, Prime, Evidence) :-
+	Prime = prime_suspect(Node, Children, _),
+	Pred = edt_root_question(IoActionMap, Store),
+	list__map(Pred, [Node | Children], Evidence).
 
 	% Add to the evidence against the prime suspect a child who
 	% is deemed correct or inadmissible.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -433,6 +433,7 @@
 	% to transform the elements of L into the elements of M.
 :- pred list__map(pred(X, Y), list(X), list(Y)).
 :- mode list__map(pred(in, out) is det, in, out) is det.
+:- mode list__map(pred(in, out) is cc_multi, in, out) is cc_multi.
 :- mode list__map(pred(in, out) is semidet, in, out) is semidet.
 :- mode list__map(pred(in, out) is multi, in, out) is multi.
 :- mode list__map(pred(in, out) is nondet, in, out) is nondet.

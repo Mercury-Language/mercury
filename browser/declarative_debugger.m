@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,6 +146,12 @@
 			% given term_path and arg_pos.
 			%
 	;	suspicious_subterm(T, arg_pos, term_path).
+
+	% The evidence that a certain node is a bug.  This consists of the
+	% smallest set of questions whose answers are sufficient to
+	% diagnose that bug.
+	%
+:- type decl_evidence(T) == list(decl_question(T)).
 
 	% Extract the EDT node from a question.
 	%
@@ -333,10 +339,10 @@ diagnosis_2(Store, NodeId, Diagnoser0, {Response, Diagnoser}) -->
 handle_analyser_response(_, no_suspects, _, no_bug_found, D, D) -->
 	io__write_string("No bug found.\n").
 
-handle_analyser_response(_, bug_found(Bug), _, Response, Diagnoser0,
-		Diagnoser) -->
+handle_analyser_response(Store, bug_found(Bug, Evidence), _, Response,
+	Diagnoser0, Diagnoser) -->
 
-	confirm_bug(Bug, Response, Diagnoser0, Diagnoser).
+	confirm_bug(Store, Bug, Evidence, Response, Diagnoser0, Diagnoser).
 
 handle_analyser_response(Store, oracle_queries(Queries), MaybeOrigin, Response,
 		Diagnoser0, Diagnoser) -->
@@ -389,25 +395,40 @@ handle_oracle_response(Store, exit_diagnosis(Node), Response, D, D) -->
 handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 	io__write_string("Diagnosis aborted.\n").
 
-:- pred confirm_bug(decl_bug::in, diagnoser_response::out,
-	diagnoser_state(R)::in, diagnoser_state(R)::out,
-	io__state::di, io__state::uo) is cc_multi.
+:- pred confirm_bug(S::in, decl_bug::in, decl_evidence(T)::in,
+	diagnoser_response::out, diagnoser_state(R)::in,
+	diagnoser_state(R)::out, io__state::di, io__state::uo) is cc_multi
+	<= annotated_trace(S, R).
 
-confirm_bug(Bug, Response, Diagnoser0, Diagnoser) -->
+confirm_bug(Store, Bug, Evidence, Response, Diagnoser0, Diagnoser) -->
 	{ diagnoser_get_oracle(Diagnoser0, Oracle0) },
-	oracle_confirm_bug(Bug, Confirmation, Oracle0, Oracle),
-	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser) },
-	{
-		Confirmation = confirm_bug,
-		decl_bug_get_event_number(Bug, Event),
-		Response = bug_found(Event)
+	oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle),
+	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser1) },
+	(
+		{ Confirmation = confirm_bug },
+		{ decl_bug_get_event_number(Bug, Event) },
+		{ Response = bug_found(Event) },
+		{ Diagnoser = Diagnoser1 }
 	;
-		Confirmation = overrule_bug,
-		Response = no_bug_found
+		{ Confirmation = overrule_bug },
+		overrule_bug(Store, Response, Diagnoser1, Diagnoser)
 	;
-		Confirmation = abort_diagnosis,
-		Response = no_bug_found
-	}.
+		{ Confirmation = abort_diagnosis },
+		{ Response = no_bug_found },
+		{ Diagnoser = Diagnoser1 }
+	).
+
+:- pred overrule_bug(S::in, diagnoser_response::out, diagnoser_state(R)::in,
+	diagnoser_state(R)::out, io__state::di, io__state::uo) is cc_multi
+	<= annotated_trace(S, R).
+
+overrule_bug(Store, Response, Diagnoser0, Diagnoser) -->
+	{ Analyser0 = Diagnoser0 ^ analyser_state },
+	{ revise_analysis(wrap(Store), AnalyserResponse, Analyser0, Analyser) },
+	{ Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser },
+	{ debug_analyser_state(Analyser, MaybeOrigin) },
+	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
+		Response, Diagnoser1, Diagnoser).
 
 %-----------------------------------------------------------------------------%
 

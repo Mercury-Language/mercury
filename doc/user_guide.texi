@@ -3367,7 +3367,7 @@ and provide answers to these questions
 based on their knowledge of the intended interpretation.
 The debugger provides some help here:
 previous answers are remembered and used where possible,
-so repeat questions are avoided.
+so questions are not repeated unnecessarily.
 Commands are available to provide answers,
 as well as to browse the arguments more closely
 or to change the order in which the questions are asked.
@@ -3398,6 +3398,12 @@ the assertion corresponding to an EXCP event,
 the declarative debugger prints the call atom
 followed by the exception that was thrown,
 and prints the question @samp{Expected?} for the user to answer.
+
+In some circumstances
+the declarative debugger provides a default answer to the question.
+If this is the case, the default answer will be shown in square brackets
+immediately after the question,
+and simply pressing return is equivalent to giving that answer.
 
 @node Declarative debugging commands
 @subsection Commands
@@ -3433,6 +3439,12 @@ the event at which the @samp{dd} command was given.
 @item help
 Summarize the list of available commands.
 @end table
+
+It is also legal to press return without specifying a command.
+If there is a default answer (see @ref{Oracle questions}),
+pressing return is equivalent to giving that answer.
+If there is no default answer,
+pressing return is equivalent to the skip command.
 
 @node Diagnoses
 @subsection Diagnoses
@@ -3482,17 +3494,25 @@ for the call in question.
 After the diagnosis is displayed, the user is asked to confirm
 that the event located by the declarative debugger
 does in fact represent a bug.
-If the user does confirm the diagnosis,
+The user can answer @samp{yes} or @samp{y} to confirm the bug,
+@samp{no} or @samp{n} to reject the bug,
+or @samp{abort} or @samp{a} to abort the diagnosis.
+
+If the user confirms the diagnosis,
 they are returned to the procedural debugger
 at the event which was found to be the bug event.
 This gives the user an opportunity, if they need it,
 to investigate (procedurally) the events in the neighbourhood of the bug.
-If the user does not confirm the diagnosis,
-which implies that some of their earlier answers must have been mistakes,
+
+If the user rejects the diagnosis,
+which implies that some of their earlier answers may have been mistakes,
+diagnosis is resumed from some earlier point determined by the debugger.
+The user may now be asked questions they have already answered,
+with the previous answer they gave being the default,
+or they may be asked entirely new questions.
+
+If the user aborts the diagnosis,
 they are returned to the event at which the @samp{dd} command was given.
-In the future, users should have the option of
-revising those of their answers which directly led to the diagnosis,
-but the current implementation doesn't do this yet.
 
 @c @node Improving the search
 @c @subsection Improving the search
