@@ -631,7 +631,7 @@ output_code_addr_decls(do_succeed) --> [].
 output_code_addr_decls(do_redo) --> [].
 output_code_addr_decls(label(_)) --> [].
 output_code_addr_decls(imported(ProcLabel)) -->
-	io__write_string("extern EntryPoint ENTRY("),
+	io__write_string("Declare_entry("),
 	output_proc_label(ProcLabel),
 	io__write_string(");\n\t  ").
 
