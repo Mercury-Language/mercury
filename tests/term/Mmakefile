@@ -91,7 +91,8 @@ MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 
 %.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
-	diff -c $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt > $@
+	diff $(DIFF_OPTS) $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt \
+		> $@
 
 #-----------------------------------------------------------------------------#
 

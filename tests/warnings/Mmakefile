@@ -46,11 +46,11 @@ $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
 
 %.res_error:	%.exp %.err
 	-rm -f $@
-	diff -c $*.exp $*.err > $@ || { cat $@ && exit 1; }
+	diff $(DIFF_OPTS) $*.exp $*.err > $@ || { cat $@ && exit 1; }
 
 %.res_compile:	%.exp %.c
 	-rm -f $@
-	diff -c $*.exp $*.err > $@ || { cat $@ && exit 1; }
+	diff $(DIFF_OPTS) $*.exp $*.err > $@ || { cat $@ && exit 1; }
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 %.c: %.m
