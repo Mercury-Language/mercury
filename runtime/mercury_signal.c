@@ -66,6 +66,19 @@
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** If we don't have SA_RESTART or SA_SIGINFO, defined them as 0.
+** It would be nice to have them, but it is still better to use
+** sigaction without SA_RESTART or SA_SIGINFO than to use signal.
+*/
+#if	!defined(SA_RESTART)
+  #define	SA_RESTART 0
+#endif
+
+#if	!defined(SA_SIGINFO)
+  #define	SA_SIGINFO 0
+#endif
+
 void
 MR_setup_signal(int sig, Code *handler, bool need_info, 
 		const char *error_message)
@@ -75,11 +88,7 @@ MR_setup_signal(int sig, Code *handler, bool need_info,
 	struct sigaction	act;
 
 	if (need_info) {
-  #if 	defined(SA_SIGINFO)
 		act.sa_flags = SA_SIGINFO | SA_RESTART;
-  #else
-		act.sa_flags = SA_RESTART;
-  #endif
 	} else {
 		act.sa_flags = SA_RESTART;
 	}
