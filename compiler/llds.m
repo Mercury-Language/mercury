@@ -1549,7 +1549,8 @@ output_goto(label(Label), CallerLabel) -->
 
 	% Note that we also do some optimization here by
 	% outputting `localcall' rather than `call' for
-	% calls to local labels.
+	% calls to local labels, or `call_localret' for
+	% calls which return to local labels (i.e. most of them).
 
 :- pred output_call(code_addr, code_addr, label, io__state, io__state).
 :- mode output_call(in, in, in, di, uo) is det.
@@ -1557,13 +1558,20 @@ output_goto(label(Label), CallerLabel) -->
 output_call(Target, Continuation, CallerLabel) -->
 	( { Target = label(Label) } ->
 		io__write_string("localcall("),
-		output_label(Label)
+		output_label(Label),
+		io__write_string(",\n\t\t"),
+		output_code_addr(Continuation)
+	; { Continuation = label(ContLabel) } ->
+		io__write_string("call_localret("),
+		output_code_addr(Target),
+		io__write_string(",\n\t\t"),
+		output_label(ContLabel)
 	;
 		io__write_string("call("),
-		output_code_addr(Target)
+		output_code_addr(Target),
+		io__write_string(",\n\t\t"),
+		output_code_addr(Continuation)
 	),
-	io__write_string(",\n\t\t"),
-	output_code_addr(Continuation),
 	io__write_string(",\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");").
