@@ -207,7 +207,7 @@ dlls: $(library.dlls)
 .PHONY: lib_std
 
 # The ilc and il grades target Microsoft's .NET frameworks.  
-ifneq (,$(findstring il,$(GRADE)))
+ifeq ($(findstring il,$(GRADE)),il)        
 
 lib_std: dlls mercury.dll
 

@@ -88,10 +88,26 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
 		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
 
+ifeq ($(findstring il,$(GRADE)),il)        
+
+# no need to build a garbage collector for the .NET backend.
+
+.PHONY: install_headers
+install_headers:
+
+.PHONY: install_lib
+install_lib:
+
+.PHONY: install_dll
+install_dll:
+
+else
+
 .PHONY: install_headers
 install_headers: install_dirs
 	cp $(HEADERS) $(INSTALL_INC_DIR)
 	cp $(PRIVATE_HEADERS) $(INSTALL_INC_DIR)/private
+
 
 .PHONY: install_lib
 install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
@@ -101,5 +117,8 @@ install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
 .PHONY: install_dll
 install_dll:
 	-[ -f libpar_gc.dll ] && cp `vpath_find libpar_gc.dll` $(INSTALL_BINDIR)
+
+endif
+
 
 #-----------------------------------------------------------------------------#

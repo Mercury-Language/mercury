@@ -183,6 +183,18 @@ check_namespace: check_headers check_objs
 .PHONY: install
 install: install_headers install_lib
 
+ifeq ($(findstring il,$(GRADE)),il)        
+
+# there is no tracing in the .NET backend
+
+.PHONY: install_headers
+install_headers:
+
+.PHONY: install_lib
+install_lib:
+
+else
+
 .PHONY: install_headers
 install_headers: $(HDRS) $(LIB_GLOBALS_H)
 	cp `vpath_find $(HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
@@ -193,6 +205,8 @@ install_lib: lib$(TRACE_LIB_NAME).$A lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 	cp `vpath_find lib$(TRACE_LIB_NAME).$A \
 		lib$(TRACE_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
+
+endif
 
 #-----------------------------------------------------------------------------#
 
