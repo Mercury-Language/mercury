@@ -3792,7 +3792,11 @@ This option significantly increases compilation time,
 link time, and intermediate disk space requirements,
 but in return reduces the size of the final
 executable, typically by about 10-20%.
-This option is only useful with @samp{--procs-per-c-function 1}.
+This option is only useful with @samp{--procs-per-c-function 1},
+so this option automatically sets @samp{--procs-per-c-function 1}.
+
+The @samp{--high-level-code} back-end does not support
+@samp{--split-c-files}.
 
 N.B.  When using @samp{mmake}, the @samp{--split-c-files} option should
 not be placed in the @samp{MCFLAGS} variable.  Instead, use the

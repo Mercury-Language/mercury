@@ -2172,7 +2172,10 @@ options_help_optimization -->
 		"\tlink time, and intermediate disk space requirements,",
 		"\tbut in return reduces the size of the final",
 		"\texecutable, typically by about 10-20%.",
-		"\tThis option is only useful with `--procs-per-c-function 1'."
+		"\tThis option is only useful with `--procs-per-c-function 1',",
+		"\tso this option automatically sets `--procs-per-c-function 1'.",
+		"\tThe `--high-level-code' back-end does not support",
+		"\t`--split-c-files'."
 	]).
 
 :- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo)

@@ -115,8 +115,13 @@ PROGS=	\
 	write \
 	write_reg1
 
-SPLIT_PROGS = \
-	split_c_files
+# --split-c-files does not work in the hl* grades (e.g. hlc.gc),
+# because it hasn't yet been implemented yet.
+ifeq "$(findstring hl,$(GRADE))" ""
+SPLIT_PROGS = split_c_files
+else
+SPLIT_PROGS =
+endif
 
 # we do no pass the following tests
 #	purity -- executable name clashes with the `purity' subdirectory
