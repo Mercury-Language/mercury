@@ -191,15 +191,6 @@ $(ss_subdir)%.s : $(s_dates_subdir)%.s_date
 $(pic_ss_subdir)%.pic_s : $(pic_s_dates_subdir)%.pic_s_date
 	@:
 
-# This variable contains the shell syntax to redirect the output of
-# a compilation command to a file.  Normally the file chosen is *.err.
-# However, you can override this variable to modify that behaviour.
-# Setting this variable to the empty string will cause all errors to
-# go to stdout/stderr.
-# Setting this variable to ">> allerrs 2>&1" will cause errors
-# to be accumulated into a single file.
-ERR_REDIRECT = > $(*F).err 2>&1
-
 $(s_dates_subdir)%.s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
 		$(*F) $(ERR_REDIRECT)
