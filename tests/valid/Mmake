@@ -7,8 +7,8 @@ include ../Mmake.common
 #-----------------------------------------------------------------------------#
 
 SOURCES= \
-	complicated_unify.m \
 	compl_unify_bug.m \
+	complicated_unify.m \
 	constructor_arg_names.m \
 	dcg_test.m \
 	det_condition.m \
@@ -27,9 +27,9 @@ SOURCES= \
 	indexing.m \
 	intermod_lambda.m \
 	lambda_inference.m\
-	lambda_type.m \
 	lambda_quant.m \
 	lambda_switch.m \
+	lambda_type.m \
 	loop.m \
 	loop_in_disj.m \
 	middle_rec_labels.m \
@@ -39,13 +39,13 @@ SOURCES= \
 	nasty_func_test.m \
 	nondet_live.m \
 	qualified_cons_id.m \
+	same_length_2.m \
 	semidet_disj.m \
 	shape_type.m \
 	simplify_bug.m \
+	soln_context.m \
 	stack_alloc.m \
 	switches.m \
-	same_length_2.m \
-	soln_context.m \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
 	undead_proc.m \
@@ -74,7 +74,7 @@ two_way_unif.c: two_way_unif.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 two_way_unif.m \
 		> two_way_unif.err 2>&1
 
-# The bug simplify_bug.m tests for only occurred at -O-1
+# The bug that simplify_bug.m tests for only occurred at -O-1
 simplify_bug.c:	simplify_bug.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) -O-1 \
 		simplify_bug.m > simplify_bug.err 2>&1
