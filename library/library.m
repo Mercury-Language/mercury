@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
 % Please keep both parts of this list in alphabetical order.
 
 % The modules intended for application programmers.
-:- import_module array, assoc_list, bag, benchmarking.
+:- import_module array, array2d, assoc_list, bag, benchmarking.
 :- import_module bimap, bintree, bintree_set, bitmap, bool, bt_array, builtin.
 :- import_module char, construct, counter, deconstruct, dir.
 :- import_module enum, eqvclass, exception.

@@ -1,0 +1,35 @@
+Empty =
+[[]]
+
+One =
+[[1]]
+One ^ elem(0, 0) = 1
+
+Two =
+[[1, 0]
+ [0, 2]]
+Two ^ elem(0, 0) = 1
+Two ^ elem(0, 1) = 0
+Two ^ elem(1, 0) = 0
+Two ^ elem(1, 1) = 2
+
+Two_a =
+[[1, 3]
+ [0, 2]]
+
+Two_b =
+[[1, 3]
+ [4, 2]]
+
+Zeroes =
+[[0, 0, 0]
+ [0, 0, 0]
+ [0, 0, 0]]
+
+Empty ^ elem(0, 0) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Zeroes ^ elem(-1, 0) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Zeroes ^ elem(0, -1) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Zeroes ^ elem(-1, -1) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Zeroes ^ elem(3, 0) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Zeroes ^ elem(0, 3) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
+Zeroes ^ elem(3, 3) = exception(univ_cons(software_error("array2d.elem: indices out of bounds")))
