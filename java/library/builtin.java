@@ -26,7 +26,19 @@ public class builtin
         return;
       }
     }
-  
+
+    public static boolean unify_2_p_0(mercury.private_builtin.type_info_1 ti,
+		    java.lang.Object x, java.lang.Object y)
+    {
+      throw new Java.lang.Error("unify/3 not implemented");
+    }
+
+    public static comparison_result_0 compare_3_p_0(
+	mercury.private_builtin.type_info_1 ti,
+	java.lang.Object x, java.lang.Object y)
+    {
+      throw new Java.lang.Error("compare/3 not implemented");
+    }
  }
 
 
