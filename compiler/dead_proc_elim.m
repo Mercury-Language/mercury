@@ -83,7 +83,10 @@ dead_proc_elim__initialize(ModuleInfo, Queue, Needed) :-
 	module_info_predids(ModuleInfo, PredIds),
 	module_info_preds(ModuleInfo, PredTable),
 	dead_proc_elim__initialize_preds(PredIds, PredTable,
-		Queue0, Queue, Needed0, Needed).
+		Queue0, Queue1, Needed0, Needed1),
+	module_info_get_pragma_exported_procs(ModuleInfo, PragmaExports),
+	dead_proc_elim__initialize_pragma_exports(PragmaExports,
+		Queue1, Queue, Needed1, Needed).
 
 :- pred dead_proc_elim__initialize_preds(list(pred_id), pred_table,
 	proc_queue, proc_queue, needed_map, needed_map).
@@ -110,6 +113,21 @@ dead_proc_elim__initialize_procs(PredId, [ProcId | ProcIds],
 	map__set(Needed0, proc(PredId, ProcId), no, Needed1),
 	dead_proc_elim__initialize_procs(PredId, ProcIds,
 		Queue1, Queue, Needed1, Needed).
+
+	% Add all procs that are exported to C by a pragma(export, ...) dec.
+	% to the needed_map.
+:- pred dead_proc_elim__initialize_pragma_exports(list(pragma_exported_proc),
+	proc_queue, proc_queue, needed_map, needed_map).
+:- mode dead_proc_elim__initialize_pragma_exports(in, in, out, in, out) is det.
+dead_proc_elim__initialize_pragma_exports([], Queue, Queue, Needed, Needed).
+dead_proc_elim__initialize_pragma_exports([P|Ps],
+		Queue0, Queue, Needed0, Needed) :-
+	P = pragma_exported_proc(PredId, ProcId, _CFunction),
+	queue__put(Queue0, proc(PredId, ProcId), Queue1),
+	map__set(Needed0, proc(PredId, ProcId), no, Needed1),
+	dead_proc_elim__initialize_pragma_exports(Ps,
+		Queue1, Queue, Needed1, Needed).
+
 
 %-----------------------------------------------------------------------------%
 
