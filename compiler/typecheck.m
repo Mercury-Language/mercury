@@ -100,9 +100,6 @@
 %
 % Wish list:
 %
-% 	we should handle explicit type qualifications
-% 	(and remove them here) but we don't do so yet
-%
 %	we should handle equivalence types here
 %
 %-----------------------------------------------------------------------------%
