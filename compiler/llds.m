@@ -426,9 +426,9 @@ output_rval(body(Exprn)) -->
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(field(Tag, Rval, Field)) -->
-	io__write_string("field(tag("),
-	io__write_int(Tag),
-	io__write_string("),"),
+	io__write_string("field("),
+	output_tag(Tag),
+	io__write_string(","),
 	output_rval(Rval),
 	io__write_string(","),
 	io__write_int(Field),
@@ -450,9 +450,9 @@ output_rval(var(_)) -->
 output_lval(reg(R)) -->
 	output_reg(R).
 output_lval(field(Tag, Lval, FieldNum)) -->
-	io__write_string("field(tag("),
+	io__write_string("field("),
 	output_tag(Tag),
-	io__write_string("), "),
+	io__write_string(", "),
 	output_lval(Lval),
 	io__write_string(", "),
 	io__write_int(FieldNum),
