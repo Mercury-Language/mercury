@@ -116,13 +116,13 @@
 			internal_map	:: proc_label_layout_info,
 					% Info for each internal label,
 					% needed for basic_stack_layouts.
-			table_io_decl	:: maybe(table_io_decl_info),
+			maybe_table_info :: maybe(proc_table_info),
+			is_being_traced :: bool,
 					% True if the effective trace level
 					% of the procedure is not none.
-			is_being_traced :: bool,
+			need_all_names	:: bool
 					% True iff we need the names of all the
 					% variables.
-			need_all_names	:: bool
 		).
 
 	%
@@ -324,8 +324,8 @@
 	map(prog_var, set(lval))::in, proc_info::in,
 	map(tvar, set(layout_locn))::out) is det.
 
-:- pred continuation_info__generate_table_decl_io_layout(proc_info::in,
-	assoc_list(prog_var, int)::in, table_io_decl_info::out) is det.
+:- pred continuation_info__generate_table_arg_type_info(proc_info::in,
+	assoc_list(prog_var, int)::in, table_arg_infos::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -766,39 +766,39 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 
 %---------------------------------------------------------------------------%
 
-continuation_info__generate_table_decl_io_layout(ProcInfo, NumberedVars,
-		TableIoDeclLayout) :-
+continuation_info__generate_table_arg_type_info(ProcInfo, NumberedVars,
+		TableArgInfos) :-
 	proc_info_vartypes(ProcInfo, VarTypes),
 	set__init(TypeVars0),
-	continuation_info__build_table_io_decl_arg_info(VarTypes,
+	continuation_info__build_table_arg_info(VarTypes,
 		NumberedVars, ArgLayouts, TypeVars0, TypeVars),
 	set__to_sorted_list(TypeVars, TypeVarsList),
-	continuation_info__find_typeinfos_for_tvars_table_io_decl(TypeVarsList,
+	continuation_info__find_typeinfos_for_tvars_table(TypeVarsList,
 		NumberedVars, ProcInfo, TypeInfoDataMap),
-	TableIoDeclLayout = table_io_decl_info(ArgLayouts, TypeInfoDataMap).
+	TableArgInfos = table_arg_infos(ArgLayouts, TypeInfoDataMap).
 
-:- pred continuation_info__build_table_io_decl_arg_info(vartypes::in,
-	assoc_list(prog_var, int)::in, list(table_io_decl_arg_info)::out,
+:- pred continuation_info__build_table_arg_info(vartypes::in,
+	assoc_list(prog_var, int)::in, list(table_arg_info)::out,
 	set(tvar)::in, set(tvar)::out) is det.
 
-continuation_info__build_table_io_decl_arg_info(_, [], [], TypeVars, TypeVars).
-continuation_info__build_table_io_decl_arg_info(VarTypes,
+continuation_info__build_table_arg_info(_, [], [], TypeVars, TypeVars).
+continuation_info__build_table_arg_info(VarTypes,
 		[Var - SlotNum | NumberedVars], [ArgLayout | ArgLayouts],
 		TypeVars0, TypeVars) :-
 	map__lookup(VarTypes, Var, Type),
-	ArgLayout = table_io_decl_arg_info(Var, SlotNum, Type),
+	ArgLayout = table_arg_info(Var, SlotNum, Type),
 	type_util__real_vars(Type, VarTypeVars),
 	set__insert_list(TypeVars0, VarTypeVars, TypeVars1),
-	continuation_info__build_table_io_decl_arg_info(VarTypes,
+	continuation_info__build_table_arg_info(VarTypes,
 		NumberedVars, ArgLayouts, TypeVars1, TypeVars).
 
 %---------------------------------------------------------------------------%
 
-:- pred continuation_info__find_typeinfos_for_tvars_table_io_decl(
+:- pred continuation_info__find_typeinfos_for_tvars_table(
 	list(tvar)::in, assoc_list(prog_var, int)::in, proc_info::in,
-	map(tvar, table_io_decl_locn)::out) is det.
+	map(tvar, table_locn)::out) is det.
 
-continuation_info__find_typeinfos_for_tvars_table_io_decl(TypeVars,
+continuation_info__find_typeinfos_for_tvars_table(TypeVars,
 		NumberedVars, ProcInfo, TypeInfoDataMap) :-
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap),
@@ -823,7 +823,7 @@ continuation_info__find_typeinfos_for_tvars_table_io_decl(TypeVars,
 			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
 			varset__lookup_name(VarSet, TypeInfoVar, VarString),
 			string__format("%s: %s %s",
-				[s("continuation_info__find_typeinfos_for_tvars_table_io_decl"),
+				[s("continuation_info__find_typeinfos_for_tvars_table"),
 				s("can't find slot for type_info var"),
 				s(VarString)], ErrStr),
 			error(ErrStr)

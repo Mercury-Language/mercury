@@ -11,7 +11,9 @@
 
 #include "mercury_type_info.h"
 #include "mercury_ho_call.h"
+#include "mercury_array_macros.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /*---------------------------------------------------------------------------*/
@@ -34,32 +36,32 @@ typedef struct MR_StringHashTableSlot_Struct    MR_StringHashTableSlot;
 typedef struct MR_AllocRecord_Struct            MR_AllocRecord;
 
 struct MR_IntHashTableSlot_Struct {
-        MR_IntHashTableSlot     *next;
-        MR_TableNode            data;
-        MR_Integer              key;
+    MR_IntHashTableSlot     *next;
+    MR_TableNode            data;
+    MR_Integer              key;
 };
 
 struct MR_FloatHashTableSlot_Struct {
-        MR_FloatHashTableSlot   *next;
-        MR_TableNode            data;
-        MR_Float                key;
+    MR_FloatHashTableSlot   *next;
+    MR_TableNode            data;
+    MR_Float                key;
 };
 
 struct MR_StringHashTableSlot_Struct {
-        MR_StringHashTableSlot  *next;
-        MR_TableNode            data;
-        MR_ConstString          key;
+    MR_StringHashTableSlot  *next;
+    MR_TableNode            data;
+    MR_ConstString          key;
 };
 
 typedef union {
-        MR_IntHashTableSlot     *int_slot_ptr;
-        MR_FloatHashTableSlot   *float_slot_ptr;
-        MR_StringHashTableSlot  *string_slot_ptr;
+    MR_IntHashTableSlot     *int_slot_ptr;
+    MR_FloatHashTableSlot   *float_slot_ptr;
+    MR_StringHashTableSlot  *string_slot_ptr;
 } MR_HashTableSlotPtr;
 
 struct MR_AllocRecord_Struct {
-        MR_HashTableSlotPtr     chunk;
-        MR_AllocRecord          *next;
+    MR_HashTableSlotPtr     chunk;
+    MR_AllocRecord          *next;
 };
 
 /*
@@ -87,7 +89,7 @@ struct MR_AllocRecord_Struct {
 ** is changed. (This avoids a float multiplication on each insertion.)
 **
 ** The reason why the hash table array contains pointers to slots instead of
-** the slots themselves is that the latter would equire the addresses of some
+** the slots themselves is that the latter would require the addresses of some
 ** hash table slots (those in the array itself and not in a chain) to change
 ** when the table is resized. As for why this is bad, see the documentation
 ** of the MR_TableNode type in mercury_tabling.h.
@@ -106,13 +108,13 @@ struct MR_AllocRecord_Struct {
 */
 
 struct MR_HashTable_Struct {
-        MR_Integer              size;
-        MR_Integer              threshold;
-        MR_Integer              value_count;
-        MR_HashTableSlotPtr     *hash_table;
-        MR_HashTableSlotPtr     freespace;
-        MR_Integer              freeleft;
-        MR_AllocRecord          *allocrecord;
+    MR_Integer              size;
+    MR_Integer              threshold;
+    MR_Integer              value_count;
+    MR_HashTableSlotPtr     *hash_table;
+    MR_HashTableSlotPtr     freespace;
+    MR_Integer              freeleft;
+    MR_AllocRecord          *allocrecord;
 };
 
 #define CHUNK_SIZE      256
@@ -124,9 +126,24 @@ struct MR_HashTable_Struct {
 */
 
 #define NUM_OF_PRIMES 16
-static MR_Word primes[NUM_OF_PRIMES] =
-        {127, 257, 509, 1021, 2053, 4099, 8191, 16381, 32771, 65537, 131071,
-        262147, 524287, 1048573, 2097143, 4194301};
+static MR_Word primes[NUM_OF_PRIMES] = {
+    127,
+    257,
+    509,
+    1021,
+    2053,
+    4099,
+    8191,
+    16381,
+    32771,
+    65537,
+    131071,
+    262147,
+    524287,
+    1048573,
+    2097143,
+    4194301
+};
 
 /* Initial size of a new table */
 #define HASH_TABLE_START_SIZE primes[0]
@@ -141,18 +158,18 @@ static  MR_Integer      next_prime(MR_Integer);
 static MR_Integer
 next_prime(MR_Integer old_size)
 {
-        int i;
+    int i;
 
-        i = 0;
-        while ( (old_size >= primes[i]) && (i < NUM_OF_PRIMES) ) {
-                i++;
-        }
+    i = 0;
+    while ( (old_size >= primes[i]) && (i < NUM_OF_PRIMES) ) {
+        i++;
+    }
 
-        if (i < NUM_OF_PRIMES) {
-                return primes[i];
-        } else {
-                return 2 * old_size - 1;
-        }
+    if (i < NUM_OF_PRIMES) {
+        return primes[i];
+    } else {
+        return 2 * old_size - 1;
+    }
 }
 
 /*
@@ -263,146 +280,161 @@ static  MR_Unsigned     MR_table_hash_insert_probes = 0;
   #define debug_insert_msg(home_bucket)                         ((void) 0)
 #endif
 
-#define MR_CREATE_HASH_TABLE(table_ptr, table_type, table_field, table_size)  \
-        do {                                                                  \
-                MR_Word         i;                                            \
-                MR_HashTable    *newtable;                                    \
-                                                                              \
-                newtable = MR_TABLE_NEW(MR_HashTable);                        \
-                                                                              \
-                newtable->size = table_size;                                  \
-                newtable->threshold = (MR_Integer) ((float) table_size        \
-                                * MAX_LOAD_FACTOR);                           \
-                newtable->value_count = 0;                                    \
-                newtable->freespace.table_field = NULL;                       \
-                newtable->freeleft = 0;                                       \
-                newtable->allocrecord = NULL;                                 \
-                newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,\
-                                table_size);                                  \
-                                                                              \
-                for (i = 0; i < table_size; i++) {                            \
-                        newtable->hash_table[i].table_field = NULL;           \
-                }                                                             \
-                                                                              \
-                table_ptr = newtable;                                         \
-        } while (0)
+/*
+** The MR_GENERIC_HASH_LOOKUP_OR_ADD macro, and its helper macro
+** MR_CREATE_HASH_TABLE implement the bodies of the following functions:
+**
+** MR_int_hash_lookup_or_add
+** MR_float_hash_lookup_or_add
+** MR_string_hash_lookup_or_add
+** MR_int_hash_lookup
+** MR_float_hash_lookup
+** MR_string_hash_lookup
+*/
 
-#define MR_GENERIC_HASH_LOOKUP_OR_ADD                                         \
-        MR_HashTable    *table;                                               \
-        table_type      *slot;                                                \
-        MR_Integer      abs_hash;                                             \
-        MR_Integer      home;                                                 \
-        DECLARE_PROBE_COUNT                                                   \
-                                                                              \
-        debug_key_msg(key, key_format, key_cast);                             \
-                                                                              \
-        /* Has the table been built? */                                       \
-        if (t->MR_hash_table == NULL) {                                       \
-                MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,            \
-                        table_field, HASH_TABLE_START_SIZE);                  \
-        }                                                                     \
-                                                                              \
-        table = t->MR_hash_table; /* Deref the table pointer */               \
-                                                                              \
-        /* Rehash the table if it has grown too full */                       \
-        if (table->value_count > table->threshold) {                          \
-                MR_HashTableSlotPtr     *new_hash_table;                      \
-                int                     new_size;                             \
-                int                     new_threshold;                        \
-                int                     old_bucket;                           \
-                int                     new_bucket;                           \
-                table_type              *next_slot;                           \
-                                                                              \
-                new_size = next_prime(table->size);                           \
-                new_threshold = (MR_Integer) ((float) new_size                \
-                                * MAX_LOAD_FACTOR);                           \
-                debug_resize_msg(table->size, new_size, new_threshold);       \
-                record_resize_count();                                        \
-                                                                              \
-                new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
-                                new_size);                                    \
-                for (new_bucket = 0; new_bucket < new_size; new_bucket++) {   \
-                        new_hash_table[new_bucket].table_field = NULL;        \
-                }                                                             \
-                                                                              \
-                for (old_bucket = 0; old_bucket < table->size; old_bucket++) {\
-                        slot = table->hash_table[old_bucket].table_field;     \
-                        while (slot != NULL) {                                \
-                                debug_rehash_msg(old_bucket);                 \
-                                                                              \
-                                abs_hash = hash(slot->key);                   \
-                                if (abs_hash < 0) {                           \
-                                        abs_hash = -abs_hash;                 \
-                                }                                             \
-                                                                              \
-                                new_bucket = abs_hash % new_size;             \
-                                next_slot = slot->next;                       \
-                                slot->next = new_hash_table[new_bucket].      \
-                                        table_field;                          \
-                                new_hash_table[new_bucket].table_field = slot;\
-                                                                              \
-                                slot = next_slot;                             \
-                        }                                                     \
-                }                                                             \
-                                                                              \
-                MR_table_free(table->hash_table);                             \
-                table->hash_table = new_hash_table;                           \
-                table->size = new_size;                                       \
-                table->threshold = new_threshold;                             \
-        }                                                                     \
-                                                                              \
-        abs_hash = hash(key);                                                 \
-        if (abs_hash < 0) {                                                   \
-                abs_hash = -abs_hash;                                         \
-        }                                                                     \
-                                                                              \
-        home = abs_hash % table->size;                                        \
-                                                                              \
-        /* Find if the element is present. If not add it */                   \
-        slot = table->hash_table[home].table_field;                           \
-        while (slot != NULL) {                                                \
-                debug_probe_msg(home);                                        \
-                record_probe_count();                                         \
-                                                                              \
-                if (equal_keys(key, slot->key)) {                             \
-                        record_lookup_count();                                \
-                        debug_lookup_msg(home);                               \
-                        return &slot->data;                                   \
-                }                                                             \
-                                                                              \
-                slot = slot->next;                                            \
-        }                                                                     \
-                                                                              \
-        debug_insert_msg(home);                                               \
-        record_insert_count();                                                \
-                                                                              \
-        if (table->freeleft == 0) {                                           \
-                MR_AllocRecord  *record;                                      \
-                                                                              \
-                table->freespace.table_field = MR_TABLE_NEW_ARRAY(            \
-                                table_type, CHUNK_SIZE);                      \
-                table->freeleft = CHUNK_SIZE;                                 \
-                                                                              \
-                record = MR_TABLE_NEW(MR_AllocRecord);                        \
-                record->chunk.table_field = table->freespace.table_field;     \
-                record->next = table->allocrecord;                            \
-                table->allocrecord = record;                                  \
-                                                                              \
-                record_alloc_count();                                         \
-        }                                                                     \
-                                                                              \
-        slot = table->freespace.table_field;                                  \
-        table->freespace.table_field++;                                       \
-        table->freeleft--;                                                    \
-                                                                              \
-        slot->key = key;                                                      \
-        slot->data.MR_integer = 0;                                            \
-        slot->next = table->hash_table[home].table_field;                     \
-        table->hash_table[home].table_field = slot;                           \
-                                                                              \
-        table->value_count++;                                                 \
-                                                                              \
-        return &slot->data;
+#define MR_CREATE_HASH_TABLE(table_ptr, table_type, table_field, table_size)\
+    do {                                                                    \
+        MR_Word         i;                                                  \
+        MR_HashTable    *newtable;                                          \
+                                                                            \
+        newtable = MR_TABLE_NEW(MR_HashTable);                              \
+                                                                            \
+        newtable->size = table_size;                                        \
+        newtable->threshold = (MR_Integer)                                  \
+            ((float) table_size * MAX_LOAD_FACTOR);                         \
+        newtable->value_count = 0;                                          \
+        newtable->freespace.table_field = NULL;                             \
+        newtable->freeleft = 0;                                             \
+        newtable->allocrecord = NULL;                                       \
+        newtable->hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
+                        table_size);                                        \
+                                                                            \
+        for (i = 0; i < table_size; i++) {                                  \
+            newtable->hash_table[i].table_field = NULL;                     \
+        }                                                                   \
+                                                                            \
+        table_ptr = newtable;                                               \
+    } while (0)
+
+#define MR_GENERIC_HASH_LOOKUP_OR_ADD                                       \
+    MR_HashTable    *table;                                                 \
+    table_type      *slot;                                                  \
+    MR_Integer      abs_hash;                                               \
+    MR_Integer      home;                                                   \
+    DECLARE_PROBE_COUNT                                                     \
+                                                                            \
+    debug_key_msg(key, key_format, key_cast);                               \
+                                                                            \
+    /* Has the table been built? */                                         \
+    if (t->MR_hash_table == NULL) {                                         \
+        MR_CREATE_HASH_TABLE(t->MR_hash_table, table_type,                  \
+            table_field, HASH_TABLE_START_SIZE);                            \
+    }                                                                       \
+                                                                            \
+    table = t->MR_hash_table; /* Deref the table pointer */                 \
+                                                                            \
+    /* Rehash the table if it has grown too full */                         \
+    if (table->value_count > table->threshold) {                            \
+        MR_HashTableSlotPtr     *new_hash_table;                            \
+        int                     new_size;                                   \
+        int                     new_threshold;                              \
+        int                     old_bucket;                                 \
+        int                     new_bucket;                                 \
+        table_type              *next_slot;                                 \
+                                                                            \
+        new_size = next_prime(table->size);                                 \
+        new_threshold = (MR_Integer) ((float) new_size  * MAX_LOAD_FACTOR); \
+        debug_resize_msg(table->size, new_size, new_threshold);             \
+        record_resize_count();                                              \
+                                                                            \
+        new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr, new_size); \
+        for (new_bucket = 0; new_bucket < new_size; new_bucket++) {         \
+            new_hash_table[new_bucket].table_field = NULL;                  \
+        }                                                                   \
+                                                                            \
+        for (old_bucket = 0; old_bucket < table->size; old_bucket++) {      \
+            slot = table->hash_table[old_bucket].table_field;               \
+            while (slot != NULL) {                                          \
+                debug_rehash_msg(old_bucket);                               \
+                                                                            \
+                abs_hash = hash(slot->key);                                 \
+                if (abs_hash < 0) {                                         \
+                    abs_hash = -abs_hash;                                   \
+                }                                                           \
+                                                                            \
+                new_bucket = abs_hash % new_size;                           \
+                next_slot = slot->next;                                     \
+                slot->next = new_hash_table[new_bucket].table_field;        \
+                new_hash_table[new_bucket].table_field = slot;              \
+                                                                            \
+                slot = next_slot;                                           \
+            }                                                               \
+        }                                                                   \
+                                                                            \
+        MR_table_free(table->hash_table);                                   \
+        table->hash_table = new_hash_table;                                 \
+        table->size = new_size;                                             \
+        table->threshold = new_threshold;                                   \
+    }                                                                       \
+                                                                            \
+    abs_hash = hash(key);                                                   \
+    if (abs_hash < 0) {                                                     \
+            abs_hash = -abs_hash;                                           \
+    }                                                                       \
+                                                                            \
+    home = abs_hash % table->size;                                          \
+                                                                            \
+    /* Find the element if it is present. */                                \
+    slot = table->hash_table[home].table_field;                             \
+    while (slot != NULL) {                                                  \
+        debug_probe_msg(home);                                              \
+        record_probe_count();                                               \
+                                                                            \
+        if (equal_keys(key, slot->key)) {                                   \
+            record_lookup_count();                                          \
+            debug_lookup_msg(home);                                         \
+            return &slot->data;                                             \
+        }                                                                   \
+                                                                            \
+        slot = slot->next;                                                  \
+    }                                                                       \
+                                                                            \
+    /* Check whether we are allowed to add the element. */                  \
+    if (lookup_only) {                                                      \
+        return NULL;                                                        \
+    }                                                                       \
+                                                                            \
+    /* Add the element. */                                                  \
+    debug_insert_msg(home);                                                 \
+    record_insert_count();                                                  \
+                                                                            \
+    if (table->freeleft == 0) {                                             \
+        MR_AllocRecord  *record;                                            \
+                                                                            \
+        table->freespace.table_field = MR_TABLE_NEW_ARRAY(table_type,       \
+            CHUNK_SIZE);                                                    \
+        table->freeleft = CHUNK_SIZE;                                       \
+                                                                            \
+        record = MR_TABLE_NEW(MR_AllocRecord);                              \
+        record->chunk.table_field = table->freespace.table_field;           \
+        record->next = table->allocrecord;                                  \
+        table->allocrecord = record;                                        \
+                                                                            \
+        record_alloc_count();                                               \
+    }                                                                       \
+                                                                            \
+    slot = table->freespace.table_field;                                    \
+    table->freespace.table_field++;                                         \
+    table->freeleft--;                                                      \
+                                                                            \
+    slot->key = key;                                                        \
+    slot->data.MR_integer = 0;                                              \
+    slot->next = table->hash_table[home].table_field;                       \
+    table->hash_table[home].table_field = slot;                             \
+                                                                            \
+    table->value_count++;                                                   \
+                                                                            \
+    return &slot->data;
 
 MR_TrieNode
 MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
@@ -412,7 +444,8 @@ MR_int_hash_lookup_or_add(MR_TrieNode t, MR_Integer key)
 #define table_type              MR_IntHashTableSlot
 #define table_field             int_slot_ptr
 #define hash(key)               (key)
-#define equal_keys(k1, k2)      (k1 == k2)
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_FALSE
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef  key_format
 #undef  key_cast
@@ -420,6 +453,27 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef  table_field
 #undef  hash
 #undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_int_hash_lookup(MR_TrieNode t, MR_Integer key)
+{
+#define key_format              "%ld"
+#define key_cast                long
+#define table_type              MR_IntHashTableSlot
+#define table_field             int_slot_ptr
+#define hash(key)               (key)
+#define equal_keys(k1, k2)      ((k1) == (k2))
+#define lookup_only             MR_TRUE
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
 }
 
 /*
@@ -437,14 +491,35 @@ MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 #define table_field             float_slot_ptr
 #define hash(key)               (MR_hash_float(key))
 #define equal_keys(k1, k2)      (memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
+#define lookup_only             MR_FALSE
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef  key_format
 #undef  key_cast
-#undef  debug_search_key
 #undef  table_type
 #undef  table_field
 #undef  hash
 #undef  equal_keys
+#undef  lookup_only
+}
+
+MR_TrieNode
+MR_float_hash_lookup(MR_TrieNode t, MR_Float key)
+{
+#define key_format              "%f"
+#define key_cast                double
+#define table_type              MR_FloatHashTableSlot
+#define table_field             float_slot_ptr
+#define hash(key)               (MR_hash_float(key))
+#define equal_keys(k1, k2)      (memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
+#define lookup_only             MR_TRUE
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
 }
 
 MR_TrieNode
@@ -455,16 +530,161 @@ MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 #define table_type              MR_StringHashTableSlot
 #define table_field             string_slot_ptr
 #define hash(key)               (MR_hash_string(key))
-#define equal_keys(k1, k2)      (MR_strtest(k1, k2) == 0)
+#define equal_keys(k1, k2)      (MR_strtest((k1), (k2)) == 0)
+#define lookup_only             MR_FALSE
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef  key_format
 #undef  key_cast
-#undef  debug_search_key
 #undef  table_type
 #undef  table_field
 #undef  hash
 #undef  equal_keys
+#undef  lookup_only
 }
+
+MR_TrieNode
+MR_string_hash_lookup(MR_TrieNode t, MR_ConstString key)
+{
+#define key_format              "%s"
+#define key_cast                const char *
+#define table_type              MR_StringHashTableSlot
+#define table_field             string_slot_ptr
+#define hash(key)               (MR_hash_string(key))
+#define equal_keys(k1, k2)      (MR_strtest((k1), (k2)) == 0)
+#define lookup_only             MR_TRUE
+MR_GENERIC_HASH_LOOKUP_OR_ADD
+#undef  key_format
+#undef  key_cast
+#undef  table_type
+#undef  table_field
+#undef  hash
+#undef  equal_keys
+#undef  lookup_only
+}
+
+static int
+MR_cmp_ints(const void *p1, const void *p2)
+{
+    MR_Integer  i1 = * (MR_Integer *) p1;
+    MR_Integer  i2 = * (MR_Integer *) p2;
+
+    if (i1 < i2) {
+        return -1;
+    } else if (i1 > i2) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static int
+MR_cmp_floats(const void *p1, const void *p2)
+{
+    MR_Float  f1 = * (MR_Float *) p1;
+    MR_Float  f2 = * (MR_Float *) p2;
+
+    if (f1 < f2) {
+        return -1;
+    } else if (f1 > f2) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static int
+MR_cmp_strings(const void *p1, const void *p2)
+{
+    MR_ConstString  s1 = * (MR_ConstString *) p1;
+    MR_ConstString  s2 = * (MR_ConstString *) p2;
+
+    return strcmp(s1, s2);
+}
+
+/*
+** The MR_HASH_CONTENTS_FUNC_BODY macro implements the bodies of the
+** following functions:
+**
+** MR_get_int_hash_table_contents
+** MR_get_float_hash_table_contents
+** MR_get_string_hash_table_contents
+*/
+
+#define MR_INIT_HASH_CONTENTS_ARRAY_SIZE    100
+
+#define MR_HASH_CONTENTS_FUNC_BODY                                      \
+        MR_bool                                                         \
+        func_name(MR_TrieNode t, type_name **values_ptr,                \
+            int *value_next_ptr)                                        \
+        {                                                               \
+            type_name       *values;                                    \
+            int             value_next;                                 \
+            int             value_max;                                  \
+            MR_HashTable    *table;                                     \
+            int             bucket;                                     \
+            table_type      *slot;                                      \
+                                                                        \
+            if (t->MR_hash_table == NULL) {                             \
+                return MR_FALSE;                                        \
+            }                                                           \
+                                                                        \
+            table = t->MR_hash_table;                                   \
+            values = NULL;                                              \
+            value_next = 0;                                             \
+            value_max = 0;                                              \
+                                                                        \
+            for (bucket = 0; bucket < table->size; bucket++) {          \
+                slot = table->hash_table[bucket].table_field;           \
+                while (slot != NULL) {                                  \
+                    MR_ensure_room_for_next(value, type_name,           \
+                        MR_INIT_HASH_CONTENTS_ARRAY_SIZE);              \
+                    values[value_next] = slot->key;                     \
+                    value_next++;                                       \
+                    slot = slot->next;                                  \
+                }                                                       \
+            }                                                           \
+                                                                        \
+            qsort(values, value_next, sizeof(type_name), comp_func);    \
+            *values_ptr = values;                                       \
+            *value_next_ptr = value_next;                               \
+            return MR_TRUE;                                             \
+        }
+
+#define func_name    MR_get_int_hash_table_contents
+#define type_name    MR_Integer
+#define table_type   MR_IntHashTableSlot
+#define table_field  int_slot_ptr
+#define comp_func    MR_cmp_ints
+MR_HASH_CONTENTS_FUNC_BODY
+#undef func_name
+#undef type_name
+#undef table_type
+#undef table_field
+#undef comp_func
+
+#define func_name    MR_get_float_hash_table_contents
+#define type_name    MR_Float
+#define table_type   MR_FloatHashTableSlot
+#define table_field  float_slot_ptr
+#define comp_func    MR_cmp_floats
+MR_HASH_CONTENTS_FUNC_BODY
+#undef func_name
+#undef type_name
+#undef table_type
+#undef table_field
+#undef comp_func
+
+#define func_name    MR_get_string_hash_table_contents
+#define type_name    MR_ConstString
+#define table_type   MR_StringHashTableSlot
+#define table_field  string_slot_ptr
+#define comp_func    MR_cmp_strings
+MR_HASH_CONTENTS_FUNC_BODY
+#undef func_name
+#undef type_name
+#undef table_type
+#undef table_field
+#undef comp_func
 
 /*---------------------------------------------------------------------------*/
 
@@ -477,19 +697,18 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 MR_TrieNode
 MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 {
-        if (t->MR_fix_table == NULL) {
-                t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
-                memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
-        }
+    if (t->MR_fix_table == NULL) {
+        t->MR_fix_table = MR_TABLE_NEW_ARRAY(MR_TableNode, range);
+        memset(t->MR_fix_table, 0, sizeof(MR_TableNode) * range);
+    }
 
 #ifdef  MR_TABLE_DEBUG
-        if (key >= range) {
-                MR_fatal_error(
-                        "MR_int_fix_index_lookup_or_add: key out of range");
-        }
+    if (key >= range) {
+        MR_fatal_error("MR_int_fix_index_lookup_or_add: key out of range");
+    }
 #endif
 
-        return &t->MR_fix_table[key];
+    return &t->MR_fix_table[key];
 }
 
 /*---------------------------------------------------------------------------*/
@@ -505,52 +724,49 @@ MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 #define MR_START_TABLE_INIT_SIZE        1024
 
 MR_TrieNode
-MR_int_start_index_lookup_or_add(MR_TrieNode table,
-        MR_Integer start, MR_Integer key)
+MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start,
+    MR_Integer key)
 {
-        MR_Integer      diff, size;
+    MR_Integer      diff, size;
 
-        diff = key - start;
+    diff = key - start;
 
 #ifdef  MR_TABLE_DEBUG
-        if (key < start) {
-                MR_fatal_error(
-                        "MR_int_start_index_lookup_or_add: small too key");
-        }
+    if (key < start) {
+        MR_fatal_error("MR_int_start_index_lookup_or_add: small too key");
+    }
 #endif
 
-        if (table->MR_start_table == NULL) {
-                size = MR_max(MR_START_TABLE_INIT_SIZE, diff + 1);
-                table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode,
-                                        size + 1);
-                memset(table->MR_start_table + 1, 0,
-                                        sizeof(MR_TableNode) * size);
-                table->MR_start_table[0].MR_integer = size;
-        } else {
-                size = table->MR_start_table[0].MR_integer;
+    if (table->MR_start_table == NULL) {
+        size = MR_max(MR_START_TABLE_INIT_SIZE, diff + 1);
+        table->MR_start_table = MR_TABLE_NEW_ARRAY(MR_TableNode, size + 1);
+        memset(table->MR_start_table + 1, 0, sizeof(MR_TableNode) * size);
+        table->MR_start_table[0].MR_integer = size;
+    } else {
+        size = table->MR_start_table[0].MR_integer;
+    }
+
+    if (diff >= size) {
+        MR_TableNode    *new_array;
+        MR_Integer      new_size, i;
+
+        new_size = MR_max(2 * size, diff + 1);
+        new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
+
+        new_array[0].MR_integer = new_size;
+
+        for (i = 0; i < size; i++) {
+            new_array[i + 1] = table->MR_start_table[i + 1];
         }
 
-        if (diff >= size) {
-                MR_TableNode    *new_array;
-                MR_Integer      new_size, i;
-
-                new_size = MR_max(2 * size, diff + 1);
-                new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
-
-                new_array[0].MR_integer = new_size;
-
-                for (i = 0; i < size; i++) {
-                        new_array[i + 1] = table->MR_start_table[i + 1];
-                }
-
-                for (; i < new_size; i++) {
-                        new_array[i + 1].MR_integer = 0;
-                }
-
-                table->MR_start_table = new_array;
+        for (; i < new_size; i++) {
+            new_array[i + 1].MR_integer = 0;
         }
 
-        return &table->MR_start_table[diff + 1];
+        table->MR_start_table = new_array;
+    }
+
+    return &table->MR_start_table[diff + 1];
 }
 
 /*---------------------------------------------------------------------------*/
@@ -558,53 +774,50 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table,
 MR_TrieNode
 MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
 {
-        MR_TypeCtorInfo         type_ctor_info;
-        MR_TrieNode             node;
-        MR_TypeInfo             *arg_vector;
-        int                     arity;
-        int                     i;
+    MR_TypeCtorInfo     type_ctor_info;
+    MR_TrieNode         node;
+    MR_TypeInfo         *arg_vector;
+    int                 arity;
+    int                 i;
 
-        /* XXX memory allocation here should be optimized */
-        type_info = MR_collapse_equivalences(type_info);
+    /* XXX memory allocation here should be optimized */
+    type_info = MR_collapse_equivalences(type_info);
 
-        type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
-        node = MR_int_hash_lookup_or_add(table, (MR_Integer) type_ctor_info);
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    node = MR_int_hash_lookup_or_add(table, (MR_Integer) type_ctor_info);
 
-        /*
-        ** All calls to MR_type_info_lookup_or_add that have the same value
-        ** of node at this point agree on the type_ctor_info of the type
-        ** being tabled. They must therefore also agree on its arity.
-        ** This is why looping over all the arguments works.
-        **
-        ** If type_info has a zero-arity type_ctor, then it may be stored
-        ** using a one-cell type_info, and type_info_args does not make
-        ** sense. This is OK, because in that case it will never be used.
-        */
+    /*
+    ** All calls to MR_type_info_lookup_or_add that have the same value
+    ** of node at this point agree on the type_ctor_info of the type
+    ** being tabled. They must therefore also agree on its arity.
+    ** This is why looping over all the arguments works.
+    **
+    ** If type_info has a zero-arity type_ctor, then it may be stored
+    ** using a one-cell type_info, and type_info_args does not make
+    ** sense. This is OK, because in that case it will never be used.
+    */
 
-        if (MR_type_ctor_rep_is_variable_arity(
-                MR_type_ctor_rep(type_ctor_info)))
-        {
-                arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
-                arg_vector = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(
-                        type_info);
-                node = MR_int_hash_lookup_or_add(node, arity);
-        } else {
-                arity = type_ctor_info->MR_type_ctor_arity;
-                arg_vector = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
-        }
+    if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(type_ctor_info))) {
+        arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
+        arg_vector = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
+        node = MR_int_hash_lookup_or_add(node, arity);
+    } else {
+        arity = type_ctor_info->MR_type_ctor_arity;
+        arg_vector = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
+    }
 
-        for (i = 1; i <= arity; i++) {
-                node = MR_type_info_lookup_or_add(node, arg_vector[i]);
-        }
+    for (i = 1; i <= arity; i++) {
+        node = MR_type_info_lookup_or_add(node, arg_vector[i]);
+    }
 
-        return node;
+    return node;
 }
 
 MR_TrieNode
 MR_type_class_info_lookup_or_add(MR_TrieNode table, MR_Word *type_class_info)
 {
-        MR_fatal_error("tabling of typeclass_infos not yet implemented");
-        return NULL;
+    MR_fatal_error("tabling of typeclass_infos not yet implemented");
+    return NULL;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -637,15 +850,16 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
         case MR_TYPECTOR_REP_ENUM: 
         case MR_TYPECTOR_REP_ENUM_USEREQ: 
             MR_DEBUG_TABLE_ENUM(table,
-                    MR_type_ctor_num_functors(type_ctor_info), data);
+                MR_type_ctor_num_functors(type_ctor_info), data);
             break;
 
         case MR_TYPECTOR_REP_RESERVED_ADDR: 
         case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ: 
             {
-                int i;
-                MR_ReservedAddrTypeLayout ra_layout =
-                        MR_type_ctor_layout(type_ctor_info).
+                int                         i;
+                MR_ReservedAddrTypeLayout   ra_layout;
+                
+                ra_layout = MR_type_ctor_layout(type_ctor_info).
                             MR_layout_reserved_addr;
 
                 /*
@@ -657,7 +871,8 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 {
                     MR_DEBUG_TABLE_ENUM(table,
                         MR_type_ctor_num_functors(type_ctor_info),
-                        ra_layout->MR_ra_constants[data]->MR_ra_functor_ordinal);
+                        ra_layout->MR_ra_constants[data]->
+                            MR_ra_functor_ordinal);
                     break;
                 }
 
@@ -666,7 +881,9 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 ** the symbolic reserved addresses.
                 */
                 for (i = 0; i < ra_layout->MR_ra_num_res_symbolic_addrs; i++) {
-                    if (data == (MR_Word) ra_layout->MR_ra_res_symbolic_addrs[i]) {
+                    if (data == (MR_Word)
+                        ra_layout->MR_ra_res_symbolic_addrs[i])
+                    {
                         int offset = i + ra_layout->MR_ra_num_res_numeric_addrs;
                         MR_DEBUG_TABLE_ENUM(table,
                             MR_type_ctor_num_functors(type_ctor_info),
@@ -713,10 +930,12 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 ptag_layout = &du_type_layout[ptag];
 
                 switch (ptag_layout->MR_sectag_locn) {
+
                 case MR_SECTAG_NONE:
                     functor_desc = ptag_layout->MR_sectag_alternatives[0];
                     arg_vector = (MR_Word *) MR_body(data, ptag);
                     break;
+
                 case MR_SECTAG_LOCAL:
                     sectag = MR_unmkbody(data);
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
@@ -724,20 +943,24 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                     assert(functor_desc->MR_du_functor_exist_info == NULL);
                     arg_vector = NULL;
                     break;
+
                 case MR_SECTAG_REMOTE:
                     sectag = MR_field(ptag, data, 0);
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
                     break;
+
                 case MR_SECTAG_VARIABLE:
                     MR_fatal_error("MR_table_type(): unexpected variable");
+
                 default:
                     MR_fatal_error("MR_table_type(): unknown sectag_locn");
+
                 }
 
                 MR_DEBUG_TABLE_ENUM(table,
-                        MR_type_ctor_num_functors(type_ctor_info),
-                        functor_desc->MR_du_functor_ordinal);
+                    MR_type_ctor_num_functors(type_ctor_info),
+                    functor_desc->MR_du_functor_ordinal);
 
                 exist_info = functor_desc->MR_du_functor_exist_info;
                 if (exist_info != NULL) {
@@ -884,7 +1107,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 data_value = (MR_Word *) data;
                 arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
                 arg_type_info_vector =
-                        MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
+                    MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                 for (i = 0; i < arity; i++) {
                     /* type_infos are counted starting at one */
                     MR_DEBUG_TABLE_ANY(table, arg_type_info_vector[i + 1],
@@ -996,37 +1219,34 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
 void
 MR_table_report_statistics(FILE *fp)
 {
-        fprintf(fp, "hash table search statistics:\n");
+    fprintf(fp, "hash table search statistics:\n");
 
 #ifdef  MR_TABLE_STATISTICS
-        if (MR_table_hash_lookups == 0) {
-                fprintf(fp, "no successful searches\n");
-        } else {
-                fprintf(fp, "successful   %6d, "
-                                "with an average of %6.3f comparisons\n",
-                        MR_table_hash_lookups,
-                        (float) MR_table_hash_lookup_probes /
-                                (float) MR_table_hash_lookups);
-        }
+    if (MR_table_hash_lookups == 0) {
+        fprintf(fp, "no successful searches\n");
+    } else {
+        fprintf(fp, "successful   %6d, with an average of %6.3f comparisons\n",
+            MR_table_hash_lookups,
+            (float) MR_table_hash_lookup_probes /
+                (float) MR_table_hash_lookups);
+    }
 
-        if (MR_table_hash_inserts == 0) {
-                fprintf(fp, "no unsuccessful searches\n");
-        } else {
-                fprintf(fp, "unsuccessful %6d, "
-                                "with an average of %6.3f comparisons\n",
-                        MR_table_hash_inserts,
-                        (float) MR_table_hash_insert_probes /
-                                (float) MR_table_hash_inserts);
-        }
+    if (MR_table_hash_inserts == 0) {
+        fprintf(fp, "no unsuccessful searches\n");
+    } else {
+        fprintf(fp, "unsuccessful %6d, with an average of %6.3f comparisons\n",
+            MR_table_hash_inserts,
+            (float) MR_table_hash_insert_probes /
+                (float) MR_table_hash_inserts);
+    }
 
-        fprintf(fp, "rehash operations: %d, per search: %6.3f%%\n",
-                        MR_table_hash_resizes,
-                        (float) (100 * MR_table_hash_resizes) /
-                        (float) (MR_table_hash_lookups
-                                 + MR_table_hash_inserts));
-        fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
+    fprintf(fp, "rehash operations: %d, per search: %6.3f%%\n",
+        MR_table_hash_resizes,
+        (float) (100 * MR_table_hash_resizes) /
+            (float) (MR_table_hash_lookups + MR_table_hash_inserts));
+    fprintf(fp, "chunk allocations: %d\n", MR_table_hash_allocs);
 #else
-        fprintf(fp, "not enabled\n");
+    fprintf(fp, "not enabled\n");
 #endif
 }
 

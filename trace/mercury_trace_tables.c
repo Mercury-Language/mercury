@@ -222,7 +222,7 @@ MR_dump_module_tables(FILE *fp)
 		fprintf(fp, "module %s\n", MR_module_infos[i]->MR_ml_name);
 		fprintf(fp, "====================\n");
 		for (j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
-			MR_print_proc_id_for_debugger(fp,
+			MR_print_proc_id_and_nl(fp,
 				MR_module_infos[i]->MR_ml_procs[j]);
 		}
 	}
@@ -252,8 +252,7 @@ MR_dump_module_procs(FILE *fp, const char *name)
 	} else {
 		fprintf(fp, "List of procedures in module `%s'\n\n", name);
 		for (j = 0; j < module->MR_ml_proc_count; j++) {
-			MR_print_proc_id_for_debugger(fp,
-				module->MR_ml_procs[j]);
+			MR_print_proc_id_and_nl(fp, module->MR_ml_procs[j]);
 		}
 	}
 }
@@ -858,7 +857,7 @@ MR_free_proc_completer_data(MR_Completer_Data completer_data)
 }
 
 void
-MR_print_proc_id_for_debugger(FILE *fp, const MR_Proc_Layout *entry_layout)
+MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
 {
 	MR_print_proc_id(fp, entry_layout);
 	fprintf(fp, "\n");

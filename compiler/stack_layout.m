@@ -95,7 +95,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
 		LayoutInfo2, LayoutInfo),
 	ModuleInfo = LayoutInfo ^ module_info,
-	TableIoDecls = LayoutInfo ^ table_io_decls,
+	TableIoDecls = LayoutInfo ^ table_infos,
 	ProcLayouts = LayoutInfo ^ proc_layouts,
 	InternalLayouts = LayoutInfo ^ internal_layouts,
 	LayoutLabels = LayoutInfo ^ label_set,
@@ -398,14 +398,14 @@ stack_layout__context_is_valid(Context) :-
 	proc_label::in, determinism::in, int::in, maybe(int)::in,
 	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
 	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
-	vartypes::in, map(int, string)::in, maybe(table_io_decl_info)::in,
+	vartypes::in, map(int, string)::in, maybe(proc_table_info)::in,
 	proc_layout_kind::in, bool::in, stack_layout_info::in,
 	stack_layout_info::out) is det.
 
 stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		Detism, StackSlots, MaybeSuccipLoc, EvalMethod, MaybeCallLabel,
 		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		VarSet, VarTypes, UsedVarNames, MaybeTableIoDeclInfo, Kind,
+		VarSet, VarTypes, UsedVarNames, MaybeTableInfo, Kind,
 		NeedsAllNames) -->
 	{
 		MaybeSuccipLoc = yes(Location)
@@ -466,7 +466,7 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod,
 			MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
 			InstMap, TraceSlotInfo, VarSet, VarTypes, UsedVarNames,
-			MaybeTableIoDeclInfo, NeedsAllNames, ExecTrace),
+			MaybeTableInfo, NeedsAllNames, ExecTrace),
 		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) }
 	),
 
@@ -476,24 +476,24 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 	stack_layout__add_proc_layout_data(Data, LayoutName, EntryLabel),
 
 	(
-		{ MaybeTableIoDeclInfo = no }
+		{ MaybeTableInfo = no }
 	;
-		{ MaybeTableIoDeclInfo = yes(TableIoDeclInfo) },
-		stack_layout__make_table_io_decl_data(RttiProcLabel, Kind,
-			TableIoDeclInfo, TableIoDeclData),
-		stack_layout__add_table_io_decl_data(TableIoDeclData)
+		{ MaybeTableInfo = yes(TableInfo) },
+		stack_layout__make_table_data(RttiProcLabel, Kind,
+			TableInfo, TableData),
+		stack_layout__add_table_data(TableData)
 	).
 
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,
 	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
 	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
-	vartypes::in, map(int, string)::in, maybe(table_io_decl_info)::in,
+	vartypes::in, map(int, string)::in, maybe(proc_table_info)::in,
 	bool::in, proc_layout_exec_trace::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		VarSet, VarTypes, UsedVarNameMap, MaybeTableIoDecl,
+		VarSet, VarTypes, UsedVarNameMap, MaybeTableInfo,
 		NeedsAllNames, ExecTrace) -->
 	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
 		NeedsAllNames, MaxVarNum, VarNameVector),
@@ -525,14 +525,20 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		% The label associated with an event must have variable info.
 	{ CallLabelLayout = label_layout(CallLabel, label_has_var_info) },
 	{
-		MaybeTableIoDecl = no,
-		MaybeTableIoDeclName = no
+		MaybeTableInfo = no,
+		MaybeTableName = no
 	;
-		MaybeTableIoDecl = yes(_),
-		MaybeTableIoDeclName = yes(table_io_decl(RttiProcLabel))
+		MaybeTableInfo = yes(TableInfo),
+		(
+			TableInfo = table_io_decl_info(_),
+			MaybeTableName = yes(table_io_decl(RttiProcLabel))
+		;
+			TableInfo = table_gen_info(_, _, _, _),
+			MaybeTableName = yes(table_gen_info(RttiProcLabel))
+		)
 	},
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcRepRval,
-		MaybeTableIoDeclName, HeadVarNumVector, VarNameVector,
+		MaybeTableName, HeadVarNumVector, VarNameVector,
 		MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
 		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
 		MaybeCallTableSlot) }.
@@ -1091,17 +1097,42 @@ stack_layout__add_one(_MaybeRval - LldsType, 1 - yes(LldsType)).
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__make_table_io_decl_data(rtti_proc_label::in,
-	proc_layout_kind::in, table_io_decl_info::in, layout_data::out,
+:- pred stack_layout__make_table_data(rtti_proc_label::in,
+	proc_layout_kind::in, proc_table_info::in, layout_data::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__make_table_io_decl_data(RttiProcLabel, Kind, TableIoDeclInfo,
-		TableIoDeclData) -->
-	{ TableIoDeclInfo = table_io_decl_info(SavedArgs, TVarSlotMap) },
-	{ list__length(SavedArgs, NumPTIs) },
+stack_layout__make_table_data(RttiProcLabel, Kind, TableInfo,
+		TableData) -->
+	(
+		{ TableInfo = table_io_decl_info(TableArgInfo) },
+		stack_layout__convert_table_arg_info(TableArgInfo,
+			NumPTIs, PTIVectorRval, TVarVectorRval),
+		{ TableData = table_io_decl_data(RttiProcLabel, Kind,
+			NumPTIs, PTIVectorRval, TVarVectorRval) }
+	;
+		{ TableInfo = table_gen_info(NumInputs, NumOutputs, Steps,
+			TableArgInfo) },
+		stack_layout__convert_table_arg_info(TableArgInfo,
+			NumPTIs, PTIVectorRval, TVarVectorRval),
+		{ NumArgs = NumInputs + NumOutputs },
+		{ require(unify(NumArgs, NumPTIs),
+			"stack_layout__make_table_data: args mismatch") },
+		{ TableData = table_gen_data(RttiProcLabel,
+			NumInputs, NumOutputs, Steps,
+			PTIVectorRval, TVarVectorRval) }
+	).
+
+:- pred stack_layout__convert_table_arg_info(table_arg_infos::in,
+	int::out, rval::out, rval::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__convert_table_arg_info(TableArgInfos, NumPTIs,
+		PTIVectorRval, TVarVectorRval) -->
+	{ TableArgInfos = table_arg_infos(Args, TVarSlotMap) },
+	{ list__length(Args, NumPTIs) },
 	stack_layout__get_cell_counter(C0),
-	{ list__map_foldl(stack_layout__construct_table_io_decl_arg_pti_rval,
-		SavedArgs, MaybePTIRvalTypes, C0, C1) },
+	{ list__map_foldl(stack_layout__construct_table_arg_pti_rval,
+		Args, MaybePTIRvalTypes, C0, C1) },
 	{ list__map(stack_layout__add_one, MaybePTIRvalTypes, PTITypes) },
 	{ assoc_list__keys(MaybePTIRvalTypes, MaybePTIRvals) },
 	{ PTIVectorTypes = initial(PTITypes, none) },
@@ -1109,17 +1140,15 @@ stack_layout__make_table_io_decl_data(RttiProcLabel, Kind, TableIoDeclInfo,
 	{ Reuse = no },
 	{ PTIVectorRval = create(0, MaybePTIRvals, PTIVectorTypes,
 		must_be_static, CNum,
-		"stack_layout_table_io_decl_ptis", Reuse) },
+		"stack_layout_table_ptis", Reuse) },
 	{ map__map_values(stack_layout__convert_slot_to_locn_map,
 		TVarSlotMap, TVarLocnMap) },
 	{ stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
 		C2, C) },
-	stack_layout__set_cell_counter(C),
-	{ TableIoDeclData = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
-		PTIVectorRval, TVarVectorRval) }.
+	stack_layout__set_cell_counter(C).
 
-:- pred stack_layout__convert_slot_to_locn_map(tvar::in,
-	table_io_decl_locn::in, set(layout_locn)::out) is det.
+:- pred stack_layout__convert_slot_to_locn_map(tvar::in, table_locn::in,
+	set(layout_locn)::out) is det.
 
 stack_layout__convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
 	(
@@ -1131,13 +1160,13 @@ stack_layout__convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
 	),
 	LvalLocns = set__make_singleton_set(LvalLocn).
 
-:- pred stack_layout__construct_table_io_decl_arg_pti_rval(
-	table_io_decl_arg_info::in, pair(maybe(rval), llds_type)::out,
+:- pred stack_layout__construct_table_arg_pti_rval(
+	table_arg_info::in, pair(maybe(rval), llds_type)::out,
 	counter::in, counter::out) is det.
 
-stack_layout__construct_table_io_decl_arg_pti_rval(ClosureArg,
+stack_layout__construct_table_arg_pti_rval(ClosureArg,
 		yes(ArgRval) - ArgRvalType, C0, C) :-
-	ClosureArg = table_io_decl_arg_info(_, _, Type),
+	ClosureArg = table_arg_info(_, _, Type),
 	ExistQTvars = [],
 	NumUnivQTvars = -1,
 	ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
@@ -1476,7 +1505,7 @@ stack_layout__represent_determinism(Detism, Code) :-
 		trace_stack_layout	:: bool, % generate tracing info?
 		procid_stack_layout	:: bool, % generate proc id info?
 		static_code_addresses	:: bool, % have static code addresses?
-		table_io_decls		:: list(comp_gen_c_data),
+		table_infos		:: list(comp_gen_c_data),
 		proc_layouts		:: list(comp_gen_c_data),
 		internal_layouts	:: list(comp_gen_c_data),
 		label_set		:: map(label, data_addr),
@@ -1514,7 +1543,7 @@ stack_layout__represent_determinism(Detism, Code) :-
 :- pred stack_layout__get_static_code_addresses(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-:- pred stack_layout__get_table_io_decl_data(list(comp_gen_c_data)::out,
+:- pred stack_layout__get_table_infos(list(comp_gen_c_data)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 :- pred stack_layout__get_proc_layout_data(list(comp_gen_c_data)::out,
@@ -1540,7 +1569,7 @@ stack_layout__get_agc_stack_layout(LI ^ agc_stack_layout, LI, LI).
 stack_layout__get_trace_stack_layout(LI ^ trace_stack_layout, LI, LI).
 stack_layout__get_procid_stack_layout(LI ^ procid_stack_layout, LI, LI).
 stack_layout__get_static_code_addresses(LI ^ static_code_addresses, LI, LI).
-stack_layout__get_table_io_decl_data(LI ^ table_io_decls, LI, LI).
+stack_layout__get_table_infos(LI ^ table_infos, LI, LI).
 stack_layout__get_proc_layout_data(LI ^ proc_layouts, LI, LI).
 stack_layout__get_internal_layout_data(LI ^ internal_layouts, LI, LI).
 stack_layout__get_label_set(LI ^ label_set, LI, LI).
@@ -1562,13 +1591,13 @@ stack_layout__get_cell_counter(CellCounter) -->
 	stack_layout__get_module_info(ModuleInfo),
 	{ module_info_get_cell_counter(ModuleInfo, CellCounter) }.
 
-:- pred stack_layout__add_table_io_decl_data(layout_data::in,
+:- pred stack_layout__add_table_data(layout_data::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__add_table_io_decl_data(TableIoDeclData, LI0, LI) :-
-	TableIoDecls0 = LI0 ^ table_io_decls,
+stack_layout__add_table_data(TableIoDeclData, LI0, LI) :-
+	TableIoDecls0 = LI0 ^ table_infos,
 	TableIoDecls = [layout_data(TableIoDeclData) | TableIoDecls0],
-	LI = LI0 ^ table_io_decls := TableIoDecls.
+	LI = LI0 ^ table_infos := TableIoDecls.
 
 :- pred stack_layout__add_proc_layout_data(comp_gen_c_data::in,
 	layout_name::in, label::in,

@@ -3232,6 +3232,19 @@ This makes it possible to debug the declarative debugger itself.
 @c If a filename is provided, the front end of the debugger is not called
 @c at all.  Instead a representation of the debugging tree is dumped to
 @c the file, which may help diagnose problems in the debugger itself.
+@sp 1
+@item table @var{proc} [@var{num1} ...]
+@kindex table (mdb command)
+Tells the debugger to print the call table of the named procedure,
+together with the saved answer (if any) for each call.
+Reports an error if the named procedure isn't tabled.
+@sp 1
+For now, this command is supported only for procedures
+whose arguments are all either integers, floats or strings.
+@sp 1
+If the user specifies one or more integers on the command line,
+the output is restricted to the entries in the call table in which
+the @var{n}th argument is equal to the @var{n}th number on the command line.
 @end table
 
 @node Declarative debugging

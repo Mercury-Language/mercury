@@ -111,6 +111,10 @@ output_layout_data_defn(table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
 		PTIVectorRval, TypeParamsRval), DeclSet0, DeclSet) -->
 	output_table_io_decl(RttiProcLabel, Kind, NumPTIs,
 		PTIVectorRval, TypeParamsRval, DeclSet0, DeclSet).
+output_layout_data_defn(table_gen_data(RttiProcLabel, NumInputs, NumOutputs,
+		Steps, PTIVectorRval, TypeParamsRval), DeclSet0, DeclSet) -->
+	output_table_gen(RttiProcLabel, NumInputs, NumOutputs, Steps,
+		PTIVectorRval, TypeParamsRval, DeclSet0, DeclSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -153,6 +157,9 @@ extract_layout_name(proc_static_data(RttiProcLabel, _, _, _, _), LayoutName) :-
 extract_layout_name(table_io_decl_data(RttiProcLabel, _, _, _, _),
 		LayoutName) :-
 	LayoutName = table_io_decl(RttiProcLabel).
+extract_layout_name(table_gen_data(RttiProcLabel, _, _, _, _, _),
+		LayoutName) :-
+	LayoutName = table_gen_info(RttiProcLabel).
 
 :- pred output_layout_decls(list(layout_name)::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
@@ -267,6 +274,21 @@ output_layout_name(table_io_decl(RttiProcLabel)) -->
 	io__write_string("_table_io_decl__"),
 	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
 	output_proc_label(ProcLabel).
+output_layout_name(table_gen_info(RttiProcLabel)) -->
+	io__write_string(mercury_data_prefix),
+	io__write_string("_table_gen__"),
+	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	output_proc_label(ProcLabel).
+output_layout_name(table_gen_enum_params(RttiProcLabel)) -->
+	io__write_string(mercury_data_prefix),
+	io__write_string("_table_enum_params__"),
+	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	output_proc_label(ProcLabel).
+output_layout_name(table_gen_steps(RttiProcLabel)) -->
+	io__write_string(mercury_data_prefix),
+	io__write_string("_table_steps__"),
+	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
+	output_proc_label(ProcLabel).
 
 output_layout_name_storage_type_name(label_layout(Label, LabelVars),
 		_BeingDefined) -->
@@ -364,6 +386,20 @@ output_layout_name_storage_type_name(table_io_decl(RttiProcLabel),
 		_BeingDefined) -->
 	io__write_string("static const MR_Table_Io_Decl "),
 	output_layout_name(table_io_decl(RttiProcLabel)).
+output_layout_name_storage_type_name(table_gen_info(RttiProcLabel),
+		_BeingDefined) -->
+	io__write_string("static const MR_Table_Gen "),
+	output_layout_name(table_gen_info(RttiProcLabel)).
+output_layout_name_storage_type_name(table_gen_enum_params(RttiProcLabel),
+		_BeingDefined) -->
+	io__write_string("static const MR_Integer "),
+	output_layout_name(table_gen_enum_params(RttiProcLabel)),
+	io__write_string("[]").
+output_layout_name_storage_type_name(table_gen_steps(RttiProcLabel),
+		_BeingDefined) -->
+	io__write_string("static const MR_Table_Trie_Step "),
+	output_layout_name(table_gen_steps(RttiProcLabel)),
+	io__write_string("[]").
 
 layout_name_would_include_code_addr(label_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = yes.
@@ -380,6 +416,9 @@ layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_call_sites(_)) = no.
 layout_name_would_include_code_addr(table_io_decl(_)) = no.
+layout_name_would_include_code_addr(table_gen_info(_)) = no.
+layout_name_would_include_code_addr(table_gen_enum_params(_)) = no.
+layout_name_would_include_code_addr(table_gen_steps(_)) = no.
 
 :- func label_vars_to_type(label_vars) = string.
 
@@ -424,7 +463,7 @@ output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeIsHidden,
 	{ LayoutName = label_layout(Label, LabelVars) },
 	output_layout_name_storage_type_name(LayoutName, yes),
 	io__write_string(" = {\n"),
-	io__write_string("\t(const MR_Proc_Layout *) &"),
+	io__write_string("\t(const MR_Proc_Layout *)\n\t\t&"),
 	output_layout_name(ProcLayoutAddr),
 	io__write_string(",\n\t"),
 	(
@@ -460,11 +499,11 @@ output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeIsHidden,
 		{ VarInfo = label_var_info(EncodedVarCount,
 			LocnsTypes, VarNums, TypeParams) },
 		io__write_int(EncodedVarCount),
-		io__write_string(",\n\t(const void *) "),
+		io__write_string(",\n\t(const void *)\n\t\t"),
 		output_rval(LocnsTypes),
-		io__write_string(",\n\t(const MR_uint_least16_t *) "),
+		io__write_string(",\n\t(const MR_uint_least16_t *)\n\t\t"),
 		output_rval(VarNums),
-		io__write_string(",\n\t(const MR_Type_Param_Locns *) "),
+		io__write_string(",\n\t(const MR_Type_Param_Locns *)\n\t\t"),
 		output_rval(TypeParams)
 	;
 		{ MaybeVarInfo = no },
@@ -646,7 +685,7 @@ output_layout_no_proc_id_group -->
 
 output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
-		MaybeTableIoDecl, _HeadVarNums, _VarNames, _MaxVarNum,
+		MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
 		_MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
 		_MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
 		_MaybeCallTableSlot) },
@@ -661,10 +700,10 @@ output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 		{ DeclSet3 = DeclSet2 }
 	),
 	(
-		{ MaybeTableIoDecl = yes(TableIoDeclName) },
-		output_layout_decl(TableIoDeclName, DeclSet3, DeclSet)
+		{ MaybeTableInfo = yes(TableInfo) },
+		output_layout_decl(TableInfo, DeclSet3, DeclSet)
 	;
-		{ MaybeTableIoDecl = no },
+		{ MaybeTableInfo = no },
 		{ DeclSet = DeclSet3 }
 	).
 
@@ -673,7 +712,7 @@ output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 
 output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
-		MaybeTableIoDecl, HeadVarNums, _VarNames, MaxVarNum,
+		MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
 		MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
 		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot) },
 	io__write_string("\t{\n\t(const MR_Label_Layout *) &"),
@@ -691,14 +730,23 @@ output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 	),
 	io__write_string(",\n\t"),
 	(
-		{ MaybeTableIoDecl = yes(TableIoDecl) },
+		{ MaybeCallTableSlot = yes(_) },
 		io__write_string("&"),
-		output_layout_name(TableIoDecl)
+		output_tabling_pointer_var_name(ProcLabel)
 	;
-		{ MaybeTableIoDecl = no },
+		{ MaybeCallTableSlot = no },
 		io__write_string("NULL")
 	),
-	io__write_string(",\n\t"),
+	io__write_string(",\n\t{ "),
+	(
+		{ MaybeTableInfo = yes(TableInfo) },
+		io__write_string("(const void *) &"),
+		output_layout_name(TableInfo)
+	;
+		{ MaybeTableInfo = no },
+		io__write_string("NULL")
+	),
+	io__write_string(" },\n\t"),
 	output_layout_name(proc_layout_head_var_nums(ProcLabel)),
 	io__write_string(",\n\t"),
 	output_layout_name(proc_layout_var_names(ProcLabel)),
@@ -1276,7 +1324,7 @@ output_call_site_static_decl(CallSiteStatic, DeclSet0, DeclSet) -->
 	io__state::di, io__state::uo) is det.
 
 output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
-		PTIVectorRval, TypeParamRval, DeclSet0, DeclSet) -->
+		PTIVectorRval, TypeParamsRval, DeclSet0, DeclSet) -->
 	output_rval_decls(PTIVectorRval, "", "", 0, _, DeclSet0, DeclSet1),
 	{ LayoutName = table_io_decl(RttiProcLabel) },
 	{ ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel) },
@@ -1292,9 +1340,124 @@ output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
 	io__write_string(",\n\t(const MR_PseudoTypeInfo *) "),
 	output_rval(PTIVectorRval),
 	io__write_string(",\n\t(const MR_Type_Param_Locns *) "),
-	output_rval(TypeParamRval),
+	output_rval(TypeParamsRval),
 	io__write_string("\n};\n"),
 	{ decl_set_insert(DeclSet2, data_addr(layout_addr(LayoutName)),
 		DeclSet) }.
+
+:- pred output_table_gen(rtti_proc_label::in, int::in, int::in,
+	list(table_trie_step)::in, rval::in, rval::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_table_gen(RttiProcLabel, NumInputs, NumOutputs, Steps,
+		PTIVectorRval, TypeParamsRval, DeclSet0, DeclSet) -->
+	output_table_gen_steps_table(RttiProcLabel, Steps, MaybeEnumParams,
+		DeclSet0, DeclSet1),
+	output_table_gen_enum_params_table(RttiProcLabel, MaybeEnumParams,
+		DeclSet1, DeclSet2),
+	output_rval_decls(PTIVectorRval, "", "", 0, _, DeclSet2, DeclSet3),
+	{ LayoutName = table_gen_info(RttiProcLabel) },
+	io__write_string("\n"),
+	output_layout_name_storage_type_name(LayoutName, yes),
+	io__write_string(" = {\n\t"),
+	io__write_int(NumInputs),
+	io__write_string(",\n\t"),
+	io__write_int(NumOutputs),
+	io__write_string(",\n\t"),
+	output_layout_name(table_gen_steps(RttiProcLabel)),
+	io__write_string(",\n\t"),
+	output_layout_name(table_gen_enum_params(RttiProcLabel)),
+	io__write_string(",\n\t(const MR_PseudoTypeInfo *)\n\t\t"),
+	output_rval(PTIVectorRval),
+	io__write_string(",\n\t(const MR_Type_Param_Locns *)\n\t\t"),
+	output_rval(TypeParamsRval),
+	io__write_string("\n};\n"),
+	{ decl_set_insert(DeclSet3, data_addr(layout_addr(LayoutName)),
+		DeclSet) }.
+
+:- pred output_table_gen_steps_table(rtti_proc_label::in,
+	list(table_trie_step)::in, list(maybe(int))::out,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_table_gen_steps_table(RttiProcLabel, Steps, MaybeEnumParams,
+		DeclSet0, DeclSet) -->
+	{ LayoutName = table_gen_steps(RttiProcLabel) },
+	io__write_string("\n"),
+	output_layout_name_storage_type_name(LayoutName, yes),
+	io__write_string(" = {\n"),
+	output_table_gen_steps(Steps, MaybeEnumParams),
+	io__write_string("};\n"),
+	{ decl_set_insert(DeclSet0, data_addr(layout_addr(LayoutName)),
+		DeclSet) }.
+
+:- pred output_table_gen_steps(list(table_trie_step)::in,
+	list(maybe(int))::out, io__state::di, io__state::uo) is det.
+
+output_table_gen_steps([], []) --> [].
+output_table_gen_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams]) -->
+	{
+		Step = table_trie_step_int,
+		StepType = "MR_TABLE_STEP_INT",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_char,
+		StepType = "MR_TABLE_STEP_CHAR",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_string,
+		StepType = "MR_TABLE_STEP_STRING",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_float,
+		StepType = "MR_TABLE_STEP_FLOAT",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_enum(EnumRange),
+		StepType = "MR_TABLE_STEP_ENUM",
+		MaybeEnumParam = yes(EnumRange)
+	;
+		Step = table_trie_step_user(_),
+		StepType = "MR_TABLE_STEP_USER",
+		MaybeEnumParam = no
+	;
+		Step = table_trie_step_poly,
+		StepType = "MR_TABLE_STEP_POLY",
+		MaybeEnumParam = no
+	},
+	io__write_string("\t"),
+	io__write_string(StepType),
+	io__write_string(",\n"),
+	output_table_gen_steps(Steps, MaybeEnumParams).
+
+:- pred output_table_gen_enum_params_table(rtti_proc_label::in,
+	list(maybe(int))::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
+
+output_table_gen_enum_params_table(RttiProcLabel, MaybeEnumParams,
+		DeclSet0, DeclSet) -->
+	{ LayoutName = table_gen_enum_params(RttiProcLabel) },
+	io__write_string("\n"),
+	output_layout_name_storage_type_name(LayoutName, yes),
+	io__write_string(" = {\n"),
+	output_table_gen_enum_params(MaybeEnumParams),
+	io__write_string("};\n"),
+	{ decl_set_insert(DeclSet0, data_addr(layout_addr(LayoutName)),
+		DeclSet) }.
+
+:- pred output_table_gen_enum_params(list(maybe(int))::in,
+	io__state::di, io__state::uo) is det.
+
+output_table_gen_enum_params([]) --> [].
+output_table_gen_enum_params([MaybeEnumParam | MaybeEnumParams]) -->
+	io__write_string("\t"),
+	(
+		{ MaybeEnumParam = no },
+		io__write_int(-1)
+	;
+		{ MaybeEnumParam = yes(EnumRange) },
+		io__write_int(EnumRange)
+	),
+	io__write_string(",\n"),
+	output_table_gen_enum_params(MaybeEnumParams).
 
 %-----------------------------------------------------------------------------%

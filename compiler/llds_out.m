@@ -223,6 +223,12 @@
 :- pred llds_out__make_rl_data_name(module_name, string).
 :- mode llds_out__make_rl_data_name(in, out) is det.
 
+	% Print out the name of the tabling variable for the specified
+	% procedure.
+
+:- pred output_tabling_pointer_var_name(proc_label::in,
+	io__state::di, io__state::uo) is det.
+
 	% The following are exported to rtti_out. It may be worthwhile
 	% to put these in a new module (maybe llds_out_util).
 
@@ -952,8 +958,9 @@ output_comp_gen_c_module_list([Module | Modules], StackLayoutLabels,
 	output_comp_gen_c_module_list(Modules, StackLayoutLabels,
 		DeclSet1, DeclSet).
 
-:- pred output_comp_gen_c_module(comp_gen_c_module::in, map(label, data_addr)::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+:- pred output_comp_gen_c_module(comp_gen_c_module::in,
+	map(label, data_addr)::in, decl_set::in, decl_set::out,
+	io__state::di, io__state::uo) is det.
 
 output_comp_gen_c_module(comp_gen_c_module(ModuleName, Procedures),
 		StackLayoutLabels, DeclSet0, DeclSet) -->
@@ -986,11 +993,15 @@ output_comp_gen_c_var_list([Var | Vars], DeclSet0, DeclSet) -->
 
 output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 		DeclSet0, DeclSet) -->
-	io__write_string("\nMR_Word mercury_var__tabling__"),
-	output_proc_label(ProcLabel),
-	io__write_string(" = 0;\n"),
+	io__write_string("\nMR_TableNode "),
+	output_tabling_pointer_var_name(ProcLabel),
+	io__write_string(" = { 0 };\n"),
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
 	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
+
+output_tabling_pointer_var_name(ProcLabel) -->
+	io__write_string("mercury_var__table_root__"),
+	output_proc_label(ProcLabel).
 
 :- pred output_comp_gen_c_data_list(list(comp_gen_c_data)::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
@@ -3487,8 +3498,7 @@ output_data_addr(ModuleName, VarName) -->
 		output_base_typeclass_info_name(ClassId, TypeNames)
 	;
 		{ VarName = tabling_pointer(ProcLabel) },
-		io__write_string("mercury_var__tabling__"),
-		output_proc_label(ProcLabel)
+		output_tabling_pointer_var_name(ProcLabel)
 	;
 		{ VarName = deep_profiling_procedure_data(ProcLabel) },
 		io__write_string(mercury_data_prefix),

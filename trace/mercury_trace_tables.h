@@ -125,8 +125,8 @@ extern	const MR_Proc_Layout *MR_search_for_matching_procedure(
 
 typedef struct {
 	const MR_Proc_Layout	**match_procs;
-	int	 			match_proc_max;
-	int	 			match_proc_next;
+	int	 		match_proc_max;
+	int	 		match_proc_next;
 } MR_Matches_Info;
 
 extern	MR_Matches_Info	MR_search_for_matching_procedures(MR_Proc_Spec *spec);
@@ -140,11 +140,15 @@ extern	MR_Matches_Info	MR_search_for_matching_procedures(MR_Proc_Spec *spec);
 */
 
 extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
-			void f(void *, const MR_Proc_Layout *), 
-			void *data);
+			void f(void *, const MR_Proc_Layout *), void *data);
 
-extern	void	MR_print_proc_id_for_debugger(FILE *fp,
-			const MR_Proc_Layout *entry);
+/*
+** MR_print_proc_id_and_nl(fp, proc):
+** 	Print the id of the procedure identified by proc, followed by a
+** 	newline.
+*/
+
+extern	void	MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *proc);
 
 /*
 ** MR_proc_layout_stats(fp):

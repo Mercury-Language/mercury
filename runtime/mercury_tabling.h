@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -33,14 +33,12 @@
 ** Forward declarations of type names.
 */
 
-typedef	union MR_TableNode_Union		MR_TableNode;
 typedef	struct MR_HashTable_Struct		MR_HashTable;
 typedef	struct MR_Subgoal_Struct		MR_Subgoal;
 typedef	struct MR_SubgoalListNode_Struct	MR_SubgoalListNode;
 typedef	struct MR_AnswerListNode_Struct		MR_AnswerListNode;
 typedef	struct MR_ConsumerListNode_Struct	MR_ConsumerListNode;
 
-typedef MR_TableNode				*MR_TrieNode;
 typedef	MR_SubgoalListNode			*MR_SubgoalList;
 typedef	MR_AnswerListNode			*MR_AnswerList;
 typedef	MR_ConsumerListNode			*MR_ConsumerList;
@@ -119,11 +117,10 @@ typedef	MR_ConsumerListNode			*MR_ConsumerList;
 ** meaning until the end of the computation.
 **
 ** The implementation of start tables currently does not obey this requirement.
-** This is okay, for two reasons. First, start tables are not yet used. Second,
-** when they are used, they will be used by I/O tabling, which guarantees that
-** there will be no insertions into the same (or any other) table between
-** getting back a tip node on the one hand and updating it and releasing the
-** pointer to it on the other hand.
+** This is okay, because start tables are used only by I/O tabling, which
+** guarantees that there will be no insertions into the same (or any other)
+** table between getting back a tip node on the one hand and updating it and
+** releasing the pointer to it on the other hand.
 ** 
 ** NOTE: the mercury_type_tables module uses the expandable hash table routines
 ** defined in this module to implement its tables. This is the only use of the
@@ -330,6 +327,35 @@ extern	MR_TrieNode	MR_table_type(MR_TrieNode table,
 				MR_TypeInfo type_info, MR_Word data_value);
 
 /*
+** These functions look to see if the given key is in the given table.
+** If it is, they return the address of the data pointer associated with
+** the key. If it is not, they return NULL.
+**
+** These functions assume that the table is a dynamically resizable hash table.
+*/
+
+extern	MR_TrieNode	MR_int_hash_lookup(MR_TrieNode table,
+				MR_Integer key);
+extern	MR_TrieNode	MR_float_hash_lookup(MR_TrieNode table,
+				MR_Float key);
+extern	MR_TrieNode	MR_string_hash_lookup(MR_TrieNode table,
+				MR_ConstString key);
+
+/*
+** These functions return a dynamically resizable array (using the primitives
+** in mercury_array_macros.h) containing all the elements in the given
+** dynamically resizable hash table.
+*/
+
+extern	MR_bool		MR_get_int_hash_table_contents(MR_TrieNode t,
+				MR_Integer **values_ptr, int *value_next_ptr);
+extern	MR_bool		MR_get_float_hash_table_contents(MR_TrieNode t,
+				MR_Float **values_ptr, int *value_next_ptr);
+extern	MR_bool		MR_get_string_hash_table_contents(MR_TrieNode t,
+				MR_ConstString **values_ptr,
+				int *value_next_ptr);
+
+/*
 ** This function prints statistics about the operation of tabling, if the
 ** collection of such statistics is enabled, on the given stream.
 */
@@ -369,31 +395,34 @@ extern	void		MR_table_report_statistics(FILE *fp);
 
 #else /* MR_NATIVE_GC */
 
+  #define MR_TABLE_NATIVE_GC_MSG					\
+	"Sorry, not implemented: tabling in native gc grades"
+
   #define MR_TABLE_NEW(type)						\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
   #define MR_TABLE_NEW_ARRAY(type, count)				\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
   #define MR_TABLE_RESIZE_ARRAY(pointer, type, count)			\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
   #define MR_table_allocate_bytes(size)					\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
-  #define MR_table_reallocate_bytes(pointer, size)				\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+  #define MR_table_reallocate_bytes(pointer, size)			\
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(void *) NULL)
   #define MR_table_allocate_words(size)					\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
 	(void *) NULL)
-  #define MR_table_reallocate_words(pointer, size)				\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+  #define MR_table_reallocate_words(pointer, size)			\
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG), 			\
 	(void *) NULL)
-  #define MR_table_free(pointer)						\
-	MR_fatal_error("Sorry, not implemented: tabling in native gc grades")
+  #define MR_table_free(pointer)					\
+	MR_fatal_error(MR_TABLE_NATIVE_GC_MSG)
   #define MR_table_list_cons(h, t)					\
-	(MR_fatal_error("Sorry, not implemented: tabling in native gc grades"), \
+	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
 	(MR_Word) 0)
 
 #endif /* MR_NATIVE_GC */

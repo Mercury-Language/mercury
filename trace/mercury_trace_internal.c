@@ -15,6 +15,7 @@
 #include "mercury_array_macros.h"
 #include "mercury_getopt.h"
 #include "mercury_signal.h"
+#include "mercury_builtin_types.h"
 
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
@@ -270,6 +271,112 @@ typedef struct
 	const MR_Make_Completer		MR_cmd_arg_completer;
 } MR_Trace_Command_Info;
 
+/*
+** The following data structures describe the information we have about the
+** input arguments of tabled procedures. We use them to decode the call tables
+** of such procedures.
+**
+** We use one MR_Call_Table_Arg structure for each input argument.
+**
+** The step field specifies what data structure the tabling system uses to
+** implement the trie nodes at the level of the call table corresponding to
+** the relevant argument. At the moment, we support only three values of this
+** field, MR_TABLE_STEP_INT, MR_TABLE_STEP_FLOAT and MR_TABLE_STEP_STRING;
+** each of those implicitly selects the corresponding alternative in the
+** arg_values union.
+**
+** The start_node field specifies the start node of the relevant trie. For the
+** first input argument, this will be the tabling pointer variable for the
+** given procedure. For later input arguments, it will be the trie node you
+** reach after following the current values of the previous arguments through
+** the call table.
+**
+** The MR_{Int,Float,String}_Table_Arg_Values structs have the same fields and
+** the same meanings, differing only in the types of the values they store.
+** Each struct is used for one of two things.
+**
+** 1. To describe a value supplied by the user on the mdb command line.
+**    In this case, the only field that matters is the cur_value field.
+**
+** 2. To describe the set of values you can find in a trie node, the one given
+**    by the start_node field, and to specify which is the current one.
+**    In this case, all the fields matter.
+**
+** The code that manipulates these structures distinguishes between the two
+** uses based on argument number.
+**
+** The values array is managed with the macros in mercury_array_macros.h,
+** so its size is given by the value_next field. The cur_index field gives the
+** index of the current value, while the cur_value field gives the current
+** value itself. (The contents of the cur_value field can be deduced from the
+** contents of the other fields with use 2, but not with use 1.)
+**
+** The valid field in the MR_Call_Table_Arg structure gives the validity
+** of the values subfield of its arg_values field; if it is false, then the
+** array is logically considered empty.
+*/
+
+typedef	struct {
+	MR_Integer			*MR_ctai_values;
+	int				MR_ctai_value_next;
+	int				MR_ctai_cur_index;
+	MR_Integer			MR_ctai_cur_value;
+} MR_Int_Table_Arg_Values;
+
+typedef	struct {
+	MR_Float			*MR_ctaf_values;
+	int				MR_ctaf_value_next;
+	int				MR_ctaf_cur_index;
+	MR_Float			MR_ctaf_cur_value;
+} MR_Float_Table_Arg_Values;
+
+typedef	struct {
+	MR_ConstString			*MR_ctas_values;
+	int				MR_ctas_value_next;
+	int				MR_ctas_cur_index;
+	MR_ConstString			MR_ctas_cur_value;
+} MR_String_Table_Arg_Values;
+
+typedef	union {
+	MR_Int_Table_Arg_Values		MR_cta_values_int;
+	MR_Float_Table_Arg_Values	MR_cta_values_float;
+	MR_String_Table_Arg_Values	MR_cta_values_string;
+} MR_Table_Arg_Values;
+
+typedef struct {
+	MR_Table_Trie_Step		MR_cta_step;
+	MR_TrieNode			MR_cta_start_node;
+	MR_bool				MR_cta_valid;
+	MR_Table_Arg_Values		MR_cta_arg_values;
+} MR_Call_Table_Arg;
+
+#define	MR_cta_int_values		MR_cta_arg_values.MR_cta_values_int.\
+					MR_ctai_values
+#define	MR_cta_int_value_next		MR_cta_arg_values.MR_cta_values_int.\
+					MR_ctai_value_next
+#define	MR_cta_int_cur_index		MR_cta_arg_values.MR_cta_values_int.\
+					MR_ctai_cur_index
+#define	MR_cta_int_cur_value		MR_cta_arg_values.MR_cta_values_int.\
+					MR_ctai_cur_value
+
+#define	MR_cta_float_values		MR_cta_arg_values.MR_cta_values_float.\
+					MR_ctaf_values
+#define	MR_cta_float_value_next		MR_cta_arg_values.MR_cta_values_float.\
+					MR_ctaf_value_next
+#define	MR_cta_float_cur_index		MR_cta_arg_values.MR_cta_values_float.\
+					MR_ctaf_cur_index
+#define	MR_cta_float_cur_value		MR_cta_arg_values.MR_cta_values_float.\
+					MR_ctaf_cur_value
+
+#define	MR_cta_string_values		MR_cta_arg_values.MR_cta_values_string.\
+					MR_ctas_values
+#define	MR_cta_string_value_next	MR_cta_arg_values.MR_cta_values_string.\
+					MR_ctas_value_next
+#define	MR_cta_string_cur_index		MR_cta_arg_values.MR_cta_values_string.\
+					MR_ctas_cur_index
+#define	MR_cta_string_cur_value		MR_cta_arg_values.MR_cta_values_string.\
+					MR_ctas_cur_value
+
 static	void	MR_trace_internal_ensure_init(void);
 static	MR_bool	MR_trace_internal_create_mdb_window(void);
 static	void	MR_trace_internal_kill_mdb_window(void);
@@ -461,6 +568,9 @@ static MR_Next	MR_trace_cmd_print_optionals(char **words, int word_count,
 static MR_Next	MR_trace_cmd_unhide_events(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static MR_Next	MR_trace_cmd_table(char **words, int word_count,
+			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+			MR_Event_Details *event_details, MR_Code **jumpaddr);
 static MR_Next	MR_trace_cmd_save(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
@@ -528,6 +638,58 @@ static	MR_bool	MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
 			const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
+
+static	const MR_Proc_Layout *
+		MR_find_single_matching_proc(MR_Proc_Spec *spec,
+			MR_bool verbose);
+
+/*
+** These functions fill in the data structure describing one input argument
+** of a tabled procedure with a constant value given on the mdb command line.
+** They return true if they succeed, and false if they fail (e.g. because the
+** string given on the mdb command line does not describe a value of the
+** required type).
+*/
+
+static	MR_bool MR_trace_fill_in_int_table_arg_slot(
+			MR_TrieNode *table_cur_ptr,
+			int arg_num, MR_ConstString given_arg,
+			MR_Call_Table_Arg *call_table_arg_ptr);
+static	MR_bool MR_trace_fill_in_float_table_arg_slot(
+			MR_TrieNode *table_cur_ptr,
+			int arg_num, MR_ConstString given_arg,
+			MR_Call_Table_Arg *call_table_arg_ptr);
+static	MR_bool MR_trace_fill_in_string_table_arg_slot(
+			MR_TrieNode *table_cur_ptr,
+			int arg_num, MR_ConstString given_arg,
+			MR_Call_Table_Arg *call_table_arg_ptr);
+
+/*
+** These functions fill in the data structure describing one input argument
+** of a tabled procedure with the next value taken from the given trie node.
+** They return true if there are no more values in the trie node, and false
+** otherwise.
+*/
+
+static	MR_bool	MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
+			MR_Call_Table_Arg *call_table_arg_ptr);
+static	MR_bool	MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
+			MR_Call_Table_Arg *call_table_arg_ptr);
+static	MR_bool	MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
+			MR_Call_Table_Arg *call_table_arg_ptr);
+
+/* Prints the given subgoal of the given procedure to MR_mdb_out. */
+static	void	MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
+			int num_inputs, MR_Call_Table_Arg *call_table_args,
+			MR_TrieNode table);
+
+/* Prints the given subgoal of the given procedure to MR_mdb_out. */
+static	void	MR_trace_print_subgoal(const MR_Proc_Layout *proc,
+			MR_Subgoal *subgoal);
+
+/* Prints the given answer_block of the given procedure to MR_mdb_out. */
+static	void	MR_print_answerblock(const MR_Proc_Layout *proc,
+			MR_Word *answer_block);
 
 static	void	MR_trace_set_level_and_report(int ancestor_level,
 			MR_bool detailed, MR_bool print_optionals);
@@ -703,7 +865,7 @@ MR_trace_internal_ensure_init(void)
 		}
 
 		env = getenv("LINES");
-		if (env != NULL && MR_trace_is_number(env, &n)) {
+		if (env != NULL && MR_trace_is_natural_number(env, &n)) {
 			MR_scroll_limit = n;
 		}
 
@@ -1158,17 +1320,17 @@ MR_trace_do_noop(void)
 }
 
 /*
-** This function is just a wrapper for MR_print_proc_id_for_debugger,
+** This function is just a wrapper for MR_print_proc_id_and_nl,
 ** with the first argument type being `void *' rather than `FILE *',
 ** so that this function's address can be passed to
 ** MR_process_matching_procedures().
 */
 
 static void
-MR_mdb_print_proc_id(void *data, const MR_Proc_Layout *entry_layout)
+MR_mdb_print_proc_id_and_nl(void *data, const MR_Proc_Layout *entry_layout)
 {
 	FILE	*fp = data;
-	MR_print_proc_id_for_debugger(fp, entry_layout);
+	MR_print_proc_id_and_nl(fp, entry_layout);
 }
 
 /* Options to pass to mmc when compiling queries. */
@@ -1280,7 +1442,7 @@ MR_trace_cmd_step(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		cmd->MR_trace_stop_event = MR_trace_event_number + 1;
 		return STOP_INTERACTING;
 	} else if (word_count == 2
-			&& MR_trace_is_number(words[1], &n))
+			&& MR_trace_is_natural_number(words[1], &n))
 	{
 		cmd->MR_trace_cmd = MR_CMD_GOTO;
 		cmd->MR_trace_stop_event = MR_trace_event_number + n;
@@ -1305,7 +1467,7 @@ MR_trace_cmd_goto(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"forward", "goto"))
 	{
 		; /* the usage message has already been printed */
-	} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
 			{
 		if (MR_trace_event_number < n) {
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
@@ -1340,7 +1502,7 @@ MR_trace_cmd_next(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 		return KEEP_INTERACTING;
-	} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
 	{
 		stop_depth = depth - n;
 	} else if (word_count == 1) {
@@ -1379,7 +1541,7 @@ MR_trace_cmd_finish(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 		return KEEP_INTERACTING;
-	} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
 	{
 		stop_depth = depth - n;
 	} else if (word_count == 1) {
@@ -1420,7 +1582,7 @@ MR_trace_cmd_fail(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 		return KEEP_INTERACTING;
-	} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
 	{
 		stop_depth = depth - n;
 	} else if (word_count == 1) {
@@ -1552,7 +1714,7 @@ MR_trace_cmd_mindepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_number(words[1], &newdepth))
+			MR_trace_is_natural_number(words[1], &newdepth))
 	{
 		cmd->MR_trace_cmd = MR_CMD_MIN_DEPTH;
 		cmd->MR_trace_stop_depth = newdepth;
@@ -1578,7 +1740,7 @@ MR_trace_cmd_maxdepth(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_number(words[1], &newdepth))
+			MR_trace_is_natural_number(words[1], &newdepth))
 	{
 		cmd->MR_trace_cmd = MR_CMD_MAX_DEPTH;
 		cmd->MR_trace_stop_depth = newdepth;
@@ -1643,7 +1805,9 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			&words, &word_count, "backward", "retry"))
 	{
 		; /* the usage message has already been printed */
-	} else if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+	} else if (word_count == 2 &&
+		MR_trace_is_natural_number(words[1], &n))
+	{
 		ancestor_level = n;
 	} else if (word_count == 1) {
 		ancestor_level = 0;
@@ -1717,7 +1881,7 @@ MR_trace_cmd_level(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_number(words[1], &n))
+			MR_trace_is_natural_number(words[1], &n))
 	{
 		MR_trace_set_level_and_report(n, detailed,
 			MR_print_optionals);
@@ -1742,7 +1906,7 @@ MR_trace_cmd_up(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_number(words[1], &n))
+			MR_trace_is_natural_number(words[1], &n))
 	{
 		MR_trace_set_level_and_report(
 			MR_trace_current_level() + n, detailed,
@@ -1772,7 +1936,7 @@ MR_trace_cmd_down(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 2 &&
-			MR_trace_is_number(words[1], &n))
+			MR_trace_is_natural_number(words[1], &n))
 	{
 		MR_trace_set_level_and_report(
 			MR_trace_current_level() - n, detailed,
@@ -1857,7 +2021,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		}
 	} else if (word_count == 3 && MR_streq(words[1], "action")
-			&& MR_trace_is_number(words[2], &n))
+			&& MR_trace_is_natural_number(words[2], &n))
 	{
 		const char	*problem;
 
@@ -1922,7 +2086,7 @@ MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		}
 	} else if (word_count == 3 && MR_streq(words[1], "action")
-			&& MR_trace_is_number(words[2], &n))
+			&& MR_trace_is_natural_number(words[2], &n))
 	{
 		const char	*problem;
 
@@ -2189,8 +2353,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			for (i = 0; i < matches.match_proc_next; i++)
 			{
 				fprintf(MR_mdb_out, "%d: ", i);
-				MR_print_proc_id_for_debugger(
-					MR_mdb_out,
+				MR_print_proc_id_and_nl(MR_mdb_out,
 					matches.match_procs[i]);
 			}
 
@@ -2222,7 +2385,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				}
 
 				MR_free(line2);
-			} else if (MR_trace_is_number(line2, &i)) {
+			} else if (MR_trace_is_natural_number(line2, &i)) {
 				if (0 <= i &&
 					i < matches.match_proc_next)
 				{
@@ -2253,7 +2416,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			ignore_count, file, line, &problem);
 		MR_maybe_print_spy_point(slot, problem);
 	} else if (word_count == 2 &&
-			MR_trace_is_number(words[1], &breakline))
+			MR_trace_is_natural_number(words[1], &breakline))
 	{
 		int	slot;
 
@@ -2288,7 +2451,7 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			&words, &word_count, "breakpoint", "ignore"))
 	{
 		; /* the usage message has already been printed */
-	} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+	} else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
 	{
 		if (0 <= n && n < MR_spy_point_next
 				&& MR_spy_points[n]->spy_exists)
@@ -2348,7 +2511,7 @@ MR_trace_cmd_enable(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	int	n;
-	if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
 		if (0 <= n && n < MR_spy_point_next
 				&& MR_spy_points[n]->spy_exists)
 		{
@@ -2406,7 +2569,7 @@ MR_trace_cmd_disable(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	int	n;
 
-	if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
 		if (0 <= n && n < MR_spy_point_next
 				&& MR_spy_points[n]->spy_exists)
 		{
@@ -2466,7 +2629,7 @@ MR_trace_cmd_delete(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 {
 	int	n;
 
-	if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+	if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
 		if (0 <= n && n < MR_spy_point_next
 				&& MR_spy_points[n]->spy_exists)
 		{
@@ -2709,7 +2872,7 @@ MR_trace_cmd_scroll(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				fprintf(MR_mdb_out,
 					"Scroll control enabled.\n");
 			}
-		} else if (MR_trace_is_number(words[1], &n)) {
+		} else if (MR_trace_is_natural_number(words[1], &n)) {
 			MR_scroll_limit = n;
 			if (MR_trace_internal_interacting) {
 				fprintf(MR_mdb_out,
@@ -2884,12 +3047,10 @@ MR_trace_cmd_alias(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_add_alias(words[1],
 				words+2, word_count-2);
 			if (MR_trace_internal_interacting) {
-				MR_trace_print_alias(MR_mdb_out,
-					words[1]);
+				MR_trace_print_alias(MR_mdb_out, words[1]);
 			}
 		} else {
-			fprintf(MR_mdb_out,
-				"`%s' is not a valid command.\n",
+			fprintf(MR_mdb_out, "`%s' is not a valid command.\n",
 				words[2]);
 		}
 	}
@@ -2905,8 +3066,7 @@ MR_trace_cmd_unalias(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	if (word_count == 2) {
 		if (MR_trace_remove_alias(words[1])) {
 			if (MR_trace_internal_interacting) {
-				fprintf(MR_mdb_out,
-					"Alias `%s' removed.\n",
+				fprintf(MR_mdb_out, "Alias `%s' removed.\n",
 					words[1]);
 			}
 		} else {
@@ -2935,7 +3095,7 @@ MR_trace_cmd_document_category(char **words, int word_count,
 	help_text = MR_trace_read_help_text();
 	if (word_count != 3) {
 		MR_trace_usage("help", "document_category");
-	} else if (! MR_trace_is_number(words[1], &slot)) {
+	} else if (! MR_trace_is_natural_number(words[1], &slot)) {
 		MR_trace_usage("help", "document_category");
 	} else {
 		msg = MR_trace_add_cat(words[2], slot, help_text);
@@ -2962,7 +3122,7 @@ MR_trace_cmd_document(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	help_text = MR_trace_read_help_text();
 	if (word_count != 4) {
 		MR_trace_usage("help", "document");
-	} else if (! MR_trace_is_number(words[2], &slot)) {
+	} else if (! MR_trace_is_natural_number(words[2], &slot)) {
 		MR_trace_usage("help", "document");
 	} else {
 		msg = MR_trace_add_item(words[1], words[3], slot,
@@ -3443,6 +3603,749 @@ MR_trace_cmd_unhide_events(char **words, int word_count,
 	}
 
 	return KEEP_INTERACTING;
+}
+
+static const MR_Proc_Layout *
+MR_find_single_matching_proc(MR_Proc_Spec *spec, MR_bool verbose)
+{
+	MR_Matches_Info		matches;
+	int			n;
+	int			i;
+
+	MR_register_all_modules_and_procs(MR_mdb_out, verbose);
+	matches = MR_search_for_matching_procedures(spec);
+	if (matches.match_proc_next == 0) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: there is no such procedure.\n");
+		return NULL;
+	} else if (matches.match_proc_next == 1) {
+		return matches.match_procs[0];
+	} else {
+		char	buf[100];
+		char	*line2;
+
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "Ambiguous procedure specification. "
+			"The matches are:\n");
+		for (i = 0; i < matches.match_proc_next; i++)
+		{
+			fprintf(MR_mdb_out, "%d: ", i);
+			MR_print_proc_id_and_nl(MR_mdb_out,
+				matches.match_procs[i]);
+		}
+
+		sprintf(buf, "\nWhich procedure's table do you want to print "
+			"(0-%d)? ",
+			matches.match_proc_next - 1);
+		line2 = MR_trace_getline(buf, MR_mdb_in, MR_mdb_out);
+		n = -1;
+		if (line2 == NULL || !MR_trace_is_natural_number(line2, &n)) {
+			n = -1;
+			fprintf(MR_mdb_out, "none of them\n");
+		} else if (n < 0 || n >= matches.match_proc_next) {
+			n = -1;
+			fprintf(MR_mdb_out, "invalid choice\n");
+		}
+
+		if (line2 != NULL) {
+			MR_free(line2);
+		}
+
+		if (n >= 0) {
+			return matches.match_procs[n];
+		} else {
+			return NULL;
+		}
+	}
+}
+
+static MR_Next
+MR_trace_cmd_table(char **words, int word_count,
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Event_Details *event_details, MR_Code **jumpaddr)
+{
+	MR_Call_Table_Arg	*call_table_args;
+	const MR_Proc_Layout	*proc;
+	MR_Proc_Spec		spec;
+	const MR_Table_Gen	*table_gen;
+	MR_TrieNode		table_cur;
+	int			num_inputs;
+	int			cur_arg;
+	int			num_tips;
+
+	if (word_count < 2) {
+		MR_trace_usage("developer", "table");
+		return KEEP_INTERACTING;
+	}
+
+	if (! MR_parse_proc_spec(words[1], &spec)) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err,
+			"mdb: invalid procedure specification.\n");
+		return KEEP_INTERACTING;
+	}
+
+	proc = MR_find_single_matching_proc(&spec, MR_TRUE);
+	if (proc == NULL) {
+		return KEEP_INTERACTING;
+	}
+
+	switch (MR_sle_eval_method(proc)) {
+		case MR_EVAL_METHOD_NORMAL:
+			MR_print_proc_id(MR_mdb_out, proc);
+			fprintf(MR_mdb_out, " isn't tabled.\n");
+			return KEEP_INTERACTING;
+
+		case MR_EVAL_METHOD_LOOP_CHECK:
+		case MR_EVAL_METHOD_MEMO:
+		case MR_EVAL_METHOD_MINIMAL:
+			break;
+
+		case MR_EVAL_METHOD_TABLE_IO:
+		case MR_EVAL_METHOD_TABLE_IO_DECL:
+		case MR_EVAL_METHOD_TABLE_IO_UNITIZE:
+		case MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL:
+			fprintf(MR_mdb_out, "IO tabled predicates do not have"
+				" their own tables.\n");
+			return KEEP_INTERACTING;
+
+		default:
+			MR_fatal_error("unrecognized eval method");
+			return KEEP_INTERACTING;
+	}
+
+	/*
+	** words[0] is the command, words[1] is the procedure spec;
+	** words[2] is the first argument. We step over the command and the
+	** procedure spec, to leave words[] containing only the argument
+	** values.
+	*/
+
+	words += 2;
+	word_count -= 2;
+
+	table_gen = proc->MR_sle_table_info.MR_table_gen;
+	num_inputs = table_gen->MR_table_gen_num_inputs;
+
+	if (word_count > num_inputs) {
+		fprintf(MR_mdb_out, "There are only %d input arguments.\n",
+			num_inputs);
+		return KEEP_INTERACTING;
+	}
+
+	call_table_args = MR_GC_NEW_ARRAY(MR_Call_Table_Arg, num_inputs);
+	if (call_table_args == NULL) {
+		MR_fatal_error("MR_trace_cmd_table: "
+			"couldn't allocate call_table_args");
+	}
+
+	table_cur = proc->MR_sle_tabling_pointer;
+	for (cur_arg = 0; cur_arg < num_inputs; cur_arg++) {
+		switch (table_gen->MR_table_gen_input_steps[cur_arg]) {
+			case MR_TABLE_STEP_INT:
+			case MR_TABLE_STEP_FLOAT:
+			case MR_TABLE_STEP_STRING:
+				/* these are OK */
+				break;
+			default:
+				fprintf(MR_mdb_out, "Sorry, can handle only "
+					"integer, float and string arguments "
+					"for now.\n");
+				MR_GC_free(call_table_args);
+				return KEEP_INTERACTING;
+		}
+
+		call_table_args[cur_arg].MR_cta_step =
+			table_gen->MR_table_gen_input_steps[cur_arg];
+		call_table_args[cur_arg].MR_cta_valid = MR_FALSE;
+	}
+
+	/*
+	** Set up the values of the input arguments supplied on the command
+	** line, to enable us to print them out in each call table entry.
+	*/
+
+	for (cur_arg = 0; cur_arg < word_count; cur_arg++) {
+		MR_bool	success;
+
+		switch (call_table_args[cur_arg].MR_cta_step) {
+			case MR_TABLE_STEP_INT:
+				success =
+					MR_trace_fill_in_int_table_arg_slot(
+						&table_cur, cur_arg + 1,
+						words[cur_arg],
+						&call_table_args[cur_arg]);
+				break;
+
+			case MR_TABLE_STEP_FLOAT:
+				success =
+					MR_trace_fill_in_float_table_arg_slot(
+						&table_cur, cur_arg + 1,
+						words[cur_arg],
+						&call_table_args[cur_arg]);
+				break;
+
+			case MR_TABLE_STEP_STRING:
+				success =
+					MR_trace_fill_in_string_table_arg_slot(
+						&table_cur, cur_arg + 1,
+						words[cur_arg],
+						&call_table_args[cur_arg]);
+				break;
+
+			default:
+				MR_fatal_error("arg not int, float or string "
+					"after check");
+		}
+
+		if (! success) {
+			/* the error message has already been printed */
+			MR_GC_free(call_table_args);
+			return KEEP_INTERACTING;
+		}
+	}
+
+	if (word_count == num_inputs) {
+		/*
+		** The user specified values for all the input arguments,
+		** so what we print is a single entry, not a table of entries,
+		** and we don't need to loop over all the entries.
+		*/
+
+		MR_trace_cmd_table_print_tip(proc, num_inputs,
+			call_table_args, table_cur);
+		MR_GC_free(call_table_args);
+		return KEEP_INTERACTING;
+	}
+
+	/*
+	** The user left the values of some input arguments unspecified,
+	** so we print a table of entries. Here we print the header.
+	*/
+
+	switch (MR_sle_eval_method(proc)) {
+		case MR_EVAL_METHOD_LOOP_CHECK:
+			fprintf(MR_mdb_out, "loopcheck table for ");
+			MR_print_proc_id(MR_mdb_out, proc);
+			fprintf(MR_mdb_out, ":\n");
+			break;
+
+		case MR_EVAL_METHOD_MEMO:
+			fprintf(MR_mdb_out, "memo table for ");
+			MR_print_proc_id(MR_mdb_out, proc);
+			fprintf(MR_mdb_out, ":\n");
+			break;
+
+		case MR_EVAL_METHOD_MINIMAL:
+			fprintf(MR_mdb_out, "minimal model table for ");
+			MR_print_proc_id(MR_mdb_out, proc);
+			fprintf(MR_mdb_out, ":\n");
+			break;
+
+		default:
+			MR_fatal_error("MR_trace_cmd_table: bad eval method");
+	}
+
+	/*
+	** This loop prints the entries in the table.
+	**
+	** If we knew in advance that the user left (say) two input argument
+	** positions unspecified, we could use a loop structure such as:
+	**
+	** 	for value1 in <values in the trie at node start_node[0]>
+	** 		cur_value[1] = value1
+	** 		start_node[1] = follow value1 in start_node[0]
+	** 		for value2 in <values in the trie at node start_node[1]>
+	** 			cur_value[2] = value2
+	** 			start_node[2] = follow value2 in start_node[1]
+	** 			print <fixed args>, cur_value[1], cur_value[2]
+	** 		end for
+	** 	end for
+	**
+	** However, we don't know in advance how many input arguments the user
+	** left unspecified. We therefore simulate the above with a single
+	** loop, which can function as any one of the above nested loops.
+	**
+	** The value of cur_arg controls which one it is simulating at any
+	** given time. Initially, cur_arg grows as we enter each of the above
+	** loops one after another, at each stage recording the set of values
+	** in the current trie node in the values array of the relevant
+	** argument.
+	**
+	** We number the input arguments from 0 to num_inputs-1. When cur_arg
+	** becomes equal to num_inputs, this means that we have values for all
+	** the input arguments, so we print the corresponding call table entry.
+	** We then initiate backtracking: we decrement cur_arg to get the next
+	** value of the last argument. We also do this whenever we run out of
+	** values in any trie.
+	**
+	** We step when we are about to backtrack out of the outermost loop.
+	*/
+
+	cur_arg = word_count;
+	num_tips = 0;
+	for (;;) {
+		MR_bool	no_more;
+		MR_bool	start_backtrack;
+
+		switch (call_table_args[cur_arg].MR_cta_step) {
+			case MR_TABLE_STEP_INT:
+				no_more = MR_update_int_table_arg_slot(
+					&table_cur, &call_table_args[cur_arg]);
+				break;
+
+			case MR_TABLE_STEP_FLOAT:
+				no_more = MR_update_float_table_arg_slot(
+					&table_cur, &call_table_args[cur_arg]);
+				break;
+
+			case MR_TABLE_STEP_STRING:
+				no_more = MR_update_string_table_arg_slot(
+					&table_cur, &call_table_args[cur_arg]);
+				break;
+
+
+			default:
+				MR_fatal_error("arg not int, float or string "
+					"after check");
+		}
+
+		if (no_more) {
+			/*
+			** There aren't any more values in the current trie
+			** of input argument cur_arg.
+			*/
+
+			start_backtrack = MR_TRUE;
+		} else {
+			/*
+			** There is at least one more value in the current trie
+			** of input argument cur_arg, so go on to the next trie
+			** (if there is one).
+			*/
+
+			cur_arg++;
+
+			if (cur_arg >= num_inputs) {
+				MR_trace_cmd_table_print_tip(proc, num_inputs,
+					call_table_args, table_cur);
+				num_tips++;
+				start_backtrack = MR_TRUE;
+			} else {
+				start_backtrack = MR_FALSE;
+			}
+		}
+
+		if (start_backtrack) {
+			cur_arg--;
+			table_cur = call_table_args[cur_arg].MR_cta_start_node;
+
+			if (cur_arg < word_count) {
+				break;
+			}
+		}
+	}
+
+	fprintf(MR_mdb_out, "end of table (%d %s)\n",
+		num_tips, (num_tips == 1 ? "entry" : "entries"));
+	MR_GC_free(call_table_args);
+	return KEEP_INTERACTING;
+}
+
+static MR_bool
+MR_trace_fill_in_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
+	int arg_num, MR_ConstString given_arg,
+	MR_Call_Table_Arg *call_table_arg_ptr)
+{
+	MR_Integer	n;
+	MR_TrieNode	table_next;
+
+	if (! MR_trace_is_integer(given_arg, &n))
+	{
+		fprintf(MR_mdb_out, "argument %d is not an integer.\n",
+			arg_num);
+		return MR_FALSE;
+	}
+
+	table_next = MR_int_hash_lookup(*table_cur_ptr, n);
+	if (table_next == NULL) {
+		fprintf(MR_mdb_out, "call table does not contain "
+			"%d in argument position %d.\n",
+			n, arg_num);
+		return MR_FALSE;
+	}
+
+	call_table_arg_ptr->MR_cta_start_node = *table_cur_ptr;
+	call_table_arg_ptr->MR_cta_valid = MR_TRUE;
+	call_table_arg_ptr->MR_cta_int_values = NULL;
+	call_table_arg_ptr->MR_cta_int_value_next = -1;
+	call_table_arg_ptr->MR_cta_int_cur_index = -1;
+	call_table_arg_ptr->MR_cta_int_cur_value = n;
+	*table_cur_ptr = table_next;
+
+	return MR_TRUE;
+}
+
+static MR_bool
+MR_trace_fill_in_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
+	int arg_num, MR_ConstString given_arg,
+	MR_Call_Table_Arg *call_table_arg_ptr)
+{
+	MR_Float	f;
+	MR_TrieNode	table_next;
+
+	if (! MR_trace_is_float(given_arg, &f))
+	{
+		fprintf(MR_mdb_out, "argument %d is not a float.\n",
+			arg_num);
+		return MR_FALSE;
+	}
+
+	table_next = MR_float_hash_lookup(*table_cur_ptr, f);
+	if (table_next == NULL) {
+		fprintf(MR_mdb_out, "call table does not contain "
+			"%f in argument position %d.\n",
+			f, arg_num);
+		return MR_FALSE;
+	}
+
+	call_table_arg_ptr->MR_cta_start_node = *table_cur_ptr;
+	call_table_arg_ptr->MR_cta_valid = MR_TRUE;
+	call_table_arg_ptr->MR_cta_float_values = NULL;
+	call_table_arg_ptr->MR_cta_float_value_next = -1;
+	call_table_arg_ptr->MR_cta_float_cur_index = -1;
+	call_table_arg_ptr->MR_cta_float_cur_value = f;
+	*table_cur_ptr = table_next;
+
+	return MR_TRUE;
+}
+
+static MR_bool
+MR_trace_fill_in_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
+	int arg_num, MR_ConstString given_arg,
+	MR_Call_Table_Arg *call_table_arg_ptr)
+{
+	MR_ConstString	s;
+	MR_TrieNode	table_next;
+
+	s = given_arg;
+
+	table_next = MR_string_hash_lookup(*table_cur_ptr, s);
+	if (table_next == NULL) {
+		fprintf(MR_mdb_out, "call table does not contain "
+			"%s in argument position %d.\n",
+			s, arg_num);
+		return MR_FALSE;
+	}
+
+	call_table_arg_ptr->MR_cta_start_node = *table_cur_ptr;
+	call_table_arg_ptr->MR_cta_valid = MR_TRUE;
+	call_table_arg_ptr->MR_cta_string_values = NULL;
+	call_table_arg_ptr->MR_cta_string_value_next = -1;
+	call_table_arg_ptr->MR_cta_string_cur_index = -1;
+	call_table_arg_ptr->MR_cta_string_cur_value = s;
+	*table_cur_ptr = table_next;
+
+	return MR_TRUE;
+}
+
+static MR_bool
+MR_update_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
+	MR_Call_Table_Arg *call_table_arg_ptr)
+{
+	MR_TrieNode	table_next;
+	MR_Integer	*values;
+	int		value_next;
+
+	if (call_table_arg_ptr->MR_cta_valid
+		&& call_table_arg_ptr->MR_cta_int_values != NULL)
+	{
+		call_table_arg_ptr->MR_cta_int_cur_index++;
+	} else {
+		if (! MR_get_int_hash_table_contents(*table_cur_ptr,
+			&values, &value_next))
+		{
+			/* there are no values in this trie node */
+			call_table_arg_ptr->MR_cta_valid = MR_FALSE;
+			return MR_TRUE;
+		}
+
+		call_table_arg_ptr->MR_cta_start_node = *table_cur_ptr;
+		call_table_arg_ptr->MR_cta_valid = MR_TRUE;
+		call_table_arg_ptr->MR_cta_int_values = values;
+		call_table_arg_ptr->MR_cta_int_value_next = value_next;
+		call_table_arg_ptr->MR_cta_int_cur_index = 0;
+	}
+
+	if (call_table_arg_ptr->MR_cta_int_cur_index
+		>= call_table_arg_ptr->MR_cta_int_value_next)
+	{
+		/* we have already returned all the values in this trie node */
+		call_table_arg_ptr->MR_cta_valid = MR_FALSE;
+		return MR_TRUE;
+	}
+
+	call_table_arg_ptr->MR_cta_int_cur_value =
+		call_table_arg_ptr->MR_cta_int_values[
+			call_table_arg_ptr->MR_cta_int_cur_index];
+
+	table_next = MR_int_hash_lookup(
+		call_table_arg_ptr->MR_cta_start_node, 
+		call_table_arg_ptr->MR_cta_int_cur_value);
+
+	if (table_next == NULL) {
+		MR_fatal_error("MR_update_int_table_arg_slot: bad lookup");
+	}
+
+	*table_cur_ptr = table_next;
+	return MR_FALSE;
+}
+
+static MR_bool
+MR_update_float_table_arg_slot(MR_TrieNode *table_cur_ptr,
+	MR_Call_Table_Arg *call_table_arg_ptr)
+{
+	MR_TrieNode	table_next;
+	MR_Float	*values;
+	int		value_next;
+
+	if (call_table_arg_ptr->MR_cta_valid
+		&& call_table_arg_ptr->MR_cta_float_values != NULL)
+	{
+		call_table_arg_ptr->MR_cta_float_cur_index++;
+	} else {
+		if (! MR_get_float_hash_table_contents(*table_cur_ptr,
+			&values, &value_next))
+		{
+			/* there are no values in this trie node */
+			call_table_arg_ptr->MR_cta_valid = MR_FALSE;
+			return MR_TRUE;
+		}
+
+		call_table_arg_ptr->MR_cta_start_node = *table_cur_ptr;
+		call_table_arg_ptr->MR_cta_valid = MR_TRUE;
+		call_table_arg_ptr->MR_cta_float_values = values;
+		call_table_arg_ptr->MR_cta_float_value_next = value_next;
+		call_table_arg_ptr->MR_cta_float_cur_index = 0;
+	}
+
+	if (call_table_arg_ptr->MR_cta_float_cur_index
+		>= call_table_arg_ptr->MR_cta_float_value_next)
+	{
+		/* we have already returned all the values in this trie node */
+		call_table_arg_ptr->MR_cta_valid = MR_FALSE;
+		return MR_TRUE;
+	}
+
+	call_table_arg_ptr->MR_cta_float_cur_value =
+		call_table_arg_ptr->MR_cta_float_values[
+			call_table_arg_ptr->MR_cta_float_cur_index];
+
+	table_next = MR_float_hash_lookup(
+		call_table_arg_ptr->MR_cta_start_node, 
+		call_table_arg_ptr->MR_cta_float_cur_value);
+
+	if (table_next == NULL) {
+		MR_fatal_error("MR_update_float_table_arg_slot: bad lookup");
+	}
+
+	*table_cur_ptr = table_next;
+	return MR_FALSE;
+}
+
+static MR_bool
+MR_update_string_table_arg_slot(MR_TrieNode *table_cur_ptr,
+	MR_Call_Table_Arg *call_table_arg_ptr)
+{
+	MR_TrieNode	table_next;
+	MR_ConstString	*values;
+	int		value_next;
+
+	if (call_table_arg_ptr->MR_cta_valid
+		&& call_table_arg_ptr->MR_cta_string_values != NULL)
+	{
+		call_table_arg_ptr->MR_cta_string_cur_index++;
+	} else {
+		if (! MR_get_string_hash_table_contents(*table_cur_ptr,
+			&values, &value_next))
+		{
+			/* there are no values in this trie node */
+			call_table_arg_ptr->MR_cta_valid = MR_FALSE;
+			return MR_TRUE;
+		}
+
+		call_table_arg_ptr->MR_cta_start_node = *table_cur_ptr;
+		call_table_arg_ptr->MR_cta_valid = MR_TRUE;
+		call_table_arg_ptr->MR_cta_string_values = values;
+		call_table_arg_ptr->MR_cta_string_value_next = value_next;
+		call_table_arg_ptr->MR_cta_string_cur_index = 0;
+	}
+
+	if (call_table_arg_ptr->MR_cta_string_cur_index
+		>= call_table_arg_ptr->MR_cta_string_value_next)
+	{
+		/* we have already returned all the values in this trie node */
+		call_table_arg_ptr->MR_cta_valid = MR_FALSE;
+		return MR_TRUE;
+	}
+
+	call_table_arg_ptr->MR_cta_string_cur_value =
+		call_table_arg_ptr->MR_cta_string_values[
+			call_table_arg_ptr->MR_cta_string_cur_index];
+
+	table_next = MR_string_hash_lookup(
+		call_table_arg_ptr->MR_cta_start_node, 
+		call_table_arg_ptr->MR_cta_string_cur_value);
+
+	if (table_next == NULL) {
+		MR_fatal_error("MR_update_string_table_arg_slot: bad lookup");
+	}
+
+	*table_cur_ptr = table_next;
+	return MR_FALSE;
+}
+
+static void
+MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc, int num_inputs,
+	MR_Call_Table_Arg *call_table_args, MR_TrieNode table)
+{
+	int	i;
+
+	fprintf(MR_mdb_out, "<");
+	for (i = 0; i < num_inputs; i++) {
+		if (i > 0) {
+			fprintf(MR_mdb_out, ", ");
+		}
+
+		switch (call_table_args[i].MR_cta_step) {
+			case MR_TABLE_STEP_INT:
+				fprintf(MR_mdb_out, "%d",
+					call_table_args[i].
+					MR_cta_int_cur_value);
+				break;
+
+			case MR_TABLE_STEP_FLOAT:
+				fprintf(MR_mdb_out, "%f",
+					call_table_args[i].
+					MR_cta_float_cur_value);
+				break;
+
+			case MR_TABLE_STEP_STRING:
+				fprintf(MR_mdb_out, "\"%s\"",
+					call_table_args[i].
+					MR_cta_string_cur_value);
+				break;
+
+			default:
+				MR_fatal_error("arg not int, float or string "
+					"after check");
+		}
+	}
+
+	fprintf(MR_mdb_out, ">: ");
+
+	if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_MINIMAL) {
+		MR_Subgoal	*subgoal;
+		int		subgoal_num;
+
+		fprintf(MR_mdb_out, "trie node %p\n", table);
+		subgoal = table->MR_subgoal;
+		if (subgoal == NULL) {
+			fprintf(MR_mdb_out, "uninitialized\n");
+		} else {
+			MR_trace_print_subgoal(proc, subgoal);
+		}
+	} else if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_MEMO) {
+		switch (table->MR_simpletable_status) {
+			case MR_SIMPLETABLE_UNINITIALIZED:
+				fprintf(MR_mdb_out, "uninitialized\n");
+				break;
+			case MR_SIMPLETABLE_WORKING:
+				fprintf(MR_mdb_out, "working\n");
+				break;
+			case MR_SIMPLETABLE_FAILED:
+				fprintf(MR_mdb_out, "failed\n");
+				break;
+			case MR_SIMPLETABLE_SUCCEEDED:
+				fprintf(MR_mdb_out, "succeeded (no outputs)\n");
+				break;
+			default:
+				fprintf(MR_mdb_out, "succeeded <");
+				MR_print_answerblock(proc,
+					table->MR_answerblock);
+				fprintf(MR_mdb_out, ">\n");
+				break;
+		}
+	} else if (MR_sle_eval_method(proc) == MR_EVAL_METHOD_LOOP_CHECK) {
+		switch (table->MR_simpletable_status) {
+			case MR_SIMPLETABLE_UNINITIALIZED:
+				fprintf(MR_mdb_out, "uninitialized\n");
+				break;
+			case MR_SIMPLETABLE_WORKING:
+				fprintf(MR_mdb_out, "working\n");
+				break;
+			default:
+				MR_fatal_error("MR_trace_cmd_table_print_tip: "
+					"bad loopcheck status");
+		}
+	} else {
+		MR_fatal_error("MR_trace_cmd_table_print_tip: bad eval method");
+	}
+}
+
+static void
+MR_trace_print_subgoal(const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
+{
+	fprintf(MR_mdb_out, "cannot print subgoals yet\n");
+}
+
+static void
+MR_print_answerblock(const MR_Proc_Layout *proc, MR_Word *answer_block)
+{
+	const MR_PseudoTypeInfo	*ptis;
+	MR_PseudoTypeInfo	pti;
+	MR_TypeCtorInfo		tci;
+	int			num_inputs;
+	int			num_outputs;
+	int			i;
+
+	num_inputs = proc->MR_sle_table_info.MR_table_gen->
+		MR_table_gen_num_inputs;
+	num_outputs = proc->MR_sle_table_info.MR_table_gen->
+		MR_table_gen_num_outputs;
+
+	ptis = proc->MR_sle_table_info.MR_table_gen->MR_table_gen_ptis;
+	ptis += num_inputs;
+
+	for (i = 0; i < num_outputs; i++) {
+		if (i > 0) {
+			fprintf(MR_mdb_out, ", ");
+		}
+
+		pti = ptis[i];
+		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pti)) {
+			fprintf(MR_mdb_out, "poly");
+			continue;
+		}
+
+		tci = MR_PSEUDO_TYPEINFO_GET_TYPE_CTOR_INFO(pti);
+		if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)) {
+			fprintf(MR_mdb_out, "%ld", (long) answer_block[i]);
+		} else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)) {
+			fprintf(MR_mdb_out, "%f",
+#ifdef	MR_HIGHLEVEL_CODE
+				(double) MR_unbox_float(
+						(MR_Box) answer_block[i]));
+#else
+				(double) MR_word_to_float(answer_block[i]));
+#endif
+		} else if (tci == &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0)) {
+			fprintf(MR_mdb_out, "\"%s\"",
+				(char *) answer_block[i]);
+		} else {
+			fprintf(MR_mdb_out, "value of unsupported type");
+		}
+	}
 }
 
 static MR_Next
@@ -4599,8 +5502,8 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 	** with the command word, to put the command word first.
 	*/
 
-	if (raw_word_count > 1 && MR_trace_is_number(raw_words[0], &i)
-			&& ! MR_trace_is_number(raw_words[1], &i)) {
+	if (raw_word_count > 1 && MR_trace_is_natural_number(raw_words[0], &i)
+			&& ! MR_trace_is_natural_number(raw_words[1], &i)) {
 		s = raw_words[0];
 		raw_words[0] = raw_words[1];
 		raw_words[1] = s;
@@ -4720,7 +5623,7 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
 	if (*word_count == 0) {
 		alias_key = "EMPTY";
 		alias_copy_start = 0;
-	} else if (MR_trace_is_number(*words[0], &n)) {
+	} else if (MR_trace_is_natural_number(*words[0], &n)) {
 		alias_key = "NUMBER";
 		alias_copy_start = 0;
 	} else {
@@ -5316,6 +6219,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "developer", "dd_dd", MR_trace_cmd_dd_dd,
 		NULL, MR_trace_filename_completer},
+	{ "developer", "table", MR_trace_cmd_table,
+		NULL, MR_trace_null_completer },
 
 	/* End of doc/mdb_command_list. */
 	{ NULL, "NUMBER", NULL,

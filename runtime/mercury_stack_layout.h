@@ -34,10 +34,6 @@
 #include "mercury_tags.h"
 #include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
 
-/* forward declarations */
-typedef	struct MR_Proc_Layout_Struct	MR_Proc_Layout;
-typedef struct MR_Module_Layout_Struct	MR_Module_Layout;
-
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_PredFunc. This enum should EXACTLY match the definition
@@ -335,7 +331,7 @@ typedef	struct MR_Type_Param_Locns_Struct {
 	MR_Long_Lval			MR_tp_param_locns[MR_VARIABLE_SIZED];
 } MR_Type_Param_Locns;
 
-typedef	struct MR_Label_Layout_Struct {
+struct MR_Label_Layout_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
@@ -344,7 +340,7 @@ typedef	struct MR_Label_Layout_Struct {
 	const void			*MR_sll_locns_types;
 	const MR_uint_least16_t		*MR_sll_var_nums;
 	const MR_Type_Param_Locns	*MR_sll_tvars;
-} MR_Label_Layout;
+};
 
 typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
@@ -451,6 +447,64 @@ typedef struct MR_Table_Io_Decl_Struct {
 	const MR_PseudoTypeInfo		*MR_table_io_decl_ptis;
 	const MR_Type_Param_Locns	*MR_table_io_decl_type_params;
 } MR_Table_Io_Decl;
+
+/*
+** The MR_Table_Gen structure.
+**
+** To enable debugging (especially performance debugging) of tabled predicates,
+** the compiler generates one of these structures for each tabled predicate
+** (except I/O primitives, for which it generates an MR_Table_Io_Decl
+** structure.)
+**
+** Each argument of a tabled predicate is an input or an output. Inputs are put
+** into the call trie, which has one level per input argument. The structure of
+** each level depends on what kind of type the corresponding input argument is;
+** this is recorded in the input_steps field, which points to an array of size
+** num_inputs. If the type is an enum, we cannot interpret the data structures
+** used on that level without also knowing how many alternatives the type has;
+** this is recorded in the corresponding element of the enum_params array,
+** which is likewise of size num_inputs. (Elements of the enum_params array
+** that correspond to arguments whose types are not enums are not meaningful.)
+**
+** The ptis field points to an array of pseudotypeinfos of size num_inputs +
+** num_outputs. The first num_inputs elements give the types of the input
+** arguments, while the remaining num_outputs elements give the types of the
+** output arguments.
+*/
+
+typedef enum {
+	MR_TABLE_STEP_INT,
+	MR_TABLE_STEP_CHAR,
+	MR_TABLE_STEP_STRING,
+	MR_TABLE_STEP_FLOAT,
+	MR_TABLE_STEP_ENUM,
+	MR_TABLE_STEP_USER,
+	MR_TABLE_STEP_POLY,
+} MR_Table_Trie_Step;
+
+typedef struct MR_Table_Gen_Struct {
+	int				MR_table_gen_num_inputs;
+	int				MR_table_gen_num_outputs;
+	const MR_Table_Trie_Step	*MR_table_gen_input_steps;
+	const MR_Integer		*MR_table_gen_enum_params;
+	const MR_PseudoTypeInfo		*MR_table_gen_ptis;
+	const MR_Type_Param_Locns	*MR_table_gen_type_params;
+} MR_Table_Gen;
+
+/*
+** MR_Table_Info: compiler generated information describing the tabling 
+** data structures used by a procedure.
+**
+** For I/O tabled procedures, the information is in the io_decl field.
+** For other kinds of tabled procedures, it is in the gen field.
+** The init field is used for initialization only.
+*/
+
+typedef union {
+	const void			*MR_table_init;
+	const MR_Table_Io_Decl		*MR_table_io_decl;
+	const MR_Table_Gen		*MR_table_gen;
+} MR_Table_Info;
 
 /*
 ** The MR_Stack_Traversal structure contains the following fields:
@@ -623,7 +677,8 @@ typedef	struct MR_Exec_Trace_Struct {
 	const MR_Label_Layout	*MR_exec_call_label;
 	const MR_Module_Layout	*MR_exec_module_layout;
 	MR_Word			*MR_exec_proc_rep;
-	const MR_Table_Io_Decl	*MR_exec_table_io_decl;
+	MR_TrieNode		MR_exec_tabling_pointer;
+	MR_Table_Info		MR_exec_table_info;
 	const MR_int_least16_t	*MR_exec_head_var_nums;
 	const MR_int_least16_t	*MR_exec_used_var_names;
 	MR_int_least16_t	MR_exec_num_head_vars;
@@ -738,7 +793,9 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 
 #define	MR_sle_call_label	MR_sle_exec_trace.MR_exec_call_label
 #define	MR_sle_module_layout	MR_sle_exec_trace.MR_exec_module_layout
-#define	MR_sle_proc_rep	MR_sle_exec_trace.MR_exec_proc_rep
+#define	MR_sle_proc_rep		MR_sle_exec_trace.MR_exec_proc_rep
+#define	MR_sle_tabling_pointer	MR_sle_exec_trace.MR_exec_tabling_pointer
+#define	MR_sle_table_info	MR_sle_exec_trace.MR_exec_table_info
 #define	MR_sle_head_var_nums	MR_sle_exec_trace.MR_exec_head_var_nums
 #define	MR_sle_num_head_vars	MR_sle_exec_trace.MR_exec_num_head_vars
 #define	MR_sle_used_var_names	MR_sle_exec_trace.MR_exec_used_var_names

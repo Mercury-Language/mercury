@@ -32,6 +32,7 @@ NONRETRY_PROGS = \
 	multi_parameter			\
 	polymorphic_output		\
 	print_goal			\
+	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
 	type_desc_test
@@ -95,6 +96,9 @@ ifeq "$(findstring debug,$(GRADE))" ""
     ifneq "$(findstring tr,$(GRADE))" ""
 	SENSITIVE_PROGS :=
     endif
+endif
+ifneq "$(findstring mm,$(GRADE))" ""
+    SENSITIVE_PROGS :=
 endif
 
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
@@ -301,6 +305,9 @@ polymorphic_output.out: polymorphic_output polymorphic_output.inp
 
 print_goal.out: print_goal print_goal.inp
 	$(MDB_STD) ./print_goal < print_goal.inp > print_goal.out 2>&1
+
+print_table.out: print_table print_table.inp
+	$(MDB_STD) ./print_table < print_table.inp > print_table.out 2>&1
 
 queens.out: queens queens.inp
 	$(MDB_STD) ./queens < queens.inp > queens.out 2>&1

@@ -214,7 +214,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "depth") && MR_trace_is_number(value, &depth))
+	else if (MR_streq(param, "depth") && MR_trace_is_natural_number(value, &depth))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_depth(print, browse, print_all,
@@ -223,7 +223,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "size") && MR_trace_is_number(value, &size))
+	else if (MR_streq(param, "size") && MR_trace_is_natural_number(value, &size))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_size(print, browse, print_all,
@@ -232,7 +232,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "width") && MR_trace_is_number(value, &width))
+	else if (MR_streq(param, "width") && MR_trace_is_natural_number(value, &width))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_width(print, browse, print_all,
@@ -241,7 +241,7 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
 				&MR_trace_browser_persistent_state);
 		);
 	}
-	else if (MR_streq(param, "lines") && MR_trace_is_number(value, &lines))
+	else if (MR_streq(param, "lines") && MR_trace_is_natural_number(value, &lines))
 	{
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_set_param_lines(print, browse, print_all,
