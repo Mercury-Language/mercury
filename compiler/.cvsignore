@@ -24,3 +24,5 @@ Mercury
 *.ilk
 *.pdb
 *.*_date
+*.mh
+Mercury.modules
