@@ -73,6 +73,8 @@
 %	is semidet.
 :- mode tree234__remove_smallest(in, out, out, out) is semidet.
 
+	% Given a tree234, return a list of all the keys in the tree.
+	% The list that is returned is in sorted order.
 :- pred tree234__keys(tree234(K, V), list(K)).
 :- mode tree234__keys(in, out) is det.
 
@@ -91,6 +93,9 @@
 :- pred tree234__assoc_list_to_tree234(assoc_list(K, V), tree234(K, V)).
 :- mode tree234__assoc_list_to_tree234(in, out) is det.
 
+	% Given a tree234, return an association list of all the
+	% keys and values in the tree.  The association list that
+	% is returned is sorted on the keys.
 :- pred tree234__tree234_to_assoc_list(tree234(K, V), assoc_list(K, V)).
 :- mode tree234__tree234_to_assoc_list(in, out) is det.
 
