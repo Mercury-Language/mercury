@@ -200,9 +200,13 @@ I wonder whether it is worth it?
 :- implementation.
 :- import_module std_util.
 
-:- type mutvar(T, S).
+:- type some_store_type ---> some_store_type.
 
-:- type store(S).
+:- type store(S) ---> store(c_pointer).
+
+:- type mutvar(T, S) ---> mutvar(c_pointer).
+
+:- type ref(T, S) ---> ref(c_pointer).
 
 :- pragma c_code(init(_S0::uo), will_not_call_mercury, "").
 
@@ -263,6 +267,9 @@ ref_functor(Ref, Functor, Arity) -->
 	/* ML_arg() is defined in std_util.m */
 	bool ML_arg(Word term_type_info, Word *term, Word argument_index,
 			Word *arg_type_info, Word **argument_ptr);
+
+	/* ML_compare_type_info() is defined in std_util.m */
+	int ML_compare_type_info(Word type_info_1, Word type_info_2);
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::di, S::uo),
