@@ -639,10 +639,17 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   <li>
   pd_util.m contains various utility predicates.
   </ul>
+
+<li> loop_inv.m: loop invariant hoisting.  This transformation moves
+  computations within loops that are the same on every iteration to the outside
+  of the loop so that the invariant computations are only computed once.  The
+  transformation turns a single looping predicate containing invariant
+  computations into two: one that computes the invariants on the first
+  iteration and then loops by calling the second predicate with extra arguments
+  for the invariant values.
  
 <li> issue warnings about unused arguments from predicates, and create
-  specialized versions without them (unused_args.m); type_infos are
-  often unused.
+specialized versions without them (unused_args.m); type_infos are often unused.
 
 <li> delay_construct.m pushes construction unifications to the right in
   semidet conjunctions, in an effort to reduce the probability that it will
@@ -1264,6 +1271,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-04-15 05:04:15 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-10-31 05:47:59 $ by $Author: rafe $@cs.mu.oz.au. <br>
 </body>
 </html>

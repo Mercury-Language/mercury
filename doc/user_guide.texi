@@ -5610,6 +5610,12 @@ containing more than @var{threshold} variables. Procedures
 containing large numbers of variables can cause
 slow compilation.
 
+@item --loop-invariants
+@findex --loop-invariants
+Optimize loop invariants by moving computations within a loop that are
+the same on every iteration to the outside so they are only calculated
+once.  (This is a separate optimization to @samp{--optimize-rl-invariants}.)
+
 @sp 1
 @item --no-common-struct
 @findex --no-common-struct

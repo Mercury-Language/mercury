@@ -34,7 +34,8 @@
 				io__state, io__state))
 		;	update_pred_error(pred_error_task)
 		;	update_module(pred(
-				pred_info, proc_info, proc_info,
+				pred_id, proc_id, pred_info,
+				proc_info, proc_info,
 				module_info, module_info))
 		;	update_module_io(pred(
 				pred_id, proc_id, proc_info, proc_info,
@@ -93,7 +94,8 @@ about unbound type variables.
 				out, out, di, uo) is det)
 		;	update_pred_error(pred(in, in, out, in, out,
 				out, out, di, uo) is det)
-		;	update_module(pred(in, in, out, in, out) is det)
+		;	update_module(pred(in, in, in, in, out, in, out)
+				is det)
 		;	update_module_io(pred(in, in, in, out,
 				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
@@ -324,7 +326,8 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 
 	(
 		Task0 = update_module(Closure),
-		call(Closure, Pred0, Proc0, Proc, ModuleInfo0, ModuleInfo8),
+		call(Closure, PredId, ProcId, Pred0, Proc0, Proc,
+			ModuleInfo0, ModuleInfo8),
 		Task1 = Task0,
 		State9 = State0
 	;

@@ -57,6 +57,7 @@
 :- import_module transform_hlds__delay_construct, transform_hlds__unused_args.
 :- import_module transform_hlds__unneeded_code, transform_hlds__lco.
 :- import_module ll_backend__deep_profiling.
+:- import_module transform_hlds__loop_inv.
 
 	% the LLDS back-end
 :- import_module ll_backend__saved_vars, ll_backend__stack_opt.
@@ -1868,45 +1869,51 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 			Verbose, Stats, HLDS33),
 	mercury_compile__maybe_dump_hlds(HLDS33, "33", "accum"),
 
-	mercury_compile__maybe_do_inlining(HLDS33, Verbose, Stats, HLDS34),
-	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"),
+	% Hoisting loop invariants first invokes pass 34, "mark_static".
+	% "mark_static" is also run at stage 60.
+	%
+	mercury_compile__maybe_loop_inv(HLDS33, Verbose, Stats, HLDS35),
+	mercury_compile__maybe_dump_hlds(HLDS35, "35", "loop_inv"),
 
-	mercury_compile__maybe_deforestation(HLDS34, Verbose, Stats, HLDS36),
-	mercury_compile__maybe_dump_hlds(HLDS36, "36", "deforestation"),
+	mercury_compile__maybe_do_inlining(HLDS35, Verbose, Stats, HLDS36),
+	mercury_compile__maybe_dump_hlds(HLDS36, "36", "inlining"),
 
-	mercury_compile__maybe_delay_construct(HLDS36, Verbose, Stats, HLDS37),
-	mercury_compile__maybe_dump_hlds(HLDS37, "37", "delay_construct"),
+	mercury_compile__maybe_deforestation(HLDS36, Verbose, Stats, HLDS37),
+	mercury_compile__maybe_dump_hlds(HLDS37, "37", "deforestation"),
 
-	mercury_compile__maybe_unused_args(HLDS37, Verbose, Stats, HLDS39),
-	mercury_compile__maybe_dump_hlds(HLDS39, "39", "unused_args"),
+	mercury_compile__maybe_delay_construct(HLDS37, Verbose, Stats, HLDS38),
+	mercury_compile__maybe_dump_hlds(HLDS38, "38", "delay_construct"),
 
-	mercury_compile__maybe_unneeded_code(HLDS39, Verbose, Stats, HLDS40),
-	mercury_compile__maybe_dump_hlds(HLDS40, "40", "unneeded_code"),
+	mercury_compile__maybe_unused_args(HLDS38, Verbose, Stats, HLDS40),
+	mercury_compile__maybe_dump_hlds(HLDS40, "40", "unused_args"),
 
-	mercury_compile__maybe_lco(HLDS40, Verbose, Stats, HLDS42),
-	mercury_compile__maybe_dump_hlds(HLDS42, "42", "lco"),
+	mercury_compile__maybe_unneeded_code(HLDS40, Verbose, Stats, HLDS41),
+	mercury_compile__maybe_dump_hlds(HLDS41, "41", "unneeded_code"),
+
+	mercury_compile__maybe_lco(HLDS41, Verbose, Stats, HLDS43),
+	mercury_compile__maybe_dump_hlds(HLDS43, "43", "lco"),
 
 	% DNF transformations should be after inlining.
-	mercury_compile__maybe_transform_dnf(HLDS40, Verbose, Stats, HLDS44),
-	mercury_compile__maybe_dump_hlds(HLDS44, "44", "dnf"),
+	mercury_compile__maybe_transform_dnf(HLDS41, Verbose, Stats, HLDS45),
+	mercury_compile__maybe_dump_hlds(HLDS45, "45", "dnf"),
 
 	% Magic sets should be the last thing done to Aditi procedures
 	% before RL code generation, and must come immediately after DNF.
-	mercury_compile__maybe_magic(HLDS44, Verbose, Stats, HLDS46),
-	mercury_compile__maybe_dump_hlds(HLDS46, "46", "magic"),
+	mercury_compile__maybe_magic(HLDS45, Verbose, Stats, HLDS47),
+	mercury_compile__maybe_dump_hlds(HLDS47, "47", "magic"),
 
-	mercury_compile__maybe_dead_procs(HLDS46, Verbose, Stats, HLDS48),
-	mercury_compile__maybe_dump_hlds(HLDS48, "48", "dead_procs"),
+	mercury_compile__maybe_dead_procs(HLDS47, Verbose, Stats, HLDS49),
+	mercury_compile__maybe_dump_hlds(HLDS49, "49", "dead_procs"),
 
 	% Deep profiling transformation should be done late in the piece
 	% since it munges the code a fair amount and introduces strange
 	% disjunctions that might confuse other hlds->hlds transformations.
-	mercury_compile__maybe_deep_profiling(HLDS48, Verbose, Stats, HLDS49,
+	mercury_compile__maybe_deep_profiling(HLDS49, Verbose, Stats, HLDS50,
 		DeepProfilingStructures),
-	mercury_compile__maybe_dump_hlds(HLDS49, "49", "deep_profiling"),
+	mercury_compile__maybe_dump_hlds(HLDS50, "50", "deep_profiling"),
 
-	{ HLDS49 = HLDS50 },
-	mercury_compile__maybe_dump_hlds(HLDS50, "50", "middle_pass").
+	{ HLDS50 = HLDS51 },
+	mercury_compile__maybe_dump_hlds(HLDS51, "51", "middle_pass").
 
 %-----------------------------------------------------------------------------%
 
@@ -2197,7 +2204,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
 	{ globals__lookup_bool_option(Globals, prev_code, PrevCode) },
 	( { FollowCode = yes ; PrevCode = yes } ->
-		{ move_follow_code_in_proc(PredInfo,
+		{ move_follow_code_in_proc(PredId, ProcId, PredInfo,
 			ProcInfoSavedCell, ProcInfoFollowCode,
 			ModuleInfoSavedCell, ModuleInfoFollow) }
 	;
@@ -2825,6 +2832,33 @@ add_aditi_procs(HLDS0, PredId, AditiPreds0, AditiPreds) :-
 		list__foldl(AddProc, ProcIds, AditiPreds0, AditiPreds)
 	;
 		AditiPreds = AditiPreds0
+	).
+
+:- pred mercury_compile__maybe_loop_inv(module_info::in,
+	bool::in, bool::in, module_info::out, io__state::di, io__state::uo)
+	is det.
+
+mercury_compile__maybe_loop_inv(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(loop_invariants, LoopInv),
+	( { LoopInv = yes } ->
+
+			% We run the mark_static pass because we need
+			% the construct_how flag to be valid.
+			%
+		mercury_compile__maybe_mark_static_terms(HLDS0, Verbose, Stats,
+			HLDS1),
+		mercury_compile__maybe_dump_hlds(HLDS1, "34", "mark_static"),
+
+		maybe_write_string(Verbose,
+			"% Hoisting loop invariants...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_module(hoist_loop_invariants),
+			HLDS1, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
 	).
 
 :- pred mercury_compile__maybe_delay_construct(module_info::in,

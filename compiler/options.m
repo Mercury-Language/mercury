@@ -435,6 +435,7 @@
 		;	optimize_saved_vars_cell_all_path_node_ratio
 		;	optimize_saved_vars_cell_include_all_candidates
 		;	optimize_saved_vars
+		;	loop_invariants
 		;	delay_construct
 		;	follow_code
 		;	prev_code
@@ -944,6 +945,7 @@ option_defaults_2(optimization_option, [
 	optimize_duplicate_calls -	bool(no),
 	constant_propagation	-	bool(no),
 	excess_assign		-	bool(no),
+	loop_invariants		-	bool(no),
 	optimize_saved_vars_const	-	bool(no),
 	optimize_saved_vars_cell	-	bool(no),
 	optimize_saved_vars_cell_loop	-	bool(yes),
@@ -1489,6 +1491,7 @@ long_option("optimise-constant-propagation", constant_propagation).
 long_option("optimize-constant-propagation", constant_propagation).
 long_option("optimize-saved-vars",	optimize_saved_vars).
 long_option("optimise-saved-vars",	optimize_saved_vars).
+long_option("loop-invariants",		loop_invariants).
 long_option("optimize-saved-vars-const",	optimize_saved_vars_const).
 long_option("optimise-saved-vars-const",	optimize_saved_vars_const).
 long_option("optimize-saved-vars-cell",	optimize_saved_vars_cell).
@@ -1976,7 +1979,8 @@ opt_space([
 	optimize_fulljumps	-	bool(no),
 	optimize_reassign	-	bool(yes),
 	inline_alloc		-	bool(no),
-	use_macro_for_redo_fail	-	bool(no)
+	use_macro_for_redo_fail	-	bool(no),
+	loop_invariants		-	bool(no)
 ]).
 
 %-----------------------------------------------------------------------------%
@@ -2090,7 +2094,8 @@ opt_level(5, _, [
 	delay_construct		-	bool(yes),
 	inline_compound_threshold -	int(100),
 	higher_order_size_limit -	int(40),
-	eliminate_local_vars	-	bool(yes)
+	eliminate_local_vars	-	bool(yes),
+	loop_invariants		-	bool(yes)
 ]).
 
 % Optimization level 6: apply optimizations which may have any
@@ -3191,6 +3196,8 @@ options_help_hlds_hlds_optimization -->
 		"--optimize-duplicate-calls",
 		"\tOptimize away multiple calls to a predicate",
 		"\twith the same input arguments.",
+		"--loop-invariants",
+		"\tHoist loop invariants out of loops.",
 		"--delay-constructs",
 		"\tReorder goals to move construction unifications after",
 		"\tprimitive goals that can fail.",

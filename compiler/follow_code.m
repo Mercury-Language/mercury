@@ -16,8 +16,9 @@
 :- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_goal.
 :- import_module list.
 
-:- pred move_follow_code_in_proc(pred_info::in, proc_info::in, proc_info::out,
-	module_info::in, module_info::out) is det.
+:- pred move_follow_code_in_proc(pred_id::in, proc_id::in, pred_info::in,
+	proc_info::in, proc_info::out, module_info::in, module_info::out)
+	is det.
 
 	% Split a list of goals into the prefix of builtins and the rest.
 :- pred move_follow_code_select(list(hlds_goal)::in, list(hlds_goal)::out,
@@ -36,7 +37,7 @@
 
 %-----------------------------------------------------------------------------%
 
-move_follow_code_in_proc(_PredInfo, ProcInfo0, ProcInfo,
+move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, follow_code, FollowCode),

@@ -42,6 +42,7 @@
    :- include_module goal_store.
 :- include_module dead_proc_elim.
 :- include_module const_prop.
+:- include_module loop_inv.
 
 % XXX The following modules are all currently unused.
 :- include_module constraint, transform.

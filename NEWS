@@ -18,6 +18,7 @@ Changes to the Mercury compiler:
 * A new `--smart-recompilation' option, for fine-grained dependency tracking.
 * A new optional warning: `--warn-non-tail-recursion'.
 * A new optimization: `--constraint-propagation'.
+* A new optimization: `--loop-invariants'.
 * Support for arbitrary mappings from module name to source file name. 
 
 Major improvements to the Mercury debugger, including:

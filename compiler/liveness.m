@@ -212,20 +212,23 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 	live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, TVarMap, VarSet,
 		LiveInfo),
 
+	globals__lookup_int_option(Globals, debug_liveness, DebugLiveness),
+	pred_id_to_int(PredId, PredIdInt),
+	maybe_write_progress_message("\nbefore liveness",
+		DebugLiveness, PredIdInt, Goal0, VarSet, ModuleInfo, IO0, IO1),
+
 	initial_liveness(ProcInfo1, PredId, ModuleInfo, Liveness0),
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
 		_, Goal1),
 
-	globals__lookup_int_option(Globals, debug_liveness, DebugLiveness),
-	pred_id_to_int(PredId, PredIdInt),
 	maybe_write_progress_message("\nafter liveness",
-		DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, IO0, IO1),
+		DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, IO1, IO2),
 
 	initial_deadness(ProcInfo1, LiveInfo, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, Liveness0, LiveInfo,
 		_, Goal2),
 	maybe_write_progress_message("\nafter deadness",
-		DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, IO1, IO2),
+		DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, IO2, IO3),
 
 	(
 		globals__get_trace_level(Globals, TraceLevel),
@@ -237,10 +240,10 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 		delay_death_proc_body(Goal2, VarSet, Liveness0, Goal3),
 		maybe_write_progress_message("\nafter delay death",
 			DebugLiveness, PredIdInt, Goal3, VarSet, ModuleInfo,
-			IO2, IO3)
+			IO3, IO4)
 	;
 		Goal3 = Goal2,
-		IO3 = IO2
+		IO4 = IO3
 	),
 
 	globals__get_trace_level(Globals, TraceLevel),
@@ -252,7 +255,7 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, ProcInfo0, ProcInfo,
 	detect_resume_points_in_goal(Goal3, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 	maybe_write_progress_message("\nafter resume point",
-		DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, IO3, IO),
+		DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, IO4, IO),
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 	proc_info_set_liveness_info(ProcInfo2, Liveness0, ProcInfo).
 
