@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -233,11 +233,8 @@ config.status: configure VERSION
 		exit 1; \
 	fi
 
-Mmake.common: Mercury.options Mmake.common.in config.status
+Mmake.common: Mmake.common.in config.status
 	./config.status
-
-Mercury.options:
-	touch Mercury.options
 
 README: .README.in VERSION
 	sed 's/@VERSION@/$(VERSION)/g' .README.in > README

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -211,6 +211,11 @@ USING_MICROSOFT_CL_COMPILER=@USING_MICROSOFT_CL_COMPILER@
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include $(MERCURY_DIR)/Mercury.options
+
+$(MERCURY_DIR)/Mercury.options:
+	@if [ ! -f $(MERCURY_DIR)/Mercury.options ]; then \
+ 		touch $(MERCURY_DIR)/Mercury.options; \
+	fi
 
 # The Mmake.params file can be used to override definitions in this file
 -include $(MERCURY_DIR)/Mmake.params
