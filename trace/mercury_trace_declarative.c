@@ -316,7 +316,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	event_details.MR_call_depth = MR_trace_call_depth;
 	event_details.MR_event_number = MR_trace_event_number;
 
-	MR_trace_enabled = MR_FALSE;
+	MR_debug_enabled = MR_FALSE;
+	MR_update_trace_func_enabled();
 	MR_decl_checkpoint_event(event_info);
 	trace = MR_trace_current_node;
 	switch (event_info->MR_trace_port) {
@@ -384,7 +385,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				event_info, &event_details);
 	}
 
-	MR_trace_enabled = MR_TRUE;
+	MR_debug_enabled = MR_TRUE;
+	MR_update_trace_func_enabled();
 	return NULL;
 }
 
@@ -1139,7 +1141,8 @@ MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: diagnosis aborted:\n%s\n", message);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = MR_TRUE;
+		MR_debug_enabled = MR_TRUE;
+		MR_update_trace_func_enabled();
 		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
@@ -1201,7 +1204,8 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	cmd->MR_trace_print_level = MR_PRINT_LEVEL_NONE;
 	cmd->MR_trace_must_check = MR_FALSE;
 
-	MR_trace_enabled = MR_TRUE;
+	MR_debug_enabled = MR_TRUE;
+	MR_update_trace_func_enabled();
 	return NULL;
 }
 
@@ -1248,7 +1252,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 
 		fclose(MR_trace_store_file);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = MR_TRUE;
+		MR_debug_enabled = MR_TRUE;
+		MR_update_trace_func_enabled();
 		MR_trace_call_seqno = event_details->MR_call_seqno;
 		MR_trace_call_depth = event_details->MR_call_depth;
 		MR_trace_event_number = event_details->MR_event_number;
@@ -1260,7 +1265,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		/*
 		** This is a quick and dirty way to debug the front end.
 		*/
-		MR_trace_enabled = MR_TRUE;
+		MR_debug_enabled = MR_TRUE;
+		MR_update_trace_func_enabled();
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 	}
 
@@ -1317,7 +1323,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		** current event, which was the event it was left from.
 		*/
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = MR_TRUE;
+		MR_debug_enabled = MR_TRUE;
+		MR_update_trace_func_enabled();
 		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
@@ -1370,7 +1377,8 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err, "direct retry impossible\n");
 		}
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_trace_enabled = MR_TRUE;
+		MR_debug_enabled = MR_TRUE;
+		MR_update_trace_func_enabled();
 		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
 	}
 
@@ -1380,7 +1388,8 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 	cmd->MR_trace_strict = MR_TRUE;
 	cmd->MR_trace_must_check = MR_FALSE;
 	MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-	MR_trace_enabled = MR_TRUE;
+	MR_debug_enabled = MR_TRUE;
+	MR_update_trace_func_enabled();
 	return jumpaddr;
 }
 

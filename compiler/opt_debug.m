@@ -531,6 +531,11 @@ dump_layout_name(module_layout_proc_vector(ModuleName), Str) :-
 	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__append_list(["module_layout_proc_vector(", ModuleNameStr, ")"],
 		Str).
+dump_layout_name(module_layout_label_exec_count(ModuleName, NumLabels), Str) :-
+	ModuleNameStr = sym_name_mangle(ModuleName),
+	NumLabelsStr = int_to_string(NumLabels),
+	string__append_list(["module_layout_label_exec_count(",
+		ModuleNameStr, ", ", NumLabelsStr, ")"], Str).
 dump_layout_name(module_layout(ModuleName), Str) :-
 	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__append_list(["module_layout(", ModuleNameStr, ")"], Str).

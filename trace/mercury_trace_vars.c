@@ -1486,13 +1486,14 @@ MR_trace_check_integrity(const MR_Label_Layout *layout, MR_Trace_Port port)
     int             level;
     const char      *problem;
     char            buf[MR_INTEGRITY_ERROR_BUF_SIZE];
-    MR_bool         saved_trace_enabled;
+    MR_bool         saved_debug_enabled;
     int             MR_check_max_mr_num;
     MR_Word         MR_check_saved_regs[MR_MAX_FAKE_REG];
     static  int     MR_check_integrity_seq_num = 0;
 
-    saved_trace_enabled = MR_trace_enabled;
-    MR_trace_enabled = MR_FALSE;
+    saved_debug_enabled = MR_debug_enabled;
+    MR_debug_enabled = MR_FALSE;
+    MR_update_trace_func_enabled();
 
     MR_compute_max_mr_num(MR_check_max_mr_num, layout);
     MR_restore_transient_registers();
@@ -1524,7 +1525,8 @@ MR_trace_check_integrity(const MR_Label_Layout *layout, MR_Trace_Port port)
     MR_saved_global_hp(MR_check_saved_regs) = MR_global_hp;
     MR_copy_saved_regs_to_regs(MR_check_max_mr_num, MR_check_saved_regs);
     MR_trace_report_msg = NULL;
-    MR_trace_enabled = saved_trace_enabled;
+    MR_debug_enabled = saved_debug_enabled;
+    MR_update_trace_func_enabled();
 }
 
 #endif  /* MR_TRACE_CHECK_INTEGRITY */

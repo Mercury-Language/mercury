@@ -40,10 +40,6 @@ typedef struct {
 				/* the list entries are MR_Module_Layouts */
 } MR_Module_Nick;
 
-static	const MR_Module_Layout	**MR_module_infos;
-static	int			MR_module_info_next = 0;
-static	int			MR_module_info_max  = 0;
-
 static	MR_Module_Nick		*MR_module_nicks;
 static	int			MR_module_nick_next = 0;
 static	int			MR_module_nick_max  = 0;
@@ -191,13 +187,8 @@ MR_insert_module_info(const MR_Module_Layout *module)
 	MR_bool		found;
 	const char	*nickname;
 
-	MR_GC_ensure_room_for_next(MR_module_info, const MR_Module_Layout *,
-		INIT_MODULE_TABLE_SIZE);
-	MR_prepare_insert_into_sorted(MR_module_infos, MR_module_info_next,
-		slot,
-		strcmp(MR_module_infos[slot]->MR_ml_name, module->MR_ml_name));
+	MR_insert_module_info_into_module_table(module);
 
-	MR_module_infos[slot] = module;
 	MR_module_info_proc_count += module->MR_ml_proc_count;
 
 	nickname = strchr(module->MR_ml_name, '.');

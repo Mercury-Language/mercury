@@ -99,11 +99,11 @@
 :- import_module int, char, string, require, std_util, list.
 
 output_layout_data_defn(label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
-		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo),
-		!DeclSet, !IO) :-
+		MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
+		MaybeVarInfo), !DeclSet, !IO) :-
 	output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr,
-		MaybePort, MaybeIsHidden, MaybeGoalPath, MaybeVarInfo,
-		!DeclSet, !IO).
+		MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
+		MaybeVarInfo, !DeclSet, !IO).
 output_layout_data_defn(proc_layout_data(ProcLabel, Traversal, MaybeRest),
 		!DeclSet, !IO) :-
 	output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
@@ -115,10 +115,10 @@ output_layout_data_defn(closure_proc_id_data(CallerProcLabel, SeqNo,
 		ModuleName, FileName, LineNumber, GoalPath, !DeclSet, !IO).
 output_layout_data_defn(module_layout_data(ModuleName, StringTableSize,
 		StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
-		SuppressedEvents), !DeclSet, !IO) :-
+		SuppressedEvents, NumLabels), !DeclSet, !IO) :-
 	output_module_layout_data_defn(ModuleName, StringTableSize,
 		StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
-		SuppressedEvents, !DeclSet, !IO).
+		SuppressedEvents, NumLabels, !DeclSet, !IO).
 output_layout_data_defn(table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
 		PTIVectorRval, TypeParamsRval), !DeclSet, !IO) :-
 	output_table_io_decl(RttiProcLabel, Kind, NumPTIs,
@@ -148,10 +148,10 @@ output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO) :-
 
 :- pred extract_layout_name(layout_data::in, layout_name::out) is det.
 
-extract_layout_name(label_layout_data(ProcLabel, LabelNum, _, _, _, _, yes(_)),
-		LayoutName) :-
+extract_layout_name(label_layout_data(ProcLabel, LabelNum, _, _, _, _, _,
+		yes(_)), LayoutName) :-
 	LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info).
-extract_layout_name(label_layout_data(ProcLabel, LabelNum, _, _, _, _, no),
+extract_layout_name(label_layout_data(ProcLabel, LabelNum, _, _, _, _, _, no),
 		LayoutName) :-
 	LayoutName = label_layout(ProcLabel, LabelNum, label_has_no_var_info).
 extract_layout_name(proc_layout_data(RttiProcLabel, _, MaybeRest),
@@ -162,7 +162,8 @@ extract_layout_name(proc_layout_data(RttiProcLabel, _, MaybeRest),
 extract_layout_name(closure_proc_id_data(CallerProcLabel, SeqNo,
 		ClosureProcLabel, _, _, _, _),
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)).
-extract_layout_name(module_layout_data(ModuleName, _,_,_,_,_,_), LayoutName) :-
+extract_layout_name(module_layout_data(ModuleName, _, _, _, _, _, _, _),
+		LayoutName) :-
 	LayoutName = module_layout(ModuleName).
 extract_layout_name(table_io_decl_data(RttiProcLabel, _, _, _, _),
 		LayoutName) :-
@@ -262,6 +263,11 @@ output_layout_name(module_layout_file_vector(ModuleName)) -->
 output_layout_name(module_layout_proc_vector(ModuleName)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_module_procs__"),
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
+	io__write_string(ModuleNameStr).
+output_layout_name(module_layout_label_exec_count(ModuleName, _)) -->
+	io__write_string(mercury_data_prefix),
+	io__write_string("_module_label_exec_counts__"),
 	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr).
 output_layout_name(module_layout(ModuleName)) -->
@@ -382,6 +388,14 @@ output_layout_name_storage_type_name(module_layout_file_vector(ModuleName),
 	io__write_string("static const MR_Module_File_Layout *"),
 	output_layout_name(module_layout_file_vector(ModuleName)),
 	io__write_string("[]").
+output_layout_name_storage_type_name(module_layout_label_exec_count(
+		ModuleName, NumElements), _BeingDefined) -->
+	io__write_string("static MR_Unsigned "),
+	output_layout_name(
+		module_layout_label_exec_count(ModuleName, NumElements)),
+	io__write_string("["),
+	io__write_int(NumElements),
+	io__write_string("]").
 output_layout_name_storage_type_name(module_layout_proc_vector(ModuleName),
 		_BeingDefined) -->
 	io__write_string("static const MR_Proc_Layout *"),
@@ -431,6 +445,7 @@ layout_name_would_include_code_addr(file_layout_label_layout_vector(_, _)) = no.
 layout_name_would_include_code_addr(module_layout_string_table(_)) = no.
 layout_name_would_include_code_addr(module_layout_file_vector(_)) = no.
 layout_name_would_include_code_addr(module_layout_proc_vector(_)) = no.
+layout_name_would_include_code_addr(module_layout_label_exec_count(_, _)) = no.
 layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_call_sites(_)) = no.
@@ -472,12 +487,13 @@ output_rval_or_num_or_none(num(Num), !IO) :-
 output_rval_or_num_or_none(none, !IO).
 
 :- pred output_label_layout_data_defn(proc_label::in, int::in, layout_name::in,
-	maybe(trace_port)::in, maybe(bool)::in, maybe(int)::in,
+	maybe(trace_port)::in, maybe(bool)::in, int::in, maybe(int)::in,
 	maybe(label_var_info)::in, decl_set::in, decl_set::out,
 	io::di, io::uo) is det.
 
 output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
-		MaybeIsHidden, MaybeGoalPath, MaybeVarInfo, !DeclSet, !IO) :-
+		MaybeIsHidden, LabelNumberInModule, MaybeGoalPath,
+		MaybeVarInfo, !DeclSet, !IO) :-
 	output_layout_decl(ProcLayoutAddr, !DeclSet, !IO),
 	(
 		MaybeIsHidden = yes(yes),
@@ -563,6 +579,8 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
 		MaybePort = no,
 		io__write_string("NONE", !IO)
 	),
+	io__write_string(", ", !IO),
+	io__write_int(LabelNumberInModule, !IO),
 	io__write_string(", ", !IO),
 	(
 		MaybeGoalPath = yes(GoalPath),
@@ -1046,12 +1064,12 @@ output_proc_id(ProcLabel) -->
 
 :- pred output_module_layout_data_defn(module_name::in, int::in,
 	string_with_0s::in, list(layout_name)::in, list(file_layout_data)::in,
-	trace_level::in, int::in, decl_set::in, decl_set::out,
+	trace_level::in, int::in, int::in, decl_set::in, decl_set::out,
 	io::di, io::uo) is det.
 
 output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
 		ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
-		!DeclSet, !IO) :-
+		NumLabels, !DeclSet, !IO) :-
 	output_module_string_table(ModuleName, StringTableSize, StringTable,
 		!DeclSet, !IO),
 	output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
@@ -1060,6 +1078,13 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
 		FileLayoutNames, !DeclSet, !IO),
 	output_file_layout_vector_data_defn(ModuleName, FileLayoutNames,
 		FileVectorName, !DeclSet, !IO),
+
+	io__write_string("\n", !IO),
+	LabelExecCountName = module_layout_label_exec_count(ModuleName,
+		NumLabels),
+	output_layout_name_storage_type_name(LabelExecCountName, yes, !IO),
+	io__write_string(";\n", !IO),
+	decl_set_insert(data_addr(layout_addr(LabelExecCountName)), !DeclSet),
 
 	ModuleLayoutName = module_layout(ModuleName),
 	io__write_string("\n", !IO),
@@ -1086,6 +1111,10 @@ output_module_layout_data_defn(ModuleName, StringTableSize, StringTable,
 	io__write_string(trace_level_rep(TraceLevel), !IO),
 	io__write_string(",\n", !IO),
 	io__write_int(SuppressedEvents, !IO),
+	io__write_string(",\n", !IO),
+	io__write_int(NumLabels, !IO),
+	io__write_string(",\n", !IO),
+	output_layout_name(LabelExecCountName, !IO),
 	io__write_string("\n};\n", !IO),
 	decl_set_insert(data_addr(layout_addr(ModuleLayoutName)), !DeclSet).
 

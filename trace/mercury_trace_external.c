@@ -477,11 +477,11 @@ MR_trace_final_external(void)
 MR_Code *
 MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
-	static MR_Word	search_data;
-	static void	(*initialize_ptr)(MR_Word *);
-	static void	(*get_collect_var_type_ptr)(MR_Word *);
+	static MR_Word		search_data;
+	static void		(*initialize_ptr)(MR_Word *);
+	static void		(*get_collect_var_type_ptr)(MR_Word *);
 	static MR_bool    	collect_linked = MR_FALSE;
-	MR_bool    	stop_collecting = MR_FALSE;
+	MR_bool    		stop_collecting = MR_FALSE;
 	MR_Integer		debugger_request_type;
 	MR_Word			debugger_request;
 	MR_Word			var_list;
@@ -504,7 +504,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	static MR_String	MR_object_file_name;
 	int			lineno = 0;
 
-	MR_trace_enabled = MR_FALSE;
+	MR_debug_enabled = MR_FALSE;
+	MR_update_trace_func_enabled();
 
 	/*
 	** These globals can be overwritten when we call Mercury code,
@@ -915,7 +916,8 @@ done:
 	MR_trace_call_depth = event_details.MR_call_depth;
 	MR_trace_event_number = event_details.MR_event_number;
 
-	MR_trace_enabled = MR_TRUE;
+	MR_debug_enabled = MR_TRUE;
+	MR_update_trace_func_enabled();
 
 	return jumpaddr;
 }

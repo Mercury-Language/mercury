@@ -1450,7 +1450,7 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
 ** with an exception handler.  As we go, invoke either or both
 ** of two actions.
 **
-** (1) If MR_trace_enabled is set, then invoke
+** (1) If MR_debug_enabled is set, then invoke
 **     `MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
 **     to signal to the debugger that that procedure has exited via
 **     an exception.  This allows to user to use the `retry' command
@@ -1632,7 +1632,7 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
 
   #endif
 
-  		if (MR_trace_enabled) {
+  		if (MR_debug_enabled) {
 			/*
 			** invoke MR_trace() to trace the exception
 			*/
@@ -2100,7 +2100,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 #ifdef	MR_DEEP_PROFILING
 	walk_stack = MR_TRUE;
 #else
-	walk_stack = MR_trace_enabled;
+	walk_stack = MR_debug_enabled;
 #endif
 
 	if (walk_stack) {

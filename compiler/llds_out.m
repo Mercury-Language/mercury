@@ -463,7 +463,7 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
 		!OtherLayouts) :-
 	( Layout = proc_layout_data(_, _, _) ->
 		!:ProcLayouts = [Layout | !.ProcLayouts]
-	; Layout = label_layout_data(_, _, _, _, _, _, _) ->
+	; Layout = label_layout_data(_, _, _, _, _, _, _, _) ->
 		!:LabelLayouts = [Layout | !.LabelLayouts]
 	;
 		!:OtherLayouts = [Layout | !.OtherLayouts]
@@ -687,7 +687,7 @@ output_debugger_init_list_decls([], !DeclSet, !IO).
 output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
 	(
 		Data = layout_data(LayoutData),
-		LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_)
+		LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_,_)
 	->
 		output_data_addr_decls(layout_addr(module_layout(ModuleName)),
 			!DeclSet, !IO)
@@ -707,7 +707,7 @@ output_debugger_init_list([], !IO).
 output_debugger_init_list([Data | Datas], !IO) :-
 	(
 		Data = layout_data(LayoutData),
-		LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_)
+		LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_,_)
 	->
 		io__write_string(
 			"\tif (MR_register_module_layout != NULL) {\n",

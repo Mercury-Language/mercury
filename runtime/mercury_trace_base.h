@@ -76,7 +76,8 @@ extern	const char 			*MR_port_names[];
 ** If the event is supposed to be traced, it performs an indirect call
 ** through MR_trace_func_ptr, which will point either to MR_trace_real,
 ** which is defined in the trace library, or to MR_trace_fake, defined here,
-** which just prints an error message and aborts.
+** which just prints an error message and aborts, or to MR_trace_count, also
+** defined here, which counts the execution of the event.
 **
 ** The return value, if not NULL, says where execution should continue
 ** after the event. (NULL means it should continue as usual.)
@@ -84,6 +85,29 @@ extern	const char 			*MR_port_names[];
 
 extern	MR_Code	*MR_trace(const MR_Label_Layout *);
 extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
+extern	MR_Code	*MR_trace_count(const MR_Label_Layout *);
+
+/*
+** These three variables implement a table of module layout structures,
+** sorted on module name, maintained by the macros in mercury_array_macros.h.
+**
+** Insertions are handled by MR_insert_module_info_into_module_table.
+*/
+
+extern	const MR_Module_Layout	**MR_module_infos;
+extern	int			MR_module_info_next;
+extern	int			MR_module_info_max;
+
+extern	void	MR_insert_module_info_into_module_table(
+			const MR_Module_Layout *module_layout);
+
+/*
+** For every label reachable from the module table, write the id of the label
+** and the number of times it has been executed to the specified file, with the
+** exception of labels that haven't been executed.
+*/
+
+extern	void	MR_trace_write_label_exec_counts(FILE *fp);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()
@@ -124,14 +148,12 @@ extern	void	(*MR_trace_shutdown)(void);
 */
 
 /*
-** Compiler generated tracing code will check whether MR_trace_enabled is true,
-** before calling MR_trace.
-**
-** MR_trace_enabled should keep the same value throughout the execution of
-** the entire program after being set in mercury_wrapper.c, with two
-** exceptions. First, the Mercury routines called as part of the functionality
+** MR_debug_enabled says whether debugging of the program is enabled.
+** It should keep the same value throughout the execution of the entire
+** program after being set in mercury_wrapper.c, with two exceptions.
+** First, the Mercury routines called as part of the functionality
 ** of the tracer itself (e.g. the term browser) should always be executed
-** with MR_trace_enabled set to MR_FALSE. Second, when a procedure has
+** with MR_debug_enabled set to MR_FALSE. Second, when a procedure has
 ** the tabled_for_io_unitize annotation, which means that it can both do I/O
 ** and call Mercury code, then we turn the procedure and its descendants
 ** into a single unit by turning off tracing within the descendants.
@@ -139,16 +161,56 @@ extern	void	(*MR_trace_shutdown)(void);
 ** arise if we got retries from within the descendants.
 */
 
-extern	MR_bool		MR_trace_enabled;
+extern	MR_bool		MR_debug_enabled;
 
 /*
-** MR_trace_ever_enabled will keep the same value throughout the execution of
+** MR_debug_ever_enabled will keep the same value throughout the execution of
 ** the entire program after being set in mercury_wrapper.c to the same value
-** as MR_trace_enabled. Unlike MR_trace_enabled, it is never reset, so one can
+** as MR_debug_enabled. Unlike MR_debug_enabled, it is never reset, so one can
 ** use its value to test whether tracing was ever enabled.
 */
 
-extern	MR_bool		MR_trace_ever_enabled;
+extern	MR_bool		MR_debug_ever_enabled;
+
+/*
+** MR_trace_count_enabled will keep the same value throughout the execution of
+** the entire program after being set in mercury_wrapper.c to the same value
+** as MR_debug_enabled. Unlike MR_debug_enabled, it is never reset, so one can
+** use its value to test whether tracing was ever enabled.
+*/
+
+extern	MR_bool		MR_trace_count_enabled;
+
+/*
+** MR_trace checks whether MR_trace_func_enabled is true, and return
+** immediately if it is not.
+**
+** MR_trace_func_enabled should be updated whenever either of the variables
+** it depends on is updated. The reason why we require this is that
+** MR_trace_func_enabled is read many times, but MR_debug_enabled and
+** MR_trace_count_enabled are updated only infrequently.
+**
+** Usually, MR_trace_func_enabled should be updated with the macro below.
+** However, MR_debug_enabled and MR_trace_count_enabled can never be set
+** simultaneously, and in places where performance is important, the update
+** of MR_trace_func_enabled can exploit this.
+*/
+
+extern	MR_bool		MR_trace_func_enabled;
+
+#define	MR_update_trace_func_enabled()				\
+	do {							\
+		MR_trace_func_enabled = 			\
+			MR_debug_enabled || MR_trace_count_enabled; \
+	} while (0)
+
+/*
+** MR_selected_trace_func_ptr contains the address of the function to call
+** in MR_trace if MR_trace_func_enabled is true.
+*/
+
+extern	MR_Code *(*MR_selected_trace_func_ptr)(const MR_Label_Layout *);
+
 
 /*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every
@@ -352,7 +414,7 @@ extern	const char
 */
 
 typedef struct {
-	MR_bool		MR_sds_trace_enabled;
+	MR_bool		MR_sds_debug_enabled;
 	MR_bool		MR_sds_io_tabling_enabled;
 	MR_bool		MR_sds_debugflags[MR_MAXFLAG];
 	MR_bool		MR_sds_include_counter_vars;

@@ -50,6 +50,7 @@
 			proc_layout_name	:: layout_name,
 			maybe_port		:: maybe(trace_port),
 			maybe_is_hidden		:: maybe(bool),
+			label_num_in_module	:: int,
 			maybe_goal_path		:: maybe(int), % offset
 			maybe_var_info		:: maybe(label_var_info)
 		)
@@ -65,7 +66,8 @@
 			proc_layout_names	:: list(layout_name),
 			file_layouts		:: list(file_layout_data),
 			trace_level		:: trace_level,
-			suppressed_events	:: int
+			suppressed_events	:: int,
+			num_label_exec_count	:: int
 		)
 	;	closure_proc_id_data(		% defines MR_Closure_Id
 			caller_proc_label	:: proc_label,
@@ -200,6 +202,7 @@
 	;	module_layout_string_table(module_name)
 	;	module_layout_file_vector(module_name)
 	;	module_layout_proc_vector(module_name)
+	;	module_layout_label_exec_count(module_name, int)
 	;	module_layout(module_name)
 	;	proc_static(rtti_proc_label)
 	;	proc_static_call_sites(rtti_proc_label).

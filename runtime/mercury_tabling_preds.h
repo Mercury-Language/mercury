@@ -587,8 +587,9 @@
 
 #define MR_table_io_left_bracket_unitized_goal(TraceEnabled)            \
     do {                                                                \
-        TraceEnabled = MR_trace_enabled;                                \
-        MR_trace_enabled = MR_FALSE;                                    \
+        TraceEnabled = MR_debug_enabled;                                \
+        MR_debug_enabled = MR_FALSE;                                    \
+        MR_update_trace_func_enabled();                                 \
         MR_io_tabling_enabled = MR_FALSE;                               \
     } while(0)
 
@@ -597,7 +598,8 @@
 #define MR_table_io_right_bracket_unitized_goal(TraceEnabled)           \
     do {                                                                \
         MR_io_tabling_enabled = MR_TRUE;                                \
-        MR_trace_enabled = TraceEnabled;                                \
+        MR_debug_enabled = TraceEnabled;                                \
+        MR_update_trace_func_enabled();                                 \
     } while(0)
 
 /***********************************************************************/

@@ -116,6 +116,9 @@ Options:
 		be put into TYPE_STATS_FILE_NAME.tests.$$. Both filenames will
 		be reported in the output of bootcheck, to allow the statistics
 		files to be matched with the bootcheck that created them.
+	--trace-count
+		Collect counts of the number of times each label is executed
+		in modules compiled with debugging.
 	-W, --windows
 		Translate paths into the Microsoft Windows format and use the
 		extension \`.lib' for libraries. This option also implies
@@ -177,6 +180,7 @@ use_mmc_make=no
 compile_times=false
 write_out_profile_data=true
 type_stats=""
+trace_count=false
 disable_debug_libs=false
 delete_deep_data=true
 
@@ -319,6 +323,9 @@ while [ $# -gt 0 ]; do
 
 	--type-stats)
 		type_stats="$2"; shift ;;
+
+	--trace-count)
+		trace_count=true ;;
 
 	-W|--windows)
 		windows=true; use_cp=true; A=lib ;;
@@ -499,6 +506,14 @@ then
 		# of *huge* amounts of stuff on stderr.
 		MERCURY_OPTIONS="$MERCURY_OPTIONS -s"
 		export MERCURY_OPTIONS
+	fi
+
+	if $trace_count
+	then
+		MERCURY_OPTIONS="$MERCURY_OPTIONS --trace-count"
+		export MERCURY_OPTIONS
+	else
+		true
 	fi
 
 	MERCURY_COMPILER=$root/compiler/mercury_compile

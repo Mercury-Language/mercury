@@ -316,6 +316,15 @@ typedef enum {
 ** structure for type variable i+1, since array offsets start at zero
 ** but type variable numbers start at one.
 **
+** The MR_sll_label_num_in_module is used for counting the number of times
+** the event of this label is executed. It gives the label's index in the
+** array pointed to by the module layout's MR_ml_label_exec_count field;
+** whenever the event of this label is executed, the element in that array
+** indicated by this index will be incremented (when MR_trace_count_enabled
+** is set). The array element at index zero is ignored. A label layout will
+** have zero in its MR_sll_label_num_in_module field if the label doesn't
+** corresponding to an event.
+**
 ** XXX: Presently, inst information is ignored; we assume that all live values
 ** are ground.
 */
@@ -329,6 +338,7 @@ struct MR_Label_Layout_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
+	MR_uint_least16_t		MR_sll_label_num_in_module;
 	MR_uint_least32_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;
@@ -340,6 +350,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
+	MR_uint_least16_t		MR_sll_label_num_in_module;
 	MR_uint_least32_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* < 0 */
 } MR_Label_Layout_No_Var_Info;
@@ -403,6 +414,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		-1,							\
 		MR_FALSE,						\
 		0,							\
+		0,							\
 		-1		/* No info about live values */		\
 	}
 
@@ -412,59 +424,59 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 ** the others are the fields of MR_Label_Layouts.
 */
 
-#define	MR_DEF_LL_GEN(e, ln, port, h, path, vc, lt, vn, tv)		\
+#define	MR_DEF_LL_GEN(e, ln, port, h, num, path, vc, lt, vn, tv)	\
 	static const MR_Label_Layout 					\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
 		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
 		MR_PASTE2(MR_PORT_, port),				\
-		(h), (path), (vc),					\
+		(h), (num), (path), (vc),				\
 		((const void *) lt),					\
 		((const MR_uint_least16_t *) vn),			\
 		((const MR_Type_Param_Locns *) tv)			\
 	}
 
-#define	MR_DEF_LLNVI_GEN(e, ln, port, h, path)				\
+#define	MR_DEF_LLNVI_GEN(e, ln, port, h, num, path)			\
 	static const MR_Label_Layout_No_Var_Info			\
 		MR_LABEL_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)) \
 	= {								\
 		MR_PROC_LAYOUT(MR_add_prefix(e)),			\
 		MR_PASTE2(MR_PORT_, port),				\
-		(h), (path), -1						\
+		(h), (path), (num), -1					\
 	}
 
-#define	MR_DEF_LL(e, ln, port, path, vc, lt, vn, tv)			\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, path, vc, lt, vn, tv)
+#define	MR_DEF_LL(e, ln, port, num, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc, lt, vn, tv)
 
-#define	MR_DEF_LLT(e, ln, port, path, vc, lt, vn, tv)			\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, path, vc, lt, vn, tv)
+#define	MR_DEF_LLT(e, ln, port, num, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc, lt, vn, tv)
 
-#define	MR_DEF_LLCCC(e, ln, port, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, path, vc,			\
+#define	MR_DEF_LLCCC(e, ln, port, num, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
 		&MR_PASTE2(mercury_common_, lt),			\
 		&MR_PASTE2(mercury_common_, vn),			\
 		&MR_PASTE2(mercury_common_, tv))
 
-#define	MR_DEF_LLCC0(e, ln, port, path, vc, lt, vn)			\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, path, vc,			\
+#define	MR_DEF_LLCC0(e, ln, port, num, path, vc, lt, vn)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
 		&MR_PASTE2(mercury_common_, lt),			\
 		&MR_PASTE2(mercury_common_, vn), 0)			\
 
-#define	MR_DEF_LLTCCC(e, ln, port, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, path, vc,			\
+#define	MR_DEF_LLTCCC(e, ln, port, num, path, vc, lt, vn, tv)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
 		&MR_PASTE2(mercury_common_, lt),			\
 		&MR_PASTE2(mercury_common_, vn),			\
 		&MR_PASTE2(mercury_common_, tv))
 
-#define	MR_DEF_LLTCC0(e, ln, port, path, vc, lt, vn)			\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, path, vc,			\
+#define	MR_DEF_LLTCC0(e, ln, port, num, path, vc, lt, vn)		\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
 		&MR_PASTE2(mercury_common_, lt),			\
 		&MR_PASTE2(mercury_common_, vn), 0)
 
-#define	MR_DEF_LLNVI(e, ln, port, path)					\
+#define	MR_DEF_LLNVI(e, ln, port, num, path)				\
 	MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, path)
 
-#define	MR_DEF_LLNVIT(e, ln, port, path)				\
+#define	MR_DEF_LLNVIT(e, ln, port, num, path)				\
 	MR_DEF_LLNVI_GEN(e, ln, port, MR_TRUE, path)
 
 #define MR_DECL_LL(e, ln)						\
@@ -775,6 +787,7 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_int_least8_t		MR_exec_maybe_maxfr;
 	MR_EvalMethodInt	MR_exec_eval_method_CAST_ME;
 	MR_int_least8_t		MR_exec_maybe_call_table;
+	const MR_Label_Layout	**MR_exec_label_layout;
 } MR_Exec_Trace;
 
 #define MR_compute_max_mr_num(max_mr_num, layout)			\
@@ -1113,8 +1126,21 @@ typedef	struct MR_Proc_Layout_Traversal_Struct {
 **
 ** The MR_ml_suppressed_events events field encodes the set of event types
 ** (ports) that were suppressed when generating code for this module. The bit
-** given by the expression (1 << MR_PORT_XXX) will be set in this integer
-** iff trace port MR_PORT_XXX is suppressed.
+** given by the expression (1 << MR_PORT_<PORTTYPE>) will be set in this
+** integer iff trace port MR_PORT_<PORTTYPE> is suppressed.
+**
+** The MR_ml_label_exec_count field points to an array of integers, with each
+** integer holding the number of times execution has reached a given label.
+** Each label's layout structure records the index of that label in this array.
+** To most direct way to go the other way, to find out which label owns a
+** particular slot in this array, is to search the label arrays in the file
+** layout structures, and test their MR_sll_label_num_in_module fields.
+** (If we needed faster access, we could add another array with elements
+** corresponding to MR_ml_label_exec_count's pointing to the labels' layout
+** structures.)
+**
+** The MR_ml_num_label_exec_counts field contains the number of elements
+** in the MR_ml_label_exec_count array.
 */
 
 typedef enum {
@@ -1142,6 +1168,8 @@ struct MR_Module_Layout_Struct {
 	const MR_Module_File_Layout	**MR_ml_module_file_layout;
 	MR_Trace_Level			MR_ml_trace_level;
 	MR_int_least32_t		MR_ml_suppressed_events;
+	MR_int_least32_t		MR_ml_num_label_exec_counts;
+	MR_Unsigned			*MR_ml_label_exec_count;
 };
 
 /*-------------------------------------------------------------------------*/

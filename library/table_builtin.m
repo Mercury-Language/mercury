@@ -642,8 +642,8 @@ table_memo_non_create_answer_block_shortcut(_) :-
 
 	% Calls to these predicates bracket the code of foreign_procs with
 	% the tabled_for_io_unitize annotation. The left bracket procedure
-	% returns the current value of MR_trace_enabled, and then turns off
-	% both MR_trace_enabled and MR_io_tabling_enabled. (We don't need to
+	% returns the current value of MR_debug_enabled, and then turns off
+	% both MR_debug_enabled and MR_io_tabling_enabled. (We don't need to
 	% save MR_io_tabling_enabled because we only get to this code if it
 	% contains true.) The right bracket code takes the value returned by
 	% the left bracket as input and restores both globals to the values

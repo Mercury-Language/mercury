@@ -412,7 +412,8 @@ static	void	MR_print_one_type_ctor_stat(FILE *fp, const char *op,
 void
 mercury_runtime_init(int argc, char **argv)
 {
-	MR_bool	saved_trace_enabled;
+	MR_bool	saved_debug_enabled;
+	MR_bool	saved_trace_count_enabled;
 
 #if MR_NUM_REAL_REGS > 0
 	MR_Word c_regs[MR_NUM_REAL_REGS];
@@ -487,8 +488,11 @@ mercury_runtime_init(int argc, char **argv)
 	** tracing until the end of this function.
 	*/
 
-	saved_trace_enabled = MR_trace_enabled;
-	MR_trace_enabled = MR_FALSE;
+	saved_debug_enabled = MR_debug_enabled;
+	saved_trace_count_enabled = MR_trace_count_enabled;
+	MR_debug_enabled = MR_FALSE;
+	MR_trace_count_enabled = MR_FALSE;
+	MR_update_trace_func_enabled();
 
 #ifdef MR_NEED_INITIALIZATION_AT_START
 	MR_do_init_modules();
@@ -580,7 +584,20 @@ mercury_runtime_init(int argc, char **argv)
 	** Now the real tracing starts; undo any updates to the trace state
 	** made by the trace code in the library initializer.
 	*/
-	MR_trace_start(saved_trace_enabled);
+	MR_debug_enabled = saved_debug_enabled;
+	MR_trace_count_enabled = saved_trace_count_enabled;
+	MR_update_trace_func_enabled();
+	MR_trace_start(MR_debug_enabled);
+
+	if (MR_debug_enabled) {
+		MR_selected_trace_func_ptr = MR_trace_func_ptr;
+		/* MR_debug_enabled overrides MR_trace_count_enabled */
+		MR_trace_count_enabled = MR_FALSE;
+	} else if (MR_trace_count_enabled) {
+		MR_register_module_layout =
+			MR_insert_module_info_into_module_table;
+		MR_selected_trace_func_ptr = MR_trace_count;
+	}
 
 	/*
 	** Restore the callee-save registers before returning,
@@ -928,7 +945,8 @@ enum MR_long_option {
 	MR_NUM_OUTPUT_ARGS,
 	MR_DEBUG_THREADS_OPT,
 	MR_DEEP_PROF_DEBUG_FILE_OPT,
-	MR_TABLING_STATISTICS_OPT
+	MR_TABLING_STATISTICS_OPT,
+	MR_TRACE_COUNT_OPT
 };
 
 struct MR_option MR_long_opts[] = {
@@ -957,7 +975,8 @@ struct MR_option MR_long_opts[] = {
 	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS },
 	{ "debug-threads",		0, 0, MR_DEBUG_THREADS_OPT },
 	{ "deep-debug-file",		0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
-	{ "tabling-statistics",		0, 0, MR_TABLING_STATISTICS_OPT }
+	{ "tabling-statistics",		0, 0, MR_TABLING_STATISTICS_OPT },
+	{ "trace-count",		0, 0, MR_TRACE_COUNT_OPT }
 };
 
 static void
@@ -1147,6 +1166,10 @@ process_options(int argc, char **argv)
 			MR_print_table_statistics = MR_TRUE;
 			break;
 
+		case MR_TRACE_COUNT_OPT:
+			MR_trace_count_enabled = MR_TRUE;
+			break;
+
 		case 'a':
 			benchmark_all_solns = MR_TRUE;
 			break;
@@ -1283,8 +1306,8 @@ process_options(int argc, char **argv)
 			break;
 
 		case 'D':
-			MR_trace_enabled = MR_TRUE;
-			MR_trace_ever_enabled = MR_TRUE;
+			MR_debug_enabled = MR_TRUE;
+			MR_debug_ever_enabled = MR_TRUE;
 
 			if (MR_streq(MR_optarg, "i"))
 				MR_trace_handler = MR_TRACE_INTERNAL;
@@ -1292,7 +1315,6 @@ process_options(int argc, char **argv)
 			else if (MR_streq(MR_optarg, "e"))
 				MR_trace_handler = MR_TRACE_EXTERNAL;
 #endif
-
 			else
 				usage();
 
@@ -1875,6 +1897,8 @@ MR_END_MODULE
 
 /*---------------------------------------------------------------------------*/
 
+#define	MERCURY_TRACE_COUNTS_FILE_NAME	".mercury_trace_counts"
+
 int
 mercury_runtime_terminate(void)
 {
@@ -1900,6 +1924,21 @@ mercury_runtime_terminate(void)
 	MR_restore_registers(); 
 
 	MR_trace_final();
+
+	if (MR_trace_count_enabled) {
+		FILE	*fp;
+
+		fp = fopen(MERCURY_TRACE_COUNTS_FILE_NAME, "w");
+		if (fp != NULL) {
+			MR_do_init_modules_debugger();
+			MR_trace_write_label_exec_counts(fp);
+			(void) fclose(fp);
+		} else {
+			fprintf(stderr, "%s: %s\n",
+				MERCURY_TRACE_COUNTS_FILE_NAME,
+				strerror(errno));
+		}
+	}
 
 #if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
 		|| defined(MR_MPROF_PROFILE_MEMORY)

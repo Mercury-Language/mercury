@@ -4266,7 +4266,7 @@ io__maybe_delete_stream_info(Stream, !IO) :-
 	[may_call_mercury, promise_pure, tabled_for_io, thread_safe,
 		terminates],
 "
-	MayDelete = !MR_trace_ever_enabled;
+	MayDelete = !MR_debug_ever_enabled;
 	IO = IO0;
 ").
 
