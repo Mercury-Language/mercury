@@ -24,18 +24,18 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type bimap(_K, _V).
+:- type bimap(K, V).
 
 %-----------------------------------------------------------------------------%
 
 	% Initialize an empty bimap.
 	%
-:- pred bimap__init(bimap(_, _)::out) is det.
-:- func bimap__init = bimap(_, _).
+:- pred bimap__init(bimap(K, V)::out) is det.
+:- func bimap__init = bimap(K, V).
 
 	% Check whether a bimap is empty.
 	%	
-:- pred bimap__is_empty(bimap(_, _)::in) is semidet.
+:- pred bimap__is_empty(bimap(K, V)::in) is semidet.
 
 :- pred bimap__search(bimap(K, V), K, V).
 :- mode bimap__search(in, in, out) is semidet.
@@ -55,13 +55,13 @@
 
 	% Given a bimap, return a list of all the keys in the bimap.
 	%
-:- pred bimap__ordinates(bimap(K, _V)::in, list(K)::out) is det.
-:- func bimap__ordinates(bimap(K, _V)) = list(K).
+:- pred bimap__ordinates(bimap(K, V)::in, list(K)::out) is det.
+:- func bimap__ordinates(bimap(K, V)) = list(K).
 
 	% Given a bimap, return a list of all the data values in the bimap.
 	%
-:- pred bimap__coordinates(bimap(_K, V)::in, list(V)::out) is det.
-:- func bimap__coordinates(bimap(_K, V)) = list(V).
+:- pred bimap__coordinates(bimap(K, V)::in, list(V)::out) is det.
+:- func bimap__coordinates(bimap(K, V)) = list(V).
 
 :- pred bimap__contains_key(bimap(K, V)::in, K::in) is semidet.
 

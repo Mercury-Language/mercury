@@ -20,9 +20,9 @@
 :- interface.
 
 %-----------------------------------------------------------------------------%
-
+%
 % TYPES.
-
+%
 % The types `character', `int', `float', and `string',
 % and tuple types `{}', `{T}', `{T1, T2}', ...
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
@@ -32,38 +32,41 @@
 % these types.)
 
 % The type c_pointer can be used by predicates which use the C interface.
+%
 :- type c_pointer.
 
 %-----------------------------------------------------------------------------%
-
+%
 % INSTS.
-
+%
 % The standard insts `free', `ground', and `bound(...)' are builtin
 % and are implemented using special code in the parser and mode-checker.
-
+%
 % So are the standard unique insts `unique', `unique(...)',
 % `mostly_unique', `mostly_unique(...)', and `clobbered'.
-% The name `dead' is allowed as a synonym for `clobbered'.
-% Similarly `mostly_dead' is a synonym for `mostly_clobbered'.
-
-:- inst dead == clobbered.
-:- inst mostly_dead == mostly_clobbered.
-
-% The `any' inst used for the constraint solver interface is also builtin.
-% The insts `new' and `old' are allowed as synonyms for `free' and `any',
-% respectively, since some of the literature uses this terminology.
-
-:- inst old == any.
-:- inst new == free.
-
+%
 % Higher-order predicate insts `pred(<modes>) is <detism>'
 % and higher-order functions insts `func(<modes>) = <mode> is det'
 % are also builtin.
 
+	% The name `dead' is allowed as a synonym for `clobbered'.
+	% Similarly `mostly_dead' is a synonym for `mostly_clobbered'.
+	%
+:- inst dead == clobbered.
+:- inst mostly_dead == mostly_clobbered.
+
+	% The `any' inst used for the constraint solver interface is also
+	% builtin.  The insts `new' and `old' are allowed as synonyms for
+	% `free' and `any', respectively, since some of the literature uses
+	% this terminology.
+	%
+:- inst old == any.
+:- inst new == free.
+
 %-----------------------------------------------------------------------------%
-
+%
 % MODES.
-
+%
 % The standard modes.
 
 :- mode unused == free >> free.
@@ -80,111 +83,116 @@
 
 % Unique modes.  These are still not fully implemented.
 
-% unique output
+	% unique output
+	%
 :- mode uo == free >> unique.
 
-% unique input
+	% unique input
+	%
 :- mode ui == unique >> unique.
 
-% destructive input
+	% destructive input
+	%
 :- mode di == unique >> clobbered.
 
 % "Mostly" unique modes (unique except that that may be referenced
 % again on backtracking).
 
-% mostly unique output
+	% mostly unique output
+	%
 :- mode muo == free >> mostly_unique.
 
-% mostly unique input
+	% mostly unique input
+	%
 :- mode mui == mostly_unique >> mostly_unique.
 
-% mostly destructive input
+	% mostly destructive input
+	%
 :- mode mdi == mostly_unique >> mostly_clobbered.
 
-% Higher-order predicate modes are builtin.
-
-% Solver type modes.
+	% Solver type modes.
+	%
 :- mode ia == any >> any.
 :- mode oa == free >> any.
 
-% The modes `no' and `oo' are allowed as synonyms, since some of the
-% literature uses this terminology.
+	% The modes `no' and `oo' are allowed as synonyms, since some of the
+	% literature uses this terminology.
+	%
 :- mode no == new >> old.
 :- mode oo == old >> old.
 
 %-----------------------------------------------------------------------------%
-
+%
 % PREDICATES.
-
+%
 % Most of these probably ought to be moved to another
 % module in the standard library such as std_util.m.
 
-% copy/2 makes a deep copy of a data structure.  The resulting copy is a
-% `unique' value, so you can use destructive update on it.
-
+	% copy/2 makes a deep copy of a data structure.  The resulting copy is
+	% a `unique' value, so you can use destructive update on it.
+	%
 :- pred copy(T, T).
 :- mode copy(ui, uo) is det.
 :- mode copy(in, uo) is det.
 
-% unsafe_promise_unique/2 is used to promise the compiler that you have a
-% `unique' copy of a data structure, so that you can use destructive update.
-% It is used to work around limitations in the current support for unique
-% modes.  `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
-% the compiler will assume that `Y' is unique.
-%
-% Note that misuse of this predicate may lead to unsound results:
-% if there is more than one reference to the data in question,
-% i.e. it is not `unique', then the behaviour is undefined.
-% (If you lie to the compiler, the compiler will get its revenge!)
-
+	% unsafe_promise_unique/2 is used to promise the compiler that you have
+	% a `unique' copy of a data structure, so that you can use destructive
+	% update.  It is used to work around limitations in the current support
+	% for unique modes.  `unsafe_promise_unique(X, Y)' is the same as `Y =
+	% X' except that the compiler will assume that `Y' is unique.
+	%
+	% Note that misuse of this predicate may lead to unsound results: if
+	% there is more than one reference to the data in question, i.e. it is
+	% not `unique', then the behaviour is undefined.  (If you lie to the
+	% compiler, the compiler will get its revenge!)
+	%
 :- pred unsafe_promise_unique(T, T).
 :- mode unsafe_promise_unique(in, uo) is det.
 
 :- func unsafe_promise_unique(T) = T.
 :- mode unsafe_promise_unique(in) = uo is det.
 
-% A synonym for fail/0; the name is more in keeping with Mercury's
-% declarative style rather than its Prolog heritage.
-
-:- pred false.
-:- mode false is failure.
+	% A synonym for fail/0; the name is more in keeping with Mercury's
+	% declarative style rather than its Prolog heritage.
+	%
+:- pred false is failure.
 
 %-----------------------------------------------------------------------------%
 
-% A call to the function `promise_only_solution(Pred)' constitutes a
-% promise on the part of the caller that `Pred' has at most one solution,
-% i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \= X2)'.
-% `promise_only_solution(Pred)' presumes that this assumption is
-% satisfied, and returns the X for which Pred(X) is true, if
-% there is one.
-%
-% You can use `promise_only_solution' as a way of 
-% introducing `cc_multi' or `cc_nondet' code inside a
-% `det' or `semidet' procedure.
-%
-% Note that misuse of this function may lead to unsound results:
-% if the assumption is not satisfied, the behaviour is undefined.
-% (If you lie to the compiler, the compiler will get its revenge!)
-
+	% A call to the function `promise_only_solution(Pred)' constitutes a
+	% promise on the part of the caller that `Pred' has at most one
+	% solution, i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \=
+	% X2)'.  `promise_only_solution(Pred)' presumes that this assumption is
+	% satisfied, and returns the X for which Pred(X) is true, if there is
+	% one.
+	%
+	% You can use `promise_only_solution' as a way of introducing
+	% `cc_multi' or `cc_nondet' code inside a `det' or `semidet' procedure.
+	%
+	% Note that misuse of this function may lead to unsound results: if the
+	% assumption is not satisfied, the behaviour is undefined.  (If you lie
+	% to the compiler, the compiler will get its revenge!)
+	%
 :- func promise_only_solution(pred(T)) = T.
 :- mode promise_only_solution(pred(out) is cc_multi) = out is det.
 :- mode promise_only_solution(pred(uo) is cc_multi) = uo is det.
 :- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
 :- mode promise_only_solution(pred(uo) is cc_nondet) = uo is semidet.
 
-% `promise_only_solution_io' is like `promise_only_solution', but
-% for procedures with unique modes (e.g. those that do IO).
-%
-% A call to `promise_only_solution_io(P, X, IO0, IO)' constitutes
-% a promise on the part of the caller that for the given IO0,
-% there is only one value of `X' and `IO' for which `P(X, IO0, IO)' is true.
-% `promise_only_solution_io(P, X, IO0, IO)' presumes that this assumption
-% is satisfied, and returns the X and IO for which `P(X, IO0, IO)' is true.
-%
-% Note that misuse of this predicate may lead to unsound results:
-% if the assumption is not satisfied, the behaviour is undefined.
-% (If you lie to the compiler, the compiler will get its revenge!)
-
+	% `promise_only_solution_io' is like `promise_only_solution', but for
+	% procedures with unique modes (e.g. those that do IO).
+	%
+	% A call to `promise_only_solution_io(P, X, IO0, IO)' constitutes a
+	% promise on the part of the caller that for the given IO0, there is
+	% only one value of `X' and `IO' for which `P(X, IO0, IO)' is true.
+	% `promise_only_solution_io(P, X, IO0, IO)' presumes that this
+	% assumption is satisfied, and returns the X and IO for which `P(X,
+	% IO0, IO)' is true.
+	%
+	% Note that misuse of this predicate may lead to unsound results: if
+	% the assumption is not satisfied, the behaviour is undefined.  (If you
+	% lie to the compiler, the compiler will get its revenge!)
+	%
 :- pred promise_only_solution_io(pred(T, IO, IO), T, IO, IO).
 :- mode promise_only_solution_io(pred(out, di, uo) is cc_multi,
 		out, di, uo) is det.
@@ -192,12 +200,14 @@
 %-----------------------------------------------------------------------------%
 
 	% unify(X, Y) is true iff X = Y.
+	%
 :- pred unify(T::in, T::in) is semidet.
 
 	% For use in defining user-defined unification predicates.
 	% The relation defined by a value of type `unify', must be an
 	% equivalence relation; that is, it must be symmetric, reflexive,
 	% and transitive. 
+	%
 :- type unify(T) == pred(T, T).
 :- inst unify == (pred(in, in) is semidet).
 
@@ -206,6 +216,7 @@
 	% compare(Res, X, Y) binds Res to =, <, or >
 	% depending on whether X is =, <, or > Y in the
 	% standard ordering.
+	%
 :- pred compare(comparison_result, T, T).
 	% Note to implementors: the modes must appear in this order:
 	% compiler/higher_order.m depends on it, as does
@@ -231,6 +242,7 @@
 	%		ComparePred(R, X, Y), (R = (=) ; R = (>)).
 	%   must be total order relations: that is they must be antisymmetric,
 	%   reflexive and transitive.
+	%
 :- type compare(T) == pred(comparison_result, T, T).
 :- inst compare == (pred(uo, in, in) is det).
 
@@ -283,6 +295,7 @@
 	% = is an equivalence relation (not necessarily the usual equality),
 	% and the equivalence classes of this relation are totally ordered
 	% with respect to < and >.
+	%
 :- type comparison_pred(T) == pred(T, T, comparison_result).
 :- inst comparison_pred(I) == (pred(in(I), in(I), out) is det).
 :- inst comparison_pred == comparison_pred(ground).

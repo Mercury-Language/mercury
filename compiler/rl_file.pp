@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,7 @@ rl_file__write_binary(ByteWriter, RLFile, Length, IO0, IO) :-
 		Pair0 = Len0 - IOState0,
 		Len = Len0 + 1,			
 		call(ByteWriter, Byte, IOState0, IOState),
-	    	Pair = Len - IOState
+	    	Pair = unsafe_promise_unique(Len) - IOState
 	),
 	State0 = 0 - IO0,
 	rl_file__write_binary_2(Writer, RLFile, State0, State),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,12 +48,14 @@
 					% integer_dot/1 tokens to integer/1
 					% tokens before returning them.
 
-% For every token, we record the line number of the line on
-% which the token occurred.
-
+	% For every token, we record the line number of the line on
+	% which the token occurred.
+	%
 :- type token_context == int.	% line number
 
-% This "fat list" representation is more efficient than a list of pairs.
+	% This "fat list" representation is more efficient than a list of
+	% pairs.
+	%
 :- type token_list
 	--->	token_cons(token, token_context, token_list)
 	;	token_nil.
@@ -61,10 +63,11 @@
 	% Read a list of tokens from the current input stream.
 	% Keep reading until we encounter either an `end' token
 	% (i.e. a full stop followed by whitespace) or the end-of-file.
-
+	%
 :- pred lexer__get_token_list(token_list::out, io::di, io::uo) is det.
 
-% The type `offset' represents a (zero-based) offset into a string.
+	% The type `offset' represents a (zero-based) offset into a string.
+	%
 :- type offset == int.
 
 	% lexer__string_get_token_list(String, MaxOffset, Tokens,
@@ -76,16 +79,18 @@
 	% we reach MaxOffset.  (MaxOffset must be =< the length of the string.)
 	% Return the tokens scanned in Tokens, and return the position
 	% one character past the end of the last token in FinalPos.
-
+	%
 :- pred lexer__string_get_token_list(string::in, offset::in, token_list::out,
 	posn::in, posn::out) is det.
 
 	% lexer__string_get_token_list(String, Tokens, InitialPos, FinalPos):
 	% calls string_get_token_list/5 above with MaxPos = length of String.
+	%
 :- pred lexer__string_get_token_list(string::in, token_list::out,
 	posn::in, posn::out) is det.
 
 	% Convert a token to a human-readable string describing the token.
+	%
 :- pred lexer__token_to_string(token::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%

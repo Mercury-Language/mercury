@@ -17,22 +17,22 @@
 :- interface.
 :- import_module list.
 
-:- type stack(_T).
+:- type stack(T).
 
 	% `stack__init(Stack)' is true iff `Stack' is an empty stack.
 	%
-:- pred stack__init(stack(_T)::out) is det.
+:- pred stack__init(stack(T)::out) is det.
 :- func stack__init = stack(T).
 
 	% `stack__is_empty(Stack)' is true iff `Stack' is an empty stack.
 	%
-:- pred stack__is_empty(stack(_T)::in) is semidet.
+:- pred stack__is_empty(stack(T)::in) is semidet.
 
 	% `stack__is_full(Stack)' is intended to be true iff `Stack'
 	% is a stack whose capacity is exhausted.  This implementation
 	% allows arbitrary-sized stacks, so stack__is_full always fails.
 	%
-:- pred stack__is_full(stack(_T)::in) is semidet.
+:- pred stack__is_full(stack(T)::in) is semidet.
 
 	% `stack__push(Stack0, Elem, Stack)' is true iff `Stack' is
 	% the stack which results from pushing `Elem' onto the top
@@ -58,6 +58,7 @@
 	%
 :- pred stack__top_det(stack(T)::in, T::out) is det.
 :- func stack__top_det(stack(T)) = T.
+:- func stack__det_top(stack(T)) = T.
 
 	% `stack__pop(Stack0, Elem, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
@@ -69,11 +70,12 @@
 	% call error/1 rather than failing if given an empty stack.
 	%
 :- pred stack__pop_det(stack(T)::in, T::out, stack(T)::out) is det.
+:- pred stack__det_pop(stack(T)::in, T::out, stack(T)::out) is det.
 
 	% `stack__depth(Stack, Depth)' is true iff `Stack' is a stack
 	% containing `Depth' elements.
 	%
-:- pred stack__depth(stack(_T)::in, int::out) is det.
+:- pred stack__depth(stack(T)::in, int::out) is det.
 :- func stack__depth(stack(T)) = int.
 
 %--------------------------------------------------------------------------%
@@ -118,6 +120,9 @@ stack__pop_det(Stack0, Elem, Stack) :-
 		error("stack__pop_det: pop from empty stack")
 	).
 
+stack__det_pop(Stack0, Elem, Stack) :-
+	stack__pop_det(Stack0, Elem, Stack).
+
 stack__depth(Stack, Depth) :-
 	list__length(Stack, Depth).
 
@@ -136,6 +141,9 @@ stack__push_list(S1, Xs) = S2 :-
 	stack__push_list(S1, Xs, S2).
 
 stack__top_det(S) = X :-
+	stack__top_det(S, X).
+
+stack__det_top(S) = X :-
 	stack__top_det(S, X).
 
 stack__depth(S) = N :-

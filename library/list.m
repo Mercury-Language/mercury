@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,7 +23,6 @@
 	%	or an element `Head' of type `T' followed by a tail `Tail'
 	%	of type `list(T)', denoted `[Head | Tail]'.
 	%
-
 :- type list(T) ---> [] ; [T | list(T)].
 
 %-----------------------------------------------------------------------------%
@@ -105,11 +104,13 @@
 	% list__remove_suffix(List, Suffix, Prefix):
 	%	The same as list__append(Prefix, Suffix, List) except that
 	%	this is semidet whereas list__append(out, in, in) is nondet.
+	%
 :- pred list__remove_suffix(list(T)::in, list(T)::in, list(T)::out) is semidet.
 
 	% list__merge(L1, L2, L):
 	%	L is the result of merging the elements of L1 and L2,
 	%	in ascending order.  L1 and L2 must be sorted.
+	%
 :- pred list__merge(list(T)::in, list(T)::in, list(T)::out) is det.
 :- func list__merge(list(T), list(T)) = list(T).
 
@@ -118,6 +119,7 @@
 	%	in ascending order, and eliminating any duplicates.
 	%	L1 and L2 must be sorted and must each not contain any
 	%	duplicates.
+	%
 :- pred list__merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out)
 	is det.
 :- func list__merge_and_remove_dups(list(T), list(T)) = list(T).
@@ -125,17 +127,20 @@
 	% list__remove_adjacent_dups(L0, L) :
 	%	L is the result of replacing every sequence of duplicate
 	%	elements in L0 with a single such element.
+	%
 :- pred list__remove_adjacent_dups(list(T)::in, list(T)::out) is det.
 :- func list__remove_adjacent_dups(list(T)) = list(T).
 
 	% list__remove_dups(L0, L) :
 	%	L is the result of deleting the second and subsequent
 	%	occurrences of every element that occurs twice in L0.
+	%
 :- pred list__remove_dups(list(T)::in, list(T)::out) is det.
 :- func list__remove_dups(list(T)) = list(T).
 
 	% list__member(Elem, List) :
 	%	True iff `List' contains `Elem'.
+	%
 :- pred list__member(T, list(T)).
 :- mode list__member(in, in) is semidet.
 :- mode list__member(out, in) is nondet.
@@ -276,6 +281,8 @@
 	is det.
 :- func list__replace_nth_det(list(T), int, T) = list(T).
 
+:- func list__det_replace_nth(list(T), int, T) = list(T).
+
 	% list__sort_and_remove_dups(List0, List):
 	%	List is List0 sorted with the second and subsequent
 	%	occurrence of any duplicates removed.
@@ -323,6 +330,8 @@
 
 :- func list__index0_det(list(T), int) = T.
 :- func list__index1_det(list(T), int) = T.
+:- func list__det_index0(list(T), int) = T.
+:- func list__det_index1(list(T), int) = T.
 
 	% list__zip(ListA, ListB, List):
 	%	List is the result of alternating the elements
@@ -363,28 +372,37 @@
 	% list__sublist(SubList, FullList) is true
 	%	if one can obtain SubList by starting with FullList
 	%	and deleting some of its elements.
+	%
 :- pred list__sublist(list(T)::in, list(T)::in) is semidet.
 
 	% list__all_same(List) is true
 	% 	if all elements of the list are the same
+	%
 :- pred list__all_same(list(T)::in) is semidet.
 
 	% list__last(List, Last) is true
 	%	if Last is the last element of List.
+	%
 :- pred list__last(list(T)::in, T::out) is semidet.
 
 	% A deterministic version of list__last, which aborts instead of
 	% failing if the input list is empty.
+	%
 :- pred list__last_det(list(T)::in, T::out) is det.
+:- pred list__det_last(list(T)::in, T::out) is det.
+:- func list__det_last(list(T)) = T.
 
 	% list__split_last(List, AllButLast, Last) is true
 	%	if Last is the last element of List and AllButLast is the list
 	%	of elements before it.
+	%
 :- pred list__split_last(list(T)::in, list(T)::out, T::out) is semidet.
 
 	% A deterministic version of list__split_last, which aborts instead of
 	% failing if the input list is empty.
+	%
 :- pred list__split_last_det(list(T)::in, list(T)::out, T::out) is det.
+:- pred list__det_split_last(list(T)::in, list(T)::out, T::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -863,7 +881,7 @@
 :- mode list__series(in, pred(in) is semidet, func(in) = out is det) = out
 	is det.
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 	% Lo `..` Hi = [Lo, Lo + 1, ..., Hi] if Lo =< Hi
 	%            =                    [] otherwise
@@ -872,16 +890,22 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func list__head(list(T)) = T is semidet.
+
+:- func list__tail(list(T)) = list(T) is semidet.
+
 	% list__det_head(List) returns the first element of List,
 	% calling error/1 if List is empty.
+	%
 :- func list__det_head(list(T)) = T.
 
 	% list__det_tail(List) returns the tail of List,
 	% calling error/1 if List is empty.
+	%
 :- func list__det_tail(list(T)) = list(T).
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -912,7 +936,7 @@
 
 :- implementation.
 
-:- import_module string, bintree_set, require, std_util.
+:- import_module string, set_tree234, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -1183,18 +1207,17 @@ list__merge_sort_2(Length, List, SortedList) :-
 %-----------------------------------------------------------------------------%
 
 list__remove_dups(Xs, Ys) :-
-	bintree_set__init(Zs0),
-	list__remove_dups_2(Xs, Zs0, Ys).
+	list__remove_dups_2(Xs, set_tree234__init, Ys).
 
-:- pred list__remove_dups_2(list(T)::in, bintree_set(T)::in, list(T)::out)
+:- pred list__remove_dups_2(list(T)::in, set_tree234(T)::in, list(T)::out)
 	is det.
 
 list__remove_dups_2([], _SoFar, []).
 list__remove_dups_2([X | Xs], SoFar0, Zs) :-
-	( bintree_set__member(X, SoFar0) ->
+	( set_tree234__member(SoFar0, X) ->
 		list__remove_dups_2(Xs, SoFar0, Zs)
 	;
-		bintree_set__insert(SoFar0, X, SoFar),
+		set_tree234__insert(X, SoFar0, SoFar),
 		list__remove_dups_2(Xs, SoFar, Ys),
 		Zs = [X | Ys]
 	).
@@ -1351,6 +1374,12 @@ list__last_det(List, Last) :-
 		error("list__last_det: empty list")
 	).
 
+list__det_last(List, Last) :-
+	list__last_det(List, Last).
+
+list__det_last(List) = Last :-
+	list__last_det(List, Last).
+
 list__split_last([H | T], AllButLast, Last) :-
 	(
 		T = [],
@@ -1369,6 +1398,9 @@ list__split_last_det(List, AllButLast, Last) :-
 	;
 		error("list__split_last_det: empty list")
 	).
+
+list__det_split_last(List, AllButLast, Last) :-
+	list__split_last_det(List, AllButLast, Last).
 
 %-----------------------------------------------------------------------------%
 
@@ -1699,6 +1731,10 @@ list__det_tail([]) = _ :-
 	error("list__det_tail/1: empty list as argument").
 list__det_tail([_ | Xs]) = Xs.
 
+list__head([X | _]) = X.
+
+list__tail([_ | Xs]) = Xs.
+
 list__append(Xs, Ys) = Zs :-
 	list__append(Xs, Ys, Zs).
 
@@ -1732,6 +1768,9 @@ list__replace_all(Xs, A, B) = Ys :-
 list__replace_nth_det(Xs, N, A) = Ys :-
 	list__replace_nth_det(Xs, N, A, Ys).
 
+list__det_replace_nth(Xs, N, A) = Ys :-
+	list__replace_nth_det(Xs, N, A, Ys).
+
 list__sort_and_remove_dups(Xs) = Ys :-
 	list__sort_and_remove_dups(Xs, Ys).
 
@@ -1744,7 +1783,13 @@ list__reverse(Xs) = Ys :-
 list__index0_det(Xs, N) = A :-
 	list__index0_det(Xs, N, A).
 
+list__det_index0(Xs, N) = A :-
+	list__index0_det(Xs, N, A).
+
 list__index1_det(Xs, N) = A :-
+	list__index1_det(Xs, N, A).
+
+list__det_index1(Xs, N) = A :-
 	list__index1_det(Xs, N, A).
 
 list__zip(Xs, Ys) = Zs :-
@@ -1790,11 +1835,11 @@ list__merge_and_remove_dups(F, Xs, Ys) = Zs :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
 	list__merge_and_remove_dups(P, Xs, Ys, Zs).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 L1 ++ L2 = list__append(L1, L2).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 list__series(I, OK, Succ) =
 	( OK(I) ->
@@ -1803,10 +1848,10 @@ list__series(I, OK, Succ) =
 	  	[]
 	).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 Lo `..` Hi =
 	list__series(Lo, ( pred(I::in) is semidet :- I =< Hi ), plus(1)).
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

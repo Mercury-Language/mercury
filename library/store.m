@@ -52,6 +52,7 @@
 
 	% generic_mutvar(T, S):
 	% a mutable variable holding a value of type T in store S
+	%
 :- type generic_mutvar(T, S).
 :- type io_mutvar(T) == generic_mutvar(T, io__state).
 :- type store_mutvar(T, S) == generic_mutvar(T, store(S)).
@@ -223,21 +224,6 @@
 % Some of these are unsafe.  All of them are deprecated.
 %
 
-	% OBSOLETE: use `S' or `some [S] ... S' instead.
-:- type some_store_type.
-
-	% initialize a store
-	% OBSOLETE: use store__new/1 instead
-:- pred store__init(store(some_store_type)).
-:- mode store__init(uo) is det.
-:- pragma obsolete(store__init/1).
-
-	% OBSOLETE: use store_mutvar/2 or generic_mutvar/2 instead.
-:- type mutvar(T, S) == store_mutvar(T, S).
-
-	% OBSOLETE: use store_mutvar/2 or generic_mutvar/2 instead.
-:- type ref(T, S) == store_ref(T, S).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -247,8 +233,6 @@
 :- typeclass store(T) where [].
 :- instance store(store(S)) where [].
 :- instance store(io__state) where [].
-
-:- type some_store_type ---> some_store_type.
 
 % The store type itself is just a dummy type,
 % with no real representation.
@@ -280,10 +264,7 @@ store_compare(_, _, _) :-
 store__new(S) :-
 	store__do_init(S).
 
-store__init(S) :-
-	store__do_init(S).
-
-:- pred store__do_init(store(some_store_type)::uo) is det.
+:- some [S] pred store__do_init(store(S)::uo) is det.
 
 :- pragma foreign_proc("C", store__do_init(_S0::uo),
 	[will_not_call_mercury, promise_pure], "").

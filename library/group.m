@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999, 2003 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
 % file: group.m.
 % main author: conway.
-% stability: low.
+% stability: low (obsolete).
 %
 % This module is probably not terribly useful, and it may not be supported
 % in future releases.

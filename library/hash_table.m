@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003-2004 The University of Melbourne
+% Copyright (C) 2001, 2003-2005 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -118,6 +118,10 @@
 :- func set(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode set(hash_table_di, in, in) = hash_table_uo is det.
 
+:- pred set(K::in, V::in,
+        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
+        is det.
+
     % Field update for hash tables.
     % HT ^ elem(K) := V  is equivalent to  set(HT, K, V).
     %
@@ -131,6 +135,10 @@
 :- func det_insert(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode det_insert(hash_table_di, in, in) = hash_table_uo is det.
 
+:- pred det_insert(K::in, V::in,
+        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
+        is det.
+
     % Change a key-value binding in a hash table.  An
     % exception is thrown if a binding for the key does not
     % already exist.
@@ -138,11 +146,19 @@
 :- func det_update(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode det_update(hash_table_di, in, in) = hash_table_uo is det.
 
+:- pred det_update(K::in, V::in,
+        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
+        is det.
+
     % Delete the entry for the given key, leaving the hash table
     % unchanged if there is no such entry.
     %
 :- func delete(hash_table(K, V), K) = hash_table(K, V).
 :- mode delete(hash_table_di, in) = hash_table_uo is det.
+
+:- pred delete(K::in, 
+        hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo)
+        is det.
 
     % Lookup the value associated with the given key.  An exception
     % is raised if there is no entry for the key.
@@ -174,6 +190,11 @@
 :- mode to_assoc_list(hash_table_ui) = out is det.
 %:- mode to_assoc_list(in) = out is det.
 
+    % Convert an association list into a hash table.
+    %
+:- func from_assoc_list(hash_pred(K)::in(hash_pred), assoc_list(K, V)::in) =
+        (hash_table(K, V)::hash_table_uo) is det.
+
     % Fold a function over the key-value bindings in a hash table.
     %
 :- func fold(func(K, V, T) = T, hash_table(K, V), T) = T.
@@ -197,7 +218,7 @@
                 values                  :: array(V)
             ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % THE HASHING SCHEME
     %
@@ -226,7 +247,7 @@
     % least one binding is inserted.  This is handled by checking
     % to see whether the keys array has non-zero size.
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 new(HashPred, N, MaxOccupancy) = HT :-
     (      if N =< 1 then
@@ -243,16 +264,17 @@ new(HashPred, N, MaxOccupancy) = HT :-
             Bitmap       = bitmap__new(NumBuckets, no),
             Keys         = array__make_empty_array,
             Values       = array__make_empty_array,
-            HT = ht(NumBuckets, 0, MaxOccupants, HashPred, Bitmap, Keys, Values)
+            HT           = ht(NumBuckets, 0, MaxOccupants, HashPred, Bitmap,
+                                Keys, Values)
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % These numbers are picked out of thin air.
     %
 new_default(HashPred) = new(HashPred, 7, 0.9).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % find_slot(HT, K) looks up key K in hash table HT and
     % returns the index for the entry K in H.  This is either the
@@ -289,7 +311,7 @@ find_slot_2(HT, K, H0, Delta) = H :-
         H  = find_slot_2(HT, K, H1, Delta)
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 set(HT0, K, V) = HT :-
 
@@ -315,7 +337,7 @@ set(HT0, K, V) = HT :-
                   else
                     (((( HT0
                             ^ num_occupants    := HT0 ^ num_occupants + 1 )
-                            ^ bitmap           := bitmap__set(HT0 ^ bitmap, H) )
+                            ^ bitmap           := bitmap__set(HT0 ^ bitmap, H))
                             ^ keys ^ elem(H)   := K )
                             ^ values ^ elem(H) := V )
                 )
@@ -324,7 +346,9 @@ set(HT0, K, V) = HT :-
 
 'elem :='(K, HT, V) = set(HT, K, V).
 
-% ---------------------------------------------------------------------------- %
+set(K, V, HT, HT ^ elem(K) := V).
+
+%-----------------------------------------------------------------------------%
 
 search(HT, K, search(HT, K)).
 
@@ -333,7 +357,7 @@ search(HT, K) = V :-
     bitmap__is_set(HT ^ bitmap, H),
     V = HT ^ values ^ elem(H).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 det_insert(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
@@ -355,7 +379,10 @@ det_insert(HT0, K, V) = HT :-
                 ^ values ^ elem(H) := V )
     ).
 
-% ---------------------------------------------------------------------------- %
+
+det_insert(K, V, HT, det_insert(HT, K, V)).
+
+%-----------------------------------------------------------------------------%
 
 det_update(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
@@ -365,7 +392,10 @@ det_update(HT0, K, V) = HT :-
         HT = HT0 ^ values ^ elem(H) := V
     ).
 
-% ---------------------------------------------------------------------------- %
+
+det_update(K, V, HT, det_update(HT, K, V)).
+
+%-----------------------------------------------------------------------------%
 
 lookup(HT, K) =
     ( if V = search(HT, K)
@@ -375,12 +405,15 @@ lookup(HT, K) =
 
 elem(K, HT) = lookup(HT, K).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 delete(HT, K) =
     HT ^ bitmap := bitmap__clear(HT ^ bitmap, find_slot(HT, K)).
 
-% ---------------------------------------------------------------------------- %
+
+delete(K, HT, delete(HT, K)).
+
+%-----------------------------------------------------------------------------%
 
 to_assoc_list(HT) = to_assoc_list_2(0, HT, []).
 
@@ -398,7 +431,19 @@ to_assoc_list_2(I, HT, AList) =
             [(HT ^ keys ^ elem(I)) - (HT ^ values ^ elem(I)) | AList])
     ).
 
-% ---------------------------------------------------------------------------- %
+
+from_assoc_list(HP, AList) = from_assoc_list_2(AList, new_default(HP)).
+
+:- func from_assoc_list_2(assoc_list(K, V)::in,
+        hash_table(K, V)::hash_table_di) = (hash_table(K, V)::hash_table_uo)
+        is det.
+
+from_assoc_list_2([], HT) = HT.
+
+from_assoc_list_2([K - V | AList], HT) =
+    from_assoc_list_2(AList, HT ^ elem(K) := V).
+
+%-----------------------------------------------------------------------------%
 
     % Hash tables expand by doubling in size.
     %
@@ -419,7 +464,7 @@ expand(HT0) = HT :-
 
     HT  = reinsert_bindings(0, NBs0, BM0, Ks0, Vs0, HT1).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- func reinsert_bindings(int, int, bitmap, array(K), array(V),
     hash_table(K, V)) = hash_table(K, V).
@@ -436,7 +481,7 @@ reinsert_bindings(I, NumBuckets, Bitmap, Keys, Values, HT) =
             set(HT, Keys ^ elem(I), Values ^ elem(I)))
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
@@ -447,7 +492,7 @@ int_double_hash(N, H1, H2) :-
     H1 = N * N,
     H2 = N `xor` (N + N).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
@@ -455,7 +500,7 @@ string_double_hash(S, H1, H2) :-
     H1 = string__hash(S),
     H2 = string__foldl(func(C, N) = char__to_int(C) + N, S, 0).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
@@ -463,14 +508,14 @@ float_double_hash(F, H1, H2) :-
     H1 = float__hash(F),
     H2 = float__hash(F * F).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
 char_double_hash(C, H1, H2) :-
     int_double_hash(char__to_int(C), H1, H2).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % This, again, is straight off the top of my head.
     %
@@ -523,7 +568,7 @@ generic_double_hash(T, Ha, Hb) :-
         )
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- func munge_factor_a = int.
 
@@ -547,13 +592,15 @@ munge(N, X, Y) =
     (X `unchecked_right_shift` (int__bits_per_int - N)) `xor`
     Y.
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 fold(Fn, HT, X) = fold_0(0, Fn, HT, X).
 
 :- func fold_0(int, func(K, V, T) = T, hash_table(K,V), T) = T.
-:- mode fold_0(in, func(in,in,in) = out is det, hash_table_ui, in) = out is det.
-:- mode fold_0(in, func(in,in,di) = uo is det, hash_table_ui, di) = uo is det.
+:- mode fold_0(in, func(in,in,in) = out is det, hash_table_ui, in) = out
+        is det.
+:- mode fold_0(in, func(in,in,di) = uo is det, hash_table_ui, di) = uo
+        is det.
 % :- mode fold_0(in, func(in,in,in) = out is det, in, in) = out is det.
 % :- mode fold_0(in, func(in,in,di) = uo is det, in, di) = uo is det.
 
@@ -563,10 +610,11 @@ fold_0(I, Fn, HT, X) =
       else if bitmap__is_clear(HT ^ bitmap, I) then
         fold_0(I + 1, Fn, HT, X)
       else
-        fold_0(I + 1, Fn, HT, Fn(HT ^ keys ^ elem(I), HT ^ values ^ elem(I), X))
+        fold_0(I + 1, Fn, HT,
+            Fn(HT ^ keys ^ elem(I), HT ^ values ^ elem(I), X))
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
     % XXX To go into array.m
     %
@@ -591,5 +639,5 @@ dynamic_cast_to_array(X, A) :-
         %
     dynamic_cast(X, A `with_type` array(ArgType)).
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

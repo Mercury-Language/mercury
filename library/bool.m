@@ -45,6 +45,8 @@
 :- func bool__not(bool) = bool.
 :- pred bool__not(bool::in, bool::out) is det.
 
+:- func bool__xor(bool, bool) = bool.
+
 	% pred_to_bool(P) = (if P then yes else no).
 	%
 :- func pred_to_bool((pred)::((pred) is semidet)) = (bool::out) is det.
@@ -116,5 +118,10 @@ bool__return_no = no.
 bool__return_yes = yes.
 
 pred_to_bool(P) = (if P then yes else no).
+
+bool__xor(no,  no)  = no.
+bool__xor(no,  yes) = yes.
+bool__xor(yes, no)  = yes.
+bool__xor(yes, yes) = no.
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2004 The University of Melbourne.
+% Copyright (C) 1995-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,42 +40,65 @@
 :- module math.
 :- interface.
 
+	% A domain error exception, indicates that the inputs to a function
+	% were outside the domain of the function.  The string indicates
+	% where the error occurred.
+	%
+	% It is possible to switch domain checking off, in which case,
+	% depending on the backend, a domain error may cause a program
+	% abort.
+	%
+:- type domain_error ---> domain_error(string).
+
 %---------------------------------------------------------------------------%
+%
 % Mathematical constants
+%
 
 	% Pythagoras' number
+	%
 :- func math__pi = float.
 
 	% Base of natural logarithms
+	%
 :- func math__e = float.
 
 %---------------------------------------------------------------------------%
+%
 % "Next integer" operations
+%
 
 	% math__ceiling(X) = Ceil is true if Ceil is the smallest integer
 	% not less than X.
+	%
 :- func math__ceiling(float) = float.
 
 	% math__floor(X) = Floor is true if Floor is the largest integer
 	% not greater than X.
+	%
 :- func math__floor(float) = float.
 
 	% math__round(X) = Round is true if Round is the integer
 	% closest to X.  If X has a fractional value of 0.5, it
 	% is rounded up.
+	%
 :- func math__round(float) = float.
 
 	% math__truncate(X) = Trunc is true if Trunc is the integer
 	% closest to X such that |Trunc| =< |X|.
+	%
 :- func math__truncate(float) = float.
 
 %---------------------------------------------------------------------------%
+%
 % Polynomial roots
+%
 
 	% math__sqrt(X) = Sqrt is true if Sqrt is the positive square
 	% root of X.
 	%
 	% Domain restriction: X >= 0
+	%
 :- func math__sqrt(float) = float.
 
 :- type math__quadratic_roots
@@ -87,101 +110,114 @@
 	% the solutions to the equation Ax^2 + Bx + C.
 	%
 	% Domain restriction: A \= 0
+	%
 :- func math__solve_quadratic(float, float, float) = quadratic_roots.
 
 %---------------------------------------------------------------------------%
+%
 % Power/logarithm operations
+%
 
 	% math__pow(X, Y) = Res is true if Res is X raised to the
 	% power of Y.
 	%
 	% Domain restriction: X >= 0 and (X = 0 implies Y > 0)
+	%
 :- func math__pow(float, float) = float.
 
 	% math__exp(X) = Exp is true if Exp is e raised to the
 	% power of X.
+	%
 :- func math__exp(float) = float.
 
 	% math__ln(X) = Log is true if Log is the natural logarithm
 	% of X.
 	%
 	% Domain restriction: X > 0
+	%
 :- func math__ln(float) = float.
 
 	% math__log10(X) = Log is true if Log is the logarithm to
 	% base 10 of X.
 	%
 	% Domain restriction: X > 0
+	%
 :- func math__log10(float) = float.
 
 	% math__log2(X) = Log is true if Log is the logarithm to
 	% base 2 of X.
 	%
 	% Domain restriction: X > 0
+	%
 :- func math__log2(float) = float.
 
 	% math__log(B, X) = Log is true if Log is the logarithm to
 	% base B of X.
 	%
 	% Domain restriction: X > 0 and B > 0 and B \= 1
+	%
 :- func math__log(float, float) = float.
 
 %---------------------------------------------------------------------------%
+%
 % Trigonometric operations
+%
 
 	% math__sin(X) = Sin is true if Sin is the sine of X.
+	%
 :- func math__sin(float) = float.
 
 	% math__cos(X) = Cos is true if Cos is the cosine of X.
+	%
 :- func math__cos(float) = float.
 
 	% math__tan(X) = Tan is true if Tan is the tangent of X.
+	%
 :- func math__tan(float) = float.
 
 	% math__asin(X) = ASin is true if ASin is the inverse
 	% sine of X, where ASin is in the range [-pi/2,pi/2].
 	%
 	% Domain restriction: X must be in the range [-1,1]
+	%
 :- func math__asin(float) = float.
 
 	% math__acos(X) = ACos is true if ACos is the inverse
 	% cosine of X, where ACos is in the range [0, pi].
 	%
 	% Domain restriction: X must be in the range [-1,1]
+	%
 :- func math__acos(float) = float.
 
 	% math__atan(X) = ATan is true if ATan is the inverse
 	% tangent of X, where ATan is in the range [-pi/2,pi/2].
+	%
 :- func math__atan(float) = float.
 
 	% math__atan2(Y, X) = ATan is true if ATan is the inverse
 	% tangent of Y/X, where ATan is in the range [-pi,pi].
+	%
 :- func math__atan2(float, float) = float.
 
 %---------------------------------------------------------------------------%
+%
 % Hyperbolic functions
+%
 
 	% math__sinh(X) = Sinh is true if Sinh is the hyperbolic
 	% sine of X.
+	%
 :- func math__sinh(float) = float.
 
 	% math__cosh(X) = Cosh is true if Cosh is the hyperbolic
 	% cosine of X.
+	%
 :- func math__cosh(float) = float.
 
 	% math__tanh(X) = Tanh is true if Tanh is the hyperbolic
 	% tangent of X.
-:- func math__tanh(float) = float.
-
-	% A domain error exception, indicates that the inputs to a function
-	% were outside the domain of the function.  The string indicates
-	% where the error occurred.
 	%
-	% It is possible to switch domain checking off, in which case,
-	% depending on the backend, a domain error may cause a program
-	% abort.
-	
-:- type domain_error ---> domain_error(string).
+:- func math__tanh(float) = float.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

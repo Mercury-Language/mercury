@@ -136,6 +136,10 @@
 :- mode array__min(array_ui) = out is det.
 :- mode array__min(in) = out is det.
 
+:- func array__least_index(array(T)) = int.
+:- mode array__least_index(array_ui) = out is det.
+:- mode array__least_index(in) = out is det.
+
 	% array__max returns the upper bound of the array.
 	%
 :- pred array__max(array(_T), int).
@@ -145,6 +149,10 @@
 :- func array__max(array(_T)) = int.
 :- mode array__max(array_ui) = out is det.
 :- mode array__max(in) = out is det.
+
+:- func array__greatest_index(array(T)) = int.
+:- mode array__greatest_index(array_ui) = out is det.
+:- mode array__greatest_index(in) = out is det.
 
 	% array__size returns the length of the array,
 	% i.e. upper bound - lower bound + 1.
@@ -1682,6 +1690,12 @@ out_of_bounds_error(Array, Index, PredName) :-
 	throw(array__index_out_of_bounds(
 		string__format("%s: index %d not in range [%d, %d]",
 			[s(PredName), i(Index), i(Min), i(Max)]))).
+
+%-----------------------------------------------------------------------------%
+
+array__least_index(A) = array__min(A).
+
+array__greatest_index(A) = array__max(A).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

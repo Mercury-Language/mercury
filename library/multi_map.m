@@ -105,6 +105,10 @@
 :- pred multi_map__set(multi_map(K, V)::in, K::in, V::in, multi_map(K, V)::out)
 	is det.
 
+:- func multi_map__add(multi_map(K, V), K, V) = multi_map(K, V).
+:- pred multi_map__add(multi_map(K, V)::in, K::in, V::in, multi_map(K, V)::out)
+	is det.
+
 	% Given a multi_map, return a list of all the keys in the multi_map
 	%
 :- func multi_map__keys(multi_map(K, _V)) = list(K).
@@ -303,6 +307,9 @@ multi_map__set(MultiMap0, Key, Value, MultiMap) :-
 		map__det_insert(MultiMap0, Key, [Value], MultiMap)
 	).
 
+multi_map__add(MultiMap0, Key, Value, MultiMap) :-
+	multi_map__set(MultiMap0, Key, Value, MultiMap).
+
 multi_map__keys(MultiMap, KeyList) :-
 	map__keys(MultiMap, KeyList).
 
@@ -486,6 +493,9 @@ multi_map__det_replace(MultiMap0, Key, Value) = MultiMap :-
 	multi_map__det_replace(MultiMap0, Key, Value, MultiMap).
 
 multi_map__set(MultiMap0, Key, Value) = MultiMap :-
+	multi_map__set(MultiMap0, Key, Value, MultiMap).
+
+multi_map__add(MultiMap0, Key, Value) = MultiMap :-
 	multi_map__set(MultiMap0, Key, Value, MultiMap).
 
 multi_map__keys(MultiMap) = Keys :-

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,31 +17,31 @@
 :- module benchmarking.
 :- interface.
 
-% `report_stats' is a non-logical procedure intended for use in profiling
-% the performance of a program.
-% It has the side-effect of reporting some memory and time usage statistics
-% about the time period since the last call to report_stats to stderr.
-
+	% `report_stats' is a non-logical procedure intended for use in
+	% profiling the performance of a program.  It has the side-effect of
+	% reporting some memory and time usage statistics about the time period
+	% since the last call to report_stats to stderr.
+	%
 :- impure pred report_stats is det.
 
-% `report_full_memory_stats' is a non-logical procedure intended for use
-% in profiling the memory usage of a program.  It has the side-effect of
-% reporting a full memory profile to stderr.
-
+	% `report_full_memory_stats' is a non-logical procedure intended for
+	% use in profiling the memory usage of a program.  It has the
+	% side-effect of reporting a full memory profile to stderr.
+	%
 :- impure pred report_full_memory_stats is det.
 
-% benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the
-% det predicate Pred. We call Pred with the input In and the output Out,
-% and return Out so that the caller can check the correctness of the
-% benchmarked predicate. Since most systems do not have good facilities
-% for measuring small times, the Repeats parameter allows the caller to
-% specify how many times Pred should be called inside the timed interval.
-% The number of milliseconds required to execute Pred with input In this
-% many times is returned as Time.
-%
-% benchmark_func(Func, In, Out, Repeats, Time) does for functions exactly
-% what benchmark_det does for predicates.
-
+	% benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the
+	% det predicate Pred. We call Pred with the input In and the output
+	% Out, and return Out so that the caller can check the correctness of
+	% the benchmarked predicate. Since most systems do not have good
+	% facilities for measuring small times, the Repeats parameter allows
+	% the caller to specify how many times Pred should be called inside the
+	% timed interval.  The number of milliseconds required to execute Pred
+	% with input In this many times is returned as Time.
+	%
+	% benchmark_func(Func, In, Out, Repeats, Time) does for functions
+	% exactly what benchmark_det does for predicates.
+	%
 :- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
 :- mode benchmark_det(pred(in, out) is det, in, out, in, out) is cc_multi.
 :- mode benchmark_det(pred(in, out) is cc_multi, in, out, in, out) is cc_multi.
@@ -53,16 +53,18 @@
 :- mode benchmark_det_io(pred(in, out, di, uo) is det, in, out, di, uo,
 	in, out) is cc_multi.
 
-% benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
-% the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
-% but it returns only a count of the solutions, rather than solutions
-% themselves.  The number of milliseconds required to generate
-% all solutions of Pred with input In Repeats times is returned as Time.
-
+	% benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
+	% the nondet predicate Pred. benchmark_nondet is similar to
+	% benchmark_det, but it returns only a count of the solutions, rather
+	% than solutions themselves.  The number of milliseconds required to
+	% generate all solutions of Pred with input In Repeats times is
+	% returned as Time.
+	% 
 :- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
 :- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out)
 	is cc_multi.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -916,4 +918,5 @@ incr_ref(Ref) :-
 	Ref.value = X;
 ").
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

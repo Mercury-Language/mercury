@@ -2,7 +2,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2004 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,10 +25,12 @@
 	% NOTE: the unit used for a value of this type depends on whether it was
 	% returned by `time__clock' or `time__times'.  See the comments on these
 	% predicates below.
+	%
 :- type clock_t == int.
 
 	% The `tms' type holds information about the amount of processor
 	% time that a process and its child processes have consumed.
+	%
 :- type tms --->
 	tms(
 		clock_t,	% tms_utime: user time
@@ -39,6 +41,7 @@
 
 	% The `time_t' type is an abstract type that represents
 	% calendar times.
+	%
 :- type time_t.
 
 	% The `tm' type is a concrete type that represents calendar
@@ -46,6 +49,7 @@
 	% Comparison (via compare/3) of `tm' values whose `tm_dst'
 	% components are identical is equivalent to comparison of
 	% the times those `tm' values represent.
+	%
 :- type tm --->
 	tm(
 		tm_year	:: int,		% Year (number since 1900)
@@ -66,6 +70,7 @@
 
 	% Some of the procedures in this module throw this type
 	% as an exception if they can't obtain a result.
+	%
 :- type time_error --->
 	time_error(string).	% Error message
 
