@@ -1,0 +1,6 @@
+:- module inf_const_bug.
+:- pragma termination_info(inf_const_bug.foo((builtin.in)) = (builtin.out), infinite, can_loop).
+:- pragma termination_info(inf_const_bug.bar((builtin.in)) = (builtin.out), infinite, can_loop).
+:- pragma termination_info(inf_const_bug.square((builtin.in)) = (builtin.out), infinite, cannot_loop).
+:- pragma termination_info(inf_const_bug.multiply((builtin.in), (builtin.in)) = (builtin.out), infinite, cannot_loop).
+:- pragma termination_info(inf_const_bug.map((builtin.in), (builtin.in)) = (builtin.out), infinite, can_loop).

@@ -56,13 +56,14 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
+:- import_module hlds__error_util.
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__lp.
 :- import_module transform_hlds__term_errors.
 :- import_module transform_hlds__term_traversal.
 
 :- import_module int, float, char, string, bool, set, bag, map.
-:- import_module term, varset, require.
+:- import_module string, term, varset, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -169,27 +170,35 @@ find_arg_sizes_in_scc_fixpoint(SCC, Module, PassInfo, OutputSupplierMap0,
 	list(term_errors__error)::in, list(term_errors__error)::out) is det.
 
 find_arg_sizes_in_scc_pass([], _, _, OutputSupplierMap, Paths, SubsetErrors,
-		Result, TermErrors, TermErrors) :-
+		Result, !TermErrors) :-
 	Result = ok(Paths, OutputSupplierMap, SubsetErrors).
 find_arg_sizes_in_scc_pass([PPId | PPIds], Module, PassInfo,
 		OutputSupplierMap0, Paths0, SubsetErrors0, Result,
-		TermErrors0, TermErrors) :-
+		!TermErrors) :-
 	find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0,
-		Result1, TermErrors1),
-	list__append(TermErrors0, TermErrors1, TermErrors2),
+		Result1, ProcTermErrors),
+	list__append(!.TermErrors, ProcTermErrors, !:TermErrors),
 	PassInfo = pass_info(_, MaxErrors, _),
-	list__take_upto(MaxErrors, TermErrors2, TermErrors3),
+	list__take_upto(MaxErrors, !TermErrors),
 	(
 		Result1 = error(_),
-		Result = Result1,
-		TermErrors = TermErrors3
+		Result  = Result1,
+			% The error does not necessarily mean that this 
+			% SCC is nonterminating.  We need to check that
+			% the remainder of this SCC does not make any
+			% nonterminating calls otherwise we might get
+			% a software error during pass 2.
+			% (See below for details).
+		list__foldl(check_proc_non_term_calls(Module), PPIds, [], 
+			OtherTermErrors), 
+		list__append(OtherTermErrors, !TermErrors)
 	;
 		Result1 = ok(Paths1, OutputSupplierMap1, SubsetErrors1),
 		list__append(Paths0, Paths1, Paths),
 		list__append(SubsetErrors0, SubsetErrors1, SubsetErrors),
 		find_arg_sizes_in_scc_pass(PPIds, Module, PassInfo,
 			OutputSupplierMap1, Paths, SubsetErrors, Result,
-			TermErrors3, TermErrors)
+			!TermErrors)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -262,8 +271,107 @@ update_output_suppliers([Arg | Args], ActiveVars,
 	update_output_suppliers(Args, ActiveVars,
 		OutputSuppliers0, OutputSuppliers).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+%
+% Check if a procedure makes any nonterminating calls. 
+%
+
+% We only use this if we have detected an error at some point during the
+% argument size analysis.  The idea is to quickly analyse a procedure and
+% see if it does anything that would prevent us from running pass 2.
+% We cannot run pass 2 if the procedure contains any calls to nonterminating
+% procedures lower down the call-graph (see term_pass2.m for details).
+
+:- pred check_proc_non_term_calls(module_info::in, pred_proc_id::in, 
+	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+
+check_proc_non_term_calls(Module, PPId, !Errors) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
+	proc_info_goal(ProcInfo, Goal),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
+
+:- pred check_goal_non_term_calls(module_info::in, 
+	pred_proc_id::in, vartypes::in, hlds_goal::in,
+	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+
+check_goal_non_term_calls(Module, PPId, VarTypes, GoalExpr - GoalInfo,
+		!Errors) :-
+	check_goal_expr_non_term_calls(Module, PPId, VarTypes, GoalExpr,
+		GoalInfo, !Errors).
+
+:- pred check_goal_expr_non_term_calls(module_info::in, pred_proc_id::in,
+	vartypes::in, hlds_goal_expr::in, hlds_goal_info::in,
+	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, conj(Goals), _, 
+		!Errors):-
+	list__foldl(check_goal_non_term_calls(Module, PPId, VarTypes), Goals,
+		!Errors).
+check_goal_expr_non_term_calls(Module, PPId, VarTypes,
+		call(CallPredId, CallProcId, Args, _, _, _), GoalInfo,
+		!Errors) :- 
+	CallPPId = proc(CallPredId, CallProcId),
+	module_info_pred_proc_info(Module, CallPPId, _, ProcInfo),
+	proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
+	goal_info_get_context(GoalInfo, Context),
+	(
+		TerminationInfo = yes(can_loop(_))
+	->
+		TermError = Context - can_loop_proc_called(PPId, CallPPId),
+		!:Errors = [ TermError | !.Errors ]
+	;
+		true
+	),	
+	(
+		horder_vars(Args, VarTypes)
+	->
+		HigherOrderError = Context - horder_args(PPId, CallPPId),
+		!:Errors = [ HigherOrderError | !.Errors ]
+	;
+		true
+	).	
+check_goal_expr_non_term_calls(_, _, _, generic_call(_,_,_,_), GoalInfo, 
+		!Errors) :-
+	goal_info_get_context(GoalInfo, Context),
+	!:Errors = [ Context - horder_call | !.Errors ].	
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, switch(_, _, Cases), _,
+		!Errors) :-
+	list__foldl(check_cases_non_term_calls(Module, PPId, VarTypes), Cases,
+		!Errors).	
+check_goal_expr_non_term_calls(_, _, _, unify(_,_,_,_,_), _, !Errors).
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, disj(Goals), _,
+		!Errors) :-
+	list__foldl(check_goal_non_term_calls(Module, PPId, VarTypes), Goals,
+		!Errors).
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, not(Goal), _, !Errors) :-
+	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, some(_, _, Goal), _,
+		!Errors) :-
+	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, 
+		if_then_else(_, Cond, Then, Else), _, !Errors) :-
+	list__foldl(check_goal_non_term_calls(Module, PPId, VarTypes),
+		[Cond, Then, Else], !Errors).	
+check_goal_expr_non_term_calls(_, _, _, foreign_proc(_, _, _, _, _, _, _),
+		_, !Errors). 
+check_goal_expr_non_term_calls(Module, PPId, VarTypes, par_conj(Goals), _,
+		!Errors) :-
+	list__foldl(check_goal_non_term_calls(Module, PPId, VarTypes), Goals,
+		!Errors).
+check_goal_expr_non_term_calls(_, _, _, shorthand(_), _, _, _) :-
+	unexpected(this_file, 
+		"shorthand goal encountered during termination analysis."). 
+
+:- pred check_cases_non_term_calls(module_info::in, pred_proc_id::in,
+	vartypes::in, case::in,
+	list(term_errors__error)::in, list(term_errors__error)::out) is det.
+
+check_cases_non_term_calls(Module, PPId, VarTypes, case(_, Goal), !Errors) :-
+	check_goal_non_term_calls(Module, PPId, VarTypes, Goal, !Errors).
+
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
 % Solve the list of constraints
 
@@ -375,4 +483,12 @@ pred_proc_var(PPId, Var, Varset0, Varset, PPVars0, PPVars) :-
 		map__det_insert(PPVars0, PPId, Var, PPVars)
 	).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "term_pass1.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module term_pass1.
 %-----------------------------------------------------------------------------%

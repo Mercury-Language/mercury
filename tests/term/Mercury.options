@@ -12,6 +12,7 @@ MCFLAGS-existential_error1=--term-norm=num-data-elems
 MCFLAGS-existential_error2=--term-norm=num-data-elems
 MCFLAGS-existential_error3=--term-norm=num-data-elems
 MCFLAGS-fold=--term-norm=simple
+MCFLAGS-inf_const_bug=--term-norm=total
 MCFLAGS-my_list=--term-norm=simple
 MCFLAGS-lte=--term-norm=simple
 MCFLAGS-my_map=--term-norm=simple

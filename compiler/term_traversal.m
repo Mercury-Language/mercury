@@ -515,8 +515,7 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
 	termination_error::in, traversal_info::in, traversal_info::out) is det.
 
 error_if_intersect(_, _, _, error(Errors, CanLoop), error(Errors, CanLoop)).
-error_if_intersect(OutVars, Context, ErrorMsg, ok(Paths, CanLoop), Info)
-		:-
+error_if_intersect(OutVars, Context, ErrorMsg, ok(Paths, CanLoop), Info) :-
 	(
 		set__to_sorted_list(Paths, PathList),
 		some_active_vars_in_bag(PathList, OutVars)
