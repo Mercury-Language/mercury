@@ -54,29 +54,33 @@
 
 	% A timestamp is a string formatted as "yyyy-mm-dd hh:mm:ss"
 	% representing a time expressed as UTC (Universal Coordinated Time).
-:- type timestamp == string.
+	%
+	% We use a no-tag type rather than an abstract equivalence type
+	% to avoid type errors with abstract equivalence types in the hlc
+	% back-end.
+:- type timestamp ---> timestamp(string).
 
-oldest_timestamp = "0000-00-00 00:00:00".
-newest_timestamp = "9999-99-99 99:99:99".
+oldest_timestamp = timestamp("0000-00-00 00:00:00").
+newest_timestamp = timestamp("9999-99-99 99:99:99").
 
 time_t_to_timestamp(Time) = gmtime_to_timestamp(time__gmtime(Time)).
 
 :- func gmtime_to_timestamp(tm) = timestamp.
 
 gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
-	gmtime_to_timestamp(Year, Month, MD, Hrs, Min, Sec,
-		YD, WD, maybe_dst_to_int(DST)).
+	timestamp(gmtime_to_timestamp_2(Year, Month, MD, Hrs, Min, Sec,
+		YD, WD, maybe_dst_to_int(DST))).
 
-:- func gmtime_to_timestamp(int, int, int, int,
-		int, int, int, int, int) = timestamp.
+:- func gmtime_to_timestamp_2(int, int, int, int,
+		int, int, int, int, int) = string.
 
 :- pragma foreign_decl("C", "
 	#include ""mercury_string.h""
 	#include <time.h>
 ").
 :- pragma foreign_proc("C",
-	gmtime_to_timestamp(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-		YD::in, WD::in, N::in) = (Result::out),
+	gmtime_to_timestamp_2(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in,
+		Sec::in, YD::in, WD::in, N::in) = (Result::out),
 	[will_not_call_mercury, promise_pure],
 "{
 	int size;
@@ -99,7 +103,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 }").
 
 :- pragma foreign_proc("MC++",
-	gmtime_to_timestamp(_Yr::in, _Mnt::in, _MD::in, _Hrs::in, _Min::in,
+	gmtime_to_timestamp_2(_Yr::in, _Mnt::in, _MD::in, _Hrs::in, _Min::in,
 		_Sec::in, _YD::in, _WD::in, _N::in) = (_Result::out),
 	[will_not_call_mercury, promise_pure],
 "{
@@ -117,9 +121,9 @@ maybe_dst_to_int(M) = N :-
 		N = -1
 	).
 
-timestamp_to_string(Timestamp) = Timestamp.
+timestamp_to_string(timestamp(Timestamp)) = Timestamp.
 
-string_to_timestamp(Timestamp) = Timestamp :-
+string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
 	string__length(Timestamp) `with_type` int =
 		string__length("yyyy-mm-dd hh:mm:ss"),
 
