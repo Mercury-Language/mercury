@@ -126,8 +126,12 @@ map__is_empty(M) :-
 map__contains(Map, K) :-
 	map__search(Map, K, _).
 
+:- map__search(_Map, K, _V) when K.	% required by bimap.nl
+
 map__search(Map, K, V) :-
 	bintree__search(Map, K, V).
+
+:- map__lookup(_Map, K, _V) when K.	% required by bimap.nl
 
 map__lookup(Map, K, V) :-
 	( bintree__search(Map, K, V1) ->
