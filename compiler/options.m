@@ -162,7 +162,6 @@
 		;	unboxed_float
 		;	sync_term_size % in words
 		;	type_layout
-		;	max_jump_table_size
 	% Options for internal use only
 	% (the values of these options are implied by the
 	% settings of other options)
@@ -201,6 +200,7 @@
 		;	cflags_for_gotos
 		;	c_debug
 		;	c_include_directory
+		;	max_jump_table_size
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
 				% fact table data array
@@ -478,8 +478,6 @@ option_defaults_2(compilation_model_option, [
 					% of writing) - will usually be over-
 					% ridden by a value from configure.
 	type_layout		-	bool(yes),
-	max_jump_table_size	-	int(0),
-					% 0 indicates any size.
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -523,6 +521,8 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
+	max_jump_table_size	-	int(0),
+					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90)
 ]).
@@ -821,7 +821,6 @@ long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
-long_option("max-jump-table-size",	max_jump_table_size).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
@@ -856,6 +855,7 @@ long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("c-debug",			c_debug).
 long_option("c-include-directory",	c_include_directory).
+long_option("max-jump-table-size",	max_jump_table_size).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).
@@ -1452,7 +1452,7 @@ options_help_output -->
 		"\tWrite Aditi-RL bytecode to `<module>.rlo' and",
 		"\tdo not compile to C.",
 *****/
-		"\t--output-grade-string",
+		"--output-grade-string",
 		"\tCompute the grade of the library to link with based on",
 		"\tthe command line options, and print it to the standard",
 		"\toutput."
@@ -1461,7 +1461,7 @@ options_help_output -->
 :- pred options_help_aux_output(io__state::di, io__state::uo) is det.
 
 options_help_aux_output -->
-	io__write_string("\n Auxiliary Output Options:\n"),
+	io__write_string("\nAuxiliary Output Options:\n"),
 	write_tabbed_lines([
 		"--no-assume-gmake",
 		"\tWhen generating `.dep' files, generate Makefile",
@@ -1687,13 +1687,18 @@ your program compiled with different options.
 ********************/
 		"--debug\t\t\t\t(grade modifier: `.debug')",
 		"\tEnable Mercury-level debugging.",
-		"\tSee the Debugging chapter of the Mercury User's Guide for details.",
+		"\tSee the Debugging chapter of the Mercury User's Guide",
+		"\tfor details.",
 		"--pic-reg\t\t\t(grade modifier: `.pic_reg')",
 		"[For Unix with intel x86 architecture only]",
 		"\tSelect a register usage convention that is compatible,",
 		"\twith position-independent code (gcc's `-fpic' option).",
 		"\tThis is necessary when using shared libraries on Intel x86",
-		"\tsystems running Unix.  On other systems it has no effect.",
+		"\tsystems running Unix.  On other systems it has no effect."
+	]),
+
+	io__write_string("\n    Developer compilation model options:\n"),
+	write_tabbed_lines([
 		"--tags {none, low, high}\t(This option is not for general use.)",
 		"\tSpecify whether to use the low bits or the high bits of ",
 		"\teach word as tag bits (default: low).",
@@ -1710,20 +1715,6 @@ your program compiled with different options.
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
 
-		"--branch-delay-slot\t\t(This option is not for general use.)",
-		"\tAssume that branch instructions have a delay slot.",
-		"--num-real-r-regs <n>\t\t(This option is not for general use.)",
-		"\tAssume registers r1 up to r<n> are real general purpose",
-		"\tregisters.",
-		"--num-real-f-regs <n>\t\t(This option is not for general use.)",
-		"\tAssume registers f1 up to f<n> are real floating point",
-		"\tregisters.",
-		"--num-real-r-temps <n>\t\t(This option is not for general use.)",
-		"\tAssume that <n> non-float temporaries will fit into",
-		"\treal machine registers.",
-		"--num-real-f-temps <n>\t\t(This option is not for general use.)",
-		"\tAssume that <n> float temporaries will fit into",
-		"\treal machine registers.",
 		"--args {simple, compact}",
 		"--arg-convention {simple, compact}",
 		"(This option is not for general use.)",
@@ -1742,12 +1733,6 @@ your program compiled with different options.
 		"\tDon't output type_ctor_layout structures or references",
 		"\tto them. (The C code also needs to be compiled with",
 		"\t`-DNO_TYPE_LAYOUT').",
-
-		"--max-jump-table-size",
-		"\tThe maximum number of entries a jump table can have.",
-		"\tThe special value 0 indicates the table size is unlimited.",
-		"\tThis option can be useful to avoid exceeding fixed limits",
-		"\timposed by some C compilers.\n",
 
 		% This is a developer only option.
 %		"--basic-stack-layout",
@@ -1838,6 +1823,12 @@ options_help_code_generation -->
 		"\t(This has the same effect as",
 		"\t`--cflags ""-g"" --link-flags ""--no-strip""'.)",
 
+		"--max-jump-table-size",
+		"\tThe maximum number of entries a jump table can have.",
+		"\tThe special value 0 indicates the table size is unlimited.",
+		"\tThis option can be useful to avoid exceeding fixed limits",
+		"\timposed by some C compilers.\n",
+
 		"--fact-table-max-array-size <n>",
 		"\tSpecify the maximum number of elements in a single",
 		"\t`pragma fact_table' data array (default: 1024).",
@@ -1845,6 +1836,24 @@ options_help_code_generation -->
 		"\tSpecify how full the `pragma fact_table' hash tables should be",
 		"\tallowed to get.  Given as an integer percentage",
 		"\t(valid range: 1 to 100, default: 90)."
+	]),
+
+	io__write_string("\n    Code generation target options:\n"),
+	write_tabbed_lines([
+		"--branch-delay-slot\t\t(This option is not for general use.)",
+		"\tAssume that branch instructions have a delay slot.",
+		"--num-real-r-regs <n>\t\t(This option is not for general use.)",
+		"\tAssume registers r1 up to r<n> are real general purpose",
+		"\tregisters.",
+		"--num-real-f-regs <n>\t\t(This option is not for general use.)",
+		"\tAssume registers f1 up to f<n> are real floating point",
+		"\tregisters.",
+		"--num-real-r-temps <n>\t\t(This option is not for general use.)",
+		"\tAssume that <n> non-float temporaries will fit into",
+		"\treal machine registers.",
+		"--num-real-f-temps <n>\t\t(This option is not for general use.)",
+		"\tAssume that <n> float temporaries will fit into",
+		"\treal machine registers."
 	]).
 
 :- pred options_help_optimization(io__state::di, io__state::uo) is det.

@@ -1847,6 +1847,9 @@ i.e. sets the counts for all depths to zero.
 @node Developer commands
 @subsection Developer commands
 @sp 1
+The following commands are intended for use by the developers
+of the Mercury implementation.
+@sp 1
 @table @code
 @item nondet_stack
 Prints the contents of the fixed slots of the frames on the nondet stack.
@@ -2937,20 +2940,6 @@ other grades use @samp{--gc none}.
 @samp{accurate} is not yet implemented.
 
 @sp 1
-@item @code{--tags @{none, low, high@}}
-(This option is not intended for general use.)
-Specify whether to use the low bits or the high bits of
-each word as tag bits (default: low).
-
-@sp 1
-@item @code{--num-tag-bits @var{n}}
-(This option is not intended for general use.)
-Use @var{n} tag bits.  This option is required if you specify
-@samp{--tags high}.
-With @samp{--tags low}, the default number of tag bits to use
-is determined by the auto-configuration script.
-
-@sp 1
 @item @code{--profiling}, @code{--time-profiling} (grades: any grade containing @samp{.prof})
 Enable time profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
@@ -2995,9 +2984,47 @@ Enables the inclusion in the executable of code and data structures
 that allow the program to be debugged with @samp{mdb} (see @ref{Debugging}).
 
 @sp 1
+@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
+[For Unix with intel x86 architecture only.]
+Select a register usage convention that is compatible
+with position-independent code (gcc's `-fpic' option).
+This is necessary when using shared libraries on Intel x86 systems
+running Unix.  On other systems it has no effect.
+
+@end table
+
+@menu
+* Developer compilation model options::
+@end menu
+
+@node Developer compilation model options
+@subsection Developer compilation model options
+
+Of the options listed below, the @samp{--num-tag-bits} option
+may be useful for cross-compilation, but apart from that
+these options are all experimental and are intended for
+use by developers of the Mercury implementation rather than by
+ordinary Mercury programmers.
+
+@table @asis
+@sp 1
+@item @code{--tags @{none, low, high@}}
+(This option is not intended for general use.)@*
+Specify whether to use the low bits or the high bits of
+each word as tag bits (default: low).
+
+@sp 1
+@item @code{--num-tag-bits @var{n}}
+(This option is not intended for general use.)@*
+Use @var{n} tag bits.  This option is required if you specify
+@samp{--tags high}.
+With @samp{--tags low}, the default number of tag bits to use
+is determined by the auto-configuration script.
+
+@sp 1
 @item @code{--args @{simple, compact@}}
 @item @code{--arg-convention @{simple, compact@}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Use the specified argument passing convention
 in the generated low-level C code.
 With the @samp{simple} convention,
@@ -3010,28 +3037,13 @@ generally leads to more efficient code.
 
 @sp 1
 @item @code{--no-type-layout}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Don't output base_type_layout structures or references to them.
 This option will generate smaller executables, but will not allow the
 use of code that uses the layout information (e.g. @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
 runtime.  The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
-
-@sp 1
-@item @code{--max-jump-table-size}
-The maximum number of entries a jump table can have. The special value 0
-indicates that there is no limit on the jump table size.
-This option can be useful to avoid exceeding fixed limits
-imposed by some C compilers.
-
-@sp 1
-@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
-[For Unix with intel x86 architecture only.]
-Select a register usage convention that is compatible
-with position-independent code (gcc's `-fpic' option).
-This is necessary when using shared libraries on Intel x86 systems
-running Unix.  On other systems it has no effect.
 
 @end table
 
@@ -3067,6 +3079,10 @@ Don't reclaim heap on backtracking in nondet code.
 @sp 1
 @item --no-reclaim-heap-on-semidet-failure
 Don't reclaim heap on backtracking in semidet code.
+
+@sp 1
+@item --no-reclaim-heap-on-failure
+Combines the effect of the two options above.
 
 @sp 1
 @item --cc @var{compiler-name}
@@ -3105,29 +3121,47 @@ default: 90).  A lower value means that the compiler will use
 larger tables, but there will generally be less hash collisions,
 so it may result in faster lookups.
 
-@sp 1
+@end table
+
+@menu
+* Code generation target options::
+@end menu
+
+@node Code generation target options
+@subsection Code generation target options
+
+The following options allow the Mercury compiler to optimize the generated
+C code based on the characteristics of the expected target architecture.
+The default values of these options will be whatever is appropriate
+for the host architecture that the Mercury compiler was installed on,
+so normally there is no need to set these options manually.  They might
+come in handy if you are cross-compiling.  But even when cross-compiling,
+it's probably not worth bothering to set these unless efficiency is
+absolutely paramount.
+
+@table @asis
 @item @code{--have-delay-slot}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume that branch instructions have a delay slot.
 
 @sp 1
 @item @code{--num-real-r-regs @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume r1 up to r@var{n} are real general purpose registers.
 
 @sp 1
 @item @code{--num-real-f-regs @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume f1 up to f@var{n} are real floating point registers.
 
 @sp 1
 @item @code{--num-real-r-temps @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume that @var{n} non-float temporaries will fit into real machine registers.
 
 @sp 1
 @item @code{--num-real-f-temps @var{n}}
-(This option is not intended for general use.)
+(This option is not intended for general use.)@*
 Assume that @var{n} float temporaries will fit into real machine registers.
 
 @end table
