@@ -12,11 +12,13 @@
 :- import_module list, int.
 
 main -->
-	( { data(Data), queen(Data, Out) } ->
+	( { queen(data, Out) } ->
 		print_list(Out)
 	;
 		io__write_string("No solution\n")
 	).
+
+:- func data = list(int).
 
 :- pred data(list(int)).
 :- mode data(out) is det.
@@ -35,6 +37,9 @@ main -->
 
 :- pred nodiag(int, int, list(int)).
 :- mode nodiag(in, in, in) is semidet.
+
+data = D :-
+	data(D).
 
 data([1,2,3,4,5]).
 

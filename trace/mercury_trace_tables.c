@@ -309,19 +309,48 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	return TRUE;
 }
 
+#define	MR_INIT_MATCH_PROC_SIZE		8
+
+static void
+MR_register_matches(void *data, const MR_Stack_Layout_Entry *entry)
+{
+	MR_Matches_Info	*m;
+
+	m = (MR_Matches_Info *) data;
+	MR_ensure_room_for_next(m->match_proc, const MR_Stack_Layout_Entry *,
+		MR_INIT_MATCH_PROC_SIZE);
+	m->match_procs[m->match_proc_next] = entry;
+	m->match_proc_next++;
+}
+
+MR_Matches_Info
+MR_search_for_matching_procedures(MR_Proc_Spec *spec)
+{
+	MR_Matches_Info	m;
+
+	m.match_procs = NULL;
+	m.match_proc_max = 0;
+	m.match_proc_next = 0;
+	MR_process_matching_procedures(spec, MR_register_matches, &m);
+	return m;
+}
+
 /*
 ** This struct is for communication between
 ** MR_register_match and MR_search_for_matching_procedure.
 */
+
 typedef struct {
 	const MR_Stack_Layout_Entry	*matching_entry;
 	bool	 			match_unique;
-} MR_match_info;
+} MR_Match_Info;
 
 static void
 MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
 {
-	MR_match_info *m = data;
+	MR_Match_Info	*m;
+
+	m = (MR_Match_Info *) data;
 	if (m->matching_entry == NULL) {
 		m->matching_entry = entry;
 	} else {
@@ -332,7 +361,8 @@ MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
 const MR_Stack_Layout_Entry *
 MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
 {
-	MR_match_info m;
+	MR_Match_Info	m;
+
 	m.matching_entry = NULL;
 	m.match_unique = TRUE;
 	MR_process_matching_procedures(spec, MR_register_match, &m);

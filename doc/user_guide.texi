@@ -2125,6 +2125,9 @@ By default, the initial state of the break point is @samp{stop}.
 @item break [-PSaei] @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
+If the specification matches more than one procedure,
+you will be asked whether you want to put a breakpoint on all of them,
+or just one (and if so, which one).
 @sp 1
 The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
 specify the action to be taken at the break point,

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-1999 The University of Melbourne.
+** Copyright (C) 1998-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -114,6 +114,22 @@ extern	bool	MR_parse_proc_spec(char *str, MR_Proc_Spec *spec);
 
 extern	const MR_Stack_Layout_Entry *MR_search_for_matching_procedure(
 					MR_Proc_Spec *spec, bool *unique);
+
+/*
+** Search the tables for procedures that matches the given specification.
+** Return their layout structures in the array in the match_procs field
+** of the structure. The match_proc_next field says how many matches there are,
+** and the match_proc_max field says how many entries the array has allocated
+** for it.
+*/
+
+typedef struct {
+	const MR_Stack_Layout_Entry	**match_procs;
+	int	 			match_proc_max;
+	int	 			match_proc_next;
+} MR_Matches_Info;
+
+extern	MR_Matches_Info	MR_search_for_matching_procedures(MR_Proc_Spec *spec);
 
 /*
 ** MR_process_matching_procedures(spec, f, data):

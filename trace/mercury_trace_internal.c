@@ -1016,32 +1016,75 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 2 &&
 				MR_parse_proc_spec(words[1], &spec))
 		{
-			const MR_Stack_Layout_Entry	*spy_proc;
-			bool				unique;
-			int				slot;
+			MR_Matches_Info	matches;
+			int		slot;
 
 			MR_register_all_modules_and_procs(MR_mdb_out, TRUE);
-			spy_proc = MR_search_for_matching_procedure(&spec,
-					&unique);
-			if (spy_proc != NULL) {
-				if (unique) {
-					slot = MR_add_proc_spy_point(when,
-						action, spy_proc, NULL);
-					MR_print_spy_point(slot);
-				} else {
-					fflush(MR_mdb_out);
-					fprintf(MR_mdb_err,
-						"Ambiguous procedure "
-						"specification. "
-						"The matches are:\n");
-					MR_process_matching_procedures(&spec,
-						MR_mdb_print_proc_id,
-						MR_mdb_err);
-				}
-			} else {
+			matches = MR_search_for_matching_procedures(&spec);
+			if (matches.match_proc_next == 0) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"There is no such procedure.\n");
+			} else if (matches.match_proc_next == 1) {
+				slot = MR_add_proc_spy_point(when, action,
+					matches.match_procs[0], NULL);
+				MR_print_spy_point(slot);
+			} else {
+				char	buf[80];
+				int	i;
+				char	*line2;
+
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"Ambiguous procedure specification. "
+					"The matches are:\n");
+				for (i = 0; i < matches.match_proc_next; i++)
+				{
+					fprintf(MR_mdb_out, "%d: ", i);
+					MR_print_proc_id_for_debugger(
+						MR_mdb_out,
+						matches.match_procs[i]);
+				}
+
+				sprintf(buf, "\nWhich do you want to put "
+					"a breakpoint on (0-%d or *)? ",
+					matches.match_proc_next - 1);
+				line2 = MR_trace_getline(buf,
+					MR_mdb_in, MR_mdb_out);
+				if (line2 == NULL) {
+					/* This means the user input EOF. */
+					fprintf(MR_mdb_out, "none of them\n");
+				} else if (streq(line2, "*")) {
+					for (i = 0;
+						i < matches.match_proc_next;
+						i++)
+					{
+						slot = MR_add_proc_spy_point(
+							when, action,
+							matches.match_procs[i],
+							NULL);
+						MR_print_spy_point(slot);
+					}
+
+					MR_free(line2);
+				} else if (MR_trace_is_number(line2, &i)) {
+					if (0 <= i &&
+						i < matches.match_proc_next)
+					{
+						slot = MR_add_proc_spy_point(
+							when, action,
+							matches.match_procs[i],
+							NULL);
+						MR_print_spy_point(slot);
+					} else {
+						fprintf(MR_mdb_out,
+							"no such match\n");
+					}
+					MR_free(line2);
+				} else {
+					fprintf(MR_mdb_out, "none of them\n");
+					MR_free(line2);
+				}
 			}
 		} else if (word_count == 2 &&
 				MR_parse_source_locn(words[1], &file, &line))
