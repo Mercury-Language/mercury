@@ -13,7 +13,7 @@ singleton_test.m:039:   warning: variable `Msg' does not occur in the C code.
 singleton_test.m:008: In function `singleton_test.my_append_func/2':
 singleton_test.m:008:   warning: unresolved polymorphism.
 singleton_test.m:008:   The variables with unbound types were:
-singleton_test.m:008:       L2 :: V_1
-singleton_test.m:008:       L1 :: V_1
+singleton_test.m:008:       L2: V_1
+singleton_test.m:008:       L1: V_1
 singleton_test.m:008:   The unbound type variable(s) will be implicitly
 singleton_test.m:008:   bound to the builtin type `void'.

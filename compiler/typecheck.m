@@ -5566,7 +5566,7 @@ write_cons_type(cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _),
 		;
 			{ error("typecheck:write_cons_type - invalid cons_id") }
 		),	
-		io__write_string(" :: ")
+		io__write_string(": ")
 	;
 		[]
 	),
@@ -5702,7 +5702,7 @@ write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
 			[]
 		),
 		mercury_output_var(Var, VarSet, no),
-		io__write_string(" :: "),
+		io__write_string(": "),
 		write_type_b(Type, TypeVarSet, TypeBindings),
 		write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings,
 			TypeVarSet, yes)
@@ -6599,7 +6599,7 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeCheckInfo, TypeAssign1,
 		{ Found1 = yes },
 		prog_out__write_context(Context),
 		mercury_output_var(V, VarSet, no),
-		io__write_string(" :: "),
+		io__write_string(": "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
 		output_type(T1, TVarSet1, HeadTypeParams1),
 		io__write_string(" or "),

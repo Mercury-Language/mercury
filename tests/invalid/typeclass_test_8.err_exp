@@ -4,7 +4,7 @@ typeclass_test_8.m:004:   `typeclass_test_8.fooable(T)'.
 typeclass_test_8.m:004: In predicate `typeclass_test_8.main/2':
 typeclass_test_8.m:004:   warning: unresolved polymorphism.
 typeclass_test_8.m:004:   The variable with an unbound type was:
-typeclass_test_8.m:004:       X :: T
+typeclass_test_8.m:004:       X: T
 typeclass_test_8.m:004:   The unbound type variable(s) will be implicitly
 typeclass_test_8.m:004:   bound to the builtin type `void'.
 For more information, try recompiling with `-E'.

@@ -4,7 +4,7 @@ overloading.m:050:   and term `opt_info(MustHaveOwnSlot, EverOnStack, CurInterva
 overloading.m:050:   type error in argument(s) of functor `opt_info/9'.
 overloading.m:050:   variable `OptInfo' has type `(overloading.opt_info)',
 overloading.m:050:   functor `opt_info/9' has type 
-overloading.m:050:   `opt_info((set.set((term.var((term.generic))))), (set.set((term.var((term.generic))))), (tree234.tree234((term.var((term.generic))), (tree234.tree234((overloading.goal_path), string)))), (overloading.interval_id), (counter.counter), (tree234.tree234((overloading.interval_id), (overloading.anchor))), (tree234.tree234((overloading.interval_id), (overloading.anchor))), (tree234.tree234((overloading.interval_id), (set.set((term.var((term.generic))))))), (tree234.tree234((overloading.interval_id), (list.list((overloading.interval_id)))))) :: (overloading.opt_info)',
+overloading.m:050:   `opt_info((set.set((term.var((term.generic))))), (set.set((term.var((term.generic))))), (tree234.tree234((term.var((term.generic))), (tree234.tree234((overloading.goal_path), string)))), (overloading.interval_id), (counter.counter), (tree234.tree234((overloading.interval_id), (overloading.anchor))), (tree234.tree234((overloading.interval_id), (overloading.anchor))), (tree234.tree234((overloading.interval_id), (set.set((term.var((term.generic))))))), (tree234.tree234((overloading.interval_id), (list.list((overloading.interval_id)))))): (overloading.opt_info)',
 overloading.m:050:   variable `MustHaveOwnSlot' has type `(set.set((term.var((term.generic)))))',
 overloading.m:050:   variable `EverOnStack' has type `(set.set((term.var((term.generic)))))',
 overloading.m:050:   variable `CurIntervalId' has type `(overloading.interval_id)',

@@ -448,7 +448,7 @@ write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet) -->
 	prog_out__write_context(Context),
 	io__write_string("      "),
 	mercury_output_var(Var, VarSet, no),
-	io__write_string(" :: "),
+	io__write_string(": "),
 	mercury_output_term(Type, TVarSet, no),
 	io__write_string("\n"),
 	write_type_var_list(Rest, Context, VarSet, TVarSet).
