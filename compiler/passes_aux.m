@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -418,17 +418,13 @@ report_sizes(ModuleInfo) -->
 :- mode tree_stats(in, in, di, uo) is det.
 
 tree_stats(Description, Tree) -->
-	{ tree234__count(Tree, Count) },
-	% { tree234__depth(Tree, Depth) },
+	{ map__count(Tree, Count) },
 	io__write_string(Description),
 	io__write_string(": count = "),
 	io__write_int(Count),
-	% io__write_string(", depth = "),
-	% io__write_int(Depth),
 	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
-
 
 report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,

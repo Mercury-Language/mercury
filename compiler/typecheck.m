@@ -1833,13 +1833,10 @@ checkpoint_2(Msg, T0) -->
 :- mode checkpoint_tree_stats(in, in, di, uo) is det.
 
 checkpoint_tree_stats(Description, Tree) -->
-        { tree234__count(Tree, Count) },
-        %{ tree234__depth(Tree, Depth) },
+        { map__count(Tree, Count) },
         io__write_string(Description),
         io__write_string(": count = "),
         io__write_int(Count),
-        %io__write_string(", depth = "),
-        %io__write_int(Depth),
         io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
