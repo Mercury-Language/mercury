@@ -121,10 +121,6 @@ while [ $# -gt 0 ]; do
 			esac
 			shift; shift
 			;;
-		--no-use-subdirs)
-			use_subdirs=no
-			shift
-			;;
 		-s|--save-makefile)
 			save_makefile=true
 			MMAKE="$MMAKE $1"
