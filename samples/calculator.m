@@ -4,11 +4,14 @@
 
 % For an example of a more efficient parser, see ../library/parser.m.
 
+% This calculator also misparses "1 - 2 - 3" as "1 - (2 - 3)".
+% (Fixing that bug is left as an exercise for the reader...)
+
 :- module calculator.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is multidet.
+:- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
 :- import_module list, char, int, string.
@@ -35,8 +38,8 @@ main -->
 	; { Res = eof },
 		io__write_string("EOF\n")
 	; { Res = ok(Line) },
-		( { fullexpr(X,Line, []) } ->
-			{ evalexpr(X,NUM)},
+		( { fullexpr(X,Line,[]) } ->
+			{ evalexpr(X,NUM) },
 			io__write_int(NUM),
 			io__write_string("\n")
 		;
