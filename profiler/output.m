@@ -393,7 +393,7 @@ output__flat_headers -->
 		[s(MilliUnitsPerCall)]),
 
 	io__format(
-	   "total\tthe average number of %s %s this procedure and its\n",
+	   "total\t\tthe average number of %s %s this procedure and its\n",
 		[s(MilliUnits), s(SpentIn)]),
 	io__format("%s  \tdescendents per call.\n\n",
 		[s(MilliUnitsPerCall)]),
