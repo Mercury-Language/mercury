@@ -32,13 +32,15 @@ NEWS for Mercury release 0.6
 
 	:- func pi = float.
 	pi = 3.14159265359.
+
+  We also support higher-order functions and function lambda expressions.
+  See the Mercury language reference manual for details.
   
   This is all still work-in-progress, and should be considered
-  experimental.  Higher-order functions are not supported yet (use
-  higher-order predicates instead).  The compiler will probably get
-  very confused if you try to define a function of arity N and a
-  predicate of arity N+1 with the same name.  There is no support for
-  debugging programs using functional syntax.
+  experimental.  The compiler will probably get very confused if you
+  try to define a function of arity N and a predicate of arity N+1 with
+  the same name.  There is no support for debugging programs using
+  functional syntax.
 
 * We now support overloading of predicates (and functions) with the
   same name and arity defined in different modules. 
