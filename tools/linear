@@ -1,0 +1,228 @@
+#!/bin/sh
+# This script finds miscompiled procedures.
+#
+# Given a stage2 directory that works (stage2.ok) and one that doesn't
+# (stage2.bad), this script uses linear search to try to find in stage2.bad
+# first the C source file and then the module within that C source file that
+# when put together with everthing else from the stage2.ok directory, still
+# causes the compiler to fail.
+#
+# If the bad C source file has different numbers of modules in the bad and ok
+# versions, then the script stops after identifying only the file.
+#
+# The test for the composite stage2 compiler is either bootstrap checking
+# (the default, or the successful execution of the all the test cases in
+# one or more dubdirectories of the tests directory.
+
+usage="\
+Usage: $0 [options]
+Options:
+	-b, --no-bootcheck
+		Do not perform a bootcheck; check only the tests directory.
+	-c, --compile-only
+		Compile only. Do not compare stage2.ok and stage3.
+	-h, --help
+		Display this usage message.
+	-j <num-jobs>, --jobs <num-jobs>
+		Run using <num-jobs> different parallel processes.
+	-m <mmake-args>, --mmake-args <mmake-args>
+		Pass <mmake-args> as options to \`mmake'.
+	-n, --negative-search
+		Look for the module that suppresses the bug, not causes it.
+	-o <filename>, --output-file <filename>
+		Output results to <filename>.
+	-r, --copy-runtime
+		Copy the runtime directory instead of linking it.
+	-t <testdir>, --test-dir <testdir>
+		Execute runtests from the named subdirectory of tests.
+"
+
+bootcheck=""
+compile_only=""
+jfactor=
+mmake_opts=""
+outfile=""
+copy_runtime=false
+testdirs=""
+negative=false
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+
+	-b|--no-bootcheck)
+		bootcheck="-b" ;;
+
+	-c|--compile-only)
+		compile_only="-c" ;;
+
+	-h|--help)
+		echo "$usage"
+		exit 0 ;;
+
+	-j|--jobs)
+		jfactor="-j$2"; shift ;;
+	-j*)
+		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+	--jobs*)
+		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-m|--mmake)
+		mmake_opts="$mmake_opts $2"; shift ;;
+
+	-n|--negative-search)
+		negative=true ;;
+
+	-o|--output-file)
+		outfile="-o $2"; shift ;;
+	-o*)
+		outfile="-o ` expr $1 : '-o\(.*\)' `"; ;;
+
+	-r|--copy-runtime)
+		copy_runtime=true ;;
+
+	-t|--test-dir)
+		testdirs="$testdirs -t$2"; shift ;;
+	-t*)
+		testdirs="$testdirs ` expr $1 : '-t\(.*\)' `" ;;
+
+	-*)
+		echo "$0: unknown option \`$1'" 1>&2
+		echo "$usage" 1>&2
+		exit 1 ;;
+
+	*)
+		echo "$usage" 1>&2
+		exit 1 ;;
+	esac
+	shift
+done
+
+if test "$negative" = true
+then
+	base=bad
+	trial=ok
+	expected=failure
+else
+	base=ok
+	trial=bad
+	expected=success
+fi
+
+if test -d stage2.ok -a -d stage2.bad
+then
+	echo "stage2.ok and stage2.bad both present"
+else
+	echo "at least one of stage2.ok and stage2.bad is missing"
+	exit 1
+fi
+
+echo "starting at `date`"
+
+root=`/bin/pwd`
+PATH=$root/tools:$PATH
+export PATH
+
+[ -d stage2 ] || mkdir stage2
+/bin/rm -fr stage2/*
+cd stage2
+mkdir compiler
+cd compiler
+ln -s ../../compiler/*.m .
+cp ../../compiler/Mmake* .
+cd ..
+mkdir library
+cd library
+ln -s ../../library/*.m .
+# ln -s ../../library/*.nl .
+ln -s ../../library/library.init .
+cp ../../library/Mmake* .
+cd ..
+if test "$copy_runtime" = "true"
+then
+	mkdir runtime
+	cd runtime
+	ln -s ../../runtime/*.h .
+	ln -s ../../runtime/*.c .
+	ln -s ../../runtime/*.mod .
+	ln -s ../../runtime/*.in .
+	ln -s ../../runtime/machdeps .
+	cp ../../runtime/Mmake* .
+	cd ..
+else
+	ln -s ../runtime .
+fi
+ln -s ../boehm_gc .
+ln -s ../doc .
+ln -s ../scripts .
+ln -s ../util .
+ln -s ../profiler .
+ln -s ../conf* .
+rm -f config*.log
+cp ../stage2.ok/Mmake* .
+cd ..
+
+# We don't copy the .d files. This prevents mmake from trying to remake any
+# of the .c and .o files, which we provide in the form they should be used.
+
+# cp stage2.ok/library/*.d stage2/library
+cp stage2.ok/library/*.dep stage2/library
+cp stage2.ok/library/*.int stage2/library
+cp stage2.ok/library/*.int2 stage2/library
+cp stage2.ok/library/*.date stage2/library
+# cp stage2.ok/compiler/*.d stage2/compiler
+cp stage2.ok/compiler/*.dep stage2/compiler
+cp stage2.ok/compiler/*.int stage2/compiler
+cp stage2.ok/compiler/*.int2 stage2/compiler
+cp stage2.ok/compiler/*.date stage2/compiler
+
+cp stage2.$base/library/*.[co] stage2/library
+cp stage2.$base/compiler/*.[co] stage2/compiler
+
+set -x
+
+normal=
+unusual=
+
+for testeddir in library compiler
+do
+	# find the set of candidate modules
+	cd stage2/$testeddir
+	allmodules=`sub X.c X *.c`
+	cd ../..
+
+	for testedmodule in $allmodules
+	do
+		# at this point, all the files in stage2
+		# should be from stage2.$base
+
+		echo "testing module: $testedmodule"
+
+		cp stage2.$trial/$testeddir/$testedmodule.[co] stage2/$testeddir
+
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		then
+			echo "test succeeded"
+			lasttest=success
+		else
+			echo "test failed"
+			lasttest=failure
+		fi
+
+		if test "$lasttest" = "$expected"
+		then
+			normal="$normal $testeddir/$testedmodule"
+		else
+			unusual="$unusual $testeddir/$testedmodule"
+		fi
+
+		cp stage2.$base/$testeddir/$testedmodule.[co] stage2/$testeddir
+	done
+done
+
+echo "modules whose stage.$trial versions behave as expected:"
+echo $normal
+
+echo "modules whose stage.$trial versions do not behave as expected:"
+echo $unusual
+
+exit 0
