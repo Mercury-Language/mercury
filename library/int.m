@@ -17,38 +17,45 @@
 
 :- import_module float.
 
-% '<' and '>' are currently defined in mercury_builtin.m, since they need to
-% be because they are used in the implementation of compare/3.
-% 
-% :- pred <(int, int).
-% :- mode <(in, in) is semidet.
-%
-% :- pred >(int, int).
-% :- mode >(in, in) is semidet.
+	% less than
+:- pred int < int.
+:- mode in  < in is semidet.
 
-:- pred =<(int, int).
-:- mode =<(in, in) is semidet.
+	% greater than
+:- pred int > int.
+:- mode in  > in is semidet.
 
-:- pred >=(int, int).
-:- mode >=(in, in) is semidet.
+	% less than or equal
+:- pred int =< int.
+:- mode in  =< in is semidet.
 
+	% greater than or equal
+:- pred int >= int.
+:- mode in >= in is semidet.
+
+	% absolute value
 :- pred int__abs(int, int).
 :- mode int__abs(in, out) is det.
 
+	% maximum
 :- pred int__max(int, int, int).
 :- mode int__max(in, in, out) is det.
 
+	% minimum
 :- pred int__min(int, int, int).
 :- mode int__min(in, in, out) is det.
 
+	% conversion of integer to floating point
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 
+	% expontiation
 :- pred int__pow(int, int, int).
 :- mode int__pow(in, in, out) is det.
 	% int__pow(X, Y, Z): Z is X raised to the Yth power
 	% Y must not be negative.
 
+	% base 2 logarithm
 :- pred int__log2(int, int).
 :- mode int__log2(in, out) is det.
 	% int__log2(X, N): N is the least integer such that 2 to the power N
