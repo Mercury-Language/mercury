@@ -60,6 +60,14 @@
 
 :- type io__error.	% Use io__error_message to decode it.
 
+	% Poly-type
+
+:- type io__poly_type	--->
+		c(char)
+	;	s(string)
+	;	i(int)
+	;	f(float).
+
 %-----------------------------------------------------------------------------%
 
 % Input predicates.
@@ -174,6 +182,14 @@
 :- mode io__write_float(in, in, di, uo) is det.
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to the specified stream.
+
+:- pred io__write_many(list(io__poly_type), io__state, io__state).
+:- mode io__write_many(in, di, uo) is det.
+%	writes a polyglot to output.
+
+:- pred io__write_many(io__output_stream, list(io__poly_type), io__state, io__state).
+:- mode io__write_many(in, in, di, uo) is det.
+%	writes a polyglot to a specified stream.
 
 :- pred io__write_anything(_T, io__state, io__state).
 :- mode io__write_anything(in, di, uo) is det.
@@ -703,6 +719,24 @@ io__write_strings(_Stream, []) --> [].
 io__write_strings(Stream, [S|Ss]) -->
 	io__write_string(Stream, S),
 	io__write_strings(Stream, Ss).
+
+io__write_many(Poly_list) -->
+	io__output_stream(Stream),
+	io__write_many(Stream, Poly_list).
+
+io__write_many( _Stream, [], IO, IO ).
+io__write_many( Stream, [ c(C) | Rest ] ) -->
+	io__write_char(Stream, C),
+	io__write_many(Stream, Rest).
+io__write_many( Stream, [ i(I) | Rest ] ) -->
+	io__write_int(Stream, I),
+	io__write_many(Stream, Rest).
+io__write_many( Stream, [ s(S) | Rest ]) -->
+	io__write_string(Stream, S),
+	io__write_many(Stream, Rest).
+io__write_many( Stream, [ f(F) | Rest ]) -->
+	io__write_float(Stream, F),
+	io__write_many(Stream, Rest).
 
 %-----------------------------------------------------------------------------%
 
