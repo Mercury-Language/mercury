@@ -3587,9 +3587,6 @@ a rather obscure coding style, which we do not recommend.)
 @node Existentially typed data types
 @section Existentially typed data types
 
-Note: existentially typed data types are not yet fully supported.
-See @ref{Known bugs in the current implementation} for details.
-
 Type variables occurring in the body of a discriminated union type
 definition may be existentially quantified.  Constructor definitions
 within discriminated union type definitions may be preceded by
@@ -3769,17 +3766,23 @@ harder_example(Name, Showable) :-
 The current implementation does not properly deal with most cases
 that involve both existentially quantified constraints and
 mode reordering due to the modes of type variables.
-The symptom in such cases is spurious mode errors.
-The solution is to write such code in the correct order manually
-rather than relying on the compiler's mode reordering.
+Note that this can easily arise if you're using nested function calls.
+The symptom in such cases is usually spurious mode errors,
+or sometimes internal compiler errors of the form
 
-We have not yet implemented RTTI (run-time type information) support
-for existentially quantified data types.  This means that many of
-the procedures in the Mercury standard library will not work for
-values of those types.  Functions affected include for example
-@samp{io__write}, @samp{io__read}, @samp{std_util__construct},
-and @samp{std_util__deconstruct}.  Likewise, the Mercury debugger
-does not yet support such types.
+@example
+Software error: map__lookup: key not found
+Key Type: prog_data:class_constraint
+Key Functor: constraint/2
+Value Type: hlds_data:constraint_proof
+@end example
+
+@noindent
+The work-around is to write such code in the correct order manually
+rather than relying on the compiler's mode reordering.
+For nested function calls, you may need to split them up using
+temporary variables, e.g. instead of @samp{X = f(g(Y))},
+write @samp{G = g(Y), X = f(G)}.
 
 @node Semantics
 @chapter Semantics
