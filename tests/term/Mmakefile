@@ -73,7 +73,12 @@ MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
 	      --no-optimize-higher-order
 MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)
 
-MCFLAGS=$(MCTRANSOPTFLAGS)
+	# if EXTRA_MCFLAGS=-O5 then --no-inlining must occur after the
+	# -O5 to turn inlining off.
+	# The following ensures that MCTRANSOPTFLAGS overrides any
+	# thing set by EXTRA_MCFLAGS, by placing them later in the
+	# argument list.
+ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 
 %.trans_opt_res: %.trans_opt_exp $(trans_opts_subdir)%.trans_opt
 	diff -c $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt > $@
