@@ -646,23 +646,31 @@ modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 
 modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 		ModuleInfo0, ModuleInfo, Changed0, Changed, NumErrors) -->
+	( { WhatToCheck = check_modes } ->
+		{ pred_info_procedures(PredInfo0, ProcTable) },
+		(
+			some [ProcInfo] {
+				map__member(ProcTable, _ProcId, ProcInfo),
+				proc_info_maybe_declared_argmodes(ProcInfo,
+					yes(_))
+			}
+		->
+			% there was at least one declared modes for this
+			% procedure
+			[]
+		;
+			% there were no declared modes for this procedure
+			maybe_report_error_no_modes(PredId, PredInfo0,
+					ModuleInfo0)
+		)
+	;
+		[]
+	),
 	% Note that we use pred_info_procids rather than
 	% pred_info_all_procids here, which means that we
 	% don't process modes that have already been inferred
 	% as invalid.
 	{ pred_info_procids(PredInfo0, ProcIds) },
-	( { WhatToCheck = check_modes } ->
-		(
-			{ ProcIds = [] }
-		->
-			maybe_report_error_no_modes(PredId, PredInfo0,
-					ModuleInfo0)
-		;
-			[]
-		)
-	;
-		[]
-	),
 	modecheck_procs(ProcIds, PredId, WhatToCheck, MayChangeCalledProc,
 				ModuleInfo0, Changed0, 0,
 				ModuleInfo, Changed, NumErrors).

@@ -140,6 +140,7 @@ SINGLEMODULE_PROGS= \
 	types	\
 	type_spec \
 	unbound_type_vars \
+	undeclared_mode \
 	undef_lambda_mode \
 	undef_inst \
 	undef_mode \
