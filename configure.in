@@ -666,6 +666,15 @@ fi
 AC_CHECK_HEADER(stdint.h, HAVE_STDINT_H=1)
 if test "$HAVE_STDINT_H" = 1; then
 	AC_DEFINE(HAVE_STDINT)
+fi
+
+AC_CHECK_HEADER(inttypes.h, HAVE_INTTYPES_H=1)
+if test "$HAVE_INTTYPES_H" = 1; then
+	AC_DEFINE(HAVE_INTTYPES)
+fi
+
+if test "$HAVE_STDINT_H" = 1 || test "$HAVE_INTTYPES_H" = 1; then
+	true
 else
 #-----------------------------------------------------------------------------#
 	AC_MSG_CHECKING(for an integer type with the same size as a pointer)
@@ -797,7 +806,7 @@ else
 	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
 	MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
 	AC_SUBST(MR_INT_LEAST16_TYPE)
-fi # ! HAVE_STDINT_H = 1
+fi # ! (HAVE_STDINT_H || HAVE_INTTYPES_H)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,

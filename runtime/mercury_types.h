@@ -26,8 +26,10 @@
 ** this is ensured by the autoconfiguration script.
 */
 
-#ifdef	HAVE_STDINT
+#if defined(HAVE_STDINT)
   #include <stdint.h>
+#elif defined(HAVE_INTTYPES)
+  #include <inttypes.h>
 #else
   typedef unsigned MR_WORD_TYPE		uintptr_t;
   typedef MR_WORD_TYPE			intptr_t;

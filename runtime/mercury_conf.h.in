@@ -92,6 +92,7 @@
 **	HAVE_SYS_WAIT		we have <sys/wait.h>
 **	HAVE_DLFCN_H		we have <dlfcn.h>
 **	HAVE_STDINT		we have <stdint.h>
+**	HAVE_INTTYPES		we have <inttypes.h>
 */
 #undef	HAVE_SYS_SIGINFO
 #undef	HAVE_UCONTEXT
@@ -102,6 +103,7 @@
 #undef	HAVE_SYS_WAIT
 #undef	HAVE_DLFCN_H
 #undef	HAVE_STDINT    
+#undef	HAVE_INTTYPES
 
 /*
 ** The following macros are defined iff the corresponding function or
