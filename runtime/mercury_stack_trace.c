@@ -19,11 +19,11 @@ static	void	MR_dump_stack_record_init(void);
 static	void	MR_dump_stack_record_frame(FILE *fp,
 			const MR_Stack_Layout_Entry *,
 			Word *base_sp, Word *base_curfr, 
-			void *print_stack_record(
+			void (*print_stack_record)(
 				FILE *, const MR_Stack_Layout_Entry *, 
 				int, int, Word *, Word *));
 static	void	MR_dump_stack_record_flush(FILE *fp, 
-			void *print_stack_record(
+			void (*print_stack_record)(
 				FILE *, const MR_Stack_Layout_Entry *, 
 				int, int, Word *, Word *));
 
@@ -61,7 +61,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	Word *det_stack_pointer, Word *current_frame, bool include_trace_data,
-	void *print_stack_record(FILE *, const MR_Stack_Layout_Entry *, 
+	void (*print_stack_record)(FILE *, const MR_Stack_Layout_Entry *, 
 	int, int, Word *, Word *))
 {
 	MR_Stack_Walk_Step_Result	result;
@@ -284,7 +284,7 @@ MR_dump_stack_record_init(void)
 
 static void
 MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	Word *base_sp, Word *base_curfr, void *print_stack_record(
+	Word *base_sp, Word *base_curfr, void (*print_stack_record)(
 		FILE *, const MR_Stack_Layout_Entry *, int, int, Word *, Word *))
 {
 	bool	must_flush;
@@ -326,7 +326,7 @@ MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 }
 
 static void
-MR_dump_stack_record_flush(FILE *fp, void *print_stack_record(
+MR_dump_stack_record_flush(FILE *fp, void (*print_stack_record)(
 	FILE *, const MR_Stack_Layout_Entry *, int, int, Word *, Word *))
 {
 	if (prev_entry_layout != NULL) {
