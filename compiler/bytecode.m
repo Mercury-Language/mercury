@@ -38,6 +38,7 @@
 					byte_temp)
 			;	enter_then(byte_temp)
 			;	endof_then(byte_label_id)
+			;	enter_else(byte_temp)
 			;	endof_if
 			;	enter_negation(byte_label_id)
 			;	endof_negation
@@ -241,6 +242,8 @@ output_args(enter_then(FramePtrTemp)) -->
 	output_temp(FramePtrTemp).
 output_args(endof_then(FollowLabelId)) -->
 	output_label_id(FollowLabelId).
+output_args(enter_else(FramePtrTemp)) -->
+	output_temp(FramePtrTemp).
 output_args(endof_if) --> [].
 output_args(enter_negation(LabelId)) -->
 	output_label_id(LabelId).
@@ -367,6 +370,8 @@ debug_args(enter_then(FramePtrTemp)) -->
 	debug_temp(FramePtrTemp).
 debug_args(endof_then(FollowLabelId)) -->
 	debug_label_id(FollowLabelId).
+debug_args(enter_else(FramePtrTemp)) -->
+	debug_temp(FramePtrTemp).
 debug_args(endof_if) --> [].
 debug_args(enter_negation(LabelId)) -->
 	debug_label_id(LabelId).
@@ -902,6 +907,7 @@ byte_code(semidet_success_check,		36).
 byte_code(fail,					37).
 byte_code(context(_),				38).
 byte_code(not_supported,			39).
+byte_code(enter_else(_),			40).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -922,6 +928,7 @@ byte_debug(endof_switch_arm(_),			"endof_switch_arm").
 byte_debug(enter_if(_, _, _),			"enter_if").
 byte_debug(enter_then(_),			"enter_then").
 byte_debug(endof_then(_),			"endof_then").
+byte_debug(enter_else(_),			"enter_else").
 byte_debug(endof_if,				"endof_if").
 byte_debug(enter_negation(_),			"enter_negation").
 byte_debug(endof_negation,			"endof_negation").
