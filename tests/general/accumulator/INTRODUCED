@@ -1,7 +1,7 @@
 	% mode  0 `base:AccFrom__pred__p/4' (det):
 	% mode  0 `call_in_base:AccFrom__pred__l/4' (det):
 	% mode  0 `chain:AccFrom__pred__pa/4' (det):
-	% mode  0 `construct:AccFrom__pred__p2/5' (det):
+	% mode  0 `construct_test:AccFrom__pred__p2/5' (det):
 	% mode  0 `dcg:AccFrom__pred__p/7' (det):
 	% mode  0 `disj:AccFrom__pred__p/3' (multi):
 	% mode  0 `func:AccFrom__func__sumlist/2' (det):

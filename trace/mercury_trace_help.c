@@ -32,10 +32,10 @@
 #include "mercury_trace_util.h"
 
 #ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.std_util.h"
+  #include "mercury.type_desc.h"
   #include "mercury.io.h"
 #else
-  #include "std_util.h"
+  #include "type_desc.h"
   #include "io.h"
 #endif
 #include "mdb.help.h"
@@ -182,7 +182,7 @@ MR_trace_help_ensure_init(void)
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
-			ML_get_type_info_for_type_info(&typeinfo_type);
+			typeinfo_type = ML_get_type_info_for_type_info();
 			ML_HELP_help_system_type(
 				&MR_trace_help_system_type_word);
 			MR_trace_help_system_type =

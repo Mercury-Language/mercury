@@ -2,7 +2,7 @@
 % 
 % Author: trd
 
-:- module construct.
+:- module construct_test.
 :- interface.
 :- import_module io.
 
@@ -23,7 +23,6 @@
 :- pred test_num_functors(type_desc::in, io__state::di, io__state::uo) is det.
 :- pred test_nth_functor(type_desc::in, io__state::di, io__state::uo) is det.
 :- pred test_all(T::in, io__state::di, io__state::uo) is det.
-
 
 :- type enum	--->	one	;	two	;	three.
 
@@ -87,7 +86,6 @@ test_construct -->
 		% No-tag type:
 	test_construct_2(type_of(qwerty(7)), "qwerty", 1, [One]),
 
-
 	{ type_to_univ("goodbye", Bye) },
 
 	test_construct_2(type_of(poly_four(3, "hello")), "poly_one", 1, [One]),
@@ -105,6 +103,7 @@ test_construct -->
 
 :- pred test_construct_2(type_desc::in, string::in, int::in, list(univ)::in,
 	io__state::di, io__state::uo) is det.
+
 test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
 	{ find_functor(TypeInfo, FunctorName, Arity, FunctorNumber) },
 	io__write_string("About to construct "),
@@ -123,12 +122,14 @@ test_construct_2(TypeInfo, FunctorName, Arity, Args) -->
 	).
 
 :- pred find_functor(type_desc::in, string::in, int::in, int::out) is det.
+
 find_functor(TypeInfo, Functor, Arity, FunctorNumber) :-
 	N = num_functors(TypeInfo),
 	find_functor2(TypeInfo, Functor, Arity, N, FunctorNumber).
 	
 :- pred find_functor2(type_desc::in, string::in, int::in, int::in, 
 	int::out) is det.
+
 find_functor2(TypeInfo, Functor, Arity, Num, FunctorNumber) :-
 	(
 		Num < 0
@@ -145,10 +146,8 @@ find_functor2(TypeInfo, Functor, Arity, Num, FunctorNumber) :-
 		)
 	).
 
-
-
-
 %----------------------------------------------------------------------------%
+
 test_all(T) -->
 	{ TypeInfo = type_of(T) },
 	test_num_functors(TypeInfo),
@@ -164,9 +163,8 @@ test_nth_functor(TypeInfo) -->
 	{ N = num_functors(TypeInfo) },
 	test_all_functors(TypeInfo, N - 1).
 
-
 :- pred test_all_functors(type_desc::in, int::in, 
-		io__state::di, io__state::uo) is det.
+	io__state::di, io__state::uo) is det.
 
 test_all_functors(TypeInfo, N) -->
 	(
@@ -204,7 +202,6 @@ test_discriminated -->
 	test_all(apple([9,5,1])), newline,
 	test_all(banana([three, one, two])), newline,
 
-
 		% test complicated tags
 	test_all(zop(3.3, 2.03)), newline,
 	test_all(zip(3, 2)), newline,
@@ -224,7 +221,6 @@ test_polymorphism -->
 	test_all(poly_one([2399.3])), newline,
 
 	newline.
-
 
 test_builtins -->
 	io__write_string("TESTING BUILTINS\n"),
@@ -284,5 +280,3 @@ test_other -->
 
 newline -->
 	io__write_char('\n').
-
-

@@ -33,9 +33,9 @@
 #include "mdb.browser_info.h"
 #include "mdb.interactive_query.h"
 #ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.std_util.h"
+  #include "mercury.type_desc.h"
 #else
-  #include "std_util.h"
+  #include "type_desc.h"
 #endif
 
 #include <stdio.h>
@@ -294,7 +294,7 @@ MR_trace_browse_ensure_init(void)
 
 	if (! done) {
 		MR_TRACE_CALL_MERCURY(
-			ML_get_type_info_for_type_info(&typeinfo_type_word);
+			typeinfo_type_word = ML_get_type_info_for_type_info();
 			ML_BROWSE_browser_persistent_state_type(
 				&MR_trace_browser_persistent_state_type_word);
 			ML_BROWSE_init_persistent_state(

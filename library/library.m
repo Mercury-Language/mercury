@@ -23,27 +23,28 @@
 :- implementation.
 
 % Note: if you add a new module to this list, you must also a new clause
-% to mercury_std_library_module/1 in compiler/modules.m.
+% to mercury_std_library_module/1 in compiler/modules.m. Conversely, this
+% should list all the modules named by mercury_std_library_module, except
+% library itself.
+%
+% Please keep both parts of this list in alphabetical order.
 
+% The modules intended for application programmers.
 :- import_module array, assoc_list, bag, benchmarking.
-:- import_module bimap, bintree, bintree_set, bool.
-:- import_module bt_array, char, counter, dir, enum, eqvclass, float.
-:- import_module math, getopt, graph, group, int.
-:- import_module io, list, map, multi_map, pqueue, queue, random, relation.
-:- import_module require, set, set_bbbtree, set_ordlist, set_unordlist.
-:- import_module sparse_bitset, stack, std_util, string, term, term_io.
-:- import_module tree234, varset.
-:- import_module store, rbtree, parser, lexer, ops.
-:- import_module prolog.
-:- import_module integer, rational.
-:- import_module exception, gc.
-:- import_module time.
-:- import_module pprint.
-:- import_module bitmap.
-:- import_module hash_table.
+:- import_module bimap, bintree, bintree_set, bitmap, bool, bt_arraym, builtin.
+:- import_module char, construct, counter, deconstruct, dir.
+:- import_module enum, eqvclass, exception.
+:- import_module float, gc, getopt, graph, group, hash_table.
+:- import_module int, integer, io, lexer, list, map, math, multi_map, ops.
+:- import_module parser, pprint, pqueue, prolog, queue.
+:- import_module random, rational, rbtree, relation, require.
+:- import_module set, set_bbbtree, set_ordlist, set_unordlist, sparse_bitset.
+:- import_module stack, std_util, store, string.
+:- import_module term, term_io, tree234, time, type_desc, varset.
 
+% The modules intended for Mercury system implementors.
+:- import_module private_builtin, table_builtin, profiling_builtin.
 :- import_module rtti_implementation.
-:- import_module builtin, private_builtin, table_builtin, profiling_builtin.
 
 % library__version must be implemented using pragma c_code,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration

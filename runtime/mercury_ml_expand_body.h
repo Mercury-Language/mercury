@@ -544,14 +544,6 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 data_word_ptr, EXTRA_ARGS expand_info);
             break;
 
-        case MR_TYPECTOR_REP_EQUIV_VAR:
-            /*
-            ** The current version of the RTTI gives all such equivalence types
-            ** the EQUIV type_ctor_rep, not EQUIV_VAR.
-            */
-            MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
-            break;
-
         case MR_TYPECTOR_REP_INT:
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
@@ -626,6 +618,12 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
 
+            handle_zero_arity_args();
+            break;
+
+        case MR_TYPECTOR_REP_FUNC:
+            /* XXX expand_info->non_canonical_type = TRUE; */
+            handle_functor_name("<<function>>");
             handle_zero_arity_args();
             break;
 

@@ -200,7 +200,8 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         {
             MR_ReservedAddrTypeLayout ra_layout;
         
-            ra_layout = MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
+            ra_layout = MR_type_ctor_layout(type_ctor_info).
+                layout_reserved_addr;
             data = *term_ptr;
 
             /*
@@ -295,19 +296,12 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
             return MR_named_arg_num(eqv_type_info, term_ptr, arg_name,
                 arg_num_ptr);
 
-        case MR_TYPECTOR_REP_EQUIV_VAR:
-            /*
-            ** The current version of the RTTI gives all such equivalence types
-            ** the EQUIV type_ctor_rep, not EQUIV_VAR.
-            */
-            MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
-            break;
-
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_USEREQ:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-            notag_functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
+            notag_functor_desc = MR_type_ctor_functors(type_ctor_info).
+                functors_notag;
 
             if (notag_functor_desc->MR_notag_functor_arg_name != NULL
             && streq(arg_name, notag_functor_desc->MR_notag_functor_arg_name))

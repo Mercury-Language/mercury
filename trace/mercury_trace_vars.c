@@ -135,32 +135,44 @@ static	MR_Point			MR_point;
 ** do not export them. The types are a lie, but a safe lie.
 */
 
-extern	struct MR_TypeCtorInfo_Struct
+#ifndef MR_HIGHLEVEL_CODE
+  extern struct MR_TypeCtorInfo_Struct
 	mercury_data_private_builtin__type_ctor_info_type_info_1;
-extern	struct MR_TypeCtorInfo_Struct
+  extern struct MR_TypeCtorInfo_Struct
 	mercury_data_private_builtin__type_ctor_info_type_ctor_info_1;
-extern	struct MR_TypeCtorInfo_Struct
+  extern struct MR_TypeCtorInfo_Struct
 	mercury_data_private_builtin__type_ctor_info_typeclass_info_1;
-extern	struct MR_TypeCtorInfo_Struct
+  extern struct MR_TypeCtorInfo_Struct
 	mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1;
-extern	struct MR_TypeCtorInfo_Struct
+  extern struct MR_TypeCtorInfo_Struct
 	mercury_data_std_util__type_ctor_info_type_desc_0;
-extern	struct MR_TypeCtorInfo_Struct
+  extern struct MR_TypeCtorInfo_Struct
 	mercury_data_std_util__type_ctor_info_type_ctor_desc_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_void_0;
+  extern struct MR_TypeCtorInfo_Struct
+	mercury_data_type_desc__type_ctor_info_type_desc_0;
+  extern struct MR_TypeCtorInfo_Struct
+	mercury_data_type_desc__type_ctor_info_type_ctor_desc_0;
+  extern struct MR_TypeCtorInfo_Struct
+  	mercury_data___type_ctor_info_func_0;
+  extern struct MR_TypeCtorInfo_Struct
+  	mercury_data___type_ctor_info_pred_0;
+  extern struct MR_TypeCtorInfo_Struct
+  	mercury_data___type_ctor_info_void_0;
 
-#ifdef MR_HIGHLEVEL_CODE
-  extern struct MR_TypeCtorInfo_Struct   mercury_data___type_ctor_info_func_0;
-  extern struct MR_TypeCtorInfo_Struct   mercury_data___type_ctor_info_pred_0;
-#endif
-
-#ifdef	NATIVE_GC
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_succip_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_hp_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_curfr_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_maxfr_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_redoip_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_redofr_0;
+  #ifdef NATIVE_GC
+    extern struct MR_TypeCtorInfo_Struct
+	mercury_data___type_ctor_info_succip_0;
+    extern struct MR_TypeCtorInfo_Struct
+	mercury_data___type_ctor_info_hp_0;
+    extern struct MR_TypeCtorInfo_Struct
+	mercury_data___type_ctor_info_curfr_0;
+    extern struct MR_TypeCtorInfo_Struct
+	mercury_data___type_ctor_info_maxfr_0;
+    extern struct MR_TypeCtorInfo_Struct
+	mercury_data___type_ctor_info_redoip_0;
+    extern struct MR_TypeCtorInfo_Struct
+	mercury_data___type_ctor_info_redofr_0;
+  #endif
 #endif
 
 static	MR_TypeCtorInfo
@@ -174,6 +186,8 @@ MR_trace_ignored_type_ctors[] =
 	&mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
 	&mercury_data_std_util__type_ctor_info_type_desc_0,
 	&mercury_data_std_util__type_ctor_info_type_ctor_desc_0,
+	&mercury_data_type_desc__type_ctor_info_type_desc_0,
+	&mercury_data_type_desc__type_ctor_info_type_ctor_desc_0,
 
 	/* we ignore these until the debugger can print higher-order terms */
 	&mercury_data___type_ctor_info_func_0,
@@ -181,9 +195,8 @@ MR_trace_ignored_type_ctors[] =
 
 	/* we ignore these because they should never be needed */
 	&mercury_data___type_ctor_info_void_0,
-#endif
 
-#ifdef	NATIVE_GC
+  #ifdef NATIVE_GC
 	/* we ignore these because they are not interesting */
 	&mercury_data___type_ctor_info_succip_0,
 	&mercury_data___type_ctor_info_hp_0,
@@ -191,6 +204,7 @@ MR_trace_ignored_type_ctors[] =
 	&mercury_data___type_ctor_info_maxfr_0,
 	&mercury_data___type_ctor_info_redoip_0,
 	&mercury_data___type_ctor_info_redofr_0,
+  #endif
 #endif
 	/* dummy member */
 	NULL

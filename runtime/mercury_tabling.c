@@ -826,14 +826,6 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_type_ctor_layout(type_ctor_info).layout_equiv), data);
             break;
 
-        case MR_TYPECTOR_REP_EQUIV_VAR:
-            /*
-            ** The current version of the RTTI gives all equivalence types
-            ** the EQUIV type_ctor_rep, not EQUIV_VAR.
-            */
-            MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
-            break;
-
         case MR_TYPECTOR_REP_INT:
             MR_DEBUG_TABLE_INT(table, data);
             break;
@@ -850,11 +842,12 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             MR_DEBUG_TABLE_STRING(table, (MR_String) data);
             break;
 
+        case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
             {
                 /*
                 ** XXX tabling of the closures by tabling their code address
-                ** and arguments is not yet implemented, due to the difficulty
+                ** and arguments is not yet implemented, due to the overhead
                 ** of figuring out the closure argument types.
                 */
         #if 0

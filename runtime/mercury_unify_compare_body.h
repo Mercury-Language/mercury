@@ -292,7 +292,6 @@ start_label:
 
         case MR_TYPECTOR_REP_EQUIV:
         case MR_TYPECTOR_REP_EQUIV_GROUND:
-        case MR_TYPECTOR_REP_EQUIV_VAR:
         case MR_TYPECTOR_REP_NOTAG:
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_RESERVED_ADDR:
@@ -585,6 +584,7 @@ start_label:
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error(attempt_msg "terms of type `void'");
 
+        case MR_TYPECTOR_REP_FUNC:
         case MR_TYPECTOR_REP_PRED:
             MR_fatal_error(attempt_msg "higher-order terms");
 

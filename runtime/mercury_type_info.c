@@ -272,3 +272,71 @@ MR_deallocate(MR_MemoryList allocated)
 		allocated = next;
 	}
 }
+
+MR_Word
+MR_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
+{
+	MR_TypeInfo	arg_type;
+	MR_Word		type_info_list;
+
+	MR_restore_transient_registers();
+	type_info_list = MR_list_empty();
+	while (arity > 0) {
+		type_info_list = MR_list_cons((MR_Word) type_params[arity],
+			type_info_list);
+		--arity;
+	}
+
+	MR_save_transient_registers();
+	return type_info_list;
+}
+
+MR_Word
+MR_arg_name_vector_to_list(int arity, const MR_ConstString *arg_names)
+{
+	MR_TypeInfo	arg_type;
+	MR_Word		arg_names_list;
+
+	MR_restore_transient_registers();
+	arg_names_list = MR_list_empty();
+
+	while (arity > 0) {
+		--arity;
+		arg_names_list = MR_list_cons((MR_Word) arg_names[arity],
+			arg_names_list);
+	}
+
+	MR_save_transient_registers();
+	return arg_names_list;
+}
+
+MR_Word
+MR_pseudo_type_info_vector_to_type_info_list(int arity,
+	MR_TypeInfoParams type_params,
+	const MR_PseudoTypeInfo *arg_pseudo_type_infos)
+{
+	MR_TypeInfo arg_type_info;
+	MR_Word     type_info_list;
+
+	MR_restore_transient_registers();
+	type_info_list = MR_list_empty();
+
+	while (--arity >= 0) {
+			/* Get the argument type_info */
+
+		MR_save_transient_registers();
+		arg_type_info = MR_create_type_info(type_params,
+			arg_pseudo_type_infos[arity]);
+		MR_restore_transient_registers();
+
+		MR_save_transient_registers();
+		arg_type_info = MR_collapse_equivalences(arg_type_info);
+		MR_restore_transient_registers();
+
+		type_info_list = MR_list_cons((MR_Word) arg_type_info,
+			type_info_list);
+	}
+
+	MR_save_transient_registers();
+	return type_info_list;
+}

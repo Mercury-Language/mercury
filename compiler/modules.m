@@ -640,7 +640,9 @@ mercury_std_library_module("bool").
 mercury_std_library_module("bt_array").
 mercury_std_library_module("builtin").
 mercury_std_library_module("char").
+mercury_std_library_module("construct").
 mercury_std_library_module("counter").
+mercury_std_library_module("deconstruct").
 mercury_std_library_module("dir").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
@@ -689,6 +691,7 @@ mercury_std_library_module("term").
 mercury_std_library_module("term_io").
 mercury_std_library_module("time").
 mercury_std_library_module("tree234").
+mercury_std_library_module("type_desc").
 mercury_std_library_module("varset").
 
 	% It is not really clear what the naming convention

@@ -130,7 +130,7 @@ __gc public class Constants {
     static int MR_TYPECTOR_REP_NOTAG			= 4;
     static int MR_TYPECTOR_REP_NOTAG_USEREQ		= 5;
     static int MR_TYPECTOR_REP_EQUIV			= 6;
-    static int MR_TYPECTOR_REP_EQUIV_VAR		= 7;
+    static int MR_TYPECTOR_REP_FUNC			= 7;
     static int MR_TYPECTOR_REP_INT		    	= 8;
     static int MR_TYPECTOR_REP_CHAR		    	= 9;
     static int MR_TYPECTOR_REP_FLOAT			=10;

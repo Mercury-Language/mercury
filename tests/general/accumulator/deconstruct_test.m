@@ -1,7 +1,7 @@
 	%
 	% Tests that any deconstruction unifications get handled properly.
 	%
-:- module deconstruct.
+:- module deconstruct_test.
 
 :- interface.
 

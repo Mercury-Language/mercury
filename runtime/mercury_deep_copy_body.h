@@ -403,14 +403,6 @@ try_again:
         goto try_again;
         break;
 
-    case MR_TYPECTOR_REP_EQUIV_VAR:
-        /*
-        ** The current version of the RTTI gives all equivalence types
-        ** the EQUIV type_ctor_rep, not EQUIV_VAR.
-        */
-        MR_fatal_error("unexpected EQUIV_VAR type_ctor_rep");
-        break;
-
     case MR_TYPECTOR_REP_INT:  /* fallthru */
     case MR_TYPECTOR_REP_CHAR:
         new_data = data;
@@ -470,6 +462,7 @@ try_again:
         }
         break;
 
+    case MR_TYPECTOR_REP_FUNC:
     case MR_TYPECTOR_REP_PRED:
         {
             MR_Word    *data_value;

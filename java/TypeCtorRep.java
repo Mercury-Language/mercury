@@ -17,7 +17,7 @@ public class TypeCtorRep {
 	public static final int MR_TYPECTOR_REP_NOTAG = 4;
 	public static final int MR_TYPECTOR_REP_NOTAG_USEREQ = 5;
 	public static final int MR_TYPECTOR_REP_EQUIV = 6;
-	public static final int MR_TYPECTOR_REP_EQUIV_VAR = 7;
+	public static final int MR_TYPECTOR_REP_FUNC = 7;
 	public static final int MR_TYPECTOR_REP_INT = 8;
 	public static final int MR_TYPECTOR_REP_CHAR = 9;
 	public static final int MR_TYPECTOR_REP_FLOAT = 10;

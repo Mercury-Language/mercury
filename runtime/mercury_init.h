@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001 The University of Melbourne.
+** Copyright (C) 1993-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,6 +85,7 @@ extern	int	mercury_terminate(void);
 				   mercury_runtime_terminate(),
 				   etc. */
 #include "mercury_trace_base.h"	/* for MR_trace_port */
+#include "mercury_type_info.h"	/* for MR_TypeCtorInfo_Struct */
 
 #ifdef CONSERVATIVE_GC
   #include "gc.h"

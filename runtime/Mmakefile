@@ -40,6 +40,7 @@ HDRS		=	\
 			mercury_calls.h		\
 			mercury_conf.h		\
 			mercury_conf_param.h	\
+			mercury_construct.h	\
 			mercury_context.h	\
 			mercury_debug.h		\
 			mercury_deconstruct.h	\
@@ -91,6 +92,7 @@ HDRS		=	\
 			mercury_trace_base.h	\
 			mercury_trail.h		\
 			mercury_types.h		\
+			mercury_type_desc.h	\
 			mercury_type_info.h	\
 			mercury_type_tables.h	\
 			mercury_wrapper.h	\
@@ -139,6 +141,7 @@ CFILES		= 	\
 			mercury_accurate_gc.c	\
 			mercury_agc_debug.c	\
 			mercury_bootstrap.c	\
+			mercury_construct.c	\
 			mercury_context.c	\
 			mercury_debug.c		\
 			mercury_deconstruct.c	\
@@ -176,6 +179,7 @@ CFILES		= 	\
 			mercury_timing.c	\
 			mercury_trace_base.c	\
 			mercury_trail.c 	\
+			mercury_type_desc.c	\
 			mercury_type_info.c	\
 			mercury_type_tables.c	\
 			mercury_wrapper.c

@@ -1,7 +1,7 @@
 	%
 	% Tests that any construction unifications get handled properly.
 	%
-:- module construct.
+:- module construct_test.
 
 :- interface.
 

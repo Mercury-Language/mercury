@@ -18,6 +18,7 @@
 #include "mercury_stack_layout.h"	/* for `MR_Label_Layout' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
+#include "mercury_type_info.h"		/* for `MR_TypeCtorInfo' */
 #include <stdio.h>			/* for `FILE' */
 
 /*
@@ -98,6 +99,10 @@ extern	void		(*MR_address_of_init_gc)(void);
 #endif
 
 extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
+
+extern	MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_func;
+extern	MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_pred;
+extern	MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_tuple;
 
 /*
 ** MR_trace_getline(const char *, FILE *, FILE *) and

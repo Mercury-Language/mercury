@@ -24,7 +24,7 @@ ORDINARY_PROGS=	\
 	comparison \
 	constraint \
 	constraint_order \
-	construct \
+	construct_test \
 	curry \
 	curry2 \
 	cut_test \

@@ -20,8 +20,8 @@ PROGS=		base		\
 		call_in_base	\
 		chain		\
 		commutative	\
-		construct	\
-		deconstruct	\
+		construct_test	\
+		deconstruct_test\
 		dcg		\
 		disj		\
 		func		\

@@ -482,7 +482,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_NOTAG),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_NOTAG_USEREQ),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_EQUIV),
-    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_EQUIV_VAR),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FUNC),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_INT),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_CHAR), 
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FLOAT),
@@ -539,7 +539,7 @@ typedef MR_int_least8_t         MR_TypeCtorRepInt;
     "NOTAG",                                    \
     "NOTAG_USEREQ",                             \
     "EQUIV",                                    \
-    "EQUIV_VAR",                                \
+    "FUNC",                                     \
     "INT",                                      \
     "CHAR",                                     \
     "FLOAT",                                    \
@@ -589,6 +589,7 @@ typedef MR_int_least8_t         MR_TypeCtorRepInt;
 */
 #define MR_type_ctor_rep_is_variable_arity(rep)             \
     (  ((rep) == MR_TYPECTOR_REP_PRED)                      \
+    || ((rep) == MR_TYPECTOR_REP_FUNC)                      \
     || ((rep) == MR_TYPECTOR_REP_TUPLE))
 
 /*---------------------------------------------------------------------------*/
@@ -1193,37 +1194,14 @@ struct MR_TypeCtorInfo_Struct {
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef MR_HIGHLEVEL_CODE
-  extern const struct MR_TypeCtorInfo_Struct 
-        mercury__builtin__builtin__type_ctor_info_pred_0,
-        mercury__builtin__builtin__type_ctor_info_func_0,
-        mercury__builtin__builtin__type_ctor_info_tuple_0;
-  #define MR_TYPE_CTOR_INFO_HO_PRED                                     \
-        (&mercury__builtin__builtin__type_ctor_info_pred_0)
-  #define MR_TYPE_CTOR_INFO_HO_FUNC                                     \
-        (&mercury__builtin__builtin__type_ctor_info_func_0)
-  #define MR_TYPE_CTOR_INFO_TUPLE                                       \
-        (&mercury__builtin__builtin__type_ctor_info_tuple_0)
-#else
-  MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
-  MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
-  MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_tuple_0);
-  #define MR_TYPE_CTOR_INFO_HO_PRED                                     \
-        ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_pred_0)
-  #define MR_TYPE_CTOR_INFO_HO_FUNC                                     \
-        ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_func_0)
-  #define MR_TYPE_CTOR_INFO_TUPLE                                       \
-        ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_tuple_0)
-#endif
-
 #define MR_TYPE_CTOR_INFO_IS_HO_PRED(T)                                 \
-        (T == MR_TYPE_CTOR_INFO_HO_PRED)
+        (MR_type_ctor_rep(T) == MR_TYPECTOR_REP_PRED)
 #define MR_TYPE_CTOR_INFO_IS_HO_FUNC(T)                                 \
-        (T == MR_TYPE_CTOR_INFO_HO_FUNC)
+        (MR_type_ctor_rep(T) == MR_TYPECTOR_REP_FUNC)
 #define MR_TYPE_CTOR_INFO_IS_HO(T)                                      \
         (MR_TYPE_CTOR_INFO_IS_HO_FUNC(T) || MR_TYPE_CTOR_INFO_IS_HO_PRED(T))
 #define MR_TYPE_CTOR_INFO_IS_TUPLE(T)                                   \
-        (T == MR_TYPE_CTOR_INFO_TUPLE)
+        (MR_type_ctor_rep(T) == MR_TYPECTOR_REP_TUPLE)
 
 /*---------------------------------------------------------------------------*/
 
@@ -1331,6 +1309,47 @@ extern  MR_TypeInfo MR_make_type_info_maybe_existq(
                         const MR_DuFunctorDesc *functor_descriptor,
                         MR_MemoryList *allocated);
 extern  void        MR_deallocate(MR_MemoryList allocated_memory_cells);
+
+/*
+** MR_type_params_vector_to_list:
+**
+** Copy `arity' type_infos from the `arg_type_infos' vector, which starts
+** at index 1, onto the Mercury heap in a list.
+**
+** You need to save and restore transient registers around
+** calls to this function.
+*/
+
+extern	MR_Word     MR_type_params_vector_to_list(int arity,
+                        MR_TypeInfoParams type_params);
+
+/*
+** ML_arg_name_vector_to_list:
+**
+** Copy `arity' argument names from the `arg_names' vector, which starts
+** at index 0, onto the Mercury heap in a list.
+**
+** You need to save and restore transient registers around
+** calls to this function.
+*/
+
+extern	MR_Word		MR_arg_name_vector_to_list(int arity,
+                        const MR_ConstString *arg_names);
+
+/*
+** ML_pseudo_type_info_vector_to_type_info_list:
+**
+** Take `arity' pseudo_type_infos from the `arg_pseudo_type_infos' vector,
+** which starts at index 0, expand them, and copy them onto the heap
+** in a list.
+**
+** You need to save and restore transient registers around
+** calls to this function.
+*/
+
+extern	MR_Word		MR_pseudo_type_info_vector_to_type_info_list(int arity,
+                        MR_TypeInfoParams type_params,
+                        const MR_PseudoTypeInfo *arg_pseudo_type_infos);
 
 /*---------------------------------------------------------------------------*/
 

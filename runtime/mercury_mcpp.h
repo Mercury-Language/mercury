@@ -128,9 +128,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_NOTAG_val			4
 #define MR_TYPECTOR_REP_NOTAG_USEREQ_val		5
 #define MR_TYPECTOR_REP_EQUIV_val			6
-	// MR_TYPECTOR_REP_EQUIV_VAR_val is unused - it is retained
-	// only for backwards compatability.
-#define MR_TYPECTOR_REP_EQUIV_VAR_val			7
+#define MR_TYPECTOR_REP_FUNC_val			7
 #define MR_TYPECTOR_REP_INT_val				8
 #define MR_TYPECTOR_REP_CHAR_val			9
 #define MR_TYPECTOR_REP_FLOAT_val			10

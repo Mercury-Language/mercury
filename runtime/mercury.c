@@ -86,7 +86,7 @@ static MR_UnifyFunc_0
 	mercury__builtin__do_unify__c_pointer_0_0,
 	mercury__builtin__do_unify__func_0_0,
 	mercury__builtin__do_unify__pred_0_0,
-	mercury__std_util__do_unify__type_desc_0_0;
+	mercury__type_desc__do_unify__type_desc_0_0;
 
 static MR_UnifyFunc_1
 	mercury__builtin__do_unify__tuple_0_0,
@@ -104,7 +104,7 @@ static MR_CompareFunc_0
 	mercury__builtin__do_compare__c_pointer_0_0,
 	mercury__builtin__do_compare__func_0_0,
 	mercury__builtin__do_compare__pred_0_0,
-	mercury__std_util__do_compare__type_desc_0_0;
+	mercury__type_desc__do_compare__type_desc_0_0;
 
 static MR_CompareFunc_1
 	mercury__builtin__do_compare__tuple_0_0,
@@ -129,9 +129,9 @@ MR_define_type_ctor_info(builtin, character, 0, MR_TYPECTOR_REP_CHAR);
 MR_define_type_ctor_info(builtin, void, 0, MR_TYPECTOR_REP_VOID);
 MR_define_type_ctor_info(builtin, c_pointer, 0, MR_TYPECTOR_REP_C_POINTER);
 MR_define_type_ctor_info(builtin, pred, 0, MR_TYPECTOR_REP_PRED);
-MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_PRED);
+MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_FUNC);
 MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
-MR_define_type_ctor_info(std_util, type_desc, 0, MR_TYPECTOR_REP_TYPEINFO);
+MR_define_type_ctor_info(type_desc, type_desc, 0, MR_TYPECTOR_REP_TYPEINFO);
 MR_define_type_ctor_info(private_builtin, type_ctor_info, 1,
 	MR_TYPECTOR_REP_TYPECTORINFO);
 MR_define_type_ctor_info(private_builtin, type_info, 1,
@@ -177,6 +177,9 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
 		return mercury__builtin____Unify____tuple_0_0(ti,
 			(MR_Tuple) x, (MR_Tuple) y);
 	} else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		return mercury__builtin____Unify____pred_0_0((MR_Pred) x,
+			(MR_Pred) y);
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_FUNC) {
 		return mercury__builtin____Unify____pred_0_0((MR_Pred) x,
 			(MR_Pred) y);
 	}
@@ -242,6 +245,9 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
 			res, (MR_Tuple) x, (MR_Tuple) y);
 		return;
 	} else if (type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+		mercury__builtin____Compare____pred_0_0(res,
+			(MR_Pred) x, (MR_Pred) y);
+	} else if (type_ctor_rep == MR_TYPECTOR_REP_FUNC) {
 		mercury__builtin____Compare____pred_0_0(res,
 			(MR_Pred) x, (MR_Pred) y);
 	    	return;
@@ -404,7 +410,7 @@ mercury__builtin____Unify____tuple_0_0(MR_Mercury_Type_Info ti,
 }
 
 bool MR_CALL
-mercury__std_util____Unify____type_desc_0_0(MR_Type_Desc x, MR_Type_Desc y)
+mercury__type_desc____Unify____type_desc_0_0(MR_Type_Desc x, MR_Type_Desc y)
 {
 	int             comp;
 
@@ -551,7 +557,7 @@ mercury__builtin____Compare____tuple_0_0(MR_Mercury_Type_Info ti,
 }
 
 void MR_CALL
-mercury__std_util____Compare____type_desc_0_0(
+mercury__type_desc____Compare____type_desc_0_0(
 	MR_Comparison_Result *result, MR_Type_Desc x, MR_Type_Desc y)
 {
 	int             comp;
@@ -663,9 +669,9 @@ mercury__builtin__do_unify__tuple_0_0(MR_Mercury_Type_Info type_info,
 }
 
 static bool MR_CALL
-mercury__std_util__do_unify__type_desc_0_0(MR_Box x, MR_Box y)
+mercury__type_desc__do_unify__type_desc_0_0(MR_Box x, MR_Box y)
 {
-	return mercury__std_util____Unify____type_desc_0_0(
+	return mercury__type_desc____Unify____type_desc_0_0(
 		(MR_Type_Desc) x, (MR_Type_Desc) y);
 }
 
@@ -780,10 +786,10 @@ mercury__builtin__do_compare__tuple_0_0(
 }
 
 static void MR_CALL
-mercury__std_util__do_compare__type_desc_0_0(
+mercury__type_desc__do_compare__type_desc_0_0(
 	MR_Comparison_Result *result, MR_Box x, MR_Box y)
 {
-	mercury__std_util____Compare____type_desc_0_0(
+	mercury__type_desc____Compare____type_desc_0_0(
 		result, (MR_Type_Desc) x, (MR_Type_Desc) y);
 }
 

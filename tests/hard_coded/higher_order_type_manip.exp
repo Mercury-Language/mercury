@@ -1,5 +1,5 @@
-func(std_util:type_desc) = string
-pred(std_util:type_desc, std_util:type_ctor_desc, list:list(std_util:type_desc))
+func(type_desc:type_desc) = string
+pred(type_desc:type_desc, type_desc:type_ctor_desc, list:list(type_desc:type_desc))
 int
 higher_order_type_manip:container(list:list(int))
 higher_order_type_manip:container(pred(io:state, io:state))

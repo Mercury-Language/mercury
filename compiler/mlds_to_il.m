@@ -3226,7 +3226,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				(
 				  Name = "array", Arity = 1
 				)
-			; LibModuleName0 = "std_util",
+			; LibModuleName0 = "type_desc",
 				( 
 				  Name = "type_desc", Arity = 0
 				)

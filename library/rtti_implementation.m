@@ -84,7 +84,7 @@
 	;	notag
 	;	notag_usereq
 	;	equiv
-	;	equiv_var
+	;	(func)
 	;	int
 	;	char
 	;	float
@@ -150,7 +150,7 @@ generic_compare(Res, X, Y) :-
 	->
 		compare_tuple(TypeInfo, Res, X, Y)
 	; 	
-		TypeCtorRep = (pred)
+		( TypeCtorRep = (pred) ; TypeCtorRep = (func) )
 	->
 		error("rtti_implementation.m: unimplemented: higher order comparisons")
 	;	
@@ -202,7 +202,7 @@ generic_unify(X, Y) :-
 	->
 		unify_tuple(TypeInfo, X, Y)
 	; 	
-		TypeCtorRep = (pred)
+		( TypeCtorRep = (pred) ; TypeCtorRep = (func) )
 	->
 		error("rtti_implementation.m: unimplemented: higher order unifications")
 	;	
@@ -466,6 +466,7 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
 :- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
 type_ctor_is_variable_arity(TypeCtorInfo) :-
 	( TypeCtorInfo ^ type_ctor_rep = (pred)
+	; TypeCtorInfo ^ type_ctor_rep = (func)
 	; TypeCtorInfo ^ type_ctor_rep = tuple
 	).
 
@@ -631,8 +632,8 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arity = 0,
 		Arguments = []
 	;
-		TypeCtorRep = equiv_var,
-		Functor = "some_equiv_var", 
+		TypeCtorRep = (func),
+		Functor = "some_func", 
 		Arity = 0,
 		Arguments = []
 	;
