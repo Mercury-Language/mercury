@@ -105,111 +105,29 @@ int		MR_trace_histogram_hwm  = 0;
 Code *
 MR_trace_struct(const MR_Trace_Call_Info *trace_call_info)
 {
-	/*
-	** You can change the 0 to 1 in the #if if you suspect that
-	** MR_trace and MR_trace_struct have diverged.
-	*/
-
-#if 0
-
-	return MR_trace(trace_call_info->MR_trace_sll,
-		trace_call_info->MR_trace_port,
-		trace_call_info->MR_trace_path,
-		trace_call_info->MR_trace_max_r_num);
-
-#else
-
-	const MR_Stack_Layout_Label	*layout;
-	Integer				maybe_from_full;
-	Unsigned			seqno;
-	Unsigned			depth;
-
-	/*
-	** WARNING WARNING WARNING
-	**
-	** The code of this function is duplicated from MR_trace,
-	** modulo references to the arguments. Any changes here
-	** must also be done there as well.
-	**
-	** This duplication is for efficiency.
-	*/
-
 	if (! MR_trace_enabled) {
 		return NULL;
 	}
 
-	/* in case MR_sp or MR_curfr is transient */
-	restore_transient_registers();
-
-	layout = trace_call_info->MR_trace_sll;
-	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
-	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
-		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
-			return NULL;
-		}
-
-		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
-		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
-	} else {
-		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
-			return NULL;
-		}
-
-		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
-		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
-	}
-
-	return (*MR_trace_func_ptr)(layout, trace_call_info->MR_trace_port,
-			seqno, depth, trace_call_info->MR_trace_path,
+	return (*MR_trace_func_ptr)(trace_call_info->MR_trace_sll,
+			trace_call_info->MR_trace_port,
+			trace_call_info->MR_trace_path,
 			trace_call_info->MR_trace_max_r_num);
-
-#endif
 }
 
 Code *
 MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	const char * path, int max_r_num)
+	const char *path, int max_r_num)
 {
 	Integer		maybe_from_full;
 	Unsigned	seqno;
 	Unsigned	depth;
 
-	/*
-	** WARNING WARNING WARNING
-	**
-	** The code of this function is duplicated in MR_trace_struct,
-	** modulo references to the arguments. Any changes here
-	** must also be done there as well.
-	**
-	** This duplication is for efficiency.
-	*/
-
 	if (! MR_trace_enabled) {
 		return NULL;
 	}
 
-	/* in case MR_sp or MR_curfr is transient */
-	restore_transient_registers();
-
-	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
-	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
-		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
-			return NULL;
-		}
-
-		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
-		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
-	} else {
-		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
-			return NULL;
-		}
-
-		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
-		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
-	}
-
-	return (*MR_trace_func_ptr)(layout, port, seqno, depth,
-			path, max_r_num);
+	return (*MR_trace_func_ptr)(layout, port, path, max_r_num);
 }
 
 void
@@ -229,7 +147,7 @@ MR_tracing_not_enabled(void)
 
 Code *
 MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth, const char * path, int max_r_num)
+	const char *path, int max_r_num)
 {
 	MR_tracing_not_enabled();
 	/*NOTREACHED*/

@@ -57,8 +57,7 @@ static	MR_Trace_Cmd_Info	MR_trace_ctrl = {
 };
 
 Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
-			const char *path, int max_r_num);
+			MR_Trace_Port port, const char *path, int max_r_num);
 static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
@@ -81,10 +80,33 @@ static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label,
 
 Code *
 MR_trace_real(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
+	const char *path, int max_r_num)
 {
+	Integer		maybe_from_full;
+	Unsigned	seqno;
+	Unsigned	depth;
 	MR_Spy_Action	action;
 	bool		match;
+
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
+	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
+		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_stackvar(MR_sp);
+		depth = (Unsigned) MR_call_depth_stackvar(MR_sp);
+	} else {
+		if (maybe_from_full > 0 && ! MR_framevar(maybe_from_full)) {
+			return NULL;
+		}
+
+		seqno = (Unsigned) MR_call_num_framevar(MR_curfr);
+		depth = (Unsigned) MR_call_depth_framevar(MR_curfr);
+	}
 
 	MR_trace_event_number++;
 
@@ -459,4 +481,3 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
 	*succeeded = FALSE;
 	return 0;
 }
-

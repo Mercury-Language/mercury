@@ -83,7 +83,7 @@ extern	Code	*MR_trace(const MR_Stack_Layout_Label *, MR_Trace_Port,
 extern	Code	*MR_trace_struct(const MR_Trace_Call_Info *trace_call_info);
 
 extern	Code	*MR_trace_fake(const MR_Stack_Layout_Label *, MR_Trace_Port,
-			Unsigned, Unsigned, const char *, int);
+			const char *, int);
 
 /*
 ** MR_trace_init() is called from mercury_runtime_init()

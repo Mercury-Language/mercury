@@ -184,7 +184,7 @@ void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 Code	*MR_library_trace_browser;
 
 Code	*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *, MR_Trace_Port,
-		Unsigned, Unsigned, const char *, int);
+		const char *, int);
 
 void	(*MR_register_module_layout)(const MR_Module_Layout *);
 

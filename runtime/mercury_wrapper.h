@@ -109,8 +109,7 @@ extern	Code		*MR_library_trace_browser;
 */
 
 extern	Code		*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
-				MR_Trace_Port, Unsigned, Unsigned,
-				const char *, int);
+				MR_Trace_Port, const char *, int);
 
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
