@@ -78,12 +78,12 @@ into another language, under the above conditions for modified versions.
 * Types::             Mercury has a strong parametric polymorphic type system
 * Modes::             Modes allow you to specify the direction of data flow
 * Unique modes::      Unique modes allow you to specify when there is only one
-		      reference to a particular value, so the compiler can
-		      safely use destructive update to modify that value.
+                      reference to a particular value, so the compiler can
+                      safely use destructive update to modify that value.
 * Determinism::       Determinism declarations let you specify that a predicate
                       should never fail or should never succeed more than once
 * Higher-order::      Mercury supports higher-order predicates, closures,
-		      lambda expressions, and currying.
+                      lambda expressions, and currying.
 * Modules::           Modules allow you to divide a program into smaller parts
 * Semantics::         An informal semantics for Mercury programs
 @end menu
@@ -213,7 +213,7 @@ a decimal point and a sequence of digits (the fraction part), and
 the letter @samp{E} and another sequence of decimal digits (the exponent).
 The fraction part or the exponent (but not both) may be omitted.
 
-@item open_ct			
+@item open_ct
 A left parenthesis, @samp{(}, that is not preceded by whitespace.
 
 @item open
@@ -222,22 +222,22 @@ A left parenthesis, @samp{(}, that is preceded by whitespace.
 @item close
 A right parenthesis, @samp{)}.
 
-@item open_list	
+@item open_list
 A left square bracket, @samp{[}.
 
 @item close_list
 A right square bracket, @samp{]}.
 
-@item open_curly	
+@item open_curly
 A left curly bracket, @samp{@{}.
 
-@item close_curly		
+@item close_curly
 A right curly bracket, @samp{@}}.
 
 @item ht_sep
 A ``head-tail separator'', i.e. a vertical bar, @samp{|}.
 
-@item comma			
+@item comma
 A comma, @samp{,}.
 
 @item end
@@ -920,6 +920,14 @@ corresponding to the standard notions of inputs and outputs:
 :- mode out :: free -> ground.
 @end example
 
+Prolog fans who want to use the symbols @samp{+} and @samp{-}
+can do so by simply by defining them using a mode declaration:
+
+@example
+:- mode (+) :: in.
+:- mode (-) :: out.
+@end example
+
 These two modes are enough for most predicates.
 Nevertheless, Mercury's mode system is sufficiently
 expressive to handle more complex data-flow patterns,
@@ -944,6 +952,33 @@ the database over a network, you would need declarations such as
 :- mode satisfy_request :: request -> ground.
 @end example
 
+@samp{inst} and @samp{mode} declarations can be parametric.
+For example, the following declaration 
+
+@example
+:- inst listskel(Inst) = bound( [] ; [Inst | listskel] ).
+@end example
+
+@noindent
+defines the inst @samp{listskel(Inst)} to be a list skeleton
+whose elements have inst @samp{Inst}; you can the use insts
+such as @samp{listskel(listskel(free))}, which represents
+the instantiation state of a list of lists of free variables.
+The standary library provides the parametric modes
+
+@example
+:- mode in(Inst) :: Inst -> Inst.
+:- mode out(Inst) :: free -> Inst.
+@end example
+
+@noindent
+so that for example the mode @samp{create_request} defined above
+could have be defined as
+
+@example
+:- mode create_request :: out(request).
+@end example
+
 A @dfn{predicate mode declaration}
 assigns a mode mapping to each argument of a predicate.
 For example, given the mode names defined by
@@ -966,6 +1001,15 @@ are as follows:
 :- pred append(list(T), list(T), list(T)).
 :- mode append(in, in, out).
 :- mode append(out, out, in).
+@end example
+
+Alternately, the mode declarations for @samp{length} could use
+the standard library modes @samp{in/1} and @samp{out/1}:
+
+@example
+:- pred length(list(T), int).
+:- mode length(in(listskel), out).
+:- mode length(out(listskel), in).
 @end example
 
 If a predicate has only one mode, the @samp{pred} and @samp{mode}
@@ -1516,7 +1560,17 @@ Mercury supports higher-order predicates with currying, closures, and
 lambda expressions.  (To be pedantic, it would be more accurate to
 say that Mercury supports higher-order procedures: in Mercury, when you
 construct a higher-order predicate term, you only get one mode of
-a predicate.)
+a predicate; if you want multiple modes, you must pass multiple
+high-order procedures.)
+
+@menu
+* Creating higher-order terms::
+* Calling higher-order terms::
+* Higher-order modes::
+@end menu
+
+@node Creating higher-order terms
+@section Creating higher-order terms
 
 To create a higher-order predicate term, you can use
 a lambda expression. Alternately, if the predicate has only one mode,
@@ -1528,6 +1582,7 @@ For example, if you have declared a predicate
 :- mode sum(in, out) is det.
 @end example
 
+@noindent
 the following two unifications have the same effect:
 
 @example
@@ -1538,10 +1593,25 @@ Y = sum,
 @end example
 
 In the above example, the type of both @samp{X} and @samp{Y} is
-@samp{pred(list(int), int)}.
+@samp{pred(list(int), int)}, which means a predicate of two
+arguments of types @samp{list(int)} and @samp{int} respectively.
 
 If the predicate has more than one mode, you must use an explicit
 lambda expression to specify which mode you want.
+
+You can also create higher-order predicate terms by "currying",
+i.e. specifying the first few arguments to a predicate, but leaving the
+remaining arguments unspecified.  For example, the unification
+
+@example
+Sum123 = sum([1,2,3])
+@end example
+
+@noindent
+binds @samp{Sum123} to a higher-order predicate term of type @samp{pred(int)}.
+
+@node Calling higher-order terms
+@section Calling higher-order terms
 
 Once you have created a higher-order predicate term (sometimes known
 as a closure), the next thing you want to do is to call it.  
@@ -1556,10 +1626,22 @@ For this, you use the builtin call/N:
 A higher-order predicate call.  @samp{call(Closure)} just calls
 the specified closure.  The other forms append the specified
 arguments onto the argument list of the closure before calling it.
-[Note: the current implementation has the extremely unfortunate
-limitation that there can be at most three additional arguments; thus
-@samp{call(Pred, Arg1, Arg2, Arg3, Arg4)} and beyond are not yet supported.]
 @end table
+
+For example, the call
+
+@example
+call(Sum123, Result)
+@end example
+
+@noindent
+would bind @samp{Result} to the sum of @samp{[1, 2, 3]}, i.e. to 6.
+
+The current implementation has the extremely unfortunate
+limitation that there can be at most three additional arguments; thus
+@samp{call(Pred, Arg1, Arg2, Arg3, Arg4)} and beyond are not yet supported.
+The current implementation also has the limitation that for higher-order
+pred terms, all input arguments must precede all output arguments.
 
 One extremely useful higher-order predicate in the Mercury standard
 library is @code{solutions/2}, which has the following declaration:
@@ -1612,6 +1694,79 @@ in sorted order:
 @example
 L = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]].
 @end example
+
+@node Higher-order modes
+@section Higher-order modes
+
+The language contains builtin @samp{inst} values
+
+@example
+pred is @var{Determinism}
+pred(@var{Mode}) is @var{Determinism}
+pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
+@dots{}
+@end example
+
+These insts represent the instantiation state of variables bound
+to higher-order predicate terms with the appropriate mode and determinism.
+For example, @samp{pred(out) is det} represents the instantion state
+of being bound to a higher-order predicate term which is @samp{det}
+and accepts one output argument; the term @samp{sum([1,2,3])} from the
+example above is one such higher-order predicate term which matches
+this instantiation state.
+
+As a convenience, the language also contains builtin @samp{mode} values
+of the same name (and they are what we have been using in the examples
+up to now).  These modes map from the corresponding @samp{inst} to
+itself.  It is as if they were defined by
+
+@example
+:- mode (pred is @var{Determinism}) :: in(pred is @var{Determinism}).
+:- mode (pred(@var{Inst}) is @var{Determinism}) ::
+    in(pred(@var{Inst}) is @var{Determinism}).
+@dots{}
+@end example
+
+@noindent
+using the parametric inst @samp{in/1} mentioned in @xref{Modes}
+which maps an inst to itself.
+
+If you want to define a predicate which returns a higher-order predicate
+term, you would use a mode such as @samp{free -> pred(@dots{}) is @dots{}},
+or @samp{out(pred(@dots{}) is @dots{})}.  For example:
+
+@example
+:- pred foo(pred(int)).
+:- mode foo(free -> pred(out) is det) is det.
+
+foo(sum([1,2,3])).
+@end example
+
+Note that in Mercury it is an error to attempt to unify two
+higher-order predicate terms.  This is because equivalence of
+higher-order predicates is undecideable in the general case.
+
+For example, given the definition of @samp{foo} above, the goal
+
+@example
+        foo(lambda([X::out] is det, X = 6))
+@end example
+
+@noindent
+is illegal.  If you really want to compare higher-order predicates
+for equivalence, you must program it yourself; for example,
+the above goal could legally be written as
+
+@example
+        P = lambda([X::out] is det, X = 6),
+        foo(Q),
+        all [X] (call(P, X) <=> call(Q, X)).
+@end example
+
+Note that the compiler will only catch direct attempts at higher-order
+unifications; indirect attempts (via polymorphic predicates, for
+example @samp{(list__append([], [P], [Q])} may result in an error at
+run-time rather than at compile-time.
 
 @node Modules
 @chapter Modules
