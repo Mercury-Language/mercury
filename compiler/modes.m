@@ -714,36 +714,23 @@ instmap_merge_2([Var|Vars], InstMapList, ModuleInfo, InstMap0,
 	%	there are two instmaps for which the inst of `Var'
 	%	is incompatible.
 
-	% This is probably circularly moded.
-
 :- pred instmap_merge_var(list(instmap), var, module_info,
 				list(inst), inst, bool).
 :- mode instmap_merge_var(in, in, in, out, out, out) is det.
 
 instmap_merge_var([], _, _, [], not_reached, no).
-instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo, Insts, Inst, Error) :-
-	instmap_lookup_var(InstMap, Var, Inst0),
-	instmap_merge_var_2(InstMaps, Inst0, Var, ModuleInfo,
-				Insts, Inst, Error).
-
-:- pred instmap_merge_var_2(list(instmap), inst, var, module_info,
-				list(inst), inst, bool).
-:- mode instmap_merge_var_2(in, in, in, in, out, out, out) is det.
-
-instmap_merge_var_2([], Inst, _Var, _ModuleInfo, [Inst], Inst, no).
-instmap_merge_var_2([InstMapB | InstMaps], InstA, Var, ModuleInfo,
-			Insts, Inst, Error) :-
-	instmap_lookup_var(InstMapB, Var, InstB),
-	( inst_merge(InstA, InstB, ModuleInfo, Inst0) ->
-		Error = Error1,
-		Inst1 = Inst0
+instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo, InstList, Inst, Error)
+		:-
+	instmap_merge_var(InstMaps, Var, ModuleInfo, InstList0, Inst0, Error0),
+	instmap_lookup_var(InstMap, Var, VarInst),
+	InstList = [VarInst | InstList0],
+	( inst_merge(Inst0, VarInst, ModuleInfo, Inst1) ->
+		Inst = Inst1,
+		Error = Error0
 	;
 		Error = yes,
-		Inst1 = not_reached
-	),
-	Insts = [InstA | Insts1],
-	instmap_merge_var_2(InstMaps, Inst1, Var, ModuleInfo,
-				Insts1, Inst, Error1).
+		Inst = not_reached
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1085,7 +1072,7 @@ inst_merge_3(ground, ground, _, _, ground).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions, abstract_inst(Name, Args)) :-
 	inst_list_merge(ArgsA, ArgsB, ModuleInfo, Expansions, Args).
-inst_merge_3(not_reached, _, _, _, not_reached).
+inst_merge_3(not_reached, Inst, _, _, Inst).
 
 :- pred inst_list_merge(list(inst), list(inst), module_info, expansions,
 			list(inst)).
