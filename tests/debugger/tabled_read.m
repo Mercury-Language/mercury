@@ -68,6 +68,6 @@ tabled_read__test(Stream, SoFar, N) -->
 :- pragma c_code(tabled_read__write_int(N::in,
 		IO0::di, IO::uo), [may_call_mercury, thread_safe],
 "{
-	printf(""%d\n"", (int) N);
+	printf(""%d\\n"", (int) N);
 	IO = IO0;
 }").
