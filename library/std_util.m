@@ -2315,7 +2315,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 char buf[500];
                 char *str;
 
-                sprintf(buf, ""%ld"", (long) data_value);
+                sprintf(buf, ""%ld"", (long) data_word);
                 incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
                     (strlen(buf) + sizeof(Word)) / sizeof(Word));
                 strcpy(str, buf);
@@ -2334,7 +2334,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 
                 incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
                     (3 + sizeof(Word)) / sizeof(Word));
-                    sprintf(str, ""\'%c\'"", (char) data_value);
+                    sprintf(str, ""\'%c\'"", (char) data_word);
                 info->functor = str;
             }
             info->argument_vector = NULL;
@@ -2348,7 +2348,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 Float f;
                 char *str;
 
-                f = word_to_float(data_value);
+                f = word_to_float(data_word);
                 sprintf(buf, ""%#.15g"", f);
                 incr_saved_hp_atomic(LVALUE_CAST(Word, str), 
                     (strlen(buf) + sizeof(Word)) / sizeof(Word));
@@ -2366,9 +2366,9 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 char *str;
     
                 incr_saved_hp_atomic(LVALUE_CAST(Word, str),
-                    (strlen((String) data_value) + 2 + sizeof(Word))
+                    (strlen((String) data_word) + 2 + sizeof(Word))
                     / sizeof(Word));
-                sprintf(str, ""%c%s%c"", '""', (String) data_value, '""');
+                sprintf(str, ""%c%s%c"", '""', (String) data_word, '""');
                 info->functor = str;
             }
             info->argument_vector = NULL;
@@ -2391,8 +2391,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                  * type_info and data.
                  */
             ML_expand((Word *)
-                ((Word *) data_value)[UNIV_OFFSET_FOR_TYPEINFO], 
-                &((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
+                ((Word *) data_word)[UNIV_OFFSET_FOR_TYPEINFO], 
+                &((Word *) data_word)[UNIV_OFFSET_FOR_DATA], info);
             break;
         case MR_DATAREP_VOID:
 		    fatal_error(""ML_expand: cannot expand void types"");
