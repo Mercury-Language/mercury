@@ -843,8 +843,9 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 			; Ext = ".trans_opts"
 			% The current interface to `mercury_update_interface'
 			% requires .h.tmp files to be in the same directory as
-			% the .h files
+			% the .h files. Same for .init.tmp files.
 			; Ext = ".h.tmp"
+			; Ext = ".init.tmp"
 			% The following files are only used by the Aditi
 			% query shell which doesn't know about --use-subdirs.
 			; Ext = ".base_schema"
