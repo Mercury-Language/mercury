@@ -196,7 +196,7 @@
 %-----------------------------------------------------------------------------%
 
 generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
-	mlds(MercuryModuleName, _, Imports, Defns)= transform_mlds(MLDS),
+	mlds(MercuryModuleName, _, Imports, Defns) = transform_mlds(MLDS),
 
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
 	prog_out__sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
@@ -277,9 +277,10 @@ transform_mlds(MLDS0) = MLDS :-
 			; D = mlds__defn(_, _, _, mlds__data(_, _))
 			)
 		), MLDS0 ^ defns, MercuryCodeMembers, Others),
-	MLDS = MLDS0 ^ defns := [wrapper_class(
-			list__map(rename_defn, MercuryCodeMembers)) | 
-			list__map(rename_defn, Others)].
+	WrapperClass = wrapper_class(list__map(rename_defn, MercuryCodeMembers)),
+		% Note that ILASM requires that the type definitions in Others
+		% must precede the references to those types in WrapperClass.
+	MLDS = MLDS0 ^ defns := list__map(rename_defn, Others) ++ [WrapperClass].
 
 
 :- func wrapper_class(mlds__defns) = mlds__defn.
