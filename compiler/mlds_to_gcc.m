@@ -3206,6 +3206,13 @@ build_unop_expr(unmkbody, Arg, Expr) -->
 	gcc__build_int(TagBits, TagBitsExpr),
 	gcc__build_binop(gcc__rshift_expr, 'MR_intptr_t',
 		Arg, TagBitsExpr, Expr).
+build_unop_expr(strip_tag, Arg, Expr) -->
+	globals__io_lookup_int_option(num_tag_bits, TagBits),
+	gcc__build_int((1 << TagBits) - 1, Mask),
+	gcc__build_unop(gcc__bit_not_expr, 'MR_intptr_t',
+		Mask, InvertedMask),
+	gcc__build_binop(gcc__bit_and_expr, 'MR_intptr_t',
+		Arg, InvertedMask, Expr).
 build_unop_expr(hash_string, Arg, Expr) -->
 	gcc__build_func_addr_expr(gcc__hash_string_func_decl,
 		HashStringFuncExpr),
