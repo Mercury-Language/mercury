@@ -101,12 +101,12 @@ dates		:
 os: $(library.os)
 cs: $(library.cs)
 
-library.pic_os=$(library.os:.o=.$(PIC_O))
+library.pic_os=$(library.os:.o=.$(EXT_FOR_PIC_OBJECTS))
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: libmercury
-libmercury : libmercury.a libmercury.$(SO) library.init
+libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) library.init
 
 libmercury.a : $(library.os)
 	ar cr libmercury.a $(library.os)
@@ -208,9 +208,10 @@ install_init: library.init
 	cp `vpath_find library.init` $(INSTALL_MODULE_DIR)
 
 .PHONY: install_library
-install_library: libmercury.a libmercury.$(SO)
+install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find libmercury.a libmercury.$(SO)` $(INSTALL_MERC_LIB_DIR)
+	cp `vpath_find libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)` \
+		$(INSTALL_MERC_LIB_DIR)
 
 .PHONY: install_nuprolog
 install_nuprolog: install_library_nu install_interpreter_nu
