@@ -30,15 +30,16 @@
 	% you make are reflected correctly in all similar parts of this
 	% file.
 
-	% XXX not yet implemented:
-	%   1. `:- module' and `:- end_module' declarations
-	%   2. `:- mode p(...)' and `:- pred p(type::mode) 
-	%      predicate mode declarations 
-	%   3. importing/exporting operators with a particular fixity
-	%      eg. :- import_op prefix(+). % only prefix +, not infix
-	%      (not important, but should be there for reasons of symmetry.)
-	% Also the handling of type and inst parameters leaves a bit
-	% to be desired, and the error reporting should be improved.
+	% XXX todo:
+	%
+	% 1.  implement importing/exporting operators with a particular fixity
+	%     eg. :- import_op prefix(+). % only prefix +, not infix
+	%     (not important, but should be there for reasons of symmetry.)
+	% 2.  improve the handling of type and inst parameters 
+	%     (see XXX's below)
+	% 3.  improve the error reporting
+	%
+	% Question: should we allow `:- rule' declarations???
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -58,14 +59,15 @@
 :- type message_list	==	list(pair(string, term)).
 				% the error/warning message, and the
 				% term to which it relates
-:- type program		==	list(item).
+:- type program		--->	module(module_name, list(item)).
 :- type item		--->	clause(varset, sym_name, list(term), goal)
 				%      VarNames, PredName, HeadArgs, ClauseBody
 			; 	type_defn(varset, type_defn, condition)
 			; 	inst_defn(varset, inst_defn, condition)
 			; 	mode_defn(varset, mode_defn, condition)
 			; 	module_defn(varset, module_defn)
-			; 	pred(varset, sym_name, list(type), condition)
+			; 	pred(varset, sym_name, list(type_and_mode),
+					condition)
 				%      VarNames, PredName, ArgTypes, Cond
 			; 	rule(varset, sym_name, list(type), condition)
 				%      VarNames, PredName, ArgTypes, Cond
@@ -73,6 +75,9 @@
 				%      VarNames, PredName, ArgModes, Cond
 			;	unimplemented	% XXX
 			; 	error.
+
+:- type type_and_mode	--->	type_only(type)
+			;	type_and_mode(type, mode).
 
 %-----------------------------------------------------------------------------%
 
@@ -211,7 +216,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% This module (prog_io) exports the following predicates:
+% This module (prog_io) exports the following predicate:
 
 :- pred prog_io__read_program(string, maybe_program, io__state, io__state).
 :- mode prog_io__read_program(input, output, di, uo).
@@ -243,35 +248,102 @@
 % This implementation uses io__read_term to read in the program
 % term at a time, and then converts those terms into clauses and
 % declarations, checking for errors as it goes.
+% Note that rather than using difference lists, we just
+% build up the lists of items and messages in reverse order
+% and then reverse them afterwards.  (Using difference lists would require
+% late-input modes.)
 
 prog_io__read_program(FileName, Result) -->
 	io__op(1199, fx, "rule"),
-	io__op(1179, xfy, "--->"),
+	io__op(1179, xfy, "--->"),		% XXX should be automatic
 	io__see(FileName, R),
-	read_program_2(R, FileName, Result).
+	(if { R = ok } then
+		read_program_3(RevMessages, RevItems0, Error),
+		{
+		  get_end_module(RevItems0, RevItems, EndModule),
 
-	% check that the file was opened succesfully
-	% (this is a separate prediacte, because
-	% you can't use if-then-else directly in DCGs
-	% due to a NU-Prolog bug)
+		  reverse(RevMessages, Messages),
+		  reverse(RevItems, Items),
 
-:- pred read_program_2(res, string, maybe_program, io__state, io__state).
-:- mode read_program_2(input, input, output, di, uo).
-read_program_2(ok, _, Program) -->
-	read_program_3(Messages, Items, no, Error),
-	{if Error = yes then
-		Program = error(Messages)
+		  check_begin_module(Messages, Items, Error, EndModule,
+				     Result)
+		},
+		io__seen
 	else
-		Program = ok(Messages, Items)
-	},
-	io__seen.
-read_program_2(error, FileName, error([Message - Term])) -->
-	{ io__progname(Progname),
-	  string__append(Progname, ": can't open file '", Message1),
-	  string__append(Message1, FileName, Message2),
-	  string__append(Message2, "'.\n", Message),
-	  Term = term_functor(term_atom("<end of file>"), [])
-	}.
+		{ io__progname(Progname),
+		  string__append(Progname, ": can't open file '", Message1),
+		  string__append(Message1, FileName, Message2),
+		  string__append(Message2, "'.\n", Message),
+		  Term = term_functor(term_atom("<end of file>"), [])
+		}
+	).
+
+
+%-----------------------------------------------------------------------------%
+
+	% extract the final `:- end_module' declaration if any
+
+:- type module_end ---> no ; yes(module_name).
+
+:- pred get_end_module(message_list, message_list, module_end).
+:- mode get_end_module(input, output, output).
+
+get_end_module(RevItems0, RevItems, EndModule) :-
+	(if some [VarSet, ModuleName, RevItems1]
+		RevItems0 = [module_defn(VarSet, end_module(ModuleName))
+			    | RevItems1]
+	then
+		RevItems = RevItems1,
+		EndModule = yes(ModuleName)
+	else
+		RevItems = RevItems0,
+		EndModule = no
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% check that the module starts with a :- module declaration,
+	% and that the end_module declaration (if any) is correct,
+	% and construct the final parsing result.
+
+:- pred check_begin_module(message_list, list(item), yes_or_no,
+			   module_end, maybe_program).
+:- mode check_begin_module(input, input, input, input, output).
+
+check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
+
+    % check that the first item is a `:- module ModuleName'
+    % declaration
+
+    (if some [VarSet, ModuleName1, Items1]
+        Items0 = [module_defn(VarSet, module(ModuleName1))
+              | Items1]
+    then
+        % check that the end module declaration (if any)
+        % matches the begin module declaration 
+
+        (if some [ModuleName2] (
+            EndModule = yes(ModuleName2),
+            ModuleName1 \= ModuleName2
+            )
+        then
+            ThisError = error(
+"`:- end_module' declaration doesn't match `:- module' declaration",
+			term_functor(term_atom("<end of file>"), []) ),
+            append([ThisError], Messages0, Messages),
+            Program = error(Messages)
+        else
+            (if Error = yes then
+                Program = error(Messages0)
+            else
+                Program = ok(Messages0, module(ModuleName1,Items1))
+            )
+        )
+    else
+        ThisError = error("module should start with a ':- module' declaration",
+            		   term_functor(term_atom("<start of file>"), []) ),
+        Program = error([ThisError | Messages])
+    ).
 
 %-----------------------------------------------------------------------------%
  	% Read a source file from standard input, first reading in
@@ -286,38 +358,53 @@ read_program_2(error, FileName, error([Message - Term])) -->
 	% which may be a declaration or a clause.
 
 :- type yes_or_no ---> yes ; no.
-:- pred read_program_3(message_list, program, yes_or_no, yes_or_no,
-			io__state, io__state).
-:- mode read_program_3(output, output, input, output, di, uo).
-read_program_3(Messages, Items, Error0, Error) -->
-	io__read_term(Result),
-	read_program_4(Result, Messages, Items, Error0, Error).
 
-	% XXX This uses difference lists in a way not allowed by
-	% the simple sequential mode system without late-input args.
+:- pred read_program_3(message_list, program, yes_or_no, io__state, io__state).
+:- mode read_program_3(output, output, output, di, uo).
+read_program_3(Messages, Items, Error) -->
+	io__read_term(MaybeTerm),
+	read_program_4(MaybeTerm, [], [], no, Messages, Items, Error).
 
-:- pred read_program_4(read_term,message_list,program,yes_or_no,yes_or_no,
+:- pred read_program_4(read_term, message_list, program, yes_or_no,
+			message_list, program, yes_or_no,
 			io__state,io__state).
-:- mode read_program_4(input, output, output, input, output, di, uo).
-read_program_4(eof, [], [], Error, Error) --> []. 
-read_program_4(term(VarSet, Term), Messages, Items, Error0, Error) -->
-	{ read_program_5(VarSet, Term, Messages, Items, Error0,
-				 Messages1, Items1, Error1) },
- 	read_program_3(Messages1, Items1, Error1, Error),
-	{ require(ground(Messages1), "Messages1 must be ground"),
-	require(ground(Messages), "Messages must be ground") }.
+:- mode read_program_4(input, input, input, input,
+			output, output, output, di, uo).
 
-:- pred read_program_5(varset, term, message_list, program, yes_or_no,
+read_program_4(eof, Msgs, Items, Error, Msgs, Items, Error) --> []. 
+
+read_program_4(error(ErrorMsg), Msgs0, Items, _, Msgs, Items, yes) -->
+	{
+	  Error = error(Msg, term_functor(term_atom(""), [])),
+	  Msgs = [Error | Msgs]
+	}.
+
+read_program_4(term(VarSet, Term), Msgs0, Items0,
+		Error0, Msgs, Items, Error) -->
+	{ 
+	  parse_item(VarSet, Term, MaybeItem),
+	  process_item(MaybeItem, Msgs0, Items0, Error0,
+				  Msgs1, Items1, Error1)
+	},
+	io__read_term(MaybeTerm),
+ 	read_program_4(MaybeTerm, Messages1, Items1, Error1,
+			Msgs, Items, Error).
+
+:- pred process_item(maybe(item),  message_list, program, yes_or_no,
 		       message_list, program, yes_or_no). 
-:- mode read_program_5(input, input, output, output, input,
-			input, input, output).
-read_program_5(VarSet, Term, Msgs, Items, Error0, Msgs1, Items1, Error) :-
-	Items = Item.Items1,
+:- mode process_item(input, input, input, input,
+			output, output, output).
+process_item(ok(Item), Msgs, Items0, Error, Msgs, [Item|Items0], Error).
+process_item(error(M,T), Msgs0, Items, _, Msgs, Items0, yes) :-
+	add_error(M, T, Msgs0, Msgs).
+
+:- pred parse_item(varset, term, maybe(item)).
+:- mode parse_item(input, input, output).
+parse_item(VarSet, Term, Result) :-
  	(if some [Decl]
 		Term = term_functor(term_atom(":-"), [Decl])
 	then
-		parse_decl(VarSet, Decl, Item, Msgs, Msgs1, Error1),
-		join_error(Error0, Error1, Error)
+		parse_decl(VarSet, Decl, Result)
 	else
 			% OK, it's not a declaration. Is it a fact, or a rule?
 		(if some [H,B]
@@ -331,15 +418,15 @@ read_program_5(VarSet, Term, Msgs, Items, Error0, Msgs1, Items1, Error) :-
 		),
 		parse_goal(Body, Body2),
 		parse_qualified_term(Head, "clause head", Result),
-		process_clause(Result, VarSet, Head, Body2, Msgs, Error0,
+		process_clause(Result, VarSet, Body2, Msgs0, Error0,
 				Item, Msgs1, Error)
 	).
 
-process_clause(ok(Name, Args), VarSet, _, Body, Msgs, Error, 
-		clause(VarSet, Name, Args, Body), Msgs, Error).
-process_clause(error(ErrMessage), _, Head, _, Msgs, _,
-		error, Msgs1, yes) :-
-	add_error(ErrMessage, Head, Msgs, Msgs1).
+:- pred process_clause(maybe_functor, varset, term, maybe(item)).
+:- mode process_clause(input, input, input, input, output).
+process_clause(ok(Name, Args), VarSet, Body,
+		ok(clause(VarSet, Name, Args, Body))).
+process_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).
 
 :- pred join_error(yes_or_no, yes_or_no, yes_or_no).
 :- mode join_error(input, input, output).
@@ -409,31 +496,22 @@ parse_some_vars_goal(A0, Vars, A) :-
 
 	% parse a declaration
 
-:- pred parse_decl(varset, term, item, message_list, message_list, yes_or_no).
-:- mode parse_decl(input, input, output, input, output, output).
-parse_decl(VarSet, F, ParsedDecl, Msgs, Msgs1, Error) :-
+:- pred parse_decl(varset, term, maybe_item).
+:- mode parse_decl(input, input, output).
+parse_decl(VarSet, F, Result) :-
 	(if some [Atom, As]
 		F = term_functor(term_atom(Atom), As)
 	then
-		(if some [Result]
-			process_decl(VarSet, Atom, As, Result)
+		(if some [R]
+			process_decl(VarSet, Atom, As, R)
 		then
-			parse_decl_2(Result, ParsedDecl, Msgs, Msgs1, Error)
+			Result = R
 		else
-			ParsedDecl = error,
-			Error = yes,
-			add_error("unrecognized declaration", F, Msgs, Msgs1)
+			Result = error("unrecognized declaration", F)
 		)
 	else
-		ParsedDecl = error,
-		Error = yes,
-		add_error("atom expected after `:-'", F, Msgs, Msgs1)
+		Result = error("atom expected after `:-'", F)
 	).
-
-:- pred parse_decl_2(maybe(item), item, message_list, message_list, yes_or_no).
-:- mode parse_decl_2(input, output, output, input, output).
-parse_decl_2(error(ErrorMsg,Term), error, (ErrorMsg-Term).Msgs1, Msgs1, yes).
-parse_decl_2(ok(ParsedDecl), ParsedDecl, Msgs1, Msgs1, no).
 
 	% process_decl(VarSet, Atom, Args, Result) succeeds if Atom(Args)
 	% is a declaration and binds Result to a representation of that
@@ -447,8 +525,10 @@ process_decl(VarSet, "type", [TypeDecl], Result) :-
 process_decl(VarSet, "pred", [PredDecl], Result) :-
 	parse_type_decl_pred(VarSet, PredDecl, Result).
 
+/*** OBSOLETE
 process_decl(VarSet, "rule", [RuleDecl], Result) :-
 	parse_type_decl_rule(VarSet, RuleDecl, Result).
+***/
 
 process_decl(VarSet, "mode", [ModeDecl], Result) :-
 	parse_mode_decl(VarSet, ModeDecl, Result).
@@ -560,8 +640,8 @@ add_warning(Warning, Term, [Msg - Term | Msgs], Msgs) :-
 	% add an error message to the list of messages
 
 :- pred add_error(string, term, message_list, message_list).
-:- mode add_error(input, input, output, input).
-add_error(Error, Term, [Msg - Term | Msgs], Msgs) :-
+:- mode add_error(input, input, input, output).
+add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 	string__append("error: ", Error, Msg).
 
 %-----------------------------------------------------------------------------%
@@ -597,6 +677,8 @@ parse_type_decl_pred(VarSet, Pred, R) :-
 	process_pred(VarSet, Body, Condition, R).
 
 %-----------------------------------------------------------------------------%
+
+/*** OBSOLETE
 	% parse_type_decl_rule(VarSet, Rule, Result) succeeds
 	% if Rule is a "rule" type declaration, and binds Result to
 	% a representation of the declaration.
@@ -605,7 +687,19 @@ parse_type_decl_pred(VarSet, Pred, R) :-
 :- mode parse_type_decl_rule(input, input, output).
 parse_type_decl_rule(VarSet, Rule, R) :-
 	get_condition(Rule, Body, Condition),
-	process_rule(VarSet, Body, Condition, R).
+	process_mode(VarSet, Body, Condition, R).
+****/
+
+%-----------------------------------------------------------------------------%
+	% parse_mode_decl_pred(Pred, Condition, Result) succeeds
+	% if Pred is a "pred" mode declaration, and binds Condition
+	% to the condition for that declaration (if any), and Result to
+	% a representation of the declaration.
+:- pred parse_mode_decl_pred(varset, term, maybe(item)).
+:- mode parse_mode_decl_pred(input, input, output).
+parse_mode_decl_pred(VarSet, Pred, R) :-
+	get_condition(Pred, Body, Condition),
+	process_mode(VarSet, Body, Condition, R).
 
 %-----------------------------------------------------------------------------%
 	% get_condition(Term0, Term, Condition) binds Condition
@@ -802,19 +896,48 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX
+	% parse a `:- pred p(...)' declaration
 
 :- pred process_pred(varset, term, condition, maybe(item)).
 :- mode process_pred(input, input, input, output).
 process_pred(VarSet, PredType, Cond, Result) :-
 	parse_qualified_term(PredType, "`:- pred' declaration", R),
-	process_pred_2(R, VarSet, Cond, Result).
+	process_pred_2(R, PredType, VarSet, Cond, Result).
 
-:- pred process_pred_2(maybe_functor, varset, condition, maybe(item)).
-:- mode process_pred_2(input, input, input, output).
-process_pred_2(ok(F, As), VarSet, Cond, ok(pred(VarSet, F, As, Cond))).
-process_pred_2(error(M, T), _, _, error(M, T)).
+:- pred process_pred_2(maybe_functor, term, varset, condition, maybe(item)).
+:- mode process_pred_2(input, input, input, input, output).
+process_pred_2(ok(F, As0), PredType, VarSet, Cond, Result) :-
+	(if some [As]
+		convert_type_and_mode_list(As0, As)
+	then
+		Result = ok(pred(VarSet, F, As, Cond))
+	else
+		Result = error("syntax error in :- pred declaration", PredType)
+	).
+process_pred_2(error(M, T), _, _, _, error(M, T)).
 
+	% parse a `:- mode p(...)' declaration
+
+:- pred process_mode(varset, term, condition, maybe(item)).
+:- mode process_mode(input, input, input, output).
+process_mode(VarSet, PredMode, Cond, Result) :-
+	parse_qualified_term(PredMode, "`:- mode' declaration", R),
+	process_mode_2(R, PredMode, VarSet, Cond, Result).
+
+:- pred process_mode_2(maybe_functor, term, varset, condition, maybe(item)).
+:- mode process_mode_2(input, input, input, input, output).
+process_mode_2(ok(F, As0), PredMode, VarSet, Cond, Result) :-
+	(if some [As]
+		convert_mode_list(As0, As)
+	then
+		Result = ok(mode(VarSet, F, As, Cond))
+	else
+		Result = error("syntax error in predicate mode declaration",
+				PredMode)
+	).
+process_mode_2(error(M, T), _, _, _, error(M, T)).
+
+/*** OBSOLETE
 	% A rule declaration is just the same as a pred declaration,
 	% except that it is for DCG rules, so there are two hidden arguments. 
 
@@ -828,15 +951,16 @@ process_rule(VarSet, RuleType, Cond, Result) :-
 :- mode process_rule_2(input, input, input, output).
 process_rule_2(ok(F, As), VarSet, Cond, ok(rule(VarSet, F, As, Cond))).
 process_rule_2(error(M, T), _, _, error(M, T)).
+***/
 
-/** JUNK
+/*** JUNK
 process_rule(VarSet, RuleType, Cond, Result) :-
 	varset__new_var(VarSet, Var, VarSet1),
 	RuleType = term_functor(F, RuleArgs),
 	append(RuleArgs, [Var, Var], PredArgs),
 	PredType = term_functor(F, PredArgs),
 	process_pred(VarSet1, PredType, Cond, Result).
-**/
+***/
 
 %-----------------------------------------------------------------------------%
 
@@ -964,10 +1088,7 @@ parse_mode_decl(VarSet, ModeDefn, Result) :-
 		convert_mode_defn(H, Body, R),
 		process_mode_defn(R, VarSet, Condition, Result)
 	else
-		% XXX
-		% Result = error("`:- mode p(...)' declarations not implemented",
-		%		ModeDefn)
-		Result = ok(unimplemented)
+		parse_mode_decl_pred(VarSet, ModeDefn, Result)
 	).
 
 :- pred mode_op(term, term, term).
@@ -1023,6 +1144,34 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 					Body)
 		)
 	).
+
+:- pred convert_type_and_mode_list(list(term), list(type_and_mode)).
+:- mode convert_type_and_mode_list(input, output).
+convert_type_and_mode_list([], []).
+convert_type_and_mode_list([H0|T0], [H|T]) :-
+	convert_type_and_mode(H0, H),
+	convert_type_and_mode_list(T0, T).
+
+:- pred convert_type_and_mode(term, type_and_mode).
+:- mode convert_type_and_mode(input, output).
+convert_type_and_mode(Term, Result) :-
+	(if some [ModeTerm, TypeTerm]
+		Term = term_functor(term_atom("::"), [ModeTerm, TypeTerm])
+	then
+		convert_type(TypeTerm, Type),
+		convert_mode(ModeTerm, Mode),
+		Result = type_and_mode(Type, Mode)
+	else
+		convert_type(Term, Type),
+		Result = type_only(Type)
+	).
+
+:- pred convert_mode_list(list(term), list(mode)).
+:- mode convert_mode_list(input, output).
+convert_mode_list([], []).
+convert_mode_list([H0|T0], [H|T]) :-
+	convert_mode(H0, H),
+	convert_mode_list(T0, T).
 
 :- pred convert_mode(term, mode).
 :- mode convert_mode(input, output).
@@ -1783,9 +1932,14 @@ process_op_specifier(error(M,T), error(M,T)).
 	
 %-----------------------------------------------------------------------------%
 
-	% XXX
+	% types are represented just as ordinary terms
 
 :- pred parse_type(term, maybe(type)).
+:- mode parse_type(input, output).
 parse_type(T, ok(T)).
+
+:- pred convert_type(term, type).
+:- mode convert_type(input, output).
+convert_type(T, T).
 
 %-----------------------------------------------------------------------------%
