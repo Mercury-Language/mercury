@@ -155,10 +155,13 @@ void goto_msg(const Code *addr)
 
 void reg_msg(void)
 {
-	int i;
+	int i,x;
 
 	for(i=1; i<=8; i++) {
-		printf("%8x ", get_reg(i));
+		x = (int) get_reg(i);
+		if ( (int) heapmin < x && x < (int) heapmax)
+			x -= (int) heapmin;
+		printf("%8x ", x);
 	}
 	printf("\n");
 }
