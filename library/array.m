@@ -228,17 +228,15 @@ array__resize(Array0, L, H, Array) :-
 
 array__from_list(List, Array) :-
 	(
-		List = []
+		List = [Head | Tail]
 	->
-		error("Cannot create an array with zero elements")
+		list__length(List, Len),
+		Len1 is Len - 1,
+		array__init(0, Len1, Head, Array0),
+		array__insert_items(Array0, 1, Tail, Array)
 	;
-		true
-	),
-	list__length(List, Len),
-	Len1 is Len - 1,
-	List = [Head | Tail],
-	array__init(0, Len1, Head, Array0),
-	array__insert_items(Array0, 1, Tail, Array).
+		error("Cannot create an array with zero elements")
+	).
 
 %-----------------------------------------------------------------------------%
 
