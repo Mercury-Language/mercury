@@ -1279,7 +1279,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				MakeVarName, ".fact_tables) ",
 				SourceFileName, "\n\n",
 				"$(", MakeVarName, ".fact_tables.cs) : ",
-				ObjFileName, ".o\n"
+				ObjFileName, "\n"
 			] )
 		;
 			[]
