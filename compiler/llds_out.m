@@ -780,6 +780,10 @@ output_instruction_decls(store_ticket(Lval), DeclSet0, DeclSet) -->
 output_instruction_decls(reset_ticket(Rval, _Reason), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(discard_ticket, DeclSet, DeclSet) --> [].
+output_instruction_decls(mark_ticket_stack(Lval), DeclSet0, DeclSet) -->
+	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet).
+output_instruction_decls(discard_tickets_to(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
 output_instruction_decls(pragma_c(_Decls, Inputs, _C_Code, Outputs, _Context),
@@ -1007,6 +1011,16 @@ output_instruction(reset_ticket(Rval, Reason), _) -->
 
 output_instruction(discard_ticket, _) -->
 	io__write_string("\tMR_discard_ticket();\n").
+
+output_instruction(mark_ticket_stack(Lval), _) -->
+	io__write_string("\tMR_mark_ticket_stack("),
+	output_lval_as_word(Lval),
+	io__write_string(");\n").
+
+output_instruction(discard_tickets_to(Rval), _) -->
+	io__write_string("\tMR_discard_tickets_to("),
+	output_rval_as_type(Rval, word),
+	io__write_string(");\n").
 
 output_instruction(incr_sp(N, Msg), _) -->
 	io__write_string("\tincr_sp_push_msg("),

@@ -181,6 +181,12 @@ dupelim__replace_labels_instr(reset_ticket(Rval0, Reason), Replmap,
 		reset_ticket(Rval, Reason)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_instr(discard_ticket, _, discard_ticket).
+dupelim__replace_labels_instr(mark_ticket_stack(Lval0), Replmap, 
+		mark_ticket_stack(Lval)) :-
+	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
+dupelim__replace_labels_instr(discard_tickets_to(Rval0), Replmap, 
+		discard_tickets_to(Rval)) :-
+	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
 dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), _, pragma_c(A,B,C,D,E)).

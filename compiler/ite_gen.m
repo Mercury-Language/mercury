@@ -220,7 +220,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 
 	code_info__pop_failure_cont,
 	( { MaybeMaxfrLval = yes(MaxfrLval) } ->
-		code_info__do_soft_cut(MaxfrLval, SoftCutCode),
+		code_info__do_soft_cut(MaxfrLval, SoftCutCode, SoftCutContCode),
 		code_info__unset_failure_cont(FlushCode)
 			% XXX why call unset_failure_cont here?
 			% We're going to call it from branch_end at the
@@ -228,6 +228,7 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 			% one really necessary?
 	;
 		{ SoftCutCode = empty },
+		{ SoftCutContCode = empty },
 		{ FlushCode = empty }
 	),
 
@@ -280,12 +281,13 @@ ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
 		 tree(ThenCode,
 		 tree(ThenSaveCode,
 		 tree(JumpToEndCode,
+		 tree(SoftCutContCode,
 		 tree(RestoreContCode,
 		 tree(RestoreHPCode,
 		 tree(RestoreTicketCode,
 		 tree(ElseCode,
 		 tree(ElseSaveCode,
-		      EndLabelCode)))))))))))))))))
+		      EndLabelCode))))))))))))))))))
 	},
 	code_info__remake_with_store_map(StoreMap).
 

@@ -244,12 +244,12 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		Ccode = Ccode0
 	;
-		Uinstr0 = incr_hp(Lval, _, Rval),
+		Uinstr0 = incr_hp(Lval, _Tag, Rval),
 
 		% Make dead the variable assigned, but make any variables
 		% needed to access it live. Make the variables in the size
 		% expression live as well.
-		% The use of the size expression occurs after the assignment
+		% The use of the size rval occurs after the assignment
 		% to lval, but the two should never have any variables in
 		% common. This is why doing the deletion first works.
 
@@ -261,8 +261,9 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Ccode = Ccode0
 	;
 		Uinstr0 = mark_hp(Lval),
+		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals(Rvals, Livevals0, Livevals),
+		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
@@ -274,20 +275,35 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Ccode = Ccode0
 	;
 		Uinstr0 = store_ticket(Lval),
+		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live_in_rvals(Rvals, Livevals0, Livevals),
+		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
 		Uinstr0 = reset_ticket(Rval, _Reason),
-		livemap__make_live_in_rvals([Rval], Livevals0, Livevals),
+		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
 		Uinstr0 = discard_ticket,
 		Livevals = Livevals0,
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
+	;
+		Uinstr0 = mark_ticket_stack(Lval),
+		set__delete(Livevals0, Lval, Livevals1),
+		opt_util__lval_access_rvals(Lval, Rvals),
+		livemap__make_live_in_rvals(Rvals, Livevals1, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
+	;
+		Uinstr0 = discard_tickets_to(Rval),
+		livemap__make_live_in_rval(Rval, Livevals0, Livevals),
 		Livemap = Livemap0,
 		Instrs = Instrs0,
 		Ccode = Ccode0
@@ -304,6 +320,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
+		% XXX we shouldn't just give up here
 		Uinstr0 = pragma_c(_, _, _, _, _),
 		Livemap = Livemap0,
 		Livevals = Livevals0,

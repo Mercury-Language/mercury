@@ -262,7 +262,10 @@
 					% in grades with trailing, it is four.)
 	).
 
-:- type lval_or_ticket  --->	ticket ; lval(lval).
+:- type lval_or_ticket 
+	--->	ticket			% a ticket (trail pointer)
+	;	ticket_counter		% a copy of the ticket counter
+	;	lval(lval).
 
 %---------------------------------------------------------------------------%
 
@@ -1039,12 +1042,21 @@ code_info__succip_is_used -->
 :- pred code_info__may_use_nondet_tailcall(bool, code_info, code_info).
 :- mode code_info__may_use_nondet_tailcall(out, in, out) is det.
 
-	% do_soft_cut takes the lval where the address of the
+	% do_soft_cut(NondetFrameLvalAddress, SoftCutCode, SoftCutContCode)
+	% takes the lval where the address of the
 	% failure frame is stored, and it returns code to
-	% set the redoip of that frame to do_fail.
+	% prune away the topmost choice point from that frame,
+	% typically by setting the redoip of that frame to do_fail.
+	% Note that the frame need not be the topmost frame -- a soft cut
+	% can prune away a single choice point from the middle.
+	% do_soft_cut also returns some additional code; in the case of
+	% trailing, the redoip will be set to point to that additional code,
+	% not to do_fail; the additional code will do a `discard_ticket'
+	% before branching to the usual failure continuation (e.g. do_fail).
 
-:- pred code_info__do_soft_cut(lval, code_tree, code_info, code_info).
-:- mode code_info__do_soft_cut(in, out, in, out) is det.
+:- pred code_info__do_soft_cut(lval, code_tree, code_tree,
+			code_info, code_info).
+:- mode code_info__do_soft_cut(in, out, out, in, out) is det.
 
 	% `generate_semi_pre_commit' and `generate_semi_commit' should be
 	% called before and after generating the code for the nondet goal
@@ -1084,7 +1096,7 @@ code_info__succip_is_used -->
 			lval,		% curfr
 			lval,		% maxfr
 			lval,		% redoip
-			maybe(lval)	% trail pointer
+			maybe(pair(lval, lval)) % ticket counter, trail pointer
 		).
 
 %---------------------------------------------------------------------------%
@@ -1823,7 +1835,7 @@ code_info__may_use_nondet_tailcall(MayTailCall) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__do_soft_cut(TheFrame, Code) -->
+code_info__do_soft_cut(TheFrame, Code, ContCode) -->
 	code_info__top_failure_cont(FailureCont),
 	{ FailureCont = failure_cont(ContInfo, _) },
 	(
@@ -1837,9 +1849,24 @@ code_info__do_soft_cut(TheFrame, Code) -->
 			% set its redoip to do_fail.
 		{ Address = do_fail }
 	),
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	( { UseTrail = yes } ->
+		code_info__get_next_label(ContLabel),
+		{ ContAddress = label(ContLabel) },
+		{ ContCode = node([
+			label(ContLabel) - "soft cut failure cont entry point",
+			discard_ticket - "pop ticket stack",
+			goto(Address) - "branch to prev failure continuation"
+		]) }
+	;
+		{ ContAddress = Address },
+		{ ContCode = empty }
+	),
 	{ Code = node([
-		assign(redoip(lval(TheFrame)), const(code_addr_const(Address)))
-			- "prune away the `else' case of the if-then-else"
+		assign(redoip(lval(TheFrame)),
+			const(code_addr_const(ContAddress)))
+		- "prune away the `else' case of the if-then-else"
 	]) }.
 
 %---------------------------------------------------------------------------%
@@ -1940,9 +1967,9 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
 	( { UseTrail = yes } ->
-		{ NumSlots = 4 },
+		{ NumSlots = 5 },
 		{ SaveMessage =
-		  "push space for curfr, maxfr, redoip, and trail" }
+	"push space for curfr, maxfr, redoip, ticket_counter and trail_ptr" }
 	;
 		{ NumSlots = 3 },
 		{ SaveMessage = "push space for curfr, maxfr, and redoip" }
@@ -1966,13 +1993,15 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		{ MaxfrSlot = stackvar(2) },
 		{ RedoipSlot = stackvar(3) },
 		( { UseTrail = yes } ->
-			{ TrailSlot = stackvar(4) },
-			{ MaybeTrailSlot = yes(TrailSlot) }
+			{ TicketCounterSlot = stackvar(4) },
+			{ TrailPtrSlot = stackvar(5) },
+			{ MaybeTrailSlots = yes(TicketCounterSlot -
+						TrailPtrSlot) }
 		;
-			{ MaybeTrailSlot = no }
+			{ MaybeTrailSlots = no }
 		),
 		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot,
-			MaybeTrailSlot) },
+			MaybeTrailSlots) },
 		code_info__add_commit_triple
 	;
 		{ PushCode = empty },
@@ -1981,13 +2010,16 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
 			RedoipSlot),
 		( { UseTrail = yes } ->
-			code_info__acquire_temp_slot(ticket, TrailSlot),
-			{ MaybeTrailSlot = yes(TrailSlot) }
+			code_info__acquire_temp_slot(ticket_counter,
+						TicketCounterSlot),
+			code_info__acquire_temp_slot(ticket, TrailPtrSlot),
+			{ MaybeTrailSlots = yes(TicketCounterSlot -
+						TrailPtrSlot) }
 		;
-			{ MaybeTrailSlot = no }
+			{ MaybeTrailSlots = no }
 		),
 		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot,
-			MaybeTrailSlot) }
+			MaybeTrailSlots) }
 	),
 	{ SaveCode = node([
 		assign(CurfrSlot, lval(curfr)) -
@@ -1997,9 +2029,12 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
 				"Save the top redoip"
 	]) },
-	{ MaybeTrailSlot = yes(TheTrailSlot) ->
+	{ MaybeTrailSlots = yes(TheTicketCounterSlot - TheTrailPtrSlot) ->
 		MaybeSaveTrailCode = node([
-			store_ticket(TheTrailSlot) - "Save trail state"
+			mark_ticket_stack(TheTicketCounterSlot) -
+				"Save the ticket counter",
+			store_ticket(TheTrailPtrSlot) -
+				"Save the trail pointer"
 		])
 	;
 		MaybeSaveTrailCode = empty
@@ -2014,7 +2049,7 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		RestoreCurfr, SuccPopCode, FailPopCode) -->
 	{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot,
-		MaybeTrailSlot) },
+		MaybeTrailSlots) },
 	{ RestoreMaxfr = node([
 		assign(maxfr, lval(MaxfrSlot)) -
 			"Prune away unwanted choice-points"
@@ -2030,10 +2065,26 @@ code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
 		code_info__rem_commit_triple,
-		( { MaybeTrailSlot = yes(_) } ->
-			{ NumSlots = 4 },
-			{ PopMessage = "pop curfr, maxfr, redoip, and trail" }
+		( { MaybeTrailSlots = yes(TicketCounterSlot - TrailPtrSlot) } ->
+			{ CommitTrail = node([
+				reset_ticket(lval(TrailPtrSlot), commit) -
+				"discard trail entries and restore trail ptr"
+			]) },
+			{ RestoreTrail = node([
+				reset_ticket(lval(TrailPtrSlot), undo) -
+				"apply trail entries and restore trail ptr"
+			]) },
+			{ RestoreTicketCounter = node([
+				discard_tickets_to(lval(TicketCounterSlot)) -
+				"restore the ticket counter"
+			]) },
+			{ NumSlots = 5 },
+			{ PopMessage =
+		     "pop curfr, maxfr, redoip, ticket_counter and trail_ptr" }
 		;
+			{ CommitTrail = empty },
+			{ RestoreTrail = empty },
+			{ RestoreTicketCounter = empty },
 			{ NumSlots = 3 },
 			{ PopMessage = "pop curfr, maxfr, and redoip" }
 		),
@@ -2044,21 +2095,36 @@ code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		code_info__release_temp_slot(CurfrSlot),
 		code_info__release_temp_slot(MaxfrSlot),
 		code_info__release_temp_slot(RedoipSlot),
+		( { MaybeTrailSlots = yes(TicketCounterSlot - TrailPtrSlot) } ->
+			{ CommitTrail = node([
+				reset_ticket(lval(TrailPtrSlot), commit) -
+				"discard trail entries and restore trail ptr"
+			]) },
+			{ RestoreTrail = node([
+				reset_ticket(lval(TrailPtrSlot), undo) -
+				"apply trail entries and restore trail ptr"
+			]) },
+			{ RestoreTicketCounter = node([
+				discard_tickets_to(lval(TicketCounterSlot)) -
+				"restore the ticket counter"
+			]) },
+			code_info__release_temp_slot(TicketCounterSlot),
+			code_info__release_temp_slot(TrailPtrSlot)
+		;
+			{ CommitTrail = empty },
+			{ RestoreTrail = empty },
+			{ RestoreTicketCounter = empty }
+		),
 		{ MainPopCode = empty }
 	),
-	code_info__maybe_reset_ticket(MaybeTrailSlot, commit,
-		MaybeCommitTicket),
-	code_info__maybe_reset_ticket(MaybeTrailSlot, undo,
-		MaybeUndoTicket),
-	code_info__maybe_discard_ticket(MaybeTrailSlot, MaybeDiscardTicket),
 	{ SuccPopCode =
 		tree(MainPopCode,
-		tree(MaybeCommitTicket,
-		     MaybeDiscardTicket)) },
+		tree(CommitTrail,
+		     RestoreTicketCounter)) },
 	{ FailPopCode =
 		tree(MainPopCode,
-		tree(MaybeUndoTicket,
-		     MaybeDiscardTicket)) }.
+		tree(RestoreTrail,
+		     RestoreTicketCounter)) }.
 
 
 :- pred code_info__clone_resume_maps(resume_maps, resume_maps,
@@ -2867,7 +2933,10 @@ code_info__get_live_value_type(lval(reg(_, _)), unwanted).
 code_info__get_live_value_type(lval(stackvar(_)), unwanted).
 code_info__get_live_value_type(lval(framevar(_)), unwanted).
 code_info__get_live_value_type(lval(mem_ref(_)), unwanted).		% XXX
-code_info__get_live_value_type(ticket, unwanted).
+code_info__get_live_value_type(ticket, unwanted). % XXX we may need to
+					% modify this, if the GC is going
+					% to garbage-collect the trail.
+code_info__get_live_value_type(ticket_counter, unwanted).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

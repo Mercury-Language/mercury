@@ -123,7 +123,8 @@
 			% The third argument is the live value info for the
 			% values live on return. The last gives the model
 			% of the called procedure, and if it is nondet,
-			% says whether tail recursion is applicable to the call.
+			% says whether tail recursion elimination is
+			% potentially applicable to the call.
 
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
@@ -140,8 +141,9 @@
 	;	goto(code_addr)
 			% goto(Target)
 			% Branch to the specified address.
-			% Note that jumps to do_fail, etc., can get
-			% optimized into the invocations of macros fail(), etc..
+			% Note that jumps to do_fail, do_redo, etc., can get
+			% optimized into the invocations of macros
+			% fail(), redo(), etc..
 
 	;	computed_goto(rval, list(label))
 			% Evaluate rval, which should be an integer,
@@ -173,24 +175,39 @@
 			% was allocated since that call to mark_hp.
 
 	;	store_ticket(lval)
-			% Get a trail ticket from the constraint solver,
-			% (conceptually) push it onto the ticket stack
-			% [actually just increment the ticket counter]
-			% and store its address in the lval.
+			% Allocate a new "ticket" and store it in the lval.
 
 	;	reset_ticket(rval, reset_trail_reason)
-			% Reset the ticket stack so that the specified
-			% rval is now at the top of the ticket stack.
-			% (i.e. reset the trail back to the specified rval.)
-			% If undo_reason is `undo' (or `exception'), restore
-			% any global state to the state it was in when
-			% the ticket pointed to by the specified rval
-			% was obtained with store_ticket().
+			% The rval must specify a ticket allocated with
+			% `store_ticket' and not yet invalidated or
+			% deallocated.
+			% If undo_reason is `undo' or `exception', restore
+			% any mutable global state to the state it was in when
+			% the ticket was obtained with store_ticket();
+			% invalidates any tickets allocated after this one.
 			% If undo_reason is `commit', leave the state
-			% unchanged, just discard the trail entries.
+			% unchanged, just discard the trail entries and
+			% any associated baggage; invalidates this
+			% ticket as well as any tickets allocated after this
+			% one.
+			% Any invalidated ticket is useless and should
+			% be deallocated with either `discard_ticket'
+			% or `discard_tickets_to'.
 
 	;	discard_ticket
-			% Pop the top ticket off the ticket stack.
+			% Deallocates the most-recently allocated ticket.
+
+	;	mark_ticket_stack(lval)
+			% Tell the trail sub-system to store a ticket counter
+			% (for later use in discard_tickets_upto)
+			% in the specified lval.
+
+	;	discard_tickets_to(rval)
+			% The rval must be a ticket counter obtained via
+			% `mark_ticket_stack' and not yet invalidated.
+			% Deallocates any trail tickets allocated after
+			% the corresponding call to mark_ticket_stack.
+			% Invalidates any later ticket counters.
 
 	;	incr_sp(int, string)
 			% Increment the det stack pointer. The string is

@@ -234,6 +234,14 @@ llds_common__process_instr(Instr0, Info0, Info, Instr) :-
 		Instr = Instr0,
 		Info = Info0
 	;
+		Instr0 = mark_ticket_stack(_),
+		Instr = Instr0,
+		Info = Info0
+	;
+		Instr0 = discard_tickets_to(_),
+		Instr = Instr0,
+		Info = Info0
+	;
 		Instr0 = incr_sp(_, _),
 		Instr = Instr0,
 		Info = Info0
