@@ -220,7 +220,9 @@ ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
 else
 	# The agc.* tests don't work in the il grades, as the CLR has
 	# its own builtin GC.
-	ifneq "$(findstring il,$(GRADE))" ""
+	# The agc.* tests also don't work in minimal model grades,
+	# because the collector doesn't scan the copied areas of the stacks.
+	ifneq "$(findstring il,$(GRADE))$(findstring .mm,$(GRADE))" ""
 		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
 		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
