@@ -388,6 +388,10 @@ so this is disabled for the moment.
 						% --inline-simple is enabled
 *********/
 	inline_vars_threshold	-	int(100),
+/********
+XXX this is disabled for the moment for the same reason as above
+	inline_intermod_simple_threshold - int(5),	
+*********/
 	intermod_inline_simple_threshold
 				-	int(0),
 	common_struct		-	bool(no),
@@ -622,6 +626,8 @@ long_option("inline-simple",		inline_simple).
 long_option("inline-single-use",	inline_single_use).
 long_option("inline-compound-threshold",	inline_compound_threshold).
 long_option("inline-simple-threshold",		inline_simple_threshold).
+long_option("intermod-inline-simple-threshold",
+					intermod_inline_simple_threshold).
 long_option("inline-vars-threshold",		inline_vars_threshold).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
