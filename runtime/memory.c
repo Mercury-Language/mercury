@@ -336,6 +336,11 @@ void init_memory(void)
 #define MY_PROT PROT_NONE
 #endif
 
+/* The BSD/386 headers don't define PROT_NONE */
+#ifndef PROT_NONE
+#define PROT_NONE 0
+#endif
+
 static void setup_mprotect(void)
 {
 	heap_zone_left = heap_zone_size;
