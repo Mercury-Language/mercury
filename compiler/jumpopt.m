@@ -2,7 +2,7 @@
 
 % jumpopt.nl - optimize jumps to jumps.
 
-% Main author: zs.
+% Author: zs.
 
 %-----------------------------------------------------------------------------%
 
@@ -12,6 +12,9 @@
 
 :- import_module list, llds.
 
+	% Build up a table showing the first instruction following each label.
+	% Then traverse the instruction list, short-circuiting jump sequences.
+
 :- pred jumpopt__main(list(instruction), list(instruction), bool).
 :- mode jumpopt__main(in, out, out) is det.
 
@@ -20,9 +23,6 @@
 :- implementation.
 
 :- import_module opt_util, std_util, map, string, require.
-
-	% Build up a table showing the first instruction following each label.
-	% Then traverse the instruction list, short-circuiting jump sequences.
 
 jumpopt__main(Instrs0, Instrs, Mod) :-
 	map__init(Instmap0),
@@ -37,6 +37,13 @@ jumpopt__main(Instrs0, Instrs, Mod) :-
 	% opt_debug__print_tailmap(Succmap),
 	jumpopt__instr_list(Instrs0, comment(""),
 		Instmap, Procmap, Sdprocmap, Succmap, Instrs, Mod).
+
+%-----------------------------------------------------------------------------%
+
+	% Build up three tables mapping labels to instruction sequences.
+	% A label has an entry in a table if it is followed by a deterministic,
+	% semideterministic or nondeterministic proceed/succeed; the map target
+	% gives the code sequence between the label and the proceed/succeed.
 
 :- pred jumpopt__build_maps(list(instruction), instmap, instmap,
 	tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
@@ -77,13 +84,30 @@ jumpopt__build_maps([Instr - _Comment|Instrs], Instmap0, Instmap,
 	jumpopt__build_maps(Instrs, Instmap1, Instmap,
 		Procmap1, Procmap, Sdprocmap1, Sdprocmap, Succmap1, Succmap).
 
+%-----------------------------------------------------------------------------%
+
+	% Optimize the given instruction list by eliminating unnecessary
+	% jumps.
+	%
+	% We handle calls by trying to short-circuit the return address.
+	%
+	% We handle gotos by first trying to eliminate them. If this fails,
+	% we check whether their target label begins a proceed/succeed
+	% sequence; if it does, we replace the label by that sequence.
+	% If this fails as well, we check whether the instruction at the
+	% ultimate target label can fall through. If it cannot (e.g. call),
+	% we replace the goto with this instruction.
+	%
+	% We handle computed gotos by attempting to short-circuit all the
+	% labels in the label list.
+
 :- pred jumpopt__instr_list(list(instruction), instr,
 	instmap, tailmap, tailmap, tailmap, list(instruction), bool).
 :- mode jumpopt__instr_list(in, in, in, in, in, in, out, out) is det.
 
 jumpopt__instr_list([], _Previnstr,
 		_Instmap, _Procmap, _Sdprocmap, _Succmap, [], no).
-jumpopt__instr_list([Instr0|Moreinstrs0], Previnstr,
+jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 		Instmap, Procmap, Sdprocmap, Succmap, Instrs, Mod) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
@@ -91,8 +115,8 @@ jumpopt__instr_list([Instr0|Moreinstrs0], Previnstr,
 		Uinstr0 = call(Proc, label(Retlabel)),
 		map__search(Instmap, Retlabel, Retinstr)
 	->
-		jumpopt__final_dest(Retlabel, Retinstr,
-			Instmap, Destlabel, Destinstr),
+		jumpopt__final_dest(Retlabel, Retinstr, Instmap,
+			Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
 			Newinstrs = [Instr0],
 			Mod0 = no
@@ -100,34 +124,49 @@ jumpopt__instr_list([Instr0|Moreinstrs0], Previnstr,
 			Newinstrs = [call(Proc, label(Destlabel)) - Redirect],
 			Mod0 = yes
 		)
-	; Uinstr0 = goto(label(Targetlabel)) ->
-		( Moreinstrs0 = [label(Targetlabel) - _|_] ->
-			% eliminating the goto (by the local peephole pass)
-			% is better than shortcircuiting it here
+	;
+		Uinstr0 = goto(label(TargetLabel))
+	->
+		(
+			opt_util__is_this_label_next(TargetLabel, Instrs0, _)
+		->
+			% Eliminating is better than shortcircuiting.
+			Newinstrs = [],
+			Mod0 = yes
+		;
+			Previnstr = if_val(_, label(IfTargetLabel)),
+			opt_util__is_this_label_next(IfTargetLabel, Instrs0, _)
+		->
+			% Eliminating the goto (by the local peephole pass)
+			% is better than shortcircuiting it here,
+			% PROVIDED the test will succeed most of the time;
+			% we could use profiling feedback on this.
+			% We cannot eliminate the instruction here because
+			% that would require altering the if_val instruction.
 			Newinstrs = [Instr0],
 			Mod0 = no
-		; Previnstr = if_val(_, label(Iftargetlabel)),
-		  Moreinstrs0 = [label(Iftargetlabel) - _|_] ->
-			% eliminating the goto (by the local peephole pass)
-			% is better than shortcircuiting it here
-			% PROVIDED the test will succeed most of the time
-			% we could use profiling feedback here XXX
-			Newinstrs = [Instr0],
-			Mod0 = no
-		; map__search(Procmap, Targetlabel, Between) ->
+		;
+			map__search(Procmap, TargetLabel, Between)
+		->
 			list__append(Between, [goto(succip) - "shortcircuit"],
 				Newinstrs),
 			Mod0 = yes
-		; map__search(Sdprocmap, Targetlabel, Between) ->
+		;
+			map__search(Sdprocmap, TargetLabel, Between)
+		->
 			list__append(Between, [goto(succip) - "shortcircuit"],
 				Newinstrs),
 			Mod0 = yes
-		; map__search(Succmap, Targetlabel, Between) ->
+		;
+			map__search(Succmap, TargetLabel, Between)
+		->
 			list__append(Between, [goto(do_succeed) - "shortcircuit"],
 				Newinstrs),
 			Mod0 = yes
-		; map__search(Instmap, Targetlabel, Targetinstr) ->
-			jumpopt__final_dest(Targetlabel, Targetinstr,
+		;
+			map__search(Instmap, TargetLabel, TargetInstr)
+		->
+			jumpopt__final_dest(TargetLabel, TargetInstr,
 				Instmap, Destlabel, Destinstr),
 			Destinstr = Udestinstr - _Destcomment,
 			string__append("shortcircuited jump: ",
@@ -138,7 +177,7 @@ jumpopt__instr_list([Instr0|Moreinstrs0], Previnstr,
 				Newinstrs = [Udestinstr - Shorted],
 				Mod0 = yes
 			;
-				( Targetlabel = Destlabel ->
+				( TargetLabel = Destlabel ->
 					Newinstrs = [Instr0],
 					Mod0 = no
 				;
@@ -170,10 +209,27 @@ jumpopt__instr_list([Instr0|Moreinstrs0], Previnstr,
 	;
 		Newprevinstr = Uinstr0
 	),
-	jumpopt__instr_list(Moreinstrs0, Newprevinstr,
-		Instmap, Procmap, Sdprocmap, Succmap, Moreinstrs, Mod1),
-	list__append(Newinstrs, Moreinstrs, Instrs),
+	jumpopt__instr_list(Instrs0, Newprevinstr,
+		Instmap, Procmap, Sdprocmap, Succmap, Instrs1, Mod1),
+	list__append(Newinstrs, Instrs1, Instrs),
 	( Mod0 = no, Mod1 = no ->
+		Mod = no
+	;
+		Mod = yes
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Short-circuit the given label by following any gotos at the
+	% labelled instruction or by falling through consecutive labels.
+
+:- pred jumpopt__short_label(label, instmap, label, bool).
+:- mode jumpopt__short_label(in, in, out, out) is det.
+
+jumpopt__short_label(Label0, Instmap, Label, Mod) :-
+	map__lookup(Instmap, Label0, Instr0),
+	jumpopt__final_dest(Label0, Instr0, Instmap, Label, _Instr),
+	( Label = Label0 ->
 		Mod = no
 	;
 		Mod = yes
@@ -194,53 +250,30 @@ jumpopt__short_labels([Label0 | Labels0], Instmap, [Label | Labels], Mod) :-
 		Mod = yes
 	).
 
-:- pred jumpopt__short_label(label, instmap, label, bool).
-:- mode jumpopt__short_label(in, in, out, out) is det.
+%-----------------------------------------------------------------------------%
 
-jumpopt__short_label(Label0, Instmap, Label, Mod) :-
-	( map__search(Instmap, Label0, Instr0) ->
-		jumpopt__final_dest(Label0, Instr0, Instmap,
-			Label, _Instr),
-		( Label = Label0 ->
-			Mod = no
-		;
-			Mod = yes
-		)
-	;
-		error("target label not in instmap")
-	).
-
-:- pred jumpopt__final_dest(label, instruction, instmap,
-	label, instruction).
-:- mode jumpopt__final_dest(in, in, in, out, out) is det.
+	% Find the final destination of a given instruction at a given label.
+	% We follow gotos as well as consecutive labels.
 
 	% Currently we don't check for infinite loops.  This is OK at
 	% the moment since the compiler never generates code containing
 	% infinite loops, but it may cause problems in the future.
 
-jumpopt__final_dest(Srclabel, Srcinstr, Instmap,
-		Destlabel, Destinstr) :-
+:- pred jumpopt__final_dest(label, instruction, instmap, label, instruction).
+:- mode jumpopt__final_dest(in, in, in, out, out) is det.
+
+jumpopt__final_dest(Srclabel, Srcinstr, Instmap, Destlabel, Destinstr) :-
 	(
-		Srcinstr = goto(label(Targetlabel)) - Comment,
-		map__search(Instmap, Targetlabel, Targetinstr)
+		Srcinstr = goto(label(TargetLabel)) - Comment,
+		map__search(Instmap, TargetLabel, TargetInstr)
 	->
-		% write('goto short-circuit from '),
-		% write(Srclabel),
-		% write(' to '),
-		% write(Targetlabel),
-		% nl,
-		jumpopt__final_dest(Targetlabel, Targetinstr,
+		jumpopt__final_dest(TargetLabel, TargetInstr,
 			Instmap, Destlabel, Destinstr)
 	;
-		Srcinstr = label(Targetlabel) - Comment,
-		map__search(Instmap, Targetlabel, Targetinstr)
+		Srcinstr = label(TargetLabel) - Comment,
+		map__search(Instmap, TargetLabel, TargetInstr)
 	->
-		% write('fallthrough short-circuit from '),
-		% write(Srclabel),
-		% write(' to '),
-		% write(Targetlabel),
-		% nl,
-		jumpopt__final_dest(Targetlabel, Targetinstr,
+		jumpopt__final_dest(TargetLabel, TargetInstr,
 			Instmap, Destlabel, Destinstr)
 	;
 		Destlabel = Srclabel,

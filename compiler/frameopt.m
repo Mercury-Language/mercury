@@ -76,6 +76,14 @@ frameopt__main(Instrs0, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
+	% For each label, find out whether succip has been saved and whether
+	% a det stack frame has been set up by the time control arrives at the
+	% label. If any path to a label answers yes to either question, the
+	% other paths must also take the same action before arriving at the
+	% label. Since this action may influence the answers at other labels
+	% reachable from this new action, we must repeat the basic step until
+	% we get a fixpoint.
+
 :- pred frameopt__repeat_build_sets(list(instruction), int,
 	set(label), set(label), set(label), set(label)).
 :- mode frameopt__repeat_build_sets(in, in, in, out, in, out) is det.
@@ -91,29 +99,21 @@ frameopt__repeat_build_sets(Instrs0, FrameSize,
 		FrameSet = FrameSet1,
 		SuccipSet = SuccipSet1
 	;
-		% write(FrameSet1),
-		% nl,
-		% write(SuccipSet1),
-		% nl,
 		frameopt__repeat_build_sets(Instrs0, FrameSize,
 			FrameSet1, FrameSet, SuccipSet1, SuccipSet)
 	).
+
+	% For each label, find out whether succip has been saved and whether
+	% a det stack frame has been set up by the time control arrives at the
+	% label.
 
 :- pred frameopt__build_sets(list(instruction), int, bool, bool, bool,
 	set(label), set(label), set(label), set(label)).
 :- mode frameopt__build_sets(in, in, in, in, in, in, out, in, out) is det.
 
 frameopt__build_sets([], _, _, _, _, FrameSet, FrameSet, SuccipSet, SuccipSet).
-frameopt__build_sets([Instr0 | Instrs0], FrameSize,
-		First, SetupFrame0, SetupSuccip0,
-		FrameSet0, FrameSet, SuccipSet0, SuccipSet) :-
-	% write(Instr0),
-	% nl,
-	% write(FrameSet0),
-	% nl,
-	% write(SuccipSet0),
-	% nl,
-	% nl,
+frameopt__build_sets([Instr0 | Instrs0], FrameSize, First, SetupFrame0,
+		SetupSuccip0, FrameSet0, FrameSet, SuccipSet0, SuccipSet) :-
 	(
 		opt_util__detstack_teardown([Instr0 | Instrs0],
 			FrameSize, _Teardown, _Tail, After)
@@ -532,9 +532,8 @@ frameopt__label_without_frame(Label0, FrameSet, TeardownMap, Label) :-
 :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in,
 	in, out, in, out) is det.
 
-frameopt__generate_if(Instr0, Instrs0, FrameSize,
-		First, SetupFrame0, SetupSuccip0,
-		FrameSet, SuccipSet, TeardownMap,
+frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
+		SetupSuccip0, FrameSet, SuccipSet, TeardownMap,
 		ProcLabel, N0, N, Instrs0, Instrs) :-
 	( Instr0 = if_val(Rval, label(Label)) - Comment ->
 		opt_util__rval_refers_stackvars(Rval, Use),
@@ -625,7 +624,8 @@ frameopt__generate_if(Instr0, Instrs0, FrameSize,
 		error("instruction other than if_val in frameopt__setup_if")
 	).
 
-:- pred frameopt__generate_setup(bool, bool, bool, bool, int, list(instruction)).
+:- pred frameopt__generate_setup(bool, bool, bool, bool, int,
+	list(instruction)).
 :- mode frameopt__generate_setup(in, in, in, in, in, out) is det.
 
 frameopt__generate_setup(SetupFrame0, SetupFrame, SetupSuccip0, SetupSuccip,
@@ -728,8 +728,8 @@ frameopt__is_succip_restored([Uinstr - _Comment | Instrs]) :-
 		frameopt__is_succip_restored(Instrs)
 	).
 
-	% Remove unnecessary saves of the succip which were speculatively
-	% introduced by frameopt__main.
+	% Remove any saves of the succip. Should be called only if succip
+	% is never restored.
 
 :- pred frameopt__dont_save_succip(list(instruction), list(instruction)).
 :- mode frameopt__dont_save_succip(in, out) is det.

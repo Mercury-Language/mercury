@@ -19,12 +19,6 @@
 
 :- import_module code_util, opt_util, map, string, std_util.
 
-	% We zip down to the end of the instruction list, and start attempting
-	% to optimize instruction sequences.  As long as we can continue
-	% optimizing the instruction sequence, we keep doing so;
-	% when we find a sequence we can't optimize, we back up try
-	% so optimize the sequence starting with the previous instruction.
-
 peephole__main(Instrs0, Instrs, Mod) :-
 	map__init(Procmap0),
 	map__init(Succmap0),
@@ -32,7 +26,13 @@ peephole__main(Instrs0, Instrs, Mod) :-
 		Succmap0, Succmap),
 	map__init(Forkmap0),
 	peephole__build_forkmap(Instrs0, Succmap, Forkmap0, Forkmap),
-	peephole__opt_2(Instrs0, Instrs, Procmap, Forkmap, Mod).
+	peephole__optimize(Instrs0, Instrs, Procmap, Forkmap, Mod).
+
+	% Build two maps, one for deterministic proceeds and one for
+	% semideterministic proceeds. If a label is followed by code
+	% that falls into one of these categories, it is entered into
+	% the relevant map, with the target being the following code,
+	% and for semideterministic proceeds, a success/failure indication.
 
 :- pred peephole__build_procmaps(list(instruction), tailmap, tailmap,
 	succmap, succmap).
@@ -59,6 +59,9 @@ peephole__build_procmaps([Instr - _Comment|Instrs], Procmap0, Procmap,
 	peephole__build_procmaps(Instrs, Procmap1, Procmap,
 		Succmap1, Succmap).
 
+	% Find labels followed by a test of r1 where both paths set r1 to
+	% its original value and proceed.
+
 :- pred peephole__build_forkmap(list(instruction), succmap,
 	tailmap, tailmap).
 :- mode peephole__build_forkmap(in, in, di, uo) is det.
@@ -76,14 +79,20 @@ peephole__build_forkmap([Instr - _Comment|Instrs], Succmap,
 	),
 	peephole__build_forkmap(Instrs, Succmap, Forkmap1, Forkmap).
 
-:- pred peephole__opt_2(list(instruction), list(instruction),
-	tailmap, tailmap, bool).
-:- mode peephole__opt_2(in, out, in, in, out) is det.
+	% We zip down to the end of the instruction list, and start attempting
+	% to optimize instruction sequences.  As long as we can continue
+	% optimizing the instruction sequence, we keep doing so;
+	% when we find a sequence we can't optimize, we back up try
+	% to optimize the sequence starting with the previous instruction.
 
-peephole__opt_2([], [], _, _, no).
-peephole__opt_2([Instr0 - Comment|Instructions0], Instructions,
+:- pred peephole__optimize(list(instruction), list(instruction),
+	tailmap, tailmap, bool).
+:- mode peephole__optimize(in, out, in, in, out) is det.
+
+peephole__optimize([], [], _, _, no).
+peephole__optimize([Instr0 - Comment|Instructions0], Instructions,
 		Procmap, Forkmap, Mod) :-
-	peephole__opt_2(Instructions0, Instructions1,
+	peephole__optimize(Instructions0, Instructions1,
 		Procmap, Forkmap, Mod0),
 	peephole__opt_instr(Instr0, Comment, Procmap, Forkmap,
 		Instructions1, Instructions, Mod1),
@@ -93,15 +102,18 @@ peephole__opt_2([Instr0 - Comment|Instructions0], Instructions,
 		Mod = yes
 	).
 
+	% Try to optimize the beginning of the given instruction sequence.
+	% If successful, try it again.
+
 :- pred peephole__opt_instr(instr, string, tailmap, tailmap,
-		list(instruction), list(instruction), bool).
+	list(instruction), list(instruction), bool).
 :- mode peephole__opt_instr(in, in, in, in, in, out, out) is det.
 
 peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 		Instructions0, Instructions, Mod) :-
 	(
 		opt_util__skip_comments(Instructions0, Instructions1),
-		peephole__opt_instr_2(Instr0, Comment0, Procmap, Forkmap,
+		peephole__match(Instr0, Comment0, Procmap, Forkmap,
 			Instructions1, Instructions2)
 	->
 		( Instructions2 = [Instr2 - Comment2 | Instructions3] ->
@@ -116,9 +128,11 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 		Mod = no
 	).
 
-:- pred peephole__opt_instr_2(instr, string, tailmap, tailmap,
-		list(instruction), list(instruction)).
-:- mode peephole__opt_instr_2(in, in, in, in, in, out) is semidet.
+	% Look for code patterns that can be optimized, and optimize them.
+
+:- pred peephole__match(instr, string, tailmap, tailmap,
+	list(instruction), list(instruction)).
+:- mode peephole__match(in, in, in, in, in, out) is semidet.
 
 	% A `call' followed by a `proceed' can be replaced with a `tailcall'.
 	%
@@ -176,7 +190,7 @@ peephole__opt_instr(Instr0, Comment0, Procmap, Forkmap,
 	%       <comments, labels>		<comments, labels>
 	%	proceed				proceed
 
-peephole__opt_instr_2(livevals(yes, Livevals), Comment, Procmap, Forkmap,
+peephole__match(livevals(yes, Livevals), Comment, Procmap, Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [call(CodeAddress, label(ContLabel)) - Comment2 | _],
@@ -197,22 +211,20 @@ peephole__opt_instr_2(livevals(yes, Livevals), Comment, Procmap, Forkmap,
 		fail
 	).
 
-	% a `goto' can be deleted if the target of the jump is the very
-	% next instruction.
+	% A `goto' can be deleted if the target of the jump is the very
+	% next instruction:
 	%
-	%	goto next;	=>	  <comments, labels>
-	%	<comments, labels>	next:
-	%     next:
-	%
-	% dead code after a `goto' is deleted in label-elim.
+	%	goto next;
+	%	<comments, labels>	=>	<comments, labels>
+	%     next:			      next:
 
-peephole__opt_instr_2(goto(label(Label)), _Comment, _Procmap, _Forkmap,
+peephole__match(goto(label(Label)), _Comment, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
-	% a conditional branch over a branch can be replaced
-	% by an inverse conditional branch
+	% A conditional branch over a branch can be replaced
+	% by an inverse conditional branch:
 	%
 	%	if (x) goto skip;		if (!x) goto somewhere
 	%	<comments>			omit <comments>
@@ -220,13 +232,14 @@ peephole__opt_instr_2(goto(label(Label)), _Comment, _Procmap, _Forkmap,
 	%	<comments, labels>	      skip:
 	%     skip:
 	%
-	% a conditional branch to the very next instruction
-	% can be deleted
+	% A conditional branch to the very next instruction
+	% can be deleted:
+	%
 	%	if (x) goto next;	=>	<comments, labels>
 	%	<comments, labels>	      next:
 	%     next:
 
-peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
+peephole__match(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	( Instrs1 = [goto(Somewhere) - C2 | Instrs2] ->
@@ -238,7 +251,7 @@ peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 		Instrs = Instrs0
 	).
 
-	% if a `mkframe' is followed by a `modframe', with the instructions
+	% If a `mkframe' is followed by a `modframe', with the instructions
 	% in between containing only straight-line code, we can delete the
 	% `modframe' and instead just set the redoip directly in the `mkframe'.
 	%
@@ -246,7 +259,7 @@ peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 	%	<straightline instrs>		<straightline instrs>
 	%	modframe(Redoip)
 	%
-	% if a `mkframe' is followed by a test that can fail, we try to
+	% If a `mkframe' is followed by a test that can fail, we try to
 	% swap the two instructions to avoid doing the mkframe unnecessarily.
 	%
 	%	mkframe(D, S, dofail)	=>	if_val(test, redo)
@@ -258,10 +271,10 @@ peephole__opt_instr_2(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
 	%	mkframe(D, S, label)	=>	mkframe(D, S, label)
 	%	if_val(test, redo)		if_val(test, label)
 	%
-	% these two patterns are mutually exclusive because if_val is not
+	% These two patterns are mutually exclusive because if_val is not
 	% straigh-line code.
 
-peephole__opt_instr_2(mkframe(Descr, Slots, Redoip), Comment,
+peephole__match(mkframe(Descr, Slots, Redoip), Comment,
 		_Procmap, _Forkmap, Instrs0, Instrs) :-
 	( opt_util__next_modframe(Instrs0, [], Newredoip, Skipped, Rest) ->
 		list__append(Skipped, Rest, Instrs1),
@@ -302,8 +315,7 @@ peephole__opt_instr_2(mkframe(Descr, Slots, Redoip), Comment,
 	%
 	%	incr_sp N
 	%	decr_sp N	=>	(nothing)
-	%
-peephole__opt_instr_2(incr_sp(N), _Comment,
-		_Procmap, _Forkmap, Instrs0, Instrs) :-
+
+peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [decr_sp(N) - _Comment2 | Instrs].

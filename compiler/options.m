@@ -89,6 +89,10 @@
 		;	optimize_repeat
 		;	static_ground_terms
 		;	smart_indexing
+		;	req_density
+		;	dense_switch_size
+		;	string_switch_size
+		;	tag_switch_size
 		;	inlining
 		;	c_optimize
 		;	debug
@@ -124,7 +128,7 @@ option_defaults(OptionDefaults) :-
 		OptionDefaults).
 
 :- pred option_defaults_2(option_category::in,
-			list(pair(option, option_data))::out) is det.
+	list(pair(option, option_data))::out) is det.
 
 option_defaults_2(warning_option, [
 		% Warning Options
@@ -187,6 +191,10 @@ option_defaults_2(optimization_option, [
 	optimize_repeat		-	int(4),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
+	req_density		-	int(25),
+	dense_switch_size	-	int(4),
+	string_switch_size	-	int(8),
+	tag_switch_size		-	int(8),
 	inlining		-	bool(yes)
 ]).
 option_defaults_2(miscellaneous_option, [
@@ -281,6 +289,10 @@ long_option("optimize-frames",		optimize_frames).
 long_option("optimize-repeat",		optimize_repeat).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
+long_option("req-density",		req_density).
+long_option("dense-switch_size",	dense_switch_size).
+long_option("string-switch_size",	string_switch_size).
+long_option("tag-switch-size",		tag_switch_size).
 long_option("inlining",			inlining).
 
 options_help -->
@@ -408,6 +420,18 @@ options_help -->
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate deterministic switches as a simple if-then-else chain;\n"),
 	io__write_string("\t\tdisable string hashing and integer table-lookup indexing.\n"),
+	io__write_string("\t--req-density\n"),
+	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
+	io__write_string("\t\tmust have at least this percentage of full slots\n"),
+	io__write_string("\t--dense-switch-size\n"),
+	io__write_string("\t\tThe jump table generated for an atomic switch\n"),
+	io__write_string("\t\tmust have at least this many entries\n"),
+	io__write_string("\t--string-switch-size\n"),
+	io__write_string("\t\tThe hash table generated for a string switch\n"),
+	io__write_string("\t\tmust have at least this many entries\n"),
+	io__write_string("\t--tag-switch-size\n"),
+	io__write_string("\t\tThe number of alternatives in a tag switch\n"),
+	io__write_string("\t\tmust exceed this number\n"),
 	io__write_string("\t--no-inlining\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--c-optimize\n"),

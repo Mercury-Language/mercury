@@ -12,6 +12,11 @@
 
 :- import_module list, llds.
 
+	% Build up a set showing which labels are branched to,
+	% then traverse the instruction list removing unnecessary labels.
+	% If the instruction before the label branches away, we also
+	% remove the instruction block following the label.
+
 :- pred labelopt__main(list(instruction), list(instruction), bool).
 :- mode labelopt__main(in, out, out) is det.
 
@@ -21,18 +26,16 @@
 
 :- import_module opt_util, std_util, bintree_set.
 
-	% Build up a table showing which labels are branched to.
-	% Then traverse the instruction list removing unnecessary labels.
-	% If the instruction before the label branches away, we also
-	% remove the instruction block following the label.
-
 :- type usemap == bintree_set(label).
 
 labelopt__main(Instructions0, Instructions, Mod) :-
 	bintree_set__init(Usemap0),
 	labelopt__build_usemap(Instructions0, Usemap0, Usemap),
-	labelopt__instr_list(Instructions0, Usemap,
-		Instructions, Mod).
+	labelopt__instr_list(Instructions0, yes, Usemap, Instructions, Mod).
+
+%-----------------------------------------------------------------------------%
+
+	% Build up a set showing which labels are branched to.
 
 :- pred labelopt__build_usemap(list(instruction), usemap, usemap).
 :- mode labelopt__build_usemap(in, di, uo) is det.
@@ -40,11 +43,12 @@ labelopt__main(Instructions0, Instructions, Mod) :-
 labelopt__build_usemap([], Usemap, Usemap).
 labelopt__build_usemap([Instr | Instructions], Usemap0, Usemap) :-
 	Instr = Uinstr - _Comment,
-	% format("looking at instr ~w", [Instr]), nl,
 	opt_util__instr_labels(Uinstr, Labels, CodeAddresses),
 	labelopt__label_list_build_usemap(Labels, Usemap0, Usemap1),
 	labelopt__code_addr_list_build_usemap(CodeAddresses, Usemap1, Usemap2),
 	labelopt__build_usemap(Instructions, Usemap2, Usemap).
+
+	% We are not interested in code addresses that are not labels.
 
 :- pred labelopt__code_addr_list_build_usemap(list(code_addr), usemap, usemap).
 :- mode labelopt__code_addr_list_build_usemap(in, di, uo) is det.
@@ -66,12 +70,13 @@ labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
 	bintree_set__insert(Usemap0, Label, Usemap1),
 	labelopt__label_list_build_usemap(Labels, Usemap1, Usemap).
 
-:- pred labelopt__instr_list(list(instruction),
-	usemap, list(instruction), bool).
-:- mode labelopt__instr_list(in, in, out, out) is det.
+%-----------------------------------------------------------------------------%
 
-labelopt__instr_list(Instrs0, Usemap, Instrs, Mod) :-
-	labelopt__instr_list(Instrs0, yes, Usemap, Instrs, Mod).
+	% Go through the given instruction sequence. When we find a label,
+	% we check whether the label can be branched to either from within
+	% the procedure or from the outside. If yes, we leave it alone.
+	% If not, we delete it. We delete the following code as well if
+	% the label was preceded by code that cannot fall through.
 
 :- pred labelopt__instr_list(list(instruction),
 	bool, usemap, list(instruction), bool).
@@ -111,12 +116,17 @@ labelopt__instr_list([Instr0 | Moreinstrs0],
 		)
 	),
 	labelopt__instr_list(Moreinstrs0, Fallthrough1, Usemap,
-				Moreinstrs, Mod1),
+		Moreinstrs, Mod1),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
 	;
 		Mod = yes
 	).
+
+	% Instead of removing eliminated instructions from the instruction list,
+	% we replace them by placeholder comments. The original comment field
+	% on the instruction is often enough to deduce what the eliminated
+	% instruction was.
 
 :- pred labelopt__eliminate(instruction, maybe(bool), instruction, bool).
 :- mode labelopt__eliminate(in, in, out, out) is det.
@@ -127,12 +137,8 @@ labelopt__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment, Mod) :-
 		Uinstr = Uinstr0,
 		Mod = no
 	;
-		(
-			Label = yes(Follow)
-		->
-			(
-				Follow = yes
-			->
+		( Label = yes(Follow) ->
+			( Follow = yes ->
 				Uinstr = comment("eliminated label only")
 			;
 				% Follow = no,
