@@ -64,7 +64,7 @@ VPATH= $(srcdir)
 # -DGC_LINUX_THREADS -DPARALLEL_MARK -DTHREAD_LOCAL_ALLOC
 
 # Mercury-specific CFLAGS:
-CFLAGS= -I$(srcdir)/include \
+CFLAGS= -I$(srcdir)/include -I$(srcdir)/include/private \
 	-DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 	$(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
@@ -314,7 +314,7 @@ CURSES= -lcurses -ltermlib
 # the SHELL environment variable.
 SHELL= /bin/sh
 
-SPECIALCFLAGS = -I$(srcdir)/include
+SPECIALCFLAGS = -I$(srcdir)/include -I$(srcdir)/include/private
 # Alternative flags to the C compiler for mach_dep.c.
 # Mach_dep.c often doesn't like optimization, and it's
 # not time-critical anyway.
