@@ -61,7 +61,6 @@ case $HOST in
 	quicksilver) 	OPTIMIZE=-O3 ;;
 	hg) 		OPTIMIZE=-O4 ;;
 	hydra)		OPTIMIZE=-O2 ;;
-	muse)		OPTIMIZE=-O0 ;;
 	munta)		OPTIMIZE=-O0 ;;
 esac
 
@@ -123,7 +122,6 @@ PARALLEL=
 case $HOST in
 	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
 	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
-	muse)		PARALLEL=-j2 ;; # out of four CPUs
 	munta)		PARALLEL=-j2 ;; # out of four CPUs
 	mundook) 	PARALLEL=-j1 ;; # out of two CPUs
 	murlibobo)	PARALLEL=-j6 ;; # out of eight CPUs
@@ -194,7 +192,8 @@ case $HOST in
 	kryten)		
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
-		CONFIG_OPTS="--enable-all-grades --without-readline" ;;
+		#CONFIG_OPTS="--enable-all-grades --without-readline" ;;
+		CONFIG_OPTS="--without-readline" ;;
 	taifun)		
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
@@ -296,7 +295,7 @@ case $status in 0)
     esac
 
     case $HOST in
-	muse|munta)
+	munta)
 		# see README.IRIX for an explanation of these contortions
 		
 		mmake install LIBGRADES="asm_fast.gc.prof asm_fast" \
@@ -352,10 +351,11 @@ date >> $TESTDIR/logs/install.$HOST
 
 : test and install the CLPR interface
 case $HOST in
-	kryten|murlibobo)
+	murlibobo)
+		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|taifun)
+	hg|quicksilver|hydra|kryten|taifun)
 		GRADES="asm_fast.gc.tr"
 		;;
 	*)
@@ -460,26 +460,38 @@ case $HOST in
 			asm_fast asm_fast.gc
 			asm_fast.prof asm_fast.gc.prof
 			asm_fast.gc.memprof
+			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr
+			asm_fast.gc.tr.debug
 			"
 		;;
-	kryten)
-		GRADES="none jump fast asm_jump asm_fast none.gc
-			jump.gc fast.gc asm_jump.gc
-			asm_fast.gc asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.tr"
-		;;
-	taifun|rimmer)
+# requires --enable-all-grades
+#	kryten)
+#		GRADES="none jump fast asm_jump asm_fast none.gc
+#			jump.gc fast.gc asm_jump.gc
+#			asm_fast.gc asm_fast.gc.prof asm_fast.prof asm_fast.gc.memprof
+#			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr asm_fast.gc.tr.debug"
+#		;;
+	kryten|taifun|rimmer)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr
 			asm_fast.gc.tr.debug"
 		;;
-	muse|munta)
+	munta)
 		GRADES="reg.gc asm_fast asm_fast.gc
 			reg.gc.prof asm_fast.gc.prof"
+		# Don't bother with these, otherwise it would take forever...
+		#	reg.prof asm_fast.prof reg.gc.memprof reg.gc.tr reg.gc.tr.debug
 		;;
-	hg|quicksilver|hydra)
-		GRADES="asm_fast.gc asm_fast \
-			asm_fast.gc.prof asm_fast.prof"
+	hg|hydra)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug"
+		;;
+	quicksilver)
+		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
+		# Don't bother with these, otherwise it would take forever...
+		#	asm_fast.gc.prof asm_fast.prof
+		#	asm_fast.gc.memprof asm_fast.gc.tr"
 		;;
 esac
 
