@@ -3,38 +3,51 @@
 INTRODUCTION
 
 This release of Mercury contains an incomplete port to the Microsoft.NET
-Common Language Runtime (CLR).  This port is very new, and the target
-platform is still in beta, so there are many unimplemented features.
+Common Language Runtime (CLR).  This port is very new, so there are still
+many unimplemented features.  Currently (2002-10-28) it passes about half
+of the tests in the Mercury test suite.
 
-In addition the port is currently targetted at .NET Beta 2 SDK.
+The port is currently targetted at the Microsoft .NET SDK version 1.
 
 The Mercury compiler will generate code in Microsoft's Intermediate
 Language (IL) that can be assembled into bytecode suitable for running
-in the .NET runtime system.  In addition, a small part of the Mercury library
-has been ported to use the .NET Frameworks.
+in the .NET runtime system.  In addition, much (but not all) of the
+Mercury library has been ported to use the .NET Frameworks.
 
 In order to try this system you will need 
 
-	- The Microsoft .NET Framework SDK Beta 2, see
+	- The Microsoft .NET Framework SDK version 1, which can be
+	  downloaded for free from
 		<http://msdn.microsoft.com/net/>
-	  to download.  If you are an MSDN Universal subscriber you can
-	  also order CDs as part of your subscription.
+	  If you are an MSDN Universal subscriber you can also order
+	  CDs as part of your subscription.
+	  
+	  It might also work with later versions, but we haven't tested
+	  with those.
 
-	- A windows system suitable for development with Microsoft .NET
-	  (Windows 2000 is the most likely).  Microsoft advises not to
-	  install the SDK onto a production machine.  Consider using a
-	  separate boot partition, or a virtual environment such as
-	  VMWare (www.vmware.com).
+	- A windows system suitable for development with Microsoft .NET.
+	  According to Microsoft, the .NET Framework SDK runs on: 
+
+		  Microsoft Windows NT 4.0 (SP 6a required)
+		  Microsoft Windows 2000 (SP 2 recommended)
+		  Microsoft Windows XP Professional
+
+	  We have tested only on Windows 2000 (with SP 2).
 
 	- Cygwin (see README.MS-Windows for how to install).
   	  The Mercury compiler still runs as a native compiler, built
 	  with gcc by default -- although see README.MS-VisualC for how
-	  to build with VC++ if you wish).
+	  to build with VC++ if you wish.
 	  Mercury still relies upon the Cygwin environment for
 	  development environment tools such as `mmake'.
 
-	- If you have installed the .NET Beta2 SDK as part of Visual
-	  Studio .NET Beta 2, you will need to put the Visual Studio 7.0
+	  You need the following Cygwin packages:
+	  	- gcc
+	  	- binutils
+	  	- make
+
+	- If you have installed the .NET SDK as part of Visual
+	  Studio .NET, you will need to put the Visual Studio
 	  binaries in your path, and set appropriate environment
 	  variables.  The easiest way to do this is to put the line
 
@@ -46,12 +59,11 @@ call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 	  given here.
 	  
 	- The Mercury distribution -- installed as usual.  Make sure
-	  the installation is run after the .NET SDK is installed (run
-	  it again if necessary) so that the configuration scripts
+	  the installation is run after the Microsoft .NET SDK is installed
+	  (run it again if necessary) so that the configuration scripts
 	  detect the installation path of the SDK.  If `configure' finds
-	  `ilasm' then this has been successful.  You can install
-	  from the binary distribution, but you will also need the source
-	  distribution to install the libraries for .NET (see below).
+	  `ilasm' and `cl' then this has been successful.  You can install
+	  from either the source or binary distribution.
 
 	  If you're reading this file from somewhere other than the
 	  Mercury distribution, try the Mercury homepage at
@@ -59,46 +71,51 @@ call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 
 -----------------------------------------------------------------------------
 
-THE ILC GRADE
+THE IL GRADE
 
-The Mercury compiler currently supports the grade 'ilc' to target the
+The Mercury compiler currently supports the grade 'il' to target the
 Microsoft.NET CLR.  Support for building and installation of this grade
 is still somewhat rudimentary.
 
-To run a Mercury program using the ilc grade, you need to build the
-library and runtime in the ilc grade, using the Mercury source distribution.
-If configure finds the .NET SDK installed on your machine, the ilc grade
+To run a Mercury program using the il grade, you need to build the
+library and runtime in the il grade, using the Mercury source distribution.
+If configure finds the .NET SDK installed on your machine, the il grade
 will be added to the list of default grades to be installed, so simply
 running 
 	mmake install
-from the Mercury source distribution will install the ilc grade.
+from the Mercury source distribution will install the il grade.
 
-You can now build programs such as hello.m or eliza.m in the samples
+You can now build programs such as hello.m or calculator.m in the samples
 directory.
 	
 	cd samples
-	mmake hello.depend GRADE=ilc
-	mmake hello GRADE=ilc
-
-You can also set the grade in an Mmakefile by adding the line
-	GRADE=ilc
-
-For for single file programs, try:
-
-	mmc --grade ilc hello.m
+	mmc --make --grade il hello
 
 Now you can run hello
 
 	./hello.exe
 
+Alternatively, if you prefer, you can use mmake rather than `mmc --make':
+
+	mmake hello.depend GRADE=il
+	mmake hello GRADE=il
+	./hello.exe
+
+You can also set the grade in an Mmakefile, by adding the line
+
+	GRADE=il
+
+to the Mmakefile; then you can leave the "GRADE=il" part off the mmake
+commands.
+
 -----------------------------------------------------------------------------
 
 USING DOTNET
 
-The Mercury standard library has not been ported to .NET yet, only a few
-important predicates have been implemented.  Unimplemented predicates
-will issue a message saying "Unimplemented: foreign code for this
-function".
+The Mercury standard library has not been fully ported to .NET yet.
+The use of unimplemented procedures will result in a run-time error,
+with a message such as "Sorry, not implemented: foreign code for this
+function", and a stack trace.
 
 If you find missing functionality, you can interface to the .NET
 Frameworks using C# and Mercury's foreign language interface.
@@ -157,4 +174,58 @@ You might find the following pages useful:
 
 	http://www.gotdotnet.com/
 
+-----------------------------------------------------------------------------
 
+FREQUENTLY ASKED QUESTIONS (FAQS)
+
+Q. What are the advantages of using the .NET back-end?
+
+A. The main advantage is easy access to the wide range of libraries for the
+   .NET platform.
+
+
+Q. Does it work with other .NET Common Language Runtime implementations,
+   such as Mono, Portable.Net, or Rotor?
+
+A. Some parts of the Mercury standard library implementation for .NET
+   are implemented using Managed C++ (Microsoft's extensions to C++
+   to support .NET).  So you need the Microsoft .NET SDK (which includes
+   the command-line version of Microsoft's C++ compiler) to build the
+   Mercury standard library in the `il' grade.
+
+   In theory, once you have done that, it should be possible to
+   build Mercury programs in the `il' grade using any ECMA-compliant
+   IL assembler that provides the same command-line interface as
+   the Microsoft ilasm.exe program, and to execute them using any
+   ECMA-complaint .NET CLR implementation.  However, we have not yet
+   tried using other .NET CLR implementations.
+
+
+Q. How does it compare in efficiency with the usual Mercury implementation?
+
+A. Our paper "Compiling Mercury to the .NET Common Language Runtime",
+   which is available from the Mercury web site, has some benchmark
+   results.  As usual, your mileage may vary.
+
+
+Q. What features are not yet implemented?
+
+A. The following standard library procedures are not yet implemented:
+
+	   - io__command_line_arguments
+	   - io__set_environment_variable
+	   - io__read_file_as_string
+	   - builtin__copy
+
+   The following are only partly implemented:
+
+	   - string__format ignores most of the formatting flags
+	   - support for standard library routines that involve
+	     run-time type identification is very patchy
+
+   In addition, there is a Mercury compiler bug which causes problems
+   for procedures with mode "unused" (a.k.a. "free>>free").
+
+   The lists above are probably incomplete.
+
+-----------------------------------------------------------------------------
