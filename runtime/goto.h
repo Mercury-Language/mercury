@@ -216,10 +216,12 @@
     #define Define_extern_entry(label)	Code * entry(label)
     #define Define_entry(label)	\
 	}	\
+	entry(label): \
 	label:	\
 	{
     #define Define_static(label)	\
 	}	\
+	entry(label): \
 	label:	\
 	{
     #define init_entry(label)	\
