@@ -2142,7 +2142,7 @@ string__format(S1, PT) = S2 :-
 % ---------------------------------------------------------------------------- %
 
 string__words(SepP, String) = Words :-
-	I = preceding_boundary(isnt(SepP), String, string__length(String) - 1).
+	I = preceding_boundary(isnt(SepP), String, string__length(String) - 1),
 	Words = words_2(SepP, String, I, []).
 
 % ---------------------------------------------------------------------------- %
