@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2003 The University of Melbourne.
+** Copyright (C) 1999-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -34,6 +34,7 @@
 				   /* the type in io.m whose foreign_type is */
 				   /* MercuryFilePtr XXX */
 #include "mercury_ho_call.h"	/* for the `MR_Closure' type */
+#include "mercury_aditi.h"	/* for the `MR_Aditi_Proc_Info' type */
 #include "mercury_bootstrap.h"
 #include "mercury_memory.h"	/* for memory allocation routines */
 #include "mercury_type_tables.h"	/* for MR_register_type_ctor_info */

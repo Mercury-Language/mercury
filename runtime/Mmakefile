@@ -23,6 +23,7 @@ MAIN_TARGET=runtime
 HDRS		=	\
 			mercury.h		\
 			mercury_accurate_gc.h	\
+			mercury_aditi.h		\
 			mercury_agc_debug.h	\
 			mercury_array_macros.h	\
 			mercury_bootstrap.h	\

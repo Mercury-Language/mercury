@@ -22,9 +22,10 @@ GRADEFLAGS-csharp_hello		= --grade il
 GRADEFLAGS-foreign_type_spec	= --grade il
 GRADEFLAGS-foreign_type_spec.foreign	= --grade il
 
+MCFLAGS-aditi_calls_mercury	= --aditi --aditi-calls-mercury
+MCFLAGS-aditi_error_bug		= --aditi
 MCFLAGS-aditi_error_bug2	= --aditi
 MCFLAGS-aditi_error_bug3	= --aditi
-MCFLAGS-aditi_error_bug		= --aditi
 MCFLAGS-aditi_private_builtin	= --allow-stubs
 MCFLAGS-aditi_query		= --aditi-only
 MCFLAGS-aditi_update		= --aditi

@@ -58,6 +58,8 @@
 #include	"mercury_tags.h"
 #include	"mercury_goto.h"
 #include	"mercury_calls.h"
+#include	"mercury_ho_call.h"
+#include	"mercury_aditi.h"
 #include	"mercury_engine.h"
 
 #include	"mercury_memory.h"

@@ -229,7 +229,11 @@
 		;	record_term_sizes_as_words
 		;	record_term_sizes_as_cells
 
-		%   (c) Miscellaneous
+		%   (c) Aditi
+		;	aditi	
+		;	aditi_calls_mercury
+
+		%   (d) Miscellaneous
 		;	gc
 		;	parallel
 		;	use_trail
@@ -677,9 +681,6 @@
 		;	intermod_directories
 		;	use_search_directories_for_intermod
 		;	filenames_from_stdin
-		;	aditi		% XXX this should be in the
-					% "Auxiliary output options"
-					% section
 		;	aditi_user
 		;	help
 		;	version
@@ -898,6 +899,8 @@ option_defaults_2(compilation_model_option, [
 	use_minimal_model_own_stacks	-	bool(no),
 	minimal_model_debug	-	bool(no),
 	type_layout		-	bool(yes),
+	aditi			-	bool(no),
+	aditi_calls_mercury	-	bool(no),% XXX eventually yes
 
 		% Data representation compilation model options
 	reserve_tag		-	bool(no),
@@ -1313,7 +1316,6 @@ option_defaults_2(build_system_option, [
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
 	filenames_from_stdin	-	bool(no),
-	aditi			-	bool(no),
 	aditi_user		-	string(""),
 	help 			-	bool(no),
 	version			-	bool(no),
@@ -1543,6 +1545,8 @@ long_option("garbage-collection",	gc).
 long_option("parallel",			parallel).
 long_option("use-trail",		use_trail).
 long_option("type-layout",		type_layout).
+long_option("aditi",			aditi).
+long_option("aditi-calls-mercury",	aditi_calls_mercury).
 	% Data represention options
 long_option("reserve-tag",		reserve_tag).
 long_option("use-minimal-model-stack_copy",	use_minimal_model_stack_copy).
@@ -1982,7 +1986,6 @@ long_option("use-search-directories-for-intermod",
 long_option("help",			help).
 long_option("version",			version).
 long_option("filenames-from-stdin",	filenames_from_stdin).
-long_option("aditi",			aditi).
 long_option("aditi-user",		aditi_user).
 long_option("fullarch",			fullarch).
 long_option("bug-intermod-2002-06-13",	compiler_sufficiently_recent).
@@ -3101,6 +3104,17 @@ your program compiled with different options.
 %		"\tAugment each heap cells with its size in cells.",
 ********************/
 	]),
+	io__write_string("      Aditi\n"),
+	write_tabbed_lines([
+		"--aditi",
+		"\tEnable Aditi compilation. You need to enable this",
+		"\toption if you are making use of the Aditi deductive",
+		"\tdatabase interface."
+		% XXX --aditi-calls-mercury is not fully implemented.
+		% "--aditi-calls-mercury",
+		% "\tEnable calling ordinary Mercury code from Aditi."
+	]),
+
 	io__write_string("      Miscellaneous optional features\n"),
 	write_tabbed_lines([
 		"--gc {none, boehm, mps, accurate, automatic}",
@@ -4140,10 +4154,6 @@ options_help_misc -->
 		"\tis reached. (This allows a program or user to interactively",
 		"\tcompile several modules without the overhead of process",
 		"\tcreation for each one.)",
-		"--aditi",
-		"\tEnable Aditi compilation. You need to enable this",
-		"\toption if you are making use of the Aditi deductive",
-		"\tdatabase interface.",
 		"--aditi-user",
 		"\tSpecify the Aditi login of the owner of the predicates",
 		"\tin any Aditi RL files produced. The owner field is",

@@ -122,6 +122,17 @@
 	--->    do_aditi_compilation
 	;       no_aditi_compilation.
 
+	% Mercury procedures which can be called from Aditi join conditions.
+	% Each procedure has one input and one output argument.
+	% The compiler generates a constant structure containing 
+	% the address and other information for each procedure,
+	% which Aditi will find using dlsym().
+:- type aditi_top_down_proc
+	--->	aditi_top_down_proc(
+			pred_proc_id,
+			string		% name of the constant.
+		).
+
 %-----------------------------------------------------------------------------%
 
 	% Various predicates for manipulating the module_info data structure
@@ -357,6 +368,15 @@
 :- pred module_info_set_analysis_info(analysis_info::in,
 	module_info::in, module_info::out) is det.
 
+:- pred module_info_aditi_top_down_procs(module_info::in,
+		list(aditi_top_down_proc)::out) is det.
+
+:- pred module_info_set_aditi_top_down_procs(module_info::in,
+		list(aditi_top_down_proc)::in, module_info::out) is det.
+
+:- pred module_info_next_aditi_top_down_proc(module_info::in, int::out,
+		module_info::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_info_preds(module_info::in, pred_table::out) is det.
@@ -575,10 +595,16 @@
 						% but lookups in this table
 						% will be much faster.
 
-		analysis_info			:: analysis_info
+		analysis_info			:: analysis_info,
 						% Information for the
 						% inter-module analysis
 						% framework.
+		aditi_top_down_procs :: list(aditi_top_down_proc),
+						% List of top-down procedures
+						% which could be called from
+						% bottom-up Aditi procedures.
+		aditi_proc_counter :: counter
+
 	).
 
 	% A predicate which creates an empty module
@@ -621,7 +647,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 		[], [], StratPreds, UnusedArgInfo, ExceptionInfo,
 		counter__init(1), counter__init(1), ImportedModules,
 		IndirectlyImportedModules, no_aditi_compilation, TypeSpecInfo,
-		NoTagTypes, init_analysis_info(mmc)),
+		NoTagTypes, init_analysis_info(mmc), [], counter__init(1)),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -703,6 +729,12 @@ module_info_get_do_aditi_compilation(MI,
 module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
 module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
 module_info_analysis_info(MI, MI ^ sub_info ^ analysis_info).
+module_info_aditi_top_down_procs(MI, MI ^ sub_info ^ aditi_top_down_procs).
+
+module_info_next_aditi_top_down_proc(MI0, Proc, MI) :-
+	Counter0 = MI0 ^ sub_info ^ aditi_proc_counter,
+	counter__allocate(Proc, Counter0, Counter),
+	MI = MI0 ^ sub_info ^ aditi_proc_counter := Counter.
 
 %-----------------------------------------------------------------------------%
 
@@ -755,6 +787,8 @@ module_info_set_no_tag_types(NewVal, MI,
 	MI ^ sub_info ^ no_tag_type_table := NewVal).
 module_info_set_analysis_info(NewVal, MI,
 	MI ^ sub_info ^ analysis_info := NewVal).
+module_info_set_aditi_top_down_procs(MI, NewVal,
+	MI ^ sub_info ^ aditi_top_down_procs := NewVal).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,8 +43,9 @@
 	% `<module>.derived_schema' if --generate-schemas was set.
 	% If --aditi-only is not set, return the rl_file containing
 	% bytecodes to be output as constant data in the C file.
-:- pred rl_out__generate_rl_bytecode(module_info::in, list(rl_proc)::in, 
-		maybe(rl_file)::out, io__state::di, io__state::uo) is det.
+:- pred rl_out__generate_rl_bytecode(list(rl_proc)::in, 
+		maybe(rl_file)::out, module_info::in, module_info::out,
+		io__state::di, io__state::uo) is det.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 	% Given a predicate to update the labels in a bytecode, update
@@ -212,8 +213,8 @@ rl_out__get_proc_schema_2(ArgNo, [_ | Args], SchemaList0, SchemaList) :-
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in,
 
-rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
-	{ module_info_name(ModuleInfo, ModuleName0) },
+rl_out__generate_rl_bytecode(Procs, MaybeRLFile, ModuleInfo0, ModuleInfo) -->
+	{ module_info_name(ModuleInfo0, ModuleName0) },
 	module_name_to_file_name(ModuleName0, ".rlo", yes, RLOName),
 	module_name_to_file_name(ModuleName0, ".rla", yes, RLAName),
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -222,11 +223,11 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
 
-	{ rl_out_info_init(ModuleInfo, RLInfo0) },
+	{ rl_out_info_init(ModuleInfo0, RLInfo0) },
 	{ list__foldl(rl_out__generate_proc_bytecode, Procs, 
 		RLInfo0, RLInfo1) },
 
-	{ module_info_predids(ModuleInfo, PredIds) },
+	{ module_info_predids(ModuleInfo0, PredIds) },
 	{ list__foldl(rl_out__generate_update_procs, PredIds,
 		RLInfo1, RLInfo2) },
 
@@ -246,7 +247,8 @@ rl_out__generate_rl_bytecode(ModuleInfo, Procs, MaybeRLFile) -->
 	{ rl_out_info_get_consts(Consts, RLInfo7, RLInfo8) },
 	{ rl_out_info_get_permanent_relations(PermRelsSet, 
 		RLInfo8, RLInfo9) },
-	{ rl_out_info_get_relation_variables(RelVars, RLInfo9, _) },
+	{ rl_out_info_get_relation_variables(RelVars, RLInfo9, RLInfo10) },
+	{ rl_out_info_get_module_info(ModuleInfo, RLInfo10, _) },
 
 	{ map__to_assoc_list(Consts, ConstsAL) },
 	{ assoc_list__reverse_members(ConstsAL, ConstsLA0) },
@@ -657,8 +659,8 @@ rl_out__generate_proc_bytecode(Proc) -->
 	
 	{ set__to_sorted_list(MemoedRels, MemoedList) },
 	( { MemoedList = [] } ->
-		{ CollectCode = [] },
-		{ NameCode = [] },
+		{ CollectCode = empty },
+		{ NameCode = empty },
 		{ GroupCode = empty }
 	;
 		% If one memoed relation is dropped, all must be 
@@ -667,8 +669,16 @@ rl_out__generate_proc_bytecode(Proc) -->
 		{ Name = rl_proc_name(Owner, _, _, _) },
 		rl_out__collect_memoed_relations(Owner, Name, MemoedList, 0,
 			CollectCode, NameCode),
-		rl_out__get_rel_var_list(MemoedList, RelVarCodes),
-		{ GroupCode = tree(node([rl_PROC_grouprels]), RelVarCodes) }
+		
+		% If one of the memoed relations is dropped,
+		% all others in this procedure must be dropped
+		% for correctness. In the current Aditi implementation
+		% relations are not garbage collected implicitly so
+		% nothing needs to be done.
+		%
+		% rl_out__get_rel_var_list(MemoedList, RelVarCodes),
+		% { GroupCode = tree(node([rl_PROC_grouprels]), RelVarCodes) }
+		{ GroupCode = empty }
 	),
 
 	rl_out_info_get_relation_addrs(Addrs),
@@ -680,9 +690,9 @@ rl_out__generate_proc_bytecode(Proc) -->
 
 	{ RLInstrCodeTree = 
 		tree(node(PermRelCodes),
-		tree(node(CollectCode),
+		tree(CollectCode,
 		tree(RLInstrCodeTree1,
-		tree(node(NameCode),
+		tree(NameCode,
 		tree(GroupCode,
 		tree(node(PermUnsetCodes),
 		node([rl_PROC_ret])	
@@ -721,24 +731,19 @@ rl_out__package_proc(Name, ArgLocs, Codes, ProcSchemaConst) -->
 %-----------------------------------------------------------------------------%
 
 	% Temporaries in Aditi are reference counted. If the count on a
-	% temporary goes to zero, it may be garbage collected. For relations
+	% temporary goes to zero, it will be garbage collected. For relations
 	% which are memoed, we do not inhibit garbage collection by
-	% holding a reference to them. Instead we just give them a name
-	% by which we can retrieve the relation later. If the system does
-	% not need to garbage collect the relation between calls, it
-	% will be used, otherwise it will be reinitialised. If one
-	% memoed relation in a procedure is dropped, all must be dropped
-	% to maintain correctness. Aditi should prefer to drop unnamed 
-	% temporaries to named ones, since unnamed temporaries cannot
-	% possibly be used later.
+	% holding a reference to them between calls. Instead we just give
+	% them a name by which we can retrieve the relation later.
 :- pred rl_out__collect_memoed_relations(string::in, rl_proc_name::in,
-		list(relation_id)::in, int::in, list(bytecode)::out,
-		list(bytecode)::out, rl_out_info::in,
+		list(relation_id)::in, int::in, byte_tree::out,
+		byte_tree::out, rl_out_info::in,
 		rl_out_info::out) is det.
 
-rl_out__collect_memoed_relations(_, _, [], _, [], []) --> [].
+rl_out__collect_memoed_relations(_, _, [], _, empty, empty) --> [].
 rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
-		[GetCode | GetCodes], [NameCode, DropCode | NameCodes]) -->
+		tree(node([GetCode]), GetCodes),
+		tree(node([NameCode, DropCode]), NameCodes)) -->
 
 	rl_out_info_get_relation_addr(Rel, Addr),
 	rl_out_info_get_relation_schema_offset(Rel, SchemaOffset),
@@ -1065,18 +1070,10 @@ rl_out__generate_instr(copy(OutputRel, InputRel) - _, Code) -->
 	% will also add any necessary indexes.
 	rl_out__generate_instr(init(OutputRel) - "", InitCode),
 
-	rl_out_info_get_next_materialise_id(Id),
-	{ Code = 
-		tree(InitCode,
-		node([
-			rl_PROC_materialise(Id),
-			rl_PROC_stream,
-			rl_PROC_var(InputAddr, 0),
-			rl_PROC_stream_end,
-			rl_PROC_var_list_cons(OutputAddr, 0),
-			rl_PROC_var_list_nil
-		])
-	) }.
+	rl_out__generate_copy_materialise(OutputAddr, InputAddr,
+		MaterialiseCode),
+	{ Code = tree(InitCode, MaterialiseCode) }.
+
 rl_out__generate_instr(make_unique(OutputRel, Input) - Comment, Code) -->
 	% 	if (one_reference(InputRel)) {
 	% 		OutputRel = add_index(InputRel)
@@ -1135,6 +1132,20 @@ rl_out__generate_instr(aggregate(Output, Input,
 	)) },
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).
 rl_out__generate_instr(comment - _, empty) --> [].
+
+:- pred rl_out__generate_copy_materialise(int::in, int::in, byte_tree::out,
+		rl_out_info::in, rl_out_info::out) is det.
+
+rl_out__generate_copy_materialise(OutputAddr, InputAddr, Code) -->
+	rl_out_info_get_next_materialise_id(Id),
+	{ Code = node([
+			rl_PROC_materialise(Id),
+			rl_PROC_stream,
+			rl_PROC_var(InputAddr, 0),
+			rl_PROC_stream_end,
+			rl_PROC_var_list_cons(OutputAddr, 0),
+			rl_PROC_var_list_nil
+		]) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -2186,9 +2197,10 @@ rl_out__instr_code_size(tree(CodeA, CodeB), Size) :-
 
 rl_out__generate_exprn(RLGoal, OutputSchemaOffset, ExprnNum) -->
 
-	rl_out_info_get_module_info(ModuleInfo),
-	{ rl_exprn__generate(ModuleInfo, RLGoal, ExprnCode,
-		NumParams, ExprnMode, Decls) },
+	rl_out_info_get_module_info(ModuleInfo0),
+	{ rl_exprn__generate(RLGoal, ExprnCode,
+		NumParams, ExprnMode, Decls, ModuleInfo0, ModuleInfo) },
+	rl_out_info_set_module_info(ModuleInfo),
 
 	rl_out__schema_to_string([], EmptySchemaOffset),
 	% Nothing is built on the stack, so this will be enough.
@@ -2210,9 +2222,11 @@ rl_out__generate_aggregate_exprn(ComputeInitial, UpdateAcc,
 		{ InputSchema = [GrpByType, NonGrpByType] },
 		{ OutputSchema = [_, AccType] }
 	->
-		rl_out_info_get_module_info(ModuleInfo),
-		{ rl_exprn__aggregate(ModuleInfo, ComputeInitial, UpdateAcc,
-			GrpByType, NonGrpByType, AccType, AggCode, Decls) },
+		rl_out_info_get_module_info(ModuleInfo0),
+		{ rl_exprn__aggregate(ComputeInitial, UpdateAcc, GrpByType,
+			NonGrpByType, AccType, AggCode, Decls,
+			ModuleInfo0, ModuleInfo) },
+		rl_out_info_set_module_info(ModuleInfo),
 		rl_out__schema_to_string([], EmptySchemaOffset),
 
 		% Nothing is built on the stack, so this will be enough.
@@ -2667,6 +2681,11 @@ rl_out_info_get_labels(Labels) --> Labels =^ proc_labels.
 		rl_out_info::out) is det.
 
 rl_out_info_get_module_info(ModuleInfo) --> ModuleInfo =^ module_info.
+
+:- pred rl_out_info_set_module_info(module_info::in, rl_out_info::in,
+		rl_out_info::out) is det.
+
+rl_out_info_set_module_info(ModuleInfo) --> ^ module_info := ModuleInfo. 
 
 %-----------------------------------------------------------------------------%
 

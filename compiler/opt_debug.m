@@ -327,6 +327,13 @@ dump_data_addr(rtti_addr(tc_rtti_id(TCName, TCDataName)), Str) :-
 	string__append_list(
 		["tc_rtti_addr(", TCNameStr, ", ", TCDataName_str, ")"],
 		Str).
+dump_data_addr(rtti_addr(aditi_rtti_id(ProcLabel)), Str) :-
+	string__append_list(
+		["aditi_rtti_addr(",
+			sym_name_to_string(qualified(ProcLabel ^ proc_module,
+				ProcLabel ^ proc_name)),
+			")"],
+		Str).
 dump_data_addr(layout_addr(LayoutName), Str) :-
 	dump_layout_name(LayoutName, LayoutName_str),
 	string__append_list(["layout_addr(", LayoutName_str, ")"], Str).

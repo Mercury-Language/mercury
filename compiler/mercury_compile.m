@@ -133,6 +133,7 @@
 :- import_module aditi_backend__rl_file.
 :- import_module backend_libs__compile_target_code.
 :- import_module backend_libs__name_mangle.
+:- import_module backend_libs__rtti.
 :- import_module check_hlds__goal_path.
 :- import_module hlds__arg_info.
 :- import_module hlds__hlds_data.
@@ -1522,8 +1523,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 		;
 			true
 		),
-		mercury_compile__maybe_generate_rl_bytecode(HLDS50,
-			Verbose, MaybeRLFile, !IO),
+		mercury_compile__maybe_generate_rl_bytecode(Verbose,
+			MaybeRLFile, HLDS50, HLDS51, !IO),
 		(
 			( Target = c
 			; Target = asm
@@ -1541,10 +1542,10 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			true
 		),
 		( AditiOnly = yes ->
-			HLDS = HLDS50,
+			HLDS = HLDS51,
 			FactTableBaseFiles = []
 		; Target = il ->
-			HLDS = HLDS50,
+			HLDS = HLDS51,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
 			( TargetCodeOnly = yes ->
 				mercury_compile__mlds_to_il_assembler(MLDS,
@@ -1561,7 +1562,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			),
 			FactTableBaseFiles = []
 		; Target = java ->
-			HLDS = HLDS50,
+			HLDS = HLDS51,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
 			mercury_compile__mlds_to_java(MLDS, !IO),
 			( TargetCodeOnly = yes ->
@@ -1577,7 +1578,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			FactTableBaseFiles = []
 		; Target = asm ->
 			% compile directly to assembler using the gcc back-end
-			HLDS = HLDS50,
+			HLDS = HLDS51,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
 			mercury_compile__maybe_mlds_to_gcc(MLDS,
 				MaybeRLFile, ContainsCCode, !IO),
@@ -1602,7 +1603,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			),
 			FactTableBaseFiles = []
 		; HighLevelCode = yes ->
-			HLDS = HLDS50,
+			HLDS = HLDS51,
 			mercury_compile__mlds_backend(HLDS, _, MLDS, !IO),
 			mercury_compile__mlds_to_high_level_c(MLDS,
 				MaybeRLFile, !IO),
@@ -1624,7 +1625,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			),
 			FactTableBaseFiles = []
 		;
-			mercury_compile__backend_pass(HLDS50, HLDS,
+			mercury_compile__backend_pass(HLDS51, HLDS,
 				GlobalData, LLDS, !IO),
 			mercury_compile__output_pass(HLDS, GlobalData, LLDS,
 				MaybeRLFile, ModuleName, _CompileErrors,
@@ -2385,15 +2386,16 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__maybe_generate_rl_bytecode(module_info::in, bool::in,
-	maybe(rl_file)::out, io::di, io::uo) is det.
+:- pred mercury_compile__maybe_generate_rl_bytecode(bool::in,
+		maybe(rl_file)::out, module_info::in, module_info::out,
+		io__state::di, io__state::uo) is det.
 
-mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
-		Verbose, MaybeRLFile, !IO) :-
+mercury_compile__maybe_generate_rl_bytecode(Verbose, MaybeRLFile,
+		!ModuleInfo, !IO) :-
 	globals__io_lookup_bool_option(aditi, Aditi, !IO),
 	(
 		Aditi = yes,
-		module_info_get_do_aditi_compilation(ModuleInfo,
+		module_info_get_do_aditi_compilation(!.ModuleInfo,
 			AditiCompile),
 		(
 			AditiCompile = do_aditi_compilation,
@@ -2404,26 +2406,24 @@ mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
 			maybe_write_string(Verbose,
 				"% Generating RL...\n", !IO),
 			maybe_flush_output(Verbose, !IO),
-			rl_gen__module(ModuleInfo, RLProcs0, !IO),
+			rl_gen__module(!.ModuleInfo, RLProcs0, !IO),
 			mercury_compile__maybe_dump_rl(RLProcs0,
-				ModuleInfo, "", "", !IO),
+				!.ModuleInfo, "", "", !IO),
 
 			%
 			% Optimize the RL procedures.
 			%
-			rl_opt__procs(ModuleInfo, RLProcs0, RLProcs, !IO),
+			rl_opt__procs(!.ModuleInfo, RLProcs0, RLProcs, !IO),
 			mercury_compile__maybe_dump_rl(RLProcs,
-				ModuleInfo, "", ".opt", !IO),
+				!.ModuleInfo, "", ".opt", !IO),
 
 			%
 			% Convert the RL procedures to bytecode.
 			%
-			rl_out__generate_rl_bytecode(ModuleInfo,
-				RLProcs, MaybeRLFile, !IO)
+			rl_out__generate_rl_bytecode(RLProcs, MaybeRLFile,
+				!ModuleInfo, !IO)
 		;
 			AditiCompile = no_aditi_compilation,
-			MaybeRLFile = no,
-
 			globals__io_lookup_bool_option(aditi_only, AditiOnly,
 				!IO),
 			(
@@ -2432,16 +2432,28 @@ mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
 				% Always generate a `.rlo' file if compiling
 				% with `--aditi-only'.
 				RLProcs = [],
-				rl_out__generate_rl_bytecode(ModuleInfo,
-					RLProcs, _, !IO)
+				rl_out__generate_rl_bytecode(RLProcs,
+					MaybeRLFile, !ModuleInfo, !IO)
 			;
-				AditiOnly = no
+				AditiOnly = no,
+				MaybeRLFile = no
 			)
 		)
 	;
 		Aditi = no,
 		MaybeRLFile = no
 	).
+
+:- pred mercury_compile__generate_aditi_proc_info(module_info,
+		list(rtti_data)).
+:- mode mercury_compile__generate_aditi_proc_info(in, out) is det.
+
+mercury_compile__generate_aditi_proc_info(HLDS, AditiProcInfoRttiData) :-
+	module_info_aditi_top_down_procs(HLDS, Procs),
+	AditiProcInfoRttiData = list__map(
+		(func(aditi_top_down_proc(proc(PredId, ProcId), _)) =
+			rtti__make_aditi_proc_info(HLDS, PredId, ProcId)
+		), Procs).
 
 %-----------------------------------------------------------------------------%
 
@@ -3776,6 +3788,7 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 	%
 	type_ctor_info__generate_rtti(HLDS, TypeCtorRttiData),
 	base_typeclass_info__generate_rtti(HLDS, OldTypeClassInfoRttiData),
+	generate_aditi_proc_info(HLDS, AditiProcInfoRttiData),
 	globals__io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti,
 		!IO),
 	type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
@@ -3785,6 +3798,8 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 	list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables),
 	list__map(llds__wrap_rtti_data, TypeClassInfoRttiData,
 		TypeClassInfos),
+	list__map(llds__wrap_rtti_data, AditiProcInfoRttiData,
+		AditiProcInfos),
 	stack_layout__generate_llds(HLDS, GlobalData0, GlobalData,
 		StackLayouts, LayoutLabels),
 	%
@@ -3803,7 +3818,8 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 	% Next we put it all together and output it to one or more C files.
 	%
 	list__condense([StaticCells, ClosureLayouts, StackLayouts,
-		TypeCtorTables, TypeClassInfos], AllData),
+		TypeCtorTables, TypeClassInfos, AditiProcInfos],
+		AllData),
 	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
 		Procs, GlobalVars, AllData, CFile, NumChunks, !IO),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
@@ -4174,13 +4190,15 @@ mercury_compile__mlds_backend(!HLDS, MLDS, !IO) :-
 mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
 	type_ctor_info__generate_rtti(HLDS, TypeCtorRtti),
 	base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRtti),
+
+	generate_aditi_proc_info(HLDS, AditiProcInfoRtti),
 	module_info_globals(HLDS, Globals),
 	globals__lookup_bool_option(Globals, new_type_class_rtti,
 		NewTypeClassRtti),
 	type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
 		NewTypeClassInfoRttiData),
 	list__condense([TypeCtorRtti, TypeClassInfoRtti,
-		NewTypeClassInfoRttiData], RttiData),
+		NewTypeClassInfoRttiData, AditiProcInfoRtti], RttiData),
 	RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
 	MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),
 	list__append(RttiDefns, Defns0, Defns),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,11 +107,13 @@
 	;	generate	% generates one output tuple
 	;	generate2	% generates two output tuples - used for
 				% B-tree key ranges.
+	;	generate_nondet % generates one output tuple.
+				% The `result' expression fragment
+				% can be called multiple times to
+				% return all the solutions.
 	.
 #else
-:- import_module std_util.
-
-:- type rl_file == unit.
+:- type rl_file ---> rl_file.
 #endif
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -344,6 +346,9 @@ rl_file__exprn_mode_to_int(ExprnMode, Mode) :-
 	;
 		ExprnMode = generate2,
 		Mode = 3
+	;
+		ExprnMode = generate_nondet,
+		Mode = 4
 	).
 
 :- pred rl_file__output_bytecodes(writer::writer, list(bytecode)::in, 

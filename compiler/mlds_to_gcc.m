@@ -1979,6 +1979,9 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
 	;
 		RttiId = tc_rtti_id(_, TCRttiName),
 		build_rtti_type_tc_name(TCRttiName, BaseType, !IO)
+	;
+		RttiId = aditi_rtti_id(_),
+		build_rtti_type_aditi_name(BaseType, !IO)
 	),
 	IsArray = rtti_id_has_array_type(RttiId),
 	(
@@ -2150,7 +2153,6 @@ build_rtti_type_name(type_ctor_info, GCC_Type, !IO) :-
 	% MR_TypeLayout       MR_type_ctor_layout;
 	% MR_int_least32_t    MR_type_ctor_num_functors;
 	% MR_int_least16_t    MR_type_ctor_flags;
-	MR_ProcAddr = gcc__ptr_type_node,
 	build_rtti_type_name(type_functors, MR_TypeFunctors, !IO),
 	build_rtti_type_name(type_layout, MR_TypeLayout, !IO),
 	build_struct_type("MR_TypeCtorInfo_Struct",
@@ -2159,8 +2161,8 @@ build_rtti_type_name(type_ctor_info, GCC_Type, !IO) :-
 		 'MR_int_least8_t'	- "MR_type_ctor_num_ptags",
 		 % MR_TypeCtorRepInt is typedef'd to be MR_int_least16_t
 		 'MR_int_least16_t'	- "MR_type_ctor_rep_CAST_ME",
-		 MR_ProcAddr		- "MR_type_ctor_unify_pred",
-		 MR_ProcAddr		- "MR_type_ctor_compare_pred",
+		 'MR_ProcAddr'		- "MR_type_ctor_unify_pred",
+		 'MR_ProcAddr'		- "MR_type_ctor_compare_pred",
 		 'MR_ConstString'	- "MR_type_ctor_module_name",
 		 'MR_ConstString'	- "MR_type_ctor_name",
 		 MR_TypeFunctors	- "MR_type_ctor_functors",
@@ -2203,6 +2205,25 @@ build_rtti_type_tc_name(type_class_instance_constraints(_), GCC_Type, !IO) :-
 build_rtti_type_tc_name(type_class_instance_methods(_), _GCC_Type, !IO) :-
 	sorry(this_file,
 		"build_rtti_type_tc_name: type_class_instance_methods").
+
+:- pred build_rtti_type_aditi_name(gcc__type::out,
+		io__state::di, io__state::uo) is det.
+
+build_rtti_type_aditi_name(GCC_Type, !IO) :-
+	% typedef struct {
+	%	MR_ProcAddr	MR_aditi_proc_addr;
+	%	MR_String	MR_aditi_proc_name;
+	%	MR_TypeInfo	MR_aditi_input_type_info;
+	%	MR_TypeInfo	MR_aditi_output_type_info;
+	%	MR_Determinism	MR_aditi_proc_detism;
+	% } MR_Aditi_Proc_Info;
+	build_struct_type("MR_Aditi_Proc_Info",
+		['MR_ProcAddr'		- "MR_aditi_proc_addr",
+		 'MR_String'		- "MR_aditi_proc_name",
+		 'MR_TypeInfo'		- "MR_aditi_input_type_info",
+		 'MR_TypeInfo'		- "MR_aditi_output_type_info",
+		 'MR_Determinism'	- "MR_aditi_proc_detism"],
+		GCC_Type, !IO).
 
 :- pred build_type_info_type(rtti_type_info::in,
 	gcc__type::out, io__state::di, io__state::uo) is det.
@@ -2593,6 +2614,7 @@ fixup_rtti_id(ctor_rtti_id(RttiTypeCtor0, RttiName0))
 	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
 	RttiName = fixup_rtti_name(RttiName0).
 fixup_rtti_id(tc_rtti_id(TCName, TCRttiName)) = tc_rtti_id(TCName, TCRttiName).
+fixup_rtti_id(aditi_rtti_id(ProcLabel)) = aditi_rtti_id(ProcLabel).
 
 	% XXX sometimes earlier stages of the compiler forget to add
 	% the appropriate qualifiers for stuff in the `builtin' module;
@@ -3730,11 +3752,13 @@ gen_context(MLDS_Context) -->
 :- func 'MR_ConstString'	= gcc__type.
 :- func 'MR_Word'		= gcc__type.
 :- func 'MR_bool'		= gcc__type.
+:- func 'MR_ProcAddr'		= gcc__type.
 :- func 'MR_TypeInfo'		= gcc__type.
 :- func 'MR_TypeCtorInfo'	= gcc__type.
 :- func 'MR_PseudoTypeInfo'	= gcc__type.
 :- func 'MR_Sectag_Locn'	= gcc__type.
 :- func 'MR_TypeCtorRep'	= gcc__type.
+:- func 'MR_Determinism'	= gcc__type.
 :- func 'MR_PredFunc'		= gcc__type.
 
 :- func 'MR_int_least8_t'	= gcc__type.
@@ -3753,17 +3777,19 @@ gen_context(MLDS_Context) -->
 	% XXX 'MR_Word' should perhaps be unsigned, to match the C back-end
 'MR_Word'		= gcc__intptr_type_node.
 'MR_bool'		= gcc__integer_type_node. % i.e. typedef int MR_bool
+'MR_ProcAddr'		= gcc__ptr_type_node.
 
 'MR_TypeInfo'		= gcc__ptr_type_node.
 'MR_TypeCtorInfo'	= gcc__ptr_type_node.
 'MR_PseudoTypeInfo'	= gcc__ptr_type_node.
 
-	% XXX MR_Sectag_Locn, MR_TypeCtorRep, and MR_PredFunc are actually
-	% enums in the C back-end.  Binary compatibility between this
-	% back-end and the C back-end only works if the C compiler
+	% XXX MR_Sectag_Locn, MR_TypeCtorRep, MR_Determinism and MR_PredFunc
+	% are actually enums in the C back-end.  Binary compatibility between
+	% this back-end and the C back-end only works if the C compiler
 	% represents these enums the same as `int'.
 'MR_Sectag_Locn'	= gcc__integer_type_node.
 'MR_TypeCtorRep'	= gcc__integer_type_node.
+'MR_Determinism'	= gcc__integer_type_node.
 'MR_PredFunc'		= gcc__integer_type_node.
 
 'MR_int_least8_t'	= gcc__int8_type_node.

@@ -5652,6 +5652,24 @@ This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
 This option is not yet supported for the IL or Java back-ends.
 
+@ifset aditi
+@sp 1
+@item --aditi
+@findex --aditi
+Enable Aditi compilation.  You need to enable this option if you
+are making use of the Aditi deductive database interface (@pxref{Using Aditi}).
+
+@c --aditi-calls-mercury is not fully implemented.
+@ignore
+@sp 1
+@item --aditi-calls-mercury
+@findex --aditi-calls-mercury
+Enable calling ordinary Mercury code from Aditi.
+@end ignore
+
+@end ifset
+@c aditi
+
 @end table
 
 @node Developer compilation model options
@@ -6732,12 +6750,6 @@ or user to interactively compile several modules without the overhead of
 process creation for each one.)
 
 @ifset aditi
-@sp 1
-@item --aditi
-@findex --aditi
-Enable Aditi compilation.  You need to enable this option if you
-are making use of the Aditi deductive database interface (@pxref{Using Aditi}).
-
 @sp 1
 @item --aditi-user
 @findex --aditi-user

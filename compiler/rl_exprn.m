@@ -113,8 +113,9 @@
 	%	ExprnMode, ExprnVarTypes).
 	%
 	% Generate an expression for a join/project/subtract condition.
-:- pred rl_exprn__generate(module_info::in, rl_goal::in, list(bytecode)::out,
-	int::out, exprn_mode::out, list(type)::out) is det.
+:- pred rl_exprn__generate(rl_goal::in, list(bytecode)::out,
+	int::out, exprn_mode::out, list(type)::out,
+	module_info::in, module_info::out) is det.
 
 	% rl_exprn__aggregate(ModuleInfo, InitAccPred, UpdateAccPred,
 	% 	GrpByType, NonGrpByType, AccType, ExprnCode, Decls).
@@ -122,9 +123,9 @@
 	% Given the closures used to create the initial accumulator for each
 	% group and update the accumulator for each tuple, create
 	% an expression to evaluate the aggregate.
-:- pred rl_exprn__aggregate(module_info::in, pred_proc_id::in,
-		pred_proc_id::in, (type)::in, (type)::in, (type)::in,
-		list(bytecode)::out, list(type)::out) is det.
+:- pred rl_exprn__aggregate(pred_proc_id::in, pred_proc_id::in,
+	(type)::in, (type)::in, (type)::in, list(bytecode)::out,
+	list(type)::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -133,6 +134,7 @@
 :- import_module aditi_backend__rl_out.
 :- import_module backend_libs.
 :- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__rtti.
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
@@ -140,15 +142,19 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
+:- import_module hlds__goal_util.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
 :- import_module hlds__special_pred.
 :- import_module libs__tree.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__inlining.
+:- import_module backend_libs__name_mangle.
 
-:- import_module assoc_list, bool, char, int, map.
+:- import_module assoc_list, bool, char, counter, int, map.
 :- import_module require, set, std_util, string, term, varset.
 
 	% A compare expression tests each attribute in a list of attributes
@@ -594,18 +600,573 @@ rl_exprn__generate_modify_project_exprn_2([Type | Types],
 
 %-----------------------------------------------------------------------------%
 
-rl_exprn__generate(ModuleInfo, RLGoal, Code, NumParams, Mode, Decls) :-
+rl_exprn__generate(RLGoal, Code, NumParams, Mode, Decls,
+		ModuleInfo0, ModuleInfo) :-
 	RLGoal = rl_goal(_, VarSet, VarTypes, InstMap,
-		Inputs, MaybeOutputs, Goals, _),
-	rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info0),
-	rl_exprn__generate_2(Inputs, MaybeOutputs, Goals,
-		Code, NumParams, Mode, Decls, Info0, _).
+		Inputs, MaybeOutputs, Goals, _), 
+	rl_exprn_info_init(ModuleInfo0, InstMap, VarTypes, VarSet, Info0),
+	module_info_globals(ModuleInfo0, Globals),
+	globals__lookup_bool_option(Globals, aditi_calls_mercury,
+		AditiCallsMercury),
+	(
+		%
+		% We prefer to generate code using the
+		% bytecodes if possible, to avoid data conversion.
+		% XXX If there is a simple semidet prefix of the
+		% conjunction, we could generate that using the
+		% bytecodes.
+		%
+		( AditiCallsMercury = no
+		; \+ rl_exprn__goal_is_complex(ModuleInfo0,
+			InstMap, Goals)
+		)
+	->
+		rl_exprn__generate_simple_goal(Inputs, MaybeOutputs, Goals,
+			Code, NumParams, Mode, Decls, Info0, Info)
+	;
+		rl_exprn__generate_top_down_call(Inputs, MaybeOutputs,
+			Goals, Code, NumParams, Mode, Decls, Info0, Info)
+	),
+	rl_exprn_info_get_module_info(ModuleInfo, Info, _).
 
-:- pred rl_exprn__generate_2(rl_goal_inputs::in, rl_goal_outputs::in,
+:- pred rl_exprn__goal_is_complex(module_info::in,
+		instmap::in, list(hlds_goal)::in) is semidet.
+
+rl_exprn__goal_is_complex(ModuleInfo, _InstMap, Goals) :-
+	list__member(Goal, Goals),
+	goal_contains_goal(Goal, SubGoal),
+	SubGoal = SubGoalExpr - SubGoalInfo,
+	(
+		goal_info_get_determinism(SubGoalInfo, Detism),
+		determinism_components(Detism, _, at_most_many)
+	;
+		SubGoalExpr = call(PredId, ProcId, _, _, _, _),
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		\+ rl_exprn__is_builtin(PredId, ProcId, PredInfo)
+	;
+		SubGoalExpr = generic_call(_, _, _, _)
+	;
+		SubGoalExpr = foreign_proc(_, _, _, _, _, _)
+	;
+		SubGoalExpr = par_conj(_)
+	;
+		SubGoalExpr = unify(_, _, _, Unification, _),
+		Unification = construct(_, ConsId, _, _, _, _, _),
+		rl_exprn__cons_id_is_complex(ConsId) = yes
+	).
+
+:- func rl_exprn__cons_id_is_complex(cons_id) = bool.
+
+rl_exprn__cons_id_is_complex(cons(_, _)) = no.
+rl_exprn__cons_id_is_complex(int_const(_)) = no.
+rl_exprn__cons_id_is_complex(string_const(_)) = no.
+rl_exprn__cons_id_is_complex(float_const(_)) = no.
+rl_exprn__cons_id_is_complex(pred_const(_, _)) = yes.
+rl_exprn__cons_id_is_complex(type_ctor_info_const(_, _, _)) = yes.
+rl_exprn__cons_id_is_complex(base_typeclass_info_const(_, _, _, _)) = yes.
+rl_exprn__cons_id_is_complex(type_info_cell_constructor(_)) = yes.
+rl_exprn__cons_id_is_complex(typeclass_info_cell_constructor) = yes.
+rl_exprn__cons_id_is_complex(tabling_pointer_const(_)) = yes.
+rl_exprn__cons_id_is_complex(table_io_decl(_)) = yes.
+rl_exprn__cons_id_is_complex(deep_profiling_proc_layout(_)) = yes.
+
+%-----------------------------------------------------------------------------%
+
+	%
+	% Produce a procedure to evaluate a join condition,
+	% and expression bytecodes to call it.
+	% The join condition may contain arbitrary Mercury goals.
+	%
+:- pred rl_exprn__generate_top_down_call(rl_goal_inputs::in,
+	rl_goal_outputs::in, list(hlds_goal)::in, list(bytecode)::out,
+	int::out, exprn_mode::out, list(type)::out,
+	rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__generate_top_down_call(Inputs, MaybeOutputs,
+		GoalList, Code, NumParams, Mode, Decls) -->
+	{ goal_list_determinism(GoalList, Detism) },
+	{ determinism_components(Detism, CanFail, MaxSoln) },
+	{ goal_list_nonlocals(GoalList, NonLocals0) },
+	{ MaybeOutputs = yes(OutputArgs0) ->
+		OutputArgs = OutputArgs0,
+		set__insert_list(NonLocals0, OutputArgs, NonLocals)
+	;
+		OutputArgs = [],
+		NonLocals = NonLocals0
+	},
+
+	% XXX It is common for arguments to be passed through a join
+	% condition without being used. In that case we should avoid
+	% the conversion to and from Mercury.
+
+	%
+	% Work out the set of input arguments for the top-down code.
+	%
+	(
+		{ Inputs = no_inputs },
+		{ InputArgs = [] }
+	;
+		{ Inputs = one_input(InputVars) },
+		{ list__filter(
+			(pred(X::in) is semidet :- set__member(X, NonLocals)),
+			InputVars, InputArgs) }
+	;
+		{ Inputs = two_inputs(InputVars1, InputVars2) },
+		{ list__filter(set__contains(NonLocals),
+			list__append(InputVars1, InputVars2),
+			InputArgs) }
+	),
+
+	%
+	% Build the Mercury procedure to be called.
+	%
+	rl_exprn__build_top_down_procedure(InputArgs, OutputArgs, GoalList,
+		DataName, AditiProcId),
+	rl_exprn_info_lookup_const(string(DataName), DataConst),
+	{ DeclareCode =
+		node([rl_EXP_declare_mercury_proc(AditiProcId, DataConst)]) },
+
+	%
+	% Allocate the Mercury tuple to store the input arguments
+	% to the top-down call.
+	%
+	rl_exprn_info_get_free_reg(int_type, ArgsLoc),
+	rl_exprn_info_reg_is_args_location(ArgsLoc),
+	rl_exprn__generate_pop(reg(ArgsLoc), int_type, ArgsLocPopCode),
+	{ InputCode =
+		tree(node([rl_EXP_allocate_mercury_input_args(AditiProcId)]),
+		tree(ArgsLocPopCode,
+		InputCode0
+	)) },
+
+	%
+	% Convert the input arguments from Aditi to Mercury,
+	% and pack them into the tuple allocated above.
+	%
+	(
+		{ Inputs = no_inputs },
+		{ NumParams = 0 },
+		{ InputCode0 = empty }
+	;
+		{ Inputs = one_input(InputVarsB) },
+		{ NumParams = 1 },
+		rl_exprn__construct_mercury_input_tuple(ArgsLoc, one, 0,
+			0, _NumArgs, InputVarsB, NonLocals,
+			AditiProcId, InputCode0)
+	;
+		{ Inputs = two_inputs(InputVars1B, InputVars2B) },
+		{ NumParams = 2 },
+		rl_exprn__construct_mercury_input_tuple(ArgsLoc, one, 0,
+			0, NumArgs1, InputVars1B, NonLocals, AditiProcId,
+			Tuple1InputCode),
+		rl_exprn__construct_mercury_input_tuple(ArgsLoc, two, 0,
+			NumArgs1, _NumArgs, InputVars2B, NonLocals,
+			AditiProcId, Tuple2InputCode),
+		% Build the arguments in reverse order.
+		{ InputCode0 = tree(Tuple2InputCode, Tuple1InputCode) }
+	),
+
+	%
+	% Call the procedure, passing in the tuple containing
+	% the input arguments.
+	%
+	rl_exprn__generate_push(reg(ArgsLoc), int_type, ArgsLocPushCode),
+	{ CallCode = rl_EXP_call_mercury_proc(AditiProcId) },
+	(
+		{ CanFail = cannot_fail },
+		{ CheckResultCode = rl_EXP_int_pop }
+	;
+		{ CanFail = can_fail },
+		{ CheckResultCode = rl_EXP_fail_if_false }
+	),
+
+	%
+	% Find out where the output arguments are stored.
+	%
+	rl_exprn_info_get_free_reg(int_type, AllResultsReg),
+	rl_exprn__generate_pop(reg(AllResultsReg), int_type,
+		StoreResultLocnCode),
+
+	%
+	% Deallocate the tuple of input arguments.
+	%
+	rl_exprn__cleanup_mercury_value(rl_EXP_clear_mercury_input_args,
+		ArgsLoc, empty, CleanupArgsCode),
+
+	( { MaxSoln = at_most_many } ->
+		%
+		% Tell Aditi that this join condition may
+		% have more solutions.
+		%
+		{ SetMoreSolutionsCode =
+			node([
+				rl_EXP_int_immed(1),
+				rl_EXP_set_more_solutions
+			]) }
+	;
+		{ SetMoreSolutionsCode = empty }
+	),
+
+	{ EvalCode0 =
+		tree(InputCode,
+		tree(ArgsLocPushCode,
+		tree(node([CallCode]),
+		tree(CleanupArgsCode,
+		tree(node([CheckResultCode]),
+		tree(StoreResultLocnCode,
+		SetMoreSolutionsCode
+	)))))) },
+
+	%
+	% Convert the output arguments from Mercury to Aditi.
+	%
+	(
+		{ MaybeOutputs = yes(_) },
+		( { MaxSoln = at_most_many } ->
+			%
+			% For a nondet procedure, Aditi collects
+			% all solutions in a list, and returns
+			% one solution for each call to the
+			% `result' expression fragment.
+			% When there are no more solutions,
+			% the list of solutions is deallocated.
+			%
+			rl_exprn_info_reg_is_multiple_value_location(
+				AllResultsReg),
+			rl_exprn__generate_push(reg(AllResultsReg),
+				int_type, PushNondetResultLocnCode),
+			rl_exprn_info_get_free_reg(int_type, SingleResultReg),
+			rl_exprn__generate_pop(reg(SingleResultReg), int_type, 
+				PopSingleResultLocnCode),
+			rl_exprn_info_get_next_label_id(MoreSolutionsLabel),
+			rl_exprn__cleanup_mercury_value(
+				rl_EXP_cleanup_nondet_solution,
+				AllResultsReg, empty, NondetCleanupCode),	
+			{ RetrieveCode =
+			    tree(PushNondetResultLocnCode,
+			    tree(node([
+			    	rl_EXP_retrieve_nondet_solution(AditiProcId)
+			    ]),
+			    tree(PopSingleResultLocnCode,
+			    tree(node([
+				rl_EXP_int_dup,
+			    	rl_EXP_set_more_solutions,
+				rl_EXP_bnez(MoreSolutionsLabel)
+			    ]),
+			    tree(NondetCleanupCode,
+			    node([
+				rl_PROC_label(MoreSolutionsLabel)
+			    ])
+			))))) }
+		;
+			{ RetrieveCode = empty },
+			{ SingleResultReg = AllResultsReg }
+		),
+		rl_exprn_info_reg_is_single_value_location(SingleResultReg),
+
+		%
+		% Extract the output arguments from the tuple,
+		% and convert them from Mercury to Aditi.
+		%
+		rl_exprn__deconstruct_mercury_output_tuple(SingleResultReg,
+			AditiProcId, OutputArgs, 0, OutputCode),
+		rl_exprn__cleanup_mercury_value(rl_EXP_cleanup_single_solution,
+			SingleResultReg, empty, CleanupSingleResultCode),	
+						
+		{ ResultCode =
+			tree(RetrieveCode,
+			tree(OutputCode,
+			CleanupSingleResultCode
+		)) },
+		{ EvalCode = EvalCode0 }
+	;
+		{ MaybeOutputs = no },
+		%
+		% We aren't expecting any outputs, but just for consistency
+		% an output tuple will be generated, so deallocate it here.
+		%
+		rl_exprn__generate_push(reg(AllResultsReg),
+			int_type, CleanupPushStoreLocnCode),
+		{ MaxSoln = at_most_many ->
+			% This probably shouldn't happen.
+			CleanupByteCode = rl_EXP_cleanup_nondet_solution
+		;
+			CleanupByteCode = rl_EXP_cleanup_single_solution
+		},
+		rl_exprn__cleanup_mercury_value(CleanupByteCode, AllResultsReg,
+			empty, CleanupCode),	
+		{ EvalCode =
+			tree(EvalCode0,
+			tree(CleanupPushStoreLocnCode,
+			CleanupCode
+		)) },
+		{ ResultCode = empty }
+	),
+
+	{ rl_exprn__get_exprn_mode(MaybeOutputs, MaxSoln, Mode) },
+
+	rl_exprn__generate_decls(ConstCode, InitCode, Decls),
+
+	%
+	% Clear the references to any Mercury values (e.g. input arguments,
+	% result tuples) so they can be garbage collected.
+	%
+	rl_exprn__cleanup_mercury_values(CleanupMercuryValueCode),
+	{ rl_exprn__generate_fragments(ConstCode, tree(DeclareCode, InitCode),
+		empty, EvalCode, ResultCode, CleanupMercuryValueCode, Code) }.
+
+:- pred rl_exprn__construct_mercury_input_tuple(reg_id::in,
+		tuple_num::in, int::in, int::in, int::out, list(prog_var)::in,
+		set(prog_var)::in, mercury_proc_id::in, byte_tree::out,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__construct_mercury_input_tuple(_, _, _,
+		ArgNum, ArgNum, [], _, _, empty) --> [].
+rl_exprn__construct_mercury_input_tuple(ArgsLoc, Tuple, TupleArg,
+		ArgNum0, ArgNum, [Arg | Args], NonLocals, ProcId, Code) -->
+	rl_exprn_info_lookup_var_type(Arg, Type),
+
+	( { set__member(Arg, NonLocals) } ->
+		% Push argument location.
+		rl_exprn__generate_push(reg(ArgsLoc), int_type,
+			ArgLocPushCode),
+
+		% Push the argument value.
+		rl_exprn__generate_push(input_field(Tuple, TupleArg),
+			Type, PushCode),
+
+		{ rl_exprn__convert_mercury_input_arg_code(Type,
+			ProcId, ArgNum0, ArgCode) },
+		{ ArgNum1 = ArgNum0 + 1 },
+		{ Code0 = tree(ArgLocPushCode, tree(PushCode, ArgCode)) } 
+	;
+		{ ArgNum1 = ArgNum0 },
+		{ Code0 = empty }
+	),
+	rl_exprn__construct_mercury_input_tuple(ArgsLoc, Tuple,
+		TupleArg + 1, ArgNum1, ArgNum, Args, NonLocals,
+		ProcId, Code1),
+	% The expression evaluator expects the arguments to be
+	% passed in reverse order.
+	{ Code = tree(Code1, Code0) }.
+
+:- pred rl_exprn__convert_mercury_input_arg_code((type)::in,
+		mercury_proc_id::in, int::in, byte_tree::out) is det.
+
+rl_exprn__convert_mercury_input_arg_code(Type, ProcId, Arg, Code) :-
+	rl_exprn__type_to_aditi_type(Type, AditiType),
+	(
+		AditiType = int,
+		Bytecode = rl_EXP_convert_int_mercury_input_arg(ProcId, Arg)
+	;
+		AditiType = string,
+		Bytecode = rl_EXP_convert_str_mercury_input_arg(ProcId, Arg)
+	;
+		AditiType = float,
+		Bytecode = rl_EXP_convert_flt_mercury_input_arg(ProcId, Arg)
+	;
+		AditiType = term(_),
+		Bytecode = rl_EXP_convert_term_mercury_input_arg(ProcId, Arg)
+	),
+	Code = node([Bytecode]).
+
+:- pred rl_exprn__deconstruct_mercury_output_tuple(reg_id::in,
+		mercury_proc_id::in, list(prog_var)::in, int::in,
+		byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__deconstruct_mercury_output_tuple(_, _, [], _, empty) --> [].
+rl_exprn__deconstruct_mercury_output_tuple(SolnLocn, ProcId, [Arg | Args],
+		ArgNum, OutputCode) -->
+	rl_exprn__generate_push(reg(SolnLocn), int_type, PushSolnCode),
+	rl_exprn_info_lookup_var_type(Arg, ArgType),
+	{ rl_exprn__convert_mercury_output_arg_code(ArgType, ProcId,
+		ArgNum, ArgNum, OutputCode0) },
+	rl_exprn__deconstruct_mercury_output_tuple(SolnLocn, ProcId, Args,
+		ArgNum + 1, OutputCode1),
+	{ OutputCode = tree(PushSolnCode, tree(OutputCode0, OutputCode1)) }.
+
+:- pred rl_exprn__convert_mercury_output_arg_code((type)::in,
+		mercury_proc_id::in, int::in, int::in, byte_tree::out) is det.
+
+rl_exprn__convert_mercury_output_arg_code(Type, ProcId, Arg, Attr, Code) :-
+	rl_exprn__type_to_aditi_type(Type, AditiType),
+	(
+		AditiType = int,
+		Bytecode = rl_EXP_convert_int_mercury_output_arg(ProcId,
+				Arg, Attr)
+	;
+		AditiType = string,
+		Bytecode = rl_EXP_convert_str_mercury_output_arg(ProcId,
+				Arg, Attr)
+	;
+		AditiType = float,
+		Bytecode = rl_EXP_convert_flt_mercury_output_arg(ProcId,
+				Arg, Attr)
+	;
+		AditiType = term(_),
+		Bytecode = rl_EXP_convert_term_mercury_output_arg(ProcId,
+				Arg, Attr)
+	),
+	Code = node([Bytecode]).
+
+	% Build a new Mercury procedure for the given list of goals.
+	% The input arguments will be passed as a tuple.
+	% The output arguments will be returned as a tuple.
+	% (Passing all arguments in a single tuple simplifies
+	% the data conversion code in the Aditi).
+:- pred rl_exprn__build_top_down_procedure(list(prog_var)::in,
+	list(prog_var)::in, list(hlds_goal)::in, string::out, int::out,
+	rl_exprn_info::in, rl_exprn_info::out) is det.
+		
+rl_exprn__build_top_down_procedure(InputArgs, OutputArgs,
+		Goals, DataName, AditiProcId) -->
+	rl_exprn__name_top_down_procedure(AditiProcId, ProcName),
+	{ init_markers(Markers) },
+	{ Owner = "" },
+	{ IsAddressTaken = address_is_taken },
+
+	% XXX magic.m should arrange for these to be passed in
+	% if the top-down goal has any existentially quantified
+	% type variables.
+	{ varset__init(TVarSet) },
+	{ varset__init(InstVarSet) },
+	{ map__init(TVarMap) },
+	{ map__init(TCVarMap) },
+	rl_exprn_info_get_varset(VarSet0),
+	rl_exprn_info_get_vartypes(VarTypes0),
+	rl_exprn_info_get_instmap(InstMap),
+	rl_exprn_info_get_module_info(ModuleInfo0),
+
+	%
+	% Wrap the given goals with goals to deconstruct the
+	% input tuple and construct the output tuple.
+	%
+	{ varset__new_var(VarSet0, InputTupleVar, VarSet1) },
+	{ varset__new_var(VarSet1, OutputTupleVar, VarSet) },
+	{ map__apply_to_list(InputArgs, VarTypes0, InputArgTypes) },
+	{ map__apply_to_list(OutputArgs, VarTypes0, OutputArgTypes) },
+	{ construct_type(unqualified("{}") - list__length(InputArgTypes),
+		InputArgTypes, InputTupleType) },
+	{ construct_type(unqualified("{}") - list__length(InputArgTypes),
+		OutputArgTypes, OutputTupleType) },
+	{ map__det_insert(VarTypes0, InputTupleVar,
+		InputTupleType, VarTypes1) },
+	{ map__det_insert(VarTypes1, OutputTupleVar,
+		OutputTupleType, VarTypes) },
+
+	{ deconstruct_tuple(InputTupleVar, InputArgs, InputTupleGoal) },
+	{ construct_tuple(OutputTupleVar, OutputArgs, OutputTupleGoal) },
+	{ AllGoals = list__append([InputTupleGoal | Goals],
+			[OutputTupleGoal]) },
+	{ instmap__lookup_vars(InputArgs, InstMap, InputInsts) },
+	{ goal_list_instmap_delta(Goals, InstMapDelta) },
+	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, FinalInstMap) },
+	{ instmap__lookup_vars(OutputArgs, FinalInstMap, FinalOutputInsts) },
+
+	{ InputTupleConsId = cons(unqualified("{}"),
+				list__length(InputArgs)) },
+	{ InputTupleInst = bound(unique,
+			[functor(InputTupleConsId, InputInsts)]) },
+
+	{ OutputTupleConsId = cons(unqualified("{}"),
+				list__length(OutputArgs)) },
+	{ OutputTupleInst = bound(unique,
+			[functor(OutputTupleConsId, FinalOutputInsts)]) },
+
+	{ instmap__init_reachable(InitialInstMap0) },
+	{ instmap__set(InitialInstMap0, InputTupleVar, InputTupleInst,
+		InitialInstMap) },
+
+	{ instmap_delta_from_assoc_list([OutputTupleVar - OutputTupleInst],
+		GoalInstMapDelta) },
+	{ goal_list_determinism(Goals, Detism) },	
+	{ goal_info_init(list_to_set([InputTupleVar, OutputTupleVar]),
+		GoalInstMapDelta, Detism, pure, GoalInfo) },
+	{ conj_list_to_goal(AllGoals, GoalInfo, Goal) },
+
+	{ ClassContext = constraints([], []) },
+	{ PredArgs = [InputTupleVar, OutputTupleVar] },
+	{ hlds_pred__define_new_pred(Goal, _CallGoal, PredArgs, _ExtraArgs,
+		InitialInstMap, ProcName, TVarSet, VarTypes, ClassContext,
+		TVarMap, TCVarMap, VarSet, InstVarSet, Markers, Owner,
+		IsAddressTaken, ModuleInfo0, ModuleInfo1, PredProcId) },
+
+	{ PredProcId = proc(PredId, ProcId) },
+	{ rtti__id_to_c_identifier(
+		aditi_rtti_id(rtti__make_rtti_proc_label(ModuleInfo1,
+			PredId, ProcId)),
+		DataName0) },
+	{ DataName = mercury_data_prefix ++ DataName0 },
+
+	{ module_info_aditi_top_down_procs(ModuleInfo1, Procs0) },
+	{ module_info_set_aditi_top_down_procs(ModuleInfo1,
+		[aditi_top_down_proc(PredProcId, DataName) | Procs0],
+		ModuleInfo) },
+	rl_exprn_info_set_module_info(ModuleInfo).
+
+:- pred rl_exprn__name_top_down_procedure(mercury_proc_id::out, string::out,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__name_top_down_procedure(ExprnProcId, ProcName) -->
+	rl_exprn_info_get_next_mercury_proc(ModuleProcId, ExprnProcId),
+
+	rl_exprn_info_get_module_info(ModuleInfo0),
+	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ ModuleStr = sym_name_mangle(ModuleName) },
+	{ ProcName = string__append_list(
+		[ModuleStr, "__aditi_proc__", int_to_string(ModuleProcId)]) }.
+
+	% Aditi keeps pointers to all Mercury values it uses
+	% in an array stored in a global variable to avoid them
+	% being garbage collected.  When we're finished with the
+	% values used by an expression, we need to clear the array.
+:- pred rl_exprn__cleanup_mercury_values(byte_tree::out,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__cleanup_mercury_values(CleanupCode) -->
+	DetValues =^ single_value_locations,
+	NondetValues =^ multiple_value_locations,
+	ArgsValues =^ input_args_locations,
+	list__foldl2(
+	    rl_exprn__cleanup_mercury_value(rl_EXP_cleanup_single_solution),
+	    DetValues, empty, DetCleanupCode),
+	list__foldl2(
+	    rl_exprn__cleanup_mercury_value(rl_EXP_cleanup_nondet_solution),
+	    NondetValues, DetCleanupCode, DetAndNondetCleanupCode),
+	list__foldl2(
+	    rl_exprn__cleanup_mercury_value(rl_EXP_clear_mercury_input_args),
+	    ArgsValues, DetAndNondetCleanupCode, CleanupCode).
+
+	% Aditi keeps pointers to all Mercury values it uses
+	% in an array stored in a global variable to avoid them
+	% being garbage collected.  This predicate generates
+	% bytecode to clear the entry in the array for one of
+	% those values.
+:- pred rl_exprn__cleanup_mercury_value(bytecode::in, reg_id::in,
+		byte_tree::in, byte_tree::out,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn__cleanup_mercury_value(CleanupBytecode, Reg,
+		CleanupCode0, CleanupCode) -->
+	rl_exprn__generate_push(reg(Reg), int_type, PushCode),
+	rl_exprn__generate_pop(reg(Reg), int_type, PopCode),
+	{ CleanupCode =
+		tree(CleanupCode0,
+		tree(PushCode,
+		tree(node([
+			CleanupBytecode,
+			rl_EXP_invalid_solution_location
+		]),
+		PopCode	
+	))) }.
+
+%-----------------------------------------------------------------------------%
+
+:- pred rl_exprn__generate_simple_goal(rl_goal_inputs::in, rl_goal_outputs::in,
 	list(hlds_goal)::in, list(bytecode)::out, int::out, exprn_mode::out,
 	list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
+rl_exprn__generate_simple_goal(Inputs, MaybeOutputs, GoalList, 
 		Code, NumParams, Mode, Decls) -->
 	{ goal_list_determinism(GoalList, Detism) },
 	{ determinism_components(Detism, CanFail, _) },
@@ -645,11 +1206,9 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 
 	( { MaybeOutputs = yes(OutputVars) } ->
 		rl_exprn__construct_output_tuple(GoalList,
-			OutputVars, OutputCode),
-		{ Mode = generate }
+			OutputVars, OutputCode)
 	;
-		{ OutputCode = empty },
-		{ Mode = test }
+		{ OutputCode = empty }
 	),
 
 	{
@@ -670,6 +1229,8 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 		)),
 		rl_exprn__resolve_addresses(ProjectCode0, ProjectCode)
 	},
+
+	{ rl_exprn__get_exprn_mode(MaybeOutputs, at_most_one, Mode) },
 
 	% Need to do the init code last, since it also needs to define
 	% the rule constants for the other fragments.
@@ -711,6 +1272,20 @@ rl_exprn__generate_fragments(DeclCode, InitCode, GroupInitCode,
 	tree__flatten(CodeTree, Code0),
 	list__condense(Code0, Code).
 
+:- pred rl_exprn__get_exprn_mode(rl_goal_outputs::in,
+		soln_count::in, exprn_mode::out) is det.
+
+rl_exprn__get_exprn_mode(MaybeOutputs, MaxSoln, Mode) :-
+	( MaybeOutputs = yes(_) ->
+		( MaxSoln = at_most_many ->
+			Mode = generate_nondet
+		;
+			Mode = generate
+		)
+	;
+		Mode = test
+	).
+
 :- pred rl_exprn__generate_decls(byte_tree::out, byte_tree::out,
 		list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -726,7 +1301,8 @@ rl_exprn__generate_decls(node(ConstCode), node(RuleCodes), VarTypes) -->
 	{ assoc_list__reverse_members(ConstsAL, ConstsLA0) },
 	{ list__sort(ConstsLA0, ConstsLA) },
 	{ list__map(rl_exprn__generate_const_decl, ConstsLA, ConstCode) },
-	rl_exprn_info_get_decls(VarTypes).
+	rl_exprn_info_get_decls(VarTypes0),
+	{ list__reverse(VarTypes0, VarTypes) }.
 
 :- pred rl_exprn__generate_const_decl(pair(int, rl_const)::in,
 		bytecode::out) is det.
@@ -773,8 +1349,8 @@ rl_exprn__generate_rule(RuleNo - (Rule - RuleTuple), Code) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Shift the inputs to the expression out of the input tuple.
-:- pred rl_exprn__deconstruct_input_tuple(tuple_num::in, int::in,
+	% Move the inputs to the expression out of the input tuple.
+:- pred rl_exprn__deconstruct_input_tuple(tuple_num::in, int::in, 
 	list(prog_var)::in, set(prog_var)::in, byte_tree::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -939,7 +1515,8 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 	{ proc_info_inferred_determinism(ProcInfo, Detism) },
 	rl_exprn_info_get_parent_pred_proc_ids(Parents0),
 	(
-		% XXX Nondet top-down calls are not yet implemented.
+		% Nondet top-down calls are not simple goals,
+		% and are only supported with `--aditi-calls-mercury'.
 		{ determinism_components(Detism, _, at_most_many) }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
@@ -947,29 +1524,19 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 			ModuleInfo, PredId, ProcId,
 			"nondeterministic Mercury calls in Aditi procedures") }
 	;
-		% XXX Top-down calls to imported predicates
-		% are not yet implemented.
+		% Calls to imported non-builtin predicates are not
+		% simple goals, and are only supported with
+		% `--aditi-calls-mercury'.
 		{ pred_info_is_imported(PredInfo) },
-
-		% Calls to `unify/2' and `compare/3' will have been
-		% transformed into the type-specific versions
-		% by polymorphism.m. Polymorphic types are not allowed
-		% in Aditi predicates so the types must be known.
-		\+ {
-			% `index/2' doesn't work in Aditi.
-			is_unify_or_compare_pred(PredInfo),
-			\+ (pred_info_name(PredInfo) = "__Index__")
-		},
-		{ \+ pred_info_is_builtin(PredInfo) },
-		{ \+ rl_exprn__is_simple_extra_aditi_builtin(PredInfo,
-			ProcId, _) }
+		{ \+ rl_exprn__is_builtin(PredId, ProcId, PredInfo) }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
 		{ rl_exprn__call_not_implemented_error(Context,
 			ModuleInfo, PredId, ProcId,
 			"calls to imported Mercury procedures from Aditi") }
 	;
-		% XXX Recursive top-down calls are not yet implemented.
+		% Recursive calls are not % simple goals, and are only
+		% supported with `--aditi-calls-mercury'.
 		{ set__member(proc(PredId, ProcId), Parents0) }
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
@@ -979,6 +1546,28 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 	;
 		rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo,
 			Fail, Vars, Code)
+	).
+
+:- pred rl_exprn__is_builtin(pred_id::in, proc_id::in,
+		pred_info::in) is semidet.
+
+rl_exprn__is_builtin(_PredId, ProcId, PredInfo) :-
+	% Calls to `unify/2' and `compare/3' will have been
+	% transformed into the type-specific versions
+	% by polymorphism.m. Polymorphic types are not allowed
+	% in Aditi predicates so the types must be known.
+	\+ (
+		% `index/2' doesn't work in Aditi.
+		is_unify_or_compare_pred(PredInfo),
+		pred_info_name(PredInfo) \= "__Index__"
+	),
+	(
+		pred_info_is_builtin(PredInfo)
+	;
+		is_unify_or_compare_pred(PredInfo)
+	;
+		rl_exprn__is_simple_extra_aditi_builtin(PredInfo,
+			ProcId, _)
 	).
 
 :- pred rl_exprn__call_not_implemented_error(prog_context::in, module_info::in,
@@ -992,7 +1581,7 @@ rl_exprn__call_not_implemented_error(Context,
 	string__append_list(
 		[
 			ContextStr, "in call to ", ProcName, ":\n",
-			"sorry, not yet implemented - ", ErrorDescr
+			ErrorDescr, " require `--aditi-calls-mercury'."
 		],
 		Msg),
 	error(Msg).
@@ -1782,15 +2371,16 @@ rl_exprn__simple_extra_builtin(predicate, "string", "length", 2, 0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-rl_exprn__aggregate(ModuleInfo, ComputeInitial, UpdateAcc, GrpByType,
-		NonGrpByType, AccType, AggCode, Decls) :-
-
+rl_exprn__aggregate(ComputeInitial, UpdateAcc, GrpByType, 
+		NonGrpByType, AccType, AggCode, Decls,
+		ModuleInfo0, ModuleInfo) :-
 	map__init(VarTypes),
 	varset__init(VarSet),
 	instmap__init_reachable(InstMap),
-	rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info0),
+	rl_exprn_info_init(ModuleInfo0, InstMap, VarTypes, VarSet, Info0),
 	rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
-		NonGrpByType, AccType, AggCode, Decls, Info0, _).
+		NonGrpByType, AccType, AggCode, Decls, Info0, Info),
+	rl_exprn_info_get_module_info(ModuleInfo, Info, _).
 
 :- pred rl_exprn__aggregate_2(pred_proc_id::in, pred_proc_id::in,
 	(type)::in, (type)::in, (type)::in, list(bytecode)::out,
@@ -2206,6 +2796,10 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_module_info(out, in, out) is det.
 
+:- pred rl_exprn_info_set_module_info(module_info,
+		rl_exprn_info, rl_exprn_info).
+:- mode rl_exprn_info_set_module_info(in, in, out) is det.
+
 :- pred rl_exprn_info_get_instmap(instmap, rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_instmap(out, in, out) is det.
 
@@ -2238,6 +2832,15 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 :- pred rl_exprn_info_get_free_reg((type), reg_id,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_free_reg(in, out, in, out) is det.
+
+:- pred rl_exprn_info_reg_is_single_value_location(reg_id::in,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+	
+:- pred rl_exprn_info_reg_is_multiple_value_location(reg_id::in,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
+
+:- pred rl_exprn_info_reg_is_args_location(reg_id::in,
+		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 :- pred rl_exprn_info_get_next_label_id(label_id,
 		rl_exprn_info, rl_exprn_info).
@@ -2284,18 +2887,35 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 
 :- type rl_exprn_info
 	---> rl_exprn_info(
-		module_info,
-		instmap,		% not yet used.
-		map(prog_var, type),
-		prog_varset,
-		id_map(prog_var),
-		label_id,		% next label.
-		id_map(rl_const),
-		id_map(pair(rl_rule, exprn_tuple)),
-		set(pred_proc_id),	% parent pred_proc_ids, used
+		module_info :: module_info,
+		instmap :: instmap,		% not yet used.
+		vartypes :: map(prog_var, type),
+		varset :: prog_varset,
+		vars :: id_map(prog_var),
+		label_counter :: counter,		% next label.
+		consts :: id_map(rl_const),
+		rules :: id_map(pair(rl_rule, exprn_tuple)),
+		parent_proc_ids :: set(pred_proc_id),
+					% parent pred_proc_ids, used
 					% to abort on recursion.
-		list(type)		% variable declarations in reverse.
+		decls :: list(type),	% variable declarations in reverse.
+		mercury_proc_counter :: counter,
+
+		% The solution for a call to a det top-down Mercury
+		% procedure is stored in one of these locations.
+		single_value_locations :: list(reg_id),
+
+		% All solutions for a call to a nondet top-down Mercury
+		% procedure are stored in one of these locations.
+		multiple_value_locations :: list(reg_id),
+
+		% The input arguments for a call to a top-down Mercury
+		% procedure are collected into a tuple stored
+		% in one of these locations.
+		input_args_locations :: list(reg_id)
 	).
+
+:- type mercury_proc_id == int.
 
 :- type rl_rule
 	---> rl_rule(
@@ -2353,74 +2973,89 @@ rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info) :-
 	id_map_init(ConstMap),
 	id_map_init(RuleMap),
 	set__init(Parents),
-	Label = 0,
+	counter__init(0, Label),
+	counter__init(0, NextMercuryProc),
 	Info = rl_exprn_info(ModuleInfo, InstMap, VarTypes, VarSet,
-		VarMap, Label, ConstMap, RuleMap, Parents, []).
+		VarMap, Label, ConstMap, RuleMap, Parents, [],
+		NextMercuryProc, [], [], []).
 
-rl_exprn_info_get_module_info(A, Info, Info) :-
-	Info = rl_exprn_info(A,_,_,_,_,_,_,_,_,_).
-rl_exprn_info_get_instmap(B, Info, Info) :-
-	Info = rl_exprn_info(_,B,_,_,_,_,_,_,_,_).
-rl_exprn_info_get_vartypes(C, Info, Info) :-
-	Info = rl_exprn_info(_,_,C,_,_,_,_,_,_,_).
-rl_exprn_info_get_varset(D, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,D,_,_,_,_,_,_).
-rl_exprn_info_get_vars(E, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,E,_,_,_,_,_).
-rl_exprn_info_get_consts(G, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,G,_,_,_).
-rl_exprn_info_get_rules(H, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,H,_,_).
-rl_exprn_info_get_parent_pred_proc_ids(I, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,_,I,_).
-rl_exprn_info_get_decls(J, Info, Info) :-
-	Info = rl_exprn_info(_,_,_,_,_,_,_,_,_,J0),
-	list__reverse(J0, J).
+rl_exprn_info_get_module_info(Info ^ module_info, Info, Info).
+rl_exprn_info_get_instmap(Info ^ instmap, Info, Info).
+rl_exprn_info_get_vartypes(Info ^ vartypes, Info, Info).
+rl_exprn_info_get_varset(Info ^ varset, Info, Info).
+rl_exprn_info_get_vars(Info ^ vars, Info, Info).
+rl_exprn_info_get_consts(Info ^ consts, Info, Info).
+rl_exprn_info_get_rules(Info ^ rules, Info, Info).
+rl_exprn_info_get_parent_pred_proc_ids(Info ^ parent_proc_ids, Info, Info).
+rl_exprn_info_get_decls(Info ^ decls, Info, Info).
 
-rl_exprn_info_set_instmap(B, Info0, Info) :-
-	Info0 = rl_exprn_info(A,_,C,D,E,F,G,H,I,J),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
-rl_exprn_info_set_vartypes(C, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,_,D,E,F,G,H,I,J),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
-rl_exprn_info_set_varset(D, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,_,E,F,G,H,I,J),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
-rl_exprn_info_set_vars(E, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,_,F,G,H,I,J),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
-rl_exprn_info_set_parent_pred_proc_ids(I, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,F,G,H,_,J),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,H,I,J).
+rl_exprn_info_set_module_info(ModuleInfo,
+	Info, Info ^ module_info := ModuleInfo).
+rl_exprn_info_set_instmap(InstMap, Info, Info ^ instmap := InstMap).
+rl_exprn_info_set_vartypes(VarTypes, Info, Info ^ vartypes := VarTypes).
+rl_exprn_info_set_varset(VarSet, Info, Info ^ varset := VarSet).
+rl_exprn_info_set_vars(Vars, Info, Info ^ vars := Vars).
+rl_exprn_info_set_parent_pred_proc_ids(ParentProcIds,
+	Info, Info ^ parent_proc_ids := ParentProcIds).
+
+:- pred rl_exprn_info_get_next_mercury_proc(int::out, mercury_proc_id::out,
+              rl_exprn_info::in, rl_exprn_info::out) is det.
+
+rl_exprn_info_get_next_mercury_proc(ModuleProcId, ExprnProcId, Info0, Info) :-
+	Counter0 = Info0 ^ mercury_proc_counter,
+	counter__allocate(ExprnProcId, Counter0, Counter),
+	module_info_next_aditi_top_down_proc(Info0 ^ module_info,
+		ModuleProcId, ModuleInfo),
+	Info = (Info0 ^ module_info := ModuleInfo)
+		^ mercury_proc_counter := Counter.
+
 rl_exprn_info_get_free_reg(Type, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,VarMap0,F,G,H,I,RegTypes0),
+	VarMap0 = Info0 ^ vars,
+	RegTypes0 = Info0 ^ decls,
 	VarMap0 = Map - Loc,
 	Loc1 = Loc + 1,
 	VarMap = Map - Loc1,
 	RegTypes = [Type | RegTypes0],
-	Info = rl_exprn_info(A,B,C,D,VarMap,F,G,H,I,RegTypes).
+	Info = (Info0 ^ vars := VarMap)
+			^ decls := RegTypes.
 rl_exprn_info_lookup_var(Var, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,VarTypes,D,VarMap0,F,G,H,I,RegTypes0),
+	VarMap0 = Info0 ^ vars,
+	RegTypes0 = Info0 ^ decls,
 	id_map_lookup(Var, Loc, Added, VarMap0, VarMap),
 	( Added = yes ->
-		map__lookup(VarTypes, Var, Type),
+		map__lookup(Info0 ^ vartypes, Var, Type),
 		RegTypes = [Type | RegTypes0]
 	;
 		RegTypes = RegTypes0
 	),
-	Info = rl_exprn_info(A,B,VarTypes,D,VarMap,F,G,H,I,RegTypes).
-rl_exprn_info_get_next_label_id(Label0, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,Label0,G,H,I,J),
-	Label = Label0 + 1,
-	Info = rl_exprn_info(A,B,C,D,E,Label,G,H,I,J).
+	Info = (Info0 ^ vars := VarMap)
+			^ decls := RegTypes.
+
+rl_exprn_info_reg_is_single_value_location(Reg, Info,
+		Info ^ single_value_locations := Locs) :-
+	Locs = [Reg | Info ^ single_value_locations].
+
+rl_exprn_info_reg_is_multiple_value_location(Reg, Info,
+		Info ^ multiple_value_locations := Locs) :-
+	Locs = [Reg | Info ^ multiple_value_locations].
+
+rl_exprn_info_reg_is_args_location(Reg, Info,
+		Info ^ input_args_locations := Locs) :-
+	Locs = [Reg | Info ^ input_args_locations].
+
+rl_exprn_info_get_next_label_id(Label, Info0,
+		Info0 ^ label_counter := Counter) :-
+	counter__allocate(Label, Info0 ^ label_counter, Counter).
+
 rl_exprn_info_lookup_const(Const, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,F,Consts0,H,I,J),
-	id_map_lookup(Const, Loc, Consts0, Consts),
-	Info = rl_exprn_info(A,B,C,D,E,F,Consts,H,I,J).
+	Consts0 = Info0 ^ consts,
+	id_map_lookup(Const, Loc, Consts0, Consts), 
+	Info = Info0 ^ consts := Consts.
+
 rl_exprn_info_lookup_rule(Rule, Loc, Info0, Info) :-
-	Info0 = rl_exprn_info(A,B,C,D,E,F,G,Rules0,I,J),
+	Rules0 = Info0 ^ rules,
 	id_map_lookup(Rule, Loc, Rules0, Rules),
-	Info = rl_exprn_info(A,B,C,D,E,F,G,Rules,I,J).
+	Info = Info0 ^ rules := Rules.
 
 rl_exprn_info_lookup_var_type(Var, Type) -->
 	rl_exprn_info_get_vartypes(VarTypes),

@@ -52,6 +52,7 @@
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__type_ctor_info.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_pred.
 :- import_module ml_backend__ml_closure_gen.
@@ -266,6 +267,38 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 		% gen_init_special_pred, if this is re-enabled.
 		% gen_init_proc_id_from_univ(ModuleInfo, PrettyprinterProc)
 	]).
+
+gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
+	RttiData = aditi_proc_info(ProcLabel, InputTypeInfo, OutputTypeInfo),
+	( real_rtti_data(type_info(InputTypeInfo)) ->
+		InputTypeInfoDefns = rtti_data_to_mlds(ModuleInfo,
+						type_info(InputTypeInfo))
+	;
+		InputTypeInfoDefns = []
+	),
+	( real_rtti_data(type_info(OutputTypeInfo)) ->
+		OutputTypeInfoDefns = rtti_data_to_mlds(ModuleInfo,
+						type_info(OutputTypeInfo))
+	;
+		OutputTypeInfoDefns = []
+	),
+	prog_out__sym_name_and_arity_to_string(
+		qualified(ProcLabel ^ proc_module, ProcLabel ^ proc_name)/
+			ProcLabel ^ proc_arity,
+		ProcNameStr),
+	module_info_name(ModuleInfo, ModuleName),
+			
+	Init = init_struct(mlds__rtti_type(item_type(RttiId)), [
+		gen_init_proc_id(ModuleInfo, ProcLabel),
+		gen_init_string(ProcNameStr),
+		gen_init_cast_rtti_data(mlds__type_info_type,
+			ModuleName, type_info(InputTypeInfo)),
+		gen_init_cast_rtti_data(mlds__type_info_type,
+			ModuleName, type_info(OutputTypeInfo)),
+		gen_init_int(code_model__represent_determinism(
+			ProcLabel ^ proc_interface_detism))
+	]),
+	SubDefns = InputTypeInfoDefns ++ OutputTypeInfoDefns.
 
 %-----------------------------------------------------------------------------%
 
@@ -1164,6 +1197,8 @@ gen_init_rtti_id(ModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
 	gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName).
 gen_init_rtti_id(ModuleName, tc_rtti_id(TCName, TCRttiName)) =
 	gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName).
+gen_init_rtti_id(ModuleName, aditi_rtti_id(ProcLabel)) =
+	gen_init_aditi_rtti_name(ModuleName, ProcLabel).
 
 	% Generate an MLDS initializer comprising just the
 	% the rval for a given rtti_name
@@ -1180,6 +1215,14 @@ gen_init_rtti_name(ModuleName, RttiTypeCtor, RttiName) =
 
 gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName) =
 	init_obj(gen_tc_rtti_name(ModuleName, TCName, TCRttiName)).
+
+	% Generate an MLDS initializer comprising just the
+	% the rval for a given aditi_rtti_name
+:- func gen_init_aditi_rtti_name(module_name, rtti_proc_label) =
+	mlds__initializer.
+
+gen_init_aditi_rtti_name(ModuleName, ProcLabel) =
+	init_obj(gen_aditi_rtti_name(ModuleName, ProcLabel)).
 
 	% Generate the MLDS initializer comprising the rtti_name
 	% for a given rtti_name, converted to the given type.
@@ -1198,6 +1241,8 @@ gen_rtti_id(ThisModuleName, ctor_rtti_id(RttiTypeCtor, RttiName)) =
 	gen_rtti_name(ThisModuleName, RttiTypeCtor, RttiName).
 gen_rtti_id(ThisModuleName, tc_rtti_id(TCName, TCRttiName)) =
 	gen_tc_rtti_name(ThisModuleName, TCName, TCRttiName).
+gen_rtti_id(ThisModuleName, aditi_rtti_id(ProcLabel)) =
+	gen_aditi_rtti_name(ThisModuleName, ProcLabel).
 
 :- func gen_rtti_name(module_name, rtti_type_ctor, ctor_rtti_name)
 	= mlds__rval.
@@ -1289,6 +1334,14 @@ gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
 		MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
 	),
 	MLDS_DataName = rtti(tc_rtti_id(TCName, TCRttiName)),
+	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
+	Rval = const(data_addr_const(DataAddr)).
+
+:- func gen_aditi_rtti_name(module_name, rtti_proc_label) = mlds__rval.
+
+gen_aditi_rtti_name(ThisModuleName, ProcLabel) = Rval :-
+	MLDS_ModuleName = mercury_module_name_to_mlds(ThisModuleName),
+	MLDS_DataName = rtti(aditi_rtti_id(ProcLabel)),
 	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 	Rval = const(data_addr_const(DataAddr)).
 

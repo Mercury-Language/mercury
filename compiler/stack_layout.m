@@ -50,9 +50,15 @@
 	% integer.
 :- pred stack_layout__represent_locn_as_int(layout_locn::in, int::out) is det.
 
+	% Construct a representation of the interface determinism of a
+	% procedure.
+:- pred stack_layout__represent_determinism_rval(determinism::in,
+		rval::out) is det.
+
 :- implementation.
 
 :- import_module backend_libs__rtti.
+:- import_module hlds__code_model.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
@@ -1585,49 +1591,8 @@ stack_layout__byte_bits = 8.
 
 %---------------------------------------------------------------------------%
 
-	% Construct a representation of the interface determinism of a
-	% procedure. The code we have chosen is not sequential; instead
-	% it encodes the various properties of each determinism.
-	%
-	% The 8 bit is set iff the context is first_solution.
-	% The 4 bit is set iff the min number of solutions is more than zero.
-	% The 2 bit is set iff the max number of solutions is more than zero.
-	% The 1 bit is set iff the max number of solutions is more than one.
-
-:- pred stack_layout__represent_determinism_rval(determinism::in, rval::out)
-	is det.
-
-stack_layout__represent_determinism_rval(Detism, const(int_const(Code))) :-
-	stack_layout__represent_determinism(Detism, Code).
-
-:- pred stack_layout__represent_determinism(determinism::in, int::out) is det.
-
-stack_layout__represent_determinism(Detism, Code) :-
-	(
-		Detism = det,
-		Code = 6		/* 0110 */
-	;
-		Detism = semidet,	/* 0010 */
-		Code = 2
-	;
-		Detism = nondet,
-		Code = 3		/* 0011 */
-	;
-		Detism = multidet,
-		Code = 7		/* 0111 */
-	;
-		Detism = erroneous,
-		Code = 4		/* 0100 */
-	;
-		Detism = failure,
-		Code = 0		/* 0000 */
-	;
-		Detism = cc_nondet,
-		Code = 10 		/* 1010 */
-	;
-		Detism = cc_multidet,
-		Code = 14		/* 1110 */
-	).
+stack_layout__represent_determinism_rval(Detism,
+		const(int_const(code_model__represent_determinism(Detism)))).
 
 %---------------------------------------------------------------------------%
 

@@ -49,6 +49,9 @@
 ** MR_DETISM_AT_MOST_MANY could also be defined as ((d) & 3) == 3),
 ** but this would be less efficient, since the C compiler does not know
 ** that we do not set the 1 bit unless we also set the 2 bit.
+**
+** NOTE: this must match the encoding specified by represent_determinism/1
+** in compiler/code_model.m.
 */
 
 typedef	MR_int_least16_t	MR_Determinism;
