@@ -8,8 +8,10 @@
 % Main author: fjh.
 
 % This module defines utility routines that are useful when
-% generating and/or emitting C code.  Changes to this module may require
-% changes to be made to java_util.m
+% generating and/or emitting C code.  Some of these routines are
+% also useful with other languages whose syntax is similar to C.
+
+% NOTE: changes to this module may require changes to be made to java_util.m.
 
 %-----------------------------------------------------------------------------%
 
@@ -19,6 +21,9 @@
 :- import_module backend_libs__builtin_ops.
 
 %-----------------------------------------------------------------------------%
+%
+% Line numbering.
+%
 
 	% set_line_num(FileName, LineNum):
 	%	emit a #line directive to set the specified filename & linenum
@@ -34,6 +39,9 @@
 :- mode c_util__reset_line_num(di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% String and character handling.
+%
 
 	% Print out a string suitably escaped for use as a C string literal.
 	% This doesn't actually print out the enclosing double quotes --
@@ -68,6 +76,22 @@
 :- mode c_util__quote_char(in, out) is det.
 
 %-----------------------------------------------------------------------------%
+%
+% Float literals.
+%
+
+	% Convert a float to a string suitable for use as a C (or Java, or IL)
+	% floating point literal.
+:- func c_util__make_float_literal(float) = string.
+
+	% As above, but write the string to the current output stream
+	% rather than returning it.
+:- pred c_util__output_float_literal(float::in, io__state::di, io__state::uo)
+	is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Operators.
 %
 % The following predicates all take as input an operator,
 % check if it is an operator of the specified kind,
@@ -117,6 +141,9 @@
 :- import_module list, bool.
 
 %-----------------------------------------------------------------------------%
+%
+% Line numbering.
+%
 
 c_util__set_line_num(File, Line) -->
 	globals__io_lookup_bool_option(line_numbers, LineNumbers),
@@ -156,6 +183,12 @@ c_util__reset_line_num -->
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% String and character handling.
+%
+% XXX we should check to ensure that we don't accidentally generate
+%     trigraph sequences in string literals.
+%
 
 c_util__output_quoted_string(S0) -->
 	c_util__output_quoted_multi_string(string__length(S0), S0).
@@ -251,6 +284,8 @@ reverse_append([X|Xs], L0, L) :-
 :- mode escape_any_char(in, out) is det.
 
         % Convert a character to the corresponding C octal escape code.
+	% XXX This assumes that the target language compiler's representation
+	%     of characters is the same as the Mercury compiler's.
 escape_any_char(Char, EscapeCodeChars) :-
         char__to_int(Char, Int),
         string__int_to_base_string(Int, 8, OctalString0),
@@ -258,6 +293,28 @@ escape_any_char(Char, EscapeCodeChars) :-
         EscapeCodeChars = ['\\' | string__to_char_list(OctalString)].
 
 %-----------------------------------------------------------------------------%
+%
+% Floating point literals.
+%
+% XXX These routines do not yet handle infinities and NaNs properly.
+
+	% This is used by the C, Java, and IL back-ends,
+	% so the output must be valid syntax in all three languages.
+	%
+	% We output literals using 17 digits of precision.
+	% This is the minimum needed to be able to convert IEEE
+	% double-precision floating point values to strings and
+	% back again without losing precision.
+	%
+make_float_literal(Float) = string__format("%#.17g", [f(Float)]).
+
+output_float_literal(Float) -->
+	io__write_string(make_float_literal(Float)).
+
+%-----------------------------------------------------------------------------%
+%
+% Operators.
+%
 
 c_util__unary_prefix_op(mktag,			"MR_mktag").
 c_util__unary_prefix_op(tag,			"MR_tag").

@@ -3403,7 +3403,7 @@ mlds_output_rval_const(float_const(FloatVal)) -->
 	% do arithmetic in `float' rather than `double'
 	% if `MR_Float' is `float' not `double'.
 	io__write_string("(MR_Float) "),
-	io__write_float(FloatVal).
+	c_util__output_float_literal(FloatVal).
 mlds_output_rval_const(string_const(String)) -->
 	% the cast avoids the following gcc warning
 	% "assignment discards qualifiers from pointer target type"
