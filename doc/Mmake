@@ -40,21 +40,18 @@ all: info dvi html
 
 .PHONY: dvi
 dvi: user_guide.dvi reference_manual.dvi library.dvi faq.dvi \
-	transition_guide.dvi profile_user_guide.dvi
+	transition_guide.dvi
 
 .PHONY: info
 info: mercury.info mercury_ref.info mercury_user_guide.info \
-	mercury_library.info mercury_faq.info mercury_trans_guide.info \
-	mercury_profile
+	mercury_library.info mercury_faq.info mercury_trans_guide.info
 
 .PHONY: html
 html: mercury.html user_guide_toc.html reference_manual_toc.html \
-	library_toc.html faq_toc.html transition_guide_toc.html \
-	profile_user_guide.html
+	library_toc.html faq_toc.html transition_guide_toc.html
 
 .PHONY: ps
-ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps \
-	profile_user_guide.ps
+ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
 
 #-----------------------------------------------------------------------------#
 
@@ -68,9 +65,6 @@ mercury_faq.info: faq.texi
 	$(MAKEINFO) $<
 mercury_library.info: library.texi
 	$(MAKEINFO) $<
-mercury_profile.ingo: profile_user_guide.texi
-	$(MAKEINFO) $<
-
 
 #-----------------------------------------------------------------------------#
 
