@@ -3477,7 +3477,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
 	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
-			ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
+			ExeFileName, ".exe : ", ExeFileName, ".dll\n",
+			ExeFileName, ".dll : ", "$(", MakeVarName, ".dlls) ",
 			"$(", MakeVarName, ".foreign_dlls)\n"] },
 	{ Else = ["else\n"] },
 	{ MainRule =
