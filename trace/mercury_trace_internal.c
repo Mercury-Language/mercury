@@ -2775,8 +2775,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			}
 
 			if (MR_trace_start_decl_debug(trace_mode, filename,
-						cmd, event_info, event_details,
-						jumpaddr))
+				cmd, event_info, event_details, jumpaddr))
 			{
 				return STOP_INTERACTING;
 			}
