@@ -175,10 +175,9 @@ $(ss_subdir)%.s : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
 		$< > $*.err 2>&1
 
-# XXX we should probably use a new `--pic' option rather than `--pic-reg'
 $(ss_subdir)%.pic_s : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
-		--pic-reg --cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
+		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
 
 $(os_subdir)%.$O : $(ss_subdir)%.s
 	$(AS) $< $(OBJFILE_OPT)$@
