@@ -1520,6 +1520,8 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 	DataRep =^ il_data_rep,
 	{ TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig) },
 	{ ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig) },
+	CallerSig =^ signature,
+	{ CallerSig = signature(_, CallerReturnParam, _) },
 	(
 		{ IsTail = tail_call },
 		% if --verifiable-code is enabled,
@@ -1536,6 +1538,13 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, IsTail),
 				}
 			),
 			{ ByRefTailCalls = no }
+		),
+		% if --verifiable-code is enabled, then we must not output
+		% the "tail." prefix unless the callee return type is
+		% compatible with the caller return type
+		\+ (
+			{ VerifiableCode = yes },
+			{ ReturnParam \= CallerReturnParam }
 		)
 	->
 		{ TailCallInstrs = [tailcall] },
