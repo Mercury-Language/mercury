@@ -490,7 +490,7 @@ install_split_library: scripts dep_library
 		done; \
 		rm -f *.$O Mercury/os/*.$O *.$A *.so; \
 	done && \
-	{ for $$ext in $(GRADE_SUBDIR_EXTS); do \
+	{ for ext in $(GRADE_SUBDIR_EXTS); do \
 	    [ -d Mercury/$${ext}s ] && mv tmp_dir/*.$$ext Mercury/$${ext}s; \
 	done; \
 	mv tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
