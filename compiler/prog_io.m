@@ -928,12 +928,22 @@ convert_constructors_2(Term.Terms, Constr.Constrs) :-
 	convert_constructor(Term, Constr),
 	convert_constructors_2(Terms, Constrs).
 
-	% true if input argument is a valid constructor
+	% true if input argument is a valid constructor.
+	% Note that as a special case, one level of
+	% curly braces around the constructor are ignored.
+	% This is to allow you to define ';'/2 constructors.
 
 :- pred convert_constructor(term, constructor).
 :- mode convert_constructor(input, output).
 convert_constructor(Term, Result) :-
-	parse_qualified_term(Term, "constructor definition", ok(F, As)),
+	(if some [Term1]
+		Term = term_functor(term_atom("{}"), [Term1])
+	then
+		Term2 = Term1
+	else
+		Term2 = Term
+	),
+	parse_qualified_term(Term2, "constructor definition", ok(F, As)),
 	convert_type_list(As, ArgTypes),
 	Result = F - ArgTypes.
 
