@@ -2845,7 +2845,7 @@ report_error_overloading_unqual_pred(TypeInfo, PredCallId) -->
 	hlds_out__write_pred_call_id(PredCallId),
 	io__write_string(" matches to more than one predicate.\n"),
 	prog_out__write_context(Context),
-	io__write_string("An explicit module qualifier may help.").
+	io__write_string("An explicit module qualifier may help.\n").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

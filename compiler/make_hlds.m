@@ -997,13 +997,13 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context,
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: pragma (c_code) declaration "),
+		io__write_string("Error: pragma(c_code, ...) declaration "),
 		io__write_string("for imported pred `"),
 		io__write_string(PName),
 		io__write_string("/"),
 		io__write_int(Arity),
 		io__write_string("'.\n")
-	; 
+	;
 		% add the pragma declaration to the proc_info for this procedure
 		{ pred_info_procedures(PredInfo0, Procs) },
 		{ map__to_assoc_list(Procs, ExistingProcs) },

@@ -1772,18 +1772,18 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 				PragmaVars = [P|PragmaVars0]
 			;
 				PragmaVars = [],
-				Error = yes("Unknown mode in pragma(c_code, ...")
+				Error = yes("unknown mode in pragma(c_code, ...")
 			)
 		;
 			% if the variable wasn't in the varset it must be an
 			% underscore variable.
 			PragmaVars = [],	% return any old junk for that.
 			Error = yes(
-				"Used anonymous variable in pragma(c_code, ...)")
+"sorry, not implemented: anonymous `_' variable in pragma(c_code, ...)")
 		)
 	;
 		PragmaVars = [],	% return any old junk in PragmaVars
-		Error = yes("Arguments not in form 'Var :: mode'")
+		Error = yes("arguments not in form 'Var :: mode'")
 	).
 
 %-----------------------------------------------------------------------------%
