@@ -1928,8 +1928,8 @@ ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		ml_gen_var_list(ArgVars, ArgLvals),
 		ml_variable_types(ArgVars, ArgTypes),
 		(
-			{ ArgLvals = [DestLval, SrcLval] },
-			{ ArgTypes = [DestType, SrcType] }
+			{ ArgLvals = [SrcLval, DestLval] },
+			{ ArgTypes = [SrcType, DestType] }
 		->
 			ml_gen_box_or_unbox_rval(SrcType, DestType,
 				lval(SrcLval), CastRval),
