@@ -183,7 +183,8 @@ clean:
 	rm -f *.no *.ql
 
 realclean:
-	rm -f library.init sicstus_saved_state sicstus_compile
+	rm -f libmercury.a libmercury.so library.init
+	rm -f sicstus_saved_state sicstus_compile
 
 #-----------------------------------------------------------------------------#
 
