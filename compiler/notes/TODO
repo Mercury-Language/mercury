@@ -29,9 +29,10 @@ fix all the XXX's.
 
 map.nl: reimplement using bintree.nl or array.nl.
 
-finish all the code for handling of integer arithmetic
-
-write a pass over hlds to recognize the builtin predicates.
+write a pass over hlds to recognize the builtin predicates,
+including arithmetic predicates such as "+" and arithmetic tests
+such as "<", and ensure that codegen outputs the correct code
+for these builtins.
 
 generate code for complicated_unify's (there are some comments about
 this in the paper.)
