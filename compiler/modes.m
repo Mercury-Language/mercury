@@ -249,7 +249,7 @@ modecheck(Module0, Module) -->
 check_pred_modes(ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	modecheck_pred_modes_2(PredIds, ModuleInfo0, ModuleInfo1),
-	modecheck_unify_procs(ModuleInfo1, ModuleInfo).
+	modecheck_unify_procs(check_modes, ModuleInfo1, ModuleInfo).
 
 	% Iterate over the list of pred_ids in a module.
 
@@ -306,7 +306,7 @@ modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo, NumErrors) -->
 modecheck_procs([], _PredId,  ModuleInfo, Errs, ModuleInfo, Errs) --> [].
 modecheck_procs([ProcId|ProcIds], PredId, ModuleInfo0, Errs0,
 					ModuleInfo, Errs) -->
-		% mode-check that mode of the predicate
+	% mode-check that mode of the predicate
 	modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1, NumErrors),
 	{ Errs1 is Errs0 + NumErrors },
 		% recursively process the remaining modes
@@ -320,17 +320,22 @@ modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors) -->
 		% get the proc_info from the module_info
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 					_PredInfo0, ProcInfo0) },
-		% modecheck it
-	modecheck_proc_2(ProcId, PredId, ModuleInfo0, ProcInfo0,
-				ModuleInfo1, ProcInfo, NumErrors),
-		% save the proc_info back in the module_info
-	{ module_info_preds(ModuleInfo1, Preds1) },
-	{ map__lookup(Preds1, PredId, PredInfo1) },
-	{ pred_info_procedures(PredInfo1, Procs1) },
-	{ map__set(Procs1, ProcId, ProcInfo, Procs) },
-	{ pred_info_set_procedures(PredInfo1, Procs, PredInfo) },
-	{ map__set(Preds1, PredId, PredInfo, Preds) },
-	{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }.
+	( { proc_info_can_process(ProcInfo0, no) } ->
+		{ ModuleInfo = ModuleInfo0 },
+		{ NumErrors = 0 }
+	;
+			% modecheck it
+		modecheck_proc_2(ProcId, PredId, ModuleInfo0, ProcInfo0,
+					ModuleInfo1, ProcInfo, NumErrors),
+			% save the proc_info back in the module_info
+		{ module_info_preds(ModuleInfo1, Preds1) },
+		{ map__lookup(Preds1, PredId, PredInfo1) },
+		{ pred_info_procedures(PredInfo1, Procs1) },
+		{ map__set(Procs1, ProcId, ProcInfo, Procs) },
+		{ pred_info_set_procedures(PredInfo1, Procs, PredInfo) },
+		{ map__set(Preds1, PredId, PredInfo, Preds) },
+		{ module_info_set_preds(ModuleInfo1, Preds, ModuleInfo) }
+	).
 
 :- pred modecheck_proc_2(proc_id, pred_id, module_info, proc_info,
 			module_info, proc_info, int, io__state, io__state).

@@ -47,7 +47,7 @@
 :- module unify_proc.
 :- interface.
 :- import_module std_util, io, list.
-:- import_module prog_io, hlds, llds, special_pred.
+:- import_module prog_io, hlds, llds, special_pred, modes.
 
 :- type unify_requests.
 
@@ -64,11 +64,14 @@
 				module_info, module_info).
 :- mode unify_proc__request_unify(in, in, in, out) is det.
 
-	% Generate code for the unification procedures which have been
-	% requested.
+	% Modecheck the unification procedures which have been
+	% requested.  If the first argument is `unique_mode_check',
+	% then also go on and do full determinism analysis and unique mode
+	% checking on them as well.
 
-:- pred modecheck_unify_procs(module_info, module_info, io__state, io__state).
-:- mode modecheck_unify_procs(in, out, di, uo) is det.
+:- pred modecheck_unify_procs(how_to_check_goal, module_info, module_info,
+				io__state, io__state).
+:- mode modecheck_unify_procs(in, in, out, di, uo) is det.
 
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
@@ -92,8 +95,9 @@
 :- import_module code_util, code_info, type_util, varset.
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, term, prog_util.
-:- import_module quantification, clause_to_proc, modes.
+:- import_module quantification, clause_to_proc.
 :- import_module globals, options, mode_util.
+:- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 
 	% We keep track of all the complicated unification procs we need
 	% by storing them in the unify_requests structure.
@@ -223,11 +227,13 @@ unify_proc__request_unify(UnifyId, Determinism, ModuleInfo0, ModuleInfo) :-
 
 		%
 		% copy the clauses for the procedure from the pred_info to the
-		% proc_info
+		% proc_info, and mark the procedure as one that cannot
+		% be processed yet
 		%
 		pred_info_procedures(PredInfo1, Procs1),
 		pred_info_clauses_info(PredInfo1, ClausesInfo),
-		map__lookup(Procs1, ProcId, ProcInfo1),
+		map__lookup(Procs1, ProcId, ProcInfo0),
+		proc_info_set_can_process(ProcInfo0, no, ProcInfo1),
 
 		copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
 		map__set(Procs1, ProcId, ProcInfo2, Procs2),
@@ -256,7 +262,7 @@ unify_proc__request_unify(UnifyId, Determinism, ModuleInfo0, ModuleInfo) :-
 
 	% XXX these belong in modes.m
 
-modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
+modecheck_unify_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo) -->
 	{ module_info_get_unify_requests(ModuleInfo0, Requests0) },
 	{ unify_proc__get_req_queue(Requests0, RequestQueue0) },
 	(
@@ -269,8 +275,13 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			{ UnifyProcId = TypeId - UniMode },
-			io__write_string(
-				"% Mode-checking unification proc for type `"),
+			( { HowToCheckGoal = check_unique_modes } ->
+				io__write_string(
+	"% Mode-checking, determinism-checking, and unique-mode-checking\n% ")
+			;
+				io__write_string("% Mode-checking ")
+			),
+			io__write_string("unification proc for type `"),
 			hlds_out__write_type_id(TypeId),
 			io__write_string("'\n"),
 			io__write_string("% with insts `"),
@@ -283,18 +294,19 @@ modecheck_unify_procs(ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		modecheck_unification_proc(UnifyProcId, ModuleInfo1,
-			ModuleInfo2),
-		modecheck_unify_procs(ModuleInfo2, ModuleInfo)
+		modecheck_unification_proc(HowToCheckGoal, UnifyProcId,
+			ModuleInfo1, ModuleInfo2),
+		modecheck_unify_procs(HowToCheckGoal, ModuleInfo2, ModuleInfo)
 	;
 		{ ModuleInfo = ModuleInfo0 }
 	).
 
-:- pred modecheck_unification_proc(unify_proc_id, module_info, module_info,
-					io__state, io__state).
-:- mode modecheck_unification_proc(in, in, out, di, uo) is det.
+:- pred modecheck_unification_proc(how_to_check_goal, unify_proc_id,
+				module_info, module_info, io__state, io__state).
+:- mode modecheck_unification_proc(in, in, in, out, di, uo) is det.
 
-modecheck_unification_proc(UnifyProcId, ModuleInfo0, ModuleInfo) -->
+modecheck_unification_proc(HowToCheckGoal, UnifyProcId,
+			ModuleInfo0, ModuleInfo) -->
 	{
 	%
 	% lookup the pred_id for the unification procedure
@@ -309,18 +321,43 @@ modecheck_unification_proc(UnifyProcId, ModuleInfo0, ModuleInfo) -->
 	%
 	module_info_get_unify_requests(ModuleInfo0, Requests0),
 	unify_proc__get_req_map(Requests0, ReqMap),
-	map__lookup(ReqMap, UnifyProcId, ProcId)
+	map__lookup(ReqMap, UnifyProcId, ProcId),
+
+	%
+	% mark the procedure as ready to be processed
+	%
+	module_info_preds(ModuleInfo0, Preds0),
+	map__lookup(Preds0, PredId, PredInfo0),
+	pred_info_procedures(PredInfo0, Procs0),
+	map__lookup(Procs0, ProcId, ProcInfo0),
+	proc_info_set_can_process(ProcInfo0, yes, ProcInfo1),
+	map__set(Procs0, ProcId, ProcInfo1, Procs1),
+	pred_info_set_procedures(PredInfo0, Procs1, PredInfo1),
+	map__set(Preds0, PredId, PredInfo1, Preds1),
+	module_info_set_preds(ModuleInfo0, Preds1, ModuleInfo1)
 	},
 
 	%
 	% modecheck the procedure
 	%
-	modecheck_proc(ProcId, PredId, ModuleInfo0, ModuleInfo, NumErrors),
+	modecheck_proc(ProcId, PredId, ModuleInfo1, ModuleInfo2, NumErrors),
 	{ NumErrors \= 0 ->
 		error("mode error in compiler-generated unification predicate")
 	;
 		true
-	}.
+	},
+	( { HowToCheckGoal = check_unique_modes } ->
+		{ detect_switches_in_proc(ProcId, PredId,
+					ModuleInfo2, ModuleInfo3) },
+		detect_cse_in_proc(ProcId, PredId,
+					ModuleInfo3, ModuleInfo4),
+		determinism_check_proc(ProcId, PredId,
+					ModuleInfo4, ModuleInfo5),
+		unique_modes__check_proc(ProcId, PredId,
+					ModuleInfo5, ModuleInfo)
+	;	
+		{ ModuleInfo = ModuleInfo2 }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

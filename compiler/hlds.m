@@ -116,7 +116,10 @@
 							% not the clause.
 					call_info,	% stack allocations
 					determinism,	% _inferred_ det'ism
-					unit,		% junk (unused)
+					bool,		% no if we must not
+						% process this procedure yet
+						% (used for complicated modes
+						% of unification procs)
 					list(arg_info),	% information about
 							% the arguments
 							% derived from the
@@ -133,7 +136,7 @@
 	--->	at_most_zero
 	;	at_most_one
 	;	at_most_many_cc
-			% "_cc" means "commited-choice": there is
+			% "_cc" means "committed-choice": there is
 			% more than one logical solution, but
 			% the pred or goal is being used in a context
 			% where we are only looking for the first
@@ -1936,6 +1939,9 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 :- pred proc_info_follow_vars(proc_info, follow_vars).
 :- mode proc_info_follow_vars(in, out) is det.
 
+:- pred proc_info_can_process(proc_info, bool).
+:- mode proc_info_can_process(in, out) is det.
+
 :- pred proc_info_set_body(proc_info, varset, map(var, type), list(var),
 				hlds__goal, proc_info).
 :- mode proc_info_set_body(in, in, in, in, in, out) is det.
@@ -1964,6 +1970,9 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 :- pred proc_info_set_call_info(proc_info, call_info, proc_info).
 :- mode proc_info_set_call_info(in, in, out) is det.
 
+:- pred proc_info_set_can_process(proc_info, bool, proc_info).
+:- mode proc_info_set_can_process(in, in, out) is det.
+
 :- implementation.
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -1985,10 +1994,11 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	ArgInfo = [],
 	ClauseBody = conj([]) - GoalInfo,
 	map__init(FollowVars),
+	CanProcess = yes,
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes,
-		ClauseBody, MContext, CallInfo, InferredDet, unit, ArgInfo,
-		Liveness, FollowVars
+		ClauseBody, MContext, CallInfo, InferredDet, CanProcess,
+		ArgInfo, Liveness, FollowVars
 	).
 
 proc_info_interface_determinism(ProcInfo, Determinism) :-
@@ -2022,8 +2032,8 @@ proc_info_call_info(ProcInfo, CallInfo) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _, _, _, _).
 proc_info_inferred_determinism(ProcInfo, Determinism) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, Determinism, _, _, _, _).
-% proc_info_junk(ProcInfo, Junk) :-
-% 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, Junk, _, _, _).
+proc_info_can_process(ProcInfo, CanProcess) :-
+ 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, CanProcess, _, _, _).
 proc_info_arg_info(ProcInfo, ArgInfo) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, ArgInfo, _, _).
 proc_info_liveness_info(ProcInfo, Liveness) :-
@@ -2043,7 +2053,7 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 % 							% not the clause.
 % 				H	call_info,	% stack allocations
 % 				I	determinism,	% _inferred_ detism
-% 				J	unit,		% junk (unused)
+% 				J	bool,		% can_process
 % 				K	list(arg_info),	% information about
 % 							% the arguments
 % 							% derived from the
@@ -2074,9 +2084,9 @@ proc_info_set_inferred_determinism(ProcInfo0, Determinism, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, Determinism, J, K, L, M).
 
-% proc_info_set_junk(ProcInfo0, Junk, ProcInfo) :-
-% 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M),
-% 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, Junk, K, L, M).
+proc_info_set_can_process(ProcInfo0, CanProcess, ProcInfo) :-
+ 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M),
+ 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, CanProcess, K, L, M).
 
 proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M),

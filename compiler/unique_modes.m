@@ -36,9 +36,9 @@
 :- mode unique_modes__check_module(in, out, di, uo) is det.
 
 	% just check a single procedure
-:- pred unique_modes__check_proc(proc_info, pred_id, proc_id, module_info,
-				proc_info, module_info, io__state, io__state).
-:- mode unique_modes__check_proc(in, in, in, in, out, out, di, uo) is det.
+:- pred unique_modes__check_proc(proc_id, pred_id, module_info,
+				module_info, io__state, io__state).
+:- mode unique_modes__check_proc(in, in, in, out, di, uo) is det.
 
 	% just check a single goal
 :- pred unique_modes__check_goal(hlds__goal, hlds__goal, mode_info, mode_info).
@@ -49,8 +49,8 @@
 
 :- implementation.
 :- import_module int, list, map, set, std_util, require, term, varset.
-:- import_module mode_util, prog_out, hlds_out, mercury_to_mercury.
-:- import_module modes, inst_match, prog_io, mode_errors, llds.
+:- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
+:- import_module modes, inst_match, prog_io, mode_errors, llds, unify_proc.
 
 %-----------------------------------------------------------------------------%
 
@@ -58,7 +58,8 @@
 
 unique_modes__check_module(ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	unique_modes__check_preds(PredIds, ModuleInfo0, ModuleInfo).
+	unique_modes__check_preds(PredIds, ModuleInfo0, ModuleInfo1),
+	modecheck_unify_procs(check_unique_modes, ModuleInfo1, ModuleInfo).
 
 :- pred unique_modes__check_preds(list(pred_id), module_info, module_info,
 					io__state, io__state).
@@ -69,37 +70,53 @@ unique_modes__check_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, PredTable) },
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
-	unique_modes__check_procs(PredId, ProcIds, ModuleInfo0, ModuleInfo1),
+	( { ProcIds \= [] } ->
+		write_progress_message("% Unique-mode-checking predicate ",
+			PredId, ModuleInfo0)
+	;
+		[]
+	),
+	unique_modes__check_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
 	unique_modes__check_preds(PredIds, ModuleInfo1, ModuleInfo).
 
-:- pred unique_modes__check_procs(pred_id, list(proc_id),
+:- pred unique_modes__check_procs(list(proc_id), pred_id,
 					module_info, module_info,
 					io__state, io__state).
 :- mode unique_modes__check_procs(in, in, in, out, di, uo) is det.
 
-unique_modes__check_procs(_PredId, [], ModuleInfo, ModuleInfo) --> [].
-unique_modes__check_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
+unique_modes__check_procs([], _PredId, ModuleInfo, ModuleInfo) --> [].
+unique_modes__check_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 		ModuleInfo) -->
+	unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
+	unique_modes__check_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+unique_modes__check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
 		_PredInfo0, ProcInfo0) },
+	( { proc_info_can_process(ProcInfo0, no) } ->
+		{ ModuleInfo = ModuleInfo0 }
+	;
+		unique_modes__check_proc_2(ProcInfo0, PredId, ProcId,
+			ModuleInfo0, ProcInfo, ModuleInfo1),
 
-	unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
-		ProcInfo, ModuleInfo1),
-
-	{ module_info_preds(ModuleInfo1, PredTable1) },
-	{ map__lookup(PredTable1, PredId, PredInfo1) },
-	{ pred_info_procedures(PredInfo1, ProcTable1) },
-	{ map__set(ProcTable1, ProcId, ProcInfo, ProcTable) },
-	{ pred_info_set_procedures(PredInfo1, ProcTable, PredInfo) },
-	{ map__set(PredTable1, PredId, PredInfo, PredTable) },
-	{ module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2) },
-
-	unique_modes__check_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
+		{ module_info_preds(ModuleInfo1, PredTable1) },
+		{ map__lookup(PredTable1, PredId, PredInfo1) },
+		{ pred_info_procedures(PredInfo1, ProcTable1) },
+		{ map__set(ProcTable1, ProcId, ProcInfo, ProcTable) },
+		{ pred_info_set_procedures(PredInfo1, ProcTable, PredInfo) },
+		{ map__set(PredTable1, PredId, PredInfo, PredTable) },
+		{ module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo) }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-unique_modes__check_proc(ProcInfo0, PredId, ProcId, ModuleInfo0,
+	% just check a single procedure
+:- pred unique_modes__check_proc_2(proc_info, pred_id, proc_id, module_info,
+				proc_info, module_info, io__state, io__state).
+:- mode unique_modes__check_proc_2(in, in, in, in, out, out, di, uo) is det.
+
+unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 			ProcInfo, ModuleInfo,
 			IOState0, IOState) :-
 	%

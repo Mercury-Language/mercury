@@ -54,8 +54,17 @@
 
 :- import_module hlds, io.
 
+	% perform full determinism analysis and checking, including determinism
+	% inference for local predicates with no determinism declaration
 :- pred determinism_pass(module_info, module_info, io__state, io__state).
 :- mode determinism_pass(in, out, di, uo) is det.
+
+	% check the determinism of a single procedure
+	% (only works if the determinism of the procedures it calls
+	% has already been inferred).
+:- pred determinism_check_proc(proc_id, pred_id, module_info, module_info,
+				io__state, io__state).
+:- mode determinism_check_proc(in, in, in, out, di, uo) is det.
 
 :- pred det_conjunction_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_conjunction_maxsoln(in, in, out) is det.
@@ -86,6 +95,9 @@ determinism_pass(ModuleInfo0, ModuleInfo) -->
 	maybe_flush_output(Verbose),
 	global_final_pass(ModuleInfo1, DeclaredProcs, ModuleInfo),
 	maybe_write_string(Verbose, "% done.\n").
+
+determinism_check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
+	global_final_pass(ModuleInfo0, [PredId - ProcId], ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

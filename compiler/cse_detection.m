@@ -23,6 +23,11 @@
 :- pred detect_cse(module_info, module_info, io__state, io__state).
 :- mode detect_cse(in, out, di, uo) is det.
 
+:- pred detect_cse_in_proc(proc_id, pred_id, module_info, module_info,
+			io__state, io__state).
+% :- mode detect_cse_in_proc(in, in, di, uo, di, uo) is det.
+:- mode detect_cse_in_proc(in, in, in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -58,13 +63,24 @@ detect_cse_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 
 detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
-	detect_cse_in_procs(ProcIds, PredId, no, Redo,
-		ModuleInfo0, ModuleInfo1),
-	(
-		{ Redo = no },
+	detect_cse_in_procs(ProcIds, PredId, ModuleInfo0, ModuleInfo).
+
+:- pred detect_cse_in_procs(list(proc_id), pred_id, module_info, module_info,
+			io__state, io__state).
+% :- mode detect_cse_in_procs(in, in, di, uo, di, uo) is det.
+:- mode detect_cse_in_procs(in, in, in, out, di, uo) is det.
+
+detect_cse_in_procs([], _PredId, ModuleInfo, ModuleInfo) --> [].
+detect_cse_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) -->
+	detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
+	detect_cse_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
+	{ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0,
+		ModuleInfo1) },
+	( { Redo = no } ->
 		{ ModuleInfo = ModuleInfo1 }
 	;
-		{ Redo = yes },
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Repeating mode check for "),
@@ -73,10 +89,7 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		{ module_info_preds(ModuleInfo1, PredTable1) },
-		{ map__lookup(PredTable1, PredId, PredInfo1) },
-		modecheck_pred_mode(PredId, PredInfo1, ModuleInfo1,
-				ModuleInfo2, Errs),
+		modecheck_proc(ProcId, PredId, ModuleInfo1, ModuleInfo2, Errs),
 		{ Errs > 0 ->
 			error("mode check fails when repeated")
 		;
@@ -89,10 +102,8 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		{ module_info_preds(ModuleInfo2, PredTable2) },
-		{ map__lookup(PredTable2, PredId, PredInfo2) },
-		detect_switches_in_pred(PredId, PredInfo2,
-			ModuleInfo2, ModuleInfo3),
+		{ detect_switches_in_proc(ProcId, PredId,
+			ModuleInfo2, ModuleInfo3) },
 
 		( { VeryVerbose = yes } ->
 			io__write_string("% Repeating common deconstruction detection for "),
@@ -101,22 +112,16 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		;
 			[]
 		),
-		{ module_info_preds(ModuleInfo3, PredTable3) },
-		{ map__lookup(PredTable3, PredId, PredInfo3) },
-		detect_cse_in_pred(PredId, PredInfo3, ModuleInfo3, ModuleInfo)
+		detect_cse_in_proc(ProcId, PredId, ModuleInfo3, ModuleInfo)
 	).
 
 :- type cse_info	--->	cse_info(varset, map(var, type), module_info).
 
-:- pred detect_cse_in_procs(list(proc_id), pred_id, bool, bool,
-	module_info, module_info, io__state, io__state).
-% :- mode detect_cse_in_procs(in, in, in, out, di, uo, di, uo) is det.
-:- mode detect_cse_in_procs(in, in, in, out, in, out, di, uo) is det.
+:- pred detect_cse_in_proc_2(proc_id, pred_id, bool, module_info, module_info).
+% :- mode detect_cse_in_proc_2(in, in, out, di, uo) is det.
+:- mode detect_cse_in_proc_2(in, in, out, in, out) is det.
 
-detect_cse_in_procs([], _PredId, Redo, Redo, ModuleInfo, ModuleInfo,
-	IOstate, IOstate).
-detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
-		ModuleInfo0, ModuleInfo, IOstate0, IOstate) :-
+detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
@@ -131,14 +136,13 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	CseInfo0 = cse_info(Varset0, VarTypes0, ModuleInfo0),
-	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo1, Goal1),
+	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
 
 	(
-		Redo1 = no,
-		ModuleInfo1 = ModuleInfo0,
-		IOstate1 = IOstate0
+		Redo = no,
+		ModuleInfo = ModuleInfo0
 	;
-		Redo1 = yes,
+		Redo = yes,
 
 		% ModuleInfo should not be changed by detect_cse_in_goal
 		CseInfo = cse_info(Varset1, VarTypes1, _),
@@ -154,13 +158,8 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 		map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__set(PredTable0, PredId, PredInfo, PredTable),
-		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-		IOstate1 = IOstate0
-	),
-
-	std_util__bool_or(Redo0, Redo1, Redo2),
-	detect_cse_in_procs(ProcIds, PredId, Redo2, Redo,
-		ModuleInfo1, ModuleInfo, IOstate1, IOstate).
+		module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo)
+	).
 
 %-----------------------------------------------------------------------------%
 

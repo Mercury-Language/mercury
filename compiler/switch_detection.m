@@ -26,6 +26,10 @@
 % :- mode detect_switches_in_pred(in, in, di, uo, di, uo) is det.
 :- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
+:- pred detect_switches_in_proc(proc_id, pred_id, module_info, module_info).
+% :- mode detect_switches_in_proc(in, in, di, uo) is det.
+:- mode detect_switches_in_proc(in, in, in, out) is det.
+
 	% utility pred used by cse_detection.m
 :- pred interpret_unify(var, unify_rhs, substitution, substitution).
 :- mode interpret_unify(in, in, in, out) is semidet.
@@ -69,6 +73,10 @@ detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
 
 detect_switches_in_procs([], _PredId, ModuleInfo, ModuleInfo).
 detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
+	detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo1),
+	detect_switches_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+
+detect_switches_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
@@ -86,8 +94,7 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-	detect_switches_in_procs(ProcIds, PredId, ModuleInfo1, ModuleInfo).
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
