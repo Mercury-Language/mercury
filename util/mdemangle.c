@@ -22,6 +22,8 @@
 #include "std.h"
 
 static void demangle(char *name);
+static bool check_for_suffix(char *start, char *position, const char *suffix,
+		int sizeof_suffix, int *mode_num2);
 
 int main(int argc, char **argv)
 {
@@ -82,6 +84,7 @@ static void demangle(char *name) {
 	   avoid a naming conflict with strchr's alter ego index() */
 
 	static const char ua_suffix[] = "__ua"; /* added by unused_args.m */
+	static const char ua_suffix2[] = "__uab"; /* added by unused_args.m */
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
 	char *start = name;
@@ -169,8 +172,8 @@ static void demangle(char *name) {
 
 	/*
 	** Process the mangling introduced by unused_args.m.
-	** This involves stripping off the `__ua<m>' added to the
-	** end of the predicate/function name, where m is the mode number.
+	** This involves stripping off the `__ua<m>' or `__uab<m>' added to 
+	** the end of the predicate/function name, where m is the mode number.
 	*/ 
 
 	position = end;	/* save end of name */		
@@ -180,22 +183,24 @@ static void demangle(char *name) {
 		position--;
 	} while (isdigit((unsigned char)*position));
 		/* get the mode number */
-	if (position + 1 - sizeof(ua_suffix) > start 
-		&& sscanf(position + 1, "%d", &mode_num2) == 1
-		&& strncmp(position + 2 - sizeof(ua_suffix),
-			ua_suffix, sizeof(ua_suffix) - 1) == 0) { 
-
+	
+	if (check_for_suffix(start, position, ua_suffix,
+			sizeof(ua_suffix), &mode_num2)) {
+		unused_args = TRUE;
 		end = position + 2 - sizeof(ua_suffix);
 		mode_num = mode_num2 % 10000;
+	}	
+	else if (check_for_suffix(start, position, ua_suffix2,
+			sizeof(ua_suffix2), &mode_num2)) {
 		unused_args = TRUE;
+		end = position + 2 - sizeof(ua_suffix2);
+		mode_num = mode_num2 % 10000;
 	}
 
 	/*
 	** Process the mangling introduced by higher_order.m.
-	** This involves stripping off the `__ho<n>_<a>' where
+	** This involves stripping off the `__ho<n>' where
 	** n is a unique identifier for this specialized version
-	** and a is the original arity of the predicate.
-	** 
 	*/
 
 	position = end;
@@ -204,9 +209,8 @@ static void demangle(char *name) {
 		if (position == start) goto wrong_format;
 		position--;
 	} while (isdigit((unsigned char)*position));
-	if (strncmp(position + 2 - sizeof(ho_suffix),
-		ho_suffix, sizeof(ho_suffix) - 1) == 0) {
-		
+	if (check_for_suffix(start, position, ho_suffix,
+			sizeof(ho_suffix), &mode_num2)) {
 		end = position + 2 - sizeof(ho_suffix);
 		higher_order = TRUE;
 	}
@@ -342,4 +346,15 @@ wrong_format:
 	return;
 }
 
+static bool check_for_suffix(char *start, char *position, const char *suffix,
+		int sizeof_suffix, int *mode_num2)
+{
+	return (
+		position + 1 - sizeof_suffix > start 
+		&& sscanf(position + 1, "%d", mode_num2) == 1
+		&& strncmp(position + 2 - sizeof_suffix,
+			suffix, sizeof_suffix - 1) == 0
+	);
+}
+	
 /*---------------------------------------------------------------------------*/
