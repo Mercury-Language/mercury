@@ -17,13 +17,11 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_goal.
 :- import_module parse_tree__prog_data.
 :- import_module check_hlds__mode_info.
-:- import_module parse_tree__inst.
 
 :- import_module bool, set, assoc_list, list, io.
 
@@ -189,11 +187,14 @@
 
 :- import_module check_hlds__mode_info.
 :- import_module check_hlds__mode_util.
+:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module int, map, term_io, varset, term.
 :- import_module std_util, require.
@@ -443,7 +444,7 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 		prog_out__write_context(Context),
 		io__write_string("  inside the condition of an if-then-else.\n")
 	; { Reason = lambda(PredOrFunc) },
-		{ PredOrFuncS = hlds_out__pred_or_func_to_str(PredOrFunc) },
+		{ PredOrFuncS = pred_or_func_to_str(PredOrFunc) },
 		io__write_string("attempt to bind a non-local variable inside\n"),
 		prog_out__write_context(Context),
 		io__write_strings(["  a ", PredOrFuncS, " lambda goal.\n"])
@@ -752,11 +753,11 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		io__write_string("\tYour code is trying to test whether two "),
-		hlds_out__write_pred_or_func(PredOrFunc),
+		write_pred_or_func(PredOrFunc),
 		io__write_string("s are equal,\n"),
 		io__write_string("\tby unifying them.  In the general case, testing equivalence\n"),
 		io__write_string("\tof "),
-		hlds_out__write_pred_or_func(PredOrFunc),
+		write_pred_or_func(PredOrFunc),
 		io__write_string("s is an undecidable problem,\n"),
 		io__write_string("\tand so this is not allowed by the Mercury mode system.\n"),
 		io__write_string("\tIn some cases, you can achieve the same effect by\n"),

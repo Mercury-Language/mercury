@@ -144,7 +144,7 @@
 	% mapped to a set including N, then the producer of that variable
 	% may be moved to the start of the goal with goal path <gp>;sN;
 	% (if the control structure is a switch) or <gp>;t; or <gp>;e;
-	% (if the control structure is an if-then-else). 
+	% (if the control structure is an if-then-else).
 	%
 	% Since <gp>;sN; is conjoined with e.g. <gp>;sN;<gp2>;sM;
 	% it would be a mode error (variable having two conjoined producers)
@@ -268,7 +268,7 @@ pre_process_proc(!ProcInfo) :-
 :- type option_values
 	--->	option_values(
 			fully_strict	::	bool,
-			reorder_conj	::	bool,	
+			reorder_conj	::	bool,
 			copy_limit	::	int
 		).
 
@@ -635,7 +635,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
 			error("process_goal_internal: switch count")
 		),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
-		BranchPoint = branch_point(GoalPath, switch(NumAlt)), 
+		BranchPoint = branch_point(GoalPath, switch(NumAlt)),
 		map__map_values(demand_var_everywhere, !WhereNeededMap),
 		map__init(BranchNeededMap0),
 		process_cases(Cases0, Cases, BranchPoint, 1,
@@ -661,7 +661,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
 	;
 		GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
-		BranchPoint = branch_point(GoalPath, ite), 
+		BranchPoint = branch_point(GoalPath, ite),
 		map__map_values(demand_var_everywhere, !WhereNeededMap),
 		process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
 			InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
@@ -693,7 +693,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
 :- type bracketed_goal
 	--->	bracketed_goal(hlds_goal, instmap, instmap).
 
-:- pred process_conj(list(hlds_goal)::in, list(hlds_goal)::out, 
+:- pred process_conj(list(hlds_goal)::in, list(hlds_goal)::out,
 	instmap::in, instmap::in, vartypes::in, module_info::in,
 	option_values::in, where_needed_map::in, where_needed_map::out,
 	refined_goal_map::in, refined_goal_map::out,
@@ -752,7 +752,7 @@ process_rev_bracketed_conj([BracketedGoal | BracketedGoals], Goals,
 :- pred process_disj(list(hlds_goal)::in, list(hlds_goal)::out,
 	instmap::in, instmap::in, vartypes::in, module_info::in,
 	option_values::in, goal_path::in,
-	where_needed_map::in, where_needed_map::in, where_needed_map::out, 
+	where_needed_map::in, where_needed_map::in, where_needed_map::out,
 	refined_goal_map::in, refined_goal_map::out,
 	bool::in, bool::out) is det.
 
@@ -776,7 +776,7 @@ process_disj([Goal0 | Goals0], [Goal | Goals], InitInstMap, FinalInstMap,
 :- pred process_cases(list(case)::in, list(case)::out, branch_point::in,
 	int::in, instmap::in, instmap::in, vartypes::in, module_info::in,
 	option_values::in, goal_path::in, where_needed_map::in,
-	where_needed_map::in, where_needed_map::out, 
+	where_needed_map::in, where_needed_map::out,
 	refined_goal_map::in, refined_goal_map::out,
 	bool::in, bool::out) is det.
 
@@ -803,7 +803,7 @@ process_cases([case(Var, Goal0) | Cases0], [case(Var, Goal) | Cases],
 	hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
 	branch_point::in, instmap::in, instmap::in, vartypes::in,
 	module_info::in, option_values::in, goal_path::in,
-	where_needed_map::in, where_needed_map::out, 
+	where_needed_map::in, where_needed_map::out,
 	refined_goal_map::in, refined_goal_map::out,
 	bool::in, bool::out) is det.
 
@@ -1135,7 +1135,7 @@ where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
 		where_needed_branches_upper_bound_2(CurrentPath,
 			Rest, Branches1, WhereNeeded)
 	).
-	
+
 :- pred get_parent_branch_point(goal_path::in, goal_path::out,
 	goal_path_step::out, branch_alts::out, int::out) is semidet.
 

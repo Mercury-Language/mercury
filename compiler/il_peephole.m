@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,10 +82,10 @@ optimize_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 		Decl = namespace(A, NamespaceDecls)
 	;
 		Mod = Mod0,
-	 	Decl0 = Decl 
+	 	Decl0 = Decl
 	).
 
-:- pred optimize_class_member(bool::in, class_member::in, class_member::out, 
+:- pred optimize_class_member(bool::in, class_member::in, class_member::out,
 	bool::in, bool::out) is det.
 optimize_class_member(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = method(A, MethodDecls0) ->
@@ -93,17 +93,17 @@ optimize_class_member(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 			MethodDecls1, Mod0, Mod),
 		( Mod = yes ->
 				% find the new maxstack
-			MaxStacks = list__map((func(X) = 
-				( if X = instrs(I) 
-				  then calculate_max_stack(I) 
+			MaxStacks = list__map((func(X) =
+				( if X = instrs(I)
+				  then calculate_max_stack(I)
 				  else 0
 				)), MethodDecls1),
 			NewMaxStack = list__foldl((func(X, Y0) = X + Y0),
 				MaxStacks, 0
 			),
 				% set the maxstack
-			MethodDecls = list__map((func(X) = 
-				( if X = maxstack(_) 
+			MethodDecls = list__map((func(X) =
+				( if X = maxstack(_)
 				  then maxstack(int32(NewMaxStack))
 				  else X
 				)), MethodDecls1),
@@ -113,11 +113,11 @@ optimize_class_member(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 		)
 	;
 		Mod = no,
-	 	Decl0 = Decl 
+	 	Decl0 = Decl
 	).
 
 :- pred optimize_method_decl(bool::in,
-	method_body_decl::in, method_body_decl::out, 
+	method_body_decl::in, method_body_decl::out,
 	bool::in, bool::out) is det.
 optimize_method_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = instrs(Instrs0) ->
@@ -126,7 +126,7 @@ optimize_method_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 		Decl = instrs(Instrs)
 	;
 		Mod = Mod0,
-	 	Decl0 = Decl 
+	 	Decl0 = Decl
 	).
 
 :- pred optimize_instrs(bool::in, instrs::in, instrs::out, bool::out) is det.
@@ -183,12 +183,12 @@ opt_instr(VerifyOnly, Instr0, Instrs0, Instrs, Mod) :-
 	% side of them (but don't eliminate them because they may be
 	% useful).
 match(ret, _, Instrs0, Replacement) :-
-	list__takewhile((pred(X::in) is semidet :- 
+	list__takewhile((pred(X::in) is semidet :-
 		X \= label(_)
 	), Instrs0, PreLabel, NextInstrs0),
 	PreLabel \= [],
 
-	list__filter((pred(X::in) is semidet :- equivalent_to_nop(X) = yes), 
+	list__filter((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
 		PreLabel, KeepInstrs),
 	Replacement = list__condense([KeepInstrs,
 			[comment("peephole -- eliminated instrs after ret"),
@@ -197,16 +197,16 @@ match(ret, _, Instrs0, Replacement) :-
 
 	% A branch to a label that is followed by a return can be reduced
 	% to just the return.
-	% NOTE: We only look for forwards branches. 
+	% NOTE: We only look for forwards branches.
 
 match(br(label_target(Label)), VerifyOnly, Instrs0, Instrs) :-
 	VerifyOnly = no,
-	list__takewhile((pred(X::in) is semidet :- 
+	list__takewhile((pred(X::in) is semidet :-
 		X \= label(Label)
 	), Instrs0, _, [label(Label) | NextInstrs0]),
 	skip_nops(NextInstrs0, NextInstrs, _),
 	NextInstrs = [ret | _],
-	Instrs = [comment("peephole -- eliminated branch to ret"), ret | 
+	Instrs = [comment("peephole -- eliminated branch to ret"), ret |
 		Instrs0].
 
 	% stloc(X)
@@ -245,7 +245,7 @@ match(stloc(Var), VerifyOnly, Instrs0, Instrs) :-
 match(ldc(Type, Const), VerifyOnly, [stloc(Var)| Instrs0], Instrs) :-
 	VerifyOnly = no,
 		% The pattern
-	list__takewhile((pred(X::in) is semidet :- 
+	list__takewhile((pred(X::in) is semidet :-
 		X \= ldloc(Var),
 		X \= label(_),
 		X \= stloc(Var),
@@ -257,18 +257,18 @@ match(ldc(Type, Const), VerifyOnly, [stloc(Var)| Instrs0], Instrs) :-
 		% Comment and replacement
 	Comment = comment(
 	    "peephole: ldc(X), stloc(X), ldloc(X) --> ldc(X), dup, stloc(X)"),
-	Replacement = list__append(PreLdInstrs, 
+	Replacement = list__append(PreLdInstrs,
 		[Comment, ldc(Type, Const), dup, stloc(Var)]),
 	Instrs = list__append(Replacement, Rest).
 
 	% Two patterns begin with start_scope.
 match(start_block(scope(Locals), Id), VerifyOnly) -->
 	{ VerifyOnly = no },
-	( 
+	(
 		match_start_scope_1(start_block(scope(Locals), Id))
 	->
 		[]
-	;	
+	;
 		match_start_scope_2(start_block(scope(Locals), Id))
 	).
 
@@ -293,7 +293,7 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 
 		% No ldloc(Var) or ldloca(Var) anywhere in the scope
 		% (should only really look until the end of this scope)
-		list__takewhile((pred(X::in) is semidet :- 
+		list__takewhile((pred(X::in) is semidet :-
 			X \= ldloc(V),
 			X \= ldloca(V)
 		), Instrs0, _, [])
@@ -306,11 +306,11 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 		% remainder of the input.
 		% Note that the preceeding input is a reversed list of
 		% instructions (we reverse and flatten it later).
-	FindDup = (pred(InstrIn::in, NextInput::out, R0::in, R::out) 
+	FindDup = (pred(InstrIn::in, NextInput::out, R0::in, R::out)
 			is semidet :-
 		R0 = Pre0 - _NextInput0,
 		list__takewhile(
-			(pred(X::in) is semidet :- X \= dup), 
+			(pred(X::in) is semidet :- X \= dup),
 			InstrIn, Pre, Post0),
 		Post0 = [dup | NextInput],
 		( Pre0 = [] -> 	InsertDup = []
@@ -328,7 +328,7 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 		R0 = Pre0 - Post0,
 		Post0 = InstrIn0,
 		list__takewhile(
-			(pred(X::in) is semidet :- equivalent_to_nop(X) = yes), 
+			(pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
 			InstrIn0, Pre, MaybePost),
 		MaybePost = [stloc(V) | Post],
 		IsUnusedLocal(V),
@@ -370,7 +370,7 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 			% No stloc(Var) or ldloc(Var) or ldloca(Var)
 			% anywhere in the scope (should only really look
 			% until the end of this scope)
-		list__takewhile((pred(X::in) is semidet :- 
+		list__takewhile((pred(X::in) is semidet :-
 			X \= ldloc(Var),
 			X \= ldloca(Var),
 			X \= stloc(Var)
@@ -420,15 +420,15 @@ no_handwritten_code([Instr | Instrs], Id) :-
 	; Instr = start_block(_, SkipId) ->
 		InstrsAfterBlock = skip_over_block(Instrs, SkipId),
 		no_handwritten_code(InstrsAfterBlock, Id)
-	; 
+	;
 		no_handwritten_code(Instrs, Id)
 	).
 
 	% Skips over a block until the end of the block (with Id matching
 	% the given Id) is found.
 :- func skip_over_block(instrs, int) = instrs.
-skip_over_block([], _) = []. 
-skip_over_block([Instr | Instrs], Id) = 
+skip_over_block([], _) = [].
+skip_over_block([Instr | Instrs], Id) =
 	( Instr = end_block(_, Id) ->
 		Instrs
 	;
@@ -448,12 +448,12 @@ skip_comments(Instrs0, Instrs, Comments) :-
 :- pred skip_nops(instrs::in, instrs::out, instrs::out) is det.
 
 skip_nops(Instrs0, Instrs, Nops) :-
-        list__takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes), 
+        list__takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
 		Instrs0, Nops, Instrs).
 
 
 
-	% keep_looking(Producer, Condition, Input, IntermediateResult0, 
+	% keep_looking(Producer, Condition, Input, IntermediateResult0,
 	%	FinalResult, Leftovers) :-
 	% Producer consumes Input and produces an intermediate result
 	% and the leftover input.
@@ -470,17 +470,17 @@ skip_nops(Instrs0, Instrs, Nops) :-
 	% it is easy to put this part of the input in the intermediate
 	% and final results.
 :- pred keep_looking(pred(A, A, B, B), pred(B, C), A, B, C, A).
-:- mode keep_looking(pred(in, out, in, out) is semidet, 
+:- mode keep_looking(pred(in, out, in, out) is semidet,
 		pred(in, out) is semidet, in, in, out, out) is semidet.
 
-keep_looking(Producer, Condition, Input, IntermediateResult0, 
+keep_looking(Producer, Condition, Input, IntermediateResult0,
 		FinalResult, Leftovers) :-
 	Producer(Input, NextInput, IntermediateResult0, IntermediateResult),
 	( Condition(IntermediateResult, FinalResult0) ->
 		Leftovers = NextInput,
 		FinalResult = FinalResult0
 	;
-		keep_looking(Producer, Condition, NextInput, 
+		keep_looking(Producer, Condition, NextInput,
 			IntermediateResult, FinalResult, Leftovers)
 	).
 
@@ -495,91 +495,91 @@ can_call(jmp(_)) 				= yes.
 can_call(newobj(_))			 	= yes.
 can_call(il_asm_code(_, _))		 	= yes.
 
-can_call(comment(_Comment)) 			= no. 
-can_call(label(_Label)) 			= no. 
+can_call(comment(_Comment)) 			= no.
+can_call(label(_Label)) 			= no.
 can_call(start_block(_, _Id)) 			= no.
 can_call(end_block(_, _Id)) 			= no.
 can_call(context(_, _)) 			= no.
-can_call(ret) 					= no. 
-can_call((and)) 				= no. 
-can_call(arglist) 				= no. 
-can_call(break) 				= no. 
-can_call(ceq) 					= no. 
-can_call(ckfinite) 				= no. 
-can_call(cpblk) 				= no. 
+can_call(ret) 					= no.
+can_call((and)) 				= no.
+can_call(arglist) 				= no.
+can_call(break) 				= no.
+can_call(ceq) 					= no.
+can_call(ckfinite) 				= no.
+can_call(cpblk) 				= no.
 can_call(dup) 					= no.
-can_call(endfilter) 				= no. 
-can_call(endfinally) 				= no. 
-can_call(initblk) 				= no. 
-can_call(ldnull) 				= no. 
-can_call(localloc)	 			= no. 
-can_call(neg) 					= no. 
-can_call(nop) 					= no. 
-can_call((not)) 				= no. 
-can_call((or)) 					= no. 
-can_call(pop) 					= no. 
-can_call(shl) 					= no. 
-can_call(tailcall) 				= no. 
-can_call(volatile) 				= no. 
-can_call(xor) 					= no. 
-can_call(ldlen) 				= no. 
-can_call(throw)	 				= no. 
-can_call(ldarg(_)) 				= no. 
+can_call(endfilter) 				= no.
+can_call(endfinally) 				= no.
+can_call(initblk) 				= no.
+can_call(ldnull) 				= no.
+can_call(localloc)	 			= no.
+can_call(neg) 					= no.
+can_call(nop) 					= no.
+can_call((not)) 				= no.
+can_call((or)) 					= no.
+can_call(pop) 					= no.
+can_call(shl) 					= no.
+can_call(tailcall) 				= no.
+can_call(volatile) 				= no.
+can_call(xor) 					= no.
+can_call(ldlen) 				= no.
+can_call(throw)	 				= no.
+can_call(ldarg(_)) 				= no.
 can_call(ldc(_Type, _Const)) 			= no.
-can_call(ldstr(_String)) 			= no. 
-can_call(add(_Overflow, _Signed)) 		= no. 
+can_call(ldstr(_String)) 			= no.
+can_call(add(_Overflow, _Signed)) 		= no.
 can_call(beq(_Target)) 				= no.
 can_call(bge(_Signed, _Target)) 		= no.
-can_call(bgt(_Signed, _Target)) 		= no. 
+can_call(bgt(_Signed, _Target)) 		= no.
 can_call(ble(_Signed, _Target)) 		= no.
 can_call(blt(_Signed, _Target)) 		= no.
 can_call(bne(_Signed, _Target)) 		= no.
 can_call(br(_Target)) 				= no.
-can_call(brfalse(_Target)) 			= no. 
-can_call(brtrue(_Target)) 			= no. 
+can_call(brfalse(_Target)) 			= no.
+can_call(brtrue(_Target)) 			= no.
 can_call(cgt(_Signed)) 				= no.
 can_call(clt(_Signed)) 				= no.
-can_call(conv(_SimpleType)) 			= no. 
-can_call(div(_Signed)) 				= no. 
+can_call(conv(_SimpleType)) 			= no.
+can_call(div(_Signed)) 				= no.
 can_call(ldarga(_Variable)) 			= no.
-can_call(ldftn(_MethodRef)) 			= no. 
-can_call(ldind(_SimpleType)) 			= no. 
-can_call(ldloc(_Variable)) 			= no. 
+can_call(ldftn(_MethodRef)) 			= no.
+can_call(ldind(_SimpleType)) 			= no.
+can_call(ldloc(_Variable)) 			= no.
 can_call(ldloca(_Variable)) 			= no.
-can_call(leave(_Target)) 			= no. 
-can_call(mul(_Overflow, _Signed)) 		= no. 
-can_call(rem(_Signed)) 				= no. 
-can_call(shr(_Signed)) 				= no. 
+can_call(leave(_Target)) 			= no.
+can_call(mul(_Overflow, _Signed)) 		= no.
+can_call(rem(_Signed)) 				= no.
+can_call(shr(_Signed)) 				= no.
 can_call(starg(_Variable)) 			= no.
-can_call(stind(_SimpleType)) 			= no. 
-can_call(stloc(_Variable)) 			= no. 
-can_call(sub(_OverFlow, _Signed)) 		= no. 
+can_call(stind(_SimpleType)) 			= no.
+can_call(stloc(_Variable)) 			= no.
+can_call(sub(_OverFlow, _Signed)) 		= no.
 can_call(switch(_)) 				= no.
 can_call(unaligned(_)) 				= no.
-can_call(box(_Type)) 				= no. 
+can_call(box(_Type)) 				= no.
 can_call(castclass(_Type)) 			= no.
-can_call(cpobj(_Type)) 				= no. 
-can_call(initobj(_Type)) 			= no. 
-can_call(isinst(_Type)) 			= no. 
-can_call(ldelem(_SimpleType)) 			= no. 
-can_call(ldelema(_Type)) 			= no. 
+can_call(cpobj(_Type)) 				= no.
+can_call(initobj(_Type)) 			= no.
+can_call(isinst(_Type)) 			= no.
+can_call(ldelem(_SimpleType)) 			= no.
+can_call(ldelema(_Type)) 			= no.
 can_call(ldfld(_FieldRef)) 			= no.
 can_call(ldflda(_FieldRef)) 			= no.
 can_call(ldobj(_Type)) 				= no.
-can_call(ldsfld(_FieldRef)) 			= no. 
-can_call(ldsflda(_FieldRef)) 			= no. 
+can_call(ldsfld(_FieldRef)) 			= no.
+can_call(ldsflda(_FieldRef)) 			= no.
 can_call(ldtoken(_)) 				= no.
 can_call(ldvirtftn(_MethodRef)) 		= no.
 can_call(mkrefany(_Type)) 			= no.
-can_call(newarr(_Type)) 			= no. 
-can_call(refanytype)	 			= no. 
-can_call(refanyval(_)) 				= no. 
-can_call(rethrow) 				= no. 
-can_call(sizeof(_Type))				= no. 
-can_call(stobj(_Type)) 				= no. 
-can_call(stelem(_SimpleType)) 			= no. 
-can_call(stfld(_FieldRef)) 			= no. 
-can_call(stsfld(_FieldRef)) 			= no. 
+can_call(newarr(_Type)) 			= no.
+can_call(refanytype)	 			= no.
+can_call(refanyval(_)) 				= no.
+can_call(rethrow) 				= no.
+can_call(sizeof(_Type))				= no.
+can_call(stobj(_Type)) 				= no.
+can_call(stelem(_SimpleType)) 			= no.
+can_call(stfld(_FieldRef)) 			= no.
+can_call(stsfld(_FieldRef)) 			= no.
 can_call(unbox(_Type)) 				= no.
 
 	% These instructions generate no actual code and do not affect
@@ -589,99 +589,99 @@ can_call(unbox(_Type)) 				= no.
 equivalent_to_nop(comment(_)) 				= yes.
 equivalent_to_nop(start_block(scope(_), _)) 		= yes.
 equivalent_to_nop(end_block(scope(_), _))	 	= yes.
-equivalent_to_nop(nop) 					= yes. 
-equivalent_to_nop(context(_, _)) 			= yes. 
+equivalent_to_nop(nop) 					= yes.
+equivalent_to_nop(context(_, _)) 			= yes.
 
-equivalent_to_nop(il_asm_code(_, _)) 			= no. 
+equivalent_to_nop(il_asm_code(_, _)) 			= no.
 equivalent_to_nop(start_block(try, _))			= no.
 equivalent_to_nop(end_block(try, _))			= no.
 equivalent_to_nop(start_block(catch(_), _))		= no.
 equivalent_to_nop(end_block(catch(_), _))		= no.
-equivalent_to_nop(label(_Label)) 			= no. 
-equivalent_to_nop(call(_MethodRef)) 			= no. 
+equivalent_to_nop(label(_Label)) 			= no.
+equivalent_to_nop(call(_MethodRef)) 			= no.
 equivalent_to_nop(calli(_Signature)) 			= no.
-equivalent_to_nop(callvirt(_MethodRef)) 		= no. 
-equivalent_to_nop(ret) 					= no. 
-equivalent_to_nop((and)) 				= no. 
-equivalent_to_nop(arglist) 				= no. 
-equivalent_to_nop(break) 				= no. 
-equivalent_to_nop(ceq) 					= no. 
-equivalent_to_nop(ckfinite) 				= no. 
-equivalent_to_nop(cpblk) 				= no. 
+equivalent_to_nop(callvirt(_MethodRef)) 		= no.
+equivalent_to_nop(ret) 					= no.
+equivalent_to_nop((and)) 				= no.
+equivalent_to_nop(arglist) 				= no.
+equivalent_to_nop(break) 				= no.
+equivalent_to_nop(ceq) 					= no.
+equivalent_to_nop(ckfinite) 				= no.
+equivalent_to_nop(cpblk) 				= no.
 equivalent_to_nop(dup) 					= no.
-equivalent_to_nop(endfilter) 				= no. 
-equivalent_to_nop(endfinally) 				= no. 
-equivalent_to_nop(initblk) 				= no. 
-equivalent_to_nop(ldnull) 				= no. 
-equivalent_to_nop(localloc)	 			= no. 
-equivalent_to_nop(neg) 					= no. 
-equivalent_to_nop((not)) 				= no. 
-equivalent_to_nop((or)) 				= no. 
-equivalent_to_nop(pop) 					= no. 
-equivalent_to_nop(shl) 					= no. 
-equivalent_to_nop(tailcall) 				= no. 
-equivalent_to_nop(volatile) 				= no. 
-equivalent_to_nop(xor) 					= no. 
-equivalent_to_nop(ldlen) 				= no. 
-equivalent_to_nop(throw) 				= no. 
-equivalent_to_nop(ldarg(_)) 				= no. 
+equivalent_to_nop(endfilter) 				= no.
+equivalent_to_nop(endfinally) 				= no.
+equivalent_to_nop(initblk) 				= no.
+equivalent_to_nop(ldnull) 				= no.
+equivalent_to_nop(localloc)	 			= no.
+equivalent_to_nop(neg) 					= no.
+equivalent_to_nop((not)) 				= no.
+equivalent_to_nop((or)) 				= no.
+equivalent_to_nop(pop) 					= no.
+equivalent_to_nop(shl) 					= no.
+equivalent_to_nop(tailcall) 				= no.
+equivalent_to_nop(volatile) 				= no.
+equivalent_to_nop(xor) 					= no.
+equivalent_to_nop(ldlen) 				= no.
+equivalent_to_nop(throw) 				= no.
+equivalent_to_nop(ldarg(_)) 				= no.
 equivalent_to_nop(ldc(_Type, _Const)) 			= no.
-equivalent_to_nop(ldstr(_String)) 			= no. 
-equivalent_to_nop(add(_Overflow, _Signed)) 		= no. 
+equivalent_to_nop(ldstr(_String)) 			= no.
+equivalent_to_nop(add(_Overflow, _Signed)) 		= no.
 equivalent_to_nop(beq(_Target)) 			= no.
 equivalent_to_nop(bge(_Signed, _Target)) 		= no.
-equivalent_to_nop(bgt(_Signed, _Target)) 		= no. 
+equivalent_to_nop(bgt(_Signed, _Target)) 		= no.
 equivalent_to_nop(ble(_Signed, _Target)) 		= no.
 equivalent_to_nop(blt(_Signed, _Target)) 		= no.
 equivalent_to_nop(bne(_Signed, _Target)) 		= no.
 equivalent_to_nop(br(_Target)) 				= no.
-equivalent_to_nop(brfalse(_Target)) 			= no. 
-equivalent_to_nop(brtrue(_Target)) 			= no. 
+equivalent_to_nop(brfalse(_Target)) 			= no.
+equivalent_to_nop(brtrue(_Target)) 			= no.
 equivalent_to_nop(cgt(_Signed)) 			= no.
 equivalent_to_nop(clt(_Signed)) 			= no.
-equivalent_to_nop(conv(_SimpleType)) 			= no. 
-equivalent_to_nop(div(_Signed)) 			= no. 
-equivalent_to_nop(jmp(_MethodRef)) 			= no. 
+equivalent_to_nop(conv(_SimpleType)) 			= no.
+equivalent_to_nop(div(_Signed)) 			= no.
+equivalent_to_nop(jmp(_MethodRef)) 			= no.
 equivalent_to_nop(ldarga(_Variable)) 			= no.
-equivalent_to_nop(ldftn(_MethodRef)) 			= no. 
-equivalent_to_nop(ldind(_SimpleType)) 			= no. 
-equivalent_to_nop(ldloc(_Variable)) 			= no. 
+equivalent_to_nop(ldftn(_MethodRef)) 			= no.
+equivalent_to_nop(ldind(_SimpleType)) 			= no.
+equivalent_to_nop(ldloc(_Variable)) 			= no.
 equivalent_to_nop(ldloca(_Variable)) 			= no.
-equivalent_to_nop(leave(_Target)) 			= no. 
-equivalent_to_nop(mul(_Overflow, _Signed)) 		= no. 
-equivalent_to_nop(rem(_Signed)) 			= no. 
-equivalent_to_nop(shr(_Signed)) 			= no. 
+equivalent_to_nop(leave(_Target)) 			= no.
+equivalent_to_nop(mul(_Overflow, _Signed)) 		= no.
+equivalent_to_nop(rem(_Signed)) 			= no.
+equivalent_to_nop(shr(_Signed)) 			= no.
 equivalent_to_nop(starg(_Variable)) 			= no.
-equivalent_to_nop(stind(_SimpleType)) 			= no. 
-equivalent_to_nop(stloc(_Variable)) 			= no. 
-equivalent_to_nop(sub(_OverFlow, _Signed)) 		= no. 
+equivalent_to_nop(stind(_SimpleType)) 			= no.
+equivalent_to_nop(stloc(_Variable)) 			= no.
+equivalent_to_nop(sub(_OverFlow, _Signed)) 		= no.
 equivalent_to_nop(switch(_)) 				= no.
 equivalent_to_nop(unaligned(_)) 			= no.
-equivalent_to_nop(box(_Type)) 				= no. 
+equivalent_to_nop(box(_Type)) 				= no.
 equivalent_to_nop(castclass(_Type)) 			= no.
-equivalent_to_nop(cpobj(_Type)) 			= no. 
-equivalent_to_nop(initobj(_Type)) 			= no. 
-equivalent_to_nop(isinst(_Type)) 			= no. 
-equivalent_to_nop(ldelem(_SimpleType)) 			= no. 
-equivalent_to_nop(ldelema(_Type)) 			= no. 
+equivalent_to_nop(cpobj(_Type)) 			= no.
+equivalent_to_nop(initobj(_Type)) 			= no.
+equivalent_to_nop(isinst(_Type)) 			= no.
+equivalent_to_nop(ldelem(_SimpleType)) 			= no.
+equivalent_to_nop(ldelema(_Type)) 			= no.
 equivalent_to_nop(ldfld(_FieldRef)) 			= no.
 equivalent_to_nop(ldflda(_FieldRef)) 			= no.
 equivalent_to_nop(ldobj(_Type)) 			= no.
-equivalent_to_nop(ldsfld(_FieldRef)) 			= no. 
-equivalent_to_nop(ldsflda(_FieldRef)) 			= no. 
+equivalent_to_nop(ldsfld(_FieldRef)) 			= no.
+equivalent_to_nop(ldsflda(_FieldRef)) 			= no.
 equivalent_to_nop(ldtoken(_)) 				= no.
 equivalent_to_nop(ldvirtftn(_MethodRef)) 		= no.
 equivalent_to_nop(mkrefany(_Type)) 			= no.
-equivalent_to_nop(newarr(_Type)) 			= no. 
-equivalent_to_nop(newobj(_MethodRef)) 			= no. 
+equivalent_to_nop(newarr(_Type)) 			= no.
+equivalent_to_nop(newobj(_MethodRef)) 			= no.
 equivalent_to_nop(refanytype)				= no.
 equivalent_to_nop(refanyval(_))				= no.
 equivalent_to_nop(rethrow)				= no.
-equivalent_to_nop(stelem(_SimpleType)) 			= no. 
-equivalent_to_nop(stfld(_FieldRef)) 			= no. 
-equivalent_to_nop(sizeof(_Type))			= no. 
+equivalent_to_nop(stelem(_SimpleType)) 			= no.
+equivalent_to_nop(stfld(_FieldRef)) 			= no.
+equivalent_to_nop(sizeof(_Type))			= no.
 equivalent_to_nop(stobj(_))				= no.
-equivalent_to_nop(stsfld(_FieldRef)) 			= no. 
+equivalent_to_nop(stsfld(_FieldRef)) 			= no.
 equivalent_to_nop(unbox(_Type)) 			= no.
 
 
@@ -707,81 +707,81 @@ can_branch(end_block(_, _)) 				= no.
 can_branch(comment(_)) 					= no.
 can_branch(start_block(_, _)) 				= no.
 can_branch(context(_, _)) 				= no.
-can_branch(nop) 					= no. 
-can_branch(label(_Label)) 				= no. 
-can_branch(call(_MethodRef)) 				= no. 
+can_branch(nop) 					= no.
+can_branch(label(_Label)) 				= no.
+can_branch(call(_MethodRef)) 				= no.
 can_branch(calli(_Signature)) 				= no.
-can_branch(callvirt(_MethodRef)) 			= no. 
-can_branch(ret) 					= no. 
-can_branch((and)) 					= no. 
-can_branch(arglist) 					= no. 
-can_branch(break) 					= no. 
-can_branch(ceq) 					= no. 
-can_branch(ckfinite) 					= no. 
-can_branch(cpblk) 					= no. 
+can_branch(callvirt(_MethodRef)) 			= no.
+can_branch(ret) 					= no.
+can_branch((and)) 					= no.
+can_branch(arglist) 					= no.
+can_branch(break) 					= no.
+can_branch(ceq) 					= no.
+can_branch(ckfinite) 					= no.
+can_branch(cpblk) 					= no.
 can_branch(dup) 					= no.
-can_branch(endfilter) 					= no. 
-can_branch(endfinally) 					= no. 
-can_branch(initblk) 					= no. 
-can_branch(ldnull) 					= no. 
-can_branch(localloc)		 			= no. 
-can_branch(neg) 					= no. 
-can_branch((not)) 					= no. 
-can_branch((or)) 					= no. 
-can_branch(pop) 					= no. 
-can_branch(shl) 					= no. 
-can_branch(tailcall) 					= no. 
-can_branch(volatile) 					= no. 
-can_branch(xor) 					= no. 
-can_branch(ldlen) 					= no. 
-can_branch(throw) 					= no. 
-can_branch(ldarg(_)) 					= no. 
+can_branch(endfilter) 					= no.
+can_branch(endfinally) 					= no.
+can_branch(initblk) 					= no.
+can_branch(ldnull) 					= no.
+can_branch(localloc)		 			= no.
+can_branch(neg) 					= no.
+can_branch((not)) 					= no.
+can_branch((or)) 					= no.
+can_branch(pop) 					= no.
+can_branch(shl) 					= no.
+can_branch(tailcall) 					= no.
+can_branch(volatile) 					= no.
+can_branch(xor) 					= no.
+can_branch(ldlen) 					= no.
+can_branch(throw) 					= no.
+can_branch(ldarg(_)) 					= no.
 can_branch(ldc(_Type, _Const)) 				= no.
-can_branch(ldstr(_String)) 				= no. 
-can_branch(add(_Overflow, _Signed))	 		= no. 
+can_branch(ldstr(_String)) 				= no.
+can_branch(add(_Overflow, _Signed))	 		= no.
 can_branch(cgt(_Signed)) 				= no.
 can_branch(clt(_Signed)) 				= no.
-can_branch(conv(_SimpleType)) 				= no. 
-can_branch(div(_Signed)) 				= no. 
-can_branch(jmp(_MethodRef)) 				= no. 
+can_branch(conv(_SimpleType)) 				= no.
+can_branch(div(_Signed)) 				= no.
+can_branch(jmp(_MethodRef)) 				= no.
 can_branch(ldarga(_Variable)) 				= no.
-can_branch(ldftn(_MethodRef)) 				= no. 
-can_branch(ldind(_SimpleType)) 				= no. 
-can_branch(ldloc(_Variable)) 				= no. 
+can_branch(ldftn(_MethodRef)) 				= no.
+can_branch(ldind(_SimpleType)) 				= no.
+can_branch(ldloc(_Variable)) 				= no.
 can_branch(ldloca(_Variable)) 				= no.
-can_branch(leave(_Target)) 				= no. 
-can_branch(mul(_Overflow, _Signed)) 			= no. 
-can_branch(rem(_Signed)) 				= no. 
-can_branch(shr(_Signed)) 				= no. 
+can_branch(leave(_Target)) 				= no.
+can_branch(mul(_Overflow, _Signed)) 			= no.
+can_branch(rem(_Signed)) 				= no.
+can_branch(shr(_Signed)) 				= no.
 can_branch(starg(_Variable)) 				= no.
-can_branch(stind(_SimpleType)) 				= no. 
-can_branch(stloc(_Variable)) 				= no. 
-can_branch(sub(_OverFlow, _Signed)) 			= no. 
+can_branch(stind(_SimpleType)) 				= no.
+can_branch(stloc(_Variable)) 				= no.
+can_branch(sub(_OverFlow, _Signed)) 			= no.
 can_branch(unaligned(_)) 				= no.
-can_branch(box(_Type)) 					= no. 
+can_branch(box(_Type)) 					= no.
 can_branch(castclass(_Type)) 				= no.
-can_branch(cpobj(_Type)) 				= no. 
-can_branch(initobj(_Type)) 				= no. 
-can_branch(isinst(_Type)) 				= no. 
-can_branch(ldelem(_SimpleType)) 			= no. 
-can_branch(ldelema(_Type)) 				= no. 
+can_branch(cpobj(_Type)) 				= no.
+can_branch(initobj(_Type)) 				= no.
+can_branch(isinst(_Type)) 				= no.
+can_branch(ldelem(_SimpleType)) 			= no.
+can_branch(ldelema(_Type)) 				= no.
 can_branch(ldfld(_FieldRef)) 				= no.
 can_branch(ldflda(_FieldRef)) 				= no.
 can_branch(ldobj(_Type)) 				= no.
-can_branch(ldsfld(_FieldRef)) 				= no. 
-can_branch(ldsflda(_FieldRef)) 				= no. 
+can_branch(ldsfld(_FieldRef)) 				= no.
+can_branch(ldsflda(_FieldRef)) 				= no.
 can_branch(ldtoken(_)) 					= no.
 can_branch(ldvirtftn(_MethodRef)) 			= no.
 can_branch(mkrefany(_Type)) 				= no.
-can_branch(newarr(_Type)) 				= no. 
-can_branch(newobj(_MethodRef)) 				= no. 
-can_branch(rethrow) 					= no. 
-can_branch(refanytype) 					= no. 
-can_branch(refanyval(_)) 				= no. 
-can_branch(stelem(_SimpleType)) 			= no. 
-can_branch(stfld(_FieldRef)) 				= no. 
-can_branch(stobj(_)) 					= no. 
-can_branch(sizeof(_Type))				= no. 
-can_branch(stsfld(_FieldRef)) 				= no. 
+can_branch(newarr(_Type)) 				= no.
+can_branch(newobj(_MethodRef)) 				= no.
+can_branch(rethrow) 					= no.
+can_branch(refanytype) 					= no.
+can_branch(refanyval(_)) 				= no.
+can_branch(stelem(_SimpleType)) 			= no.
+can_branch(stfld(_FieldRef)) 				= no.
+can_branch(stobj(_)) 					= no.
+can_branch(sizeof(_Type))				= no.
+can_branch(stsfld(_FieldRef)) 				= no.
 can_branch(unbox(_Type)) 				= no.
 

@@ -15,15 +15,19 @@
 % cross-compiling, since the overflow behaviour of the host machine might
 % not be the same as that of the target machine, e.g. if they have different
 % word sizes.
-% 
+%
 %------------------------------------------------------------------------------%
 
 :- module transform_hlds__const_prop.
 
 :- interface.
 
-:- import_module hlds__hlds_module, hlds__hlds_goal, hlds__hlds_pred.
-:- import_module parse_tree__prog_data, hlds__instmap.
+:- import_module hlds__hlds_goal.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_pred.
+:- import_module hlds__instmap.
+:- import_module parse_tree__prog_data.
+
 :- import_module list.
 
 	% evaluate_call(PredId, ProcId, Args, GoalInfo0,
@@ -57,7 +61,6 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, list, int, float, map, require, string.
@@ -533,7 +536,7 @@ make_construction_goal(OutputArg, Cons, GoalInfo0, Goal, GoalInfo) :-
 
 :- pred make_assignment(arg_hlds_info::in, arg_hlds_info::in,
 	hlds_goal_expr::out) is det.
-            
+
 make_assignment(OutputArg, InputArg, Goal) :-
 	OutVar = OutputArg ^ arg_var,
 	InVar = InputArg ^ arg_var,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -198,7 +198,7 @@ remove_reassign_loop([Instr0 | Instrs0], KnownContentsMap0, DepLvalMap0,
 		Uinstr0 = goto(_),
 		RevInstrs1 = [Instr0 | RevInstrs0],
 			% The value of KnownContentsMap doesn't really matter
-			% since the next instruction (which must be a label) 
+			% since the next instruction (which must be a label)
 			% will reset it to empty anyway.
 		KnownContentsMap = map__init,
 		DepLvalMap = map__init
@@ -206,7 +206,7 @@ remove_reassign_loop([Instr0 | Instrs0], KnownContentsMap0, DepLvalMap0,
 		Uinstr0 = computed_goto(_, _),
 		RevInstrs1 = [Instr0 | RevInstrs0],
 			% The value of KnownContentsMap doesn't really matter
-			% since the next instruction (which must be a label) 
+			% since the next instruction (which must be a label)
 			% will reset it to empty anyway.
 		KnownContentsMap = map__init,
 		DepLvalMap = map__init

@@ -61,7 +61,6 @@
 :- import_module ll_backend__layout.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, std_util, list, assoc_list, set, map.
@@ -196,7 +195,7 @@
 	% information in the second field. Since code_info.m generates
 	% unique labels for each resumption point, this field is never updated
 	% once it is set in pass 2.
-	% 
+	%
 	% For labels which correspond to a call return (part (c) above),
 	% we record information in the third field during pass 4. If execution
 	% tracing is turned on, then jumpopt.m will not redirect call return

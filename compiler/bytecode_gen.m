@@ -146,7 +146,7 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	bytecode_gen__goal(Goal, ByteInfo2, ByteInfo3, GoalCode),
 
 	bytecode_gen__get_next_label(ByteInfo3, EndLabel, ByteInfo),
-	
+
 	bytecode_gen__get_counts(ByteInfo, LabelCount, TempCount),
 
 	ZeroLabelCode = node([label(ZeroLabel)]),
@@ -189,7 +189,7 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo0, ByteInfo, Code) :-
 
 bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	(
-		GoalExpr = generic_call(GenericCallType, 
+		GoalExpr = generic_call(GenericCallType,
 			ArgVars, ArgModes, Detism),
 		( GenericCallType = higher_order(PredVar, _, _, _) ->
 			bytecode_gen__higher_order_call(PredVar, ArgVars,
@@ -549,10 +549,10 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 		TestId = string_test
 	;
 		TypeCategory = float_type,
-		TestId = float_test 
+		TestId = float_test
 	;
 		TypeCategory = enum_type,
-		TestId = enum_test 
+		TestId = enum_test
 	;
 		TypeCategory = higher_order_type,
 		unexpected(this_file, "higher_order_type in simple_test")
@@ -709,7 +709,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 			string__to_char_list(FunctorName, FunctorList),
 			( FunctorList = [Char] ->
 				ByteConsId = char_const(Char)
-			;	
+			;
 				unexpected(this_file,
 					"map_cons_id: unqualified cons_id is not a char_const")
 			)
@@ -735,20 +735,23 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = float_const(FloatVal),
 		ByteConsId = float_const(FloatVal)
 	;
-		ConsId = pred_const(PredId, ProcId, EvalMethod),
+		ConsId = pred_const(ShroudedPredProcId, EvalMethod),
+		proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId),
 		( EvalMethod = normal ->
 			predicate_id(ModuleInfo, PredId,
 				ModuleName, PredName, Arity),
 
 			module_info_pred_info(ModuleInfo, PredId, PredInfo),
 			bytecode_gen__get_is_func(PredInfo, IsFunc),
-				
+
 			proc_id_to_int(ProcId, ProcInt),
 			ByteConsId = pred_const(ModuleName,
 				PredName, Arity, IsFunc, ProcInt)
 		;
 			% XXX
-			sorry(this_file, "bytecode for Aditi lambda expressions")
+			sorry(this_file,
+				"bytecode for Aditi lambda expressions")
 		)
 	;
 		ConsId = type_ctor_info_const(ModuleName, TypeName, TypeArity),
@@ -766,7 +769,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = typeclass_info_cell_constructor,
 		ByteConsId = typeclass_info_cell_constructor
 	;
-		ConsId = tabling_pointer_const(_, _),
+		ConsId = tabling_pointer_const(_),
 		sorry(this_file, "bytecode cannot implement tabling")
 	;
 		ConsId = table_io_decl(_),
@@ -806,10 +809,10 @@ bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
 bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-
 	unexpected(this_file, "tabling_pointer_constant cons tag " ++
 		"for non-tabling_pointer_constant cons id").
-bytecode_gen__map_cons_tag(deep_profiling_proc_layout_tag(_), _) :-
+bytecode_gen__map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
 	unexpected(this_file, "deep_profiling_proc_layout_tag cons tag " ++
 		"for non-deep_profiling_proc_static cons id").
-bytecode_gen__map_cons_tag(table_io_decl_tag(_), _) :-
+bytecode_gen__map_cons_tag(table_io_decl_tag(_, _), _) :-
 	unexpected(this_file, "table_io_decl_tag cons tag " ++
 		"for non-table_io_decl cons id").
 bytecode_gen__map_cons_tag(reserved_address(_), _) :-
@@ -853,7 +856,7 @@ bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
 
 :- pred bytecode_gen__init_byte_info(module_info::in,
 	map(prog_var, byte_var)::in, map(prog_var, type)::in,
-	byte_info::out) is det.  
+	byte_info::out) is det.
 
 bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo) :-
 	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo,

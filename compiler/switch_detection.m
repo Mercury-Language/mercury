@@ -53,14 +53,13 @@
 
 :- import_module check_hlds__det_util.
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__modes.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.
 :- import_module hlds__passes_aux.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 
 :- import_module term.
 :- import_module char, int, assoc_list, map, set, std_util, require.
@@ -153,7 +152,7 @@ detect_switches_in_goal_1(ModuleInfo, VarTypes, InstMap0, InstMap,
 
 	% Here we process each of the different sorts of goals.
 
-:- pred detect_switches_in_goal_2(module_info::in, vartypes::in, instmap::in, 
+:- pred detect_switches_in_goal_2(module_info::in, vartypes::in, instmap::in,
 	hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out) is det.
 
 detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
@@ -424,7 +423,7 @@ partition_disj_trial([Goal0 | Goals], Var, !Left, !Cases) :-
 	list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
 	unit::in, unit::out) is det.
 
-find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals, 
+find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
 		_Result0, Result, _, unit) :-
 	(
 		Goal0 = GoalExpr0 - GoalInfo,
@@ -525,7 +524,7 @@ find_bind_var(Var, ProcessUnify, Goal0 - GoalInfo, Goal,
 	).
 
 :- pred conj_find_bind_var(prog_var::in,
-	process_unify(Result, Info)::in(process_unify), 
+	process_unify(Result, Info)::in(process_unify),
 	list(hlds_goal)::in, list(hlds_goal)::out,
 	prog_substitution::in, prog_substitution::out, Result::in, Result::out,
 	Info::in, Info::out, deconstruct_search::out) is det.

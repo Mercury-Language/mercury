@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2003 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 
 :- import_module assoc_list, bool, int, require, set, std_util.
 
-rl_key__extract_indexing(no_inputs, _, _, _, []). 
+rl_key__extract_indexing(no_inputs, _, _, _, []).
 rl_key__extract_indexing(one_input(Args), Goals, ModuleInfo, VarTypes,
 		ArgBounds) :-
 	rl_key__compute_var_bound_maps(Goals, ModuleInfo, VarTypes, VarMaps),
@@ -99,7 +99,7 @@ rl_key__compute_var_bounds(ModuleInfo, Args, VarMap, ArgBounds) :-
 	ArgBounds1 \= [],
 	map__from_assoc_list(ArgBounds1, ArgBounds).
 
-:- pred rl_key__useful_bounds(module_info::in, 
+:- pred rl_key__useful_bounds(module_info::in,
 		pair(prog_var, pair(key_term))::in,
 		pair(prog_var, pair(key_term))::out) is semidet.
 
@@ -118,11 +118,11 @@ rl_key__useful_bounds(ModuleInfo, Var - (LowerBound0 - UpperBound0),
 
 rl_key__remove_useless_info(_ModuleInfo, var - Vars, var - Vars).
 rl_key__remove_useless_info(ModuleInfo,
-		functor(ConsId, Type, ArgBounds0) - Vars, 
+		functor(ConsId, Type, ArgBounds0) - Vars,
 		Bound) :-
 	list__map(rl_key__remove_useless_info(ModuleInfo),
 		ArgBounds0, ArgBounds),
-	( 
+	(
 		type_is_tuple(Type, _)
 	->
 		Bound = var - Vars
@@ -140,7 +140,7 @@ rl_key__remove_useless_info(ModuleInfo,
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
 		Body ^ du_type_ctors = []
-	->	
+	->
 		Bound = var - Vars
 	;
 		Bound = functor(ConsId, Type, ArgBounds) - Vars
@@ -181,10 +181,10 @@ rl_key__bounds_to_key_range(MaybeConstructArgs, Args, VarTypes,
 	),
 		% Partial matches on indexes aren't yet allowed.
 	list__map((pred(Attr::in, (Attr - AttrBound)::out) is semidet :-
-			list__index1(Args, Attr, KeyArg), 
+			list__index1(Args, Attr, KeyArg),
 			map__search(VarBoundMap, KeyArg, AttrBound)
 		), Attrs, AttrBounds),
-				
+
 	list__map(list__index1(Args), Attrs, KeyArgs),
 	map__apply_to_list(KeyArgs, VarTypes, ArgTypes),
 
@@ -268,7 +268,7 @@ rl_key__convert_key_attr_2(MaybeArgs, functor(ConsId, Type, Terms) - _,
 	SeenInfinity0 = no,
 	list__map_foldl(rl_key__convert_key_attr(MaybeArgs),
 		Terms, Attrs, SeenInfinity0, SeenInfinity).
-		
+
 :- pred rl_key__split_key_tuples(assoc_list(int, pair(key_term))::in,
 	assoc_list(int, key_term)::out, assoc_list(int, key_term)::out) is det.
 
@@ -378,7 +378,7 @@ key_tuple_less_or_equal(ModuleInfo, UpperLower1, [Index1 - Term1 | Tuple1],
 
 key_term_less_or_equal(_ModuleInfo, _, functor(_, _, _), upper, infinity).
 key_term_less_or_equal(_ModuleInfo, lower, infinity, _, functor(_, _, _)).
-key_term_less_or_equal(ModuleInfo, UpperLower1, functor(ConsId1, _, Args1), 
+key_term_less_or_equal(ModuleInfo, UpperLower1, functor(ConsId1, _, Args1),
 		UpperLower2, functor(ConsId2, Type, Args2)) :-
 	( ConsId1 = ConsId2 ->
 		assoc_list__from_corresponding_lists(Args1, Args2, Args),
@@ -391,7 +391,7 @@ key_term_less_or_equal(ModuleInfo, UpperLower1, functor(ConsId1, _, Args1),
 		rl_key__choose_cons_id(ModuleInfo, lower, Type,
 			ConsId1, ConsId2, ConsId),
 		ConsId = ConsId1
-	).	
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -431,9 +431,9 @@ rl_key__var_and_eq_args_to_attr_pair(Args1, Args2, Arg1 - EqArgs2,
 		list__nth_member_search(Args2, Arg2, Attr2)
 	->
 		AttrPair = Attr1 - Attr2
-	;	
+	;
 		error("rl_key__var_and_eq_args_to_attr_pair")
-	).	
+	).
 
 :- pred rl_key__intersect_branch_eq_args(rl_var_bounds::in,
 		assoc_list(prog_var, set(prog_var))::in,
@@ -498,7 +498,7 @@ rl_key__get_var_bounds(ModuleInfo, VarMap, Var,
 	;
 		set__singleton_set(Vars, Var),
 		LowerBound = var - Vars,
-		UpperBound = var - Vars 
+		UpperBound = var - Vars
 	).
 
 :- type upper_lower
@@ -676,7 +676,7 @@ rl_key__extract_key_range_switch(Cnstrs0, Var, [Case | Cases],
 
 rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 	key_info_get_module_info(ModuleInfo),
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },	
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ PredModule = pred_info_module(PredInfo) },
 	{ PredName = pred_info_name(PredInfo) },
 	{ list__length(Args, Arity) },
@@ -696,7 +696,7 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 		;
 			{ error("rl_key__extract_key_range_call: unify") }
 		)
-	; 
+	;
 		{
 			is_builtin_compare_pred(PredModule,
 				PredName, Arity, CompareTypePrime)
@@ -714,21 +714,21 @@ rl_key__extract_key_range_call(PredId, ProcId, Args) -->
 	).
 
 
-:- pred rl_key__update_compare_bounds(compare_type::in, list(prog_var)::in, 
-		key_info::in, key_info::out) is det.	
+:- pred rl_key__update_compare_bounds(compare_type::in, list(prog_var)::in,
+		key_info::in, key_info::out) is det.
 
 rl_key__update_compare_bounds(result(Result), Args0) -->
 	{ list__reverse(Args0, Args) },
 	( { Args = [Arg2, Arg1 | _] } ->
 		rl_key__update_compare_bounds_2(Result, Arg1, Arg2)
 	;
-		{ error("rl_key__update_compare_bounds") }	
+		{ error("rl_key__update_compare_bounds") }
 	).
 rl_key__update_compare_bounds(unknown, Args) -->
 	( { Args = [Arg2, Arg1, ResultVar | _] } ->
 		rl_key__add_compare_result(ResultVar, Arg1, Arg2)
 	;
-		{ error("rl_key__update_compare_bounds") }	
+		{ error("rl_key__update_compare_bounds") }
 	).
 
 :- pred rl_key__add_compare_result(prog_var::in, prog_var::in, prog_var::in,
@@ -747,7 +747,7 @@ rl_key__add_compare_result(CompareResult, Arg1, Arg2) -->
 	key_info_set_constraints(Cnstrs).
 
 :- pred rl_key__update_compare_bounds_2(comparison_result::in,
-	prog_var::in, prog_var::in, key_info::in, key_info::out) is det.	
+	prog_var::in, prog_var::in, key_info::in, key_info::out) is det.
 
 rl_key__update_compare_bounds_2((<), Arg1, Arg2) -->
 	rl_key__add_var_upper_bound(Arg1, Arg2),
@@ -757,12 +757,12 @@ rl_key__update_compare_bounds_2((>), Arg1, Arg2) -->
 	rl_key__add_var_upper_bound(Arg2, Arg1).
 rl_key__update_compare_bounds_2((=), Arg1, Arg2) -->
 	rl_key__unify_var_var(Arg1, Arg2).
-	
+
 
 	% Note that all ranges in a B-tree are closed, so '<' is treated
 	% as '=<' when computing the key range. The join condition must be
 	% sure to do the '\=' comparison at run-time.
-:- type compare_type 
+:- type compare_type
 	--->	result(comparison_result) % ordering if the predicate succeeds.
 	;	unknown		% result of compare/3, to be tested later.
 	.
@@ -821,7 +821,7 @@ rl_key__extract_key_range_unify(complicated_unify(_, _, _)) -->
 		key_info::in, key_info::out) is det.
 
 rl_key__unify_functor(Var, ConsId, Args) -->
-	key_info_get_constraints(Constraints0),	
+	key_info_get_constraints(Constraints0),
 	{ GetArgTerm = (pred(Arg::in, ArgTerm::out) is det :-
 			set__singleton_set(ArgSet, Arg),
 			ArgTerm = var - ArgSet
@@ -855,11 +855,11 @@ rl_key__unify_functor(Var, ConsId, Args) -->
 		key_info::in, key_info::out) is det.
 
 rl_key__unify_var_var(Var1, Var2) -->
-	key_info_get_constraints(Constraints0),	
+	key_info_get_constraints(Constraints0),
 	{ AddEquality = (pred(Map0::in, Map::out) is det :-
 		rl_key__add_alias(Var1, Var2, Map0, Map1),
 		rl_key__add_alias(Var2, Var1, Map1, Map)
-	) }, 
+	) },
 	{ list__map(AddEquality, Constraints0, Constraints) },
 	key_info_set_constraints(Constraints).
 
@@ -894,7 +894,7 @@ rl_key__add_functor_constraint(Var, ConsId) -->
 		{ ConsId = int_const(_), Arity = 0
 		; ConsId = float_const(_), Arity = 0
 		; ConsId = string_const(_), Arity = 0
-		; ConsId = cons(_, Arity) 
+		; ConsId = cons(_, Arity)
 		}
 	->
 		key_info_get_vartypes(VarTypes),
@@ -965,7 +965,7 @@ rl_key__update_bounds(Var, LowerBound1, UpperBound1) -->
 	{ list__map(UpdateBounds, Cnstrs0, Cnstrs) },
 	key_info_set_constraints(Cnstrs).
 
-	% If the bounds can't be combined, we should throw away 
+	% If the bounds can't be combined, we should throw away
 	% this set of constraints, since they are unsatisfiable.
 :- pred rl_key__unify_term(module_info::in, upper_lower::in,
 		key_term::in, key_term::in, key_term::out) is det.
@@ -988,7 +988,7 @@ rl_key__unify_term_2(ModuleInfo, UpperLower,
 		functor(ConsId1, Type, Args1),
 		functor(ConsId2, _, Args2),
 		functor(ConsId, Type, Args)) :-
-	( ConsId1 = ConsId2 ->	
+	( ConsId1 = ConsId2 ->
 		ConsId = ConsId1,
 		assoc_list__from_corresponding_lists(Args1, Args2, Args3),
 		UpdatePair = (pred(Pair::in, Bound::out) is det :-
@@ -998,7 +998,7 @@ rl_key__unify_term_2(ModuleInfo, UpperLower,
 			),
 		list__map(UpdatePair, Args3, Args)
 	;
-		rl_key__det_choose_cons_id(ModuleInfo, UpperLower, 
+		rl_key__det_choose_cons_id(ModuleInfo, UpperLower,
 			Type, ConsId1, Args1, ConsId2, Args2, ConsId, Args)
 	).
 
@@ -1014,7 +1014,7 @@ rl_key__unify_term_2(ModuleInfo, UpperLower,
 rl_key__det_choose_cons_id(ModuleInfo, UpperLower, Type, ConsId1, Args1,
 		ConsId2, Args2, ConsId, Args) :-
 	(
-		rl_key__choose_cons_id(ModuleInfo, UpperLower, 
+		rl_key__choose_cons_id(ModuleInfo, UpperLower,
 			Type, ConsId1, ConsId2, ChosenConsId)
 	->
 		ConsId = ChosenConsId,
@@ -1024,18 +1024,18 @@ rl_key__det_choose_cons_id(ModuleInfo, UpperLower, Type, ConsId1, Args1,
 			Args = Args2
 		)
 	;
-		error("rl_key__det_choose_cons_id: invalid cons_id pair")	
+		error("rl_key__det_choose_cons_id: invalid cons_id pair")
 	).
 
 :- pred rl_key__choose_cons_id(module_info::in, upper_lower::in,
 		(type)::in, cons_id::in, cons_id::in, cons_id::out) is semidet.
-		
+
 rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 		ConsId1, ConsId2, ConsId) :-
 	(
 		ConsId1 = cons(_, _),
 		ConsId2 = cons(_, _)
-	->	
+	->
 		module_info_types(ModuleInfo, Types),
 		type_to_ctor_and_args(Type, TypeCtor, _),
 		map__search(Types, TypeCtor, TypeDefn),
@@ -1047,14 +1047,14 @@ rl_key__choose_cons_id(ModuleInfo, UpperLower, Type,
 	;
 		% int_consts etc. can be directly compared.
 		compare(CompareRes, ConsId1, ConsId2),
-		rl_key__choose_cons_id_3(CompareRes, UpperLower, 
+		rl_key__choose_cons_id_3(CompareRes, UpperLower,
 			ConsId1, ConsId2, ConsId)
 	).
 
-	% Find the cons_id which compares lowest, then choose 
+	% Find the cons_id which compares lowest, then choose
 	% the one which gives the largest range.
 :- pred rl_key__choose_cons_id_2(list(constructor)::in, upper_lower::in,
-		cons_id::in, cons_id::in, cons_id::out) is semidet.	
+		cons_id::in, cons_id::in, cons_id::out) is semidet.
 
 rl_key__choose_cons_id_2([], _, _, _, _) :-
 	error("rl_key__choose_cons_id_2: couldn't find ctor").
@@ -1128,6 +1128,6 @@ key_info_get_constraints(Cnstrs, Info, Info) :-
 key_info_set_constraints(Cnstrs, Info0, Info) :-
 	Info0 = key_info(A, B, _),
 	Info = key_info(A, B, Cnstrs).
-	
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

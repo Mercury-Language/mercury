@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,7 +55,6 @@
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__instmap.
-:- import_module parse_tree__inst.
 
 :- import_module assoc_list, bool, map, require, set, std_util, term, varset.
 
@@ -138,7 +137,7 @@ context__categorize_call_list(Context, PredProcId, InputArgs, OutputArgs,
 		)
 	->
 		Result = exit(Calls, AfterGoals)
-	; 
+	;
 		context__check_left_linear_rule(PredProcId, InputArgs,
 			OutputArgs, Calls, AfterGoals, LeftResult),
 
@@ -201,7 +200,7 @@ context__check_left_linear_rule(PredProcId, InputArgs,
 	pred_proc_id::in, list(prog_var)::in, list(prog_var)::in,
 	db_call_list::in, list(hlds_goal)::in, context_rule::out) is det.
 
-context__check_right_or_multi_linear_rule(RuleContext, PredProcId, InputArgs, 
+context__check_right_or_multi_linear_rule(RuleContext, PredProcId, InputArgs,
 		OutputArgs, Calls, AfterGoals, Result) :-
 	(
 		AfterGoals = [],
@@ -231,14 +230,14 @@ context__check_right_or_multi_linear_rule(RuleContext, PredProcId, InputArgs,
 				Result = right_linear(OtherCalls,
 					NonRecGoals, Call)
 			;
-				Result = non_linear(Errors0)	
+				Result = non_linear(Errors0)
 			)
 		;
-			context__check_multi_calls(PredProcId, InputArgs, 
+			context__check_multi_calls(PredProcId, InputArgs,
 				OtherCalls, Errors0, Errors),
 
 			( Errors = [] ->
-				Result = multi_linear(OtherCalls, 
+				Result = multi_linear(OtherCalls,
 					NonRecGoals, Call)
 			;
 				Result = non_linear(Errors)
@@ -260,14 +259,14 @@ context__check_multi_calls(PredProcId, InputArgs, [BeforeGoals - Call | Calls],
 		magic_util__db_call_input_args(Call, Inputs),
 		( Inputs = InputArgs ->
 			Errors1 = Errors0
-		;	
+		;
 			magic_util__db_call_context(Call, Context),
 			Errors1 = [inputs_to_recursive_call - Context
 					| Errors0]
 		)
 	;
 		magic_util__db_call_nonlocals(Call, NonLocals),
-		magic_util__db_call_context(Call, Context), 
+		magic_util__db_call_context(Call, Context),
 		context__check_nonlocals(Context, InputSet, NonLocals,
 			Errors0, Errors1)
 	),
@@ -279,7 +278,7 @@ context__check_multi_calls(PredProcId, InputArgs, [BeforeGoals - Call | Calls],
 %-----------------------------------------------------------------------------%
 
 :- pred context__check_db_call_nonlocals(set(prog_var)::in,
-		pair(list(hlds_goal), db_call)::in, 
+		pair(list(hlds_goal), db_call)::in,
 		assoc_list(linearity_error, prog_context)::in,
 		assoc_list(linearity_error, prog_context)::out) is det.
 
@@ -294,10 +293,10 @@ context__check_db_call_nonlocals(Inputs, BeforeGoals - Call,
 :- pred context__check_goal_nonlocals(set(prog_var)::in, hlds_goal::in,
 		assoc_list(linearity_error, prog_context)::in,
 		assoc_list(linearity_error, prog_context)::out) is det.
-		
+
 context__check_goal_nonlocals(Inputs, _ - GoalInfo, Errors0, Errors) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals),	
-	goal_info_get_context(GoalInfo, Context), 
+	goal_info_get_nonlocals(GoalInfo, NonLocals),
+	goal_info_get_context(GoalInfo, Context),
 	context__check_nonlocals(Context, Inputs, NonLocals, Errors0, Errors).
 
 :- pred context__check_nonlocals(term__context::in, set(prog_var)::in,
@@ -348,15 +347,15 @@ context__transform_rule(PredProcId, exit(CallList0, AfterGoals0) - GoalInfo,
 		NonLocals, FactoredGoal),
 	{ list__append(FactoredGoal, AfterGoals, GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Disjunct) }.
-	
+
 context__transform_rule(_, non_linear(Errors) - _, _, _,
 		Disjuncts, Disjuncts) -->
 	list__foldl(context__add_linearity_error, Errors).
-	
+
 context__transform_rule(PredProcId,
 		left_linear(Call, CallList, AfterGoals) - GoalInfo,
 		Inputs, Outputs, Disjuncts0, [Disjunct | Disjuncts0]) -->
-	% For a left-linear rule, just factor the rule into 
+	% For a left-linear rule, just factor the rule into
 	% a form that rl_gen.m can handle.
 
 	{ Call = db_call(_, _ - RecGoalInfo, _, Args0, _, _, _) },
@@ -366,7 +365,7 @@ context__transform_rule(PredProcId,
 	{ PredModule = pred_info_module(PredInfo) },
 	{ PredName = pred_info_name(PredInfo) },
 	magic_info_get_curr_pred_proc_id(proc(PredId, ProcId)),
-	{ CallGoal = call(PredId, ProcId, Args, not_builtin, no, 
+	{ CallGoal = call(PredId, ProcId, Args, not_builtin, no,
 			qualified(PredModule, PredName)) - RecGoalInfo },
 
 	magic_info_get_magic_vars(Vars),
@@ -416,7 +415,7 @@ context__transform_rule(PredProcId,
 	magic_util__restrict_nonlocals(NonLocals1, NonLocals2),
 
 	% No call to the magic predicate is necessary, because the
-	% internal recursive calls produce the input. 
+	% internal recursive calls produce the input.
 	% Pull the first recursive call to the front of the list.
 	% XXX this could introduce inefficiency because the
 	% constraints on the call are not taken as well.
@@ -432,9 +431,9 @@ context__transform_rule(PredProcId,
 	magic_info_get_curr_pred_proc_id(proc(PredId, ProcId)),
 	magic_info_get_magic_vars(MagicVars),
 	{ list__append(MagicVars, Args0, Args) },
-	{ RecGoal = call(PredId, ProcId, Args, not_builtin, no, 
+	{ RecGoal = call(PredId, ProcId, Args, not_builtin, no,
 			qualified(PredModule, PredName)) - RecGoalInfo },
-	
+
 	{ list__reverse(CallList, RevCallList) },
 	context__factor_goal_list(PredProcId, RecGoal,
 		RevCallList, NonLocals2, FactoredGoal),
@@ -507,8 +506,8 @@ context__factor_goal_list(PredProcId, FirstCall,
 
 		{ Call = db_call(_, _ - GoalInfo0, _, Args, InputArgs, _, _) },
 		magic_info_get_curr_pred_proc_id(proc(PredId, ProcId)),
-		magic_info_get_magic_proc_info(MagicProcInfo),	
-		{ map__lookup(MagicProcInfo, proc(PredId, ProcId), 
+		magic_info_get_magic_proc_info(MagicProcInfo),
+		{ map__lookup(MagicProcInfo, proc(PredId, ProcId),
 			ThisProcInfo) },
 		{ ThisProcInfo = magic_proc_info(OldArgModes, _, _, _, _) },
 		magic_info_get_module_info(ModuleInfo0),
@@ -526,7 +525,7 @@ context__factor_goal_list(PredProcId, FirstCall,
 		{ PredName = pred_info_name(PredInfo) },
 		magic_info_get_magic_vars(MagicVars),
 		{ list__append(MagicVars, NewArgs, AllArgs) },
-		{ RecGoal = call(PredId, ProcId, AllArgs, not_builtin, no, 
+		{ RecGoal = call(PredId, ProcId, AllArgs, not_builtin, no,
 			qualified(PredModule, PredName)) - GoalInfo },
 		{ SetupCall = [RecGoal | Tests] }
 	;
@@ -560,7 +559,7 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 		{ map__init(Subn) },
 		{ list__append(InputRels, NewInputArgs, MagicInputArgs) },
 		{ list__append(MagicInputArgs, InputArgs, MagicArgs) },
-		
+
 		{ list__append(NewInputArgs, InputArgs, AllInputArgs) }
 	),
 
@@ -571,7 +570,7 @@ context__create_magic_call(MagicCall, RenameInputs, Subn, MagicInputArgs) -->
 		ModuleInfo, InstMapDelta) },
 	{ goal_info_init(NonLocals, InstMapDelta, nondet, pure, GoalInfo) },
 
-	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs, 
+	{ MagicCall = call(MagicPredId, MagicProcId, MagicArgs,
 			not_builtin, no, PredName) - GoalInfo }.
 
 %-----------------------------------------------------------------------------%

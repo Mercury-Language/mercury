@@ -15,7 +15,7 @@
 
 :- import_module parse_tree__prog_data.
 
-:- import_module std_util, list, term.
+:- import_module std_util, list, varset, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -213,11 +213,75 @@
 	goal::in, goal::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% Various predicates for accessing the cons_id type.
+
+	% Given a cons_id and a list of argument terms, convert it into a
+	% term. Fails if the cons_id is a pred_const, or type_ctor_info_const.
+
+:- pred cons_id_and_args_to_term(cons_id::in, list(term(T))::in, term(T)::out)
+	is semidet.
+
+	% Get the arity of a cons_id, aborting on pred_const and
+	% type_ctor_info_const.
+
+:- func cons_id_arity(cons_id) = arity.
+
+	% Get the arity of a cons_id. Return a `no' on those cons_ids
+	% where cons_id_arity/2 would normally abort.
+
+:- func cons_id_maybe_arity(cons_id) = maybe(arity).
+
+	% The reverse conversion - make a cons_id for a functor.
+	% Given a const and an arity for the functor, create a cons_id.
+
+:- func make_functor_cons_id(const, arity) = cons_id.
+
+	% Another way of making a cons_id from a functor.
+	% Given the name, argument types, and type_ctor of a functor,
+	% create a cons_id for that functor.
+
+:- func make_cons_id(sym_name, list(constructor_arg), type_ctor) = cons_id.
+
+	% Another way of making a cons_id from a functor.
+	% Given the name, argument types, and type_ctor of a functor,
+	% create a cons_id for that functor.
+	%
+	% Differs from make_cons_id in that (a) it requires the sym_name
+	% to be already module qualified, which means that it does not
+	% need the module qualification of the type, (b) it can compute the
+	% arity from any list of the right length.
+
+:- func make_cons_id_from_qualified_sym_name(sym_name, list(_)) = cons_id.
+
+%-----------------------------------------------------------------------------%
+
+	% make_n_fresh_vars(Name, N, VarSet0, Vars, VarSet):
+	%	`Vars' is a list of `N' fresh variables allocated from
+	%	`VarSet0'.  The variables will be named "<Name>1", "<Name>2",
+	%	"<Name>3", and so on, where <Name> is the value of `Name'.
+	%	`VarSet' is the resulting varset.
+
+:- pred make_n_fresh_vars(string::in, int::in, list(var(T))::out,
+	varset(T)::in, varset(T)::out) is det.
+
+	% given the list of predicate arguments for a predicate that
+	% is really a function, split that list into the function arguments
+	% and the function return type.
+:- pred pred_args_to_func_args(list(T)::in, list(T)::out, T::out) is det.
+
+	% Get the last two arguments from the list, failing if there
+	% aren't at least two arguments.
+:- pred get_state_args(list(T)::in, list(T)::out, T::out, T::out) is semidet.
+
+	% Get the last two arguments from the list, aborting if there
+	% aren't at least two arguments.
+:- pred get_state_args_det(list(T)::in, list(T)::out, T::out, T::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 
 :- import_module bool, require, string, int, map, varset.
@@ -369,7 +433,7 @@ prog_util__rename_in_goal_expr(OldVar, NewVar,
 	prog_util__rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
 	prog_util__rename_in_goal(OldVar, NewVar, Cond0, Cond),
 	prog_util__rename_in_goal(OldVar, NewVar, Then0, Then).
-prog_util__rename_in_goal_expr(OldVar, NewVar, 
+prog_util__rename_in_goal_expr(OldVar, NewVar,
 		if_then_else(Vars0, StateVars0, Cond0, Then0, Else0),
 		if_then_else(Vars, StateVars, Cond, Then, Else)) :-
 	prog_util__rename_in_vars(OldVar, NewVar, Vars0, Vars),
@@ -524,3 +588,126 @@ list_to_string_2(Pred, [T | Ts]) -->
 	).
 
 %-----------------------------------------------------------------------------%
+
+cons_id_and_args_to_term(int_const(Int), [], Term) :-
+	term__context_init(Context),
+	Term = term__functor(term__integer(Int), [], Context).
+cons_id_and_args_to_term(float_const(Float), [], Term) :-
+	term__context_init(Context),
+	Term = term__functor(term__float(Float), [], Context).
+cons_id_and_args_to_term(string_const(String), [], Term) :-
+	term__context_init(Context),
+	Term = term__functor(term__string(String), [], Context).
+cons_id_and_args_to_term(cons(SymName, _Arity), Args, Term) :-
+	construct_qualified_term(SymName, Args, Term).
+
+cons_id_arity(cons(_, Arity)) = Arity.
+cons_id_arity(int_const(_)) = 0.
+cons_id_arity(string_const(_)) = 0.
+cons_id_arity(float_const(_)) = 0.
+cons_id_arity(pred_const(_, _)) =
+	func_error("cons_id_arity: can't get arity of pred_const").
+cons_id_arity(type_ctor_info_const(_, _, _)) =
+	func_error("cons_id_arity: can't get arity of type_ctor_info_const").
+cons_id_arity(base_typeclass_info_const(_, _, _, _)) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of base_typeclass_info_const").
+cons_id_arity(type_info_cell_constructor(_)) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of type_info_cell_constructor").
+cons_id_arity(typeclass_info_cell_constructor) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of typeclass_info_cell_constructor").
+cons_id_arity(tabling_pointer_const(_)) =
+	func_error("cons_id_arity: can't get arity of tabling_pointer_const").
+cons_id_arity(deep_profiling_proc_layout(_)) =
+	func_error("cons_id_arity: " ++
+		"can't get arity of deep_profiling_proc_layout").
+cons_id_arity(table_io_decl(_)) =
+	func_error("cons_id_arity: can't get arity of table_io_decl").
+
+cons_id_maybe_arity(cons(_, Arity)) = yes(Arity).
+cons_id_maybe_arity(int_const(_)) = yes(0).
+cons_id_maybe_arity(string_const(_)) = yes(0).
+cons_id_maybe_arity(float_const(_)) = yes(0).
+cons_id_maybe_arity(pred_const(_, _)) = no.
+cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
+cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
+cons_id_maybe_arity(type_info_cell_constructor(_)) = no.
+cons_id_maybe_arity(typeclass_info_cell_constructor) = no.
+cons_id_maybe_arity(tabling_pointer_const(_)) = no.
+cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
+cons_id_maybe_arity(table_io_decl(_)) = no.
+
+make_functor_cons_id(term__atom(Name), Arity) = cons(unqualified(Name), Arity).
+make_functor_cons_id(term__integer(Int), _) = int_const(Int).
+make_functor_cons_id(term__string(String), _) = string_const(String).
+make_functor_cons_id(term__float(Float), _) = float_const(Float).
+
+make_cons_id(SymName0, Args, TypeCtor) = cons(SymName, Arity) :-
+	% Use the module qualifier on the SymName, if there is one,
+	% otherwise use the module qualifier on the Type, if there is one,
+	% otherwise leave it unqualified.
+	% XXX is that the right thing to do?
+	(
+		SymName0 = qualified(_, _),
+		SymName = SymName0
+	;
+		SymName0 = unqualified(ConsName),
+		(
+			TypeCtor = unqualified(_) - _,
+			SymName = SymName0
+		;
+			TypeCtor = qualified(TypeModule, _) - _,
+			SymName = qualified(TypeModule, ConsName)
+		)
+	),
+	list__length(Args, Arity).
+
+make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
+	list__length(Args, Arity).
+
+%-----------------------------------------------------------------------------%
+
+make_n_fresh_vars(BaseName, N, Vars, VarSet0, VarSet) :-
+	make_n_fresh_vars_2(BaseName, 0, N, Vars, VarSet0, VarSet).
+
+:- pred make_n_fresh_vars_2(string::in, int::in, int::in, list(var(T))::out,
+	varset(T)::in, varset(T)::out) is det.
+
+make_n_fresh_vars_2(BaseName, N, Max, Vars, !VarSet) :-
+	(N = Max ->
+		Vars = []
+	;
+		N1 = N + 1,
+		varset__new_var(!.VarSet, Var, !:VarSet),
+		string__int_to_string(N1, Num),
+		string__append(BaseName, Num, VarName),
+		varset__name_var(!.VarSet, Var, VarName, !:VarSet),
+		Vars = [Var | Vars1],
+		make_n_fresh_vars_2(BaseName, N1, Max, Vars1, !VarSet)
+	).
+
+pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
+	list__length(PredArgs, NumPredArgs),
+	NumFuncArgs = NumPredArgs - 1,
+	( list__split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) ->
+		FuncArgs = FuncArgs0,
+		FuncReturn = FuncReturn0
+	;
+		error("pred_args_to_func_args: function missing return value?")
+	).
+
+get_state_args(Args0, Args, State0, State) :-
+	list__reverse(Args0, RevArgs0),
+	RevArgs0 = [State, State0 | RevArgs],
+	list__reverse(RevArgs, Args).
+
+get_state_args_det(Args0, Args, State0, State) :-
+	( get_state_args(Args0, Args1, State0A, StateA) ->
+		Args = Args1,
+		State0 = State0A,
+		State = StateA
+	;
+		error("hlds_pred__get_state_args_det")
+	).

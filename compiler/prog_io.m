@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2003 The University of Melbourne.
+% Copyright (C) 1993-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,6 @@
 :- interface.
 
 :- import_module libs__timestamp.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
 
@@ -274,13 +273,19 @@
 
 :- implementation.
 
-:- import_module parse_tree__prog_io_goal, parse_tree__prog_io_dcg.
-:- import_module parse_tree__prog_io_pragma, parse_tree__prog_io_util.
-:- import_module parse_tree__prog_io_typeclass, parse_tree__modules.
-:- import_module hlds__hlds_data, hlds__hlds_pred, parse_tree__prog_util.
+:- import_module libs__globals.
+:- import_module libs__options.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__modules.
+:- import_module parse_tree__prog_io_dcg.
+:- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_io_pragma.
+:- import_module parse_tree__prog_io_typeclass.
+:- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
-:- import_module libs__globals, libs__options.
-:- import_module parse_tree__modules, recompilation, recompilation__version.
+:- import_module parse_tree__prog_util.
+:- import_module recompilation.
+:- import_module recompilation__version.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 :- import_module assoc_list, map, time, set.

@@ -1722,7 +1722,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
 		%			succeeded = MR_TRUE;
 		%		})
 		%	#ifdef PUT_COMMIT_IN_OWN_FUNC
-		%	   
+		%
 		%	    commit_func();
 		%	#endif
 
@@ -1813,7 +1813,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
 		%	#endif
 		%		})
 		%	#ifdef PUT_COMMIT_IN_NESTED_FUNC
-		%	   
+		%
 		%	    commit_func();
 		%       #endif
 

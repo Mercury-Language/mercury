@@ -75,7 +75,7 @@
 % (This includes typeclass info variables that hold typeinfos;
 % in the following "typeinfo variables" also includes typeclass info
 % variables.)
-% 
+%
 % Hence, the invariant needed for typeinfo-liveness calculation:
 % 	a variable holding a typeinfo must be live at any continuation
 % 	where any variable whose type is described (in whole or in part)
@@ -90,7 +90,7 @@
 % be born before the continuation after the call. So the typeinfo
 % variables will always be born before any continuation where they are
 % needed.
-% 
+%
 % A typeinfo variable becomes dead after both the following conditions
 % are true:
 %
@@ -98,7 +98,7 @@
 % 	    longer part of the nonlocals)
 %	(2) No other nonlocal variable's type is described by that typeinfo
 %	    variable.
-% 
+%
 % (1) happens without any changes to the liveness computation (it is
 %     the normal condition for variables becoming dead). This is more
 %     conservative than what is required for the invariant, but is
@@ -179,7 +179,6 @@
 :- implementation.
 
 % Parse tree modules
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_util.
 
 % HLDS modules

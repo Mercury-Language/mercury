@@ -65,7 +65,7 @@
 :- include_module goal_path.
 
 %-----------------------------------------------------------------------------%
-          
+
 :- implementation.
 
 :- import_module libs.

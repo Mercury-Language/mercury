@@ -372,7 +372,7 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
 	% the C block ends, so again we must stop using its local variables.
 	% (Livevals pseudo-instructions occur only immediately before
 	% instructions that cause control transfer, so we stop at them too.)
-	% 
+	%
 	% Our caller ensures that we can also so stop at any point. By doing so
 	% we may fail to exploit an optimization opportunity, but the code we
 	% generate will still be correct. At the moment we stop at instructions

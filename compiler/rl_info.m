@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998, 2003 The University of Melbourne.
+% Copyright (C) 1998, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -211,7 +211,7 @@
 		rl_info, rl_info).
 :- mode rl_info_get_proc_schema(in, out, rl_info_di, rl_info_uo) is det.
 
-:- pred rl_info_partition_call_args(pred_proc_id, list(T), 
+:- pred rl_info_partition_call_args(pred_proc_id, list(T),
 		list(T), list(T), rl_info, rl_info).
 :- mode rl_info_partition_call_args(in, in, out, out,
 		rl_info_di, rl_info_uo) is det.
@@ -230,7 +230,7 @@
 %-----------------------------------------------------------------------------%
 
 	% Create a comment showing which predicate the current rule came from.
-:- pred rl_info__comment(string::out, rl_info::rl_info_di, 
+:- pred rl_info__comment(string::out, rl_info::rl_info_di,
 		rl_info::rl_info_uo) is det.
 
 :- pred rl_info_write_message(string, list(string__poly_type),
@@ -254,18 +254,18 @@
 	--->	rl_info(
 			io__state,
 			module_info,
-			maybe(pred_info), 
+			maybe(pred_info),
 			maybe(proc_info),
-			list(pred_proc_id),	% predicates in the current 
+			list(pred_proc_id),	% predicates in the current
 						% RL procedure.
 			relation_map,
 			map(relation_id, relation_info),
 			unit,
 			map(prog_var, relation_id),
-						% map from var to 
+						% map from var to
 						% magic input relation.
 			list(pred_proc_id),	% preds in the current SCC.
-			int,			% current rule within 
+			int,			% current rule within
 						% a predicate
 			label_id,		% next label_id
 			relation_id,		% next relation_id
@@ -276,10 +276,10 @@
 			set(pred_proc_id),	% predicates for which we need
 						% to delay updating the diff
 						% relation until the end of
-						% the iteration. See the 
+						% the iteration. See the
 						% comment on rl_gen__order_scc.
 
-			bool,			% is the current SCC 
+			bool,			% is the current SCC
 						% highest in SCC list
 						% for the current RL procedure.
 			list(pred_proc_id)	% entry-points of the current
@@ -313,7 +313,7 @@ rl_info_init(ModuleInfo, IO, RLInfo) :-
 rl_info_get_io_state(IO, RLInfo, RLInfo) :-
 	RLInfo = rl_info(IO0, _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_),
 	unsafe_promise_unique(IO0, IO).
-	
+
 rl_info_set_io_state(IO0, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(_, B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
 	unsafe_promise_unique(IO0, IO),
@@ -321,7 +321,7 @@ rl_info_set_io_state(IO0, RLInfo0, RLInfo) :-
 
 rl_info_get_module_info(ModuleInfo, RLInfo, RLInfo) :-
 	RLInfo = rl_info(_, ModuleInfo, _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_).
-	
+
 rl_info_set_module_info(ModuleInfo, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A, _, C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
 	RLInfo = rl_info(A, ModuleInfo, C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S).
@@ -333,7 +333,7 @@ rl_info_get_pred_info(PredInfo, RLInfo, RLInfo) :-
 	;
 		error("rl_info_get_pred_info: pred_info not set")
 	).
-	
+
 rl_info_set_pred_info(PredInfo, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B, _, D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
 	RLInfo = rl_info(A,B, yes(PredInfo), D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S).
@@ -345,29 +345,29 @@ rl_info_get_proc_info(ProcInfo, RLInfo, RLInfo) :-
 	;
 		error("rl_info_get_pred_info: pred_info not set")
 	).
-	
-	
+
+
 rl_info_set_proc_info(ProcInfo, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B,C ,_, E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
 	RLInfo = rl_info(A,B,C, yes(ProcInfo), E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S).
 
 rl_info_get_scc_list(SubModule, RLInfo, RLInfo) :-
 	RLInfo = rl_info(_,_,_,_, SubModule, _,_,_,_,_,_,_,_,_,_,_,_,_,_).
-	
+
 rl_info_set_scc_list(SubModule, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B,C,D, _, F,G,H,I,J,K,L,M,N,O,P,Q,R,S),
 	RLInfo = rl_info(A,B,C,D, SubModule, F,G,H,I,J,K,L,M,N,O,P,Q,R,S).
 
 rl_info_get_relation_map(RelMap, RLInfo, RLInfo) :-
 	RLInfo = rl_info(_,_,_,_,_, RelMap, _,_,_,_,_,_,_,_,_,_,_,_,_).
-	
+
 rl_info_set_relation_map(RelMap, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B,C,D,E, _, G,H,I,J,K,L,M,N,O,P,Q,R,S),
 	RLInfo = rl_info(A,B,C,D,E, RelMap, G,H,I,J,K,L,M,N,O,P,Q,R,S).
 
 rl_info_get_relation_info(RelInfo, RLInfo, RLInfo) :-
 	RLInfo = rl_info(_,_,_,_,_,_, RelInfo, _,_,_,_,_,_,_,_,_,_,_,_).
-	
+
 rl_info_set_relation_info(RelInfo, RLInfo0, RLInfo) :-
 	RLInfo0 = rl_info(A,B,C,D,E,F, _, H,I,J,K,L,M,N,O,P,Q,R,S),
 	RLInfo = rl_info(A,B,C,D,E,F, RelInfo, H,I,J,K,L,M,N,O,P,Q,R,S).
@@ -448,13 +448,13 @@ rl_info_set_scc_entry_points(EntryPoints, RLInfo0, RLInfo) :-
 %-----------------------------------------------------------------------------%
 
 rl_info_get_new_temporary(TempRelationSchema, RelationId) -->
-	rl_info_get_next_relation_id(RelationId),	
+	rl_info_get_next_relation_id(RelationId),
 	rl_info_get_relation_info(RelationInfo0),
 	rl_info_relation_schema_to_type_list(TempRelationSchema, Types),
 	{ rl__relation_id_to_string(RelationId, RelationName) },
 	rl_info_get_module_info(ModuleInfo),
 	{ rl__default_temporary_state(ModuleInfo, TmpState) },
-	{ RelInfo = relation_info(temporary(TmpState), 
+	{ RelInfo = relation_info(temporary(TmpState),
 			Types, [], RelationName) },
 	{ map__det_insert(RelationInfo0, RelationId, RelInfo, RelationInfo) },
 	rl_info_set_relation_info(RelationInfo).
@@ -464,7 +464,7 @@ rl_info_relation_schema_to_type_list(same_as_pred(proc(PredId, ProcId)),
 	rl_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_arg_types(PredInfo, AllArgTypes) },
-	rl_info_partition_call_args(proc(PredId, ProcId), 
+	rl_info_partition_call_args(proc(PredId, ProcId),
 			AllArgTypes, _, Types).
 rl_info_relation_schema_to_type_list(same_as_relation(RelationId), Types) -->
 	rl_info_get_relation_info(RelInfo),
@@ -486,7 +486,7 @@ rl_info_lookup_relation(TempRelationId, RelationId) -->
 		% pred_id (others are separated out), so the proc_id
 		% can be ignored when creating the name.
 		{ PredProcId = proc(PredId, _) },
-		{ module_info_pred_info(ModuleInfo, 
+		{ module_info_pred_info(ModuleInfo,
 			PredId, PredInfo) },
 		( { hlds_pred__pred_info_is_base_relation(PredInfo) } ->
 			{ RelType = permanent(PredProcId) },
@@ -514,7 +514,7 @@ rl_info_lookup_relation(TempRelationId, RelationId) -->
 		{ map__det_insert(RelationInfos0, RelationId,
 			RelationInfo, RelationInfos) },
 		rl_info_set_relation_info(RelationInfos),
-		{ map__det_insert(RelMap0, TempRelationId, 
+		{ map__det_insert(RelMap0, TempRelationId,
 			RelationId, RelMap) },
 		rl_info_set_relation_map(RelMap)
 	).
@@ -532,7 +532,7 @@ rl_info_get_relation_schema(Rel, Schema) -->
 		relation_info(_, Schema, _, _)) }.
 
 rl_info_make_vars_equivalent(Var1, Var2, RLInfo0, RLInfo) :-
-	RLInfo0 = rl_info(A,B,C,D,E,F,G,H, VarRels0, J,K,L,M,N,O, 
+	RLInfo0 = rl_info(A,B,C,D,E,F,G,H, VarRels0, J,K,L,M,N,O,
 			VarStat0, Q,R,S),
 	( map__search(VarRels0, Var2, RelId) ->
 		map__det_insert(VarRels0, Var1, RelId, VarRels)
@@ -544,7 +544,7 @@ rl_info_make_vars_equivalent(Var1, Var2, RLInfo0, RLInfo) :-
 	;
 		VarStat = VarStat0
 	),
-	RLInfo = rl_info(A,B,C,D,E,F,G,H, VarRels, J,K,L,M,N,O, 
+	RLInfo = rl_info(A,B,C,D,E,F,G,H, VarRels, J,K,L,M,N,O,
 			VarStat, Q,R,S).
 
 rl_info_get_var_type(Var, Type) -->
@@ -576,13 +576,13 @@ rl_info_set_var_status(Var, Status) -->
 	rl_info_get_var_status_map(VarStat0),
 	{ map__set(VarStat0, Var, Status, VarStat) },
 	rl_info_set_var_stats(VarStat).
-	
+
 %-----------------------------------------------------------------------------%
 
 rl_info_partition_call_args(proc(PredId, ProcId), AllArgs,
 		InputArgs, OutputArgs) -->
 	rl_info_get_module_info(ModuleInfo),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, 
+	{ module_info_pred_proc_info(ModuleInfo, PredId,
 		ProcId, _, ProcInfo) },
 	{ proc_info_argmodes(ProcInfo, ArgModes) },
 	{ partition_args(ModuleInfo, ArgModes,
@@ -607,7 +607,7 @@ rl_info_get_current_proc_output_vars(Vars) -->
 
 rl_info_get_proc_schema(proc(PredId, ProcId), schema(Schema)) -->
 	rl_info_get_module_info(ModuleInfo),
-	{ module_info_pred_proc_info(ModuleInfo, 
+	{ module_info_pred_proc_info(ModuleInfo,
 		PredId, ProcId, PredInfo, ProcInfo) },
 	{ pred_info_arg_types(PredInfo, ArgTypes) },
 	{ pred_info_get_markers(PredInfo, Markers) },
@@ -620,16 +620,16 @@ rl_info_get_proc_schema(proc(PredId, ProcId), schema(Schema)) -->
 
 rl_info_write_message(FormatStr, Items) -->
 	rl_info_get_io_state(IO0),
-	{ globals__io_lookup_bool_option(debug_rl_gen, Debug, IO0, IO1) }, 
+	{ globals__io_lookup_bool_option(debug_rl_gen, Debug, IO0, IO1) },
 	{ Debug = yes ->
 		string__format(FormatStr, Items, Message),
 		io__write_string(Message, IO1, IO2),
 		io__flush_output(IO2, IO)
-	;	
+	;
 		IO = IO1
 	},
 	rl_info_set_io_state(IO).
-	
+
 %-----------------------------------------------------------------------------%
 
 rl_info__comment(Comment) -->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 
 	% timestamp_to_string(Timestamp) = String:
 	%	Converts `Timestamp' into a string with format
-	%	"yyyy-mm-dd hh:mm:ss", expressed as UTC. 
+	%	"yyyy-mm-dd hh:mm:ss", expressed as UTC.
 :- func timestamp_to_string(timestamp) = string.
 
 	% string_to_timestamp(String) = Timestamp:

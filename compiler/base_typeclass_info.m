@@ -8,7 +8,7 @@
 % that hold the base_typeclass_info structures of the typeclass instances
 % defined by the current module.
 %
-% See notes/type_class_transformation.html for a description of the various 
+% See notes/type_class_transformation.html for a description of the various
 % ways to represent type information, including a description of the
 % base_typeclass_info structures.
 %
@@ -61,7 +61,7 @@ base_typeclass_info__generate_rtti(ModuleInfo, RttiDataList) :-
 
 base_typeclass_info__gen_infos_for_classes([], _ModuleName, _ModuleInfo,
 		RttiDataList, RttiDataList).
-base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo, 
+base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo,
 		RttiDataList0, RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(C, ModuleName,
 		ModuleInfo, RttiDataList0, RttiDataList1),
@@ -75,7 +75,7 @@ base_typeclass_info__gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo,
 
 base_typeclass_info__gen_infos_for_instance_list(_ - [], _, _,
 		RttiDataList, RttiDataList).
-base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is], 
+base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		ModuleName, ModuleInfo, RttiDataList0, RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
 		ModuleName, ModuleInfo, RttiDataList0, RttiDataList1),
@@ -90,7 +90,7 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 	->
 		make_instance_string(InstanceTypes, InstanceString),
 		base_typeclass_info__gen_body(PredProcIds,
-			InstanceTypes, InstanceConstraints, ModuleInfo, 
+			InstanceTypes, InstanceConstraints, ModuleInfo,
 			ClassId, BaseTypeClassInfo),
 		TCName = generate_class_name(ClassId),
 		RttiData = base_typeclass_info(TCName, InstanceModule,
@@ -145,11 +145,11 @@ base_typeclass_info__construct_proc_labels([proc(PredId, ProcId) | Procs],
 
 %----------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__gen_superclass_count(class_id, module_info, 
+:- pred base_typeclass_info__gen_superclass_count(class_id, module_info,
 	int, int).
 :- mode base_typeclass_info__gen_superclass_count(in, in, out, out) is det.
 
-base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo, 
+base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
 		NumSuperClasses, ClassArity) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),

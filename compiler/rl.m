@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 University of Melbourne.
+% Copyright (C) 1998-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,11 +13,10 @@
 % Output to RL bytecodes by rl_out.m.
 %
 %-----------------------------------------------------------------------------%
-:- module aditi_backend__rl. 
+:- module aditi_backend__rl.
 
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -30,7 +29,7 @@
 
 :- type rl_code		==	list(rl_proc).
 
-:- type rl_proc	
+:- type rl_proc
 	---> rl_proc(
 		rl_proc_name,
 		list(relation_id),	% input argument relations
@@ -121,7 +120,7 @@
 
 %-----------------------------------------------------------------------------%
 
-		% instruction and a comment. 
+		% instruction and a comment.
 :- type rl_instruction	==	pair(rl_instr, string).
 
 :- type rl_instr
@@ -146,7 +145,7 @@
 		)
 	;
 		% A difference is just a special case of subtract.
-		% The inputs must be sorted and have the same schema.	
+		% The inputs must be sorted and have the same schema.
 		difference(	% output = input 1 - input 2
 			output_rel,		% output
 			relation_id,		% input 1
@@ -169,7 +168,7 @@
 			assoc_list(output_rel, rl_goal),
 						% other outputs (materialised)
 			project_type
-		)		
+		)
 	;
 		union(
 			output_rel,		% output
@@ -192,7 +191,7 @@
 				% relation_id is used to hold a copy of the
 				% di relation if required. The indexes should
 				% be added to the copy if it is made.
-		)	
+		)
 	;
 		% Insert a relation into another relation.
 		% The input relation is destructively updated.
@@ -237,7 +236,7 @@
 		% there are no later references in the code to the input
 		% relation. Base relations and named temporaries are always
 		% copied, because they have an implicit reference in the
-		% database's `relation name -> relation contents' mapping. 
+		% database's `relation name -> relation contents' mapping.
 		%
 		% Make sure the output has the given set of indexes, even
 		% if it isn't copied.
@@ -250,7 +249,7 @@
 		init(output_rel)
 	;
 		% add a tuple to a relation.
-		insert_tuple(	
+		insert_tuple(
 			output_rel,		% output
 			relation_id,		% input
 			rl_goal
@@ -274,7 +273,7 @@
 						% each group
 			pred_proc_id		% predicate to update the
 						% accumulator for each tuple.
-		)	
+		)
 	;
 		% Assign the input relation to the output, ensuring
 		% that the output has the appropriate indexes.
@@ -423,7 +422,7 @@
 :- type difference_type
 	--->	sort_merge(sort_spec)
 	.
-		
+
 :- type project_type
 	--->	filter
 	;	index(index_spec, key_range)
@@ -463,9 +462,9 @@
 	% hlds_goal form.
 :- type rl_goal
 	---> rl_goal(
-		pred_proc_id :: maybe(pred_proc_id),	
+		pred_proc_id :: maybe(pred_proc_id),
 				% Predicate from which the expression was
-				% taken - used to avoid unnecessarily merging 
+				% taken - used to avoid unnecessarily merging
 				% varsets. Should be `no' if the varset
 				% contains vars from multiple procs.
 		varset :: prog_varset,
@@ -513,11 +512,11 @@
 		relation_state::out) is det.
 
 	% rl__instr_relations(Instr, InputRels, OutputRels).
-:- pred rl__instr_relations(rl_instruction::in, 
+:- pred rl__instr_relations(rl_instruction::in,
 		list(relation_id)::out, list(relation_id)::out) is det.
 
 	% Return all relations referenced by a goto condition.
-:- pred rl__goto_cond_relations(goto_cond::in, 
+:- pred rl__goto_cond_relations(goto_cond::in,
 		list(relation_id)::out) is det.
 
 	% Is the instructions a label, goto or conditional goto.
@@ -527,7 +526,7 @@
 	% Strip off the index specification from an output relation.
 :- pred rl__output_rel_relation(output_rel::in, relation_id::out) is det.
 
-	% Get a sort specification sorting ascending on all attributes.	
+	% Get a sort specification sorting ascending on all attributes.
 :- pred rl__ascending_sort_spec(list(type)::in, sort_attrs::out) is det.
 
 	% Get a list of all attributes for a given schema.
@@ -570,9 +569,9 @@
 	% Swap the inputs of a goal such as a join condition which
 	% has two input relations.
 :- pred rl__swap_goal_inputs(rl_goal::in, rl_goal::out) is det.
-	
+
 	% Remove the output tuple from a goal, converting a join
-	% into a semi-join. 
+	% into a semi-join.
 :- pred rl__strip_goal_outputs(rl_goal::in, rl_goal::out) is det.
 
 	% Succeed if the goal produces an output tuple.
@@ -649,12 +648,12 @@
 
 	% rl__schemas_to_strings(ModuleInfo, SchemaLists,
 	%	TypeDecls, SchemaStrings)
-	% 
+	%
 	% Convert a list of lists of types to a list of schema strings,
 	% with the declarations for the types used in TypeDecls.
 :- pred rl__schemas_to_strings(module_info::in,
 		list(list(type))::in, string::out, list(string)::out) is det.
-			
+
 	% Convert a list of types to a schema string.
 :- pred rl__schema_to_string(module_info::in,
 		list(type)::in, string::out) is det.
@@ -681,6 +680,7 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__goal_form.
+:- import_module hlds__hlds_data.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_out.
@@ -703,7 +703,7 @@ rl__default_temporary_state(ModuleInfo, TmpState) :-
 %-----------------------------------------------------------------------------%
 
 rl__instr_relations(
-		join(output_rel(Output, _), Input1, Input2, _, _, _, _) - _, 
+		join(output_rel(Output, _), Input1, Input2, _, _, _, _) - _,
 		[Input1, Input2], [Output]).
 rl__instr_relations(subtract(output_rel(Output, _),
 		Input1, Input2, _, _, _) - _, [Input1, Input2], [Output]).
@@ -713,12 +713,12 @@ rl__instr_relations(project(OutputRel,
 		Input, _, OtherOutputRels, _) - _,
 		[Input], Outputs) :-
 	assoc_list__keys(OtherOutputRels, OutputRels),
-	list__map(rl__output_rel_relation, 
+	list__map(rl__output_rel_relation,
 		 [OutputRel | OutputRels], Outputs).
 rl__instr_relations(union(OutputRel, Inputs, _) - _, Inputs, [Output]) :-
 	rl__output_rel_relation(OutputRel, Output).
 rl__instr_relations(union_diff(UoOutput, DiInput, Input,
-		output_rel(Diff, _), _, _) - _, 
+		output_rel(Diff, _), _, _) - _,
 		[DiInput, Input], [UoOutput, Diff]).
 rl__instr_relations(insert(DiOutput, DiInput, Input, _, _) - _,
 		[DiInput, Input], [DiOutput]).
@@ -876,9 +876,9 @@ rl__make_trivial_join_or_subtract_info(ModuleInfo, JoinOrSubtract, ProjectType,
 		%
 		% A projection is not needed for semi-joins with
 		% deterministic conditions.
-		% 
+		%
 		SemiJoin = yes(_),
-		\+ ( 
+		\+ (
 			% For this type of trivial subtract,
 			% the selection will use the negation
 			% of the condition, which will pretty
@@ -945,7 +945,7 @@ rl__goal_can_be_removed(ModuleInfo, Goals) :-
 	(
 		FullyStrict = no
 	;
-		all [Goal] (	
+		all [Goal] (
 			list__member(Goal, Goals)
 		=>
 			goal_cannot_loop_or_throw(Goal)
@@ -956,7 +956,7 @@ rl__join_type_to_project_type(nested_loop, yes(filter)).
 rl__join_type_to_project_type(index(IndexSpec, KeyRange0),
 		yes(index(IndexSpec, KeyRange))) :-
 	join_key_range_to_project_key_range(KeyRange0, KeyRange).
-	
+
 	%
 	% Introducing sort-merge and hash joins means that there is a
 	% connection between the arguments of the two input tuples, so
@@ -1002,14 +1002,14 @@ rl__goal_is_independent_of_input(InputNo, RLGoal) :-
 		MaybeOutputs = yes(Outputs),
 		set__list_to_set(Outputs, OutputSet),
 		set__intersect(OutputSet, InputArgSet, OutputIntersection),
-		\+ set__empty(OutputIntersection)  
+		\+ set__empty(OutputIntersection)
 	),
 	\+ (
 		list__member(Goal, Goals),
 		Goal = _ - GoalInfo,
 		goal_info_get_nonlocals(GoalInfo, NonLocals),
 		set__intersect(NonLocals, InputArgSet, Intersection),
-		\+ set__empty(Intersection)  
+		\+ set__empty(Intersection)
 	).
 
 :- pred rl__select_input_args(tuple_num::in, rl_goal_inputs::in,
@@ -1029,7 +1029,7 @@ rl__swap_join_type_inputs(nested_loop, nested_loop).
 rl__swap_join_type_inputs(sort_merge(A, B), sort_merge(B, A)).
 rl__swap_join_type_inputs(hash(A, B), hash(B, A)).
 rl__swap_join_type_inputs(index(_, _), _) :-
-	error("rl__swap_join_type_inputs: can't swap inputs of index join"). 
+	error("rl__swap_join_type_inputs: can't swap inputs of index join").
 
 rl__swap_goal_inputs(RLGoal0, RLGoal) :-
 	Inputs0 = RLGoal0 ^ inputs,
@@ -1140,7 +1140,7 @@ rl__get_c_interface_rl_proc_name(ModuleInfo, PredProcId, ProcName) :-
 	InterfaceArity = NumOutputArgs + 1,
 	rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo,
 		PredName, InterfaceArity, ProcName).
-			
+
 rl__permanent_relation_name(ModuleInfo, PredId, ProcName) :-
 	rl__get_permanent_relation_info(ModuleInfo, PredId, Owner,
 		Module, _, _, Name, _),
@@ -1218,16 +1218,16 @@ rl__schema_to_string(ModuleInfo, Types, SchemaString) :-
 
 	% Go over a list of types collecting declarations for all the
 	% types used in the list.
-:- pred rl__gather_types(module_info::in, set(full_type_id)::in, 
-		list(type)::in, gathered_types::in, gathered_types::out, 
-		set(full_type_id)::in, set(full_type_id)::out, 
+:- pred rl__gather_types(module_info::in, set(full_type_id)::in,
+		list(type)::in, gathered_types::in, gathered_types::out,
+		set(full_type_id)::in, set(full_type_id)::out,
 		string::in, string::out, string::in, string::out) is det.
 
-rl__gather_types(_, _, [], GatheredTypes, GatheredTypes, 
+rl__gather_types(_, _, [], GatheredTypes, GatheredTypes,
 		RecursiveTypes, RecursiveTypes, Decls, Decls,
 		TypeString, TypeString).
-rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0, 
-		GatheredTypes, RecursiveTypes0, RecursiveTypes, 
+rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0,
+		GatheredTypes, RecursiveTypes0, RecursiveTypes,
 		Decls0, Decls, TypeString0, TypeString) :-
 	rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0,
 		GatheredTypes1, RecursiveTypes0, RecursiveTypes1,
@@ -1238,16 +1238,16 @@ rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0,
 		Comma = ","
 	),
 	string__append_list([TypeString0, ThisTypeString, Comma], TypeString1),
-	rl__gather_types(ModuleInfo, Parents, Types, GatheredTypes1, 
-		GatheredTypes, RecursiveTypes1, RecursiveTypes, 
+	rl__gather_types(ModuleInfo, Parents, Types, GatheredTypes1,
+		GatheredTypes, RecursiveTypes1, RecursiveTypes,
 		Decls1, Decls, TypeString1, TypeString).
 
-:- pred rl__gather_type(module_info::in, set(full_type_id)::in, (type)::in, 
-		gathered_types::in, gathered_types::out, set(full_type_id)::in, 
+:- pred rl__gather_type(module_info::in, set(full_type_id)::in, (type)::in,
+		gathered_types::in, gathered_types::out, set(full_type_id)::in,
 		set(full_type_id)::out, string::in, string::out,
 		string::out) is det.
 
-rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes, 
+rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 		RecursiveTypes0, RecursiveTypes, Decls0, Decls, ThisType) :-
 	ClassifiedType0 = classify_type(ModuleInfo, Type),
 	( ClassifiedType0 = enum_type ->
@@ -1337,7 +1337,7 @@ rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 		),
 		(
 			map__search(GatheredTypes0, TypeCtor - Args,
-				MangledTypeName0) 
+				MangledTypeName0)
 		->
 			GatheredTypes = GatheredTypes0,
 			Decls = Decls0,
@@ -1353,10 +1353,10 @@ rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 			map__det_insert(GatheredTypes0, TypeCtor - Args,
 				MangledTypeName, GatheredTypes1),
 
-			rl__gather_constructors(ModuleInfo, 
-				Parents1, Ctors, GatheredTypes1, 
+			rl__gather_constructors(ModuleInfo,
+				Parents1, Ctors, GatheredTypes1,
 				GatheredTypes, RecursiveTypes1,
-				RecursiveTypes, Decls0, Decls1, 
+				RecursiveTypes, Decls0, Decls1,
 				"", CtorDecls),
 
 			% Recursive types are marked by a
@@ -1368,7 +1368,7 @@ rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 			),
 			string__append_list([Decls1, RecursiveSpec, ":",
 				MangledTypeName, "=", CtorDecls, " "],
-				Decls)	
+				Decls)
 		),
 		string__append(":T", MangledTypeName, ThisType)
 	;
@@ -1376,13 +1376,13 @@ rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 	).
 
 :- pred rl__gather_constructors(module_info::in, set(full_type_id)::in,
-		list(constructor)::in, map(full_type_id, string)::in, 
-		map(full_type_id, string)::out, set(full_type_id)::in, 
+		list(constructor)::in, map(full_type_id, string)::in,
+		map(full_type_id, string)::out, set(full_type_id)::in,
 		set(full_type_id)::out, string::in, string::out,
 		string::in, string::out) is det.
-				
-rl__gather_constructors(_, _, [], GatheredTypes, GatheredTypes, 
-		RecursiveTypes, RecursiveTypes, Decls, Decls, 
+
+rl__gather_constructors(_, _, [], GatheredTypes, GatheredTypes,
+		RecursiveTypes, RecursiveTypes, Decls, Decls,
 		CtorDecls, CtorDecls).
 rl__gather_constructors(ModuleInfo, Parents, [Ctor | Ctors],
 		GatheredTypes0, GatheredTypes, RecursiveTypes0, RecursiveTypes,
@@ -1392,8 +1392,8 @@ rl__gather_constructors(ModuleInfo, Parents, [Ctor | Ctors],
 	rl__mangle_and_quote_ctor_name(CtorName, Arity, MangledCtorName),
 
 	assoc_list__values(Args, ArgTypes),
-	rl__gather_types(ModuleInfo, Parents, ArgTypes, GatheredTypes0, 
-		GatheredTypes1, RecursiveTypes0, RecursiveTypes1, 
+	rl__gather_types(ModuleInfo, Parents, ArgTypes, GatheredTypes0,
+		GatheredTypes1, RecursiveTypes0, RecursiveTypes1,
 		Decls0, Decls1, "", ArgList),
 	( Ctors = [] ->
 		Sep = ""
@@ -1421,22 +1421,22 @@ rl__mangle_type_name(TypeCtor, Args, MangledTypeName) :-
 		string::in, string::out) is det.
 
 rl__mangle_type_name_2(TypeCtor, Args, MangledTypeName0, MangledTypeName) :-
-	( 
+	(
 		TypeCtor = qualified(Module0, Name) - Arity,
 		prog_out__sym_name_to_string(Module0, Module),
-		string__append_list([MangledTypeName0, Module, "__", Name], 
+		string__append_list([MangledTypeName0, Module, "__", Name],
 			MangledTypeName1)
 	;
 		TypeCtor = unqualified(TypeName) - Arity,
 		string__append(MangledTypeName0, TypeName, MangledTypeName1)
 	),
 	string__int_to_string(Arity, ArStr),
-	string__append_list([MangledTypeName1, "___", ArStr], 
+	string__append_list([MangledTypeName1, "___", ArStr],
 		MangledTypeName2),
 	( Args = [] ->
 		MangledTypeName = MangledTypeName2
 	;
-		list__foldl(rl__mangle_type_arg, Args, 
+		list__foldl(rl__mangle_type_arg, Args,
 			MangledTypeName2, MangledTypeName)
 	).
 
@@ -1445,7 +1445,7 @@ rl__mangle_type_name_2(TypeCtor, Args, MangledTypeName0, MangledTypeName) :-
 rl__mangle_type_arg(Arg, String0, String) :-
 	string__append(String0, "___", String1),
 	( type_to_ctor_and_args(Arg, ArgTypeCtor, ArgTypeArgs) ->
-		rl__mangle_type_name_2(ArgTypeCtor, ArgTypeArgs, 
+		rl__mangle_type_name_2(ArgTypeCtor, ArgTypeArgs,
 			String1, String)
 	;
 		error("rl__mangle_type_arg: type_to_ctor_and_args failed")

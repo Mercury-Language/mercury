@@ -80,7 +80,7 @@
 					% and the context of the call.
 					% In pass 1, all starts should be no.
 					% In pass 2, all starts should be yes.
-			int,			
+			int,
 			list(pred_proc_id),
 			bag(prog_var)
 					% These three fields describe the
@@ -204,7 +204,7 @@ traverse_goal_2(foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
 	ArgVars = list__map(foreign_arg_var, Args),
 	partition_call_args(Module, CallArgModes, ArgVars, _InVars, OutVars),
 	goal_info_get_context(GoalInfo, Context),
-		
+
 	( is_termination_known(Module, proc(CallPredId, CallProcId)) ->
 		error_if_intersect(OutVars, Context, pragma_foreign_code,
 			!Info)

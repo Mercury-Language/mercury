@@ -7,9 +7,9 @@
 % Main author: stayl
 %
 % This module should only be imported by rl_out.m. XXX make it a sub-module.
-% 
+%
 % Generate RL "expressions" to evaluate join conditions.
-% 
+%
 % The code generated here is pretty awful. Each variable used in the
 % expression is assigned its own register. All calls are generated inline -
 % recursive calls and calls to imported predicates result in an abort.
@@ -84,7 +84,7 @@
 	% an equi-join.
 :- pred rl_exprn__generate_equijoin_exprn(module_info::in, list(int)::in,
 	list(type)::in, list(bytecode)::out) is det.
-	
+
 	% rl_exprn__generate_hash_function(ModuleInfo, HashAttrs,
 	%	InputSchema, ExprnCode).
 	%
@@ -117,7 +117,7 @@
 	int::out, exprn_mode::out, list(type)::out) is det.
 
 	% rl_exprn__aggregate(ModuleInfo, InitAccPred, UpdateAccPred,
-	% 	GrpByType, NonGrpByType, AccType, ExprnCode, Decls).	
+	% 	GrpByType, NonGrpByType, AccType, ExprnCode, Decls).
 	%
 	% Given the closures used to create the initial accumulator for each
 	% group and update the accumulator for each tuple, create
@@ -181,7 +181,7 @@ rl_exprn__generate_sort_merge_compare_exprn(_ModuleInfo, Spec1, Schema1,
 	),
 	rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code).
 
-:- pred rl_exprn__do_generate_compare_exprn(list(type)::in, 
+:- pred rl_exprn__do_generate_compare_exprn(list(type)::in,
 	assoc_list(pair(int, sort_dir))::in, list(bytecode)::out) is det.
 
 rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code) :-
@@ -189,7 +189,7 @@ rl_exprn__do_generate_compare_exprn(Schema1, CompareAttrs, Code) :-
 	list__foldl(rl_exprn__generate_compare_instrs(Schema1),
 		CompareAttrs, empty, CompareCode),
 
-	ExprnCode = 
+	ExprnCode =
 		tree(node([rl_PROC_expr_frag(2)]),
 		tree(CompareCode,
 		node([
@@ -413,7 +413,7 @@ rl_exprn__generate_bound_3(_ModuleInfo, MaybeArgTypes, IsSubTerm, FieldNum,
 			FieldNum, PutCode)
 	),
 	Code = node([GetCode, PutCode]).
-		
+
 rl_exprn__generate_bound_3(ModuleInfo, MaybeArgTypes, IsSubTerm, FieldNum,
 		TupleNum, functor(ConsId, Type, Attrs), Code, Depth) -->
 	rl_exprn__set_term_arg_cons_id_code(ConsId, Type, TupleNum,
@@ -507,7 +507,7 @@ rl_exprn__set_term_arg_cons_id_code(string_const(Str), _, TupleNum, FieldNum,
 	;
 		Code = Code0
 	}.
-rl_exprn__set_term_arg_cons_id_code(pred_const(_, _, _), _, _, _, _, _, _) -->
+rl_exprn__set_term_arg_cons_id_code(pred_const(_, _), _, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(type_ctor_info_const(_, _, _),
 		_, _, _, _, _, _) -->
@@ -521,7 +521,7 @@ rl_exprn__set_term_arg_cons_id_code(type_info_cell_constructor(_),
 rl_exprn__set_term_arg_cons_id_code(typeclass_info_cell_constructor,
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
-rl_exprn__set_term_arg_cons_id_code(tabling_pointer_const(_, _),
+rl_exprn__set_term_arg_cons_id_code(tabling_pointer_const(_),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(deep_profiling_proc_layout(_),
@@ -596,7 +596,7 @@ rl_exprn__generate_modify_project_exprn_2([Type | Types],
 
 rl_exprn__generate(ModuleInfo, RLGoal, Code, NumParams, Mode, Decls) :-
 	RLGoal = rl_goal(_, VarSet, VarTypes, InstMap,
-		Inputs, MaybeOutputs, Goals, _), 
+		Inputs, MaybeOutputs, Goals, _),
 	rl_exprn_info_init(ModuleInfo, InstMap, VarTypes, VarSet, Info0),
 	rl_exprn__generate_2(Inputs, MaybeOutputs, Goals,
 		Code, NumParams, Mode, Decls, Info0, _).
@@ -605,7 +605,7 @@ rl_exprn__generate(ModuleInfo, RLGoal, Code, NumParams, Mode, Decls) :-
 	list(hlds_goal)::in, list(bytecode)::out, int::out, exprn_mode::out,
 	list(type)::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
-rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList, 
+rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 		Code, NumParams, Mode, Decls) -->
 	{ goal_list_determinism(GoalList, Detism) },
 	{ determinism_components(Detism, CanFail, _) },
@@ -615,7 +615,7 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 	;
 		NonLocals = NonLocals0
 	},
-	( 
+	(
 		{ Inputs = no_inputs },
 		{ NumParams = 0 },
 		{ InputCode = empty }
@@ -652,7 +652,7 @@ rl_exprn__generate_2(Inputs, MaybeOutputs, GoalList,
 		{ Mode = test }
 	),
 
-	{ 
+	{
 		CanFail = can_fail,
 		EvalCode =
 			tree(InputCode,
@@ -693,7 +693,7 @@ rl_exprn__generate_fragments(DeclCode, InitCode, GroupInitCode,
 				rl_exprn__resolve_addresses(FragCode0,
 					FragCode),
 				Tree =
-					tree(Tree0, 
+					tree(Tree0,
 					tree(node([rl_PROC_expr_frag(FragNo)]),
 					FragCode
 				))
@@ -728,11 +728,11 @@ rl_exprn__generate_decls(node(ConstCode), node(RuleCodes), VarTypes) -->
 	{ list__map(rl_exprn__generate_const_decl, ConstsLA, ConstCode) },
 	rl_exprn_info_get_decls(VarTypes).
 
-:- pred rl_exprn__generate_const_decl(pair(int, rl_const)::in, 
+:- pred rl_exprn__generate_const_decl(pair(int, rl_const)::in,
 		bytecode::out) is det.
 
 rl_exprn__generate_const_decl(Addr - Const, Code) :-
-	( 
+	(
 		Const = int(Int),
 		Code = rl_HEAD_const_int(Addr, Int)
 	;
@@ -774,7 +774,7 @@ rl_exprn__generate_rule(RuleNo - (Rule - RuleTuple), Code) -->
 %-----------------------------------------------------------------------------%
 
 	% Shift the inputs to the expression out of the input tuple.
-:- pred rl_exprn__deconstruct_input_tuple(tuple_num::in, int::in, 
+:- pred rl_exprn__deconstruct_input_tuple(tuple_num::in, int::in,
 	list(prog_var)::in, set(prog_var)::in, byte_tree::out,
 	rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -802,15 +802,15 @@ rl_exprn__deconstruct_input_tuple(TupleNo, FieldNo, [Var | Vars],
 rl_exprn__construct_output_tuple(Goals, Vars, Code) -->
 	{ goal_list_determinism(Goals, Detism) },
 	( { determinism_components(Detism, _, at_most_zero) } ->
-		% The condition never succeeds, so don't try to 
+		% The condition never succeeds, so don't try to
 		% construct the output.
-		{ Code = empty }	
+		{ Code = empty }
 	;
 		{ FirstField = 0 },
 		rl_exprn__construct_output_tuple_2(FirstField, Vars, Code)
 	).
 
-:- pred rl_exprn__construct_output_tuple_2(int::in, list(prog_var)::in, 
+:- pred rl_exprn__construct_output_tuple_2(int::in, list(prog_var)::in,
 		byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__construct_output_tuple_2(_, [], empty) --> [].
@@ -828,12 +828,12 @@ rl_exprn__construct_output_tuple_2(FieldNo, [Var | Vars], Code) -->
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__goals([], _, empty) --> [].
-rl_exprn__goals([Goal | Goals], Fail, Code) --> 
+rl_exprn__goals([Goal | Goals], Fail, Code) -->
 	rl_exprn__goal(Goal, Fail, Code0),
 	rl_exprn__goals(Goals, Fail, Code1),
 	{ Code = tree(Code0, Code1) }.
 
-:- pred rl_exprn__goal(hlds_goal::in, byte_tree::in, 
+:- pred rl_exprn__goal(hlds_goal::in, byte_tree::in,
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__goal(unify(_, _, _, Uni, _) - Info, Fail, Code) -->
@@ -844,9 +844,9 @@ rl_exprn__goal(not(NegGoal) - _, Fail, Code) -->
 	rl_exprn_info_get_next_label_id(EndLabel),
 	{ NotFail = node([rl_EXP_jmp(EndLabel)]) },
 	rl_exprn__goal(NegGoal, NotFail, NegCode),
-	{ Code = 
-		tree(NegCode, 
-		tree(Fail, 
+	{ Code =
+		tree(NegCode,
+		tree(Fail,
 		node([rl_PROC_label(EndLabel)])
 	)) }.
 rl_exprn__goal(if_then_else(_, Cond, Then, Else) - _, Fail, Code) -->
@@ -857,10 +857,10 @@ rl_exprn__goal(if_then_else(_, Cond, Then, Else) - _, Fail, Code) -->
 	rl_exprn__goal(Then, Fail, ThenCode),
 	rl_exprn__goal(Else, Fail, ElseCode),
 	{ Code =
-		tree(CondCode, 
-		tree(ThenCode, 
+		tree(CondCode,
+		tree(ThenCode,
 		tree(node([rl_EXP_jmp(EndIte), rl_PROC_label(StartElse)]),
-		tree(ElseCode, 
+		tree(ElseCode,
 		node([rl_PROC_label(EndIte)])
 	)))) }.
 rl_exprn__goal(conj(Goals) - _, Fail, Code) -->
@@ -890,7 +890,7 @@ rl_exprn__goal(shorthand(_) - _, _, _) -->
 	{ error("rl_exprn__goal: unexpected shorthand") }.
 
 :- pred rl_exprn__cases(prog_var::in, list(case)::in, byte_tree::in,
-		byte_tree::in, byte_tree::out, 
+		byte_tree::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__cases(_, [], _, Fail, Fail) --> [].
@@ -900,16 +900,16 @@ rl_exprn__cases(Var, [case(ConsId, Goal) | Cases], Succeed, Fail, Code) -->
 	rl_exprn__functor_test(Var, ConsId, node([Jmp]), TestCode),
 	rl_exprn__goal(Goal, Fail, GoalCode),
 	rl_exprn__cases(Var, Cases, Succeed, Fail, Code1),
-	{ Code = 
+	{ Code =
 		tree(TestCode,
 		tree(GoalCode,
-		tree(Succeed, 
+		tree(Succeed,
 		tree(node([rl_PROC_label(NextCase)]),
 		Code1
 	)))) }.
 
 :- pred rl_exprn__disj(list(hlds_goal)::in, byte_tree::in,
-		byte_tree::in, byte_tree::out, 
+		byte_tree::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__disj([], _, Fail, Fail) --> [].
@@ -919,7 +919,7 @@ rl_exprn__disj([Goal | Goals], Succeed, Fail, Code) -->
 	{ NextLabel = node([rl_PROC_label(NextDisj)]) },
 	rl_exprn__goal(Goal, TryNext, GoalCode),
 	rl_exprn__disj(Goals, Succeed, Fail, Code1),
-	{ Code = 
+	{ Code =
 		tree(GoalCode,
 		tree(Succeed,
 		tree(NextLabel,
@@ -928,8 +928,8 @@ rl_exprn__disj([Goal | Goals], Succeed, Fail, Code) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_exprn__call(pred_id::in, proc_id::in, list(prog_var)::in, 
-		hlds_goal_info::in, byte_tree::in, byte_tree::out, 
+:- pred rl_exprn__call(pred_id::in, proc_id::in, list(prog_var)::in,
+		hlds_goal_info::in, byte_tree::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
@@ -984,7 +984,7 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 :- pred rl_exprn__call_not_implemented_error(prog_context::in, module_info::in,
 		pred_id::in, proc_id::in, string::in) is erroneous.
 
-rl_exprn__call_not_implemented_error(Context, 
+rl_exprn__call_not_implemented_error(Context,
 		ModuleInfo, PredId, ProcId, ErrorDescr) :-
 	describe_one_proc_name(ModuleInfo, should_module_qualify,
 		proc(PredId, ProcId), ProcName),
@@ -999,7 +999,7 @@ rl_exprn__call_not_implemented_error(Context,
 
 :- pred rl_exprn__call_body(pred_id::in, proc_id::in, pred_info::in,
 	proc_info::in, byte_tree::in, list(prog_var)::in, byte_tree::out,
-	rl_exprn_info::in, rl_exprn_info::out) is det.  
+	rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	{ pred_info_get_maybe_special_pred(PredInfo, MaybeSpecial) },
@@ -1049,12 +1049,12 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 		rl_exprn__cons_id_to_rule_number(EQConsId, ResType, EQRuleNo),
 		rl_exprn__cons_id_to_rule_number(GTConsId, ResType, GTRuleNo),
 		rl_exprn__cons_id_to_rule_number(LTConsId, ResType, LTRuleNo),
-		
+
 		rl_exprn_info_get_next_label_id(GTLabel),
 		rl_exprn_info_get_next_label_id(LTLabel),
 		rl_exprn_info_get_next_label_id(EndLabel),
 
-		{ Code = 
+		{ Code =
 			tree(PushCode1,
 			tree(PushCode2,
 			node([
@@ -1075,7 +1075,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 		)) }
 	;
 		% XXX temporary hack until we allow Mercury calls from Aditi -
-		% generate the goal of the called procedure, not a call to 
+		% generate the goal of the called procedure, not a call to
 		% the called procedure.
 		rl_exprn_info_get_parent_pred_proc_ids(Parents0),
 		{ set__insert(Parents0, proc(PredId, ProcId), Parents) },
@@ -1106,15 +1106,15 @@ rl_exprn__inline_call(_PredId, _ProcId, CalledPredInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_exprn__unify(unification::in, hlds_goal_info::in, 
+:- pred rl_exprn__unify(unification::in, hlds_goal_info::in,
 		byte_tree::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
-	
-rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _), 
+
+rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 		GoalInfo, _Fail, Code) -->
 	rl_exprn_info_lookup_var_type(Var, Type),
 	rl_exprn_info_lookup_var(Var, VarReg),
-	( 
+	(
 		{ ConsId = cons(SymName, _) },
 		(
 			{ mercury_private_builtin_module(Builtin) },
@@ -1155,41 +1155,41 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 	;
 		{ ConsId = float_const(Float) },
 		rl_exprn__assign(reg(VarReg), const(float(Float)), Type, Code)
-	; 
-		{ ConsId = pred_const(_, _, _) },
+	;
+		{ ConsId = pred_const(_, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - pred_const") }
-	; 
+	;
 		{ ConsId = type_ctor_info_const(_, _, _) },
 		% XXX for now we ignore these and hope it doesn't matter.
 		% They may be introduced for calls to the automatically
 		% generated unification and comparison procedures.
 		{ Code = empty }
-	; 
+	;
 		{ ConsId = base_typeclass_info_const(_, _, _, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - " ++
 			"base_typeclass_info_const") }
-	; 
+	;
 		{ ConsId = type_info_cell_constructor(_) },
 		% XXX for now we ignore these and hope it doesn't matter.
 		{ Code = empty }
-	; 
+	;
 		{ ConsId = typeclass_info_cell_constructor },
 		{ error("rl_exprn__unify: unsupported cons_id - " ++
 			"typeclass_info_cell_constructor") }
-	; 
-		{ ConsId = tabling_pointer_const(_, _) },
+	;
+		{ ConsId = tabling_pointer_const(_) },
 		{ error("rl_exprn__unify: unsupported cons_id - " ++
 			"tabling_pointer_const") }
-	; 
+	;
 		{ ConsId = deep_profiling_proc_layout(_) },
 		{ error("rl_exprn__unify: unsupported cons_id - " ++
 			"deep_profiling_proc_layout") }
-	; 
+	;
 		{ ConsId = table_io_decl(_) },
 		{ error("rl_exprn__unify: unsupported cons_id - " ++
 			"table_io_decl") }
 	).
-		
+
 rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail, _CanCGC),
 		GoalInfo, Fail, Code) -->
 	rl_exprn_info_lookup_var(Var, VarLoc),
@@ -1202,7 +1202,7 @@ rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail, _CanCGC),
 	( { Args \= [] } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 		rl_exprn__generate_push(reg(VarLoc), Type, PushCode),
-		rl_exprn__handle_functor_args(Args, UniModes, 
+		rl_exprn__handle_functor_args(Args, UniModes,
 			NonLocals, 0, ConsId, ArgCodes0),
 		{ ArgCodes =
 			tree(PushCode,
@@ -1221,7 +1221,7 @@ rl_exprn__unify(assign(Var1, Var2), _GoalInfo, _Fail, Code) -->
 	rl_exprn_info_lookup_var_type(Var1, Type),
 	rl_exprn__assign(reg(Var1Loc), reg(Var2Loc), Type, Code).
 rl_exprn__unify(simple_test(Var1, Var2), _GoalInfo, Fail, Code) -->
-	% Note that the type here isn't necessarily one of the builtins - 
+	% Note that the type here isn't necessarily one of the builtins -
 	% magic.m uses simple_test for all in-in unifications it introduces.
 	rl_exprn_info_lookup_var(Var1, Var1Loc),
 	rl_exprn_info_lookup_var(Var2, Var2Loc),
@@ -1246,10 +1246,10 @@ rl_exprn__test(Var1Loc, Var2Loc, Type, Fail, Code) -->
 	{ rl_exprn__type_to_aditi_type(Type, AditiType) },
 
 	{ rl_exprn__test_bytecode(AditiType, EqInstr) },
-	{ Code = 
-		tree(PushCode1, 
-		tree(PushCode2, 
-		tree(node([EqInstr]), 
+	{ Code =
+		tree(PushCode1,
+		tree(PushCode2,
+		tree(node([EqInstr]),
 		tree(node([rl_EXP_bnez(Label)]),
 		tree(Fail,
 		node([rl_PROC_label(Label)])
@@ -1262,7 +1262,7 @@ rl_exprn__test_bytecode(float, rl_EXP_flt_eq).
 rl_exprn__test_bytecode(string, rl_EXP_str_eq).
 rl_exprn__test_bytecode(term(_), rl_EXP_term_eq).
 
-:- pred rl_exprn__functor_test(prog_var::in, cons_id::in, byte_tree::in, 
+:- pred rl_exprn__functor_test(prog_var::in, cons_id::in, byte_tree::in,
 	byte_tree::out, rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__functor_test(Var, ConsId, Fail, Code) -->
@@ -1282,7 +1282,7 @@ rl_exprn__functor_test(Var, ConsId, Fail, Code) -->
 		rl_exprn_info_get_next_label_id(Label),
 		rl_exprn__cons_id_to_rule_number(ConsId, Type, RuleNo),
 		rl_exprn__generate_push(reg(VarReg), Type, PushCode),
-		{ Code = 
+		{ Code =
 			tree(PushCode,
 			tree(node([
 				rl_EXP_test_functor(RuleNo),
@@ -1295,7 +1295,7 @@ rl_exprn__functor_test(Var, ConsId, Fail, Code) -->
 		{ error("rl_exprn__functor_test: unsupported cons_id") }
 	).
 
-:- pred rl_exprn__is_char_cons_id(cons_id::in, 
+:- pred rl_exprn__is_char_cons_id(cons_id::in,
 		(type)::in, int::out) is semidet.
 
 rl_exprn__is_char_cons_id(ConsId, Type, Int) :-
@@ -1368,7 +1368,7 @@ rl_exprn__handle_functor_args([Arg | Args], [Mode | Modes], NonLocals,
 			{ RightMode = top_unused }
 		->
 			{ Code1 = empty }
-		;	
+		;
 			{ error("rl_exprn__handle_functor_args: weird unification") }
 		),
 		{ Code = tree(Code1, Code0) }
@@ -1378,7 +1378,7 @@ rl_exprn__handle_functor_args([Arg | Args], [Mode | Modes], NonLocals,
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_exprn__cons_id_to_rule_number(cons_id::in, (type)::in, int::out, 
+:- pred rl_exprn__cons_id_to_rule_number(cons_id::in, (type)::in, int::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
 rl_exprn__cons_id_to_rule_number(ConsId, Type, RuleNo) -->
@@ -1387,9 +1387,9 @@ rl_exprn__cons_id_to_rule_number(ConsId, Type, RuleNo) -->
 :- pred rl_exprn__cons_id_to_rule_number(cons_id::in, (type)::in,
 		exprn_tuple::in, int::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
-	
+
 rl_exprn__cons_id_to_rule_number(ConsId, Type, ExprnTuple, RuleNo) -->
-	( 
+	(
 		{ ConsId = cons(ConsName, Arity) },
 		{ type_to_ctor_and_args(Type, TypeCtor, Args) }
 	->
@@ -1408,7 +1408,7 @@ rl_exprn__cons_id_to_rule_number(ConsId, Type, ExprnTuple, RuleNo) -->
 	% Put a value on top of the expression stack.
 :- pred rl_exprn__generate_push(rl_rval::in, (type)::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
-	
+
 rl_exprn__generate_push(reg(Reg), Type0, Code) -->
 	{ rl_exprn__type_to_aditi_type(Type0, Type) },
 	rl_exprn__do_generate_push_var(Reg, Type, Code).
@@ -1425,15 +1425,15 @@ rl_exprn__generate_push(const(Const), _Type, node([ByteCode])) -->
 		Const = string(_),
 		ByteCode = rl_EXP_str_push(ConstNo)
 	}.
-rl_exprn__generate_push(input_field(TupleNo, FieldNo), 
+rl_exprn__generate_push(input_field(TupleNo, FieldNo),
 		Type0, node([ByteCode])) -->
 	{ rl_exprn__type_to_aditi_type(Type0, Type) },
 	{ rl_exprn__get_input_field_code(TupleNo, Type, FieldNo, ByteCode) }.
-rl_exprn__generate_push(term_arg(TermLoc, _ConsId, Field, TermType), 
+rl_exprn__generate_push(term_arg(TermLoc, _ConsId, Field, TermType),
 		Type0, ByteCodes) -->
 	{ rl_exprn__type_to_aditi_type(Type0, AditiType) },
 	rl_exprn__generate_push(TermLoc, TermType, PushCodes),
-	{ 
+	{
 		AditiType = int,
 		ByteCode = rl_EXP_get_int_arg(Field)
 	;
@@ -1446,8 +1446,8 @@ rl_exprn__generate_push(term_arg(TermLoc, _ConsId, Field, TermType),
 		AditiType = term(_),
 		ByteCode = rl_EXP_get_term_arg(Field)
 	},
-	{ ByteCodes = 
-		tree(PushCodes, 
+	{ ByteCodes =
+		tree(PushCodes,
 		node([ByteCode])
 	) }.
 
@@ -1471,7 +1471,7 @@ rl_exprn__do_generate_push_var(Index, Type, node([ByteCode])) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Get the value on top of the expression stack and put it in the 
+	% Get the value on top of the expression stack and put it in the
 	% specified rl_lval.
 :- pred rl_exprn__generate_pop(rl_lval::in, (type)::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
@@ -1494,7 +1494,7 @@ rl_exprn__generate_pop(output_field(FieldNo), Type0, node([ByteCode])) -->
 	;
 		Type = term(_),
 		% This bytecode copies the argument term adjusting rule numbers
-		% if the schemas of the argument term and the output tuple 
+		% if the schemas of the argument term and the output tuple
 		% do not match.
 		ByteCode = rl_EXP_put_term_output(FieldNo)
 	}.
@@ -1502,7 +1502,7 @@ rl_exprn__generate_pop(term_arg(Reg, _ConsId, Field, TermType), Type0, Code) -->
 	% There's no swap operation (and to do a swap, the expression
 	% evaluator would probably need to know the types of the top
 	% two elements of the stack, so rl_EXP_swap_int_int,
-	% rl_EXP_swap_int_flt, etc). 
+	% rl_EXP_swap_int_flt, etc).
 	{ rl_exprn__type_to_aditi_type(Type0, Type) },
 	rl_exprn_info_get_free_reg(Type0, TmpIndex),
 	rl_exprn__generate_pop(reg(TmpIndex), Type0, PopCode1),
@@ -1521,10 +1521,10 @@ rl_exprn__generate_pop(term_arg(Reg, _ConsId, Field, TermType), Type0, Code) -->
 		{ Type = term(_) },
 		{ SetArg = rl_EXP_put_term_arg(Field) }
 	),
-	{ Code = 
-		tree(PopCode1, 
-		tree(PushCode1, 
-		tree(PushCode2, 
+	{ Code =
+		tree(PopCode1,
+		tree(PushCode1,
+		tree(PushCode2,
 		node([SetArg])
 	))) }.
 
@@ -1544,7 +1544,7 @@ rl_exprn__do_generate_pop_var(Index, Type, node([ByteCode])) -->
 	;
 		Type = term(_),
 		ByteCode = rl_EXP_put_term_var(Index)
-	}.	
+	}.
 
 %-----------------------------------------------------------------------------%
 
@@ -1561,8 +1561,8 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 	% Generate LLDS for the builtin, then convert that to Aditi bytecode.
 	%
 	(
-		{ builtin_ops__translate_builtin(PredModule0, PredName, 
-			ProcId, Args, SimpleCode) } 
+		{ builtin_ops__translate_builtin(PredModule0, PredName,
+			ProcId, Args, SimpleCode) }
 	->
 		(
 			{ SimpleCode = test(TestExpr) },
@@ -1595,7 +1595,7 @@ rl_exprn__generate_builtin_call(_PredId, ProcId,
 		{ error(Msg) }
 	).
 
-:- pred rl_exprn__maybe_simple_expr_to_rl_rval(maybe(simple_expr(prog_var))::in, 
+:- pred rl_exprn__maybe_simple_expr_to_rl_rval(maybe(simple_expr(prog_var))::in,
 		aditi_type::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -1630,9 +1630,9 @@ rl_exprn__simple_expr_to_rl_rval(binary(BinOp, Expr1, Expr2), Code) -->
 	rl_exprn__simple_expr_to_rl_rval(Expr1, Code1),
 	rl_exprn__simple_expr_to_rl_rval(Expr2, Code2),
 	{ rl_exprn__binop_bytecode(BinOp, Bytecode) },
-	{ Code = 
-		tree(Code1, 
-		tree(Code2, 
+	{ Code =
+		tree(Code1,
+		tree(Code2,
 		node([Bytecode])
 	)) }.
 
@@ -1673,7 +1673,7 @@ rl_exprn__binop_bytecode(float_ge, rl_EXP_flt_ge).
 	% This is not an exhaustive list, it's just the ones that
 	% Aditi happens to have bytecodes for.
 	% This is only needed until Aditi can call arbitrary Mercury code.
-:- pred rl_exprn__generate_extra_aditi_builtin(bytecode::in, 
+:- pred rl_exprn__generate_extra_aditi_builtin(bytecode::in,
 		list(prog_var)::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 
@@ -1687,7 +1687,7 @@ rl_exprn__generate_extra_aditi_builtin(Bytecode, Args, Code) -->
 	rl_exprn_info_lookup_var(OutArg, OutReg),
 	rl_exprn_info_lookup_var_type(OutArg, OutVarType),
 	rl_exprn__generate_pop(reg(OutReg), OutVarType, PopCode),
-	
+
 	{ Code =
 		tree(PushCode,
 		tree(node([Bytecode]),
@@ -1782,7 +1782,7 @@ rl_exprn__simple_extra_builtin(predicate, "string", "length", 2, 0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-rl_exprn__aggregate(ModuleInfo, ComputeInitial, UpdateAcc, GrpByType, 
+rl_exprn__aggregate(ModuleInfo, ComputeInitial, UpdateAcc, GrpByType,
 		NonGrpByType, AccType, AggCode, Decls) :-
 
 	map__init(VarTypes),
@@ -1805,7 +1805,7 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 	%
 	% Initialise the accumulator and group-by variables.
 	%
-	rl_exprn__aggregate_init(ComputeInitial, GrpByReg, GrpByType, 
+	rl_exprn__aggregate_init(ComputeInitial, GrpByReg, GrpByType,
 		NonGrpByType, AccReg, AccType, InitCode0, GroupInitCode),
 
 	%
@@ -1819,14 +1819,14 @@ rl_exprn__aggregate_2(ComputeInitial, UpdateAcc, GrpByType,
 	% Generate code to update the accumulator.
 	%
 	rl_exprn__aggregate_update(UpdateAcc, GrpByReg, GrpByType,
-		NonGrpByType, AccReg, AccType, UpdateCode),	
+		NonGrpByType, AccReg, AccType, UpdateCode),
 	{ EvalCode = tree(TestCode, UpdateCode) },
 
 	%
 	% Create the output tuple.
 	%
 	rl_exprn__assign(output_field(0), reg(GrpByReg),
-		GrpByType, GrpByOutputCode), 
+		GrpByType, GrpByOutputCode),
 	rl_exprn__assign(output_field(1), reg(AccReg),
 		AccType, AccOutputCode),
 	{ ProjectCode = tree(GrpByOutputCode, AccOutputCode) },
@@ -1861,7 +1861,7 @@ rl_exprn__aggregate_init(ComputeClosure, GrpByReg, GrpByType, NonGrpByType,
 	%
 	% Compute the initial accumulator given the first tuple in
 	% the group, and assign it to a register.
-	% 
+	%
 	{ Args = [GrpByReg, NonGrpByReg, InitialAccReg] },
 	{ ArgTypes = [GrpByType, NonGrpByType, AccType] },
 	rl_exprn__closure(ComputeClosure, Args, ArgTypes, IsConst, AccCode0),
@@ -1938,7 +1938,7 @@ rl_exprn__closure(proc(PredId, ProcId), ArgLocs, ArgTypes, IsConst, Code) -->
 	rl_exprn_info_get_vartypes(VarTypes0),
 	{ list__length(ArgTypes, NumVars) },
 	{ varset__new_vars(VarSet0, NumVars, ArgVars, VarSet) },
-	{ map__det_insert_from_corresponding_lists(VarTypes0, 
+	{ map__det_insert_from_corresponding_lists(VarTypes0,
 		ArgVars, ArgTypes, VarTypes) },
 	rl_exprn_info_set_varset(VarSet),
 	rl_exprn_info_set_vartypes(VarTypes),
@@ -1969,7 +1969,7 @@ rl_exprn__closure(proc(PredId, ProcId), ArgLocs, ArgTypes, IsConst, Code) -->
 
 	% Return the bytecode used to get a field from an input term.
 :- pred rl_exprn__get_input_field_code(tuple_num::in, aditi_type::in,
-		int::in, bytecode::out) is det. 
+		int::in, bytecode::out) is det.
 
 rl_exprn__get_input_field_code(one, int, Attr, rl_EXP_int_field1(Attr)).
 rl_exprn__get_input_field_code(one, string, Attr, rl_EXP_str_field1(Attr)).
@@ -2052,7 +2052,7 @@ rl_exprn__type_to_aditi_type(Type, AditiType) :-
 		% closure is not used. int is a bit of a lie, but since
 		% the argument is not used, it should be harmless.
 		AditiType = int
-	).	
+	).
 
 :- pred rl_exprn__aditi_type_to_type(aditi_type::in, (type)::out) is det.
 
@@ -2169,13 +2169,13 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 	--->	reg(reg_id)
 
 	;	const(rl_const)
-	
+
 		% A field in one of the input tuples
 	;	input_field(
 			tuple_num,
 			int		% field no
 		)
-		
+
 		% An argument of a term in a register
 	;	term_arg(
 			rl_rval,	% register holding the term
@@ -2247,7 +2247,7 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_lookup_const(in, out, in, out) is det.
 
-:- pred rl_exprn_info_get_consts(id_map(rl_const), 
+:- pred rl_exprn_info_get_consts(id_map(rl_const),
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_consts(out, in, out) is det.
 
@@ -2255,7 +2255,7 @@ rl_exprn__get_exprn_labels_list(PC0, PC, Labels0, Labels,
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_lookup_rule(in, out, in, out) is det.
 
-:- pred rl_exprn_info_get_rules(id_map(pair(rl_rule, exprn_tuple)), 
+:- pred rl_exprn_info_get_rules(id_map(pair(rl_rule, exprn_tuple)),
 		rl_exprn_info, rl_exprn_info).
 :- mode rl_exprn_info_get_rules(out, in, out) is det.
 
@@ -2415,7 +2415,7 @@ rl_exprn_info_get_next_label_id(Label0, Info0, Info) :-
 	Info = rl_exprn_info(A,B,C,D,E,Label,G,H,I,J).
 rl_exprn_info_lookup_const(Const, Loc, Info0, Info) :-
 	Info0 = rl_exprn_info(A,B,C,D,E,F,Consts0,H,I,J),
-	id_map_lookup(Const, Loc, Consts0, Consts), 
+	id_map_lookup(Const, Loc, Consts0, Consts),
 	Info = rl_exprn_info(A,B,C,D,E,F,Consts,H,I,J).
 rl_exprn_info_lookup_rule(Rule, Loc, Info0, Info) :-
 	Info0 = rl_exprn_info(A,B,C,D,E,F,G,Rules0,I,J),

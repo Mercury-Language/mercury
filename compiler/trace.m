@@ -115,7 +115,7 @@
 
 		slot_call_table		:: maybe(int)
 					% If the procedure's evaluation method
-					% is memo, loopcheck or minimal model, 
+					% is memo, loopcheck or minimal model,
 					% this will be yes(M), where stack slot
 					% M holds the variable that represents
 					% the tip of the call table. Otherwise,
@@ -225,7 +225,6 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__layout_out.
 :- import_module ll_backend__llds_out.
-:- import_module parse_tree__inst.
 
 :- import_module list, bool, int, string, map, std_util, require, term, varset.
 
@@ -1056,7 +1055,7 @@ trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
 					% of the slots that hold the value
 					% of the trail pointer and the ticket
 					% counter at the time of the call.
-		maxfr_lval		:: maybe(lval),	
+		maxfr_lval		:: maybe(lval),
 					% If we reserve a slot for holding
 					% the value of maxfr at entry for use
 					% in implementing retry, the lval of

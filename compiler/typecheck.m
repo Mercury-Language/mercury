@@ -132,7 +132,6 @@
 
 :- import_module check_hlds__clause_to_proc.
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_error_util.
@@ -147,6 +146,7 @@
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -5689,7 +5689,7 @@ report_error_func_instead_of_pred(Info, PredOrFunc, PredCallId) -->
 	{ typecheck_info_get_context(Info, Context) },
 	prog_out__write_context(Context),
 	io__write_string("  (There is a *"),
-	hlds_out__write_pred_or_func(PredOrFunc),
+	write_pred_or_func(PredOrFunc),
 	io__write_string("* with that name, however."),
 	( { PredOrFunc = function } ->
 		io__nl,
@@ -5750,7 +5750,7 @@ report_error_pred_num_args(Info, PredOrFunc - SymName/Arity, Arities) -->
 	io__nl,
 	prog_out__write_context(Context),
 	io__write_string("  in call to "),
-	hlds_out__write_pred_or_func(PredOrFunc),
+	write_pred_or_func(PredOrFunc),
 	io__write_string(" `"),
 	prog_out__write_sym_name(SymName),
 	io__write_string("'.\n").

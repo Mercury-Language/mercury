@@ -19,7 +19,7 @@
 
 :- import_module aditi_backend__rl_block.
 
-	% Given the flow graph for a procedure, return a new flow 
+	% Given the flow graph for a procedure, return a new flow
 	% graph with loop invariant instructions moved out of loops.
 :- pred rl_loop__shift_invariants(rl_opt_info::in, rl_opt_info::out) is det.
 
@@ -55,15 +55,15 @@ rl_loop__shift_invariants -->
 		list(loop)::out, rl_opt_info::in, rl_opt_info::out) is det.
 
 rl_loop__shift_invariants_2([], Loops, Loops) --> [].
-rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0], 
-		ProcessedLoops0, ProcessedLoops) --> 
+rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
+		ProcessedLoops0, ProcessedLoops) -->
 	{ Loop0 = loop(EntryNode, Nodes) },
 
 		% We can only remove invariant computation if it is performed
 		% on every execution of the loop, i.e. the block containing
 		% it dominates all the exit points.
 	rl_opt_info_get_flow_graph(FlowGraph),
-	{ IsExitPoint = 
+	{ IsExitPoint =
 		(pred(Node::in) is semidet :-
 			relation__lookup_element(FlowGraph, Node, NodeKey),
 			relation__lookup_from(FlowGraph, NodeKey,
@@ -75,7 +75,7 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 		) },
 	{ set__to_sorted_list(Nodes, NodeList) },
 	{ list__filter(IsExitPoint, NodeList, ExitNodes) },
-	rl_opt_info_get_dominator_info(DominatorInfo), 
+	rl_opt_info_get_dominator_info(DominatorInfo),
 	{
 		ExitNodes = [ExitNode | ExitNodes1],
 		map__lookup(DominatorInfo, ExitNode, ExitDominatingNodes0),
@@ -84,7 +84,7 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 				map__lookup(DominatorInfo, N, DominatingNodes1),
 				set__intersect(Inter0, DominatingNodes1, Inter)
 			),
-		list__foldl(IntersectDominators, ExitNodes1, 
+		list__foldl(IntersectDominators, ExitNodes1,
 			ExitDominatingNodes0, ExitDominatingNodes)
 	;
 		ExitNodes = [],
@@ -97,15 +97,15 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 	% Pick out relations which are only used in one block within the
 	% loop. Since rl_gen.m only generates loops with one block,
 	% this isn't a problem.
-	rl_loop__get_nonlocal_rels(NodeList, OneBlockRels0, 
+	rl_loop__get_nonlocal_rels(NodeList, OneBlockRels0,
 		_OneBlockRels, ManyBlockRels0, ManyBlockRels),
 
 	rl_loop__shift_invariants_loop(NodeList, NodeList, ExitDominatingNodes,
 		ManyBlockRels, _, no, MaybeHeader),
-	rl_loop__maybe_add_header(MaybeHeader, Nodes, EntryNode, 
-		ProcessedLoops0, ProcessedLoops1, 
+	rl_loop__maybe_add_header(MaybeHeader, Nodes, EntryNode,
+		ProcessedLoops0, ProcessedLoops1,
 		LoopsToProcess0, LoopsToProcess),
-	rl_loop__shift_invariants_2(LoopsToProcess, 
+	rl_loop__shift_invariants_2(LoopsToProcess,
 		[Loop0 | ProcessedLoops1], ProcessedLoops).
 
 %-----------------------------------------------------------------------------%
@@ -118,10 +118,10 @@ rl_loop__shift_invariants_2([Loop0 | LoopsToProcess0],
 
 rl_loop__get_nonlocal_rels([], OneBlock, OneBlock,
 		ManyBlock, ManyBlock) --> [].
-rl_loop__get_nonlocal_rels([Block | Blocks], OneBlock0, OneBlock, 
+rl_loop__get_nonlocal_rels([Block | Blocks], OneBlock0, OneBlock,
 		ManyBlock0, ManyBlock) -->
 	rl_opt_info_get_block(Block, block(_, Instrs, _, _)),
-	{ GetInstrRelations = 
+	{ GetInstrRelations =
 		(pred(Instr::in, Rels0::in, Rels::out) is det :-
 			rl__instr_relations(Instr, Inputs, Outputs),
 			set__insert_list(Rels0, Inputs, Rels1),
@@ -147,7 +147,7 @@ rl_loop__get_nonlocal_rels([Block | Blocks], OneBlock0, OneBlock,
 	{ set__to_sorted_list(BlockRels1, BlockRels) },
 	{ list__foldl(Update, BlockRels,
 		OneBlock0 - ManyBlock0, OneBlock1 - ManyBlock1) },
-	rl_loop__get_nonlocal_rels(Blocks, OneBlock1, OneBlock, 
+	rl_loop__get_nonlocal_rels(Blocks, OneBlock1, OneBlock,
 		ManyBlock1, ManyBlock).
 
 %-----------------------------------------------------------------------------%
@@ -163,13 +163,13 @@ rl_loop__shift_invariants_loop([LoopNode | LoopNodes], AllLoopNodes,
 		MaybeHeader0, MaybeHeader) -->
 	rl_opt_info_get_block(LoopNode, Block0),
 	{ Block0 = block(Label, Instrs0, Branch, BlockInfo) },
-	{ GetChangedRels = 
+	{ GetChangedRels =
 		(pred(Instr::in, Rels0::in, Rels::out) is det :-
 			rl__instr_relations(Instr, _, Outputs),
 			set__insert_list(Rels0, Outputs, Rels)
 		) },
 	{ set__init(BlockChangedRels0) },
-	{ list__foldl(GetChangedRels, Instrs0, 
+	{ list__foldl(GetChangedRels, Instrs0,
 		BlockChangedRels0, BlockChangedRels) },
 	(
 		% Can't shift invariants if this block doesn't dominate
@@ -181,7 +181,7 @@ rl_loop__shift_invariants_loop([LoopNode | LoopNodes], AllLoopNodes,
 		% any relations which are changed in only one block within
 		% the loop.
 
-		{ set__difference(BlockChangedRels, NonLocalRels0, 
+		{ set__difference(BlockChangedRels, NonLocalRels0,
 			ThisBlockRels) },
 		{ \+ set__empty(ThisBlockRels) }
 	->
@@ -189,7 +189,7 @@ rl_loop__shift_invariants_loop([LoopNode | LoopNodes], AllLoopNodes,
 		{ set__init(ShiftedRels0) },
 		rl_loop__shift_invariants_block(Instrs0, Instrs, LoopNode,
 			AllLoopNodes, ExitDominatingNodes, BlockChangedRels,
-			NonLocalRels0, NonLocalRels1, SeenRels, 
+			NonLocalRels0, NonLocalRels1, SeenRels,
 			ShiftedRels0, _ShiftedRels, MaybeHeader0, MaybeHeader1),
 		rl_opt_info_set_block(LoopNode,
 			block(Label, Instrs, Branch, BlockInfo))
@@ -203,18 +203,18 @@ rl_loop__shift_invariants_loop([LoopNode | LoopNodes], AllLoopNodes,
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_loop__shift_invariants_block(list(rl_instruction)::in, 
+:- pred rl_loop__shift_invariants_block(list(rl_instruction)::in,
 	list(rl_instruction)::out, block_id::in, list(block_id)::in,
-	set(block_id)::in, set(relation_id)::in, set(relation_id)::in, 
-	set(relation_id)::out, set(relation_id)::in, 
+	set(block_id)::in, set(relation_id)::in, set(relation_id)::in,
+	set(relation_id)::out, set(relation_id)::in,
 	set(relation_id)::in, set(relation_id)::out, maybe(block)::in,
 	maybe(block)::out, rl_opt_info::in, rl_opt_info::out) is det.
 
-rl_loop__shift_invariants_block([], [], _, _, _, _, NL, NL, _, 
+rl_loop__shift_invariants_block([], [], _, _, _, _, NL, NL, _,
 		S, S, H, H) --> [].
 rl_loop__shift_invariants_block([Instr | Instrs0], Instrs, LoopNode,
 		AllLoopNodes, ExitDominatingNodes, BlockChangedRels,
-		NonLocalRels0, NonLocalRels, SeenRels0, 
+		NonLocalRels0, NonLocalRels, SeenRels0,
 		ShiftedRels0, ShiftedRels, MaybeHeader0, MaybeHeader) -->
 	{ rl__instr_relations(Instr, InputRels, OutputRels) },
 	(
@@ -235,36 +235,36 @@ rl_loop__shift_invariants_block([Instr | Instrs0], Instrs, LoopNode,
 		) },
 
 		% Is there no use of one of the output relations within
-		% the block which could be reached by some other definition 
+		% the block which could be reached by some other definition
 		% of the output.
 		{ \+ (
 			list__member(OutputRel, OutputRels),
 			set__member(OutputRel, SeenRels0)
 		) },
-	
-		% Check that the outputs of this instruction are the only 
+
+		% Check that the outputs of this instruction are the only
 		% values of those output relations used by other instructions
 		% within this block.
 		{ set__list_to_set(OutputRels, OutputRelSet) },
-		{ rl_loop__check_later_uses_in_block(OutputRelSet, 
+		{ rl_loop__check_later_uses_in_block(OutputRelSet,
 			Instrs0, Instrs1) }
 	->
-		{ rl_loop__add_instruction_to_pre_header(MaybeHeader0, 
+		{ rl_loop__add_instruction_to_pre_header(MaybeHeader0,
 			Instr, MaybeHeader1) },
 		{ set__insert_list(SeenRels0, InputRels, SeenRels1) },
 		{ set__insert_list(SeenRels1, OutputRels, SeenRels) },
 		{ set__insert_list(ShiftedRels0, InputRels, ShiftedRels1) },
-		{ set__union(ShiftedRels1, OutputRelSet, ShiftedRels2) }, 
-		rl_loop__shift_invariants_block(Instrs1, Instrs, LoopNode, 
+		{ set__union(ShiftedRels1, OutputRelSet, ShiftedRels2) },
+		rl_loop__shift_invariants_block(Instrs1, Instrs, LoopNode,
 			AllLoopNodes, ExitDominatingNodes, BlockChangedRels,
-			NonLocalRels0, NonLocalRels, SeenRels, 
+			NonLocalRels0, NonLocalRels, SeenRels,
 			ShiftedRels2, ShiftedRels, MaybeHeader1, MaybeHeader)
 	;
 		{ set__insert_list(SeenRels0, InputRels, SeenRels1) },
 		{ set__insert_list(SeenRels1, OutputRels, SeenRels) },
-		rl_loop__shift_invariants_block(Instrs0, Instrs1, LoopNode, 
+		rl_loop__shift_invariants_block(Instrs0, Instrs1, LoopNode,
 			AllLoopNodes, ExitDominatingNodes, BlockChangedRels,
-			NonLocalRels0, NonLocalRels, SeenRels, 
+			NonLocalRels0, NonLocalRels, SeenRels,
 			ShiftedRels0, ShiftedRels, MaybeHeader0, MaybeHeader),
 		{ Instrs = [Instr | Instrs1] }
 	).
@@ -281,11 +281,11 @@ rl_loop__unmovable(unset(_) - _).
 
 %-----------------------------------------------------------------------------%
 
-	% Check that all instructions in the current block that 
+	% Check that all instructions in the current block that
 	% use any of the outputs of the instruction we are trying to
 	% move only use the version produced by that instruction.
-:- pred rl_loop__check_later_uses_in_block(set(relation_id)::in, 
-	list(rl_instruction)::in, list(rl_instruction)::out) is semidet.	
+:- pred rl_loop__check_later_uses_in_block(set(relation_id)::in,
+	list(rl_instruction)::in, list(rl_instruction)::out) is semidet.
 
 rl_loop__check_later_uses_in_block(_, [], []).
 rl_loop__check_later_uses_in_block(OutputRels, [Instr | Instrs0], Instrs) :-
@@ -298,7 +298,7 @@ rl_loop__check_later_uses_in_block(OutputRels, [Instr | Instrs0], Instrs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_loop__add_instruction_to_pre_header(maybe(block)::in, 
+:- pred rl_loop__add_instruction_to_pre_header(maybe(block)::in,
 		rl_instruction::in, maybe(block)::out) is det.
 
 rl_loop__add_instruction_to_pre_header(no, Instr, yes(Block)) :-
@@ -308,7 +308,7 @@ rl_loop__add_instruction_to_pre_header(yes(Block0), Instr, yes(Block)) :-
 	Block0 = block(Label, RevInstrs0, Branch, BlockInfo),
 	RevInstrs = [Instr | RevInstrs0],
 	Block = block(Label, RevInstrs, Branch, BlockInfo).
-	
+
 %-----------------------------------------------------------------------------%
 
 :- pred rl_loop__maybe_add_header(maybe(block)::in, set(block_id)::in,
@@ -316,8 +316,8 @@ rl_loop__add_instruction_to_pre_header(yes(Block0), Instr, yes(Block)) :-
 	list(loop)::out, rl_opt_info::in, rl_opt_info::out) is det.
 
 rl_loop__maybe_add_header(no, _, _, P, P, L, L) --> [].
-rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode, 
-		ProcessedLoops0, ProcessedLoops, 
+rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode,
+		ProcessedLoops0, ProcessedLoops,
 		LoopsToProcess0, LoopsToProcess) -->
 	rl_opt_info_get_new_label(HeaderLabel, HeaderBlockId),
 
@@ -330,14 +330,14 @@ rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode,
 
 	% Add the new block to the ordering.
 	rl_opt_info_get_rev_block_order(RevOrder0),
-	{ rl_loop__insert_into_order(RevOrder0, HeaderBlockId, 
+	{ rl_loop__insert_into_order(RevOrder0, HeaderBlockId,
 		EntryNode, RevOrder) },
 	rl_opt_info_set_rev_block_order(RevOrder),
 
 	% Fix up the flow graph.
 	rl_opt_info_get_flow_graph(FlowGraph0),
 	{ relation__lookup_element(FlowGraph0, EntryNode, EntryKey) },
-	{ relation__add_element(FlowGraph0, HeaderBlockId, 
+	{ relation__add_element(FlowGraph0, HeaderBlockId,
 		HeaderKey, FlowGraph1) },
 	{ relation__add(FlowGraph1, HeaderKey, EntryKey, FlowGraph) },
 	rl_opt_info_set_flow_graph(FlowGraph),
@@ -355,7 +355,7 @@ rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode,
 		) },
 		{ list__map(UpdateLoop, ProcessedLoops0, ProcessedLoops) },
 		{ list__map(UpdateLoop, LoopsToProcess0, LoopsToProcess) },
-		rl_loop__update_gotos(LoopNodes, EntryLabel, HeaderLabel, 
+		rl_loop__update_gotos(LoopNodes, EntryLabel, HeaderLabel,
 			EntryNode, HeaderBlockId)
 	;
 		{ error("rl_loop__maybe_add_header: " ++
@@ -369,25 +369,25 @@ rl_loop__maybe_add_header(yes(HeaderBlock), LoopNodes, EntryNode,
 
 rl_loop__insert_into_order([], _, _, _) :-
 	error("rl_loop__insert_into_order").
-rl_loop__insert_into_order([Block | RevOrder0], 
+rl_loop__insert_into_order([Block | RevOrder0],
 		HeaderBlockId, EntryNode, RevOrder) :-
 	( Block = EntryNode ->
 		RevOrder = [EntryNode, HeaderBlockId | RevOrder0]
 	;
-		rl_loop__insert_into_order(RevOrder0, HeaderBlockId, 
+		rl_loop__insert_into_order(RevOrder0, HeaderBlockId,
 			EntryNode, RevOrder1),
 		RevOrder = [Block | RevOrder1]
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_loop__update_gotos(set(block_id)::in, label_id::in, label_id::in, 
+:- pred rl_loop__update_gotos(set(block_id)::in, label_id::in, label_id::in,
 	block_id::in, block_id::in, rl_opt_info::in, rl_opt_info::out) is det.
 
 rl_loop__update_gotos(LoopNodes, OldLabel, NewLabel,
 		OldEntryBlock, NewEntryBlock) -->
 
-	% 
+	%
 	% Fix up gotos to the loop entry from outside the loop.
 	%
 	rl_opt_info_get_block_map(BlockMap0),
@@ -398,16 +398,16 @@ rl_loop__update_gotos(LoopNodes, OldLabel, NewLabel,
 		( set__member(BlockId, LoopNodes) ->
 			MaybeBranch = MaybeBranch0
 		;
-			( 
-				MaybeBranch0 = yes(goto(OldLabel) - Comment) 
+			(
+				MaybeBranch0 = yes(goto(OldLabel) - Comment)
 			->
 				MaybeBranch = yes(goto(NewLabel) - Comment)
-			; 
-				MaybeBranch0 = 
+			;
+				MaybeBranch0 =
 					yes(conditional_goto(Cond, OldLabel)
 						- Comment)
 			->
-				MaybeBranch = 
+				MaybeBranch =
 					yes(conditional_goto(Cond, NewLabel)
 						- Comment)
 			;
@@ -420,32 +420,32 @@ rl_loop__update_gotos(LoopNodes, OldLabel, NewLabel,
 	{ map__from_assoc_list(BlockAL, BlockMap) },
 	rl_opt_info_set_block_map(BlockMap),
 
-	% 
+	%
 	% Fix up the flow graph.
 	%
 	rl_opt_info_get_flow_graph(FlowGraph0),
 	{ relation__lookup_element(FlowGraph0,
 		OldEntryBlock, OldEntryBlockKey) },
-	{ relation__lookup_element(FlowGraph0, 
+	{ relation__lookup_element(FlowGraph0,
 		NewEntryBlock, NewEntryBlockKey) },
-	{ relation__lookup_to(FlowGraph0, OldEntryBlockKey, 
+	{ relation__lookup_to(FlowGraph0, OldEntryBlockKey,
 		CallingBlockKeys) },
 	{ set__to_sorted_list(LoopNodes, NodeList) },
-	{ list__map(relation__lookup_element(FlowGraph0), 
+	{ list__map(relation__lookup_element(FlowGraph0),
 		NodeList, NodeKeys) },
 	{ set__delete_list(CallingBlockKeys, NodeKeys,
 		OutsideLoopCallingBlocks) },
 	{ set__to_sorted_list(OutsideLoopCallingBlocks, OutsideLoopBlocks) },
 	{ list__length(OutsideLoopBlocks, NumBlocks) },
 	{ list__duplicate(NumBlocks, OldEntryBlockKey, OldEntryList) },
-	{ assoc_list__from_corresponding_lists(OutsideLoopBlocks, OldEntryList, 
-		OldEntryAssocList) },	
-	{ relation__remove_assoc_list(FlowGraph0, 
+	{ assoc_list__from_corresponding_lists(OutsideLoopBlocks, OldEntryList,
+		OldEntryAssocList) },
+	{ relation__remove_assoc_list(FlowGraph0,
 		OldEntryAssocList, FlowGraph1) },
 	{ list__duplicate(NumBlocks, NewEntryBlockKey, NewEntryList) },
-	{ assoc_list__from_corresponding_lists(OutsideLoopBlocks, NewEntryList, 
-		NewEntryAssocList) },	
-	{ relation__add_assoc_list(FlowGraph1, 
+	{ assoc_list__from_corresponding_lists(OutsideLoopBlocks, NewEntryList,
+		NewEntryAssocList) },
+	{ relation__add_assoc_list(FlowGraph1,
 		NewEntryAssocList, FlowGraph) },
 	rl_opt_info_set_flow_graph(FlowGraph).
 

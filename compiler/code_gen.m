@@ -406,7 +406,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
 		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
 			BytecodeInstructions, ProcLabel, EmptyLabelCounter,
 			MayAlterRtti)
-	;	
+	;
 		Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
 			Instructions, ProcLabel, LabelCounter,
 			MayAlterRtti)
@@ -1390,7 +1390,7 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 	ModuleSymName = pred_info_module(PredInfo),
 
 	prog_out__sym_name_to_string(ModuleSymName, "__", ModuleName),
-	
+
 	code_util__make_local_entry_label(ModuleInfo, PredId,
 		ProcId, no, Entry),
 
@@ -1423,7 +1423,7 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 		"\t\tMR_restore_registers();\n",
 		"\t\tMR_GOTO(return_addr);\n"
 		], BytecodeCall),
-	
+
 	BytecodeInstructionsComponents = [
 		pragma_c_raw_code("\t{\n", live_lvals_info(set__init)),
 		pragma_c_raw_code(CallStruct, live_lvals_info(set__init)),

@@ -30,7 +30,7 @@
 % are not made atomic, magic.m just recreates the tests anyway.
 %
 % The main predicate of this module allows callers to specify that *any*
-% goal should be considered atomic unless it involves calls to certain 
+% goal should be considered atomic unless it involves calls to certain
 % specified predicates. This allows e.g. the magic set transformation to
 % consider all goals that do not refer to database predicates to be atomic.
 %
@@ -160,7 +160,7 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 	proc_info_vartypes(ProcInfo0, VarTypes),
 	proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
 	proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
-	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext,
 		VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
 
 	proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap),
@@ -402,7 +402,7 @@ dnf__get_new_pred_name(PredTable, Base, Name, Counter0, Counter) :-
 
 dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		ModuleInfo0, ModuleInfo, PredId) :-
-	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext, 
+	DnfInfo = dnf_info(TVarSet, VarTypes, ClassContext,
 			VarSet, InstVarSet, Markers, TVarMap, TCVarMap, Owner),
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
@@ -449,16 +449,16 @@ dnf__is_considered_atomic(Goal, InNeg, InSome, MaybeNonAtomic) :-
 
 dnf__is_atomic_expr(_, _, _, conj([]), yes).
 	% Don't transform a call and some atomic tests on the outputs, since
-	% magic.m will just create another copy of the tests, adding some extra 
-	% overhead. This form of conjunction commonly occurs for calls 
+	% magic.m will just create another copy of the tests, adding some extra
+	% overhead. This form of conjunction commonly occurs for calls
 	% in implied modes.
 dnf__is_atomic_expr(MaybeNonAtomic, _, _, conj([Call | Tests]), IsAtomic) :-
 	(
 		Call = call(_, _, _, _, _, _) - _,
-		MaybeNonAtomic = yes(NonAtomic),	
+		MaybeNonAtomic = yes(NonAtomic),
 		dnf__goals_free_of_nonatomic(Tests, NonAtomic)
 	->
-		IsAtomic = yes 
+		IsAtomic = yes
 	;
 		IsAtomic = no
 	).
@@ -511,12 +511,13 @@ dnf__free_of_nonatomic(switch(_, _, Cases) - _, NonAtomic) :-
 	dnf__cases_free_of_nonatomic(Cases, NonAtomic).
 dnf__free_of_nonatomic(unify(_, _, _, Uni, _) - _, NonAtomic) :-
 	\+ (
-		Uni = construct(_, pred_const(PredId, ProcId, _),
+		Uni = construct(_, pred_const(ShroudedPredProcId, _),
 			_, _, _, _, _),
-		set__member(proc(PredId, ProcId), NonAtomic)
+		PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+		set__member(PredProcId, NonAtomic)
 	).
 dnf__free_of_nonatomic(disj(Goals) - GoalInfo, NonAtomic) :-
-		% For Aditi, nondet disjunctions are non-atomic, 
+		% For Aditi, nondet disjunctions are non-atomic,
 		% no matter what they contain.
 	goal_info_get_determinism(GoalInfo, Detism),
 	\+ determinism_components(Detism, _, at_most_many),
@@ -525,9 +526,9 @@ dnf__free_of_nonatomic(not(Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
 dnf__free_of_nonatomic(some(_, _, Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
-dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else) - GoalInfo, 
+dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else) - GoalInfo,
 		NonAtomic) :-
-		% For Aditi, nondet if-then-elses are non-atomic, 
+		% For Aditi, nondet if-then-elses are non-atomic,
 		% no matter what they contain.
 	goal_info_get_determinism(GoalInfo, Detism),
 	\+ determinism_components(Detism, _, at_most_many),

@@ -35,7 +35,7 @@
 
 :- import_module backend_libs__builtin_ops.
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_llds. 
+:- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.

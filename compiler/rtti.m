@@ -45,7 +45,7 @@
 			rtti_type_ctor,
 			% This list should not be empty; if it is, one should
 			% use plain_arity_zero_type_info instead.
-			list(rtti_type_info)	
+			list(rtti_type_info)
 		)
 	;	var_arity_type_info(
 			var_arity_ctor_id,
@@ -1235,7 +1235,7 @@ rtti__encode_tc_instance_type(TCType) = Str :-
 		% XXX We may wish to check that all arguments are variables.
 	),
 	RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, _CtorArity),
-	prog_out__sym_name_to_string(qualified(ModuleName, TypeName), "__", 
+	prog_out__sym_name_to_string(qualified(ModuleName, TypeName), "__",
 		TypeStr),
 	string__int_to_string(Arity, ArityStr),
 	% XXX This naming scheme is the same as for base_typeclass_infos.

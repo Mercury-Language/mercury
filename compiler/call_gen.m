@@ -68,7 +68,7 @@
 :- import_module hlds__instmap.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module libs__tree. 
+:- import_module libs__tree.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__trace.
 
@@ -94,7 +94,7 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code,
 
 		% Make the call.
 	code_info__get_module_info(!.CI, ModuleInfo),
-	Address = code_info__make_entry_label(!.CI, ModuleInfo,	
+	Address = code_info__make_entry_label(!.CI, ModuleInfo,
 		PredId, ProcId, yes),
 	code_info__get_next_label(ReturnLabel, !CI),
 	call_gen__call_comment(CodeModel, CallComment),
@@ -159,7 +159,7 @@ call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
 	;
 		call_gen__generate_generic_call_2(OuterCodeModel,
 			GenericCall, Args0, Modes0, Det, GoalInfo, Code, !CI)
-	).	
+	).
 
 :- pred call_gen__generate_generic_call_2(code_model::in, generic_call::in,
 	list(prog_var)::in, list(mode)::in, determinism::in,

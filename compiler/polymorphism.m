@@ -354,8 +354,8 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_io.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -1260,13 +1260,15 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% check if variable has a higher-order type
 		type_is_higher_order(TypeOfX, Purity, _PredOrFunc,
 			EvalMethod, CalleeArgTypes),
-		ConsId0 = pred_const(PredId, ProcId, _)
+		ConsId0 = pred_const(ShroudedPredProcId, _)
 	->
 		%
 		% convert the higher-order pred term to a lambda goal
 		%
 		poly_info_get_varset(!.Info, VarSet0),
 		goal_info_get_context(GoalInfo0, Context),
+		proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId),
 		convert_pred_to_lambda_goal(Purity, EvalMethod,
 			X0, PredId, ProcId, ArgVars0, CalleeArgTypes,
 			UnifyContext, GoalInfo0, Context, ModuleInfo0,
@@ -1626,7 +1628,7 @@ polymorphism__process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 	make_foreign_args(Vars, ArgInfos, OrigArgTypes, Args).
 
 :- pred polymorphism__foreign_proc_add_typeclass_info((mode)::in,
-	pragma_foreign_code_impl::in, tvarset::in, class_constraint::in, 
+	pragma_foreign_code_impl::in, tvarset::in, class_constraint::in,
 	maybe(pair(string, mode))::out) is det.
 
 polymorphism__foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet,

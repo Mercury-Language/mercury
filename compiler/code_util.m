@@ -39,7 +39,7 @@
 
 :- type immed == maybe(pair(int, pred_proc_id)).
 
-:- pred code_util__make_entry_label(module_info::in, pred_id::in, proc_id::in, 
+:- pred code_util__make_entry_label(module_info::in, pred_id::in, proc_id::in,
 	immed::in, code_addr::out) is det.
 
 :- pred code_util__make_entry_label_from_rtti(rtti_proc_label::in, immed::in,
@@ -273,11 +273,11 @@ code_util__goal_may_alloc_temp_frame_2(if_then_else(_Vars, C, T, E), May) :-
 	).
 code_util__goal_may_alloc_temp_frame_2(shorthand(ShorthandGoal), May) :-
 	code_util__goal_may_alloc_temp_frame_2_shorthand(ShorthandGoal,May).
-		
+
 :- pred code_util__goal_may_alloc_temp_frame_2_shorthand(
 		shorthand_goal_expr::in, bool::out) is det.
 
-code_util__goal_may_alloc_temp_frame_2_shorthand(bi_implication(G1, G2), 
+code_util__goal_may_alloc_temp_frame_2_shorthand(bi_implication(G1, G2),
 		May) :-
 	( code_util__goal_may_alloc_temp_frame(G1, yes) ->
 		May = yes

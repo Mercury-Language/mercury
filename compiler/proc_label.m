@@ -16,7 +16,7 @@
 
 :- module backend_libs__proc_label.
 
-:- interface. 
+:- interface.
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -138,10 +138,10 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 		ThisModule \= PredModule,
 		PredIsImported = no
 	->
-		% This predicate is a specialized version of 
+		% This predicate is a specialized version of
 		% a pred from a `.opt' file.
 		DefiningModule = ThisModule
-	;	
+	;
 		DefiningModule = PredModule
 	),
 	ProcLabel = proc(DefiningModule, PredOrFunc,

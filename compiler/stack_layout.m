@@ -69,7 +69,6 @@
 :- import_module ll_backend__prog_rep.
 :- import_module ll_backend__static_term.
 :- import_module ll_backend__trace.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -427,7 +426,7 @@ stack_layout__context_is_valid(Context) :-
 %---------------------------------------------------------------------------%
 
 :- pred stack_layout__construct_proc_traversal(label::in, determinism::in,
-	int::in, maybe(int)::in, proc_layout_stack_traversal::out, 
+	int::in, maybe(int)::in, proc_layout_stack_traversal::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_proc_traversal(EntryLabel, Detism, NumStackSlots,

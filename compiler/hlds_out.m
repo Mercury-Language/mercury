@@ -34,7 +34,6 @@
 
 % Parse tree modules
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 % HLDS modules
 :- import_module hlds__hlds_data.
@@ -98,15 +97,6 @@
 :- pred hlds_out__write_call_arg_id(call_id::in, int::in, pred_markers::in,
 	io::di, io::uo) is det.
 :- func hlds_out__call_arg_id_to_string(call_id, int, pred_markers) = string.
-
-	% Print "predicate" or "function" depending on the given value.
-:- pred hlds_out__write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
-
-	% Return "predicate" or "function" depending on the given value.
-:- func hlds_out__pred_or_func_to_full_str(pred_or_func) = string.
-
-	% Return "pred" or "func" depending on the given value.
-:- func hlds_out__pred_or_func_to_str(pred_or_func) = string.
 
 	% hlds_out__write_unify_context/5 writes out a message such as
 	%	foo.m:123:   in argument 3 of functor `foo/5':
@@ -243,12 +233,33 @@
 :- func inst_to_term(inst) = prog_term.
 
 %-----------------------------------------------------------------------------%
+
+:- pred mercury_output_uni_mode(uni_mode::in, inst_varset::in,
+	io::di, io::uo) is det.
+
+:- func mercury_uni_mode_to_string(uni_mode, inst_varset) = string.
+
+:- pred mercury_output_uni_mode_list(list(uni_mode)::in, inst_varset::in,
+	io::di, io::uo) is det.
+
+:- func mercury_uni_mode_list_to_string(list(uni_mode), inst_varset) = string.
+
+	% Output an inst in a format where all compiler-defined insts
+	% have been expanded out; recursive insts have their self-referential
+	% parts printed out as elipses ("...").
+	% (These routines are used for outputting insts in mode errors.)
+
+:- pred mercury_output_expanded_inst((inst)::in, inst_varset::in,
+	module_info::in, io::di, io::uo) is det.
+:- func mercury_expanded_inst_to_string(inst, inst_varset, module_info)
+	= string.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 % Parse tree modules.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -256,19 +267,13 @@
 % HLDS modules.
 :- import_module check_hlds__check_typeclass.
 :- import_module check_hlds__purity.
+:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__instmap.
 :- import_module hlds__special_pred.
 
-% RL back-end modules (XXX should avoid using those here).
-:- import_module aditi_backend.
-:- import_module aditi_backend__rl.
-
 % Misc
-:- import_module backend_libs.
-:- import_module backend_libs__foreign.
-:- import_module backend_libs__rtti.
 :- import_module libs__globals.
 :- import_module libs__options.
 
@@ -313,9 +318,10 @@ hlds_out__cons_id_to_string(string_const(String)) =
 	term_io__quoted_string(String).
 hlds_out__cons_id_to_string(float_const(Float)) =
 	float_to_string(Float).
-hlds_out__cons_id_to_string(pred_const(PredId, ProcId, _)) =
-	"<pred " ++ int_to_string(pred_id_to_int(PredId)) ++
-	" proc " ++ int_to_string(proc_id_to_int(ProcId)) ++ ">".
+hlds_out__cons_id_to_string(
+		pred_const(shrouded_pred_proc_id(PredId, ProcId), _)) =
+	"<pred " ++ int_to_string(PredId) ++
+	" proc " ++ int_to_string(ProcId) ++ ">".
 hlds_out__cons_id_to_string(type_ctor_info_const(Module, Ctor, Arity)) =
 	"<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
 	Ctor ++ "/" ++ int_to_string(Arity) ++ ">".
@@ -325,12 +331,18 @@ hlds_out__cons_id_to_string(type_info_cell_constructor(_)) =
 	"<type_info_cell_constructor>".
 hlds_out__cons_id_to_string(typeclass_info_cell_constructor) =
 	"<typeclass_info_cell_constructor>".
-hlds_out__cons_id_to_string(tabling_pointer_const(PredId, ProcId)) =
-	"<tabling_pointer " ++ int_to_string(pred_id_to_int(PredId)) ++
-	", " ++ int_to_string(proc_id_to_int(ProcId)) ++ ">".
-hlds_out__cons_id_to_string(deep_profiling_proc_layout(_)) =
-	"<deep_profiling_proc_layout>".
-hlds_out__cons_id_to_string(table_io_decl(_)) = "<table_io_decl>".
+hlds_out__cons_id_to_string(
+		tabling_pointer_const(shrouded_pred_proc_id(PredId, ProcId))) =
+	"<tabling_pointer " ++ int_to_string(PredId) ++
+	", " ++ int_to_string(ProcId) ++ ">".
+hlds_out__cons_id_to_string(deep_profiling_proc_layout(
+		shrouded_pred_proc_id(PredId, ProcId))) =
+	"<deep_profiling_proc_layout " ++ int_to_string(PredId) ++
+	", " ++ int_to_string(ProcId) ++ ">".
+hlds_out__cons_id_to_string(table_io_decl(
+		shrouded_pred_proc_id(PredId, ProcId))) =
+	"<table_io_decl " ++ int_to_string(PredId) ++
+	", " ++ int_to_string(ProcId) ++ ">".
 
 	% The code of this predicate duplicates the functionality of
 	% hlds_error_util__describe_one_pred_name. Changes here should be made
@@ -590,18 +602,6 @@ hlds_out__aditi_builtin_arg_number_to_string(
 	% The original goal had a sym_name/arity
 	% at the front of the argument list.
 	Str = "argument " ++ int_to_string(ArgNum + 1).
-
-hlds_out__write_pred_or_func(predicate, !IO) :-
-	io__write_string("predicate", !IO).
-
-hlds_out__write_pred_or_func(function, !IO) :-
-	io__write_string("function", !IO).
-
-hlds_out__pred_or_func_to_full_str(predicate) = "predicate".
-hlds_out__pred_or_func_to_full_str(function) = "function".
-
-hlds_out__pred_or_func_to_str(predicate) = "pred".
-hlds_out__pred_or_func_to_str(function) = "func".
 
 %-----------------------------------------------------------------------------%
 
@@ -928,7 +928,7 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
 		pred_id_to_int(PredId, PredInt),
 		io__write_int(PredInt, !IO),
 		io__write_string(", category: ", !IO),
-		hlds_out__write_pred_or_func(PredOrFunc, !IO),
+		write_pred_or_func(PredOrFunc, !IO),
 		io__write_string(", status: ", !IO),
 		hlds_out__write_import_status(ImportStatus, !IO),
 		io__write_string("\n", !IO),
@@ -2220,7 +2220,7 @@ hlds_out__write_aditi_builtin(_ModuleInfo, Builtin, CallId,
 	io__write_string(UpdateName, !IO),
 	io__write_string("(", !IO),
 	CallId = PredOrFunc - _,
-	PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
+	PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
 	io__write_string(PredOrFuncStr, !IO),
 	io__write_string(" ", !IO),
 	hlds_out__simple_call_id_to_sym_name_and_arity(CallId, SymArity),
@@ -2590,7 +2590,8 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		hlds_out__write_functor(term__string(Str), ArgVars,
 			VarSet, AppendVarNums, !IO)
 	;
-		ConsId = pred_const(PredId, _, _),
+		ConsId = pred_const(ShroudedPredProcId, _),
+		proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		PredModule = pred_info_module(PredInfo),
 		PredName = pred_info_name(PredInfo),
@@ -2633,7 +2634,9 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 			ArgVars, VarSet, AppendVarNums, next_to_graphic_token,
 			!IO)
 	;
-		ConsId = tabling_pointer_const(PredId, ProcId),
+		ConsId = tabling_pointer_const(ShroudedPredProcId),
+		proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId),
 		io__write_string("tabling_pointer_const(", !IO),
 		hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
 		io__write_string(", ", !IO),
@@ -2641,8 +2644,9 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		io__write_int(ProcIdInt, !IO),
 		io__write_string(")", !IO)
 	;
-		ConsId = deep_profiling_proc_layout(RttiProcLabel),
-		rtti__proc_label_pred_proc_id(RttiProcLabel, PredId, ProcId),
+		ConsId = deep_profiling_proc_layout(ShroudedPredProcId),
+		proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId),
 		io__write_string("deep_profiling_proc_layout(", !IO),
 		hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
 		proc_id_to_int(ProcId, ProcIdInt),
@@ -2650,8 +2654,9 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		io__write_int(ProcIdInt, !IO),
 		io__write_string("))", !IO)
 	;
-		ConsId = table_io_decl(RttiProcLabel),
-		rtti__proc_label_pred_proc_id(RttiProcLabel, PredId, ProcId),
+		ConsId = table_io_decl(ShroudedPredProcId),
+		proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId),
 		io__write_string("table_io_decl(", !IO),
 		hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
 		proc_id_to_int(ProcId, ProcIdInt),
@@ -4017,6 +4022,88 @@ det_to_string(cc_multidet) = "cc_multi".
 det_to_string(cc_nondet) = "cc_nondet".
 det_to_string(multidet) = "multi".
 det_to_string(nondet) = "nondet".
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_uni_mode_list(UniModes, VarSet) -->
+	mercury_format_uni_mode_list(UniModes, VarSet).
+
+mercury_uni_mode_list_to_string(UniModes, VarSet) = String :-
+	mercury_format_uni_mode_list(UniModes, VarSet, "", String).
+
+:- pred mercury_format_uni_mode_list(list(uni_mode)::in, inst_varset::in,
+	U::di, U::uo) is det <= output(U).
+
+mercury_format_uni_mode_list([], _VarSet) --> [].
+mercury_format_uni_mode_list([Mode | Modes], VarSet) -->
+	mercury_format_uni_mode(Mode, VarSet),
+	( { Modes = [] } ->
+		[]
+	;
+		add_string(", "),
+		mercury_format_uni_mode_list(Modes, VarSet)
+	).
+
+mercury_output_uni_mode(UniMode, VarSet) -->
+	mercury_format_uni_mode(UniMode, VarSet).
+
+mercury_uni_mode_to_string(UniMode, VarSet) = String :-
+	mercury_format_uni_mode(UniMode, VarSet, "", String).
+
+:- pred mercury_format_uni_mode(uni_mode::in, inst_varset::in,
+	U::di, U::uo) is det <= output(U).
+
+mercury_format_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
+	mercury_format_mode((InstA1 -> InstA2), simple_inst_info(VarSet)),
+	add_string(" = "),
+	mercury_format_mode((InstB1 -> InstB2), simple_inst_info(VarSet)).
+
+:- instance inst_info(expanded_inst_info) where [
+	func(instvarset/1) is eii_varset,
+	pred(format_defined_inst/4) is mercury_format_expanded_defined_inst
+].
+
+:- type expanded_inst_info
+	--->	expanded_inst_info(
+			eii_varset	:: inst_varset,
+			eii_module_info	:: module_info,
+			eii_expansions	:: set(inst_name)
+					% the set of already-expanded insts;
+					% further occurrences of these will
+					% be output as "..."
+		).
+
+:- pred mercury_format_expanded_defined_inst(inst_name::in,
+	expanded_inst_info::in, U::di, U::uo) is det <= output(U).
+
+mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo) -->
+	( { set__member(InstName, ExpandedInstInfo ^ eii_expansions) } ->
+		add_string("...")
+	; { InstName = user_inst(_, _) } ->
+		% don't expand user-defined insts, just output them as is
+		% (we do expand any compiler-defined insts that occur
+		% in the arguments of the user-defined inst, however)
+		mercury_format_inst_name(InstName, ExpandedInstInfo)
+        ;
+                { inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName,
+			Inst) },
+                { set__insert(ExpandedInstInfo ^ eii_expansions, InstName,
+			Expansions) },
+		mercury_format_inst(Inst,
+			ExpandedInstInfo ^ eii_expansions := Expansions)
+	).
+
+
+mercury_output_expanded_inst(Inst, VarSet, ModuleInfo, !IO) :-
+	set__init(Expansions),
+	mercury_format_inst(Inst,
+		expanded_inst_info(VarSet, ModuleInfo, Expansions), !IO).
+
+mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
+	set__init(Expansions),
+	mercury_format_inst(Inst,
+		expanded_inst_info(VarSet, ModuleInfo, Expansions),
+		"", String).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

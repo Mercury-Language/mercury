@@ -11,7 +11,9 @@
 
 :- import_module hlds.
 
-%:- import_module aditi_hlds, aditi_codegen, aditi_rl_out.
+% :- import_module aditi_hlds.
+% :- import_module aditi_codegen.
+% :- import_module aditi_rl_out.
 
 %
 % Phase 4-rl: Aditi-related HLDS transformations

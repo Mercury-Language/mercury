@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -7,7 +7,7 @@
 % File: term_norm.m
 % Main author: crs.
 %
-% This modules defines predicates for computing functor norms. 
+% This modules defines predicates for computing functor norms.
 %
 %-----------------------------------------------------------------------------%
 
@@ -15,7 +15,6 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module libs__globals.
@@ -30,10 +29,10 @@
 
 :- type functor_info.
 
-% This predicate sets the functor_info depending on the value of the 
+% This predicate sets the functor_info depending on the value of the
 % termination_norm option.
 
-:- pred set_functor_info(globals__termination_norm::in, module_info::in, 
+:- pred set_functor_info(globals__termination_norm::in, module_info::in,
 	functor_info::out) is det.
 
 % This predicate computes the weight of a functor and the set of arguments
@@ -56,6 +55,7 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
 :- import_module libs__options.
 :- import_module parse_tree__prog_out.
 
@@ -70,7 +70,7 @@
 % where i is an element of a set I, and I is a subset of {1, ... n}
 %
 % We currently support four kinds of semilinear norms.
-% XXX Actually we currently only use three of them.  `use_map/1' is unused. 
+% XXX Actually we currently only use three of them.  `use_map/1' is unused.
 
 :- type functor_info
 	--->	simple	% All non-constant functors have weight 1,
@@ -146,10 +146,10 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 :- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,
 	constructor::in, weight_table::in, weight_table::out) is det.
 
-% For existentially typed data items the compiler may insert some 
+% For existentially typed data items the compiler may insert some
 % type-info related arguments into the functor.  We ignore these
 % arguments when calculating the weight of a functor and we do not
-% include them in the list of counted arguments.  
+% include them in the list of counted arguments.
 
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
 	Ctor = ctor(_ExistQVars, _Constraints, SymName, Args),
@@ -193,7 +193,7 @@ find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
 		ArgInfo = [no | ArgInfo0]
 	).
 
-:- pred is_arg_recursive(constructor_arg::in, type_ctor::in, 
+:- pred is_arg_recursive(constructor_arg::in, type_ctor::in,
 	list(type_param)::in) is semidet.
 
 is_arg_recursive(Arg, TypeCtor, Params) :-
@@ -250,7 +250,7 @@ functor_norm(use_map(WeightMap), TypeCtor, ConsId, _, Int, !Args, !Modes) :-
 	;
 		Int = 0
 	).
-functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _, Int, !Args, 
+functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _, Int, !Args,
 		!Modes) :-
 	( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
 		WeightInfo = weight(Int, UseArgList),
@@ -267,8 +267,8 @@ functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _, Int, !Args,
 
 % This predicate will fail if the length of the input lists are not matched.
 
-:- pred functor_norm_filter_args(list(bool)::in, list(prog_var)::in, 
-	list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out) 
+:- pred functor_norm_filter_args(list(bool)::in, list(prog_var)::in,
+	list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out)
 	is semidet.
 
 functor_norm_filter_args([], [], [], [], []).

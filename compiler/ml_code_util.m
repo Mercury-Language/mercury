@@ -753,7 +753,6 @@
 :- import_module ml_backend__ml_call_gen.
 :- import_module ml_backend__ml_code_gen.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_util.

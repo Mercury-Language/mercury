@@ -239,7 +239,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 			BaseList,
 			LiveValCode,
 			[
-				goto(succip)	
+				goto(succip)
 				- "exit from base case"
 			]
 		], InstrList)
@@ -279,7 +279,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 			TestAuxReg,
 			LiveValCode,
 			[
-				goto(succip)	
+				goto(succip)
 					- "exit from recursive case",
 				label(BaseLabel)
 					- "start of base case"
@@ -287,7 +287,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 			BaseList,
 			LiveValCode,
 			[
-				goto(succip)	
+				goto(succip)
 				- "exit from base case"
 			]
 		], InstrList)
@@ -539,20 +539,20 @@ middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
 	),
 	middle_rec__find_used_registers_maybe_rvals(MaybeRvals, !Used).
 
-:- pred insert_pragma_c_input_registers(list(pragma_c_input)::in, 
+:- pred insert_pragma_c_input_registers(list(pragma_c_input)::in,
 	set(int)::di, set(int)::uo) is det.
 
 insert_pragma_c_input_registers([], !Used).
-insert_pragma_c_input_registers([Input|Inputs], !Used) :-	
+insert_pragma_c_input_registers([Input|Inputs], !Used) :-
 	Input = pragma_c_input(_, _, Rval, _),
 	middle_rec__find_used_registers_rval(Rval, !Used),
 	insert_pragma_c_input_registers(Inputs, !Used).
 
-:- pred insert_pragma_c_output_registers(list(pragma_c_output)::in, 
+:- pred insert_pragma_c_output_registers(list(pragma_c_output)::in,
 	set(int)::di, set(int)::uo) is det.
 
 insert_pragma_c_output_registers([], !Used).
-insert_pragma_c_output_registers([Output|Outputs], !Used) :-	
+insert_pragma_c_output_registers([Output|Outputs], !Used) :-
 	Output = pragma_c_output(Lval, _, _, _),
 	middle_rec__find_used_registers_lval(Lval, !Used),
 	insert_pragma_c_output_registers(Outputs, !Used).

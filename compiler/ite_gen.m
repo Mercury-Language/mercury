@@ -149,7 +149,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo,
 		map__init(EmptyStoreMap),
 		code_info__generate_branch_end(EmptyStoreMap, no,
 			MaybeEnd0, ThenSaveCode, !CI)
-	;	
+	;
 			% Generate the then branch
 		trace__maybe_generate_internal_event_code(ThenGoal,
 			IteGoalInfo, ThenTraceCode, !CI),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 University of Melbourne.
+% Copyright (C) 2003-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,8 +41,8 @@
 :- import_module hlds__instmap.
 :- import_module hlds__passes_aux.
 :- import_module hlds__quantification.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -99,7 +99,9 @@ transform_aditi_builtins_in_goal_expr(Goal0, GoalInfo, Goal) -->
 	{ Goal0 = unify(_, _, _, Unification, _) },
 	(
 		{ Unification = construct(Var, ConsId, Args, _, _, _, _) },
-		{ ConsId = pred_const(PredId, ProcId, aditi_bottom_up) }
+		{ ConsId = pred_const(ShroudedPredProcId, aditi_bottom_up) },
+		{ proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId) }
 	->
 		^ changed := yes,
 		transform_aditi_bottom_up_closure(Var, PredId, ProcId,
@@ -188,9 +190,9 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	% back to its real type (pred(c_pointer::out) is det) before
 	% passing it to `aditi_private_builtin__do_bulk_*'.
 	%
-	
+
 	create_bulk_update_closure_var(NewVar),
-	ProcInfo =^ proc_info, 
+	ProcInfo =^ proc_info,
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
 	{ map__apply_to_list(Args, VarTypes, InputTupleTypes) },
 
@@ -229,7 +231,9 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	{ UniMode = ((free_inst - CastInputInst) ->
 			(CastInputInst - CastInputInst)) },
 	{ list__duplicate(NumBuiltinArgs, UniMode, UniModes) },
-	{ BuiltinConsId = pred_const(BuiltinPredId, BuiltinProcId, normal) },
+	{ ShroudedPredProcId = shroud_pred_proc_id(
+		proc(BuiltinPredId, BuiltinProcId)) },
+	{ BuiltinConsId = pred_const(ShroudedPredProcId, normal) },
 	{ Unification = construct(NewVar, BuiltinConsId, BuiltinArgs,
 			UniModes, construct_dynamically,
 			cell_is_unique, no) },
@@ -286,7 +290,7 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 			(free_inst -> CastOutputInst)] },
 	{ CastGoal = generic_call(unsafe_cast, [NewVar, Var],
 			CastModes, det) - GoalInfo },
-	
+
 	{ Goals = list__condense([ConstArgGoals, TupleGoals,
 				[UnifyGoal, CastGoal]]) },
 	{ Goal = conj(Goals) }.
@@ -330,7 +334,7 @@ transform_aditi_builtin_2(aditi_tuple_update(_, _),
 
 	% Remove the `aditi__state' from the list of arguments.
 	{ type_util__remove_aditi_state(TupleTypes0, TupleArgs0, TupleArgs) },
-	
+
 	%
 	% Produce code to create the vectors of type-infos and arguments
 	% for the tuple.
@@ -359,7 +363,7 @@ transform_aditi_builtin_2(aditi_tuple_update(_, _),
 	{ CallGoal = call(BuiltinPredId, BuiltinProcId, CallArgs,
 			not_builtin, no, BuiltinSymName) - CallGoalInfo },
 
-	{ Goals = list__append(TupleGoals, [CallGoal]) }. 
+	{ Goals = list__append(TupleGoals, [CallGoal]) }.
 
 transform_aditi_builtin_2(
 		aditi_bulk_update(Op, PredId, _),
@@ -428,7 +432,7 @@ transform_aditi_builtin_2(
 	{ BuiltinPredProcId = proc(BuiltinPredId, BuiltinProcId) },
 	{ CallGoal = call(BuiltinPredId, BuiltinProcId, CallArgs, not_builtin,
 				no, BuiltinSymName) - GoalInfo },
-	
+
 	{ Goals = [CastGoal, CallGoal] }.
 
 create_aditi_call_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
@@ -493,7 +497,7 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 			type_is_aditi_state(Type)
 		), TypesVarsAL, AditiStateVars) },
 	{ AditiStateVars = [FirstStateVar | _] ->
-		AditiStateVar = FirstStateVar	
+		AditiStateVar = FirstStateVar
 	;
 		% post_typecheck.m ensures that all Aditi predicates
 		% have an aditi__state argument.
@@ -514,7 +518,7 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 		InputArgs, OutputArgs) },
 	{ map__apply_to_list(InputArgs, VarTypes, InputTypes) },
 	{ rl__schema_to_string(ModuleInfo0, InputTypes, InputSchema) },
-	{ ConstArgs = [string(ProcName), string(InputSchema)] },  
+	{ ConstArgs = [string(ProcName), string(InputSchema)] },
 	generate_const_args(ConstArgs, ConstArgVars, ConstArgGoals),
 
 	%
@@ -522,7 +526,7 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	%
 	handle_input_tuple(InputArgs, InputTupleVar, InputTupleTypeInfo,
 		InputTupleGoals),
-	
+
 	%
 	% Build a goal to deconstruct the vector of output arguments.
 	%
@@ -540,14 +544,14 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	{ set__list_to_set(CallArgs, NonLocals) },
 	{ determinism_components(Det, _, at_most_zero) ->
 		instmap_delta_init_unreachable(InstMapDelta)
-	;	
+	;
 		instmap_delta_from_assoc_list([OutputTupleVar - ground_inst],
 			InstMapDelta)
 	},
 	{ goal_info_init(NonLocals, InstMapDelta, Det, pure, GoalInfo) },
 	{ CallGoal = call(BuiltinPredId, BuiltinProcId, CallArgs,
 		not_builtin, no, BuiltinSymName) - GoalInfo },
-			
+
 	{ Goals = list__condense(
 			[ConstArgGoals, InputTupleGoals, OutputTypeInfoGoals,
 			[CallGoal, OutputGoal]]) },
@@ -561,13 +565,13 @@ make_tuple_var(Args, TupleVar, TupleTypeInfo, TupleTypeInfoGoal) -->
 	ProcInfo0 =^ proc_info,
 	{ proc_info_vartypes(ProcInfo0, VarTypes) },
 	{ map__apply_to_list(Args, VarTypes, ArgTypes) },
-	{ construct_type(unqualified("{}") - list__length(Args), 
+	{ construct_type(unqualified("{}") - list__length(Args),
 		ArgTypes, TupleType) },
 	{ proc_info_create_var_from_type(TupleType, no, TupleVar,
 		ProcInfo0, ProcInfo) },
 	^ proc_info := ProcInfo,
 	make_type_info_for_var(TupleVar, TupleTypeInfo, TupleTypeInfoGoal).
-	
+
 :- pred make_type_info_for_var(prog_var, prog_var,
 		list(hlds_goal), aditi_transform_info, aditi_transform_info).
 :- mode make_type_info_for_var(in, out, out, in, out) is det.
@@ -629,7 +633,7 @@ generate_const_args([ConstArg | ConstArgs], [ConstArgVar | ConstArgVars],
 			ConstArgVar, ProcInfo0, ProcInfo)
 	},
 	^ proc_info := ProcInfo,
-	generate_const_args(ConstArgs, ConstArgVars, ConstGoals).	
+	generate_const_args(ConstArgs, ConstArgVars, ConstGoals).
 
 	% Create a variable for the query closure passed to a bulk update.
 	% The closure returns a reference to the answer relation for the
@@ -706,7 +710,7 @@ aditi_builtin_info(ModuleInfo, aditi_bulk_update(Op, PredId, _),
 construct_aditi_transform_info(ModuleInfo, PredId, ProcInfo, Info) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	Changed = no,
-	Info = aditi_transform_info(ModuleInfo, PredInfo, ProcInfo, Changed).	
+	Info = aditi_transform_info(ModuleInfo, PredInfo, ProcInfo, Changed).
 
 :- pred deconstruct_aditi_transform_info(aditi_transform_info, pred_id,
 		module_info, proc_info, bool).

@@ -135,7 +135,6 @@
 :- import_module check_hlds__cse_detection.
 :- import_module check_hlds__det_analysis.
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__modes.
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__post_typecheck.
@@ -151,8 +150,8 @@
 :- import_module libs__options.
 :- import_module libs__tree.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module recompilation.

@@ -67,7 +67,7 @@
 	% The documentation can go either next to the option definition
 	% here, or as commented-out code in the appropriate subroutine
 	% of options_help/2.
-:- type option	
+:- type option
 	% Warning options
 		--->	inhibit_warnings
 		;	inhibit_accumulator_warnings
@@ -397,7 +397,7 @@
 		;	max_jump_table_size
 		;	compare_specialization
 		;	fact_table_max_array_size
-				% maximum number of elements in a single 
+				% maximum number of elements in a single
 				% fact table data array
 
 		;	fact_table_hash_percent_full
@@ -528,7 +528,7 @@
 	%	- IL
 	%	(none yet)
 	% Target code compilation options
-		;	target_debug	
+		;	target_debug
 
 			% C
 		;	cc
@@ -1424,7 +1424,7 @@ long_option("make-transitive-optimisation-interface",
 					make_transitive_opt_interface).
 long_option("make-trans-opt", 		make_transitive_opt_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
-long_option("convert-to-Mercury", 	convert_to_mercury). 
+long_option("convert-to-Mercury", 	convert_to_mercury).
 long_option("pretty-print", 		convert_to_mercury).
 long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
@@ -1634,9 +1634,9 @@ long_option("automatic-intermodule-optimisation",
 					automatic_intermodule_optimization).
 long_option("use-opt-files",		use_opt_files).
 long_option("use-trans-opt-files",	use_trans_opt_files).
-long_option("transitive-intermodule-optimization", 
+long_option("transitive-intermodule-optimization",
 					transitive_optimization).
-long_option("transitive-intermodule-optimisation", 
+long_option("transitive-intermodule-optimisation",
 					transitive_optimization).
 long_option("trans-intermod-opt", 	transitive_optimization).
 
@@ -1954,12 +1954,12 @@ long_option("libgrade",			libgrades).
 long_option("options-file",		options_files).
 long_option("config-file",		config_file).
 long_option("options-search-directory", options_search_directories).
-long_option("use-subdirs",		use_subdirs).	
-long_option("use-grade-subdirs",	use_grade_subdirs).	
+long_option("use-subdirs",		use_subdirs).
+long_option("use-grade-subdirs",	use_grade_subdirs).
 long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
-					use_search_directories_for_intermod).	
+					use_search_directories_for_intermod).
 
 % misc options
 long_option("help",			help).
@@ -1972,7 +1972,7 @@ long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
 long_option("read-config-file-2003-03-01", compiler_sufficiently_recent).
 long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent).
- 
+
 %-----------------------------------------------------------------------------%
 
 special_handler(grade, string(Grade), OptionTable0, Result) :-
@@ -2168,7 +2168,7 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
 		init_file_directories - dir__make_path_name(Dir, "modules"),
 		mercury_library_directories - Dir
 	], OptionTable0).
-	  
+
 :- func append_to_accumulating_option(pair(option, string),
 		option_table) = option_table.
 
@@ -2241,7 +2241,7 @@ opt_space([
 % Optimization level -1:
 % Generate totally unoptimized code; turns off ALL optimizations that
 % can be turned off, including HLDS->HLDS, HLDS->LLDS, LLDS->LLDS, LLDS->C,
-% and C->object optimizations.  
+% and C->object optimizations.
 % (However, there are some optimizations that can't be disabled.)
 
 % Optimization level 0: aim to minimize overall compilation time.
@@ -2308,7 +2308,7 @@ opt_level(2, _, [
 opt_level(3, _, [
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_saved_vars_const -	bool(yes),
-	optimize_unused_args	-	bool(yes),	
+	optimize_unused_args	-	bool(yes),
 	optimize_higher_order	-	bool(yes),
 	deforestation		-	bool(yes),
 	local_constraint_propagation -	bool(yes),
@@ -2750,7 +2750,7 @@ options_help_aux_output -->
 % compatibility only.  It is now equivalent to `--trace rep'.
 %		"--trace {minimum, shallow, deep, decl, rep, default}",
 		"--trace {minimum, shallow, deep, rep, default}",
-		"\tGenerate code that includes the specified level", 
+		"\tGenerate code that includes the specified level",
 		"\tof execution tracing.",
 		"\tSee the Debugging chapter of the Mercury User's Guide",
 		"\tfor details.",
@@ -2964,7 +2964,7 @@ options_help_compilation_model -->
 % The ilc grade is not documented because it is not useful;
 % it has been superceded by the il grade.
 		"\tor one of those with one or more of the grade modifiers",
-		"\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',", 
+		"\t`.gc', `.mps', `.prof', `.memprof', `.profdeep', `.tr',",
 		"\t`rt', `.debug', `.par' and/or `.pic_reg' appended.",
 		"\tDepending on your particular installation, only a subset",
 		"\tof these possible grades will have been installed.",
@@ -3002,18 +3002,18 @@ options_help_compilation_model -->
 
 		"--no-support-ms-clr",
 		"\tDon't use MS CLR specific workarounds in the generated code.",
-		
+
 		"--support-rotor-clr",
 		"\tUse specific workarounds for the ROTOR CLR in the generated",
 		"\tcode.",
-		
+
 		"--java",
 		"\tAn abbreviation for `--target java'.",
 		"--java-only",
 		"\tAn abbreviation for `--target java --target-code-only'.",
 		"\tGenerate Java code in `<module>.java', but do not generate",
 		"\tobject code.",
-		
+
 		"--compile-to-c",
 		"\tAn abbreviation for `--target c --target-code-only'.",
 		"\tGenerate C code in `<module>.c', but do not generate object",
@@ -3062,7 +3062,7 @@ because they are currently not useful.
 The idea was for you to be able to use --profile-calls
 and --profile-time separately, but that doesn't work
 because compiling with --profile-time instead of
---profile-calls results in different code addresses, 
+--profile-calls results in different code addresses,
 so you can't combine the data from versions of
 your program compiled with different options.
 
@@ -3509,7 +3509,7 @@ options_help_hlds_hlds_optimization -->
 		"--no-inline-builtins",
 		"\tGenerate builtins (e.g. arithmetic operators) as calls to",
 		"\tout of line procedures.  This is done by default when,",
-		"\tdebugging, as without this option the execution of", 
+		"\tdebugging, as without this option the execution of",
 		"\tbuiltins is not traced.",
 		"--no-inline-single-use",
 		"\tDisable the inlining of procedures called only once.",
@@ -3633,7 +3633,7 @@ options_help_hlds_hlds_optimization -->
 		"\tto be optimized by deforestation.",
 		"\tA value of -1 specifies no limit. The default is 15."
 	]).
-	 
+
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
 
 options_help_hlds_llds_optimization -->
@@ -3856,7 +3856,7 @@ options_help_target_code_compilation -->
 		"--javac <javac>",
 		"--java-compiler <javac>",
 		"\tSpecify which Java compiler to use.  The default is `javac'.",
-		
+
 		"--java-interpreter <java>",
 		"\tSpecify which Java interpreter to use.",
 		"\tThe default is `java'",
@@ -4046,7 +4046,7 @@ options_help_build_system -->
 
 		"--install-prefix <dir>",
 		"\tThe directory under which to install Mercury libraries.",
-		
+
 		% --use-symlinks is only used by Mercury.config.
 		% It controls whether the build system should attempt
 		% to use symlinks.

@@ -50,7 +50,7 @@
 	find_target_file_names::in(find_target_file_names),
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	modules_to_recompile::out, read_modules::out,
-	io__state::di, io__state::uo) is det.	
+	io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -82,12 +82,12 @@ recompilation__check__should_recompile(ModuleName, FindTargetFiles,
 			set__init, some([]), FindAll, []) },
 	recompilation__check__should_recompile_2(no, FindTargetFiles,
 		FindTimestampFiles, ModuleName, Info0, Info).
-	
+
 :- pred recompilation__check__should_recompile_2(bool::in,
 	find_target_file_names::in(find_target_file_names),
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	module_name::in, recompilation_check_info::in,
-	recompilation_check_info::out, io__state::di, io__state::uo) is det.	
+	recompilation_check_info::out, io__state::di, io__state::uo) is det.
 
 recompilation__check__should_recompile_2(IsSubModule, FindTargetFiles,
 		FindTimestampFiles, ModuleName, Info0, Info) -->
@@ -194,11 +194,11 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 		{ VersionNumberTerm = term__functor(term__atom(","),
 			[UsageFileVersionNumberTerm,
 			VersionNumbersVersionNumberTerm], _) },
-		{ UsageFileVersionNumberTerm = 
+		{ UsageFileVersionNumberTerm =
 			term__functor(
 				term__integer(usage_file_version_number),
 				_, _) },
-		{ VersionNumbersVersionNumberTerm = 
+		{ VersionNumbersVersionNumberTerm =
 			term__functor(
 				term__integer(version_numbers_version_number),
 				_, _) }
@@ -211,7 +211,7 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 				"invalid usage file version number in file `"
 				++ UsageFileName ++ "'."),
 			Info0) }
-	), 
+	),
 
 	%
 	% Find the timestamp of the module the last time it was compiled.
@@ -243,7 +243,7 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 				Items, Error, FileName, Info0, Info1),
 			Info2 = Info1 ^ modules_to_recompile := (all),
 			record_recompilation_reason(module_changed(FileName),
-				Info2, Info3)	
+				Info2, Info3)
 		;
 			( Error \= no_module_errors
 			; MaybeNewTimestamp = no
@@ -264,7 +264,7 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 	%
 	read_term_check_for_error_or_eof(Info3, "inline sub-modules",
 		SubModulesTerm),
-	{ 
+	{
 		SubModulesTerm = term__functor(term__atom("sub_modules"),
 					SubModuleTerms, _),
 		list__map(
@@ -312,13 +312,13 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 
 	read_term_check_for_error_or_eof(Info6, "used classes",
 		UsedClassesTerm),
-	{ 
+	{
 		UsedClassesTerm = term__functor(term__atom("used_classes"),
 					UsedClassTerms, _),
 		list__map(
 			(pred(Term::in, UsedClass::out) is semidet :-
 				parse_name_and_arity(Term,
-					ClassName, ClassArity),			
+					ClassName, ClassArity),
 				UsedClass = ClassName - ClassArity
 			), UsedClassTerms, UsedClasses)
 	->
@@ -357,7 +357,7 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
 		ModuleName = ModuleName0,
 		ModuleTimestamp = module_timestamp(Suffix,
 			Timestamp, NeedQualifier)
-	;	
+	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in module timestamp"),
 		throw_syntax_error(Reason, Info)
@@ -394,7 +394,7 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 				ItemType, SimpleItems)
 		; is_pred_or_func_item_type(ItemType) ->
 			list__foldl(parse_pred_or_func_item(Info),
-				ItemTerms, map__init, PredOrFuncItems),	
+				ItemTerms, map__init, PredOrFuncItems),
 			UsedItems = update_pred_or_func_set(UsedItems0,
 				ItemType, PredOrFuncItems)
 		; ItemType = functor ->
@@ -622,7 +622,7 @@ check_imported_modules(Info0, Info) -->
 	(
 		{ TermResult = term(_, Term) },
 		( { Term = term__functor(term__atom("done"), [], _) } ->
-			{ Info = Info0 }	
+			{ Info = Info0 }
 		;
 			check_imported_module(Term, Info0, Info1),
 			check_imported_modules(Info1, Info)
@@ -647,7 +647,7 @@ check_imported_modules(Info0, Info) -->
 				"unexpected end of file") },
 		{ throw_syntax_error(Reason, Info0) }
 	).
-	
+
 :- pred check_imported_module(term::in, recompilation_check_info::in,
 	recompilation_check_info::out, io__state::di, io__state::uo) is det.
 
@@ -872,7 +872,7 @@ check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_ambiguities(_, _, _, clause(_, _, _, _, _) - _) -->
-	{ error("check_for_ambiguities: clause") }.	
+	{ error("check_for_ambiguities: clause") }.
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 			type_defn(_, Name, Params, Body, _) - _) -->
 	{ Arity = list__length(Params) },
@@ -966,11 +966,11 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
 			{ map__search(UsedItemMap, Name - Arity,
 				MatchingQualifiers) }
 		->
-			map__foldl(	
+			map__foldl(
 				check_for_simple_item_ambiguity_2(
 					ItemType, NeedQualifier,
 						SymName, Arity),
-					MatchingQualifiers)	
+					MatchingQualifiers)
 		;
 			[]
 		)
@@ -1000,7 +1000,7 @@ check_for_simple_item_ambiguity_2(ItemType, NeedQualifier,
 		\+ { SymName = qualified(OldMatchingModuleName, _) }
 	->
 		{ OldMatchingName = qualified(OldMatchingModuleName, Name) },
-		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity), 
+		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
 				[item_id(ItemType, OldMatchingName - Arity)]
 			) },
 		record_recompilation_reason(Reason)
@@ -1031,7 +1031,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
 	->
 		UsedItems =^ used_items,
 		{ UsedItemMap = extract_pred_or_func_set(UsedItems,
-					ItemType) },	
+					ItemType) },
 		{ unqualify_name(SymName, Name) },
 		( { map__search(UsedItemMap, Name, MatchingArityList) } ->
 		    list__foldl(
@@ -1046,7 +1046,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
 				    MatchArity = Arity
 				}
 			    ->
-				map__foldl(	
+				map__foldl(
 				    check_for_pred_or_func_item_ambiguity_2(
 					ItemType, NeedQualifier,
 					SymName, MatchArity),
@@ -1113,7 +1113,7 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
 			Item = item_id(ItemType, OldMatchingName - Arity)
 		    ),
 		    set__to_sorted_list(OldMatchingModuleNames)) },
-		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity), 
+		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
 				AmbiguousDecls
 		) },
 		record_recompilation_reason(Reason)
@@ -1188,9 +1188,9 @@ check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _) -->
 check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor) -->
 	UsedItems =^ used_items,
 	{ unqualify_name(Name, UnqualName) },
-	{ UsedCtors = UsedItems ^ functors },	
+	{ UsedCtors = UsedItems ^ functors },
 	( { map__search(UsedCtors, UnqualName, UsedCtorAL) } ->
-		check_functor_ambiguities_2(NeedQualifier, Name, MatchArity, 
+		check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 			ResolvedCtor, UsedCtorAL)
 	;
 		[]
@@ -1237,7 +1237,7 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 				Name, Arity, ResolvedCtor),
 			UsedCtorMap)
 	;
-		[]	
+		[]
 	),
 	( { Continue = yes } ->
 		check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
@@ -1247,7 +1247,7 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 	).
 
 :- pred check_functor_ambiguity(need_qualifier::in,
-	sym_name::in, arity::in, resolved_functor::in, 
+	sym_name::in, arity::in, resolved_functor::in,
 	module_qualifier::in, set(resolved_functor)::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
@@ -1308,7 +1308,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 	;	output_file_not_up_to_date(
 			file_name
 		)
-	
+
 	;	syntax_error(
 			term__context,
 			string
@@ -1327,7 +1327,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 			sym_name,
 			arity,
 			resolved_functor,	% new item.
-			list(resolved_functor)	
+			list(resolved_functor)
 						% ambiguous declarations.
 		)
 
@@ -1485,7 +1485,7 @@ describe_functor(SymName, _Arity,
 		pred_or_func(_, ModuleName, PredOrFunc, PredArity)) =
 		[words(ItemTypeStr), SymNameAndArityPiece] :-
 	string_to_item_type(ItemTypeStr,
-		pred_or_func_to_item_type(PredOrFunc)),	
+		pred_or_func_to_item_type(PredOrFunc)),
 	unqualify_name(SymName, UnqualName),
 	SymNameAndArityPiece = words(describe_sym_name_and_arity(
 		qualified(ModuleName, UnqualName) / PredArity)).
@@ -1496,7 +1496,7 @@ describe_functor(SymName, Arity, constructor(TypeName - TypeArity)) =
 		words(describe_sym_name_and_arity(TypeName / TypeArity))
 		].
 describe_functor(SymName, Arity,
-			field(TypeName - TypeArity, ConsName - ConsArity)) = 
+			field(TypeName - TypeArity, ConsName - ConsArity)) =
 		[words("field access function"),
 		words(describe_sym_name_and_arity(SymName / Arity)),
 		words("for constructor"),

@@ -132,13 +132,6 @@
 :- pred write_proc_progress_message(string::in, pred_id::in, proc_id::in,
 	module_info::in, io::di, io::uo) is det.
 
-:- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
-:- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
-:- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
-
-:- pred report_error(string::in, io::di, io::uo) is det.
-:- pred report_error(io__output_stream::in, string::in, io::di, io::uo) is det.
-
 :- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
 	% Prints the id of the given procedure via report_pred_name_mode,
@@ -247,7 +240,9 @@
 :- import_module libs__options.
 :- import_module libs__process_util.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module int, string, map, require, varset.
 
@@ -410,26 +405,6 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo) -->
 	;
 		[]
 	).
-
-maybe_report_stats(yes) --> io__report_stats.
-maybe_report_stats(no) --> [].
-
-maybe_write_string(yes, String) --> io__write_string(String).
-maybe_write_string(no, _) --> [].
-
-maybe_flush_output(yes) --> io__flush_output.
-maybe_flush_output(no) --> [].
-
-report_error(ErrorMessage) -->
-	io__write_string("Error: "),
-	io__write_string(ErrorMessage),
-	io__write_string("\n"),
-	io__set_exit_status(1).
-
-report_error(Stream, ErrorMessage) -->
-	io__set_output_stream(Stream, OldStream),
-	report_error(ErrorMessage),
-	io__set_output_stream(OldStream, _).
 
 :- pred passes_aux__handle_errors(int::in, int::in,
 	module_info::in, module_info::out, io::di, io::uo) is det.

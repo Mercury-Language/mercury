@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,41 +9,37 @@
 %
 % This module defines some utility routines for manipulating insts.
 %
-
-/*
-The handling of `any' insts is not complete.  (See also inst_match.m)
-
-The major limitation is that we don't allow `free' to be passed
-where `any' is expected.  To handle that, modes.m would have to be
-changed to handle the implicit conversions from `free' to `any' at
-
-	(1) procedure calls (this is just an extension of implied modes)
-	(2) the end of branched goals
-	(3) the end of predicates.
-
-Since that is not yet done, we currently require the user to
-insert explicit calls to initialize constraint variables.
-
-Another limitation is that we don't allow any unifications between functors
-and variables of mode `any'; the reason for that is that I have no
-idea what code we should generate for them.  Currently `any' insts
-are only used for abstract types, so the type system should prevent
-any unification between functors and variables of mode `any'.
-
-Another limitation is that currently code generation assumes that insts
-`bound', `ground', and `any' are all represented the same way.
-That works fine for the CLP(R) interface but might not be ideal
-in the general case.
-*/
+%
+% The handling of `any' insts is not complete.  (See also inst_match.m)
+%
+% The major limitation is that we don't allow `free' to be passed
+% where `any' is expected.  To handle that, modes.m would have to be
+% changed to handle the implicit conversions from `free' to `any' at
+%
+% 	(1) procedure calls (this is just an extension of implied modes)
+% 	(2) the end of branched goals
+% 	(3) the end of predicates.
+%
+% Since that is not yet done, we currently require the user to
+% insert explicit calls to initialize constraint variables.
+%
+% Another limitation is that we don't allow any unifications between functors
+% and variables of mode `any'; the reason for that is that I have no
+% idea what code we should generate for them.  Currently `any' insts
+% are only used for abstract types, so the type system should prevent
+% any unification between functors and variables of mode `any'.
+%
+% Another limitation is that currently code generation assumes that insts
+% `bound', `ground', and `any' are all represented the same way.
+% That works fine for the CLP(R) interface but might not be ideal
+% in the general case.
 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__inst_util.
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module list, std_util.
@@ -139,6 +135,7 @@ in the general case.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
+:- import_module parse_tree__prog_mode.
 
 :- import_module bool, std_util, require, map, list, set, int.
 
@@ -295,12 +292,11 @@ abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY, _),
 			BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
 
-/*** abstract insts not supported
-abstractly_unify_inst_3(live, bound(Uniq, List), abstract_inst(_,_), Real, M,
-					ground(shared), semidet, M) :-
-	unify_uniq(live, Real, semidet, unique, UniqY, Uniq),
-	bound_inst_list_is_ground(List, M).
-***/
+% abstract insts not supported
+% abstractly_unify_inst_3(live, bound(Uniq, List), abstract_inst(_,_), Real, M,
+% 					ground(shared), semidet, M) :-
+% 	unify_uniq(live, Real, semidet, unique, UniqY, Uniq),
+% 	bound_inst_list_is_ground(List, M).
 
 abstractly_unify_inst_3(live, ground(UniqX, higher_order(PredInst)),
 		any(UniqY), Real, M, ground(Uniq, higher_order(PredInst)),
@@ -343,22 +339,21 @@ abstractly_unify_inst_3(live, ground(Uniq, none), Inst0, Real, M0,
 % abstractly_unify_inst_3(live, abstract_inst(_,_), free,       _, _, _, _, _)
 %       :- fail.
 
-/*** abstract insts not supported
-abstractly_unify_inst_3(live, abstract_inst(_,_), bound(Uniq, List), Real,
-		ModuleInfo, ground(shared, no), semidet, ModuleInfo) :-
-	check_not_clobbered(Real, Uniq),
-	bound_inst_list_is_ground(List, ModuleInfo).
-
-abstractly_unify_inst_3(live, abstract_inst(_,_), ground(Uniq, no), Real, M,
-				ground(shared, no), semidet, M) :-
-	check_not_clobbered(Real, Uniq).
-
-abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
-			abstract_inst(Name, ArgsB), Real, ModuleInfo0,
-			abstract_inst(Name, Args), Det, ModuleInfo) :-
-	abstractly_unify_inst_list(ArgsA, ArgsB, live, Real, ModuleInfo0,
-		Args, Det, ModuleInfo).
-***/
+% abstract insts not supported
+% abstractly_unify_inst_3(live, abstract_inst(_,_), bound(Uniq, List), Real,
+% 		ModuleInfo, ground(shared, no), semidet, ModuleInfo) :-
+% 	check_not_clobbered(Real, Uniq),
+% 	bound_inst_list_is_ground(List, ModuleInfo).
+%
+% abstractly_unify_inst_3(live, abstract_inst(_,_), ground(Uniq, no), Real, M,
+% 				ground(shared, no), semidet, M) :-
+% 	check_not_clobbered(Real, Uniq).
+%
+% abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
+% 			abstract_inst(Name, ArgsB), Real, ModuleInfo0,
+% 			abstract_inst(Name, Args), Det, ModuleInfo) :-
+% 	abstractly_unify_inst_list(ArgsA, ArgsB, live, Real, ModuleInfo0,
+% 		Args, Det, ModuleInfo).
 
 abstractly_unify_inst_3(dead, not_reached, _, _, M, not_reached, det, M).
 
@@ -392,19 +387,18 @@ abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY, _),
 					BoundInsts, Det1, M),
 	det_par_conjunction_detism(Det1, semidet, Det).
 
-/***** abstract insts aren't really supported
-abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
-			ModuleInfo, Result, Det, ModuleInfo) :-
-	( bound_inst_list_is_ground(List, ModuleInfo) ->
-		Result = bound(Uniq, List),
-		Det = semidet
-	; bound_inst_list_is_free(List, ModuleInfo) ->
-		Result = abstract_inst(N,As),
-		Det = det
-	;
-		fail
-	).
-*****/
+% abstract insts aren't really supported
+% abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
+% 			ModuleInfo, Result, Det, ModuleInfo) :-
+% 	( bound_inst_list_is_ground(List, ModuleInfo) ->
+% 		Result = bound(Uniq, List),
+% 		Det = semidet
+% 	; bound_inst_list_is_free(List, ModuleInfo) ->
+% 		Result = abstract_inst(N,As),
+% 		Det = det
+% 	;
+% 		fail
+% 	).
 
 abstractly_unify_inst_3(dead, ground(UniqX, higher_order(PredInst)),
 		any(UniqY), Real, M, ground(Uniq, higher_order(PredInst)),
@@ -434,29 +428,27 @@ abstractly_unify_inst_3(dead, ground(Uniq, none), Inst0, Real, M0,
 				Inst, Det, M) :-
 	make_ground_inst(Inst0, dead, Uniq, Real, M0, Inst, Det, M).
 
-/***** abstract insts aren't really supported
-abstractly_unify_inst_3(dead, abstract_inst(N,As), bound(List), Real,
-			ModuleInfo, Result, Det, ModuleInfo) :-
-	( bound_inst_list_is_ground(List, ModuleInfo) ->
-		Result = bound(List),
-		Det = semidet
-	; bound_inst_list_is_free(List, ModuleInfo) ->
-		Result = abstract_inst(N,As),
-		Det = det
-	;
-		fail
-	).
-
-abstractly_unify_inst_3(dead, abstract_inst(_,_), ground, _Real, ModuleInfo,
-		ground, semidet, ModuleInfo).
-
-abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
-			abstract_inst(Name, ArgsB), Real, ModuleInfo0,
-			abstract_inst(Name, Args), Det, ModuleInfo) :-
-	abstractly_unify_inst_list(ArgsA, ArgsB, dead, Real, ModuleInfo0,
-			Args, Det, ModuleInfo).
-
-*****/
+% abstract insts aren't really supported
+% abstractly_unify_inst_3(dead, abstract_inst(N,As), bound(List), Real,
+% 			ModuleInfo, Result, Det, ModuleInfo) :-
+% 	( bound_inst_list_is_ground(List, ModuleInfo) ->
+% 		Result = bound(List),
+% 		Det = semidet
+% 	; bound_inst_list_is_free(List, ModuleInfo) ->
+% 		Result = abstract_inst(N,As),
+% 		Det = det
+% 	;
+% 		fail
+% 	).
+%
+% abstractly_unify_inst_3(dead, abstract_inst(_,_), ground, _Real, ModuleInfo,
+% 		ground, semidet, ModuleInfo).
+%
+% abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
+% 			abstract_inst(Name, ArgsB), Real, ModuleInfo0,
+% 			abstract_inst(Name, Args), Det, ModuleInfo) :-
+% 	abstractly_unify_inst_list(ArgsA, ArgsB, dead, Real, ModuleInfo0,
+% 			Args, Det, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -727,7 +719,7 @@ abstractly_unify_constrained_inst_vars(IsLive, InstVars, InstConstraint, InstB,
 		UnifyIsReal, ModuleInfo0, Inst, Det, ModuleInfo) :-
 	abstractly_unify_inst(IsLive, InstConstraint, InstB, UnifyIsReal,
 		ModuleInfo0, Inst0, Det, ModuleInfo),
-	( 
+	(
 		\+ inst_matches_final(Inst0, InstConstraint, ModuleInfo)
 	->
 		% The inst has become too instantiated so the
@@ -1148,7 +1140,6 @@ maybe_make_shared_inst_list([], [_|_], _, _, _) :-
 maybe_make_shared_inst_list([_|_], [], _, _, _) :-
 	error("maybe_make_shared_inst_list: length mismatch").
 
-
 make_shared_inst_list([], ModuleInfo, [], ModuleInfo).
 make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
 		[Inst | Insts], ModuleInfo) :-
@@ -1416,7 +1407,6 @@ inst_merge(InstA, InstB, MaybeType, ModuleInfo0, Inst, ModuleInfo) :-
 			% merge the insts
 		inst_merge_2(InstA, InstB, MaybeType, ModuleInfo1, Inst0,
 			ModuleInfo2),
-			
 
 			% now update the value associated with ThisInstPair
 		module_info_insts(ModuleInfo2, InstTable2),
@@ -1571,7 +1561,7 @@ inst_merge_4(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
 				ModuleInfo),
 			GroundInstInfo = none
 		)
-	;       
+	;
 		\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoA,
 			ModuleInfo),
 		\+ ground_inst_info_is_nonstandard_func_mode(GroundInstInfoB,
@@ -1708,7 +1698,6 @@ inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType, ModuleInfo0,
 			ModuleInfo = ModuleInfo0
 		)
 	).
-	
 
 %-----------------------------------------------------------------------------%
 

@@ -423,7 +423,7 @@ optimize_live_sets_in_goal(if_then_else(_, Cond, Then, Else) - GoalInfo,
 	reached_cond_then(GoalInfo, !OptInfo),
 	optimize_live_sets_in_goal(Cond, !OptInfo),
 	reached_branch_start(doesnt_need_flush, StartAnchor, BeforeId,
-		CondOpenIntervals, !OptInfo), 
+		CondOpenIntervals, !OptInfo),
 	enter_branch_tail(EndAnchor, AfterId, !OptInfo),
 	optimize_live_sets_in_goal(Else, !OptInfo),
 	reached_branch_start(needs_flush, StartAnchor, BeforeId,
@@ -450,7 +450,7 @@ optimize_live_sets_in_goal(Goal - GoalInfo, !OptInfo) :-
 	( GenericCall = unsafe_cast ->
 		require_in_regs(InputArgs, !OptInfo),
 		require_access(InputArgs, !OptInfo)
-	;	
+	;
 		call_gen__generic_call_info(CodeModel, GenericCall, _,
 			GenericVarsArgInfos, _),
 		assoc_list__keys(GenericVarsArgInfos, GenericVars),
@@ -1332,7 +1332,7 @@ add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
 	--->	all_paths(
 			set(path),	% The set of all paths so far.
 			bool,		% Have we stepped over model_non goals?
-			set(prog_var)	% The vars which are known to be used 
+			set(prog_var)	% The vars which are known to be used
 					% after the deconstruction goes out of
 					% scope.
 		).
@@ -1889,7 +1889,7 @@ make_inserted_goal(VarInfo0, VarInfo, VarRename0, VarRename, Spec, Goal) :-
 			map__init, VoidRename),
 		VarInfo = var_info(VarSet, VarTypes),
 		map__merge(VarRename0, NewRename, VarRename),
-		% We rename the original goal with the 
+		% We rename the original goal with the
 		rename_vars_in_goal(Goal2, VarRename, Goal3),
 		rename_vars_in_goal(Goal3, VoidRename, Goal)
 	;

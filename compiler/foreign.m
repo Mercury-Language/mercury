@@ -26,25 +26,16 @@
 
 :- import_module bool, list, string, term.
 
-:- type foreign_decl_info ==	list(foreign_decl_code).
-		% in reverse order
-:- type foreign_import_module_info == list(foreign_import_module).
-		% in reverse order
-:- type foreign_body_info   ==	list(foreign_body_code).
-		% in reverse order
+:- type foreign_decl_info 		== list(foreign_decl_code).
+					% in reverse order
+:- type foreign_body_info		== list(foreign_body_code).
+					% in reverse order
 
 :- type foreign_decl_code
 	--->	foreign_decl_code(
 			foreign_language,
 			foreign_decl_is_local,
 			string,
-			prog_context
-		).
-
-:- type foreign_import_module
-	--->	foreign_import_module(
-			foreign_language,
-			module_name,
 			prog_context
 		).
 
@@ -63,12 +54,12 @@
 		).
 
 :- type foreign_export_decl
-	---> foreign_export_decl(
-		foreign_language,	% language of the export
-		string,		% return type
-		string,		% function name
-		string		% argument declarations
-	).
+	--->	foreign_export_decl(
+			foreign_language,	% language of the export
+			string,			% return type
+			string,			% function name
+			string			% argument declarations
+		).
 
 	% Some code from a `pragma foreign_code' declaration that is not
 	% associated with a given procedure.
@@ -197,21 +188,12 @@
 :- func foreign__prefer_foreign_language(globals, compilation_target,
 	foreign_language, foreign_language) = bool.
 
-	% A string representation of the foreign language suitable
-	% for use in human-readable error messages
-:- func foreign_language_string(foreign_language) = string.
-
-	% A string representation of the foreign language suitable
-	% for use in machine-readable name mangling.
-:- func simple_foreign_language_string(foreign_language) = string.
-
 	% Sub-type of foreign_language for languages for which
 	% we generate external files for foreign code.
 :- inst lang_gen_ext_file
 	--->	c
 	;	managed_cplusplus
-	;	csharp
-	.
+	;	csharp.
 
 	% The file extension used for this foreign language (including
 	% the dot).
@@ -253,6 +235,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module list, map, assoc_list, std_util, string, varset, int, term.
 :- import_module require.
@@ -625,18 +608,6 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
 	),
 
 	create_pragma_import_c_code(PragmaVars, ModuleInfo, C_Code3, C_Code).
-
-foreign_language_string(c) = "C".
-foreign_language_string(managed_cplusplus) = "Managed C++".
-foreign_language_string(csharp) = "C#".
-foreign_language_string(il) = "IL".
-foreign_language_string(java) = "Java".
-
-simple_foreign_language_string(c) = "c".
-simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
-simple_foreign_language_string(csharp) = "csharp".
-simple_foreign_language_string(il) = "il".
-simple_foreign_language_string(java) = "java".
 
 foreign_language_file_extension(c) = ".c".
 foreign_language_file_extension(managed_cplusplus) = ".cpp".

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- import_module io.
 
-:- pred rl_dump__write_procedure(module_info, rl_proc, io__state, io__state). 
+:- pred rl_dump__write_procedure(module_info, rl_proc, io__state, io__state).
 :- mode rl_dump__write_procedure(in, in, di, uo) is det.
 
 :- pred rl_dump__write_instruction(module_info, relation_info_map,
@@ -64,11 +64,11 @@ rl_dump__write_procedure(ModuleInfo, Proc) -->
 		Outputs),
 	io__write_string(")\n{\n"),
 	{ map__keys(RelationInfo, RelationIds) },
-	list__foldl(rl_dump__declare_relation(ModuleInfo, RelationInfo), 
+	list__foldl(rl_dump__declare_relation(ModuleInfo, RelationInfo),
 		RelationIds),
 	io__nl,
-	list__foldl(rl_dump__write_instruction(ModuleInfo, RelationInfo), 
-		Instructions), 
+	list__foldl(rl_dump__write_instruction(ModuleInfo, RelationInfo),
+		Instructions),
 	io__write_string("}\n\n\n\n").
 
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,7 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(ModuleInfo, RelationInfo, 
+rl_dump__write_instruction(ModuleInfo, RelationInfo,
 		subtract(Output, Input1, Input2, SubType,
 			Exprn, TrivialSubtractInfo) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
@@ -152,7 +152,7 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(ModuleInfo, RelationInfo, 
+rl_dump__write_instruction(ModuleInfo, RelationInfo,
 		difference(Output, Input1, Input2, Type) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
 	io__write_string(" = difference("),
@@ -178,7 +178,7 @@ rl_dump__write_instruction(ModuleInfo, RelationInfo,
 	io__write_string("\t"),
 	io__write_list(OtherOutputs, ",\n",
 		rl_dump__write_project_output(ModuleInfo, RelationInfo)),
-	
+
 	io__write_string(")."),
 	rl_dump__write_comment(Comment),
 	io__nl.
@@ -278,7 +278,7 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(_ModuleInfo, RelationInfo, 
+rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 		unset(RelationId) - Comment) -->
 	io__write_string("unset("),
 	rl_dump__write_relation_id(RelationInfo, RelationId),
@@ -286,7 +286,7 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(_ModuleInfo, _RelationInfo, 
+rl_dump__write_instruction(_ModuleInfo, _RelationInfo,
 		label(LabelId) - Comment) -->
 	io__write_string("\nlabel("),
 	{ rl__label_id_to_string(LabelId, String) },
@@ -313,8 +313,8 @@ rl_dump__write_instruction(_ModuleInfo, _, goto(LabelId) - Comment) -->
 	io__write_string(").\n"),
 	rl_dump__write_comment(Comment),
 	io__nl.
-	
-rl_dump__write_instruction(_ModuleInfo, RelationInfo, 
+
+rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 		ref(Output, Input) - Comment) -->
 	rl_dump__write_relation_id(RelationInfo, Output),
 	io__write_string(" = "),
@@ -323,7 +323,7 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(_ModuleInfo, RelationInfo, 
+rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 		copy(Output, Input) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
 	io__write_string(" = copy("),
@@ -332,7 +332,7 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(_ModuleInfo, RelationInfo, 
+rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 		make_unique(Output, Input) - Comment) -->
 	rl_dump__write_output_rel(RelationInfo, Output),
 	io__write_string(" = make_unique("),
@@ -341,20 +341,20 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 	rl_dump__write_comment(Comment),
 	io__nl.
 
-rl_dump__write_instruction(_ModuleInfo, RelationInfo, 
+rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 		call(Name, InputArgs, OutputArgs, Saved) - Comment) -->
 	io__write_string("call("),
 	{ rl__proc_name_to_string(Name, NameStr) },
 	io__write_string(NameStr),
 	comma,
-	rl_dump__write_list(rl_dump__write_relation_id(RelationInfo), 
+	rl_dump__write_list(rl_dump__write_relation_id(RelationInfo),
 		InputArgs),
 	comma,
-	rl_dump__write_list(rl_dump__write_output_rel(RelationInfo), 
+	rl_dump__write_list(rl_dump__write_output_rel(RelationInfo),
 		OutputArgs),
 	comma,
 	{ set__to_sorted_list(Saved, SavedList) },
-	rl_dump__write_list(rl_dump__write_relation_id(RelationInfo), 
+	rl_dump__write_list(rl_dump__write_relation_id(RelationInfo),
 		SavedList),
 
 	io__write_string(").\n\t"),
@@ -675,7 +675,7 @@ rl_dump__write_goal(ModuleInfo, RLGoal) -->
 		io__write_string("\toutputs: "),
 		rl_dump__write_var_list(VarSet, Outputs),
 		io__nl
-	;	
+	;
 		[]
 	),
 	hlds_out__write_goal_list(GoalList, ModuleInfo,
@@ -704,7 +704,7 @@ rl_dump__write_bound_pair(ModuleInfo, VarSet,
 	io__write_string(" - "),
 	rl_dump__write_key_term(ModuleInfo, VarSet, UpperBound).
 
-:- pred rl_dump__write_key_term(module_info::in, prog_varset::in, key_term::in, 
+:- pred rl_dump__write_key_term(module_info::in, prog_varset::in, key_term::in,
 		io__state::di, io__state::uo) is det.
 
 rl_dump__write_key_term(_ModuleInfo, VarSet, var - Vars0) -->

@@ -48,6 +48,7 @@
 :- import_module ll_backend__reassign.
 :- import_module ll_backend__use_local_vars.
 :- import_module ll_backend__wrap_blocks.
+:- import_module parse_tree__prog_out.
 
 :- import_module bool, int, string.
 :- import_module map, set, std_util, require, counter.
@@ -286,7 +287,7 @@ optimize__repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
 		Mod1 = no
 	),
 	globals__io_lookup_bool_option(optimize_peep, Peephole, !IO),
-	( 
+	(
 		Peephole = yes,
 		(
 			VeryVerbose = yes,

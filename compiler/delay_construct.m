@@ -182,7 +182,7 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
 % construction unifications before it. The conjunct may also require the value
 % of a variable defined by a construction unification. In such cases, we could
 % drop before that goal only the construction unifications that define the
-% variables needed by the conjunct, either directly or indirectly through 
+% variables needed by the conjunct, either directly or indirectly through
 % the values required by some of those construction unifications. However,
 % separating out this set of delayed constructions from the others would
 % require somewhat complex code, and it is not clear that there would be any

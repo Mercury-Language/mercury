@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -693,9 +693,9 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 %		HeadVar__2_2 = x:u(TypeClassInfo_for_v_14, V_6)
 %		...
 %	)
-%	
+%
 % The main part of cse_detection will replace this with
-%	
+%
 %	HeadVar__2_2 = x:u(V_17, V_16)
 %	(
 %		TypeClassInfo_for_v_8 = V_17,
@@ -712,7 +712,7 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 % it is imperative that the data structures in the proc_info that refer
 % to them be updated to eliminate references to those variables.
 % Those data structures may originally contain something like this:
-%	
+%
 % type_info varmap:
 % T_1 (number 1) -> typeclass_info(TypeClassInfo_for_v_8, 1)
 % T_3 (number 3) -> typeclass_info(TypeClassInfo_for_v_14, 1)
@@ -724,7 +724,7 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 % V_6 (number 6) :: T_3
 %
 % They must be updated like this:
-%	
+%
 % type_info varmap:
 % T_1 (number 1) -> typeclass_info(V_17, 1)
 % typeclass_info varmap:
@@ -796,7 +796,7 @@ apply_tvar_rename(TvarSub, _Var, Type0, Type) :-
 :- pred find_type_info_locn_tvar_map(map(prog_var, prog_var)::in,
 	pair(tvar, type_info_locn)::in,
  	map(type_info_locn, tvar)::in, map(type_info_locn, tvar)::out) is det.
- 
+
 find_type_info_locn_tvar_map(FirstOldNewMap, Tvar - TypeInfoLocn0,
 		NewTvarMap0, NewTvarMap) :-
  	type_info_locn_var(TypeInfoLocn0, Old),
@@ -811,7 +811,7 @@ find_type_info_locn_tvar_map(FirstOldNewMap, Tvar - TypeInfoLocn0,
 	map(type_info_locn, tvar)::in, pair(tvar, type_info_locn)::in,
  	map(tvar, type_info_locn)::in, map(tvar, type_info_locn)::out,
 	map(tvar, tvar)::in, map(tvar, tvar)::out) is det.
- 
+
 reconstruct_type_info_varmap(FirstOldNewMap, NewTvarMap, Tvar - TypeInfoLocn0,
 		TypeInfoVarMap0, TypeInfoVarMap, TvarSub0, TvarSub) :-
  	type_info_locn_var(TypeInfoLocn0, Old),

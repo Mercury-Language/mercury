@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998,2002-2003 University of Melbourne.
+% Copyright (C) 1998,2002-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: rl_analyse.m
 % Main author: stayl
-% 
+%
 % Generic flow graph analysis for RL instructions.
 % This is mostly as described in the Dragon Book, chapter 10.
 %-----------------------------------------------------------------------------%
@@ -96,7 +96,7 @@
 	% "generated" and "killed" by the block.
 :- type gen_kill_data == block_data(int_set, pair(int_set)).
 :- type gen_kill_data_map == block_data_map(int_set, pair(int_set)).
-	
+
 	% XXX use bit vectors.
 :- type int_set == set(int).
 
@@ -110,7 +110,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module assoc_list, bool, relation, require, string.  
+:- import_module assoc_list, bool, relation, require, string.
 
 rl_analyse(Blocks, Analysis, BlockDataMap0, BlockDataMap,
 		Globals0, Globals, IO0, IO) -->
@@ -153,7 +153,7 @@ rl_analyse__to_fixpoint(Analysis, Blocks, BlockDataMap0, BlockDataMap,
 
 rl_analyse__blocks(_, [], Info, Info, Changed, Changed,
 		Globals, Globals, IO, IO) --> [].
-rl_analyse__blocks(Analysis, [BlockId | BlockIds], BlockDataMap0, BlockDataMap, 
+rl_analyse__blocks(Analysis, [BlockId | BlockIds], BlockDataMap0, BlockDataMap,
 		Changed0, Changed, Globals0, Globals, IO0, IO) -->
 	rl_opt_info_get_flow_graph(FlowGraph),
 	{ relation__lookup_element(FlowGraph, BlockId, BlockKey) },
@@ -174,7 +174,7 @@ rl_analyse__blocks(Analysis, [BlockId | BlockIds], BlockDataMap0, BlockDataMap,
 	{ list__map(relation__lookup_key(FlowGraph), PredecessorKeys,
 		Predecessors) },
 	{ map__lookup(BlockDataMap0, BlockId, BlockData0) },
-	
+
 	{ GetOutValues = (pred(Node::in, NodeAndOValue::out) is det :-
 		map__lookup(BlockDataMap0, Node, block_data(_, OutValue, _)),
 		NodeAndOValue = Node - OutValue
@@ -205,7 +205,7 @@ rl_analyse__blocks(Analysis, [BlockId | BlockIds], BlockDataMap0, BlockDataMap,
 
 	%
 	% Check whether anything changed.
-	% 
+	%
 	{ BlockData0 = block_data(_, OldOut, _) },
 	{ BlockData = block_data(_, NewOut, _) },
 	( { rl_analyse__equal(Analysis, OldOut, NewOut, Globals2) } ->
@@ -239,7 +239,7 @@ rl_analyse__do_io(Writer) -->
 	).
 
 :- pred rl_analyse__dump_block_data_map(rl_analysis(T, U, V)::rl_analysis,
-		list(block_id)::in, block_data_map(T, U)::in, V::in, 
+		list(block_id)::in, block_data_map(T, U)::in, V::in,
 		io__state::di, io__state::uo) is det.
 
 rl_analyse__dump_block_data_map(Analysis, Blocks, BlockDataMap, Globals) -->
@@ -262,7 +262,7 @@ rl_analyse__dump_block_data(Analysis, BlockDataMap, Globals, BlockId) -->
 	io__nl.
 
 :- pred rl_analyse__dump_changed_data(rl_analysis(T, U, V)::rl_analysis,
-		block_id::in, block_data(T, U)::in, block_data(T, U)::in, 
+		block_id::in, block_data(T, U)::in, block_data(T, U)::in,
 		V::in, io__state::di, io__state::uo) is det.
 
 rl_analyse__dump_changed_data(Analysis, BlockId, Data0, Data, Globals) -->
@@ -298,7 +298,7 @@ rl_analyse__write_int_set(Set0) -->
 		assoc_list(block_id, T)::in, pair(block_id, maybe(T))::in,
 		pair(block_id, maybe(T))::out, V::in, V::out,
 		rl_opt_info::in, rl_opt_info::out) is det.
-	
+
 rl_analyse__confluence_list(_, [], Value, Value, Globals, Globals) --> [].
 rl_analyse__confluence_list(Analysis, [OutPredecessor | OutPredecessors],
 		Value0, Value, Globals0, Globals) -->
@@ -323,7 +323,7 @@ rl_analyse__confluence_list(Analysis, [OutPredecessor | OutPredecessors],
 	% Given the information at entry, compute the information at exit.
 :- pred rl_analyse__block_update(rl_analysis(BlockData, Info, Globals),
 		block_id, BlockData, block_data(BlockData, Info),
-		block_data(BlockData, Info), Globals, Globals, 
+		block_data(BlockData, Info), Globals, Globals,
 		rl_opt_info, rl_opt_info).
 :- mode rl_analyse__block_update(rl_analysis, in, in,
 		in, out, in, out, in, out) is det.
@@ -343,7 +343,7 @@ rl_analyse__confluence(rl_analysis(_, Confluence, _, _, _), BlockData1,
 		Block - MaybeData2, Block - yes(Data), Globals0, Globals) -->
 	call(Confluence, BlockData1, Block - MaybeData2, Data,
 		Globals0, Globals).
-rl_analyse__block_update(rl_analysis(_, _, Update, _, _), BlockId, 
+rl_analyse__block_update(rl_analysis(_, _, Update, _, _), BlockId,
 		In, Data0, Data, Globals0, Globals) -->
 	call(Update, BlockId, In, Data0, Data, Globals0, Globals).
 rl_analyse__equal(rl_analysis(_, _, _, Equal, _), Data1, Data2, Globals) :-

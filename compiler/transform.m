@@ -36,7 +36,7 @@
 
 :- import_module list.
 
-:- pred transform__reschedule_conj(list(hlds_goal)::in, list(hlds_goal)::out, 
+:- pred transform__reschedule_conj(list(hlds_goal)::in, list(hlds_goal)::out,
 	mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%

@@ -21,7 +21,6 @@
 :- interface.
 
 :- import_module backend_libs__rtti.
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
@@ -37,6 +36,7 @@
 :- implementation.
 
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.

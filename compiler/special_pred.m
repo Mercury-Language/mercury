@@ -36,14 +36,13 @@
 	% for the given type constructor.
 :- func special_pred_name(special_pred_id, type_ctor) = string.
 
-	% This predicate always returns determinism `semidet' for 
-	% unification procedures.  For types with only one value, the 
+	% This predicate always returns determinism `semidet' for
+	% unification procedures.  For types with only one value, the
 	% unification is actually `det', however we need to pretend it
-	% is `semidet' so that it can be called correctly from the 
+	% is `semidet' so that it can be called correctly from the
 	% polymorphic `unify' procedure.
-:- pred special_pred_interface(special_pred_id, type, list(type),
-	list(mode), determinism).
-:- mode special_pred_interface(in, in, out, out, out) is det.
+:- pred special_pred_interface(special_pred_id::in, (type)::in,
+	list(type)::out, list(mode)::out, determinism::out) is det.
 
 	% special_pred_name_arity(SpecialPredType, GenericPredName, Arity):
 	%	true iff there is a special predicate of category
@@ -52,11 +51,9 @@
 :- mode special_pred_name_arity(in, out, out) is det.
 :- mode special_pred_name_arity(out, in, out) is semidet.
 
-:- pred special_pred_mode_num(special_pred_id, int).
-:- mode special_pred_mode_num(in, out) is det.
+:- pred special_pred_mode_num(special_pred_id::in, int::out) is det.
 
-:- pred special_pred_list(list(special_pred_id)).
-:- mode special_pred_list(out) is det.
+:- pred special_pred_list(list(special_pred_id)::out) is det.
 
 	% Given a special pred id and the list of its arguments, work out
 	% which argument specifies the type that this special predicate is for.
@@ -69,14 +66,13 @@
 	% can be found in the last type argument, except for index, for
 	% which it is the second-last argument.
 
-:- pred special_pred_get_type(special_pred_id, list(prog_var), prog_var).
-:- mode special_pred_get_type(in, in, out) is semidet.
+:- pred special_pred_get_type(special_pred_id::in, list(prog_var)::in,
+	prog_var::out) is semidet.
 
-:- pred special_pred_get_type_det(special_pred_id, list(prog_var), prog_var).
-:- mode special_pred_get_type_det(in, in, out) is det.
+:- pred special_pred_get_type_det(special_pred_id::in, list(prog_var)::in,
+	prog_var::out) is det.
 
-:- pred special_pred_description(special_pred_id, string).
-:- mode special_pred_description(in, out) is det.
+:- pred special_pred_description(special_pred_id::in, string::out) is det.
 
 	%
 	% Succeeds if the declarations and clauses for the special predicates
@@ -84,12 +80,11 @@
 	% This will succeed for imported types for which the special
 	% predicates do not need typechecking.
 	%
-:- pred special_pred_is_generated_lazily(module_info, type_ctor).
-:- mode special_pred_is_generated_lazily(in, in) is semidet.
+:- pred special_pred_is_generated_lazily(module_info::in, type_ctor::in)
+	is semidet.
 
-:- pred special_pred_is_generated_lazily(module_info, type_ctor,
-		hlds_type_body, import_status).
-:- mode special_pred_is_generated_lazily(in, in, in, in) is semidet.
+:- pred special_pred_is_generated_lazily(module_info::in, type_ctor::in,
+	hlds_type_body::in, import_status::in) is semidet.
 
 	%
 	% A compiler-generated predicate only needs type checking if
@@ -97,20 +92,19 @@
 	% or	(b) it is the unification or comparison predicate for an
 	%           existially quantified type.
 	%
-:- pred special_pred_for_type_needs_typecheck(module_info, hlds_type_body).
-:- mode special_pred_for_type_needs_typecheck(in, in) is semidet.
+:- pred special_pred_for_type_needs_typecheck(module_info::in,
+	hlds_type_body::in) is semidet.
 
 	% Succeed if the type can have clauses generated for
 	% its special predicates. This will fail for abstract
 	% types and types for which the RTTI information is
 	% defined by hand.
-:- pred can_generate_special_pred_clauses_for_type(module_info, type_ctor,
-		hlds_type_body).
-:- mode can_generate_special_pred_clauses_for_type(in, in, in) is semidet.
+:- pred can_generate_special_pred_clauses_for_type(module_info::in,
+	type_ctor::in, hlds_type_body::in) is semidet.
 
 	% Are the special predicates for a builtin type defined in Mercury?
-:- pred is_builtin_types_special_preds_defined_in_mercury(
-		type_ctor::in, string::out) is semidet.
+:- pred is_builtin_types_special_preds_defined_in_mercury(type_ctor::in,
+	string::out) is semidet.
 
 	% Does the compiler generate the RTTI for the builtin types, or is
 	% it hand-coded?
@@ -122,6 +116,7 @@
 :- import_module check_hlds__type_util.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 
 :- import_module bool, require.
@@ -173,7 +168,7 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
 		TypeCategory = tuple_type
 	;
 		( TypeCategory = user_ctor_type
-		; TypeCategory = enum_type 
+		; TypeCategory = enum_type
 		; is_introduced_type_info_type_category(TypeCategory) = yes
 		),
 		module_info_types(ModuleInfo, Types),
@@ -197,9 +192,8 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
 			TypeCtor, Body, Status)
 	).
 
-:- pred special_pred_is_generated_lazily_2(module_info,
-	type_ctor, hlds_type_body, import_status).
-:- mode special_pred_is_generated_lazily_2(in, in, in, in) is semidet.
+:- pred special_pred_is_generated_lazily_2(module_info::in,
+	type_ctor::in, hlds_type_body::in, import_status::in) is semidet.
 
 special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	(
@@ -269,6 +263,5 @@ compiler_generated_rtti_for_builtins(ModuleInfo) :-
 	globals__get_target(Globals, Target),
 	( Target = il ; Target = java ).
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

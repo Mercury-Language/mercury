@@ -86,7 +86,7 @@
 			list(string),	% split into words.
 			variable_source
 		).
-		
+
 :- type variable_source
 	--->	options_file
 	;	command_line
@@ -97,7 +97,7 @@ options_variables_init = map__init.
 
 read_args_file(OptionsFile, MaybeMCFlags) -->
 	read_options_file(OptionsFile,
-		options_variables_init, MaybeVariables),	
+		options_variables_init, MaybeVariables),
 	(
 		{ MaybeVariables = yes(Variables) },
 		% Ignore settings in the environment -- the parent
@@ -107,7 +107,7 @@ read_args_file(OptionsFile, MaybeMCFlags) -->
 		(
 			{ FlagsResult = set(MCFlags) },
 			{ MaybeMCFlags = yes(MCFlags) }
-		;	
+		;
 			{ FlagsResult = unset },
 			io__write_string(
 "mercury_compile: internal error: arguments file does not set MCFLAGS.\n"),
@@ -122,7 +122,7 @@ read_args_file(OptionsFile, MaybeMCFlags) -->
 		{ MaybeVariables = no },
 		{ MaybeMCFlags = no }
 	).
-	
+
 
 read_options_file(OptionsFile, Variables0, MaybeVariables) -->
 	promise_only_solution_io(
@@ -301,7 +301,7 @@ read_options_lines(Dir, Variables0, Variables) -->
 			read_options_line(FoundEOF1, [], Line0),
 			(
 			    { Line0 = [] },
-			    { Variables1 = Variables0 }	
+			    { Variables1 = Variables0 }
 			;
 			    { Line0 = [_|_] },
 			    { parse_options_line(Line0, ParsedLine) },
@@ -503,7 +503,7 @@ expand_variables_2(Variables, [Char | Chars], RevChars0, RevChars,
 			Chars4 = Chars1,
 			VarName = string__char_to_string(Char2)
 		    },
-			
+
 		    lookup_variable_chars(Variables, VarName,
 				VarChars, Undef0, Undef1),
 		    expand_variables_2(Variables, Chars4,
@@ -571,13 +571,13 @@ report_undefined_variables_2([_|Rest] @ UndefVars) -->
 :- pred parse_options_line(list(char)::in, options_file_line::out) is det.
 
 parse_options_line(Line0, OptionsFileLine) :-
-	(	
+	(
 		( Line0 = [('-') | Line1] ->
 			ErrorIfNotExist = no_error,
 			Line2 = Line1
 		;
 			ErrorIfNotExist = error,
-			Line2 = Line0	
+			Line2 = Line0
 		),
 		list__append(string__to_char_list("include"), Line3, Line2)
 	->
@@ -641,7 +641,7 @@ parse_variable_2(IsFirst, Var0, Var, [Char | Chars0], Chars) :-
 	(
 		\+ char__is_whitespace(Char),
 		( IsFirst = yes ->
-			char__is_alpha(Char) 
+			char__is_alpha(Char)
 		;
 			( char__is_alnum_or_underscore(Char)
 			; Char = ('-')
@@ -768,7 +768,7 @@ split_into_words_2(Chars0, Words0) = Words :-
 :- pred get_word(string::out, list(char)::in, list(char)::out) is det.
 
 get_word(string__from_rev_char_list(RevWord), Chars0, Chars) :-
-	get_word_2([], RevWord, Chars0, Chars).	
+	get_word_2([], RevWord, Chars0, Chars).
 
 :- pred get_word_2(list(char)::in, list(char)::out,
 	list(char)::in, list(char)::out) is det.
@@ -777,7 +777,7 @@ get_word_2(RevWord, RevWord, [], []).
 get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
 	( char__is_whitespace(Char) ->
 		Chars = Chars0,
-		RevWord = RevWord0			
+		RevWord = RevWord0
 	; Char = '"' ->
 		parse_string_chars([], RevStringChars, Chars0, Chars1),
 		get_word_2(RevStringChars ++ RevWord0, RevWord,

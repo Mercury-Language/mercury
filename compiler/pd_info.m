@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,6 @@
 
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -25,7 +24,7 @@
 :- import_module bool, map, list, io, set, std_util, getopt.
 :- import_module counter.
 
-:- type pd_info 
+:- type pd_info
 	---> pd_info(
 		io :: io__state,
 		module_info :: module_info,
@@ -41,7 +40,7 @@
 		useless_versions :: useless_versions
 	).
 
-		% map from list of called preds in the 
+		% map from list of called preds in the
 		% conjunctions to the specialised versions.
 :- type goal_version_index == map(list(pred_proc_id), list(pred_proc_id)).
 
@@ -62,7 +61,7 @@
 :- pred pd_info_init(module_info, pd_arg_info, io__state, pd_info).
 :- mode pd_info_init(in, in, di, pd_info_uo) is det.
 
-:- pred pd_info_init_unfold_info(pred_proc_id, 
+:- pred pd_info_init_unfold_info(pred_proc_id,
 		pred_info, proc_info, pd_info, pd_info).
 :- mode pd_info_init_unfold_info(in, in, in, pd_info_di, pd_info_uo) is det.
 
@@ -158,7 +157,7 @@
 :- mode pd_info_foldl(pred(in, pd_info_di, pd_info_uo) is det, in,
 		pd_info_di, pd_info_uo) is det.
 
-:- pred pd_info_foldl2(pred(T, U, U, pd_info, pd_info), list(T), U, U, 
+:- pred pd_info_foldl2(pred(T, U, U, pd_info, pd_info), list(T), U, U,
 		pd_info, pd_info).
 :- mode pd_info_foldl2(pred(in, in, out, pd_info_di, pd_info_uo) is det, in,
 		in, out, pd_info_di, pd_info_uo) is det.
@@ -168,6 +167,7 @@
 
 :- import_module check_hlds__det_util.
 :- import_module check_hlds__inst_match.
+:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
@@ -197,7 +197,7 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo) -->
 	CostDelta = 0,
 	pd_term__local_term_info_init(LocalTermInfo),
 	set__singleton_set(Parents, PredProcId),
-	UnfoldInfo = unfold_info(ProcInfo, InstMap, CostDelta, LocalTermInfo, 
+	UnfoldInfo = unfold_info(ProcInfo, InstMap, CostDelta, LocalTermInfo,
 			PredInfo, Parents, PredProcId, no, 0, no)
 	},
 	pd_info_set_unfold_info(UnfoldInfo).
@@ -292,7 +292,7 @@ pd_info_foldl2(Pred, [H | T], Acc0, Acc) -->
 					% processing this procedure
 			local_term_info :: local_term_info,
 					% information used to prevent
-					% infinite unfolding within the 
+					% infinite unfolding within the
 					% current procedure.
 			pred_info :: pred_info,
 			parents :: set(pred_proc_id),
@@ -302,16 +302,16 @@ pd_info_foldl2(Pred, [H | T], Acc0, Acc) -->
 			size_delta :: int,
 					% increase in size measured while
 					% processing this procedure
-			rerun_det :: bool	
+			rerun_det :: bool
 					% does determinism analysis
 					% need to be rerun.
-		).	
+		).
 
 	% pd_arg_info records which procedures have arguments for which
 	% it might be worthwhile to attempt deforestation if there
 	% is extra information about them, and the branches of the single
 	% branched goal in the top level conjunction which produce that extra
-	% information. 
+	% information.
 :- type pd_arg_info == map(pred_proc_id, pd_proc_arg_info).
 
 :- type pd_proc_arg_info	==	pd_branch_info(int).
@@ -319,9 +319,9 @@ pd_info_foldl2(Pred, [H | T], Acc0, Acc) -->
 :- type pd_branch_info(T)
 	--->	pd_branch_info(
 			branch_info_map(T),
-			set(T),		% variables for which we want 
+			set(T),		% variables for which we want
 					% extra left context
-			set(T)		% outputs for which we have no 
+			set(T)		% outputs for which we have no
 					% extra information
 		).
 
@@ -420,7 +420,7 @@ pd_info_get_size_delta(UnfoldInfo ^ size_delta) -->
 	pd_info_get_unfold_info(UnfoldInfo).
 pd_info_get_rerun_det(UnfoldInfo ^ rerun_det) -->
 	pd_info_get_unfold_info(UnfoldInfo).
-	
+
 pd_info_set_proc_info(ProcInfo) -->
 	pd_info_get_unfold_info(UnfoldInfo0),
 	{ UnfoldInfo = UnfoldInfo0 ^ proc_info := ProcInfo },
@@ -495,7 +495,7 @@ pd_info_incr_size_delta(Delta1) -->
 :- pred pd_info__invalidate_version(pred_proc_id::in,
 	pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
-	% Remove a version, but allow it to be recreated if it 
+	% Remove a version, but allow it to be recreated if it
 	% is used elsewhere.
 :- pred pd_info__remove_version(pred_proc_id::in,
 	pd_info::pd_info_di, pd_info::pd_info_uo) is det.
@@ -504,8 +504,8 @@ pd_info_incr_size_delta(Delta1) -->
 :- type maybe_version
 	--->	no_version
 	;	version(
-			version_is_exact, 
-			pred_proc_id, 
+			version_is_exact,
+			pred_proc_id,
 			version_info,
 			map(prog_var, prog_var),
 					% renaming of the version info
@@ -519,7 +519,7 @@ pd_info_incr_size_delta(Delta1) -->
 :- type version_info
 	---> version_info(
 		hlds_goal,		% goal before unfolding.
-		list(pred_proc_id),	% calls being deforested. 
+		list(pred_proc_id),	% calls being deforested.
 		list(prog_var),		% arguments.
 		list(type),		% argument types.
 		instmap,		% initial insts of the nonlocals.
@@ -557,19 +557,19 @@ pd_info__search_version(Goal, MaybeVersion) -->
 %-----------------------------------------------------------------------------%
 
 :- pred pd_info__get_matching_version(module_info::in, hlds_goal::in,
-		instmap::in, map(prog_var, type)::in, list(pred_proc_id)::in, 
+		instmap::in, map(prog_var, type)::in, list(pred_proc_id)::in,
 		version_index::in, maybe_version::out) is semidet.
 
 pd_info__get_matching_version(_, _, _, _, [], _, no_version).
-pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes, 
+pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
 		[VersionId | VersionIds], Versions, MaybeVersion) :-
 	map__lookup(Versions, VersionId, Version),
 	Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
 			OldInstMap, _, _, _, _),
 	(
 		pd_info__goal_is_more_general(ModuleInfo,
-			OldGoal, OldInstMap, OldArgs, OldArgTypes, 
-			ThisGoal, ThisInstMap, VarTypes, VersionId, Version, 
+			OldGoal, OldInstMap, OldArgs, OldArgTypes,
+			ThisGoal, ThisInstMap, VarTypes, VersionId, Version,
 			MaybeVersion1)
 	->
 		(
@@ -584,8 +584,8 @@ pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
 			MaybeVersion1 =
 				version(more_general, PredProcId,
 					MoreGeneralVersion, Renaming, TypeSubn),
-			pd_info__get_matching_version(ModuleInfo, ThisGoal, 
-				ThisInstMap, VarTypes, VersionIds, 
+			pd_info__get_matching_version(ModuleInfo, ThisGoal,
+				ThisInstMap, VarTypes, VersionIds,
 				Versions, MaybeVersion2),
 			pd_info__pick_version(ModuleInfo, PredProcId, Renaming,
 				TypeSubn, MoreGeneralVersion, MaybeVersion2,
@@ -600,13 +600,13 @@ pd_info__get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
 %-----------------------------------------------------------------------------%
 
 	% Choose between two versions.
-:- pred pd_info__pick_version(module_info::in, pred_proc_id::in, 
-		map(prog_var, prog_var)::in, tsubst::in, version_info::in, 
+:- pred pd_info__pick_version(module_info::in, pred_proc_id::in,
+		map(prog_var, prog_var)::in, tsubst::in, version_info::in,
 		maybe_version::in, maybe_version::out) is det.
 
 pd_info__pick_version(_, PredProcId, Renaming, TSubn, VersionInfo, no_version,
 	version(more_general, PredProcId, VersionInfo, Renaming, TSubn)).
-pd_info__pick_version(_, _, _, _, _, 
+pd_info__pick_version(_, _, _, _, _,
 		version(exact, PredProcId, Version2, Renaming2, TSubn2),
 		version(exact, PredProcId, Version2, Renaming2, TSubn2)).
 pd_info__pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
@@ -616,10 +616,10 @@ pd_info__pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
 	Version2 = version_info(_, _, _, _, _, _, CostDelta2, _, _),
 	% Select the version with the biggest decrease in cost.
 	( CostDelta1 > CostDelta2 ->
-		MaybeVersion = version(more_general, PredProcId1, 
+		MaybeVersion = version(more_general, PredProcId1,
 				Version1, Renaming1, TSubn1)
 	;
-		MaybeVersion = version(more_general, PredProcId2, 
+		MaybeVersion = version(more_general, PredProcId2,
 				Version2, Renaming2, TSubn2)
 	).
 
@@ -635,29 +635,29 @@ pd_info__pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
 	% 	variable in the new (multiple vars in the new goal can
 	% 	map to one var in the old).
 	% - each nonlocal in the new goal maps to a non-local in the
-	% 	old (i.e. the old version produces all the variables 
+	% 	old (i.e. the old version produces all the variables
 	% 	that the new one does).
 	% - for each pair of corresponding insts in the above mapping,
 	%	the old inst must be at least as general as the
 	% 	new one, i.e inst_matches_initial(FirstInst, SecondInst) (?)
-	% 
-:- pred pd_info__goal_is_more_general(module_info::in, hlds_goal::in, 
+	%
+:- pred pd_info__goal_is_more_general(module_info::in, hlds_goal::in,
 	instmap::in, list(prog_var)::in, list(type)::in, hlds_goal::in,
-	instmap::in, map(prog_var, type)::in, pred_proc_id::in, 
+	instmap::in, map(prog_var, type)::in, pred_proc_id::in,
 	version_info::in, maybe_version::out) is semidet.
 
-pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs, 
-		OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId, 
+pd_info__goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
+		OldArgTypes, NewGoal, NewInstMap, NewVarTypes, PredProcId,
 		Version, MaybeVersion) :-
-	pd_util__goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes, 
-		NewGoal, NewVarTypes, OldNewRenaming, TypeRenaming), 
+	pd_util__goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
+		NewGoal, NewVarTypes, OldNewRenaming, TypeRenaming),
 	OldGoal = _ - OldGoalInfo,
 	goal_info_get_nonlocals(OldGoalInfo, OldNonLocals0),
 	set__to_sorted_list(OldNonLocals0, OldNonLocalsList),
-	pd_info__check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming, 
+	pd_info__check_insts(ModuleInfo, OldNonLocalsList, OldNewRenaming,
 		OldInstMap, NewInstMap, NewVarTypes, exact, Exact),
-		
-	MaybeVersion = version(Exact, PredProcId, Version, 
+
+	MaybeVersion = version(Exact, PredProcId, Version,
 		OldNewRenaming, TypeRenaming).
 
 %-----------------------------------------------------------------------------%
@@ -679,7 +679,7 @@ pd_info__check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
 	( ExactSoFar0 = exact ->
 		% Does inst_matches_initial(Inst1, Inst2, M) and
 		% inst_matches_initial(Inst2, Inst1, M) imply that Inst1
-		% and Inst2 are interchangable? 
+		% and Inst2 are interchangable?
 		(
 			inst_matches_initial(OldVarInst, NewVarInst, Type,
 				ModuleInfo)
@@ -709,7 +709,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	{ term__context_line(Context, Line) },
 	pd_info_get_module_info(ModuleInfo0),
-	{ module_info_name(ModuleInfo0, ModuleName) },	
+	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ make_pred_name_with_context(ModuleName, "DeforestationIn",
 		predicate, PredName, Line, Count, SymName) },
 	{ unqualify_name(SymName, Name) },
@@ -726,7 +726,7 @@ pd_info__define_new_pred(Goal, PredProcId, CallGoal) -->
 	{ proc_info_inst_varset(ProcInfo, InstVarSet) },
 	% XXX handle the extra typeinfo arguments for
 	% --typeinfo-liveness properly.
-	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap, 
+	{ hlds_pred__define_new_pred(Goal, CallGoal, Args, _ExtraArgs, InstMap,
 		Name, TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap,
 		VarSet, InstVarSet, Markers, Owner, address_is_not_taken,
 		ModuleInfo0, ModuleInfo, PredProcId) },
@@ -743,7 +743,7 @@ pd_info__register_version(PredProcId, Version) -->
 		map__det_update(GoalVersionIndex0, Calls,
 			[PredProcId | VersionList0], GoalVersionIndex)
 	;
-		map__set(GoalVersionIndex0, Calls, [PredProcId], 
+		map__set(GoalVersionIndex0, Calls, [PredProcId],
 			GoalVersionIndex)
 	},
 	pd_info_set_goal_version_index(GoalVersionIndex),
@@ -783,7 +783,7 @@ pd_info__remove_version(PredProcId) -->
 	pd_info_get_goal_version_index(GoalIndex0),
 	( { map__search(GoalIndex0, Calls, GoalVersions0) } ->
 		{ list__delete_all(GoalVersions0, PredProcId, GoalVersions) },
-		{ map__det_update(GoalIndex0, Calls, 
+		{ map__det_update(GoalIndex0, Calls,
 			GoalVersions, GoalIndex) },
 		pd_info_set_goal_version_index(GoalIndex)
 	;

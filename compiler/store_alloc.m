@@ -303,7 +303,7 @@ store_alloc_in_disj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
 	last_locns::in, list(last_locns)::out,
 	set(prog_var)::in, store_alloc_info::in) is det.
 
-store_alloc_in_cases([], [], !Liveness, _, [], _, _). 
+store_alloc_in_cases([], [], !Liveness, _, [], _, _).
 store_alloc_in_cases([case(Cons, Goal0) | Goals0], [case(Cons, Goal) | Goals],
 		Liveness0, Liveness,
 		LastLocns0, [LastLocnsGoal | LastLocnsCases],

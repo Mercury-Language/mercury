@@ -14,10 +14,9 @@
 :- interface.
 
 :- import_module hlds__hlds_pred.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, map, std_util, term.
+:- import_module bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -27,44 +26,6 @@
 	% up the type of functors/constants.
 
 :- type cons_table	==	map(cons_id, list(hlds_cons_defn)).
-
-:- type cons_id
-	--->	cons(sym_name, arity)	% name, arity
-		% Tuples have cons_id
-		% `cons(unqualified("{}"), Arity)'.
-
-	;	int_const(int)
-	;	string_const(string)
-	;	float_const(float)
-	;	pred_const(pred_id, proc_id, lambda_eval_method)
-		% Note that a pred_const represents a closure,
-		% not just a code address.
-	;	type_ctor_info_const(module_name, string, int)
-		% module name, type name, type arity
-	;	base_typeclass_info_const(module_name, class_id, int, string)
-		% module name of instance declaration
-		% (not filled in so that link errors result
-		% from overlapping instances),
-		% class name and arity,
-		% class instance, a string encoding the type
-		% names and arities of the arguments to the
-		% instance declaration
-	;	type_info_cell_constructor(type_ctor)
-		% module name, type name, type arity
-	;	typeclass_info_cell_constructor
-	;	tabling_pointer_const(pred_id, proc_id)
-		% The address of the static variable
-		% that points to the table that implements
-		% memoization, loop checking or the minimal
-		% model semantics for the given procedure.
-	;	deep_profiling_proc_layout(rtti_proc_label)
-		% The Proc_Layout structure of a procedure. Its proc_static
-		% field is used by deep profiling, as documented in the deep
-		% profiling paper.
-	;	table_io_decl(rtti_proc_label).
-		% The address of a structure that describes
-		% the layout of the answer block used by
-		% I/O tabling for declarative debugging.
 
 	% A cons_defn is the definition of a constructor (i.e. a constant
 	% or a functor) for a particular type.
@@ -123,134 +84,6 @@
 :- type field_access_type
 	--->	get
 	;	set.
-
-%-----------------------------------------------------------------------------%
-
-	% Various predicates for accessing the cons_id type.
-
-	% Given a cons_id and a list of argument terms, convert it into a
-	% term. Fails if the cons_id is a pred_const, or type_ctor_info_const.
-
-:- pred cons_id_and_args_to_term(cons_id::in, list(term(T))::in, term(T)::out)
-	is semidet.
-
-	% Get the arity of a cons_id, aborting on pred_const and
-	% type_ctor_info_const.
-
-:- func cons_id_arity(cons_id) = arity.
-
-	% Get the arity of a cons_id. Return a `no' on those cons_ids
-	% where cons_id_arity/2 would normally abort.
-
-:- func cons_id_maybe_arity(cons_id) = maybe(arity).
-
-	% The reverse conversion - make a cons_id for a functor.
-	% Given a const and an arity for the functor, create a cons_id.
-
-:- func make_functor_cons_id(const, arity) = cons_id.
-
-	% Another way of making a cons_id from a functor.
-	% Given the name, argument types, and type_ctor of a functor,
-	% create a cons_id for that functor.
-
-:- func make_cons_id(sym_name, list(constructor_arg), type_ctor) = cons_id.
-
-	% Another way of making a cons_id from a functor.
-	% Given the name, argument types, and type_ctor of a functor,
-	% create a cons_id for that functor.
-	%
-	% Differs from make_cons_id in that (a) it requires the sym_name
-	% to be already module qualified, which means that it does not
-	% need the module qualification of the type, (b) it can compute the
-	% arity from any list of the right length.
-
-:- func make_cons_id_from_qualified_sym_name(sym_name, list(_)) = cons_id.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module parse_tree__prog_util.
-
-:- import_module string, require, varset.
-
-cons_id_and_args_to_term(int_const(Int), [], Term) :-
-	term__context_init(Context),
-	Term = term__functor(term__integer(Int), [], Context).
-cons_id_and_args_to_term(float_const(Float), [], Term) :-
-	term__context_init(Context),
-	Term = term__functor(term__float(Float), [], Context).
-cons_id_and_args_to_term(string_const(String), [], Term) :-
-	term__context_init(Context),
-	Term = term__functor(term__string(String), [], Context).
-cons_id_and_args_to_term(cons(SymName, _Arity), Args, Term) :-
-	construct_qualified_term(SymName, Args, Term).
-
-cons_id_arity(cons(_, Arity)) = Arity.
-cons_id_arity(int_const(_)) = 0.
-cons_id_arity(string_const(_)) = 0.
-cons_id_arity(float_const(_)) = 0.
-cons_id_arity(pred_const(_, _, _)) =
-	func_error("cons_id_arity: can't get arity of pred_const").
-cons_id_arity(type_ctor_info_const(_, _, _)) =
-	func_error("cons_id_arity: can't get arity of type_ctor_info_const").
-cons_id_arity(base_typeclass_info_const(_, _, _, _)) =
-	func_error("cons_id_arity: " ++
-		"can't get arity of base_typeclass_info_const").
-cons_id_arity(type_info_cell_constructor(_)) =
-	func_error("cons_id_arity: " ++
-		"can't get arity of type_info_cell_constructor").
-cons_id_arity(typeclass_info_cell_constructor) =
-	func_error("cons_id_arity: " ++
-		"can't get arity of typeclass_info_cell_constructor").
-cons_id_arity(tabling_pointer_const(_, _)) =
-	func_error("cons_id_arity: can't get arity of tabling_pointer_const").
-cons_id_arity(deep_profiling_proc_layout(_)) =
-	func_error("cons_id_arity: " ++
-		"can't get arity of deep_profiling_proc_layout").
-cons_id_arity(table_io_decl(_)) =
-	func_error("cons_id_arity: can't get arity of table_io_decl").
-
-cons_id_maybe_arity(cons(_, Arity)) = yes(Arity).
-cons_id_maybe_arity(int_const(_)) = yes(0).
-cons_id_maybe_arity(string_const(_)) = yes(0).
-cons_id_maybe_arity(float_const(_)) = yes(0).
-cons_id_maybe_arity(pred_const(_, _, _)) = no.
-cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
-cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
-cons_id_maybe_arity(type_info_cell_constructor(_)) = no.
-cons_id_maybe_arity(typeclass_info_cell_constructor) = no.
-cons_id_maybe_arity(tabling_pointer_const(_, _)) = no.
-cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
-cons_id_maybe_arity(table_io_decl(_)) = no.
-
-make_functor_cons_id(term__atom(Name), Arity) = cons(unqualified(Name), Arity).
-make_functor_cons_id(term__integer(Int), _) = int_const(Int).
-make_functor_cons_id(term__string(String), _) = string_const(String).
-make_functor_cons_id(term__float(Float), _) = float_const(Float).
-
-make_cons_id(SymName0, Args, TypeCtor) = cons(SymName, Arity) :-
-	% Use the module qualifier on the SymName, if there is one,
-	% otherwise use the module qualifier on the Type, if there is one,
-	% otherwise leave it unqualified.
-	% XXX is that the right thing to do?
-	(
-		SymName0 = qualified(_, _),
-		SymName = SymName0
-	;
-		SymName0 = unqualified(ConsName),
-		(
-			TypeCtor = unqualified(_) - _,
-			SymName = SymName0
-		;
-			TypeCtor = qualified(TypeModule, _) - _,
-			SymName = qualified(TypeModule, ConsName)
-		)
-	),
-	list__length(Args, Arity).
-
-make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
-	list__length(Args, Arity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -400,10 +233,10 @@ make_cons_id_from_qualified_sym_name(SymName, Args) = cons(SymName, Arity) :-
 			% represented as global data. The word just contains
 			% the address of the tabling pointer of the
 			% specified procedure.
-	;	deep_profiling_proc_layout_tag(rtti_proc_label)
+	;	deep_profiling_proc_layout_tag(pred_id, proc_id)
 			% This is for constants representing procedure
 			% descriptions for deep profiling.
-	;	table_io_decl_tag(rtti_proc_label)
+	;	table_io_decl_tag(pred_id, proc_id)
 			% This is for constants representing the structure
 			% that allows us to decode the contents of the memory
 			% block containing the headvars of I/O primitives.
@@ -510,8 +343,8 @@ get_primary_tag(pred_closure_tag(_, _, _)) = no.
 get_primary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_primary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_primary_tag(tabling_pointer_constant(_, _)) = no.
-get_primary_tag(deep_profiling_proc_layout_tag(_)) = no.
-get_primary_tag(table_io_decl_tag(_)) = no.
+get_primary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
+get_primary_tag(table_io_decl_tag(_, _)) = no.
 get_primary_tag(single_functor) = yes(0).
 get_primary_tag(unshared_tag(PrimaryTag)) = yes(PrimaryTag).
 get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag)) =
@@ -529,8 +362,8 @@ get_secondary_tag(pred_closure_tag(_, _, _)) = no.
 get_secondary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_constant(_, _, _)) = no.
 get_secondary_tag(tabling_pointer_constant(_, _)) = no.
-get_secondary_tag(deep_profiling_proc_layout_tag(_)) = no.
-get_secondary_tag(table_io_decl_tag(_)) = no.
+get_secondary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
+get_secondary_tag(table_io_decl_tag(_, _)) = no.
 get_secondary_tag(single_functor) = no.
 get_secondary_tag(unshared_tag(_)) = no.
 get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag)) =
@@ -616,9 +449,6 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 :- interface.
 
 	% The symbol table for insts.
-
-:- type inst_id		==	pair(sym_name, arity).
-				% name, arity.
 
 :- type inst_table.
 
@@ -810,9 +640,6 @@ user_inst_table_optimize(UserInstTable0, UserInstTable) :-
 
 	% The symbol table for modes.
 
-:- type mode_id		==	pair(sym_name, arity).
-				% name, arity
-
 :- type mode_table.
 :- type mode_defns	 ==	map(mode_id, hlds_mode_defn).
 
@@ -948,8 +775,6 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- interface.
 
 :- type class_table == map(class_id, hlds_class_defn).
-
-:- type class_id 	--->	class_id(sym_name, arity).
 
 	% Information about a single `typeclass' declaration
 :- type hlds_class_defn --->

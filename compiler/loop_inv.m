@@ -102,7 +102,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module hlds__hlds_module.
 
-    % hoist_loop_invariants(PredId, ProcId, PredInfo, 
+    % hoist_loop_invariants(PredId, ProcId, PredInfo,
     %       ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo)
     %
     % Analyze the procedure identified by PredProcId and, if
@@ -129,7 +129,6 @@
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 
@@ -220,7 +219,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % is non-empty.
             %
         InvGoals \= []
-      
+
       then
 
             % The set of computed invariant vars is the difference
@@ -968,7 +967,7 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
 
     hlds_pred__proc_info_set_body(ProcInfo0, VarSet, VarTypes,
             HeadVars, Body, TVarMap, TCVarMap, ProcInfo1),
-    
+
     quantification__requantify_proc(ProcInfo1, ProcInfo2),
     mode_util__recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
             ModuleInfo0, ModuleInfo1),

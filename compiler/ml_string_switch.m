@@ -134,7 +134,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 		StringTableType, local, init_array(Strings), Context),
 	ml_gen_var_lval(!.Info, StringTableName, StringTableType,
 		StringTableLval),
-	
+
 	%
 	% Generate code which does the hash table lookup.
 	%

@@ -200,7 +200,7 @@ build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
 				% vars needed by all the resumption points.
 				% However, the first disjunct can be orig_only
 				% while later disjuncts are include the stack.
-				
+
 				% Note that we must check the disjunction's
 				% code model, not any disjuncts'; the
 				% disjunction as a whole can be model_non
@@ -418,7 +418,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
 %-----------------------------------------------------------------------------%
 
 :- pred build_live_sets_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-	set(prog_var)::in, alloc_data::in, T::in, T::out, 
+	set(prog_var)::in, alloc_data::in, T::in, T::out,
 	set(prog_var)::in, set(prog_var)::out,
 	set(prog_var)::in, set(prog_var)::out) is det <= stack_alloc_info(T).
 

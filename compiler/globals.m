@@ -43,20 +43,27 @@
  	;	csharp
  	;	managed_cplusplus
  	;	java
- 	;	il
-	.
+ 	;	il.
+
+	% A string representation of the foreign language suitable
+	% for use in human-readable error messages
+:- func foreign_language_string(foreign_language) = string.
+
+	% A string representation of the foreign language suitable
+	% for use in machine-readable name mangling.
+:- func simple_foreign_language_string(foreign_language) = string.
 
 	% The GC method specifies how we do garbage collection.
 	% The last four alternatives are for the C and asm back-ends;
 	% the first alternative is for compiling to IL or Java,
 	% where the target language implementation handles garbage
 	% collection automatically.
-	% 
+	%
 :- type gc_method
 	--->	automatic % It is the responsibility of the target language
 			  % that we are compiling to to handle GC.
 
-	;	none	% No garbage collection. 
+	;	none	% No garbage collection.
 			% But memory may be recovered on backtracking,
 			% if the --reclaim-heap-on-*failure options are set.
 
@@ -114,7 +121,7 @@
 	list(foreign_language)::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
-:- pred globals__get_termination_norm(globals::in, termination_norm::out) 
+:- pred globals__get_termination_norm(globals::in, termination_norm::out)
 	is det.
 :- pred globals__get_trace_level(globals::in, trace_level::out) is det.
 :- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
@@ -181,7 +188,7 @@
 :- pred globals__io_get_target(compilation_target::out, io::di, io::uo) is det.
 :- pred globals__io_get_backend_foreign_languages(list(foreign_language)::out,
 	io::di, io::uo) is det.
-	
+
 :- pred globals__io_lookup_foreign_language_option(option::in,
 	foreign_language::out, io::di, io::uo) is det.
 
@@ -271,6 +278,18 @@ convert_termination_norm("simple", simple).
 convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
+
+foreign_language_string(c) = "C".
+foreign_language_string(managed_cplusplus) = "Managed C++".
+foreign_language_string(csharp) = "C#".
+foreign_language_string(il) = "IL".
+foreign_language_string(java) = "Java".
+
+simple_foreign_language_string(c) = "c".
+simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
+simple_foreign_language_string(csharp) = "csharp".
+simple_foreign_language_string(il) = "il".
+simple_foreign_language_string(java) = "java".
 
 gc_is_conservative(boehm) = yes.
 gc_is_conservative(mps) = yes.
@@ -386,7 +405,7 @@ globals__have_static_code_addresses(Globals, IsConst) :-
 	globals__get_options(Globals, OptionTable),
 	globals__have_static_code_addresses_2(OptionTable, IsConst).
 
-:- pred globals__have_static_code_addresses_2(option_table::in, 
+:- pred globals__have_static_code_addresses_2(option_table::in,
 	bool::out) is det.
 
 globals__have_static_code_addresses_2(OptionTable, IsConst) :-

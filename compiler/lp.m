@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2003 The University of Melbourne.
+% Copyright (C) 1997,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -253,7 +253,7 @@ standardize_equation(Eqn0, Eqn) -->
 	{ Eqn0 = eqn(Coeffs0, (=<), Const0) },
 	( { Const0 < 0.0 } ->
 		{ negate_equation(Eqn0, Eqn1) },
-		standardize_equation(Eqn1, Eqn) 
+		standardize_equation(Eqn1, Eqn)
 	;
 		new_slack_var(Var),
 		{ Coeffs = [Var - 1.0|Coeffs0] },
@@ -681,7 +681,7 @@ row_op(Scale, From, To, A0, A) :-
 		map(pair(int), float)
 	).
 
-:- pred init_tableau(int::in, int::in, map(var, int)::in, 
+:- pred init_tableau(int::in, int::in, map(var, int)::in,
 		map(var, pair(var))::in, tableau::out) is det.
 
 init_tableau(Rows, Cols, VarNums, URSVars, Tableau) :-

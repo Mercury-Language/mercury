@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 % File: make.dependencies.m
 % Author: stayl
-% 
+%
 % Code to find the dependencies for a particular target,
 % e.g. module.c depends on module.m, import.int, etc.
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
 	% check_dependencies(TargetFileName, TargetFileTimestamp,
 	%	BuildDepsSucceeded, Dependencies, Result)
 	%
-	% Check that all the dependency targets are up-to-date. 
+	% Check that all the dependency targets are up-to-date.
 :- pred check_dependencies(file_name::in, maybe_error(timestamp)::in, bool::in,
 	list(dependency_file)::in, dependencies_result::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
@@ -78,7 +78,7 @@
 	% check_dependencies(TargetFileName, TargetFileTimestamp,
 	%	BuildDepsSucceeded, Dependencies, Result)
 	%
-	% Check that all the dependency files are up-to-date. 
+	% Check that all the dependency files are up-to-date.
 :- pred check_dependency_timestamps(file_name::in, maybe_error(timestamp)::in,
 	bool::in, list(File)::in,
 	pred(File, io__state, io__state)::(pred(in, di, uo) is det),
@@ -114,7 +114,7 @@ union_deps(FindDeps, ModuleName, Success, Deps0,
 :- mode combine_deps(in(find_module_deps), in(find_module_deps)) =
 		out(find_module_deps) is det.
 
-combine_deps(FindDeps1, FindDeps2) = 
+combine_deps(FindDeps1, FindDeps2) =
 	(pred(ModuleName::in, Success::out, Deps::out,
 			Info0::in, Info::out, di, uo) is det -->
 		FindDeps1(ModuleName, Success1, Deps1, Info0, Info1),
@@ -157,7 +157,7 @@ target_dependencies(_, il_asm) =
 	combine_deps_list([
 		il_code `of` self
 	]).
-target_dependencies(Globals, java_code) = compiled_code_dependencies(Globals). 
+target_dependencies(Globals, java_code) = compiled_code_dependencies(Globals).
 target_dependencies(Globals, asm_code(_)) =
 		compiled_code_dependencies(Globals).
 target_dependencies(Globals, object_code(PIC)) = Deps :-
@@ -253,7 +253,7 @@ compiled_code_dependencies(Globals) = Deps :-
 :- func compiled_code_dependencies =
 	(find_module_deps(dependency_file)::out(find_module_deps)) is det.
 
-compiled_code_dependencies = 
+compiled_code_dependencies =
 		combine_deps_list([
 			source `of` self,
 			fact_table `files_of` self,
@@ -357,7 +357,7 @@ init_cached_direct_imports = map__init.
 
 :- pred direct_imports(module_name::in, bool::out, set(module_name)::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
-		
+
 direct_imports(ModuleName, Success, Modules, Info0, Info) -->
     ( { Result0 = Info0 ^ cached_direct_imports ^ elem(ModuleName) } ->
 	{ Result0 = Success - Modules },
@@ -427,7 +427,7 @@ non_intermod_direct_imports(ModuleName, Success, Modules, Info0, Info) -->
 		% conservative than they need to be in that case.
 		% However, that should not be a major problem.
 		% (This duplicates how this is handled by modules.m).
-		% 
+		%
 		{ Modules0 = set__union(set__list_to_set(Imports ^ impl_deps),
 				set__list_to_set(Imports ^ int_deps)) },
 		( { ModuleName = qualified(ParentModule, _) } ->
@@ -544,7 +544,7 @@ foreign_imports(ModuleName, Success, Modules, Info0, Info) -->
 
 :- pred find_module_foreign_imports(set(foreign_language)::in, module_name::in,
 	bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.	
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 find_module_foreign_imports(Languages, ModuleName,
 		Success, ForeignModules, Info0, Info) -->
@@ -560,10 +560,10 @@ find_module_foreign_imports(Languages, ModuleName,
 		{ ForeignModules = set__init },
 		{ Info = Info1 }
 	).
-		
+
 :- pred find_module_foreign_imports_2(set(foreign_language)::in,
 	module_name::in, bool::out, set(module_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.	
+	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 find_module_foreign_imports_2(Languages, ModuleName,
 		Success, ForeignModules, Info0, Info) -->
@@ -801,7 +801,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
 			ImportsToCheck = Imports ^ int_deps
 		;
 			DependenciesType = all_dependencies,
-			ImportsToCheck = 
+			ImportsToCheck =
 			    list__condense([
 				Imports ^ int_deps,
 				Imports ^ impl_deps,
@@ -880,7 +880,7 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
 
 check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
 		DepFiles, WriteDepFile, DepTimestamps, DepsResult) -->
-    ( 
+    (
 	{ MaybeTimestamp = error(_) },
 	{ DepsResult = out_of_date },
 	debug_msg(

@@ -334,19 +334,19 @@
 			% This field is filled in during the stackvars pass.
 			% It is not meaningful before then, and should
 			% contain `no_need'.
-			% 
+			%
 			% For calls, generic calls, and for foreign_proc
 			% goals that may call back to Mercury, the stackvars
 			% pass will set this argument to need_call(NC), where
 			% NC specifies what variables need to be stored on the
 			% stack across the call.
-			% 
+			%
 			% For disjunctions, if-then-elses and negations,
 			% the stackvars pass will set this argument to
 			% need_resume(NR), where NR specifies what variables
 			% need to be stored on the stack at the resumption
 			% point established by the goal.
-			% 
+			%
 			% For parallel conjunctions, the stackvars pass will
 			% set this argument to need_par_conj(NPC), where NPC
 			% specifies what variables are required to be stored

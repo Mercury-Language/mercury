@@ -16,7 +16,6 @@
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, char, list, set, std_util.
@@ -1099,10 +1098,10 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
-:- import_module assoc_list, require, string, term, varset.
 
-:- import_module map, require, string, term, varset.
+:- import_module assoc_list, map, require, string, term, varset.
 
 %-----------------------------------------------------------------------------%
 

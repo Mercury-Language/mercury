@@ -31,7 +31,6 @@
 :- module check_hlds__post_typecheck.
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -101,8 +100,8 @@
 	--->	aditi_update_of_derived_relation(prog_context,
 			aditi_builtin, simple_call_id).
 
-:- pred report_aditi_builtin_error(aditi_builtin_error, io__state, io__state).
-:- mode report_aditi_builtin_error(in, di, uo) is det.
+:- pred report_aditi_builtin_error(aditi_builtin_error::in, io::di, io::uo)
+	is det.
 
 	% Work out whether a var-functor unification is actually a function
 	% call. If so, replace the unification goal with a call.
@@ -125,13 +124,14 @@
 :- import_module check_hlds__typecheck.
 :- import_module hlds__assertion.
 :- import_module hlds__goal_util.
+:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_out.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -645,7 +645,7 @@ report_aditi_builtin_error(
 	prog_out__write_context(Context),
 	io__write_string("  error: the modified "),
 	{ CallId = PredOrFunc - _ },
-	hlds_out__write_pred_or_func(PredOrFunc),
+	write_pred_or_func(PredOrFunc),
 	io__write_string(" is not a base relation.\n").
 
 %-----------------------------------------------------------------------------%
@@ -1234,7 +1234,9 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			PredOrFunc, TVarSet, AllArgTypes, ModuleInfo, PredId)
 	->
 		get_proc_id(ModuleInfo, PredId, ProcId),
-		ConsId = pred_const(PredId, ProcId, EvalMethod),
+		ShroudedPredProcId =
+			shroud_pred_proc_id(proc(PredId, ProcId)),
+		ConsId = pred_const(ShroudedPredProcId, EvalMethod),
 		Goal = unify(X0, functor(ConsId, no, ArgVars0), Mode0,
 			Unification0, UnifyContext) - GoalInfo0
 	;

@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999, 2003 The University of Melbourne.
+% Copyright (C) 1998-1999, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: rl_liveness.m
 % Main author: stayl
 %
-% Use rl_analyse.m to compute the liveness of relations. 
+% Use rl_analyse.m to compute the liveness of relations.
 % Remove dead code and insert instructions unset relation variables
 % to make sure that temporaries are kept no longer than they are needed.
 % Work out which relations need to be saved across calls.
@@ -58,8 +58,8 @@ rl_liveness_2(IO0, IO) -->
 	{ LiveBlockUpdate = rl_liveness__update_block_liveness },
 	{ LiveEqual = rl_liveness__unify },
 	{ LiveWrite = rl_analyse__write_gen_kill_data },
-	
-	{ LiveAnalysis = 
+
+	{ LiveAnalysis =
 		rl_analysis(
 			backward,
 			LiveConfluence,
@@ -83,7 +83,7 @@ rl_liveness_2(IO0, IO) -->
 	{ CreateEqual = rl_liveness__unify },
 	{ CreateWrite = rl_analyse__write_gen_kill_data },
 
-	{ CreateAnalysis = 
+	{ CreateAnalysis =
 		rl_analysis(
 			forward,
 			CreateConfluence,
@@ -91,14 +91,14 @@ rl_liveness_2(IO0, IO) -->
 			CreateEqual,
 			CreateWrite
 		) },
-	
+
 	{ list__reverse(RevOrder, Order) },
 	rl_analyse(Order, CreateAnalysis, CreateMap1, CreateMap,
 		unit, _, IO1, IO),
 
 	list__foldl(
 		rl_liveness__insert_init_and_unset_instructions(LiveAtStart,
-			LiveAtEnd, LiveMap, CreateMap), 
+			LiveAtEnd, LiveMap, CreateMap),
 		Order
 	).
 
@@ -107,7 +107,7 @@ rl_liveness_2(IO0, IO) -->
 :- type live_data == gen_kill_data.
 :- type live_data_map == gen_kill_data_map.
 
-:- pred rl_liveness__init_block_liveness(set(relation_id)::in, block_id::in, 
+:- pred rl_liveness__init_block_liveness(set(relation_id)::in, block_id::in,
 		live_data_map::in, live_data_map::out,
 		rl_opt_info::in, rl_opt_info::out) is det.
 
@@ -120,7 +120,7 @@ rl_liveness__init_block_liveness(LiveAtEndofLast, BlockId,
 	{ set__init(DefinedRels0) },
 	{ set__init(UsedRels0) },
 
-	{ list__foldl2(rl_liveness__instr_use_before_def, Instrs, 
+	{ list__foldl2(rl_liveness__instr_use_before_def, Instrs,
 		Use0, Use1, DefinedRels0, DefinedRels1) },
 	{ MaybeBranch = yes(BranchInstr) ->
 		rl_liveness__instr_use_before_def(BranchInstr, Use1, Use,
@@ -129,7 +129,7 @@ rl_liveness__init_block_liveness(LiveAtEndofLast, BlockId,
 		Use = Use1
 	},
 
-	{ list__foldl2(rl_liveness__instr_def_before_use, Instrs, 
+	{ list__foldl2(rl_liveness__instr_def_before_use, Instrs,
 		Def0, Def, UsedRels0, _) },
 	% The branch instruction at the end of the block
 	% can't define any relations.
@@ -154,14 +154,14 @@ rl_liveness__init_block_liveness(LiveAtEndofLast, BlockId,
 	{ BlockData = block_data(EndLiveRels, StartLiveRels, Use - Def) },
 	{ map__det_insert(LiveData0, BlockId, BlockData, LiveData) }.
 
-	% Find all relations used in the block before 
+	% Find all relations used in the block before
 	% any definitions in the block. These relations
 	% are required to be live on entry to the block.
-:- pred rl_liveness__instr_use_before_def(rl_instruction::in, 
+:- pred rl_liveness__instr_use_before_def(rl_instruction::in,
 		set(relation_id)::in, set(relation_id)::out,
 		set(relation_id)::in, set(relation_id)::out) is det.
 
-rl_liveness__instr_use_before_def(Instr, Use0, Use, 
+rl_liveness__instr_use_before_def(Instr, Use0, Use,
 		DefinedRels0, DefinedRels) :-
 	rl__instr_relations(Instr, Inputs, Outputs),
 	set__list_to_set(Inputs, InputSet),
@@ -172,7 +172,7 @@ rl_liveness__instr_use_before_def(Instr, Use0, Use,
 	% Find all relations defined in the block before any uses
 	% in the block. These relations are dead at the start of
 	% the block.
-:- pred rl_liveness__instr_def_before_use(rl_instruction::in, 
+:- pred rl_liveness__instr_def_before_use(rl_instruction::in,
 		set(relation_id)::in, set(relation_id)::out,
 		set(relation_id)::in, set(relation_id)::out) is det.
 
@@ -207,7 +207,7 @@ rl_liveness__update_block_liveness(BlockId, EndLiveRels0,
 			% The relations used in the branch at the end
 			% are always live at the end of the block.
 			rl__instr_relations(Branch, BranchInputs, _),
-			set__insert_list(EndLiveRels0, 
+			set__insert_list(EndLiveRels0,
 				BranchInputs, EndLiveRels)
 		;
 			EndLiveRels = EndLiveRels0
@@ -215,7 +215,7 @@ rl_liveness__update_block_liveness(BlockId, EndLiveRels0,
 		set__difference(EndLiveRels, Def, StartLiveRels0),
 		set__union(StartLiveRels0, Use, StartLiveRels),
 		BlockData = block_data(EndLiveRels, StartLiveRels, Use - Def)
-	}.	
+	}.
 
 %-----------------------------------------------------------------------------%
 
@@ -242,8 +242,8 @@ rl_liveness__unify(Data, Data, _).
 
 :- pred rl_liveness__init_block_creation(set(relation_id)::in, block_id::in,
 		creation_data_map::in, creation_data_map::out,
-		rl_opt_info::in, rl_opt_info::out) is det.	
-	
+		rl_opt_info::in, rl_opt_info::out) is det.
+
 rl_liveness__init_block_creation(CreatedAtStartOfFirst, BlockId,
 		CreateMap0, CreateMap) -->
 	rl_opt_info_get_block(BlockId, Block),
@@ -267,11 +267,11 @@ rl_liveness__init_block_creation(CreatedAtStartOfFirst, BlockId,
 	{ BlockData = block_data(InCreated, OutCreated, Created - Dummy) },
 	{ map__det_insert(CreateMap0, BlockId, BlockData, CreateMap) }.
 
-:- pred rl_liveness__update_block_creation(block_id::in, 
+:- pred rl_liveness__update_block_creation(block_id::in,
 		int_set::in, creation_data::in, creation_data::out,
 		unit::in, unit::out, rl_opt_info::in, rl_opt_info::out) is det.
 
-rl_liveness__update_block_creation(BlockId, InCreated, 
+rl_liveness__update_block_creation(BlockId, InCreated,
 		BlockData0, BlockData, _, unit) -->
 	rl_opt_info_get_first_block_id(FirstBlockId),
 	{ BlockId = FirstBlockId ->
@@ -309,7 +309,7 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 	{ list__foldl2(rl_liveness__insert_unset_instructions,
 		RevInstrs0, [], Instrs1, BlockLiveAtEnd, BlockLiveAtStart) },
 
-		% 
+		%
 		% Drop relations which are live at the end of a
 		% calling block but are dead at the start of
 		% this block.
@@ -318,9 +318,9 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 	{ relation__lookup_element(Graph, BlockId, BlockKey) },
 	{ relation__lookup_to(Graph, BlockKey, CallingBlockKeys0) },
 	{ set__to_sorted_list(CallingBlockKeys0, CallingBlockKeys) },
-	{ list__map(relation__lookup_key(Graph), CallingBlockKeys, 
+	{ list__map(relation__lookup_key(Graph), CallingBlockKeys,
 		CallingBlocks) },
-	{ GetLiveOutputs = 
+	{ GetLiveOutputs =
 		(pred(CallingBlock::in, LiveRels::out) is det :-
 			map__lookup(LiveMap, CallingBlock, CallingData),
 			CallingData = block_data(LiveRels, _, _)
@@ -333,8 +333,8 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 	),
 	{ list__foldl(set__union, CallingBlockLiveRels0,
 		CallingBlockLiveRels1, CallingBlockLiveRels) },
-	{ set__difference(CallingBlockLiveRels, 
-		BlockLiveAtStart, DeadAtStart0) },	
+	{ set__difference(CallingBlockLiveRels,
+		BlockLiveAtStart, DeadAtStart0) },
 	{ set__to_sorted_list(DeadAtStart0, DeadAtStart) },
 	{ list__map(rl_liveness__drop_rel, DeadAtStart, DropDeadRels) },
 
@@ -351,14 +351,14 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 		BlockCreatedAtEnd) },
 	{ list__reverse(RevInstrs1, Instrs2) },
 
-		% 
+		%
 		% Add creates for relations which are live at the
 		% start of a called block but which are not initialised
-		% by any caller of this block and are not created 
+		% by any caller of this block and are not created
 		% by this block.
-		%	
+		%
 	{ relation__lookup_from(Graph, BlockKey, CalledBlockKeys0) },
-	{ set__to_sorted_list(CalledBlockKeys0, CalledBlockKeys) }, 
+	{ set__to_sorted_list(CalledBlockKeys0, CalledBlockKeys) },
 	{ list__map(relation__lookup_key(Graph), CalledBlockKeys,
 		CalledBlocks) },
 	{ GetCreatedOutputs =
@@ -371,19 +371,19 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 			set__intersect(CalledInitAtStart0, CalledLiveAtStart,
 				CalledInitAtStart)
 		) },
-	{ list__map(GetCreatedOutputs, CalledBlocks, CalledBlockCreated0) },	
+	{ list__map(GetCreatedOutputs, CalledBlocks, CalledBlockCreated0) },
 	( { BlockId = LastBlockId } ->
 		{ CalledBlockCreated1 = LiveAtEnd }
 	;
 		{ set__init(CalledBlockCreated1) }
-	),	
+	),
 	{ list__foldl(set__union, CalledBlockCreated0,
 		CalledBlockCreated1, CalledBlockCreated) },
-	{ set__difference(CalledBlockCreated, BlockCreatedAtEnd, 
+	{ set__difference(CalledBlockCreated, BlockCreatedAtEnd,
 		NotCreatedAtEnd0) },
 	{ set__to_sorted_list(NotCreatedAtEnd0, NotCreatedAtEnd) },
 
-	{ list__filter_map(rl_liveness__init_rel(RelInfoMap), 
+	{ list__filter_map(rl_liveness__init_rel(RelInfoMap),
 		NotCreatedAtEnd, CreateRels) },
 
 	{ list__condense([DropDeadRels, Instrs2, CreateRels], Instrs) },
@@ -397,16 +397,16 @@ rl_liveness__insert_init_and_unset_instructions(CreatedAtStart, LiveAtEnd,
 	% Also add instructions to make sure inputs to operations
 	% such as B-tree union_diff have only one reference and can
 	% be updated.
-:- pred rl_liveness__insert_unset_instructions(rl_instruction::in, 
+:- pred rl_liveness__insert_unset_instructions(rl_instruction::in,
 		list(rl_instruction)::in, list(rl_instruction)::out,
 		set(relation_id)::in, set(relation_id)::out) is det.
 
-rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs, 
+rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 		LiveRels0, LiveRels) :-
-	rl__instr_relations(Instr0, Inputs, Outputs),	
+	rl__instr_relations(Instr0, Inputs, Outputs),
 	set__list_to_set(Outputs, OutputSet),
 	set__intersect(OutputSet, LiveRels0, LiveOutputs),
-	( 
+	(
 		set__empty(LiveOutputs)
 	->
 		( rl_liveness__undroppable_instr(Instr0) ->
@@ -479,7 +479,7 @@ rl_liveness__insert_unset_instructions(Instr0, Instrs0, Instrs,
 			PostInstrs1 = []
 		),
 
-		% Add the instructions to unset the newly dead 
+		% Add the instructions to unset the newly dead
 		% relation variables after the instruction.
 		list__condense(
 			[
@@ -509,25 +509,25 @@ rl_liveness__drop_rel(Rel, unset(Rel) - "").
 	% Add create instructions to explicitly initialise free relation
 	% variables just before they are used.
 :- pred rl_liveness__insert_init_instructions(relation_info_map::in,
-		rl_instruction::in, list(rl_instruction)::in, 
-		list(rl_instruction)::out, set(relation_id)::in, 
+		rl_instruction::in, list(rl_instruction)::in,
+		list(rl_instruction)::out, set(relation_id)::in,
 		set(relation_id)::out) is det.
 
-rl_liveness__insert_init_instructions(RelInfoMap, Instr, 
+rl_liveness__insert_init_instructions(RelInfoMap, Instr,
 		RevInstrs0, RevInstrs, CreatedRels0, CreatedRels) :-
-	rl__instr_relations(Instr, Inputs, Outputs),	
+	rl__instr_relations(Instr, Inputs, Outputs),
 
 	set__list_to_set(Inputs, InputSet),
 	set__difference(InputSet, CreatedRels0, UninitialisedInputs0),
 	set__to_sorted_list(UninitialisedInputs0, UninitialisedInputs),
-	list__filter_map(rl_liveness__init_rel(RelInfoMap), 
+	list__filter_map(rl_liveness__init_rel(RelInfoMap),
 		UninitialisedInputs, Initialisations),
 
 	list__append([Instr | Initialisations], RevInstrs0, RevInstrs),
 	set__insert_list(CreatedRels0, Outputs, CreatedRels1),
 	set__union(CreatedRels1, UninitialisedInputs0, CreatedRels).
 
-:- pred rl_liveness__init_rel(relation_info_map::in, 
+:- pred rl_liveness__init_rel(relation_info_map::in,
 		relation_id::in, rl_instruction::out) is semidet.
 
 rl_liveness__init_rel(RelInfoMap, Rel, init(output_rel(Rel, [])) - "") :-

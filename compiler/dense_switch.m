@@ -157,7 +157,7 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 
 		% XXX
 		% We keep track of the code_info at the end of one of
-		% the non-fail cases.  We have to do this because 
+		% the non-fail cases.  We have to do this because
 		% generating a `fail' slot last would yield the
 		% wrong liveness and would not unset the failure cont
 		% for a nondet switch.

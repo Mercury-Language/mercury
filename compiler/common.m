@@ -93,7 +93,6 @@
 :- import_module hlds__quantification.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__pd_cost.
 

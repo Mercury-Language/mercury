@@ -230,7 +230,7 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
 	;
 		ArgsTypes = ArgsTypes0
 	),
-	compute_cell_type(ArgsTypes, CellType, CellTypeAndValue), 
+	compute_cell_type(ArgsTypes, CellType, CellTypeAndValue),
 	do_add_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataAddr,
 		!Info).
 

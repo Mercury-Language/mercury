@@ -42,14 +42,10 @@
 :- module parse_tree__mercury_to_mercury.
 :- interface.
 
-:- import_module hlds__hlds_data.
-:- import_module hlds__hlds_goal.
-:- import_module hlds__hlds_module.
 :- import_module libs__globals.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, std_util, list, io, varset, term.
+:- import_module bool, char, std_util, list, io, varset, term.
 
 :- type needs_brackets
 	--->	needs_brackets		% needs brackets, if it is an op
@@ -61,24 +57,20 @@
 	;	not_next_to_graphic_token.	% doesn't need quotes
 
 %	convert_to_mercury(ModuleName, OutputFileName, Items)
-:- pred convert_to_mercury(module_name, string, list(item_and_context),
-				io__state, io__state).
-:- mode convert_to_mercury(in, in, in, di, uo) is det.
+:- pred convert_to_mercury(module_name::in, string::in,
+	list(item_and_context)::in, io::di, io::uo) is det.
 
 %	mercury_output_item(Item, Context)
 %		output the specified item, followed by ".\n"
-:- pred mercury_output_item(item, prog_context, io__state, io__state).
-:- mode mercury_output_item(in, in, di, uo) is det.
+:- pred mercury_output_item(item::in, prog_context::in, io::di, io::uo) is det.
 
 	% Output a `:- pred' declaration, making sure that the variable
 	% number appears in variable names if the boolean argument
 	% is set to `yes'.
-:- pred mercury_output_pred_type(tvarset, existq_tvars, sym_name, list(type),
-		maybe(determinism), purity, class_constraints,
-		prog_context, bool, io__state, io__state).
-:- mode mercury_output_pred_type(in, in, in, in, in, in, in, in, in,
-		di, uo) is det.
-
+:- pred mercury_output_pred_type(tvarset::in, existq_tvars::in, sym_name::in,
+	list(type)::in, maybe(determinism)::in, purity::in,
+	class_constraints::in, prog_context::in, bool::in, io::di, io::uo)
+	is det.
 :- func mercury_pred_type_to_string(tvarset, existq_tvars, sym_name,
 	list(type), maybe(determinism), purity, class_constraints,
 	prog_context, bool) = string.
@@ -86,162 +78,125 @@
 	% Output a `:- func' declaration, making sure that the variable
 	% number appears in variable names if the boolean argument
 	% is set to `yes'.
-:- pred mercury_output_func_type(tvarset, existq_tvars, sym_name,
-		list(type), type,
-		maybe(determinism), purity, class_constraints,
-		prog_context, bool, io__state, io__state).
-:- mode mercury_output_func_type(in, in, in, in, in, in, in, in, in, in,
-		di, uo) is det.
-
+:- pred mercury_output_func_type(tvarset::in, existq_tvars::in, sym_name::in,
+	list(type)::in, (type)::in, maybe(determinism)::in, purity::in,
+	class_constraints::in, prog_context::in, bool::in, io::di, io::uo)
+	is det.
 :- func mercury_func_type_to_string(tvarset, existq_tvars, sym_name,
 	list(type), type, maybe(determinism), purity, class_constraints,
 	prog_context, bool) = string.
 
-:- pred mercury_output_pred_mode_decl(inst_varset, sym_name, list(mode),
-		maybe(determinism), prog_context, io__state, io__state).
-:- mode mercury_output_pred_mode_decl(in, in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_pred_mode_decl(inst_varset::in, sym_name::in,
+	list(mode)::in, maybe(determinism)::in, prog_context::in,
+	io::di, io::uo) is det.
 :- func mercury_pred_mode_decl_to_string(inst_varset, sym_name, list(mode),
 	maybe(determinism), prog_context) = string.
 
-:- pred mercury_output_func_mode_decl(inst_varset, sym_name, list(mode), mode,
-		maybe(determinism), prog_context, io__state, io__state).
-:- mode mercury_output_func_mode_decl(in, in, in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_func_mode_decl(inst_varset::in, sym_name::in,
+	list(mode)::in, (mode)::in, maybe(determinism)::in, prog_context::in,
+	io::di, io::uo) is det.
 :- func mercury_func_mode_decl_to_string(inst_varset, sym_name, list(mode),
 	mode, maybe(determinism), prog_context) = string.
 
-:- pred mercury_output_mode_subdecl(pred_or_func, inst_varset, sym_name,
-		list(mode), maybe(determinism), prog_context,
-		io__state, io__state).
-:- mode mercury_output_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_mode_subdecl(pred_or_func::in, inst_varset::in,
+	sym_name::in, list(mode)::in, maybe(determinism)::in, prog_context::in,
+	io::di, io::uo) is det.
 :- func mercury_mode_subdecl_to_string(pred_or_func, inst_varset, sym_name,
 	list(mode), maybe(determinism), prog_context) = string.
 
-:- pred mercury_output_pred_mode_subdecl(inst_varset, sym_name, list(mode),
-		maybe(determinism), prog_context, io__state, io__state).
-:- mode mercury_output_pred_mode_subdecl(in, in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_pred_mode_subdecl(inst_varset::in, sym_name::in,
+	list(mode)::in, maybe(determinism)::in, prog_context::in,
+	io::di, io::uo) is det.
 :- func mercury_pred_mode_subdecl_to_string(inst_varset, sym_name, list(mode),
 	maybe(determinism), prog_context) = string.
 
-:- pred mercury_output_func_mode_subdecl(inst_varset, sym_name, list(mode),
-		mode, maybe(determinism), prog_context, io__state, io__state).
-:- mode mercury_output_func_mode_subdecl(in, in, in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_func_mode_subdecl(inst_varset::in, sym_name::in,
+	list(mode)::in, (mode)::in, maybe(determinism)::in, prog_context::in,
+	io::di, io::uo) is det.
 :- func mercury_func_mode_subdecl_to_string(inst_varset, sym_name, list(mode),
 	mode, maybe(determinism), prog_context) = string.
 
-:- pred mercury_output_pragma_decl(sym_name, int, pred_or_func, string,
-		io__state, io__state).
-:- mode mercury_output_pragma_decl(in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_pragma_decl(sym_name::in, int::in, pred_or_func::in,
+	string::in, io::di, io::uo) is det.
 :- func mercury_pragma_decl_to_string(sym_name, int, pred_or_func, string)
 	= string.
 
-:- pred mercury_output_foreign_language_string(foreign_language,
-		io__state, io__state).
-:- mode mercury_output_foreign_language_string(in, di, uo) is det.
-
+:- pred mercury_output_foreign_language_string(foreign_language::in,
+	io::di, io::uo) is det.
 :- func mercury_foreign_language_to_string(foreign_language) = string.
 
-:- pred mercury_output_pragma_foreign_code(
-		pragma_foreign_proc_attributes, sym_name,
-		pred_or_func, list(pragma_var), prog_varset,
-		pragma_foreign_code_impl, io__state, io__state).
-:- mode mercury_output_pragma_foreign_code(
-		in, in, in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_pragma_foreign_code(pragma_foreign_proc_attributes::in,
+	sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
+	pragma_foreign_code_impl::in, io::di, io::uo) is det.
 :- func mercury_pragma_foreign_code_to_string(pragma_foreign_proc_attributes,
 	sym_name, pred_or_func, list(pragma_var), prog_varset,
 	pragma_foreign_code_impl) = string.
 
 :- inst type_spec == bound(type_spec(ground, ground, ground, ground,
-			ground, ground, ground, ground)).
+	ground, ground, ground, ground)).
 
 	% mercury_output_pragma_type_spec(Pragma, AppendVarnums).
-:- pred mercury_output_pragma_type_spec((pragma_type), bool,
-		io__state, io__state).
-:- mode mercury_output_pragma_type_spec(in(type_spec), in, di, uo) is det.
+:- pred mercury_output_pragma_type_spec((pragma_type)::in(type_spec), bool::in,
+	io::di, io::uo) is det.
 
-:- pred mercury_output_pragma_unused_args(pred_or_func, sym_name,
-		int, mode_num, list(int), io__state, io__state).
-:- mode mercury_output_pragma_unused_args(in, in, in, in, in, di, uo) is det.
+:- pred mercury_output_pragma_unused_args(pred_or_func::in, sym_name::in,
+	int::in, mode_num::in, list(int)::in, io::di, io::uo) is det.
 
 	% Write an Aditi index specifier.
-:- pred mercury_output_index_spec(index_spec, io__state, io__state).
-:- mode mercury_output_index_spec(in, di, uo) is det.
+:- pred mercury_output_index_spec(index_spec::in, io::di, io::uo) is det.
 
 	% Output the given foreign_decl declaration
 :- pred mercury_output_pragma_foreign_decl(foreign_language::in,
-	foreign_decl_is_local::in, string::in,
-	io::di, io::uo) is det.
-
+	foreign_decl_is_local::in, string::in, io::di, io::uo) is det.
 :- func mercury_pragma_foreign_decl_to_string(foreign_language,
 	foreign_decl_is_local, string) = string.
 
-:- pred mercury_output_pragma_foreign_import_module(foreign_language,
-		module_name, io__state, io__state).
-:- mode mercury_output_pragma_foreign_import_module(in, in, di, uo) is det.
+:- pred mercury_output_pragma_foreign_import_module(foreign_language::in,
+	module_name::in, io::di, io::uo) is det.
 
-:- pred mercury_output_ctor(constructor, tvarset, io__state, io__state).
-:- mode mercury_output_ctor(in, in, di, uo) is det.
+:- pred mercury_output_ctor(constructor::in, tvarset::in, io::di, io::uo)
+	is det.
 
-:- pred mercury_output_remaining_ctor_args(tvarset, list(constructor_arg),
-		io__state, io__state).
-:- mode mercury_output_remaining_ctor_args(in, in, di, uo) is det.
+:- pred mercury_output_remaining_ctor_args(tvarset::in,
+	list(constructor_arg)::in, io::di, io::uo) is det.
+
+:- pred mercury_output_inst_list(list(inst)::in, inst_varset::in,
+	io::di, io::uo) is det.
+:- func mercury_inst_list_to_string(list(inst), inst_varset) = string.
 
 	% Output a list of insts in a format that makes them easy to read
 	% but may not be valid Mercury.
 
-:- pred mercury_output_structured_inst_list(list(inst), int, inst_varset,
-			io__state, io__state).
-:- mode mercury_output_structured_inst_list(in, in, in, di, uo) is det.
-
+:- pred mercury_output_structured_inst_list(list(inst)::in, int::in,
+	inst_varset::in, io::di, io::uo) is det.
 :- func mercury_structured_inst_list_to_string(list(inst), int, inst_varset)
 	= string.
-
-:- pred mercury_output_inst_list(list(inst), inst_varset, io__state, io__state).
-:- mode mercury_output_inst_list(in, in, di, uo) is det.
-
-:- func mercury_inst_list_to_string(list(inst), inst_varset) = string.
 
 	% Output an inst in a format that makes it easy to read
 	% but may not be valid Mercury.
 	% The `int' argument specifies the indentation level.
 	% (These routines are used with `--debug-modes'.)
 
-:- pred mercury_output_structured_inst(inst, int, inst_varset,
-		io__state, io__state).
-:- mode mercury_output_structured_inst(in, in, in, di, uo) is det.
-
+:- pred mercury_output_structured_inst((inst)::in, int::in, inst_varset::in,
+	io::di, io::uo) is det.
 :- func mercury_structured_inst_to_string(inst, int, inst_varset) = string.
-
-	% Output an inst in a format where all compiler-defined insts
-	% have been expanded out; recursive insts have their self-referential
-	% parts printed out as elipses ("...").
-	% (These routines are used for outputting insts in mode errors.)
-
-:- pred mercury_output_expanded_inst(inst, inst_varset, module_info,
-		io__state, io__state).
-:- mode mercury_output_expanded_inst(in, in, in, di, uo) is det.
-
-:- func mercury_expanded_inst_to_string(inst, inst_varset, module_info)
-	= string.
 
 	% Output an inst in a format that is valid Mercury.
 	% (These routines are used to create `.int' files, etc.)
 
-:- pred mercury_output_inst(inst, inst_varset, io__state, io__state).
-:- mode mercury_output_inst(in, in, di, uo) is det.
-
+:- pred mercury_output_inst((inst)::in, inst_varset::in, io::di, io::uo)
+	is det.
 :- func mercury_inst_to_string(inst, inst_varset) = string.
+:- pred mercury_format_inst((inst)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
+
+:- pred mercury_format_inst_name(inst_name::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 	% Output a cons_id, parenthesizing it if necessary
 
-:- pred mercury_output_cons_id(cons_id, needs_brackets, io__state, io__state).
-:- mode mercury_output_cons_id(in, in, di, uo) is det.
+:- pred mercury_output_cons_id(cons_id::in, needs_brackets::in,
+	io::di, io::uo) is det.
 
 :- func mercury_cons_id_to_string(cons_id, needs_brackets) = string.
 
@@ -249,64 +204,46 @@
 	% in a format that is valid Mercury.
 	% (These routines are used to create `.int' files, etc.)
 
-:- pred mercury_output_mode(mode, inst_varset, io__state, io__state).
-:- mode mercury_output_mode(in, in, di, uo) is det.
-
+:- pred mercury_output_mode((mode)::in, inst_varset::in, io::di, io::uo)
+	is det.
 :- func mercury_mode_to_string(mode, inst_varset) = string.
 
-:- pred mercury_output_mode_list(list(mode), inst_varset, io__state, io__state).
-:- mode mercury_output_mode_list(in, in, di, uo) is det.
+:- pred mercury_format_mode((mode)::in, InstInfo::in,
+	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
+:- pred mercury_output_mode_list(list(mode)::in, inst_varset::in,
+	io::di, io::uo) is det.
 :- func mercury_mode_list_to_string(list(mode), inst_varset) = string.
-
-:- pred mercury_output_uni_mode(uni_mode, inst_varset, io__state, io__state).
-:- mode mercury_output_uni_mode(in, in, di, uo) is det.
-
-:- func mercury_uni_mode_to_string(uni_mode, inst_varset) = string.
-
-:- pred mercury_output_uni_mode_list(list(uni_mode), inst_varset,
-		io__state, io__state).
-:- mode mercury_output_uni_mode_list(in, in, di, uo) is det.
-
-:- func mercury_uni_mode_list_to_string(list(uni_mode), inst_varset) = string.
 
 	% Output a determinism, in a format that is valid Mercury.
 
-:- pred mercury_output_det(determinism, io__state, io__state).
-:- mode mercury_output_det(in, di, uo) is det.
-
+:- pred mercury_output_det(determinism::in, io::di, io::uo) is det.
 :- func mercury_det_to_string(determinism) = string.
 
 	% Output a comma-separated list of variables, making sure that
 	% the variable number appears in the variable name if the boolean
 	% argument is set to `yes'.
 
-:- pred mercury_output_vars(list(var(T)), varset(T), bool,
-		io__state, io__state).
-:- mode mercury_output_vars(in, in, in, di, uo) is det.
-
+:- pred mercury_output_vars(list(var(T))::in, varset(T)::in, bool::in,
+	io::di, io::uo) is det.
 :- func mercury_vars_to_string(list(var(T)), varset(T), bool) = string.
 
 	% Output a variable, making sure that the variable number appears
 	% in the variable name if the boolean argument is set to `yes'.
 
-:- pred mercury_output_var(var(T), varset(T), bool, io__state, io__state).
-:- mode mercury_output_var(in, in, in, di, uo) is det.
-
+:- pred mercury_output_var(var(T)::in, varset(T)::in, bool::in,
+	io::di, io::uo) is det.
 :- func mercury_var_to_string(var(T), varset(T), bool) = string.
 
 	% Output a term, making sure that the variable number appears
 	% in variable names if the boolean argument is set to `yes'.
 
-:- pred mercury_output_term(term(T), varset(T), bool, io__state, io__state).
-:- mode mercury_output_term(in, in, in, di, uo) is det.
-
+:- pred mercury_output_term(term(T)::in, varset(T)::in, bool::in,
+	io::di, io::uo) is det.
 :- func mercury_term_to_string(term(T), varset(T), bool) = string.
 
-:- pred mercury_output_term(term(T), varset(T), bool, needs_quotes,
-		io__state, io__state).
-:- mode mercury_output_term(in, in, in, in, di, uo) is det.
-
+:- pred mercury_output_term(term(T)::in, varset(T)::in, bool::in,
+	needs_quotes::in, io::di, io::uo) is det.
 :- func mercury_term_to_string(term(T), varset(T), bool, needs_quotes)
 	= string.
 
@@ -316,39 +253,31 @@
 :- func mercury_type_to_string(tvarset, type) = string.
 :- func mercury_type_list_to_string(tvarset, list(type)) = string.
 
-:- pred mercury_output_newline(int, io__state, io__state).
-:- mode mercury_output_newline(in, di, uo) is det.
+:- pred mercury_output_newline(int::in, io::di, io::uo) is det.
 
-:- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
-:- mode mercury_output_bracketed_sym_name(in, di, uo) is det.
+:- pred mercury_output_bracketed_sym_name(sym_name::in,
+	io::di, io::uo) is det.
 
-:- pred mercury_output_bracketed_sym_name(sym_name, needs_quotes,
-		io__state, io__state).
-:- mode mercury_output_bracketed_sym_name(in, in, di, uo) is det.
+:- pred mercury_output_bracketed_sym_name(sym_name::in, needs_quotes::in,
+	io::di, io::uo) is det.
 
-:- pred mercury_convert_var_name(string, string).
-:- mode mercury_convert_var_name(in, out) is det.
+:- pred mercury_convert_var_name(string::in, string::out) is det.
 
 	% Output a constraint, making sure that the variable number appears
 	% in variable names if the boolean argument is set to `yes'.
-:- pred mercury_output_constraint(tvarset, bool, class_constraint,
-		io__state, io__state).
-:- mode mercury_output_constraint(in, in, in, di, uo) is det.
-
+:- pred mercury_output_constraint(tvarset::in, bool::in, class_constraint::in,
+	io::di, io::uo) is det.
 :- func mercury_constraint_to_string(tvarset, class_constraint) = string.
 
 	% Output an existential quantifier, making sure that the variable
 	% number appears in variable names if the boolean argument
 	% is set to `yes'.
-:- pred mercury_output_quantifier(tvarset, bool, existq_tvars,
-		io__state, io__state).
-:- mode mercury_output_quantifier(in, in, in, di, uo) is det.
-
+:- pred mercury_output_quantifier(tvarset::in, bool::in, existq_tvars::in,
+	io::di, io::uo) is det.
 :- func mercury_quantifier_to_string(tvarset, bool, existq_tvars) = string.
 
-:- pred mercury_output_instance_methods(instance_methods, io__state,
-	io__state).
-:- mode mercury_output_instance_methods(in, di, uo) is det.
+:- pred mercury_output_instance_methods(instance_methods::in,
+	io::di, io::uo) is det.
 
 	% This predicate outputs termination_info pragmas;
 	% such annotations can be part of .opt and .trans_opt files.
@@ -369,16 +298,59 @@
 	bool::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+% This is the typeclass mentioned in the long comment at the top of the module.
+
+:- typeclass output(U) where [
+	pred add_string(string::in, U::di, U::uo) is det,
+	pred add_strings(list(string)::in, U::di, U::uo) is det,
+	pred add_char(char::in, U::di, U::uo) is det,
+	pred add_int(int::in, U::di, U::uo) is det,
+	pred add_float(float::in, U::di, U::uo) is det,
+	pred add_purity_prefix(purity::in, U::di, U::uo) is det,
+	pred add_quoted_atom(string::in, U::di, U::uo) is det,
+	pred add_quoted_string(string::in, U::di, U::uo) is det,
+	pred add_constant(const::in, U::di, U::uo) is det,
+	pred add_class_id(class_id::in, U::di, U::uo) is det,
+	pred add_eval_method(eval_method::in, U::di, U::uo) is det,
+	pred add_lambda_eval_method(lambda_eval_method::in, U::di, U::uo)
+		is det,
+	pred add_index_type(index_type::in, U::di, U::uo) is det,
+	pred add_escaped_string(string::in, U::di, U::uo) is det,
+	pred add_format(string::in, list(io__poly_type)::in,
+		U::di, U::uo) is det,
+	pred add_list(list(T)::in, string::in,
+		pred(T, U, U)::pred(in, di, uo) is det,
+		U::di, U::uo) is det
+].
+
+:- instance output(io__state).
+:- instance output(string).
+
+% We use the following type class to share code between mercury_output_inst,
+% which outputs inst in Mercury syntax, and mercury_output_expanded_inst,
+% which is the same except that it expands any compiler-defined insts
+% (except those which have already been encountered).
+%
+% (XXX Perhaps we should use the same sort of technique to also avoid
+% code duplication with mercury_format_structured_inst.)
+
+:- typeclass inst_info(InstInfo) where [
+	(func instvarset(InstInfo) = inst_varset),
+	(pred format_defined_inst(inst_name::in, InstInfo::in,
+		U::di, U::uo) is det <= output(U))
+].
+
+:- type simple_inst_info
+	--->	simple_inst_info(sii_varset :: inst_varset).
+
+:- instance inst_info(simple_inst_info).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module backend_libs__foreign.
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
-:- import_module hlds__hlds_out.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_io_util.
@@ -386,7 +358,7 @@
 :- import_module parse_tree__prog_util.
 :- import_module recompilation__version.
 
-:- import_module assoc_list, char, int, string, set, lexer, ops, require.
+:- import_module assoc_list, int, string, set, lexer, ops, require.
 :- import_module term, term_io, varset.
 
 %-----------------------------------------------------------------------------%
@@ -1095,83 +1067,16 @@ mercury_format_structured_inst(not_reached, Indent, _) -->
 	mercury_format_tabs(Indent),
 	add_string("not_reached\n").
 
-% We use the following type class to share code between mercury_output_inst,
-% which outputs inst in Mercury syntax, and mercury_output_expanded_inst,
-% which is the same except that it expands any compiler-defined insts
-% (except those which have already been encountered).
-%
-% (XXX Perhaps we should use the same sort of technique to also avoid
-% code duplication with mercury_format_structured_inst.)
-
-:- typeclass inst_info(InstInfo) where [
-	(func instvarset(InstInfo) = inst_varset),
-	(pred format_defined_inst(inst_name::in, InstInfo::in,
-		U::di, U::uo) is det <= output(U))
-].
-
-:- type simple_inst_info
-	--->	simple_inst_info(sii_varset :: inst_varset).
-
 :- instance inst_info(simple_inst_info) where [
 	func(instvarset/1) is sii_varset,
 	pred(format_defined_inst/4) is mercury_format_inst_name
 ].
-
-:- instance inst_info(expanded_inst_info) where [
-	func(instvarset/1) is eii_varset,
-	pred(format_defined_inst/4) is mercury_format_expanded_defined_inst
-].
-
-:- type expanded_inst_info
-	--->	expanded_inst_info(
-			eii_varset :: inst_varset,
-			eii_module_info :: module_info,
-			eii_expansions :: set(inst_name)
-					% the set of already-expanded insts;
-					% further occurrences of these will
-					% be output as "..."
-		).
-
-:- pred mercury_format_expanded_defined_inst(inst_name::in,
-	expanded_inst_info::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_expanded_defined_inst(InstName, ExpandedInstInfo) -->
-	( { set__member(InstName, ExpandedInstInfo ^ eii_expansions) } ->
-		add_string("...")
-	; { InstName = user_inst(_, _) } ->
-		% don't expand user-defined insts, just output them as is
-		% (we do expand any compiler-defined insts that occur
-		% in the arguments of the user-defined inst, however)
-		mercury_format_inst_name(InstName, ExpandedInstInfo)
-        ;
-                { inst_lookup(ExpandedInstInfo ^ eii_module_info, InstName,
-			Inst) },
-                { set__insert(ExpandedInstInfo ^ eii_expansions, InstName,
-			Expansions) },
-		mercury_format_inst(Inst,
-			ExpandedInstInfo ^ eii_expansions := Expansions)
-	).
-
-
-mercury_output_expanded_inst(Inst, VarSet, ModuleInfo) -->
-	{ set__init(Expansions) },
-	mercury_format_inst(Inst,
-		expanded_inst_info(VarSet, ModuleInfo, Expansions)).
-
-mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
-	set__init(Expansions),
-	mercury_format_inst(Inst,
-		expanded_inst_info(VarSet, ModuleInfo, Expansions),
-		"", String).
 
 mercury_output_inst(Inst, VarSet) -->
 	mercury_format_inst(Inst, simple_inst_info(VarSet)).
 
 mercury_inst_to_string(Inst, VarSet) = String :-
 	mercury_format_inst(Inst, simple_inst_info(VarSet), "", String).
-
-:- pred mercury_format_inst((inst)::in, InstInfo::in,
-	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 mercury_format_inst(any(Uniq), _) -->
 	mercury_format_any_uniqueness(Uniq).
@@ -1357,9 +1262,6 @@ mercury_format_structured_inst_name(typed_inst(Type, InstName),
 	mercury_format_tabs(Indent),
 	add_string(")\n").
 
-:- pred mercury_format_inst_name(inst_name::in, InstInfo::in,
-	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
-
 mercury_format_inst_name(user_inst(Name, Args), InstInfo) -->
 	( { Args = [] } ->
 		mercury_format_bracketed_sym_name(Name)
@@ -1542,12 +1444,10 @@ mercury_format_cons_id(float_const(X), _) -->
 	add_float(X).
 mercury_format_cons_id(string_const(X), _) -->
 	add_quoted_string(X).
-mercury_format_cons_id(pred_const(PredId, ProcId, EvalMethod), _) -->
+mercury_format_cons_id(pred_const(ShroudedPredProcId, EvalMethod), _) -->
 	% XXX Sufficient, but probably should print this out in
 	%     name/arity form.
-
-	{ pred_id_to_int(PredId, PredInt) },
-	{ proc_id_to_int(ProcId, ProcInt) },
+	{ ShroudedPredProcId = shrouded_pred_proc_id(PredInt, ProcInt) },
 	add_string("<pred_const("),
 	add_int(PredInt),
 	add_string(", "),
@@ -1576,7 +1476,7 @@ mercury_format_cons_id(type_info_cell_constructor(_), _) -->
 	add_string("<type_info_cell_constructor>").
 mercury_format_cons_id(typeclass_info_cell_constructor, _) -->
 	add_string("<typeclass_info_cell_constructor>").
-mercury_format_cons_id(tabling_pointer_const(_, _), _) -->
+mercury_format_cons_id(tabling_pointer_const(_), _) -->
 	add_string("<tabling pointer>").
 mercury_format_cons_id(deep_profiling_proc_layout(_), _) -->
 	add_string("<deep_profiling_proc_layout>").
@@ -1630,47 +1530,11 @@ mercury_format_mode_list([Mode | Modes], InstInfo) -->
 		mercury_format_mode_list(Modes, InstInfo)
 	).
 
-mercury_output_uni_mode_list(UniModes, VarSet) -->
-	mercury_format_uni_mode_list(UniModes, VarSet).
-
-mercury_uni_mode_list_to_string(UniModes, VarSet) = String :-
-	mercury_format_uni_mode_list(UniModes, VarSet, "", String).
-
-:- pred mercury_format_uni_mode_list(list(uni_mode)::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
-
-mercury_format_uni_mode_list([], _VarSet) --> [].
-mercury_format_uni_mode_list([Mode | Modes], VarSet) -->
-	mercury_format_uni_mode(Mode, VarSet),
-	( { Modes = [] } ->
-		[]
-	;
-		add_string(", "),
-		mercury_format_uni_mode_list(Modes, VarSet)
-	).
-
-mercury_output_uni_mode(UniMode, VarSet) -->
-	mercury_format_uni_mode(UniMode, VarSet).
-
-mercury_uni_mode_to_string(UniMode, VarSet) = String :-
-	mercury_format_uni_mode(UniMode, VarSet, "", String).
-
-:- pred mercury_format_uni_mode(uni_mode::in, inst_varset::in,
-	U::di, U::uo) is det <= output(U).
-
-mercury_format_uni_mode((InstA1 - InstB1 -> InstA2 - InstB2), VarSet) -->
-	mercury_format_mode((InstA1 -> InstA2), simple_inst_info(VarSet)),
-	add_string(" = "),
-	mercury_format_mode((InstB1 -> InstB2), simple_inst_info(VarSet)).
-
 mercury_output_mode(Mode, VarSet) -->
 	mercury_format_mode(Mode, simple_inst_info(VarSet)).
 
 mercury_mode_to_string(Mode, VarSet) = String :-
 	mercury_format_mode(Mode, simple_inst_info(VarSet), "", String).
-
-:- pred mercury_format_mode((mode)::in, InstInfo::in,
-	U::di, U::uo) is det <= (output(U), inst_info(InstInfo)).
 
 mercury_format_mode((InstA -> InstB), InstInfo) -->
 	(
@@ -1998,7 +1862,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
 	),
 	add_purity_prefix(Purity),
 
-	{ PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc) },
+	{ PredOrFuncStr = pred_or_func_to_str(PredOrFunc) },
 	add_string(PredOrFuncStr),
 	add_string(" "),
 
@@ -3153,7 +3017,7 @@ mercury_output_type_subst(VarSet, AppendVarnums, Var - Type) -->
 mercury_output_pragma_unused_args(PredOrFunc, SymName,
 		Arity, ModeNum, UnusedArgs) -->
 	io__write_string(":- pragma unused_args("),
-	hlds_out__write_pred_or_func(PredOrFunc),
+	write_pred_or_func(PredOrFunc),
 	io__write_string(", "),
 	mercury_output_bracketed_sym_name(SymName),
 	io__write_string(", "),
@@ -3841,31 +3705,6 @@ maybe_unqualify_sym_name(yes, Name0, unqualified(Name)) :-
 	unqualify_name(Name0, Name).
 
 %-----------------------------------------------------------------------------%
-
-% This is the typeclass mentioned in the long comment at the top of the module.
-
-:- typeclass output(U) where [
-	pred add_string(string::in, U::di, U::uo) is det,
-	pred add_strings(list(string)::in, U::di, U::uo) is det,
-	pred add_char(char::in, U::di, U::uo) is det,
-	pred add_int(int::in, U::di, U::uo) is det,
-	pred add_float(float::in, U::di, U::uo) is det,
-	pred add_purity_prefix(purity::in, U::di, U::uo) is det,
-	pred add_quoted_atom(string::in, U::di, U::uo) is det,
-	pred add_quoted_string(string::in, U::di, U::uo) is det,
-	pred add_constant(const::in, U::di, U::uo) is det,
-	pred add_class_id(class_id::in, U::di, U::uo) is det,
-	pred add_eval_method(eval_method::in, U::di, U::uo) is det,
-	pred add_lambda_eval_method(lambda_eval_method::in, U::di, U::uo)
-		is det,
-	pred add_index_type(index_type::in, U::di, U::uo) is det,
-	pred add_escaped_string(string::in, U::di, U::uo) is det,
-	pred add_format(string::in, list(io__poly_type)::in,
-		U::di, U::uo) is det,
-	pred add_list(list(T)::in, string::in,
-		pred(T, U, U)::pred(in, di, uo) is det,
-		U::di, U::uo) is det
-].
 
 :- instance output(io__state) where [
 	pred(add_string/3) is io__write_string,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 University of Melbourne.
+% Copyright (C) 2001-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,7 @@
 :- include_module recompilation__version.
 
 	% Identify a particular version of a program item.
-	% This could be done using a timestamp or a hash value. 
+	% This could be done using a timestamp or a hash value.
 :- type version_number == timestamp.
 
 :- pred write_version_number(version_number::in,
@@ -107,7 +107,7 @@
 		module_name :: module_name,
 
 			% used items imported from other modules
-		used_items :: used_items,	
+		used_items :: used_items,
 
 			% For now we only record dependencies of imported
 			% items on equivalence types. The rest of the
@@ -145,7 +145,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type item_id_set(Map, Set, Cons) 
+:- type item_id_set(Map, Set, Cons)
 	---> item_id_set(
 		types :: Map,
 		type_bodies :: Map,
@@ -171,7 +171,7 @@
 
 	% For constructors, predicates and functions we can't work out
 	% which item is actually used until we've run typechecking.
-	% 
+	%
 :- type pred_or_func_set == simple_item_set.
 
 :- type functor_set == simple_item_set.
@@ -257,7 +257,7 @@
 
 term_to_version_number(Term) = term_to_timestamp(Term).
 
-term_to_timestamp(term__functor(term__string(TimestampString), [], _)) = 
+term_to_timestamp(term__functor(term__string(TimestampString), [], _)) =
 		string_to_timestamp(TimestampString).
 
 write_version_number(VersionNumber) -->
@@ -339,7 +339,7 @@ update_ids(Items, functor, IdMap) = Items ^ functors := IdMap.
 map_ids(Func, Items0, Init) = Items :-
 	Items1 = init_item_id_set(Init),
 	Items = list__foldl(
-		(func(ItemType, NewItems0) = 
+		(func(ItemType, NewItems0) =
 			update_ids(NewItems0, ItemType,
 				Func(ItemType, extract_ids(Items0, ItemType)))
 		),
@@ -372,14 +372,14 @@ init_recompilation_info(ModuleName) =
 recompilation__record_used_item(ItemType, Id, QualifiedId) -->
     (
     	% Don't record builtin items (QualifiedId may be unqualified
-	% for predicates, functions and functors because they aren't 
+	% for predicates, functions and functors because they aren't
 	% qualified until after typechecking).
 	{ ItemType \= predicate },
 	{ ItemType \= function },
 	{ ItemType \= functor },
     	{ QualifiedId = unqualified(_) - _ }
     ->
-	[]	
+	[]
     ;
 	ItemSet0 =^ used_items,
 	{ IdSet0 = extract_ids(ItemSet0, ItemType) },
@@ -395,7 +395,7 @@ recompilation__record_used_item(ItemType, Id, QualifiedId) -->
 		{ map__init(MatchingNames1) }
 	),
 	( { map__contains(MatchingNames1, ModuleQualifier) } ->
-		[]	
+		[]
 	;
 		{ map__det_insert(MatchingNames1, ModuleQualifier,
 			ModuleName, MatchingNames) },

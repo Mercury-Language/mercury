@@ -61,13 +61,13 @@
 % be different for each call.
 % Currently we don't support second-order polymorphism, so we
 % don't support existentially typed lambda expressions either.
-% 
+%
 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds__lambda.
 
-:- interface. 
+:- interface.
 
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -84,6 +84,7 @@
 
 % Parse tree modules
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 
 % HLDS modules
@@ -111,8 +112,8 @@
 			class_constraints,	% from the pred_info
 			tvarset,		% from the proc_info
 			inst_varset,		% from the proc_info
-			map(tvar, type_info_locn),	
-						% from the proc_info 
+			map(tvar, type_info_locn),
+						% from the proc_info
 						% (typeinfos)
 			map(class_constraint, prog_var),
 						% from the proc_info
@@ -132,7 +133,7 @@
 lambda__process_module(ModuleInfo0, ModuleInfo) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	lambda__process_preds(PredIds, ModuleInfo0, ModuleInfo1),
-	% Need update the dependency graph to include the lambda predicates. 
+	% Need update the dependency graph to include the lambda predicates.
 	module_info_clobber_dependency_info(ModuleInfo1, ModuleInfo).
 
 :- pred lambda__process_preds(list(pred_id)::in,
@@ -198,10 +199,10 @@ lambda__process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
 
 	% process the goal
 	Info0 = lambda_info(VarSet0, VarTypes0, Constraints0, TypeVarSet0,
-		InstVarSet0, TVarMap0, TCVarMap0, Markers, PredOrFunc, 
+		InstVarSet0, TVarMap0, TCVarMap0, Markers, PredOrFunc,
 		PredName, Owner, !.ModuleInfo, MustRecomputeNonLocals0),
 	lambda__process_goal(Goal0, Goal1, Info0, Info1),
-	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet, 
+	Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet,
 		_, TVarMap, TCVarMap, _, _, _, _, !:ModuleInfo,
 		MustRecomputeNonLocals),
 
@@ -245,7 +246,7 @@ lambda__process_goal_2(unify(XVar, Y, Mode, Unification, Context), GoalInfo,
 
 		% then, convert the lambda expression into a new predicate
 		lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars,
-			Modes, Det, NonLocalVars, LambdaGoal1, 
+			Modes, Det, NonLocalVars, LambdaGoal1,
 			Unification, Y1, Unification1, !Info),
 		Unify = unify(XVar, Y1, Mode, Unification1, Context)
 	;
@@ -266,7 +267,7 @@ lambda__process_goal_2(disj(Goals0), GoalInfo, disj(Goals) - GoalInfo,
 	lambda__process_goal_list(Goals0, Goals, !Info).
 lambda__process_goal_2(not(Goal0), GoalInfo, not(Goal) - GoalInfo, !Info) :-
 	lambda__process_goal(Goal0, Goal, !Info).
-lambda__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo, 
+lambda__process_goal_2(switch(Var, CanFail, Cases0), GoalInfo,
 		switch(Var, CanFail, Cases) - GoalInfo, !Info) :-
 	lambda__process_cases(Cases0, Cases, !Info).
 lambda__process_goal_2(some(Vars, CanRemove, Goal0), GoalInfo,
@@ -318,14 +319,14 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		Owner, ModuleInfo0, MustRecomputeNonLocals0),
 
 		% Calculate the constraints which apply to this lambda
-		% expression. 
+		% expression.
 		% Note currently we only allow lambda expressions
 		% to have universally quantified constraints.
 	map__keys(TCVarMap, AllConstraints),
 	map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
 	list__map(type_util__vars, LambdaVarTypes, LambdaTypeVarsList),
 	list__condense(LambdaTypeVarsList, LambdaTypeVars),
-	list__filter(lambda__constraint_contains_vars(LambdaTypeVars), 
+	list__filter(lambda__constraint_contains_vars(LambdaTypeVars),
 		AllConstraints, UnivConstraints),
 	Constraints = constraints(UnivConstraints, []),
 
@@ -366,7 +367,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 
 	set__to_sorted_list(NonLocals, ArgVars1),
 
-	( 
+	(
 		% Optimize a special case: replace
 		%	`lambda([Y1, Y2, ...] is Detism,
 		%		p(X1, X2, ..., Y1, Y2, ...))'
@@ -390,7 +391,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			EvalMethod = normal
 		),
 		list__remove_suffix(CallVars, Vars, InitialVars),
-	
+
 		% check that none of the variables that we're trying to
 		% use as curried arguments are lambda-bound variables
 		\+ (
@@ -425,12 +426,12 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			PredOrFunc = Call_PredOrFunc,
 			CodeModel = Call_CodeModel
 		),
-			
+
 			% check that the curried arguments are all input
 		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
 		list__length(InitialVars, NumInitialVars),
 		list__take(NumInitialVars, Call_ArgModes, CurriedArgModes),
-		\+ (	list__member(Mode, CurriedArgModes), 
+		\+ (	list__member(Mode, CurriedArgModes),
 			\+ mode_is_input(ModuleInfo0, Mode)
 		)
 	->
@@ -478,7 +479,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% type_info arguments, we use the mode "in".  For the original
 		% non-local vars, we use the modes from `UniModes1'.
 		% For the lambda var arguments at the end,
-		% we use the mode in the lambda expression. 
+		% we use the mode in the lambda expression.
 
 		list__length(ArgVars, NumArgVars),
 		in_mode(In),
@@ -491,16 +492,16 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		map__overlay(ArgModesMap, OrigArgModesMap, ArgModesMap1),
 		map__apply_to_list(ArgVars, ArgModesMap1, ArgModes1),
 
-		% Recompute the uni_modes. 
-		mode_util__modes_to_uni_modes(ArgModes1, ArgModes1, 
+		% Recompute the uni_modes.
+		mode_util__modes_to_uni_modes(ArgModes1, ArgModes1,
 			ModuleInfo1, UniModes),
 
 		list__append(ArgModes1, Modes, AllArgModes),
 		map__apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
 		purity_to_markers(Purity, LambdaMarkers0),
-		( 
-			% Pass through the aditi markers for 
+		(
+			% Pass through the aditi markers for
 			% aggregate query closures.
 			% XXX we should differentiate between normal
 			% top-down closures and aggregate query closures,
@@ -556,7 +557,7 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		set__init(Assertions),
 
 		pred_info_create(ModuleName, PredName, PredOrFunc,
-			LambdaContext, local, LambdaMarkers,  
+			LambdaContext, local, LambdaMarkers,
 			ArgTypes, TVarSet, ExistQVars, Constraints,
 			Assertions, Owner, ProcInfo, ProcId, PredInfo),
 
@@ -568,7 +569,8 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		module_info_set_predicate_table(PredicateTable,
 			ModuleInfo1, ModuleInfo)
 	),
-	ConsId = pred_const(PredId, ProcId, EvalMethod),
+	ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+	ConsId = pred_const(ShroudedPredProcId, EvalMethod),
 	Functor = functor(ConsId, no, ArgVars),
 
 	Unification = construct(Var, ConsId, ArgVars, UniModes,

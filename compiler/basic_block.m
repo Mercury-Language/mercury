@@ -83,7 +83,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel,
 		LabelInstr = label(Label) - "",
 		RestInstrs = [OrigInstr0 | OrigInstrs0]
 	),
-	( 
+	(
 		take_until_end_of_block(RestInstrs, BlockInstrs, Instrs1),
 		build_block_map(Instrs1, LabelSeq0, ProcLabel, !BlockMap, !C),
 		( list__last(BlockInstrs, LastInstr) ->

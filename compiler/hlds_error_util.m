@@ -59,6 +59,7 @@
 
 :- import_module check_hlds__mode_util.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 

@@ -195,21 +195,21 @@ gen_init_rtti_data_defn(RttiData, _RttiId, ModuleInfo, Init, ExtraDefns) :-
 		| MethodInitializers
 	]).
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
-	RttiData = type_info(TypeInfo), 
+	RttiData = type_info(TypeInfo),
 	gen_type_info_defn(ModuleInfo, TypeInfo, RttiId, Init, SubDefns).
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
-	RttiData = pseudo_type_info(PseudoTypeInfo), 
+	RttiData = pseudo_type_info(PseudoTypeInfo),
 	gen_pseudo_type_info_defn(ModuleInfo, PseudoTypeInfo, RttiId,
 		Init, SubDefns).
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
-	RttiData = type_class_decl(TCDecl), 
+	RttiData = type_class_decl(TCDecl),
 	gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns).
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
-	RttiData = type_class_instance(Instance), 
+	RttiData = type_class_instance(Instance),
 	gen_type_class_instance_defn(Instance, RttiId, ModuleInfo, Init,
 		SubDefns).
 gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
-	RttiData = type_ctor_info(TypeCtorData), 
+	RttiData = type_ctor_info(TypeCtorData),
 	TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
 		TypeArity, UnifyUniv, CompareUniv, Flags, TypeCtorDetails),
 	RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, TypeArity),
@@ -905,7 +905,7 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap) = MLDS_Defns :-
 	SubDefns = list__map(
 		gen_du_stag_ordered_table(ModuleName, RttiTypeCtor), PtagList),
 	( PtagList = [1 - _ | _] ->
-			% Output a dummy ptag definition for the 
+			% Output a dummy ptag definition for the
 			% reserved tag first.
 		RttiElemName = du_ptag_layout(0),
 		RttiElemId = ctor_rtti_id(RttiTypeCtor, RttiElemName),
@@ -1187,7 +1187,7 @@ gen_init_tc_rtti_name(ModuleName, TCName, TCRttiName) =
 	= mlds__initializer.
 
 gen_init_cast_rtti_id(DestType, ModuleName, RttiId) = Initializer :-
-	SrcType = rtti_type(item_type(RttiId)), 
+	SrcType = rtti_type(item_type(RttiId)),
 	Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 		gen_rtti_id(ModuleName, RttiId))).
 
@@ -1417,7 +1417,7 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
 		MLGenInfo1, MLGenInfo),
 	ml_gen_info_get_extra_defns(MLGenInfo, ExtraDefns1),
 	ExtraDefns = list__append(ExtraDefns1, ExtraDefns0),
-	
+
 	%
 	% The initializer for the wrapper is just the wrapper function's
 	% address, converted to mlds__generic_type (by boxing).
@@ -1436,7 +1436,7 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
         QualifiedProcLabel = qual(PredModule, PredLabel - ProcId),
 	Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),
 	Signature = mlds__get_func_signature(Params),
-	ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel, 
+	ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel,
 		Signature))),
 	%
 	% Convert the procedure address to a generic type.
@@ -1526,7 +1526,7 @@ gen_init_array(Conv, List) = init_array(list__map(Conv, List)).
 
 gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
 gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
-	
+
 :- func gen_init_null_pointer(mlds__type) = mlds__initializer.
 
 gen_init_null_pointer(Type) = init_obj(const(null(Type))).

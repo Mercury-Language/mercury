@@ -161,7 +161,7 @@ goal_cannot_loop_expr(_, unify(_, _, _, Uni, _)) :-
 		Uni = deconstruct(_, _, _, _, _, _)
 	).
 		% Complicated unifies are _non_builtin_
-	
+
 %-----------------------------------------------------------------------------%
 
 contains_only_builtins(Goal - _GoalInfo) :-
@@ -290,7 +290,7 @@ goal_may_allocate_heap_2(shorthand(ShorthandGoal), May) :-
 
 :- pred goal_may_allocate_heap_2_shorthand(shorthand_goal_expr::in, bool::out)
 	is det.
-	
+
 goal_may_allocate_heap_2_shorthand(bi_implication(G1, G2), May) :-
 	( goal_may_allocate_heap(G1, yes) ->
 		May = yes

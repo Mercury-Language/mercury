@@ -40,6 +40,7 @@
 :- implementation.
 
 :- import_module check_hlds__type_util.
+:- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_io.
@@ -58,21 +59,27 @@ are_equivalence_types_expanded(ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-cons_id_to_tag(int_const(X), _, _) = int_constant(X).
-cons_id_to_tag(float_const(X), _, _) = float_constant(X).
-cons_id_to_tag(string_const(X), _, _) = string_constant(X).
-cons_id_to_tag(pred_const(P,M,E), _, _) = pred_closure_tag(P,M,E).
+cons_id_to_tag(int_const(I), _, _) = int_constant(I).
+cons_id_to_tag(float_const(F), _, _) = float_constant(F).
+cons_id_to_tag(string_const(S), _, _) = string_constant(S).
+cons_id_to_tag(pred_const(ShroudedPredProcId, EvalMethod), _, _) =
+		pred_closure_tag(PredId, ProcId, EvalMethod) :-
+	proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
 cons_id_to_tag(type_ctor_info_const(M,T,A), _, _) =
 		type_ctor_info_constant(M,T,A).
 cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _) =
 		base_typeclass_info_constant(M,C,N).
 cons_id_to_tag(type_info_cell_constructor(_), _, _) = unshared_tag(0).
 cons_id_to_tag(typeclass_info_cell_constructor, _, _) = unshared_tag(0).
-cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _) =
-		tabling_pointer_constant(PredId,ProcId).
-cons_id_to_tag(deep_profiling_proc_layout(PPId), _, _) =
-		deep_profiling_proc_layout_tag(PPId).
-cons_id_to_tag(table_io_decl(PPId), _, _) = table_io_decl_tag(PPId).
+cons_id_to_tag(tabling_pointer_const(ShroudedPredProcId), _, _) =
+		tabling_pointer_constant(PredId, ProcId) :-
+	proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
+cons_id_to_tag(deep_profiling_proc_layout(ShroudedPredProcId), _, _) =
+		deep_profiling_proc_layout_tag(PredId, ProcId) :-
+	proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
+cons_id_to_tag(table_io_decl(ShroudedPredProcId), _, _) =
+		table_io_decl_tag(PredId, ProcId) :-
+	proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
 cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
 	(
 			% handle the `character' type specially
@@ -137,5 +144,5 @@ type_to_string(Type, String) :-
 	;
 		error("type_to_string: invalid type")
 	).
-		
+
 %----------------------------------------------------------------------------%

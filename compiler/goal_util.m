@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,12 +14,10 @@
 :- module hlds__goal_util.
 :- interface.
 
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module assoc_list, bool, list, set, map, term, std_util.
@@ -86,7 +84,7 @@
 	% compute which type-info and type-class-info variables
 	% may need to be non-local to a goal.
 	%
-	% A type-info variable may be non-local to a goal if any of 
+	% A type-info variable may be non-local to a goal if any of
 	% the ordinary non-local variables for that goal are
 	% polymorphically typed with a type that depends on that
 	% type-info variable, or if the type-info is for an
@@ -145,13 +143,13 @@
 
 	% returns all the predids that are used within a goal
 :- pred predids_from_goal(hlds_goal::in, list(pred_id)::out) is det.
-	
+
 	% returns all the predids that are used in a list of goals
 :- pred predids_from_goals(list(hlds_goal)::in, list(pred_id)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-	% Convert a switch back into a disjunction. This is needed 
+	% Convert a switch back into a disjunction. This is needed
 	% for the magic set transformation.
 	% This aborts if any of the constructors are existentially typed.
 :- pred goal_util__switch_to_disjunction(prog_var::in, list(case)::in,
@@ -159,7 +157,7 @@
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	module_info::in, module_info::out) is det.
 
-	% Convert a case into a conjunction by adding a tag test 
+	% Convert a case into a conjunction by adding a tag test
 	% (deconstruction unification) to the case goal.
 	% This aborts if the constructor is existentially typed.
 :- pred goal_util__case_to_disjunct(prog_var::in, cons_id::in, hlds_goal::in,
@@ -193,7 +191,7 @@
 	% The information computed by termination analysis is used when
 	% making this decision.
 	%
-:- pred goal_util__reordering_maintains_termination(module_info::in, bool::in, 
+:- pred goal_util__reordering_maintains_termination(module_info::in, bool::in,
 	hlds_goal::in, hlds_goal::in) is semidet.
 
 	% generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
@@ -253,8 +251,9 @@
 :- import_module hlds__goal_form.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_llds.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_util.
 
 :- import_module int, string, require, varset.
 
@@ -462,7 +461,7 @@ goal_util__rename_unify_rhs(functor(Functor, E, ArgVars0), Must, Subn,
 goal_util__rename_unify_rhs(
 		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocals0, Vars0, Modes, Det, Goal0),
-		Must, Subn, 
+		Must, Subn,
 		lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocals, Vars, Modes, Det, Goal)) :-
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
@@ -597,7 +596,7 @@ goal_util__goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
 		)
 	;
 		true
-	),	
+	),
 	goal_util__rhs_goal_vars(RHS, !Set).
 
 goal_util__goal_vars_2(generic_call(GenericCall, ArgVars, _, _), !Set) :-
@@ -666,13 +665,13 @@ goal_util__cases_goal_vars([case(_, Goal - _) | Cases], !Set) :-
 	set(prog_var)::in, set(prog_var)::out) is det.
 
 goal_util__rhs_goal_vars(RHS, !Set) :-
-	RHS = var(X), 
+	RHS = var(X),
 	set__insert(!.Set, X, !:Set).
 goal_util__rhs_goal_vars(RHS, !Set) :-
 	RHS = functor(_Functor, _, ArgVars),
 	set__insert_list(!.Set, ArgVars, !:Set).
 goal_util__rhs_goal_vars(RHS, !Set) :-
-	RHS = lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal - _), 
+	RHS = lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal - _),
 	set__insert_list(!.Set, NonLocals, !:Set),
 	set__insert_list(!.Set, LambdaVars, !:Set),
 	goal_util__goal_vars_2(Goal, !Set).
@@ -789,7 +788,7 @@ goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(foreign_proc(_, _, _, _, _, _), 1).
 goal_expr_size(shorthand(ShorthandGoal), Size) :-
 	goal_expr_size_shorthand(ShorthandGoal, Size).
-	
+
 :- pred goal_expr_size_shorthand(shorthand_goal_expr::in, int::out) is det.
 
 goal_expr_size_shorthand(bi_implication(LHS, RHS), Size) :-
@@ -918,7 +917,7 @@ goal_expr_calls_pred_id(some(_, _, Goal), PredId) :-
 goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
 
 %-----------------------------------------------------------------------------%
- 
+
 goal_contains_reconstruction(_Goal - _) :-
 	% This will only succeed on the alias branch with structure reuse.
 	semidet_fail.
@@ -951,7 +950,7 @@ goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
 goals_contain_reconstruction(Goals) :-
 	list__member(Goal, Goals),
 	goal_contains_reconstruction(Goal).
- 
+
 %-----------------------------------------------------------------------------%
 
 	% goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
@@ -987,7 +986,7 @@ direct_subgoal(switch(_, _, CaseList), Goal) :-
 
 goal_util__switch_to_disjunction(_, [], _, [],
 		!VarSet, !VarTypes, !ModuleInfo).
-goal_util__switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap, 
+goal_util__switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap,
 		[Goal | Goals], !VarSet, !VarTypes, !ModuleInfo) :-
 	goal_util__case_to_disjunct(Var, ConsId, Goal0, InstMap, Goal,
 		!VarSet, !VarTypes, !ModuleInfo),
@@ -1039,7 +1038,7 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct,
 	goal_info_get_nonlocals(CaseGoalInfo, CaseNonLocals0),
 	set__insert(CaseNonLocals0, Var, CaseNonLocals),
 	goal_info_get_instmap_delta(CaseGoalInfo, CaseInstMapDelta),
-	instmap_delta_apply_instmap_delta(ExtraInstMapDelta, 
+	instmap_delta_apply_instmap_delta(ExtraInstMapDelta,
 		CaseInstMapDelta, InstMapDelta),
 	goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
 	det_conjunction_detism(semidet, CaseDetism0, Detism),
@@ -1051,7 +1050,7 @@ goal_util__case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct,
 %-----------------------------------------------------------------------------%
 
 goal_util__if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
-	goal_util__compute_disjunct_goal_info(Cond0, Then, 
+	goal_util__compute_disjunct_goal_info(Cond0, Then,
 		GoalInfo, CondThenInfo),
 	conj_list_to_goal([Cond0, Then], CondThenInfo, CondThen),
 
@@ -1090,14 +1089,14 @@ goal_util__if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
 	goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, CondPurity,
 		NegCondInfo),
 
-	goal_util__compute_disjunct_goal_info(not(Cond) - NegCondInfo, Else, 
+	goal_util__compute_disjunct_goal_info(not(Cond) - NegCondInfo, Else,
 		GoalInfo, NegCondElseInfo),
-	conj_list_to_goal([not(Cond) - NegCondInfo, Else], 
+	conj_list_to_goal([not(Cond) - NegCondInfo, Else],
 		NegCondElseInfo, NegCondElse),
 	Goal = disj([CondThen, NegCondElse]).
 
 	% Compute a hlds_goal_info for a pair of conjoined goals.
-:- pred goal_util__compute_disjunct_goal_info(hlds_goal::in, hlds_goal::in, 
+:- pred goal_util__compute_disjunct_goal_info(hlds_goal::in, hlds_goal::in,
 	hlds_goal_info::in, hlds_goal_info::out) is det.
 
 goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
@@ -1121,7 +1120,7 @@ goal_util__compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 
 	goal_list_purity([Goal1, Goal2], CombinedPurity),
 
-	goal_info_init(CombinedNonLocals, CombinedDelta, 
+	goal_info_init(CombinedNonLocals, CombinedDelta,
 		CombinedDetism, CombinedPurity, CombinedInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1139,7 +1138,7 @@ goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
 	\+ goal_info_is_impure(EarlierGoalInfo),
 	\+ goal_info_is_impure(LaterGoalInfo),
 
-	goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict, 
+	goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
 		EarlierGoal, LaterGoal),
 
 	%
@@ -1150,17 +1149,17 @@ goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
 		InstmapBeforeEarlierGoal, VarTypes, ModuleInfo),
 
 	%
-	% Don't reorder the goals if the later goal changes the 
+	% Don't reorder the goals if the later goal changes the
 	% instantiatedness of any of the non-locals of the earlier
-	% goal. This is necessary if the later goal clobbers any 
+	% goal. This is necessary if the later goal clobbers any
 	% of the non-locals of the earlier goal, and avoids rerunning
 	% full mode analysis in other cases.
 	%
-	\+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal, 
+	\+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
 		InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
 
-goal_util__reordering_maintains_termination(_ModuleInfo, FullyStrict, 
+goal_util__reordering_maintains_termination(_ModuleInfo, FullyStrict,
 		EarlierGoal, LaterGoal) :-
 	EarlierGoal = _ - EarlierGoalInfo,
 	LaterGoal = _ - LaterGoalInfo,
@@ -1170,18 +1169,18 @@ goal_util__reordering_maintains_termination(_ModuleInfo, FullyStrict,
 	goal_info_get_determinism(LaterGoalInfo, LaterDetism),
 	determinism_components(LaterDetism, LaterCanFail, _),
 
-		% If --fully-strict was specified, don't convert 
-		% (can_loop, can_fail) into (can_fail, can_loop). 
-	( 
-		FullyStrict = yes, 
+		% If --fully-strict was specified, don't convert
+		% (can_loop, can_fail) into (can_fail, can_loop).
+	(
+		FullyStrict = yes,
 		\+ goal_cannot_loop_or_throw(EarlierGoal)
 	->
 		LaterCanFail = cannot_fail
 	;
 		true
 	),
-		% Don't convert (can_fail, can_loop) into 
-		% (can_loop, can_fail), since this could worsen 
+		% Don't convert (can_fail, can_loop) into
+		% (can_loop, can_fail), since this could worsen
 		% the termination properties of the program.
 	( EarlierCanFail = can_fail ->
 		goal_cannot_loop_or_throw(LaterGoal)
@@ -1295,7 +1294,7 @@ generate_unsafe_cast(InArg, OutArg, Context, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-predids_from_goals(Goals, PredIds) :- 
+predids_from_goals(Goals, PredIds) :-
 	(
 		Goals = [],
 		PredIds = []

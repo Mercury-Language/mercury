@@ -61,8 +61,9 @@
 :- import_module hlds__instmap.
 :- import_module hlds__make_hlds.
 :- import_module hlds__quantification.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
 :- import_module bool, list, map, std_util, int, set, require.
@@ -160,13 +161,15 @@ modecheck_unification(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 		% check if variable has a higher-order type
 		type_is_higher_order(TypeOfX, Purity, _, EvalMethod,
 			PredArgTypes),
-		ConsId0 = pred_const(PredId, ProcId, _)
+		ConsId0 = pred_const(ShroudedPredProcId, _)
 	->
 		%
 		% convert the pred term to a lambda expression
 		%
 		mode_info_get_varset(!.ModeInfo, VarSet0),
 		mode_info_get_context(!.ModeInfo, Context),
+		proc(PredId, ProcId) =
+			unshroud_pred_proc_id(ShroudedPredProcId),
 		convert_pred_to_lambda_goal(Purity, EvalMethod,
 			X0, PredId, ProcId, ArgVars0, PredArgTypes,
 			UnifyContext, GoalInfo0, Context,
@@ -1029,9 +1032,11 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
 			% converted back to a predicate constant, but
 			% that doesn't matter since the code will be
 			% pruned away later by simplify.m.
-			ConsId = pred_const(PredId, ProcId, EvalMethod),
+			ConsId = pred_const(ShroudedPredProcId, EvalMethod),
 			instmap__is_reachable(InstMap)
 		->
+			proc(PredId, ProcId) =
+				unshroud_pred_proc_id(ShroudedPredProcId),
 			(
 				RHS0 = lambda_goal(_, _, EvalMethod, _,
 					_, _, _, _, Goal),

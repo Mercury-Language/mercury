@@ -1616,7 +1616,7 @@ report_unused_args(PredInfo, UnusedArgs) -->
 	{ Arity = pred_info_arity(PredInfo) },
 	prog_out__write_context(Context),
 	io__write_string("In "),
-	hlds_out__write_pred_or_func(PredOrFunc),
+	write_pred_or_func(PredOrFunc),
 	io__write_string(" `"),
 	prog_out__write_sym_name(Module),
 	io__write_string("."),

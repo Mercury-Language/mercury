@@ -24,7 +24,7 @@
 	%	CircularTypes, EqvMap, MaybeRecompInfo0, MaybeRecompInfo).
 	%
 	% First it builds up a map from type_ctor to the equivalent type.
-	% Then it traverses through the list of items, expanding all types. 
+	% Then it traverses through the list of items, expanding all types.
 	% This has the effect of eliminating all the equivalence types
 	% from the source code.
 	%
@@ -78,7 +78,7 @@
 	% expanded in each declaration.  Any items which depend on
 	% that declaration also depend on the expanded items.
 :- pred equiv_type__maybe_record_expanded_items(module_name::in, sym_name::in,
-	maybe(recompilation_info)::in, equiv_type_info::out) is det. 
+	maybe(recompilation_info)::in, equiv_type_info::out) is det.
 
 	% Record all the expanded items in the recompilation_info.
 :- pred equiv_type__finish_recording_expanded_items(item_id::in,
@@ -91,12 +91,10 @@
 :- implementation.
 
 % XXX we shouldn't import the HLDS here.
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_data.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -121,7 +119,7 @@ equiv_type__expand_eqv_types(ModuleName, Items0, Items, Error, EqvMap,
 	(
 		ErrorList = []
 	->
-		Error = no	
+		Error = no
 	;
 		list__foldl(equiv_type__report_error,
 			list__reverse(ErrorList), !IO),
@@ -320,10 +318,10 @@ equiv_type__replace_in_item(ModuleName,
 	).
 
 equiv_type__replace_in_item(ModuleName,
-			typeclass(Constraints0, ClassName, Vars, 
+			typeclass(Constraints0, ClassName, Vars,
 				ClassInterface0, VarSet0),
 			_Context, EqvMap, EqvInstMap,
-			typeclass(Constraints, ClassName, Vars, 
+			typeclass(Constraints, ClassName, Vars,
 				ClassInterface, VarSet),
 		Errors, !Info) :-
 	list__length(Vars, Arity),
@@ -349,15 +347,15 @@ equiv_type__replace_in_item(ModuleName,
 		ExpandedItems, !Info).
 
 equiv_type__replace_in_item(ModuleName,
-			instance(Constraints0, ClassName, Ts0, 
+			instance(Constraints0, ClassName, Ts0,
 				InstanceBody, VarSet0, ModName),
 			_Context, EqvMap, _EqvInstMap,
-			instance(Constraints, ClassName, Ts, 
+			instance(Constraints, ClassName, Ts,
 				InstanceBody, VarSet, ModName),
 		[], !Info) :-
 	( ( !.Info = no ; ModName = ModuleName ) ->
 		UsedTypeCtors0 = no
-	;	
+	;
 		UsedTypeCtors0 = yes(ModuleName - set__init)
 	),
 	equiv_type__replace_in_class_constraint_list(EqvMap,
@@ -379,7 +377,7 @@ equiv_type__replace_in_item(ModuleName,
 		[], !Info) :-
 	( ( !.Info = no ; PredName = qualified(ModuleName, _) ) ->
 		ExpandedItems0 = no
-	;	
+	;
 		ExpandedItems0 = yes(ModuleName - ItemIds0)
 	),
 	equiv_type__replace_in_subst(EqvMap, Subst0, Subst, VarSet0, VarSet,
@@ -584,7 +582,7 @@ equiv_type__replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info) :-
 	equiv_type__replace_in_type_2(EqvMap, [], Type0, Type, Changed, _,
 		!VarSet, !Info).
 
-	% Replace all equivalence types in a given type, detecting  
+	% Replace all equivalence types in a given type, detecting
 	% any circularities.
 :- pred equiv_type__replace_in_type_2(eqv_map::in, list(type_ctor)::in,
 	(type)::in, (type)::out, bool::out, bool::out,
@@ -594,7 +592,7 @@ equiv_type__replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info) :-
 equiv_type__replace_in_type_2(_EqvMap, _Seen,
 		term__variable(V), term__variable(V), no, no, !VarSet, !Info).
 equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
-		Changed, Circ, !VarSet, !Info) :- 
+		Changed, Circ, !VarSet, !Info) :-
 	Type0 = term__functor(_, _, _),
 	( type_to_ctor_and_args(Type0, EqvTypeCtor, TArgs0) ->
 		equiv_type__replace_in_type_list_2(EqvMap,
@@ -606,7 +604,7 @@ equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
 		;
 			Circ1 = no
 		),
-		(	
+		(
 			map__search(EqvMap, EqvTypeCtor,
 				eqv_type_body(EqvVarSet, Args0, Body0)),
 			%
@@ -698,8 +696,8 @@ equiv_type__replace_in_inst(Inst0, EqvInstMap, ExpandedInstIds,
 	class_constraints::in, class_constraints::out,
 	list(type_and_mode)::in, list(type_and_mode)::out,
 	tvarset::in, tvarset::out,
-	maybe(type)::in, maybe(type)::out, maybe(inst)::in, maybe(inst)::out, 
-	maybe(determinism)::in, maybe(determinism)::out, 
+	maybe(type)::in, maybe(type)::out, maybe(inst)::in, maybe(inst)::out,
+	maybe(determinism)::in, maybe(determinism)::out,
 	equiv_type_info::in, equiv_type_info::out, list(eqv_error)::out)
 	is det.
 
@@ -728,7 +726,7 @@ equiv_type__replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap,
 			Errors0 = [invalid_with_type(PredName, PredOrFunc)
 					- Context]
 		)
-	;	
+	;
 		MaybeWithType0 = no,
 		ExtraTypes = [],
 		Errors0 = []
@@ -923,7 +921,7 @@ equiv_type__report_error(invalid_with_type(SymName, PredOrFunc) - Context,
 			fixed(error_util__describe_sym_name(SymName))
 		], ':'),
 	Rest = [nl, words("error: expected higher order"),
-			words(error_util__pred_or_func_to_string(PredOrFunc)),	
+			words(error_util__pred_or_func_to_string(PredOrFunc)),
 			words("type after `with_type`.")],
 	error_util__write_error_pieces(Context, 0, FirstLine ++ Rest, !IO).
 equiv_type__report_error(invalid_with_inst(DeclType, SymName, MaybePredOrFunc)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -112,7 +112,7 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 			% for the nested sub-modules depend on this module's
 			% `.int0' file).
 			DepFilesToMake = set__to_sorted_list(
-				set__delete_list(DepFiles0, 
+				set__delete_list(DepFiles0,
 				make_dependency_list(ModulesToCheck,
 					private_interface)))
 		;
@@ -234,9 +234,9 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 			Info2, Info3),
 		list__map_foldl2(get_file_timestamp([dir__this_directory]),
 			TouchedFiles, TouchedFileTimestamps, Info3, Info4),
-		{ MaybeOldestTimestamp0 = list__foldl(find_oldest_timestamp, 
+		{ MaybeOldestTimestamp0 = list__foldl(find_oldest_timestamp,
 			TouchedTargetFileTimestamps, ok(newest_timestamp)) },
-		{ MaybeOldestTimestamp = list__foldl(find_oldest_timestamp, 
+		{ MaybeOldestTimestamp = list__foldl(find_oldest_timestamp,
 			TouchedFileTimestamps, MaybeOldestTimestamp0) },
 
 		get_file_name(no, TargetFile, TargetFileName, Info4, Info5),
@@ -269,7 +269,7 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
 		io__make_temp(ArgFileName),
 		{ MaybeArgFileName = yes(ArgFileName) }
 	;
-		{ MaybeArgFileName = no }	
+		{ MaybeArgFileName = no }
 	),
 	{ Cleanup =
 		(pred(MakeInfo0::in, MakeInfo::out, di, uo) is det -->
@@ -521,7 +521,7 @@ invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded) -->
 		error(
 		"make.module_target.invoke_mmc: argument file not created")
 	},
-		
+
 	io__open_output(ArgFileName, ArgFileOpenRes),
 	(
 		{ ArgFileOpenRes = ok(ArgFileStream) },
@@ -534,7 +534,7 @@ invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded) -->
 		{ Command = string__join_list(" ",
 			[quote_arg(MercuryCompiler),
 				"--arg-file", quote_arg(ArgFileName)]) },
-			
+
 		% We've already written the command.
 		{ CommandVerbosity = verbose },
 		invoke_system_command(ErrorStream,
@@ -626,7 +626,7 @@ compilation_task(_, il_asm) = target_code_to_object_code(non_pic) - [].
 compilation_task(_, java_code) = process_module(compile_to_target_code) -
 					["--java-only"].
 compilation_task(_, asm_code(PIC)) =
-		process_module(compile_to_target_code) - 
+		process_module(compile_to_target_code) -
 			( PIC = pic -> ["--pic"] ; [] ).
 compilation_task(_, object_code(PIC)) =
 	target_code_to_object_code(PIC) - get_pic_flags(PIC).
@@ -719,7 +719,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 		    { HeaderTargets0 = make_target_list(HeaderModuleNames,
 		    			c_header(mih)) }
 		;
-		    { HeaderTargets0 = [] }	
+		    { HeaderTargets0 = [] }
 		)
 	    ;
 	        { CompilationTarget = asm },
@@ -781,10 +781,10 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 			{ TimestampFiles1 =
 				[TimestampFile | TimestampFiles0] }
 		;
-			{ TimestampFiles1 = TimestampFiles0 }			
+			{ TimestampFiles1 = TimestampFiles0 }
 		)
 	    ), TouchedTargetFiles, [], TimestampFileNames),
-			
+
 	{ TouchedFileNames = list__condense([ForeignCodeFiles,
 					TimestampFileNames]) }.
 
@@ -849,7 +849,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles) -->
 					".c", no, FactTableCFile),
 				fact_table_file_name(ModuleName, FactTableFile,
 					ObjExt, no, FactTableObjFile),
-				{ FactTableForeignFile = foreign_code_file(c, 
+				{ FactTableForeignFile = foreign_code_file(c,
 					FactTableCFile, FactTableObjFile) }
 			), Imports ^ fact_table_deps, FactTableForeignFiles),
 		{ ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles }
@@ -864,13 +864,13 @@ external_foreign_code_files(PIC, Imports, ForeignFiles) -->
 external_foreign_code_files_for_il(ModuleName, Language,
 		ForeignFiles) -->
 	(
-		{ ForeignModuleName = foreign_language_module_name(ModuleName, 
+		{ ForeignModuleName = foreign_language_module_name(ModuleName,
 					Language) },
 		{ ForeignExt = foreign_language_file_extension(Language) }
 	->
-		module_name_to_file_name(ForeignModuleName, ForeignExt, yes, 
+		module_name_to_file_name(ForeignModuleName, ForeignExt, yes,
 			ForeignFileName),
-		module_name_to_file_name(ForeignModuleName, ".dll", yes, 
+		module_name_to_file_name(ForeignModuleName, ".dll", yes,
 			ForeignDLLFileName),
 		{ ForeignFiles = [foreign_code_file(Language, ForeignFileName,
 					ForeignDLLFileName)] }

@@ -100,7 +100,6 @@
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
@@ -715,11 +714,12 @@ intermod__module_qualify_unify_rhs(_LHS, RHS @ functor(Functor, _Exist, _Vars),
 		RHS, DoWrite, !Info) :-
 	% Is this a higher-order predicate or higher-order function
 	% term?
-	( Functor = pred_const(PredId, _, _) ->
+	( Functor = pred_const(ShroudedPredProcId, _) ->
 		%
 		% Yes, the unification creates a higher-order term.
 		% Make sure that the predicate/function is exported.
 		%
+		proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
 		intermod__add_proc(PredId, DoWrite, !Info)
 	;
 		%

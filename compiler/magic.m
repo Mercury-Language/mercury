@@ -7,7 +7,7 @@
 % Main author: stayl
 %
 % This module implements the supplementary magic set transformation,
-% sort of as described in 
+% sort of as described in
 % 	C. Beeri and R. Ramakrishnan,
 % 	On the power of magic,
 % 	Journal of Logic Programming,
@@ -47,7 +47,7 @@
 % :- pred p(aditi__state::in, int::out, int::out) is nondet.
 % :- pragma base_relation(p/3).
 %
-% anc(DB, X, Y) :- 
+% anc(DB, X, Y) :-
 %	p(DB, X, Y).
 % anc(DB, X, Y) :-
 %	p(DB, X, Z),
@@ -100,7 +100,7 @@
 % 		int::out, int::out) is nondet.
 % :- pragma aditi(anc__aditi0/3).
 %
-% anc__aditi0(InAnc, X, Y) :- 
+% anc__aditi0(InAnc, X, Y) :-
 %	anc__magic(InAnc, X),
 %	p(V_1, Y),
 %	V1 == X.
@@ -121,7 +121,7 @@
 %	% Collect the input from recursive calls.
 % 	anc__supp1(InAnc, _, Z).
 %
-%	% `anc__supp1' is introduced to do common sub-expression - 
+%	% `anc__supp1' is introduced to do common sub-expression -
 %	% this join would otherwise be done in both `anc__aditi0'
 %	% and `anc__magic'. This is also necessary because rl_gen.m
 %	% only handles rules with at most two database calls.
@@ -143,7 +143,7 @@
 % While it processes the module it checks that there are no higher-order,
 % partially instantiated, polymorphic or abstract arguments since Aditi
 % cannot handle these.
-% 
+%
 % Any closures occurring in Aditi procedures must not have curried arguments.
 % Closures may only be used for aggregates.
 %
@@ -156,7 +156,7 @@
 % Note that the transformation introduces new mangled predicate names,
 % but these should not show up in the generated C code so util/mdemangle does
 % not need to handle them.
-% 
+%
 %-----------------------------------------------------------------------------%
 :- module aditi_backend__magic.
 
@@ -192,8 +192,8 @@
 :- import_module libs__options.
 :- import_module ll_backend.
 :- import_module ll_backend__saved_vars.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module transform_hlds__dead_proc_elim.
 :- import_module transform_hlds__dependency_graph.
@@ -204,9 +204,9 @@
 magic__process_module(ModuleInfo0, ModuleInfo) -->
 
 	%
-	% Run simplification on Aditi procedures, mainly to get rid of 
+	% Run simplification on Aditi procedures, mainly to get rid of
 	% nested explicit quantifications.
-	% 
+	%
 	globals__io_get_globals(Globals),
 	{ simplify__find_simplifications(no, Globals, Simplifications) },
 	process_matching_nonimported_procs(
@@ -229,7 +229,7 @@ magic__process_module(ModuleInfo0, ModuleInfo) -->
 	{ magic_info_init(ModuleInfo3, Info0) },
 	{ module_info_predids(ModuleInfo3, PredIds) },
 
-	% 
+	%
 	% Only preprocess imported Aditi predicates which are used,
 	% to avoid performing error checking (e.g. checking for abstract
 	% types) on predicates which are not used. The check for abstract
@@ -290,7 +290,7 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 	{ proc_info_goal(!.ProcInfo, Goal0) },
 
 	{ Goal0 = if_then_else(_Vars, Cond, Then, Else) - GoalInfo ->
-		goal_util__if_then_else_to_disjunction(Cond, Then, Else, 
+		goal_util__if_then_else_to_disjunction(Cond, Then, Else,
 			GoalInfo, Disj),
 		Goal1 = Disj - GoalInfo,
 		proc_info_set_goal(Goal1, !ProcInfo),
@@ -301,12 +301,12 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 	; Goal0 = switch(Var, _Canfail, Cases) - GoalInfo ->
 		proc_info_varset(!.ProcInfo, VarSet0),
 		proc_info_vartypes(!.ProcInfo, VarTypes0),
-		proc_info_get_initial_instmap(!.ProcInfo, 
+		proc_info_get_initial_instmap(!.ProcInfo,
 			!.ModuleInfo, InstMap),
 		% XXX check for existentially typed constructors first -
 		% they will cause an abort.
 		goal_util__switch_to_disjunction(Var, Cases,
-			InstMap, Disjuncts, VarSet0, VarSet1, 
+			InstMap, Disjuncts, VarSet0, VarSet1,
 			VarTypes0, VarTypes1, !ModuleInfo),
 		proc_info_set_varset(VarSet1, !ProcInfo),
 		proc_info_set_vartypes(VarTypes1, !ProcInfo),
@@ -375,13 +375,13 @@ magic__check_scc_2(SCC) -->
 	->
 		term__context_init(InitContext),
 		set__insert(Errors1, mixed_scc(SCC) - InitContext, Errors)
-	;		
+	;
 		Errors = Errors1
 	},
 	magic_info_set_errors(Errors).
 
 %-----------------------------------------------------------------------------%
-	
+
 	% All the procedures which previously had Aditi markers should
 	% have been renamed apart, leaving the old versions to be called
 	% from C. These old versions must have their aditi/base relation
@@ -431,8 +431,8 @@ magic__find_used_imported_aditi_preds_2(ModuleInfo,
 	Generator = (pred(P::out) is nondet :- goal_calls_pred_id(Goal, P)),
 
 	% Add all used imported Aditi predicates to the accumulator.
-	Accumulator = 
-	    (pred(CalledPredId::in, UsedPreds0::in, UsedPreds::out) is det :-	
+	Accumulator =
+	    (pred(CalledPredId::in, UsedPreds0::in, UsedPreds::out) is det :-
 		module_info_pred_info(ModuleInfo,
 			CalledPredId, CalledPredInfo),
 		(
@@ -475,7 +475,7 @@ magic__process_imported_procs([PredId | PredIds], UsedPreds) -->
 			PredModuleName = pred_info_module(PredInfo),
 			ModuleName = PredModuleName
 		;
-			set__member(PredId, UsedPreds)	
+			set__member(PredId, UsedPreds)
 		}
 	->
 		{ ProcIds = pred_info_procids(PredInfo) },
@@ -492,7 +492,7 @@ magic__process_imported_procs_2(_, []) --> [].
 magic__process_imported_procs_2(PredId, [ProcId | ProcIds]) -->
 	{ PredProcId = proc(PredId, ProcId) },
 	magic__get_scc_inputs([PredProcId], InputTypes, InputModes),
-	magic__adjust_pred_info([PredProcId], InputTypes, 
+	magic__adjust_pred_info([PredProcId], InputTypes,
 		InputModes, PredProcId),
 	magic__process_imported_procs_2(PredId, ProcIds).
 
@@ -551,13 +551,13 @@ magic__process_base_relation(PredId0, ProcId0) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Go over each sub-module adding in the input arguments for each 
-	% procedure, allocating the magic predicates, filling in the 
+	% Go over each sub-module adding in the input arguments for each
+	% procedure, allocating the magic predicates, filling in the
 	% magic_map, pred_map and magic_proc_info fields of the magic_info.
 :- pred magic__preprocess_scc(aditi_scc::in,
 		magic_info::in, magic_info::out) is det.
 
-magic__preprocess_scc(aditi_scc(SCC0, EntryPoints)) --> 
+magic__preprocess_scc(aditi_scc(SCC0, EntryPoints)) -->
 	{ list__condense(SCC0, SCC) },
 	magic__get_scc_inputs(EntryPoints, InputTypes, InputModes),
 	list__foldl(magic__adjust_pred_info(EntryPoints,
@@ -589,7 +589,7 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 			OutputMode = (free -> OutputInst)
 		) },
 	{ list__map(GetOutputMode, InputModes, InputRelModes) },
- 	{ Inst = ground(unique, higher_order(pred_inst_info(predicate, 
+ 	{ Inst = ground(unique, higher_order(pred_inst_info(predicate,
 				InputRelModes, nondet))) },
 	{ Mode = (Inst -> Inst) },
 	magic__get_scc_inputs(PredProcIds, Types, Modes).
@@ -600,13 +600,13 @@ magic__get_scc_inputs([PredProcId | PredProcIds],
 		list(mode)::in, pred_proc_id::in,
 		magic_info::in, magic_info::out) is det.
 
-magic__adjust_pred_info(EntryPoints, MagicTypes, 
+magic__adjust_pred_info(EntryPoints, MagicTypes,
 		MagicModes, PredProcId0) -->
 	{ PredProcId0 = proc(PredId0, ProcId0) },
 	magic__separate_proc(PredId0, ProcId0),
 	magic_info_get_pred_map(PredMap1),
 	{ map__lookup(PredMap1, PredProcId0, PredProcId) },
-	magic__adjust_proc_info(EntryPoints, PredProcId0, PredProcId, 
+	magic__adjust_proc_info(EntryPoints, PredProcId0, PredProcId,
 		MagicTypes, MagicModes).
 
 %-----------------------------------------------------------------------------%
@@ -615,7 +615,7 @@ magic__adjust_pred_info(EntryPoints, MagicTypes,
 	% pred_info for a derived database predicate contains only one
 	% proc_info. This is necessary because the different procedures
 	% have different numbers of input arguments and are members of
-	% different sub-modules, so the transformed procedures will have 
+	% different sub-modules, so the transformed procedures will have
 	% different numbers and types of input relation arguments. We also need
 	% to leave the original declarations so that predicates compiled
 	% to C can call the procedure.
@@ -631,7 +631,7 @@ magic__separate_proc(PredId, ProcId) -->
 	{ set__init(ErrorVars) },
 	magic_info_set_error_vars(ErrorVars),
 
-	% 
+	%
 	% Create a new pred_info for the procedure.
 	%
 
@@ -659,7 +659,7 @@ magic__separate_proc(PredId, ProcId) -->
 	{ set__init(Assertions) },
 	{ pred_info_create(Module, NewName, PredOrFunc, Context,
 		Status, Markers, ArgTypes, TVarSet, ExistQVars,
-		ClassConstraints, Assertions, Owner, ProcInfo0, 
+		ClassConstraints, Assertions, Owner, ProcInfo0,
 		NewProcId, NewPredInfo0) },
 	{ pred_info_set_indexes(Indexes, NewPredInfo0, NewPredInfo) },
 
@@ -672,7 +672,7 @@ magic__separate_proc(PredId, ProcId) -->
 	magic_info_set_module_info(ModuleInfo),
 
 	%
-	% Later we need to convert all calls to the old 
+	% Later we need to convert all calls to the old
 	% procedure to calls to the new.
 	%
 	magic_info_get_pred_map(PredMap0),
@@ -690,7 +690,7 @@ magic__separate_proc(PredId, ProcId) -->
 		pred_proc_id::in, list(type)::in, list(mode)::in,
 		magic_info::in, magic_info::out) is det.
 
-magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId, 
+magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 		MagicTypes, MagicModes) -->
 	magic_info_get_module_info(ModuleInfo0),
 	{ module_info_pred_proc_info(ModuleInfo0, AditiPredProcId,
@@ -729,7 +729,7 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 			% Create a new procedure to collect the input
 			% for the current procedure.
 		magic__create_magic_pred(CPredProcId, LocalAditiPredProcId,
-			MagicTypes, MagicModes, InputArgTypes, InputArgModes, 
+			MagicTypes, MagicModes, InputArgTypes, InputArgModes,
 			InstVarSet, Index)
 	),
 
@@ -737,7 +737,7 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 	% Replace the goal for the C procedure with a goal to
 	% interface with the Aditi procedure from C, unless --aditi-only
 	% was specified or the procedure is imported.
-	% 	
+	%
 	magic__interface_from_c(EntryPoints, CPredProcId,
 		LocalAditiPredProcId).
 
@@ -753,11 +753,11 @@ magic__adjust_proc_info(EntryPoints, CPredProcId, AditiPredProcId,
 		pred_proc_id::out, magic_info::in, magic_info::out) is det.
 
 magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
-		MaybeIndex, MagicTypes, MagicModes, PredInfo0, ProcInfo0, 
+		MaybeIndex, MagicTypes, MagicModes, PredInfo0, ProcInfo0,
 		InputArgTypes, InputArgModes, LocalAditiPredProcId) -->
 
 	%
-	% Check that the argument types and modes 
+	% Check that the argument types and modes
 	% are legal for Aditi procedures.
 	%
 	{ pred_info_arg_types(PredInfo0, TVarSet, ExistQVars, ArgTypes0) },
@@ -794,10 +794,10 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 	{ list__append(MagicTypes, ArgTypes1, ArgTypes) },
 
 	%
-	% Ensure that the exported interface procedure gets the 
+	% Ensure that the exported interface procedure gets the
 	% correct argmodes.
 	%
-	{ instmap_delta_from_mode_list(HeadVars, ArgModes, 
+	{ instmap_delta_from_mode_list(HeadVars, ArgModes,
 		ModuleInfo0, InstMapDelta) },
 	{ proc_info_goal(ProcInfo1, Goal0 - GoalInfo0) },
 	{ goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) },
@@ -815,7 +815,7 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 
 	{ pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes,
 		PredInfo0, PredInfo) },
-	
+
 	{ proc_info_set_headvars(HeadVars, ProcInfo3, ProcInfo4) },
 	{ proc_info_set_argmodes(ArgModes, ProcInfo4, ProcInfo) },
 
@@ -832,7 +832,7 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 		{ LocalAditiPredProcId = AditiPredProcId }
 	),
 
-	{ ThisProcInfo = magic_proc_info(ArgModes1, MagicVars, 
+	{ ThisProcInfo = magic_proc_info(ArgModes1, MagicVars,
 		MagicTypes, MagicModes, MaybeIndex) },
 	magic_info_get_magic_proc_info(MagicProcInfo0),
 	{ map__det_insert(MagicProcInfo0, LocalAditiPredProcId,
@@ -853,7 +853,7 @@ magic__adjust_args(CPredProcId, AditiPredProcId, InterfaceRequired,
 		list(prog_var)::in, list(type)::in, list(mode)::in,
 		list(prog_var)::in, list(type)::in, list(mode)::in,
 		pred_proc_id::out, magic_info::in, magic_info::out) is det.
-	
+
 magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 		ExportedPredInfo0, ExportedProcInfo0, LocalProcInfo,
 		HeadVars1, ArgTypes1, ArgModes1, MagicVars,
@@ -918,7 +918,7 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 	%
 	magic_info_set_pred_info(ExportedPredInfo1),
 	magic_info_set_proc_info(ExportedProcInfo2),
-	magic__interface_call_args(MagicVars, MagicTypes, MagicModes,	
+	magic__interface_call_args(MagicVars, MagicTypes, MagicModes,
 		Index, 1, InputGoals),
 	magic_info_get_pred_info(ExportedPredInfo2),
 	magic_info_get_proc_info(ExportedProcInfo3),
@@ -938,19 +938,19 @@ magic__create_interface_proc(Index, CPredProcId, AditiPredProcId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred magic__interface_call_args(list(prog_var)::in, list(type)::in, 
+:- pred magic__interface_call_args(list(prog_var)::in, list(type)::in,
 	list(mode)::in, int::in, int::in, list(hlds_goal)::out,
 	magic_info::in, magic_info::out) is det.
 
 magic__interface_call_args([], _, _, _, _, []) --> [].
-magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,	
+magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,
 		CalledPredIndex, CurrVar, InputGoals) -->
 	{ NextVar = CurrVar + 1 },
 	magic__interface_call_args(MagicInputs, MagicTypes, MagicModes,
 		CalledPredIndex, NextVar, InputGoals1),
 	( { CurrVar = CalledPredIndex } ->
 		%
-		% Just pass through the closure passed in 
+		% Just pass through the closure passed in
 		% from the calling module.
 		%
 		{ InputGoals = InputGoals1 }
@@ -959,7 +959,7 @@ magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,
 		% Create an empty input closure.
 		%
 		{ list__index1_det(MagicTypes, CurrVar, MagicType) },
-		{ 
+		{
 			type_is_higher_order(MagicType, (pure), predicate,
 				(aditi_bottom_up), ArgTypes1)
 		->
@@ -976,7 +976,7 @@ magic__interface_call_args([MagicInput | MagicInputs], MagicTypes, MagicModes,
 		magic_util__create_closure(CurrVar, MagicInput, InputMode,
 			LambdaGoal, [], Args, InputGoal),
 		{ InputGoals = [InputGoal | InputGoals1] }
-	).	
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1025,13 +1025,13 @@ magic__interface_from_c(EntryPoints, CPredProcId, AditiPredProcId) -->
 	;
 		{ magic__create_input_join_proc(CPredProcId, AditiPredProcId,
 			_JoinPredProcId, ModuleInfo1, ModuleInfo2) },
-		
+
 		%
 		% Change the goal for the original procedure to
 		% call the database procedure.
 		%
 		{ aditi_builtin_ops__create_aditi_call_proc(CPredProcId,
-			ModuleInfo2, ModuleInfo) }, 
+			ModuleInfo2, ModuleInfo) },
 		magic_info_set_module_info(ModuleInfo)
 	).
 
@@ -1170,12 +1170,12 @@ magic__build_join_pred_info(CPredProcId, CPredInfo, JoinProcInfo,
 %-----------------------------------------------------------------------------%
 
 	% Allocate a predicate to collect the input for the current predicate.
-:- pred magic__create_magic_pred(pred_proc_id::in, pred_proc_id::in, 
-		list(type)::in, list(mode)::in, list(type)::in, 
+:- pred magic__create_magic_pred(pred_proc_id::in, pred_proc_id::in,
+		list(type)::in, list(mode)::in, list(type)::in,
 		list(mode)::in, inst_varset::in, maybe(int)::in,
 		magic_info::in, magic_info::out) is det.
 
-magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes, 
+magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		InputTypes0, InputModes0, InstVarSet, Index) -->
 
 	magic_info_get_module_info(ModuleInfo0),
@@ -1186,13 +1186,13 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		% Get some new vars to carry the magic input.
 	{ list__length(MagicTypes, NumMagicArgs) },
 	{ varset__new_vars(VarSet0, NumMagicArgs, MagicArgs, VarSet1) },
-	{ map__det_insert_from_corresponding_lists(VarTypes0, MagicArgs, 
+	{ map__det_insert_from_corresponding_lists(VarTypes0, MagicArgs,
 		MagicTypes, VarTypes1) },
 
 		% Get some new vars for the outputs.
 	{ list__length(InputModes0, NumInputArgs) },
 	{ varset__new_vars(VarSet1, NumInputArgs, InputArgs0, VarSet2) },
-	{ map__det_insert_from_corresponding_lists(VarTypes1, InputArgs0, 
+	{ map__det_insert_from_corresponding_lists(VarTypes1, InputArgs0,
 		InputTypes0, VarTypes2) },
 
 	{ list__map(magic_util__mode_to_output_mode(ModuleInfo0),
@@ -1212,7 +1212,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		list__append(OutputModes0, OutputModes0, OutputModes),
 		assoc_list__from_corresponding_lists(InputArgs0, InputArgs1,
 			ArgsAL0),
-		IsContext = yes(ArgsAL0)	
+		IsContext = yes(ArgsAL0)
 	;
 		VarSet = VarSet2,
 		VarTypes = VarTypes2,
@@ -1233,7 +1233,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 		{ set__list_to_set([CurrPredVar | InputArgs0], NonLocals0) },
 		{ mode_list_get_final_insts(OutputModes0, ModuleInfo0,
 			OutputInsts0) },
-		{ assoc_list__from_corresponding_lists(InputArgs0, 
+		{ assoc_list__from_corresponding_lists(InputArgs0,
 			OutputInsts0, InstAL0) },
 		{ instmap_delta_from_assoc_list(InstAL0, InstMapDelta0) },
 		{ goal_info_init(NonLocals0, InstMapDelta0,
@@ -1248,7 +1248,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 				OutputModes0, Assigns) },
 			{ list__append(OutputInsts0,
 				OutputInsts0, OutputInsts) },
-			{ assoc_list__from_corresponding_lists(InputArgs, 
+			{ assoc_list__from_corresponding_lists(InputArgs,
 				OutputInsts, InstAL) },
 			{ instmap_delta_from_assoc_list(InstAL, InstMapDelta) },
 			{ set__list_to_set([CurrPredVar | InputArgs],
@@ -1277,7 +1277,7 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ proc_info_create(VarSet, VarTypes, AllArgs, AllArgModes, InstVarSet,
 		nondet, Goal, Context, TVarMap, TCVarMap, address_is_not_taken,
 		ProcInfo) },
-	
+
 	%
 	% Fill in the pred_info.
 	%
@@ -1311,13 +1311,13 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	magic_info_get_magic_map(MagicMap0),
 	{ map__det_insert(MagicMap0, PredProcId, MagicPredProcId, MagicMap) },
 	magic_info_set_magic_map(MagicMap).
-	
+
 
 	% Produce assignments to the duplicate outputs
 	% of a context magic predicate.
 :- pred magic__create_assignments(module_info::in,
 		assoc_list(prog_var, prog_var)::in,
-		list(mode)::in, list(hlds_goal)::out) is det.	
+		list(mode)::in, list(hlds_goal)::out) is det.
 
 magic__create_assignments(_, [], [], []).
 magic__create_assignments(_, [], [_|_], _) :-
@@ -1332,7 +1332,7 @@ magic__create_assignments(ModuleInfo, [Arg0 - Arg | ArgsAL],
 	set__list_to_set([Arg0, Arg], NonLocals),
 	instmap_delta_from_assoc_list([Arg - Inst], Delta),
 	goal_info_init(NonLocals, Delta, det, pure, GoalInfo),
-	magic__create_assignments(ModuleInfo, ArgsAL, Modes, Assigns).	
+	magic__create_assignments(ModuleInfo, ArgsAL, Modes, Assigns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1377,7 +1377,7 @@ magic__preprocess_disjunct(Disjunct0, Disjunct) -->
 
 magic__preprocess_goal(Goal, Goals, HOMap0, HOMap) -->
 	magic__preprocess_goal_2(Goal, Goals, HOMap0, HOMap),
-	list__foldl(magic__check_goal_nonlocals, Goals). 
+	list__foldl(magic__check_goal_nonlocals, Goals).
 
 :- pred magic__preprocess_goal_2(hlds_goal::in, list(hlds_goal)::out,
 		map(prog_var, hlds_goal)::in, map(prog_var, hlds_goal)::out,
@@ -1389,7 +1389,7 @@ magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) -->
 	{ Goal = disj(_) - _ }.
 magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) -->
 	{ Goal = switch(_, _, _) - _ }.
-magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) --> 
+magic__preprocess_goal_2(Goal, [Goal], HOMap, HOMap) -->
 	{ Goal = if_then_else(_, _, _, _) - _ }.
 magic__preprocess_goal_2(par_conj(_) - _, _, _, _) -->
 	{ error("Sorry, not yet implemented: parallel conjunction in Aditi procedures") }.
@@ -1414,7 +1414,7 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap, HOMap) -->
 		{ Goals = [Goal] }
 	; { hlds_pred__is_aditi_relation(ModuleInfo, PredId) } ->
 		% The predicates in magic_util.m to deal with input arguments
-		% expect that there are no duplicates. 
+		% expect that there are no duplicates.
 		{ set__init(SeenArgs) },
 		magic__preprocess_call_args(Args, NewArgs, SeenArgs,
 			[], IntroducedArgs, [], ExtraGoals),
@@ -1440,11 +1440,11 @@ magic__preprocess_goal_2(not(Goal0) - Info, [not(Goal) - Info],
 magic__preprocess_goal_2(Goal0, Goals, HOMap0, HOMap) -->
 	{ Goal0 = unify(_, _, _, Uni, _) - GoalInfo },
 	(
-		{ Uni = construct(Var, pred_const(_, _, _), Args, _, _, _, _) }
+		{ Uni = construct(Var, pred_const(_, _), Args, _, _, _, _) }
 	->
 		% Collect up the closure construction so that it can be
 		% placed next to the aggregate goal that uses it.
-		% 
+		%
 		% XXX What about if someone puts a closure inside
 		% a structure? At the moment we don't handle it and
 		% we don't give an error message.
@@ -1453,7 +1453,7 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap0, HOMap) -->
 			{ Args = [] }
 		->
 			[]
-		; 
+		;
 			{ Args = [Arg] },
 			{ proc_info_vartypes(ProcInfo, VarTypes) },
 			{ map__lookup(VarTypes, Arg, ArgType) },
@@ -1475,7 +1475,7 @@ magic__preprocess_goal_2(Goal0, Goals, HOMap0, HOMap) -->
 		{ Uni = assign(Var1, Var2) }
 	->
 		magic_info_get_proc_info(ProcInfo),
-		{ proc_info_vartypes(ProcInfo, VarTypes) },	
+		{ proc_info_vartypes(ProcInfo, VarTypes) },
 		{ map__lookup(VarTypes, Var1, Var1Type) },
 		( { type_is_aditi_state(Var1Type) } ->
 			% Remove assignments of `aditi:state's.
@@ -1565,20 +1565,22 @@ magic__check_goal_nonlocals(Goal) -->
 			Goal = some(_, _, _) - _
 		;
 			Goal = conj(_) - _
-		; 	
+		;
 			Goal = call(_, _, _, _, _, _) - _,
 			magic_util__goal_is_aditi_call(ModuleInfo, PredMap,
 				Goal, _, _)
 		;
 			Goal = unify(_, _, _, Uni, _) - _,
-			Uni = construct(_, pred_const(PredId, ProcId, _),
+			Uni = construct(_, pred_const(ShroudedPredProcId, _),
 				_, _, _, _, _),
+			PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
 			% XXX once the implementation of aggregates has
 			% been updated to use `aditi_bottom_up' closures,
 			% this can be done by just checking the eval_method.
 			(
-				map__contains(PredMap, proc(PredId, ProcId))
+				map__contains(PredMap, PredProcId)
 			;
+				PredProcId = proc(PredId, _),
 				hlds_pred__is_aditi_relation(ModuleInfo,
 					PredId)
 			)
@@ -1609,22 +1611,22 @@ magic__check_goal_nonlocals(Goal) -->
 			{ Error = non_removeable_aditi_state(PredProcId,
 				VarSet, IllegalNonLocals) - Context },
 			{ set__insert(Errors0, Error, Errors) },
-			magic_info_set_errors(Errors)			
+			magic_info_set_errors(Errors)
 		)
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Generate goals to create the closures needed by this call.
-:- pred magic__rename_and_generate_closures(list(prog_var)::in, 
+:- pred magic__rename_and_generate_closures(list(prog_var)::in,
 	list(hlds_goal)::out, hlds_goal::in, hlds_goal::out,
 	map(prog_var, hlds_goal)::in, magic_info::in, magic_info::out) is det.
 
 magic__rename_and_generate_closures([], [], Goal, Goal, _) --> [].
-magic__rename_and_generate_closures([Arg | Args], ExtraGoals, 
+magic__rename_and_generate_closures([Arg | Args], ExtraGoals,
 		Goal0, Goal, HOMap) -->
-	magic__rename_and_generate_closures(Args, ExtraGoals1, 
-		Goal0, Goal1, HOMap), 
+	magic__rename_and_generate_closures(Args, ExtraGoals1,
+		Goal0, Goal1, HOMap),
 	( { map__search(HOMap, Arg, ClosureGoal0) } ->
 		magic_info_get_proc_info(ProcInfo0),
 		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
@@ -1638,7 +1640,7 @@ magic__rename_and_generate_closures([Arg | Args], ExtraGoals,
 			Subn, ClosureGoal) },
 		{ goal_util__rename_vars_in_goal(Goal1, Subn, Goal) },
 		{ ExtraGoals = [ClosureGoal | ExtraGoals1] }
-	;	
+	;
 		{ ExtraGoals = ExtraGoals1 },
 		{ Goal = Goal1 }
 	).
@@ -1656,7 +1658,7 @@ magic__process_scc(aditi_scc(SCC0, _), Info0, Info) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred magic__process_proc(pred_proc_id::in, 
+:- pred magic__process_proc(pred_proc_id::in,
 		magic_info::in, magic_info::out) is det.
 
 magic__process_proc(PredProcId0) -->
@@ -1668,7 +1670,7 @@ magic__process_proc(PredProcId0) -->
 	},
 
 	magic_info_get_module_info(ModuleInfo0),
-	{ module_info_pred_proc_info(ModuleInfo0, PredProcId, 
+	{ module_info_pred_proc_info(ModuleInfo0, PredProcId,
 		PredInfo0, ProcInfo0) },
 	(
 		{ pred_info_is_imported(PredInfo0)
@@ -1692,7 +1694,7 @@ magic__process_proc(PredProcId0) -->
 
 		{ list__length(MagicInputs, NumMagicInputs) },
 		{ list__drop(NumMagicInputs, HeadVars, OldHeadVars) ->
-			partition_args(ModuleInfo0, 
+			partition_args(ModuleInfo0,
 				OldArgModes, OldHeadVars, Inputs, Outputs)
 		;
 			error("magic__process_proc: list__drop failed")
@@ -1725,7 +1727,7 @@ magic__process_proc(PredProcId0) -->
 %-----------------------------------------------------------------------------%
 
 :- pred magic__process_disjuncts(set(prog_var)::in, list(hlds_goal)::in,
-		list(hlds_goal)::out, magic_info::in, magic_info::out) is det.	
+		list(hlds_goal)::out, magic_info::in, magic_info::out) is det.
 
 magic__process_disjuncts(_, [], []) --> [].
 magic__process_disjuncts(HeadVars, [Disjunct0 | Disjuncts0],
@@ -1734,13 +1736,13 @@ magic__process_disjuncts(HeadVars, [Disjunct0 | Disjuncts0],
 	magic__process_disjuncts(HeadVars, Disjuncts0, Disjuncts).
 
 :- pred magic__process_disjunct(set(prog_var)::in, hlds_goal::in,
-		hlds_goal::out, magic_info::in, magic_info::out) is det.	
+		hlds_goal::out, magic_info::in, magic_info::out) is det.
 
-magic__process_disjunct(HeadVars, Disjunct0, Disjunct) --> 
+magic__process_disjunct(HeadVars, Disjunct0, Disjunct) -->
 	{ Disjunct0 = _ - DisjInfo },
 	{ goal_to_conj_list(Disjunct0, GoalList0) },
 	{ list__reverse(GoalList0, RevGoalList0) },
-	magic__get_next_db_pred(RevGoalList0, BeforeGoals, 
+	magic__get_next_db_pred(RevGoalList0, BeforeGoals,
 		MaybeDBCall, [], AfterGoals),
 
 	( { MaybeDBCall = yes(DBCall1) } ->
@@ -1761,8 +1763,8 @@ magic__process_disjunct(HeadVars, Disjunct0, Disjunct) -->
 	{ conj_list_to_goal(GoalList, DisjInfo, Disjunct) }.
 
 	% Search backwards through the goal list for a disjunct.
-	% When a call is found, recursively process the goals before 
-	% it. 
+	% When a call is found, recursively process the goals before
+	% it.
 :- pred magic__process_disjunct_2(list(hlds_goal)::in, db_call::in,
 		set(prog_var)::in, list(hlds_goal)::out,
 		magic_info::in, magic_info::out) is det.
@@ -1770,7 +1772,7 @@ magic__process_disjunct(HeadVars, Disjunct0, Disjunct) -->
 magic__process_disjunct_2(RevBeforeGoals1, DBCall1, NonLocals0, Goals) -->
 
 	% Find the next database call.
-	magic__get_next_db_pred(RevBeforeGoals1, RevBeforeGoals2, 
+	magic__get_next_db_pred(RevBeforeGoals1, RevBeforeGoals2,
 		MaybeDBCall2, [], AfterGoals2),
 
 	( { MaybeDBCall2 = yes(DBCall2) } ->
@@ -1789,7 +1791,7 @@ magic__process_disjunct_2(RevBeforeGoals1, DBCall1, NonLocals0, Goals) -->
 		% use that to create the input for the first call.
 		magic_util__setup_call(Goals3, DBCall1, NonLocals0, Goals)
 	;
-		% We've run out of calls to process, so get the magic 
+		% We've run out of calls to process, so get the magic
 		% input for this procedure to feed the other calls.
 		magic__create_magic_call(MagicCall),
 		{ list__reverse(RevBeforeGoals1, BeforeGoals1) },
@@ -1801,12 +1803,12 @@ magic__process_disjunct_2(RevBeforeGoals1, DBCall1, NonLocals0, Goals) -->
 
 	% Skip along the reversed list of goals to the first database call,
 	% returning the list of goals before and after the call as well.
-:- pred magic__get_next_db_pred(list(hlds_goal)::in, list(hlds_goal)::out, 
-		maybe(db_call)::out, list(hlds_goal)::in, 
+:- pred magic__get_next_db_pred(list(hlds_goal)::in, list(hlds_goal)::out,
+		maybe(db_call)::out, list(hlds_goal)::in,
 		list(hlds_goal)::out, magic_info::in, magic_info::out) is det.
 
 magic__get_next_db_pred([], [], no, Goals, Goals) --> [].
-magic__get_next_db_pred([Goal | RevGoals], RevBeforeGoals, 
+magic__get_next_db_pred([Goal | RevGoals], RevBeforeGoals,
 		MaybeCall, AfterGoals0, AfterGoals) -->
 	magic_info_get_module_info(ModuleInfo),
 	magic_info_get_pred_map(PredMap),

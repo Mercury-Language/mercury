@@ -39,7 +39,6 @@
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_out.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_util.
@@ -71,11 +70,11 @@ recompilation__version__compute_version_numbers(SourceFileTime, Items,
 		map__init(OldInstanceItems),
 		map__init(OldInstanceVersionNumbers)
 	),
-	
+
 	recompilation__version__compute_item_version_numbers(SourceFileTime,
 		GatheredItems, GatheredOldItems, OldItemVersionNumbers,
 		ItemVersionNumbers),
-		
+
 	recompilation__version__compute_instance_version_numbers(SourceFileTime,
 		InstanceItems, OldInstanceItems, OldInstanceVersionNumbers,
 		InstanceVersionNumbers).
@@ -112,7 +111,7 @@ recompilation__version__compute_item_version_numbers(SourceFileTime,
 	).
 
 :- pred recompilation__version__compute_instance_version_numbers(timestamp::in,
-	instance_item_map::in, instance_item_map::in, 
+	instance_item_map::in, instance_item_map::in,
 	instance_version_numbers::in, instance_version_numbers::out) is det.
 
 recompilation__version__compute_instance_version_numbers(SourceFileTime,
@@ -199,7 +198,7 @@ distribute_pragma_items({ItemId, ItemAndContext, Section},
 	% Pragmas can apply to typeclass methods.
 	map__map_values(
 	    (pred(_::in, ClassItems0::in, ClassItems::out) is det :-
-		( 
+		(
 			% Does this pragma match any of the methods
 			% of this class.
 			list__member(_ - ClassItem, ClassItems0),
@@ -234,7 +233,7 @@ distribute_pragma_items({ItemId, ItemAndContext, Section},
 :- type gathered_item_info
 	--->	gathered_item_info(
 			gathered_items :: gathered_items,
-			pragma_items :: list({maybe_pred_or_func_id, 
+			pragma_items :: list({maybe_pred_or_func_id,
 						item_and_context, section}),
 			other_items :: item_list,
 			instances :: instance_item_map
@@ -260,7 +259,7 @@ recompilation__version__gather_items_2(ItemAndContext, !Section) -->
 		{ !:Section = interface }
 	;
 		{ Item = module_defn(_, implementation) }
-	->	
+	->
 		{ !:Section = implementation }
 	;
 		{ Item = type_defn(VarSet, Name, Args, Body, Cond) }
@@ -276,7 +275,7 @@ recompilation__version__gather_items_2(ItemAndContext, !Section) -->
 			{ Body = du_type(_, IsSolverType, _) },
 			{ NameItem = type_defn(VarSet, Name, Args,
 				abstract_type(IsSolverType), Cond) },
-			{ BodyItem = Item }	
+			{ BodyItem = Item }
 		;
 			{ Body = eqv_type(_) },
 			% When we use an equivalence type we
@@ -502,12 +501,12 @@ item_to_item_id(Item, ItemId) :-
 item_to_item_id_2(clause(_, _, _, _, _), no).
 item_to_item_id_2(type_defn(_, Name, Params, _, _),
 		yes(item_id((type), Name - Arity))) :-
-	list__length(Params, Arity).		
+	list__length(Params, Arity).
 item_to_item_id_2(inst_defn(_, Name, Params, _, _),
-		yes(item_id((inst), Name - Arity))) :-	
+		yes(item_id((inst), Name - Arity))) :-
 	list__length(Params, Arity).
 item_to_item_id_2(mode_defn(_, Name, Params, _, _),
-		yes(item_id((mode), Name - Arity))) :-	
+		yes(item_id((mode), Name - Arity))) :-
 	list__length(Params, Arity).
 item_to_item_id_2(module_defn(_, _), no).
 item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
@@ -547,7 +546,7 @@ item_to_item_id_2(pragma(_), no).
 item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	Item = typeclass(_, ClassName, ClassVars, _, _),
-	list__length(ClassVars, ClassArity).	
+	list__length(ClassVars, ClassArity).
 
 	% Instances are handled separately (unlike other items, the module
 	% qualifier on an instance declaration is the module containing
@@ -572,9 +571,9 @@ is_pred_pragma(type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
 is_pred_pragma(inline(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(no_inline(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(obsolete(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(export(Name, PredOrFunc, Modes, _), 
+is_pred_pragma(export(Name, PredOrFunc, Modes, _),
 		yes(yes(PredOrFunc) - Name / Arity)) :-
-	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).	
+	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).
 	% Pragma import declarations are never used
 	% directly by Mercury code.
 is_pred_pragma(import(_, _, _, _, _), no).
@@ -599,7 +598,7 @@ is_pred_pragma(promise_pure(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(promise_semipure(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(termination_info(PredOrFunc, Name, Modes, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)) :-
-	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).	
+	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).
 is_pred_pragma(terminates(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(does_not_terminate(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(check_termination(Name, Arity), yes(no - Name / Arity)).
@@ -637,7 +636,7 @@ items_are_unchanged([Section - (Item1 - _) | Items1],
 	% declarations produced from concrete declarations for use in an
 	% interface file. The varsets may contain variables from the
 	% discarded bodies which will not be present in the items read
-	% in from the interface files for comparison. 
+	% in from the interface files for comparison.
 	%
 	% This code assumes that the variables in the head of a
 	% type or instance declaration are added to the varset before
@@ -717,7 +716,7 @@ item_is_unchanged(Item1, Item2) = Result :-
 		% determinism should have been split into a separate
 		% declaration. This case can only happen if this was
 		% not a combined predicate and mode declaration
-		% (XXX We should warn about this somewhere). 
+		% (XXX We should warn about this somewhere).
 		% For functions a determinism declaration but no modes
 		% implies the default modes. The default modes are
 		% added later by make_hlds.m, so they won't have been
@@ -780,7 +779,7 @@ item_is_unchanged(Item1, Item2) = Result :-
 :- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
 	list(type_and_mode)::in, maybe(type)::in, class_constraints::in,
 	tvarset::in, existq_tvars::in, list(type_and_mode)::in,
-	maybe(type)::in, class_constraints::in) is semidet. 
+	maybe(type)::in, class_constraints::in) is semidet.
 
 pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 		MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
@@ -931,7 +930,7 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
 		MaybeWithInst2 = no,
 		AllModeTerms1 = ModeTerms1,
 		AllModeTerms2 = ModeTerms2
-	),	
+	),
 
 	term__apply_substitution_to_list(AllModeTerms2,
 		InstSubst, SubstAllModeTerms2),
@@ -1046,7 +1045,7 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
 		VersionNumbersTermList = VersionNumbersTermList0
 	;
 		VersionNumbersTermList = [VersionNumbersTerm]
-	),	
+	),
 	map_parser(parse_item_type_version_numbers,
 		VersionNumbersTermList, Result0),
 	(
@@ -1056,7 +1055,7 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
 		VersionNumbers = list__foldl(
 		    (func(VNResult, version_numbers(VNs0, Instances0)) =
 		    		version_numbers(VNs, Instances) :-
-			( 
+			(
 				VNResult = items(ItemType, ItemVNs),
 				VNs = update_ids(VNs0, ItemType, ItemVNs),
 				Instances = Instances0
@@ -1112,11 +1111,11 @@ parse_item_type_version_numbers(Term, Result) :-
 		(
 			Result1 = ok(VNsAL),
 			map__from_assoc_list(VNsAL, VNsMap),
-			Result = ok(instances(VNsMap))	
+			Result = ok(instances(VNsMap))
 		;
 			Result1 = error(A, B),
 			Result = error(A, B)
-		)	
+		)
 	;
 		Result = error("invalid item type version numbers",
 				Term)

@@ -41,84 +41,81 @@
 % set the final insts to `not_reached'.  What this means is that we don't
 % yet have any information about what the final insts will be.  We then keep
 % iterating mode inference passes until we reach a fixpoint.
-
-/*************************************
-To mode-analyse a procedure:
-	1.  Initialize the insts of the head variables.
-	2.  Mode-analyse the goal.
-	3.  a.  If we're doing mode-checking:
-	        Check that the final insts of the head variables
-	        matches that specified in the mode declaration
-	    b.  If we're doing mode-inference:
-		Normalise the final insts of the head variables,
-	        record the newly inferred normalised final insts
-		in the proc_info, and check whether they changed
-		(so that we know when we've reached the fixpoint).
-
-To mode-analyse a goal:
-If goal is
-	(a) a disjunction
-		Mode-analyse the sub-goals;
-		check that the final insts of all the non-local
-		variables are the same for all the sub-goals.
-	(b) a conjunction
-		Attempt to schedule each sub-goal.  If a sub-goal can
-		be scheduled, then schedule it, otherwise delay it.
-		Continue with the remaining sub-goals until there are
-		no goals left.  Every time a variable gets bound,
-		see whether we should wake up a delayed goal,
-		and if so, wake it up next time we get back to
-		the conjunction.  If there are still delayed goals
-		hanging around at the end of the conjunction,
-		report a mode error.
-	(c) a negation
-		Mode-check the sub-goal.
-		Check that the sub-goal does not further instantiate
-		any non-local variables.  (Actually, rather than
-		doing this check after we mode-analyse the subgoal,
-		we instead "lock" the non-local variables, and
-		disallow binding of locked variables.)
-	(d) a unification
-		Check that the unification doesn't attempt to unify
-		two free variables (or in general two free sub-terms)
-		unless one of them is dead.  Split unifications
-		up if necessary to avoid complicated sub-unifications.
-		We also figure out at this point whether or not each
-		unification can fail.
-	(e) a predicate call
-		Check that there is a mode declaration for the
-		predicate which matches the current instantiation of
-		the arguments.  (Also handle calls to implied modes.)
-		If the called predicate is one for which we must infer
-		the modes, then create a new mode for the called predicate
-		whose initial insts are the result of normalising
-		the current inst of the arguments.
-	(f) an if-then-else
-		Attempt to schedule the condition.  If successful,
-		then check that it doesn't further instantiate any
-		non-local variables, mode-check the `then' part
-		and the `else' part, and then check that the final
-		insts match.  (Perhaps also think about expanding
-		if-then-elses so that they can be run backwards,
-		if the condition can't be scheduled?)
-
-To attempt to schedule a goal, first mode-check the goal.  If mode-checking
-succeeds, then scheduling succeeds.  If mode-checking would report
-an error due to the binding of a local variable, then scheduling
-fails.  (If mode-checking would report an error due to the binding of
-a *local* variable, we could report the error right away --
-but this idea has not yet been implemented.)
-
-Note that the notion of liveness used here is different to that
-used in liveness.m and the code generator.  Here, we consider
-a variable live if its value will be used later on in the computation.
-
-******************************************/
-
+%
+% To mode-analyse a procedure:
+% 	1.  Initialize the insts of the head variables.
+% 	2.  Mode-analyse the goal.
+% 	3.  a.  If we're doing mode-checking:
+% 	        Check that the final insts of the head variables
+% 	        matches that specified in the mode declaration
+% 	    b.  If we're doing mode-inference:
+% 		Normalise the final insts of the head variables,
+% 	        record the newly inferred normalised final insts
+% 		in the proc_info, and check whether they changed
+% 		(so that we know when we've reached the fixpoint).
+% 
+% To mode-analyse a goal:
+% If goal is
+% 	(a) a disjunction
+% 		Mode-analyse the sub-goals;
+% 		check that the final insts of all the non-local
+% 		variables are the same for all the sub-goals.
+% 	(b) a conjunction
+% 		Attempt to schedule each sub-goal.  If a sub-goal can
+% 		be scheduled, then schedule it, otherwise delay it.
+% 		Continue with the remaining sub-goals until there are
+% 		no goals left.  Every time a variable gets bound,
+% 		see whether we should wake up a delayed goal,
+% 		and if so, wake it up next time we get back to
+% 		the conjunction.  If there are still delayed goals
+% 		hanging around at the end of the conjunction,
+% 		report a mode error.
+% 	(c) a negation
+% 		Mode-check the sub-goal.
+% 		Check that the sub-goal does not further instantiate
+% 		any non-local variables.  (Actually, rather than
+% 		doing this check after we mode-analyse the subgoal,
+% 		we instead "lock" the non-local variables, and
+% 		disallow binding of locked variables.)
+% 	(d) a unification
+% 		Check that the unification doesn't attempt to unify
+% 		two free variables (or in general two free sub-terms)
+% 		unless one of them is dead.  Split unifications
+% 		up if necessary to avoid complicated sub-unifications.
+% 		We also figure out at this point whether or not each
+% 		unification can fail.
+% 	(e) a predicate call
+% 		Check that there is a mode declaration for the
+% 		predicate which matches the current instantiation of
+% 		the arguments.  (Also handle calls to implied modes.)
+% 		If the called predicate is one for which we must infer
+% 		the modes, then create a new mode for the called predicate
+% 		whose initial insts are the result of normalising
+% 		the current inst of the arguments.
+% 	(f) an if-then-else
+% 		Attempt to schedule the condition.  If successful,
+% 		then check that it doesn't further instantiate any
+% 		non-local variables, mode-check the `then' part
+% 		and the `else' part, and then check that the final
+% 		insts match.  (Perhaps also think about expanding
+% 		if-then-elses so that they can be run backwards,
+% 		if the condition can't be scheduled?)
+% 
+% To attempt to schedule a goal, first mode-check the goal.  If mode-checking
+% succeeds, then scheduling succeeds.  If mode-checking would report
+% an error due to the binding of a local variable, then scheduling
+% fails.  (If mode-checking would report an error due to the binding of
+% a *local* variable, we could report the error right away --
+% but this idea has not yet been implemented.)
+% 
+% Note that the notion of liveness used here is different to that
+% used in liveness.m and the code generator.  Here, we consider
+% a variable live if its value will be used later on in the computation.
+%
 % XXX we ought to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is
 %     dead (causes problems handling e.g. `list__same_length').
-
+%
 % XXX we ought to break unifications into "micro-unifications", because
 %     some code can't be scheduled without splitting up unifications.
 %     For example, `p(X) :- X = f(A, B), B is A + 1.', where
@@ -135,7 +132,6 @@ a variable live if its value will be used later on in the computation.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, list, io, std_util.
@@ -191,7 +187,6 @@ a variable live if its value will be used later on in the computation.
 % The following predicates are used by unique_modes.m.
 
 :- import_module check_hlds__mode_info.
-:- import_module hlds__hlds_data.
 
 	% Modecheck a unification.
 
@@ -358,6 +353,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, set, term, varset.

@@ -34,7 +34,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds__unique_modes.
-:- interface. 
+:- interface.
 
 :- import_module check_hlds__mode_info.
 :- import_module hlds__hlds_goal.
@@ -73,9 +73,9 @@
 :- import_module hlds__hlds_out.
 :- import_module hlds__instmap.
 :- import_module hlds__passes_aux.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 
 :- import_module term, varset.
@@ -119,12 +119,12 @@ unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO) :-
 	%
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 
-	% 
+	%
 	% Grab the original bag of nondet-live vars
 	%
 	mode_info_get_nondet_live_vars(!.ModeInfo, NondetLiveVars0),
 
-	% 
+	%
 	% If the goal is not nondet, then nothing is nondet-live,
 	% so reset the bag of nondet-live vars to be empty.
 	%
@@ -141,7 +141,7 @@ unique_modes__check_goal(Goal0, Goal, !ModeInfo, !IO) :-
 	unique_modes__check_goal_2(GoalExpr0, GoalInfo0, GoalExpr,
 		!ModeInfo, !IO),
 
-	% 
+	%
 	% Restore the original bag of nondet-live vars
 	%
 	mode_info_set_nondet_live_vars(NondetLiveVars0, !ModeInfo),
@@ -356,7 +356,7 @@ unique_modes__check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0,
 	%
 	% :- mode p(di).
 	% p(Var) :-
-	%	(if 
+	%	(if
 	%		(if semidet_succeed then
 	%			clobber(Var), fail
 	%		else
@@ -510,7 +510,7 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 	),
 	mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
-	% to modecheck a pragma_c_code, we just modecheck the proc for 
+	% to modecheck a pragma_c_code, we just modecheck the proc for
 	% which it is the goal.
 unique_modes__check_goal_2(foreign_proc(Attributes, PredId, ProcId0,
 		Args, ExtraArgs, PragmaCode),
@@ -587,7 +587,7 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
 		% If it didn't work, restore the original instmap,
 		% and then call modecheck_call_pred.
 		% That will try all the modes, and will infer
-		% new ones if necessary. 
+		% new ones if necessary.
 		%
 		% We set the declared determinism for newly inferred
 		% modes to be the same as the determinism inferred for
@@ -601,7 +601,7 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId, !ModeInfo) :-
 		proc_info_inferred_determinism(ProcInfo, Determinism),
 		modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
 			ArgVars, NewArgVars, ExtraGoals, !ModeInfo),
-		
+
 		( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 			true
 		;
@@ -637,7 +637,7 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 		ArgOffset, NewArgVars, ExtraGoals, !ModeInfo),
 	( NewArgVars = ArgVars, ExtraGoals = no_extra_goals ->
 		true
-	;	
+	;
 		% this shouldn't happen, since modes.m should do
 		% all the handling of implied modes
 		error("unique_modes.m: call to implied mode?")

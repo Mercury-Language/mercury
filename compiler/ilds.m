@@ -9,7 +9,7 @@
 %
 % The IL instruction set is documented in the Microsoft .NET Framework SDK.
 %
-% See 
+% See
 % 	http://msdn.microsoft.com/net/
 % for more info, including a downloadable (Windows only) version of the
 % SDK available here:
@@ -33,7 +33,7 @@
 		).
 
 	% A method signature
-:- type signature 
+:- type signature
 	---> signature(
 		call_conv,	% calling convention
 		ret_type,	% return type
@@ -58,9 +58,9 @@
 % -------------------------------------------------------------------------
 
 	% if an assembly name is empty it is a reference to a local type
-	% in the same assembly. 
+	% in the same assembly.
 
-:- type structured_name ---> 
+:- type structured_name --->
 		structured_name(
 			assembly_name,		% the name of the assembly
 			namespace_qual_name,	% the name of the top-level class
@@ -87,10 +87,10 @@
 		)
 	;	assembly(ilds__id).
 
-:- type namespace_qual_name == list(ilds__id). 
+:- type namespace_qual_name == list(ilds__id).
 :- type nested_class_name == list(ilds__id).
 
-	
+
 	% An assembly- and namespace-qualified class name is a structured name.
 	% E.g. the ILASM name [Foo]Bar1.Bar2.Baz1/Baz2/Quux is
 	% structured_name("Foo", ["Bar1", "Bar2", "Baz1"], ["Baz2", "Quux"]).
@@ -105,15 +105,15 @@
 	% structured_name("Foo", ["Bar1", "Bar2"], []).
 :- type namespace_name == structured_name.
 
-	% A member of a class 
+	% A member of a class
 :- type class_member_name
 	---> class_member_name(
-			class_name, 
+			class_name,
 			member_name
 	).
 
 	% The name of a member (method, field, event or property)
-:- type member_name 
+:- type member_name
 	--->	ctor		% constructor (initializes instances
 				% of this class)
 	; 	cctor		% class constructor (initializes
@@ -121,16 +121,16 @@
 	;	id(ilds__id).	% ordinary method or field name
 
 	% calling conventions.
-:- type call_conv   
+:- type call_conv
 	--->	call_conv(
 			bool,		% is this an instance method call?
 			call_kind	% what kind of call is it
 	).
 
-:- type call_kind 
+:- type call_kind
 	--->	default
-	; 	vararg	
-	;	unmanaged_cdecl	
+	; 	vararg
+	;	unmanaged_cdecl
 	;	unmanaged_stdcall
 	;	unmanaged_thiscall
 	;	unmanaged_fastcall.
@@ -157,12 +157,12 @@
 	---> 	int8
 	;	int16
 	;	int32
-	;	int64	
+	;	int64
 	;	uint8
 	;	uint16
 	;	uint32
 	;	uint64
-	;	native_int	
+	;	native_int
 	;	native_uint		% Also used for unmanaged pointers.
 	;	float32
 	;	float64
@@ -178,13 +178,13 @@
 	;	interface(class_name)
 	;	'[]'(ilds__type, bounds) % An array
 	;	'&'(ilds__type)		 % A managed pointer
-	;	'*'(ilds__type).	 % A transient pointer (could become 
+	;	'*'(ilds__type).	 % A transient pointer (could become
 					 % managed or unmanaged depending on
 					 % usage).
 
 :- type bounds == list(bound).
 
-:- type bound 
+:- type bound
 	---> 	upper(int)		% 0 <= index <= int
 	;    	lower(int)		% int <= index <= maxint
 	;    	between(int, int).	% int <= index <= int2
@@ -202,22 +202,22 @@
 	--->	i(int)
 	;	f(float).
 
-:- type overflow 
+:- type overflow
 	--->	checkoverflow
 	;	nocheckoverflow.
 
-:- type signed 
+:- type signed
 	--->	signed
 	;	unsigned.  % or unordered for comparisons
 
 	% A variable (local or argument) can be referred to by name or index
-:- type variable 
+:- type variable
 	--->	name(ilds__id)
-	;	index(index). 
+	;	index(index).
 
 :- type index == int.
 
-:- type target 
+:- type target
 	---> 	offset_target(int)
 	;	label_target(label).
 
@@ -227,7 +227,7 @@
 
 	% blocks can be just scope for locals, can surround a block of
 	% handwritten code, or can introduce try or catch code.
-:- type blocktype 
+:- type blocktype
 
 		% scope just introduces a scope for local variables
 	--->	scope(locals)
@@ -237,19 +237,19 @@
 	% each block has a unique identifier (mainly so you can tell which
 	% ones match up without counting them).
 	% XXX should probably use counter type instead.
-:- type blockid == int. 
+:- type blockid == int.
 
-:- type instr 
+:- type instr
 
 
 	% NOT INSTRUCTIONS AT ALL
 	% These are just added to the IL instructions to make it easy to
 	% generate instructions and include debugging information.
 	--->	comment(string)
-	;	label(label)				% a label 
-	;	start_block(blocktype, blockid)		% new block 
+	;	label(label)				% a label
+	;	start_block(blocktype, blockid)		% new block
 	;	end_block(blocktype, blockid)		% end block
-	;	context(string, int)			% context of following 
+	;	context(string, int)			% context of following
 							% code (filename, line)
 	;	il_asm_code(string, int)		% a slab of handwritten
 							% IL assembler (with
@@ -287,7 +287,7 @@
 	;	jmp(methodref) % jump to a specified method
 	;	ldarg(variable)	% load argument onto the stack
 	; 	ldarga(variable)	% fetch address of argument
-	;	ldc(simple_type, constant)	
+	;	ldc(simple_type, constant)
 					% load a numeric constant
 	;	ldftn(methodref)	% push a pointer to a method
 	;	ldind(simple_type)	% indirect load a value onto the stack
@@ -312,11 +312,11 @@
 	;	sub(overflow, signed)	% subtract value2 from value1
 	;	switch(list(target))	% table switch on value
 	;	tailcall		% remove frame before following call
-	;	unaligned(alignment)	% subsequent pointer not aligned 
+	;	unaligned(alignment)	% subsequent pointer not aligned
 	;	volatile		% subsequent pointer ref is volatile
 	;	xor			% bitwise XOR of integer values
 
-	% OBJECT MODEL INSTRUCTIONS 
+	% OBJECT MODEL INSTRUCTIONS
 
 	;	box(ilds__type)		% convert pointer to reference
 	;	callvirt(methodref)	% call a method associated with obj
@@ -392,7 +392,7 @@
 
 get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
 		= SuffixName :-
-	( 
+	(
 		list__last(OuterClassFullName, Last)
 	->
 		SuffixName = [Last | NestedClass]
@@ -402,7 +402,7 @@ get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
 	).
 
 get_class_namespace(structured_name(_, FullName, _)) = NamespaceName :-
-	( 
+	(
 		list__last(FullName, Last),
 		list__remove_suffix(FullName, [Last], NamespaceName0)
 	->
@@ -424,17 +424,17 @@ append_nested_class_name(StructuredName0, ExtraNestedClasses)
 	StructuredName = structured_name(Assembly, Class,
 				NestedClasses ++ ExtraNestedClasses).
 
-calculate_max_stack(Instrs) = 
+calculate_max_stack(Instrs) =
 	calculate_max_stack_2(Instrs, 0, 0).
 
 :- func calculate_max_stack_2(list(ilds__instr), int, int) = int.
 
 calculate_max_stack_2([], _, Max) = Max.
-calculate_max_stack_2([I | Instrs], Current, Max) =  
+calculate_max_stack_2([I | Instrs], Current, Max) =
 		calculate_max_stack_2(Instrs, NewCurrent, NewMax) :-
 
 		% If there is handwritten code, it might increase the
-		% current stack height by its maximum, but it will then 
+		% current stack height by its maximum, but it will then
 		% pop the stack leaving nothing on the stack (so Current
 		% remains the same).
 	( I = il_asm_code(_, HandwrittenMax) ->
@@ -464,11 +464,11 @@ get_stack_difference(start_block(scope(_), _)) 			= 0.
 get_stack_difference(start_block(try, _)) 			= 0.
 get_stack_difference(start_block(catch(_), _)) 			= 1.
 get_stack_difference(context(_, _)) 				= 0.
-get_stack_difference(label(_Label)) 				= 0. 
+get_stack_difference(label(_Label)) 				= 0.
 get_stack_difference(il_asm_code(_, _))				= 0.
 
-get_stack_difference(add(_Overflow, _Signed))	 		= -1. 
-get_stack_difference((and)) 					= -1. 
+get_stack_difference(add(_Overflow, _Signed))	 		= -1.
+get_stack_difference((and)) 					= -1.
 get_stack_difference(arglist) 					=  1.
 get_stack_difference(beq(_))					= -2.
 get_stack_difference(bge(_, _))					= -2.
@@ -482,68 +482,68 @@ get_stack_difference(brtrue(_))					= -1.
 get_stack_difference(brfalse(_))				= -1.
 get_stack_difference(call(MethodRef)) = get_call_stack_difference(MethodRef).
 get_stack_difference(calli(Signature)) = get_calli_stack_difference(Signature).
-get_stack_difference(callvirt(MethodRef)) = 
+get_stack_difference(callvirt(MethodRef)) =
 	get_call_stack_difference(MethodRef).
-get_stack_difference(ceq) 					= -1. 
+get_stack_difference(ceq) 					= -1.
 get_stack_difference(cgt(_Signed)) 				= -1.
-get_stack_difference(ckfinite) 					= 0. 
+get_stack_difference(ckfinite) 					= 0.
 get_stack_difference(clt(_Signed)) 				= -1.
-get_stack_difference(conv(_SimpleType)) 			= 0. 
-get_stack_difference(cpblk) 					= -3. 
-get_stack_difference(div(_Signed)) 				= -1. 
+get_stack_difference(conv(_SimpleType)) 			= 0.
+get_stack_difference(cpblk) 					= -3.
+get_stack_difference(div(_Signed)) 				= -1.
 get_stack_difference(dup) 					= 1.
-get_stack_difference(endfilter) 				= -1. 
-get_stack_difference(endfinally) 				= -1. 
-get_stack_difference(initblk) 					= -3. 
-get_stack_difference(jmp(_MethodRef)) 				= 0. 
-get_stack_difference(ldarg(_)) 					= 1. 
+get_stack_difference(endfilter) 				= -1.
+get_stack_difference(endfinally) 				= -1.
+get_stack_difference(initblk) 					= -3.
+get_stack_difference(jmp(_MethodRef)) 				= 0.
+get_stack_difference(ldarg(_)) 					= 1.
 get_stack_difference(ldarga(_Variable)) 			= 1.
 get_stack_difference(ldc(_Type, _Const)) 			= 1.
-get_stack_difference(ldftn(_MethodRef)) 			= 1. 
-get_stack_difference(ldind(_SimpleType)) 			= 0. 
-get_stack_difference(ldloc(_Variable)) 				= 1. 
+get_stack_difference(ldftn(_MethodRef)) 			= 1.
+get_stack_difference(ldind(_SimpleType)) 			= 0.
+get_stack_difference(ldloc(_Variable)) 				= 1.
 get_stack_difference(ldloca(_Variable)) 			= 1.
-get_stack_difference(ldnull) 					= 1. 
-get_stack_difference(leave(_Target)) 				= 0. 
-get_stack_difference(localloc)		 			= 0. 
-get_stack_difference(mul(_Overflow, _Signed)) 			= -1. 
-get_stack_difference(neg) 					= 0. 
-get_stack_difference(nop) 					= 0. 
-get_stack_difference((not)) 					= 0. 
-get_stack_difference((or)) 					= -1. 
-get_stack_difference(pop) 					= -1. 
-get_stack_difference(rem(_Signed)) 				= -1. 
-get_stack_difference(ret) 					= 0. 
-get_stack_difference(shl) 					= -1. 
-get_stack_difference(shr(_Signed)) 				= -1. 
+get_stack_difference(ldnull) 					= 1.
+get_stack_difference(leave(_Target)) 				= 0.
+get_stack_difference(localloc)		 			= 0.
+get_stack_difference(mul(_Overflow, _Signed)) 			= -1.
+get_stack_difference(neg) 					= 0.
+get_stack_difference(nop) 					= 0.
+get_stack_difference((not)) 					= 0.
+get_stack_difference((or)) 					= -1.
+get_stack_difference(pop) 					= -1.
+get_stack_difference(rem(_Signed)) 				= -1.
+get_stack_difference(ret) 					= 0.
+get_stack_difference(shl) 					= -1.
+get_stack_difference(shr(_Signed)) 				= -1.
 get_stack_difference(starg(_Variable)) 				= -1.
-get_stack_difference(stind(_SimpleType)) 			= -2. 
-get_stack_difference(stloc(_Variable)) 				= -1. 
-get_stack_difference(sub(_OverFlow, _Signed)) 			= -1. 
+get_stack_difference(stind(_SimpleType)) 			= -2.
+get_stack_difference(stloc(_Variable)) 				= -1.
+get_stack_difference(sub(_OverFlow, _Signed)) 			= -1.
 get_stack_difference(switch(_))					= -1.
-get_stack_difference(tailcall) 					= 0. 
+get_stack_difference(tailcall) 					= 0.
 get_stack_difference(unaligned(_)) 				= 0.
-get_stack_difference(volatile) 					= 0. 
-get_stack_difference(xor) 					= -1. 
+get_stack_difference(volatile) 					= 0.
+get_stack_difference(xor) 					= -1.
 
-get_stack_difference(box(_Type)) 				= 0. 
+get_stack_difference(box(_Type)) 				= 0.
 get_stack_difference(castclass(_Type)) 				= 0.
-get_stack_difference(cpobj(_Type)) 				= -2. 
-get_stack_difference(initobj(_Type)) 				= -1. 
-get_stack_difference(isinst(_Type)) 				= 0. 
-get_stack_difference(ldelem(_SimpleType)) 			= -1. 
-get_stack_difference(ldelema(_Type)) 				= -1. 
+get_stack_difference(cpobj(_Type)) 				= -2.
+get_stack_difference(initobj(_Type)) 				= -1.
+get_stack_difference(isinst(_Type)) 				= 0.
+get_stack_difference(ldelem(_SimpleType)) 			= -1.
+get_stack_difference(ldelema(_Type)) 				= -1.
 get_stack_difference(ldfld(_FieldRef)) 				= 0.
 get_stack_difference(ldflda(_FieldRef)) 			= 0.
-get_stack_difference(ldlen) 					= 0. 
+get_stack_difference(ldlen) 					= 0.
 get_stack_difference(ldobj(_Type)) 				= 0.
-get_stack_difference(ldsfld(_FieldRef)) 			= 1. 
-get_stack_difference(ldsflda(_FieldRef)) 			= 1. 
-get_stack_difference(ldstr(_String)) 				= 1. 
+get_stack_difference(ldsfld(_FieldRef)) 			= 1.
+get_stack_difference(ldsflda(_FieldRef)) 			= 1.
+get_stack_difference(ldstr(_String)) 				= 1.
 get_stack_difference(ldtoken(_)) 				= 1.
 get_stack_difference(ldvirtftn(_MethodRef)) 			= 0.
 get_stack_difference(mkrefany(_Type)) 				= 0.
-get_stack_difference(newarr(_Type)) 				= 0. 
+get_stack_difference(newarr(_Type)) 				= 0.
 get_stack_difference(newobj(methoddef(_, _, _, Params))) =  Diff :-
 	Diff = -(length(Params)) + 1.
 get_stack_difference(newobj(local_method(_, _, _, Params))) =  Diff :-
@@ -552,10 +552,10 @@ get_stack_difference(refanytype)				= 0.
 get_stack_difference(refanyval(_Type)) 				= 0.
 get_stack_difference(rethrow)	 				= 0.
 get_stack_difference(sizeof(_Type))				= 1.
-get_stack_difference(stelem(_SimpleType)) 			= -3. 
-get_stack_difference(stfld(_FieldRef)) 				= -2. 
+get_stack_difference(stelem(_SimpleType)) 			= -3.
+get_stack_difference(stfld(_FieldRef)) 				= -2.
 get_stack_difference(stobj(_ClassName))				= -2.
-get_stack_difference(stsfld(_FieldRef)) 			= -1. 
+get_stack_difference(stsfld(_FieldRef)) 			= -1.
 get_stack_difference(throw)					= -1.
 get_stack_difference(unbox(_Type)) 				= 0.
 
@@ -566,16 +566,16 @@ get_stack_difference(unbox(_Type)) 				= 0.
 	% on the stack.
 :- func get_call_stack_difference(methodref) = int.
 get_call_stack_difference(MethodRef) = Diff :-
-	( 
-		MethodRef = methoddef(CallConv, RetType, _, Params) 
-	; 
+	(
+		MethodRef = methoddef(CallConv, RetType, _, Params)
+	;
 		MethodRef = local_method(CallConv, RetType, _, Params)
 	),
 	InstanceDiff = ( CallConv = call_conv(yes, _) -> -1 ; 0 ),
 	RetDiff = ( RetType = void -> 0 ; 1),
 	Diff = -(length(Params)) + InstanceDiff + RetDiff.
 
-	
+
 	% A calli will remove the function pointer, the params, and
 	% remove "this" if it is an instance method, but puts the return
 	% type (if there is one) on the stack.

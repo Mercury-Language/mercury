@@ -24,7 +24,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_util.
 
-:- import_module bool, list, assoc_list, set, map, std_util, term, varset.
+:- import_module bool, list, assoc_list, set, map, std_util.
 
 :- implementation.
 
@@ -43,7 +43,7 @@
 :- import_module libs__options.
 
 % Standard library modules.
-:- import_module int, string, require.
+:- import_module int, string, require, varset, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -55,12 +55,21 @@
 
 :- type pred_id.
 :- type proc_id.
+:- type pred_proc_id	--->	proc(pred_id, proc_id).
 
 	% Predicate and procedure ids are abstract data types. One important
 	% advantage of this arrangement is to make it harder to accidentally
 	% use an integer in their place. However, you can convert between
 	% integers and pred_ids/proc_ids with the following predicates and
 	% functions.
+
+:- func shroud_pred_id(pred_id) = shrouded_pred_id.
+:- func shroud_proc_id(proc_id) = shrouded_proc_id.
+:- func shroud_pred_proc_id(pred_proc_id) = shrouded_pred_proc_id.
+
+:- func unshroud_pred_id(shrouded_pred_id) = pred_id.
+:- func unshroud_proc_id(shrouded_proc_id) = proc_id.
+:- func unshroud_pred_proc_id(shrouded_pred_proc_id) = pred_proc_id.
 
 :- pred pred_id_to_int(pred_id, int).
 :- mode pred_id_to_int(in, out) is det.
@@ -79,7 +88,7 @@
 :- func hlds_pred__initial_proc_id = proc_id.
 
         % Return an invalid predicate or procedure id. These are intended
-	% to be used to initialize the relevant fields in in call(...) goals 
+	% to be used to initialize the relevant fields in in call(...) goals
 	% before we do type- and mode-checks, or when those check find that
 	% there was no predicate matching the call.
 
@@ -111,7 +120,6 @@
 
 :- type simple_call_id == pair(pred_or_func, sym_name_and_arity).
 
-:- type pred_proc_id	--->	proc(pred_id, proc_id).
 :- type pred_proc_list	==	list(pred_proc_id).
 
 :- type prog_var_name == string.
@@ -633,7 +641,7 @@
 	%
 	% Return a pred_info whose fields are filled in from the information
 	% (direct and indirect) in the arguments, and from defaults. The given
-	% proc_info becomes the only procedure of the predicate (currently) 
+	% proc_info becomes the only procedure of the predicate (currently)
 	% and its proc_id is returned as the second last argument.
 
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
@@ -881,6 +889,16 @@
 
 :- type pred_id		==	int.
 :- type proc_id		==	int.
+
+shroud_pred_id(PredId) = shrouded_pred_id(PredId).
+shroud_proc_id(ProcId) = shrouded_proc_id(ProcId).
+shroud_pred_proc_id(proc(PredId, ProcId)) =
+	shrouded_pred_proc_id(PredId, ProcId).
+
+unshroud_pred_id(shrouded_pred_id(PredId)) = PredId.
+unshroud_proc_id(shrouded_proc_id(ProcId)) = ProcId.
+unshroud_pred_proc_id(shrouded_pred_proc_id(PredId, ProcId)) =
+	proc(PredId, ProcId).
 
 pred_id_to_int(PredId, PredId).
 pred_id_to_int(PredId) = PredId.
@@ -2639,76 +2657,6 @@ find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-:- interface.
-
-	% make_n_fresh_vars(Name, N, VarSet0, Vars, VarSet):
-	%	`Vars' is a list of `N' fresh variables allocated from
-	%	`VarSet0'.  The variables will be named "<Name>1", "<Name>2",
-	%	"<Name>3", and so on, where <Name> is the value of `Name'.
-	%	`VarSet' is the resulting varset.
-
-:- pred make_n_fresh_vars(string::in, int::in, list(var(T))::out,
-	varset(T)::in, varset(T)::out) is det.
-
-	% given the list of predicate arguments for a predicate that
-	% is really a function, split that list into the function arguments
-	% and the function return type.
-:- pred pred_args_to_func_args(list(T)::in, list(T)::out, T::out) is det.
-
-	% Get the last two arguments from the list, failing if there
-	% aren't at least two arguments.
-:- pred get_state_args(list(T)::in, list(T)::out, T::out, T::out) is semidet.
-
-	% Get the last two arguments from the list, aborting if there
-	% aren't at least two arguments.
-:- pred get_state_args_det(list(T)::in, list(T)::out, T::out, T::out) is det.
-
-:- implementation.
-
-make_n_fresh_vars(BaseName, N, Vars, VarSet0, VarSet) :-
-	make_n_fresh_vars_2(BaseName, 0, N, Vars, VarSet0, VarSet).
-
-:- pred make_n_fresh_vars_2(string::in, int::in, int::in, list(var(T))::out,
-	varset(T)::in, varset(T)::out) is det.
-
-make_n_fresh_vars_2(BaseName, N, Max, Vars, !VarSet) :-
-	(N = Max ->
-		Vars = []
-	;
-		N1 = N + 1,
-		varset__new_var(!.VarSet, Var, !:VarSet),
-		string__int_to_string(N1, Num),
-		string__append(BaseName, Num, VarName),
-		varset__name_var(!.VarSet, Var, VarName, !:VarSet),
-		Vars = [Var | Vars1],
-		make_n_fresh_vars_2(BaseName, N1, Max, Vars1, !VarSet)
-	).
-
-pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
-	list__length(PredArgs, NumPredArgs),
-	NumFuncArgs = NumPredArgs - 1,
-	( list__split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) ->
-		FuncArgs = FuncArgs0,
-		FuncReturn = FuncReturn0
-	;
-		error("pred_args_to_func_args: function missing return value?")
-	).
-
-get_state_args(Args0, Args, State0, State) :-
-	list__reverse(Args0, RevArgs0),
-	RevArgs0 = [State, State0 | RevArgs],
-	list__reverse(RevArgs, Args).
-
-get_state_args_det(Args0, Args, State0, State) :-
-	( get_state_args(Args0, Args1, State0A, StateA) ->
-		Args = Args1,
-		State0 = State0A,
-		State = StateA
-	;
-		error("hlds_pred__get_state_args_det")
-	).
-
-%-----------------------------------------------------------------------------%
 	% Predicates to deal with record syntax.
 
 :- interface.
@@ -2980,9 +2928,6 @@ hlds_pred__is_differential(ModuleInfo, PredId) :-
 	% the given determinism.
 :- func valid_determinism_for_eval_method(eval_method, determinism) = bool.
 
-	% Convert an evaluation method to a string.
-:- func eval_method_to_string(eval_method) = string.
-
 	% Return true if the given evaluation method requires a
 	% stratification check.
 :- func eval_method_needs_stratification(eval_method) = bool.
@@ -3048,27 +2993,6 @@ valid_determinism_for_eval_method(eval_minimal, Detism) = Valid :-
 	;
 		Valid = no
 	).
-
-eval_method_to_string(eval_normal) =		"normal".
-eval_method_to_string(eval_loop_check) =	"loop_check".
-eval_method_to_string(eval_memo) =		"memo".
-eval_method_to_string(eval_minimal) = 		"minimal_model".
-eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
-	(
-                IsDecl = table_io_decl,
-                DeclStr = "decl, "
-        ;
-                IsDecl = table_io_proc,
-                DeclStr = "proc, "
-        ),
-        (
-                IsUnitize = table_io_unitize,
-                UnitizeStr = "unitize"
-        ;
-                IsUnitize = table_io_alone,
-                UnitizeStr = "alone"
-        ),
-	Str = "table_io(" ++ DeclStr ++ UnitizeStr ++ ")".
 
 eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.

@@ -38,10 +38,10 @@
 
 :- implementation.
 
-:- import_module check_hlds__purity.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_out.
 
 :- import_module int, map, string, std_util, list, counter.
 
@@ -177,7 +177,7 @@ parse_dcg_goal_2("[|]", [X, Xs], Context, Goal, !VarSet, !Counter,
 	new_dcg_var(!VarSet, !Counter, Var),
 	ConsTerm0 = term__functor(term__atom("[|]"), [X, Xs], Context),
 	term__coerce(ConsTerm0, ConsTerm),
-	term_list_append_term(ConsTerm, term__variable(Var), Term), 
+	term_list_append_term(ConsTerm, term__variable(Var), Term),
 	Goal = unify(term__variable(Var0), Term, pure) - Context.
 
 	% Call to '='/1 - unify argument with DCG input arg.
@@ -477,7 +477,7 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
 	Goal = if_then_else(SomeVars, StateVars, Cond, Then, Else) - Context.
 
 	% term_list_append_term(ListTerm, Term, Result):
-	% 	if ListTerm is a term representing a proper list, 
+	% 	if ListTerm is a term representing a proper list,
 	%	this predicate will append the term Term
 	%	onto the end of the list
 

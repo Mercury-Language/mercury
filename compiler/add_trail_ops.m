@@ -46,7 +46,6 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
@@ -291,7 +290,7 @@ goal_expr_add_trail_ops(shorthand(_), _, _, !Info) :-
 
 conj_add_trail_ops(Goals0, Goals, !Info) :-
 	list__map_foldl(goal_add_trail_ops, Goals0, Goals, !Info).
-	
+
 :- pred disj_add_trail_ops(hlds_goals::in, bool::in, code_model::in,
 	prog_var::in, hlds_goals::out,
 	trail_ops_info::in, trail_ops_info::out) is det.
@@ -432,13 +431,13 @@ ground_inst = ground(unique, none).
 
 new_ticket_var(Var, !Info) :-
 	new_var("TrailTicket", ticket_type, Var, !Info).
-	
+
 :- pred new_ticket_counter_var(prog_var::out,
 	trail_ops_info::in, trail_ops_info::out) is det.
 
 new_ticket_counter_var(Var, !Info) :-
 	new_var("SavedTicketCounter", ticket_counter_type, Var, !Info).
-	
+
 :- pred new_var(string::in, (type)::in, prog_var::out,
 	trail_ops_info::in, trail_ops_info::out) is det.
 

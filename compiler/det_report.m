@@ -142,7 +142,9 @@
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__error_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module assoc_list, bool, int, map, set, std_util, require, string.
 :- import_module getopt, term, varset.
@@ -325,7 +327,7 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
 		DeclaredDetism \= cc_multidet
 	->
 		proc_info_context(ProcInfo, Context1),
-		write_error_pieces(Context1, 0, 
+		write_error_pieces(Context1, 0,
 			[words("Error: main/2 must be " ++
 				"`det' or `cc_multi'.")], !IO),
 		module_info_incr_errors(!ModuleInfo)
@@ -1202,7 +1204,7 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
 	;
 		error("det_report_msg: type_to_ctor_and_args failed")
 	),
-	(	
+	(
 		Pieces0 = [],
 		ErrorMsg = "Error:"
 	;
@@ -1252,7 +1254,7 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
 	;
 		error("det_report_msg: type_to_ctor_and_args failed")
 	),
-	(	
+	(
 		Pieces0 = [],
 		ErrorMsg = "Error:"
 	;
@@ -1309,7 +1311,7 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
 	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
 		proc(PredId, ProcId), Desc),
 	goal_info_get_context(GoalInfo, Context),
-	write_error_pieces(Context, 0, 
+	write_error_pieces(Context, 0,
 		[words("In " ++ Desc ++ ":"), nl,
 		words("Determinism error in lambda expression."), nl,
 		words("Declared `"

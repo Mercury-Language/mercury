@@ -15,14 +15,11 @@
 :- interface.
 
 :- import_module libs.
-:- import_module hlds. % XXX for hlds_data__cons_id
 :- import_module backend_libs. % XXX for `foreign'
 :- import_module recompilation.
 
 % The parse tree data type itself.
 :- include_module prog_data.
-:- include_module (inst).
-	% XXX inst uses hlds_data__cons_id
 
 % The parser.
 :- include_module prog_io.
@@ -37,6 +34,7 @@
 :- include_module prog_out.
 
 % Utility routines.
+:- include_module prog_mode.
 :- include_module prog_util.
 :- include_module error_util.
 
@@ -53,12 +51,10 @@
 % :- include_module intermod.
 % :- include_module trans_opt.
 
-% :- implementation.
+%-----------------------------------------------------------------------------%
 
 % XXX lots of stuff uses hlds_data__type_id and type_util.m.
 % XXX modules.m uses llds_out for the init names.
-
-%-----------------------------------------------------------------------------%
 
 :- implementation.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 University of Melbourne.
+% Copyright (C) 2002-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,7 +103,7 @@ build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->
 	;
 		{ Succeeded = Succeeded0 },
 		{ Info = Info1 }
-	).	
+	).
 
 :- type signal_action ---> signal_action.
 :- pragma foreign_type("C", signal_action, "MR_signal_action").
@@ -364,7 +364,7 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 		}
 
 		/*
-		** Restore the system call signal behaviour. 
+		** Restore the system call signal behaviour.
 		*/
 		MR_signal_should_restart(SIGINT, MR_TRUE);
 		MR_signal_should_restart(SIGTERM, MR_TRUE);

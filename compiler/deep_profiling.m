@@ -38,7 +38,6 @@
 :- import_module libs__options.
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__trace.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds.
@@ -598,11 +597,11 @@ transform_det_proc(ModuleInfo, PredProcId, !Proc) :-
 		PredProcId = proc(PredId, ProcId)
 	),
 
-	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
 	ProcStatic = hlds_proc_static(FileName, LineNumber, IsInInterface,
 		CallSites),
-	ProcStaticConsId = deep_profiling_proc_layout(RttiProcLabel),
+	ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+	ProcStaticConsId = deep_profiling_proc_layout(ShroudedPredProcId),
 	generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
 
 	(
@@ -693,11 +692,11 @@ transform_semi_proc(ModuleInfo, PredProcId, !Proc) :-
 		PredProcId = proc(PredId, ProcId)
 	),
 
-	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
 	ProcStatic = hlds_proc_static(FileName, LineNumber,
 		IsInInterface, CallSites),
-	ProcStaticConsId = deep_profiling_proc_layout(RttiProcLabel),
+	ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+	ProcStaticConsId = deep_profiling_proc_layout(ShroudedPredProcId),
 	generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
 
 	(
@@ -800,11 +799,11 @@ transform_non_proc(ModuleInfo, PredProcId, !Proc) :-
 	CallSites = DeepInfo ^ call_sites,
 
 	PredProcId = proc(PredId, ProcId),
-	RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
 	IsInInterface = is_proc_in_interface(ModuleInfo, PredId, ProcId),
 	ProcStatic = hlds_proc_static(FileName, LineNumber,
 		IsInInterface, CallSites),
-	ProcStaticConsId = deep_profiling_proc_layout(RttiProcLabel),
+	ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+	ProcStaticConsId = deep_profiling_proc_layout(ShroudedPredProcId),
 	generate_unify(ProcStaticConsId, ProcStaticVar, BindProcStaticVarGoal),
 
 	(
@@ -992,7 +991,7 @@ transform_goal(Path, some(QVars, CanRemove, Goal0) - GoalInfo0,
 		GoalInfo1 = GoalInfo0,
 		MaybeCut = no_cut
 	;
-		% Given a subgoal containing both nondet code and impure code, 
+		% Given a subgoal containing both nondet code and impure code,
 		% determinism analysis will remove the `some' wrapped around
 		% that subgoal if it is allowed to. If we get here, then the
 		% subgoal inside the `some' contains nondet code, and the deep
@@ -1070,7 +1069,7 @@ transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
 	;
 		GenericCall = aditi_builtin(_, _),
 		error("deep_profiling__transform_call: aditi_builtin")
-	).	
+	).
 
 :- pred transform_conj(int::in, goal_path::in,
 	list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
@@ -1271,7 +1270,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 			], Goals),
 			Goal = conj(Goals) - GoalInfo
 		;
-			
+
 			ExtraVars = list_to_set([MiddleCSD | SaveRestoreVars]),
 			WrappedGoalGoalInfo =
 				goal_info_add_nonlocals_make_impure(GoalInfo,
@@ -1315,7 +1314,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
 
 transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
 	Vars0 = !.DeepInfo ^ vars,
-	VarTypes0 = !.DeepInfo ^ var_types, 
+	VarTypes0 = !.DeepInfo ^ var_types,
 
 	CPointerType = c_pointer_type,
 	varset__new_named_var(Vars0, "SavedPtr", SavedPtrVar, Vars1),

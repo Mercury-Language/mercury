@@ -27,7 +27,7 @@
 % The MLDS data structure is quite full-featured, including for example
 % support for arbitrary nesting, multiple return values, and tagged pointers.
 % However, many
-% of the intended target languages don't support all of those features. 
+% of the intended target languages don't support all of those features.
 % Therefore the HLDS->MLDS compiler must ensure that the final MLDS code that
 % it eventually generates does not use features which the target does not
 % support.  This will (presumably) be accomplished by having handle_options.m
@@ -35,7 +35,7 @@
 % HLDS->MLDS compiler take account of those flags and either generate simpler
 % MLDS code in the first place or run some extra simplification passes over
 % the MLDS code before invoking the MLDS->target compiler.
-% 
+%
 
 %-----------------------------------------------------------------------------%
 %
@@ -103,7 +103,7 @@
 % MLDS variable names are determined by the HLDS variable name and
 % (in some cases, to avoid ambiguity) variable number.  The MLDS
 % variable name is a structured term that keeps the original variable
-% name separate from the distinguishing variable number. 
+% name separate from the distinguishing variable number.
 % It is up to each individual backend to mangle the variable name
 % and number to avoid ambiguity where necessary.
 % All references to MLDS variables must however be fully qualified
@@ -134,7 +134,7 @@
 %
 % If there is an MLDS type corresponding to a Mercury type, then
 % the Mercury type name maps directly to the MLDS type name,
-% suitably module-qualified of course. 
+% suitably module-qualified of course.
 % The MLDS type name includes the type arity (arity overloading is allowed).
 % However, if a low-level data representation scheme is used,
 % then some Mercury types may not have corresponding MLDS type names
@@ -180,7 +180,7 @@
 % MLDS functions used to implement each procedure.]
 
 % 9. Type classes.
-% 
+%
 % Currently type classes are handled early and at a fairly low level.
 % It's not yet clear how easy it will be to convert this to MLDS.
 % It may depend to some degree on the target language.
@@ -194,7 +194,7 @@
 %
 % Mercury instance definitions should map to classes which implement the
 % corresponding interface.  Note that if there is an instance declaration
-% `:- instance foo(bar)', then the MLDS type for `bar' will *not* implement 
+% `:- instance foo(bar)', then the MLDS type for `bar' will *not* implement
 % the MLDS interface for `foo' -- instead, there will be a new MLDS type
 % for `instance foo(bar)' which implements that interface.
 
@@ -276,7 +276,7 @@
 %-----------------------------------------------------------------------------%
 %
 % Notes on garbage collection and liveness.
-% 
+%
 
 % "Liveness-accurate GC" is GC in which the collector does not trace local
 % variables which are definitely not live according to a straight-forward
@@ -419,7 +419,7 @@
 % package mscorlib it will return System.Object.
 :- func mlds_module_name_to_sym_name(mlds__package_name) = sym_name.
 
-% Give the name of a Mercury module, return the name of the corresponding 
+% Give the name of a Mercury module, return the name of the corresponding
 % MLDS package.
 :- func mlds_module_name_to_package_name(mlds_module_name) = sym_name.
 
@@ -481,7 +481,7 @@
 
 			proc_id,		% Mode number.
 
-				% A sequence number used to distinguish 
+				% A sequence number used to distinguish
 				% different MLDS functions when compiling a
 				% single HLDS predicate into multiple MLDS
 				% functions (e.g. to handle backtracking).
@@ -544,7 +544,7 @@
 	% (i.e. the original Mercury procedure was declared `:- external').
 	% (If you want to generate an abstract body consider adding another
 	% alternative here).
-:- type mlds__function_body 
+:- type mlds__function_body
 	--->	defined_here(mlds__statement)
 	;	external.
 
@@ -761,10 +761,10 @@
 
 	;	mlds__rtti_type(rtti_id_maybe_element)
 
-		% A type used by the ML code generator for references 
-		% to variables that have yet to be declared.  This occurs 
-		% once in ml_code_util.m where references to env_ptr's are 
-		% generated but the declaration of these env_ptr's does not 
+		% A type used by the ML code generator for references
+		% to variables that have yet to be declared.  This occurs
+		% once in ml_code_util.m where references to env_ptr's are
+		% generated but the declaration of these env_ptr's does not
 		% occur until the ml_elim_nested pass.
 	;	mlds__unknown_type.
 
@@ -920,7 +920,7 @@
 	%
 	% sequence
 	%
-		block(mlds__defns, list(mlds__statement))	
+		block(mlds__defns, list(mlds__statement))
 
 	%
 	% iteration
@@ -1003,7 +1003,7 @@
 
 	;	return(list(mlds__rval))	% Some targets will not support
 						% returning more than one value
-						
+
 	%
 	% commits (a specialized form of exception handling)
 	%
@@ -1038,7 +1038,7 @@
 		% ensure that the call to __builtin_longjmp() is
 		% not in the same function as the call to
 		% __builtin_setjmp().
-		%	
+		%
 	;	try_commit(mlds__lval, mlds__statement, mlds__statement)
 	;	do_commit(mlds__rval)
 
@@ -1076,7 +1076,7 @@ XXX Full exception handling support is not yet implemented.
 	%
 
 	;	atomic(mlds__atomic_statement)
-	
+
 	.
 
 %-----------------------------------------------------------------------------%
@@ -1167,7 +1167,7 @@ XXX Full exception handling support is not yet implemented.
 	% hint and generate code which does not remove the caller's
 	% stack frame and/or which falls through to the following
 	% statement.
-	% 
+	%
 :- type call_kind
 	--->	no_return_call	% a call that never returns
 				% (this is a special case of a tail call)
@@ -1250,7 +1250,7 @@ XXX Full exception handling support is not yet implemented.
 					% The arguments to the constructor.
 			list(mlds__type)
 					% The types of the arguments to the
-					% constructor. 
+					% constructor.
 					%
 					% Note that for --low-level-data, we box
 					% all fields of objects created with
@@ -1266,7 +1266,7 @@ XXX Full exception handling support is not yet implemented.
 					% HLDS->MLDS code generator
 					% to insert code to box/unbox
 					% the arguments.
-					% 
+					%
 		)
 
 	;	gc_check
@@ -1356,7 +1356,7 @@ XXX Full exception handling support is not yet implemented.
 				% calculated by the foreign code into.
 		)
 	;	unused.
-		
+
 	%
 	% This is just a random selection of possible languages
 	% that we might want to target...
@@ -1383,7 +1383,7 @@ XXX Full exception handling support is not yet implemented.
 			% following `#line' directives work OK,
 			% either the string in a raw_target_code must
 			% end in `\n' (or `\n' followed by whitespace),
-			% or the following target_code_component must be 
+			% or the following target_code_component must be
 			% a `name(Name)' component, for which we do not
 			% output #line directives.
 	;	target_code_input(mlds__rval)
@@ -1432,7 +1432,7 @@ XXX Full exception handling support is not yet implemented.
 	% A field_id represents some data within an object
 	%
 
-:- type field_id 
+:- type field_id
 	--->		% offset(N) represents the field
 			% at offset N Words.
 	 	offset(mlds__rval)
@@ -1455,8 +1455,8 @@ XXX Full exception handling support is not yet implemented.
 	% An mlds__var represents a variable or constant.
 	%
 :- type mlds__var == mlds__fully_qualified_name(mlds__var_name).
-:- type mlds__var_name ---> 
-		mlds__var_name(string, maybe(int)). 
+:- type mlds__var_name --->
+		mlds__var_name(string, maybe(int)).
 		% var name and perhaps a unique number to be added as a
 		% suffix where necessary.
 
@@ -1464,22 +1464,22 @@ XXX Full exception handling support is not yet implemented.
 	% An lval represents a data location or variable that can be used
 	% as the target of an assignment.
 	%
-:- type mlds__lval 
+:- type mlds__lval
 
 	%
 	% values on the heap
 	% or fields of a structure
 	%
-	--->	field(maybe(mlds__tag), mlds__rval, field_id, 
+	--->	field(maybe(mlds__tag), mlds__rval, field_id,
 			mlds__type, mlds__type)
 				% field(Tag, Address, FieldId, FieldType,
 				%	PtrType)
 				% selects a field of a compound term.
 				% Address is a tagged pointer to a cell
-				% on the heap; the position in the cell, 
-				% FieldId, is represented either as a field 
-				% name or a number of words offset. If Tag is 
-				% yes, the arg gives the value of the tag; if 
+				% on the heap; the position in the cell,
+				% FieldId, is represented either as a field
+				% name or a number of words offset. If Tag is
+				% yes, the arg gives the value of the tag; if
 				% it is no, the tag bits will have to be masked
 				% off. The value of the tag should be given if
 				% it is known, since this will lead to
@@ -1508,7 +1508,7 @@ XXX Full exception handling support is not yet implemented.
 	% values somewhere in memory
 	% this is the deference operator (e.g. unary `*' in C)
 	%
-	;	mem_ref(mlds__rval, mlds__type)	
+	;	mem_ref(mlds__rval, mlds__type)
 				% The rval should have originally come
 				% from a mem_addr rval.
 				% The type is the type of the value being
@@ -1518,8 +1518,8 @@ XXX Full exception handling support is not yet implemented.
 	% variables
 	% these may be local or they may come from some enclosing scope
 	% the variable name should be fully qualified
-	;	var(mlds__var, mlds__type) 
-	
+	;	var(mlds__var, mlds__type)
+
 	.
 
 %-----------------------------------------------------------------------------%
@@ -1528,7 +1528,7 @@ XXX Full exception handling support is not yet implemented.
 %
 
 	% An rval is an expression that represents a value.
-:- type mlds__rval	
+:- type mlds__rval
 	--->	lval(mlds__lval)
 		% The value of an `lval' rval is just the value stored in
 		% the specified lval.
@@ -1560,7 +1560,7 @@ XXX Full exception handling support is not yet implemented.
 			% box(MLDSType)
 			% convert from MLDSType to mlds__generic_type,
 			% by boxing if necessary, or just casting if not
-	--->	box(mlds__type)	
+	--->	box(mlds__type)
 
 			% unbox(MLDSType)
 			% convert from mlds__generic_type to MLDSType,
@@ -1568,10 +1568,10 @@ XXX Full exception handling support is not yet implemented.
 			% i.e. unboxing if boxing was necessary,
 			% and just casting otherwise.
 	;	unbox(mlds__type)
-		
+
 			% cast(MLDSType):
 			% Coerce the type of the rval to be MLDSType.
-			% XXX it might be worthwhile adding the 
+			% XXX it might be worthwhile adding the
 			% type that we cast from.
 	;	cast(mlds__type)
 	;	std_unop(builtin_ops__unary_op).
@@ -1589,7 +1589,7 @@ XXX Full exception handling support is not yet implemented.
 	;	multi_string_const(int, string)
 	;	code_addr_const(mlds__code_addr)
 	;	data_addr_const(mlds__data_addr)
-		% A null value, of the given type. 
+		% A null value, of the given type.
 		% Usually the type will be a pointer (mlds__ptr_type)
 		% but it could also be string or a func_type.
 		% (Null is not a valid value of type string
@@ -1695,7 +1695,7 @@ XXX Full exception handling support is not yet implemented.
 			bool			% function without return value
 						% (i.e. non-default mode)
 		)
-			
+
 	;	special_pred(
 			string,			% pred name
 			maybe(mercury_module_name),
@@ -1745,7 +1745,7 @@ mlds__get_prog_context(mlds__context(Context)) = Context.
 % MLDS type and instead fully convert all Mercury types to MLDS types.
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
-	( 
+	(
 		type_to_ctor_and_args(Type, TypeCtor, [ElemType]),
 		TypeCtor = qualified(unqualified("array"), "array") - 1
 	->
@@ -1801,8 +1801,9 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 				% This is checked by check_foreign_type
 				% in make_hlds.
 				unexpected(this_file,
-				"mercury_type_to_mlds_type: No Java foreign type")
-			)	
+					"mercury_type_to_mlds_type: " ++
+					"No Java foreign type")
+			)
 		;
 			Target = asm,
 			(

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -7,7 +7,7 @@
 % Main author: stayl
 %
 % Find the basic blocks and loops in a list of RL instructions.
-% Produce a flow graph. 
+% Produce a flow graph.
 % See the Dragon Book for details.
 %-----------------------------------------------------------------------------%
 :- module aditi_backend__rl_block.
@@ -21,7 +21,7 @@
 
 :- import_module bool, io, int, list, map, relation, set, std_util.
 
-:- pred rl_block__create_flow_graph(bool::in, module_info::in, 
+:- pred rl_block__create_flow_graph(bool::in, module_info::in,
 		rl_proc::in, rl_opt_info::out,
 		io__state::di, io__state::uo) is det.
 
@@ -63,7 +63,7 @@ rl_block__build_maps(ModuleInfo, Proc, Info) :-
 	Proc = rl_proc(_, Inputs, Outputs, Memoed, RelInfo, Instrs, _),
 	rl_opt_info_init(ModuleInfo, RelInfo, Inputs, Outputs, Memoed,
 		Info0, FirstBlockId),
-	
+
 	% Some analyses require that the first block not be branched
 	% to from anywhere, so we add an empty one here.
 	block_info_init(BlockInfo),
@@ -73,13 +73,13 @@ rl_block__build_maps(ModuleInfo, Proc, Info) :-
 	rl_opt_info_add_flow_graph_arc(FirstBlockId, BlockId, Info2, Info3),
 	rl_block__build_maps_2([], Instrs, BlockId, no, Info3, Info).
 
-:- pred rl_block__build_maps_2(list(rl_instruction)::in, 
+:- pred rl_block__build_maps_2(list(rl_instruction)::in,
 		list(rl_instruction)::in, block_id::in, maybe(label_id)::in,
 		rl_opt_info::in, rl_opt_info::out) is det.
 
 rl_block__build_maps_2(RevBlockInstrs, [], BlockId, MaybeLabel) -->
-	% Some analyses, e.g. liveness, require that the last block 
-	% only falls through to the end of the procedure, so we add an 
+	% Some analyses, e.g. liveness, require that the last block
+	% only falls through to the end of the procedure, so we add an
 	% extra one even if there are no instructions.
 	{ list__reverse(RevBlockInstrs, BlockInstrs) },
 	{ block_info_init(BlockInfo) },
@@ -87,7 +87,7 @@ rl_block__build_maps_2(RevBlockInstrs, [], BlockId, MaybeLabel) -->
 	rl_opt_info_add_block(BlockId, Block),
 	rl_opt_info_set_last_block_id(BlockId).
 
-rl_block__build_maps_2(RevBlockInstrs0, [Instr | Instrs], 
+rl_block__build_maps_2(RevBlockInstrs0, [Instr | Instrs],
 		BlockId, MaybeLabel0) -->
 	( { Instr = label(Label) - _ } ->
 		% Assign a new block_id for the label.
@@ -97,7 +97,7 @@ rl_block__build_maps_2(RevBlockInstrs0, [Instr | Instrs],
 		{ block_info_init(BlockInfo) },
 		{ Block = block(MaybeLabel0, BlockInstrs, no, BlockInfo) },
 		rl_opt_info_add_block(BlockId, Block),
-		rl_block__build_maps_2([], Instrs, LabelBlockId, yes(Label)) 
+		rl_block__build_maps_2([], Instrs, LabelBlockId, yes(Label))
 	; { Instr = conditional_goto(_, Label) - _ } ->
 		rl_opt_info_add_label(Label, LabelBlockId),
 		rl_opt_info_add_flow_graph_arc(BlockId, LabelBlockId),
@@ -111,7 +111,7 @@ rl_block__build_maps_2(RevBlockInstrs0, [Instr | Instrs],
 			yes(Instr), BlockInfo) },
 		rl_opt_info_add_block(BlockId, Block),
 
-		rl_block__build_maps_2([], Instrs, NextBlockId, no) 
+		rl_block__build_maps_2([], Instrs, NextBlockId, no)
 	; { Instr = goto(Label) - _ } ->
 		rl_opt_info_add_label(Label, LabelBlockId),
 		rl_opt_info_add_flow_graph_arc(BlockId, LabelBlockId),
@@ -127,21 +127,21 @@ rl_block__build_maps_2(RevBlockInstrs0, [Instr | Instrs],
 		( { rl_block__get_next_label(NextLabel, Instrs, Instrs1) } ->
 			rl_opt_info_add_label(NextLabel, NextLabelBlockId),
 			rl_block__build_maps_2([], Instrs1,
-				NextLabelBlockId, yes(NextLabel)) 
+				NextLabelBlockId, yes(NextLabel))
 		;
 			% There must always be a way to get to the end
 			% of the procedure.
-			{ error("rl_block__build_maps - goto not followed by a label") }	
+			{ error("rl_block__build_maps - goto not followed by a label") }
 		)
 	; { Instr = comment - _ } ->
-		% Strip comments, since they are likely to be fairly 
+		% Strip comments, since they are likely to be fairly
 		% meaningless after optimization.
-		rl_block__build_maps_2(RevBlockInstrs0, 
+		rl_block__build_maps_2(RevBlockInstrs0,
 			Instrs, BlockId, MaybeLabel0)
 	;
-		rl_block__build_maps_2([Instr | RevBlockInstrs0], 
+		rl_block__build_maps_2([Instr | RevBlockInstrs0],
 			Instrs, BlockId, MaybeLabel0)
-	).	
+	).
 
 	% Find the next label after an unconditional goto, removing
 	% any instructions in between since they are dead code.
@@ -159,7 +159,7 @@ rl_block__get_next_label(NextLabel, [Instr | Instrs0], Instrs1) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% See dragon book p. 670. 
+	% See dragon book p. 670.
 	% A node in the flow graph dominates another node if all paths to
 	% the second node from the initial node pass through the first.
 :- pred rl_block__get_dominator_info(rl_opt_info::in, rl_opt_info::out) is det.
@@ -174,7 +174,7 @@ rl_block__get_dominator_info -->
 		% The initial node dominates itself.
 	rl_opt_info_get_first_block_id(FirstBlockId),
 	{ set__singleton_set(InitialNodeDominators, FirstBlockId) },
-	{ set_dominating_nodes(Dominators0, FirstBlockId, 
+	{ set_dominating_nodes(Dominators0, FirstBlockId,
 		InitialNodeDominators, Dominators1) },
 
 		% Initially, all non-initial nodes dominate all other
@@ -189,15 +189,15 @@ rl_block__get_dominator_info -->
 		list__foldl(
 			rl_block__get_dominator_info_single_pass(FlowGraph),
 			NonInitialNodeList, Dom0 - no, Dom - Changed)
-	) },	
+	) },
 	{ compute_to_fixpoint(SinglePass, Dominators2, Dominators) },
 	rl_opt_info_set_dominator_info(Dominators).
 
-:- pred rl_block__get_dominator_info_single_pass(flow_graph::in, 
+:- pred rl_block__get_dominator_info_single_pass(flow_graph::in,
 	block_id::in, pair(dominator_info, bool)::in,
 	pair(dominator_info, bool)::out) is det.
 
-rl_block__get_dominator_info_single_pass(FlowGraph, Node, 
+rl_block__get_dominator_info_single_pass(FlowGraph, Node,
 		Dominators0 - Changed0, Dominators - Changed) :-
 	relation__lookup_element(FlowGraph, Node, NodeKey),
 	relation__lookup_to(FlowGraph, NodeKey, Predecessors0),
@@ -212,7 +212,7 @@ rl_block__get_dominator_info_single_pass(FlowGraph, Node,
 				Inter::out) is det :-
 			relation__lookup_key(FlowGraph, PredecessorKey,
 				Predecessor),
-			lookup_dominating_nodes(Dominators0, Predecessor, 
+			lookup_dominating_nodes(Dominators0, Predecessor,
 				PredecessorDom),
 			set__intersect(Inter0, PredecessorDom, Inter)
 		),
@@ -235,7 +235,7 @@ rl_block__get_dominator_info_single_pass(FlowGraph, Node,
 
 	% Find the back edges in the flow graph, then find the loop for
 	% each back edge.
-:- pred rl_block__find_loops(rl_opt_info::in, rl_opt_info::out) is det. 
+:- pred rl_block__find_loops(rl_opt_info::in, rl_opt_info::out) is det.
 
 rl_block__find_loops -->
 	rl_opt_info_get_flow_graph(FlowGraph),
@@ -253,7 +253,7 @@ rl_block__find_loops -->
 		( CallingNode = CalledNode ->
 			set__singleton_set(LoopNodes, CallingNode)
 		;
-			set__list_to_set([CallingNode, CalledNode], 
+			set__list_to_set([CallingNode, CalledNode],
 				LoopNodes0),
 			queue__init(NodesToProcess0),
 			queue__put(NodesToProcess0, CallingNode,
@@ -275,7 +275,7 @@ rl_block__get_loop(FlowGraph, DominatorInfo, NodeQueue0,
 		relation__lookup_element(FlowGraph, Node, NodeKey),
 		relation__lookup_to(FlowGraph, NodeKey, Predecessors),
 		set__to_sorted_list(Predecessors, PredecessorList),
-		HandlePredecessor = (pred(PredecessorKey::in, Info0::in, 
+		HandlePredecessor = (pred(PredecessorKey::in, Info0::in,
 		    		Info::out) is det :-
 		    	Info0 = Nodes0 - Queue0,
 			relation__lookup_key(FlowGraph, PredecessorKey,
@@ -289,14 +289,14 @@ rl_block__get_loop(FlowGraph, DominatorInfo, NodeQueue0,
 			),
 			Info = Nodes - Queue
 		),
-		list__foldl(HandlePredecessor, PredecessorList, 
+		list__foldl(HandlePredecessor, PredecessorList,
 			LoopNodes0 - NodeQueue1, LoopNodes1 - NodeQueue2),
 		rl_block__get_loop(FlowGraph, DominatorInfo, NodeQueue2,
 			LoopNodes1, LoopNodes)
 	;
 		LoopNodes = LoopNodes0
 	).
-	
+
 %-----------------------------------------------------------------------------%
 
 :- pred compute_to_fixpoint(pred(T, T, bool), T, T).
@@ -324,7 +324,7 @@ rl_block__get_nonlocal_relations(NonLocals) -->
 		SingleBlockRels0 - NonLocals1, _ - NonLocals).
 
 :- pred rl_block__update_nonlocal_relations(block_id::in,
-		pair(set(relation_id))::in, pair(set(relation_id))::out, 
+		pair(set(relation_id))::in, pair(set(relation_id))::out,
 		rl_opt_info::in, rl_opt_info::out) is det.
 
 rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
@@ -382,7 +382,7 @@ rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
 	% pass through the first.
 :- type dominator_info	==	map(block_id, set(block_id)).
 
-:- type loop		
+:- type loop
 	---> loop(
 		block_id,	% entry block
 		set(block_id)	% all blocks
@@ -400,7 +400,7 @@ rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
 		rl_opt_info::in, rl_opt_info::out) is det.
 :- pred rl_opt_info_get_block_map(block_map::out,
 		rl_opt_info::in, rl_opt_info::out) is det.
-:- pred rl_opt_info_get_module_info(module_info::out, 
+:- pred rl_opt_info_get_module_info(module_info::out,
 		rl_opt_info::in, rl_opt_info::out) is det.
 :- pred rl_opt_info_get_label_map(label_map::out,
 		rl_opt_info::in, rl_opt_info::out) is det.
@@ -488,7 +488,7 @@ rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
 :- type rl_opt_info
 	--->	rl_opt_info(
 			block_id,			% next block id
-			relation_info_map,	
+			relation_info_map,
 			label_id,			% next label_id
 			block_id,			% first block_id
 			block_map,
@@ -497,7 +497,7 @@ rl_block__update_nonlocal_relations(BlockId, Single0 - Multi0, Single - Multi)
 			flow_graph,
 			dominator_info,
 			list(loop),
-			list(block_id),			% blocks in 
+			list(block_id),			% blocks in
 							% reverse order
 			block_id,			% last block_id
 			list(relation_id),		% inputs
@@ -607,7 +607,7 @@ rl_opt_info_init(ModuleInfo, RelationInfoMap, Inputs, Outputs,
 		NextRelationId = 0
 	),
 
-	Info = rl_opt_info(FirstBlockId, RelationInfoMap, 0, 0, BlockMap0, 
+	Info = rl_opt_info(FirstBlockId, RelationInfoMap, 0, 0, BlockMap0,
 		ModuleInfo, LabelMap0, FlowGraph0, DominatorInfo0, [], [], 0,
 		Inputs, Outputs, MemoedRels, NextRelationId, unit).
 
@@ -646,7 +646,7 @@ rl_opt_info_add_label(LabelId, LabelBlockId) -->
 	rl_opt_info_get_label_map(LabelMap0),
 	( { map__search(LabelMap0, LabelId, LabelBlockId1) } ->
 		{ LabelBlockId = LabelBlockId1 }
-	;	
+	;
 		rl_opt_info_get_next_block_id(LabelBlockId),
 		{ map__det_insert(LabelMap0, LabelId,
 			LabelBlockId, LabelMap) },
@@ -690,7 +690,7 @@ rl_opt_info_set_relation_info(RelationId, RelationInfo) -->
 	rl_opt_info_set_relation_info_map(RelMap).
 
 rl_opt_info_add_relation(Schema, RelationId) -->
-	rl_opt_info_get_next_relation_id(RelationId),	
+	rl_opt_info_get_next_relation_id(RelationId),
 	{ NextRelationId = RelationId + 1 },
 	rl_opt_info_set_next_relation_id(NextRelationId),
 	{ rl__relation_id_to_string(RelationId, RelName) },
@@ -701,16 +701,16 @@ rl_opt_info_add_relation(Schema, RelationId) -->
 	rl_opt_info_get_relation_info_map(RelMap0),
 	{ map__det_insert(RelMap0, RelationId, RelationInfo, RelMap) },
 	rl_opt_info_set_relation_info_map(RelMap).
-	
+
 %-----------------------------------------------------------------------------%
 
 rl_opt_info_add_flow_graph_arc(CallingBlock, CalledBlock) -->
 	rl_opt_info_get_flow_graph(FlowGraph0),
-	{ relation__add_element(FlowGraph0, CallingBlock, 
+	{ relation__add_element(FlowGraph0, CallingBlock,
 		CallingBlockKey, FlowGraph1) },
 	{ relation__add_element(FlowGraph1, CalledBlock,
 		CalledBlockKey, FlowGraph2) },
-	{ relation__add(FlowGraph2, CallingBlockKey, 
+	{ relation__add(FlowGraph2, CallingBlockKey,
 		CalledBlockKey, FlowGraph) },
 	rl_opt_info_set_flow_graph(FlowGraph).
 
@@ -730,7 +730,7 @@ rl_block__get_proc(Info0, ProcName, MercuryProcs, Proc) :-
 	list__reverse(RevOrder, Order),
 	rl_opt_info_get_block_map(BlockMap, Info1, Info2),
 	GetInstrs = (pred(BlockId::in, Instrs::out) is det :-
-		map__lookup(BlockMap, BlockId, 
+		map__lookup(BlockMap, BlockId,
 			block(MaybeLabel, Instrs0, MaybeBranch, _)),
 		( MaybeBranch = yes(Branch) ->
 			list__append(Instrs0, [Branch], Instrs1)
@@ -761,10 +761,10 @@ rl_block__dump_blocks(yes, Info0, Info) -->
 	{ rl_opt_info_get_block_map(BlockMap, Info1, Info2) },
 	{ rl_opt_info_get_relation_info_map(RelInfo, Info2, Info3) },
 	{ rl_opt_info_get_module_info(ModuleInfo, Info3, Info) },
-	list__foldl(rl_block__dump_block(BlockMap, RelInfo, ModuleInfo), 
+	list__foldl(rl_block__dump_block(BlockMap, RelInfo, ModuleInfo),
 		BlockOrder).
 
-:- pred rl_block__dump_block(block_map::in, relation_info_map::in, 
+:- pred rl_block__dump_block(block_map::in, relation_info_map::in,
 	module_info::in, block_id::in, io__state::di, io__state::uo) is det.
 
 rl_block__dump_block(BlockMap, RelMap, ModuleInfo, BlockId) -->
@@ -773,12 +773,12 @@ rl_block__dump_block(BlockMap, RelMap, ModuleInfo, BlockId) -->
 
 	{ Block = block(MaybeLabel, Instrs, MaybeBranch, BlockInfo) },
 	( { MaybeLabel = yes(Label) } ->
-		rl_dump__write_instruction(ModuleInfo, 
+		rl_dump__write_instruction(ModuleInfo,
 			RelMap, label(Label) - "")
 	;
 		[]
 	),
-	io__write_list(Instrs, "", 
+	io__write_list(Instrs, "",
 		rl_dump__write_instruction(ModuleInfo, RelMap)),
 	( { MaybeBranch = yes(Branch) } ->
 		rl_dump__write_instruction(ModuleInfo, RelMap, Branch)
@@ -819,7 +819,7 @@ rl_block__dump_flow_graph_2(Graph, Block) -->
 	io__write_list(CalledBlocks, ", ", io__write_int),
 	io__nl.
 
-:- pred rl_block__dump_loops(bool::in, list(loop)::in, 
+:- pred rl_block__dump_loops(bool::in, list(loop)::in,
 		io__state::di, io__state::uo) is det.
 
 rl_block__dump_loops(no, _) --> [].

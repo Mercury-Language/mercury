@@ -116,7 +116,6 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module check_hlds__mode_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__term_norm.
@@ -940,7 +939,7 @@ make_type_ctor_info(TypeCtor, TypeCtorVar, TypeCtorGoals, !Info) :-
 
 % Generate a goal that looks up the size of Arg at runtime, given that the
 % type_info of Arg's type is in TypeInfoVar.
-% 
+%
 % We ultimately always want to compute the sum of the sizes of the fields
 % being defined, so if we have previously looked up the sizes of other fields,
 % then combine the operation of looking up Arg's size with adding that size to

@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- module hlds__arg_info.
-:- interface. 
+:- interface.
 
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_module.
@@ -122,7 +122,7 @@ generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
 	module_info::in, module_info::out) is det.
 
 generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
-generate_proc_list_arg_info(PredId, [ProcId | ProcIds], 
+generate_proc_list_arg_info(PredId, [ProcId | ProcIds],
 		!ModuleInfo) :-
 	module_info_preds(!.ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),

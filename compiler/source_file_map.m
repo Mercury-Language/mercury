@@ -21,7 +21,7 @@
 	%
 	% FileNameIsMapped is `yes' if ModuleName is in
 	% the Mercury.modules file.
-:- pred lookup_module_source_file(module_name::in, file_name::out, 
+:- pred lookup_module_source_file(module_name::in, file_name::out,
 		io__state::di, io__state::uo) is det.
 
 	% Return `yes' if there is a valid Mercury.modules file.
@@ -151,7 +151,7 @@ read_until_char(EndChar, Chars0, Result) -->
 		( { Char = EndChar } ->
 			{ Result = ok(Chars0) }
 		;
-			read_until_char(EndChar, [Char | Chars0], Result)	
+			read_until_char(EndChar, [Char | Chars0], Result)
 		)
 	;
 		{ CharRes = eof },

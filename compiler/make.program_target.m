@@ -106,7 +106,7 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info) -->
 	    { BuildDepsResult \= error }
 	->
 	    build_with_check_for_interrupt(
-		build_with_output_redirect(MainModuleName, 
+		build_with_output_redirect(MainModuleName,
 			build_linked_target(MainModuleName, FileType,
 				OutputFileName, MaybeTimestamp, AllModules,
 				ObjModules, CompilationTarget,
@@ -125,7 +125,7 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info) -->
 
 get_target_modules(TargetType, AllModules, TargetModules, Info0, Info) -->
     globals__io_get_target(CompilationTarget),
-    ( 
+    (
 	{
 		TargetType = errors
 	;
@@ -147,7 +147,7 @@ get_target_modules(TargetType, AllModules, TargetModules, Info0, Info) -->
 			ModuleName = Imports ^ source_file_module_name
 		->
 			TargetModules1 = [ModuleName | TargetModules0]
-		;	
+		;
 			TargetModules1 = TargetModules0
 		}
 	    ),
@@ -206,7 +206,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info) -->
 	;
 		{ ObjectTargets = ForeignObjectTargets }
 	).
-	
+
 
 :- pred build_linked_target(module_name::in, linked_target_type::in,
 	file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
@@ -228,7 +228,7 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			CommandString, PreLinkSucceeded)
 	;
 		{ PreLinkSucceeded = yes }
-	),	
+	),
 
 	( { PreLinkSucceeded = yes } ->
 		build_linked_target_2(MainModuleName, FileType, OutputFileName,
@@ -270,7 +270,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			MainModuleName, AllModulesList, InitObjectResult),
 		(
 			{ InitObjectResult = yes(InitObject) },
-			
+
 			% We may need to update the timestamp
 			% of the `_init.o' file.
 			{ Info1 = Info0 ^ file_timestamps :=
@@ -392,7 +392,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		),
 
 		{ Info5 = Info4 ^ command_line_targets :=
-			set__delete(Info4 ^ command_line_targets, 
+			set__delete(Info4 ^ command_line_targets,
 				MainModuleName - linked_target(FileType)) },
 		( { Succeeded = yes } ->
 			{ Info = Info5 ^ file_timestamps :=
@@ -446,7 +446,7 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
 
 make_misc_target(MainModuleName - TargetType, Succeeded, Info0, Info) -->
 	build_with_module_options(MainModuleName, [],
-		make_misc_target(MainModuleName - TargetType), 
+		make_misc_target(MainModuleName - TargetType),
 		Succeeded, Info0, Info).
 
 :- pred make_misc_target(pair(module_name, misc_target_type)::in,
@@ -472,7 +472,7 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, Info0, Info) -->
 		list__foldl2(make_module_clean, AllModules, Info3, Info4),
 		remove_init_files(MainModuleName, Info4, Info)
 	;
-		{ TargetType = realclean },	
+		{ TargetType = realclean },
 		{ Succeeded = yes },
 		make_main_module_realclean(MainModuleName, Info3, Info4),
 		list__foldl2(make_module_realclean, AllModules, Info4, Info)
@@ -698,7 +698,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 		{ error("install_library_grade: bad DEFAULT_MCFLAGS") }
 	),
 
-	( 
+	(
 		{ OptionsError = yes(OptionsMessage) },
 		usage_error(OptionsMessage),
 		{ Succeeded = no }
@@ -715,7 +715,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 				File = target(_ - Target),
 				target_is_grade_or_arch_dependent(Target)
 			    )
-			), 
+			),
 			map__to_assoc_list(StatusMap0))) },
 		{ Info1 = (Info0 ^ dependency_status := StatusMap)
 				^ option_args := OptionArgs },
@@ -791,7 +791,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName,
 	(
 		{ Target = c, HighLevelCode = yes
 		; Target = asm,
-			Imports ^ foreign_code = contains_foreign_code(_) 
+			Imports ^ foreign_code = contains_foreign_code(_)
 		}
 	->
 		{ GradeIncDir = LibDir/"lib"/Grade/FullArch/"inc" },
@@ -1047,7 +1047,7 @@ make_module_clean(ModuleName, !Info) -->
 	remove_file(CSharpModule, foreign_language_file_extension(csharp),
 		!Info),
 	remove_target_file(CSharpModule, foreign_il_asm(csharp), !Info),
-	
+
 	{ McppModule = foreign_language_module_name(ModuleName,
 				managed_cplusplus) },
 	remove_file(McppModule,

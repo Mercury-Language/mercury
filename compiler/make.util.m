@@ -70,7 +70,7 @@
 	% Perform the given closure after updating the option_table in
 	% the globals in the io__state to contain the module-specific
 	% options for the specified module and the extra options given
-	% in ExtraArgs and OptionArgs 
+	% in ExtraArgs and OptionArgs
 	% Does not add `--invoked-by-mmc-make' and `--use-subdirs'
 	% to the option list.
 	% The old option table will be restored afterwards.
@@ -284,7 +284,7 @@ foldl3_maybe_stop_at_error_2(KeepGoing, P, [T | Ts],
 %-----------------------------------------------------------------------------%
 
 build_with_module_options_and_output_redirect(ModuleName,
-		ExtraOptions, Build, Succeeded, Info0, Info) -->	
+		ExtraOptions, Build, Succeeded, Info0, Info) -->
     build_with_module_options(ModuleName, ExtraOptions,
 	(pred(AllOptions::in, Succeeded1::out,
 			Info1::in, Info2::out, di, uo) is det -->
@@ -339,7 +339,7 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
 		MaybeInfo = no,
 		Succeeded = no
 	;
-		OptionsResult = yes(ModuleOptionArgs), 
+		OptionsResult = yes(ModuleOptionArgs),
 		globals__io_get_globals(Globals, !IO),
 
 		% --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS
@@ -405,12 +405,12 @@ unredirect_output(ModuleName, ErrorOutputStream, Info0, Info) -->
    (
 	{ TmpErrorInputRes = ok(TmpErrorInputStream) },
 	module_name_to_file_name(ModuleName, ".err", yes, ErrorFileName),
-	( { set__member(ModuleName, Info0 ^ error_file_modules) } -> 
+	( { set__member(ModuleName, Info0 ^ error_file_modules) } ->
 		io__open_append(ErrorFileName, ErrorFileRes)
 	;
 		io__open_output(ErrorFileName, ErrorFileRes)
 	),
-	( 
+	(
 	    { ErrorFileRes = ok(ErrorFileOutputStream) },
 	    globals__io_lookup_int_option(output_compile_error_lines,
 			LinesToWrite),
@@ -490,10 +490,10 @@ get_timestamp_file_timestamp(ModuleName - FileType,
 
 get_dependency_timestamp(file(FileName, MaybeOption), MaybeTimestamp,
 			Info0, Info) -->
-	(       
+	(
 		{ MaybeOption = yes(Option) },
 		globals__io_lookup_accumulating_option(Option, SearchDirs)
-	;       
+	;
 		{ MaybeOption = no },
 		{ SearchDirs = [dir__this_directory] }
 	),
@@ -506,7 +506,7 @@ get_dependency_timestamp(target(Target), MaybeTimestamp, Info0, Info) -->
 		% file changed, the interface files of the imported module
 		% must have changed in a way that would force the `.c' and
 		% `.o' files of the current module to be rebuilt.
-		MaybeTimestamp = ok(oldest_timestamp)	
+		MaybeTimestamp = ok(oldest_timestamp)
 	;
 		MaybeTimestamp = MaybeTimestamp0
 	}.
@@ -530,7 +530,7 @@ get_target_timestamp(Search, ModuleName - FileType, MaybeTimestamp,
 		% it just means that a library wasn't compiled with
 		% `--intermodule-optimization'.
 		%
-		get_module_dependencies(ModuleName, MaybeImports,	
+		get_module_dependencies(ModuleName, MaybeImports,
 			Info2, Info3),
 		{
 			MaybeImports = yes(Imports),
@@ -549,12 +549,12 @@ get_target_timestamp(Search, ModuleName - FileType, MaybeTimestamp,
 	).
 
 get_file_name(Search, ModuleName - FileType, FileName, Info0, Info) -->
-	( { FileType = source } -> 
+	( { FileType = source } ->
 		%
 		% In some cases the module name won't match the file
 		% name (module mdb.parse might be in parse.m or mdb.m),
 		% so we need to look up the file name here.
-		% 
+		%
 		get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
 		(
 			{ MaybeImports = yes(Imports) },
@@ -588,7 +588,7 @@ get_file_name(Search, ModuleName - FileType, FileName, Info0, Info) -->
 	).
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, Info0, Info) -->
-	( { MaybeTimestamp0 = Info0 ^ file_timestamps ^ elem(FileName) } -> 
+	( { MaybeTimestamp0 = Info0 ^ file_timestamps ^ elem(FileName) } ->
 		{ Info = Info0 },
 		{ MaybeTimestamp = MaybeTimestamp0 }
 	;
@@ -618,7 +618,7 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, Info0, Info) -->
 	).
 
 :- pred get_search_directories(module_target_type::in, list(dir_name)::out,
-		io__state::di, io__state::uo) is det.	
+		io__state::di, io__state::uo) is det.
 
 get_search_directories(FileType, SearchDirs) -->
 	( { yes(SearchDirOpt) = search_for_file_type(FileType) } ->
@@ -627,7 +627,7 @@ get_search_directories(FileType, SearchDirs) -->
 		% Make sure the current directory is searched
 		% for C headers and libraries.
 		{ SearchDirs =
-			( list__member(dir__this_directory, SearchDirs0) -> 
+			( list__member(dir__this_directory, SearchDirs0) ->
 				SearchDirs0
 			;
 				[dir__this_directory | SearchDirs0]
@@ -737,7 +737,7 @@ module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName) -->
 	( { Search = yes } ->
 		module_name_to_search_file_name(ModuleName,
 			Ext, FileName)
-	;		
+	;
 		module_name_to_file_name(ModuleName,
 			Ext, MkDir, FileName)
 	)

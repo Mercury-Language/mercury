@@ -16,7 +16,7 @@
 % field macro) in the array of results. The array is padded with "0"s for
 % cases that are not covered. This is fine, since we do the lookup after
 % we check the bit-vector for the appropriate case.
- 
+
 % The current implementation works out whether or not it can do a lookup
 % switch by generating code for each case and looking to see that no code
 % got generated (i.e. only the code generation state got modified) and that

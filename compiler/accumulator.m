@@ -158,7 +158,6 @@
 :- implementation.
 
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
 :- import_module hlds__assertion.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
@@ -170,8 +169,8 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__goal_store.
 
@@ -1165,7 +1164,7 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
 		Substs0),
 
 	process_assoc_set(set__to_sorted_list(Assoc), GoalStore,
-		set__list_to_set(OutPrime), ModuleInfo, Substs0, Substs1, 
+		set__list_to_set(OutPrime), ModuleInfo, Substs0, Substs1,
 		!VarSet, !VarTypes, CS, Warnings),
 
 	process_update_set(set__to_sorted_list(Update), GoalStore,

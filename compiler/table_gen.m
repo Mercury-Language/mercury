@@ -73,8 +73,8 @@
 :- import_module ll_backend.
 :- import_module ll_backend__continuation_info.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__const_prop.
@@ -888,9 +888,8 @@ table_gen__create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 		TableDecl = table_io_decl,
 		PredId = !.TableInfo ^ table_cur_pred_id,
 		ProcId = !.TableInfo ^ table_cur_proc_id,
-		RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo,
-			PredId, ProcId),
-		TableIoDeclConsId = table_io_decl(RttiProcLabel),
+		ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+		TableIoDeclConsId = table_io_decl(ShroudedPredProcId),
 		make_const_construction(TableIoDeclConsId, c_pointer_type,
 			yes("TableIoDeclPtr"), TableIoDeclGoal,
 			TableIoDeclPtrVar, !VarTypes, !VarSet),
@@ -1382,7 +1381,8 @@ generate_get_table_goal(PredId, ProcId, !VarTypes, !VarSet, PredTableVar,
 		Goal) :-
 	generate_new_table_var("PredTable", trie_node_type,
 		!VarTypes, !VarSet, PredTableVar),
-	ConsId = tabling_pointer_const(PredId, ProcId),
+	ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+	ConsId = tabling_pointer_const(ShroudedPredProcId),
 	make_const_construction(PredTableVar, ConsId, GoalExpr - GoalInfo0),
 	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
@@ -1978,7 +1978,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarTypes, !VarSet, Goal) :-
 	Name = pred_info_name(PredInfo),
 	Arity = pred_info_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
+	PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
 	prog_out__sym_name_to_string(qualified(Module, Name), NameStr),
 	string__int_to_string(Arity, ArityStr),
 	string__append_list([Msg, " in ", PredOrFuncStr, " ", NameStr,

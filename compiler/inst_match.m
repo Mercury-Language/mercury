@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2003 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,29 +9,27 @@
 %
 % This module defines some utility routines for comparing insts
 % that are used by modes.m and det_analysis.m.
-
-/*
-The handling of `any' insts is not complete.  (See also inst_util.m)
-It would be nice to allow `free' to match `any', but right now we
-only allow a few special cases of that.
-The reason is that although the mode analysis would be pretty
-straight-forward, generating the correct code is quite a bit trickier.
-modes.m would have to be changed to handle the implicit
-conversions from `free'/`bound'/`ground' to `any' at
-
-	(1) procedure calls (this is just an extension of implied modes)
-		currently we support only the easy cases of this
-	(2) the end of branched goals
-	(3) the end of predicates.
-
-Since that is not yet done, we currently require the user to
-insert explicit calls to initialize constraint variables.
-
-We do allow `bound' and `ground' to match `any', based on the
-assumption that `bound' and `ground' are represented in the same
-way as `any', i.e. that we use the type system rather than the
-mode system to distinguish between different representations.
-*/
+%
+% The handling of `any' insts is not complete.  (See also inst_util.m)
+% It would be nice to allow `free' to match `any', but right now we
+% only allow a few special cases of that.
+% The reason is that although the mode analysis would be pretty
+% straight-forward, generating the correct code is quite a bit trickier.
+% modes.m would have to be changed to handle the implicit
+% conversions from `free'/`bound'/`ground' to `any' at
+%
+% 	(1) procedure calls (this is just an extension of implied modes)
+% 		currently we support only the easy cases of this
+% 	(2) the end of branched goals
+% 	(3) the end of predicates.
+%
+% Since that is not yet done, we currently require the user to
+% insert explicit calls to initialize constraint variables.
+%
+% We do allow `bound' and `ground' to match `any', based on the
+% assumption that `bound' and `ground' are represented in the same
+% way as `any', i.e. that we use the type system rather than the
+% mode system to distinguish between different representations.
 
 %-----------------------------------------------------------------------------%
 
@@ -40,7 +38,6 @@ mode system to distinguish between different representations.
 :- interface.
 
 :- import_module hlds__hlds_module.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module list.
@@ -50,7 +47,7 @@ mode system to distinguish between different representations.
 :- pred inst_expand(module_info, inst, inst).
 :- mode inst_expand(in, in, out) is det.
 
-	% inst_expand(ModuleInfo, Inst0, Inst) checks if the top-level 
+	% inst_expand(ModuleInfo, Inst0, Inst) checks if the top-level
 	% part of the inst is a defined inst, and if so replaces it
 	% with the definition.
 
@@ -142,7 +139,7 @@ mode system to distinguish between different representations.
 	% 	defines a partial order which is the same as
 	% 	inst_matches_initial except that uniqueness comparisons are
 	% 	reversed and we don't allow
-	% 	inst_is_at_least_as_instantiated(any, any).  
+	% 	inst_is_at_least_as_instantiated(any, any).
 
 :- pred inst_is_at_least_as_instantiated(inst, inst, type, module_info).
 :- mode inst_is_at_least_as_instantiated(in, in, in, in) is semidet.
@@ -344,7 +341,7 @@ inst_matches_initial(InstA, InstB, Type, ModuleInfo0, ModuleInfo, Sub0, Sub) :-
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
 	Info0 = init_inst_match_info(ModuleInfo) ^ calculate_sub := forward,
 	inst_matches_final_2(InstA, InstB, yes(Type), Info0, _).
-	
+
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo0,
 		ModuleInfo, Sub0, Sub) :-
 	Info0 = (init_inst_match_info(ModuleInfo0)
@@ -457,7 +454,7 @@ inst_matches_initial_2(InstA, InstB, MaybeType, Info0, Info) :-
 		inst_expand(Info0^module_info, InstB, InstB2),
 		set__insert(Info0^expansions, ThisExpansion, Expansions1),
 		handle_inst_var_subs(inst_matches_initial_2,
-			inst_matches_initial_4, InstA2, InstB2, MaybeType, 
+			inst_matches_initial_4, InstA2, InstB2, MaybeType,
 			Info0^expansions := Expansions1, Info)
 	).
 
@@ -872,7 +869,7 @@ uniq_matches_bound_inst_list(Uniq, List, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 	% Here we check that the functors in the first list are a
-	% subset of the functors in the second list. 
+	% subset of the functors in the second list.
 	% (If a bound(...) inst only specifies the insts for some of
 	% the constructors of its type, then it implicitly means that
 	% all other constructors must have all their arguments
@@ -898,7 +895,7 @@ bound_inst_list_matches_initial([X|Xs], [Y|Ys], MaybeType) -->
 		{ compare(>, ConsIdX, ConsIdY) },
 			% ConsIdY does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies `not_reached'
-			% for the args of ConsIdY, and hence 
+			% for the args of ConsIdY, and hence
 			% automatically matches_initial Y.  We just need to
 			% check that [X|Xs] matches_initial Ys.
 		bound_inst_list_matches_initial([X|Xs], Ys, MaybeType)
@@ -1069,7 +1066,7 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB], [Type | Types]) -->
 	inst_list_matches_final(ArgsA, ArgsB, Types).
 
 	% Here we check that the functors in the first list are a
-	% subset of the functors in the second list. 
+	% subset of the functors in the second list.
 	% (If a bound(...) inst only specifies the insts for some of
 	% the constructors of its type, then it implicitly means that
 	% all other constructors must have all their arguments
@@ -1095,7 +1092,7 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], MaybeType) -->
 		{ compare(>, ConsIdX, ConsIdY) },
 			% ConsIdY does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies `not_reached'
-			% for the args of ConsIdY, and hence 
+			% for the args of ConsIdY, and hence
 			% automatically matches_final Y.  We just need to
 			% check that [X|Xs] matches_final Ys.
 		bound_inst_list_matches_final([X|Xs], Ys, MaybeType)
@@ -1136,7 +1133,7 @@ inst_matches_binding_2(InstA, InstB, MaybeType, Info0, Info) :-
 :- pred inst_matches_binding_3 `with_type` inst_matches_pred.
 :- mode inst_matches_binding_3 `with_inst` inst_matches_pred.
 
-% Note that `any' is *not* considered to match `any' unless 
+% Note that `any' is *not* considered to match `any' unless
 % Info ^ any_matches_any = yes or the type is not a solver type (and does not
 % contain any solver types).
 inst_matches_binding_3(free, free, _, I, I).
@@ -1218,7 +1215,7 @@ inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB],
 	inst_list_matches_binding(ArgsA, ArgsB, MaybeTypes).
 
 	% Here we check that the functors in the first list are a
-	% subset of the functors in the second list. 
+	% subset of the functors in the second list.
 	% (If a bound(...) inst only specifies the insts for some of
 	% the constructors of its type, then it implicitly means that
 	% all other constructors must have all their arguments
@@ -1244,7 +1241,7 @@ bound_inst_list_matches_binding([X|Xs], [Y|Ys], MaybeType) -->
 		{ compare(>, ConsIdX, ConsIdY) },
 			% ConsIdX does not occur in [X|Xs].
 			% Hence [X|Xs] implicitly specifies `not_reached'
-			% for the args of ConsIdY, and hence 
+			% for the args of ConsIdY, and hence
 			% automatically matches_binding Y.  We just need to
 			% check that [X|Xs] matches_binding Ys.
 		bound_inst_list_matches_binding([X|Xs], Ys, MaybeType)
@@ -1545,7 +1542,7 @@ inst_is_not_fully_unique_2(ModuleInfo, bound(shared, List),
 		Expansions0, Expansions) :-
         bound_inst_list_is_not_fully_unique_2(List, ModuleInfo,
 		Expansions0, Expansions).
-inst_is_not_fully_unique_2(ModuleInfo, bound(mostly_unique, List), 
+inst_is_not_fully_unique_2(ModuleInfo, bound(mostly_unique, List),
                 Expansions0, Expansions) :-
         bound_inst_list_is_not_fully_unique_2(List, ModuleInfo,
 		Expansions0, Expansions).
@@ -1578,7 +1575,7 @@ bound_inst_list_is_ground(BoundInsts, ModuleInfo) :-
 :- pred bound_inst_list_is_ground(list(bound_inst), maybe(type), module_info).
 :- mode bound_inst_list_is_ground(in, in, in) is semidet.
 
-bound_inst_list_is_ground([], _, _). 
+bound_inst_list_is_ground([], _, _).
 bound_inst_list_is_ground([functor(Name, Args)|BoundInsts], MaybeType,
 		ModuleInfo) :-
 	maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, Name,
@@ -1593,7 +1590,7 @@ bound_inst_list_is_ground_or_any([functor(_Name, Args)|BoundInsts],
         inst_list_is_ground_or_any(Args, ModuleInfo),
         bound_inst_list_is_ground_or_any(BoundInsts, ModuleInfo).
 
-bound_inst_list_is_unique([], _). 
+bound_inst_list_is_unique([], _).
 bound_inst_list_is_unique([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
         inst_list_is_unique(Args, ModuleInfo),
         bound_inst_list_is_unique(BoundInsts, ModuleInfo).
@@ -1869,7 +1866,7 @@ inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, InstName,
 				InstName, Result, Expansions1, Expansions)
 		)
 	).
-inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo, 
+inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo,
 		InstName, Result, Expansions0, Expansions) :-
 	bound_inst_list_contains_instname(ArgInsts, ModuleInfo,
 		InstName, Result, Expansions0, Expansions).

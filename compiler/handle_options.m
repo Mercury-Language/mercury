@@ -586,7 +586,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	option_implies(invoked_by_mmc_make, transitive_optimization, bool(no)),
 
 	( { \+ io__have_symlinks } ->
-		globals__io_set_option(use_symlinks, bool(no))	
+		globals__io_set_option(use_symlinks, bool(no))
 	;
 		[]
 	),
@@ -803,7 +803,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 			globals__io_set_option(loop_invariants, bool(no)),
 
 			% For the IL backend we turn off optimize_peep
-			% so that we don't optimize away references to the 
+			% so that we don't optimize away references to the
 			% local variables of a procedure.
 			( { Target = il } ->
 				globals__io_set_option(optimize_peep,

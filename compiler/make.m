@@ -90,7 +90,7 @@
 			% The original set of options passed to mmc,
 			% not including the targets to be made.
 		option_args :: list(string),
-		
+
 			% The contents of the Mercury.options file.
 		options_variables :: options_variables,
 
@@ -236,7 +236,7 @@ make__process_args(Variables, OptionArgs, Targets0) -->
 	{ Continue = yes },
 	{ Targets = Targets0 }
     ),
-    ( { Continue = no } ->	
+    ( { Continue = no } ->
 	io__set_exit_status(1)
     ;
 	globals__io_lookup_bool_option(keep_going, KeepGoing),
@@ -401,7 +401,7 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 search_backwards_for_dot(String, Index, DotIndex) :-
 	Index >= 0,
 	( string__index_det(String, Index, '.') ->
-		DotIndex = Index	
+		DotIndex = Index
 	;
 		search_backwards_for_dot(String, Index - 1, DotIndex)
 	).

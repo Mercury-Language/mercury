@@ -41,7 +41,6 @@
 
 :- interface.
 
-:- import_module backend_libs__foreign.
 :- import_module libs__globals.
 :- import_module libs__timestamp.
 :- import_module parse_tree__prog_data.
@@ -765,10 +764,8 @@
 
 :- implementation.
 
-:- import_module backend_libs__c_util.
 :- import_module backend_libs__foreign.
 :- import_module backend_libs__name_mangle.
-:- import_module hlds__passes_aux.
 :- import_module libs__handle_options.
 :- import_module libs__options.
 :- import_module make.				% XXX undesirable dependency
@@ -3663,7 +3660,7 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
 % :- pred write_relations(string::in, relation(sym_name)::in,
 % 	relation(sym_name)::in, relation(sym_name)::in,
 % 	relation(sym_name)::in, relation(sym_name)::in, io::di, io::uo) is det.
-% 
+%
 % write_relations(FileName, IntDepsRel, TransIntDepsRel,
 % 		ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel) -->
 % 	io__open_output(FileName, Result),
@@ -3677,28 +3674,28 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
 % 	;
 % 		{ error("unable to open file: " ++ FileName) }
 % 	).
-% 
+%
 % :- pred write_relation(io__output_stream::in, string::in,
 % 	relation(sym_name)::in, io::di, io::uo) is det.
-% 
+%
 % write_relation(Stream, Name, Relation) -->
 % 	io__write_string(Stream, "digraph " ++ Name ++ " {\n"),
 % 	io__write_string(Stream, "label=\"" ++ Name ++ "\";\n"),
 % 	io__write_string(Stream, "center=true;\n"),
 % 	relation__traverse(Relation, write_node(Stream), write_edge(Stream)),
 % 	io__write_string(Stream, "}\n").
-% 
+%
 % :- pred write_node(io__output_stream::in, sym_name::in, io::di, io::uo)
 %	is det.
-% 
+%
 % write_node(Stream, Node) -->
 % 	{ sym_name_to_string(Node, "__", NodeStr) },
 % 	io__write_string(Stream, NodeStr),
 % 	io__write_string(Stream, ";\n").
-% 
+%
 % :- pred write_edge(io__output_stream::in, sym_name::in, sym_name::in,
 % 	io::di, io::uo) is det.
-% 
+%
 % write_edge(Stream, A, B) -->
 % 	{ sym_name_to_string(A, "__", AStr) },
 % 	{ sym_name_to_string(B, "__", BStr) },

@@ -483,14 +483,15 @@ dependency_graph__add_arcs_in_cons(cons(_, _), _Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(int_const(_), _Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(string_const(_), _Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(float_const(_), _Caller, !DepGraph).
-dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc, _), Caller,
+dependency_graph__add_arcs_in_cons(pred_const(ShroudedPredProcId, _), Caller,
 		!DepGraph) :-
+	PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
 	(
 			% If the node isn't in the relation, then
 			% we didn't insert it because is was imported,
 			% and we don't consider it.
 		relation__search_element(!.DepGraph,
-			dependency_node(proc(Pred, Proc)), Callee)
+			dependency_node(PredProcId), Callee)
 	->
 		relation__add(!.DepGraph, Caller, Callee, !:DepGraph)
 	;
@@ -504,7 +505,7 @@ dependency_graph__add_arcs_in_cons(type_info_cell_constructor(_),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(typeclass_info_cell_constructor,
 		_Caller, !DepGraph).
-dependency_graph__add_arcs_in_cons(tabling_pointer_const(_, _),
+dependency_graph__add_arcs_in_cons(tabling_pointer_const(_),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(deep_profiling_proc_layout(_),
 		_Caller, !DepGraph).
@@ -813,11 +814,11 @@ process_aditi_goal(IsNeg, call(PredId, ProcId, Args, _, _, _) - _,
 	aditi_scc_info_handle_call(IsNeg, PredId, ProcId, Args, !.Map, !Info).
 process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _, !Map, !Info) :-
 	(
-		Unify = construct(_, pred_const(PredId, ProcId, _),
+		Unify = construct(_, pred_const(ShroudedPredProcId, _),
 			_, _, _, _, _)
 	->
-		aditi_scc_info_add_closure(Var, proc(PredId, ProcId),
-			!Map, !Info)
+		PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+		aditi_scc_info_add_closure(Var, PredProcId, !Map, !Info)
 	;
 		true
 	).

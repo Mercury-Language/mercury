@@ -9,6 +9,7 @@
 % Specify Mercury compiler analyses to be used with the
 % inter-module analysis framework.
 %-----------------------------------------------------------------------------%
+
 :- module transform_hlds__mmc_analysis.
 
 :- interface.
@@ -25,7 +26,7 @@
 :- func module_id_to_module_name(module_id) = module_name.
 
 :- func pred_or_func_name_arity_to_func_id(pred_or_func,
-		string, arity, proc_id) = func_id.
+	string, arity, proc_id) = func_id.
 
 :- implementation.
 
@@ -62,4 +63,3 @@ pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
 		- unqualified(Name)/Arity),
 	proc_id_to_int(ProcId, ProcInt),
 	FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).
-

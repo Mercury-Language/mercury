@@ -155,22 +155,6 @@
 %  Compare two purities.
 :- pred less_pure(purity::in, purity::in) is semidet.
 
-%  Print out a purity name.
-:- pred write_purity(purity::in, io__state::di, io__state::uo) is det.
-
-%  Print out a purity prefix.
-%  This works under the assumptions that all purity names but `pure' are prefix
-%  Operators, and that we never need `pure' indicators/declarations.
-
-:- pred write_purity_prefix(purity::in, io__state::di, io__state::uo) is det.
-
-:- func purity_prefix_to_string(purity) = string.
-
-%  Get a purity name as a string.
-:- pred purity_name(purity, string).
-:- mode purity_name(in, out) is det.
-:- mode purity_name(out, in) is semidet.
-
 % Give an error message for unifications marked impure/semipure that are
 % not function calls (e.g. impure X = 4)
 :- pred impure_unification_expr_error(prog_context::in, purity::in,
@@ -196,6 +180,7 @@
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -231,34 +216,8 @@ worst_purity((impure), (impure)) = (impure).
 less_pure(P1, P2) :-
 	\+ ( worst_purity(P1, P2) = P2).
 
-% this works under the assumptions that all purity names but `pure' are prefix
-% operators, and that we never need `pure' indicators/declarations.
-
-write_purity_prefix(Purity, !IO) :-
-	( Purity = pure ->
-		true
-	;
-		write_purity(Purity, !IO),
-		io__write_string(" ", !IO)
-	).
-
-purity_prefix_to_string(Purity) = String :-
-	( Purity = pure ->
-		String = ""
-	;
-		purity_name(Purity, PurityName),
-		String = string__append(PurityName, " ")
-	).
-
-write_purity(Purity, !IO) :-
-	purity_name(Purity, String),
-	io__write_string(String, !IO).
-
-purity_name(pure, "pure").
-purity_name((semipure), "semipure").
-purity_name((impure), "impure").
-
 %-----------------------------------------------------------------------------%
+
 %	 Purity-check the code for all the predicates in a module
 
 :- pred check_preds_purity(bool::in, bool::out,
@@ -985,7 +944,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		prog_out__write_context(Context),
 		io__write_string("  A pure "),
-		hlds_out__write_pred_or_func(PredOrFunc),
+		write_pred_or_func(PredOrFunc),
 		io__write_string(" that invokes impure or semipure code should\n"),
 		prog_out__write_context(Context),
 		io__write_string(
@@ -1038,7 +997,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity) -->
 		prog_out__write_context(Context),
 		{ PredOrFunc = pred_info_is_pred_or_func(PredInfo) },
 		io__write_string("  This "),
-		hlds_out__write_pred_or_func(PredOrFunc),
+		write_pred_or_func(PredOrFunc),
 		io__write_string(" does not invoke any "),
 		io__write_string(CodeStr),
 		io__write_string(" code,\n"),
@@ -1059,7 +1018,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
 	prog_out__write_context(Context),
 	io__write_string("  purity error: "),
-	hlds_out__write_pred_or_func(PredOrFunc),
+	write_pred_or_func(PredOrFunc),
 	io__write_string(" is "),
 	write_purity(Purity),
 	io__write_string(".\n"),

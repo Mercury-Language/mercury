@@ -254,7 +254,7 @@ follow_code__conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
 	Goal0 = GoalExpr0 - GoalInfo0,
 	goal_info_get_determinism(GoalInfo0, Detism0),
 	determinism_components(Detism0, _CanFail0, MaxSolns0),
-	( MaxSolns0 = at_most_zero ->	
+	( MaxSolns0 = at_most_zero ->
 		Goal = Goal0
 	;
 		check_follow_code_detism(FollowGoals, Detism0),
@@ -317,7 +317,7 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 % 		Goal = Goal0,
 % 		RevPrevGoals = [Goal0 | RevPrevGoals0]
 % 	).
-% 
+%
 % :- pred move_prev_code_breakup_branched(hlds_goal, hlds_goal, hlds_goal,
 % 	hlds_goal).
 % :- mode move_prev_code_breakup_branched(in, out, out, out) is semidet.
@@ -332,15 +332,15 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 	goal_info_get_nonlocals(GoalInfo, NonLocals),
 	set__union(Varset0, NonLocals, Varset).
 
-% 
+%
 % :- pred move_prev_code_new_forbidden_vars(hlds_goal, hlds_goal,
 % 	set(prog_var), set(prog_var)).
 % :- mode move_prev_code_new_forbidden_vars(in, in, in, out) is det.
-% 
+%
 % :- pred move_prev_code_vars_difference(hlds_goal, hlds_goal, hlds_goal,
 % 	set(prog_var), set(prog_var)).
 % :- mode move_prev_code_vars_difference(in, in, in, in, out) is det.
-% 
+%
 % move_prev_code_vars_difference(Cond, First, Rest, ForbiddenVars, LocalVars) :-
 % 	Cond  = _ - CondInfo,
 % 	First = _ - FirstInfo,
@@ -351,11 +351,11 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 % 	set__union(CondVars, FirstVars, ThisBranchVars),
 % 	set__difference(ThisBranchVars, RestVars, LocalVars0),
 % 	set__difference(LocalVars0, ForbiddenVars, LocalVars).
-% 
+%
 % :- pred move_prev_code_can_pull_producer(set(prog_var), list(hlds_goal),
 % 	list(hlds_goal), list(hlds_goal)).
 % :- mode move_prev_code_can_pull_producer(in, in, di, uo) is det.
-% 
+%
 % :- pred move_prev_code_replace_first(hlds_goal,
 % 	list(hlds_goal), list(hlds_goal), hlds_goal).
 % :- mode move_prev_code_replace_first(di, in, in, uo) is det.

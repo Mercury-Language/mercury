@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 University of Melbourne.
+% Copyright (C) 2001-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,10 +87,10 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__timestamp.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
+:- import_module parse_tree__prog_out.
 :- import_module recompilation__version.
 
 :- import_module assoc_list, bool, int, require.
@@ -106,7 +106,8 @@ recompilation__usage__write_usage_file(ModuleInfo, NestedSubModules,
 	->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose,
-	"% Writing recompilation compilation dependency information\n"),
+			"% Writing recompilation compilation " ++
+			"dependency information\n"),
 
 		{ module_info_name(ModuleInfo, ModuleName) },
 		module_name_to_file_name(ModuleName, ".used", yes, FileName),
@@ -204,7 +205,7 @@ recompilation__usage__write_usage_file_2(ModuleInfo, NestedSubModules,
 	),
 
 	map__foldl(
-	    (pred(ModuleName::in, ModuleUsedItems::in, di, uo) is det -->	
+	    (pred(ModuleName::in, ModuleUsedItems::in, di, uo) is det -->
 		io__nl,
 		io__write_string("("),
 		mercury_output_bracketed_sym_name(ModuleName),
@@ -414,7 +415,7 @@ write_resolved_item_set(ItemType, ItemSet, WriteMatches) -->
 			io__write_list(MatchList, ",\n\t\t\t\t",
 			    WriteMatches),
 			io__write_string(")")
-		    )),	
+		    )),
 		io__write_string(")")
 	    )),
 	io__write_string("\n\t)").
@@ -506,7 +507,7 @@ recompilation__usage__find_all_used_imported_items(ModuleInfo,
 				ImportedItemsMap::out) is det :-
 			ModuleItems = init_item_id_set(set__init),
 			map__det_insert(ImportedItemsMap0, VisibleModule,
-				ModuleItems, ImportedItemsMap)	
+				ModuleItems, ImportedItemsMap)
 		    ),
 		    ImportedItems0, ImportedItems1)
 	    )),
@@ -539,7 +540,7 @@ recompilation__usage__find_all_used_imported_items(ModuleInfo,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_all_used_imported_items_2(UsedItems) -->
-		
+
 	%
 	% Find items used by imported instances for local classes.
 	%
@@ -567,7 +568,7 @@ recompilation__usage__find_all_used_imported_items_2(UsedItems) -->
 
 	{ Functions = UsedItems ^ functions },
 	recompilation__usage__find_items_used_by_preds(function, Functions),
-		
+
 	{ Constructors = UsedItems ^ functors },
 	recompilation__usage__find_items_used_by_functors(Constructors),
 
@@ -699,7 +700,7 @@ recompilation__usage__do_record_used_functor(ModuleQualifier, SymName, Arity,
 		recompilation__usage__find_items_used_by_functor(
 			Name, Arity),
 		MatchingCtors),
-	
+
 	{ set__empty(MatchingCtors) ->
 		Recorded = no,
 		ResolvedCtorMap = ResolvedCtorMap0
@@ -734,7 +735,7 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 	MatchingConstructors =
 		list__map(
 			(func(ConsDefn) = Ctor :-
-				ConsDefn = hlds_cons_defn(_,_,_, TypeCtor, _),	
+				ConsDefn = hlds_cons_defn(_,_,_, TypeCtor, _),
 				Ctor = constructor(TypeCtor)
 			),
 			ConsDefns),
@@ -771,7 +772,7 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 				( ConsId = cons(ConsName, ConsArity) ->
 					FieldCtor = field(TypeCtor,
 						ConsName - ConsArity)
-				;	
+				;
 					error(
 					"weird cons_id in hlds_field_defn")
 				)
@@ -782,14 +783,14 @@ recompilation__usage__find_matching_functors(ModuleInfo, SymName, Arity,
 
 	ResolvedConstructors = set__list_to_set(list__condense(
 		[MatchingConstructors, MatchingPreds, MatchingFields])
-	). 
+	).
 
 :- func recompilation__usage__get_pred_or_func_ctors(module_info, sym_name,
 		arity, pred_id) = resolved_functor is semidet.
 
 recompilation__usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 		PredId) = ResolvedCtor :-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),	
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredModule = pred_info_module(PredInfo),
 	PredArity = pred_info_arity(PredInfo),
@@ -976,7 +977,7 @@ recompilation__usage__find_items_used_by_item((typeclass), ClassItemId) -->
 		[]
 	).
 
-recompilation__usage__find_items_used_by_item(predicate, ItemId) --> 
+recompilation__usage__find_items_used_by_item(predicate, ItemId) -->
 	recompilation__usage__record_used_pred_or_func(predicate, ItemId).
 recompilation__usage__find_items_used_by_item(function, ItemId) -->
 	recompilation__usage__record_used_pred_or_func(function, ItemId).
@@ -994,7 +995,7 @@ recompilation__usage__find_items_used_by_instance(ClassId,
 	% the interfaces for imported instances are only needed with
 	% --intermodule-optimization, which isn't handled here yet)
 	ModuleInfo =^ module_info,
-	( 
+	(
 		{ module_info_name(ModuleInfo, InstanceModuleName) }
 	->
 		[]
@@ -1033,7 +1034,7 @@ recompilation__usage__find_items_used_by_class_method(
 		;
 			{ TypeAndMode = type_and_mode(Type, Mode) },
 			recompilation__usage__find_items_used_by_mode(Mode)
-		),	
+		),
 		recompilation__usage__find_items_used_by_type(Type)
 	    ), ArgTypesAndModes).
 recompilation__usage__find_items_used_by_class_method(
@@ -1148,7 +1149,7 @@ recompilation__usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 			ItemType, NameArity),
 		recompilation__usage__record_imported_item(ItemType, NameArity),
 		{ pred_info_arg_types(PredInfo, ArgTypes) },
-		recompilation__usage__find_items_used_by_types(ArgTypes), 
+		recompilation__usage__find_items_used_by_types(ArgTypes),
 		{ pred_info_procedures(PredInfo, Procs) },
 		map__foldl(
 			(pred(_::in, ProcInfo::in, in, out) is det -->
@@ -1174,7 +1175,7 @@ recompilation__usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 		)
 	).
 
-:- pred recompilation__usage__find_items_used_by_type_spec(pragma_type::in, 
+:- pred recompilation__usage__find_items_used_by_type_spec(pragma_type::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_type_spec(Pragma) -->
@@ -1233,7 +1234,7 @@ recompilation__usage__find_items_used_by_simple_item_set(ItemType, Set) -->
 				ItemType, qualified(Module, Name) - Arity)
 		    ), MatchingIdMap)
 	    ), Set).
-	
+
 :- pred recompilation__usage__find_items_used_by_types(list(type)::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
@@ -1325,7 +1326,7 @@ recompilation__usage__find_items_used_by_inst(
 		Name - Arity),
 	recompilation__usage__find_items_used_by_insts(ArgInsts).
 
-:- pred recompilation__usage__find_items_used_by_inst_name(inst_name::in, 
+:- pred recompilation__usage__find_items_used_by_inst_name(inst_name::in,
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_inst_name(
@@ -1363,7 +1364,7 @@ recompilation__usage__find_items_used_by_inst_name(
 :- pred recompilation__usage__find_items_used_by_class_context(
 	class_constraints::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
-		
+
 recompilation__usage__find_items_used_by_class_context(
 		constraints(Constraints1, Constraints2)) -->
 	recompilation__usage__find_items_used_by_class_constraints(
@@ -1404,7 +1405,7 @@ recompilation__usage__maybe_record_item_to_process(ItemType, NameArity) -->
 	),
 
 	=(Info),
-	( 
+	(
 		{ item_is_recorded_used(Info, ItemType, NameArity) }
 	->
 		% This item has already been recorded.
@@ -1428,7 +1429,7 @@ recompilation__usage__maybe_record_item_to_process(ItemType, NameArity) -->
 
 :- pred item_is_recorded_used(recompilation_usage_info::in, item_type::in,
 		pair(sym_name, arity)::in) is semidet.
-	
+
 item_is_recorded_used(Info, ItemType, NameArity) :-
 	ImportedItems = Info ^ imported_items,
 	NameArity = qualified(ModuleName, Name) - Arity,
@@ -1436,7 +1437,7 @@ item_is_recorded_used(Info, ItemType, NameArity) :-
 	ModuleItemIdSet = extract_ids(ModuleIdSet, ItemType),
 	set__member(Name - Arity, ModuleItemIdSet).
 
-:- pred item_is_local(recompilation_usage_info::in, 
+:- pred item_is_local(recompilation_usage_info::in,
 		pair(sym_name, arity)::in) is semidet.
 
 item_is_local(Info, NameArity) :-

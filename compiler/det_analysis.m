@@ -135,6 +135,7 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__options.
 :- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_out.
 
 :- import_module string, assoc_list, bool, map, set, require, term.
 
@@ -251,7 +252,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 	proc_info_declared_determinism(Proc0, MaybeDeclaredDetism),
 	( MaybeDeclaredDetism = yes(DeclaredDetism) ->
 		det_get_soln_context(DeclaredDetism, DeclaredSolnContext)
-	;	
+	;
 		DeclaredSolnContext = all_solns
 	),
 	(
@@ -288,8 +289,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 
 		% Now see if the evaluation model can change the detism
 	proc_info_eval_method(Proc0, EvalMethod),
-	Detism = eval_method_change_determinism(EvalMethod, Detism2),		
-			
+	Detism = eval_method_change_determinism(EvalMethod, Detism2),
+
 	(
 		proc_info_has_io_state_pair(!.ModuleInfo, Proc,
 			_InArgNum, _OutArgNum),
@@ -386,7 +387,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	determinism_components(Detism, InternalCanFail, Solns),
 	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
 
-	% 
+	%
 	% The code generators assume that conjunctions containing
 	% multi or nondet goals and if-then-elses containing
 	% multi or nondet conditions can only occur inside other
@@ -446,7 +447,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		% choice point at all, rather than wrapping a
 		% some [] around a nondet disj, which would
 		% create a choice point and then prune it.
-		Goal1 \= disj(_),	
+		Goal1 \= disj(_),
 
 		% do we already have a commit?
 		Goal1 \= some(_, _, _)
@@ -607,7 +608,7 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 				at_most_many_cc)
 		->
 			LambdaSolnContext = first_soln
-		;	
+		;
 			LambdaSolnContext = all_solns
 		),
 		det_info_get_module_info(DetInfo, ModuleInfo),
@@ -723,7 +724,7 @@ det_infer_goal_2(some(Vars, CanRemove, Goal0), _, InstMap0, SolnContext,
 
 	% pragma foregin_codes are handled in the same way as predicate calls
 det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-			PragmaCode), 
+			PragmaCode),
 		GoalInfo, _, SolnContext, DetInfo, _, _,
 		foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 			PragmaCode),
@@ -768,7 +769,7 @@ det_infer_goal_2(shorthand(_), _, _, _, _, _, _, _, _, _) :-
 	list(det_msg)::out) is det.
 
 det_infer_conj([], _InstMap0, _SolnContext, _DetInfo, [], det, []).
-det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, 
+det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 		[Goal | Goals], Detism, Msgs) :-
 
 	% We should look to see when we get to a not_reached point
@@ -794,7 +795,7 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	% than one solution of the first conjunct if the later conjuncts
 	% may possibly fail.
 	%
-	( 
+	(
 		CanFailB = cannot_fail,
 		SolnContext = first_soln
 	->
@@ -819,13 +820,13 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	list(det_msg)::out) is det.
 
 det_infer_par_conj([], _InstMap0, _SolnContext, _DetInfo, [], det, []).
-det_infer_par_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, 
+det_infer_par_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 		[Goal | Goals], Detism, Msgs) :-
 
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 		Goal, DetismA, MsgsA),
 	determinism_components(DetismA, CanFailA, MaxSolnsA),
-	
+
 	det_infer_par_conj(Goals0, InstMap0, SolnContext, DetInfo,
 		Goals, DetismB, MsgsB),
 	determinism_components(DetismB, CanFailB, MaxSolnsB),
@@ -1014,7 +1015,7 @@ det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% Deconstruction unifications cannot fail if the type
 	% only has one constructor, or if the variable is known to be
 	% already bound to the appropriate functor.
-	% 
+	%
 	% This is handled (modulo bugs) by modes.m, which sets
 	% the appropriate field in the deconstruct(...) to can_fail for
 	% those deconstruction unifications which might fail.
@@ -1036,7 +1037,7 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
 		determinism_components(DeclaredDetism, _, at_most_many_cc)
 	->
 		SolnContext = first_soln
-	;	
+	;
 		SolnContext = all_solns
 	).
 
@@ -1249,7 +1250,7 @@ segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 		!DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, Pred),
-	( 
+	(
 		(
 			pred_info_is_imported(Pred)
 		;
@@ -1280,7 +1281,7 @@ segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 
 	% We can't infer a tighter determinism for imported procedures or
 	% for class methods, so set the inferred determinism to be the
-	% same as the declared determinism. This can't be done easily in 
+	% same as the declared determinism. This can't be done easily in
 	% make_hlds.m since inter-module optimization means that the
 	% import_status of procedures isn't determined until after all
 	% items are processed.

@@ -316,7 +316,7 @@ ml_gen_static_const_arg(Var, StaticCons, Rval, !Info) :-
 	is det.
 
 ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
-	StaticCons = static_cons(ConsId, ArgVars, StaticArgs), 
+	StaticCons = static_cons(ConsId, ArgVars, StaticArgs),
 	(
 		%
 		% types for which some other constructor has a
@@ -431,11 +431,11 @@ ml_gen_constant(tabling_pointer_constant(PredId, ProcId), VarType, Rval,
 	DataAddr = data_addr(PredModule, tabling_pointer(PredLabel - ProcId)),
 	Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
-ml_gen_constant(deep_profiling_proc_layout_tag(_), _, _, !Info) :-
+ml_gen_constant(deep_profiling_proc_layout_tag(_, _), _, _, !Info) :-
 	error("ml_gen_constant: " ++
 		"deep_profiling_proc_layout_tag not yet supported").
 
-ml_gen_constant(table_io_decl_tag(_), _, _, !Info) :-
+ml_gen_constant(table_io_decl_tag(_, _), _, _, !Info) :-
 	error("ml_gen_constant: table_io_decl_tag not yet supported").
 
 ml_gen_constant(reserved_address(ReservedAddr), VarType, Rval, !Info) :-
@@ -520,7 +520,7 @@ target_supports_inheritence(java) = yes.
 target_supports_inheritence(asm) = no.
 
 %-----------------------------------------------------------------------------%
-		
+
 	% convert a cons_id for a given type to a cons_tag
 ml_cons_id_to_tag(Info, ConsId, Type, Tag) :-
 	ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -554,7 +554,7 @@ ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes, HowToConstruct, Context,
 		MaybeCtorName = yes(CtorName)
 	),
 
-	% 
+	%
 	% If there is a secondary tag, it goes in the first field
 	%
 	( MaybeSecondaryTag = yes(SecondaryTag) ->
@@ -827,7 +827,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 		->
 			ConstType = mlds__array_type(mlds__generic_type)
 		;
-			% Check if we're constructing a value for a 
+			% Check if we're constructing a value for a
 			% discriminated union where the specified cons_id
 			% which is represented as a derived class that
 			% is derived from the base class for this
@@ -1134,7 +1134,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval, !Info) :-
 		BoxedRval = unop(box(Type), Rval),
 		ConstDefns = []
 	).
-	
+
 :- pred ml_gen_static_const_arg_list(list(prog_var)::in, list(static_cons)::in,
 	list(mlds__rval)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -1149,7 +1149,7 @@ ml_gen_static_const_arg_list([], [_|_], _, !Info) :-
 	error("ml_gen_static_const_arg_list: length mismatch").
 
 	% Generate the name of the local static constant
-	% for a given variable. 
+	% for a given variable.
 	%
 :- pred ml_gen_static_const_name(prog_var::in, mlds__var_name::out,
 	ml_gen_info::in, ml_gen_info::out) is det.
@@ -1186,7 +1186,7 @@ ml_gen_static_const_addr(Info, Var, Type, ConstAddrRval) :-
 :- pred ml_cons_name(cons_id::in, ctor_name::out) is det.
 
 ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
-	( 
+	(
 		HLDS_ConsId = cons(SymName, Arity),
 	    	SymName = qualified(SymModuleName, ConsName)
 	->
@@ -1325,10 +1325,10 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 		Tag = tabling_pointer_constant(_, _),
 		Statements = []
 	;
-		Tag = deep_profiling_proc_layout_tag(_),
+		Tag = deep_profiling_proc_layout_tag(_, _),
 		Statements = []
 	;
-		Tag = table_io_decl_tag(_),
+		Tag = table_io_decl_tag(_, _),
 		Statements = []
 	;
 		Tag = no_tag,
@@ -1443,10 +1443,10 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 		Tag = tabling_pointer_constant(_, _),
 		error("ml_tag_offset_and_argnum")
 	;
-		Tag = deep_profiling_proc_layout_tag(_),
+		Tag = deep_profiling_proc_layout_tag(_, _),
 		error("ml_tag_offset_and_argnum")
 	;
-		Tag = table_io_decl_tag(_),
+		Tag = table_io_decl_tag(_, _),
 		error("ml_tag_offset_and_argnum")
 	;
 		Tag = no_tag,
@@ -1458,7 +1458,6 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 		Tag = reserved_address(_),
 		error("ml_tag_offset_and_argnum")
 	).
-
 
 	% Given a type and a cons_id, and also the types of the actual
 	% arguments of that cons_id in some particular use of it,
@@ -1560,7 +1559,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 		% With the high-level data representation,
 		% we always used named fields, except for
 		% tuple types.
-		% 
+		%
 		HighLevelData = yes,
 		globals__get_target(Globals, Target),
 		(
@@ -1737,7 +1736,7 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 	% ml_gen_tag_test_rval(Tag, VarType, ModuleInfo, VarRval) = TestRval:
 	%	TestRval is a Rval of type bool which evaluates to
 	%	true if VarRval has the specified Tag and false otherwise.
-	%	VarType is the type of VarRval. 
+	%	VarType is the type of VarRval.
 	%
 :- func ml_gen_tag_test_rval(cons_tag, prog_type, module_info, mlds__rval)
 	= mlds__rval.
@@ -1761,10 +1760,10 @@ ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _, _) = _ :-
 ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
-ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_), _, _, _) = _ :-
+ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted deep_profiling_proc_layout unification").
-ml_gen_tag_test_rval(table_io_decl_tag(_), _, _, _) = _ :-
+ml_gen_tag_test_rval(table_io_decl_tag(_, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted table_io_decl unification").
 ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true).
@@ -1787,7 +1786,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
 		PrimaryTagTest = binop(eq,
 			unop(std_unop(tag), Rval),
 			unop(std_unop(mktag),
-				const(int_const(PrimaryTagVal)))), 
+				const(int_const(PrimaryTagVal)))),
 		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
 	).
 ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
@@ -1836,7 +1835,7 @@ ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
 		% all fields -- even the secondary tag -- are boxed,
 		% and so we need to unbox (i.e. cast) it back to the
 		% right type here.
-		SecondaryTagField = 
+		SecondaryTagField =
 			unop(unbox(mlds__native_int_type),
 				lval(field(yes(PrimaryTagVal), Rval,
 				offset(const(int_const(0))),
@@ -1914,7 +1913,7 @@ ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
 		QualTypeName = qual(MLDS_Module, TypeName),
 		TypeQualifier = mlds__append_class_qualifier(
 			MLDS_Module, TypeName, TypeArity),
-		
+
 		( ml_tag_uses_base_class(Tag) ->
 			% in this case, there's only one functor for the type
 			% (other than reserved_address constants),

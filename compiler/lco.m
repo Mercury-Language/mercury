@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -126,7 +126,7 @@ lco_in_cases([case(Cons, Goal0) | Cases0], ModuleInfo,
 % We traverse the conjunction backwards (the caller has reversed the list).
 % RevGoals is the list of remaining goals in the reversed conjunction list.
 % RevUnifies is the list of assignments and constructions delayed by any
-% previous recursive invocations of lco_in_conj. 
+% previous recursive invocations of lco_in_conj.
 %
 % invariant: append(reverse(RevGoals), Unifies) = original conjunction
 

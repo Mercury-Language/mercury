@@ -518,7 +518,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	%
 	% ml_gen_closure_wrapper:
 	% 	see comment in interface section for details.
-	% 
+	%
 	% This is used to create wrappers both for ordinary closures and
 	% also for type class methods.
 	%
@@ -538,7 +538,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	%
 	%		/* declarations needed for by-value outputs */
 	%		MR_Box retval;
-	%		
+	%
 	%		closure = closure_arg; 	/* XXX should add cast */
 	%
 	%		/* call function, unboxing inputs if needed */
@@ -634,10 +634,10 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	% #elif FUNC_IN_FORWARDS_MODE
 	%		MR_Box retval; /* GC tracing code as above */
 	% #endif
-	%		
+	%
 	%		closure = closure_arg; 	/* XXX should add cast */
 	%
-	%	    CONJ(code_model, 
+	%	    CONJ(code_model,
 	%		/* call function, unboxing inputs if needed */
 	%		conv_retval = foo(closure->f1, unbox(closure->f2), ...,
 	%			unbox(wrapper_arg1), &conv_arg2,
@@ -672,7 +672,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	%		succeeded = foo(closure->f1, unbox(closure->f2), ...,
 	%			unbox(wrapper_arg1), &conv_arg2,
 	%			wrapper_arg3, ...);
-	%		
+	%
 	%		if (succeeded) {
 	%			/* box output arguments */
 	%			*wrapper_arg2 = box(conv_arg2);
@@ -688,7 +688,7 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
 	%			...
 	%			(*succ_cont)();
 	%		}
-	%			
+	%
 	%		/* call function, boxing/unboxing inputs if needed */
 	%		foo(closure->f1, unbox(closure->f2), ...,
 	%			unbox(wrapper_arg1), &conv_arg2,
@@ -728,7 +728,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
 	%
 
 	% first generate the declarations for the boxed arguments
-	( 
+	(
 		list__drop(NumClosureArgs, ProcHeadVars, WrapperHeadVars0),
 		list__drop(NumClosureArgs, ProcArgModes, WrapperArgModes0),
 		list__drop(NumClosureArgs, ProcArgTypes, WrapperArgTypes0),

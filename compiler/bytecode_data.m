@@ -145,7 +145,7 @@ int_to_byte_list(Bits, IntVal, Bytes) :-
 
 output_int(Writer, Bits, IntVal, !IO) :-
 	int__bits_per_int(IntBits),
-	( 
+	(
 		Bits < IntBits,
 		int__pow(2, Bits - 1, MaxVal),
 		( IntVal >= MaxVal
@@ -229,8 +229,8 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
 ** That is, a sequence of eight bytes.
 */
 
-:- pred float_to_float64_bytes(float::in, 
-	int::out, int::out, int::out, int::out, 
+:- pred float_to_float64_bytes(float::in,
+	int::out, int::out, int::out, int::out,
 	int::out, int::out, int::out, int::out) is det.
 
 :- pragma c_code(

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,10 +21,8 @@
 
 :- import_module check_hlds__mode_errors.
 :- import_module check_hlds__mode_info.
-:- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module map, bool, set, list, assoc_list, std_util.
@@ -377,7 +375,7 @@ instmap_delta_from_mode_list(Var, Modes, ModuleInfo, InstMapDelta) :-
 	instmap_delta_init_reachable(InstMapDelta0),
 	instmap_delta_from_mode_list_2(Var, Modes, ModuleInfo,
 		InstMapDelta0, InstMapDelta).
-	
+
 :- pred instmap_delta_from_mode_list_2(list(prog_var), list(mode),
 		module_info, instmap_delta, instmap_delta).
 :- mode instmap_delta_from_mode_list_2(in, in, in, in, out) is det.
@@ -508,7 +506,7 @@ instmap_delta_insert(reachable(InstMapping0), Var, Inst, Instmap) :-
 
 instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap,
 		InstmapDelta0, InstmapDelta, ModuleInfo0, ModuleInfo) :-
-	( 
+	(
 		InstmapDelta0 = unreachable,
 		InstmapDelta = unreachable,
 		ModuleInfo = ModuleInfo0
@@ -552,7 +550,7 @@ instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
 	instmap__set(InstMap0, Var, Inst, InstMap).
 
 :- pred bind_inst_to_functor(type, cons_id, (inst), (inst),
-		module_info, module_info). 
+		module_info, module_info).
 :- mode bind_inst_to_functor(in, in, in, out, in, out) is det.
 
 bind_inst_to_functor(Type, ConsId, Inst0, Inst, ModuleInfo0, ModuleInfo) :-
@@ -560,7 +558,7 @@ bind_inst_to_functor(Type, ConsId, Inst0, Inst, ModuleInfo0, ModuleInfo) :-
 	list__duplicate(Arity, dead, ArgLives),
 	list__duplicate(Arity, free, ArgInsts),
 	(
-		abstractly_unify_inst_functor(dead, Inst0, ConsId, ArgInsts, 
+		abstractly_unify_inst_functor(dead, Inst0, ConsId, ArgInsts,
 			ArgLives, real_unify, Type, ModuleInfo0, Inst1, _Det,
 			ModuleInfo1)
 	->
@@ -634,7 +632,7 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	; InstMap0 = reachable(InstMapping0) ->
 		set__to_sorted_list(NonLocals, NonLocalsList),
 		mode_info_get_var_types(ModeInfo0, VarTypes),
-		instmap__merge_2(NonLocalsList, InstMapList, VarTypes,	
+		instmap__merge_2(NonLocalsList, InstMapList, VarTypes,
 			ModuleInfo0, InstMapping0, ModuleInfo, InstMapping,
 			ErrorList),
 		mode_info_set_module_info(ModuleInfo, ModeInfo0, ModeInfo1),
@@ -779,7 +777,7 @@ instmap__unify(NonLocals, InstMapList, ModeInfo0, ModeInfo) :-
 			ModuleInfo0, InstMapping0, ModuleInfo,
 			InstMapping, ErrorList),
 		mode_info_set_module_info(ModuleInfo, ModeInfo0, ModeInfo1),
-			
+
 			% If there were any errors, then add the error
 			% to the list of possible errors in the mode_info.
 		( ErrorList = [FirstError | _] ->

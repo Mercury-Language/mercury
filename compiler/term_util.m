@@ -122,12 +122,12 @@
 :- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
 	prog_context::out) is det.
 
-	% Succeeds if the termination status of a procedure is known.	
+	% Succeeds if the termination status of a procedure is known.
 :- pred is_termination_known(module_info::in, pred_proc_id::in) is semidet.
-	
+
 	% Succeeds if the foreign proc attributes imply that a procedure
 	% is terminating.
-:- pred attributes_imply_termination(pragma_foreign_proc_attributes::in) 
+:- pred attributes_imply_termination(pragma_foreign_proc_attributes::in)
 	is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -218,7 +218,7 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
 		split_unification_vars(Args, UniModes, ModuleInfo,
 			InVars0, OutVars0),
 		UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
-		( 
+		(
 			inst_is_bound(ModuleInfo, ArgInit)
 		->
 			% Variable is an input variable

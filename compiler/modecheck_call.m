@@ -88,8 +88,8 @@
 :- import_module check_hlds__unify_proc.
 :- import_module hlds__hlds_data.
 :- import_module hlds__instmap.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 
 :- import_module int, map, bool, set, require, term, varset.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,7 +119,7 @@ goal_expr_mark_static_terms(shorthand(_), _, _, _) :-
 
 conj_mark_static_terms(Goals0, Goals) -->
 	list__map_foldl(goal_mark_static_terms, Goals0, Goals).
-	
+
 :- pred disj_mark_static_terms(hlds_goals::in, hlds_goals::out,
 		static_info::in) is det.
 

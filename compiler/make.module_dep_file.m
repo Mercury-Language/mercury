@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,7 +188,7 @@ get_module_dependencies_2(RebuildDeps, ModuleName,
 			make_module_dependencies(ModuleName, Info3, Info6)
 		;
 			{ Info6 = Info3 ^ module_dependencies
-					^ elem(ModuleName) := no }	
+					^ elem(ModuleName) := no }
 		)
 	),
 
@@ -261,7 +261,7 @@ do_write_module_dep_file(Imports) -->
 			ForeignLanguages = set__to_sorted_list(
 						ForeignLanguages0)
 		;
-			ForeignLanguages = []	
+			ForeignLanguages = []
 		},
 		io__write_list(ForeignLanguages, ", ",
 			mercury_output_foreign_language_string),
@@ -289,7 +289,7 @@ do_write_module_dep_file(Imports) -->
 		io__set_exit_status(1)
 	).
 
-:- pred read_module_dependencies(bool::in, module_name::in, 
+:- pred read_module_dependencies(bool::in, module_name::in,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
 
 read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
@@ -302,7 +302,7 @@ read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
 	parser__read_term(ImportsTermResult),
 	io__set_input_stream(OldInputStream, ModuleDepStream),
 	io__close_input(ModuleDepStream),
-	( 
+	(
 		{ ImportsTermResult = term(_, ImportsTerm) },
 		{ ImportsTerm = term__functor(term__atom("module"),
 				ModuleArgs, _) },
@@ -431,7 +431,7 @@ read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
 				map__search(Info2 ^ module_dependencies,
 					NestedChild, ChildImports)
 			->
-				ChildImports = no	
+				ChildImports = no
 			;
 				true
 			}
@@ -547,7 +547,7 @@ make_module_dependencies(ModuleName, Info0, Info) -->
 			["--make-short-interface"],
 			make_short_interfaces(ErrorStream,
 				SourceFileName, SubModuleList)
-		    ), 
+		    ),
 		    cleanup_short_interfaces(SubModuleNames),
 		    Succeeded, Info2, Info3)
 	    ;
@@ -576,9 +576,9 @@ make_module_dependencies(ModuleName, Info0, Info) -->
 :- pred make_short_interfaces(io__output_stream::in, file_name::in,
 	assoc_list(module_name, item_list)::in, list(string)::in, bool::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
-		
+
 make_short_interfaces(ErrorStream, SourceFileName, SubModuleList,
-		_, Succeeded, Info, Info) --> 
+		_, Succeeded, Info, Info) -->
 	io__set_output_stream(ErrorStream, OutputStream),
 	list__foldl(
 	    (pred(SubModule::in, di, uo) is det -->

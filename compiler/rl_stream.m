@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: rl_stream.m
 % Main author: stayl
 %
-% The output of a relational operation can be used as a stream if it is 
+% The output of a relational operation can be used as a stream if it is
 % used only once after it is produced and if indexing is not required.
 % A stream is never stored in its entirety - it is produced one tuple at
 % a time as needed.
@@ -21,7 +21,7 @@
 % sure they are materialised.
 %
 % The algorithm used follows the chain of blocks in the procedure, dividing
-% the procedure up into sections containing no back arcs in the flow graph. 
+% the procedure up into sections containing no back arcs in the flow graph.
 % A relation which becomes live and then dies within that region only
 % being used once can be turned into a stream.
 %
@@ -46,7 +46,7 @@
 :- import_module assoc_list, bag, int, list, map, multi_map.
 :- import_module relation, require, set, std_util.
 
-:- type stream_info 
+:- type stream_info
 	---> stream_info(
 		set(relation_id),		% must materialise rels
 		bag(relation_id),		% use counts - must be one
@@ -78,7 +78,7 @@ rl_stream__detect_streams_2([Block | Order0], Materialise0, Materialise) -->
 	{ bag__init(Uses) },
 	{ relation__init(Aliases) },
 	{ Info0 = stream_info(Materialise0, Uses, Aliases) },
-	rl_opt_info_get_flow_graph(Graph), 
+	rl_opt_info_get_flow_graph(Graph),
 	{ rl_stream__get_blocks_to_back_arc(Graph, [Block | Order0], Order,
 		[], BlockList) },
 	{ set__list_to_set(BlockList, BlockSet) },
@@ -103,7 +103,7 @@ rl_stream__get_blocks_to_back_arc(Graph, [Block | Order0], Order,
 	relation__lookup_element(Graph, Block, BlockKey),
 	relation__lookup_to(Graph, BlockKey, CallingBlockKeys),
 	relation__lookup_from(Graph, BlockKey, CalledBlockKeys),
-	( 
+	(
 		% Check that a calling block is not later in the sequence,
 		% if this is not the first block in the list to check.
 		Blocks0 \= [],
@@ -147,10 +147,10 @@ rl_stream__detect_must_materialise_rels(Graph, BlockMap,
 	list__map(relation__lookup_key(Graph),
 		CallingBlockKeys, CallingBlocks),
 	set__list_to_set(CallingBlocks, CallingBlockSet),
-	set__difference(CallingBlockSet, Blocks, OutsideCallingBlocks0),	
+	set__difference(CallingBlockSet, Blocks, OutsideCallingBlocks0),
 	set__to_sorted_list(OutsideCallingBlocks0, OutsideCallingBlocks),
 	list__map(rl_stream__get_final_live_rels(BlockMap),
-		OutsideCallingBlocks, FinalLive0), 
+		OutsideCallingBlocks, FinalLive0),
 	list__condense(FinalLive0, FinalLive),
 
 	rl_stream__add_must_materialise_rels(FinalLive, Info0, Info1),
@@ -163,7 +163,7 @@ rl_stream__detect_must_materialise_rels(Graph, BlockMap,
 	set__difference(CalledBlockSet, Blocks, OutsideCalledBlocks0),
 	set__to_sorted_list(OutsideCalledBlocks0, OutsideCalledBlocks),
 	list__map(rl_stream__get_initial_live_rels(BlockMap),
-		OutsideCalledBlocks, InitialLive0), 
+		OutsideCalledBlocks, InitialLive0),
 	list__condense(InitialLive0, InitialLive),
 	rl_stream__add_must_materialise_rels(InitialLive, Info1, Info2),
 
@@ -231,7 +231,7 @@ rl_stream__detect_multiple_use_rels(Graph, BlockMap, BlockIds, InitialInfo,
 		list__foldl(rl_stream__detect_multiple_use_rels(Graph,
 				BlockMap, BlockIds, Info3),
 			InsideLaterCalledBlocks, Info0, Info)
-	).	
+	).
 
 	% Find all called blocks inside the set of interest and
 	% after the given one -- we don't want to go back around a loop.
@@ -378,7 +378,7 @@ rl_stream__update_counts(RelationIds, Info0, Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_stream__add_must_materialise_rels(list(relation_id)::in, 
+:- pred rl_stream__add_must_materialise_rels(list(relation_id)::in,
 		stream_info::in, stream_info::out) is det.
 
 rl_stream__add_must_materialise_rels(Rels, Info0, Info) :-
@@ -406,7 +406,7 @@ rl_stream__add_alias(Rel1, Rel2, Info0, Info) :-
 
 rl_stream__must_materialise_rels(join(Output, _, _, _, _, _, _) - _,
 		Materialise) :-
-	rl_stream__output_is_indexed(Output, Materialise).	
+	rl_stream__output_is_indexed(Output, Materialise).
 rl_stream__must_materialise_rels(subtract(Output, _, _, _, _, _) - _,
 		Materialise) :-
 	rl_stream__output_is_indexed(Output, Materialise).
@@ -431,10 +431,10 @@ rl_stream__must_materialise_rels(union(Output, _, _) - _, Materialise) :-
 	% XXX the difference doesn't actually have to be materialised,
 	% but it's a difficult case to handle because we have to be
 	% sure that the difference is fully looked at somewhere to
-	% force the update of the I/O relation, and also we need to 
+	% force the update of the I/O relation, and also we need to
 	% be sure that this happens before the I/O relation is used.
 rl_stream__must_materialise_rels(union_diff(UoOutput, DiInput, _,
-		output_rel(Difference, _), _, _) - _, 
+		output_rel(Difference, _), _, _) - _,
 		[UoOutput, DiInput, Difference]).
 rl_stream__must_materialise_rels(insert(UoOutput, DiInput, _, _, _) - _,
 		[UoOutput, DiInput]).

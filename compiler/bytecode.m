@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,7 +23,7 @@
 
 :- type byte_tree	==	tree(list(byte_code)).
 
-:- type byte_code	--->	enter_pred(byte_pred_id, int, 
+:- type byte_code	--->	enter_pred(byte_pred_id, int,
 					byte_is_func, int)
 			;	endof_pred
 			;	enter_proc(byte_proc_id, determinism,
@@ -444,7 +444,7 @@ debug_args(pickup_arg(RegType, RegNum, Var)) -->
 debug_args(call(ModuleId, PredId, Arity, IsFunc, ProcId)) -->
 	debug_module_id(ModuleId),
 	debug_pred_id(PredId),
-	debug_length(Arity), 
+	debug_length(Arity),
 	debug_is_func(IsFunc),
 	debug_proc_id(ProcId).
 debug_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism)) -->
@@ -834,7 +834,7 @@ debug_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity)) -->
 	debug_module_id(ModuleId),
 	debug_string(TypeName),
 	debug_int(TypeArity).
-debug_cons_id(base_typeclass_info_const(ModuleId, 
+debug_cons_id(base_typeclass_info_const(ModuleId,
 		class_id(ClassName, ClassArity), Instance)) -->
 	debug_string("base_typeclass_info_const"),
 	debug_module_id(ModuleId),

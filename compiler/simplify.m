@@ -97,8 +97,8 @@
 :- import_module hlds__special_pred.
 :- import_module libs__options.
 :- import_module libs__trace_params.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__const_prop.
 :- import_module transform_hlds__pd_cost.

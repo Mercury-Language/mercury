@@ -98,7 +98,7 @@
 
 	% The operator returned will be <, >, etc.;
 	% it can be used in the form `strcmp(<Arg1>, <Arg2>) <Op> 0'.
-	% 
+	%
 :- pred c_util__string_compare_op(binary_op::in, string::out) is semidet.
 
 	% The operator returned will be +, *, etc.;

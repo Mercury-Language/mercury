@@ -99,7 +99,7 @@ prog_rep__represent_cons_id(float_const(Float), Rep) :-
 	string__float_to_string(Float, Rep).
 prog_rep__represent_cons_id(string_const(String), Rep) :-
 	string__append_list(["""", String, """"], Rep).
-prog_rep__represent_cons_id(pred_const(_, _, _), Rep) :-
+prog_rep__represent_cons_id(pred_const(_, _), Rep) :-
 	Rep = "$pred_const".
 prog_rep__represent_cons_id(type_ctor_info_const(_, _, _), Rep) :-
 	Rep = "$type_ctor_info_const".
@@ -109,7 +109,7 @@ prog_rep__represent_cons_id(type_info_cell_constructor(_), Rep) :-
 	Rep = "$type_info_cell_constructor".
 prog_rep__represent_cons_id(typeclass_info_cell_constructor, Rep) :-
 	Rep = "$typeclass_info_cell_constructor".
-prog_rep__represent_cons_id(tabling_pointer_const(_, _), Rep) :-
+prog_rep__represent_cons_id(tabling_pointer_const(_), Rep) :-
 	Rep = "$tabling_pointer_const".
 prog_rep__represent_cons_id(deep_profiling_proc_layout(_), Rep) :-
 	Rep = "$deep_profiling_procedure_data".

@@ -9,7 +9,7 @@
 
 % This module defines utility routines that are used by the
 % Java backend.  Much of the code below is similar to that in c_util.m;
-% changes made to this module may require changes to c_util.m. 
+% changes made to this module may require changes to c_util.m.
 
 %-----------------------------------------------------------------------------%
 
@@ -44,9 +44,9 @@
 :- mode java_util__unary_prefix_op(in, out) is det.
 
 	% The operator returned will be <, >, etc.;
-	% it can be used in the form: 
+	% it can be used in the form:
 	% `<string_object>.CompareTo(<Arg1>, <Arg2>) <Op> 0'.
-	% 
+	%
 :- pred java_util__string_compare_op(binary_op, string).
 :- mode java_util__string_compare_op(in, out) is semidet.
 
@@ -83,7 +83,7 @@
 	% Tags are not used in the Java back-end, as such, all of the tagging
 	% operators except for `tag' return no-ops. The `tag' case is handled
 	% seperately in mlds_to_java__output_std_unop.
-	% 
+	%
 java_util__unary_prefix_op(mktag, 		"/* mktag */ ").
 java_util__unary_prefix_op(unmktag, 		"/* unmktag */ ").
 java_util__unary_prefix_op(strip_tag,           "/* strip_tag */ ").

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 University of Melbourne.
+% Copyright (C) 1998-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,14 +37,14 @@
 :- pred pd_debug__message(string::in, list(string__poly_type)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
-:- pred pd_debug__message(prog_context::in, string::in, 
+:- pred pd_debug__message(prog_context::in, string::in,
 		list(string__poly_type)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
-:- pred pd_debug__write(T::in, pd_info::pd_info_di, 
+:- pred pd_debug__write(T::in, pd_info::pd_info_di,
 		pd_info::pd_info_uo) is det.
 
-:- pred pd_debug__write_pred_proc_id_list(list(pred_proc_id)::in, 
+:- pred pd_debug__write_pred_proc_id_list(list(pred_proc_id)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -77,7 +77,7 @@ pd_debug__do_io(Pred) -->
 
 pd_debug__search_version_result(MaybeVersion) -->
 	pd_info_get_module_info(ModuleInfo),
-	pd_debug__do_io(pd_debug__search_version_result_2(ModuleInfo, 
+	pd_debug__do_io(pd_debug__search_version_result_2(ModuleInfo,
 		MaybeVersion)).
 
 :- pred pd_debug__search_version_result_2(module_info::in, maybe_version::in,
@@ -115,8 +115,8 @@ pd_debug__register_version(PredProcId, Version) -->
 
 pd_debug__output_version(ModuleInfo, PredProcId,
 		Version, WriteUnfoldedGoal) -->
-	{ Version = version_info(Goal - GoalInfo, _, Args, _, InstMap, 
-			InitialCost, CostDelta, Parents, _) }, 
+	{ Version = version_info(Goal - GoalInfo, _, Args, _, InstMap,
+			InitialCost, CostDelta, Parents, _) },
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	io__write_string(PredName),
 	io__write_string(": (PredProcId :"),
@@ -135,7 +135,7 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	io__write_int(CostDelta),
 	io__nl,
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
-	{ module_info_pred_proc_info(ModuleInfo, 
+	{ module_info_pred_proc_info(ModuleInfo,
 		PredId, ProcId, _, ProcInfo) },
 	{ proc_info_varset(ProcInfo, VarSet) },
 	{ instmap__restrict(InstMap, NonLocals, InstMap1) },
@@ -148,13 +148,13 @@ pd_debug__output_version(ModuleInfo, PredProcId,
 	io__nl,
 	io__write_string("Parents: "),
 	{ set__to_sorted_list(Parents, ParentsList) },
-	io__write_list(ParentsList, ", ", 
-		pd_debug__write_pred_proc_id(ModuleInfo)), 
+	io__write_list(ParentsList, ", ",
+		pd_debug__write_pred_proc_id(ModuleInfo)),
 	io__nl,
 	( { WriteUnfoldedGoal = yes } ->
 		{ proc_info_goal(ProcInfo, ProcGoal) },
 		io__write_string("Unfolded goal\n"),
-		hlds_out__write_goal(ProcGoal, 
+		hlds_out__write_goal(ProcGoal,
 			ModuleInfo, VarSet, yes, 1, "\n"),
 		io__nl
 	;
@@ -178,7 +178,7 @@ pd_debug__write_pred_proc_id_list(PredProcIds) -->
 			pd_debug__write_pred_proc_id(ModuleInfo))
 	).
 
-:- pred pd_debug__write_pred_proc_id(module_info::in, pred_proc_id::in, 
+:- pred pd_debug__write_pred_proc_id(module_info::in, pred_proc_id::in,
 		io__state::di, io__state::uo) is det.
 
 pd_debug__write_pred_proc_id(ModuleInfo, proc(PredId, ProcId)) -->
@@ -223,7 +223,7 @@ pd_debug__do_output(DoDebug) -->
 %-----------------------------------------------------------------------------%
 
 pd_debug__message(Context, Fmt, Args) -->
-	pd_debug__do_io(prog_out__write_context(Context)),	
+	pd_debug__do_io(prog_out__write_context(Context)),
 	pd_debug__do_io(io__format(Fmt, Args)).
 
 pd_debug__message(Fmt, Args) -->
@@ -233,6 +233,6 @@ pd_debug__message(Fmt, Args) -->
 
 pd_debug__write(Thing) -->
 	pd_debug__do_io(io__write(Thing)).
-	
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

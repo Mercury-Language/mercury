@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 University of Melbourne.
+% Copyright (C) 1998-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -172,7 +172,7 @@ pd_cost__call(3).
 pd_cost__higher_order_call(8).
 
 pd_cost__eliminate_switch(5).
-pd_cost__fold(15).		% reward folding 
+pd_cost__fold(15).		% reward folding
 pd_cost__recursive_fold(25).	% reward recursive folding more
 
 %-----------------------------------------------------------------------------%

@@ -97,8 +97,8 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
 		Indexing),
 	(
 		% Check for a switch on a type whose representation
-		% uses reserved addresses 
-		list__member(Case, TaggedCases),    
+		% uses reserved addresses
+		list__member(Case, TaggedCases),
 		Case = case(_Priority, Tag, _ConsId, _Goal),
 		(
 			Tag = reserved_address(_)

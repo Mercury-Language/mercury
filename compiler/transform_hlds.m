@@ -3,11 +3,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%          
+%
 % transform_hlds: High-level transformations
 %	that are independent of the choice of back-end
 %	(the "middle" HLDS pass).
-%  
+%
 
 :- module transform_hlds.
 :- interface.
@@ -17,9 +17,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- include_module intermod, trans_opt.
+:- include_module intermod.
+:- include_module trans_opt.
 
-:- include_module dependency_graph. % XXX imports llds (for profiling labels)
+:- include_module dependency_graph.
 
 :- include_module equiv_type_hlds.
 

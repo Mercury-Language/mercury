@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -770,7 +770,7 @@ implicitly_quantify_conj_2(
 	quantification__set_outside(OutsideVars, !Info),
 	quantification__set_nonlocals(NonLocalVars, !Info).
 
-:- pred implicitly_quantify_disj(list(hlds_goal)::in, list(hlds_goal)::out, 
+:- pred implicitly_quantify_disj(list(hlds_goal)::in, list(hlds_goal)::out,
 	quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_disj([], [], !Info) :-
@@ -1004,14 +1004,14 @@ quantification__goal_vars_2(_, foreign_proc(_, _, _, Args, ExtraArgs, _),
 
 quantification__goal_vars_2(NonLocalsToRecompute, shorthand(ShorthandGoal),
 		!Set, !LambdaSet) :-
-	quantification__goal_vars_2_shorthand(NonLocalsToRecompute, 
+	quantification__goal_vars_2_shorthand(NonLocalsToRecompute,
 		ShorthandGoal, !Set, !LambdaSet).
 
 :- pred quantification__goal_vars_2_shorthand(nonlocals_to_recompute::in,
 	shorthand_goal_expr::in, set_of_var::in, set_of_var::out,
 	set_of_var::in, set_of_var::out) is det.
 
-quantification__goal_vars_2_shorthand(NonLocalsToRecompute, 
+quantification__goal_vars_2_shorthand(NonLocalsToRecompute,
 		bi_implication(LHS, RHS), !Set, !LambdaSet) :-
 	goal_list_vars_2(NonLocalsToRecompute, [LHS, RHS],
 		!Set, !LambdaSet).
@@ -1038,7 +1038,7 @@ quantification__unify_rhs_vars(NonLocalsToRecompute, functor(_, _, ArgVars),
 quantification__unify_rhs_vars(NonLocalsToRecompute,
 		lambda_goal(_, _, _, _, _, LambdaVars, _, _, Goal), _,
 		!Set, !LambdaSet) :-
-	% Note that the NonLocals list is not counted, since all the 
+	% Note that the NonLocals list is not counted, since all the
 	% variables in that list must occur in the goal.
 	quantification__goal_vars_bitset(NonLocalsToRecompute, Goal, GoalVars),
 	delete_list(GoalVars, LambdaVars, GoalVars1),
@@ -1110,7 +1110,7 @@ quantification__warn_overlapping_scope(OverlapVars, Context, !Info) :-
 quantification__rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
 	quantification__get_nonlocals_to_recompute(NonLocalsToRecompute,
 		!Info),
-	( 
+	(
 		%
 		% Don't rename apart variables when recomputing the
 		% code-gen nonlocals -- that would stuff up the

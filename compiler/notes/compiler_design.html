@@ -268,14 +268,14 @@ such as pretty-printing.
 	goals), prog_io_pragma.m (which handles pragma declarations),
 	prog_io_typeclass.m (which handles typeclass and instance declarations)
 	and prog_io_util.m (which defines predicates and types needed by the
-	other prog_io*.m modules.  The data structure for insts is stored in 
-	its own module, inst.m.
+	other prog_io*.m modules.
 	
 	<p>
 
 	The modules prog_out.m and mercury_to_mercury.m contain predicates
 	for printing the parse tree.  prog_util.m contains some utility
-	predicates for manipulating the parse tree, while error_util.m
+	predicates for manipulating the parse tree, prog_mode contains utility
+	predicates for manipulating insts and modes, while error_util.m
 	contains predicates for printing nicely formatting error messages.
 
 <li><p> imports and exports are handled at this point (modules.m)
@@ -1530,6 +1530,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2004-03-23 11:02:45 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-06-14 04:17:03 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

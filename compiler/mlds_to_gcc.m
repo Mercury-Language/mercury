@@ -101,13 +101,13 @@
 :- use_module io.
 
 	% run_gcc_backend(ModuleName, CallBack, CallBackOutput):
-	% 
+	%
 	% Set things up to generate an assembler file whose name
 	% is based on the specified module name, and then call the
 	% CallBack procedure.  When the CallBack procedure exits
 	% (returning CallBackOutput), finish generating the assembler
 	% file, and then return the CallBackOutput back to the caller.
-	% 
+	%
 	% Due to limitations in the GCC back-end, this procedure
 	% must not be called more than once per process.
 
@@ -312,7 +312,7 @@ mlds_to_gcc__compile_to_asm(MLDS, MaybeRLFile, ContainsCCode) -->
 	%
 	% Declarations of functions and types referred to by this
 	% module are generated on-demand.
-	% 
+	%
 	{ list__filter(defn_is_type, Defns, TypeDefns, NonTypeDefns) },
 	{ MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName) },
 	{ GlobalInfo0 = global_info(map__init, map__init) },
@@ -340,8 +340,8 @@ not yet:
 	% to prevent linking with the wrong grade.
 	% But this would require duplicating the logic in
 	% runtime/mercury_grade.h.  Some of it is already duplicated
-	% in 
-	% of the code in 
+	% in
+	% of the code in
 /******
 not yet:
 	% mlds_output_grade_var, io__nl.
@@ -407,7 +407,7 @@ init_fn_name(ModuleName, Suffix) = InitFnName :-
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
 	prog_out__sym_name_to_string(
-			mlds_module_name_to_sym_name(ModuleName), "__", 
+			mlds_module_name_to_sym_name(ModuleName), "__",
 			ModuleNameString0),
 	(
 		string__prefix(ModuleNameString0, "mercury__")
@@ -493,7 +493,7 @@ output_init_fn_name(ModuleName, Suffix) -->
 		% Here we ensure that we only get one "mercury__" at the
 		% start of the function name.
 	{ prog_out__sym_name_to_string(
-			mlds_module_name_to_sym_name(ModuleName), "__", 
+			mlds_module_name_to_sym_name(ModuleName), "__",
 			ModuleNameString0) },
 	{
 		string__prefix(ModuleNameString0, "mercury__")
@@ -525,7 +525,7 @@ need_to_init_entries(Globals) :-
 		io__state::di, io__state::uo) is det.
 
 mlds_output_calls_to_init_entry(_ModuleName, []) --> [].
-mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) --> 
+mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) -->
 	{ FuncDefn = mlds__defn(EntityName, _, _, _) },
 	% Generate a call to MR_insert_entry_label(), which is declared as
 	% 	MR_insert_entry_label(const char *name, MR_Code *addr,
@@ -545,7 +545,7 @@ mlds_output_calls_to_init_entry(ModuleName, [FuncDefn | FuncDefns]) -->
 
 mlds_output_calls_to_register_tci(_ModuleName, []) --> [].
 mlds_output_calls_to_register_tci(ModuleName,
-		[TypeCtorInfoDefn | TypeCtorInfoDefns]) --> 
+		[TypeCtorInfoDefn | TypeCtorInfoDefns]) -->
 	{ TypeCtorInfoDefn = mlds__defn(EntityName, _, _, _) },
 	io__write_string("\tMR_register_type_ctor_info(&"),
 	mlds_output_fully_qualified_name(qual(ModuleName, EntityName)),
@@ -641,7 +641,7 @@ mlds_output_pragma_export_type(prefix, mlds__pseudo_type_info_type) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
 	io__write_string("MR_Word").
-	
+
 
 	%
 	% Output the definition body for a pragma export
@@ -740,7 +740,7 @@ build_local_defns([Defn|Defns], ModuleName, DefnInfo0, DefnInfo) -->
 			qual(ModuleName, Name), GCC_Defn) },
 	build_local_defns(Defns, ModuleName, DefnInfo1, DefnInfo).
 
-	% Handle MLDS definitions that are nested inside a type, 
+	% Handle MLDS definitions that are nested inside a type,
 	% i.e. fields of that type.
 :- pred build_field_defns(mlds__defns, mlds_module_name, global_info,
 		gcc__field_decls, field_table, field_table,
@@ -1566,7 +1566,7 @@ get_return_type(List, GlobalInfo, GCC_Type) -->
 	% `FuncName' is the name used for generating debug symbols,
 	% whereas `AsmFuncName' is what we actually spit out in the
 	% assembler file.
-:- pred get_qualified_func_name(mlds__qualified_entity_name::in, 
+:- pred get_qualified_func_name(mlds__qualified_entity_name::in,
 		mlds_module_name::out, string::out, string::out) is det.
 get_qualified_func_name(Name, ModuleName, FuncName, AsmFuncName) :-
 	Name = qual(ModuleName, EntityName),
@@ -1578,7 +1578,7 @@ get_qualified_func_name(Name, ModuleName, FuncName, AsmFuncName) :-
 	% `FuncName' is the name used for generating debug symbols,
 	% whereas `AsmFuncName' is what we actually spit out in the
 	% assembler file.
-:- pred get_func_name(mlds__entity_name::in, 
+:- pred get_func_name(mlds__entity_name::in,
 		string::out, string::out) is det.
 get_func_name(FunctionName, FuncName, AsmFuncName) :-
 	( FunctionName = function(PredLabel, ProcId, MaybeSeqNum, _PredId) ->
@@ -1714,7 +1714,7 @@ build_type(Type, GlobalInfo, GCC_Type) -->
 :- pred build_type(mlds__type, initializer_array_size, global_info,
 		gcc__type, io__state, io__state).
 :- mode build_type(in, in, in, out, di, uo) is det.
-	
+
 	% Just represent Mercury arrays as MR_Word.
 build_type(mercury_array_type(_ElemType), _, _, GCC_Type) -->
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
@@ -1924,7 +1924,7 @@ build_mercury_type(Type, TypeCategory, GCC_Type) -->
 
 build_sized_array_type(GCC_Type, ArraySize, GCC_ArrayType) -->
 	{ ArraySize = no_size, Size = 0
-	; ArraySize = array_size(Size) 
+	; ArraySize = array_size(Size)
 	},
 	gcc__build_array_type(GCC_Type, Size, GCC_ArrayType).
 
@@ -1968,7 +1968,7 @@ build_rtti_type(RttiIdMaybeElement, Size, GCC_Type, !IO) :-
 		RttiIdMaybeElement = element_type(RttiId)
 	),
 	(
-		RttiId = ctor_rtti_id(_, RttiName), 
+		RttiId = ctor_rtti_id(_, RttiName),
 		build_rtti_type_name(RttiName, BaseType, !IO)
 	;
 		RttiId = tc_rtti_id(_, TCRttiName),
@@ -2091,7 +2091,7 @@ build_rtti_type_name(res_value_ordered_table, GCC_Type, !IO) :-
 	%     MR_int_least16_t    MR_ra_num_res_symbolic_addrs;
 	%     const void * const *MR_ra_res_symbolic_addrs;
 	%     const MR_ReservedAddrFunctorDesc * const * MR_ra_constants;
-	%     MR_DuTypeLayout     MR_ra_other_functors;  
+	%     MR_DuTypeLayout     MR_ra_other_functors;
 	% } MR_ReservedAddrTypeDesc;
 	build_struct_type("MR_ReservedAddrTypeDesc",
 		['MR_int_least16_t'	- "MR_ra_num_res_numeric_addrs",
@@ -2572,7 +2572,7 @@ build_data_name(proc_layout(_ProcLabel)) = _ :-
 build_data_name(internal_layout(_ProcLabel, _FuncSeqNum)) = _ :-
 	sorry(this_file, "internal_layout").
 build_data_name(tabling_pointer(ProcLabel)) = TablingPointerName :-
-	% convert the proc_label into an entity_name, 
+	% convert the proc_label into an entity_name,
 	% so we can use get_func_name below
 	ProcLabel = PredLabel - ProcId,
 	MaybeSeqNum = no,
@@ -3097,7 +3097,7 @@ gen_atomic_stmt(DefnInfo, NewObject, Context) -->
 	% assign it to Target
 	build_lval(Target, DefnInfo, GCC_Target),
 	gcc__gen_assign(GCC_Target, GCC_TaggedCastCall),
-	
+
 	%
 	% Initialize the fields.
 	%
@@ -3273,7 +3273,7 @@ build_lval(var(qual(ModuleName, VarName), _VarType), DefnInfo, Expr) -->
 	% we check if its an RTTI enumeration constant.
 	%
 	{ Name = qual(ModuleName, data(var(VarName))) },
-	( 
+	(
 		{ map__search(DefnInfo ^ local_vars, Name, LocalVarDecl) }
 	->
 		{ Expr = gcc__var_expr(LocalVarDecl) }
@@ -3354,7 +3354,7 @@ build_rval(self(_), _DefnInfo, _Expr) -->
 :- pred build_unop(mlds__unary_op, mlds__rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_unop(in, in, in, out, di, uo) is det.
-	
+
 build_unop(cast(Type), Rval, DefnInfo, GCC_Expr) -->
 	build_cast_rval(Type, Rval, DefnInfo, GCC_Expr).
 build_unop(box(Type), Rval, DefnInfo, GCC_Expr) -->
@@ -3410,7 +3410,7 @@ type_is_float(Type) :-
 :- pred build_cast_rval(mlds__type, mlds__rval, defn_info, gcc__expr,
 		io__state, io__state).
 :- mode build_cast_rval(in, in, in, out, di, uo) is det.
-	
+
 build_cast_rval(Type, Rval, DefnInfo, GCC_Expr) -->
 	build_rval(Rval, DefnInfo, GCC_Rval),
 	build_type(Type, DefnInfo ^ global_info, GCC_Type),
@@ -3419,7 +3419,7 @@ build_cast_rval(Type, Rval, DefnInfo, GCC_Expr) -->
 :- pred build_std_unop(builtin_ops__unary_op, mlds__rval, defn_info,
 		gcc__expr, io__state, io__state).
 :- mode build_std_unop(in, in, in, out, di, uo) is det.
-	
+
 build_std_unop(UnaryOp, Arg, DefnInfo, Expr) -->
 	build_rval(Arg, DefnInfo, GCC_Arg),
 	build_unop_expr(UnaryOp, GCC_Arg, Expr).
@@ -3472,7 +3472,7 @@ build_unop_expr((not), Arg, Expr) -->
 :- pred build_std_binop(builtin_ops__binary_op, mlds__rval, mlds__rval,
 		defn_info, gcc__expr, io__state, io__state).
 :- mode build_std_binop(in, in, in, in, out, di, uo) is det.
-	
+
 build_std_binop(BinaryOp, Arg1, Arg2, DefnInfo, Expr) -->
 	( { string_compare_op(BinaryOp, CorrespondingIntOp) } ->
 		%
@@ -3644,7 +3644,7 @@ build_code_addr(CodeAddr, GlobalInfo, Expr) -->
 		{ CodeAddr = internal(Label, SeqNum, Signature) },
 		{ MaybeSeqNum = yes(SeqNum) }
 	),
-	% convert the label into a entity_name, 
+	% convert the label into a entity_name,
 	% so we can use make_func_decl below
 	{ Label = qual(ModuleName, PredLabel - ProcId) },
 	{ Name = qual(ModuleName, function(PredLabel, ProcId,

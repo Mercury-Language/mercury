@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,7 +125,7 @@ rl_block_opt__build_dag(project(Output, Input, Exprn,
 	rl_block_opt__lookup_relation(Input, InputNode),
 	rl_block_opt__add_dag_node([Output | MaterialisedOutputs], [InputNode],
 		project(InputNode, [Exprn | Exprns], Type), _).
-		
+
 rl_block_opt__build_dag(union(Output, Inputs, Type) - _) -->
 	rl_block_opt__lookup_relations(Inputs, InputNodes0),
 
@@ -159,7 +159,7 @@ rl_block_opt__build_dag(sort(Output, Input, Attrs) - _) -->
 	rl_block_opt__lookup_relation(Input, InputNode),
 	rl_block_opt__add_dag_node([Output], [InputNode],
 		sort(InputNode, Attrs), _).
-	
+
 rl_block_opt__build_dag(ref(Output, Input) - _) -->
 	rl_block_opt__lookup_relation(Input, InputNode),
 	rl_block_opt__set_relation_output_id(Output, InputNode).
@@ -233,7 +233,7 @@ rl_block_opt__lookup_relation(RelationId, OutputId) -->
 				input(RelationId), OutputId)
 		;
 			{ string__format(
-		"rl_block_opt__lookup_relation: can't find relation %i", 
+		"rl_block_opt__lookup_relation: can't find relation %i",
 				[i(RelationId)], Msg) },
 			{ error(Msg) }
 		)
@@ -352,7 +352,7 @@ rl_block_opt__add_dag_node(OutputRels, InputNodes, Instr, MatchingNode) -->
 %-----------------------------------------------------------------------------%
 
 	% Do common subexpression elimination.
-:- pred rl_block_opt__find_matching_node(exprns::in, 
+:- pred rl_block_opt__find_matching_node(exprns::in,
 		instr::in, node_id::out) is semidet.
 
 rl_block_opt__find_matching_node(Exprns, Instr, Node) :-
@@ -361,7 +361,7 @@ rl_block_opt__find_matching_node(Exprns, Instr, Node) :-
 	Instr \= init(_),
 	rl_block_opt__find_matching_node_2(Exprns, Instr, Node).
 
-:- pred rl_block_opt__find_matching_node_2(assoc_list(instr, node_id)::in, 
+:- pred rl_block_opt__find_matching_node_2(assoc_list(instr, node_id)::in,
 		instr::in, node_id::out) is semidet.
 
 rl_block_opt__find_matching_node_2([InstrToCheck - Node | InstrsToCheck],
@@ -416,7 +416,7 @@ rl_block_opt__do_add_node(OutputRels, Instr, MatchingNode) -->
 	dag_get_next_node_id(MatchingNode),
 	list__map_foldl(rl_block_opt__init_output_node,
 		OutputRels, Outputs0),
-	{ NodeInfo = node_info(Instr, Outputs0) },  
+	{ NodeInfo = node_info(Instr, Outputs0) },
 	dag_get_node_info_map(NodeInfoMap0),
 	{ map__det_insert(NodeInfoMap0, MatchingNode,
 		NodeInfo, NodeInfoMap) },
@@ -450,7 +450,7 @@ rl_block_opt__set_relation_node(NodeId, Output, Index0, Index) -->
 	{ InputRel = input_node(NodeId, Index0) },
 	( { map__search(Assign0, InputRel, OutputId0) } ->
 		{ OutputId = OutputId0 }
-	;	
+	;
 		dag_get_next_output_id(OutputId),
 		{ map__det_insert(Assign0, InputRel, OutputId, Assign) },
 		dag_set_output_assign_map(Assign),
@@ -477,7 +477,7 @@ rl_block_opt__add_node_dependencies(MatchingNode, InputNodes) -->
 	dag_get_node_dep_map(Dep0),
 	{ MMapSet = (pred(Node::in, Depend0::in, Depend::out) is det :-
 		multi_map__set(Depend0, MatchingNode, Node, Depend)
-	) },		
+	) },
 	{ list__foldl(MMapSet, InputNodes, Dep0, Dep) },
 	dag_set_node_dep_map(Dep).
 
@@ -486,7 +486,7 @@ rl_block_opt__add_node_dependencies(MatchingNode, InputNodes) -->
 	% Keep rewriting until nothing changes.
 :- pred rl_block_opt__rewrite_dag(dag::in, dag::out) is det.
 
-rl_block_opt__rewrite_dag --> 
+rl_block_opt__rewrite_dag -->
 	dag_get_node_info_map(NodeInfoMap),
 	{ map__keys(NodeInfoMap, Nodes) },
 	rl_block_opt__rewrite_nodes(Nodes, no, Changed),
@@ -551,7 +551,7 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 			IOLoc = IOLoc0,
 			NewRel = NewRel0,
 			DiffOutput = DiffOutput0
-		;	
+		;
 			UnionInputLocs = [IOLoc, DiffLoc],
 			rl_block_opt__get_difference_info(NodeInfoMap0, Locs,
 				IOLoc, DiffLoc, DiffNode, NewRel, DiffOutput)
@@ -586,7 +586,7 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 				NodeInfo, NodeInfoMap) },
 			dag_set_node_info_map(NodeInfoMap)
 		;
-			[]	
+			[]
 		)
 	;
 		{ list__member(merge_output_projections, Flags) }
@@ -597,17 +597,17 @@ rl_block_opt__rewrite_node(Node, NodeInfo0, Changed) -->
 		% same one.
 		rl_block_opt__merge_output_projections(Node, Changed)
 	;
-		{ Changed = no }	
+		{ Changed = no }
 	).
 
 %-----------------------------------------------------------------------------%
 
 	% Check that the given node holds a difference instruction,
-	% and extract some information from the instruction.	
+	% and extract some information from the instruction.
 :- pred rl_block_opt__get_difference_info(map(node_id, node_info)::in,
 		output_loc_map::in, output_id::in, output_id::in,
 		node_id::out, output_id::out, output_node::out) is semidet.
-	
+
 rl_block_opt__get_difference_info(NodeInfoMap0, LocMap,
 		IOLoc, DiffOutputId, DiffNode, NewRel, DiffOutput) :-
 	map__lookup(LocMap, DiffOutputId, DiffLoc),
@@ -666,7 +666,7 @@ rl_block_opt__add_index_to_node(OutputId, Index) -->
 		rl_block_opt__add_specific_index(Index), OutputId, _).
 
 :- pred rl_block_opt__add_specific_index(list(index_spec)::in, list(type)::in,
-	list(index_spec)::in, list(index_spec)::out, 
+	list(index_spec)::in, list(index_spec)::out,
 	list(index_spec)::out) is det.
 
 rl_block_opt__add_specific_index(AddedIndexes0, _,
@@ -732,7 +732,7 @@ rl_block_opt__get_node_indexes(OutputId, Indexes) -->
 		output_id::out) is semidet.
 
 rl_block_opt__add_index_to_input(Instr, OutputNo, InputLoc) :-
-	( Instr = union_diff(_, InputLoc, _) 
+	( Instr = union_diff(_, InputLoc, _)
 	; Instr = insert(_, InputLoc, _)
 	),
 	OutputNo = 0.
@@ -740,7 +740,7 @@ rl_block_opt__add_index_to_input(Instr, OutputNo, InputLoc) :-
 %-----------------------------------------------------------------------------%
 
 	% Update the nodes instruction, inputs and outputs.
-:- pred rl_block_opt__update_node(node_id::in, instr::in, list(output_id)::in, 
+:- pred rl_block_opt__update_node(node_id::in, instr::in, list(output_id)::in,
 		list(output_node)::in, dag::in, dag::out) is det.
 
 rl_block_opt__update_node(Node, Instr, InputLocs, OutputRels) -->
@@ -760,7 +760,7 @@ rl_block_opt__update_node(Node, Instr, InputLocs, OutputRels) -->
 			), UsedNodes, Uses0, Uses) },
 		dag_set_output_use_map(Uses),
 		dag_set_node_dep_map(Dep)
-	;		
+	;
 		[]
 	),
 	rl_block_opt__add_node_dependencies(Node, InputLocs).
@@ -809,7 +809,7 @@ rl_block_opt__remove_node(Node) -->
 	% is evaluated. This may cause problems if a user of a materialised
 	% output comes before the user of the non-materialised output. In
 	% the worst case, it could cause a circular dependency.
-	% The quick hack solution is to just materialise all outputs of a 
+	% The quick hack solution is to just materialise all outputs of a
 	% projection if there are more than one.
 :- pred rl_block_opt__merge_output_projections(node_id::in, bool::out,
 		dag::in, dag::out) is det.
@@ -934,7 +934,7 @@ rl_block_opt__partition_project_outputs_2([Project | Projects],
 :- pred rl_block_opt__add_to_partitions(output_projection::in,
 	list(project_partition)::in, list(project_partition)::out) is det.
 
-rl_block_opt__add_to_partitions(Project, [], 
+rl_block_opt__add_to_partitions(Project, [],
 		[project_partition(ProjType, [Project])]) :-
 	Project = output_projection(_, _, ProjType, _).
 rl_block_opt__add_to_partitions(Project, [Partition0 | Partitions0],
@@ -959,7 +959,7 @@ rl_block_opt__produce_merged_projection(project_partition(_, Projects)) -->
 	dag_get_next_node_id(NewNode),
 	rl_block_opt__collect_project_outputs(NewNode, 0, Projects,
 		[], OutputNodes0, [], Goals0),
-	{ list__reverse(OutputNodes0, OutputNodes) }, 
+	{ list__reverse(OutputNodes0, OutputNodes) },
 	{ list__reverse(Goals0, Goals) },
 	(
 		{ Projects = [Project | _] },
@@ -1017,7 +1017,7 @@ rl_block_opt__collect_project_outputs(NewNode, Index0, [Project | Projects],
 
 :- pred rl_block_opt__collect_project_outputs_2(node_id::in, int::in,
 		list(output_node)::in, node_id::in, int::in, int::out,
-		list(output_node)::in, list(output_node)::out, 
+		list(output_node)::in, list(output_node)::out,
 		dag::in, dag::out) is det.
 
 rl_block_opt__collect_project_outputs_2(_, _, [],
@@ -1142,7 +1142,7 @@ rl_block_opt__conjoin_goals(ModuleInfo, RLGoal1, RLGoal2, RLGoal) :-
 		RenameHeadVars = InputArgs2
 	;
 		error("rl_block_opt__conjoin_goals")
-	),	
+	),
 
 	goal_info_init(DummyGoalInfo),
 
@@ -1239,7 +1239,7 @@ rl_block_opt__get_required_nodes([Node | Nodes0], Required0, Required,
 		dag_get_node_dep_map(Dep),
 		dag_get_output_loc_map(Locs),
 		{ map__search(Dep, Node, NeededOutputs) ->
-			GetNode = 
+			GetNode =
 				(pred(OutputId::in, OutputNode::out) is det :-
 					map__lookup(Locs, OutputId,
 						input_node(OutputNode, _))
@@ -1261,7 +1261,7 @@ rl_block_opt__get_required_nodes([Node | Nodes0], Required0, Required,
 	),
 	rl_block_opt__get_required_nodes(Nodes1, Required1, Required,
 		NodeRel1, NodeRel).
-		
+
 %-----------------------------------------------------------------------------%
 
 :- type node_rels == map(node_id, list(output_rel)).
@@ -1277,7 +1277,7 @@ rl_block_opt__evaluate_nodes([Node | Nodes], NonLocalRels, NodeRels0,
 		AssignInstrs0, Instrs0, Instrs) -->
 	rl_block_opt__evaluate_node(Node, NonLocalRels, NodeRels0, NodeRels1,
 		AssignInstrs0, AssignInstrs1, Instrs0, Instrs1),
-	rl_block_opt__evaluate_nodes(Nodes, NonLocalRels, 
+	rl_block_opt__evaluate_nodes(Nodes, NonLocalRels,
 		NodeRels1, AssignInstrs1, Instrs1, Instrs).
 
 :- pred rl_block_opt__evaluate_node(node_id::in, set(relation_id)::in,
@@ -1312,7 +1312,7 @@ rl_block_opt__get_node_outputs(Instr, NonLocalRels, [OutputNode | OutputNodes],
 	{ OutputNode = output_node(Schema, Index, AllOutputs0) },
 	{ set__intersect(AllOutputs0, NonLocalRels, NonLocalOutputs0) },
 	{ Instr = input(InputRel1) ->
-		% Don't assign the input relation to itself. 
+		% Don't assign the input relation to itself.
 		set__delete(NonLocalOutputs0, InputRel1, NonLocalOutputs)
 	;
 		NonLocalOutputs = NonLocalOutputs0
@@ -1328,7 +1328,7 @@ rl_block_opt__get_node_outputs(Instr, NonLocalRels, [OutputNode | OutputNodes],
 		% instruction, another instruction has overwritten its value.
 		set__member(InputRel2, NonLocalOutputs0)
 		}
-	->	
+	->
 		{ RelationId = InputRel2 }
 	;
 		dag_add_relation(Schema, RelationId)
@@ -1353,7 +1353,7 @@ rl_block_opt__get_ref_instrs(RelationId, OutputList, RefInstrs) :-
 
 :- pred rl_block_opt__generate_instr(list(output_node)::in,
 	list(output_rel)::in, node_rels::in, instr::in,
-	list(rl_instruction)::out, dag::in, dag::out) is det.		
+	list(rl_instruction)::out, dag::in, dag::out) is det.
 
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
 		join(Input1Loc, Input2Loc, JoinType, Exprn,
@@ -1443,7 +1443,7 @@ rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
 	{ set__init(Saved) },
 	list__map_foldl(rl_block_opt__get_relation_id(NodeRels),
 		InputLocs, Inputs).
-	
+
 rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
 		aggregate(Input1Loc, Initial, Update),
 		[aggregate(Output, Input1, Initial, Update) - ""]) -->
@@ -1459,7 +1459,7 @@ rl_block_opt__generate_instr(_, NodeOutputs, NodeRels,
 rl_block_opt__generate_instr(_, NodeOutputs, _NodeRels,
 		init(_), [init(Output) - ""]) -->
 	{ rl_block_opt__one_output(NodeOutputs, Output) }.
-	
+
 rl_block_opt__generate_instr(_, NodeOutputs, _, input(Input), Instrs) -->
 	{ rl_block_opt__one_output(NodeOutputs, OutputRel) },
 	{ OutputRel = output_rel(Output, Indexes) },
@@ -1476,7 +1476,7 @@ rl_block_opt__generate_instr(_, NodeOutputs, _, input(Input), Instrs) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred rl_block_opt__get_relation_id(node_rels::in, 
+:- pred rl_block_opt__get_relation_id(node_rels::in,
 		output_id::in, relation_id::out, dag::in, dag::out) is det.
 
 rl_block_opt__get_relation_id(NodeRels, OutputId, RelationId) -->
@@ -1524,7 +1524,7 @@ rl_block_opt__one_output(Outputs, Output) :-
 	;	union(list(output_id), union_type)
 	;	union_diff(output_id, output_id, index_spec)
 	;	insert(output_id, output_id, insert_type)
-	;	sort(output_id, assoc_list(int, sort_dir))     
+	;	sort(output_id, assoc_list(int, sort_dir))
 	;	call(rl_proc_name, list(output_id))
 	;	aggregate(output_id, pred_proc_id, pred_proc_id)
 	;	insert_tuple(output_id, rl_goal)
@@ -1532,7 +1532,7 @@ rl_block_opt__one_output(Outputs, Output) :-
 	;	input(relation_id)	% input to block
 	.
 
-:- type dag 
+:- type dag
 	---> dag(
 		node_id,			% next node_id
 		output_id,			% next output_id
@@ -1595,7 +1595,7 @@ dag_init(RLOptInfo, BlockInfo, Flags, dag(0, 0, RelMap, [], Outputs, Assign,
 	map__init(Locs),
 	map__init(Uses),
 	map__init(Dep).
-		
+
 :- pred dag_get_next_node_id(node_id, dag, dag).
 :- mode dag_get_next_node_id(out, in, out) is det.
 

@@ -84,9 +84,10 @@
 :- implementation.
 
 :- import_module check_hlds__inst_match.
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module libs__options.
+:- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_util.
 
 :- import_module map, term, require, std_util.
 

@@ -49,13 +49,13 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
 :- import_module check_hlds__purity.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__make_hlds.
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_mode.
 
 :- import_module assoc_list, bool, int, set, map, varset, require.
 

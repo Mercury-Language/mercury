@@ -405,7 +405,7 @@ build_block_map([], _, [], !BlockMap, _, !C).
 build_block_map([Instr0 | Instrs0], FrameSize, LabelSeq, !BlockMap,
 		ProcLabel, !C) :-
 	( Instr0 = label(Label) - _ ->
-		( 
+		(
 			frameopt__detstack_setup(Instrs0, _, _, Setup,
 				Others, Remain)
 		->
@@ -938,7 +938,7 @@ can_delay_frame([Label | Labels], BlockMap, First) :-
 	%	that fall through to ordinary blocks that need a frame,
 	%	since the frame setup code can be interposed between the
 	%	two blocks.
-	%	
+	%
 	% -	The second phase gets rid of the frame setup code in the
 	%	initial setup block, but its main task is to transform
 	%	ordinary blocks that do not need a frame. Such blocks cannot
@@ -1210,7 +1210,7 @@ transform_ordinary_block(Label0, Labels0, BlockInfo0, FramedLabels, FrameSize,
 						- "late setup label",
 					incr_sp(FrameSize, Msg)
 						- "late setup",
-					assign(stackvar(FrameSize), 
+					assign(stackvar(FrameSize),
 						lval(succip))
 						- "late save"
 				],

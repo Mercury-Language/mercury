@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 University of Melbourne.
+% Copyright (C) 1997-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,6 @@
 
 :- interface.
 
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
 
@@ -44,7 +43,6 @@
 :- implementation.
 
 :- import_module check_hlds__type_util.
-:- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.

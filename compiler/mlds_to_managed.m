@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Module: 	mlds_to_managed 
+% Module: 	mlds_to_managed
 % Main author: 	trd, petdr.
 %
 % Generate code for the foreign language interface to C# and managed C++.
@@ -65,7 +65,7 @@
 
 output_managed_code(Lang, MLDS) -->
 	{ MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns) },
-	output_src_start(ModuleName), 
+	output_src_start(ModuleName),
 	io__nl,
 
 	generate_code(Lang, MLDS),
@@ -78,10 +78,10 @@ output_src_start(ModuleName) -->
 	{ library__version(Version) },
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
 	io__write_strings(
-		["//\n// Automatically generated from `", 
+		["//\n// Automatically generated from `",
 		ModuleNameStr,
 		".m' by the\n",
-		"// Mercury compiler, version ", 
+		"// Mercury compiler, version ",
 		Version,
 		".\n",
 		"// Do not edit.\n",
@@ -99,7 +99,7 @@ output_src_end(ModuleName) -->
 
 generate_code(Lang, MLDS) -->
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
-	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName), 
+	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
 			wrapper_class_name) },
 
 	io__nl,
@@ -115,7 +115,7 @@ generate_code(Lang, MLDS) -->
 		% Output the namespace.
 	{ generate_namespace_details(Lang, ClassName,
 			NameSpaceFmtStr, Namespace) },
-	io__write_list(Namespace, "\n", 
+	io__write_list(Namespace, "\n",
 		(pred(N::in, di, uo) is det -->
 			io__format(NameSpaceFmtStr, [s(N)])
 	)),
@@ -145,7 +145,7 @@ generate_code(Lang, MLDS) -->
 	io__write_string("};\n"),
 
 		% Close the namespace braces.
-	io__write_list(Namespace, "\n", 
+	io__write_list(Namespace, "\n",
 		(pred(_N::in, di, uo) is det -->
 			io__write_string("}")
 	)),
@@ -252,7 +252,7 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
 		module_name::in, mlds__foreign_code::in,
 		io__state::di, io__state::uo) is det.
 
-generate_foreign_header_code(Lang, ModuleName, 
+generate_foreign_header_code(Lang, ModuleName,
 		mlds__foreign_code(RevHeaderCode, RevImports, _RevBodyCode,
 			_ExportDefns)) -->
 
@@ -275,7 +275,7 @@ generate_foreign_header_code(Lang, ModuleName,
 	),
 
 	{ HeaderCode = list__reverse(RevHeaderCode) },
-	io__write_list(HeaderCode, "\n", 
+	io__write_list(HeaderCode, "\n",
 		% XXX Ignoring _IsLocal may not be the right thing to do.
 		(pred(foreign_decl_code(CodeLang, _IsLocal, Code, Context)::in,
 				di, uo) is det -->
@@ -314,11 +314,11 @@ generate_namespace_details(Lang, ClassName, NameSpaceFmtStr, Namespace) :-
 		mlds_module_name::in, mlds__foreign_code::in,
 		io__state::di, io__state::uo) is det.
 
-generate_foreign_code(Lang, _ModuleName, 
+generate_foreign_code(Lang, _ModuleName,
 		mlds__foreign_code(_RevHeaderCode, _RevImports, RevBodyCode,
 			_ExportDefns)) -->
 	{ BodyCode = list__reverse(RevBodyCode) },
-	io__write_list(BodyCode, "\n", 
+	io__write_list(BodyCode, "\n",
 		(pred(user_foreign_code(CodeLang, Code, Context)::in,
 				di, uo) is det -->
 			output_context(Lang, Context),
@@ -337,11 +337,11 @@ generate_foreign_code(Lang, _ModuleName,
 generate_method_code(_, _, defn(export(_), _, _, _)) --> [].
 generate_method_code(_, _, defn(data(_), _, _, _)) --> [].
 generate_method_code(_, _, defn(type(_, _), _, _, _)) --> [].
-generate_method_code(Lang, _ModuleName, 
-		defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId), 
+generate_method_code(Lang, _ModuleName,
+		defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId),
 	_Context, _DeclFlags, Entity)) -->
 
-	( 
+	(
 			% XXX we ignore the attributes
 		{ Entity = mlds__function(_, Params, defined_here(Statement),
 			_Attributes) },
@@ -353,7 +353,7 @@ generate_method_code(Lang, _ModuleName,
 		{ Outputs = [] ->
 			ReturnType = void
 		; Outputs = [MLDSReturnType] ->
-			mlds_type_to_ilds_type(DataRep, MLDSReturnType) = 
+			mlds_type_to_ilds_type(DataRep, MLDSReturnType) =
 				ilds__type(_, SimpleType),
 			ReturnType = simple_type(SimpleType)
 		;
@@ -386,11 +386,11 @@ generate_method_code(Lang, _ModuleName,
 		[]
 	).
 
-:- pred write_statement(foreign_language::in(managed_lang), 
+:- pred write_statement(foreign_language::in(managed_lang),
 		mlds__arguments::in, mlds__statement::in,
 		io__state::di, io__state::uo) is det.
 write_statement(Lang, Args, statement(Statement, Context)) -->
-	( 
+	(
 			% XXX petdr
 		{ Statement = atomic(outline_foreign_proc(Lang, OutlineArgs,
 				_Lvals, Code)) }
@@ -419,7 +419,7 @@ write_statement(Lang, Args, statement(Statement, Context)) -->
 			{ sorry(this_file, "multiple return values") }
 		)
 	;
-		{ Statement = atomic(assign(LVal, RVal)) } 
+		{ Statement = atomic(assign(LVal, RVal)) }
 	->
 		write_lval(Lang, LVal),
 		io__write_string(" = "),
@@ -517,7 +517,7 @@ write_assign_local_to_output(Lang, argument(Name, Type, _GcCode)) -->
 	},
 
 		% A pointer type is an output type.
-	( 
+	(
 		{ Type = mlds__ptr_type(_OutputType) },
 		{ not is_anonymous_variable(VarName) }
 	->
@@ -566,7 +566,7 @@ write_rval(_Lang, mkword(_Tag, _Rval)) -->
 write_rval(Lang, const(RvalConst)) -->
 	write_rval_const(Lang, RvalConst).
 write_rval(Lang, unop(Unop, Rval)) -->
-	( 
+	(
 		{ Unop = std_unop(StdUnop) },
 		{ c_util__unary_prefix_op(StdUnop, UnopStr) }
 	->
@@ -585,7 +585,7 @@ write_rval(Lang, unop(Unop, Rval)) -->
 		{ sorry(this_file, "box or unbox unop") }
 	).
 write_rval(Lang, binop(Binop, Rval1, Rval2)) -->
-	( 
+	(
 		{ c_util__binary_infix_op(Binop, BinopStr) }
 	->
 		io__write_string("("),
@@ -601,10 +601,10 @@ write_rval(Lang, binop(Binop, Rval1, Rval2)) -->
 
 write_rval(_Lang, mem_addr(_)) -->
 	{ sorry(this_file, "mem_addr rval") }.
-	
+
 write_rval(_Lang, self(_)) -->
 	{ sorry(this_file, "self rval") }.
-	
+
 :- pred write_rval_const(foreign_language, mlds__rval_const, io, io).
 :- mode write_rval_const(in(managed_lang), in, di, uo) is det.
 
@@ -613,15 +613,15 @@ write_rval_const(_Lang, false) --> io__write_string("0").
 write_rval_const(_Lang, int_const(I)) --> io__write_int(I).
 write_rval_const(_Lang, float_const(F)) --> io__write_float(F).
 	% XXX We don't quote this correctly.
-write_rval_const(_Lang, string_const(S)) --> 
+write_rval_const(_Lang, string_const(S)) -->
 	io__write_string(""""),
 	c_util__output_quoted_string(S),
 	io__write_string("""").
-write_rval_const(_Lang, multi_string_const(L, S)) --> 
+write_rval_const(_Lang, multi_string_const(L, S)) -->
 	io__write_string(""""),
 	c_util__output_quoted_multi_string(L, S),
 	io__write_string("""").
-write_rval_const(Lang, code_addr_const(CodeAddrConst)) --> 
+write_rval_const(Lang, code_addr_const(CodeAddrConst)) -->
 	(
 		{ CodeAddrConst = proc(ProcLabel, _FuncSignature) },
 		{ mangle_mlds_proc_label(ProcLabel, no, ClassName,
@@ -638,9 +638,9 @@ write_rval_const(Lang, code_addr_const(CodeAddrConst)) -->
 		write_field_selector(Lang),
 		io__write_string(MangledName)
 	).
-write_rval_const(_Lang, data_addr_const(_)) --> 
+write_rval_const(_Lang, data_addr_const(_)) -->
 	{ sorry(this_file, "data_addr_const rval") }.
-write_rval_const(Lang, null(_)) --> 
+write_rval_const(Lang, null(_)) -->
 	( { Lang = csharp },
 		io__write_string("null")
 	; { Lang = managed_cplusplus },
@@ -711,10 +711,10 @@ write_parameter_type(Lang, Type) -->
 
 :- pred write_input_arg_as_foreign_type(foreign_language::in(managed_lang),
 		mlds__argument::in, io__state::di, io__state::uo) is det.
-write_input_arg_as_foreign_type(Lang, Arg) --> 
+write_input_arg_as_foreign_type(Lang, Arg) -->
 	{ Arg = mlds__argument(EntityName, Type, _GC_TraceCode) },
 	get_il_data_rep(DataRep),
-	write_il_type_as_foreign_type(Lang, 
+	write_il_type_as_foreign_type(Lang,
 			mlds_type_to_ilds_type(DataRep, Type)),
 	io__write_string(" "),
 	( { EntityName = data(var(VarName)) } ->
@@ -739,14 +739,14 @@ write_parameter_initializer(csharp, Type) -->
 
 write_il_ret_type_as_foreign_type(_Lang, void) -->
 	io__write_string("void").
-write_il_ret_type_as_foreign_type(Lang, simple_type(T)) --> 
+write_il_ret_type_as_foreign_type(Lang, simple_type(T)) -->
 	write_il_simple_type_as_foreign_type(Lang, T).
 
 :- pred write_il_type_as_foreign_type(foreign_language::in(managed_lang),
 		ilds__type::in, io__state::di, io__state::uo) is det.
 
 write_il_type_as_foreign_type(Lang, ilds__type(Modifiers, SimpleType)) -->
-	io__write_list(Modifiers, " ", 
+	io__write_list(Modifiers, " ",
 		write_il_type_modifier_as_foreign_type(Lang)),
 	write_il_simple_type_as_foreign_type(Lang, SimpleType).
 
@@ -754,60 +754,60 @@ write_il_type_as_foreign_type(Lang, ilds__type(Modifiers, SimpleType)) -->
 	foreign_language::in(managed_lang), ilds__type_modifier::in,
 	io__state::di, io__state::uo) is det.
 
-write_il_type_modifier_as_foreign_type(_Lang, const) --> 
+write_il_type_modifier_as_foreign_type(_Lang, const) -->
 	io__write_string("const").
-write_il_type_modifier_as_foreign_type(_Lang, readonly) --> 
+write_il_type_modifier_as_foreign_type(_Lang, readonly) -->
 	io__write_string("readonly").
-write_il_type_modifier_as_foreign_type(_Lang, volatile) --> 
+write_il_type_modifier_as_foreign_type(_Lang, volatile) -->
 	io__write_string("volatile").
 
 	% XXX need to revisit this and choose types appropriately
 :- pred write_il_simple_type_as_foreign_type(foreign_language::in(managed_lang),
 		simple_type::in, io__state::di, io__state::uo) is det.
 
-write_il_simple_type_as_foreign_type(csharp, int8) --> 
+write_il_simple_type_as_foreign_type(csharp, int8) -->
 	io__write_string("sbyte").
-write_il_simple_type_as_foreign_type(csharp, int16) --> 
+write_il_simple_type_as_foreign_type(csharp, int16) -->
 	io__write_string("short").
-write_il_simple_type_as_foreign_type(csharp, int32) --> 
+write_il_simple_type_as_foreign_type(csharp, int32) -->
 	io__write_string("int").
-write_il_simple_type_as_foreign_type(csharp, int64) --> 
+write_il_simple_type_as_foreign_type(csharp, int64) -->
 	io__write_string("long").
-write_il_simple_type_as_foreign_type(csharp, uint8) --> 
+write_il_simple_type_as_foreign_type(csharp, uint8) -->
 	io__write_string("byte").
-write_il_simple_type_as_foreign_type(csharp, uint16) --> 
+write_il_simple_type_as_foreign_type(csharp, uint16) -->
 	io__write_string("ushort").
-write_il_simple_type_as_foreign_type(csharp, uint32) --> 
+write_il_simple_type_as_foreign_type(csharp, uint32) -->
 	io__write_string("uint").
-write_il_simple_type_as_foreign_type(csharp, uint64) --> 
+write_il_simple_type_as_foreign_type(csharp, uint64) -->
 	io__write_string("ulong").
-write_il_simple_type_as_foreign_type(csharp, native_int) --> 
+write_il_simple_type_as_foreign_type(csharp, native_int) -->
 	io__write_string("int").
-write_il_simple_type_as_foreign_type(csharp, native_uint) --> 
+write_il_simple_type_as_foreign_type(csharp, native_uint) -->
 	io__write_string("uint").
-write_il_simple_type_as_foreign_type(csharp, float32) --> 
+write_il_simple_type_as_foreign_type(csharp, float32) -->
 	io__write_string("float").
-write_il_simple_type_as_foreign_type(csharp, float64) --> 
+write_il_simple_type_as_foreign_type(csharp, float64) -->
 	io__write_string("double").
-write_il_simple_type_as_foreign_type(csharp, native_float) --> 
+write_il_simple_type_as_foreign_type(csharp, native_float) -->
 	io__write_string("float").
-write_il_simple_type_as_foreign_type(csharp, bool) --> 
+write_il_simple_type_as_foreign_type(csharp, bool) -->
 	io__write_string("bool").
-write_il_simple_type_as_foreign_type(csharp, char) --> 
+write_il_simple_type_as_foreign_type(csharp, char) -->
 	io__write_string("char").
-write_il_simple_type_as_foreign_type(csharp, string) --> 
+write_il_simple_type_as_foreign_type(csharp, string) -->
 	io__write_string("string").
-write_il_simple_type_as_foreign_type(csharp, object) --> 
+write_il_simple_type_as_foreign_type(csharp, object) -->
 	io__write_string("object").
-write_il_simple_type_as_foreign_type(csharp, refany) --> 
+write_il_simple_type_as_foreign_type(csharp, refany) -->
 	io__write_string("mercury.MR_RefAny").
-write_il_simple_type_as_foreign_type(csharp, class(ClassName)) --> 
+write_il_simple_type_as_foreign_type(csharp, class(ClassName)) -->
 	write_class_name(csharp, ClassName).
-write_il_simple_type_as_foreign_type(csharp, valuetype(ClassName)) --> 
+write_il_simple_type_as_foreign_type(csharp, valuetype(ClassName)) -->
 	write_class_name(csharp, ClassName).
-write_il_simple_type_as_foreign_type(csharp, interface(_ClassName)) --> 
+write_il_simple_type_as_foreign_type(csharp, interface(_ClassName)) -->
 	{ sorry(this_file, "interfaces") }.
-write_il_simple_type_as_foreign_type(csharp, '[]'(Type, Bounds)) --> 
+write_il_simple_type_as_foreign_type(csharp, '[]'(Type, Bounds)) -->
 	write_il_type_as_foreign_type(csharp, Type),
 	io__write_string("[]"),
 	( { Bounds = [] } ->
@@ -815,51 +815,51 @@ write_il_simple_type_as_foreign_type(csharp, '[]'(Type, Bounds)) -->
 	;
 		{ sorry(this_file, "arrays with bounds") }
 	).
-write_il_simple_type_as_foreign_type(csharp, '&'(Type)) --> 
+write_il_simple_type_as_foreign_type(csharp, '&'(Type)) -->
 		% XXX is this always right?
 	io__write_string("ref "),
 	write_il_type_as_foreign_type(csharp, Type).
-write_il_simple_type_as_foreign_type(csharp, '*'(Type)) --> 
+write_il_simple_type_as_foreign_type(csharp, '*'(Type)) -->
 	write_il_type_as_foreign_type(csharp, Type),
 	io__write_string(" *").
 
-write_il_simple_type_as_foreign_type(managed_cplusplus, int8) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, int8) -->
 	io__write_string("mercury::MR_Integer8").
-write_il_simple_type_as_foreign_type(managed_cplusplus, int16) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, int16) -->
 	io__write_string("mercury::MR_Integer16").
-write_il_simple_type_as_foreign_type(managed_cplusplus, int32) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, int32) -->
 	io__write_string("mercury::MR_Integer").
-write_il_simple_type_as_foreign_type(managed_cplusplus, int64) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, int64) -->
 	io__write_string("mercury::MR_Integer64").
-write_il_simple_type_as_foreign_type(managed_cplusplus, uint8) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, uint8) -->
 	io__write_string("unsigned int").
-write_il_simple_type_as_foreign_type(managed_cplusplus, uint16) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, uint16) -->
 	io__write_string("unsigned int").
-write_il_simple_type_as_foreign_type(managed_cplusplus, uint32) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, uint32) -->
 	io__write_string("unsigned int").
-write_il_simple_type_as_foreign_type(managed_cplusplus, uint64) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, uint64) -->
 	io__write_string("unsigned int").
-write_il_simple_type_as_foreign_type(managed_cplusplus, native_int) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, native_int) -->
 	io__write_string("mercury::MR_Integer").
-write_il_simple_type_as_foreign_type(managed_cplusplus, native_uint) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, native_uint) -->
 	io__write_string("unsigned int").
-write_il_simple_type_as_foreign_type(managed_cplusplus, float32) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, float32) -->
 	io__write_string("float").
-write_il_simple_type_as_foreign_type(managed_cplusplus, float64) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, float64) -->
 	io__write_string("mercury::MR_Float").
-write_il_simple_type_as_foreign_type(managed_cplusplus, native_float) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, native_float) -->
 	io__write_string("mercury::MR_Float").
-write_il_simple_type_as_foreign_type(managed_cplusplus, bool) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, bool) -->
 	io__write_string("mercury::MR_Bool").
-write_il_simple_type_as_foreign_type(managed_cplusplus, char) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, char) -->
 	io__write_string("mercury::MR_Char").
-write_il_simple_type_as_foreign_type(managed_cplusplus, string) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, string) -->
 	io__write_string("mercury::MR_String").
-write_il_simple_type_as_foreign_type(managed_cplusplus, object) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, object) -->
 	io__write_string("mercury::MR_Box").
-write_il_simple_type_as_foreign_type(managed_cplusplus, refany) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, refany) -->
 	io__write_string("mercury::MR_RefAny").
-write_il_simple_type_as_foreign_type(managed_cplusplus, class(ClassName)) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, class(ClassName)) -->
 	( { ClassName = il_generic_class_name } ->
 		io__write_string("mercury::MR_Box")
 	;
@@ -868,24 +868,24 @@ write_il_simple_type_as_foreign_type(managed_cplusplus, class(ClassName)) -->
 		io__write_string(" *")
 	).
 write_il_simple_type_as_foreign_type(managed_cplusplus,
-		valuetype(ClassName)) --> 
+		valuetype(ClassName)) -->
 	io__write_string("__value class "),
 	write_class_name(managed_cplusplus, ClassName).
 		% XXX this is not the right syntax
 write_il_simple_type_as_foreign_type(managed_cplusplus,
-		interface(ClassName)) --> 
+		interface(ClassName)) -->
 	io__write_string("interface "),
 	write_class_name(managed_cplusplus, ClassName),
 	io__write_string(" *").
 		% XXX this needs more work
 write_il_simple_type_as_foreign_type(managed_cplusplus,
-		'[]'(_Type, _Bounds)) --> 
+		'[]'(_Type, _Bounds)) -->
 	io__write_string("mercury::MR_Word").
-write_il_simple_type_as_foreign_type(managed_cplusplus, '&'(Type)) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, '&'(Type)) -->
 	io__write_string("MR_Ref("),
 	write_il_type_as_foreign_type(managed_cplusplus, Type),
 	io__write_string(")").
-write_il_simple_type_as_foreign_type(managed_cplusplus, '*'(Type)) --> 
+write_il_simple_type_as_foreign_type(managed_cplusplus, '*'(Type)) -->
 	write_il_type_as_foreign_type(managed_cplusplus, Type),
 	io__write_string(" *").
 
@@ -914,7 +914,7 @@ write_csharp_initializer(interface(_ClassName)) --> io__write_string("null").
 write_csharp_initializer('[]'(_Type, _Bounds)) --> io__write_string("null").
 write_csharp_initializer('&'(_Type)) --> io__write_string("null").
 write_csharp_initializer('*'(_Type)) --> io__write_string("null").
-write_csharp_initializer(valuetype(ClassName)) --> 
+write_csharp_initializer(valuetype(ClassName)) -->
 	io__write_string("new "),
 	write_class_name(csharp, ClassName),
 	io__write_string("()").

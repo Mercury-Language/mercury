@@ -293,11 +293,11 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			BranchStart, MaybeEnd1, MaybeEnd, RestCode, !CI),
 
 		Code =
-			tree(EntryResumePointCode, 
+			tree(EntryResumePointCode,
 			tree(RestoreHpCode,
 			tree(RestoreTicketCode,
 			tree(SaveHpCode,
-			tree(ModContCode, 
+			tree(ModContCode,
 			tree(TraceCode,
 			tree(GoalCode,
 			tree(ResumeVarsCode,

@@ -121,7 +121,6 @@
 :- import_module ll_backend__fact_table.
 :- import_module ll_backend__llds.
 :- import_module parse_tree__error_util.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__modules.
@@ -129,6 +128,7 @@
 :- import_module parse_tree__prog_io_dcg.
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 :- import_module recompilation.
@@ -3293,7 +3293,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
 			module_info_pred_info(!.Module, OrigPred,
 				OrigPredInfo),
 			pred_info_context(OrigPredInfo, OrigContext),
-			DeclString = hlds_out__pred_or_func_to_str(PredOrFunc),
+			DeclString = pred_or_func_to_str(PredOrFunc),
 			adjust_func_arity(PredOrFunc, OrigArity, Arity),
 			multiple_def_error(ItemStatus, PredName, OrigArity,
 				DeclString, Context, OrigContext, FoundError,
@@ -4047,7 +4047,7 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
 	init_markers(Markers0),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_string_option(Globals, aditi_user, Owner),
-	pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context, 
+	pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
 		Status, none, Markers0, Types, TVarSet, ExistQVars,
 		ClassContext, Proofs, Owner, ClausesInfo, PredInfo0),
 	add_marker(infer_type, Markers0, Markers),
@@ -4093,7 +4093,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 	( VeryVerbose = yes ->
 		io__write_string("% Processing clause for ", !IO),
-		hlds_out__write_pred_or_func(PredOrFunc, !IO),
+		write_pred_or_func(PredOrFunc, !IO),
 		io__write_string(" `", !IO),
 		list__length(Args, PredArity0),
 		PredArity = PredArity0 + ArityAdjustment,
@@ -8404,11 +8404,11 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
 		prog_out__write_context(Context, !IO),
 		io__write_string("  (There are no declared modes for this ",
 			!IO),
-		hlds_out__write_pred_or_func(PredOrFunc, !IO),
+		write_pred_or_func(PredOrFunc, !IO),
 		io__write_string(".)\n", !IO)
 	; VerboseErrors = yes ->
 		io__write_string("\tThe declared modes for this ", !IO),
-		hlds_out__write_pred_or_func(PredOrFunc, !IO),
+		write_pred_or_func(PredOrFunc, !IO),
 		io__write_string(" are the following:\n", !IO),
 		OutputProc = (pred(ProcId::in, di, uo) is det -->
 			io__write_string("\t\t:- mode "),
@@ -8466,7 +8466,7 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
 		io__write_string("\n"),
 		prog_out__write_context(Context),
 		io__write_string("  without preceding `"),
-		{ DeclString = hlds_out__pred_or_func_to_str(PredOrFunc) },
+		{ DeclString = pred_or_func_to_str(PredOrFunc) },
 		io__write_string(DeclString),
 		io__write_string("' declaration.\n")
 	).

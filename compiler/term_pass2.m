@@ -24,8 +24,8 @@
 
 :- import_module list.
 
-	% NOTE: This code assumes that the SCC does not call any 
-	% nonterminating procedures.  If it does then that fact 
+	% NOTE: This code assumes that the SCC does not call any
+	% nonterminating procedures.  If it does then that fact
 	% should have been detected during pass 1.
 :- pred prove_termination_in_scc(list(pred_proc_id)::in, module_info::in,
 	pass_info::in, int::in, termination_info::out) is det.

@@ -2839,7 +2839,7 @@ rval_to_function(Rval, MemberName) :-
 	%	// Are we responsible for initialising the runtime.
 	%	call bool [mercury]mercury.runtime::
 	%			responsible_for_initialising_runtime()
-	%	
+	%
 	% 	// if (rtti_initialized) return;
 	% 	ldsfld rtti_initialized
 	%       brfalse done_label
@@ -4170,13 +4170,13 @@ make_fieldref(ILType, ClassName, Id) =
 
 :- func responsible_for_init_runtime_instrs = list(instr).
 responsible_for_init_runtime_instrs = [
-	call(get_static_methodref(runtime_init_module_name, 
+	call(get_static_methodref(runtime_init_module_name,
 		responsible_for_init_runtime_name, simple_type(bool), []))
 	].
 
 :- func runtime_initialization_instrs = list(instr).
 runtime_initialization_instrs = [
-	call(get_static_methodref(runtime_init_module_name, 
+	call(get_static_methodref(runtime_init_module_name,
 			runtime_init_method_name, void, [il_bool_type]))
 	].
 

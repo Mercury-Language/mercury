@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999, 2003 The University of Melbourne.
+% Copyright (C) 1998-1999, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,7 +40,7 @@
 rl_opt__procs(ModuleInfo, Procs0, Procs) -->
 	list__map_foldl(rl_opt__proc(ModuleInfo), Procs0, Procs).
 
-:- pred rl_opt__proc(module_info::in, rl_proc::in, rl_proc::out, 
+:- pred rl_opt__proc(module_info::in, rl_proc::in, rl_proc::out,
 		io__state::di, io__state::uo) is det.
 
 rl_opt__proc(ModuleInfo, Proc0, Proc) -->
@@ -60,7 +60,7 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 
 	globals__io_lookup_bool_option(optimize_rl_invariants, Loops),
 	( { Loops = yes } ->
-		maybe_write_string(VeryVerbose, 
+		maybe_write_string(VeryVerbose,
 			"% Detecting loop invariants in "),
 		maybe_write_string(VeryVerbose, NameStr),
 		maybe_write_string(VeryVerbose, "..."),
@@ -77,7 +77,7 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 	globals__io_lookup_bool_option(optimize_rl_index, OptIndex),
 	( { Opt = yes } ->
 		% rl_block_opt.m requires liveness to have been run.
-		maybe_write_string(VeryVerbose, 
+		maybe_write_string(VeryVerbose,
 			"% Detecting liveness in "),
 		maybe_write_string(VeryVerbose, NameStr),
 		maybe_write_string(VeryVerbose, "..."),
@@ -120,7 +120,7 @@ rl_opt__proc(ModuleInfo, Proc0, Proc) -->
 		{ Info20 = Info10 }
 	),
 
-	maybe_write_string(VeryVerbose, 
+	maybe_write_string(VeryVerbose,
 		"% Detecting final liveness in "),
 	maybe_write_string(VeryVerbose, NameStr),
 	maybe_write_string(VeryVerbose, "..."),

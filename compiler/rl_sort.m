@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2027,12 +2027,12 @@ rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 %-----------------------------------------------------------------------------%
 
 % 	% Beyond this point is junk at the moment.
-% 
+%
 % 	% Do an assignment of sort specifiers to each sort variable.
 % :- pred rl_sort__assign_sort_vars(sort_data_map::in, var_requests::in,
 % 	sort_data_map::in, var_requests::in, map(int, sort_index)::out,
 % 	rl_opt_info::in, rl_opt_info::out) is det.
-% 
+%
 % rl_sort__assign_sort_vars(_AvailData0, AvailRequests0, _NeededData0,
 % 		NeededRequests, VarBindings) -->
 % 	{
@@ -2041,15 +2041,15 @@ rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 % 	set__sorted_list_to_set(VarsList0, Vars0),
 % 	set__sorted_list_to_set(VarsList1, Vars1),
 % 	set__union(Vars0, Vars1, Vars),
-% 
+%
 % 	map__init(VarBindings0),
-% 
+%
 % 	% Find out which sort vars can be allocated based on
 % 	% available sortedness.
 % 	rl_sort__single_request_vars(AvailRequests0,
 % 		VarBindings0, VarBindings1),
 % 	rl_sort__bind_vars(AvailRequests0, VarBindings1, AvailRequests),
-% 
+%
 % 	map__keys(VarBindings1, BoundVars1),
 % 	set__delete_list(Vars, BoundVars1, UnboundVars1)
 % 	},
@@ -2060,20 +2060,20 @@ rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 % 		% needed sortedness intersecting with available sortedness.
 % 		rl_sort__intersect_requests(AvailRequests, NeededRequests,
 % 			IntersectedRequests),
-% 
+%
 % 		rl_sort__single_request_vars(IntersectedRequests,
 % 			VarBindings1, VarBindings)
-% 
+%
 % 		% If there's anything left unbound, just pick one of the
 % 		% available sortednesses. XXX try all with cost measurement
 % 		% to pick the best.
 % 	}.
-% 
+%
 % 	% Find all sort variables which have only one requested sortedness.
 % :- pred rl_sort__single_request_vars(var_requests::in,
 % 		map(int, sort_index)::in,
 % 		map(int, sort_index)::out) is det.
-% 
+%
 % rl_sort__single_request_vars(Requests0, SingleVars0, SingleVars) :-
 % 	IsSingleBindingVar =
 % 		(pred(Var::in, Reqs0::in, Single0::in, Single::out) is det :-
@@ -2091,10 +2091,10 @@ rl_sort__map_sort_and_index_specs(_, _, _, Instr, Instr) :-
 % 			)
 % 		),
 % 	map__foldl(IsSingleBindingVar, Requests0, SingleVars0, SingleVars).
-% 
+%
 % :- pred rl_sort__intersect_requests(var_requests::in,
 % 		var_requests::in, var_requests::out) is det.
-% 
+%
 % rl_sort__intersect_requests(Requests1, Requests2, Intersection) :-
 % 	IntersectBindings =
 % 		(pred(Key::in, Value0::in, Inter0::in, Inter::out) is det :-

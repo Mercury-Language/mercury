@@ -33,7 +33,6 @@
 :- import_module hlds__instmap.
 :- import_module hlds__quantification.
 :- import_module parse_tree__equiv_type.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module recompilation.
 

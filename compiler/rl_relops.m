@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
 	% perforance of a join by much, but requires an extra pass over
 	% the data). There's not really any way to decide at compile time
 	% what the performance difference will be, so we do it anyway.
-	%		
+	%
 	% XXX this is a bad idea, since the relation being projected
 	% may have an index built for it, which will have to be rebuilt
 	% after the projection. This can be done later as an optimization.
@@ -37,7 +37,7 @@
 	rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 */
 
-	% Compute a projection for a single call rule. If the 
+	% Compute a projection for a single call rule. If the
 	% projection condition is semidet, generate a select first.
 :- pred rl_relops__select_and_project(relation_id::in, relation_id::out,
 	list(prog_var)::in, list(prog_var)::in, instmap::in,
@@ -56,9 +56,9 @@
 	%	InputArgs1, InputArgs2, InstMap, JoinCondGoals,
 	%	OutputArgs, OutputSchema, OutputRel, Code).
 	%
-	% Generate (DiffRel1 |X| FullRel2) U (FullRel1 |X| DiffRel2) for a 
+	% Generate (DiffRel1 |X| FullRel2) U (FullRel1 |X| DiffRel2) for a
 	% rule with two recursive calls.
-:- pred rl_relops__diff_diff_join(relation_id::in, relation_id::in, 
+:- pred rl_relops__diff_diff_join(relation_id::in, relation_id::in,
 	relation_id::in, relation_id::in, list(prog_var)::in,
 	list(prog_var)::in, instmap::in, list(hlds_goal)::in,
 	list(prog_var)::in, relation_schema::in, relation_id::out,
@@ -70,21 +70,21 @@
 :- pred rl_relops__subtract(relation_id::in, relation_id::in,
 	list(prog_var)::in, list(prog_var)::in, instmap::in,
 	list(hlds_goal)::in, list(hlds_goal)::in, list(prog_var)::in,
-	relation_schema::in, relation_id::out, rl_tree::out, 
+	relation_schema::in, relation_id::out, rl_tree::out,
 	rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
 	% rl_relops__difference(InputRel1, InputRel2, OutputRel, Code).
-	% 
+	%
 	% A difference is just a special case of subtract
 	% (InputRel1 - InputRel2 = OutputRel).
-	% The inputs to the difference must be sorted.	
+	% The inputs to the difference must be sorted.
 :- pred rl_relops__difference(relation_id::in, relation_id::in,
 	relation_id::in, rl_tree::out,
-	rl_info::rl_info_di, rl_info::rl_info_uo) is det.	
+	rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
 	% rl_relops__union(MustSortOutput, Schema, InputRels, MaybeOutputRel,
 	% 	OutputRel, Code).
-:- pred rl_relops__union(bool::in, relation_schema::in, list(relation_id)::in, 
+:- pred rl_relops__union(bool::in, relation_schema::in, list(relation_id)::in,
 	maybe(relation_id)::in, relation_id::out, rl_tree::out,
 	rl_info::rl_info_di, rl_info::rl_info_uo) is det.
 
@@ -155,7 +155,7 @@ rl_relops__get_dependent_goals(Vars, InstMap0,
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
 	rl_info_get_module_info(ModuleInfo),
-	{ IsInput = 
+	{ IsInput =
 		(pred(Var::in) is semidet :-
 			instmap__lookup_var(InstMap0, Var, Inst0),
 			instmap__lookup_var(InstMap, Var, Inst),
@@ -168,7 +168,7 @@ rl_relops__get_dependent_goals(Vars, InstMap0,
 		{ set__union(Vars, NonLocals, Vars1) },
 		rl_relops__get_dependent_goals(Vars1, InstMap,
 			Goals, DependentGoals1),
-		{ DependentGoals = [Goal | DependentGoals1] }	
+		{ DependentGoals = [Goal | DependentGoals1] }
 	;
 		rl_relops__get_dependent_goals(Vars, InstMap,
 			Goals, DependentGoals)
@@ -240,20 +240,20 @@ rl_relops__join_2(InputRel1, InputRel2, Args1, Args2, InstMap,
 	rl_relops__goal(InstMap, two_inputs(ReorderedArgs1, ReorderedArgs2),
 		yes(OutputVars), JoinCondGoals, JoinCond),
 	rl_info__comment(Comment),
-		
+
 	rl_info_get_new_temporary(OutputSchema, OutputRel),
 	{ rl__is_semi_join(JoinType, JoinCond, SemiJoin) },
 
 	rl_info_get_module_info(ModuleInfo),
 	{ rl__is_trivial_join(ModuleInfo, JoinType, JoinCond,
 		SemiJoin, TrivialJoin) },
-		
+
 	{ Code = node([join(output_rel(OutputRel, []), ReorderedInput1,
 		ReorderedInput2, JoinType, JoinCond,
 		SemiJoin, TrivialJoin) - Comment]) }.
 
 rl_relops__diff_diff_join(DiffRel1, FullRel1, DiffRel2, FullRel2,
-		Args1, Args2, InstMap, JoinCondGoals, RuleOutputs, 
+		Args1, Args2, InstMap, JoinCondGoals, RuleOutputs,
 		RuleSchema, RuleResult, JoinCode) -->
 	rl_relops__join_2(DiffRel1, FullRel2, Args1, Args2, InstMap,
 		JoinCondGoals, RuleOutputs, RuleSchema, OutputRel1,
@@ -272,7 +272,7 @@ rl_relops__diff_diff_join(DiffRel1, FullRel1, DiffRel2, FullRel2,
 	rl_relops__union(yes, RuleSchema, [OutputRel1, OutputRel2],
 		no, RuleResult, UnionCode),
 
-	{ JoinCode = 
+	{ JoinCode =
 		tree(JoinCode1,
 		tree(JoinCode2,
 		UnionCode
@@ -309,7 +309,7 @@ rl_relops__subtract(Rel1, Rel2, OutputArgs1, OutputArgs2, InstMap,
 
 	{ rl__is_trivial_subtract(ModuleInfo, SubtractType, SubtractCond,
 		TrivialSubtract) },
-		
+
 	{ Subtract = subtract(output_rel(TempRel, []),
 		Rel1, Rel2, SubtractType, SubtractCond,
 		TrivialSubtract) - Comment },
@@ -344,7 +344,7 @@ rl_relops__union(SortNeeded, Schema, RelsToUnion,
     (
 	{ RelsToUnion = [] },
 	{ error("rl_relops__union: no relations to union") }
-    ; 
+    ;
 	{ RelsToUnion = [RelToUnion | RelsToUnion1] },
 	(
 		{ RelsToUnion1 = [] },
@@ -363,15 +363,15 @@ rl_relops__union(SortNeeded, Schema, RelsToUnion,
 			rl_info_get_new_temporary(Schema, UnionRel)
 		),
 		( { SortNeeded = yes } ->
-			rl_relops__sort_rels(RelsToUnion, 
+			rl_relops__sort_rels(RelsToUnion,
 				SortedRelsToUnion, SortCode)
-		;	
+		;
 			{ SortCode = empty },
 			{ SortedRelsToUnion = RelsToUnion }
 		),
 		rl_info_relation_schema_to_type_list(Schema, Types),
 		{ rl__ascending_sort_spec(Types, SortAttrs) },
-		{ Union = union(output_rel(UnionRel, []), SortedRelsToUnion, 
+		{ Union = union(output_rel(UnionRel, []), SortedRelsToUnion,
 			sort_merge(attributes(SortAttrs))) - "" },
 		{ UnionCode = tree(SortCode, node([Union])) }
 	)

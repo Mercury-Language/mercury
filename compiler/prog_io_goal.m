@@ -26,7 +26,7 @@
 	% a list of the quantified variables, a list of quantified
 	% state variables, and a goal. (If the term doesn't start
 	% with `some [Vars]', we return empty lists of variables.)
-	% 
+	%
 :- pred parse_some_vars_goal(term::in, list(prog_var)::out,
 	list(prog_var)::out, goal::out, prog_varset::in, prog_varset::out)
 	is det.
@@ -97,10 +97,10 @@
 
 :- implementation.
 
-:- import_module check_hlds__mode_util.
-:- import_module check_hlds__purity.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_util.
+:- import_module parse_tree__prog_mode.
+:- import_module parse_tree__prog_out.
 
 :- import_module term.
 :- import_module int, map, string, std_util.
@@ -290,7 +290,7 @@ parse_goal_with_purity(A0, Purity, A, !V) :-
 %-----------------------------------------------------------------------------%
 
 parse_some_vars_goal(A0, Vars, StateVars, A, !VarSet) :-
-	( 
+	(
 		A0 = term__functor(term__atom("some"), [QVars, A1], _Context),
 		parse_quantifier_vars(QVars, StateVars0, Vars0)
 	->
@@ -424,10 +424,10 @@ parse_lambda_eval_method(Term0, EvalMethod, Term) :-
 		( MethodStr = "aditi_bottom_up" ->
 			EvalMethod = (aditi_bottom_up),
 			Term = Term1
-		;	
+		;
 			EvalMethod = normal,
 			Term = Term0
-		)	
+		)
 	;
 		EvalMethod = normal,
 		Term = Term0

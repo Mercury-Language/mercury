@@ -459,7 +459,9 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc,
 	(
 		Uni = construct(_, ConsId, _, _, _, _, _),
 		(
-			ConsId = pred_const(PredId, ProcId, _),
+			ConsId = pred_const(ShroudedPredProcId, _),
+			proc(PredId, ProcId) =
+				unshroud_pred_proc_id(ShroudedPredProcId),
 			Entity = proc(PredId, ProcId)
 		;
 			ConsId = type_ctor_info_const(Module, TypeName, Arity),

@@ -1,25 +1,25 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: pd_term.m
 % Main author: stayl
 %
-% Termination checking for the deforestation process. 
+% Termination checking for the deforestation process.
 % There are two places where care must be taken to ensure
 % termination of the process:
 % - when unfolding a call to a recursive procedure
-% - when creating a new version, to avoid creating an infinite sequence of 
+% - when creating a new version, to avoid creating an infinite sequence of
 % 	new versions for which folding never occurs.
 %
 % For conjunctions, count up the length of the conjunction.
 % For each pair of calls on the end of the conjunction,
-% this length must decrease for the check to succeed. 
+% this length must decrease for the check to succeed.
 %
 % For single calls, the first call records the sizes of the insts
 % of all the arguments. If the total size of a later call increases,
-% the increasing arguments are removed from the record. If there are 
+% the increasing arguments are removed from the record. If there are
 % no decreasing arguments, the termination check fails. Otherwise
 % the check succeeds and the new argument sizes are recorded.
 %
@@ -27,7 +27,7 @@
 % - Partition on subterms of arguments rather than whole arguments - useful
 % 	when partially instantiated structures are present.
 % - Use homeomorphic embedding instead of term sizes as suggested in
-% 	the papers on partial deduction from K.U. Leuven. This will be 
+% 	the papers on partial deduction from K.U. Leuven. This will be
 % 	useful (necessary?) if we start propagating equality constraints.
 %
 %-----------------------------------------------------------------------------%
@@ -51,8 +51,8 @@
 	% process looping.
 :- pred pd_term__global_check(module_info::in, hlds_goal::in,
 		list(hlds_goal)::in, maybe(hlds_goal)::in,
-		instmap::in, version_index::in, 
-		global_term_info::in, global_term_info::out, 
+		instmap::in, version_index::in,
+		global_term_info::in, global_term_info::out,
 		global_check_result::out) is det.
 
 	% A proc_pair holds the pred_proc_ids of the procedures called at
@@ -84,7 +84,7 @@
 		proc_pair::in, pred_proc_id::in,
 		int::in, global_term_info::out) is det.
 
-:- type global_term_info. 
+:- type global_term_info.
 :- type local_term_info.
 :- type pd_proc_term_info.
 
@@ -93,7 +93,6 @@
 
 :- import_module check_hlds__mode_util.
 :- import_module hlds__hlds_pred.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__pd_util.
 
@@ -119,7 +118,7 @@
 
 	% Mapping from argument to size.
 :- type pd_proc_term_info	== 	assoc_list(int, int).
-	
+
 %-----------------------------------------------------------------------------%
 
 pd_term__global_term_info_init(TermInfo) :-
@@ -135,7 +134,7 @@ pd_term__get_proc_term_info(TermInfo, PredProcId, ProcTermInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal, 
+pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 		_InstMap, Versions, Info0, Info, Result) :-
 	Info0 = global_term_info(SingleGoalCover0, MultipleGoalCover0),
 	(
@@ -143,7 +142,7 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 		Hd = (pred(List::in, Head::out) is semidet :-
 			List = [Head | _]
 		),
-		expand_calls(Hd, Versions, proc(PredId1, ProcId1), 
+		expand_calls(Hd, Versions, proc(PredId1, ProcId1),
 			FirstPredProcId),
 		(
 			MaybeLaterGoal = yes(
@@ -158,12 +157,12 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 	->
 		ProcPair = FirstPredProcId - MaybeLastPredProcId,
 		list__length(BetweenGoals, Length),
-		( 
-			map__search(MultipleGoalCover0, ProcPair, 
-				MaxLength - MaybeCoveringPredProcId) 
+		(
+			map__search(MultipleGoalCover0, ProcPair,
+				MaxLength - MaybeCoveringPredProcId)
 		->
 			(
-				Length < MaxLength 
+				Length < MaxLength
 			->
 				Result = ok(ProcPair, Length),
 					% set the maybe(pred_proc_id)
@@ -171,13 +170,13 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 				map__set(MultipleGoalCover0, ProcPair,
 					Length - no, MultipleGoalCover)
 			;
-				Length = MaxLength, 
-				MaybeCoveringPredProcId = 
-					yes(CoveringPredProcId) 
+				Length = MaxLength,
+				MaybeCoveringPredProcId =
+					yes(CoveringPredProcId)
 			->
 				% If the goals match, check that the
 				% argument insts decrease.
-				% If not, we may need to do a 
+				% If not, we may need to do a
 				% generalisation step.
 				Result = possible_loop(ProcPair, Length,
 						CoveringPredProcId),
@@ -202,14 +201,14 @@ pd_term__global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 	),
 	Info = global_term_info(SingleGoalCover, MultipleGoalCover).
 
-	% We don't want to use folded calls to parent versions 
-	% when doing the global termination check, since that 
+	% We don't want to use folded calls to parent versions
+	% when doing the global termination check, since that
 	% could give a sequence:
 	%	old ....pred1
 	% 	new1 .... pred1
 	% 	new2 ....... pred1
 	% 	new3 ......... pred1
-	% Instead, we expand to predicates from the original program, 
+	% Instead, we expand to predicates from the original program,
 	% which must contain a finite number of pairs of pred_proc_ids.
 :- pred expand_calls(pred(list(pred_proc_id), pred_proc_id), version_index,
 		pred_proc_id, pred_proc_id).
@@ -221,7 +220,7 @@ expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
 		call(GetEnd, Calls, PredProcId1),
 		expand_calls(GetEnd, Versions, PredProcId1, PredProcId)
 	;
-		PredProcId = PredProcId0	
+		PredProcId = PredProcId0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -234,29 +233,29 @@ pd_term__local_check(ModuleInfo, Goal1, InstMap, Cover0, Cover) :-
 		map__set(Cover0, proc(PredId, ProcId),
 			CoveringInstSizes, Cover)
 	;
-		pd_term__initial_sizes(ModuleInfo, InstMap, 
+		pd_term__initial_sizes(ModuleInfo, InstMap,
 			Args, 1, ArgInstSizes),
-		map__set(Cover0, proc(PredId, ProcId), 
+		map__set(Cover0, proc(PredId, ProcId),
 			ArgInstSizes, Cover)
 	).
 
-:- pred pd_term__do_local_check(module_info::in, instmap::in, 
-		list(prog_var)::in, assoc_list(int, int)::in, 
+:- pred pd_term__do_local_check(module_info::in, instmap::in,
+		list(prog_var)::in, assoc_list(int, int)::in,
 		assoc_list(int, int)::out) is semidet.
 
 pd_term__do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
-	pd_term__get_matching_sizes(ModuleInfo, InstMap, Args, 
+	pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
 		OldSizes, NewSizes1, OldTotal, NewTotal),
 	( NewTotal < OldTotal ->
 		NewSizes = NewSizes1
 	;
-		pd_term__split_out_non_increasing(OldSizes, NewSizes1, 
+		pd_term__split_out_non_increasing(OldSizes, NewSizes1,
 			yes, NewSizes)
 	).
 
 %-----------------------------------------------------------------------------%
 
-pd_term__update_global_term_info(TermInfo0, ProcPair, 
+pd_term__update_global_term_info(TermInfo0, ProcPair,
 		PredProcId, Size, TermInfo) :-
 	TermInfo0 = global_term_info(Single, Multiple0),
 	map__set(Multiple0, ProcPair, Size - yes(PredProcId), Multiple),
@@ -268,7 +267,7 @@ pd_term__update_global_term_info(TermInfo0, ProcPair,
 		int::in, assoc_list(int, int)::out) is det.
 
 pd_term__initial_sizes(_, _, [], _, []).
-pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo, 
+pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
 		[ArgNo - Size | Sizes]) :-
 	NextArgNo = ArgNo + 1,
 	pd_term__initial_sizes(ModuleInfo, InstMap, Args, NextArgNo, Sizes),
@@ -277,13 +276,13 @@ pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_term__get_matching_sizes(module_info::in, instmap::in, 
-		list(prog_var)::in, assoc_list(int, int)::in, 
+:- pred pd_term__get_matching_sizes(module_info::in, instmap::in,
+		list(prog_var)::in, assoc_list(int, int)::in,
 		assoc_list(int, int)::out, int::out, int::out) is det.
 
 pd_term__get_matching_sizes(_, _, _, [], [], 0, 0).
-pd_term__get_matching_sizes(ModuleInfo, InstMap, Args, 
-		[ArgNo - OldSize | OldSizes], [ArgNo - NewSize | NewSizes], 
+pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
+		[ArgNo - OldSize | OldSizes], [ArgNo - NewSize | NewSizes],
 		OldTotal, NewTotal) :-
 	pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
 		OldSizes, NewSizes, OldTotal1, NewTotal1),
@@ -292,7 +291,7 @@ pd_term__get_matching_sizes(ModuleInfo, InstMap, Args,
 	pd_util__inst_size(ModuleInfo, ArgInst, NewSize),
 	OldTotal = OldTotal1 + OldSize,
 	NewTotal = NewTotal1 + NewSize.
-	
+
 %-----------------------------------------------------------------------------%
 
 :- pred pd_term__split_out_non_increasing(assoc_list(int, int)::in,
@@ -304,7 +303,7 @@ pd_term__split_out_non_increasing([_|_], [], _, _) :-
 	error("pd_term__split_out_non_increasing").
 pd_term__split_out_non_increasing([], [_|_], _, _) :-
 	error("pd_term__split_out_non_increasing").
-pd_term__split_out_non_increasing([Arg - OldSize | Args0], 
+pd_term__split_out_non_increasing([Arg - OldSize | Args0],
 		[_ - NewSize | Args], FoundDecreasing, NonIncreasing) :-
 	pd_term__split_out_non_increasing(Args0, Args,
 		FoundDecreasing1, NonIncreasing1),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,7 @@
 % of gcc, should go in gcc/mercury/mercury-gcc.c rather than in
 % inline C code here.  That way, the GCC developers (who know C,
 % but probably don't know Mercury) can help maintain it.
-% 
+%
 % For symmetry, any complicated Mercury code should probably go in
 % mlds_to_gcc.m rather than here, although that is not so important.
 %
@@ -70,7 +70,7 @@
 %-----------------------------------------------------------------------------%
 
 	% gcc__run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output):
-	% 
+	%
 	% This is the top-level routine that MUST be used to invoke the
 	% GCC back-end.  It makes sure GCC has been initialized, using
 	% the specified CommandLine for GCC's command-line parameters,
@@ -85,12 +85,12 @@
 	% caller of gcc__run_backend.  ReturnValue will be the
 	% return value from the GCC backend, i.e. zero if all is OK,
 	% and non-zero if something went wrong.
-	% 
+	%
 	% WARNING: The other functions and predicates defined in this
 	% module MUST NOT be called directly; they can only be called
 	% from the FrontEndCallBack routine passed to gcc__run_backend.
 	% Otherwise the GCC back-end won't get properly initialized.
-	% 
+	%
 	% Due to limitations in the GCC back-end, this routine must
 	% not be called more than once; if it is, it will print an
 	% error message and abort execution.
@@ -98,7 +98,7 @@
 :- type frontend_callback(T) == pred(T, io__state, io__state).
 :- inst frontend_callback == (pred(out, di, uo) is det).
 
-:- pred gcc__run_backend(string::in, int::out, 
+:- pred gcc__run_backend(string::in, int::out,
 		frontend_callback(T)::in(frontend_callback), T::out,
 		io__state::di, io__state::uo) is det.
 
@@ -134,7 +134,7 @@
 :- func jmpbuf_type_node = gcc__type.	% `__builtin_jmpbuf', i.e. `void *[5]'
 					% This is used for `__builtin_setjmp'
 					% and `__builtin_longjmp'.
-	
+
 	% Given a type `T', produce a pointer type `T *'.
 :- pred build_pointer_type(gcc__type::in, gcc__type::out,
 		io__state::di, io__state::uo) is det.
@@ -689,7 +689,7 @@
 /* XXX The inclusion of c-tree.h is an undesirable dependency on GCC's
    C front-end.  It is only needed for versions of
    the mercury-gcc distribution based on GCC 3.2 or earlier.
-   In later versions, I modified the mercury-gcc distribution so that 
+   In later versions, I modified the mercury-gcc distribution so that
    it no longer depends on the C front-end, making the inclusion of
    c-tree.h unnecessary.
    This line should be removed once GCC 3.3 has been official released
@@ -720,14 +720,14 @@
 	%		GCC tree and RTL.  When we return back to
 	%		main/2 in mercury_compile, and that returns,
 	% 		the gcc back-end will continue on and will
-	%		generate the asm file. 
+	%		generate the asm file.
 	%
 	%		Note that mercury_compile.m can't invoke the
 	% 		assembler to produce an object file, since
 	% 		the assembler won't get produced until
 	%		after main/2 has exited!  Instead, the gcc
 	%		driver program (`gcc') will invoke the assembler.
-	%		
+	%
 	%	2. Mercury main():
 	%		mercury_compile.m gets control first.
 	%
@@ -747,7 +747,7 @@
 	%		XXX For programs with nested modules,
 	%		we'll end up calling the gcc back-end
 	%		more than once; this will lead to an abort.
-	%		
+	%
 
 gcc__run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output) -->
 	in_gcc(InGCC),
@@ -852,7 +852,7 @@ MC_call_gcc_backend(MR_String all_args, MR_Integer *result)
 
 	/*
 	** Reset GCC's progname after we return from toplev_main(),
-	** so that MC_in_gcc() knows that we're no longer in GCC. 
+	** so that MC_in_gcc() knows that we're no longer in GCC.
 	*/
 	progname = NULL;
 
@@ -1033,7 +1033,7 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 	/* XXX Move this code to `mercury-gcc.c'. */
 	/* XXX Do we need to check that NumElems fits in a HOST_WIDE_INT?  */
 	HOST_WIDE_INT max = (HOST_WIDE_INT) NumElems - (HOST_WIDE_INT) 1;
-	tree index_type = build_index_type (build_int_2 (max, 
+	tree index_type = build_index_type (build_int_2 (max,
 		(max < 0 ? -1 : 0)));
 	ArrayType = (MR_Word) build_array_type((tree) ElemType, index_type);
 ").

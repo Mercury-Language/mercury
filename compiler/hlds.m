@@ -48,7 +48,7 @@
 :- import_module libs.
 :- import_module check_hlds.		% needed for unify_proc__unify_proc_id,
 					% etc.
-:- import_module transform_hlds.	% needed for mmc_analysis, term_util
+:- import_module transform_hlds.	% needed for term_util
 
 :- end_module hlds.
 

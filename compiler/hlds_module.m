@@ -39,10 +39,10 @@
 
 :- import_module check_hlds__typecheck.
 :- import_module hlds__hlds_out.
+:- import_module transform_hlds__mmc_analysis.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
-:- import_module transform_hlds__mmc_analysis.
 
 :- import_module bool, require, int, string.
 
@@ -58,7 +58,7 @@
 			foreign_body_info
 		).
 
-:- type pragma_exported_proc	
+:- type pragma_exported_proc
 	--->	pragma_exported_proc(
 			pred_id,
 			proc_id,
@@ -412,7 +412,7 @@
 :- pred module_info_dependency_info(module_info::in, dependency_info::out)
 	is det.
 
-:- pred module_info_aditi_dependency_ordering(module_info::in, 
+:- pred module_info_aditi_dependency_ordering(module_info::in,
 	aditi_dependency_ordering::out) is det.
 
 	% Please see module_info_ensure_dependency_info for the
@@ -497,7 +497,7 @@
 						% containing fact tables
 						% implementing predicates
 						% defined in this module.
-			
+
 		maybe_dependency_info		:: maybe(dependency_info),
 						% This dependency info is
 						% constrained to be only for
@@ -920,7 +920,7 @@ module_add_foreign_body_code(Lang, Foreign_Body_Code, Context, !Module) :-
 	module_info_get_foreign_body_code(!.Module, Foreign_Body_List0),
 		% store the decls in reverse order and reverse them later
 		% for efficiency
-	Foreign_Body_List = 
+	Foreign_Body_List =
 		[foreign_body_code(Lang, Foreign_Body_Code, Context) |
 			Foreign_Body_List0],
 	module_info_set_foreign_body_code(Foreign_Body_List, !Module).
@@ -952,12 +952,12 @@ module_add_fact_table_file(FileName, !Module) :-
 
 :- type aditi_dependency_ordering	== list(aditi_scc).
 
-	% Each Aditi SCC contains one or more SCCs from the original 
+	% Each Aditi SCC contains one or more SCCs from the original
 	% dependency ordering and the entry points of the SCC.
 	% SCCs which are only called from one other SCC and are not
 	% called through negation or aggregation are merged into the
 	% parent SCC. This makes the low-level RL optimizations more
-	% effective while maintaining stratification. 
+	% effective while maintaining stratification.
 :- type aditi_scc
 	--->	aditi_scc(dependency_ordering, list(pred_proc_id)).
 
@@ -968,10 +968,10 @@ module_add_fact_table_file(FileName, !Module) :-
 
 :- pred hlds_dependency_info_init(dependency_info(T)::out) is det.
 
-:- pred hlds_dependency_info_get_dependency_graph(dependency_info(T)::in, 
+:- pred hlds_dependency_info_get_dependency_graph(dependency_info(T)::in,
 	dependency_graph(T)::out) is det.
 
-:- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T)::in, 
+:- pred hlds_dependency_info_get_dependency_ordering(dependency_info(T)::in,
 	dependency_ordering(T)::out) is det.
 
 :- pred hlds_dependency_info_get_maybe_aditi_dependency_ordering(
@@ -997,7 +997,7 @@ module_add_fact_table_file(FileName, !Module) :-
 			dep_graph	:: dependency_graph(T),
 			dep_ord		:: dependency_ordering(T),
 			dep_aditi_ord	:: maybe(aditi_dependency_ordering)
-					% Dependency ordering of Aditi SCCs 
+					% Dependency ordering of Aditi SCCs
 		).
 
 hlds_dependency_info_init(DepInfo) :-
@@ -1150,7 +1150,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 	% I hope it doesn't break anything too badly...
 	%
 	% (`m_n_a' here is short for "module, name, arity".)
-	
+
 	% Is the item known to be fully qualified?
 	% If so, a search for `pred foo.bar/2' will not match
 	% `pred baz.foo.bar/2'.
@@ -1215,10 +1215,10 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 
 	% predicate_table_insert(PredTable0, PredInfo,
 	%		NeedQual, PartialQualInfo, PredId, PredTable).
-	% 
+	%
 	% Insert PredInfo into PredTable0 and assign it a new pred_id.
-	% You should check beforehand that the pred doesn't already 
-	% occur in the table. 
+	% You should check beforehand that the pred doesn't already
+	% occur in the table.
 :- pred predicate_table_insert(pred_info::in, need_qualifier::in,
 	partial_qualifier_info::in, pred_id::out,
 	predicate_table::in, predicate_table::out) is det.
@@ -1278,12 +1278,12 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 		accessibility_table :: accessibility_table,
 							% How is the predicate
 							% accessible?
-		
+
 		% indexes on predicates
 
 		pred_name_index		:: name_index,	% map from pred name
 							% to pred_id
-		pred_name_arity_index	:: name_arity_index,	
+		pred_name_arity_index	:: name_arity_index,
 							% map from pred name &
 							% arity to pred_id
 		pred_module_name_arity_index :: module_name_arity_index,
@@ -1294,7 +1294,7 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 		% indexes on functions
 		func_name_index		:: name_index,	% map from func name
 							% to pred_id
-		func_name_arity_index	:: name_arity_index,	
+		func_name_arity_index	:: name_arity_index,
 							% map from func name &
 							% arity to pred_id
 		func_module_name_arity_index :: module_name_arity_index
@@ -1321,10 +1321,10 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepOrd, DepInfo,
 :- type name_arity_index == map(name_arity, list(pred_id)).
 :- type name_arity ---> string / arity.
 
-	% First search on module and name, then search on arity. The two 
+	% First search on module and name, then search on arity. The two
 	% levels are needed because typecheck.m needs to be able to search
 	% on module and name only for higher-order terms.
-:- type module_name_arity_index == map(pair(module_name, string), 
+:- type module_name_arity_index == map(pair(module_name, string),
 					map(arity, list(pred_id))).
 
 predicate_table_init(PredicateTable) :-
@@ -1369,7 +1369,7 @@ predicate_table_remove_predid(PredId, PredicateTable0, PredicateTable) :-
 	PredicateTable = PredicateTable0 ^ pred_ids := PredIds.
 
 predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
-	PredicateTable0 = predicate_table(Preds0, NextPredId, PredIds0, 
+	PredicateTable0 = predicate_table(Preds0, NextPredId, PredIds0,
 		AccessibilityTable0,
 		PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
 	list__delete_all(PredIds0, PredId, PredIds),
@@ -1383,23 +1383,23 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
 		IsPredOrFunc = predicate,
 		predicate_table_remove_from_index(Module, Name, Arity, PredId,
 			PredN0, PredN, PredNA0, PredNA, PredMNA0, PredMNA),
-		PredicateTable = predicate_table(Preds, NextPredId, PredIds, 
+		PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 			AccessibilityTable,
 			PredN, PredNA, PredMNA, FuncN0, FuncNA0, FuncMNA0)
 	;
 		IsPredOrFunc = function,
 		FuncArity = Arity - 1,
-		predicate_table_remove_from_index(Module, Name, FuncArity, 
-			PredId, FuncN0, FuncN, FuncNA0, FuncNA, 
+		predicate_table_remove_from_index(Module, Name, FuncArity,
+			PredId, FuncN0, FuncN, FuncNA0, FuncNA,
 			FuncMNA0, FuncMNA),
-		PredicateTable = predicate_table(Preds, NextPredId, PredIds, 
+		PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 			AccessibilityTable,
 			PredN0, PredNA0, PredMNA0, FuncN, FuncNA, FuncMNA)
 	).
 
 :- pred predicate_table_remove_from_index(module_name::in, string::in, int::in,
 	pred_id::in, name_index::in, name_index::out,
-	name_arity_index::in, name_arity_index::out, 
+	name_arity_index::in, name_arity_index::out,
 	module_name_arity_index::in, module_name_arity_index::out) is det.
 
 predicate_table_remove_from_index(Module, Name, Arity, PredId,
@@ -1415,7 +1415,7 @@ do_remove_from_index(T, PredId, Index0, Index) :-
 	( map__search(Index0, T, NamePredIds0) ->
 		list__delete_all(NamePredIds0, PredId, NamePredIds),
 		( NamePredIds = [] ->
-			map__delete(Index0, T, Index)	
+			map__delete(Index0, T, Index)
 		;
 			map__det_update(Index0, T, NamePredIds, Index)
 		)
@@ -1434,14 +1434,14 @@ do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
 	( PredIds = [] ->
 		map__delete(Arities0, Arity, Arities),
 		( map__is_empty(Arities) ->
-			map__delete(MNA0, Module - Name, MNA)	
+			map__delete(MNA0, Module - Name, MNA)
 		;
 			map__det_update(MNA0, Module - Name, Arities, MNA)
 		)
 	;
 		map__det_update(Arities0, Arity, PredIds, Arities),
 		map__det_update(MNA0, Module - Name, Arities, MNA)
-	).	
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1560,7 +1560,7 @@ predicate_table_search_module_name(PredicateTable, IsFullyQualified,
 		PredPredIds = []
 	),
 	(
-		predicate_table_search_func_module_name(PredicateTable, 
+		predicate_table_search_func_module_name(PredicateTable,
 			IsFullyQualified, Module, Name, FuncPredIds0)
 	->
 		FuncPredIds = FuncPredIds0
@@ -1758,7 +1758,7 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
 			),
 			predicate_table_insert_2(yes(PredId), PredInfo,
 				NeedQual, MaybeQualInfo, _, Table0, Table)
-			
+
 		), PredIds, PredicateTable0).
 
 :- pred predicate_table_reset(predicate_table::in, predicate_table::out)
@@ -1807,12 +1807,12 @@ predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
 		% insert the pred_id into either the function or predicate
 		% indices, as appropriate
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-	( 
+	(
 		PredOrFunc = predicate,
 		predicate_table_do_insert(Module, Name, Arity,
 			NeedQual, MaybeQualInfo, PredId,
 			AccessibilityTable0, AccessibilityTable,
-			Pred_N_Index0, Pred_N_Index, 
+			Pred_N_Index0, Pred_N_Index,
 			Pred_NA_Index0, Pred_NA_Index,
 			Pred_MNA_Index0, Pred_MNA_Index),
 
@@ -1825,7 +1825,7 @@ predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
 		predicate_table_do_insert(Module, Name, FuncArity,
 			NeedQual, MaybeQualInfo, PredId,
 			AccessibilityTable0, AccessibilityTable,
-			Func_N_Index0, Func_N_Index, 
+			Func_N_Index0, Func_N_Index,
 			Func_NA_Index0, Func_NA_Index,
 			Func_MNA_Index0, Func_MNA_Index),
 
@@ -1854,7 +1854,7 @@ predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
 
 predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 		PredId, AccessibilityTable0, AccessibilityTable,
-		N_Index0, N_Index, NA_Index0, NA_Index, 
+		N_Index0, N_Index, NA_Index0, NA_Index,
 		MNA_Index0, MNA_Index) :-
 	( NeedQual = may_be_unqualified ->
 			% insert the unqualified name into the name index
@@ -1921,7 +1921,7 @@ get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 		predicate_table_search_pf_sym_arity(PredicateTable,
 			IsFullyQualified, PredOrFunc, SymName,
 			Arity, PredIds),
-		% Resolve overloading using the argument types. 
+		% Resolve overloading using the argument types.
 		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 			TVarSet, ArgTypes, PredId0, _PredName)
 	->
@@ -1933,7 +1933,7 @@ get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 
 get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 		ArgTypes, ModuleInfo, PredId, ProcId) :-
-	( 
+	(
 		get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 			ArgTypes, ModuleInfo, PredId0)
 	->
@@ -1942,10 +1942,10 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
                 % Undefined/invalid pred or func.
 		% the type-checker should ensure that this never happens
 		list__length(ArgTypes, Arity),
-		PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
+		PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
 		prog_out__sym_name_to_string(SymName, Name2),
 		string__int_to_string(Arity, ArityString),
-		string__append_list(["get_pred_id_and_proc_id: ", 
+		string__append_list(["get_pred_id_and_proc_id: ",
 			"undefined/invalid ", PredOrFuncStr,
 			"\n`", Name2, "/", ArityString, "'"], Msg),
 		error(Msg)
@@ -1962,7 +1962,7 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
 		Name = pred_info_name(PredInfo),
 		PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 		Arity = pred_info_arity(PredInfo),
-		PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
+		PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
 		string__int_to_string(Arity, ArityString),
 		( ProcIds = [] ->
 			string__append_list([
@@ -2035,7 +2035,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 		( ProcIds = [ProcId0] ->
 			ProcId = ProcId0
 		;
-			error(string__format( 
+			error(string__format(
 				"expected single mode for %s/%d",
 				[s(ProcName), i(Arity)]))
 		)

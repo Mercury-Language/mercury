@@ -26,7 +26,6 @@
 :- import_module hlds__hlds_pred.
 :- import_module libs__tree.
 :- import_module ll_backend__layout.
-:- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool, list, assoc_list, map, set, std_util, counter, term.
@@ -52,7 +51,7 @@
 %
 % The type `c_file' is the actual LLDS.
 %
-:- type c_file	
+:- type c_file
 	--->	c_file(
 			cfile_modulename	:: module_name,
 			cfile_foreign_decl	:: foreign_decl_info,
@@ -517,7 +516,7 @@
 					% about the live lvals used in
 					% the c_code.
 
-	;	live_lvals_info(	
+	;	live_lvals_info(
 			set(lval)	% The set of lvals defined before the
 					% c_code that are live inside the
 					% c_code.
@@ -820,7 +819,7 @@
 				% stage after code generation.
 
 	% An rval is an expression that represents a value.
-:- type rval	
+:- type rval
 	--->	lval(lval)
 		% The value of an `lval' rval is just the value stored in
 		% the specified lval.
@@ -884,7 +883,7 @@
 			% the table used to implement memoization, loopcheck
 			% or minimal model semantics for the given procedure.
 
-:- type reg_type	
+:- type reg_type
 	--->	r		% general-purpose (integer) regs
 	;	f.		% floating point regs
 

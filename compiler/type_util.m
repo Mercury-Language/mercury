@@ -531,6 +531,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
+:- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
 :- import_module bool, char, int, string.
@@ -723,7 +724,7 @@ type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
 			TypeArgs0)
 	->
 		TypeArgs = TypeArgs0,
-		PredOrFuncStr = hlds_out__pred_or_func_to_str(PredOrFunc),
+		PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
 		TypeCtor = unqualified(PredOrFuncStr) - 0
 	;
 		type_is_tuple(Type, TypeArgs1)

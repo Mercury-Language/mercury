@@ -118,7 +118,7 @@ handle_foreign_lang(java, _) :-
 
 output_assembler(MLDS, ForeignLangs) -->
 	{ MLDS = mlds(ModuleName, _ForeignCode, _Imports, _Defns) },
-	output_src_start(ModuleName), 
+	output_src_start(ModuleName),
 	io__nl,
 
 	generate_il(MLDS, ILAsm0, ForeignLangs),
