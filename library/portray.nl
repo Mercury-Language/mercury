@@ -1,3 +1,10 @@
+% This file contains a definition for portray/1 that only
+% displays the top-level functors of big terms.
+% This is useful for debugging, since otherwise the NU-Prolog
+% debugger prints out screenfuls of crap as you step through
+% a program.  It also contains a definition for spyHook/2 that displays
+% the term in full, so that you can get the full details by
+% typing "|" in the debugger.
 
 portray(Term) :-
 	compound(Term),
