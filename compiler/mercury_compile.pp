@@ -896,8 +896,7 @@ mercury_compile(module(_, _, _, _, FoundSyntaxError)) -->
 		mercury_compile__modecheck(HLDS1, HLDS2, FoundModeError),
 		mercury_compile__maybe_dump_hlds(HLDS2, "2", "modecheck"),
 
-		mercury_compile__polymorphism(HLDS2, HLDS3),
-		mercury_compile__maybe_dump_hlds(HLDS3, "3", "polymorphism"),
+		mercury_compile__maybe_polymorphism(HLDS2, HLDS3),
 
 		mercury_compile__detect_switches(HLDS3, HLDS4),
 		mercury_compile__maybe_dump_hlds(HLDS4, "4", "switch_detect"),
@@ -1119,19 +1118,28 @@ mercury_compile__modecheck(HLDS0, HLDS, FoundModeError) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics).
 
-:- pred mercury_compile__polymorphism(module_info, module_info,
+:- pred mercury_compile__maybe_polymorphism(module_info, module_info,
 						io__state, io__state).
-:- mode mercury_compile__polymorphism(in, out, di, uo) is det.
+:- mode mercury_compile__maybe_polymorphism(in, out, di, uo) is det.
 
-mercury_compile__polymorphism(HLDS0, HLDS) -->
-	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose,
-		"% Transforming polymorphic unifications..."),
-	maybe_flush_output(Verbose),
-	{ polymorphism__process_module(HLDS0, HLDS) },
-	maybe_write_string(Verbose, " done.\n"),
-	globals__io_lookup_bool_option(statistics, Statistics),
-	maybe_report_stats(Statistics).
+mercury_compile__maybe_polymorphism(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(polymorphism, Polymorphism),
+	(
+		{ Polymorphism = yes }
+	->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose,
+			"% Transforming polymorphic unifications..."),
+		maybe_flush_output(Verbose),
+		{ polymorphism__process_module(HLDS0, HLDS) },
+		maybe_write_string(Verbose, " done.\n"),
+		globals__io_lookup_bool_option(statistics, Statistics),
+		maybe_report_stats(Statistics),
+		mercury_compile__maybe_dump_hlds(HLDS, "3", "polymorphism")
+	;
+		{ HLDS = HLDS0 }
+	).
+
 
 :- pred mercury_compile__detect_switches(module_info, module_info,
 						io__state, io__state).
