@@ -95,7 +95,7 @@ extern	const MR_Stack_Layout_Label *MR_find_nth_ancestor(
 **	been reached.
 **
 **	The meaning of the return value for MR_stack_walk_step is
-**	described in its type definiton above.  If an error is
+**	described in its type definition above.  If an error is
 **	encountered, problem_ptr will be set to a string representation
 **	of the error.
 */
