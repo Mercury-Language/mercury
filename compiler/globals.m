@@ -191,7 +191,7 @@ convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
 
-convert_trace_level("mininum", minimal).
+convert_trace_level("minimum", minimal).
 convert_trace_level("interfaces", interface).
 convert_trace_level("all", full).
 
