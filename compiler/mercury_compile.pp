@@ -542,7 +542,7 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".cs)\n"),
 	io__write_string(DepStream, "\t$(MOD2INIT) $(MOD2INITFLAGS) $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".cs) > $("),
+	io__write_string(DepStream, ".cs) > "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "_init.c\n\n"),
 
