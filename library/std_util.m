@@ -1322,10 +1322,10 @@ Word 	ML_make_type(int arity, MR_TypeCtorInfo type_ctor_info,
 ").
 
 
-	% A type_ctor_info is represented as a pointer to a type_ctor_info,
-	% except for higher-order types, which are represented using
-	% small integers.  See runtime/type_info.h.
-:- type type_ctor_info == c_pointer.  
+	% A type_ctor_info is really just a subtype of type_info,
+	% but we should hide this from users as it is an implementation
+	% detail.
+:- type type_ctor_info == type_info.  
 
 :- pragma c_code(type_of(_Value::unused) = (TypeInfo::out),
 	will_not_call_mercury, " 

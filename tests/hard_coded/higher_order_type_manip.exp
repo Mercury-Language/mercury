@@ -1,5 +1,5 @@
 func(std_util:type_info) = string
-pred(std_util:type_info, c_pointer, list:list(std_util:type_info))
+pred(std_util:type_info, std_util:type_info, list:list(std_util:type_info))
 int
 higher_order_type_manip:container(list:list(int))
 higher_order_type_manip:container(pred(io:state, io:state))

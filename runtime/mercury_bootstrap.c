@@ -22,25 +22,30 @@
 #include "mercury_imp.h"
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct_bootstrap {
+const struct mercury_data_std_util__type_ctor_layout_type_info_0_struct_bootstrap
+{
 	TYPE_LAYOUT_FIELDS
-} mercury_data_builtin__type_ctor_layout_c_pointer_0_bootstrap = {
+} mercury_data_std_util__type_ctor_layout_type_info_0_bootstrap = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE))
+		mkbody(MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE))
 };
 
 MR_MODULE_STATIC_OR_EXTERN
-const struct mercury_data_builtin__type_ctor_functors_c_pointer_0_struct_bootstrap {
+const struct
+mercury_data_std_util__type_ctor_functors_type_info_0_struct_bootstrap {
 	Integer f1;
-} mercury_data_builtin__type_ctor_functors_c_pointer_0_bootstrap = {
+} mercury_data_std_util__type_ctor_functors_type_info_0_bootstrap = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-Declare_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
-Declare_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
-Declare_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
 
-const struct mercury_data_builtin__type_ctor_info_c_pointer_0_struct {
+Define_extern_entry(mercury____Unify___std_util__type_info_0_0_bootstrap);
+Define_extern_entry(mercury____Index___std_util__type_info_0_0_bootstrap);
+Define_extern_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
+
+
+
+const struct mercury_data_std_util__type_ctor_info_type_info_0_struct_bootstrap {
 	Integer f1;
 	Code * f2;
 	Code * f3;
@@ -50,59 +55,71 @@ const struct mercury_data_builtin__type_ctor_info_c_pointer_0_struct {
 	Word * f7;
 	Word * f8;
 	Word * f9;
-}  mercury_data_builtin__type_ctor_info_c_pointer_0 = {
+}  mercury_data_std_util__type_ctor_info_type_info_0 = {
 	(Integer) 0,
-	ENTRY(mercury____Unify___builtin__c_pointer_0_0_bootstrap),
-	ENTRY(mercury____Index___builtin__c_pointer_0_0_bootstrap),
-	ENTRY(mercury____Compare___builtin__c_pointer_0_0_bootstrap),
-	MR_TYPECTOR_REP_C_POINTER,
-	(Word *) &mercury_data_builtin__type_ctor_functors_c_pointer_0_bootstrap,
-	(Word *) &mercury_data_builtin__type_ctor_layout_c_pointer_0_bootstrap,
-	string_const("builtin", 7),
-	string_const("c_pointer", 9)
+	ENTRY(mercury____Unify___std_util__type_info_0_0_bootstrap),
+	ENTRY(mercury____Index___std_util__type_info_0_0_bootstrap),
+	ENTRY(mercury____Compare___std_util__type_info_0_0_bootstrap),
+	(Integer) 15,
+	(Word *) &mercury_data_std_util__type_ctor_functors_type_info_0_bootstrap,
+	(Word *) &mercury_data_std_util__type_ctor_layout_type_info_0_bootstrap,
+	string_const("std_util", 8),
+	string_const("type_info", 9)
 };
 
-Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
-Define_extern_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
-Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
 
-BEGIN_MODULE(unify_c_pointer_module_bootstrap)
-	init_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
-	init_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
-	init_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
-
+BEGIN_MODULE(unify_univ_module_bootstrap)
+	init_entry(mercury____Unify___std_util__type_info_0_0_bootstrap);
+	init_entry(mercury____Index___std_util__type_info_0_0_bootstrap);
+	init_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
 BEGIN_CODE
-Define_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
+Define_entry(mercury____Unify___std_util__type_info_0_0_bootstrap);
+{
 	/*
-	** For c_pointer, we assume that equality and comparison
-	** can be based on object identity (i.e. using address comparisons).
-	** This is correct for types like io__stream, and necessary since
-	** the io__state contains a map(io__stream, filename).
-	** However, it might not be correct in general...
+	** Unification for type_info.
+	**
+	** The two inputs are in the registers named by unify_input[12].
+	** The success/failure indication should go in unify_output.
 	*/
-	r1 = (r1 == r2);
-	proceed();
+	int	comp;
 
-Define_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
+	save_transient_registers();
+	comp = MR_compare_type_info(r1, r2);
+	restore_transient_registers();
+	r1 = (comp == COMPARE_EQUAL);
+	proceed();
+}
+
+Define_entry(mercury____Index___std_util__type_info_0_0_bootstrap);
 	r1 = -1;
 	proceed();
 
-Define_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
-	r1 = (r1 == r2 ? COMPARE_EQUAL :
-			  r1 < r2 ? COMPARE_LESS :
-			  COMPARE_GREATER);
+Define_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
+{
+	/*
+	** Comparison for type_info:
+	**
+	** The two inputs are in the registers named by compare_input[12].
+	** The result should go in compare_output.
+	*/
+	int	comp;
+
+	save_transient_registers();
+	comp = MR_compare_type_info(r1, r2);
+	restore_transient_registers();
+	r1 = comp;
 	proceed();
+}
 
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_unify_c_pointer_module_bootstrap
+INIT sys_init_unify_univ_module_bootstrap
 */
-
-extern ModuleFunc unify_c_pointer_module_bootstrap;
-void sys_init_unify_c_pointer_module_bootstrap(void);
-	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
-void sys_init_unify_c_pointer_module_bootstrap(void) {
-	unify_c_pointer_module_bootstrap();
+extern ModuleFunc unify_univ_module_bootstrap;
+void sys_init_unify_univ_module_bootstrap(void); /* suppress gcc -Wmissing-decl warning */
+void sys_init_unify_univ_module_bootstrap(void) {
+	unify_univ_module_bootstrap();
 }
+

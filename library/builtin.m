@@ -949,6 +949,30 @@ Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
 
+
+const struct mercury_data_builtin__type_ctor_info_c_pointer_0_struct {
+        Integer f1;
+	Code * f2;
+	Code * f3;
+	Code * f4;
+	Integer f5;
+	Word * f6;
+	Word * f7;
+	Word * f8;
+	Word * f9;
+}  mercury_data_builtin__type_ctor_info_c_pointer_0 = {
+	(Integer) 0,
+	ENTRY(mercury____Unify___builtin__c_pointer_0_0),
+	ENTRY(mercury____Index___builtin__c_pointer_0_0),
+	ENTRY(mercury____Compare___builtin__c_pointer_0_0),
+	MR_TYPECTOR_REP_C_POINTER,
+	(Word *) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
+	(Word *) &mercury_data_builtin__type_ctor_layout_c_pointer_0,
+	string_const(""builtin"", 7),
+	string_const(""c_pointer"", 9)
+};
+
+
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___builtin__c_pointer_0_0);
 	init_entry(mercury____Index___builtin__c_pointer_0_0);
