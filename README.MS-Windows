@@ -2,7 +2,7 @@
 
 INTRODUCTION
 
-Mecury has been ported to Windows 95 and Windows NT using the "Cygwin"
+Mercury has been ported to Windows 95 and Windows NT using the "Cygwin"
 (formerly also known as "Cygwin32" and "gnu-win32") Unix emulation
 package from Cygnus.  It should work on Windows 98 too, but we haven't
 tested that.
