@@ -33,7 +33,6 @@ typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
 typedef unsigned WORD_TYPE	Unsigned;
 typedef void			Code;	/* code addresses are `void *' */
-typedef	Word			SpinLock;
 
 #include	"regs.h"	/* must come before system headers */
 

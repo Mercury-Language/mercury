@@ -8,6 +8,7 @@
 #define	MEMORY_H
 
 #include "regs.h"
+#include <stdlib.h>
 #include "std.h"
 
 /* these cannot be changed without lots of modifications elsewhere */
@@ -31,7 +32,7 @@ extern	Word	fake_reg[MAX_FAKE_REG];
 extern	Word	virtual_reg_map[MAX_REAL_REG];
 
 /* used for counting register usage */
-extern	Word 	num_uses[MAX_RN];
+extern	unsigned long 	num_uses[MAX_RN];
 
 /*
 ** The Mercury runtime uses a number of memory areas or *zones*. These
@@ -137,8 +138,8 @@ extern	int		dumpindex;
 ** are ignored.
 */
 
-MemoryZone	*create_zone(const char *name, int id, unsigned size,
-			unsigned offset, unsigned redsize,
+MemoryZone	*create_zone(const char *name, int id,
+			size_t size, size_t offset, size_t redsize,
 			ZoneHandler *handler);
 
 /*
@@ -155,7 +156,7 @@ MemoryZone	*create_zone(const char *name, int id, unsigned size,
 */
 
 MemoryZone	*construct_zone(const char *name, int Id, Word *base,
-			unsigned size, unsigned offset, unsigned redsize,
+			size_t size, size_t offset, size_t redsize,
 			ZoneHandler *handler);
 
 /*
@@ -187,24 +188,27 @@ extern	void	init_heap(void);
 ** next_offset() returns sucessive offsets across the primary cache. Useful
 ** when calling {create,construct}_zone().
 */
-extern	Word	next_offset(void);
+extern	size_t	next_offset(void);
 
 /*
-** allocate_bytes() allocates the given number of bytes. If shared memory
-** is being used, this allocation routine will allocate in shared memory.
+** allocate_bytes() allocates the given number of bytes.
+**
+** allocate_object(type) allocates space for an object of the specified type.
+**
+** allocate_array(type, num) allocates space for an array of objects of the
+** specified type.
+**
+** If shared memory is being used, these allocation routines will allocate
+** in shared memory.
 */
-extern	void	*allocate_bytes(int numbytes);
 
-/*
-** allocate_words() works the same as allocate_bytes() except that it allocates
-** the given number of words instead of bytes.
-*/
-extern	Word	*allocate_words(int numwords);
+extern	void	*allocate_bytes(size_t numbytes);
 
-/*
-** allocate_lock() returns a pointer to a new lock.
-*/
-extern	SpinLock *allocate_lock(void);
+#define allocate_object(type) \
+	((type *)allocate_bytes(sizeof(type)))
+
+#define allocate_array(type, num) \
+	((type *)allocate_bytes((num) * sizeof(type)))
 
 /*
 ** deallocate_memory() deallocates the memory allocated by one of the

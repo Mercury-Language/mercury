@@ -1,6 +1,7 @@
 #include "imp.h"
+#include "spinlock.h"
 
-void do_spinlock(Word *)
+void do_spinlock(Word *l)
 {
 	fatal_error("do_spinlock unimplemented");
 }

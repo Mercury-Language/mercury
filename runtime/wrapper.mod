@@ -736,7 +736,7 @@ static void print_register_usage_counts(void)
 			}
 		}
 
-		printf("\t%lu\n", (unsigned long)num_uses[i]);
+		printf("\t%lu\n", num_uses[i]);
 	}
 }
 #endif

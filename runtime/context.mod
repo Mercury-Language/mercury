@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include "context.h"
+
 #ifdef	PARALLEL
 int numprocs	=	1;
 #endif
@@ -12,7 +14,7 @@ void	delete_context(Context *context);
 
 #ifdef	PARALLEL
 pid_t	*procid;
-Word	*procwaiting;
+AtomicBool *procwaiting;
 #endif
 int	my_procnum;
 pid_t	my_procid;
@@ -21,8 +23,8 @@ Word	*min_heap_reclamation_point;
 Context	*this_context;
 Context	**runqueue_ptr;
 Context	**free_context_list_ptr;
-Word	*runqueue_lock;
-Word	*free_context_list_lock;
+SpinLock *runqueue_lock;
+SpinLock *free_context_list_lock;
 
 Context	*do_schedule_cptr;
 Code	*do_schedule_resume;
@@ -41,12 +43,12 @@ void init_processes(void)
 	my_procid = getpid();
 
 	runqueue_lock = allocate_lock();
-	runqueue_ptr = (Context **) allocate_words(sizeof(Context *));
+	runqueue_ptr = allocate_object(Context *);
 	*runqueue_ptr = NULL;
 
 #ifdef	PARALLEL
-	procid = (pid_t *) allocate_bytes(sizeof(pid_t) * numprocs);
-	procwaiting = allocate_words(numprocs);
+	procid = allocate_array(pid_t, numprocs);
+	procwaiting = allocate_array(AtomicBool, numprocs);
 	procid[0] = my_procid;
 	procwaiting[0] = FALSE;
 
@@ -85,10 +87,8 @@ static void init_free_context_list(void)
 	Context *tmp;
 
 	free_context_list_lock = allocate_lock();
-	free_context_list_ptr = (Context **) allocate_bytes(sizeof(Context *));
-	*free_context_list_ptr =
-		(Context *) allocate_bytes(INITIAL_NUM_CONTEXTS *
-				sizeof(Context));
+	free_context_list_ptr = allocate_object(Context *);
+	*free_context_list_ptr = allocate_array(Context, INITIAL_NUM_CONTEXTS);
 	tmp = *free_context_list_ptr;
 	for (i = 0; i < INITIAL_NUM_CONTEXTS; i++) {
 		if (i != INITIAL_NUM_CONTEXTS - 1)
@@ -276,7 +276,7 @@ do_schedule:
 	/* Check to see if we need to signal a sleeping process */
 	if (old == NULL) {
 		int i;
-		for(i=0; i < numprocs; i++) {
+		for(i = 0; i < numprocs; i++) {
 			if (procwaiting[i] == TRUE) {
 				kill(procid[i], SIGUSR1);
 				break;
@@ -302,17 +302,17 @@ do_join_and_terminate:
 
 	syncterm = do_join_and_terminate_syncterm;
 
-	get_lock(syncterm[SYNC_TERM_LOCK]);
+	get_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
 	if (--(syncterm[SYNC_TERM_COUNTER]) == 0) {
 		assert(syncterm[SYNC_TERM_PARENT] != NULL);
-		release_lock(syncterm[SYNC_TERM_LOCK]);
+		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
 		ctxt = (Context *) syncterm[SYNC_TERM_PARENT];
 		delete_context(this_context);
 		this_context = ctxt;
 		load_context(this_context);
 		GOTO(this_context->resume);
 	} else {
-		release_lock(syncterm[SYNC_TERM_LOCK]);
+		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
 		delete_context(this_context);
 		runnext();
 	}
@@ -331,16 +331,16 @@ do_join_and_continue:
 	register Word *syncterm;
 
 	syncterm = do_join_and_continue_syncterm;
-	get_lock(syncterm[SYNC_TERM_LOCK]);
+	get_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
 	if (--(syncterm[SYNC_TERM_COUNTER]) == 0) {
 		assert(syncterm[SYNC_TERM_PARENT] == NULL);
-		release_lock(syncterm[SYNC_TERM_LOCK]);
+		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
 		GOTO(do_join_and_continue_whereto);
 	} else {
 		save_context(this_context);
 		this_context->resume = do_join_and_continue_whereto;
 		syncterm[SYNC_TERM_PARENT] = (Word) this_context;
-		release_lock(syncterm[SYNC_TERM_LOCK]);
+		release_lock((SpinLock *)&syncterm[SYNC_TERM_LOCK]);
 		runnext();
 	}
 }

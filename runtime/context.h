@@ -1,7 +1,6 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
-#include <signal.h>
 #include "spinlock.h"
 
 /*
@@ -57,14 +56,13 @@ extern int numprocs;
 */
 #define INITIAL_NUM_CONTEXTS	20
 
-typedef struct CONTEXT Context;
-
 /*
 ** The field names that correspond to virtual machine registers:
 ** 	sp, maxfr & curfr
 ** are prefixed with `context_' so that they don't get replaced
 ** during macro expansion.
 */
+typedef struct CONTEXT Context;
 struct CONTEXT {
 	struct CONTEXT	*next;	
 		/*
@@ -185,9 +183,11 @@ extern	pid_t	*procid;
 		** (Assuming that Words can be read and written in a
 		** coherent manner is sufficiently important in terms of
 		** simplifying the synchronization mechanisms, that
-		** we really need to do so.)
+		** we really need to do so -- or so says Tom, at least.
+		** I remain unconvinced. -Fergus.)
 		*/
-extern	Word	*procwaiting;
+typedef Word AtomicBool;
+extern	AtomicBool	*procwaiting;
 
 		/*
 		** my_procnum is the number of the current process.
