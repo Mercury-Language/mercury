@@ -10,11 +10,11 @@
 
 :- interface.
 
-:- implementation.
-
 :- import_module int.
 
 :- pred p(int::out) is det.
+
+:- implementation.
 
     % Warning about referring to "uninitialized" !.X.
     %

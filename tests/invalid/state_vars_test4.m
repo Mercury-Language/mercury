@@ -10,11 +10,11 @@
 
 :- interface.
 
-:- implementation.
-
 :- import_module int.
 
 :- func f(int) = int.
+
+:- implementation.
 
     % Illegally uses !Y as a func result.
     %

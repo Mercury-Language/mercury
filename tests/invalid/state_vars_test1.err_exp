@@ -1,4 +1,3 @@
-state_vars_test1.m:  1: Warning: interface for module `state_vars_test1' does not export anything.
 state_vars_test1.m:023: Error: cannot use !:X in this context;
 
 state_vars_test1.m:023:   however !.X may be used here.

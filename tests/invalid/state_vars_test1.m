@@ -10,11 +10,11 @@
 
 :- interface.
 
-:- implementation.
-
 :- import_module int.
 
 :- pred p(int::in, int::out) is det.
+
+:- implementation.
 
     % Illegally refers to !:X in an if-then-else expr.
     %

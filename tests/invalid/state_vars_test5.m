@@ -10,11 +10,11 @@
 
 :- interface.
 
-:- implementation.
-
 :- import_module list, int.
 
 :- func f(list(int)) = int.
+
+:- implementation.
 
     % Illegally uses !X as a lambda arg.
     %
