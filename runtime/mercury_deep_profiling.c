@@ -351,10 +351,10 @@ MR_write_out_profiling_tree(void)
 
 #ifdef	MR_DEEP_PROFILING_DEBUG
 	if (MR_deep_prof_debug_file_flag) {
-	debug_fp = fopen("Deep.debug", "w");
-	if (debug_fp == NULL) {
-		debug_fp = stderr;
-	}
+		debug_fp = fopen("Deep.debug", "w");
+		if (debug_fp == NULL) {
+			debug_fp = stderr;
+		}
 	}
 #endif
 
@@ -390,8 +390,8 @@ MR_write_out_profiling_tree(void)
 
 #ifdef MR_DEEP_PROFILING_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "root = %p, %d\n",
-		&MR_main_parent_proc_dynamic, root_pd_id);
+		fprintf(debug_fp, "root = %p, %d\n",
+			&MR_main_parent_proc_dynamic, root_pd_id);
 	}
 #endif
 
@@ -627,10 +627,10 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 {
 	const MR_ProcStatic	*ps;
 	const MR_Proc_Id	*procid;
-	int	ps_id;
-	int	css_id;
-	MR_bool	already_written;
-	int	i;
+	int			ps_id;
+	int			css_id;
+	MR_bool			already_written;
+	int			i;
 
 	if (proc_layout == NULL) {
 		MR_fatal_error("MR_write_out_proc_static: null proc_layout");
@@ -648,7 +648,7 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 	if (debug_fp != NULL) {
 		fprintf(debug_fp, "proc_static %p/%p/%d\n",
 			proc_layout, ps, ps_id);
-	fprintf(debug_fp, "  filename \"%s\", linenumber %d, "
+		fprintf(debug_fp, "  filename \"%s\", linenumber %d, "
 			"interface %d, %d call sites\n",
 		ps->MR_ps_file_name, ps->MR_ps_line_number,
 		ps->MR_ps_is_in_interface, ps->MR_ps_num_call_sites);
@@ -668,7 +668,7 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 	if (MR_PROC_ID_COMPILER_GENERATED(*procid)) {
 #ifdef MR_DEEP_PROFILING_DEBUG
 		if (debug_fp != NULL) {
-		fprintf(debug_fp, "  compiler %s/%s/%s/%s/%d/%d\n",
+			fprintf(debug_fp, "  compiler %s/%s/%s/%s/%d/%d\n",
 				procid->MR_proc_uci.MR_uci_type_name,
 				procid->MR_proc_uci.MR_uci_type_module,
 				procid->MR_proc_uci.MR_uci_def_module,
@@ -688,7 +688,7 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 	} else {
 #ifdef MR_DEEP_PROFILING_DEBUG
 		if (debug_fp != NULL) {
-		fprintf(debug_fp, "  user %d/%s/%s/%s/%d/%d\n",
+			fprintf(debug_fp, "  user %d/%s/%s/%s/%d/%d\n",
 				procid->MR_proc_user.MR_user_pred_or_func,
 				procid->MR_proc_user.MR_user_decl_module,
 				procid->MR_proc_user.MR_user_def_module,
@@ -723,7 +723,7 @@ MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
 
 #ifdef MR_DEEP_PROFILING_DEBUG
 		if (debug_fp != NULL) {
-		fprintf(debug_fp,
+			fprintf(debug_fp,
 				"call site id %d in "
 				"proc_static %p/%p/%d -> %d\n",
 				i, proc_layout, ps, ps_id, css_id);
@@ -768,8 +768,8 @@ MR_write_out_call_site_static(FILE *fp, const MR_CallSiteStatic *css)
 
 #ifdef MR_DEEP_PROFILING_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "call_site_static %p/%d\n", css, css_id);
-	fprintf(debug_fp,
+		fprintf(debug_fp, "call_site_static %p/%d\n", css, css_id);
+		fprintf(debug_fp,
 			"  filename \"%s\", linenum %d, "
 			"goal path %s, kind %d\n",
 		css->MR_css_file_name, css->MR_css_line_number,
@@ -786,8 +786,8 @@ MR_write_out_call_site_static(FILE *fp, const MR_CallSiteStatic *css)
 			&ps_id, NULL, MR_FALSE);
 #ifdef MR_DEEP_PROFILING_DEBUG
 		if (debug_fp != NULL) {
-		fprintf(debug_fp, "  callee %p/%d\n",
-			css->MR_css_callee_ptr_if_known, ps_id);
+			fprintf(debug_fp, "  callee %p/%d\n",
+				css->MR_css_callee_ptr_if_known, ps_id);
 		}
 #endif
 		MR_write_num(fp, ps_id);
@@ -966,7 +966,7 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
 			case MR_normal_call:
 #ifdef MR_DEEP_PROFILING_DEBUG
 				if (debug_fp != NULL) {
-				fprintf(debug_fp,
+					fprintf(debug_fp,
 						"  normal call from pd %p "
 						"to pd %p\n",
 						pd, pd->
@@ -1018,8 +1018,8 @@ MR_write_out_ho_call_site_ptrs(FILE *fp, const MR_ProcDynamic *pd,
 #endif
 #ifdef MR_DEEP_PROFILING_DEBUG
 		if (debug_fp != NULL) {
-		fprintf(debug_fp, "  multi call from pd %p to pd %p\n",
-			pd, dynlist->MR_csdlist_call_site);
+			fprintf(debug_fp, "  multi call from pd %p to pd %p\n",
+				pd, dynlist->MR_csdlist_call_site);
 		}
 #endif
 		MR_write_csd_ptr(fp, dynlist->MR_csdlist_call_site);
@@ -1058,7 +1058,7 @@ MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id)
 {
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "ptr: %d\n", node_id);
+		fprintf(debug_fp, "ptr: %d\n", node_id);
 	}
 #endif
 
@@ -1073,7 +1073,7 @@ MR_write_kind(FILE *fp, MR_CallSite_Kind kind)
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "call_site_kind: %d\n", (int) kind);
+		fprintf(debug_fp, "call_site_kind: %d\n", (int) kind);
 	}
 #endif
 
@@ -1094,7 +1094,7 @@ MR_write_byte(FILE *fp, const char byte)
 {
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "byte: %d\n", (int) byte);
+		fprintf(debug_fp, "byte: %d\n", (int) byte);
 	}
 #endif
 	putc(byte, fp);
@@ -1115,7 +1115,7 @@ MR_write_num(FILE *fp, unsigned long num)
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "num: %ld\n", num);
+		fprintf(debug_fp, "num: %ld\n", num);
 	}
 #endif
 
@@ -1143,7 +1143,7 @@ MR_write_fixed_size_int(FILE *fp, unsigned long num)
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "fixed_size_int: %ld\n", num);
+		fprintf(debug_fp, "fixed_size_int: %ld\n", num);
 	}
 #endif
 
@@ -1162,7 +1162,7 @@ MR_write_string(FILE *fp, const char *ptr)
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
 	if (debug_fp != NULL) {
-	fprintf(debug_fp, "string: <%s>\n", ptr);
+		fprintf(debug_fp, "string: <%s>\n", ptr);
 	}
 #endif
 

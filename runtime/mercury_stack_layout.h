@@ -833,15 +833,15 @@ typedef	struct MR_Exec_Trace_Struct {
 */
 
 struct MR_Proc_Layout_Struct {
-	MR_Stack_Traversal	MR_sle_traversal;
-	MR_Proc_Id		MR_sle_proc_id;
+	MR_Stack_Traversal			MR_sle_traversal;
+	MR_Proc_Id				MR_sle_proc_id;
 	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
 };
 
 typedef	struct MR_Proc_Layout_User_Struct {
-	MR_Stack_Traversal	MR_user_traversal;
-	MR_User_Proc_Id		MR_user_id;
+	MR_Stack_Traversal			MR_user_traversal;
+	MR_User_Proc_Id				MR_user_id;
 	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
 	MR_ProcStatic				*MR_sle_proc_static;
 } MR_Proc_Layout_User;

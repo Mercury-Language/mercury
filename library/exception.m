@@ -871,13 +871,17 @@ typedef struct ML_ExceptionHandler_struct {
   #endif
 
   #ifdef MR_THREAD_SAFE
+
     #define ML_GET_EXCEPTION_HANDLER()		\
     	MR_GETSPECIFIC(MR_exception_handler_key)
-  #define ML_SET_EXCEPTION_HANDLER(val)	\
+    #define ML_SET_EXCEPTION_HANDLER(val)	\
   	pthread_setspecific(MR_exception_handler_key, (val))
+
   #else  /* !MR_THREAD_SAFE */
-  #define ML_GET_EXCEPTION_HANDLER()	ML_exception_handler
-  #define ML_SET_EXCEPTION_HANDLER(val)	ML_exception_handler = (val)
+
+    #define ML_GET_EXCEPTION_HANDLER()		ML_exception_handler
+    #define ML_SET_EXCEPTION_HANDLER(val)	ML_exception_handler = (val)
+
   #endif /* !MR_THREAD_SAFE */
 
 void MR_CALL
@@ -1422,26 +1426,26 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
 
 /*
 ** MR_throw_walk_stack():
-**	Unwind the stack as far as possible, until we reach a frame
-**	with an exception handler.  As we go, invoke either or both
-**	of two actions.
+** Unwind the stack as far as possible, until we reach a frame
+** with an exception handler.  As we go, invoke either or both
+** of two actions.
 **
-**	(1) If MR_trace_enabled is set, then invoke
-**	`MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
-**	to signal to the debugger that that procedure has exited via
-**	an exception.  This allows to user to use the `retry' command
-**	to restart a goal which exited via an exception.
+** (1) If MR_trace_enabled is set, then invoke
+**     `MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
+**     to signal to the debugger that that procedure has exited via
+**     an exception.  This allows to user to use the `retry' command
+**     to restart a goal which exited via an exception.
 **
-**	Note that if MR_STACK_TRACE is not defined, then we may not be
-**	able to traverse the stack all the way; in that case, we just
-**	print a warning and then continue.  It might be better to just
-**	`#ifdef' out all this code (and the code in builtin_throw which
-**	calls it) if MR_STACK_TRACE is not defined.
+**     Note that if MR_STACK_TRACE is not defined, then we may not be
+**     able to traverse the stack all the way; in that case, we just
+**     print a warning and then continue.  It might be better to just
+**     `#ifdef' out all this code (and the code in builtin_throw which
+**     calls it) if MR_STACK_TRACE is not defined.
 **
-**	(2) In deep profiling grades, execute the actions appropriate for
-**	    execution leaving the procedure invocation via the exception port.
-**	    (Deep profiling grades always set MR_STACK_TRACE, so in such grades
-**	    we *will* be able to traverse the stack all the way.
+** (2) In deep profiling grades, execute the actions appropriate for
+**     execution leaving the procedure invocation via the exception port.
+**     (Deep profiling grades always set MR_STACK_TRACE, so in such grades
+**     we *will* be able to traverse the stack all the way.
 **
 ** The arguments base_sp and base_curfr always hold MR_sp and MR_curfr.
 ** They exist only because we cannot take the addresses of MR_sp and MR_curfr.
@@ -1609,20 +1613,20 @@ ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
   #endif
 
   		if (MR_trace_enabled) {
-		/*
-		** invoke MR_trace() to trace the exception
-		*/
+			/*
+			** invoke MR_trace() to trace the exception
+			*/
 			if (return_label_layout->MR_sll_port !=
-					MR_PORT_EXCEPTION)
+				MR_PORT_EXCEPTION)
 			{
 				MR_fatal_error(""return layout port ""
 					""is not exception"");
-		}
+			}
 
-		MR_jumpaddr = MR_trace(return_label_layout);
-		if (MR_jumpaddr != NULL) {
-			return MR_jumpaddr;
-		}
+			MR_jumpaddr = MR_trace(return_label_layout);
+			if (MR_jumpaddr != NULL) {
+				return MR_jumpaddr;
+			}
 		}
 
 		/*

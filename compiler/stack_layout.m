@@ -122,7 +122,8 @@ stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
 
 	list__condense([TableIoDecls, ProcLayouts, InternalLayouts],
 		Layouts0),
-	( TraceLayout = yes ->
+	(
+		TraceLayout = yes,
 		module_info_name(ModuleInfo0, ModuleName),
 		globals__lookup_bool_option(Globals, rtti_line_numbers,
 			LineNumbers),
@@ -141,6 +142,7 @@ stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
 			SourceFileLayouts, TraceLevel, SuppressedEvents)),
 		Layouts = [ModuleLayout | Layouts0]
 	;
+		TraceLayout = no,
 		Layouts = Layouts0
 	).
 
@@ -430,8 +432,7 @@ stack_layout__context_is_valid(Context) :-
 stack_layout__construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
 		MaybeSuccipLoc, Traversal, !Info) :-
 	(
-		MaybeSuccipLoc = yes(Location)
-	->
+		MaybeSuccipLoc = yes(Location),
 		( determinism_components(Detism, _, at_most_many) ->
 			SuccipLval = framevar(Location)
 		;
@@ -441,6 +442,7 @@ stack_layout__construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
 			SuccipInt),
 		MaybeSuccipInt = yes(SuccipInt)
 	;
+		MaybeSuccipLoc = no,
 			% Use a dummy location if there is no succip slot
 			% on the stack.
 			%
@@ -1096,7 +1098,8 @@ stack_layout__construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
 	stack_layout__set_static_cell_info(StaticCellInfo1, !Info),
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout, !Info),
-	( TraceStackLayout = yes ->
+	(
+		TraceStackLayout = yes,
 		list__foldl(AddRevNums, AllArrayInfo,
 			[], RevVarNumRvals),
 		list__reverse(RevVarNumRvals, VarNumRvals),
@@ -1108,6 +1111,7 @@ stack_layout__construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
 		stack_layout__set_static_cell_info(StaticCellInfo, !Info),
 		NumVector = const(data_addr_const(NumVectorAddr, no))
 	;
+		TraceStackLayout = no,
 		NumVector = const(int_const(0))
 	).
 

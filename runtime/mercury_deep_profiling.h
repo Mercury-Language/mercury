@@ -183,7 +183,7 @@ typedef enum {
 #define	MR_new_proc_dynamic(pd, pl)					\
 	do {								\
 		MR_ProcStatic	*psl;					\
-		int	npdi;						\
+		int		npdi;					\
 									\
 		(pd) = MR_PROFILING_MALLOC(MR_ProcDynamic);		\
 		(pd)->MR_pd_proc_layout = (pl);				\

@@ -3543,21 +3543,21 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 			MaybeRecInfo = yes(DeepRecInfo),
 			DeepRecInfo = deep_recursion_info(Role, _),
 			io__write_string("% deep recursion info: ", !IO),
-		(
-			Role = inner_proc(DeepPredProcId),
-			io__write_string("inner, outer is ", !IO)
+			(
+				Role = inner_proc(DeepPredProcId),
+				io__write_string("inner, outer is ", !IO)
+			;
+				Role = outer_proc(DeepPredProcId),
+				io__write_string("outer, inner is ", !IO)
+			),
+			DeepPredProcId = proc(DeepPredId, DeepProcId),
+			pred_id_to_int(DeepPredId, DeepPredInt),
+			proc_id_to_int(DeepProcId, DeepProcInt),
+			io__write_int(DeepPredInt, !IO),
+			io__write_string("/", !IO),
+			io__write_int(DeepProcInt, !IO),
+			io__write_string("\n", !IO)
 		;
-			Role = outer_proc(DeepPredProcId),
-			io__write_string("outer, inner is ", !IO)
-		),
-		DeepPredProcId = proc(DeepPredId, DeepProcId),
-		pred_id_to_int(DeepPredId, DeepPredInt),
-		proc_id_to_int(DeepProcId, DeepProcInt),
-		io__write_int(DeepPredInt, !IO),
-		io__write_string("/", !IO),
-		io__write_int(DeepProcInt, !IO),
-		io__write_string("\n", !IO)
-	;
 			MaybeRecInfo = no
 		),
 		(

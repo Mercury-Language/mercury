@@ -638,16 +638,16 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
 			MaybeProcStatic = yes(ProcStatic),
 			output_proc_static_data_defn(RttiProcLabel, ProcStatic,
 				!DeclSet, !IO)
-	;
+		;
 			MaybeProcStatic = no
 		),
 		(
 			MaybeExecTrace = yes(ExecTrace),
-		HeadVarNums = ExecTrace ^ head_var_nums,
+			HeadVarNums = ExecTrace ^ head_var_nums,
 			output_proc_layout_head_var_nums(RttiProcLabel,
 				HeadVarNums, !DeclSet, !IO),
-		VarNames = ExecTrace ^ var_names,
-		MaxVarNum = ExecTrace ^ max_var_num,
+			VarNames = ExecTrace ^ var_names,
+			MaxVarNum = ExecTrace ^ max_var_num,
 			output_proc_layout_var_names(RttiProcLabel, VarNames,
 				MaxVarNum, !DeclSet, !IO),
 			output_layout_exec_trace_decls(RttiProcLabel,
