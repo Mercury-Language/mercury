@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2002 The University of Melbourne.
+// Copyright (C) 2002-2003 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -20,6 +20,11 @@ public class io
         System.out.print(val);
      }
     
+    public static void write_char_3_p_0(char val)
+     {
+        System.out.print(val);
+     }
+
     public static void nl_2_p_0()
      {
         System.out.print("\n");

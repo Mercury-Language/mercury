@@ -1,6 +1,6 @@
 
 //
-// Copyright (C) 2002 The University of Melbourne.
+// Copyright (C) 2002-2003 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -49,6 +49,11 @@ public class private_builtin
      }
     
 
+    public static int builtin_strcmp_3_p_0(java.lang.String string1, java.lang.String string2)
+     {
+        return string1.compareTo(string2);
+     }
+    
     public static void compare_error_0_p_0()
      {
 	throw new java.lang.Error("internal error in compare/3");
