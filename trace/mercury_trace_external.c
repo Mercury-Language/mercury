@@ -261,7 +261,7 @@ MR_trace_init_external(void)
 		{
 			fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
 		}
-		host_addr = inet_network(hostname);
+		host_addr = inet_addr(hostname);
 		if (host_addr == -1) {
 			fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 				"invalid address");
