@@ -1,2 +1,2 @@
-typeclass_test_3.m:001: Warning: incorrect module name in `:- module' declaration.
-XXX
+undefined class method
+For more information, try recompiling with `-E'.

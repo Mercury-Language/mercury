@@ -40,6 +40,7 @@ SOURCES= \
 	type_mismatch.m \
 	typeclass_test_1.m \
 	typeclass_test_2.m \
+	typeclass_test_3.m \
 	typeclass_test_4.m \
 	unbound_inst_var.m \
 	undef_lambda_mode.m \
@@ -49,7 +50,6 @@ SOURCES= \
 	vars_in_wrong_places.m
 
 # we do not yet pass the following tests:
-#	typeclass_test_3.m (gets software error; cause unknown)
 #	freefree.m 	(need bromage's aliasing stuff)
 #	no_exports.m	(this is really a WISHLIST item)
 #
