@@ -271,6 +271,16 @@ output_instruction(goto(Label)) -->
 	output_label(Label),
 	io__write_string("))").
 
+output_instruction(test(Rval1, Rval2, Label)) -->
+	io__write_string("\t"),
+	io__write_string("if(("),
+	output_rval(Rval1),
+	io__write_string(") != ("),
+	output_rval(Rval2),
+	io__write_string("))\n\t\tGOTO(LABEL("),
+	output_label(Label),
+	io__write_string("));").
+
 output_instruction(if_tag(Reg, Tag, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if(tag("),
