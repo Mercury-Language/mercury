@@ -70,6 +70,18 @@
 :- pred array__to_list(array(T), list(T)).
 :- mode array__to_list(in, out) is det.
 
+	% array__bsearch takes an array, an element to be found
+	% and a comparison predicate and returns the position of
+	% the element in the array.  Assumes the array is in sorted
+	% order.  Fails if the element is not present.  If the
+	% element to be found appears multiple times, the index of
+	% the first occurrence will be returned.
+	% call/N currently does not allow output arguments to come
+	% before input arguments, so you can't just pass compare/3
+	% in here. :-(
+:- pred array__bsearch(array(T), T, pred(T, T, comparison_result), int).
+:- mode array__bsearch(in, in, pred(in, in, out) is det, out) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -176,6 +188,49 @@ array__fetch_items(Array, Low, High, List) :-
                 array__lookup(Array, Low, Item),
                 List = [Item|List0]
         ).
+
+%-----------------------------------------------------------------------------%
+
+array__bsearch(A, El, Compare, I) :-
+	array__bounds(A, Lo, Hi),
+	Lo =< Hi,
+	array__bsearch_2(A, Lo, Hi, El, Compare, I).
+
+:- pred array__bsearch_2(array(T), int, int, T,
+			pred(T, T, comparison_result), int).
+:- mode array__bsearch_2(in, in, in, in, pred(in, in, out) is det,
+				out) is semidet.
+array__bsearch_2(A, Lo, Hi, El, Compare, I) :-
+	Width is Hi - Lo,
+
+	% If Width < 0, there is no range left.
+	Width >= 0,
+
+	% If Width == 0, we may just have found our element.
+	% Do a Compare to check.
+	( Width = 0 ->
+	    array__lookup(A, Lo, X),
+	    call(Compare, El, X, (=)),
+	    I = Lo
+	;
+	    % Otherwise find the middle element of the range
+	    % and check against that.  NOTE: I used ">> 1"
+	    % rather than "// 2" because division always
+	    % rounds towards zero whereas shift right always
+	    % rounds down.  (Indices can be negative.)
+	    Mid is (Lo + Hi) >> 1,
+	    array__lookup(A, Mid, XMid),
+	    call(Compare, XMid, El, Comp),
+	    ( Comp = (<),
+		Mid1 is Mid + 1,
+		array__bsearch_2(A, Mid1, Hi, El, Compare, I)
+	    ; Comp = (=),
+		array__bsearch_2(A, Lo, Mid, El, Compare, I)
+	    ; Comp = (>),
+		Mid1 is Mid - 1,
+		array__bsearch_2(A, Lo, Mid1, El, Compare, I)
+	    )
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
