@@ -92,8 +92,8 @@ call_gen__generate_semidet_call(PredId, ProcId, Arguments, Code) -->
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_declared_determinism(ProcInfo, Determinism) },
-	( { Determinism = semidet } ->
+	{ proc_info_interface_determinism(ProcInfo, Determinism) },
+	( { Determinism = semideterministic } ->
 		call_gen__generate_semidet_call_2(PredId, ProcId, Arguments,
 			Code)
 	;

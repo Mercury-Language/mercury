@@ -62,7 +62,7 @@ detect_live_vars_in_procs([ProcId | ProcIds], PredId,
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_inferred_determinism(ProcInfo0, Category),
+	proc_info_interface_determinism(ProcInfo0, Category),
 
 	detect_initial_live_vars(ProcInfo0, ModuleInfo0, Liveness0),
 	set__init(LiveVars0),

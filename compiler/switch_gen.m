@@ -54,7 +54,10 @@ switch_gen__generate_det_switch(CaseVar, Cases, Instr) -->
 	% At the end of the list of cases we put the end-of-switch
 	% label which each case branches to after its case goal.
 switch_gen__generate_det_cases([], _Var, _Lval, EndLabel, Code) -->
-	{ Code = node([label(EndLabel) - " End of switch"]) }.
+	code_info__generate_failure(FailCode),	% temporary hack, 
+		% since det analysis is wrong for switches.
+	{ EndCode = node([label(EndLabel) - " End of switch"]) },
+	{ Code = tree(FailCode, EndCode) }.
 	
 	% Each case [except the last] consists of a tag test, followed
 	% by the goal for that case, followed by a branch to the end of

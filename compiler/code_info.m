@@ -2106,7 +2106,12 @@ code_info__generate_failure(Code) -->
 		{ Code = node([ goto(Cont) -
 					"Branch to failure continuation" ]) }
 	;
-		{ error("code_info__generate_failure: missing failure continuation") }
+		% XXX temporary hack, since det analysis
+		% is wrong for switches
+		{ Code = node([
+			c_code("abort();") - "`fail' in deterministic code"
+		]) }
+		% { error("code_info__generate_failure: missing failure continuation") }
 	).
 
 %---------------------------------------------------------------------------%
@@ -2175,7 +2180,7 @@ code_info__generate_commit(FailLabel, Commit) -->
 	code_info__pop_lval(maxfr, RestoreMaxfr),
 	code_info__generate_failure(Fail),
 	{ RestoreRegs = tree(RestoreRedoIp, RestoreMaxfr) },
-	{ FailCode = tree(RestoreRegs, Fail) },
+	{ FailCode = tree(RestoreRedoIp, Fail) },
 	{ SuccessCode = RestoreRegs },
 	{ Commit = tree(GotoSuccCode, tree(FailCode,
 		tree(SuccLabelCode, SuccessCode))) }.

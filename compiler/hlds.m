@@ -1119,6 +1119,9 @@ pred_info_is_imported(PredInfo) :-
 :- pred proc_info_declared_determinism(proc_info, determinism).
 :- mode proc_info_declared_determinism(in, out) is det.
 
+:- pred proc_info_interface_determinism(proc_info, category).
+:- mode proc_info_interface_determinism(in, out) is det.
+
 :- pred proc_info_inferred_determinism(proc_info, category).
 :- mode proc_info_inferred_determinism(in, out) is det.
 
@@ -1216,6 +1219,14 @@ determinism_to_category(failure, semideterministic).
 	% that the procedure wasn't deterministic, then det_analysis.nl
 	% provide the correct inferred determinism for it.
 determinism_to_category(unspecified, deterministic).
+
+proc_info_interface_determinism(ProcInfo, Category) :-
+	proc_info_declared_determinism(ProcInfo, Determinism),
+	( Determinism = unspecified ->
+		proc_info_inferred_determinism(ProcInfo, Category)
+	;
+		determinism_to_category(Determinism, Category)
+	).
 
 proc_info_declared_determinism(ProcInfo, Determinism) :-
 	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _, _, _).

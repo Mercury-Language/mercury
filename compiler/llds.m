@@ -41,6 +41,7 @@
 			;	modframe(maybe(label))
 			;	label(label)
 			;	goto(label)
+			;	c_code(string)	% insert arbitrary C code
 			;	test(rval, rval, label)
 					% branch to label if
 					% equality test fails
@@ -276,6 +277,10 @@ output_instruction(redo) -->
 output_instruction(fail) -->
 	io__write_string("\t"),
 	io__write_string("fail();").
+
+output_instruction(c_code(C_Code_String)) -->
+	io__write_string("\t"),
+	io__write_string(C_Code_String).
 
 output_instruction(mkframe(Str, Num, Maybe)) -->
 	io__write_string("\t"),

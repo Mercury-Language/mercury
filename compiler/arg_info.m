@@ -79,7 +79,7 @@ generate_proc_arg_info(PredId, [ProcId | ProcIds], ModuleInfo0, ModuleInfo) :-
 
 make_arg_infos(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_argmodes(ProcInfo0, ArgModes),
-	proc_info_inferred_determinism(ProcInfo0, Determinism),
+	proc_info_interface_determinism(ProcInfo0, Determinism),
 	( Determinism = semideterministic ->
 		StartingRegister = 2
 	;
