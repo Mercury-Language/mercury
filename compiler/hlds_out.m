@@ -171,10 +171,15 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	),
 	io__write_string("'").
 
-hlds_out__write_call_id(PredOrFunc, NameAndArity) -->
+hlds_out__write_call_id(PredOrFunc, Name/Arity) -->
 	hlds_out__write_pred_or_func(PredOrFunc),
 	io__write_string(" `"),
-	hlds_out__write_pred_call_id(NameAndArity),
+	{ PredOrFunc = function ->
+		OrigArity is Arity - 1
+	;
+		OrigArity = Arity
+	},
+	hlds_out__write_pred_call_id(Name/OrigArity),
 	io__write_string("'").
 
 hlds_out__write_pred_call_id(Name / Arity) -->
