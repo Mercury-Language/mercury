@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998,2000 The University of Melbourne.
+% Copyright (C) 1997-1998,2000, 2003 The University of Melbourne.
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -1662,25 +1662,30 @@ no_dot_wpath(WPATH) = REDUCED_WPATH :-
 command_wrapper(Closure, Interp, _Args, tcl_ok, "") -->
 	call(Closure, Interp).
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern MR_Integer	tk_direct_thingy_counter;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	MR_Integer	tk_direct_thingy_counter = 0;
 ").
 
 :- pred get_thingy_counter(int::out, io__state::di, io__state::uo) is det.
 
-:- pragma c_code(get_thingy_counter(Int::out, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", get_thingy_counter(Int::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure], "
 	Int = tk_direct_thingy_counter;
 	IO = IO0;
 ").
 
 :- pred set_thingy_counter(int::in, io__state::di, io__state::uo) is det.
 
-:- pragma c_code(set_thingy_counter(Int::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", set_thingy_counter(Int::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], "
 	tk_direct_thingy_counter = Int;
 	IO = IO0;
 ").
 
+%-----------------------------------------------------------------------------%
+:- end_module mtk.
+%-----------------------------------------------------------------------------%

@@ -1,0 +1,1 @@
+MCFLAGS-mercury_tcltk=--no-warn-nothing-exported

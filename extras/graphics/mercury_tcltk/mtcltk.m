@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998,2000 The University of Melbourne.
+% Copyright (C) 1997-1998,2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,7 +85,7 @@
 
 :- type tcl_interp == c_pointer.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 /* 
  * tkAppInit.c --
  *
@@ -102,7 +102,6 @@
  */
 
 #include ""tk.h""
-#include ""mtcltk.h""
 ").
 
 
@@ -111,22 +110,23 @@
  * Sun shared libraries to be used for Tcl.
  */
 
-:- pragma c_code("
-extern int matherr(void);
-int *tclDummyMathPtr = (int *) matherr;
+:- pragma foreign_code("C", "
+	extern int matherr(void);
+	int *tclDummyMathPtr = (int *) matherr;
 ").
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern MR_Word mtcltk_mercury_initializer;
 	char *mtcltk_strdup(const char *str);
 ").
 
-:- pragma c_code("
-	Word mtcltk_mercury_initializer;
+:- pragma foreign_code("C", "
+	MR_Word mtcltk_mercury_initializer;
 ").
 
-:- pragma c_code(mtcltk__main(Closure::pred(in, di, uo) is det, Args::in,
-		IO0::di, IO::uo), may_call_mercury, "
+:- pragma foreign_proc("C", mtcltk__main(Closure::pred(in, di, uo) is det, 
+		Args::in, IO0::di, IO::uo), 
+	[may_call_mercury, promise_pure], "
 {
     MR_Word l;
     int     argc, i;
@@ -138,7 +138,7 @@ int *tclDummyMathPtr = (int *) matherr;
     argc = 0;
     for(l = Args; l != MR_list_empty(); l = MR_list_tail(l))
 	argc++;
-    MR_incr_hp(MR_LVALUE_CAST(Word, argv), argc + 1);
+    MR_incr_hp(MR_LVALUE_CAST(MR_Word, argv), argc + 1);
 
     for(i = 0, l = Args; l != list_empty(); l = list_tail(l), i++)
 	argv[i] = (char *) MR_list_head(l);
@@ -160,7 +160,7 @@ call_mercury_initializer(Closure, Interp) -->
 :- pragma export(call_mercury_initializer(pred(in, di, uo) is det, in, di, uo),
 		"mtcltk_call_mercury_initializer").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 /*
  *----------------------------------------------------------------------
  *
@@ -193,7 +193,8 @@ Tcl_AppInit(Tcl_Interp *interp)
     }
     Tcl_StaticPackage(interp, tk_str, Tk_Init, (Tcl_PackageInitProc *) NULL);
 
-    mtcltk_call_mercury_initializer(mtcltk_mercury_initializer, (Word)interp);
+    mtcltk_call_mercury_initializer(mtcltk_mercury_initializer, 
+    		(MR_Word)interp);
 
     return TCL_OK;
 }
@@ -201,8 +202,9 @@ Tcl_AppInit(Tcl_Interp *interp)
 
 	% XXX Had to change Status to RStatus because using Status
 	% resulted in *parse errors* in gcc :-(
-:- pragma c_code(eval(Interp::in, Cmd::in, RStatus::out, Result::out,
-		IO0::di, IO::uo), may_call_mercury, "
+:- pragma foreign_proc("C", eval(Interp::in, Cmd::in, RStatus::out, Result::out,
+		IO0::di, IO::uo), 
+	[may_call_mercury, promise_pure], "
 {
 	int err;
 
@@ -228,17 +230,17 @@ char *mtcltk_strdup(const char *str)
 {
 	MR_Word newstr;
 
-	assert(str);
+	MR_assert(str);
 	MR_incr_hp_atomic(newstr, (strlen(str) + sizeof(MR_Word))
                 / sizeof(MR_Word));
-	assert(newstr);
+	MR_assert(newstr);
 	strcpy((char *) newstr, str);
 
 	return (char *) newstr;
 }
 ").
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 int mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 		 int argc, char *argv[]);
 ").
@@ -258,7 +260,7 @@ call_mercury_closure(Closure, Interp, Args, Status, Result) -->
 		in, in, out, out, di, uo),
 		"mtcltk_call_mercury_closure").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 int mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 		 int argc, char *argv[])
 {
@@ -269,7 +271,8 @@ int mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 	/* convert the array of strings into a Mercury list of strings */
 	args = MR_list_empty();
 	for (i = argc - 1; i >= 0; i--) {
-		args = MR_list_cons(mtcltk_strdup(argv[i]), args);
+		args = MR_list_cons((MR_Word) mtcltk_strdup(argv[i]), 
+			(MR_Word) args);
 	}
 
 	mtcltk_call_mercury_closure((MR_Word) clientData, (MR_Word) interp,
@@ -285,17 +288,19 @@ int mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
 :- pragma export(tcl_status_ok(in), "mtcltk_tcl_status_ok").
 tcl_status_ok(tcl_ok).
 
-:- pragma c_code(create_command(Interp::in, Name::in,
-			Closure::pred(in, in, out, out, di, uo) is det,
-			IO0::di, IO::uo), may_call_mercury,
+:- pragma foreign_proc("C", create_command(Interp::in, Name::in,
+		Closure::pred(in, in, out, out, di, uo) is det, 
+		IO0::di, IO::uo), 
+	[may_call_mercury, promise_pure],
 "{
 	Tcl_CreateCommand((Tcl_Interp *)Interp, Name, mtcltk_do_callback,
 				(ClientData)Closure, NULL);
 	IO = IO0;
 }").
 
-:- pragma c_code(delete_command(Interp::in, Name::in, Result::out,
-			IO0::di, IO::uo),
+:- pragma foreign_proc("C", delete_command(Interp::in, Name::in, Result::out,
+		IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
 "{
 	int err;
 	err = Tcl_DeleteCommand((Tcl_Interp *)Interp, Name);
@@ -303,7 +308,7 @@ tcl_status_ok(tcl_ok).
 	IO = IO0;
 }").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 #ifdef MR_CONSERVATIVE_GC
 
@@ -344,4 +349,5 @@ void free(void *ptr)
 ").
 
 %-----------------------------------------------------------------------------%
+:- end_module mtcltk.
 %-----------------------------------------------------------------------------%

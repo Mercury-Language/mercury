@@ -1,10 +1,16 @@
 
+include Mercury.options
+
 # You may need to modify the line below
 
 MLLIBS    = -ltk8.0 -ltcl8.0 -L/usr/X11R6/lib -lX11 -lXmu -lXext -lm -ldl \
    	    -lXt -lICE -lSM
 
 MLFLAGS	  = -R/usr/X11R6/lib
+
+# On some Linux machines you may need to let mgnuc know where the 
+# tcl/tk header files are. 
+# EXTRA_CFLAGS = -I/usr/include/tcl8.0
 
 LIBRARY = libmercury_tcltk
 
