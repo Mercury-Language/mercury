@@ -3614,10 +3614,19 @@ For example,
 declares the type class @code{point}, which
 represents points in two dimensional space. 
 
-@code{pred}, @code{func} and @code{mode} declarations are the only legal
-declarations inside a @code{typeclass} declaration.  The number of parameters 
-to the type class (e.g. @code{T}) is not limited.  For example, the following 
-is allowed:
+@code{pred}, @code{func} and @code{mode} declarations are the only
+legal declarations inside a @code{typeclass} declaration.  The mode and
+determinism of type class methods must be explicitly declared or
+(for functions) defaulted, not inferred.  In other words, for each
+predicate declared in a type class, there must be at least one mode
+declaration, and each mode declaration in a type class must include
+an explicit determinism annotation.  Functions with no explicit mode
+declaration get the usual default mode (@pxref{Modes}): all arguments
+have mode @samp{in}, the result has mode @samp{out}, and the determinism
+is @samp{det}.
+
+The number of parameters to the type class (e.g. @code{T}) is not limited. 
+For example, the following is allowed:
 
 @example
 :- typeclass a(T1, T2) where [@dots{}].

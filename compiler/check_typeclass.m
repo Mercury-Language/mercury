@@ -395,11 +395,15 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 			(
 				map__lookup(ProcTable, TheProcId, ProcInfo), 
 				proc_info_argmodes(ProcInfo, Modes),
-				proc_info_interface_determinism(ProcInfo, 
-					Detism),
+				% if the determinism declaration on the method
+				% was omitted, then make_hlds.m will have
+				% already issued an error message, so
+				% don't complain here.
+				proc_info_declared_determinism(ProcInfo, 
+					MaybeDetism),
 				proc_info_inst_varset(ProcInfo, InstVarSet),
 				ModesAndDetism = modes_and_detism(Modes,
-						InstVarSet, Detism)
+						InstVarSet, MaybeDetism)
 			)),
 		ProcIds, 
 		ArgModes),
@@ -428,7 +432,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 				OrderedMethods, Errors, ModuleInfo, QualInfo).
 
 :- type modes_and_detism
-	--->	modes_and_detism(list(mode), inst_varset, determinism).
+	--->	modes_and_detism(list(mode), inst_varset, maybe(determinism)).
 
 :- pred check_instance_pred_procs(class_id, list(tvar), sym_name, pred_markers,
 	hlds_instance_defn, hlds_instance_defn, 
@@ -713,9 +717,9 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,
 			OldPredInfo::in, NewPredInfo::out] is det,
 	(
-		ModeAndDet = modes_and_detism(Modes, InstVarSet, Det),
+		ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
 		add_new_proc(OldPredInfo, InstVarSet, PredArity, Modes,
-			yes(Modes), no, yes(Det), Context, address_is_taken,
+			yes(Modes), no, MaybeDet, Context, address_is_taken,
 			NewPredInfo, NewProcId)
 	)),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 

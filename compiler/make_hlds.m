@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2379,8 +2379,8 @@ module_add_class_interface(Module0, Name, Vars, Methods, Status, PredProcIds,
 		Module) -->
 	module_add_class_interface_2(Module0, Name, Vars, Methods, Status,
 		PredProcIds0, Module1),
-	{ add_default_class_method_func_modes(Methods, PredProcIds0,
-		PredProcIds, Module1, Module) }.
+	check_method_modes(Methods, PredProcIds0,
+		PredProcIds, Module1, Module).
 
 :- pred module_add_class_interface_2(module_info, sym_name, list(tvar),
 	class_interface, item_status, list(maybe(pair(pred_id, proc_id))), 
@@ -2451,59 +2451,80 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	).
 
-	% Go through the list of class methods, looking for functions without
-	% mode declarations.
-:- pred add_default_class_method_func_modes(class_interface, 
+	% Go through the list of class methods, looking for
+	% - functions without mode declarations: add a default mode
+	% - predicates without mode declarations: report an error
+	% - mode declarations with no determinism: report an error
+:- pred check_method_modes(class_interface, 
 	list(maybe(pair(pred_id, proc_id))), 
-	list(maybe(pair(pred_id, proc_id))), module_info, module_info).
-:- mode add_default_class_method_func_modes(in, in, out, in, out) is det.
+	list(maybe(pair(pred_id, proc_id))), module_info, module_info,
+	io__state, io__state).
+:- mode check_method_modes(in, in, out, in, out, di, uo) is det.
 
-add_default_class_method_func_modes([], PredProcIds, PredProcIds,
-		Module, Module).
-add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
-		Module0, Module) :-
+check_method_modes([], PredProcIds, PredProcIds, Module, Module) --> [].
+check_method_modes([M|Ms], PredProcIds0, PredProcIds, Module0, Module) -->
 	(
-		M = func(_, _, _, FuncName, TypesAndModes, _, _, _, _, _, _)
+		{ M = func(_, _, _, QualName, TypesAndModes, _, _, _, _, _, _),
+		  PorF = function
+		; M = pred(_, _, _, QualName, TypesAndModes, _, _, _, _, _),
+		  PorF = predicate
+		}
 	->
-		( FuncName = qualified(ModuleName0, Func0) ->
+		{ QualName = qualified(ModuleName0, Name0) ->
 			ModuleName = ModuleName0,
-			Func = Func0
+			Name = Name0
 		;
 			% The class interface should be fully module qualified
 			% by prog_io.m at the time it is read in.
 			error(
 		       "add_default_class_method_func_modes: unqualified func")
-		),
+		},
 
-		list__length(TypesAndModes, FuncArity),
-		module_info_get_predicate_table(Module0, PredTable),
+		{ list__length(TypesAndModes, Arity) },
+		{ adjust_func_arity(PorF, Arity, PredArity) },
+
+		{ module_info_get_predicate_table(Module0, PredTable) },
 		(
-			predicate_table_search_func_m_n_a(PredTable,
-				ModuleName, Func, FuncArity, [PredId])
+			{ predicate_table_search_pf_m_n_a(PredTable, PorF,
+				ModuleName, Name, PredArity, [PredId]) }
 		->
-			module_info_pred_info(Module0, PredId, PredInfo0),
-			maybe_add_default_func_mode(PredInfo0,
-				PredInfo, MaybeProc),
+			{ module_info_pred_info(Module0, PredId, PredInfo0) },
 			(
-				MaybeProc = no,
-				PredProcIds1 = PredProcIds0,
-				Module1 = Module0
+				{ PorF = function },
+				{ maybe_add_default_func_mode(PredInfo0,
+					PredInfo, MaybeProc) },
+				{
+					MaybeProc = no,
+					PredProcIds1 = PredProcIds0,
+					Module1 = Module0
+				;
+					MaybeProc = yes(ProcId),
+					NewPredProc = yes(PredId - ProcId),
+					PredProcIds1 = [NewPredProc |
+						PredProcIds0],
+					module_info_set_pred_info(Module0,
+						PredId, PredInfo, Module1)
+				}
 			;
-				MaybeProc = yes(ProcId),
-				NewPredProc = yes(PredId - ProcId),
-				PredProcIds1 = [NewPredProc | PredProcIds0],
-				module_info_set_pred_info(Module0, PredId,
-					PredInfo, Module1)
+				{ PorF = predicate },
+				{ pred_info_procedures(PredInfo0, Procs) },
+				( { map__is_empty(Procs) } ->
+					pred_method_with_no_modes_error(
+						PredInfo0)
+				;
+					[]
+				),
+				{ Module1 = Module0 },
+				{ PredProcIds1 = PredProcIds0 }
 			)
 		;
-			error("add_default_class_method_func_modes")
+			{ error("handle_methods_with_no_modes") }
 		)
 	;
-		PredProcIds1 = PredProcIds0,
-		Module1 = Module0
+		{ PredProcIds1 = PredProcIds0 },
+		{ Module1 = Module0 }
 	),
-	add_default_class_method_func_modes(Ms, PredProcIds1, PredProcIds,
-		Module1, Module).
+	check_method_modes(Ms, PredProcIds1, PredProcIds, Module1, Module).
 
 :- pred module_add_instance_defn(module_info, module_name,
 		list(class_constraint), sym_name, list(type), instance_body,
@@ -3260,7 +3281,7 @@ module_add_mode(ModuleInfo0, InstVarSet, PredName, Modes, MaybeDet, _Cond,
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 
 	module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet,
-		MContext, PredInfo, ProcId),
+		IsClassMethod, MContext, PredInfo, ProcId),
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,
@@ -3268,12 +3289,13 @@ module_add_mode(ModuleInfo0, InstVarSet, PredName, Modes, MaybeDet, _Cond,
 	{ PredProcId = PredId - ProcId }.
 
 :- pred module_do_add_mode(pred_info, inst_varset, arity, list(mode),
-		maybe(determinism), prog_context, pred_info, proc_id,
+		maybe(determinism), bool, prog_context, pred_info, proc_id,
 		io__state, io__state).
-:- mode module_do_add_mode(in, in, in, in, in, in, out, out, di, uo) is det.
+:- mode module_do_add_mode(in, in, in, in, in, in, in, out, out, di, uo)
+		is det.
 
-module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet, MContext,
-		PredInfo, ProcId) -->
+module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet,
+		IsClassMethod, MContext, PredInfo, ProcId) -->
 		% check that the determinism was specified
 	(
 		{ MaybeDet = no }
@@ -3283,7 +3305,10 @@ module_do_add_mode(PredInfo0, InstVarSet, Arity, Modes, MaybeDet, MContext,
 		{ pred_info_module(PredInfo0, PredModule) },
 		{ pred_info_name(PredInfo0, PredName) },
 		{ PredSymName = qualified(PredModule, PredName) },
-		( { status_is_exported(ImportStatus, yes) } ->
+		( { IsClassMethod = yes } ->
+			unspecified_det_for_method(PredSymName, Arity,
+				PredOrFunc, MContext)
+		; { status_is_exported(ImportStatus, yes) } ->
 			unspecified_det_for_exported(PredSymName, Arity,
 				PredOrFunc, MContext)
 		;
@@ -7443,6 +7468,22 @@ undefined_pred_or_func_error(Name, Arity, Context, Description) -->
 	% Which is more correct?
 	io__write_string("  without corresponding `pred' or `func' declaration.\n").
 
+:- pred pred_method_with_no_modes_error(pred_info, io__state, io__state).
+:- mode pred_method_with_no_modes_error(in, di, uo) is det.
+
+pred_method_with_no_modes_error(PredInfo) -->
+	{ pred_info_context(PredInfo, Context) },
+	{ pred_info_module(PredInfo, Module) },
+	{ pred_info_name(PredInfo, Name) },
+	{ pred_info_arity(PredInfo, Arity) },
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("Error: no mode declaration for type class method\n"),
+	prog_out__write_context(Context),
+	io__write_string("  predicate `"),
+	prog_out__write_sym_name_and_arity(qualified(Module,Name)/Arity),
+	io__write_string("'.\n").
+
 :- pred undefined_mode_error(sym_name, int, prog_context, string,
 				io__state, io__state).
 :- mode undefined_mode_error(in, in, in, in, di, uo) is det.
@@ -7549,6 +7590,20 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context) -->
 	;
 		[]
 	).
+
+:- pred unspecified_det_for_method(sym_name, arity, pred_or_func,
+			prog_context, io__state, io__state).
+:- mode unspecified_det_for_method(in, in, in, in, di, uo) is det.
+
+unspecified_det_for_method(Name, Arity, PredOrFunc, Context) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string(
+		"Error: no determinism declaration for type class method\n"),
+	prog_out__write_context(Context),
+	io__write_string("  "),
+	hlds_out__write_simple_call_id(PredOrFunc, Name/Arity),
+	io__write_string(".\n").
 
 :- pred unspecified_det_for_exported(sym_name, arity, pred_or_func,
 			prog_context, io__state, io__state).
