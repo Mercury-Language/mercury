@@ -3324,7 +3324,11 @@ make_name_specifier(Name, name(Name)).
 :- mode parse_symbol_name(in, out) is det.
 parse_symbol_name(Term, Result) :-
     ( 
-       	Term = term__functor(term__atom(":"), [ModuleTerm, NameTerm], _Context)
+       	Term = term__functor(term__atom(FunctorName),
+			[ModuleTerm, NameTerm], _Context),
+	(	FunctorName = ":"
+	;	FunctorName = "."
+	)
     ->
         ( 
             NameTerm = term__functor(term__atom(Name), [], _Context1)
@@ -3417,8 +3421,11 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
 
 parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
     (
-       	Term = term__functor(term__atom(":"), [ModuleTerm, NameArgsTerm],
-		_Context)
+       	Term = term__functor(term__atom(FunctorName),
+		[ModuleTerm, NameArgsTerm], _Context),
+	(	FunctorName = "."
+	;	FunctorName = ":"
+	)
     ->
         ( 
             NameArgsTerm = term__functor(term__atom(Name), Args, _Context2)
