@@ -33,9 +33,6 @@ SOURCES= \
 #	freefree.m
 #	types.m
 
-# the following tests are no longer invalid :-(
-#	lambda_type_bad.m
-
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)
 ERRS=		$(SOURCES:%.m=%.err)

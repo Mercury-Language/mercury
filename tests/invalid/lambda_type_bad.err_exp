@@ -1,6 +1,0 @@
-lambda_type_bad.m:011: In clause for predicate `lambda_type_bad:p/0':
-lambda_type_bad.m:011:   type error in unification of variable `Z'
-lambda_type_bad.m:011:   and constant `a'.
-lambda_type_bad.m:011:   variable `Z' has type `int',
-lambda_type_bad.m:011:   constant `a' has type `character'.
-For more information, try recompiling with `-E'.
