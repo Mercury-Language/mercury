@@ -4,9 +4,20 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
+# This is the Mmakefile for the Mercury runtime library
+
+MAIN_TARGET=runtime
+
+#-----------------------------------------------------------------------------#
+
 # All the headers in $(HDRS) should be syntactically well-formed
 # header files, unlike the headers in $(BODY_HDRS).
 # All the headers in $(HDRS) must also be in C (not C++).
+
+# Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
+# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A, and $(OBJ) : $(HDRS) would create a
+# circular dependency.  For similar but different reasons,
+# $(LIB_DLL_H) also cannot be part of $(HDRS).
 
 #		  keep this list in alphabetical order, please
 HDRS		=	\
@@ -82,8 +93,7 @@ HDRS		=	\
 			mercury_typeclass_info.h	\
 			mercury_types.h		\
 			mercury_univ.h		\
-			mercury_wrapper.h	\
-			$(LIB_DLL_H)
+			mercury_wrapper.h
 
 # The headers in $(BODY_HDRS) contain code schemes included multiple times
 # in one or more source files. Their dependencies must be explicitly listed.
@@ -105,10 +115,6 @@ BODY_HDRS	=	\
 			mercury_ml_expand_body.h	\
 			mercury_ml_functor_body.h	\
 			mercury_unify_compare_body.h
-
-# Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on
-# lib$(RT_LIB_NAME)$(DLL_DEF_LIB).$A, and $(OBJ) : $(HDRS) would create a
-# circular dependency.
 
 MACHHDRS	= 	machdeps/no_regs.h	\
 			machdeps/i386_regs.h	\
@@ -177,13 +183,6 @@ CFILES		= 	\
 
 #-----------------------------------------------------------------------------#
 
-# Mmake - Mmake file for the Mercury runtime library
-
-MAIN_TARGET=runtime
-
-# Specify which files to check for namespace cleanliness, and which name
-# prefixes are allowed.
-
 CHECK_HDRS  = $(HDRS)
 CHECK_MHDRS =
 CHECK_OBJS  = $(CFILES:.c=.$O)
@@ -222,6 +221,7 @@ $(HDR_CHECK_OBJS):	mercury_conf.h
 #-----------------------------------------------------------------------------#
 
 # Stuff for Windows DLLs
+# This needs to come after the include of Mmake.common, which defines USE_DLLS.
 
 ifeq ($(USE_DLLS),yes)
 
@@ -244,7 +244,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS)
+$(OBJS) $(PIC_OBJS): $(HDRS) $(MACHHDRS) $(LIB_DLL_H)
 
 mercury_builtin_types.$(O):	mercury_hand_unify_compare_body.h
 mercury_builtin_types.(O):	mercury_hand_unify_body.h mercury_hand_compare_body.h
@@ -341,8 +341,8 @@ mercury_conf.h: mercury_conf.h.date
 .PHONY: cs
 cs: $(CFILES)
 
-tags: $(CFILES) $(HDRS) $(BODY_HDRS)
-	ctags $(CFILES) $(HDRS) $(BODY_HDRS)
+tags: $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
+	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 
 #-----------------------------------------------------------------------------#
 
@@ -395,8 +395,10 @@ else
 # mercury_conf.h needs to be in a separate directory so it can be 
 # overridden by a different configuration.
 .PHONY: install_headers
-install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) $(LIB_GLOBALS_H) install_dirs
-	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_GLOBALS_H)` $(INSTALL_INC_DIR)
+install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
+		$(LIB_DLL_H) $(LIB_GLOBALS_H) install_dirs
+	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_DLL_H) $(LIB_GLOBALS_H)` \
+		$(INSTALL_INC_DIR)
 	rm -f $(INSTALL_INC_DIR)/mercury_conf.h
 	cp `vpath_find mercury_conf.h` $(INSTALL_CONF_DIR)
 	-chmod u+w $(INSTALL_CONF_DIR)/mercury_conf.h
