@@ -54,7 +54,8 @@ do_call_closure:
 
 	restore_registers();
 
-	call((Code *)field(0, closure, 1), LABEL(do_closure_return));
+	call((Code *)field(0, closure, 1), LABEL(do_closure_return),
+		LABEL(do_call_closure));
 }
 do_closure_return:
 {
@@ -102,7 +103,8 @@ do_call_semidet_closure:
 	for(i=1; i <= num_in_args; i++) 
 		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
 	restore_registers();
-	call((Code *)field(0, closure, 1), LABEL(do_semidet_closure_return));
+	call((Code *)field(0, closure, 1), LABEL(do_semidet_closure_return),
+		LABEL(do_call_semidet_closure));
 }
 do_semidet_closure_return:
 {
@@ -162,7 +164,8 @@ mercury__index_2_0:
 
 	push(succip);
 	push(type_arity);
-	call(index_pred, LABEL(mercury__index_3_0_i1));
+	call(index_pred, LABEL(mercury__index_3_0_i1), 
+		LABEL(mercury__index_2_0));
 }
 mercury__index_3_0_i1:
 {
@@ -207,7 +210,8 @@ mercury__compare_3_0:
 
 	push(succip);
 	push(type_arity);
-	call(compare_pred, LABEL(mercury__compare_3_0_i1));
+	call(compare_pred, LABEL(mercury__compare_3_0_i1),
+		LABEL(mercury__compare_3_0));
 }
 mercury__compare_3_0_i1:
 {

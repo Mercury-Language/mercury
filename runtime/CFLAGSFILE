@@ -26,3 +26,6 @@
 
 # Always search the current directory for header files
 -I.
+
+# Use this option if you want to include profiling information.
+-DUSE_PROFILING

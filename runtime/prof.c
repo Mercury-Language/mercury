@@ -2,19 +2,25 @@
 **      Profiling module
 */
 
-#define 	DEBUG_ON
 #include 	"debug.h"
 
 #include        "prof.h"
 #include        "std.h"
 #include	"imp.h"
 
-prof_node *addr_pair_table[PROF_TABLE_SIZE] = {NULL};
+static	FILE	  *declfptr = NULL;
+static	prof_node *addr_pair_table[PROF_TABLE_SIZE] = {NULL};
 DEBUG(
-	int       indice_count[PROF_TABLE_SIZE] = {0};
+	/* To show the distribution of the hash function */
+	static	int 	indice_count[PROF_TABLE_SIZE] = {0};
 )
 
-void prof_profile(void *Callee, void *Caller)
+/*
+**	prof_call_profile:
+**		Saves the callee, caller pair into a hash table. If the
+**		address pair already exists then it increments a count.
+*/
+void prof_call_profile(Code *Callee, Code *Caller)
 {
         prof_node *temp, *prev, *new_node;
 	int indice;
@@ -26,6 +32,7 @@ void prof_profile(void *Callee, void *Caller)
 		indice_count[indice]++; 
 	)
 
+	/* Special case of when pointer in array is NULL */
 	if (!temp) {
 		new_node = malloc(sizeof(prof_node));
 		new_node->Callee = Callee;
@@ -85,4 +92,28 @@ DEBUG(
 	for (i = 0; i < PROF_TABLE_SIZE ; i++) 
 		printf("%d :\t%d\n", i, indice_count[i]);
 )
+}
+
+/*
+**	prof_output_addr_decls:
+**		Ouputs the main predicate labels as well as their machine
+**		addresses to a file called "addrdecl.out".
+**		At the moment I think the best place to insert this call
+**		is in the makeentry call in label.c
+*/
+void prof_output_addr_decls(const char *name, const Code *address)
+{
+	if (declfptr) {
+		fprintf(declfptr, "%p\t%s\n", address, name);
+	}
+	else {
+		if ( (declfptr = fopen("addrdecl.out", "w") ) ) {
+			fprintf(declfptr, "%p\t%s\n", address, name);
+		}
+		else {
+			fprintf(stderr, "\nCouldn't create addrdecl.out\n");
+			exit(1);
+		}
+	}
+	return;
 }

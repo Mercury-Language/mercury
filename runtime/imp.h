@@ -93,19 +93,34 @@ extern	int	hash_string(const char *);
 
 #include	"engine.h"
 
+/* DEFINITIONS FOR PROFILING */
+
+#ifdef	USE_PROFILING
+
+#include	"prof.h"
+#define	PROFILE(callee, caller)		prof_call_profile((callee), (caller))
+
+#else
+
+#define	PROFILE(callee, caller)		((void)0)
+
+#endif
+
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
-#define	localcall(label, succ_cont)				\
+#define	localcall(label, succ_cont, current_label)		\
 			do {					\
 				debugcall(LABEL(label), (succ_cont)); \
 				succip = (succ_cont);		\
+				PROFILE(LABEL(label), (current_label));	\
 				GOTO_LABEL(label);		\
 			} while (0)
 
-#define	call(proc, succ_cont)					\
+#define	call(proc, succ_cont, current_label)			\
 			do {					\
 				debugcall((proc), (succ_cont));	\
 				succip = (succ_cont);		\
+				PROFILE((proc), (current_label));	\
 				GOTO(proc);			\
 			} while (0)
 

@@ -16,7 +16,7 @@
 /* profiling node information */
 typedef struct s_prof_node
 {
-        void *Callee, *Caller;
+        Code *Callee, *Caller;
         unsigned long count;
         struct s_prof_node *next;
 } prof_node;
@@ -29,7 +29,7 @@ typedef struct s_prof_node
 
 
 /* function prototypes */                                    
-extern  void    prof_profile(void *, void *);
+extern  void    prof_call_profile(Code *, Code *);
 extern	void	prof_output_addr_pair_table(void);
-
+extern	void	prof_output_addr_decls(const char *, const Code *);
 #endif

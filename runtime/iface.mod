@@ -77,7 +77,8 @@ when Call:	cmdtarget = whichlabel(act_predname);
 		restore_transient_registers();
 		maxfr = cmdfr;
 		mkframe("iface_1", 0, LABEL(iface_fail));
-		call(entries[cmdtarget].e_addr, LABEL(iface_succ));
+		call(entries[cmdtarget].e_addr, LABEL(iface_succ),
+			LABEL(do_iface));
 
 when Redo:	if (maxfr <= cmdfr)
 		{

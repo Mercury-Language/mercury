@@ -1,5 +1,6 @@
 #include	"imp.h"
 #include	"table.h"
+#include	"prof.h"
 
 #define	ENTRY_TABLE_SIZE	512
 
@@ -28,6 +29,10 @@ Label *makeentry(const char *name, Code *addr)
 	entry = make(Label);
 	entry->e_name  = name;
 	entry->e_addr  = addr;
+
+#ifdef	USE_PROFILING
+	prof_output_addr_decls(name, addr);
+#endif
 
 #ifndef	SPEED
 	if (progdebug)

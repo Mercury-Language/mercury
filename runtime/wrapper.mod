@@ -414,10 +414,11 @@ do_interpreter:
 
 	/* input routines must be deterministic */
 	if (which_input != NULL)
-		call(which_input->e_addr, LABEL(global_setupdone));
+		call(which_input->e_addr, LABEL(global_setupdone),
+			LABEL(do_interpreter));
 
 global_setupdone:
-	call(which->e_addr, LABEL(global_success));
+	call(which->e_addr, LABEL(global_success), LABEL(do_interpreter));
 
 global_success:
 #ifndef	SPEED

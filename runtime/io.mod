@@ -96,12 +96,14 @@ mercury__io__run_0_0:
 	r1 = initial_external_state();
 	{ extern EntryPoint ENTRY(mercury__io__init_state_2_0); 
 	  call(ENTRY(mercury__io__init_state_2_0),
-		LABEL(mercury__io__run_0_0_i1)); }
+		LABEL(mercury__io__run_0_0_i1),
+		LABEL(mercury__io__run_0_0)); }
 mercury__io__run_0_0_i1:
 	r1 = r2;
 	{ extern EntryPoint ENTRY(mercury__main_2_0); 
 	  call(ENTRY(mercury__main_2_0),
-		LABEL(mercury__io__run_0_0_i2)); }
+		LABEL(mercury__io__run_0_0_i2),
+		LABEL(mercury__io__run_0_0)); }
 mercury__io__run_0_0_i2:
 	final_io_state(r2);
 	LVALUE_CAST(Word, succip) = detstackvar(1);
@@ -440,7 +442,8 @@ mercury__string__to_int_list_2_2:
 	detstackvar(2) = r2;
 	r2 = r3;
 	localcall(mercury__string__to_int_list_2_1,
-		LABEL(mercury__string__to_int_list_2_2_i1));
+		LABEL(mercury__string__to_int_list_2_2_i1),
+		LABEL(mercury__string__to_int_list_2_2));
 mercury__string__to_int_list_2_2_i1:
 	r1 = string_equal(r1, detstackvar(2));
 	LVALUE_CAST(Word,succip) = (int) detstackvar(1);

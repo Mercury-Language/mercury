@@ -1,6 +1,7 @@
 #include 	<string.h>
 #include	"imp.h"
 #include	"dummy.h"
+#include	"prof.h"
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 
@@ -87,7 +88,9 @@ void call_engine(Code *entry_point)
 
 	unsigned char locals[LOCALS_SIZE];
 
+
 #ifndef SPEED
+{
 	/* ensure that we only make the label once */
 	static bool initialized = FALSE;
 	if (!initialized)
@@ -95,6 +98,20 @@ void call_engine(Code *entry_point)
 		makelabel("engine_done", LABEL(engine_done));
 		initialized = TRUE;
 	}
+}
+#endif
+
+#ifdef USE_PROFILING
+{
+	/* ensure that we only make the label once */
+	static bool prof_initialized = FALSE;
+	if (!prof_initialized)
+	{
+		makeentry("call_engine_label", LABEL(call_engine_label));
+		prof_initialized = TRUE;
+	}
+}
+call_engine_label:
 #endif
 
 	/*
@@ -119,7 +136,7 @@ void call_engine(Code *entry_point)
 	/*
 	** Now just call the entry point
 	*/
-	call(entry_point, LABEL(engine_done));
+	call(entry_point, LABEL(engine_done), LABEL(engine_done));
 
 engine_done:
 	/*
@@ -166,6 +183,10 @@ engine_done:
 		printf("(low mark = %d, high mark = %d)\n", low, high);
 	}
 #endif
+
+#ifdef 	USE_PROFILING
+	prof_output_addr_pair_table();
+#endif
 }
 
 #else /* not USE_GCC_NONLOCAL_GOTOS */
@@ -192,6 +213,9 @@ static Code *engine_done(void)
 {
 	save_transient_registers();
 
+#ifdef	USE_PROFILING
+	prof_output_addr_pair_table();
+#endif
 	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
 }
