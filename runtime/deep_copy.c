@@ -8,22 +8,11 @@
  * This module defines the deep copy function.
  */
 
+#include "imp.h"
 #include "deep_copy.h"
 #include "type_info.h"
 
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
-
-#define incr_saved_hp(A,B)	do { 					\
-					restore_transient_registers();	\
-					incr_hp((A), (B));		\
-					save_transient_registers();	\
-				} while (0)
-
-#define incr_saved_hp_atomic(A,B) do { 					\
-					restore_transient_registers();	\
-					incr_hp_atomic((A), (B));	\
-					save_transient_registers();	\
-				} while (0)
 
 /*
 ** Prototypes.

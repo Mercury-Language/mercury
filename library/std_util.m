@@ -886,17 +886,28 @@ static Word * create_type_info(Word *term_type_info,
 :- pragma(c_code, "
 
 /*
- * Expand the given data using its type_info, find its
- * functor, arity, argument vector and type_info vector.
- * 
- * The info.type_info_vector is allocated using malloc 
- * It is the responsibility of the  caller to free this
- * memory, and to copy any fields of this vector to
- * the Mercury heap. The type_infos that the elements of
- * this vector point to are either
- * 	- already allocated on the heap.
- * 	- constants (eg base_type_infos)
- */
+** Expand the given data using its type_info, find its
+** functor, arity, argument vector and type_info vector.
+** 
+** The info.type_info_vector is allocated using malloc 
+** It is the responsibility of the  caller to free this
+** memory, and to copy any fields of this vector to
+** the Mercury heap. The type_infos that the elements of
+** this vector point to are either
+** 	- already allocated on the heap.
+** 	- constants (eg base_type_infos)
+**
+** Please note: 
+**	mercury_expand increments the heap pointer, however, on
+**	some platforms the reigster windows mean that transient
+**	Mercury registers may be lost. Before calling mercury_expand,
+**	call save_transient_registers(), and afterwards, call
+**	restore_transient_registers().
+**
+** 	If writing a C function that calls deep_copy, make sure you
+** 	document that around your function, save_transient_registers()
+** 	restore_transient_registers() need to be used.
+*/
 
 void 
 mercury_expand(Word* type_info, Word data_word, expand_info *info)
@@ -980,7 +991,7 @@ mercury_expand(Word* type_info, Word data_word, expand_info *info)
 			/* is it a no_tag type? */
 		else if (((Word *) entry_value)[0]) {
 			Word new_arg_vector; 
-			incr_hp(new_arg_vector, 1);
+			incr_saved_hp(new_arg_vector, 1);
 			field(0, new_arg_vector, 0) = data_word;
 			mercury_expand_simple(new_arg_vector, 
 				(Word *) entry_value, type_info, info);
@@ -1146,7 +1157,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		/* XXX should escape characters correctly */
 
 		if (info->need_functor) {
-			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
 				(strlen((String) data_value) + 2 + 
 					sizeof(Word)) / sizeof(Word));
 			sprintf(info->functor, ""%c%s%c"", '""', 
@@ -1163,7 +1174,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 			Float f;
 			f = word_to_float(data_value);
 			sprintf(buf, ""%#.15g"", f);
-			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
 				(strlen(buf) + sizeof(Word)) / sizeof(Word));
 			strcpy(info->functor, buf);
 		}
@@ -1177,7 +1188,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 			char buf[500];
 
 			sprintf(buf, ""%ld"", (long) data_value);
-			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
 				(strlen(buf) + sizeof(Word)) / sizeof(Word));
 			strcpy(info->functor, buf);
 		}
@@ -1191,7 +1202,7 @@ mercury_expand_builtin(Word data_value, Word entry_value, expand_info *info)
 		/* XXX should escape characters correctly */
 
 		if (info->need_functor) {
-			incr_hp_atomic(LVALUE_CAST(Word, info->functor), 
+			incr_saved_hp_atomic(LVALUE_CAST(Word, info->functor), 
 				(3 + sizeof(Word)) / sizeof(Word));
 			sprintf(info->functor, ""\'%c\'"", (char) data_value);
 		}
@@ -1283,7 +1294,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	arity = ((Word *) base_type_info)[0];
 
-	incr_hp(LVALUE_CAST(Word, type_info), arity + 1);
+	incr_saved_hp(LVALUE_CAST(Word, type_info), arity + 1);
 
 	for (i = 0; i <= arity; i++) {
 		if (arg_pseudo_type_info[i] < TYPELAYOUT_MAX_VARINT) {
@@ -1311,7 +1322,11 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	info.need_functor = TRUE;
 	info.need_args = FALSE;
 
+	save_transient_registers();
+
 	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
+
+	restore_transient_registers();
 
 		/* Copy functor onto the heap */
 	make_aligned_string(LVALUE_CAST(String, Functor), info.functor);
@@ -1328,7 +1343,11 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	info.need_functor = FALSE;
 	info.need_args = TRUE;
 
+	save_transient_registers();
+
 	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
+
+	restore_transient_registers();
 
 		/* Check range */
 	SUCCESS_INDICATOR = (ArgumentIndex > 0 && ArgumentIndex <= info.arity);
@@ -1355,6 +1374,7 @@ Word * create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	free(info.type_info_vector);
 
+
 }").
 
 det_arg(Type, ArgumentIndex, Argument) :-
@@ -1376,7 +1396,11 @@ det_arg(Type, ArgumentIndex, Argument) :-
 	info.need_functor = TRUE;
 	info.need_args = TRUE;
 
+	save_transient_registers();
+
 	mercury_expand((Word *) TypeInfo_for_T, Type, &info);
+	
+	restore_transient_registers();
 
 		/* Get functor */
 	make_aligned_string(LVALUE_CAST(String, Functor), info.functor);
