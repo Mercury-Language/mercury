@@ -978,7 +978,7 @@ unify_proc_info__extract(unify_proc_info(VarSet, Types, _ModuleInfo),
 			VarSet, Types).
 
 unify_proc_info__get_varset(VarSet, ProcInfo, ProcInfo) :-
-	ProcInfo = unify_proc_info(VarSet, Types, ModuleInfo).
+	ProcInfo = unify_proc_info(VarSet, _Types, _ModuleInfo).
 
 unify_proc_info__set_varset(VarSet, unify_proc_info(_VarSet, Types, ModuleInfo),
 				unify_proc_info(VarSet, Types, ModuleInfo)).
