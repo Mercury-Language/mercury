@@ -14,7 +14,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-SCRIPTS = mmake mmc mod2c c2init mgnuc ml mprof mprof_merge_runs mint \
+SCRIPTS = mmake mmc c2init mgnuc ml mprof mprof_merge_runs mint \
 	  sicstus_conv mtags vpath_find mercury_update_interface \
 	  mkfifo_using_mknod
 NUPROLOG_SCRIPTS = mnc mnl mnp

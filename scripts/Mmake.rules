@@ -12,7 +12,7 @@ main_target: $(MAIN_TARGET)
 
 # Beware that the order of suffixes is significant.
 .SUFFIXES: .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
-		.ugly .date .date3 .optdate .mod .c .nu .o .pic_o \
+		.ugly .date .date3 .optdate .c .nu .o .pic_o \
 		.i .s .pic_s \
 		.ql .pl
 
@@ -102,11 +102,6 @@ main_target: $(MAIN_TARGET)
 .m.c:
 	rm -f $*.c
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) $< > $*.err 2>&1
-
-# the next rule is needed only for a few files in the `runtime' directory
-
-.mod.c:
-	[ -f $< ] && $(MOD2C) -s $(GRADE) $(MOD2CFLAGS) $< > $@
 
 .c.o:
 	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -c $< -o $@
