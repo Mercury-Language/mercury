@@ -14,6 +14,8 @@
 		where comparison is compare_bar.
 :- pragma foreign_type("IL", bar_rep, "valuetype [mscorlib]System.Double")
 		where comparison is compare_bar.
+:- pragma foreign_type("Java", bar_rep, "long")
+		where comparison is compare_bar.
 
 :- pred compare_bar(comparison_result::uo, bar::in, bar::in) is det.
 
