@@ -1,3 +1,4 @@
+register --quiet
 echo on
 context none
 break p
