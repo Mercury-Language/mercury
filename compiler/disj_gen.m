@@ -38,7 +38,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen, code_util, options, globals.
+:- import_module hlds_data, code_gen, code_util, trace, options, globals.
 :- import_module bool, set, tree, list, map, std_util, require.
 
 %---------------------------------------------------------------------------%
@@ -166,6 +166,14 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		;
 			error("pruned disj non-last goal is not semidet")
 		},
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			{ goal_info_get_goal_path(GoalInfo, Path) },
+			trace__generate_event_code(disj(Path), TraceInfo,
+				TraceCode)
+		;
+			{ TraceCode = empty }
+		),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 
@@ -186,11 +194,13 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			 tree(RestoreHPCode,
 			 tree(SaveHPCode,
 			 tree(RestoreTicketCode,
+			 tree(TraceCode,
 			 tree(GoalCode,
 			 tree(SaveCode,
 			 tree(BranchCode,
 			 tree(RestoreContCode,
-			      RestCode)))))))) }
+			      RestCode)))))))))
+		}
 	;
 		% Emit code for the last disjunct
 
@@ -203,6 +213,14 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			undo, RestorePopTicketCode),
 
 			% Generate the goal
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			{ goal_info_get_goal_path(GoalInfo0, Path) },
+			trace__generate_event_code(disj(Path), TraceInfo,
+				TraceCode)
+		;
+			{ TraceCode = empty }
+		),
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 
@@ -211,9 +229,11 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		]) },
 		{ Code = tree(RestoreHPCode,
 			 tree(RestorePopTicketCode,
+			 tree(TraceCode,
 			 tree(GoalCode,
 			 tree(SaveCode,
-			      EndCode)))) }
+			      EndCode)))))
+		}
 	).
 
 %---------------------------------------------------------------------------%
@@ -308,6 +328,15 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 
 		code_info__grab_code_info(CodeInfo),
 
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			{ goal_info_get_goal_path(GoalInfo, Path) },
+			trace__generate_event_code(disj(Path), TraceInfo,
+				TraceCode)
+		;
+			{ TraceCode = empty }
+		),
+
 		code_gen__generate_goal(model_non, Goal, GoalCode),
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
 
@@ -334,12 +363,14 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		{ Code = tree(ModContCode, 
 			 tree(RestoreHPCode,
 			 tree(RestoreTicketCode,
+			 tree(TraceCode,
 			 tree(GoalCode,
 			 tree(SaveCode,
 			 tree(FlushResumeVarsCode,
 			 tree(BranchCode,
 			 tree(RestoreContCode,
-			      RestCode)))))))) }
+			      RestCode)))))))))
+		}
 	;
 		% Emit code for the last disjunct
 
@@ -357,6 +388,15 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
 			undo, RestorePopTicketCode),
 
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			{ goal_info_get_goal_path(GoalInfo0, Path) },
+			trace__generate_event_code(disj(Path), TraceInfo,
+				TraceCode)
+		;
+			{ TraceCode = empty }
+		),
+
 		code_gen__generate_goal(model_non, Goal0, GoalCode),
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
 
@@ -365,9 +405,11 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		]) },
 		{ Code = tree(RestoreHPCode,
 			 tree(RestorePopTicketCode,
+			 tree(TraceCode,
 			 tree(GoalCode,
 			 tree(SaveCode,
-			      EndCode)))) }
+			      EndCode)))))
+		}
 	).
 
 %---------------------------------------------------------------------------%

@@ -49,7 +49,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_goal, hlds_data, code_gen.
+:- import_module hlds_module, hlds_goal, hlds_data, code_gen, trace.
 :- import_module char, map, tree, int, std_util, require, list.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
@@ -237,9 +237,22 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
 		% We need to save the expression cache, etc.,
 		% and restore them when we've finished
 		code_info__grab_code_info(CodeInfoAtStart),
+		code_info__get_maybe_trace_info(MaybeTraceInfo),
+		( { MaybeTraceInfo = yes(TraceInfo) } ->
+			{ Goal = _ - GoalInfo },
+			{ goal_info_get_goal_path(GoalInfo, Path) },
+			trace__generate_event_code(switch(Path), TraceInfo,
+				TraceCode)
+		;
+			{ TraceCode = empty }
+		),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
-		{ Code = tree(GoalCode, SaveCode) },
+		{ Code =
+			tree(TraceCode,
+			tree(GoalCode,
+			     SaveCode))
+		},
 		code_info__grab_code_info(CodeInfoAtEnd),
 		code_info__slap_code_info(CodeInfoAtStart),
 		{ Cases = Cases1 },

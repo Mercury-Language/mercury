@@ -36,7 +36,7 @@
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module dnf, constraint, unused_args, dead_proc_elim, saved_vars.
 :- import_module lco, liveness, stratify.
-:- import_module follow_code, live_vars, arg_info, store_alloc.
+:- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module llds_common, llds_out.
 
@@ -742,9 +742,12 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68), !,
 	mercury_compile__maybe_dump_hlds(HLDS68, "68", "store_map"), !,
 
-	maybe_report_sizes(HLDS68),
+	mercury_compile__maybe_goal_paths(HLDS68, Verbose, Stats, HLDS72), !,
+	mercury_compile__maybe_dump_hlds(HLDS72, "72", "goal_path"), !,
 
-	{ HLDS90 = HLDS68 },
+	maybe_report_sizes(HLDS72),
+
+	{ HLDS90 = HLDS72 },
 	mercury_compile__maybe_dump_hlds(HLDS90, "90", "precodegen"), !,
 
 	mercury_compile__generate_code(HLDS90, Verbose, Stats, HLDS95, LLDS1),
@@ -864,12 +867,21 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
-	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
-	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	{ globals__lookup_bool_option(Globals, generate_trace, Trace) },
+	( { Trace = yes } ->
+		write_proc_progress_message(
+			"% Calculating goal paths in ",
+					PredId, ProcId, ModuleInfo3),
+		{ goal_path__fill_slots(ProcInfo6, ModuleInfo3, ProcInfo7) }
+	;
+		{ ProcInfo7 = ProcInfo6 }
+	),
 	write_proc_progress_message(
 		"% Generating low-level (LLDS) code for ",
 				PredId, ProcId, ModuleInfo3),
-	{ generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo3, Globals,
+	{ module_info_get_continuation_info(ModuleInfo3, ContInfo0) },
+	{ module_info_get_cell_count(ModuleInfo3, CellCount0) },
+	{ generate_proc_code(ProcInfo7, ProcId, PredId, ModuleInfo3, Globals,
 		ContInfo0, CellCount0, ContInfo, CellCount, Proc0) },
 	{ module_info_set_continuation_info(ModuleInfo3, ContInfo, 
 		ModuleInfo4) },
@@ -1428,6 +1440,24 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
+
+:- pred mercury_compile__maybe_goal_paths(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_goal_paths(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(generate_trace, Trace),
+	( { Trace = yes } ->
+		maybe_write_string(Verbose, "% Calculating goal paths..."),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_proc(goal_path__fill_slots),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
 
 :- pred mercury_compile__generate_code(module_info, bool, bool, module_info,
 	list(c_procedure), io__state, io__state).

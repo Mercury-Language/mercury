@@ -25,11 +25,15 @@
 
 :- interface.
 
-:- import_module llds, code_info.
+:- import_module hlds_goal, llds, code_info.
 
 :- type trace_port	--->	call
 			;	exit
-			;	fail.
+			;	fail
+			;	ite_then(goal_path)
+			;	ite_else(goal_path)
+			;	switch(goal_path)
+			;	disj(goal_path).
 
 :- type trace_info.
 
@@ -41,6 +45,8 @@
 
 :- pred trace__generate_event_code(trace_port::in, trace_info::in,
 	code_tree::out, code_info::in, code_info::out) is det.
+
+:- pred trace__path_to_string(goal_path::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -102,35 +108,62 @@ trace__generate_event_code(Port, TraceInfo, TraceCode) -->
 	proc_id_to_int(ProcId, ProcInt),
 	ModeNum is ProcInt mod 10000,
 	string__int_to_string(ModeNum, ModeNumStr),
-	string__append_list([
-		"MR_trace(",
-		PortStr, ", ",
-		CodeModelStr, ", ",
-		CallNumStr, ", ",
-		CallDepthStr, ", ",
-		Quote, ModuleName, Quote, ", ",
-		Quote, PredName, Quote, ", ",
-		ArityStr, ", ",
-		ModeNumStr, ");\n"],
-		TraceStmt),
+	( trace__port_path(Port, Path) ->
+		trace__path_to_string(Path, PathStr),
+		string__append_list([
+			"MR_trace_path(",
+			PortStr, ", ",
+			CodeModelStr, ", ",
+			CallNumStr, ", ",
+			CallDepthStr, ", ",
+			Quote, ModuleName, Quote, ", ",
+			Quote, PredName, Quote, ", ",
+			ArityStr, ", ",
+			ModeNumStr, ", ",
+			Quote, PathStr, Quote, ");\n"],
+			TraceStmt)
+	;
+		string__append_list([
+			"MR_trace(",
+			PortStr, ", ",
+			CodeModelStr, ", ",
+			CallNumStr, ", ",
+			CallDepthStr, ", ",
+			Quote, ModuleName, Quote, ", ",
+			Quote, PredName, Quote, ", ",
+			ArityStr, ", ",
+			ModeNumStr, ");\n"],
+			TraceStmt)
+	),
 	TraceCode = node([c_code(TraceStmt) - ""])
 	}.
+
+%-----------------------------------------------------------------------------%
+
+:- pred trace__port_path(trace_port::in, goal_path::out) is semidet.
+
+trace__port_path(ite_then(Path), Path).
+trace__port_path(ite_else(Path), Path).
+trace__port_path(switch(Path),   Path).
+trace__port_path(disj(Path),     Path).
 
 :- pred trace__port_to_string(trace_port::in, string::out) is det.
 
 trace__port_to_string(call, "MR_PORT_CALL").
 trace__port_to_string(exit, "MR_PORT_EXIT").
 trace__port_to_string(fail, "MR_PORT_FAIL").
+trace__port_to_string(ite_then(_), "MR_PORT_THEN").
+trace__port_to_string(ite_else(_), "MR_PORT_ELSE").
+trace__port_to_string(switch(_),   "MR_PORT_SWITCH").
+trace__port_to_string(disj(_),     "MR_PORT_DISJ").
 
-:- pred trace__code_model_to_string(code_model, string).
-:- mode trace__code_model_to_string(in, out) is det.
+:- pred trace__code_model_to_string(code_model::in, string::out) is det.
 
 trace__code_model_to_string(model_det,  "MR_MODEL_DET").
 trace__code_model_to_string(model_semi, "MR_MODEL_SEMI").
 trace__code_model_to_string(model_non,  "MR_MODEL_NON").
 
-:- pred trace__stackref_to_string(lval, string).
-:- mode trace__stackref_to_string(in, out) is det.
+:- pred trace__stackref_to_string(lval::in, string::out) is det.
 
 trace__stackref_to_string(Lval, LvalStr) :-
 	( Lval = stackvar(Slot) ->
@@ -142,3 +175,34 @@ trace__stackref_to_string(Lval, LvalStr) :-
 	;
 		error("non-stack lval in stackref_to_string")
 	).
+
+%-----------------------------------------------------------------------------%
+
+trace__path_to_string(Path, PathStr) :-
+	trace__path_steps_to_strings(Path, StepStrs),
+	list__reverse(StepStrs, RevStepStrs),
+	string__append_list(RevStepStrs, PathStr).
+
+:- pred trace__path_steps_to_strings(goal_path::in, list(string)::out) is det.
+
+trace__path_steps_to_strings([], []).
+trace__path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
+	trace__path_step_to_string(Step, StepStr),
+	trace__path_steps_to_strings(Steps, StepStrs).
+
+:- pred trace__path_step_to_string(goal_path_step::in, string::out) is det.
+
+trace__path_step_to_string(conj(N), Str) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["c", NStr, ";"], Str).
+trace__path_step_to_string(disj(N), Str) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["d", NStr, ";"], Str).
+trace__path_step_to_string(switch(N), Str) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["s", NStr, ";"], Str).
+trace__path_step_to_string(ite_cond, "?;").
+trace__path_step_to_string(ite_then, "t;").
+trace__path_step_to_string(ite_else, "e;").
+trace__path_step_to_string(neg, "~;").
+trace__path_step_to_string(exist, "q;").
