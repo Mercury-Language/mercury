@@ -20,16 +20,15 @@
 
 :- type modules_to_recompile
 	--->	(all)
-	;	some(list(module_name))
-	.
+	;	some(list(module_name)).
 
 :- type find_target_file_names ==
-		pred(module_name, list(file_name), io__state, io__state).
+		pred(module_name, list(file_name), io, io).
 :- inst find_target_file_names ==
 		(pred(in, out, di, uo) is det).
 
 :- type find_timestamp_file_names ==
-		pred(module_name, list(file_name), io__state, io__state).
+		pred(module_name, list(file_name), io, io).
 :- inst find_timestamp_file_names ==
 		(pred(in, out, di, uo) is det).
 
@@ -49,8 +48,7 @@
 :- pred recompilation__check__should_recompile(module_name::in,
 	find_target_file_names::in(find_target_file_names),
 	find_timestamp_file_names::in(find_timestamp_file_names),
-	modules_to_recompile::out, read_modules::out,
-	io__state::di, io__state::uo) is det.
+	modules_to_recompile::out, read_modules::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -70,112 +68,122 @@
 :- import_module recompilation__version.
 
 :- import_module assoc_list, bool, exception, int, map, parser, require.
-:- import_module set, std_util, string, term, term_io.
+:- import_module svmap, set, std_util, string, term, term_io.
 
 recompilation__check__should_recompile(ModuleName, FindTargetFiles,
 		FindTimestampFiles, Info ^ modules_to_recompile,
-		Info ^ read_modules) -->
+		Info ^ read_modules, !IO) :-
 	globals__io_lookup_bool_option(find_all_recompilation_reasons,
-			FindAll),
-	{ Info0 = recompilation_check_info(ModuleName, no, [], map__init,
-			init_item_id_set(map__init, map__init, map__init),
-			set__init, some([]), FindAll, []) },
+		FindAll, !IO),
+	Info0 = recompilation_check_info(ModuleName, no, [], map__init,
+		init_item_id_set(map__init, map__init, map__init),
+		set__init, some([]), FindAll, []),
 	recompilation__check__should_recompile_2(no, FindTargetFiles,
-		FindTimestampFiles, ModuleName, Info0, Info).
+		FindTimestampFiles, ModuleName, Info0, Info, !IO).
 
 :- pred recompilation__check__should_recompile_2(bool::in,
 	find_target_file_names::in(find_target_file_names),
 	find_timestamp_file_names::in(find_timestamp_file_names),
 	module_name::in, recompilation_check_info::in,
-	recompilation_check_info::out, io__state::di, io__state::uo) is det.
+	recompilation_check_info::out, io::di, io::uo) is det.
 
 recompilation__check__should_recompile_2(IsSubModule, FindTargetFiles,
-		FindTimestampFiles, ModuleName, Info0, Info) -->
-	{ Info1 = (Info0 ^ module_name := ModuleName)
-			^ sub_modules := [] },
-	module_name_to_file_name(ModuleName, ".used", no, UsageFileName),
-	io__open_input(UsageFileName, MaybeVersionStream),
+		FindTimestampFiles, ModuleName, !Info, !IO) :-
+	!:Info = (!.Info ^ module_name := ModuleName) ^ sub_modules := [],
+	module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
+	io__open_input(UsageFileName, MaybeVersionStream, !IO),
 	(
-		{ MaybeVersionStream = ok(VersionStream0) },
-		io__set_input_stream(VersionStream0, OldInputStream),
+		MaybeVersionStream = ok(VersionStream0),
+		io__set_input_stream(VersionStream0, OldInputStream, !IO),
 
 		promise_only_solution_io(
-		    (pred(R::out, di, uo) is cc_multi -->
-			try_io(
-			    (pred(Info2::out, di, uo) is det -->
-				recompilation__check__should_recompile_3(
-					IsSubModule, FindTargetFiles,
-					Info1, Info2)
-		    	    ), R)
-		    ),
-		    Result),
+			should_recompile_3_try(IsSubModule,
+				FindTimestampFiles, !.Info),
+			Result, !IO),
 		(
-			{ Result = succeeded(Info3) },
-			{ Reasons = Info3 ^ recompilation_reasons }
+			Result = succeeded(!:Info),
+			Reasons = !.Info ^ recompilation_reasons
 		;
-			{ Result = failed },
-			{ error("recompilation__check__should_recompile_2") }
+			Result = failed,
+			error("recompilation__check__should_recompile_2")
 		;
-			{ Result = exception(Exception) },
-			{ univ_to_type(Exception, RecompileException0) ->
+			Result = exception(Exception),
+			( univ_to_type(Exception, RecompileException0) ->
 				RecompileException = RecompileException0
 			;
 				rethrow(Result)
-			},
-			{ RecompileException =
-				recompile_exception(Reason, Info3) },
-			{ Reasons = [Reason] }
+			),
+			RecompileException =
+				recompile_exception(Reason, !:Info),
+			Reasons = [Reason]
 		),
-
-		( { Reasons = [] } ->
-			FindTimestampFiles(ModuleName, TimestampFiles),
+		(
+			Reasons = [],
+			FindTimestampFiles(ModuleName, TimestampFiles, !IO),
 			write_recompilation_message(
-			    (pred(di, uo) is det -->
-				io__write_string("Not recompiling module "),
-				prog_out__write_sym_name(ModuleName),
-				io__write_string(".\n")
-			    )),
-			list__foldl(touch_datestamp, TimestampFiles),
-			{ Info4 = Info3 }
+				(pred(IO0::di, IO::uo) is det :-
+					io__write_string(
+						"Not recompiling module ",
+						IO0, IO1),
+					prog_out__write_sym_name(ModuleName,
+						IO1, IO2),
+					io__write_string(".\n", IO2, IO)
+				), !IO),
+			list__foldl(touch_datestamp, TimestampFiles, !IO)
 		;
-			{ add_module_to_recompile(ModuleName, Info3, Info4) },
+			Reasons = [_ | _],
+			add_module_to_recompile(ModuleName, !Info),
 			write_recompilation_message(
-			    (pred(di, uo) is det -->
-				list__foldl(
-					write_recompile_reason(ModuleName),
-					list__reverse(Reasons))
-			    ))
+				(pred(IO0::di, IO::uo) is det :-
+					list__foldl(
+						write_recompile_reason(
+							ModuleName),
+						list__reverse(Reasons),
+						IO0, IO)
+				), !IO)
 		),
-		io__set_input_stream(OldInputStream, VersionStream),
-		io__close_input(VersionStream),
+		io__set_input_stream(OldInputStream, VersionStream, !IO),
+		io__close_input(VersionStream, !IO),
 
-		( { (all) = Info4 ^ modules_to_recompile } ->
-			{ Info = Info4 }
+		( (all) = !.Info ^ modules_to_recompile ->
+			true
 		;
-			{ Info5 = Info4 ^ is_inline_sub_module := yes },
+			!:Info = !.Info ^ is_inline_sub_module := yes,
 			list__foldl2(
 				recompilation__check__should_recompile_2(yes,
 					FindTargetFiles, FindTimestampFiles),
-				Info5 ^ sub_modules, Info5, Info)
+				!.Info ^ sub_modules, !Info, !IO)
 		)
 	;
-		{ MaybeVersionStream = error(_) },
+		MaybeVersionStream = error(_),
 		write_recompilation_message(
-		    (pred(di, uo) is det -->
-			{ Reason = file_error(UsageFileName,
-				"file `" ++ UsageFileName ++ "' not found.") },
-			write_recompile_reason(ModuleName, Reason)
-		    )),
-		{ Info = Info1 ^ modules_to_recompile := (all) }
+			(pred(IO0::di, IO::uo) is det :-
+				Reason = file_error(UsageFileName,
+					"file `" ++ UsageFileName ++
+					"' not found."),
+				write_recompile_reason(ModuleName, Reason,
+					IO0, IO)
+			), !IO),
+		!:Info = !.Info ^ modules_to_recompile := (all)
 	).
 
+:- pred should_recompile_3_try(bool::in,
+	find_timestamp_file_names::in(find_timestamp_file_names),
+	recompilation_check_info::in,
+	exception_result(recompilation_check_info)::out,
+	io::di, io::uo) is cc_multi.
+
+should_recompile_3_try(IsSubModule, FindTargetFiles, Info, Result, !IO) :-
+	try_io(should_recompile_3(IsSubModule, FindTargetFiles, Info),
+		Result, !IO).
+
 :- pred recompilation__check__should_recompile_3(bool::in,
-		find_target_file_names::in(find_target_file_names),
-		recompilation_check_info::in, recompilation_check_info::out,
-		io__state::di, io__state::uo) is det.
+	find_target_file_names::in(find_target_file_names),
+	recompilation_check_info::in, recompilation_check_info::out,
+	io::di, io::uo) is det.
 
 recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
-		Info0, Info) -->
+		!Info, !IO) :-
 
 	%
 	% WARNING: any exceptions thrown before the sub_modules
@@ -188,62 +196,63 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 	%
 	% Check that the format of the usage file is the current format.
 	%
-	read_term_check_for_error_or_eof(Info0, "usage file version number",
-		VersionNumberTerm),
+	read_term_check_for_error_or_eof(!.Info, "usage file version number",
+		VersionNumberTerm, !IO),
 	(
-		{ VersionNumberTerm = term__functor(term__atom(","),
+		VersionNumberTerm = term__functor(term__atom(","),
 			[UsageFileVersionNumberTerm,
-			VersionNumbersVersionNumberTerm], _) },
-		{ UsageFileVersionNumberTerm =
+			VersionNumbersVersionNumberTerm], _),
+		UsageFileVersionNumberTerm =
 			term__functor(
 				term__integer(usage_file_version_number),
-				_, _) },
-		{ VersionNumbersVersionNumberTerm =
+				_, _),
+		VersionNumbersVersionNumberTerm =
 			term__functor(
 				term__integer(version_numbers_version_number),
-				_, _) }
+				_, _)
 	->
-		[]
+		true
 	;
-		io__input_stream_name(UsageFileName),
-		{ throw_syntax_error(
+		io__input_stream_name(UsageFileName, !IO),
+		throw_syntax_error(
 			file_error(UsageFileName,
 				"invalid usage file version number in file `"
 				++ UsageFileName ++ "'."),
-			Info0) }
+			!.Info)
 	),
 
 	%
 	% Find the timestamp of the module the last time it was compiled.
 	%
-	read_term_check_for_error_or_eof(Info0, "module timestamp",
-		TimestampTerm),
-	{ parse_module_timestamp(Info0, TimestampTerm, _, ModuleTimestamp) },
-	{ ModuleTimestamp = module_timestamp(_, RecordedTimestamp, _) },
+	read_term_check_for_error_or_eof(!.Info, "module timestamp",
+		TimestampTerm, !IO),
+	parse_module_timestamp(!.Info, TimestampTerm, _, ModuleTimestamp),
+	ModuleTimestamp = module_timestamp(_, RecordedTimestamp, _),
 
-	( { IsSubModule = yes } ->
+	(
+		IsSubModule = yes
 		% For inline sub-modules we don't need to check
 		% the module timestamp because we've already checked
 		% the timestamp for the parent module.
-		{ Info3 = Info0 }
 	;
+		IsSubModule = no,
 		%
 		% If the module has changed, recompile.
 		%
-		{ ModuleName = Info0 ^ module_name },
+		ModuleName = !.Info ^ module_name,
 		read_mod_if_changed(ModuleName, ".m", "Reading module",
 			yes, RecordedTimestamp, Items, Error,
-			FileName, MaybeNewTimestamp),
-		{
+			FileName, MaybeNewTimestamp, !IO),
+		(
 			MaybeNewTimestamp = yes(NewTimestamp),
 			NewTimestamp \= RecordedTimestamp
 		->
 			record_read_file(ModuleName,
 				ModuleTimestamp ^ timestamp := NewTimestamp,
-				Items, Error, FileName, Info0, Info1),
-			Info2 = Info1 ^ modules_to_recompile := (all),
+				Items, Error, FileName, !Info),
+			!:Info = !.Info ^ modules_to_recompile := (all),
 			record_recompilation_reason(module_changed(FileName),
-				Info2, Info3)
+				!Info)
 		;
 			( Error \= no_module_errors
 			; MaybeNewTimestamp = no
@@ -251,103 +260,106 @@ recompilation__check__should_recompile_3(IsSubModule, FindTargetFiles,
 		->
 			throw_syntax_error(
 				file_error(FileName,
-				    "error reading file `"
-				    ++ FileName ++ "'."),
-				Info0)
+					"error reading file `"
+					++ FileName ++ "'."),
+				!.Info)
 		;
-			Info3 = Info0
-		}
+			true
+		)
 	),
 
 	%
 	% Find out whether this module has any inline sub-modules.
 	%
-	read_term_check_for_error_or_eof(Info3, "inline sub-modules",
-		SubModulesTerm),
-	{
+	read_term_check_for_error_or_eof(!.Info, "inline sub-modules",
+		SubModulesTerm, !IO),
+	(
 		SubModulesTerm = term__functor(term__atom("sub_modules"),
-					SubModuleTerms, _),
+			SubModuleTerms, _),
 		list__map(
 			(pred(Term::in, SubModule::out) is semidet :-
 				sym_name_and_args(Term, SubModule, [])
 			),
 			SubModuleTerms, SubModules)
 	->
-		Info4 = Info3 ^ sub_modules := SubModules
+		!:Info = !.Info ^ sub_modules := SubModules
 	;
 		Reason1 = syntax_error(get_term_context(SubModulesTerm),
-				"error in sub_modules term"),
-		throw_syntax_error(Reason1, Info3)
-	},
+			"error in sub_modules term"),
+		throw_syntax_error(Reason1, !.Info)
+	),
 
 	%
 	% Check whether the output files are present and up-to-date.
 	%
-	FindTargetFiles(Info4 ^ module_name, TargetFiles),
+	FindTargetFiles(!.Info ^ module_name, TargetFiles, !IO),
 	list__foldl2(
-	    (pred(TargetFile::in, RInfo0::in, RInfo::out, di, uo) is det -->
-		io__file_modification_time(TargetFile, TargetModTimeResult),
-		{
-			TargetModTimeResult = ok(TargetModTime),
-			compare(TargetModTimeCompare,
-				time_t_to_timestamp(TargetModTime),
-				RecordedTimestamp),
-			TargetModTimeCompare = (>)
-		->
-			RInfo = RInfo0
-		;
-			Reason2 = output_file_not_up_to_date(TargetFile),
-			record_recompilation_reason(Reason2, RInfo0, RInfo)
-		}
-	    ), TargetFiles, Info4, Info5),
+		(pred(TargetFile::in, RInfo0::in, RInfo::out, IO0::di, IO::uo)
+				is det :-
+			io__file_modification_time(TargetFile,
+				TargetModTimeResult, IO0, IO),
+			(
+				TargetModTimeResult = ok(TargetModTime),
+				compare(TargetModTimeCompare,
+					time_t_to_timestamp(TargetModTime),
+					RecordedTimestamp),
+				TargetModTimeCompare = (>)
+			->
+				RInfo = RInfo0
+			;
+				Reason2 =
+					output_file_not_up_to_date(TargetFile),
+				record_recompilation_reason(Reason2,
+					RInfo0, RInfo)
+			)
+		), TargetFiles, !Info, !IO),
 
 	%
 	% Read in the used items, used for checking for
 	% ambiguities with new items.
 	%
-	read_term_check_for_error_or_eof(Info5, "used items",
-		UsedItemsTerm),
-	{ parse_used_items(Info5, UsedItemsTerm, UsedItems) },
-	{ Info6 = Info5 ^ used_items := UsedItems },
+	read_term_check_for_error_or_eof(!.Info, "used items",
+		UsedItemsTerm, !IO),
+	parse_used_items(!.Info, UsedItemsTerm, UsedItems),
+	!:Info = !.Info ^ used_items := UsedItems,
 
-	read_term_check_for_error_or_eof(Info6, "used classes",
-		UsedClassesTerm),
-	{
+	read_term_check_for_error_or_eof(!.Info, "used classes",
+		UsedClassesTerm, !IO),
+	(
 		UsedClassesTerm = term__functor(term__atom("used_classes"),
-					UsedClassTerms, _),
+			UsedClassTerms, _),
 		list__map(
 			(pred(Term::in, UsedClass::out) is semidet :-
-				parse_name_and_arity(Term,
-					ClassName, ClassArity),
+				parse_name_and_arity(Term, ClassName,
+					ClassArity),
 				UsedClass = ClassName - ClassArity
 			), UsedClassTerms, UsedClasses)
 	->
-		Info7 = Info6 ^ used_typeclasses :=
-					set__list_to_set(UsedClasses)
+		!:Info = !.Info ^ used_typeclasses :=
+			set__list_to_set(UsedClasses)
 	;
 		Reason3 = syntax_error(get_term_context(UsedClassesTerm),
-				"error in used_typeclasses term"),
-		throw_syntax_error(Reason3, Info6)
-	},
-	check_imported_modules(Info7, Info).
-
+			"error in used_typeclasses term"),
+		throw_syntax_error(Reason3, !.Info)
+	),
+	check_imported_modules(!Info, !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred parse_module_timestamp(recompilation_check_info::in, term::in,
-		module_name::out, module_timestamp::out) is det.
+	module_name::out, module_timestamp::out) is det.
 
 parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
 	conjunction_to_list(Term, Args),
 	(
-		Args = [ModuleNameTerm, SuffixTerm,
-				TimestampTerm | MaybeOtherTerms],
+		Args = [ModuleNameTerm, SuffixTerm, TimestampTerm
+			| MaybeOtherTerms],
 		sym_name_and_args(ModuleNameTerm, ModuleName0, []),
 		SuffixTerm = term__functor(term__string(Suffix), [], _),
 		Timestamp = term_to_timestamp(TimestampTerm),
 		(
 			MaybeOtherTerms = [term__functor(term__atom("used"),
-						[], _)],
+				[], _)],
 			NeedQualifier = must_be_qualified
 		;
 			MaybeOtherTerms = [],
@@ -355,27 +367,27 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
 		)
 	->
 		ModuleName = ModuleName0,
-		ModuleTimestamp = module_timestamp(Suffix,
-			Timestamp, NeedQualifier)
+		ModuleTimestamp = module_timestamp(Suffix, Timestamp,
+			NeedQualifier)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in module timestamp"),
+			"error in module timestamp"),
 		throw_syntax_error(Reason, Info)
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred parse_used_items(recompilation_check_info::in,
-		term::in, resolved_used_items::out) is det.
+	term::in, resolved_used_items::out) is det.
 
 parse_used_items(Info, Term, UsedItems) :-
 	( Term = term__functor(term__atom("used_items"), UsedItemTerms, _) ->
-	 	list__foldl(parse_used_item_set(Info), UsedItemTerms,
+		list__foldl(parse_used_item_set(Info), UsedItemTerms,
 			init_item_id_set(map__init, map__init, map__init),
 			UsedItems)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in used items"),
+			"error in used items"),
 		throw_syntax_error(Reason, Info)
 	).
 
@@ -388,8 +400,8 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 		string_to_item_type(ItemTypeStr, ItemType)
 	->
 		( is_simple_item_type(ItemType) ->
-			list__foldl(parse_simple_item(Info),
-				ItemTerms, map__init, SimpleItems),
+			list__foldl(parse_simple_item(Info), ItemTerms,
+				map__init, SimpleItems),
 			UsedItems = update_simple_item_set(UsedItems0,
 				ItemType, SimpleItems)
 		; is_pred_or_func_item_type(ItemType) ->
@@ -403,24 +415,23 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 			UsedItems = UsedItems0 ^ functors := CtorItems
 		;
 			Reason = syntax_error(get_term_context(Term),
-				string__append(
-				    "error in used items: unknown item type :",
-				    ItemTypeStr)),
+				"error in used items: unknown item type :" ++
+				ItemTypeStr),
 			throw_syntax_error(Reason, Info)
 		)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in used items"),
+			"error in used items"),
 		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_simple_item(recompilation_check_info::in, term::in,
-		simple_item_set::in, simple_item_set::out) is det.
+	simple_item_set::in, simple_item_set::out) is det.
 
 parse_simple_item(Info, Term, Set0, Set) :-
 	(
 		Term = term__functor(term__atom("-"),
-				[NameArityTerm, MatchesTerm], _),
+			[NameArityTerm, MatchesTerm], _),
 		parse_name_and_arity(NameArityTerm, SymName, Arity)
 	->
 		unqualify_name(SymName, Name),
@@ -430,13 +441,13 @@ parse_simple_item(Info, Term, Set0, Set) :-
 		map__det_insert(Set0, Name - Arity, Matches, Set)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in simple items"),
+			"error in simple items"),
 		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_simple_item_match(recompilation_check_info::in, term::in,
-		map(module_qualifier, module_name)::in,
-		map(module_qualifier, module_name)::out) is det.
+	map(module_qualifier, module_name)::in,
+	map(module_qualifier, module_name)::out) is det.
 
 parse_simple_item_match(Info, Term, Items0, Items) :-
 	(
@@ -454,22 +465,21 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
 		map__det_insert(Items0, Qualifier, ModuleName, Items)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in simple item match"),
+			"error in simple item match"),
 		throw_syntax_error(Reason, Info)
 	).
 
-:- pred parse_pred_or_func_item(recompilation_check_info::in,
-		term::in, resolved_pred_or_func_set::in,
-		resolved_pred_or_func_set::out) is det.
+:- pred parse_pred_or_func_item(recompilation_check_info::in, term::in,
+	resolved_pred_or_func_set::in, resolved_pred_or_func_set::out) is det.
 
-parse_pred_or_func_item(Info, Term, Set0, Set) :-
-	parse_resolved_item_set(Info, parse_pred_or_func_item_match,
-		Term, Set0, Set).
+parse_pred_or_func_item(Info, Term, !Set) :-
+	parse_resolved_item_set(Info, parse_pred_or_func_item_match, Term,
+		!Set).
 
 :- pred parse_pred_or_func_item_match(recompilation_check_info::in, term::in,
 	resolved_pred_or_func_map::in, resolved_pred_or_func_map::out) is det.
 
-parse_pred_or_func_item_match(Info, Term, Items0, Items) :-
+parse_pred_or_func_item_match(Info, Term, !Items) :-
 	PredId = invalid_pred_id,
 	(
 		(
@@ -479,57 +489,56 @@ parse_pred_or_func_item_match(Info, Term, Items0, Items) :-
 			sym_name_and_args(QualifierTerm, Qualifier, []),
 			conjunction_to_list(MatchesTerm, MatchesList),
 			list__map(
-			    (pred(MatchTerm::in, Match::out) is semidet :-
-				sym_name_and_args(MatchTerm, MatchName, []),
-				Match = PredId - MatchName
-			    ),
-			    MatchesList, Matches)
+				(pred(MatchTerm::in, Match::out) is semidet :-
+					sym_name_and_args(MatchTerm, MatchName,
+						[]),
+					Match = PredId - MatchName
+				),
+				MatchesList, Matches)
 		;
 			sym_name_and_args(Term, Qualifier, []),
 			Matches = [PredId - Qualifier]
 		)
 	->
-		map__det_insert(Items0, Qualifier, set__list_to_set(Matches),
-			Items)
+		svmap__det_insert(Qualifier, set__list_to_set(Matches),
+			!Items)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in pred or func match"),
+			"error in pred or func match"),
 		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_functor_item(recompilation_check_info::in, term::in,
 	resolved_functor_set::in, resolved_functor_set::out) is det.
 
-parse_functor_item(Info, Term, Set0, Set) :-
-	parse_resolved_item_set(Info, parse_functor_matches, Term, Set0, Set).
+parse_functor_item(Info, Term, !Set) :-
+	parse_resolved_item_set(Info, parse_functor_matches, Term, !Set).
 
 :- pred parse_functor_matches(recompilation_check_info::in, term::in,
 	resolved_functor_map::in, resolved_functor_map::out) is det.
 
-parse_functor_matches(Info, Term, Map0, Map) :-
+parse_functor_matches(Info, Term, !Map) :-
 	(
 		Term = term__functor(term__atom("=>"),
 			[QualifierTerm, MatchesTerm], _),
 		sym_name_and_args(QualifierTerm, Qualifier, [])
 	->
 		conjunction_to_list(MatchesTerm, MatchesList),
-		list__map(parse_resolved_functor(Info),
-			MatchesList, Matches),
-		map__det_insert(Map0, Qualifier,
-			set__list_to_set(Matches), Map)
+		list__map(parse_resolved_functor(Info), MatchesList, Matches),
+		svmap__det_insert(Qualifier, set__list_to_set(Matches), !Map)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in functor match"),
+			"error in functor match"),
 		throw_syntax_error(Reason, Info)
 	).
 
 :- pred parse_resolved_functor(recompilation_check_info::in, term::in,
-		resolved_functor::out) is det.
+	resolved_functor::out) is det.
 
 parse_resolved_functor(Info, Term, Ctor) :-
 	(
 		Term = term__functor(term__atom(PredOrFuncStr),
-				[ModuleTerm, ArityTerm], _),
+			[ModuleTerm, ArityTerm], _),
 		( PredOrFuncStr = "predicate", PredOrFunc = predicate
 		; PredOrFuncStr = "function", PredOrFunc = function
 		),
@@ -552,7 +561,7 @@ parse_resolved_functor(Info, Term, Ctor) :-
 		Ctor = field(TypeName - TypeArity, ConsName - ConsArity)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in functor match"),
+			"error in functor match"),
 		throw_syntax_error(Reason, Info)
 	).
 
@@ -568,7 +577,7 @@ parse_resolved_functor(Info, Term, Ctor) :-
 parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
 	(
 		Term = term__functor(term__atom("-"),
-				[NameTerm, MatchesTerm], _),
+			[NameTerm, MatchesTerm], _),
 		NameTerm = term__functor(term__atom(Name), [], _)
 	->
 		conjunction_to_list(MatchesTerm, MatchTermList),
@@ -578,7 +587,7 @@ parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
 		map__det_insert(Set0, Name, Matches, Set)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in resolved item matches"),
+			"error in resolved item matches"),
 		throw_syntax_error(Reason, Info)
 	).
 
@@ -586,8 +595,8 @@ parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
 	parse_resolved_item_matches(T)::in(parse_resolved_item_matches),
 	term::in, pair(arity, resolved_item_map(T))::out) is det.
 
-parse_resolved_item_arity_matches(Info, ParseMatches,
-		Term, Arity - MatchMap) :-
+parse_resolved_item_arity_matches(Info, ParseMatches, Term,
+		Arity - MatchMap) :-
 	(
 		Term = term__functor(term__atom("-"),
 			[ArityTerm, MatchesTerm], _),
@@ -602,7 +611,7 @@ parse_resolved_item_arity_matches(Info, ParseMatches,
 			MatchTermList, map__init, MatchMap)
 	;
 		Reason = syntax_error(get_term_context(Term),
-				"error in resolved item matches"),
+			"error in resolved item matches"),
 		throw_syntax_error(Reason, Info)
 	).
 
@@ -615,44 +624,45 @@ parse_resolved_item_arity_matches(Info, ParseMatches,
 	% a recompilation.
 	%
 :- pred check_imported_modules(recompilation_check_info::in,
-	recompilation_check_info::out, io__state::di, io__state::uo) is det.
+	recompilation_check_info::out, io::di, io::uo) is det.
 
-check_imported_modules(Info0, Info) -->
-	parser__read_term(TermResult),
+check_imported_modules(!Info, !IO) :-
+	parser__read_term(TermResult, !IO),
 	(
-		{ TermResult = term(_, Term) },
-		( { Term = term__functor(term__atom("done"), [], _) } ->
-			{ Info = Info0 }
+		TermResult = term(_, Term),
+		( Term = term__functor(term__atom("done"), [], _) ->
+			true
 		;
-			check_imported_module(Term, Info0, Info1),
-			check_imported_modules(Info1, Info)
+			check_imported_module(Term, !Info, !IO),
+			check_imported_modules(!Info, !IO)
 		)
 	;
-		{ TermResult = error(Message, Line) },
-		io__input_stream_name(FileName),
-		{ Reason = syntax_error(term__context(FileName, Line),
-				Message) },
-		{ throw_syntax_error(Reason, Info0) }
+		TermResult = error(Message, Line),
+		io__input_stream_name(FileName, !IO),
+		Reason = syntax_error(term__context(FileName, Line),
+			Message),
+		throw_syntax_error(Reason, !.Info)
 	;
-		{ TermResult = eof },
+		TermResult = eof,
 		%
 		% There should always be an item `done.' at the end of
 		% the list of modules to check. This is used to make
 		% sure that the writing of the `.used' file was not
 		% interrupted.
 		%
-		io__input_stream_name(FileName),
-		io__get_line_number(Line),
-		{ Reason = syntax_error(term__context(FileName, Line),
-				"unexpected end of file") },
-		{ throw_syntax_error(Reason, Info0) }
+		io__input_stream_name(FileName, !IO),
+		io__get_line_number(Line, !IO),
+		Reason = syntax_error(term__context(FileName, Line),
+			"unexpected end of file"),
+		throw_syntax_error(Reason, !.Info)
 	).
 
-:- pred check_imported_module(term::in, recompilation_check_info::in,
-	recompilation_check_info::out, io__state::di, io__state::uo) is det.
+:- pred check_imported_module(term::in,
+	recompilation_check_info::in, recompilation_check_info::out,
+	io::di, io::uo) is det.
 
-check_imported_module(Term, Info0, Info) -->
-	{
+check_imported_module(Term, !Info, !IO) :-
+	(
 		Term = term__functor(term__atom("=>"),
 			[TimestampTerm0, UsedItemsTerm0], _)
 	->
@@ -661,36 +671,36 @@ check_imported_module(Term, Info0, Info) -->
 	;
 		TimestampTerm = Term,
 		MaybeUsedItemsTerm = no
-	},
-	{ parse_module_timestamp(Info0, TimestampTerm,
-		ImportedModuleName, ModuleTimestamp) },
+	),
+	parse_module_timestamp(!.Info, TimestampTerm,
+		ImportedModuleName, ModuleTimestamp),
 
-	{ ModuleTimestamp = module_timestamp(Suffix,
-			RecordedTimestamp, NeedQualifier) },
+	ModuleTimestamp = module_timestamp(Suffix,
+		RecordedTimestamp, NeedQualifier),
 	(
 		%
 		% If we're checking a sub-module, don't re-read
 		% interface files read for other modules checked
 		% during this compilation.
 		%
-		{ Info0 ^ is_inline_sub_module = yes },
-		{ find_read_module(Info0 ^ read_modules, ImportedModuleName,
+		!.Info ^ is_inline_sub_module = yes,
+		find_read_module(!.Info ^ read_modules, ImportedModuleName,
 			Suffix, yes, Items0, MaybeNewTimestamp0,
-			Error0, FileName0) }
+			Error0, FileName0)
 	->
-		{ Items = Items0 },
-		{ MaybeNewTimestamp = MaybeNewTimestamp0 },
-		{ Error = Error0 },
-		{ FileName = FileName0 },
-		{ Recorded = bool__yes }
+		Items = Items0,
+		MaybeNewTimestamp = MaybeNewTimestamp0,
+		Error = Error0,
+		FileName = FileName0,
+		Recorded = bool__yes
 	;
-		{ Recorded = bool__no },
+		Recorded = bool__no,
 		read_mod_if_changed(ImportedModuleName, Suffix,
 			"Reading interface file for module",
 			yes, RecordedTimestamp, Items, Error,
-			FileName, MaybeNewTimestamp)
+			FileName, MaybeNewTimestamp, !IO)
 	),
-	{
+	(
 		MaybeNewTimestamp = yes(NewTimestamp),
 		NewTimestamp \= RecordedTimestamp,
 		Error = no_module_errors
@@ -698,14 +708,14 @@ check_imported_module(Term, Info0, Info) -->
 		( Recorded = no ->
 			record_read_file(ImportedModuleName,
 				ModuleTimestamp ^ timestamp := NewTimestamp,
-				Items, Error, FileName, Info0, Info1)
+				Items, Error, FileName, !Info)
 		;
-			Info1 = Info0
+			true
 		),
 		(
 			MaybeUsedItemsTerm = yes(UsedItemsTerm),
 			Items = [InterfaceItem, VersionNumberItem
-					| OtherItems],
+				| OtherItems],
 			InterfaceItem = module_defn(_, interface) - _,
 			VersionNumberItem = module_defn(_,
 				version_numbers(_, VersionNumbers)) - _
@@ -713,10 +723,10 @@ check_imported_module(Term, Info0, Info) -->
 			check_module_used_items(ImportedModuleName,
 				NeedQualifier, RecordedTimestamp,
 				UsedItemsTerm, VersionNumbers,
-				OtherItems, Info1, Info)
+				OtherItems, !Info)
 		;
 			record_recompilation_reason(module_changed(FileName),
-				Info1, Info)
+				!Info)
 		)
 	;
 		Error \= no_module_errors
@@ -724,34 +734,32 @@ check_imported_module(Term, Info0, Info) -->
 		throw_syntax_error(
 			file_error(FileName,
 				"error reading file `" ++ FileName ++ "'."),
-			Info0)
+			!.Info)
 	;
-		Info = Info0
-	}.
+		true
+	).
 
 :- pred check_module_used_items(module_name::in, need_qualifier::in,
 	timestamp::in, term::in, version_numbers::in, item_list::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
-		UsedItemsTerm, NewVersionNumbers,
-		Items) -->
+		UsedItemsTerm, NewVersionNumbers, Items, !Info) :-
 
-	{ recompilation__version__parse_version_numbers(UsedItemsTerm,
-		UsedItemsResult) },
-	=(Info0),
-	{
+	recompilation__version__parse_version_numbers(UsedItemsTerm,
+		UsedItemsResult),
+	(
 		UsedItemsResult = ok(UsedVersionNumbers)
 	;
 		UsedItemsResult = error(Msg, ErrorTerm),
 		Reason = syntax_error(get_term_context(ErrorTerm), Msg),
-		throw_syntax_error(Reason, Info0)
-	},
+		throw_syntax_error(Reason, !.Info)
+	),
 
-	{ UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,
-				UsedInstanceVersionNumbers) },
-	{ NewVersionNumbers = version_numbers(NewItemVersionNumbers,
-				NewInstanceVersionNumbers) },
+	UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,
+		UsedInstanceVersionNumbers),
+	NewVersionNumbers = version_numbers(NewItemVersionNumbers,
+		NewInstanceVersionNumbers),
 
 	%
 	% Check whether any of the items which were used have changed.
@@ -760,47 +768,44 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
 		check_item_version_numbers(ModuleName,
 			UsedItemVersionNumbers, NewItemVersionNumbers),
 		[(type), type_body, (inst), (mode), (typeclass),
-			predicate, function]),
+			predicate, function], !Info),
 
 	%
 	% Check whether added or modified items could cause name
 	% resolution ambiguities with items which were used.
 	%
-	list__foldl(
-		check_for_ambiguities(NeedQualifier,
-			OldTimestamp, UsedItemVersionNumbers),
-		Items),
+	list__foldl(check_for_ambiguities(NeedQualifier,
+		OldTimestamp, UsedItemVersionNumbers), Items, !Info),
 
 	%
 	% Check whether any instances of used typeclasses have been
 	% added, removed or changed.
 	%
 	check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
-		NewInstanceVersionNumbers),
+		NewInstanceVersionNumbers, !Info),
 
 	%
 	% Check for new instances for used typeclasses.
 	%
-	{ ModuleInstances = set__sorted_list_to_set(
-			map__sorted_keys(NewInstanceVersionNumbers)) },
-	{ UsedInstances = set__sorted_list_to_set(
-			map__sorted_keys(UsedInstanceVersionNumbers)) },
+	ModuleInstances = set__sorted_list_to_set(
+		map__sorted_keys(NewInstanceVersionNumbers)),
+	UsedInstances = set__sorted_list_to_set(
+		map__sorted_keys(UsedInstanceVersionNumbers)),
 
-	UsedClasses =^ used_typeclasses,
-	{ set__difference(set__intersect(UsedClasses, ModuleInstances),
-		UsedInstances, AddedInstances) },
-	( { [AddedInstance | _] = set__to_sorted_list(AddedInstances) } ->
-		{ Reason1 = changed_or_added_instance(ModuleName,
-				AddedInstance) },
-		record_recompilation_reason(Reason1)
+	UsedClasses = !.Info ^ used_typeclasses,
+	set__difference(set__intersect(UsedClasses, ModuleInstances),
+		UsedInstances, AddedInstances),
+	( [AddedInstance | _] = set__to_sorted_list(AddedInstances) ->
+		Reason1 = changed_or_added_instance(ModuleName, AddedInstance),
+		record_recompilation_reason(Reason1, !Info)
 	;
-		[]
+		true
 	).
 
 :- func make_item_id(module_name, item_type, pair(string, arity)) = item_id.
 
 make_item_id(Module, ItemType, Name - Arity) =
-		item_id(ItemType, qualified(Module, Name) - Arity).
+	item_id(ItemType, qualified(Module, Name) - Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -808,56 +813,60 @@ make_item_id(Module, ItemType, Name - Arity) =
 	item_version_numbers::in, item_type::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_item_version_numbers(ModuleName, UsedVersionNumbers,
-		NewVersionNumbers, ItemType) -->
-	{ NewItemTypeVersionNumbers = extract_ids(NewVersionNumbers,
-						ItemType) },
-	map__foldl(
-	    (pred(NameArity::in, UsedVersionNumber::in, in, out) is det -->
-		(
-			{ map__search(NewItemTypeVersionNumbers,
-				NameArity, NewVersionNumber) }
-		->
-			( { NewVersionNumber = UsedVersionNumber } ->
-				[]
-			;
-				{ Reason = changed_item(
-					make_item_id(ModuleName, ItemType,
-						NameArity)) },
-				record_recompilation_reason(Reason)
-			)
+check_item_version_numbers(ModuleName, UsedVersionNumbers, NewVersionNumbers,
+		ItemType, !Info) :-
+	NewItemTypeVersionNumbers = extract_ids(NewVersionNumbers, ItemType),
+	map__foldl(check_item_version_number(ModuleName,
+		NewItemTypeVersionNumbers, ItemType),
+		extract_ids(UsedVersionNumbers, ItemType), !Info).
+
+:- pred check_item_version_number(module_name::in, version_number_map::in,
+	item_type::in, pair(string, arity)::in, version_number::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_item_version_number(ModuleName, NewItemTypeVersionNumbers, ItemType,
+		NameArity, UsedVersionNumber, !Info) :-
+	( map__search(NewItemTypeVersionNumbers, NameArity, NewVersionNumber) ->
+		( NewVersionNumber = UsedVersionNumber ->
+			true
 		;
-			{ Reason = removed_item(make_item_id(ModuleName,
-						ItemType, NameArity)) },
-			record_recompilation_reason(Reason)
+			Reason = changed_item(make_item_id(ModuleName,
+				ItemType, NameArity)),
+			record_recompilation_reason(Reason, !Info)
 		)
-	    ),
-	    extract_ids(UsedVersionNumbers, ItemType)).
+	;
+		Reason = removed_item(make_item_id(ModuleName, ItemType,
+			NameArity)),
+		record_recompilation_reason(Reason, !Info)
+	).
 
 :- pred check_instance_version_numbers(module_name::in,
 	instance_version_numbers::in, instance_version_numbers::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
-		NewInstanceVersionNumbers) -->
-	map__foldl(
-	    (pred(ClassId::in, UsedVersionNumber::in, in, out) is det -->
-	  	(
-			{ map__search(NewInstanceVersionNumbers,
-				ClassId, NewVersionNumber) }
-		->
-			( { UsedVersionNumber = NewVersionNumber } ->
-				[]
-			;
-				{ Reason = changed_or_added_instance(
-					ModuleName, ClassId) },
-				record_recompilation_reason(Reason)
-			)
+		NewInstanceVersionNumbers, !Info) :-
+	map__foldl(check_instance_version_number(ModuleName,
+		NewInstanceVersionNumbers), UsedInstanceVersionNumbers, !Info).
+
+:- pred check_instance_version_number(module_name::in,
+	instance_version_numbers::in, item_name::in, version_number::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
+		ClassId, UsedVersionNumber, !Info) :-
+	( map__search(NewInstanceVersionNumbers, ClassId, NewVersionNumber) ->
+		( UsedVersionNumber = NewVersionNumber ->
+			true
 		;
-			{ Reason = removed_instance(ModuleName, ClassId) },
-			record_recompilation_reason(Reason)
+			Reason = changed_or_added_instance(ModuleName,
+				ClassId) ,
+			record_recompilation_reason(Reason, !Info)
 		)
-	    ), UsedInstanceVersionNumbers).
+	;
+		Reason = removed_instance(ModuleName, ClassId),
+		record_recompilation_reason(Reason, !Info)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -871,68 +880,74 @@ check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
 	item_version_numbers::in, item_and_context::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_ambiguities(_, _, _, clause(_, _, _, _, _) - _) -->
-	{ error("check_for_ambiguities: clause") }.
+check_for_ambiguities(_, _, _, clause(_, _, _, _, _) - _, !Info) :-
+	error("check_for_ambiguities: clause").
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-			type_defn(_, Name, Params, Body, _) - _) -->
-	{ Arity = list__length(Params) },
+		type_defn(_, Name, Params, Body, _) - _, !Info) :-
+	Arity = list__length(Params),
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-		VersionNumbers, (type), Name, Arity, NeedsCheck),
-	( { NeedsCheck = yes } ->
+		VersionNumbers, (type), Name, Arity, NeedsCheck, !Info),
+	(
+		NeedsCheck = yes,
 		check_type_defn_ambiguity_with_functor(NeedQualifier,
-			Name - Arity, Body)
+			Name - Arity, Body, !Info)
 	;
-		[]
+		NeedsCheck = no
 	).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-			inst_defn(_, Name, Params, _, _) - _) -->
+		inst_defn(_, Name, Params, _, _) - _, !Info) :-
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-		VersionNumbers, (inst), Name, list__length(Params), _).
+		VersionNumbers, (inst), Name, list__length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-			mode_defn(_, Name, Params, _, _) - _) -->
+		mode_defn(_, Name, Params, _, _) - _, !Info) :-
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-		VersionNumbers, (mode), Name, list__length(Params), _).
+		VersionNumbers, (mode), Name, list__length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-			typeclass(_, Name, Params, Interface, _) - _) -->
+		typeclass(_, Name, Params, Interface, _) - _, !Info) :-
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
 		VersionNumbers, (typeclass), Name, list__length(Params),
-		NeedsCheck),
-	( { NeedsCheck = yes, Interface = concrete(Methods) } ->
+		NeedsCheck, !Info),
+	(
+		NeedsCheck = yes,
+		Interface = concrete(Methods)
+	->
 		list__foldl(
-		    (pred(ClassMethod::in, in, out) is det -->
-		    	(
-				{ ClassMethod = pred_or_func(_, _, _,
-					PredOrFunc, MethodName, MethodArgs,
-					MethodWithType, _, _, _, _, _, _) },
-				check_for_pred_or_func_item_ambiguity(yes,
-					NeedQualifier, OldTimestamp,
-					VersionNumbers, PredOrFunc,
-					MethodName, MethodArgs, MethodWithType)
-			;
-				{ ClassMethod = pred_or_func_mode(_, _, _, _,
-					_, _, _, _) }
-		    	)
-		    ),
-		    Methods)
+			(pred(ClassMethod::in, IO0::in, IO::out) is det :-
+				(
+					ClassMethod = pred_or_func(_, _, _,
+						PredOrFunc, MethodName,
+						MethodArgs, MethodWithType,
+						_, _, _, _, _, _),
+					check_for_pred_or_func_item_ambiguity(
+						yes, NeedQualifier,
+						OldTimestamp, VersionNumbers,
+						PredOrFunc, MethodName,
+						MethodArgs, MethodWithType,
+						IO0, IO)
+				;
+					ClassMethod = pred_or_func_mode(_, _,
+						_, _, _, _, _, _),
+					IO = IO0
+				)
+			), Methods, !Info)
 	;
-		[]
+		true
 	).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 		pred_or_func(_, _, _, PredOrFunc, Name, Args,
-			WithType, _, _, _, _, _) - _)
-		-->
+			WithType, _, _, _, _, _) - _, !Info) :-
 	check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
-		VersionNumbers, PredOrFunc, Name, Args, WithType).
+		VersionNumbers, PredOrFunc, Name, Args, WithType, !Info).
 check_for_ambiguities(_, _, _,
-		pred_or_func_mode(_, _, _, _, _, _, _) - _) --> [].
-check_for_ambiguities(_, _, _, pragma(_) - _) --> [].
-check_for_ambiguities(_, _, _, promise(_, _, _, _) - _) --> [].
-check_for_ambiguities(_, _, _, module_defn(_, _) - _) --> [].
-check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _) --> [].
-check_for_ambiguities(_, _, _, nothing(_) - _) --> [].
+		pred_or_func_mode(_, _, _, _, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, pragma(_) - _, !Info).
+check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
+check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, nothing(_) - _, !Info).
 
 :- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,
-		item_type::in, sym_name::in, arity::in) is semidet.
+	item_type::in, sym_name::in, arity::in) is semidet.
 
 item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
 		ItemType, SymName, Arity) :-
@@ -949,33 +964,32 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
 
 :- pred check_for_simple_item_ambiguity(need_qualifier::in, timestamp::in,
 	item_version_numbers::in, item_type::in(simple_item), sym_name::in,
-	arity::in, bool::out, recompilation_check_info::in,
-	recompilation_check_info::out) is det.
+	arity::in, bool::out,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
-		VersionNumbers, ItemType, SymName, Arity, NeedsCheck) -->
+		VersionNumbers, ItemType, SymName, Arity, NeedsCheck, !Info) :-
 	(
-		{ item_is_new_or_changed(UsedFileTimestamp, VersionNumbers,
-			ItemType, SymName, Arity) }
+		item_is_new_or_changed(UsedFileTimestamp, VersionNumbers,
+			ItemType, SymName, Arity)
 	->
-		{ NeedsCheck = yes },
-		UsedItems =^ used_items,
-		{ UsedItemMap = extract_simple_item_set(UsedItems, ItemType) },
-		{ unqualify_name(SymName, Name) },
+		NeedsCheck = yes,
+		UsedItems = !.Info ^ used_items,
+		UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
+		unqualify_name(SymName, Name),
 		(
-			{ map__search(UsedItemMap, Name - Arity,
-				MatchingQualifiers) }
+			map__search(UsedItemMap, Name - Arity,
+				MatchingQualifiers)
 		->
 			map__foldl(
-				check_for_simple_item_ambiguity_2(
-					ItemType, NeedQualifier,
-						SymName, Arity),
-					MatchingQualifiers)
+				check_for_simple_item_ambiguity_2(ItemType,
+					NeedQualifier, SymName, Arity),
+				MatchingQualifiers, !Info)
 		;
-			[]
+			true
 		)
 	;
-		{ NeedsCheck = no }
+		NeedsCheck = no
 	).
 
 :- pred check_for_simple_item_ambiguity_2(item_type::in, need_qualifier::in,
@@ -983,29 +997,28 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_simple_item_ambiguity_2(ItemType, NeedQualifier,
-		SymName, Arity, OldModuleQualifier, OldMatchingModuleName) -->
-	{ unqualify_name(SymName, Name) },
+		SymName, Arity, OldModuleQualifier, OldMatchingModuleName,
+		!Info) :-
+	unqualify_name(SymName, Name),
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
 		% hopefully won't come up too often.
-		{ NeedQualifier = must_be_qualified },
-		{ OldModuleQualifier = unqualified("") }
+		NeedQualifier = must_be_qualified,
+		OldModuleQualifier = unqualified("")
 	->
-		[]
+		true
 	;
-		{ QualifiedName = module_qualify_name(OldModuleQualifier,
-						Name) },
-		{ match_sym_name(QualifiedName, SymName) },
-		\+ { SymName = qualified(OldMatchingModuleName, _) }
+		QualifiedName = module_qualify_name(OldModuleQualifier, Name),
+		match_sym_name(QualifiedName, SymName),
+		\+ SymName = qualified(OldMatchingModuleName, _)
 	->
-		{ OldMatchingName = qualified(OldMatchingModuleName, Name) },
-		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
-				[item_id(ItemType, OldMatchingName - Arity)]
-			) },
-		record_recompilation_reason(Reason)
+		OldMatchingName = qualified(OldMatchingModuleName, Name),
+		Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
+			[item_id(ItemType, OldMatchingName - Arity)]),
+		record_recompilation_reason(Reason, !Info)
 	;
-		[]
+		true
 	).
 
 :- pred check_for_pred_or_func_item_ambiguity(bool::in, need_qualifier::in,
@@ -1014,111 +1027,115 @@ check_for_simple_item_ambiguity_2(ItemType, NeedQualifier,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
-		VersionNumbers, PredOrFunc, SymName, Args, WithType) -->
-	{
+		VersionNumbers, PredOrFunc, SymName, Args, WithType, !Info) :-
+	(
 		WithType = no,
 		adjust_func_arity(PredOrFunc, Arity, list__length(Args))
 	;
 		WithType = yes(_),
 		Arity = list__length(Args)
-	},
-	{ ItemType = pred_or_func_to_item_type(PredOrFunc) },
+	),
+	ItemType = pred_or_func_to_item_type(PredOrFunc),
 	(
-		{ NeedsCheck = yes
+		( NeedsCheck = yes
 		; item_is_new_or_changed(OldTimestamp, VersionNumbers,
-				ItemType, SymName, Arity)
-		}
+			ItemType, SymName, Arity)
+		)
 	->
-		UsedItems =^ used_items,
-		{ UsedItemMap = extract_pred_or_func_set(UsedItems,
-					ItemType) },
-		{ unqualify_name(SymName, Name) },
-		( { map__search(UsedItemMap, Name, MatchingArityList) } ->
-		    list__foldl(
-			(pred((MatchArity - MatchingQualifiers)::in,
-					in, out) is det -->
-			    (
-			    	{
-				    WithType = yes(_),
-				    MatchArity >= Arity
-				;
-				    WithType = no,
-				    MatchArity = Arity
-				}
-			    ->
-				map__foldl(
-				    check_for_pred_or_func_item_ambiguity_2(
-					ItemType, NeedQualifier,
-					SymName, MatchArity),
-				    MatchingQualifiers)
-			    ;
-			    	[]
-			    )
-			), MatchingArityList)
+		UsedItems = !.Info ^ used_items,
+		UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
+		unqualify_name(SymName, Name),
+		( map__search(UsedItemMap, Name, MatchingArityList) ->
+			list__foldl(check_for_pred_or_func_item_ambiguity_1(
+				WithType, ItemType, NeedQualifier, SymName,
+				Arity),
+				MatchingArityList, !Info)
 		;
-		    []
+			true
 		),
 
-		{ PredId = invalid_pred_id },
-		( { SymName = qualified(ModuleName, _) } ->
-			{
+		PredId = invalid_pred_id,
+		( SymName = qualified(ModuleName, _) ->
+			(
 				WithType = yes(_),
 				% We don't know the actual arity.
 				AritiesToMatch = any
 			;
 				WithType = no,
 				AritiesToMatch = less_than_or_equal(Arity)
-			},
-			check_functor_ambiguities(NeedQualifier,
-				SymName, AritiesToMatch,
-				pred_or_func(PredId, ModuleName,
-					PredOrFunc, Arity))
+			),
+			check_functor_ambiguities(NeedQualifier, SymName,
+				AritiesToMatch, pred_or_func(PredId,
+				ModuleName, PredOrFunc, Arity), !Info)
 		;
-			{ error(
-	"check_for_pred_or_func_item_ambiguity: unqualified predicate name") }
+			error("check_for_pred_or_func_item_ambiguity: " ++
+				"unqualified predicate name")
 		)
 	;
-		[]
+		true
+	).
+
+:- pred check_for_pred_or_func_item_ambiguity_1(maybe(type)::in, item_type::in,
+	need_qualifier::in, sym_name::in, arity::in,
+	pair(arity, map(sym_name, set(pair(pred_id, module_name))))::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, NeedQualifier,
+		SymName, Arity, MatchArity - MatchingQualifiers, !Info) :-
+	(
+		(
+			WithType = yes(_),
+			MatchArity >= Arity
+		;
+			WithType = no,
+			MatchArity = Arity
+		)
+	->
+		map__foldl(check_for_pred_or_func_item_ambiguity_2(
+			ItemType, NeedQualifier, SymName, MatchArity),
+			MatchingQualifiers, !Info)
+	;
+		true
 	).
 
 :- pred check_for_pred_or_func_item_ambiguity_2(item_type::in,
 	need_qualifier::in, sym_name::in, arity::in, module_qualifier::in,
-	set(pair(pred_id, module_name))::in, recompilation_check_info::in,
-	recompilation_check_info::out) is det.
+	set(pair(pred_id, module_name))::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
-		SymName, Arity, OldModuleQualifier, OldMatchingModuleNames) -->
-	{ unqualify_name(SymName, Name) },
+		SymName, Arity, OldModuleQualifier, OldMatchingModuleNames,
+		!Info) :-
+	unqualify_name(SymName, Name),
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
 		% hopefully won't come up too often.
-		{ NeedQualifier = must_be_qualified },
-		{ OldModuleQualifier = unqualified("") }
+		NeedQualifier = must_be_qualified,
+		OldModuleQualifier = unqualified("")
 	->
-		[]
+		true
 	;
-		{ QualifiedName = module_qualify_name(OldModuleQualifier,
-						Name) },
-		{ match_sym_name(QualifiedName, SymName) },
-		\+ {
+		QualifiedName = module_qualify_name(OldModuleQualifier, Name),
+		match_sym_name(QualifiedName, SymName),
+		\+ (
 			SymName = qualified(PredModuleName, _),
-			set__member(_ - PredModuleName,
-				OldMatchingModuleNames)
-		}
+			set__member(_ - PredModuleName, OldMatchingModuleNames)
+		)
 	->
-		{ AmbiguousDecls = list__map(
-		    (func(_ - OldMatchingModule) = Item :-
-			OldMatchingName = qualified(OldMatchingModule, Name),
-			Item = item_id(ItemType, OldMatchingName - Arity)
-		    ),
-		    set__to_sorted_list(OldMatchingModuleNames)) },
-		{ Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
-				AmbiguousDecls
-		) },
-		record_recompilation_reason(Reason)
+		AmbiguousDecls = list__map(
+			(func(_ - OldMatchingModule) = Item :-
+				OldMatchingName = qualified(OldMatchingModule,
+					Name),
+				Item = item_id(ItemType,
+					OldMatchingName - Arity)
+			),
+			set__to_sorted_list(OldMatchingModuleNames)),
+		Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
+			AmbiguousDecls),
+		record_recompilation_reason(Reason, !Info)
 	;
-		[]
+		true
 	).
 
 	%
@@ -1127,49 +1144,48 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
 	% with functors used during the last compilation.
 	%
 :- pred check_type_defn_ambiguity_with_functor(need_qualifier::in,
-		type_ctor::in, type_defn::in, recompilation_check_info::in,
-		recompilation_check_info::out) is det.
+	type_ctor::in, type_defn::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_type_defn_ambiguity_with_functor(_, _, abstract_type(_)) --> [].
-check_type_defn_ambiguity_with_functor(_, _, eqv_type(_)) --> [].
-check_type_defn_ambiguity_with_functor(NeedQualifier,
-			TypeCtor, du_type(Ctors, _)) -->
-	list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor),
-		Ctors).
-check_type_defn_ambiguity_with_functor(_, _, foreign_type(_, _, _)) --> [].
-check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _)) --> [].
+check_type_defn_ambiguity_with_functor(_, _, abstract_type(_), !Info).
+check_type_defn_ambiguity_with_functor(_, _, eqv_type(_), !Info).
+check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor,
+		du_type(Ctors, _), !Info) :-
+	list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
+		!Info).
+check_type_defn_ambiguity_with_functor(_, _, foreign_type(_, _, _), !Info).
+check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _), !Info).
 
 :- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,
-		constructor::in, recompilation_check_info::in,
-		recompilation_check_info::out) is det.
+	constructor::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_functor_ambiguities(NeedQualifier, TypeCtor,
-		ctor(_, _, Name, Args)) -->
-	{ ResolvedCtor = constructor(TypeCtor) },
-	{ Arity = list__length(Args) },
+		ctor(_, _, Name, Args), !Info) :-
+	ResolvedCtor = constructor(TypeCtor),
+	Arity = list__length(Args),
 	check_functor_ambiguities(NeedQualifier, Name, exact(Arity),
-		ResolvedCtor),
-	list__foldl(
-		check_field_ambiguities(NeedQualifier,
-			field(TypeCtor, Name - Arity)),
-		Args).
+		ResolvedCtor, !Info),
+	list__foldl(check_field_ambiguities(NeedQualifier,
+		field(TypeCtor, Name - Arity)), Args, !Info).
 
 :- pred check_field_ambiguities(need_qualifier::in, resolved_functor::in,
-		constructor_arg::in, recompilation_check_info::in,
-		recompilation_check_info::out) is det.
+	constructor_arg::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_field_ambiguities(_, _, no - _) --> [].
-check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _) -->
+check_field_ambiguities(_, _, no - _, !Info).
+check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _,
+		!Info) :-
 	%
 	% XXX The arities to match below will need to change if we ever
 	% allow taking the address of field access functions.
 	%
-	{ field_access_function_name(get, FieldName, ExtractFuncName) },
+	field_access_function_name(get, FieldName, ExtractFuncName),
 	check_functor_ambiguities(NeedQualifier, ExtractFuncName,
-		exact(1), ResolvedCtor),
-	{ field_access_function_name(set, FieldName, UpdateFuncName) },
+		exact(1), ResolvedCtor, !Info),
+	field_access_function_name(set, FieldName, UpdateFuncName),
 	check_functor_ambiguities(NeedQualifier, UpdateFuncName,
-		exact(2), ResolvedCtor).
+		exact(2), ResolvedCtor, !Info).
 
 	%
 	% Predicates and functions used as functors can match
@@ -1179,22 +1195,22 @@ check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _) -->
 :- type functor_match_arity
 	--->	exact(arity)
 	;	less_than_or_equal(arity)
-	;	any
-	.
+	;	any.
 
 :- pred check_functor_ambiguities(need_qualifier::in, sym_name::in,
 	functor_match_arity::in, resolved_functor::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor) -->
-	UsedItems =^ used_items,
-	{ unqualify_name(Name, UnqualName) },
-	{ UsedCtors = UsedItems ^ functors },
-	( { map__search(UsedCtors, UnqualName, UsedCtorAL) } ->
+check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor,
+		!Info) :-
+	UsedItems = !.Info ^ used_items,
+	unqualify_name(Name, UnqualName),
+	UsedCtors = UsedItems ^ functors,
+	( map__search(UsedCtors, UnqualName, UsedCtorAL) ->
 		check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
-			ResolvedCtor, UsedCtorAL)
+			ResolvedCtor, UsedCtorAL, !Info)
 	;
-		[]
+		true
 	).
 
 :- pred check_functor_ambiguities_2(need_qualifier::in, sym_name::in,
@@ -1202,12 +1218,12 @@ check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor) -->
 	assoc_list(arity, resolved_functor_map)::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities_2(_, _, _, _, []) --> [].
+check_functor_ambiguities_2(_, _, _, _, [], !Info).
 check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
-		ResolvedCtor, [Arity - UsedCtorMap | UsedCtorAL]) -->
+		ResolvedCtor, [Arity - UsedCtorMap | UsedCtorAL], !Info) :-
 	(
-		{ MatchArity = exact(ArityToMatch) },
-		{ ArityToMatch = Arity ->
+		MatchArity = exact(ArityToMatch),
+		( ArityToMatch = Arity ->
 			Check = bool__yes,
 			Continue = bool__no
 		;
@@ -1217,34 +1233,34 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 			;
 				Continue = no
 			)
-		}
+		)
 	;
-		{ MatchArity = less_than_or_equal(ArityToMatch) },
-		{ Arity =< ArityToMatch ->
+		MatchArity = less_than_or_equal(ArityToMatch),
+		( Arity =< ArityToMatch ->
 			Check = yes,
 			Continue = yes
 		;
 			Check = no,
 			Continue = no
-		}
+		)
 	;
-		{ MatchArity = any },
-		{ Check = yes },
-		{ Continue = yes }
+		MatchArity = any,
+		Check = yes,
+		Continue = yes
 	),
-	( { Check = yes } ->
-		map__foldl(
-			check_functor_ambiguity(NeedQualifier,
-				Name, Arity, ResolvedCtor),
-			UsedCtorMap)
+	(
+		Check = yes,
+		map__foldl(check_functor_ambiguity(NeedQualifier, Name, Arity,
+			ResolvedCtor), UsedCtorMap, !Info)
 	;
-		[]
+		Check = no
 	),
-	( { Continue = yes } ->
+	(
+		Continue = yes,
 		check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
-			ResolvedCtor, UsedCtorAL)
+			ResolvedCtor, UsedCtorAL, !Info)
 	;
-		[]
+		Continue = no
 	).
 
 :- pred check_functor_ambiguity(need_qualifier::in,
@@ -1253,46 +1269,46 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
-		OldModuleQualifier, OldResolvedCtors) -->
+		OldModuleQualifier, OldResolvedCtors, !Info) :-
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
 		% hopefully won't come up too often.
-		{ NeedQualifier = must_be_qualified },
-		{ OldModuleQualifier = unqualified("") }
+		NeedQualifier = must_be_qualified,
+		OldModuleQualifier = unqualified("")
 	->
-		[]
+		true
 	;
-		{ unqualify_name(SymName, Name) },
-		{ OldName = module_qualify_name(OldModuleQualifier, Name) },
-		{ match_sym_name(OldName, SymName) },
-		\+ { set__member(ResolvedCtor, OldResolvedCtors) }
+		unqualify_name(SymName, Name),
+		OldName = module_qualify_name(OldModuleQualifier, Name),
+		match_sym_name(OldName, SymName),
+		\+ set__member(ResolvedCtor, OldResolvedCtors)
 	->
-		{ Reason = functor_ambiguity(
-				module_qualify_name(OldModuleQualifier, Name),
-				Arity,
-				ResolvedCtor,
-				set__to_sorted_list(OldResolvedCtors)
-			) },
-		record_recompilation_reason(Reason)
+		Reason = functor_ambiguity(
+			module_qualify_name(OldModuleQualifier, Name),
+			Arity,
+			ResolvedCtor,
+			set__to_sorted_list(OldResolvedCtors)
+		),
+		record_recompilation_reason(Reason, !Info)
 	;
-		[]
+		true
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- type recompilation_check_info
-	---> recompilation_check_info(
-		module_name :: module_name,
-		is_inline_sub_module :: bool,
-		sub_modules :: list(module_name),
-		read_modules :: read_modules,
-		used_items :: resolved_used_items,
-		used_typeclasses :: set(item_name),
-		modules_to_recompile :: modules_to_recompile,
-		collect_all_reasons :: bool,
-		recompilation_reasons :: list(recompile_reason)
-	).
+	--->	recompilation_check_info(
+			module_name		:: module_name,
+			is_inline_sub_module	:: bool,
+			sub_modules		:: list(module_name),
+			read_modules		:: read_modules,
+			used_items		:: resolved_used_items,
+			used_typeclasses	:: set(item_name),
+			modules_to_recompile	:: modules_to_recompile,
+			collect_all_reasons	:: bool,
+			recompilation_reasons	:: list(recompile_reason)
+		).
 
 :- type recompile_exception
 	---> recompile_exception(
@@ -1328,8 +1344,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 			sym_name,
 			arity,
 			resolved_functor,	% new item.
-			list(resolved_functor)
-						% ambiguous declarations.
+			list(resolved_functor)	% ambiguous declarations.
 		)
 
 	;	changed_item(
@@ -1348,62 +1363,60 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
 	;	removed_instance(
 			module_name,
 			item_name		% class name
-		)
-	.
+		).
 
 :- pred add_module_to_recompile(module_name::in, recompilation_check_info::in,
-		recompilation_check_info::out) is det.
+	recompilation_check_info::out) is det.
 
-add_module_to_recompile(Module, Info0, Info) :-
-	ModulesToRecompile0 = Info0 ^ modules_to_recompile,
+add_module_to_recompile(Module, !Info) :-
+	ModulesToRecompile0 = !.Info ^ modules_to_recompile,
 	(
-		ModulesToRecompile0 = (all),
-		Info = Info0
+		ModulesToRecompile0 = (all)
 	;
 		ModulesToRecompile0 = some(Modules0),
-		Info = Info0 ^ modules_to_recompile :=
-				some([Module | Modules0])
+		!:Info = !.Info ^ modules_to_recompile :=
+			some([Module | Modules0])
 	).
 
 :- pred record_read_file(module_name::in, module_timestamp::in, item_list::in,
-		module_error::in, file_name::in, recompilation_check_info::in,
-		recompilation_check_info::out) is det.
+	module_error::in, file_name::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-record_read_file(ModuleName, ModuleTimestamp, Items, Error, FileName) -->
-	Imports0 =^ read_modules,
-	{ map__set(Imports0, ModuleName - ModuleTimestamp ^ suffix,
-		read_module(ModuleTimestamp, Items, Error, FileName),
-		Imports) },
-	^ read_modules := Imports.
+record_read_file(ModuleName, ModuleTimestamp, Items, Error, FileName, !Info) :-
+	Imports0 = !.Info ^ read_modules,
+	map__set(Imports0, ModuleName - ModuleTimestamp ^ suffix,
+		read_module(ModuleTimestamp, Items, Error, FileName), Imports),
+	!:Info = !.Info ^ read_modules := Imports.
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_recompilation_message(pred(io__state, io__state),
-		io__state, io__state).
-:- mode write_recompilation_message(pred(di, uo) is det, di, uo) is det.
+:- pred write_recompilation_message(pred(io, io)::in(pred(di, uo) is det),
+	io::di, io::uo) is det.
 
-write_recompilation_message(P) -->
-	globals__io_lookup_bool_option(verbose_recompilation, Verbose),
-	( { Verbose = yes } ->
-		P
+write_recompilation_message(P, !IO) :-
+	globals__io_lookup_bool_option(verbose_recompilation, Verbose, !IO),
+	(
+		Verbose = yes,
+		P(!IO)
 	;
-		[]
+		Verbose = no
 	).
 
 :- pred write_recompile_reason(module_name::in, recompile_reason::in,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-write_recompile_reason(ModuleName, Reason) -->
-	{ recompile_reason_message(Reason, MaybeContext, ErrorPieces0) },
-	{ ErrorPieces =
+write_recompile_reason(ModuleName, Reason, !IO) :-
+	recompile_reason_message(Reason, MaybeContext, ErrorPieces0),
+	ErrorPieces =
 		[words("Recompiling module"),
 		words(string__append(describe_sym_name(ModuleName), ":")),
 		nl
-		| ErrorPieces0] },
-	write_error_pieces_maybe_with_context(MaybeContext, 0, ErrorPieces).
+		| ErrorPieces0],
+	write_error_pieces_maybe_with_context(MaybeContext, 0, ErrorPieces,
+		!IO).
 
 :- pred recompile_reason_message(recompile_reason::in, maybe(context)::out,
-		list(format_component)::out) is det.
+	list(format_component)::out) is det.
 
 recompile_reason_message(file_error(_FileName, Msg), no, [words(Msg)]).
 recompile_reason_message(output_file_not_up_to_date(FileName), no,
@@ -1424,7 +1437,7 @@ recompile_reason_message(item_ambiguity(Item, AmbiguousItems), no, Pieces) :-
 			AmbiguousItemPieces]),
 		'.').
 recompile_reason_message(functor_ambiguity(SymName, Arity,
-			Functor, AmbiguousFunctors), no, Pieces) :-
+		Functor, AmbiguousFunctors), no, Pieces) :-
 	FunctorPieces = describe_functor(SymName, Arity, Functor),
 	AmbiguousFunctorPieces = component_lists_to_pieces(
 		list__map(describe_functor(SymName, Arity),
@@ -1480,7 +1493,7 @@ describe_item(item_id(ItemType0, SymName - Arity)) = Pieces :-
 body_item(type_body, (type)).
 
 :- func describe_functor(sym_name, arity, resolved_functor) =
-		list(format_component).
+	list(format_component).
 
 describe_functor(SymName, _Arity,
 		pred_or_func(_, ModuleName, PredOrFunc, PredArity)) =
@@ -1509,27 +1522,25 @@ describe_functor(SymName, Arity,
 %-----------------------------------------------------------------------------%
 
 :- pred read_term_check_for_error_or_eof(recompilation_check_info::in,
-		string::in, term::out, io__state::di, io__state::uo) is det.
+	string::in, term::out, io::di, io::uo) is det.
 
-read_term_check_for_error_or_eof(Info, Item, Term) -->
-	parser__read_term(TermResult),
+read_term_check_for_error_or_eof(Info, Item, Term, !IO) :-
+	parser__read_term(TermResult, !IO),
 	(
-		{ TermResult = term(_, Term) }
+		TermResult = term(_, Term)
 	;
-		{ TermResult = error(Message, Line) },
-		io__input_stream_name(FileName),
-		{ Reason = syntax_error(term__context(FileName, Line),
-				Message) },
-		{ throw_syntax_error(Reason, Info) }
+		TermResult = error(Message, Line),
+		io__input_stream_name(FileName, !IO),
+		Reason = syntax_error(term__context(FileName, Line),
+			Message),
+		throw_syntax_error(Reason, Info)
 	;
-		{ TermResult = eof },
-		io__input_stream_name(FileName),
-		io__get_line_number(Line),
-		{ Reason = syntax_error(term__context(FileName, Line),
-			string__append_list(
-				["unexpected end of file, expected ",
-				Item, "."])) },
-		{ throw_syntax_error(Reason, Info) }
+		TermResult = eof,
+		io__input_stream_name(FileName, !IO),
+		io__get_line_number(Line, !IO),
+		Reason = syntax_error(term__context(FileName, Line),
+			"unexpected end of file, expected " ++ Item ++ "."),
+		throw_syntax_error(Reason, Info)
 	).
 
 :- func get_term_context(term) = term__context.
@@ -1544,12 +1555,12 @@ get_term_context(Term) =
 :- pred record_recompilation_reason(recompile_reason::in,
 	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-record_recompilation_reason(Reason, Info0, Info) :-
-	( Info0 ^ collect_all_reasons = yes ->
-		Info = Info0 ^ recompilation_reasons :=
-				[Reason | Info0 ^ recompilation_reasons]
+record_recompilation_reason(Reason, !Info) :-
+	( !.Info ^ collect_all_reasons = yes ->
+		!:Info = !.Info ^ recompilation_reasons :=
+			[Reason | !.Info ^ recompilation_reasons]
 	;
-		throw(recompile_exception(Reason, Info0))
+		throw(recompile_exception(Reason, !.Info))
 	).
 
 :- pred throw_syntax_error(recompile_reason::in,

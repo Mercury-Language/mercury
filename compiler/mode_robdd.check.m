@@ -191,8 +191,7 @@ check_robdd(X1, X2) = mode_robdd(X1, X2) :-
 		% impure unsafe_perform_io(report_robdd_error(R1, R2))
 	).
 
-% :- pred report_robdd_error(robdd(T)::in, robdd(T)::in, io__state::di,
-% 		io__state::uo) is det.
+% :- pred report_robdd_error(robdd(T)::in, robdd(T)::in, io::di, io::uo) is det.
 % 
 % report_robdd_error(R1, R2) -->
 % 	% { R12 = R1 * (~ R2) },

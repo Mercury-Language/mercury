@@ -172,7 +172,7 @@
 % Run the polymorphism pass over the whole HLDS.
 
 :- pred polymorphism__process_module(module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 % Run the polymorphism pass over a single pred.
 % This is used to transform clauses introduced by unify_proc.m
@@ -402,8 +402,7 @@ polymorphism__process_module(!ModuleInfo, !IO) :-
 	polymorphism__expand_class_method_bodies(!ModuleInfo).
 
 :- pred polymorphism__maybe_process_pred(pred_id::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 polymorphism__maybe_process_pred(PredId, !ModuleInfo, !IO) :-
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -519,8 +518,7 @@ polymorphism__fixup_pred(PredId, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred polymorphism__process_pred(pred_id::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 polymorphism__process_pred(PredId, !ModuleInfo, !IO) :-
 	write_pred_progress_message("% Transforming polymorphism for ",

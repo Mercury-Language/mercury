@@ -18,7 +18,7 @@
 	%
 	% Make a target corresponding to a single module.
 :- pred make_module_target(dependency_file::in, bool::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 	% record_made_target(Target, Task, MakeSucceeded)
 	%
@@ -28,25 +28,25 @@
 	% Exported for use by make__module_dep_file__write_module_dep_file.
 :- pred record_made_target(target_file::in, compilation_task_type::in,
 	bool::in, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 :- type foreign_code_file
 	--->	foreign_code_file(
-			foreign_language :: foreign_language,
+			foreign_language	:: foreign_language,
 
 				% Name of the file produced by the Mercury
 				% compiler, e.g. module_c_code.c.
-			target_file :: file_name,
+			target_file		:: file_name,
 
 				% Name of the file produced by the foreign
 				% language compiler, e.g. module_c_code.o.
-			object_file :: file_name
+			object_file		:: file_name
 		).
 
 	% Find the foreign code files generated when a module is processed.
 	% The `pic' field is only used for C foreign code.
 :- pred external_foreign_code_files(pic::in, module_imports::in,
-	list(foreign_code_file)::out, io__state::di, io__state::uo) is det.
+	list(foreign_code_file)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -54,7 +54,7 @@
 :- import_module hlds__passes_aux.
 
 :- pred make_module_target(dependency_file::in, bool::in, bool::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_target(TargetFile, Succeeded1, Succeeded1 `and` Succeeded2,
 		Info0, Info) -->
@@ -196,7 +196,7 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, Info0, Info) -->
 
 :- pred make_dependency_files(target_file::in, list(dependency_file)::in,
 	list(target_file)::in, list(file_name)::in, dependencies_result::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 		TouchedFiles, DepsResult, Info0, Info) -->
@@ -250,7 +250,7 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 :- pred build_target(compilation_task_result::in, target_file::in,
 	module_imports::in, list(target_file)::in, list(file_name)::in,
 	bool::out, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
 		TouchedFiles, Succeeded, Info0, Info) -->
@@ -296,7 +296,7 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
 :- pred build_target_2(module_name::in, compilation_task_type::in,
 	maybe(file_name)::in, module_imports::in, list(string)::in,
 	io__output_stream::in, bool::out, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
 		_Imports, AllOptionArgs, ErrorStream,
@@ -385,7 +385,7 @@ build_target_2(ModuleName, fact_table_code_to_object_code(PIC, FactTableFile),
 
 :- pred build_object_code(module_name::in, compilation_target::in, pic::in,
 	io__output_stream::in, module_imports::in, bool::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 build_object_code(ModuleName, c, PIC, ErrorStream, _Imports, Succeeded) -->
 	compile_target_code__compile_c_file(ErrorStream, PIC, ModuleName,
@@ -402,8 +402,8 @@ build_object_code(ModuleName, il, _, ErrorStream, Imports, Succeeded) -->
 		Imports ^ has_main, Succeeded).
 
 :- pred compile_foreign_code_file(io__output_stream::in, pic::in,
-		module_imports::in, foreign_code_file::in, bool::out,
-		io__state::di, io__state::uo) is det.
+	module_imports::in, foreign_code_file::in, bool::out,
+	io::di, io::uo) is det.
 
 compile_foreign_code_file(ErrorStream, PIC, _Imports,
 		foreign_code_file(c, CFile, ObjFile), Succeeded) -->
@@ -478,7 +478,7 @@ get_object_extension(Globals, PIC) = Ext :-
 %-----------------------------------------------------------------------------%
 
 :- pred call_mercury_compile_main(list(string)::in, bool::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 call_mercury_compile_main(Args, Succeeded) -->
 	io__get_exit_status(Status0),
@@ -489,7 +489,7 @@ call_mercury_compile_main(Args, Succeeded) -->
 	io__set_exit_status(Status0).
 
 :- pred invoke_mmc(io__output_stream::in, maybe(file_name)::in,
-	list(string)::in, bool::out, io__state::di, io__state::uo) is det.
+	list(string)::in, bool::out, io::di, io::uo) is det.
 
 invoke_mmc(ErrorStream, MaybeArgFileName, Args, Succeeded) -->
 	io__progname("", ProgName),
@@ -559,8 +559,8 @@ record_made_target(TargetFile, CompilationTask, Succeeded, Info0, Info) -->
 		TouchedFiles, Info1, Info).
 
 :- pred record_made_target_2(bool::in, target_file::in, list(target_file)::in,
-	list(file_name)::in, make_info::in, make_info::out,
-	io__state::di, io__state::uo) is det.
+	list(file_name)::in, make_info::in, make_info::out, io::di, io::uo)
+	is det.
 
 record_made_target_2(Succeeded, TargetFile, TouchedTargetFiles,
 		OtherTouchedFiles, Info0, Info) -->
@@ -597,7 +597,7 @@ update_target_status(TargetStatus, TargetFile, Info,
 :- type compilation_task_result == pair(compilation_task_type, list(string)).
 
 :- func compilation_task(globals, module_target_type) =
-		compilation_task_result.
+	compilation_task_result.
 
 compilation_task(_, source) = _ :- error("compilation_task").
 compilation_task(_, errors) =
@@ -649,7 +649,7 @@ get_pic_flags(non_pic) = [].
 	% Find the files which could be touched by a compilation task.
 :- pred touched_files(target_file::in, compilation_task_type::in,
 	list(target_file)::out, list(file_name)::out,
-	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+	make_info::in, make_info::out, io::di, io::uo) is det.
 
 touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 		TouchedFileNames, Info0, Info) -->
@@ -859,36 +859,35 @@ external_foreign_code_files(PIC, Imports, ForeignFiles) -->
 
 :- pred external_foreign_code_files_for_il(module_name::in,
 	foreign_language::in, list(foreign_code_file)::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
-external_foreign_code_files_for_il(ModuleName, Language,
-		ForeignFiles) -->
+external_foreign_code_files_for_il(ModuleName, Language, ForeignFiles, !IO) :-
 	(
-		{ ForeignModuleName = foreign_language_module_name(ModuleName,
-					Language) },
-		{ ForeignExt = foreign_language_file_extension(Language) }
+		ForeignModuleName = foreign_language_module_name(ModuleName,
+			Language),
+		ForeignExt = foreign_language_file_extension(Language)
 	->
 		module_name_to_file_name(ForeignModuleName, ForeignExt, yes,
-			ForeignFileName),
+			ForeignFileName, !IO),
 		module_name_to_file_name(ForeignModuleName, ".dll", yes,
-			ForeignDLLFileName),
-		{ ForeignFiles = [foreign_code_file(Language, ForeignFileName,
-					ForeignDLLFileName)] }
+			ForeignDLLFileName, !IO),
+		ForeignFiles = [foreign_code_file(Language, ForeignFileName,
+			ForeignDLLFileName)]
 	;
 		% No external file is generated for this foreign language.
-		{ ForeignFiles = [] }
+		ForeignFiles = []
 	).
 
 :- func target_type_to_pic(module_target_type) = pic.
 
-target_type_to_pic(TargetType) =
-		( TargetType = asm_code(PIC) ->
-			PIC
-		; TargetType = object_code(PIC) ->
-			PIC
-		;
-			non_pic
-		).
+target_type_to_pic(TargetType) = Result :-
+	( TargetType = asm_code(PIC) ->
+		Result = PIC
+	; TargetType = object_code(PIC) ->
+		Result = PIC
+	;
+		Result = non_pic
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -8,6 +8,7 @@
 %
 % Process and signal handling, mainly for use by make.m and its sub-modules.
 %-----------------------------------------------------------------------------%
+
 :- module libs__process_util.
 
 :- interface.
@@ -16,10 +17,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type build0(Info) == pred(bool, Info, Info, io__state, io__state).
+:- type build0(Info) == pred(bool, Info, Info, io, io).
 :- inst build0 == (pred(out, in, out, di, uo) is det).
 
-:- type post_signal_cleanup(Info) == pred(Info, Info, io__state, io__state).
+:- type post_signal_cleanup(Info) == pred(Info, Info, io, io).
 :- inst post_signal_cleanup == (pred(in, out, di, uo) is det).
 
 	% build_with_check_for_interrupt(Build, Cleanup,
@@ -38,15 +39,15 @@
 	% immediately afterwards.
 :- pred build_with_check_for_interrupt(build0(Info)::in(build0),
 	post_signal_cleanup(Info)::in(post_signal_cleanup), bool::out,
-	Info::in, Info::out, io__state::di, io__state::uo) is det.
+	Info::in, Info::out, io::di, io::uo) is det.
 
 	% raise_signal(Signal).
 	% Send `Signal' to the current process.
-:- pred raise_signal(int::in, io__state::di, io__state::uo) is det.
+:- pred raise_signal(int::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- type io_pred == pred(bool, io__state, io__state).
+:- type io_pred == pred(bool, io, io).
 :- inst io_pred == (pred(out, di, uo) is det).
 
 	% Does fork() work on the current platform.
@@ -64,12 +65,12 @@
 	% If fork() is not supported on the current architecture,
 	% `AltP' will be called instead in the current process.
 :- pred call_in_forked_process(io_pred::in(io_pred), io_pred::in(io_pred),
-	bool::out, io__state::di, io__state::uo) is det.
+	bool::out, io::di, io::uo) is det.
 
 	% As above, but if fork() is not available, just call the
 	% predicate in the current process.
-:- pred call_in_forked_process(io_pred::in(io_pred),
-	bool::out, io__state::di, io__state::uo) is det.
+:- pred call_in_forked_process(io_pred::in(io_pred), bool::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -80,29 +81,28 @@
 
 :- import_module std_util, require.
 
-build_with_check_for_interrupt(Build, Cleanup, Succeeded, Info0, Info) -->
-	setup_signal_handlers(MaybeSigIntHandler),
-	Build(Succeeded0, Info0, Info1),
-	restore_signal_handlers(MaybeSigIntHandler),
-	check_for_signal(Signalled, Signal),
-	( { Signalled = 1 } ->
-		{ Succeeded = no },
-		globals__io_lookup_bool_option(verbose_make, Verbose),
-		( { Verbose = yes } ->
-			io__write_string("** Received signal "),
-			io__write_int(Signal),
-			io__write_string(", cleaning up.\n")
+build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
+	setup_signal_handlers(MaybeSigIntHandler, !IO),
+	Build(Succeeded0, !Info, !IO),
+	restore_signal_handlers(MaybeSigIntHandler, !IO),
+	check_for_signal(Signalled, Signal, !IO),
+	( Signalled = 1 ->
+		Succeeded = no,
+		globals__io_lookup_bool_option(verbose_make, Verbose, !IO),
+		( Verbose = yes ->
+			io__write_string("** Received signal ", !IO),
+			io__write_int(Signal, !IO),
+			io__write_string(", cleaning up.\n", !IO)
 		;
-			[]
+			true
 		),
-		Cleanup(Info1, Info),
+		Cleanup(!Info, !IO),
 
 		% The signal handler has been restored to the default,
 		% so this should kill us.
-		raise_signal(Signal)
+		raise_signal(Signal, !IO)
 	;
-		{ Succeeded = Succeeded0 },
-		{ Info = Info1 }
+		Succeeded = Succeeded0
 	).
 
 :- type signal_action ---> signal_action.
@@ -162,8 +162,7 @@ MC_mercury_compile_signal_handler(int sig)
 }
 ").
 
-:- pred setup_signal_handlers(signal_action::out,
-		io__state::di, io__state::uo) is det.
+:- pred setup_signal_handlers(signal_action::out, io::di, io::uo) is det.
 
 setup_signal_handlers(signal_action::out, IO::di, IO::uo).
 
@@ -190,8 +189,7 @@ setup_signal_handlers(signal_action::out, IO::di, IO::uo).
 #endif
 }").
 
-:- pred restore_signal_handlers(signal_action::in,
-		io__state::di, io__state::uo) is det.
+:- pred restore_signal_handlers(signal_action::in, io::di, io::uo) is det.
 
 restore_signal_handlers(_::in, IO::di, IO::uo).
 
@@ -214,21 +212,23 @@ restore_signal_handlers(_::in, IO::di, IO::uo).
 	% Restore all signal handlers to default values in the child
 	% so that the child will be killed by the signals the parent
 	% is catching.
-:- pred setup_child_signal_handlers(io__state::di, io__state::uo) is det.
+:- pred setup_child_signal_handlers(io::di, io::uo) is det.
 
-setup_child_signal_handlers -->
-	restore_signal_handlers(sig_dfl).
+setup_child_signal_handlers(!IO) :-
+	restore_signal_handlers(sig_dfl, !IO).
 
 :- func sig_dfl = signal_action.
 
 sig_dfl = (signal_action::out).
 
-:- pragma foreign_proc("C", sig_dfl = (Result::out),
-		[will_not_call_mercury, promise_pure],
-	"MR_init_signal_action(&Result, SIG_DFL, MR_FALSE, MR_TRUE);").
+:- pragma foreign_proc("C",
+	sig_dfl = (Result::out),
+	[will_not_call_mercury, promise_pure],
+"
+	MR_init_signal_action(&Result, SIG_DFL, MR_FALSE, MR_TRUE);
+").
 
-:- pred check_for_signal(int::out, int::out,
-		io__state::di, io__state::uo) is det.
+:- pred check_for_signal(int::out, int::out, io::di, io::uo) is det.
 
 check_for_signal(0::out, 0::out, IO::di, IO::uo).
 
@@ -259,27 +259,28 @@ raise_signal(_::in, IO::di, IO::uo).
 
 %-----------------------------------------------------------------------------%
 
-call_in_forked_process(P, Success) -->
-	call_in_forked_process(P, P, Success).
+call_in_forked_process(P, Success, !IO) :-
+	call_in_forked_process(P, P, Success, !IO).
 
-call_in_forked_process(P, AltP, Success) -->
-	( { can_fork } ->
-		call_in_forked_process_2(P, ForkStatus, CallStatus),
-		{ ForkStatus = 1 ->
+call_in_forked_process(P, AltP, Success, !IO) :-
+	( can_fork ->
+		call_in_forked_process_2(P, ForkStatus, CallStatus, !IO),
+		( ForkStatus = 1 ->
 			Success = no
 		;
 			Status = io__handle_system_command_exit_status(
-					CallStatus),
+				CallStatus),
 			Success = (Status = ok(exited(0)) -> yes ; no)
-		}
+		)
 	;
-		AltP(Success)
+		AltP(Success, !IO)
 	).
 
 can_fork :- semidet_fail.
 
-:- pragma foreign_proc("C", can_fork,
-		[will_not_call_mercury, thread_safe, promise_pure],
+:- pragma foreign_proc("C",
+	can_fork,
+	[will_not_call_mercury, thread_safe, promise_pure],
 "
 #ifdef MC_CAN_FORK
 	SUCCESS_INDICATOR = MR_TRUE;
@@ -289,7 +290,7 @@ can_fork :- semidet_fail.
 ").
 
 :- pred call_in_forked_process_2(io_pred::in(io_pred), int::out, int::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 	error("call_in_forked_process_2").
@@ -385,13 +386,13 @@ call_in_forked_process_2(_::in(io_pred), _::out, _::out, _::di, _::uo) :-
 
 	% call_child_process_io_pred(P, ExitStatus).
 :- pred call_child_process_io_pred(io_pred::in(io_pred), int::out,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 :- pragma export(call_child_process_io_pred(in(io_pred), out, di, uo),
-		"MC_call_child_process_io_pred").
+	"MC_call_child_process_io_pred").
 
-call_child_process_io_pred(P, Status) -->
-	setup_child_signal_handlers,
-	P(Success),
-	{ Status = ( Success = yes -> 0 ; 1 ) }.
+call_child_process_io_pred(P, Status, !IO) :-
+	setup_child_signal_handlers(!IO),
+	P(Success, !IO),
+	Status = ( Success = yes -> 0 ; 1 ).
 
 %-----------------------------------------------------------------------------%

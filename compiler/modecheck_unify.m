@@ -110,7 +110,7 @@ modecheck_unification(X, var(Y), Unification0, UnifyContext,
 			BothLive = dead
 		),
 		abstractly_unify_inst(BothLive, InstOfX, InstOfY,
-			real_unify, ModuleInfo0, UnifyInst, Det1, ModuleInfo1),
+			real_unify, UnifyInst, Det1, ModuleInfo0, ModuleInfo1),
 		% Don't allow free-free unifications if both variables are
 		% locked.  (Normally the checks for binding locked variables
 		% are done in modecheck_set_var_inst, which is called below,
@@ -274,7 +274,7 @@ modecheck_unification(X, lambda_goal(Purity, PredOrFunc, EvalMethod, _,
 		mode_info_get_types_of_vars(!.ModeInfo, Vars, VarTypes),
 		propagate_types_into_mode_list(VarTypes, ModuleInfo0,
 			Modes0, Modes)
- 	;
+	;
 		Modes = Modes0
 	),
 
@@ -331,8 +331,8 @@ modecheck_unification(X, lambda_goal(Purity, PredOrFunc, EvalMethod, _,
 
 		inst_list_is_ground_or_any(NonLocalInsts, ModuleInfo2)
 	->
-		make_shared_inst_list(NonLocalInsts, ModuleInfo2,
-			SharedNonLocalInsts, ModuleInfo3),
+		make_shared_inst_list(NonLocalInsts, SharedNonLocalInsts,
+			ModuleInfo2, ModuleInfo3),
 		instmap__set_vars(InstMap1, NonLocalsList, SharedNonLocalInsts,
 			InstMap2),
 		mode_info_set_module_info(ModuleInfo3, !ModeInfo),
@@ -412,7 +412,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
 	LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes, LambdaDet),
 	(
 		abstractly_unify_inst(dead, InstOfX, InstOfY, real_unify,
-			ModuleInfo0, UnifyInst, _Det, ModuleInfo1)
+			UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
 	->
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModuleInfo1, !ModeInfo),
@@ -531,8 +531,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		ExtraGoals1 = no_extra_goals
 	;
 		abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
-			InstArgs, LiveArgs, real_unify, TypeOfX, ModuleInfo0,
-			UnifyInst, Det1, ModuleInfo1)
+			InstArgs, LiveArgs, real_unify, TypeOfX,
+			UnifyInst, Det1, ModuleInfo0, ModuleInfo1)
 	->
 		Inst = UnifyInst,
 		Det = Det1,
@@ -612,8 +612,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		Unification = construct(_, _, _, _, _, _, _),
 		LiveX = dead
 	->
-		Goal = conj([]),
-		!:ModeInfo = !.ModeInfo		% XXX deleting this exposes
+		Goal = conj([])
+		% !:ModeInfo = !.ModeInfo	% XXX deleting this exposes
 						% a bug in the state variable
 						% transformation
 	;
@@ -625,8 +625,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 		%,
 		% Unifying two preds is not erroneous as far as the
 		% mode checker is concerned, but a mode _error_.
-		Goal = disj([]),
-		!:ModeInfo = !.ModeInfo		% XXX deleting this exposes
+		Goal = disj([])
+		% !:ModeInfo = !.ModeInfo	% XXX deleting this exposes
 						% a bug in the state variable
 						% transformation
 	;

@@ -42,8 +42,7 @@
 	% This could be done using a timestamp or a hash value.
 :- type version_number == timestamp.
 
-:- pred write_version_number(version_number::in,
-		io__state::di, io__state::uo) is det.
+:- pred write_version_number(version_number::in, io::di, io::uo) is det.
 
 :- func term_to_version_number(term(T)) = version_number is semidet.
 
@@ -70,54 +69,50 @@
 	;	(typeclass)
 	;	functor		% The RHS of a var-functor unification.
 	;	predicate
-	;	function
-	.
+	;	function.
 
 :- inst simple_item
 	--->	(type)
 	;	type_body
 	;	(mode)
 	;	(inst)
-	;	(typeclass)
-	.
+	;	(typeclass).
 
 :- inst pred_or_func
 	--->	predicate
-	;	function
-	.
+	;	function.
 
-:- pred is_simple_item_type(
-		item_type::(ground->simple_item)) is semidet.
+:- pred is_simple_item_type(item_type::(ground->simple_item)) is semidet.
 
-:- pred is_pred_or_func_item_type(
-		item_type::(ground->pred_or_func)) is semidet.
+:- pred is_pred_or_func_item_type(item_type::(ground->pred_or_func)) is semidet.
 
 :- pred string_to_item_type(string, item_type).
 :- mode string_to_item_type(in, out) is semidet.
 :- mode string_to_item_type(out, in) is det.
 
 :- func pred_or_func_to_item_type(pred_or_func::in)
-		= (item_type::out(pred_or_func)) is det.
+	= (item_type::out(pred_or_func)) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- type recompilation_info
-	---> recompilation_info(
-			% name of the current module
-		module_name :: module_name,
+	--->	recompilation_info(
+				% name of the current module
+			module_name	:: module_name,
 
-			% used items imported from other modules
-		used_items :: used_items,
+				% used items imported from other modules
+			used_items	:: used_items,
 
-			% For now we only record dependencies of imported
-			% items on equivalence types. The rest of the
-			% dependencies can be found be examining the
-			% pred_infos, type_defns etc. of the items
-			% recorded in the used_items field above.
-		dependencies :: map(item_id, set(item_id)),
+				% For now we only record dependencies of
+				% imported items on equivalence types.
+				% The rest of the dependencies can be found
+				% by examining the pred_infos, type_defns etc.
+				% of the items recorded in the used_items
+				% field above.
+			dependencies	:: map(item_id, set(item_id)),
 
-		version_numbers :: map(module_name, version_numbers)
-	).
+			version_numbers	:: map(module_name, version_numbers)
+		).
 
 :- func init_recompilation_info(module_name) = recompilation_info.
 
@@ -146,16 +141,16 @@
 %-----------------------------------------------------------------------------%
 
 :- type item_id_set(Map, Set, Cons)
-	---> item_id_set(
-		types :: Map,
-		type_bodies :: Map,
-		modes :: Map,
-		insts :: Map,
-		typeclasses :: Map,
-		functors :: Cons,
-		predicates :: Set,
-		functions :: Set
-	).
+	--->	item_id_set(
+			types		:: Map,
+			type_bodies	:: Map,
+			modes		:: Map,
+			insts		:: Map,
+			typeclasses	:: Map,
+			functors	:: Cons,
+			predicates	:: Set,
+			functions	:: Set
+		).
 
 :- type item_id_set(T) == item_id_set(T, T, T).
 
@@ -166,8 +161,8 @@
 %-----------------------------------------------------------------------------%
 
 	% An simple_item_set records the single possible match for an item.
-:- type simple_item_set == map(pair(string, arity),
-				map(module_qualifier, module_name)).
+:- type simple_item_set ==
+	map(pair(string, arity), map(module_qualifier, module_name)).
 
 	% For constructors, predicates and functions we can't work out
 	% which item is actually used until we've run typechecking.
@@ -193,34 +188,33 @@
 	%
 
 :- func extract_simple_item_set(item_id_set(Simple, PorF, Cons)::in,
-		item_type::in(simple_item)) = (Simple::out) is det.
+	item_type::in(simple_item)) = (Simple::out) is det.
 
 :- func update_simple_item_set(item_id_set(Simple, PorF, Cons)::in,
-		item_type::in(simple_item), Simple::in)
-		= (item_id_set(Simple, PorF, Cons)::out) is det.
+	item_type::in(simple_item), Simple::in)
+	= (item_id_set(Simple, PorF, Cons)::out) is det.
 
 :- func extract_pred_or_func_set(item_id_set(Simple, PorF, Cons)::in,
-		item_type::in(pred_or_func)) = (PorF::out) is det.
+	item_type::in(pred_or_func)) = (PorF::out) is det.
 
 :- func update_pred_or_func_set(item_id_set(Simple, PorF, Cons)::in,
-		item_type::in(pred_or_func), PorF::in)
-		= (item_id_set(Simple, PorF, Cons)::out) is det.
+	item_type::in(pred_or_func), PorF::in)
+	= (item_id_set(Simple, PorF, Cons)::out) is det.
 
 :- func extract_ids(item_id_set(T), item_type) = T.
 
 :- func update_ids(item_id_set(T), item_type, T) = item_id_set(T).
 
-:- func map_ids((func(item_type, T) = U),
-		item_id_set(T), U) = item_id_set(U).
+:- func map_ids((func(item_type, T) = U), item_id_set(T), U) = item_id_set(U).
 
 %-----------------------------------------------------------------------------%
 
 	% Version numbers for items in a single module.
 :- type version_numbers
-	---> version_numbers(
-		item_version_numbers,
-		instance_version_numbers
-	).
+	--->	version_numbers(
+			item_version_numbers,
+			instance_version_numbers
+		).
 
 	% The constructors set should always be empty -
 	% constructors are never imported separately.
@@ -258,12 +252,12 @@
 term_to_version_number(Term) = term_to_timestamp(Term).
 
 term_to_timestamp(term__functor(term__string(TimestampString), [], _)) =
-		string_to_timestamp(TimestampString).
+	string_to_timestamp(TimestampString).
 
-write_version_number(VersionNumber) -->
-	io__write_string(""""),
-	io__write_string(timestamp_to_string(VersionNumber)),
-	io__write_string("""").
+write_version_number(VersionNumber, !IO) :-
+	io__write_string("""", !IO),
+	io__write_string(timestamp_to_string(VersionNumber), !IO),
+	io__write_string("""", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -291,14 +285,13 @@ string_to_item_type("functor", functor).
 %-----------------------------------------------------------------------------%
 
 init_item_id_set(Init) =
-		item_id_set(Init, Init, Init, Init, Init, Init, Init, Init).
+	item_id_set(Init, Init, Init, Init, Init, Init, Init, Init).
 
 init_item_id_set(Simple, PorF, Cons) =
-		item_id_set(Simple, Simple, Simple, Simple, Simple,
-			Cons, PorF, PorF).
+	item_id_set(Simple, Simple, Simple, Simple, Simple, Cons, PorF, PorF).
 
 init_used_items = item_id_set(map__init, map__init, map__init, map__init,
-			map__init, map__init, map__init, map__init).
+	map__init, map__init, map__init, map__init).
 
 extract_simple_item_set(Items, type) = Items ^ types.
 extract_simple_item_set(Items, type_body) = Items ^ type_bodies.
@@ -369,48 +362,48 @@ init_recompilation_info(ModuleName) =
 		map__init
 	).
 
-recompilation__record_used_item(ItemType, Id, QualifiedId) -->
-    (
-    	% Don't record builtin items (QualifiedId may be unqualified
-	% for predicates, functions and functors because they aren't
-	% qualified until after typechecking).
-	{ ItemType \= predicate },
-	{ ItemType \= function },
-	{ ItemType \= functor },
-    	{ QualifiedId = unqualified(_) - _ }
-    ->
-	[]
-    ;
-	ItemSet0 =^ used_items,
-	{ IdSet0 = extract_ids(ItemSet0, ItemType) },
-	{ QualifiedId = QualifiedName - Arity },
-	{ unqualify_name(QualifiedName, UnqualifiedName) },
-	{ ModuleName = find_module_qualifier(QualifiedName) },
-	{ UnqualifiedId = UnqualifiedName - Arity },
-	{ Id = SymName - _ },
-	{ ModuleQualifier = find_module_qualifier(SymName) },
-	( { map__search(IdSet0, UnqualifiedId, MatchingNames0) } ->
-		{ MatchingNames1 = MatchingNames0 }
+recompilation__record_used_item(ItemType, Id, QualifiedId, !Info) :-
+	(
+		% Don't record builtin items (QualifiedId may be unqualified
+		% for predicates, functions and functors because they aren't
+		% qualified until after typechecking).
+		ItemType \= predicate,
+		ItemType \= function,
+		ItemType \= functor,
+		QualifiedId = unqualified(_) - _
+	->
+		true
 	;
-		{ map__init(MatchingNames1) }
-	),
-	( { map__contains(MatchingNames1, ModuleQualifier) } ->
-		[]
-	;
-		{ map__det_insert(MatchingNames1, ModuleQualifier,
-			ModuleName, MatchingNames) },
-		{ map__set(IdSet0, UnqualifiedId,
-			MatchingNames, IdSet) },
-		{ ItemSet = update_ids(ItemSet0, ItemType, IdSet) },
-		^ used_items := ItemSet
-	)
-    ).
+		ItemSet0 = !.Info ^ used_items,
+		IdSet0 = extract_ids(ItemSet0, ItemType),
+		QualifiedId = QualifiedName - Arity,
+		unqualify_name(QualifiedName, UnqualifiedName),
+		ModuleName = find_module_qualifier(QualifiedName),
+		UnqualifiedId = UnqualifiedName - Arity,
+		Id = SymName - _,
+		ModuleQualifier = find_module_qualifier(SymName),
+		( map__search(IdSet0, UnqualifiedId, MatchingNames0) ->
+			MatchingNames1 = MatchingNames0
+		;
+			map__init(MatchingNames1)
+		),
+		( map__contains(MatchingNames1, ModuleQualifier) ->
+			true
+		;
+			map__det_insert(MatchingNames1, ModuleQualifier,
+				ModuleName, MatchingNames),
+			map__set(IdSet0, UnqualifiedId,
+				MatchingNames, IdSet),
+			ItemSet = update_ids(ItemSet0, ItemType, IdSet),
+			!:Info = !.Info ^ used_items := ItemSet
+		)
+	).
 
-recompilation__record_expanded_items(Item, ExpandedItems, Info0, Info) :-
+recompilation__record_expanded_items(Item, ExpandedItems, !Info) :-
 	( set__empty(ExpandedItems) ->
-		Info = Info0
+		true
 	;
-		DepsMap0 = Info0 ^ dependencies,
+		DepsMap0 = !.Info ^ dependencies,
 		( map__search(DepsMap0, Item, Deps0) ->
 			Deps1 = Deps0
 		;
@@ -418,7 +411,7 @@ recompilation__record_expanded_items(Item, ExpandedItems, Info0, Info) :-
 		),
 		set__union(Deps1, ExpandedItems, Deps),
 		map__set(DepsMap0, Item, Deps, DepsMap),
-		Info = Info0 ^ dependencies := DepsMap
+		!:Info = !.Info ^ dependencies := DepsMap
 	).
 
 %-----------------------------------------------------------------------------%

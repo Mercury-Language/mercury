@@ -40,9 +40,8 @@
 	% 	`[Var1::Mode1, ..., VarN::ModeN] is Det'
 	% part.
 	%
-:- pred parse_lambda_expression(term, list(prog_term),
-		list(mode), determinism).
-:- mode parse_lambda_expression(in, out, out, out) is semidet.
+:- pred parse_lambda_expression(term::in, list(prog_term)::out,
+	list(mode)::out, determinism::out) is semidet.
 
 	% parse_pred_expression/3 converts the first argument to a :-/2
 	% higher-order pred expression into a list of variables, a list
@@ -50,9 +49,8 @@
 	% a variant on parse_lambda_expression with a different syntax:
 	% 	`(pred(Var1::Mode1, ..., VarN::ModeN) is Det :- Goal)'.
 	%
-:- pred parse_pred_expression(term, lambda_eval_method, list(prog_term),
-		list(mode), determinism).
-:- mode parse_pred_expression(in, out, out, out, out) is semidet.
+:- pred parse_pred_expression(term::in, lambda_eval_method::out,
+	list(prog_term)::out, list(mode)::out, determinism::out) is semidet.
 
 	% parse_dcg_pred_expression/3 converts the first argument to a -->/2
 	% higher-order dcg pred expression into a list of arguments, a list
@@ -62,9 +60,8 @@
 	%	`(pred(Var1::Mode1, ..., VarN::ModeN, DCG0Mode, DCGMode)
 	%		is Det --> Goal)'.
 	%
-:- pred parse_dcg_pred_expression(term, lambda_eval_method, list(prog_term),
-		list(mode), determinism).
-:- mode parse_dcg_pred_expression(in, out, out, out, out) is semidet.
+:- pred parse_dcg_pred_expression(term::in, lambda_eval_method::out,
+	list(prog_term)::out, list(mode)::out, determinism::out) is semidet.
 
 	% parse_func_expression/3 converts the first argument to a :-/2
 	% higher-order func expression into a list of arguments, a list
@@ -83,15 +80,14 @@
 	% or
 	% 	`(func(Var1, ..., VarN) = (VarN1). '
 	%
-:- pred parse_func_expression(term, lambda_eval_method, list(prog_term),
-		list(mode), determinism).
-:- mode parse_func_expression(in, out, out, out, out) is semidet.
+:- pred parse_func_expression(term::in, lambda_eval_method::out,
+	list(prog_term)::out, list(mode)::out, determinism::out) is semidet.
 
 	% parse_lambda_eval_method/3 extracts the `aditi_bottom_up'
 	% annotation (if any) from a pred expression and returns the
 	% rest of the term.
-:- pred parse_lambda_eval_method(term(T), lambda_eval_method, term(T)).
-:- mode parse_lambda_eval_method(in, out, out) is det.
+:- pred parse_lambda_eval_method(term(T)::in, lambda_eval_method::out,
+	term(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -178,13 +174,9 @@ parse_goal_2(";", [A0, B0], R, !V) :-
 		parse_goal(B0, B, !V),
 		R = (A;B)
 	).
-parse_goal_2("else", [
-		    term__functor(term__atom("if"), [
-			term__functor(term__atom("then"), [A0, B0], _)
-		    ], _),
-		    C0
-		],
-		if_then_else(Vars, StateVars, A, B, C), !V) :-
+parse_goal_2("else", [IF, C0], if_then_else(Vars, StateVars, A, B, C), !V) :-
+	IF = term__functor(term__atom("if"),
+		[term__functor(term__atom("then"), [A0, B0], _)], _),
 	parse_some_vars_goal(A0, Vars, StateVars, A, !V),
 	parse_goal(B0, B, !V),
 	parse_goal(C0, C, !V).
@@ -307,14 +299,14 @@ parse_some_vars_goal(A0, Vars, StateVars, A, !VarSet) :-
 
 parse_lambda_expression(LambdaExpressionTerm, Args, Modes, Det) :-
 	LambdaExpressionTerm = term__functor(term__atom("is"),
-				[LambdaArgsTerm, DetTerm], _),
+		[LambdaArgsTerm, DetTerm], _),
 	DetTerm = term__functor(term__atom(DetString), [], _),
 	standard_det(DetString, Det),
 	parse_lambda_args(LambdaArgsTerm, Args, Modes),
 	inst_var_constraints_are_consistent_in_modes(Modes).
 
-:- pred parse_lambda_args(term, list(prog_term), list(mode)).
-:- mode parse_lambda_args(in, out, out) is semidet.
+:- pred parse_lambda_args(term::in, list(prog_term)::out, list(mode)::out)
+	is semidet.
 
 parse_lambda_args(Term, Args, Modes) :-
 	( Term = term__functor(term__atom("[|]"), [Head, Tail], _Context) ->
@@ -331,8 +323,7 @@ parse_lambda_args(Term, Args, Modes) :-
 		parse_lambda_arg(Term, Arg, Mode)
 	).
 
-:- pred parse_lambda_arg(term, prog_term, mode).
-:- mode parse_lambda_arg(in, out, out) is semidet.
+:- pred parse_lambda_arg(term::in, prog_term::out, (mode)::out) is semidet.
 
 parse_lambda_arg(Term, ArgTerm, Mode) :-
 	Term = term__functor(term__atom("::"), [ArgTerm0, ModeTerm], _),
@@ -394,7 +385,6 @@ parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 		list__map(term__coerce, Args1, Args)
 	).
 
-
 parse_func_expression(FuncTerm, EvalMethod, Args, Modes, Det) :-
 	%
 	% parse a func expression with unspecified modes and determinism
@@ -433,8 +423,8 @@ parse_lambda_eval_method(Term0, EvalMethod, Term) :-
 		Term = Term0
 	).
 
-:- pred parse_pred_expr_args(list(term), list(prog_term), list(mode)).
-:- mode parse_pred_expr_args(in, out, out) is semidet.
+:- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
+	list(mode)::out) is semidet.
 
 parse_pred_expr_args([], [], []).
 parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
@@ -444,9 +434,8 @@ parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 	% parse_dcg_pred_expr_args is like parse_pred_expr_args except
 	% that the last two elements of the list are the modes of the
 	% two dcg arguments.
-:- pred parse_dcg_pred_expr_args(list(term), list(prog_term),
-		list(mode)).
-:- mode parse_dcg_pred_expr_args(in, out, out) is semidet.
+:- pred parse_dcg_pred_expr_args(list(term)::in, list(prog_term)::out,
+	list(mode)::out) is semidet.
 
 parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
 		[DCGModeA, DCGModeB]) :-

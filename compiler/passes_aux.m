@@ -30,11 +30,10 @@
 				proc_info, proc_info))
 		;	update_proc_io(pred(
 				pred_id, proc_id, module_info,
-				proc_info, proc_info, io__state, io__state))
+				proc_info, proc_info, io, io))
 		;	update_proc_error(pred(
 				pred_id, proc_id, module_info, module_info,
-				proc_info, proc_info, int, int,
-				io__state, io__state))
+				proc_info, proc_info, int, int, io, io))
 		;	update_pred_error(pred_error_task)
 		;	update_module(pred(
 				pred_id, proc_id, pred_info,
@@ -42,8 +41,7 @@
 				module_info, module_info))
 		;	update_module_io(pred(
 				pred_id, proc_id, proc_info, proc_info,
-				module_info, module_info,
-				io__state, io__state))
+				module_info, module_info, io, io))
 		% It would be better to use an existentially-quantified type
 		% rather than `univ' here, but the current version of Mercury
 		% doesn't support existentially-quantified types.
@@ -55,7 +53,7 @@
 
 :- type pred_error_task ==
 		pred(pred_id, module_info, module_info, pred_info, pred_info,
-			int, int, io__state, io__state).
+			int, int, io, io).
 
 % Note that update_module_cookie causes some difficulties.
 % Ideally, it should be implemented using existential types:
@@ -186,8 +184,7 @@
 	% a Unix shell to be present, so it won't work properly
 	% with native Windows.
 :- pred invoke_shell_command(io__output_stream::in,
-	command_verbosity::in, string::in, bool::out,
-	io__state::di, io__state::uo) is det.
+	command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
 
 	% invoke_shell_command(ErrorStream, Verbosity, Command,
 	%		ProcessOutput, Succeeded)
@@ -201,7 +198,7 @@
 	% with native Windows.
 :- pred invoke_shell_command(io__output_stream::in,
 	command_verbosity::in, string::in, maybe(string)::in, bool::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% invoke_system_command(ErrorStream, Verbosity, Command, Succeeded)
 	%
@@ -209,8 +206,7 @@
 	% Both standard and error output will go to the
 	% specified output stream.
 :- pred invoke_system_command(io__output_stream::in,
-	command_verbosity::in, string::in, bool::out,
-	io__state::di, io__state::uo) is det.
+	command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
 
 	% invoke_system_command(ErrorStream, Verbosity, Command,
 	%		ProcessOutput, Succeeded)
@@ -221,14 +217,14 @@
 	% `ProcessOutput'.
 :- pred invoke_system_command(io__output_stream::in,
 	command_verbosity::in, string::in, maybe(string)::in, bool::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% Make a command string, which needs to be invoked in a shell
 	% environment.
 :- pred make_command_string(string::in, quote_char::in, string::out) is det.
 
 	% If the bool is `no' set the exit status to 1.
-:- pred maybe_set_exit_status(bool::in, io__state::di, io__state::uo) is det.
+:- pred maybe_set_exit_status(bool::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 

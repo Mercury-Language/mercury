@@ -302,7 +302,7 @@ main(Args, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gc_init(io__state::di, io__state::uo) is det.
+:- pred gc_init(io::di, io::uo) is det.
 
 % This version is only used if there is no matching foreign_proc version.
 gc_init(!IO).
@@ -1241,12 +1241,12 @@ halt_at_module_error(HaltSyntax, some_module_errors) :- HaltSyntax = yes.
 module_to_link(ModuleName - _Items, ModuleToLink) :-
 	module_name_to_file_name(ModuleName, ModuleToLink).
 
-:- type compile == pred(bool, io__state, io__state).
+:- type compile == pred(bool, io, io).
 :- inst compile == (pred(out, di, uo) is det).
 
 :- pred compile_with_module_options(module_name::in, options_variables::in,
-	list(string)::in, compile::in(compile),
-	bool::out, io__state::di, io__state::uo) is det.
+	list(string)::in, compile::in(compile), bool::out, io::di, io::uo)
+	is det.
 
 compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
 		Compile, Succeeded, !IO) :-
@@ -2087,8 +2087,8 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 		)
 	).
 
-:- pred mercury_compile__maybe_write_optfile(bool::in, module_info::in,
-	module_info::out, io__state::di, io__state::uo) is det.
+:- pred mercury_compile__maybe_write_optfile(bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 	globals__io_get_globals(Globals, !IO),
@@ -2393,8 +2393,8 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__maybe_generate_rl_bytecode(bool::in,
-		maybe(rl_file)::out, module_info::in, module_info::out,
-		io__state::di, io__state::uo) is det.
+	maybe(rl_file)::out, module_info::in, module_info::out,
+	io::di, io::uo) is det.
 
 mercury_compile__maybe_generate_rl_bytecode(Verbose, MaybeRLFile,
 		!ModuleInfo, !IO) :-
@@ -2450,9 +2450,8 @@ mercury_compile__maybe_generate_rl_bytecode(Verbose, MaybeRLFile,
 		MaybeRLFile = no
 	).
 
-:- pred mercury_compile__generate_aditi_proc_info(module_info,
-		list(rtti_data)).
-:- mode mercury_compile__generate_aditi_proc_info(in, out) is det.
+:- pred mercury_compile__generate_aditi_proc_info(module_info::in,
+	list(rtti_data)::out) is det.
 
 mercury_compile__generate_aditi_proc_info(HLDS, AditiProcInfoRttiData) :-
 	module_info_aditi_top_down_procs(HLDS, Procs),
@@ -2464,8 +2463,7 @@ mercury_compile__generate_aditi_proc_info(HLDS, AditiProcInfoRttiData) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__backend_pass(module_info::in, module_info::out,
-	global_data::out, list(c_procedure)::out,
-	io::di, io::uo) is det.
+	global_data::out, list(c_procedure)::out, io::di, io::uo) is det.
 
 mercury_compile__backend_pass(!HLDS, GlobalData, LLDS, !IO) :-
 	module_info_name(!.HLDS, ModuleName),

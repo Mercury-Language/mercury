@@ -60,7 +60,7 @@ transform__reschedule_conj([Goal0 | Goals0], Goals, !ModeInfo) :-
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 
-	delay_info__wakeup_goals(DelayInfo0, WokenGoals, DelayInfo1),
+	delay_info__wakeup_goals(WokenGoals, DelayInfo0, DelayInfo1),
 	mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 	( WokenGoals \= [] ->
 		list__append(WokenGoals, [Goal0 | Goals0], Goals1),

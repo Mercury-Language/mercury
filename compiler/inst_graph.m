@@ -126,8 +126,7 @@
 
 	% Print the given inst_graph over the given varset in a format
 	% suitable for debugging output.
-:- pred dump(inst_graph::in, prog_varset::in, io__state::di, io__state::uo)
-	is det.
+:- pred dump(inst_graph::in, prog_varset::in, io::di, io::uo) is det.
 
 	% XXX this should probably go in list.m.
 :- pred corresponding_members(list(T)::in, list(U)::in, T::out, U::out)
@@ -372,7 +371,7 @@ dump(InstGraph, VarSet, !IO) :-
 	map__foldl(dump_node(VarSet), InstGraph, !IO).
 
 :- pred dump_node(prog_varset::in, prog_var::in, node::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 dump_node(VarSet, Var, Node, !IO) :-
 	Node = node(Functors, MaybeParent),
@@ -389,7 +388,7 @@ dump_node(VarSet, Var, Node, !IO) :-
 	map__foldl(dump_functor(VarSet), Functors, !IO).
 
 :- pred dump_functor(prog_varset::in, cons_id::in, list(prog_var)::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 dump_functor(VarSet, ConsId, Args, !IO) :-
 	io__write_string("%%\t", !IO),
@@ -404,8 +403,7 @@ dump_functor(VarSet, ConsId, Args, !IO) :-
 	),
 	io__nl(!IO).
 
-:- pred dump_var(prog_varset::in, prog_var::in,
-	io__state::di, io__state::uo) is det.
+:- pred dump_var(prog_varset::in, prog_var::in, io::di, io::uo) is det.
 
 dump_var(VarSet, Var, !IO) :-
 	term_io__write_variable(Var, VarSet, !IO).

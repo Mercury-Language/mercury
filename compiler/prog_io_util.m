@@ -300,7 +300,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
 
 		Term = term__functor(term__atom("is"), [EqTerm, DetTerm], _),
 		EqTerm = term__functor(term__atom("="),
-					[FuncTerm, RetModeTerm], _),
+			[FuncTerm, RetModeTerm], _),
 		FuncTerm = term__functor(term__atom("func"), ArgModesTerms, _)
 	->
 		DetTerm = term__functor(term__atom(DetString), [], _),
@@ -360,7 +360,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 
 		Name = "is", Args0 = [EqTerm, DetTerm],
 		EqTerm = term__functor(term__atom("="),
-					[FuncTerm, RetModeTerm], _),
+			[FuncTerm, RetModeTerm], _),
 		FuncTerm = term__functor(term__atom("func"), ArgModesTerm, _)
 	->
 		DetTerm = term__functor(term__atom(DetString), [], _),
@@ -393,7 +393,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
 		% Do not allow nested constrained_inst_vars.
 		convert_inst(no_allow_constrained_inst_var, InstTerm, Inst),
 		Result = constrained_inst_vars(set__make_singleton_set(
-				term__coerce_var(Var)), Inst)
+			term__coerce_var(Var)), Inst)
 	% anything else must be a user-defined inst
 	;
 		parse_qualified_term(Term, Term, "inst",

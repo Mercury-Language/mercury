@@ -23,9 +23,8 @@
 :- import_module parse_tree__prog_io_util.
 :- import_module varset, term.
 
-:- pred parse_dcg_clause(module_name, varset, term, term,
-		prog_context, maybe_item_and_context).
-:- mode parse_dcg_clause(in, in, in, in, in, out) is det.
+:- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
+	prog_context::in, maybe_item_and_context::out) is det.
 
 	% parse_dcg_pred_goal(GoalTerm, Goal,
 	%	DCGVarInitial, DCGVarFinal, VarSet0, Varset)
@@ -156,7 +155,7 @@ parse_dcg_goal_2("{}", [G0 | Gs], Context, Goal, !VarSet, !Counter, !Var) :-
 	% The parser treats '{}/N' terms as tuples, so we need
 	% to undo the parsing of the argument conjunction here.
 	list_to_conjunction(Context, G0, Gs, G),
-        parse_goal(G, Goal, !VarSet).
+	parse_goal(G, Goal, !VarSet).
 parse_dcg_goal_2("impure", [G], _, Goal, !VarSet, !Counter, !Var) :-
 	parse_dcg_goal_with_purity(G, (impure), Goal, !VarSet, !Counter, !Var).
 parse_dcg_goal_2("semipure", [G], _, Goal, !VarSet, !Counter, !Var) :-
@@ -209,9 +208,8 @@ parse_dcg_goal_2(":=", [A0], Context, Goal, !VarSet, !Counter, _Var0, Var) :-
 % ******/
 
 	% If-then (NU-Prolog syntax).
-parse_dcg_goal_2("if", [
-			term__functor(term__atom("then"), [Cond0, Then0], _)
-		], Context, Goal, !VarSet, !Counter, Var0, Var) :-
+parse_dcg_goal_2("if", [term__functor(term__atom("then"), [Cond0, Then0], _)],
+		Context, Goal, !VarSet, !Counter, Var0, Var) :-
 	parse_dcg_if_then(Cond0, Then0, Context, SomeVars, StateVars,
 		Cond, Then, !VarSet, !Counter, Var0, Var),
 	( Var = Var0 ->
@@ -266,12 +264,10 @@ parse_dcg_goal_2(";", [A0, B0], Context, Goal, !VarSet, !Counter, Var0, Var) :-
 	).
 
 	% If-then-else (NU-Prolog syntax).
-parse_dcg_goal_2("else", [
-		    term__functor(term__atom("if"), [
-			term__functor(term__atom("then"), [Cond0, Then0], _)
-		    ], Context),
-		    Else0
-		], _, Goal, !VarSet, !Counter, !Var) :-
+parse_dcg_goal_2("else", [IF, Else0], _, Goal, !VarSet, !Counter, !Var) :-
+	IF = term__functor(term__atom("if"),
+		[term__functor(term__atom("then"), [Cond0, Then0], _)],
+		Context),
 	parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
 		!VarSet, !Counter, !Var).
 
@@ -489,9 +485,9 @@ term_list_append_term(List0, Term, List) :-
 		List = Term
 	;
 		List0 = term__functor(term__atom("[|]"),
-				[Head, Tail0], Context2),
+			[Head, Tail0], Context2),
 		List = term__functor(term__atom("[|]"),
-				[Head, Tail], Context2),
+			[Head, Tail], Context2),
 		term_list_append_term(Tail0, Term, Tail)
 	).
 

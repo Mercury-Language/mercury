@@ -500,19 +500,19 @@ propagate_type_into_mode(Type, ModuleInfo, Mode0, Mode) :-
 :- pred propagate_type_into_inst_lazily((type)::in, tsubst::in,
 	module_info::in, (inst)::in, (inst)::out) is det.
 
-% 	% XXX We ought to expand things eagerly here, using the commented
-% 	% out code below.  However, that causes efficiency problems,
-% 	% so for the moment it is disabled.
+%	% XXX We ought to expand things eagerly here, using the commented
+%	% out code below.  However, that causes efficiency problems,
+%	% so for the moment it is disabled.
 % propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
-% 	apply_type_subst(Type0, Subst, Type),
-% 	(
-% 	        type_constructors(Type, ModuleInfo, Constructors)
-% 	->
-% 	        propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
-% 	               Inst)
-% 	;
-% 	        Inst = Inst0
-% 	).
+%	apply_type_subst(Type0, Subst, Type),
+%	(
+%	        type_constructors(Type, ModuleInfo, Constructors)
+%	->
+%	        propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
+%	               Inst)
+%	;
+%	        Inst = Inst0
+%	).
 
 propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
 	propagate_ctor_info_lazily(Inst0, Type, Subst, ModuleInfo, Inst).
@@ -718,27 +718,8 @@ propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 	(
 		type_is_tuple(Type, TupleArgTypes)
 	->
-		list__map(
-		    (pred(BoundInst0::in, BoundInst::out) is det :-
-			BoundInst0 = functor(Functor, ArgInsts0),
-			(
-				Functor = cons(unqualified("{}"), _),
-				list__length(ArgInsts0,
-					list__length(TupleArgTypes))
-			->
-				map__init(Subst),
-				propagate_types_into_inst_list(TupleArgTypes,
-					Subst, ModuleInfo, ArgInsts0, ArgInsts)
-			;
-				% The bound_inst's arity does not match the
-				% tuple's arity, so leave it alone. This can
-				% only happen in a user defined bound_inst.
-				% A mode error should be reported if anything
-				% tries to match with the inst.
-				ArgInsts = ArgInsts0
-			),
-			BoundInst = functor(Functor, ArgInsts)
-		    ), BoundInsts0, BoundInsts)
+		list__map(propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes),
+			BoundInsts0, BoundInsts)
 	;
 		type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
 		TypeCtor = qualified(TypeModule, _) - _,
@@ -757,6 +738,30 @@ propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 		% Builtin types don't need processing.
 		BoundInsts = BoundInsts0
 	).
+
+:- pred propagate_ctor_info_tuple(module_info::in, list(type)::in,
+	bound_inst::in, bound_inst::out) is det.
+
+propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
+	BoundInst0 = functor(Functor, ArgInsts0),
+	(
+		Functor = cons(unqualified("{}"), _),
+		list__length(ArgInsts0, ArgInstsLen),
+		list__length(TupleArgTypes, TupleArgTypesLen),
+		ArgInstsLen = TupleArgTypesLen
+	->
+		map__init(Subst),
+		propagate_types_into_inst_list(TupleArgTypes,
+			Subst, ModuleInfo, ArgInsts0, ArgInsts)
+	;
+		% The bound_inst's arity does not match the
+		% tuple's arity, so leave it alone. This can
+		% only happen in a user defined bound_inst.
+		% A mode error should be reported if anything
+		% tries to match with the inst.
+		ArgInsts = ArgInsts0
+	),
+	BoundInst = functor(Functor, ArgInsts).
 
 :- pred propagate_ctor_info_3(list(bound_inst)::in, module_name::in,
 	list(constructor)::in, tsubst::in, module_info::in,
@@ -876,7 +881,7 @@ recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstVarSet,
 	recompute_info::in, recompute_info::out) is det.
 
 recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
-		VarTypes, InstMap0, InstMapDelta, RI0, RI) :-
+		VarTypes, InstMap0, InstMapDelta, !RI) :-
 	(
 		RecomputeAtomic = no,
 		goal_is_atomic(Goal0),
@@ -884,14 +889,13 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 			% Lambda expressions always need to be processed.
 	->
 		Goal = Goal0,
-		GoalInfo1 = GoalInfo0,
-		RI0 = RI
+		GoalInfo1 = GoalInfo0
 	;
 		recompute_instmap_delta_2(RecomputeAtomic, Goal0, GoalInfo0,
-			Goal, VarTypes, InstMap0, InstMapDelta0, RI0, RI),
+			Goal, VarTypes, InstMap0, InstMapDelta0, !RI),
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		instmap_delta_restrict(InstMapDelta0,
-			NonLocals, InstMapDelta1),
+		instmap_delta_restrict(InstMapDelta0, NonLocals,
+			InstMapDelta1),
 		goal_info_set_instmap_delta(GoalInfo0,
 			InstMapDelta1, GoalInfo1)
 	),
@@ -1226,8 +1230,7 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
 		mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
 		(
 			abstractly_unify_inst(dead, ArgInst0, FinalInst,
-				fake_unify, !.ModuleInfo, UnifyInst, _,
-				!:ModuleInfo)
+				fake_unify, UnifyInst, _, !ModuleInfo)
 		->
 			Mode = (ArgInst0 -> UnifyInst)
 		;
@@ -1373,7 +1376,7 @@ fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
 %-----------------------------------------------------------------------------%
 
 partition_args(_, [], [_|_], _, _) :-
-        error("partition_args").
+	error("partition_args").
 partition_args(_, [_|_], [], _, _) :-
 	error("partition_args").
 partition_args(_, [], [], [], []).

@@ -31,8 +31,7 @@
 % of each predicate, and determine which modes are needed for each predicate.
 
 :- pred mode_ordering(pred_constraint_map::in, list(list(pred_id))::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred mode_ordering__proc(inst_graph::in, mode_constraint::in,
 	mode_constraint_info::in, module_info::in, pred_constraint_map::in,
@@ -468,8 +467,8 @@ pred_info_create_proc_info_for_mode_decl_constraint(PredInfo0,
 	).
 
 :- pred find_matching_proc(pred_id::in, list(prog_var)::in, set(prog_var)::in,
-	proc_id::out, set(prog_var)::out, mode_ordering__info::in,
-	mode_ordering__info::out) is det.
+	proc_id::out, set(prog_var)::out,
+	mode_ordering__info::in, mode_ordering__info::out) is det.
 
 find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars) -->
 	ModuleInfo =^ module_info,
@@ -538,16 +537,15 @@ find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
 		CalleeInstGraph, MCInfo, ProcId, ConsumingVars)
 	).
 
-:- pred report_mode_errors(module_info::in, io__state::di, io__state::uo)
-		is det.
+:- pred report_mode_errors(module_info::in, io::di, io::uo) is det.
 
-report_mode_errors(_) --> [].
+report_mode_errors(_, !IO).
 	% XXX
-	%io__stderr_stream(StdErr),
-	%io__write_string(StdErr, "Mode error reporting NYI").
+	%io__stderr_stream(StdErr, !IO),
+	%io__write_string(StdErr, "Mode error reporting NYI", !IO).
 
 :- pred lookup_pred_constraint(pred_constraint_map::in, pred_id::in,
-		mode_constraint::out, mode_constraint_info::out) is det.
+	mode_constraint::out, mode_constraint_info::out) is det.
 
 lookup_pred_constraint(PCM, PredId, MC, MCInfo) :-
 	map__lookup(PCM, PredId, pci(MC, MCInfo)).

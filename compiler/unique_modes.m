@@ -251,7 +251,7 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
 		; Inst1 = any(unique)
 		)
 	->
-		make_mostly_uniq_inst(Inst0, ModuleInfo0, Inst, ModuleInfo),
+		make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),
 		mode_info_set_module_info(ModuleInfo, !ModeInfo),
 		instmap__set(InstMap0, Var, Inst, InstMap),
 		mode_info_set_instmap(InstMap, !ModeInfo)
@@ -732,8 +732,8 @@ unique_modes__check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
 	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	instmap__lookup_vars(SharedList, InstMap0, VarInsts),
 	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-	make_shared_inst_list(VarInsts, ModuleInfo0,
-		SharedVarInsts, ModuleInfo1),
+	make_shared_inst_list(VarInsts, SharedVarInsts,
+		ModuleInfo0, ModuleInfo1),
 	mode_info_set_module_info(ModuleInfo1, !ModeInfo),
 	instmap__set_vars(InstMap0, SharedList, SharedVarInsts, InstMap1),
 	mode_info_set_instmap(InstMap1, !ModeInfo).

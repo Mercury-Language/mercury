@@ -20,25 +20,23 @@
 :- import_module list, varset, term.
 
 	% parse a typeclass declaration.
-:- pred parse_typeclass(module_name, varset, list(term), maybe1(item)).
-:- mode parse_typeclass(in, in, in, out) is semidet.
+:- pred parse_typeclass(module_name::in, varset::in, list(term)::in,
+	maybe1(item)::out) is semidet.
 
 	% parse an instance declaration.
-:- pred parse_instance(module_name, varset, list(term), maybe1(item)).
-:- mode parse_instance(in, in, in, out) is semidet.
+:- pred parse_instance(module_name::in, varset::in, list(term)::in,
+	maybe1(item)::out) is semidet.
 
 	% parse a list of class constraints
-:- pred parse_class_constraints(module_name, term,
-		maybe1(list(class_constraint))).
-:- mode parse_class_constraints(in, in, out) is det.
+:- pred parse_class_constraints(module_name::in, term::in,
+	maybe1(list(class_constraint))::out) is det.
 
 	% parse a list of class and inst constraints
-:- pred parse_class_and_inst_constraints(module_name, term,
-		maybe_class_and_inst_constraints).
-:- mode parse_class_and_inst_constraints(in, in, out) is det.
+:- pred parse_class_and_inst_constraints(module_name::in, term::in,
+	maybe_class_and_inst_constraints::out) is det.
 
 :- type maybe_class_and_inst_constraints ==
-		maybe2(list(class_constraint), inst_var_sub).
+	maybe2(list(class_constraint), inst_var_sub).
 
 :- implementation.
 
@@ -63,8 +61,8 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		parse_class_name(ModuleName, Arg, VarSet, Result)
 	).
 
-:- pred parse_non_empty_class(module_name, term, term, varset, maybe1(item)).
-:- mode parse_non_empty_class(in, in, in, in, out) is det.
+:- pred parse_non_empty_class(module_name::in, term::in, term::in, varset::in,
+	maybe1(item)::out) is det.
 
 parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
 	varset__coerce(VarSet, TVarSet),
@@ -92,8 +90,8 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_name(module_name, term, varset, maybe1(item)).
-:- mode parse_class_name(in, in, in, out) is det.
+:- pred parse_class_name(module_name::in, term::in, varset::in,
+	maybe1(item)::out) is det.
 
 parse_class_name(ModuleName, Arg, VarSet, Result) :-
 	(
@@ -106,8 +104,8 @@ parse_class_name(ModuleName, Arg, VarSet, Result) :-
 		parse_unconstrained_class(ModuleName, Arg, TVarSet, Result)
 	).
 
-:- pred parse_constrained_class(module_name, term, term, varset, maybe1(item)).
-:- mode parse_constrained_class(in, in, in, in, out) is det.
+:- pred parse_constrained_class(module_name::in, term::in, term::in,
+	varset::in, maybe1(item)::out) is det.
 
 parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 	varset__coerce(VarSet, TVarSet),
@@ -135,8 +133,9 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 				list__member(Var, ConstrainedVars),
 				\+ list__member(Var, Vars)
 			->
-				Result = error(
-"type variable in superclass constraint is not a parameter of this type class",
+				Result = error("type variable in " ++
+					"superclass constraint is not " ++
+					"a parameter of this type class",
 					Constraints)
 			;
 				Result = ok(typeclass(ConstraintList, Name,
@@ -152,18 +151,16 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_superclass_constraints(module_name, term,
-		maybe1(list(class_constraint))).
-:- mode parse_superclass_constraints(in, in, out) is det.
+:- pred parse_superclass_constraints(module_name::in, term::in,
+	maybe1(list(class_constraint))::out) is det.
 
 parse_superclass_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,
-		"constraints on class declaration may only constrain type variables and ground types",
-		Result).
+		"constraints on class declaration may only constrain " ++
+		"type variables and ground types", Result).
 
-:- pred parse_unconstrained_class(module_name, term, tvarset, maybe1(item)).
-:- mode parse_unconstrained_class(in, in, in, out) is det.
-
+:- pred parse_unconstrained_class(module_name::in, term::in, tvarset::in,
+	maybe1(item)::out) is det.
 
 parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
 	parse_implicitly_qualified_term(ModuleName,
@@ -180,18 +177,16 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
 			Result = ok(typeclass([], ClassName, Vars,
 					abstract, TVarSet))
 		;
-			Result = error(
-			"expected distinct variables as class parameters",
-				Name)
+			Result = error("expected distinct variables " ++
+				"as class parameters", Name)
 		)
 	;
 		MaybeClassName = error(String, Term),
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_methods(module_name, term, varset,
-		maybe1(list(class_method))).
-:- mode parse_class_methods(in, in, in, out) is det.
+:- pred parse_class_methods(module_name::in, term::in, varset::in,
+	maybe1(list(class_method))::out) is det.
 
 parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 	(
@@ -211,8 +206,7 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 		Result = error("expected list of class methods", Methods)
 	).
 
-:- pred list_term_to_term_list(term, list(term)).
-:- mode list_term_to_term_list(in, out) is semidet.
+:- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
 
 list_term_to_term_list(Methods, MethodList) :-
 	(
@@ -225,9 +219,8 @@ list_term_to_term_list(Methods, MethodList) :-
 	).
 
 
-:- pred item_to_class_method(maybe2(item, prog_context), term,
-	maybe1(class_method)).
-:- mode item_to_class_method(in, in, out) is det.
+:- pred item_to_class_method(maybe2(item, prog_context)::in, term::in,
+	maybe1(class_method)::out) is det.
 
 item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
@@ -235,20 +228,20 @@ item_to_class_method(ok(Item, Context), Term, Result) :-
 		Item = pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L)
 	->
 		Result = ok(pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L,
-				Context))
+			Context))
 	;
 		Item = pred_or_func_mode(A, B, C, D, E, F, G)
 	->
 		Result = ok(pred_or_func_mode(A, B, C, D, E, F, G, Context))
 	;
-		Result = error("Only pred, func and mode declarations allowed in class interface", Term)
+		Result = error("Only pred, func and mode declarations " ++
+			"allowed in class interface", Term)
 	).
 
 	% from a list of maybe1s, search through until you find an error.
 	% If an error is found, return it.
 	% If no error is found, return ok(the original elements).
-:- pred find_errors(list(maybe1(T)), maybe1(list(T))).
-:- mode find_errors(in, out) is det.
+:- pred find_errors(list(maybe1(T))::in, maybe1(list(T))::out) is det.
 
 find_errors([], ok([])).
 find_errors([X|Xs], Result) :-
@@ -283,9 +276,8 @@ parse_class_and_inst_constraints(ModuleName, ConstraintsTerm, Result) :-
 
 % Parse constraints which can only constrain type variables and ground types.
 
-:- pred parse_simple_class_constraints(module_name, term, string,
-		maybe1(list(class_constraint))).
-:- mode parse_simple_class_constraints(in, in, in, out) is det.
+:- pred parse_simple_class_constraints(module_name::in, term::in, string::in,
+	maybe1(list(class_constraint))::out) is det.
 
 parse_simple_class_constraints(ModuleName, ConstraintsTerm, ErrorMessage,
 		Result) :-
@@ -293,9 +285,8 @@ parse_simple_class_constraints(ModuleName, ConstraintsTerm, ErrorMessage,
 		ErrorMessage, Result0),
 	extract_class_constraints(Result0, Result).
 
-:- pred parse_simple_class_and_inst_constraints(module_name, term, string,
-		maybe_class_and_inst_constraints).
-:- mode parse_simple_class_and_inst_constraints(in, in, in, out) is det.
+:- pred parse_simple_class_and_inst_constraints(module_name::in, term::in,
+	string::in, maybe_class_and_inst_constraints::out) is det.
 
 parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 		ErrorMessage, Result) :-
@@ -321,9 +312,8 @@ parse_simple_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 
 % Parse constraints which can constrain arbitrary types
 
-:- pred parse_arbitrary_class_and_inst_constraints(module_name, term,
-		maybe_class_and_inst_constraints).
-:- mode parse_arbitrary_class_and_inst_constraints(in, in, out) is det.
+:- pred parse_arbitrary_class_and_inst_constraints(module_name::in, term::in,
+	maybe_class_and_inst_constraints::out) is det.
 
 parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 		Result) :-
@@ -331,9 +321,8 @@ parse_arbitrary_class_and_inst_constraints(ModuleName, ConstraintsTerm,
 	parse_class_and_inst_constraint_list(ModuleName, ConstraintList,
 		Result).
 
-:- pred parse_class_and_inst_constraint_list(module_name, list(term),
-		maybe_class_and_inst_constraints).
-:- mode parse_class_and_inst_constraint_list(in, in, out) is det.
+:- pred parse_class_and_inst_constraint_list(module_name::in, list(term)::in,
+	maybe_class_and_inst_constraints::out) is det.
 
 parse_class_and_inst_constraint_list(_, [], ok([], map__init)).
 parse_class_and_inst_constraint_list(ModuleName, [C0|C0s], Result) :-
@@ -342,27 +331,25 @@ parse_class_and_inst_constraint_list(ModuleName, [C0|C0s], Result) :-
 	Result = combine_class_and_inst_constraints(Result0, Result1).
 
 :- func combine_class_and_inst_constraints(maybe1(class_or_inst_constraint),
-		maybe_class_and_inst_constraints) =
-		maybe_class_and_inst_constraints.
+	maybe_class_and_inst_constraints) = maybe_class_and_inst_constraints.
 
 combine_class_and_inst_constraints(error(String, Term), _) =
-		error(String, Term).
+	error(String, Term).
 combine_class_and_inst_constraints(ok(_), error(String, Term)) =
-		error(String, Term).
+	error(String, Term).
 combine_class_and_inst_constraints(ok(class_constraint(ClassConstraint)),
-			ok(ClassConstraints, InstConstraints)) =
-		ok([ClassConstraint | ClassConstraints], InstConstraints).
+		ok(ClassConstraints, InstConstraints)) =
+	ok([ClassConstraint | ClassConstraints], InstConstraints).
 combine_class_and_inst_constraints(ok(inst_constraint(InstVar, Inst)),
-			ok(ClassConstraints, InstConstraints)) =
-		ok(ClassConstraints, InstConstraints ^ elem(InstVar) := Inst).
+		ok(ClassConstraints, InstConstraints)) =
+	ok(ClassConstraints, InstConstraints ^ elem(InstVar) := Inst).
 
 :- type class_or_inst_constraint
 	--->	class_constraint(class_constraint)
 	;	inst_constraint(inst_var, inst).
 
-:- pred parse_class_or_inst_constraint(module_name, term,
-		maybe1(class_or_inst_constraint)).
-:- mode parse_class_or_inst_constraint(in, in, out) is det.
+:- pred parse_class_or_inst_constraint(module_name::in, term::in,
+	maybe1(class_or_inst_constraint)::out) is det.
 
 parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
 	(
@@ -383,8 +370,7 @@ parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
 			ConstraintTerm)
 	).
 
-:- pred parse_inst_constraint(term, inst_var, inst).
-:- mode parse_inst_constraint(in, out, out) is semidet.
+:- pred parse_inst_constraint(term::in, inst_var::out, (inst)::out) is semidet.
 
 parse_inst_constraint(Term, InstVar, Inst) :-
 	Term = term__functor(term__atom("=<"), [Arg1, Arg2], _),
@@ -392,9 +378,8 @@ parse_inst_constraint(Term, InstVar, Inst) :-
 	term__coerce_var(InstVar0, InstVar),
 	convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
 
-:- pred extract_class_constraints(maybe_class_and_inst_constraints,
-		maybe1(list(class_constraint))).
-:- mode extract_class_constraints(in, out) is det.
+:- pred extract_class_constraints(maybe_class_and_inst_constraints::in,
+	maybe1(list(class_constraint))::out) is det.
 
 extract_class_constraints(ok(ClassConstraints, _), ok(ClassConstraints)).
 extract_class_constraints(error(String, Term), error(String, Term)).
@@ -415,8 +400,8 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Result) :-
 		parse_instance_name(ModuleName, Arg, TVarSet, Result)
 	).
 
-:- pred parse_instance_name(module_name, term, tvarset, maybe1(item)).
-:- mode parse_instance_name(in, in, in, out) is det.
+:- pred parse_instance_name(module_name::in, term::in, tvarset::in,
+	maybe1(item)::out) is det.
 
 parse_instance_name(ModuleName, Arg, TVarSet, Result) :-
 	(
@@ -428,8 +413,8 @@ parse_instance_name(ModuleName, Arg, TVarSet, Result) :-
 		parse_underived_instance(ModuleName, Arg, TVarSet, Result)
 	).
 
-:- pred parse_derived_instance(module_name, term, term, tvarset, maybe1(item)).
-:- mode parse_derived_instance(in, in, in, in, out) is det.
+:- pred parse_derived_instance(module_name::in, term::in, term::in,
+	tvarset::in, maybe1(item)::out) is det.
 
 parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 		Result) :-
@@ -447,7 +432,7 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 				ModName))
 		->
 			Result = ok(instance(ConstraintList, Name, Types, Body,
-					VarSet, ModName))
+				VarSet, ModName))
 		;
 				% if the item we get back isn't an instance,
 				% something has gone wrong...
@@ -460,17 +445,16 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 		Result = error(String, Term)
 	).
 
-:- pred parse_instance_constraints(module_name, term,
-		maybe1(list(class_constraint))).
-:- mode parse_instance_constraints(in, in, out) is det.
+:- pred parse_instance_constraints(module_name::in, term::in,
+	maybe1(list(class_constraint))::out) is det.
 
 parse_instance_constraints(ModuleName, Constraints, Result) :-
 	parse_simple_class_constraints(ModuleName, Constraints,
 		"constraints on instance declaration may only constrain type variables and ground types",
 		Result).
 
-:- pred parse_underived_instance(module_name, term, tvarset, maybe1(item)).
-:- mode parse_underived_instance(in, in, in, out) is det.
+:- pred parse_underived_instance(module_name::in, term::in, tvarset::in,
+	maybe1(item)::out) is det.
 
 parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 		% We don't give a default module name here since the instance
@@ -520,16 +504,17 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 				% XXX erroneous type
 			ErroneousTypes = [E0|_Es],
 			term__coerce(E0, E),
-			Result = error("expected type in instance declaration to be a functor with variables as args", E)
+			Result = error("expected type in " ++
+				"instance declaration to be " ++
+				"a functor with variables as args", E)
 		)
 	;
 		MaybeClassName = error(String, Term),
 		Result = error(String, Term)
 	).
 
-:- pred parse_non_empty_instance(module_name, term, term, varset, tvarset,
-		maybe1(item)).
-:- mode parse_non_empty_instance(in, in, in, in, in, out) is det.
+:- pred parse_non_empty_instance(module_name::in, term::in, term::in,
+	varset::in, tvarset::in, maybe1(item)::out) is det.
 
 parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
 	parse_instance_methods(ModuleName, Methods, VarSet, ParsedMethods),
@@ -559,8 +544,8 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred check_tvars_in_instance_constraint(maybe1(item), term, maybe1(item)).
-:- mode check_tvars_in_instance_constraint(in, in, out) is det.
+:- pred check_tvars_in_instance_constraint(maybe1(item)::in, term::in,
+	maybe1(item)::out) is det.
 
 check_tvars_in_instance_constraint(error(M,E), _, error(M, E)).
 check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
@@ -579,8 +564,8 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 			list__member(TVar, TVars),
 			\+ term__contains_var_list(Types, TVar)
 		->
-			Result = error(
-	"unbound type variable(s) in constraints on instance declaration",
+			Result = error("unbound type variable(s) " ++
+				"in constraints on instance declaration",
 				InstanceTerm)
 		;
 			Result = ok(Item)
@@ -589,9 +574,8 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 		error("check_tvars_in_constraint: expecting instance item")
 	).
 
-:- pred parse_instance_methods(module_name, term, varset,
-		maybe1(list(instance_method))).
-:- mode parse_instance_methods(in, in, in, out) is det.
+:- pred parse_instance_methods(module_name::in, term::in, varset::in,
+	maybe1(list(instance_method))::out) is det.
 
 parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
 	(
@@ -607,14 +591,13 @@ parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
 	).
 
 	% Turn the term into a method instance
-:- pred term_to_instance_method(module_name, varset, term,
-		maybe1(instance_method)).
-:- mode term_to_instance_method(in, in, in, out) is det.
+:- pred term_to_instance_method(module_name::in, varset::in, term::in,
+	maybe1(instance_method)::out) is det.
 
 term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 	(
 		MethodTerm = term__functor(term__atom("is"), [ClassMethodTerm,
-						InstanceMethod], TermContext)
+			InstanceMethod], TermContext)
 	->
 		(
 			ClassMethodTerm = term__functor(term__atom("pred"),
@@ -640,7 +623,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 					ArityInt, TermContext))
 			;
 				Result = error(
-				    "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
+					"expected `pred(<Name> / <Arity>) " ++
+					"is <InstanceMethod>'",
 					MethodTerm)
 			)
 		;
@@ -667,12 +651,14 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 					ArityInt, TermContext))
 			;
 				Result = error(
-				    "expected `func(<Name> / <Arity>) is <InstanceMethod>'",
+					"expected `func(<Name> / <Arity>) " ++
+					"is <InstanceMethod>'",
 					MethodTerm)
 			)
 		;
 			Result = error(
-				"expected `pred(<Name> / <Arity>) is <InstanceName>'",
+				"expected `pred(<Name> / <Arity>) " ++
+				"is <InstanceName>'",
 				MethodTerm)
 		)
 	;
@@ -696,11 +682,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 				_ClauseBody)
 		->
 			adjust_func_arity(PredOrFunc, ArityInt,
-					list__length(HeadArgs)),
+				list__length(HeadArgs)),
 			Result = ok(instance_method(PredOrFunc,
-					ClassMethodName,
-					clauses([Item]),
-					ArityInt, Context))
+				ClassMethodName, clauses([Item]), ArityInt,
+				Context))
 		;
 			Result0 = error(ErrorMsg, ErrorTerm)
 		->
@@ -708,8 +693,10 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
 		;
 			% catch-all error message for a syntactically valid item
 			% which is not a clause
-			Result = error("expected clause or `pred(<Name> / <Arity>) is <InstanceName>' or `func(<Name> / <Arity>) is <InstanceName>')",
+			Result = error("expected clause or " ++
+				"`pred(<Name> / <Arity>) is " ++
+				"<InstanceName>' or " ++
+				"`func(<Name> / <Arity>) is <InstanceName>')",
 				MethodTerm)
 		)
 	).
-

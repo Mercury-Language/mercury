@@ -64,7 +64,7 @@ mode_checkpoint(Port, Msg, !ModeInfo, !IO) :-
 	).
 
 :- pred mode_checkpoint_2(port::in, string::in, mode_info::in, mode_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 mode_checkpoint_2(Port, Msg, !ModeInfo, !IO) :-
 	mode_info_get_last_checkpoint_insts(!.ModeInfo, OldInsts),
@@ -108,7 +108,7 @@ mode_checkpoint_2(Port, Msg, !ModeInfo, !IO) :-
 
 :- pred write_var_insts(assoc_list(prog_var, inst)::in,
 	assoc_list(prog_var, inst)::in, prog_varset::in, inst_varset::in,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 write_var_insts([], _, _, _, !IO).
 write_var_insts([Var - Inst | VarInsts], OldInsts, VarSet, InstVarSet, !IO) :-

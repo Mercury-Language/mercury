@@ -58,7 +58,7 @@
 	%
 :- pred post_typecheck__finish_preds(list(pred_id)::in, bool::in,
 	int::out, bool::out, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 	% As above, but don't check for `aditi__state's and return
 	% the list of procedures containing unbound inst variables
@@ -71,13 +71,13 @@
 	list(proc_id)::out, pred_info::in, pred_info::out) is det.
 
 :- pred post_typecheck__finish_ill_typed_pred(module_info::in, pred_id::in,
-	pred_info::in, pred_info::out, io__state::di, io__state::uo) is det.
+	pred_info::in, pred_info::out, io::di, io::uo) is det.
 
 	% Now that the assertion has finished being typechecked,
 	% remove it from further processing and store it in the
 	% assertion_table.
 :- pred post_typecheck__finish_promise(promise_type::in, pred_id::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo) is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 	% Handle any unresolved overloading for a predicate call.
 	%
@@ -147,7 +147,7 @@ post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors,
 
 :- pred post_typecheck__finish_preds(list(pred_id)::in, bool::in,
 	module_info::in, module_info::out, int::in, int::out,
-	bool::in, bool::out, io__state::di, io__state::uo) is det.
+	bool::in, bool::out, io::di, io::uo) is det.
 
 post_typecheck__finish_preds([], _, !ModuleInfo, !NumErrors,
 		!PostTypecheckError, !IO).
@@ -227,8 +227,8 @@ post_typecheck__finish_preds([PredId | PredIds], ReportTypeErrors,
 %  variables, and that there are no unsatisfied type class constraints.
 
 :- pred post_typecheck__check_type_bindings(module_info::in, pred_id::in,
-	pred_info::in, pred_info::out, bool::in, int::out,
-	io__state::di, io__state::uo) is det.
+	pred_info::in, pred_info::out, bool::in, int::out, io::di, io::uo)
+	is det.
 
 post_typecheck__check_type_bindings(ModuleInfo, PredId, PredInfo0, PredInfo,
 		ReportErrs, NumErrors, !IO) :-
@@ -336,8 +336,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypesMap, !Proofs) :-
 % report an error: unsatisfied type class constraints
 %
 :- pred report_unsatisfied_constraints(list(class_constraint)::in,
-	pred_id::in, pred_info::in, module_info::in,
-	io__state::di, io__state::uo) is det.
+	pred_id::in, pred_info::in, module_info::in, io::di, io::uo) is det.
 
 report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo) -->
 	io__set_exit_status(1),
@@ -894,7 +893,7 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO) :-
 
 :- pred report_unbound_inst_var_error(module_info::in,
 	pred_id::in, proc_id::in, proc_table::in, proc_table::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
 		!IO) :-
