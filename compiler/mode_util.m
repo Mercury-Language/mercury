@@ -255,7 +255,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, map, set, term, std_util, assoc_list.
+:- import_module require, int, map, set, term, std_util, assoc_list.
 :- import_module prog_util, type_util.
 :- import_module inst_match.
 
@@ -1082,9 +1082,9 @@ propagate_types_into_inst_list([_|_], _, _, [], []) :-
 propagate_type_into_mode(Type, ModuleInfo, Mode0, Mode) :-
 	mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
 	map__init(Subst),
-	ex_propagate_type_into_inst(Type, Subst, ModuleInfo, InitialInst0,
+	propagate_type_into_inst_lazily(Type, Subst, ModuleInfo, InitialInst0,
 		InitialInst),
-	ex_propagate_type_into_inst(Type, Subst, ModuleInfo, FinalInst0, 
+	propagate_type_into_inst_lazily(Type, Subst, ModuleInfo, FinalInst0, 
 		FinalInst),
 	Mode = (InitialInst -> FinalInst).
 
@@ -1092,20 +1092,53 @@ propagate_type_into_mode(Type, ModuleInfo, Mode0, Mode) :-
 	% the type, produce a new inst which includes the information provided
 	% by the type.
 	%
+	% There are three sorts of information added:
+	%	1.  Module qualifiers.
+	%	2.  The set of constructors in the type.
+	%	3.  For higher-order function types
+	%	    (but not higher-order predicate types),
+	%	    the higher-order inst, i.e. the argument modes
+	%	    and the determinism.
+	%
+	% Currently #2 is not yet implemented, due to unsolved
+	% efficiency problems.  (See the XXX's below.)
+	%
+	% There are two versions, an "eager" one and a "lazy" one.
+	% In general eager expansion is to be preferred, because
+	% the expansion is done just once, whereas with lazy expansion
+	% the work will be done N times.
+	% However, for recursive insts we must use lazy expansion
+	% (otherwise we would get infinite regress).
+	% Also, usually many of the imported procedures will not be called,
+	% so for the insts in imported mode declarations N is often zero.
+
 :- pred propagate_type_into_inst(type, tsubst, module_info, inst, inst).
 :- mode propagate_type_into_inst(in, in, in, in, out) is det.
 
+:- pred propagate_type_into_inst_lazily(type, tsubst, module_info, inst, inst).
+:- mode propagate_type_into_inst_lazily(in, in, in, in, out) is det.
+
+/*********
+	% XXX We ought to expand things eagerly here, using the commented
+	% out code below.  However, that causes efficiency problems,
+	% so for the moment it is disabled.
 propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
-	ex_propagate_ctor_info(Inst0, Type, Subst, ModuleInfo, Inst).
+	apply_type_subst(Type0, Subst, Type),
+	(
+	        type_constructors(Type, ModuleInfo, Constructors)
+	->
+	        propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
+	               Inst) 
+	;
+	        Inst = Inst0
+	).
+*********/
 
-	% Given a type and an inst, produce a new inst which includes
-	% the information provided by the type.
+propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
+	propagate_ctor_info_lazily(Inst0, Type, Subst, ModuleInfo, Inst).
 
-:- pred ex_propagate_type_into_inst(type, tsubst, module_info, inst, inst).
-:- mode ex_propagate_type_into_inst(in, in, in, in, out) is det.
-
-ex_propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
-	ex_propagate_ctor_info(Inst0, Type, Subst, ModuleInfo, Inst).
+propagate_type_into_inst_lazily(Type, Subst, ModuleInfo, Inst0, Inst) :-
+	propagate_ctor_info_lazily(Inst0, Type, Subst, ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1121,21 +1154,24 @@ propagate_ctor_info(free(_), _, _, _, _) :-
 	error("propagate_ctor_info: type info already present").
 propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, ModuleInfo,
 		Inst) :-
-	map__init(Subst),
-	propagate_ctor_info_2(BoundInsts0, Type, Subst, ModuleInfo,
-		BoundInsts),
+	propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
 	;
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-propagate_ctor_info(ground(Uniq, no), _Type,
-		Constructors, ModuleInfo, Inst) :-
-	constructors_to_bound_insts(Constructors, Uniq, ModuleInfo,
-		BoundInsts0),
-	list__sort_and_remove_dups(BoundInsts0, BoundInsts),
-	Inst = bound(Uniq, BoundInsts).
+propagate_ctor_info(ground(Uniq, no), Type, Constructors, ModuleInfo, Inst) :-
+	( type_is_higher_order(Type, function, ArgTypes) ->
+		default_higher_order_func_inst(ArgTypes, ModuleInfo,
+			HigherOrderInstInfo),
+		Inst = ground(Uniq, yes(HigherOrderInstInfo))
+	;
+		constructors_to_bound_insts(Constructors, Uniq, ModuleInfo,
+			BoundInsts0),
+		list__sort_and_remove_dups(BoundInsts0, BoundInsts),
+		Inst = bound(Uniq, BoundInsts)
+	).
 propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, ModuleInfo,
 			ground(Uniq, yes(PredInstInfo))) :-
 	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
@@ -1161,36 +1197,49 @@ propagate_ctor_info(defined_inst(InstName), Type, Ctors, ModuleInfo, Inst) :-
 	inst_lookup(ModuleInfo, InstName, Inst0),
 	propagate_ctor_info(Inst0, Type, Ctors, ModuleInfo, Inst).
 
-:- pred ex_propagate_ctor_info(inst, type, tsubst, module_info, inst).
-:- mode ex_propagate_ctor_info(in, in, in, in, out) is det.
+:- pred propagate_ctor_info_lazily(inst, type, tsubst, module_info, inst).
+:- mode propagate_ctor_info_lazily(in, in, in, in, out) is det.
 
-% ex_propagate_ctor_info(free, Type, _, _, free(Type)).	% temporarily disabled
-ex_propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
-
-ex_propagate_ctor_info(any(Uniq), _Type, _, _, any(Uniq)).
+propagate_ctor_info_lazily(any(Uniq), _Type, _, _, any(Uniq)).
 						% XXX loses type info!
-ex_propagate_ctor_info(free(_), _, _, _, _) :-
-	error("ex_propagate_ctor_info: type info already present").
-ex_propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Subst, 
+
+% propagate_ctor_info_lazily(free, Type, _, _, free(Type)).
+							% temporarily disabled
+propagate_ctor_info_lazily(free, _Type, _, _, free).	% XXX temporary hack
+
+propagate_ctor_info_lazily(free(_), _, _, _, _) :-
+	error("propagate_ctor_info_lazily: type info already present").
+propagate_ctor_info_lazily(bound(Uniq, BoundInsts0), Type0, Subst, 
 		ModuleInfo, Inst) :-
-	propagate_ctor_info_2(BoundInsts0, Type, Subst,
-		ModuleInfo, BoundInsts),
+	apply_type_subst(Type0, Subst, Type),
+	propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
 	;
 		% XXX do we need to sort the BoundInsts?
 		Inst = bound(Uniq, BoundInsts)
 	).
-% The information added by this is not yet used, so it's disabled since
-% it unnecessarily complicates the insts.
-% ex_propagate_ctor_info(ground(Uniq, no), Type, _, _, Inst) :-
-%	Inst = defined_inst(typed_ground(Uniq, Type)). 
-ex_propagate_ctor_info(ground(Uniq, no), _Type, _, _, ground(Uniq, no)).
-ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
+propagate_ctor_info_lazily(ground(Uniq, no), Type0, Subst, ModuleInfo, Inst) :-
+	apply_type_subst(Type0, Subst, Type),
+	( type_is_higher_order(Type, function, ArgTypes) ->
+		default_higher_order_func_inst(ArgTypes, ModuleInfo,
+			HigherOrderInstInfo),
+		Inst = ground(Uniq, yes(HigherOrderInstInfo))
+	;
+		% XXX The information added by this is not yet used,
+		% so it's disabled since it unnecessarily complicates
+		% the insts.
+		/*********
+		Inst = defined_inst(typed_ground(Uniq, Type)) 
+		*********/
+		Inst = ground(Uniq, no)
+	).
+
+propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 		ModuleInfo, ground(Uniq, yes(PredInstInfo))) :-
 	PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
 	PredInstInfo = pred_inst_info(PredOrFunc, Modes, Det),
-	term__apply_substitution(Type0, Subst, Type),
+	apply_type_subst(Type0, Subst, Type),
 	( type_is_higher_order(Type, PredOrFunc, ArgTypes) ->
 		propagate_types_into_mode_list(ArgTypes, ModuleInfo,
 			Modes0, Modes)
@@ -1201,19 +1250,38 @@ ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 		% be reported if anything tries to match with the inst.
 		Modes = Modes0
 	).
-ex_propagate_ctor_info(not_reached, _Type, _, _ModuleInfo, not_reached).
-ex_propagate_ctor_info(inst_var(_), _, _, _, _) :-
-	error("propagate_ctor_info: unbound inst var").
-ex_propagate_ctor_info(abstract_inst(Name, Args), _, _, _,
+propagate_ctor_info_lazily(not_reached, _Type, _, _ModuleInfo, not_reached).
+propagate_ctor_info_lazily(inst_var(_), _, _, _, _) :-
+	error("propagate_ctor_info_lazily: unbound inst var").
+propagate_ctor_info_lazily(abstract_inst(Name, Args), _, _, _,
 		abstract_inst(Name, Args)).	% XXX loses info
-ex_propagate_ctor_info(defined_inst(InstName0), Type0, Subst, _,
+propagate_ctor_info_lazily(defined_inst(InstName0), Type0, Subst, _,
 		defined_inst(InstName)) :-
-	( map__is_empty(Subst) ->
-		Type = Type0
-	;
-		term__apply_substitution(Type0, Subst, Type)
-	),
+	apply_type_subst(Type0, Subst, Type),
 	InstName = typed_inst(Type, InstName0).
+
+	%
+	% If the user does not explicitly specify a higher-order inst
+	% for a higher-order function type, it defaults to
+	% `func(in, in, ..., in) = out is det',
+	% i.e. all args input, return value output, and det.
+	% This applies recursively to the arguments and return
+	% value too.
+	%
+:- pred default_higher_order_func_inst(list(type), module_info, pred_inst_info).
+:- mode default_higher_order_func_inst(in, in, out) is det.
+
+default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
+	In = (ground(shared, no) -> ground(shared, no)),
+	Out = (free -> ground(shared, no)),
+	list__length(PredArgTypes, NumPredArgs),
+	NumFuncArgs is NumPredArgs - 1,
+	list__duplicate(NumFuncArgs, In, FuncArgModes),
+	FuncRetMode = Out,
+	list__append(FuncArgModes, [FuncRetMode], PredArgModes0),
+	propagate_types_into_mode_list(PredArgTypes, ModuleInfo,
+		PredArgModes0, PredArgModes),
+	PredInstInfo = pred_inst_info(function, PredArgModes, det).
 
 :- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
 				list(bound_inst)).
@@ -1240,16 +1308,11 @@ ctor_arg_list_to_inst_list([_Name - _Type | Args], Uniq, [Inst | Insts]) :-
 	Inst = ground(Uniq, no),
 	ctor_arg_list_to_inst_list(Args, Uniq, Insts).
 
-:- pred propagate_ctor_info_2(list(bound_inst), (type), tsubst,
-		module_info, list(bound_inst)).
-:- mode propagate_ctor_info_2(in, in, in, in, out) is det.
+:- pred propagate_ctor_info_2(list(bound_inst), (type), module_info,
+		list(bound_inst)).
+:- mode propagate_ctor_info_2(in, in, in, out) is det.
 
-propagate_ctor_info_2(BoundInsts0, Type0, Subst, ModuleInfo, BoundInsts) :-
-	( map__is_empty(Subst) ->
-		Type = Type0
-	;
-		term__apply_substitution(Type0, Subst, Type)
-	),
+propagate_ctor_info_2(BoundInsts0, Type, ModuleInfo, BoundInsts) :-
 	(
 		type_to_type_id(Type, TypeId, TypeArgs),
 		TypeId = qualified(TypeModule, _) - _,
@@ -1307,6 +1370,17 @@ propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
 	),
 	propagate_ctor_info_3(BoundInsts0, TypeModule,
 		Constructors, Subst, ModuleInfo, BoundInsts).
+
+:- pred apply_type_subst(type, tsubst, type).
+:- mode apply_type_subst(in, in, out) is det.
+
+apply_type_subst(Type0, Subst, Type) :-
+	% optimize common case
+	( map__is_empty(Subst) ->
+		Type = Type0
+	;
+		term__apply_substitution(Type0, Subst, Type)
+	).
 
 %-----------------------------------------------------------------------------%
 
