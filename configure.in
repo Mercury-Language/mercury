@@ -2331,7 +2331,7 @@ case "$host" in
 				LD_LIBFLAGS_FOR_THREADS="/MD"
 				;;
 			*)
-				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE" ;;
+				CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -DMR_THREAD_SAFE" ;;
 		esac
 		;;
 
