@@ -170,6 +170,9 @@ indented at 4 spaces per level of indentation.
 
 Each line should not extend beyond 79 characters,
 unless this is necessary due to the use of long string literals.
+The reason we don't allow 80 character lines is that
+these lines wrap around in diffs,
+since diff adds an extra character at the start of each line.
 
 <p>
 
@@ -296,6 +299,8 @@ Double-dashed lines, i.e.
 </pre>
 
 can also be used to indicate divisions into major sections.
+Note that these dividing lines should not exceed the 79 character limit
+(see above).
 
 <h2> Testing </h2>
 
@@ -337,6 +342,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2002-03-26 01:17:05 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-07-17 06:23:57 $ by $Author: dougl $@cs.mu.oz.au. <br>
 </body>
 </html>
