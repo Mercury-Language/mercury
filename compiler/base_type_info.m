@@ -163,18 +163,11 @@ from the data_name, for use in forward declarations.
 		base_type_info__construct_functors(ModuleInfo, TypeName,
 			TypeArity, FunctorsArg),
 		base_type_info__construct_type_ctor_representation(HldsDefn,
-			_TypeCtorArg),
-			% XXX we put the layout argument twice.
-			% this is just temporary for bootstrapping
-			% purposes.  We will replace the LayoutArg with
-			% TypeCtorArg when the installed compiler
-			% generates the layout in a later slot, and
-			% change the #defines runtime/mercury_type_info.h
-			% to use the later slot.
+			TypeCtorArg),
 		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
 		NameArg = yes(const(string_const(TypeName))),
 		ModuleArg = yes(const(string_const(ModuleNameString))),
-		list__append(PredAddrArgs, [LayoutArg, FunctorsArg, LayoutArg,
+		list__append(PredAddrArgs, [TypeCtorArg, FunctorsArg, LayoutArg,
 			ModuleArg, NameArg], FinalArgs)
 	;
 		FinalArgs = PredAddrArgs
