@@ -49,6 +49,11 @@ libgcd$(DLL_DEF_LIB).dll: $(OBJS)
 # The original NT SDK used lib32 instead of lib
 
 
+libnogc$(DLL_DEF_LIB).lib: gc.lib
+	rm -f libnogc$(DLL_DEF_LIB).lib
+	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	cp gc.lib libnogc$(DLL_DEF_LIB).lib
+
 libgc$(DLL_DEF_LIB).lib: gc.lib
 	rm -f libgc$(DLL_DEF_LIB).lib
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
