@@ -43,6 +43,12 @@
 		save_ticket_counter = MR_ticket_counter;	\
 	} while(0)
 
+/* void MR_discard_ticket(void); */
+#define MR_discard_ticket()					\
+	do {							\
+		--MR_ticket_counter;				\
+	} while(0)
+
 /* void MR_discard_tickets_to(Word); */
 #define MR_discard_tickets_to(save_ticket_counter)		\
 	do {							\
@@ -64,7 +70,7 @@
 	  ** Unwind restoration info back to `old'.  `kind' indicates
 	  ** whether we are restoring or just discarding the info.
 	  */
-/* void MR_discard_tickets_to(Word, MR_trail_reason); */
+/* void MR_reset_ticket(Word, MR_untrail_reason); */
 #define MR_reset_ticket(old, kind)				\
 	do {							\
 		MR_TrailEntry *old_trail_ptr =  		\
@@ -74,12 +80,6 @@
 			MR_untrail_to(old_trail_ptr, kind);	\
 			restore_transient_registers();		\
 		}						\
-	} while(0)
-
-/* void MR_discard_tickets_to(void); */
-#define MR_discard_ticket()					\
-	do {							\
-		--MR_ticket_counter;				\
 	} while(0)
 
 /*---------------------------------------------------------------------------*/
@@ -92,14 +92,24 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** MR_untrail_reason defines the possible reasons why a trail
-** entry may be activated and/or removed.
+** MR_untrail_reason defines the possible reasons why the trail is to be
+** traversed.
 */
 typedef enum {
-	MR_undo,	/* ordinary backtracking on failure */
-	MR_commit,	/* pruning */
-	MR_exception,	/* (reserved for future use) an exception was thrown */
-	MR_gc		/* (reserved for future use) garbage collection */
+        MR_undo,        /* Ordinary backtracking on failure.  Function */
+                        /* trail entries are invoked and value trail */
+                        /* entries are used to restore memory.  Then */
+                        /* these trail entries are discarded. */
+        MR_commit,      /* Pruning.  Function trail entries are invoked */
+                        /* and discarded; value trail entries are just */
+                        /* discarded. */
+        MR_exception,   /* (reserved for future use) An exception was */
+                        /* thrown.  Behaves as MR_undo, except that */
+                        /* function trail entries may choose to behave */
+                        /* differently for exceptions than for failure. */
+        MR_gc           /* (reserved for future use) Garbage collection. */
+                        /* The interface between the trail and accurate */
+                        /* garbage collection is not yet designed. */
 } MR_untrail_reason;
 
 typedef enum {
@@ -257,7 +267,7 @@ extern Unsigned MR_ticket_counter_var;
 /*---------------------------------------------------------------------------*/
 
 /*
-** void  MR_trail_value_at_address(Word *address, Word value);
+** void  MR_trail_value(Word *address, Word value);
 **
 ** Make sure that when the current execution is
 ** backtracked over, `value' is placed in `address'.
