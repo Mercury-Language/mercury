@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -98,9 +98,9 @@ browse__print(State) -->
 	% we use portray_fmt(..., flat).
 	%
 	{ get_term(State, Univ) },
-	{ term_size(Univ, Size) },
 	{ max_print_size(MaxSize) },
-	( { Size =< MaxSize } ->
+	{ term_size_left_from_max(Univ, MaxSize, RemainingSize) },
+	( { RemainingSize >= 0 } ->
 		io__write_univ(Univ),
 		io__nl
 	;
@@ -126,6 +126,35 @@ term_size(Univ, TotalSize) :-
 	AddSizes = (pred(X::in, Y::in, Z::out) is det :- Z = X + Y),
 	list__foldl(AddSizes, ArgSizes, Arity * 2, TotalArgsSize),
 	TotalSize = TotalArgsSize + FunctorSize.
+
+	% Estimate the total term size, in characters,
+	% We count the number of characters in the functor,
+	% plus two characters for each argument: "(" and ")"
+	% for the first, and ", " for each of the rest,
+	% plus the sizes of the arguments themselves.
+	% This is only approximate since it doesn't take into
+	% account all the special cases such as operators.
+	%
+	% This predicate returns not the estimated total term size,
+	% but the difference between the given maximum size the caller
+	% is interested in and the estimated total term size.
+	% This difference is positive if the term is smaller than the
+	% maximum and negative if it is bigger. If the difference is
+	% negative, term_size_left_from_max will return a negative difference
+	% but the value will usually not be accurate, since in such cases
+	% by definition the caller is not interested in the accurate value.
+:- pred term_size_left_from_max(univ::in, int::in, int::out) is det.
+term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
+	( MaxSize < 0 ->
+		RemainingSize = MaxSize
+	;
+		deconstruct(Univ, Functor, Arity, Args),
+		string__length(Functor, FunctorSize),
+		PrincipalSize = FunctorSize + Arity * 2,
+		MaxArgsSize = MaxSize - PrincipalSize,
+		list__foldl(term_size_left_from_max,
+			Args, MaxArgsSize, RemainingSize)
+	).
 
 %---------------------------------------------------------------------------%
 %
