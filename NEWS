@@ -211,6 +211,8 @@ DRAFT NEWS for Mercury release 0.7
     (string__to_char_list(String, Chars), list__foldl(Pred, Chars, Acc0, Acc))
     but is implemented more efficiently.
 
+  - XXX cleanup of integer division, mod & rem
+
   - uniq_array__shrink/3 has been added to the library.  This is similar
     to uniq_array__resize/4 except that it's designed for cases when you
     only want to make an array smaller, so you don't have to supply a
