@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# cvsdiff deposits the results of running `cvs diff' in a file cvsdiff-<N+1>
+# where <N> is the current latest cvsdiff file number (e.g. if the latest
+# cvsdiff file is cvsdiff-3 then the new one will be cvsdiff-4.)
+#
+# The results of running `interdiff cvsdiff-<N> cvsdiff-<N+1>' are deposited
+# in a file interdiff-<N>-<N+1> (e.g. to follow the example above, the
+# interdiff file would be interdiff-3-4.)
+
+set -x
+
+lastcvsdiff=`ls -rt cvsdiff-* 2> /dev/null | tail -1`
+M=`echo $lastcvsdiff | sed 's/cvsdiff-//'`
+N=`expr 0$M + 1`
+newcvsdiff="cvsdiff-$N"
+
+cvs -n diff > $newcvsdiff
+
+newinterdiff="interdiff-$M-$N"
+
+if [ -z "$lastcvsdiff" ]
+then
+	cp $newcvsdiff $newinterdiff
+else
+	interdiff $lastcvsdiff $newcvsdiff > $newinterdiff
+fi
