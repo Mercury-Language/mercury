@@ -26,6 +26,7 @@ CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 CFLAG_TO_NAME_OBJECT_FILE="@OBJFILE_OPT@"
 OBJECT_FILE_EXTENSION=".@OBJ_SUFFIX@"
+FULLARCH=@FULLARCH@
 LOW_TAG_BITS=@LOW_TAG_BITS@
 BITS_PER_WORD=@BITS_PER_WORD@
 BYTES_PER_WORD=@BYTES_PER_WORD@
@@ -47,6 +48,7 @@ case $# in
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
 		--object-file-extension "$OBJECT_FILE_EXTENSION" \
+		--fullarch "$FULLARCH" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \
@@ -65,6 +67,7 @@ case $# in
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
 		--object-file-extension "$OBJECT_FILE_EXTENSION" \
+		--fullarch "$FULLARCH" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
 		--num-real-r-temps "$NUM_REAL_R_TEMPS" \
 		--conf-low-tag-bits "$LOW_TAG_BITS" \

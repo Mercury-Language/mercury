@@ -111,13 +111,12 @@ if test "$BOOTSTRAP_MC" != ""; then
 			).
 EOF
 	if
-		# The installed compiler must create `.c_date' files
-		# to be compatible with scripts/Mmake.rules.
+		# Test for the `--fullarch' option.
 	 	echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 	 	$BOOTSTRAP_MC \
+			--fullarch "$FULLARCH" \
 			--halt-at-warn $link_flags conftest \
 		 	</dev/null >&AC_FD_CC 2>&1 &&
-		test -f ./conftest.c_date &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
 		AC_MSG_RESULT(yes)
