@@ -117,7 +117,7 @@ static const char mercury_funcs[] =
 	"#define MR_TRACE_ENABLED %d\n"
 	"\n"
 	"#ifdef MR_HIGHLEVEL_CODE\n"
-	"  extern void %s(void);\n"
+	"  extern void MR_CALL %s(void);\n"
 	"#else\n"
 	"  MR_declare_entry(%s);\n"
 	"#endif\n"

@@ -331,14 +331,14 @@ void sys_init_array_module_builtins(void) {
 	return;
 }
 
-bool
+bool MR_CALL
 mercury__array____Unify____array_1_0(MR_Mercury_Type_Info type_info,
 	MR_Array x, MR_Array y)
 {
 	return mercury__array__array_equal_2_p_0(type_info, x, y);
 }
 
-void
+void MR_CALL
 mercury__array____Compare____array_1_0(
 	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
 	MR_Array x, MR_Array y)

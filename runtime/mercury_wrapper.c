@@ -185,7 +185,7 @@ void	(*MR_address_of_init_gc)(void);
 #endif
 
 #ifdef MR_HIGHLEVEL_CODE
-void	(*MR_program_entry_point)(void);
+void MR_CALL (*MR_program_entry_point)(void);
 		/* normally main_2_p_0 (main/2) */
 #else
 MR_Code	*MR_program_entry_point;

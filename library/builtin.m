@@ -427,8 +427,8 @@ aliasing, and in particular the lack of support for `ui' modes.
 
 :- pragma c_header_code("
 #ifdef MR_HIGHLEVEL_CODE
-  void mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info, MR_Box, MR_Box *);
-  void mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info, MR_Box, MR_Box *);
+  void MR_CALL mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info, MR_Box, MR_Box *);
+  void MR_CALL mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info, MR_Box, MR_Box *);
 #endif
 ").
 
@@ -436,7 +436,7 @@ aliasing, and in particular the lack of support for `ui' modes.
 
 #ifdef MR_HIGHLEVEL_CODE
 
-void
+void MR_CALL
 mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info type_info,
 	MR_Box value, MR_Box * copy)
 {
@@ -444,7 +444,7 @@ mercury__builtin__copy_2_p_0(MR_Mercury_Type_Info type_info,
 	*copy = (MR_Box) deep_copy(&val, (MR_TypeInfo) type_info, NULL, NULL);
 }
 
-void
+void MR_CALL
 mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info, MR_Box x, MR_Box * y)
 {
 	mercury__builtin__copy_2_p_0(type_info, x, y);

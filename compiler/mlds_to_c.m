@@ -261,6 +261,7 @@ mlds_output_src_file(Indent, MLDS) -->
 	mlds_output_defns(Indent, MLDS_ModuleName, NonTypeDefns), io__nl,
 	mlds_output_init_fn_defns(MLDS_ModuleName, FuncDefns,
 		TypeCtorInfoDefns), io__nl,
+	mlds_output_grade_var, io__nl,
 	mlds_output_src_end(Indent, ModuleName).
 
 :- pred mlds_output_hdr_start(indent, mercury_module_name,
@@ -382,6 +383,19 @@ mlds_output_auto_gen_comment(ModuleName) -->
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	output_c_file_intro_and_grade(SourceFileName, Version),
 	io__nl.
+
+	%
+	% Output a reference to the mangled grade name for the grade
+	% that the C file gets compiled with.  This ensures that
+	% we don't try to link objects files compiled in different
+	% grades.
+	%
+:- pred mlds_output_grade_var(io__state::di, io__state::uo) is det.
+mlds_output_grade_var -->
+	io__write_string(
+		"/* ensure everything is compiled with the same grade */\n"),
+	io__write_string(
+		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -599,7 +613,11 @@ mlds_output_pragma_export_func_name(ModuleName, Indent,
 		ml_pragma_export(C_name, _MLDS_Name, Signature, Context)) -->
 	{ Name = qual(ModuleName, export(C_name)) },
 	mlds_indent(Context, Indent),
-	mlds_output_func_decl_ho(Indent, Name, Context, Signature,
+	% For functions exported using `pragma export',
+	% we use the default C calling convention.
+	{ CallingConvention = "" },
+	mlds_output_func_decl_ho(Indent, Name, Context,
+			CallingConvention, Signature,
 			mlds_output_pragma_export_type(prefix),
 			mlds_output_pragma_export_type(suffix)).
 
@@ -696,9 +714,7 @@ write_func_args(ModuleName, [Arg | Args]) -->
 		io__state::di, io__state::uo) is det.
 
 mlds_output_name_with_cast(ModuleName, Name - Type) -->
-	io__write_char('('),
-	mlds_output_type(Type),
-	io__write_string(") "),
+	mlds_output_cast(Type),
 	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
 
 	%
@@ -1230,16 +1246,19 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 :- mode mlds_output_func_decl(in, in, in, in, di, uo) is det.
 
 mlds_output_func_decl(Indent, QualifiedName, Context, Signature) -->
-	mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
+	{ CallingConvention = "MR_CALL " },
+	mlds_output_func_decl_ho(Indent, QualifiedName, Context, 
+			CallingConvention, Signature,
 			mlds_output_type_prefix, mlds_output_type_suffix).
 
 :- pred mlds_output_func_decl_ho(indent, qualified_entity_name, mlds__context,
-		func_params, output_type, output_type, io__state, io__state).
-:- mode mlds_output_func_decl_ho(in, in, in, in, in(output_type),
+		string, func_params, output_type, output_type,
+		io__state, io__state).
+:- mode mlds_output_func_decl_ho(in, in, in, in, in, in(output_type),
 		in(output_type), di, uo) is det.
 
-mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
-		OutputPrefix, OutputSuffix) -->
+mlds_output_func_decl_ho(Indent, QualifiedName, Context,
+		CallingConvention, Signature, OutputPrefix, OutputSuffix) -->
 	{ Signature = mlds__func_params(Parameters, RetTypes) },
 	( { RetTypes = [] } ->
 		io__write_string("void")
@@ -1250,6 +1269,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
 		% { error("mlds_output_func: multiple return types") }
 	),
 	io__write_char(' '),
+	io__write_string(CallingConvention),
 	mlds_output_fully_qualified_name(QualifiedName),
 	{ QualifiedName = qual(ModuleName, _) },
 	mlds_output_params(OutputPrefix, OutputSuffix,
@@ -1307,7 +1327,7 @@ mlds_output_func_type_prefix(Params) -->
 	% Note that mlds__func_type actually corresponds to a
 	% function _pointer_ type in C.  This is necessary because
 	% function types in C are not first class.
-	io__write_string(" (*").
+	io__write_string(" MR_CALL (*").
 
 :- pred mlds_output_func_type_suffix(func_params, io__state, io__state).
 :- mode mlds_output_func_type_suffix(in, di, uo) is det.
@@ -1573,7 +1593,7 @@ mlds_output_type_prefix(mlds__cont_type(ArgTypes)) -->
 		)
 	;
 		% This case only happens for --nondet-copy-out
-		io__write_string("void (*")
+		io__write_string("void MR_CALL (*")
 	).
 mlds_output_type_prefix(mlds__commit_type) -->
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
@@ -2397,9 +2417,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	io__write_string(" = "),
 	( { MaybeTag = yes(Tag0) } ->
 		{ Tag = Tag0 },
-		io__write_string("("),
-		mlds_output_type(Type),
-		io__write_string(") "),
+		mlds_output_cast(Type),
 		io__write_string("MR_mkword("),
 		mlds_output_tag(Tag),
 		io__write_string(", "),
@@ -2412,9 +2430,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 		% in the call to MR_new_object() is not
 		% always correct.
 		%
-		io__write_string("("),
-		mlds_output_type(Type),
-		io__write_string(") "),
+		mlds_output_cast(Type),
 		{ EndMkword = "" }
 	),
 	io__write_string("MR_new_object("),
@@ -2575,9 +2591,8 @@ mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 		_FieldType, _PtrType)) -->
 	% XXX we shouldn't bother with this cast in the case where
 	% PtrType == CtorType
-	io__write_string("(("),
-	mlds_output_type(CtorType),
-	io__write_string(") "),
+	io__write_string("("),
+	mlds_output_cast(CtorType),
 	( { MaybeTag = yes(0) } ->
 		( { PtrRval = mem_addr(Lval) } ->
 			mlds_output_lval(Lval),
@@ -2715,10 +2730,16 @@ mlds_output_unop(std_unop(Unop), Exprn) -->
 :- mode mlds_output_cast_rval(in, in, di, uo) is det.
 	
 mlds_output_cast_rval(Type, Exprn) -->
+	mlds_output_cast(Type),
+	mlds_output_rval(Exprn).
+
+:- pred mlds_output_cast(mlds__type, io__state, io__state).
+:- mode mlds_output_cast(in, di, uo) is det.
+	
+mlds_output_cast(Type) -->
 	io__write_string("("),
 	mlds_output_type(Type),
-	io__write_string(") "),
-	mlds_output_rval(Exprn).
+	io__write_string(") ").
 
 :- pred mlds_output_boxed_rval(mlds__type, mlds__rval, io__state, io__state).
 :- mode mlds_output_boxed_rval(in, in, di, uo) is det.
@@ -2763,9 +2784,9 @@ mlds_output_unboxed_rval(Type, Exprn) -->
 		% pointer to integer of different size" from gcc.
 		% XXX The generated code would be more readable if we
 		%     only did this for the cases where it was necessary.
-		io__write_string("(("),
-		mlds_output_type(Type),
-		io__write_string(") (MR_Word) "),
+		io__write_string("("),
+		mlds_output_cast(Type),
+		io__write_string("(MR_Word) "),
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	).

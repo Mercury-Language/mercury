@@ -70,6 +70,13 @@
 **	Use C's `float' rather than C's `double' for the
 **	Mercury floating point type (`MR_Float').
 **
+** MR_USE_REGPARM:
+**	On x86, use a different (more efficient) calling convention.
+**	This requires the use of a very recent version of gcc --
+**	more recent that gcc 2.95.2.
+**	For details, see the definition of the MR_CALL macro in
+**	runtime/mercury_std.h.
+**
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
 **

@@ -65,7 +65,7 @@ extern	int	MR_load_aditi_rl_code(void);
 */
 
 #ifdef MR_HIGHLEVEL_CODE
-extern	void		(*MR_program_entry_point)(void);
+extern	void MR_CALL	(*MR_program_entry_point)(void);
 			/* normally main_2_p_0 */
 #else
 extern	MR_Code 	*MR_program_entry_point;

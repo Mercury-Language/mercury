@@ -92,10 +92,6 @@ typedef unsigned char MR_UnsignedChar;
 typedef MR_Char *MR_String;
 typedef const MR_Char *MR_ConstString;
 
-/* continuation function type, for --high-level-code option */
-typedef void (*MR_NestedCont) (void);	/* for --gcc-nested-functions */
-typedef void (*MR_Cont) (void *);	/* for --no-gcc-nested-functions */
-
 #ifndef MR_HIGHLEVEL_CODE
   /*
   ** semidet predicates indicate success or failure by leaving nonzero or zero

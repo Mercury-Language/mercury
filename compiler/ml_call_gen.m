@@ -195,6 +195,23 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	),
 
 	%
+	% Assign the function address rval to a new local variable.
+	% This makes the generated code slightly more readable.
+	% More importantly, this is also necessary when using a
+	% non-standard calling convention with GNU C, since GNU C
+	% (2.95.2) ignores the function attributes on function
+	% pointer types in casts.
+	% 
+	ml_gen_info_new_conv_var(ConvVarNum),
+	{ string__format("func_%d", [i(ConvVarNum)],
+		FuncVarName) },
+	{ FuncVarDecl = ml_gen_mlds_var_decl(var(FuncVarName), FuncType,
+		mlds__make_context(Context)) },
+	ml_qualify_var(FuncVarName, FuncVarLval),
+	{ AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context) },
+	{ FuncVarRval = lval(FuncVarLval) },
+
+	%
 	% Generate code to box/unbox the arguments
 	% and compute the list of properly converted rvals/lvals
 	% to pass as the function call's arguments and return values
@@ -216,12 +233,12 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	% which when called will generate it.)
 	%
 	{ ObjectRval = no },
-	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncRval,
+	{ DoGenCall = ml_gen_mlds_call(Signature, ObjectRval, FuncVarRval,
 		[ClosureRval | InputRvals], OutputLvals, OutputTypes,
 		CodeModel, Context) },
 
 	( { ConvArgDecls = [], ConvOutputStatements = [] } ->
-		DoGenCall(MLDS_Decls, MLDS_Statements)
+		DoGenCall(MLDS_Decls0, MLDS_Statements0)
 	;
 		%
 		% Construct a closure to generate code to 
@@ -245,10 +262,11 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 		ml_combine_conj(CodeModel, Context,
 			DoGenCall, DoGenConvOutputAndSucceed,
 			CallAndConvOutputDecls, CallAndConvOutputStatements),
-		{ MLDS_Decls = list__append(ConvArgDecls,
-			CallAndConvOutputDecls) },
-		{ MLDS_Statements = CallAndConvOutputStatements }
-	).
+		{ MLDS_Decls0 = ConvArgDecls ++ CallAndConvOutputDecls },
+		{ MLDS_Statements0 = CallAndConvOutputStatements }
+	),
+	{ MLDS_Decls = [FuncVarDecl | MLDS_Decls0] },
+	{ MLDS_Statements = [AssignFuncVar | MLDS_Statements0] }.
 
 	%
 	% Generate code for the various parts that are needed for
