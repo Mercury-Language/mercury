@@ -4,6 +4,8 @@ main_target: check
 
 include ../Mmake.common
 
+MCFLAGS-pretty_print_test = --no-line-numbers
+
 #-----------------------------------------------------------------------------#
 
 mdemangle_test.out: mdemangle_test.inp
