@@ -13,7 +13,6 @@
    by calls to the C standard library functions.
 
    So it looks like we'll have to use the sliding registers.
-   This will make debugging a real pain.
    It won't work at all unless we are using gcc's non-local gotos.
 */
 #ifndef USE_GCC_NONLOCAL_GOTOS
@@ -35,6 +34,39 @@ reg	Word	mr10 __asm__("l4");
    leave them for gcc */
 
 #define NUM_REAL_REGS 11
+
+extern Word saved_regs[];
+
+#define save_registers()			\
+	(					\
+		saved_regs[0] = mr0,		\
+		saved_regs[1] = mr1,		\
+		saved_regs[2] = mr2,		\
+		saved_regs[3] = mr3,		\
+		saved_regs[4] = mr4,		\
+		saved_regs[5] = mr5,		\
+		saved_regs[6] = mr6,		\
+		saved_regs[7] = mr7,		\
+		saved_regs[8] = mr8,		\
+		saved_regs[9] = mr9,		\
+		saved_regs[10] = mr10,		\
+		(void)0				\
+	)
+#define restore_registers()			\
+	(					\
+		mr0 = saved_regs[0],		\
+		mr1 = saved_regs[1],		\
+		mr2 = saved_regs[2],		\
+		mr3 = saved_regs[3],		\
+		mr4 = saved_regs[4],		\
+		mr5 = saved_regs[5],		\
+		mr6 = saved_regs[6],		\
+		mr7 = saved_regs[7],		\
+		mr8 = saved_regs[8],		\
+		mr9 = saved_regs[9],		\
+		mr10 = saved_regs[10],		\
+		(void)0				\
+	)
 
 extern Word mr11, mr12, mr13, mr14, mr15;
 extern Word mr16, mr17, mr18, mr19, mr20, mr21, mr22, mr23;
