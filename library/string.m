@@ -1862,14 +1862,21 @@ string__float_to_f_string(_, _) :-
 :- pragma foreign_proc("MC++",
 	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
-	/*
-	** XXX should we also catch System::OverflowException?
-	*/
-	SUCCESS_INDICATOR = MR_TRUE;
-	try {
-	    FloatVal = System::Convert::ToDouble(FloatString);
-	} catch (System::FormatException *e) {
-	     SUCCESS_INDICATOR = MR_FALSE;
+	// leading or trailing whitespace is not allowed
+	if (System::Char::IsWhiteSpace(FloatString, 0) ||
+	    System::Char::IsWhiteSpace(FloatString, FloatString->Length - 1))
+	{
+	    SUCCESS_INDICATOR = MR_FALSE;
+	} else {
+	    /*
+	    ** XXX should we also catch System::OverflowException?
+	    */
+	    try {
+	        FloatVal = System::Convert::ToDouble(FloatString);
+	        SUCCESS_INDICATOR = MR_TRUE;
+	    } catch (System::FormatException *e) {
+	        SUCCESS_INDICATOR = MR_FALSE;
+	    }
 	}
 }").
 
