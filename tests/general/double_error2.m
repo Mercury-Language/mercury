@@ -1,4 +1,4 @@
-:- module x.
+:- module double_error2.
 
 :- interface.
 

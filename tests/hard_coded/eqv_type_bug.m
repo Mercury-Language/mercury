@@ -1,4 +1,4 @@
-:- module try.
+:- module eqv_type_bug.
 
 :- interface.
 
