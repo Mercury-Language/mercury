@@ -135,6 +135,19 @@ static	int			MR_scroll_next = 0;
 static	MR_bool			MR_echo_commands = MR_FALSE;
 
 /*
+** MR_have_mdb_window and MR_mdb_window_pid are set by
+** mercury_trace_internal.c after the xterm window for
+** mdb has been spawned. The window process is killed by
+** MR_trace_internal_kill_mdb_window(), which is called by
+** MR_trace_final() through the MR_trace_shutdown() pointer.
+** This indirect call is used to avoid references to the
+** non-ISO header file <unistd.h> (for pid_t) in the runtime
+** headers.
+*/
+static	MR_bool		MR_have_mdb_window = MR_FALSE;
+static	pid_t		MR_mdb_window_pid = 0;
+
+/*
 ** The details of the source server, if any.
 */
 
@@ -259,6 +272,7 @@ typedef struct
 
 static	void	MR_trace_internal_ensure_init(void);
 static	MR_bool	MR_trace_internal_create_mdb_window(void);
+static	void	MR_trace_internal_kill_mdb_window(void);
 static	void	MR_trace_internal_init_from_env(void);
 static	void	MR_trace_internal_init_from_local(void);
 static	void	MR_trace_internal_init_from_home_dir(void);
@@ -738,7 +752,6 @@ MR_trace_internal_create_mdb_window(void)
 	int master_fd = -1;
 	int slave_fd = -1;
 	char *slave_name;
-	pid_t child_pid;
 #if defined(MR_HAVE_TERMIOS_H) && defined(MR_HAVE_TCGETATTR) && \
 		defined(MR_HAVE_TCSETATTR) && defined(ECHO) && defined(TCSADRAIN)
 	struct termios termio;
@@ -799,13 +812,13 @@ MR_trace_internal_create_mdb_window(void)
 	tcsetattr(slave_fd, TCSADRAIN, &termio);
 #endif
 
-	child_pid = fork();
-	if (child_pid == -1) {
+	MR_mdb_window_pid = fork();
+	if (MR_mdb_window_pid == -1) {
 		MR_mdb_perror("fork() for mdb window failed"); 
 		close(master_fd);
 		close(slave_fd);
 		return MR_FALSE;
-	} else if (child_pid == 0) {
+	} else if (MR_mdb_window_pid == 0) {
 		/*
 		** Child - exec() the xterm.
 		*/
@@ -853,6 +866,7 @@ MR_trace_internal_create_mdb_window(void)
 		int out_fd = -1;
 
 		MR_mdb_in = MR_mdb_out = MR_mdb_err = NULL;
+		MR_have_mdb_window = MR_TRUE;
 
 		close(master_fd);
 
@@ -927,20 +941,11 @@ MR_trace_internal_create_mdb_window(void)
 		}
 
 		MR_have_mdb_window = MR_TRUE;
-		MR_mdb_window_pid = child_pid;
+		MR_trace_shutdown = MR_trace_internal_kill_mdb_window;
 		return MR_TRUE;
 
 parent_error:
-#if defined(MR_HAVE_KILL) && defined(SIGTERM) && defined(MR_HAVE_WAIT)
-		if (kill(child_pid, SIGTERM) != -1) {
-			do {
-				wait_status = wait(NULL);
-				if (wait_status == -1 && errno != EINTR) {
-					break;	
-				}
-			} while (wait_status != child_pid);
-		}
-#endif
+		MR_trace_internal_kill_mdb_window();
 		if (MR_mdb_in) fclose(MR_mdb_in);
 		if (MR_mdb_out) fclose(MR_mdb_out);
 		if (MR_mdb_err) fclose(MR_mdb_err);
@@ -956,6 +961,25 @@ parent_error:
 		"Sorry, `mdb --window' not supported on this platform.\n");
 	return MR_FALSE;
 #endif /* !MR_HAVE_OPEN, etc. */
+}
+
+static void
+MR_trace_internal_kill_mdb_window(void)
+{
+#if defined(MR_HAVE_KILL) && defined(MR_HAVE_WAIT) && defined(SIGTERM)
+	if (MR_have_mdb_window) {
+		int status;
+		status = kill(MR_mdb_window_pid, SIGTERM);
+		if (status != -1) {
+			do {
+				status = wait(NULL);
+				if (status == -1 && errno != EINTR) {
+					break;
+				}
+			} while (status != MR_mdb_window_pid);
+		}
+	}
+#endif
 }
 
 static void

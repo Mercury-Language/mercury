@@ -19,9 +19,6 @@
 #include "mercury_stack_layout.h"
 #include "mercury_std.h"
 #include "mercury_tabling.h"	/* for MR_TableNode */
-#ifdef MR_HAVE_UNISTD_H
-  #include <unistd.h>           /* for the write system call and pid_t */
-#endif
 
 /*
 ** This enum should EXACTLY match the definition of the `trace_port_type'
@@ -99,13 +96,9 @@ extern	void	MR_trace_end(void);
 extern	void	MR_trace_final(void);
 
 /*
-** MR_have_mdb_window and MR_mdb_window_pid are set by
-** mercury_trace_internal.c after the xterm window for
-** mdb has been spawned. The window process is killed by 
-** MR_trace_final().
+** Kill any windows created by mdb.
 */
-extern	MR_bool	MR_have_mdb_window;
-extern	pid_t	MR_mdb_window_pid;
+extern	void	(*MR_trace_shutdown)(void);
 
 /*
 ** The globals that define the interface between the tracing subsystem

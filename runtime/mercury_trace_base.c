@@ -38,8 +38,7 @@ ENDINIT
   #include <sys/wait.h>		/* for the wait system call */
 #endif
 
-MR_bool		MR_have_mdb_window = MR_FALSE;
-pid_t		MR_mdb_window_pid = 0;
+void		(*MR_trace_shutdown)(void) = NULL;
 
 MR_bool		MR_trace_enabled = MR_FALSE;
 MR_Unsigned	MR_trace_call_seqno = 0;
@@ -186,23 +185,12 @@ MR_trace_final(void)
 	}
 #endif
 
-#if defined(MR_HAVE_KILL) && defined(MR_HAVE_WAIT) && defined(SIGTERM)
 	/*
 	** If mdb started a window, make sure it dies now.
 	*/
-	if (MR_have_mdb_window) {
-		int status;
-		status = kill(MR_mdb_window_pid, SIGTERM);
-		if (status != -1) {
-			do {
-				status = wait(NULL);
-				if (status == -1 && errno != EINTR) {
-					break;
-				}
-			} while (status != MR_mdb_window_pid);
-		}
+	if (MR_trace_shutdown != NULL) {
+		(*MR_trace_shutdown)();
 	}
-#endif
 }
 
 void
