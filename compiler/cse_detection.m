@@ -515,24 +515,20 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			MaybeUnify = MaybeUnify1,
 			CseInfo = CseInfo1
 		;
-			find_bind_var_for_cse(Goals0, Substitution0, Var,
+			find_bind_var_for_cse(Goals0, Substitution1, Var,
 				MaybeUnify0, CseInfo1, CseInfo,
 				Goals1, Substitution, MaybeUnify),
 			Goals = [Goal0 - GoalInfo | Goals1]
 		)
 	; Goal0 = unify(A, B, _, UnifyInfo0, _) ->
-		( interpret_unify(A, B, Substitution0, Substitution1) ->
-			Substitution2 = Substitution1
-		;
-			% the unification must fail - just ignore it
-			Substitution2 = Substitution0
-		),
-			% check whether the var was bound
 		term__apply_rec_substitution(term__variable(Var),
-			Substitution2, Term),
+			Substitution0, Term),
 		(
-			Term = term__functor(_, _, _),
-			UnifyInfo0 = deconstruct(_, _, _, _, _),
+			Term = term__variable(Var1),
+			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _),
+			term__apply_rec_substitution(term__variable(UnifyVar),
+				Substitution0, term__variable(UnifyVar1)),
+			Var1 = UnifyVar1,
 			MaybeUnify0 = no
 		->
 			CseInfo0 = cse_info(Varset0, Typemap0, ModuleInfo),
@@ -542,9 +538,13 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			CseInfo = cse_info(Varset, Typemap, ModuleInfo),
 			MaybeUnify = yes(Goal),
 			list__append(Replacements, Goals0, Goals),
-			Substitution = Substitution2
+			Substitution = Substitution0
 		;
-			Term = term__functor(_, _, _),
+			Term = term__variable(Var1),
+			UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _),
+			term__apply_rec_substitution(term__variable(UnifyVar),
+				Substitution0, term__variable(UnifyVar1)),
+			Var1 = UnifyVar1,
 			UnifyInfo0 = deconstruct(_, _, _, _, _),
 			MaybeUnify0 = yes(OldUnifyGoal),
 			goal_info_context(GoalInfo, Context),
@@ -552,7 +552,7 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 				Context, Replacements)
 		->
 			list__append(Replacements, Goals0, Goals),
-			Substitution = Substitution2,
+			Substitution = Substitution0,
 			CseInfo = CseInfo0,
 			MaybeUnify = MaybeUnify0
 		;
@@ -563,10 +563,16 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			Term = term__functor(_, _, _)
 		->
 			Goals = [Goal0 - GoalInfo | Goals0],
-			Substitution = Substitution2,
+			Substitution = Substitution0,
 			CseInfo = CseInfo0,
 			MaybeUnify = no
 		;
+			( interpret_unify(A, B, Substitution0, Substitution1) ->
+				Substitution2 = Substitution1
+			;
+				% the unification must fail - just ignore it
+				Substitution2 = Substitution0
+			),
 			find_bind_var_for_cse(Goals0, Substitution2, Var,
 				MaybeUnify0, CseInfo0, CseInfo,
 				Goals1, Substitution, MaybeUnify),

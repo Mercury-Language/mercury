@@ -379,35 +379,39 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 			Substitution = Substitution1,
 			MaybeFunctor = MaybeFunctor1
 		;
-			find_bind_var_for_switch(Goals0, Substitution0, Var,
+			find_bind_var_for_switch(Goals0, Substitution1, Var,
 				Goals, Substitution, MaybeFunctor)
 		)
 	; Goal0 = unify(A, B, C, UnifyInfo0, E) ->
-			 % otherwise abstractly interpret the unification
-		( interpret_unify(A, B, Substitution0, Substitution1) ->
-			Substitution2 = Substitution1
-		;
-			% the unification must fail - just ignore it
-			Substitution2 = Substitution0
-		),
-			% check whether the var was bound
-		term__apply_rec_substitution(term__variable(Var), Substitution2,
-			Term),
+			% check whether the unification is a deconstruction
+			% unification on Var or a variable aliased to Var
 		(
-			Term = term__functor(_Name, _Args, _Context),
-			UnifyInfo0 = deconstruct(Var1, Functor, F, G, _)
+			UnifyInfo0 = deconstruct(UnifyVar, Functor, F, G, _),
+			term__apply_rec_substitution(term__variable(Var),
+				Substitution0, term__variable(Var1)),
+			term__apply_rec_substitution(term__variable(UnifyVar),
+				Substitution0, term__variable(UnifyVar1)),
+			Var1 = UnifyVar1
 		->
 			MaybeFunctor = yes(Functor),
 				% The deconstruction unification now becomes
 				% deterministic, since the test will get
 				% carried out in the switch.
-			UnifyInfo = deconstruct(Var1, Functor, F, G,
+			UnifyInfo = deconstruct(UnifyVar, Functor, F, G,
 				cannot_fail),
 			Goal = unify(A, B, C, UnifyInfo, E),
 			Goals = Goals0,
-			Substitution = Substitution2
+			Substitution = Substitution0
 		;
+			% otherwise abstractly interpret the unification
+			% and continue
 			Goal = Goal0,
+			( interpret_unify(A, B, Substitution0, Substitution1) ->
+				Substitution2 = Substitution1
+			;
+				% the unification must fail - just ignore it
+				Substitution2 = Substitution0
+			),
 			find_bind_var_for_switch(Goals0, Substitution2, Var,
 				Goals, Substitution, MaybeFunctor)
 		)
