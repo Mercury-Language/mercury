@@ -1,13 +1,15 @@
 This directory contains stuff for doing coroutining with deterministic goals.
-See the two example programs:
-	philo	- the dining philosophers example
-	philo2  - the dining philosophers example using mutvars for
-		  synchronisation
+See the example programs:
+	philo, philo2, philo3
+		- several variants on the dining philosophers example.
+		  philo uses a single semaphone for synchronization,
+		  philo2 uses a single mvar,
+		  while philo3 uses one semaphore per fork.
 	midimon	- a midi data monitor that concurrently reads the bytestream,
 		  parses the MIDI messages, and writes out the results.
 		  A file `midi_data' has been included which contains some midi
 		  data you can test the program with. MIDI (Musical Instrument
 		  Digital Interface) is a hardware and software protocol for
-		  electronic musical instruments (eg synthesizers) to talk to
+		  electronic musical instruments (e.g. synthesizers) to talk to
 		  each other.
 

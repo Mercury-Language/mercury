@@ -8,8 +8,10 @@
 
 default_target: tests
 
-depend:		philo.depend philo2.depend midimon.depend
-tests:		philo philo2 midimon
+TESTS = philo philo2 philo3 midimon
+
+depend:		$(TESTS:%=%.depend)
+tests:		$(TESTS)
 
 .PHONY: check
 check: tests
