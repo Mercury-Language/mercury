@@ -32,6 +32,9 @@
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
 				% declaration.
+		;	warn_infinite_recursion(hlds__goal_info)
+				% warning about recursive calls
+				% which would cause infinite loops.
 		;	duplicate_call(seen_call_id, term__context,
 				hlds__goal_info)
 				% multiple calls with the same input args.
@@ -825,6 +828,7 @@ det_msg_get_type(ite_cond_cannot_succeed(_), warning).
 det_msg_get_type(negated_goal_cannot_fail(_), warning).
 det_msg_get_type(negated_goal_cannot_succeed(_), warning).
 det_msg_get_type(warn_obsolete(_, _), warning).
+det_msg_get_type(warn_infinite_recursion(_), warning).
 det_msg_get_type(duplicate_call(_, _, _), warning).
 det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).
 det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
@@ -895,6 +899,27 @@ det_report_msg(warn_obsolete(PredId, GoalInfo), ModuleInfo) -->
 	io__write_string("Warning: call to obsolete "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
 	io__write_string(".\n").
+det_report_msg(warn_infinite_recursion(GoalInfo), _ModuleInfo) -->
+	{ goal_info_get_context(GoalInfo, Context) },
+/*
+% it would be better if we supplied more information
+% than just the line number.
+	prog_out__write_context(Context),
+	io__write_string("In "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(":\n"),
+*/
+	prog_out__write_context(Context),
+	io__write_string(
+		"Warning: recursive call will lead to infinite recursion.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"\tIf this recursive call is executed, the procedure will call itself
+\twith exactly the same input arguments, leading to infinite recursion.\n")
+	;
+		[]
+	).
 det_report_msg(duplicate_call(SeenCall, PrevContext, GoalInfo), ModuleInfo) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	prog_out__write_context(Context),

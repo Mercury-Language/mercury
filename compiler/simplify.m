@@ -370,12 +370,50 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	;
 		Info1 = Info0
 	),
-	( simplify_do_calls(Info1) ->
+
+	%
+	% Check for recursive calls with the same input arguments,
+	% and warn about them (since they will lead to infinite loops).
+	%
+	(
+		simplify_do_warn(Info1),
+
+		%
+		% Is this a (directly) recursive call,
+		% i.e. is the procedure being called the same as the
+		% procedure we're analyzing?
+		%
+		simplify_info_get_det_info(Info1, DetInfo),
+		det_info_get_pred_id(DetInfo, PredId),
+		det_info_get_proc_id(DetInfo, ProcId),
+
+		%
+		% Are the input arguments the same (or equivalent)?
+		%
+		simplify_info_get_module_info(Info1, ModuleInfo1),
+		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
+			_PredInfo1, ProcInfo1),
+		proc_info_headvars(ProcInfo1, HeadVars),
+		proc_info_argmodes(ProcInfo1, ArgModes),
+		simplify_info_get_common_info(Info1, CommonInfo1),
+		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
+			CommonInfo1, ModuleInfo1)
+	->
+		simplify_info_add_msg(Info1, warn_infinite_recursion(GoalInfo),
+				Info2)
+	;
+		Info2 = Info1
+	),
+
+	%
+	% check for duplicate calls to the same procedure
+	%
+	( simplify_do_calls(Info2) ->
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo,
-			Goal, Info1, Info)
+			Goal, Info2, Info)
 	;
 		Goal = Goal0,
-		Info = Info1
+		Info = Info2
 	).
 
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
@@ -513,6 +551,31 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Info = Info0,
 		Goal = Goal0
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% simplify__input_args_are_equiv(Args, HeadVars, Modes,
+	% 		CommonInfo, ModuleInfo1):
+	% Succeeds if all the input arguments (determined by looking at
+	% `Modes') in `Args' are equivalent (according to the equivalence
+	% class specified by `CommonInfo') to the corresponding variables
+	% in HeadVars.  HeadVars, Modes, and Args should all be lists of
+	% the same length.
+
+:- pred simplify__input_args_are_equiv(list(var), list(var), list(mode),
+	common_info, module_info).
+:- mode simplify__input_args_are_equiv(in, in, in, in, in) is semidet.
+
+simplify__input_args_are_equiv([], [], _, _, _).
+simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
+		CommonInfo, ModuleInfo1) :-
+	( mode_is_input(ModuleInfo1, Mode) ->
+		common__vars_are_equivalent(Arg, HeadVar, CommonInfo)
+	;
+		true
+	),
+	simplify__input_args_are_equiv(Args, HeadVars, Modes,
+			CommonInfo, ModuleInfo1).
 
 %-----------------------------------------------------------------------------%
 
