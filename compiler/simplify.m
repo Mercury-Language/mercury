@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1621,8 +1621,8 @@ simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
 		hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
 
 simplify__nested_somes(CanRemove0, Vars1, Goal0, OrigGoalInfo, Goal) :-
-	simplify__nested_somes_2(CanRemove0, Vars1, Goal0,
-		CanRemove, Vars, Goal1),
+	simplify__nested_somes_2(CanRemove0, no, Vars1, Goal0,
+		CanRemove, KeepThisCommit, Vars, Goal1),
 	Goal1 = GoalExpr1 - GoalInfo1,
 	(
 		goal_info_get_determinism(GoalInfo1, Detism),
@@ -1633,29 +1633,43 @@ simplify__nested_somes(CanRemove0, Vars1, Goal0, OrigGoalInfo, Goal) :-
 		% is unnecessary.
 		Goal = GoalExpr1 - GoalInfo1
 	;
-		Goal = some(Vars, CanRemove, Goal1) - OrigGoalInfo
+		% The `some' needs to be kept.
+		% However, we may still have merged multiple nested somes
+		% into a single `some'.  This is OK, but we need to be careful
+		% to ensure that we don't lose the `keep_this_commit' flag
+		% (if any) on the nested somes.
+		( KeepThisCommit = yes ->
+			goal_info_add_feature(OrigGoalInfo, keep_this_commit,
+				GoalInfo)
+		;
+			GoalInfo = OrigGoalInfo
+		),
+		Goal = some(Vars, CanRemove, Goal1) - GoalInfo
 	).
 
-:- pred simplify__nested_somes_2(can_remove::in, list(prog_var)::in,
-		hlds_goal::in, can_remove::out, list(prog_var)::out,
+:- pred simplify__nested_somes_2(can_remove::in, bool::in, list(prog_var)::in,
+		hlds_goal::in, can_remove::out, bool::out, list(prog_var)::out,
 		hlds_goal::out) is det.
 
-simplify__nested_somes_2(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
-	( Goal0 = some(Vars1, CanRemove1, Goal1) - _ ->
-		(
-			( CanRemove0 = cannot_remove
-			; CanRemove1 = cannot_remove
-			)
-		->
+simplify__nested_somes_2(CanRemove0, KeepThisCommit0, Vars0, Goal0,
+		CanRemove, KeepThisCommit, Vars, Goal) :-
+	( Goal0 = some(Vars1, CanRemove1, Goal1) - GoalInfo0 ->
+		( goal_info_has_feature(GoalInfo0, keep_this_commit) ->
+			KeepThisCommit2 = yes
+		;
+			KeepThisCommit2 = KeepThisCommit0
+		),
+		( CanRemove1 = cannot_remove ->
 			CanRemove2 = cannot_remove
 		;
-			CanRemove2 = can_remove
+			CanRemove2 = CanRemove0
 		),
 		list__append(Vars0, Vars1, Vars2),
-		simplify__nested_somes_2(CanRemove2, Vars2, Goal1,
-			CanRemove, Vars, Goal)
+		simplify__nested_somes_2(CanRemove2, KeepThisCommit2, Vars2,
+			Goal1, CanRemove, KeepThisCommit, Vars, Goal)
 	;
 		CanRemove = CanRemove0,
+		KeepThisCommit = KeepThisCommit0,
 		Vars = Vars0,
 		Goal = Goal0
 	).
