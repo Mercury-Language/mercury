@@ -79,6 +79,13 @@
 %
 %	if (!r1) MR_GOTO_LABEL(fail_label);
 %
+% In the case of a pragma c_code with determinism failure, the above
+% is followed by
+%
+%    <code to fail>
+%
+% and the <check of r1> is empty.
+%
 % The code we generate for nondet pragma_c_code assumes that this code is
 % the only thing between the procedure prolog and epilog; such pragma_c_codes
 % therefore cannot be inlined. The code of the procedure is of one of the
@@ -333,9 +340,10 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 
 :- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
 	pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-	list(prog_var)::in, list(maybe(pair(string, mode)))::in, list(type)::in,
-	string::in, maybe(prog_context)::in, hlds_goal_info::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+	list(prog_var)::in, list(maybe(pair(string, mode)))::in,
+	list(type)::in, string::in, maybe(prog_context)::in,
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
@@ -377,7 +385,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		code_info__save_variables(OutArgsSet, _, SaveVarsCode)
 	),
 
+	{ goal_info_get_determinism(GoalInfo, Detism) },
 	( { CodeModel = model_semi } ->
+		% We want to clear r1 even for Detism = failure,
+		% since code with such detism may still assign to
+		% SUCCESS_INDICATOR (i.e. r1).
 		code_info__reserve_r1(ReserveR1_Code)
 	;
 		{ ReserveR1_Code = empty }
@@ -408,6 +420,9 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% into some other location.
 	%
 	( { CodeModel = model_semi } ->
+		% We want to clear r1 even for Detism = failure,
+		% since code with such detism may still assign to
+		% SUCCESS_INDICATOR (i.e. r1).
 		code_info__clear_r1(ClearR1_Code)
 	;
 		{ ClearR1_Code = empty }
@@ -477,7 +492,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% <for semidet code, check of r1>
 	%
-	( { CodeModel = model_semi } ->
+	( { CodeModel = model_semi, Detism \= failure } ->
 		code_info__get_next_label(FailLabel),
 		{ CheckR1_Comp = pragma_c_fail_to(FailLabel) },
 		{ MaybeFailLabel = yes(FailLabel) }
@@ -538,6 +553,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%	<code to fail>
 	%	skip_label:
 	%
+	% for code with determinism failure, we need to insert the failure
+	% handling code here:
+	%
+	%	<code to fail>
+	%
 	( { MaybeFailLabel = yes(TheFailLabel) } ->
 		code_info__get_next_label(SkipLabel),
 		code_info__generate_failure(FailCode),
@@ -552,6 +572,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			tree(FailCode,
 			     SkipLabelCode)))
 		}
+	; { Detism = failure } ->
+		code_info__generate_failure(FailureCode)
 	;
 		{ FailureCode = empty }
 	),
