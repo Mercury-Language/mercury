@@ -156,12 +156,11 @@ tar:
 	cd util && mmake
 	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
 	cd library && $(SUBDIR_MMAKE) depend
-	cd library && $(SUBDIR_MMAKE) ints cs library.init
+	cd library && $(SUBDIR_MMAKE) ints opts cs library.init tags
 	cd compiler && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) ints cs tags
 	cd profiler && $(SUBDIR_MMAKE) depend
 	cd profiler && $(SUBDIR_MMAKE) ints cs tags
-	cd library && $(SUBDIR_MMAKE) tags
 	cd doc && $(SUBDIR_MMAKE) info html dvi
 	cd bindist && $(SUBDIR_MMAKE) bindist.configure bindist.build_vars
 	# clean up
