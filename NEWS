@@ -20,7 +20,8 @@ Changes to the Mercury standard library:
   concatenation, array2d, for two-dimensional arrays, and version_array,
   version_array2d, version_bitmap, version_hash_table, and version_store,
   implementing non-unique versions of these types supporting O(1) access for
-  non-persistent use.
+  non-persistent use.  A new module term_to_xml has been added for converting
+  arbitrary terms to XML documents.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating
   directories and symbolic links, for checking file types and file
@@ -716,6 +717,12 @@ Changes to the Mercury standard library:
 * We've added random__random/5, which produces a random integer in a
   given range, and random__randcount/3, which returns the number of
   distinct random numbers that can be generated.
+
+* A new module `term_to_xml' has been added to the standard library.  This
+  module contains predicates to write arbitrary Mercury terms to an output
+  stream as XML.  Automatic generation of DTDs for Mercury types is also
+  supported.  Once a Mercury term is in XML it can be converted to many other
+  formats such as HTML or XUL using an appropriate stylesheet.
 
 Changes to the extras distribution:
 

@@ -54,7 +54,14 @@
 
 p(_, _, _, 1).
 
-:- type wrap ---> wrap(mytype).
+:- type wrap(T) ---> wrap(T).
+
+:- pred p1(type_desc::in, maybe_functor_info::in, string::out, 
+	list(attribute)::out) is det.
+
+p1(_, _, "X", []).
+
+:- type ext ---> some [T] ext(T).
 
 main(!IO) :-
 	some [!M] (
@@ -89,23 +96,74 @@ main(!IO) :-
 		t(type_of(!.M)),
 		ctor(type_ctor(type_of(!.M))),
 		foreign(F),
-		pointer(P)]),
+		pointer(P)],
+	Map = !.M
+	),
 	array.from_list(X, A),
-	write_xml_doc_cc(A, with_stylesheet("text/css", 
+	write_xml_doc_cc(A, unique, with_stylesheet("text/css", 
 		"http://www.cs.mu.oz.au/a_css.css"), embed, Result1, !IO),
+	write_string("Result 1:\n", !IO),
 	write(Result1, !IO),
 	nl(!IO),
 	nl(!IO),
-	write_xml_doc(X, no_stylesheet, external(public("test", "test.dtd")),
-		Result2, !IO),
+	write_xml_doc_cc(A, unique, with_stylesheet("text/css", 
+		"http://www.cs.mu.oz.au/a_css.css"), no_dtd, Result2, !IO),
+	write_string("Result 2:\n", !IO),
 	write(Result2, !IO),
 	nl(!IO),
 	nl(!IO),
-	Simple = listPart(666),
-	write_xml_doc(Simple, no_stylesheet, no_dtd, Result3, !IO),
+	write_xml_doc_cc(wrap(Map), unique, with_stylesheet("text/css", 
+		"http://www.cs.mu.oz.au/a_css.css"), embed, Result3, !IO),
+	write_string("Result 3:\n", !IO),
 	write(Result3, !IO),
 	nl(!IO),
 	nl(!IO),
-	write_xml_doc(yes, no_stylesheet, embed, Result4, !IO),
+	write_xml_doc_cc(wrap(Map), simple, with_stylesheet("text/css", 
+		"http://www.cs.mu.oz.au/a_css.css"), embed, Result3_1, !IO),
+	write_string("Result 3_1:\n", !IO),
+	write(Result3_1, !IO),
+	nl(!IO),
+	nl(!IO),
+	array.from_list([listPart(1),listPart(2),
+		nothing,
+		listPart(4),
+		nothing,
+		listPart(6),
+		listPart(7),
+		listPart(8),
+		nothing], A2),
+	write_xml_doc(A2, unique, with_stylesheet("text/css", 
+		"http://www.cs.mu.oz.au/a_css.css"), embed, Result4, !IO),
+	write_string("Result 4:\n", !IO),
 	write(Result4, !IO),
+	nl(!IO),
+	nl(!IO),
+	write_xml_doc(X, simple, no_stylesheet, 
+		external(public("test", "test.dtd")), Result5, !IO),
+	write_string("Result 5:\n", !IO),
+	write(Result5, !IO),
+	nl(!IO),
+	nl(!IO),
+	Simple = listPart(666),
+	write_xml_doc(Simple, custom(p1), no_stylesheet, external(
+		system("test")), Result6, !IO),
+	write_string("Result 6:\n", !IO),
+	write(Result6, !IO),
+	nl(!IO),
+	nl(!IO),
+	write_xml_doc(wrap(Simple), custom(p1), no_stylesheet, embed, 
+		Result7, !IO),
+	write_string("Result 7:\n", !IO),
+	write(Result7, !IO),
+	nl(!IO),
+	nl(!IO),
+	write_xml_doc(yes, unique, no_stylesheet, embed, Result8, !IO),
+	write_string("Result 8:\n", !IO),
+	write(Result8, !IO),
+	nl(!IO),
+	nl(!IO),
+	write_xml_doc('new ext'(1), unique, no_stylesheet, no_dtd, 
+		Result9, !IO),
+	write_string("Result 9:\n", !IO),
+	write(Result9, !IO),
 	nl(!IO).

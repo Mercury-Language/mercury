@@ -112,17 +112,7 @@ is a &lt;string&gt;&amp;</String>
 		<Int type="int">999</Int>
 	</a-32-60-33-64-35-36-37-94-38-42-40-41-62-32functor-32name-33-33-33--1--write_xml-46mytype>
 	<a_pred--1--write_xml-46mytype functor="a_pred" type="write_xml.mytype" arity="1">
-		<pred-40int-41 functor="p" type="pred(int)" arity="3">
-			<Int type="int">1</Int>
-			<Int type="int">2</Int>
-			<hello--5--write_xml-46mytype functor="hello" type="write_xml.mytype" arity="5">
-				<String type="string">a string</String>
-				<Int type="int">1</Int>
-				<Char type="character">c</Char>
-				<Float type="float">-1.00000000000000e-15</Float>
-				<yes--0--bool-46bool functor="yes" type="bool.bool" arity="0" />
-			</hello--5--write_xml-46mytype>
-		</pred-40int-41>
+		<pred-40int-41 functor="&lt;&lt;predicate&gt;&gt;" type="pred(int)" arity="0" />
 	</a_pred--1--write_xml-46mytype>
 	<t--1--write_xml-46mytype functor="t" type="write_xml.mytype" arity="1">
 		<type_desc-46type_desc functor="tree234" type="type_desc.type_desc" arity="2">

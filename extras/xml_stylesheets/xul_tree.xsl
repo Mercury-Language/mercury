@@ -32,6 +32,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 					<xsl:attribute name="id">field</xsl:attribute>
 					<xsl:attribute name="label">Field Name</xsl:attribute>
 					<xsl:attribute name="flex">1</xsl:attribute>
+					<xsl:attribute name="hidden">true</xsl:attribute>
 				</xsl:element>
 				<xsl:element name="splitter">
 					<xsl:attribute name="class">tree-splitter</xsl:attribute>
@@ -82,7 +83,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 		<xsl:element name="treerow">
 			<xsl:element name="treecell">
 				<xsl:choose>
-					<xsl:when test="@name='String'">
+					<xsl:when test="name()='String'">
 						<xsl:attribute name="label">&quot;<xsl:value-of select="." />&quot;</xsl:attribute>
 					</xsl:when>
 					<xsl:otherwise>
@@ -96,7 +97,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 				</xsl:attribute>
 			</xsl:element>
 			<xsl:element name="treecell">
-				<xsl:attribute name="label">string</xsl:attribute>
+				<xsl:attribute name="label"><xsl:value-of select="@type" /></xsl:attribute>
 			</xsl:element>
 			<xsl:element name="treecell">
 				<xsl:attribute name="label">
@@ -162,7 +163,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 			</xsl:element>
 			<xsl:element name="treecell">
 				<xsl:attribute name="label">
-					<xsl:value-of select="@typename" />
+					<xsl:value-of select="@type" />
 				</xsl:attribute>
 			</xsl:element>
 			<xsl:element name="treecell">
