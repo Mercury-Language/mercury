@@ -1385,6 +1385,7 @@ io__set_op_table(OpTable,	io__state(A, B, _, D, E),
 #include ""wrapper.h""
 #include ""type_info.h""
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
