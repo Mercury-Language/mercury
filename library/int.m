@@ -177,6 +177,18 @@
 :- pred builtin_bit_neg(int, int).
 :- mode builtin_bit_neg(in, uo) is det.
 
+	% int__int_max(Max) binds Max to the maximum value of an int
+	% on this machine.
+:- pred int__int_max(int::out) is det.
+
+	% int__int_min(Max) binds Min to the minimum value of an int
+	% on this machine.
+:- pred int__int_min(int::out) is det.
+
+	% int__int_bits(Bits) binds Bits to the number of bits in an int
+	% on this machine.
+:- pred int__int_bits(int::out) is det.
+
 :- implementation.
 :- import_module require.
 
@@ -271,3 +283,31 @@ int__log2_2(X, N0, N) :-
 ").
 
 %-----------------------------------------------------------------------------%
+
+:- pragma c_header_code("
+	#include <limits.h>
+").
+
+
+:- pragma c_code(int__int_max(Max::out), "
+	if (sizeof(Integer) == sizeof(int))
+		Max = INT_MAX;
+	else if (sizeof(Integer) == sizeof(long))
+		Max = LONG_MAX;
+	else
+		fatal_error(""Unable to figure out max integer size"");
+").
+
+:- pragma c_code(int__int_min(Min::out), "
+	if (sizeof(Integer) == sizeof(int))
+		Min = INT_MIN;
+	else if (sizeof(Integer) == sizeof(long))
+		Min = LONG_MIN;
+	else
+		fatal_error(""Unable to figure out min integer size"");
+").
+
+:- pragma c_code(int__int_bits(Bits::out), "
+	Bits = sizeof(Integer) * CHAR_BIT;
+").
+

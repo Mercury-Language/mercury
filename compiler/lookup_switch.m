@@ -329,7 +329,14 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 	generate_bit_vec(CaseVals, Start, BitVec),
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, bits_per_word, WordBits) },
+	{ getopt__lookup_int_option(Options, bits_per_word, WordBits0) },
+	{ int__int_bits(MachineBits) },
+		% prevent cross-compilation errors by making sure that
+		% the bitvector uses a number of bits that will fit both
+		% on this machine (so that we can correctly generate it),
+		% and on the target machine (so that it can be executed
+		% correctly)
+	{ int__min(WordBits0, MachineBits, WordBits) },
 	{ UIndex = unop(cast_to_unsigned, Index) },
 	{ Word = lval(field(0, BitVec,
 			binop(/, UIndex,const(int_const(WordBits)))))},
@@ -350,7 +357,14 @@ generate_bit_vec(CaseVals, Start, BitVec) -->
 	{ map__init(Empty) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, bits_per_word, WordBits) },
+	{ getopt__lookup_int_option(Options, bits_per_word, WordBits0) },
+	{ int__int_bits(MachineBits) },
+		% prevent cross-compilation errors by making sure that
+		% the bitvector uses a number of bits that will fit both
+		% on this machine (so that we can correctly generate it),
+		% and on the target machine (so that it can be executed
+		% correctly)
+	{ int__min(WordBits0, MachineBits, WordBits) },
 	{ generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap) },
 	{ map__to_assoc_list(BitMap, WordVals) },
 	{ generate_bit_vec_args(WordVals, 0, Args) },
