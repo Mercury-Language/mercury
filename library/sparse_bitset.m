@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+% Copyright (C) 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -411,10 +411,6 @@ foldr(F, sparse_bitset(Set), Acc0) = Acc :-
 		(pred(E::in, Acc1::in, Acc2::out) is det :-
 			Acc2 = F(E, Acc1)
 		), Set, Acc0, Acc).
-
-:- func foldr_2(func(T, U) = U, bitset_impl, U) = U <= enum(T).
-:- pragma type_spec(foldr_2/3, T = int).
-:- pragma type_spec(foldr_2/3, T = var(_)).
 
 :- pred foldr_2(pred(T, U, U), bitset_impl, U, U) <= enum(T).
 :- mode foldr_2(pred(in, in, out) is det, in, in, out) is det.
