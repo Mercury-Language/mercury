@@ -57,7 +57,6 @@ int		mercury_exit_status = 0;
 
 #endif
 
-extern	int	main(int argc, char **argv);
 static	void	process_options(int argc, char **argv);
 static	void	usage(void);
 static	void	run_code(void);
@@ -139,7 +138,7 @@ static void process_options(int argc, char **argv)
 		which = default_entry;
 	}
 
-	while ((c = getopt(argc, argv, "hcltp:d:r:w:s:z:1:2:3:")) != EOF)
+	while ((c = getopt(argc, argv, "xhcltp:d:r:w:s:z:1:2:3:")) != EOF)
 	{
 		switch (c)
 		{
@@ -262,6 +261,11 @@ static void process_options(int argc, char **argv)
 					nondstack_zone_size = val;
 				else
 					usage();
+		
+		when 'x':	
+#ifdef CONSERVATIVE_GC
+				GC_dont_gc = 1;
+#endif
 
 		when '1':	if (sscanf(optarg, "%d", &r1val) != 1)
 					usage();
@@ -294,6 +298,7 @@ static void usage(void)
 	printf("-c \t\tcheck cross-function stack usage\n");
 	printf("-l \t\tprint all labels\n");
 	printf("-t \t\tuse own timer\n");
+	printf("-x \t\tdisable garbage collection\n");
 	printf("-dg \t\tdebug gotos\n");
 	printf("-dc \t\tdebug calls\n");
 	printf("-db \t\tdebug backtracking\n");
