@@ -2444,14 +2444,15 @@ mercury_compile__link_module_list(Modules) -->
 	;
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
-	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
 	    globals__io_get_trace_level(TraceLevel),
 	    { TraceLevel \= none ->
-		CmdPrefix = "c2init -t "
+		TraceOpt = "--trace "
 	    ;
-		CmdPrefix = "c2init "
+		TraceOpt = ""
 	    },
-	    { string__append_list([CmdPrefix | MkInitCmd0], MkInitCmd) },
+	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
+	    { string__append_list(["c2init ", TraceOpt | MkInitCmd0],
+	    	MkInitCmd) },
 	    invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
 	    ( { MkInitOK = no } ->
@@ -2492,7 +2493,8 @@ mercury_compile__link_module_list(Modules) -->
 		    { join_string_list(LinkObjectsList, "", "", " ",
 				LinkObjects) },
 		    { string__append_list(
-			["ml --grade ", Grade, " ", C_Debug_Opt, LinkFlags,
+			["ml --grade ", Grade, " ",
+			C_Debug_Opt, TraceOpt, LinkFlags,
 			" -o ", OutputFileName, " ",
 			InitObjFileName, " ", Objects, " ",
 			LinkObjects, " ",
