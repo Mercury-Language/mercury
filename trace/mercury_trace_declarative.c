@@ -182,9 +182,9 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	if (event_info->MR_event_number > MR_edt_last_event) {
 		/* This shouldn't ever be reached. */
 		fprintf(MR_mdb_err, "Warning: missed final event.\n");
-		fprintf(MR_mdb_err, "event %d\nlast event %d\n",
-				event_info->MR_event_number,
-				MR_edt_last_event);
+		fprintf(MR_mdb_err, "event %lu\nlast event %lu\n",
+				(unsigned long) event_info->MR_event_number,
+				(unsigned long) MR_edt_last_event);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		return MR_trace_event_internal(cmd, TRUE, event_info);
 	}
