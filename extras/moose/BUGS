@@ -1,4 +1,27 @@
 
+Doesn't handle epsilon productions properly -- throws an exception
+when computing the action table:
+
+	Uncaught Mercury exception:
+	Software Error: map__lookup: key not found
+		Key Type: grammar.symbol
+		Key Functor: terminal/1
+		Value Type: list.list(lalr.item)
+	Stack dump follows:
+	   0       pred exception.throw/1-0 (erroneous) (exception.m:304)
+	   1       pred require.error/1-0 (erroneous) (require.m:101)
+	   2       pred require.report_lookup_error/3-0 (erroneous) (require.m:89)
+	   3       pred map.lookup/3-0 (det) (map.m:469)
+	   4       pred tables.IntroducedFrom__pred__actions2__119__6/8-0 (det) (tables.m:121)
+	   5    2* pred list.foldl2/6-0 (det) (list.m:1356 and others)
+	   7       pred tables.actions2/12-0 (det) (tables.m:119)
+	   8       pred tables.actions1/10-0 (det) (tables.m:91)
+	   9       pred tables.actions/8-0 (det) (tables.m:72)
+	  10       pred moose.process_2/8-0 (det) (moose.m:200)
+	  11       pred moose.process/3-0 (det) (moose.m:133)
+	  12       pred moose.main2/4-0 (det) (moose.m:59)
+	  13       pred moose.main/2-0 (det) (moose.m:36)
+
 Doesn't give good error messages if :- action is used but the rule
 doesn't exist. 
 
