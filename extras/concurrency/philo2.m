@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -98,4 +98,8 @@ name(sartre	, "Sartre").
 	sleep((rand() % Int));
 #endif
 	IO =  IO0;
+}").
+:- pragma foreign_proc("C#", rand_sleep(Int::in, _IO0::di, _IO::uo),
+		[thread_safe, will_not_call_mercury, promise_pure], "{
+	System.Threading.Thread.Sleep((new System.Random()).Next(Int) * 1000);
 }").

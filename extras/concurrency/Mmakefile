@@ -8,6 +8,11 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
 TESTS = philo philo2 philo3 midimon
 
+MLLIBS=pthreadVSE.lib
+MCFLAGS=--no-line-numbers
+MGNUCFLAGS=--c-debug
+MLFLAGS=--c-debug
+
 -include ../Mmake.params
 
 default_target: all
