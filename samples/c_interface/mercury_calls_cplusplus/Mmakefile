@@ -29,7 +29,7 @@ HACK=		-DMR_MACHDEPS_ALPHA_REGS_H \
 #-----------------------------------------------------------------------------#
 
 # tell the Mercury linker to link in cpp_main.o
-MLLIBS=cpp_main.o
+MLOBJS=cpp_main.o
 
 # tell mmake that it needs to make cpp_main.o before it can make mercury_main
 mercury_main: cpp_main.o

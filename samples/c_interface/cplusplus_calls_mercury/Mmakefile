@@ -31,7 +31,7 @@ MGNUCFLAGS=-g
 MLFLAGS=-g
 
 # tell the Mercury linker to link in cpp_main.o and mercury_lib.o
-MLLIBS=cpp_main.o mercury_lib.o
+MLOBJS=cpp_main.o mercury_lib.o
 
 #-----------------------------------------------------------------------------#
 
