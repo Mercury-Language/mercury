@@ -21,6 +21,9 @@ Sorry, the diagnosis cannot continue because it requires support for
 the following: code that catches exceptions.
 The debugger is a work in progress, and this is not supported in the
 current version.
+mdb: warning: reached unknown label
+This may result in some exception events
+being omitted from the trace.
       E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> continue
 exception(univ_cons("q: bad input"))

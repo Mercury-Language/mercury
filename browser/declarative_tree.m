@@ -55,9 +55,12 @@
 		pred(edt_get_e_bug/4) is trace_get_e_bug,
 		pred(edt_get_i_bug/4) is trace_get_i_bug,
 		pred(edt_children/3) is trace_children,
+		pred(edt_parent/3) is trace_last_parent,
 		pred(edt_dependency/6) is trace_dependency,
 		pred(edt_subterm_mode/5) is trace_subterm_mode,
-		pred(edt_is_implicit_root/2) is trace_is_implicit_root
+		pred(edt_is_implicit_root/2) is trace_is_implicit_root,
+		pred(edt_same_nodes/3) is trace_same_event_numbers,
+		pred(edt_topmost_node/2) is trace_topmost_node
 	].
 
 %-----------------------------------------------------------------------------%
@@ -188,7 +191,65 @@ trace_get_i_bug(wrap(Store), dynamic(BugRef),
 	get_edt_node_initial_atom(Store, BugRef, BugAtom),
 	get_edt_node_initial_atom(Store, InadmissibleRef, InadmissibleAtom),
 	get_edt_node_event_number(Store, BugRef, Event).
-	
+
+	% Finding the parent of a node in the EDT from an EXIT event is
+	% in actual fact not deterministic in the presence of backtracking,
+	% since one EXIT event could belong to multiple children if it is in 
+	% a call which is backtracked over and each of these children could
+	% have different parents.  We return the last interface event of the
+	% parent CALL event as the parent.  This is okay since trace_parent is
+	% only used when an explicit subtree is generated which is above the
+	% previous subtree, so it doesn't really matter which parent we pick.
+	%
+:- pred trace_last_parent(wrap(S)::in, edt_node(R)::in, edt_node(R)::out) 
+	is semidet <= annotated_trace(S, R).
+
+trace_last_parent(wrap(Store), dynamic(Ref), dynamic(Parent)) :-
+	det_edt_return_node_from_id(Store, Ref, Node),
+	(
+		Node = fail(_, CallId, _, _)
+	;
+		Node = exit(_, CallId, _, _, _, _)
+	;
+		Node = excp(_, CallId, _, _, _)
+	),
+	call_node_from_id(Store, CallId, Call),
+	CallPrecId = Call ^ call_preceding,
+	step_left_to_call(Store, CallPrecId, ParentCallNode),
+	Parent = ParentCallNode ^ call_last_interface.
+
+:- pred trace_same_event_numbers(wrap(S)::in, edt_node(R)::in, 
+	edt_node(R)::in) is semidet <= annotated_trace(S, R).
+
+trace_same_event_numbers(wrap(Store), dynamic(Ref1), dynamic(Ref2)) :-
+	det_edt_return_node_from_id(Store, Ref1, Node1),
+	det_edt_return_node_from_id(Store, Ref2, Node2),
+	(
+		Node1 = exit(_, _, _, _, Event, _),
+		Node2 = exit(_, _, _, _, Event, _)
+	;
+		Node1 = fail(_, _, _, Event),
+		Node2 = fail(_, _, _, Event)
+	;
+		Node1 = excp(_, _, _, _, Event),
+		Node2 = excp(_, _, _, _, Event)
+	).
+
+:- pred trace_topmost_node(wrap(S)::in, edt_node(R)::in) is semidet
+	<= annotated_trace(S, R).
+
+trace_topmost_node(wrap(Store), dynamic(Ref)) :-
+	det_edt_return_node_from_id(Store, Ref, Node),
+	(
+		Node = exit(_, CallId, _, _, _, _)
+	;
+		Node = fail(_, CallId, _, _)
+	;
+		Node = excp(_, CallId, _, _, _)
+	),
+	% The node is topmost of the call sequence number is 1.
+	call_node_from_id(Store, CallId, call(_, _, _, 1, _, _, _, _, _)).
+
 :- pred trace_children(wrap(S)::in, edt_node(R)::in, list(edt_node(R))::out)
 	is semidet <= annotated_trace(S, R).
 
@@ -772,10 +833,6 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
 			PrevNodeId = NegPrec
 		;	
 			Node = cond(CondPrec, _, _)
-		->
-			PrevNodeId = CondPrec
-		;
-			Node = cond(CondPrec, _, failed)
 		->
 			PrevNodeId = CondPrec
 		;

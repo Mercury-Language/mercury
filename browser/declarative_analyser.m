@@ -29,7 +29,7 @@
 			% There are no suspects left, and no incorrect
 			% nodes have been found.
 	--->	no_suspects
-	
+
 			% A suspect who is guilty, along with the evidence
 			% against the suspect.
 	;	bug_found(decl_bug, decl_evidence(T))
@@ -39,8 +39,12 @@
 
 			% The analyser requires the given implicit sub-tree
 			% to be made explicit.
-	;	require_explicit(T)
-	
+	;	require_explicit_subtree(T)
+
+			% The analyser requires an explicit tree above the 
+			% root of an existing explicit tree.
+	;	require_explicit_supertree(T)
+
 			% The analyser would like the oracle to re-ask the user
 			% this question and then for analysis to continue.
 	;	revise(decl_question(T)).
@@ -89,7 +93,7 @@
 :- import_module mdb.declarative_edt.
 :- import_module mdbcomp.program_representation.
 
-:- import_module bool, exception, string, map, int, counter, array, list.
+:- import_module exception, string, map, int, counter, array, list.
 
 	% Describes what search strategy is being used by the analyser and the
 	% state of the search.
@@ -110,25 +114,30 @@
 			% a binary search between this node and the root of the
 			% search space (the binary search will only come into
 			% effect if the oracle asserts the suspect is correct
-			% or inadmissible).  The arguments of this field give
-			% the atom and subterm position in that atom where the
-			% search got up to if it needs to stop to wait for an
-			% explicit subtree to be generated.  The last argument
-			% is the last suspect on the dependency chain whose
-			% status was unknown.  Initially this is no, but as the
-			% sub-term is tracked to where is was initially bound
-			% (which could be above or below the node where it was
-			% marked incorrect), the most recent node through which
-			% the subterm was tracked that has a status of
-			% `unknown' is stored in this field.  This is then used
-			% as the next question if the node that bound the
-			% subterm is trusted or in an excluded part of the
-			% search tree.
+			% or inadmissible).  			
 			%
 	;	follow_subterm_end(
+				%
+				% The following 3 args give the position the
+				% sub-term tracking algorithm has got up to if
+				% it needs to stop to wait for an explicit
+				% sub/super-tree to be generated.
+				%
 			suspect_id, 
 			arg_pos, 
 			term_path, 
+
+				% The last suspect on the dependency chain
+				% whose status was unknown.  Initially this is
+				% no, but as the sub-term is tracked to where
+				% it was initially bound (which could be above
+				% or below the node where it was marked
+				% incorrect), the most recent node through
+				% which the sub-term was tracked that has a
+				% status of `unknown' is stored in this field.
+				% This is then used as the next question if the
+				% node that bound the sub-term is trusted or in
+				% an excluded part of the search tree.
 			maybe(suspect_id)
 		)
 
@@ -155,7 +164,8 @@
 	% 
 :- type search_response
 	--->	question(suspect_id)
-	;	require_explicit(suspect_id).
+	;	require_explicit_subtree(suspect_id)
+	;	require_explicit_supertree.
 
 	% The analyser state records all of the information that needs
 	% to be remembered across multiple invocations of the analyser.
@@ -166,20 +176,12 @@
 				% Information about the EDT nodes relevent to 
 				% the bug search.
 			search_space		:: search_space(T),
-				
-				% Previous roots of the search space.  These 
-				% will be revisited if the analysis is
-				% revised (for instance when the user 
-				% overrules a bug found by the analyser).
-			previous_roots		:: list(suspect_id),
 			
-				% This is set to yes when an explicit subtree
-				% needs to be generated.  The suspect_id of the
-				% suspect in the search space is stored here so
-				% we know which node in the search space to
-				% update once the explicit subtree has been
-				% generated.
-			require_explicit :: maybe(suspect_id),
+				% This is set to yes when an explicit tree
+				% needs to be generated.  
+				% The maybe argument says what type of explicit
+				% tree needs to be generated.
+			require_explicit :: maybe(explicit_tree_type),
 
 				% The method currently being employed to search
 				% the search space for questions for the 
@@ -205,12 +207,22 @@
 			debug_origin		:: maybe(subterm_origin(T))
 	).
 
+:- type explicit_tree_type
+
+			% Generate an explicit subtree for the implicit root
+			% referenced by the suspect_id.
+	--->	explicit_subtree(suspect_id)
+	
+			% Generate a new explicit tree above the current 
+			% explicit tree.
+	;	explicit_supertree.
+
 analyser_state_init(IoActionMap, Analyser) :-
-	Analyser = analyser(empty_search_space, [], no, top_down, no, 
+	Analyser = analyser(empty_search_space, no, top_down, no, 
 		IoActionMap, no).
 
 reset_analyser(!Analyser) :-
-	!:Analyser = analyser(empty_search_space, [], no, top_down, no, 
+	!:Analyser = analyser(empty_search_space, no, top_down, no, 
 		!.Analyser ^ io_action_map, no).
 
 analyser_state_replace_io_map(IoActionMap, !Analyser) :-
@@ -218,12 +230,20 @@ analyser_state_replace_io_map(IoActionMap, !Analyser) :-
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
-start_or_resume_analysis(Store, Tree, Response, !Analyser) :-
+start_or_resume_analysis(Store, Node, Response, !Analyser) :-
 	MaybeRequireExplicit = !.Analyser ^ require_explicit,
 	(
-		MaybeRequireExplicit = yes(SuspectId),
-		incorporate_explicit_subtree(SuspectId, Tree, 
-			!.Analyser ^ search_space, SearchSpace),
+		MaybeRequireExplicit = yes(TreeType),
+		SearchSpace0 = !.Analyser ^ search_space,
+		(
+			TreeType = explicit_supertree,
+			incorporate_explicit_supertree(Store, Node, 
+				SearchSpace0, SearchSpace)
+		;
+			TreeType = explicit_subtree(SuspectId),
+			incorporate_explicit_subtree(SuspectId, Node, 
+				SearchSpace0, SearchSpace)
+		),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace,
 		!:Analyser = !.Analyser ^ require_explicit := no,
 		decide_analyser_response(Store, Response, !Analyser)
@@ -234,11 +254,12 @@ start_or_resume_analysis(Store, Tree, Response, !Analyser) :-
 		% start of a new declarative debugging session.
 		%
 		reset_analyser(!Analyser),
-		initialise_search_space(Tree, SearchSpace),
+		initialise_search_space(Node, SearchSpace),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace,
-		root_det(SearchSpace, RootId),
-		!:Analyser = !.Analyser ^ last_search_question := yes(RootId),
-		edt_question(!.Analyser ^ io_action_map, Store, Tree, 
+		topmost_det(SearchSpace, TopMostId),
+		!:Analyser = !.Analyser ^ last_search_question := 
+			yes(TopMostId),
+		edt_question(!.Analyser ^ io_action_map, Store, Node, 
 			Question),
 		Response = revise(Question)
 	).
@@ -280,8 +301,6 @@ process_answer(_, truth_value(_, inadmissible), SuspectId, !Analyser) :-
 process_answer(_, truth_value(_, erroneous), SuspectId, !Analyser) :-
 	assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space, 
 		SearchSpace),
-	PreviousRoots = !.Analyser ^ previous_roots,
-	!:Analyser = !.Analyser ^ previous_roots := [SuspectId| PreviousRoots],
 	!:Analyser = !.Analyser ^ search_space := SearchSpace.
 
 process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId, 
@@ -303,47 +322,31 @@ process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId,
 	;
 		Mode = subterm_out,
 		assert_suspect_is_erroneous(SuspectId, 
-			!.Analyser ^ search_space, SearchSpace),
-		!:Analyser = !.Analyser ^ previous_roots := 
-			[SuspectId | !.Analyser ^ previous_roots]
+			!.Analyser ^ search_space, SearchSpace)
 	),
 	!:Analyser = !.Analyser ^ search_space := SearchSpace,
 	!:Analyser = !.Analyser ^ search_mode := follow_subterm_end(SuspectId,
 		ArgPos, TermPath, no).
 
 revise_analysis(Store, Response, !Analyser) :-
-	%
-	% The head of previous_roots in the analyser is just the
-	% current root of the search space, so we make the second element in
-	% previous_roots the new root, make everything below it
-	% unknown and re-query the current root.  If there's only one previous
-	% root (the current root) then we make it and all its descendents
-	% unknown and re-query it.  If there are no previous roots then we give
-	% up the search.
-	%
+	SearchSpace = !.Analyser ^ search_space,
 	(
-		!.Analyser ^ previous_roots = [Current | PreviousRoots],
-		(
-			PreviousRoots = [LastRoot | _],
-			revise_suspect(LastRoot, !.Analyser ^ search_space,
-				SearchSpace0),
-			assert_suspect_is_erroneous(LastRoot, SearchSpace0,
-				SearchSpace1)
-		;
-			PreviousRoots = [],
-			revise_suspect(Current, !.Analyser ^ search_space,
-				SearchSpace1)
-		),
-		edt_question(!.Analyser ^ io_action_map, Store, 
-			get_edt_node(SearchSpace1, Current), Question),
+		root(SearchSpace, RootId)
+	->
+		Node = get_edt_node(!.Analyser ^ search_space, RootId),
+		edt_question(!.Analyser ^ io_action_map, Store, Node,
+			Question),
 		Response = revise(Question),
+		revise_root(SearchSpace, SearchSpace1),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace1,
-		!:Analyser = !.Analyser ^ previous_roots := PreviousRoots,
-		!:Analyser = !.Analyser ^ search_mode := top_down,
-		!:Analyser = !.Analyser ^ last_search_question := yes(Current)
+		!:Analyser = !.Analyser ^ last_search_question := yes(RootId),
+		!:Analyser = !.Analyser ^ search_mode := top_down
 	;
-		!.Analyser ^ previous_roots = [],
-		Response = no_suspects
+		%
+		% There must be a root, since a bug was found (and is now
+		% being revised).
+		%
+		throw(internal_error("revise_analysis", "no root"))
 	).
 
 :- pred decide_analyser_response(S::in, analyser_response(T)::out,
@@ -351,32 +354,61 @@ revise_analysis(Store, Response, !Analyser) :-
 	is det <= mercury_edt(S, T).
 
 decide_analyser_response(Store, Response, !Analyser) :-
-	SearchSpace0 = !.Analyser ^ search_space,
-	root_det(SearchSpace0, RootId),
-	(
-		no_more_questions(Store, SearchSpace0, SearchSpace1,
-			CorrectDescendents, InadmissibleChildren)
-	->
+	some [!SearchSpace] (
+		!:SearchSpace = !.Analyser ^ search_space,
 		(
-			suspect_erroneous(SearchSpace1, RootId)
+			root(!.SearchSpace, RootId),
+			suspect_is_bug(Store, RootId, !SearchSpace,
+				CorrectDescendents, InadmissibleChildren)
 		->
+			!:Analyser = !.Analyser ^ search_space :=
+				!.SearchSpace,
 			bug_response(Store, !.Analyser ^ io_action_map, 
-				SearchSpace1, RootId, 
+				!.SearchSpace, RootId, 
 				[RootId | CorrectDescendents], 
-				InadmissibleChildren, Response),
-			!:Analyser = !.Analyser ^ search_space := SearchSpace1
-				
+				InadmissibleChildren, Response)
 		;
-			revise_analysis(Store, Response, !Analyser)
+			are_unknown_suspects(!.SearchSpace)
+		->
+			search(Store, !SearchSpace, !.Analyser ^ search_mode,
+				NewMode, SearchResponse),
+			!:Analyser = !.Analyser ^ search_space :=
+				!.SearchSpace,
+			!:Analyser = !.Analyser ^ search_mode := NewMode,
+			handle_search_response(Store, SearchResponse, 
+				!Analyser, Response)
+		;		
+			%
+			% Try to extend the search space upwards.  If this
+			% fails and we're not at the topmost traced node, then
+			% request that an explicit supertree be generated.
+			%
+			(
+				extend_search_space_upwards(Store,
+					!SearchSpace)
+			->
+				!:Analyser = !.Analyser ^ search_space :=
+					!.SearchSpace,
+				decide_analyser_response(Store, Response,
+					!Analyser)
+			;
+				topmost_det(!.SearchSpace, TopMostId),
+				TopMostNode = get_edt_node(!.SearchSpace,
+					TopMostId),
+				(
+					edt_topmost_node(Store, TopMostNode)
+				->
+					% We can't look any higher.
+					Response = no_suspects
+				;
+					Response = require_explicit_supertree(
+						TopMostNode),
+					!:Analyser = !.Analyser ^
+						require_explicit := yes(
+							explicit_supertree)
+				)
+			)
 		)
-	;
-		% Search the search space for questions for the oracle.
-		search(Store, SearchSpace0, SearchSpace, 
-			!.Analyser ^ search_mode, NewMode, SearchResponse),
-		!:Analyser = !.Analyser ^ search_mode := NewMode,
-		!:Analyser = !.Analyser ^ search_space := SearchSpace,
-		handle_search_response(Store, SearchResponse, !Analyser,
-			Response)
 	).
 
 :- pred handle_search_response(S::in, search_response::in, 
@@ -412,11 +444,19 @@ handle_search_response(Store, question(SuspectId), !Analyser, Response) :-
 	),
 	!:Analyser = !.Analyser ^ last_search_question := yes(SuspectId).
 
-handle_search_response(_, require_explicit(SuspectId), !Analyser, 
+handle_search_response(_, require_explicit_subtree(SuspectId), !Analyser, 
 		Response) :-
-	!:Analyser = !.Analyser ^ require_explicit := yes(SuspectId),
-	Response = require_explicit(get_edt_node(!.Analyser ^ search_space,
-		SuspectId)).
+	!:Analyser = !.Analyser ^ require_explicit := yes(explicit_subtree(
+		SuspectId)),
+	Node = get_edt_node(!.Analyser ^ search_space, SuspectId),
+	Response = require_explicit_subtree(Node).
+
+handle_search_response(_, require_explicit_supertree, !Analyser, Response) :-
+	!:Analyser = !.Analyser ^ require_explicit := yes(explicit_supertree),
+	SearchSpace = !.Analyser ^ search_space,
+	topmost_det(SearchSpace, TopMostId),
+	TopMost = get_edt_node(SearchSpace, TopMostId),
+	Response = require_explicit_supertree(TopMost).
 
 	% bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence, 
 	%	InadmissibleChildren, Response)
@@ -475,9 +515,19 @@ search(Store, !SearchSpace, binary(PathArray, Top - Bottom, LastTested),
 	search_response::out, search_mode::out) is det <= mercury_edt(S, T).
 
 top_down_search(Store, !SearchSpace, Response, NewMode) :-
-	root_det(!.SearchSpace, RootId),
+	%
+	% If there's no root yet (because the oracle hasn't asserted any nodes
+	% are erroneous yet) then use the topmost suspect as a starting point.
+	%
 	(
-		first_unknown_descendent(Store, RootId, 
+		root(!.SearchSpace, RootId)
+	->
+		Start = RootId
+	;
+		topmost_det(!.SearchSpace, Start)
+	),
+	(
+		first_unknown_descendent(Store, Start, 
 			!.SearchSpace, SearchSpace1, MaybeDescendent)
 	->
 		SearchSpace1 = !:SearchSpace,
@@ -513,64 +563,77 @@ top_down_search(Store, !SearchSpace, Response, NewMode) :-
 		(
 			pick_implicit_root(Store, !.SearchSpace, ImplicitRoot)
 		->
-			Response = require_explicit(ImplicitRoot),
+			Response = require_explicit_subtree(ImplicitRoot),
 			NewMode = top_down
 		;
 			throw(internal_error("top_down_search",
-				"first_unknown_descendent requires an explicit"
-				++" subtree to be generated, but "++
-				"pick_implicit_root couldn't find an implicit"
-				++" root to generate an explicit subtree from"))
+				"first_unknown_descendent requires an "
+				++ "explicit subtree to be generated, but "
+				++ "pick_implicit_root couldn't find an "
+				++ "implicit root to generate an "
+				++ "explicit subtree from"))
 		)
 	).
 
 :- pred follow_subterm_end_search(S::in, search_space(T)::in,
 	search_space(T)::out, maybe(suspect_id)::in, suspect_id::in,
-	arg_pos::in, term_path::in, search_mode::out, search_response::out) 
-	is det <= mercury_edt(S, T).
+	arg_pos::in, term_path::in, search_mode::out,
+	search_response::out) is det <= mercury_edt(S, T).
 
 follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos, 
 		TermPath, NewMode, SearchResponse) :-
 	find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 		FindOriginResponse),
-	root_det(!.SearchSpace, RootId),
 	(
-		FindOriginResponse = primitive_op(_, _),
+		FindOriginResponse = primitive_op(PrimitiveOpId, _, _),
 		%
 		% XXX In future the filename and line number of the primitive
 		% operation could be printed out if the node in which the
 		% primitive operation occured turned out to be a bug.
 		%
 		(
-			LastUnknown = yes(Unknown),
-			SearchResponse = question(Unknown),
-			setup_binary_search(!.SearchSpace, RootId, Unknown,
+			suspect_unknown(!.SearchSpace, PrimitiveOpId)
+		->
+			SearchResponse = question(PrimitiveOpId),
+			setup_binary_search(!.SearchSpace,  PrimitiveOpId,
 				NewMode)
 		;
-			LastUnknown = no,
-			top_down_search(Store, !SearchSpace, 
-				SearchResponse, NewMode)
+			(
+				LastUnknown = yes(Unknown),
+				SearchResponse = question(Unknown),
+				setup_binary_search(!.SearchSpace, 
+					Unknown, NewMode)
+			;
+				LastUnknown = no,
+				top_down_search(Store, !SearchSpace, 
+					SearchResponse, NewMode)
+			)
 		)
 	;
 		FindOriginResponse = not_found,
 		(
 			LastUnknown = yes(Unknown),
 			SearchResponse = question(Unknown),
-			setup_binary_search(!.SearchSpace, RootId, Unknown,
-				NewMode)
+			setup_binary_search(!.SearchSpace,  
+				Unknown, NewMode)
 		;
 			LastUnknown = no,
 			top_down_search(Store, !SearchSpace,
 				SearchResponse, NewMode)
 		)
 	;
-		FindOriginResponse = require_explicit,
-		SearchResponse = require_explicit(SuspectId),
+		FindOriginResponse = require_explicit_subtree,
+		SearchResponse = require_explicit_subtree(SuspectId),
 		%
 		% Record the current position of the search so 
 		% we can continue where we left off once the explicit
 		% subtree has been generated.
 		%
+		NewMode = follow_subterm_end(SuspectId, ArgPos, TermPath,
+			LastUnknown)
+	;
+		FindOriginResponse = require_explicit_supertree,
+		SearchResponse = require_explicit_supertree,
 		NewMode = follow_subterm_end(SuspectId, ArgPos, TermPath,
 			LastUnknown)
 	;
@@ -583,27 +646,61 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 		;
 			NewLastUnknown = LastUnknown
 		),
-		%
-		% This recursive call will not lead to an infinite loop because
-		% eventually either the sub-term will be bound (and
-		% find_subterm_origin will respond with primitive_op/2) or
-		% there will be insufficient tracing information to continue
-		% (and find_subterm_origin will respond with not_found).
-		%
-		follow_subterm_end_search(Store, !SearchSpace, 
-			NewLastUnknown, OriginId, OriginArgPos,
-			OriginTermPath, NewMode, SearchResponse)
+		(
+			%
+			% Check if it's worth continuing tracking the sub-term.
+			% We want to stop if we enter a portion of the search
+			% space known not to contain the bug from which we 
+			% can't return (for example if we come across an
+			% erroneous node where the sub-term is an input).
+			%
+			give_up_subterm_tracking(!.SearchSpace, OriginId)
+		->
+			(
+				LastUnknown = yes(Unknown),
+				SearchResponse = question(Unknown),
+				setup_binary_search(!.SearchSpace,
+					Unknown, NewMode)
+			;
+				LastUnknown = no,
+				top_down_search(Store, !SearchSpace,
+					SearchResponse, NewMode)
+			)
+		;
+			%
+			% This recursive call will not lead to an infinite loop
+			% because eventually either the sub-term will be bound
+			% (and find_subterm_origin will respond with
+			% primitive_op/2) or there will be insufficient tracing
+			% information to continue (and find_subterm_origin will
+			% respond with not_found).
+			%
+			follow_subterm_end_search(Store, !SearchSpace, 
+				NewLastUnknown, OriginId, OriginArgPos,
+				OriginTermPath, NewMode, 
+				SearchResponse)
+		)
 	).
 
-	% setup_binary_search(SearchSpace, TopId, BottomId, Response, 
-	%	SearchMode).
-	% Sets up the search mode to do a binary search between BottomId
-	% and TopId. 
+	% setup_binary_search(SearchSpace, SuspectId, Response, SearchMode).
+	% Sets up the search mode to do a binary search between SuspectId
+	% and either the root of the search space if a suspect has 
+	% previously been marked erroneous, or the topmost node if no suspect
+	% has yet been marked erroneous.
 	%
 :- pred setup_binary_search(search_space(T)::in, suspect_id::in,
-	suspect_id::in, search_mode::out) is det.
+	search_mode::out) is det.
 
-setup_binary_search(SearchSpace, TopId, BottomId, SearchMode) :-
+setup_binary_search(SearchSpace, SuspectId, SearchMode) :-
+	(
+		root(SearchSpace, RootId) 
+	->
+		TopId = RootId,
+		BottomId = SuspectId
+	;
+		topmost_det(SearchSpace, TopId),
+		BottomId = SuspectId
+	),
 	(
 		get_path(SearchSpace, BottomId, TopId, Path)
 	->

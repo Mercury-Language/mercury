@@ -1,19 +1,44 @@
 register --quiet
 context none
 echo on
-step
+table_io allow
+table_io start
+break divide2
+continue
 finish
-dd
-b 2
+dd -ad3
+browse 2
+mark
+n
+y
+b 3
+mark
+n
+y
+n
+y
+y
+n
+y
+n
+
+b 3
 mark
 n
 n
+n
 y
+n
 y
 y
 n
+y
+
+n
+y
+y
+y
 b 1
 mark
-n
 y
-continue
+quit -y

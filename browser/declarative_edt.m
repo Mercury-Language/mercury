@@ -29,7 +29,12 @@
 % particular search algorithm.
 %
 % By convention nodes in the search space are referred to as `suspects', while
-% nodes in the EDT are referred to as `EDT nodes', or just `nodes'.
+% nodes in the EDT are referred to as `EDT nodes', or just `nodes'.  
+% 
+% Also we use the term "root" to refer to the root of the smallest subtree in
+% the search space that must contain a bug based on the answers received so
+% far and the term "topmost" for the suspect in the search space with the
+% lowest depth.
 %
 
 :- module mdb.declarative_edt.
@@ -85,8 +90,19 @@
 		%
 	pred edt_children(S::in, T::in, list(T)::out) is semidet,
 
+		% Return a parent of an EDT node.  Using the annotated trace to
+		% generate the EDT there may be more than one parent of a given
+		% node (see the comment above trace_last_parent/3 in
+		% declarative_tree.m).  This member is required to
+		% deterministically pick one if this is the case.  Fails if the
+		% node is the root of the initial explicit portion of the EDT,
+		% or the root of a portion of the EDT generated as an explicit
+		% supertree.
+		%
+	pred edt_parent(S::in, T::in, T::out) is semidet,
+
 		% Given a subterm of a tree, find the mode of that subterm
-		% and the origin of it amongst the parent, siblings or
+		% and the origin of it amongst a parent, siblings or
 		% children.
 		%
 	pred edt_dependency(S::in, T::in, arg_pos::in, term_path::in, 
@@ -100,7 +116,17 @@
 		% Succeeds if the Node is the root of an implicit subtree.
 		% Fails otherwise.
 		%
-	pred edt_is_implicit_root(S::in, T::in) is semidet
+	pred edt_is_implicit_root(S::in, T::in) is semidet,
+
+		% True if the two nodes are the same even if one may
+		% be represented implicitly and the other explicitly.
+		%
+	pred edt_same_nodes(S::in, T::in, T::in) is semidet, 
+
+		% True if it is not possible to materialize any nodes 
+		% above the given node.
+		%
+	pred edt_topmost_node(S::in, T::in) is semidet
 ].
 
 :- type subterm_mode
@@ -115,7 +141,7 @@
 			% part of which argument is the origin.
 	--->	output(T, arg_pos, term_path)
 
-			% Subterm came from an input of the parent. The
+			% Subterm came from an input of a parent. The
 			% arguments identify which part of which argument of
 			% the clause head is the origin.
 	;	input(arg_pos, term_path)
@@ -161,7 +187,8 @@
 	%
 :- func empty_search_space = search_space(T).
 
-	% Creates a new search space containing just the one EDT node.
+	% Creates a new search space containing just the one EDT node with 
+	% an initial status of unknown.
 	%
 :- pred initialise_search_space(T::in, search_space(T)::out) is det.
 
@@ -175,21 +202,21 @@
 	%
 :- pred root(search_space(T)::in, suspect_id::out) is semidet.
 
-	% Returns the root but throws an exception if the search space is
-	% empty.
+	% Return the topmost suspect in the search space and throw an 
+	% exception if the search space is empty.
 	%
-:- pred root_det(search_space(T)::in, suspect_id::out) is det.
+:- pred topmost_det(search_space(T)::in, suspect_id::out) is det.
 
-	% no_more_questions(Store, !SearchSpace, CorrectDescendents, 
-	%	InadmissibleChildren).
-	% Succeeds if the root of the search space has only correct,
+	% suspect_is_bug(Store, SuspectId, !SearchSpace, CorrectDescendents,
+	%	InadmissibleChildren)
+	% Succeeds if the given suspect is erroneous and has only correct,
 	% inadmissible, pruned or ignored descendents.  The direct children of
 	% the root who are inadmissible are placed in InadmissibleChildren.
 	% CorrectDescendents is all the correct and inadmissible 
-	% descendents of the root.
+	% descendents of the suspect.
 	%
-:- pred no_more_questions(S::in, search_space(T)::in, search_space(T)::out, 
-	list(suspect_id)::out, list(suspect_id)::out) 
+:- pred suspect_is_bug(S::in, suspect_id::in, search_space(T)::in, 
+	search_space(T)::out, list(suspect_id)::out, list(suspect_id)::out)
 	is semidet <= mercury_edt(S, T).
 
 	% children(Store, SuspectId, !SearchSpace, Children).
@@ -237,7 +264,7 @@
 	% find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 	% 	Response).  
 	% Finds the origin of the subterm given by SuspectId, ArgPos and
-	% TermPath in its immediate neighbors.  If the children of a suspect
+	% TermPath in its immediate neighbours.  If the children of a suspect
 	% are required then they'll be added to the search space, unless an
 	% explicit subtree is required in which case the appropriate response
 	% is returned (see definition of find_origin_response type below).
@@ -252,22 +279,27 @@
 	--->	not_found
 	
 			% The subterm originated from the suspect referenced by 
-			% argument 1.  The 2nd and 3rd arguments give the
+			% argument 1.  The second and third arguments give the
 			% position of the subterm in the origin node.
 	;	origin(suspect_id, arg_pos, term_path)
 	
 			% The subterm was bound by a primitive operation inside
 			% the suspect.  The arguments are the filename and line
 			% number of primitive op that bound the subterm.
-	;	primitive_op(string, int)
+	;	primitive_op(suspect_id, string, int)
 			
 			% The suspect is the root of an implicit subtree and
 			% the origin lies in one of it's children.
-	;	require_explicit. 
+	;	require_explicit_subtree
+	
+			% The suspect is the root of the topmost explicit 
+			% EDT and the origin lies in an ancestor.  A new
+			% supertree needs to be generated.
+	;	require_explicit_supertree.
 
 	% Returns the depth of the suspect in the EDT.
 	%
-:- pred depth(suspect_id::in, search_space(T)::in, int::out) is det.
+:- func suspect_depth(search_space(T), suspect_id) = int.
 
 	% travel_up(SearchSpace, SuspectId, N, AncestorId).  
 	% True iff AncestorId is the Nth ancestor of SuspectId in SearchSpace.
@@ -277,15 +309,25 @@
 
 	% incorporate_explicit_subtree(SuspectId, Node, !SearchSpace).
 	% Replaces the EDT node referenced by SuspectId with Node.
+	%
 :- pred incorporate_explicit_subtree(suspect_id::in, T::in,
 	search_space(T)::in, search_space(T)::out) is det.
 
-	% Makes the given suspect the root of the search space and also changes
-	% it and all it's descendent's status to unknown (except for skipped
-	% and ignored nodes which are left as is).
+	% incorporate_explicit_supertree(Store, Node, !SearchSpace).
+	% Node should be the implicit root in a newly generated supertree
+	% that represents the topmost node of the current search space.
+	% Node's parent will be inserted at the top of the search space.
 	%
-:- pred revise_suspect(suspect_id::in, search_space(T)::in, 
-	search_space(T)::out) is det.
+:- pred incorporate_explicit_supertree(S::in, T::in, search_space(T)::in,
+	search_space(T)::out) is det <= mercury_edt(S, T).
+
+	% extend_search_space_upwards(Store, !SearchSpace).
+	% Attempts to add a parent of the current topmost node to the
+	% search space.  Fails if this is not possible because an explicit
+	% supertree is required.
+	%
+:- pred extend_search_space_upwards(S::in, search_space(T)::in, 
+	search_space(T)::out) is semidet <= mercury_edt(S, T).
 
 	% Return the EDT node corresponding to the suspect_id.
 	%
@@ -368,11 +410,32 @@
 :- pred suspect_correct_or_inadmissible(search_space(T)::in, suspect_id::in) 
 	is semidet.
 
+	% When tracking a sub-term, should we give up if we reach the given 
+	% suspect, because the binding node must lie in a portion of 
+	% the tree we've already eliminated?
+	%
+:- pred give_up_subterm_tracking(search_space(T)::in, suspect_id::in) 
+	is semidet.
+
+	% Are there any unknown or skipped suspects in the search space?
+	%
+:- pred are_unknown_suspects(search_space(T)::in) is semidet.
+
+	% Mark the root and it's non-ignored children as unknown.
+	% Throws an exception if the search space doesn't have a root.
+	%
+:- pred revise_root(search_space(T)::in, search_space(T)::out) is det.
+
+	% Check the consistency of the search space and throw an exception
+	% if it's not consistent.  Used for debugging.
+	%
+:- pred check_search_space_consistency(search_space(T)::in, string::in) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module exception, map, int, counter, std_util, string, bool.
+:- import_module exception, map, int, counter, std_util, string, bool, bimap.
 
 	% A suspect is an edt node with some additional information relevant
 	% to the bug search.
@@ -392,6 +455,11 @@
 			status			:: suspect_status,
 				
 				% The depth of the suspect in the EDT.
+				% Initially the depth of the topmost node will
+				% be zero, however if a new explicit supertree
+				% is generated and added to the search space,
+				% we allow the depth of the new topmost node 
+				% to be negative.
 			depth			:: int,
 			
 				% The children of the suspect.  If this is
@@ -421,14 +489,18 @@
 
 :- type search_space(T) 
 	--->	search_space(
-				% The root of the (potentially) buggy subtree
-				% in the search space.  The search space root
-				% will be the last suspect marked erroneous,
-				% except for when the search first starts and
-				% the oracle hasn't asserted any suspects are
-				% erroneous, or when the root of the EDT is
-				% revised (so its erroneous status is reset).  
+				% The root of the subtree in the search space
+				% that contains a bug, based on the answers 
+				% received so far.  The search space root
+				% will be the last suspect marked erroneous, 
+				% or no if no suspects have been marked 
+				% erroneous yet.
 			root			:: maybe(suspect_id),
+			
+				% The topmost node of all the nodes in the
+				% search space.  Will be no if the search
+				% space is empty.
+			topmost			:: maybe(suspect_id),
 			
 				% Counter for generating suspect_ids.
 			suspect_id_counter	:: counter,
@@ -444,42 +516,50 @@
 
 				% A map of roots of implicit subtrees in the
 				% EDT to explicit subtrees.
-			implicit_roots_to_explicit_roots	:: map(T, T)
+				% We use a bimap so we can also find the
+				% implicit root given an explicit root.
+				%
+			implicit_roots_to_explicit_roots	:: bimap(T, T),
+
+				% How many skipped or unknown suspects are in
+				% the search space?
+			unknown_count		:: int,
+
+				% How many suspects in the search space have
+				% we not explored the children of whos children
+				% might be worth exploring? (i.e. we don't 
+				% include unexplored children of correct,
+				% inadmissible or pruned suspects)
+			unexplored_leaves	:: int
 	).
 
-empty_search_space = search_space(no, counter.init(0), counter.init(0), 
-	map.init, map.init).
+empty_search_space = search_space(no, no, counter.init(0), counter.init(0), 
+	map.init, bimap.init, 0, 0).
 
 root(SearchSpace, RootId) :- SearchSpace ^ root = yes(RootId).
 
-root_det(SearchSpace, RootId) :- 
+topmost_det(SearchSpace, TopMostId) :- 
 	(
-		SearchSpace ^ root = yes(Id),
-		RootId = Id
+		SearchSpace ^ topmost = yes(Id),
+		TopMostId = Id
 	;
-		SearchSpace ^ root = no,
-		throw(internal_error("root_det", "search space empty"))
+		SearchSpace ^ topmost = no,
+		throw(internal_error("topmost_det", "search space empty"))
 	).
 
-no_more_questions(Store, !SearchSpace, CorrectDescendents, 
+are_unknown_suspects(SearchSpace) :- SearchSpace ^ unknown_count > 0.
+are_unknown_suspects(SearchSpace) :- SearchSpace ^ unexplored_leaves > 0.
+
+suspect_is_bug(Store, SuspectId, !SearchSpace, CorrectDescendents,
 		InadmissibleChildren) :-
-	root_det(!.SearchSpace, RootId),
-	!.SearchSpace ^ root = yes(RootId),
-	\+ suspect_is_questionable(!.SearchSpace, RootId),
-	(
-		suspect_in_buggy_subtree(!.SearchSpace, RootId)
-	->
-		children(Store, RootId, !SearchSpace, Children),
-		non_ignored_descendents(Store, Children, !SearchSpace,
-			Descendents),
-		filter(suspect_correct_or_inadmissible(!.SearchSpace),
-			Descendents, CorrectDescendents, []),
-		filter(suspect_inadmissible(!.SearchSpace), Children,
-			InadmissibleChildren)
-	;
-		CorrectDescendents = [],
-		InadmissibleChildren = []
-	).
+	suspect_erroneous(!.SearchSpace, SuspectId),
+	children(Store, SuspectId, !SearchSpace, Children),
+	non_ignored_descendents(Store, Children, !SearchSpace,
+		Descendents),
+	filter(suspect_correct_or_inadmissible(!.SearchSpace),
+		Descendents, CorrectDescendents, []),
+	filter(suspect_inadmissible(!.SearchSpace), Children,
+		InadmissibleChildren).
 
 suspect_correct_or_inadmissible(SearchSpace, SuspectId) :-
 	lookup_suspect(SearchSpace, SuspectId, Suspect),
@@ -523,7 +603,7 @@ suspect_in_excluded_subtree(SearchSpace, SuspectId) :-
 
 	% Succeeds if we haven't got an answer from the oracle about this
 	% suspect, and haven't been able to infer anything about this suspect
-	% from other oracle answers?
+	% from other oracle answers.
 	%
 :- pred suspect_is_questionable(search_space(T)::in, suspect_id::in) 
 	is semidet.
@@ -593,59 +673,127 @@ in_buggy_subtree(pruned, no).
 in_buggy_subtree(in_erroneous_subtree_complement, no).
 in_buggy_subtree(unknown, yes).
 
-
-	% Should the suspect's status be propogated to it's children when the
-	% children are added to the search space?
+	% Return the status that should be assigned to children of a suspect 
+	% with the given status, when the children are being added to the
+	% search space.
 	%
-:- pred propogate_status_to_children(suspect_status::in, bool::out) is det.
+:- func new_child_status(suspect_status) = suspect_status.
 
-propogate_status_to_children(ignored, no).
-propogate_status_to_children(skipped(_), no).
-propogate_status_to_children(correct, no).
-propogate_status_to_children(erroneous, no).
-propogate_status_to_children(inadmissible, no).
-propogate_status_to_children(pruned, yes).
-propogate_status_to_children(in_erroneous_subtree_complement, yes).
-propogate_status_to_children(unknown, no).
+new_child_status(ignored) = unknown.
+new_child_status(skipped(_)) = unknown.
+new_child_status(correct) = pruned.
+new_child_status(erroneous) = unknown.
+new_child_status(inadmissible) = pruned.
+new_child_status(pruned) = pruned.
+new_child_status(in_erroneous_subtree_complement) = 
+	in_erroneous_subtree_complement.
+new_child_status(unknown) = unknown.
 
-assert_suspect_is_correct(SuspectId, !SearchSpace) :-
+	% Return the status that should be assigned to the parent of a suspect
+	% with the given status, when the parent is being added to the search
+	% space.
+	%
+:- func new_parent_status(suspect_status) = suspect_status.
+
+new_parent_status(ignored) = unknown.
+new_parent_status(skipped(_)) = unknown.
+new_parent_status(correct) = unknown.
+new_parent_status(erroneous) = in_erroneous_subtree_complement.
+new_parent_status(inadmissible) = unknown.
+new_parent_status(pruned) = pruned.
+new_parent_status(in_erroneous_subtree_complement) = 
+	in_erroneous_subtree_complement.
+new_parent_status(unknown) = unknown.
+
+give_up_subterm_tracking(SearchSpace, SuspectId) :-
+	Status = get_status(SearchSpace, SuspectId),
+	(Status = erroneous ; Status = in_erroneous_subtree_complement).
+
+	% Mark the suspect as correct or inadmissible.
+	%
+:- pred assert_suspect_is_valid(suspect_status::in, suspect_id::in, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-		correct, Store),
+		Status, Store),
 	!:SearchSpace = !.SearchSpace ^ store := Store,
+	adjust_unknown_count(yes(Suspect ^ status), Status, !SearchSpace),
 	(
 		Suspect ^ children = yes(Children),
-		list.foldl(trickle_status(pruned), Children, 
-			!SearchSpace)
+		list.foldl(propagate_status_downwards(pruned, 
+			[correct, inadmissible]), Children, !SearchSpace)
 	;
-		Suspect ^ children = no
+		Suspect ^ children = no,
+		adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
+			!SearchSpace)
+	),
+	%
+	% If the suspect was erroneous or excluded because of another erronoeus
+	% suspect, then we should update the complement of the subtree rooted
+	% at the suspect to unknown.
+	%
+	(
+		excluded_complement(Suspect ^ status, yes)
+	->
+		propagate_status_upwards(unknown, [erroneous], SuspectId, 
+			Lowest, !SearchSpace),
+		%
+		% Update the root to the next lowest erroneous suspect.
+		%
+		(
+			suspect_erroneous(!.SearchSpace, Lowest)
+		->
+			!:SearchSpace = !.SearchSpace ^ root := yes(Lowest)
+		;
+			!:SearchSpace = !.SearchSpace ^ root := no 
+		)
+	;
+		true
 	).
+
+assert_suspect_is_inadmissible(SuspectId, !SearchSpace) :-
+	assert_suspect_is_valid(inadmissible, SuspectId, !SearchSpace).
+
+assert_suspect_is_correct(SuspectId, !SearchSpace) :-
+	assert_suspect_is_valid(correct, SuspectId, !SearchSpace).
 
 assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
 		erroneous, Store),
 	!:SearchSpace = !.SearchSpace ^ store := Store,
-	exclude_complement(SuspectId, !SearchSpace),
-	!:SearchSpace = !.SearchSpace ^ root := yes(SuspectId).
-
-assert_suspect_is_inadmissible(SuspectId, !SearchSpace) :-
-	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-		inadmissible, Store),
-	!:SearchSpace = !.SearchSpace ^ store := Store,
+	adjust_unknown_count(yes(Suspect ^ status), erroneous, !SearchSpace),
 	(
-		Suspect ^ children = yes(Children),
-		list.foldl(trickle_status(pruned), Children, 
+		Suspect ^ children = no,
+		adjust_unexplored_leaves(yes(Suspect ^ status), erroneous, 
 			!SearchSpace)
 	;
-		Suspect ^ children = no
-	).
+		Suspect ^ children = yes(Children),
+		%
+		% If the suspect was correct, inadmissible or pruned then we
+		% should make all the descendents unknown again.
+		%
+		(
+			excluded_subtree(Suspect ^ status, yes)
+		->
+			list.foldl(propagate_status_downwards(unknown, 
+				[correct, inadmissible]), Children,
+				!SearchSpace)
+		;
+			true
+		)
+	),
+	propagate_status_upwards(in_erroneous_subtree_complement, [erroneous], 
+		SuspectId, _, !SearchSpace),
+	!:SearchSpace = !.SearchSpace ^ root := yes(SuspectId).
 
 ignore_suspect(SuspectId, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
 		ignored, Store),
+	adjust_unknown_count(yes(Suspect ^ status), ignored, !SearchSpace),
 	!:SearchSpace = !.SearchSpace ^ store := Store.
 	
 skip_suspect(SuspectId, !SearchSpace) :-
@@ -656,9 +804,29 @@ skip_suspect(SuspectId, !SearchSpace) :-
 		skipped(N), Store),
 	!:SearchSpace = !.SearchSpace ^ store := Store.
 
-depth(SuspectId, SearchSpace, Depth) :-
-	lookup_suspect(SearchSpace, SuspectId, Suspect),
-	Suspect ^ depth = Depth.
+revise_root(!SearchSpace) :-
+	(
+		!.SearchSpace ^ root = yes(RootId),
+		force_propagate_status_downwards(unknown, 
+			[correct, inadmissible], RootId, Leaves, !SearchSpace),
+		list.foldl(force_propagate_status_downwards(unknown, [correct,
+			inadmissible]), Leaves, !SearchSpace),
+		propagate_status_upwards(unknown, [erroneous], RootId, Lowest, 
+			!SearchSpace),
+		(
+			suspect_erroneous(!.SearchSpace, Lowest)
+		->
+			!:SearchSpace = !.SearchSpace ^ root := yes(Lowest)
+		;
+			!:SearchSpace = !.SearchSpace ^ root := no
+		)
+	;
+		!.SearchSpace ^ root = no,
+		throw(internal_error("revise_root", "no root"))
+	).
+	
+suspect_depth(SearchSpace, SuspectId) = Suspect ^ depth :-
+	lookup_suspect(SearchSpace, SuspectId, Suspect).
 
 travel_up(SearchSpace, StartId, Distance, FinishId) :- 
 	(
@@ -674,50 +842,95 @@ travel_up(SearchSpace, StartId, Distance, FinishId) :-
 find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 		Response) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	Node = Suspect ^ edt_node,
-	edt_dependency(Store, Node, ArgPos, TermPath, Mode, Origin),
+	ImplicitToExplicit = !.SearchSpace ^
+		implicit_roots_to_explicit_roots,
+	% The node in the search space will be the explicit version.
+	ExplicitNode = Suspect ^ edt_node,
+	edt_subterm_mode(Store, ExplicitNode, ArgPos, TermPath, Mode),
+	%
+	% If the mode is input then the origin will be in a parent or a 
+	% sibling.  In either case we need access to a parent EDT node, so
+	% if the node is at the top of a generated explicit subtree we must use
+	% the implicit root instead, so the dependency tracking algorithm 
+	% has access to the node's parent and siblings in the EDT.
+	%
+	(
+		Mode = subterm_in,
+		bimap.search(ImplicitToExplicit, ImplicitNode, ExplicitNode)
+	->
+		Node = ImplicitNode
+	;
+		Node = ExplicitNode
+	),
+	(
+		Mode = subterm_in,
+		(
+			Suspect ^ parent = yes(ParentId),
+			resolve_origin(Store, Node, ArgPos, TermPath,
+				ParentId, !SearchSpace, Response)
+		;
+			Suspect ^ parent = no,
+			(
+				extend_search_space_upwards(Store, 
+					!SearchSpace)
+			->
+				topmost_det(!.SearchSpace, NewRootId),
+				resolve_origin(Store, Node, ArgPos,
+					TermPath, NewRootId, !SearchSpace,
+					Response)
+			;
+				Response = require_explicit_supertree
+			)
+		)
+	;
+		Mode = subterm_out,
+		resolve_origin(Store, Node, ArgPos,
+			TermPath, SuspectId, !SearchSpace,
+			Response)
+	).
+
+	% resolve_origin(Store, Node, ArgPos, TermPath, SuspectId,
+	% 	!SearchSpace, Response).
+	% Find the origin of the subterm in Node and report the origin as
+	% SuspectId if the origin is a primitive op or an input and as the
+	% appropriate child of SuspectId if the origin is an output.  SuspectId
+	% should point to a parent of Node if the mode of the sub-term is
+	% input and should point to Node itself if the mode of the sub-term is
+	% output.
+	%
+:- pred resolve_origin(S::in, T::in, arg_pos::in, term_path::in, 
+	suspect_id::in, search_space(T)::in, search_space(T)::out, 
+	find_origin_response::out) is det <= mercury_edt(S, T).
+	
+resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, !SearchSpace, 
+		Response) :-
+	edt_dependency(Store, Node, ArgPos, TermPath, _, Origin),
 	(
 		Origin = primitive_op(FileName, LineNo),
-		Response = primitive_op(FileName, LineNo)
+		Response = primitive_op(SuspectId, FileName, LineNo)
 	;
 		Origin = not_found,
 		Response = not_found
 	;
 		Origin = input(InputArgPos, InputTermPath),
-		(
-			Mode = subterm_in,
-			(
-				Suspect ^ parent = yes(ParentId),
-				Response = origin(ParentId, InputArgPos,
-					InputTermPath)
-			;
-				Suspect ^ parent = no,
-				% Origin lies above the root of the search 
-				% space, so return not_found.
-				Response = not_found
-			)
-		;
-			Mode = subterm_out,
-			Response = origin(SuspectId, InputArgPos, 
-				InputTermPath)
-		)
+		Response = origin(SuspectId, InputArgPos, InputTermPath)
 	;
 		Origin = output(OriginNode, OutputArgPos, OutputTermPath),
 		(
-			map.search(
-				!.SearchSpace^implicit_roots_to_explicit_roots,
-				OriginNode, ExplicitNode)
+			bimap.search(!.SearchSpace ^
+				implicit_roots_to_explicit_roots, OriginNode,
+				ExplicitNode)
 		->
 			ExplicitOrigin = ExplicitNode
 		;
 			ExplicitOrigin = OriginNode
 		),
 		(
-			Mode = subterm_in,
-			get_siblings(!.SearchSpace, SuspectId, Siblings),
+			children(Store, SuspectId, !SearchSpace, Children)
+		->
 			(
-				find_edt_node_in_suspect_list(Siblings, 
-					ExplicitOrigin, !.SearchSpace, 
+				find_edt_node_in_suspect_list(Children,
+					ExplicitOrigin, !.SearchSpace,
 					OriginId)
 			->
 				Response = origin(OriginId, OutputArgPos,
@@ -728,28 +941,7 @@ find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 					"not in siblings"))
 			)
 		;
-			Mode = subterm_out,
-			(
-				children(Store, SuspectId, !.SearchSpace,
-					SearchSpace1, Children)
-			->
-				!:SearchSpace = SearchSpace1,
-				(
-					find_edt_node_in_suspect_list(Children,
-						ExplicitOrigin, !.SearchSpace, 
-						OriginId)
-				->
-					Response = origin(OriginId, 
-						OutputArgPos, OutputTermPath)
-				;
-					throw(internal_error(
-						"find_subterm_origin",
-						"output origin for output "++
-						"subterm not in children"))
-				)
-			;
-				Response = require_explicit
-			)
+			Response = require_explicit_subtree
 		)
 	).
 
@@ -787,64 +979,262 @@ lookup_suspect(SearchSpace, SuspectId, Suspect) :-
 			"couldn't find suspect"))
 	).
 
-	% Sets the status of a node and all it's descendents to the given 
-	% status.  If a descendent already has the status then trickle_status
-	% assumes all it's descendents already have the same status and won't
-	% bother updating them.
+	% propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves, 
+	%	!SearchSpace). 
+	% Sets the status of SuspectId and all it's descendents to Status.
+	% If a descendent (including the suspect) already has a status in
+	% StopStatusSet then propagate_status_downwards won't update any
+	% further descendents.  The list of all the children of the lowest
+	% updated suspects is returned in Leaves.
 	% 
-:- pred trickle_status(suspect_status::in, suspect_id::in, search_space(T)::in, 
-	search_space(T)::out) is det.
+:- pred propagate_status_downwards(suspect_status::in, 
+	list(suspect_status)::in, suspect_id::in, list(suspect_id)::out, 
+	search_space(T)::in, search_space(T)::out) is det.
 
-trickle_status(Status, SuspectId, !SearchSpace) :-
+	% An accumulator version of propagate_status_downwards.
+	%
+propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves, 
+	!SearchSpace) :-
+	propagate_status_downwards(Status, StopStatusSet, SuspectId, [], 
+		Leaves, !SearchSpace).
+
+	% A version of propagate_status_downwards which doesn't return leaves.
+	%
+:- pred propagate_status_downwards(suspect_status::in, 
+	list(suspect_status)::in, suspect_id::in, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+propagate_status_downwards(Status, StopStatusSet, SuspectId, !SearchSpace) :-
+	propagate_status_downwards(Status, StopStatusSet, SuspectId, _, 
+		!SearchSpace).
+
+:- pred propagate_status_downwards(suspect_status::in, 
+	list(suspect_status)::in, suspect_id::in, 
+	list(suspect_id)::in, list(suspect_id)::out, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+propagate_status_downwards(Status, StopStatusSet, SuspectId, !Leaves, 
+		!SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	(
-		Suspect ^ status \= Status
+		\+ member(Suspect ^ status, StopStatusSet)
 	->
 		map.set(!.SearchSpace ^ store, SuspectId, 
 			Suspect ^ status := Status, Store),
 		!:SearchSpace = !.SearchSpace ^ store := Store,
 		(
 			Suspect ^ children = yes(Children),
-			list.foldl(trickle_status(Status), Children, 
+			list.foldl2(propagate_status_downwards(Status, 
+				StopStatusSet), Children, !Leaves,
 				!SearchSpace)
 		;
-			Suspect ^ children = no
+			Suspect ^ children = no,
+			adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
+				!SearchSpace)
+		),
+		adjust_unknown_count(yes(Suspect ^ status), Status, 
+			!SearchSpace)
+	;
+		list.cons(SuspectId, !Leaves)
+	).
+
+	% force_propagate_status_downwards is like propagate_status_downwards,
+	% except that the given suspect's status will be changed no matter what
+	% its current status.
+	%
+:- pred force_propagate_status_downwards(suspect_status::in, 
+	list(suspect_status)::in, suspect_id::in, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+force_propagate_status_downwards(Status, StopStatusSet, SuspectId, 
+		!SearchSpace) :-
+	force_propagate_status_downwards(Status, StopStatusSet, SuspectId, _, 
+		!SearchSpace).
+
+:- pred force_propagate_status_downwards(suspect_status::in, 
+	list(suspect_status)::in, suspect_id::in, list(suspect_id)::out,
+	search_space(T)::in, search_space(T)::out) is det.
+
+force_propagate_status_downwards(Status, StopStatusSet, SuspectId, Leaves, 
+		!SearchSpace) :-
+	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+	map.set(!.SearchSpace ^ store, SuspectId, 
+		Suspect ^ status := Status, Store),
+	!:SearchSpace = !.SearchSpace ^ store := Store,
+	(
+		Suspect ^ children = yes(Children),
+		list.foldl2(propagate_status_downwards(Status, StopStatusSet), 
+			Children, [], Leaves, !SearchSpace)
+	;
+		Suspect ^ children = no,
+		adjust_unexplored_leaves(yes(Suspect ^ status), Status, 
+			!SearchSpace),
+		Leaves = []
+	),
+	adjust_unknown_count(yes(Suspect ^ status), Status, !SearchSpace).
+
+	% Increments or decrements the unknown suspect count after a status
+	% change.  The first argument should be the previous status of the 
+	% changed suspect or no if a new suspect is being added and the second
+	% argument should be the suspect's new status.
+	%
+:- pred adjust_unknown_count(maybe(suspect_status)::in, suspect_status::in, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+adjust_unknown_count(MaybeOldStatus, NewStatus, !SearchSpace) :- 
+	(
+		MaybeOldStatus = yes(OldStatus),
+		questionable(OldStatus, yes),
+		questionable(NewStatus, no)
+	->
+		!:SearchSpace = !.SearchSpace ^ unknown_count :=
+			!.SearchSpace ^ unknown_count - 1
+	;
+		questionable(NewStatus, yes),
+		(
+			MaybeOldStatus = no
+		;
+			MaybeOldStatus = yes(OldStatus),
+			questionable(OldStatus, no)
 		)
+	->
+		!:SearchSpace = !.SearchSpace ^ unknown_count :=
+			!.SearchSpace ^ unknown_count + 1
 	;
 		true
 	).
 
-	% Marks all suspects not in the subtree with the given suspect
-	% as the root as in_erroneous_subtree_complement.
-	% 
-:- pred exclude_complement(suspect_id::in, search_space(T)::in, 
-	search_space(T)::out) is det.
+	% Increments or decrements the unexplored leaves count after a status
+	% change.  The first argument should be the previous status of the 
+	% changed suspect or no if a new suspect is being added and the second
+	% argument should be the suspect's new status.  The changed suspect
+	% should be a leaf node (i.e. have its children field set to no).
+	%
+:- pred adjust_unexplored_leaves(maybe(suspect_status)::in, suspect_status::in, 
+	search_space(T)::in, search_space(T)::out) is det.
 
-exclude_complement(SuspectId, !SearchSpace) :-
-	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	Status = get_status(!.SearchSpace, SuspectId),  
+adjust_unexplored_leaves(MaybeOldStatus, NewStatus, !SearchSpace) :- 
 	(
-		Status \= in_erroneous_subtree_complement
+		MaybeOldStatus = yes(OldStatus),
+		in_buggy_subtree(OldStatus, yes),
+		in_buggy_subtree(NewStatus, no)
 	->
+		!:SearchSpace = !.SearchSpace ^ unexplored_leaves :=
+			!.SearchSpace ^ unexplored_leaves - 1
+	;
+		in_buggy_subtree(NewStatus, yes),
 		(
-			Suspect ^ parent = yes(ParentId)
-		->
-			get_siblings(!.SearchSpace, SuspectId, Siblings),
-			list.foldl(trickle_status(
-				in_erroneous_subtree_complement), 
-				Siblings, !SearchSpace),
-			exclude_complement(ParentId, !SearchSpace),
-			lookup_suspect(!.SearchSpace, ParentId, Parent),
-			map.set(!.SearchSpace ^ store, ParentId, 
-				Parent ^ status := 
-				in_erroneous_subtree_complement, Store),
-			!:SearchSpace = !.SearchSpace ^ store := Store,
-			!:SearchSpace = !.SearchSpace ^ root := yes(SuspectId)
+			MaybeOldStatus = no
 		;
-			true
+			MaybeOldStatus = yes(OldStatus),
+			in_buggy_subtree(OldStatus, no)
 		)
+	->
+		!:SearchSpace = !.SearchSpace ^ unexplored_leaves :=
+			!.SearchSpace ^ unexplored_leaves + 1
 	;
 		true
+	).
+
+	% Decrement the unexplored leaves count if the given status indicates
+	% that the suspect is in a potentially buggy part of the search space.
+	%
+:- pred decrement_unexplored_leaves(suspect_status::in, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+decrement_unexplored_leaves(OldStatus, !SearchSpace) :-
+	(
+		in_buggy_subtree(OldStatus, yes)
+	->
+		!:SearchSpace = !.SearchSpace ^ unexplored_leaves :=
+			!.SearchSpace ^ unexplored_leaves - 1
+	;
+		true
+	).
+
+check_search_space_consistency(SearchSpace, Context) :-
+	(
+		SearchSpace ^ unknown_count \= calc_num_unknown(SearchSpace)
+	->
+		throw(internal_error("check_search_space_consistency",
+			"unknown count incorrect. search space follows.\n" 
+			++ string(SearchSpace) ++ "\n Context is:\n" ++
+			Context))
+	;
+		SearchSpace ^ unexplored_leaves \= calc_num_unexplored(
+			SearchSpace)
+	->
+		throw(internal_error("check_search_space_consistency",
+			"unexplored leaves incorrect. search space follows.\n"
+			++ string(SearchSpace) ++ "\n Context is:\n" ++
+			Context))
+	;
+		true
+	).
+	
+	% Work out the number of unknown suspects in the search space.
+	% Used for assertion checking.
+:- func calc_num_unknown(search_space(T)) = int.
+
+calc_num_unknown(SearchSpace) = NumUnknown :-
+	Suspects = map.values(SearchSpace ^ store),
+	list.filter(
+		( pred(suspect(_, _, Status, _, _)::in) is semidet :- 
+			questionable(Status, yes)
+		), Suspects, Questionable),
+	NumUnknown = list.length(Questionable).
+
+	% Work out the number of suspects with unexplored children.
+	% Used for assertion checking.
+:- func calc_num_unexplored(search_space(T)) = int.
+
+calc_num_unexplored(SearchSpace) = NumUnexplored :-
+	Suspects = map.values(SearchSpace ^ store),
+	list.filter(
+		( pred(suspect(_, _, Status, _, no)::in) is semidet :- 
+			in_buggy_subtree(Status, yes)
+		), Suspects, Unexplored),
+	NumUnexplored = list.length(Unexplored).
+
+	% propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest, 
+	% 	!SearchSpace)
+	% Marks all suspects not in the subtree rooted at SuspectId
+	% with Status.  If an ancestor of SuspectId has a status in 
+	% StopStatusSet, then perculation will not progress passed this
+	% ancestor.  The lowest ancestor of SuspectId with a status in
+	% StopStatusSet is returned in Lowest.  If there are no ancestors
+	% with a status in StopStatusSet then Lowest will be the topmost 
+	% suspect.
+	% 
+:- pred propagate_status_upwards(suspect_status::in, list(suspect_status)::in, 
+	suspect_id::in, suspect_id::out, 
+	search_space(T)::in, search_space(T)::out) is det.
+
+propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest, 
+		!SearchSpace) :-
+	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
+	(
+		Suspect ^ parent = yes(ParentId)
+	->
+		get_siblings(!.SearchSpace, SuspectId, Siblings),
+		list.foldl(propagate_status_downwards(Status, StopStatusSet), 
+			Siblings, !SearchSpace),
+		lookup_suspect(!.SearchSpace, ParentId, Parent),
+		(
+			\+ list.member(Parent ^ status, StopStatusSet)
+		->
+			propagate_status_upwards(Status, StopStatusSet,
+				ParentId, Lowest, !SearchSpace),
+			map.set(!.SearchSpace ^ store, ParentId, 
+				Parent ^ status := Status, Store),
+			adjust_unknown_count(yes(Parent ^ status), Status,
+				!SearchSpace),
+			!:SearchSpace = !.SearchSpace ^ store := Store
+		;
+			Lowest = ParentId
+		)
+	;
+		Lowest = SuspectId
 	).
 
 	% Find the siblings of a suspect in the search space.  This does not
@@ -895,7 +1285,8 @@ add_children(EDTChildren, SuspectId, Status, !SearchSpace, Children) :-
 	!:SearchSpace = !.SearchSpace ^ suspect_id_counter := Counter,
 	map.set(!.SearchSpace ^ store, SuspectId, 
 		Suspect ^ children := yes(Children), Store),
-	!:SearchSpace = !.SearchSpace ^ store := Store.
+	!:SearchSpace = !.SearchSpace ^ store := Store,
+	decrement_unexplored_leaves(Suspect ^ status, !SearchSpace).
 
 :- pred add_children_2(list(T)::in, suspect_id::in, suspect_status::in, 
 	int::in, search_space(T)::in, search_space(T)::out, counter::in,
@@ -905,63 +1296,179 @@ add_children_2([], _, _, _, SearchSpace, SearchSpace, Counter, Counter, []).
 
 add_children_2([EDTChild | EDTChildren], SuspectId, Status, Depth, 
 		!SearchSpace, !Counter, Children) :-
-	(
-		allocate(NextId, !Counter),
-		map.det_insert(!.SearchSpace ^ store, NextId, 
-			suspect(yes(SuspectId), EDTChild, Status, Depth, 
-				no), Store),
-		!:SearchSpace = !.SearchSpace ^ store := Store,
-		add_children_2(EDTChildren, SuspectId, Status, Depth, 
-			!SearchSpace, !Counter, OtherChildren),
-		Children = [NextId | OtherChildren]
-	).
+	allocate(NextId, !Counter),
+	map.det_insert(!.SearchSpace ^ store, NextId, 
+		suspect(yes(SuspectId), EDTChild, Status, Depth, 
+			no), Store),
+	!:SearchSpace = !.SearchSpace ^ store := Store,
+	adjust_unknown_count(no, Status, !SearchSpace),
+	adjust_unexplored_leaves(no, Status, !SearchSpace),
+	add_children_2(EDTChildren, SuspectId, Status, Depth, 
+		!SearchSpace, !Counter, OtherChildren),
+	Children = [NextId | OtherChildren].
 
 initialise_search_space(Node, SearchSpace) :-
 	map.set(init, 0, suspect(no, Node, unknown, 0, no), SuspectStore),
-	SearchSpace = search_space(yes(0), counter.init(1), 
-		counter.init(0), SuspectStore, map.init).
+	SearchSpace = search_space(no, yes(0), counter.init(1), 
+		counter.init(0), SuspectStore, bimap.init, 1, 1).
 
 incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
 	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
 	map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ edt_node := Node,
 		Store),
 	!:SearchSpace = !.SearchSpace ^ store := Store,
-	map.set(!.SearchSpace ^ implicit_roots_to_explicit_roots, 
+	bimap.set(!.SearchSpace ^ implicit_roots_to_explicit_roots, 
 		Suspect ^ edt_node, Node, ImplicitToExplicit),
 	!:SearchSpace = 
 		!.SearchSpace ^ implicit_roots_to_explicit_roots :=
 		ImplicitToExplicit.
-	
-revise_suspect(SuspectId, !SearchSpace) :-
-	!:SearchSpace = !.SearchSpace ^ root := yes(SuspectId),
-	revise_suspects(SuspectId, !SearchSpace).
 
-:- pred revise_suspects(suspect_id::in, search_space(T)::in, 
-	search_space(T)::out) is det.
-
-revise_suspects(SuspectId, !SearchSpace) :-
-	lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-	Status = Suspect ^ status,
+incorporate_explicit_supertree(Store, Node, !SearchSpace) :-
+	topmost_det(!.SearchSpace, OldTopMostId),
 	(
-		( Status = ignored ; Status = skipped(_) ; Status = unknown )
+		edt_parent(Store, Node, Parent)
 	->
-		true
+		insert_new_topmost_node(Store, Parent, !SearchSpace),
+		%
+		% Node implicitly represents the root of the old search space,
+		% which we already have an explicit version of, so we link
+		% the two by placing an entry in 
+		% implicit_roots_to_explicit_roots.
+		%
+		bimap.set(!.SearchSpace ^ implicit_roots_to_explicit_roots, 
+			Node, get_edt_node(!.SearchSpace, OldTopMostId), 
+			ImplicitToExplicit),
+		!:SearchSpace = 
+			!.SearchSpace ^ implicit_roots_to_explicit_roots :=
+			ImplicitToExplicit
 	;
-		map.set(!.SearchSpace ^ store, SuspectId, 
-			Suspect ^ status := unknown, Store),
-		!:SearchSpace = !.SearchSpace ^ store := Store
-	),
+		throw(internal_error("incorporate_explicit_supertree",
+			"no parent"))
+	).
+
+extend_search_space_upwards(Store, !SearchSpace) :-
+	topmost_det(!.SearchSpace, OldTopMostId),
+	edt_parent(Store, get_edt_node(!.SearchSpace, OldTopMostId), 
+		NewTopMost),
+	insert_new_topmost_node(Store, NewTopMost, !SearchSpace).
+
+	% Add the given EDT node to the top of the search space.  The given
+	% node should be a parent of the current topmost node in the search 
+	% space.
+	%
+:- pred insert_new_topmost_node(S::in, T::in, 
+	search_space(T)::in, search_space(T)::out)
+	is det <= mercury_edt(S, T).
+
+insert_new_topmost_node(Store, NewTopMostEDTNode, !SearchSpace) :-
 	(
-		Suspect ^ children = yes(Children),
-		foldl(revise_suspects, Children, !SearchSpace)
+		edt_children(Store, NewTopMostEDTNode, EDTChildren)
+	->	
+		topmost_det(!.SearchSpace, OldTopMostId),
+		lookup_suspect(!.SearchSpace, OldTopMostId, OldTopMost),
+		(
+			%
+			% One of the children of the new topmost node will be
+			% the old topmost node so filter it out so it isn't
+			% added twice.  
+			%
+			find_node_in_list(Store, EDTChildren, 
+				OldTopMost ^ edt_node, Pos),
+			list.split_list(Pos - 1, EDTChildren, LeftChildren, 
+				[_ | RightChildren])
+		->
+			% 
+			% Insert the new topmost node.
+			%
+			NewTopMostStatus = new_parent_status(
+				OldTopMost ^ status),
+			NewTopMostDepth = OldTopMost ^ depth - 1,
+			NewTopMost = suspect(no, NewTopMostEDTNode, 
+				NewTopMostStatus, NewTopMostDepth, no),
+			some [!Counter, !SuspectStore] (
+				!:Counter = !.SearchSpace ^ suspect_id_counter,
+				counter.allocate(NewTopMostId, !Counter),
+				!:SearchSpace = 
+					!.SearchSpace ^ suspect_id_counter :=
+					!.Counter,
+				!:SuspectStore = !.SearchSpace ^ store,
+				map.set(!.SuspectStore, NewTopMostId, 
+					NewTopMost, !:SuspectStore),
+				!:SearchSpace = !.SearchSpace ^ store := 
+					!.SuspectStore
+			),
+			SiblingStatus = new_child_status(NewTopMostStatus),
+			add_children(append(LeftChildren, RightChildren), 
+				NewTopMostId, SiblingStatus, !SearchSpace,
+				ChildrenIds),
+			
+			% 
+			% Adjust the unexplored leaves count since the new top
+			% most node was added with no children.
+			%
+			adjust_unexplored_leaves(no, NewTopMostStatus, 
+				!SearchSpace),
+
+			%
+			% Now add the old topmost node as a child to the new
+			% topmost node.
+			%
+			(
+				list.split_list(Pos - 1, ChildrenIds,
+					LeftChildrenIds, RightChildrenIds)
+			->
+				append(LeftChildrenIds, [OldTopMostId | 
+					RightChildrenIds], 
+					NewTopMostChildrenIds)
+			;
+				throw(internal_error("insert_new_topmost_node",
+					"invalid position"))
+			),
+			some [!SuspectStore] (
+				!:SuspectStore = !.SearchSpace ^ store,
+				map.set(!.SuspectStore, NewTopMostId, 
+					NewTopMost ^ children := 
+					yes(NewTopMostChildrenIds),
+					!:SuspectStore),
+				map.set(!.SuspectStore, OldTopMostId, 
+					OldTopMost ^ parent := 
+						yes(NewTopMostId), 
+					!:SuspectStore),
+				!:SearchSpace = !.SearchSpace ^ store := 
+					!.SuspectStore
+			),
+			!:SearchSpace = !.SearchSpace ^ topmost :=
+				yes(NewTopMostId),
+
+			adjust_unknown_count(no, NewTopMostStatus, 
+				!SearchSpace)
+		;
+			throw(internal_error("insert_new_topmost_node",
+				"couldn't find event number"))
+		)
+			
 	;
-		Suspect ^ children = no
+		throw(internal_error("insert_new_topmost_node", 
+			"couldn't get new topmost node's children"))
+	).
+
+:- pred find_node_in_list(S::in, list(T)::in, T::in,
+	int::out) is semidet <= mercury_edt(S, T).
+
+find_node_in_list(Store, [Node | Nodes], NodeToMatch, Pos) :-
+	(
+		edt_same_nodes(Store, Node, NodeToMatch)
+	->
+		Pos = 1
+	;
+		find_node_in_list(Store, Nodes, NodeToMatch, TailPos),
+		Pos = TailPos + 1
 	).
 
 get_edt_node(SearchSpace, SuspectId) = Node :-
 	lookup_suspect(SearchSpace, SuspectId, Suspect),
 	Node = Suspect ^ edt_node.
-	
+
 	% Return the status of the suspect.
 :- func get_status(search_space(T), suspect_id) = suspect_status.
 
@@ -980,15 +1487,9 @@ children(Store, SuspectId, !SearchSpace, Children) :-
 	;
 		Suspect ^ children = no,
 		edt_children(Store, Suspect ^ edt_node, EDTChildren),
-		(
-			propogate_status_to_children(Suspect ^ status, yes)
-		->
-			add_children(EDTChildren, SuspectId, Suspect ^ status,
-				!SearchSpace, Children)
-		;
-			add_children(EDTChildren, SuspectId, unknown, 
-				!SearchSpace, Children)
-		)
+		NewStatus = new_child_status(Suspect ^ status),
+		add_children(EDTChildren, SuspectId, NewStatus,
+			!SearchSpace, Children)
 	).
 
 	% non_ignored_descendents(Store, SuspectIds, !SearchSpace,
@@ -1020,15 +1521,15 @@ non_ignored_descendents(Store, [SuspectId | SuspectIds], !SearchSpace,
 	append(Descendents1, Descendents2, Descendents).
 
 choose_skipped_suspect(SearchSpace, Skipped) :-
-	SearchSpace ^ root = yes(RootId),
+	SearchSpace ^ topmost = yes(TopMostId),
 	% XXX This can be done more efficiently, but I don't think this
 	% predicate will be called too often.
-	map.foldl(least_skipped(SearchSpace), SearchSpace ^ store, RootId,
+	map.foldl(least_skipped(SearchSpace), SearchSpace ^ store, TopMostId,
 		Skipped),
 	(
-		RootId = Skipped
+		TopMostId = Skipped
 	=>
-		skipped(_) = get_status(SearchSpace, RootId)
+		skipped(_) = get_status(SearchSpace, TopMostId)
 	).
 
 	% least_skipped(SearchSpace, SuspectId1, Suspect1, SuspectId2, 
@@ -1142,7 +1643,7 @@ get_children_list(Store, [SuspectId | SuspectIds], !SearchSpace,
 	).
 
 pick_implicit_root(Store, SearchSpace, ImplicitRoot) :-
-	root(SearchSpace, RootId),
+	SearchSpace ^ root = yes(RootId),
 	find_first_implicit_root(Store, SearchSpace, [RootId], ImplicitRoot).
 
 	% Look for an implicit root in the descendents of each suspect in
@@ -1201,5 +1702,3 @@ get_path(SearchSpace, BottomId, TopId, PathSoFar, Path) :-
 		get_path(SearchSpace, ParentId, TopId, [BottomId | PathSoFar],
 			Path)
 	).
-
-

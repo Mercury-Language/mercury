@@ -8,6 +8,7 @@ continue
 finish -n
 dd
 yes
+abort
 continue
 continue
 continue

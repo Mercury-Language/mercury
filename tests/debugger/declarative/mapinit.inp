@@ -2,5 +2,5 @@ echo on
 step
 finish
 dd
-y
+a
 c

@@ -1,20 +1,57 @@
 register --quiet
-untrust 0
 context none
 echo on
-step
-finish
-dd
-b 2
-mark
-n
-n
-y
-y
-y
-n
-b 1
-mark
-n
-y
+untrust 0
+table_io allow
+table_io start
+break divide2
 continue
+finish
+dd -ad3
+browse 2
+mark
+n
+n
+y
+n
+y
+n
+y
+b 3
+mark
+n
+n
+y
+y
+y
+y
+y
+n
+y
+y
+n
+n
+b 3
+mark
+n
+n
+y
+y
+y
+y
+y
+n
+y
+y
+y
+y
+n
+y
+y
+n
+y
+y
+y
+y
+y
+quit -y

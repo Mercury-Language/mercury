@@ -25,6 +25,18 @@
 ** 	- An alternative front end could graphically display the
 ** 	  generated trees as part of a visualization tool rather
 ** 	  than analyzing them for bugs.
+**
+** The backend decides which events should be included in the annotated trace.
+** Given a final event the backend can either build the
+** annotated trace for the subtree rooted at the final event down to a specified
+** depth limit, or can build the tree a specified number of ancestors above the
+** given event, with the given event as an implicit root of the existing trace.
+**
+** The backend can be called multiple times to materialize different portions
+** of the annotated trace.  It is the responsibility of the frontend to 
+** connect the various portions of the annotated trace together into a 
+** complete tree.  This is done in declarative_edt.m.
+**
 */
 
 #include "mercury_imp.h"
@@ -101,28 +113,57 @@
 
 static	MR_Unsigned	MR_edt_max_depth;
 static	MR_Unsigned	MR_edt_last_event;
-static	MR_bool		MR_edt_inside;
 static	MR_Unsigned	MR_edt_start_seqno;
 static	MR_Unsigned	MR_edt_start_io_counter;
-static	MR_Unsigned	MR_edt_initial_depth;
+static	MR_Unsigned	MR_edt_topmost_call_depth;
 
 /*
-** The depth of the EDT is different from the call depth of the events,
-** since the call depth is not guaranteed to be the same for the children
-** of a call eventi - see comments in MR_trace_real in trace/mercury_trace.c.
-** We use the following variable to keep track of the EDT depth.
+** This tells MR_trace_decl_debug whether it is inside a portion of the
+** annotated trace that should be materialized (ignoring any depth limit).  It
+** has opposite meanings depending on whether an explicit supertree or subtree
+** has been requested.  When materializing a subtree it will be true for all
+** nodes in the subtree.  When materializing a supertree it will be true for
+** all nodes outside the subtree above which a supertree was requested (we
+** don't want to include nodes in the subtree because that's already been
+** materialized).
+*/
+
+static	MR_bool		MR_edt_inside;
+
+/*
+** The initial event at which the `dd' command was given.  This is used when 
+** aborting diagnosis to return the user to the event where they initiated
+** the declarative debugging session.
+*/
+
+static	MR_Unsigned	MR_edt_initial_event;
+
+/*
+** This variable indicates whether we are building a supertree above a
+** given event or a subtree rooted at a given event.
+*/
+
+static	MR_bool		MR_edt_building_supertree;
+
+/*
+** The node returned to the frontend once a subtree or supertree has been
+** generated.  If a supertree is generated then the implicit root in the
+** new supertree that represents the existing tree is returned, otherwise
+** the root of the new explicit subtree is returned.
+*/
+
+static	MR_Trace_Node	MR_edt_return_node;
+
+/*
+** The depth of the EDT is different from the call depth of the events, since
+** the call depth is not guaranteed to be the same for the children of a call
+** event - see comments in MR_trace_real in trace/mercury_trace.c.  We use the
+** following variable to keep track of the EDT depth.  We only keep track of
+** the depth of the portion of the EDT we are materializing.  MR_edt_depth is 0
+** for the root of the tree we are materializing.
 */
 
 static	MR_Integer	MR_edt_depth;
-
-/*
-** We only build the annotated trace for events down to a certain depth.
-** MR_edt_depth_step_size gives the default depth limit (relative to the
-** starting depth).  In future it would be nice to adjust this factor based on
-** profiling information.  
-*/
-		
-static	int	MR_edt_depth_step_size = 3000;
 
 /*
 ** The declarative debugger ignores modules that were not compiled with
@@ -212,7 +253,8 @@ static	MR_Word		MR_decl_atom_args(const MR_Label_Layout *layout,
 				MR_Word *saved_regs);
 static	const char	*MR_trace_start_collecting(MR_Unsigned event,
 				MR_Unsigned seqno, MR_Unsigned maxdepth,
-				MR_Unsigned initial_depth,
+				MR_Unsigned topmost_call_depth,
+				MR_bool create_supertree,
 				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details,
@@ -220,7 +262,9 @@ static	const char	*MR_trace_start_collecting(MR_Unsigned event,
 static	MR_Code		*MR_trace_restart_decl_debug(
 				MR_Trace_Node call_preceding,
 				MR_Unsigned event,
-				MR_Unsigned seqno, MR_Trace_Cmd_Info *cmd,
+				MR_Unsigned seqno, 
+				MR_bool create_supertree,
+				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details);
 static	MR_Code		*MR_decl_diagnosis(MR_Trace_Node root,
@@ -244,6 +288,13 @@ static	void		MR_decl_checkpoint_loc(const char *str,
 
 MR_bool MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
 
+MR_Integer	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
+
+/*
+** This function is called for every traced event when building the
+** annotated trace.  It must decide which events are included in the 
+** annotated trace.
+*/
 MR_Code *
 MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
@@ -257,7 +308,8 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
 
-	if (event_info->MR_event_number > MR_edt_last_event) {
+	if (event_info->MR_event_number > MR_edt_last_event
+			&& !MR_edt_building_supertree) {
 		/* This shouldn't ever be reached. */
 		fprintf(MR_mdb_err, "Warning: missed final event.\n");
 		fprintf(MR_mdb_err, "event %lu\nlast event %lu\n",
@@ -273,22 +325,103 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	}
 
 	/*
-	** If this event is an interface event then increase or decrease 
-	** the EDT depth appropriately.
+	** Filter out events for compiler generated procedures.
+	** XXX Compiler generated unify procedures should be included
+	** in the annotated trace so that sub-term dependencies can be
+	** tracked through them.  The commented code below should be 
+	** uncommented to include unifications in the annotated trace.
+	*/
+	if (MR_PROC_LAYOUT_IS_UCI(entry)) {
+		/* && !MR_streq("__Unify__",
+			entry->MR_sle_proc_id.MR_proc_uci.MR_uci_pred_name)) {
+		*/
+		return NULL;
+	}
+
+	/*
+	** Decide if we are inside or outside the subtree or supertree that
+	** needs to be materialized, ignoring for now any depth limit.  
+	** If we are materializing a supertree then MR_edt_inside will
+	** be true whenever we are not in the subtree rooted at the call
+	** corresponding to MR_edt_start_seqno.  If we are materializing a
+	** subtree then MR_edt_inside will be true whenever we are in the 
+	** subtree rooted at the call corresponding to MR_edt_start_segno.
+	*/
+	if (MR_edt_building_supertree) {
+		if (!MR_edt_inside) {
+			if (event_info->MR_call_seqno == MR_edt_start_seqno &&
+				MR_port_is_final(event_info->MR_trace_port))
+			{
+				/*
+				** We are exiting the subtree rooted at
+				** MR_edt_start_seqno.
+				*/
+				MR_edt_inside = MR_TRUE;
+			} else {
+				/*
+				** We are in an existing explicit subtree.
+				*/
+				MR_decl_checkpoint_filter(event_info);
+				return NULL;
+			}
+		} else {
+			if (event_info->MR_call_seqno == MR_edt_start_seqno) {
+				/*
+				** The port must be either CALL or REDO;
+				** we are leaving the supertree and entering
+				** the existing explicit subtree.
+				** We must still however add this node to the 
+				** generated EDT, so we don't return here.
+				*/
+				MR_edt_inside = MR_FALSE;
+			} 
+		}
+	} else {
+		if (MR_edt_inside) {
+			if (event_info->MR_call_seqno == MR_edt_start_seqno &&
+				MR_port_is_final(event_info->MR_trace_port))
+			{
+				/*
+				** We are leaving the topmost call.
+				*/
+				MR_edt_inside = MR_FALSE;
+			}
+		} else {
+			if (event_info->MR_call_seqno == MR_edt_start_seqno) {
+				/*
+				** The port must be either CALL or REDO;
+				** we are (re)entering the topmost call.
+				*/
+				MR_edt_inside = MR_TRUE;
+			} else {
+				/*
+				** Ignore this event---it is outside the
+				** topmost call.
+				*/
+				MR_decl_checkpoint_filter(event_info);
+				return NULL;
+			}
+		}
+	}
+	
+	/*
+	** If the current event is an interface event then increase or decrease
+	** the EDT depth appropriately.  Note that we must be inside the
+	** portion of the trace being materialized (ignoring the depth limit)
+	** when we reach this point.
 	*/
 	if (event_info->MR_trace_port == MR_PORT_CALL 
 			|| event_info->MR_trace_port == MR_PORT_REDO) {
 		MR_edt_depth++;
+		depth_check_adjustment = 0;
 	}
-	if (event_info->MR_trace_port == MR_PORT_EXIT 
-			|| event_info->MR_trace_port == MR_PORT_FAIL
-			|| event_info->MR_trace_port == MR_PORT_EXCEPTION) {
+	if (MR_port_is_final(event_info->MR_trace_port)) {
 		/*
-		** The depth of the EXIT, FAIL or EXCP event is actually
-		** MR_edt_depth (not MR_edt_depth-1), however we need to 
-		** adjust the depth here for future events.  This 
-		** inconsistency is neutralised by adjusting the depth
-		** limit check by setting depth_check_adjustment.
+		** The depth of the EXIT, FAIL or EXCP event is
+		** actually MR_edt_depth (not MR_edt_depth-1), however
+		** we need to adjust the depth here for future events.
+		** This inconsistency is neutralised by adjusting the
+		** depth limit check by setting depth_check_adjustment.
 		*/
 		MR_edt_depth--;
 		depth_check_adjustment = 1;
@@ -313,39 +446,6 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		** FAIL and EXCP events and 0 otherwise) ensures that EXIT,
 		** FAIL and EXCP events have the same depth as their 
 		** corresponding CALL or REDO events.
-		*/
-		return NULL;
-	}
-
-	if (MR_edt_inside) {
-		if (event_info->MR_call_seqno == MR_edt_start_seqno &&
-			MR_port_is_final(event_info->MR_trace_port))
-		{
-			/*
-			** We are leaving the topmost call.
-			*/
-			MR_edt_inside = MR_FALSE;
-		}
-	} else {
-		if (event_info->MR_call_seqno == MR_edt_start_seqno) {
-			/*
-			** The port must be either CALL or REDO;
-			** we are (re)entering the topmost call.
-			*/
-			MR_edt_inside = MR_TRUE;
-		} else {
-			/*
-			** Ignore this event---it is outside the
-			** topmost call.
-			*/
-			MR_decl_checkpoint_filter(event_info);
-			return NULL;
-		}
-	}
-
-	if (MR_PROC_LAYOUT_IS_UCI(entry)) {
-		/*
-		** Filter out events for compiler generated procedures.
 		*/
 		return NULL;
 	}
@@ -427,11 +527,19 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_trace_call_depth = event_details.MR_call_depth;
 	MR_trace_event_number = event_details.MR_event_number;
 
-	if (MR_trace_event_number == MR_edt_last_event) {
+	if (event_info->MR_call_seqno == MR_edt_start_seqno &&
+		MR_port_is_final(event_info->MR_trace_port))
+	{
+		MR_edt_return_node = MR_trace_current_node;
+	}
+
+	if ((!MR_edt_building_supertree && 
+			MR_trace_event_number == MR_edt_last_event)
+			|| (MR_edt_building_supertree && MR_edt_depth == 0)) {
 		/*
 		** Call the front end.
 		*/
-		return MR_decl_diagnosis(MR_trace_current_node, cmd,
+		return MR_decl_diagnosis(MR_edt_return_node, cmd,
 				event_info, &event_details);
 	}
 
@@ -1144,9 +1252,13 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	MR_Retry_Result		result;
 	const MR_Proc_Layout 	*entry;
 	FILE			*out;
-	MR_Unsigned		depth_limit;
+	MR_Unsigned		edt_depth_limit;
 	const char		*message;
 	MR_Trace_Level		trace_level;
+
+	MR_edt_return_node = (MR_Trace_Node) NULL;
+
+	MR_edt_initial_event = event_details->MR_event_number;
 
 	if (!MR_port_is_final(event_info->MR_trace_port)) {
 		fflush(MR_mdb_out);
@@ -1211,16 +1323,16 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	MR_trace_decl_mode = trace_mode;
 
 	MR_trace_decl_ensure_init();
-	depth_limit = event_info->MR_call_depth + MR_edt_depth_step_size;
-	MR_edt_initial_depth = event_info->MR_call_depth;
-	MR_edt_depth = MR_edt_initial_depth;
+	edt_depth_limit = MR_edt_depth_step_size;
+	MR_edt_topmost_call_depth = event_info->MR_call_depth;
+	MR_edt_depth = 0;
 	
 	MR_trace_current_node = (MR_Trace_Node) NULL;
 	
 	message = MR_trace_start_collecting(event_info->MR_event_number,
-			event_info->MR_call_seqno, depth_limit,
-			MR_edt_initial_depth, cmd, event_info, event_details,
-			jumpaddr);
+			event_info->MR_call_seqno, edt_depth_limit,
+			MR_edt_topmost_call_depth, MR_FALSE, cmd, event_info, 
+			event_details, jumpaddr);
 
 	if (message == NULL) {
 		return MR_TRUE;
@@ -1237,26 +1349,39 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 static	MR_Code *
 MR_trace_restart_decl_debug(
 	MR_Trace_Node call_preceding, MR_Unsigned event, MR_Unsigned seqno,
-	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-	MR_Event_Details *event_details)
+	MR_bool create_supertree, MR_Trace_Cmd_Info *cmd, MR_Event_Info
+	*event_info, MR_Event_Details *event_details)
 {
-	MR_Unsigned		depth_limit;
+	MR_Unsigned		edt_depth_limit;
 	const char		*message;
 	MR_Code			*jumpaddr;
 
-	depth_limit = MR_edt_max_depth + MR_edt_depth_step_size;
+	MR_edt_return_node = (MR_Trace_Node) NULL;
 
 	/* 
-	** Set this to the preceding node, so the new subtree's parent is
-	** resolved correcly.
+	** Set this to the preceding node, so the new explicit tree's parent is
+	** resolved correctly.
 	*/
 	MR_trace_current_node = call_preceding;
 
-	MR_edt_depth = MR_edt_initial_depth;
+	/*
+	** If we're going to build a supertree above the current root, then
+	** adjust the depth of the topmost node.
+	*/
+	if (create_supertree) {
+		if (MR_edt_depth_step_size < MR_edt_topmost_call_depth) {
+			MR_edt_topmost_call_depth -= MR_edt_depth_step_size;
+		} else {
+			MR_edt_topmost_call_depth = 1;
+		}
+	}
+	edt_depth_limit = MR_edt_depth_step_size + 1;
+	
+	MR_edt_depth = 0;
 
-	message = MR_trace_start_collecting(event, seqno, depth_limit,
-			MR_edt_initial_depth, cmd, event_info, event_details, 
-			&jumpaddr);
+	message = MR_trace_start_collecting(event, seqno, edt_depth_limit,
+			MR_edt_topmost_call_depth, create_supertree, cmd, 
+			event_info, event_details, &jumpaddr);
 
 	if (message != NULL) {
 		fflush(MR_mdb_out);
@@ -1272,21 +1397,22 @@ MR_trace_restart_decl_debug(
 
 static	const char *
 MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
-	MR_Unsigned maxdepth, MR_Unsigned initial_depth, 
-	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-	MR_Event_Details *event_details, MR_Code **jumpaddr)
+	MR_Unsigned maxdepth, MR_Unsigned topmost_call_depth, 
+	MR_bool create_supertree, MR_Trace_Cmd_Info *cmd, MR_Event_Info
+	*event_info, MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
 	const char		*problem;
 	MR_Retry_Result		retry_result;
+	MR_Unsigned		retry_levels;
 
 	/*
 	** Go back to an event before the topmost call.
 	*/
 	retry_result = MR_trace_retry(event_info, event_details, 
-		event_info->MR_call_depth - initial_depth,
-		MR_RETRY_IO_ONLY_IF_SAFE,
-		MR_trace_decl_assume_all_io_is_tabled, &problem, NULL, NULL,
-		jumpaddr);
+		event_info->MR_call_depth - topmost_call_depth, 
+		MR_RETRY_IO_INTERACTIVE,
+		MR_trace_decl_assume_all_io_is_tabled, &problem, 
+		MR_mdb_in, MR_mdb_out, jumpaddr);
 	if (retry_result != MR_RETRY_OK_DIRECT) {
 		if (retry_result == MR_RETRY_ERROR) {
 			return problem;
@@ -1305,10 +1431,16 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	** desired depth bound.
 	*/
 	MR_edt_last_event = event;
-	MR_edt_inside = MR_FALSE;
 	MR_edt_start_seqno = seqno;
 	MR_edt_start_io_counter = MR_io_tabling_counter;
 	MR_edt_max_depth = maxdepth;
+
+	if (create_supertree) {
+		MR_edt_inside = MR_TRUE;
+	} else {
+		MR_edt_inside = MR_FALSE;
+	}
+	MR_edt_building_supertree = create_supertree;
 
 	/*
 	** Restore globals from the saved copies.
@@ -1344,6 +1476,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	MR_bool			symptom_found;
 	MR_bool			no_bug_found;
 	MR_bool			require_subtree;
+	MR_bool			require_supertree;
 	MR_Unsigned		bug_event;
 	MR_Unsigned		symptom_event;
 	MR_Unsigned		final_event;
@@ -1427,6 +1560,9 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 				(MR_Integer *) &final_event,
 				(MR_Integer *) &topmost_seqno,
 				(MR_Trace_Node *) &call_preceding);
+		require_supertree = MR_DD_diagnoser_require_supertree(response,
+				(MR_Integer *) &final_event,
+				(MR_Integer *) &topmost_seqno);
 	);
 
 	MR_trace_call_seqno = event_details->MR_call_seqno;
@@ -1446,22 +1582,29 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	if (no_bug_found) {
 		/*
 		** No bug found.  Return to the procedural debugger at the
-		** current event, which was the event it was left from.
+		** event where the `dd' command was initially given.
 		*/
-		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		MR_debug_enabled = MR_TRUE;
-		MR_update_trace_func_enabled();
-		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
+		return MR_decl_go_to_selected_event(MR_edt_initial_event, cmd,
+				event_info, event_details);
 	}
 
 	if (require_subtree) {
 		/*
-		** Front end requires a subtree to be made explicit.
-		** Restart the declarative debugger with deeper
-		** depth limit.
+		** Front end requires a subtree to be made explicit.  Restart
+		** the declarative debugger with the appropriate depth limit.
 		*/
 		return MR_trace_restart_decl_debug(call_preceding,
-				final_event, topmost_seqno,
+				final_event, topmost_seqno, MR_FALSE,
+				cmd, event_info, event_details);
+	}
+
+	if (require_supertree) {
+		/*
+		** Front end requires a supertree to be made 
+		** explicit.
+		*/
+		return MR_trace_restart_decl_debug((MR_Trace_Node)NULL,
+				final_event, topmost_seqno, MR_TRUE,
 				cmd, event_info, event_details);
 	}
 
@@ -1486,10 +1629,11 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
 #endif
-	retry_result = MR_trace_retry(event_info, event_details, 0,
-		MR_RETRY_IO_ONLY_IF_SAFE,
-		MR_trace_decl_assume_all_io_is_tabled,
-		&problem, NULL, NULL, &jumpaddr);
+	retry_result = MR_trace_retry(event_info, event_details, 
+		event_info->MR_call_depth - MR_edt_topmost_call_depth, 
+		MR_RETRY_IO_INTERACTIVE,
+		MR_trace_decl_assume_all_io_is_tabled, &problem, 
+		MR_mdb_in, MR_mdb_out, &jumpaddr);
 #ifdef	MR_DEBUG_RETRY
 	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);

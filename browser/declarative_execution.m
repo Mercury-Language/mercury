@@ -35,8 +35,9 @@
 	--->	call(
 			call_preceding		:: R,
 						% Preceding event.
-			call_last_exit_redo	:: R,
-						% Last EXIT or REDO event.
+			call_last_interface	:: R,
+						% Last EXIT, REDO, FAIL or
+						% EXCP event.
 			call_atom		:: trace_atom,
 						% Atom that was called.
 			call_seq		:: sequence_number,
@@ -401,6 +402,8 @@
 :- import_module mdb__declarative_debugger.
 :- import_module int, map, exception, store.
 :- import_module require.
+:- import_module mdb.declarative_edt.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -1026,7 +1029,7 @@ trace_node_first_disj(first_disj(_, _), NULL) :-
 trace_node_first_disj(later_disj(_, _, FirstDisj), FirstDisj).	
 
 	% Export a version of this function to be called by C code
-	% in trace/declarative_debugger.c.
+	% in trace/mercury_trace_declarative.c.
 	%
 :- func step_left_in_contour_store(trace_node_store, trace_node(trace_node_id))
 		= trace_node_id.

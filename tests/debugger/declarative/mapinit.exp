@@ -1,14 +1,14 @@
-       1:      1  1 CALL pred mapinit.main/2-0 (det) mapinit.m:28
+      E1:     C1 CALL pred mapinit.main/2-0 (det) mapinit.m:28
 mdb> echo on
 Command echo enabled.
 mdb> step
-       2:      2  2 CALL pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
+      E2:     C2 CALL pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> finish
-       3:      2  2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
+      E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> dd
 xmap_init(empty)
-Valid? y
-No bug found.
-       3:      2  2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
+Valid? a
+Diagnosis aborted.
+      E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:37 (mapinit.m:29)
 mdb> c
 two(0, "zero", empty, empty)

@@ -321,7 +321,7 @@ lpe_example.out: lpe_example lpe_example.inp
 	|| { grep . $@ /dev/null; exit 1; }
 
 mapinit.out: mapinit mapinit.inp
-	$(MDB) ./mapinit < mapinit.inp > mapinit.out 2>&1 \
+	$(MDB_STD) ./mapinit < mapinit.inp > mapinit.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 mismatch_on_call.out: mismatch_on_call mismatch_on_call.$(DEBUG_INP)

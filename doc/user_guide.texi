@@ -3262,8 +3262,16 @@ The following commands relate to the declarative debugger.  See
 @c makes an assertion, and if the assertion is incorrect, the resulting
 @c behaviour would be hard for non-developers to understand. The option is
 @c therefore deliberately not documented.
-Starts declarative debugging
-using the current event as the initial symptom.
+Starts declarative debugging using the current event as the initial symptom.
+@sp 1
+When searching for bugs the declarative debugger needs to keep portions of the
+execution trace in memory.  If it requires a new portion of the trace then it
+needs to rerun the program.  The @samp{-d@var{depth}} and
+@samp{--depth-step-size @var{depth}} options tell the declarative debugger how
+much of the execution trace to gather when it reruns the program.  A higher
+@var{depth} will require more memory, but will improve the performance of the
+declarative debugger for long running programs since it will not have to rerun
+the program as much.
 @sp 1
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)
@@ -3336,16 +3344,12 @@ not to complain if the named file does not exist or is not readable.
 @sp 1
 @item save @var{filename}
 @kindex save (mdb command)
-Saves current set of breakpoints, the current set of aliases and the
+Saves the current set of breakpoints, the current set of aliases and the
 current set of objects trusted by the declarative debugger
 in the named file as a set of @samp{break}, @samp{alias} and @samp{trust} 
 commands.
 Sourcing the file will recreate the current breakpoints and aliases and will
 trust the currently trusted objects.
-@sp 1
-Saves current set of breakpoints and the current set of aliases
-in the named file as a set of @samp{break} and @samp{alias} commands.
-Sourcing the file will recreate the current breakpoints and aliases.
 @sp 1
 @item quit [-y]
 @kindex quit (mdb command)
@@ -3960,6 +3964,15 @@ Thus irrelevant questions about @code{get_payment_amount} are avoided.
 If, say, the date was only wrong in the year part, then we could also have
 marked the year subterm in which case the next question would have been about
 the call that constructed the year part of the date.
+
+This feature is also useful when using the procedural debugger.  For example,
+suppose that you come across a CALL event and you would like to know the source
+of a particular input to the call.  To find out you could first go to the final
+event by issuing a @samp{finish} command.  Invoke the declarative debugger with
+a @samp{dd} command and then mark the input term you are interested in.  The
+next question should be about the call that bound the term.  Issue a @samp{pd}
+command at this point to return to the procedural debugger. It will now show
+the final event of the call that bound the term.
 
 @subsubsection Trusting predicates, functions and modules
 

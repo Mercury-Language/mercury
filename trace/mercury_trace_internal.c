@@ -540,8 +540,8 @@ static	MR_bool	MR_trace_options_view(const char **window_cmd,
 			MR_bool *split, MR_bool *close_window, char ***words,
 			int *word_count, const char *cat, const char*item);
 static	MR_bool	MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-			char ***words, int *word_count,
-			const char *cat, const char *item);
+			MR_Integer *depth_step_size, char ***words, 
+			int *word_count, const char *cat, const char *item);
 static	MR_bool	MR_trace_options_type_ctor(MR_bool *print_rep,
 			MR_bool *print_functors, char ***words,
 			int *word_count, const char *cat, const char *item);
@@ -5511,8 +5511,9 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+	MR_edt_depth_step_size = MR_TRACE_DECL_INITIAL_DEPTH;
 	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-		&words, &word_count, "dd", "dd"))
+		&MR_edt_depth_step_size, &words, &word_count, "dd", "dd"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count == 1) {
@@ -5545,8 +5546,9 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	const char	*filename;
 
 	MR_trace_decl_assume_all_io_is_tabled = MR_FALSE;
+	MR_edt_depth_step_size = 3;
 	if (! MR_trace_options_dd(&MR_trace_decl_assume_all_io_is_tabled,
-		&words, &word_count, "dd", "dd_dd"))
+		&MR_edt_depth_step_size, &words, &word_count, "dd", "dd_dd"))
 	{
 		; /* the usage message has already been printed */
 	} else if (word_count <= 2) {
@@ -5556,7 +5558,7 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else {
 			trace_mode = MR_TRACE_DECL_DEBUG_DEBUG;
 			filename = (const char *) NULL;
-		}
+		} 
 
 		if (MR_trace_start_decl_debug(trace_mode, filename,
 			cmd, event_info, event_details, jumpaddr))
@@ -6551,25 +6553,33 @@ MR_trace_options_view(const char **window_cmd, const char **server_cmd,
 static struct MR_option MR_trace_dd_opts[] =
 {
 	{ "assume-all-io-is-tabled",	MR_no_argument,	NULL,	'a' },
+	{ "depth-step-size",	MR_required_argument, 	NULL, 	'd' },
 	{ NULL,			MR_no_argument,		NULL,	0 }
 };
 
 static MR_bool
-MR_trace_options_dd(MR_bool *assume_all_io_is_tabled,
-	char ***words, int *word_count, const char *cat, const char *item)
+MR_trace_options_dd(MR_bool *assume_all_io_is_tabled, 
+	MR_Integer *depth_step_size, char ***words, int *word_count, const char
+	*cat, const char *item)
 {
 	int	c;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "a", MR_trace_dd_opts,
-		NULL)) != EOF)
+	while ((c = MR_getopt_long(*word_count, *words, "ad:", 
+		MR_trace_dd_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
 			case 'a':
 				*assume_all_io_is_tabled = MR_TRUE;
 				break;
-
+			case 'd':
+				if (!MR_trace_is_natural_number(MR_optarg, 
+						depth_step_size)) {
+					MR_trace_usage(cat, item);
+					return MR_FALSE;
+				}
+				break;
 			default:
 				MR_trace_usage(cat, item);
 				return MR_FALSE;

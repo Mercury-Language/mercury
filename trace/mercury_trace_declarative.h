@@ -81,4 +81,21 @@ typedef MR_Word MR_Trace_Node;
 #define MR_TRACE_STATUS_FAILED		(MR_Word) 1
 #define MR_TRACE_STATUS_UNDECIDED	(MR_Word) 2
 
+/*
+** The initial depth step size.  The choice of 3 is quite arbitrary, but
+** it does mean the code which generates new portions of the annotated trace
+** is exercised more during testing.
+*/
+
+#define MR_TRACE_DECL_INITIAL_DEPTH	3
+
+/*
+** We only build the annotated trace for events down to a certain depth.
+** MR_edt_depth_step_size gives the default depth limit (relative to the
+** starting depth).  In future it would be nice to adjust this factor based on
+** profiling information.  
+*/
+
+extern	MR_Integer	MR_edt_depth_step_size;
+
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

@@ -20,8 +20,7 @@ Found incorrect contour:
 p(41)
 Is this a bug? no
 p(41)
-Valid? [no] yes
-No bug found.
+Valid? [no] pd
        3:      2  2 EXIT pred revise_2.p/1-0 (det) revise_2.m:14 (revise_2.m:8)
 mdb> continue
 41
