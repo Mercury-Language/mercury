@@ -491,6 +491,12 @@ long_usage -->
 	% more than one value for each dimension (eg *.gc.agc).
 	% Adding a value here will require adding clauses to the
 	% grade_component_table.
+	%
+	% A --grade option causes all the grade dependent options to be
+	% reset, and only those described by the grade string to be set.
+	% The value to which a grade option should be reset should be given
+	% in the grade_start_values table below.
+	%
 	% The ordering of the components here is the same as the order
 	% used in scripts/ml.in, and any change here will require a
 	% corresponding change there. The only place where the ordering
@@ -509,6 +515,7 @@ long_usage -->
 	.
 
 convert_grade_option(GradeString, Options0, Options) :-
+	reset_grade_options(Options0, Options1),
 	split_grade_string(GradeString, Components),
 	set__init(NoComps),
 	list__foldl2(lambda([CompStr::in, Opts0::in, Opts::out,
@@ -519,7 +526,7 @@ convert_grade_option(GradeString, Options0, Options) :-
 		\+ set__member(Comp, CompSet0),
 		set__insert(CompSet0, Comp, CompSet),
 		add_option_list(CompOpts, Opts0, Opts)
-	)), Components, Options0, Options, NoComps, _FinalComps).
+	)), Components, Options1, Options, NoComps, _FinalComps).
 
 :- pred add_option_list(list(pair(option, option_data)), option_table,
 		option_table).
@@ -633,6 +640,32 @@ grade_component_table("strace", trace,
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)]).
 
+:- pred reset_grade_options(option_table, option_table).
+:- mode reset_grade_options(in, out) is det.
+
+reset_grade_options(Options0, Options) :-
+	aggregate(grade_start_values, lambda([Pair::in, Opts0::in, Opts::out]
+			is det, (
+		Pair = Option - Value,
+		map__set(Opts0, Option, Value, Opts)
+	)), Options0, Options).
+
+:- pred grade_start_values(pair(option, option_data)).
+:- mode grade_start_values(out) is multi.
+
+grade_start_values(args - string("compact")).
+grade_start_values(asm_labels - bool(no)).
+grade_start_values(gcc_non_local_gotos - bool(no)).
+grade_start_values(gcc_global_registers - bool(no)).
+grade_start_values(gc - string("none")).
+grade_start_values(parallel - bool(no)).
+grade_start_values(pic_reg - bool(no)).
+grade_start_values(profile_time - bool(no)).
+grade_start_values(profile_calls - bool(no)).
+grade_start_values(profile_memory - bool(no)).
+grade_start_values(stack_trace - bool(no)).
+grade_start_values(require_tracing - bool(no)).
+grade_start_values(use_trail - bool(no)).
 
 :- pred split_grade_string(string, list(string)).
 :- mode split_grade_string(in, out) is semidet.
