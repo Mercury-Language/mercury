@@ -916,6 +916,7 @@ output_instruction(decr_sp(N), _) -->
 	% The code we produce for pragma(c_code, ...) is in the form
 	% {
 	%	<declaration of one local variable for each one in the proc>
+	%	<declarations for any rvals and lvals used, if needed>
 	%	<assignment of the input regs to the corresponding locals>
 	%	<the C code itself>
 	%	<assignment to the output regs of the corresponding locals>
@@ -924,6 +925,9 @@ output_instruction(decr_sp(N), _) -->
 output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
+	{ set__init(DeclSet0) },
+	output_pragma_input_rval_decls(Inputs, DeclSet0, DeclSet1),
+	output_pragma_output_lval_decls(Outputs, DeclSet1, _DeclSet),
 	output_pragma_inputs(Inputs),
 	io__write_string("\t\t"),
 	io__write_string(C_Code),
@@ -947,6 +951,17 @@ output_pragma_decls([D|Decls]) -->
 	io__write_string(VarName),
 	io__write_string(";\n"),
 	output_pragma_decls(Decls).
+
+	% Output declarations for any rvals used to initialize the inputs
+:- pred output_pragma_input_rval_decls(list(pragma_c_input), decl_set, decl_set,
+					io__state, io__state).
+:- mode output_pragma_input_rval_decls(in, in, out, di, uo) is det.
+
+output_pragma_input_rval_decls([], DeclSet, DeclSet) --> [].
+output_pragma_input_rval_decls([I|Inputs], DeclSet0, DeclSet) -->
+	{ I = pragma_c_input(_VarName, _Type, Rval) },
+	output_rval_decls(Rval, DeclSet0, DeclSet1),
+	output_pragma_input_rval_decls(Inputs, DeclSet1, DeclSet).
 
 	% Output the input variable assignments at the top of the 
 	% pragma_c_code code.
@@ -975,6 +990,17 @@ output_pragma_inputs([I|Inputs]) -->
 	),
 	io__write_string(";\n"),
 	output_pragma_inputs(Inputs).
+
+	% Output declarations for any lvals used for the outputs
+:- pred output_pragma_output_lval_decls(list(pragma_c_output),
+				decl_set, decl_set, io__state, io__state).
+:- mode output_pragma_output_lval_decls(in, in, out, di, uo) is det.
+
+output_pragma_output_lval_decls([], DeclSet, DeclSet) --> [].
+output_pragma_output_lval_decls([O|Outputs], DeclSet0, DeclSet) -->
+	{ O = pragma_c_output(Lval, _Type, _VarName) },
+	output_lval_decls(Lval, DeclSet0, DeclSet1),
+	output_pragma_output_lval_decls(Outputs, DeclSet1, DeclSet).
 
 	% Output the output variable assignments at the bottom of the
 	% pragma_c_code
