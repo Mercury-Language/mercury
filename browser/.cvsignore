@@ -13,7 +13,7 @@
 *.date0
 *.date3
 *.pic_o
-mdb.*.h
+mdb*.h
 mer_browser.init
 Mercury
 mdb.dv
