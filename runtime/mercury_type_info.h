@@ -1405,23 +1405,67 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 #define MR_CTOR1_ADDR(m, n)                                             \
     (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(m, n, 1)
 
-#define MR_INT_CTOR_ADDR                                                \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0)
-#define MR_FLOAT_CTOR_ADDR                                              \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0)
-#define MR_CHAR_CTOR_ADDR                                               \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0)
-#define MR_STRING_CTOR_ADDR                                             \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0)
-#define MR_IO_CTOR_ADDR                                                 \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(io, state, 0)
-#define MR_BOOL_CTOR_ADDR                                               \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(bool, bool, 0)
-#define MR_LIST_CTOR_ADDR                                               \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(list, list, 1)
-#define MR_TYPE_INFO_CTOR_ADDR                                          \
-    (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1)
+/*
+** `bool' is often defined in other C code and can cause conflicts
+** when linking, hence we expand these definitions out fully here.
+*/
 
+#ifdef MR_HIGHLEVEL_CODE
+
+  #define MR_INT_CTOR_ADDR                                                \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_int_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0) */
+  #define MR_FLOAT_CTOR_ADDR                                              \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_float_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0) */
+  #define MR_CHAR_CTOR_ADDR                                               \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_character_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0) */
+  #define MR_STRING_CTOR_ADDR                                             \
+      (MR_Word *) &mercury__builtin__builtin__type_ctor_info_string_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0) */
+  #define MR_IO_CTOR_ADDR                                                 \
+      (MR_Word *) &mercury__io__io__type_ctor_info_state_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(io, state, 0) */
+  #define MR_BOOL_CTOR_ADDR                                               \
+      (MR_Word *) &mercury__bool__bool__type_ctor_info_bool_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(bool, bool, 0) */
+  #define MR_LIST_CTOR_ADDR                                               \
+      (MR_Word *) &mercury__list__list__type_ctor_info_list_1
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(list, list, 1) */
+  #define MR_TYPE_INFO_CTOR_ADDR                                          \
+      (MR_Word *) &mercury__private_builtin__private_builtin__type_ctor_info_type_info_1
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1) */
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
+  #define MR_INT_CTOR_ADDR                                                \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_int_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0) */
+  #define MR_FLOAT_CTOR_ADDR                                              \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_float_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, float, 0) */
+  #define MR_CHAR_CTOR_ADDR                                               \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_character_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0) */
+  #define MR_STRING_CTOR_ADDR                                             \
+      (MR_Word *) &mercury_data_builtin__type_ctor_info_string_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0) */
+  #define MR_IO_CTOR_ADDR                                                 \
+      (MR_Word *) &mercury_data_io__type_ctor_info_state_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(io, state, 0) */
+  #define MR_BOOL_CTOR_ADDR                                               \
+      (MR_Word *) &mercury_data_bool__type_ctor_info_bool_0
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(bool, bool, 0) */
+  #define MR_LIST_CTOR_ADDR                                               \
+      (MR_Word *) &mercury_data_list__type_ctor_info_list_1
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(list, list, 1) */
+  #define MR_TYPE_INFO_CTOR_ADDR                                          \
+      (MR_Word *) &mercury_data_private_builtin__type_ctor_info_type_info_1
+      /* (MR_Word *) &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1) */
+
+#endif
+  
 /*---------------------------------------------------------------------------*/
 
 /*
