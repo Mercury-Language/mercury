@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -15,13 +15,14 @@ VPATH=$(LIBRARY_DIR)
 
 #-----------------------------------------------------------------------------#
 
-# Specify which compilers to use to compile the compiler.
+# Specify which compilers to use to compile the profiler.
 # Don't change these without good reason - if you want to
 # do a temporary change, change ../Mmake.params
 
 M_ENV	=	MERCURY_INT_DIR=$(LIBRARY_DIR)  \
 		MERCURY_ALL_C_INCL_DIRS="\
 			-I$(TRACE_DIR) \
+			-I$(LIBRARY_DIR) \
 			-I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
