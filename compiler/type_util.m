@@ -54,7 +54,7 @@
 			;	pred_type
 			;	enum_type
 			;	polymorphic_type
-			;	user_type(type).
+			;	user_type.
 
 	% Given a non-variable type, return its type-id and argument types.
 
@@ -178,7 +178,7 @@ type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),
 	BuiltinType \= polymorphic_type,
 	BuiltinType \= pred_type,
-	BuiltinType \= user_type(_).
+	BuiltinType \= user_type.
 
 type_util__var(term__variable(Var), Var).
 
@@ -216,7 +216,7 @@ classify_type(VarType, ModuleInfo, Type) :-
 	->
 		Type = enum_type
 	;
-		Type = user_type(VarType)
+		Type = user_type
 	).
 
 type_is_higher_order(Type, PredOrFunc, PredArgTypes) :-

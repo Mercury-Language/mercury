@@ -174,7 +174,7 @@ switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
 switch_gen__type_cat_to_switch_cat(float_type, other_switch).
 switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
 switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
-switch_gen__type_cat_to_switch_cat(user_type(_), tag_switch).
+switch_gen__type_cat_to_switch_cat(user_type, tag_switch).
 switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
 
 %---------------------------------------------------------------------------%
