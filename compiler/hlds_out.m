@@ -72,22 +72,23 @@ hlds_out__write_pred_id(PredId) -->
 
 hlds_out__write_unify_context(unify_context(MainContext, RevSubContexts),
 		Context) -->
-	prog_out__write_context(Context),
-	hlds_out__write_unify_main_context(MainContext),
+	hlds_out__write_unify_main_context(MainContext, Context),
 	{ reverse(RevSubContexts, SubContexts) },
 	hlds_out__write_unify_sub_contexts(SubContexts, Context).
 
-:- pred hlds_out__write_unify_main_context(unify_main_context,
+:- pred hlds_out__write_unify_main_context(unify_main_context, term__context,
 						io__state, io__state).
-:- mode hlds_out__write_unify_main_context(in, di, uo).
+:- mode hlds_out__write_unify_main_context(in, in, di, uo).
 
-hlds_out__write_unify_main_context(explicit) -->
+hlds_out__write_unify_main_context(explicit, _) -->
 	[].
-hlds_out__write_unify_main_context(head(ArgNum)) -->
+hlds_out__write_unify_main_context(head(ArgNum), Context) -->
+	prog_out__write_context(Context),
 	io__write_string("  in argument "),
 	io__write_int(ArgNum),
 	io__write_string(" of clause head:\n").
-hlds_out__write_unify_main_context(call(PredId, ArgNum)) -->
+hlds_out__write_unify_main_context(call(PredId, ArgNum), Context) -->
+	prog_out__write_context(Context),
 	io__write_string("  in argument "),
 	io__write_int(ArgNum),
 	io__write_string(" of call to predicate `"),
