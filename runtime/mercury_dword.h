@@ -31,7 +31,7 @@
   ** This case is nice and simple.
   */
 
-  typedef unsigned MR_INT_LEAST64_TYPE MR_Dword;
+  typedef MR_uint_least64_t MR_Dword;
 
   #define MR_convert_dword_to_double(dword_form, double_form) \
 		((double_form) = (double) (dword_form))
