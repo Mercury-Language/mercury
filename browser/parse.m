@@ -105,6 +105,7 @@
 :- interface.
 
 :- import_module mdb__browser_info.
+
 :- import_module io, string, list, std_util, getopt.
 
 :- type command
@@ -161,6 +162,7 @@
 :- implementation.
 
 :- import_module mdb__util.
+
 :- import_module bool, list, char, int.
 
 :- type token
@@ -172,8 +174,7 @@
 	;	(<)
 	;	num(int)
 	;	name(string)
-	;	unknown(char)
-	.
+	;	unknown(char).
 
 parse__read_command(Prompt, Command) -->
 	util__trace_get_command(Prompt, Line),

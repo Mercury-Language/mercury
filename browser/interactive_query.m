@@ -17,6 +17,7 @@
 
 :- module mdb__interactive_query.
 :- interface.
+
 :- import_module io, list.
 
 :- pred query(query_type::in, imports::in, options::in,
@@ -34,9 +35,12 @@
 :- type options == string.
 
 :- implementation.
-:- import_module std_util, bool, string, term, varset, term_io, parser.
-:- import_module mdb__dl, mdb__name_mangle.
+
+:- import_module mdb__dl.
+:- import_module mdb__name_mangle.
 :- import_module mdb__util.
+
+:- import_module std_util, bool, string, term, varset, term_io, parser.
 
 :- pragma export(query(in, in, in, in, in, di, uo), "ML_query").
 

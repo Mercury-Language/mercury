@@ -23,8 +23,11 @@
 %
 
 :- module mdb__declarative_oracle.
+
 :- interface.
+
 :- import_module mdb__declarative_debugger.
+
 :- import_module list, io.
 
 	% A response that the oracle gives to a query about the
@@ -67,7 +70,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module mdb__declarative_user, mdb__tree234_cc, mdb__set_cc, mdb__util.
+
+:- import_module mdb__declarative_user.
+:- import_module mdb__tree234_cc.
+:- import_module mdb__set_cc.
+:- import_module mdb__util.
+
 :- import_module bool, std_util, set.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->

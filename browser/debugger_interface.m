@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,9 +30,12 @@
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
 :- implementation.
-:- import_module io, require.
+
 :- import_module list, bool, std_util.
-:- import_module mdb__interactive_query, mdb__util.
+:- import_module mdb__interactive_query.
+:- import_module mdb__util.
+
+:- import_module io, require.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 
