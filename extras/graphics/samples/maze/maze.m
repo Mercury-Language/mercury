@@ -89,8 +89,9 @@ main -->
 			Rnd0, Rnd) },
 		io__write_string(" done.\n"),
 		io__flush_output,
+		set_global("Rnd", Rnd),
 			% enter Tcl/Tk.
-		main(doit(Maze1, Rnd), ["maze"])
+		main(doit(Maze1), ["maze"])
 
 	;
 		{ MOpts = error(Str) },
@@ -104,10 +105,10 @@ main -->
 
 	% Main callback from Tcl/Tk.
 
-:- pred doit(maze, random__supply, tcl_interp, io__state, io__state).
-:- mode doit(in, mdi, in, di, uo) is det.
+:- pred doit(maze, tcl_interp, io__state, io__state).
+:- mode doit(in, in, di, uo) is det.
 
-doit(Maze, Rnd0, Interp) -->
+doit(Maze, Interp) -->
 		% Initialize the Togl widget.
 	mtogl__init(Interp, Res0),
 	{ Res0 \= tcl_ok -> error("Mtogl__init failed") ; true },
@@ -118,7 +119,6 @@ doit(Maze, Rnd0, Interp) -->
 	set_global("Maze", Maze),
 	set_global("Pos", pos(0, 0)),
 	set_global("Dir", east),
-	set_global("Rnd", Rnd0),
 	set_global("Phi", 0.0),
 	set_global("Theta", 0.0),
 	{ set__init(Set) },
