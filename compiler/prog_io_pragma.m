@@ -231,92 +231,10 @@ parse_foreign_language_type(InputTerm, Language, Result) :-
 :- mode parse_il_type_name(in, in, out) is det.
 
 parse_il_type_name(String0, ErrorTerm, ForeignType) :-
-	( 
-		String0 = "bool"
+	(
+		parse_special_il_type_name(String0, ForeignTypeResult)
 	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Boolean")))
-	;
-		String0 = "char"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Char")))
-	;
-		String0 = "object"
-	->
-		ForeignType = ok(il(reference, "mscorlib",
-			qualified(unqualified("System"), "Object")))
-	;
-		String0 = "string"
-	->
-		ForeignType = ok(il(reference, "mscorlib",
-			qualified(unqualified("System"), "String")))
-	;
-		String0 = "float32"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Single")))
-	;
-		String0 = "float64"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Double")))
-	;
-		String0 = "int8"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "SByte")))
-	;
-		String0 = "int16"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Int16")))
-	;
-		String0 = "int32"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Int32")))
-	;
-		String0 = "int64"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Int64")))
-	;
-		( String0 = "natural int" ; String0 = "native int" )
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "IntPtr")))
-	;
-		( String0 = "natural unsigned int" 
-		; String0 = "native unsigned int" )
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "UIntPtr")))
-	;
-		( String0 = "typedref" ; String0 = "refany" )
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "TypedReference")))
-	;
-		String0 = "unsigned int8"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "Byte")))
-	;
-		String0 = "unsigned int16"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "UInt16")))
-	;
-		String0 = "unsigned int32"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "UInt32")))
-	;
-		String0 = "unsigned int64"
-	->
-		ForeignType = ok(il(value, "mscorlib",
-			qualified(unqualified("System"), "UInt64")))
+		ForeignType = ok(ForeignTypeResult)
 	;
 		string__append("class [", String1, String0),
 		string__sub_string_search(String1, "]", Index)
@@ -337,6 +255,53 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 		ForeignType = error(
 			"invalid foreign language type description", ErrorTerm)
 	).
+
+	% Parse all the special assembler names for all the builtin types.
+	% See Parition I 'Built-In Types' (Section 8.2.2) for the list
+	% of all builtin types.
+:- pred parse_special_il_type_name(string::in,
+		foreign_language_type::out) is semidet.
+
+parse_special_il_type_name("bool", il(value, "mscorlib",
+			qualified(unqualified("System"), "Boolean"))).
+parse_special_il_type_name("char", il(value, "mscorlib",
+			qualified(unqualified("System"), "Char"))).
+parse_special_il_type_name("object", il(reference, "mscorlib",
+			qualified(unqualified("System"), "Object"))).
+parse_special_il_type_name("string", il(reference, "mscorlib",
+			qualified(unqualified("System"), "String"))).
+parse_special_il_type_name("float32", il(value, "mscorlib",
+			qualified(unqualified("System"), "Single"))).
+parse_special_il_type_name("float64", il(value, "mscorlib",
+			qualified(unqualified("System"), "Double"))).
+parse_special_il_type_name("int8", il(value, "mscorlib",
+			qualified(unqualified("System"), "SByte"))).
+parse_special_il_type_name("int16", il(value, "mscorlib",
+			qualified(unqualified("System"), "Int16"))).
+parse_special_il_type_name("int32", il(value, "mscorlib",
+			qualified(unqualified("System"), "Int32"))).
+parse_special_il_type_name("int64", il(value, "mscorlib",
+			qualified(unqualified("System"), "Int64"))).
+parse_special_il_type_name("natural int", il(value, "mscorlib",
+			qualified(unqualified("System"), "IntPtr"))).
+parse_special_il_type_name("native int", il(value, "mscorlib",
+			qualified(unqualified("System"), "IntPtr"))).
+parse_special_il_type_name("natural unsigned int", il(value, "mscorlib",
+			qualified(unqualified("System"), "UIntPtr"))).
+parse_special_il_type_name("native unsigned int", il(value, "mscorlib",
+			qualified(unqualified("System"), "UIntPtr"))).
+parse_special_il_type_name("refany", il(value, "mscorlib",
+			qualified(unqualified("System"), "TypeReference"))).
+parse_special_il_type_name("typedref", il(value, "mscorlib",
+			qualified(unqualified("System"), "TypeReference"))).
+parse_special_il_type_name("unsigned int8", il(value, "mscorlib",
+			qualified(unqualified("System"), "Byte"))).
+parse_special_il_type_name("unsigned int16", il(value, "mscorlib",
+			qualified(unqualified("System"), "UInt16"))).
+parse_special_il_type_name("unsigned int32", il(value, "mscorlib",
+			qualified(unqualified("System"), "UInt32"))).
+parse_special_il_type_name("unsigned int64", il(value, "mscorlib",
+			qualified(unqualified("System"), "UInt64"))).
 
 	% This predicate parses both c_header_code and foreign_decl pragmas.
 :- pred parse_pragma_foreign_decl_pragma(module_name, string,
