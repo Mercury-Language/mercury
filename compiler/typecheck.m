@@ -1562,25 +1562,25 @@ typecheck_aditi_builtin_2(CallId, Args,
 		aditi_bulk_update(Update, PredId, Syntax)) -->
 	{ CallId = PredOrFunc - _ },
 	{ InsertDeleteAdjustArgTypes = 
-	    lambda([RelationArgTypes::in, UpdateArgTypes::out] is det, (
+		(pred(RelationArgTypes::in, UpdateArgTypes::out) is det :-
 			construct_higher_order_type((pure), PredOrFunc,
 				(aditi_bottom_up), RelationArgTypes,
 				ClosureType),
 			UpdateArgTypes = [ClosureType]
-	    )) },
+	) },
 
 	% `aditi_modify' takes a closure which takes two sets of arguments
 	% corresponding to those of the base relation, one set for
 	% the tuple to delete, and one for the tuple to insert.
 	{ ModifyAdjustArgTypes = 
-	    lambda([RelationArgTypes::in, AditiModifyTypes::out] is det, (
+		(pred(RelationArgTypes::in, AditiModifyTypes::out) is det :-
 			list__append(RelationArgTypes, RelationArgTypes,
 				ClosureArgTypes),
 			construct_higher_order_pred_type((pure),
 				(aditi_bottom_up), ClosureArgTypes,
 				ClosureType),
 			AditiModifyTypes = [ClosureType]
-	    )) },
+	) },
 
 	{
 		Update = bulk_insert,
@@ -1610,8 +1610,8 @@ typecheck_aditi_builtin_closure(CallId, OtherArgs, AdjustArgTypes, PredId) -->
 			AdjustArgTypes, PredId)
 	;
 		% An error should have been reported by make_hlds.m.
-		{ error(
-		"typecheck_aditi_builtin: incorrect arity for builtin") }
+		{ error("typecheck_aditi_builtin: " ++
+			"incorrect arity for builtin") }
 	).
 
 	% Typecheck the DCG state arguments in the argument
@@ -1646,8 +1646,7 @@ aditi_builtin_first_state_arg(aditi_bulk_update(_, _, _), _) = 2 .
 				typecheck_info_uo) is det.
 
 typecheck_call_pred(CallId, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
-	AdjustArgTypes = lambda([X::in, X::out] is det, true),
-	typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
+	typecheck_call_pred_adjust_arg_types(CallId, Args, assign,
 		PredId, TypeCheckInfo0, TypeCheckInfo).
 
 	% A closure of this type performs a transformation on
@@ -1726,8 +1725,7 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
 				typecheck_info_uo) is det.
 
 typecheck_call_pred_id(PredId, Args, TypeCheckInfo0, TypeCheckInfo) :-
-	AdjustArgTypes = lambda([X::in, X::out] is det, true),
-	typecheck_call_pred_id_adjust_arg_types(PredId, Args, AdjustArgTypes,
+	typecheck_call_pred_id_adjust_arg_types(PredId, Args, assign,
 		TypeCheckInfo0, TypeCheckInfo).
 
 	% Typecheck a call to a specific predicate, performing the given
@@ -1992,8 +1990,8 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars0,
 	%
 	type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
 	list__append(PredExistQVars, HeadTypeParams0, HeadTypeParams),
-	type_assign_set_head_type_params(TypeAssign1, HeadTypeParams,
-			TypeAssign),
+	type_assign_set_head_type_params(HeadTypeParams,
+		TypeAssign1, TypeAssign),
 	%
 	% save the results and recurse
 	%
@@ -2015,7 +2013,7 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes0,
 		Subst),
 	term__apply_substitution_to_list(PredArgTypes0, Subst,
 		PredArgTypes),
-	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign).
+	type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign).
 
 %-----------------------------------------------------------------------------%
 
@@ -2074,8 +2072,8 @@ convert_args_type_assign(args(TypeAssign0, _, Constraints0), TypeAssign) :-
 	type_assign_get_type_bindings(TypeAssign0, Bindings),
 	apply_rec_subst_to_constraints(Bindings, Constraints0, Constraints),
 	add_constraints(OldConstraints, Constraints, NewConstraints),
-	type_assign_set_typeclass_constraints(TypeAssign0,
-		NewConstraints, TypeAssign).
+	type_assign_set_typeclass_constraints(NewConstraints,
+		TypeAssign0, TypeAssign).
 
 :- pred typecheck_var_has_arg_type(prog_var, 
 				args_type_assign_set, args_type_assign_set,
@@ -2154,7 +2152,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, VarId,
 		)
 	    ;
 		map__det_insert(VarTypes0, VarId, Type, VarTypes),
-		type_assign_set_var_types(TypeAssign0, VarTypes, TypeAssign),
+		type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
 		ArgTypeAssignSet = [args(TypeAssign, ArgTypes, ClassContext)
 					| ArgTypeAssignSet0]
 	    )
@@ -2314,7 +2312,7 @@ type_assign_var_has_type(TypeAssign0, VarId, Type,
 		)
 	;
 		map__det_insert(VarTypes0, VarId, Type, VarTypes),
-		type_assign_set_var_types(TypeAssign0, VarTypes, TypeAssign),
+		type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
 		TypeAssignSet = [TypeAssign | TypeAssignSet0]
 	).
 
@@ -2723,8 +2721,8 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeAssignSet0, TypeAssignSet) :-
 			% Y is a fresh variable which hasn't been
 			% assigned a type yet
 			map__det_insert(VarTypes0, Y, TypeX, VarTypes),
-			type_assign_set_var_types(TypeAssign0, VarTypes,
-				TypeAssign),
+			type_assign_set_var_types(VarTypes,
+				TypeAssign0, TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
 		)
 	;
@@ -2734,8 +2732,8 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeAssignSet0, TypeAssignSet) :-
 			% X is a fresh variable which hasn't been
 			% assigned a type yet
 			map__det_insert(VarTypes0, X, TypeY, VarTypes),
-			type_assign_set_var_types(TypeAssign0, VarTypes,
-				TypeAssign),
+			type_assign_set_var_types(VarTypes,
+				TypeAssign0, TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
 		;
 			% both X and Y are fresh variables -
@@ -2743,8 +2741,8 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeAssignSet0, TypeAssignSet) :-
 			% their type
 			type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
 			varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
-			type_assign_set_typevarset(TypeAssign0, TypeVarSet,
-				TypeAssign1),
+			type_assign_set_typevarset(TypeVarSet,
+				TypeAssign0, TypeAssign1),
 			Type = term__variable(TypeVar),
 			map__det_insert(VarTypes0, X, Type, VarTypes1),
 			( X \= Y ->
@@ -2752,8 +2750,8 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeAssignSet0, TypeAssignSet) :-
 			;
 				VarTypes = VarTypes1
 			),
-			type_assign_set_var_types(TypeAssign1, VarTypes,
-				TypeAssign),
+			type_assign_set_var_types(VarTypes,
+				TypeAssign1, TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
 		)
 	).
@@ -2791,7 +2789,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
 			% none are added by unification with a
 			% functor
 		map__det_insert(VarTypes0, Y, ConsType, VarTypes),
-		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign3),
+		type_assign_set_var_types(VarTypes, TypeAssign1, TypeAssign3),
 		Constraints = constraints([], []),
 		TypeAssignSet = [args(TypeAssign3, ArgTypes, Constraints) | 
 				TypeAssignSet0]
@@ -2844,14 +2842,14 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeCheckInfo, ConsType, ArgTypes,
 		%
 		add_constraints(OldConstraints, ConstraintsToAdd,
 			ClassConstraints),
-		type_assign_set_typeclass_constraints(TypeAssign1,
-			ClassConstraints, TypeAssign2),
+		type_assign_set_typeclass_constraints(ClassConstraints,
+			TypeAssign1, TypeAssign2),
 		type_assign_get_head_type_params(TypeAssign2,
 			HeadTypeParams0),
 		list__append(ConsExistQVars, HeadTypeParams0,
 			HeadTypeParams),
-		type_assign_set_head_type_params(TypeAssign2,
-			HeadTypeParams, TypeAssign),
+		type_assign_set_head_type_params(HeadTypeParams,
+			TypeAssign2, TypeAssign),
 
 		ConsType = ConsType1,
 		ArgTypes = ArgTypes1
@@ -2975,11 +2973,11 @@ type_assign_get_types_of_vars([Var|Vars], TypeAssign0,
 		% use as the type of that variable
 		type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
 		varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
-		type_assign_set_typevarset(TypeAssign0, TypeVarSet,
-						TypeAssign1),
+		type_assign_set_typevarset(TypeVarSet,
+			TypeAssign0, TypeAssign1),
 		Type = term__variable(TypeVar),
 		map__det_insert(VarTypes0, Var, Type, VarTypes1),
-		type_assign_set_var_types(TypeAssign1, VarTypes1, TypeAssign2)
+		type_assign_set_var_types(VarTypes1, TypeAssign1, TypeAssign2)
 	),
 	% recursively process the rest of the variables.
 	type_assign_get_types_of_vars(Vars, TypeAssign2, Types, TypeAssign).
@@ -2996,7 +2994,7 @@ type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
 	type_assign_get_head_type_params(TypeAssign0, HeadTypeParams),
 	type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
 	type_unify(X, Y, HeadTypeParams, TypeBindings0, TypeBindings),
-	type_assign_set_type_bindings(TypeAssign0, TypeBindings, TypeAssign).
+	type_assign_set_type_bindings(TypeBindings, TypeAssign0, TypeAssign).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3914,22 +3912,19 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 
 get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
 		ExistTypeRenaming) :-
-	MaybeAddToMap = lambda([TVar::in, Renaming0::in, Renaming::out] is det,
+	MaybeAddToMap = (pred(TVar::in, Renaming0::in, Renaming::out) is det :-
+		term__apply_rec_substitution(term__variable(TVar),
+			TypeBindings, Result),
 		(
-			term__apply_rec_substitution(
-				term__variable(TVar),
-				TypeBindings, Result),
-			(
-				Result = term__variable(NewTVar),
-				NewTVar \= TVar,
-				\+ list__member(NewTVar, OldHeadTypeParams)
-			->
-				map__det_insert(Renaming0, TVar, NewTVar,
-					Renaming)
-			;
-				Renaming = Renaming0
-			)
-		)),
+			Result = term__variable(NewTVar),
+			NewTVar \= TVar,
+			\+ list__member(NewTVar, OldHeadTypeParams)
+		->
+			map__det_insert(Renaming0, TVar, NewTVar, Renaming)
+		;
+			Renaming = Renaming0
+		)
+	),
 	map__init(ExistTypeRenaming0),
 	list__foldl(MaybeAddToMap, ExistQVars, ExistTypeRenaming0,
 		ExistTypeRenaming).
@@ -4251,11 +4246,12 @@ split_cons_errors(MaybeConsInfoList, ConsInfoList1, ConsErrors) :-
 %-----------------------------------------------------------------------------%
 
 :- pred report_unsatisfiable_constraints(type_assign_set, typecheck_info,
-					typecheck_info).
+	typecheck_info).
 :- mode report_unsatisfiable_constraints(in, typecheck_info_di,
-					typecheck_info_uo) is det.
+	typecheck_info_uo) is det.
 
-report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
+report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo)
+		:-
 	typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
 
 	typecheck_info_get_context(TypeCheckInfo0, Context),
@@ -4264,27 +4260,26 @@ report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :
 	io__write_string("  unsatisfiable typeclass constraint(s):\n",
 		IOState2, IOState3),
 
-	WriteConstraints = lambda([TypeAssign::in, IO0::di, IO::uo] is det,
-		(
-			type_assign_get_typeclass_constraints(
-				TypeAssign, Constraints),
-			Constraints = constraints(UnprovenConstraints0,
-					_AssumedConstraints),
-			
-			type_assign_get_typevarset(TypeAssign, VarSet),
-			type_assign_get_type_bindings(TypeAssign, Bindings),
-			apply_rec_subst_to_constraint_list(Bindings,
-				UnprovenConstraints0, UnprovenConstraints1),
-			list__sort_and_remove_dups(UnprovenConstraints1,
-				UnprovenConstraints),
-			prog_out__write_context(Context, IO0, IO1),
-			io__write_string("  `", IO1, IO2),
-			AppendVarnums = no,
-			io__write_list(UnprovenConstraints, "', `",
-			    mercury_output_constraint(VarSet, AppendVarnums),
-			    IO2, IO3),
-			io__write_string("'.\n", IO3, IO)
-		)),
+	WriteConstraints = (pred(TypeAssign::in, IO0::di, IO::uo) is det :-
+		type_assign_get_typeclass_constraints(
+			TypeAssign, Constraints),
+		Constraints = constraints(UnprovenConstraints0,
+			_AssumedConstraints),
+		
+		type_assign_get_typevarset(TypeAssign, VarSet),
+		type_assign_get_type_bindings(TypeAssign, Bindings),
+		apply_rec_subst_to_constraint_list(Bindings,
+			UnprovenConstraints0, UnprovenConstraints1),
+		list__sort_and_remove_dups(UnprovenConstraints1,
+			UnprovenConstraints),
+		prog_out__write_context(Context, IO0, IO1),
+		io__write_string("  `", IO1, IO2),
+		AppendVarnums = no,
+		io__write_list(UnprovenConstraints, "', `",
+			mercury_output_constraint(VarSet, AppendVarnums),
+			IO2, IO3),
+		io__write_string("'.\n", IO3, IO)
+	),
 
 		% XXX this won't be very pretty when there are
 		% XXX multiple type_assigns.
@@ -4356,12 +4351,12 @@ perform_context_reduction(OrigTypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :-
 	->
 		report_unsatisfiable_constraints(TypeAssignSet0,
 			TypeCheckInfo1, TypeCheckInfo2),
-		DeleteConstraints = lambda([TA0::in, TA::out] is det, (
+		DeleteConstraints = (pred(TA0::in, TA::out) is det :-
 			type_assign_get_typeclass_constraints(TA0, 
 				constraints(_, AssumedConstraints)),
-			type_assign_set_typeclass_constraints(TA0, 
-				constraints([], AssumedConstraints), TA)
-		)),
+			type_assign_set_typeclass_constraints(
+				constraints([], AssumedConstraints), TA0, TA)
+		),
 		list__map(DeleteConstraints, OrigTypeAssignSet,
 			NewTypeAssignSet),
 		typecheck_info_set_type_assign_set(TypeCheckInfo2,
@@ -4394,10 +4389,10 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 
 	Constraints = constraints(UnprovenConstraints, AssumedConstraints),
 
-	type_assign_set_typeclass_constraints(TypeAssign0, Constraints,
-		TypeAssign1),
-	type_assign_set_typevarset(TypeAssign1, Tvarset, TypeAssign2),
-	type_assign_set_constraint_proofs(TypeAssign2, Proofs, TypeAssign).
+	type_assign_set_typeclass_constraints(Constraints,
+		TypeAssign0, TypeAssign1),
+	type_assign_set_typevarset(Tvarset, TypeAssign1, TypeAssign2),
+	type_assign_set_constraint_proofs(Proofs, TypeAssign2, TypeAssign).
 
 
 typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable, 
@@ -4878,130 +4873,81 @@ convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 
 :- type type_assign_set	==	list(type_assign).
 
-:- type type_assign	
-	--->	type_assign(
-			map(prog_var, type),	% var types
-			tvarset,		% type names
-			headtypes,		% universally quantified
-						% type variables
-			tsubst,			% type bindings
-			class_constraints,	% typeclass constraints.
-				% This field has the form
-				% `constraints(Universal, Existential)',
-				% The first element in this pair
-				% (the "universal" constraints) holds
-				% the constraints that we must prove,
-				% i.e. universal constraints from callees,
-				% or existential constraints on the declaration
-				% of the predicate we are analyzing.
-				% The second element in the pair
-				% (the "existential" constraints) holds
-				% the constraints we can assume,
-				% i.e. existential constraints from callees,
-				% or universal constraints on the declaration
-				% of the predicate we are analyzing.
-			map(class_constraint,	% for each constraint
-			    constraint_proof)	% found to be redundant, 
-			    			% why is it so?
-		).
+:- type type_assign --->
+	type_assign(
+		var_types		:: map(prog_var, type),
+		type_varset		:: tvarset,
+					% type names
+		head_type_params	:: headtypes,
+					% universally quantified type variables
+		type_bindings		:: tsubst,
+					% type bindings
+		class_constraints	:: class_constraints,
+			% This field has the form
+			% `constraints(Universal, Existential)',
+			% The first element in this pair
+			% (the "universal" constraints) holds
+			% the constraints that we must prove,
+			% i.e. universal constraints from callees,
+			% or existential constraints on the declaration
+			% of the predicate we are analyzing.
+			% The second element in the pair
+			% (the "existential" constraints) holds
+			% the constraints we can assume,
+			% i.e. existential constraints from callees,
+			% or universal constraints on the declaration
+			% of the predicate we are analyzing.
+		constraint_proofs	:: map(class_constraint,
+						constraint_proof)
+					% for each constraint
+					% found to be redundant, 
+					% why is it so?
+	).
 
 %-----------------------------------------------------------------------------%
 
-	% Access predicates for the type_assign data structure.
-	% Excruciatingly boring code.
+:- pred type_assign_get_var_types(type_assign::in,
+	map(prog_var, type)::out) is det.
+:- pred type_assign_get_typevarset(type_assign::in,
+	tvarset::out) is det.
+:- pred type_assign_get_head_type_params(type_assign::in,
+	headtypes::out) is det.
+:- pred type_assign_get_type_bindings(type_assign::in,
+	tsubst::out) is det.
+:- pred type_assign_get_typeclass_constraints(type_assign::in,
+	class_constraints::out) is det.
+:- pred type_assign_get_constraint_proofs(type_assign::in,
+	map(class_constraint, constraint_proof)::out) is det.
 
-:- pred type_assign_get_var_types(type_assign, map(prog_var, type)).
-:- mode type_assign_get_var_types(in, out) is det.
-
-type_assign_get_var_types(type_assign(VarTypes, _, _, _, _, _), VarTypes).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_get_typevarset(type_assign, tvarset).
-:- mode type_assign_get_typevarset(in, out) is det.
-
-type_assign_get_typevarset(type_assign(_, TypeVarSet, _, _, _, _), TypeVarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_get_head_type_params(type_assign, headtypes).
-:- mode type_assign_get_head_type_params(in, out) is det.
-
-type_assign_get_head_type_params(type_assign(_, _, HeadTypeParams, _, _, _),
-			HeadTypeParams).
+type_assign_get_var_types(TA, TA ^ var_types).
+type_assign_get_typevarset(TA, TA ^ type_varset).
+type_assign_get_head_type_params(TA, TA ^ head_type_params).
+type_assign_get_type_bindings(TA, TA ^ type_bindings).
+type_assign_get_typeclass_constraints(TA, TA ^ class_constraints).
+type_assign_get_constraint_proofs(TA, TA ^ constraint_proofs).
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_assign_get_type_bindings(type_assign, tsubst).
-:- mode type_assign_get_type_bindings(in, out) is det.
+:- pred type_assign_set_var_types(map(prog_var, type)::in,
+	type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_typevarset(tvarset::in,
+	type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_head_type_params(headtypes::in,
+	type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_type_bindings(tsubst::in,
+	type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_typeclass_constraints(class_constraints::in,
+	type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_constraint_proofs(
+	map(class_constraint, constraint_proof)::in,
+	type_assign::in, type_assign::out) is det.
 
-type_assign_get_type_bindings(type_assign(_, _, _, TypeBindings, _, _),
-	TypeBindings).
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_get_typeclass_constraints(type_assign, class_constraints).
-:- mode type_assign_get_typeclass_constraints(in, out) is det.
-
-type_assign_get_typeclass_constraints(type_assign(_, _, _, _, Constraints, _),
-	Constraints).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_get_constraint_proofs(type_assign,
-	map(class_constraint, constraint_proof)).
-:- mode type_assign_get_constraint_proofs(in, out) is det.
-
-type_assign_get_constraint_proofs(type_assign(_, _, _, _, _, Proofs), Proofs).  
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_set_var_types(type_assign, map(prog_var, type),
-		type_assign).
-:- mode type_assign_set_var_types(in, in, out) is det.
-
-type_assign_set_var_types(type_assign(_, B, C, D, E, F), VarTypes,
-			type_assign(VarTypes, B, C, D, E, F)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_set_typevarset(type_assign, tvarset, type_assign).
-:- mode type_assign_set_typevarset(in, in, out) is det.
-
-type_assign_set_typevarset(type_assign(A, _, C, D, E, F), TypeVarSet,
-			type_assign(A, TypeVarSet, C, D, E, F)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_set_head_type_params(type_assign, headtypes, type_assign).
-:- mode type_assign_set_head_type_params(in, in, out) is det.
-
-type_assign_set_head_type_params(type_assign(A, B, _, D, E, F), HeadTypeParams,
-			type_assign(A, B, HeadTypeParams, D, E, F)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_set_type_bindings(type_assign, tsubst, type_assign).
-:- mode type_assign_set_type_bindings(in, in, out) is det.
-
-type_assign_set_type_bindings(type_assign(A, B, C, _, E, F), TypeBindings,
-			type_assign(A, B, C, TypeBindings, E, F)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_set_typeclass_constraints(type_assign, class_constraints,
-			type_assign).
-:- mode type_assign_set_typeclass_constraints(in, in, out) is det.
-
-type_assign_set_typeclass_constraints(type_assign(A, B, C, D, _, F),
-			Constraints, type_assign(A, B, C, D, Constraints, F)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_set_constraint_proofs(type_assign,
-	map(class_constraint, constraint_proof), type_assign).
-:- mode type_assign_set_constraint_proofs(in, in, out) is det.
-
-type_assign_set_constraint_proofs(type_assign(A, B, C, D, E, _),
-			Proofs, type_assign(A, B, C, D, E, Proofs)).
+type_assign_set_var_types(X, TA, TA ^ var_types := X).
+type_assign_set_typevarset(X, TA, TA ^ type_varset := X).
+type_assign_set_head_type_params(X, TA, TA ^ head_type_params := X).
+type_assign_set_type_bindings(X, TA, TA ^ type_bindings := X).
+type_assign_set_typeclass_constraints(X, TA, TA ^ class_constraints := X).
+type_assign_set_constraint_proofs(X, TA, TA ^ constraint_proofs := X).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -6662,4 +6608,9 @@ strip_builtin_qualifiers_from_type_list(Types0, Types) :-
 	list__map(strip_builtin_qualifiers_from_type, Types0, Types).
 
 %-----------------------------------------------------------------------------%
+
+:- pred assign(T::in, T::out) is det.
+
+assign(X, X).
+
 %-----------------------------------------------------------------------------%
