@@ -72,12 +72,12 @@ ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
 
 #-----------------------------------------------------------------------------#
 
-release_branch=0.11
+release_branch=0.12
 case "$BRANCH" in
     "")
         DAY=`date '+%e'`
         case $HOST in
-	    taifun|mundroo)
+	    mundroo)
 	    	# For these hosts we only run 3 times a week;
 		# twice during the week and once on the weekend.
 		# During the week, test the main branch.
@@ -87,7 +87,7 @@ case "$BRANCH" in
 			*)	BRANCH=latest ;;
 		esac
 		;;
-	    murlibobo|hg|hydra|mars)
+	    hg)
 		#
 		# For these hosts:
 		# On odd-numbered days, test the release branch.
@@ -219,7 +219,7 @@ echo "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" > $mail_subject
 
 # NB we can't just pipe into `mutt' because the $mail_subject file
 # needs to be written before `mutt' is started.
-mutt -s "`cat $mail_subject`" fjh@cs.mu.oz.au < $tmpfile
+mutt -s "`cat $mail_subject`" zs@cs.mu.oz.au < $tmpfile
 rm -f $tmpfile $tmpscript $mail_subject
 
 #-----------------------------------------------------------------------------#
