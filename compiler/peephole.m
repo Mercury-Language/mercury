@@ -81,16 +81,38 @@ peephole__match(computed_goto(_, Labels), Comment, Instrs0, Instrs) :-
 	Instrs = [goto(label(Target)) - Comment | Instrs0].
 
 	% A conditional branch whose condition is constant
-	% can be either elimininated or replaced by an unconditional goto.
+	% can be either eliminated or replaced by an unconditional goto.
+	%
+	% A conditional branch to an address followed by an unconditional
+	% branch to the same address can be eliminated.
+	%
+	% A conditional branch to a label followed by that label
+	% can be eliminated.
 
 peephole__match(if_val(Rval, CodeAddr), Comment, Instrs0, Instrs) :-
-	opt_util__is_const_condition(Rval, Taken),
 	(
-		Taken = yes,
-		Instrs = [goto(CodeAddr) - Comment | Instrs0]
+		opt_util__is_const_condition(Rval, Taken)
+	->
+		(
+			Taken = yes,
+			Instrs = [goto(CodeAddr) - Comment | Instrs0]
+		;
+			Taken = no,
+			Instrs = Instrs0
+		)
 	;
-		Taken = no,
+		opt_util__skip_comments(Instrs0, Instrs1),
+		Instrs1 = [Instr1 | _],
+		Instr1 = goto(CodeAddr) - _
+	->
 		Instrs = Instrs0
+	;
+		CodeAddr = label(Label),
+		opt_util__is_this_label_next(Label, Instrs0, _)
+	->
+		Instrs = Instrs0
+	;
+		fail
 	).
 
 	% If a `mkframe' is followed by a `modframe', with the instructions

@@ -31,7 +31,7 @@
 			;	vn_succip(vn)
 			;	vn_hp
 			;	vn_sp
-			;	vn_field(tag, vn, vn)		% lval
+			;	vn_field(maybe(tag), vn, vn)
 			;	vn_mem_ref(vn).
 
 			% these lvals do not have vnlval parallels

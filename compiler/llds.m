@@ -305,20 +305,26 @@
 	/* virtual machine registers */
 
 		reg(reg_type, int)
-				% one of the general-purpose virtual machine
-				% registers (either an int or float reg)
-	;	succip		% virtual machine register holding the
-				% return address for det/semidet code
-	;	maxfr		% virtual machine register holding a pointer
-				% to the top of nondet stack
-	;	curfr		% virtual machine register holding a pointer
-				% to the current nondet stack frame
-	;	hp		% virtual machine register holding the heap
-				% pointer
-	;	sp		% virtual machine register point to the
-				% top of det stack
+				% One of the general-purpose virtual machine
+				% registers (either an int or float reg).
+
+	;	succip		% Virtual machine register holding the
+				% return address for det/semidet code.
+
+	;	maxfr		% Virtual machine register holding a pointer
+				% to the top of nondet stack.
+
+	;	curfr		% Virtual machine register holding a pointer
+				% to the current nondet stack frame.
+
+	;	hp		% Virtual machine register holding the heap
+				% pointer.
+
+	;	sp		% Virtual machine register point to the
+				% top of det stack.
+
 	;	temp(reg_type, int)
-				% a local temporary register
+				% A local temporary register.
 				% These temporary registers are actually
 				% local variables declared in `block'
 				% instructions.  They may only be
@@ -332,43 +338,55 @@
 
 	/* values on the stack */
 
-	;	stackvar(int)	% det stack slots (numbered starting from 1)
-				% relative to the current value of `sp'
-				% these are used for both det and semidet code
-	;	framevar(int)	% nondet stack slots (numbered starting from 0)
-				% relative to the current value of `curfr'
+	;	stackvar(int)	% A det stack slot. The number is the offset
+				% relative to the current value of `sp'.
+				% These are used in both det and semidet code.
+				% Stackvar slot numbers start at 1.
 
-	;	succip(rval)	% the succip slot of the specified
+	;	framevar(int)	% A nondet stack slot. The reference is
+				% relative to the current value of `curfr'.
+				% These are used in nondet code.
+				% Framevar slot numbers start at 0.
+
+	;	succip(rval)	% The succip slot of the specified
 				% nondet stack frame; holds the code address
 				% to jump to on successful exit from this
-				% nondet procedure
-	;	redoip(rval)	% the redoip slot of the specified
+				% nondet procedure.
+
+	;	redoip(rval)	% The redoip slot of the specified
 				% nondet stack frame; holds the code address
-				% to jump to on failure
-	;	succfr(rval)	% the succfr slot of the specified
+				% to jump to on failure.
+
+	;	succfr(rval)	% The succfr slot of the specified
 				% nondet stack frame; holds the address of
 				% caller's nondet stack frame.  On successful
 				% exit from this nondet procedure, we will
 				% set curfr to this value.
-	;	prevfr(rval)	% the prevfr slot of the specified
+
+	;	prevfr(rval)	% The prevfr slot of the specified
 				% nondet stack frame; holds the address of
 				% the previous frame on the nondet stack.
 
 	/* values on the heap */
 
-	;	field(tag, rval, rval)
+	;	field(maybe(tag), rval, rval)
 				% field(Tag, Address, FieldNum)
-				% selects a field of a compound term
+				% selects a field of a compound term.
+				% Address is a tagged pointer to a cell
+				% on the heap; the offset into the cell
+				% is FieldNum words. If Tag is yes, the
+				% arg gives the value of the tag; if it is
+				% no, the tag bits will have to be masked off.
 
 	/* values somewhere in memory */
 
-	;	mem_ref(rval)	% a word in the heap, in the det stack or
+	;	mem_ref(rval)	% A word in the heap, in the det stack or
 				% in the nondet stack. The rval should have
 				% originally come from a mem_addr rval.
 
 	/* pseudo-values */
 
-	;	lvar(var).	% the location of the specified variable
+	;	lvar(var).	% The location of the specified variable.
 				% `var' lvals are used during code generation,
 				% but should not be present in the LLDS at any
 				% stage after code generation.
@@ -378,12 +396,14 @@
 	--->	lval(lval)
 		% The value of an `lval' rval is just the value stored in
 		% the specified lval.
+
 	;	var(var)
 		% The value of a `var' rval is just the value of the
 		% specified variable.
 		% `var' rvals are used during code generation,
 		% but should not be present in the LLDS at any
 		% stage after code generation.
+
 	;	create(tag, list(maybe(rval)), bool, int, string)
 		% create(Tag, Arguments, IsUnique, LabelNumber):
 		% A `create' instruction is used during code generation
@@ -407,14 +427,18 @@
 		% The last argument gives the name of the type constructor
 		% of the function symbol of which this is a cell, for use
 		% in memory profiling.
+
 	;	mkword(tag, rval)
-		% given a pointer and a tag,
-		% mkword returns a tagged pointer
+		% Given a pointer and a tag, mkword returns a tagged pointer.
+
 	;	const(rval_const)
+
 	;	unop(unary_op, rval)
+
 	;	binop(binary_op, rval, rval)
+
 	;	mem_addr(mem_ref).
-		% The addess of a word in the heap, the det stack or
+		% The address of a word in the heap, the det stack or
 		% the nondet stack.
 
 :- type mem_ref

@@ -96,7 +96,7 @@
 	% deleted. The second says whether we introduced any jumps that
 	% can be profitably be short-circuited.
 
-:- pred frameopt__main(list(instruction)::in, list(instruction)::out,
+:- pred frameopt_main(list(instruction)::in, list(instruction)::out,
 	bool::out, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@
 :- import_module livemap, prog_data, opt_util, code_util, opt_debug.
 :- import_module int, string, require, std_util, assoc_list, set, map, queue.
 
-frameopt__main(Instrs0, Instrs, Mod, Jumps) :-
+frameopt_main(Instrs0, Instrs, Mod, Jumps) :-
 	opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr,
 		Comments0, Instrs1),
 	(

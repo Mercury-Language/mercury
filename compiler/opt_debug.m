@@ -511,8 +511,12 @@ opt_debug__dump_vnlval(vn_hp, Str) :-
 	string__append_list(["vn_hp"], Str).
 opt_debug__dump_vnlval(vn_sp, Str) :-
 	string__append_list(["vn_sp"], Str).
-opt_debug__dump_vnlval(vn_field(T, N, F), Str) :-
-	string__int_to_string(T, T_str),
+opt_debug__dump_vnlval(vn_field(MT, N, F), Str) :-
+	( MT = yes(T) ->
+		string__int_to_string(T, T_str)
+	;
+		T_str = "no"
+	),
 	string__int_to_string(N, N_str),
 	string__int_to_string(F, F_str),
 	string__append_list(["vn_field(", T_str, ", ", N_str, ", ",
@@ -591,8 +595,12 @@ opt_debug__dump_lval(hp, Str) :-
 	string__append_list(["hp"], Str).
 opt_debug__dump_lval(sp, Str) :-
 	string__append_list(["sp"], Str).
-opt_debug__dump_lval(field(T, N, F), Str) :-
-	string__int_to_string(T, T_str),
+opt_debug__dump_lval(field(MT, N, F), Str) :-
+	( MT = yes(T) ->
+		string__int_to_string(T, T_str)
+	;
+		T_str = "no"
+	),
 	opt_debug__dump_rval(N, N_str),
 	opt_debug__dump_rval(F, F_str),
 	string__append_list(["field(", T_str, ", ", N_str, ", ",

@@ -349,7 +349,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		BitNum = UIndex
 	;
 		WordNum = binop(/, UIndex, const(int_const(WordBits))),
-		Word = lval(field(0, BitVec, WordNum)),
+		Word = lval(field(yes(0), BitVec, WordNum)),
 		BitNum = binop(mod, UIndex, const(int_const(WordBits)))
 	},
 	{ HasBit = binop((&),
@@ -454,7 +454,7 @@ lookup_switch__generate_terms_2(Index, [Var|Vars], Map) -->
 	{ construct_args(Vals, 0, Args) },
 	code_info__get_next_cell_number(CellNo),
 	{ ArrayTerm = create(0, Args, no, CellNo, "lookup_switch_data") },
-	{ LookupTerm = lval(field(0, ArrayTerm, Index)) },
+	{ LookupTerm = lval(field(yes(0), ArrayTerm, Index)) },
 	code_info__cache_expression(Var, LookupTerm),
 	lookup_switch__generate_terms_2(Index, Vars, Map).
 

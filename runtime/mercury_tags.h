@@ -66,6 +66,9 @@
 #define	field(t, p, i)		((Word *) body((p), (t)))[i]
 #define	const_field(t, p, i)	((const Word *) body((p), (t)))[i]
 
+#define	mask_field(p, i)	((Word *) strip_tag(p))[i]
+#define	const_mask_field(p, i)	((const Word *) strip_tag(p))[i]
+
 /*
 ** the following list_* macros are used by handwritten C code
 ** that needs to access Mercury lists.

@@ -7,14 +7,6 @@
 % jumpopt.m - optimize jumps to jumps.
 %
 % Author: zs.
-%
-% We first build up a bunch of tables giving information about labels.
-% This information includes the first instruction following each label,
-% the block following each label, whether a label is part of a procedure
-% epilog of various types (det, semidet or nondet).
-%
-% We then traverse the instruction list, using the information in the
-% tables to short-circuit jumps.
 
 %-----------------------------------------------------------------------------%
 
@@ -22,19 +14,46 @@
 
 :- interface.
 
-:- import_module list, bool.
 :- import_module llds.
+:- import_module list, bool.
 
-:- pred jumpopt__main(list(instruction), bool, bool, list(instruction), bool).
-:- mode jumpopt__main(in, in, in, out, out) is det.
+:- pred jumpopt_main(list(instruction), bool, bool, list(instruction), bool).
+:- mode jumpopt_main(in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module code_util, opt_util, std_util, map, string, require.
+:- import_module code_util, opt_util.
+:- import_module std_util, map, string, require.
 
-jumpopt__main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
+% We first build up a bunch of tables giving information about labels.
+% We then traverse the instruction list, using the information in the
+% tables to short-circuit jumps.
+%
+% Instrmap:	Maps each label to the next real (non-comment, non-livevals)
+%		instruction after that label.
+% Lvalmap:	Maps each label to yes(Livevals) if the label is followed
+%		by a livevals instruction, and to no otherwise.
+% Blockmap:	Maps each label to the block following that label.
+%		This includes all instructions up to the first one that
+%		cannot fall through.
+% Procmap:	Maps each label that begins a det epilog to the epilog.
+% Succmap:	Maps each label that begins a nondet epilog to the epilog.
+% Sdprocmap:	Maps each label that begins a semidet epilog to the epilog.
+%		This can be the success epilog or the failure epilog.
+% Forkmap:	Maps each label that begins a full semidet epilog (code to
+%		test r1, and to execute the the success or failure epilog
+%		depending on the result) to the epilog.
+%
+% If we are not doing full jump optimization, Blockmap will be empty.
+% Even with full jump optimization, Blockmap will not contain the initial
+% block of the procedure unless Recjump is set. The intention is that
+% Recjump will not be set until optimizations such as frameopt and value
+% numbering, which can do a better job of optimizing this block, have
+% been applied.
+
+jumpopt_main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
 	map__init(Instrmap0),
 	map__init(Lvalmap0),
 	map__init(Procmap0),
@@ -52,15 +71,8 @@ jumpopt__main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
-	% Build up three tables mapping labels to instruction sequences.
-	% A label has an entry in a table if it is followed by a deterministic,
-	% semideterministic or nondeterministic proceed/succeed; the map target
-	% gives the code sequence between the label and the proceed/succeed.
-	% We also build up a map giving the livevals instruction at the label
-	% if any, and the first real instruction at the label.
-
-:- pred jumpopt__build_maps(list(instruction), bool, bool, instrmap, instrmap,
-	tailmap, tailmap, lvalmap, lvalmap,
+:- pred jumpopt__build_maps(list(instruction), bool, bool,
+	instrmap, instrmap, tailmap, tailmap, lvalmap, lvalmap,
 	tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
 % :- mode jumpopt__build_maps(in, in, in, di, uo, di, uo, di, uo, di, uo,
 %	di, uo, di, uo) is det.
@@ -426,27 +438,27 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 			RemainInstrs = [NewInstr | AfterGoto],
 			Mod0 = yes
 		;
-			% Attempt to transform code such as
-			%
-			%	if (Cond) L2
-			%	r1 = TRUE
-			% 	<epilog>
-			%	...
-			% L2:
-			%	r1 = FALSE
-			%	<epilog>
-			%
-			% into
-			%
-			%	r1 = Cond
-			%	<epilog>
-			%
-
 			map__search(Instrmap, TargetLabel, TargetInstr)
 		->
 			jumpopt__final_dest(TargetLabel, TargetInstr,
 				Instrmap, DestLabel, _DestInstr),
 			(
+				% Attempt to transform code such as
+				%
+				%	if (Cond) L1
+				%	r1 = TRUE
+				% 	<epilog>
+				%	...
+				% L1:
+				%	r1 = FALSE
+				%	<epilog>
+				%
+				% into
+				%
+				%	r1 = Cond
+				%	<epilog>
+				%
+
 				opt_util__is_sdproceed_next(Instrs0, BetweenFT),
 				map__search(Blockmap, DestLabel, Block),
 				opt_util__is_sdproceed_next(Block, BetweenBR),
@@ -477,7 +489,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 				RemainInstrs = Instrs0,
 				Mod0 = yes
 			;
-				% Short-circuit the destination.
+				% Try to short-circuit the destination.
+
 				TargetLabel \= DestLabel
 			->
 				string__append("shortcircuited jump: ",
@@ -636,3 +649,5 @@ jumpopt__final_dest_2(SrcLabel, SrcInstr, Instrmap, LabelsSofar,
 		DestLabel = SrcLabel,
 		DestInstr = SrcInstr
 	).
+
+%-----------------------------------------------------------------------------%

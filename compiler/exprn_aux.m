@@ -717,15 +717,21 @@ exprn_aux__simplify_rval(Rval0, Rval) :-
 
 exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	(
-		Rval0 = lval(field(Tag, create(Tag, Args, _, _, _), Field)),
+		Rval0 = lval(field(MaybeTag, Base, Field)),
+		Base = create(Tag, Args, _, _, _),
+		(
+			MaybeTag = yes(Tag)
+		;
+			MaybeTag = no
+		),
 		Field = const(int_const(FieldNum))
 	->
 		list__index0_det(Args, FieldNum, yes(Rval))
 	;
-		Rval0 = lval(field(Tag, Rval1, Num)),
+		Rval0 = lval(field(MaybeTag, Rval1, Num)),
 		exprn_aux__simplify_rval_2(Rval1, Rval2)
 	->
-		Rval = lval(field(Tag, Rval2, Num))
+		Rval = lval(field(MaybeTag, Rval2, Num))
 	;
 		Rval0 = create(Tag, Args0, Unique, CNum, Msg),
 		exprn_aux__simplify_args(Args0, Args),
@@ -733,20 +739,20 @@ exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	->
 		Rval = create(Tag, Args, Unique, CNum, Msg)
 	;
-		Rval0 = unop(UOp, Rval1),
+		Rval0 = unop(UnOp, Rval1),
 		exprn_aux__simplify_rval_2(Rval1, Rval2)
 	->
-		Rval = unop(UOp, Rval2)
+		Rval = unop(UnOp, Rval2)
 	;
-		Rval0 = binop(BOp, Rval1, Rval2),
+		Rval0 = binop(BinOp, Rval1, Rval2),
 		exprn_aux__simplify_rval_2(Rval1, Rval3)
 	->
-		Rval = binop(BOp, Rval3, Rval2)
+		Rval = binop(BinOp, Rval3, Rval2)
 	;
-		Rval0 = binop(BOp, Rval1, Rval2),
+		Rval0 = binop(BinOp, Rval1, Rval2),
 		exprn_aux__simplify_rval_2(Rval2, Rval3)
 	->
-		Rval = binop(BOp, Rval1, Rval3)
+		Rval = binop(BinOp, Rval1, Rval3)
 	;
 		fail
 	).

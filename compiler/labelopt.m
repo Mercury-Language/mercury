@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996 The University of Melbourne.
+% Copyright (C) 1994-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,8 +22,8 @@
 	% If the instruction before the label branches away, we also
 	% remove the instruction block following the label.
 
-:- pred labelopt__main(list(instruction), bool, list(instruction), bool).
-:- mode labelopt__main(in, in, out, out) is det.
+:- pred labelopt_main(list(instruction), bool, list(instruction), bool).
+:- mode labelopt_main(in, in, out, out) is det.
 
 	% Build up a set showing which labels are branched to.
 
@@ -37,11 +37,11 @@
 :- import_module opt_util.
 :- import_module std_util.
 
-labelopt__main(Instrs0, Final, Instrs, Mod) :-
+labelopt_main(Instrs0, Final, Instrs, Mod) :-
 	labelopt__build_useset(Instrs0, Useset),
 	labelopt__instr_list(Instrs0, yes, Useset, Instrs1, Mod),
 	( Final = yes, Mod = yes ->
-		labelopt__main(Instrs1, Final, Instrs, _)
+		labelopt_main(Instrs1, Final, Instrs, _)
 	;
 		Instrs = Instrs1
 	).

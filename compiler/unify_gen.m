@@ -214,7 +214,7 @@ unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Rval, TestRval) :-
 	TestRval = binop(and,
 			binop(eq,	unop(tag, Rval),
 					unop(mktag, const(int_const(Bits)))), 
-			binop(eq,	lval(field(Bits, Rval,
+			binop(eq,	lval(field(yes(Bits), Rval,
 						const(int_const(0)))),
 					const(int_const(Num)))).
 unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
@@ -388,13 +388,13 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		{ Code2 = node([
 			comment("build new closure from old closure") - "",
 			assign(NumOldArgs,
-				lval(field(0, OldClosure, Zero)))
+				lval(field(yes(0), OldClosure, Zero)))
 				- "get number of arguments",
 			incr_hp(NewClosure, no,
 				binop(+, lval(NumOldArgs),
 				NumNewArgsPlusTwo_Rval), "closure")
 				- "allocate new closure",
-			assign(field(0, lval(NewClosure), Zero),
+			assign(field(yes(0), lval(NewClosure), Zero),
 				binop(+, lval(NumOldArgs), NumNewArgs_Rval))
 				- "set new number of arguments",
 			assign(LoopCounter, Zero)
@@ -403,9 +403,9 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 			assign(LoopCounter,
 				binop(+, lval(LoopCounter), One))
 				- "increment loop counter",
-			assign(field(0, lval(NewClosure),
+			assign(field(yes(0), lval(NewClosure),
 					lval(LoopCounter)),
-				lval(field(0, OldClosure,
+				lval(field(yes(0), OldClosure,
 					lval(LoopCounter))))
 				- "copy old field",
 			if_val(binop(<=, lval(LoopCounter),
@@ -449,7 +449,7 @@ unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
 		assign(LoopCounter,
 			binop(+, lval(LoopCounter), One))
 			- "increment argument counter",
-		assign(field(0, lval(NewClosure), lval(LoopCounter)),
+		assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
 			Value)
 			- "set new argument field"
 	]) },
@@ -529,7 +529,7 @@ unify_gen__var_types(Vars, Types) -->
 unify_gen__make_fields_and_argvars([], _, _, _, [], []).
 unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
 		[F | Fs], [A | As]) :-
-	F = lval(field(TagNum, Rval, const(int_const(Field0)))),
+	F = lval(field(yes(TagNum), Rval, const(int_const(Field0)))),
 	A = ref(Var),
 	Field1 is Field0 + 1,
 	unify_gen__make_fields_and_argvars(Vars, Rval, Field1, TagNum, Fs, As).
@@ -755,7 +755,7 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 :- mode unify_gen__var_type_msg(in, out) is det.
 
 unify_gen__var_type_msg(Type, Msg) :-
-	( type_util__type_to_type_id(Type, TypeId, _) ->
+	( type_to_type_id(Type, TypeId, _) ->
 		TypeId = TypeSym - TypeArity,
 		(
 			TypeSym = qualified(ModuleName, TypeName),

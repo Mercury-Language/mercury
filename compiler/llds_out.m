@@ -2629,11 +2629,16 @@ output_rval(mkword(Tag, Exprn)) -->
 output_rval(lval(Lval)) -->
 	% if a field is used as an rval, then we need to use
 	% the const_field() macro, not the field() macro,
-	% to avoid warnings about discarding const.
-	( { Lval = field(Tag, Rval, FieldNum) } ->
-		io__write_string("const_field("),
-		output_tag(Tag),
-		io__write_string(", "),
+	% to avoid warnings about discarding const,
+	% and similarly for mask_field.
+	( { Lval = field(MaybeTag, Rval, FieldNum) } ->
+		( { MaybeTag = yes(Tag) } ->
+			io__write_string("const_field("),
+			output_tag(Tag),
+			io__write_string(", ")
+		;
+			io__write_string("const_mask_field(")
+		),
 		output_rval(Rval),
 		io__write_string(", "),
 		output_rval(FieldNum),
@@ -2833,10 +2838,14 @@ output_lval(succip(Rval)) -->
 	io__write_string("bt_succip("),
 	output_rval(Rval),
 	io__write_string(")").
-output_lval(field(Tag, Rval, FieldNum)) -->
-	io__write_string("field("),
-	output_tag(Tag),
-	io__write_string(", "),
+output_lval(field(MaybeTag, Rval, FieldNum)) -->
+	( { MaybeTag = yes(Tag) } ->
+		io__write_string("field("),
+		output_tag(Tag),
+		io__write_string(", ")
+	;
+		io__write_string("mask_field(")
+	),
 	output_rval(Rval),
 	io__write_string(", "),
 	output_rval(FieldNum),

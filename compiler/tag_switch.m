@@ -536,7 +536,7 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 		},
 
 		{ StagLoc = remote ->
-			OrigStagRval = lval(field(Primary, Rval,
+			OrigStagRval = lval(field(yes(Primary), Rval,
 				const(int_const(0)))),
 			Comment = "compute remote sec tag to switch on"
 		;

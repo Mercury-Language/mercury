@@ -20,9 +20,9 @@
 	% Find straight-line code sequences and optimize them using
 	% value numbering.
 
-:- pred value_number__main(list(instruction), list(instruction),
+:- pred value_number_main(list(instruction), list(instruction),
 	io__state, io__state).
-:- mode value_number__main(in, out, di, uo) is det.
+:- mode value_number_main(in, out, di, uo) is det.
 
 	% The main value numbering pass introduces references to temporary
 	% variables whose values need be preserved only within an extended
@@ -50,7 +50,7 @@
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
 
-value_number__main(Instrs0, Instrs) -->
+value_number_main(Instrs0, Instrs) -->
 	{ opt_util__get_prologue(Instrs0, ProcLabel,
 		LabelInstr, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },

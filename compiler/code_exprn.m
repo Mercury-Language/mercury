@@ -1317,7 +1317,7 @@ code_exprn__construct_args([R | Rs], Tag, Lval, N0, Targets, Code) -->
 	(
 		{ R = yes(Rval) }
 	->
-		{ Target0 = field(Tag, lval(Lval), const(int_const(N0))) },
+		{ Target0 = field(yes(Tag), lval(Lval), const(int_const(N0))) },
 		{ MaybeTarget = yes(Target0) },
 		code_exprn__place_arg(Rval, yes(Target0), _, Code0)
 	;
