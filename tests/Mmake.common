@@ -244,8 +244,6 @@ start_runtests_local:
 #
 # Run a single test, cleaning up if it succeeds, or producing
 # a log file and gzipping the executable the test fails.
-# Note that the %.log target does not fail if the test fails --
-# we really want `--keep-going' to be the default for this Mmakefile.
 #
 .PHONY: %.log
 %.log: start_runtests_local
@@ -263,6 +261,7 @@ start_runtests_local:
 		echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
 			| tee -a $@; \
 		echo $* >> FAILED_TESTS; \
+		exit 1; \
 	else \
 		{ mmake $$test.runtest 2>&1 || touch $*.failed; } \
 			| tee -a $@; \
@@ -274,6 +273,7 @@ start_runtests_local:
 			echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
 				| tee -a $@; \
 			echo $* >> FAILED_TESTS; \
+			exit 1; \
 		else \
 			rm -f $@; \
 			rm -f $$test.out* $$test.*res*; \
@@ -282,20 +282,27 @@ start_runtests_local:
 		fi; \
 	fi
 
+# XXX The tests cannot be run in parallel because where several test
+# cases depend on the same target, the different invocations of mmake
+# above may all attempt to create the target at the same time.
+# Also, `mmake $$test.realclean' would be run before all users
+# of the target are finished with it.
 TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
-runtests_local: $(TEST_LOGS)
+runtests_local:
 	@touch DUMMY.log
-	@cat *.log > $(ERROR_OUTPUT_FILE)
-	@rm -f *.log
-	@if [ -s $(ERROR_OUTPUT_FILE) ]; then \
-		echo "FAILED tests in $(THIS_DIR) in grade $(GRADE)"; \
-		exit 1; \
-	else \
+	@if mmake -k -j1 $(TEST_LOGS) && \
+		cat *.log > $(ERROR_OUTPUT_FILE) && \
+		rm -f *.log && \
+		[ ! -s $(ERROR_OUTPUT_FILE) ]; \
+	then \
 		echo "FINISHED tests in $(THIS_DIR) in grade $(GRADE)"; \
 		echo cleaning up the directory after the tests; \
 		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \
 		rm core > /dev/null 2>&1; \
 		touch CLEAN; \
+	else \
+		echo "FAILED tests in $(THIS_DIR) in grade $(GRADE)"; \
+		exit 1; \
 	fi
 
 endif	# THIS_DIR_TESTS_TO_RUN != ""
