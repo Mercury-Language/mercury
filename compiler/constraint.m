@@ -620,11 +620,8 @@ constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
 			% it by constraint__propagate_conj_sub_goal).
 			%
 			list__member(EarlierConstraint, Dependent0),
-			EarlierConstraint = constraint(_,
-				EarlierChangedVars, _, _),
-			set__intersect(EarlierChangedVars, ConstraintNonLocals,
-				EarlierConstraintIntersection),
-			\+ set__empty(EarlierConstraintIntersection)
+			\+ can_reorder_constraints(EarlierConstraint,
+				Constraint)
 		)
 	->
 		Independent1 = Independent0,
@@ -635,6 +632,20 @@ constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
 	),
 	constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
 		Constraints, Dependent1, Dependent, Independent1, Independent).
+
+%-----------------------------------------------------------------------------%
+
+:- pred can_reorder_constraints(constraint, constraint).
+:- mode can_reorder_constraints(in, in) is semidet.
+
+can_reorder_constraints(EarlierConstraint, Constraint) :-
+	EarlierConstraint = constraint(_, EarlierChangedVars, _, _),
+	Constraint = constraint(ConstraintGoal, _, _, _),
+	ConstraintGoal = _ - ConstraintGoalInfo,
+	goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
+	set__intersect(EarlierChangedVars, ConstraintNonLocals,
+			EarlierConstraintIntersection),
+	set__empty(EarlierConstraintIntersection).
 	
 %-----------------------------------------------------------------------------%
 
@@ -646,13 +657,78 @@ constraint__filter_dependent_constraints(NonLocals, GoalOutputVars,
 
 constraint__propagate_conj_constraints([], RevGoals, Goals) --> 
 	{ list__reverse(RevGoals, Goals) }.
-constraint__propagate_conj_constraints([Goal0 - Constraints | Goals0],
+constraint__propagate_conj_constraints([Goal0 - Constraints0 | Goals0],
 		RevGoals0, RevGoals) -->
-	constraint__propagate_conj_sub_goal(Goal0, Constraints, GoalList1),
+	{ constraint__filter_complex_constraints(Constraints0,
+		SimpleConstraints, ComplexConstraints0) },
+	constraint__propagate_conj_sub_goal(Goal0,
+		SimpleConstraints, GoalList1),
+	{ constraint__flatten_constraints(ComplexConstraints0,
+		ComplexConstraints) },
+	{ list__reverse(ComplexConstraints, RevComplexConstraints) },
 	{ list__reverse(GoalList1, RevGoalList1) },
-	{ list__append(RevGoalList1, RevGoals0, RevGoals1) },
+	{ list__condense([RevComplexConstraints, RevGoalList1, RevGoals0],
+		RevGoals1) },
 	constraint_info_update_goal(Goal0),
 	constraint__propagate_conj_constraints(Goals0, RevGoals1, RevGoals).
+
+:- pred constraint__filter_complex_constraints(list(constraint),
+		list(constraint), list(constraint)).
+:- mode constraint__filter_complex_constraints(in, out, out) is det.
+		
+constraint__filter_complex_constraints(Constraints,
+		SimpleConstraints, ComplexConstraints) :-
+	constraint__filter_complex_constraints(Constraints,
+		[], SimpleConstraints, [], ComplexConstraints).
+
+	% Don't attempt to push branched goals into other goals.
+:- pred constraint__filter_complex_constraints(list(constraint),
+		list(constraint), list(constraint),
+		list(constraint), list(constraint)).
+:- mode constraint__filter_complex_constraints(in, in, out, in, out) is det.
+
+constraint__filter_complex_constraints([], SimpleConstraints,
+		list__reverse(SimpleConstraints),
+		ComplexConstraints, list__reverse(ComplexConstraints)).
+constraint__filter_complex_constraints([Constraint | Constraints],
+		SimpleConstraints0, SimpleConstraints,
+		ComplexConstraints0, ComplexConstraints) :-
+	Constraint = constraint(ConstraintGoal, _, _, _),
+	(
+		constraint__goal_is_simple(ConstraintGoal),
+
+		%
+		% Check whether this simple constraint can be reordered
+		% with the complex constraints we've already found.
+		%
+		\+ (
+			list__member(ComplexConstraint, ComplexConstraints0),
+			\+ can_reorder_constraints(ComplexConstraint,
+				Constraint)
+		)
+	->
+		SimpleConstraints1 = [Constraint | SimpleConstraints0],
+		ComplexConstraints1 = ComplexConstraints0
+	;
+		SimpleConstraints1 = SimpleConstraints0,
+		ComplexConstraints1 = [Constraint | ComplexConstraints0]
+	),
+	constraint__filter_complex_constraints(Constraints, SimpleConstraints1,
+		SimpleConstraints, ComplexConstraints1, ComplexConstraints).
+
+:- pred constraint__goal_is_simple(hlds_goal).
+:- mode constraint__goal_is_simple(in) is semidet.
+
+constraint__goal_is_simple(Goal) :-
+	Goal = GoalExpr - _,
+	(
+		goal_is_atomic(GoalExpr)
+	;
+		( GoalExpr = some(_, _, SubGoal)
+		; GoalExpr = not(SubGoal)
+		),
+		constraint__goal_is_simple(SubGoal)
+	).
 
 %-----------------------------------------------------------------------------%
 
