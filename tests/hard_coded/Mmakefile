@@ -87,6 +87,7 @@ PROGS=	\
 	string_loop \
 	test_imported_no_tag \
 	tim_qual1 \
+	var_not_found \
 	write \
 	write_reg1
 
