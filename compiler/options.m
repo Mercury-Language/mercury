@@ -563,6 +563,10 @@
 		;	aditi_user
 		;	help
 		;	fullarch
+		;	compiler_sufficiently_recent
+				% This option is used to test that the compiler
+				% is sufficiently recent when no other test
+				% can easily be constructed in configure.in.
 		.
 
 :- implementation.
@@ -1098,7 +1102,9 @@ option_defaults_2(miscellaneous_option, [
 	aditi			-	bool(no),
 	aditi_user		-	string(""),
 	help 			-	bool(no),
-	fullarch		-	string("")
+	fullarch		-	string(""),
+	compiler_sufficiently_recent
+				-	bool(no)
 ]).
 
 	% please keep this in alphabetic order
@@ -1675,6 +1681,7 @@ long_option("filenames-from-stdin",	filenames_from_stdin).
 long_option("aditi",			aditi).
 long_option("aditi-user",		aditi_user).
 long_option("fullarch",			fullarch).
+long_option("bug-intermod-2002-06-13",	compiler_sufficiently_recent).
 
 %-----------------------------------------------------------------------------%
 
