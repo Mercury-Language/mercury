@@ -63,7 +63,7 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 	code_info__grab_code_info(CodeInfo),
 	code_info__set_fall_through(ElseLab),
 	unify_gen__generate_tag_test(Var, Cons, TestCode),
-		% generate the case as a semi-deterministc goal
+		% generate the case as a deterministic goal
 	code_gen__generate_forced_det_goal(Goal, ThisCode),
 	{ ElseLabel = node([
 		goto(EndLabel) - "skip to the end of the switch",

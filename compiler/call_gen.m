@@ -57,7 +57,7 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 
 %---------------------------------------------------------------------------%
 
-	% To generate a call to a deterministic predicate, first
+	% To generate a call to a semideterministic predicate, first
 	% we get the arginfo for the callee.
 	% We then save any live variables onto the stack, clear any
 	% "reserved" registers (which get allocated as temporaries

@@ -25,6 +25,9 @@
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(in, in) is semidet.
 
+:- pred mode_is_unused(module_info, mode).
+:- mode mode_is_unused(in, in) is semidet.
+
 :- pred mode_util__modes_to_uni_modes(mode, list(mode), module_info,
 							list(uni_mode)).
 :- mode mode_util__modes_to_uni_modes(in, in, in, out) is det.
@@ -115,6 +118,14 @@ mode_is_output(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	inst_is_free(ModuleInfo, InitialInst),
 	inst_is_bound(ModuleInfo, FinalInst).
+
+	% A mode is considered a unused mode if it is equivalent
+	% to free->free.
+
+mode_is_unused(ModuleInfo, Mode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	inst_is_free(ModuleInfo, InitialInst),
+	inst_is_free(ModuleInfo, FinalInst).
 
 %-----------------------------------------------------------------------------%
 

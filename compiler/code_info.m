@@ -984,9 +984,9 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		%
 		% Given the type, determine the type_id
 		%
-	{ Type = term__functor(ConsName, Args, _Context) ->
-		list__length(Args, Arity),
-		make_type_id(ConsName, Arity, TypeId)
+	{ Type = term__functor(TypeName, TypeArgs, _Context) ->
+		list__length(TypeArgs, TypeArity),
+		make_type_id(TypeName, TypeArity, TypeId)
 	;
 		error("unification with polymorphically typed variable?")
 	},

@@ -1486,8 +1486,8 @@ modecheck_unification(term__variable(X), term__variable(Y), Modes, Unification,
 	Modes = ModeX - ModeY,
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
-		Unification).
+	categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y,
+			VarTypes, ModuleInfo, Unification).
 
 modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 			Mode, Unification, ModeInfo0, ModeInfo) :-
@@ -1979,26 +1979,48 @@ abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred categorize_unify_var_var(mode, mode, var, var, map(var, type), 
-				module_info, unification).
-:- mode categorize_unify_var_var(in, in, in, in, in, in, out) is det.
+:- pred categorize_unify_var_var(mode, mode, is_live, is_live, var, var,
+				map(var, type), module_info, unification).
+:- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, out) is det.
 
-categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
-		Unification) :-
-	( mode_is_output(ModuleInfo, ModeX) ->
+categorize_unify_var_var(ModeX, ModeY, LiveX, LiveY, X, Y, VarTypes,
+		ModuleInfo, Unification) :-
+	(
+		mode_is_output(ModuleInfo, ModeX)
+	->
 		Unification = assign(X, Y)
-	; mode_is_output(ModuleInfo, ModeY) ->
+	;
+		mode_is_output(ModuleInfo, ModeY)
+	->
 		Unification = assign(Y, X)
+	;
+		mode_is_unused(ModuleInfo, ModeX),
+		mode_is_unused(ModuleInfo, ModeY)
+	->
+		% For free-free unifications, we pretend that they
+		% are an assignment to the dead variable.
+		% (It might be a better idea to have a separate category
+		% for these)
+		( LiveX = dead ->
+			Unification = assign(X, Y)
+		; LiveY = dead ->
+			Unification = assign(Y, X)
+		;
+			error("categorize_unify_var_var: free-free unify!")
+		)
 	;
 		map__lookup(VarTypes, X, Type),
 		type_is_atomic(Type, ModuleInfo)
 	->
 		Unification = simple_test(X, Y)
 	;
-		ModeX = (IX -> FX),
-		ModeY = (IY -> FY),
+		% XXX some complicated unifies are deterministic
+		Determinism = semideterministic,
+		mode_get_insts(ModuleInfo, ModeX, IX, FX),
+		mode_get_insts(ModuleInfo, ModeY, IY, FY),
 		Unification = complicated_unify((IX - IY) -> (FX - FY),
-				term__variable(X), term__variable(Y))
+				term__variable(X), term__variable(Y),
+				Determinism)
 	).
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
@@ -2016,12 +2038,13 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 	->
 		Unification = construct(X, ConsId, ArgVars, ArgModes)
 	; 
-		% XXXXX
+		% XXXXX compute determinism!
 		% module_info_get_insts(ModuleInfo, ModeX, InitialInst0, _Final),
 		% inst_expand(ModuleInfo, InitialInst0, InitialInst),
 		% ( InitialInst = bound([SingleFunctor]) ->
+		Det = deterministic,
 		
-		Unification = deconstruct(X, ConsId, ArgVars, ArgModes)
+		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, Det)
 	).
 
 %-----------------------------------------------------------------------------%

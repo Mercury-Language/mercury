@@ -506,17 +506,16 @@ det_infer_unify(construct(_, _, _, _), _MiscInfo, deterministic).
 	% already bound to the appropriate functor.
 	% 
 	% This will (XXX eventually!) be handled by modes.nl setting
-	% the local_determinism field in the goal_info to semidet for
+	% the determinism field in the deconstruct(...) to semidet for
 	% those deconstruction unifications which might fail.
-	% (And switch_detection may set it back to det again, if it moves
-	% the functor test into a switch instead.)
+	% But switch_detection.nl may set it back to det again, if it moves
+	% the functor test into a switch instead.
 
-det_infer_unify(deconstruct(_, _, _, _), _MiscInfo, deterministic).
+det_infer_unify(deconstruct(_, _, _, _, Det), _MiscInfo, Det).
 
 det_infer_unify(simple_test(_, _), _MiscInfo, semideterministic).
 
-	% XXX - Many of these will be semideterministic!
-det_infer_unify(complicated_unify(_, _, _), _MiscInfo, deterministic).
+det_infer_unify(complicated_unify(_, _, _, Det), _MiscInfo, Det).
 
 :- pred det_infer_switch(list(case), misc_info, list(case), 
 			list(cons_id), category).
