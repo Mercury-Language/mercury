@@ -430,61 +430,118 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 			;	lambda_goal(list(var), list(mode), determinism,
 						hlds__goal).
 
-:- type unification	--->
-				% Y = f(X) where the top node of Y is output,
-				% written as Y := f(X).
-				construct(var, cons_id, list(var),
-					list(uni_mode))
+:- type unification
+		% Y = f(X) where the top node of Y is output,
+		% written as Y := f(X).
+	--->	construct(
+			var,		% the variable being constructed
+					% e.g. Y in above example
+			cons_id,	% the cons_id of the functor
+					% f/1 in the above example
+			list(var),	% the list of argument variables
+					% [X] in the above example
+			list(uni_mode)	% The list of modes of the arguments
+					% sub-unifications.
+		)
 
-				% Y = f(X) where the top node of Y is input,
-				% written Y == f(X).
-			;	deconstruct(var, cons_id, list(var),
-					list(uni_mode), can_fail)
-					% Var, Functor, ArgVars, ArgModes, Det
+		% Y = f(X) where the top node of Y is input,
+		% written Y == f(X).
+	;	deconstruct(
+			var,		% the variable being deconstructed
+					% e.g. Y in the above example
+			cons_id,	% the cons_id of the functor
+					% f/1 in the above example
+			list(var),	% the list of argument variables
+					% [X] in the above example
+			list(uni_mode), % the lists of modes of the argument
+					% sub-unifications
+			can_fail	% whether or not the unification
+					% can fail
+		)
 
-				% Y = X where the top node of Y is output,
-				% written Y := X.
-			;	assign(var, var)
+		% Y = X where the top node of Y is output,
+		% written Y := X.
+	;	assign(
+			var,	% variable being assigned to
+			var	% variable whose value is being assigned
+		)
 
-				% Y = X where the type of X and Y is an atomic
-				% type and they are both input, written X == Y.
-			;	simple_test(var, var)
+		% Y = X where the type of X and Y is an atomic
+		% type and they are both input, written Y == X.
+	;	simple_test(var, var)
 
-				% Y = X where the type of Y and X is not an
-				% atomic type, and where the top-level node
-				% of both Y and X is input. May involve
-				% bi-directional data flow. Implemented
-				% using out-of-line call to a compiler
-				% generated unification predicate for that
-				% type & mode.
-			;	complicated_unify(uni_mode,
-					can_fail, follow_vars).
+		% Y = X where the type of Y and X is not an
+		% atomic type, and where the top-level node
+		% of both Y and X is input. May involve
+		% bi-directional data flow. Implemented
+		% using out-of-line call to a compiler
+		% generated unification predicate for that
+		% type & mode.
+	;	complicated_unify(
+			uni_mode,	% the mode of the unification
+			can_fail,	% whether or not it can fail
+			follow_vars	% the suggested locations where
+					% variables should be placed when
+					% generating code that follows
+					% the call to the out-of-line
+					% unification predicate (e.g. as
+					% determined by whichever call follows
+					% this one).
+		).
 
-:- type unify_context	--->	unify_context(
-					unify_main_context,
-					unify_sub_contexts
-				).
+	% A unify_context describes the location in the original source
+	% code of a unification, for use in error messages.
+:- type unify_context
+	--->	unify_context(
+			unify_main_context,
+			unify_sub_contexts
+		).
 
-:- type unify_main_context --->	explicit
-			;	head(int)
-			;	call(pred_call_id, int).
+	% A unify_main_context describes overall location of the
+	% unification within a clause
+:- type unify_main_context
+		% an explicit call to =/2
+	--->	explicit
+			
+		% a unification in an argument of a clause head
+	;	head(	
+			int		% the argument number
+					% (first argument == no. 1)
+		)
 
-:- type unify_sub_context ==	pair(cons_id, int).
+		% a unification in an argument of a predicate call
+	;	call(	
+			pred_call_id,	% the name and arity of the predicate
+			int		% the argument number (first arg == 1)
+		).
 
-:- type unify_sub_contexts ==	list(unify_sub_context).
+	% A unify_sub_context describes the location of sub-unification
+	% (which is unifying one argument of a term)
+	% within a particular unification.
+:- type unify_sub_context
+	==	pair(
+			cons_id,	% the functor
+			int		% the argument number (first arg == 1)
+		).
 
-:- type call_unify_context	--->	call_unify_context(
-					var,
-					unify_rhs,
-					unify_context
-				).
+:- type unify_sub_contexts == list(unify_sub_context).
 
-:- type hlds__goals	==	list(hlds__goal).
+	% A call_unify_context is used for unifications that get turned
+	% into calls to out-of-line unification predicates.
+	% It records which part of the original source code
+:- type call_unify_context
+	--->	call_unify_context(
+			var,		% the LHS of the unification
+			unify_rhs,	% the RHS of the unification
+			unify_context	% the context of the unification
+		).
+
+:- type hlds__goals == list(hlds__goal).
 
 :- type hlds__goal_info.
 
-:- type goal_feature --->
-		constraint.	% This is included if the goal is
+:- type goal_feature
+	--->	constraint.	% This is included if the goal is
 				% a constraint.  See constraint.m
 				% for the definition of this.
 
@@ -528,6 +585,10 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- type unify_mode	==	pair(mode, mode).
 
 :- type uni_mode	--->	pair(inst) -> pair(inst).
+					% Each uni_mode maps a pair
+					% of insts to a pair of new insts
+					% Each pair represents the insts
+					% of the LHS and the RHS respectively
 
 %-----------------------------------------------------------------------------%
 
@@ -536,24 +597,33 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 	% type, inst, mode, condition) are represented in the same way as
 	% in prog_io.m, and are defined there.
 
-:- type hlds__type_defn	--->	hlds__type_defn(
-						% names of type vars (empty
+	% An hlds__type_defn holds the information about a type definition.
+	%
+:- type hlds__type_defn
+	--->	hlds__type_defn(
+			tvarset,		% Names of type vars (empty
 						% except for polymorphic types)
-					tvarset,
-						% formal type parameters
-					list(type_param),
-						% the definition of the type
-					hlds__type_body,
-						% a class invariant for the
-						% type (not used)
-					condition,
-					term__context
-				).
+			list(type_param),	% Formal type parameters
+			hlds__type_body,	% the definition of the type
 
+			condition,		% UNUSED
+				% Reserved for holding a user-defined invariant
+				% for the type, as in the NU-Prolog's type
+				% checker, which allows `where' conditions on
+				% type definitions.  For example:
+				% :- type sorted_list(T) == list(T)
+				%	where sorted.
+
+			term__context		% the location of this type
+						% definition in the original
+						% source code
+		).
+
+	% An `hlds__type_body' holds the body of a type definition:
 	% du = discriminated union, uu = undiscriminated union,
-	% eqv_type = equivalence type (a type defined to be eqv to some
-	% other type)
-
+	% eqv_type = equivalence type (a type defined to be equivalen
+	% to some other type)
+	%
 :- type hlds__type_body
 	--->	du_type(
 			list(constructor), 	% the ctors for this type
@@ -564,26 +634,52 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 	;	eqv_type(type)
 	;	abstract_type.
 
+	% The `cons_tag_values' type stores the information on how
+	% a discriminated union type is represented.
+	% For each functor in the d.u. type, it gives a cons_tag
+	% which specifies how that functor and its arguments are represented.
 :- type cons_tag_values
 	== map(cons_id, cons_tag).
 
+	% A `cons_tag' specifies how a functor and its arguments (if any)
+	% are represented.  Currently all values are represented as
+	% a single word; values which do not fit into a word are represented
+	% by a (possibly tagged) pointer to memory on the heap.
 :- type cons_tag
 	--->	string_constant(string)
+			% Strings are represented using the string_const()
+			% macro; in the current implementation, Mercury
+			% strings are represented just as C null-terminated
+			% strings.
 	;	float_constant(float)
+			% Floats are represented using the float_to_word(),
+			% word_to_float(), and float_const() macros.
+			% The default implementation of these is to
+			% use boxed double-precision floats.
 	;	int_constant(int)
+			% This means the constant is represented just as
+			% a word containing the specified integer value.
 			% This is used for enumerations and character
 			% constants as well as for int constants.
 	;	pred_closure_tag(pred_id, proc_id)
 			% Higher-order pred closures tags.
+			% These are represented as a pointer to
+			% an argument vector.
 			% The first two words of the argument vector
 			% hold the number of args and the address of
 			% the procedure respectively.
+			% The remaining words hold the arguments.
 	;	address_constant(pred_id, proc_id)
 			% Procedure address constants
 			% (used for constructing type_infos).
+			% The word just contains the address of the
+			% specified procedure.
 	;	simple_tag(tag_bits)
 			% This is for constants or functors which only
-			% require a simple (two-bit) tag.
+			% require a simple tag.  (A "simple" tag is one
+			% which fits on the bottom of a pointer - i.e.
+			% two bits for 32-bit architectures, or three bits
+			% for 64-bit architectures).
 			% For constants we store a tagged zero, for functors
 			% we store a tagged pointer to the argument vector.
 	;	complicated_tag(tag_bits, int)
@@ -601,31 +697,81 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 			% tag is stored in the rest of the main word rather
 			% than in the first word of the argument vector.
 
+	% The type `tag_bits' holds a simple tag value.
 :- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits
 
-:- type hlds__inst_defn	--->	hlds__inst_defn(
-					varset,
-					list(inst_param),
-					hlds__inst_body,
-					condition,
-					term__context
-				).
+	% An `hlds__inst_defn' holds the information we need to store
+	% about inst definitions such as
+	%	:- inst list_skel(I) = bound([] ; [I | list_skel(I)].
+	%
+:- type hlds__inst_defn
+	--->	hlds__inst_defn(
+			varset,			% The names of the inst
+						% parameters (if any).
+			list(inst_param),	% The inst parameters (if any).
+						% ([I] in the above example.)
+			hlds__inst_body,	% The definition of this inst.
+			condition,		% Unused (reserved for
+						% holding a user-defined 
+						% invariant).
+			term__context		% The location in the source
+						% code of this inst definition.
+		).
 
-:- type hlds__inst_body	--->	eqv_inst(inst)
-			;	abstract_inst.
+:- type hlds__inst_body
+	--->	eqv_inst(inst)			% This inst is equivalent to
+						% some other inst.
+	;	abstract_inst.			% This inst is just a forward
+						% declaration; the real
+						% definition will be filled in
+						% later.  (XXX Abstract insts
+						% are not really supported.)
 
-:- type hlds__mode_defn --->	hlds__mode_defn(varset, list(inst_param),
-					hlds__mode_body, condition,
-					term__context).
+	% A hlds__mode_defn stores the information about a mode
+	% definition such as
+	%	:- mode out :: free -> ground.
+	% or
+	%	:- mode in(I) :: I -> I.
+	% or
+	%	:- mode in_list_skel :: in(list_skel).
+	%
+:- type hlds__mode_defn
+	--->	hlds__mode_defn(
+			varset,			% The names of the inst
+						% parameters (if any).
+			list(inst_param),	% The list of the inst
+						% parameters (if any).
+						% (e.g. [I] for the second
+						% example above.)
+			hlds__mode_body,	% The definition of this mode.
+			condition,		% Unused (reserved for
+						% holding a user-defined
+						% invariant).
+			term__context		% The location of this mode
+						% definition in the original
+						% source code.
+		).
 
-:- type hlds__mode_body --->	eqv_mode(mode).
+	% The only sort of mode definitions allowed are equivalence modes.
+	% 
+:- type hlds__mode_body
+	--->	eqv_mode(mode).		% This mode is equivalent to some
+					% other mode.
 
-:- type hlds__cons_defn	--->	hlds__cons_defn(
-					% maybe add tvarset?
-					list(type),	% arg types
-					type_id,	% result type
-					term__context
-				).
+	% A cons_defn is the definition of a constructor (i.e. a constant
+	% or a functor) for a particular type.
+:- type hlds__cons_defn
+	--->	hlds__cons_defn(
+			% maybe add tvarset?
+			list(type),		% The types of the arguments
+						% of this functor (if any)
+			type_id,		% The result type, i.e. the
+						% type to which this
+						% cons_defn belongs.
+			term__context		% The location of this
+						% ctor definition in the
+						% original source code
+		).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -634,6 +780,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 
 :- interface.
 
+	% Create an empty module_info for a given module name.
 :- pred module_info_init(string, module_info).
 :- mode module_info_init(in, out) is det.
 
@@ -655,16 +802,30 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- pred module_info_pred_info(module_info, pred_id, pred_info).
 :- mode module_info_pred_info(in, in, out) is det.
 
+	% Given a pred_id and a proc_id, get the
+	% pred_info that predicate and the proc_info for that
+	% mode of that predicate.
 :- pred module_info_pred_proc_info(module_info, pred_id, proc_id,
 					pred_info, proc_info).
 :- mode module_info_pred_proc_info(in, in, in, out, out) is det.
 
+	% Return a list of the pred_ids of all the "valid" predicates.
+	% (Predicates whose definition contains a type error, etc.
+	% get removed from this list, so that later passes can rely
+	% on the predicates in this list being type-correct, etc.)
 :- pred module_info_predids(module_info, list(pred_id)).
 :- mode module_info_predids(in, out) is det.
 
+	% Reverse the list of pred_ids.
+	% (The list is built up by inserting values at the front,
+	% for efficiency; once we've done so, we reverse the list
+	% so that progress messages and error messages come out
+	% in the expected order.)
 :- pred module_info_reverse_predids(module_info, module_info).
 :- mode module_info_reverse_predids(in, out) is det.
 
+	% For an explanation of the unify_requests structure,
+	% see unify_info.m.
 :- pred module_info_get_unify_requests(module_info, unify_requests).
 :- mode module_info_get_unify_requests(in, out) is det.
 
@@ -708,9 +869,12 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- pred module_info_consids(module_info, list(cons_id)).
 :- mode module_info_consids(in, out) is det.
 
+	% The dependency information must have been build before
+	% calling this predicate.
 :- pred module_info_dependency_info(module_info, dependency_info).
 :- mode module_info_dependency_info(in, out) is det.
 
+	% Succeeds iff the dependency information has already been built
 :- pred module_info_dependency_info_built(module_info).
 :- mode module_info_dependency_info_built(in) is semidet.
 
@@ -764,12 +928,24 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 :- mode module_info_incr_warnings(in, out) is det.
 */
 
+	% The module_info stores a counter which is used to number
+	% introduced lambda predicates as __LambdaGoal__1, __LambdaGoal__2,
+	% etc.; this predicate returns the next number and increments
+	% the counter.
 :- pred module_info_next_lambda_count(module_info, int, module_info).
 :- mode module_info_next_lambda_count(in, out, out) is det.
 
+	% Remove a predicate from the list of pred_ids, to prevent
+	% further processing of this predicate after an error is
+	% encountered.
 :- pred module_info_remove_predid(module_info, pred_id, module_info).
 :- mode module_info_remove_predid(in, in, out) is det.
 
+	% Once the module_info has been built, we call module_info_optimize
+	% to attempt to optimize the data structures for lots of accesses
+	% and relatively few insertion/deletions.  (This was useful when
+	% we were using unbalanced binary trees, but now that we are using
+	% 234-trees, it is a no-op.)
 :- pred module_info_optimize(module_info, module_info).
 :- mode module_info_optimize(in, out) is det.
 
@@ -1015,56 +1191,59 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 
 :- interface.
 
-	% Various predicates for accessing the predicate_table type
+	% Various predicates for accessing the predicate_table type.
+	% The predicate_table holds information about the predicates
+	% defined in this module or imported from other modules.
+	% The primary key for this table is the `pred_id', but there
+	% are also secondary indexes on name, name+arity, and module+name+arity.
 
 	% Initialize the predicate table
-
+	%
 :- pred predicate_table_init(predicate_table).
 :- mode predicate_table_init(out) is det.
 
 	% Balance all the binary trees in the predicate table
-
+	%
 :- pred predicate_table_optimize(predicate_table, predicate_table).
 :- mode predicate_table_optimize(in, out) is det.
 
 	% Get the pred_id->pred_info map.
-
+	%
 :- pred predicate_table_get_preds(predicate_table, pred_table).
 :- mode predicate_table_get_preds(in, out) is det.
 
 	% Set the pred_id->pred_info map.
 	% NB You shouldn't modify the keys in this table, only
-
 	% use predicate_table_insert and predicate_table_remove_predid.
-
+	%
 :- pred predicate_table_set_preds(predicate_table, pred_table, predicate_table).
 :- mode predicate_table_set_preds(in, in, out) is det.
 
 	% Get a list of all the valid predids in the predicate_table.
-
+	%
 :- pred predicate_table_get_predids(predicate_table, list(pred_id)).
 :- mode predicate_table_get_predids(in, out) is det.
 
 	% Remove a pred_id from the valid list.
-
+	%
 :- pred predicate_table_remove_predid(predicate_table, pred_id,
 					predicate_table).
 :- mode predicate_table_remove_predid(in, in, out) is det.
 
 	% Search the table for predicates matching this
 	% (possibly module-qualified) sym_name & arity.
-
+	%
 :- pred predicate_table_search_sym_arity(predicate_table, sym_name, arity,
 					list(pred_id)).
 :- mode predicate_table_search_sym_arity(in, in, in, out) is semidet.
 
 	% Search the table for predicates matching this name.
-
+	%
 :- pred predicate_table_search_name(predicate_table, string, list(pred_id)).
 :- mode predicate_table_search_name(in, in, out) is semidet.
 
 	% Search the table for predicates matching this name & arity.
-
+	%
 :- pred predicate_table_search_name_arity(predicate_table, string, arity,
 						list(pred_id)).
 :- mode predicate_table_search_name_arity(in, in, in, out) is semidet.
@@ -1073,7 +1252,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	% name, and arity. (We currently don't allow overloading
 	% of predicates with the same name/arity in the same module.)
 	% m_n_a is short for module, name, arity.
-
+	%
 :- pred predicate_table_search_m_n_a(predicate_table, module_name, string,
 						arity, list(pred_id)).
 :- mode predicate_table_search_m_n_a(in, in, in, in, out) is semidet.
@@ -1081,7 +1260,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	% Insert a new pred_info structure into the predicate_table
 	% and assign it a new pred_id. You should check beforehand
 	% that the pred doesn't already occur in the table.
-
+	%
 :- pred predicate_table_insert(predicate_table, pred_info, pred_id,
 				predicate_table).
 :- mode predicate_table_insert(in, in, out, out) is det.
@@ -1089,7 +1268,7 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	% Return an invalid pred_id. Used to initialize the pred_id
 	% in call(...) goals before we do typechecking or when type-checking
 	% finds that there was no predicate which matched the call.
-
+	%
 :- pred invalid_pred_id(pred_id).
 :- mode invalid_pred_id(out) is det.
 :- mode invalid_pred_id(in) is semidet.
@@ -1117,8 +1296,10 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 :- type pred_id == int.
 
 :- type pred_name_index	== map(string, list(pred_id)).
+
 :- type pred_name_arity_index == map(name_arity, list(pred_id)).
 :- type name_arity ---> string / arity.
+
 :- type pred_module_name_arity_index == map(module_name_arity, list(pred_id)).
 :- type module_name_arity ---> module_name_arity(module_name, string, arity).
 
@@ -1262,12 +1443,21 @@ invalid_pred_id(-1).
 
 :- interface.
 
+	% Given a cons_id, convert it into a const (from term.m) and
+	% an integer arity.  Fails if the cons_id is not representable
+	% as a const (for example, if it is a higher-order pred constant
+	% or an address constant).
 :- pred cons_id_to_const(cons_id, const, arity).
 :- mode cons_id_to_const(in, out, out) is semidet.
 
+	% The reverse conversion - make a cons_id for a functor.
+	% Given a const and an arity for the functor, create a cons_id.
 :- pred make_functor_cons_id(const, arity, cons_id).
 :- mode make_functor_cons_id(in, in, out) is det.
 
+	% Another way of making a cons_id from a functor.
+	% Given the name, argument types, and type_id of a functor,
+	% create a cons_id for that functor.
 :- pred make_cons_id(sym_name, list(type), type_id, cons_id).
 :- mode make_cons_id(in, in, in, out) is det.
 
@@ -1298,6 +1488,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- interface.
 
+	% The type `import_status' describes whether an entity (a predicate,
+	% type, inst, or mode) is local to the current module, exported from
+	% the current module, or imported from some other module.
 :- type import_status
 	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
@@ -1336,9 +1529,13 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_arity(pred_info, arity).
 :- mode pred_info_arity(in, out) is det.
 
+	% Return a list of all the proc_ids for the different modes
+	% of this predicate.
 :- pred pred_info_procids(pred_info, list(proc_id)).
 :- mode pred_info_procids(in, out) is det.
 
+	% Return a list of the proc_ids for all the modes
+	% of this predicate that are not imported.
 :- pred pred_info_non_imported_procids(pred_info, list(proc_id)).
 :- mode pred_info_non_imported_procids(in, out) is det.
 
@@ -1373,6 +1570,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- pred pred_info_is_pseudo_exported(pred_info::in) is semidet.
 
+	% Set the import_status of the predicate to `imported'.
+	% This is used for `:- external(foo/2).' declarations.
 :- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
 
 :- pred pred_info_set_status(pred_info::in, import_status::in,
@@ -1384,6 +1583,10 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_typevarset(pred_info, tvarset, pred_info).
 :- mode pred_info_set_typevarset(in, in, out) is det.
 
+	% Succeeds if there was a `:- pragma(inline, ...)' declaration
+	% for this predicate.  Note that the compiler may decide
+	% to inline a predicate even if there was no pragma(inline, ...)
+	% declaration for that predicate.
 :- pred pred_info_is_inlined(pred_info).
 :- mode pred_info_is_inlined(in) is semidet.
 
@@ -1889,20 +2092,41 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 				set(var), hlds__goal_info).
 :- mode goal_info_set_nondet_lives(in, in, out) is det.
 
+	% Convert a goal to a list of conjuncts.
+	% If the goal is a conjunction, then return its conjuncts,
+	% otherwise return the goal as a singleton list.
+	%
 :- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
 :- mode goal_to_conj_list(in, out) is det.
 
+	% Convert a goal to a list of disjuncts.
+	% If the goal is a disjunction, then return its disjuncts,
+	% otherwise return the goal as a singleton list.
+	%
 :- pred goal_to_disj_list(hlds__goal, list(hlds__goal)).
 :- mode goal_to_disj_list(in, out) is det.
 
+	% Convert a list of conjuncts to a goal.
+	% If the list contains only one goal, then return that goal,
+	% otherwise return the conjunction of the conjuncts,
+	% with the specified goal_info.
+	%
 :- pred conj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
 :- mode conj_list_to_goal(in, in, out) is det.
 
+	% Convert a list of disjuncts to a goal.
+	% If the list contains only one goal, then return that goal,
+	% otherwise return the disjunction of the disjuncts,
+	% with the specified goal_info.
+	%
 :- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
 :- mode disj_list_to_goal(in, in, out) is det.
 
-	% A goal is atomic iff it doesn't contain any sub-goals.
-
+	% A goal is atomic iff it doesn't contain any sub-goals
+	% (except possibly goals inside lambda expressions --
+	% but lambda expressions will get transformed into separate
+	% predicates by the polymorphism.m pass).
+	%
 :- pred goal_is_atomic(hlds__goal_expr).
 :- mode goal_is_atomic(in) is semidet.
 
@@ -2017,7 +2241,7 @@ goal_info_has_feature(GoalInfo, Feature) :-
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
-
+	%
 goal_to_conj_list(Goal, ConjList) :-
 	( Goal = (conj(List) - _) ->
 		ConjList = List
@@ -2026,9 +2250,9 @@ goal_to_conj_list(Goal, ConjList) :-
 	).
 
 	% Convert a goal to a list of disjuncts.
-	% If the goal is a conjunction, then return its conjuncts,
+	% If the goal is a disjunction, then return its disjuncts
 	% otherwise return the goal as a singleton list.
-
+	%
 goal_to_disj_list(Goal, DisjList) :-
 	( Goal = (disj(List) - _) ->
 		DisjList = List
@@ -2036,6 +2260,11 @@ goal_to_disj_list(Goal, DisjList) :-
 		DisjList = [Goal]
 	).
 
+	% Convert a list of conjuncts to a goal.
+	% If the list contains only one goal, then return that goal,
+	% otherwise return the conjunction of the conjuncts,
+	% with the specified goal_info.
+	%
 conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	( ConjList = [Goal0] ->
 		Goal = Goal0
@@ -2043,6 +2272,11 @@ conj_list_to_goal(ConjList, GoalInfo, Goal) :-
 		Goal = conj(ConjList) - GoalInfo
 	).
 
+	% Convert a list of disjuncts to a goal.
+	% If the list contains only one goal, then return that goal,
+	% otherwise return the disjunction of the conjuncts,
+	% with the specified goal_info.
+	%
 disj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	( ConjList = [Goal0] ->
 		Goal = Goal0
@@ -2062,6 +2296,13 @@ goal_is_atomic(pragma_c_code(_,_,_,_,_)).
 %-----------------------------------------------------------------------------%
 
 :- interface.
+
+	% Originally we classified predicates according to whether they
+	% were "builtin" or not.  But in fact there are two sorts of
+	% "builtin" predicates - those that we open-code using inline
+	% instructions (e.g. arithmetic predicates), and those which
+	% are still "internal", but for which we generate a call to an
+	% out-of-line procedure (e.g. call/N).
 
 :- pred is_builtin__is_internal(is_builtin).
 :- mode is_builtin__is_internal(in) is semidet.
