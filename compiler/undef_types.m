@@ -135,9 +135,18 @@ find_undef_type(term__functor(F, As, C), ErrorContext, TypeDefns) -->
 		->
 			[]
 		;
-			{ map__contains(TypeDefns, TypeId) }
+			{ map__search(TypeDefns, TypeId, TypeDefn) }
 		->
-			[]
+			{ TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
+			% all equivalence types except for circular ones
+			% get expanded by prog_util.m.  Therefore, if there
+			% are any equivalence types still left now, then
+			% they must be circular.
+			( { TypeBody = eqv_type(_) } ->
+				report_circular_type(TypeId, ErrorContext)
+			;
+				[]
+			)
 		;
 			{ is_builtin_pred_type(TypeId) }
 		->
@@ -196,6 +205,23 @@ report_undef_type(TypeId, ErrorContext - Context) -->
 	io__write_string(":\n"),
 	prog_out__write_context(Context),
 	io__write_string("  error: undefined type "),
+	hlds_out__write_type_id(TypeId),
+	io__write_string(".\n").
+
+	% Output an error message about a circular equivalence type
+	% in the specified context.
+
+:- pred report_circular_type(type_id, error_context, io__state, io__state).
+:- mode report_circular_type(in, in, di, uo) is det.
+
+report_circular_type(TypeId, ErrorContext - Context) -->
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("In definition of "),
+	write_error_context(ErrorContext),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error: circular type definition for "),
 	hlds_out__write_type_id(TypeId),
 	io__write_string(".\n").
 
