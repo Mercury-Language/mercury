@@ -6,11 +6,15 @@
 # to produce an executable binary.
 
 NULIBDIR=${MERCURY_LIB_DIR:-@LIBDIR@/nuprolog/@FULLARCH@}
+LIBRARY_OBJS=${MERCURY_LIB_OBJS:-"@LIBOBJS@"}
 
 options=
 
 while true; do
 	case "$1" in
+		-u)	options="$options $1 $2"
+			shift 2
+			;;
 		-*)	options="$options $1"
 			shift
 			;;
@@ -19,4 +23,9 @@ while true; do
 	esac
 done
 
-exec nc $options "$NULIBDIR"/*.no "$@"
+objlist=
+for obj in $LIBRARY_OBJS; do
+	objlist="$objlist $NULIBDIR/$obj"
+done
+
+exec nc $options $objlist "$@"

@@ -8,9 +8,14 @@ nc_builtin_nl=${MERCURY_NC_BUILTIN:-@LIBDIR@/nuprolog/nc_builtin.nl}
 
 options=
 
+unset target
+
 while true; do
 	case "$1" in
 		-F)	options="$options $1 $2"
+			shift 2
+			;;
+		-o)	target="$2"
 			shift 2
 			;;
 		-*)	options="$options $1"
@@ -28,5 +33,5 @@ for file in "$@"; do
 	cat $nc_builtin_nl $file > $tmp.nl
 	nc -c $options $tmp.nl
 	rm $tmp.nl $tmp.ns
-	mv $tmp.no `dirname $file`/`basename $file .nl`.no
+	mv $tmp.no ${target:-`dirname $file`/`basename $file .nl`.no}
 done
