@@ -99,10 +99,6 @@ extern	void		(*MR_address_of_init_gc)(void);
 
 extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
 
-extern	MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_func;
-extern	MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_pred;
-extern	MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_tuple;
-
 /*
 ** MR_trace_getline(const char *, FILE *, FILE *) and
 ** MR_trace_get_command(const char *, FILE *, FILE *) are defined in

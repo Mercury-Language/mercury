@@ -264,10 +264,6 @@ void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 
 int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
-MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_func;
-MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_pred;
-MR_TypeCtorInfo	MR_address_of_type_ctor_info_for_tuple;
-
 char	*(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 char	*(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
 const char *
