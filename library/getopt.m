@@ -94,7 +94,7 @@
 		).
 
 :- inst option_ops =
-	bound(
+	bound((
 		option_ops(
 			pred(in, out) is semidet,	% short_option
 			pred(in, out) is semidet,	% long_option
@@ -106,7 +106,7 @@
 			pred(out, out) is nondet,	% option_default
 			pred(in, in, in, out) is semidet% special handler
 		)
-	).
+	)).
 
 :- type option_data
 	--->	bool(bool)
