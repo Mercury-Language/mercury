@@ -787,7 +787,6 @@
 :- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
 :- import_module getopt, multi_map, sparse_bitset, svset.
-:- import_module deconstruct.
 
 %-----------------------------------------------------------------------------%
 
