@@ -2190,16 +2190,16 @@ read_optimization_interfaces([Import | Imports],
 		maybe_write_string(VeryVerbose, " `"),
 		{ prog_out__sym_name_to_string(Import, ImportString) },
 		maybe_write_string(VeryVerbose, ImportString),
-		maybe_write_string(VeryVerbose, "'... "),
+		maybe_write_string(VeryVerbose, "'...\n"),
 		maybe_flush_output(VeryVerbose),
-		maybe_write_string(VeryVerbose, "% done.\n"),
 
 		module_name_to_file_name(Import, ".opt", no, FileName),
 		prog_io__read_opt_file(FileName, Import, yes,
 				ModuleError, Messages, Items1),
 		update_error_status(opt, FileName, ModuleError, Messages,
 				Error0, Error1),
-		{ list__append(Items0, Items1, Items2) }
+		{ list__append(Items0, Items1, Items2) },
+		maybe_write_string(VeryVerbose, "% done.\n")
 	),
 	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
 
