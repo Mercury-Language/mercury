@@ -93,7 +93,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 
 #define	localtailcall(label)					\
 			do {					\
-				debugtailcall(LABEL(proc));	\
+				debugtailcall(LABEL(label));	\
 				GOTO_LABEL(label);		\
 			} while (0)
 #define	tailcall(proc)	do {					\
@@ -253,6 +253,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				nondstack_overflow_check();	\
 			} while (0)
 
+/* obsolete */
 #define	mkreclaim(prednm)					\
 			do {					\
 				reg	Word	*prevfr;	\
