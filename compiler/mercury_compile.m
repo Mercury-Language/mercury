@@ -925,16 +925,16 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_unused_args(HLDS40, Verbose, Stats, HLDS43), !,
 	mercury_compile__maybe_dump_hlds(HLDS43, "43", "unused_args"), !,
 
-	mercury_compile__maybe_dead_procs(HLDS43, Verbose, Stats, HLDS46), !,
-	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"), !,
+	mercury_compile__maybe_lco(HLDS43, Verbose, Stats, HLDS45), !,
+	mercury_compile__maybe_dump_hlds(HLDS45, "45", "lco"), !,
 
-	mercury_compile__maybe_lco(HLDS46, Verbose, Stats, HLDS47), !,
-	mercury_compile__maybe_dump_hlds(HLDS47, "47", "lco"), !,
+	mercury_compile__maybe_dead_procs(HLDS45, Verbose, Stats, HLDS46), !,
+	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"), !,
 
 	% map_args_to_regs affects the interface to a predicate,
 	% so it must be done in one phase immediately before code generation
 
-	mercury_compile__map_args_to_regs(HLDS47, Verbose, Stats, HLDS49), !,
+	mercury_compile__map_args_to_regs(HLDS46, Verbose, Stats, HLDS49), !,
 	mercury_compile__maybe_dump_hlds(HLDS49, "49", "args_to_regs"), !,
 
 	{ HLDS50 = HLDS49 },
@@ -1646,7 +1646,7 @@ mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose, "% Looking for LCO modulo constructor application ...\n"),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
-			update_proc_io(lco_modulo_constructors), HLDS0, HLDS),
+			update_module_io(lco_modulo_constructors), HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;

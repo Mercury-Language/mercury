@@ -478,7 +478,11 @@ call_gen__save_variables(Args, Code) -->
 
 call_gen__save_variables_2([], empty) --> [].
 call_gen__save_variables_2([Var | Vars], Code) -->
-	code_info__save_variable_on_stack(Var, CodeA),
+	( code_info__var_is_free_alias(Var) ->
+		code_info__save_reference_on_stack(Var, CodeA)
+	;
+		code_info__save_variable_on_stack(Var, CodeA)
+	),
 	call_gen__save_variables_2(Vars, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
@@ -503,6 +507,11 @@ call_gen__rebuild_registers_2([Var - arg_info(ArgLoc, Mode) | Args]) -->
 	->
 		{ code_util__arg_loc_to_register(ArgLoc, Register) },
 		code_info__set_var_location(Var, Register)
+	;
+		{ Mode = ref_out }
+	->
+		{ code_util__arg_loc_to_register(ArgLoc, Register) },
+		code_info__set_var_reference_location(Var, Register)
 	;
 		{ true }
 	),
@@ -582,7 +591,7 @@ call_gen__generate_builtin_arg(Rval0, Rval, Code) -->
 call_gen__partition_args([], [], []).
 call_gen__partition_args([V - arg_info(_Loc,Mode) | Rest], Ins, Outs) :-
 	(
-		Mode = top_in
+		arg_mode_is_input(Mode)
 	->
 		call_gen__partition_args(Rest, Ins0, Outs),
 		Ins = [V | Ins0]
@@ -684,7 +693,7 @@ call_gen__select_out_args([], Out) :-
 call_gen__select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
 	call_gen__select_out_args(Rest, Out0),
 	(
-		Mode = top_out
+		arg_mode_is_output(Mode)
 	->
 		set__insert(Out0, V, Out)
 	;
@@ -699,7 +708,7 @@ call_gen__select_out_args([V - arg_info(_Loc, Mode) | Rest], Out) :-
 call_gen__input_args([], []).
 call_gen__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		Mode = top_in
+		arg_mode_is_input(Mode)
 	->
 		Vs = [Loc |Vs0]
 	;
@@ -712,7 +721,7 @@ call_gen__input_args([arg_info(Loc, Mode) | Args], Vs) :-
 call_gen__input_arg_locs([], []).
 call_gen__input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		Mode = top_in
+		arg_mode_is_input(Mode)
 	->
 		Vs = [Var - Loc | Vs0]
 	;
@@ -723,7 +732,7 @@ call_gen__input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 call_gen__output_arg_locs([], []).
 call_gen__output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 	(
-		Mode = top_out
+		arg_mode_is_output(Mode)
 	->
 		Vs = [Var - Loc | Vs0]
 	;

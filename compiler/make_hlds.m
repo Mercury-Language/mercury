@@ -4070,7 +4070,6 @@ unravel_unification(term__variable(X), RHS,
 			HLDS_Goal0, VarSet3, HLDS_Goal, VarSet, Info2, Info),
 		{ instmap_delta_init_reachable(InstMapDelta) },
 		{ inst_table_init(InstTable) },
-
 			 % quantification will reduce this down to
 			 % the proper set of nonlocal arguments.
 		{ goal_util__goal_vars(HLDS_Goal, LambdaGoalVars0) }, 
@@ -4187,8 +4186,10 @@ unravel_unification(term__functor(LeftF, LeftAs, LeftC),
 
 create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
 		Goal) :-
-	UMode = ((free - free) -> (free - free)),
-	Mode = ((free -> free) - (free -> free)),
+	UMode = ((free(unique) - free(unique)) -> 
+		(free(unique) - free(unique))),
+	Mode = ((free(unique) -> free(unique)) - 
+		(free(unique) -> free(unique))),
 	UnifyInfo = complicated_unify(UMode, can_fail),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo0),

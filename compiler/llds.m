@@ -581,7 +581,7 @@
 :- type mem_ref
 	--->	stackvar_ref(int)		% stack slot number
 	;	framevar_ref(int)		% stack slot number
-	;	heap_ref(rval, int, int).	% the cell pointer,
+	;	heap_ref(rval, tag, int).	% the cell pointer,
 						% the tag to subtract,
 						% and the field number
 
@@ -742,6 +742,13 @@
 				% size is a word but which may be either
 				% signed or unsigned
 				% (used for registers, stack slots, etc.)
+
+	% Arguments to procedures may be either pass-by-value or
+	% pass-by-reference.
+:- type val_or_ref
+	--->	value(rval)	 % rval is the value of the variable.
+	;	reference(lval). % lval points to the location of the variable.
+
 
 	% given a non-var rval, figure out its type
 :- pred llds__rval_type(rval::in, llds_type::out) is det.

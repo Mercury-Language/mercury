@@ -770,7 +770,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
 		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, _Modes,
-				_Determinism, _IMelta, Goal - _GoalInfo)
+				_Determinism, _IMDelta, Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, [], CalledProcs),
 		set__insert_list(HasAT0, CalledProcs, HasAT)

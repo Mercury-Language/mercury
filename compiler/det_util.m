@@ -172,11 +172,11 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
 					bool		% --fully-strict
 				).
 
-det_info_init(ModuleInfo, PredId, ProcId, IKT, Globals, DetInfo) :-
+det_info_init(ModuleInfo, PredId, ProcId, InstTable, Globals, DetInfo) :-
 	globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
 	globals__lookup_bool_option(Globals, reorder_disj, ReorderDisj),
 	globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
-	DetInfo = det_info(ModuleInfo, PredId, ProcId, IKT,
+	DetInfo = det_info(ModuleInfo, PredId, ProcId, InstTable,
 		ReorderConj, ReorderDisj, FullyStrict).
 
 det_info_get_module_info(det_info(ModuleInfo, _, _, _, _, _, _), ModuleInfo).

@@ -37,6 +37,9 @@
 :- pred exprn_aux__rval_contains_lval(rval, lval).
 :- mode exprn_aux__rval_contains_lval(in, in) is semidet.
 
+:- pred exprn_aux__lval_contains_lval(lval, lval).
+:- mode exprn_aux__lval_contains_lval(in, in) is semidet.
+
 :- pred exprn_aux__rval_contains_rval(rval, rval).
 :- mode exprn_aux__rval_contains_rval(in, in) is semidet.
 :- mode exprn_aux__rval_contains_rval(in, out) is multidet.
@@ -56,6 +59,9 @@
 
 :- pred exprn_aux__substitute_rvals_in_rval(assoc_list(rval, rval), rval, rval).
 :- mode exprn_aux__substitute_rvals_in_rval(in, in, out) is det.
+
+:- pred exprn_aux__substitute_lval_in_lval(lval, lval, lval, lval).
+:- mode exprn_aux__substitute_lval_in_lval(in, in, in, out) is det.
 
 :- pred exprn_aux__vars_in_lval(lval, list(var)).
 :- mode exprn_aux__vars_in_lval(in, out) is det.
@@ -202,9 +208,6 @@ exprn_aux__rval_contains_lval(binop(_, Rval0, Rval1), Lval) :-
 	;
 		exprn_aux__rval_contains_lval(Rval1, Lval)
 	).
-
-:- pred exprn_aux__lval_contains_lval(lval, lval).
-:- mode exprn_aux__lval_contains_lval(in, in) is semidet.
 
 exprn_aux__lval_contains_lval(Lval0, Lval) :-
 	(
@@ -413,9 +416,6 @@ exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef) :-
 			Rval0, Rval),
 		MemRef = heap_ref(Rval, Tag, N)
 	).
-
-:- pred exprn_aux__substitute_lval_in_lval(lval, lval, lval, lval).
-:- mode exprn_aux__substitute_lval_in_lval(in, in, in, out) is det.
 
 exprn_aux__substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
 	(

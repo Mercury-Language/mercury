@@ -73,10 +73,10 @@ find_final_follow_vars_2([], [], Follow, Follow).
 find_final_follow_vars_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 							Follow0, Follow) :-
 	code_util__arg_loc_to_register(Loc, Reg),
-	(
-		Mode = top_out
-	->
-		map__det_insert(Follow0, Var, Reg, Follow1)
+	( Mode = top_out ->
+		map__det_insert(Follow0, Var, store_info(val, Reg), Follow1)
+	; Mode = ref_out ->
+		map__det_insert(Follow0, Var, store_info(ref, Reg), Follow1)
 	;
 		Follow0 = Follow1
 	),
@@ -281,10 +281,10 @@ find_follow_vars_from_arginfo_2([], [], Follow, Follow).
 find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 							Follow0, Follow) :-
 	code_util__arg_loc_to_register(Loc, Reg),
-	(
-		Mode = top_in
-	->
-		map__set(Follow0, Var, Reg, Follow1)
+	( Mode = top_in ->
+		map__set(Follow0, Var, store_info(val, Reg), Follow1)
+	; Mode = ref_in ->
+		map__set(Follow0, Var, store_info(ref, Reg), Follow1)
 	;
 		Follow0 = Follow1
 	),

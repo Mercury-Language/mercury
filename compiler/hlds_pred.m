@@ -130,15 +130,30 @@
 :- type liveness	--->	live
 			;	dead.
 
+	% Info about an argument of a procedure.
 :- type arg_info	--->	arg_info(
-					arg_loc,	% stored location
-					arg_mode	% mode of top functor
+					arg_loc,
+					arg_mode
 				).
 
-:- type arg_mode	--->	top_in
-			;	top_out
-			;	top_unused.
+	% Mode and calling convention (pass-by-value/reference) of top functor.
+:- type arg_mode	--->	top_in		% input value
+			;	top_out		% output value
+			;	top_unused	% unused
+			;	ref_out		% output reference
+			;	ref_in.		% input reference
 
+	% arg_mode_is_input(ArgMode) is true iff ArgMode passes something
+	% into the procedure (either a value or a reference).
+:- pred arg_mode_is_input(arg_mode).
+:- mode arg_mode_is_input(in) is semidet.
+
+	% arg_mode_is_output(ArgMode) is true iff ArgMode passes something
+	% out of the procedure (either a value or a reference).
+:- pred arg_mode_is_output(arg_mode).
+:- mode arg_mode_is_output(in) is semidet.
+
+	% Stored location of argument.
 :- type arg_loc		==	int.
 
 	% The type `import_status' describes whether an entity (a predicate,
@@ -459,6 +474,34 @@ hlds_pred__next_proc_id(ProcId, NextProcId) :-
 pred_id_to_int(PredId, PredId).
 
 proc_id_to_int(ProcId, ProcId).
+
+arg_mode_is_input(ArgMode) :-
+	arg_mode_is_input_2(ArgMode, yes).
+
+	% Allow determinism checker to remind us of any new functor
+	% that are added to the arg_mode type.
+:- pred arg_mode_is_input_2(arg_mode, bool).
+:- mode arg_mode_is_input_2(in, out) is det.
+
+arg_mode_is_input_2(top_in, yes).
+arg_mode_is_input_2(ref_in, yes).
+arg_mode_is_input_2(top_out, no).
+arg_mode_is_input_2(ref_out, no).
+arg_mode_is_input_2(top_unused, no).
+
+arg_mode_is_output(ArgMode) :-
+	arg_mode_is_output_2(ArgMode, yes).
+
+	% Allow determinism checker to remind us of any new functor
+	% that are added to the arg_mode type.
+:- pred arg_mode_is_output_2(arg_mode, bool).
+:- mode arg_mode_is_output_2(in, out) is det.
+
+arg_mode_is_output_2(top_out, yes).
+arg_mode_is_output_2(ref_out, yes).
+arg_mode_is_output_2(top_in, no).
+arg_mode_is_output_2(ref_in, no).
+arg_mode_is_output_2(top_unused, no).
 
 hlds_pred__in_in_unification_proc_id(0).
 

@@ -578,7 +578,8 @@ modecheck_unification(X,
 			% return any old garbage
 		RHS = lambda_goal(PredOrFunc, ArgVars, Vars,
 				Modes0, Det, IMDelta, LambdaGoal0),
-		Mode = (free -> free) - (free -> free),
+		Mode = (free(unique) -> free(unique)) - 
+			(free(unique) -> free(unique)),
 		Unification = Unification0
 	),
 	Goal = unify(X, RHS, Mode, Unification, UnifyContext).
@@ -723,8 +724,19 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	;
 		map__init(Sub0),
 		abstractly_unify_inst_functor(LiveX, InstOfX, ConsId,
-			InstArgs, LiveArgs, real_unify, InstTable1, ModuleInfo1, Sub0,
-			UnifyInst, Det1, InstTable2, ModuleInfo2, Sub)
+			InstArgs, LiveArgs, real_unify, InstTable1, ModuleInfo1,
+			Sub0, UnifyInst, Det1, InstTable2, ModuleInfo2, Sub),
+		\+ inst_contains_free_alias(UnifyInst, InstTable2, ModuleInfo2)
+			% AAA when we allow users to create
+			% free(alias) insts themselves we will need a
+			% better scheduling algorithm.  For now, it's
+			% ok to disallow free(alias) insts in
+			% mode-checking because they are only created
+			% in the LCO pass.
+			% One algorithm would be to schedule all constructions
+			% as early as possible and then, in the code generator,
+			% cache references to free(alias) variables until they
+			% are actually needed.
 	->
 		Inst = UnifyInst,
 		mode_info_set_module_info(ModeInfo1, ModuleInfo2, ModeInfo2),
@@ -917,7 +929,8 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 
 		% change the main unification to use `Var' instead of Var0
-		UniMode = (InitialInstX - free -> InitialInstX - InitialInstX),
+		UniMode = (InitialInstX - free(unique) -> 
+				InitialInstX - InitialInstX),
 
 		% Compute the instmap that results after the main unification.
 		% We just need to set the inst of `Var'.

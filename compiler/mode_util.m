@@ -197,19 +197,19 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Given a list of variables, and a list of livenesses,
-	% select the live variables.
-	%
-:- pred get_live_vars(list(var), list(is_live), list(var)).
-:- mode get_live_vars(in, in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
 	% Construct a mode corresponding to the standard `in',
 	% `out', or `uo' mode.
 :- pred in_mode((mode)::out) is det.
 :- pred out_mode((mode)::out) is det.
 :- pred uo_mode((mode)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Given a list of variables, and a list of livenesses,
+	% select the live variables.
+	%
+:- pred get_live_vars(list(var), list(is_live), list(var)).
+:- mode get_live_vars(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -249,11 +249,11 @@ insts_to_mode(Initial, Final, Mode) :-
 	% This is just to make error messages and inferred modes
 	% more readable.
 	%
-	( Initial = free, Final = ground(shared, no) ->
+	( Initial = free(unique), Final = ground(shared, no) ->
 		make_std_mode("out", [], Mode)
-	; Initial = free, Final = ground(unique, no) ->
+	; Initial = free(unique), Final = ground(unique, no) ->
 		make_std_mode("uo", [], Mode)
-	; Initial = free, Final = ground(mostly_unique, no) ->
+	; Initial = free(unique), Final = ground(mostly_unique, no) ->
 		make_std_mode("muo", [], Mode)
 	; Initial = ground(shared, no), Final = ground(shared, no) ->
 		make_std_mode("in", [], Mode)
@@ -267,7 +267,7 @@ insts_to_mode(Initial, Final, Mode) :-
 	; Initial = ground(mostly_unique, no),
 	  Final = ground(mostly_unique, no) ->
 		make_std_mode("mdi", [], Mode)
-	; Initial = free ->
+	; Initial = free(unique) ->
 		make_std_mode("out", [Final], Mode)
 	; Final = ground(clobbered, no) ->
 		make_std_mode("di", [Initial], Mode)
@@ -351,14 +351,25 @@ mode_to_arg_mode(InstTable, ModuleInfo, Mode, Type, ArgMode) :-
 
 :- pred mode_to_arg_mode_2(inst_table, module_info, mode, arg_mode).
 :- mode mode_to_arg_mode_2(in, in, in, out) is det.
+
 mode_to_arg_mode_2(InstTable, ModuleInfo, Mode, ArgMode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	( inst_is_bound(InitialInst, InstTable, ModuleInfo) ->
 		ArgMode = top_in
 	; inst_is_bound(FinalInst, InstTable, ModuleInfo) ->
-		ArgMode = top_out
+		( inst_is_free_alias(InitialInst, InstTable, ModuleInfo) ->
+			ArgMode = ref_in
+		;
+			ArgMode = top_out
+		)
 	;
-		ArgMode = top_unused
+		( 
+			inst_is_free_alias(FinalInst, InstTable, ModuleInfo)
+		->
+			ArgMode = ref_out
+		;
+			ArgMode = top_unused
+		)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -385,8 +396,9 @@ get_single_arg_inst(bound(_Uniq, List), _InstTable, _, ConsId, ArgInst) :-
 		% the code is unreachable
 		ArgInst = not_reached
 	).
-get_single_arg_inst(free, _InstTable, _, _, free).
-get_single_arg_inst(free(_Type), _InstTable, _, _, free).  % XXX loses type info
+get_single_arg_inst(free(A), _InstTable, _, _, free(A)).
+get_single_arg_inst(free(A, _Type), _InstTable, _, _, free(A)).  
+							% XXX loses type info
 get_single_arg_inst(alias(Key), InstTable, ModuleInfo, ConsId, Inst) :-
 	inst_table_get_inst_key_table(InstTable, IKT),
 	inst_key_table_lookup(IKT, Key, Inst0),
@@ -445,10 +457,10 @@ get_arg_insts(bound(_Uniq, List), ConsId, Arity, ArgInsts) :-
 		% the code is unreachable
 		list__duplicate(Arity, not_reached, ArgInsts)
 	).
-get_arg_insts(free, _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, free, ArgInsts).
-get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
-	list__duplicate(Arity, free, ArgInsts).
+get_arg_insts(free(A), _ConsId, Arity, ArgInsts) :-
+	list__duplicate(Arity, free(A), ArgInsts).
+get_arg_insts(free(A, _Type), _ConsId, Arity, ArgInsts) :-
+	list__duplicate(Arity, free(A), ArgInsts).
 get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
 	list__duplicate(Arity, any(Uniq), ArgInsts).
 
@@ -606,8 +618,8 @@ inst_has_no_duplicate_inst_keys(Set0, Set, alias(Key), InstTable, ModuleInfo) :-
 	inst_table_get_inst_key_table(InstTable, IKT),
 	inst_key_table_lookup(IKT, Key, Inst),
 	inst_has_no_duplicate_inst_keys(Set1, Set, Inst, InstTable, ModuleInfo).
+inst_has_no_duplicate_inst_keys(Set, Set, free(_, _), _InstTable, _ModuleInfo).
 inst_has_no_duplicate_inst_keys(Set, Set, free(_), _InstTable, _ModuleInfo).
-inst_has_no_duplicate_inst_keys(Set, Set, free, _InstTable, _ModuleInfo).
 inst_has_no_duplicate_inst_keys(Set0, Set, bound(_, BoundInsts), InstTable,
 		ModuleInfo) :-
 	bound_insts_list_has_no_duplicate_inst_keys(Set0, Set, BoundInsts,
@@ -787,10 +799,10 @@ propagate_ctor_info(alias(Key), Type, Constructors, InstTable, ModuleInfo,
 
 % propagate_ctor_info(free, Type, _, _, _, free(Type)).
 							% temporarily disabled
-propagate_ctor_info(free, _Type, _, _, _, free).
+propagate_ctor_info(free(A), _Type, _, _, _, free(A)).
 							% XXX temporary hack
 
-propagate_ctor_info(free(_), _, _, _, _, _) :-
+propagate_ctor_info(free(_, _), _, _, _, _, _) :-
 	error("propagate_ctor_info: type info already present").
 propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, InstTable,
 		ModuleInfo, Inst) :-
@@ -860,10 +872,10 @@ propagate_ctor_info_lazily(any(Uniq), _Type, _, _, _, any(Uniq)).
 
 % propagate_ctor_info_lazily(free, Type, _, _, _, free(Type)).
 							% temporarily disabled
-propagate_ctor_info_lazily(free, _Type, _, _, _, free).
+propagate_ctor_info_lazily(free(A), _Type, _, _, _, free(A)).
 							% XXX temporary hack
 
-propagate_ctor_info_lazily(free(_), _, _, _, _, _) :-
+propagate_ctor_info_lazily(free(_, _), _, _, _, _, _) :-
 	error("propagate_ctor_info_lazily: type info already present").
 propagate_ctor_info_lazily(bound(Uniq, BoundInsts0), Type0, Subst, 
 		InstTable, ModuleInfo, Inst) :-
@@ -945,7 +957,7 @@ propagate_ctor_info_lazily(defined_inst(InstName0), Type0, Subst, _, _,
 
 default_higher_order_func_inst(PredArgTypes, ModuleInfo, PredInstInfo) :-
 	In = (ground(shared, no) -> ground(shared, no)),
-	Out = (free -> ground(shared, no)),
+	Out = (free(unique) -> ground(shared, no)),
 	list__length(PredArgTypes, NumPredArgs),
 	NumFuncArgs is NumPredArgs - 1,
 	list__duplicate(NumFuncArgs, In, FuncArgModes),
@@ -1163,8 +1175,8 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 inst_apply_substitution(any(Uniq), _, any(Uniq)).
 inst_apply_substitution(alias(Var), _, alias(Var)) :-
 	error("inst_apply_substitution: alias").
-inst_apply_substitution(free, _, free).
-inst_apply_substitution(free(T), _, free(T)).
+inst_apply_substitution(free(A), _, free(A)).
+inst_apply_substitution(free(A, T), _, free(A, T)).
 inst_apply_substitution(ground(Uniq, PredStuff0), Subst,
 			ground(Uniq, PredStuff)) :-
 	maybe_pred_inst_apply_substitution(PredStuff0, Subst, PredStuff).
@@ -1435,8 +1447,15 @@ recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 		goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo),
 		instmap__init_unreachable(InstMap)
 	;
-		goal_info_get_nonlocals(GoalInfo1, NonLocals),
-		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
+		% AAA some non-locals that have their insts changed by
+		% this call may not be in the non-locals set, if they were
+		% changed via aliases.   Andrew Bromage is working on
+		% a solution to this, but for now it is necessary to
+		% keep all vars in the instmap_delta, even if they're
+		% not in NonLocals.
+		%goal_info_get_nonlocals(GoalInfo1, NonLocals),
+		%instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
+		InstMapDelta = InstMapDelta0,
 		goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo),
 		instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap)
 	),
@@ -2051,7 +2070,14 @@ make_var_alias(Var, InstMap0, InstMap, IKT0, IKT) :-
 		InstMap0 = InstMap,
 		IKT0 = IKT
 	;
-		inst_key_table_add(IKT0, Inst, InstKey, IKT),
+		( Inst = free(_) ->
+			NewInst = free(alias)
+		; Inst = free(_, T) ->
+			NewInst = free(alias, T)
+		;
+			NewInst = Inst
+		),
+		inst_key_table_add(IKT0, NewInst, InstKey, IKT),
 		instmap__set(InstMap0, Var, alias(InstKey), InstMap)
 	).
 
@@ -2131,8 +2157,8 @@ strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-
 strip_builtin_qualifiers_from_inst(inst_var(V), inst_var(V)).
 strip_builtin_qualifiers_from_inst(alias(V), alias(V)).
 strip_builtin_qualifiers_from_inst(not_reached, not_reached).
-strip_builtin_qualifiers_from_inst(free, free).
-strip_builtin_qualifiers_from_inst(free(Type), free(Type)).
+strip_builtin_qualifiers_from_inst(free(A), free(A)).
+strip_builtin_qualifiers_from_inst(free(A, Type), free(A, Type)).
 strip_builtin_qualifiers_from_inst(any(Uniq), any(Uniq)).
 strip_builtin_qualifiers_from_inst(ground(Uniq, Pred0), ground(Uniq, Pred)) :-
 	strip_builtin_qualifiers_from_pred_inst(Pred0, Pred).
@@ -2265,7 +2291,7 @@ bind_inst_to_functor(Inst0, ConsId, Inst, Sub, InstTable0, ModuleInfo0,
 		InstTable, ModuleInfo) :-
 	( ConsId = cons(_, Arity) ->
 		list__duplicate(Arity, dead, ArgLives),
-		list__duplicate(Arity, free, ArgInsts)
+		list__duplicate(Arity, free(unique), ArgInsts)
 	;
 		ArgLives = [],
 		ArgInsts = []
@@ -2288,14 +2314,6 @@ bind_inst_to_functor(Inst0, ConsId, Inst, Sub, InstTable0, ModuleInfo0,
 	).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-in_mode(Mode) :- make_std_mode("in", [], Mode).
-
-out_mode(Mode) :- make_std_mode("out", [], Mode).
-
-uo_mode(Mode) :- make_std_mode("uo", [], Mode).
-
 %-----------------------------------------------------------------------------%
 
 :- pred make_std_mode(string, list(inst), mode).
@@ -2411,6 +2429,14 @@ apply_inst_key_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
 apply_inst_key_sub_mode(Sub, user_defined_mode(SymName, Insts0),
 		user_defined_mode(SymName, Insts)) :-
 	list__map(inst_apply_sub(Sub), Insts0, Insts).
+
+%-----------------------------------------------------------------------------%
+
+in_mode(Mode) :- make_std_mode("in", [], Mode).
+
+out_mode(Mode) :- make_std_mode("out", [], Mode).
+
+uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
 %-----------------------------------------------------------------------------%
 

@@ -3069,9 +3069,9 @@ output_lval(temp(Type, Num)) -->
 		io__write_int(Num)
 	).
 output_lval(mem_ref(Rval)) -->
-	io__write_string("XXX("),
+	io__write_string("(*(Word *)("),
 	output_rval(Rval),
-	io__write_string(")").
+	io__write_string("))").
 
 %-----------------------------------------------------------------------------%
 

@@ -46,7 +46,7 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
-	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
+	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0, _Refs),
 	set__init(LiveSets0),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),

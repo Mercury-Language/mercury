@@ -1190,7 +1190,8 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), InstTable, ModuleInfo, Va
 			% mode analysis yet
 			{ Unification = complicated_unify(Mode, CanFail) },
 			{ CanFail = can_fail },
-			{ Mode = (free - free -> free - free) }
+			{ Mode = (free(unique) - free(unique) -> 
+					free(unique) - free(unique)) }
 		->
 			hlds_out__write_indent(Indent),
 			io__write_string("% Not yet classified\n")
@@ -1836,20 +1837,27 @@ hlds_out__write_typeinfo_varmap_2([TVar | TVars], Indent, AppendVarnums,
 
 hlds_out__write_stack_slots(Indent, StackSlots, VarSet, AppendVarnums) -->
 	{ map__to_assoc_list(StackSlots, VarSlotList) },
-	hlds_out__write_var_to_lvals(VarSlotList, VarSet, AppendVarnums,
+	{ list__map(lambda([X::in, Y::out] is det, 
+			( X = V - L, Y = V - store_info(val, L) )),
+		VarSlotList, StoreInfoList) },
+	hlds_out__write_var_to_lvals(StoreInfoList, VarSet, AppendVarnums,
 		Indent).
 
-:- pred hlds_out__write_var_to_lvals(assoc_list(var, lval), varset, bool, int,
-	io__state, io__state).
+:- pred hlds_out__write_var_to_lvals(assoc_list(var, store_info), varset,
+	bool, int, io__state, io__state).
 :- mode hlds_out__write_var_to_lvals(in, in, in, in, di, uo) is det.
 
-hlds_out__write_var_to_lvals([], _, _, _) --> [].
-hlds_out__write_var_to_lvals([Var - Loc | VarLocs], VarSet, AppendVarnums,
-		Indent) -->
+	hlds_out__write_var_to_lvals([], _, _, _) --> [].
+hlds_out__write_var_to_lvals([Var - store_info(ValOrRef, Loc) | VarLocs],
+		VarSet, AppendVarnums, Indent) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("%\t"),
 	mercury_output_var(Var, VarSet, AppendVarnums),
 	io__write_string("\t-> "),
+	( { ValOrRef = ref },
+		io__write_string("*")
+	; { ValOrRef = val }
+	),
 	{ llds_out__lval_to_string(Loc, LocStrPrime) ->
 		LocStr = LocStrPrime
 	;

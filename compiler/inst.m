@@ -21,8 +21,8 @@
 :- type (inst)
 	--->		any(uniqueness)
 	;		alias(inst_key)
-	;		free
-	;		free(type)
+	;		free(aliasing)
+	;		free(aliasing, type)
 	;		bound(uniqueness, list(bound_inst))
 				% The list(bound_inst) must be sorted
 	;		ground(uniqueness, maybe(pred_inst_info))
@@ -40,6 +40,25 @@
 				% has been declared but not actually been
 				% defined (yet).
 	;		abstract_inst(sym_name, list(inst)).
+
+	% Aliasing information for free insts.
+	% This information is needed during code generation because free(alias)
+	% and free(alias_many) variables have references associated with them
+	% whereas free(unique) variables need no representation until they are
+	% bound (or become free(alias)).
+:- type aliasing
+	--->		unique	% No aliasing.  Such variables either have no
+				% representation or are represented by junk.
+	;		alias.	% Inst is for a free variable in a known number
+				% of partially instantiated data structures.
+				% Such variables are represented by a reference
+				% to where their value needs to be put when
+				% they are bound.
+	% ;		alias_many.
+				% XXX not yet implemented.
+				% Inst is for a variable that has an arbitrary
+				% number of references which are not all known
+				% in the current scope.
 
 :- type uniqueness
 	--->		shared		% there might be other references
@@ -406,8 +425,9 @@ optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub,
 	).
 optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub,
 		any(Uniq), any(Uniq), IKs, IKs).
-optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free, free, IKs, IKs).
-optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(T), free(T),
+optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(A), free(A), 
+		IKs, IKs).
+optimise_inst_keys_in_inst(_OldFwd, _UsedOnce, _Sub, free(A, T), free(A, T),
 		IKs, IKs).
 optimise_inst_keys_in_inst(OldFwd, UsedOnce, Sub,
 		bound(Uniq, Insts0), bound(Uniq, Insts), IKs0, IKs) :-
@@ -578,8 +598,8 @@ add_backward_dependencies([K | Ks], V, BwdMap0, BwdMap) :-
 
 inst_keys_in_inst(any(_Uniq), Keys, Keys).
 inst_keys_in_inst(alias(Key), Keys, [Key | Keys]).
-inst_keys_in_inst(free, Keys, Keys).
-inst_keys_in_inst(free(_Type), Keys, Keys).
+inst_keys_in_inst(free(_), Keys, Keys).
+inst_keys_in_inst(free(_, _Type), Keys, Keys).
 inst_keys_in_inst(bound(_Uniq, BoundInsts), Keys0, Keys) :-
 	inst_keys_in_bound_insts(BoundInsts, Keys0, Keys).
 inst_keys_in_inst(ground(_Uniq, _MaybePredInstInfo), Keys, Keys).
@@ -613,8 +633,8 @@ inst_expand_fully(_IKT, any(Uniq), any(Uniq)).
 inst_expand_fully(IKT, alias(Key), Inst) :-
 	inst_key_table_lookup(IKT, Key, Inst0),
 	inst_expand_fully(IKT, Inst0, Inst).
-inst_expand_fully(_IKT, free, free).
-inst_expand_fully(_IKT, free(Type), free(Type)).
+inst_expand_fully(_IKT, free(A), free(A)).
+inst_expand_fully(_IKT, free(A, Type), free(A, Type)).
 inst_expand_fully(IKT, bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts)) :-
 	bound_insts_expand_fully(IKT, BoundInsts0, BoundInsts).
 inst_expand_fully(_IKT, ground(Uniq, PredInstInfo), ground(Uniq, PredInstInfo)).
@@ -645,8 +665,8 @@ inst_apply_sub(Sub, alias(Key0), alias(Key)) :-
 	;
 		Key = Key0
 	).
-inst_apply_sub(_Sub, free, free).
-inst_apply_sub(_Sub, free(Type), free(Type)).
+inst_apply_sub(_Sub, free(Aliasing), free(Aliasing)).
+inst_apply_sub(_Sub, free(Aliasing, Type), free(Aliasing, Type)).
 inst_apply_sub(Sub, bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts)) :-
 	list__map(bound_inst_apply_sub(Sub), BoundInsts0, BoundInsts).
 inst_apply_sub(_Sub, ground(Uniq, MaybePredInstInfo),

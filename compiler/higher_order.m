@@ -1216,7 +1216,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 	PredInstInfo = pred_inst_info(PredOrFunc,
 		argument_modes(CalledArgIT, UnCurriedArgModes), Detism),
 	Inst = ground(shared, yes(PredInstInfo)),
-	Unimode = (free -> Inst) - (Inst -> Inst),
+	Unimode = (free(unique) -> Inst) - (Inst -> Inst),
 	Goal = unify(LVar, Rhs, Unimode, Unify, Context),
 
 	set__list_to_set([LVar | NewHeadVars0], NonLocals),

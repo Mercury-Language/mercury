@@ -414,7 +414,7 @@ instmapping_lookup_var(InstMap, Var, Inst) :-
 	( map__search(InstMap, Var, VarInst) ->
 		Inst = VarInst
 	;
-		Inst = free
+		Inst = free(unique)
 	).
 
 instmap_delta_search_var(unreachable, _, not_reached).
@@ -663,8 +663,8 @@ instmap__get_relevant_inst_keys_in_inst(alias(Key), Recursive, ModuleInfo,
 	),
 	instmap__get_relevant_inst_keys_in_inst(Inst, Recursive, ModuleInfo,
 		InstTable, S1, S, D1, D).
-instmap__get_relevant_inst_keys_in_inst(free, _, _, _, S, S, D, D).
 instmap__get_relevant_inst_keys_in_inst(free(_), _, _, _, S, S, D, D).
+instmap__get_relevant_inst_keys_in_inst(free(_, _), _, _, _, S, S, D, D).
 instmap__get_relevant_inst_keys_in_inst(bound(_, BoundInsts), Rec, ModuleInfo,
 		InstTable, S0, S, D0, D) :-
 	list__foldl2(lambda([BoundInst :: in, AS0 :: in, AS :: out,
@@ -931,7 +931,7 @@ instmap__unify_var([InstMap - Nonlocals| Rest], Var, InstList0, InstList,
 			Sub2 = Sub0
 		)
 	;
-		VarInst = free,
+		VarInst = free(unique),
 		Inst2 = Inst0,
 		Error1 = Error0,
 		ModuleInfo2 = ModuleInfo0,

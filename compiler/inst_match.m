@@ -158,6 +158,11 @@ mode system to distinguish between different representations.
 :- pred inst_is_ground_or_any(inst, inst_table, module_info).
 :- mode inst_is_ground_or_any(in, in, in) is semidet.
 
+	% succeed if the inst is fully ground and higher order
+	% (i.e. contains a pred_inst_info.
+:- pred inst_is_higher_order_ground(inst, inst_table, module_info).
+:- mode inst_is_higher_order_ground(in, in, in) is semidet.
+
         % succeed if the inst is `mostly_unique' or `unique'
 :- pred inst_is_mostly_unique(inst, inst_table, module_info).
 :- mode inst_is_mostly_unique(in, in, in) is semidet.
@@ -219,6 +224,12 @@ mode system to distinguish between different representations.
 
 :- pred inst_is_free(inst, inst_table, module_info).
 :- mode inst_is_free(in, in, in) is semidet.
+
+:- pred inst_is_free_alias(inst, inst_table, module_info).
+:- mode inst_is_free_alias(in, in, in) is semidet.
+
+:- pred inst_contains_free_alias(inst, inst_table, module_info).
+:- mode inst_contains_free_alias(in, in, in) is semidet.
 
 :- pred inst_list_is_free(list(inst), inst_table, module_info).
 :- mode inst_list_is_free(in, in, in) is semidet.
@@ -310,14 +321,18 @@ inst_matches_initial_2(InstA, InstB, InstTable, ModuleInfo, Expansions) :-
 
 inst_matches_initial_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(any(_), free, _, _, _).
-inst_matches_initial_3(free, any(_), _, _, _).
-inst_matches_initial_3(free, free, _, _, _).
+inst_matches_initial_3(any(_), free(unique), _, _, _).
+inst_matches_initial_3(free(unique), any(_), _, _, _).
+inst_matches_initial_3(free(alias), free(alias), _, _, _).
+			% AAA free(alias) should match_initial free(unique)
+			% and vice-versa.  They will as soon as the mode
+			% checker supports the implied modes that would result.
+inst_matches_initial_3(free(unique), free(unique), _, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), InstTable, ModuleInfo,
 		_) :-
 	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_uniq(ListA, UniqB, InstTable, ModuleInfo).
-inst_matches_initial_3(bound(_Uniq, _List), free, _, _, _).
+inst_matches_initial_3(bound(_Uniq, _List), free(_), _, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), 
 			InstTable, ModuleInfo, Expansions) :-
 	unique_matches_initial(UniqA, UniqB),
@@ -340,7 +355,7 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), InstTable, ModuleI
 	bound_inst_list_is_mostly_unique(List, InstTable, ModuleInfo).
 inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
-inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _, _).
+inst_matches_initial_3(ground(_Uniq, _PredInst), free(_), _, _, _).
 inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), InstTable,
 		ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
@@ -359,7 +374,7 @@ inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _, _) :-
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
 inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _, _).
-inst_matches_initial_3(abstract_inst(_,_), free, _, _, _).
+inst_matches_initial_3(abstract_inst(_,_), free(_), _, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				InstTable, ModuleInfo, Expansions) :-
 	inst_list_matches_initial(ArgsA, ArgsB, InstTable, ModuleInfo,
@@ -382,7 +397,8 @@ pred_inst_matches(PredInstA, PredInstB, InstTable, ModuleInfo) :-
 	set__init(Expansions),
 	pred_inst_matches_2(PredInstA, PredInstB, InstTable, ModuleInfo, Expansions).
 
-	% pred_inst_matches_2(PredInstA, PredInstB, InstTable, ModuleInfo, Expansions)
+	% pred_inst_matches_2(PredInstA, PredInstB, InstTable, ModuleInfo,
+	%		Expansions)
 	%	Same as pred_inst_matches/4, except that inst pairs in
 	%	Expansions are assumed to match_final each other.
 	%	(This avoids infinite loops when calling inst_matches_final
@@ -392,13 +408,15 @@ pred_inst_matches(PredInstA, PredInstB, InstTable, ModuleInfo) :-
 			module_info, expansions).
 :- mode pred_inst_matches_2(in, in, in, in, in) is semidet.
 
-pred_inst_matches_2(
-		pred_inst_info(PredOrFunc, argument_modes(_InstTableA, ModesA), Det),
-		pred_inst_info(PredOrFunc, argument_modes(_InstTableB, ModesB), Det),
+pred_inst_matches_2(pred_inst_info(PredOrFunc, ArgModesA, Det),
+		pred_inst_info(PredOrFunc, ArgModesB, Det),
 		InstTable, ModuleInfo, Expansions) :-
+	ArgModesA = argument_modes(_, ModesA),
+	ArgModesB = argument_modes(_, ModesB),
 	% XXX This is incorrect in the case where the pred insts have
 	%     aliasing in their argument_modes.
-	pred_inst_argmodes_matches(ModesA, ModesB, InstTable, ModuleInfo, Expansions).
+	pred_inst_argmodes_matches(ModesA, ModesB, InstTable, ModuleInfo, 
+		Expansions).
 
 	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo, Expansions):
 	% succeeds if the initial insts of ModesB specify at least as
@@ -562,13 +580,13 @@ inst_matches_final_2(InstA, InstB, InstTable, ModuleInfo, Expansions) :-
 
 inst_matches_final_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_final(UniqA, UniqB).
-inst_matches_final_3(free, any(Uniq), _, _, _) :-
+inst_matches_final_3(free(unique), any(Uniq), _, _, _) :-
 	% We do not yet allow `free' to match `any',
 	% unless the `any' is `clobbered_any' or `mostly_clobbered_any'.
 	% Among other things, changing this would break compare_inst
 	% in modecheck_call.m.
 	( Uniq = clobbered ; Uniq = mostly_clobbered ).
-inst_matches_final_3(free, free, _, _, _).
+inst_matches_final_3(free(Aliasing), free(Aliasing), _, _, _).
 inst_matches_final_3(bound(UniqA, ListA), any(UniqB), InstTable, ModuleInfo,
 		_) :-
 	unique_matches_final(UniqA, UniqB),
@@ -687,7 +705,7 @@ inst_matches_binding_2(InstA, InstB, InstTable, ModuleInfo, Expansions) :-
 :- mode inst_matches_binding_3(in, in, in, in, in) is semidet.
 
 % Note that `any' is *not* considered to match `any'.
-inst_matches_binding_3(free, free, _, _, _).
+inst_matches_binding_3(free(Aliasing), free(Aliasing), _, _, _).
 inst_matches_binding_3(bound(_UniqA, ListA), bound(_UniqB, ListB), InstTable,
 		ModuleInfo, Expansions) :-
 	bound_inst_list_matches_binding(ListA, ListB, InstTable, ModuleInfo,
@@ -793,8 +811,8 @@ inst_is_clobbered(alias(Key), InstTable, ModuleInfo) :-
         % or is a user-defined inst which is defined as `free'.
         % Abstract insts must not be free.
 
-inst_is_free(free, _, _).
-inst_is_free(free(_Type), _, _).
+inst_is_free(free(_), _, _).
+inst_is_free(free(_, _), _, _).
 inst_is_free(inst_var(_), _, _) :-
         error("internal error: uninstantiated inst parameter").
 inst_is_free(defined_inst(InstName), InstTable, ModuleInfo) :-
@@ -804,6 +822,51 @@ inst_is_free(alias(Key), InstTable, ModuleInfo) :-
 	inst_table_get_inst_key_table(InstTable, IKT),
 	inst_key_table_lookup(IKT, Key, Inst),
 	inst_is_free(Inst, InstTable, ModuleInfo).
+
+	% inst_is_free_alias succeeds iff the inst passed is `free(alias)'
+	% or a user-defined inst which is defined as `free(alias)' or
+	% `alias(IK)' where `IK' points to a `free(alias)' inst in the IKT.
+
+inst_is_free_alias(free(alias), _, _).
+inst_is_free_alias(free(alias, _), _, _).
+inst_is_free_alias(inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_free_alias(defined_inst(InstName), InstTable, ModuleInfo) :-
+	inst_lookup(InstTable, ModuleInfo, InstName, Inst),
+	inst_is_free_alias(Inst, InstTable, ModuleInfo).
+inst_is_free_alias(alias(Key), InstTable, ModuleInfo) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_free_alias(Inst, InstTable, ModuleInfo).
+
+	% inst_contains_free_alias succeeds iff the inst passed is free(alias)
+	% or is bound to a functor with an argument containing a free(alias).
+inst_contains_free_alias(Inst, InstTable, ModuleInfo) :-
+	set__init(Seen0),
+	inst_contains_free_alias_2(Inst, InstTable, ModuleInfo, Seen0).
+
+:- pred inst_contains_free_alias_2(inst, inst_table, module_info,
+	set(inst_name)).
+:- mode inst_contains_free_alias_2(in, in, in, in) is semidet.
+
+inst_contains_free_alias_2(free(alias), _, _, _).
+inst_contains_free_alias_2(free(alias, _), _, _, _).
+inst_contains_free_alias_2(inst_var(_), _, _, _) :-
+        error("internal error: uninstantiated inst parameter").
+inst_contains_free_alias_2(defined_inst(InstName), InstTable, ModuleInfo,
+		Seen0) :-
+	\+ set__member(InstName, Seen0),
+	inst_lookup(InstTable, ModuleInfo, InstName, Inst),
+	set__insert(Seen0, InstName, Seen1),
+	inst_contains_free_alias_2(Inst, InstTable, ModuleInfo, Seen1).
+inst_contains_free_alias_2(alias(Key), InstTable, ModuleInfo, Seen) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_contains_free_alias_2(Inst, InstTable, ModuleInfo, Seen).
+inst_contains_free_alias_2(bound(_, BoundInsts), InstTable, ModuleInfo, Seen) :-
+	list__member(functor(_, ArgInsts), BoundInsts),
+	list__member(Inst, ArgInsts),
+	inst_contains_free_alias_2(Inst, InstTable, ModuleInfo, Seen).
 
         % inst_is_bound succeeds iff the inst passed is not `free'
         % or is a user-defined inst which is not defined as `free'.
@@ -914,6 +977,21 @@ inst_is_ground_or_any_2(alias(Key), InstTable, ModuleInfo, Expansions) :-
 	inst_key_table_lookup(IKT, Key, Inst),
 	inst_is_ground_or_any_2(Inst, InstTable, ModuleInfo, Expansions).
 
+        % inst_is_higher_order_ground succeeds iff the inst passed is `ground'
+        % or equivalent and has a pred_inst_info.
+
+inst_is_higher_order_ground(ground(_, yes(_PredInstInfo)), _, _).
+inst_is_higher_order_ground(inst_var(_), _, _) :-
+        error("internal error: uninstantiated inst parameter").
+inst_is_higher_order_ground(Inst, InstTable, ModuleInfo) :-
+	Inst = defined_inst(InstName),
+	inst_lookup(InstTable, ModuleInfo, InstName, Inst2),
+	inst_is_higher_order_ground(Inst2, InstTable, ModuleInfo).
+inst_is_higher_order_ground(alias(Key), InstTable, ModuleInfo) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_is_higher_order_ground(Inst, InstTable, ModuleInfo).
+
         % inst_is_unique succeeds iff the inst passed is unique
         % or free.  Abstract insts are not considered unique.
 
@@ -933,7 +1011,8 @@ inst_is_unique_2(bound(unique, List), InstTable, ModuleInfo, Expansions) :-
 	bound_inst_list_has_property(inst_is_unique_2, List, InstTable,
 		ModuleInfo, Expansions).
 inst_is_unique_2(any(unique), _, _, _).
-inst_is_unique_2(free, _, _, _).
+inst_is_unique_2(free(_), _, _, _).
+inst_is_unique_2(free(_, _), _, _, _).
 inst_is_unique_2(ground(unique, _), _, _, _).
 inst_is_unique_2(inst_var(_), _, _, _) :-
         error("internal error: uninstantiated inst parameter").
@@ -972,7 +1051,8 @@ inst_is_mostly_unique_2(bound(mostly_unique, List), InstTable, ModuleInfo,
 		ModuleInfo, Expansions).
 inst_is_mostly_unique_2(any(unique), _, _, _).
 inst_is_mostly_unique_2(any(mostly_unique), _, _, _).
-inst_is_mostly_unique_2(free, _, _, _).
+inst_is_mostly_unique_2(free(_), _, _, _).
+inst_is_mostly_unique_2(free(_, _), _, _, _).
 inst_is_mostly_unique_2(ground(unique, _), _, _, _).
 inst_is_mostly_unique_2(ground(mostly_unique, _), _, _, _).
 inst_is_mostly_unique_2(inst_var(_), _, _, _) :-
@@ -1013,7 +1093,7 @@ inst_is_not_partly_unique_2(bound(shared, List), InstTable, ModuleInfo,
 		Expansions) :-
 	bound_inst_list_has_property(inst_is_not_partly_unique_2, List,
 		InstTable, ModuleInfo, Expansions).
-inst_is_not_partly_unique_2(free, _, _, _).
+inst_is_not_partly_unique_2(free(_), _, _, _).
 inst_is_not_partly_unique_2(any(shared), _, _, _).
 inst_is_not_partly_unique_2(ground(shared, _), _, _, _).
 inst_is_not_partly_unique_2(inst_var(_), _, _, _) :-
@@ -1060,7 +1140,7 @@ inst_is_not_fully_unique_2(bound(mostly_unique, List), InstTable, ModuleInfo,
 		InstTable, ModuleInfo, Expansions).
 inst_is_not_fully_unique_2(any(shared), _, _, _).
 inst_is_not_fully_unique_2(any(mostly_unique), _, _, _).
-inst_is_not_fully_unique_2(free, _, _, _).
+inst_is_not_fully_unique_2(free(_), _, _, _).
 inst_is_not_fully_unique_2(ground(shared, _), _, _, _).
 inst_is_not_fully_unique_2(ground(mostly_unique, _), _, _, _).
 inst_is_not_fully_unique_2(inst_var(_), _, _, _) :-
@@ -1317,6 +1397,16 @@ inst_contains_inst_var_2(ground(_Uniq, PredInstInfo), _InstTable, ModuleInfo,
 		argument_modes(ArgInstTable, Modes), _Det)),
 	mode_list_contains_inst_var_2(Modes, ArgInstTable, ModuleInfo,
 		Expansions, InstVar).
+inst_contains_inst_var_2(abstract_inst(_Name, ArgInsts), InstTable, ModuleInfo,
+		Expansions, InstVar) :-
+	inst_list_contains_inst_var(ArgInsts, InstTable, ModuleInfo, Expansions,
+		InstVar).
+inst_contains_inst_var_2(ground(_Uniq, PredInstInfo), InstTable,
+		ModuleInfo, Expansions, InstVar) :-
+	PredInstInfo = yes(pred_inst_info(_PredOrFunc, ArgModes, _Det)),
+	ArgModes = argument_modes(_, Modes),
+	mode_list_contains_inst_var_2(Modes, InstTable, ModuleInfo, Expansions,
+		InstVar).
 inst_contains_inst_var_2(abstract_inst(_Name, ArgInsts), InstTable, ModuleInfo,
 		Expansions, InstVar) :-
 	inst_list_contains_inst_var(ArgInsts, InstTable, ModuleInfo, Expansions,

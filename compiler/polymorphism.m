@@ -1487,7 +1487,7 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 		% create the construction unification to initialize the variable
 	BaseUnification = construct(BaseVar, ConsId, [], []),
-	BaseUnifyMode = (free -> ground(shared, no)) -
+	BaseUnifyMode = (free(unique) -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	BaseUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -1515,13 +1515,13 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 		% create the construction unification to initialize the
 		% variable
-	UniMode = (free - ground(shared, no) ->
+	UniMode = (free(unique) - ground(shared, no) ->
 		   ground(shared, no) - ground(shared, no)),
 	list__length(NewArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(NewVar, NewConsId, NewArgVars,
 		UniModes),
-	UnifyMode = (free -> ground(shared, no)) -
+	UnifyMode = (free(unique) -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -1860,7 +1860,8 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	CountTerm = functor(CountConsId, []),
 	CountInst = bound(unique, [functor(int_const(Num), [])]),
-	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
+	CountUnifyMode = (free(unique) -> CountInst) -
+			(CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	CountUnify = unify(CountVar, CountTerm, CountUnifyMode,
@@ -1933,7 +1934,7 @@ polymorphism__get_special_proc_list_2([Id | Ids],
 	Term = functor(cons(PredName2, 0), []),
 
 	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
-	UnifyMode = (free -> Inst) - (Inst -> Inst),
+	UnifyMode = (free(unique) -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(Var, Term, UnifyMode, Unification, UnifyContext),
@@ -2042,12 +2043,12 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 		TypeInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize the variable
-	UniMode = (free - ground(shared, no) ->
+	UniMode = (free(unique) - ground(shared, no) ->
 		   ground(shared, no) - ground(shared, no)),
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes),
-	UnifyMode = (free -> ground(shared, no)) -
+	UnifyMode = (free(unique) -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -2100,7 +2101,7 @@ polymorphism__init_const_base_type_info_var(Type, TypeId,
 
 	% create the construction unification to initialize the variable
 	Unification = construct(BaseTypeInfoVar, ConsId, [], []),
-	UnifyMode = (free -> ground(shared, no)) -
+	UnifyMode = (free(unique) -> ground(shared, no)) -
 			(ground(shared, no) -> ground(shared, no)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong

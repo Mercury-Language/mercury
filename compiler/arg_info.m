@@ -48,7 +48,7 @@
 	% Given a list of the head variables and their argument information,
 	% return a list giving the input variables and their initial locations.
 :- pred arg_info__build_input_arg_list(assoc_list(var, arg_info),
-	assoc_list(var, rval)).
+	assoc_list(var, val_or_ref)).
 :- mode arg_info__build_input_arg_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -207,6 +207,20 @@ make_arg_infos_compact_list([Mode | Modes], [Type | Types], InReg0, OutReg0,
 		ArgReg = OutReg0,
 		InReg1 = InReg0,
 		OutReg1 is OutReg0 + 1
+	;
+		% Treat aliased args as input because we need to pass in 
+		% a pointer to the memory location.
+		ArgMode = ref_in,
+		ArgReg = InReg0,
+		InReg1 is InReg0 + 1,
+		OutReg1 = OutReg0
+	;
+		% Treat ref_out the same as output because we will need to
+		% return a reference.
+		ArgMode = ref_out,
+		ArgReg = OutReg0,
+		InReg1 = InReg0,
+		OutReg1 is OutReg0 + 1
 	),
 	ArgInfo = arg_info(ArgReg, ArgMode),
 	make_arg_infos_compact_list(Modes, Types, InReg1, OutReg1,
@@ -239,11 +253,12 @@ arg_info__ho_call_args_method(_, compact).
 arg_info__build_input_arg_list([], []).
 arg_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 	Arg = arg_info(Loc, Mode),
-	(
-		Mode = top_in
-	->
+	( Mode = top_in  ->
 		code_util__arg_loc_to_register(Loc, Reg),
-		VarArgs = [V - lval(Reg) | VarArgs0]
+		VarArgs = [V - value(lval(Reg)) | VarArgs0]
+	; Mode = ref_in ->
+		code_util__arg_loc_to_register(Loc, Reg),
+		VarArgs = [V - reference(Reg) | VarArgs0]
 	;
 		VarArgs = VarArgs0
 	),

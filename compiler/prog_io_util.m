@@ -175,7 +175,7 @@ convert_inst(Term, Result) :-
 	Term = term__functor(Name, Args0, _Context),
 	% `free' insts
 	( Name = term__atom("free"), Args0 = [] ->
-		Result = free
+		Result = free(unique)
 
 	% `any' insts
 	; Name = term__atom("any"), Args0 = [] ->

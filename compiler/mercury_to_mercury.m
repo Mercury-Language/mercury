@@ -185,7 +185,7 @@
 
 :- implementation.
 
-:- import_module prog_out, prog_util, hlds_pred, hlds_out, (inst), instmap.
+:- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
 :- import_module globals, options, termination.
 :- import_module int, string, set, term_io, lexer, require.
 :- import_module char.
@@ -648,12 +648,18 @@ mercury_output_structured_inst(Expand, alias(Key), Indent, VarSet,
 		{ inst_key_table_lookup(IKT, Key, Inst) },
 		mercury_output_inst(Expand, Inst, VarSet, InstTable)
 	).
-mercury_output_structured_inst(_, free, Indent, _, _) -->
+mercury_output_structured_inst(_, free(unique), Indent, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("free\n").
-mercury_output_structured_inst(_, free(_T), Indent, _, _) -->
+mercury_output_structured_inst(_, free(alias), Indent, _, _) -->
+	mercury_output_tabs(Indent),
+	io__write_string("free_alias\n").
+mercury_output_structured_inst(_, free(unique, _T), Indent, _, _) -->
 	mercury_output_tabs(Indent),
 	io__write_string("free(with some type)\n").
+mercury_output_structured_inst(_, free(alias, _T), Indent, _, _) -->
+	mercury_output_tabs(Indent),
+	io__write_string("free_alias(with some type)\n").
 mercury_output_structured_inst(Expand, bound(Uniq, BoundInsts), Indent,
 		VarSet, InstTable) -->
 	mercury_output_tabs(Indent),
@@ -748,10 +754,14 @@ mercury_output_inst(Expand, alias(Key), VarSet, InstTable) -->
 		{ inst_key_table_lookup(IKT, Key, Inst) },
 		mercury_output_inst(Expand, Inst, VarSet, InstTable)
 	).
-mercury_output_inst(_, free, _, _) -->
+mercury_output_inst(_, free(unique), _, _) -->
 	io__write_string("free").
-mercury_output_inst(_, free(_T), _, _) -->
+mercury_output_inst(_, free(alias), _, _) -->
+	io__write_string("free_alias").
+mercury_output_inst(_, free(unique, _T), _, _) -->
 	io__write_string("free(with some type)").
+mercury_output_inst(_, free(alias, _T), _, _) -->
+	io__write_string("free_alias(with some type)").
 mercury_output_inst(Expand, bound(Uniq, BoundInsts), VarSet, InstTable) -->
 	mercury_output_uniqueness(Uniq, "bound"),
 	io__write_string("("),

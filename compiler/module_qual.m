@@ -514,9 +514,11 @@ qualify_inst_list([Inst0 | Insts0], [Inst | Insts], Info0, Info) -->
 qualify_inst(any(A), any(A), Info, Info) --> [].
 qualify_inst(alias(V), alias(V), Info, Info) -->
 	{ error("qualify_inst: alias") }.
-qualify_inst(free, free, Info, Info) --> [].
+qualify_inst(free(unique), free(unique), Info, Info) --> [].
+qualify_inst(free(alias), _, _, _) -->
+	{ error("compiler generated inst not expected") }.
 qualify_inst(not_reached, not_reached, Info, Info) --> [].
-qualify_inst(free(_), _, _, _) -->
+qualify_inst(free(_, _), _, _, _) -->
 	{ error("compiler generated inst not expected") }.
 qualify_inst(bound(Uniq, BoundInsts0), bound(Uniq, BoundInsts),
 				Info0, Info) -->

@@ -160,7 +160,10 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	{ simplify_info_init(DetInfo0, Simplifications, InstMap0,
 		VarSet0, VarTypes0, SimplifyInfo0) },
 
-	{ simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo) },
+	pd_info_get_io_state(IO0),
+	{ simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo,
+		IO0, IO) },
+	pd_info_set_io_state(IO),
 
 	%
 	% Deconstruct the simplify_info.
@@ -479,7 +482,7 @@ pd_util__get_branch_instmap_deltas(switch(_, _, Cases, _) - _,
 			Case = case(_, CaseIMD, _ - CaseInfo),
 			goal_info_get_instmap_delta(CaseInfo, GoalIMD),
 			instmap_delta_apply_instmap_delta(CaseIMD, GoalIMD,
-				InstMapDelta) % AAA is this right?
+				InstMapDelta)
 		)),
 	list__map(GetCaseInstMapDelta, Cases, InstMapDeltas).
 pd_util__get_branch_instmap_deltas(disj(Disjuncts, _) - _, InstMapDeltas) :-
@@ -727,7 +730,7 @@ inst_MSG(InstA, InstB, InstTable, ModuleInfo, Inst) :-
 :- mode inst_MSG_2(in, in, in, in, out) is semidet.
 
 inst_MSG_2(any(_), any(Uniq), _IT, _M, any(Uniq)).
-inst_MSG_2(free, free, _IT, _M, free).
+inst_MSG_2(free(Aliasing), free(Aliasing), _IT, _M, free(Aliasing)).
 
 inst_MSG_2(bound(_, ListA), bound(UniqB, ListB), InstTable, ModuleInfo, Inst) :-
 	bound_inst_list_MSG(ListA, ListB, InstTable, ModuleInfo, UniqB, ListB,
@@ -814,8 +817,8 @@ pd_util__inst_size(InstTable, ModuleInfo, Inst, Size) :-
 
 pd_util__inst_size_2(_, _, not_reached, _, 0).
 pd_util__inst_size_2(_, _, any(_), _, 0).
-pd_util__inst_size_2(_, _, free, _, 0).
 pd_util__inst_size_2(_, _, free(_), _, 0).
+pd_util__inst_size_2(_, _, free(_,_), _, 0).
 pd_util__inst_size_2(_, _, ground(_, _), _, 0).
 pd_util__inst_size_2(_, _, inst_var(_), _, 0).
 pd_util__inst_size_2(_, _, abstract_inst(_, _), _, 0).

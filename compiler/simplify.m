@@ -38,8 +38,8 @@
 :- mode simplify__proc(in, in, in, in, out, in, out, out, out, di, uo) is det.
 
 :- pred simplify__process_goal(hlds_goal, hlds_goal,
-		simplify_info, simplify_info).
-:- mode simplify__process_goal(in, out, in, out) is det.
+		simplify_info, simplify_info, io__state, io__state).
+:- mode simplify__process_goal(in, out, in, out, di, uo) is det.
 	
 	% Find out which simplifications should be run from the options table
 	% stored in the globals. The first argument states whether warnings
@@ -70,6 +70,7 @@
 :- import_module hlds_module, hlds_data, (inst), inst_match.
 :- import_module options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes, purity, pd_cost.
+:- import_module unify_proc, mode_info.
 :- import_module set, require, std_util, int.
 
 %-----------------------------------------------------------------------------%
@@ -109,13 +110,13 @@ simplify__proc_2(Simplifications0, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	simplify_info_init(DetInfo0, Simplifications, InstMap0,
 		VarSet0, VarTypes0, Info0),
 	proc_info_goal(ProcInfo0, Goal0),
-	simplify__process_goal(Goal0, Goal, Info0, Info),
+	simplify__process_goal(Goal0, Goal, Info0, Info, State1, State2),
 
 	simplify_info_get_module_info(Info, ModuleInfo),
 	simplify_info_get_msgs(Info, Msgs0),
 	set__to_sorted_list(Msgs0, Msgs),
 	det_report_msgs(Msgs, ModuleInfo, WarnCnt,
-			ErrCnt, State1, State),
+			ErrCnt, State2, State),
 	simplify_info_get_varset(Info, VarSet),
 	simplify_info_get_var_types(Info, VarTypes),
 	simplify_info_get_inst_table(Info, InstTable),
@@ -124,7 +125,7 @@ simplify__proc_2(Simplifications0, PredId, ProcId, ModuleInfo0, ModuleInfo,
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
 	proc_info_set_inst_table(ProcInfo3, InstTable, ProcInfo).
 
-simplify__process_goal(Goal0, Goal, Info0, Info) :-
+simplify__process_goal(Goal0, Goal, Info0, Info, IOState0, IOState) :-
 	simplify_info_get_simplifications(Info0, Simplifications0),
 	simplify_info_get_instmap(Info0, InstMap0),
 
@@ -137,7 +138,8 @@ simplify__process_goal(Goal0, Goal, Info0, Info) :-
 		simplify_info_set_simplifications(Info0, Simplifications1,
 			Info1),
 		
-		simplify__do_process_goal(Goal0, Goal1, Info1, Info2),
+		simplify__do_process_goal(Goal0, Goal1, Info1, Info2,
+			IOState0, IOState1),
 
 		NotOnSecondPass = [warn_simple_code, warn_duplicate_calls,
 			common_struct, duplicate_calls],
@@ -146,16 +148,18 @@ simplify__process_goal(Goal0, Goal, Info0, Info) :-
 		simplify_info_reinit(Simplifications2, InstMap0, Info2, Info3)
 	;
 		Info3 = Info0,
-		Goal1 = Goal0
+		Goal1 = Goal0,
+		IOState1 = IOState0
 	),
 		% On the second pass do excess assignment elimination and
 		% some cleaning up after the common structure pass.
-	simplify__do_process_goal(Goal1, Goal, Info3, Info).
+	simplify__do_process_goal(Goal1, Goal, Info3, Info, IOState1, IOState).
 
 :- pred simplify__do_process_goal(hlds_goal::in, hlds_goal::out,
-		simplify_info::in, simplify_info::out) is det.
+		simplify_info::in, simplify_info::out, io__state::di,
+		io__state::uo) is det.
 
-simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
+simplify__do_process_goal(Goal0, Goal, Info0, Info, IOState0, IOState) :-
 	simplify_info_get_instmap(Info0, InstMap0),
 	simplify__goal(Goal0, Goal1, Info0, Info1),
 	simplify_info_get_varset(Info1, VarSet0),
@@ -178,12 +182,16 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		proc_info_arglives(ProcInfo, ModuleInfo1, ArgLives),
 		recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal2,
 			Goal, InstMap0, InstTable0, InstTable, _, ModuleInfo1,
-			ModuleInfo),
+			ModuleInfo2),
+		modecheck_queued_procs(check_unique_modes(
+			may_change_called_proc), ModuleInfo2, ModuleInfo,
+			_Changed, IOState0, IOState),
 		simplify_info_set_module_info(Info3, ModuleInfo, Info4),
 		simplify_info_set_inst_table(Info4, InstTable, Info)
 	;
 		Goal = Goal1,
-		Info = Info1
+		Info = Info1,
+		IOState = IOState0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1029,7 +1037,7 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 		RevGoals0, RevGoals, GoalNeeded, Info0, Info) :-
 	(
 		simplify_do_excess_assigns(Info0),
-		Goal0 = unify(_, _, _, Unif, _) - _,
+		Goal0 = unify(_, _, LMode - RMode, Unif, _) - _,
 		goal_info_get_nonlocals(ConjInfo, NonLocals),
 		Unif = assign(LeftVar, RightVar),
 		( \+ set__member(LeftVar, NonLocals) ->
@@ -1038,7 +1046,16 @@ simplify__excess_assigns(Goal0, ConjInfo, Goals0, Goals,
 			LocalVar = RightVar, ReplacementVar = LeftVar
 		;
 			fail
-		)
+		),
+
+		% If one of the variables is free(alias) before the call
+		% then we can't remove the assignment.
+		simplify_info_get_module_info(Info0, ModuleInfo),
+		simplify_info_get_inst_table(Info0, InstTable),
+		mode_get_insts(ModuleInfo, LMode, LInitInst, _LFinInst),
+		\+ inst_is_free_alias(LInitInst, InstTable, ModuleInfo),
+		mode_get_insts(ModuleInfo, RMode, RInitInst, _RFinInst),
+		\+ inst_is_free_alias(RInitInst, InstTable, ModuleInfo)
 	->
 		GoalNeeded = no,
 		map__init(Subn0),
@@ -1137,7 +1154,8 @@ simplify__create_test_unification(Var, ConsId, ConsArity,
 	),
 	InstToUniMode =
 		lambda([ArgInst::in, ArgUniMode::out] is det, (
-			ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
+			ArgUniMode = ((ArgInst - free(unique)) -> 
+				(ArgInst - ArgInst))
 		)),
 	list__map(InstToUniMode, ArgInsts, UniModes),
 	UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
