@@ -260,6 +260,26 @@ Changes to the Mercury implementation:
 	  extras/dynamic/dl.m in the mercury-extras distribution)
 	  for procedures with arguments of type `float' or `char'
 
+* There's a new back-end that targets .NET.
+
+  Thanks to Microsoft's generous and ongoing support, both financial
+  and otherwise, we've been able to port Mercury to Microsoft's new
+  .NET system.  There's another new back-end for the Mercury compiler,
+  based on the `--high-level-code' back-end, that compiles to IL, the
+  Microsoft .NET Intermediate Language.
+
+  This back-end is enabled using the new `--target il' option
+  (or just `--il' for short), or the `ilc' grade.
+
+  Compiler support for this new back-end is mostly complete,
+  but large parts of the standard library are still not yet
+  implemented for this new port.
+
+  This is still work in progress.
+  
+  For more details, see the README.DotNet file, and
+  <http://www.cs.mu.oz.au/research/mercury/dotnet.html>.
+
 * The names of some of the `--enable-*' options to `configure' have changed.
 
   See the output of `configure --help' for details.
