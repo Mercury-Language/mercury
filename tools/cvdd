@@ -120,7 +120,7 @@ do
 		kind="c" ;;
 	doc)
 		echo "$exclude_all $exclude_doc" | sed -e '/^ *$/d' > $excludefile
-		kind="dod" ;;
+		kind="doc" ;;
 	*)
 		echo "$exclude_all $exclude_other" | sed -e '/^ *$/d' > $excludefile
 		kind="other" ;;
