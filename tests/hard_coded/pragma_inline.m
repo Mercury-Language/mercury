@@ -27,6 +27,8 @@ will_not_call_mercury, "
         printf(""%s"", Message);
         IO = IO0;
 ").
+c_write_string(Str) -->
+	io__write_string(Str).
 
 :- pragma(inline, c_write_string/3).
 
@@ -47,3 +49,4 @@ will_not_call_mercury, "{
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
 }").
+append_strings(A, B, A ++ B).

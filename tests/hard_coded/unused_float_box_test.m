@@ -79,6 +79,9 @@ my_get_functor_info(Univ, FunctorInfo) :-
 {
 	abort();
 }").
+get_notag_functor_info(_, _) :-
+	semidet_succeed,
+	private_builtin__sorry("local get_notag_functor_info").
 
     % from the type stored in the univ.)
 :- pred get_equiv_functor_info(Univ::in, ExpUniv::out) is semidet.
@@ -89,6 +92,9 @@ my_get_functor_info(Univ, FunctorInfo) :-
 {
 	abort();
 }").
+get_equiv_functor_info(_, _) :-
+	semidet_succeed,
+	private_builtin__sorry("local get_equiv_functor_info").
 
 :- pred get_enum_functor_info(Univ::in, Int::out) is semidet.
 
@@ -98,6 +104,9 @@ my_get_functor_info(Univ, FunctorInfo) :-
 {
 	abort();
 }").
+get_enum_functor_info(_, _) :-
+	semidet_succeed,
+	private_builtin__sorry("local get_enum_functor_info").
 
 :- pred get_du_functor_info(my_univ::in, int::out, int::out, int::out,
     list(univ)::out) is semidet.
@@ -108,6 +117,9 @@ my_get_functor_info(Univ, FunctorInfo) :-
 {
 	abort();
 }").
+get_du_functor_info(_, _, _, _, _) :-
+	semidet_succeed,
+	private_builtin__sorry("local get_du_functor_info").
 
 %------------------------------------------------------------------------------%
 

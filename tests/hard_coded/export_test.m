@@ -29,3 +29,7 @@ foo(X, X+1).
 "
 	foo(X, &Y);
 ").
+:- pragma foreign_proc("C#", bar(X::in, Y::out),
+		[may_call_mercury, promise_pure], "
+	export_test.mercury_code.foo(X, ref Y);
+").

@@ -15,4 +15,9 @@ c_code(T, U) :- c_code_2(T, U).
 	U = T;
 	TypeInfo_for_U = TypeInfo_for_T;
 }").
+:- pragma foreign_proc("C#", c_code_2(T::in, U::out), [promise_pure],
+"{
+	U = T;
+	TypeInfo_for_U = TypeInfo_for_T;
+}").
 

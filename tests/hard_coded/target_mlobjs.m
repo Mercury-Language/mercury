@@ -16,4 +16,5 @@ main -->
 	c_write_string(Message);
 	IO = IO0;
 ").
-
+c_write_string(Str) -->
+	io__write_string(Str).

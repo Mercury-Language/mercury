@@ -32,3 +32,5 @@ main -->
 	Value = counter++;
 }
 ").
+:- pragma foreign_code("C#", "static int counter = 0;").
+:- pragma foreign_proc("C#", bar(Value::out), [], "Value = counter++;").

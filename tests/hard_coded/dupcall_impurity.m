@@ -41,3 +41,9 @@ test2 -->
 :- pragma c_code(next_x(X::out), "X = my_global++;").
 :- pragma c_code(incr_x, "my_global++;").
 
+:- pragma foreign_code("C#", "static int my_global;").
+
+:- pragma foreign_proc("C#", get_x(X::out),
+		[promise_semipure], "X = my_global;").
+:- pragma foreign_proc("C#", next_x(X::out), [], "X = my_global++;").
+:- pragma foreign_proc("C#", incr_x, [], "my_global++;").

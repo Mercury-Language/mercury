@@ -40,4 +40,5 @@ test(3) :- impure unsafe_write_string("call to test\n").
 :- impure pred unsafe_write_string(string::in) is det.
 
 :- pragma c_code(unsafe_write_string(Str::in), "printf(Str);").
-	
+:- pragma foreign_proc("C#", unsafe_write_string(Str::in), [],
+		"System.Console.Write(Str);").

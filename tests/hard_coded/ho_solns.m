@@ -39,6 +39,13 @@ main -->
 	L = L0;
 }
 ").
+:- pragma foreign_proc("C#",
+	convert_list(L0 :: in, L :: out(list_skel(mypred))),
+	[promise_pure], "
+{
+	L = L0;
+}
+").
 
 :- pred use_list(list(mypred), io__state, io__state).
 :- mode use_list(in(list_skel(mypred)), di, uo) is det.

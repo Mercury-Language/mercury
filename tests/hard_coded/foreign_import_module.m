@@ -21,3 +21,7 @@ main -->
 "
 	foo(X, &Y);
 ").
+:- pragma foreign_proc("C#", bar(X::in, Y::out),
+		[may_call_mercury, promise_pure], "
+	foreign_import_module_2.mercury_code.foo(X, ref Y);
+").

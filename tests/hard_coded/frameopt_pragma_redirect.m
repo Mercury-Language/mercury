@@ -60,6 +60,7 @@ check_interval(S - E) :-
 :- pragma c_code(is_invalid(X :: in),
 	[will_not_call_mercury, thread_safe], 
 	"SUCCESS_INDICATOR = X > 50;").
+is_invalid(X) :- X > 50.
 
 main -->
 	{ add_interval_list([1 - 2, 3 - 4, 5 - 6, 7 - 8, 9 - 10], I) },

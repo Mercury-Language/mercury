@@ -41,11 +41,15 @@ main -->
 	int counter = 1;
 ").
 
+:- pragma foreign_code("C#", "static int counter = 1;").
+
 :- impure pred incr(int::out) is det.
 
 incr(_::out) :- error("incr/1 called for language other than C").
 
 :- pragma foreign_proc("C", incr(Val::out), [will_not_call_mercury],
+			"counter++; Val = counter;").
+:- pragma foreign_proc("C#", incr(Val::out), [will_not_call_mercury],
 			"counter++; Val = counter;").
 
 :- semipure pred get(int::out) is det.
@@ -55,6 +59,9 @@ get(_::out) :- error("get/1 called for language other than C").
 :- pragma foreign_proc("C", get(Val::out),
 		[will_not_call_mercury, promise_semipure],
 		"Val = counter").
+:- pragma foreign_proc("C#", get(Val::out),
+		[will_not_call_mercury, promise_semipure],
+		"Val = counter;").
 	
 :- pred unsafe_get(int::out) is det.
 :- pragma promise_pure(unsafe_get/1).

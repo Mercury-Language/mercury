@@ -54,15 +54,23 @@ main -->
 :- mode test1(in, out, out) is semidet.
 :- mode test1(in, in, out) is semidet.
 
+	
+:- pragma promise_pure(test1/3).
 :- pragma c_code(test1(_A::in, B::out, C::out), will_not_call_mercury, "
 	B = C = ""test1(in, out, out)"";
 	SUCCESS_INDICATOR = MR_TRUE;
 ").
+test1(_A::in, B::out, C::out) :-
+	B = C,
+	B = "test1(in, out, out)".
 
 :- pragma c_code(test1(_A::in, _B::in, C::out), will_not_call_mercury, "
 	C = ""test1(in, in, out)"";
 	SUCCESS_INDICATOR = MR_TRUE;
 "). 
+test1(_A::in, _B::in, C::out) :-
+	C = "test1(in, in, out)".
+
 
 % prefer `di' to `uo'
 
@@ -70,13 +78,18 @@ main -->
 :- mode test2(in, out) is det.
 :- mode test2(di, uo) is det.
 
+:- pragma promise_pure(test2/2).
 :- pragma c_code(test2(_A::in, B::out), will_not_call_mercury, "
 	B = ""test2(in, out)"";
 ").
+test2(_A::in, B::out) :-
+	B = "test2(in, out)".
 
 :- pragma c_code(test2(_A::di, B::uo), will_not_call_mercury, "
 	B = ""test2(di, uo)"";
 ").
+test2(_A::di, B::uo) :-
+	B = "test2(di, uo)".
 
 /******* `ui' modes not yet supported
 % prefer `ui' to `in'
@@ -98,6 +111,9 @@ main -->
 :- pragma c_code(mkany(S::out(any)), will_not_call_mercury, "
 	S = NULL;
 ").
+:- pragma foreign_proc("C#", mkany(S::out(any)), [promise_pure], "
+	S = null;
+").
 
 % prefer in(any) over out(any)
 % [i.e. any -> any beats free -> any]
@@ -106,14 +122,20 @@ main -->
 :- mode test3(in(any), out) is det.
 :- mode test3(out(any), out) is det.
 
+:- pragma promise_pure(test3/2).
 :- pragma c_code(test3(_A::in(any), B::out), will_not_call_mercury, "
 	B = ""test3(in(any), out)"";
 ").
+test3(_A::in(any), B::out) :-
+	B = "test3(in(any), out)".
 
 :- pragma c_code(test3(A::out(any), B::out), will_not_call_mercury, "
 	A = NULL;
 	B = ""test3(out(any), out)"";
 ").
+test3(A::out(any), B::out) :-
+	mkany(A),
+	B = "test3(out(any), out)".
 
 % for non-comparable modes, pick the first one
 
@@ -121,15 +143,22 @@ main -->
 :- mode test4(in, out, out) is det.
 :- mode test4(out, in, out) is det.
 
+:- pragma promise_pure(test4/3).
 :- pragma c_code(test4(_A::in, B::out, C::out), will_not_call_mercury, "
 	B = """";
 	C = ""test4(in, out, out)"";
 ").
+test4(_A::in, B::out, C::out) :-
+	B = "",
+	C = "test4(in, out, out)".
 
 :- pragma c_code(test4(A::out, _B::in, C::out), will_not_call_mercury, "
 	A = """";
 	C = ""test4(out, in, out)"";
 ").
+test4(A::out, _B::in, C::out) :-
+	A = "",
+	C = "test4(out, in, out)".
 
 % for non-comparable modes, pick the first one
 
@@ -141,11 +170,16 @@ main -->
 :- mode test5(in(a), in(ab), out) is det.
 :- mode test5(in(ab), in(b), out) is det.
 
+:- pragma promise_pure(test5/3).
 :- pragma c_code(test5(_A::in(a), _B::in(ab), C::out), will_not_call_mercury, "
 	C = ""test5(in(a), in(ab), out)"";
 ").
+test5(_A::in(a), _B::in(ab), C::out) :-
+	C = "test5(in(a), in(ab), out)".
+	
 
 :- pragma c_code(test5(_A::in(ab), _B::in(b), C::out), will_not_call_mercury, "
 	C = ""test5(in(ab), in(b), out)"";
 ").
-
+test5(_A::in(ab), _B::in(b), C::out) :-
+	C = "test5(in(ab), in(b), out)".

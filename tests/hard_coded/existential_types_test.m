@@ -14,8 +14,6 @@
 
 :- some [T] func my_exist_t = T.
 
-:- some [T] pred has_type(T::unused, type_desc::in) is det.
-
 :- import_module io.
 
 :- pred main(io__state::di, state::uo) is det.
@@ -39,16 +37,4 @@ foo(X) -->
 
 call_my_univ_value(Univ) = my_univ_value(Univ).
 
-:- pragma c_code(my_univ_value(Univ::in) = (Value::out), will_not_call_mercury, "{
-	MR_TypeInfo type_info;
-
-	MR_unravel_univ(Univ, type_info, Value);
-	TypeInfo_for_T = (MR_Word) type_info;
-}").
-
-% The predicate has_type/2 is basically an existentially typed
-% inverse to the function type_of/1.
-
-:- pragma c_code(has_type(_Arg::unused, TypeInfo::in), will_not_call_mercury,
-	"TypeInfo_for_T = TypeInfo;"
-).
+my_univ_value(Univ) = univ_value(Univ).

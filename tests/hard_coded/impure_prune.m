@@ -38,3 +38,8 @@ bump_counter :-
 :- pragma c_code(get_counter(X::out), will_not_call_mercury, "X = counter;").
 :- pragma c_code(set_counter(X::in), will_not_call_mercury, "counter = X;").
 
+:- pragma foreign_code("C#", "static int counter = 0;").
+:- pragma foreign_proc("C#", get_counter(X::out),
+		[promise_semipure], "X = counter;").
+:- pragma foreign_proc("C#", set_counter(X::in), [], "counter = X;").
+

@@ -7,6 +7,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
+:- import_module int, list, math, string.
 
 main --> 
 	c_write_string("Hello, world\n"),
@@ -26,6 +27,8 @@ main -->
 	printf(""%s"", Message);
 	IO = IO0;
 ").
+c_write_string(Str) -->
+	io__write_string(Str).
 
 :- pred c_incr_and_decr(int::in, int::out, int::out) is det.
 
@@ -33,6 +36,7 @@ main -->
 	Int1 = Int0 + 1;
 	Int2 = Int0 - 1;
 ").
+c_incr_and_decr(A, A + 1, A - 1).
 
 :- pred c_write_integer(int::in, io__state::di, io__state::uo) is det.
 
@@ -40,10 +44,13 @@ main -->
 	printf(""%ld\\n"", (long) Int);
 	IO = IO0;
 ").
+c_write_integer(Int) -->
+	io__format("%d\n", [i(Int)]).
 
 :- pred c_get_meaning_of_life(float::out) is det.
 
 :- pragma(c_code, c_get_meaning_of_life(X::out), "X = 42.0;").
+c_get_meaning_of_life(42.0).
 
 :- pred c_write_float(float::in, io__state::di, io__state::uo) is det.
 
@@ -51,6 +58,8 @@ main -->
 	printf(""%.1f\\n"", X);
 	IO = IO0;
 ").
+c_write_float(F) -->
+	io__format("%f\n", [f(F)]).
 
 :- pragma(c_header_code, "#include <math.h>").
 
@@ -60,3 +69,5 @@ main -->
 	printf(""%.3f\\n"", cos(X));
 	IO = IO0;
 ").
+c_write_cosine(F) -->
+	io__format("%.3f\n", [f(cos(F))]).

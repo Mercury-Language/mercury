@@ -29,6 +29,9 @@
 	:- mode inst_cast(in, out(pred(in, out) is det)) is det.
 	:- pragma c_code(inst_cast(X::in, Y::out(pred(in, out) is det)),
 		[will_not_call_mercury, thread_safe], "Y = X").
+	:- pragma foreign_proc("C#",
+		inst_cast(X::in, Y::out(pred(in, out) is det)),
+		[will_not_call_mercury, thread_safe, promise_pure], "Y = X;").
 
 	:- pred foo(T, T, string, string).
 	:- mode foo(in, in, in, out) is det.
