@@ -1552,8 +1552,8 @@ typeinfo_is_variable(_::in, 42::out) :-
 :- pragma foreign_proc("C#",
 	typeinfo_is_variable(TypeInfo::in, VarNum::out), [promise_pure], "
 	try {
-		SUCCESS_INDICATOR = true;
 		VarNum = System.Convert.ToInt32(TypeInfo);
+		SUCCESS_INDICATOR = true;
 	}
 	catch (System.Exception e) {
 		SUCCESS_INDICATOR = false;
