@@ -52,20 +52,20 @@
 
 :- type bool ---> yes ; no.
 
-:- pred bool__or(bool, bool, bool).
-:- mode bool__or(in, in, out) is det.
+:- pred std_util__bool_or(bool, bool, bool).
+:- mode std_util__bool_or(in, in, out) is det.
 
-:- pred bool__or_list(list(bool), bool).
-:- mode bool__or_list(in, out) is det.
+:- pred std_util__bool_or_list(list(bool), bool).
+:- mode std_util__bool_or_list(in, out) is det.
 
-:- pred bool__and(bool, bool, bool).
-:- mode bool__and(in, in, out) is det.
+:- pred std_util__bool_and(bool, bool, bool).
+:- mode std_util__bool_and(in, in, out) is det.
 
-:- pred bool__and_list(list(bool), bool).
-:- mode bool__and_list(in, out) is det.
+:- pred std_util__bool_and_list(list(bool), bool).
+:- mode std_util__bool_and_list(in, out) is det.
 
-:- pred bool__not(bool, bool).
-:- mode bool__not(in, out) is det.
+:- pred std_util__bool_not(bool, bool).
+:- mode std_util__bool_not(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -139,29 +139,29 @@ solutions(Pred, List) :-
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
-bool__or(yes, _, yes).
-bool__or(no, Bool, Bool).
+std_util__bool_or(yes, _, yes).
+std_util__bool_or(no, Bool, Bool).
 
-bool__or_list([], no).
-bool__or_list([Bool | Bools], Result) :-
+std_util__bool_or_list([], no).
+std_util__bool_or_list([Bool | Bools], Result) :-
 	( Bool = yes ->
 		Result = yes
 	;
-		bool__or_list(Bools, Result)
+		std_util__bool_or_list(Bools, Result)
 	).
 
-bool__and(no, _, no).
-bool__and(yes, Bool, Bool).
+std_util__bool_and(no, _, no).
+std_util__bool_and(yes, Bool, Bool).
 
-bool__and_list([], yes).
-bool__and_list([Bool | Bools], Result) :-
+std_util__bool_and_list([], yes).
+std_util__bool_and_list([Bool | Bools], Result) :-
 	( Bool = no ->
 		Result = no
 	;
-		bool__and_list(Bools, Result)
+		std_util__bool_and_list(Bools, Result)
 	).
 
-bool__not(no, yes).
-bool__not(yes, no).
+std_util__bool_not(no, yes).
+std_util__bool_not(yes, no).
 
 %-----------------------------------------------------------------------------%

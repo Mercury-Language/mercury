@@ -259,12 +259,12 @@
 % The types term and const should be defined in term.m, but we define them here
 % since they're need for implementation of term_to_type/2 and type_to_term/2.
 
-:- type term		--->	term__functor(const, list(term), term__context)
-			;	term__variable(var).
-:- type const		--->	term__atom(string)
-			;	term__integer(int)
-			;	term__string(string)
-			;	term__float(float).
+:- type term		--->	term_functor(const, list(term), term_context)
+			;	term_variable(var).
+:- type const		--->	term_atom(string)
+			;	term_integer(int)
+			;	term_string(string)
+			;	term_float(float).
 :- type var.
 
 % The type list should be defined in list.m, but we define it here since
@@ -275,11 +275,11 @@
         % At the moment, the only context we store is the line
         % number.
 
-:- type term__context	--->	term__context(string, int).
+:- type term_context	--->	term_context(string, int).
 				% file, line number.
 
-:- pred term__context_init(term__context).
-:- mode term__context_init(out) is det.
+:- pred term_context_init(term_context).
+:- mode term_context_init(out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -325,11 +325,11 @@ builtin_compare_int(R, X, Y) :-
 		R = (>)
 	).
 
-builtin_term_to_type_int(term__functor(term__integer(Int), _TermList, _Context),
+builtin_term_to_type_int(term_functor(term_integer(Int), _TermList, _Context),
 									Int).
 
-builtin_type_to_term_int(Int, term__functor(term__integer(Int), [], Context)) :-
-	term__context_init(Context).
+builtin_type_to_term_int(Int, term_functor(term_integer(Int), [], Context)) :-
+	term_context_init(Context).
 
 builtin_unify_string(S, S).
 
@@ -346,11 +346,11 @@ builtin_compare_string(R, S1, S2) :-
 	).
 
 builtin_term_to_type_string(
-	term__functor(term__string(String), _TermList, _Context), String).
+	term_functor(term_string(String), _TermList, _Context), String).
 
 builtin_type_to_term_string(
-		String, term__functor(term__string(String), [], Context)) :- 
-        term__context_init(Context).
+		String, term_functor(term_string(String), [], Context)) :- 
+        term_context_init(Context).
 
 
 builtin_unify_float(F, F).
@@ -366,12 +366,12 @@ builtin_compare_float(R, F1, F2) :-
 		R = (=)
 	).
 
-builtin_term_to_type_float(term__functor(
-			term__float(Float), _TermList, _Context), Float).
+builtin_term_to_type_float(term_functor(
+			term_float(Float), _TermList, _Context), Float).
 
 builtin_type_to_term_float(
-		Float, term__functor(term__float(Float), [], Context)) :-
-	term__context_init(Context).
+		Float, term_functor(term_float(Float), [], Context)) :-
+	term_context_init(Context).
 
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.
@@ -401,7 +401,7 @@ builtin_index_pred(_, -1).
 compare_error :-
 	error("internal error in compare/3").
 
-term__context_init(term__context("", 0)).
+term_context_init(term_context("", 0)).
 
 :- end_module mercury_builtin.
 
