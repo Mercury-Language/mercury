@@ -27,7 +27,7 @@ PATH="/home/mercury/public/$HOST:$PATH"
 PATH="`pwd`:$PATH"
 export PATH
 
-CVSROOT=/home/staff/zs/imp
+CVSROOT=/home/mercury1/repository
 export CVSROOT
 
 # tell gcc to use /tmp, not /usr/tmp
