@@ -175,31 +175,31 @@ static void process_options(int argc, char **argv)
 
 		case 'd':	if (streq(optarg, "b"))
 					nondstackdebug = TRUE;
-				or (streq(optarg, "c"))
+				else if (streq(optarg, "c"))
 					calldebug    = TRUE;
-				or (streq(optarg, "d"))
+				else if (streq(optarg, "d"))
 					detaildebug  = TRUE;
-				or (streq(optarg, "g"))
+				else if (streq(optarg, "g"))
 					gotodebug    = TRUE;
-				or (streq(optarg, "G"))
+				else if (streq(optarg, "G"))
 #ifdef CONSERVATIVE_GC
 					GC_quiet = FALSE;
 #else
 					fatal_error("-dG: GC not enabled");
 #endif
-				or (streq(optarg, "s"))
+				else if (streq(optarg, "s"))
 					detstackdebug   = TRUE;
-				or (streq(optarg, "h"))
+				else if (streq(optarg, "h"))
 					heapdebug    = TRUE;
-				or (streq(optarg, "f"))
+				else if (streq(optarg, "f"))
 					finaldebug   = TRUE;
-				or (streq(optarg, "p"))
+				else if (streq(optarg, "p"))
 					progdebug   = TRUE;
-				or (streq(optarg, "m"))
+				else if (streq(optarg, "m"))
 					memdebug    = TRUE;
-				or (streq(optarg, "r"))
+				else if (streq(optarg, "r"))
 					sregdebug    = TRUE;
-				or (streq(optarg, "a"))
+				else if (streq(optarg, "a"))
 				{
 					calldebug      = TRUE;
 					nondstackdebug = TRUE;
@@ -252,11 +252,11 @@ static void process_options(int argc, char **argv)
 
 				if (optarg[0] == 'h')
 					heap_size = val;
-				or (optarg[0] == 'd')
+				else if (optarg[0] == 'd')
 					detstack_size = val;
-				or (optarg[0] == 'n')
+				else if (optarg[0] == 'n')
 					nondstack_size = val;
-				or (optarg[0] == 'l')
+				else if (optarg[0] == 'l')
 					entry_table_size = val *
 						1024 / (2 * sizeof(List *));
 				else
@@ -269,14 +269,15 @@ static void process_options(int argc, char **argv)
 
 				if (optarg[0] == 'h')
 					heap_zone_size = val;
-				or (optarg[0] == 'd')
+				else if (optarg[0] == 'd')
 					detstack_zone_size = val;
-				or (optarg[0] == 'n')
+				else if (optarg[0] == 'n')
 					nondstack_zone_size = val;
 				else
 					usage();
+				break;
 		
-		when 'x':	
+		case 'x':	
 #ifdef CONSERVATIVE_GC
 				GC_dont_gc = 1;
 #endif
@@ -438,16 +439,22 @@ static void print_register_usage_counts(void)
 
 			case SI_RN:
 				printf("succip");
-			when HP_RN:
+				break;
+			case HP_RN:
 				printf("hp");
-			when SP_RN:
+				break;
+			case SP_RN:
 				printf("sp");
-			when CF_RN:
+				break;
+			case CF_RN:
 				printf("curfr");
-			when MF_RN:
+				break;
+			case MF_RN:
 				printf("maxfr");
-			otherwise:
+				break;
+			default:
 				printf("UNKNOWN%d", i);
+				break;
 			}
 		}
 

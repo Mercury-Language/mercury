@@ -581,9 +581,13 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 		{
 
 	case BUS_ADRALN:	fprintf(stderr, "invalid address alignment\n");
-	when BUS_ADRERR:	fprintf(stderr, "non-existent physical address\n");
-	when BUS_OBJERR:	fprintf(stderr, "object specific hardware error\n");
-	otherwise:		fprintf(stderr, "unknown\n");
+				break;
+	case BUS_ADRERR:	fprintf(stderr, "non-existent physical address\n");
+				break;
+	case BUS_OBJERR:	fprintf(stderr, "object specific hardware error\n");
+				break;
+	default:		fprintf(stderr, "unknown\n");
+				break;
 
 		}
 
@@ -606,10 +610,13 @@ static void explain_segv(siginfo_t *info, void *context)
 		{
 
 	case SEGV_MAPERR:	fprintf(stderr,
-				"address not mapped to object\n");
-	when SEGV_ACCERR:	fprintf(stderr,
-				"invalid permissions for mapped object\n");
-	otherwise:		fprintf(stderr, "unknown\n");
+				    "address not mapped to object\n");
+				break;
+	case SEGV_ACCERR:	fprintf(stderr,
+				    "invalid permissions for mapped object\n");
+				break;
+	default:		fprintf(stderr, "unknown\n");
+				break;
 
 		}
 
@@ -675,12 +682,15 @@ static void simple_sighandler(int sig)
 
 case SIGBUS: 	fprintf(stderr,
 			"*** Mercury runtime: caught bus error ***\n");
+		break;
 
-when SIGSEGV: 	fprintf(stderr,
+case SIGSEGV: 	fprintf(stderr,
 			"*** Mercury runtime: caught segmentation violation ***\n");
+		break;
 
-otherwise:	fprintf(stderr,
+default:	fprintf(stderr,
 			"*** Mercury runtime: caught unknown signal %d ***\n", sig);
+		break;
 
 	}
 
