@@ -1075,6 +1075,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		code_info__variables_are_live(Vars)
 	->
 			% get a spare register
+			% XXX we should make a more intelligent choice
 		code_info__get_next_free_register(Reg, NewReg),
 			% Update the register info -
 			% remove the entry for the old register,
@@ -1087,7 +1088,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 			% Generate the code fragment.
 		{ Code = node([
 			assign(reg(NewReg), lval(reg(Reg))) -
-				"Swap variable to a new register"
+				"Swap live variable to a new register"
 		]) }
 	;
 		{ Contents = vars(Vars1) },
@@ -1095,6 +1096,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 		{ code_info__variables_are_args(Vars2, Args) }
 	->
 			% get a spare register
+			% XXX we should make a more intelligent choice
 		code_info__get_free_register(NewReg),
 			% Update the register info -
 			% remove the entry for the old register,
@@ -1107,7 +1109,7 @@ code_info__shuffle_registers_2(Reg, Args, Contents, Code) -->
 			% Generate the code fragment.
 		{ Code = node([
 			assign(reg(NewReg), lval(reg(Reg))) -
-				"Swap variable to a new register"
+				"Swap arg variable to a new register"
 		]) }
 	;
 		{ Code = empty }
