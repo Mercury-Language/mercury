@@ -169,7 +169,7 @@ group__same_group(G, E0, E1) :-
 group__largest_group_key(G, GK) :-
 	group__get_sets(G, Ss),
 	map__to_assoc_list(Ss, SL),
-	SL = [_|_],
+	SL = [_|_],	% XXX determinism error!
 	group__largest_group_key_2(SL, 0, 0, GK).
 
 :- pred group__largest_group_key_2(assoc_list(group__key, set(T)), int,
