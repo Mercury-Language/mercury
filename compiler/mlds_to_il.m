@@ -1134,6 +1134,9 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			instr_node(ldstr("\nUncaught system exception: \n")),
 			instr_node(call(WriteString)),
 			instr_node(call(WriteObject)),
+			instr_node(ldc(int32, i(1))), 
+			instr_node(call(il_set_exit_code)),
+
 			instr_node(leave(label_target(DoneLabel))),
 			instr_node(end_block(catch(ExceptionClassName),
 				OuterCatchBlockId))
@@ -1148,6 +1151,9 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			instr_node(ldfld(FieldRef)),
 
 			instr_node(call(WriteUncaughtException)),
+
+			instr_node(ldc(int32, i(1))), 
+			instr_node(call(il_set_exit_code)),
 
 			instr_node(leave(label_target(DoneLabel))),
 			instr_node(end_block(
@@ -1177,10 +1183,12 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			%	}
 			%	catch (mercury.runtime.Exception me) {
 			%		ML_report_uncaught_exception(me);
+			%		System.Environment.ExitCode = 1;
 			%	}
 			% } 
 			% catch (System.Exception e) {
 			%	System.Console.Write(e);
+			%	System.Environment.ExitCode = 1;
 			% }
 
 		{ InstrsTree = tree__list([
@@ -3886,6 +3894,19 @@ il_exception_simple_type = class(il_exception_class_name).
 
 :- func il_exception_class_name = ilds__class_name.
 il_exception_class_name = mercury_runtime_name(["Exception"]).
+
+%-----------------------------------------------------------------------------%
+
+	% The System.Environment.set_ExitCode method
+	% (the "setter" for the System.Environment.ExitCode property).
+	% We use this to set a non-zero exit status when
+	% the main method exits due to an uncaught exception.
+:- func il_set_exit_code = methodref.
+il_set_exit_code = get_static_methodref(system_environment_class_name,
+	id("set_ExitCode"), void, [ilds__type([], int32)]).
+
+:- func system_environment_class_name = ilds__class_name.
+system_environment_class_name = il_system_name(["Environment"]).
 
 %-----------------------------------------------------------------------------%
 %
