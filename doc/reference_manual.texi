@@ -2040,7 +2040,7 @@ between C functions which are called from Mercury. For example:
 For the sake of efficiency, calls to predicates will be inlined by the Mercury
 compiler whenever a declaration of the form
 @example
-:- pragma(inline, Predname/Arity
+:- pragma(inline, Predname/Arity).
 @end example
 which results in call to the predicate Predname with arity Arity to be inlined.
 
