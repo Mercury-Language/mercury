@@ -997,6 +997,8 @@ output_pragma_decls([D|Decls]) -->
                 VarType = "Float"
         ; Type = term__functor(term__atom("string"), [], _) ->
                 VarType = "String"
+        ; Type = term__functor(term__atom("character"), [], _) ->
+                VarType = "Char"
         ;
                 VarType = "Word"
         },
