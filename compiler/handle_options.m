@@ -313,7 +313,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% store nondet environments on the heap.
 	% XXX no static ground terms should be eliminated in a later
 	%     version.
-	% XXX The Java backend should eventually support optimizing tailcalls.
 	( { Target = java } ->
 		globals__io_set_option(highlevel_code, bool(yes)),
 		globals__io_set_option(highlevel_data, bool(yes)),	
@@ -321,7 +320,6 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(det_copy_out, bool(yes)),
 		globals__io_set_option(num_tag_bits, int(0)),
-		globals__io_set_option(optimize_tailcalls, bool(no)),
 		globals__io_set_option(static_ground_terms, bool(no)),
 		globals__io_set_option(put_nondet_env_on_heap, bool(yes))
 	;
