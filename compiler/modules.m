@@ -896,7 +896,7 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 			check_int_for_no_exports(InterfaceItems, ModuleName),
 			write_interface_file(ModuleName, ".int",
 							InterfaceItems),
-			{ get_short_interface(InterfaceItems,
+			{ get_short_interface(InterfaceItems, int2,
 						ShortInterfaceItems) },
 			write_interface_file(ModuleName, ".int2",
 						ShortInterfaceItems),
@@ -912,7 +912,7 @@ make_short_interface(ModuleName, Items0) -->
 		% only be written to .opt files,
 	{ strip_assertions(InterfaceItems0, InterfaceItems1) },
 	check_for_clauses_in_interface(InterfaceItems1, InterfaceItems),
-	{ get_short_interface(InterfaceItems, ShortInterfaceItems0) },
+	{ get_short_interface(InterfaceItems, int3, ShortInterfaceItems0) },
 	module_qual__module_qualify_items(ShortInterfaceItems0,
 			ShortInterfaceItems, ModuleName, no, _, _, _, _),
 	write_interface_file(ModuleName, ".int3", ShortInterfaceItems),
@@ -4382,11 +4382,15 @@ get_interface_2([Item - Context | Rest], InInterface0,
 	% type declarations, then it doesn't need any import_module
 	% declarations.
 
-:- pred get_short_interface(item_list, item_list).
-:- mode get_short_interface(in, out) is det.
+:- type short_interface_kind
+	--->	int2	% the qualified short interface, for the .int2 file
+	;	int3.	% the unqualified short interface, for the .int3 file
 
-get_short_interface(Items0, Items) :-
-	get_short_interface_2(Items0, [], [], no,
+:- pred get_short_interface(item_list, short_interface_kind, item_list).
+:- mode get_short_interface(in, in, out) is det.
+
+get_short_interface(Items0, Kind, Items) :-
+	get_short_interface_2(Items0, [], [], no, Kind,
 			RevItems, RevImports, NeedsImports),
 	list__reverse(RevItems, Items1),
 	( NeedsImports = yes ->
@@ -4397,13 +4401,13 @@ get_short_interface(Items0, Items) :-
 	).
 
 :- pred get_short_interface_2(item_list, item_list, item_list, bool,
-				item_list, item_list, bool).
-:- mode get_short_interface_2(in, in, in, in, out, out, out) is det.
+		short_interface_kind, item_list, item_list, bool).
+:- mode get_short_interface_2(in, in, in, in, in, out, out, out) is det.
 
-get_short_interface_2([], Items, Imports, NeedsImports,
+get_short_interface_2([], Items, Imports, NeedsImports, _Kind,
 			Items, Imports, NeedsImports).
 get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
-			Items, Imports, NeedsImports) :-
+			Kind, Items, Imports, NeedsImports) :-
 	ItemAndContext = Item0 - Context,
 	( Item0 = module_defn(_, import(_)) ->
 		Items1 = Items0,
@@ -4413,7 +4417,7 @@ get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
 		Items1 = Items0,
 		Imports1 = [ItemAndContext | Imports0],
 		NeedsImports1 = NeedsImports0
-	; make_abstract_type_defn(Item0, Item1) ->
+	; make_abstract_type_defn(Item0, Kind, Item1) ->
 		Imports1 = Imports0,
 		Items1 = [Item1 - Context | Items0],
 		NeedsImports1 = NeedsImports0
@@ -4426,7 +4430,7 @@ get_short_interface_2([ItemAndContext | Rest], Items0, Imports0, NeedsImports0,
 		Imports1 = Imports0,
 		NeedsImports1 = NeedsImports0
 	),
-	get_short_interface_2(Rest, Items1, Imports1, NeedsImports1,
+	get_short_interface_2(Rest, Items1, Imports1, NeedsImports1, Kind,
 				Items, Imports, NeedsImports).
 
 :- pred include_in_short_interface(item).
@@ -4438,13 +4442,25 @@ include_in_short_interface(mode_defn(_, _, _)).
 include_in_short_interface(module_defn(_, _)).
 include_in_short_interface(typeclass(_, _, _, _, _)).
 
-:- pred make_abstract_type_defn(item, item).
-:- mode make_abstract_type_defn(in, out) is semidet.
+:- pred make_abstract_type_defn(item, short_interface_kind, item).
+:- mode make_abstract_type_defn(in, in, out) is semidet.
 
-make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond),
+make_abstract_type_defn(type_defn(VarSet, du_type(Name, Args, _, _), Cond), _,
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
-make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
+make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond), _,
 			type_defn(VarSet, abstract_type(Name, Args), Cond)).
+make_abstract_type_defn(type_defn(VarSet, eqv_type(Name, Args, _), Cond),
+			ShortInterfaceKind,
+			type_defn(VarSet, abstract_type(Name, Args), Cond)) :-
+	% For the `.int2' files, we need the full definitions of
+	% equivalence types.  They are needed to ensure that
+	% non-abstract equivalence types always get fully expanded
+	% before code generation, even in modules that only indirectly
+	% import the definition of the equivalence type.
+	% But the full definitions are not needed for the `.int3' files.
+	% So we convert equivalence types into abstract types only for
+	% the `.int3' files.
+	ShortInterfaceKind = int3.
 
 	% All instance declarations must be written
 	% to `.int' files as abstract instance
