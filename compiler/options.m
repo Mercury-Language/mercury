@@ -63,10 +63,12 @@
 		;	warn_duplicate_calls
 		;	warn_missing_module_name
 		;	warn_wrong_module_name
+		;	warn_smart_recompilation	% not yet used.
 	% Verbosity options
 		;	verbose
 		;	very_verbose
 		;	verbose_errors
+		;	verbose_recompilation		% not yet used.
 		;	statistics
 		;	debug_types
 		;	debug_modes
@@ -93,6 +95,13 @@
 		;	aditi_only
 		;	output_grade_string
 	% Auxiliary output options
+		;	smart_recompilation		% not yet used.
+
+				% This option is used to control output
+				% of version numbers in interface files.
+				% It is implied by smart_recompilation,
+				% and cannot be set explicitly by the user.
+		;	generate_item_version_numbers
 		;	assume_gmake
 		;	trace
 		;	trace_optimized
@@ -466,13 +475,15 @@ option_defaults_2(warning_option, [
 	warn_simple_code	-	bool(yes),
 	warn_duplicate_calls	-	bool(no),
 	warn_missing_module_name -	bool(yes),
-	warn_wrong_module_name -	bool(yes)
+	warn_wrong_module_name -	bool(yes),
+	warn_smart_recompilation -	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
 	verbose			-	bool(no),
 	very_verbose		-	bool(no),
 	verbose_errors		-	bool(no),
+	verbose_recompilation	-	bool(no),
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
@@ -503,6 +514,8 @@ option_defaults_2(output_option, [
 ]).
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
+	smart_recompilation	-	bool(no),
+	generate_item_version_numbers -	bool(no),
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
@@ -856,11 +869,13 @@ long_option("warn-simple-code",		warn_simple_code).
 long_option("warn-duplicate-calls",	warn_duplicate_calls).
 long_option("warn-missing-module-name",	warn_missing_module_name).
 long_option("warn-wrong-module-name",	warn_wrong_module_name).
+long_option("warn-smart-recompilation",	warn_smart_recompilation).
 
 % verbosity options
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
 long_option("verbose-error-messages",	verbose_errors).
+long_option("verbose-recompilation",	verbose_recompilation).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
@@ -907,6 +922,7 @@ long_option("aditi-only",		aditi_only).
 long_option("output-grade-string",	output_grade_string).
 
 % aux output options
+long_option("smart-recompilation",	smart_recompilation).
 long_option("assume-gmake",		assume_gmake).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
@@ -1335,7 +1351,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_missing_trans_opt_deps -	bool(Enable),
 			warn_simple_code	-	bool(Enable),
 			warn_missing_module_name -	bool(Enable),
-			warn_wrong_module_name	-	bool(Enable)
+			warn_wrong_module_name	-	bool(Enable),
+			warn_smart_recompilation -	bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
