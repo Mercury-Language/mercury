@@ -618,6 +618,10 @@ contains miscellaneous predicates for LLDS-to-LLDS optimization.
   the functors of a given type. The base_type_layout and base_type_functors
   structures of each declared type constructor are added to the LLDS.
 
+<li> stack_layout.m generates the stack_layout structures for
+  accurate garbage collection. Tables are created from the data
+  collected in continuation_info.m.
+
 <li> llds_common.m extracts static terms from the main body of the LLDS, and
   puts them at the front. If a static term originally appeared several times,
   it will now appear as a single static term with multiple references to it.
@@ -731,6 +735,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-10-10 06:16:13 $ by $Author: bromage $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-11-28 06:10:12 $ by $Author: bromage $@cs.mu.oz.au. <br>
 </body>
 </html>

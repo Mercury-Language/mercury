@@ -1,7 +1,7 @@
 <html>
 <head>
 <title>
-	The New Allocation Scheme
+	The Storage Allocation Scheme
 </title>
 </head>
 
@@ -13,8 +13,11 @@
 <hr>
 <!-------------------------->
 
-This document describes the allocation system we are moving towards;
-it is only partially implemented as yet.
+This document describes
+the storage allocation system used by the code generator.
+The code generator currently does not really use
+the follow_vars field of goal_infos,
+but the rest of the scheme reflects what the compiler does.
 
 <hr>
 <!-------------------------->
@@ -225,7 +228,7 @@ The resume_point field does not assign a location to these variables.
 The reason is that as an optimization, each conceptual resumption point
 is associated with either one or two labels, and if there are two labels,
 these will differ in where they expect these variables to be. The
-the failure continuation stack entry created by the code generator
+failure continuation stack entry created by the code generator
 that describes the resumption point will associate a resume map with
 each label, with each resume map assigning a location to each variable
 included in the resume vars set.
@@ -311,7 +314,7 @@ We handle these by flushing all variables that are live after the call
 except those produced by the call. This is equivalent to the set of
 variables that are live immediately after the call, minus the pre-birth
 and post-birth sets of the call, which in turn is equivalent to the set
-of variables live before the call minus the the pre-death and post-death
+of variables live before the call minus the pre-death and post-death
 sets of the call.
 
 <p>
@@ -545,6 +548,6 @@ registers. Instead, it should keep the variable in its stack slot.
 <!-------------------------->
 <hr>
 <!-------------------------->
-Last update was $Date: 1997-10-10 06:16:11 $ by $Author: bromage $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-11-28 06:10:11 $ by $Author: bromage $@cs.mu.oz.au. <br>
 </body>
 </html>
