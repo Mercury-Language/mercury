@@ -476,6 +476,7 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 	;
 		%
 		% the source files, the final executables,
+		% library files (including .init files)
 		% output files intended for use by the user,
 		% and phony Mmake targets names go in the current directory
 		%
@@ -487,6 +488,14 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".nu.debug"
 		; Ext = ".sicstus"
 		; Ext = ".sicstus.debug"
+		% library files
+		; Ext = ".a"
+		; Ext = ".so"
+		; Ext = ".$(EXT_FOR_SHARED_LIB)"
+		; Ext = ".split.a"
+		; Ext = ".split.so"
+		; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
+		; Ext = ".init"
 		% output files intended for use by the user
 		; Ext = ".h"
 		; Ext = ".err"
@@ -517,19 +526,6 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 			Ext = ".dir/*.o"
 		->
 			SubDirName = "dirs"
-		;
-			% .a and .so files need to go in the same
-			% directory, so that using .$(EXT_FOR_SHARED_LIB)
-			% will work
-			( Ext = ".a"
-			; Ext = ".so"
-			; Ext = ".$(EXT_FOR_SHARED_LIB)"
-			; Ext = ".split.a"
-			; Ext = ".split.so"
-			; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
-			)
-		->
-			SubDirName = "libs"
 		;
 			% .o and .pic_o files need to go in the
 			% same directory, so that using
