@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module array, bag, bimap, bintree, bintree_set, char, dir.
+:- import_module array, bag, bimap, bintree, bintree_set, bool, char, dir.
 :- import_module eqvclass, float, math, getopt, graph, group, int, io.
 :- import_module list, map, pqueue, queue, random, relation, require.
 :- import_module set, set_bbbtree, set_unordlist, stack, std_util, string.

@@ -37,7 +37,7 @@
 
 :- module getopt.
 :- interface.
-:- import_module int, string, list, map, std_util.
+:- import_module int, string, bool, list, map, std_util.
 
 	% getopt__process_options(OptionOps, Args, NonOptionArgs, Result)
 	%

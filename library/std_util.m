@@ -12,7 +12,7 @@
 % that don't belong elsewhere, like <stdlib.h> in C.
 %
 % It contains the predicates solutions/2, semidet_succeed/0, semidet_fail/0,
-% and report_stats/0; the types univ, unit, bool, maybe(T), pair(T1, T2);
+% and report_stats/0; the types univ, unit, maybe(T), pair(T1, T2);
 % and some predicates which operate on those types.
 
 %-----------------------------------------------------------------------------%
@@ -45,30 +45,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% The boolean type.
-% Unlike most languages, we use `yes' and `no' as boolean constants
-% rather than `true' and `false'.  This is to avoid confusion
-% with the predicates `true' and `fail'.
-
-:- type bool ---> yes ; no.
-
-:- pred std_util__bool_or(bool, bool, bool).
-:- mode std_util__bool_or(in, in, out) is det.
-
-:- pred std_util__bool_or_list(list(bool), bool).
-:- mode std_util__bool_or_list(in, out) is det.
-
-:- pred std_util__bool_and(bool, bool, bool).
-:- mode std_util__bool_and(in, in, out) is det.
-
-:- pred std_util__bool_and_list(list(bool), bool).
-:- mode std_util__bool_and_list(in, out) is det.
-
-:- pred std_util__bool_not(bool, bool).
-:- mode std_util__bool_not(in, out) is det.
-
-%-----------------------------------------------------------------------------%
-
 % The "maybe" type.
 
 :- type maybe(T) ---> yes(T) ; no.
@@ -81,7 +57,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% The "pair" type. Useful for many purposes.
+% The "pair" type.  Useful for many purposes.
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 :- type pair(T)		==	pair(T,T).
@@ -138,30 +114,5 @@ solutions(Pred, List) :-
 	set__to_sorted_list(Set, List).
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
-
-std_util__bool_or(yes, _, yes).
-std_util__bool_or(no, Bool, Bool).
-
-std_util__bool_or_list([], no).
-std_util__bool_or_list([Bool | Bools], Result) :-
-	( Bool = yes ->
-		Result = yes
-	;
-		std_util__bool_or_list(Bools, Result)
-	).
-
-std_util__bool_and(no, _, no).
-std_util__bool_and(yes, Bool, Bool).
-
-std_util__bool_and_list([], yes).
-std_util__bool_and_list([Bool | Bools], Result) :-
-	( Bool = no ->
-		Result = no
-	;
-		std_util__bool_and_list(Bools, Result)
-	).
-
-std_util__bool_not(no, yes).
-std_util__bool_not(yes, no).
 
 %-----------------------------------------------------------------------------%

@@ -312,6 +312,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module bool.
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(in, out) is det.

@@ -140,13 +140,13 @@ term_io__write_term(VarSet, Term) -->
 				io__state, io__state).
 :- mode term_io__write_term_2(in, in, in, out, out, di, uo) is det.
 
-term_io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
+term_io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
 	term_io__write_variable_2(Id, VarSet0, N0, VarSet, N).
-term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
+term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		-->
 	io__get_op_table(OpTable),
 	(
-		{ Functor = term_atom(".") },
+		{ Functor = term__atom(".") },
 		{ Args = [ListHead, ListTail] }
 	->
 		io__write_char('['),
@@ -154,14 +154,14 @@ term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N),
 		io__write_char(']')
 	;
-		{ Functor = term_atom("[]") },
+		{ Functor = term__atom("[]") },
 		{ Args = [] }
 	->
 		io__write_string("[]"),
 		{ N = N0 },
 		{ VarSet = VarSet0 }
 	;
-		{ Functor = term_atom("{}") },
+		{ Functor = term__atom("{}") },
 		{ Args = [BracedTerm] }
 	->
 		io__write_string("{ "),
@@ -169,7 +169,7 @@ term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_string(" }")
 	;
 		{ Args = [PrefixArg] },
-		{ Functor = term_atom(OpName) },
+		{ Functor = term__atom(OpName) },
 		{ ops__lookup_prefix_op(OpTable, OpName, _, _) }
 	->
 		io__write_char('('),
@@ -179,7 +179,7 @@ term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_char(')')
 	;
 		{ Args = [PostfixArg] },
-		{ Functor = term_atom(OpName) },
+		{ Functor = term__atom(OpName) },
 		{ ops__lookup_postfix_op(OpTable, OpName, _, _) }
 	->
 		io__write_char('('),
@@ -189,7 +189,7 @@ term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
-		{ Functor = term_atom(OpName) },
+		{ Functor = term__atom(OpName) },
 		{ ops__lookup_infix_op(OpTable, OpName, _, _, _) }
 	->
 		io__write_char('('),
@@ -201,7 +201,7 @@ term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
-		{ Functor = term_atom(OpName) },
+		{ Functor = term__atom(OpName) },
 		{ ops__lookup_binary_prefix_op(OpTable, OpName, _, _, _) }
 	->
 		io__write_char('('),
@@ -232,18 +232,18 @@ term_io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 
 term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 	( 
-		{ Term = term_variable(Id) },
+		{ Term = term__variable(Id) },
 		{ varset__lookup_var(VarSet0, Id, Val) }
 	->
 		term_io__write_list_tail(Val, VarSet0, N0, VarSet, N)
 	;
-		{ Term = term_functor(term_atom("."), [ListHead, ListTail], _) }
+		{ Term = term__functor(term__atom("."), [ListHead, ListTail], _) }
 	->
 		io__write_string(", "),
 		term_io__write_term_2(ListHead, VarSet0, N0, VarSet1, N1),
 		term_io__write_list_tail(ListTail, VarSet1, N1, VarSet, N)
 	;
-		{ Term = term_functor(term_atom("[]"), [], _) }
+		{ Term = term__functor(term__atom("[]"), [], _) }
 	->
 		{ VarSet = VarSet0 },
 		{ N = N0 }
@@ -268,13 +268,13 @@ term_io__write_term_args([X|Xs], VarSet0, N0, VarSet, N) -->
 %-----------------------------------------------------------------------------%
 
 	% write the functor
-term_io__write_constant(term_integer(I)) -->
+term_io__write_constant(term__integer(I)) -->
 	io__write_int(I).
-term_io__write_constant(term_float(F)) -->
+term_io__write_constant(term__float(F)) -->
 	io__write_float(F).
-term_io__write_constant(term_atom(A))  -->
+term_io__write_constant(term__atom(A))  -->
 	term_io__quote_atom(A).
-term_io__write_constant(term_string(S)) -->
+term_io__write_constant(term__string(S)) -->
 	io__write_char('"'),
 	term_io__quote_string(S),
 	io__write_char('"').

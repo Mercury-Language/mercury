@@ -36,7 +36,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, char, int, float, list, std_util, require.
+:- import_module string, char, int, float, bool, list, std_util, require.
 :- import_module map, term, varset.
 :- import_module lexer, ops.
 
@@ -205,7 +205,7 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 						RightRightResult),
 			( { RightRightResult = ok(RightRightTerm) } ->
 				parser__get_term_context(Context, TermContext),
-				{ Term = ok(term_functor(term_atom(Op),
+				{ Term = ok(term__functor(term__atom(Op),
 					[RightTerm, RightRightTerm],
 					TermContext)) }
 			;
@@ -235,21 +235,21 @@ parser__parse_left_term(MaxPriority, IsArg, OpPriority, Term) -->
 			parser__get_term_context(Context, TermContext),
 			{
 				Op = "-",
-				RightTerm = term_functor(term_integer(X), [],
+				RightTerm = term__functor(term__integer(X), [],
 						_)
 			->
 				NegX is 0 - X,
-				Term = ok(term_functor(term_integer(NegX), [],
+				Term = ok(term__functor(term__integer(NegX), [],
 							TermContext))
 			;
 				Op = "-",
-				RightTerm = term_functor(term_float(F), [], _)
+				RightTerm = term__functor(term__float(F), [], _)
 			->
 				builtin_float_minus(0.0, F, NegF),
-				Term = ok(term_functor(term_float(NegF), [],
+				Term = ok(term__functor(term__float(NegF), [],
 					TermContext))
 			;
-				Term = ok(term_functor(term_atom(Op),
+				Term = ok(term__functor(term__atom(Op),
 					[RightTerm], TermContext))
 			}
 		;
@@ -285,7 +285,7 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		parser__parse_term_2(RightPriority, IsArg, RightTerm0),
 		( { RightTerm0 = ok(RightTerm) } ->
 			parser__get_term_context(Context, TermContext),
-			{ OpTerm = term_functor(term_atom(Op),
+			{ OpTerm = term__functor(term__atom(Op),
 				[LeftTerm, RightTerm], TermContext) },
 			parser__parse_rest(MaxPriority, IsArg, OpPriority,
 				OpTerm, Term)
@@ -302,7 +302,7 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 		{ parser__check_priority(LeftAssoc, OpPriority, LeftPriority) }
 	->
 		parser__get_term_context(Context, TermContext),
-		{ OpTerm = term_functor(term_atom(Op), [LeftTerm],
+		{ OpTerm = term__functor(term__atom(Op), [LeftTerm],
 			TermContext) },
 		parser__parse_rest(MaxPriority, IsArg, OpPriority, OpTerm, Term)
 	;
@@ -348,7 +348,7 @@ parser__parse_simple_term_2(name(Atom), Context, Prec, Term) -->
 	( parser__get_token(open_ct) ->
 		parser__parse_args(Args0),
 		(	{ Args0 = ok(Args) },
-			{ Term = ok(term_functor(term_atom(Atom), Args,
+			{ Term = ok(term__functor(term__atom(Atom), Args,
 				TermContext)) }
 		;
 			% propagate error upwards
@@ -362,24 +362,24 @@ parser__parse_simple_term_2(name(Atom), Context, Prec, Term) -->
 		;
 			true
 		},
-		{ Term = ok(term_functor(term_atom(Atom), [], TermContext)) }
+		{ Term = ok(term__functor(term__atom(Atom), [], TermContext)) }
 	).
 
 parser__parse_simple_term_2(variable(VarName), _, _, Term) -->
 	parser__add_var(VarName, Var),
-	{ Term = ok(term_variable(Var)) }.
+	{ Term = ok(term__variable(Var)) }.
 
 parser__parse_simple_term_2(integer(Int), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
-	{ Term = ok(term_functor(term_integer(Int), [], TermContext)) }.
+	{ Term = ok(term__functor(term__integer(Int), [], TermContext)) }.
 
 parser__parse_simple_term_2(float(Float), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
-	{ Term = ok(term_functor(term_float(Float), [], TermContext)) }.
+	{ Term = ok(term__functor(term__float(Float), [], TermContext)) }.
 
 parser__parse_simple_term_2(string(String), Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
-	{ Term = ok(term_functor(term_string(String), [], TermContext)) }.
+	{ Term = ok(term__functor(term__string(String), [], TermContext)) }.
 
 parser__parse_simple_term_2(open, _, _, Term) -->
 	parser__parse_term(Term0),
@@ -400,7 +400,7 @@ parser__parse_simple_term_2(open_ct, Context, Prec, Term) -->
 parser__parse_simple_term_2(open_list, Context, _, Term) -->
 	( parser__get_token(close_list) ->
 		parser__get_term_context(Context, TermContext),
-		{ Term = ok(term_functor(term_atom("[]"), [], TermContext)) }
+		{ Term = ok(term__functor(term__atom("[]"), [], TermContext)) }
 	;
 		parser__parse_list(Term)
 	).
@@ -408,12 +408,12 @@ parser__parse_simple_term_2(open_list, Context, _, Term) -->
 parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 	parser__get_term_context(Context, TermContext),
 	( parser__get_token(close_curly) ->
-		{ Term = ok(term_functor(term_atom("{}"), [], TermContext)) }
+		{ Term = ok(term__functor(term__atom("{}"), [], TermContext)) }
 	;
 		parser__parse_term(SubTerm0),
 		( { SubTerm0 = ok(SubTerm) } ->
 			( parser__get_token(close_curly) ->
-				{ Term = ok(term_functor(term_atom("{}"), 
+				{ Term = ok(term__functor(term__atom("{}"), 
 					[SubTerm], TermContext)) }
 			;
 				parser__unexpected("expecting `}' or operator",
@@ -436,7 +436,7 @@ parser__parse_list(List) -->
 		( { Token = comma } ->
 		    parser__parse_list(Tail0),
 		    ( { Tail0 = ok(Tail) } ->
-		        { List = ok(term_functor(term_atom("."), [Arg, Tail],
+		        { List = ok(term__functor(term__atom("."), [Arg, Tail],
 						TermContext)) }
 		    ;
 			% propagate error
@@ -446,7 +446,7 @@ parser__parse_list(List) -->
 		    parser__parse_arg(Tail0),
 		    ( { Tail0 = ok(Tail) } ->
 			( parser__get_token(close_list) ->
-		            { List = ok(term_functor(term_atom("."),
+		            { List = ok(term__functor(term__atom("."),
 					[Arg, Tail], TermContext)) }
 			;
 			    parser__unexpected("expecting ']' or operator",
@@ -457,8 +457,8 @@ parser__parse_list(List) -->
 			{ List = Tail0 }
 		    )
 		; { Token = close_list } ->
-		    { Tail = term_functor(term_atom("[]"), [], TermContext) },
-		    { List = ok(term_functor(term_atom("."), [Arg, Tail],
+		    { Tail = term__functor(term__atom("[]"), [], TermContext) },
+		    { List = ok(term__functor(term__atom("."), [Arg, Tail],
 				TermContext)) }
 		;
 		    parser__unexpected_tok(Token, Context,
@@ -695,13 +695,13 @@ parser__check_priority(y, MaxPriority, Priority) :-
 parser__check_priority(x, MaxPriority, Priority) :-
 	Priority < MaxPriority.
 
-:- pred parser__get_term_context(token_context, term_context,
+:- pred parser__get_term_context(token_context, term__context,
 				parser__state, parser__state).
 :- mode parser__get_term_context(in, out, in, out) is det.
 
 parser__get_term_context(TokenContext, TermContext) -->
 	=(parser__state(FileName, _Ops, _VarSet, _Tokens, _Names)),
-	{ term_context_init(FileName, TokenContext, TermContext) }.
+	{ term__context_init(FileName, TokenContext, TermContext) }.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

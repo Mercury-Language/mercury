@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module list, std_util.
+:- import_module bool, list, std_util.
 
 :- type set_bbbtree(T).
 

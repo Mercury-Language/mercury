@@ -22,12 +22,12 @@
 % The term type is actually defined in mercury_builtin.m.
 
 /*
-:- type term		--->	term_functor(const, list(term), term_context)
-			;	term_variable(var).
-:- type const		--->	term_atom(string)
-			;	term_integer(int)
-			;	term_string(string)
-			;	term_float(float).
+:- type term		--->	term__functor(const, list(term), term__context)
+			;	term__variable(var).
+:- type const		--->	term__atom(string)
+			;	term__integer(int)
+			;	term__string(string)
+			;	term__float(float).
 */
 
 :- type var.
@@ -190,27 +190,27 @@
 
 	% Given a term context, return the source line number.
 
-:- pred term_context_line(term_context, int).
-:- mode term_context_line(in, out) is det.
+:- pred term__context_line(term__context, int).
+:- mode term__context_line(in, out) is det.
 
 	% Given a term context, return the source file.
 
-:- pred term_context_file(term_context, string).
-:- mode term_context_file(in, out) is det.
+:- pred term__context_file(term__context, string).
+:- mode term__context_file(in, out) is det.
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
 	% Unify_proc__generate_du_type_to_term_clauses
-	% requires the use of an initialized term_context. It
-	% directly constructs an initialized term_context
-	% without calling term_context_init to avoid the
+	% requires the use of an initialized term__context. It
+	% directly constructs an initialized term__context
+	% without calling term__context_init to avoid the
 	% prob of including the term module in everything.
 
-% :- pred term_context_init(term_context).
-% :- mode term_context_init(out) is det.
+% :- pred term__context_init(term__context).
+% :- mode term__context_init(out) is det.
 
-:- pred term_context_init(string, int, term_context).
-:- mode term_context_init(in, in, out) is det.
+:- pred term__context_init(string, int, term__context).
+:- mode term__context_init(in, in, out) is det.
 
 	% Convert a list of terms which are all vars into a list
 	% of vars.  Abort (call error/1) if the list contains
@@ -250,8 +250,8 @@ term__vars(Term, Vars) :-
 term__vars_list(Terms, Vars) :-
 	term__vars_2_list(Terms, [], Vars).
 
-term__vars_2(term_variable(V), Vs, [V|Vs]).
-term__vars_2(term_functor(_,Args,_), Vs0, Vs) :-
+term__vars_2(term__variable(V), Vs, [V|Vs]).
+term__vars_2(term__functor(_,Args,_), Vs0, Vs) :-
 	term__vars_2_list(Args, Vs0, Vs).
 
 :- pred term__vars_2_list(list(term), list(var), list(var)).
@@ -266,8 +266,8 @@ term__vars_2_list([T|Ts], Vs0, Vs) :-
 
 	% term__contains_var(Term, Var) is true if Var occurs in Term.
 
-term__contains_var(term_variable(V), V).
-term__contains_var(term_functor(_, Args, _), V) :-
+term__contains_var(term__variable(V), V).
+term__contains_var(term__functor(_, Args, _), V) :-
 	term__contains_var_list(Args, V).
 
 term__contains_var_list([T|_], V) :-
@@ -278,7 +278,7 @@ term__contains_var_list([_|Ts], V) :-
 %-----------------------------------------------------------------------------%
 
 	% term__contains_functor(Term, Functor, Args):
-	%	term_functor(Functor, Args, _) is a subterm of Term.
+	%	term__functor(Functor, Args, _) is a subterm of Term.
 	%
 	% CURRENTLY NOT USED.
 
@@ -286,8 +286,8 @@ term__contains_var_list([_|Ts], V) :-
 % :- mode term__contains_functor(in, in, in) is semidet.
 :- mode term__contains_functor(in, out, out) is nondet.
 
-term__contains_functor(term_functor(Functor, Args, _), Functor, Args).
-term__contains_functor(term_functor(_, Args, _), SubFunctor, SubArgs) :-
+term__contains_functor(term__functor(Functor, Args, _), Functor, Args).
+term__contains_functor(term__functor(_, Args, _), SubFunctor, SubArgs) :-
  	list__member(SubTerm, Args),
  	term__contains_functor(SubTerm, SubFunctor, SubArgs).
 
@@ -303,28 +303,28 @@ term__contains_functor(term_functor(_, Args, _), SubFunctor, SubArgs) :-
 :- mode term__subterm(in, out) is multidet.
 
 term__subterm(Term, Term).
-term__subterm(term_functor(_, Args, _), SubTerm) :-
+term__subterm(term__functor(_, Args, _), SubTerm) :-
 	list__member(Term, Args),
 	term__subterm(Term, SubTerm).
 
 %-----------------------------------------------------------------------------%
 
-	% Access predicates for the term_context data structure.
+	% Access predicates for the term__context data structure.
 
 	% Given a term context, return the source line number.
 
-term_context_line(term_context(_, LineNumber), LineNumber).
+term__context_line(term__context(_, LineNumber), LineNumber).
 
 	% Given a term context, return the source file.
 
-term_context_file(term_context(FileName, _), FileName).
+term__context_file(term__context(FileName, _), FileName).
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
 
-% term_context_init(term_context("", 0)).
+% term__context_init(term__context("", 0)).
 
-term_context_init(File, LineNumber, term_context(File, LineNumber)).
+term__context_init(File, LineNumber, term__context(File, LineNumber)).
 
 %-----------------------------------------------------------------------------%
 
@@ -333,7 +333,7 @@ term_context_init(File, LineNumber, term_context(File, LineNumber)).
 
 :- term__unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
 
-term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
+term__unify(term__variable(X), term__variable(Y), Bindings0, Bindings) :-
 	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
 	->
@@ -347,7 +347,7 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			% Y is a variable which hasn't been bound yet
 			term__apply_rec_substitution(BindingOfX, Bindings0,
 				SubstBindingOfX),
-			( SubstBindingOfX = term_variable(Y) ->
+			( SubstBindingOfX = term__variable(Y) ->
 			 	Bindings = Bindings0
 			;
 				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
@@ -362,7 +362,7 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			% X is a variable which hasn't been bound yet
 			term__apply_rec_substitution(BindingOfY2, Bindings0,
 				SubstBindingOfY2),
-			( SubstBindingOfY2 = term_variable(X) ->
+			( SubstBindingOfY2 = term__variable(X) ->
 				Bindings = Bindings0
 			;
 				\+ term__occurs(SubstBindingOfY2, X, Bindings0),
@@ -375,35 +375,35 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			( X = Y ->
 				Bindings = Bindings0
 			;
-				map__set(Bindings0, X, term_variable(Y),
+				map__set(Bindings0, X, term__variable(Y),
 					Bindings)
 			)
 		)
 	).
 
-term__unify(term_variable(X), term_functor(F, As, C), Bindings0, Bindings) :-
+term__unify(term__variable(X), term__functor(F, As, C), Bindings0, Bindings) :-
 	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
 	->
-		term__unify(BindingOfX, term_functor(F, As, C), Bindings0,
+		term__unify(BindingOfX, term__functor(F, As, C), Bindings0,
 			Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
-		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
+		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
-term__unify(term_functor(F, As, C), term_variable(X), Bindings0, Bindings) :-
+term__unify(term__functor(F, As, C), term__variable(X), Bindings0, Bindings) :-
 	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
 	->
-		term__unify(term_functor(F, As, C), BindingOfX, Bindings0,
+		term__unify(term__functor(F, As, C), BindingOfX, Bindings0,
 			Bindings)
 	;
 		\+ term__occurs_list(As, X, Bindings0),
-		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
+		map__set(Bindings0, X, term__functor(F, As, C), Bindings)
 	).
 
-term__unify(term_functor(F, AsX, _), term_functor(F, AsY, _)) -->
+term__unify(term__functor(F, AsX, _), term__functor(F, AsY, _)) -->
 	term__unify_list(AsX, AsY).
 
 :- pred term__unify_list(list(term), list(term), substitution, substitution).
@@ -420,7 +420,7 @@ term__unify_list([X | Xs], [Y | Ys]) -->
 	% perhaps indirectly via the substitution.  (The variable must
 	% not be mapped by the substitution.)
 
-term__occurs(term_variable(X), Y, Bindings) :-
+term__occurs(term__variable(X), Y, Bindings) :-
 	(
 		X = Y
 	->
@@ -429,7 +429,7 @@ term__occurs(term_variable(X), Y, Bindings) :-
 		map__search(Bindings, X, BindingOfX),
 		term__occurs(BindingOfX, Y, Bindings)
 	).
-term__occurs(term_functor(_F, As, _), Y, Bindings) :-
+term__occurs(term__functor(_F, As, _), Y, Bindings) :-
 	term__occurs_list(As, Y, Bindings).
 
 term__occurs_list([Term | Terms], Y, Bindings) :-
@@ -447,16 +447,16 @@ term__occurs_list([Term | Terms], Y, Bindings) :-
 	%	replace all occurrences of Var in Term0 with Replacement,
 	%	and return the result in Term.
 
-term__substitute(term_variable(Var), SearchVar, Replacement, Term) :-
+term__substitute(term__variable(Var), SearchVar, Replacement, Term) :-
 	(
 		Var = SearchVar
 	->
 		Term = Replacement
 	;
-		Term = term_variable(Var)
+		Term = term__variable(Var)
 	).
-term__substitute(term_functor(Name, Args0, Context), Var, Replacement,
-		 term_functor(Name, Args, Context)) :-
+term__substitute(term__functor(Name, Args0, Context), Var, Replacement,
+		 term__functor(Name, Args, Context)) :-
 	term__substitute_list(Args0, Var, Replacement, Args).
 
 term__substitute_list([], _Var, _Replacement, []).
@@ -493,7 +493,7 @@ term__substitute_corresponding_2([S | Ss], [R | Rs], Subst0, Subst) :-
 
 %-----------------------------------------------------------------------------%
 
-term__apply_rec_substitution(term_variable(Var), Substitution, Term) :-
+term__apply_rec_substitution(term__variable(Var), Substitution, Term) :-
 	(
 		%some [Replacement]
 		map__search(Substitution, Var, Replacement)
@@ -501,10 +501,10 @@ term__apply_rec_substitution(term_variable(Var), Substitution, Term) :-
 		% recursively apply the substition to the replacement
 		term__apply_rec_substitution(Replacement, Substitution, Term)
 	;
-		Term = term_variable(Var)
+		Term = term__variable(Var)
 	).
-term__apply_rec_substitution(term_functor(Name, Args0, Context), Substitution,
-		 term_functor(Name, Args, Context)) :-
+term__apply_rec_substitution(term__functor(Name, Args0, Context), Substitution,
+		 term__functor(Name, Args, Context)) :-
 	term__apply_rec_substitution_to_list(Args0, Substitution, Args).
 
 term__apply_rec_substitution_to_list([], _Substitution, []).
@@ -515,17 +515,17 @@ term__apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
 
 %-----------------------------------------------------------------------------%
 
-term__apply_substitution(term_variable(Var), Substitution, Term) :-
+term__apply_substitution(term__variable(Var), Substitution, Term) :-
 	(
 		%some [Replacement]
 		map__search(Substitution, Var, Replacement)
 	->
 		Term = Replacement
 	;
-		Term = term_variable(Var)
+		Term = term__variable(Var)
 	).
-term__apply_substitution(term_functor(Name, Args0, Context), Substitution,
-		 term_functor(Name, Args, Context)) :-
+term__apply_substitution(term__functor(Name, Args0, Context), Substitution,
+		 term__functor(Name, Args, Context)) :-
 	term__apply_substitution_to_list(Args0, Substitution, Args).
 
 term__apply_substitution_to_list([], _Substitution, []).
@@ -555,11 +555,11 @@ term__var_to_int(Var, Var).
 %-----------------------------------------------------------------------------%
 
 	% substitute a variable name in a term.
-term__relabel_variable(term_functor(Const, Terms0, Cont), OldVar, NewVar,
-				term_functor(Const, Terms, Cont)) :-
+term__relabel_variable(term__functor(Const, Terms0, Cont), OldVar, NewVar,
+				term__functor(Const, Terms, Cont)) :-
 	term__relabel_variables(Terms0, OldVar, NewVar, Terms).
-term__relabel_variable(term_variable(Var0), OldVar, NewVar,
-				term_variable(Var)) :-
+term__relabel_variable(term__variable(Var0), OldVar, NewVar,
+				term__variable(Var)) :-
 	(
 		Var0 = OldVar
 	->
@@ -587,15 +587,15 @@ term__term_list_to_var_list(Terms, Vars) :-
 :- term__var_list_to_term_list(Terms, Vars) when Terms or Vars. % Indexing
 
 term__var_list_to_term_list([], []).
-term__var_list_to_term_list([Var | Vars], [term_variable(Var) | Terms]) :-
+term__var_list_to_term_list([Var | Vars], [term__variable(Var) | Terms]) :-
 	term__var_list_to_term_list(Vars, Terms).
 
 %-----------------------------------------------------------------------------%
 
-term__is_ground(term_variable(V), Bindings) :-
+term__is_ground(term__variable(V), Bindings) :-
 	map__search(Bindings, V, Binding),
 	term__is_ground(Binding, Bindings).
-term__is_ground(term_functor(_, Args, _), Bindings) :-
+term__is_ground(term__functor(_, Args, _), Bindings) :-
 	term__is_ground_2(Args, Bindings).
 
 :- pred term__is_ground_2(list(term), substitution).
@@ -608,7 +608,7 @@ term__is_ground_2([Term|Terms], Bindings) :-
 
 %-----------------------------------------------------------------------------%
 
-term__is_ground(term_functor(_, Args, _)) :-
+term__is_ground(term__functor(_, Args, _)) :-
 	term__is_ground_2(Args).
 
 :- pred term__is_ground_2(list(term)).
@@ -639,7 +639,7 @@ term__compare(Cmp, Term1, Term2, Bindings) :-
 	% Functor and a list of closures ArgClosures which yield the arguments
 	% of the term, and it returns a Term with the functor Functor and
 	% the arguments derived from the closures. The context is set to
-	% the result of term_context_init/1.
+	% the result of term__context_init/1.
 :- pred term__construct_term(string, list(pred(term)), term).
 :- mode term__construct_term( in, list_skel_in(pred(out) is det), out) is det.
 
@@ -648,10 +648,10 @@ term__compare(Cmp, Term1, Term2, Bindings) :-
 :- pred term__construct_const(string, term).
 :- mode term__construct_const(in, out) is det.
 
-	% term_string_to_term(String, Term) makes a 'string' term Term,
+	% term__string_to_term(String, Term) makes a 'string' term Term,
 	% corresponding to String.
-:- pred term_string_to_term(string, term).
-:- mode term_string_to_term(in, out) is det.
+:- pred term__string_to_term(string, term).
+:- mode term__string_to_term(in, out) is det.
 
 	% term__int_to_term(Int, Term) makes a 'int' term Term,
 	% corresponding to Int.
@@ -674,17 +674,17 @@ term__from_list(P, [H|L], T) :-
 		term__from_list(P, L)
 	], T).
 
-term__construct_const(Functor, term_functor(term_atom(Functor), [], C)) :-
-	term_context_init(C).
+term__construct_const(Functor, term__functor(term__atom(Functor), [], C)) :-
+	term__context_init(C).
 
-term__construct_term(S, L0, term_functor(term_atom(S), L, C)) :-
+term__construct_term(S, L0, term__functor(term__atom(S), L, C)) :-
 	list__apply(L0, L),
-	term_context_init(C).
+	term__context_init(C).
 
-term_string_to_term(S, term_functor(term_string(S), [], C)) :-
-	term_context_init(C).
+term__string_to_term(S, term__functor(term__string(S), [], C)) :-
+	term__context_init(C).
 
-term__int_to_term(I, term_functor(term_integer(I), [], C)) :-
-	term_context_init(C).
+term__int_to_term(I, term__functor(term__integer(I), [], C)) :-
+	term__context_init(C).
 
 %-----------------------------------------------------------------------------%
