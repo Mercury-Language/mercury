@@ -26,11 +26,11 @@ dd                 histogram_exp      return             var_name_stats
 dd_dd              ignore             s                  vars
 debug_vars         io_query           save               view
 delete             label_stats        save_to_file       
---More--[Kdisable            level              scope              
+disable            level              scope              
 h              help           histogram_all  histogram_exp  
 var_details     var_name_stats  vars            view
 var_details     var_name_stats  vars            
-help vars 
+ help vars 
 vars
      Prints the names of all the known variables in the current
      environment, together with an ordinal number for each variable.

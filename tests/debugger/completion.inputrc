@@ -5,5 +5,8 @@ set completion-query-items 100000
 # requiring multiple `complete' commands.
 set show-all-if-ambiguous on
 
+# Disable --More-- prompt when completion list fills screen.
+set page-completions off
+
 # Make the completion requests show up in the input file.
 @: complete
