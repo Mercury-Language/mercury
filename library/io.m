@@ -1708,6 +1708,12 @@ io__write_univ(Univ, Priority) -->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
 		io__write_c_pointer(C_Pointer)
+	; { type_ctor_name(type_ctor(univ_type(Univ))) = "type_info" },
+	  { type_ctor_module_name(type_ctor(univ_type(Univ))) =
+			"private_builtin" } ->
+	  	% XXX This is a hack (see the comment for array below).
+		{ TypeInfo = unsafe_cast(univ_value_as_type_any(Univ)) },
+		io__write_string(type_name(TypeInfo))
 	; { type_ctor_name(type_ctor(univ_type(Univ))) = "array" },
 	  { type_ctor_module_name(type_ctor(univ_type(Univ))) = "array" } ->
 		%
@@ -1725,6 +1731,25 @@ io__write_univ(Univ, Priority) -->
 	;
 		io__write_ordinary_term(Univ, Priority)
 	).
+
+	% XXX These two functions and the type definition 
+	% are just temporary, they are used for the
+	% horrible hack above.
+
+:- func unsafe_cast(T1::in) = (T2::out) is det.
+:- pragma c_code(unsafe_cast(VarIn::in) = (VarOut::out),
+	will_not_call_mercury, "
+	VarOut = VarIn;
+").
+
+:- type any == c_pointer.
+
+:- func univ_value_as_type_any(univ) = any.
+:- pragma c_code(univ_value_as_type_any(Univ::in) = (Val::out),
+	will_not_call_mercury, "
+	Val = field(mktag(0), Univ, UNIV_OFFSET_FOR_DATA);
+").
+
 
 :- pred io__write_univ_as_univ(univ, io__state, io__state).
 :- mode io__write_univ_as_univ(in, di, uo) is det.

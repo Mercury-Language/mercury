@@ -354,7 +354,7 @@
 	% The string representation of the functor that `functor' and 
 	% `deconstruct' return is:
 	% 	- for user defined types, the functor that is given
-	% 	  in the type defintion. For lists, this
+	% 	  in the type definition. For lists, this
 	% 	  means the functors ./2 and []/0 are used, even if
 	% 	  the list uses the [....] shorthand.
 	%	- for integers, the string is a base 10 number,
@@ -943,6 +943,13 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 		"Y = X;").
 %-----------------------------------------------------------------------------%
 
+	% We define type_info as the same as the private_builtin
+	% definition of type_info.  `unit' is just used as a placeholder.
+	% type_info/1 is defined internally, and the type parameter
+	% is really some sort of existential type.
+	
+:- type type_info == private_builtin:type_info(unit). 
+
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 univ(X) = Univ :- type_to_univ(X, Univ).
@@ -1056,19 +1063,6 @@ const struct mercury_data_std_util__base_type_functors_univ_0_struct {
 	MR_TYPEFUNCTORS_UNIV
 };
 
-const struct mercury_data_std_util__base_type_layout_type_info_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_std_util__base_type_layout_type_info_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_TYPEINFO_VALUE))
-};
-
-const struct mercury_data_std_util__base_type_functors_type_info_0_struct {
-	Integer f1;
-} mercury_data_std_util__base_type_functors_type_info_0 = {
-	MR_TYPEFUNCTORS_SPECIAL
-};
-
 #endif
 
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
@@ -1080,22 +1074,12 @@ MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__univ_0_0);
 MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__univ_0_0);
 MR_MAKE_STACK_LAYOUT_INTERNAL(mercury____Compare___std_util__univ_0_0, 1);
 
-Define_extern_entry(mercury____Unify___std_util__type_info_0_0);
-Define_extern_entry(mercury____Index___std_util__type_info_0_0);
-Define_extern_entry(mercury____Compare___std_util__type_info_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___std_util__type_info_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___std_util__type_info_0_0);
-MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___std_util__type_info_0_0);
 
 BEGIN_MODULE(unify_univ_module)
 	init_entry_sl(mercury____Unify___std_util__univ_0_0);
 	init_entry_sl(mercury____Index___std_util__univ_0_0);
 	init_entry_sl(mercury____Compare___std_util__univ_0_0);
 	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
-
-	init_entry_sl(mercury____Unify___std_util__type_info_0_0);
-	init_entry_sl(mercury____Index___std_util__type_info_0_0);
-	init_entry_sl(mercury____Compare___std_util__type_info_0_0);
 BEGIN_CODE
 Define_entry(mercury____Unify___std_util__univ_0_0);
 {
@@ -1205,42 +1189,6 @@ Define_label(mercury____Compare___std_util__univ_0_0_i1);
 	r1 = r2;
 	proceed();
 #endif
-
-Define_entry(mercury____Unify___std_util__type_info_0_0);
-{
-	/*
-	** Unification for type_info.
-	**
-	** The two inputs are in the registers named by unify_input[12].
-	** The success/failure indication should go in unify_output.
-	*/
-	int comp;
-	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
-	restore_transient_registers();
-	unify_output = (comp == COMPARE_EQUAL);
-	proceed();
-}
-
-Define_entry(mercury____Index___std_util__type_info_0_0);
-	index_output = -1;
-	proceed();
-
-Define_entry(mercury____Compare___std_util__type_info_0_0);
-{
-	/*
-	** Comparison for type_info:
-	**
-	** The two inputs are in the registers named by compare_input[12].
-	** The result should go in compare_output.
-	*/
-	int comp;
-	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
-	restore_transient_registers();
-	compare_output = comp;
-	proceed();
-}
 
 END_MODULE
 
