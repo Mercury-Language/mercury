@@ -2350,6 +2350,7 @@ opt_level(0, _, [
 	smart_indexing		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
+	optimize_dead_procs	-	bool(yes),
 	excess_assign		-	bool(yes)	% ???
 ]).
 
@@ -2375,7 +2376,6 @@ opt_level(2, _, [
 	optimize_fulljumps	-	bool(yes),
 	optimize_repeat		-	int(3),
 	optimize_dups		-	bool(yes),
-	optimize_dead_procs	-	bool(yes),
 	follow_code		-	bool(yes),
 	inline_simple		-	bool(yes),
 	inline_single_use	-	bool(yes),
