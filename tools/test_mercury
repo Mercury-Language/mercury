@@ -1059,7 +1059,7 @@ case $HOST in
 		fullname=i686-pc-linux-libc2.2-gnu-O5
 		;;
 	earth|jupiter)	
-		fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
+		fullname=i686-pc-linux-libc2.2-gnu-O5-intermod
 		;;
 	mars)	
 		fullname=i686-pc-linux-libc2.2-gnu-O5
