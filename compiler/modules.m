@@ -539,6 +539,7 @@ mercury_std_library_module("benchmarking").
 mercury_std_library_module("bimap").
 mercury_std_library_module("bintree").
 mercury_std_library_module("bintree_set").
+mercury_std_library_module("bitmap").
 mercury_std_library_module("bool").
 mercury_std_library_module("bt_array").
 mercury_std_library_module("builtin").
