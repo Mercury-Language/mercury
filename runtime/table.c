@@ -30,6 +30,10 @@ void tab_init_table(Table *table)
 	reg	int	i;
 
 	table->ta_store = make_many(List *, table->ta_size);
+
+	/* make sure that the make_many worked! */
+	assert(((table->ta_size != 0) ? table->ta_store : 1));
+
 	for (i = 0; i < table->ta_size; i++)
 		table->ta_store[i] = NULL;
 }
