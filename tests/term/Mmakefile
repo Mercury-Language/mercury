@@ -19,6 +19,8 @@ TERM_PROGS= \
 	dds3_15 \
 	dds3_17 \
 	dds3_8 \
+	existential_error1 \
+	existential_error2 \
 	fold \
 	my_list \
 	lte \
@@ -87,7 +89,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-MCTERMFLAGS = --enable-termination --term-single-arg 5 --term-norm simple
+MCTERMFLAGS = --enable-termination --term-single-arg 5
 MCOPTFLAGS  = --no-inlining --no-optimize-unused-args --no-deforestation \
 	      --no-optimize-higher-order
 MCTRANSOPTFLAGS = $(MCTERMFLAGS) $(MCOPTFLAGS)

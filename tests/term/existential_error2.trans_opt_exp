@@ -1,0 +1,2 @@
+:- module existential_error2.
+:- pragma termination_info(existential_error2.construct_list_of_any((builtin.out)), finite(1, [no]), cannot_loop).

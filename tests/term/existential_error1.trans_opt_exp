@@ -1,0 +1,2 @@
+:- module existential_error1.
+:- pragma termination_info(existential_error1.deconstruct_univ((builtin.in), (builtin.out)), infinite, can_loop).
