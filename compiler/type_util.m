@@ -933,9 +933,8 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 	% XXX Instead of just failing if the functors' name/arity is different,
 	% we should check here if these types have been defined
 	% to be equivalent using equivalence types.  But this
-	% is difficult because (1) it causes typevarset synchronization
-	% problems, and (2) the relevant variables TypeInfo, TVarSet0, TVarSet
-	% haven't been passed in to here.
+	% is difficult because the relevant variable
+	% TypeTable hasn't been passed in to here.
 
 /*******
 	...
@@ -958,16 +957,15 @@ type_unify(term__functor(FX, AsX, _CX), term__functor(FY, AsY, _CY),
 
 replace_eqv_type(Functor, Arity, Args, EqvType) :-
 
-	% XXX magically_obtain(TypeTable, TVarSet0, TVarSet)
+	% XXX magically_obtain(TypeTable)
 
 	make_type_id(Functor, Arity, TypeId),
 	map__search(TypeTable, TypeId, TypeDefn),
-	TypeDefn = hlds_type_defn(TypeVarSet, TypeParams0,
-			eqv_type(EqvType0), _Condition, Context, _Status),
-	varset__merge(TVarSet0, TypeVarSet, [EqvType0 | TypeParams0],
-			TVarSet, [EqvType1, TypeParams1]),
-	type_param_to_var_list(TypeParams1, TypeParams),
-	term__substitute_corresponding(EqvType1, TypeParams, AsX,
+	get_type_defn_body(TypeDefn, TypeBody),
+	TypeBody = eqv_type(EqvType0),
+	get_type_defn_tparams(TypeDefn, TypeParams0),
+	type_param_to_var_list(TypeParams0, TypeParams),
+	term__substitute_corresponding(EqvType0, TypeParams, AsX,
 		EqvType).
 
 ******/
