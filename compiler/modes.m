@@ -862,7 +862,7 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	instmap_lookup_var(InstMap0, Var, Inst0),
-	( inst_is_compat(Inst0, Inst, ModuleInfo) ->
+	( inst_gteq(Inst0, Inst, ModuleInfo) ->
 		ModeInfo = ModeInfo0
 	; mode_info_var_is_locked(ModeInfo0, Var) ->
 		mode_info_error([Var], mode_error_bind_var(Var, Inst0, Inst),
