@@ -437,7 +437,6 @@ typedef MR_Bool			Bool;
 
 /* stuff from mercury_tags.h */
 
-#define	TAGBITS			MR_TAGBITS
 #define	WORDBITS		MR_WORDBITS
 
 #define	mktag(t)		MR_mktag(t)

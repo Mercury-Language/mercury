@@ -235,6 +235,9 @@
 #ifdef MR_HIGHTAGS
   #define HIGHTAGS 1
 #endif
+#ifndef TAGBITS
+  #define TAGBITS MR_TAGBITS
+#endif
 
 /*
 ** Other stuff.

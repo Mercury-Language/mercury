@@ -56,6 +56,7 @@
 ** MR_INLINE_ALLOC
 ** MR_PIC_REG
 ** MR_HIGHTAGS
+** MR_TAGBITS
 **	See the documentation for
 **		--high-level-code
 **		--high-level-data
@@ -74,6 +75,7 @@
 **		--inline-alloc
 **		--pic-reg
 **		--tags
+**		--num-tag-bits
 **	(respectively) in the mmc help message or the Mercury User's Guide.
 **
 ** MR_PIC
@@ -174,6 +176,13 @@
 #ifdef HIGHTAGS
   #define MR_HIGHTAGS 1
   #undef HIGHTAGS
+#endif
+#ifdef TAGBITS
+  #define MR_TAGBITS TAGBITS
+  /*
+  ** We can't #undef TAGBITS here because it is used in the
+  ** value of MR_TAGBITS.
+  */
 #endif
 
 /*
