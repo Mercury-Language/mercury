@@ -75,6 +75,10 @@
 :- mode ml_gen_closure_wrapper(in, in, in, in, in, out, out,
 		in, out) is det.
 
+	% Generate an MLDS rval for a given reserved address,
+	% cast to the appropriate type.
+:- func ml_gen_reserved_address(reserved_address, mlds__type) = mlds__rval.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -204,7 +208,29 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
 
+	ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes,
+		HowToConstruct, Context, MLDS_Decls, MLDS_Statements).
+
+:- pred ml_gen_construct_2(cons_tag, prog_type, prog_var, cons_id, prog_vars,
+		list(uni_mode), how_to_construct, prog_context,
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_construct_2(in, in, in, in, in, in, in, in, out, out, in, out)
+		is det.
+
+ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, HowToConstruct,
+		Context, MLDS_Decls, MLDS_Statements) -->
 	(
+		%
+		% types for which some other constructor has a
+		% reserved_address -- that only makes a difference when
+		% deconstructing, so here we ignore that, and just
+		% recurse on the representation for this constructor.
+		%
+		{ Tag = shared_with_reserved_addresses(_, ThisTag) }
+	->
+		ml_gen_construct_2(ThisTag, Type, Var, ConsId, Args, ArgModes,
+			HowToConstruct, Context, MLDS_Decls, MLDS_Statements)
+	;
 		%
 		% no_tag types
 		%
@@ -268,17 +294,37 @@ ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
 	% ml_gen_construct.
 	%
 :- pred ml_gen_static_const_arg(prog_var, static_cons, mlds__rval,
-	ml_gen_info, ml_gen_info).
+		ml_gen_info, ml_gen_info).
 :- mode ml_gen_static_const_arg(in, in, out, in, out) is det.
 
-ml_gen_static_const_arg(Var, static_cons(ConsId, ArgVars, StaticArgs), Rval) -->
+ml_gen_static_const_arg(Var, StaticCons, Rval) -->
 	%
 	% figure out how this argument is represented
 	%
+	{ StaticCons = static_cons(ConsId, _ArgVars, _StaticArgs) },
 	ml_variable_type(Var, VarType),
 	ml_cons_id_to_tag(ConsId, VarType, Tag),
 
+	ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval).
+
+:- pred ml_gen_static_const_arg_2(cons_tag, prog_type, prog_var, static_cons,
+		mlds__rval, ml_gen_info, ml_gen_info).
+:- mode ml_gen_static_const_arg_2(in, in, in, in, out, in, out) is det.
+
+ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval) -->
+	{ StaticCons = static_cons(_ConsId, ArgVars, StaticArgs) }, 
 	(
+		%
+		% types for which some other constructor has a
+		% reserved_address -- that only makes a difference when
+		% constructing, so here we ignore that, and just
+		% recurse on the representation for this constructor.
+		%
+		{ Tag = shared_with_reserved_addresses(_, ThisTag) }
+	->
+		ml_gen_static_const_arg_2(ThisTag, VarType, Var, StaticCons,
+			Rval)
+	;
 		%
 		% no_tag types
 		%
@@ -397,7 +443,17 @@ ml_gen_constant(deep_profiling_proc_static_tag(_), _, _) -->
 ml_gen_constant(code_addr_constant(PredId, ProcId), _, ProcAddrRval) -->
 	ml_gen_proc_addr_rval(PredId, ProcId, ProcAddrRval).
 
-% tags which are not (necessarily) constants are handled
+ml_gen_constant(reserved_address(ReservedAddr), VarType, Rval) -->
+	ml_gen_type(VarType, MLDS_VarType),
+	{ Rval = ml_gen_reserved_address(ReservedAddr, MLDS_VarType) }.
+
+ml_gen_constant(shared_with_reserved_addresses(_, ThisTag), VarType, Rval) -->
+	% For shared_with_reserved_address, the sharing is only
+	% important for tag tests, not for constructions,
+	% so here we just recurse on the real representation.
+	ml_gen_constant(ThisTag, VarType, Rval).
+
+% these tags, which are not (necessarily) constants, are handled
 % in ml_gen_construct and ml_gen_static_const_arg,
 % so we don't need to handle them here.
 ml_gen_constant(no_tag, _, _) -->
@@ -408,6 +464,29 @@ ml_gen_constant(shared_remote_tag(_, _), _, _) -->
 	{ error("ml_gen_constant: shared_remote_tag") }.
 ml_gen_constant(pred_closure_tag(_, _, _), _, _) -->
 	{ error("ml_gen_constant: pred_closure_tag") }.
+
+%-----------------------------------------------------------------------------%
+
+% Generate an MLDS rval for a given reserved address,
+% cast to the appropriate type.
+ml_gen_reserved_address(null_pointer, MLDS_Type) = const(null(MLDS_Type)).
+ml_gen_reserved_address(small_pointer(Int), MLDS_Type) =
+		unop(cast(MLDS_Type), const(int_const(Int))).
+ml_gen_reserved_address(reserved_object(TypeId, QualCtorName, CtorArity),
+		_Type) = Rval :-
+	( QualCtorName = qualified(ModuleName, CtorName) ->
+		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+		TypeId = TypeName - TypeArity,
+		unqualify_name(TypeName, UnqualTypeName),
+		MLDS_TypeName = mlds__append_class_qualifier(MLDS_ModuleName,
+			UnqualTypeName, TypeArity),
+		Name = ml_format_reserved_object_name(CtorName, CtorArity),
+		Rval = const(data_addr_const(
+			data_addr(MLDS_TypeName, var(Name))))
+	;
+		unexpected(this_file,
+			"unqualified ctor name in reserved_object")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1040,7 +1119,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, CtorName, Var,
 		{ ArgInits = list__map(func(X) = init_obj(X), ArgRvals) },
 		{ Initializer = init_array(ArgInits) },
 		{ ConstDefn = ml_gen_static_const_defn(ConstName, ConstType,
-			Initializer, Context) },
+			local, Initializer, Context) },
 
 		%
 		% Assign the address of the local static constant to
@@ -1178,7 +1257,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 			[i(PredIdNum), i(ProcIdNum), i(SequenceNum)]), no) },
 		{ Initializer = init_obj(Rval) },
 		{ ConstDefn = ml_gen_static_const_defn(ConstName, Type,
-			Initializer, Context) },
+			local, Initializer, Context) },
 		{ ConstDefns = [ConstDefn] },
 		%
 		% Return as the boxed rval the address of that constant,
@@ -1315,6 +1394,17 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 	{ MLDS_Decls = [] },
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
+	ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
+			MLDS_Statements).
+
+:- pred ml_gen_det_deconstruct_2(cons_tag, prog_type, prog_var, cons_id,
+		prog_vars, list(uni_mode), prog_context,
+		mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_det_deconstruct_2(in, in, in, in, in, in, in, out, in, out)
+		is det.
+
+ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
+		MLDS_Statements) -->
 	% For constants, if the deconstruction is det, then we already know
 	% the value of the constant, so MLDS_Statements = [].
 	(
@@ -1374,8 +1464,22 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 				VarLval, OffSet, ArgNum,
 				PrimaryTag, Context, MLDS_Statements)
 	;
+		% For constants, if the deconstruction is det, then we already
+		% know the value of the constant, so MLDS_Statements = [].
 		{ Tag = shared_local_tag(_Bits1, _Num1) },
-		{ MLDS_Statements = [] } % if this is det, then nothing happens
+		{ MLDS_Statements = [] }
+	;
+		% For constants, if the deconstruction is det, then we already
+		% know the value of the constant, so MLDS_Statements = [].
+		{ Tag = reserved_address(_) },
+		{ MLDS_Statements = [] }
+	;
+		% For shared_with_reserved_address, the sharing is only
+		% important for tag tests, not for det deconstructions,
+		% so here we just recurse on the real representation.
+		{ Tag = shared_with_reserved_addresses(_, ThisTag) },
+		ml_gen_det_deconstruct_2(ThisTag, Type, Var, ConsId, Args,
+				Modes, Context, MLDS_Statements)
 	).
 
 	% Calculate the integer offset used to reference the first field
@@ -1397,6 +1501,10 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 		TagBits = PrimaryTag,
 		OffSet = 1,
 		ArgNum = 1
+	;
+		Tag = shared_with_reserved_addresses(_, ThisTag),
+		% just recurse on ThisTag
+		ml_tag_offset_and_argnum(ThisTag, TagBits, OffSet, ArgNum)
 	;
 		Tag = string_constant(_String),
 		error("ml_tag_offset_and_argnum")
@@ -1429,6 +1537,9 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 		error("ml_tag_offset_and_argnum")
 	;
 		Tag = shared_local_tag(_Bits1, _Num1),
+		error("ml_tag_offset_and_argnum")
+	;
+		Tag = reserved_address(_),
 		error("ml_tag_offset_and_argnum")
 	).
 
@@ -1798,6 +1909,28 @@ ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
 	TestRval = binop(eq, Rval,
 		  unop(cast(MLDS_VarType), mkword(Bits,
 		  	unop(std_unop(mkbody), const(int_const(Num)))))).
+
+ml_gen_tag_test_rval(reserved_address(ReservedAddr), VarType, ModuleInfo,
+		Rval) = TestRval :-
+	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
+	ReservedAddrRval = ml_gen_reserved_address(ReservedAddr, MLDS_VarType),
+	TestRval = binop(eq, Rval, ReservedAddrRval).
+
+ml_gen_tag_test_rval(shared_with_reserved_addresses(ReservedAddrs, ThisTag),
+		VarType, ModuleInfo, Rval) = FinalTestRval :-
+	%
+	% We first check that the Rval doesn't match any of the
+	% ReservedAddrs, and then check that it matches ThisTag.
+	%
+	CheckReservedAddrs = (func(RA, TestRval0) = TestRval :-
+		EqualRA = ml_gen_tag_test_rval(reserved_address(RA), VarType,
+					ModuleInfo, Rval),
+		TestRval = binop((and), unop(std_unop(not), EqualRA), TestRval0)
+	),
+	MatchesThisTag = ml_gen_tag_test_rval(ThisTag, VarType, ModuleInfo,
+			Rval),
+	FinalTestRval = list__foldr(CheckReservedAddrs, ReservedAddrs,
+			MatchesThisTag).
 
 	% ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
 	%	Return the rval for the secondary tag field of VarRval,

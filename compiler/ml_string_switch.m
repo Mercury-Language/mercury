@@ -116,8 +116,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 		NextSlotsName),
 	{ NextSlotsType = mlds__array_type(SlotVarType) },
 	{ NextSlotsDefn = ml_gen_static_const_defn(NextSlotsName,
-		NextSlotsType,
-		init_array(NextSlots), Context) },
+		NextSlotsType, local, init_array(NextSlots), Context) },
 	ml_gen_var_lval(NextSlotsName, NextSlotsType, NextSlotsLval),
 
 	ml_gen_info_new_const(StringTableSeq),
@@ -125,7 +124,7 @@ ml_string_switch__generate(Cases, Var, CodeModel, _CanFail, Context,
 		StringTableName),
 	{ StringTableType = mlds__array_type(StringVarType) },
 	{ StringTableDefn = ml_gen_static_const_defn(StringTableName,
-		StringTableType, init_array(Strings), Context) },
+		StringTableType, local, init_array(Strings), Context) },
 	ml_gen_var_lval(StringTableName, StringTableType ,StringTableLval),
 	
 	%

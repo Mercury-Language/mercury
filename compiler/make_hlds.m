@@ -1788,9 +1788,9 @@ module_add_type_defn(Module0, TVarSet, Name, Args, TypeDefn, _Cond, Context,
 		item_status(Status0, NeedQual), Module) -->
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
-	{ convert_type_defn(TypeDefn, Globals, Body) },
 	{ list__length(Args, Arity) },
 	{ TypeId = Name - Arity },
+	{ convert_type_defn(TypeDefn, TypeId, Globals, Body) },
 	{ Body = abstract_type ->
 		make_status_abstract(Status0, Status1)
 	;
@@ -2011,15 +2011,15 @@ combine_status_abstract_imported(Status2, Status) :-
 		Status = abstract_imported
 	).
 
-:- pred convert_type_defn(type_defn, globals, hlds_type_body).
-:- mode convert_type_defn(in, in, out) is det.
+:- pred convert_type_defn(type_defn, type_id, globals, hlds_type_body).
+:- mode convert_type_defn(in, in, in, out) is det.
 
-convert_type_defn(du_type(Body, EqualityPred), Globals,
+convert_type_defn(du_type(Body, EqualityPred), TypeId, Globals,
 		du_type(Body, CtorTags, IsEnum, EqualityPred)) :-
-	assign_constructor_tags(Body, Globals, CtorTags, IsEnum).
-convert_type_defn(uu_type(Body), _, uu_type(Body)).
-convert_type_defn(eqv_type(Body), _, eqv_type(Body)).
-convert_type_defn(abstract_type, _, abstract_type).
+	assign_constructor_tags(Body, TypeId, Globals, CtorTags, IsEnum).
+convert_type_defn(uu_type(Body), _, _, uu_type(Body)).
+convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
+convert_type_defn(abstract_type, _, _, abstract_type).
 
 :- pred ctors_add(list(constructor), type_id, tvarset, need_qualifier,
 		partial_qualifier_info, prog_context, import_status,

@@ -276,11 +276,15 @@ switch_util__type_cat_to_switch_cat(tuple_type, other_switch).
 	%
 switch_util__switch_priority(no_tag, 0).		% should never occur
 switch_util__switch_priority(int_constant(_), 1).
+switch_util__switch_priority(reserved_address(_), 1).
 switch_util__switch_priority(shared_local_tag(_, _), 1).
 switch_util__switch_priority(unshared_tag(_), 2).
 switch_util__switch_priority(float_constant(_), 3).
 switch_util__switch_priority(shared_remote_tag(_, _), 4).
 switch_util__switch_priority(string_constant(_), 5).
+switch_util__switch_priority(shared_with_reserved_addresses(RAs, Tag), N) :-
+	switch_util__switch_priority(Tag, N0),
+	N = N0 + list__length(RAs).
 	% The following tags should all never occur in switches.
 switch_util__switch_priority(pred_closure_tag(_, _, _), 6).
 switch_util__switch_priority(code_addr_constant(_, _), 6).

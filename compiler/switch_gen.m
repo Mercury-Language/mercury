@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,6 +79,21 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 	{ globals__lookup_bool_option(Globals, smart_indexing,
 		Indexing) },
 	(
+		% Check for a switch on a type whose representation
+		% uses reserved addresses 
+		{ list__member(Case, TaggedCases) },    
+		{ Case = case(_Priority, Tag, _ConsId, _Goal) },
+		{
+			Tag = reserved_address(_)
+		;
+			Tag = shared_with_reserved_addresses(_, _)
+		}
+	->
+		% XXX This may be be inefficient in some cases.
+		switch_gen__generate_all_cases(TaggedCases, CaseVar,
+			CodeModel, CanFail, StoreMap, EndLabel, no, MaybeEnd,
+			Code)
+	;
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
 		code_info__get_maybe_trace_info(MaybeTraceInfo),

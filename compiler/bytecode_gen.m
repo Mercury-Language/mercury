@@ -770,6 +770,16 @@ bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-
 	unexpected(this_file, "tabling_pointer_constant cons tag for non-tabling_pointer_constant cons id").
 bytecode_gen__map_cons_tag(deep_profiling_proc_static_tag(_), _) :-
 	unexpected(this_file, "deep_profiling_proc_static_tag cons tag for non-deep_profiling_proc_static cons id").
+bytecode_gen__map_cons_tag(reserved_address(_), _) :-
+	% These should only be generated if the --num-reserved-addresses
+	% or --num-reserved-objects options are used.
+	sorry(this_file,
+	   "bytecode with --num-reserved-addresses or --num-reserved-objects").
+bytecode_gen__map_cons_tag(shared_with_reserved_addresses(_, _), _) :-
+	% These should only be generated if the --num-reserved-addresses
+	% or --num-reserved-objects options are used.
+	sorry(this_file,
+	   "bytecode with --num-reserved-addresses or --num-reserved-objects").
 
 %---------------------------------------------------------------------------%
 

@@ -188,6 +188,8 @@
 		;	reserve_tag
 		;	tags
 		;	num_tag_bits
+		;	num_reserved_addresses
+		;	num_reserved_objects
 		;	bits_per_word
 		;	bytes_per_word
 				% The undocumented conf_low_tag_bits option
@@ -661,6 +663,8 @@ option_defaults_2(compilation_model_option, [
 					% -1 is a special value which means
 					% use the value of conf_low_tag_bits
 					% instead
+	num_reserved_addresses	-	int(0),
+	num_reserved_objects	-	int(0),
 	bits_per_word		-	int(32),
 					% A good default for the current
 					% generation of architectures.
@@ -1119,6 +1123,8 @@ long_option("pic",			pic).
 long_option("pic-reg",			pic_reg).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
+long_option("num-reserved-addresses",	num_reserved_addresses).
+long_option("num-reserved-objects",	num_reserved_objects).
 long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
@@ -1979,7 +1985,8 @@ options_help_aux_output -->
 		"--dump-mlds <stage number or name>",
 		"\tDump the MLDS (medium level intermediate representation) after",
 		"\tthe specified stage to `<module>.mlds_dump.<num>-<name>',",
-		"\t`<module>.c_dump.<num>-<name>' and `<module>.h_dump.<num>-<name>'.",
+		"\t`<module>.c_dump.<num>-<name>',",
+		"\tand `<module>.h_dump.<num>-<name>'.",
 		"\tStage numbers range from 1-99.",
 		"\tMultiple dump options accumulate.",
 		"--dump-rl",
@@ -2342,6 +2349,15 @@ your program compiled with different options.
 	% 	"\t\t`--tags none' implies `--num-tag-bits 0'.",
 		"--num-tag-bits <n>\t\t(This option is not for general use.)",
 		"\tUse <n> tag bits.",
+		"--num-reserved-addresses <n>\t(This option is not for general use.)",
+		"\tTreat the integer values from 0 up to <n> - 1 as reserved",
+		"\taddresses that can be used to represent nullary constructors",
+		"\t(constants) of discriminated union types.",
+		"--num-reserved-objects <n>\t(This option is not for general use.)",
+		"\tAllocate up to <n> global objects per type,",
+		"\tfor representing nullary constructors",
+		"\t(constants) of discriminated union types.",
+
 
 		"--reserve-tag\t\t\t(grade modifier: `.rt')",
 		"\tReserve a tag in the data representation of the generated ",

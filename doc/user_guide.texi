@@ -4495,6 +4495,7 @@ ordinary Mercury programmers.
 @item @code{--tags @{none, low, high@}}
 @findex --tags
 @cindex Tags
+@cindex Data representation
 (This option is not intended for general use.)@*
 Specify whether to use the low bits or the high bits of
 each word as tag bits (default: low).
@@ -4503,6 +4504,7 @@ each word as tag bits (default: low).
 @item @code{--num-tag-bits @var{n}}
 @findex --num-tag-bits
 @cindex Tags
+@cindex Data representation
 (This option is not intended for general use.)@*
 Use @var{n} tag bits.  This option is required if you specify
 @samp{--tags high}.
@@ -4510,9 +4512,37 @@ With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
 
 @sp 1
+@item @code{--num-reserved-addresses @var{n}}
+@findex --reserved-addresses
+@cindex Reserved addresses
+@cindex Addresses, reserved
+@cindex Data representation
+(This option is not intended for general use.)@*
+Treat the integer values from 0 up to @var{n} - 1 as reserved
+addresses that can be used to represent nullary constructors
+(constants) of discriminated union types.
+
+@sp 1
+@item @code{--num-reserved-objects @var{n}}
+@findex --reserved-addresses
+@cindex Reserved addresses
+@cindex Reserved objects
+@cindex Addresses, reserved
+@cindex Objects, reserved
+@cindex Data representation
+(This option is not intended for general use.)@*
+Allocate up to @var{n} - 1 global objects for representing nullary
+constructors (constants) of discriminated union types.
+
+Note that reserved objects will only be used if reserved addresses
+(see @code{--num-reserved-addresses}) are not available, since the
+latter are more efficient.
+
+@sp 1
 @item @code{--reserve-tag} (grades: any grade containing @samp{.rt})
 @findex --reserve-tag
 @cindex Tags
+@cindex Data representation
 Reserve a tag in the data representation of the generated 
 code. This tag is intended to be used to give an explicit
 representation to free variables.
