@@ -36,13 +36,15 @@ NONDET_PROGS = \
 	seq4 \
 	sg \
 	tc_loop \
-	tc_minimal
+	tc_minimal \
+	tc_minimal2
 
 # We don't yet pass the following minimal model tests. The reason is that
 # they contain interactions between tabling and constructs that function
 # as committed or negated contexts.
 #
 #	consumer_in_solutions
+#	oota
 
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""
