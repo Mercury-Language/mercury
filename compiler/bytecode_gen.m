@@ -52,11 +52,9 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
 			ProcsCode),
 		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ list__length(ProcIds, ProcsCount) },
-		{ PredCode = tree(
-			tree(
-				node([enter_pred(PredName, ProcsCount)]),
-				ProcsCode),
-			node([endof_pred])) }
+		{ EnterCode = node([enter_pred(PredName, ProcsCount)]) },
+		{ EndofCode = node([endof_pred]) },
+		{ PredCode = tree(EnterCode, tree(ProcsCode, EndofCode)) }
 	),
 	bytecode_gen__preds(PredIds, ModuleInfo, OtherCode),
 	{ Code = tree(PredCode, OtherCode) }.
@@ -105,13 +103,12 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	bytecode_gen__goal(Goal, ByteInfo, 1, N, GoalCode),
 
-	BodyTree = tree(
-			tree(
-				PickupCode,
-				node([label(0)])),
-			tree(
-				GoalCode,
-				PlaceCode)),
+	ZeroLabelCode = node([label(0)]),
+	BodyTree =
+		tree(PickupCode,
+		tree(ZeroLabelCode,
+		tree(GoalCode,
+		     PlaceCode))),
 	tree__flatten(BodyTree, BodyList),
 	list__condense(BodyList, BodyCode0),
 	( list__member(not_supported, BodyCode0) ->
@@ -119,11 +116,9 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	;
 		BodyCode = node(BodyCode0)
 	),
-	Code = tree(
-			node([enter_proc(ProcId, Detism, N, VarInfos)]),
-			tree(
-				BodyCode,
-				node([endof_proc]))).
+	EnterCode = node([enter_proc(ProcId, Detism, N, VarInfos)]),
+	EndofCode = node([endof_proc]),
+	Code = tree(EnterCode, tree(BodyCode, EndofCode)).
 
 %---------------------------------------------------------------------------%
 
@@ -163,42 +158,40 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 		GoalExpr = not(Goal),
 		bytecode_gen__goal(Goal, ByteInfo, N0, N1, SomeCode),
 		N is N1 + 1,
-		Code = tree(
-			tree(
-				node([enter_negation(N1)]),
-				SomeCode),
-			node([endof_negation]))
+		EnterCode = node([enter_negation(N1)]),
+		EndofCode = node([endof_negation]),
+		Code = tree(EnterCode, tree(SomeCode, EndofCode))
 	;
 		GoalExpr = some(_, Goal),
 		bytecode_gen__goal(Goal, ByteInfo, N0, N, SomeCode),
-		Code = tree(
-			tree(
-				node([enter_commit]),
-				SomeCode),
-			node([endof_commit]))
+		EnterCode = node([enter_commit]),
+		EndofCode = node([endof_commit]),
+		Code = tree(EnterCode, tree(SomeCode, EndofCode))
 	;
 		GoalExpr = conj(GoalList),
 		bytecode_gen__conj(GoalList, ByteInfo, N0, N, Code)
 	;
 		GoalExpr = disj(GoalList, _),
-		bytecode_gen__disj(GoalList, ByteInfo, N0, N1, DisjCode),
-		N is N1 + 1,
-		Code = tree(
-			tree(
-				node([enter_disjunction(N1)]),
-				DisjCode),
-			node([endof_disjunction, label(N1)]))
+		( GoalList = [] ->
+			Code = node([fail]),
+			N = N0
+		;
+			N1 is N0 + 1,
+			bytecode_gen__disj(GoalList, ByteInfo, N0,
+				N1, N, DisjCode),
+			EnterCode = node([enter_disjunction(N0)]),
+			EndofCode = node([endof_disjunction, label(N0)]),
+			Code = tree(EnterCode, tree(DisjCode, EndofCode))
+		)
 	;
 		GoalExpr = switch(Var, _, CasesList, _),
-		bytecode_gen__switch(CasesList, Var, ByteInfo, N0, N1,
+		N1 is N0 + 1,
+		bytecode_gen__switch(CasesList, Var, ByteInfo, N0, N1, N,
 			SwitchCode),
 		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
-		N is N1 + 1,
-		Code = tree(
-			tree(
-				node([enter_switch(ByteVar, N1)]),
-				SwitchCode),
-			node([endof_switch, label(N1)]))
+		EnterCode = node([enter_switch(ByteVar, N0)]),
+		EndofCode = node([endof_switch, label(N0)]),
+		Code = tree(EnterCode, tree(SwitchCode, EndofCode))
 	;
 		GoalExpr = if_then_else(_Vars, Cond, Then, Else, _),
 		bytecode_gen__goal(Cond, ByteInfo, N0, N1, CondCode),
@@ -206,19 +199,18 @@ bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 		N3 is N2 + 1,
 		bytecode_gen__goal(Else, ByteInfo, N3, N4, ElseCode),
 		N is N4 + 1,
-		Code = tree(
-			tree(
-				tree(
-					node([enter_if(N2, N4)]),
-					CondCode),
-				tree(
-					node([enter_then]),
-					ThenCode)),
-			tree(
-				node([endof_then, label(N2)]),
-				tree(
-					ElseCode,
-					node([endof_else, label(N4)]))))
+		EnterIfCode = node([enter_if(N2, N4)]),
+		EnterThenCode = node([enter_then]),
+		EnterElseCode = node([endof_then]),
+		EndofIfCode = node([endof_if, label(N4)]),
+		Code =
+			tree(EnterIfCode,
+			tree(CondCode,
+			tree(EnterThenCode,
+			tree(ThenCode,
+			tree(EnterElseCode,
+			tree(ElseCode,
+			     EndofIfCode))))))
 	;
 		GoalExpr = pragma_c_code(_, _, _, _, _, _),
 		Code = node([not_supported]),
@@ -494,42 +486,46 @@ bytecode_gen__conj([Goal | Goals], ByteInfo, N0, N, Code) :-
 	% Generate bytecode for each disjunct of a disjunction.
 
 :- pred bytecode_gen__disj(list(hlds__goal)::in, byte_info::in,
-	int::in, int::out, byte_tree::out) is det.
+	int::in, int::in, int::out, byte_tree::out) is det.
 
-bytecode_gen__disj([], _, N, N, empty).
-bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo, N0, N, Code) :-
+bytecode_gen__disj([], _, _, N, N, empty).
+bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo, EndLabel, N0, N, Code) :-
 	bytecode_gen__goal(Disjunct, ByteInfo, N0, N1, ThisCode),
-	N2 is N1 + 1,
-	bytecode_gen__disj(Disjuncts, ByteInfo, N2, N, OtherCode),
-	Code = tree(
-		tree(
-			node([enter_disjunct(N1)]),
-			ThisCode),
-		tree(
-			node([endof_disjunct, label(N1)]),
-			OtherCode)).
+	( Disjuncts = [] ->
+		EnterCode = node([enter_disjunct(-1)]),
+		EndofCode = node([endof_disjunct(EndLabel)]),
+		Code = tree(EnterCode, tree(ThisCode, EndofCode)),
+		N = N1
+	;
+		N2 is N1 + 1,
+		bytecode_gen__disj(Disjuncts, ByteInfo, EndLabel,
+			N2, N, OtherCode),
+		EnterCode = node([enter_disjunct(N1)]),
+		EndofCode = node([endof_disjunct(EndLabel), label(N1)]),
+		Code =
+			tree(EnterCode,
+			tree(ThisCode,
+			tree(EndofCode,
+			     OtherCode)))
+	).
 
 %---------------------------------------------------------------------------%
 
 	% Generate bytecode for each arm of a switch.
 
 :- pred bytecode_gen__switch(list(case)::in, var::in, byte_info::in,
-	int::in, int::out, byte_tree::out) is det.
+	int::in, int::in, int::out, byte_tree::out) is det.
 
-bytecode_gen__switch([], _, _, N, N, empty).
-bytecode_gen__switch([case(ConsId, Goal) | Cases], Var, ByteInfo, N0, N, Code)
-		:-
+bytecode_gen__switch([], _, _, _, N, N, empty).
+bytecode_gen__switch([case(ConsId, Goal) | Cases], Var, ByteInfo, EndLabel,
+		N0, N, Code) :-
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	bytecode_gen__goal(Goal, ByteInfo, N0, N1, ThisCode),
 	N2 is N1 + 1,
-	bytecode_gen__switch(Cases, Var, ByteInfo, N2, N, OtherCode),
-	Code = tree(
-		tree(
-			node([enter_switch_arm(ByteConsId, N1)]),
-			ThisCode),
-		tree(
-			node([endof_switch_arm, label(N1)]),
-			OtherCode)).
+	bytecode_gen__switch(Cases, Var, ByteInfo, EndLabel, N2, N, OtherCode),
+	EnterCode = node([enter_switch_arm(ByteConsId, N1)]),
+	EndofCode = node([endof_switch_arm(EndLabel), label(N1)]),
+	Code = tree(EnterCode, tree(ThisCode, tree(EndofCode, OtherCode))).
 
 %---------------------------------------------------------------------------%
 

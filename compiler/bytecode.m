@@ -28,15 +28,15 @@
 			;	enter_disjunction(byte_label_id)
 			;	endof_disjunction
 			;	enter_disjunct(byte_label_id)
-			;	endof_disjunct
+			;	endof_disjunct(byte_label_id)
 			;	enter_switch(byte_var, byte_label_id)
 			;	endof_switch
 			;	enter_switch_arm(byte_cons_id, byte_label_id)
-			;	endof_switch_arm
+			;	endof_switch_arm(byte_label_id)
 			;	enter_if(byte_label_id, byte_label_id)
 			;	enter_then
 			;	endof_then
-			;	endof_else
+			;	endof_if
 			;	enter_negation(byte_label_id)
 			;	endof_negation
 			;	enter_commit
@@ -62,6 +62,7 @@
 			;	builtin_unop(unary_op, byte_arg, byte_var)
 			;	builtin_bintest(binary_op, byte_arg, byte_arg)
 			;	builtin_untest(unary_op, byte_arg)
+			;	fail
 			;	context(int)
 			;	not_supported
 			.
@@ -118,7 +119,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(6).
+bytecode__version(7).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -202,7 +203,8 @@ output_args(enter_disjunction(LabelId)) -->
 output_args(endof_disjunction) --> [].
 output_args(enter_disjunct(LabelId)) -->
 	output_label_id(LabelId).
-output_args(endof_disjunct) --> [].
+output_args(endof_disjunct(LabelId)) -->
+	output_label_id(LabelId).
 output_args(enter_switch(Var, LabelId)) -->
 	output_var(Var),
 	output_label_id(LabelId).
@@ -210,13 +212,14 @@ output_args(endof_switch) --> [].
 output_args(enter_switch_arm(ConsId, LabelId)) -->
 	output_cons_id(ConsId),
 	output_label_id(LabelId).
-output_args(endof_switch_arm) --> [].
+output_args(endof_switch_arm(LabelId)) -->
+	output_label_id(LabelId).
 output_args(enter_if(ElseLabelId, FollowLabelId)) -->
 	output_label_id(ElseLabelId),
 	output_label_id(FollowLabelId).
 output_args(enter_then) --> [].
 output_args(endof_then) --> [].
-output_args(endof_else) --> [].
+output_args(endof_if) --> [].
 output_args(enter_negation(LabelId)) -->
 	output_label_id(LabelId).
 output_args(endof_negation) --> [].
@@ -284,6 +287,7 @@ output_args(builtin_bintest(Binop, Var1, Var2)) -->
 output_args(builtin_untest(Unop, Var1)) -->
 	output_unop(Unop),
 	output_arg(Var1).
+output_args(fail) --> [].
 output_args(context(Line)) -->
 	output_two_byte(Line).
 output_args(not_supported) --> [].
@@ -310,7 +314,8 @@ debug_args(enter_disjunction(LabelId)) -->
 debug_args(endof_disjunction) --> [].
 debug_args(enter_disjunct(LabelId)) -->
 	debug_label_id(LabelId).
-debug_args(endof_disjunct) --> [].
+debug_args(endof_disjunct(LabelId)) -->
+	debug_label_id(LabelId).
 debug_args(enter_switch(Var, LabelId)) -->
 	debug_var(Var),
 	debug_label_id(LabelId).
@@ -318,13 +323,14 @@ debug_args(endof_switch) --> [].
 debug_args(enter_switch_arm(ConsId, LabelId)) -->
 	debug_cons_id(ConsId),
 	debug_label_id(LabelId).
-debug_args(endof_switch_arm) --> [].
+debug_args(endof_switch_arm(LabelId)) -->
+	debug_label_id(LabelId).
 debug_args(enter_if(ElseLabelId, FollowLabelId)) -->
 	debug_label_id(ElseLabelId),
 	debug_label_id(FollowLabelId).
 debug_args(enter_then) --> [].
 debug_args(endof_then) --> [].
-debug_args(endof_else) --> [].
+debug_args(endof_if) --> [].
 debug_args(enter_negation(LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(endof_negation) --> [].
@@ -392,6 +398,7 @@ debug_args(builtin_bintest(Binop, Var1, Var2)) -->
 debug_args(builtin_untest(Unop, Var1)) -->
 	debug_unop(Unop),
 	debug_arg(Var1).
+debug_args(fail) --> [].
 debug_args(context(Line)) -->
 	debug_int(Line).
 debug_args(not_supported) --> [].
@@ -789,15 +796,15 @@ byte_code(label(_),				 4).
 byte_code(enter_disjunction(_),			 5).
 byte_code(endof_disjunction,			 6).
 byte_code(enter_disjunct(_),			 7).
-byte_code(endof_disjunct,			 8).
+byte_code(endof_disjunct(_),			 8).
 byte_code(enter_switch(_, _),			 9).
 byte_code(endof_switch,				10).
 byte_code(enter_switch_arm(_, _),		11).
-byte_code(endof_switch_arm,			12).
+byte_code(endof_switch_arm(_),			12).
 byte_code(enter_if(_, _),			13).
 byte_code(enter_then,				14).
 byte_code(endof_then,				15).
-byte_code(endof_else,				16).
+byte_code(endof_if,				16).
 byte_code(enter_negation(_),			17).
 byte_code(endof_negation,			18).
 byte_code(enter_commit,				19).
@@ -816,8 +823,9 @@ byte_code(builtin_binop(_, _, _, _),		31).
 byte_code(builtin_unop(_, _, _),		32).
 byte_code(builtin_bintest(_, _, _),		33).
 byte_code(builtin_untest(_, _),			34).
-byte_code(context(_),				35).
-byte_code(not_supported,			36).
+byte_code(fail,					35).
+byte_code(context(_),				36).
+byte_code(not_supported,			37).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -830,15 +838,15 @@ byte_debug(label(_),				"label").
 byte_debug(enter_disjunction(_),		"enter_disjunction").
 byte_debug(endof_disjunction,			"endof_disjunction").
 byte_debug(enter_disjunct(_),			"enter_disjunct").
-byte_debug(endof_disjunct,			"endof_disjunct").
+byte_debug(endof_disjunct(_),			"endof_disjunct").
 byte_debug(enter_switch(_, _),			"enter_switch").
 byte_debug(endof_switch,			"endof_switch").
 byte_debug(enter_switch_arm(_, _),		"enter_switch_arm").
-byte_debug(endof_switch_arm,			"endof_switch_arm").
+byte_debug(endof_switch_arm(_),			"endof_switch_arm").
 byte_debug(enter_if(_, _),			"enter_if").
 byte_debug(enter_then,				"enter_then").
 byte_debug(endof_then,				"endof_then").
-byte_debug(endof_else,				"endof_else").
+byte_debug(endof_if,				"endof_if").
 byte_debug(enter_negation(_),			"enter_negation").
 byte_debug(endof_negation,			"enter_negation").
 byte_debug(enter_commit,			"enter_commit").
@@ -857,6 +865,7 @@ byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
 byte_debug(builtin_bintest(_, _, _),		"builtin_bintest").
 byte_debug(builtin_untest(_, _),		"builtin_untest").
+byte_debug(fail,				"fail").
 byte_debug(context(_),				"context").
 byte_debug(not_supported,			"not_supported").
 
