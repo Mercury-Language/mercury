@@ -73,7 +73,7 @@ void
 MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, MR_Word *max_frame)
 {
-	Code *success_ip;
+	MR_Code *success_ip;
 	int frame_size;
 	MR_bool registers_valid;
 

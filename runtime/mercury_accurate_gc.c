@@ -307,7 +307,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 
 		saved_success_location = &MR_based_framevar(curfr_at_signal,
 			number);
-		saved_success = (Code *) *saved_success_location;
+		saved_success = (MR_Code *) *saved_success_location;
 	}
 
 #ifdef MR_DEBUG_AGC_SCHEDULING
@@ -452,7 +452,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 	int				short_var_count, long_var_count;
 
 #ifdef MR_DEBUG_AGC_COLLECTION
-	printlabel((Code *) (Word) label->i_addr);
+	printlabel((MR_Code *) (Word) label->i_addr);
         fflush(NULL);
 #endif
 
@@ -516,7 +516,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 			fatal_error("can only handle stackvars");
 			}
 		
-		success_ip = (Code *) MR_based_stackvar(stack_pointer, number);
+		success_ip = (MR_Code *) MR_based_stackvar(stack_pointer, number);
 		stack_pointer = stack_pointer - 
 			proc_layout->MR_sle_stack_slots;
 		label = MR_lookup_internal_by_addr(success_ip);
