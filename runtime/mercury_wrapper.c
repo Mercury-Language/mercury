@@ -323,15 +323,6 @@ MR_bool	(*MR_DI_found_match)(MR_Integer, MR_Integer, MR_Integer, MR_Word,
 		/* normally ML_DI_found_match (output_current/12) */
 void	(*MR_DI_read_request_from_socket)(MR_Word, MR_Word *, MR_Integer *);
 
-/*
-** This variable has been replaced by MR_io_print_to_*_stream,
-** but the installed mkinit executable may still generate references to it.
-** We must therefore keep it until all obsolete mkinit executables have
-** been retired.
-*/
-
-MR_Code	*MR_library_trace_browser;
-
 MR_Code	*(*volatile MR_trace_func_ptr)(const MR_Label_Layout *);
 
 void	(*MR_address_of_trace_interrupt_handler)(void);

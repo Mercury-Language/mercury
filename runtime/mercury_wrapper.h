@@ -149,16 +149,6 @@ extern	void		(*MR_address_of_trace_init_external)(void);
 extern	void		(*MR_address_of_trace_final_external)(void);
 
 /*
-** XXX This is obsolete too.
-** This variable has been replaced by MR_io_print_to_*_stream,
-** but the installed mkinit executable may still generate references to it.
-** We must therefore keep it until all obsolete mkinit executables have
-** been retired.
-*/
-
-extern	MR_Code		*MR_library_trace_browser;
-
-/*
 ** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c),
 ** or MR_trace_fake (runtime/mercury_trace_base.c),
 ** depending on whether tracing was enabled when creating the _init.c
