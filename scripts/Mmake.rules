@@ -209,12 +209,17 @@ $(os_subdir)%.$O : $(ss_subdir)%.s
 $(os_subdir)%.pic_o : $(ss_subdir)%.pic_s
 	$(AS) $< $(OBJFILE_OPT)$@
 
-$(os_subdir)%__c_code.$O : $(cs_subdir)%.c
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
+# For *__c_code.{o,pic_o}, we depend on the .s or .pic_s file rather
+# than the .c file, since the .c file is produced as a side-effect of
+# generating the .s/.pic_s file.
 
-$(os_subdir)%__c_code.pic_o : $(cs_subdir)%.c
+$(os_subdir)%__c_code.$O : $(ss_subdir)%.s
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) \
+		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
+
+$(os_subdir)%__c_code.pic_o : $(ss_subdir)%.pic_s
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
-		-c $< $(OBJFILE_OPT)$@
+		-c $(cs_subdir)$*.c $(OBJFILE_OPT)$@
 
 endif
 
