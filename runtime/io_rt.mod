@@ -89,11 +89,13 @@ mercury_getc(MercuryFile* mf)
 static void
 mercury_close(MercuryFile* mf)
 {
-	assert(mf != &mercury_stdin);
-	assert(mf != &mercury_stdout);
-	assert(mf != &mercury_stderr);
-	fclose(mf->file);
-	oldmem(mf);
+	if (mf != &mercury_stdin &&
+	    mf != &mercury_stdout &&
+	    mf != &mercury_stderr)
+	{
+		fclose(mf->file);
+		oldmem(mf);
+	}
 }
 
 
