@@ -16,7 +16,7 @@
 :- module llds.		
 :- interface.
 :- import_module io, std_util, list, set, term, string, int, float.
-:- import_module tree.
+:- import_module tree, shapes.
 
 %-----------------------------------------------------------------------------%
 
@@ -122,9 +122,7 @@
 	;	decr_sp(int).
 			% Decrement the det stack pointer.
 
-:- type liveinfo	--->	live_lvalue(lval, shape_number).
-
-:- type shape_number == int.
+:- type liveinfo	--->	live_lvalue(lval, shape_num).
 
 :- type lval		--->	reg(reg)	% either an int or float reg
 			;	stackvar(int)	% det stack slots
@@ -760,7 +758,7 @@ output_gc_livevals_2([live_lvalue(Lval, Shape)|Lvals]) -->
 	io__write_string(" *\t"),
 	output_lval(Lval),
 	io__write_string("\t"),
-	io__write_int(Shape),
+	shapes__write_shape_num(Shape),
 	io__write_string("\n"),
 	output_gc_livevals_2(Lvals).
 

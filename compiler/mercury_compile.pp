@@ -146,16 +146,26 @@ postprocess_options(ok(OptionTable0), Error) -->
 		{ Error = yes("Invalid grade option") }
 	).
 
+% Set the type of gc that the grade option implies.
+% 'accurate' is not set in the grade, so we don't override it here.
 :- pred convert_gc_grade_option(string::in, option_table::in, option_table::out)
 	is semidet.
 
 convert_gc_grade_option(GC_Grade) -->
 	( { string__remove_suffix(GC_Grade, ".gc", Grade) } ->
-		set_string_opt(gc, "conservative"),
-		convert_grade_option(Grade)
+		( get_string_opt(gc, "accurate") ->
+			convert_grade_option(Grade)
+		;
+			set_string_opt(gc, "conservative"),
+			convert_grade_option(Grade)
+		)
 	;
-		set_string_opt(gc, "none"),
-		convert_grade_option(GC_Grade)
+		( get_string_opt(gc, "accurate") ->
+			convert_grade_option(GC_Grade)
+		;
+			set_string_opt(gc, "none"),
+			convert_grade_option(GC_Grade)
+		)
 	).
 
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
@@ -215,6 +225,12 @@ set_bool_opt(Option, Value, OptionTable0, OptionTable) :-
 
 set_string_opt(Option, Value, OptionTable0, OptionTable) :-
 	map__set(OptionTable0, Option, string(Value), OptionTable).
+
+:- pred get_string_opt(option, string, option_table, option_table).
+:- mode get_string_opt(in, in, in, out) is semidet.
+
+get_string_opt(Option, Value, OptionTable, OptionTable) :-
+	map__lookup(OptionTable, Option, string(Value)).
 
 	% Display error message and then usage message
 :- pred usage_error(string::in, io__state::di, io__state::uo) is det.
@@ -1923,8 +1939,8 @@ mercury_compile__output_llds(ModuleName, LLDS) -->
 :- mode mercury_compile__maybe_write_gc(in, in, in, di, uo) is det.
 
 mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
-	globals__io_lookup_string_option(gc, Garbage),
-	( { Garbage = "accurate" } ->
+	globals__io_get_gc_method(GarbageCollectionMethod),
+	( { GarbageCollectionMethod = accurate } ->
 		globals__io_lookup_bool_option(verbose, Verbose),
 		maybe_write_string(Verbose, "% Writing gc info to `"),
 		maybe_write_string(Verbose, ModuleName),
@@ -1933,7 +1949,7 @@ mercury_compile__maybe_write_gc(ModuleName, Shape_Info, LLDS) -->
 		garbage_out__do_garbage_out(Shape_Info, LLDS),
 		maybe_write_string(Verbose, " done.\n")
 	;
-		[]		
+		[]
 	).
 
 :- pred mercury_compile__maybe_find_abstr_exports(module_info, module_info, 

@@ -584,7 +584,7 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 	module_info_types(Module_Info, Type_Table),
 	shapes__request_shape_number(Type - ground, Type_Table,
 			S_Tab0, S_Tab1, S_Number),
-	LiveVal = live_lvalue(reg(R), S_Number),
+	LiveVal = live_lvalue(reg(R), num(S_Number)),
 	call_gen__insert_arg_livelvals(As, Module_Info, 
 			[LiveVal|LiveVals0], LiveVals, Code1,
 			 Code, S_Tab1, S_Tab).

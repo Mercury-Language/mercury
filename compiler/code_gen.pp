@@ -25,7 +25,7 @@
 :- module code_gen.
 
 :- interface.
-:- import_module hlds, llds, code_info, io.
+:- import_module hlds, llds, code_info, shapes, io.
 
 		% Translate a HLDS structure into an LLDS
 
@@ -1113,7 +1113,7 @@ code_gen__add_saved_succip([I0-S|Is0], N, [I-S|Is]) :-
         ;
 		I0 = call(T, R, C, LV0)
 	->
-		I = call(T, R, C, [live_lvalue(stackvar(N), -1)|LV0])
+		I = call(T, R, C, [live_lvalue(stackvar(N), succip)|LV0])
 	;
 		I = I0
 	),

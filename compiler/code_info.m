@@ -1952,7 +1952,7 @@ code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
 	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
 
 :- pred code_info__generate_stack_livelvals_3(stack(pair(lval)), 
-					list(liveinfo), list(liveinfo)).
+			list(liveinfo), list(liveinfo)).
 :- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
 
 code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
@@ -1966,30 +1966,31 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 		LiveInfo = LiveInfo0
 	).
 
-:- pred code_info__get_shape_num(lval, int).
+:- pred code_info__get_shape_num(lval, shape_num).
 :- mode code_info__get_shape_num(in, out) is det.
 
-code_info__get_shape_num(succip, -1).
-code_info__get_shape_num(hp, -2).
-code_info__get_shape_num(maxfr, -3).
-code_info__get_shape_num(curfr, -7).	% XXX magic numbers! is this one right?
-code_info__get_shape_num(succfr(_), -7). % XXX magic numbers! is this one right?
-code_info__get_shape_num(prevfr(_), -7). % XXX magic numbers! is this one right?
-code_info__get_shape_num(redoip(_), -4). % And this one?
-code_info__get_shape_num(sp, -5).
-code_info__get_shape_num(lvar(_), -6).
-code_info__get_shape_num(field(_, _, _), -6).
-code_info__get_shape_num(temp(_), -6).
-code_info__get_shape_num(reg(_), -6).
-code_info__get_shape_num(stackvar(_), -6).
-code_info__get_shape_num(framevar(_), -6).
+code_info__get_shape_num(succip, succip).
+code_info__get_shape_num(hp, hp).
+code_info__get_shape_num(maxfr, maxfr).
+code_info__get_shape_num(curfr, curfr).	
+code_info__get_shape_num(succfr(_), succfr).	
+code_info__get_shape_num(prevfr(_), prevfr).	
+code_info__get_shape_num(redoip(_), redoip). 
+code_info__get_shape_num(sp, sp).
+code_info__get_shape_num(lvar(_), unwanted).
+code_info__get_shape_num(field(_, _, _), unwanted).
+code_info__get_shape_num(temp(_), unwanted).
+code_info__get_shape_num(reg(_), unwanted).
+code_info__get_shape_num(stackvar(_), unwanted).
+code_info__get_shape_num(framevar(_), unwanted).
 
 :- pred code_info__livevals_to_livelvals(list(pair(lval, var)), list(liveinfo),
 					 code_info, code_info).
 :- mode code_info__livevals_to_livelvals(in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], [], C, C).
-code_info__livevals_to_livelvals([L - V|Ls], [live_lvalue(L, S_Num )|Lives]) --> 
+code_info__livevals_to_livelvals([L - V|Ls], 
+			[live_lvalue(L, num(S_Num))|Lives]) --> 
 	code_info__get_module_info(Module),
 	code_info__get_shapes(S_Tab0),
 	{ module_info_types(Module, Type_Table) } ,

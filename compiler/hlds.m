@@ -218,8 +218,6 @@ special_pred_info(compare, Type,
 			;	polymorphic(type)
 			;	closure(type).
 
-:- type shape_num	==	int.
-
 :- type shape_tag	--->	constant
 			;	simple(list(pair(shape_num, shape_id)))
 			;	complicated(list(list(pair(shape_num, shape_id)))).

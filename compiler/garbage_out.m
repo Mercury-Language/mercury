@@ -86,9 +86,8 @@ garbage_out__do_garbage_out(ShapeInfo, c_file(Name, Modules)) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-
 %-----------------------------------------------------------------------------%
-% Want to output only the livevals for call, attach the continuation to them.
+% Create the list of continuations.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__create_cont_list(list(c_module), cont_list).
 :- mode garbage_out__create_cont_list(in, out) is det.
@@ -101,20 +100,21 @@ garbage_out__create_cont_list([M |Ms], C_List) :-
 	list__append(C, Cs, C_List).
 
 %-----------------------------------------------------------------------------%
-% Want to output only the livevals for call, attach the continuation to them.
+% Create the list of continuations.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__create_cont_list_2(list(c_procedure), cont_list).
 :- mode garbage_out__create_cont_list_2(in, out) is det.
 
 garbage_out__create_cont_list_2([], []).
-garbage_out__create_cont_list_2([P |Ps], C_List) :-
-	garbage_out__create_cont_list_2(Ps, Cs),
+garbage_out__create_cont_list_2([P |Ps], CList) :-
 	P = c_procedure(_Name, _Arity, _ModeNum0, Instructions),
 	garbage_out__proc_instr_list(Instructions, [], C),
-	list__append(C, Cs, C_List).
+	list__reverse(C, ReverseC),
+	garbage_out__create_cont_list_2(Ps, Cs),
+	list__append(ReverseC, Cs, CList).
 
 %-----------------------------------------------------------------------------%
-% Want to output only the livevals for call, attach the continuation to them.
+% Process the instruction list.
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__proc_instr_list(list(instruction), cont_list,  cont_list).
 :- mode garbage_out__proc_instr_list(in, in, out) is det.
@@ -211,7 +211,6 @@ garbage_out__output(List, Shapes, _Abs_Exports) -->
 	garbage_out__write_shape_table(Shapes),
 	io__write_string("],\n").
 
-
 %-----------------------------------------------------------------------------%
 % Write the continuation list.
 %-----------------------------------------------------------------------------%
@@ -281,7 +280,7 @@ garbage_out__write_liveinfo_list([]) --> { true }.
 garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) --> 
 	garbage_out__write_liveval(L),
 	io__write_string("-"),
-	io__write_int(S),
+	shapes__write_shape_num(S),
 	garbage_out__maybe_write_comma(Ls),
 	garbage_out__write_liveinfo_list(Ls).
 
@@ -355,7 +354,7 @@ garbage_out__write_shape_table(ShapeTable - _NextNum) -->
 
 garbage_out__write_shapes([]) --> { true }.
 garbage_out__write_shapes([ShapeNum - Shape | Shapes]) --> 
-	io__write_int(ShapeNum),
+	shapes__write_shape_num(ShapeNum),
 	io__write_string("-"),
 	garbage_out__write_shape(Shape),
 	garbage_out__maybe_write_comma_newline(Shapes),
@@ -398,7 +397,7 @@ garbage_out__write_shape(closure(Type)) -->
 	io__write_string(")").
 garbage_out__write_shape(equivalent(ShapeNum)) -->
 	io__write_string("equivalent("),
-	io__write_int(ShapeNum),
+	shapes__write_shape_num(ShapeNum),
 	io__write_string(")").
 
 
@@ -469,7 +468,7 @@ garbage_out__write_type(Type) -->
 :- mode garbage_out__write_shape_list(in, di, uo) is det.
 garbage_out__write_shape_list([]) --> {true}.
 garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
-	io__write_int(ShapeNum),
+	shapes__write_shape_num(ShapeNum),
 	garbage_out__maybe_write_comma(Shape_List),
 	garbage_out__write_shape_list(Shape_List).
 
@@ -480,9 +479,11 @@ garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
 :- mode garbage_out__write_int_list(in, di, uo) is det.
 garbage_out__write_int_list([]) --> {true}.
 garbage_out__write_int_list([ShapeNum | Shape_List]) -->
-	io__write_int(ShapeNum),
+	shapes__write_shape_num(ShapeNum),
 	garbage_out__maybe_write_comma(Shape_List),
 	garbage_out__write_int_list(Shape_List).
+
+
 
 
 
