@@ -60,6 +60,7 @@
 :- implementation.
 
 :- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__foreign.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.
 :- import_module backend_libs__type_class_info.
@@ -314,7 +315,6 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			BuiltinCtor)
 	->
 		Details = builtin(BuiltinCtor)
-
 	;
 		ModuleName = unqualified(ModuleStr),
 		impl_type_ctor(ModuleStr, TypeName, TypeArity,
@@ -327,8 +327,19 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			error("type_ctor_info__gen_type_ctor_data: " ++
 				"abstract_type")
 		;
-			TypeBody = foreign_type(_, _),
-			Details = foreign
+			TypeBody = foreign_type(ForeignBody, _),
+			foreign_type_body_to_exported_type(ModuleInfo, 
+				ForeignBody, _, _, Assertions),
+			(
+				list__member(can_pass_as_mercury_type,
+					Assertions),
+				list__member(stable, Assertions)
+			->
+				IsStable = is_stable
+			;
+				IsStable = is_not_stable
+			),
+			Details = foreign(IsStable)
 		;
 			TypeBody = eqv_type(Type),
 				% There can be no existentially typed args to
@@ -339,8 +350,8 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 				UnivTvars, ExistTvars, MaybePseudoTypeInfo),
 			Details = eqv(MaybePseudoTypeInfo)
 		;
-			TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred,
-				ReservedTag, _, _),
+			TypeBody = du_type(Ctors, ConsTagMap, Enum,
+				EqualityPred, ReservedTag, _, _),
 			(
 				EqualityPred = yes(_),
 				EqualityAxioms = user_defined
@@ -410,8 +421,8 @@ builtin_type_ctor("builtin", "string", 0, string).
 builtin_type_ctor("builtin", "float", 0, float).
 builtin_type_ctor("builtin", "character", 0, char).
 builtin_type_ctor("builtin", "void", 0, void).
-builtin_type_ctor("builtin", "c_pointer", 0, c_pointer).
-builtin_type_ctor("builtin", "stable_c_pointer", 0, stable_c_pointer).
+builtin_type_ctor("builtin", "c_pointer", 0, c_pointer(is_not_stable)).
+builtin_type_ctor("builtin", "stable_c_pointer", 0, c_pointer(is_stable)).
 builtin_type_ctor("builtin", "pred", 0, pred_ctor).
 builtin_type_ctor("builtin", "func", 0, func_ctor).
 builtin_type_ctor("builtin", "tuple", 0, tuple).
@@ -459,7 +470,7 @@ type_ctor_info__make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
 
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 8.
+type_ctor_info_rtti_version = 9.
 
 % Construct an rtti_data for a pseudo_type_info,
 % and also construct rtti_data definitions for all of the pseudo_type_infos

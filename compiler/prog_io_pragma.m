@@ -434,6 +434,10 @@ parse_foreign_type_assertion(Term, Assertion) :-
 	Term = term__functor(term__atom(Constant), [], _),
         Constant = "can_pass_as_mercury_type",
         Assertion = can_pass_as_mercury_type.
+parse_foreign_type_assertion(Term, Assertion) :-
+	Term = term__functor(term__atom(Constant), [], _),
+	Constant = "stable",
+	Assertion = stable.
 
 	% This predicate parses both c_header_code and foreign_decl pragmas.
 :- pred parse_pragma_foreign_decl_pragma(module_name, string,

@@ -1,18 +1,16 @@
 //
-// Copyright (C) 2000-2003 The University of Melbourne.
+// Copyright (C) 2000-2004 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
 
 // mercury_mcpp.h - This file defines the system runtime types and
 // macros that are used when generating code for the .NET backend.
-// It is written using Managed Extensions for C++ (usually called Managed C++ 
+// It is written using Managed Extensions for C++ (usually called Managed C++
 // or MC++).
-
 
 // We need a definition of NULL
 #include <stddef.h>
-
 
 namespace mercury {
 
@@ -33,14 +31,11 @@ typedef double 		MR_Float;
 typedef System::String *MR_String;
 typedef void (*MR_Cont) (void *);
 
-
 // Should these be MR_ qualified?
 #define TRUE 1
 #define FALSE 0
 #define MR_TRUE 1
 #define MR_FALSE 0
-
-
 
 typedef __gc public class System::Object * MR_Word[];
 typedef __gc public class System::Object * MR_Box;
@@ -68,7 +63,6 @@ typedef __gc public class System::Object * MR_TypeCtorInfo[];
 typedef __gc public class System::Object * MR_TypeInfoParams[];
 typedef __gc public class System::Object * MR_TypeClassInfo[];
 
-
 // XXX This code is duplicated in mercury_type_info.h.
 // We should factor out these definitions and use a shared version.
 
@@ -93,19 +87,19 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_PASTE7_2(a,b,c,d,e,f,g)	a##b##c##d##e##f##g
 
 // The code to generate RTTI structures is somewhat complicated.
-// For each RTTI symbol, we generate an initializer method, 
+// For each RTTI symbol, we generate an initializer method,
 // and a field.  The initializer method returns a value for the field.
 // Since it is a static field, the initializer will be run in the class
 // constructor.
 //
 // This code is intended to be more general than the macros in
-// mercury_typeinfo.h -- by conditionally defining the appropriate 
-// #defines for MR_CLASS_INIT* and MR_STRUCT_INIT* you should be able to 
+// mercury_typeinfo.h -- by conditionally defining the appropriate
+// #defines for MR_CLASS_INIT* and MR_STRUCT_INIT* you should be able to
 // re-use this code, however this has not been done yet.
 
 // In the .NET backend, we don't need to forward declare RTTI structures.
-#define MR_Declare_entry(a) 	
-#define MR_Declare_struct(a) 
+#define MR_Declare_entry(a)
+#define MR_Declare_struct(a)
 
 // We have to jump through a few hoops to get function pointers -- we do
 // it in IL currently.  We treat function pointers as integers and have
@@ -117,11 +111,11 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 // XXX MR_ENTRY appears to be unused
 
 // Code to handle initialization of fields.
-#define MR_STRUCT_INIT(a) 
-#define MR_STRUCT_INIT_END(a) 
+#define MR_STRUCT_INIT(a)
+#define MR_STRUCT_INIT_END(a)
 #define MR_CLASS_INIT(a) \
 	static MR_Word a(void) { \
-		System::Object *arr[] = { 
+		System::Object *arr[] = {
 #define MR_CLASS_INIT_END(m, f, i)	\
 		};			\
 		return arr;		\
@@ -133,11 +127,11 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP(a) MR_BOX_INT(mercury::runtime::Constants::a)
 
 // XXX This is hardcoded
-#define MR_RTTI_VERSION MR_BOX_INT(8)
+#define MR_RTTI_VERSION MR_BOX_INT(9)
 
 // XXX It is intended that we eventually define the constants in
 // private_builtin.m and mercury_mcpp.cpp in terms of these #defines
-// instead of hard-coding the values. 
+// instead of hard-coding the values.
 #define MR_TYPECTOR_REP_ENUM_val 			0
 #define MR_TYPECTOR_REP_ENUM_USEREQ_val 		1
 #define MR_TYPECTOR_REP_DU_val				2
@@ -178,9 +172,10 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_FOREIGN_val			37
 #define MR_TYPECTOR_REP_REFERENCE_val			38
 #define MR_TYPECTOR_REP_STABLE_C_POINTER_val		39
-#define MR_TYPECTOR_REP_UNKNOWN_val			40
+#define MR_TYPECTOR_REP_STABLE_FOREIGN_val		40
+#define MR_TYPECTOR_REP_UNKNOWN_val			41
 
-// XXX we should integrate this macro in with the version in 
+// XXX we should integrate this macro in with the version in
 // mercury_typeinfo.h
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, n, a, cr, u, c)	\
     MR_Declare_entry(u)							\
@@ -206,7 +201,7 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(m, n, a, cr)		\
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, n, a, cr,		\
 	MR_PASTE7(mercury::, m, ::do_unify__, n, _, a, _0),     \
-	MR_PASTE7(mercury::, m, ::do_compare__, n, _, a, _0))  
+	MR_PASTE7(mercury::, m, ::do_compare__, n, _, a, _0))
 
 // Some definitions for writing code by hand that constructs lists.
 // Note that this is very dependent on the data representation chosen
@@ -244,7 +239,6 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_list_tail(List)	\
 	(dynamic_cast<MR_Word>((List)->GetValue(2)))
 
-
 // Some definitions for writing code by hand that constructs any type.
 
 #define MR_newobj(Obj, Tag, Size)					\
@@ -278,10 +272,8 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_newenum(Obj, Tag)						\
 	MR_newobj(Obj, Tag, 0)
 
-
 // A few macros to define some RTTI slots.
 // At the moment RTTI support in the .NET backend is very minimal.
-
 
 #define MR_TYPEINFO_TYPE_CTOR_INFO_SLOT		0
 
@@ -290,4 +282,3 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPE_CTOR_INFO_COMPARE_PRED_SLOT	6
 
 } /* end namespace mercury */
-

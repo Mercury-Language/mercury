@@ -405,6 +405,7 @@ start_label:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
         case MR_TYPECTOR_REP_ARRAY:
         case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
 
             /*
             ** We call the type-specific compare routine as
@@ -574,6 +575,9 @@ start_label:
             **
             ** XXX This is a temporary measure.
             */
+#ifdef include_compare_rep_code
+        case MR_TYPECTOR_REP_STABLE_FOREIGN: /* fallthru */
+#endif
         case MR_TYPECTOR_REP_STABLE_C_POINTER: /* fallthru */
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef  select_compare_code

@@ -189,7 +189,9 @@
 	;	impl_artifact(
 			impl_ctor		:: impl_ctor
 		)
-	;	foreign.
+	;	foreign(
+			is_stable		:: is_stable
+		).
 
 	% For a given du family type, this says whether the user has defined
 	% their own unification predicate for the type.
@@ -365,8 +367,7 @@
 	;	char
 	;	string
 	;	void
-	;	c_pointer
-	;	stable_c_pointer
+	;	c_pointer(is_stable)
 	;	pred_ctor
 	;	func_ctor
 	;	tuple
@@ -390,6 +391,10 @@
 	;	typeclass_info
 	;	base_typeclass_info
 	;	subgoal.			% coming soon
+
+:- type is_stable
+	--->	is_stable
+	;	is_not_stable.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1440,7 +1445,7 @@ rtti__type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 		TypeCtorDetails = impl_artifact(ImplCtor),
 		impl_ctor_rep_to_string(ImplCtor, RepStr)
 	;
-		TypeCtorDetails = foreign,
+		TypeCtorDetails = foreign(IsStable),
 		(
 			type_ctor_is_array(
 				qualified(TypeCtorData ^ tcr_module_name,
@@ -1452,7 +1457,13 @@ rtti__type_ctor_rep_to_string(TypeCtorData, RepStr) :-
 			% provide tracing functions for foreign types.
 			RepStr = "MR_TYPECTOR_REP_ARRAY"
 		;
-			RepStr = "MR_TYPECTOR_REP_FOREIGN"
+			(
+				IsStable = is_stable,
+				RepStr = "MR_TYPECTOR_REP_STABLE_FOREIGN"
+			;
+				IsStable = is_not_stable,
+				RepStr = "MR_TYPECTOR_REP_FOREIGN"
+			)
 		)
 	).
 
@@ -1463,8 +1474,9 @@ builtin_ctor_rep_to_string(string, "MR_TYPECTOR_REP_STRING").
 builtin_ctor_rep_to_string(float, "MR_TYPECTOR_REP_FLOAT").
 builtin_ctor_rep_to_string(char, "MR_TYPECTOR_REP_CHAR").
 builtin_ctor_rep_to_string(void, "MR_TYPECTOR_REP_VOID").
-builtin_ctor_rep_to_string(c_pointer, "MR_TYPECTOR_REP_C_POINTER").
-builtin_ctor_rep_to_string(stable_c_pointer,
+builtin_ctor_rep_to_string(c_pointer(is_not_stable),
+	"MR_TYPECTOR_REP_C_POINTER").
+builtin_ctor_rep_to_string(c_pointer(is_stable),
 	"MR_TYPECTOR_REP_STABLE_C_POINTER").
 builtin_ctor_rep_to_string(pred_ctor, "MR_TYPECTOR_REP_PRED").
 builtin_ctor_rep_to_string(func_ctor, "MR_TYPECTOR_REP_FUNC").
@@ -1520,7 +1532,7 @@ type_ctor_details_num_ptags(notag(_, _)) = -1.
 type_ctor_details_num_ptags(eqv(_)) = -1.
 type_ctor_details_num_ptags(builtin(_)) = -1.
 type_ctor_details_num_ptags(impl_artifact(_)) = -1.
-type_ctor_details_num_ptags(foreign) = -1.
+type_ctor_details_num_ptags(foreign(_)) = -1.
 
 type_ctor_details_num_functors(enum(_, Functors, _, _)) =
 	list__length(Functors).
@@ -1532,7 +1544,7 @@ type_ctor_details_num_functors(notag(_, _)) = 1.
 type_ctor_details_num_functors(eqv(_)) = -1.
 type_ctor_details_num_functors(builtin(_)) = -1.
 type_ctor_details_num_functors(impl_artifact(_)) = -1.
-type_ctor_details_num_functors(foreign) = -1.
+type_ctor_details_num_functors(foreign(_)) = -1.
 
 du_arg_info_name(ArgInfo) = ArgInfo ^ du_arg_name.
 

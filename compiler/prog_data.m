@@ -1150,7 +1150,8 @@
 		).
 
 :- type foreign_type_assertion
-	--->	can_pass_as_mercury_type.
+	--->	can_pass_as_mercury_type
+	;	stable.
 
 :- type constructor
 	--->	ctor(

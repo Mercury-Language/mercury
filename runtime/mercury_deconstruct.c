@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2003 The University of Melbourne.
+** Copyright (C) 2002-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -295,6 +295,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_TUPLE:
         case MR_TYPECTOR_REP_ARRAY:
         case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
         case MR_TYPECTOR_REP_UNKNOWN:
             return MR_FALSE;
     }

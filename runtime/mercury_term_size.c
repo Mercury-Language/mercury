@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003 The University of Melbourne.
+** Copyright (C) 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -280,6 +280,7 @@ try_again:
         case MR_TYPECTOR_REP_C_POINTER:
         case MR_TYPECTOR_REP_STABLE_C_POINTER:
         case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {
                 printf("MR_term_size: c_pointer/foreign %p\n", (void *) term);

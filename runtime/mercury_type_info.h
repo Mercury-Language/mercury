@@ -75,7 +75,7 @@
 ** compiler/type_ctor_info.m and with MR_RTTI_VERSION in mercury_mcpp.h.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__FLAG
+#define MR_RTTI_VERSION                 MR_RTTI_VERSION__STABLE_FOREIGN
 #define MR_RTTI_VERSION__INITIAL        2
 #define MR_RTTI_VERSION__USEREQ         3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT   4
@@ -83,6 +83,7 @@
 #define MR_RTTI_VERSION__COMPACT        6
 #define MR_RTTI_VERSION__REP            7
 #define MR_RTTI_VERSION__FLAG           8
+#define MR_RTTI_VERSION__STABLE_FOREIGN 9
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -614,6 +615,7 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_FOREIGN),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_REFERENCE),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_C_POINTER),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_STABLE_FOREIGN),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -679,6 +681,7 @@ typedef MR_int_least16_t  MR_TypeCtorRepInt;
     "FOREIGN",                                  \
     "REFERENCE",                                \
     "STABLE_C_POINTER",                         \
+    "STABLE_FOREIGN",                           \
     "UNKNOWN"
 
 extern  MR_ConstString  MR_ctor_rep_name[];

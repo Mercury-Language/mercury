@@ -96,6 +96,14 @@
 :- func foreign_type_body_has_user_defined_eq_comp_pred(module_info,
 	foreign_type_body) = unify_compare is semidet.
 
+	% Find the current target backend from the module_info, and given
+	% a foreign_type_body, return the name of the foreign language type
+	% the identity of any user-defined unify/compare predicates, and the
+	% assertions applicable to that backend.
+:- pred foreign_type_body_to_exported_type(module_info::in,
+	foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
+	list(foreign_type_assertion)::out) is det.
+
 	% Given the exported_type representation for a type, determine
 	% whether or not it is a foreign type, and if yes, return the foreign
 	% type's assertions.
@@ -670,10 +678,6 @@ foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body) =
 	foreign_type_body_to_exported_type(ModuleInfo, Body, _,
 		MaybeUserEqComp, _),
 	MaybeUserEqComp = yes(UserEqComp).
-
-:- pred foreign_type_body_to_exported_type(module_info::in,
-	foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
-	list(foreign_type_assertion)::out) is det.
 
 foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
 		MaybeUserEqComp, Assertions) :-

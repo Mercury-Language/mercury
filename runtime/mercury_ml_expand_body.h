@@ -1161,6 +1161,11 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             return;
 
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
+            handle_functor_name("<<stable_foreign>>");
+            handle_zero_arity_args();
+            return;
+
         case MR_TYPECTOR_REP_REFERENCE:
             if (noncanon == MR_NONCANON_ABORT) {
                 /* XXX should throw an exception */

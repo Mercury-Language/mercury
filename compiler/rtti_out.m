@@ -699,7 +699,7 @@ output_type_ctor_details_defn(RttiTypeCtor, TypeCtorDetails,
 		MaybeLayoutName = no,
 		MaybeFunctorsName = no
 	;
-		TypeCtorDetails = foreign,
+		TypeCtorDetails = foreign(_),
 		MaybeLayoutName = no,
 		MaybeFunctorsName = no
 	).

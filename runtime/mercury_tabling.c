@@ -1032,6 +1032,14 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
             */
             MR_DEBUG_TABLE_INT(table, data);
 
+        case MR_TYPECTOR_REP_STABLE_FOREIGN:
+            /*
+            ** This works because a stable foreign type guarantees that the
+            ** data structures pointed to, indirectly as well as directly,
+            ** will remain stable until the program exits.
+            */
+            MR_DEBUG_TABLE_INT(table, data);
+
         case MR_TYPECTOR_REP_TYPEINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
             MR_DEBUG_TABLE_TYPEINFO(table, (MR_TypeInfo) data);

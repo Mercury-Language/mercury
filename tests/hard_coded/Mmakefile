@@ -381,6 +381,7 @@ ifeq "$(filter hl% il% java%,$(GRADE))" ""
 		$(BACKEND_PROGS_2) \
 		compare_representation \
 		compare_rep_usereq \
+		stable_foreign \
 		type_tables 
 else
 	BACKEND_PROGS =

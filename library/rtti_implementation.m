@@ -149,6 +149,7 @@
 	;	foreign
 	;	reference
 	;	stable_c_pointer
+	;	stable_foreign
 	;	unknown.
 
 	% We keep all the other types abstract.
@@ -259,6 +260,8 @@ num_functors(TypeDesc) = NumFunctors :-
 	; TypeCtorRep = ticket,
 		NumFunctors = -1
 	; TypeCtorRep = foreign,
+		NumFunctors = -1
+	; TypeCtorRep = stable_foreign,
 		NumFunctors = -1
 	; TypeCtorRep = reference,
 		NumFunctors = -1
@@ -399,6 +402,8 @@ get_functor_impl(TypeDesc, FunctorNumber,
 	; TypeCtorRep = ticket,
 		fail
 	; TypeCtorRep = foreign,
+		fail
+	; TypeCtorRep = stable_foreign,
 		fail
 	; TypeCtorRep = reference,
 		fail
@@ -1287,6 +1292,11 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
 	;
 		TypeCtorRep = foreign,
 		Functor = "<<foreign>>", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = stable_foreign,
+		Functor = "<<stable_foreign>>", 
 		Arity = 0,
 		Arguments = []
 	;

@@ -592,7 +592,8 @@ try_again:
     case MR_TYPECTOR_REP_HP:
         assert(MR_tag(data) == 0);
         if (in_range((MR_Word *) data)) {
-            MR_fatal_error("Sorry, not implemented: copying saved heap pointer");
+            MR_fatal_error("Sorry, not implemented: "
+                "copying saved heap pointer");
         } else {
             new_data = data;
         }
@@ -629,6 +630,10 @@ try_again:
         }
         return new_data;
 
+    case MR_TYPECTOR_REP_STABLE_FOREIGN:
+        /* by definition, stable foreign values are never relocated */
+        return data;
+
     case MR_TYPECTOR_REP_FOREIGN:
         {
             MR_Word *data_value;
@@ -636,9 +641,9 @@ try_again:
             data_value = (MR_Word *) MR_strip_tag(data);
 
             /*
-            ** XXX It is bad that the behaviour here depends on
-            ** the value of the foreign type.  But I don't see any
-            ** better alternative at the moment.
+            ** Foreign types that are not pointers should not have
+            ** MR_TYPECTOR_REP_FOREIGN; instead, they should have
+            ** MR_TYPECTOR_REP_STABLE_FOREIGN.
             */
             if (lower_limit != NULL && !in_range(data_value)) {
                 /*

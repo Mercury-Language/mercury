@@ -584,7 +584,7 @@ gen_functors_layout_info(ModuleInfo, RttiTypeCtor, TypeCtorDetails,
 		LayoutInit = gen_init_null_pointer(mlds__generic_type),
 		FunctorInit = gen_init_null_pointer(mlds__generic_type)
 	;
-		TypeCtorDetails = foreign,
+		TypeCtorDetails = foreign(_),
 		Defns = [],
 		LayoutInit = gen_init_null_pointer(mlds__generic_type),
 		FunctorInit = gen_init_null_pointer(mlds__generic_type)

@@ -5753,9 +5753,9 @@ using the following syntax:
 :- pragma foreign_type(@var{Lang}, @var{MercuryTypeName}, @var{ForeignTypeDescriptor}, [@var{ForeignTypeAssertion}, ...]).
 @end example
 
-Currently, only one kind of assertion is supported:
-@samp{can_pass_as_mercury_type}.
-This asserts that on the C backends, values of the given type
+Currently, two kinds of assertions are supported.
+The @samp{can_pass_as_mercury_type} assertion
+states that on the C backends, values of the given type
 can be passed to and from Mercury code without boxing,
 via simple casts, which is faster.
 This requires the type to be either an integer type or a pointer type,
@@ -5766,6 +5766,13 @@ and violations are very likely to result in
 the generated executable silently doing the wrong thing,
 we do not recommend the use of assertions
 unless you are an implementor of the Mercury system.
+The @samp{stable} assertion is meaningful
+only in the presence of the @samp{can_pass_as_mercury_type} assertion.
+It states that either the C type is an integer type,
+or it is a pointer type pointing to memory that will never change.
+Together, these assertions are sufficient to allow
+tabling and the @samp{compare_representation} primitive
+to work on values of such types.
 
 As with discriminated union types, programmers can specify the unification
 @w{and/or} comparison predicates to use for values of the type using the

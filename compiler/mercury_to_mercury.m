@@ -403,14 +403,14 @@ convert_to_mercury(ModuleName, OutputFileName, Items) -->
 
 	% output the declarations one by one
 
-:- pred mercury_output_item_list(bool, list(item_and_context),
-		io__state, io__state).
-:- mode mercury_output_item_list(in, in, di, uo) is det.
+:- pred mercury_output_item_list(bool::in, list(item_and_context)::in,
+	io::di, io::uo) is det.
 
-mercury_output_item_list(_, []) --> [].
-mercury_output_item_list(UnqualifiedItemNames, [Item - Context | Items]) -->
-	mercury_output_item(UnqualifiedItemNames, Item, Context),
-	mercury_output_item_list(UnqualifiedItemNames, Items).
+mercury_output_item_list(_, [], !IO).
+mercury_output_item_list(UnqualifiedItemNames, [Item - Context | Items],
+		!IO) :-
+	mercury_output_item(UnqualifiedItemNames, Item, Context, !IO),
+	mercury_output_item_list(UnqualifiedItemNames, Items, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -418,8 +418,8 @@ mercury_output_item(Item, Context) -->
 	{ UnqualifiedItemNames = no },
 	mercury_output_item(UnqualifiedItemNames, Item, Context).
 
-:- pred mercury_output_item(bool, item, prog_context, io__state, io__state).
-:- mode mercury_output_item(in, in, in, di, uo) is det.
+:- pred mercury_output_item(bool::in, item::in, prog_context::in,
+	io::di, io::uo) is det.
 
 	% dispatch on the different types of items
 
@@ -746,14 +746,12 @@ mercury_to_string_promise_type(true) = "promise".
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_class_methods(list(class_method), io__state, io__state).
-:- mode output_class_methods(in, di, uo) is det.
+:- pred output_class_methods(list(class_method)::in, io::di, io::uo) is det.
 
 output_class_methods(Methods) -->
 	io__write_list(Methods, ",\n", output_class_method).
 
-:- pred output_class_method(class_method, io__state, io__state).
-:- mode output_class_method(in, di, uo) is det.
+:- pred output_class_method(class_method::in, io::di, io::uo) is det.
 
 output_class_method(Method) -->
 	io__write_string("\t"),
@@ -814,8 +812,7 @@ output_class_method(Method) -->
 mercury_output_instance_methods(Methods) -->
 	io__write_list(Methods, ",\n", output_instance_method).
 
-:- pred output_instance_method(instance_method, io__state, io__state).
-:- mode output_instance_method(in, di, uo) is det.
+:- pred output_instance_method(instance_method::in, io::di, io::uo) is det.
 
 output_instance_method(Method) -->
 	{ Method = instance_method(PredOrFunc, Name1, Defn, Arity, Context) },
@@ -1646,9 +1643,11 @@ mercury_output_type_defn(TVarSet, Name, Args,
 
 mercury_output_foreign_type_assertion(can_pass_as_mercury_type, !IO) :-
 	io__write_string("can_pass_as_mercury_type", !IO).
+mercury_output_foreign_type_assertion(stable, !IO) :-
+	io__write_string("stable", !IO).
 
-:- pred mercury_output_begin_type_decl(is_solver_type, io__state, io__state).
-:- mode mercury_output_begin_type_decl(in, di, uo) is det.
+:- pred mercury_output_begin_type_decl(is_solver_type::in,
+	io::di, io::uo) is det.
 
 mercury_output_begin_type_decl(solver_type) -->
 	io__write_string(":- solver type ").
@@ -1656,7 +1655,7 @@ mercury_output_begin_type_decl(non_solver_type) -->
 	io__write_string(":- type ").
 
 :- pred mercury_output_equality_compare_preds(maybe(unify_compare)::in,
-		io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 mercury_output_equality_compare_preds(no) --> [].
 mercury_output_equality_compare_preds(
