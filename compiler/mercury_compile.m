@@ -204,15 +204,15 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	; { Error = yes, HaltSyntax = yes } ->
 		{ ModulesToLink = [] }
 	; { MakeInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		list__foldl(make_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakeShortInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		list__foldl(make_short_interface, SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakePrivateInterface = yes } ->
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		list__foldl(make_private_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { ConvertToMercury = yes } ->
@@ -224,7 +224,7 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 		convert_to_goedel(ModuleName, Items),
 		{ ModulesToLink = [] }
 	;
-		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		split_into_submodules(ModuleName, Items, SubModuleList),
 		(
 			{ mercury_private_builtin_module(ModuleName)
 			; mercury_public_builtin_module(ModuleName)
