@@ -38,9 +38,10 @@ AS=../scripts/mgnuc --grade $(GRADE) --assemble
 # CFLAGS= -O -DNO_SIGNALS -DALL_INTERIOR_POINTERS -DSILENT \
 # 	  -DATOMIC_UNCOLLECTABLE
 CFLAGS= -DSILENT -DDONT_DEFINE_READ -DNO_DEBUGGING \
-	$(EXTRA_CFLAGS)
+	$(CFLAGS_FOR_PIC) $(EXTRA_CFLAGS)
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
 # profiling was enabled.
+# We need $(CFLAGS_FOR_PIC) because we might be building a shared library.
 
 # Setjmp_test may yield overly optimistic results when compiled
 # without optimization.
