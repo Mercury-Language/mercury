@@ -3460,9 +3460,7 @@ MR_trace_cmd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"mdb: dd requires no arguments.\n");
 	} else {
 		if (MR_trace_start_decl_debug(MR_TRACE_DECL_DEBUG,
-					(const char *) NULL, cmd,
-					event_info, event_details,
-					jumpaddr))
+			NULL, cmd, event_info, event_details, jumpaddr))
 		{
 			return STOP_INTERACTING;
 		}
