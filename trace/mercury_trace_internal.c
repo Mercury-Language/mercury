@@ -2727,7 +2727,7 @@ MR_trace_cmd_mmc_options(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		strcat(MR_mmc_options, words[i]);
 		strcat(MR_mmc_options, " ");
 	}
-	MR_mmc_options[len] = '\0';
+	MR_mmc_options[len - 1] = '\0';
 
 	return KEEP_INTERACTING;
 }
