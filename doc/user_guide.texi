@@ -3748,7 +3748,8 @@ string and print it on the standard output.
 When compiling, write program dependency information
 to be used to avoid unnecessary recompilations if an
 imported module's interface changes in a way which does
-not invalidate the compiled code.
+not invalidate the compiled code. @samp{--smart-recompilation} does
+not yet work with @samp{--intermodule-optimization}.
 
 @item --no-assume-gmake
 @findex --no-assume-gmake
