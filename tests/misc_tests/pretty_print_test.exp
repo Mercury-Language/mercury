@@ -1,28 +1,30 @@
 :- module pretty_print_test.
 :- interface.
 :- import_module io.
-:- pred pretty_print_test:main(io__state, io__state).
-:- mode pretty_print_test:main(di, uo) is det.
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
 :- implementation.
-:- type (pretty_print_test:foobar)
-	--->	(pretty_print_test:foo)
-	;	pretty_print_test:bar(int)
-	;	pretty_print_test:baz(int, int).
-:- type (pretty_print_test:cont(T))
-	--->	(pretty_print_test:foo)
-	;	pretty_print_test:cont(T, cont(T)).
-:- type (pretty_print_test:eq(T1, T2)) == foobar.
-pretty_print_test:main(DCG_0, DCG_2) :-
+:- type foobar
+	--->	foo
+	;	bar(int)
+	;	baz(int, int)
+	.
+:- type cont(T)
+	--->	foo
+	;	cont(T, cont(T))
+	.
+:- type eq(T1, T2) == foobar.
+main(DCG_0, DCG_2) :-
 	io:write_int(type_num(42), DCG_0, DCG_1),
 	io:nl(DCG_1, DCG_2).
-:- typeclass pretty_print_test:numbered_type(T) where [
-	func pretty_print_test:type_num(T) = int,
-	func pretty_print_test:type_num_2(T) = int,
-	pred pretty_print_test:type_num_3(T, int),
-	mode pretty_print_test:type_num_3(in, out),
-	mode pretty_print_test:type_num_3(out, in),
-	pred pretty_print_test:type_num_4(T, int),
-	mode pretty_print_test:type_num_4(in, out)
+:- typeclass numbered_type(T) where [
+	func type_num(T) = int,
+	func type_num_2(T) = int,
+	pred type_num_3(T, int),
+	mode type_num_3(in, out),
+	mode type_num_3(out, in),
+	pred type_num_4(T, int),
+	mode type_num_4(in, out)
 ].
 :- instance (numbered_type(int)) where [
 	func(type_num/1) is foo_type_num,
@@ -30,9 +32,9 @@ pretty_print_test:main(DCG_0, DCG_2) :-
 	pred(type_num_3/2) is foo_type_num_p,
 	pred(type_num_4/2) is foo_type_num_p
 ].
-:- func pretty_print_test:foo_type_num(int) = int.
-pretty_print_test:foo_type_num(V_1) = 42.
-:- pred pretty_print_test:foo_type_num_p(int, int).
-:- mode pretty_print_test:foo_type_num_p(in, out) is det.
-:- mode pretty_print_test:foo_type_num_p(out, in) is det.
-pretty_print_test:foo_type_num_p(V_1, 42).
+:- func foo_type_num(int) = int.
+foo_type_num(V_1) = 42.
+:- pred foo_type_num_p(int, int).
+:- mode foo_type_num_p(in, out) is det.
+:- mode foo_type_num_p(out, in) is det.
+foo_type_num_p(V_1, 42).
