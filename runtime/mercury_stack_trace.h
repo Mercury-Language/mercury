@@ -102,7 +102,7 @@ extern	void	MR_dump_nondet_stack_from_layout(FILE *fp, int limit,
 
 typedef void MR_Traverse_Nondet_Frame_Func(void *user_data,
 			const MR_Label_Layout *layout, MR_Word *base_sp,
-			MR_Word *base_curfr, int level_number);
+			MR_Word *base_curfr);
 
 extern	void	MR_traverse_nondet_stack_from_layout(
 			MR_Word *maxfr, const MR_Label_Layout *label_layout,

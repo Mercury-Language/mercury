@@ -57,19 +57,24 @@
   static void   MR_LLDS_garbage_collect(MR_Code *saved_success,
                         MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
-  static void   traverse_call_stack(MR_Code *success_ip, MR_Internal *label,
-                        const MR_Label_Layout *label_layout,
-                        MR_Word **ptr_to_stack_pointer,
-                        MR_Word **ptr_to_current_frame);
-  static void   traverse_nondet_stack(MR_Word *stack_pointer,
+  static void   traverse_det_stack(const MR_Label_Layout *label_layout,
+                        MR_Word *stack_pointer, MR_Word *current_frame);
+  static void   traverse_nondet_stack(const MR_Label_Layout *label_layout,
+                        MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
+  static void   traverse_nondet_frame(void *user_data,
+                        const MR_Label_Layout *label_layout,
+                        MR_Word *stack_pointer, MR_Word *current_frame);
+  static void   traverse_frame(MR_bool is_first_frame,
+                        const MR_Label_Layout *label_layout,
+                        MR_Word *stack_pointer, MR_Word *current_frame);
   static void   resize_and_reset_redzone(MR_MemoryZone *old_heap,
                         MR_MemoryZone *new_heap);
   static void   copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
-                        MR_bool copy_regs, MR_Word *stack_pointer,
+                        MR_bool is_first_frame, MR_Word *stack_pointer,
                         MR_Word *current_frame);
   static void   copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-                        MR_bool copy_regs, MR_Word *stack_pointer,
+                        MR_bool is_first_frame, MR_Word *stack_pointer,
                         MR_Word *current_frame);
 
 #endif
@@ -434,14 +439,8 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 {
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_Word                         *old_hp;
-
     MR_Internal                     *label;
     const MR_Label_Layout           *label_layout;
-
-    MR_Internal                     *first_label;
-    MR_Word                         *first_stack_pointer;
-    MR_Word                         *first_max_frame;
-    MR_Word                         *first_current_frame;
 
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
@@ -468,17 +467,13 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     label_layout = label->i_layout;
 
     if (MR_agc_debug) {
-        first_label = label;
-        first_stack_pointer = stack_pointer;
-        first_current_frame = current_frame;
-        first_max_frame = max_frame;
 
         fprintf(stderr, "BEFORE:\n");
 
-        MR_agc_dump_stack_frames(first_label, old_heap, first_stack_pointer,
-                first_current_frame);
-        MR_agc_dump_nondet_stack_frames(first_label, old_heap,
-                first_stack_pointer, first_current_frame, first_max_frame);
+        MR_agc_dump_stack_frames(label, old_heap, stack_pointer,
+                current_frame);
+        MR_agc_dump_nondet_stack_frames(label, old_heap,
+                stack_pointer, current_frame, max_frame);
         MR_agc_dump_roots(root_list);
 
         /* 
@@ -491,20 +486,12 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     }
 
     /*
-    ** First, traverse the call stack.  This includes all of the det stack
-    ** and the success continuation frames on the nondet stack.  It does not
-    ** include the failure continuation frames on the nondet stack.
-    ** (We really only need to traverse the det stack here, but there's no
-    ** way to do that without traversing the success continuation frames of
-    ** the nondet stack too.)
+    ** Traverse the stacks, copying the live data in the old heap to the
+    ** new heap.
     */
-    traverse_call_stack(success_ip, label, label_layout,
-        &stack_pointer, &current_frame);
-
-    /* 
-    ** Next, traverse the whole of the nondet stack.
-    */
-    traverse_nondet_stack(stack_pointer, max_frame, current_frame);
+    traverse_det_stack(label_layout, stack_pointer, current_frame);
+    traverse_nondet_stack(label_layout, stack_pointer, max_frame,
+        current_frame);
 
     /*
     ** Copy any roots that are not on the stack.
@@ -534,10 +521,10 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         /* XXX save this, it appears to get clobbered */
         new_hp = MR_virtual_hp;
 
-        MR_agc_dump_stack_frames(first_label, new_heap, first_stack_pointer,
-            first_current_frame);
-        MR_agc_dump_nondet_stack_frames(first_label, new_heap,
-            first_stack_pointer, first_current_frame, first_max_frame);
+        MR_agc_dump_stack_frames(label, new_heap, stack_pointer,
+            current_frame);
+        MR_agc_dump_nondet_stack_frames(label, new_heap,
+            stack_pointer, current_frame, max_frame);
 
         /* XXX restore this, it appears to get clobbered */
         MR_virtual_hp = new_hp;
@@ -547,250 +534,161 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 }
 
 /*
-** Traverse the call stack.  This includes all of the det stack
-** and the success continuation frames on the nondet stack.  It does not
-** include the failure continuation frames on the nondet stack.
-** (We really only need to traverse the det stack here, but there's no
-** way to do that without traversing the success continuation frames of
-** the nondet stack too.)
+** Traverse the det stack.  In order to do this, we need to traverse
+** the call stack, which includes all of the det stack _plus_ the
+** success continuation frames on the nondet stack (but not the failure
+** continuation frames on the nondet stack).  But we skip all the nondet
+** frames.
 */
 static void
-traverse_call_stack(MR_Code *success_ip, MR_Internal *label,
-    const MR_Label_Layout *label_layout,
-    MR_Word **ptr_to_stack_pointer, MR_Word **ptr_to_current_frame)
+traverse_det_stack(const MR_Label_Layout *label_layout,
+    MR_Word *stack_pointer, MR_Word *current_frame)
 {
-    MR_bool   top_frame = MR_TRUE;
+    /*
+    ** Record whether this is the first frame on the call stack.
+    ** The very first frame on the call stack is special because it may have
+    ** live registers (the other frames should only have live stack slots).
+    */
+    MR_bool   is_first_frame = MR_TRUE;
+
     /*
     ** For each stack frame ...
     */
     do {
-        const MR_Label_Layout           *return_label_layout;
-        int                             short_var_count, long_var_count;
-        int                             i;
-        MR_MemoryList                   allocated_memory_cells = NULL;
-        MR_TypeInfoParams               type_params;
         const MR_Proc_Layout            *proc_layout;
-
-        if (MR_agc_debug) {
-            MR_printlabel(stderr, (MR_Code *) (MR_Word) label->i_addr);
-            fflush(NULL);
-        }
-
-        short_var_count = MR_short_desc_var_count(label_layout);
-        long_var_count = MR_long_desc_var_count(label_layout);
-
-        /* Get the type parameters from the stack frame. */
+        MR_Stack_Walk_Step_Result       result;
+        const char                      *problem;
 
         /*
-        ** We must pass NULL here since the registers have not been saved;
-        ** This should be OK, because none of the values used by a procedure
-        ** will be stored in registers across a call, since we have no
-        ** caller-save registers (they are all callee-save).
-        ** XXX except for the topmost frame!
+        ** Traverse this stack frame, if it is a det frame.
         */
-        type_params = MR_materialize_type_params_base(label_layout,
-            NULL, *ptr_to_stack_pointer, *ptr_to_current_frame);
-        
-        /* Copy each live variable */
-
-        for (i = 0; i < long_var_count; i++) {
-            MR_Long_Lval locn;
-            MR_PseudoTypeInfo pseudo_type_info;
-            MR_TypeInfo type_info;
-
-            locn = MR_long_desc_var_locn(label_layout, i);
-            pseudo_type_info = MR_var_pti(label_layout, i);
-
-            type_info = MR_make_type_info(type_params, pseudo_type_info,
-                    &allocated_memory_cells);
-            copy_long_value(locn, type_info, top_frame,
-                    *ptr_to_stack_pointer, *ptr_to_current_frame);
-            MR_deallocate(allocated_memory_cells);
-            allocated_memory_cells = NULL;
-        }
-
-        for (; i < short_var_count; i++) {
-            MR_Short_Lval locn;
-            MR_PseudoTypeInfo pseudo_type_info;
-            MR_TypeInfo type_info;
-
-            locn = MR_short_desc_var_locn(label_layout, i);
-            pseudo_type_info = MR_var_pti(label_layout, i);
-
-            type_info = MR_make_type_info(type_params, pseudo_type_info,
-                    &allocated_memory_cells);
-            copy_short_value(locn, type_info, top_frame,
-                    *ptr_to_stack_pointer, *ptr_to_current_frame);
-            MR_deallocate(allocated_memory_cells);
-            allocated_memory_cells = NULL;
-        }
-
-        MR_free(type_params);
-
         proc_layout = label_layout->MR_sll_entry;
-
-        {
-            MR_Long_Lval            location;
-            MR_Long_Lval_Type       type;
-            int                     number;
-
-            location = proc_layout->MR_sle_succip_locn;
-            if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
-                type = MR_LONG_LVAL_TYPE(location);
-                number = MR_LONG_LVAL_NUMBER(location);
-                if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-                    MR_fatal_error("can only handle stackvars");
-                }
-                success_ip = (MR_Code *)
-                        MR_based_stackvar(*ptr_to_stack_pointer, number);
-                *ptr_to_stack_pointer = *ptr_to_stack_pointer - 
-                        proc_layout->MR_sle_stack_slots;
-            } else {
-                /*
-                ** Note that curfr always points to an ordinary
-                ** procedure frame, never to a temp frame, and
-                ** this property continues to hold while we traverse
-                ** the nondet stack via the succfr slot.  So it is
-                ** safe to access the succip and succfr slots
-                ** without checking what kind of frame it is.
-                */
-                /* succip is saved in succip_slot */
-                assert(location == -1);
-                success_ip = MR_succip_slot(*ptr_to_current_frame);
-                *ptr_to_current_frame = MR_succfr_slot(*ptr_to_current_frame);
-            }
-            label = MR_lookup_internal_by_addr(success_ip);
+        if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
+            traverse_frame(is_first_frame, label_layout, stack_pointer,
+                current_frame);
         }
 
-/*
-        we should use this code eventually, but it requires a bit of
-        a redesign of the code around here.
- 
+        /*
+        ** Get the next stack frame
+        */
         result = MR_stack_walk_step(proc_layout, &label_layout,
-            ptr_to_stack_pointer, ptr_to_current_frame, &problem);
-
+            &stack_pointer, &current_frame, &problem);
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
         } 
-*/
 
-        if (label == NULL) {
-            break;
-        }
-        return_label_layout = label->i_layout;
-        label_layout = return_label_layout;
-        top_frame = MR_FALSE;
+        is_first_frame = MR_FALSE;
+
     } while (label_layout != NULL); /* end for each stack frame... */
 }
 
 /*
 ** Traverse the whole of the nondet stack.
-**
-** XXX The code below is broken.  We should use
-**     MR_traverse_nondet_stack_from_layout() instead.
-**
-** XXX Will we need correct value of stack_pointer (the pointer
-**     to the det stack)?
-**     Hopefully not, since I think that for nondet code, all values
-**     should be saved on the nondet stack, not the det stack?
 */ 
-static void
-traverse_nondet_stack(MR_Word *stack_pointer,
-        MR_Word *max_frame, MR_Word *current_frame)
-{
-    MR_bool top_frame = MR_FALSE; /* XXX always false... is this wrong? */
 
-    while (max_frame > MR_nondet_stack_trace_bottom) {
-        MR_Internal *label;
-#if 0
-        MR_bool registers_valid;
-        int frame_size;
-
-        registers_valid = (max_frame == current_frame);
-        frame_size = max_frame - MR_prevfr_slot(max_frame);
-
-        if (frame_size == MR_NONDET_TEMP_SIZE) {
-            if (MR_agc_debug) {
-                MR_printlabel(stderr, MR_redoip_slot(max_frame));
-                fflush(NULL);
-            }
-        } else if (frame_size == MR_DET_TEMP_SIZE) {
-            if (MR_agc_debug) {
-                MR_printlabel(stderr, MR_redoip_slot(max_frame));
-                fflush(NULL);
-            }
-            stack_pointer = MR_tmp_detfr_slot(max_frame); /* XXX ??? */
-        } else {
-            if (MR_agc_debug) {
-                MR_printlabel(stderr, MR_redoip_slot(max_frame));
-                fflush(NULL);
-            }
-        }
-#endif
-        label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
-        stack_pointer = NULL; /* XXX ??? */
-
-        if (label != NULL) {
-            const MR_Label_Layout   *label_layout;
-            int                     short_var_count, long_var_count;
-            int                     i;
-            MR_MemoryList           allocated_memory_cells = NULL;
-            MR_TypeInfoParams       type_params;
-
-            label_layout = label->i_layout;
-            short_var_count = MR_short_desc_var_count(label_layout);
-            long_var_count = MR_long_desc_var_count(label_layout);
-            /* var_count = label_layout->MR_sll_var_count; */
-
-            /*
-            ** We must pass NULL here since the registers have not been
-            ** saved; This should be OK, because none of the values used
-            ** by a procedure will be stored in registers across a call,
-            ** since we have no caller-save registers (they are all
-            ** callee-save).  XXX except for frame which was active
-            ** when we entered the garbage collector!
-            **
-            ** XXX Is it right to pass MR_redofr_slot(max_frame) here?
-            **     Why not just max_frame?
-            */
-            type_params = MR_materialize_type_params_base(label_layout,
-                    NULL, stack_pointer, MR_redofr_slot(max_frame));
+struct first_frame_data {
+    const MR_Label_Layout *first_frame_layout;
+    MR_Word *first_frame_curfr;
+};
     
-            /* Copy each live variable */
-            for (i = 0; i < long_var_count; i++) {
-                MR_Long_Lval locn;
-                MR_PseudoTypeInfo pseudo_type_info;
-                MR_TypeInfo type_info;
+static void
+traverse_nondet_stack(const MR_Label_Layout *first_frame_layout,
+        MR_Word *stack_pointer, MR_Word *max_frame, MR_Word *current_frame)
+{
+    struct first_frame_data data;
+    data.first_frame_layout = first_frame_layout;
+    data.first_frame_curfr = current_frame;
+    MR_traverse_nondet_stack_from_layout(max_frame, first_frame_layout,
+            stack_pointer, current_frame, traverse_nondet_frame,
+            &data);
+}
 
-                locn = MR_long_desc_var_locn(label_layout, i);
-                pseudo_type_info = MR_var_pti(label_layout, i);
+static void
+traverse_nondet_frame(void *user_data,
+        const MR_Label_Layout *label_layout, MR_Word *stack_pointer,
+        MR_Word *current_frame)
+{   
+    MR_bool is_first_frame;
+    struct first_frame_data *data = user_data;
+    
+    /*
+    ** Determine whether this is the first frame on the call stack.
+    ** The very first frame on the call stack is special because it may have
+    ** live registers (the other frames should only have live stack slots).
+    */
+    is_first_frame = (current_frame == data->first_frame_curfr
+        && !MR_DETISM_DET_STACK(
+            data->first_frame_layout->MR_sll_entry->MR_sle_detism));
 
-                type_info = MR_make_type_info(type_params, pseudo_type_info,
-                        &allocated_memory_cells);
-                copy_long_value(locn, type_info, top_frame,
-                        stack_pointer, current_frame);
-                MR_deallocate(allocated_memory_cells);
-                allocated_memory_cells = NULL;
-            }
+    traverse_frame(is_first_frame, label_layout, stack_pointer, current_frame);
+}
 
-            for (; i < short_var_count; i++) {
-                MR_Short_Lval locn;
-                MR_PseudoTypeInfo pseudo_type_info;
-                MR_TypeInfo type_info;
+/*
+** Traverse a stack frame (it could be either a det frame or a nondet frame).
+*/
+static void
+traverse_frame(MR_bool is_first_frame, const MR_Label_Layout *label_layout,
+        MR_Word *stack_pointer, MR_Word *current_frame)
+{
+    int                             short_var_count, long_var_count;
+    int                             i;
+    MR_MemoryList                   allocated_memory_cells = NULL;
+    MR_TypeInfoParams               type_params;
+    MR_Short_Lval                   locn;
+    MR_PseudoTypeInfo               pseudo_type_info;
+    MR_TypeInfo                     type_info;
 
-                locn = MR_short_desc_var_locn(label_layout, i);
-                pseudo_type_info = MR_var_pti(label_layout, i);
-
-                type_info = MR_make_type_info(type_params, pseudo_type_info,
-                        &allocated_memory_cells);
-                copy_short_value(locn, type_info, top_frame,
-                        stack_pointer, current_frame);
-                MR_deallocate(allocated_memory_cells);
-                allocated_memory_cells = NULL;
-            }
-        }
-        max_frame = MR_prevfr_slot(max_frame);
+    if (MR_agc_debug) {
+        /* XXX we used to print the label name here, but that's
+           not available anymore */
+        printf("traverse_frame: traversing frame with label layout %p\n",
+            (const void *) label_layout);
+        fflush(NULL);
     }
+
+    short_var_count = MR_short_desc_var_count(label_layout);
+    long_var_count = MR_long_desc_var_count(label_layout);
+
+    /* Get the type parameters from the stack frame. */
+
+    /*
+    ** For frames other than the first frame, we must pass NULL for the
+    ** registers here, since the registers have not been saved;
+    ** This should be OK, because none of the values used by a procedure
+    ** will be stored in registers across a call, since we have no
+    ** caller-save registers (they are all callee-save).
+    */
+    type_params = MR_materialize_type_params_base(label_layout,
+            (is_first_frame ? MR_fake_reg : NULL),
+            stack_pointer, current_frame);
+    
+    /* Copy each live variable */
+
+    for (i = 0; i < long_var_count; i++) {
+        locn = MR_long_desc_var_locn(label_layout, i);
+        pseudo_type_info = MR_var_pti(label_layout, i);
+
+        type_info = MR_make_type_info(type_params, pseudo_type_info,
+                &allocated_memory_cells);
+        copy_long_value(locn, type_info, is_first_frame,
+                stack_pointer, current_frame);
+        MR_deallocate(allocated_memory_cells);
+        allocated_memory_cells = NULL;
+    }
+
+    for (; i < short_var_count; i++) {
+        locn = MR_short_desc_var_locn(label_layout, i);
+        pseudo_type_info = MR_var_pti(label_layout, i);
+
+        type_info = MR_make_type_info(type_params, pseudo_type_info,
+                &allocated_memory_cells);
+        copy_short_value(locn, type_info, is_first_frame,
+                stack_pointer, current_frame);
+        MR_deallocate(allocated_memory_cells);
+        allocated_memory_cells = NULL;
+    }
+
+    MR_free(type_params);
 }
 
 /*
@@ -805,15 +703,15 @@ traverse_nondet_stack(MR_Word *stack_pointer,
 */
 
 static void
-copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
-                MR_Word *stack_pointer, MR_Word *current_frame)
+copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
+        MR_bool is_first_frame, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     int locn_num;
 
     locn_num = MR_LONG_LVAL_NUMBER(locn);
     switch (MR_LONG_LVAL_TYPE(locn)) {
     case MR_LONG_LVAL_TYPE_R:
-        if (copy_regs) {
+        if (is_first_frame) {
             MR_virtual_reg(locn_num) = MR_agc_deep_copy(
                     MR_virtual_reg(locn_num), type_info,
                     MR_ENGINE(MR_eng_heap_zone2->min),
@@ -850,6 +748,14 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
         break;
 
     case MR_LONG_LVAL_TYPE_HP:
+        /*
+        ** Currently we don't support heap reclamation on failure
+        ** with accurate GC, so we shouldn't get any saved HP values.
+        ** XXX To support this, saved heap pointer values would need to be
+        ** updated to point to the new heap... but this is tricky -- see the
+        ** CVS log message for revision 1.21 of runtime/mercury_accurate_gc.c.
+        */
+        MR_fatal_error("copy_long_value: MR_LONG_LVAL_TYPE_HP");
         break;
 
     case MR_LONG_LVAL_TYPE_SP:
@@ -857,9 +763,11 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 
     case MR_LONG_LVAL_TYPE_INDIRECT:
         /* XXX Tyson will have to write the code for this */
+        MR_fatal_error("NYI: copy_long_value on MR_LONG_LVAL_TYPE_INDIRECT");
         break;
 
     case MR_LONG_LVAL_TYPE_UNKNOWN:
+        MR_fatal_error("copy_long_value: MR_LONG_LVAL_TYPE_UNKNOWN");
         break;
 
     default:
@@ -870,14 +778,14 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, MR_bool copy_regs,
 
 static void
 copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-                 MR_bool copy_regs, MR_Word *stack_pointer,
+                 MR_bool is_first_frame, MR_Word *stack_pointer,
                  MR_Word *current_frame)
 {
     int locn_num;
 
     switch (MR_SHORT_LVAL_TYPE(locn)) {
     case MR_SHORT_LVAL_TYPE_R:
-        if (copy_regs) {
+        if (is_first_frame) {
             locn_num = MR_SHORT_LVAL_NUMBER(locn);
             MR_virtual_reg(locn_num) =
                     MR_agc_deep_copy(

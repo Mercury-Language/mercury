@@ -242,8 +242,8 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
         return MR_STEP_ERROR_BEFORE;
     }
 
+    location = entry_layout->MR_sle_succip_locn;
     if (MR_DETISM_DET_STACK(determinism)) {
-        location = entry_layout->MR_sle_succip_locn;
         type = MR_LONG_LVAL_TYPE(location);
         number = MR_LONG_LVAL_NUMBER(location);
 
@@ -256,6 +256,16 @@ MR_stack_walk_step(const MR_Proc_Layout *entry_layout,
         *stack_trace_sp_ptr = *stack_trace_sp_ptr -
             entry_layout->MR_sle_stack_slots;
     } else {
+        /* succip is always saved in succip_slot */
+        assert(location == -1);
+        /*
+        ** Note that curfr always points to an ordinary
+        ** procedure frame, never to a temp frame, and
+        ** this property continues to hold while we traverse
+        ** the nondet stack via the succfr slot.  So it is
+        ** safe to access the succip and succfr slots
+        ** without checking what kind of frame it is.
+        */
         success = MR_succip_slot(*stack_trace_curfr_ptr);
         *stack_trace_curfr_ptr = MR_succfr_slot(*stack_trace_curfr_ptr);
     }
@@ -578,8 +588,7 @@ MR_traverse_nondet_stack_frame(void *info, MR_Nondet_Frame_Category category,
 {
     MR_Traverse_Nondet_Frame_Func_Info *func_info = info;
     if (category != MR_TERMINAL_TOP_FRAME_ON_SIDE_BRANCH) {
-        func_info->func(func_info->func_data, top_layout, base_sp, base_curfr,
-            level_number);
+        func_info->func(func_info->func_data, top_layout, base_sp, base_curfr);
     }
 }
 
