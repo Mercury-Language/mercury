@@ -2077,6 +2077,16 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 							Date3FileName),
 
 		/*
+		** We add some extra dependencies to the generated `.d' files, so
+		** that local `.int', `.opt', etc. files shadow the installed
+		** versions properly (e.g. for when you're trying to build a new
+		** version of an installed library).  This saves the user from
+		** having to add these explicitly if they have multiple libraries
+		** installed in the same installation hierarchy which aren't
+		** independent (e.g. one uses another).
+		** These extra dependencies are necessary due to the way the
+		** combination of search paths and pattern rules works in Make.
+		**
 		** Be very careful about changing the following rules.
 		** The `@:' is a silent do-nothing command.
 		** It is used to force GNU Make to recheck the timestamp
