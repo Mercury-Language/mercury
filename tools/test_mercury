@@ -653,12 +653,18 @@ case $status in
 esac
 
 # Now rebuild the index files on the www site
-echo "test_mercury generating index files on www site, starting at `date`" 1>&2
-(
-cd $BETA_WEBDIR_TOP
-generate_index_html
-)
-echo "test_mercury generating index files on www site, finished at `date`" 1>&2
+case $HOST in 
+    murlibobo)
+	echo "test_mercury generating www index files, starting at `date`" 1>&2
+	(
+	cd $BETA_WEBDIR_TOP
+	generate_index_html
+	)
+	echo "test_mercury generating www index files, finished at `date`" 1>&2
+	;;
+    *)
+	;;
+esac
 
 : check for success
 
