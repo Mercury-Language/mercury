@@ -263,12 +263,12 @@ typedef double Float;
 
 /* unboxed float means we can assume sizeof(Float) == sizeof(Word) */
 
-#define float_const(f) ((Float)f)
-
 union FloatWord {
 	Float f;
 	Word w;
 };
+
+#define float_const(f) float_to_word(f)
 
 #ifdef __GNUC__
 
