@@ -898,7 +898,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, ModuleInfo0,
 abstractly_unify_inst_2(IsLive, InstA, InstB, UnifyIsReal, ModuleInfo0,
 		Inst, Det, ModuleInfo) :-
 	( InstB = not_reached ->
-		Inst = InstA,
+		Inst = not_reached,
 		Det = det,
 		ModuleInfo = ModuleInfo0
 	;
