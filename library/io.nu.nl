@@ -140,6 +140,11 @@ io__init(Args) :-
 	),
 	assert(io__save_exit_status(0)).
 
+:- pred io__gc_init(type_info, type_info, io__state, io__state).
+:- mode io__gc_init(in, in, di, uo) is det.
+
+io__gc_init(_, _) --> [].
+
 :- pred io__gc_init(io__state, io__state).
 :- mode io__gc_init(di, uo) is det.
 io__gc_init --> [].
