@@ -113,19 +113,33 @@ array__bounds(node(_), 0, 0).
 array__bounds(two(Low, High, _, _), Low, High).
 array__bounds(three(Low, High, _, _, _), Low, High).
 
-array__search(node(Item), Index, Item).
-array__search(two(Low, High, Left, Right), Index, Item) :-
+array__search(Array, Index, Item) :-
+	array__bounds(Array, Low, High),
+	(if
+		Index < Low
+	then
+		error("Array index below lower bound")
+	else if
+		Index > High
+	then
+		error("Array index above upper bound")
+	else
+		array__search_2(Array, Index, Item)
+	).
+
+array__search_2(node(Item), Index, Item).
+array__search_2(two(Low, High, Left, Right), Index, Item) :-
 	Size is High - Low,
 	Half is Size / 2,
 	Mid is Low + Half,
 	(if
 		Index < Mid
 	then
-		array__search(Left, Index, Item)
+		array__search_2(Left, Index, Item)
 	else
-		array__search(Right, Index, Item)
+		array__search_2(Right, Index, Item)
 	).
-array__search(three(Low, High, Left, Middle, Right), Index, Item) :-
+array__search_2(three(Low, High, Left, Middle, Right), Index, Item) :-
 	Size is High - Low,
 	Third is Size / 3,
 	Mid1 is Low + Third,
@@ -133,13 +147,13 @@ array__search(three(Low, High, Left, Middle, Right), Index, Item) :-
 	(if
 		Index < Mid1
 	then
-		array__search(Left, Index, Item)
+		array__search_2(Left, Index, Item)
 	else if
 		Index < Mid2
 	then
-		array__search(Middle, Index, Item)
+		array__search_2(Middle, Index, Item)
 	else
-		array__search(Right, Index, Item)
+		array__search_2(Right, Index, Item)
 	).
 
 array__set(node(_), Index, Item, node(Item)).
@@ -210,7 +224,7 @@ array__fetch_items(Array, Low, High, List) :-
 	else
 		Low1 is Low + 1,
 		array__fetch_items(Array, Low1, High, List0),
-		array__search(Array, Low, Item),
+		array__search_2(Array, Low, Item),
 		List = [Item|List0]
 	).
 
