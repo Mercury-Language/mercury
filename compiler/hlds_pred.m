@@ -110,22 +110,27 @@
 	% After mode analysis the clauses and the procedure goals are not
 	% guaranteed to be the same, and the clauses are only kept so that
 	% the optimized goal can be compared with the original in HLDS dumps.
-:- type clauses_info	--->	clauses_info(
-					prog_varset,	% variable names
-					vartypes,
-						% variable types from
-						% explicit qualifications
-					vartypes,
-						% variable types
-						% inferred by typecheck.m.
-					list(prog_var),	% head vars
-					list(clause),
-						% the following two fields
-						% are computed by
-						% polymorphism.m
-					type_info_varmap,
-					typeclass_info_varmap
-				).
+:- type clauses_info
+	--->	clauses_info(
+			varset			:: prog_varset,
+							% variable names
+			explicit_vartypes	:: vartypes,
+							% variable types from
+							% explicit
+							% qualifications
+			vartypes		:: vartypes,
+							% variable types
+							% inferred by
+							% typecheck.m.
+			headvars		:: list(prog_var),
+							% head vars
+			clauses			:: list(clause),
+							% the following two
+							% fields are computed
+							% by polymorphism.m
+			type_info_varmap	:: type_info_varmap,
+			typeclass_info_varmap	:: typeclass_info_varmap
+		).
 
 :- type vartypes == map(prog_var, type).
 
@@ -739,50 +744,61 @@ status_defined_in_this_module(local,			yes).
 
 :- type pred_info
 	--->	predicate(
-			tvarset,	% names of type vars
+			decl_typevarset	:: tvarset,
+					% names of type vars
 					% in the predicate's type decl
-			list(type),	% argument types
-			condition,	% formal specification
+			arg_types	:: list(type),
+					% argument types
+			condition	:: condition,
+					% formal specification
 					% (not used)
 
-			clauses_info,
+			clauses_info	:: clauses_info,
 
-			proc_table,
+			procedures	:: proc_table,
 
-			prog_context,
+			context		:: prog_context,
 					% the location (line #)
 					% of the :- pred decl.
 
-			module_name,	% module in which pred occurs
-			string,		% predicate name
-			arity,		% the arity of the pred
+			(module)	:: module_name,
+					% module in which pred occurs
+			name		:: string,
+					% predicate name
+			arity		:: arity,
+					% the arity of the pred
 					% (*not* counting any inserted
 					% type_info arguments)
-			import_status,
-			tvarset,	% names of type vars
+			import_status	:: import_status,
+			typevarset	:: tvarset,
+					% names of type vars
 					% in the predicate's type decl
 					% or in the variable type assignments
-			goal_type,	% whether the goals seen so far for
+			goal_type	:: goal_type,
+					% whether the goals seen so far for
 					% this pred are clauses, 
 					% pragma c_code(...) decs, or none
-			pred_markers,	% various boolean flags
-			pred_or_func,	% whether this "predicate" was really
+			markers		:: pred_markers,
+					% various boolean flags
+			is_pred_or_func	:: pred_or_func,
+					% whether this "predicate" was really
 					% a predicate or a function
-			class_constraints,
+			class_context	:: class_constraints,
 					% the class constraints on the 
 					% type variables in the predicate's
 					% type declaration
-			constraint_proof_map,
+			constraint_proofs :: constraint_proof_map,
 					% explanations of how redundant
 					% constraints were eliminated. These
 					% are needed by polymorphism.m to
 					% work out where to get the
 					% typeclass_infos from.
 					% Computed during type checking.
-			existq_tvars,	% the set of existentially quantified
+			exist_quant_tvars :: existq_tvars,
+					% the set of existentially quantified
 					% type variables in the predicate's
 					% type decl
-			head_type_params,
+			head_type_params :: head_type_params,
 					% The set of type variables which the
 					% body of the predicate can't bind,
 					% and whose type_infos are produced
@@ -794,23 +810,23 @@ status_defined_in_this_module(local,			yes).
 					% (the type_infos are returned from
 					% the called preds).
 					% Computed during type checking.
-			list(class_constraint),
+			unproven_body_constraints :: list(class_constraint),
 					% unproven class constraints on type
 					% variables in the predicate's body,
 					% if any (if this remains non-empty
 					% after type checking has finished,
 					% post_typecheck.m will report a type
 					% error).
-			aditi_owner,
+			aditi_owner	:: aditi_owner,
 					% The owner of this predicate if
 					% it is an Aditi predicate. Set to
 					% the value of --aditi-user if no
 					% `:- pragma owner' declaration exists.
-			list(index_spec),
+			indexes		:: list(index_spec),
 					% Indexes if this predicate is
 					% an Aditi base relation, ignored
 					% otherwise.
-			set(assert_id)
+			assertions	:: set(assert_id)
 					% List of assertions which
 					% mention this predicate.
 		).
@@ -862,9 +878,7 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Indexes, Assertions).
 
 pred_info_procids(PredInfo, ProcIds) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _),
-	map__keys(Procs, ProcIds).
+	map__keys(PredInfo^procedures, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -894,59 +908,36 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 		ProcIds = []
 	).
 
-pred_info_clauses_info(PredInfo, Clauses) :-
-	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _, _).
+pred_info_clauses_info(PredInfo, PredInfo^clauses_info).
 
-pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, 
-		L, M, N, O, P, Q, R, S, T, U, V).
+pred_info_set_clauses_info(PredInfo, X, PredInfo^clauses_info := X).
 
 pred_info_arg_types(PredInfo, ArgTypes) :-
 	pred_info_arg_types(PredInfo, _TypeVars, _ExistQVars, ArgTypes).
 
-pred_info_arg_types(PredInfo, TypeVars, ExistQVars, ArgTypes) :-
-	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, ExistQVars, _, _, _, _, _).
+pred_info_arg_types(PredInfo, PredInfo^decl_typevarset,
+		PredInfo^exist_quant_tvars, PredInfo^arg_types).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes,
 		PredInfo) :-
-	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		_, R, S, T, U, V),
-	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K,
-		L, M, N, O, P, ExistQVars, R, S, T, U, V).
+	PredInfo = ((PredInfo0
+			^decl_typevarset := TypeVarSet)
+			^exist_quant_tvars := ExistQVars)
+			^arg_types := ArgTypes.
 
-pred_info_procedures(PredInfo, Procs) :-
-	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _).
+pred_info_procedures(PredInfo, PredInfo^procedures).
 
-pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M, 
-		N, O, P, Q, R, S, T, U, V).
+pred_info_set_procedures(PredInfo, X, PredInfo^procedures := X).
 
-pred_info_context(PredInfo, Context) :-
-	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _, _, _).
+pred_info_context(PredInfo, PredInfo^context).
 
-pred_info_module(PredInfo, Module) :-
-	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _).
+pred_info_module(PredInfo, PredInfo^(module)).
 
-pred_info_name(PredInfo, PredName) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _).
+pred_info_name(PredInfo, PredInfo^name).
 
-pred_info_arity(PredInfo, Arity) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _).
+pred_info_arity(PredInfo, PredInfo^arity).
 
-pred_info_import_status(PredInfo, ImportStatus) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _,
-				_, _, _, _, _, _, _, _, _).
+pred_info_import_status(PredInfo, PredInfo^import_status).
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, imported(_)).
@@ -978,46 +969,24 @@ procedure_is_exported(PredInfo, ProcId) :-
 	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, ImportStatus,
-		K, L, M, N, O, P, Q, R, S, T, U, V),
-	status_is_exported(ImportStatus, Exported),
+	status_is_exported(PredInfo0^import_status, Exported),
 	(
 		Exported = yes,
-		PredInfo = predicate(A, B, C, D, E, F, G, H, I,
-				imported(interface), K, L, M, N, O,
-				P, Q, R, S, T, U, V)
+		PredInfo = PredInfo0^import_status := imported(interface)
 	;
 		Exported = no,
-		PredInfo = predicate(A, B, C, D, E, F, G, H, I,
-				imported(implementation), K, L, M, N, O,
-				P, Q, R, S, T, U, V)
+		PredInfo = PredInfo0^import_status := imported(implementation)
 	).
 
-pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, 
-		L, M, N, O, P, Q, R, S, T, U, V).
+pred_info_set_import_status(PredInfo, X, PredInfo^import_status := X).
 
-pred_info_typevarset(PredInfo, TypeVarSet) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _, 
-		_, _, _, _, _, _, _, _, _).
+pred_info_typevarset(PredInfo, PredInfo^typevarset).
 
-pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M,
-				N, O, P, Q, R, S, T, U, V).
+pred_info_set_typevarset(PredInfo, X, PredInfo^typevarset := X).
 
-pred_info_get_goal_type(PredInfo, GoalType) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _, 
-		_, _, _, _, _, _, _, _, _).
+pred_info_get_goal_type(PredInfo, PredInfo^goal_type).
 
-pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, 
-		N, O, P, Q, R, S, T, U, V).
+pred_info_set_goal_type(PredInfo, X, PredInfo^goal_type := X).
 
 pred_info_requested_inlining(PredInfo0) :-
 	pred_info_get_markers(PredInfo0, Markers),
@@ -1049,43 +1018,21 @@ purity_to_markers(pure, []).
 purity_to_markers(semipure, [semipure]).
 purity_to_markers(impure, [impure]).
 
-pred_info_get_markers(PredInfo, Markers) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, 
-		_, _, _, _, _, _, _, _, _).
+pred_info_get_markers(PredInfo, PredInfo^markers).
 
-pred_info_set_markers(PredInfo0, Markers, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, 
-		N, O, P, Q, R, S, T, U, V).
+pred_info_set_markers(PredInfo, X, PredInfo^markers := X).
 
-pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
-			IsPredOrFunc, _, _, _, _, _, _, _, _).
+pred_info_get_is_pred_or_func(PredInfo, PredInfo^is_pred_or_func).
 
-pred_info_set_class_context(PredInfo0, ClassContext, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		ClassContext, P, Q, R, S, T, U, V).
+pred_info_set_class_context(PredInfo, X, PredInfo^class_context := X).
 
-pred_info_get_class_context(PredInfo, ClassContext) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		ClassContext, _, _, _, _, _, _, _).
+pred_info_get_class_context(PredInfo, PredInfo^class_context).
 
-pred_info_set_constraint_proofs(PredInfo0, Proofs, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, Proofs, Q, R, S, T, U, V).
+pred_info_set_constraint_proofs(PredInfo, X, PredInfo^constraint_proofs := X).
 
-pred_info_get_constraint_proofs(PredInfo, ConstraintProofs) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		ConstraintProofs, _, _, _, _, _, _).
+pred_info_get_constraint_proofs(PredInfo, PredInfo^constraint_proofs).
 
-pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, ExistQVars, _, _, _, _, _).
+pred_info_get_exist_quant_tvars(PredInfo, PredInfo^exist_quant_tvars).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
@@ -1094,57 +1041,27 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 	pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
 	list__delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
 
-pred_info_get_head_type_params(PredInfo, HeadTypeParams) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, HeadTypeParams, _, _, _, _).
+pred_info_get_head_type_params(PredInfo, PredInfo^head_type_params).
 
-pred_info_set_head_type_params(PredInfo0, HeadTypeParams, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, _, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, HeadTypeParams, S, T, U, V).
+pred_info_set_head_type_params(PredInfo, X, PredInfo^head_type_params := X).
 
-pred_info_get_unproven_body_constraints(PredInfo, UnprovenBodyConstraints) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, UnprovenBodyConstraints, _, _, _).
+pred_info_get_unproven_body_constraints(PredInfo,
+		PredInfo^unproven_body_constraints).
 
-pred_info_set_unproven_body_constraints(PredInfo0, UnprovenBodyConstraints,
-		PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, _, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, UnprovenBodyConstraints, T, U, V).
+pred_info_set_unproven_body_constraints(PredInfo, X,
+		PredInfo^unproven_body_constraints := X).
 
+pred_info_get_aditi_owner(PredInfo, PredInfo^aditi_owner).
 
-pred_info_get_aditi_owner(PredInfo, Owner) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, Owner, _, _).
+pred_info_set_aditi_owner(PredInfo, X, PredInfo^aditi_owner := X).
 
-pred_info_set_aditi_owner(PredInfo0, Owner, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, _, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, Owner, U, V).
+pred_info_get_indexes(PredInfo, PredInfo^indexes).
 
-pred_info_get_indexes(PredInfo, Indexes) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, Indexes, _).
+pred_info_set_indexes(PredInfo, X, PredInfo^indexes := X).
 
-pred_info_set_indexes(PredInfo0, Indexes, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, T, _, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, T, Indexes, V).
+pred_info_get_assertions(PredInfo, PredInfo^assertions).
 
-pred_info_get_assertions(PredInfo, Assertions) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, Assertions).
-
-pred_info_set_assertions(PredInfo0, Assertions, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, T, U, _),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, T, U, Assertions).
+pred_info_set_assertions(PredInfo, X, PredInfo^assertions := X).
 
 %-----------------------------------------------------------------------------%
 
@@ -1182,46 +1099,21 @@ marker_list_to_markers(Markers, Markers).
 
 %-----------------------------------------------------------------------------%
 
-% :- type clauses_info	--->	clauses_info(
-% 					prog_varset,	% variable names
-% 					vartypes,
-% 						% variable types from
-% 						% explicit qualifications
-% 					vartypes,
-% 						% variable types
-% 						% inferred by typecheck.m.
-% 					list(prog_var),	% head vars
-% 					list(clause),
-%					type_info_varmap,
-%					typeclass_info_varmap,
-% 				).
+clauses_info_varset(CI, CI^varset).
+clauses_info_explicit_vartypes(CI, CI^explicit_vartypes).
+clauses_info_vartypes(CI, CI^vartypes).
+clauses_info_headvars(CI, CI^headvars).
+clauses_info_clauses(CI, CI^clauses).
+clauses_info_type_info_varmap(CI, CI^type_info_varmap).
+clauses_info_typeclass_info_varmap(CI, CI^typeclass_info_varmap).
 
-clauses_info_varset(clauses_info(VarSet, _, _, _, _, _, _), VarSet).
-clauses_info_explicit_vartypes(
-	clauses_info(_, ExplicitVarTypes, _, _, _, _, _), ExplicitVarTypes).
-clauses_info_vartypes(clauses_info(_, _, VarTypes, _, _, _, _), VarTypes).
-clauses_info_headvars(clauses_info(_, _, _, HeadVars, _, _, _), HeadVars).
-clauses_info_clauses(clauses_info(_, _, _, _, Clauses, _, _), Clauses).
-clauses_info_type_info_varmap(clauses_info(_, _, _, _, _, TIMap, _), TIMap).
-clauses_info_typeclass_info_varmap(clauses_info(_, _, _, _, _, _, TCIMap),
-		TCIMap).
-
-clauses_info_set_varset(clauses_info(_, B, C, D, E, F, G), VarSet,
-		clauses_info(VarSet, B, C, D, E, F, G)).
-clauses_info_set_explicit_vartypes(clauses_info(A, _, C, D, E, F, G),
-		ExplicitVarTypes,
-		clauses_info(A, ExplicitVarTypes, C, D, E, F, G)).
-clauses_info_set_vartypes(clauses_info(A, B, _, D, E, F, G), VarTypes,
-		clauses_info(A, B, VarTypes, D, E, F, G)).
-clauses_info_set_headvars(clauses_info(A, B, C, _, E, F, G), HeadVars,
-		clauses_info(A, B, C, HeadVars, E, F, G)).
-clauses_info_set_clauses(clauses_info(A, B, C, D, _, F, G), Clauses,
-		clauses_info(A, B, C, D, Clauses, F, G)).
-clauses_info_set_type_info_varmap(clauses_info(A, B, C, D, E, _, G), TIMap,
-		clauses_info(A, B, C, D, E, TIMap, G)).
-clauses_info_set_typeclass_info_varmap(clauses_info(A, B, C, D, E, F, _),
-		TCIMap,
-		clauses_info(A, B, C, D, E, F, TCIMap)).
+clauses_info_set_varset(CI, X, CI^varset := X).
+clauses_info_set_explicit_vartypes(CI, X, CI^explicit_vartypes := X).
+clauses_info_set_vartypes(CI, X, CI^vartypes := X).
+clauses_info_set_headvars(CI, X, CI^headvars := X).
+clauses_info_set_clauses(CI, X, CI^clauses := X).
+clauses_info_set_type_info_varmap(CI, X, CI^type_info_varmap := X).
+clauses_info_set_typeclass_info_varmap(CI, X, CI^typeclass_info_varmap := X).
 
 %-----------------------------------------------------------------------------%
 
