@@ -776,10 +776,11 @@
 
 :- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_switch_gen.
 :- import_module ml_code_util.
-:- import_module arg_info, llds, llds_out. % XXX needed for pragma foreign code
+:- import_module llds. % XXX needed for pragma foreign code
 :- import_module export, foreign. % XXX needed for pragma foreign code
 :- import_module hlds_pred, hlds_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops, error_util.
+:- import_module c_util.
 :- import_module passes_aux, modules.
 :- import_module globals, options.
 
@@ -2685,7 +2686,7 @@ ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 	->
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_name(PredInfo, Name),
-		llds_out__quote_c_string(Name, MangledName),
+		c_util__quote_string(Name, MangledName),
 		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ObtainLock),
 		string__append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
