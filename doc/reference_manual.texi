@@ -5772,9 +5772,9 @@ and linking that source file with the Mercury program
 language, if appropriate).
 
 Entities declared in @samp{pragma foreign_decl} declarations are
-visible in @samp{pragma foreign_code} and @samp{pragma foreign_proc}
-declarations that specify the same foreign language and occur in the
-same Mercury module.
+visible in @samp{pragma foreign_code}, @samp{pragma foreign_type},
+and @samp{pragma foreign_proc} declarations that specify the same foreign
+language and occur in the same Mercury module.
 
 To make the declarations for Mercury predicates or functions
 exported to a foreign language using a @samp{pragma export}
@@ -5941,8 +5941,9 @@ set @code{SUCCESS_INDICATOR} to false (zero).
 @subsubsection Using pragma foreign_decl for C
 
 Any macros, function prototypes, or other C declarations
-that are used in @samp{foreign_code} or @samp{foreign_proc} 
-pragmas must be included using a @samp{foreign_decl} declaration of the form
+that are used in @samp{foreign_code}, @samp{foreign_type}
+or @samp{foreign_proc} pragmas must be included using a
+@samp{foreign_decl} declaration of the form
 
 @example
 :- pragma foreign_decl("C", @var{HeaderCode}).
@@ -6038,7 +6039,10 @@ type, that no part of the type name is required after the variable name.
 which was defined as a function pointer type.)
 
 C preprocessor directives (such as @samp{#if}) may not be used in
-@var{CForeignType}.
+@var{CForeignType}.  (You can however use a typedef name that refers
+to a type defined in a @samp{pragma foreign_decl} declaration, and
+the @samp{pragma foreign_decl} declaration may contain C preprocessor
+directives.)
 
 @strong{With @samp{--gc accurate}, foreign_types which are C pointer types
 must not point to the Mercury heap.}
