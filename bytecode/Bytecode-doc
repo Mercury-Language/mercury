@@ -1,0 +1,314 @@
+
+Summary of types
+----------------
+
+	- byte
+		unsigned char 0-255
+	- cstring
+		Sequence of non-zero bytes terminated by zero-byte.
+		XXX: May change this later to allow embedded
+		zero-bytes in strings.
+	- ushort
+		2 bytes interpreted as an unsigned short.
+		MSB is first byte read.
+	- int
+		4 bytes interpreted as a signed int
+		MSB is the first byte? XXX: check output_int().
+	- pointer
+		4 bytes interpreted as a machine address.
+		XXX: byte-ordering is what?
+	- float
+		XXX: not yet supported but presumably..
+		4 bytes interpreted as float.
+		XXX: Should use IEEE floats.
+	- list of T
+		- contiguous sequence of T
+	- determinism
+		one byte interpreted as follows
+			- 0 = det
+			- 1 = semidet
+			- 2 = multidet
+			- 3 = nondet
+			- 4 = cc_multidet
+			- 5 = cc_nondet
+			- 6 = erroneous
+			- 7 = failure
+	- tag is one of:
+		% XXX Need explanation of all these.
+		- 0 (byte) (simple tag)
+			- primary (byte)
+		- 1 (byte) (complicated tag)
+			- primary (byte)
+			- secondary (int)
+		- 2 (byte) (complicated constant tag)
+			- primary (byte)
+			- secondary (int)
+		- 3 (byte) (no_tag)
+		- 4 (byte) XXX: This one needs to be added
+			It handles an enumeration of pure constants.
+	- cons_id (constructor id) is one of:
+		% Note that not all of these alternatives are
+		% meaningful in all bytecodes that have arguments of
+		% type cons_id. XXX: Specify exactly which cases
+		% are meaningful.
+		- 0 (byte)
+			- functor name (cstring)
+			- arity (ushort)
+			- tag (tag)
+		- 1 (byte)
+			- integer constant (int)
+		- 2 (byte)
+			- string constant (cstring) XXX: no '\0' in strings!
+		- 3 (byte)
+			- float constant (float) XXX: not yet supported
+		- 4 (byte)
+			- module id (cstring)
+			- predicate id (cstring)
+			- arity (ushort)
+			- procedure id (byte)
+		- 5 (byte)
+			- module id (cstring)
+			- predicate id (cstring)
+			- arity (ushort)
+			- procedure id (byte)
+		- 6 (byte)
+			- module id (cstring)
+			- type name (cstring)
+			- type arity (byte)
+	- op_arg (argument to an operator) is one of:
+		- 0 (byte) 
+			- variable slot (ushort)
+		- 1 (byte)
+			- integer constant (int)
+		- 2 (byte)
+			- float constant (float) XXX: not yet supported
+
+
+Summary of Bytecodes
+--------------------
+
+% Note: Currently we specify only the static layout of bytecodes.
+% We also need to specify the operational semantics of the bytecodes,
+% which can be done by specifying state transitions on the abstract
+% machine. That is, to specify the meaning of a bytecode, we simply
+% say how the state of the abstract machine has changed from before
+% interpreting the bytecode to after interpreting the bytecode.
+
+- enter_pred (0)
+	- predicate name (cstring)
+	- number of procedures in predicate (ushort)
+
+- endof_pred (1)
+
+- enter_proc (2)
+	- procedure id (byte)	XXX: should use ushort instead?
+		procedure id is used to distinguish the procedures
+		in a predicate.
+	- determinism of the procedure (determinism)
+	- label count (ushort)
+		Number of labels in the procedure. Used for allocating a
+		table of labels in the interpreter.
+	- length of list = number of items in next arg (ushort)
+	- list of
+		- Variable info (cstring)
+		XXX: we should also have typeinfo for each variable.
+
+- endof_proc (3)
+
+- label (4)
+	- Code label. (ushort)
+	Used for jumps, switches, if-then-else, etc.
+
+- enter_disjunction (5)
+	- label id (ushort)
+		Label refers to the label immediately after the disjunction.
+
+- endof_disjunction (6)
+
+- enter_disjunct (7)
+	- label id (ushort)
+		Label refers to label for next disjunct.
+
+- endof_disjunct (8)
+
+- enter_switch (9)
+	- variable in slots on which we are switching (ushort)
+	- label immediately after the switch (ushort)
+	We jump to the label after we've performed the switch.
+		label refers to label immediately after corresponding
+		endof_switch.
+
+- endof_switch (10)
+
+- enter_switch_arm (11)
+	- constructor id (cons_id)
+	- label id (ushort) 
+		label refers to label for next switch arm.
+			
+- endof_switch_arm (12) 
+
+- enter_if (13)
+	- else label id (ushort)
+	- follow label id (ushort)
+		label refers to label at endof_if
+		Note that we must've pushed a failure context
+		before entering the enter_if. If the condition
+		fails, we follow the failure context.
+
+- enter_then (14)
+	XXX: should have flag here? [I wrote this note in a meeting.
+	What in hell did I mean?]
+
+- enter_else (15)
+
+- endof_if (16)
+
+- enter_negation (17)
+	- label id (ushort)
+		label refers to label at endof_negation.
+		Note: As with if-then-else, we must push a failure
+		context just before entering enter_negation. If the
+		negation fails, we follow the failure context.
+
+- endof_negation (18)
+
+- enter_commit (19)
+	% XXX: how does this work?
+
+- endof_commit (20)
+
+- assign (21)
+	- Variable A in slots (ushort)
+	- Variable B in slots (ushort)
+	A := B. Copy contents of slot B to slot A.
+
+- test (22)
+	- Variable A in slots (ushort)
+	- Variable B in slots (ushort)
+	Used to test atomic values (int, float, etc). Before entering
+	test, a failure context must be pushed. If the test fails,
+	the failure context is followed.
+	
+
+- construct (23)
+	- variable slot (ushort)
+	- constructor id (cons_id)
+	- list length of next arg (ushort)
+	- list of:
+		- variable slot (ushort)
+	Apply constructor to list of arguments (in list of variable slots)
+	and store result in a variable slot.
+
+- complex_construct (XXX: this bytecode doesn't yet exist)
+	This used for general unification using partially instantiated
+	terms. This should be added soon and is made possible by bromage's
+	aliasing work.
+
+- deconstruct (24)
+	- variable slot Var (ushort)
+	- constructor id (cons_id)
+	- list length of next arg (ushort)
+	- list of:
+		- variable slot (ushort)
+	If cons_id is:
+		- a functor applied to some args, then remove functor
+			and put args into variable slots.
+		- an integer constant, then check for equality of
+			the constant and the value in the variable slot
+		- a float constant, then check for equality of
+			the constant and the value in the variable slot.
+		- anything else, then makes no sense and interpreter
+			should raise error. XXX: correct? 
+	Note: We must push a failure context before entering deconstruct.			If the deconstruct fails (i.e. functor of Var isn't
+		the same as cons_id, or ints are not equal, or floats are
+		not equal), then we must follow the failure context.
+
+- complex_deconstruct (25)
+	- variable slot (ushort)
+	- constructor id (cons_id)
+	- list length of next arg (ushort)
+	- list of
+		- variable slot (ushort)
+		- `dir' which is one of:
+			- 0 (byte) to_arg
+			- 1 (byte) to_var
+			- 2 (byte) to_none
+	Note: This is a generalised deconstruct. The directions specify
+	which way bindings move. XXX: This is still not 100% crystal clear.
+
+- place_arg (26)
+	- register number (byte) 
+		XXX: Do we have at most 256 registers?
+	- variable number (ushort)
+	Move number from variable slot to register.
+	(Note: See notes for pickup_arg.)
+	XXX: We will need to #include imp.h from ther Mercury runtime,
+	since this specifies the usage of registers. For example, we
+	need to know whether we're using the compact or non-compact
+	register allocation method for parameter passing. (The compact
+	method reuses input registers as output registers. In the 
+	non-compact mode, input and output registers are distinct.)
+
+
+
+- call (27)
+	- module id (cstring)
+	- predicate id (cstring)
+	- arity (ushort)
+	- procedure id (byte)
+	XXX: If we call a Mercury builtin, the module name is `mercury_builtin'.
+	What if the user has a module called mercury_builtin?
+
+- pickup_arg (28)
+	- register number (byte)
+	- variable number in variable slots (ushort)
+	Move argument from register to variable slot.
+	(Note: We currently don't make use of floating-point registers.
+	The datatype for pickup_arg in the bytecode generator allows
+	for distinguishing register `types', that is floating-point
+	register or normal registers. We may later want to spit out
+	another byte `r' or `f' to identify the type of register.)
+
+- builtin_binop (29)
+	- binary operator (byte)
+	% XXX: how do we interpret the binary operator byte?
+	% Currently the generated bytecode has `*' for multiply,
+	% `+' for plus, and so on. Does this suffice??
+	- argument to binary operator (op_arg)
+	- another argument to binary operator (op_arg)
+	- variable slot which receives result of binary operation (ushort)
+	XXX: Floating point operations must be distinguished from
+	int operations. In the interpreter, we should use a lookup table 
+	that maps bytes to the operations.
+
+- builtin_unop (30)
+	- unary operator (byte)
+	- argument to unary operator (op_arg)
+	- variable slot which receives result of unary operation (ushort)
+
+- builtin_bintest (31)
+	- binary operator (byte)
+	- argument to binary test (op_arg)
+	- another argument to binary test op_arg)
+	% XXX: How do we return a result here???
+
+- builtin_untest (32)
+	- unary operator (byte)
+	- argument to unary operator (op_arg)
+
+- context (33)
+	- line number in Mercury source that the current bytecode
+		line corresponds to. (ushort)
+	XXX: Still not clear how we should implement `step' in a debugger
+	since a single context may have other contexts interleaved in it.
+
+
+- not_supported (34)
+	Some unsupported feature is used. Inline C in Mercury code,
+	for instance. Any procedure thatr contains inline C
+	(or is compiled Mercury?) must have the format:
+		enter_pred ...
+		not_supported
+		endof_pred
+
+
