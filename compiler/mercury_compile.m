@@ -317,6 +317,7 @@ module_to_link(ModuleName - _Items, ModuleToLink) -->
 :- mode compile(in, in, di, uo) is det.
 
 compile(SourceFileName, ModuleName - Items) -->
+	check_for_no_exports(Items, ModuleName),
 	grab_imported_modules(SourceFileName, ModuleName, Items,
 		Module, Error2),
 	( { Error2 \= fatal } ->
