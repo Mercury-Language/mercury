@@ -210,7 +210,11 @@ Changes to the Mercury standard library:
 * We've removed the long obsolete `int__builtin_*' and
   `float__builtin_float_*' predicates, which were synonyms
   for the arithmetic functions dating from when Mercury didn't
-  have functions.
+  have functions. 
+  
+* We've removed the long obsolete predicates `io__read_anything',
+  `io__write_anything', and `io__print_anything', which were long ago
+  renamed as `io__read', `io__write', and `io__print' respectively.
 
 Changes to the extras distribution:
 

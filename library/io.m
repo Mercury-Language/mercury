@@ -337,22 +337,39 @@
 :- mode io__print(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__print(in, in, in, di, uo) is cc_multi.
 
-%		io__print/5 writes its third argument to the specified output
-%		stream in a format that is intended to be human readable. 
+:- pred io__print_cc(T, io__state, io__state).
+:- mode io__print_cc(in, di, uo) is cc_multi.
+
+%	io__print/3 writes its argument to the standard output stream.
+%	io__print/4 writes its second argument to the output stream
+%	specified in its first argument.
+%	In all cases, the argument to output can be of any type.
+%	It is output in a format that is intended to be human readable.
 %
-%		If the argument is just a single string or character, it
-%		will be printed out exactly as is (unquoted).
-%		If the argument is of type univ, then it will print out
-%		the value stored in the univ, but not the type.
-%		For higher-order types, or for types defined using the
-%		foreign language interface (pragma foreign_code), the text
-%		output will only describe the type that is being printed, not
-%		the value.
+%	If the argument is just a single string or character, it
+%	will be printed out exactly as is (unquoted).
+%	If the argument is of type univ, then it will print out
+%	the value stored in the univ, but not the type.
 %
-%		io__print/4 implicitly specifies `canonicalize' as the
-%		treatment of noncanonical types, while io__print/3 also
-%		implicitly specifies the current output stream as the stream
-%		for this I/O action.
+%	io__print/5 is the same as io__print/4 except that it allows
+%	the caller to specify how non-canonical types should be handled.
+%	io__print/3 and io__print/4 implicitly specify `canonicalize'
+%	as the method for handling non-canonical types.  This means
+%	that for higher-order types, or types with user-defined
+%	equality axioms, or types defined using the foreign language
+%	interface (i.e. c_pointer type or pragma foreign_type),
+%	the text output will only describe the type that is being
+%	printed, not the value.
+%
+%	io__print_cc/3 is the same as io__print/3 except that it
+%	specifies `include_details_cc' rather than `canonicalize'.
+%	This means that it will print the details of non-canonical
+%	types.  However, it has determinism `cc_multi'.
+%
+%	Note that even if `include_details_cc' is specified,
+%	some implementations may not be able to print all the details
+%	for higher-order types or types defined using the foreign
+%	language interface.
 
 :- pred io__write(T, io__state, io__state).
 :- mode io__write(in, di, uo) is det.
@@ -367,24 +384,33 @@
 :- mode io__write(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode io__write(in, in, in, di, uo) is cc_multi.
 
-%		io__write/3 writes its argument to the current output stream.
-%		io__write/4 writes its argument to the specified output stream.
-%		The argument may be of any type.
-%		The argument is written in a format that is intended to
-%		be valid Mercury syntax whenever possible.
+:- pred io__write_cc(T, io__state, io__state).
+:- mode io__write_cc(in, di, uo) is cc_multi.
+
+%	io__write/3 writes its argument to the current output stream.
+%	io__write/4 writes its second argument to the output stream
+%	specified in its first argument.
+%	In all cases, the argument to output may be of any type.
+%	The argument is written in a format that is intended to
+%	be valid Mercury syntax whenever possible.
 %
-%		Strings and characters are always printed out in quotes,
-%		using backslash escapes if necessary.
-%		For higher-order types, or for types defined using the
-%		foreign language interface (pragma foreign_code), the text
-%		output will only describe the type that is being printed, not
-%		the value, and the result may not be parsable by `io__read'.
-%		For the types containing existential quantifiers,
-%		the type `type_desc' and closure types, the result may not be
-%		parsable by `io__read', either.  But in all other cases the
-%		format used is standard Mercury syntax, and if you append a
-%		period and newline (".\n"), then the results can be read in
-%		again using `io__read'.
+%	Strings and characters are always printed out in quotes,
+%	using backslash escapes if necessary.
+%	For higher-order types, or for types defined using the
+%	foreign language interface (pragma foreign_code), the text
+%	output will only describe the type that is being printed, not
+%	the value, and the result may not be parsable by `io__read'.
+%	For the types containing existential quantifiers,
+%	the type `type_desc' and closure types, the result may not be
+%	parsable by `io__read', either.  But in all other cases the
+%	format used is standard Mercury syntax, and if you append a
+%	period and newline (".\n"), then the results can be read in
+%	again using `io__read'.
+%
+%	io__write/5 is the same as io__write/4 except that it allows
+%	the caller to specify how non-canonical types should be handled.
+%	io__write_cc/3 is the same as io__write/3 except that it
+%	specifies `include_details_cc' rather than `canonicalize'.
 
 :- pred io__nl(io__state, io__state).
 :- mode io__nl(di, uo) is det.
@@ -1200,29 +1226,6 @@
 
 %-----------------------------------------------------------------------------%
 :- interface.
-
-% For backwards compatibility:
-
-:- pragma obsolete(io__read_anything/3).
-:- pred io__read_anything(io__read_result(T), io__state, io__state).
-:- mode io__read_anything(out, di, uo) is det.
-%		Same as io__read/3.
-
-:- pragma obsolete(io__read_anything/4).
-:- pred io__read_anything(io__output_stream, io__read_result(T),
-			io__state, io__state).
-:- mode io__read_anything(in, out, di, uo) is det.
-%		Same as io__read/4.
-
-:- pragma obsolete(io__write_anything/3).
-:- pred io__write_anything(T, io__state, io__state).
-:- mode io__write_anything(in, di, uo) is det.
-%		Same as io__write/3.
-
-:- pragma obsolete(io__write_anything/4).
-:- pred io__write_anything(io__output_stream, T, io__state, io__state).
-:- mode io__write_anything(in, in, di, uo) is det.
-%		Same as io__write/4.
 
 % For use by term_io.m:
 
@@ -2121,9 +2124,6 @@ io__putback_byte(Char) -->
 	io__binary_input_stream(Stream),
 	io__putback_byte(Stream, Char).
 
-io__read_anything(Result) -->
-	io__read(Result).
-
 io__read(Result) -->
 	term_io__read_term(ReadResult),
 	io__get_line_number(LineNumber),
@@ -2187,9 +2187,6 @@ io__process_read_term(IsAditiTuple, ReadResult, LineNumber, Result) :-
 		ReadResult = error(String, Int),
 		Result = error(String, Int)
 	).
-
-io__read_anything(Stream, Result) -->
-	io__read(Stream, Result).
 
 io__read(Stream, Result) -->
 	io__set_input_stream(Stream, OrigStream),
@@ -2267,6 +2264,8 @@ io__write_many(Stream, [f(F) | Rest]) -->
 
 %-----------------------------------------------------------------------------%
 
+% various different versions of io__print
+
 :- pragma export(io__print(in, in(do_not_allow), in, di, uo),
 	"ML_io_print_dna_to_stream").
 :- pragma export(io__print(in, in(canonicalize), in, di, uo),
@@ -2290,6 +2289,9 @@ io__print(Stream, Term) -->
 
 io__print(Term) -->
 	io__do_print(canonicalize, Term).
+
+io__print_cc(Term) -->
+	io__do_print(include_details_cc, Term).
 
 :- pred io__do_print(deconstruct__noncanon_handling, T, io__state, io__state).
 :- mode io__do_print(in(do_not_allow), in, di, uo) is det.
@@ -2331,11 +2333,9 @@ we will want to do something like
 	)
 */
 
-io__write_anything(Anything) -->
-	io__write(Anything).
+%-----------------------------------------------------------------------------%
 
-io__write_anything(Stream, Anything) -->
-	io__write(Stream, Anything).
+% various different versions of io__write
 
 io__write(Stream, NonCanon, X) -->
 	io__set_output_stream(Stream, OrigStream),
@@ -2347,9 +2347,11 @@ io__write(Stream, X) -->
 	io__do_write(canonicalize, X),
 	io__set_output_stream(OrigStream, _Stream).
 
-io__write(Term) -->
-	{ type_to_univ(Term, Univ) },
-	io__write_univ(Univ).
+io__write(X) -->
+	io__do_write(canonicalize, X).
+
+io__write_cc(X) -->
+	io__do_write(include_details_cc, X).
 
 :- pred io__do_write(deconstruct__noncanon_handling, T, io__state, io__state).
 :- mode io__do_write(in(do_not_allow), in, di, uo) is det.
@@ -2359,23 +2361,23 @@ io__write(Term) -->
 
 io__do_write(NonCanon, Term) -->
 	{ type_to_univ(Term, Univ) },
-	io__get_op_table(OpTable),
-	io__do_write_univ(NonCanon, Univ, ops__max_priority(OpTable) + 1).
+	io__do_write_univ(NonCanon, Univ).
+
+%-----------------------------------------------------------------------------%
+
+% various different versions of io__write_univ
 
 io__write_univ(Univ) -->
-	io__get_op_table(OpTable),
-	io__do_write_univ(canonicalize, Univ, ops__max_priority(OpTable) + 1).
+	io__do_write_univ(canonicalize, Univ).
 
 io__write_univ(Stream, Univ) -->
 	io__set_output_stream(Stream, OrigStream),
-	io__get_op_table(OpTable),
-	io__do_write_univ(canonicalize, Univ, ops__max_priority(OpTable) + 1),
+	io__do_write_univ(canonicalize, Univ),
 	io__set_output_stream(OrigStream, _Stream).
 
 io__write_univ(Stream, NonCanon, Univ) -->
 	io__set_output_stream(Stream, OrigStream),
-	io__get_op_table(OpTable),
-	io__do_write_univ(NonCanon, Univ, ops__max_priority(OpTable) + 1),
+	io__do_write_univ(NonCanon, Univ),
 	io__set_output_stream(OrigStream, _Stream).
 
 :- pred io__do_write_univ(deconstruct__noncanon_handling, univ,
