@@ -43,6 +43,7 @@
 :- import_module list, string, char.
 :- import_module std_util, require.
 
+:- import_module demangle.
 
 %-----------------------------------------------------------------------------%
 
@@ -85,8 +86,8 @@ maybe_read_label_name(MaybeLabelName) -->
 	io__read_word(WordResult),
 	(
 		{ WordResult = ok(CharList0) },
-		{ label_demangle(CharList0, CharList) },
-		{ string__from_char_list(CharList, LabelName) },
+		{ string__from_char_list(CharList0, LabelName0) },
+		{ demangle(LabelName0, LabelName) },
 		{ MaybeLabelName = yes(LabelName) }
 	;
 		{ WordResult = eof },
@@ -137,8 +138,8 @@ read_label_name(LabelName) -->
 	io__read_word(WordResult),
 	(
 		{ WordResult = ok(CharList0) },
-		{ label_demangle(CharList0, CharList) },
-		{ string__from_char_list(CharList, LabelName) }
+		{ string__from_char_list(CharList0, LabelName0) },
+		{ demangle(LabelName0, LabelName) }
 	;
 		{ WordResult = eof },
 		{ error("read_label_name: EOF reached") }
@@ -177,39 +178,3 @@ read_int(Count) -->
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred label_demangle(list(char), list(char)).
-:- mode label_demangle(in, out) is det.
-
-label_demangle(CharList0, CharList) :-
-	(
-		CharList0 = ['m','e','r','c','u','r','y','_','_' | CharList1]
-	->
-		demangle_arity_and_mode(CharList1, CharList)
-	;
-		CharList = CharList0
-	).
-
-
-:- pred demangle_arity_and_mode(list(char), list(char)).
-:- mode demangle_arity_and_mode(in, out) is det.
-
-demangle_arity_and_mode(CharList0, CharList) :-
-	list__reverse(CharList0, CharList1),
-	CharList2 = [')' | CharList1],
-	read__replace(CharList2, '_', '(', CharList3),
-	read__replace(CharList3, '_', '/', CharList4),
-	list__reverse(CharList4, CharList).
-
-
-:- pred read__replace(list(char), char, char, list(char)).
-:- mode read__replace(in, in, in, out) is det.
-
-read__replace(L0, D, R, L) :-
-	(
-		list__replace_first(L0, D, R, L1)
-	->
-		L = L1
-	;
-		error("demangle_label: ill formed label\n")
-	).

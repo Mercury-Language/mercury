@@ -14,7 +14,7 @@
 
 :- module options.
 :- interface.
-:- import_module bool, int, string, io, std_util, getopt.
+:- import_module bool, string, io, getopt.
 
 :- type option	
 	% Verbosity options
@@ -48,7 +48,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module std_util.
 
 option_defaults(Option, Default) :-
 	semidet_succeed,

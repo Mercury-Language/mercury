@@ -416,15 +416,6 @@ output_alphabet_listing(IndexMap) -->
 output_alphabet_listing_2([]) --> 
 	io__write_string("\n").
 output_alphabet_listing_2([Name - Index | T]) -->
-	{ string__format("[%d]\t%-30s", [i(Index), s(Name)], String) },
-	io__write_string(String),
-	output_alphabet_listing_3(T).
-
-:- pred output_alphabet_listing_3(assoc_list(string, int), io__state, io__state).
-:- mode output_alphabet_listing_3(in, di, uo) is det.
-
-output_alphabet_listing_3([]) --> [].
-output_alphabet_listing_3([Name - Index | T]) -->
 	{ string__format("[%d]\t%-30s\n", [i(Index), s(Name)], String) },
 	io__write_string(String),
 	output_alphabet_listing_2(T).

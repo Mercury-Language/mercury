@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module list, map, require, std_util.
+:- import_module list, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -193,7 +193,7 @@
 
 
 :- implementation.
-
+:- import_module require, std_util.
 
 :- type prof --->
 		prof(
