@@ -2708,7 +2708,8 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
 	( varset__is_empty(ConsTypeVarSet) ->
 		ConsType = ConsType0,
 		ArgTypes = ArgTypes0,
-		TypeAssign = TypeAssign0
+		TypeAssign2 = TypeAssign0,
+		ConstraintsToAdd = ClassConstraints0
 	;
 		type_assign_rename_apart(TypeAssign0, ConsTypeVarSet,
 			[ConsType0 | ArgTypes0],
@@ -2718,33 +2719,29 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
 			ConsExistQVars),
 		apply_subst_to_constraints(Subst, ClassConstraints0,
 			ConstraintsToAdd),
-		type_assign_get_typeclass_constraints(TypeAssign1,
-			OldConstraints),
-		%
-		% add the constraints for this functor
-		% to the current constraint set
-		% For functors which are data constructors,
-		% the fact that we don't take the dual
-		% corresponds to assuming that they
-		% will be used as deconstructors rather than as
-		% constructors.
-		%
-		add_constraints(OldConstraints, ConstraintsToAdd,
-			ClassConstraints),
-		type_assign_set_typeclass_constraints(ClassConstraints,
-			TypeAssign1, TypeAssign2),
-		type_assign_get_head_type_params(TypeAssign2,
-			HeadTypeParams0),
-		list__append(ConsExistQVars, HeadTypeParams0,
-			HeadTypeParams),
-		type_assign_set_head_type_params(HeadTypeParams,
-			TypeAssign2, TypeAssign),
+		type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
+		list__append(ConsExistQVars, HeadTypeParams0, HeadTypeParams),
+		type_assign_set_head_type_params(HeadTypeParams, TypeAssign1,
+			TypeAssign2),
 
 		ConsType = ConsType1,
 		ArgTypes = ArgTypes1
 	;
 		error("get_cons_stuff: type_assign_rename_apart failed")
-	).
+	),
+		%
+		% Add the constraints for this functor to the current
+		% constraint set.  Note that there can still be (ground)
+		% constraints even if the varset is empty.
+		%
+		% For functors which are data constructors, the fact that we
+		% don't take the dual corresponds to assuming that they will
+		% be used as deconstructors rather than as constructors.
+		%
+	type_assign_get_typeclass_constraints(TypeAssign2, OldConstraints),
+	add_constraints(OldConstraints, ConstraintsToAdd, ClassConstraints),
+	type_assign_set_typeclass_constraints(ClassConstraints, TypeAssign2,
+		TypeAssign).
 
 	%
 	% compute the dual of a set of constraints:
