@@ -192,8 +192,8 @@ are escaped in the usual way by surrounding them in curly braces
 
 Note that in Mercury you normally use strings (@code{"..."})
 rather than atoms (@code{'...'}) for messages like @code{"The total is"}.
-(It's possible to use atoms, but you have to declare each
-such atom before-hand, so its more convenient to use strings.)
+(It is possible to use atoms, but you have to declare each
+such atom before-hand, so it is more convenient to use strings.)
 However, for strings and characters, @samp{write} prints out the quotes;
 to avoid this, you need to use @samp{print} instead of @samp{write}.
 
