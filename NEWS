@@ -5,13 +5,31 @@ NEWS for Mercury release 0.6
 
 * XXX unused_args
 
-* XXX dead_proc_elim
+* A new optimization, --optimize-dead-procs, removes unused procedures from
+  the generated code. XXX
+
+* The getopt library is now more flexible. It can handle command line switches
+  (such as -O2) that affect the values of many options, and it can handle
+  long options that specify a value after an equal sign, in the GNU style
+  (e.g. --optimization-level=2).
 
 * We have renamed the varset__lookup predicates to varset__search in order to
   conform to our general naming convention.
 
 * Various other minor improvements:
+
+  - You can now use -O <n> to select an optimization level between 0 and 5.
+
+  - You can now use --optimize-space to select optimization for space, instead
+    of optimization for time (which is the default).
+
   - The code generator now emits better code for constructing deep
     nonground terms.
-  - Value numbering is now invoked even on code sequences containing several
+
+  - Value numbering now processes even code sequences containing several
     heap allocations.
+
+  - --pred-value-number now works. If it is given, and value numbering notices
+    that a value is available from a location that is faster to access than the
+    one from which another code sequence retrieves the value, this other code
+    sequence will be reoptimized taking this into account.
