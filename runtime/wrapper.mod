@@ -691,7 +691,7 @@ run_code(void)
 	nondetstack_zone->max = nondetstack_zone->min;
 #endif
 
-	time_at_start = get_run_time();
+	time_at_start = MR_get_user_cpu_miliseconds();
 	time_at_last_stat = time_at_start;
 
 	for (repcounter = 0; repcounter < repeats; repcounter++) {
@@ -701,7 +701,7 @@ run_code(void)
 	}
 
         if (use_own_timer) {
-		time_at_finish = get_run_time();
+		time_at_finish = MR_get_user_cpu_miliseconds();
 	}
 
 #if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(SPEED)

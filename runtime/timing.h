@@ -1,47 +1,46 @@
 /*
-** Copyright (C) 1993-1995 University of Melbourne.
+** Copyright (C) 1997 University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#ifndef	TIMING_H
-#define	TIMING_H
+/*
+** timing.h - interface to timing routines.
+**	Defines `MR_CLOCK_TICKS_PER_SECOND'
+**	and `MR_get_user_cpu_miliseconds()'.
+*/
 
-/*---------------------------------------------------------------------------*/
-/* I hacked this from toplev.c in the gcc source - fjh. */
-/*---------------------------------------------------------------------------*/
+#ifndef TIMING_H
+#define TIMING_H
 
-/* Copyright (C) 1987, 1988, 1989, 1992, 1993 Free Software Foundation, Inc.
+#include "conf.h"
 
-This file is part of GNU CC.
+#ifdef HAVE_SYS_PARAM
+#include <sys/param.h>
+#endif
 
-GNU CC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2, or (at your option)
-any later version.
+#ifdef HAVE_SYS_TIME
+#include <sys/time.h>
+#endif
 
-GNU CC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+/* 
+** `HZ' is the number of clock ticks per second.
+** It is used when converting a clock_t value to a time in seconds.
+** It may be defined by <sys/time.h>, but if it is not defined there,
+** we may be able to use `sysconf(_SC_CLK_TCK)' instead
+*/
+#ifdef HZ
+  #define MR_CLOCK_TICKS_PER_SECOND	HZ
+#elif defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+  #define MR_CLOCK_TICKS_PER_SECOND	((int) sysconf(_SC_CLK_TCK))
+#else
+  /* just leave it undefined */
+#endif
 
-You should have received a copy of the GNU General Public License
-along with GNU CC; see the file COPYING.  If not, write to
-the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+/*
+** MR_get_user_cpu_miliseconds() returns the CPU time consumed by the
+** process, in miliseconds, from an arbitrary initial time.
+*/
+int MR_get_user_cpu_miliseconds(void);
 
-/* Return time used so far, in milliseconds.  */
-
-extern	int	get_run_time (void);
-
-/* Print a message and a time in milliseconds. */
-
-extern	void	print_time(const char *str, int total);
-
-#define TIMEVAR(VAR, BODY)    					\
-	do {							\
-		int otime = get_run_time ();			\
-		BODY;						\
-		VAR = get_run_time () - otime;			\
-	} while (0)	
-
-#endif /* not TIMING_H */
+#endif /* TIMING_H */

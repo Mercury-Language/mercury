@@ -21,28 +21,20 @@
 
 #include        "std.h"
 #include	"prof_mem.h"
+#include	"timing.h"
 
 #if defined(PROFILE_TIME)
 
 #include	<signal.h>
 
-#ifdef HAVE_SYS_PARAM
-#include	<sys/param.h>
-#endif
-
 #ifdef HAVE_SYS_TIME
 #include	<sys/time.h>
 #endif
 
-/* 
-** if `HZ' is not defined, we may be able to use `sysconf(_SC_CLK_TCK)' instead
-*/
-#if !defined(HZ) && defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
-#define HZ ((int)sysconf(_SC_CLK_TCK))
-#endif
-
-#if !defined(HZ) || !defined(SIGPROF) || !defined(HAVE_SETITIMER)
-#error "Time profiling not supported on this system"
+#if !defined(MR_CLOCK_TICKS_PER_SECOND) \
+	|| !defined(SIGPROF) \
+	|| !defined(HAVE_SETITIMER)
+  #error "Time profiling not supported on this system"
 #endif
 
 #endif	/* PROFILE_TIME */
@@ -52,9 +44,9 @@
 */
 #define CALL_TABLE_SIZE 4096
 #define TIME_TABLE_SIZE 4096
-#define CLOCK_TICKS     5
+#define MR_CLOCK_TICKS_PER_SIGPROF	5
 
-#define USEC            1000000
+#define MR_USEC_PER_SEC            	1000000
 
 /*
 ** profiling node information 
@@ -245,10 +237,13 @@ prof_time_profile(int);
 
 /*
 **	prof_init_time_profile:
-**		Writes the value of HZ (no. of ticks per second.) at the start
-**		of the file 'Prof.Counts'.
+**		Writes the value of MR_CLOCK_TICKS_PER_SECOND and
+**		MR_CLOCK_TICKS_PER_SIGPROF at the start of the file
+**		'Prof.Counts'.
 **		Then sets up the profiling timer and starts it up. 
-**		At the moment it is after every X ticks of the clock.
+**		At the moment it is after every MR_CLOCK_TICKS_PER_SIGPROF
+**		ticks of the clock.
+**
 **		SYSTEM SPECIFIC CODE
 */
 
@@ -257,10 +252,13 @@ prof_init_time_profile()
 {
 	FILE 	*fptr;
 	struct itimerval itime;
+	const long sigprof_interval_in_usecs = MR_CLOCK_TICKS_PER_SIGPROF *
+		(MR_USEC_PER_SEC / MR_CLOCK_TICKS_PER_SECOND);
 
-	/* output the value of HZ */
+	/* output the value of MR_CLOCK_TICKS_PER_SECOND */
 	fptr = checked_fopen("Prof.Counts", "create", "w");
-	fprintf(fptr, "%d %d\n", HZ, CLOCK_TICKS);
+	fprintf(fptr, "%d %d\n",
+		MR_CLOCK_TICKS_PER_SECOND, MR_CLOCK_TICKS_PER_SIGPROF);
 	checked_fclose(fptr, "Prof.Counts");
 
 	checked_atexit(prof_finish);
@@ -268,9 +266,9 @@ prof_init_time_profile()
 	profiling_on = TRUE;
 
 	itime.it_value.tv_sec = 0;
-	itime.it_value.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS; 
+	itime.it_value.tv_usec = sigprof_interval_in_usecs;
 	itime.it_interval.tv_sec = 0;
-	itime.it_interval.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS;
+	itime.it_interval.tv_usec = sigprof_interval_in_usecs;
 
 	checked_signal(SIGPROF, prof_time_profile);
 	checked_setitimer(ITIMER_PROF, &itime);
