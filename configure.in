@@ -2260,7 +2260,7 @@ case "$host" in
 		NUM_REAL_R_TEMPS=6
 		HAVE_DELAY_SLOT=--have-delay-slot
 		;;
-	rs6000-*)
+	rs6000-*|powerpc-*)
 		# NUM_REAL_REGS=10
 		# but succip, sp, hp, maxfr, and curfr are real regs,
 		# so subtract 5

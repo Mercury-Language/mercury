@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1997, 2000 The University of Melbourne.
+** Copyright (C) 1996-1997, 2000, 2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -8,7 +8,7 @@
 #define MR_MACHDEPS_RS6000_REGS_H
 
 /*
-** Machine registers MR_mr0 - MR_mr36 for the RS/6000 architecture.
+** Machine registers MR_mr0 - MR_mr36 for the RS/6000 (and PowerPC) architecture.
 **
 ** The first MR_NUM_REAL_REGS of these are real machine registers.
 ** The others are just slots in a global array.
