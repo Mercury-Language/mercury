@@ -82,8 +82,8 @@ into another language, under the above conditions for modified versions.
                       safely use destructive update to modify that value
 * Determinism::       Determinism declarations let you specify that a predicate
                       should never fail or should never succeed more than once
-* Higher-order::      Mercury supports higher-order predicates, closures,
-                      lambda expressions, and currying
+* Higher-order::      Mercury supports higher-order predicates and functions,
+                      with closures, lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
 * Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Pragma declarations give information to the Mercury 
@@ -266,32 +266,13 @@ Syntactically, terms in Mercury are exactly the same as in ISO Prolog.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  See @xref{Data-terms}.
 
-with two
-exceptions.  The first one is that double-quoted strings are atomic in
-Mercury, they are not abbreviations for lists of character codes.
-The second is that Mercury terms can contain lambda expressions.
-
-A term is either a variable or a functor, or a lambda expression.
-
-A functor is an integer, a float, a string, a character literal
-(any single-character name), a name, or a compound term.
-
+A term is either a variable or a functor.
+A functor is an integer, a float, a string, a name, or a compound term.
 A compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  Compound terms may also be specified using
 operator notation, as in Prolog.
-
-A lambda expression is a compound term of the form
-
-@example
-lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
-@end example
-
-@noindent
-where Var1, Var2, @dots{} are variables, Mode1, Mode2, @dots{} are
-modes [@xref{Modes}], Det is a determinism [@xref{Determinism}],
-and Goal is a goal [@xref{Goals}].  See @xref{Higher-order}.
 
 @node Items
 @section Items
@@ -635,16 +616,17 @@ Syntactically, a data-term is just a term.
 There are a couple of differences from Prolog.
 The first one is that double-quoted strings are atomic in
 Mercury, they are not abbreviations for lists of character codes.
-The second is that Mercury terms may contain function calls and
-lambda expressions.
+The second is that Mercury terms may contain function applications,
+higher-order function applications, and lambda expressions.
 
-A data-term is either a variable, a data-functor, or a lambda expression.
+A data-term is either a variable, a data-functor, a higher-order
+function application, or a lambda expression.
 
 A data-functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound data-term.
 A compound data-term is a compound term whose form
-does not match the form of a lambda expression and whose arguments
-are data-terms.
+does not match the form of a lambda expression or higher-order
+function application and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
@@ -653,12 +635,35 @@ A lambda expression is a compound term of the form
 
 @example
 lambda([Var1::Mode1, Var2::Mode2, @dots{}] is Det, Goal)
+pred(Var1::Mode1, Var2::Mode2, @dots{}) is Det :- Goal
+func(Var1::Mode1, Var2::Mode2, @dots{}) = (Var::Mode) is Det :- Goal
+func(Var1, Var2, @dots{}) = Var :- Goal
 @end example
 
 @noindent
 where Var1, Var2, @dots{} are variables, Mode1, Mode2, @dots{} are
 modes [@xref{Modes}], Det is a determinism [@xref{Determinism}],
-and Goal is a goal [@xref{Goals}].  See @xref{Higher-order}.
+and Goal is a goal [@xref{Goals}]. 
+It denotes a higher-order predicate or function term
+whose value is the predicate or function of the specified arguments
+determined by the specified goal.
+See @xref{Higher-order}.
+
+A higher-order function application is a compound term of the form
+
+@example
+apply(@var{Func}, @var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN})
+@dots{}
+@end example
+
+@noindent
+where @var{N} >= 1, @var{Func} is a term of type
+@samp{func(T1, T2, ..., Tn) = T}, and
+@var{Arg1}, @var{Arg2}, @dots{}, @var{ArgN} are terms of types
+@samp{T1}, @samp{T2}, @dots{}, @samp{Tn}. 
+The type of the higher-order function application term is @var{T}.
+It denotes the result of applying the specified function to the
+specified arguments.  See @xref{Higher-order}.
 
 @node Implicit quantification
 @section Implicit quantification
@@ -714,8 +719,9 @@ There is a special syntax for constants of type @code{int}, @code{float},
 and @code{string}.  (For @code{char}, the standard syntax suffices.)
 
 @item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
-These higher-order predicate types are used to pass predicate addresses
-and closures to other predicates.  See @xref{Higher-order}.
+@itemx Function types: @code{func(T1) = T}, @code{func(T1, T2) = T}, @dots{}
+These higher-order function and predicate types are used to pass procedure
+addresses and closures to other predicates.  See @xref{Higher-order}.
 
 @item The universal type: @code{univ}.
 The type @code{univ} is defined in the standard library module @code{std_util},
@@ -1849,14 +1855,13 @@ does not yet support this.
 @node Higher-order
 @chapter Higher-order programming
 
-Mercury supports higher-order predicates with currying, closures, and
-lambda expressions.  (To be pedantic, it would be more accurate to
+Mercury supports higher-order functions and predicates with currying,
+closures, and lambda expressions. 
+(To be pedantic, it would be more accurate to
 say that Mercury supports higher-order procedures: in Mercury, when you
 construct a higher-order predicate term, you only get one mode of
-a predicate; if you want multiple modes, you must pass multiple
+a predicate or function; if you want multiple modes, you must pass multiple
 higher-order procedures.)
-
-Higher-order functions are not supported (yet).
 
 @menu
 * Creating higher-order terms::
@@ -1867,9 +1872,9 @@ Higher-order functions are not supported (yet).
 @node Creating higher-order terms
 @section Creating higher-order terms
 
-To create a higher-order predicate term, you can use
-a lambda expression. Alternately, if the predicate has only one mode,
-you can just use the name of a predicate.
+To create a higher-order predicate or function term, you can use
+a lambda expression, or, if the predicate or function has only one
+mode, you can just use its name.
 For example, if you have declared a predicate
 
 @example
@@ -1878,25 +1883,56 @@ For example, if you have declared a predicate
 @end example
 
 @noindent
-the following two unifications have the same effect:
+the following three unifications have the same effect:
 
 @example
-@dots{}
-X = lambda([List::in, Length::out] is det, sum(List, Length)),
-Y = sum,
-@dots{}
+X = lambda([List::in, Length::out] is det, sum(List, Length))
+Y = (pred(List::in, Length::out) is det :- sum(List, Length))
+Z = sum
 @end example
 
-In the above example, the type of both @samp{X} and @samp{Y} is
+In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
 @samp{pred(list(int), int)}, which means a predicate of two
 arguments of types @samp{list(int)} and @samp{int} respectively.
+[The syntax using @samp{lambda} is supported to enable programs to work
+in both Mercury and Prolog, because the syntax using @samp{pred} and
+@samp{:-} can't be easily emulated in Prolog.  When we have implemented
+better debugging environments for Mercury, the syntax using @samp{lambda}
+will be deprecated.]
 
-If the predicate has more than one mode, you must use an explicit
+Similarly, given
+
+@example
+:- func scalar_product(int, list(int)) = list(int).
+:- mode scalar_product(in, in) = out is det.
+@end example
+
+@noindent
+the following three unifications have the same effect:
+
+@example
+X = (func(Num, List) = NewList :- NewList = scalar_product(Num, List))
+Y = (func(Num::in, List::in) = (NewList::out) is det
+        :- NewList = scalar_product(Num, List))
+Z = sum_func
+@end example
+
+In the above example, the type of @samp{X}, @samp{Y}, and @samp{Z} is
+@samp{func(int, list(int)) = list(int)}, which means a function of two
+arguments, whose types are @samp{int} and @samp{list(int)},
+with a return type of @samp{int}.
+As with @samp{:- func} declarations, if the modes and determinism
+of the function are omitted in a higher-order function term, then
+the modes default to @samp{in} for the arguments, @samp{out} for the
+function result, and the determinism defaults to @samp{det}.
+
+If the predicate or function has more than one mode, you must use an explicit
 lambda expression to specify which mode you want.
 
 You can also create higher-order predicate terms by "currying",
-i.e. specifying the first few arguments to a predicate, but leaving the
-remaining arguments unspecified.  For example, the unification
+i.e. specifying the first few arguments to a predicate or function, but
+leaving the remaining arguments unspecified.  For example, the
+unification
 
 @example
 Sum123 = sum([1,2,3])
@@ -1904,26 +1940,35 @@ Sum123 = sum([1,2,3])
 
 @noindent
 binds @samp{Sum123} to a higher-order predicate term of type @samp{pred(int)}.
+Similarly, the unification
+
+@example
+Double = scalar_product(2)
+@end example
+
+@noindent
+binds @samp{Double} to a higher-order function term of type
+@samp{func(list(int)) = list(int)}.
 
 @node Calling higher-order terms
 @section Calling higher-order terms
 
 Once you have created a higher-order predicate term (sometimes known
 as a closure), the next thing you want to do is to call it.  
-For this, you use the builtin call/N:
+For predicates, you use the builtin goal call/N:
 
 @table @asis
 @item @code{call(Closure)}
 @itemx @code{call(Closure1, Arg1)}
 @itemx @code{call(Closure2, Arg1, Arg2)}
-@itemx @code{call(Closure3, Arg1, Arg2, Arg3)}
 @itemx @dots{}
-A higher-order predicate call.  @samp{call(Closure)} just calls
-the specified closure.  The other forms append the specified
-arguments onto the argument list of the closure before calling it.
+A higher-order predicate call.  @samp{call(Closure)} just calls the
+specified higher-order predicate term.  The other forms append the
+specified arguments onto the argument list of the closure before
+calling it. 
 @end table
 
-For example, the call
+For example, the goal
 
 @example
 call(Sum123, Result)
@@ -1932,11 +1977,34 @@ call(Sum123, Result)
 @noindent
 would bind @samp{Result} to the sum of @samp{[1, 2, 3]}, i.e. to 6.
 
-The current implementation has the extremely unfortunate
-limitation that there can be at most three additional arguments; thus
-@samp{call(Pred, Arg1, Arg2, Arg3, Arg4)} and beyond are not yet supported.
-The current implementation also has the limitation that for higher-order
-pred terms, all input arguments must precede all output arguments.
+For functions, you use the builtin expression apply/N:
+
+@table @asis
+@item @code{apply(Closure1, Arg1)}
+@itemx @code{apply(Closure2, Arg1, Arg2)}
+@itemx @dots{}
+A higher-order function application.  Such a term denotes the
+result of invoking the specified higher-order function term with
+the specified arguments.
+@end table
+
+For example, given the definition of @samp{Double} above, the goal
+
+@example
+List = apply(Double, [1, 2, 3])
+@end example
+
+@noindent
+would be equivalent to
+
+@example
+List = scalar_product(2, [1, 2, 3])
+@end example
+
+@noindent
+and so for a suitable implementation of the function
+@samp{scalar_product/2} this would bind @samp{List} to
+@samp{[2, 4, 6]}.
 
 One extremely useful higher-order predicate in the Mercury standard
 library is @code{solutions/2}, which has the following declaration:
@@ -1993,6 +2061,12 @@ L = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]].
 @node Higher-order modes
 @section Higher-order modes
 
+In Mercury, the mode and determinism of a higher-order predicate or function
+term are part of that term's @emph{inst}, not its @emph{type}.
+This allows a single higher-order predicate to work on argument
+predicates of different modes and determinism, which is particularly
+useful for library predicates such as @samp{list__map} and @samp{list__foldl}.
+
 The language contains builtin @samp{inst} values
 
 @example
@@ -2000,10 +2074,14 @@ pred is @var{Determinism}
 pred(@var{Mode}) is @var{Determinism}
 pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
 @dots{}
+func(@var{Mode1}) = @var{Mode} is @var{Determinism}
+func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
+@dots{}
 @end example
 
 These insts represent the instantiation state of variables bound
-to higher-order predicate terms with the appropriate mode and determinism.
+to higher-order predicate and function terms with the appropriate mode
+and determinism.
 For example, @samp{pred(out) is det} represents the instantion state
 of being bound to a higher-order predicate term which is @samp{det}
 and accepts one output argument; the term @samp{sum([1,2,3])} from the
@@ -2038,8 +2116,8 @@ foo(sum([1,2,3])).
 @end example
 
 Note that in Mercury it is an error to attempt to unify two
-higher-order predicate terms.  This is because equivalence of
-higher-order predicates is undecidable in the general case.
+higher-order terms.  This is because equivalence of
+higher-order terms is undecidable in the general case.
 
 For example, given the definition of @samp{foo} above, the goal
 
@@ -2457,7 +2535,7 @@ list_cons(head,tail)    /* construct a list with the given head and tail */
 @subsection Using C pointers
 
 The inbuilt Mercury type @code{c_pointer} can be used to pass C pointers
-between C functions which are called from Mercury. For example:
+between C functions which are called from Mercury.  For example:
 
 @example
 :- module pointer_example.
