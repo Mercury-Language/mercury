@@ -48,6 +48,7 @@ PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
+PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
 PATH="/home/mercury/public/$HOST:$PATH"
 export PATH
 
