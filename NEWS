@@ -135,6 +135,19 @@ NEWS for Mercury release 0.6
     sequence retrieves the value, this other code sequence will be
     reoptimized taking this into account.
 
+* We now support a C-to-Mercury interface. (ie. we allow C to call Mercury).
+  This is achieved by the pragma(export, ...) declaration. There is the 
+  restriction that the program must start in Mercury, but the C code that is
+  called may itself call Mercury.
+  ( XXX We don't handle strings and floats properly).
+
+* Some work has been done on integrating constraints into the language. It is
+  fairly untested, but works on a simple interface with CLP(R). In a compilation
+  grade ending in .cnstr, eg. asm_fast.gc.cnstr, macros are emitted into the
+  generated code to allow a solver to backtrack. These are defined in
+  runtime/mercury_solver_backtrack.h. This should be more complete in a future
+  release.
+
 * We have added a little bit of inline assembler code for the Alpha so
   that we can support the use of gcc non-local gotos and asm labels.
   This improved both code size and execution speed for the Alpha port
@@ -171,4 +184,3 @@ NEWS for Mercury release 0.6
     conform to our general naming convention.
 
   - We have removed the (undocumented) library predicate list__map_maybe/3.
-
