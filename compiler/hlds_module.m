@@ -245,6 +245,8 @@
 
 	% The visible modules are the current module, any
 	% imported modules, and any ancestor modules.
+	% XXX BUG: it should also include modules imported
+	% from ancestor modules!
 	% It excludes transitively imported modules (those
 	% for which we read `.int2' files).
 :- pred visible_module(module_name, module_info).
