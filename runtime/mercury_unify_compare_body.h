@@ -554,6 +554,34 @@ start_label:
 #endif
             }
 
+        case MR_TYPECTOR_REP_TYPECTORINFO:
+            {
+                int result;
+
+                MR_save_transient_registers();
+                result = MR_compare_type_ctor_info(
+                    (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
+                MR_restore_transient_registers();
+#ifdef	select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                compare_call_exit_code(typectorinfo_compare);
+  #endif
+                return_answer(result);
+#else
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                if (result == MR_COMPARE_EQUAL) {
+                    unify_call_exit_code(typectorinfo_unify);
+                    return_answer(TRUE);
+                } else {
+                    unify_call_fail_code(typectorinfo_unify);
+                    return_answer(FALSE);
+                }
+  #else
+                return_answer(result == MR_COMPARE_EQUAL);
+  #endif
+#endif
+            }
+
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error(attempt_msg "terms of type `void'");
 
@@ -562,6 +590,9 @@ start_label:
 
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             MR_fatal_error(attempt_msg "typeclass_infos");
+
+        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
+            MR_fatal_error(attempt_msg "base_typeclass_infos");
 
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(attempt_msg "terms of unknown type");

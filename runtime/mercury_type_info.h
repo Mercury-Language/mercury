@@ -464,8 +464,11 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** constructor.
 **
 ** Any changes in this definition will also require changes in
-** MR_CTOR_REP_NAMES below, and may also require changes in
-** library/rtti_implementation.m and runtime/mercury_mcpp.{h,cpp}
+** MR_CTOR_REP_NAMES below, in runtime/mercury_mcpp.{h,cpp}, in
+** library/rtti_implementation.m (definitely the list of type_ctor_reps,
+** maybe the bodies of predicates), in library/private_builtin.m,
+** and in java/TypeCtorRep.java.
+**
 ** Additions to the end of this enum can be handled naturally,
 ** but changes in the meanings of already assigned values
 ** require bootstrapping with RTTI-version-dependent code.
@@ -505,6 +508,8 @@ typedef enum {
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TUPLE),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR),
     MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_TYPECTORINFO),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_TYPECTOR_REP_BASETYPECLASSINFO),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -560,6 +565,8 @@ typedef MR_int_least8_t         MR_TypeCtorRepInt;
     "TUPLE",                                    \
     "RESERVED_ADDR",                            \
     "RESERVED_ADDR_USEREQ",                     \
+    "TYPECTORINFO",                     	\
+    "BASETYPECLASSINFO",                     	\
     "UNKNOWN"
 
 #define MR_type_ctor_rep_is_basically_du(rep)               \
@@ -1221,12 +1228,29 @@ struct MR_TypeCtorInfo_Struct {
 /*---------------------------------------------------------------------------*/
 
 /*
-** MR_compare_type_info returns MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or
-** MR_COMPARE_LESS, depending on whether t1 is greater than , equal to,
-** or less than t2.
+** Compare two type_info structures, using an arbitrary ordering based on
+** the addresses of the type_ctor_infos, or in the case of higher order types,
+** the arity). Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** depending on whether ti1 is greater than, equal to, or less than ti2.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
 */
 
-extern  int     MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2);
+extern  int     MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2);
+
+/*
+** Compare two type_ctor_info structures, using an arbitrary ordering based on
+** the addresses of the type_ctor_infos, or in the case of higher order types,
+** the arity). Return MR_COMPARE_GREATER, MR_COMPARE_EQUAL, or MR_COMPARE_LESS,
+** depending on whether tci1 is greater than, equal to, or less than tci2.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
+*/
+
+extern  int     MR_compare_type_ctor_info(MR_TypeCtorInfo tci1,
+			MR_TypeCtorInfo tci2);
 
 /*
 ** MR_collapse_equivalences expands out all the top-level equivalences in
@@ -1235,6 +1259,9 @@ extern  int     MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2);
 ** However, since it only works on the top level type constructor,
 ** this is not guaranteed for the typeinfos of the type constructor's
 ** arguments.
+**
+** You need to wrap MR_{save/restore}_transient_hp() around
+** calls to this function.
 */
 
 extern  MR_TypeInfo MR_collapse_equivalences(MR_TypeInfo type_info);

@@ -128,16 +128,18 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_NOTAG_val			4
 #define MR_TYPECTOR_REP_NOTAG_USEREQ_val		5
 #define MR_TYPECTOR_REP_EQUIV_val			6
+	// MR_TYPECTOR_REP_EQUIV_VAR_val is unused - it is retained
+	// only for backwards compatability.
 #define MR_TYPECTOR_REP_EQUIV_VAR_val			7
-#define MR_TYPECTOR_REP_INT_val		    		8
-#define MR_TYPECTOR_REP_CHAR_val		    	9
+#define MR_TYPECTOR_REP_INT_val				8
+#define MR_TYPECTOR_REP_CHAR_val			9
 #define MR_TYPECTOR_REP_FLOAT_val			10
 #define MR_TYPECTOR_REP_STRING_val			11
-#define MR_TYPECTOR_REP_PRED_val		    	12
+#define MR_TYPECTOR_REP_PRED_val			12
 	// MR_TYPECTOR_REP_UNIV_val is unused - it is retained
 	// only for backwards compatability.
-#define MR_TYPECTOR_REP_UNIV_val		    	13
-#define MR_TYPECTOR_REP_VOID_val		    	14
+#define MR_TYPECTOR_REP_UNIV_val			13
+#define MR_TYPECTOR_REP_VOID_val			14
 #define MR_TYPECTOR_REP_C_POINTER_val			15
 #define MR_TYPECTOR_REP_TYPEINFO_val			16
 #define MR_TYPECTOR_REP_TYPECLASSINFO_val		17
@@ -156,6 +158,9 @@ typedef __gc public class System::Object * MR_TypeClassInfo[];
 #define MR_TYPECTOR_REP_TUPLE_val			30
 #define MR_TYPECTOR_REP_RESERVED_ADDR_val		31
 #define MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ_val	32
+#define MR_TYPECTOR_REP_TYPECTORINFO_val		33
+#define MR_TYPECTOR_REP_BASETYPECLASSINFO_val		34
+#define MR_TYPECTOR_REP_UNKNOWN_val			35
 
 // XXX we should integrate this macro in with the version in 
 // mercury_typeinfo.h

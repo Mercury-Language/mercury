@@ -2758,7 +2758,9 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_VOID:
     case MR_TYPECTOR_REP_C_POINTER:
     case MR_TYPECTOR_REP_TYPEINFO:
+    case MR_TYPECTOR_REP_TYPECTORINFO:
     case MR_TYPECTOR_REP_TYPECLASSINFO:
+    case MR_TYPECTOR_REP_BASETYPECLASSINFO:
     case MR_TYPECTOR_REP_ARRAY:
     case MR_TYPECTOR_REP_SUCCIP:
     case MR_TYPECTOR_REP_HP:
@@ -3105,7 +3107,9 @@ ML_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_VOID:
         case MR_TYPECTOR_REP_C_POINTER:
         case MR_TYPECTOR_REP_TYPEINFO:
+        case MR_TYPECTOR_REP_TYPECTORINFO:
         case MR_TYPECTOR_REP_TYPECLASSINFO:
+        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
         case MR_TYPECTOR_REP_ARRAY:
         case MR_TYPECTOR_REP_SUCCIP:
         case MR_TYPECTOR_REP_HP:

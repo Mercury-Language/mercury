@@ -58,7 +58,9 @@ try_again:
     case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
         {
             int j;
-            MR_ReservedAddrTypeLayout ra_layout =
+            MR_ReservedAddrTypeLayout ra_layout;
+
+            ra_layout =
                 MR_type_ctor_layout(type_ctor_info).layout_reserved_addr;
 
             /*
@@ -66,7 +68,7 @@ try_again:
             ** the numeric reserved addresses.
             */
             if ((MR_Unsigned) data <
-                    (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
+                (MR_Unsigned) ra_layout->MR_ra_num_res_numeric_addrs)
             {
                 new_data = data;
                 break;
@@ -257,7 +259,7 @@ try_again:
 
 #define MR_DC_copy_exist_info                                           \
                     for (i = 0; i < num_ti_plain; i++) {                \
-                        MR_field(0, new_data, cur_slot) = (MR_Word)        \
+                        MR_field(0, new_data, cur_slot) = (MR_Word)     \
                             copy_type_info((MR_TypeInfo *)              \
                                 &data_value[cur_slot],                  \
                                 lower_limit, upper_limit);              \
@@ -265,7 +267,7 @@ try_again:
                     }                                                   \
                                                                         \
                     for (i = 0; i < num_tci; i++) {                     \
-                        MR_field(0, new_data, cur_slot) = (MR_Word)        \
+                        MR_field(0, new_data, cur_slot) = (MR_Word)     \
                             copy_typeclass_info(&data_value[cur_slot],  \
                                 lower_limit, upper_limit);              \
                         cur_slot++;                                     \
@@ -476,12 +478,11 @@ try_again:
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
             /*
-            ** predicate closures store the number of curried arguments
-            ** as their first argument, the MR_Code * as their second, and
-            ** then the arguments
+            ** Closures have the structure given by the MR_Closure type.
             **
-            ** Their type-infos have a pointer to type_ctor_info for
-            ** pred/0, arity, and then argument typeinfos.
+            ** Their type_infos have a pointer to type_ctor_info for
+            ** pred/0 or func/0, the number of argument typeinfos,
+            ** and then the argument typeinfos themselves.
             **
             ** XXX pred needs to handle traversals.
             */
@@ -498,7 +499,7 @@ try_again:
 
                 /* create new closure */
                 MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_closure),
-                        args + 3);
+                    args + 3);
 
                 /* copy the fixed fields */
                 new_closure->MR_closure_layout = closure_layout;
@@ -528,7 +529,8 @@ try_again:
                             type_info_arg_vector, arg_pseudo_type_info,
                             lower_limit, upper_limit);
                 }
-                if (type_info_arg_vector) {
+
+                if (type_info_arg_vector != NULL) {
                     MR_free(type_info_arg_vector);
                 }
 
@@ -635,6 +637,21 @@ try_again:
             lower_limit, upper_limit);
         break;
 
+    case MR_TYPECTOR_REP_TYPECTORINFO:
+        /* type_ctor_infos are always static */
+        new_data = data;
+        break;
+
+    case MR_TYPECTOR_REP_TYPECLASSINFO:
+        new_data = (MR_Word) copy_typeclass_info(data_ptr,
+            lower_limit, upper_limit);
+        break;
+
+    case MR_TYPECTOR_REP_BASETYPECLASSINFO:
+        /* base_typeclass_infos are always static */
+        new_data = data;
+        break;
+
     case MR_TYPECTOR_REP_C_POINTER:
         {
             MR_Word *data_value;
@@ -712,7 +729,7 @@ copy_arg(maybeconst MR_Word *parent_data_ptr, maybeconst MR_Word *data_ptr,
 {
     MR_MemoryList   allocated_memory_cells;
     MR_TypeInfo     new_type_info;
-    MR_Word            new_data;
+    MR_Word         new_data;
 
     allocated_memory_cells = NULL;
     new_type_info = MR_make_type_info_maybe_existq(type_params,
@@ -727,7 +744,7 @@ copy_arg(maybeconst MR_Word *parent_data_ptr, maybeconst MR_Word *data_ptr,
 
 static MR_TypeInfo
 copy_type_info(maybeconst MR_TypeInfo *type_info_ptr,
-        const MR_Word *lower_limit, const MR_Word *upper_limit)
+    const MR_Word *lower_limit, const MR_Word *upper_limit)
 {
     MR_TypeInfo type_info = *type_info_ptr;
 
@@ -810,9 +827,9 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
         base_typeclass_info = (MR_Word *) *typeclass_info;
 
         num_instance_constraints = 
-                MR_typeclass_info_num_instance_constraints(typeclass_info);
+            MR_typeclass_info_num_instance_constraints(typeclass_info);
         num_unconstrained = 
-                MR_typeclass_info_num_extra_instance_args(typeclass_info) 
+            MR_typeclass_info_num_extra_instance_args(typeclass_info) 
                 - num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
         num_arg_typeinfos = MR_typeclass_info_num_type_infos(typeclass_info);
@@ -836,8 +853,8 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
             ** typeclass declaration (superclass constraints).  
             */
         for (i = num_unconstrained + 1; 
-                i < num_unconstrained + num_instance_constraints + num_super + 1; 
-                i++) 
+            i <= num_unconstrained + num_instance_constraints + num_super; 
+            i++) 
         {
             new_typeclass_info[i] = (MR_Word) copy_typeclass_info(
                 &typeclass_info[i], lower_limit, upper_limit);
@@ -848,8 +865,8 @@ copy_typeclass_info(maybeconst MR_Word *typeclass_info_ptr,
             ** head of the type class declaration.
             */
         for (i = num_unconstrained + num_instance_constraints + num_super + 1;
-            i < num_unconstrained + num_instance_constraints + 
-                        num_super + num_arg_typeinfos + 1;
+            i <= num_unconstrained + num_instance_constraints + num_super
+                + num_arg_typeinfos;
             i++)
         {
             new_typeclass_info[i] = (MR_Word) copy_type_info(

@@ -363,14 +363,14 @@ void sys_init_type_info_module_write_out_proc_statics(FILE *fp);
 	*/
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, type_ctor_info, 1,
-	MR_TYPECTOR_REP_TYPEINFO,
+	MR_TYPECTOR_REP_TYPECTORINFO,
 	mercury____Unify___private_builtin__type_info_1_0,
 	mercury____Compare___private_builtin__type_info_1_0);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO);
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, base_typeclass_info, 1,
-	MR_TYPECTOR_REP_TYPECLASSINFO,
+	MR_TYPECTOR_REP_BASETYPECLASSINFO,
 	mercury____Unify___private_builtin__typeclass_info_1_0,
 	mercury____Compare___private_builtin__typeclass_info_1_0);
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
@@ -524,11 +524,11 @@ static MR_TypeClassInfo MR_typeclass_info_arg_typeclass_info(
 :- pragma foreign_code("MC++", "
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_ctor_info, 1,
-	MR_TYPECTOR_REP_TYPEINFO) 
+	MR_TYPECTOR_REP_TYPECTORINFO) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, type_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, base_typeclass_info, 1,
-	MR_TYPECTOR_REP_TYPECLASSINFO) 
+	MR_TYPECTOR_REP_BASETYPECLASSINFO) 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO) 
 
@@ -543,40 +543,42 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 	// See runtime/mercury_mcpp.cpp for discussion of why we aren't using
 	// enums or const static ints here.
 
-static int MR_TYPECTOR_REP_ENUM 			= MR_TYPECTOR_REP_ENUM_val;
+static int MR_TYPECTOR_REP_ENUM 		= MR_TYPECTOR_REP_ENUM_val;
 static int MR_TYPECTOR_REP_ENUM_USEREQ 		= MR_TYPECTOR_REP_ENUM_USEREQ_val;
-static int MR_TYPECTOR_REP_DU				= MR_TYPECTOR_REP_DU_val;
+static int MR_TYPECTOR_REP_DU			= MR_TYPECTOR_REP_DU_val;
 static int MR_TYPECTOR_REP_DU_USEREQ		= 3;
-static int MR_TYPECTOR_REP_NOTAG			= 4;
+static int MR_TYPECTOR_REP_NOTAG		= 4;
 static int MR_TYPECTOR_REP_NOTAG_USEREQ		= 5;
-static int MR_TYPECTOR_REP_EQUIV			= 6;
+static int MR_TYPECTOR_REP_EQUIV		= 6;
 static int MR_TYPECTOR_REP_EQUIV_VAR		= 7;
 static int MR_TYPECTOR_REP_INT		    	= 8;
 static int MR_TYPECTOR_REP_CHAR		    	= 9;
-static int MR_TYPECTOR_REP_FLOAT			=10;
-static int MR_TYPECTOR_REP_STRING			=11;
+static int MR_TYPECTOR_REP_FLOAT		=10;
+static int MR_TYPECTOR_REP_STRING		=11;
 static int MR_TYPECTOR_REP_PRED		    	=12;
 static int MR_TYPECTOR_REP_UNIV		    	=13;
 static int MR_TYPECTOR_REP_VOID		    	=14;
 static int MR_TYPECTOR_REP_C_POINTER		=15;
-static int MR_TYPECTOR_REP_TYPEINFO			=16;
+static int MR_TYPECTOR_REP_TYPEINFO		=16;
 static int MR_TYPECTOR_REP_TYPECLASSINFO	=17;
-static int MR_TYPECTOR_REP_ARRAY			=18;
-static int MR_TYPECTOR_REP_SUCCIP			=19;
-static int MR_TYPECTOR_REP_HP				=20;
-static int MR_TYPECTOR_REP_CURFR			=21;
-static int MR_TYPECTOR_REP_MAXFR			=22;
-static int MR_TYPECTOR_REP_REDOFR			=23;
-static int MR_TYPECTOR_REP_REDOIP			=24;
+static int MR_TYPECTOR_REP_ARRAY		=18;
+static int MR_TYPECTOR_REP_SUCCIP		=19;
+static int MR_TYPECTOR_REP_HP			=20;
+static int MR_TYPECTOR_REP_CURFR		=21;
+static int MR_TYPECTOR_REP_MAXFR		=22;
+static int MR_TYPECTOR_REP_REDOFR		=23;
+static int MR_TYPECTOR_REP_REDOIP		=24;
 static int MR_TYPECTOR_REP_TRAIL_PTR		=25;
-static int MR_TYPECTOR_REP_TICKET			=26;
+static int MR_TYPECTOR_REP_TICKET		=26;
 static int MR_TYPECTOR_REP_NOTAG_GROUND		=27;
 static int MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ	=28;
 static int MR_TYPECTOR_REP_EQUIV_GROUND		=29;
 static int MR_TYPECTOR_REP_TUPLE		=30;
 static int MR_TYPECTOR_REP_RESERVED_ADDR	=31;
 static int MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ	=32;
-static int MR_TYPECTOR_REP_UNKNOWN		=33;
+static int MR_TYPECTOR_REP_TYPECTORINFO		=33;
+static int MR_TYPECTOR_REP_BASETYPECLASSINFO	=34;
+static int MR_TYPECTOR_REP_UNKNOWN		=35;
 
 static int MR_SECTAG_NONE				= 0;
 static int MR_SECTAG_LOCAL				= 1;

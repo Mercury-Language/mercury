@@ -110,28 +110,16 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 	}
 }
 
-/*
-** MR_compare_type_info(type_info_1, type_info_2):
-**
-** Compare two type_info structures, using an arbitrary ordering
-** (based on the addresses of the type_ctor_infos, or in
-** the case of higher order types, the arity).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
-
 int
-MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
+MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 {
-	MR_TypeInfo	type_info_1;
-	MR_TypeInfo	type_info_2;
-	MR_TypeCtorInfo	type_ctor_info_1;
-	MR_TypeCtorInfo	type_ctor_info_2;
+	MR_TypeCtorInfo	tci1;
+	MR_TypeCtorInfo	tci2;
 	MR_TypeInfo	*arg_vector_1;
 	MR_TypeInfo	*arg_vector_2;
 	int		num_arg_types;
 	int		i;
+	int		comp;
 
 	/* 
 	** Try to optimize a common case:
@@ -139,7 +127,7 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 	** same type.
 	*/
 
-	if (t1 == t2) {
+	if (ti1 == ti2) {
 		return MR_COMPARE_EQUAL;
 	}
 
@@ -147,57 +135,42 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 	** Otherwise, we need to expand equivalence types, if any.
 	*/
 
-	type_info_1 = MR_collapse_equivalences(t1);
-	type_info_2 = MR_collapse_equivalences(t2);
+	ti1 = MR_collapse_equivalences(ti1);
+	ti2 = MR_collapse_equivalences(ti2);
 
 	/* 
 	** Perhaps they are equal now...
 	*/
 
-	if (type_info_1 == type_info_2) {
+	if (ti1 == ti2) {
 		return MR_COMPARE_EQUAL;
 	}
 
 	/*
-	** Otherwise find the addresses of the type_ctor_infos,
-	** and compare those.
-	**
-	** Note: this is an arbitrary ordering. It doesn't matter
-	** what the ordering is, just so long as it is consistent.
-	** ANSI C doesn't guarantee much about pointer comparisons,
-	** so it is possible that this might not do the right thing
-	** on some obscure systems.
-	** The casts to (MR_Word) here are in the hope of increasing
-	** the chance that this will work on a segmented architecture.
+	** Otherwise find the type_ctor_infos, and compare those.
 	*/
 
-	type_ctor_info_1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info_1);
-	type_ctor_info_2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info_2);
+	tci1 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti1);
+	tci2 = MR_TYPEINFO_GET_TYPE_CTOR_INFO(ti2);
 
-	if ((MR_Unsigned) type_ctor_info_1 < (MR_Unsigned) type_ctor_info_2) {
-		return MR_COMPARE_LESS;
-	} else if ((MR_Unsigned) type_ctor_info_1 > (MR_Unsigned) type_ctor_info_2) {
-		return MR_COMPARE_GREATER;
+	comp = MR_compare_type_ctor_info(tci1, tci2);
+	if (comp != MR_COMPARE_EQUAL) {
+		return comp;
 	}
 
 	/*
-	** If the type_ctor_info addresses are equal, we don't need to
-	** compare the arity of the types - they must be the same -
-	** unless they are higher-order (which are all mapped to
-	** pred/0) or tuples (which are all mapped to tuple/0). 
-	** But we need to recursively compare the argument types, if any.
+	** If the type_ctor_infos are equal, we don't need to compare
+	** the arity of the types - they must be the same - unless they are
+	** higher-order (which are all mapped to pred/0 or func/0) or tuples
+	** (which are all mapped to tuple/0), in which cases we must compare
+	** the arities before we can check the argument types.
 	*/
-		/* Check for higher order or tuples */
-	if (MR_type_ctor_rep_is_variable_arity(
-		MR_type_ctor_rep(type_ctor_info_1)))
-	{
+
+	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
 		int	num_arg_types_2;
 
-			/* Get number of arguments from type_info */
-		num_arg_types = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(
-				type_info_1);
-		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(
-				type_info_2);
+		num_arg_types = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti1);
+		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti2);
 
 			/* Check arity */
 		if (num_arg_types < num_arg_types_2) {
@@ -206,28 +179,45 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 			return MR_COMPARE_GREATER;
 		}
 
-			/*
-			** Increment, so arguments are at the
-			** expected offset.
-			*/
-		arg_vector_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
-				type_info_1);
-		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
-				type_info_2);
+		arg_vector_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti2);
 	} else {
-		num_arg_types = type_ctor_info_1->MR_type_ctor_arity;
-		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
-				type_info_1);
-		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
-				type_info_2);
+		num_arg_types = tci1->MR_type_ctor_arity;
+		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti2);
 	}
 
 		/* compare the argument types */
 	for (i = 1; i <= num_arg_types; i++) {
-		int comp = MR_compare_type_info(
-				arg_vector_1[i], arg_vector_2[i]);
+		comp = MR_compare_type_info(arg_vector_1[i], arg_vector_2[i]);
 		if (comp != MR_COMPARE_EQUAL)
 			return comp;
+	}
+
+	return MR_COMPARE_EQUAL;
+}
+
+int
+MR_compare_type_ctor_info(MR_TypeCtorInfo tci1, MR_TypeCtorInfo tci2)
+{
+	int		i;
+
+	/*
+	** Note: this is an arbitrary ordering. It doesn't matter
+	** what the ordering is, just so long as it is consistent.
+	** For consistency, we are relying on the fact that type_ctor_infos
+	** are always statically allocated.
+	** ANSI C doesn't guarantee much about pointer comparisons,
+	** so it is possible that this might not do the right thing
+	** on some obscure systems.
+	** The casts to (MR_Unsigned) here are in the hope of increasing
+	** the chance that this will work on a segmented architecture.
+	*/
+
+	if ((MR_Unsigned) tci1 < (MR_Unsigned) tci2) {
+		return MR_COMPARE_LESS;
+	} else if ((MR_Unsigned) tci1 > (MR_Unsigned) tci2) {
+		return MR_COMPARE_GREATER;
 	}
 
 	return MR_COMPARE_EQUAL;
@@ -236,7 +226,7 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 	/*
 	** MR_collapse_equivalences:
 	**
-	** Keep looking past equivalences until the there are no more.
+	** Keep looking past equivalences until there are no more.
 	** This only looks past equivalences of the top level type, not
 	** the argument typeinfos.
 	** 
@@ -257,9 +247,9 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 	{
 
 		maybe_equiv_type_info = MR_create_type_info(
-				MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
-					maybe_equiv_type_info),
-				MR_type_ctor_layout(type_ctor_info).layout_equiv);
+			MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
+				maybe_equiv_type_info),
+			MR_type_ctor_layout(type_ctor_info).layout_equiv);
 
 		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(
 				maybe_equiv_type_info);

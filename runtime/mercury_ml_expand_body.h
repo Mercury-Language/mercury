@@ -711,10 +711,24 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             handle_zero_arity_args();
             break;
 
+        case MR_TYPECTOR_REP_TYPECTORINFO:
+            /* XXX expand_info->non_canonical_type = TRUE; */
+            /* XXX should we return the arguments here? */
+            handle_functor_name("<<typectorinfo>>");
+            handle_zero_arity_args();
+            break;
+
         case MR_TYPECTOR_REP_TYPECLASSINFO:
             /* XXX expand_info->non_canonical_type = TRUE; */
             /* XXX should we return the arguments here? */
             handle_functor_name("<<typeclassinfo>>");
+            handle_zero_arity_args();
+            break;
+
+        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
+            /* XXX expand_info->non_canonical_type = TRUE; */
+            /* XXX should we return the arguments here? */
+            handle_functor_name("<<basetypeclassinfo>>");
             handle_zero_arity_args();
             break;
 

@@ -133,13 +133,13 @@ MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_PRED);
 MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
 MR_define_type_ctor_info(std_util, type_desc, 0, MR_TYPECTOR_REP_TYPEINFO);
 MR_define_type_ctor_info(private_builtin, type_ctor_info, 1,
-	MR_TYPECTOR_REP_TYPEINFO);
+	MR_TYPECTOR_REP_TYPECTORINFO);
 MR_define_type_ctor_info(private_builtin, type_info, 1,
 	MR_TYPECTOR_REP_TYPEINFO);
 MR_define_type_ctor_info(private_builtin, base_typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO);
 MR_define_type_ctor_info(private_builtin, typeclass_info, 1,
-	MR_TYPECTOR_REP_TYPECLASSINFO);
+	MR_TYPECTOR_REP_BASETYPECLASSINFO);
 
 /*---------------------------------------------------------------------------*/
 

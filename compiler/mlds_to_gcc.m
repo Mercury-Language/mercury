@@ -2165,7 +2165,11 @@ rtti_enum_const("MR_TYPECTOR_REP_NOTAG_GROUND", 27).
 rtti_enum_const("MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ", 28).
 rtti_enum_const("MR_TYPECTOR_REP_EQUIV_GROUND", 29).
 rtti_enum_const("MR_TYPECTOR_REP_TUPLE", 30).
-rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 31).
+rtti_enum_const("MR_TYPECTOR_REP_RESERVED_ADDR", 31).
+rtti_enum_const("MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ", 32).
+rtti_enum_const("MR_TYPECTOR_REP_TYPECTORINFO", 33).
+rtti_enum_const("MR_TYPECTOR_REP_BASETYPECLASSINFO", 34).
+rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 35).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).
