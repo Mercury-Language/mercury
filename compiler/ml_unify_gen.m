@@ -644,7 +644,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		{ list__append(ExtraTypes, MLDS_ArgTypes0, MLDS_ArgTypes) },
 
 		%
-		% Compute the number of bytes to allocate
+		% Compute the number of words to allocate
 		%
 		{ list__length(ArgRvals, NumArgs) },
 		{ SizeInWordsRval = const(int_const(NumArgs)) },
