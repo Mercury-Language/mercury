@@ -265,13 +265,13 @@ rename_defn(defn(Name, Context, Flags, Entity0))
 	= defn(Name, Context, Flags, Entity) :-
 	( Entity0 = data(Type, Initializer),
 		Entity = data(Type, rename_initializer(Initializer))
-	; Entity0 = function(MaybePredProcId, Params, MaybeStmt0),
-		( MaybeStmt0 = yes(Stmt),
-			MaybeStmt = yes(rename_statement(Stmt))
-		; MaybeStmt0 = no,
-			MaybeStmt = no
+	; Entity0 = function(MaybePredProcId, Params, FunctionBody0),
+		( FunctionBody0 = defined_here(Stmt),
+			FunctionBody = defined_here(rename_statement(Stmt))
+		; FunctionBody0 = external,
+			FunctionBody = external
 		),
-		Entity = function(MaybePredProcId, Params, MaybeStmt)
+		Entity = function(MaybePredProcId, Params, FunctionBody)
 	; Entity0 = class(_),
 		unexpected(this_file, "nested class")
 	).
@@ -833,9 +833,11 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 	il_info_get_next_block_id(BlockId),
 
 		% Generate the code of the statement.
-	( { MaybeStatement = yes(Statement) } -> 
+	( 
+		{ MaybeStatement = defined_here(Statement) },
 		statement_to_il(Statement, InstrsTree1)
-	;
+	; 
+		{ MaybeStatement = external },
 			% If there is no function body, generate
 			% forwarding code instead.  This can happen with
 			% :- external

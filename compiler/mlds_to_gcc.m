@@ -788,8 +788,8 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 		{ GlobalInfo = GlobalInfo0 ^ global_vars := GlobalVars }
 	;
 		{ DefnBody = mlds__function(_MaybePredProcId, Signature,
-			MaybeBody) },
-		gen_func(Name, Context, Flags, Signature, MaybeBody,
+			FunctionBody) },
+		gen_func(Name, Context, Flags, Signature, FunctionBody,
 			GlobalInfo0, GlobalInfo)
 	;
 		{ DefnBody = mlds__class(ClassDefn) },
@@ -1428,7 +1428,7 @@ mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 %
 
 :- pred gen_func(qualified_entity_name, mlds__context,
-		mlds__decl_flags, func_params, maybe(statement),
+		mlds__decl_flags, func_params, function_body,
 		global_info, global_info, io__state, io__state).
 :- mode gen_func(in, in, in, in, in, in, out, di, uo) is det.
 
@@ -1436,9 +1436,9 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 		GlobalInfo0, GlobalInfo) -->
 	{ GlobalInfo = GlobalInfo0 },
 	(
-		{ MaybeBody = no }
+		{ MaybeBody = external }
 	;
-		{ MaybeBody = yes(Body) },
+		{ MaybeBody = defined_here(Body) },
 		gcc__push_gc_context,
 		make_func_decl_for_defn(Name, Signature, GlobalInfo0,
 			FuncDecl, SymbolTable),

@@ -444,17 +444,21 @@
 			maybe(pred_proc_id),	% identifies the original
 						% Mercury procedure, if any
 			mlds__func_params,	% the arguments & return types
-			maybe(mlds__statement)	% the function body, or `no'
-						% if the function is abstract
-						% or if the function is defined
-						% externally (i.e. the original
-						% Mercury procedure was declared
-						% `:- external').
+			mlds__function_body	% the function body
+
 		)
 		% packages, classes, interfaces, structs, enums
 	;	mlds__class(
 			mlds__class_defn
 		).
+
+	% It is possible for the function to be defined externally
+	% (i.e. the original Mercury procedure was declared `:- external').
+	% (If you want to generate an abstract body consider adding another
+	% alternative here).
+:- type mlds__function_body 
+	--->	defined_here(mlds__statement)
+	;	external.
 
 	% Note that `one_copy' variables *must* have an initializer
 	% (the GCC back-end relies on this).

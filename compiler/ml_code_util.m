@@ -921,7 +921,8 @@ ml_gen_label_func(FuncLabel, FuncParams, Context, Statement, Func) -->
 	%
 	{ DeclFlags = ml_gen_label_func_decl_flags },
 	{ MaybePredProcId = no },
-	{ FuncDefn = function(MaybePredProcId, FuncParams, yes(Statement)) },
+	{ FuncDefn = function(MaybePredProcId, FuncParams,
+		defined_here(Statement)) },
 	{ Func = mlds__defn(FuncName, mlds__make_context(Context), DeclFlags,
 			FuncDefn) }.
 
@@ -1775,7 +1776,7 @@ ml_gen_call_current_success_cont_indirectly(Context, MLDS_Statement) -->
 
 	{ 
 		Defn = mlds__defn(function(PredLabel, ProcId, 
-			yes(SeqNum), _), _, _, function(_, _, yes(_)))
+			yes(SeqNum), _), _, _, function(_, _, defined_here(_)))
 	->
 		% We call the proxy function.
 		QualProcLabel = qual(MLDS_Module, PredLabel - ProcId),

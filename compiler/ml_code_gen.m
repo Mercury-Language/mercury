@@ -1050,7 +1050,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 		% corresponding definition, making sure that the function
 		% is declared as `extern' rather than `static'.
 		%
-		MaybeStatement = no,
+		FunctionBody = external,
 		ExtraDefns = []
 	;
 		% Set up the initial success continuation, if any.
@@ -1100,10 +1100,10 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 		MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
 		MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements,
 			Context),
-		MaybeStatement = yes(MLDS_Statement)
+		FunctionBody = defined_here(MLDS_Statement)
 	),
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
-			MLDS_Params, MaybeStatement).
+			MLDS_Params, FunctionBody).
 
 	% for model_det and model_semi procedures,
 	% figure out which output variables are returned by

@@ -423,7 +423,7 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 		Name0 = function(_Label0, ProcID, MaybeSeqNum, PredID),
 		Body0 = mlds__function(MaybeID, Params0, 
 			MaybeStatements0),
-		MaybeStatements0 = yes(Statements0),
+		MaybeStatements0 = defined_here(Statements0),
 		Statements0 = mlds__statement(
 			block(BlockDefns0, _BlockList0), _) 
 	->
@@ -459,7 +459,8 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 		% Put it all together.
 		%
 		Params = mlds__func_params(Args, RetTypes),
-		Body   = mlds__function(MaybeID, Params, yes(Statements)),
+		Body   = mlds__function(MaybeID, Params,
+			defined_here(Statements)),
 		Flags  = ml_gen_special_member_decl_flags,	
 		Defn   = mlds__defn(Name, Context, Flags, Body) 
 	;
@@ -977,16 +978,16 @@ output_pred_proc_id(proc(PredId, ProcId)) -->
 	).
 
 :- pred output_func(indent, qualified_entity_name, mlds__context,
-		func_params, maybe(statement), io__state, io__state).
+		func_params, function_body, io__state, io__state).
 :- mode output_func(in, in, in, in, in, di, uo) is det.
 
 output_func(Indent, Name, Context, Signature, MaybeBody) -->
 	output_func_decl(Indent, Name, Context, Signature),
 	(
-		{ MaybeBody = no },
+		{ MaybeBody = external },
 		io__write_string(";\n")
 	;
-		{ MaybeBody = yes(Body) },
+		{ MaybeBody = defined_here(Body) },
 		io__write_string("\n"),
 		indent_line(Context, Indent),
 		io__write_string("{\n"),

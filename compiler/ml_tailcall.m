@@ -125,7 +125,7 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
 		;
 			AtTail = no
 		),
-		FuncBody = mark_tailcalls_in_maybe_statement(FuncBody0,
+		FuncBody = mark_tailcalls_in_function_body(FuncBody0,
 			AtTail, Locals),
 		DefnBody = mlds__function(PredProcId, Params, FuncBody),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
@@ -143,6 +143,14 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
 		DefnBody = mlds__class(ClassDefn),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	).
+
+:- func mark_tailcalls_in_function_body(function_body, at_tail, locals)
+		= function_body.
+
+mark_tailcalls_in_function_body(external, _, _) = external.
+mark_tailcalls_in_function_body(defined_here(Statement0), AtTail, Locals) =
+		defined_here(Statement) :-
+	Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
 :- func mark_tailcalls_in_maybe_statement(maybe(mlds__statement),
 		at_tail, locals) = maybe(mlds__statement).

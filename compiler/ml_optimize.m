@@ -78,7 +78,7 @@ optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 		OptInfo = opt_info(Globals, ModuleName, Name, Params, Context),
 
 		FuncBody1 = optimize_func(OptInfo, FuncBody0),
-		FuncBody = optimize_in_maybe_statement(OptInfo, FuncBody1),
+		FuncBody = optimize_in_function_body(OptInfo, FuncBody1),
 
 		DefnBody = mlds__function(PredProcId, Params, FuncBody),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
@@ -98,6 +98,13 @@ optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 		DefnBody = mlds__class(ClassDefn),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	).
+
+:- func optimize_in_function_body(opt_info, function_body) = function_body.
+
+optimize_in_function_body(_, external) = external.
+optimize_in_function_body(OptInfo, defined_here(Statement0)) =
+		defined_here(Statement) :-
+	Statement = optimize_in_statement(OptInfo, Statement0).
 
 :- func optimize_in_maybe_statement(opt_info, 
 		maybe(mlds__statement)) = maybe(mlds__statement).
@@ -291,15 +298,13 @@ generate_assign_args(OptInfo,
 
 %----------------------------------------------------------------------------
 
-:- func optimize_func(opt_info, maybe(mlds__statement)) 
-		= maybe(mlds__statement).
+:- func optimize_func(opt_info, function_body) = function_body.
 
-optimize_func(OptInfo, MaybeStatement) = 
-	maybe_apply(optimize_func_stmt(OptInfo), MaybeStatement).
+optimize_func(_, external) = external.
+optimize_func(OptInfo, defined_here(Statement)) =
+	defined_here(optimize_func_stmt(OptInfo, Statement)).
 
-
-:- func optimize_func_stmt(opt_info, 
-	mlds__statement) = (mlds__statement).
+:- func optimize_func_stmt(opt_info, mlds__statement) = (mlds__statement).
 
 optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) = 
 		mlds__statement(Stmt, Context) :-

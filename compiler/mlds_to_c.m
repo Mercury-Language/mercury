@@ -1188,16 +1188,16 @@ mlds_output_pred_proc_id(proc(PredId, ProcId)) -->
 	).
 
 :- pred mlds_output_func(indent, qualified_entity_name, mlds__context,
-		func_params, maybe(statement), io__state, io__state).
+		func_params, function_body, io__state, io__state).
 :- mode mlds_output_func(in, in, in, in, in, di, uo) is det.
 
-mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
+mlds_output_func(Indent, Name, Context, Signature, FunctionBody) -->
 	mlds_output_func_decl(Indent, Name, Context, Signature),
 	(
-		{ MaybeBody = no },
+		{ FunctionBody = external },
 		io__write_string(";\n")
 	;
-		{ MaybeBody = yes(Body) },
+		{ FunctionBody = defined_here(Body) },
 		io__write_string("\n"),
 
 		mlds_indent(Context, Indent),
@@ -1803,7 +1803,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody)
 		{ Name \= type(_, _) },
 		% Don't output "static" for functions that don't have a body.
 		% This can happen for Mercury procedures declared `:- external'
-		{ DefnBody \= mlds__function(_, _, no) }
+		{ DefnBody \= mlds__function(_, _, external) }
 	->
 		io__write_string("static ")
 	;
