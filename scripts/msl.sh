@@ -19,6 +19,7 @@ LIBRARY_OBJS=${MERCURY_SP_LIB_OBJS:-`cd $SPLIBDIR; echo *.ql`}
 
 verbose=false
 debug=false
+save_temp=false
 target=a.out
 
 while true; do
@@ -35,6 +36,10 @@ while true; do
 			target=$2
 			shift 2
 			;;
+		-s|--save-temp)
+			save_temp=true
+			shift
+			;;
 		-*)	
 			echo "$0: invalid option \`$1'" 1>&2
 			exit 1
@@ -47,7 +52,7 @@ done
 objlist=
 for obj in $LIBRARY_OBJS; do
 	if [ "$obj" = "sp_lib.ql" ]; then
-		sp_lib=$obj
+		sp_lib=$SPLIBDIR/$obj
 	elif echo "" "$objlist" "$@" "" | grep " $obj " > /dev/null; then
 		true
 	else
@@ -58,8 +63,15 @@ done
 if $verbose; then
 	echo Linking $objlist "$@" $sp_lib
 fi
+if $save_temp; then
+	tmp=msl.tmp
+else
+	tmp=/tmp/msl$$
+	trap 'rm -f $tmp; exit 1' 1 2 3 13 15 
+	trap 'rm -f $tmp; exit 0' 0
+fi
 if $debug; then
-	$SP $objlist "$@" $sp_lib 2>&1 << EOF
+	cat > $tmp << EOF
 	assert((mercury_do_save :-
 		on_exception(Error, (
 		  prolog_flag(compiling, _, fastcode),
@@ -72,8 +84,9 @@ if $debug; then
 	mercury_do_save.
 
 EOF
+	$SP $objlist "$@" $sp_lib < $tmp 2>&1 
 else
-	$SP $objlist "$@" $sp_lib 2>&1 << EOF
+	cat > $tmp << EOF
 	on_exception(Error, (
 	  prolog_flag(compiling, _, fastcode),
 	  unix(argv(Files)), load(Files),
@@ -86,6 +99,7 @@ else
 	e
 	e
 EOF
+	$SP $objlist "$@" $sp_lib < $tmp 2>&1 
 fi # grep -v 'DOMAIN ERROR.*when_condition' 
 # We pipe the output through grep -v to suppress some spurious warnings
 # caused by the NU-Prolog when declarations not matching Sicstus syntax.
