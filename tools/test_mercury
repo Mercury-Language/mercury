@@ -519,15 +519,15 @@ case "$with_asm" in
 		# Once it is done once, it will be saved in the user's
 		# ~/.cvspass file, so it doesn't need to be done again.
 		#
-		# This should soon be commented out, to save bandwidth,
+		# This is commented out, to save bandwidth,
 		# since currently we're using a fixed snapshot
 		# (`-r gcc_3_2_release') anyway.
 		# Perhaps this should eventually change to use
 		# `-r gcc_latest_snapshot'.
 		date
-		cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
-		 	checkout -r gcc_3_2_release gcc || { false; exit 1; }
-		date
+		#cvs -d :pserver:anoncvs@gcc.gnu.org:/cvs/gcc -z 9 \
+		# 	checkout -r gcc_3_2_release gcc || { false; exit 1; }
+		#date
 		# Link the Mercury gcc back-end interface sources
 		# into the appropriate place in the gcc sources
 		pwd
