@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2003 The University of Melbourne.
+% Copyright (C) 1995-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1623,9 +1623,9 @@ polymorphism__process_foreign_proc_args(PredInfo, NumExtraVars, Impl,
 		TypeInfoTypes),
 	list__map(polymorphism__build_typeclass_info_type, UnivCs, UnivTypes),
 	list__map(polymorphism__build_typeclass_info_type, ExistCs, ExistTypes),
-	list__append(TypeInfoTypes, OrigArgTypes0, OrigArgTypes1),
-	list__append(ExistTypes, OrigArgTypes1, OrigArgTypes2),
-	list__append(UnivTypes, OrigArgTypes2, OrigArgTypes).
+	list__append(ExistTypes, OrigArgTypes0, OrigArgTypes1),
+	list__append(UnivTypes, OrigArgTypes1, OrigArgTypes2),
+	list__append(TypeInfoTypes, OrigArgTypes2, OrigArgTypes).
 
 :- pred polymorphism__foreign_proc_add_typeclass_infos(
 	list(class_constraint)::in, list(class_constraint)::in,

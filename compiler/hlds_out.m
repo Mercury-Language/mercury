@@ -1724,8 +1724,9 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		true
 	).
 
-hlds_out__write_goal_2(foreign_proc(Attributes, _, _, ArgVars, ArgNames, _,
-		PragmaCode), _, _, _, Indent, Follow, _, !IO) :-
+hlds_out__write_goal_2(foreign_proc(Attributes, _PredId, _ProcId, ArgVars,
+		ArgNames, OrigArgTypes, PragmaCode),
+		_, _, AppendVarNums, Indent, Follow, _, !IO) :-
 	ForeignLang = foreign_language(Attributes),
 	hlds_out__write_indent(Indent, !IO),
 	io__write_string("$pragma_foreign_proc( /* ", !IO),
@@ -1735,6 +1736,12 @@ hlds_out__write_goal_2(foreign_proc(Attributes, _, _, ArgVars, ArgNames, _,
 	io__write_string("], [", !IO),
 	get_pragma_foreign_var_names(ArgNames, Names),
 	hlds_out__write_string_list(Names, !IO),
+	io__write_string("], [", !IO),
+	% XXX We don't have the TypeVarSet available here,
+	%     but it's only used for printing out the names of the
+	%     type variables, which isn't essential.
+	varset__init(TypeVarSet),
+	hlds_out__write_type_list(OrigArgTypes, TypeVarSet, AppendVarNums, !IO),
 	io__write_string("], ", !IO),
 	(
 		PragmaCode = ordinary(C_Code, _),
@@ -2710,6 +2717,14 @@ hlds_out__write_import_status(pseudo_imported) -->
 	io__write_string("pseudo_imported").
 hlds_out__write_import_status(exported_to_submodules) -->
 	io__write_string("exported_to_submodules").
+
+:- pred hlds_out__write_type_list(list(type)::in, tvarset::in, bool::in,
+		io::di, io::uo) is det.
+hlds_out__write_type_list(Types, TypeVarSet, AppendVarNums) -->
+	list__foldl((pred(Type::in, di, uo) is det -->
+		mercury_output_term(Type, TypeVarSet, AppendVarNums),
+		io__write_string(", ")),
+		Types).
 
 :- pred hlds_out__write_var_types(int::in, prog_varset::in, bool::in,
 	vartypes::in, tvarset::in, io::di, io::uo) is det.
