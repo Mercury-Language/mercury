@@ -169,7 +169,7 @@ esac
 MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC,mmc)
 if test "$BOOTSTRAP_MC" != ""; then
-	AC_MSG_CHECKING(whether $BOOTSTRAP_MC works and is sufficiently recent)
+	AC_MSG_CHECKING(whether the above mmc works and is sufficiently recent)
 	cat > conftest.m << EOF
 		% this module contains features which didn't work in
 		% previous versions of the Mercury compiler
@@ -224,6 +224,24 @@ EOF
 	else
 		BOOTSTRAP_MC=
 		AC_MSG_RESULT(no)
+		# This will only work if the user is working with a source
+		# distribution which includes the pre-generated .C files.
+		# So do a quick check now to ensure that we fail early with a
+		# reasonable error message if they are not present.
+		if	test -f compiler/top_level.c ||
+		   	test -f compiler/Mercury/cs/top_level.c
+		then
+			true
+		elif
+			test -f $LIBDIR/bin/$FULLARCH/mercury_compile ||
+			test -f $LIBDIR/bin/$FULLARCH/mercury_compile.exe
+		then
+			AC_MSG_WARN(
+[using $LIBDIR/bin/$FULLARCH/mercury_compile to bootstrap])
+		else
+			AC_MSG_ERROR(
+[You need a working Mercury compiler to bootstrap with])
+		fi
 	fi
 	rm -f conftest*
 fi
