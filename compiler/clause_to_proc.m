@@ -30,16 +30,56 @@
 :- pred copy_clauses_to_proc(proc_id, clauses_info, proc_info, proc_info).
 :- mode copy_clauses_to_proc(in, in, in, out) is det.
 
+	% Before copying the clauses to the procs, we need to add
+	% a default mode of `:- mode foo(in, in, ..., in) = out.'
+	% for functions that don't have an explicit mode declaration.
+
+:- pred maybe_add_default_mode(pred_info, pred_info).
+:- mode maybe_add_default_mode(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_goal.
-:- import_module list, set, map, std_util.
+:- import_module hlds_goal, hlds_data, prog_io, make_hlds.
+:- import_module int, list, set, map, std_util.
+
+maybe_add_default_mode(PredInfo0, PredInfo) :-
+	pred_info_procedures(PredInfo0, Procs0),
+	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
+	( 
+		%
+		% Is this a function with no modes?
+		%
+		PredOrFunc = function,
+		map__is_empty(Procs0)
+	->
+		%
+		% If so, add a default mode of 
+		%
+		%	:- mode foo(in, in, ..., in) = out is det.
+		%
+		% for this function.  (N.B. functions which can
+		% fail must be explicitly declared as semidet.)
+		%
+		pred_info_arity(PredInfo0, PredArity),
+		FuncArity is PredArity - 1,
+		InMode = user_defined_mode(unqualified("in"), []),
+		OutMode = user_defined_mode(unqualified("out"), []),
+		list__duplicate(FuncArity, InMode, FuncArgModes),
+		FuncRetMode = OutMode,
+		list__append(FuncArgModes, [FuncRetMode], PredArgModes),
+		Determinism = det,
+		pred_info_context(PredInfo0, Context),
+		add_new_proc(PredInfo0, PredArity, PredArgModes,
+			yes(Determinism), Context, PredInfo, _ProcId)
+	;
+		PredInfo = PredInfo0
+	).
 
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
-	pred_info_clauses_info(PredInfo0, ClausesInfo),
 	pred_info_procedures(PredInfo0, Procs0),
+	pred_info_clauses_info(PredInfo0, ClausesInfo),
 	pred_info_non_imported_procids(PredInfo0, ProcIds),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
