@@ -158,7 +158,7 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 		Stmt0 = if_then_else(Rval, Then, MaybeElse),
 		Stmt = if_then_else(Rval,
 			optimize_in_statement(OptInfo, Then),
-			maybe_apply(optimize_in_statement(OptInfo), MaybeElse))
+			map_maybe(optimize_in_statement(OptInfo), MaybeElse))
 	;
 		Stmt0 = switch(Type, Rval, Range, Cases0, Default0),
 		Stmt = switch(Type, Rval, Range,
@@ -1266,14 +1266,6 @@ eliminate_var_in_trail_op(mark_ticket_stack(Lval0), mark_ticket_stack(Lval),
 eliminate_var_in_trail_op(prune_tickets_to(Rval0), prune_tickets_to(Rval),
 		!VarElimInfo) :-
 	eliminate_var_in_rval(Rval0, Rval, !VarElimInfo).
-
-%-----------------------------------------------------------------------------%
-
-        % Maps T into V, inside a maybe .
-:- func maybe_apply(func(T) = V, maybe(T)) = maybe(V).
-
-maybe_apply(_, no) = no.
-maybe_apply(F, yes(T)) = yes(F(T)).
 
 %-----------------------------------------------------------------------------%
 
