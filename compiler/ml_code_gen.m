@@ -1084,36 +1084,8 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
  			ml_set_up_initial_succ_cont(ModuleInfo, 
 				CopiedOutputVars, MLDSGenInfo0, MLDSGenInfo1)
  		;
-		
-		module_info_globals(ModuleInfo, Globals),
-		globals__lookup_bool_option(Globals, det_copy_out,
-			DetCopyOut),
-		(
-			DetCopyOut = yes
-		->
-			% all of the output vars are returned by value
-			% rather than passed by reference
-			ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
-				OutputVars),
-			CopiedOutputVars = OutputVars,
-			ml_gen_info_set_byref_output_vars([],	
-				MLDSGenInfo0, MLDSGenInfo1)
-		;
- 			is_output_det_function(ModuleInfo, PredId, ProcId,
- 				ResultVar)
- 		->
-				CopiedOutputVars = [ResultVar],
-				ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
-					ByRefOutputVars0),
-				list__delete_all(ByRefOutputVars0, ResultVar, 
-					ByRefOutputVars),
-				ml_gen_info_set_byref_output_vars(
-				ByRefOutputVars, MLDSGenInfo0, MLDSGenInfo1)
-			;
-				CopiedOutputVars = [],
-				MLDSGenInfo1 = MLDSGenInfo0
-			)
-		
+			ml_det_copy_out_vars(ModuleInfo,
+			 	CopiedOutputVars, MLDSGenInfo0, MLDSGenInfo1)
 		),
 
 		% This would generate all the local variables at the top of
@@ -1155,6 +1127,51 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
 			MLDS_Params, MaybeStatement).
 
+	% for model_det and model_semi procedures,
+	% figure out which output variables are returned by
+	% value (rather than being passed by reference) and remove
+	% them from the byref_output_vars field in the ml_gen_info.
+:- pred ml_det_copy_out_vars(module_info, list(prog_var),
+		ml_gen_info, ml_gen_info).
+:- mode ml_det_copy_out_vars(in, out, in, out) is det.
+
+ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars,
+		MLDSGenInfo0, MLDSGenInfo) :-
+	ml_gen_info_get_byref_output_vars(MLDSGenInfo0, OutputVars),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, det_copy_out, DetCopyOut),
+	(
+		% if --det-copy-out is enabled, all output variables
+		% are returned by value, rather than passing
+		% them by reference.
+		DetCopyOut = yes
+	->
+		ByRefOutputVars = [],
+		CopiedOutputVars = OutputVars
+	;
+		% for det functions, the function result variable
+		% is returned by value, and any remaining output
+		% variables are passed by reference
+		ml_gen_info_get_pred_id(MLDSGenInfo0, PredId),
+		ml_gen_info_get_proc_id(MLDSGenInfo0, ProcId),
+		is_output_det_function(ModuleInfo, PredId,
+			ProcId, ResultVar)
+	->
+		CopiedOutputVars = [ResultVar],
+		list__delete_all(OutputVars, ResultVar, ByRefOutputVars)
+	;
+		% otherwise, all output vars are passed by reference
+		CopiedOutputVars = [],
+		ByRefOutputVars = OutputVars
+	),
+	ml_gen_info_set_byref_output_vars(ByRefOutputVars,
+		MLDSGenInfo0, MLDSGenInfo).
+
+	% for model_non procedures,
+	% figure out which output variables are returned by
+	% value (rather than being passed by reference) and remove
+	% them from the byref_output_vars field in the ml_gen_info,
+	% and construct the initial success continuation.
 :- pred ml_set_up_initial_succ_cont(module_info, list(prog_var),
 		ml_gen_info, ml_gen_info).
 :- mode ml_set_up_initial_succ_cont(in, out, in, out) is det.
