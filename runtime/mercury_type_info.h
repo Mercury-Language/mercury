@@ -940,7 +940,7 @@ typedef MR_ReservedAddrTypeDesc *MR_ReservedAddrTypeLayout;
 ** This type describes the identity of the type that an equivalence type
 ** is equivalent to, and hence its layout.
 **
-** An MR_NotagLayout gives the pseudo typeinfo of the type that this type
+** An MR_EquivLayout gives the pseudo typeinfo of the type that this type
 ** is equivalent to.
 **
 ** The intention is that if you have a word in an equivalence type that you
@@ -980,7 +980,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
 */
 
 typedef union {
-    void                        *MR_layout_init;
+    const void                  *MR_layout_init;
     MR_DuTypeLayout             MR_layout_du;
     MR_EnumTypeLayout           MR_layout_enum;
     MR_NotagTypeLayout          MR_layout_notag;
@@ -1025,7 +1025,7 @@ typedef struct {
 */
 
 typedef union {
-    void                        *MR_functors_init;
+    const void                  *MR_functors_init;
     MR_DuFunctorDesc            **MR_functors_du;
     MR_MaybeResAddrFunctorDesc  *MR_functors_res;
     MR_EnumFunctorDesc          **MR_functors_enum;
@@ -1169,8 +1169,8 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
     MR_PASTE2(MR_, MR_PASTE2(NAME, MR_PASTE2(Func_, ARITY)))
 
   #define MR_DEFINE_TYPE_CTOR_INFO_DECLARE_ADDRS(u, c, a)               \
-    static MR_PASTE2(MR_UnifyFunc_, a) u;                               \
-    static MR_PASTE2(MR_CompareFunc_, a) c;
+    extern MR_PASTE2(MR_UnifyFunc_, a) u;                               \
+    extern MR_PASTE2(MR_CompareFunc_, a) c;
 
   #define MR_DEFINE_TYPE_CTOR_INFO_BODY(m, n, a, cr, u, c)              \
     {                                                                   \
