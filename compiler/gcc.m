@@ -9,26 +9,38 @@
 
 % This module is the Mercury interface to the GCC compiler back-end.
 %
+% This module provides a thin wrapper around the C types,
+% constants, and functions defined in gcc/tree.{c,h,def}
+% and gcc/mercury/mercury-gcc.c in the GCC source.
+% (The functions in gcc/mercury/mercury-gcc.c are in turn a
+% thicker wrapper around the more complicated parts of GCC's
+% source-language-independent back-end.)
+%
+% Note that we want to keep this code as simple as possible.
+% Anything complicated, which might require changes for new versions
+% of gcc, should go in gcc/mercury/mercury-gcc.c rather than in
+% inline C code here.
+%
+% This module makes no attempt to be a *complete* interface to the
+% gcc back-end; we only define interfaces to those parts of the gcc
+% back-end that we need for compiling Mercury.
+%
+% REFERENCES
+%
+% For more information about the GCC compiler back-end,
+% see the documentation at <http://gcc.gnu.org> and
+% <http://gcc.gnu.org/readings.html>, in particular
+% "Writing a Compiler Front End to GCC" by Joachim Nadler
+% and Tim Josling <tej@melbpc.org.au>.
+%
+% QUOTES
+%
 %	``GCC is a software Vietnam.''
 %		-- Simon Peyton-Jones.
 %
 %	``Never get involved in a land war in Asia.''
 %		-- from the movie "The Princess Bride".
 %
-% This module provides a thin wrapper around the C types,
-% constants, and functions defined in gcc/tree.{c,h,def}
-% and gcc/mercury/mercury-gcc.c in the GCC source.
-% (The functions in gcc/mercury/mercury-gcc.c are in turn a thick
-% wrapper around GCC's source-language-independent back-end.)
-
-% Note that we want to keep this code as simple as possible.
-% Anything complicated, which might require changes for new versions
-% of gcc, should go in gcc/mercury/mercury-gcc.c rather than in
-% inline C code here.
-
-% This module makes no attempt to be a *complete* interface to the
-% gcc back-end; we only define interfaces to those parts of the gcc
-% back-end that we need.
 
 %-----------------------------------------------------------------------------%
 
@@ -775,10 +787,9 @@
 :- pragma c_code(next_field_decl(Decls::in, Decl::out, RemainingDecls::out,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	/* XXX Move to mercury-gcc.c? */
-	assert ((tree) Decls != NULL_TREE);
+	assert((tree) Decls != NULL_TREE);
 	Decl = (MR_Word) (tree) Decls;
-	RemainingDecls = (MR_Word) TREE_CHAIN ((tree) Decls);
+	RemainingDecls = (MR_Word) TREE_CHAIN((tree) Decls);
 ").
 
 :- type gcc__type_decl == gcc__tree.
@@ -911,6 +922,7 @@ build_float(Val, Expr) -->
 :- pragma c_code(build_real(Type::in, Value::in, Expr::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
+	/* XXX should move to mercury-gcc.c */
 	/* XXX this won't work if cross-compiling */
 	union { double dbl; HOST_WIDE_INT ints[20]; } u;
 	u.dbl = Value;
@@ -1140,19 +1152,19 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 :- pragma c_code(gen_case_label(Value::in, Label::in,
 	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
-	merc_gen_switch_case_label ((tree) Value, (tree) Label);
+	merc_gen_switch_case_label((tree) Value, (tree) Label);
 ").
 
 :- pragma c_code(gen_default_case_label(Label::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
-	merc_gen_switch_case_label (NULL_TREE, (tree) Label);
+	merc_gen_switch_case_label(NULL_TREE, (tree) Label);
 ").
 
 :- pragma c_code(gen_break(_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	int result = expand_exit_something();
-	assert (result != 0);
+	assert(result != 0);
 ").
 
 :- pragma c_code(gen_end_switch(Expr::in, _IO0::di, _IO::uo),
