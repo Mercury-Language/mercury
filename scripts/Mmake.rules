@@ -250,6 +250,7 @@ $(os_subdir)%.dll : %.cpp
 	$(MS_CL) -CLR$(MS_CL_NOASM) -I`cygpath -w $(MERC_C_INCL_DIR)` \
 		-AI`cygpath -w $(MERC_DLL_DIR)` $(ALL_MS_CLFLAGS) $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
+	rm -f $*.obj
 
 $(os_subdir)%.dll : %.il
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
@@ -352,6 +353,7 @@ ifeq ($(findstring il,$(GRADE)),il)
 .cpp.dll:
 	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
+	rm -f $*.obj
 
 .cpp.exe:
 	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@

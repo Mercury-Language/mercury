@@ -2953,14 +2953,6 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 					ForeignExt, ForeignBasis, DepStream),
 	io__write_string(DepStream, "\n"),
 
-		% .foreign_os are the object files which are generated
-		% by the MC++ compiler.
-	io__write_string(DepStream, MakeVarName),
-	io__write_string(DepStream, ".foreign_os = "),
-	write_compact_dependencies_list(ForeignModules, "$(os_subdir)", ".obj",
-					ForeignBasis, DepStream),
-	io__write_string(DepStream, "\n"),
-
 		% The dlls which contain the foreign_code.
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".foreign_dlls = "),
@@ -3616,7 +3608,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
 		"\t-rm -f $(", MakeVarName, ".errs)\n",
 		"\t-rm -f $(", MakeVarName, ".foreign_cs)\n",
-		"\t-rm -f $(", MakeVarName, ".foreign_os)\n",
 		"\t-rm -f $(", MakeVarName, ".schemas)\n"
 	]),
 
