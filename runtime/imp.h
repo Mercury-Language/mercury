@@ -227,7 +227,7 @@ typedef double Float;
 /* we need to ensure that what we allocated on the heap is properly
    aligned */
 #define float_to_word(f) ( \
-		( (Word)hp & 1 ? hp_alloc(1) : (void)0 ), \
+		( (Word)hp & (sizeof(Float) - 1) ? hp_alloc(1) : (void)0 ), \
 		hp_alloc(FLOAT_WORDS), \
 		*(Float *)(void *)(hp - FLOAT_WORDS) = (f), \
 		/* return */ (Word) (hp - FLOAT_WORDS) \
