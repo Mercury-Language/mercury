@@ -406,6 +406,8 @@ case $COMPILER in gcc)
 				ARCH_OPTS="$ARCH_OPTS -O1" ;;
 			*" dupelim.c "*|*" modules.dir/dupelim"*".c "*)
 				ARCH_OPTS="$ARCH_OPTS -O1" ;;
+			*" dl.c "*|*" modules.dir/dl"*".c "*)
+				ARCH_OPTS="$ARCH_OPTS -O1" ;;
 			*" mercury_to_mercury.c "*|*" modules.dir/mercury_to_mercury"*".c "*)
 				ARCH_OPTS="$ARCH_OPTS -O1" ;;
 			*" modules.c "*|*" modules.dir/modules"*".c "*)
