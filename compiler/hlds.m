@@ -35,7 +35,7 @@
 
 % Miscellaneous utilities.
 :- include_module passes_aux, error_util.
-:- include_module goal_util. % XXX goal_util imports code_aux.m
+:- include_module goal_form, goal_util.
 :- include_module hlds_code_util.	% XXX currently code_util.m
 
 %-----------------------------------------------------------------------------%

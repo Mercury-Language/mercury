@@ -74,20 +74,23 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_aux, check_hlds__det_analysis.
-:- import_module ll_backend__follow_code, hlds__goal_util.
-:- import_module transform_hlds__const_prop.
-:- import_module hlds__hlds_module, hlds__hlds_data, (parse_tree__inst).
-:- import_module check_hlds__inst_match, varset.
-:- import_module libs__options, hlds__passes_aux, parse_tree__prog_data.
-:- import_module check_hlds__mode_util, check_hlds__type_util.
-:- import_module ll_backend__code_util, hlds__quantification.
+:- import_module parse_tree__inst, parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
+:- import_module hlds__hlds_module, hlds__hlds_data, hlds__passes_aux.
+:- import_module hlds__goal_util, hlds__goal_form, hlds__special_pred.
+:- import_module hlds__quantification.
+:- import_module check_hlds__type_util.
+:- import_module check_hlds__mode_util, check_hlds__inst_match.
+:- import_module check_hlds__det_analysis.
 :- import_module check_hlds__modes, check_hlds__purity.
+:- import_module check_hlds__unify_proc.
+:- import_module check_hlds__polymorphism.
+:- import_module transform_hlds__const_prop.
 :- import_module transform_hlds__pd_cost.
-:- import_module parse_tree__prog_util, check_hlds__unify_proc.
-:- import_module hlds__special_pred, check_hlds__polymorphism.
+:- import_module ll_backend__code_util, ll_backend__follow_code.
+:- import_module libs__options.
 
-:- import_module set, require, std_util, int, term.
+:- import_module int, set, require, std_util, varset, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -330,7 +333,7 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% ensure goal is pure or semipure
 		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
-		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
+		; goal_cannot_loop(ModuleInfo, Goal0)
 		)
 	->
 		% warn about this, unless the goal was an explicit
@@ -378,7 +381,7 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		% ensure goal is pure or semipure
 		\+ goal_info_is_impure(GoalInfo0),
 		( det_info_get_fully_strict(DetInfo, no)
-		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
+		; goal_cannot_loop(ModuleInfo, Goal0)
 		)
 	->
 /******************

@@ -17,9 +17,9 @@
 
 :- interface.
 
+:- import_module parse_tree__prog_data.
 :- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__instmap, parse_tree__prog_data.
+:- import_module hlds__hlds_pred, hlds__instmap.
 :- import_module assoc_list, list, std_util, map, set.
 
 %-----------------------------------------------------------------------------%
@@ -671,10 +671,12 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module ll_backend__code_util, ll_backend__code_aux, libs__globals.
-:- import_module ll_backend__llds_out, libs__options, parse_tree__prog_out.
-:- import_module check_hlds__mode_util, parse_tree__prog_util.
-:- import_module check_hlds__type_util, ll_backend__llds.
+:- import_module parse_tree__prog_util, parse_tree__prog_out.
+:- import_module hlds__goal_form.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
+:- import_module ll_backend__llds, ll_backend__llds_out.
+:- import_module ll_backend__code_util, ll_backend__code_aux.
+:- import_module libs__globals, libs__options.
 :- import_module bool, int, require, string.
 
 rl__default_temporary_state(ModuleInfo, TmpState) :-
@@ -938,7 +940,7 @@ rl__goal_can_be_removed(ModuleInfo, Goals) :-
 		all [Goal] (	
 			list__member(Goal, Goals)
 		=>
-			code_aux__goal_cannot_loop(ModuleInfo, Goal)
+			goal_cannot_loop(ModuleInfo, Goal)
 		)
 	).
 

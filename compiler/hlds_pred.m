@@ -27,7 +27,7 @@
 :- import_module parse_tree__prog_util.
 
 % HLDS modules.
-:- import_module ll_backend__code_aux, hlds__goal_util, hlds__make_hlds.
+:- import_module hlds__goal_util, hlds__make_hlds, hlds__goal_form.
 :- import_module check_hlds__inst_match, check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 
@@ -1423,7 +1423,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
 		% Approximate the termination information
 		% for the new procedure.
-	( code_aux__goal_cannot_loop(ModuleInfo0, Goal0) ->
+	( goal_cannot_loop(ModuleInfo0, Goal0) ->
 		TermInfo = yes(cannot_loop)
 	;
 		TermInfo = no

@@ -140,17 +140,17 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module check_hlds__det_analysis, transform_hlds__constraint.
-:- import_module transform_hlds__pd_cost, hlds__hlds_data, hlds__instmap.
-:- import_module transform_hlds__unused_args, check_hlds__inst_match.
-:- import_module (parse_tree__inst), hlds__quantification.
-:- import_module check_hlds__mode_util.
-:- import_module ll_backend__code_aux, check_hlds__purity.
+:- import_module parse_tree__inst.
+:- import_module hlds__goal_util, hlds__hlds_data, hlds__instmap.
+:- import_module hlds__quantification, hlds__goal_form.
+:- import_module check_hlds__purity, check_hlds__type_util.
 :- import_module check_hlds__mode_info, check_hlds__unique_modes.
-:- import_module transform_hlds__pd_debug.
-:- import_module check_hlds__type_util, check_hlds__det_util.
-:- import_module check_hlds__det_analysis, libs__options, hlds__goal_util.
-:- import_module check_hlds__det_report, check_hlds__inst_util.
+:- import_module check_hlds__mode_util, check_hlds__inst_util.
+:- import_module check_hlds__inst_match, check_hlds__det_report.
+:- import_module check_hlds__det_util, check_hlds__det_analysis.
+:- import_module transform_hlds__pd_cost, transform_hlds__pd_debug.
+:- import_module transform_hlds__constraint, transform_hlds__unused_args.
+:- import_module libs__options.
 :- import_module assoc_list, int, require, set, term.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
@@ -1194,7 +1194,7 @@ pd_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
 		% (can_loop, can_fail) into (can_fail, can_loop). 
 	( 
 		FullyStrict = yes, 
-		\+ code_aux__goal_cannot_loop(ModuleInfo, EarlierGoal)
+		\+ goal_cannot_loop(ModuleInfo, EarlierGoal)
 	->
 		LaterCanFail = cannot_fail
 	;
@@ -1204,7 +1204,7 @@ pd_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
 		% (can_loop, can_fail), since this could worsen 
 		% the termination properties of the program.
 	( EarlierCanFail = can_fail ->
-		code_aux__goal_cannot_loop(ModuleInfo, LaterGoal)
+		goal_cannot_loop(ModuleInfo, LaterGoal)
 	;
 		true
 	).
