@@ -318,7 +318,7 @@ static void setup_mprotect(void)
 	if (heap_zone_size > 0
 	    && mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
 	{
-		perror("Mercury runtime: cannot protect head redzone");
+		perror("Mercury runtime: cannot protect heap redzone");
 		exit(1);
 	}
 
