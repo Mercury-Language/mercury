@@ -62,6 +62,7 @@
 			;	compile
 			;	cc
 			;	cflags
+			;	c_include_directory
 			;	link
 			;	gcc_non_local_gotos
 			;	gcc_global_registers
@@ -106,6 +107,7 @@ option_defaults([
 	compile			-	bool(no),
 	cc			-	string("gcc"),
 	cflags			-	string(""),
+	c_include_directory	-	string(""),
 	link			-	bool(no),
 	gcc_non_local_gotos	-	bool(no),
 	gcc_global_registers	-	bool(no),
@@ -180,6 +182,7 @@ long_option("compile-to-c",		compile_to_c).
 long_option("compile",			compile).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
+long_option("c-include-directory",	c_include_directory).
 long_option("link",			link).
 long_option("gcc-non-local-gotos",	gcc_non_local_gotos).
 long_option("gcc-global-registers",	gcc_global_registers).
@@ -276,6 +279,8 @@ options_help -->
 	io__write_string("\t\tEnable the C compiler's optimizations.\n"),
 	io__write_string("\t--cc <compiler-name>\n"),
 	io__write_string("\t\tSpecify which C compiler to use.\n"),
+	io__write_string("\t--c-include-directory <dir>\n"),
+	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler\n"),
 
