@@ -1042,15 +1042,14 @@ output_int(Val) -->
 :- pred output_float(float, io__state, io__state).
 :- mode output_float(in, di, uo) is det.
 
-output_float(_Val) -->
-	io__write_byte(0).
-	% This is just temporary; we ought to find a way to write out
+output_float(Val) -->
+	% XXX This is just temporary; we ought to find a way to write out
 	% the float as a sequence of bytes. Requiring the compiling and
 	% debugging platform to have the same FP representation is better
 	% than silently rounding/truncating float values given to the
 	% debugger.
-	% { string__float_to_string(Val, Str) },
-	% output_string(Str).
+	{ string__float_to_string(Val, Str) },
+	output_string(Str).
 
 %---------------------------------------------------------------------------%
 
