@@ -3149,6 +3149,9 @@ ML_get_num_functors(MR_TypeInfo type_info)
 #undef	ARITY_ARG
 }").
 
+functor_cc(_Term::in, _Functor::out, _Arity::out) :-
+	error("NYI: std_util__functor_cc/3").
+
 /*
 ** N.B. any modifications to arg/2 might also require similar
 ** changes to store__arg_ref in store.m.
@@ -3325,6 +3328,9 @@ ML_get_num_functors(MR_TypeInfo type_info)
 #undef	ARGUMENTS_ARG
 }").
 
+deconstruct_cc(_Term::in, _Functor::out, _Arity::out, _Arguments::out) :-
+	error("NYI: std_util__deconstruct_cc/3").
+
 :- pragma foreign_proc("C", 
 	limited_deconstruct(Term::in, MaxArity::in, Functor::out,
 		Arity::out, Arguments::out),
@@ -3379,11 +3385,16 @@ ML_get_num_functors(MR_TypeInfo type_info)
 #undef	ARGUMENTS_ARG
 }").
 
+limited_deconstruct_cc(_Term::in, _MaxArity::in, _Functor::out, _Arity::out,
+		_Arguments::out) :-
+	error("NYI: std_util__limited_deconstruct_cc/3").
+
 :- pragma foreign_proc("MC++", functor(_Term::in, _Functor::out, _Arity::out),
 	[will_not_call_mercury], "
 {
 	mercury::runtime::Errors::SORRY(""foreign code for functor"");
 }").
+
 
 /*
 ** N.B. any modifications to arg/2 might also require similar
