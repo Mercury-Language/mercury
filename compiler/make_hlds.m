@@ -1163,13 +1163,10 @@ transform_goal_2(true, _, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	goal_info_init(GoalInfo).
 
 	% Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
-	% This code is not used - it is actually done in negation.m.
-transform_goal_2(all(Vars0, Goal0), _, VarSet0, Subst,
-		not(some(Vars, not(Goal) - GoalInfo) - GoalInfo) - GoalInfo,
-		VarSet) :-
-	substitute_vars(Vars0, Subst, Vars),
-	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
-	goal_info_init(GoalInfo).
+transform_goal_2(all(Vars0, Goal0), Context, VarSet0, Subst, Goal, VarSet) :-
+	TransformedGoal = not(some(Vars0, not(Goal0) - Context) - Context),
+	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
+			Goal, VarSet).
 
 transform_goal_2(some(Vars0, Goal0), _, VarSet0, Subst,
 		some(Vars, Goal) - GoalInfo, VarSet) :-
@@ -1190,10 +1187,15 @@ transform_goal_2(if_then(Vars0, A0, B0), Context, Subst, VarSet0,
 	transform_goal_2(if_then_else(Vars0, A0, B0, true - Context),
 			Context, Subst, VarSet0, Goal, VarSet).
 
-transform_goal_2(not(A0), _, VarSet0, Subst,
-		not(A) - GoalInfo, VarSet) :-
-	transform_goal(A0, VarSet0, Subst, A, VarSet),
-	goal_info_init(GoalInfo).
+transform_goal_2(not(A0), _, VarSet0, Subst, Goal, VarSet) :-
+	% eliminate double negations
+	( A0 = not(Goal0) - _ ->
+		transform_goal(Goal0, VarSet0, Subst, Goal, VarSet)
+	;
+		transform_goal(A0, VarSet0, Subst, A, VarSet),
+		goal_info_init(GoalInfo),
+		Goal = not(A) - GoalInfo
+	).
 
 transform_goal_2((A0,B0), _, VarSet0, Subst, Goal, VarSet) :-
 	get_conj(B0, Subst, [], VarSet0, L0, VarSet1),
@@ -1209,14 +1211,12 @@ transform_goal_2((A0;B0), _, VarSet0, Subst, Goal, VarSet) :-
 
 transform_goal_2(implies(P, Q), Context, VarSet0, Subst, Goal, VarSet) :-
 		% `P => Q' is defined as `not (P, not Q)'
-		% This code is not used - it is actually done in negation.m.
 	TransformedGoal = not( (P, not(Q) - Context) - Context ),
 	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
 		Goal, VarSet).
 
 transform_goal_2(equivalent(P, Q), Context, VarSet0, Subst, Goal, VarSet) :-
 		% `P <=> Q' is defined as `(P => Q), (Q => P)'
-		% This code is not used - it is actually done in negation.m.
 	TransformedGoal = (implies(P, Q) - Context, implies(Q, P) - Context),
 	transform_goal_2(TransformedGoal, Context, VarSet0, Subst,
 		Goal, VarSet).

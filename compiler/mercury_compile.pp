@@ -32,7 +32,7 @@
 :- import_module mercury_to_mercury, mercury_to_goedel.
 :- import_module conf, getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
-:- import_module negation, dependency_graph, constraint.
+:- import_module dependency_graph, constraint.
 :- import_module common, require, library.
 
 %-----------------------------------------------------------------------------%
@@ -1329,8 +1329,7 @@ mercury_compile__pre_hlds_pass(module(Module, ShortDeps, LongDeps, Items0, _),
 
 	write_dependency_file(Module, ShortDeps, LongDeps),
 
-	negation__transform(Items0, Items1),
-	mercury_compile__expand_equiv_types(Items1, Items),
+	mercury_compile__expand_equiv_types(Items0, Items),
 	maybe_report_stats(Statistics),
 
 	mercury_compile__make_hlds(Module, Items, HLDS0, FoundError),
