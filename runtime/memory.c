@@ -78,6 +78,7 @@ extern	int	getpagesize(void);
 ** round_up(amount, align) returns `amount' rounded up to the nearest
 ** alignment boundary.  `align' must be a power of 2.
 */
+
 #define round_up(amount, align) ((((amount) - 1) | ((align) - 1)) + 1)
 
 static	void	setup_mprotect(void);
@@ -230,63 +231,68 @@ void init_memory(void)
 
 	if (memdebug)
 	{
+		fprintf(stderr, "\n");
+		fprintf(stderr, "pcache_size  = %d (0x%x)\n",
+			pcache_size, pcache_size);
+		fprintf(stderr, "page_size    = %d (0x%x)\n",
+			page_size, page_size);
+		fprintf(stderr, "unit         = %d (0x%x)\n",
+			unit, unit);
 
-		printf("\n");
-		printf("pcache_size  = %d (0x%x)\n", pcache_size, pcache_size);
-		printf("page_size    = %d (0x%x)\n", page_size, page_size);
-		printf("unit         = %d (0x%x)\n", unit, unit);
+		fprintf(stderr, "\n");
+		fprintf(stderr, "fake_reg       = %p (offset %d)\n",
+			(void *) fake_reg, (int) fake_reg & (unit-1));
+		fprintf(stderr, "\n");
 
-		printf("\n");
-		printf("fake_reg       = %p (offset %d)\n", (void *) fake_reg,
-			(int) fake_reg & (unit-1));
-		printf("\n");
+		fprintf(stderr, "heap           = %p (offset %d)\n",
+			(void *) heap, (int) heap & (unit-1));
+		fprintf(stderr, "heapmin        = %p (offset %d)\n",
+			(void *) heapmin, (int) heapmin & (unit-1));
+		fprintf(stderr, "heapend        = %p (offset %d)\n",
+			(void *) heapend, (int) heapend & (unit-1));
+		fprintf(stderr, "heap_zone      = %p (offset %d)\n",
+			(void *) heap_zone, (int) heap_zone & (unit-1));
 
-		printf("heap           = %p (offset %d)\n", (void *) heap,
-			(int) heap & (unit-1));
-		printf("heapmin        = %p (offset %d)\n", (void *) heapmin,
-			(int) heapmin & (unit-1));
-		printf("heapend        = %p (offset %d)\n", (void *) heapend,
-			(int) heapend & (unit-1));
-		printf("heap_zone      = %p (offset %d)\n", (void *) heap_zone,
-			(int) heap_zone & (unit-1));
+		fprintf(stderr, "\n");
+		fprintf(stderr, "detstack       = %p (offset %d)\n",
+			(void *) detstack, (int) detstack & (unit-1));
+		fprintf(stderr, "detstackmin    = %p (offset %d)\n",
+			(void *) detstackmin, (int) detstackmin & (unit-1));
+		fprintf(stderr, "detstackend    = %p (offset %d)\n",
+			(void *) detstackend, (int) detstackend & (unit-1));
+		fprintf(stderr, "detstack_zone  = %p (offset %d)\n",
+			(void *) detstack_zone, (int) detstack_zone & (unit-1));
 
-		printf("\n");
-		printf("detstack       = %p (offset %d)\n", (void *) detstack,
-			(int) detstack & (unit-1));
-		printf("detstackmin    = %p (offset %d)\n", (void *) detstackmin,
-			(int) detstackmin & (unit-1));
-		printf("detstackend    = %p (offset %d)\n", (void *) detstackend,
-			(int) detstackend & (unit-1));
-		printf("detstack_zone  = %p (offset %d)\n", (void *) detstack_zone,
-			(int) detstack_zone & (unit-1));
-
-		printf("\n");
-		printf("nondstack      = %p (offset %d)\n", (void *) nondstack,
-			(int) nondstack & (unit-1));
-		printf("nondstackmin   = %p (offset %d)\n", (void *) nondstackmin,
-			(int) nondstackmin & (unit-1));
-		printf("nondstackend   = %p (offset %d)\n", (void *) nondstackend,
-			(int) nondstackend & (unit-1));
-		printf("nondstack_zone = %p (offset %d)\n", (void *) nondstack_zone,
+		fprintf(stderr, "\n");
+		fprintf(stderr, "nondstack      = %p (offset %d)\n",
+			(void *) nondstack, (int) nondstack & (unit-1));
+		fprintf(stderr, "nondstackmin   = %p (offset %d)\n",
+			(void *) nondstackmin, (int) nondstackmin & (unit-1));
+		fprintf(stderr, "nondstackend   = %p (offset %d)\n",
+			(void *) nondstackend, (int) nondstackend & (unit-1));
+		fprintf(stderr, "nondstack_zone = %p (offset %d)\n",
+			(void *) nondstack_zone,
 			(int) nondstack_zone & (unit-1));
 
-		printf("\n");
-		printf("arena start    = %p (offset %d)\n", (void *) arena,
-			(int) arena & (unit-1));
-		printf("arena end      = %p (offset %d)\n", (void *) (arena+total_size),
+		fprintf(stderr, "\n");
+		fprintf(stderr, "arena start    = %p (offset %d)\n",
+			(void *) arena, (int) arena & (unit-1));
+		fprintf(stderr, "arena end      = %p (offset %d)\n",
+			(void *) (arena+total_size),
 			(int) (arena+total_size) & (unit-1));
 
-		printf("\n");
-		printf("heap size      = %d (0x%x)\n",
+		fprintf(stderr, "\n");
+		fprintf(stderr, "heap size      = %d (0x%x)\n",
 			(char *) heapend - (char *) heapmin,
 			(char *) heapend - (char *) heapmin);
-		printf("detstack size  = %d (0x%x)\n",
+		fprintf(stderr, "detstack size  = %d (0x%x)\n",
 			(char *) detstackend - (char *) detstackmin,
 			(char *) detstackend - (char *) detstackmin);
-		printf("nondstack size = %d (0x%x)\n",
+		fprintf(stderr, "nondstack size = %d (0x%x)\n",
 			(char *) nondstackend - (char *) nondstackmin,
 			(char *) nondstackend - (char *) nondstackmin);
-		printf("arena size     = %d (0x%x)\n", total_size, total_size);
+		fprintf(stderr, "arena size     = %d (0x%x)\n",
+			total_size, total_size);
 	}
 }
 
@@ -312,7 +318,7 @@ void init_memory(void)
 	** all these areas, so we need to allow reads.
 	** XXX This probably causes efficiency problems:
 	** too much memory for the GC to scan, and it probably
-	** all gets paged it.
+	** all gets paged in.
 	*/
 #define MY_PROT PROT_READ
 #else
@@ -375,7 +381,9 @@ static bool try_munprotect(void *addr)
 	if (heap_zone != NULL && heap_zone <= fault_addr
 	&& fault_addr <= heap_zone + heap_zone_size)
 	{
-		if (memdebug) printf("address is in heap red zone\n");
+		if (memdebug)
+			fprintf(stderr, "address is in heap red zone\n");
+
 		new_zone = (char *) round_up((int) fault_addr+4, unit);
 		if (new_zone <= heap_zone + heap_zone_left)
 		{
@@ -383,20 +391,19 @@ static bool try_munprotect(void *addr)
 			{
 				if (memdebug)
 				{
-					printf("can't unprotect last page\n");
+					fprintf(stderr, "can't unprotect last page\n");
 					fflush(stdout);
 				}
+
 				fatal_abort("\nMercury runtime: heap overflow\n");
 			}
 
 			if (memdebug)
-			{
-				printf("trying to unprotect from %p to %p\n",
+				fprintf(stderr, "trying to unprotect from %p to %p\n",
 					(void *) heap_zone, (void *) new_zone);
-			}
 
 			if (mprotect(heap_zone, new_zone-heap_zone,
-					PROT_READ|PROT_WRITE) != 0)
+				PROT_READ|PROT_WRITE) != 0)
 			{
 				perror("Mercury runtime: cannot unprotect heap");
 				exit(1);
@@ -406,34 +413,36 @@ static bool try_munprotect(void *addr)
 			heap_zone = new_zone;
 			if (memdebug)
 			{
-				printf("successful, heap_zone now %p\n",
+				fprintf(stderr, "successful, heap_zone now %p\n",
 					(void *) heap_zone);
-				/* printf("value at fault addr %p is %d\n",
+				/* fprintf(stderr, "value at fault addr %p is %d\n",
 					(void *) addr, * ((Word *) addr)); */
 			}
+
 			return TRUE;
 		}
 	}
-	or (detstack_zone != NULL && detstack_zone <= fault_addr
+	else if (detstack_zone != NULL && detstack_zone <= fault_addr
 	&& fault_addr <= detstack_zone + detstack_zone_size)
 	{
-		if (memdebug) printf("address is in detstack red zone\n");
+		if (memdebug)
+			fprintf(stderr, "address is in detstack red zone\n");
+
 		new_zone = (char *) round_up((int) fault_addr+4, unit);
 		if (new_zone <= detstack_zone + detstack_zone_left)
 		{
 			if (memdebug)
-			{
-				printf("trying to unprotect from %p to %p\n",
+				fprintf(stderr, "trying to unprotect from %p to %p\n",
 					(void *) detstack_zone, (void *) new_zone);
-			}
 
 			if (new_zone >= (char *) detstackend)
 			{
 				if (memdebug)
 				{
-					printf("cannot unprotect last page\n");
+					fprintf(stderr, "cannot unprotect last page\n");
 					fflush(stdout);
 				}
+
 				fatal_abort("\nMercury runtime: det stack overflow\n");
 			}
 
@@ -446,39 +455,43 @@ static bool try_munprotect(void *addr)
 
 			detstack_zone_left -= new_zone-detstack_zone;
 			detstack_zone = new_zone;
-			if (memdebug) {
-				printf("successful, detstack_zone now %p\n",
+			if (memdebug)
+			{
+				fprintf(stderr, "successful, detstack_zone now %p\n",
 					(void *) detstack_zone);
-				/* printf("value at fault addr %p is %d\n",
+				/* fprintf(stderr, "value at fault addr %p is %d\n",
 					(void *) addr, * ((Word *) addr)); */
 			}
+
 			return TRUE;
 		}
 	}
-	or (nondstack_zone != NULL && nondstack_zone <= fault_addr
+	else if (nondstack_zone != NULL && nondstack_zone <= fault_addr
 	&& fault_addr <= nondstack_zone + nondstack_zone_size)
 	{
-		if (memdebug) printf("address is in nondstack red zone\n");
+		if (memdebug)
+			fprintf(stderr, "address is in nondstack red zone\n");
+
 		new_zone = (char *) round_up((int) fault_addr+4, unit);
 		if (new_zone <= nondstack_zone + nondstack_zone_left)
 		{
 			if (memdebug)
-			{
-				printf("trying to unprotect from %p to %p\n",
+				fprintf(stderr, "trying to unprotect from %p to %p\n",
 					(void *) nondstack_zone, (void *) new_zone);
-			}
 
 			if (new_zone >= (char *) nondstackend)
 			{
-				if (memdebug) {
-					printf("cannot unprotect last page\n");
+				if (memdebug)
+				{
+					fprintf(stderr, "cannot unprotect last page\n");
 					fflush(stdout);
 				}
+
 				fatal_abort("\nMercury runtime: nondet stack overflow\n");
 			}
 
 			if (mprotect(nondstack_zone, new_zone-nondstack_zone,
-					PROT_READ|PROT_WRITE) != 0)
+				PROT_READ|PROT_WRITE) != 0)
 			{
 				perror("Mercury runtime: cannot unprotect nondstack\n");
 				exit(1);
@@ -488,11 +501,12 @@ static bool try_munprotect(void *addr)
 			nondstack_zone = new_zone;
 			if (memdebug)
 			{
-				printf("successful, nondstack_zone now %p\n",
+				fprintf(stderr, "successful, nondstack_zone now %p\n",
 					(void *) nondstack_zone);
-				/* printf("value at fault addr %p is %d\n",
+				/* fprintf(stderr, "value at fault addr %p is %d\n",
 					(void *) addr, * ((Word *) addr)); */
 			}
+
 			return TRUE;
 		}
 	}
@@ -554,7 +568,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 {
 	if (sig != SIGBUS || info->si_signo != SIGBUS)
 	{
-		fprintf(stderr, "\n*** caught strange bus error ***\n");
+		fprintf(stderr, "\n*** Mercury runtime: caught strange bus error ***\n");
 		exit(1);
 	}
 
@@ -573,7 +587,8 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 		}
 
-		fprintf(stderr, "address involved: %p\n", (void *) info->si_addr);
+		fprintf(stderr, "address involved: %p\n",
+			(void *) info->si_addr);
 	}
 
 	exit(1);
@@ -610,8 +625,7 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 {
 	if (sig != SIGSEGV || info->si_signo != SIGSEGV)
 	{
-		fprintf(stderr, "\n*** Mercury runtime: caught strange "
-				"segmentation violation ***\n");
+		fprintf(stderr, "\n*** Mercury runtime: caught strange segmentation violation ***\n");
 		exit(1);
 	}
 
@@ -624,10 +638,15 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 	if (memdebug) explain_segv(info, context);
 	if (try_munprotect(info->si_addr))
 	{
-		if(memdebug) printf("returning from signal handler\n\n");
+		if (memdebug)
+			fprintf(stderr, "returning from signal handler\n\n");
+
 		return;
 	}
-	if (!memdebug) explain_segv(info, context);
+
+	if (!memdebug)
+		explain_segv(info, context);
+
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
@@ -655,15 +674,16 @@ static void simple_sighandler(int sig)
 	{
 
 case SIGBUS: 	fprintf(stderr,
-		    "*** Mercury runtime: caught bus error ***\n");
+			"*** Mercury runtime: caught bus error ***\n");
 
 when SIGSEGV: 	fprintf(stderr,
-		    "*** Mercury runtime: caught segmentation violation ***\n");
+			"*** Mercury runtime: caught segmentation violation ***\n");
 
 otherwise:	fprintf(stderr,
-		    "*** Mercury runtime: caught unknown signal %d ***\n", sig);
+			"*** Mercury runtime: caught unknown signal %d ***\n", sig);
 
 	}
+
 	exit(1);
 }
 

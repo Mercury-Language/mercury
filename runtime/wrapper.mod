@@ -144,10 +144,12 @@ static void process_options(int argc, char **argv)
 		{
 
 		case 'h':	usage();
+				break;
 
 		case 'c':	check_space = TRUE;
+				break;
 
-		when 'l':	label_list = get_all_labels();
+		case 'l':	label_list = get_all_labels();
 				for_list (ptr, label_list)
 				{
 					Label	*label;
@@ -157,9 +159,10 @@ static void process_options(int argc, char **argv)
 						(unsigned) label->e_addr,
 						label->e_name);
 				}
+
 				exit(0);
 
-		when 't':	use_own_timer = TRUE;
+		case 't':	use_own_timer = TRUE;
 
 				calldebug      = FALSE;
 				nondstackdebug = FALSE;
@@ -168,8 +171,9 @@ static void process_options(int argc, char **argv)
 				gotodebug      = FALSE;
 				sregdebug      = FALSE;
 				finaldebug     = FALSE;
+				break;
 
-		when 'd':	if (streq(optarg, "b"))
+		case 'd':	if (streq(optarg, "b"))
 					nondstackdebug = TRUE;
 				or (streq(optarg, "c"))
 					calldebug    = TRUE;
@@ -212,30 +216,38 @@ static void process_options(int argc, char **argv)
 					usage();
 
 				use_own_timer = FALSE;
+				break;
 
-		when 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
+		case 'p':	if (sscanf(optarg, "%d", &pcache_size) != 1)
 					usage();
 
 				if (pcache_size < 512)
 					pcache_size *= 1024;
 
-		when 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
+				break;
+
+		case 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
 					usage();
 
-		when 'w': {
-				Label *which_label;
-				which_label = lookup_label_name(optarg);
-				if (which_label == NULL)
-				{
-					fprintf(stderr,
-						"predicate name %s unknown\n",
-						optarg);
-					exit(1);
-				}
-				which = which_label->e_addr;
-		}
+				break;
 
-		when 's':	if (sscanf(optarg+1, "%d", &val) != 1)
+		case 'w':
+				{
+					Label *which_label;
+
+					which_label = lookup_label_name(optarg);
+					if (which_label == NULL)
+					{
+						fprintf(stderr, "predicate name %s unknown\n", optarg);
+						exit(1);
+					}
+
+					which = which_label->e_addr;
+				}
+
+				break;
+
+		case 's':	if (sscanf(optarg+1, "%d", &val) != 1)
 					usage();
 
 				if (optarg[0] == 'h')
@@ -250,7 +262,9 @@ static void process_options(int argc, char **argv)
 				else
 					usage();
 
-		when 'z':	if (sscanf(optarg+1, "%d", &val) != 1)
+				break;
+
+		case 'z':	if (sscanf(optarg+1, "%d", &val) != 1)
 					usage();
 
 				if (optarg[0] == 'h')
@@ -267,21 +281,31 @@ static void process_options(int argc, char **argv)
 				GC_dont_gc = 1;
 #endif
 
-		when '1':	if (sscanf(optarg, "%d", &r1val) != 1)
+				break;
+
+		case '1':	if (sscanf(optarg, "%d", &r1val) != 1)
 					usage();
 
-		when '2':	if (sscanf(optarg, "%d", &r2val) != 1)
+				break;
+
+		case '2':	if (sscanf(optarg, "%d", &r2val) != 1)
 					usage();
 
-		when '3':	if (sscanf(optarg, "%d", &r3val) != 1)
+				break;
+
+		case '3':	if (sscanf(optarg, "%d", &r3val) != 1)
 					usage();
 
-		otherwise:	usage();
+				break;
+
+		default:	usage();
 
 		}
 	}
+
 	mercury_argc = argc - optind;
 	mercury_argv = argv + optind;
+
 	if (which == NULL)
 	{
 		fprintf(stderr, "no entry point supplied on command line "
