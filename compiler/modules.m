@@ -4791,6 +4791,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 							SharedLibFileName),
 	module_name_to_lib_file_name("lib", ModuleName,
 		".$(EXT_FOR_SHARED_LIB)", no, MaybeSharedLibFileName),
+	module_name_to_file_name(ModuleName, ".jar", no, JarFileName),
 
 	{ AllInts = [
 		"$(", MakeVarName, ".ints) ",
@@ -4804,7 +4805,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		| AllInts
 	] },
 	{ JavaLibRule = [
-		LibTargetName, " : ", "$(", MakeVarName, ".classes) \\\n\t\t"
+		LibTargetName, " : ", JarFileName, " \\\n\t\t"
 		| AllInts
 	] },
 	{ LibRule = [
@@ -4847,6 +4848,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)", LibFileName, " ",
 			"$(", MakeVarName, ".os) ", All_MLObjsString, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
+		"\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName,
+		" $(", MakeVarName, ".classes)\n"
 	]),
 
 	module_name_to_file_name(ModuleName, ".dep", no, DepFileName),
