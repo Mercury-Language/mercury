@@ -449,41 +449,18 @@ mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
 mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 		Decl, Info0, Info) :-
 	il_info_new_class(Info0, Info1),
-	EntityName = entity_name_to_ilds_id(Name),
-	ClassDefn = class_defn(_Kind, _Imports, Inherits, Implements,
-			Ctors, Members),
-	( Inherits = [],
-		Extends = extends_nothing,
-		Parent = il_generic_class_name
-	; Inherits = [Parent0 | Rest],
-		( Rest = [] ->
-			Parent = mlds_type_to_ilds_class_name(
-					Info1 ^ il_data_rep, Parent0),
-			Extends = extends(Parent)
-		;
-			error(this_file ++ 
-				": multiple inheritance not supported.")
-		)
-	),
 
-	Interfaces = implements(
-			list__map(interface_id_to_class_name, Implements)),
-
-	ClassName = class_name(Info1 ^ module_name, EntityName),
-	list__map_foldl(generate_method(ClassName, no), Members,
-			MethodsAndFields, Info1, Info2),
-	list__map_foldl(generate_method(ClassName, yes(Parent)), Ctors,
-			IlCtors, Info2, Info3),
-	MethodsAndFieldsAndCtors = IlCtors ++ MethodsAndFields,
+	generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends,
+			Interfaces, MethodsAndFieldsAndCtors, Info1, Info2),
 
 		% Only the mercury_code class needs to have the
 		% initialization instructions executed by the class
 		% constructor.
 	( EntityName = "mercury_code" ->
-		Imports = Info3 ^ imports,
-		InitInstrs = list__condense(tree__flatten(Info3 ^ init_instrs)),
+		Imports = Info2 ^ imports,
+		InitInstrs = list__condense(tree__flatten(Info2 ^ init_instrs)),
 		AllocInstrs = list__condense(
-				tree__flatten(Info3 ^ alloc_instrs)),
+				tree__flatten(Info2 ^ alloc_instrs)),
 
 			% Generate a field that records whether we have
 			% finished RTTI initialization.
@@ -493,16 +470,56 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 			% Generate a class constructor.
 		make_class_constructor_classdecl(AllocDoneFieldRef,
 				Imports, AllocInstrs, InitInstrs, CCtor,
-				Info3, Info),
+				Info2, Info),
 
 			% The declarations in this class.
 		MethodDecls = [AllocDoneField, CCtor | MethodsAndFieldsAndCtors]
 	;
 		MethodDecls = MethodsAndFieldsAndCtors,
-		Info = Info3
+		Info = Info2
 	),
 	Decl = class(decl_flags_to_classattrs(Flags), EntityName, Extends,
 			Interfaces, MethodDecls).
+
+:- pred generate_class_body(mlds__entity_name::in, mlds__class_defn::in,
+		ilds__class_name::out, ilds__id::out, extends::out,
+		implements::out, list(classdecl)::out,
+		il_info::in, il_info::out) is det.
+
+generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends, Interfaces,
+		ClassDecls, Info0, Info) :-
+	EntityName = entity_name_to_ilds_id(Name),
+	ClassDefn = class_defn(_Kind, _Imports, Inherits, Implements,
+			Ctors, Members),
+	Parent - Extends = generate_parent_and_extends(Info0 ^ il_data_rep,
+			Inherits),
+	Interfaces = implements(
+			list__map(interface_id_to_class_name, Implements)),
+
+	ClassName = class_name(Info0 ^ module_name, EntityName),
+	list__map_foldl(generate_method(ClassName, no), Members,
+			MethodsAndFields, Info0, Info1),
+	list__map_foldl(generate_method(ClassName, yes(Parent)), Ctors,
+			IlCtors, Info1, Info),
+	ClassDecls = IlCtors ++ MethodsAndFields.
+
+
+:- func generate_parent_and_extends(il_data_rep, list(mlds__class_id))
+	= pair(ilds__class_name, extends).
+
+generate_parent_and_extends(DataRep, Inherits) = Parent - Extends :-
+	( Inherits = [],
+		Parent = il_generic_class_name,
+		Extends = extends_nothing
+	; Inherits = [Parent0 | Rest],
+		( Rest = [] ->
+			Parent = mlds_type_to_ilds_class_name(DataRep, Parent0),
+			Extends = extends(Parent)
+		;
+			error(this_file ++ 
+				": multiple inheritance not supported.")
+		)
+	).
 
 class_name(Module, Name) = structured_name(Assembly, ClassName ++ [Name]) :-
 	ClassName = sym_name_to_list(mlds_module_name_to_sym_name(Module)),
@@ -527,19 +544,42 @@ sym_name_to_list(qualified(Module, Name))
 :- func decl_flags_to_classattrs(mlds__decl_flags) = list(ilasm__classattr).
 
 decl_flags_to_classattrs(Flags)
-	= list__condense([Access, Finality, Abstractness]) :-
+	= list__condense([Access, decl_flags_to_classattrs_2(Flags)]) :-
 	AccessFlag = access(Flags),
 	( AccessFlag = public,
 		Access = [public]
 	; AccessFlag = protected,
 		Access = []
 	; AccessFlag = private,
-		Access = []
+		Access = [private]
 	; AccessFlag = default,
 		error("decl_flags_to_classattrs: default access flag")
 	; AccessFlag = local,
 		error("decl_flags_to_classattrs: local access flag")
-	),
+	).
+
+:- func decl_flags_to_nestedclassattrs(mlds__decl_flags) =
+		list(ilasm__classattr).
+
+decl_flags_to_nestedclassattrs(Flags)
+	= list__condense([Access, decl_flags_to_classattrs_2(Flags)]) :-
+	AccessFlag = access(Flags),
+	( AccessFlag = public,
+		Access = [nestedpublic]
+	; AccessFlag = protected,
+		Access = [nestedfamily]
+	; AccessFlag = private,
+		Access = [nestedprivate]
+	; AccessFlag = default,
+		Access = [nestedassembly]
+	; AccessFlag = local,
+		error("decl_flags_to_classattrs: local access flag")
+	).
+
+:- func decl_flags_to_classattrs_2(mlds__decl_flags) = list(ilasm__classattr).
+
+decl_flags_to_classattrs_2(Flags)
+	= list__condense([Finality, Abstractness]) :-
 	FinalityFlag = finality(Flags),
 	( FinalityFlag = overridable,
 		Finality = []
@@ -861,9 +901,12 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassDecl) -->
 	{ ClassDecl = ilasm__method(methodhead(Attrs, MemberName,
 			ILSignature, []), MethodContents)}.
 
-generate_method(_, _, defn(_Name, _Context, _Flags, Entity), _ClassDecl) -->
-	{ Entity = class(_ClassDefn) },
-	{ sorry(this_file, "nested classes") }.
+generate_method(_, _, defn(Name, _Context, Flags, Entity), ClassDecl) -->
+	{ Entity = class(ClassDefn) },
+	generate_class_body(Name, ClassDefn, _ClassName, EntityName,
+			Extends, Interfaces, ClassDecls),
+	{ ClassDecl = nested_class(decl_flags_to_nestedclassattrs(Flags),
+			EntityName, Extends, Interfaces, ClassDecls) }.
 
 %-----------------------------------------------------------------------------%
 

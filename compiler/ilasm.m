@@ -184,12 +184,18 @@
 
 	% attributes that a class can have.
 	% see SDK documentation for what they all mean.
-:- type classattr
-	--->	abstract    ;  ansi       ;  auto          ;  autochar
-	;	contextful  ;  enum       ;  explicit      ;  import
-	;	interface   ;  lazyinit   ;  marshalbyref  ;  public
-	;	sealed      ;  sequential ;  unicode       ;  value
-	;	wrapper.
+:-  type classattr
+	--->	abstract		; ansi
+	;	auto			; autochar
+	;	beforefieldinit		; explicit
+	;	interface		; nestedassembly
+	;	nestedfamandassem	; nestedfamily
+	;	nestedfamorassem	; nestedprivate
+	;	nestedpublic		; private
+	;	public 			; rtspecialname
+	;	sealed			; sequential
+	;	serializable		; specialname
+	;	unicode.
 
 	% attributes that a method can have.	
 	% see SDK documentation for what they all mean.
@@ -296,7 +302,7 @@ ilasm__output(Blocks, Info0, Info) -->
 ilasm__output_decl(class(Attrs, Id, Extends, Implements, Contents),
 		Info0, Info) --> 
 	io__write_string(".class "),
-	io__write_list(Attrs, " ", io__write),
+	io__write_list(Attrs, " ", output_classattr),
 	( { Attrs \= [] } ->
 		io__write_string(" ")
 	;
@@ -1316,6 +1322,30 @@ output_methodref(local_method(call_conv(IsInstance, _), ReturnType,
 	io__write_string("("),
 	ilasm__write_list(ArgTypes, ", ", output_type, Info1, Info),
 	io__write_string(")").
+
+:- pred output_classattr(classattr::in, io__state::di, io__state::uo) is det.
+
+output_classattr(abstract) --> io__write_string("abstract").
+output_classattr(ansi) --> io__write_string("ansi").
+output_classattr(auto) --> io__write_string("auto").
+output_classattr(autochar) --> io__write_string("autochar").
+output_classattr(beforefieldinit) --> io__write_string("beforefieldinit").
+output_classattr(explicit) --> io__write_string("explicit").
+output_classattr(interface) --> io__write_string("interface").
+output_classattr(nestedassembly) --> io__write_string("nested assembly").
+output_classattr(nestedfamandassem) --> io__write_string("nested famandassem").
+output_classattr(nestedfamily) --> io__write_string("nested family").
+output_classattr(nestedfamorassem) --> io__write_string("nested famorassem").
+output_classattr(nestedprivate) --> io__write_string("nested private").
+output_classattr(nestedpublic) --> io__write_string("nested public").
+output_classattr(private) --> io__write_string("private").
+output_classattr(public) --> io__write_string("public").
+output_classattr(rtspecialname) --> io__write_string("rtspecialname").
+output_classattr(sealed) --> io__write_string("sealed").
+output_classattr(sequential) --> io__write_string("sequential").
+output_classattr(serializable) --> io__write_string("serializable").
+output_classattr(specialname) --> io__write_string("specialname").
+output_classattr(unicode) --> io__write_string("unicode").
 
 :- pred ilasm__output_assembly_decl(assembly_decl::in, 
 	io__state::di, io__state::uo) is det.
