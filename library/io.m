@@ -48,9 +48,11 @@
 
 	% Opaque handles for binary I/O streams.
 
-:- type io__binary_input_stream.
+:- type io__binary_input_stream		==	io__binary_stream.
 
-:- type io__binary_output_stream.
+:- type io__binary_output_stream	==	io__binary_stream.
+
+:- type io__binary_stream.
 
 	% Various types used for the result from the access predicates
 
@@ -85,6 +87,17 @@
 %	;	i(int)
 %	;	f(float).
 %
+
+	% io__whence denotes the base for a seek operation.
+	% 	set	- seek relative to the start of the file
+	%	cur	- seek relative to the current position in the file
+	%	end	- seek relative to the end of the file.
+
+:- type io__whence
+	--->	set
+	;	cur
+	;	end
+	.
 
 %-----------------------------------------------------------------------------%
 
@@ -571,6 +584,17 @@
 :- mode io__flush_binary_output(in, di, uo) is det.
 %	Flush the output buffer of the specified binary output stream.
 
+:- pred io__seek_binary(io__binary_stream, io__whence, int,
+		io__state, io__state).
+:- mode io__seek_binary(in, in, in, di, uo) is det.
+%	Seek to an offset relative to Whence (documented above)
+%	on a specified binary stream. Attempting to seek on a
+%	pipe or tty results in implementation dependent behaviour.
+
+:- pred io__binary_stream_offset(io__binary_stream, int, io__state, io__state).
+:- mode io__binary_stream_offset(in, out, di, uo) is det.
+%	Returns the offset (in bytes) into the specified binary stream.
+
 %-----------------------------------------------------------------------------%
 
 % Binary input stream predicates.
@@ -891,8 +915,7 @@
 :- type io__input_stream ==	io__stream.
 :- type io__output_stream ==	io__stream.
 
-:- type io__binary_input_stream ==	io__stream.
-:- type io__binary_output_stream ==	io__stream.
+:- type io__binary_stream ==	io__stream.
 
 :- type io__stream == c_pointer.
 
@@ -1480,9 +1503,9 @@ io__write_binary(Stream, Term) -->
 	io__set_binary_output_stream(OrigStream, _Stream).
 
 io__read_binary(Stream, Result) -->
-	io__set_output_stream(Stream, OrigStream),
+	io__set_binary_input_stream(Stream, OrigStream),
 	io__read_binary(Result),
-	io__set_output_stream(OrigStream, _Stream).
+	io__set_binary_input_stream(OrigStream, _Stream).
 
 io__write_binary(Term) -->
 	% a quick-and-dirty implementation... not very space-efficient
@@ -2149,6 +2172,39 @@ void sys_init_io_run_module(void) {
 	}
 	update_io(IO0, IO);
 ").
+
+/* moving about binary streams */
+
+:- pred whence_to_int(io__whence::in, int::out) is det.
+
+whence_to_int(set, 0).
+whence_to_int(cur, 1).
+whence_to_int(end, 2).
+
+io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
+	whence_to_int(Whence, Flag),
+	io__seek_binary_2(Stream, Flag, Offset, IO0, IO).
+
+:- pred io__seek_binary_2(io__stream, int, int, io__state, io__state).
+:- mode io__seek_binary_2(in, in, in, di, uo) is det.
+
+:- pragma c_code(io__seek_binary_2(Stream::in, Flag::in, Off::in,
+	IO0::di, IO::uo),
+"{
+	static const int seek_flags[] = { SEEK_SET, SEEK_CUR, SEEK_END };
+	MercuryFile *stream = (MercuryFile *) Stream;
+	fseek(stream->file, Off, seek_flags[Flag]);
+	IO = IO0;
+}").
+
+:- pragma c_code(io__binary_stream_offset(Stream::in, Offset::out,
+		IO0::di, IO::uo),
+"{
+	MercuryFile *stream = (MercuryFile *) Stream;
+	Offset = ftell(stream->file);
+	IO = IO0;
+}").
+
 
 /* output predicates - with output to the specified stream */
 
