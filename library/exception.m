@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1385,7 +1385,7 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	** since it invalidates all the framevars.)
 	*/
 	MR_maxfr = MR_prevfr_slot(MR_curfr);
-	MR_curfr = MR_maxfr;
+	MR_curfr = MR_succfr_slot(MR_curfr);
 
 	/*
 	** Now longjmp to the catch, which will invoke the handler
