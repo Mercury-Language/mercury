@@ -507,9 +507,8 @@ void reset_zone(MemoryZone *zone)
 #endif
 }
 
-#ifdef	HAVE_MPROTECT
-
-#ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
+#if defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
+	/* try_munprotect is only useful if we have SIGINFO */
 
 #define STDERR 2
 
@@ -690,18 +689,13 @@ bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 	return FALSE;
 }
 
-#endif /* HAVE_SIGINFO */
-
-#else /* not HAVE_MPROTECT */
-
-#ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
+#else
+/* not HAVE_MPROTECT || not HAVE_SIGINFO */
 
 static bool try_munprotect(void *addr, void *context)
 {
 	return FALSE;
 }
-
-#endif /* HAVE_SIGINFO */
 
 bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
@@ -713,7 +707,7 @@ bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 	return FALSE;
 }
 
-#endif /* not HAVE_MPROTECT */
+#endif /* not HAVE_MPROTECT || not HAVE_SIGINFO */
 
 #ifdef	HAVE_SIGINFO
 
