@@ -1356,58 +1356,116 @@ MR_print_answerblock(FILE *fp, const MR_Proc_Layout *proc,
 }
 
 #ifdef  MR_HIGHLEVEL_CODE
+    #ifdef MR_USE_GCC_NESTED_FUNCTIONS
+      
+        static void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_2_p_0(
+            MR_AnswerList answer_list0, MR_Box *boxed_answer_block,
+            MR_NestedCont cont);
 
-static void MR_CALL
-    mercury__table_builtin__table_memo_return_all_answers_2_p_0(
-        MR_AnswerList answer_list0, MR_Box *boxed_answer_block,
-        MR_Cont cont, void *cont_env_ptr);
+        static void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_2_p_0(
+                MR_AnswerList answer_list0, MR_Box *boxed_answer_block_ptr,
+                MR_NestedCont cont)
+        {
+            MR_AnswerList answer_list;
+            while (answer_list0 != NULL) {
+                answer_list = answer_list0->MR_aln_next_answer;
+                *boxed_answer_block_ptr =
+                     (MR_Box) answer_list0->MR_aln_answer_block;
+                cont();
+                answer_list0 = answer_list;
+            }
+        }
+        
+        void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
+            MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
+            MR_NestedCont cont)
+        {
+            MR_MemoNonRecordPtr record;
+            MR_AnswerList       list;
 
-static void MR_CALL
-mercury__table_builtin__table_memo_return_all_answers_2_p_0(
-    MR_AnswerList answer_list0, MR_Box *boxed_answer_block_ptr,
-    MR_Cont cont, void *cont_env_ptr)
-{
-    MR_AnswerList answer_list;
+            record = (MR_MemoNonRecordPtr) boxed_record;
+            list = record->MR_mn_answer_list;
+            if (list == NULL) {
+                MR_fatal_error(
+                    "table_memo_return_all_answers_multi: no answers");
+            }
+            mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
+                boxed_answer_block_ptr, cont);
+        }
+       
+        void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+            MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
+            MR_NestedCont cont)
+        {
+            MR_MemoNonRecordPtr record;
+            MR_AnswerList       list;
 
-    while (answer_list0 != NULL) {
-        answer_list = answer_list0->MR_aln_next_answer;
-        *boxed_answer_block_ptr = (MR_Box) answer_list0->MR_aln_answer_block;
-        cont(cont_env_ptr);
-        answer_list0 = answer_list;
-    }
-}
+            record = (MR_MemoNonRecordPtr) boxed_record;
+            list = record->MR_mn_answer_list;
+            mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
+                boxed_answer_block_ptr, cont);
+        }
 
-void MR_CALL
-mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
-    MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
-    MR_Cont cont, void *cont_env_ptr)
-{
-    MR_MemoNonRecordPtr record;
-    MR_AnswerList       list;
+    #else   /* ! MR_USE_GCC_NESTED_FUNCTIONS */
 
-    record = (MR_MemoNonRecordPtr) boxed_record;
-    list = record->MR_mn_answer_list;
-    if (list == NULL) {
-        MR_fatal_error("table_memo_return_all_answers_multi: no answers");
-    }
-    mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
-        boxed_answer_block_ptr, cont, cont_env_ptr);
-}
+        static void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_2_p_0(
+            MR_AnswerList answer_list0, MR_Box *boxed_answer_block,
+            MR_Cont cont, void *cont_env_ptr);
 
-void MR_CALL
-mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
-    MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
-    MR_Cont cont, void *cont_env_ptr)
-{
-    MR_MemoNonRecordPtr record;
-    MR_AnswerList       list;
+        static void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_2_p_0(
+            MR_AnswerList answer_list0, MR_Box *boxed_answer_block_ptr,
+            MR_Cont cont, void *cont_env_ptr)
+        {
+            MR_AnswerList answer_list;
 
-    record = (MR_MemoNonRecordPtr) boxed_record;
-    list = record->MR_mn_answer_list;
-    mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
-        boxed_answer_block_ptr, cont, cont_env_ptr);
-}
+            while (answer_list0 != NULL) {
+                answer_list = answer_list0->MR_aln_next_answer;
+                *boxed_answer_block_ptr =
+                     (MR_Box) answer_list0->MR_aln_answer_block;
+                cont(cont_env_ptr);
+                answer_list0 = answer_list;
+            }
+        }
 
+        void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_multi_2_p_0(
+            MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
+            MR_Cont cont, void *cont_env_ptr)
+        {
+            MR_MemoNonRecordPtr record;
+            MR_AnswerList       list;
+
+            record = (MR_MemoNonRecordPtr) boxed_record;
+            list = record->MR_mn_answer_list;
+            if (list == NULL) {
+                MR_fatal_error(
+                    "table_memo_return_all_answers_multi: no answers");
+            }
+            mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
+                boxed_answer_block_ptr, cont, cont_env_ptr);
+        }
+
+        void MR_CALL
+        mercury__table_builtin__table_memo_return_all_answers_nondet_2_p_0(
+            MR_Box boxed_record, MR_Box *boxed_answer_block_ptr,
+            MR_Cont cont, void *cont_env_ptr)
+        {
+            MR_MemoNonRecordPtr record;
+            MR_AnswerList       list;
+
+            record = (MR_MemoNonRecordPtr) boxed_record;
+            list = record->MR_mn_answer_list;
+            mercury__table_builtin__table_memo_return_all_answers_2_p_0(list,
+                boxed_answer_block_ptr, cont, cont_env_ptr);
+        }
+
+    #endif /* MR_USE_GCC_NESTED_FUNCTIONS */
 #else   /* MR_HIGHLEVEL_CODE */
 
 MR_define_extern_entry(MR_MEMO_NON_RET_ALL_NONDET_ENTRY);
