@@ -763,6 +763,10 @@
 %		You can put back as many bytes as you like.
 %		You can even put back something that you didn't actually read.
 %		The byte is taken from the bottom 8 bits of an integer.
+%		Note: `io__putback_byte' uses the C library function ungetc().
+%		On some systems only one byte of pushback is guaranteed.
+%		`io__putback_byte' will throw an io__error exception
+%		if ungetc() fails.
 
 :- pred io__putback_byte(io__binary_input_stream, int, io__state, io__state).
 :- mode io__putback_byte(in, in, di, uo) is det.
@@ -770,6 +774,10 @@
 %		You can put back as many bytes as you like.
 %		You can even put back something that you didn't actually read.
 %		The byte is returned in the bottom 8 bits of an integer.
+%		Note: `io__putback_byte' uses the C library function ungetc().
+%		On some systems only one byte of pushback is guaranteed.
+%		`io__putback_byte' will throw an io__error exception
+%		if ungetc() fails.
 
 %-----------------------------------------------------------------------------%
 
