@@ -45,7 +45,6 @@
 
 % XXX The following modules are all currently unused.
 :- include_module constraint, transform.
-:- include_module excess.
 :- include_module lco.
 
 %-----------------------------------------------------------------------------%
