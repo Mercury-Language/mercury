@@ -56,6 +56,7 @@ func1(_::in) = ("func1(in) = out"::out).
 func1(0::out) = ("func1(out) = out"::out).
 
 :- pragma promise_pure(func2/2). % XXX technically this is a lie
+:- pragma inline(func2/2).
 func2(_::in, _::in) = (R::out) :-
 	R = "func2(in, in) = out".
 func2(_::in, 0::out) = (R::out) :-
@@ -73,6 +74,7 @@ test1(_::in) :-
 test1(0::out) :-
 	impure puts("test1(out)").
 
+:- pragma inline(test2/2).
 test2(_::in, _::in) :-
 	impure puts("test2(in, in)").
 test2(_::in, 0::out) :-
@@ -85,10 +87,25 @@ test2(0::out, 0::out) :-
 :- pragma c_code(puts(S::in), [will_not_call_mercury], "puts(S)").
 
 :- pragma promise_pure(get_determinism/2).
-get_determinism(_Pred::(pred(out) is det), det::out(bound(det))).
-get_determinism(_Pred::(pred(out) is semidet), semidet::out(bound(semidet))).
+:- pragma inline(get_determinism/2).
+get_determinism(Pred::(pred(out) is det), Det::out(bound(det))) :-
+	get_determinism_2(Pred, Det).
+get_determinism(Pred::(pred(out) is semidet), Det::out(bound(semidet))) :-
+	get_determinism_2(Pred, Det).
 get_determinism(_Pred::(pred(out) is cc_multi), cc_multi::out(bound(cc_multi))).
 get_determinism(_Pred::(pred(out) is cc_nondet), cc_nondet::out(bound(cc_nondet))).
 get_determinism(_Pred::(pred(out) is multi), multi::out(bound(multi))).
 get_determinism(_Pred::(pred(out) is nondet), nondet::out(bound(nondet))).
 
+:- inst bound_to_det == bound(det).
+:- inst bound_to_semidet == bound(semidet).
+
+:- pred get_determinism_2(pred(T), determinism).
+:- mode get_determinism_2(pred(out) is det,     out(bound_to_det))     is det.
+:- mode get_determinism_2(pred(out) is semidet, out(bound_to_semidet)) is det.
+:- pragma promise_pure(get_determinism_2/2).
+:- pragma inline(get_determinism_2/2).
+
+get_determinism_2(_Pred::(pred(out) is det), det::out(bound_to_det)).
+get_determinism_2(_Pred::(pred(out) is semidet),
+		semidet::out(bound_to_semidet)).
