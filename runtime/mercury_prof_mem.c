@@ -65,7 +65,7 @@ MR_prof_malloc(size_t size)
 	** require stricter alignment than that, then you will need to
 	** change this to round the size up accordingly.
 	*/
-	size = (size + sizeof(Word) - 1) / sizeof(Word);
+	size = ((size + sizeof(Word) - 1) / sizeof(Word)) * sizeof(Word);
 
 	/* Here we waste a bit of space but hopefully not to much */
 	if (mem_left < size) {
