@@ -839,35 +839,42 @@ of these possible grades will have been installed.
 Attempting to use a grade which has not been installed
 will result in an error at link time.
 
-@table @code
-@item debug
---debug, --no-c-optimize
+The following table shows the options that are selected by each grade; it
+is followed by a descriptions of those options.
+
+@table @asis
+@item @samp{debug}
+@code{--debug --no-c-optimize}
 
 @item none
+None.
 
-@item reg
---use-gcc-global-regisers
+@item @samp{reg}
+@code{--use-gcc-global-regisers}
 
-@item jump
---use-gcc-nonlocal gotos
+@item @samp{jump}
+@code{--use-gcc-nonlocal gotos}
 
-@item fast
---use-gcc-global-registers --use-asm-labels
+@item @samp{fast}
+@code{--use-gcc-global-registers --use-asm-labels}
 
-@item asm_jump
---use-gcc-global-registers --use-asm-labels
+@item @samp{asm_jump}
+@code{--use-gcc-global-registers --use-asm-labels}
 
-@item asm_fast
---use-gcc-global-registers --use-gcc-nonlocal_gotos --use-asm-labels
+@item @samp{asm_fast}
+@code{--use-gcc-global-registers --use-gcc-nonlocal_gotos --use-asm-labels}
 
-@item *.gc
---use-conservative-gc
+@item Any of the above followed by @samp{.gc}
+As above, plus @code{--use-conservative-gc}.
 
-@item *.prof
---profiling
+@item Any of the above plus @samp{*.prof}
+As above, plus @code{--profiling}.
 
 @end table
 @sp 1
+Reminder: the following optimizations should not be set individually.
+Instead, you should use the @samp{--grade} option to change the setting of
+these options.
 
 @sp 1
 @item --gcc-global-registers (grades: reg, fast, asm_fast)
@@ -888,9 +895,8 @@ labels.
 @sp 1
 @item --gc @{none, conservative, accurate@}
 @itemx --garbage-collection @{none, conservative, accurate@}
+Specify which method of garbage collection to use.
 `.gc' grades use `--gc conservative', other grades use `--gc none'.
-Specify which method of garbage collection to use
-(default: @samp{conservative}).
 @samp{accurate} is not yet implemented.
 
 @sp 1
