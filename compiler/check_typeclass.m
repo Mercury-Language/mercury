@@ -812,7 +812,7 @@ make_introduced_pred_name(ClassId, MethodName, Arity,
 		InstanceString),
 	string__append_list(
 		[check_typeclass__introduced_pred_name_prefix,
-		ClassNameString, "__",
+		ClassNameString, "____",
 		InstanceString, "____",
 		MethodNameString, "_",
 		ArityString], 
@@ -823,7 +823,7 @@ make_introduced_pred_name(ClassId, MethodName, Arity,
 	% used to call a class method for a specific instance.
 :- func check_typeclass__introduced_pred_name_prefix = string.
 
-check_typeclass__introduced_pred_name_prefix = "Introduced_pred_for_".
+check_typeclass__introduced_pred_name_prefix = "ClassMethod_for_".
 
 %---------------------------------------------------------------------------%
 
