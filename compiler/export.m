@@ -50,8 +50,10 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	%
 	% #if SEMIDET
 	%   bool
+	% #elif FUNCTION
+	%   Word
 	% #else
-	%   int
+	%   void
 	% #endif
 	% <function name>(Word Mercury__Argument1, Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
@@ -59,6 +61,10 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	% #if NUM_REAL_REGS > 0
 	%	Word c_regs[NUM_REAL_REGS];
 	% #endif
+	% #if FUNCTION
+	%	Word retval;
+	% #endif
+	%
 	%		/* save the registers that our C caller may be using */
 	%	save_regs_to_mem(c_regs);
 	%
@@ -84,11 +90,15 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	%		restore_regs_from_mem(c_regs);
 	%		return FALSE;
 	%	}
+	% #elif FUNCTION
+	%	<copy return value register into retval>
 	% #endif
 	%	<copy output args from registers into *Mercury__Arguments>
 	%	restore_regs_from_mem(c_regs);
 	% #if SEMIDET
 	%	return TRUE;
+	% #elif FUNCTION
+	%	return retval;
 	% #endif
 	% }
 :- pred export__to_c(pred_table, list(pragma_exported_proc), module_info,
@@ -99,7 +109,8 @@ export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function),
 	get_export_info(Preds, PredId, ProcId,
-		C_RetType, MaybeFail, MaybeSucceed, ArgInfoTypes),
+		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
+		ArgInfoTypes),
 	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
 
 		% work out which arguments are input, and which are output,
@@ -115,7 +126,9 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				C_Function, "(", ArgDecls, ")\n{\n",
 				"#if NUM_REAL_REGS > 0\n",
 				"\tWord c_regs[NUM_REAL_REGS];\n",
-				"#endif\n\n",
+				"#endif\n",
+				MaybeDeclareRetval,
+				"\n",
 				"\tsave_regs_to_mem(c_regs);\n", 
 				"\trestore_registers();\n", 
 				InputArgs,
@@ -139,16 +152,18 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 
 
 	% get_export_info(Preds, PredId, ProcId,
-	%		C_RetType, MaybeFail, MaybeSuccess, ArgInfoTypes):
+	%		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSuccess,
+	%		ArgInfoTypes):
 	%	Figure out the C return type, the actions on success
 	%	and failure, and the argument locations/modes/types
 	%	for a given procedure.
 :- pred get_export_info(pred_table, pred_id, proc_id,
-			string, string, string, assoc_list(arg_info, type)).
-:- mode get_export_info(in, in, in, out, out, out, out) is det.
+			string, string, string, string,
+			assoc_list(arg_info, type)).
+:- mode get_export_info(in, in, in, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId,
-		C_RetType, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
+get_export_info(Preds, PredId, ProcId, C_RetType,
+		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
@@ -162,7 +177,6 @@ get_export_info(Preds, PredId, ProcId,
 	% figure out what the C return type should be,
 	% and build the `return' instructions (if any)
 	( CodeModel = model_det,
-		MaybeFail = "",
 		(
 			PredOrFunc = function,
 			pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
@@ -173,11 +187,18 @@ get_export_info(Preds, PredId, ProcId,
 			argloc_to_string(RetArgLoc, RetArgString0),
 			convert_type_from_mercury(RetArgString0, RetType,
 				RetArgString),
-			string__append_list(["return ", RetArgString, ";\n"],
+			string__append_list(["\t", C_RetType,
+					" return_value;\n"],
+						MaybeDeclareRetval),
+			string__append_list(["\treturn_value = ", RetArgString,
+						";\n"], MaybeFail),
+			string__append_list(["\treturn return_value;\n"],
 				MaybeSucceed),
 			ArgInfoTypes = ArgInfoTypes1
 		;
 			C_RetType = "void",
+			MaybeDeclareRetval = "",
+			MaybeFail = "",
 			MaybeSucceed = "",
 			ArgInfoTypes = ArgInfoTypes0
 		)
@@ -187,6 +208,7 @@ get_export_info(Preds, PredId, ProcId,
 		% value becomes the last argument, and the C return value
 		% is a bool that is used to indicate success or failure.
 		C_RetType = "bool",
+		MaybeDeclareRetval = "",
 		string__append_list([
 			"\tif (!r1) {\n",
 			"\t\trestore_regs_from_mem(c_regs);\n",
@@ -199,6 +221,7 @@ get_export_info(Preds, PredId, ProcId,
 		% we should probably check this earlier, e.g. in make_hlds.m,
 		% but better we catch this error late than never...
 		C_RetType = "\n#error ""cannot export nondet procedure""\n",
+		MaybeDeclareRetval = "",
 		MaybeFail = "",
 		MaybeSucceed = "",
 		ArgInfoTypes = ArgInfoTypes0
@@ -420,8 +443,9 @@ export__produce_header_file(Module, ModuleName) -->
 export__produce_header_file_2(_Preds, []) --> [].
 export__produce_header_file_2(Preds, [E|ExportedProcs]) -->
 	{ E = pragma_exported_proc(PredId, ProcId, C_Function) },
-	{ get_export_info(Preds, PredId, ProcId,
-		C_RetType, _FailureAction, _SuccessAction, HeadArgInfoTypes) },
+	{ get_export_info(Preds, PredId, ProcId, C_RetType,
+		_DeclareReturnVal, _FailureAction, _SuccessAction,
+		HeadArgInfoTypes) },
 	{ get_argument_declarations(HeadArgInfoTypes, no, ArgDecls) },
 
 		% output the function header
