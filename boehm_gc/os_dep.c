@@ -16,6 +16,7 @@
    and the work-around for SIG_FILL on gnu-win32.  -fjh. */
 
 # include "gc_priv.h"
+# include "mercury_boehm_gc_conf.h"
 
 # if defined(LINUX) && !defined(POWERPC)
 #   include <linux/version.h>
@@ -33,7 +34,12 @@
       /* least one 2.1.35 (LINUX_VERSION_CODE = 0x20103) release.     */
       /* For the moment I'll just make it unconditional.  If you get  */
       /* a compilation error at the line below, just comment it out.  */
-#     include <asm/sigcontext.h>
+      /*  							      */
+      /* 10-Feb-1998 Modified to use autoconf to handle this for      */
+      /*             Mercury -- Tyson Dowd <trd@cs.mu.oz.au>          */
+#     ifdef MERCURY_LINUX_NEED_ASM_SIGCONTEXT
+#        include <asm/sigcontext.h>
+#     endif
 #   endif
 # endif
 # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) && !defined(MACOS)

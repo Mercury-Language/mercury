@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne. 
+# Copyright (C) 1995-1998 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -39,7 +39,7 @@ if test "$SUPPRESS_LOG_FILE_RECURSION" != "yes"; then
 	exit
 fi
 #-----------------------------------------------------------------------------#
-AC_CONFIG_HEADER(runtime/mercury_conf.h)
+AC_CONFIG_HEADER(runtime/mercury_conf.h boehm_gc/mercury_boehm_gc_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 AC_CANONICAL_HOST
 FULLARCH="$host"
@@ -1512,6 +1512,49 @@ case $EXT_FOR_PIC_OBJECTS in
 		LIBRARY_RM_C=:
 		;;
 esac
+#-----------------------------------------------------------------------------#
+# The boehm_gc system doesn't use autoconf, but for cases like this,
+# it should.
+# Linux with libc6 souldn't use asm/sigcontext.h, but some versions of the
+# kernel with libc5 need it.
+case "$host" in
+	*-*-linux|*-*-linux-gnu)
+		AC_MSG_CHECKING(whether we need asm/sigcontext.h)
+		AC_CACHE_VAL(mercury_linux_need_asm_sigcontext,
+		AC_TRY_RUN([
+			#include <asm/sigcontext.h>
+			#include <signal.h> 
+			#include <linux/version.h>
+			#if (LINUX_VERSION_CODE >= 0x20100)
+				typedef void (* REAL_SIG_PF)(int, 
+						struct sigcontext);
+			#else
+				typedef void (* REAL_SIG_PF)(int, 
+						struct sigcontext_struct);
+			#endif
+
+			int main() {
+				REAL_SIG_PF handler;
+				struct sigcontext foo;
+				if (0) {
+					handler(0, foo);
+				}
+				exit(0);
+			}], [mercury_linux_need_asm_sigcontext=yes],
+			[mercury_linux_need_asm_sigcontext=no], 
+			[mercury_linux_need_asm_sigcontext=no])
+		)
+		AC_MSG_RESULT($mercury_linux_need_asm_sigcontext)
+		if test $mercury_linux_need_asm_sigcontext = "yes"; then
+			AC_DEFINE(MERCURY_LINUX_NEED_ASM_SIGCONTEXT)
+		fi
+		;;
+	*)
+		mercury_linux_use_asm_signcontext=no
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
 
 AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(EXE_RPATH_OPT)
@@ -1551,9 +1594,11 @@ scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
 scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
-if test "$CONFIG_HEADERS" = "runtime/mercury_conf.h"; then
-	touch runtime/mercury_conf.h.date
-fi
+for header in $CONFIG_HEADERS ; do
+	if test "$header" = "runtime/mercury_conf.h"; then
+		touch runtime/mercury_conf.h.date
+	fi
+done
 # conftest.junk is used to avoid a warning if there
 # are no files in the list passed to chmod
 touch conftest.junk

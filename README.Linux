@@ -7,8 +7,11 @@ If you still have an old a.out system, the auto-configuration might
 wrongly assume your Linux system uses ELF; if that happens, you will you
 have to manually edit the EXT_FOR_SHARED_LIB variable in Mmake.common.
 
-It is possible that on some recent versions of Linux, you may get an
-error when compiling boehm_gc/os_dep.c.  If so, apply the patch below.
+There are some incompatibilities in different kernel versions and libc
+versions to do with the handling of signals. We had added some
+autoconfiguration code to try to detect which header files need to be
+included, but if you have trouble compiling boehm_gc/os_dep.c, try
+applying the patch below (and send us a bug report if you can).
 Just type `patch boehm_gc/os_dep.c < README.Linux'.
 
 On Linux with ELF, shared libraries are supported.  However, ELF shared
@@ -47,18 +50,13 @@ and then PIC and non-PIC code could be mixed without any problems.)
 
 --------------------
 
---- os_dep.c	Mon Nov 24 17:01:23 1997
-+++ new/os_dep.c	Mon Nov 24 17:04:10 1997
-@@ -31,11 +31,11 @@
-       /* This used to be conditional on (LINUX_VERSION_CODE < 0x20100), */
-       /* but that is not the right test, since it is needed for at    */
-       /* least one 2.1.35 (LINUX_VERSION_CODE = 0x20103) release.     */
-       /* For the moment I'll just make it unconditional.  If you get  */
-       /* a compilation error at the line below, just comment it out.  */
--#     include <asm/sigcontext.h>
+--- os_dep.c	Tue Feb 10 15:37:42 1998
++++ new/os_dep.c	Tue Feb 10 16:04:24 1998
+@@ -38,6 +38,7 @@
+       /* 10-Feb-1998 Modified to use autoconf to handle this for      */
+       /*             Mercury -- Tyson Dowd <trd@cs.mu.oz.au>          */
+ #     ifdef MERCURY_LINUX_NEED_ASM_SIGCONTEXT
 +/*** #     include <asm/sigcontext.h> ***/
+ #        include <asm/sigcontext.h>
+ #     endif
  #   endif
- # endif
- # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) && !defined(MACOS)
- #   include <sys/types.h>
- #   if !defined(MSWIN32) && !defined(SUNOS4)
