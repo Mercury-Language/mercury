@@ -4218,6 +4218,15 @@ target code (e.g. gcc).
 @findex --warn-up-to-date
 Don't warn if targets specified on the command line
 with @samp{--make} are already up to date.
+
+@sp 1
+@item --no-warn-stubs
+@findex --no-warn-stubs
+@findex --warn-stubs
+Disable warnings about procedures for which there are no
+clauses.  Note that this option only has any effect if
+the @samp{--allow-stubs} option (@pxref{Language semantics options})
+is enabled.
 @end table
 
 @node Verbosity options
@@ -4721,6 +4730,20 @@ Execute disjunctions strictly left-to-right.
 @item --fully-strict
 @findex --fully-strict
 Don't optimize away loops or calls to @code{error/1}.
+
+@sp 1
+@item --allow-stubs
+@findex --allow-stubs
+@cindex Stubs
+@cindex Procedures with no clauses
+@cindex No clauses, procedures with
+@cindex Clauses, procedures without
+
+Allow procedures to have no clauses.
+Any calls to such procedures will raise an exception at run-time.
+This option is sometimes useful during program development.
+(See also the documentation for the @samp{--warn-stubs} option
+in @ref{Warning options}.)
 
 @sp 1
 @item --infer-all

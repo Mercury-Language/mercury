@@ -883,6 +883,11 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 			% decls in c_code -- this is just because we
 			% assume they are pure, but you can declare them
 			% to be impure.
+			%
+			% We don't warn about exaggerated impurity declarations
+			% for "stub" procedures, i.e. procedures which
+			% originally had no clauses.
+			%
 		pred_info_get_markers(PredInfo, Markers),
 		pred_info_get_goal_type(PredInfo, GoalType),
 		( 
@@ -893,6 +898,8 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
 			check_marker(Markers, class_method) 
 		;
 			check_marker(Markers, class_instance_method) 
+		;
+			check_marker(Markers, stub) 
 		)
 	->
 		PurityCheckResult = no_worries
@@ -935,8 +942,6 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity) -->
 			% class methods or instance methods --- it just
 			% means that the predicate provided as an
 			% implementation was more pure than necessary.
-			% Likewise, we don't warn about exaggerated
-			% impurity decls on closures.
 		{ pred_info_get_markers(PredInfo, Markers) },
 		{ 
 			check_marker(Markers, class_method) 

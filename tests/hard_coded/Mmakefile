@@ -209,10 +209,11 @@ endif
 # The following tests are passed only in some grades.
 
 # Deep profiling cannot yet handle exceptions being caught, which the
-# user_defined_equality test case does.
+# allow_stubs and user_defined_equality test cases do.
 
 ifeq "$(findstring profdeep,$(GRADE))" ""
 	EXCEPTION_PROGS = \
+		allow_stubs \
 		user_defined_equality
 else
 	EXCEPTION_PROGS =

@@ -10,10 +10,12 @@ Changes to the Mercury language:
   declarations and in the head of a clause for a user-defined field access
   function.
 * We now support impure higher-order code.
-
 * We now allow user-defined comparison routines.
 
 Changes to the Mercury compiler:
+* Better support for incremental program development:
+  there's two new compiler options, `--allow-stubs' and `--no-warn-stubs',
+  to support execution of incomplete programs.
 * It's now easier to use shared libraries on Linux/x86 systems
   with `mmc --make'.
 

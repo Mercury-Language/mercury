@@ -92,6 +92,7 @@
 		;	warn_non_tail_recursion
 		;	warn_target_code
 		;	warn_up_to_date
+		;	warn_stubs
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -171,6 +172,7 @@
 		;	reorder_disj
 		;	fully_strict
 		;	strict_sequential
+		;	allow_stubs
 		;	infer_types
 		;	infer_modes
 		;	infer_det
@@ -716,7 +718,8 @@ option_defaults_2(warning_option, [
 	warn_undefined_options_variables - bool(yes),
 	warn_non_tail_recursion -	bool(no),
 	warn_target_code	-	bool(yes),
-	warn_up_to_date -		bool(yes)
+	warn_up_to_date -		bool(yes),
+	warn_stubs		-	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -801,6 +804,7 @@ option_defaults_2(language_semantics_option, [
 	reorder_conj		-	bool(yes),
 	reorder_disj		-	bool(yes),
 	fully_strict		-	bool(yes),
+	allow_stubs		-	bool(no),
 	infer_types		-	bool(no),
 	infer_modes		-	bool(no),
 	infer_det		-	bool(yes),
@@ -1323,6 +1327,7 @@ long_option("warn-undefined-options-variables",
 long_option("warn-non-tail-recursion",	warn_non_tail_recursion).
 long_option("warn-target-code",		warn_target_code).
 long_option("warn-up-to-date",		warn_up_to_date).
+long_option("warn-stubs",		warn_stubs).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -1427,6 +1432,7 @@ long_option("reorder-conj",		reorder_conj).
 long_option("reorder-disj",		reorder_disj).
 long_option("fully-strict",		fully_strict).
 long_option("strict-sequential",	strict_sequential).
+long_option("allow-stubs",		allow_stubs).
 long_option("infer-all",		infer_all).
 long_option("infer-types",		infer_types).
 long_option("infer-modes",		infer_modes).
@@ -2002,7 +2008,8 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 			warn_smart_recompilation -	bool(Enable),
 			warn_undefined_options_variables - bool(Enable),
 			warn_target_code	-	bool(Enable),
-			warn_up_to_date -		bool(Enable)
+			warn_up_to_date -		bool(Enable),
+			warn_stubs	-		bool(Enable)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
 	override_options([
@@ -2475,6 +2482,11 @@ options_help_warning -->
 		"--no-warn-up-to-date",
 		"\tDon't warn if targets specified on the command line",
 		"\twith `--make' are already up to date.",
+		"--no-warn-stubs",
+		"\tDisable warnings about procedures for which there are no",
+		"\tclauses.  Note that this option only has any effect if",
+		"\tthe `--allow-stubs' option (described in the ""Language",
+		"\tSemantics Options"" section below) is enabled.",
 		"--no-warn-target-code",
 		"\tDisable warnings from the compiler used to process the",
 		"\ttarget code (e.g. gcc)."
@@ -2763,6 +2775,12 @@ options_help_semantics -->
 		"\tExecute disjunctions strictly left-to-right.",
 		"--fully-strict",
 		"\tDon't optimize away loops or calls to error/1.",
+		"--allow-stubs",
+		"\tAllow procedures to have no clauses.  Any calls to",
+		"\tsuch procedures will raise an exception at run-time.",
+		"\tThis option is sometimes useful during program development.",
+		"\t(See also the documentation for the `--warn-stubs' option",
+		"\tin the ""Warning Options"" section.)",
 		"--infer-all",
 		"\tAbbreviation for `--infer-types --infer-modes --infer-det'.",
 		"--infer-types",

@@ -24,7 +24,8 @@ ERRORCHECK_PROGS= \
 	state_vars_test \
 	unused_args_analysis \
 	unused_args_test \
-	unused_import
+	unused_import \
+	warn_stubs
 
 PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 

@@ -311,91 +311,114 @@ typecheck_pred_types_2(Iteration, [PredId | PredIds], ModuleInfo0, ModuleInfo,
 		module_info, module_info, bool, bool, io__state, io__state).
 :- mode typecheck_pred_type(in, in, in, out, in, out, out, out, di, uo) is det.
 
-typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
-		ModuleInfo0, ModuleInfo, Error, Changed, IOState0, IOState) :-
+typecheck_pred_type(Iteration, PredId, !PredInfo,
+		ModuleInfo0, ModuleInfo, Error, Changed, !IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.  Same for builtins.
 	    % But, compiler-generated unify predicates are not guaranteed
 	    % to be type-correct if they call a user-defined equality pred
 	    % or if it is a special pred for an existentially typed data type.
-	    ( code_util__compiler_generated(PredInfo0),
-	      \+ special_pred_needs_typecheck(PredInfo0, ModuleInfo0)
-	    ; code_util__predinfo_is_builtin(PredInfo0)
+	    ( code_util__compiler_generated(!.PredInfo),
+	      \+ special_pred_needs_typecheck(!.PredInfo, ModuleInfo0)
+	    ; code_util__predinfo_is_builtin(!.PredInfo)
 	    )
 	->
-	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
 	    clauses_info_clauses(ClausesInfo0, Clauses0),
 	    ( Clauses0 = [] ->
-		pred_info_mark_as_external(PredInfo0, PredInfo)
+		pred_info_mark_as_external(!PredInfo)
 	    ;
-	        PredInfo = PredInfo0
+	        true
 	    ),
-	    Error = no,
-	    Changed = no,
 	    ModuleInfo = ModuleInfo0,
-	    IOState = IOState0
+	    Error = no,
+	    Changed = no
 	;
-	    globals__io_get_globals(Globals, IOState0, IOState1),
+	    globals__io_get_globals(Globals, !IOState),
 	    ( Iteration = 1 ->
-		maybe_add_field_access_function_clause(ModuleInfo0,
-			PredInfo0, PredInfo0a),
-		maybe_improve_headvar_names(Globals, PredInfo0a, PredInfo1),
+		maybe_add_field_access_function_clause(ModuleInfo0, !PredInfo),
+		maybe_improve_headvar_names(Globals, !PredInfo),
 
 		% The goal_type of the pred_info may have been changed
 		% by maybe_add_field_access_function_clause.
-		module_info_set_pred_info(ModuleInfo0, PredId, PredInfo1,
+		module_info_set_pred_info(ModuleInfo0, PredId, !.PredInfo,
 			ModuleInfo)
 	    ;
-		PredInfo1 = PredInfo0,
-		ModuleInfo = ModuleInfo0
+	    	ModuleInfo = ModuleInfo0
 	    ),
-	    pred_info_arg_types(PredInfo1, _ArgTypeVarSet, ExistQVars0,
+	    pred_info_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
 		    ArgTypes0),
-	    pred_info_clauses_info(PredInfo1, ClausesInfo0),
+	    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
 	    clauses_info_clauses(ClausesInfo0, Clauses0),
 	    clauses_info_headvars(ClausesInfo0, HeadVars),
-	    clauses_info_varset(ClausesInfo0, VarSet),
+	    clauses_info_varset(ClausesInfo0, VarSet0),
 	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes0),
+	    pred_info_get_markers(!.PredInfo, Markers0),
+	    % Handle the --allow-stubs and --warn-stubs options.
+	    % If --allow-stubs is set, and there are no clauses,
+	    % issue a warning if --warn-stubs is set, and then
+	    % generate a "stub" clause that just throws an exception.
 	    ( 
-		Clauses0 = [] 
+	    	Clauses0 = [],
+		globals__lookup_bool_option(Globals, allow_stubs, yes),
+		\+ check_marker(Markers0, class_method)
+	    ->
+		( globals__lookup_bool_option(Globals, warn_stubs, yes) ->
+			report_no_clauses("Warning", PredId, !.PredInfo,
+				ModuleInfo, !IOState)
+		;
+			true
+		),
+		error_util__describe_one_pred_name(ModuleInfo, PredId,
+			PredName),
+		generate_stub_clause(PredName, !PredInfo, ModuleInfo,
+			StubClause, VarSet0, VarSet),
+		Clauses1 = [StubClause],
+	        clauses_info_set_clauses(ClausesInfo0, Clauses1,
+			ClausesInfo1),
+	        clauses_info_set_varset(ClausesInfo1, VarSet,
+			ClausesInfo2)
+	    ;
+	    	VarSet = VarSet0,
+	        Clauses1 = Clauses0,
+		ClausesInfo2 = ClausesInfo0
+	    ),
+	    (
+	        Clauses1 = []
 	    ->
 			% There are no clauses for class methods.
 			% The clauses are generated later on,
 			% in polymorphism__expand_class_method_bodies
-	        pred_info_get_markers(PredInfo1, Markers),
-		( check_marker(Markers, class_method) ->
-			IOState = IOState1,
+		( check_marker(Markers0, class_method) ->
 				% For the moment, we just insert the types
 				% of the head vars into the clauses_info
 			map__from_corresponding_lists(HeadVars, ArgTypes0,
 				VarTypes),
-			clauses_info_set_vartypes(ClausesInfo0, VarTypes,
+			clauses_info_set_vartypes(ClausesInfo2, VarTypes,
 				ClausesInfo),
-			pred_info_set_clauses_info(PredInfo1, ClausesInfo,
-				PredInfo2),
+			pred_info_set_clauses_info(!.PredInfo, ClausesInfo,
+				!:PredInfo),
 				% We also need to set the head_type_params
 				% field to indicate that all the existentially
 				% quantified tvars in the head of this
 				% pred are indeed bound by this predicate.
 			term__vars_list(ArgTypes0,
 				HeadVarsIncludingExistentials),
-			pred_info_set_head_type_params(PredInfo2,
-				HeadVarsIncludingExistentials, PredInfo),
+			pred_info_set_head_type_params(!.PredInfo,
+				HeadVarsIncludingExistentials, !:PredInfo),
 			Error = no,
 			Changed = no
 		;
-			report_error_no_clauses(PredId, PredInfo1, ModuleInfo,
-			    IOState1, IOState),
-			PredInfo = PredInfo1,
+			report_no_clauses("Error", PredId, !.PredInfo,
+				ModuleInfo, !IOState),
 			Error = yes,
 			Changed = no
 		)
 	    ;
-	        pred_info_typevarset(PredInfo1, TypeVarSet0),
-	        pred_info_import_status(PredInfo1, Status),
-	        pred_info_get_markers(PredInfo1, Markers),
-		( check_marker(Markers, infer_type) ->
+	        pred_info_typevarset(!.PredInfo, TypeVarSet0),
+	        pred_info_import_status(!.PredInfo, Status),
+		( check_marker(Markers0, infer_type) ->
 			% For a predicate whose type is inferred,
 			% the predicate is allowed to bind the type
 			% variables in the head of the predicate's
@@ -404,17 +427,17 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 			% `pred foo(T1, T2, ..., TN)' by make_hlds.m.
 			Inferring = yes,
 			write_pred_progress_message("% Inferring type of ",
-				PredId, ModuleInfo, IOState1, IOState2),
+				PredId, ModuleInfo, !IOState),
 			HeadTypeParams1 = [],
 			PredConstraints = constraints([], [])
 		;
 			Inferring = no,
 			write_pred_progress_message("% Type-checking ",
-				PredId, ModuleInfo, IOState1, IOState2),
+				PredId, ModuleInfo, !IOState),
 			term__vars_list(ArgTypes0, HeadTypeParams0),
 			list__delete_elems(HeadTypeParams0, ExistQVars0,
 				HeadTypeParams1),
-			pred_info_get_class_context(PredInfo1,
+			pred_info_get_class_context(!.PredInfo,
 				PredConstraints)
 		),
 
@@ -427,18 +450,18 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 		%
 		dual_constraints(PredConstraints, Constraints),
 
-		( pred_info_is_field_access_function(ModuleInfo, PredInfo1) ->
+		( pred_info_is_field_access_function(ModuleInfo, !.PredInfo) ->
 			IsFieldAccessFunction = yes
 		;
 			IsFieldAccessFunction = no
 		),
-		typecheck_info_init(IOState2, ModuleInfo, PredId,
+		typecheck_info_init(!.IOState, ModuleInfo, PredId,
 				IsFieldAccessFunction, TypeVarSet0, VarSet,
 				ExplicitVarTypes0, HeadTypeParams1,
 				Constraints, Status, TypeCheckInfo1),
 		typecheck_info_get_type_assign_set(TypeCheckInfo1,
 				OrigTypeAssignSet),
-		typecheck_clause_list(Clauses0, HeadVars, ArgTypes0, Clauses,
+		typecheck_clause_list(Clauses1, HeadVars, ArgTypes0, Clauses,
 				TypeCheckInfo1, TypeCheckInfo2),
 		% we need to perform a final pass of context reduction
 		% at the end, before checking the typeclass constraints
@@ -452,8 +475,8 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 				InferredTypeConstraints0, ConstraintProofs,
 				TVarRenaming, ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
-		clauses_info_set_vartypes(ClausesInfo0, InferredVarTypes,
-				ClausesInfo1),
+		clauses_info_set_vartypes(ClausesInfo2, InferredVarTypes,
+				ClausesInfo3),
 
 		%
 		% Apply substitutions to the explicit vartypes.
@@ -467,13 +490,13 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 		apply_variable_renaming_to_type_map(TVarRenaming,
 			ExplicitVarTypes1, ExplicitVarTypes),
 
-		clauses_info_set_explicit_vartypes(ClausesInfo1,
-			ExplicitVarTypes, ClausesInfo2),
-		clauses_info_set_clauses(ClausesInfo2, Clauses, ClausesInfo),
-		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
-		pred_info_set_typevarset(PredInfo2, TypeVarSet, PredInfo3),
-		pred_info_set_constraint_proofs(PredInfo3, ConstraintProofs,
-			PredInfo4),
+		clauses_info_set_explicit_vartypes(ClausesInfo3,
+			ExplicitVarTypes, ClausesInfo4),
+		clauses_info_set_clauses(ClausesInfo4, Clauses, ClausesInfo),
+		pred_info_set_clauses_info(!.PredInfo, ClausesInfo, !:PredInfo),
+		pred_info_set_typevarset(!.PredInfo, TypeVarSet, !:PredInfo),
+		pred_info_set_constraint_proofs(!.PredInfo, ConstraintProofs,
+			!:PredInfo),
 
 		%
 		% Split the inferred type class constraints into those 
@@ -495,8 +518,8 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 		% bound in to types that make the constraints satisfiable,
 		% causing the error to go away.
 		%
-		pred_info_set_unproven_body_constraints(PredInfo4,
-				UnprovenBodyConstraints, PredInfo5),
+		pred_info_set_unproven_body_constraints(!.PredInfo,
+				UnprovenBodyConstraints, !:PredInfo),
 
 		( Inferring = yes ->
 			%
@@ -509,14 +532,14 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 			%
 			% Now save the information we inferred in the pred_info
 			%
-			pred_info_set_head_type_params(PredInfo5,
-				HeadTypeParams, PredInfo6),
-			pred_info_set_arg_types(PredInfo6, TypeVarSet,
-				ExistQVars, ArgTypes, PredInfo7),
-			pred_info_get_class_context(PredInfo1,
+			pred_info_set_head_type_params(!.PredInfo,
+				HeadTypeParams, !:PredInfo),
+			pred_info_set_arg_types(!.PredInfo, TypeVarSet,
+				ExistQVars, ArgTypes, !:PredInfo),
+			pred_info_get_class_context(!.PredInfo,
 				OldTypeConstraints),
-			pred_info_set_class_context(PredInfo7,
-				InferredTypeConstraints, PredInfo),
+			pred_info_set_class_context(!.PredInfo,
+				InferredTypeConstraints, !:PredInfo),
 			%
 			% Check if anything changed
 			%
@@ -535,10 +558,10 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 				Changed = yes
 			)
 		; % Inferring = no
-			pred_info_set_head_type_params(PredInfo5,
-				HeadTypeParams2, PredInfo6),
+			pred_info_set_head_type_params(!.PredInfo,
+				HeadTypeParams2, !:PredInfo),
 			pred_info_get_maybe_instance_method_constraints(
-				PredInfo6, MaybeInstanceMethodConstraints0),
+				!.PredInfo, MaybeInstanceMethodConstraints0),
 
 			%
 			% leave the original argtypes etc., but 
@@ -586,20 +609,70 @@ typecheck_pred_type(Iteration, PredId, PredInfo0, PredInfo,
 				MaybeInstanceMethodConstraints),
 
 			% save the results in the pred_info
-			pred_info_set_arg_types(PredInfo6, TypeVarSet,
-				ExistQVars, RenamedOldArgTypes, PredInfo7),
-			pred_info_set_class_context(PredInfo7,
-				RenamedOldConstraints, PredInfo8),
+			pred_info_set_arg_types(!.PredInfo, TypeVarSet,
+				ExistQVars, RenamedOldArgTypes, !:PredInfo),
+			pred_info_set_class_context(!.PredInfo,
+				RenamedOldConstraints, !:PredInfo),
 			pred_info_set_maybe_instance_method_constraints(
-				PredInfo8, MaybeInstanceMethodConstraints,
-				PredInfo),
+				!.PredInfo, MaybeInstanceMethodConstraints,
+				!:PredInfo),
 
 			Changed = no
 		),
 		typecheck_info_get_found_error(TypeCheckInfo4, Error),
-		typecheck_info_get_io_state(TypeCheckInfo4, IOState)
+		typecheck_info_get_io_state(TypeCheckInfo4, !:IOState)
 	    )
 	).
+
+	
+	% Mark the predicate as a stub, and generate a clause of the form
+	%	<p>(...) :-
+	%		PredName = "<Predname>",
+	%		private_builtin.no_clauses(PredName).
+	% or
+	%	<p>(...) :-
+	%		PredName = "<Predname>",
+	%		private_builtin.sorry(PredName).
+	% depending on whether the predicate is part of
+	% the Mercury standard library or not.
+:- pred generate_stub_clause(string, pred_info, pred_info, module_info, clause,
+		prog_varset, prog_varset).
+:- mode generate_stub_clause(in, in, out, in, out, in, out) is det.
+generate_stub_clause(PredName, PredInfo0, PredInfo, ModuleInfo, StubClause,
+		VarSet0, VarSet) :-
+	%
+	% Mark the predicate as a stub
+	% (i.e. record that it originally had no clauses)
+	%
+	pred_info_get_markers(PredInfo0, Markers0),
+	add_marker(Markers0, stub, Markers),
+	pred_info_set_markers(PredInfo0, Markers, PredInfo),
+
+	%
+	% Generate `PredName = "<PredName>"'
+	%
+	varset__new_named_var(VarSet0, "PredName", PredNameVar, VarSet),
+	make_string_const_construction(PredNameVar, PredName, UnifyGoal),
+	%
+	% Generate `private_builtin.no_clauses(PredName)'
+	% or `private_builtin.sorry(PredName)'
+	%
+	mercury_private_builtin_module(PrivateBuiltin),
+	pred_info_module(PredInfo, ModuleName),
+	( mercury_std_library_module_name(ModuleName) ->
+		CalleeName = "sorry"
+	;
+		CalleeName = "no_clauses"
+	),
+	pred_info_context(PredInfo, Context),
+	generate_simple_call(PrivateBuiltin, CalleeName, [PredNameVar],
+		only_mode, det, no, [], ModuleInfo, Context, CallGoal),
+	%
+	% Combine the unification and call into a conjunction
+	%
+	goal_info_init(Context, GoalInfo),
+	Body = conj([UnifyGoal, CallGoal]) - GoalInfo,
+	StubClause = clause([], Body, mercury, Context).
 
 :- pred rename_instance_method_constraints(map(tvar, tvar),
 		maybe(instance_method_constraints),
@@ -4968,15 +5041,16 @@ write_inference_message(PredInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_no_clauses(pred_id, pred_info,
+:- pred report_no_clauses(string, pred_id, pred_info,
 					module_info, io__state, io__state).
-:- mode report_error_no_clauses(in, in, in, di, uo) is det.
+:- mode report_no_clauses(in, in, in, in, di, uo) is det.
 
-report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
+report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo) -->
 	{ pred_info_context(PredInfo, Context) },
 	{ error_util__describe_one_pred_name(ModuleInfo, PredId, PredName0) },
 	{ string__append(PredName0, ".", PredName) },
-	{ ErrorMsg = [ words("Error: no clauses for "), fixed(PredName) ] },
+	{ ErrorMsg = [ words(MessageKind ++ ": no clauses for "),
+		fixed(PredName) ] },
 	error_util__write_error_pieces(Context, 0, ErrorMsg).
 
 %-----------------------------------------------------------------------------%

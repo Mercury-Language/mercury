@@ -222,7 +222,7 @@
 							% this clause applies
 							% (empty list means
 							% it applies to all
-							% clauses)
+							% modes)
 					hlds_goal,	% Body
 					implementation_language,
 							% implementation
@@ -369,7 +369,13 @@
 :- type pred_markers.
 
 :- type marker
-	--->	infer_type	% Requests type inference for the predicate
+	--->	stub		% The predicate has no clauses.
+				% typecheck.m will generate a body for
+				% the predicate which just throws an exception.
+				% This marker is used to tell purity analysis
+				% and determinism analysis not to issue warnings
+				% for these predicates.
+	;	infer_type	% Requests type inference for the predicate
 				% These markers are inserted by make_hlds
 				% for undeclared predicates.
 	;	infer_modes	% Requests mode inference for the predicate

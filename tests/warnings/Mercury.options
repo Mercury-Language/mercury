@@ -26,3 +26,4 @@ MCFLAGS-inference_test		= --infer-all
 	# lower optimization levels.
 MCFLAGS-infinite_recursion	= --excess-assign --common-struct
 
+MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args

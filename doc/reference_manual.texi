@@ -1822,6 +1822,17 @@ There must only be one predicate with a given name and arity in each module,
 and only one function with a given name and arity in each module.
 It is an error to declare the same predicate or function twice.
 
+There must be at least one clause defined for each declared predicate or
+function, except for those defined using the foreign language interface
+(@pxref{Foreign language interface} and @ref{C interface}).
+However, Mercury implementations are permitted to provide a method
+of processing Mercury programs in which such errors are not reported
+until and unless the predicate or function is actually called.
+(The University of Melbourne Mercury implementation provides this
+with its @samp{--allow-stubs} option.  This can be useful during
+program development, since it allows you to execute parts of
+a program while the program's implementation is still incomplete.)
+
 Note that a predicate defined using DCG notation (@pxref{DCG-rules})
 will appear to be defined with two fewer arguments than it is declared
 with.  It will also appear to be called with two fewer arguments when

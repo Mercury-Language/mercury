@@ -252,8 +252,19 @@ setup_local_var_usage([], _, !VarUsage, !PredProcs,
 setup_local_var_usage([PredId | PredIds], UnusedArgInfo,
 		!VarUsage, !PredProcList, !OptProcs, !ModuleInfo, !IO) :-
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+	(
 		% The builtins use all their arguments.
-	( code_util__predinfo_is_builtin(PredInfo) ->
+		% We also want to treat stub procedures
+		% (those which originally had no clauses)
+		% as if they use all of their arguments,
+		% to avoid spurious warnings in their callers.
+		(
+			code_util__predinfo_is_builtin(PredInfo)
+		; 
+			pred_info_get_markers(PredInfo, Markers),
+			check_marker(Markers, stub)
+		)
+	->
 		setup_local_var_usage(PredIds, UnusedArgInfo, !VarUsage,
 			!PredProcList, !OptProcs, !ModuleInfo, !IO)
 	;
@@ -1541,6 +1552,12 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 				% that have unused arguments.
 			\+ code_util__predinfo_is_builtin(PredInfo),
 			\+ code_util__compiler_generated(PredInfo),
+				% Don't warn about stubs for procedures
+				% with no clauses -- in that case,
+				% we *expect* that none of the arguments
+				% will be used,
+			pred_info_get_markers(PredInfo, Markers),
+			\+ check_marker(Markers, stub),
 				% Don't warn about lambda expressions
 				% not using arguments. (The warning
 				% message for these doesn't contain

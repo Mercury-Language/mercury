@@ -1169,6 +1169,9 @@ do_compare__ref_1_0(
 :- pred unsafe_type_cast(T1, T2).
 :- mode unsafe_type_cast(in, out) is det.
 
+	% unused/0 should never be called.
+	% The compiler sometimes generates references to this procedure,
+	% but they should never get executed.
 :- pred unused is det.
 
 	% N.B. interface continued below.
@@ -1222,9 +1225,17 @@ nyi_foreign_type_compare(Result, _, _) :-
 :- 	  mode nonvar(in) is det.
 :- 	  mode nonvar(unused) is failure.
 
+% no_clauses/1 is used to report a run-time error when there is a call
+% to a procedure for which there are no clauses, and the procedure was
+% compiled with `--allow-stubs' and is not part of the Mercury standard
+% library.  (If the procedure is part of the Mercury standard library,
+% the compiler will generate a call to sorry/1 instead of no_clauses/1.)
+
+:- pred no_clauses(string::in) is erroneous.
+
 % sorry/1 is used to apologize about the fact that we have not implemented
-% some predicate or function in the library for a given back end. The argument
-% should give the name of the predicate or function.
+% some predicate or function in the Mercury standard library for a given
+% back end. The argument should give the name of the predicate or function.
 
 :- pred sorry(string::in) is erroneous.
 
@@ -1244,8 +1255,11 @@ nonvar(_::in) :- true.
 nonvar(_::unused) :- fail.
 
 sorry(PredName) :-
-	error("sorry, `" ++ PredName ++ "' not implemented\n" ++
+	error("sorry, " ++ PredName ++ " not implemented\n" ++
 		"for this target language (or compiler back-end).").
+
+no_clauses(PredName) :-
+	error("no clauses for " ++ PredName).
 
 :- pragma foreign_proc(c, imp, [will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc(il, imp,
