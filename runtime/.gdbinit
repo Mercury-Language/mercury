@@ -40,9 +40,17 @@ Prints some of the registers
 Works using only gcc, doesn't call any C functions.
 end
 #-----------------------------------------------------------------------------#
+define pmf
+gdb-get-regs
+set dumpframe($mr8)
+end
+document pmf
+Prints the maximum (top) nondet stack frame.
+end
+#-----------------------------------------------------------------------------#
 define pf
 gdb-get-regs
-set dumpframe($mr9)
+set dumpframe($mr8)
 end
 document pf
 Prints the current nondet stack frame.
