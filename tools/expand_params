@@ -1,5 +1,20 @@
 #!/bin/sh
 
+# The objective of this script is to transform a shorthand description
+# of an Mmake.params file into the Mmake.params itself. The shorthand
+# description is given to this script as its arguments.
+#
+# The shorthand consists of pairs of word:
+#
+#	grade <full grade name>		meaning that grade
+#	args {s,c}			meaning simple or compact
+#	typeinfo {1,2,s,d}		meaning one-cell, one-or-two-cell,
+#					shared-one-or-two-cell, or default
+#	opt <integer>			meaning that optimization level
+#
+# Other arguments are also allowed; these are expected to be other arguments
+# to mc.
+
 usage="$0 [grade g] [args {s,c}] [typeinfo {1,2,s,d}] [opt N] mcflags ..."
 
 GRADE="asm_fast.gc"
