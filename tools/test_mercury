@@ -723,7 +723,7 @@ do
 			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake install LIBGRADES= \
+			mmake install LIBGRADES=$grade \
 					$PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				set_status "clpr realclean"
