@@ -124,6 +124,7 @@
 
 :- implementation.
 
+:- import_module backend_libs__name_mangle.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
@@ -356,7 +357,7 @@ opt_debug__dump_data_name(common(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append("common", N_str, Str).
 opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
-	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
+	Str = make_base_typeclass_info_name(ClassId, InstanceNum).
 opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
@@ -367,8 +368,8 @@ opt_debug__dump_data_name(deep_profiling_procedure_data(ProcLabel), Str) :-
 
 opt_debug__dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity),
 		Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleName_str),
-	llds_out__name_mangle(TypeName, TypeName_str),
+	ModuleName_str = sym_name_mangle(ModuleName),
+	TypeName_str = name_mangle(TypeName),
 	string__int_to_string(Arity, Arity_str),
 	string__append_list(["rtti_type_ctor(", ModuleName_str, ", ",
 		TypeName_str, Arity_str, ")"], Str).
@@ -419,7 +420,7 @@ opt_debug__dump_rtti_name(type_ctor_info, Str) :-
 	Str = "type_ctor_info".
 opt_debug__dump_rtti_name(base_typeclass_info(_ModuleName, ClassId,
 		InstanceStr), Str) :-
-	llds_out__make_base_typeclass_info_name(ClassId, InstanceStr, Str).
+	Str = make_base_typeclass_info_name(ClassId, InstanceStr).
 opt_debug__dump_rtti_name(type_info(_TypeInfo), Str) :-
 	% XXX should give more info than this
 	Str = "type_info".
@@ -457,36 +458,36 @@ opt_debug__dump_layout_name(closure_proc_id(ProcLabel, SeqNo, _), Str) :-
 	string__append_list(["closure_proc_id(", ProcLabelStr, ", ",
 		SeqNoStr, ")"], Str).
 opt_debug__dump_layout_name(file_layout(ModuleName, FileNum), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__int_to_string(FileNum, FileNumStr),
 	string__append_list(["file_layout(", ModuleNameStr, ", ",
 		FileNumStr, ")"], Str).
 opt_debug__dump_layout_name(file_layout_line_number_vector(ModuleName,
 		FileNum), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__int_to_string(FileNum, FileNumStr),
 	string__append_list(["file_layout_line_number_vector(", ModuleNameStr,
 		", ", FileNumStr, ")"], Str).
 opt_debug__dump_layout_name(file_layout_label_layout_vector(ModuleName,
 		FileNum), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__int_to_string(FileNum, FileNumStr),
 	string__append_list(["file_layout_label_layout_vector(", ModuleNameStr,
 		", ", FileNumStr, ")"], Str).
 opt_debug__dump_layout_name(module_layout_string_table(ModuleName), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__append_list(["module_layout_string_table(", ModuleNameStr,
 		")"], Str).
 opt_debug__dump_layout_name(module_layout_file_vector(ModuleName), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__append_list(["module_layout_file_vector(", ModuleNameStr, ")"],
 		Str).
 opt_debug__dump_layout_name(module_layout_proc_vector(ModuleName), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__append_list(["module_layout_proc_vector(", ModuleNameStr, ")"],
 		Str).
 opt_debug__dump_layout_name(module_layout(ModuleName), Str) :-
-	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	ModuleNameStr = sym_name_mangle(ModuleName),
 	string__append_list(["module_layout(", ModuleNameStr, ")"], Str).
 opt_debug__dump_layout_name(proc_static(RttiProcLabel), Str) :-
 	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -607,10 +608,10 @@ opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 	( Module = PredModule ->
 		ExtraModule = ""
 	;
-		llds_out__sym_name_mangle(PredModule, PredModuleName),
+		PredModuleName = sym_name_mangle(PredModule),
 		string__append(PredModuleName, "_", ExtraModule)
 	),
-	llds_out__sym_name_mangle(Module, ModuleName),
+	ModuleName = sym_name_mangle(Module),
 	string__int_to_string(Arity, A_str),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),
@@ -618,9 +619,9 @@ opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 		"_", A_str, "_", M_str], Str).
 opt_debug__dump_proclabel(special_proc(Module, Pred, TypeModule,
 		Type, Arity, ProcId), Str) :-
-	llds_out__sym_name_mangle(Module, ModuleName),
-	llds_out__sym_name_mangle(TypeModule, TypeModuleName),
-	llds_out__qualify_name(TypeModuleName, Type, TypeName),
+	ModuleName = sym_name_mangle(Module),
+	TypeModuleName = sym_name_mangle(TypeModule),
+	TypeName = qualify_name(TypeModuleName, Type),
 	string__int_to_string(Arity, A_str),
 	proc_id_to_int(ProcId, Mode),
 	string__int_to_string(Mode, M_str),

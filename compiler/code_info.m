@@ -38,6 +38,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
 :- import_module libs__globals.
+:- import_module libs__trace_params.
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
@@ -51,7 +52,6 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_code_util.
 :- import_module libs__options.
-:- import_module libs__trace_params.
 :- import_module libs__tree.
 :- import_module ll_backend__arg_info.
 :- import_module ll_backend__code_exprn.

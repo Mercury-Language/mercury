@@ -10,8 +10,6 @@
 :- module libs.
 :- interface.
 
-:- import_module ll_backend. % XXX trace_params depends on llds__trace_port.
-
 % option handling
 :- include_module globals.
 :- include_module handle_options.

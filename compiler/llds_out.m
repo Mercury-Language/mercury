@@ -19,11 +19,8 @@
 
 :- import_module aditi_backend__rl_file.
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__proc_label.
-:- import_module hlds__hlds_data.
 :- import_module libs__globals.
 :- import_module ll_backend__llds.
-:- import_module parse_tree__prog_data.
 
 :- import_module bool, std_util, list, map, io.
 
@@ -35,16 +32,6 @@
 
 :- pred output_llds(c_file::in, map(label, data_addr)::in, maybe(rl_file)::in,
 	io__state::di, io__state::uo) is det.
-
-	% output_c_file_intro_and_grade(SourceFileName, Version)
-	% outputs a comment which includes the settings used to generate
-	% the C file.  This is used by configure to check the any
-	% existing C files are consistent with the current
-	% configuration.  SourceFileName is the name of the file from
-	% which the C is generated, while Version is the version name
-	% of the mercury compiler.
-:- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
-:- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
 
 	% output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
 	% DeclSet0, DeclSet) outputs the declarations of any static constants,
@@ -102,10 +89,6 @@
 
 :- pred output_data_addr(data_addr::in, io__state::di, io__state::uo) is det.
 
-	% All the C data structures we generate which are either fully static
-	% or static after initialization should have this prefix.
-:- func mercury_data_prefix = string.
-
 	% c_data_linkage_string(Globals, DefaultLinkage, StaticEvenIfSplit,
 	%	BeingDefined):
 	% Return a C string that gives the storage class appropriate for the
@@ -151,87 +134,10 @@
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo) is det.
 
-	% Output a proc label (used for building static call graph for prof).
+	% Convert a label to a C string. The boolean controls whether
+	% a prefix ("mercury__") is added to the string.
 
-:- pred output_proc_label(proc_label, io__state, io__state).
-:- mode output_proc_label(in, di, uo) is det.
-
-	% Get a proc label string (used by procs which are exported to C).
-	% The boolean controls whether a prefix ("mercury__") is added to the
-	% proc label.
-
-:- pred llds_out__get_proc_label(proc_label, bool, string).
-:- mode llds_out__get_proc_label(in, in, out) is det.
-
-	% Get a label string.
-	% The boolean controls whether a prefix ("mercury__") is added to the
-	% label.
-
-:- pred llds_out__get_label(label, bool, string).
-:- mode llds_out__get_label(in, in, out) is det.
-
-	% Mangle an arbitrary name into a C identifier
-
-:- pred llds_out__name_mangle(string, string).
-:- mode llds_out__name_mangle(in, out) is det.
-
-	% Mangle a possibly module-qualified Mercury symbol name
-	% into a C identifier.
-
-:- pred llds_out__sym_name_mangle(sym_name, string).
-:- mode llds_out__sym_name_mangle(in, out) is det.
-
-	% Produces a string of the form Module__Name.
-
-:- pred llds_out__qualify_name(string, string, string).
-:- mode llds_out__qualify_name(in, in, out) is det.
-
-	% Convert a string into a form suitable for outputting as a C string,
-	% by converting special characters into backslashes escapes.
-:- pred llds_out__quote_c_string(string, string).
-:- mode llds_out__quote_c_string(in, out) is det.
-
-	% Like quote_c_string except the resulting string is written to
-	% the current output stream.
-:- pred output_c_quoted_string(string, io__state, io__state).
-:- mode output_c_quoted_string(in, di, uo) is det.
-
-	% Like quote_c_quoted_string except that the string may have
-	% NULL characters embedded in it.
-:- pred output_c_quoted_multi_string(int, string, io__state, io__state).
-:- mode output_c_quoted_multi_string(in, in, di, uo) is det.
-
-	% Create a name for base_typeclass_info
-
-:- pred llds_out__make_base_typeclass_info_name(class_id, string, string).
-:- mode llds_out__make_base_typeclass_info_name(in, in, out) is det.
-
-	% output the name for base_typeclass_info,
-	% with the appropriate "mercury_data_" prefix.
-
-:- pred output_base_typeclass_info_name(class_id, string, io__state, io__state).
-:- mode output_base_typeclass_info_name(in, in, di, uo) is det.
-
-	% Convert a label to a string description of the stack layout
-	% structure of that label.
-
-	% Returns the name of the initialization function
-	% for a given module.
-
-:- pred llds_out__make_init_name(module_name, string).
-:- mode llds_out__make_init_name(in, out) is det.
-
-	% Returns the name of the Aditi-RL code constant
-	% for a given module.
-
-:- pred llds_out__make_rl_data_name(module_name, string).
-:- mode llds_out__make_rl_data_name(in, out) is det.
-
-	% Print out the name of the tabling variable for the specified
-	% procedure.
-
-:- pred output_tabling_pointer_var_name(proc_label::in,
-	io__state::di, io__state::uo) is det.
+:- func llds_out__label_to_c_string(label, bool) = string.
 
 	% The following are exported to rtti_out. It may be worthwhile
 	% to put these in a new module (maybe llds_out_util).
@@ -277,6 +183,8 @@
 :- import_module backend_libs__compile_target_code.
 :- import_module backend_libs__export.
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
+:- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__passes_aux.
@@ -288,6 +196,7 @@
 :- import_module ll_backend__rtti_out.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__modules.
+:- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -474,37 +383,6 @@ output_c_file_mercury_headers -->
 	;
 		{ GenBytecode = no }
 	).
-
-output_c_file_intro_and_grade(SourceFileName, Version) -->
-	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
-	{ string__int_to_string(NumTagBits, NumTagBitsStr) },
-	globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
-	{ convert_bool_to_string(UnboxedFloat, UnboxedFloatStr) },
-
-	io__write_strings(["/*\n",
-		"** Automatically generated from `", SourceFileName,
-			"' by the Mercury compiler,\n",
-		"** version ", Version, ".\n",
-		"** Do not edit.\n",
-		"**\n",
-		"** The autoconfigured grade settings governing\n",
-		"** the generation of this C file were\n",
-		"**\n",
-		"** TAG_BITS=", NumTagBitsStr, "\n",
-		"** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
-		"**\n",
-		"** END_OF_C_GRADE_INFO\n",
-		"*/\n",
-		"\n",
-		"#define MR_TYPE_CTOR_INFO_HAS_FLAG 1\n",
-		"\n"
-	]).
-
-:- pred convert_bool_to_string(bool, string).
-:- mode convert_bool_to_string(in, out) is det.
-
-convert_bool_to_string(no, "no").
-convert_bool_to_string(yes, "yes").
 
 :- pred output_single_c_file(c_file, maybe(int), map(label, data_addr),
 	maybe(rl_file), io__state, io__state).
@@ -866,7 +744,7 @@ output_init_comment(ModuleName) -->
 	io__write_string("init\n"),
 	globals__io_lookup_bool_option(aditi, Aditi),
 	( { Aditi = yes } ->
-		{ llds_out__make_rl_data_name(ModuleName, RLName) },
+		{ RLName = make_rl_data_name(ModuleName) },
 		io__write_string("ADITI_DATA "),
 		io__write_string(RLName),
 		io__write_string("\n")
@@ -876,29 +754,12 @@ output_init_comment(ModuleName) -->
 	io__write_string("ENDINIT\n"),
 	io__write_string("*/\n\n").
 
-:- pred output_init_name(module_name, io__state, io__state).
-:- mode output_init_name(in, di, uo) is det.
-
-output_init_name(ModuleName) -->
-	{ llds_out__make_init_name(ModuleName, InitName) },
-	io__write_string(InitName).
-
-llds_out__make_init_name(ModuleName, InitName) :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-	string__append_list(["mercury__", MangledModuleName, "__"],
-		InitName).
-
-llds_out__make_rl_data_name(ModuleName, RLDataConstName) :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-	string__append("mercury__aditi_rl_data__", MangledModuleName,
-		RLDataConstName).
-
 :- pred output_bunch_name(module_name, string, int, io__state, io__state).
 :- mode output_bunch_name(in, in, in, di, uo) is det.
 
 output_bunch_name(ModuleName, InitStatus, Number) -->
 	io__write_string("mercury__"),
-	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+	{ MangledModuleName = sym_name_mangle(ModuleName) },
 	io__write_string(MangledModuleName),
 	io__write_string("_"),
 	io__write_string(InitStatus),
@@ -1011,10 +872,6 @@ output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 	io__write_string(" = { 0 };\n"),
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
 	{ decl_set_insert(DeclSet0, data_addr(DataAddr), DeclSet) }.
-
-output_tabling_pointer_var_name(ProcLabel) -->
-	io__write_string("mercury_var__table_root__"),
-	output_proc_label(ProcLabel).
 
 :- pred output_comp_gen_c_data_list(list(comp_gen_c_data)::in,
 	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
@@ -1751,7 +1608,7 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 		{ FrameInfo = ordinary_frame(Msg, Num, MaybeStruct) },
 		( { MaybeStruct = yes(pragma_c_struct(StructName, _, _)) } ->
 			io__write_string("\tMR_mkpragmaframe("""),
-			output_c_quoted_string(Msg),
+			c_util__output_quoted_string(Msg),
 			io__write_string(""", "),
 			io__write_int(Num),
 			io__write_string(", "),
@@ -1761,7 +1618,7 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 			io__write_string(");\n")
 		;
 			io__write_string("\tMR_mkframe("""),
-			output_c_quoted_string(Msg),
+			c_util__output_quoted_string(Msg),
 			io__write_string(""", "),
 			io__write_int(Num),
 			io__write_string(", "),
@@ -1825,7 +1682,7 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	output_label(CallerLabel),
 	io__write_string(", """),
-	output_c_quoted_string(TypeMsg),
+	c_util__output_quoted_string(TypeMsg),
 	io__write_string(""");\n").
 
 output_instruction(mark_hp(Lval), _) -->
@@ -1875,7 +1732,7 @@ output_instruction(incr_sp(N, Msg), _) -->
 	io__write_string("\tMR_incr_sp_push_msg("),
 	io__write_int(N),
 	io__write_string(", """),
-	output_c_quoted_string(Msg),
+	c_util__output_quoted_string(Msg),
 	io__write_string(""");\n").
 
 output_instruction(decr_sp(N), _) -->
@@ -3487,15 +3344,13 @@ output_data_addr(rtti_addr(RttiTypeCtor, RttiName)) -->
 output_data_addr(layout_addr(LayoutName)) -->
 	output_layout_name(LayoutName).
 
-mercury_data_prefix = "mercury_data_".
-
 :- pred output_data_addr(module_name::in, data_name::in,
 	io__state::di, io__state::uo) is det.
 
 output_data_addr(ModuleName, VarName) -->
 	(
 		{ VarName = common(N) },
-		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+		{ MangledModuleName = sym_name_mangle(ModuleName) },
 		io__write_string(mercury_data_prefix),
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
@@ -3608,152 +3463,20 @@ output_label_defn(local(Num, ProcLabel)) -->
 % in the recursive call.
 
 output_label(Label) -->
-	{ llds_out__get_label(Label, yes, LabelStr) },
+	{ LabelStr = llds_out__label_to_c_string(Label, yes) },
 	io__write_string(LabelStr).
 
-output_proc_label(ProcLabel) -->
-	{ llds_out__get_proc_label(ProcLabel, yes, ProcLabelString) },
-	io__write_string(ProcLabelString).
-
-llds_out__get_label(exported(ProcLabel), AddPrefix, ProcLabelStr) :-
-	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
-llds_out__get_label(local(ProcLabel), AddPrefix, ProcLabelStr) :-
-	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
-llds_out__get_label(c_local(ProcLabel), AddPrefix, ProcLabelStr) :-
-	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
-llds_out__get_label(local(Num, ProcLabel), AddPrefix, LabelStr) :-
-	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr),
+llds_out__label_to_c_string(exported(ProcLabel), AddPrefix) =
+	proc_label_to_c_string(ProcLabel, AddPrefix).
+llds_out__label_to_c_string(local(ProcLabel), AddPrefix) =
+	proc_label_to_c_string(ProcLabel, AddPrefix).
+llds_out__label_to_c_string(c_local(ProcLabel), AddPrefix) =
+	proc_label_to_c_string(ProcLabel, AddPrefix).
+llds_out__label_to_c_string(local(Num, ProcLabel), AddPrefix) = LabelStr :-
+	ProcLabelStr = proc_label_to_c_string(ProcLabel, AddPrefix),
 	string__int_to_string(Num, NumStr),
 	string__append("_i", NumStr, NumSuffix),
 	string__append(ProcLabelStr, NumSuffix, LabelStr).
-
-%
-% Warning: any changes to the name mangling algorithm here will also
-% require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m and util/mdemangle.c.
-%
-llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
-		PredName, Arity, ModeNum0), AddPrefix, ProcLabelString) :-
-	get_label_name(DefiningModule, PredOrFunc, PredModule,
-		PredName, Arity, AddPrefix, LabelName),
-	( PredOrFunc = function ->
-		OrigArity = Arity - 1
-	;
-		OrigArity = Arity
-	),
-	string__int_to_string(OrigArity, ArityString),
-	proc_id_to_int(ModeNum0, ModeInt),
-	string__int_to_string(ModeInt, ModeNumString),
-	string__append_list([LabelName, "_", ArityString, "_", ModeNumString],
-		ProcLabelString).
-
-	% For a special proc, output a label of the form:
-	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
-llds_out__get_proc_label(special_proc(Module, PredName, TypeModule,
-		TypeName, TypeArity, ModeNum0), AddPrefix, ProcLabelString) :-
-	% figure out the LabelName
-	DummyArity = -1,	% not used by get_label_name.
-	get_label_name(unqualified(""), predicate, unqualified(""),
-		PredName, DummyArity, AddPrefix, LabelName),
-
-	% figure out the ModeNumString
-	string__int_to_string(TypeArity, TypeArityString),
-	proc_id_to_int(ModeNum0, ModeInt),
-	string__int_to_string(ModeInt, ModeNumString),
-
-	% mangle all the relevent names
-	llds_out__sym_name_mangle(Module, MangledModule),
-	llds_out__sym_name_mangle(TypeModule, MangledTypeModule),
-	llds_out__name_mangle(TypeName, MangledTypeName),
-
-	% Module-qualify the type name.
-	% To handle locally produced unification preds for imported types,
-	% we need to qualify it with both the module name of the
-	% type, and also (if it is different) the module name of the
-	% current module.
-	llds_out__qualify_name(MangledTypeModule, MangledTypeName,
-		QualifiedMangledTypeName),
-	llds_out__maybe_qualify_name(MangledModule, QualifiedMangledTypeName,
-		FullyQualifiedMangledTypeName),
-
-	% join it all together
-	string__append_list( [LabelName, "_", FullyQualifiedMangledTypeName,
-		"_", TypeArityString, "_", ModeNumString],
-		ProcLabelString).
-
-	%  get a label name, given the defining module, predicate or
-	%  function indicator, declaring module, predicate name, arity,
-	%  and whether or not to add a prefix.
-
-:- pred get_label_name(module_name, pred_or_func, module_name, string, arity,
-			bool, string).
-:- mode get_label_name(in, in, in, in, in, in, out) is det.
-
-%
-% Warning: any changes to the name mangling algorithm here will also
-% require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m and util/mdemangle.c.
-%
-get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
-		Name0, Arity, AddPrefix, LabelName) :-
-	llds_out__sym_name_mangle(DeclaringModule, DeclaringModuleName),
-	llds_out__sym_name_mangle(DefiningModule, DefiningModuleName),
-	(
-		(
-			mercury_private_builtin_module(DeclaringModule)
-		;
-			mercury_public_builtin_module(DeclaringModule)
-		;
-			Name0 = "main",
-			Arity = 2
-		;
-			string__prefix(Name0, "__")
-		)
-		% The conditions above define which labels are printed without
-		% module qualification.  XXX Changes to runtime/* are necessary
-		% to allow `builtin' or `private_builtin' labels to be
-		% qualified.
-	->
-		LabelName0 = Name0
-	;
-		llds_out__qualify_name(DeclaringModuleName, Name0,
-			LabelName0)
-	),
-	(
-		% if this is a specialized version of a predicate
-		% defined in some other module, then it needs both
-		% module prefixes
-		DefiningModule \= DeclaringModule
-	->
-		string__append_list([DefiningModuleName, "__", LabelName0],
-			LabelName1)
-	;
-		LabelName1 = LabelName0
-	),
-	llds_out__name_mangle(LabelName1, LabelName2),
-	(
-		PredOrFunc = function,
-		string__append("fn__", LabelName2, LabelName3)
-	;
-		PredOrFunc = predicate,
-		LabelName3 = LabelName2
-	),
-	(
-		AddPrefix = yes
-	->
-		get_label_prefix(Prefix),
-		string__append(Prefix, LabelName3, LabelName)
-	;
-		LabelName = LabelName3
-	).
-
-	% To ensure that Mercury labels don't clash with C symbols, we
-	% prefix them with `mercury__'.
-
-:- pred get_label_prefix(string).
-:- mode get_label_prefix(out) is det.
-
-get_label_prefix("mercury__").
 
 :- pred output_reg(reg_type, int, io__state, io__state).
 :- mode output_reg(in, in, di, uo) is det.
@@ -4063,14 +3786,14 @@ output_rval_const(float_const(FloatVal)) -->
 	c_util__output_float_literal(FloatVal).
 output_rval_const(string_const(String)) -->
 	io__write_string("MR_string_const("""),
-	output_c_quoted_string(String),
+	c_util__output_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_const(multi_string_const(Length, String)) -->
 	io__write_string("MR_string_const("""),
-	output_c_quoted_multi_string(Length, String),
+	c_util__output_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),
 	io__write_string(")").
@@ -4139,14 +3862,14 @@ output_rval_static_const(float_const(FloatVal)) -->
 	c_util__output_float_literal(FloatVal).
 output_rval_static_const(string_const(String)) -->
 	io__write_string("MR_string_const("""),
-	output_c_quoted_string(String),
+	c_util__output_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_static_const(multi_string_const(Length, String)) -->
 	io__write_string("MR_string_const("""),
-	output_c_quoted_multi_string(Length, String),
+	c_util__output_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),
 	io__write_string(")").
@@ -4279,15 +4002,6 @@ output_set_line_num(Context) -->
 output_reset_line_num -->
 	c_util__reset_line_num.
 
-output_c_quoted_string(S) -->
-	c_util__output_quoted_string(S).
-
-output_c_quoted_multi_string(Len, S) -->
-	c_util__output_quoted_multi_string(Len, S).
-
-llds_out__quote_c_string(String, QuotedString) :-
-	c_util__quote_string(String, QuotedString).
-
 %-----------------------------------------------------------------------------%
 
 :- pred output_binary_op(binary_op, io__state, io__state).
@@ -4335,149 +4049,6 @@ llds_out__reg_to_string(f, N, Description) :-
 	string__int_to_string(N, N_String),
 	string__append("MR_f(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
-
-%-----------------------------------------------------------------------------%
-
-%
-% Warning: any changes to the name mangling algorithm here will also
-% require changes to extras/dynamic_linking/name_mangle.m,
-% profiler/demangle.m and util/mdemangle.c.
-%
-
-llds_out__sym_name_mangle(unqualified(Name), MangledName) :-
-	llds_out__name_mangle(Name, MangledName).
-llds_out__sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-	llds_out__name_mangle(PlainName, MangledPlainName),
-	llds_out__qualify_name(MangledModuleName, MangledPlainName,
-			MangledName).
-
-	% Convert a Mercury predicate name into something that can form
-	% part of a C identifier.  This predicate is necessary because
-	% quoted names such as 'name with embedded spaces' are valid
-	% predicate names in Mercury.
-
-llds_out__name_mangle(Name, MangledName) :-
-	(
-		string__is_alnum_or_underscore(Name)
-	->
-		% any names that start with `f_' are changed so that
-		% they start with `f__', so that we can use names starting
-		% with `f_' (followed by anything except an underscore)
-		% without fear of name collisions
-		(
-			string__append("f_", Suffix, Name)
-		->
-			string__append("f__", Suffix, MangledName)
-		;
-			MangledName = Name
-		)
-	;
-		llds_out__convert_to_valid_c_identifier(Name, MangledName)
-	).
-
-:- pred llds_out__convert_to_valid_c_identifier(string, string).
-:- mode llds_out__convert_to_valid_c_identifier(in, out) is det.
-
-llds_out__convert_to_valid_c_identifier(String, Name) :-
-	(
-		llds_out__name_conversion_table(String, Name0)
-	->
-		Name = Name0
-	;
-		llds_out__convert_to_valid_c_identifier_2(String, Name0),
-		string__append("f", Name0, Name)
-	).
-
-llds_out__qualify_name(Module0, Name0, Name) :-
-	string__append_list([Module0, "__", Name0], Name).
-
-	% Produces a string of the form Module__Name, unless Module__
-	% is already a prefix of Name.
-
-:- pred llds_out__maybe_qualify_name(string, string, string).
-:- mode llds_out__maybe_qualify_name(in, in, out) is det.
-
-llds_out__maybe_qualify_name(Module0, Name0, Name) :-
-	string__append(Module0, "__", UnderscoresModule),
-	( string__append(UnderscoresModule, _, Name0) ->
-		Name = Name0
-	;
-		string__append(UnderscoresModule, Name0, Name)
-	).
-
-	% A table used to convert Mercury functors into
-	% C identifiers.  Feel free to add any new translations you want.
-	% The C identifiers should start with "f_",
-	% to avoid introducing name clashes.
-	% If the functor name is not found in the table, then
-	% we use a fall-back method which produces ugly names.
-
-:- pred llds_out__name_conversion_table(string, string).
-:- mode llds_out__name_conversion_table(in, out) is semidet.
-
-llds_out__name_conversion_table("\\=", "f_not_equal").
-llds_out__name_conversion_table(">=", "f_greater_or_equal").
-llds_out__name_conversion_table("=<", "f_less_or_equal").
-llds_out__name_conversion_table("=", "f_equal").
-llds_out__name_conversion_table("<", "f_less_than").
-llds_out__name_conversion_table(">", "f_greater_than").
-llds_out__name_conversion_table("-", "f_minus").
-llds_out__name_conversion_table("+", "f_plus").
-llds_out__name_conversion_table("*", "f_times").
-llds_out__name_conversion_table("/", "f_slash").
-llds_out__name_conversion_table(",", "f_comma").
-llds_out__name_conversion_table(";", "f_semicolon").
-llds_out__name_conversion_table("!", "f_cut").
-llds_out__name_conversion_table("{}", "f_tuple").
-llds_out__name_conversion_table("[|]", "f_cons").
-llds_out__name_conversion_table("[]", "f_nil").
-
-	% This is the fall-back method.
-	% Given a string, produce a C identifier
-	% for that string by concatenating the decimal
-	% expansions of the character codes in the string,
-	% separated by undellines.
-	% The C identifier will start with "f_"; this predicate
-	% constructs everything except the initial "f".
-	%
-	% For example, given the input "\n\t" we return "_10_8".
-
-:- pred llds_out__convert_to_valid_c_identifier_2(string, string).
-:- mode llds_out__convert_to_valid_c_identifier_2(in, out) is det.
-
-llds_out__convert_to_valid_c_identifier_2(String, Name) :-
-	(
-		string__first_char(String, Char, Rest)
-	->
-		% XXX This will cause ABI incompatibilities between
-		%     compilers which are built in grades that have
-		%     different character representations.
-		char__to_int(Char, Code),
-		string__int_to_string(Code, CodeString),
-		string__append("_", CodeString, ThisCharString),
-		llds_out__convert_to_valid_c_identifier_2(Rest, Name0),
-		string__append(ThisCharString, Name0, Name)
-	;
-		% String is the empty string
-		Name = String
-	).
-
-%-----------------------------------------------------------------------------%
-
-llds_out__make_base_typeclass_info_name(class_id(ClassSym, ClassArity),
-		TypeNames, Str) :-
-	llds_out__sym_name_mangle(ClassSym, MangledClassString),
-	string__int_to_string(ClassArity, ArityString),
-	llds_out__name_mangle(TypeNames, MangledTypeNames),
-	string__append_list(["base_typeclass_info_", MangledClassString,
-		"__arity", ArityString, "__", MangledTypeNames], Str).
-
-output_base_typeclass_info_name(ClassId, TypeNames) -->
-	{ llds_out__make_base_typeclass_info_name(ClassId, TypeNames, Str) },
-	io__write_string(mercury_data_prefix),
-	io__write_string("__"),
-	io__write_string(Str).
 
 %-----------------------------------------------------------------------------%
 
@@ -4545,7 +4116,7 @@ output_rl_file(ModuleName, MaybeRLFile) -->
 		[]
 	;
 		io__write_string("\n\n/* Aditi-RL code for this module. */\n"),
-		{ llds_out__make_rl_data_name(ModuleName, RLDataConstName) },
+		{ RLDataConstName = make_rl_data_name(ModuleName) },
 		io__write_string("const char "),
 		io__write_string(RLDataConstName),
 		io__write_string("[] = {"),

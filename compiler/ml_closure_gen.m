@@ -86,6 +86,7 @@
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.
+:- import_module ll_backend.
 :- import_module ll_backend__continuation_info. % needed for
 					   % `generate_closure_layout'
 :- import_module ll_backend__llds.         % needed for `layout_locn'

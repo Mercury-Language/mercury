@@ -284,7 +284,6 @@
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__llds_out.
-:- import_module ll_backend__trace.
 
 % Misc
 :- import_module backend_libs__foreign.
@@ -1217,7 +1216,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		{ goal_info_get_goal_path(GoalInfo, Path) },
 		( { Path \= [] } ->
 			% XXX should avoid dependency on trace.m here
-			{ trace__path_to_string(Path, PathStr) },
+			{ goal_path_to_string(Path, PathStr) },
 			hlds_out__write_indent(Indent),
 			io__write_string("% goal path: "),
 			io__write_string(PathStr),

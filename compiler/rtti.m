@@ -631,10 +631,10 @@
 
 :- implementation.
 
+:- import_module backend_libs__name_mangle.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
-:- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
 :- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
 
 :- import_module int, string, require, varset.
@@ -865,9 +865,9 @@ rtti__addr_to_string(RttiTypeCtor, RttiName, Str) :-
 		RttiName = base_typeclass_info(_ModuleName, ClassId,
 			InstanceStr),
 		ClassId = class_id(ClassSym, ClassArity),
-		llds_out__sym_name_mangle(ClassSym, MangledClassString),
+		MangledClassString = sym_name_mangle(ClassSym),
 		string__int_to_string(ClassArity, ArityString),
-		llds_out__name_mangle(InstanceStr, MangledTypeNames),
+		MangledTypeNames = name_mangle(InstanceStr),
 		string__append_list(["base_typeclass_info_",
 			MangledClassString, "__arity", ArityString, "__",
 			MangledTypeNames], Str)
@@ -890,8 +890,8 @@ rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
 	;
 		ModuleNameSym = ModuleNameSym0
 	),
-	sym_name_mangle(ModuleNameSym, ModuleName),
-	name_mangle(TypeName0, TypeName),
+	ModuleName = sym_name_mangle(ModuleNameSym),
+	TypeName = name_mangle(TypeName0),
 	string__int_to_string(TypeArity, ArityStr).
 
 %-----------------------------------------------------------------------------%

@@ -100,20 +100,16 @@
 
 :- implementation.
 
+:- import_module backend_libs__name_mangle.
+:- import_module backend_libs__proc_label.
 :- import_module check_hlds__mode_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
-
-% XXX we should not import llds here -- this should depend only on the HLDS,
-% not on the LLDS.  But the LLDS stuff is unfortunately needed for producing
-% the LLDS labels used for dependency_graph__write_prof_dependency_graph.
-:- import_module ll_backend__llds, ll_backend__llds_out.
 
 :- import_module term, varset.
 :- import_module int, bool, term, require, string.
@@ -582,23 +578,8 @@ write_graph_children([ChildKey | Children], Parent, Graph, WriteLink) -->
 :- mode dependency_graph__output_label(in, in, in, di, uo) is det.
 
 dependency_graph__output_label(ModuleInfo, PredId, ProcId) -->
-	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId, no,
-		Address) },
-        (
-                { Address = label(local(ProcLabela)) }
-        ->
-                output_label(local(ProcLabela))
-        ;
-                { Address = imported(ProcLabelb) }
-        ->
-                output_proc_label(ProcLabelb)
-        ;
-                { Address = label(exported(ProcLabelc)) }
-        ->
-                output_label(exported(ProcLabelc))
-        ;
-                { error("dependency_graph__output_label: label not of type local or imported or exported\n") }
-        ).
+	{ ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId) },
+	output_proc_label(ProcLabel).
 
 %-----------------------------------------------------------------------------%
 

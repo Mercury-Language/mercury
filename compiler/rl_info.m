@@ -238,6 +238,7 @@
 :- mode rl_info_write_message(in, in, rl_info_di, rl_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds__mode_util.
@@ -245,8 +246,6 @@
 :- import_module hlds__hlds_goal.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds_out.
 :- import_module parse_tree__prog_out.
 
 :- import_module int, require.

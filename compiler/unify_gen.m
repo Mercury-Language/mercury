@@ -59,7 +59,6 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__layout.
 :- import_module ll_backend__stack_layout.
-:- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
@@ -655,7 +654,7 @@ unify_gen__generate_construction_2(
 		{ term__context_file(Context, FileName) },
 		{ term__context_line(Context, LineNumber) },
 		{ goal_info_get_goal_path(GoalInfo, GoalPath) },
-		{ trace__path_to_string(GoalPath, GoalPathStr) },
+		{ goal_path_to_string(GoalPath, GoalPathStr) },
 		code_info__get_cur_proc_label(CallerProcLabel),
 		code_info__get_next_closure_seq_no(SeqNo),
 		code_info__get_cell_counter(C0),

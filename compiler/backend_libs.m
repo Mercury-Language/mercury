@@ -27,16 +27,12 @@
 :- include_module export.
 :- include_module foreign.
 :- include_module matching.
+:- include_module name_mangle.
 :- include_module proc_label.
 :- include_module pseudo_type_info.
 :- include_module rtti.
 :- include_module switch_util.
 :- include_module type_ctor_info.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-:- import_module ll_backend. % XXX for llds_out__name_mangle.
 
 :- end_module backend_libs.
 

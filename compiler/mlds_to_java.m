@@ -67,6 +67,7 @@
 :- import_module backend_libs__c_util.
 :- import_module backend_libs__export.	% for export__type_to_type_string
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
@@ -74,9 +75,6 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
-				% llds_out__sym_name_mangle,
-				% llds_out__make_base_typeclass_info_name,
 :- import_module ml_backend__java_util. 
 :- import_module ml_backend__ml_code_util. % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend__ml_type_gen.	% for ml_gen_type_name
@@ -263,13 +261,13 @@ reverse_string(String0, String) :-
 :- mode mangle_mlds_sym_name_for_java(in, in, out) is det.
 
 mangle_mlds_sym_name_for_java(unqualified(Name), _Qualifier, JavaSafeName) :-
-	llds_out__name_mangle(Name, MangledName),
+	MangledName = name_mangle(Name),
 	JavaSafeName = valid_symbol_name(MangledName).
 mangle_mlds_sym_name_for_java(qualified(ModuleName, PlainName), Qualifier,
 		MangledName) :-
 	mangle_mlds_sym_name_for_java(ModuleName, Qualifier,
 			MangledModuleName),
-	llds_out__name_mangle(PlainName, MangledPlainName),
+	MangledPlainName = name_mangle(PlainName),
 	JavaSafePlainName = valid_symbol_name(MangledPlainName),
 	java_qualify_mangled_name(MangledModuleName, JavaSafePlainName,
 			Qualifier, MangledName).
@@ -279,7 +277,6 @@ mangle_mlds_sym_name_for_java(qualified(ModuleName, PlainName), Qualifier,
 
 java_qualify_mangled_name(Module0, Name0, Qualifier, Name) :-
 	string__append_list([Module0, Qualifier, Name0], Name).
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -736,7 +733,7 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
 	%
 	ModuleNameStr = mlds_module_name_to_string(ModuleQualifier),	
 	ClassEntityName = "AddrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
-	llds_out__name_mangle(ClassEntityName, MangledClassEntityName),
+	MangledClassEntityName = name_mangle(ClassEntityName),
 	%
 	% Put it all together.
 	%
@@ -913,31 +910,29 @@ pred_label_string(pred(PredOrFunc, MaybeDefiningModule, Name, PredArity,
 	( PredOrFunc = predicate, Suffix = "p", OrigArity = PredArity
 	; PredOrFunc = function, Suffix = "f", OrigArity = PredArity - 1
 	),
-	llds_out__name_mangle(Name, MangledName),
+	MangledName = name_mangle(Name),
 	PredLabelStr0 = MangledName ++ "_" 
 			++ string__int_to_string(OrigArity) ++ "_"
 			++ Suffix,
 	( MaybeDefiningModule = yes(DefiningModule) ->
-		llds_out__sym_name_mangle(DefiningModule, MangledModuleName),
+		MangledModuleName = sym_name_mangle(DefiningModule),
 		PredLabelStr = PredLabelStr0 ++ "_in__" ++ MangledModuleName
 	;
 		PredLabelStr = PredLabelStr0
 	).
 pred_label_string(special_pred(PredName, MaybeTypeModule,
 		TypeName, TypeArity)) = PredLabelStr :-
-	llds_out__name_mangle(PredName, MangledPredName),
-	llds_out__name_mangle(TypeName, MangledTypeName),
+	MangledPredName = name_mangle(PredName),
+	MangledTypeName = name_mangle(TypeName),
 	PredLabelStr0 = MangledPredName ++ "__", 
 	( MaybeTypeModule = yes(TypeModule) ->
-		llds_out__sym_name_mangle(TypeModule, MangledModuleName),
+		MangledModuleName = sym_name_mangle(TypeModule),
 		PredLabelStr1 = PredLabelStr0 ++ "__" ++ MangledModuleName
 	;
 		PredLabelStr1 = PredLabelStr0
 	),
 	PredLabelStr = PredLabelStr1 ++ MangledTypeName ++ "_" ++
-			string__int_to_string(TypeArity).
-
-
+		string__int_to_string(TypeArity).
 	
 %------------------------------------------------------------------------------
 %
@@ -1567,14 +1562,13 @@ output_fully_qualified(qual(ModuleName, Name), OutputFunc, Qualifier) -->
 :- mode output_module_name(in, di, uo) is det.
 
 output_module_name(ModuleName) -->
-	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
-	io__write_string(MangledModuleName).
+	io__write_string(sym_name_mangle(ModuleName)).
 
 :- pred output_class_name(mlds__entity_name, io__state, io__state).
 :- mode output_class_name(in, di, uo) is det.
 
 output_class_name(type(Name, Arity)) -->
-	{ llds_out__name_mangle(Name, MangledName) },
+	{ MangledName = name_mangle(Name) },
 	io__format("%s_%d", [s(MangledName), i(Arity)]).
 
 output_class_name(data(_)) --> []. 
@@ -1585,7 +1579,7 @@ output_class_name(export(_)) --> [].
 :- mode output_name(in, di, uo) is det.
 
 output_name(type(Name, Arity)) -->
-	{ llds_out__name_mangle(Name, MangledName) },
+	{ MangledName = name_mangle(Name) },
 	io__format("%s_%d", [s(MangledName), i(Arity)]).
 output_name(data(DataName)) -->
 	output_data_name(DataName).
@@ -1609,7 +1603,7 @@ output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, PredArity,
 	( { PredOrFunc = predicate, Suffix = "p", OrigArity = PredArity }
 	; { PredOrFunc = function, Suffix = "f", OrigArity = PredArity - 1 }
 	),
-	{ llds_out__name_mangle(Name, MangledName) },
+	{ MangledName = name_mangle(Name) },
 	io__format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)]),
 	( { MaybeDefiningModule = yes(DefiningModule) } ->
 		io__write_string("_in__"),
@@ -1618,10 +1612,10 @@ output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, PredArity,
 		[]
 	).
 
-output_pred_label(special_pred(PredName, MaybeTypeModule,
-		TypeName, TypeArity)) -->
-	{ llds_out__name_mangle(PredName, MangledPredName) },
-	{ llds_out__name_mangle(TypeName, MangledTypeName) },
+output_pred_label(special_pred(PredName, MaybeTypeModule, TypeName,
+		TypeArity)) -->
+	{ MangledPredName = name_mangle(PredName) },
+	{ MangledTypeName = name_mangle(TypeName) },
 	io__write_string(MangledPredName),
 	io__write_string("__"),
 	( { MaybeTypeModule = yes(TypeModule) } ->
@@ -1657,9 +1651,7 @@ output_data_name(rtti(RttiTypeCtor, RttiName)) -->
 	{ rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName) },
 	io__write_string(RttiAddrName).
 output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
-        { llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
-		Name) },
-	io__write_string(Name).
+	io__write_string(make_base_typeclass_info_name(ClassId, InstanceStr)).
 output_data_name(module_layout) -->
 	{ error("mlds_to_java.m: NYI: module_layout") }.
 output_data_name(proc_layout(_ProcLabel)) -->
@@ -2567,7 +2559,7 @@ output_atomic_stmt(Indent, _FuncInfo, NewObject, Context) -->
 		io__write_char('.'),
 		{ QualifiedCtorId = qual(_ModuleName, CtorDefn) },
 		{ CtorDefn = ctor_id(CtorName, CtorArity) },
-		{ llds_out__name_mangle(CtorName, MangledCtorName) },
+		{ MangledCtorName = name_mangle(CtorName) },
 		io__format("%s_%d", [s(MangledCtorName), i(CtorArity)])
 	;
 		output_type(Type)
@@ -2716,7 +2708,7 @@ output_lval(field(_MaybeTag, PtrRval, named_field(FieldName, CtorType),
 		_FieldType, _PtrType)) -->
 	( 
 		{ FieldName = qual(_, UnqualFieldName) }, 
-	 	{ llds_out__name_mangle(UnqualFieldName, MangledFieldName) },
+	 	{ MangledFieldName = name_mangle(UnqualFieldName) },
 	  	{ MangledFieldName = "data_tag" } 
 	->
 		%
@@ -2751,8 +2743,7 @@ output_lval(var(qual(_ModuleName, Name), _VarType)) -->
 :- mode output_mangled_name(in, di, uo) is det.
 
 output_mangled_name(Name) -->
-	{ llds_out__name_mangle(Name, MangledName) },
-	io__write_string(MangledName).
+	io__write_string(name_mangle(Name)).
 
 :- pred mlds_output_bracketed_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_bracketed_lval(in, di, uo) is det.

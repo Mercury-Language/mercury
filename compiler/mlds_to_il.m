@@ -138,7 +138,7 @@
 :- import_module backend_libs__c_util.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__foreign.
-:- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.
 :- import_module check_hlds__type_util.
@@ -147,7 +147,6 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__tree.
-:- import_module ll_backend__llds_out.
 :- import_module ml_backend__il_peephole.
 :- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_type_gen.
@@ -156,8 +155,6 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
-
-:- use_module ll_backend__llds. /* for user_foreign_code */
 
 :- import_module bool, int, map, string, set, list, assoc_list, term.
 :- import_module library, require, counter.
@@ -1276,9 +1273,8 @@ mangle_dataname(common(Int))
 	= string__format("common_%s", [i(Int)]).
 mangle_dataname(rtti(RttiTypeCtor, RttiName)) = MangledName :-
 	rtti__addr_to_string(RttiTypeCtor, RttiName, MangledName).
-mangle_dataname(base_typeclass_info(ClassId, InstanceStr)) = MangledName :-
-        llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
-		MangledName).
+mangle_dataname(base_typeclass_info(ClassId, InstanceStr)) =
+        make_base_typeclass_info_name(ClassId, InstanceStr).
 mangle_dataname(module_layout) = _MangledName :-
 	error("unimplemented: mangling module_layout").
 mangle_dataname(proc_layout(_)) = _MangledName :-
@@ -3224,7 +3220,7 @@ predlabel_to_id(pred(PredOrFunc, MaybeModuleName, Name, Arity, CodeModel,
 			i(Arity), s(PredOrFuncStr), s(MaybeProcIdInt),
 			s(MaybeSeqNumStr)], UnMangledId),
 		Id = UnMangledId.
-		% llds_out__name_mangle(UnMangledId, Id).
+		% Id = name_mangle(UnMangledId).
 
 predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 			ProcId, MaybeSeqNum, Id) :-
@@ -3244,7 +3240,7 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 			[s(MaybeModuleStr), s(PredName), s(TypeName), i(Arity),
 				i(ProcIdInt), s(MaybeSeqNumStr)], UnMangledId),
 		Id = UnMangledId.
-		% llds_out__name_mangle(UnMangledId, Id).
+		% Id = name_mangle(UnMangledId).
 
 
 	% If an mlds__var is not an argument or a local, what is it?
@@ -3404,8 +3400,7 @@ mangle_dataname(common(Int), MangledName) :-
 mangle_dataname(rtti(RttiTypeCtor, RttiName), MangledName) :-
 	rtti__addr_to_string(RttiTypeCtor, RttiName, MangledName).
 mangle_dataname(base_typeclass_info(ClassId, InstanceStr), MangledName) :-
-        llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
-		MangledName).
+	MangledName = make_base_typeclass_info_name(ClassId, InstanceStr).
 mangle_dataname(module_layout, _MangledName) :-
 	error("unimplemented: mangling module_layout").
 mangle_dataname(proc_layout(_), _MangledName) :-

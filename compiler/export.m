@@ -69,6 +69,7 @@
 
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
@@ -78,7 +79,6 @@
 :- import_module ll_backend__arg_info.
 :- import_module ll_backend__code_gen.
 :- import_module ll_backend__code_util.
-:- import_module ll_backend__llds_out.
 :- import_module parse_tree__modules.
 
 :- import_module term, varset.
@@ -240,7 +240,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	copy_output_args(ArgInfoTypes, 0, Module, OutputArgs),
 	
 	ProcLabel = make_proc_label(Module, PredId, ProcId),
-	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
+	ProcLabelString = proc_label_to_c_string(ProcLabel, yes),
 
 	string__append_list([
 		"\n",
@@ -630,7 +630,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName) -->
 			SourceFileName,
 			"' by the\n** Mercury compiler, version ", Version,
 			".\n** Do not edit.\n*/\n"]),
-		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+		{ MangledModuleName = sym_name_mangle(ModuleName) },
 		{ string__to_upper(MangledModuleName, UppercaseModuleName) },
 		{ string__append(UppercaseModuleName, "_H", GuardMacroName) },
 		io__write_strings([

@@ -223,6 +223,7 @@
 :- implementation.
 
 :- import_module backend_libs__code_model.
+:- import_module backend_libs__name_mangle.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
@@ -841,10 +842,8 @@ handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-:- import_module ll_backend__llds_out.
-
 decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
+	MangledModuleName = sym_name_mangle(ModuleName),
 	string__to_upper(MangledModuleName, UppercaseModuleName).
 
 %-----------------------------------------------------------------------------%

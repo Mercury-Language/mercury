@@ -667,7 +667,7 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 		{ Return = no },
 		{ MaybePort = yes(Port) },
 		{ MaybeIsHidden = yes(IsHidden) },
-		{ trace__path_to_string(GoalPath, GoalPathStr) },
+		{ goal_path_to_string(GoalPath, GoalPathStr) },
 		stack_layout__lookup_string_in_table(GoalPathStr, GoalPathNum),
 		{ MaybeGoalPath = yes(GoalPathNum) }
 	;
@@ -687,7 +687,7 @@ stack_layout__construct_internal_layout(ProcLayoutName, Label - Internal,
 			{ stack_layout__find_valid_return_context(
 				TargetsContexts, _, _, GoalPath) }
 		->
-			{ trace__path_to_string(GoalPath, GoalPathStr) },
+			{ goal_path_to_string(GoalPath, GoalPathStr) },
 			stack_layout__lookup_string_in_table(GoalPathStr,
 				GoalPathNum),
 			{ MaybeGoalPath = yes(GoalPathNum) }

@@ -126,32 +126,33 @@
 :- import_module ml_backend__ml_util.		% MLDS utility predicates 
 
 	% miscellaneous compiler modules
-:- import_module parse_tree__prog_data.
-:- import_module hlds__hlds_module.
-:- import_module hlds__hlds_pred.
-:- import_module hlds__hlds_out.
-:- import_module ll_backend__llds.
 :- import_module aditi_backend__rl.
-:- import_module parse_tree__mercury_to_mercury.
-:- import_module hlds__hlds_data.
-:- import_module ll_backend__layout.
-:- import_module transform_hlds__dependency_graph.
-:- import_module parse_tree__prog_util.
 :- import_module aditi_backend__rl_dump.
 :- import_module aditi_backend__rl_file.
-:- import_module libs__options.
-:- import_module libs__globals.
-:- import_module libs__trace_params.
+:- import_module backend_libs__compile_target_code.
+:- import_module backend_libs__name_mangle.
 :- import_module check_hlds__goal_path.
+:- import_module hlds__hlds_data.
+:- import_module hlds__hlds_module.
+:- import_module hlds__hlds_out.
+:- import_module hlds__hlds_pred.
 :- import_module hlds__passes_aux.
-:- import_module recompilation.
-:- import_module recompilation__usage.
-:- import_module recompilation__check.
+:- import_module libs__globals.
+:- import_module libs__options.
 :- import_module libs__timestamp.
+:- import_module libs__trace_params.
+:- import_module ll_backend__layout.
+:- import_module ll_backend__llds.
 :- import_module make.
 :- import_module make__options_file.
 :- import_module make__util.
-:- import_module backend_libs__compile_target_code.
+:- import_module parse_tree__mercury_to_mercury.
+:- import_module parse_tree__prog_data.
+:- import_module parse_tree__prog_util.
+:- import_module recompilation.
+:- import_module recompilation__check.
+:- import_module recompilation__usage.
+:- import_module transform_hlds__dependency_graph.
 
 	% inter-module analysis framework
 :- import_module analysis.
@@ -3565,7 +3566,7 @@ mercury_compile__construct_c_file(_Module,
 	{ C_InterfaceInfo = foreign_interface_info(ModuleSymName,
 		C_HeaderCode0, C_Includes, C_BodyCode0,
 		_C_ExportDecls, C_ExportDefns) },
-	{ llds_out__sym_name_mangle(ModuleSymName, MangledModuleName) },
+	{ MangledModuleName = sym_name_mangle(ModuleSymName) },
 	{ string__append(MangledModuleName, "_module", ModuleName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
 	{ get_c_body_code(C_BodyCode0, C_BodyCode) },

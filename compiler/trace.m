@@ -209,10 +209,6 @@
 	% for a redo event. Otherwise, generate empty code.
 :- pred trace__maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
 
-	% Convert a goal path to a string, using the format documented
-	% in the Mercury user's guide.
-:- pred trace__path_to_string(goal_path::in, string::out) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1009,42 +1005,6 @@ trace__stackref_to_string(Lval, LvalStr) :-
 	).
 
 %-----------------------------------------------------------------------------%
-
-trace__path_to_string(Path, PathStr) :-
-	trace__path_steps_to_strings(Path, StepStrs),
-	list__reverse(StepStrs, RevStepStrs),
-	string__append_list(RevStepStrs, PathStr).
-
-:- pred trace__path_steps_to_strings(goal_path::in, list(string)::out) is det.
-
-trace__path_steps_to_strings([], []).
-trace__path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
-	trace__path_step_to_string(Step, StepStr),
-	trace__path_steps_to_strings(Steps, StepStrs).
-
-	% The inverse of this procedure is implemented in
-	% browser/program_representation.m, and must be updated if this
-	% is changed.
-
-:- pred trace__path_step_to_string(goal_path_step::in, string::out) is det.
-
-trace__path_step_to_string(conj(N), Str) :-
-	string__int_to_string(N, NStr),
-	string__append_list(["c", NStr, ";"], Str).
-trace__path_step_to_string(disj(N), Str) :-
-	string__int_to_string(N, NStr),
-	string__append_list(["d", NStr, ";"], Str).
-trace__path_step_to_string(switch(N, _), Str) :-
-	string__int_to_string(N, NStr),
-	string__append_list(["s", NStr, ";"], Str).
-trace__path_step_to_string(ite_cond, "?;").
-trace__path_step_to_string(ite_then, "t;").
-trace__path_step_to_string(ite_else, "e;").
-trace__path_step_to_string(neg, "~;").
-trace__path_step_to_string(exist(cut), "q!;").
-trace__path_step_to_string(exist(no_cut), "q;").
-trace__path_step_to_string(first, "f;").
-trace__path_step_to_string(later, "l;").
 
 :- pred trace__convert_external_port_type(external_trace_port::in,
 	trace_port::out) is det.

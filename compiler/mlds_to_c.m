@@ -67,6 +67,7 @@
 :- import_module backend_libs__c_util.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
@@ -74,10 +75,6 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
-				% llds_out__sym_name_mangle,
-				% llds_out__make_base_typeclass_info_name,
-				% output_c_file_intro_and_grade.
 :- import_module ml_backend__ml_code_util.
 				% for ml_gen_public_field_decl_flags, which is
 				% used by the code that handles derived classes
@@ -295,7 +292,7 @@ mlds_output_hdr_start(Indent, ModuleName) -->
 	io__nl,
 	mlds_indent(Indent),
 	io__write_string("#ifndef MR_HEADER_GUARD_"),
-	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+	{ MangledModuleName = sym_name_mangle(ModuleName) },
 	io__write_string(MangledModuleName),
 	io__nl,
 	mlds_indent(Indent),
@@ -1670,7 +1667,7 @@ mlds_output_fully_qualified_proc_label(QualifiedName) -->
 
 mlds_output_fully_qualified(qual(ModuleName, Name), OutputFunc) -->
 	{ SymName = mlds_module_name_to_sym_name(ModuleName) },
-	{ llds_out__sym_name_mangle(SymName, MangledModuleName) },
+	{ MangledModuleName = sym_name_mangle(SymName) },
 	io__write_string(MangledModuleName),
 	io__write_string("__"),
 	OutputFunc(Name).
@@ -1679,7 +1676,7 @@ mlds_output_fully_qualified(qual(ModuleName, Name), OutputFunc) -->
 :- mode mlds_output_module_name(in, di, uo) is det.
 
 mlds_output_module_name(ModuleName) -->
-	{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
+	{ MangledModuleName = sym_name_mangle(ModuleName) },
 	io__write_string(MangledModuleName).
 
 :- pred mlds_output_name(mlds__entity_name, io__state, io__state).
@@ -1689,7 +1686,7 @@ mlds_output_module_name(ModuleName) -->
 %     if they are not needed.
 
 mlds_output_name(type(Name, Arity)) -->
-	{ llds_out__name_mangle(Name, MangledName) },
+	{ MangledName = name_mangle(Name) },
 	io__format("%s_%d", [s(MangledName), i(Arity)]).
 mlds_output_name(data(DataName)) -->
 	mlds_output_data_name(DataName).
@@ -1713,7 +1710,7 @@ mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
 	( { PredOrFunc = predicate, Suffix = "p" }
 	; { PredOrFunc = function, Suffix = "f" }
 	),
-	{ llds_out__name_mangle(Name, MangledName) },
+	{ MangledName = name_mangle(Name) },
 	io__format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)]),
 	( { MaybeDefiningModule = yes(DefiningModule) } ->
 		io__write_string("_in__"),
@@ -1723,8 +1720,8 @@ mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
 	).
 mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
 		TypeName, TypeArity)) -->
-	{ llds_out__name_mangle(PredName, MangledPredName) },
-	{ llds_out__name_mangle(TypeName, MangledTypeName) },
+	{ MangledPredName = name_mangle(PredName) },
+	{ MangledTypeName = name_mangle(TypeName) },
 	io__write_string(MangledPredName),
 	io__write_string("__"),
 	( { MaybeTypeModule = yes(TypeModule) } ->
@@ -1749,8 +1746,7 @@ mlds_output_data_name(rtti(RttiTypeCtor, RttiName)) -->
 	{ rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName) },
 	io__write_string(RttiAddrName).
 mlds_output_data_name(base_typeclass_info(ClassId, InstanceStr)) -->
-        { llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
-		Name) },
+        { Name = make_base_typeclass_info_name(ClassId, InstanceStr) },
 	io__write_string(Name).
 mlds_output_data_name(module_layout) -->
 	{ error("mlds_to_c.m: NYI: module_layout") }.
@@ -3062,8 +3058,7 @@ mlds_output_var_name(VarName) -->
 :- mode mlds_output_mangled_name(in, di, uo) is det.
 
 mlds_output_mangled_name(Name) -->
-	{ llds_out__name_mangle(Name, MangledName) },
-	io__write_string(MangledName).
+	io__write_string(name_mangle(Name)).
 
 :- pred mlds_output_bracketed_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_bracketed_lval(in, di, uo) is det.

@@ -582,26 +582,6 @@
 	;	gc
 	.
 
-	% The kinds of events with which MR_trace may be called, either
-	% by compiler-generated code, or by code in the standard library
-	% referring to compiler-generated data structures.
-:- type trace_port
-	--->	call
-	;	exit
-	;	fail
-	;	redo
-	;	exception
-	;	ite_cond
-	;	ite_then
-	;	ite_else
-	;	neg_enter
-	;	neg_success
-	;	neg_failure
-	;	switch
-	;	disj
-	;	nondet_pragma_first
-	;	nondet_pragma_later.
-
 	% Each call instruction has a list of liveinfo, which stores
 	% information about which variables are live after the call
 	% (that is, on return).  The information is intended for use by

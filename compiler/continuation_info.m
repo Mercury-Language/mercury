@@ -57,6 +57,7 @@
 :- import_module hlds__hlds_pred.
 :- import_module hlds__instmap.
 :- import_module libs__globals.
+:- import_module libs__trace_params.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__inst.

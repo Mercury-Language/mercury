@@ -149,6 +149,12 @@
 
 :- pred globals__want_return_var_layouts(globals::in, bool::out) is det.
 
+	% globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst)
+	% figures out whether an imported label address is a constant.
+	% This depends on how we treat labels.
+
+:- pred globals__imported_is_constant(bool::in, bool::in, bool::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for storing a `globals' structure in the
@@ -384,7 +390,7 @@ globals__have_static_code_addresses_2(OptionTable, IsConst) :-
 	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
 		NonLocalGotos),
 	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
-	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 
 globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
 	% We need to generate layout info for call return labels
@@ -403,6 +409,26 @@ globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
 		WantReturnLayouts = yes
 	;
 		WantReturnLayouts = no
+	).
+
+	% The logic of this function and how it is used to select the default
+	% type_info method must agree with the code in runtime/typeinfo.h.
+
+globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
+	(
+		NonLocalGotos = yes,
+		AsmLabels = no
+	->
+		%
+		% with non-local gotos but no asm labels, jumps to code
+		% addresses in different c_modules must be done via global
+		% variables; the value of these global variables is not
+		% constant (i.e. not computable at load time), since they
+		% can't be initialized until we call init_modules().
+		%
+		IsConst = no
+	;
+		IsConst = yes
 	).
 
 %-----------------------------------------------------------------------------%

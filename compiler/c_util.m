@@ -135,6 +135,18 @@
 :- mode c_util__binary_infix_op(in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
+
+	% output_c_file_intro_and_grade(SourceFileName, Version)
+	% outputs a comment which includes the settings used to generate
+	% the C file.  This is used by configure to check the any
+	% existing C files are consistent with the current
+	% configuration.  SourceFileName is the name of the file from
+	% which the C is generated, while Version is the version name
+	% of the mercury compiler.
+:- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
+:- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -372,5 +384,37 @@ c_util__binary_infix_op(<, "<").
 c_util__binary_infix_op(>, ">").
 c_util__binary_infix_op(<=, "<=").
 c_util__binary_infix_op(>=, ">=").
+
+%-----------------------------------------------------------------------------%
+
+output_c_file_intro_and_grade(SourceFileName, Version) -->
+	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
+	{ string__int_to_string(NumTagBits, NumTagBitsStr) },
+	globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
+	{ UnboxedFloatStr = convert_bool_to_string(UnboxedFloat) },
+
+	io__write_strings(["/*\n",
+		"** Automatically generated from `", SourceFileName,
+			"' by the Mercury compiler,\n",
+		"** version ", Version, ".\n",
+		"** Do not edit.\n",
+		"**\n",
+		"** The autoconfigured grade settings governing\n",
+		"** the generation of this C file were\n",
+		"**\n",
+		"** TAG_BITS=", NumTagBitsStr, "\n",
+		"** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
+		"**\n",
+		"** END_OF_C_GRADE_INFO\n",
+		"*/\n",
+		"\n",
+		"#define MR_TYPE_CTOR_INFO_HAS_FLAG 1\n",
+		"\n"
+	]).
+
+:- func convert_bool_to_string(bool) = string.
+
+convert_bool_to_string(no) = "no".
+convert_bool_to_string(yes) = "yes".
 
 %-----------------------------------------------------------------------------%

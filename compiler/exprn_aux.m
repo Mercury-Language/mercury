@@ -29,12 +29,6 @@
 :- pred exprn_aux__const_is_constant(rval_const::in, exprn_opts::in, bool::out)
 	is det.
 
-	% exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst)
-	% figures out whether an imported label address is a constant.
-	% This depends on how we treat labels.
-
-:- pred exprn_aux__imported_is_constant(bool::in, bool::in, bool::out) is det.
-
 :- pred exprn_aux__rval_contains_lval(rval::in, lval::in) is semidet.
 
 :- pred exprn_aux__rval_contains_rval(rval, rval).
@@ -105,6 +99,7 @@
 
 :- implementation.
 
+:- import_module libs__globals.
 :- import_module libs__options.
 
 :- import_module int, set, require, getopt.
@@ -159,7 +154,7 @@ exprn_aux__addr_is_constant(label(Label), ExprnOpts, IsConst) :-
 	exprn_aux__label_is_constant(Label, NonLocalGotos, AsmLabels, IsConst).
 exprn_aux__addr_is_constant(imported(_), ExprnOpts, IsConst) :-
 	ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
-	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 exprn_aux__addr_is_constant(succip, _, no).
 exprn_aux__addr_is_constant(do_succeed(_), _, no).
 exprn_aux__addr_is_constant(do_redo, _, no).
@@ -182,32 +177,11 @@ exprn_aux__addr_is_constant(do_not_reached, _, no).
 	is det.
 
 exprn_aux__label_is_constant(exported(_), NonLocalGotos, AsmLabels, IsConst) :-
-	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 exprn_aux__label_is_constant(local(_), NonLocalGotos, AsmLabels, IsConst) :-
-	exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 exprn_aux__label_is_constant(c_local(_), _NonLocalGotos, _AsmLabels, yes).
 exprn_aux__label_is_constant(local(_, _), _NonLocalGotos, _AsmLabels, yes).
-
-	% The logic of this function and how it is used in globals.m to
-	% select the default type_info method must agree with the code in
-	% runtime/typeinfo.h.
-
-exprn_aux__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
-	(
-		NonLocalGotos = yes,
-		AsmLabels = no
-	->
-		%
-		% with non-local gotos but no asm labels, jumps to code
-		% addresses in different c_modules must be done via global
-		% variables; the value of these global variables is not
-		% constant (i.e. not computable at load time), since they
-		% can't be initialized until we call init_modules().
-		%
-		IsConst = no
-	;
-		IsConst = yes
-	).
 
 %------------------------------------------------------------------------------%
 

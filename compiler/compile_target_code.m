@@ -164,17 +164,17 @@
 		io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module hlds__error_util.
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__handle_options.
 :- import_module libs__options.
 :- import_module libs__trace_params.
-:- import_module ll_backend__llds_out.	% for llds_out__make_init_name and
-					% llds_out__make_rl_data_name
 :- import_module parse_tree__prog_out.
 
 :- import_module char, dir, getopt, int, require, string.
@@ -739,15 +739,13 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded) -->
 		globals__io_lookup_bool_option(aditi, Aditi),
 		list__foldl(
 		    (pred(ModuleName::in, di, uo) is det -->
-			{ llds_out__make_init_name(ModuleName,
-				InitFuncName0) },
+			{ InitFuncName0 = make_init_name(ModuleName) },
 			{ InitFuncName = InitFuncName0 ++ "init" },
 			io__write_string(InitFileStream, "INIT "),
 			io__write_string(InitFileStream, InitFuncName),
 			io__nl(InitFileStream),
 			( { Aditi = yes } ->
-				{ llds_out__make_rl_data_name(ModuleName,
-					RLName) },
+				{ RLName = make_rl_data_name(ModuleName) },
 				io__write_string(InitFileStream,
 					"ADITI_DATA "),
 				io__write_string(InitFileStream, RLName),

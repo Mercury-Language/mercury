@@ -151,13 +151,13 @@
 :- import_module check_hlds.
 :- import_module hlds.
 :- import_module libs.
-:- import_module ll_backend. % XXX
 :- import_module parse_tree.
 
 % XXX some of these imports might be unused
 
 :- import_module backend_libs__builtin_ops.
 :- import_module backend_libs__code_model.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.		% for rtti__addr_to_string.
 :- import_module check_hlds__type_util.
@@ -166,9 +166,6 @@
 :- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__llds_out.	% XXX needed for llds_out__name_mangle,
-				% llds_out__sym_name_mangle,
-				% llds_out__make_base_typeclass_info_name,
 :- import_module ml_backend__ml_code_util.% for ml_gen_public_field_decl_flags,
 				% which is used by the code that handles
 				% derived classes
@@ -1174,7 +1171,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 		{ GCC_VarName = ml_var_name_to_string(VarName) },
 		gcc__build_static_var_decl(GCC_VarName, GCC_Type, GCC_InitExpr,
 			GCC_Defn),
-		{ llds_out__name_mangle(GCC_VarName, MangledVarName) },
+		{ MangledVarName = name_mangle(GCC_VarName) },
 		gcc__set_var_decl_asm_name(GCC_Defn, MangledVarName),
 		add_var_decl_flags(Flags, GCC_Defn),
 		gcc__finish_static_var_decl(GCC_Defn)
@@ -1626,7 +1623,7 @@ get_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
 	( PredOrFunc = predicate, Suffix = "p"
 	; PredOrFunc = function, Suffix = "f"
 	),
-	llds_out__name_mangle(Name, MangledName),
+	MangledName = name_mangle(Name),
 	string__format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)],
 		LabelName0),
 	( MaybeDefiningModule = yes(DefiningModule) ->
@@ -1637,8 +1634,8 @@ get_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
 	).
 get_pred_label_name(special_pred(PredName, MaybeTypeModule,
 		TypeName, TypeArity), LabelName) :-
-	llds_out__name_mangle(PredName, MangledPredName),
-	llds_out__name_mangle(TypeName, MangledTypeName),
+	MangledPredName = name_mangle(PredName),
+	MangledTypeName = name_mangle(TypeName),
 	TypeNameString = string__format("%s_%d",
 		[s(MangledTypeName), i(TypeArity)]),
 	( MaybeTypeModule = yes(TypeModule) ->
@@ -1650,27 +1647,28 @@ get_pred_label_name(special_pred(PredName, MaybeTypeModule,
 	LabelName = string__append_list([MangledPredName, "__" | TypeNameList]).
 
 :- func get_module_name(module_name) = string.
-get_module_name(ModuleName) = MangledModuleName :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName).
+
+get_module_name(ModuleName) = sym_name_mangle(ModuleName).
 
 :- pred build_param_types(mlds__arg_types::in, global_info::in,
-		list(gcc__type)::out, gcc__param_types::out,
-		io__state::di, io__state::uo) is det.
+	list(gcc__type)::out, gcc__param_types::out,
+	io__state::di, io__state::uo) is det.
 
 build_param_types(ArgTypes, GlobalInfo, GCC_Types, ParamTypes) -->
-	build_param_types(ArgTypes, GlobalInfo, GCC_Types, gcc__empty_param_types,
-		ParamTypes).
+	build_param_types(ArgTypes, GlobalInfo, GCC_Types,
+		gcc__empty_param_types, ParamTypes).
 
-% build a list of parameter types, and prepend this list to the gcc__param_types list
-% passed as input
+% build a list of parameter types, and prepend this list to the
+% gcc__param_types list passed as input
 :- pred build_param_types(mlds__arg_types::in, global_info::in,
-		list(gcc__type)::out, gcc__param_types::in, gcc__param_types::out,
-		io__state::di, io__state::uo) is det.
+	list(gcc__type)::out, gcc__param_types::in, gcc__param_types::out,
+	io__state::di, io__state::uo) is det.
 
 build_param_types([], _, [], ParamTypes, ParamTypes) --> [].
 build_param_types([ArgType | ArgTypes], GlobalInfo, [GCC_Type | GCC_Types],
 		ParamTypes0, ParamTypes) -->
-	build_param_types(ArgTypes, GlobalInfo, GCC_Types, ParamTypes0, ParamTypes1),
+	build_param_types(ArgTypes, GlobalInfo, GCC_Types,
+		ParamTypes0, ParamTypes1),
 	build_type(ArgType, GlobalInfo, GCC_Type),
 	{ ParamTypes = gcc__cons_param_types(GCC_Type, ParamTypes1) }.
 
@@ -2353,7 +2351,7 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 :- func build_name(mlds__entity_name) = string.
 
 build_name(type(Name, Arity)) = TypeName :-
-	llds_out__name_mangle(Name, MangledName),
+	MangledName = name_mangle(Name),
 	TypeName = string__format("%s_%d", [s(MangledName), i(Arity)]).
 build_name(data(DataName)) = build_data_name(DataName).
 build_name(EntityName) = AsmFuncName :-
@@ -2363,17 +2361,15 @@ build_name(export(Name)) = Name.
 
 :- func build_data_name(mlds__data_name) = string.
 
-build_data_name(var(Name)) = MangledName :-
-	llds_out__name_mangle(ml_var_name_to_string(Name), MangledName).
+build_data_name(var(Name)) = name_mangle(ml_var_name_to_string(Name)).
 build_data_name(common(Num)) =
 	string__format("common_%d", [i(Num)]).
 build_data_name(rtti(RttiTypeCtor0, RttiName0)) = RttiAddrName :-
 	RttiTypeCtor = fixup_rtti_type_ctor(RttiTypeCtor0),
 	RttiName = fixup_rtti_name(RttiName0),
 	rtti__addr_to_string(RttiTypeCtor, RttiName, RttiAddrName).
-build_data_name(base_typeclass_info(ClassId, InstanceStr)) = Name :-
-	llds_out__make_base_typeclass_info_name(ClassId, InstanceStr,
-		Name).
+build_data_name(base_typeclass_info(ClassId, InstanceStr)) =
+	make_base_typeclass_info_name(ClassId, InstanceStr).
 build_data_name(module_layout) = _ :-
 	sorry(this_file, "module_layout").
 build_data_name(proc_layout(_ProcLabel)) = _ :-

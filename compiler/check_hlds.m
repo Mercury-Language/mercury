@@ -70,7 +70,6 @@
           
 :- implementation.
 :- import_module transform_hlds.	% for pd_cost, etc.
-:- import_module ll_backend.		% XXX for code_util, code_aux
 
 :- end_module check_hlds.
 

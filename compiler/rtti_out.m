@@ -83,6 +83,7 @@
 :- implementation.
 
 :- import_module backend_libs__c_util.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__type_ctor_info.
 :- import_module hlds__error_util.
@@ -1069,7 +1070,7 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		output_rtti_addr(RttiTypeCtor, type_ctor_info),
 		io__write_string(",\n\t\t"),
 		{ RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity) },
-		{ llds_out__sym_name_mangle(ModuleName, ModuleNameString) },
+		{ ModuleNameString = sym_name_mangle(ModuleName) },
 		{ string__append(ModuleNameString, "__", UnderscoresModule) },
 		( 
 			{ string__append(UnderscoresModule, _, TypeName) } 
@@ -1078,7 +1079,7 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		;
 			io__write_string(UnderscoresModule)
 		),
-		{ llds_out__name_mangle(TypeName, MangledTypeName) },
+		{ MangledTypeName = name_mangle(TypeName) },
 		io__write_string(MangledTypeName),
 		io__write_string("_"),
 		io__write_int(Arity),
@@ -1304,8 +1305,7 @@ output_addr_of_rtti_data(RttiData) -->
 			InstanceStr, _) }
 	->
 		% rtti_data_to_name/3 does not handle this case
-		output_base_typeclass_info_name(ClassId,
-			InstanceStr)
+		output_base_typeclass_info_name(ClassId, InstanceStr)
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeCtor, RttiName) },
 		output_addr_of_rtti_addr(RttiTypeCtor, RttiName)

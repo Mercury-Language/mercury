@@ -801,6 +801,10 @@
 
 :- type maybe_cut	--->	cut ; no_cut.
 
+	% Convert a goal path to a string, using the format documented
+	% in the Mercury user's guide.
+:- pred goal_path_to_string(goal_path::in, string::out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Miscellaneous utility procedures for dealing with HLDS goals
@@ -1383,6 +1387,44 @@ goal_remove_feature(Goal - GoalInfo0, Feature, Goal - GoalInfo) :-
 
 goal_has_feature(_Goal - GoalInfo, Feature) :-
 	goal_info_has_feature(GoalInfo, Feature).
+
+%-----------------------------------------------------------------------------%
+
+goal_path_to_string(Path, PathStr) :-
+	goal_path_steps_to_strings(Path, StepStrs),
+	list__reverse(StepStrs, RevStepStrs),
+	string__append_list(RevStepStrs, PathStr).
+
+:- pred goal_path_steps_to_strings(goal_path::in, list(string)::out) is det.
+
+goal_path_steps_to_strings([], []).
+goal_path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
+	goal_path_step_to_string(Step, StepStr),
+	goal_path_steps_to_strings(Steps, StepStrs).
+
+	% The inverse of this procedure is implemented in
+	% browser/program_representation.m, and must be updated if this
+	% is changed.
+
+:- pred goal_path_step_to_string(goal_path_step::in, string::out) is det.
+
+goal_path_step_to_string(conj(N), Str) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["c", NStr, ";"], Str).
+goal_path_step_to_string(disj(N), Str) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["d", NStr, ";"], Str).
+goal_path_step_to_string(switch(N, _), Str) :-
+	string__int_to_string(N, NStr),
+	string__append_list(["s", NStr, ";"], Str).
+goal_path_step_to_string(ite_cond, "?;").
+goal_path_step_to_string(ite_then, "t;").
+goal_path_step_to_string(ite_else, "e;").
+goal_path_step_to_string(neg, "~;").
+goal_path_step_to_string(exist(cut), "q!;").
+goal_path_step_to_string(exist(no_cut), "q;").
+goal_path_step_to_string(first, "f;").
+goal_path_step_to_string(later, "l;").
 
 %-----------------------------------------------------------------------------%
 %

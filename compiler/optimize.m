@@ -28,6 +28,7 @@
 
 :- implementation.
 
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__passes_aux.
@@ -97,7 +98,7 @@ optimize__init_opt_debug_info(Name, Arity, PredProcId, Instrs0, Counter,
 	globals__io_lookup_bool_option(debug_opt, DebugOpt),
 	(
 		{ DebugOpt = yes },
-		{ llds_out__name_mangle(Name, MangledName) },
+		{ MangledName = name_mangle(Name) },
 		{ PredProcId = proc(PredId, ProcId) },
 		{ pred_id_to_int(PredId, PredIdInt) },
 		{ proc_id_to_int(ProcId, ProcIdInt) },

@@ -71,9 +71,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-	% aditi_backend__rl_exprn uses ll_backend__llds
-	% and backend_libs__builtin_ops.
-:- import_module ll_backend.
+	% aditi_backend__rl_exprn uses backend_libs__builtin_ops.
 :- import_module backend_libs.
 
 :- end_module aditi_backend.

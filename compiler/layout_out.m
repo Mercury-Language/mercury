@@ -82,11 +82,12 @@
 :- implementation.
 
 :- import_module backend_libs__c_util.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__rtti.
+:- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_pred.
 :- import_module libs__trace_params.
 :- import_module ll_backend__code_util.
-:- import_module ll_backend__trace.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
@@ -197,7 +198,7 @@ output_layout_decl(LayoutName, DeclSet0, DeclSet) -->
 
 	% This code should be kept in sync with output_layout_name/3 below.
 make_label_layout_name(Label) = Name :-
-	llds_out__get_label(Label, yes, LabelName),
+	LabelName = label_to_c_string(Label, yes),
 	string__append_list([
 		mercury_data_prefix,
 		"_label_layout__",
@@ -208,8 +209,7 @@ output_layout_name(label_layout(Label, _)) -->
 	% This code should be kept in sync with make_label_layout_name/1 above.
 	io__write_string(mercury_data_prefix),
 	io__write_string("_label_layout__"),
-	{ llds_out__get_label(Label, yes, LabelName) },
-	io__write_string(LabelName).
+	io__write_string(label_to_c_string(Label, yes)).
 output_layout_name(proc_layout(ProcLabel, _)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_proc_layout__"),
@@ -231,43 +231,43 @@ output_layout_name(closure_proc_id(CallerProcLabel, SeqNo, _)) -->
 output_layout_name(file_layout(ModuleName, FileNum)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_file_layout__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr),
 	io__write_string("_"),
 	io__write_int(FileNum).
 output_layout_name(file_layout_line_number_vector(ModuleName, FileNum)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_file_lines__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr),
 	io__write_string("_"),
 	io__write_int(FileNum).
 output_layout_name(file_layout_label_layout_vector(ModuleName, FileNum)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_file_label_layouts__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr),
 	io__write_string("_"),
 	io__write_int(FileNum).
 output_layout_name(module_layout_string_table(ModuleName)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_module_strings__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr).
 output_layout_name(module_layout_file_vector(ModuleName)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_module_files__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr).
 output_layout_name(module_layout_proc_vector(ModuleName)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_module_procs__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr).
 output_layout_name(module_layout(ModuleName)) -->
 	io__write_string(mercury_data_prefix),
 	io__write_string("_module_layout__"),
-	{ llds_out__sym_name_mangle(ModuleName, ModuleNameStr) },
+	{ ModuleNameStr = sym_name_mangle(ModuleName) },
 	io__write_string(ModuleNameStr).
 output_layout_name(proc_static(RttiProcLabel)) -->
 	io__write_string(mercury_data_prefix),
@@ -1302,7 +1302,7 @@ output_call_site_static(CallSiteStatic, Index, Index + 1) -->
 	io__write_string(""", "),
 	io__write_int(LineNumber),
 	io__write_string(", """),
-	{ trace__path_to_string(GoalPath, GoalPathStr) },
+	{ goal_path_to_string(GoalPath, GoalPathStr) },
 	io__write_string(GoalPathStr),
 	io__write_string(""" },\n").
 

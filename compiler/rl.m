@@ -673,18 +673,16 @@
 :- pred rl__mangle_ctor_name(sym_name::in, int::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 :- import_module hlds__goal_form.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_aux.
-:- import_module ll_backend__code_util.
-:- import_module ll_backend__llds.
-:- import_module ll_backend__llds_out.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
@@ -1090,7 +1088,7 @@ rl__get_entry_proc_name(ModuleInfo, PredProcId, PredInfo, PredName, Arity,
 	IsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
 	ProcLabel = make_user_proc_label(ModuleName, IsImported,
 		PredOrFunc, PredModule, PredName, Arity, ProcId),
-	llds_out__get_proc_label(ProcLabel, no, ProcLabelStr),
+	ProcLabelStr = proc_label_to_c_string(ProcLabel, no),
 	prog_out__sym_name_to_string(PredModule, PredModuleStr),
 	ProcName = rl_proc_name(Owner, PredModuleStr, ProcLabelStr, 2).
 

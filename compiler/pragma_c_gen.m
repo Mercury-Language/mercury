@@ -43,7 +43,9 @@
 
 :- implementation.
 
+:- import_module backend_libs__c_util.
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module check_hlds__type_util.
 :- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
@@ -489,7 +491,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	;
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_name(PredInfo, Name),
-		llds_out__quote_c_string(Name, MangledName),
+		c_util__quote_string(Name, MangledName),
 		string__append_list(["\tMR_OBTAIN_GLOBAL_LOCK(""",
 			MangledName, """);\n"], ObtainLockStr),
 		ObtainLock = pragma_c_raw_code(ObtainLockStr,
@@ -629,12 +631,11 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
 
 make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
-	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no,
-		CodeAddr),
+	code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
 	( CodeAddr = imported(ProcLabel) ->
-		llds_out__get_proc_label(ProcLabel, yes, ProcLabelString)
-	; CodeAddr = label(ProcLabel) ->
-		llds_out__get_label(ProcLabel, yes, ProcLabelString)
+		ProcLabelString = proc_label_to_c_string(ProcLabel, yes)
+	; CodeAddr = label(Label) ->
+		ProcLabelString = label_to_c_string(Label, yes)
 	;
 		error("unexpected code_addr in make_proc_label_hash_define")
 	).
@@ -922,7 +923,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		SharedLastSuccessLabel = "MR_shared_success_last_"
 			++ ProcLabelString ++ ":\n",
 
-		llds_out__get_label(SharedLabel, yes, LabelStr),
+		LabelStr = label_to_c_string(SharedLabel, yes),
 		string__format("\tMR_GOTO_LABEL(%s);\n", [s(LabelStr)],
 			GotoSharedLabel),
 
@@ -1334,8 +1335,8 @@ output_descs_from_arg_info([Arg | Args], Outputs, CodeInfo0, CodeInfo) :-
 %---------------------------------------------------------------------------%
 
 pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId, StructName) :-
-	llds_out__sym_name_mangle(ModuleName, MangledModuleName),
-	llds_out__name_mangle(PredName, MangledPredName),
+	MangledModuleName = sym_name_mangle(ModuleName),
+	MangledPredName = name_mangle(PredName),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(ProcNum, ProcNumStr),

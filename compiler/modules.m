@@ -744,10 +744,10 @@
 :- implementation.
 
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__name_mangle.
 :- import_module hlds__passes_aux.
 :- import_module libs__handle_options.
 :- import_module libs__options.
-:- import_module ll_backend__llds_out.
 :- import_module make. 				% XXX undesirable dependency
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__module_qual.
@@ -4737,9 +4737,9 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 :- mode append_to_init_list(in, in, in, di, uo) is det.
 
 append_to_init_list(DepStream, InitFileName, Module) -->
-	{ llds_out__make_init_name(Module, InitFuncName0) },
+	{ InitFuncName0 = make_init_name(Module) },
 	{ string__append(InitFuncName0, "init", InitFuncName) },
-	{ llds_out__make_rl_data_name(Module, RLName) },
+	{ RLName = make_rl_data_name(Module) },
 	io__write_strings(DepStream, [
 		"\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n"
 	]),

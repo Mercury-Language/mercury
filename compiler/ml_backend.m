@@ -26,7 +26,6 @@
 :- import_module check_hlds.	 % is this needed?
 :- import_module hlds.
 :- import_module libs.
-:- import_module ll_backend.     % XXX needed for llds_out__name_mangle, etc.
 :- import_module parse_tree.
 :- import_module transform_hlds. % is this needed?
 

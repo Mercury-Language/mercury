@@ -43,7 +43,6 @@
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 

@@ -106,8 +106,10 @@
 :- import_module ll_backend__llds.
 :- import_module ll_backend__llds_out.
 % Modules shared between different back-ends.
+:- import_module backend_libs__c_util.
 :- import_module backend_libs__code_model.
 :- import_module backend_libs__export.
+:- import_module backend_libs__name_mangle.
 :- import_module backend_libs__foreign.
 % Misc
 :- import_module libs__globals.
@@ -1342,7 +1344,7 @@ write_fact_args([Arg | Args], OutputStream) -->
 		{ Arg = term__string(String) },
 		io__set_output_stream(OutputStream, OldStream),
 		io__write_string(""""),
-		output_c_quoted_string(String),
+		c_util__output_quoted_string(String),
 		io__write_string(""", "),
 		io__set_output_stream(OldStream, _)
 	;
@@ -2308,7 +2310,7 @@ write_hash_table_2(HashTable, CurrIndex, MaxIndex) -->
 				{ Key = term__string(String) }
 			->
 				io__write_string(""""),
-				output_c_quoted_string(String),
+				c_util__output_quoted_string(String),
 				io__write_string("""")
 			;
 				{ Key = term__integer(Int) }
@@ -2453,10 +2455,11 @@ write_fact_table_numfacts(PredName, NumFacts, OutputStream, C_HeaderCode) -->
 	io__set_output_stream(OldOutputStream, _).
 
 %---------------------------------------------------------------------------%
+
 :- pred make_fact_table_identifier(sym_name::in, string::out) is det.
 
 make_fact_table_identifier(SymName, Identifier) :-
-	llds_out__sym_name_mangle(SymName, Identifier).
+	Identifier = sym_name_mangle(SymName).
 
 %---------------------------------------------------------------------------%
 

@@ -14,7 +14,7 @@
 :- import_module check_hlds.     % needed for unify_proc__unify_proc_id,
 				 % etc.
 :- import_module libs.
-% :- import_module ll_backend.   % XXX needed for `llds__lval',
+:- import_module ll_backend.     % XXX needed for `llds__lval',
 				 % which is used in various annotations
 				 % in the HLDS (stack_slots, follow_vars, etc.)
 :- import_module parse_tree.
