@@ -249,7 +249,7 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 stack_layout__construct_layouts(ProcLayoutInfo) -->
 	{ ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, Detism,
 		StackSlots, SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
-		Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
+		HeadVars, Goal, InstMap, TraceSlotInfo, ForceProcIdLayout,
 		VarSet, VarTypes, InternalMap, MaybeTableIoDecl) },
 	{ map__to_assoc_list(InternalMap, Internals) },
 	stack_layout__set_cur_proc_named_vars(map__init),
@@ -286,8 +286,9 @@ stack_layout__construct_layouts(ProcLayoutInfo) -->
 	stack_layout__set_label_tables(LabelTables),
 	stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel,
 		ProcLabel, Detism, StackSlots, SuccipLoc, EvalMethod,
-		MaybeCallLabel, MaxTraceReg, Goal, InstMap, TraceSlotInfo,
-		VarSet, VarTypes, NamedVars, MaybeTableIoDecl, Kind).
+		MaybeCallLabel, MaxTraceReg, HeadVars, Goal, InstMap,
+		TraceSlotInfo, VarSet, VarTypes, NamedVars, MaybeTableIoDecl,
+		Kind).
 
 %---------------------------------------------------------------------------%
 
@@ -386,16 +387,16 @@ stack_layout__context_is_valid(Context) :-
 
 :- pred stack_layout__construct_proc_layout(rtti_proc_label::in, label::in,
 	proc_label::in, determinism::in, int::in, maybe(int)::in,
-	eval_method::in, maybe(label)::in, int::in, hlds_goal::in, instmap::in,
-	trace_slot_info::in, prog_varset::in, vartypes::in,
-	map(int, string)::in, maybe(table_io_decl_info)::in,
+	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
+	hlds_goal::in, instmap::in, trace_slot_info::in, prog_varset::in,
+	vartypes::in, map(int, string)::in, maybe(table_io_decl_info)::in,
 	proc_layout_kind::in, stack_layout_info::in, stack_layout_info::out)
 	is det.
 
 stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 		Detism, StackSlots, MaybeSuccipLoc, EvalMethod, MaybeCallLabel,
-		MaxTraceReg, Goal, InstMap, TraceSlotInfo, VarSet, VarTypes,
-		UsedVarNames, MaybeTableIoDeclInfo, Kind) -->
+		MaxTraceReg, HeadVars, Goal, InstMap, TraceSlotInfo, VarSet,
+		VarTypes, UsedVarNames, MaybeTableIoDeclInfo, Kind) -->
 	{
 		MaybeSuccipLoc = yes(Location)
 	->
@@ -453,7 +454,7 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 	;
 		{ Kind = proc_layout_exec_trace(_) },
 		stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod,
-			MaybeCallLabel, MaxTraceReg, Goal, InstMap,
+			MaybeCallLabel, MaxTraceReg, HeadVars, Goal, InstMap,
 			TraceSlotInfo, VarSet, VarTypes, UsedVarNames,
 			MaybeTableIoDeclInfo, ExecTrace),
 		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) }
@@ -474,15 +475,15 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 	).
 
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,
-	eval_method::in, maybe(label)::in, int::in, hlds_goal::in,
-	instmap::in, trace_slot_info::in, prog_varset::in, vartypes::in,
-	map(int, string)::in, maybe(table_io_decl_info)::in,
+	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
+	hlds_goal::in, instmap::in, trace_slot_info::in, prog_varset::in,
+	vartypes::in, map(int, string)::in, maybe(table_io_decl_info)::in,
 	proc_layout_exec_trace::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
-		MaxTraceReg, Goal, InstMap, TraceSlotInfo, VarSet, VarTypes,
-		UsedVarNameMap, MaybeTableIoDecl, ExecTrace) -->
+		MaxTraceReg, HeadVars, Goal, InstMap, TraceSlotInfo, VarSet,
+		VarTypes, UsedVarNameMap, MaybeTableIoDecl, ExecTrace) -->
 	stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap,
 		MaxVarNum, VarNameVector),
 	stack_layout__get_trace_level(TraceLevel),
@@ -494,7 +495,7 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 	;
 		{ BodyReps = yes },
 		stack_layout__get_module_info(ModuleInfo),
-		{ prog_rep__represent_goal(Goal, InstMap, VarTypes,
+		{ prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes,
 			ModuleInfo, GoalRep) },
 		{ type_to_univ(GoalRep, GoalRepUniv) },
 		stack_layout__get_cell_counter(CellCounter0),

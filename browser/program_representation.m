@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,6 +42,14 @@
 	% Each element of this structure will correspond one-to-one
 	% to the original stage 90 HLDS.
 
+:- type proc_rep
+	--->	proc_rep(
+			list(var_rep),		% The head variables, in order,
+						% including the ones introduced
+						% by the compiler.
+			goal_rep		% The procedure body.
+		).
+
 :- type goal_rep
 	--->	conj_rep(
 			list(goal_rep)		% The conjuncts in the original
@@ -64,7 +72,8 @@
 			goal_rep		% The negated goal.
 		)
 	;	some_rep(
-			goal_rep		% The quantified goal.
+			goal_rep,		% The quantified goal.
+			maybe_cut
 		)
 	;	atomic_goal_rep(
 			detism_rep,
@@ -150,6 +159,7 @@
                         ;       first
                         ;       later.
 
+	% Does `some G' have a different determinism from plain `G'?
 :- type maybe_cut       --->    cut ; no_cut.
 
 :- pred path_step_from_string(string, goal_path_step).

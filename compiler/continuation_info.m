@@ -92,6 +92,10 @@
 					% rN register that can contain useful
 					% information during a call to MR_trace
 					% from within this procedure.
+			head_vars	:: list(prog_var),
+					% The head variables, in order,
+					% including the ones introduced by the
+					% compiler.
 			proc_body	:: hlds_goal,
 					% The body of the procedure.
 			initial_instmap	:: instmap,

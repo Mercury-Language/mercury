@@ -766,11 +766,11 @@ contour_foldl2(Store, ProcessEvent, Ref, Init, A, B) :-
 
 next_contour(Store, Node, Cont, AtomInfo) :-
 	(
-		Node = call(_, _, _, _, _, _, MaybeGoal)
+		Node = call(_, _, _, _, _, _, MaybeProc)
 	->
 		AtomInfo = [],
 		(
-			MaybeGoal = yes(Goal)
+			MaybeProc = yes(proc_rep(_, Goal))
 		->
 			Cont = subgoal_cont(Goal, return)
 		;
@@ -861,7 +861,7 @@ process_trace_event_goal(Ref, Event, negation_rep(Goal), Cont0, Cont) -->
 		process_trace_event_goal(Ref, Event, Goal, neg_cont(Cont0),
 				Cont)
 	).
-process_trace_event_goal(Ref, Event, some_rep(Goal), Cont0, Cont) -->
+process_trace_event_goal(Ref, Event, some_rep(Goal, _), Cont0, Cont) -->
 	process_trace_event_goal(Ref, Event, Goal, Cont0, Cont).
 process_trace_event_goal(Ref, Event, GoalRep, Cont0, Cont) -->
 	{ GoalRep = atomic_goal_rep(_, _, _, _, AtomicGoal) },
@@ -916,7 +916,7 @@ process_non_event_goals_2(ite_rep(_, _, _), _, _) -->
 	{ error("process_non_event_goals_2: cond event expected") }.
 process_non_event_goals_2(negation_rep(Goal), Cont, MaybeArgs) -->
 	process_non_event_goals_2(Goal, neg_cont(Cont), MaybeArgs).
-process_non_event_goals_2(some_rep(Goal), Cont, MaybeArgs) -->
+process_non_event_goals_2(some_rep(Goal, _), Cont, MaybeArgs) -->
 	process_non_event_goals_2(Goal, Cont, MaybeArgs).
 process_non_event_goals_2(Goal, Cont, MaybeArgs) -->
 	{ Goal = atomic_goal_rep(_, _, _, _, AtomicGoal) },

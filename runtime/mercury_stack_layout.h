@@ -525,7 +525,7 @@ typedef union MR_Proc_Id_Union {
 ** stored there, as well the table associating source-file contexts with labels.
 **
 ** The proc_rep field contains a representation of the body of the procedure
-** as a Mercury term of type goal_rep, defined in program_representation.m.
+** as a Mercury term of type proc_rep, defined in program_representation.m.
 ** Note that the type of this field is `MR_Word *', not `MR_Word',
 ** for the same reasons that MR_mkword() has type `MR_Word *' rather
 ** than `MR_Word' (see the comment in runtime/mercury_tags.h).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,7 +35,7 @@
 			sequence_number,	% Call sequence number.
 			event_number,		% Trace event number.
 			bool,			% At the maximum depth?
-			maybe(goal_rep)		% Body of the called procedure.
+			maybe(proc_rep)		% Body of the called procedure.
 		)
 	;	exit(
 			R,			% Preceding event.
@@ -728,15 +728,15 @@ construct_call_node(Preceding, Atom, SeqNo, EventNo, MaxDepth) = Call :-
 	null_trace_node_id(Answer).
 
 :- func construct_call_node_with_goal(trace_node_id, trace_atom,
-		sequence_number, event_number, bool, goal_rep)
+		sequence_number, event_number, bool, proc_rep)
 		= trace_node(trace_node_id).
 :- pragma export(construct_call_node_with_goal(in, in, in, in, in, in) = out,
 		"MR_DD_construct_call_node_with_goal").
 
 construct_call_node_with_goal(Preceding, Atom, SeqNo, EventNo, MaxDepth,
-		GoalRep) = Call :-
+		ProcRep) = Call :-
 	Call = call(Preceding, Answer, Atom, SeqNo, EventNo, MaxDepth,
-			yes(GoalRep)),
+			yes(ProcRep)),
 	null_trace_node_id(Answer).
 
 
