@@ -22,7 +22,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module list, set.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,11 +65,24 @@
 %-----------------------------------------------------------------------------%
 
 % solutions/2 collects all the solutions to a predicate and
-% returns them as a list (in sorted order, with duplicates removed).
+% returns them as a list in sorted order, with duplicates removed.
+% solutions_set/2 returns them as a set.
+% unsorted_solutions/2 returns them as an unsorted list with possible
+% duplicates; since there are an infinite number of such lists,
+% this must be called from a context in which only a single solution
+% is required.
 
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(pred(out) is multi, out) is det.
 :- mode solutions(pred(out) is nondet, out) is det.
+
+:- pred solutions_set(pred(T), set(T)).
+:- mode solutions_set(pred(out) is multi, out) is det.
+:- mode solutions_set(pred(out) is nondet, out) is det.
+
+:- pred unsorted_solutions(pred(T), list(T)).
+:- mode unsorted_solutions(pred(out) is multi, out) is cc_multi.
+:- mode unsorted_solutions(pred(out) is nondet, out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -96,11 +109,15 @@
 	% use calls to `semidet_succeed' to suppress warnings about
 	% determinism declarations which could be stricter.
 	% Similarly, `semidet_fail' is like `fail' except that its
-	% determinism is semidet rather than failure.
+	% determinism is semidet rather than failure, and
+	% `cc_multi_equal(X,Y)' is the same as `X=Y' except that it
+	% is cc_multi rather than det.
 
 :- pred semidet_succeed is semidet.
 
 :- pred semidet_fail is semidet.
+
+:- pred cc_multi_equal(T::in, T::out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,14 +144,23 @@ maybe_pred(Pred, X, Y) :-
 		Y = no
 	).
 
-:- pred builtin_solutions(pred(T), set(T)).
+:- pred builtin_solutions(pred(T), list(T)).
 :- mode builtin_solutions(pred(out) is multi, out) is det.
 :- mode builtin_solutions(pred(out) is nondet, out) is det.
 :- external(builtin_solutions/2).
+	% builtin_solutions is implemented in runtime/solutions.mod.
 
 solutions(Pred, List) :-
-	builtin_solutions(Pred, Set),
-	set__to_sorted_list(Set, List).
+	builtin_solutions(Pred, UnsortedList),
+	list__sort_and_remove_dups(UnsortedList, List).
+
+solutions_set(Pred, Set) :-
+	builtin_solutions(Pred, List),
+	set__list_to_set(List, Set).
+
+unsorted_solutions(Pred, List) :-
+	builtin_solutions(Pred, UnsortedList),
+	cc_multi_equal(UnsortedList, List).
 
 univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
@@ -146,6 +172,7 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 :- pragma(c_code, semidet_succeed, "SUCCESS_INDICATOR = TRUE;").
 :- pragma(c_code, semidet_fail,    "SUCCESS_INDICATOR = FALSE;").
+:- pragma(c_code, cc_multi_equal(X::in, Y::out), "Y = X;").
 
 /*---------------------------------------------------------------------------*/
 
