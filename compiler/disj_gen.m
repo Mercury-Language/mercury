@@ -83,6 +83,7 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 %---------------------------------------------------------------------------%
 
 disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
+		% Sanity check
 	{ Goals = [] ->
 		error("empty disjunction shouldn't be non-det")
 	; Goals = [_]  ->
@@ -127,6 +128,7 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__slap_code_info(CodeInfo),
+		code_info__remake_with_call_info,
 		code_info__pop_failure_cont,
 		{ DisjCode = tree(tree(tree(ContCode,SaveHeapCode), GoalCode),
 			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },

@@ -1186,15 +1186,24 @@ code_info__get_current_label(Label) -->
 %---------------------------------------------------------------------------%
 
 code_info__get_variable_register(Var, Lval) -->
-	code_info__get_variables(Variables),
 	(
-		{ map__search(Variables, Var, VarStat) },
-		{ VarStat = evaluated(Lvals0) },
-		{ set__to_sorted_list(Lvals0, [Lval0|_]) }
+		code_info__variable_register(Var, Lval0)
 	->
 		{ Lval = Lval0 }
 	;
 		{ error("Cannot find lvalue of variable") }
+	).
+
+:- pred first_register(list(lval), lval).
+:- mode first_register(in, out) is semidet.
+
+first_register([L|Ls], R) :-
+	(
+		L = reg(_)
+	->
+		R = L
+	;
+		first_register(Ls, R)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1202,8 +1211,16 @@ code_info__get_variable_register(Var, Lval) -->
 code_info__variable_register(Var, Lval) -->
 	code_info__get_variables(Variables),
 	{ map__search(Variables, Var, VarStat) },
-	{ VarStat = evaluated(Lvals) },
-	{ set__to_sorted_list(Lvals, [Lval|_]) }.
+	{ VarStat = evaluated(Lvals0) },
+	{ set__to_sorted_list(Lvals0, LvalList) },
+	(
+		{ first_register(LvalList, Lval0) }
+	->
+		{ Lval = Lval0 }
+	;
+		{ LvalList = [Lval0|_] },
+		{ Lval = Lval0 }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -1543,8 +1560,7 @@ code_info__generate_forced_saves_2([Var|Vars], Code) -->
 code_info__generate_nondet_saves(Code) -->
 	code_info__get_call_info(CallInfo),
 	{ map__to_assoc_list(CallInfo, CallList) },
-	code_info__generate_nondet_saves_2(CallList, Code),
-	code_info__remake_with_call_info.
+	code_info__generate_nondet_saves_2(CallList, Code).
 
 :- pred code_info__generate_nondet_saves_2(assoc_list(var, lval), code_tree,
 							code_info, code_info).

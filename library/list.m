@@ -115,6 +115,16 @@
 %	The `_det' preds call error/1 if the index is out of
 %	range, whereas the semidet preds fail if the index is out of range.
 
+		% Take two lists and alternate elements starting with
+		% the first list. When one of the lists goes to empty,
+		% the remainder of the nonempty list is appended.
+
+:- pred list__zip(list(T), list(T), list(T)).
+:- mode list__zip(in, in, out) is det.
+
+:- pred list__split3(list(T), list(T), list(T), list(T)).
+:- mode list__split3(in, out, in, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -249,5 +259,61 @@ list__length(L, N) :- length(L, N).
 list__reverse(L0, L) :- reverse(L0, L).
 list__delete(X, L0, L) :- delete(X, L0, L).
 list__sort(L0, L) :- sort(L0, L).
+
+list__zip([], Bs, Bs).
+list__zip([A|As], Bs, [A|Cs]) :-
+	list__zip2(As, Bs, Cs).
+
+:- pred list__zip2(list(T), list(T), list(T)).
+:- mode list__zip2(in, in, out) is det.
+
+:- list__zip2(_, Bs, _) when Bs. % NU-Prolog indexing
+
+list__zip2(As, [], As).
+list__zip2(As, [B|Bs], [B|Cs]) :-
+	list__zip2(As, Bs, Cs).
+
+list__split3(As, Bs, Cs, Ds) :-
+	list__length(As, AL),
+	list__length(Cs, CL),
+	list__length(Ds, DL),
+	N1 is AL + CL,
+	BL is DL - N1,
+	N2 is AL + BL,
+	list__take(AL, Ds, As),
+	list__drop(N2, Ds, Cs),
+	list__drop(AL, Ds, Ts),
+	list__take(BL, Ts, Bs).
+
+:- pred list__take(int, list(T), list(T)).
+:- mode list__take(in, in, out) is semidet.
+:- mode list__take(in, in, in) is semidet.
+
+list__take(N, As, Bs) :-
+	(
+		N > 0
+	->
+		N1 is N - 1,
+		As = [A|As1],
+		Bs = [A|Bs1],
+		list__take(N1, As1,Bs1)
+	;
+		Bs = []
+	).
+
+:- pred list__drop(int, list(T), list(T)).
+:- mode list__drop(in, in, out) is semidet.
+:- mode list__drop(in, in, in) is semidet.
+
+list__drop(N, As, Bs) :-
+	(
+		N > 0
+	->
+		N1 is N - 1,
+		As = [_|Cs],
+		list__drop(N1, Cs, Bs)
+	;
+		As = Bs
+	).
 
 %-----------------------------------------------------------------------------%
