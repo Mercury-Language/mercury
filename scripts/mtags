@@ -37,7 +37,7 @@ while ($#ARGV >= 0)
 		if ($decl ne "pred")
 		{
 			if ($body =~ /\.[ \t]*$/ &&
-			$body !~ /--->/ && $body !~ /==/ && $body !~ /::/)
+			$body !~ /--->/ && $body !~ /=/ && $body !~ /::/)
 				{ next; }
 		}
 
