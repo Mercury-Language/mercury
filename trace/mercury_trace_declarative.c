@@ -62,27 +62,19 @@ static	MR_Edt_Node	*MR_edt_parent;
 
 static void
 MR_trace_decl_wrong_answer_call(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot);
+		MR_Event_Info *event_info, int decl_slot);
 
 static void
 MR_trace_decl_wrong_answer_exit(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot);
+		MR_Event_Info *event_info, int decl_slot);
 
 static void
 MR_trace_decl_wrong_answer_redo(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot);
+		MR_Event_Info *event_info, int decl_slot);
 
 static void
 MR_trace_decl_wrong_answer_fail(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot);
+		MR_Event_Info *event_info, int decl_slot);
 
 static void
 MR_trace_decl_update_path(const MR_Stack_Layout_Label *layout, 
@@ -104,18 +96,19 @@ MR_edt_node_construct(const MR_Stack_Layout_Label *layout,
 
 Code *
 MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num)
+		MR_Event_Info *event_info)
 {
 	int			decl_slot;
-	MR_Stack_Layout_Entry 	*entry = layout->MR_sll_entry;
+	MR_Stack_Layout_Entry 	*entry;
 	MR_Edt_Node		*edt_node;
+	Unsigned		depth;
+
+	entry = event_info->MR_event_sll->MR_sll_entry;
+	depth = event_info->MR_call_depth;
 
 	if (MR_trace_event_number > MR_edt_last_event) {
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		return MR_trace_event_internal(cmd, TRUE, layout, saved_regs,
-				port, seqno, depth, path, max_mr_num);
+		return MR_trace_event_internal(cmd, TRUE, event_info);
 	}
 
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -138,33 +131,30 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 	MR_trace_enabled = FALSE;
 	decl_slot = entry->MR_sle_maybe_decl_debug;
 
-	switch (port) {
+	switch (event_info->MR_trace_port) {
 		case MR_PORT_CALL:
-			MR_trace_decl_wrong_answer_call(cmd, layout,
-					saved_regs, port, seqno, depth, path,
-					max_mr_num, decl_slot);
+			MR_trace_decl_wrong_answer_call(cmd, event_info,
+					decl_slot);
 			break;
 		case MR_PORT_EXIT:
-			MR_trace_decl_wrong_answer_exit(cmd, layout,
-					saved_regs, port, seqno, depth, path,
-					max_mr_num, decl_slot);
+			MR_trace_decl_wrong_answer_exit(cmd, event_info,
+					decl_slot);
 			break;
 		case MR_PORT_REDO:
-			MR_trace_decl_wrong_answer_redo(cmd, layout,
-					saved_regs, port, seqno, depth, path,
-					max_mr_num, decl_slot);
+			MR_trace_decl_wrong_answer_redo(cmd, event_info,
+					decl_slot);
 			break;
 		case MR_PORT_FAIL:
-			MR_trace_decl_wrong_answer_fail(cmd, layout,
-					saved_regs, port, seqno, depth, path,
-					max_mr_num, decl_slot);
+			MR_trace_decl_wrong_answer_fail(cmd, event_info,
+					decl_slot);
 			break;
 		case MR_PORT_THEN:
 		case MR_PORT_ELSE:
 		case MR_PORT_DISJ:
 		case MR_PORT_SWITCH:
-			MR_trace_decl_update_path(layout, saved_regs, path,
-					decl_slot);
+			MR_trace_decl_update_path(event_info->MR_event_sll,
+					event_info->MR_saved_regs, 
+					event_info->MR_event_path, decl_slot);
 		case MR_PORT_PRAGMA_FIRST:
 		case MR_PORT_PRAGMA_LATER:
 			break;
@@ -186,15 +176,17 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 
 static void
 MR_trace_decl_wrong_answer_call(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot)
+		MR_Event_Info *event_info, int decl_slot)
 {
 	MR_Edt_Node		*edt_node;
 	MR_Edt_Node_Type	node_tag;
-	MR_Stack_Layout_Entry 	*entry = layout->MR_sll_entry;
+	MR_Stack_Layout_Entry 	*entry;
+	Word			*saved_regs;
+	
+	entry = event_info->MR_event_sll->MR_sll_entry;
+	saved_regs = event_info->MR_saved_regs;
 
-	if (depth < MR_edt_max_depth) {
+	if (event_info->MR_call_depth < MR_edt_max_depth) {
 		node_tag = MR_EDT_WRONG_ANSWER_EXPLICIT;
 	} else {
 		/*
@@ -204,7 +196,7 @@ MR_trace_decl_wrong_answer_call(MR_Trace_Cmd_Info *cmd,
 		node_tag = MR_EDT_WRONG_ANSWER_IMPLICIT;
 	}
 
-	edt_node = MR_edt_node_construct(layout, node_tag,
+	edt_node = MR_edt_node_construct(event_info->MR_event_sll, node_tag,
 			MR_trace_event_number);
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
@@ -228,14 +220,16 @@ MR_trace_decl_wrong_answer_call(MR_Trace_Cmd_Info *cmd,
 
 static void
 MR_trace_decl_wrong_answer_exit(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot)
+		MR_Event_Info *event_info, int decl_slot)
 {
 	MR_Edt_Node			*edt_node;
-	MR_Stack_Layout_Entry 		*entry = layout->MR_sll_entry;
+	const MR_Stack_Layout_Label 	*layout;
+	Word				*saved_regs;
+	
+	layout = event_info->MR_event_sll;
+	saved_regs = event_info->MR_saved_regs;
 
-	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
 		edt_node = (MR_Edt_Node *) MR_based_stackvar(
 				MR_saved_sp(saved_regs), decl_slot);
 		MR_edt_parent = (MR_Edt_Node *) MR_based_stackvar(
@@ -249,7 +243,7 @@ MR_trace_decl_wrong_answer_exit(MR_Trace_Cmd_Info *cmd,
 
 	edt_node->MR_edt_node_layout = layout;
 	edt_node->MR_edt_node_end_event = MR_trace_event_number;
-	edt_node->MR_edt_node_seqno = seqno;
+	edt_node->MR_edt_node_seqno = event_info->MR_call_seqno;
 
 	MR_trace_decl_save_args(layout, saved_regs, edt_node);
 
@@ -262,12 +256,14 @@ MR_trace_decl_wrong_answer_exit(MR_Trace_Cmd_Info *cmd,
 
 static void
 MR_trace_decl_wrong_answer_redo(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot)
+		MR_Event_Info *event_info, int decl_slot)
 {
 	MR_Edt_Node		*edt_node;
-	MR_Stack_Layout_Entry 	*entry = layout->MR_sll_entry;
+	MR_Stack_Layout_Entry 	*entry;
+	Word			*saved_regs;
+	
+	entry = event_info->MR_event_sll->MR_sll_entry;
+	saved_regs = event_info->MR_saved_regs;
 
 	/*
 	** Re-use the node that was allocated at the CALL event.
@@ -302,12 +298,14 @@ MR_trace_decl_wrong_answer_redo(MR_Trace_Cmd_Info *cmd,
 
 static void
 MR_trace_decl_wrong_answer_fail(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Trace_Port port, int seqno, int depth, const char *path,
-		int *max_mr_num, int decl_slot)
+		MR_Event_Info *event_info, int decl_slot)
 {
 	MR_Edt_Node		*edt_node;
-	MR_Stack_Layout_Entry 	*entry = layout->MR_sll_entry;
+	MR_Stack_Layout_Entry 	*entry;
+	Word			*saved_regs;
+	
+	entry = event_info->MR_event_sll->MR_sll_entry;
+	saved_regs = event_info->MR_saved_regs;
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 		edt_node = (MR_Edt_Node *) MR_based_stackvar(
@@ -403,13 +401,13 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 }
 
 bool
-MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd, 
-		const MR_Stack_Layout_Label *layout, Word *saved_regs,
-		MR_Event_Details *event_details, int seqno, int depth,
-		int *max_mr_num, Code **jumpaddr)
+MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+		MR_Event_Details *event_details, Code **jumpaddr)
 {
-	MR_Stack_Layout_Entry 	*entry = layout->MR_sll_entry;
+	MR_Stack_Layout_Entry 	*entry;
 	int			decl_slot;
+
+	entry = event_info->MR_event_sll->MR_sll_entry;
 
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
 		return FALSE;
@@ -423,13 +421,12 @@ MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd,
 
 	MR_trace_decl_mode = MR_TRACE_WRONG_ANSWER;
 	MR_edt_parent = MR_edt_node_construct(NULL, 
-			MR_EDT_WRONG_ANSWER_EXPLICIT, 0);
+				MR_EDT_WRONG_ANSWER_EXPLICIT, 0);
 	MR_edt_last_event = MR_trace_event_number;
-	MR_edt_min_depth = depth;
-	MR_edt_max_depth = depth + MR_EDT_DEPTH_STEP_SIZE;
+	MR_edt_min_depth = event_info->MR_call_depth;
+	MR_edt_max_depth = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
 
-	MR_trace_retry(layout, saved_regs, event_details, seqno, depth,
-			max_mr_num, jumpaddr);
+	MR_trace_retry(event_info, event_details, jumpaddr);
 
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
 	cmd->MR_trace_stop_event = MR_trace_event_number + 1;

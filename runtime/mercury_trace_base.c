@@ -140,7 +140,7 @@ MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 
 Code *
 MR_trace_fake(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
-	Word seqno, Word depth, const char * path, int max_mr_num)
+	Unsigned seqno, Unsigned depth, const char * path, int max_mr_num)
 {
 	fatal_error("This executable is not set up for debugging.\n"
 		"Rebuild the <main>_init.c file, "

@@ -63,12 +63,12 @@ struct MR_Edt_Node_Struct {
 		** The event numbers of the CALL and EXIT events for
 		** this proof.
 		*/
-	int				MR_edt_node_start_event;
-	int				MR_edt_node_end_event;
+	Unsigned			MR_edt_node_start_event;
+	Unsigned			MR_edt_node_end_event;
 		/*
 		** The sequence number of the CALL and EXIT events.
 		*/
-	int				MR_edt_node_seqno;
+	Unsigned			MR_edt_node_seqno;
 		/*
 		** The rightmost child of this node, or NULL if there
 		** are no children.
@@ -87,10 +87,7 @@ struct MR_Edt_Node_Struct {
 */
 
 extern	Code	*MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Trace_Port port,
-			int seqno, int depth,
-			const char *path, int *max_mr_num);
+			MR_Event_Info *event_info);
 
 /*
 ** The internal (interactive) debugger calls this function to enter
@@ -100,9 +97,7 @@ extern	Code	*MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 */
 
 extern	bool	MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			int seqno, int depth, int *max_mr_num,
-			Code **jumpaddr);
+			MR_Event_Info *event_info,
+			MR_Event_Details *event_details, Code **jumpaddr);
 
 #endif	/* MERCURY_TRACE_DECLARATIVE_H */

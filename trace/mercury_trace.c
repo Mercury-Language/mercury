@@ -226,18 +226,25 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 	Unsigned seqno, Unsigned depth, const char *path, int max_r_num)
 {
-	int	max_mr_num;
-	Code	*jumpaddr;
-	Word	saved_regs[MAX_FAKE_REG];
+	Code		*jumpaddr;
+	MR_Event_Info	event_info;
+	Word		*saved_regs = event_info.MR_saved_regs;
+
+	event_info.MR_event_number = MR_trace_event_number;
+	event_info.MR_call_seqno = seqno;
+	event_info.MR_call_depth = depth;
+	event_info.MR_trace_port = port;
+	event_info.MR_event_sll = layout;
+	event_info.MR_event_path = path;
 
 	if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
-		max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
+		event_info.MR_max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
 	} else {
-		max_mr_num = MR_MAX_SPECIAL_REG_MR;
+		event_info.MR_max_mr_num = MR_MAX_SPECIAL_REG_MR;
 	}
 
 	/* This also saves the regs in MR_fake_regs. */
-	MR_copy_regs_to_saved_regs(max_mr_num, saved_regs);
+	MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
 
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
@@ -245,12 +252,10 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			fatal_error("reporting event for external debugger");
 		}
 
-		jumpaddr = MR_trace_event_external(cmd, layout, saved_regs,
-				port, seqno, depth, path, &max_mr_num);
+		jumpaddr = MR_trace_event_external(cmd, &event_info);
 	} else {
 		jumpaddr = MR_trace_event_internal(cmd, interactive,
-				layout, saved_regs, port, seqno,
-				depth, path, &max_mr_num);
+				&event_info);
 	}
 #else
 	/*
@@ -258,9 +263,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 	** This is enforced by mercury_wrapper.c.
 	*/
 
-	jumpaddr = MR_trace_event_internal(cmd, interactive,
-			layout, saved_regs, port, seqno,
-			depth, path, &max_mr_num);
+	jumpaddr = MR_trace_event_internal(cmd, interactive, &event_info);
 #endif
 
 	/*
@@ -276,14 +279,13 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 
 	restore_transient_registers(); /* in case MR_global_hp is transient */
 	MR_saved_global_hp(saved_regs) = MR_global_hp;
-	MR_copy_saved_regs_to_regs(max_mr_num, saved_regs);
+	MR_copy_saved_regs_to_regs(event_info.MR_max_mr_num, saved_regs);
 	return jumpaddr;
 }
 
 const char *
-MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
-	MR_Event_Details *event_details, int seqno, int depth,
-	int *max_mr_num, Code **jumpaddr)
+MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
+	Code **jumpaddr)
 {
 	const MR_Stack_Layout_Entry	*entry;
 	const MR_Stack_Layout_Label	*call_label;
@@ -295,8 +297,10 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 	int				i;
 	bool				succeeded;
 	const char			*message;
+	Word 				*saved_regs;
 
-	entry = this_label->MR_sll_entry;
+	saved_regs = event_info->MR_saved_regs;
+	entry = event_info->MR_event_sll->MR_sll_entry;
 	call_label = entry->MR_sle_call_label;
 
 	if (call_label->MR_sll_var_count < 0) {
@@ -319,8 +323,9 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 	arg_max = 0;
 
 	for (i = 0; i < call_label->MR_sll_var_count; i++) {
-		arg_value = MR_trace_find_input_arg(this_label, saved_regs,
-				input_args->MR_slvs_names[i], &succeeded);
+		arg_value = MR_trace_find_input_arg(event_info->MR_event_sll,
+				saved_regs, input_args->MR_slvs_names[i],
+				&succeeded);
 
 		if (! succeeded) {
 			message = "Cannot perform retry because the values of "
@@ -339,8 +344,8 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 		}
 	}
 
-	MR_trace_call_seqno = seqno - 1;
-	MR_trace_call_depth = depth - 1;
+	MR_trace_call_seqno = event_info->MR_call_seqno - 1;
+	MR_trace_call_depth = event_info->MR_call_depth - 1;
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 		MR_Live_Lval	location;
@@ -390,7 +395,7 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 		free(args);
 	}
 
-	*max_mr_num = max(*max_mr_num, arg_max);
+	event_info->MR_max_mr_num = max(event_info->MR_max_mr_num, arg_max);
 	*jumpaddr = entry->MR_sle_code_addr;
 
 	/*

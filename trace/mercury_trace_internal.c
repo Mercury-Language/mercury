@@ -142,11 +142,9 @@ static	void	MR_trace_internal_init_from_env(void);
 static	void	MR_trace_internal_init_from_local(void);
 static	void	MR_trace_internal_init_from_home_dir(void);
 static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			MR_Trace_Port port, int seqno, int depth,
-			const char *path, int *ancestor_level,
-			int *max_mr_num, Code **jumpaddr);
+			MR_Event_Info *event_info, 
+			MR_Event_Details *event_details, int *ancestor_level,
+			Code **jumpaddr);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -207,9 +205,7 @@ static	void	MR_insert_line_at_head(const char *line);
 static	void	MR_insert_line_at_tail(const char *line);
 
 static	void	MR_trace_event_print_internal_report(
-			const MR_Stack_Layout_Label *layout,
-			MR_Trace_Port port, int seqno, int depth,
-			const char *path);
+			MR_Event_Info *event_info);
 static	void	MR_trace_print_port(MR_Trace_Port port);
 
 static	bool	MR_trace_valid_command(const char *word);
@@ -220,9 +216,7 @@ static	void	MR_dump_stack_record_print(FILE *fp,
 
 Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
-	const MR_Stack_Layout_Label *layout, Word *saved_regs,
-	MR_Trace_Port port, int seqno, int depth,
-	const char *path, int *max_mr_num)
+		MR_Event_Info *event_info)
 {
 	int			i;
 	int			c;
@@ -235,21 +229,19 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	MR_Event_Details	event_details;
 
 	if (! interactive) {
-		return MR_trace_event_internal_report(cmd, layout, saved_regs,
-				port, seqno, depth, path, max_mr_num);
+		return MR_trace_event_internal_report(cmd, event_info);
 	}
 
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
 	if (MR_trace_decl_mode == MR_TRACE_WRONG_ANSWER) {
-		return MR_trace_decl_wrong_answer(cmd, layout, saved_regs,
-				port, seqno, depth, path, max_mr_num);
+		return MR_trace_decl_wrong_answer(cmd, event_info);
 	}
 #endif	MR_USE_DECLARATIVE_DEBUGGER
 
 	MR_trace_enabled = FALSE;
 	MR_trace_internal_ensure_init();
 
-	MR_trace_event_print_internal_report(layout, port, seqno, depth, path);
+	MR_trace_event_print_internal_report(event_info);
 
 	/*
 	** These globals can be overwritten when we call Mercury code,
@@ -271,9 +263,8 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 
 	do {
 		line = MR_trace_getline("mdb> ", MR_mdb_in);
-		res = MR_trace_debug_cmd(line, cmd, layout, saved_regs,
-				&event_details, port, seqno, depth, path,
-				&ancestor_level, max_mr_num, &jumpaddr);
+		res = MR_trace_debug_cmd(line, cmd, event_info, &event_details,
+				&ancestor_level, &jumpaddr);
 	} while (res == KEEP_INTERACTING);
 
 	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
@@ -419,10 +410,8 @@ MR_mdb_print_proc_id(void *data, const MR_Stack_Layout_Entry *entry_layout)
 
 static MR_Next
 MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
-	const MR_Stack_Layout_Label *layout, Word *saved_regs,
-	MR_Event_Details *event_details, MR_Trace_Port port,
-	int seqno, int depth, const char *path,
-	int *ancestor_level, int *max_mr_num, Code **jumpaddr)
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	int *ancestor_level, Code **jumpaddr)
 {
 	char		**words;
 	char		**orig_words = NULL;
@@ -432,6 +421,13 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	char		*semicolon;
 	int		i;
 	int		n;
+
+	Unsigned	depth = event_info->MR_call_depth;
+	MR_Trace_Port	port = event_info->MR_trace_port;
+	const MR_Stack_Layout_Label
+			*layout = event_info->MR_event_sll;
+	Word		*saved_regs = event_info->MR_saved_regs;
+
 
 	if (line == NULL) {
 		/*
@@ -676,9 +672,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 
 		if (stop_depth == depth && MR_port_is_final(port)) {
-			message = MR_trace_retry(layout, saved_regs,
-				event_details, seqno, depth, max_mr_num,
-				jumpaddr);
+			message = MR_trace_retry(event_info, event_details,
+					jumpaddr);
 			if (message != NULL) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "%s\n", message);
@@ -803,8 +798,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "current")) {
 		if (word_count == 1) {
-			MR_trace_event_print_internal_report(layout, port,
-				seqno, depth, path);
+			MR_trace_event_print_internal_report(event_info);
 		} else {
 			MR_trace_usage("browsing", "current");
 		}
@@ -1277,9 +1271,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			fprintf(MR_mdb_err,
 				"mdb: wrong answer analysis is only "
 				"available from EXIT events.\n");
-		} else if (MR_trace_start_wrong_answer(cmd, layout,
-				saved_regs, event_details, seqno, depth,
-				max_mr_num, jumpaddr)) {
+		} else if (MR_trace_start_wrong_answer(cmd, event_info,
+				event_details, jumpaddr)) {
 			goto return_stop_interacting;
 		} else {
 			fflush(MR_mdb_out);
@@ -2258,9 +2251,7 @@ MR_insert_line_at_tail(const char *contents)
 
 Code *
 MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-	const MR_Stack_Layout_Label *layout, Word *saved_regs,
-	MR_Trace_Port port, int seqno, int depth, const char *path,
-	int *max_mr_num)
+		MR_Event_Info *event_info)
 {
 	char	*buf;
 	int	i;
@@ -2294,12 +2285,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 						free(buf);
 						return MR_trace_event_internal(
 								cmd, TRUE,
-								layout,
-								saved_regs,
-								port,
-								seqno, depth,
-								path,
-								max_mr_num);
+								event_info);
 
 					default:
 						fflush(MR_mdb_out);
@@ -2317,21 +2303,23 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 		MR_scroll_next = 0;
 	}
 
-	MR_trace_event_print_internal_report(layout, port, seqno, depth, path);
+	MR_trace_event_print_internal_report(event_info);
 	MR_scroll_next++;
 
 	return NULL;
 }
 
 void
-MR_trace_event_print_internal_report(const MR_Stack_Layout_Label *layout,
-	MR_Trace_Port port, int seqno, int depth, const char *path)
+MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
 	fprintf(MR_mdb_out, "%8ld: %6ld %2ld ",
-		(long) MR_trace_event_number, (long) seqno, (long) depth);
+		(long) event_info->MR_event_number, 
+		(long) event_info->MR_call_seqno,
+		(long) event_info->MR_call_depth);
 
-	MR_trace_print_port(port);
-	MR_print_proc_id(MR_mdb_out, layout->MR_sll_entry, path, NULL, NULL);
+	MR_trace_print_port(event_info->MR_trace_port);
+	MR_print_proc_id(MR_mdb_out, event_info->MR_event_sll->MR_sll_entry,
+			event_info->MR_event_path, NULL, NULL);
 }
 
 static void

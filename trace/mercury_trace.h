@@ -21,6 +21,29 @@
 #ifndef MERCURY_TRACE_H
 #define MERCURY_TRACE_H
 
+/*
+** MR_Event_Info is used to hold the information for a trace event.  One
+** of these is built by MR_trace_event and is passed (by reference)
+** throughout the tracing system.
+*/
+
+typedef struct MR_Event_Info_Struct {
+	Unsigned			MR_event_number;
+	Unsigned			MR_call_seqno;
+	Unsigned			MR_call_depth;
+	MR_Trace_Port			MR_trace_port;
+	const MR_Stack_Layout_Label	*MR_event_sll;
+	const char 			*MR_event_path;
+	Word				MR_saved_regs[MAX_FAKE_REG];
+	int				MR_max_mr_num;
+} MR_Event_Info;
+
+/*
+** MR_Event_Details is used to save some globals across calls to
+** MR_trace_debug_cmd.  It is passed to MR_trace_retry which can
+** then override the saved values.
+*/
+
 typedef struct MR_Event_Details_Struct {
 	int			MR_call_seqno;
 	int			MR_call_depth;
@@ -30,10 +53,8 @@ typedef struct MR_Event_Details_Struct {
 /* The initial size of arrays of argument values. */
 #define	MR_INIT_ARG_COUNT	20
 
-const char *	MR_trace_retry(const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Event_Details *event_details,
-			int seqno, int depth, int *max_mr_num,
-			Code **jumpaddr);
+const char *	MR_trace_retry(MR_Event_Info *event_info,
+			MR_Event_Details *event_details, Code **jumpaddr);
 Word		MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
 			Word *saved_regs, const char *name, bool *succeeded);
 

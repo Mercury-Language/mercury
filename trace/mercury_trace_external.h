@@ -12,10 +12,7 @@
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
 extern	Code   *MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Trace_Port port, Unsigned seqno,
-			Unsigned depth, const char *path, int *max_mr_num);
-
+			MR_Event_Info *event_info);
 
 #endif	/* MR_USE_EXTERNAL_DEBUGGER */
 

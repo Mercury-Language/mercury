@@ -36,17 +36,11 @@ extern	MR_Trace_Mode	MR_trace_decl_mode;
 #endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 extern	Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
-			bool interactive,
-			const MR_Stack_Layout_Label *layout,
-			Word *saved_regs, MR_Trace_Port port,
-			int seqno, int depth,
-			const char *path, int *max_mr_num);
+			bool interactive, MR_Event_Info *event_info);
 
 
 extern	Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-			const MR_Stack_Layout_Label *layout, Word *saved_regs,
-			MR_Trace_Port port, int seqno, int depth,
-			const char *path, int *max_mr_num);
+			MR_Event_Info *event_info);
 
 /*
 ** Debugger I/O streams.

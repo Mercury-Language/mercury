@@ -350,10 +350,7 @@ MR_trace_final_external(void)
 }
 
 Code *
-MR_trace_event_external(MR_Trace_Cmd_Info *cmd, 
-	const MR_Stack_Layout_Label *layout, Word *saved_regs,
-	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path, 
-	int *max_mr_num)
+MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
 	static bool	searching = FALSE;
 	static Word	search_data;
@@ -368,6 +365,12 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 	MR_Event_Details	event_details;
 	char		*message;
         bool		include_trace_data = TRUE;
+	const MR_Stack_Layout_Label *layout = event_info->MR_event_sll;
+	Unsigned	seqno = event_info->MR_call_seqno;
+	Unsigned	depth = event_info->MR_call_depth;
+	MR_Trace_Port	port = event_info->MR_trace_port;
+	const char 	*path = event_info->MR_event_path;
+	Word		*saved_regs = event_info->MR_saved_regs;
 
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
@@ -454,9 +457,8 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_RETRY\n");
 				}
-				message = MR_trace_retry(layout, saved_regs, 
-					&event_details, seqno, depth, 
-					max_mr_num, &jumpaddr);
+				message = MR_trace_retry(event_info, 
+					&event_details, &jumpaddr);
 				if (message == NULL) {
 					MR_send_message_to_socket("ok");
 					cmd->MR_trace_cmd = MR_CMD_GOTO;
