@@ -1334,28 +1334,25 @@ warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap,
 
 
 %-----------------------------------------------------------------------------%
+
 :- pred warn_singletons_in_pragma_c_code_2(list(string), list(var), 
 	map(var, string), term__context, list(string)).
 :- mode warn_singletons_in_pragma_c_code_2(in, in, in, in, out) is det.
-
 
 warn_singletons_in_pragma_c_code_2(_, [], _, _, []).
 warn_singletons_in_pragma_c_code_2(C_CodeList, [Arg|Args], ArgNameMap,
 		Context, SingletonVars) :-
 	warn_singletons_in_pragma_c_code_2(C_CodeList, Args, 
 		ArgNameMap, Context, SingletonVars0),
+	map__lookup(ArgNameMap, Arg, Name),
 	(
-		map__lookup(ArgNameMap, Arg, Name)
-	->
-		(
-			list__member(Name, C_CodeList)
-		->
-			SingletonVars = SingletonVars0
-		;
-			SingletonVars = [Name|SingletonVars0]
+		( string__prefix(Name, "_")
+		; list__member(Name, C_CodeList)
 		)
+	->
+		SingletonVars = SingletonVars0
 	;
-		error("warn_singletons_in_pragma_c_code: varname missing")
+		SingletonVars = [Name|SingletonVars0]
 	).
 
 %-----------------------------------------------------------------------------%
