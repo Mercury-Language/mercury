@@ -50,8 +50,8 @@
 
 :- type user_state
 	--->	user(
-			io__input_stream,
-			io__output_stream
+			instr	:: io__input_stream,
+			outstr	:: io__output_stream
 		).
 
 user_state_init(InStr, OutStr, User) :-
@@ -152,8 +152,8 @@ reverse_and_append([A | As], Bs, Cs) :-
 :- pred user_help_message(user_state, io__state, io__state).
 :- mode user_help_message(in, di, uo) is det.
 
-user_help_message(user(_, OutStr)) -->
-	io__write_strings(OutStr, [
+user_help_message(User) -->
+	io__write_strings(User^outstr, [
 		"According to the intended interpretation of the program,",
 		" answer one of:\n",
 		"\ty\tyes\t\tthe node is correct\n",
@@ -170,8 +170,8 @@ user_help_message(user(_, OutStr)) -->
 :- pred user_confirm_bug_help(user_state, io__state, io__state).
 :- mode user_confirm_bug_help(in, di, uo) is det.
 
-user_confirm_bug_help(user(_, OutStr)) -->
-	io__write_strings(OutStr, [
+user_confirm_bug_help(User) -->
+	io__write_strings(User^outstr, [
 		"Answer one of:\n",
 		"\ty\tyes\t\tconfirm that the suspect is a bug\n",
 		"\tn\tno\t\tdo not accept that the suspect is a bug\n",
@@ -186,8 +186,7 @@ user_confirm_bug_help(user(_, OutStr)) -->
 :- mode get_command(in, out, in, out, di, uo) is det.
 
 get_command(Prompt, Command, User, User) -->
-	{ User = user(InStr, OutStr) },
-	util__trace_getline(Prompt, Result, InStr, OutStr),
+	util__trace_getline(Prompt, Result, User^instr, User^outstr),
 	( { Result = ok(String) },
 		{ string__to_char_list(String, Line) },
 		{
@@ -199,8 +198,8 @@ get_command(Prompt, Command, User, User) -->
 		}
 	; { Result = error(Error) },
 		{ io__error_message(Error, Msg) },
-		io__write_string(OutStr, Msg),
-		io__nl(OutStr),
+		io__write_string(User^outstr, Msg),
+		io__nl(User^outstr),
 		{ Command = abort }
 	; { Result = eof },
 		{ Command = abort }
@@ -258,42 +257,39 @@ user_confirm_bug(Bug, Response, User0, User) -->
 :- mode write_decl_question(in, in, di, uo) is det.
 
 write_decl_question(wrong_answer(Atom), User) -->
-	{ User = user(_, OutStr) },
-	write_decl_atom(OutStr, "", Atom).
+	write_decl_atom(User^outstr, "", Atom).
 	
 write_decl_question(missing_answer(Call, Solns), User) -->
-	{ User = user(_, OutStr) },
-	write_decl_atom(OutStr, "Call ", Call),
+	write_decl_atom(User^outstr, "Call ", Call),
 	(
 		{ Solns = [] }
 	->
-		io__write_string(OutStr, "No solutions.\n")
+		io__write_string(User^outstr, "No solutions.\n")
 	;
-		io__write_string(OutStr, "Solutions:\n"),
-		list__foldl(write_decl_atom(OutStr, "\t"), Solns)
+		io__write_string(User^outstr, "Solutions:\n"),
+		list__foldl(write_decl_atom(User^outstr, "\t"), Solns)
 	).
 
 :- pred write_decl_bug(decl_bug, user_state, io__state, io__state).
 :- mode write_decl_bug(in, in, di, uo) is det.
 
 write_decl_bug(e_bug(EBug), User) -->
-	{ User = user(_, OutStr) },
 	(
 		{ EBug = incorrect_contour(Atom, _, _) },
-		io__write_string(OutStr, "Found incorrect contour:\n"),
-		write_decl_atom(OutStr, "", Atom)
+		io__write_string(User^outstr, "Found incorrect contour:\n"),
+		write_decl_atom(User^outstr, "", Atom)
 	;
 		{ EBug = partially_uncovered_atom(Atom, _) },
-		io__write_string(OutStr, "Found partially uncovered atom:\n"),
-		write_decl_atom(OutStr, "", Atom)
+		io__write_string(User^outstr,
+				"Found partially uncovered atom:\n"),
+		write_decl_atom(User^outstr, "", Atom)
 	).
 
 write_decl_bug(i_bug(IBug), User) -->
-	{ User = user(_, OutStr) },
 	{ IBug = inadmissible_call(Parent, _, Call, _) },
-	io__write_string(OutStr, "Found inadmissible call:\n"),
-	write_decl_atom(OutStr, "Parent", Parent),
-	write_decl_atom(OutStr, "Call ", Call).
+	io__write_string(User^outstr, "Found inadmissible call:\n"),
+	write_decl_atom(User^outstr, "Parent", Parent),
+	write_decl_atom(User^outstr, "Call ", Call).
 
 :- pred write_decl_atom(io__output_stream, string, decl_atom,
 		io__state, io__state).
