@@ -2160,59 +2160,59 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
 		_, ProcInfo) },
 	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-		{ proc_info_context(ProcInfo, Context) },
-		{ eval_method_to_string(EvalMethod, EvalMethodS) },
+	{ proc_info_context(ProcInfo, Context) },
+	{ eval_method_to_string(EvalMethod, EvalMethodS) },
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-		{ proc_info_argmodes(ProcInfo, Modes) },
-		( 
+	{ proc_info_argmodes(ProcInfo, Modes) },
+	( 
 		{ eval_method_requires_ground_args(EvalMethod) = yes },
 		\+ { only_fully_in_out_modes(Modes, ModuleInfo0) } 
-		->
-			prog_out__write_context(Context),
-			io__write_string("Sorry, not implemented: `pragma "),
-			io__write_string(EvalMethodS),
-			io__write_string("'\n"),
-			prog_out__write_context(Context),
+	->
+		prog_out__write_context(Context),
+		io__write_string("Sorry, not implemented: `pragma "),
+		io__write_string(EvalMethodS),
+		io__write_string("'\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  declaration not allowed for procedure with\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  partially instantiated modes.\n"), 
+		( { VerboseErrors = yes } ->
 			io__write_string(
-			    "  declaration not allowed for procedure with\n"),
-			prog_out__write_context(Context),
-			io__write_string(
-			    "  partially instantiated modes.\n"), 
-			( { VerboseErrors = yes } ->
-				io__write_string(
 "	Tabling of predicates/functions with partially instantiated modes
 	is not currently implemented.\n")
-			;
-				[]
-			),
-			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
 		;
-			{ ModuleInfo1 = ModuleInfo0 }	
-		),	
-		( 
+			[]
+		),
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
+	;
+		{ ModuleInfo1 = ModuleInfo0 }	
+	),	
+	( 
 		{ eval_method_destroys_uniqueness(EvalMethod) = yes },
 		\+ { only_nonunique_modes(Modes, ModuleInfo1) } 
-		->
-			prog_out__write_context(Context),
-			io__write_string("Error: `pragma "),
-			io__write_string(EvalMethodS),
-			io__write_string("'\n"),
-			prog_out__write_context(Context),
+	->
+		prog_out__write_context(Context),
+		io__write_string("Error: `pragma "),
+		io__write_string(EvalMethodS),
+		io__write_string("'\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  declaration not allowed for procedure with\n"),
+		prog_out__write_context(Context),
+		io__write_string("  unique modes.\n"), 
+		( { VerboseErrors = yes } ->
 			io__write_string(
-			    "  declaration not allowed for procedure with\n"),
-			prog_out__write_context(Context),
-			io__write_string("  unique modes.\n"), 
-			( { VerboseErrors = yes } ->
-				io__write_string(
 "	Tabling of predicates/functions with unique modes is not allowed
 	as this would lead to a copying of the unique arguments which 
 	would result in them no longer being unique.\n")
-			;
-				[]
-			),
-			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
 		;
-			{ ModuleInfo2 = ModuleInfo1 }	
+			[]
+		),
+		{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
+	;
+		{ ModuleInfo2 = ModuleInfo1 }	
 		
 	),
 	proc_check_eval_methods(Rest, PredId, ModuleInfo2, ModuleInfo).
