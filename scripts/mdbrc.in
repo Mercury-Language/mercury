@@ -15,3 +15,5 @@ alias	excp	exception
 alias	e	exception
 alias	EMPTY	step
 alias	NUMBER	step
+set xml_browser_cmd '@DEFAULT_XML_BROWSER_CMD@'
+set xml_tmp_filename '@DEFAULT_XML_TMP_FILENAME@'

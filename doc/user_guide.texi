@@ -2527,8 +2527,8 @@ and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @c The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 @c and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
-@item browse [-fpv] @var{name}
-@itemx browse [-fpv] @var{num}
+@item browse [-fpvx] @var{name}
+@itemx browse [-fpvx] @var{num}
 @kindex browse (mdb command)
 Invokes an interactive term browser to browse
 the value of the variable in the current environment
@@ -2543,42 +2543,65 @@ within a single screen.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+The @samp{-x} or @samp{--xml} option tells mdb to dump the value of the
+variable to an XML file and then invoke an XML browser on the file.
+The XML filename as well as the command to invoke the XML browser can
+be set using the @samp{set} command.  See the documentation for @samp{set}
+for more details.
 @sp 1
 For further documentation on the interactive term browser,
 invoke the @samp{browse} command from within @samp{mdb} and then
 type @samp{help} at the @samp{browser>} prompt.
 @sp 1
-@item browse [-fpv]
-@itemx browse [-fpv] goal
+@item browse [-fpvx]
+@itemx browse [-fpvx] goal
 Invokes the interactive term browser to browse
 the goal of the current call in its present state of instantiation.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+The @samp{-x} or @samp{--xml} option tells mdb to dump the goal to an XML file
+and then invoke an XML browser on the file.  The XML filename as well as the
+command to invoke the XML browser can be set using the @samp{set} command.  See
+the documentation for @samp{set} for more details.
 @sp 1
-@item browse [-fpv] exception
+@item browse [-fpvx] exception
 Invokes the interactive term browser to browse
 the value of the exception at an EXCP port.
 Reports an error if the current event does not refer to such a port.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+The @samp{-x} or @samp{--xml} option tells mdb to dump the exception to an 
+XML file and then invoke an XML browser on the file.  The XML filename as well
+as the command to invoke the XML browser can be set using the @samp{set}
+command.  See the documentation for @samp{set} for more details.
 @sp 1
-@item browse [-fpv] action @var{num}
+@item browse [-fpvx] action @var{num}
 Invokes an interactive term browser to browse a representation
 of the @var{num}'th I/O action executed by the program.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+The @samp{-x} or @samp{--xml} option tells mdb to dump the io action
+representation to an XML file and then invoke an XML browser on the file.  The
+XML filename as well as the command to invoke the XML browser can be set using
+the @samp{set} command.  See the documentation for @samp{set} for more details.
 @c @sp 1
-@c @item browse [-fpv] proc_body
+@c @item browse [-fpvx] proc_body
 @c Invokes an interactive term browser to browse a representation
 @c of the body of the current procedure, if it is available.
 @c @sp 1
 @c The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 @c and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+@c The @samp{-x} or @samp{--xml} option tells mdb to dump the procedure
+@c body representation to an XML file and then invoke an XML browser on the
+@c file.  The XML filename as well as the command to invoke the XML
+@c browser can be set using the @samp{set} command.  See the documentation
+@c for @samp{set} for more details.
 @sp 1
-@item stack [-d] [@var{num}]
+
+@item stack [-d] [@var{num}] 
 @kindex stack (mdb command)
 Prints the names of the ancestors of the call
 specified by the current event.
@@ -2664,9 +2687,12 @@ have since scrolled off the screen.
 @kindex size (mdb command)
 @kindex width (mdb command)
 @kindex lines (mdb command)
+@kindex xml_browser_cmd (mdb command)
+@kindex xml_tmp_filename (mdb command)
 Updates the configuration parameters of the browser.
 The parameters that can be configured are
-@samp{format}, @samp{depth}, @samp{size}, @samp{width} and @samp{lines}.
+@samp{format}, @samp{depth}, @samp{size}, @samp{width}, @samp{lines}, 
+@samp{xml_browser_cmd} and @samp{xml_tmp_filename}.
 @sp 1
 @itemize @bullet
 @item
@@ -2698,6 +2724,23 @@ the sum of the sizes of the elements in the list.
 @sp 1
 @item
 @samp{lines} is the maximum number of lines of one term to display.
+@sp 1
+@item
+@samp{xml_tmp_filename} is the name of the file to dump XML to before
+invoking your XML browser.
+on 
+@sp 1
+@item
+@samp{xml_browser_cmd} is the shell command(s) used to invoke your XML browser.
+If you want a stylesheet to be applied to the XML before the browser is invoked
+then you should do that in this command using the appropriate program (such as
+xsltproc).  By default if xsltproc and mozilla (or firefox) are available,
+xsltproc is invoked to apply the xul_tree.xsl stylesheet in
+extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
+@sp 1
+You can use the apostrophe character (') to quote the command string when using
+the @samp{set} command, for example "set xml_browser_cmd 'firefox
+file:///tmp/mdbtmp.xml'".
 @end itemize
 @sp 1
 The browser maintains separate configuration parameters
@@ -2782,26 +2825,31 @@ mdb will attempt to connect to the existing one.
 The option @samp{-t} (or @samp{--timeout}) specifies
 the maximum number of seconds to wait for the server to start.
 @sp 1
-@item save_to_file goal @var{filename}
+@item save_to_file [-x] goal @var{filename}
 @kindex save_to_file (mdb command)
 Writes the goal of the current call in its present state of instantiation
-to the specified file.
+to the specified file.  The option @samp{-x} (or @samp{--xml}) causes the
+output to be in XML.
 @sp 1
-@item save_to_file exception @var{filename}
+@item save_to_file [-x] exception @var{filename}
 Writes the value of the exception at an EXCP port
 to the specified file.
 Reports an error if the current event does not refer to such a port.
+The option @samp{-x} (or @samp{--xml}) causes the
+output to be in XML.
 @sp 1
-@item save_to_file @var{name} @var{filename}
-@itemx save_to_file @var{num} @var{filename}
+@item save_to_file [-x] @var{name} @var{filename}
+@itemx save_to_file [-x] @var{num} @var{filename}
 Writes the value of the variable in the current environment
 with the given ordinal number or with the given name
-to the specified file.
+to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
+output to be in XML.
 @c @sp 1
-@c @item save_to_file proc_body @var{filename}
+@c @item save_to_file [-x] proc_body @var{filename}
 @c Writes the representation of the body of the current procedure,
 @c if it is available,
-@c to the specified file.
+@c to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
+@c output to be in XML.
 @end table
 
 @sp 1

@@ -100,6 +100,21 @@ MR_trace_save_term(const char *filename, MR_Word browser_term)
 }
 
 void
+MR_trace_save_term_xml(const char *filename, MR_Word browser_term)
+{
+	MercuryFile	mdb_out;
+	MR_String	mercury_filename;
+
+	mercury_filename = (MR_String) (MR_Integer) filename;
+
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+	MR_TRACE_CALL_MERCURY(
+		ML_BROWSE_save_term_to_file_xml(mercury_filename, 
+			browser_term, &mdb_out);
+	);
+}
+
+void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {
 	MercuryFile	mdb_in;

@@ -3808,6 +3808,30 @@ AC_SUBST(USE_MSVCRT)
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
 
+#-----------------------------------------------------------------------------#
+# Check for a XUL browser and xslrproc and if we find both then set the
+# default xml_browser_command and xml_tmp_filename mdb options.
+#
+
+AC_PATH_PROGS(XUL_BROWSER, firefox mozilla, "")
+
+AC_PATH_PROGS(XSLTPROC, xsltproc, "")
+
+if test "$XUL_BROWSER" != "" && test "$XSLTPROC" != ""; then
+	DEFAULT_XML_BROWSER_CMD="$XSLTPROC $DEFAULT_MERCURY_DEBUGGER_INIT_DIR/xul_tree.xsl /tmp/mdbtmp.xml > /tmp/mdbtmp.xul && $XUL_BROWSER file:///tmp/mdbtmp.xul"
+	DEFAULT_XML_TMP_FILENAME="/tmp/mdbtmp.xml"
+else
+	DEFAULT_XML_BROWSER_CMD=""
+	DEFAULT_XML_TMP_FILENAME=""
+fi
+
+AC_SUBST(DEFAULT_XML_BROWSER_CMD)
+AC_SUBST(DEFAULT_XML_TMP_FILENAME)
+
+#-----------------------------------------------------------------------------#
+
+
+
 mercury_check_c_files () {
     c_dir=$1
     c_date_dir=$2

@@ -106,6 +106,62 @@ big(
   3, 
   big(big(small, 4, big(small, 5, small)), 6, small))
 browser> quit
+mdb> set xml_tmp_filename './browser_test.xml.out'
+mdb> set xml_browser_cmd 'cat ./browser_test.xml.out'
+mdb> browse --xml 1
+<?xml version="1.0"?>
+<big functor="big" type="browser_test.big" arity="3">
+	<big functor="big" type="browser_test.big" arity="3">
+		<big functor="big" type="browser_test.big" arity="3">
+			<small functor="small" type="browser_test.big" arity="0" />
+			<Int type="int">1</Int>
+			<small functor="small" type="browser_test.big" arity="0" />
+		</big>
+		<Int type="int">2</Int>
+		<small functor="small" type="browser_test.big" arity="0" />
+	</big>
+	<Int type="int">3</Int>
+	<big functor="big" type="browser_test.big" arity="3">
+		<big functor="big" type="browser_test.big" arity="3">
+			<small functor="small" type="browser_test.big" arity="0" />
+			<Int type="int">4</Int>
+			<big functor="big" type="browser_test.big" arity="3">
+				<small functor="small" type="browser_test.big" arity="0" />
+				<Int type="int">5</Int>
+				<small functor="small" type="browser_test.big" arity="0" />
+			</big>
+		</big>
+		<Int type="int">6</Int>
+		<small functor="small" type="browser_test.big" arity="0" />
+	</big>
+</big>
+mdb> browse -x Data
+<?xml version="1.0"?>
+<big functor="big" type="browser_test.big" arity="3">
+	<big functor="big" type="browser_test.big" arity="3">
+		<big functor="big" type="browser_test.big" arity="3">
+			<small functor="small" type="browser_test.big" arity="0" />
+			<Int type="int">1</Int>
+			<small functor="small" type="browser_test.big" arity="0" />
+		</big>
+		<Int type="int">2</Int>
+		<small functor="small" type="browser_test.big" arity="0" />
+	</big>
+	<Int type="int">3</Int>
+	<big functor="big" type="browser_test.big" arity="3">
+		<big functor="big" type="browser_test.big" arity="3">
+			<small functor="small" type="browser_test.big" arity="0" />
+			<Int type="int">4</Int>
+			<big functor="big" type="browser_test.big" arity="3">
+				<small functor="small" type="browser_test.big" arity="0" />
+				<Int type="int">5</Int>
+				<small functor="small" type="browser_test.big" arity="0" />
+			</big>
+		</big>
+		<Int type="int">6</Int>
+		<small functor="small" type="browser_test.big" arity="0" />
+	</big>
+</big>
 mdb> set -A -f depth 1
 mdb> print *
        Data (arg 1)           	big(big/3, 3, big/3)

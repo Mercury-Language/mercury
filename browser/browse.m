@@ -94,6 +94,13 @@
 :- pred save_term_to_file(string::in, string::in, browser_term::in,
 	io__output_stream::in, io::di, io::uo) is cc_multi.
 
+	% save_term_to_file_xml(FileName, BrowserTerm, Out, !IO):
+	% Save BrowserTerm to FileName as an XML document.  If there
+	% is an error, print an error message to Out.
+	%
+:- pred save_term_to_file_xml(string::in, browser_term::in,
+	io__output_stream::in, io::di, io::uo) is cc_multi.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -103,7 +110,7 @@
 :- import_module mdb__frame.
 :- import_module mdb__sized_pretty.
 
-:- import_module bool, string, int, char, map, std_util.
+:- import_module bool, string, int, char, map, std_util, term_to_xml.
 :- import_module parser, require, pprint, getopt, deconstruct.
 
 %---------------------------------------------------------------------------%
@@ -125,6 +132,9 @@
 
 :- pragma export(save_term_to_file(in, in, in, in, di, uo),
 	"ML_BROWSE_save_term_to_file").
+
+:- pragma export(save_term_to_file_xml(in, in, in, di, uo),
+	"ML_BROWSE_save_term_to_file_xml").
 
 %---------------------------------------------------------------------------%
 %
@@ -176,6 +186,49 @@ save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
 				io__write_string("=\n", !IO),
 				save_univ(1, Result, !IO),
 				io__write_string("\n", !IO)
+			)
+		),
+		io__told(!IO)
+	;
+		FileStreamRes = error(Error),
+		io__error_message(Error, Msg),
+		io__write_string(OutStream, Msg, !IO)
+	).
+
+:- type xml_predicate_wrapper
+	--->	predicate(
+			predicate_name		:: string, 
+			predicate_arguments	:: list(univ)
+		).
+
+:- type xml_function_wrapper
+	--->	function(
+			function_name		:: string, 
+			function_arguments	:: list(univ), 
+			return_value		:: univ
+		).
+
+save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
+	io__tell(FileName, FileStreamRes, !IO),
+	(
+		FileStreamRes = ok,
+		(
+			BrowserTerm = plain_term(Univ),
+			Term = univ_value(Univ),
+			term_to_xml.write_xml_doc_cc(Term, simple,
+				no_stylesheet, 	no_dtd, _, !IO)
+		;
+			BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
+			(
+				MaybeRes = no,
+				PredicateTerm = predicate(Functor, Args),
+				term_to_xml.write_xml_doc_cc(PredicateTerm, 
+					simple, no_stylesheet, no_dtd, _, !IO)
+			;
+				MaybeRes = yes(Result),
+				FunctionTerm = function(Functor, Args, Result),
+				term_to_xml.write_xml_doc_cc(FunctionTerm, 
+					simple, no_stylesheet, no_dtd, _, !IO)
 			)
 		),
 		io__told(!IO)

@@ -35,6 +35,8 @@ extern	MR_Word	MR_synthetic_to_browser_term(const char *functor,
 */
 
 extern	void	MR_trace_save_term(const char *filename, MR_Word browser_term);
+extern	void	MR_trace_save_term_xml(const char *filename, 
+			MR_Word browser_term);
 
 /*
 ** The following types must correspond with browse_caller_type and

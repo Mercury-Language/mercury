@@ -171,6 +171,13 @@ static	MR_bool			MR_trace_internal_interacting = MR_FALSE;
 static	MR_bool			MR_print_optionals = MR_FALSE;
 
 /*
+** These variables tell mdb how to invoke the user's xml browser.
+*/
+
+static	char	*MR_xml_browser_command = NULL;
+static	char	*MR_xml_tmp_filename = NULL;
+
+/*
 ** MR_context_position specifies whether we print context at events,
 ** and if so, where.
 */
@@ -518,7 +525,7 @@ static	MR_bool	MR_trace_options_stack_trace(MR_bool *detailed,
 			const char *cat, const char *item);
 static	MR_bool	MR_trace_options_confirmed(MR_bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
-static	MR_bool	MR_trace_options_format(MR_Browse_Format *format,
+static	MR_bool	MR_trace_options_format(MR_Browse_Format *format, MR_bool *xml,
 			char ***words, int *word_count, const char *cat,
 			const char *item);
 static	MR_bool	MR_trace_options_param_set(MR_Word *print_set,
@@ -544,6 +551,9 @@ static	MR_bool	MR_trace_options_class_decl(MR_bool *print_methods,
 static	MR_bool	MR_trace_options_all_procedures(MR_bool *separate,
 			MR_bool *uci, char ***words, int *word_count,
 			const char *cat, const char *item);
+static	MR_bool	MR_trace_options_save_to_file(MR_bool *xml,
+			char ***words, int *word_count, const char *cat, 
+			const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
 static	void	MR_trace_do_noop(void);
 
@@ -633,6 +643,14 @@ static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
 static	const char *MR_trace_browse_proc_body(MR_Event_Info *event_info,
 			MR_Browser browser, MR_Browse_Caller_Type caller,
 			MR_Browse_Format format);
+
+/* Functions to invoke the user's XML browser on terms or goals */
+static	void	MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
+static	void	MR_trace_browse_xml(MR_Word type_info, MR_Word value,
+			MR_Browse_Caller_Type caller, MR_Browse_Format format);
+static	void	MR_trace_browse_goal_xml(MR_ConstString name,
+			MR_Word arg_list, MR_Word is_func,
+			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 
 static	const char *MR_trace_read_help_text(void);
 static	const char *MR_trace_parse_line(char *line,
@@ -1204,6 +1222,45 @@ MR_trace_browse_internal(MR_Word type_info, MR_Word value,
 }
 
 static void
+MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
+{
+	if (MR_xml_tmp_filename != NULL &&
+			(!MR_streq(MR_xml_tmp_filename, ""))) {
+		MR_trace_save_term_xml(MR_xml_tmp_filename, browser_term);
+	} else {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: You need to issue a "
+			"\"set xml_tmp_filename '...'\" command first.\n");
+	}
+	
+	if (MR_xml_browser_command != NULL &&
+			(!MR_streq(MR_xml_browser_command, ""))) {
+		if (system(MR_xml_browser_command) == -1) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, 
+				"\nmdb: Error invoking XML browser using "
+				"command:\n\"%s\"\n", MR_xml_browser_command);
+		}
+	} else {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: You need to issue a "
+			"\"set xml_browser_cmd '...'\" command first.\n");
+	}
+}
+
+static void
+MR_trace_browse_xml(MR_Word type_info, MR_Word value,
+		MR_Browse_Caller_Type caller, MR_Browse_Format format)
+{
+	MR_Word		browser_term;
+
+	browser_term = MR_type_value_to_browser_term((MR_TypeInfo) type_info,
+		value);
+	
+	MR_trace_save_and_invoke_xml_browser(browser_term);
+}
+
+static void
 MR_trace_browse_goal_internal(MR_ConstString name, MR_Word arg_list,
 	MR_Word is_func, MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
@@ -1226,6 +1283,17 @@ MR_trace_browse_goal_internal(MR_ConstString name, MR_Word arg_list,
 			MR_fatal_error("MR_trace_browse_goal_internal:"
 				" unknown caller type");
 	}
+}
+
+static void
+MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
+	MR_Word is_func, MR_Browse_Caller_Type caller, MR_Browse_Format format)
+{
+	MR_Word		browser_term;
+
+	browser_term = MR_synthetic_to_browser_term(name, arg_list, is_func);
+
+	MR_trace_save_and_invoke_xml_browser(browser_term);
 }
 
 static const char *
@@ -1948,12 +2016,16 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	MR_Browse_Format	format;
+	MR_bool			xml;
 	int			n;
 
-	if (! MR_trace_options_format(&format, &words, &word_count,
+	if (! MR_trace_options_format(&format, &xml, &words, &word_count,
 		"browsing", "print"))
 	{
 		; /* the usage message has already been printed */
+	} else if (xml) {
+		/* the --xml option is not valid for print */
+		MR_trace_usage("browsing", "print");
 	} else if (word_count == 1) {
 		const char	*problem;
 
@@ -2020,64 +2092,76 @@ MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	MR_Browse_Format	format;
+	MR_bool			xml;
 	int			n;
+	MR_GoalBrowser		goal_browser;
+	MR_Browser		browser;
 
-	if (! MR_trace_options_format(&format, &words, &word_count,
+	if (! MR_trace_options_format(&format, &xml, &words, &word_count,
 		"browsing", "browse"))
 	{
 		; /* the usage message has already been printed */
-	} else if (word_count == 1) {
-		const char	*problem;
-
-		problem = MR_trace_browse_one_goal(MR_mdb_out,
-			MR_trace_browse_goal_internal,
-			MR_BROWSE_CALLER_BROWSE, format);
-
-		if (problem != NULL) {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		}
-	} else if (word_count == 2) {
-		const char	*problem;
-
-		if (MR_streq(words[1], "goal")) {
-			problem = MR_trace_browse_one_goal(MR_mdb_out,
-				MR_trace_browse_goal_internal,
-				MR_BROWSE_CALLER_BROWSE, format);
-		} else if (MR_streq(words[1], "exception")) {
-			problem = MR_trace_browse_exception(event_info,
-				MR_trace_browse_internal,
-				MR_BROWSE_CALLER_BROWSE, format);
-		} else if (MR_streq(words[1], "proc_body")) {
-			problem = MR_trace_browse_proc_body(event_info,
-				MR_trace_browse_internal,
-				MR_BROWSE_CALLER_BROWSE, format);
-		} else {
-			problem = MR_trace_parse_browse_one(MR_mdb_out,
-				MR_FALSE, words[1], MR_trace_browse_internal,
-				MR_BROWSE_CALLER_BROWSE, format,
-				MR_TRUE);
-		}
-
-		if (problem != NULL) {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		}
-	} else if (word_count == 3 && MR_streq(words[1], "action")
-		&& MR_trace_is_natural_number(words[2], &n))
-	{
-		const char	*problem;
-
-		problem = MR_trace_browse_action(MR_mdb_out, n,
-				MR_trace_browse_goal_internal,
-				MR_BROWSE_CALLER_BROWSE, format);
-
-		if (problem != NULL) {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		}
 	} else {
-		MR_trace_usage("browsing", "browse");
+		if (xml) {
+			goal_browser = MR_trace_browse_goal_xml;
+			browser = MR_trace_browse_xml;
+		} else {
+			goal_browser = MR_trace_browse_goal_internal;
+			browser = MR_trace_browse_internal;
+		}
+		if (word_count == 1) {
+			const char	*problem;
+
+			problem = MR_trace_browse_one_goal(MR_mdb_out,
+				goal_browser,
+				MR_BROWSE_CALLER_BROWSE, format);
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
+		} else if (word_count == 2) {
+			const char	*problem;
+
+			if (MR_streq(words[1], "goal")) {
+				problem = MR_trace_browse_one_goal(MR_mdb_out,
+					goal_browser, MR_BROWSE_CALLER_BROWSE,
+					format);
+			} else if (MR_streq(words[1], "exception")) {
+				problem = MR_trace_browse_exception(event_info,
+					browser, MR_BROWSE_CALLER_BROWSE,
+					format);
+			} else if (MR_streq(words[1], "proc_body")) {
+				problem = MR_trace_browse_proc_body(event_info,
+					browser, MR_BROWSE_CALLER_BROWSE,
+					format);
+			} else {
+				problem = MR_trace_parse_browse_one(MR_mdb_out,
+					MR_FALSE, words[1], browser,
+					MR_BROWSE_CALLER_BROWSE, format,
+					MR_TRUE);
+			}
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
+		} else if (word_count == 3 && MR_streq(words[1], "action")
+			&& MR_trace_is_natural_number(words[2], &n))
+		{
+			const char	*problem;
+
+			problem = MR_trace_browse_action(MR_mdb_out, n,
+					goal_browser, MR_BROWSE_CALLER_BROWSE,
+					format);
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
+		} else {
+			MR_trace_usage("browsing", "browse");
+		}
 	}
 
 	return KEEP_INTERACTING;
@@ -2159,13 +2243,31 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Word			verbose_format;
 	MR_Word			pretty_format;
 
-	if (! MR_trace_options_param_set(&print_set, &browse_set,
+	if (word_count == 3 && MR_streq(words[1], "xml_browser_cmd")) {
+		if (MR_xml_browser_command == NULL) {
+			MR_xml_browser_command = 
+				(char*)malloc(strlen(words[2]) + 1);
+		} else {
+			MR_xml_browser_command = (char*)realloc(
+				MR_xml_browser_command, strlen(words[2]) + 1);
+		}
+		strcpy(MR_xml_browser_command, words[2]);
+	} else if (word_count == 3 && MR_streq(words[1], "xml_tmp_filename")) {
+		if (MR_xml_tmp_filename == NULL) {
+			MR_xml_tmp_filename = 
+				(char*)malloc(strlen(words[2]) + 1);
+		} else {
+			MR_xml_tmp_filename = (char*)realloc(
+				MR_xml_tmp_filename, strlen(words[2]) + 1);
+		}
+		strcpy(MR_xml_tmp_filename, words[2]);
+	} else if (! MR_trace_options_param_set(&print_set, &browse_set,
 		&print_all_set, &flat_format, &raw_pretty_format,
 		&verbose_format, &pretty_format, &words, &word_count,
 		"parameter", "set"))
 	{
 		; /* the usage message has already been printed */
-	}
+	} 
 	else if (word_count != 3 ||
 		! MR_trace_set_browser_param(print_set, browse_set,
 			print_all_set, flat_format, raw_pretty_format,
@@ -2223,8 +2325,13 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_bool			verbose = MR_FALSE;
 	MR_Word			browser_term;
 	const char		*problem = NULL;
+	MR_bool			xml = MR_FALSE;
 
-	if (word_count != 3) {
+	if (! MR_trace_options_save_to_file(&xml, &words, &word_count,
+		"browsing", "save_to_file"))
+	{
+		; /* the usage message has already been printed */
+	} else if (word_count != 3) {
 		MR_trace_usage("browsing", "save_to_file");
 	} else {
 		if (MR_streq(words[1], "goal")) {
@@ -2276,7 +2383,11 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		} else {
-			MR_trace_save_term(words[2], browser_term);
+			if (xml) {
+				MR_trace_save_term_xml(words[2], browser_term);
+			} else {
+				MR_trace_save_term(words[2], browser_term);
+			}
 		}
 	}
 
@@ -6180,18 +6291,20 @@ static struct MR_option MR_trace_format_opts[] =
 	{ "raw_pretty",	MR_no_argument,	NULL,	'r' },
 	{ "verbose",	MR_no_argument,	NULL,	'v' },
 	{ "pretty",	MR_no_argument,	NULL,	'p' },
+	{ "xml",	MR_no_argument,	NULL,	'x' },
 	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static MR_bool
-MR_trace_options_format(MR_Browse_Format *format, char ***words,
+MR_trace_options_format(MR_Browse_Format *format, MR_bool *xml, char ***words,
 	int *word_count, const char *cat, const char *item)
 {
 	int	c;
 
 	*format = MR_BROWSE_DEFAULT_FORMAT;
+	*xml = MR_FALSE;
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "frvp",
+	while ((c = MR_getopt_long(*word_count, *words, "frvpx",
 		MR_trace_format_opts, NULL)) != EOF)
 	{
 		switch (c) {
@@ -6210,6 +6323,10 @@ MR_trace_options_format(MR_Browse_Format *format, char ***words,
 
 			case 'p':
 				*format = MR_BROWSE_FORMAT_PRETTY;
+				break;
+
+			case 'x':
+				*xml = MR_TRUE;
 				break;
 
 			default:
@@ -6550,6 +6667,39 @@ MR_trace_options_all_procedures(MR_bool *separate, MR_bool *uci,
 
 			case 'u':
 				*uci = MR_TRUE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return MR_FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return MR_TRUE;
+}
+
+static struct MR_option MR_trace_save_to_file_opts[] =
+{
+	{ "xml",		MR_no_argument,		NULL,	'x' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static MR_bool
+MR_trace_options_save_to_file(MR_bool *xml,
+	char ***words, int *word_count, const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "x", 
+		MR_trace_save_to_file_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'x':
+				*xml = MR_TRUE;
 				break;
 
 			default:
@@ -7238,9 +7388,9 @@ static const char *const	MR_trace_stack_cmd_args[] =
 static const char *const	MR_trace_set_cmd_args[] =
 	{ "-A", "-B", "-P", "-f", "-p", "-v",
 	"--print-all", "--print", "--browse",
-	"--flat", "--pretty", "--verbose",
-	"format", "depth", "size", "width", "lines",
-	"flat", "pretty", "verbose", NULL };
+	"--flat", "--pretty", "--verbose", "xml_tmp_filename",
+	"xml_browser_cmd", "format", "depth", "size", "width", "lines", "flat",
+	"pretty", "verbose", NULL };
 
 static const char *const	MR_trace_view_cmd_args[] =
 	{ "-c", "-f", "-n", "-s", "-t", "-v", "-w", "-2",

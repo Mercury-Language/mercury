@@ -36,6 +36,10 @@ ls
 cdr 3 ../1/..
 ls
 quit
+set xml_tmp_filename './browser_test.xml.out'
+set xml_browser_cmd 'cat ./browser_test.xml.out'
+browse --xml 1
+browse -x Data
 set -A -f depth 1
 print *
 print Data/1
