@@ -20,6 +20,7 @@ SCRIPTS = mmake mmc mdb c2init mgnuc ml mprof mprof_merge_runs \
 	  mercury.bat
 DEBUGGER_SCRIPTS = mdbrc
 EMACS_SCRIPTS = gud.el
+CGI_SCRIPTS = mdprof
 
 #-----------------------------------------------------------------------------#
 
@@ -33,7 +34,7 @@ EMACS_SCRIPTS = gud.el
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
+all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS) $(CGI_SCRIPTS)
 all: Mmake.vars
 
 #-----------------------------------------------------------------------------#
@@ -47,7 +48,7 @@ ml canonical_grade: canonical_grade.sh-subr
 
 .PHONY: install
 install: install_mmake install_scripts \
-	install_debugger_scripts install_emacs_scripts
+	install_debugger_scripts install_emacs_scripts install_cgi_scripts
 
 .PHONY: install_dirs
 install_dirs:
@@ -74,10 +75,6 @@ install_scripts: $(SCRIPTS) install_dirs
 	done
 	-rm -f $(INSTALL_BINDIR)/mmake.old
 
-.PHONY: install_emacs_scripts
-install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
-	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
-
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
 	# Reportedly old versions of Mercury
@@ -88,6 +85,21 @@ install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
 	-chmod u+w $(INSTALL_LIBDIR)/mdb/*
 	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb 
 
+.PHONY: install_emacs_scripts
+install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
+	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
+
+.PHONY: install_cgi_scripts
+install_cgi_scripts: $(CGI_SCRIPTS)
+	# $(INSTALL_CGI_DIR) is likely to be writeable only by root or
+	# the www system administrator, which is why we don't consider a
+	# failure of this action to be an error. If the command fails,
+	# the install action in ../Mmakefile will remind the user to do
+	# the copy later.
+	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
+		cp $(CGI_SCRIPTS) $(INSTALL_CGI_DIR) ; \
+	fi
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: uninstall
@@ -95,6 +107,15 @@ uninstall:
 	-rm -r $(INSTALL_LIBDIR)/mmake
 	-cd $(INSTALL_BINDIR) && rm $(SCRIPTS) 
 	-cd $(INSTALL_LIBDIR)/mdb && rm $(DEBUGGER_SCRIPTS)
+	# Is there any reason why we don't uninstall $(EMACS_SCRIPTS) here?
+	# We try to uninstall $(CGI_SCRIPTS), but failure to do so is not an
+	# error for two reasons: because we may simply lack permission to
+	# update the directory, and because the deep profiler installation
+	# may not have been enabled in the first place. (Looking at the current
+	# value of $(ENABLE_DEEP_PROFILER) to check for the latter wouldn't
+	# necessarily do any good, since its setting may have changed since
+	# the original install.)
+	-cd $(INSTALL_CGI_DIR) && rm $(CGI_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 

@@ -15,6 +15,6 @@
 # unprocessed, which is what we want; the web servers breaks up QUERY_STRING
 # on boundaries inappropriate for us when computing the command line arguments.
 
-PATH=@PREFIX@/bin:$PATH
+PATH=@prefix@/lib/mercury/bin/@FULLARCH@:$PATH
 export PATH
 exec mdprof_cgi

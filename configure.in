@@ -163,7 +163,7 @@ case $enable_gcc_back_end in
 		done
 		;;
 	*)
-		# The user has specifies the gcc source directory via
+		# The user has specified the gcc source directory via
 		# `--enable-gcc-back-end=<directory>'.  Check that
 		# they specified it correctly.
 		gcc_src_dir="$enable_gcc_back_end"
@@ -1741,6 +1741,10 @@ AC_MSG_RESULT($mercury_cv_egcs)
 #
 # Add an option that disables the deep profiler.
 #
+AC_ARG_ENABLE(deep-profiler,
+[  --enable-deep-profiler=<directory>
+                          install deep profiler CGI script in <directory>],
+enable_deep_profiler="$enableval",enable_deep_profiler=default)
 AC_MSG_CHECKING(whether to enable the deep profiler)
 
     # This test may need to be made more specific at a later date.
@@ -1748,9 +1752,9 @@ AC_MSG_CHECKING(whether to enable the deep profiler)
     # unistd.h or not, but at a later date we may also need to test for
     # other posix features.
 if test "$HAVE_UNISTD_H" = 1; then
-    mercury_cv_enable_deep_profiler=yes
+    mercury_cv_can_enable_deep_profiler=yes
 else
-    mercury_cv_enable_deep_profiler=no
+    mercury_cv_can_enable_deep_profiler=no
 fi
 
 # on x86, gcc version egcs-1.1.2 has a bug which causes it to get
@@ -1759,13 +1763,55 @@ fi
 # So if we're using an egcs version of gcc, disable deep profiling.
 case "$host" in i*86-*-*)
     case "$mercury_cv_egcs" in yes)
-	mercury_cv_enable_deep_profiler=no ;;
+	mercury_cv_can_enable_deep_profiler=no ;;
     esac ;;
 esac
+
+mercury_cv_default_cgi_dir=/usr/lib/cgi-bin
+case $enable_deep_profiler in
+	default)
+		if test -d $mercury_cv_default_cgi_dir; then
+			mercury_cv_enable_deep_profiler=$mercury_cv_can_enable_deep_profiler
+			mercury_cv_cgi_dir=$mercury_cv_default_cgi_dir
+		else
+			mercury_cv_enable_deep_profiler=no
+		fi
+		;;
+	no)
+		mercury_cv_enable_deep_profiler=no
+		;;
+	*)
+		if test $enable_deep_profiler = yes; then
+			mercury_cv_cgi_dir=$mercury_cv_default_cgi_dir
+		else
+			mercury_cv_cgi_dir=$enable_deep_profiler
+		fi
+
+		if test $mercury_cv_can_enable_deep_profiler = no; then
+			echo
+			AC_MSG_ERROR(--enable-deep-profiler specified but system does not support it)
+			exit 1
+		fi
+
+		mercury_cv_enable_deep_profiler=yes
+		;;
+esac
+
+if test $mercury_cv_enable_deep_profiler = yes; then
+	if test -d $mercury_cv_cgi_dir; then
+		true
+	else
+		echo
+		AC_MSG_ERROR(CGI script directory $mercury_cv_cgi_dir does not exist)
+		exit 1
+	fi		
+fi
 
 AC_MSG_RESULT($mercury_cv_enable_deep_profiler)
 ENABLE_DEEP_PROFILER=$mercury_cv_enable_deep_profiler
 AC_SUBST(ENABLE_DEEP_PROFILER)
+CGIDIR=$mercury_cv_cgi_dir
+AC_SUBST(CGIDIR)
 #-----------------------------------------------------------------------------#
 
 # Figure out which flavour of pthreads to use, since none of the
@@ -2074,7 +2120,10 @@ if test "$enable_libgrades_given" = yes; then
 		grade_error=false
 		for raw_grade in $raw_grades
 		do
-			if scripts/canonical_grade --grade $raw_grade > .confgrade
+			if ! test -x scripts/canonical/grade
+			then
+				canonical_grades="$canonical_grades $raw_grade"
+			elif scripts/canonical_grade --grade $raw_grade > .confgrade
 			then
 				canonical_grades="$canonical_grades `cat .confgrade`"
 			else

@@ -329,6 +329,11 @@ install: install_main install_grades
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
 	@echo "-- and $(INSTALL_INFO_DIR) to your INFOPATH,"
+	@if test $(ENABLE_DEEP_PROFILER) != yes || \
+		cmp -s scripts/mdprof.in $(INSTALL_CGI_DIR)/mdprof; \
+	then true ; else \
+		echo "-- to copy scripts/mdprof to $(INSTALL_CGI_DIR),"; \
+	fi
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
 	@echo "	(setq load-path (cons (expand-file-name "
@@ -339,7 +344,8 @@ install: install_main install_grades
 install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
   		install_library install_browser install_trace \
-		install_compiler install_profiler install_deep_profiler install_doc 
+		install_compiler install_profiler install_deep_profiler \
+		install_doc 
  
 .PHONY: install_scripts
 install_scripts: scripts

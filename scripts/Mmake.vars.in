@@ -485,7 +485,7 @@ INSTALL_MKDIR = mkdir -p
 #-----------------------------------------------------------------------------#
 
 # Specify the locations for installing things.
-# These directories can all be modified independantly.
+# These directories can all be modified independently.
 # In particular, you might want to find a better place for the DVI and
 # HTML files.
 
@@ -525,6 +525,7 @@ INSTALL_MAN_DIR		= $(INSTALL_PREFIX)/man
 INSTALL_HTML_DIR	= $(INSTALL_PREFIX)/lib/mercury/html
 INSTALL_MDB_DOC_DIR	= $(INSTALL_PREFIX)/lib/mercury/mdb
 INSTALL_ELISP_DIR	= $(INSTALL_PREFIX)/lib/mercury/elisp
+INSTALL_CGI_DIR		= @CGIDIR@
 
 # You should not need to override anything below here
 
