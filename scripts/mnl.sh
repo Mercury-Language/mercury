@@ -9,9 +9,14 @@ NULIBDIR=${MERCURY_LIB_DIR:-@LIBDIR@/nuprolog/@FULLARCH@}
 LIBRARY_OBJS=${MERCURY_LIB_OBJS:-"@LIBOBJS@"}
 
 options=
+verbose=false
 
 while true; do
 	case "$1" in
+		-v)
+			verbose=true
+			shift
+			;;
 		-e|-u|-o|-F)
 			options="$options $1 $2"
 			shift 2
@@ -26,11 +31,14 @@ done
 
 objlist=
 for obj in $LIBRARY_OBJS; do
-	if echo "$@" | grep "$obj" > /dev/null; then
+	if echo "" "$@" "" | grep " $obj " > /dev/null; then
 		true
 	else
 		objlist="$objlist $NULIBDIR/$obj"
 	fi
 done
 
+if $verbose; then
+	echo nc $options $objlist "$@"
+fi
 exec nc $options $objlist "$@"
