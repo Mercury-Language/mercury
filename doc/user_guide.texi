@@ -7509,6 +7509,15 @@ to the file or device specified by @var{filename}.
 @c --mdb-in-window is for use only by the mdb script, so it's
 @c not documented here.
 
+@c The documentation of --mdb-benchmark-silent is commented out because
+@c this option is intended only for implementors.
+
+@c @sp 1
+@c @item --mdb-benchmark-silent
+@c @findex --mdb-benchmark-silent (runtime option)
+@c Redirect all output, including error messages, to /dev/null.
+@c This is useful for benchmarking.
+
 @sp 1
 @item --debug-threads
 @findex --debug-threads (runtime option)
@@ -7520,9 +7529,18 @@ unlocking occurring in each module which has been compiled with the C macro
 symbol @samp{MR_DEBUG_THREADS} defined.
 
 @sp 1
-@item --tabling-statistics @var{size}
+@item --tabling-statistics
 @findex --tabling-statistics
 Prints statistics about tabling when the program terminates.
+
+@sp 1
+@item --mem-usage-report
+@findex --mem-usage-report
+Print a report about the memory usage of the program
+when the program terminates.
+The report is printed to a new file named @file{.mem_usage_report@var{N}}
+for the lowest value of @var{N} (up to 99)
+which doesn't overwrite an existing file.
 
 @end table
 

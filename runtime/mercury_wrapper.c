@@ -35,6 +35,10 @@ ENDINIT
 
 #include	<stdio.h>
 #include	<string.h>
+#include	<sys/types.h>
+#include	<sys/stat.h>
+#include	<fcntl.h>
+#include	<sys/resource.h>
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
   #include <excpt.h>
@@ -159,6 +163,8 @@ const char	*MR_mdb_out_filename = NULL;
 const char	*MR_mdb_err_filename = NULL;
 MR_bool		MR_mdb_in_window = MR_FALSE;
 
+MR_bool		MR_mdb_benchmark_silent = MR_FALSE;
+
 /* use readline() in the debugger even if the input stream is not a tty */
 MR_bool		MR_force_readline = MR_FALSE;
 
@@ -233,6 +239,11 @@ MR_bool		MR_check_space = MR_FALSE;
 static	MR_bool	benchmark_all_solns = MR_FALSE;
 static	MR_bool	use_own_timer = MR_FALSE;
 static	int	repeats = 1;
+
+#define	MAX_MEM_USAGE_REPORT_ATTEMPTS		100
+#define	MAX_MEM_USAGE_REPORT_FILENAME_SIZE	1024
+
+static	MR_bool	mem_usage_report = MR_FALSE;
 
 static	int	MR_num_output_args = 0;
 
@@ -952,13 +963,15 @@ enum MR_long_option {
 	MR_MDB_IN,
 	MR_MDB_OUT,
 	MR_MDB_ERR,
+	MR_MDB_BENCHMARK_SILENT,
 	MR_MDB_IN_WINDOW,
 	MR_FORCE_READLINE,
 	MR_NUM_OUTPUT_ARGS,
 	MR_DEBUG_THREADS_OPT,
 	MR_DEEP_PROF_DEBUG_FILE_OPT,
 	MR_TABLING_STATISTICS_OPT,
-	MR_TRACE_COUNT_OPT
+	MR_TRACE_COUNT_OPT,
+	MR_MEM_USAGE_REPORT
 };
 
 struct MR_option MR_long_opts[] = {
@@ -983,12 +996,14 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
 	{ "mdb-err", 			1, 0, MR_MDB_ERR },
 	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW },
+	{ "mdb-benchmark-silent",	0, 0, MR_MDB_BENCHMARK_SILENT },
 	{ "force-readline",		0, 0, MR_FORCE_READLINE },
 	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS },
 	{ "debug-threads",		0, 0, MR_DEBUG_THREADS_OPT },
 	{ "deep-debug-file",		0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT },
 	{ "tabling-statistics",		0, 0, MR_TABLING_STATISTICS_OPT },
-	{ "trace-count",		0, 0, MR_TRACE_COUNT_OPT }
+	{ "trace-count",		0, 0, MR_TRACE_COUNT_OPT },
+	{ "mem-usage-report",		0, 0, MR_MEM_USAGE_REPORT }
 };
 
 static void
@@ -1152,6 +1167,10 @@ process_options(int argc, char **argv)
 			MR_mdb_in_window = MR_TRUE;
 			break;
 
+		case MR_MDB_BENCHMARK_SILENT:
+			MR_mdb_benchmark_silent = MR_TRUE;
+			break;
+
 		case MR_FORCE_READLINE:
 			MR_force_readline = MR_TRUE;
 #ifdef MR_NO_USE_READLINE
@@ -1180,6 +1199,10 @@ process_options(int argc, char **argv)
 
 		case MR_TRACE_COUNT_OPT:
 			MR_trace_count_enabled = MR_TRUE;
+			break;
+
+		case MR_MEM_USAGE_REPORT:
+			mem_usage_report = MR_TRUE;
 			break;
 
 		case 'a':
@@ -1976,6 +1999,49 @@ mercury_runtime_terminate(void)
 	pthread_cond_broadcast(&MR_runqueue_cond);
   #endif
 #endif
+
+	if (mem_usage_report) {
+		char	buf[MAX_MEM_USAGE_REPORT_FILENAME_SIZE];
+		int	i;
+		int	fd;
+		FILE	*fp;
+
+		fp = NULL;
+		for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
+			sprintf(buf, ".mem_usage_report%2d", i);
+
+			fd = open(buf, O_WRONLY | O_CREAT | O_EXCL, 0600);
+			if (fd >= 0) {
+				fp = fdopen(fd, "w");
+				break;
+			}
+		}
+
+		if (fp != NULL) {
+			struct rusage	rusage;
+
+			fprintf(fp, "io actions        %10d\n",
+				MR_io_tabling_counter_hwm);
+			if (getrusage(RUSAGE_SELF, &rusage) == 0) {
+				fprintf(fp, "max resident      %10ld\n",
+					rusage.ru_maxrss);
+				fprintf(fp, "integral shared   %10ld\n",
+					rusage.ru_ixrss);
+				fprintf(fp, "integral unshared %10ld\n",
+					rusage.ru_idrss);
+				fprintf(fp, "integral stack    %10ld\n",
+					rusage.ru_isrss);
+				fprintf(fp, "page reclaims     %10ld\n",
+					rusage.ru_minflt);
+				fprintf(fp, "page faults       %10ld\n",
+					rusage.ru_majflt);
+				fprintf(fp, "swaps             %10ld\n",
+					rusage.ru_nswap);
+			}
+
+			(void) fclose(fp);
+		}
+	}
 
 	MR_terminate_engine();
 

@@ -687,6 +687,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	char			*line;
 	MR_Next			res;
 	MR_Event_Details	event_details;
+	const char		*prompt;
 
 	if (! interactive) {
 		return MR_trace_event_internal_report(cmd, event_info);
@@ -791,6 +792,20 @@ MR_trace_internal_ensure_init(void)
 		char	*env;
 		int	n;
 
+		if (MR_mdb_benchmark_silent) {
+			(void) close(1);
+			if (open("/dev/null", O_WRONLY) != 1) {
+				fprintf(stderr, "cannot silence stdout");
+				exit(1);
+			}
+
+			(void) close(2);
+			if (open("/dev/null", O_WRONLY) != 2) {
+				/* there is nowhere to report the error */
+				exit(1);
+			}
+		}
+
 		if (MR_mdb_in_window) {
 			/*
 			** If opening the window fails, fall back on
@@ -807,11 +822,11 @@ MR_trace_internal_ensure_init(void)
 
 		if (! MR_mdb_in_window) {
 			MR_mdb_in = MR_try_fopen(MR_mdb_in_filename,
-					"r", stdin);
+				"r", stdin);
 			MR_mdb_out = MR_try_fopen(MR_mdb_out_filename,
-					"w", stdout);
+				"w", stdout);
 			MR_mdb_err = MR_try_fopen(MR_mdb_err_filename,
-					"w", stderr);
+				"w", stderr);
 		}
 
 		/* Ensure that MR_mdb_err is not buffered */
@@ -3996,9 +4011,9 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		** The "table_io allow" command allows the programmer to give
 		** the command "table_io start" even in grades in which there
 		** is no guarantee that all I/O primitives are tabled. It is
-		** for developers only, because its use on programs in which
-		** some but not all I/O primitives are tabled, the results of
-		** turning on I/O tabling can be weird.
+		** for developers only, because if it is used on programs in
+		** which some but not all I/O primitives are tabled, the
+		** results of turning on I/O tabling can be weird.
 		*/
 
 		MR_io_tabling_allowed = MR_TRUE;

@@ -230,6 +230,9 @@ extern	const char	*MR_mdb_err_filename;
 /* should mdb be started in a window */
 extern	MR_bool		MR_mdb_in_window;
 
+/* should mdb be silent for benchmarking purposes */
+extern	MR_bool		MR_mdb_benchmark_silent;
+
 /* use readline() in the debugger even if the input stream is not a tty */
 extern	MR_bool		MR_force_readline;
 
