@@ -10,6 +10,7 @@
 *.int3
 *.date
 *.date3
+*.pic_o
 help.h
 debugger_interface.h
 declarative_debugger.h
