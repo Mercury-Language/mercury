@@ -5,12 +5,14 @@
 void mkframe_msg(void)
 {
 	restore_registers();
+
 	printf("\nnew choice point for procedure %s\n", curprednm);
 	printf("new  fr: "); printnondstack(curfr);
 	printf("prev fr: "); printnondstack(curprevfr);
 	printf("succ fr: "); printnondstack(cursuccfr);
 	printf("succ ip: "); printlabel(cursuccip);
 	printf("redo ip: "); printlabel(curredoip);
+
 	if (detaildebug)
 		dumpnondstack();
 }
@@ -18,11 +20,13 @@ void mkframe_msg(void)
 void mkreclaim_msg(void)
 {
 	restore_registers();
+
 	printf("\nnew reclaim point for procedure %s\n", curprednm);
 	printf("new  fr: "); printnondstack(curfr);
 	printf("prev fr: "); printnondstack(recprevfr);
 	printf("redo ip: "); printlabel(recredoip);
 	printf("save hp: "); printheap(recsavehp);
+
 	if (detaildebug)
 		dumpnondstack();
 }
@@ -30,8 +34,10 @@ void mkreclaim_msg(void)
 void modframe_msg(void)
 {
 	restore_registers();
+
 	printf("\nmodifying choice point for procedure %s\n", curprednm);
 	printf("redo ip: "); printlabel(curredoip);
+
 	if (detaildebug)
 		dumpnondstack();
 }
@@ -39,26 +45,33 @@ void modframe_msg(void)
 void succeed_msg(void)
 {
 	restore_registers();
+
 	printf("\nsucceeding from procedure %s\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
 	printf("succ fr: "); printnondstack(cursuccfr);
 	printf("succ ip: "); printlabel(cursuccip);
-	printregs("registers at success");
+
+	if (detaildebug)
+		printregs("registers at success");
 }
 
 void succeeddiscard_msg(void)
 {
 	restore_registers();
+
 	printf("\nsucceeding from procedure %s, discarding frame\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
 	printf("succ fr: "); printnondstack(cursuccfr);
 	printf("succ ip: "); printlabel(cursuccip);
-	printregs("registers at success");
+
+	if (detaildebug)
+		printregs("registers at success");
 }
 
 void fail_msg(void)
 {
 	restore_registers();
+
 	printf("\nfailing from procedure %s\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
 	printf("fail fr: "); printnondstack(curprevfr);
@@ -68,6 +81,7 @@ void fail_msg(void)
 void redo_msg(void)
 {
 	restore_registers();
+
 	printf("\nredo from procedure %s\n", curprednm);
 	printf("curr fr: "); printnondstack(curfr);
 	printf("redo fr: "); printnondstack(maxfr);
@@ -84,6 +98,7 @@ void call_msg(const Code *proc, const Code *succcont)
 void tailcall_msg(const Code *proc)
 {
 	restore_registers();
+
 	printf("\ntail calling "); printlabel(proc);
 	printf("continuation "); printlabel(succip);
 	printregs("registers at tailcall");
@@ -123,6 +138,7 @@ void goto_msg(const Code *addr)
 {
 	printf("\ngoto ");
 	printlabel(addr);
+
 	if (detaildebug)
 		printregs("registers at goto");
 }
@@ -264,8 +280,9 @@ int whichlabel(const char *name)
 	reg	bool	found;
 
 	found = FALSE;
-	for (i = 0; i < MAXLABELS; i++)
+	for (i = 0; i < cur_entry; i++)
 	{
+		/* printf("comparing %s and %s\n", name, entries[i].e_name); */
 		if (streq(name, entries[i].e_name))
 			return i;
 	}
@@ -381,7 +398,8 @@ void printframe(const char *msg)
 	{
 		printf("r%d:      ", i + 1);
 		value = get_reg(i+1);
-		if ((int) heapmin <= value && value <= (int) heapmax)
+
+		if ((int) heapmin <= value && value <= (int) (&heap[MAXHEAP]))
 			printlist(value);
 		else
 			printint(value);
@@ -408,7 +426,8 @@ void printregs(const char *msg)
 	{
 		printf("r%d:      ", i + 1);
 		value = get_reg(i+1);
-		if ((int) heapmin <= value && value <= (int) heapmax)
+
+		if ((int) heapmin <= value && value <= (int) (&heap[MAXHEAP]))
 			printlist(value);
 		else
 			printint(value);
