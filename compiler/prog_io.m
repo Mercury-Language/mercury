@@ -122,6 +122,8 @@
 			;	c_code(sym_name, 
 					list(pragma_var), varset, string)
 				% PredName, Vars/Mode, VarNames, C Code
+			;	memo(sym_name, int)
+				% Predname, Arity
 			;	inline(sym_name, int).
 				% Predname, Arity
 
@@ -645,6 +647,8 @@ read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error) -->
 			module_error, message_list, item_list, module_error,
 			io__state, io__state).
 :- mode read_items_loop_2(in, in, in, in, in, out, out, out, di, uo) is det.
+
+:- pragma(inline, read_items_loop_2/10).
 
 % do a switch on the type of the next item
 
@@ -1767,7 +1771,7 @@ parse_pragma(VarSet, Pragma, Result) :-
        PragmaType = term__functor(term__atom("inline"),[], _)
     ->
        (
-       PragmaTerms = [PredAndArityTerm]
+            PragmaTerms = [PredAndArityTerm]
        ->
 	    (
                 PredAndArityTerm = term__functor(term__atom("/"), 
@@ -1783,11 +1787,11 @@ parse_pragma(VarSet, Pragma, Result) :-
 			ok(pragma(inline(unqualified(PredName), Arity)))
 		;
 	    	    Result = 
-		        error("Expected predname/arity for pragma(inline,...)",
+		        error("Expected predname/arity for pragma(inline, ...)",
 			PredAndArityTerm)
 		)
 	    ;
-	    	Result = error("Expected predname/arity for pragma(inline...)",
+	    	Result = error("Expected predname/arity for pragma(inline, ...)",
 			PredAndArityTerm)
 	    )
 	;
@@ -1797,10 +1801,44 @@ parse_pragma(VarSet, Pragma, Result) :-
 		PragmaType)
        )
     ;
+       PragmaType = term__functor(term__atom("memo"),[], _)
+    ->
+       (
+            PragmaTerms = [PredAndArityTerm]
+       ->
+	    (
+                PredAndArityTerm = term__functor(term__atom("/"), 
+	    		[PredNameTerm, ArityTerm], _)
+	    ->
+		(
+		    (
+		    PredNameTerm = term__functor(term__atom(PredName), [], _),
+		    ArityTerm = term__functor(term__integer(Arity), [], _)
+		    )
+		->
+		    Result = 
+			ok(pragma(memo(unqualified(PredName), Arity)))
+		;
+	    	    Result = 
+		        error("Expected predname/arity for pragma(memo, ...)",
+			PredAndArityTerm)
+		)
+	    ;
+	    	Result = error("Expected predname/arity for pragma(memo, ...)",
+			PredAndArityTerm)
+	    )
+	;
+	    Result = 
+	    	error(
+		"wrong number of arguments in pragma(memo, ...) declaration.",
+		PragmaType)
+       )
+    ;
     	Result = error("Unknown pragma declaration type", PragmaType)
     ).
 
 %-----------------------------------------------------------------------------%
+
 	% parse the variable list in the pragma c code declaration.
 	% The final argument is 'no' for no error, or 'yes(ErrorMessage)'.
 :- pred parse_pragma_c_code_varlist(varset, list(term), list(pragma_var), 

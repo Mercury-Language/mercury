@@ -92,8 +92,8 @@ dead_proc_elim__initialize_preds([PredId | PredIds], PredTable,
 dead_proc_elim__initialize_procs(_PredId, [], Queue, Queue, Needed, Needed).
 dead_proc_elim__initialize_procs(PredId, [ProcId | ProcIds],
 		Queue0, Queue, Needed0, Needed) :-
-	queue__put(Queue0, PredId - ProcId, Queue1),
-	set__insert(Needed0, PredId - ProcId, Needed1),
+	queue__put(Queue0, proc(PredId, ProcId), Queue1),
+	set__insert(Needed0, proc(PredId, ProcId), Needed1),
 	dead_proc_elim__initialize_procs(PredId, ProcIds,
 		Queue1, Queue, Needed1, Needed).
 
@@ -126,7 +126,7 @@ dead_proc_elim__examine(Queue0, Examined0, ModuleInfo, Needed0, Needed) :-
 	set(pred_proc_id), set(pred_proc_id)).
 :- mode dead_proc_elim__examine_proc(in, in, in, out, in, out) is det.
 
-dead_proc_elim__examine_proc(PredId - ProcId, ModuleInfo, Queue0, Queue,
+dead_proc_elim__examine_proc(proc(PredId, ProcId), ModuleInfo, Queue0, Queue,
 		Needed0, Needed) :-
 	(
 		module_info_preds(ModuleInfo, PredTable),
@@ -199,12 +199,12 @@ dead_proc_elim__traverse_expr(if_then_else(_, Cond, Then, Else),
 	dead_proc_elim__traverse_goal(Else, Queue2, Queue,  Needed2, Needed).
 dead_proc_elim__traverse_expr(call(PredId, ProcId, _,_,_,_,_),
 		Queue0, Queue, Needed0, Needed) :-
-	queue__put(Queue0, PredId - ProcId, Queue),
-	set__insert(Needed0, PredId - ProcId, Needed).
+	queue__put(Queue0, proc(PredId, ProcId), Queue),
+	set__insert(Needed0, proc(PredId, ProcId), Needed).
 dead_proc_elim__traverse_expr(pragma_c_code(_, PredId, ProcId, _,_),
 		Queue0, Queue, Needed0, Needed) :-
-	queue__put(Queue0, PredId - ProcId, Queue),
-	set__insert(Needed0, PredId - ProcId, Needed).
+	queue__put(Queue0, proc(PredId, ProcId), Queue),
+	set__insert(Needed0, proc(PredId, ProcId), Needed).
 dead_proc_elim__traverse_expr(unify(_,_,_, Uni, _), Queue0, Queue,
 		Needed0, Needed) :-
 	(
@@ -213,8 +213,8 @@ dead_proc_elim__traverse_expr(unify(_,_,_, Uni, _), Queue0, Queue,
 		; ConsId = address_const(PredId, ProcId)
 		)
 	->
-		queue__put(Queue0, PredId - ProcId, Queue),
-		set__insert(Needed0, PredId - ProcId, Needed)
+		queue__put(Queue0, proc(PredId, ProcId), Queue),
+		set__insert(Needed0, proc(PredId, ProcId), Needed)
 	;
 		Queue = Queue0,
 		Needed = Needed0
@@ -281,7 +281,7 @@ dead_proc_elim__eliminate_procs(_, [], _, _, _, _, ProcTable, ProcTable) --> [].
 dead_proc_elim__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name,
 		Arity, ProcTable0, ProcTable) -->
 	(
-		( { set__member(PredId - ProcId, Needed) }
+		( { set__member(proc(PredId, ProcId), Needed) }
 		; { Keep = yes(ProcId) }
 		)
 	->

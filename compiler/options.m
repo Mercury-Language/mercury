@@ -23,6 +23,8 @@
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
 :- pred option_defaults(option::out, option_data::out) is nondet.
+:- pred special_handler(option::in, special_data::in, option_table::in,
+	option_table::out) is semidet.
 
 :- pred options_help(io__state::di, io__state::uo) is det.
 
@@ -101,6 +103,7 @@
 		;	c_include_directory
 	% Optimization Options
 		;	opt_level
+		;	opt_space	% default is to optimize time
 	%	- HLDS
 		;	inlining
 		;	common_struct
@@ -273,6 +276,7 @@ option_defaults_2(code_gen_option, [
 option_defaults_2(optimization_option, [
 		% Optimization options
 	opt_level		-	int_special,
+	opt_space		-	special,
 % HLDS
 	inlining		-	bool(yes),
 	common_struct		-	bool(yes),
@@ -451,6 +455,9 @@ long_option("c-include-directory",	c_include_directory).
 long_option("opt-level",		opt_level).
 long_option("optimization-level",	opt_level).
 long_option("optimisation-level",	opt_level).
+long_option("opt-space",		opt_space).
+long_option("optimize-space",		opt_space).
+long_option("optimise-space",		opt_space).
 
 % HLDS->HLDS optimizations
 long_option("inlining",			inlining).
@@ -528,9 +535,9 @@ long_option("heap-space",		heap_space).
 long_option("builtin-module",		builtin_module).
 long_option("search-directory",		search_directories).
 
-:- pred special_handler(option, special_data, option_table, option_table).
-:- mode special_handler(in, in, in, out) is semidet.
-
+special_handler(opt_space, none, OptionTable0, OptionTable) :-
+	opt_space(OptionSettingsList),
+	override_options(OptionSettingsList, OptionTable0, OptionTable).
 special_handler(opt_level, int(N0), OptionTable0, OptionTable) :-
 	( N0 > 5 ->
 		N = 5
@@ -539,8 +546,11 @@ special_handler(opt_level, int(N0), OptionTable0, OptionTable) :-
 	;
 		N = N0
 	),
-	opt_level(N, OptionSettingsList),
-	override_options(OptionSettingsList, OptionTable0, OptionTable).
+	( opt_level(N, OptionSettingsList) ->
+		override_options(OptionSettingsList, OptionTable0, OptionTable)
+	;
+		error("Unknown optimization level")
+	).
 
 :- pred override_options(list(pair(option, option_data)),
 	option_table, option_table).
@@ -550,6 +560,15 @@ override_options([], OptionTable, OptionTable).
 override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
 	map__set(OptionTable0, Option, Value, OptionTable1),
 	override_options(Settings, OptionTable1, OptionTable).
+
+:- pred opt_space(list(pair(option, option_data))::out) is det.
+
+opt_space([
+	optimize_dead_procs	-	bool(yes),
+	optimize_fulljumps	-	bool(no),
+	optimize_labels		-	bool(yes),
+	optimize_dups		-	bool(yes)
+]).
 
 :- pred opt_level(int::in, list(pair(option, option_data))::out) is semidet.
 
@@ -903,6 +922,10 @@ options_help -->
 	io__write_string("\t\twhile optimization level 5 means full optimization.\n"),
 	% io__write_string("\t\tFor a full description of each optimization level,\n"),
 	% io__write_string("\t\tsee the Mercury User's Guide.\n"),
+	io__write_string("\t--opt-space, --optimize-space\n"),
+	io__write_string("\t\tTurn on optimizations that reduce code size\n"),
+	io__write_string("\t\tand turn off optimizations that significantly\n"),
+	io__write_string("\t\tincrease code size.\n"),
 
 	io__write_string("\n    High-level (HLDS->HLDS) optimizations:\n"),
 	io__write_string("\t--no-inlining\n"),

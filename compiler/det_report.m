@@ -20,8 +20,6 @@
 
 	% Types used in both det_report and det_analysis.
 
-:- type predproclist	==	list(pair(pred_id, proc_id)).
-
 :- type maybe_changed	--->	changed ; unchanged.
 
 :- type misc_info	--->	misc_info(
@@ -51,8 +49,8 @@
 	% Check all the determinism declarations in this module.
 	% This is the main predicate exported by this module.
 
-:- pred global_checking_pass(list(pair(pred_id, proc_id)),
-	module_info, module_info, io__state, io__state).
+:- pred global_checking_pass(pred_proc_list, module_info, module_info,
+	io__state, io__state).
 :- mode global_checking_pass(in, in, out, di, uo) is det.
 
 	% Check a lambda goal with the specified declared and inferred
@@ -93,7 +91,7 @@
 %-----------------------------------------------------------------------------%
 
 global_checking_pass([], ModuleInfo, ModuleInfo) --> [].
-global_checking_pass([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
+global_checking_pass([proc(PredId, ModeId) | Rest], ModuleInfo0, ModuleInfo) -->
 	{
 		module_info_preds(ModuleInfo0, PredTable),
 		map__lookup(PredTable, PredId, PredInfo),

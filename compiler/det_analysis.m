@@ -98,7 +98,7 @@ determinism_pass(ModuleInfo0, ModuleInfo) -->
 	maybe_write_string(Verbose, "% done.\n").
 
 determinism_check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
-	global_final_pass(ModuleInfo0, [PredId - ProcId], ModuleInfo).
+	global_final_pass(ModuleInfo0, [proc(PredId, ProcId)], ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -106,7 +106,7 @@ determinism_check_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 	% returns two lists of procedure ids, the first being those
 	% with determinism declarations, and the second being those without.
 
-:- pred determinism_declarations(module_info, predproclist, predproclist).
+:- pred determinism_declarations(module_info, pred_proc_list, pred_proc_list).
 :- mode determinism_declarations(in, out, out) is det.
 
 determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
@@ -116,7 +116,7 @@ determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs) :-
 	% get_all_pred_procs takes a module_info and returns a list
 	% of all the procedures ids for that module.
 
-:- pred get_all_pred_procs(module_info, predproclist).
+:- pred get_all_pred_procs(module_info, pred_proc_list).
 :- mode get_all_pred_procs(in, out) is det.
 
 get_all_pred_procs(ModuleInfo, PredProcs) :-
@@ -125,7 +125,7 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 	get_all_pred_procs_2(Preds, PredIds, [], PredProcs).
 
 :- pred get_all_pred_procs_2(pred_table, list(pred_id),
-				predproclist, predproclist).
+				pred_proc_list, pred_proc_list).
 :- mode get_all_pred_procs_2(in, in, in, out) is det.
 
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
@@ -135,34 +135,35 @@ get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
-:- pred fold_pred_modes(pred_id, list(proc_id), predproclist, predproclist).
+:- pred fold_pred_modes(pred_id, list(proc_id), pred_proc_list, pred_proc_list).
 :- mode fold_pred_modes(in, in, in, out) is det.
 
 fold_pred_modes(_PredId, [], PredProcs, PredProcs).
 fold_pred_modes(PredId, [ProcId|ProcIds], PredProcs0, PredProcs) :-
-	fold_pred_modes(PredId, ProcIds, [PredId - ProcId|PredProcs0],
+	fold_pred_modes(PredId, ProcIds, [proc(PredId, ProcId) | PredProcs0],
 		PredProcs).
 
 	% segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs)
 	% splits the list of procedures PredProcs into DeclaredProcs and
 	% UndeclaredProcs.
 
-:- pred segregate_procs(module_info, predproclist, predproclist, predproclist).
+:- pred segregate_procs(module_info, pred_proc_list, pred_proc_list,
+	pred_proc_list).
 :- mode segregate_procs(in, in, out, out) is det.
 
 segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs) :-
 	segregate_procs_2(ModuleInfo, PredProcs, [], DeclaredProcs,
 					[], UndeclaredProcs).
 
-:- pred segregate_procs_2(module_info, predproclist, predproclist,
-			predproclist, predproclist, predproclist).
+:- pred segregate_procs_2(module_info, pred_proc_list, pred_proc_list,
+			pred_proc_list, pred_proc_list, pred_proc_list).
 :- mode segregate_procs_2(in, in, in, out, in, out) is det.
 
 segregate_procs_2(_ModuleInfo, [], DeclaredProcs, DeclaredProcs,
 				UndeclaredProcs, UndeclaredProcs).
-segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
-			DeclaredProcs0, DeclaredProcs,
-				UndeclaredProcs0, UndeclaredProcs) :-
+segregate_procs_2(ModuleInfo, [proc(PredId, PredMode) | PredProcs],
+		DeclaredProcs0, DeclaredProcs,
+		UndeclaredProcs0, UndeclaredProcs) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, Pred),
 	pred_info_procedures(Pred, Procs),
@@ -170,19 +171,19 @@ segregate_procs_2(ModuleInfo, [PredId - PredMode|PredProcs],
 	proc_info_declared_determinism(Proc, MaybeDetism),
 	(
 		MaybeDetism = no,
-		UndeclaredProcs1 = [PredId - PredMode|UndeclaredProcs0],
+		UndeclaredProcs1 = [proc(PredId, PredMode) | UndeclaredProcs0],
 		DeclaredProcs1 = DeclaredProcs0
 	;
 		MaybeDetism = yes(_),
-		DeclaredProcs1 = [PredId - PredMode|DeclaredProcs0],
+		DeclaredProcs1 = [proc(PredId, PredMode) | DeclaredProcs0],
 		UndeclaredProcs1 = UndeclaredProcs0
 	),
 	segregate_procs_2(ModuleInfo, PredProcs, DeclaredProcs1, DeclaredProcs,
-				UndeclaredProcs1, UndeclaredProcs).
+		UndeclaredProcs1, UndeclaredProcs).
 
 %-----------------------------------------------------------------------------%
 
-:- pred global_analysis_pass(module_info, predproclist, module_info,
+:- pred global_analysis_pass(module_info, pred_proc_list, module_info,
 	io__state, io__state).
 :- mode global_analysis_pass(in, in, out, di, uo) is det.
 
@@ -204,7 +205,7 @@ global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 		{ ModuleInfo = ModuleInfo1 }
 	).
 
-:- pred global_analysis_single_pass(predproclist,
+:- pred global_analysis_single_pass(pred_proc_list,
 	module_info, module_info, maybe_changed, maybe_changed,
 	io__state, io__state).
 :- mode global_analysis_single_pass(in, in, out, in, out, di, uo)
@@ -212,7 +213,7 @@ global_analysis_pass(ModuleInfo0, ProcList, ModuleInfo) -->
 
 global_analysis_single_pass([], ModuleInfo, ModuleInfo,
 	Changed, Changed) --> [].
-global_analysis_single_pass([PredId - PredMode | PredProcs],
+global_analysis_single_pass([proc(PredId, PredMode) | PredProcs],
 		ModuleInfo0, ModuleInfo, Changed0, Changed) -->
 	{ det_infer_proc(PredId, PredMode, ModuleInfo0, ModuleInfo1,
 		Changed0, Changed1, Msgs) },
@@ -230,7 +231,7 @@ global_analysis_single_pass([PredId - PredMode | PredProcs],
 	global_analysis_single_pass(PredProcs,
 		ModuleInfo2, ModuleInfo, Changed1, Changed).
 
-:- pred global_final_pass(module_info, list(pair(pred_id, proc_id)),
+:- pred global_final_pass(module_info, pred_proc_list,
 	module_info, io__state, io__state).
 :- mode global_final_pass(in, in, out, di, uo) is det.
 

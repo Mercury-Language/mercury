@@ -164,7 +164,7 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 		map__init(PredVars0),
 			% first time through we can only specialize call/N
 		map__init(NewPreds0),
-		PredProcId = PredId - ProcId,
+		PredProcId = proc(PredId, ProcId),
 		Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo0),
 		traverse_goal(Goal0, Goal1, PredProcId, Changed,
 				GoalSize, Info0, info(_, Requests1,_,_)),
@@ -194,7 +194,6 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 	get_specialization_requests_2(PredIds, Requests2, Requests,
 			GoalSizes1, GoalSizes, ModuleInfo1, ModuleInfo).
 
-
 		% This is called when the first procedure of a pred was 
 		% changed. It fixes up all the other procs, ignoring the
 		% goal_size and requests that come out, since that information
@@ -212,7 +211,7 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
 	Info0 = info(PredVars0, Requests0, NewPreds0, ModuleInfo),
-	traverse_goal(Goal0, Goal1, PredId - ProcId, _, _,
+	traverse_goal(Goal0, Goal1, proc(PredId, ProcId), _, _,
 					Info0, info(_, Requests1,_,_)),
 	proc_info_headvars(ProcInfo0, HeadVars),
 	proc_info_variables(ProcInfo0, Varset0),
@@ -480,7 +479,7 @@ check_unify(construct(LVar, ConsId, _Args, _Modes), Info0, Info) :-
 				PredVars = PredVars0
 			)
 		;
-			map__set(PredVars0, LVar, yes(PredId - ProcId),
+			map__set(PredVars0, LVar, yes(proc(PredId, ProcId)),
 								PredVars)
 		)
 	;
@@ -529,7 +528,7 @@ maybe_specialize_call(Goal0 - Info, Goal - Info, PredProcId, Changed,
 				),
 				(
 					map__search(PredVars, PredVar,
-							yes(PredId - ProcId))
+						yes(proc(PredId, ProcId)))
 				->
 					predicate_name(Module, PredId,
 								PredName2),
@@ -551,8 +550,9 @@ maybe_specialize_call(Goal0 - Info, Goal - Info, PredProcId, Changed,
 			
 				% Check to see if any of the specialized
 				% versions of the called pred apply here.
-				map__search(NewPreds, CalledPred - CalledProc,
-								NewPredSet),
+				map__search(NewPreds,
+					proc(CalledPred, CalledProc),
+					NewPredSet),
 				solutions(lambda([X::out] is nondet, (
 					set__member(X, NewPredSet),
 					X = new_pred(_,_,_, HigherOrderArgs)
@@ -579,8 +579,9 @@ maybe_specialize_call(Goal0 - Info, Goal - Info, PredProcId, Changed,
 				% call, so we put in a request for a specialized
 				% version of the pred.
 				Goal = Goal0,
-				Request = request(PredProcId, CalledPred - 
-					 	CalledProc, HigherOrderArgs), 	
+				Request = request(PredProcId,
+					proc(CalledPred, CalledProc),
+					HigherOrderArgs), 	
 				set__insert(Requests0, Request, Requests),
 				Changed = yes
 			)
@@ -599,7 +600,7 @@ find_higher_order_args([], _, _, HOArgs, HOArgs).
 find_higher_order_args([Arg | Args], PredVars, ArgNo, HOArgs0, HOArgs) :-
 	NextArg is ArgNo + 1,
 	(
-		map__search(PredVars, Arg, yes(PredId - ProcId))
+		map__search(PredVars, Arg, yes(proc(PredId, ProcId)))
 	->
 		HOArgs1 = [higher_order_arg(PredId, ProcId, ArgNo) | HOArgs0]
 	;
@@ -643,7 +644,7 @@ filter_requests(Requests0, GoalSizes, Requests) :-
 	solutions(lambda([X::out] is nondet, (
 			set__member(X, Requests0),
 			X = request(_, CalledPredProcId, _),
-			CalledPredProcId = CalledPredId - _,
+			CalledPredProcId = proc(CalledPredId, _),
 			map__search(GoalSizes, CalledPredId, GoalSize),
 			max_specialized_goal_size(MaxSize),
 			GoalSize =< MaxSize
@@ -702,7 +703,7 @@ create_new_preds([Request | Requests], NewPreds0, NewPreds, PredsToFix0,
 create_new_pred(request(_CallingPredProc, CalledPredProc, HOArgs),
 		new_pred(NewPredId, NewProcId, Name, HOArgs), NextHOid0,
 		NextHOid, ModuleInfo0, ModuleInfo, IOState0, IOState) :- 
-	CalledPredProc = CalledPred - _,
+	CalledPredProc = proc(CalledPred, _),
 	module_info_get_predicate_table(ModuleInfo0,
 					 PredTable0),
 	predicate_table_get_preds(PredTable0, Preds0),
@@ -810,7 +811,7 @@ remove_listof_higher_order_args(List0, ArgNo, ArgsToRemove, List) :-
 
 fixup_preds([], _, ModuleInfo, ModuleInfo).
 fixup_preds([PredProcId | PredProcIds], NewPreds, ModuleInfo0, ModuleInfo) :-
-	PredProcId = PredId - ProcId, 
+	PredProcId = proc(PredId, ProcId), 
 	module_info_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, Procs0),
@@ -836,7 +837,7 @@ create_specialized_versions([], _, Requests, Requests, Sizes, Sizes, Mod, Mod).
 create_specialized_versions([PredProc | PredProcs], NewPreds, Requests0,
 		Requests, GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo) :-
 	map__lookup(NewPreds, PredProc, SpecVersions0),
-	PredProc = PredId - ProcId, 
+	PredProc = proc(PredId, ProcId), 
 	module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, _, ProcInfo0),
 	set__to_sorted_list(SpecVersions0, SpecVersions),
 	create_specialized_versions_2(SpecVersions, NewPreds, ProcInfo0,
@@ -878,7 +879,7 @@ create_specialized_versions_2([NewPred | NewPreds], NewPredMap, NewProcInfo0,
 	),
 	Goal1 = conj(Goals) - Info0,
 	map__init(PredVars0),
-	traverse_goal(Goal1, Goal2, NewPredId - NewProcId, _, GoalSize,
+	traverse_goal(Goal1, Goal2, proc(NewPredId, NewProcId), _, GoalSize,
 		info(PredVars0, Requests0, NewPredMap, ModuleInfo0),
 		info(_, Requests1,_,_)),
 	map__set(GoalSizes0, NewPredId, GoalSize, GoalSizes1),

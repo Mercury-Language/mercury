@@ -156,36 +156,48 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 		{ Pragma = c_code(_, _, _, _) },
 		{ Module = Module0 }
 	;
+		{ Pragma = memo(Pred, Arity) },
+		add_pred_marker(Module0, "memo", Pred, Arity, Context,
+			[request(dnf), request(magic), request(memo)], Module)
+	;
 		{ Pragma = inline(Pred, Arity) },
-		{ module_info_get_predicate_table(Module0, PredTable0) },
-		(
-			{ predicate_table_search_sym_arity(PredTable0, Pred, 
-				Arity, PredIds) }
-		->
-				% set the corresponding predicates' inline
-				% field in the pred_infos
-			{ predicate_table_get_preds(PredTable0, Preds0) },
-			{ pragma_inline_preds(Preds0, PredIds, Preds) },
-			{ predicate_table_set_preds(PredTable0, Preds, 
-				PredTable) },
-			{ module_info_set_predicate_table(Module0, PredTable, 
-				Module) }
-		;
-			io__stderr_stream(StdErr),
-			io__set_output_stream(StdErr, OldStream),
-			prog_out__write_context(Context),
-			io__write_strings(
-				["Warning: pragma(inline, ...) declaration ",
-				"for predicate\n"]),
-			prog_out__write_context(Context),
-			prog_out__write_sym_name(Pred),
-			io__write_char('/'),
-			io__write_int(Arity),
-			io__write_string(
-				" without preceding pred declaration.\n"),
-			io__set_output_stream(OldStream, _),
-			{ Module = Module0 }
-		)
+		add_pred_marker(Module0, "inline", Pred, Arity, Context,
+			[request(inline)], Module)
+	).
+
+:- pred add_pred_marker(module_info, string, sym_name, arity,
+	term__context, list(marker_status), module_info, io__state, io__state).
+:- mode add_pred_marker(in, in, in, in, in, in, out, di, uo) is det.
+
+add_pred_marker(Module0, PragmaName, Pred, Arity, Context, Markers, Module) -->
+	{ module_info_get_predicate_table(Module0, PredTable0) },
+	(
+		{ predicate_table_search_sym_arity(PredTable0, Pred, 
+			Arity, PredIds) }
+	->
+		{ predicate_table_get_preds(PredTable0, Preds0) },
+		{ pragma_set_markers(Preds0, PredIds, Markers, Preds) },
+		{ predicate_table_set_preds(PredTable0, Preds, 
+			PredTable) },
+		{ module_info_set_predicate_table(Module0, PredTable, 
+			Module) }
+	;
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
+		prog_out__write_context(Context),
+		io__write_strings(
+			["Warning: pragma(",
+			PragmaName,
+			", ...) declaration ",
+			"for predicate\n"]),
+		prog_out__write_context(Context),
+		prog_out__write_sym_name(Pred),
+		io__write_char('/'),
+		io__write_int(Arity),
+		io__write_string(
+			" without preceding pred declaration.\n"),
+		io__set_output_stream(OldStream, _),
+		{ Module = Module0 }
 	).
 
 add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
@@ -1119,7 +1131,8 @@ pragma_get_vars([P|PragmaVars], [V|Vars]) :-
 
 %---------------------------------------------------------------------------%
 
-	% from the list of pragma_vars , extract the names.
+	% from the list of pragma_vars, extract the names.
+
 :- pred pragma_get_var_names(list(pragma_var), list(string)).
 :- mode pragma_get_var_names(in, out) is det.
 
@@ -1130,22 +1143,38 @@ pragma_get_var_names([P|PragmaVars], [N|Names]) :-
 
 %---------------------------------------------------------------------------%
 
-	% For each pred_id in the list, set the 'inlined' flag in the
-	% corresponding pred_info.
-:- pred pragma_inline_preds(pred_table, list(pred_id), pred_table).
-:- mode pragma_inline_preds(in, in, out) is det.
+	% For each pred_id in the list, set the given markers
+	% in the corresponding pred_info.
 
-pragma_inline_preds(PredTable, [], PredTable).
-pragma_inline_preds(PredTable0, [PredId|PredIds], PredTable) :-
+:- pred pragma_set_markers(pred_table, list(pred_id), list(marker_status),
+	pred_table).
+:- mode pragma_set_markers(in, in, in, out) is det.
+
+pragma_set_markers(PredTable, [], _, PredTable).
+pragma_set_markers(PredTable0, [PredId | PredIds], Markers, PredTable) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_set_inlined(PredInfo0, yes, PredInfo),
+	pred_info_get_marker_list(PredInfo0, MarkerList0),
+	pragma_set_markers_2(Markers, MarkerList0, MarkerList),
+	pred_info_set_marker_list(PredInfo0, MarkerList, PredInfo),
 	map__set(PredTable0, PredId, PredInfo, PredTable1),
-	pragma_inline_preds(PredTable1, PredIds, PredTable).
+	pragma_set_markers(PredTable1, PredIds, Markers, PredTable).
 
+:- pred pragma_set_markers_2(list(marker_status), list(marker_status),
+	list(marker_status)).
+:- mode pragma_set_markers_2(in, in, out) is det.
+
+pragma_set_markers_2([], MarkerList, MarkerList).
+pragma_set_markers_2([Marker | Markers], MarkerList0, MarkerList) :-
+	( list__member(Marker, MarkerList0) ->
+		MarkerList1 = MarkerList0
+	;
+		MarkerList1 = [Marker | MarkerList0]
+	),
+	pragma_set_markers_2(Markers, MarkerList1, MarkerList).
 
 %---------------------------------------------------------------------------%
 
-% Find the procedure with modes which match the ones we want.
+	% Find the procedure with modes which match the ones we want.
 
 :- pred get_matching_procedure(assoc_list(proc_id, proc_info), list(mode), 
 		proc_id).

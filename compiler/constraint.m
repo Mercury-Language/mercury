@@ -53,7 +53,7 @@ constraint_propagation2([C | Cs], ModuleInfo0, ModuleInfo) -->
 				io__state, io__state).
 :- mode constraint_propagation3(in, in, out, di, uo) is det.
 constraint_propagation3([], ModuleInfo, ModuleInfo) --> [].
-constraint_propagation3([Pred - Proc | Rest], ModuleInfo0, ModuleInfo) -->
+constraint_propagation3([proc(Pred, Proc) | Rest], ModuleInfo0, ModuleInfo) -->
 	constraint__transform_proc_1(Pred, Proc, ModuleInfo0, ModuleInfo1),
 	modecheck_proc(Proc, Pred, ModuleInfo1, ModuleInfo2, Errs),
 	( { Errs \= 0 } ->

@@ -193,11 +193,11 @@ detect_switches_in_goal_2(pragma_c_code(A,B,C,D,E), _, _, _, _, _,
 
 :- type cases == map(cons_id, list(hlds__goal)).
 
-:- type cases_list == assoc_list(cons_id, list(hlds__goal)).
-	% the cases_list should always be sorted on cons_id -
+:- type sorted_case_list == assoc_list(cons_id, list(hlds__goal)).
+	% the sorted_case_list should always be sorted on cons_id -
 	% `delete_unreachable_cases' relies on this.
 
-:- type again ---> again(var, list(hlds__goal), cases_list).
+:- type again ---> again(var, list(hlds__goal), sorted_case_list).
 
 :- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
 	instmap, instmap, map(var, type), list(var), module_info, list(again),
@@ -314,7 +314,8 @@ detect_switches_in_conj([Goal0 | Goals0], InstMap0, VarTypes, ModuleInfo,
 	% We partition the goals by abstractly interpreting the unifications
 	% at the start of each disjunction, to build up a substitution.
 
-:- pred partition_disj(list(hlds__goal), var, list(hlds__goal), cases_list).
+:- pred partition_disj(list(hlds__goal), var, list(hlds__goal),
+	sorted_case_list).
 :- mode partition_disj(in, in, out, out) is semidet.
 
 partition_disj(Goals0, Var, Left, CasesAssocList) :-
@@ -437,7 +438,7 @@ interpret_unify(_X, lambda_goal(_LambdaVars, _Modes, _Det, _Goal),
 		% prevents us from optimizing them as well as we would like.
 	Subst = Subst0.
 
-:- pred cases_to_switch(cases_list, var, map(var, type), hlds__goal_info,
+:- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds__goal_info,
 			instmap, module_info, hlds__goal_expr).
 % :- mode cases_to_switch(di, in, in, in, in, in, uo) is det.
 :- mode cases_to_switch(in, in, in, in, in, in, out) is det.
@@ -467,7 +468,8 @@ cases_to_switch(CasesList, Var, VarTypes, GoalInfo, InstMap, ModuleInfo,
 	detect_switches_in_cases(Cases0, InstMap, VarTypes, ModuleInfo, Cases),
 	Goal = switch(Var, CanFail, Cases).
 
-:- pred delete_unreachable_cases(cases_list, list(cons_id), cases_list).
+:- pred delete_unreachable_cases(sorted_case_list, list(cons_id),
+	sorted_case_list).
 :- mode delete_unreachable_cases(in, in, out) is det.
 
 	% Given a list of cases, and a list of the possible cons_ids

@@ -272,7 +272,7 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 		( { pred_info_is_imported(PredInfo) } ->
 			[]
 		;
-			% for psuedo-imported predicates (i.e. unification
+			% for pseudo-imported predicates (i.e. unification
 			% preds), only print them if we are using a local
 			% mode for them
 			{ pred_info_is_pseudo_imported(PredInfo) },
@@ -299,9 +299,10 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_procedures(PredInfo, ProcTable) },
 	{ pred_info_context(PredInfo, Context) },
 	{ pred_info_name(PredInfo, PredName) },
+	{ pred_info_import_status(PredInfo, ImportStatus) },
+	{ pred_info_get_marker_list(PredInfo, Markers) },
 	mercury_output_pred_type(TVarSet, unqualified(PredName), ArgTypes,
 		no, Context),
-	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
 	hlds_out__write_indent(Indent),
 	io__write_string("% pred id: "),
@@ -309,6 +310,13 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	io__write_string(", status: "),
 	hlds_out__write_import_status(ImportStatus),
 	io__write_string("\n"),
+	( { Markers = [] } ->
+		[]
+	;
+		io__write_string("% markers:"),
+		hlds_out__write_marker_list(Markers),
+		io__write_string("\n")
+	),
 	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
 
 		% Never write the clauses out verbosely -
@@ -323,6 +331,38 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	hlds_out__write_procs(Indent, ModuleInfo, PredId, ImportStatus,
 		ProcTable),
 	io__write_string("\n").
+
+:- pred hlds_out__write_marker_list(list(marker_status), io__state, io__state).
+:- mode hlds_out__write_marker_list(in, di, uo) is det.
+
+hlds_out__write_marker_list([]) --> [].
+hlds_out__write_marker_list([Marker | Markers]) -->
+	hlds_out__write_marker_status(Marker),
+	hlds_out__write_marker_list(Markers).
+
+:- pred hlds_out__write_marker_status(marker_status, io__state, io__state).
+:- mode hlds_out__write_marker_status(in, di, uo) is det.
+
+hlds_out__write_marker_status(request(Marker)) -->
+	io__write_string(" request("),
+	hlds_out__write_marker(Marker),
+	io__write_string(")").
+hlds_out__write_marker_status(done(Marker)) -->
+	io__write_string(" done("),
+	hlds_out__write_marker(Marker),
+	io__write_string(")").
+
+:- pred hlds_out__write_marker(marker, io__state, io__state).
+:- mode hlds_out__write_marker(in, di, uo) is det.
+
+hlds_out__write_marker(inline) -->
+	io__write_string("inline").
+hlds_out__write_marker(dnf) -->
+	io__write_string("dnf").
+hlds_out__write_marker(magic) -->
+	io__write_string("magic").
+hlds_out__write_marker(memo) -->
+	io__write_string("memo").
 
 hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clauses0)
 		-->

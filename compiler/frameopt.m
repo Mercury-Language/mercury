@@ -77,7 +77,7 @@ frameopt__main(Instrs0, Instrs, FillDelaySlot, TeardownMap, Mod) :-
 			SuccipSet0, SuccipSet),
 		opt_util__new_label_no(Instrs0, 1000, N0),
 		bimap__init(TeardownMap0),
-		frameopt__dup_teardown_labels(Body0, FrameSize,
+		frameopt__dup_teardown_labels(Body0, FrameSize, FrameSet,
 			TeardownMap0, TeardownMap, ProcLabel, N0, N1, Extra),
 		map__init(InsertMap0),
 		frameopt__doit(Body0, FrameSize, [], no, no,
@@ -606,30 +606,46 @@ frameopt__setup_liveval_use(Label, Livemap, Set0, Set) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred frameopt__dup_teardown_labels(list(instruction),
-	int, bimap(label, label), bimap(label, label),
+:- pred frameopt__dup_teardown_labels(list(instruction), int, set(label),
+	bimap(label, label), bimap(label, label),
 	proc_label, int, int, list(instruction)).
-:- mode frameopt__dup_teardown_labels(in, in, in, out, in, in, out, out) is det.
+:- mode frameopt__dup_teardown_labels(in, in, in, in, out, in, in, out, out)
+	is det.
 
-frameopt__dup_teardown_labels([], _, TeardownMap, TeardownMap, _, N, N, []).
-frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
+frameopt__dup_teardown_labels([], _, _, TeardownMap, TeardownMap, _, N, N, []).
+frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize, FrameSet,
 		TeardownMap0, TeardownMap, ProcLabel, N0, N, Extra) :-
 	(
 		Instr0 = label(Label) - _,
 		frameopt__detstack_teardown(Instrs0,
-			FrameSize, Tail, _Teardown, Goto, After)
+			FrameSize, Tail, Teardown, Goto, After)
 	->
 		N1 is N0 + 1,
-		% XXX What do I need to have here in the bool field.
 		NewLabel = local(ProcLabel, N0),
 		NewLabelInstr = label(NewLabel) - "non-teardown parallel label",
-		list__condense([[NewLabelInstr], Tail, Goto], Extra1),
-		bimap__set(TeardownMap0, Label, NewLabel, TeardownMap1),
-		frameopt__dup_teardown_labels(After, FrameSize,
+
+		% If Label is in FrameSet, the code following it will not be
+		% changed by the rest of frameopt, and we create a parallel
+		% code fragment that does not have the teardown action.
+
+		% If Label is not in FrameSet, the code following it WILL be
+		% changed by the rest of frameopt to remove the teardown code.
+		% The parallel code fragment we create SHOULD have the teardown
+		% action. We enter this into TeardownMap in reverse.
+
+		( set__member(Label, FrameSet) ->
+			list__condense([[NewLabelInstr], Tail, Goto], Extra1),
+			bimap__set(TeardownMap0, Label, NewLabel, TeardownMap1)
+		;
+			list__condense([[NewLabelInstr], Tail, Teardown, Goto],
+				Extra1),
+			bimap__set(TeardownMap0, NewLabel, Label, TeardownMap1)
+		),
+		frameopt__dup_teardown_labels(After, FrameSize, FrameSet,
 			TeardownMap1, TeardownMap, ProcLabel, N1, N, Extra2),
 		list__append(Extra1, Extra2, Extra)
 	;
-		frameopt__dup_teardown_labels(Instrs0, FrameSize,
+		frameopt__dup_teardown_labels(Instrs0, FrameSize, FrameSet,
 			TeardownMap0, TeardownMap, ProcLabel, N0, N, Extra)
 	).
 
@@ -660,7 +676,8 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 		( SetupFrame0 = yes ->
 			list__condense([Tail, Teardown, Goto, Instrs1], Instrs)
 		;
-			list__condense([Tail, Goto, Instrs1], Instrs)
+			Comment = [comment("teardown omitted here") - ""],
+			list__condense([Tail, Comment, Goto, Instrs1], Instrs)
 		)
 	;
 		Instr0 = Uinstr0 - Comment,
@@ -1140,7 +1157,6 @@ frameopt__generate_labels([Label | Labels], SetupFrame0, SetupSuccip0,
 			SetupCodes = SetupCodes1
 		;
 			N is N1 + 1,
-			% XXX What option does the bool need to be?
 			NewLabel = local(ProcLabel, N1),
 			LabelCode = [
 				label(NewLabel)

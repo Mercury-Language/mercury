@@ -51,7 +51,8 @@
 :- type proc_id		==	int.
 :- type proc_info.
 
-:- type pred_proc_id	==	pair(pred_id, proc_id).
+:- type pred_proc_id	--->	proc(pred_id, proc_id).
+:- type pred_proc_list	==	list(pred_proc_id).
 
 	% the type of goals that have been given for a pred.
 :- type goal_type 	--->	pragmas		% pragma(c_code, ...)
@@ -144,8 +145,6 @@
 	;	at_most_many.
 
 :- type soln_context	--->	all_solns ; first_soln.
-
-:- type procedure_id	--->	proc(pred_id, proc_id).
 
 :- type liveness_info	==	set(var).	% The live variables
 
@@ -634,9 +633,11 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 
 :- type unify_sub_contexts == list(unify_sub_context).
 
-	% A call_unify_context is used for unifications that get turned
-	% into calls to out-of-line unification predicates.
+	% A call_unify_context is used for unifications that get
+	% turned into calls to out-of-line unification predicates.
 	% It records which part of the original source code
+	% the unification occurred in.
+
 :- type call_unify_context
 	--->	call_unify_context(
 			var,		% the LHS of the unification
@@ -1622,6 +1623,9 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 				% of a unification is exported
 	;	local.		% defined in the implementation of this module
 
+:- type marker		--->	inline ; dnf ; magic ; memo.
+:- type marker_status	--->	request(marker) ; done(marker).
+
 :- pred predicate_module(module_info, pred_id, module_name).
 :- mode predicate_module(in, in, out) is det.
 
@@ -1704,6 +1708,12 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_typevarset(pred_info, tvarset, pred_info).
 :- mode pred_info_set_typevarset(in, in, out) is det.
 
+:- pred pred_info_get_goal_type(pred_info, goal_type).
+:- mode pred_info_get_goal_type(in, out) is det.
+
+:- pred pred_info_set_goal_type(pred_info, goal_type, pred_info).
+:- mode pred_info_set_goal_type(in, in, out) is det.
+
 	% Succeeds if there was a `:- pragma(inline, ...)' declaration
 	% for this predicate.  Note that the compiler may decide
 	% to inline a predicate even if there was no pragma(inline, ...)
@@ -1711,14 +1721,11 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_is_inlined(pred_info).
 :- mode pred_info_is_inlined(in) is semidet.
 
-:- pred pred_info_set_inlined(pred_info, bool, pred_info).
-:- mode pred_info_set_inlined(in, in, out) is det.
+:- pred pred_info_get_marker_list(pred_info, list(marker_status)).
+:- mode pred_info_get_marker_list(in, out) is det.
 
-:- pred pred_info_get_goal_type(pred_info, goal_type).
-:- mode pred_info_get_goal_type(in, out) is det.
-
-:- pred pred_info_set_goal_type(pred_info, goal_type, pred_info).
-:- mode pred_info_set_goal_type(in, in, out) is det.
+:- pred pred_info_set_marker_list(pred_info, list(marker_status), pred_info).
+:- mode pred_info_set_marker_list(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1763,11 +1770,12 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 			tvarset,	% names of type vars
 					% in the predicate's type decl
 					% or in the variable type assignments
-			bool,		% whether or not to automatically
-					% inline this pred
-			goal_type	% whether the goals seen so far for
+			goal_type,	% whether the goals seen so far for
 					% this pred are clauses, 
 					% pragma(c_code, ...) decs, or none
+			list(marker_status)
+					% records which transformations
+					% have been done or are to be done
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
@@ -1775,9 +1783,14 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, Types, Cond, Context,
 	map__init(Procs),
 	unqualify_name(SymName, PredName),
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
+	( Inline = yes ->
+		Markers = [request(inline)]
+	;
+		Markers = []
+	),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
-		Inline, GoalType).
+		GoalType, Markers).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, _),
@@ -1818,8 +1831,7 @@ pred_info_arg_types(PredInfo, TypeVars, ArgTypes) :-
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ArgTypes, PredInfo) :-
 	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M),
-	PredInfo = 
-		predicate(TypeVarSet, ArgTypes, 
+	PredInfo = predicate(TypeVarSet, ArgTypes, 
 			C, D, E, F, G, H, I, J, K, L, M).
 
 pred_info_procedures(PredInfo, Procs) :-
@@ -1845,18 +1857,20 @@ pred_info_import_status(PredInfo, ImportStatus) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, imported, _, _, _).
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = imported.
 
 pred_info_is_pseudo_imported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_imported, 
-		_, _, _).
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = pseudo_imported.
 
 pred_info_is_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, exported, _, _, _).
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = exported.
 
 pred_info_is_pseudo_exported(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, pseudo_exported, 
-		_, _, _).
+	pred_info_import_status(PredInfo, ImportStatus),
+	ImportStatus = pseudo_exported.
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M),
@@ -1873,19 +1887,23 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M).
 
-pred_info_is_inlined(PredInfo) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, yes, _).
-
-pred_info_set_inlined(PredInfo0, Inlined, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, Inlined, M).
-
 pred_info_get_goal_type(PredInfo, GoalType) :-
-	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, GoalType).
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _).
 
 pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M).
+
+pred_info_is_inlined(PredInfo0) :-
+	pred_info_get_marker_list(PredInfo0, Markers),
+	list__member(request(inline), Markers).
+
+pred_info_get_marker_list(PredInfo, Markers) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers).
+
+pred_info_set_marker_list(PredInfo0, Markers, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, GoalType).
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

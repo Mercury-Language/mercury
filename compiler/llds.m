@@ -1101,9 +1101,9 @@ output_instruction(decr_sp(N), _) -->
 
 	% The code we produce for pragma(c_code, ...) is in the form
 	% {
-	%	<declaration of one local variables for each one in the proc>
+	%	<declaration of one local variable for each one in the proc>
 	%	<assignment of the input regs to the corresponding locals>
-	%	<the c code itself>
+	%	<the C code itself>
 	%	<assignment to the output regs of the corresponding locals>
 	% }
 	%
