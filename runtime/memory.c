@@ -19,7 +19,7 @@
 **	the bottom of the detstack 
 **	the bottom of the nondstack 
 **
-** all start at different offsets from the primary cache size.
+** all start at different offsets from multiples of the primary cache size.
 ** This should reduce cache conflicts (especially for small programs).
 **
 ** If the operating system of the machine supports the mprotect syscall,
@@ -126,6 +126,11 @@ int	heap_zone_left = 0;
 int	detstack_zone_left = 0;
 int	nondstack_zone_left = 0;
 
+#ifndef	SPEED
+const char	**dumpstack;
+int		dumpindex;
+#endif
+
 static	unsigned	unit;
 static	unsigned	page_size;
 
@@ -133,8 +138,10 @@ void init_memory(void)
 {
 	char		*arena;
 	unsigned	total_size;
-	unsigned	fake_reg_offset, heap_offset,
-			detstack_offset, nondstack_offset;
+	unsigned	fake_reg_offset;
+	unsigned	heap_offset;
+	unsigned	detstack_offset;
+	unsigned	nondstack_offset;
 
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -185,7 +192,7 @@ void init_memory(void)
 
 	total_size = heap_size + detstack_size + nondstack_size + 4 * unit;
 
-	/*  get mem_size pages aligned on a page boundary */
+	/*  get total_size bytes aligned on a page boundary */
 	arena = memalign(unit, total_size);
 	if (arena == NULL)
 	{
@@ -235,6 +242,14 @@ void init_memory(void)
 				"allocated too much memory\n");
 		exit(1);
 	}
+
+#ifndef	SPEED
+	/* We allocate as mach char *s as there are words in the detstack. */
+	/* In the worst-case, all detstack frames have only one word. */
+	dumpstack = (char **) memalign(unit,
+		detstack_size * (sizeof(char *) / (sizeof(Word))));
+	dumpindex = 0;
+#endif
 
 	setup_mprotect();
 	setup_signal();
@@ -379,21 +394,74 @@ static void setup_mprotect(void)
 
 #ifdef HAVE_SIGINFO	/* try_munprotect is only useful if we have SIGINFO */
 
-/*
-** fatal_abort() prints an error message and then exits.
-** It is like fatal_error(), except that it is safe to call from a signal
-** handler
-*/
-
 #define STDERR 2
 
-static void fatal_abort(void *context, const char *main_msg)
+#ifdef	SPEED
+
+static void print_dump_stack(void)
+{
+	const char *msg = "You can get a stack dump by using grade debug\n";
+	write(STDERR, msg, strlen(msg));
+}
+
+#else
+
+static void print_dump_stack(void)
+{
+	int	i;
+	int	start;
+	int	count;
+	char	buf[2560];
+
+	strcpy(buf, "A dump of the det stack follows\n\n");
+	write(STDERR, buf, strlen(buf));
+
+	i = 0;
+	while (i < dumpindex)
+	{
+		start = i;
+		count = 1;
+		i++;
+
+		while (i < dumpindex &&
+			strcmp(dumpstack[i], dumpstack[start]) == 0)
+		{
+			count++;
+			i++;
+		}
+
+		if (count > 1)
+			sprintf(buf, "%s * %d\n", dumpstack[start], count);
+		else
+			sprintf(buf, "%s\n", dumpstack[start]);
+
+		write(STDERR, buf, strlen(buf));
+	}
+
+	strcpy(buf, "\nend of stack dump\n");
+	write(STDERR, buf, strlen(buf));
+
+}
+
+#endif
+
+/*
+** fatal_abort() prints an error message, possibly a stack dump, and then exits.
+** It is like fatal_error(), except that it is safe to call
+** from a signal handler.
+*/
+
+static void fatal_abort(void *context, const char *main_msg, int dump)
 {
 	char	*context_msg;
 
 	context_msg = explain_context((ucontext_t *) context);
 	write(STDERR, main_msg, strlen(main_msg));
 	write(STDERR, context_msg, strlen(context_msg));
+
+	if (dump)
+		print_dump_stack();
+
 	_exit(1);
 }
 
@@ -422,7 +490,7 @@ static bool try_munprotect(void *addr, void *context)
 					fflush(stdout);
 				}
 
-				fatal_abort(context, "\nMercury runtime: heap overflow\n");
+				fatal_abort(context, "\nMercury runtime: heap overflow\n", FALSE);
 			}
 
 			if (memdebug)
@@ -471,7 +539,7 @@ static bool try_munprotect(void *addr, void *context)
 					fflush(stdout);
 				}
 
-				fatal_abort(context, "\nMercury runtime: det stack overflow\n");
+				fatal_abort(context, "\nMercury runtime: det stack overflow\n", TRUE);
 			}
 
 			if (mprotect(detstack_zone, new_zone-detstack_zone,
@@ -516,7 +584,7 @@ static bool try_munprotect(void *addr, void *context)
 					fflush(stdout);
 				}
 
-				fatal_abort(context, "\nMercury runtime: nondet stack overflow\n");
+				fatal_abort(context, "\nMercury runtime: nondet stack overflow\n", FALSE);
 			}
 
 			if (mprotect(nondstack_zone, new_zone-nondstack_zone,

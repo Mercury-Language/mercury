@@ -8,6 +8,24 @@
 
 #define	detstackvar(n)	sp[-n]
 
+#define	incr_sp_push_msg(n, msg)				\
+			(					\
+				debugincrsp(n, sp),		\
+				dump_push_msg(msg),		\
+				sp = sp + (n),			\
+				detstack_overflow_check(),	\
+				(void)0				\
+			)
+
+#define	decr_sp_pop_msg(n)					\
+			(					\
+				debugdecrsp(n, sp),		\
+				dump_pop_msg(),			\
+				sp = sp - (n),			\
+				detstack_underflow_check(),	\
+				(void)0				\
+			)
+
 #define	incr_sp(n)	(					\
 				debugincrsp(n, sp),		\
 				sp = sp + (n),			\
@@ -21,7 +39,6 @@
 				detstack_underflow_check(),	\
 				(void)0				\
 			)
-
 
 #define	push(w)		(					\
 				*sp = (Word) (w),		\

@@ -13,8 +13,6 @@
 	#define DEBUG(X)
 #endif
 
-#define DONT(X)
-
 #endif
 
 /* DEFINITIONS FOR DEBUGGING MESSAGES */
@@ -36,6 +34,9 @@
 #endif
 
 #ifdef	SPEED
+
+#define	dump_push_msg(msg)			((void)0)
+#define	dump_pop_msg()				((void)0)
 
 #define	debugcr1(val0, hp)			((void)0)
 #define	debugcr2(val0, val1, hp)		((void)0)
@@ -61,6 +62,9 @@
 #define	debugmsg3(msg, arg1, arg2, arg3)	((void)0)
 
 #else
+
+#define	dump_push_msg(msg)			(dumpstack[dumpindex++] = msg)
+#define	dump_pop_msg()				(--dumpindex)
 
 #define	debugcr1(val0, hp) \
 	IF (heapdebug, (save_transient_registers(), cr1_msg(val0, hp)))

@@ -16,8 +16,8 @@
 /* this can be changed at will */
 #define MAX_VIRTUAL_REG	1024
 
-/* allocate enough fake_regs to hold both the special regs and all
-   the virtual registers */
+/* allocate enough fake_regs to hold both the special regs */
+/* and all the virtual registers */
 #define MAX_FAKE_REG	(NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
 				/* mr0 .. mr36, mr(37) ... mr(1028) */
 
@@ -58,6 +58,11 @@ extern	char *	nondstack_zone;
 extern	int	heap_zone_left;
 extern	int	detstack_zone_left;
 extern	int	nondstack_zone_left;
+
+#ifndef	SPEED
+extern	const char	**dumpstack;
+extern	int		dumpindex;
+#endif
 
 extern	void	init_memory(void);
 
