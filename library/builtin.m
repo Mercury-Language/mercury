@@ -552,6 +552,7 @@ public static bool unify_2_p(object[] ti, object X, object Y)
 
 % These abstract type declarations are needed so that the type_ctor
 % is generated for these types.
+/* XXX commented out while I fix a bug which is triggered in asm_fast.gc
 :- type int.
 :- type string.
 :- type character.
@@ -560,6 +561,7 @@ public static bool unify_2_p(object[] ti, object X, object Y)
 :- type (func).
 :- type void.
 :- type tuple.
+*/
 
 :- pragma foreign_code("C#", "
 	
