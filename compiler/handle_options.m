@@ -355,6 +355,13 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	option_implies(intermodule_optimization, use_opt_files, bool(no)),
 	option_implies(transitive_optimization, use_trans_opt_files, bool(no)),
 
+	% XXX `--use-opt-files' is broken.
+	% When inter-module optimization is enabled, error checking
+	% without the extra information from the `.opt' files
+	% is done when making the `.opt' file. With `--use-opt-files',
+	% that doesn't happen.
+	globals__io_set_option(use_opt_files, bool(no)),
+
 	option_implies(very_verbose, verbose, bool(yes)),
 
 	% --split-c-files implies --procs-per-c-function 1
