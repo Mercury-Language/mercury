@@ -3,9 +3,6 @@
 
 % XXX currently we do not pass the test of "univ"!
 
-% XXX currently we do not pass the "B43" test,
-% because of a bug in io__read_binary
-
 :- module write_binary.
 :- interface.
 :- import_module io.
@@ -190,9 +187,7 @@ do_test_2(Term, TermRead) -->
 			io__close_binary_input(InputStream),
 			(
 				{ B42 = ok(42) },
-				% XXX currently we do not pass the B43 test,
-				% because of a bug in io__read_binary
-				%%% { B43 = ok(43) },
+				{ B43 = ok(43) },
 				{ Result = ok(TermRead0) },
 				{ TermRead0 = Term }
 			->

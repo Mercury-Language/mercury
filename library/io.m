@@ -4108,14 +4108,26 @@ io__read_binary(Result) -->
 	% top of the MR_MercuryFileStruct class definition.
 	io__binary_input_stream(Stream),
 	io__read(Stream, ReadResult),
-	{ io__convert_read_result(ReadResult, Result) }.
-
-:- pred io__convert_read_result(io__read_result(T), io__result(T)).
-:- mode io__convert_read_result(in, out) is det.
-
-io__convert_read_result(ok(T), ok(T)).
-io__convert_read_result(eof, eof).
-io__convert_read_result(error(Error, _Line), error(io_error(Error))).
+	(
+		{ ReadResult = ok(T) },
+		% We've read the newline and the trailing full stop.
+		% Now skip the newline after the full stop.
+		io__read_char(Stream, NewLineRes),
+		( { NewLineRes = error(Error) } ->
+			{ Result = error(Error) }
+		; { NewLineRes = ok('\n') } ->
+			{ Result = ok(T) }
+		;
+			{ Result = error(io_error(
+				"io.read_binary: missing newline")) }
+		)
+	;
+		{ ReadResult = eof },
+		{ Result = eof }
+	;
+		{ ReadResult = error(ErrorMsg, _Line) },
+		{ Result = error(io_error(ErrorMsg)) }
+	).
 
 %-----------------------------------------------------------------------------%
 
