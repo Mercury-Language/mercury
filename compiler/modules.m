@@ -1118,29 +1118,31 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 		% Process the modules imported using `import_module'.
 	{ IntIndirectImports0 = [] },
 	process_module_long_interfaces(IntImportedModules, ".int",
-		IntIndirectImports0, IntIndirectImports1, Module3, Module3a),
+		IntIndirectImports0, IntIndirectImports1, Module3, Module4),
 
-	{ append_pseudo_decl(Module3a, imported(implementation), Module3b) },
+	{ append_pseudo_decl(Module4, imported(implementation), Module5) },
 
 	{ ImpIndirectImports0 = [] },
 	process_module_long_interfaces(ImpImportedModules, ".int",
-		ImpIndirectImports0, ImpIndirectImports1, Module3b, Module4),
+		ImpIndirectImports0, ImpIndirectImports1, Module5, Module6),
 
-		% Process the modules imported using `use_module' 
-		% and the short interfaces for indirectly imported
-		% modules. The short interfaces are treated as if
-		% they are imported using `use_module'.
-	{ append_pseudo_decl(Module4, used(interface), Module5) },
+		% Process the modules imported using `use_module' .
+	{ append_pseudo_decl(Module6, used(interface), Module7) },
 	process_module_long_interfaces(IntUsedModules, ".int",
-		IntIndirectImports1, IntIndirectImports, Module5, Module6),
-	process_module_short_interfaces_transitively(IntIndirectImports,
-		".int2", Module6, Module7),
-
-	{ append_pseudo_decl(Module7, used(implementation), Module8) },
+		IntIndirectImports1, IntIndirectImports, Module7, Module8),
+	{ append_pseudo_decl(Module8, used(implementation), Module9) },
 	process_module_long_interfaces(ImpUsedModules, ".int",
-		ImpIndirectImports1, ImpIndirectImports, Module8, Module9),
+		ImpIndirectImports1, ImpIndirectImports, Module9, Module10),
+
+		% Process the short interfaces for indireclty imported modules.
+		% The short interfaces are treated as if
+		% they are imported using `use_module'.
+	{ append_pseudo_decl(Module10, used(interface), Module11) },
+	process_module_short_interfaces_transitively(IntIndirectImports,
+		".int2", Module11, Module12),
+	{ append_pseudo_decl(Module12, used(implementation), Module13) },
 	process_module_short_interfaces_transitively(ImpIndirectImports,
-		".int2", Module9, Module),
+		".int2", Module13, Module),
 
 	{ module_imports_get_error(Module, Error) }.
 
@@ -1180,33 +1182,37 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 
 		% then the .int3s for `:- import'-ed modules
 	process_module_long_interfaces(IntImportDeps, ".int3",
-			[], IntIndirectImportDeps0, Module2, Module2a),
+			[], IntIndirectImportDeps0, Module2, Module3),
 
-	{ append_pseudo_decl(Module2a, imported(implementation), Module2b) },
+	{ append_pseudo_decl(Module3, imported(implementation), Module4) },
 
 	process_module_private_interfaces(ParentDeps,
 			ImpImportDeps0, ImpImportDeps, ImpUseDeps0, ImpUseDeps,
-			Module2b, Module2c),
+			Module4, Module5),
 
 	process_module_long_interfaces(ImpImportDeps, ".int3",
-			[], ImpIndirectImportDeps0, Module2c, Module3),
+			[], ImpIndirectImportDeps0, Module5, Module6),
 
-		% then (after a `:- used' decl)
+		% then (after appropriate `:- used' decls)
 		% the .int3s for `:- use'-ed modules
-		% and indirectly imported modules
-	{ append_pseudo_decl(Module3, used(interface), Module4) },
+	{ append_pseudo_decl(Module6, used(interface), Module7) },
 	process_module_long_interfaces(IntUseDeps, ".int3",
 			IntIndirectImportDeps0, IntIndirectImportDeps,
-			Module4, Module5),
-	process_module_short_interfaces_transitively(
-			IntIndirectImportDeps, ".int3", Module5, Module6),
-
-	{ append_pseudo_decl(Module6, used(implementation), Module7) },
+			Module7, Module8),
+	{ append_pseudo_decl(Module8, used(implementation), Module9) },
 	process_module_long_interfaces(ImpUseDeps, ".int3",
 			ImpIndirectImportDeps0, ImpIndirectImportDeps,
-			Module7, Module8),
+			Module9, Module10),
+
+		% then (after appropriate `:- used' decl)
+		% the .int3s for indirectly imported modules
+	{ append_pseudo_decl(Module10, used(interface), Module11) },
 	process_module_short_interfaces_transitively(
-			ImpIndirectImportDeps, ".int3", Module8, Module),
+			IntIndirectImportDeps, ".int3", Module11, Module12),
+
+	{ append_pseudo_decl(Module12, used(implementation), Module13) },
+	process_module_short_interfaces_transitively(
+			ImpIndirectImportDeps, ".int3", Module13, Module),
 
 	{ module_imports_get_error(Module, Error) }.
 
