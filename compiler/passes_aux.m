@@ -37,7 +37,7 @@
 				pred_id, proc_id, proc_info, proc_info,
 				module_info, module_info,
 				io__state, io__state))
-		% It would be better to use an existentiallly-quantified type
+		% It would be better to use an existentially-quantified type
 		% rather than `univ' here, but the current version of Mercury 
 		% doesn't support existentially-quantified types.
 		;	update_module_cookie(pred(
