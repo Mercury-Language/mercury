@@ -1838,7 +1838,7 @@ occupied by a value that will not be used.
 
 Note that a value is not considered @samp{unique} if it might be
 needed on backtracking.  This means that unique modes are generally
-only useful for code whose determinism is @samp{det} or @samp{cc_multidet}
+only useful for code whose determinism is @samp{det} or @samp{cc_multi}
 (@pxref{Determinism}).
 
 @node Backtrackable destructive update
@@ -1983,7 +1983,7 @@ For example:
 :- mode length(in) = in is semidet.
 @end example
 
-An annotation of @samp{det} or @samp{multidet} is an assertion that
+An annotation of @samp{det} or @samp{multi} is an assertion that
 for every value each of the inputs, there exists at least one value
 of the outputs for which the predicate is true, or (in the case
 of functions) for which the function term is equal to the result term.

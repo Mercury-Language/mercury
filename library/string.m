@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
 :- mode string__append(in, in, out) is det.
-:- mode string__append(out, out, in) is multidet.
+:- mode string__append(out, out, in) is multi.
 %	Append two strings together.
 %
 %       The following mode is semidet in the sense that it doesn't
@@ -42,7 +42,7 @@
 
 :- pred string__prefix(string, string).
 :- mode string__prefix(in, in) is semidet.
-:- mode string__prefix(in, out) is multidet.
+:- mode string__prefix(in, out) is multi.
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String.  Same as string__append(Prefix, _, String).
 
@@ -263,7 +263,7 @@
 
 :- pred string__append_list(list(string), string).
 :- mode string__append_list(in, out) is det.
-:- mode string__append_list(out, in) is multidet.
+:- mode string__append_list(out, in) is multi.
 %	Append a list of strings together.
 
 :- pred string__hash(string, int).
@@ -1701,7 +1701,7 @@ string__special_precision_and_width(-1).
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
 :- mode string__append(in, in, out) is det.
-:- mode string__append(out, out, in) is multidet.
+:- mode string__append(out, out, in) is multi.
 */
 
 /*
