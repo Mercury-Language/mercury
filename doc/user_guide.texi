@@ -45,7 +45,7 @@
 @ifinfo
 This file documents the Mercury implementation, version <VERSION>.
 
-Copyright (C) 1995-2002 The University of Melbourne.
+Copyright (C) 1995-2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -847,9 +847,9 @@ Note that @samp{--use-subdirs} is automatically enabled if you specify
 The Mmake variables above can be used by @samp{mmc --make} if they
 are set in a file called @file{Mercury.options}. The @file{Mercury.options}
 file has the same syntax as an Mmakefile, but only variable assignments and
-@samp{include} directives are allowed.  All variables in the Mercury.options
+@samp{include} directives are allowed.  All variables in @file{Mercury.options}
 are treated as if they are assigned using @samp{:=}. Variables may also
-be set in the environment.
+be set in the environment, overriding settings in options files.
 
 @samp{mmc --make} can be used in conjunction with Mmake. This is useful
 for projects which include source code written in languages other than
