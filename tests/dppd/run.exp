@@ -1,0 +1,28 @@
+Iterations: 1
+
+advisor                            result   1
+applast                            result   0
+contains_kmp                       result   1
+contains_lam                       result   1
+doubleapp                          result   1
+flip                               result   1
+grammar                            result   1
+imperative_solve_power             result   1
+map_reduce                         result   1
+map_rev                            result   1
+match_kmp                          result   0
+match                              result   1
+match_append                       result   1
+maxlength                          result   0
+missionaries                       result   1
+regexp_r1                          result   0
+regexp_r2                          result   0
+regexp_r3                          result   0
+relative                           result   1
+remove                             result   1
+remove2                            result   1
+rotateprune                        result   1
+ssuply                             result   1
+transpose                          result   1
+upto_sum1                          result   1
+upto_sum2                          result   1

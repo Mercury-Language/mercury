@@ -49,7 +49,7 @@ main -->
 	->
 		{ Iterations = Iterations0 }
 	;
-		{ Iterations = 1000 }
+		{ Iterations = 1 }
 	),
 	io__write_string("Iterations: "),
 	io__write_int(Iterations),
@@ -69,6 +69,12 @@ run_benchmark_list(Iterations, [Name - Closure | Benchmarks]) -->
 :- mode run_benchmark(in, in, (pred) is semidet, di, uo) is cc_multi.
 
 run_benchmark(Iterations, Name, Closure) -->
+	% By default, we just run a single iteration and print out
+	% for each test whether the query succeeded or failed;
+	% this is used by the test suite framework.
+	% If the `-n' option is used (see above), we run
+	% multiple iterations, and print out the times for each benchmark.
+	% This can be useful for testing the effect of optimizations.
 	{ CallClosure = 
 		( pred(_Input::in, Output::out) is det :-
 			( call(Closure) ->
@@ -77,11 +83,13 @@ run_benchmark(Iterations, Name, Closure) -->
 				Output = 0
 			)
 		) },
-	{ benchmark_det(CallClosure, 0, _, Iterations, Time) },
-	io__write_string(Name),
-	io__write_string(" "),
-	io__write_int(Time),
-	io__nl,
+	{ benchmark_det(CallClosure, 0, Result, Iterations, Time) },
+	( { Iterations > 1 } ->
+		io__format("%-30s     result %3d        time (ms) %8d\n",
+			[s(Name), i(Result), i(Time)])
+	;
+		io__format("%-30s     result %3d\n", [s(Name), i(Result)])
+	),
 	io__flush_output,
 	garbage_collect.
 

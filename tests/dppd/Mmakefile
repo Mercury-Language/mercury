@@ -11,7 +11,7 @@ include $(TESTS_DIR)/Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-%.runtest: %.res
+run.runtest: run.res
 
 MCFLAGS=#--pd --no-inlining -d 35 -D petdr #-d 99
 #GRADE=asm_fast.gc.prof
