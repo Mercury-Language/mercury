@@ -49,17 +49,19 @@ Options:
 	--no-demangle
 		Don't pipe the output of the linker through the Mercury
 		demangler.
-	-g, --no-strip
+	-g, --no-strip, --c-debug
 		Do not strip debugging information.
 	-s <grade>, --grade <grade>
 	--asm-labels
 	--gcc-non-local-gotos
 	--gcc-global-registers
+	--gc {conservative, accurate, none}
 	-p, --profiling
 	--profile-calls
 	--profile-time
 	--profile-memory
 	--debug
+	--low-level-debug
 	--use-trail
 	--args {simple, compact}
 	--pic-reg
@@ -118,10 +120,10 @@ while : ; do
 	--no-demangle)
 		demangle=false
 		;;
-	--strip)
+	-g-|--no-c-debug|--strip)
 		strip=true
 		;;
-	-g|--no-strip)
+	-g|--c-debug|--no-strip)
 		strip=false
 		;;
 	--make-shared-lib)
@@ -288,9 +290,11 @@ case $args_method in
 	simple)		GRADE="$GRADE.sa" ;;
 	compact)	;;
 esac
-case $debug in
-	true)		GRADE="$GRADE.debug" ;;
-	false)		;;
+case $stack_trace,$require_tracing in
+	true,true)	GRADE="$GRADE.debug" ;;
+	false,true)	GRADE="$GRADE.trace" ;;
+	true,false)	GRADE="$GRADE.strce" ;;
+	false,false)	;;
 esac
 
 case "$GRADE" in

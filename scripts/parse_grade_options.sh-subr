@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997 The University of Melbourne.
+# Copyright (C) 1997-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -29,9 +29,24 @@
 		global_regs=false ;;
 
 	--debug)
-		debug=true ;;
+		stack_trace=true 
+		require_tracing=true
+		;;
 	--no-debug)
-		debug=false ;;
+		stack_trace=false 
+		require_tracing=false
+		;;
+# The following more fine-grained options have been omitted
+# since they are not very useful and would probably only
+# confuse people.
+#	--stack-trace)
+#		stack_trace=true ;;
+#	--no-stack-trace)
+#		stack_trace=false ;;
+#	--require-tracing)
+#		require_tracing=true ;;
+#	--no-require-tracing)
+#		require_tracing=false ;;
 
 	--gc)
 		shift
@@ -109,10 +124,25 @@
 
 		case "$grade" in
 			*.debug)
-				debug=true
+				stack_trace=true
+				require_tracing=false
 				grade="` expr $grade : '\(.*\).debug' `"
 				;;
-			*)	debug=false
+# The following alternatives have been omitted since
+# they're not very useful and would probably just confuse people.
+#			*.trace)
+#				stack_trace=false
+#				require_tracing=true
+#				grade="` expr $grade : '\(.*\).trace' `"
+#				;;
+#			*.strce)
+#				stack_trace=true
+#				require_tracing=false
+#				grade="` expr $grade : '\(.*\).strce' `"
+#				;;
+			*)	
+				stack_trace=false
+				require_tracing=false
 				;;
 		esac
 
@@ -209,12 +239,6 @@
 				non_local_gotos=true
 				;;
 			none)
-				global_regs=false
-				asm_labels=false
-				non_local_gotos=false
-				;;
-			debug)
-				debug=true
 				global_regs=false
 				asm_labels=false
 				non_local_gotos=false

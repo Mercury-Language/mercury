@@ -2030,11 +2030,29 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	{ string__int_to_string(NumTagBits, NumTagBitsString) },
 	{ string__append_list(
 		["-DTAGBITS=", NumTagBitsString, " "], NumTagBitsOpt) },
-	globals__io_lookup_bool_option(debug, Debug),
-	{ Debug = yes ->
-		DebugOpt = "-g "
+	globals__io_lookup_bool_option(require_tracing, RequireTracing),
+	{ RequireTracing = yes ->
+		RequireTracingOpt = "-DMR_REQUIRE_TRACING "
 	;
-		DebugOpt = "-DSPEED "
+		RequireTracingOpt = ""
+	},
+	globals__io_lookup_bool_option(stack_trace, StackTrace),
+	{ StackTrace = yes ->
+		StackTraceOpt = "-DMR_STACK_TRACE "
+	;
+		StackTraceOpt = ""
+	},
+	globals__io_lookup_bool_option(c_debug, C_Debug),
+	{ C_Debug = yes ->
+		C_DebugOpt = "-g "
+	;
+		C_DebugOpt = ""
+	},
+	globals__io_lookup_bool_option(low_level_debug, LL_Debug),
+	{ LL_Debug = yes ->
+		LL_DebugOpt = "-DMR_LOW_LEVEL_DEBUG "
+	;
+		LL_DebugOpt = ""
 	},
 	{ string__sub_string_search(CC, "gcc", _) ->
 		CompilerType = gcc
@@ -2062,7 +2080,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		TypeLayoutOpt = ""
 	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
-	{ C_optimize = yes, Debug = no ->
+	{ C_optimize = yes ->
 		( CompilerType = gcc ->
 			OptimizeOpt = "-O2 -fomit-frame-pointer "
 		; CompilerType = lcc ->
@@ -2101,7 +2119,9 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
-		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt, DebugOpt,
+		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
+		C_DebugOpt, LL_DebugOpt,
+		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, ArgsOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },

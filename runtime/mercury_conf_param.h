@@ -90,8 +90,18 @@
 /*
 ** Debugging options:
 **
+** MR_STACK_TRACE
+**	Enable stuff needed so that error/1 (and co.) can print out
+**	stack traces.
+**
+** MR_REQUIRE_TRACING
+**	Require that all Mercury procedures linked in should be compiled
+**	with at least interface tracing.  This effect is achieved
+**	by including MR_REQUIRE_TRACING in the mangled grade
+**	(see mercury_grade.h).
+**
 ** MR_USE_EXTERNAL_DEBUGGER:
-**	Make MR_trace() use an external process debugger
+**	Allow MR_trace() to use an external process debugger
 **	(with communication done via a socket interface)
 **	rather than using the debugger that is part of
 **	the Mercury runtime.
@@ -142,7 +152,7 @@
 **	Enables support for the `-w' (entry point) command
 **	in the MERCURY_OPTIONS environment variable.
 **	(`-w' also happens to work if you set certain other
-**	options instead, include MR_LOWLEVEL_DEBUGGING.)
+**	options instead, include MR_LOWLEVEL_DEBUG.)
 */
 
 /*---------------------------------------------------------------------------*/

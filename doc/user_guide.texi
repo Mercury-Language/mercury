@@ -2062,13 +2062,12 @@ has a small effect on the execution speed.
 @sp 1
 @item @code{--debug} (grades: any grade containing @samp{.debug})
 Enable debugging.
-Pass the @samp{-g} flag to the C compiler, instead of @samp{-DSPEED},
-to enable debugging of the generated C code.
-This option also implies @samp{--no-c-optimize}.
-Debugging support is currently extremely primitive -
-this option is probably not useful to anyone except the Mercury implementors.
-We recommend that you use instead use `mnp' or `msp'.
-@xref{Using Prolog} for details.
+
+To try this out, compile your program with @samp{--debug},
+run @samp{mdb @var{program}}, and then type @samp{h}
+at the @samp{mdb} prompt.
+
+XXX We should document this in more detail.
 
 @sp 1
 @item @code{--args @{old, compact@}}
@@ -2108,6 +2107,14 @@ running Unix.  On other systems it has no effect.
 @section Code generation options
 
 @table @code
+@item @code{--low-level-debug}
+Enables various low-level debugging stuff that was in the distant past
+used to debug the Mercury compiler's low-level code generation. 
+This option is not likely to be useful to anyone except the Mercury
+implementors.  It causes the generated code to become very big and very
+inefficient, and slows down compilation a lot.
+
+@sp 1
 @item --no-trad-passes
 The default @samp{--trad-passes} completely processes each predicate
 before going on to the next predicate.
@@ -2140,6 +2147,14 @@ Specify the directory containing the Mercury C header files.
 @sp 1
 @item --cflags @var{options}
 Specify options to be passed to the C compiler.
+
+@sp 1
+@item @code{--c-debug}
+Pass the @samp{-g} flag to the C compiler, to enable debugging
+of the generated C code.
+Since the generated C code is very low-level, this option is not likely
+to be useful to anyone except the Mercury implementors, except perhaps
+for debugging code that uses Mercury's C interface extensively.
 
 @sp 1
 @item --fact-table-max-array-size @var{size}

@@ -147,16 +147,20 @@ postprocess_options(ok(OptionTable), Error) -->
                             { convert_termination_norm(TermNormStr, TermNorm) }
                         ->
                             { map__lookup(OptionTable, trace, Trace) },
+                            { map__lookup(OptionTable, require_tracing,
+			    	RequireTracingOpt) },
                             (
                                 { Trace = string(TraceStr) },
-                                { convert_trace_level(TraceStr, TraceLevel) }
+                                { RequireTracingOpt = bool(RequireTracing) },
+                                { convert_trace_level(TraceStr, RequireTracing,
+				    TraceLevel) }
                             ->
                                 postprocess_options_2(OptionTable,
                                     GC_Method, TagsMethod, ArgsMethod,
                                     PrologDialect, TermNorm, TraceLevel),
                                 { Error = no }
                             ;
-                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `interfaces' or  `all').") }
+                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `interfaces', `all', or `default').") }
                             )
                         ;
                             { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
@@ -429,7 +433,8 @@ compute_grade(Globals, Grade) :-
 	globals__lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
 */
 	globals__get_args_method(Globals, ArgsMethod),
-	globals__lookup_bool_option(Globals, debug, Debug),
+	globals__lookup_bool_option(Globals, stack_trace, StackTrace),
+	globals__lookup_bool_option(Globals, require_tracing, RequireTracing),
 /*
 	globals__lookup_bool_option(Globals, pic_reg, PIC_Reg),
 */
@@ -517,10 +522,18 @@ compute_grade(Globals, Grade) :-
 	; ArgsMethod = simple, Part8 = ".sa"
 	),
 
-	( Debug = yes ->
-		Part9 = ".debug"
+	( StackTrace = yes ->
+		( RequireTracing = yes ->
+			Part9 = ".debug"
+		;
+			Part9 = ".strce"
+		)
 	;
-		Part9 = ""
+		( RequireTracing = yes ->
+			Part9 = ".trace"
+		;
+			Part9 = ""
+		)
 	),
 
 /*******
@@ -553,10 +566,20 @@ convert_grade_option(Grade0) -->
 	% part9
 	( { string__remove_suffix(Grade2, ".debug", Grade3) } ->
 		{ Grade4 = Grade3 },
-		set_bool_opt(debug, yes)
+		set_bool_opt(stack_trace, yes),
+		set_bool_opt(require_tracing, yes)
+	; { string__remove_suffix(Grade2, ".trace", Grade3) } ->
+		{ Grade4 = Grade3 },
+		set_bool_opt(stack_trace, no),
+		set_bool_opt(require_tracing, yes)
+	; { string__remove_suffix(Grade2, ".strce", Grade3) } ->
+		{ Grade4 = Grade3 },
+		set_bool_opt(stack_trace, yes),
+		set_bool_opt(require_tracing, no)
 	;
 		{ Grade4 = Grade2 },
-		set_bool_opt(debug, no)
+		set_bool_opt(stack_trace, no),
+		set_bool_opt(require_tracing, no)
 	),
 	% part8
 	( { string__remove_suffix(Grade4, ".sa", Grade5) } ->
@@ -638,44 +661,32 @@ convert_grade_option(Grade0) -->
 	is semidet.
 
 convert_grade_option_2("asm_fast") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, yes).
 convert_grade_option_2("fast") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("asm_jump") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, yes).
 convert_grade_option_2("jump") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("reg") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("none") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("debug") -->
-	set_bool_opt(debug, yes),
-	set_bool_opt(c_optimize, no),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, no).

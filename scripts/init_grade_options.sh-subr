@@ -22,7 +22,9 @@ profile_calls=false
 profile_memory=false
 use_trail=false
 args_method=compact
-debug=false
+stack_trace=false
+require_tracing=false
+low_level_debug=false
 
 case $# in
 	0) set - "--grade $DEFAULT_GRADE" ;;

@@ -156,11 +156,20 @@
 ** try to do a stack trace you might find it doesn't work very
 ** well unless all modules are compiled in with --stack-trace.
 ** Hence we consider it effectively binary incompatible.
+** Similar considerations apply to procedure call tracing.
 */
 #if defined(MR_STACK_TRACE)
-  #define MR_GRADE_PART_11	_strce
+  #if defined(MR_REQUIRE_TRACING)
+    #define MR_GRADE_PART_11	_debug
+  #else
+    #define MR_GRADE_PART_11	_strce
+  #endif
 #else
-  #define MR_GRADE_PART_11
+  #if defined(MR_REQUIRE_TRACING)
+    #define MR_GRADE_PART_11	_trace
+  #else
+    #define MR_GRADE_PART_11
+  #endif
 #endif
 
 #define MR_GRADE		MR_PASTE11(			\

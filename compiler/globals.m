@@ -56,7 +56,8 @@
 :- pred convert_args_method(string::in, args_method::out) is semidet.
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
-:- pred convert_trace_level(string::in, trace_level::out) is semidet.
+:- pred convert_trace_level(string::in, bool::in, trace_level::out) is semidet.
+	% the bool should be the setting of the `require_tracing' option.
 
 %-----------------------------------------------------------------------------%
 
@@ -191,9 +192,12 @@ convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
 
-convert_trace_level("minimum", minimal).
-convert_trace_level("interfaces", interface).
-convert_trace_level("all", full).
+convert_trace_level("minimum", no, minimal).
+convert_trace_level("minimum", yes, interface).
+convert_trace_level("interfaces", _, interface).
+convert_trace_level("all", _, full).
+convert_trace_level("default", no, minimal).
+convert_trace_level("default", yes, full).
 
 %-----------------------------------------------------------------------------%
 

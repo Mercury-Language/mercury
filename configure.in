@@ -1013,6 +1013,7 @@ LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		MERCURY_MSG("but plain gcc labels do not")
 		mercury_cv_asm_labels=yes
 		mercury_cv_gcc_labels=no
+		CFLAGS_FOR_GOTOS="-fno-defer-pop -fomit-frame-pointer"
 		;;
 	# Similarly for rs6000
 	rs6000-*)
