@@ -164,14 +164,16 @@ simplify__goal_2(unify(LT, RT0, M, U, C), _, InstMap0, DetInfo,
 		Msgs = []
 	).
 
-	% (A -> B ; C) is semantically equivalent to (A, B ; ~A, C).
+	% (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
 	% If the deterministic of A means that one of these disjuncts
 	% cannot succeed, then we replace the if-then-else with the
 	% other disjunct. (We could also eliminate A, but we leave
 	% that to the recursive invocations.)
 	%
 	% The conjunction operator in the remaining disjunct ought to be
-	% a sequential conjunction, EXPLAIN WHY.
+	% a sequential conjunction, because Mercury's if-then-else always
+	% guarantees sequentiality, whereas conjunction only guarantees
+	% sequentiality if the --no-reorder-conj option is enabled.
 	%
 	% However, currently reordering is only done in mode analysis,
 	% not in the code generator, so we don't yet need a sequential
@@ -182,7 +184,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
 		InstMap0, DetInfo, Goal, Msgs) :-
 	Cond0 = _ - CondInfo,
 	goal_info_get_determinism(CondInfo, CondDetism),
-	determinism_components(CondDetism, CondCanFail, CondSolns),
+	determinism_components(CondDetism, CondCanFail, _CondSolns),
 	( CondCanFail = cannot_fail ->
 		goal_to_conj_list(Cond0, CondList),
 		goal_to_conj_list(Then0, ThenList),
@@ -190,6 +192,10 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
 		simplify__goal(conj(List) - GoalInfo0, InstMap0, DetInfo,
 			Goal - _, Msgs1),
 		Msgs = [ite_cond_cannot_fail(GoalInfo0) | Msgs1]
+/*********
+	The following optimization is disabled, because it is
+	buggy (see the XXX below).  It's not important, since
+	most of these cases will be optimized by modes.m anyway.
 	; CondSolns = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		goal_to_conj_list(Else0, ElseList),
@@ -200,6 +206,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
 		simplify__goal(conj(List) - GoalInfo0, InstMap0, DetInfo,
 			Goal - _, Msgs1),
 		Msgs = [ite_cond_cannot_succeed(GoalInfo0) | Msgs1]
+**********/
 	; Else0 = disj([], _) - _ ->
 		% (A -> C ; fail) is equivalent to (A, C)
 		goal_to_conj_list(Cond0, CondList),
