@@ -281,9 +281,15 @@ Define_entry(MR_do_trace_redo_fail);
 	printf("MR_redo_layout_framevar(MR_redofr_slot(MR_curfr) = %p\n",
 		MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
 #endif
-	MR_trace((const MR_Stack_Layout_Label *)
-		MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)),
-		MR_PORT_REDO, "", 0);
+	{
+		Code *MR_jumpaddr;
+		save_transient_registers();
+		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)),
+			MR_PORT_REDO, "", 0);
+		restore_transient_registers();
+		if (MR_jumpaddr != NULL) GOTO(MR_jumpaddr);
+	}
 	fail();
 
 END_MODULE
