@@ -445,19 +445,6 @@ mercury__copy_2_1:
 
 /* error/1, from require.m */
 
-mercury__error_1_0:
-	fflush(stdout);
-	fprintf(stderr, "Software error: %s\n", (char *) r1);
-	exit(1);
-#ifndef	USE_GCC_NONLOCAL_GOTOS
-	return 0;	/* suppress some dumb warnings */
-#endif
-
-
-/* XXXXXX hack, for temporary compatability.  Remove label and above pred soon.
- 26/9/95 dylan
-*/
-
 mercury__require__error_1_0:
 	fflush(stdout);
 	fprintf(stderr, "Software error: %s\n", (char *) r1);
@@ -489,22 +476,6 @@ mercury__io__putenv_1_0:
 
 /* report_stats/0 and type_to_univ/2, from std_util.m */
 
-mercury__report_stats_0_0:
-	fprintf(mercury_current_output->file, 
-		"[Heap: %.3fk, D Stack: %.3fk, ND Stack: %.3fk]\n",
-		((char *)hp - (char *)heapmin) / 1000.0,
-		((char *)sp - (char *)detstackmin) / 1000.0,
-		((char *)maxfr - (char *)nondstackmin) / 1000.0
-	);
-	proceed();
-
-
-/* XXXXX The above version of report_stats is for backward compatability only.
-	To be removed soon.
-
-	dylan 26/9/95
-*/
-
 mercury__std_util__report_stats_0_0:
 	fprintf(mercury_current_output->file, 
 		"[Heap: %.3fk, D Stack: %.3fk, ND Stack: %.3fk]\n",
@@ -514,63 +485,6 @@ mercury__std_util__report_stats_0_0:
 	);
 	proceed();
 
-
-/*
-	`univ' is represented as a two word structure.
-	The first word contains the address of a type_info for the type.
-	The second word contains the data.
-*/
-#define UNIV_OFFSET_FOR_TYPEINFO 0
-#define UNIV_OFFSET_FOR_DATA 1
-
-/*
-	:- pred type_to_univ(T, univ).
-	:- mode type_to_univ(di, uo) is det.
-	:- mode type_to_univ(in, out) is det.
-	:- mode type_to_univ(out, in) is semidet.
-*/
-mercury__type_to_univ_2_0:
-mercury__type_to_univ_2_1:
-	/*
-	 *  Forward mode - convert from type to univ.
-	 *  On entry r1 contains type_info for type T,
-	 *  and r2 contains the input argument of type T.
-	 *  On exit r3 contains the output argument of type univ.
-	 */
-	incr_hp(r3, 2); /* allocate heap space */
-	field(mktag(0), r3, UNIV_OFFSET_FOR_TYPEINFO) = r1;
-		/* set the first field to contain the address of the
-		   type_info for this type */
-	field(mktag(0), r3, UNIV_OFFSET_FOR_DATA) = r2;
-		/* store the input argument in the second field */
-	proceed();
-
-mercury__type_to_univ_2_2:
-	/*
-	 *  Backward mode - convert from univ to type.
-	 *  On entry r2 contains type_info for type T,
-	 *  and r4 contains the input argument of type univ.
-	 *  On successful exit r3 contains the output argument of type T;
-	 *  r1 is for the success/failure indication.
-	 *
-	 *  We check that type_infos compare equal.
-	 */
-	r1 = field(mktag(0), r4, UNIV_OFFSET_FOR_TYPEINFO);
-	if (compare_type_info(r1, r2) != COMPARE_EQUAL)
-	{
-		r1 = FALSE;
-		proceed();
-	}
-	r3 = field(mktag(0), r4, UNIV_OFFSET_FOR_DATA);
-	r1 = TRUE;
-	proceed();
-
-/* XXXXXX  The above 50 lines may be removed later on.  They are there for 
-	backward-ish compatability.  They are duplicated in the next 50
-	lines, with different names.
-
-	dylan, 26/9/95
-*/
 
 /*
 	`univ' is represented as a two word structure.
@@ -692,16 +606,6 @@ mercury____Type_To_Term___univ_0_0:
 	fatal_error("cannot convert type univ to term");
 
 /* semidet_succeed and semidet_fail, from std_util.m */
-
-mercury__semidet_succeed_0_0:
-	r1 = TRUE;
-	proceed();
-mercury__semidet_fail_0_0:
-	r1 = FALSE;
-	proceed();
-
-/*  XXXXX remove the above two functions in the near-future.
-*/
 
 mercury__std_util__semidet_succeed_0_0:
 	r1 = TRUE;
