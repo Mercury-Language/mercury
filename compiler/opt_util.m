@@ -668,13 +668,12 @@ opt_util__no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize,
 	;
 		Uinstr0 = assign(Lval, Rval),
 		(
-% XXX turn this back on when possible
-%			Lval = stackvar(_),
-%			opt_util__rval_refers_stackvars(Rval, no)
-%		->
-%			opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
-%				Between, Remain)
-%		;
+			Lval = stackvar(_),
+			opt_util__rval_refers_stackvars(Rval, no)
+		->
+			opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+				Between, Remain)
+		;
 			Lval = succip,
 			Rval = lval(stackvar(FrameSize)),
 			opt_util__skip_comments(Instrs0, Instrs1),
