@@ -48,12 +48,6 @@ static	void		MR_trace_browse_ensure_init(void);
 static	bool		MR_trace_is_portray_format(const char *str,
 				MR_Browse_Format *format);
 
-static void
-MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
-{
-	MR_mercuryfile_init(c_file, 1, mercury_file);
-}
-
 void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {

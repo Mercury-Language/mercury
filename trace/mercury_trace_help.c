@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,6 +28,7 @@
 #include "mercury_deep_copy.h"
 
 #include "mercury_trace_help.h"
+#include "mercury_trace_internal.h"
 #include "mercury_trace_util.h"
 
 #ifdef MR_HIGHLEVEL_CODE
@@ -43,7 +44,6 @@
 
 static	MR_Word		MR_trace_help_system;
 static	MR_TypeInfo	MR_trace_help_system_type;
-static	MR_Word		MR_trace_help_stdout;
 
 static	const char	*MR_trace_help_add_node(MR_Word path, const char *name,
 				int slot, const char *text);
@@ -110,10 +110,14 @@ MR_trace_help_add_node(MR_Word path, const char *name, int slot, const char *tex
 void
 MR_trace_help(void)
 {
+	MercuryFile mdb_out;
+
 	MR_trace_help_ensure_init();
 
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
+
 	MR_TRACE_CALL_MERCURY(
-		ML_HELP_help(MR_trace_help_system, MR_trace_help_stdout);
+		ML_HELP_help(MR_trace_help_system, (MR_Word) &mdb_out);
 	);
 }
 
@@ -121,6 +125,7 @@ void
 MR_trace_help_word(const char *word)
 {
 	char	*word_on_heap;
+	MercuryFile mdb_out;
 
 	MR_trace_help_ensure_init();
 
@@ -128,9 +133,10 @@ MR_trace_help_word(const char *word)
 		MR_make_aligned_string_copy(word_on_heap, word);
 	);
 
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 	MR_TRACE_CALL_MERCURY(
 		ML_HELP_name(MR_trace_help_system, word_on_heap,
-			MR_trace_help_stdout);
+			(MR_Word) &mdb_out);
 	);
 }
 
@@ -143,6 +149,7 @@ MR_trace_help_cat_item(const char *category, const char *item)
 	char	*category_on_heap;
 	char	*item_on_heap;
 	bool	error;
+	MercuryFile mdb_out;
 
 	MR_trace_help_ensure_init();
 
@@ -154,8 +161,10 @@ MR_trace_help_cat_item(const char *category, const char *item)
 		path = MR_list_cons((MR_Word) category_on_heap, path);
 	);
 
+	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 	MR_TRACE_CALL_MERCURY(
-		ML_HELP_path(MR_trace_help_system, path, MR_trace_help_stdout, &result);
+		ML_HELP_path(MR_trace_help_system, path,
+			(MR_Word) &mdb_out, &result);
 		error = ML_HELP_result_is_error(result, &msg);
 	);
 
@@ -169,7 +178,6 @@ MR_trace_help_ensure_init(void)
 {
 	static	bool	done = FALSE;
 	MR_Word		typeinfo_type;
-	MR_Word		output_stream_type;
 	MR_Word		MR_trace_help_system_type_word;
 
 	if (! done) {
@@ -180,8 +188,6 @@ MR_trace_help_ensure_init(void)
 			MR_trace_help_system_type =
 				(MR_TypeInfo) MR_trace_help_system_type_word;
 			ML_HELP_init(&MR_trace_help_system);
-			ML_io_output_stream_type(&output_stream_type);
-			ML_io_stdout_stream(&MR_trace_help_stdout);
 		);
 
 		MR_trace_help_system_type = (MR_TypeInfo) MR_make_permanent(
@@ -189,9 +195,6 @@ MR_trace_help_ensure_init(void)
 					(MR_TypeInfo) typeinfo_type);
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 					MR_trace_help_system_type);
-		MR_trace_help_stdout = MR_make_permanent(MR_trace_help_stdout,
-					(MR_TypeInfo) output_stream_type);
-
 		done = TRUE;
 	}
 }

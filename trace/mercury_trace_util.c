@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000-2001 The University of Melbourne.
+** Copyright (C) 2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,8 +13,15 @@
 
 #include "mercury_imp.h"
 #include "mercury_trace_util.h"
+#include "mercury_file.h"
 
 #include <ctype.h>
+
+void
+MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
+{
+	MR_mercuryfile_init(c_file, 1, mercury_file);
+}
 
 bool
 MR_trace_is_number(const char *word, int *value)
