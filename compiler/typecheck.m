@@ -4132,7 +4132,7 @@ report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Error: no clauses for "),
 	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string("\n").
+	io__write_string(".\n").
 
 %-----------------------------------------------------------------------------%
 
