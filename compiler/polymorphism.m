@@ -233,10 +233,13 @@ polymorphism__process_goal_2(
 			GoalInfo, Goal) -->
 	{ term__term_list_to_var_list(Args0, ArgVars0) },
 	polymorphism__process_call(PredId, ProcId, ArgVars0, 
-			ArgVars, ExtraGoals),
+			ArgVars, ExtraVars, ExtraGoals),
 	{ term__var_list_to_term_list(ArgVars, Args) },
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
+	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
+	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
 	{ Call = call(PredId, ProcId, Args, Builtin, Name, FollowVars)
-			- GoalInfo },
+			- CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
@@ -348,13 +351,13 @@ polymorphism__process_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 	polymorphism__process_goal(Goal0, Goal),
 	polymorphism__process_goal_list(Goals0, Goals).
 
-:- pred polymorphism__process_call(pred_id, proc_id, list(var),
+:- pred polymorphism__process_call(pred_id, proc_id, list(var), list(var),
 					list(var), list(hlds__goal),
 					poly_info, poly_info).
-:- mode polymorphism__process_call(in, in, in, out, out, in, out) is det.
+:- mode polymorphism__process_call(in, in, in, out, out, out, in, out) is det.
 
-polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
-				Info0, Info) :-
+polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
+				ExtraVars, ExtraGoals, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0,
 				UnifyProcMap, ModuleInfo),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -368,6 +371,7 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars, ExtraGoals,
 		% optimize for common case of non-polymorphic call
 		ArgVars = ArgVars0,
 		ExtraGoals = [],
+		ExtraVars = [],
 		Info = Info0
 	;
 		list__sort(PredTypeVars0, PredTypeVars), % eliminate duplicates
