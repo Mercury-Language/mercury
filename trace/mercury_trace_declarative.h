@@ -37,15 +37,6 @@ extern	bool	MR_trace_start_decl_debug(const char *out,
 
 typedef Word MR_Trace_Node;
 
-#define	MR_trace_call_node_last_interface(node)				\
-		MR_field(MR_mktag(0), (node), (Integer) 1)
-
-#define MR_trace_cond_node_status(node)					\
-		MR_field(MR_mktag(3), (node), (Integer) 3)
-
-#define MR_trace_neg_node_status(node)					\
-		MR_field(MR_mktag(3), (node), (Integer) 3)
-
 #define MR_TRACE_STATUS_SUCCEEDED	(Word) 0
 #define MR_TRACE_STATUS_FAILED		(Word) 1
 #define MR_TRACE_STATUS_UNDECIDED	(Word) 2

@@ -396,6 +396,7 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 {
 	MR_Trace_Node		node;
 	MR_Trace_Node		call;
+	Word			last_interface;
 	Word			atom;
 
 	atom = MR_decl_make_atom(event_info->MR_event_sll,
@@ -410,12 +411,13 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 #endif
 	
 	MR_TRACE_CALL_MERCURY(
+		last_interface = MR_DD_call_node_get_last_interface(
+				(Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_exit_node(
 				(Word) prev, (Word) call,
-				MR_trace_call_node_last_interface(call),
-				atom);
+				last_interface, atom);
+		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
 	);
-	MR_trace_call_node_last_interface(call) = (Word) node;
 
 	return node;
 }
@@ -426,6 +428,7 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node		node;
 	MR_Trace_Node		call;
 	MR_Trace_Node		next;
+	Word			last_interface;
 
 #ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
@@ -453,11 +456,13 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 #endif /* !MR_USE_DECL_STACK_SLOT */
 
 	MR_TRACE_CALL_MERCURY(
+		last_interface = MR_DD_call_node_get_last_interface(
+					(Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_redo_node(
 					(Word) prev,
-				MR_trace_call_node_last_interface(call));
+					last_interface);
+		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
 	);
-	MR_trace_call_node_last_interface(call) = (Word) node;
 
 	return node;
 }
@@ -468,7 +473,7 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node		node;
 	MR_Trace_Node		next;
 	MR_Trace_Node		call;
-	MR_Trace_Node		redo;
+	Word			redo;
 
 #ifdef MR_USE_DECL_STACK_SLOT
 	call = MR_trace_decl_get_slot(event_info->MR_event_sll->MR_sll_entry,
@@ -490,15 +495,14 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_decl_checkpoint_match(call);
 #endif
 
-	redo = MR_trace_call_node_last_interface(call);
 	MR_TRACE_CALL_MERCURY(
+		redo = MR_DD_call_node_get_last_interface( (Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_fail_node(
 						(Word) prev,
 						(Word) call,
 						(Word) redo);
+		MR_DD_call_node_set_last_interface((Word) call, (Word) node);
 	);
-
-	MR_trace_call_node_last_interface(call) = (Word) node;
 	return node;
 }
 
@@ -534,9 +538,9 @@ MR_trace_decl_then(MR_Event_Info *event_info, MR_Trace_Node prev)
 	cond = next;
 	MR_decl_checkpoint_match(cond);
 	
-	MR_trace_cond_node_status(cond) = MR_TRACE_STATUS_SUCCEEDED;
-
 	MR_TRACE_CALL_MERCURY(
+		MR_DD_cond_node_set_status((Word) cond,
+					MR_TRACE_STATUS_SUCCEEDED);
 		node = (MR_Trace_Node) MR_DD_construct_then_node(
 					(Word) prev,
 					(Word) cond);
@@ -571,8 +575,9 @@ MR_trace_decl_else(MR_Event_Info *event_info, MR_Trace_Node prev)
 	}
 	MR_decl_checkpoint_match(cond);
 	
-	MR_trace_cond_node_status(cond) = MR_TRACE_STATUS_FAILED;
 	MR_TRACE_CALL_MERCURY(
+		MR_DD_cond_node_set_status((Word) cond,
+					MR_TRACE_STATUS_FAILED);
 		node = (MR_Trace_Node) MR_DD_construct_else_node(
 					(Word) prev,
 					(Word) cond);
@@ -620,8 +625,9 @@ MR_trace_decl_neg_success(MR_Event_Info *event_info, MR_Trace_Node prev)
 	}
 	MR_decl_checkpoint_match(nege);
 	
-	MR_trace_neg_node_status(nege) = MR_TRACE_STATUS_SUCCEEDED;
 	MR_TRACE_CALL_MERCURY(
+		MR_DD_neg_node_set_status((Word) nege,
+					MR_TRACE_STATUS_SUCCEEDED);
 		node = (MR_Trace_Node) MR_DD_construct_neg_succ_node(
 						(Word) prev,
 						(Word) nege);
@@ -645,8 +651,9 @@ MR_trace_decl_neg_failure(MR_Event_Info *event_info, MR_Trace_Node prev)
 	}
 	MR_decl_checkpoint_match(next);
 	
-	MR_trace_neg_node_status(next) = MR_TRACE_STATUS_FAILED;
 	MR_TRACE_CALL_MERCURY(
+		MR_DD_neg_node_set_status((Word) next,
+					MR_TRACE_STATUS_FAILED);
 		node = (MR_Trace_Node) MR_DD_construct_neg_fail_node(
 						(Word) prev,
 						(Word) next);

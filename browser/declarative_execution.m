@@ -23,9 +23,9 @@
 	% The type R is the type of references to other nodes
 	% in the store.
 	%
-	% If this type is modified, some of the macros in
-	% trace/mercury_trace_declarative.h may also need to be
-	% updated.
+	% If this type is modified, the procedures below which
+	% do destructive update on values of this type may also
+	% need to be modified.
 	%
 :- type trace_node(R)
 	--->	call(
@@ -213,7 +213,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, require.
+:- import_module map, require, store.
 
 det_trace_node_from_id(Store, NodeId, Node) :-
 	(
@@ -333,6 +333,88 @@ disj_node_from_id(Store, NodeId, Node) :-
 	% Following are some predicates that are useful for
 	% manipulating the above instance in C code.
 	%
+
+:- func call_node_get_last_interface(trace_node(trace_node_id))
+		= trace_node_id.
+:- pragma export(call_node_get_last_interface(in) = out,
+		"MR_DD_call_node_get_last_interface").
+
+call_node_get_last_interface(Call) = Last :-
+	(
+		Call = call(_, Last0, _, _)
+	->
+		Last = Last0
+	;
+		error("call_node_get_last_interface: not a CALL node")
+	).
+
+:- func call_node_set_last_interface(trace_node(trace_node_id), trace_node_id)
+		= trace_node(trace_node_id).
+:- mode call_node_set_last_interface(di, di) = out is det.
+:- pragma export(call_node_set_last_interface(di, di) = out,
+		"MR_DD_call_node_set_last_interface").
+
+call_node_set_last_interface(Call0, Last) = Call :-
+	(
+		Call0 = call(_, _, _, _)
+	->
+		Call1 = Call0
+	;
+		error("call_node_set_last_interface: not a CALL node")
+	),
+		% The last interface is the second field, so we pass 1
+		% (since argument numbers start from 0).
+		%
+	set_trace_node_arg(Call1, 1, Last, Call).
+
+:- func cond_node_set_status(trace_node(trace_node_id), goal_status)
+		= trace_node(trace_node_id).
+:- mode cond_node_set_status(di, di) = out is det.
+:- pragma export(cond_node_set_status(di, di) = out,
+		"MR_DD_cond_node_set_status").
+
+cond_node_set_status(Cond0, Status) = Cond :-
+	(
+		Cond0 = cond(_, _, _)
+	->
+		Cond1 = Cond0
+	;
+		error("cond_node_set_status: not a COND node")
+	),
+		% The goal status is the third field, so we pass 2
+		% (since argument numbers start from 0).
+		%
+	set_trace_node_arg(Cond1, 2, Status, Cond).
+
+:- func neg_node_set_status(trace_node(trace_node_id), goal_status)
+		= trace_node(trace_node_id).
+:- mode neg_node_set_status(di, di) = out is det.
+:- pragma export(neg_node_set_status(di, di) = out,
+		"MR_DD_neg_node_set_status").
+
+neg_node_set_status(Neg0, Status) = Neg :-
+	(
+		Neg0 = neg(_, _, _)
+	->
+		Neg1 = Neg0
+	;
+		error("neg_node_set_status: not a NEGE node")
+	),
+		% The goal status is the third field, so we pass 2
+		% (since argument numbers start from 0).
+		%
+	set_trace_node_arg(Neg1, 2, Status, Neg).
+
+:- pred set_trace_node_arg(trace_node(trace_node_id), int, T,
+		trace_node(trace_node_id)).
+:- mode set_trace_node_arg(di, in, di, out) is det.
+
+set_trace_node_arg(Node0, FieldNum, Val, Node) :-
+	store__init(S0),
+	store__new_ref(Node0, Ref, S0, S1),
+	store__arg_ref(Ref, FieldNum, ArgRef, S1, S2),
+	store__set_ref_value(ArgRef, Val, S2, S),
+	store__extract_ref_value(S, Ref, Node).
 
 :- func trace_node_port(trace_node(trace_node_id)) = trace_port_type.
 :- pragma export(trace_node_port(in) = out,
