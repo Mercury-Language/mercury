@@ -1652,14 +1652,16 @@ void GC_dirty_init()
 #     else
       	sigaction(SIGSEGV, &act, &oldact);
 #     endif
-#     ifdef IRIX5
+#     if defined(_sigargs)
+	/* This is Irix 5.x, not 6.x.  Irix 5.x does not have	*/
+	/* sa_sigaction.					*/
+	GC_old_segv_handler = oldact.sa_handler;
+#     else /* Irix 6.x or SUNOS5SIGS */
+        if (oldact.sa_flags & SA_SIGINFO) {
+          GC_old_segv_handler = (SIG_PF)(oldact.sa_sigaction);
+        } else {
           GC_old_segv_handler = oldact.sa_handler;
-#     else
-          if (oldact.sa_flags & SA_SIGINFO) {
-              GC_old_segv_handler = (SIG_PF)(oldact.sa_sigaction);
-          } else {
-              GC_old_segv_handler = oldact.sa_handler;
-          }
+        }
 #     endif
       if (GC_old_segv_handler == SIG_IGN) {
 	     GC_err_printf0("Previously ignored segmentation violation!?");
