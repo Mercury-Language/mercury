@@ -661,13 +661,15 @@ typecheck_goal_2(if_then_else(Vs, A0, B0, C0, SM),
 	checkpoint("then"),
 	typecheck_goal(B0, B),
 	checkpoint("else"),
-	typecheck_goal(C0, C).
+	typecheck_goal(C0, C),
+	ensure_vars_have_a_type(Vs).
 typecheck_goal_2(not(A0), not(A)) -->
 	checkpoint("not"),
 	typecheck_goal(A0, A).
 typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->
 	checkpoint("some"),
-	typecheck_goal(G0, G).
+	typecheck_goal(G0, G),
+	ensure_vars_have_a_type(Vs).
 typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name),
 		call(PredId, Mode, Args, Builtin, Context, Name)) -->
 	checkpoint("call"),
@@ -699,6 +701,30 @@ typecheck_goal_list([], []) --> [].
 typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 	typecheck_goal(Goal0, Goal),
 	typecheck_goal_list(Goals0, Goals).
+
+%-----------------------------------------------------------------------------%
+
+	% ensure_vars_have_a_type(Vars):
+	%	Ensure that each variable in Vars has been assigned a type.
+
+:- pred ensure_vars_have_a_type(list(var), typecheck_info, typecheck_info).
+:- mode ensure_vars_have_a_type(in, typecheck_info_di, typecheck_info_uo)
+	is det.
+
+ensure_vars_have_a_type(Vars) -->
+	( { Vars = [] } ->
+		[]
+	;
+		% invent some new type variables to use as the types of
+		% these variables
+		{ list__length(Vars, NumVars) },
+		{ varset__init(TypeVarSet0) },
+		{ varset__new_vars(TypeVarSet0, NumVars,
+			TypeVars, TypeVarSet) },
+		{ term__var_list_to_term_list(TypeVars, Types) },
+		typecheck_var_has_polymorphic_type_list(Vars,
+			TypeVarSet, Types)
+	).
 
 %-----------------------------------------------------------------------------%
 
