@@ -169,7 +169,7 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 			{ \+ code_util__predinfo_is_builtin(ModuleInfo0,
 					PredInfo0) },
 			(
-				{ inlining__simple_goal(Goal,
+				{ inlining__is_simple_goal(Goal,
 						InlineThreshold) }
 			;
 				{ pred_info_is_inlined(PredInfo0) }
