@@ -147,13 +147,13 @@
 % System constants
 %
 
-	% Maximum floating-point number
+	% Maximum finite floating-point number
 	%
 	% max = (1 - radix ** mantissa_digits) * radix ** max_exponent
 	%
 :- func float__max = float.
 
-	% Minimum normalised floating-point number
+	% Minimum normalised positive floating-point number
 	%
 	% min = radix ** (min_exponent - 1)
 	%
@@ -430,8 +430,18 @@ float__hash(_) = _ :-
 %
 % System constants
 %
-% The floating-point system constants are derived from <float.h> and
+% For C, the floating-point system constants are derived from <float.h> and
 % implemented using the C interface.
+%
+% For .NET, the values are mostly hard-coded.
+% It's OK to do this, because the ECMA specification for the .NET CLR
+% nails down the representation of System.Double as 64-bit IEEE float.
+%
+% XXX For Java, we should do the same as for .NET.
+% In fact, maybe we should code these values in Mercury clauses,
+% rather than foreign_proc pragmas; assuming IEEE floating point
+% is a reasonable default these days, and doing that might improve
+% the compiler's optimization.
 
 :- pragma c_header_code("
 
@@ -473,7 +483,13 @@ float__max = _ :-
 	"Min = ML_FLOAT_MIN;").
 :- pragma foreign_proc("C#", float__min = (Min::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Min = System.Double.MinValue;").
+	% We can't use System.Double.MinValue, because in v1 of the .NET CLR,
+	% that means something completely different: the negative number
+	% with the greatest absolute value.
+	% Instead, we just hard-code the appropriate value (copied from the
+	% glibc header files); this is OK, because the ECMA specification
+	% nails down the representation of double as 64-bit IEEE.
+	"Min = 2.2250738585072014e-308;").
 float__min = _ :=
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -485,7 +501,15 @@ float__min = _ :=
 	"Eps = ML_FLOAT_EPSILON;").
 :- pragma foreign_proc("C#", float__epsilon = (Eps::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
-	"Eps = System.Double.Epsilon;").
+	% We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
+	% that means something completely different: the smallest (denormal)
+	% positive number.  I don't know what the people who designed that
+	% were smoking; that semantics for "epsilon" is different from the
+	% use of "epsilon" in C, Lisp, Ada, etc., not to mention Mercury.
+	% Instead, we just hard-code the appropriate value (copied from the
+	% glibc header files); this is OK, because the ECMA specification
+	% nails down the representation of double as 64-bit IEEE.
+	"Eps = 2.2204460492503131e-16;").
 float__epsilon = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -495,6 +519,12 @@ float__epsilon = _ :-
 :- pragma foreign_proc("C", float__radix = (Radix::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"Radix = ML_FLOAT_RADIX;").
+:- pragma foreign_proc("C#", float__radix = (Radix::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+	% The ECMA specification requires that double be 64-bit IEEE.
+	% I think that implies that it must have Radix = 2.
+	% This is definitely right for x86, anyway.
+	"Radix = 2;").
 float__radix = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -504,6 +534,10 @@ float__radix = _ :-
 :- pragma foreign_proc("C", float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"MantDig = ML_FLOAT_MANT_DIG;").
+:- pragma foreign_proc("C#", float__mantissa_digits = (MantDig::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+	% ECMA specifies that System.Double is 64-bit IEEE float
+	"MantDig = 53;").
 float__mantissa_digits = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -515,6 +549,10 @@ float__mantissa_digits = _ :-
 :- pragma foreign_proc("C", float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"MinExp = ML_FLOAT_MIN_EXP;").
+:- pragma foreign_proc("C#", float__min_exponent = (MinExp::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+	% ECMA specifies that System.Double is 64-bit IEEE float
+	"MinExp = -1021;").
 float__min_exponent = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -526,6 +564,10 @@ float__min_exponent = _ :-
 :- pragma foreign_proc("C", float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],
 	"MaxExp = ML_FLOAT_MAX_EXP;").
+:- pragma foreign_proc("C#", float__max_exponent = (MaxExp::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+	% ECMA specifies that System.Double is 64-bit IEEE float
+	"MaxExp = 1024;").
 float__max_exponent = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
