@@ -234,7 +234,7 @@ case $HOST in murlibobo)
 	rm -f so_locations &&
 	autoconf &&
 	mercury_cv_num_low_tag_bits=2 \
-	mercury_cv_bits_per_word=22 \
+	mercury_cv_bits_per_word=32 \
 	sh configure --prefix=$INSTALL_DIR &&
 	version=`mmake version` &&
 	mmake MMAKEFLAGS='MCFLAGS="-O5 --opt-space" -j4' tar &&
