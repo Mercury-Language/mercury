@@ -130,9 +130,9 @@
 #endif
 
 #ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_PART_6A	MR_PASTE2(MR_GRADE_PART_6, _mm)
+  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6, _mm)
 #else
-  #define MR_GRADE_PART_6A	MR_GRADE_PART_6
+  #define MR_GRADE_PART_7	MR_GRADE_PART_6
 #endif
 
 #if defined(MR_USE_TRAIL) && defined(MR_USE_MINIMAL_MODEL)
@@ -140,31 +140,25 @@
 #endif
 
 #if TAGBITS == 0
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6A, _notags)
+  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _notags)
 #elif defined(HIGHTAGS)
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6A, \
+  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, \
   					MR_PASTE2(_hightags, TAGBITS))
 #else
-  #define MR_GRADE_PART_7	MR_PASTE2(MR_GRADE_PART_6A, \
+  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, \
   					MR_PASTE2(_tags, TAGBITS))
 #endif
 
 #ifdef BOXED_FLOAT
-  #define MR_GRADE_PART_8	MR_GRADE_PART_7
+  #define MR_GRADE_PART_9	MR_GRADE_PART_8
 #else				/* "ubf" stands for "unboxed float" */
-  #define MR_GRADE_PART_8	MR_PASTE2(MR_GRADE_PART_7, _ubf)
+  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _ubf)
 #endif
 
 #ifdef COMPACT_ARGS
-  #define MR_GRADE_PART_9	MR_GRADE_PART_8
-#else				/* "sa" stands for "simple args" */
-  #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _sa)
-#endif
-
-#ifndef MR_DEBUG_NONDET_STACK
   #define MR_GRADE_PART_10	MR_GRADE_PART_9
-#else
-  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _debugNDS)
+#else				/* "sa" stands for "simple args" */
+  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _sa)
 #endif
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
@@ -286,21 +280,21 @@ extern const char MR_GRADE_VAR;
 #endif
 
 #ifdef MR_USE_MINIMAL_MODEL
-  #define MR_GRADE_OPT_PART_6A	MR_GRADE_OPT_PART_6 ".mm"
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6 ".mm"
 #else
-  #define MR_GRADE_OPT_PART_6A	MR_GRADE_OPT_PART_6
+  #define MR_GRADE_OPT_PART_7	MR_GRADE_OPT_PART_6
 #endif
 
 /*
-** Parts 7-10 above (i.e. tag bits, compact args, and (un)boxed float)
+** Parts 8-10 above (i.e. tag bits, compact args, and (un)boxed float)
 ** are documented as "not for general use", and can't be set via the
 ** `--grade' option; we don't bother to pass them on.
 */
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_6A ".picreg"
+  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".picreg"
 #else
-  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_6A
+  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7
 #endif
 
 /*

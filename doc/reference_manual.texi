@@ -3976,11 +3976,11 @@ Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
 
 @example
-list_is_empty(list)     /* test if a list is empty */
-list_head(list)         /* get the head of a list */
-list_tail(list)         /* get the tail of a list */
-list_empty()            /* create an empty list */
-list_cons(head,tail)    /* construct a list with the given head and tail */
+MR_list_is_empty(list)     /* test if a list is empty */
+MR_list_head(list)         /* get the head of a list */
+MR_list_tail(list)         /* get the tail of a list */
+MR_list_empty()            /* create an empty list */
+MR_list_cons(head,tail)    /* construct a list with the given head and tail */
 @end example
 
 Note that the use of these macros is subject to some caveats

@@ -598,10 +598,10 @@ string__from_char_list(CharList, String) :-
 	size = sizeof(Word);
 	len = 1;
 	list_ptr = Chars;
-	while (!list_is_empty(list_ptr)) {
+	while (!MR_list_is_empty(list_ptr)) {
 		size++;
 		len++;
-		list_ptr = list_tail(list_ptr);
+		list_ptr = MR_list_tail(list_ptr);
 	}
 /*
 ** allocate (length + 1) bytes of heap space for string
@@ -619,9 +619,9 @@ string__from_char_list(CharList, String) :-
 ** in reverse order.
 */
 	list_ptr = Chars;
-	while (!list_is_empty(list_ptr)) {
-		Str[--len] = (char) list_head(list_ptr);
-		list_ptr = list_tail(list_ptr);
+	while (!MR_list_is_empty(list_ptr)) {
+		Str[--len] = (char) MR_list_head(list_ptr);
+		list_ptr = MR_list_tail(list_ptr);
 	}
 }").
 
@@ -1602,10 +1602,10 @@ string__special_precision_and_width(-1).
 :- pragma c_code(string__to_int_list(Str::in, IntList::out),
 		[will_not_call_mercury, thread_safe], "{
 	const char *p = Str + strlen(Str);
-	IntList = list_empty();
+	IntList = MR_list_empty();
 	while (p > Str) {
 		p--;
-		IntList = list_cons((UnsignedChar) *p, IntList);
+		IntList = MR_list_cons((UnsignedChar) *p, IntList);
 	}
 }").
 
@@ -1621,9 +1621,9 @@ string__special_precision_and_width(-1).
 */
 	size = sizeof(Word);
 	int_list_ptr = IntList;
-	while (!list_is_empty(int_list_ptr)) {
+	while (! MR_list_is_empty(int_list_ptr)) {
 		size++;
-		int_list_ptr = list_tail(int_list_ptr);
+		int_list_ptr = MR_list_tail(int_list_ptr);
 	}
 /*
 ** allocate (length + 1) bytes of heap space for string
@@ -1636,9 +1636,9 @@ string__special_precision_and_width(-1).
 */
 	size = 0;
 	int_list_ptr = IntList;
-	while (!list_is_empty(int_list_ptr)) {
-		Str[size++] = list_head(int_list_ptr);
-		int_list_ptr = list_tail(int_list_ptr);
+	while (! MR_list_is_empty(int_list_ptr)) {
+		Str[size++] = MR_list_head(int_list_ptr);
+		int_list_ptr = MR_list_tail(int_list_ptr);
 	}
 /*
 ** null terminate the string

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -600,7 +600,7 @@ MADITI_do_call(void)
 	** we haven't altered any of the virtual_reg array entries.
 	*/
 
-	tuple_list = list_empty();
+	tuple_list = MR_list_empty();
 	DEBUG(printf(""building input tuple...""));
 	for (i = 0; i < num_input_args; i++) {
 		/* convert the argument to a string, adding it to the tuple */

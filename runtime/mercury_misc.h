@@ -20,7 +20,7 @@
 #include <stdlib.h>		/* for `size_t' */
 
 #ifdef MR_LOWLEVEL_DEBUG
-extern	void	mkframe_msg(void);
+extern	void	mkframe_msg(const char *);
 extern	void	succeed_msg(void);
 extern	void	succeeddiscard_msg(void);
 extern	void	fail_msg(void);
