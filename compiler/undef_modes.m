@@ -227,6 +227,7 @@ find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
 :- pred report_undef_mode(mode_id, mode_error_context, io__state, io__state).
 :- mode report_undef_mode(in, in, di, uo) is det.
 report_undef_mode(ModeId, ErrorContext - Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In "),
 	write_mode_error_context(ErrorContext),
@@ -243,6 +244,7 @@ report_undef_mode(ModeId, ErrorContext - Context) -->
 :- mode report_undef_inst(in, in, di, uo) is det.
 
 report_undef_inst(InstId, ErrorContext - Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In "),
 	write_mode_error_context(ErrorContext),

@@ -140,6 +140,7 @@ find_undef_type(term__functor(F, As, C), ErrorContext, TypeDefns) -->
 :- mode report_invalid_type(in, in, di, uo) is det.
 
 report_invalid_type(Type, ErrorContext - Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In definition of "),
 	write_error_context(ErrorContext),
@@ -157,6 +158,7 @@ report_invalid_type(Type, ErrorContext - Context) -->
 :- mode report_undef_type(in, in, di, uo) is det.
 
 report_undef_type(TypeId, ErrorContext - Context) -->
+	io__set_exit_status(1),
 	prog_out__write_context(Context),
 	io__write_string("In definition of "),
 	write_error_context(ErrorContext),
