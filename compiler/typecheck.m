@@ -995,8 +995,8 @@ typecheck_unification(term__functor(_, _, _), term__functor(_, _, _)) -->
 
 typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 	type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
-	typecheck_unification_2(TypeAssignSet0, term__variable(X),
-		term__variable(Y), TypeInfo0, [], TypeAssignSet),
+	typecheck_unify_var_var_2(TypeAssignSet0, X, Y, TypeInfo0,
+			[], TypeAssignSet),
 	( TypeAssignSet = [], TypeAssignSet0 \= [] ->
 		type_info_get_io_state(TypeInfo0, IOState0),
 		report_error_unif_var_var(TypeInfo0, X, Y, TypeAssignSet0,
@@ -1004,7 +1004,8 @@ typecheck_unify_var_var(X, Y, TypeInfo0, TypeInfo) :-
 		type_info_set_io_state(TypeInfo0, IOState1, TypeInfo1),
 		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
-		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+		type_info_set_type_assign_set(TypeInfo0, TypeAssignSet,
+			TypeInfo)
 	).
 
 :- pred typecheck_unify_var_functor(var, const, list(term), term__context,
@@ -1024,7 +1025,7 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 		type_info_set_found_error(TypeInfo1, yes, TypeInfo)
 	;
 		type_info_get_type_assign_set(TypeInfo0, TypeAssignSet0),
-		typecheck_unify_var_functor_2a(TypeAssignSet0,
+		typecheck_unify_var_functor_get_ctors(TypeAssignSet0,
 			TypeInfo0, ConsDefnList, [], ConsTypeAssignSet),
 								% XXX Args
 		typecheck_unify_var_functor_3a( ConsTypeAssignSet, Var, Args,
@@ -1044,7 +1045,8 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 		)
 	).
 
-	% typecheck_unify_var_functor_2a(TypeAssignSet, TypeInfo, ConsDefns):
+	% typecheck_unify_var_functor_get_ctors(TypeAssignSet, TypeInfo,
+	%	ConsDefns):
 	%	
 	% Iterate over all the different possible type assignments.
 	% For each type assignment in `TypeAssignSet', produce a pair 
@@ -1059,36 +1061,36 @@ typecheck_unify_var_functor(Var, Functor, Args, Context, TypeInfo9, TypeInfo) :-
 :- type cons_type_set == list(cons_type).
 :- type cons_type_assign_set == list(pair(type_assign, cons_type_set)).
 
-:- pred typecheck_unify_var_functor_2a(type_assign_set,
+:- pred typecheck_unify_var_functor_get_ctors(type_assign_set,
 				type_info, list(cons_type_info),
 				cons_type_assign_set, cons_type_assign_set).
-:- mode typecheck_unify_var_functor_2a(in, in, in, in, out) is det.
+:- mode typecheck_unify_var_functor_get_ctors(in, in, in, in, out) is det.
 
 	% Iterate over the type assign sets
 
-typecheck_unify_var_functor_2a([], _, _) --> [].
-typecheck_unify_var_functor_2a([TypeAssign0 | TypeAssigns], TypeInfo,
+typecheck_unify_var_functor_get_ctors([], _, _) --> [].
+typecheck_unify_var_functor_get_ctors([TypeAssign0 | TypeAssigns], TypeInfo,
 		ConsDefns) -->
-	{ typecheck_unify_var_functor_2b(ConsDefns, TypeInfo,
+	{ typecheck_unify_var_functor_get_ctors_2(ConsDefns, TypeInfo,
 		TypeAssign0, TypeAssign, [], ConsTypeAssignSet) },
 	list__append([TypeAssign - ConsTypeAssignSet]),
-	typecheck_unify_var_functor_2a(TypeAssigns, TypeInfo, ConsDefns).
+	typecheck_unify_var_functor_get_ctors(TypeAssigns, TypeInfo, ConsDefns).
 
 	% Iterate over all the different cons defns.
 
-:- pred typecheck_unify_var_functor_2b(list(cons_type_info), type_info,
+:- pred typecheck_unify_var_functor_get_ctors_2(list(cons_type_info), type_info,
 				type_assign, type_assign,
 				cons_type_set, cons_type_set).
-:- mode typecheck_unify_var_functor_2b(in, in, in, out, in, out) is det.
+:- mode typecheck_unify_var_functor_get_ctors_2(in, in, in, out, in, out)
+				is det.
 
-typecheck_unify_var_functor_2b([], _, TypeAssign, TypeAssign) --> [].
-typecheck_unify_var_functor_2b([ConsDefn | ConsDefns], TypeInfo, TypeAssign0,
-		TypeAssign)
-		-->
+typecheck_unify_var_functor_get_ctors_2([], _, TypeAssign, TypeAssign) --> [].
+typecheck_unify_var_functor_get_ctors_2([ConsDefn | ConsDefns], TypeInfo,
+					TypeAssign0, TypeAssign) -->
 	{ get_cons_stuff(ConsDefn, TypeAssign0, TypeInfo,
 			ConsType, ArgTypes, TypeAssign1) },
 	list__append([cons_type(ConsType, ArgTypes)]),
-	typecheck_unify_var_functor_2b(ConsDefns, TypeInfo,
+	typecheck_unify_var_functor_get_ctors_2(ConsDefns, TypeInfo,
 			TypeAssign1, TypeAssign).
 
 	% typecheck_unify_var_functor_3a(ConsTypeAssignSet, Var, Args, ...):
@@ -1131,18 +1133,18 @@ typecheck_unify_var_functor_3b([ConsType | ConsTypes],
 
 	% iterate over all the possible type assignments.
 
-:- pred typecheck_unification_2(type_assign_set, term, term,
+:- pred typecheck_unify_var_var_2(type_assign_set, var, var,
 				type_info, type_assign_set, type_assign_set).
-:- mode typecheck_unification_2(in, in, in, type_info_ui, in, out) is det.
+:- mode typecheck_unify_var_var_2(in, in, in, type_info_ui, in, out) is det.
 
-typecheck_unification_2([], _, _, _) --> [].
-typecheck_unification_2([TypeAssign0 | TypeAssigns0], X, Y, TypeInfo) -->
-	type_assign_unify_term(X, Y, TypeAssign0, TypeInfo),
-	typecheck_unification_2(TypeAssigns0, X, Y, TypeInfo).
+typecheck_unify_var_var_2([], _, _, _) --> [].
+typecheck_unify_var_var_2([TypeAssign0 | TypeAssigns0], X, Y, TypeInfo) -->
+	type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo),
+	typecheck_unify_var_var_2(TypeAssigns0, X, Y, TypeInfo).
 	
 %-----------------------------------------------------------------------------%
 
-	% Type-check the unification of two terms,
+	% Type-check the unification of two variables,
 	% and update the type assignment.
 	% TypeAssign0 is the type assignment we are updating,
 	% TypeAssignSet0 is an accumulator for the list of possible
@@ -1150,15 +1152,12 @@ typecheck_unification_2([TypeAssign0 | TypeAssigns0], X, Y, TypeInfo) -->
 	% any type assignment(s) resulting from TypeAssign0 and this
 	% unification.
 
-:- pred type_assign_unify_term(term, term, type_assign, type_info,
+:- pred type_assign_unify_var_var(var, var, type_assign, type_info,
 				type_assign_set, type_assign_set).
-:- mode type_assign_unify_term(in, in, in, type_info_ui, in, out) is det.
+:- mode type_assign_unify_var_var(in, in, in, type_info_ui, in, out) is det.
 
-	% NU-Prolog indexing
-:- type_assign_unify_term(T1, T2, _, _, _, _) when T1 and T2.
-
-type_assign_unify_term(term__variable(X), term__variable(Y), TypeAssign0,
-		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
+type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo, TypeAssignSet0,
+			TypeAssignSet) :-
 	type_assign_get_var_types(TypeAssign0, VarTypes0),
 	(
 		map__search(VarTypes0, X, TypeX)
@@ -1168,7 +1167,8 @@ type_assign_unify_term(term__variable(X), term__variable(Y), TypeAssign0,
 		->
 			% both X and Y already have types - just
 			% unify their types
-			type_info_get_head_type_params(TypeInfo, HeadTypeParams),
+			type_info_get_head_type_params(TypeInfo,
+					HeadTypeParams),
 			( 
 				type_assign_unify_type(TypeAssign0,
 					HeadTypeParams, TypeX, TypeY,
@@ -1212,25 +1212,6 @@ type_assign_unify_term(term__variable(X), term__variable(Y), TypeAssign0,
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
 		)
 	).
-
-type_assign_unify_term(term__functor(Functor, Args, _), term__variable(Y),
-		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	list__length(Args, Arity),
-	type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsDefnList),
-	type_assign_unify_var_functor(ConsDefnList, Args, Y, TypeAssign0,
-		TypeInfo, TypeAssignSet0, TypeAssignSet).
-
-type_assign_unify_term(term__variable(Y), term__functor(F, As, C), TypeAssign0,
-		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
-	type_assign_unify_term(term__functor(F, As, C), term__variable(Y),
-		TypeAssign0, TypeInfo, TypeAssignSet0, TypeAssignSet).
-	
-type_assign_unify_term(term__functor(_, _, _), term__functor(_, _, _),
-		_, _, TypeAssignSet, TypeAssignSet) :-
-	    % We don't handle this, because it shouldn't occur
-	    % if the code is in superhomogeneous form, and we convert the code
-	    % to superhomogeneous form before doing type-checking.
-	error("Unexpected unification of term with term\n").
 
 %-----------------------------------------------------------------------------%
 
