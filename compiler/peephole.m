@@ -124,7 +124,7 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = call(Proc, Destlabel) - Comment0
+			Instr = Instr0
 		;
 			Instr = call(Proc, Destlabel) - Redirect
 		)
@@ -133,7 +133,7 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = entrycall(Proc, Destlabel) - Comment0
+			Instr = Instr0
 		;
 			Instr = entrycall(Proc, Destlabel) - Redirect
 		)
@@ -142,7 +142,7 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
 		( Retlabel = Destlabel ->
-			Instr = unicall(Unilabel, Destlabel) - Comment0
+			Instr = Instr0
 		;
 			Instr = unicall(Unilabel, Destlabel) - Redirect
 		)
@@ -158,23 +158,8 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 			Destinstr = Udestinstr - _Destcomment,
 			string__append("shortcircuited jump: ",
 				Comment0, Shorted),
-			( Udestinstr = call(Proc, Retlabel) ->
-				Instr = call(Proc, Retlabel) - Shorted
-			; Udestinstr = entrycall(Proc, Retlabel) ->
-				Instr = entrycall(Proc, Retlabel) - Shorted
-			; Udestinstr = unicall(Unilabel, Retlabel) ->
-				Instr = unicall(Unilabel, Retlabel) - Shorted
-			; Udestinstr = tailcall(Retaddr),
-					Retaddr = local(Retlabel) ->
-				Instr = tailcall(local(Retlabel)) - Shorted
-			; Udestinstr = proceed ->
-				Instr = proceed - Shorted
-			; Udestinstr = succeed ->
-				Instr = succeed - Shorted
-			; Udestinstr = fail ->
-				Instr = fail - Shorted
-			; Udestinstr = redo ->
-				Instr = redo - Shorted
+			( peephole__indirect_jump(Udestinstr) ->
+				Instr = Udestinstr - Shorted
 			;
 				( Targetlabel = Destlabel ->
 					Instr = goto(Destlabel) - Comment0
@@ -188,9 +173,24 @@ peephole__jumpopt_instr_list([Instr0|Moreinstr0], Jumpmap,
 	),
 	peephole__jumpopt_instr_list(Moreinstr0, Jumpmap, Moreinstr).
 
+:- pred peephole__indirect_jump(instr).
+:- mode peephole__indirect_jump(in) is semidet.
+
+peephole__indirect_jump(call(_, _)).
+peephole__indirect_jump(entrycall(_, _)).
+peephole__indirect_jump(unicall(_, _)).
+peephole__indirect_jump(fail).
+peephole__indirect_jump(redo).
+peephole__indirect_jump(succeed).
+peephole__indirect_jump(proceed).
+
 :- pred peephole__jumpopt_final_dest(label, instruction, jumpmap,
 	label, instruction).
 :- mode peephole__jumpopt_final_dest(in, in, in, out, out) is det.
+
+	% Currently we don't check for infinite loops.  This is OK at
+	% the moment since the compiler never generates code containing
+	% infinite loops, but it may cause problems in the future.
 
 peephole__jumpopt_final_dest(Srclabel, Srcinstr, Jumpmap,
 		Destlabel, Destinstr) :-
@@ -227,17 +227,35 @@ peephole__opt_instr_list([Instr0 - Comment|Instructions0], Instructions) :-
 
 peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions) :-
 	(
-		peephole__opt_instr_2(Instr0, Comment0, Instructions0,
-			Instructions1)
+		peephole__skip_comments(Instructions0, Instructions1),
+		peephole__opt_instr_2(Instr0, Comment0, Instructions1,
+			Instructions2)
 	->
-		( Instructions1 = [Instr1 - Comment1 | Instructions2] ->
-			peephole__opt_instr(Instr1, Comment1, Instructions2,
+		( Instructions2 = [Instr2 - Comment2 | Instructions3] ->
+			peephole__opt_instr(Instr2, Comment2, Instructions3,
 				Instructions)
 		;
-			Instructions = Instructions1
+			Instructions = Instructions2
 		)
 	;
 		Instructions = [Instr0 - Comment0 | Instructions0]
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Given a list of instructions, skip past any comment instructions
+	% at the start and return the remaining instructions.
+	% We do this because comment instructions get in the way of
+	% peephole optimization.
+
+:- pred peephole__skip_comments(list(instruction), list(instruction)).
+:- mode peephole__skip_comments(in, out) is det.
+
+peephole__skip_comments(Instrs0, Instrs) :-
+	( Instrs0 = [comment(_) - _ | Instrs1] ->
+		peephole__skip_comments(Instrs1, Instrs)
+	;
+		Instrs = Instrs0
 	).
 
 %-----------------------------------------------------------------------------%
@@ -266,8 +284,8 @@ peephole__opt_instr_2(call(CodeAddress, ContLabel), Comment, Instrs0, Instrs) :-
 	%	mkframe(D, S, _)	=>	mkframe(D, S, Redoip)
 	%	modframe(Redoip)
 	%
-	% XXX this is not effective since the two instrs are separated
-	% at least by a comment and probably by arg saves as well
+	% XXX this is usually not effective since the two instrs are
+	% usually separated by some arg saves.
 
 peephole__opt_instr_2(mkframe(Descr, Slots, _), Comment, Instrs0, Instrs) :-
 	Instrs0 = [modframe(Redoip) - _ | Instrs1],
@@ -288,20 +306,32 @@ peephole__opt_instr_2(goto(Label), _, Instrs, Instrs) :-
 	%	if (x) goto skip;		if (!x) goto somewhere
 	%	goto somewhere;		=>    skip:
 	%     skip:
+	%
+	% a conditional branch to the very next instruction
+	% can be deleted
+	%	if (x) goto next;	=>    next:
+	%     next:
 
-peephole__opt_instr_2(if_val(Rval, Skip), _C1, Instrs0, Instrs) :-
-	Instrs0 = [goto(Somewhere) - C2, label(Skip) - C3 | Instrs1],
-	peephole__neg_rval(Rval, NotRval),
-	Instrs = [if_val(NotRval, Somewhere) - C2, label(Skip) - C3 | Instrs1].
+peephole__opt_instr_2(if_val(Rval, Target), _C1, Instrs0, Instrs) :-
+	( Instrs0 = [goto(Somewhere) - C2, label(Target) - C3 | Instrs1] ->
+		peephole__neg_rval(Rval, NotRval),
+		Instrs = [if_val(NotRval, Somewhere) - C2, label(Target) - C3
+				| Instrs1]
+	; Instrs0 = [label(Target) - _ | _] ->
+		Instrs = Instrs0
+	;
+		fail
+	).
 
-	% a conditional branch around a redo or fail can be replaced
+	% A conditional branch around a redo or fail can be replaced
 	% by an inverse conditional redo or fail
 	%
 	%	if (x) goto skip;		if (!x) redo;
 	%	redo;			=>    skip:
 	%     skip:
 	%
-	% XXX this requires a change to the type of the second arg of if_val
+	% This would require a change to the type of the second arg of if_val.
+	% Is it worth it?  The two fragments generate the same assembly.
 
 %-----------------------------------------------------------------------------%
 
