@@ -1,0 +1,149 @@
+#!/bin/sh
+
+sed_command()
+{
+	sed -e 's/+/%2B/g' -e 's/ /+/g'
+}
+
+browser=lynx		# WWW browser to use
+site=aus		# Mercury web site to use: aus (Australia) or us (USA)
+what=mail		# database to search: web site or mailing lists
+match=all
+format=long
+run=exec
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-b|--browser)
+			browser="$2"
+			shift 2 ;;
+		-l|--lynx)
+			browser=lynx
+			shift ;;
+		--netscape)
+			browser=netscape
+			shift ;;
+		--mosaic|--Mosaic)
+			browser=Mosaic
+			shift ;;
+
+		--aus|--australia)
+			site=aus
+			shift ;;
+		-u|--us|--usa)
+			site=us
+			shift ;;
+
+		-a|--any)
+			match=any
+			shift ;;
+		--all)
+			match=all
+			shift ;;
+
+		-m|--mail)
+			what=mail
+			shift ;;
+		-w|--web|--www)
+			what=web
+			shift ;;
+
+		-l|--long)
+			format=long
+			shift ;;
+		-s|--short)
+			format=short
+			shift ;;
+
+		-e|--echo)
+			run=echo
+			shift ;;
+
+		--)	break 2 ;;
+
+		-h|--help|-*)
+		cat << EOF
+Usage: `basename $0` [options] [text to search for]
+Options:
+	-h, --help
+		Print this message
+
+	-b <browser>, --browser <browser>
+		Use the specified program for your WWW browser
+	--netscape
+		Use netscape for your WWW browser
+	--mosaic
+		Use Mosaic for your WWW browser
+	-l, --lynx
+		Use lynx for your WWW browser (the default)
+
+	--aus, --australia
+		Use the original Australian site (the default)
+	-u, --us, --usa
+		Use the US sourceforge mirror site
+
+	-m, --mail
+		Search the mailing list archives (the default)
+	-w, --web, --www
+		Search the Web page
+
+	-s, --short
+		Use the "short" answer format
+	-l, --long
+		Use the "long" answer format (the default)
+
+	-a, --any
+		Match any of the specified keywords.
+	--all
+		Match all of the specified keywords (the default).
+EOF
+			exit 1
+			;;
+
+		*)	break 2 ;;
+	esac
+done
+
+case $site in
+	aus)	server=www.mercury.cs.mu.oz.au
+		;;
+	us)	server=www.sourceforge.net/mercury
+		;;
+	*)	echo "unknown site $site" 1>&2; exit 1 ;;
+esac
+
+case $# in
+	0)	
+		case $what in
+			mail) url=mailing-lists/search.html ;;
+			web)  url=search.html ;;
+		esac
+		$run $browser "http://$server/$url" ;;
+	*)	
+		case $match in
+			all) method=and ;;
+			any) method=or ;;
+		esac
+				
+		case $what in
+			mail) restrict=mailing-lists
+			      exclude=
+			      ;;
+			web)  restrict=
+			      exclude=mailing-lists
+			      ;;
+		esac
+		query=`echo "\"$1\"" | sed_command`
+		shift
+		case $# in
+			0) ;;
+			*)
+			for arg in "$@"; do
+				part_query=`echo "\"$arg\"" | sed_command`
+				query="$query+$part_query"
+			done
+			;;
+		esac
+		form="method=$method&format=builtin-$format&config=htdig-mercury&restrict=$restrict&exclude=$exclude&words=$query"
+		$run $browser "http://$server/cgi-bin/htsearch?$form"
+		;;
+esac
