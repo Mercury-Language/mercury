@@ -48,11 +48,11 @@ binary_distribution: bindist.configure bindist.build_vars
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
 	(dir=`pwd` && cd $(INSTALL_LIB_DIR)/mercury && \
-		tar -cf $dir/$(MERCURY_VERSION)/lib $(LIB_FILES) && \
-		gzip $dir/$(MERCURY_VERSION)/lib.tar)
+		tar -cf $$dir/$(MERCURY_VERSION)/lib $(LIB_FILES) && \
+		gzip $$dir/$(MERCURY_VERSION)/lib.tar)
 	(dir=`pwd` && cd $(INSTALL_INFO_DIR)/.. && \
-		tar -cf $dir/$(MERCURY_VERSION)/info.tar info && \
-		gzip $dir/$(MERCURY_VERSION)/info.tar)
+		tar -cf $$dir/$(MERCURY_VERSION)/info.tar info && \
+		gzip $$dir/$(MERCURY_VERSION)/info.tar)
 	test -d $(MERCURY_VERSION)/scripts || mkdir $(MERCURY_VERSION)/scripts
 	cp $(SCRIPT_FILES) $(MERCURY_VERSION)/scripts
 	test -d $(MERCURY_VERSION)/util || mkdir $(MERCURY_VERSION)/util
