@@ -24,7 +24,7 @@ library, runtime, etc.) fit together.
 <p>
 
 The main job of the compiler is to translate Mercury into C, although it
-can also translate (subsets of) Mercury to some other languages: Goedel,
+can also translate (subsets of) Mercury to some other languages:
 Mercury bytecode (for a planned bytecode interpreter), MSIL (for the
 Microsoft .NET platform) and RL (the Aditi Relational Language).
 
@@ -1105,10 +1105,6 @@ bytecode interpreter has not yet been written.
 
 <p>
 
-The following modules do not serve any function at the moment.
-Some of them are obsolete; other are work-in-progress.
-(For some of them its hard to say which!)
-
 	<dl>
 
 	<dt> lco.m:
@@ -1118,19 +1114,12 @@ Some of them are obsolete; other are work-in-progress.
 		It does not apply the optimization and will not until the
 		mode system is capable of expressing definite aliasing.
 
-	<dt> mercury_to_goedel.m:
-		<dd>
-		This converts from item_list to Goedel source code.
-		It works for simple programs, but doesn't handle
-		various Mercury constructs such as lambda expressions,
-		higher-order predicates, and functor overloading.
-
 	</dl>
 
 <p>
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-05-24 05:47:09 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-05-24 06:07:33 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

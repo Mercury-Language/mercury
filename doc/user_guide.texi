@@ -3121,13 +3121,6 @@ a @samp{.opt} file can only hold information derived directly
 from the corresponding @samp{.m} file.
 
 @sp 1
-@item -G
-@itemx --convert-to-goedel
-Convert the Mercury code to Goedel.  Output to file @file{@var{module}.loc}.
-The translation is not perfect; some Mercury constructs cannot be easily
-translated into Goedel.
-
-@sp 1
 @item -P
 @itemx --pretty-print
 @itemx --convert-to-mercury
@@ -3219,14 +3212,6 @@ supported in general.
 Output a bytecode form of the module for use
 by an experimental debugger.
 
-@c @item --generate-prolog
-@c Convert the program to Prolog.  Output to file @file{@var{module}.pl}
-@c or @file{@var{module}.nl} (depending the the dialect).
-@c
-@c @item --prolog-dialect @var{dialect}
-@c Target the named dialect if generating Prolog code.
-@c The @var{dialect} should be one of @samp{sicstus}, @samp{nu}.
-
 @item --auto-comments
 Output comments in the @file{@var{module}.c} file.
 This is primarily useful for trying to understand
@@ -3238,8 +3223,7 @@ The code may be easier to understand if you also use the
 @sp 1
 @item -n-, --no-line-numbers
 Do not put source line numbers in the generated code.
-The generated code may be in C (the usual case),
-in Goedel (with @samp{--convert-to-goedel})
+The generated code may be in C (the usual case)
 or in Mercury (with @samp{--convert-to-mercury}).
 
 @sp 1

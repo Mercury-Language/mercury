@@ -74,15 +74,3 @@ distribution.
 
 * Improvements to the debugger's pretty-printer.
 
-Work not in progress
---------------------
-
-The compiler also contains some code for the following features,
-but work on them has stopped, since finishing them off would be
-quite a bit more work, and our current priorities lie elsewhere.
-Still, these would make interesting and worthwhile projects
-if someone has the time for it.
-
-* There is a `--generate-prolog' option for a new back-end
-  that generates Prolog code.
-  Not very much progress has really been made on this.

@@ -77,8 +77,6 @@ handle_options(MaybeError, Args, Link) -->
 						MakeTransOptInt),
 		globals__io_lookup_bool_option(convert_to_mercury,
 			ConvertToMercury),
-		globals__io_lookup_bool_option(convert_to_goedel,
-			ConvertToGoedel),
 		globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
 		globals__io_lookup_bool_option(target_code_only,
@@ -91,7 +89,7 @@ handle_options(MaybeError, Args, Link) -->
 		{ bool__or_list([GenerateDependencies, MakeInterface,
 			MakePrivateInterface, MakeShortInterface,
 			MakeOptimizationInt, MakeTransOptInt,
-			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
+			ConvertToMercury, TypecheckOnly,
 			ErrorcheckOnly, TargetCodeOnly,
 			GenerateIL, GenerateJava,
 			CompileOnly, AditiOnly],
@@ -133,14 +131,9 @@ postprocess_options(ok(OptionTable), Error) -->
         ->
             { map__lookup(OptionTable, tags, TagsMethod0) },
             (
-                { TagsMethod0 = string(TagsMethodStr) },
-                { convert_tags_method(TagsMethodStr, TagsMethod) }
+                    { TagsMethod0 = string(TagsMethodStr) },
+                    { convert_tags_method(TagsMethodStr, TagsMethod) }
             ->
-                { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
-                (
-                    { PrologDialect0 = string(PrologDialectStr) },
-                    { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
-                ->
                     { map__lookup(OptionTable,
                         fact_table_hash_percent_full, PercentFull) },
                     (
@@ -178,7 +171,7 @@ postprocess_options(ok(OptionTable), Error) -->
                                     ->
                                         postprocess_options_2(OptionTable,
                                             Target, GC_Method, TagsMethod,
-                                            PrologDialect, TermNorm, TraceLevel,
+                                            TermNorm, TraceLevel,
                                             TraceSuppress, Error)
                                     ;
                                         { DumpAliasOption = string(DumpAlias) },
@@ -191,8 +184,8 @@ postprocess_options(ok(OptionTable), Error) -->
                                             NewOptionTable) },
                                         postprocess_options_2(NewOptionTable,
                                             Target, GC_Method, TagsMethod,
-                                            PrologDialect, TermNorm,
-                                            TraceLevel, TraceSuppress, Error)
+                                            TermNorm, TraceLevel,
+					    TraceSuppress, Error)
                                     ;
                                         { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
                                     )
@@ -208,11 +201,8 @@ postprocess_options(ok(OptionTable), Error) -->
                     ;
                         { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
                     )
-                ;
-                    { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
-                )
             ;
-                { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+                    { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
             )
         ;
             { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
@@ -223,15 +213,15 @@ postprocess_options(ok(OptionTable), Error) -->
     
 
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
-    gc_method::in, tags_method::in, prolog_dialect::in, termination_norm::in,
+    gc_method::in, tags_method::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, maybe(string)::out,
     io__state::di, io__state::uo) is det.
 
 postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
-		PrologDialect, TermNorm, TraceLevel, TraceSuppress, Error) -->
+		TermNorm, TraceLevel, TraceSuppress, Error) -->
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
-		PrologDialect, TermNorm, TraceLevel, TraceSuppress),
+		TermNorm, TraceLevel, TraceSuppress),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->

@@ -14,7 +14,7 @@
 % The basic reason for this is that it was designed to preserve
 % as much information about the source code as possible, so that
 % this representation could also be used for other tools such
-% as Mercury-to-Goedel converters, pretty-printers, etc.
+% as pretty-printers.
 % Currently the only information that is lost is that comments and
 % whitespace are stripped, any redundant parenthesization
 % are lost, distinctions between different spellings of the same

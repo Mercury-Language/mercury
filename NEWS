@@ -40,6 +40,9 @@ Changes to the Mercury implementation:
   This change will break some existing programs, but that is easily fixed
   by adding any necessary `:- import_module' or `:- use_module' declarations.
 
+* The `--convert-to-goedel' option has been removed.
+  It never really worked anyway.
+
 NEWS for Mercury release 0.10.1:
 --------------------------------
 

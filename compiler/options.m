@@ -86,7 +86,6 @@
 		;	generate_dependencies
 		;	generate_module_order
 		;	convert_to_mercury
-		;	convert_to_goedel
 		;	typecheck_only
 		;	errorcheck_only
 		;	target_code_only
@@ -103,11 +102,6 @@
 		;	suppress_trace
 		;	stack_trace_higher_order
 		;	generate_bytecode
-		;	generate_prolog		% Currently not used
-				% XXX generate_prolog should probably be
-				% in the "Output options" section rather than
-				% in the "Auxiliary output options" section
-		;	prolog_dialect		% Currently not used
 		;	line_numbers
 		;	auto_comments
 		;	show_dependency_graph
@@ -500,7 +494,6 @@ option_defaults_2(output_option, [
 	make_optimization_interface -	bool(no),
 	make_transitive_opt_interface -	bool(no),
 	convert_to_mercury 	-	bool(no),
-	convert_to_goedel 	-	bool(no),
 	typecheck_only		-	bool(no),
 	errorcheck_only		-	bool(no),
 	target_code_only	-	bool(no),
@@ -519,8 +512,6 @@ option_defaults_2(aux_output_option, [
 	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
-	generate_prolog		-	bool(no),
-	prolog_dialect		-	string("default"),
 	line_numbers		-	bool(yes),
 	auto_comments		-	bool(no),
 	show_dependency_graph	-	bool(no),
@@ -824,7 +815,6 @@ short_option('d', 			dump_hlds).
 short_option('D', 			dump_hlds_alias).
 short_option('e', 			errorcheck_only).
 short_option('E', 			verbose_errors).
-short_option('G', 			convert_to_goedel).
 short_option('h', 			help).
 short_option('H', 			highlevel_code).
 short_option('i', 			make_interface).
@@ -909,8 +899,6 @@ long_option("make-trans-opt", 		make_transitive_opt_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury). 
 long_option("pretty-print", 		convert_to_mercury).
-long_option("convert-to-goedel", 	convert_to_goedel).
-long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("typecheck-only",		typecheck_only).
 long_option("errorcheck-only",		errorcheck_only).
 long_option("target-code-only",		target_code_only).
@@ -929,10 +917,6 @@ long_option("suppress-trace",		suppress_trace).
 long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
-long_option("generate-prolog",		generate_prolog).
-long_option("generate-Prolog",		generate_prolog).
-long_option("prolog-dialect",		prolog_dialect).
-long_option("Prolog-dialect",		prolog_dialect).
 long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
 long_option("show-dependency-graph",	show_dependency_graph).
@@ -1713,10 +1697,6 @@ options_help_output -->
 		"\tOutput transitive optimization information",
 		"\tinto the `<module>.trans_opt' file.",
 		"\tThis option should only be used by mmake.",
-		"-G, --convert-to-goedel",
-		"\tConvert to Goedel. Output to file `<module>.loc'.",
-		"\tNote that some Mercury language constructs cannot",
-		"\t(easily) be translated into Goedel.",
 		"-P, --convert-to-mercury",
 		"\tConvert to Mercury. Output to file `<module>.ugly'",
 		"\tThis option acts as a Mercury ugly-printer.",
@@ -1784,17 +1764,9 @@ options_help_aux_output -->
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",
-% --generate-prolog is not documented because it is not yet implemented
-%		"--generate-prolog",
-%		"\tConvert the program to Prolog. Output to file `<module>.pl'",
-%		"\tor `<module>.nl' (depending on the dialect).",
-% --prolog-dialect is not documented because it is not yet used
-%		"--prolog-dialect {sicstus,nu}",
-%		"\tTarget the named dialect if generating Prolog code.",
 		"-n-, --no-line-numbers",
 		"\tDo not put source line numbers in the generated code.",
 		"\tThe generated code may be in C (the usual case),",
-		"\tin Goedel (with the option --convert-to-goedel)",
 		"\tor in Mercury (with the option --convert-to-mercury).",
 		"--auto-comments",
 		"\tOutput comments in the `<module>.c' file.",

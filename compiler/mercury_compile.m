@@ -69,7 +69,7 @@
 
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
-:- import_module mercury_to_mercury, mercury_to_goedel.
+:- import_module mercury_to_mercury.
 :- import_module dependency_graph, prog_util, rl_dump, rl_file.
 :- import_module options, globals, trace_params, passes_aux.
 
@@ -260,7 +260,7 @@ compiling_to_asm(Globals) :-
 	globals__get_target(Globals, asm),
 	% even if --target asm is specified,
 	% it can be overridden by other options:
-	OptionList = [convert_to_mercury, convert_to_goedel,
+	OptionList = [convert_to_mercury,
 		generate_dependencies, make_interface,
 		make_short_interface, make_private_interface,
 		make_optimization_interface,
@@ -476,7 +476,6 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	globals__io_lookup_bool_option(make_private_interface,
 						MakePrivateInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
-	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
 	( { Error = fatal } ->
 		{ ModulesToLink = [] }
 	; { Error = yes, HaltSyntax = yes } ->
@@ -497,9 +496,6 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 		module_name_to_file_name(ModuleName, ".ugly", yes,
 					OutputFileName),
 		convert_to_mercury(ModuleName, OutputFileName, Items),
-		{ ModulesToLink = [] }
-	; { ConvertToGoedel = yes } ->
-		convert_to_goedel(ModuleName, Items),
 		{ ModulesToLink = [] }
 	;
 		split_into_submodules(ModuleName, Items, SubModuleList),
