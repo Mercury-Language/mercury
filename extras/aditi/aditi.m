@@ -186,7 +186,7 @@
 :- import_module bool, char, exception, list, require, std_util, string.
 
 :- type aditi__connection == int.
-:- type aditi__state == unit.
+:- type aditi__state ---> aditi__state.
 
 	% These are handled by the RL code generator.
 :- external(aditi__aggregate_compute_initial/5).
@@ -203,6 +203,9 @@
 
 #define MADITI_check(status) MADITI_do_check(status, __LINE__);
 #define MADITI_throw MR_longjmp(&MADITI_jmp_buf);
+
+/* The timeout (in seconds) to use for a call to an Aditi procedure. */
+#define MADITI_CALL_TIMEOUT 600
 
 typedef enum { MADITI_INSERT_TUPLE, MADITI_DELETE_TUPLE } MADITI_insert_delete;
 typedef enum { MADITI_INSERT, MADITI_DELETE, MADITI_MODIFY } MADITI_bulk_op;
@@ -852,8 +855,8 @@ MADITI_run_procedure(String proc_name, String input_schema, String input_tuple)
 	DEBUG(printf(""running procedure... ""));
 	/* XXX MR_GC_NEW_ATOMIC */
 	output_ticket = (ticket *) MR_GC_NEW(ticket);
-	MADITI_check(ADITI_NAME(run2_s)(proc_name, 0, &MADITI_ticket,
-		&input_ticket, output_ticket));
+	MADITI_check(ADITI_NAME(run2_s)(proc_name, MADITI_CALL_TIMEOUT,
+		&MADITI_ticket, &input_ticket, output_ticket));
 	DEBUG(printf(""done\\n""));
 
 	/*
@@ -1039,7 +1042,7 @@ MADITI_do_bulk_operation(MADITI_bulk_op operation)
 	DEBUG(printf(""Query finished -- calling update procedure %s\\n"",
 		update_proc_name));
 	MADITI_check(ADITI_NAME(run2_s)(update_proc_name,
-		0, &MADITI_ticket, call_result_ticket,
+		MADITI_CALL_TIMEOUT, &MADITI_ticket, call_result_ticket,
 		&dummy_output_ticket)
 	);
 
