@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -571,22 +571,10 @@ rbtree__lookup(T, K, V) :-
 
 %-----------------------------------------------------------------------------%
 
-rbtree__search(empty, _K, _V) :-
-	fail.
-rbtree__search(red(K0, V0, Left, Right), K, V) :-
-	compare(Result, K, K0),
-	(
-		Result = (=)
-	->
-		V = V0
-	;
-		Result = (<)
-	->
-		rbtree__search(Left, K, V)
-	;
-		rbtree__search(Right, K, V)
-	).
-rbtree__search(black(K0, V0, Left, Right), K, V) :-
+rbtree__search(Tree, K, V) :-
+	( Tree = red(K0, V0, Left, Right)
+	; Tree = black(K0, V0, Left, Right)
+	),
 	compare(Result, K, K0),
 	(
 		Result = (=)
