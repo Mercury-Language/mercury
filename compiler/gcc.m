@@ -681,7 +681,6 @@
 
 #include ""gcc/config.h""
 #include ""gcc/system.h""
-#include ""gcc/gansidecl.h""
 #include ""gcc/toplev.h""
 #include ""gcc/tree.h""
 /* XXX we should eliminate the dependency on the C front-end */
@@ -1146,7 +1145,7 @@ call_frontend_callback(FrontEndCallBack, Output) -->
 	set_var_decl_asm_name(Decl::in, AsmName::in, _IO0::di, _IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-	DECL_ASSEMBLER_NAME((tree) Decl) = get_identifier(AsmName);
+	SET_DECL_ASSEMBLER_NAME((tree) Decl, get_identifier(AsmName));
 ").
 
 %
