@@ -10,68 +10,35 @@ browser> set format raw_pretty
 browser> set depth 10
 browser> ls
 big(
-  big(big(small, .(1, []), small), .(1, .(2, [])), small), 
-  .(1, .(2, .(3, []))), 
+  big(big(small, [1], small), [1, 2], small), 
+  [1, 2, 3], 
   big(
-    big(
-      small, 
-      .(1, .(2, .(3, .(4, [])))), 
-      big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
-    .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
+    big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), 
+    [1, 2, 3, 4, 5, 6], 
     small))
 browser> set width 131
 browser> ls
 big(
-  big(big(small, .(1, []), small), .(1, .(2, [])), small), 
-  .(1, .(2, .(3, []))), 
-  big(
-    big(small, .(1, .(2, .(3, .(4, [])))), big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
-    .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
-    small))
+  big(big(small, [1], small), [1, 2], small), 
+  [1, 2, 3], 
+  big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), [1, 2, 3, 4, 5, 6], small))
 browser> set width 30
 browser> ls
 big(
   big(
-    big(
-      small, 
-      .(1, []), 
-      small), 
-    .(1, .(2, [])), 
+    big(small, [1], small), 
+    [1, 2], 
     small), 
-  .(1, .(2, .(3, []))), 
+  [1, 2, 3], 
   big(
     big(
       small, 
-      .(
-        1, 
-        .(
-          2, 
-          .(3, .(4, [])))), 
+      [1, 2, 3, 4], 
       big(
         small, 
-        .(
-          1, 
-          .(
-            2, 
-            .(
-              3, 
-              .(
-                4, 
-                .(
-                  5, 
-                  []))))), 
+        [1, 2, 3, 4, 5], 
         small)), 
-    .(
-      1, 
-      .(
-        2, 
-        .(
-          3, 
-          .(
-            4, 
-            .(
-              5, 
-              .(6, [])))))), 
+    [1, 2, 3, 4, 5, 6], 
     small))
 browser> set width 10
 browser> ls
@@ -79,70 +46,42 @@ big(
   big(
     big(
       small, 
-      .(
-        1, 
-        []), 
+      [1], 
       small), 
-    .(
-      1, 
-      .(
-        2, 
-        [])), 
+    [1, 
+    2], 
     small), 
-  .(
-    1, 
-    .(
-      2, 
-      .(
-        3, 
-        []))), 
+  [1, 2, 
+  3], 
   big(
     big(
       small, 
-      .(
-        1, 
-        .(
-          2, 
-          .(
-            3, 
-            .(
-              4, 
-              [])))), 
+      [1, 
+      2, 
+      3, 
+      4], 
       big(
         small, 
-        .(
-          1, 
-          .(
-            2, 
-            .(
-              3, 
-              .(
-                4, 
-                .(
-                  5, 
-                  []))))), 
-        small)), 
-    .(
-      1, 
-      .(
+        [1, 
         2, 
-        .(
-          3, 
-          .(
-            4, 
-            .(
-              5, 
-              .(
-                6, 
-                [])))))), 
+        3, 
+        4, 
+        5], 
+        small)), 
+    [1, 
+    2, 
+    3, 
+    4, 
+    5, 
+    6], 
     small))
 browser> set width 79
 browser> set depth 3
 browser> ls
 big(
-  big(big(small, ./2, small), .(1, ./2), small), 
-  .(1, .(2, ./2)), 
-  big(big(small, ./2, big/3), .(1, ./2), small))
+  big(big(small, [...], small), [1, ...], small), 
+  [1, 2, ...], 
+  big(big(small, [...], big/3), [1, ...], small))
 browser> set format pretty
 browser> set lines 4
 browser> set width 40
