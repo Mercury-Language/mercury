@@ -14,6 +14,13 @@
 #include "mercury_stack_trace.h"
 #include <stdio.h>
 
+typedef	enum {
+	STEP_ERROR_BEFORE,	/* the current entry_layout has no valid info */
+	STEP_ERROR_AFTER,	/* the current entry_layout has valid info,
+				   but the next one does not */
+	STEP_OK			/* both have valid info */
+} MR_Stack_Walk_Step_Result;
+
 static const char * detism_names[] = {
 	"failure",	/* 0 */
 	"",		/* 1 */
@@ -32,11 +39,15 @@ static const char * detism_names[] = {
 	"cc_multi"	/* 14 */
 };
 
+static	MR_Stack_Walk_Step_Result MR_stack_walk_step(MR_Stack_Layout_Entry *,
+			MR_Stack_Layout_Entry **, Word **, Word **,
+			const char **);
+
 static	void	MR_dump_stack_record_init(void);
 static	void	MR_dump_stack_record_frame(FILE *fp, MR_Stack_Layout_Entry *);
 static	void	MR_dump_stack_record_flush(FILE *fp);
 static	void	MR_dump_stack_record_print(FILE *fp, MR_Stack_Layout_Entry *,
-			int);
+			int, int);
 
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
@@ -72,85 +83,118 @@ const char *
 MR_dump_stack_from_layout(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
 		Word *det_stack_pointer, Word *current_frame)
 {
+	MR_Stack_Walk_Step_Result	result;
+	MR_Stack_Layout_Entry		*next_entry_layout;
+	const char			*problem;
+	Word				*stack_trace_sp;
+	Word				*stack_trace_curfr;
+
+	MR_dump_stack_record_init();
+
+	stack_trace_sp = det_stack_pointer;
+	stack_trace_curfr = current_frame;
+
+	do {
+		result = MR_stack_walk_step(entry_layout, &next_entry_layout,
+				&stack_trace_sp, &stack_trace_curfr, &problem);
+		if (result == STEP_ERROR_BEFORE) {
+			MR_dump_stack_record_flush(fp);
+			return problem;
+		} else if (result == STEP_ERROR_AFTER) {
+			MR_dump_stack_record_frame(fp, entry_layout);
+			MR_dump_stack_record_flush(fp);
+			return problem;
+		} else {
+			MR_dump_stack_record_frame(fp, entry_layout);
+		}
+
+		if (next_entry_layout == NULL) {
+			break;
+		}
+
+		entry_layout = next_entry_layout;
+	} while (TRUE); 
+
+	MR_dump_stack_record_flush(fp);
+	return NULL;
+}
+
+static	MR_Stack_Walk_Step_Result
+MR_stack_walk_step(MR_Stack_Layout_Entry *entry_layout,
+	MR_Stack_Layout_Entry **next_entry_layout,
+	Word **stack_trace_sp_ptr, Word **stack_trace_curfr_ptr,
+	const char **problem_ptr)
+{
 	Label			*label;
 	MR_Live_Lval		location;
 	MR_Stack_Layout_Label	*layout;
 	MR_Lval_Type		type;
-	Code			*success_pointer;
 	int			number, determinism;
+	Code			*success;
 
-	MR_dump_stack_record_init();
+	determinism = entry_layout->MR_sle_detism;
 
-	do {
+	if (determinism < 0) {
+		/*
+		** This means we have reached some handwritten code that has
+		** no further information about the stack frame.
+		*/
+
+		*problem_ptr = "reached procedure with no stack trace info";
+		return STEP_ERROR_BEFORE;
+	}
+
+	if (MR_DETISM_DET_STACK(determinism)) {
 		location = entry_layout->MR_sle_succip_locn;
 		type = MR_LIVE_LVAL_TYPE(location);
 		number = MR_LIVE_LVAL_NUMBER(location);
 
-		determinism = entry_layout->MR_sle_detism;
-
-		/*
-		** A negative determinism means handwritten code has
-		** been reached.  Usually this means we have reached
-		** "global_success", so we should stop dumping the stack.
-		**
-		** Otherwise it means we have reached some handwritten
-		** code that has no further information about the stack
-		** frame.  In this case, we also stop dumping the stack.
-		*/
-
-		if (determinism < 0) {
-			MR_dump_stack_record_flush(fp);
-			return "reached procedure with no stack trace info";
+		if (type != MR_LVAL_TYPE_STACKVAR) {
+			*problem_ptr = "can only handle stackvars";
+			return STEP_ERROR_AFTER;
 		}
 
-		MR_dump_stack_record_frame(fp, entry_layout);
-		if (MR_DETISM_DET_STACK(determinism)) {
-			if (type == MR_LVAL_TYPE_STACKVAR) {
-				success_pointer = (Code *) field(0,
-					det_stack_pointer, -number);
-			} else {
-				MR_dump_stack_record_flush(fp);
-				return "can only handle stackvars";
-			}
-			det_stack_pointer = det_stack_pointer -
-				entry_layout->MR_sle_stack_slots;
-		} else {
-			success_pointer = bt_succip(current_frame);
-			current_frame = bt_succfr(current_frame);
-		}
+		success = (Code *) field(0, *stack_trace_sp_ptr, -number);
+		*stack_trace_sp_ptr = *stack_trace_sp_ptr -
+			entry_layout->MR_sle_stack_slots;
+	} else {
+		success = bt_succip(*stack_trace_curfr_ptr);
+		*stack_trace_curfr_ptr = bt_succfr(*stack_trace_curfr_ptr);
+	}
 
-		if (success_pointer == MR_stack_trace_bottom) {
-			MR_dump_stack_record_flush(fp);
-			return NULL;
-		}
+	if (success == MR_stack_trace_bottom) {
+		*next_entry_layout = NULL;
+		return STEP_OK;
+	}
 
-		label = lookup_label_addr(success_pointer);
-		if (label == NULL) {
-			MR_dump_stack_record_flush(fp);
-			return "reached label with no stack trace info";
-		}
+	label = lookup_label_addr(success);
+	if (label == NULL) {
+		*problem_ptr = "reached label with no stack trace info";
+		return STEP_ERROR_AFTER;
+	}
 
-		layout = (MR_Stack_Layout_Label *) label->e_layout;
-		if (layout == NULL) {
-			MR_dump_stack_record_flush(fp);
-			return "reached label with no stack layout info";
-		}
+	layout = (MR_Stack_Layout_Label *) label->e_layout;
+	if (layout == NULL) {
+		*problem_ptr = "reached label with no stack layout info";
+		return STEP_ERROR_AFTER;
+	}
 
-		entry_layout = layout->MR_sll_entry;
-	} while (TRUE);
-
-	/*NOTREACHED*/
-	return "internal error in MR_dump_stack_from_layout";
+	*next_entry_layout = layout->MR_sll_entry;
+	return STEP_OK;
 }
 
-static MR_Stack_Layout_Entry	*prev_entry_layout;
-static int			prev_entry_layout_count;
+static	MR_Stack_Layout_Entry	*prev_entry_layout;
+static	int			prev_entry_layout_count;
+static	int			prev_entry_start_level;
+static	int			current_level;
 
 static void
 MR_dump_stack_record_init(void)
 {
 	prev_entry_layout = NULL;
 	prev_entry_layout_count = 0;
+	prev_entry_start_level = 0;
+	current_level = 0;
 }
 
 static void
@@ -162,7 +206,10 @@ MR_dump_stack_record_frame(FILE *fp, MR_Stack_Layout_Entry *entry_layout)
 		MR_dump_stack_record_flush(fp);
 		prev_entry_layout = entry_layout;
 		prev_entry_layout_count = 1;
+		prev_entry_start_level = current_level;
 	}
+
+	current_level++;
 }
 
 static void
@@ -170,24 +217,26 @@ MR_dump_stack_record_flush(FILE *fp)
 {
 	if (prev_entry_layout != NULL) {
 		MR_dump_stack_record_print(fp, prev_entry_layout,
-			prev_entry_layout_count);
+			prev_entry_layout_count, prev_entry_start_level);
 	}
 }
 
 static void
 MR_dump_stack_record_print(FILE *fp, MR_Stack_Layout_Entry *entry_layout,
-	int count)
+	int count, int start_level)
 {
-	fprintf(fp, "\t%s:%s/%ld (mode %ld, %s)",
+	fprintf(fp, "%9d ", start_level);
+
+	if (count > 1) {
+		fprintf(fp, " %3d*", count);
+	} else {
+		fprintf(fp, "%5s", "");
+	}
+
+	fprintf(fp, " %s:%s/%ld-%ld (%s)\n",
 		entry_layout->MR_sle_def_module,
 		entry_layout->MR_sle_name,
 		(long) entry_layout->MR_sle_arity,
 		(long) entry_layout->MR_sle_mode,
 		detism_names[entry_layout->MR_sle_detism]);
-
-	if (count > 1) {
-		fprintf(fp, " * %d\n", count);
-	} else {
-		putc('\n', fp);
-	}
 }
