@@ -1301,15 +1301,16 @@ XXX Full exception handling support is not yet implemented.
 	%
 	--->	field(maybe(mlds__tag), mlds__rval, field_id, 
 			mlds__type, mlds__type)
-				% field(Tag, Address, FieldName, FieldType,
+				% field(Tag, Address, FieldId, FieldType,
 				%	PtrType)
 				% selects a field of a compound term.
 				% Address is a tagged pointer to a cell
-				% on the heap; the offset into the cell
-				% is FieldNum words. If Tag is yes, the
-				% arg gives the value of the tag; if it is
-				% no, the tag bits will have to be masked off.
-				% The value of the tag should be given if
+				% on the heap; the position in the cell, 
+				% FieldId, is represented either as a field 
+				% name or a number of words offset. If Tag is 
+				% yes, the arg gives the value of the tag; if 
+				% it is no, the tag bits will have to be masked
+				% off. The value of the tag should be given if
 				% it is known, since this will lead to
 				% faster code.
 				% The FieldType is the type of the field.
