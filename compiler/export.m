@@ -540,7 +540,7 @@ copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 			C_Type = foreign__to_type_string(c, Export_Type),
 			string__append_list(
 				["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(",
-				C_Type, ", ", ArgLocString, ", ",
+				C_Type, ", ", ArgLocString, ", * ",
 				ArgName, ");\n"], OutputArg)
 		;
 			string__append_list(
