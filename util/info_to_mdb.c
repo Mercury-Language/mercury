@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -31,7 +31,7 @@ static	void	print_command_line(const char *line, bool is_concept);
 static	char	*get_next_line(FILE *infp);
 static	void	put_line_back(char *line);
 
-#define	concept_char(c)		(MR_isupper(c) ? tolower(c) : \
+#define	concept_char(c)		(MR_isupper(c) ? tolower((unsigned char)c) : \
 					(MR_isspace(c) ? '_' : (c)))
 
 int
