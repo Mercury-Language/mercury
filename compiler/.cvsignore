@@ -1,5 +1,6 @@
 *.c
 *.ql
+*.prof
 mercury_compile.m optimize.m code_gen.m
 conf.m
 mercury_compile.stats
