@@ -85,6 +85,14 @@ LINK_SHARED_OBJ_SH  	= @LINK_SHARED_OBJ_SH@
 ALLOW_UNDEFINED	= @ALLOW_UNDEFINED@
 ERROR_UNDEFINED	= @ERROR_UNDEFINED@
 
+# The thread-safe version of the Boehm GC library links in lots
+# of system-specific libraries that we don't want to have to
+# explicitly link in when building the Mercury shared libraries,
+# so override ERROR_UNDEFINED in that case.
+ifeq "$(findstring .par,$(GRADE))$(findstring .gc,$(GRADE))" ".par.gc"
+ERROR_UNDEFINED	= $(ALLOW_UNDEFINED)
+endif
+
 # The following variables specify how to pass options to the # $(CC) or
 # $(LINK_SHARED_OBJ) command to specify directories to be searched at
 # runtime for shared libraries.
