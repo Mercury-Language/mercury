@@ -305,8 +305,10 @@ enum MR_TypeLayoutValue {
 
 #define MR_EXISTENTIAL_VAR_BASE			512
 
-#define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)	( (Word) T > MR_EXISTENTIAL_VAR_BASE )
-#define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)	( (Word) T <= MR_EXISTENTIAL_VAR_BASE )
+#define MR_TYPE_VARIABLE_IS_EXIST_QUANT(T)	\
+	( (Word) (T) > MR_EXISTENTIAL_VAR_BASE )
+#define MR_TYPE_VARIABLE_IS_UNIV_QUANT(T)	\
+	( (Word) (T) <= MR_EXISTENTIAL_VAR_BASE )
 
 /*
 ** This constant is also used for other information - for
