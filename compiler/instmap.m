@@ -146,6 +146,12 @@
 		instmap, instmap, module_info, module_info).
 :- mode instmap__bind_var_to_functor(in, in, in, out, in, out) is det.
 
+	% Update the given instmap to include the initial insts of the
+	% lambda variables.
+:- pred instmap__pre_lambda_update(module_info, list(var), list(mode),
+		instmap, instmap).
+:- mode instmap__pre_lambda_update(in, in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Given two instmaps and a set of variables, compute an instmap delta
@@ -422,6 +428,11 @@ bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+instmap__pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
+	mode_list_get_initial_insts(Modes, ModuleInfo, Insts),
+	assoc_list__from_corresponding_lists(Vars, Insts, VarInsts),
+	instmap_delta_from_assoc_list(VarInsts, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
 %-----------------------------------------------------------------------------%
 

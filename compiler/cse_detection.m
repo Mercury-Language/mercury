@@ -209,9 +209,12 @@ detect_cse_in_goal_2(higher_order_call(A,B,C,D,E), _, _, CseInfo, CseInfo, no,
 detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 	call(A,B,C,D,E,F)).
 
-detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap, CseInfo0, CseInfo, Redo,
+detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap0, CseInfo0, CseInfo, Redo,
 		unify(A,B,C,D,E)) :-
 	( B0 = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0) ->
+		CseInfo0 = cse_info(_, _, ModuleInfo),
+		instmap__pre_lambda_update(ModuleInfo, 
+			Vars, Modes, InstMap0, InstMap),
 		detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo, Redo,
 			Goal),
 		B = lambda_goal(PredOrFunc, Vars, Modes, Det, Goal)

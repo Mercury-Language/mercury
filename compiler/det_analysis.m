@@ -448,7 +448,10 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 		;	
 			LambdaSolnContext = all_solns
 		),
-		det_infer_goal(Goal0, InstMap0, LambdaSolnContext, DetInfo,
+		det_info_get_module_info(DetInfo, ModuleInfo),
+		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
+			InstMap0, InstMap1),
+		det_infer_goal(Goal0, InstMap1, LambdaSolnContext, DetInfo,
 				Goal, LambdaInferredDet, Msgs1),
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
