@@ -461,22 +461,21 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 	proc_info_set_goal(ProcInfo3, Goal, ProcInfo4),
 
 	(
+		Requantify = yes,
+		requantify_proc(ProcInfo4, ProcInfo5)
+	;
+		Requantify = no,
+		ProcInfo5 = ProcInfo4
+	),
+
+	(
 		DidInlining = yes,
-		recompute_instmap_delta_proc(yes, ProcInfo4, ProcInfo5,
+		recompute_instmap_delta_proc(yes, ProcInfo5, ProcInfo,
 			ModuleInfo0, ModuleInfo1)
 	;
 		DidInlining = no,
-		ProcInfo5 = ProcInfo4,
+		ProcInfo = ProcInfo5,
 		ModuleInfo1 = ModuleInfo0
-	),
-
-	globals__io_get_globals(Globals, IoState0, IoState),
-	(
-		Requantify = yes,
-		requantify_proc(ProcInfo5, ProcInfo)
-	;
-		Requantify = no,
-		ProcInfo = ProcInfo5
 	),
 
 	map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
@@ -498,6 +497,7 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		% then we re-run determinism analysis, because
 		% propagating the determinism information through
 		% the procedure may lead to more efficient code.
+	globals__io_get_globals(Globals, IoState0, IoState),
 	(
 		DetChanged = yes,	
 		det_infer_proc(PredId, ProcId, ModuleInfo2, ModuleInfo,
