@@ -162,8 +162,8 @@
 
     % Like lookup, but just fails if there is no entry for the key.
     %
-:- func search(hash_table(K, V), K) = V.
-:- mode search(hash_table_ui, in) = out is semidet.
+:- pred search(hash_table(K, V), K, V).
+:- mode search(hash_table_ui, in, out) is semidet.
 %:- mode search(in, in, out) is semidet.
 
     % Convert a hash table into an association list.
@@ -183,19 +183,9 @@
 
 :- implementation.
 
-% Everything beyond here is not intended as part of the public interface,
-% and will not appear in the Mercury Library Reference Manual.
-
-:- interface.
-
-:- pred search(hash_table(K, V), K, V).
-:- mode search(hash_table_ui, in, out) is semidet.
-%:- mode search(in, in, out) is semidet.
-:- pragma obsolete(search/3).
-
-:- implementation.
-
 :- import_module math, bool, exception, list, require, std_util.
+
+
 
 :- type hash_table(K, V) 
     --->    ht(
@@ -337,9 +327,7 @@ set(HT0, K, V) = HT :-
 
 % ---------------------------------------------------------------------------- %
 
-search(HT, K, search(HT, K)).
-
-search(HT, K) = V :-
+search(HT, K, V) :-
     H = find_slot(HT, K),
     bitmap__is_set(HT ^ bitmap, H),
     V = HT ^ values ^ elem(H).
@@ -381,7 +369,7 @@ det_update(HT, K, V) =
 % ---------------------------------------------------------------------------- %
 
 lookup(HT, K) =
-    ( if V = search(HT, K)
+    ( if search(HT, K, V)
       then V
       else throw(software_error("hash_table__lookup: key not found"))
     ).
