@@ -283,7 +283,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require, globals, options.
+:- import_module char, require, globals, options.
 :- import_module exprn_aux.
 
 %-----------------------------------------------------------------------------%
@@ -1687,40 +1687,100 @@ llds__reg_to_string(f(N), Description) :-
 	string__append("f(", N_String, Tmp),
 	string__append(Tmp, ")", Description).
 
-	% XXX This is a quick hack!
+%-----------------------------------------------------------------------------%
+
+	% Convert a Mercury predicate name into something that can form
+	% part of a C identifier.  This predicate is necessary because
+	% quoted names such as 'name with embedded spaces' are valid
+	% predicate names in Mercury.
 
 :- pred llds__name_mangle(string, string).
 :- mode llds__name_mangle(in, out) is det.
 
-llds__name_mangle(Pred0, Pred) :-
-	string__to_char_list(Pred0, CharList0),
-	llds__name_mangle_2(CharList0, CharList),
-	string__from_char_list(CharList, Pred).
-
-:- pred llds__name_mangle_2(list(character), list(character)).
-:- mode llds__name_mangle_2(in, out) is det.
-
-llds__name_mangle_2([], []).
-llds__name_mangle_2([C|Cs], Chars) :-
-	llds__mangle_char(C, Chars0),
-	llds__name_mangle_2(Cs, Chars1),
-	list__append(Chars0, Chars1, Chars).
-
-:- pred llds__mangle_char(character, list(character)).
-:- mode llds__mangle_char(in, out) is det.
-
-llds__mangle_char(C, Chars) :-
+llds__name_mangle(Name, MangledName) :-
 	(
-		C = ('=')
+		string__is_alnum_or_underscore(Name)
 	->
-		Chars = ['_','_','e','q','_','_']
+		% any names that start with `f_' are changed so that
+		% they start with `f__', so that we can use names starting
+		% with `f_' (followed by anything except an underscore)
+		% without fear of name collisions
+		(
+			string__append("f_", Suffix, Name)
+		->
+			string__append("f__", Suffix, MangledName)
+		;
+			MangledName = Name
+		)
 	;
-		C = ('!')
-	->
-		Chars = ['_','_','c','u','t','_','_']
-	;
-		Chars = [C]
+		llds__convert_to_valid_c_identifier(Name, MangledName)
 	).
+
+
+:- pred llds__convert_to_valid_c_identifier(string, string).
+:- mode llds__convert_to_valid_c_identifier(in, out) is det.
+
+llds__convert_to_valid_c_identifier(String, Name) :-	
+	(
+		llds__name_conversion_table(String, Name0)
+	->
+		Name = Name0
+	;
+		llds__convert_to_valid_c_identifier_2(String, Name0),
+		string__append("f", Name0, Name)
+	).
+
+	% A table used to convert Mercury functors into
+	% C identifiers.  Feel free to add any new translations you want.
+	% The C identifiers should start with "f_",
+	% to avoid introducing name clashes.
+	% If the functor name is not found in the table, then
+	% we use a fall-back method which produces ugly names.
+
+:- pred llds__name_conversion_table(string, string).
+:- mode llds__name_conversion_table(in, out) is semidet.
+
+llds__name_conversion_table("\\=", "f_not_equal").
+llds__name_conversion_table(">=", "f_greater_or_equal").
+llds__name_conversion_table("=<", "f_less_or_equal").
+llds__name_conversion_table("=", "f_equal").
+llds__name_conversion_table("<", "f_less_than").
+llds__name_conversion_table(">", "f_greater_than").
+llds__name_conversion_table("-", "f_minus").
+llds__name_conversion_table("+", "f_plus").
+llds__name_conversion_table("*", "f_times").
+llds__name_conversion_table("/", "f_slash").
+llds__name_conversion_table(",", "f_comma").
+llds__name_conversion_table(";", "f_semicolon").
+
+	% This is the fall-back method.
+	% Given a string, produce a C identifier
+	% for that string by concatenating the decimal
+	% expansions of the character codes in the string,
+	% separated by underlines.
+	% The C identifier will start with "f_"; this predicate
+	% constructs everything except the initial "f".
+	%
+	% For example, given the input "\n\t" we return "_10_8".
+
+:- pred llds__convert_to_valid_c_identifier_2(string, string).
+:- mode llds__convert_to_valid_c_identifier_2(in, out) is det.
+
+llds__convert_to_valid_c_identifier_2(String, Name) :-	
+	(
+		string__first_char(String, Char, Rest)
+	->
+		char_to_int(Char, Code),
+		string__int_to_string(Code, CodeString),
+		string__append("_", CodeString, ThisCharString),
+		llds__convert_to_valid_c_identifier_2(Rest, Name0),
+		string__append(ThisCharString, Name0, Name)
+	;
+		% String is the empty string
+		Name = String
+	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred gather_labels(list(c_procedure), list(label)).
 :- mode gather_labels(in, out) is det.
@@ -1751,6 +1811,8 @@ gather_labels_from_instrs([Instr | Instrs], Labels0, Labels) :-
 
 :- pred use_macro_for_redo_fail(bool).
 :- mode use_macro_for_redo_fail(out) is det.
+
+% this ought to be a compiler option...
 
 use_macro_for_redo_fail(yes).
 
