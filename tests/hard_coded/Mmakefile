@@ -56,6 +56,7 @@ ORDINARY_PROGS=	\
 	existential_types_test \
 	expand \
 	export_test \
+	export_test2 \
 	external_unification_pred \
 	failure_unify \
 	field_syntax \
@@ -254,8 +255,6 @@ endif
 # XXX compare_rep_array doesn't work because MR_COMPARE_BY_RTTI is
 #     not yet implemented for arrays.
 #
-# XXX export_test2 doesn't work because the equiv_type_hlds pass is disabled
-#     due to performance problems.
 
 # The following tests are passed only in some grades.
 

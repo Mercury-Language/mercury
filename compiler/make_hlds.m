@@ -8127,7 +8127,7 @@ process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
 	% because at the moment no recompilation.item_id can depend on a
 	% clause item.
 	RecordExpanded = no,
-	equiv_type__replace_in_type(EqvMap, Type2, Type, TVarSet1, TVarSet,
+	equiv_type__replace_in_type(EqvMap, Type2, Type, _, TVarSet1, TVarSet,
 		RecordExpanded, _)
 	},
 	update_var_types(VarTypes0, Var, Type, Context, VarTypes),

@@ -45,9 +45,15 @@
 		in, out, di, uo) is det.
 
 	% Replace equivalence types in a given type.
-:- pred equiv_type__replace_in_type(eqv_map, type, type,
+	% The bool output is `yes' if anything changed.
+:- pred equiv_type__replace_in_type(eqv_map, type, type, bool,
 		tvarset, tvarset, equiv_type_info, equiv_type_info).
-:- mode equiv_type__replace_in_type(in, in, out, in, out, in, out) is det.
+:- mode equiv_type__replace_in_type(in, in, out, out, in, out, in, out) is det.
+
+:- pred equiv_type__replace_in_type_list(eqv_map, list(type), list(type),
+		bool, tvarset, tvarset, equiv_type_info, equiv_type_info).
+:- mode equiv_type__replace_in_type_list(in, in, out, out, in, out,
+		in, out) is det.
 
 :- pred equiv_type__replace_in_class_constraints(eqv_map, class_constraints, 
 		class_constraints, tvarset, tvarset,
@@ -389,8 +395,8 @@ equiv_type__replace_in_item(ModuleName,
 	equiv_type__replace_in_class_constraint_list(EqvMap,
 		Constraints0, Constraints, VarSet0, VarSet1,
 		UsedTypeCtors0, UsedTypeCtors1),
-	equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, _, VarSet1, VarSet,
-		UsedTypeCtors1, UsedTypeCtors),
+	equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, _, _,
+		VarSet1, VarSet, UsedTypeCtors1, UsedTypeCtors),
 	list__length(Ts0, Arity),
 	equiv_type__finish_recording_expanded_items(
 		item_id(typeclass, ClassName - Arity),
@@ -426,7 +432,7 @@ equiv_type__replace_in_item(ModuleName,
 equiv_type__replace_in_type_defn(EqvMap, TypeCtor, eqv_type(TBody0),
 		eqv_type(TBody), ContainsCirc, !VarSet, !Info) :-
 	equiv_type__replace_in_type_2(EqvMap, [TypeCtor], TBody0, TBody,
-		ContainsCirc, !VarSet, !Info).
+		_, ContainsCirc, !VarSet, !Info).
 
 equiv_type__replace_in_type_defn(EqvMap, _,
 		du_type(TBody0, IsSolverType, EqPred),
@@ -457,7 +463,8 @@ equiv_type__replace_in_class_constraint_list(EqvMap, Cs0, Cs,
 equiv_type__replace_in_class_constraint(EqvMap, Constraint0, Constraint,
 		!VarSet, !Info) :-
 	Constraint0 = constraint(ClassName, Ts0),
-	equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, _, !VarSet, !Info),
+	equiv_type__replace_in_type_list(EqvMap, Ts0, Ts,
+		_, _, !VarSet, !Info),
 	Constraint = constraint(ClassName, Ts).
 
 %-----------------------------------------------------------------------------%
@@ -523,7 +530,7 @@ equiv_type__replace_in_class_method(_, EqvInstMap,
 equiv_type__replace_in_subst(_EqvMap, [], [], !VarSet, !Info).
 equiv_type__replace_in_subst(EqvMap, [Var - Type0 | Subst0],
 		[Var - Type | Subst], !VarSet, !Info) :-
-	equiv_type__replace_in_type(EqvMap, Type0, Type, !VarSet, !Info),
+	equiv_type__replace_in_type(EqvMap, Type0, Type, _, !VarSet, !Info),
 	equiv_type__replace_in_subst(EqvMap, Subst0, Subst, !VarSet, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -546,31 +553,43 @@ equiv_type__replace_in_ctor(EqvMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred equiv_type__replace_in_type_list(eqv_map, list(type), list(type),
-		bool, tvarset, tvarset, equiv_type_info, equiv_type_info).
-:- mode equiv_type__replace_in_type_list(in, in, out, out, in, out,
-		in, out) is det.
-
-equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, ContainsCirc,
+equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, Changed,
 		!VarSet, !Info) :-
 	equiv_type__replace_in_type_list_2(EqvMap, [], Ts0, Ts,
-		no, ContainsCirc, !VarSet, !Info).
+		Changed, no, _, !VarSet, !Info).
+
+:- pred equiv_type__replace_in_type_list(eqv_map, list(type), list(type),
+		bool, bool, tvarset, tvarset, equiv_type_info, equiv_type_info).
+:- mode equiv_type__replace_in_type_list(in, in, out, out, out, in, out,
+		in, out) is det.
+
+equiv_type__replace_in_type_list(EqvMap, Ts0, Ts, Changed, ContainsCirc,
+		!VarSet, !Info) :-
+	equiv_type__replace_in_type_list_2(EqvMap, [], Ts0, Ts,
+		Changed, no, ContainsCirc, !VarSet, !Info).
 
 :- pred equiv_type__replace_in_type_list_2(eqv_map, list(type_ctor),
-		list(type), list(type), bool, bool, tvarset, tvarset,
+		list(type), list(type), bool, bool, bool, tvarset, tvarset,
 		equiv_type_info, equiv_type_info).
-:- mode equiv_type__replace_in_type_list_2(in, in, in, out,
+:- mode equiv_type__replace_in_type_list_2(in, in, in, out, out,
 		in, out, in, out, in, out) is det.
 
-equiv_type__replace_in_type_list_2(_EqvMap, _Seen, [], [],
+equiv_type__replace_in_type_list_2(_EqvMap, _Seen, [], [], no,
 		!ContainsCirc, !VarSet, !Info).
-equiv_type__replace_in_type_list_2(EqvMap, Seen, [T0 | Ts0], [T | Ts],
-		!Circ, !VarSet, !Info) :-
-	equiv_type__replace_in_type_2(EqvMap, Seen, T0, T, ContainsCirc,
-		!VarSet, !Info),
+equiv_type__replace_in_type_list_2(EqvMap, Seen, List0 @ [T0 | Ts0], List,
+		Changed, !Circ, !VarSet, !Info) :-
+	equiv_type__replace_in_type_2(EqvMap, Seen, T0, T, Changed0,
+		ContainsCirc, !VarSet, !Info),
 	!:Circ = ContainsCirc `or` !.Circ,
 	equiv_type__replace_in_type_list_2(EqvMap, Seen, Ts0, Ts,
-		!Circ, !VarSet, !Info).
+		Changed1, !Circ, !VarSet, !Info),
+	( ( Changed0 = yes ; Changed1 = yes ) ->
+		Changed = yes,
+		List = [T | Ts]
+	;
+		Changed = no,
+		List = List0
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -595,7 +614,7 @@ equiv_type__replace_in_ctor_arg_list_2(_EqvMap, _Seen, [], [], !ContainsCirc,
 		!VarSet, !Info).
 equiv_type__replace_in_ctor_arg_list_2(EqvMap, Seen, [N - T0 | As0],
 		[N - T | As], !Circ, !VarSet, !Info) :-
-	equiv_type__replace_in_type_2(EqvMap, Seen, T0, T, ContainsCirc,
+	equiv_type__replace_in_type_2(EqvMap, Seen, T0, T, _, ContainsCirc,
 		!VarSet, !Info),
 	!:Circ = !.Circ `or` ContainsCirc,
 	equiv_type__replace_in_ctor_arg_list_2(EqvMap, Seen, As0, As,
@@ -603,28 +622,28 @@ equiv_type__replace_in_ctor_arg_list_2(EqvMap, Seen, [N - T0 | As0],
 
 %-----------------------------------------------------------------------------%
 
-equiv_type__replace_in_type(EqvMap, Type0, Type, !VarSet, !Info) :-
-	equiv_type__replace_in_type_2(EqvMap, [], Type0, Type, _,
+equiv_type__replace_in_type(EqvMap, Type0, Type, Changed, !VarSet, !Info) :-
+	equiv_type__replace_in_type_2(EqvMap, [], Type0, Type, Changed, _,
 		!VarSet, !Info).
 
 	% Replace all equivalence types in a given type, detecting  
 	% any circularities.
 :- pred equiv_type__replace_in_type_2(eqv_map, list(type_ctor), type, type,
-	bool, tvarset, tvarset, equiv_type_info, equiv_type_info).
-:- mode equiv_type__replace_in_type_2(in, in, in, out, out,
+	bool, bool, tvarset, tvarset, equiv_type_info, equiv_type_info).
+:- mode equiv_type__replace_in_type_2(in, in, in, out, out, out,
 	in, out, in, out) is det.
 
 equiv_type__replace_in_type_2(_EqvMap, _Seen,
-		term__variable(V), term__variable(V), no, !VarSet, !Info).
+		term__variable(V), term__variable(V), no, no, !VarSet, !Info).
 equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
-		Circ, !VarSet, !Info) :- 
+		Changed, Circ, !VarSet, !Info) :- 
 	Type0 = term__functor(_, _, _),
 	(
 		type_to_ctor_and_args(Type0, EqvTypeCtor, TArgs0)
 	->
 		equiv_type__replace_in_type_list_2(EqvMap,
 			TypeCtorsAlreadyExpanded, TArgs0, TArgs1,
-			no, Circ0, !VarSet, !Info),
+			ArgsChanged, no, Circ0, !VarSet, !Info),
 
 		( list__member(EqvTypeCtor, TypeCtorsAlreadyExpanded) ->
 			Circ1 = yes
@@ -651,6 +670,7 @@ equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
 			Circ0 = no,
 			Circ1 = no
 		->
+			Changed = yes,
 			equiv_type__record_expanded_item(
 				item_id(type, EqvTypeCtor), !Info),
 			term__term_list_to_var_list(Args, ArgVars),
@@ -658,12 +678,20 @@ equiv_type__replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
 							Body, Type1),
 			equiv_type__replace_in_type_2(EqvMap,
 				[EqvTypeCtor | TypeCtorsAlreadyExpanded],
-				Type1, Type, Circ, !VarSet, !Info)
+				Type1, Type, _, Circ, !VarSet, !Info)
 		;
+			ArgsChanged = yes
+		->
+			Changed = yes,
 			construct_type(EqvTypeCtor, TArgs1, Type),
+			bool__or(Circ0, Circ1, Circ)
+		;
+			Changed = no,
+			Type = Type0,
 			bool__or(Circ0, Circ1, Circ)
 		)
 	;
+		Changed = no,
 		Type = Type0,
 		Circ = no
 	).
@@ -735,7 +763,7 @@ equiv_type__replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap,
 	(
 		MaybeWithType0 = yes(WithType0),
 		equiv_type__replace_in_type(EqvMap, WithType0, WithType,
-			!TypeVarSet, !Info),
+			_, !TypeVarSet, !Info),
 		(
 			type_is_higher_order(WithType, _Purity, PredOrFunc,
 				_EvalMethod, ExtraTypes0)
@@ -872,11 +900,11 @@ equiv_type__replace_in_tms(EqvMap, !TMs, !VarSet, !Info) :-
 
 equiv_type__replace_in_tm(EqvMap, type_only(Type0),
 		type_only(Type), !VarSet, !Info) :-
-	equiv_type__replace_in_type(EqvMap, Type0, Type, !VarSet, !Info).
+	equiv_type__replace_in_type(EqvMap, Type0, Type, _, !VarSet, !Info).
 
 equiv_type__replace_in_tm(EqvMap, type_and_mode(Type0, Mode),
 		type_and_mode(Type, Mode), !VarSet, !Info) :-
-	equiv_type__replace_in_type(EqvMap, Type0, Type, !VarSet, !Info).
+	equiv_type__replace_in_type(EqvMap, Type0, Type, _, !VarSet, !Info).
 
 %-----------------------------------------------------------------------------%
 
