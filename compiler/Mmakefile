@@ -48,13 +48,6 @@ MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
 			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.a ;; \
 		    esac \
 		` -lm
-MSC	=	MERCURY_SICSTUS_COMPILER=$(LIBRARY_DIR)/sicstus_compile \
-		$(SCRIPTS_DIR)/msc
-MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
-MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
-		$(SCRIPTS_DIR)/mnc
-MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
-MNLFLAGS =	-u 6000
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 MTAGSFLAGS =	
 
@@ -90,10 +83,6 @@ endif
 # targets
 #
 # mercury_compile
-# mercury_compile.nu
-# mercury_compile.nu.debug
-# mercury_compile.sicstus
-# mercury_compile.sicstus.debug
 
 .PHONY: depend
 depend:		mercury_compile.depend
@@ -103,19 +92,10 @@ depend:		mercury_compile.depend
 mercury_compile.depend: rl_file.m rl_out.m
 
 .PHONY: all
-all:		mercury nuprolog sicstus
+all:		mercury
 
 .PHONY: mercury
 mercury:	mercury_compile
-
-.PHONY: nuprolog
-nuprolog:	mercury_compile.nu
-
-.PHONY: sicstus
-sicstus:	mercury_compile.sicstus
-
-.PHONY: debug
-debug:		mercury_compile mercury_compile.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
@@ -129,9 +109,6 @@ mercury_compile: $(TRACE_DIR)/lib$(TRACE_LIB_NAME).a
 # Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).a, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.
-
-mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
-mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
 
 mercury_compile_init.c: $(UTIL_DIR)/mkinit
 
@@ -185,36 +162,17 @@ realclean:
 install: install_mercury
 
 .PHONY: install_all
-install_all: install_mercury install_nuprolog install_sicstus
+install_all: install_mercury
 
 .PHONY: install_mercury
 install_mercury: install_compiler
 	
-.PHONY: install_nuprolog
-install_nuprolog: install_compiler_nu
-
-.PHONY: install_sicstus
-install_sicstus: install_compiler_sicstus
-
 .PHONY: install_dirs
 install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
-	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
-	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
 
 .PHONY: install_compiler
 install_compiler: mercury_compile install_dirs
 	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
-
-.PHONY: install_compiler_nu
-install_compiler_nu: mercury_compile.nu install_dirs
-	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
-		> $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
-	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
-	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
-
-.PHONY: install_compiler_sicstus
-install_compiler_sicstus: mercury_compile.sicstus install_dirs
-	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
 
 #-----------------------------------------------------------------------------#
