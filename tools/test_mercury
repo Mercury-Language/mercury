@@ -477,7 +477,7 @@ esac
 	cd .. &&
 	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
 	rm -f $UNSTABLE/mercury-*.$fullarch.tar.gz &&
-	mv mercury/mercury-$version.$fullarch.tar.gz $STABLE
+	mv mercury/mercury-$version.$fullarch.tar.gz $UNSTABLE
 } || status=1
 
 case $status in
