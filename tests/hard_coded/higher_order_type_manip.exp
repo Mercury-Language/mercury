@@ -1,6 +1,7 @@
 func(type_desc:type_desc) = string
 pred(type_desc:type_desc, type_desc:type_ctor_desc, list:list(type_desc:type_desc))
 int
+((func) = int)
 higher_order_type_manip:container(list:list(int))
 higher_order_type_manip:container(pred(io:state, io:state))
 func(int) = int

@@ -26,6 +26,8 @@ main -->
 	io__write_string("\n"),
 	io__write_string(type_name(type_of(tryme))),
 	io__write_string("\n"),
+	io__write_string(type_name(type_of((func) = tryme))),
+	io__write_string("\n"),
 	io__write_string(type_name(type_of(container([1,2,3])))),
 	io__write_string("\n"),
 	io__write_string(type_name(type_of(container(main)))),
