@@ -48,30 +48,34 @@
 :- mode float__pow( in, in, out) is det.
 %	float__pow( Base, Exponent, Answer)
 %		A limited way to calculate powers.  The exponent must be an 
-%		integer greater or equal to 0.
+%		integer greater or equal to 0.  Currently this function runs
+%		at O(n), where n is the value of the exponent.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+/* All the buitlin_float_* are builtins, which the compiler expands inline. */
+
+% float_pow(Base, Exponent, Answer).
+%	XXXX This function could be more efficient, with an int_mod pred, to
+%	reduce O(N) to O(logN) of the exponent.
 float__pow( X, Exp, Ans) :-
-		Exp < 0
+	( Exp < 0
 	->
 		error("float__pow taken with exponent < 0\n")
 	;
-		Exp = 0
-	->
-		Ans = 1.0
-	;
-		Exp  = 1 
+	( Exp  = 1 
 	->
 		Ans =  X
+	;
+	( Exp = 0
+	->
+		Ans = 1.0
 	;
 		New_e is Exp - 1,
 		float__pow(X, New_e, A2),
 		builtin_float_times(X, A2, Ans)
-	.
-
-/* They're all builtins, which the compiler expands inline. */
+	))).
 
 %---------------------------------------------------------------------------%
