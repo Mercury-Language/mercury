@@ -238,15 +238,15 @@ A negation.  The two different syntaxes have identical semantics.
 @var{Goal} must be a valid goal.
 
 @item @var{Goal1} => @var{Goal2}
-An implication.  This is an abbrevation for
+An implication.  This is an abbreviation for
 @samp{not (@var{Goal1}, not @var{Goal2})}.
 
 @item @var{Goal1} <= @var{Goal2}
-A reverse implication.  This is an abbrevation for
+A reverse implication.  This is an abbreviation for
 @samp{not (@var{Goal2}, not @var{Goal1})}.
 
 @item @var{Goal1} <=> @var{Goal2}
-A logical equivalence.  This is an abbrevation for
+A logical equivalence.  This is an abbreviation for
 @samp{(@var{Goal1} => @var{Goal2}), (@var{Goal1} <= @var{Goal2}}.
 
 @item if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}
@@ -421,12 +421,12 @@ transform(V_in, V_out, p(A1, ..., AN)) = p(A1, ..., AN, V_in, V_Out)
 The rule for implicit quantification in Mercury is not the same
 as the usual one in mathematical logic.  In Mercury variables
 that do not occur in the head of a clause
-are implicitly extentially quantified around their closest
+are implicitly existentially quantified around their closest
 enclosing scope (in a sense to be made precise in the following
 paragraphs).  This allows most existential quantifiers to be omitted,
 and leads to more concise code.
 
-An occurence of a variable is @dfn{in a negated context} if it is
+An occurrence of a variable is @dfn{in a negated context} if it is
 inside a negation, inside a universal quantification, in the condition
 of an if-then-else, or in an inequality.
 
@@ -581,7 +581,7 @@ This means that the type names will be exported, but the constructors
 
 @end itemize
 
-Constructors may be overloaded amoung different types:
+Constructors may be overloaded among different types:
 there may be any number of constructors with a given name and arity,
 so long as they all have different types.
 However, there must be only one constructor with a given name, arity, and type.
@@ -726,7 +726,7 @@ Nevertheless, Mercury's mode system is sufficiently
 expressive to handle more complex data-flow patterns, including those
 involving partially instantiated data structures.  
 [NOTE: The current implementation does not handle partially
-instantiatied data yet!]
+instantiated data yet!]
 
 For example, consider an
 interface to a database that associates data with keys, and provides
@@ -971,7 +971,7 @@ For procedures that are local to a module, the determinism annotations
 may be omitted; in that case, their determinism will be inferred.
 (To be precise, the determinism of procedures without a determinism
 annotation is defined as the least fixpoint of the transformation
-which, given an initial assignment of determism to such procedures,
+which, given an initial assignment of determinism to such procedures,
 applies those rules to infer a new such assignment.)
 
 For procedures that are exported from their containing module,
@@ -1081,7 +1081,7 @@ Otherwise, the determinism of the negation is @code{semidet}.
 
 @end table
 
-Note that ``perfect'' determinism inference is an undecideable
+Note that ``perfect'' determinism inference is an undecidable
 problem, because it requires solving the halting problem.
 (For instance, in the following example
 
@@ -1114,7 +1114,7 @@ predicate @samp{error/1}.
 @end example
 
 @noindent
-The predicate @code{error/1} has determininsm @code{erroneous}, which means
+The predicate @code{error/1} has determinism @code{erroneous}, which means
 the compiler knows that it will never succeed or fail, so the inferred
 determinism for the body of @code{p/1} is @code{det}.
 (Note that checking assumptions like this is good coding style anyway.
@@ -1226,7 +1226,7 @@ and filename and directory handling.
 @chapter Semantics
 
 A legal Mercury program is one that complies with the syntax,
-type, mode, determism, and module system rules specified in
+type, mode, determinism, and module system rules specified in
 earlier chapters.  If a program does not comply with those rules,
 the compiler must report an error.
 
