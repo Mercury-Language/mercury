@@ -524,7 +524,7 @@ report_mode_error_in_callee(ModeInfo, Vars, Insts,
 	output_inst_list(Insts, InstVarSet),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
-	io__write_string("  which does not match any of the valid modes for "),
+	io__write_string("  which does not match any of the valid modes for\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
