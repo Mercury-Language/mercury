@@ -30,6 +30,9 @@
 #include "mercury_std.h"	/* for the MR_CALL macro (and others) */
 #include "mercury_type_info.h"
 #include "mercury_builtin_types.h" 
+#include "mercury_library_types.h" /* for MercuryFilePtr, for files that use */
+				   /* the type in io.m whose foreign_type is */
+				   /* MercuryFilePtr XXX */
 #include "mercury_ho_call.h"	/* for the `MR_Closure' type */
 #include "mercury_bootstrap.h"
 #include "mercury_memory.h"	/* for memory allocation routines */
