@@ -616,7 +616,7 @@
 
 window(Interp, Configs, window(Widget)) -->
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format(".toplevel%d", [i(Id)], Widget) },
 	{ string__format("toplevel %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -629,7 +629,7 @@ window(Interp, Configs, window(Widget)) -->
 button(Interp, Configs, ParentWidget, button(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.button%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("button %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -666,7 +666,7 @@ disable(Interp, Widget) -->
 canvas(Interp, Configs, ParentWidget, canvas(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.canvas%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("canvas %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -796,7 +796,7 @@ stringify_item_configs([Cfg|Cfgs], Str) :-
 entry(Interp, Configs, ParentWidget, entry(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.entry%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("entry %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -809,7 +809,7 @@ entry(Interp, Configs, ParentWidget, entry(Widget)) -->
 frame(Interp, Configs, ParentWidget, frame(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.frame%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("frame %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -822,7 +822,7 @@ frame(Interp, Configs, ParentWidget, frame(Widget)) -->
 label(Interp, Configs, ParentWidget, label(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.label%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("label %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -835,7 +835,7 @@ label(Interp, Configs, ParentWidget, label(Widget)) -->
 listbox(Interp, Configs, ParentWidget, listbox(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.listbox%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("listbox %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -903,7 +903,7 @@ get_selection(Interp, _Widget, Selection) -->
 menubutton(Interp, Configs, ParentWidget, menubutton(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.menubutton%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("menubutton %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -916,7 +916,7 @@ menubutton(Interp, Configs, ParentWidget, menubutton(Widget)) -->
 menu(Interp, Configs, ParentWidget, menu(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.menu%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("menu %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -944,7 +944,7 @@ add_menu_item(Interp, Widget, separator, Configs) -->
 
 new_radio_group(_Interp, RadioVar) -->
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("radiovar%d", [i(Id)], RadioVar) }.
 
 set_radio_group(Interp, RadVar, Value) -->
@@ -956,7 +956,7 @@ radiobutton(Interp, Configs, ParentWidget, RadioVar, Value,
 		radiobutton(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.radiobutton%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("radiobutton %s -indicatoron 0 -variable %s -value %s ",
 		[s(Widget), s(RadioVar), s(Value)], Str0) },
@@ -970,7 +970,7 @@ radiobutton(Interp, Configs, ParentWidget, RadioVar, Value,
 scrollbar(Interp, Configs, ParentWidget, scrollbar(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.scrollbar%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("scrollbar %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -983,7 +983,7 @@ scrollbar(Interp, Configs, ParentWidget, scrollbar(Widget)) -->
 text(Interp, Configs, ParentWidget, text(Widget)) -->
 	{ unwrap(ParentWidget, Parent) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("%s.text%d", [s(Parent), i(Id)], Widget) },
 	{ string__format("text %s ", [s(Widget)], Str0) },
 	stringify_configs(Interp, Configs, Str1),
@@ -1113,7 +1113,7 @@ destroy(Interp, Widget) -->
 bind(Interp, Widget, Event, EDataSpecs, Closure) -->
 	{ unwrap(Widget, Path) },
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("cmd%d", [i(Id)], CmdName) },
 	{ stringify_event(Event, EventStr) },
 	{ stringify_edata_specs(EDataSpecs, EDataStr) },
@@ -1386,7 +1386,7 @@ stringify_config(_Interp, border_width(Wdth), Str, IO, IO) :-
 
 stringify_config(Interp, command(Closure), Str) -->
 	get_thingy_counter(Id),
-	set_thingy_counter(Id+1),
+	set_thingy_counter(Id + 1),
 	{ string__format("cmd%d", [i(Id)], CmdName) },
 	create_command(Interp, CmdName, command_wrapper(Closure)),
 	{ string__format("-command %s", [s(CmdName)], Str) }.
