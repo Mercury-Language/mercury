@@ -475,7 +475,8 @@ case $status in
     	mmake bindist &&
 	cd .. &&
 	( [ -d $STABLE ] || mkdir $STABLE ) &&
-	mv mercury-$version*.tar.gz $STABLE
+	rm -f $STABLE/* &&
+	mv mercury/mercury-$version.*.tar.gz $STABLE
        } || status=1
     ;;
 esac
@@ -491,7 +492,6 @@ case $status in
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
-	    rm -f $STABLE/* &&
 	    ln $UNSTABLE/mercury-compiler-$version-unstable.tar.gz \
 	        $STABLE/mercury-compiler-$version.tar.gz &&
 	    ln $UNSTABLE/mercury-extras-$version-unstable.tar.gz \
