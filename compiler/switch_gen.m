@@ -71,17 +71,14 @@ switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 		{ EndCode = node([label(EndLabel) - "End of det switch"]) },
 		{ CasesCode = tree(ThisCode, EndCode) }
 	;
-		code_info__get_next_label(ThisLab),
-		code_info__get_next_label(ElseLab),
 		code_info__grab_code_info(CodeInfo),
+		code_info__get_next_label(ElseLab),
+		code_info__push_failure_cont(yes(ElseLab)),
 		unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
+		code_info__generate_test_and_fail(Rval, BranchCode),
+		code_info__pop_failure_cont,
+		{ TestCode = tree(FlushCode, BranchCode) },
 			% generate the case as a deterministic goal
-		code_info__generate_icond_branch(Rval,ThisLab, ElseLab,
-			BranchCode),
-		{ TestCode = tree(
-			tree(BranchCode, FlushCode),
-			node([label(ThisLab) - ""])
-		) },
 		code_gen__generate_forced_det_goal(Goal, ThisCode),
 		{ ElseLabel = node([
 			goto(EndLabel) - "skip to the end of the det switch",
@@ -135,16 +132,12 @@ switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Det, Lval,
 		{ Cases = [_|_] ; Det = semideterministic }
 	->
 		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ThisLab),
 		code_info__get_next_label(ElseLab),
+		code_info__push_failure_cont(yes(ElseLab)),
 		unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
-			% generate the case as a deterministic goal
-		code_info__generate_icond_branch(Rval,ThisLab, ElseLab,
-			BranchCode),
-		{ TestCode = tree(
-			tree(FlushCode, BranchCode),
-			node([label(ThisLab) - ""])
-		) },
+		code_info__generate_test_and_fail(Rval, BranchCode),
+		code_info__pop_failure_cont,
+		{ TestCode = tree(FlushCode, BranchCode) },
 			% generate the case as a semi-deterministc goal
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
 		{ ElseLabel = node([
@@ -196,7 +189,7 @@ switch_gen__generate_non_cases([], _Var, Det, _Lval, EndLabel, Code) -->
 	{ Code = tree(FailCode, node([ label(EndLabel) -
 		"End of nondet switch" ])) }.
 
-	% A nondet cases consists of a tag-test followed by a semidet
+	% A nondet cases consists of a tag-test followed by a nondet
 	% goal and a label for the start of the next case.
 switch_gen__generate_non_cases([case(Cons, Goal)|Cases], Var, Det, Lval,
 					EndLabel, CasesCode) -->
@@ -204,16 +197,12 @@ switch_gen__generate_non_cases([case(Cons, Goal)|Cases], Var, Det, Lval,
 		{ Cases = [_|_] ; Det = semideterministic }
 	->
 		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ThisLab),
 		code_info__get_next_label(ElseLab),
+		code_info__push_failure_cont(yes(ElseLab)),
 		unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
-			% generate the case as a deterministic goal
-		code_info__generate_icond_branch(Rval,ThisLab, ElseLab,
-			BranchCode),
-		{ TestCode = tree(
-			tree(FlushCode, BranchCode),
-			node([label(ThisLab) - ""])
-		) },
+		code_info__generate_test_and_fail(Rval, BranchCode),
+		code_info__pop_failure_cont,
+		{ TestCode = tree(FlushCode, BranchCode) },
 			% generate the case as a non-deterministc goal
 		code_gen__generate_forced_non_goal(Goal, ThisCode),
 		{ ElseLabel = node([

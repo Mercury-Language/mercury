@@ -247,26 +247,17 @@
 :- pred code_info__get_module_info(module_info, code_info, code_info).
 :- mode code_info__get_module_info(out, in, out) is det.
 
-:- pred code_info__push_failure_cont(label, code_info, code_info).
+:- pred code_info__push_failure_cont(maybe(label), code_info, code_info).
 :- mode code_info__push_failure_cont(in, in, out) is det.
 
-:- pred code_info__pop_failure_cont(label, code_info, code_info).
-:- mode code_info__pop_failure_cont(out, in, out) is semidet.
-
-:- pred code_info__pop_failure_cont_det(label, code_info, code_info).
-:- mode code_info__pop_failure_cont_det(out, in, out) is det.
-
-:- pred code_info__set_failure_cont(label, code_info, code_info).
-:- mode code_info__set_failure_cont(in, in, out) is det.
+:- pred code_info__pop_failure_cont(code_info, code_info).
+:- mode code_info__pop_failure_cont(in, out) is det.
 
 :- pred code_info__get_failure_cont(label, code_info, code_info).
 :- mode code_info__get_failure_cont(out, in, out) is det.
 
 :- pred code_info__failure_cont(label, code_info, code_info).
 :- mode code_info__failure_cont(out, in, out) is semidet.
-
-:- pred code_info__unset_failure_cont(code_info, code_info).
-:- mode code_info__unset_failure_cont(in, out) is det.
 
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
@@ -280,14 +271,6 @@
 :- pred code_info__generate_test_and_fail(rval, code_tree,
 							code_info, code_info).
 :- mode code_info__generate_test_and_fail(in, out, in, out) is det.
-
-:- pred code_info__generate_cond_branch(rval, label, label, code_tree,
-							code_info, code_info).
-:- mode code_info__generate_cond_branch(in, in, in, out, in, out) is det.
-
-:- pred code_info__generate_icond_branch(rval, label, label, code_tree,
-							code_info, code_info).
-:- mode code_info__generate_icond_branch(in, in, in, out, in, out) is det.
 
 :- pred code_info__generate_pre_commit(code_tree, label, code_info, code_info).
 :- mode code_info__generate_pre_commit(out, out, in, out) is det.
@@ -362,15 +345,14 @@
 					% the status of each variable.
 			proc_info,	% The proc_info for the this procedure.
 			bool,		% do we need to store succip?
-			fall_through,	% The fallthrough label for failure
+			fall_through,	% The failure continuation stack
 			module_info,	% The module_info structure - you just
 					% never know when you might need it.
 			liveness_info,	% Variables that are live
 					% after this goal
 			stack(map(var, lval)),
 					% Store Map - where to put things
-			pair(category),	% The category of the current procedure
-					% and the current context (respectively)
+			category,	% The category of the current procedure
 			unit,		% UNUSED
 			pair(int),	% The current and maximum (respectively)
 					% number of extra temporary stackslots
@@ -394,7 +376,9 @@
 			;	evaluated(set(lval))
 			;	cached(rval, target_register).
 
-:- type fall_through	==	stack(label).
+:- type fall_through	==	stack(maybe(label)).
+	% `yes(Label)' means on failure we jump to `Label'
+	% `no' means on failure we do a `redo()'.
 
 %---------------------------------------------------------------------------%
 
@@ -425,7 +409,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		ModuleInfo,
 		Liveness,
 		StoreMapStack,
-		Category - Category,
+		Category,
 		unit,
 		0 - 0,
 		Globals
@@ -2035,9 +2019,10 @@ code_info__stack_variable(Num, Lval) -->
 	(
 		{ Cat = nondeterministic }
 	->
-		{ Lval = framevar(Num) }
+		{ Num1 is Num - 1 },		% framevars start at zero
+		{ Lval = framevar(Num1) }
 	;
-		{ Lval = stackvar(Num) }
+		{ Lval = stackvar(Num) }	% stackvars start at one
 	).
 
 %---------------------------------------------------------------------------%
@@ -2127,59 +2112,28 @@ code_info__pop_lval(Lval, Code) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
-	code_info__get_context_category(Category),
-	(
-		{ Category = nondeterministic }
-	->
-		{ Code = node([ redo - "" ]) }
-	;
-		code_info__failure_cont(Cont)
-	->
+	( code_info__failure_cont(Cont) ->
 		{ Code = node([ goto(Cont) -
-					"Branch to failure continuation" ]) }
+				"Branch to failure continuation" ]) }
 	;
-		{ error("code_info__generate_failure: missing failure continuation") }
-		% { Code = node([
-		% 	c_code("abort();") - "`fail' in deterministic code"
-		% ]) }
+		{ Code = node([ redo - "" ]) }
 	).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_test_and_fail(Rval, Code) -->
-	code_info__get_context_category(Category),
 	(
-		{ Category = nondeterministic }
+		code_info__failure_cont(Cont)
 	->
+		{ Code = node([ if_val(not(Rval), Cont) - "" ]) }
+	;
 		code_info__get_next_label(Success),
 		{ Code = node([
 			if_val(Rval, Success) - "",
 			redo - "",
 			label(Success) - ""
 		]) }
-	;
-		code_info__failure_cont(Cont)
-	->
-		{ Code = node([ if_val(not(Rval), Cont) - "" ]) }
-	;
-		{ error("code_info__generate_test_and_fail: missing failure continuation") }
 	).
-
-%---------------------------------------------------------------------------%
-
-code_info__generate_cond_branch(Rval, YesLab, NoLab, Code) -->
-	{ Code = node([
-		if_val(Rval, YesLab) - "",
-		goto(NoLab) - ""
-	]) }.
-
-%---------------------------------------------------------------------------%
-
-code_info__generate_icond_branch(Rval, YesLab, NoLab, Code) -->
-	{ Code = node([
-		if_val(not(Rval), NoLab) - "",
-		goto(YesLab) - ""
-	]) }.
 
 %---------------------------------------------------------------------------%
 
@@ -2192,6 +2146,7 @@ code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
 	code_info__push_rval(lval(maxfr), SaveMaxfr),
 	code_info__push_rval(lval(curredoip), SaveRedoip),
+	code_info__push_failure_cont(yes(FailLabel)),
 	{ SetRedoIp = node([
 		modframe(yes(FailLabel)) - "hijack the failure continuation"
 	]) },
@@ -2206,6 +2161,7 @@ code_info__generate_commit(FailLabel, Commit) -->
 	{ SuccLabelCode = node([
 		label(SuccLabel) - "success continuation"
 	]) },
+	code_info__pop_failure_cont,
 	code_info__pop_lval(curredoip, RestoreRedoIp),
 	code_info__pop_lval(maxfr, RestoreMaxfr),
 	code_info__generate_failure(Fail),
@@ -2222,27 +2178,21 @@ code_info__push_failure_cont(Cont) -->
 	{ stack__push(Fall0, Cont, Fall) },
 	code_info__set_fall_through(Fall).
 
-code_info__pop_failure_cont_det(Cont) -->
-	( code_info__pop_failure_cont(Cont0) ->
-		{ Cont = Cont0 }
+code_info__pop_failure_cont -->
+	( 
+		code_info__get_fall_through(Fall0),
+		{ stack__pop(Fall0, _, Fall) },
+		code_info__set_fall_through(Fall)
+	->
+		[]
 	;
-		{ error("code_info__pop_failure_cont failed") }
+		{ error("code_info__pop_failure_cont: empty stack") }
 	).
-
-code_info__pop_failure_cont(Cont) -->
-	code_info__get_fall_through(Fall0),
-	{ stack__pop(Fall0, Cont, Fall) },
-	code_info__set_fall_through(Fall).
-
-code_info__set_failure_cont(Cont) -->
-	code_info__get_fall_through(Fall0),
-	{ stack__push(Fall0, Cont, Fall) },
-	code_info__set_fall_through(Fall).
 
 code_info__get_failure_cont(Cont) -->
 	code_info__get_fall_through(Fall),
 	(
-		{ stack__top(Fall, Cont0) }
+		{ stack__top(Fall, yes(Cont0)) }
 	->
 		{ Cont = Cont0 }
 	;
@@ -2251,17 +2201,7 @@ code_info__get_failure_cont(Cont) -->
 
 code_info__failure_cont(Cont) -->
 	code_info__get_fall_through(Fall),
-	{ stack__top(Fall, Cont) }.
-
-code_info__unset_failure_cont -->
-	code_info__get_fall_through(Fall0),
-	(
-		{ stack__pop(Fall0, _Cont, Fall) }
-	->
-		code_info__set_fall_through(Fall)
-	;
-		{ error("code_info__unset_failure_cont: no failure continuation") }
-	).
+	{ stack__top(Fall, yes(Cont)) }.
 
 %---------------------------------------------------------------------------%
 
@@ -2312,11 +2252,11 @@ code_info__current_store_map(Map) -->
 :- mode code_info__set_variables(in, in, out) is det.
 
 		% Get the fall though point for failure
-:- pred code_info__get_fall_through(stack(label), code_info, code_info).
+:- pred code_info__get_fall_through(fall_through, code_info, code_info).
 :- mode code_info__get_fall_through(out, in, out) is det.
 
 		% Set the fall though point for failure
-:- pred code_info__set_fall_through(stack(label), code_info, code_info).
+:- pred code_info__set_fall_through(fall_through, code_info, code_info).
 :- mode code_info__set_fall_through(in, in, out) is det.
 
 :- pred code_info__get_liveness_info(liveness_info, code_info, code_info).
@@ -2328,14 +2268,8 @@ code_info__current_store_map(Map) -->
 :- pred code_info__get_proc_category(category, code_info, code_info).
 :- mode code_info__get_proc_category(out, in, out) is det.
 
-:- pred code_info__get_context_category(category, code_info, code_info).
-:- mode code_info__get_context_category(out, in, out) is det.
-
 :- pred code_info__set_proc_category(category, code_info, code_info).
 :- mode code_info__set_proc_category(in, in, out) is det.
-
-:- pred code_info__set_context_category(category, code_info, code_info).
-:- mode code_info__set_context_category(in, in, out) is det.
 
 :- pred code_info__get_push_count(int, code_info, code_info).
 :- mode code_info__get_push_count(out, in, out) is det.
@@ -2449,19 +2383,8 @@ code_info__set_store_map(N, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q, R),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
-code_info__get_proc_category(OP, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, OP - _, _, _,
-		_).
-
-code_info__get_context_category(OC, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _ - OC, _, _,
-		_).
-
-code_info__set_context_category(OC, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, OP - _, P,
-		Q, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, OP - OC, P,
-		Q, R).
+code_info__get_proc_category(O, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _).
 
 code_info__get_continuation(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _).

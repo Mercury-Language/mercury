@@ -496,11 +496,9 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 unify_gen__generate_sub_test(UnivalX, UnivalY, Code) -->
 	unify_gen__evaluate_uni_val(UnivalX, LvalX, CodeX),
 	unify_gen__evaluate_uni_val(UnivalY, LvalY, CodeY),
-	code_info__get_failure_cont(FallThrough),
-	{ Code = tree(CodeX, tree(CodeY,
-		node([if_val(binop(eq, lval(LvalX), lval(LvalY)), FallThrough)
-				- "simple test in [de]construction"])
-	)) }.
+	code_info__generate_test_and_fail(
+		binop(eq, lval(LvalX), lval(LvalY)), TestCode),
+	{ Code = tree(tree(CodeX, CodeY), TestCode) }.
 
 :- pred unify_gen__evaluate_uni_val(uni_val, lval, code_tree,
 					code_info, code_info).

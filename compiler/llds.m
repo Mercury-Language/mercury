@@ -514,6 +514,8 @@ output_rval(create(_,_)) -->
 	{ error("Cannot output a create(_,_) expression in code") }.
 output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
+output_rval(unused) -->
+	{ error("Cannot output a `unused' expression in code") }.
 
 :- pred output_lval(lval, io__state, io__state).
 :- mode output_lval(in, di, uo) is det.
@@ -625,6 +627,15 @@ output_operator(>=) -->
 :- pred clause_num_to_string(int::in, string::out) is det.
 
 clause_num_to_string(N, Str) :-
+	( clause_num_to_string_2(N, Str0) ->
+		Str = Str0
+	;
+		error("clause_num_to_string failed")
+	).
+
+:- pred clause_num_to_string_2(int::in, string::out) is semidet.
+
+clause_num_to_string_2(N, Str) :-
 	(
 		N < 26
 	->
@@ -638,7 +649,7 @@ clause_num_to_string(N, Str) :-
 	).
 
 :- pred int_to_letter(int, string).
-:- mode int_to_letter(in, out) is det.
+:- mode int_to_letter(in, out) is semidet.
 
 	% This code is boring, but portable - it works even for EBCDIC ;-)
 

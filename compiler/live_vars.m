@@ -301,7 +301,8 @@ allocate_live_vars([Var|Vars], N0, Category, CallInfo0, CallInfo) :-
 	(
 		Category = nondeterministic
 	->
-		Lval = framevar(N0)
+		N0_Minus_1 is N0 - 1,		% framevars start at zero
+		Lval = framevar(N0_Minus_1)
 	;
 		Lval = stackvar(N0)
 	),

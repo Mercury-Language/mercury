@@ -37,30 +37,25 @@ disj_gen__generate_semi_disj(Goals, Code) -->
 		RestoreHeap = no
 	},
 	code_info__maybe_save_hp(RestoreHeap, HPSaveCode),
-	code_info__get_failure_cont(FallThrough),
 	code_info__get_next_label(EndLabel),
-	disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel, GoalsCode),
+	disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode),
 	code_info__remake_with_store_map,
 	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
 	{ Code = tree(HPSaveCode, tree(GoalsCode, HPRestoreCode)) }.
 
-:- pred disj_gen__generate_semi_cases(list(hlds__goal), label, label,
+:- pred disj_gen__generate_semi_cases(list(hlds__goal), label,
 					code_tree, code_info, code_info).
-:- mode disj_gen__generate_semi_cases(in, in, in, out, in, out) is det.
+:- mode disj_gen__generate_semi_cases(in, in, out, in, out) is det.
 
-disj_gen__generate_semi_cases([], FallThrough, _EndLabel, Code) -->
+disj_gen__generate_semi_cases([], _EndLabel, Code) -->
 		% This only gets executed if the disjunction
 		% was empty, corresponding to an explicit `fail' in the
 		% source code.
-	{ Code = node([
-		goto(FallThrough) - "explicit `fail'"
-	]) }.
-disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
-						EndLabel, GoalsCode) -->
+	code_info__generate_failure(Code).
+disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 	(
 		{ Goals = [] }
 	->
-		code_info__set_failure_cont(FallThrough),
 			% generate the case as a semi-deterministic goal
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
 		{ GoalsCode = tree(ThisCode, node([
@@ -69,9 +64,10 @@ disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
 	;
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_next_label(ElseLab),
-		code_info__set_failure_cont(ElseLab),
+		code_info__push_failure_cont(yes(ElseLab)),
 			% generate the case as a semi-deterministic goal
 		code_gen__generate_forced_semi_goal(Goal, ThisCode),
+		code_info__pop_failure_cont,
 		{ ElseLabel = node([
 			goto(EndLabel) - "skip to the end of the disj",
 			label(ElseLab) - "next case"
@@ -80,8 +76,7 @@ disj_gen__generate_semi_cases([Goal|Goals], FallThrough,
 			% the expression cache, etc.
 		code_info__slap_code_info(CodeInfo),
 			% generate the rest of the cases.
-		disj_gen__generate_semi_cases(Goals, FallThrough, EndLabel,
-			GoalsCode0),
+		disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode0),
 		{ GoalsCode = tree(ThisCode, tree(ElseLabel, GoalsCode0)) }
 	).
 
@@ -96,8 +91,6 @@ disj_gen__generate_non_disj(Goals, tree(SaveCode, GoalsCode)) -->
 		true
 	},
 	code_info__generate_nondet_saves(SaveCode),
-	code_info__get_next_label(ContLab),
-	code_info__push_failure_cont(ContLab),
 	code_info__get_next_label(EndLab),
 	disj_gen__generate_non_disj_2(Goals, EndLab, GoalsCode).
 
@@ -111,7 +104,8 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	(
 		{ Goals = [_|_] }
 	->
-		code_info__get_failure_cont(ContLab0),
+		code_info__get_next_label(ContLab0),
+		code_info__push_failure_cont(yes(ContLab0)),
 		{ ContCode = node([
 			modframe(yes(ContLab0)) -
 					"Set failure continuation"
@@ -134,22 +128,12 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__slap_code_info(CodeInfo),
-		code_info__pop_failure_cont_det(_),
-		(
-			{ Goals = [_,_|_] }
-		->
-			code_info__get_next_label(NextCont),
-			code_info__push_failure_cont(NextCont)
-		;
-			[]
-		),
+		code_info__pop_failure_cont,
 		{ DisjCode = tree(tree(tree(ContCode,SaveHeapCode), GoalCode),
 			tree(FailCode, tree(RestoreHeapCode, RestCode))) },
 		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
 	;
-		(
-			code_info__failure_cont(ContLab1)
-		->
+		( code_info__failure_cont(ContLab1) ->
 			{ Label = yes(ContLab1) }
 		;
 			{ Label = no }

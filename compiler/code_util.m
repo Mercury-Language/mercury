@@ -37,7 +37,7 @@
 
 :- pred atom_to_operator(string, operator).
 :- mode atom_to_operator(in, out) is semidet.
-:- mode atom_to_operator(out, in) is det.
+:- mode atom_to_operator(out, in) is semidet.
 
 %---------------------------------------------------------------------------%
 

@@ -40,10 +40,10 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
-	code_info__set_failure_cont(ElseLab),
-		% generate the semi-deterministc test goal
+	code_info__push_failure_cont(yes(ElseLab)),
+		% generate the semi-deterministic test goal
 	code_gen__generate_semi_goal(CondGoal, TestCode),
-	code_info__unset_failure_cont,
+	code_info__pop_failure_cont,
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_gen__generate_forced_det_goal(ThenGoal, ThenGoalCode),
@@ -89,10 +89,10 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	},
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 	code_info__get_next_label(ElseLab),
-	code_info__push_failure_cont(ElseLab),
+	code_info__push_failure_cont(yes(ElseLab)),
 		% generate the semi-deterministic test goal
 	code_gen__generate_semi_goal(CondGoal, CondCode),
-	code_info__pop_failure_cont_det(_),
+	code_info__pop_failure_cont,
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_gen__generate_forced_semi_goal(ThenGoal, ThenGoalCode),
