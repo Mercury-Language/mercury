@@ -1,0 +1,198 @@
+/*
+** Copyright (C) 1995-1997 The University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+*/
+
+/*
+** conf.h.in -
+**	Various configuration parameters, determined automatically by
+**	the auto-configuration script.
+*/
+
+/*
+** Note -- this file must not contain any #include statements,
+** for reasons explained in imp.h.
+*/
+
+#ifndef CONF_H
+#define CONF_H
+
+/*
+** WORD_TYPE: the base type for the definition of Word.
+** This must be a C integral type (e.g. int, long, or long long)
+** without any explicit signedness.
+** It ought to be the same size as the machine's general-purpose registers.
+*/
+#undef	WORD_TYPE
+
+/*
+** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
+** we can use.  Normally this is the base-2 log of the word size in bytes.
+*/
+#undef	LOW_TAG_BITS
+
+/*
+** BOXED_FLOAT: defined if double precision floats might not fit
+** in a Word, and hence must be boxed.
+** Note that when bootstrapping from the source distribution,
+** we initially build things without BOXED_FLOAT even on machines
+** for which sizeof(Float) <= sizeof(Word).
+** Conversely if BOXED_FLOAT is undefined, it implies that
+** sizeof(Float) <= sizeof(Word).
+*/
+#undef	BOXED_FLOAT
+
+/*
+** The following macros are defined iff the corresponding header file
+** is available:
+**
+**	HAVE_SYS_SIGINFO	we have <sys/siginfo.h>
+**	HAVE_UCONTEXT		we have <ucontext.h>
+**	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
+**	HAVE_ASM_SIGCONTEXT	we have <asm/sigcontext.h> (e.g. i386 Linux)
+**	HAVE_SYS_TIME		we have <sys/time.h>
+**	HAVE_SYS_PARAM		we have <sys/param.h>
+**	HAVE_SYS_WAIT		we have <sys/wait.h>
+*/
+#undef	HAVE_SYS_SIGINFO
+#undef	HAVE_UCONTEXT
+#undef	HAVE_SYS_UCONTEXT
+#undef	HAVE_ASM_SIGCONTEXT
+#undef	HAVE_SYS_TIME
+#undef	HAVE_SYS_PARAM
+#undef	HAVE_SYS_WAIT
+
+/*
+** The following macros are defined iff the corresponding function or
+** system call is available:
+**
+**	HAVE_SYSCONF     	we have the sysconf() system call.
+**	HAVE_SIGACTION		we have the sigaction() sysstem call.
+**	HAVE_GETPAGESIZE 	we have the getpagesize() system call.
+**	HAVE_MPROTECT    	we have the mprotect() system call.
+**	HAVE_MEMALIGN    	we have the memalign() function.
+**	HAVE_STRERROR    	we have the strerror() function.
+**	HAVE_SETITIMER   	we have the setitimer() function.
+**	HAVE_MEMMOVE   		we have the memmove() function.
+*/
+#undef	HAVE_SYSCONF
+#undef	HAVE_SIGACTION
+#undef	HAVE_GETPAGESIZE
+#undef	HAVE_MEMALIGN
+#undef	HAVE_MPROTECT
+#undef	HAVE_STRERROR
+#undef	HAVE_SETITIMER
+#undef	HAVE_MEMMOVE
+
+/*
+** RETSIGTYPE: the return type of signal handlers.
+** Either `int' or `void'.
+*/
+#undef	RETSIGTYPE
+
+/*
+** We use mprotect() and signals to catch stack and heap overflows.
+** In order to detect such overflows, we need to be able to figure
+** out what address we were trying to read from or write to when we
+** get a SIGSEGV signal.  This is a fairly non-portable thing, so
+** it has to be done differently on different systems.
+** The following macros specify whether we can do it and if so, how.
+**
+**	HAVE_SIGINFO		defined iff we can _somehow_ figure out the
+**				fault address for SIGSEGVs.
+**	HAVE_SIGINFO_T		defined iff we can figure out the
+**				fault address for SIGSEGVs using sigaction
+**				and siginfo_t.
+**	HAVE_SIGCONTEXT_STRUCT	defined iff normal signal handlers are given
+**				sigcontext_struct arguments that we can use to
+**				figure out the fault address for SIGSEGVs.
+*/
+#undef	HAVE_SIGINFO
+#undef	HAVE_SIGINFO_T
+#undef	HAVE_SIGCONTEXT_STRUCT
+
+/*
+** For debugging purposes, if we get a fatal signal, we print out the
+** program counter (PC) at which the signal occurred.
+**
+** PC_ACCESS, PC_ACCESS_GREG: the way to access the saved PC in ucontexts.
+**
+** If PC_ACCESS_GREG is defined, then PC_ACCESS specifies an index into
+** the `gregs' (general registers) array, which is a field of the `ucontext'
+** struct.  Otherwise, if PC_ACCESS is defined then it is a field name
+** in the `ucontext' struct.  If PC_ACCESS is not defined, then we don't
+** have any way of getting the saved PC.
+*/
+#undef	PC_ACCESS
+#undef	PC_ACCESS_GREG
+
+/*
+** SIGACTION_FIELD: the name of the field in the sigaction struct
+** (either sa_handler or sa_sigaction).  Defined only if HAVE_SIGACTION
+** is defined.
+*/
+#undef	SIGACTION_FIELD
+
+/*
+** PARALLEL: defined iff we are configuring for parallel execution.
+** (This is work in progress... parallel execution is not yet supported.)
+*/
+#undef	PARALLEL
+
+/*
+** The bytecode files represent floats in 64-bit IEEE format.
+**
+** MR_FLOAT_IS_64_BITS: defined iff the C type `float' is exactly 64 bits.
+** MR_DOUBLE_IS_64_BITS: defined iff the C type `double' is exactly 64 bits.
+** MR_LONG_DOUBLE_IS_64_BITS: defined iff the C type `long double' is exactly
+** 64-bits.
+**
+** XXX why not just have a single MR_64_BIT_FLOAT_TYPE macro,
+** defined to `float', `double', or `long double' as appropriate?
+*/
+#undef	MR_FLOAT_IS_64_BIT
+#undef	MR_DOUBLE_IS_64_BIT
+#undef	MR_LONG_DOUBLE_IS_64_BIT
+
+/*
+** The following macros specify the ordering of bytes within
+** are used by the bytecode compiler and the
+** bytecode interpreter when writing/reading floats from/to bytecode files.
+**
+** MR_BIG_ENDIAN: defined iff the host system is big-endian.
+** MR_LITTLE_ENDIAN: defined iff the host system is little-endian.
+** (Wierd-endian systems should define neither of these.) 
+*/
+#undef	MR_BIG_ENDIAN
+#undef	MR_LITTLE_ENDIAN
+
+/*
+** The following macro specifies whether the non-ANSI, non-POSIX,
+** but usually available standard library function `tempnam' is
+** available.
+*/
+#undef	IO_HAVE_TEMPNAM
+
+/*
+** Which version of Mercury is this?  (Taken from the file ../VERSION.)
+*/
+#define MR_VERSION "unknown"
+
+/*
+** What system is this version of Mercury configured for?
+*/
+#define MR_FULLARCH "unknown"
+
+/*
+** Should we build the Mercury libraries as Windows DLLs?
+*/
+#undef USE_DLLS
+
+/*
+** For SPARC systems, does `as' not allow `.type' in inline asm?
+** (True for SunOS 4.x.)
+*/
+#undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
+
+#endif /* CONF_H */
