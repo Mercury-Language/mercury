@@ -69,6 +69,5 @@
 #define	mr34	fake_reg[34]
 #define	mr35	fake_reg[35]
 #define	mr36	fake_reg[36]
-#define mr(n)	(assert(n>36),fake_reg[n])
 
 #endif /* NO_REGS_H */
