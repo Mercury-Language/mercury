@@ -159,7 +159,7 @@ Changes to the Mercury implementation:
 * The compiler can now perform type specialization.
 
   Type specialization removes the overhead of polymorphic code, including
-  code which uses typeclasses. The disadvantage is increased code size.
+  code which uses type classes. The disadvantage is increased code size.
   Currently we do not perform inter-module type specialization.
   Type specialization is enabled by using the `--type-specialization' option.
 
@@ -280,7 +280,7 @@ Changes to the Mercury implementation:
 
 * We've made the MERCURY_OPTIONS environment variable somewhat easier to use.
 
-* Mtags is now able to produce tags for typeclass declarations.  It is
+* Mtags is now able to produce tags for type class declarations.  It is
   also able to produce tags files in the extended format supported by
   recent versions of Vim and Elvis.  Do `mtags --help' for more
   information.

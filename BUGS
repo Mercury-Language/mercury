@@ -110,39 +110,6 @@ On the alpha, if the Mercury runtime catches a signal, it
 sometimes prints out the wrong value for the PC.
 
 -----------------------------------------------------------------------------
-Subject: bug with polymorphic abstract exported equivalence types
-Date: Tue, 27 May 1997 20:42:43 +1000 (EST)
-
-The compiler generates incorrect code for the following program.
-The problem is that at the call to f/1 in module bar, f/1 has
-type `func(foo(T)) = int', and so it passes the type_info in r1
-and the foo(T) (== int) in r2.  But in the definition it has type
-`func(int) = int', so it just passes the int in r1.
-Similarly for the call to c/0.
-
-:- module foo.
-:- interface.
-:- func f(foo(T)) = int.
-:- type foo(T).
-:- func c = foo(int).
-:- implementation.
-:- import_module int.
-:- type foo(T) == int.
-
-f(X) = X + 1.
-
-c = 42.
-
-:- module bar.
-:- interface.
-:- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
-:- implementation.
-:- import_module foo.
-main -->
-	write(f(c)), nl.
-
------------------------------------------------------------------------------
 Subject: inter-module optimization and abstract exported equivalence types.
 Date: Thu, 19 February 1998
 
