@@ -21,15 +21,17 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type code_model	--->	model_det		% functional & total
-			;	model_semi		% just functional
-			;	model_non.		% not functional
+:- type code_model
+	--->	model_det		% functional & total
+	;	model_semi		% just functional
+	;	model_non.		% not functional
 
-:- type c_file		--->	c_file(
-					string,		% filename
-					c_header_info,
-					list(c_module)
-				).
+:- type c_file	
+	--->	c_file(
+			string,		% filename
+			c_header_info,
+			list(c_module)
+		).
 
 :- type c_header_info 	==	list(c_header_code).	% in reverse order
 :- type c_body_info 	==	list(c_body_code).	% in reverse order
@@ -64,26 +66,40 @@
 			term__context		% source code location
 		)
 
-		% Code from pragma(export, ...) decls.
+		% Code from `pragma export' decls.
 	;	c_export(
 			list(c_export)
 		).
 
-:- type c_procedure	--->	c_procedure(string, int, llds__proc_id,
-						list(instruction)).
-			%	predicate name, arity, mode, code
+:- type c_procedure
+	--->	c_procedure(
+			string,			% predicate name
+			int,			% arity
+			llds__proc_id,		% mode number
+			list(instruction)	% the code for this procedure
+		).
 
+:- type llds__proc_id	==	int.
+
+	% the code for `pragma export' is generated directly as strings
+	% by export.m.
 :- type c_export	==	string.
 
-:- type llds__proc_id == int.
-
+	% we build up instructions as trees and then flatten
+	% the tree to get a list.
 :- type code_tree	==	tree(list(instruction)).
 
 :- type instruction	==	pair(instr, string).
 			%	instruction, comment
 
-:- type call_model	--->	det ; semidet ; nondet(bool).
+:- type call_model
+	--->	det
+	;	semidet
+	;	nondet(bool).
 
+	% `instr' defines the various LLDS virtual machine instructions.
+	% Each instruction gets compiled to a simple piece of C code
+	% or a macro invocation.
 :- type instr
 	--->	comment(string)
 			% Insert a comment into the output code.
@@ -93,10 +109,12 @@
 			% are currently live.
 
 	;	block(int, int, list(instruction))
+			% block(NumIntTemps, NumFloatTemps, Instrs):
 			% A list of instructions that make use of
 			% some local temporary variables.
 
 	;	assign(lval, rval)
+			% assign(Location, Value):
 			% Assign the value specified by rval to the location
 			% specified by lval.
 
@@ -117,6 +135,8 @@
 			% current_redoip = FailureContinuation.
 
 	;	label(label)
+			% Defines a label that can be used as the
+			% target of calls, gotos, etc.
 
 	;	goto(code_addr)
 			% goto(Target)
@@ -154,16 +174,19 @@
 			% was allocated since that call to mark_hp.
 
 	;	store_ticket(lval)
-			% Get a ticket from the constraint solver, and store it
-			% in the lval.
+			% Get a ticket from the constraint solver,
+			% push it onto the ticket stack,
+			% and store its address in the lval.
 
 	;	restore_ticket(rval)
-			% Restore the the constraint solver to the ticket given
-			% in the rval.
+			% Restore the the constraint solver to the state
+			% it was in when the ticket pointed to by the
+			% specified rval was obtained with store_ticket().
+			% Reset the ticket stack so that the specified
+			% rval is now at the top of the ticket stack.
 
 	;	discard_ticket
-			% Decrement the ticket stack by the size of a solver
-			% stack frame.
+			% Pop the top ticket off the ticket stack.
 
 	;	incr_sp(int, string)
 			% Increment the det stack pointer. The string is
@@ -181,167 +204,252 @@
 			% find the outputs for pragma(c_code, ... ) decs.
 
 
-:- type pragma_c_decl	--->	pragma_c_decl(type, string).
+	% pragma_c_decl holds the information needed for a variable
+	% declaration for a pragma_c instruction.
+:- type pragma_c_decl
+	--->	pragma_c_decl(type, string).
 				% Type name, variable name.
-:- type pragma_c_input	--->	pragma_c_input(string, type, rval).
+
+	% A pragma_c_input represents the code that initializes one
+	% of the input variables for a pragma_c instruction.
+:- type pragma_c_input
+	--->	pragma_c_input(string, type, rval).
 				% variable name, type, variable value.
-:- type pragma_c_output   --->	pragma_c_output(lval, type, string).
+
+	% A pragma_c_output represents the code that stores one of
+	% of the outputs for a pragma_c instruction.
+:- type pragma_c_output  
+	--->	pragma_c_output(lval, type, string).
 				% where to put the output val, type and name
 				% of variable containing the output val
 
+	% Each call instruction has a list of liveinfo,
+	% which stores information about which variables
+	% are live at the point of that call.  The information
+	% is intended for use by the non-conservative garbage collector.
+:- type liveinfo
+	--->	live_lvalue(
+			lval,
+				% What stackslot/reg does
+				% this lifeinfo structure
+				% refer to?
+			shape_num,
+				% What is the shape of this (bound) variable?
+			maybe(list(lval))
+				% Where are the typeinfos that determine the
+				% types of the actual parameters of the type
+				% parameters of this shape (if it is
+				% polymorphic), in the order of the arguments.
+		).
 
-:- type liveinfo	--->	live_lvalue(
-					lval,
-						% What stackslot/reg does
-						% this lifeinfo structure
-						% refer to?
-					shape_num,
-						% What is the shape of this
-						% (bound) variable?
-					maybe(list(lval))
-						% Where are the typeinfos
-						% the determine the types
-						% of the actual parameters
-						% of the type parameters of
-						% this shape (if it is poly-
-						% morphic), in the order of
-						% the arguments.
-				).
+	% An lval represents a data location or register that can be used
+	% as the target of an assignment.
+:- type lval --->
 
-:- type lval		--->	reg(reg)	% either an int or float reg
-			;	stackvar(int)	% det stack slots
-			;	framevar(int)	% nondet stack slots
-			;	succip		% det return address
-			;	maxfr		% top of nondet stack
-			;	curfr		% nondet stack frame pointer
-			;	succip(rval)	% the succip of the named
-						% nondet stack frame
-			;	redoip(rval)	% the redoip of the named
-						% nondet stack frame
-			;	succfr(rval)
-			;	prevfr(rval)
-			;	hp		% heap pointer
-			;	sp		% top of det stack
-			;	field(tag, rval, rval)
-			;	lvar(var)
-			;	temp(reg).	% only inside blocks
+	/* virtual machine registers */
 
-:- type rval		--->	lval(lval)
-			;	var(var)
-			;	create(tag, list(maybe(rval)), bool, int)
-				% tag, arguments, unique, label number
-				% The boolean should be true if the term
-				% must be unique. This will prevent the term
-				% from being used for other purposes as well.
-				% The label number is needed for the case when
-				% we can construct the term at compile-time
-				% and just reference the label.
-				% Only constant term create() rvals should
-				% get output, others will get transformed
-				% to incr_hp(..., Tag, Size) plus
-				% assignments to the fields
-			;	mkword(tag, rval)
-			;	const(rval_const)
-			;	unop(unary_op, rval)
-			;	binop(binary_op, rval, rval).
+		reg(reg)	% one of the general-purpose virtual machine
+				% registers (either an int or float reg)
+	;	succip		% virtual machine register holding the
+				% return address for det/semidet code
+	;	maxfr		% virtual machine register holding a pointer
+				% to the top of nondet stack
+	;	curfr		% virtual machine register holding a pointer
+				% to the current nondet stack frame
+	;	hp		% virtual machine register holding the heap
+				% pointer
+	;	sp		% virtual machine register point to the
+				% top of det stack
+	;	temp(temp_reg)	% a local temporary register
+				% These temporary registers are actually
+				% local variables declared in `block'
+				% instructions.  They may only be
+				% used inside blocks.  The code generator
+				% doesn't generate these; they are introduced
+				% by value numbering.  The basic idea is
+				% to improve efficiency by using local
+				% variables that the C compiler may be
+				% able to allocate in a register rather than
+				% using stack slots.
 
-:- type rval_const	--->	true
-			;	false
-			;	int_const(int)
-			;	float_const(float)
-			;	string_const(string)
-			;	code_addr_const(code_addr)
-			;	data_addr_const(data_addr).
+	/* values on the stack */
 
-:- type data_addr	--->	data_addr(string, data_name, bool).
-				% module name; which var; does it have any
-				% addresses inside it (i.e. Word or Word *)?
+	;	stackvar(int)	% det stack slots (numbered starting from 1)
+				% relative to the current value of `sp'
+				% these are used for both det and semidet code
+	;	framevar(int)	% nondet stack slots (numbered starting from 0)
+				% relative to the current value of `curfr'
 
-:- type data_name	--->	common(int)
-			;	base_type_info(string, arity)
-				% type name, type arity
-			;	base_type_layout(string, arity).
-				% type name, type arity
+	;	succip(rval)	% the succip slot of the specified
+				% nondet stack frame; holds the code address
+				% to jump to on successful exit from this
+				% nondet procedure
+	;	redoip(rval)	% the redoip slot of the specified
+				% nondet stack frame; holds the code address
+				% to jump to on failure
+	;	succfr(rval)	% the succfr slot of the specified
+				% nondet stack frame; holds the address of
+				% caller's nondet stack frame.  On successful
+				% exit from this nondet procedure, we will
+				% set curfr to this value.
+	;	prevfr(rval)	% the prevfr slot of the specified
+				% nondet stack frame; holds the address of
+				% the previous frame on the nondet stack.
 
-:- type unary_op	--->	mktag
-			;	tag
-			;	unmktag
-			;	mkbody
-			;	body
-			;	unmkbody
-			;	cast_to_unsigned
-			;	hash_string
-			;	bitwise_complement
-			;	(not).
+	/* values on the heap */
 
-:- type binary_op	--->	(+)	% integer arithmetic
-			;	(-)
-			;	(*)
-			;	(/)
-			;	(mod)
-			;	(<<)	% left shift
-			;	(>>)	% right shift
-			;	(&)	% bitwise and
-			;	('|')	% bitwise or
-			;	(^)	% bitwise xor
-			;	(and)	% logical and
-			;	(or)	% logical or
-			;	eq	% ==
-			;	ne	% !=
-			;	array_index
-			;	str_eq	% string comparisons
-			;	str_ne
-			;	str_lt
-			;	str_gt
-			;	str_le
-			;	str_ge
-			;	(<)	% integer comparions
-			;	(>)
-			;	(<=)
-			;	(>=)
-			;	float_plus
-			;	float_minus
-			;	float_times
-			;	float_divide
-			;	float_eq
-			;	float_ne
-			;	float_lt
-			;	float_gt
-			;	float_le
-			;	float_ge.
+	;	field(tag, rval, rval)
+				% field(Tag, Address, FieldNum)
+				% selects a field of a compound term
 
-:- type reg		--->	r(int)		% integer regs
-			;	f(int).		% floating point regs
+	/* pseudo-values */
 
-	% local(proc_label)
-	%	Local entry label.
-	% local(proc_label, int)
-	%	Internal local label which can only be accessed externally
-	%	if it is a continuation label.
-	% exported(proc_label)
-	%	Entry label, which can be accessed from any where.
+	;	lvar(var).	% the location of the specified variable
+				% `var' lvals are used during code generation,
+				% but should not be present in the LLDS at any
+				% stage after code generation.
+
+	% An rval is an expression that represents a value.
+:- type rval	
+	--->	lval(lval)
+		% The value of an `lval' rval is just the value stored in
+		% the specified lval.
+	;	var(var)
+		% The value of a `var' rval is just the value of the
+		% specified variable.
+		% `var' rvals are used during code generation,
+		% but should not be present in the LLDS at any
+		% stage after code generation.
+	;	create(tag, list(maybe(rval)), bool, int)
+		% create(Tag, Arguments, IsUnique, LabelNumber):
+		% A `create' instruction is used during code generation
+		% for creating a term, either on the heap or
+		% (if the term is constant) as a static constant.
+		% After code generation, only constant term create() rvals
+		% should be present in the LLDS, others will get transformed
+		% to incr_hp(..., Tag, Size) plus assignments to the fields.
+		%
+		% The boolean should be true if the term
+		% must be unique (e.g. if we're doing to do
+		% destructive update on it).  This will prevent the term
+		% from being used for other purposes as well; unique terms
+		% are always created on the heap, not as constants, and
+		% we must not do common term elimination on them.
+		%
+		% The label number is needed for the case when
+		% we can construct the term at compile-time
+		% and just reference the label.
+	;	mkword(tag, rval)
+		% given a pointer and a tag,
+		% mkword returns a tagged pointer
+	;	const(rval_const)
+	;	unop(unary_op, rval)
+	;	binop(binary_op, rval, rval).
+
+:- type rval_const
+	--->	true
+	;	false
+	;	int_const(int)
+	;	float_const(float)
+	;	string_const(string)
+	;	code_addr_const(code_addr)
+	;	data_addr_const(data_addr).
+
+:- type data_addr
+	--->	data_addr(string, data_name, bool).
+			% module name; which var; does it have any
+			% addresses inside it (i.e. Word or Word *)?
+
+:- type data_name
+	--->	common(int)
+	;	base_type_info(string, arity)
+			% type name, type arity
+	;	base_type_layout(string, arity).
+			% type name, type arity
+
+:- type unary_op
+	--->	mktag
+	;	tag
+	;	unmktag
+	;	mkbody
+	;	body
+	;	unmkbody
+	;	cast_to_unsigned
+	;	hash_string
+	;	bitwise_complement
+	;	(not).
+
+:- type binary_op
+	--->	(+)	% integer arithmetic
+	;	(-)
+	;	(*)
+	;	(/)
+	;	(mod)
+	;	(<<)	% left shift
+	;	(>>)	% right shift
+	;	(&)	% bitwise and
+	;	('|')	% bitwise or
+	;	(^)	% bitwise xor
+	;	(and)	% logical and
+	;	(or)	% logical or
+	;	eq	% ==
+	;	ne	% !=
+	;	array_index
+	;	str_eq	% string comparisons
+	;	str_ne
+	;	str_lt
+	;	str_gt
+	;	str_le
+	;	str_ge
+	;	(<)	% integer comparions
+	;	(>)
+	;	(<=)
+	;	(>=)
+	;	float_plus
+	;	float_minus
+	;	float_times
+	;	float_divide
+	;	float_eq
+	;	float_ne
+	;	float_lt
+	;	float_gt
+	;	float_le
+	;	float_ge.
+
+	% one of the general-purpose virtual machine registers
+:- type reg	
+	--->	r(int)		% integer regs
+	;	f(int).		% floating point regs
+
+:- type temp_reg == reg.
 
 :- type label
-	--->		local(proc_label, int)	% internal to procedure
-	;		c_local(proc_label)	% internal to C module
-	;		local(proc_label)	% internal to Mercury module
-	;		exported(proc_label).	% exported from Mercury module
+	--->	local(proc_label, int)	% internal to procedure
+	;	c_local(proc_label)	% internal to C module
+	;	local(proc_label)	% internal to Mercury module
+	;	exported(proc_label).	% exported from Mercury module
 
 :- type code_addr
-	--->		label(label)		% defined this Mercury module
-	;		imported(proc_label)	% from another Mercury module
-	;		succip
-	;		do_succeed(bool)	% any alternatives left?
-	;		do_redo
-	;		do_fail
-	;		do_det_closure
-	;		do_semidet_closure
-	;		do_nondet_closure.
+	--->	label(label)		% a label defined in this Mercury module
+	;	imported(proc_label)	% a label from another Mercury module
+	;	succip			% the address in the `succip' register
+	;	do_succeed(bool)	% the bool is `yes' if there are any
+					% alternatives left.  If the bool is
+					% `no', we do a succeed_discard()
+					% rather than a succeed().
+	;	do_redo
+	;	do_fail
+	;	do_det_closure
+	;	do_semidet_closure
+	;	do_nondet_closure.
 
+	% A proc_label is a label used for the entry point to a procedure
 :- type proc_label
 	--->	proc(string, pred_or_func, string, int, int)
 		%	 module, predicate/function, name, arity, mode #
 	;	special_proc(string, string, sym_name, int, int).
 		%	module, pred name, type name, type arity, mode #
 
-:- type tag		==	int.
+	% A tag (used in mkword, create and field expressions
+	% and in incr_hp instructions) is a small integer.
+:- type tag	==	int.
