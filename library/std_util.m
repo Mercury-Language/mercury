@@ -316,6 +316,18 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 
 :- pragma(c_code, "
 
+/*
+ *
+ * Univ has a special value reserved for it, since it needs to
+ * be handled slightly differently - the first word is the
+ * typeinfo structure for this type, the second is the actual data.
+ *
+ */
+
+Word * mercury_data_std_util__base_type_layout_univ_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_UNIV_VALUE))
+};
+
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
 Define_extern_entry(mercury____Compare___std_util__univ_0_0);

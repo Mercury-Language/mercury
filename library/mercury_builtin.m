@@ -215,6 +215,8 @@
 :- pred builtin_term_to_type_pred(term::in, (pred)::out) is semidet.
 :- pred builtin_type_to_term_pred((pred)::in, term::out) is det.
 
+:- pred unused is det.
+
 	% compare_error is used in the code generated for compare/3 preds
 :- pred compare_error is erroneous.
 
@@ -458,10 +460,23 @@ builtin_type_to_term_pred(_Pred, Term) :-
 		Term = term__functor(term__atom(""), [], Context)
 	).
 
+unused :-
+	( semidet_succeed ->
+		error("attempted use of dead predicate")
+	;
+		% the following is never executed 
+		true
+	).
+
 :- pragma(c_header_code, "#include ""type_info.h""").
 
 :- pragma(c_code, "
 #ifdef	SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+
+
+Word * mercury_data___base_type_layout_int_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_INT_VALUE))
+};
 
 Declare_entry(mercury__builtin_unify_int_2_0);
 Declare_entry(mercury__builtin_index_int_2_0);
@@ -473,8 +488,15 @@ Word * mercury_data___base_type_info_int_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_unify_int_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_index_int_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_compare_int_3_0),
+#ifdef USE_TYPE_TO_TERM
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_int_2_0),
-	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_int_2_0)
+	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_int_2_0),
+#endif
+	(Word *) (Integer) mercury_data___base_type_layout_int_0
+};
+
+Word * mercury_data___base_type_layout_character_0[] = {
+    make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_CHARACTER_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_character_2_0);
@@ -487,8 +509,15 @@ Word * mercury_data___base_type_info_character_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_unify_character_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_index_character_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_compare_character_3_0),
+#ifdef USE_TYPE_TO_TERM
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_character_2_0),
-	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_character_2_0)
+	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_character_2_0),
+#endif
+	(Word *) (Integer) mercury_data___base_type_layout_character_0
+};
+
+Word * mercury_data___base_type_layout_string_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_STRING_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_string_2_0);
@@ -501,8 +530,15 @@ Word * mercury_data___base_type_info_string_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_unify_string_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_index_string_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_compare_string_3_0),
+#ifdef USE_TYPE_TO_TERM
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_string_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_string_2_0)
+#endif
+	(Word *) (Integer) mercury_data___base_type_layout_string_0
+};
+
+Word * mercury_data___base_type_layout_float_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_FLOAT_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_float_2_0);
@@ -515,8 +551,15 @@ Word * mercury_data___base_type_info_float_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_unify_float_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_index_float_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_compare_float_3_0),
+#ifdef USE_TYPE_TO_TERM
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_float_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_float_2_0)
+#endif
+	(Word *) (Integer) mercury_data___base_type_layout_float_0
+};
+
+Word * mercury_data___base_type_layout_pred_0[] = {
+    make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_PREDICATE_VALUE))
 };
 
 Declare_entry(mercury__builtin_unify_pred_2_0);
@@ -529,8 +572,11 @@ Word * mercury_data___base_type_info_pred_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_unify_pred_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_index_pred_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_compare_pred_3_0),
+#ifdef USE_TYPE_TO_TERM
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_pred_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_pred_2_0)
+#endif
+	(Word *) (Integer) mercury_data___base_type_layout_pred_0
 };
 
 #endif

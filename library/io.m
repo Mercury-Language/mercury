@@ -738,7 +738,7 @@
  *			;	user_output
  *			;	user_error.
  * In C:
- *	io__stream	==	pointer to MercuryStream
+ *	io__stream	==	pointer to MercuryFile
  */
 
 	% This inter-language stuff is tricky.
@@ -1710,6 +1710,27 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, "
 
+#ifdef  SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+
+	/* Rest of word is pointer to 2 cell struct */
+
+extern Word * mercury_data___base_type_info_int_0[];
+Word * mercury_data_io__base_type_layout_io__stream_0b[] = {
+	(Word *) (Integer) mercury_data___base_type_info_int_0
+};
+
+Word * mercury_data_io__base_type_layout_io__stream_0a[] = {
+	(Word *) ((Integer) 2),
+	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b),
+	(Word *) ((Integer) mercury_data_io__base_type_layout_io__stream_0b)
+};
+
+Word * mercury_data_io__base_type_layout_io__stream_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_SIMPLE_TAG, ((Integer) mercury_data_io__base_type_layout_io__stream_0a))
+};
+
+#endif
+
 Define_extern_entry(mercury____Unify___io__stream_0_0);
 Define_extern_entry(mercury____Index___io__stream_0_0);
 Define_extern_entry(mercury____Compare___io__stream_0_0);
@@ -1968,6 +1989,20 @@ void sys_init_io_stream_module(void) {
 /*---------------------------------------------------------------------------*/
 
 :- pragma(c_code, "
+
+#ifdef  SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+
+	/* 
+	 * We'll just pretend the io__external_state is an
+	 * integer. For memory copying application, this is
+	 * close enough.
+	 */
+
+Word * mercury_data_io__base_type_layout_io__external_state_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, mkbody(TYPELAYOUT_INT_VALUE))
+};
+
+#endif
 
 Define_extern_entry(mercury____Unify___io__external_state_0_0);
 Define_extern_entry(mercury____Compare___io__external_state_0_0);
