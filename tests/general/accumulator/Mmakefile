@@ -33,8 +33,16 @@ PROGS=		base		\
 		split		\
 		swap
 
-MCFLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
+ACC_FLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
 		--intermodule-optimization
+
+	# Optimizations to turn off.
+OPT_FLAGS = --no-deforestation --no-inlining --no-optimize-unused-args
+
+	# Ensure that the accumulator introduction flags are passed
+	# after EXTRA_MCFLAGS, so that we can override things set in
+	# EXTRA_MCFLAGS.
+ALL_MCGFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
 
     # programs which aren't working.
 NOT_WORKING =
