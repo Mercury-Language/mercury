@@ -256,6 +256,8 @@ Changes to the Mercury standard library:
 * We've added int:'/'/2 as a synonym for int:'//'/2 and false/0 as a
   built-in synonym for fail/0 (both left-overs from Mercury's Prolog
   heritage.)
+
+* dir:'/'/2 is now a synonym for `dir__make_path_name'.
   
 * We've removed the long obsolete predicates `io__read_anything',
   `io__write_anything', and `io__print_anything', which were long ago

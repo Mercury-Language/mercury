@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999-2000, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -41,6 +41,7 @@
 	% Given a directory name and a filename, return the pathname of that
 	% file in that directory.
 :- func dir__make_path_name(string, string) = string.
+:- func string / string = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -94,6 +95,8 @@ dir__make_path_name(DirName, FileName) = PathName :-
 	string__append_list([DirName,
 		string__char_to_string(dir__directory_separator),
 		FileName], PathName).
+
+DirName / FileName = dir__make_path_name(DirName, FileName).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
