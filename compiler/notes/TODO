@@ -6,7 +6,6 @@ TODO LIST:
 Required to bootstrap:
 ----------------------
 
-- polymorphic unifications
 - compare/3
 - term_io__read_term etc.
 
