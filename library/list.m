@@ -59,7 +59,7 @@
 :- pred list__condense(list(list(T)), list(T)).
 :- mode list__condense(in, out) is det.
 
-:- pred list__same_length(list(T), list(T)).
+:- pred list__same_length(list(T1), list(T2)).
 /**** 
 	% XXX The current mode checker can't handle this
 :- mode list__same_length(input_list_skel, output_list_skel) is det.
