@@ -289,7 +289,7 @@ transform_mlds(MLDS0) = MLDS :-
 	list__map(mlds_export_to_mlds_defn, AllExports, ExportDefns),
 
 	list__filter((pred(D::in) is semidet :-
-			( D = mlds__defn(_, _, _, mlds__function(_, _, _))
+			( D = mlds__defn(_, _, _, mlds__function(_, _, _, _))
 			; D = mlds__defn(_, _, _, mlds__data(_, _))
 			)
 		), MLDS0 ^ defns ++ ExportDefns, MercuryCodeMembers, Others),
@@ -317,13 +317,15 @@ rename_defn(defn(Name, Context, Flags, Entity0))
 	= defn(Name, Context, Flags, Entity) :-
 	( Entity0 = data(Type, Initializer),
 		Entity = data(Type, rename_initializer(Initializer))
-	; Entity0 = function(MaybePredProcId, Params, FunctionBody0),
+	; Entity0 = function(MaybePredProcId, Params, FunctionBody0,
+			Attributes),
 		( FunctionBody0 = defined_here(Stmt),
 			FunctionBody = defined_here(rename_statement(Stmt))
 		; FunctionBody0 = external,
 			FunctionBody = external
 		),
-		Entity = function(MaybePredProcId, Params, FunctionBody)
+		Entity = function(MaybePredProcId, Params, FunctionBody,
+			Attributes)
 	; Entity0 = class(ClassDefn),
 		ClassDefn = class_defn(Kind, Imports, Inherits, Implements,
 				Ctors, Members),
@@ -501,7 +503,7 @@ mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags, data(_Type, _Init)),
 		_Decl, Info, Info) :-
 	sorry(this_file, "top level data definition!").
 mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
-		function(_MaybePredProcId, _Params, _MaybeStmts)),
+		function(_MaybePredProcId, _Params, _MaybeStmts, _Attrs)),
 		_Decl, Info, Info) :-
 	sorry(this_file, "top level function definition!").
 mlds_defn_to_ilasm_decl(defn(Name, Context, Flags0, class(ClassDefn)),
@@ -587,8 +589,9 @@ maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
 		% Generate an empty block for the body of the constructor.
 		Stmt = mlds__statement(block([], []), Context),
 
+		Attributes = [],
 		Ctor = mlds__function(no, func_params([], []),
-				defined_here(Stmt)),
+				defined_here(Stmt), Attributes),
 		CtorFlags = init_decl_flags(public, per_instance, non_virtual,
 				overridable, modifiable, concrete),
 
@@ -886,7 +889,8 @@ generate_method(ClassName, _, defn(Name, Context, Flags, Entity),
 			MaybeOffset, Initializer) }.
 
 generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
-	{ Entity = function(_MaybePredProcId, Params, MaybeStatement) },
+	{ Entity = function(_MaybePredProcId, Params, MaybeStatement,
+		Attributes) },
 
 	il_info_get_module_name(ModuleName),
 
@@ -1058,7 +1062,10 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 	VerifiableCode =^ verifiable_code,
 	{ MethodBody = make_method_defn(DebugIlAsm, VerifiableCode,
 		InstrsTree) },
-	{ list__append(EntryPoint, MethodBody, MethodContents) },
+	{ CustomAttributes = attributes_to_custom_attributes(DataRep,
+		Attributes) },
+	{ list__condense([EntryPoint, CustomAttributes, MethodBody],
+		MethodContents) },
 
 	{ ClassMember = ilasm__method(methodhead(Attrs, MemberName,
 			ILSignature, []), MethodContents)}.
@@ -1069,6 +1076,20 @@ generate_method(_, _, defn(Name, Context, Flags, Entity), ClassMember) -->
 			Extends, Interfaces, ClassMembers),
 	{ ClassMember = nested_class(decl_flags_to_nestedclassattrs(Flags),
 			EntityName, Extends, Interfaces, ClassMembers) }.
+
+%-----------------------------------------------------------------------------%
+
+:- func attributes_to_custom_attributes(il_data_rep, list(mlds__attribute))
+		= list(method_body_decl).
+attributes_to_custom_attributes(DataRep, Attrs) = 
+	list__map(attribute_to_custom_attribute(DataRep), Attrs).
+
+:- func attribute_to_custom_attribute(il_data_rep, mlds__attribute)
+		= method_body_decl.
+attribute_to_custom_attribute(DataRep, custom(MLDSType)) = custom(CustomDecl) :-
+	ClassName = mlds_type_to_ilds_class_name(DataRep, MLDSType),
+	MethodRef = get_constructor_methoddef(ClassName, []),
+	CustomDecl = custom_decl(methodref(MethodRef), no, no_initalizer).
 
 %-----------------------------------------------------------------------------%
 
@@ -1163,8 +1184,10 @@ mlds_export_to_mlds_defn(
 			[CallStatement, ReturnStatement]
 		)
 		), Context),
-		
-	DefnEntity = function(no, Params, defined_here(Statement)),
+	
+	Attributes = [],
+	DefnEntity = function(no, Params, defined_here(Statement),
+		Attributes),
 
 	Flags = init_decl_flags(public, one_copy, non_virtual, overridable,
 		const, concrete),
@@ -2595,8 +2618,8 @@ rval_to_function(Rval, MemberName) :-
 
 :- pred make_class_constructor_class_member(fieldref, mlds__imports,
 	list(instr), list(instr), class_member, il_info, il_info).
-:- mode make_class_constructor_class_member(in, in, in, in, out,
-		in, out) is det.
+:- mode make_class_constructor_class_member(in, in, in, in,
+	out, in, out) is det.
 make_class_constructor_class_member(DoneFieldRef, Imports, AllocInstrs, 
 		InitInstrs, Method) -->
 	{ Method = method(methodhead([public, static], cctor, 

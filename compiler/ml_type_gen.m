@@ -556,9 +556,10 @@ gen_constructor_function(BaseClassId, ClassType, ClassQualifier,
 	),
 	
 	Stmt = mlds__statement(block([], InitMembers), Context),
+	Attributes = [],
 
 	Ctor = mlds__function(no, func_params(Args, ReturnValues),
-			defined_here(Stmt)),
+			defined_here(Stmt), Attributes),
 	CtorFlags = init_decl_flags(public, per_instance, non_virtual,
 			overridable, modifiable, concrete),
 

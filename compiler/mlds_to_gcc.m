@@ -791,7 +791,7 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 		{ GlobalInfo = GlobalInfo0 ^ global_vars := GlobalVars }
 	;
 		{ DefnBody = mlds__function(_MaybePredProcId, Signature,
-			FunctionBody) },
+			FunctionBody, _Attributes) },
 		gen_func(Name, Context, Flags, Signature, FunctionBody,
 			GlobalInfo0, GlobalInfo)
 	;
@@ -811,7 +811,7 @@ build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 		build_local_data_defn(Name, Flags, Type,
 			Initializer, DefnInfo, GCC_Defn)
 	;
-		{ DefnBody = mlds__function(_, _, _) },
+		{ DefnBody = mlds__function(_, _, _, _) },
 		% nested functions should get eliminated by ml_elim_nested,
 		% unless --gcc-nested-functions is enabled.
 		% XXX --gcc-nested-functions is not yet implemented
@@ -838,7 +838,7 @@ build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
 			GCC_Defn),
 		add_field_decl_flags(Flags, GCC_Defn)
 	;
-		{ DefnBody = mlds__function(_, _, _) },
+		{ DefnBody = mlds__function(_, _, _, _) },
 		{ unexpected(this_file, "function nested in type") }
 	;
 		{ DefnBody = mlds__class(_) },

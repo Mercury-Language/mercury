@@ -422,7 +422,7 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 	(
 		Name0 = function(_Label0, ProcID, MaybeSeqNum, PredID),
 		Body0 = mlds__function(MaybeID, Params0, 
-			MaybeStatements0),
+			MaybeStatements0, Attributes),
 		MaybeStatements0 = defined_here(Statements0),
 		Statements0 = mlds__statement(
 			block(BlockDefns0, _BlockList0), _) 
@@ -460,7 +460,7 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 		%
 		Params = mlds__func_params(Args, RetTypes),
 		Body   = mlds__function(MaybeID, Params,
-			defined_here(Statements)),
+			defined_here(Statements), Attributes),
 		Flags  = ml_gen_special_member_decl_flags,	
 		Defn   = mlds__defn(Name, Context, Flags, Body) 
 	;
@@ -629,7 +629,8 @@ output_defn(Indent, ModuleName, Defn) -->
 output_defn_body(_, Name, _, mlds__data(Type, Initializer)) -->
 	output_data_defn(Name, Type, Initializer).
 output_defn_body(Indent, Name, Context, 
-		mlds__function(MaybePredProcId, Signature, MaybeBody)) -->
+		mlds__function(MaybePredProcId, Signature, MaybeBody,
+			_Attributes)) -->
 	output_maybe(MaybePredProcId, output_pred_proc_id),
 	output_func(Indent, Name, Context, Signature, MaybeBody).
 output_defn_body(Indent, Name, Context, mlds__class(ClassDefn)) -->

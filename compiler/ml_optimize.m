@@ -74,13 +74,15 @@ optimize_in_defns(Defns, Globals, ModuleName) =
 optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
-		DefnBody0 = mlds__function(PredProcId, Params, FuncBody0),
+		DefnBody0 = mlds__function(PredProcId, Params, FuncBody0,
+			Attributes),
 		OptInfo = opt_info(Globals, ModuleName, Name, Params, Context),
 
 		FuncBody1 = optimize_func(OptInfo, FuncBody0),
 		FuncBody = optimize_in_function_body(OptInfo, FuncBody1),
 
-		DefnBody = mlds__function(PredProcId, Params, FuncBody),
+		DefnBody = mlds__function(PredProcId, Params, FuncBody,
+			Attributes),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	;
 		DefnBody0 = mlds__data(_, _),

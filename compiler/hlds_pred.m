@@ -456,6 +456,17 @@
 				% then it must give an error message.
 	.
 
+
+	% An abstract set of attributes.
+:- type pred_attributes.
+
+:- type attribute
+	--->	custom(type)
+				% A custom attribute, indended to be associated
+				% with this predicate in the underlying
+				% implementation.
+	.
+
 	% Aditi predicates are identified by their owner as well as
 	% module, name and arity.
 :- type aditi_owner == string.
@@ -773,6 +784,12 @@
 :- pred pred_info_set_markers(pred_info, pred_markers, pred_info).
 :- mode pred_info_set_markers(in, in, out) is det.
 
+:- pred pred_info_get_attributes(pred_info, pred_attributes).
+:- mode pred_info_get_attributes(in, out) is det.
+
+:- pred pred_info_set_attributes(pred_info, pred_attributes, pred_info).
+:- mode pred_info_set_attributes(in, in, out) is det.
+
 :- pred pred_info_get_call_id(pred_info, simple_call_id).
 :- mode pred_info_get_call_id(in, out) is det.
 
@@ -798,6 +815,29 @@
 
 :- pred marker_list_to_markers(list(marker), pred_markers).
 :- mode marker_list_to_markers(in, out) is det.
+
+	% create an empty set of attributes
+:- pred init_attributes(pred_attributes).
+:- mode init_attributes(out) is det.
+
+	% check if a particular is in the set
+:- pred check_attribute(pred_attributes, attribute).
+:- mode check_attribute(in, in) is semidet.
+
+	% add a attribute to the set
+:- pred add_attribute(pred_attributes, attribute, pred_attributes).
+:- mode add_attribute(in, in, out) is det.
+
+	% remove a attribute from the set
+:- pred remove_attribute(pred_attributes, attribute, pred_attributes).
+:- mode remove_attribute(in, in, out) is det.
+
+	% convert the set to a list
+:- pred attributes_to_attribute_list(pred_attributes, list(attribute)).
+:- mode attributes_to_attribute_list(in, out) is det.
+
+:- pred attribute_list_to_attributes(list(attribute), pred_attributes).
+:- mode attribute_list_to_attributes(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -892,6 +932,8 @@ status_defined_in_this_module(local,			yes).
 					% pragma foreign_code(...) decs, or none
 			markers		:: pred_markers,
 					% various boolean flags
+			attributes	:: pred_attributes,
+					% various attributes 
 			is_pred_or_func	:: pred_or_func,
 					% whether this "predicate" was really
 					% a predicate or a function
@@ -960,15 +1002,17 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 	sym_name_get_module_name(SymName, ModuleName, PredModuleName),
 	term__vars_list(Types, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+	Attributes = [],
 	UnprovenBodyConstraints = [],
 	Indexes = [],
 	set__init(Assertions),
 	MaybeInstanceConstraints = no,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet,
-		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
-		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes, Assertions, MaybeInstanceConstraints).
+		GoalType, Markers, Attributes, PredOrFunc, ClassContext,
+		ClassProofs, ExistQVars, HeadTypeParams,
+		UnprovenBodyConstraints, User, Indexes, Assertions,
+		MaybeInstanceConstraints).
 
 pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, Status, Markers, PredOrFunc, ClassContext, User,
@@ -986,6 +1030,7 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	unqualify_name(SymName, PredName),
 	% The empty list of clauses is a little white lie.
 	Clauses = [],
+	Attributes = [],
 	map__init(TVarNameMap),
 	HasForeignClauses = no,
 	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
@@ -999,9 +1044,10 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	MaybeInstanceConstraints = no,
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet,
-		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
-		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes, Assertions, MaybeInstanceConstraints).
+		clauses, Markers, Attributes, PredOrFunc, ClassContext,
+		ClassProofs, ExistQVars, HeadTypeParams,
+		UnprovenBodyConstraints, User, Indexes, Assertions,
+		MaybeInstanceConstraints).
 
 pred_info_all_procids(PredInfo, ProcIds) :-
 	ProcTable = PredInfo ^ procedures,
@@ -1199,6 +1245,10 @@ pred_info_get_markers(PredInfo, PredInfo^markers).
 
 pred_info_set_markers(PredInfo, X, PredInfo^markers := X).
 
+pred_info_get_attributes(PredInfo, PredInfo ^ attributes).
+
+pred_info_set_attributes(PredInfo, X, PredInfo ^ attributes := X).
+
 pred_info_get_is_pred_or_func(PredInfo, PredInfo^is_pred_or_func).
 
 pred_info_set_class_context(PredInfo, X, PredInfo^class_context := X).
@@ -1279,6 +1329,23 @@ remove_marker(Markers0, Marker, Markers) :-
 markers_to_marker_list(Markers, Markers).
 
 marker_list_to_markers(Markers, Markers).
+
+:- type pred_attributes == list(attribute).
+
+init_attributes([]).
+
+check_attribute(Attributes, Attribute) :-
+	list__member(Attribute, Attributes).
+
+add_attribute(Attributes, Attribute, [Attribute | Attributes]).
+
+remove_attribute(Attributes0, Attribute, Attributes) :-
+	list__delete_all(Attributes0, Attribute, Attributes).
+
+attributes_to_attribute_list(Attributes, Attributes).
+
+attribute_list_to_attributes(Attributes, Attributes).
+
 
 %-----------------------------------------------------------------------------%
 

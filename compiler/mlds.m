@@ -445,8 +445,8 @@
 			maybe(pred_proc_id),	% identifies the original
 						% Mercury procedure, if any
 			mlds__func_params,	% the arguments & return types
-			mlds__function_body	% the function body
-
+			mlds__function_body,	% the function body
+			list(mlds__attribute)	% attributes
 		)
 		% packages, classes, interfaces, structs, enums
 	;	mlds__class(
@@ -747,6 +747,15 @@
 		mlds__context
 	).
 
+%-----------------------------------------------------------------------------%
+%
+% Attributes
+%
+
+:- type mlds__attribute
+	---> custom(
+		mlds__type
+	).
 
 %-----------------------------------------------------------------------------%
 %

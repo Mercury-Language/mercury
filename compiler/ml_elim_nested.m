@@ -162,7 +162,7 @@ ml_elim_nested(MLDS0, MLDS) -->
 ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	( DefnBody0 = mlds__function(PredProcId, Params,
-			defined_here(FuncBody0)) ->
+			defined_here(FuncBody0), Attributes) ->
 		EnvName = ml_env_name(Name),
 			% XXX this should be optimized to generate 
 			% EnvTypeName from just EnvName
@@ -272,9 +272,8 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 				HoistedDefns = HoistedDefns0
 			)
 		),
-
 		DefnBody = mlds__function(PredProcId, Params,
-			defined_here(FuncBody)),
+			defined_here(FuncBody), Attributes),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
 		FlatDefns = list__append(HoistedDefns, [Defn])
 	;
@@ -495,8 +494,8 @@ convert_local_to_global(mlds__defn(Name, Context, Flags0, Body)) =
 ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
-		DefnBody0 = mlds__function(PredProcId, Params, 
-			defined_here(FuncBody0)),
+		DefnBody0 = mlds__function(PredProcId, Params,
+			defined_here(FuncBody0), Attributes),
 		statement_contains_var(FuncBody0, qual(ModuleName,
 			mlds__var_name("env_ptr", no)))
 	->
@@ -515,7 +514,7 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 		FuncBody = mlds__statement(block([EnvPtrDecl],
 				[InitEnvPtr, FuncBody0]), Context),
 		DefnBody = mlds__function(PredProcId, Params,
-			defined_here(FuncBody)),
+			defined_here(FuncBody), Attributes),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
 		Init = yes
 	;
@@ -832,7 +831,8 @@ flatten_nested_defns([Defn0 | Defns0], FollowingStatements, Defns) -->
 flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 	{ Defn0 = mlds__defn(Name, Context, Flags0, DefnBody0) },
 	(
-		{ DefnBody0 = mlds__function(PredProcId, Params, FuncBody0) },
+		{ DefnBody0 = mlds__function(PredProcId, Params, FuncBody0,
+			Attributes) },
 		%
 		% recursively flatten the nested function
 		%
@@ -846,7 +846,8 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		{ Flags1 = set_access(Flags0, private) },
 		{ Flags = set_per_instance(Flags1, one_copy) },
 
-		{ DefnBody = mlds__function(PredProcId, Params, FuncBody) },
+		{ DefnBody = mlds__function(PredProcId, Params, FuncBody,
+			Attributes) },
 		{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
 
 		% Note that we assume that we can safely hoist stuff
@@ -945,7 +946,7 @@ ml_should_add_local_data(ModuleName, VarName,
 	),
 	(
 		FollowingDefn = mlds__defn(_, _, _,
-			mlds__function(_, _, _)),
+			mlds__function(_, _, _, _)),
 		defn_contains_var(FollowingDefn, QualVarName)
 	;
 		FollowingDefn = mlds__defn(_, _, _,
@@ -1257,8 +1258,8 @@ defn_contains_defn(mlds__defn(_Name, _Context, _Flags, DefnBody), Defn) :-
 :- mode defn_body_contains_defn(in, out) is nondet.
 
 % defn_body_contains_defn(mlds__data(_Type, _Initializer), _Defn) :- fail.
-defn_body_contains_defn(mlds__function(_PredProcId, _Params, FunctionBody),
-		Name) :-
+defn_body_contains_defn(mlds__function(_PredProcId, _Params, FunctionBody,
+		_Attrs), Name) :-
 	function_body_contains_defn(FunctionBody, Name).
 defn_body_contains_defn(mlds__class(ClassDefn), Name) :-
 	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,
@@ -1394,8 +1395,8 @@ defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
 
 defn_body_contains_var(mlds__data(_Type, Initializer), Name) :-
 	initializer_contains_var(Initializer, Name).
-defn_body_contains_var(mlds__function(_PredProcId, _Params, FunctionBody),
-		Name) :-
+defn_body_contains_var(mlds__function(_PredProcId, _Params, FunctionBody,
+		_Attrs), Name) :-
 	function_body_contains_var(FunctionBody, Name).
 defn_body_contains_var(mlds__class(ClassDefn), Name) :-
 	ClassDefn = mlds__class_defn(_Kind, _Imports, _Inherits, _Implements,

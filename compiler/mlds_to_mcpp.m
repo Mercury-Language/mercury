@@ -219,8 +219,9 @@ generate_method_mcpp_code(ModuleName,
 		defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId), 
 	_Context, _DeclFlags, Entity)) -->
 	( 
+			% XXX we ignore the attributes
 		{ Entity = mlds__function(_, Params,
-			defined_here(Statement)) },
+			defined_here(Statement), _) },
 		( 
 			{ has_inline_target_code_statement(Statement) }
 		;

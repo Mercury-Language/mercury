@@ -1118,8 +1118,15 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 			Context),
 		FunctionBody = defined_here(MLDS_Statement)
 	),
+
+	pred_info_get_attributes(PredInfo, Attributes),
+	attributes_to_attribute_list(Attributes, AttributeList),
+
+	MLDSAttributes = attributes_to_mlds_attributes(ModuleInfo,
+		AttributeList),
+	
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
-			MLDS_Params, FunctionBody).
+			MLDS_Params, FunctionBody, MLDSAttributes).
 
 	% for model_det and model_semi procedures,
 	% figure out which output variables are returned by
@@ -3266,6 +3273,22 @@ ml_gen_disj([First | Rest], CodeModel, Context,
 			{ error("model_non disj in model_det disjunction") }
 		)
 	).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for handling attributes
+%
+
+:- func attributes_to_mlds_attributes(module_info, list(hlds_pred__attribute))
+		= list(mlds__attribute).
+attributes_to_mlds_attributes(ModuleInfo, Attrs) =
+	list__map(attribute_to_mlds_attribute(ModuleInfo), Attrs).
+
+:- func attribute_to_mlds_attribute(module_info, hlds_pred__attribute)
+	= mlds__attribute.
+attribute_to_mlds_attribute(ModuleInfo, custom(Type)) = 
+	custom(mercury_type_to_mlds_type(ModuleInfo, Type)).
+
 
 :- func this_file = string.
 this_file = "mlds_to_c.m".
