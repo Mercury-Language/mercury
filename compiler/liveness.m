@@ -614,7 +614,7 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 
 	PostDelta0 = PostBirths0 - PostDeaths0,
 
-	set__difference(Liveness0,  PreDeaths0, Liveness1),
+	set__difference(Liveness0, PreDeaths0, Liveness1),
 
 	goal_info_get_code_model(GoalInfo0, GoalModel),
 	(
@@ -675,21 +675,25 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 	add_nondet_lives_to_goal(Cond0, Liveness0, Extras0,
 					Cond, Liveness1, Extras1),
 	add_nondet_lives_to_goal(Then0, Liveness1, Extras1,
-					Then1, _Liveness2, Extras2),
+					Then1, LivenessThen, Extras2),
 	add_nondet_lives_to_goal(Else0, Liveness1, Extras0,
 					Else1, Liveness, Extras3),
 	set__union(Extras2, Extras3, Extras),
 
 		% things that become nondet live in the Else
-		% but not the Then have to become automagically
+		% but not the Then and which are not live at
+		% the end of the Then have to become automagically
 		% live at the end of the Then.
-	set__difference(Extras, Extras2, ElseOnlyExtras),
+	set__difference(Extras, Extras2, ElseOnlyExtras0),
+	set__difference(ElseOnlyExtras0, LivenessThen, ElseOnlyExtras),
 	stuff_liveness_residue_after_goal(Then1, ElseOnlyExtras, Then),
 
 		% things that become nondet live in the Then
-		% but not the Else have to become automagically
+		% but not the Else and which are not live at the
+		% end of the Else have to become automagically
 		% live at the end of the Else.
-	set__difference(Extras, Extras3, ThenOnlyExtras),
+	set__difference(Extras, Extras3, ThenOnlyExtras0),
+	set__difference(ThenOnlyExtras0, Liveness, ThenOnlyExtras),
 	stuff_liveness_residue_after_goal(Else1, ThenOnlyExtras, Else).
 
 	% Nondet lives cannot escape from a commit
@@ -769,8 +773,8 @@ add_nondet_lives_to_disj([G0], Liveness0, Extras0,
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0,
 					G1, Liveness, Extras1),
 	set__union(ExtrasAcc, Extras1, Extras),
-	set__difference(ExtrasAcc, Extras1, OtherGoalExtras),
-			% optimized Extras -> ExtrasAcc
+	set__difference(ExtrasAcc, Extras1, OtherGoalExtras0),
+	set__difference(OtherGoalExtras0, Liveness, OtherGoalExtras),
 	stuff_liveness_residue_after_goal(G1, OtherGoalExtras, G).
 add_nondet_lives_to_disj([G0|Gs0], Liveness0, Extras0,
 					[G|Gs], Liveness, ExtrasAcc0, Extras) :-
@@ -780,7 +784,8 @@ add_nondet_lives_to_disj([G0|Gs0], Liveness0, Extras0,
 	set__union(ExtrasAcc0, Extras2, ExtrasAcc),
 	add_nondet_lives_to_disj(Gs0, Liveness0, Extras0,
 					Gs, _Liveness1, ExtrasAcc, Extras),
-	set__difference(Extras, Extras2, OtherGoalExtras),
+	set__difference(Extras, Extras2, OtherGoalExtras0),
+	set__difference(OtherGoalExtras0, Liveness, OtherGoalExtras),
 	stuff_liveness_residue_after_goal(G1, OtherGoalExtras, G).
 
 :- pred add_nondet_lives_to_switch(list(case), set(var), set(var), 
@@ -797,7 +802,8 @@ add_nondet_lives_to_switch([case(ConsId, G0)|Gs0], Liveness0, Extras0,
 
 	add_nondet_lives_to_switch(Gs0, Liveness0, Extras0,
 					Gs, _Liveness1, ExtrasAcc, Extras),
-	set__difference(Extras, Extras2, OtherGoalExtras),
+	set__difference(Extras, Extras2, OtherGoalExtras0),
+	set__difference(OtherGoalExtras0, Liveness, OtherGoalExtras),
 	stuff_liveness_residue_after_goal(G1, OtherGoalExtras, G).
 
 %-----------------------------------------------------------------------------%
