@@ -935,9 +935,9 @@ hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _),
 	io__write_string(Follow),
 	io__write_string("\n").
 
-hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
-		_ModuleInfo, VarSet, AppendVarnums, Indent, Follow, _) -->
-		% XXX we should print more info here
+hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
+			MaybeUnifyContext, PredName),
+		ModuleInfo, VarSet, AppendVarnums, Indent, Follow, TypeQual) -->
 	globals__io_lookup_string_option(verbose_dump_hlds, Verbose),
 	( { string__contains_char(Verbose, 'b') } ->
 		(
@@ -965,7 +965,38 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, Builtin, _, PredName),
 			AppendVarnums)
 	),
 	io__write_string(Follow),
-	io__write_string("\n").
+	io__write_string("\n"),
+	( { string__contains_char(Verbose, 'l') } ->
+		{ pred_id_to_int(PredId, PredNum) },
+		{ proc_id_to_int(ProcId, ProcNum) },
+		hlds_out__write_indent(Indent),
+		io__write_string("% pred id: "),
+		io__write_int(PredNum),
+		io__write_string(", proc id: "),
+		io__write_int(ProcNum),
+		io__write_strings([Follow, "\n"]),
+		( { MaybeUnifyContext = yes(CallUnifyContext) } ->
+			{ TypeQual = yes(_, VarTypes) ->
+				map__lookup(VarTypes, Var, UniType),
+				VarType = yes(UniType)
+			;
+				VarType = no
+			},
+			{ CallUnifyContext = call_unify_context(Var,
+					RHS, _UnifyContext) },
+			hlds_out__write_indent(Indent),
+			io__write_string("% Complicated unify: "),
+			mercury_output_var(Var, VarSet, AppendVarnums),
+			io__write_string(" = "),
+			hlds_out__write_unify_rhs_2(RHS, ModuleInfo, VarSet,
+				AppendVarnums, Indent, Follow, VarType,
+				TypeQual)
+		;
+			[]
+		)
+	;
+		[]
+	).
 
 hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 		AppendVarnums, Indent, Follow, TypeQual) -->
