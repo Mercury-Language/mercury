@@ -1,6 +1,6 @@
 
 /*
- *	$Id: bytecode.h,v 1.6 1997-02-01 13:35:53 aet Exp $
+ *	$Id: bytecode.h,v 1.7 1997-03-20 08:15:46 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -40,8 +40,6 @@ typedef double
 	Double;
 typedef char*
 	CString;
-typedef unsigned short
-	ushort;
 
 typedef struct Tag {
 	Byte	id;
@@ -117,6 +115,7 @@ typedef struct Cons_id {
 	Byte	id;
 	union {
 		struct {
+			CString		module_id;
 			CString		string;
 			short		arity;
 			Tag		tag;
@@ -141,6 +140,9 @@ typedef struct Cons_id {
 			CString		type_name;
 			Byte		type_arity;
 		} base_type_info_const;
+		struct {
+			Byte		ch;
+		} char_const;
 	} opt;
 } Cons_id;
 
@@ -154,6 +156,7 @@ typedef struct Cons_id {
 #define	CONSID_PRED_CONST	4
 #define	CONSID_CODE_ADDR_CONST	5
 #define	CONSID_BASE_TYPE_INFO_CONST	6
+#define	CONSID_CHAR_CONST	7
 
 
 typedef struct Bytecode {
@@ -389,6 +392,7 @@ typedef struct Bytecode {
 #define	BC_fail				37
 #define	BC_context			38
 #define	BC_not_supported		39
+#define	BC_noop				255
 
 /*
  *	Read the next bytecode from the stream fp.
