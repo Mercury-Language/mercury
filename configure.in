@@ -1246,12 +1246,21 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 #-----------------------------------------------------------------------------#
 #
 # On sparc, x86, and probably on other architectures,
-# for egcs 1.1, if we're using non-local gotos, then we need
-# `-fno-gcse -fno-function-cse'.
-# (Actually I don't know if _both_ of these are needed.
-# Maybe you can get away with just one of them.)
-# Earlier versions of gcc will just ignore those arguments,
-# so we don't need to conditionalize that on the gcc version.
+# if we're using non-local gotos, then for egcs 1.1, we need
+# `-fno-gcse -fno-function-cse', and for gcc 2.8 we need `-fno-function-cse'.
+# Otherwise gcc generates code which initializes registers in the function
+# prologue and expects them to be valid later on, which doesn't work with
+# non-local gotos, since we jump directly into the middle of a function.
+# (Actually I don't know if `-fno-functions-cse' is really needed.
+# Maybe you can get away without it.  But better to err on the safe side...)
+#
+# For alpha and for mips, and probably on other architectures, when using
+# non-local gotos we need -fomit-frame-pointer, otherwise when compiling
+# with --no-c-optimize we run into a problem similar to the one above:
+# Gcc generates code which initializes the frame pointer in the
+# function prologue, and then expects it to be valid later on, which
+# doesn't work with non-local gotos, since we jump directly into the
+# middle of a function.
 #
 # For Irix 5, gcc labels don't work with shared libraries,
 # so if we're using gcc labels, we need to use non-shared libraries,
@@ -1278,6 +1287,11 @@ case "$host" in
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
 LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 		export LIBRARY_PATH
+		;;
+esac
+case "$host" in
+	mips-*)
+		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
 	i?86-*)
 		CC="$CC -fno-builtin -fno-omit-frame-pointer"
