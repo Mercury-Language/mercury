@@ -100,13 +100,24 @@
 :- func \ int = int.
 :- mode \ in  = uo  is det.
 
+	% unary plus
+:- func + int = int.
+:- mode + in = uo is det.
+
+	% unary minus
+:- func - int = int.
+:- mode - in = uo is det.
+
 	% is/2, for backwards compatiblity with Prolog (and with
 	% early implementations of Mercury)
 :- pred is(T, T) is det.
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
-/* The following routines are builtins that the compiler knows about. */
+/* The following routines are builtins that the compiler knows about.
+   Don't use them; use the functions above.
+   These will go away in some future release.
+*/
 
 :- pred builtin_plus(int, int, int).
 :- mode builtin_plus(in, in, uo) is det.
@@ -149,25 +160,10 @@
 :- mode builtin_bit_neg(in, uo) is det.
 
 :- implementation.
-
 :- import_module require.
 
-:- pragma(c_code, is(X::uo, Y::di),  "X = Y;").
-:- pragma(c_code, is(X::out, Y::in), "X = Y;").
-
-/*
-(X + Y) = Z	:-	builtin_plus(X, Y, Z).
-(X * Y) = Z	:-	builtin_times(X, Y, Z).
-(X - Y) = Z	:-	builtin_minus(X, Y, Z).
-(X mod Y) = Z	:-	builtin_mod(X, Y, Z).
-(X // Y) = Z	:-	builtin_div(X, Y, Z).
-(X << Y) = Z	:-	builtin_left_shift(X, Y, Z).
-(X >> Y) = Z	:-	builtin_right_shift(X, Y, Z).
-(X /\ Y) = Z	:-	builtin_bit_and(X, Y, Z).
-(X \/ Y) = Z	:-	builtin_bit_or(X, Y, Z).
-(X ^ Y) = Z	:-	builtin_bit_xor(X, Y, Z).
-(\ X) = Z	:-	builtin_bit_neg(X, Z).
-*/
+% The arithmetic and comparison operators are recognized by
+% the compiler as builtins, so we don't need to define them here.
 
 int__abs(Num, Abs) :-
 	(
@@ -240,11 +236,22 @@ int__log2_2(X, N0, N) :-
 % builtin_unary_minus and builtin_unary_plus aren't actually builtin yet,
 % although they should be... still, cross-module inlining would do the trick
 
-builtin_unary_minus(X, Y) :-
-	Y is 0 - X.
+- X = 0 - X.
++ X = 0 + X.
 
-builtin_unary_plus(X, Y) :-
-	Y is 0 + X.
+builtin_unary_minus(X, Y) :- Y is 0 - X.
+builtin_unary_plus(X, Y)  :- Y is 0 + X.
+
+%-----------------------------------------------------------------------------%
+
+% is/2 is replaced with `=' in the parser, but the following is useful
+% in case you should take the address of `is' or something wierd like that.
+
+% we use pragma(c_code) to avoid complaints about redefinition of is/2
+% from the Prolog compilers.
+
+:- pragma(c_code, is(X::uo, Y::di),  "X = Y;").
+:- pragma(c_code, is(X::out, Y::in), "X = Y;").
 
 %-----------------------------------------------------------------------------%
 
