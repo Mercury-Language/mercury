@@ -259,9 +259,7 @@
 %		void success() {
 %			goto done;
 %		}
-%		try {
-%			<Goal && success()>
-%		} catch (COMMIT) {}
+%		<Goal && success()>
 %	done:	;
 
 %	model_non in det context (using catch/throw):
@@ -279,7 +277,7 @@
 % 	===>
 %		jmp_buf buf;
 %		void success() {
-%			longjmp(buf, TRUE);
+%			longjmp(buf, 1);
 %		}
 %		if (setjmp(buf) == 0) {
 %			<Goal && success()>
