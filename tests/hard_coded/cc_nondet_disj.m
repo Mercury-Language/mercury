@@ -1,4 +1,4 @@
-:- module foo.
+:- module cc_nondet_disj.
 :- interface.
 :- import_module io.
 

@@ -1,4 +1,4 @@
-:- module l.
+:- module higher_order_func_test.
 :- import_module int.
 
 :- interface.

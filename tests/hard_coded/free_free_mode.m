@@ -1,4 +1,4 @@
-:- module hello.
+:- module free_free_mode.
 :- interface.
 :- import_module io.
 
