@@ -395,7 +395,7 @@ static MR_Next	MR_trace_cmd_help(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
 
-#ifdef MR_TRACE_HISTORGRAM
+#ifdef MR_TRACE_HISTOGRAM
 static MR_Next	MR_trace_cmd_histogram_all(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
@@ -405,7 +405,7 @@ static MR_Next	MR_trace_cmd_histogram_exp(char **words, int word_count,
 static MR_Next	MR_trace_cmd_clear_histogram(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
-#endif	/* MR_TRACE_HISTORGRAM */
+#endif	/* MR_TRACE_HISTOGRAM */
 
 #ifdef MR_USE_MINIMAL_MODEL
 static MR_Next	MR_trace_cmd_gen_stack(char **words, int word_count,
