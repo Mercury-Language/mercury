@@ -12,9 +12,8 @@
 
 :- implementation.
 
-:- import_module help.
-:- import_module debugger_interface.
-:- import_module browse, frame, parse, util.
+:- import_module browse, frame, help, parse, util.
+:- import_module debugger_interface, declarative_debugger, declarative_oracle.
 :- import_module interactive_query, dl, name_mangle.
 
 % See library/library.m for why we implement this predicate this way.

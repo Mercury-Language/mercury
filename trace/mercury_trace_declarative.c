@@ -11,21 +11,23 @@
 ** back end is an extension to the internal debugger which collects
 ** related trace events and builds them into an Evaluation Dependency
 ** Tree (EDT).  Once built, the EDT is passed to the front end where it can
-** be analysed to find bugs.
-**
-** In this incarnation, the front end just dumps the EDT to stdout where
-** the user can do manual analysis.
+** be analysed to find bugs.  The front end is implemented in
+** browse/declarative_debugger.m.
 */
 
 #include "mercury_imp.h"
 
 #ifdef MR_USE_DECLARATIVE_DEBUGGER
 
-#include "mercury_dummy.h"
 #include "mercury_trace.h"
+#include "mercury_trace_browse.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_declarative.h"
+#include "mercury_trace_tables.h"
+#include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
+#include "mercury_string.h"
+#include "declarative_debugger.h"
 #include <stdio.h>
 
 /*
@@ -46,9 +48,9 @@
 ** back into interactive mode.
 */
 
-static	int		MR_edt_min_depth;
-static	int		MR_edt_max_depth;
-static	int		MR_edt_last_event;
+static	Unsigned	MR_edt_min_depth;
+static	Unsigned	MR_edt_max_depth;
+static	Unsigned	MR_edt_last_event;
 
 /*
 ** MR_edt_parent points to the the parent edt_node of a procedure
@@ -77,22 +79,24 @@ MR_trace_decl_wrong_answer_fail(MR_Trace_Cmd_Info *cmd,
 		MR_Event_Info *event_info, int decl_slot);
 
 static void
-MR_trace_decl_update_path(const MR_Stack_Layout_Label *layout, 
-		Word *saved_regs, const char *path, int decl_slot);
+MR_trace_decl_update_path(MR_Event_Info *event_info, int decl_slot);
 
 static void
 MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 		MR_Edt_Node *edt_node);
 
-static 	void
-MR_edt_print(MR_Edt_Node *root, int level);
-
-static 	void
-MR_edt_print_node(MR_Edt_Node *node, int level);
+static	void
+MR_analyse_edt(MR_Edt_Node *root);
 
 static	MR_Edt_Node *
 MR_edt_node_construct(const MR_Stack_Layout_Label *layout,
 		MR_Edt_Node_Type node_tag, int start_event);
+
+static	ConstString
+MR_edt_root_node_name(const MR_Stack_Layout_Entry *entry);
+
+static	Word
+MR_edt_root_node_args(const MR_Edt_Node *edt);
 
 Code *
 MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd, 
@@ -106,7 +110,9 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
 
-	if (MR_trace_event_number > MR_edt_last_event) {
+	if (event_info->MR_event_number > MR_edt_last_event) {
+		/* This shouldn't ever be reached. */
+		fprintf(MR_mdb_err, "Warning: missed final event.\n");
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		return MR_trace_event_internal(cmd, TRUE, event_info);
 	}
@@ -120,10 +126,13 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 		depth < MR_edt_min_depth ||
 		entry->MR_sle_maybe_decl_debug < 1 ) {
 		/*
-		** We can just ignore any event with a depth outside the
-		** range given by MR_edt_{min,max}_depth, or which
-		** does not have slots reserved for declarative
-		** debugging.
+		** We ignore any event for a procedure that does not have
+		** slots reserved for declarative debugging.  Such
+		** procedures are assumed to be correct.  We also filter
+		** out events with a depth outside the range given by
+		** MR_edt_{min,max}_depth.  These events are either
+		** irrelevant, or else implicitly represented in the
+		** structure being built.
 		*/
 		return NULL;
 	}
@@ -152,9 +161,7 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 		case MR_PORT_ELSE:
 		case MR_PORT_DISJ:
 		case MR_PORT_SWITCH:
-			MR_trace_decl_update_path(event_info->MR_event_sll,
-					event_info->MR_saved_regs, 
-					event_info->MR_event_path, decl_slot);
+			MR_trace_decl_update_path(event_info, decl_slot);
 		case MR_PORT_PRAGMA_FIRST:
 		case MR_PORT_PRAGMA_LATER:
 			break;
@@ -164,9 +171,10 @@ MR_trace_decl_wrong_answer(MR_Trace_Cmd_Info *cmd,
 	
 	if (MR_trace_event_number == MR_edt_last_event) {
 		/* Call the front end */
-		MR_edt_print(MR_edt_parent->MR_edt_node_children, 0);
+		MR_analyse_edt(MR_edt_parent->MR_edt_node_children);
 
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
+		return MR_trace_event_internal(cmd, TRUE, event_info);
 	}
 
 	MR_trace_enabled = TRUE;
@@ -197,7 +205,7 @@ MR_trace_decl_wrong_answer_call(MR_Trace_Cmd_Info *cmd,
 	}
 
 	edt_node = MR_edt_node_construct(event_info->MR_event_sll, node_tag,
-			MR_trace_event_number);
+			event_info->MR_event_number);
 
 	if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
 		MR_based_stackvar(MR_saved_sp(saved_regs), decl_slot) =
@@ -242,7 +250,7 @@ MR_trace_decl_wrong_answer_exit(MR_Trace_Cmd_Info *cmd,
 	}
 
 	edt_node->MR_edt_node_layout = layout;
-	edt_node->MR_edt_node_end_event = MR_trace_event_number;
+	edt_node->MR_edt_node_end_event = event_info->MR_event_number;
 	edt_node->MR_edt_node_seqno = event_info->MR_call_seqno;
 
 	MR_trace_decl_save_args(layout, saved_regs, edt_node);
@@ -323,17 +331,21 @@ MR_trace_decl_wrong_answer_fail(MR_Trace_Cmd_Info *cmd,
 
 /*
 ** MR_trace_decl_update_path adds to the record of the execution path
-** taken for the current edt_node.
+** taken for the current EDT parent node.
 **
-** XXX It currently just overwrites all but the last path seen.  If
-** the goal is a conjunction of two disjunctions, only the path 
-** through the second disjunction is remembered.
+** XXX It currently doesn't do anything useful.  When implemented properly
+** it will add a new type of node to the current parent to indicate the
+** path taken.
 */
 static void
-MR_trace_decl_update_path(const MR_Stack_Layout_Label *layout, 
-		Word *saved_regs, const char *path, int decl_slot)
+MR_trace_decl_update_path(MR_Event_Info *event_info, int decl_slot)
 {
-	MR_Edt_Node	*edt_node;
+	MR_Edt_Node			*edt_node;
+	const MR_Stack_Layout_Label	*layout;
+	Word				*saved_regs;
+
+	layout = event_info->MR_event_sll;
+	saved_regs = event_info->MR_saved_regs;
 
 	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
 		edt_node = (MR_Edt_Node *) MR_based_stackvar(
@@ -342,7 +354,7 @@ MR_trace_decl_update_path(const MR_Stack_Layout_Label *layout,
 		edt_node = (MR_Edt_Node *) MR_based_framevar(
 				MR_saved_curfr(saved_regs), decl_slot);
 	}
-	edt_node->MR_edt_node_path = path;
+	edt_node->MR_edt_node_path = event_info->MR_event_path;
 }
 
 static void
@@ -365,7 +377,10 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 
 	arg_count = layout->MR_sll_var_count;
 	if (arg_count < 0) {
-		printf("mdb: no info about live variables.\n");
+		fprintf(MR_mdb_err, "mdb: no info about live variables.\n");
+	}
+
+	if (arg_count <= 0) {
 		edt_node->MR_edt_node_arg_values = NULL;
 		edt_node->MR_edt_node_arg_types = NULL;
 		return;
@@ -384,15 +399,15 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 				&arg_values[i]);
 		locn = var->MR_slv_locn;
 
-#ifdef 0
-		printf("var %d: lval type = %d, "
+#ifdef MR_DEBUG_DD_BACK_END
+		fprintf(MR_mdb_out, "var %d: lval type = %d, "
 				"lval number = %d, value = ",
 				i,
 				MR_LIVE_LVAL_TYPE(locn),
 				MR_LIVE_LVAL_NUMBER(locn)
 		);
-		MR_write_variable(arg_types[i], arg_values[i]);
-		printf("\n");
+		MR_trace_print(arg_types[i], arg_values[i]);
+		fprintf(MR_mdb_out, "\n");
 #endif
 	}
 
@@ -406,6 +421,7 @@ MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 {
 	MR_Stack_Layout_Entry 	*entry;
 	int			decl_slot;
+	const char		*message;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 
@@ -426,7 +442,11 @@ MR_trace_start_wrong_answer(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 	MR_edt_min_depth = event_info->MR_call_depth;
 	MR_edt_max_depth = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
 
-	MR_trace_retry(event_info, event_details, jumpaddr);
+	message = MR_trace_retry(event_info, event_details, jumpaddr);
+
+	if (message != NULL) {
+		return FALSE;
+	}
 
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
 	cmd->MR_trace_stop_event = MR_trace_event_number + 1;
@@ -453,58 +473,90 @@ MR_edt_node_construct(const MR_Stack_Layout_Label *layout,
 	return edt_node;
 }
 
-/*
-** The following functions do a fairly unpretty print of the EDT.  They
-** currently form the front end of the declarative debugger.  In the
-** future the front end will be in a separate module to the back, and
-** will be much more detailed.  These functions will probably disappear.
-*/
-
 static void
-MR_edt_print(MR_Edt_Node *root, int level)
+MR_analyse_edt(MR_Edt_Node *root)
 {
-	int i;
+	MercuryFile	mdb_in, mdb_out;
 
-	if (root->MR_edt_node_sibling != NULL) {
-		MR_edt_print(root->MR_edt_node_sibling, level);
-	}
+	mdb_in.file = MR_mdb_in;
+	mdb_in.line_number = 1;
+	mdb_out.file = MR_mdb_out;
+	mdb_out.line_number = 1;
 
-	MR_edt_print_node(root, level);
+	MR_TRACE_CALL_MERCURY(
+		ML_DD_analyse_edt((Word) root,
+				(Word) &mdb_in,
+				(Word) &mdb_out
+			);
+	);
+}
 
-	if (root->MR_edt_node_tag == MR_EDT_WRONG_ANSWER_IMPLICIT) {
-		for (i = 0; i < level + 1; i++) {
-			printf("    ");
-		}
-		printf("/* implicit */\n");
-	}
+extern void
+MR_edt_root_node(Word EDT, Word *Node)
+{
+	MR_Edt_Node		*edt;
+	MR_Stack_Layout_Entry	*entry;
+	ConstString		name;
+	Word			args;
 
-	if (root->MR_edt_node_children != NULL) {
-		MR_edt_print(root->MR_edt_node_children, level + 1);
+	edt = (MR_Edt_Node *) EDT;
+	entry = edt->MR_edt_node_layout->MR_sll_entry;
+	
+	switch (edt->MR_edt_node_tag) {
+		case MR_EDT_WRONG_ANSWER_EXPLICIT:
+		case MR_EDT_WRONG_ANSWER_IMPLICIT:
+			name = MR_edt_root_node_name(entry);
+			args = MR_edt_root_node_args(edt);
+			MR_TRACE_USE_HP(
+				incr_hp(*Node, 2);
+			);
+			field(mktag(0), *Node, 0) = (Word) name;
+			field(mktag(0), *Node, 1) = args;
+			break;
+		default:
+			fatal_error("MR_edt_root_node: unknown tag");
 	}
 }
 
-static void
-MR_edt_print_node(MR_Edt_Node *node, int level)
+static ConstString
+MR_edt_root_node_name(const MR_Stack_Layout_Entry *entry)
 {
-	int i;
+	if (MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
+		if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+			return (ConstString) "(internal)";
+		} else {
+			return entry->MR_sle_proc_id.MR_proc_user.MR_user_name;
+		}
+	} else {
+		return (ConstString) "(unknown)";
+	}
+}
 
-	for (i = 0; i < level; i++) {
-		printf("    ");
-	}
-	printf("(");
-	MR_write_variable(node->MR_edt_node_arg_types[0],
-			node->MR_edt_node_arg_values[0]);
-	for (i = 1; i < node->MR_edt_node_layout->MR_sll_var_count; i++) {
-		printf(", ");
-		MR_write_variable(node->MR_edt_node_arg_types[i],
-				node->MR_edt_node_arg_values[i]);
-	}
-	printf(") ");
-	if (node->MR_edt_node_path != NULL) {
-		printf("%s ", node->MR_edt_node_path);
-	}
-	MR_print_proc_id_for_debugger(stdout, 
-			node->MR_edt_node_layout->MR_sll_entry);
+static Word
+MR_edt_root_node_args(const MR_Edt_Node *edt)
+{
+	int			i;
+	int			argc;
+	Word			arglist;
+	Word			tail;
+	Word			head;
+
+	argc = edt->MR_edt_node_layout->MR_sll_var_count;
+
+	MR_TRACE_USE_HP(
+		arglist = list_empty();
+		for (i = argc - 1; i >= 0; i--) {
+			tail = arglist;
+			incr_hp(head, 2);
+			field(mktag(0), head, UNIV_OFFSET_FOR_TYPEINFO) =
+				edt->MR_edt_node_arg_types[i];
+			field(mktag(0), head, UNIV_OFFSET_FOR_DATA) =
+				edt->MR_edt_node_arg_values[i];
+			arglist = list_cons(head, tail);
+		}
+	);
+
+	return arglist;
 }
 
 #endif	/* MR_USE_DECLARATIVE_DEBUGGER */

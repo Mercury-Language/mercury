@@ -111,8 +111,11 @@
 **	Slows down compilation a LOT.
 **
 ** MR_USE_DECLARATIVE_DEBUGGER
-**	Enable this if you want declarative debugging support in the
-**	internal debugger.
+**	Enables declarative debugging support in the internal debugger.
+**
+** MR_DEBUG_DD_BACK_END
+**	Enables low-level debugging messages on the operation of the
+**	declarative debugging back end.
 **
 ** MR_DEBUG_GOTOS
 **	(Implied by MR_LOWLEVEL_DEBUG.)

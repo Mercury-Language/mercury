@@ -4,8 +4,6 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#include "mercury_imp.h"
-
 #ifndef MERCURY_TRACE_DECLARATIVE_H
 #define MERCURY_TRACE_DECLARATIVE_H
 
@@ -15,6 +13,9 @@
 ** debugging.  It also defines an interface to the back end of the
 ** declarative debugger from the internal debugger.
 */
+
+#include "mercury_imp.h"
+#include "mercury_trace.h"
 
 /*
 ** Each node in an EDT has a tag to denote its type.  At the moment
@@ -80,6 +81,13 @@ struct MR_Edt_Node_Struct {
 		*/
 	MR_Edt_Node			*MR_edt_node_sibling;
 };
+
+/*
+** The following function is part of an interface to the EDT that can be
+** used by a front end written in Mercury (see browser/declarative_debugger.m).
+*/
+
+extern	void	MR_edt_root_node(Word EDT, Word *Node);
 
 /*
 ** When in declarative debugging mode, the internal debugger calls

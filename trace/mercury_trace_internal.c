@@ -1365,7 +1365,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
 				"mdb: dd_wrong requires no arguments.\n");
-		} else if (port != MR_PORT_EXIT) {
+		} else if (event_info->MR_trace_port != MR_PORT_EXIT) {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
 				"mdb: wrong answer analysis is only "
