@@ -639,7 +639,7 @@ mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 {
 	if (ML_exception_handler == NULL) {
 		ML_report_uncaught_exception((MR_Word) exception);
-		abort();
+		exit(EXIT_FAILURE);
 	} else {
 #ifdef	MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""throw longjmp %p\\n"",
