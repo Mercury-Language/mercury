@@ -33,7 +33,7 @@
 :- import_module conf, getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
 :- import_module negation, dependency_graph, constraint.
-:- import_module common, require.
+:- import_module common, require, library.
 
 %-----------------------------------------------------------------------------%
 
@@ -289,7 +289,9 @@ report_error(ErrorMessage) -->
 usage -->
 	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
- 	io__write_string(StdErr, "Mercury Compiler, version 0.3\n"),
+	{ library__version(Version) },
+ 	io__write_strings(StdErr,
+			["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string(StdErr,
 			"Copyright (C) 1995 University of Melbourne\n"),
 	io__write_string(StdErr, "Usage: "),
@@ -302,7 +304,8 @@ usage -->
 :- pred long_usage(io__state::di, io__state::uo) is det.
 long_usage -->
 	io__progname_base("mercury_compile", ProgName),
- 	io__write_string("Mercury Compiler, version 0.3\n"),
+	{ library__version(Version) },
+ 	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string("Copyright (C) 1995 University of Melbourne\n"),
 	io__write_string("Usage: "),
 	io__write_string(ProgName),
