@@ -543,8 +543,10 @@ typedef union MR_Proc_Id_Union {
 ** Therefore using the stored offset to index into the string table
 ** is always safe.
 **
-** The max_var_num field gives the number of elements in the used_var_names
-** table.
+** The max_named_var_num field gives the number of elements in the
+** used_var_names table, which is also the number of the highest numbered
+** named variable. Note that unnamed variables may have numbers higher than
+** this.
 **
 ** The max_r_num field tells the debugger which Mercury abstract machine
 ** registers need saving in MR_trace: besides the special registers, it is
@@ -613,7 +615,7 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_Word			*MR_exec_proc_rep;
 	const MR_Table_Io_Decl	*MR_exec_table_io_decl;
 	const MR_int_least16_t	*MR_exec_used_var_names;
-	MR_int_least16_t	MR_exec_max_var_num;
+	MR_int_least16_t	MR_exec_max_named_var_num;
 	MR_int_least16_t	MR_exec_max_r_num;
 	MR_int_least8_t		MR_exec_maybe_from_full;
 	MR_int_least8_t		MR_exec_maybe_io_seq;
@@ -727,7 +729,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 #define	MR_sle_module_layout	MR_sle_exec_trace.MR_exec_module_layout
 #define	MR_sle_proc_rep	MR_sle_exec_trace.MR_exec_proc_rep
 #define	MR_sle_used_var_names	MR_sle_exec_trace.MR_exec_used_var_names
-#define	MR_sle_max_var_num	MR_sle_exec_trace.MR_exec_max_var_num
+#define	MR_sle_max_named_var_num MR_sle_exec_trace.MR_exec_max_named_var_num
 #define	MR_sle_max_r_num	MR_sle_exec_trace.MR_exec_max_r_num
 #define	MR_sle_maybe_from_full	MR_sle_exec_trace.MR_exec_maybe_from_full
 #define	MR_sle_maybe_io_seq	MR_sle_exec_trace.MR_exec_maybe_io_seq

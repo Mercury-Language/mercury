@@ -415,8 +415,9 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 			continue;
 		}
 
-		if (var_num > entry->MR_sle_max_var_num) {
-			MR_fatal_error("array bounds error on var name table");
+		if (var_num > entry->MR_sle_max_named_var_num) {
+			/* this value is a compiler-generated variable */
+			continue;
 		}
 
 			/* variable number 1 is stored at offset 0 */

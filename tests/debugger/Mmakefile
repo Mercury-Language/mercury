@@ -44,6 +44,7 @@ NONRETRY_PROGS = \
 	nondet_stack			\
 	output_term_dep			\
 	polymorphic_output		\
+	queens_rep			\
 	resume_typeinfos		\
 	shallow				\
 	type_desc_test
@@ -52,6 +53,7 @@ NONRETRY_PROGS = \
 # the input is not a terminal.
 MLFLAGS-completion = --runtime-flags --force-readline
 
+MCFLAGS-queens_rep = --trace rep
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io
 MCFLAGS-tabled_read_decl = --trace-table-io-decl
@@ -256,6 +258,9 @@ output_term_dep.out: output_term_dep output_term_dep.inp
 
 queens.out: queens queens.inp
 	$(MDB) ./queens < queens.inp > queens.out 2>&1
+
+queens_rep.out: queens_rep queens_rep.inp
+	$(MDB) ./queens_rep < queens_rep.inp > queens_rep.out 2>&1
 
 # We insert the names of entry labels into the label table only in a few grades
 # (e.g. profiling grades). The debugger's redo label is an entry label. To

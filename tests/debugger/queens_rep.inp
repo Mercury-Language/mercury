@@ -1,0 +1,5 @@
+echo on
+context none
+goto 9
+print
+continue -n -S
