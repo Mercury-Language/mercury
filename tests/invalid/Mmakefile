@@ -208,6 +208,8 @@ duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m \
 	else	echo "Error was successfully detected" > $*.err; \
 	fi
 
+$(dates_subdir)undef_mod_qual.date: $(int0s_subdir)undef_mod_qual.int0
+
 # Some tests have more than one possible valid output, so
 # we allow the test to pass if it matches any of the .err_exp* files.
 DIFF_OPTS=-c
