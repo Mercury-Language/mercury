@@ -73,33 +73,40 @@ include Mercury.options
 #
 # This is adapted from the rule in ../../Mmake.common.  The only
 # differences are that we only cat the first 50 lines to stdout, as
-# generally it is quite big and that we sort the output before the
-# comparison, as the IL and C backends use a different ordering for
-# lexical comparisons.
+# generally it is quite big and that we sort both the output and the
+# expected output before the comparison, as the IL and C backends use
+# a different ordering for lexical comparisons.  The reason for sorting
+# the expected output as well is to allow for different behaviour in
+# different versions of sort.
 #
 %.res: %.exp %.out
-	@echo "Comparing $*.sorted_out with $*.exp*,"
+	@echo "Comparing $*.sorted_out with $*.sorted_exp*,"
 	@echo "	results in $@"
 	@-rm -f $@ $*.res[1-5]
 	@sort $*.out > $*.sorted_out
-	@{ diff $(DIFF_OPTS) $*.exp $*.sorted_out > $*.res1 && \
-		echo "Matched $*.exp" && \
+	@sort $*.exp > $*.sorted_exp
+	@{ diff $(DIFF_OPTS) $*.sorted_exp $*.sorted_out > $*.res1 && \
+		echo "Matched $*.sorted_exp" && \
 		cp $*.res1 $@; } || \
 	{ test -f $*.exp2 && \
-		diff $(DIFF_OPTS) $*.exp2 $*.sorted_out > $*.res2 && \
-		echo "Matched $*.exp2" && \
+		@sort $*.exp2 > $*.sorted_exp2 \
+		diff $(DIFF_OPTS) $*.sorted_exp2 $*.sorted_out > $*.res2 && \
+		echo "Matched $*.sorted_exp2" && \
 		cp $*.res2 $@; } || \
 	{ test -f $*.exp3 && \
-		diff $(DIFF_OPTS) $*.exp3 $*.sorted_out > $*.res3 && \
-		echo "Matched $*.exp3" && \
+		@sort $*.exp3 > $*.sorted_exp3 \
+		diff $(DIFF_OPTS) $*.sorted_exp3 $*.sorted_out > $*.res3 && \
+		echo "Matched $*.sorted_exp3" && \
 		cp $*.res3 $@; } || \
 	{ test -f $*.exp4 && \
-		diff $(DIFF_OPTS) $*.exp4 $*.sorted_out > $*.res4 && \
-		echo "Matched $*.exp4" && \
+		@sort $*.exp4 > $*.sorted_exp4 \
+		diff $(DIFF_OPTS) $*.sorted_exp4 $*.sorted_out > $*.res4 && \
+		echo "Matched $*.sorted_exp4" && \
 		cp $*.res4 $@; } || \
 	{ test -f $*.exp5 && \
-		diff $(DIFF_OPTS) $*.exp5 $*.sorted_out > $*.res5 && \
-		echo "Matched $*.exp5" && \
+		@sort $*.exp5 > $*.sorted_exp5 \
+		diff $(DIFF_OPTS) $*.sorted_exp5 $*.sorted_out > $*.res5 && \
+		echo "Matched $*.sorted_exp5" && \
 		cp $*.res5 $@; } || \
 	{ shortest=`wc -l $*.res[1-5] | grep -v total | sort -n | \
 		head -1 | awk '{ print $$2; }' `; \
@@ -112,11 +119,11 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-realclean_local: clean_sorted_outs
-clean_local: clean_sorted_outs
+realclean_local: clean_sorted_files
+clean_local: clean_sorted_files
 
-clean_sorted_outs:
-	rm -f *.sorted_out
+clean_sorted_files:
+	rm -f *.sorted_out *.sorted_exp*
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
