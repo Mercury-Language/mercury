@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2000 The University of Melbourne.
+% Copyright (C) 1994-1998,2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -36,18 +36,21 @@
 	% binds RS to the new state of the random number supply.
 :- pred random__random(int, random__supply, random__supply).
 :- mode random__random(out, mdi, muo) is det.
+:- mode random__random(out, in, out) is det.
 
 	% random__randmax(RandMax, RS0, RS): binds Randax to the maximum
 	% random number that can be returned from the random number
 	% supply RS0, and returns RS = RS0.
 :- pred random__randmax(int, random__supply, random__supply).
 :- mode random__randmax(out, mdi, muo) is det.
+:- mode random__randmax(out, in, out) is det.
 
 	% random__permutation(List0, List, RS0, RS):
 	% binds List to a random permutation of List0,
 	% and binds RS to the new state of the random number supply.
 :- pred random__permutation(list(T), list(T), random__supply, random__supply).
 :- mode random__permutation(in, out, mdi, muo) is det.
+:- mode random__permutation(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -106,9 +109,11 @@ random__permutation(List0, List, RS0, RS) :-
 	Len = array__size(Samples),
 	perform_sampling(Len, Samples, [], List, RS0, RS).
 
-:- pred perform_sampling(int::in, array(T)::array_di,
-	list(T)::in, list(T)::out,
-	random__supply::mdi, random__supply::muo) is det.
+:- pred perform_sampling(int, array(T), list(T), list(T),
+	random__supply, random__supply) is det.
+
+:- mode perform_sampling(in, array_di, in, out, mdi, muo) is det.
+:- mode perform_sampling(in, array_di, in, out, in, out) is det.
 
 perform_sampling(I, Record0, Order0, Order, RS0, RS) :-
 	( I =< 0 ->
@@ -137,6 +142,7 @@ random__test(Seed, N, Nums, Max) :-
 
 :- pred random__test_2(int, list(int), random__supply, random__supply).
 :- mode random__test_2(in, out, mdi, muo) is det.
+:- mode random__test_2(in, out, in, out) is det.
 
 random__test_2(N, Is, RS0, RS) :-
 	(
