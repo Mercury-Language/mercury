@@ -527,7 +527,7 @@ void sys_init_unify_univ_module(void) {
 
 %-----------------------------------------------------------------------------%
 
-:- pragma(c_code, "
+:- pragma(c_header_code, "
 
 	/* 
 	 * Code for functor, arg and expand
@@ -566,7 +566,7 @@ typedef struct mercury_expand_info {
 
 	/* Prototypes */
 
-static void mercury_expand(Word* type_info, Word data_word, expand_info *info);
+void mercury_expand(Word* type_info, Word data_word, expand_info *info);
 
 static void mercury_expand_const(Word data_value, Word entry_value,
 	expand_info *info);
@@ -581,6 +581,10 @@ static void mercury_expand_complicated(Word data_value, Word entry_value,
 
 static Word * create_type_info(Word *term_type_info, 
 	Word *arg_pseudo_type_info);
+
+").
+
+:- pragma(c_code, "
 
 /*
  * Expand the given data using its type_info, find its
