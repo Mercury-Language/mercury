@@ -338,10 +338,10 @@ detect_deadness_in_conj([Goal0|Goals0], Deadness0, ModuleInfo,
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, unreachable)
 	->
-		set__init(Deadness2),
+		detect_deadness_in_conj(Goals0, Deadness0,
+						ModuleInfo, Goals, Deadness2),
 		detect_deadness_in_goal(Goal0, Deadness2,
-						ModuleInfo, Deadness, Goal),
-		Goals = Goals0
+						ModuleInfo, Deadness, Goal)
 	;
 		detect_deadness_in_conj(Goals0, Deadness0,
 						ModuleInfo, Goals, Deadness1),

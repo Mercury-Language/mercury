@@ -51,6 +51,9 @@
 			;	debug_types
 			;	debug_modes
 			;	tags
+			;	follow_code
+			;	follow_vars
+			;	reclaim_heap_on_failure
 			;	num_tag_bits
 			;	gc
 			;	compile_to_c
@@ -87,6 +90,9 @@ option_defaults([
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
 	tags			-	string("low"),
+	follow_code		-	bool(yes),
+	follow_vars		-	bool(yes),
+	reclaim_heap_on_failure	-	bool(no),
 	num_tag_bits		-	int(2),
 	gc			-	string("none"),
 	compile_to_c		-	bool(no),
@@ -145,6 +151,9 @@ long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
 long_option("generate-dependencies",	generate_dependencies).
 long_option("tags",			tags).
+long_option("follow-code",		follow_code).
+long_option("follow-vars",		follow_vars).
+long_option("reclaim-heap-on-failure",	reclaim_heap_on_failure).
 long_option("num-tag-bits",		num_tag_bits).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
@@ -216,6 +225,12 @@ options_help -->
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
 	io__write_string("\nCode generation options (**MOSTLY NOT YET IMPLEMENTED**)\n"),
+	io__write_string("\t--follow-code\n"),
+	io__write_string("\tMigrate builtin goals into branched goals\n"),
+	io__write_string("\t--follow-vars\n"),
+	io__write_string("\tOptimise the assignment of registers in branched goals\n"),
+	io__write_string("\t--reclaim-heap-on-failure\n"),
+	io__write_string("\t\tReclaim heap when semidet code fails\n"),
 	io__write_string("\t--gcc-global-registers\n"),
 	io__write_string("\t\tUse GNU C's global register variables extension.\n"),
 	io__write_string("\t--gcc-non-local-gotos\n"),

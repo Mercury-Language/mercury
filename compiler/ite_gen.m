@@ -25,37 +25,62 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require.
+:- import_module set, tree, list, map, std_util, require.
 
 ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
+	code_info__get_options(Options),
+	(
+		{ set__member(save_hp, Options) }
+	->
+		code_info__save_hp(HPSaveCode)
+	;
+		{ HPSaveCode = empty }
+	),
 	code_info__get_next_label(ElseLab),
 	code_info__set_failure_cont(ElseLab),
 		% generate the semi-deterministc test goal
 	code_gen__generate_semi_goal(CondGoal, TestCode),
 	code_info__unset_failure_cont,
 	code_info__grab_code_info(CodeInfo),
+	(
+		{ set__member(save_hp, Options) }
+	->
+		code_info__pop_stack(HPPopCode)
+	;
+		{ HPPopCode = empty }
+	),
 	code_gen__generate_forced_det_goal(ThenGoal, ThenGoalCode),
 		% generate code that executes the then condition
 		% and branches to the end of the if-then-else
 	code_info__slap_code_info(CodeInfo),
+	(
+		{ set__member(save_hp, Options) }
+	->
+		code_info__restore_hp(HPRestoreCode)
+	;
+		{ HPRestoreCode = empty }
+	),
 	code_gen__generate_forced_det_goal(ElseGoal, ElseGoalCode),
 	code_info__get_next_label(EndLab),
 		% place the label marking the start of the then code,
 		% then execute the then goal, and then mark the end
 		% of the if-then-else
 	{ ThenCode = tree(
-		ThenGoalCode,
+		tree(HPPopCode, ThenGoalCode),
 		node([ goto(EndLab) - "Jump the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
 		tree(
 			node([label(ElseLab) - "else case"]),
-			ElseGoalCode
+			tree(HPRestoreCode, ElseGoalCode)
 		),
 		node([label(EndLab) - "end of if-then-else"])
 	) },
 		% generate the then condition
-	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) },
+	{ Instr = tree(
+		tree(HPSaveCode, TestCode),
+		tree(ThenCode, ElseCode)
+	) },
 	code_info__remake_code_info.
 
 %---------------------------------------------------------------------------%

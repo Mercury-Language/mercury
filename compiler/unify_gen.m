@@ -116,7 +116,7 @@ unify_gen__generate_tag_test_2(complicated_tag(Bits, Num), Lval, TestCode) -->
 	code_info__generate_test_and_fail(
 				binop(eq,lval(Lval), iconst(Bits)), Test1),
 	code_info__generate_test_and_fail(
-			binop(eq,field(Bits, lval(Lval), 1), iconst(Num)),
+			binop(eq,field(Bits, lval(Lval), 0), iconst(Num)),
 									Test2),
 	{ TestCode = tree(Test1, Test2) }.
 unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Lval,
@@ -143,10 +143,10 @@ unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
 unify_gen__generate_tag_rval_2(int_constant(Int), Lval, Rval) :-
 	Rval = binop(eq,lval(Lval), iconst(Int)).
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Lval, Rval) :-
-	Rval = binop(eq,lval(Lval), iconst(SimpleTag)).
+	Rval = binop(eq,tag(lval(Lval)), mktag(iconst(SimpleTag))).
 unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Lval, Rval) :-
-	Rval = binop(and, binop(eq,lval(Lval), iconst(Bits)), 
-			binop(eq,field(Bits, lval(Lval), 1), iconst(Num))).
+	Rval = binop(and, binop(eq,tag(lval(Lval)), mktag(iconst(Bits))), 
+			binop(eq,field(Bits, lval(Lval), 0), iconst(Num))).
 unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Lval,
 		Rval) :-
 	Rval = binop(eq, lval(Lval), mkword(Bits, mkbody(iconst(Num)))).
@@ -184,7 +184,7 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		code_info__cache_expression(Var, create(SimpleTag, RVals)),
 		code_info__flush_variable(Var, CodeA),
 		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 1, SimpleTag,
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 0, SimpleTag,
 							Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
 								Modes, CodeB),
@@ -197,7 +197,7 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Code) -->
 		code_info__cache_expression(Var, create(Bits0, RVals)),
 		code_info__flush_variable(Var, CodeA),
 		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 2,
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 1,
 						Bits0, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
 								Modes, CodeB),
@@ -271,7 +271,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	->
 		code_info__flush_variable(Var, CodeA),
 		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 1,
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 0,
 						SimpleTag, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
 								Modes, CodeB),
@@ -281,7 +281,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	->
 		code_info__flush_variable(Var, CodeA),
 		code_info__get_variable_register(Var, Lval),
-		{ unify_gen__make_fields_and_argvars(Args, Lval, 2,
+		{ unify_gen__make_fields_and_argvars(Args, Lval, 1,
 						Bits0, Fields, ArgVars) },
 		unify_gen__generate_det_unify_args(Fields, ArgVars,
 								Modes, CodeB),

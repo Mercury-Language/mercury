@@ -71,6 +71,7 @@
 			;	create(tag, list(rval))
 			;	mkword(tag, rval)
 			;	mktag(rval)
+			;	tag(rval)
 			;	mkbody(rval)
 			;	body(rval)
 			;	iconst(int)		% integer constants
@@ -469,6 +470,10 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(")").
 output_rval(mktag(Exprn)) -->
 	io__write_string("mktag("),
+	output_rval(Exprn),
+	io__write_string(")").
+output_rval(tag(Exprn)) -->
+	io__write_string("tag("),
 	output_rval(Exprn),
 	io__write_string(")").
 output_rval(mkbody(Exprn)) -->
