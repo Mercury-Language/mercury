@@ -124,6 +124,32 @@ static void checked_fclose(FILE* file, const char *filename)
 	}
 }
 
+#ifdef	PROFILE_TIME
+
+static void checked_setitimer(int which, struct itimerval *value)
+{
+	errno = 0;
+	if ( setitimer(which, value, NULL) != 0 ) {
+		fprintf(stderr,
+			"Mercury runtime: cannot set timer for profiling: %s\n",
+			strerror(errno));
+		exit(1);
+	}
+}
+
+static void checked_signal(int sig, void (*disp)(int))
+{
+	errno = 0;
+	if ( signal(sig, disp) == SIG_ERR ) {
+		fprintf(stderr,
+			"Mercury runtime: Cannot redirect signal: %s\n",
+			strerror(errno));
+		exit(1);
+	}
+}
+
+#endif /* PROFILE_TIME */
+
 /* ======================================================================== */
 
 #ifdef PROFILE_TIME
@@ -144,7 +170,7 @@ void prof_init_time_profile()
 
 	/* output the value of HZ */
 	fptr = checked_fopen("Prof.Counts", "create", "w");
-	fprintf(fptr, "%d\n", HZ);
+	fprintf(fptr, "%d %d\n", HZ, CLOCK_TICKS);
 	checked_fclose(fptr, "Prof.Counts");
 
 	itime.it_value.tv_sec = 0;
@@ -152,8 +178,8 @@ void prof_init_time_profile()
 	itime.it_interval.tv_sec = 0;
 	itime.it_interval.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS;
 
-	signal(SIGPROF, prof_time_profile);
-	setitimer(ITIMER_PROF, &itime, NULL);
+	checked_signal(SIGPROF, prof_time_profile);
+	checked_setitimer(ITIMER_PROF, &itime);
 }
 
 #endif /* PROFILE_TIME */
@@ -206,13 +232,16 @@ void prof_time_profile(int signum)
         prof_time_node *node, **node_addr, *new_node;
         int hash_value;
 
+	/* Ignore any signal's we get in this function. */
+	checked_signal(SIGPROF, SIG_IGN);
+
         hash_value = hash_prof_addr(prof_current_proc);
 
         node_addr = &addr_table[hash_value];
         while ((node = *node_addr) != NULL) {
                 if ( (node->Addr == prof_current_proc) ) {
                         node->count++;
-			signal(SIGPROF, prof_time_profile);
+			checked_signal(SIGPROF, prof_time_profile);
                         return;
                 }
                 node_addr = &node->next;
@@ -224,7 +253,7 @@ void prof_time_profile(int signum)
         new_node->next = NULL;
         *node_addr = new_node;
 
-	signal(SIGPROF, prof_time_profile);
+	checked_signal(SIGPROF, prof_time_profile);
         return;
 }
 
@@ -244,7 +273,7 @@ void prof_turn_off_time_profiling()
         itime.it_interval.tv_sec = 0;
         itime.it_interval.tv_usec = 0;
 
-        setitimer(ITIMER_PROF, &itime, NULL);
+        checked_setitimer(ITIMER_PROF, &itime);
 }
 	
 #endif /* PROFILE_TIME */
