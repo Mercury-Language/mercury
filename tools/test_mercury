@@ -935,7 +935,7 @@ case $HOST in
 		#	asm_fast.gc.memprof asm_fast.gc.tr"
 		;;
 	*)
-		GRADES="`mmake echo_libgrades`"
+		GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
 		;;
 esac
 
@@ -1161,16 +1161,29 @@ ulimit -S -t unlimited
 	fi &&
 	mv mercury/mercury-$version.$fullarch.tar.gz \
 		$UNSTABLE/mercury-$version.$fullname.tar.gz &&
-	echo "test_mercury tagging unstable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
-	cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
-	cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
-	if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
-		cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag mercury-gcc &&
-		cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
-	else	
-		true
-	fi &&
-	echo "test_mercury tagging unstable $BASE_TAG_NAME, finished at `date`" 1>&2
+	case "$CVSROOT" in
+	    :pserver:guest* | :pserver:anon*)
+		echo "Not tagging CVS repository" \
+			"(no write access for anonymous cvs)"
+		;;
+	    *)
+		echo "test_mercury tagging unstable $BASE_TAG_NAME," \
+			"starting at `date`" 1>&2 &&
+		cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag \
+			mercury clpr tests &&
+		cvs tag unstable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+		if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
+			cvs rtag -d unstable-$BASE_TAG_NAME-$fullname_tag \
+				mercury-gcc &&
+			cvs tag unstable-$BASE_TAG_NAME-$fullname_tag \
+				mercury-gcc
+		else	
+			true
+		fi &&
+		echo "test_mercury tagging unstable $BASE_TAG_NAME," \
+			"finished at `date`" 1>&2
+		;;
+	esac
 } || set_status "creating binary distribution"
 
 case $status in
@@ -1189,16 +1202,28 @@ case $status in
 		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.tar.gz \
 		$BETA_FTPDIR/mercury-$RELEASE_VERSION_PATTERN.$fullname.txt" &&
 	rcp $STABLE/mercury*-$version.$fullname.* $BETA_FTPHOST:$BETA_FTPDIR &&
-	echo "test_mercury tagging stable $BASE_TAG_NAME, starting at `date`" 1>&2 &&
-	cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury clpr tests &&
-	cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
-	if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
-		cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc &&
-		cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
-	else	
-		true
-	fi &&
-	echo "test_mercury tagging stable $BASE_TAG_NAME, finished at `date`" 1>&2
+	case "$CVSROOT" in
+	    :pserver:guest* | :pserver:anon*)
+		echo "Not tagging CVS repository" \
+			"(no write access for anonymous cvs)"
+		;;
+	    *)
+		echo "test_mercury tagging stable $BASE_TAG_NAME," \
+			"starting at `date`" 1>&2 &&
+		cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag \
+			mercury clpr tests &&
+		cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury tests &&
+		if [ -d gcc/. ] && [ -d mercury-gcc/. ]; then
+			cvs rtag -d stable-$BASE_TAG_NAME-$fullname_tag \
+				mercury-gcc &&
+			cvs tag stable-$BASE_TAG_NAME-$fullname_tag mercury-gcc
+		else	
+			true
+		fi &&
+		echo "test_mercury tagging stable $BASE_TAG_NAME," \
+			"finished at `date`" 1>&2
+		;;
+	esac
        } || set_status "copying binary distribution"
     ;;
 esac
