@@ -33,6 +33,7 @@ SOURCES= \
 	implied_mode.m \
 	indexing.m \
 	intermod_lambda.m \
+	intermod_test.m \
 	lambda_inference.m\
 	lambda_instmap_bug.m \
 	lambda_quant.m \
@@ -98,6 +99,12 @@ intermod_lambda.c:
 	$(MCOI) --grade $(GRADE) $(MCOIFLAGS) intermod_lambda2.m
 	$(MCG) --grade $(GRADE) $(MCGFLAGS) --intermodule-optimization \
 		intermod_lambda.m
+
+intermod_test.c:
+	$(MCI) --grade $(GRADE) $(MCIFLAGS) intermod_test2.m
+	$(MCOI) --grade $(GRADE) $(MCOIFLAGS) intermod_test2.m
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) --intermodule-optimization \
+		intermod_test.m
 
 check:	objs
 
