@@ -93,4 +93,4 @@ fi
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
 export PATH
-exec mmc --no-mercury-stdlib-dir -I $WORKSPACE/library $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS "$@"
+exec mmc --no-mercury-stdlib-dir -I $WORKSPACE/library -I $WORKSPACE/analysis $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS "$@"
