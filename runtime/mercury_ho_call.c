@@ -3,12 +3,11 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-1999 The University of Melbourne.
+** Copyright (C) 1995-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-#define MR_UNIFY_COMPARE_BY_CTOR_REP	
 #define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
 #define	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
 
@@ -177,7 +176,6 @@ Define_entry(mercury__do_call_class_method);
 
 Define_entry(mercury__unify_2_0);
 {
-#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP
 	Word		type_info;
 	MR_TypeCtorInfo	type_ctor_info;
 	Word		x, y;
@@ -356,48 +354,6 @@ unify_start:
 			fatal_error("attempt to unify terms "
 					"of unknown representation");
 	}
-#else
-	Code	*unify_pred;	/* address of the unify pred for this type */
-	int	type_arity;	/* number of type_info args */
-	Word	args_base;	/* the address of the word before the first */
-				/* type_info argument */
-	Word	x, y;
-	int	i;
-
-	Word	type_info;
-	Word	type_ctor_info;
-
-	type_info = r1;
-	x = r2;
-	y = r3;
-
-	type_ctor_info = MR_field(0, type_info, 0);
-	if (type_ctor_info == 0) {
-		type_arity = 0;
-		unify_pred = (Code *) MR_field(0, type_info,
-					OFFSET_FOR_UNIFY_PRED);
-		/* args_base will not be needed */
-		args_base = 0; /* just to supress a gcc warning */
-	} else {
-		type_arity = MR_field(0, type_ctor_info, OFFSET_FOR_COUNT);
-		unify_pred = (Code *) MR_field(0, type_ctor_info,
-				OFFSET_FOR_UNIFY_PRED);
-		args_base = type_info;
-	}
-
-	save_registers();
-
-	/* we call `UnifyPred(...ArgTypeInfos..., X, Y)' */
-	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = MR_field(0, args_base, i);
-	}
-	virtual_reg(type_arity + 1) = x;
-	virtual_reg(type_arity + 2) = y;
-
-	restore_registers();
-
-	tailcall(unify_pred, LABEL(mercury__unify_2_0));
-#endif
 }
 
 /*
@@ -412,7 +368,6 @@ unify_start:
 
 Define_entry(mercury__index_2_0);
 {
-#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP
 	Word		type_info;
 	MR_TypeCtorInfo	type_ctor_info;
 	Word		x;
@@ -540,45 +495,6 @@ Define_entry(mercury__index_2_0);
 			fatal_error("attempt to index a term "
 					"of unknown representation");
 	}
-#else
-	Code	*index_pred;	/* address of the index pred for this type */
-	int	type_arity;	/* number of type_info args */
-	Word	args_base;	/* the address of the word before the first */
-				/* type_info argument */
-	Word	x;
-	int	i;
-
-	Word	type_info;
-	Word	type_ctor_info;
-
-	type_info = r1;
-	x = r2;
-	type_ctor_info = MR_field(0, type_info, 0);
-	if (type_ctor_info == 0) {
-		type_arity = 0;
-		index_pred = (Code *) MR_field(0, type_info,
-					OFFSET_FOR_INDEX_PRED);
-		/* args_base will not be needed */
-		args_base = 0; /* just to supress a gcc warning */
-	} else {
-		type_arity = MR_field(0, type_ctor_info, OFFSET_FOR_COUNT);
-		index_pred = (Code *) MR_field(0, type_ctor_info,
-				OFFSET_FOR_INDEX_PRED);
-		args_base = type_info;
-	}
-
-	save_registers();
-
-	/* we call `IndexPred(...ArgTypeInfos..., X, Index)' */
-	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = MR_field(0, args_base, i);
-	}
-	virtual_reg(type_arity + 1) = x;
-
-	restore_registers();
-
-	tailcall(index_pred, LABEL(mercury__index_2_0));
-#endif
 }
 
 /*
@@ -608,7 +524,6 @@ Define_entry(mercury__compare_3_2);
 #endif
 Define_entry(mercury__compare_3_3);
 {
-#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP
 	Word		type_info;
 	MR_TypeCtorInfo	type_ctor_info;
 	Word		x, y;
@@ -820,48 +735,6 @@ compare_start:
 			fatal_error("attempt to compare terms "
 					"of unknown representation");
 	}
-#else
-	Code	*compare_pred;	/* address of the compare pred for this type */
-	int	type_arity;	/* number of type_info args */
-	Word	args_base;	/* the address of the word before the first */
-				/* type_info argument */
-	Word	x, y;
-	int	i;
-
-	Word	type_info;
-	Word	type_ctor_info;
-
-	type_info = r1;
-	x = r2;
-	y = r3;
-
-	type_ctor_info = MR_field(0, type_info, 0);
-	if (type_ctor_info == 0) {
-		type_arity = 0;
-		compare_pred = (Code *) MR_field(0, type_info,
-						OFFSET_FOR_COMPARE_PRED);
-		/* args_base will not be needed */
-		args_base = 0; /* just to supress a gcc warning */
-	} else {
-		type_arity = MR_field(0, type_ctor_info, OFFSET_FOR_COUNT);
-		compare_pred = (Code *) MR_field(0, type_ctor_info,
-				OFFSET_FOR_COMPARE_PRED);
-		args_base = type_info;
-	}
-
-	save_registers();
-
-	/* we call `ComparePred(...ArgTypeInfos..., Result, X, Y)' */
-	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = MR_field(0, args_base, i);
-	}
-	virtual_reg(type_arity + 1) = x;
-	virtual_reg(type_arity + 2) = y;
-
-	restore_registers();
-
-	tailcall(compare_pred, LABEL(mercury__compare_3_3));
-#endif
 }
 END_MODULE
 
