@@ -1686,7 +1686,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 	%
 
 		% check if variable has a higher-order pred type
-		TypeOfX = term__functor(term__atom("pred"), PredArgTypes, _),
+		type_is_higher_order(TypeOfX, PredOrFunc, PredArgTypes),
 		Name = term__atom(PName),
 		% but in case we are redoing mode analysis, make sure
 		% we don't mess with the address constants for type_info
@@ -1708,7 +1708,7 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
 		% Build up the hlds__goal_expr for the call that will form
 		% the lambda goal
 		%
-		get_pred_id_and_proc_id(PName, Arity, PredArgTypes,
+		get_pred_id_and_proc_id(PName, Arity, PredOrFunc, PredArgTypes,
 				 ModuleInfo0, PredId, ProcId),
 		PredName = unqualified(PName),
 		hlds__is_builtin_make_builtin(no, no, Builtin),
@@ -2382,7 +2382,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 			Unification = complicated_unify(UniMode, CanFail,
 				Follow),
 			(
-				Type = term__functor(term__atom("pred"), _, _)
+				type_is_higher_order(Type, PredOrFunc, _)
 			->
 				% we do not want to report this as an error
 				% if it occurs in a compiler-generated
@@ -2397,7 +2397,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 				;
 					set__init(WaitingVars),
 					mode_info_error(WaitingVars,
-						mode_error_unify_pred,
+			mode_error_unify_pred(X, error_at_var(Y), Type, PredOrFunc),
 						ModeInfo0, ModeInfo)
 				)
 			;
@@ -2470,7 +2470,12 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 	; 
 		% If it's a deconstruction, it is a mode error
 		set__init(WaitingVars),
-		mode_info_error(WaitingVars, mode_error_unify_pred,
+		mode_info_get_var_types(ModeInfo0, VarTypes0),
+		map__lookup(VarTypes0, X, Type),
+		mode_info_error(WaitingVars,
+				mode_error_unify_pred(X,
+					error_at_lambda(ArgVars, ArgModes0),
+					Type, predicate),
 				ModeInfo0, ModeInfo),
 		% return any old garbage
 		Unification = Unification0
@@ -2538,10 +2543,12 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		;
 			% Otherwise, it can fail
 			CanFail = can_fail,
-			( TypeOfX = term__functor(term__atom("pred"), _, _) ->
+			( type_is_higher_order(TypeOfX, PredOrFunc, _) ->
 				set__init(WaitingVars),
 				mode_info_error(WaitingVars,
-					mode_error_unify_pred,
+			mode_error_unify_pred(X,
+					error_at_functor(Name, ArgVars),
+					TypeOfX, PredOrFunc),
 					ModeInfo0, ModeInfo)
 			;
 				ModeInfo = ModeInfo0
@@ -2550,11 +2557,11 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes, CanFail)
 	).
 
-:- pred get_pred_id_and_proc_id(string, arity, list(type), module_info,
-				pred_id, proc_id).
-:- mode get_pred_id_and_proc_id(in, in, in, in, out, out) is det.
+:- pred get_pred_id_and_proc_id(string, arity, pred_or_func, list(type),
+				module_info, pred_id, proc_id).
+:- mode get_pred_id_and_proc_id(in, in, in, in, in, out, out) is det.
 
-get_pred_id_and_proc_id(Name, Arity, PredArgTypes, ModuleInfo,
+get_pred_id_and_proc_id(Name, Arity, _PredOrFunc, PredArgTypes, ModuleInfo,
 			PredId, ProcId) :-
 	list__length(PredArgTypes, PredArity),
 	TotalArity is Arity + PredArity,

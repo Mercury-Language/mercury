@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_data, prog_io.
+:- import_module hlds_module, hlds_pred, hlds_data, prog_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -27,6 +27,14 @@
 
 :- pred type_is_atomic(type, module_info).
 :- mode type_is_atomic(in, in) is semidet.
+
+	% type_is_higher_order_type(Type, PredOrFunc, ArgTypes) succeeds iff
+	% Type is a higher-order predicate or function type with the specified
+	% argument types (for functions, the return type is appended to the
+	% end of the argument types).
+
+:- pred type_is_higher_order(type, pred_or_func, list(type)).
+:- mode type_is_higher_order(in, out, out) is semidet.
 
 	% Given a type, determine what sort of type it is.
 
@@ -126,7 +134,7 @@ classify_type(VarType, ModuleInfo, Type) :-
 	->
 		Type = str_type
 	;
-		VarType = term__functor(term__atom("pred"), _ArgTypes, _)
+		type_is_higher_order(VarType, _, _)
 	->
 		Type = pred_type
 	;
@@ -135,6 +143,20 @@ classify_type(VarType, ModuleInfo, Type) :-
 		Type = enum_type
 	;
 		Type = user_type(VarType)
+	).
+
+type_is_higher_order(Type, PredOrFunc, PredArgTypes) :-
+	(
+		Type = term__functor(term__atom("pred"),
+					PredArgTypes, _),
+		PredOrFunc = predicate
+	;
+		Type = term__functor(term__atom("="),
+				[term__functor(term__atom("func"),
+					FuncArgTypes, _),
+				 FuncRetType], _),
+		list__append(FuncArgTypes, [FuncRetType], PredArgTypes),
+		PredOrFunc = function
 	).
 
 :- pred type_is_enumeration(type, module_info).

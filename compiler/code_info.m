@@ -682,7 +682,7 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 		{ Tag = int_constant(CharCode) }
 	;
 		% handle higher-order pred types specially
-		{ Type = term__functor(term__atom("pred"), PredArgTypes, _) }
+		{ type_is_higher_order(Type, _PredOrFunc, PredArgTypes) }
 	->
 		{ list__length(PredArgTypes, PredArity) },
 		code_info__get_module_info(ModuleInfo),

@@ -653,8 +653,11 @@ add_new_pred(Module0, TVarSet, PredName, Types, Cond, Context, Status,
 			{ module_info_pred_info(Module, OrigPred,
 				OrigPredInfo) },
 			{ pred_info_context(OrigPredInfo, OrigContext) },
-			multiple_def_error(PredName, Arity, "pred", Context,
-				OrigContext)
+			{ PredOrFunc = predicate, DeclString = "pred"
+			; PredOrFunc = function, DeclString = "func"
+			}, !,
+			multiple_def_error(PredName, Arity, DeclString,
+				Context, OrigContext)
 		;
 			( 
 				{ code_util__predinfo_is_builtin(Module1, 

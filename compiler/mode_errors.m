@@ -42,9 +42,10 @@
 	;	mode_error_var_has_inst(var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
-	;	mode_error_unify_pred
+	;	mode_error_unify_pred(var, mode_error_unify_rhs, type,
+				pred_or_func)
 			% an attempt was made to unify two higher-order
-			% pred variables.
+			% predicate or function variables.
 	;	mode_error_implied_mode(var, inst, inst)
 			% a call to a predicate with an overly
 			% instantiated variable would use an implied
@@ -82,6 +83,11 @@
 	;	wrongly_instantiated.	% a catchall for anything that doesn't
 					% fit into the above two categories.
 
+:- type mode_error_unify_rhs
+	--->	error_at_var(var)
+	;	error_at_functor(const, list(var))
+	;	error_at_lambda(list(var), list(mode)).
+
 :- type mode_error_info
 	---> mode_error_info(
 		set(var),	% the variables which caused the error
@@ -117,7 +123,7 @@
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_out.
 :- import_module mode_info, prog_out, mercury_to_mercury.
 :- import_module options, globals.
-:- import_module bool, list, map, io, term, term_io, std_util, require.
+:- import_module bool, list, map, io, term, term_io, varset, std_util, require.
 
 	% just dispatch on the diffferent sorts of mode errors
 
@@ -125,8 +131,9 @@ report_mode_error(mode_error_disj(MergeContext, ErrorList), ModeInfo) -->
 	report_mode_error_disj(ModeInfo, MergeContext, ErrorList).
 report_mode_error(mode_error_var_has_inst(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_var_has_inst(ModeInfo, Var, InstA, InstB).
-report_mode_error(mode_error_unify_pred, ModeInfo) -->
-	report_mode_error_unify_pred(ModeInfo).
+report_mode_error(mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
+		ModeInfo) -->
+	report_mode_error_unify_pred(ModeInfo, Var, RHS, Type, PredOrFunc).
 report_mode_error(mode_error_implied_mode(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_no_mode_decl, ModeInfo) -->
@@ -407,17 +414,57 @@ report_mode_error_no_mode_decl(ModeInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  no mode declaration for called predicate.\n").
 
-:- pred report_mode_error_unify_pred(mode_info, io__state, io__state).
-:- mode report_mode_error_unify_pred(mode_info_ui, di, uo) is det.
+:- pred report_mode_error_unify_pred(mode_info, var, mode_error_unify_rhs,
+					type, pred_or_func,
+					io__state, io__state).
+:- mode report_mode_error_unify_pred(mode_info_ui, in, in, in, in,
+					di, uo) is det.
 
-report_mode_error_unify_pred(ModeInfo) -->
+report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 	{ mode_info_get_context(ModeInfo, Context) },
+	{ mode_info_get_varset(ModeInfo, VarSet) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
-	io__write_string("  mode error: attempt at higher-order unification.\n").
-	% { mode_info_get_varset(ModeInfo, VarSet) },
-	% mercury_output_var(VarA, VarSet),
-	% mercury_output_var(VarB, VarSet),
+	io__write_string("  In unification of `"),
+	mercury_output_var(X, VarSet),
+	io__write_string("' with `"),
+	(
+		{ RHS = error_at_var(Y) },
+		mercury_output_var(Y, VarSet)
+	;
+		{ RHS = error_at_functor(Const, ArgVars) },
+		hlds_out__write_functor(Const, ArgVars, VarSet)
+	;
+		{ RHS = error_at_lambda(ArgVars, ArgModes) },
+		io__write_string("lambda(["),
+		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet),
+		io__write_string("] ... )")
+	),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_string("  mode error: attempt at higher-order unification.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Cannot unify two terms of type `"),
+	{ varset__init(TypeVarSet) },
+	mercury_output_term(Type, TypeVarSet),
+	io__write_string("'.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string("\tYour code is trying to test whether two "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string("s are equal,\n"),
+		io__write_string("\tby unifying them.  In the general case, testing equivalence\n"),
+		io__write_string("\tof "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string("s is an undecidable problem,\n"),
+		io__write_string("\tand so this is not allowed by the Mercury mode system.\n"),
+		io__write_string("\tIn some cases, you can achieve the same effect by\n"),
+		io__write_string("\twriting an explicit universal quantification,\n"),
+		io__write_string("\te.g. `all [X] call(P, X) <=> call(Q, X)',"),
+		io__write_string(" instead of `P = Q'.\n")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -351,7 +351,7 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			{ Goal = call(PredId, ProcId, ArgVars, IsBuiltin,
 				yes(CallContext), SymName, Follow) - GoalInfo }
 
-		; { Type = term__functor(term__atom("pred"), _, _) } ->
+		; { type_is_higher_order(Type, _, _) } ->
 			{ SymName = unqualified("builtin_unify_pred") },
 			{ ArgVars = [XVar, YVar] },
 			{ module_info_get_predicate_table(ModuleInfo,
@@ -363,7 +363,7 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 			->
 				PredId = PredId0
 			;
-				error("can't locate builtin_unify_pred/2")
+				error("can't locate mercury_builtin:builtin_unify_pred/2")
 			},
 			{ ProcId = 0 },
 			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },

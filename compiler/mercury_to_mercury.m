@@ -1356,6 +1356,7 @@ mercury_unary_prefix_op("\\+").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
 mercury_unary_prefix_op("end_module").
+mercury_unary_prefix_op("func").
 mercury_unary_prefix_op("if").
 mercury_unary_prefix_op("import_module").
 mercury_unary_prefix_op("insert").

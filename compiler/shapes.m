@@ -385,7 +385,7 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 			error("shapes__create_shape_2: unknown type")
 		)
 	;
-		Type = term__functor(term__atom("pred"), _Vars, _Context)
+		type_is_higher_order(Type, _, _)
 	->
 		S_Tab = S_Tab0,
 		Shape = closure(Type)
