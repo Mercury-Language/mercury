@@ -92,6 +92,7 @@
 		;	reclaim_heap_on_semidet_failure
 		;	reclaim_heap_on_nondet_failure
 		;	use_macro_for_redo_fail
+		;	simple_neg
 		;	tags
 		;	num_tag_bits
 		;	prev_code
@@ -217,6 +218,7 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_semidet_failure	-	bool(yes),
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	use_macro_for_redo_fail	-	bool(no),
+	simple_neg		-	bool(yes),
 	num_tag_bits		-	int(-1),
 					% -1 is a special value which means
 					% use the autoconf-determined value
@@ -349,6 +351,7 @@ long_option("reclaim-heap-on-semidet-failure",
 long_option("reclaim-heap-on-nondet-failure",
 					reclaim_heap_on_nondet_failure).
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
+long_option("simple_neg",		simple_neg).
 long_option("num-tag-bits",		num_tag_bits).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
@@ -531,6 +534,8 @@ options_help -->
 	io__write_string("\t--use-macro-for-redo-fail\n"),
 	io__write_string("\t\tEmit the fail or redo macro instead of a branch\n"),
 	io__write_string("\t\tto the fail or redo code in the runtime system.\n"),
+	io__write_string("\t--no-simple-neg\n"),
+	io__write_string("\t\tDon't generate simplified code for simple negations."),
 	io__write_string("\t--no-gcc-global-registers\n"),
 	io__write_string("\t\tDon't use GNU C's global register variables extension.\n"),
 	io__write_string("\t--no-gcc-non-local-gotos\n"),

@@ -38,8 +38,10 @@ jumpopt__main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
 	jumpopt__build_maps(Instrs0, Blockopt, Recjump, Instrmap0, Instrmap,
 		Blockmap0, Blockmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap),
+	map__init(Forkmap0),
+	jumpopt__build_forkmap(Instrs0, Sdprocmap, Forkmap0, Forkmap),
 	jumpopt__instr_list(Instrs0, comment(""), Instrmap, Blockmap, Lvalmap,
-		Procmap, Sdprocmap, Succmap, Instrs1, Mod),
+		Procmap, Sdprocmap, Forkmap, Succmap, Instrs1, Mod),
 	( Blockopt = yes ->
 		opt_util__filter_out_bad_livevals(Instrs1, Instrs)
 	;
@@ -77,23 +79,23 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, Instrmap0, Instrmap,
 		;
 			map__det_insert(Lvalmap0, Label, no, Lvalmap1)
 		),
-		opt_util__skip_comments_livevals(Instrs0, Instrs2),
+		opt_util__skip_comments_livevals(Instrs1, Instrs2),
 		( Instrs2 = [Instr2 | _] ->
 			map__det_insert(Instrmap0, Label, Instr2, Instrmap1)
 		;
 			Instrmap1 = Instrmap0
 		),
-		( opt_util__is_proceed_next(Instrs2, Between1) ->
+		( opt_util__is_proceed_next(Instrs1, Between1) ->
 			map__det_insert(Procmap0, Label, Between1, Procmap1)
 		;
 			Procmap1 = Procmap0
 		),
-		( opt_util__is_sdproceed_next(Instrs2, Between2) ->
+		( opt_util__is_sdproceed_next(Instrs1, Between2) ->
 			map__det_insert(Sdprocmap0, Label, Between2, Sdprocmap1)
 		;
 			Sdprocmap1 = Sdprocmap0
 		),
-		( opt_util__is_succeed_next(Instrs2, Between3) ->
+		( opt_util__is_succeed_next(Instrs1, Between3) ->
 			map__det_insert(Succmap0, Label, Between3, Succmap1)
 		;
 			Succmap1 = Succmap0
@@ -118,12 +120,33 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, Instrmap0, Instrmap,
 		Blockmap1, Blockmap, Lvalmap1, Lvalmap,
 		Procmap1, Procmap, Sdprocmap1, Sdprocmap, Succmap1, Succmap).
 
+	% Find labels followed by a test of r1 where both paths set r1 to
+	% its original value and proceed.
+
+:- pred jumpopt__build_forkmap(list(instruction), tailmap, tailmap, tailmap).
+% :- mode jumpopt__build_forkmap(in, in, di, uo) is det.
+:- mode jumpopt__build_forkmap(in, in, in, out) is det.
+
+jumpopt__build_forkmap([], _Sdprocmap, Forkmap, Forkmap).
+jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
+		Forkmap0, Forkmap) :-
+	(
+		Instr = label(Label),
+		opt_util__is_forkproceed_next(Instrs, Sdprocmap, Between)
+	->
+		map__set(Forkmap0, Label, Between, Forkmap1)
+	;
+		Forkmap1 = Forkmap0
+	),
+	jumpopt__build_forkmap(Instrs, Sdprocmap, Forkmap1, Forkmap).
+
 %-----------------------------------------------------------------------------%
 
 	% Optimize the given instruction list by eliminating unnecessary
 	% jumps.
 	%
-	% We handle calls by trying to short-circuit the return address.
+	% We handle calls by attempting to turn them into tailcalls. If this
+	% fails, we try to short-circuit the return address.
 	%
 	% We handle gotos by first trying to eliminate them. If this fails,
 	% we check whether their target label begins a proceed/succeed
@@ -136,28 +159,51 @@ jumpopt__build_maps([Instr0 | Instrs0], Blockopt, Recjump, Instrmap0, Instrmap,
 	% labels in the label list.
 
 :- pred jumpopt__instr_list(list(instruction), instr, instrmap, tailmap,
-	lvalmap, tailmap, tailmap, tailmap, list(instruction), bool).
-:- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, out, out) is det.
+	lvalmap, tailmap, tailmap, tailmap, tailmap, list(instruction), bool).
+:- mode jumpopt__instr_list(in, in, in, in, in, in, in, in, in, out, out)
+	is det.
 
 jumpopt__instr_list([], _PrevInstr, _Instrmap, _Blockmap,
-		_Lvalmap, _Procmap, _Sdprocmap, _Succmap, [], no).
+		_Lvalmap, _Procmap, _Sdprocmap, _Forkmap, _Succmap, [], no).
 jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
-		Lvalmap, Procmap, Sdprocmap, Succmap, Instrs, Mod) :-
+		Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, Instrs, Mod) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
-		Uinstr0 = call(Proc, label(RetLabel), Caller, LiveVals),
-		map__search(Instrmap, RetLabel, RetInstr)
+		Uinstr0 = call(Proc, label(RetLabel), Caller, CallLiveVals)
 	->
-		jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
-			DestLabel, DestInstr),
-		( RetLabel = DestLabel ->
+		(
+			map__search(Procmap, RetLabel, Between0),
+			PrevInstr = livevals(Livevals) 
+		->
+			opt_util__filter_out_livevals(Between0, Between1),
+			list__append(Between1, [livevals(Livevals) - "",
+				goto(Proc, Caller) - Redirect], NewInstrs),
+			Mod0 = yes
+		;
+			map__search(Forkmap, RetLabel, Between0),
+			PrevInstr = livevals(Livevals) 
+		->
+			opt_util__filter_out_livevals(Between0, Between1),
+			list__append(Between1, [livevals(Livevals) - "",
+				goto(Proc, Caller) - Redirect], NewInstrs),
+			Mod0 = yes
+		;
+			map__search(Instrmap, RetLabel, RetInstr)
+		->
+			jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
+				DestLabel, DestInstr),
+			( RetLabel = DestLabel ->
+				NewInstrs = [Instr0],
+				Mod0 = no
+			;
+				NewInstrs = [call(Proc, label(DestLabel),
+					Caller, CallLiveVals) - Redirect],
+				Mod0 = yes
+			)
+		;
 			NewInstrs = [Instr0],
 			Mod0 = no
-		;
-			NewInstrs = [call(Proc, label(DestLabel), Caller,
-				LiveVals) - Redirect],
-			Mod0 = yes
 		)
 	;
 		Uinstr0 = goto(label(TargetLabel), _CallerAddress)
@@ -263,7 +309,7 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		NewPrevInstr = Uinstr0
 	),
 	jumpopt__instr_list(Instrs0, NewPrevInstr, Instrmap, Blockmap, Lvalmap,
-		Procmap, Sdprocmap, Succmap, Instrs1, Mod1),
+		Procmap, Sdprocmap, Forkmap, Succmap, Instrs1, Mod1),
 	list__append(NewInstrs, Instrs1, Instrs),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no

@@ -195,7 +195,7 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 		{ vn__push_livevals_back(Instrs4, Instrs5) },
 		{ vn__convert_back_modframe(Instrs5, Instrs6) },
 		{ bimap__init(TeardownMap) },
-		{ peephole__main(Instrs6, Instrs7, TeardownMap, _) },
+		{ peephole__optimize(Instrs6, Instrs7, TeardownMap, _) },
 
 		vn__cost_header_msg("original code sequence"),
 		vn__block_cost(Instrs0, yes, OrigCost),
@@ -313,7 +313,9 @@ vn__verify_correspondence([Lval | Lvals], VerifyMap0, VerifyMap7, Problem) :-
 			Problem = yes(Msg)
 		)
 	;
-		\+ map__search(VerifyMap0, Lval, _),
+		% We want to allow the optimization of blocks in which
+		% the new version of the code does not have any mention at all
+		% of some lval that appeared in dead code.
 		\+ map__search(VerifyMap7, Lval, _)
 	->
 		vn__verify_correspondence(Lvals, VerifyMap0, VerifyMap7,

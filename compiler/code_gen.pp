@@ -869,7 +869,9 @@ code_gen__generate_negation(Goal, Code) -->
 		% doesn't require a cache flush.
 	(
 		{ Goal = unify(_, _, _, simple_test(L,R), _) - GoalInfo },
-		code_info__can_generate_direct_branch(CodeAddr)
+		code_info__can_generate_direct_branch(CodeAddr),
+		code_info__get_globals(Globals),
+		{ globals__lookup_bool_option(Globals, simple_neg, yes) }
 	->
 			% Because we're generating a goal
 			% (special-cased, though it may be)

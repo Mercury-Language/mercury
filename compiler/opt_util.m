@@ -115,7 +115,7 @@
  	% Is the following code a test of r1, followed in both continuations
 	% by a semidet proceed with the same value of r1?
 
-:- pred opt_util__is_forkproceed_next(list(instruction), map(label, bool),
+:- pred opt_util__is_forkproceed_next(list(instruction), tailmap,
 	list(instruction)).
 :- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
 
@@ -133,12 +133,6 @@
 
 :- pred opt_util__filter_out_labels(list(instruction), list(instruction)).
 :- mode opt_util__filter_out_labels(in, out) is det.
-
-	% Remove the assignment to r1 from the list returned by
-	% opt_util__is_sdproceed_next.
-
-:- pred opt_util__filter_out_r1(list(instruction), list(instruction)).
-:- mode opt_util__filter_out_r1(in, out) is det.
 
 	% Remove any livevals instructions that do not precede an instruction
 	% that needs one.
@@ -509,26 +503,39 @@ opt_util__is_succeed_next(Instrs0, InstrsBetweenIncl) :-
 	Instr3 = goto(do_succeed(_), _) - _,
 	InstrsBetweenIncl = [Instr1, Instr3].
 
-	% When we return Between, we are implicitly assuming that
-	% the other continuation' instruction sequence is the same
-	% expect for the value assigned to r1. If this isn't true,
-	% then we are up shit creek anyway.
-
-opt_util__is_forkproceed_next(Instrs0, Succmap, Between) :-
+opt_util__is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 	opt_util__skip_comments_labels(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	( Instr1 = if_val(lval(reg(r(1))), label(BranchLabel)) - _ ->
-		map__search(Succmap, BranchLabel, BranchSuccess),
-		BranchSuccess = yes,
-		opt_util__is_sdproceed_next_sf(Instrs2, Between, FallSuccess),
-		FallSuccess = no
+		map__search(Sdprocmap, BranchLabel, BetweenBranch),
+		opt_util__filter_out_r1(BetweenBranch, yes(true), Between),
+		opt_util__is_sdproceed_next(Instrs2, BetweenFall),
+		opt_util__filter_out_r1(BetweenFall, yes(false), Between)
 	; Instr1 = if_val(unop(not, lval(reg(r(1)))), label(BranchLabel)) - _ ->
-		map__search(Succmap, BranchLabel, BranchSuccess),
-		BranchSuccess = no,
-		opt_util__is_sdproceed_next_sf(Instrs2, Between, FallSuccess),
-		FallSuccess = yes
+		map__search(Sdprocmap, BranchLabel, BetweenBranch),
+		opt_util__filter_out_r1(BetweenBranch, yes(false), Between),
+		opt_util__is_sdproceed_next(Instrs2, BetweenFall),
+		opt_util__filter_out_r1(BetweenFall, yes(true), Between)
 	;
 		fail
+	).
+
+	% Remove the assignment to r1 from the list returned by
+	% opt_util__is_sdproceed_next.
+
+:- pred opt_util__filter_out_r1(list(instruction), maybe(rval_const),
+	list(instruction)).
+:- mode opt_util__filter_out_r1(in, out, out) is det.
+
+opt_util__filter_out_r1([], no, []).
+opt_util__filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
+	opt_util__filter_out_r1(Instrs0, Success0, Instrs1),
+	( Instr0 = assign(reg(r(1)), const(Success1)) - _ ->
+		Instrs = Instrs1,
+		Success = yes(Success1)
+	;
+		Instrs = [Instr0 | Instrs1],
+		Success = Success0
 	).
 
 opt_util__straight_alternative(Instrs0, Between, After) :-
@@ -597,8 +604,7 @@ opt_util__no_stack_straight_line_2([Instr0 | Instrs0], After0, After, Instrs) :-
 
 opt_util__lval_refers_stackvars(reg(_), no).
 opt_util__lval_refers_stackvars(stackvar(_), yes).
-opt_util__lval_refers_stackvars(framevar(_), _) :-
-	error("found framevar in lval_refers_stackvars").
+opt_util__lval_refers_stackvars(framevar(_), yes).
 opt_util__lval_refers_stackvars(succip, no).
 opt_util__lval_refers_stackvars(maxfr, no).
 opt_util__lval_refers_stackvars(curfr, no).
@@ -804,15 +810,6 @@ opt_util__filter_out_labels([], []).
 opt_util__filter_out_labels([Instr0 | Instrs0], Instrs) :-
 	opt_util__filter_out_labels(Instrs0, Instrs1),
 	( Instr0 = label(_) - _ ->
-		Instrs = Instrs1
-	;
-		Instrs = [Instr0 | Instrs1]
-	).
-
-opt_util__filter_out_r1([], []).
-opt_util__filter_out_r1([Instr0 | Instrs0], Instrs) :-
-	opt_util__filter_out_r1(Instrs0, Instrs1),
-	( Instr0 = assign(reg(r(1)), const(_)) - _ ->
 		Instrs = Instrs1
 	;
 		Instrs = [Instr0 | Instrs1]

@@ -128,7 +128,7 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ peephole__main(Instrs2, Instrs3, TeardownMap, Mod2) }
+		{ peephole__optimize(Instrs2, Instrs3, TeardownMap, Mod2) }
 	;
 		{ Instrs3 = Instrs2 },
 		{ Mod2 = no }
@@ -196,21 +196,16 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 		;
 			[]
 		),
-			% XXX Mod1 is singleton in two separate scopes
-			% zs, please check the fix is correct and remove
-			% this comment.
-			% (this comment will self destruct in 10 seconds....)
-		{ frameopt__main(Instrs0, Instrs1, TeardownMap, _Mod1) }
+		{ frameopt__main(Instrs0, Instrs1, TeardownMap, _) }
 	;
 		{ Instrs1 = Instrs0 },
-		{ bimap__init(TeardownMap) } %, (XXX here too)
-		% { Mod1 = no }
+		{ bimap__init(TeardownMap) }
 	),
 	globals__io_lookup_bool_option(optimize_peep, Peephole),
 	( { FrameOpt = yes, Peephole = yes } ->
 		% get rid of useless incr_sp/decr_sp pairs
 		{ bimap__init(Empty1) },
-		{ peephole__main(Instrs1, Instrs2, Empty1, _) }
+		{ peephole__optimize(Instrs1, Instrs2, Empty1, _) }
 	;
 		{ Instrs2 = Instrs1 }
 	),
@@ -232,7 +227,7 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 			Instrs4, RepMod),
 		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
 			{ bimap__init(Empty2) },
-			{ peephole__main(Instrs4, Instrs5, Empty2, _) }
+			{ peephole__optimize(Instrs4, Instrs5, Empty2, _) }
 		;
 			{ Instrs5 = Instrs4 }
 		),
