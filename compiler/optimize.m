@@ -53,8 +53,7 @@ optimize__proc(CProc0, GlobalData, CProc) -->
 		global_data_maybe_get_proc_layout(GlobalData, PredProcId,
 			ProcLayout)
 	->
-		ProcLayout = proc_layout_info(_, _, _, _, _, _, _, _,
-			LabelMap),
+		LabelMap = ProcLayout^internal_map,
 		map__sorted_keys(LabelMap, LayoutLabels),
 		set__sorted_list_to_set(LayoutLabels, LayoutLabelSet)
 	;
