@@ -601,7 +601,7 @@ mercury_sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 :- pragma foreign_code("MC++", "
     MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY)
 
-    static int
+    static MR_bool
     special___Unify___array_1_0(MR_TypeInfo type_info, MR_Array x, MR_Array y)
     {
             return mercury::array::mercury_code::ML_array_equal(
@@ -616,7 +616,7 @@ mercury_sys_init_array_module_builtins_write_out_proc_statics(FILE *fp)
 	    	type_info, result, x, y);
     }
 
-    static int
+    static MR_bool
     do_unify__array_1_0(MR_TypeInfo type_info, MR_Box x, MR_Box y)
     {
             return mercury::array__cpp_code::mercury_code::special___Unify___array_1_0(

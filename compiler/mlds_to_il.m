@@ -167,6 +167,7 @@
 	verifiable_code	:: bool,		% --verifiable-code
 	il_byref_tailcalls :: bool,		% --il-byref-tailcalls
 	support_ms_clr	:: bool,		% --support-ms-clr
+	support_rotor_clr :: bool,		% --support-rotor-clr
 		% class-wide attributes (all accumulate)
 	alloc_instrs	:: instr_tree,		% .cctor allocation instructions
 	init_instrs	:: instr_tree,		% .cctor init instructions
@@ -236,7 +237,7 @@ maybe_get_dotnet_library_version(MaybeVersion) -->
 		io__state, io__state).
 :- mode generate_il(in, in, out, out, di, uo) is det.
 
-generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
+generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
 
 	mlds(MercuryModuleName, ForeignCode, Imports, Defns) =
 		transform_mlds(MLDS),
@@ -244,22 +245,20 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, IO0, IO) :-
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
 	prog_out__sym_name_to_string(mlds_module_name_to_sym_name(ModuleName),
 			".", AssemblyName),
-	get_il_data_rep(ILDataRep, IO0, IO1),
-	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO2),
+	get_il_data_rep(ILDataRep, !IO),
+	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, !IO),
 	globals__io_lookup_bool_option(verifiable_code,
-			VerifiableCode, IO2, IO3),
-	globals__io_lookup_bool_option(il_byref_tailcalls, ByRefTailCalls,
-			IO3, IO4),
-	globals__io_lookup_bool_option(sign_assembly, SignAssembly,
-			IO4, IO5),
+			VerifiableCode, !IO),
+	globals__io_lookup_bool_option(il_byref_tailcalls, ByRefTailCalls, !IO),
+	globals__io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
 	globals__io_lookup_bool_option(separate_assemblies, SeparateAssemblies,
-			IO5, IO6),
-	globals__io_lookup_bool_option(support_ms_clr, MsCLR,
-			IO6, IO),
+			!IO),
+	globals__io_lookup_bool_option(support_ms_clr, MsCLR, !IO),
+	globals__io_lookup_bool_option(support_rotor_clr, RotorCLR, !IO),
 
 	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
 			ILDataRep, DebugIlAsm, VerifiableCode, ByRefTailCalls,
-			MsCLR),
+			MsCLR, RotorCLR),
 
 		% Generate code for all the methods.
 	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
@@ -1584,6 +1583,7 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, CallKind),
 	VerifiableCode =^ verifiable_code,
 	ByRefTailCalls =^ il_byref_tailcalls,
 	MsCLR =^ support_ms_clr,
+	RotorCLR =^ support_rotor_clr,
 	DataRep =^ il_data_rep,
 	{ TypeParams = mlds_signature_to_ilds_type_params(DataRep, Sig) },
 	{ ReturnParam = mlds_signature_to_il_return_param(DataRep, Sig) },
@@ -1619,6 +1619,13 @@ statement_to_il(statement(call(Sig, Function, _This, Args, Returns, CallKind),
 		\+ (
 			{ MsCLR = yes },
 			{ ReturnParam \= CallerReturnParam }
+		),
+		% The ROTOR implementation only allows "tail."
+		% annotations on direct calls (tail.call),
+		% not indirect calls (calli).
+		\+ (
+			{ RotorCLR = yes },
+			{ Function \= const(_) }
 		)
 	->
 		{ TailCallInstrs = [tailcall] },
@@ -4206,12 +4213,12 @@ runtime_init_method_name = id("init_runtime").
 %
 
 :- func il_info_init(mlds_module_name, ilds__id, mlds__imports,
-		il_data_rep, bool, bool, bool, bool) = il_info.
+		il_data_rep, bool, bool, bool, bool, bool) = il_info.
 
 il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
-		DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR) =
+		DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR) =
 	il_info(ModuleName, AssemblyName, Imports, set__init, ILDataRep,
-		DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR,
+		DebugIlAsm, VerifiableCode, ByRefTailCalls, MsCLR, RotorCLR,
 		empty, empty, [], no, set__init, set__init,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature) :-

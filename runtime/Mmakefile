@@ -282,6 +282,13 @@ clean_local:
 runtime: $(DOTNET_DLLS)
 
 mercury_mcpp.dll: mercury_il.dll $(MCPP_HDRS)
+
+# Uncomment the following rule if you want to build Mercury in a form
+# that will work with ROTOR.
+# mercury_il.dll: mercury_il.il
+#	sed '/REMOVE FOR ROTOR/s@^@//@' mercury_il.il > mercury_il.rotor.il
+#	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=mercury_il.dll \
+#			mercury_il.rotor.il
  
 else
 

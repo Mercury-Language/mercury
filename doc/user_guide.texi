@@ -5140,6 +5140,11 @@ Microsoft .NET SDK.
 Don't use Microsoft CLR specific workarounds in the generated code.
 
 @sp 1
+@item --support-rotor-clr
+@findex --support-rotor-clr
+Use ROTOR CLR specific workarounds in the generated code.
+
+@sp 1
 @item @code{--compile-to-c}
 @itemx @code{--compile-to-C}
 @findex --compile-to-c

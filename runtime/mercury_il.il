@@ -377,7 +377,7 @@ get_ftn_ptr_type_desc_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
-	tail.
+	tail.		// REMOVE FOR ROTOR
 	calli	bool (class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -393,7 +393,7 @@ get_ftn_ptr_type_desc_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
-	tail.
+	tail.		// REMOVE FOR ROTOR
 	calli	bool (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -409,7 +409,7 @@ get_ftn_ptr_type_desc_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
-	tail.
+	tail.		// REMOVE FOR ROTOR
 	calli	bool (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -427,7 +427,7 @@ get_ftn_ptr_type_desc_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
-	tail.
+	tail.		// REMOVE FOR ROTOR
 	calli	bool (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -446,7 +446,7 @@ get_ftn_ptr_type_desc_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
-	tail.
+	tail.		// REMOVE FOR ROTOR
 	calli	bool (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }
@@ -468,7 +468,7 @@ get_ftn_ptr_type_desc_unify() {
 	ldarg 'procedure'
 	unbox int32
 	ldobj int32
-	tail.
+	tail.		// REMOVE FOR ROTOR
 	calli	bool (class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object, class [mscorlib]System.Object)
 	ret
 }

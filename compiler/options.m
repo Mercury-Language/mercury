@@ -548,6 +548,7 @@
 		;	quoted_ilasm_flag
 		;	dotnet_library_version
 		;	support_ms_clr
+		;	support_rotor_clr
 
 			% Managed C++
 		;	mcpp_compiler
@@ -1143,6 +1144,7 @@ option_defaults_2(target_code_compilation_option, [
 		% with Beta2.
 	dotnet_library_version	-	string("1.0.3300.0"),
 	support_ms_clr		-	bool(yes),
+	support_rotor_clr	-	bool(no),
 
 % Managed C++
 	mcpp_compiler		-	string("cl"),
@@ -1808,6 +1810,7 @@ long_option("ilasm-flags",		ilasm_flags).
 long_option("ilasm-flag",		quoted_ilasm_flag).
 long_option("dotnet-library-version",	dotnet_library_version).
 long_option("support-ms-clr",		support_ms_clr).
+long_option("support-rotor-clr",	support_rotor_clr).
 
 long_option("mcpp-compiler",		mcpp_compiler).
 long_option("mcpp-flags",		mcpp_flags).
@@ -2902,6 +2905,9 @@ options_help_compilation_model -->
 
 		"--no-support-ms-clr",
 		"\tDon't use MS CLR specific workarounds in the generated code.",
+		
+		"--support-rotor-clr",
+		"\tUse specific workarounds for the ROTOR CLR in the generated code.",
 		
 		"--java",
 		"\tAn abbreviation for `--target java'.",
