@@ -58,7 +58,7 @@
 ** Debugger I/O streams.
 ** Replacements for stdin/stdout/stderr respectively.
 **
-** The distinction between MR_mdb_out and MR_mdb_err is analagous to
+** The distinction between MR_mdb_out and MR_mdb_err is analogous to
 ** the distinction between stdout and stderr: ordinary output, including
 ** information messages about conditions which are not errors, should
 ** go to MR_mdb_out, but error messages should go to MR_mdb_err.
@@ -67,12 +67,14 @@
 ** file, so we need to be careful to ensure that buffering does
 ** not stuff up the interleaving of error messages and ordinary output.
 ** To ensure this, we do two things:
+**
 **	- MR_mdb_err is unbuffered
 **	- we always fflush(MR_mdb_out) before writing to MR_mdb_err
 */
-FILE *MR_mdb_in;
-FILE *MR_mdb_out;
-FILE *MR_mdb_err;
+
+FILE	*MR_mdb_in;
+FILE	*MR_mdb_out;
+FILE	*MR_mdb_err;
 
 static	MR_Trace_Print_Level	MR_default_print_level = MR_PRINT_LEVEL_SOME;
 
@@ -408,6 +410,7 @@ MR_trace_do_noop(void)
 ** so that this function's address can be passed to
 ** MR_process_matching_procedures().
 */
+
 static void
 MR_mdb_print_proc_id(void *data, const MR_Stack_Layout_Entry *entry_layout)
 {
@@ -496,6 +499,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 **	(a) include them in MR_trace_valid_command_list, defined below.
 **	(b) document them in doc/user_guide.texi
 */
+
 static MR_Next
 MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
