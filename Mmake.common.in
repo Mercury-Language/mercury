@@ -113,7 +113,7 @@ SHARED_LIBS		= @SHARED_LIBS@
 # in scripts/Mmake.vars to avoid accidentally overwriting an
 # existing installation when using an installed mmake.
 INSTALL_PREFIX		= @prefix@
-FINAL INSTALL_PREFIX	= @prefix@
+FINAL_INSTALL_PREFIX	= @prefix@
 
 #-----------------------------------------------------------------------------#
 
