@@ -23,7 +23,8 @@ the binary distribution was compiled with.)
 
 You can download gnu-win32 from <ftp://ftp.cygnus.com/pub/gnu-win32>.
 
-To install gnu-win32, make a directory say D:\CYGNUS and unpack the archives
+To install gnu-win32, make a directory say D:\CYGNUS on a file
+system that supports long filenames, and unpack the archives
 there.  Make sure that you have C:\tmp and C:\bin directories.
 Copy sh.exe from D:\CYGNUS\H-i386-cygnus\bin to C:\bin.
 Make sure C:\bin is first in your PATH and D:\CYGNUS\H-i386-cygnus\bin
@@ -76,9 +77,9 @@ which by default gets installed in /usr/local/mercury-VERSION/lib/mercury/html,
 using Netscape or MS Internet Explorer.  Or you can get a copy of GNU Emacs
 for NT and use it to browse the INFO version.
 
-Previous versions of gnu-win32 had problems with system() that
-caused some trouble when invoking `mc' directly, rather than via
-`mmake', but I think those should be fixed now.
+The system() function in gnu-win32 version beta-16 is broken, which
+means that compiling programs by invoking `mc' directly, rather than
+via `mmake', will fail.  Just use mmake.
 
 There may still be some problems with case-insensitive filenames
 and the nameclash between `mmake' and `Mmake'.  If you run into any
