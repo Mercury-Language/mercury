@@ -119,7 +119,7 @@ esac
 #
 
 cp $BETA_WEBDIR/mercury-compiler-$version.tar.gz \
-	$RPMDIR/SOURCES/mercury-compiler-$base_version \
+	$RPMDIR/SOURCES/mercury-compiler-$base_version.tar.gz \
 	|| fatal_error "copying source dist"
 rm -rf $BUILD_ROOT
 mkdir -p $BUILD_ROOT
@@ -146,8 +146,9 @@ cp \
    $BETA_WEBDIR/mercury-compiler-$version_with_underscores-$rel.$arch.rpm" \
 	|| failed 'copying RPM to web site'
 su mercury -c "\
-rm -f `find $BETA_WEBDIR -name "$pattern-$rel.$arch.rpm" -a -! -name \
-       mercury-compiler-$version_with_underscores-$rel.$arch.rpm`" \
+find $BETA_WEBDIR -name "$pattern-$rel.$arch.rpm" -a -! -name \
+   mercury-compiler-$version_with_underscores-$rel.$arch.rpm | \
+   xargs rm -f" \
 	|| failed 'to delete old RPM'
 
 su mercury -c "\
@@ -155,8 +156,9 @@ cp $RPMDIR/SRPMS/mercury-compiler-$base_vsn_with_us-$rel.src.rpm \
    $BETA_WEBDIR/mercury-compiler-$version_with_underscores-$rel.src.rpm" \
 	|| failed "copying SRPM to web site"
 su mercury -c "\
-rm -f `find $BETA_WEBDIR -name "$pattern-$rel.src.rpm" -a -! -name \
-       mercury-compiler-$version_with_underscores-$rel.src.rpm`" \
+find $BETA_WEBDIR -name "$pattern-$rel.src.rpm" -a -! -name \
+   mercury-compiler-$version_with_underscores-$rel.src.rpm | \
+   xargs rm -f" \
 	|| failed 'to delete old source RPM'
 
 su mercury -c "\
