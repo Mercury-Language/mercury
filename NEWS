@@ -18,6 +18,8 @@ Changes to the Mercury compiler:
 * Better support for incremental program development:
   there's two new compiler options, `--allow-stubs' and `--no-warn-stubs',
   to support execution of incomplete programs.
+* There's a new warning option `--warn-dead-procs' for detecting unreachable
+  code.
 * It's now easier to use shared libraries on Linux/x86 systems
   with `mmc --make'.
 
@@ -196,6 +198,13 @@ Changes to the extras distribution:
 * Nothing yet.
 
 Changes to the Mercury compiler:
+
+* There's a new warning option `--warn-dead-procs' which can be used
+  for detecting unreachable code.
+
+  This is not yet enabled by default, because it can cause some spurious
+  warnings in modules containing code which mixes Mercury clauses and
+  `pragma foreign_proc' declarations for the same procedure.
 
 * `mmc --make' now works correctly with Microsoft Visual C++.
 
