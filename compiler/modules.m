@@ -2033,12 +2033,20 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				SourceFileName, "\n\n"
 		]),
 
-		% If we are on the IL backend and the current module
-		% contains some foreign code, generate a dependency
-		% between the dll containing the mercury code and the
-		% dll containing the foreign code.  Also generate
-		% dependencies between the foreign code dll and how to
-		% it relates to the il file (dll -> cpp -> il).
+		% Generate the following dependency.  This dependency is
+		% needed because module__cpp_code.dll might refer to
+		% high level data in any of the mercury modules it
+		% imports plus itself.
+		%
+		% 	module__cpp_code.dll : module.dll imports.dll
+		% 
+		%
+		% Generate the following sequence of rules which state
+		% how to generate the module__cpp_code.dll.
+		%
+		%	module__cpp_code.dll : module__cpp_code.cpp
+		%	module__cpp_code.cpp : module.il
+		%
 		globals__io_get_target(Target),
 		(
 			{ Target = il },
@@ -2064,8 +2072,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			module_name_to_file_name(ModuleName,
 					ForeignCodeExt ++ "dll",
 					no, ForeignDllFileName),
+
 			io__write_strings(DepStream, [
-				DllFileName, " : ", ForeignDllFileName, "\n",
+				ForeignDllFileName, " : ", DllFileName]),
+			write_dll_dependencies_list(AllDeps, DepStream),
+			io__nl(DepStream),
+
+			io__write_strings(DepStream, [
 				ForeignDllFileName, " : ", ForeignFileName,"\n",
 				ForeignFileName, " : ", IlFileName, "\n\n"])
 		;
@@ -3357,7 +3370,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	{ If = ["ifeq ($(findstring il,$(GRADE)),il)\n"] },
 	{ ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe ",
-			"$(", MakeVarName, ".dlls)\n"] },
+			"$(", MakeVarName, ".dlls) ",
+			"$(", MakeVarName, ".foreign_dlls)\n"] },
 	{ Else = ["else\n"] },
 	{ MainRule =
 		[ExeFileName, " : $(", MakeVarName, ".cs_or_ss) ",
@@ -3815,6 +3829,30 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	io__write_string(DepStream, " \\\n\t"),
 	io__write_string(DepStream, FileName),
 	write_dependencies_list(Modules, Suffix, DepStream).
+
+:- pred write_dll_dependencies_list(list(module_name), io__output_stream,
+				io__state, io__state).
+:- mode write_dll_dependencies_list(in, in, di, uo) is det.
+
+write_dll_dependencies_list(Modules0, DepStream) -->
+	{ F = (func(M) =
+		( if M = unqualified(S), mercury_std_library_module(S) then
+			unqualified("mercury")
+		else
+			M
+		)
+	)},
+	{ Modules = list__remove_dups(list__map(F, Modules0)) },
+	list__foldl(write_dll_dependency(DepStream), Modules).
+
+:- pred write_dll_dependency(io__output_stream, module_name,
+				io__state, io__state).
+:- mode write_dll_dependency(in, in, di, uo) is det.
+
+write_dll_dependency(DepStream, Module) -->
+	module_name_to_file_name(Module, ".dll", no, FileName),
+	io__write_string(DepStream, " \\\n\t"),
+	io__write_string(DepStream, FileName).
 
 :- pred write_fact_table_dependencies_list(module_name, list(file_name),
 			string, io__output_stream, io__state, io__state).
