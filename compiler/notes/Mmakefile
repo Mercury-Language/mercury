@@ -1,0 +1,34 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 1995 University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+# Mmake - Mmake file for the Mercury documentation.
+
+MAIN_TARGET=all
+
+MERCURY_DIR=../..
+include $(MERCURY_DIR)/Mmake.common
+
+INSTALL_WEB_SUBDIR=$(INSTALL_WEBDIR)/developer
+
+DOCS_TEXT=ALLOCATION AUTHORS CODING_STANDARDS COMPILER_DESIGN \
+	GC_AND_C_CODE GLOSSARY MODULE_SYSTEM RELEASE_CHECKLIST \
+	REVIEWS TODO
+DOCS_HTML=
+DOCS_ALL=$(DOCS_TEXT) $(DOCS_HTML)
+
+#-----------------------------------------------------------------------------#
+
+# This install is for installing the Mercury webpage, which goes to
+# a different directory (supplied by the environment variable
+# INSTALL_WEBDIR).
+
+.PHONY: install
+install: library-chapters.texi split_html ps 
+	[ -d $(INSTALL_WEB_SUBDIR) ] || mkdir -p $(INSTALL_WEB_SUBDIR)
+	cp $(DOCS_ALL) $(INSTALL_WEB_SUBDIR)
+
+#-----------------------------------------------------------------------------#
+
