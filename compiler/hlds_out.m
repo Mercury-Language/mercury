@@ -1,4 +1,3 @@
-
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -189,7 +188,21 @@ hlds_out__write_type_id(Name - Arity) -->
 	io__write_int(Arity).
 
 hlds_out__cons_id_to_string(cons(SymName, Arity), String) :-
-	prog_out__sym_name_to_string(SymName, SymNameString),
+	prog_out__sym_name_to_string(SymName, SymNameString0),
+	( string__contains_char(SymNameString0, '*') ->
+		% We need to protect against the * appearing next to a /
+		Stuff = lambda([Char::in, Str0::in, Str::out] is det, (
+			( Char = ('*') ->
+				string__append(Str0, "star", Str)
+			;
+				string__char_to_string(Char, CharStr),
+				string__append(Str0, CharStr, Str)
+			)
+		)),
+		string__foldl(Stuff, SymNameString0, "", SymNameString)
+	;
+		SymNameString = SymNameString0
+	),
 	string__int_to_string(Arity, ArityString),
 	string__append_list([SymNameString, "/", ArityString], String).
 hlds_out__cons_id_to_string(int_const(Int), String) :-
@@ -1104,7 +1117,7 @@ hlds_out__write_goal_2(call(PredId, ProcId, ArgVars, Builtin,
 			{ CallUnifyContext = call_unify_context(Var,
 					RHS, _UnifyContext) },
 			hlds_out__write_indent(Indent),
-			io__write_string("% Complicated unify: "),
+			io__write_string("% unify context: "),
 			mercury_output_var(Var, VarSet, AppendVarnums),
 			io__write_string(" = "),
 			hlds_out__write_unify_rhs_2(RHS, ModuleInfo, VarSet,
