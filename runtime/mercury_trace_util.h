@@ -27,6 +27,17 @@ extern	bool	MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
 extern	bool	MR_trace_get_type_and_value_base(const MR_Stack_Layout_Var *var,
 			bool saved_regs_valid, Word *base_sp, Word *base_curfr,
 			Word *type_params, Word *type_info, Word *value);
+extern	bool	MR_trace_get_type(const MR_Stack_Layout_Var *var,
+			Word *type_params, Word *type_info);
+extern	bool	MR_trace_get_type_base(const MR_Stack_Layout_Var *var,
+			bool saved_regs_valid, Word *base_sp, Word *base_curfr,
+			Word *type_params, Word *type_info);
+extern	bool	MR_trace_get_type_and_value_filtered(
+			const MR_Stack_Layout_Var *var, const char *name,
+			Word *type_info, Word *value);
+extern	bool	MR_trace_get_type_filtered(const MR_Stack_Layout_Var *var, 
+			const char *name, Word *type_info);
+
 
 /*
 ** MR_trace_write_variable:

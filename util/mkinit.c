@@ -136,8 +136,13 @@ static const char mercury_funcs[] =
 	"	MR_library_finalizer = ML_io_finalize_state;\n"
 	"	MR_library_trace_browser = ENTRY(mercury__io__print_3_0);\n"
 	"#ifdef MR_USE_EXTERNAL_DEBUGGER\n"
+	"	MR_type_name = ML_type_name;\n"
 	"	MR_DI_output_current_vars = ML_DI_output_current_vars;\n"
+  	"	MR_DI_output_current_nth_var = ML_DI_output_current_nth_var;\n"
+	"	MR_DI_output_current_live_var_names =
+			ML_DI_output_current_live_var_names;\n"
 	"	MR_DI_output_current_slots = ML_DI_output_current_slots;\n"
+  	"	MR_DI_get_var_number = ML_DI_get_var_number;\n"
 	"	MR_DI_found_match = ML_DI_found_match;\n"
 	"	MR_DI_read_request_from_socket = ML_DI_read_request_from_socket;\n"
 	"#endif\n"

@@ -59,15 +59,32 @@ extern	void		(*address_of_init_gc)(void);
 */
 void	(*MR_DI_output_current_vars)(Word, Word, Word);
 		/* normally ML_DI_output_current_vars (output_current_vars/3) */
+void	(*MR_DI_output_current_nth_var)(Word, Word);
+		/* normally ML_DI_output_current_nth_var 
+						 (output_current_nth_var/2) */
+void	(*MR_DI_output_current_live_var_names)(Word, Word, Word);
+		/* normally ML_DI_output_current_live_var_names
+					   (output_current_live_var_names/5) */
 void	(*MR_DI_output_current_slots)(Integer, Integer, Integer, Word, String,
 		String, Integer, Integer, Integer, String, Word);
 		/* normally ML_DI_output_current_slots (output_current_slots/13) */
 bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String, String,
 		Integer, Integer, Integer, Word, String, Word);
 		/* normally ML_DI_found_match (found_match/12) */
+int	(*MR_DI_get_var_number)(Word);
+		/* normally ML_DI_get_var_number (get_var_number/1) */
 void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
 		/* normally ML_DI_read_request_from_socket
 		   (read_request_from_socket/5) */
+
+/*
+** ML_type_name() is defined in library/std_util.m and use in
+** runtime/mercury_trace_external.c
+*/
+
+String	(*MR_type_name)(Word);
+		/* normally ML_type_name (type_name/1) */ 
+
 
 extern	void		do_init_modules(void);
 

@@ -149,16 +149,10 @@ MR_trace_make_var_list(const MR_Stack_Layout_Label *layout)
 		**
 		** XXX The printing of large data structures is painful
 		** at the moment due to the lack of a true browser.
-		**
-		** "variables" representing the saved values of succip, hp etc,
-		** which are the "variables" for which get_type_and_value
-		** fails, are not of interest to the trace analyzer.
 		*/
 
-		if ((strncmp(name, "TypeInfo", 8) == 0)
-		|| (strncmp(name, "ModuleInfo", 10) == 0)
-		|| (strncmp(name, "HLDS", 4) == 0)
-		|| !MR_trace_get_type_and_value(var, NULL, &type_info, &value))
+		if (!MR_trace_get_type_and_value_filtered(var, name, 
+							  &type_info, &value))
 		{
 			continue;
 		}
@@ -314,6 +308,34 @@ MR_trace_get_type_and_value_base(const MR_Stack_Layout_Var *var,
 	return succeeded;
 }
 
+bool
+MR_trace_get_type(const MR_Stack_Layout_Var *var,
+	Word *type_params, Word *type_info)
+{
+	return MR_trace_get_type_base(var, TRUE,
+		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs),
+		type_params, type_info);
+}
+
+bool
+MR_trace_get_type_base(const MR_Stack_Layout_Var *var,
+	bool saved_regs_valid, Word *base_sp, Word *base_curfr,
+	Word *type_params, Word *type_info)
+{
+	bool	succeeded;
+	Word	*pseudo_type_info;
+	int	i;
+
+	if (!MR_LIVE_TYPE_IS_VAR(var->MR_slv_live_type)) {
+		return FALSE;
+	}
+
+	pseudo_type_info = MR_LIVE_TYPE_GET_VAR_TYPE(var->MR_slv_live_type);
+	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
+	
+	return TRUE;
+}
+
 void
 MR_trace_write_variable(Word type_info, Word value)
 {
@@ -342,3 +364,36 @@ MR_trace_write_variable(Word type_info, Word value)
 	call_engine(MR_library_trace_browser);
 }
 
+
+/*
+** get_type_and_value() and get_type() will succeed to retrieve "variables"
+** that we do not want to send to the user; "variables" beginning with
+** `ModuleInfo', or `HLDS' may occur when debugging the compiler and are too
+** big to be displayed.  "Variables" beginning with `TypeInfo' denote the
+** additional parameters introduced by compiler/polymorphism.m that we don't
+** want to show neither.
+** That's why we define filtered version of get_type_and_value() and get_type()
+** that will fail to retrieve such variables.
+*/
+
+bool
+MR_trace_get_type_and_value_filtered(const MR_Stack_Layout_Var *var, 
+				     const char *name, 
+				     Word *type_info, Word *value)
+{
+	return ((strncmp(name, "TypeInfo", 8) != 0)
+	       && (strncmp(name, "ModuleInfo", 10) != 0)
+	       && (strncmp(name, "HLDS", 4) != 0)
+	       && MR_trace_get_type_and_value(var, NULL, type_info, value));
+}
+
+
+bool
+MR_trace_get_type_filtered(const MR_Stack_Layout_Var *var, 
+			   const char *name, Word *type_info)
+{
+	return ((strncmp(name, "TypeInfo", 8) != 0)
+	       && (strncmp(name, "ModuleInfo", 10) != 0)
+	       && (strncmp(name, "HLDS", 4) != 0)
+	       && MR_trace_get_type(var, NULL, type_info));
+}

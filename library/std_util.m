@@ -1319,6 +1319,9 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 }
 ").
 
+% Export this function in order to use it in runtime/mercury_trace_external.c
+:- pragma export(type_name(in) = out, "ML_type_name").
+
 type_name(Type) = TypeName :-
 	type_ctor_and_args(Type, TypeCtor, ArgTypes),
 	type_ctor_name_and_arity(TypeCtor, ModuleName, Name, Arity),

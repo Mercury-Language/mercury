@@ -100,6 +100,13 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
  				% XXX should provide a way of getting
 				% just part of the arguments
  				% (to reduce unnecessary socket traffic)
+		% A `current_live_var_names' request instructs the debuggee to
+		% retrieve the list of internal names of the currently 
+		% live variables and a list of their corresponding types.
+	;	current_live_var_names
+		% A 'current_nth_var' request instructs the debuggee to 
+		% retrieve the specified live variable.
+	;	current_nth_var(int)
 	;	abort_prog
 			% just abort the program
 	;	no_trace
@@ -153,6 +160,11 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
  		)
 	% responses to current_vars
 	;	current_vars(list(univ), list(string))
+	% reponse to current_nth_var
+	;	current_nth_var(univ)
+	% responses to current_live_var_names
+	;	current_live_var_names(list(string), list(string))
+	% response sent when the last event is reached
 	;	last_event
 	% responses to abort_prog or no_trace
 	;	ok
@@ -190,7 +202,7 @@ output_current_slots(EventNumber, CallNumber, DepthNumber, Port,
 	io__flush_output(OutputStream).
 
 % output_current_vars "ML_DI_output_current_vars":
-%	send to the debugger the list of the live arguments of the current event.
+%	send to the debugger the list of the live variables of the current event.
 
 :- pragma export(output_current_vars(in, in, in, di, uo), "ML_DI_output_current_vars").
 			
@@ -205,6 +217,58 @@ output_current_vars(VarList, StringList, OutputStream) -->
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
 	io__flush_output(OutputStream).
+
+% output_current_nth_var "ML_DI_output_current_nth_var":
+%	send to the debugger the requested live variable of the current event.
+
+:- pragma export(output_current_nth_var(in, in, di, uo), "ML_DI_output_current_nth_var").
+			
+:- pred output_current_nth_var(univ, io__output_stream, io__state, io__state).
+:- mode output_current_nth_var(in, in, di, uo) is det.
+
+
+output_current_nth_var(Var, OutputStream) -->
+		
+	{ CurrentTraceInfo = current_nth_var(Var) },
+	io__write(OutputStream, CurrentTraceInfo),
+	io__print(OutputStream, ".\n"),
+	io__flush_output(OutputStream).
+
+
+:- pragma export(output_current_live_var_names(in, in, in, di, uo), 
+	"ML_DI_output_current_live_var_names").
+			
+:- pred output_current_live_var_names(list(string), list(string),
+	io__output_stream, io__state, io__state).
+:- mode output_current_live_var_names(in, in, in, di, uo) is det.
+
+
+output_current_live_var_names(LiveVarNameList, LiveVarTypeList, 
+	OutputStream) -->
+		
+	{ CurrentTraceInfo = current_live_var_names(
+				LiveVarNameList, LiveVarTypeList) },
+	io__write(OutputStream, CurrentTraceInfo),
+	io__print(OutputStream, ".\n"),
+	io__flush_output(OutputStream).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma export(get_var_number(in) = out, "ML_DI_get_var_number").
+			
+:- func get_var_number(debugger_request) = int.
+:- mode get_var_number(in) = out is det.
+	% This function is intended to retrieve the integer in 
+	% "current_nth_var(int)" requests. 
+
+get_var_number(DebuggerRequest) = VarNumber :-
+	(
+		DebuggerRequest = current_nth_var(Var)
+	->
+		Var = VarNumber
+	;
+		error("get_var_number: not a current_nth_var request")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -307,6 +371,8 @@ classify_request(current_slots, 3).
 classify_request(no_trace, 4).
 classify_request(abort_prog, 5).
 classify_request(error(_), 6).
+classify_request(current_live_var_names, 7).
+classify_request(current_nth_var(_), 8).
 
 
 %-----------------------------------------------------------------------------%

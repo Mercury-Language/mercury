@@ -50,6 +50,12 @@ typedef enum {
 	MR_REQUEST_NO_TRACE      = 4, /* continue to end, not tracing	      */
 	MR_REQUEST_ABORT_PROG    = 5, /* abort the current execution	      */
 	MR_REQUEST_ERROR         = 6, /* something went wrong                 */
+	MR_REQUEST_CURRENT_LIVE_VAR_NAMES  
+				 = 7, /* report data for 
+					 current_live_var_names query */
+	MR_REQUEST_CURRENT_NTH_VAR 
+				 = 8  /* report data for 
+					 current_nth_var query */
 
 } MR_debugger_request_type;
 
@@ -69,7 +75,15 @@ static void	MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, Unsigned seqno, Unsigned depth, 
 			const char *path);
 static void	MR_output_current_vars(Word var_list, Word string_list);
-static Word	MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout);
+static void	MR_output_current_nth_var(Word var);
+static void	MR_output_current_live_var_names(Word var_names_list, 
+						 Word type_list);
+static Word	MR_trace_make_var_names_list(
+			const MR_Stack_Layout_Label *layout);
+static Word	MR_trace_make_type_list(const MR_Stack_Layout_Label *layout);
+static Word	MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, 
+				      Word debugger_request);
+static int	MR_get_var_number(Word debugger_request);
 
 #if 0
 This pseudocode should go in the debugger process:
@@ -348,16 +362,40 @@ MR_trace_event_external(MR_trace_cmd_info *cmd,
 			        searching = TRUE;
 				return;
 
+			case MR_REQUEST_CURRENT_LIVE_VAR_NAMES:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"MR_REQUEST_CURRENT_LIVE_VAR"
+						"_NAMES\n");
+				}
+				var_names_list = 
+				  MR_trace_make_var_names_list(layout);
+				type_list = MR_trace_make_type_list(layout);
+				MR_output_current_live_var_names(var_names_list,
+								 type_list);
+				break;
+
 			case MR_REQUEST_CURRENT_VARS:
 				if (MR_debug_socket) {
 					fprintf(stderr, "\nMercury runtime: "
 						"REQUEST_CURRENT_VARS\n");
 				}
 				var_list = MR_trace_make_var_list(layout);
-				var_names_list = MR_trace_make_var_names_list(layout);
-				MR_output_current_vars(var_list, var_names_list);
+				var_names_list = 
+				  MR_trace_make_var_names_list(layout);
+				MR_output_current_vars(var_list, 
+						       var_names_list);
 				break;
 
+			case MR_REQUEST_CURRENT_NTH_VAR:
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_NTH_CURRENT_VAR\n");
+				}
+				var = MR_trace_make_nth_var(layout, 
+							    debugger_request);
+				MR_output_current_nth_var(var);
+				break;			
 			case MR_REQUEST_CURRENT_SLOTS:
 				if (MR_debug_socket) {
 					fprintf(stderr, "\nMercury runtime: "
@@ -407,6 +445,22 @@ MR_output_current_vars(Word var_list, Word string_list)
 		(Word) &MR_debugger_socket_out);
 }
 
+static void
+MR_output_current_nth_var(Word var)
+{
+	MR_DI_output_current_nth_var(
+		var,
+		(Word) &MR_debugger_socket_out);
+}
+
+static void
+MR_output_current_live_var_names(Word var_names_list, Word type_list)
+{
+	MR_DI_output_current_live_var_names(
+		var_names_list,
+		type_list,
+		(Word) &MR_debugger_socket_out);
+}
 
 static void
 MR_read_request_from_socket(
@@ -456,7 +510,6 @@ MR_send_message_to_socket(const char *message)
 }
 
 
-
 /*
 ** This function returns the list of the internal names of currently live
 ** variables.
@@ -490,4 +543,105 @@ MR_trace_make_var_names_list(const MR_Stack_Layout_Label *layout)
 }
 
 
+/*
+** This function returns the list of types of currently live variables.
+*/
+
+static Word
+MR_trace_make_type_list(const MR_Stack_Layout_Label *layout)
+{
+	int 				var_count;
+	const MR_Stack_Layout_Vars 	*vars;
+	int				i;
+	const char			*name;
+	MR_Stack_Layout_Var*		var;
+	Word				type_info;
+	String		      		type_info_string;
+
+	Word				type_list;
+
+	var_count = layout->MR_sll_var_count;
+	vars = &layout->MR_sll_var_info;
+
+	restore_transient_registers();
+	type_list = list_empty();
+	save_transient_registers();
+	for (i = var_count - 1; i >= 0; i--) {
+
+		name = MR_name_if_present(vars, i);
+		var = &vars->MR_slvs_pairs[i];
+
+		if (!MR_trace_get_type_filtered(var, name, &type_info))
+		{
+			continue;
+		}
+
+		restore_transient_registers();
+		type_info_string = MR_type_name(type_info);
+		type_list = list_cons(type_info_string, type_list);
+		save_transient_registers();
+	}
+
+	return type_list;
+}
+
+
+/*
+** This function returns the requested live variable.
+*/
+
+static Word
+MR_trace_make_nth_var(const MR_Stack_Layout_Label *layout, 
+		      Word debugger_request)
+{
+	int 				var_number;
+	const MR_Stack_Layout_Vars 	*vars;
+	const char			*name;
+	MR_Stack_Layout_Var*		var;
+	int				i;
+	Word				value;
+	Word				type_info;
+
+	Word				univ;
+
+	var_number = MR_get_var_number(debugger_request);
+		/* debugger_request should be of the form: 
+		   current_nth_var(var_number) */
+	vars = &layout->MR_sll_var_info;
+	name = MR_name_if_present(vars, var_number);
+	var = &vars->MR_slvs_pairs[var_number];
+
+	restore_transient_registers();
+	incr_hp(univ, 2);
+
+
+	if (MR_trace_get_type_and_value_filtered(var, name, &type_info, 
+						     &value))
+	{
+		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
+		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
+	} else {
+		/*
+		** Should never occur since we check in the external debugger
+		** process if a variable is live before retrieving it.
+		*/
+		fatal_error("try to retrieve a non-live variable");
+	}
+
+	save_transient_registers();
+
+	return univ;
+}
+
+
+/*
+** This function is called only when debugger_request = current_nth_var(n).
+** It returns the integer 'n'.  
+*/
+
+static int
+MR_get_var_number(Word debugger_request)
+{
+	return MR_DI_get_var_number(debugger_request);
+}
 #endif /* MR_USE_EXTERNAL_DEBUGGER */
