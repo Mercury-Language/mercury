@@ -121,6 +121,7 @@ ORDINARY_PROGS=	\
 	nondet_copy_out \
 	nullary_ho_func \
 	null_char \
+	ppc_bug \
 	pprint_test \
 	pprint_test2 \
 	pragma_c_code \

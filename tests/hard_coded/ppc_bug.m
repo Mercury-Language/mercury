@@ -1,0 +1,40 @@
+% The following program compiles incorrectly on PPC/MacOS X
+% in grade reg.gc.  find_nth_yes/4 ends up throwing an
+% exception instead of returning `YesPos = 3'.  Passing
+% `--no-optimize-fulljumps' causes the test to pass.
+%
+% The test passes with gcc 2.95.2 (Apple version)
+% but fails with gcc 3.3 (Apple version). 
+
+:- module ppc_bug.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io::di, io::uo) is det.
+
+:- implementation.
+
+:- import_module list, int, bool, std_util, exception.
+
+main(!IO) :-
+	find_nth_yes([yes, no, yes, yes], 2, 1, X),
+	io.write_int(X, !IO),
+	io.nl(!IO).
+
+:- pred find_nth_yes(list(bool)::in, int::in, int::in, int::out) is det.
+
+find_nth_yes([], _, _, _) :- throw("no").
+find_nth_yes([B | Bs], N, Cur, YesPos) :-
+	( 
+		B = no,
+		find_nth_yes(Bs, N, Cur + 1, YesPos)
+	;
+		B = yes,
+		( N = 1 ->
+			YesPos = Cur
+		;
+			find_nth_yes(Bs, N - 1, Cur + 1, YesPos)
+		)
+	).
