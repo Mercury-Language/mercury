@@ -292,7 +292,7 @@ AC_PATH_PROGS(JAVAC, jikes javac gcj)
 case "$JAVAC" in *gcj)
 	JAVAC="$JAVAC -C" ;;
 esac
-AC_PATH_PROG(JAVA_INTERPRETER, java)
+AC_PATH_PROG(JAVA_INTERPRETER, java gij)
 AC_PATH_PROG(JAR, jar)
 
 AC_CACHE_VAL(mercury_cv_java, [
