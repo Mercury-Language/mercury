@@ -207,20 +207,22 @@ value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, N0, OptInstrs) -->
 	;
 		{ DivideSet = UseSet }
 	),
+	vn_debug__cost_header_msg("procedure before value numbering"),
+	vn_debug__dump_instrs(Instrs1),
 	{ vn_block__divide_into_blocks(Instrs1, DivideSet, Blocks) },
 	value_number__optimize_blocks(Blocks, LiveMap, N0, OptBlocks0,
 		[], RevTuples),
 	globals__io_lookup_bool_option(pred_value_number, PredVn),
 	( { PredVn = yes } ->
+		{ list__condense([Comments | OptBlocks0], OptInstrs0) },
+		vn_debug__cost_header_msg("procedure before parallels"),
+		vn_debug__dump_instrs(OptInstrs0),
 		{ list__reverse(RevTuples, Tuples) },
 		value_number__process_parallel_tuples(Tuples, OptBlocks0,
 			LiveMap, OptBlocks1),
-		{ list__condense([Comments | OptBlocks0], OptInstrs0) },
 		{ list__condense([Comments | OptBlocks1], OptInstrs) },
-		vn_debug__cost_header_msg("procedure before parallels"),
-		vn_cost__block_cost(OptInstrs0, yes, _),
 		vn_debug__cost_header_msg("procedure after parallels"),
-		vn_cost__block_cost(OptInstrs, yes, _)
+		vn_debug__dump_instrs(OptInstrs)
 	;
 		{ OptBlocks1 = OptBlocks0 },
 		{ list__condense([Comments | OptBlocks1], OptInstrs) }
@@ -264,6 +266,7 @@ value_number__optimize_block(Instrs0, LiveMap, ParEntries, LabelNo0, LabelNo,
 	;
 		value_number__optimize_fragment(Instrs0, LiveMap, ParEntries,
 			LabelNo0, Tuple, Instrs),
+		vn_debug__tuple_msg(no, Instrs, Tuple),
 		{ Tuple = tuple(_, _, _, LabelNo, _) },
 		{ RevTuples = [yes(Tuple) | RevTuples0] }
 	).
@@ -313,19 +316,19 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
 		{ error("empty instruction sequence in value_number__optimize_fragment") }
 	),
 	{ vn_block__build_block_info(Instrs0, LiveMap, ParEntries, LabelNo0,
-		VnTables0, Liveset, SeenIncr, Tuple0) },
+		VnTables0, Liveset0, SeenIncr0, Tuple0) },
 	{ Tuple0 = tuple(Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
 
-	{ vn_util__build_uses(Liveset, Ctrlmap, VnTables0, VnTables1) },
+	{ vn_util__build_uses(Liveset0, Ctrlmap, VnTables0, VnTables1) },
 
-	vn_order__order(Liveset, VnTables1, SeenIncr, Ctrl, Ctrlmap,
+	vn_order__order(Liveset0, VnTables1, SeenIncr0, Ctrl, Ctrlmap,
 		Flushmap, Res),
 	(
 		{ Res = success(VnTables2, Order) },
 		{ value_number__max_real_regs(MaxRealRegs) },
 		{ value_number__max_real_temps(MaxRealTemps) },
 		{ vn_temploc__init_templocs(MaxRealRegs, MaxRealTemps,
-			Liveset, VnTables2, Templocs0) },
+			Liveset0, VnTables2, Templocs0) },
 		vn_flush__nodelist(Order, Ctrlmap, VnTables2, Templocs0,
 			Instrs1),
 
@@ -346,30 +349,20 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
 			{ vn_block__build_block_info(Instrs6, LiveMap,
 				ParEntries, LabelNo0, VnTables6, Liveset6,
 				SeenIncr6, Tuple6) },
-			{ vn_verify__equivalence(Liveset, Liveset6,
-				VnTables0, VnTables6, Problem) },
-			( { SeenIncr \= SeenIncr6 } ->
-				vn_debug__failure_msg(Uinstr0,
-					"disagreement on SeenIncr"),
-				{ Instrs = Instrs0 },
-				{ Tuple = Tuple0 }
-			; { Problem = yes(Msg) } ->
-				vn_debug__failure_msg(Uinstr0, Msg),
-				{ Instrs = Instrs0 },
-				{ Tuple = Tuple0 }
-			; { vn_verify__tags(Instrs6) } ->
+			vn_verify__ok(Instrs6, Uinstr0, SeenIncr0, SeenIncr6,
+				Liveset0, Liveset6, VnTables0, VnTables6, OK),
+			( { OK = yes } ->
 				{ Instrs = Instrs6 },
 				{ Tuple = Tuple6 }
 			;
-				vn_debug__failure_msg(Uinstr0,
-					"failure of tag check"),
 				{ Instrs = Instrs0 },
 				{ Tuple = Tuple0 }
 			)
 		;
 			{ Instrs = Instrs0 },
 			{ Tuple = Tuple0 }
-		)
+		),
+		vn_debug__tuple_msg(yes(no), Instrs, Tuple)
 	;
 		{ Res = failure(MaybeLabel) },
 		(
@@ -381,8 +374,9 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, ParEntries, LabelNo0,
 			value_number__last_ditch(Instrs0,
 				LiveMap, LabelNo, Instrs)
 		),
-		{ vn_block__build_block_info(Instrs0, LiveMap, ParEntries,	
-			LabelNo0, _, _, _, Tuple) }
+		{ vn_block__build_block_info(Instrs, LiveMap, ParEntries,	
+			LabelNo0, _, _, _, Tuple) },
+		vn_debug__tuple_msg(yes(yes), Instrs, Tuple)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -590,7 +584,9 @@ value_number__process_parallels(Pars, LiveMap, Instr0, Instr,
 			{ error("more than one parallel for goto") }
 		)
 	; { Uinstr0 = computed_goto(Rval, Labels) } ->
-		value_number__process_parallel_list(Pars, Labels, LiveMap,
+		{ value_number__pair_labels_pars(Labels, Pars, LabelPars) },
+		vn_debug__computed_goto_msg(Labels, Pars, LabelPars),
+		value_number__process_parallel_list(LabelPars, LiveMap,
 			AllBlocks, FinalLabels, Extras),
 		{ Instr = computed_goto(Rval, FinalLabels) - Comment }
 	;
@@ -598,25 +594,65 @@ value_number__process_parallels(Pars, LiveMap, Instr0, Instr,
 		{ Extras = [] }
 	).
 
-:- pred value_number__process_parallel_list(list(parallel), list(label),
+:- pred value_number__pair_labels_pars(list(label), list(parallel),
+	assoc_list(label, maybe(parallel))).
+:- mode value_number__pair_labels_pars(in, in, out) is det.
+
+value_number__pair_labels_pars([], Pars, []) :-
+	( Pars = [] ->
+		true
+	;
+		error("parallel without corresponding label")
+	).
+value_number__pair_labels_pars([Label | Labels0], Pars0,
+		[Label - MaybePar | LabelPars]) :-
+	( value_number__find_parallel_for_label(Pars0, Label, Par, Pars1) ->
+		MaybePar = yes(Par),
+		Pars2 = Pars1
+	;
+		MaybePar = no,
+		Pars2 = Pars0
+	),
+	value_number__pair_labels_pars(Labels0, Pars2, LabelPars).
+
+:- pred value_number__find_parallel_for_label(list(parallel), label, parallel,
+	list(parallel)).
+:- mode value_number__find_parallel_for_label(in, in, out, out) is semidet.
+
+value_number__find_parallel_for_label([Par0 | Pars0], Label, Par, Rest) :-
+	( Par0 = parallel(Label, _, _) ->
+		Par = Par0,
+		Rest = Pars0
+	;
+		value_number__find_parallel_for_label(Pars0, Label, Par, Rest1),
+		Rest = [Par0 | Rest1]
+	).
+
+:- pred value_number__process_parallel_list(assoc_list(label, maybe(parallel)),
 	livemap, list(list(instruction)), list(label),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode value_number__process_parallel_list(in, in, in, in, out, out, di, uo)
+:- mode value_number__process_parallel_list(in, in, in, out, out, di, uo)
 	is det.
 
-value_number__process_parallel_list([], _, _, _, [], []) --> [].
-value_number__process_parallel_list([Par | Pars], OldLabels, LiveMap, AllBlocks,
-		[Label | Labels], Extras) -->
-	{ Par = parallel(OldLabel, _, _) },
-	{ OldLabels = [OldLabel | OldLabels1Prime] ->
-		OldLabels1 = OldLabels1Prime
+value_number__process_parallel_list([], _, _, [], []) --> [].
+value_number__process_parallel_list([OldLabel - MaybePar | LabelPars],
+		LiveMap, AllBlocks, [Label | Labels], Extras) -->
+	( { MaybePar = yes(Par) } ->
+		( { Par = parallel(OldLabel, _, _) } ->
+			[]
+		;
+			{ error("wrong label in parallel for computed_goto") }
+		),
+		value_number__process_parallel(Par, LiveMap,
+			AllBlocks, Label, Extras1),
+		value_number__process_parallel_list(LabelPars, LiveMap,
+			AllBlocks, Labels, Extras2),
+		{ list__append(Extras1, Extras2, Extras) }
 	;
-		error("wrong label sequence in parallel for computed_goto")
-	},
-	value_number__process_parallel(Par, LiveMap, AllBlocks, Label, Extras1),
-	value_number__process_parallel_list(Pars, OldLabels1, LiveMap,
-		AllBlocks, Labels, Extras2),
-	{ list__append(Extras1, Extras2, Extras) }.
+		{ Label = OldLabel },
+		value_number__process_parallel_list(LabelPars, LiveMap,
+			AllBlocks, Labels, Extras)
+	).
 
 :- pred value_number__process_parallel(parallel, livemap,
 	list(list(instruction)), label, assoc_list(label, list(instruction)),

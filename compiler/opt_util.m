@@ -975,7 +975,8 @@ opt_util__can_instr_branch_away(pragma_c(_, _, _, _), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_), yes).
-opt_util__can_instr_fall_through(block(_, _), yes).
+opt_util__can_instr_fall_through(block(_, Instrs), FallThrough) :-
+	opt_util__can_block_fall_through(Instrs, FallThrough).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _, _, _), no).
 opt_util__can_instr_fall_through(call_closure(_, _, _), no).
@@ -995,6 +996,20 @@ opt_util__can_instr_fall_through(discard_ticket, yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 opt_util__can_instr_fall_through(pragma_c(_, _, _, _), yes).
+
+	% Check whether an instruction sequence can possibly fall through
+	% to the next instruction without using its label.
+
+:- pred opt_util__can_block_fall_through(list(instruction), bool).
+:- mode opt_util__can_block_fall_through(in, out) is det.
+
+opt_util__can_block_fall_through([], yes).
+opt_util__can_block_fall_through([Instr - _ | Instrs], FallThrough) :-
+	( opt_util__can_instr_fall_through(Instr, no) ->
+		FallThrough = no
+	;
+		opt_util__can_block_fall_through(Instrs, FallThrough)
+	).
 
 :- pred opt_util__can_use_livevals(instr, bool).
 :- mode opt_util__can_use_livevals(in, out) is det.

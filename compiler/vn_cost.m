@@ -30,15 +30,15 @@
 
 :- import_module vn_debug, require, string, std_util.
 
-vn_cost__block_cost(Instr, Flag, Cost) -->
-	vn_cost__block_cost_2(Instr, Flag, 0, Cost).
+vn_cost__block_cost(Instr, PrintInstr, Cost) -->
+	vn_cost__block_cost_2(Instr, PrintInstr, 0, Cost).
 
 :- pred vn_cost__block_cost_2(list(instruction), bool, int, int,
 	io__state, io__state).
 :- mode vn_cost__block_cost_2(in, in, in, out, di, uo) is det.
 
 vn_cost__block_cost_2([], _, Cost, Cost) --> [].
-vn_cost__block_cost_2([Instr | Instrs], Flag, CostBefore, Cost) -->
+vn_cost__block_cost_2([Instr | Instrs], PrintInstr, CostBefore, Cost) -->
 	{ Instr = Uinstr - _ },
 	{ vn_cost__instr_cost(Uinstr, InstrCost) },
 	{ Uinstr = if_val(_, _) ->
@@ -52,12 +52,12 @@ vn_cost__block_cost_2([Instr | Instrs], Flag, CostBefore, Cost) -->
 		CostNow is CostBefore + InstrCost
 	},
 	(
-		{ Flag = yes },
+		{ PrintInstr = yes },
 		vn_debug__cost_detail_msg(Uinstr, InstrCost, CostNow)
 	;
-		{ Flag = no }
+		{ PrintInstr = no }
 	),
-	vn_cost__block_cost_2(Instrs, Flag, CostNow, Cost).
+	vn_cost__block_cost_2(Instrs, PrintInstr, CostNow, Cost).
 
 :- pred vn_cost__instr_cost(instr, int).
 :- mode vn_cost__instr_cost(in, out) is det.

@@ -14,22 +14,47 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, set, string, std_util, llds.
+:- import_module vn_type, vn_table, llds.
+:- import_module list, bool.
 
-:- pred vn_verify__equivalence(vnlvalset, vnlvalset, vn_tables, vn_tables,
-	maybe(string)).
-:- mode vn_verify__equivalence(in, in, in, in, out) is det.
-
-:- pred vn_verify__tags(list(instruction)).
-:- mode vn_verify__tags(in) is semidet.
+:- pred vn_verify__ok(list(instruction), instr, bool, bool,
+	vnlvalset, vnlvalset, vn_tables, vn_tables, bool, io__state, io__state).
+:- mode vn_verify__ok(in, in, in, in, in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module opt_debug, vn_util.
-:- import_module map, list, require.
+:- import_module opt_debug, vn_debug, vn_util.
+:- import_module map, set, string, std_util, require.
+
+vn_verify__ok(Instrs, Uinstr0, SeenIncr0, SeenIncr, Liveset0, Liveset,
+		VnTables0, VnTables, OK) -->
+	(
+		{ SeenIncr0 \= SeenIncr }
+	->
+		vn_debug__failure_msg(Uinstr0, "disagreement on SeenIncr"),
+		{ OK = no }
+	;
+		{ vn_verify__equivalence(Liveset0, Liveset,
+			VnTables0, VnTables, Problem) },
+		{ Problem = yes(Msg) }
+	->
+		vn_debug__failure_msg(Uinstr0, Msg),
+		{ OK = no }
+	;
+		{ vn_verify__tags(Instrs) }
+	->
+		{ OK = yes }
+	;
+		vn_debug__failure_msg(Uinstr0, "failure of tag check"),
+		{ OK = no }
+	).
+
+:- pred vn_verify__equivalence(vnlvalset, vnlvalset, vn_tables, vn_tables,
+	maybe(string)).
+:- mode vn_verify__equivalence(in, in, in, in, out) is det.
 
 vn_verify__equivalence(Liveset0, Liveset7, VnTables0, VnTables7,
 		Problem) :-
@@ -209,6 +234,9 @@ vn_verify__subst_sub_vns(vn_binop(Op, _, _), [R1, R2], _, binop(Op, R1, R2)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- pred vn_verify__tags(list(instruction)).
+:- mode vn_verify__tags(in) is semidet.
 
 vn_verify__tags(Instrs) :-
 	list__reverse(Instrs, RevInstrs),

@@ -862,20 +862,9 @@ vn_util__build_uses_from_livevals([Live | Liveslist], VnTables0, VnTables) :-
 vn_util__record_access([], VnTables, VnTables).
 vn_util__record_access([Vnlval | Vnlvals], VnTables0, VnTables) :-
 	vn_util__vnlval_access_vns(Vnlval, SubVns),
-	vn_util__record_use_list(SubVns, src_access(Vnlval), VnTables0, VnTables1),
-	vn_util__record_access_vns(SubVns, VnTables1, VnTables2),
-	vn_util__record_access(Vnlvals, VnTables2, VnTables).
-
-:- pred vn_util__record_access_vns(list(vn), vn_tables, vn_tables).
-% :- mode vn_util__record_access_vns(in, di, uo) is det.
-:- mode vn_util__record_access_vns(in, in, out) is det.
-
-vn_util__record_access_vns(_, VnTables, VnTables).
-% vn_util__record_access_vns([], VnTables, VnTables).
-% vn_util__record_access_vns([Vn | Vns], VnTables0, VnTables) :-
-% 	vn_util__vnlval_access_vns(Vnlval, SubVns),
-% 	vn_util__record_use_list(SubVns, src_access(Vnlval), VnTables0, VnTables1),
-% 	vn_util__record_access_vns(Vnlvals, VnTables1, VnTables).
+	vn_util__record_use_list(SubVns, src_access(Vnlval),
+		VnTables0, VnTables1),
+	vn_util__record_access(Vnlvals, VnTables1, VnTables).
 
 :- pred vn_util__record_use(vn, vn_src, vn_tables, vn_tables).
 % :- mode vn_util__record_use(in, in, di, uo) is det.

@@ -17,6 +17,10 @@
 :- import_module atsort, vn_type, vn_table, livemap.
 :- import_module bool, map, list, io.
 
+:- pred vn_debug__tuple_msg(maybe(bool), list(instruction), vn_ctrl_tuple,
+	io__state, io__state).
+:- mode vn_debug__tuple_msg(in, in, in, di, uo) is det.
+
 :- pred vn_debug__livemap_msg(livemap, io__state, io__state).
 :- mode vn_debug__livemap_msg(in, di, uo) is det.
 
@@ -26,11 +30,18 @@
 :- pred vn_debug__failure_msg(instr, string, io__state, io__state).
 :- mode vn_debug__failure_msg(in, in, di, uo) is det.
 
+:- pred vn_debug__parallel_msgs(list(parallel), io__state, io__state).
+:- mode vn_debug__parallel_msgs(in, di, uo) is det.
+
 :- pred vn_debug__parallel_msg(parallel, io__state, io__state).
 :- mode vn_debug__parallel_msg(in, di, uo) is det.
 
+:- pred vn_debug__computed_goto_msg(list(label), list(parallel),
+	assoc_list(label, maybe(parallel)), io__state, io__state).
+:- mode vn_debug__computed_goto_msg(in, in, in, di, uo) is det.
+
 :- pred vn_debug__order_start_msg(ctrlmap, flushmap, vn_tables,
-				io__state, io__state).
+	io__state, io__state).
 :- mode vn_debug__order_start_msg(in, in, in, di, uo) is det.
 
 :- pred vn_debug__order_sink_msg(vn_node, io__state, io__state).
@@ -74,14 +85,63 @@
 :- mode vn_debug__flush_also_msg(in, di, uo) is det.
 
 :- pred vn_debug__flush_end_msg(list(instruction), vn_tables,
-			io__state, io__state).
+	io__state, io__state).
 :- mode vn_debug__flush_end_msg(in, in, di, uo) is det.
+
+:- pred vn_debug__dump_instrs(list(instruction), io__state, io__state).
+:- mode vn_debug__dump_instrs(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module llds, globals, options, opt_debug, string, int, std_util.
+
+vn_debug__tuple_msg(Intermediate, Instrs, Tuple) -->
+	vn_debug__tuple_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		io__write_string("\nTuples from the "),
+		(
+			{ Intermediate = no },
+			io__write_string("final instruction sequence:\n\n")
+		;
+			{ Intermediate = yes(Stitched) },
+			(
+				{ Stitched = no },
+				io__write_string("intermediate instruction sequence:\n\n")
+			;
+				{ Stitched = yes },
+				io__write_string("stitched-together instruction sequence:\n\n")
+			)
+		),
+		vn_debug__dump_instrs(Instrs),
+		io__write_string("\nTuple data:\n\n"),
+		{ Tuple = tuple(N, CtrlMap, _, _, ParMap) },
+		vn_debug__tuple_entries(0, N, CtrlMap, ParMap),
+		io__write_string("\nTuple data ends\n\n")
+	;
+		{ Flag = no }
+	).
+
+:- pred vn_debug__tuple_entries(int, int, ctrlmap, parmap,
+	io__state, io__state).
+:- mode vn_debug__tuple_entries(in, in, in, in, di, uo) is det.
+
+vn_debug__tuple_entries(N, Max, CtrlMap, ParMap) -->
+	( { N < Max } ->
+		{ map__lookup(CtrlMap, N, VnInstr) },
+		{ map__lookup(ParMap, N, Parallels) },
+		{ opt_debug__dump_vninstr(VnInstr, I_str) },
+		io__write_string("\n-----------\n"),
+		io__write_string(I_str),
+		io__write_string(":\n"),
+		vn_debug__parallel_msgs(Parallels),
+		{ N1 is N + 1 },
+		vn_debug__tuple_entries(N1, Max, CtrlMap, ParMap)
+	;
+		[]
+	).
 
 vn_debug__livemap_msg(Livemap) -->
 	vn_debug__livemap_msg_flag(Flag),
@@ -144,6 +204,11 @@ vn_debug__failure_msg(Instr, Cause) -->
 		{ Flag = no }
 	).
 
+vn_debug__parallel_msgs([]) --> [].
+vn_debug__parallel_msgs([Parallel | Parallels]) -->
+	vn_debug__parallel_msg(Parallel),
+	vn_debug__parallel_msgs(Parallels).
+
 vn_debug__parallel_msg(parallel(OldLabel, NewLabel, ParEntries)) -->
 	vn_debug__parallel_msg_flag(Flag),
 	(
@@ -172,6 +237,57 @@ vn_debug__parentry_msg([Lval - Rvals | ParEntries]) -->
 	io__write_string(R_str),
 	io__write_string("\n"),
 	vn_debug__parentry_msg(ParEntries).
+
+vn_debug__computed_goto_msg(Labels, Parallels, Pairs) -->
+	vn_debug__parallel_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		io__write_string("computed goto labels:\n"),
+		vn_debug__dump_labels(Labels),
+		io__write_string("computed goto parallels:\n"),
+		vn_debug__dump_parallels(Parallels),
+		io__write_string("computed goto pairs:\n"),
+		vn_debug__dump_label_parallel_pairs(Pairs),
+		io__write_string("computed goto message end\n")
+	;
+		{ Flag = no }
+	).
+
+:- pred vn_debug__dump_labels(list(label), io__state, io__state).
+:- mode vn_debug__dump_labels(in, di, uo) is det.
+
+vn_debug__dump_labels([]) --> [].
+vn_debug__dump_labels([Label | Labels]) -->
+	{ opt_debug__dump_label(Label, Lstr) },
+	io__write_string(Lstr),
+	io__write_string("\n"),
+	vn_debug__dump_labels(Labels).
+
+:- pred vn_debug__dump_parallels(list(parallel), io__state, io__state).
+:- mode vn_debug__dump_parallels(in, di, uo) is det.
+
+vn_debug__dump_parallels([]) --> [].
+vn_debug__dump_parallels([Parallel | Parallels]) -->
+	vn_debug__parallel_msg(Parallel),
+	vn_debug__dump_parallels(Parallels).
+
+:- pred vn_debug__dump_label_parallel_pairs(assoc_list(label, maybe(parallel)),
+	io__state, io__state).
+:- mode vn_debug__dump_label_parallel_pairs(in, di, uo) is det.
+
+vn_debug__dump_label_parallel_pairs([]) --> [].
+vn_debug__dump_label_parallel_pairs([Label - MaybeParallel | Pairs]) -->
+	{ opt_debug__dump_label(Label, Lstr) },
+	io__write_string(Lstr),
+	io__write_string(": "),
+	(
+		{ MaybeParallel = yes(Parallel) },
+		vn_debug__parallel_msg(Parallel)
+	;
+		{ MaybeParallel = no },
+		io__write_string("no\n")
+	),
+	vn_debug__dump_label_parallel_pairs(Pairs).
 
 vn_debug__order_start_msg(Ctrlmap, Flushmap, VnTables) -->
 	vn_debug__order_msg_flag(Flag),
@@ -360,15 +476,36 @@ vn_debug__flush_end_msg(Instrs, VnTables) -->
 		{ Flag = yes },
 		{ opt_debug__dump_fullinstrs(Instrs, I_str) },
 		{ opt_debug__dump_useful_vns(VnTables, U_str) },
+		% { opt_debug__dump_useful_locs(VnTables, L_str) },
+		% { opt_debug__dump_vn_locs(VnTables, V_str) },
 		io__write_string("generated instrs:\n"),
 		io__write_string(I_str),
 		io__write_string("new use info\n"),
 		io__write_string(U_str)
+		% io__write_string("new location content info\n"),
+		% io__write_string(L_str),
+		% io__write_string("new vn location info\n"),
+		% io__write_string(V_str)
+	;
+		{ Flag = no }
+	).
+
+vn_debug__dump_instrs([]) --> [].
+vn_debug__dump_instrs([Uinstr - _ | Instrs]) -->
+	vn_debug__cost_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		output_instruction(Uinstr),
+		io__write_string("\n"),
+		vn_debug__dump_instrs(Instrs)
 	;
 		{ Flag = no }
 	).
 
 %-----------------------------------------------------------------------------%
+
+:- pred vn_debug__tuple_msg_flag(bool, io__state, io__state).
+:- mode vn_debug__tuple_msg_flag(out, di, uo) is det.
 
 :- pred vn_debug__livemap_msg_flag(bool, io__state, io__state).
 :- mode vn_debug__livemap_msg_flag(out, di, uo) is det.
@@ -398,6 +535,11 @@ vn_debug__flush_end_msg(Instrs, VnTables) -->
 :- mode vn_debug__failure_msg_flag(out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+vn_debug__tuple_msg_flag(Flag) -->
+	globals__io_lookup_int_option(vndebug, Vndebug),
+	{ Bit is Vndebug /\ 512 },
+	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn_debug__livemap_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),

@@ -143,9 +143,9 @@ labelopt__instr_list([Instr0 | MoreInstrs0],
 	).
 
 	% Instead of removing eliminated instructions from the instruction list,
-	% we can replace them by placeholder comments. The original comment field
-	% on the instruction is often enough to deduce what the eliminated
-	% instruction was.
+	% we can replace them by placeholder comments. The original comment
+	% field on the instruction is often enough to deduce what the
+	% eliminated instruction was.
 
 :- pred labelopt__eliminate(instruction, maybe(bool), list(instruction), bool).
 :- mode labelopt__eliminate(in, in, out, out) is det.

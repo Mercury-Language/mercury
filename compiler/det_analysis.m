@@ -706,7 +706,7 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, _SolnContext,
 		RT = RT0,
 		Msgs = []
 	),
-	det_infer_unify(U, MiscInfo, UnifyDet).
+	det_infer_unify(U, UnifyDet).
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, InstMap0,
 		SolnContext, MiscInfo, NonLocalVars, DeltaInstMap,
@@ -994,8 +994,8 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, MiscInfo, CanFail0,
 		MaxSolns2, Cases, Detism, Msgs2),
 	list__append(Msgs1, Msgs2, Msgs).
 
-:- pred det_infer_unify(unification, misc_info, determinism).
-:- mode det_infer_unify(in, in, out) is det.
+:- pred det_infer_unify(unification, determinism).
+:- mode det_infer_unify(in, out) is det.
 
 	% Deconstruction unifications are deterministic if the type
 	% only has one constructor, or if the variable is known to be
@@ -1007,12 +1007,12 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, MiscInfo, CanFail0,
 	% But switch_detection.m may set it back to det again, if it moves
 	% the functor test into a switch instead.
 
-det_infer_unify(deconstruct(_, _, _, _, CanFail), _MiscInfo, Detism) :-
+det_infer_unify(deconstruct(_, _, _, _, CanFail), Detism) :-
 	determinism_components(Detism, CanFail, at_most_one).
-det_infer_unify(assign(_, _), _MiscInfo, det).
-det_infer_unify(construct(_, _, _, _), _MiscInfo, det).
-det_infer_unify(simple_test(_, _), _MiscInfo, semidet).
-det_infer_unify(complicated_unify(_, CanFail, _), _MiscInfo, Detism) :-
+det_infer_unify(assign(_, _), det).
+det_infer_unify(construct(_, _, _, _), det).
+det_infer_unify(simple_test(_, _), semidet).
+det_infer_unify(complicated_unify(_, CanFail, _), Detism) :-
 	determinism_components(Detism, CanFail, at_most_one).
 
 %-----------------------------------------------------------------------------%

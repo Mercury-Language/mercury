@@ -283,9 +283,32 @@ peephole__match(modframe(Redoip), Comment, _, _, Instrs0, Instrs) :-
 	%	succip = detstackvar(N)
 	%	decr_sp N
 
+	% The following transformation is sometimes useful because of the
+	% limitations of frameopt:
+	%
+	%	incr_sp N
+	%	goto L2
+	%     L1:		=>    L1:
+	%	incr_sp N		incr_sp N
+	%     L2:		      L2:
+
 peephole__match(incr_sp(N), _, _, _, Instrs0, Instrs) :-
-	opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain),
-	list__append(Between, Remain, Instrs).
+	(
+		opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain)
+	->
+		list__append(Between, Remain, Instrs)
+	;
+		fail,
+		Instrs0 = [Instr0, Instr1, Instr2, Instr3 | Instrs3],
+		Instr0 = goto(label(L2)) - _,
+		Instr1 = label(_) - _,
+		Instr2 = incr_sp(N) - _,
+		Instr3 = label(L2) - _
+	->
+		Instrs = [Instr1, Instr2, Instr3 | Instrs3]
+	;
+		fail
+	).
 
 	% Code that saves succip immediately after restoring it is useless.
 	% Fulljump optimization after frameopt generates code that fits this

@@ -747,30 +747,38 @@ vn_block__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 
 vn_block__find_cheaper_copies(Lval, Vn, VnTables, ParEntries) :-
 	vn_cost__lval_cost(Lval, LvalCost),
-	vn_table__lookup_current_locs(Vn, CurVnlvals,
-		"vn_block__find_cheaper_copies", VnTables),
-	vn_block__find_cheaper_copies_2(CurVnlvals, LvalCost, CheapRvals),
+	vn_table__get_vnlval_vn_list(VnTables, VnlvalVnList),
+	vn_block__find_cheaper_copies_2(VnlvalVnList, Vn, LvalCost, CheapRvals),
 	( CheapRvals = [] ->
 		ParEntries = []
 	;
 		ParEntries = [Lval - CheapRvals]
 	).
 
-:- pred vn_block__find_cheaper_copies_2(list(vnlval), int, list(rval)).
-:- mode vn_block__find_cheaper_copies_2(in, in, out) is det.
+:- pred vn_block__find_cheaper_copies_2(assoc_list(vnlval, vn), vn, int,
+	list(rval)).
+:- mode vn_block__find_cheaper_copies_2(in, in, in, out) is det.
 
-vn_block__find_cheaper_copies_2([], _, []).
-vn_block__find_cheaper_copies_2([Vnlval | Vnlvals], OldCost, Rvals) :-
-	vn_block__find_cheaper_copies_2(Vnlvals, OldCost, Rvals0),
-	vn_util__no_access_vnlval_to_lval(Vnlval, MaybeLval),
-	(
-		MaybeLval = yes(Lval),
-		vn_cost__lval_cost(Lval, LvalCost),
-		LvalCost < OldCost
-	->
-		Rvals = [lval(Lval) | Rvals0]
+vn_block__find_cheaper_copies_2([], _, _, []).
+vn_block__find_cheaper_copies_2([Vnlval - Vn | VnlvalVns], SeekVn, OldCost,
+		Rvals) :-
+	( Vn = SeekVn  ->
+		vn_block__find_cheaper_copies_2(VnlvalVns, SeekVn, OldCost,
+			Rvals0),
+		(
+			vn_util__no_access_vnlval_to_lval(Vnlval, MaybeLval),
+			MaybeLval = yes(Lval),
+			vn_cost__lval_cost(Lval, LvalCost),
+			LvalCost < OldCost,
+			Lval \= temp(_)
+		->
+			Rvals = [lval(Lval) | Rvals0]
+		;
+			Rvals = Rvals0
+		)
 	;
-		Rvals = Rvals0
+		vn_block__find_cheaper_copies_2(VnlvalVns, SeekVn, OldCost,
+			Rvals)
 	).
 
 %-----------------------------------------------------------------------------%
