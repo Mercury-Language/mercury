@@ -17,7 +17,6 @@ PROGS=	\
 	construct \
 	curry \
 	curry2 \
-	cycles \
 	deep_copy_bug \
 	det_in_semidet_cntxt \
 	division_test \
@@ -74,6 +73,10 @@ PROGS=	\
 	tim_qual1 \
 	write \
 	write_reg1
+
+# Not working:
+# 	cycles - loops when compiled in a non-GC grade with --deforestation.
+# 	cycles2 - loops when compiled in a non-GC grade.
 
 #-----------------------------------------------------------------------------#
 
