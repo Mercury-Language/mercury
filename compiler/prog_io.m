@@ -1765,9 +1765,8 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	; Name = term__atom("not_reached"), Args0 = [] ->
 		Result = not_reached
 	;
-		(   ( Name = term__atom("bound")
-		    ; Name = term__atom("bound_unique")
-		    ),
+		(   Name = term__atom(Bound),
+		    ( Bound = "bound" ; Bound = "bound_unique" ),
 		    Args0 = [Disj]
 		)
 	->
