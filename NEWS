@@ -55,6 +55,8 @@ Changes to the compiler back-ends:
 Numerous minor improvements to the Mercury standard library.
 
 Changes to the extras distribution:
+* Added easyx, a new Xlib based graphics library suitable for implementing
+  simple interactive graphical applications.
 * Major improvements to the OpenGL binding.
 * We've added a binding to GLUT (the GL utility toolkit).
 

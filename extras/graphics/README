@@ -5,6 +5,10 @@ but both are complete *enough* to be very useful.
 If you add missing functionality to any of these modules, let us know,
 and we'll see about incorporating enhancements in the main distribution.
 
+	easyx/			A Mercury binding to Xlib suitable for
+				simple interactive graphical
+				applications.
+
 	mercury_tcltk/		A Mercury binding to Tcl/Tk.
 
 	mercury_opengl/		A Mercury binding to OpenGL.  This 
