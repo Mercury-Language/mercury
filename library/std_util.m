@@ -1607,7 +1607,7 @@ unravel_univ(Univ, X) :-
 	univ_value(Univ) = X.
 
 dynamic_cast(X, Y) :-
-	univ_to_type(univ(X), Y).
+	private_builtin__typed_unify(X, Y).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1348,15 +1348,17 @@ simplify__call_goal(PredId, ProcId, Args, IsBuiltin,
 	( simplify_do_const_prop(Info3) ->
 		simplify_info_get_instmap(Info3, Instmap0),
 		simplify_info_get_module_info(Info3, ModuleInfo2),
+		simplify_info_get_var_types(Info3, VarTypes),
 		(
 			Goal1 = call(_, _, _, _, _, _),
-			evaluate_builtin(PredId, ProcId, Args, GoalInfo0, 
-				Goal2, GoalInfo2, Instmap0,
-				ModuleInfo2, ModuleInfo3)
+			const_prop.evaluate_call(PredId, ProcId, Args,
+				GoalInfo0, VarTypes, Instmap0, ModuleInfo2,
+				Goal2, GoalInfo2)
 		->
 			Goal = Goal2,
 			GoalInfo = GoalInfo2,
-			simplify_info_set_module_info(Info3, ModuleInfo3, Info4),
+			simplify_info_set_module_info(Info3, ModuleInfo2,
+				Info4),
 			simplify_info_set_requantify(Info4, Info)
 		;
 			Goal = Goal1,
