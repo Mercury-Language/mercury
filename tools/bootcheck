@@ -942,12 +942,12 @@ then
 		if test "$testdirs" = ""
 		then
 			cd ${tests_prefix}tests
-			./runtests $jfactor $test_grade_opt
+			./runtests $target_opt $jfactor $test_grade_opt
 		else
 			for testdir in $testdirs
 			do
 				cd $root/${tests_prefix}tests/$testdir
-				./runtests $jfactor $test_grade_opt
+				./runtests $target_opt $jfactor $test_grade_opt
 			done
 		fi
 		test_status=$?
