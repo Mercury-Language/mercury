@@ -62,7 +62,7 @@ small amount of implementation-dependent code, and none of the
 rest of the implementation need change.
 
 Our current implementation of lazy evaluation is not very efficient.
-There are several for this.  One is that promise_only_solution/1,
+There are several reasons for this.  One is that promise_only_solution/1,
 which is used in the implementation of force/1, is currently implemented
 rather inefficiently.  Another is that the lazy(T) type currently uses
 two levels of indirection, whereas it really ought to use only one.
