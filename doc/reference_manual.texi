@@ -1,0 +1,409 @@
+\input texinfo
+@setfilename mercury_ref.info
+@settitle The Mercury Language Reference Manual
+
+@c @ignore
+@ifinfo
+@format
+START-INFO-DIR-ENTRY
+* Mercury: (mercury_ref).		The Mercury Language Reference Manual
+END-INFO-DIR-ENTRY
+@end format
+@end ifinfo
+@c @end ignore
+
+@c @smallbook
+@c @cropmarks
+@c @finalout
+@setchapternewpage off
+@ifinfo
+This file documents the Mercury programming language.
+
+Copyright @copyright{} 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@c @finalout
+@title The Mercury Language Reference Manual
+@subtitle DRAFT - March, 1995
+@author Fergus Henderson
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+@c ---------------------------------------------------------------------------
+
+@node Top,,, (DIR)
+@menu
+* Introduction::      A brief introduction to Mercury
+* Syntax::     
+* Types::     
+* Modes::     
+* Determinism::     
+@end menu
+
+@node Introduction, Syntax,, Top
+@chapter Introduction
+
+Mercury is a new general-purpose programming language, designed
+and implemented by a small group of researchers at the University
+of Melbourne, Australia.  Mercury is based on the paradigm of
+pure declarative logic programming, and was designed to be
+useful for the development of large and robust ``real-world'' applications.
+It improves on existing logic programming languages by providing
+increased productivity, reliability and efficiency, and by avoiding the
+need for non-logical program constructs.
+
+Mercury has strong type, mode and determinism checking at compile
+time.  In addition to improving reliability, this static checking
+improves productivity during development and maintenance by detecting
+errors early in the software life-cycle.  The information provided by
+the programmers' declarations is very useful documentation that is
+guaranteed to be correct, and which is also extremely useful to the
+compiler for generating efficient code.
+
+To facilitate programming-in-the-large, to allow separate compilation,
+and to support encapsulation, Mercury has a simple module system.
+Mercury's standard library has a variety of pre-defined modules
+for common programming tasks.
+
+@node Syntax, Types, Introduction, Top
+@chapter Syntax
+
+Mercury's syntax is similar to the syntax of (pure) Prolog, with some
+additional declarations for types, modes, determinism, and the module system.
+A Mercury program consists of a set of modules.  Each module is a file
+containing a sequence of items (declarations and clauses).  Each item
+is a term followed by a period.  Each term is composed of a sequence
+of tokens, and each token is composed of a sequence of characters.
+
+@section Tokens
+
+Tokens in Mercury are exactly the same as in ISO Prolog.
+@c XXX need to document this properly!
+
+@section Terms
+
+Terms in Mercury are exactly the same as in ISO Prolog, with one
+exception: double-quoted strings are atomic in Mercury,
+they are not abbreviations for lists of character codes.
+@c XXX need to document this properly!
+
+@section Items
+
+Each item in a Mercury module is either a declaration or a clause.
+If the top-level functor of the term is @samp{:-/1}, the item is a
+declaration, otherwise it is a clause.  If the top-level functor of the
+term is @samp{:-/2}, the item is a rule.  If the top-level functor is
+@samp{-->/2}, the item is a DCG rule.  Otherwise, the item is a fact.
+
+@node Types, Modes, Syntax, Top
+@chapter Types
+
+The type system is based on a polymorphic many-sorted logic.
+
+Certain special types are builtin, or are defined in the Mercury library:
+
+@table @asis
+@item Primitive types: @code{char}, @code{int},
+@code{float}@footnote{Note that @code{float} is not yet supported by the
+current Mercury implementation}, @code{string}.
+There is a special syntax for constants of type @code{int}, @code{float},
+and @code{string}.  (For @code{char}, the standard syntax suffices.)
+
+@item Predicate types: @code{pred}, @code{pred(T)}, @code{pred(T1, T2)}, @dots{}
+These higher-order predicate types are used to pass predicates around.
+We're still working on the details of how higher-order predicates will work
+in Mercury --- so don't use these yet.
+
+@item The universal type: @code{univ}.
+The type @code{univ} is defined in the standard library module @code{std_util},
+along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
+With those predicates, any type can be converted to the universal type
+and back again.  The universal type is useful for situations where you need
+heterogeneous collections.
+
+@item The ``state-of-the-world type'': @code{io__state}.
+The type @code{io__state} is define in the standard library module
+@code{io}, and represents the state of the world.  Predicates which
+perform I/O are passed the old state of the world and produce a new
+state of the world.  In this way, we can give a declarative semantics to
+code that performs I/O.
+
+@end table
+
+New types can be introduced with @samp{:- type} declarations.
+There are several categories of derived types:
+
+@itemize
+@item
+Discriminated unions: these encompass both enumeration and
+record types in other languages.  A derived type is defined
+using @samp{:- type @var{type} ---> @var{body}}. 
+(Note there are @emph{three} dashes in that arrow.  It should
+not be confused with the two-dash arrow used for DCGs or the
+one-dash arrow used for if-then-else.)
+The @var{type} term is a functor whose arguments
+(if any) are all variables.  The @var{body} term is as
+sequence of constructor definitions separated by semi-colons.
+Each constructor definition is a functor whose arguments (if any) are types.
+Type definitions must be @dfn{transparent}: all type variables
+occuring in the @var{body} must also occur in the @var{type}.
+
+Here are some examples:
+
+@example
+	:- type fruit
+		--->	apple
+		;	orange
+		;	banana
+		;	pear.
+
+	:- type strange
+		--->	foo(int)
+		;	bar(string).
+
+	:- type employee
+		--->	employee(
+				string,		% name
+				int,		% age
+				string		% department
+			).
+
+	:- type tree
+		--->	empty
+		;	leaf(int)
+		;	branch(tree, tree).
+
+	:- type list(T)
+		--->	[]
+		;	[T | list(T)].
+
+	:- type pair(T1, T2)
+		--->	T1 - T2.
+@end example
+
+If the body of a discriminated union type definition contains a term whose
+top-level functor is @code{';'/2}, the semi-colon is normally assumed to be a
+separator.  This makes it difficult to define a type whose constructors
+include @code{';'/2}.  To allow this, curly braces can be used to quote
+the semi-colon.  It is then also necessary to quote curly braces.
+The following example illustrates this:
+
+@example
+	:- type tricky
+		--->	@{ int ; int @}
+		;	@{ @{ int @} @}.
+@end example
+
+@item
+Equivalence types: these are type abbreviations.  They are defined
+using `==' as follows.
+
+@example
+	:- type money == int.
+	:- type assoc_list(KeyType, ValueType)
+		== list(pair(KeyType, ValueType)).
+@end example
+
+Like discriminated union definitions, equivalence type definitions must
+be transparent.
+
+@item
+Abstract types: these are types whose implementation is hidden.
+The type declarations
+
+@example
+	:- type t1.
+	:- type t2(T1, T2).
+@end example
+
+@noindent
+declare types @code{t1/0} and @code{t/2} to be abstract types.
+Such declarations are only useful in the interface section of a module.
+This means that the type names will be exported, but the constructors
+(constants and functors) for these types will not be exported.
+
+@end itemize
+
+@node Modes, Determinism, Types, Top
+@chapter Modes
+
+@node Determinism,, Modes, Top
+@chapter Determinism
+
+@subsection Determinism categories
+
+For each mode of a predicate, we categorise that mode according to
+whether it can succeed more than once, and whether or not it can
+fail.
+
+@itemize
+@item
+If all calls to a particular mode of a predicate
+have no more than one solution, and they do not fail,
+then that mode of the predicate is @dfn{deterministic}
+(@code{det}).
+
+@item
+If all calls to a particular mode of a predicate have no more than one
+solution but may fail, then that mode of the predicate is
+@dfn{semideterministic} (@code{semidet}).
+
+@item
+If all calls to a particular mode of a predicate do not fail, but may
+have more than one solution, then that mode of the predicate is
+@dfn{multideterministic} (@code{multidet}).
+
+@item
+If some calls to a particular mode of a predicate
+have no solution but other calls may have more than one solution,
+then that mode of the predicate is @dfn{nondeterministic} (@code{nondet}).
+@end itemize
+
+It's also necessary to consider the case where predicates neither
+fail nor succeed, such as when they loop forever, or when they 
+lead to a run-time error.
+
+@itemize
+@item
+If all calls to a particular mode of a predicate neither fail nor
+succeed, then that mode of the predicate is @dfn{erroneous}.
+
+@item
+If all calls to a particular mode of a predicate never succeed,
+but may fail, that mode of the predicate is @dfn{failure}.
+
+@end itemize
+
+To summarize:
+
+@example
+                Maximum number of solutions
+Can fail?       0               1               > 1
+no              erroneous       det             multidet
+yes             failure         semidet         nondet
+@end example
+
+The determinism of each mode of a predicate is indicated by
+an annotation on the mode declaration.  For example:
+
+@example
+:- pred append(list(T), list(T), list(T)).
+:- mode append(in, in, out) is det.
+:- mode append(out, out, in) is multidet.
+:- mode append(in, in, in) is semidet.
+@end example
+
+If the mode of the predicate is given in the @code{:- pred} declaration
+rather than in a separate @code{:- mode} declaration,
+then the determinism annotation goes on the @code{:- pred} declaration.
+In particular, this is necessary if the predicate does not have any
+argument variables.
+For example:
+@example
+:- pred loop(int::in) is erroneous.
+loop(X) :- loop(X).
+
+:- pred p is det.
+p.
+
+:- pred q is failure.
+q :- fail.
+@end example
+
+@subsection Determinism checking and inference.
+
+The determinism categories form a lattice, as specified by
+the following ordering:
+
+@center erroneous > failure
+@center erroneous > det
+@center failure > semidet
+@center det > semidet
+@center semidet > nondet
+@center det > multidet
+@center multidet > nondet
+
+Graphically:
+
+@example
+             erroneous
+              /     \
+          failure   det
+             \     /   \
+             semidet    multidet
+                  \     /
+                   nondet
+@end example
+
+The compiler infers the determinism category of each goal as follows:
+
+@table @asis
+@item Calls
+The determinism category of a call is the determinism of the particular
+mode of the called predicate (as determined by mode analysis).
+
+@item Unifications
+The determinism of a unification is either @code{det}, @code{semidet},
+or @code{failure}, depending on its mode.
+
+@item Conjunctions
+The determinism of @samp{(@var{A}, @var{B})} is defined as
+follows.  If the determinism of @var{A} is @code{erroneous} or
+@code{failure}, then the determinism of the conjunction is also
+@code{erroneous} or @code{failure}, respectively.  Otherwise
+the determinism of the conjunction is the minimum (meet) of the
+determinism of the conjuncts.
+@comment XXX meet? should that be join?
+
+@item Disjunctions
+The determinism of a disjunction is defined as follows.
+Firstly, if the disjunction has an input variable for
+which there is a partition of the disjuncts such that
+each 
+
+@item If-then-else
+
+@item Negations
+
+@end table
+
+If a predicate is not exported from its containing module, the
+determinism declaration may be omitted.  In this case, the compiler
+will infer the most appropriate determinism declaration.
+
+@contents
+@bye
