@@ -63,8 +63,13 @@ PROGS=		\
 		string_format_test_3 \
 		string_test \
 		string_test_2 \
-		univ \
 		unreachable 
+
+# univ.m does not work in the hlc.* grades because unification of univ
+# values is not yet implemented.
+ifeq "$(findstring hl,$(GRADE))" ""
+	PROGS+= univ
+endif
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
@@ -104,7 +109,7 @@ string_format_test_2.out: string_format_test_2
 		    -e 's/string.m:[0-9]*/string.m:NNNN/g' \
 		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
 		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-		> string_format_test_2.out
+		| tr -d '\r' > string_format_test_2.out
 		
 string_format_test_3.out: string_format_test_3
 	-./string_format_test_3 2>&1 | \
@@ -112,7 +117,7 @@ string_format_test_3.out: string_format_test_3
 		    -e 's/string.m:[0-9]*/string.m:NNNN/g' \
 		    -e 's/require.m:[0-9]*/require.m:NNNN/g' \
 		    -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-		> string_format_test_3.out
+		| tr -d '\r' > string_format_test_3.out
 
 #-----------------------------------------------------------------------------#
 
