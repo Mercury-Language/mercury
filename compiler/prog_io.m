@@ -2035,16 +2035,28 @@ make_maybe_where_details(
 				WhereTerm)
 		)
 	;
-		IsSolverType = solver_type
+		IsSolverType = solver_type,
 	->
 		(
 			RepresentationIsResult = ok(yes(RepnType)),
 			InitialisationIsResult = ok(yes(InitPred)),
-			GroundIsResult         = ok(yes(GroundInst)),
-			AnyIsResult            = ok(yes(AnyInst)),
+			GroundIsResult         = ok(MaybeGroundInst),
+			AnyIsResult            = ok(MaybeAnyInst),
 			EqualityIsResult       = ok(MaybeEqPred),
 			ComparisonIsResult     = ok(MaybeCmpPred)
 		->
+			(
+				MaybeGroundInst = yes(GroundInst)
+			;
+				MaybeGroundInst = no,
+				GroundInst = ground_inst
+			),
+			(
+				MaybeAnyInst = yes(AnyInst)
+			;
+				MaybeAnyInst = no,
+				AnyInst = ground_inst
+			),
 			MaybeSolverTypeDetails = yes(solver_type_details(
 				RepnType, InitPred, GroundInst, AnyInst)),
 			(
@@ -2058,10 +2070,18 @@ make_maybe_where_details(
 			),
 			Result = ok(MaybeSolverTypeDetails, MaybeUnifyCompare)
 		;
-			Result = error("missing solver type attribute: " ++
-				"required solver type attributes are " ++
-				"`representation', `initialisation', " ++
-				"`ground', and `any'", WhereTerm)
+			RepresentationIsResult = ok(no)
+		->
+			Result = error("solver type definitions must have a" ++
+				"`representation' attribute")
+		;
+			InitialisationIsResult = ok(no)
+		->
+			Result = error("solver type definitions must have an" ++
+				"`initialisation' attribute")
+		;
+			error("prog_io__make_maybe_where_details: " ++
+				"shouldn't have reached this point! (1)")
 		)
 	;
 		% Here we know IsSolverType = non_solver_type, so...
@@ -2081,7 +2101,7 @@ make_maybe_where_details(
 		Result = ok(no, yes(unify_compare(MaybeEqPred, MaybeCmpPred)))
 	;
 		error("prog_io__make_maybe_where_details: " ++
-			"shouldn't have reached this point!")
+			"shouldn't have reached this point! (2)")
 	).
 
 	% get_determinism(Term0, Term, Determinism) binds Determinism
