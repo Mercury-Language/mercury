@@ -147,7 +147,7 @@ DRAFT NEWS for Mercury release 0.7
     We've also added io__nl/3 to print a newline.
     Together with the change to make module qualifiers optional,
     these changes make performing output quite a bit simpler;
-    it's nice that `print("Foo = "), print(Foo), nl' works now.
+    it's nice to be able to write `print("Foo = "), print(Foo), nl'.
 
   - term_to_type/2 and type_to_term/2 are now implemented.
 
@@ -155,7 +155,7 @@ DRAFT NEWS for Mercury release 0.7
     The predicate report_stats, which used to be in std_util, is now
     in this module.
 
-  - The interface to the relation module has been changed extensively.
+  - The interface to the relation.m module has been changed extensively.
     Elements must now be explicitly added to the domain of the relation,
     using relation__add_element/4, and relation operations such as
     relation__add are now performed on relation_keys.  There are also
@@ -164,7 +164,11 @@ DRAFT NEWS for Mercury release 0.7
 	relation__search_element/3, relation__lookup_element/3,
 	relation__search_key/3, and relation__lookup_key/3
 
-  - set__subset XXX
+  - We changed the order of the arguments to set_bbbtree__subset,
+    for consistency with the order in set__subset and elsewhere.
+    We also changed the implementation of set__subset and
+    set_ordlist__subset to match the behaviour specified in the
+    documentation.
 
   - We made some extensive additions to bag.m to include the standard set
     operations (union, intersection, subtraction), and some other predicates

@@ -1,4 +1,4 @@
-% Regresion tests for set_bbbtree.
+% Regression tests for set_bbbtree.
 
 % Author benyi.
 
@@ -141,8 +141,8 @@ main -->
 	),
 
 	(
-		{ set_bbbtree__subset(Set90, SetIntersection) },
-		{ set_bbbtree__subset(Set100, SetIntersection) }
+		{ set_bbbtree__subset(SetIntersection, Set90) },
+		{ set_bbbtree__subset(SetIntersection, Set100) }
 	->
 		{ true }
 	;
