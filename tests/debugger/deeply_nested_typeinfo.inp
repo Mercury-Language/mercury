@@ -1,0 +1,5 @@
+echo on
+register --quiet
+step
+print *
+continue -n -S
