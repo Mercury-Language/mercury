@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -8,7 +8,8 @@
 %
 % main author: conway.
 %
-% This module provides predicates for generating procedure calls.
+% This module provides predicates for generating procedure calls,
+% including calls to higher-order pred variables.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -148,14 +149,14 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	code_info__get_next_label(ContLab, no),
+	call_gen__rebuild_registers(Args),
 	code_info__generate_failure(FailCode),
 	{ CodeD = tree(node([
 		if_val(lval(reg(r(1))), label(ContLab)) -
 			"Test for success"
 		]), tree(FailCode, node([ label(ContLab) - "" ]))) },
 
-	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) },
-	call_gen__rebuild_registers(Args).
+	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) }.
 
 %---------------------------------------------------------------------------%
 
@@ -462,17 +463,18 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, CanFail, Code) -->
 		{ CanFail = can_fail }
 	->
 		code_info__get_next_label(ContLab, no),
+		call_gen__rebuild_registers(Args),
 		code_info__generate_failure(FailCode),
 		{ CodeD = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
 	;
+		call_gen__rebuild_registers(Args),
 		{ CodeD = empty }
 	),
 
-	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) },
-	call_gen__rebuild_registers(Args).
+	{ Code = tree(CodeA, tree(CodeB, tree(tree(CodeC0, CodeC1), CodeD))) }.
 
 %---------------------------------------------------------------------------%
 
@@ -624,6 +626,8 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 				"Assign number of output arguments"
 		])
 	) },
+<<<<<<< call_gen.m
+=======
 	code_info__get_next_label(ReturnLabel, yes),
 	{ TryCallCode = node([
 		livevals(LiveVals) - "",
@@ -631,25 +635,74 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 			"setup and call higher order pred",
 		label(ReturnLabel) - "Continuation label"
 	]) },
+>>>>>>> 1.62
 	(
+<<<<<<< call_gen.m
 		{ CodeModel = model_semi }
 	->
+		{ FirstArg = 2 }
+	;
+		{ FirstArg = 1 }
+	),
+	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
+	call_gen__rebuild_registers(OutArguments),
+	code_info__get_next_label(ReturnLabel, yes),
+	(
+		{ CodeModel = model_det },
+		{ CallCode = node([
+			livevals(LiveVals) - "",
+			call_closure(no, label(ReturnLabel), OutLiveVals) -
+				"setup and call det higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) }
+	;
+		{ CodeModel = model_semi },
+		{ TryCallCode = node([
+			livevals(LiveVals) - "",
+			call_closure(yes, label(ReturnLabel), OutLiveVals) -
+				"setup and call semidet higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) },
+=======
+		{ CodeModel = model_semi }
+	->
+>>>>>>> 1.62
 		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab, no),
 		{ CheckReturnCode = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"
 			]), tree(FailCode, node([ label(ContLab) - "" ]))) },
+<<<<<<< call_gen.m
+		{ CallCode = tree(TryCallCode, CheckReturnCode) }
+=======
 		{ CallCode = tree(TryCallCode, CheckReturnCode) },
 		{ FirstArg = 2 }
+>>>>>>> 1.62
 	;
+<<<<<<< call_gen.m
+		{ CodeModel = model_non },
+		{ CallCode = node([
+			livevals(LiveVals) - "",
+			call_closure(no, label(ReturnLabel),
+						OutLiveVals)
+				- "setup and call nondet higher order pred",
+			label(ReturnLabel) - "Continuation label"
+		]) }
+=======
 		{ CallCode = TryCallCode },
 		{ FirstArg = 1 }
+>>>>>>> 1.62
 	),
+<<<<<<< call_gen.m
+	{ Code = tree(tree(SaveCode, tree(ImmediateCode, VarCode)),
+		tree(SetupCode, CallCode)) }.
+=======
 	{ Code = tree(tree(SaveCode, tree(ImmediateCode, VarCode)),
 		tree(SetupCode, CallCode)) },
 	{ call_gen__outvars_to_outargs(OutVars, FirstArg, OutArguments) },
 	call_gen__rebuild_registers(OutArguments).
+>>>>>>> 1.62
 
 %---------------------------------------------------------------------------%
 
