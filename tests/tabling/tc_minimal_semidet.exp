@@ -1,0 +1,6 @@
+tc(1, 1): succeeded
+tc(1, 2): succeeded
+tc(2, 2): succeeded
+tc(2, 3): succeeded
+tc(3, 3): failed
+tc(2, 4): succeeded
