@@ -192,7 +192,8 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
 
 %----------------------------------------------------------------------------
 
-	% Generate assigments of new values to a list of arguments.
+	% Assign the specified list of rvals to the arguments.
+	% This is used as part of tail recursion optimization (see above).
 
 :- pred generate_assign_args(opt_info, mlds__arguments, list(mlds__rval),
 	list(mlds__statement), list(mlds__defn)).
@@ -206,6 +207,9 @@ generate_assign_args(_, [], [], [], []).
 generate_assign_args(OptInfo, 
 	[Name - Type | Rest], [Arg | Args], Statements, TempDefns) :-
 	(
+		%
+		% extract the variable name
+		%
 		Name = data(var(VarName))
 	->
 		QualVarName = qual(OptInfo ^ module_name, VarName),
@@ -219,6 +223,15 @@ generate_assign_args(OptInfo,
 				Statements, TempDefns)
 		;
 
+			% Declare a temporary variable, initialized it
+			% to the arg, recursively process the remaining
+			% args, and then assign the temporary to the
+			% parameter:
+			%
+			%	SomeType argN__tmp_copy = new_argN_value;
+			%	...
+			%	new_argN_value = argN_tmp_copy;
+			%
 			% The temporaries are needed for the case where
 			% we are e.g. assigning v1, v2 to v2, v1;
 			% they ensure that we don't try to reference the old

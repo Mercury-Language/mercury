@@ -2370,7 +2370,7 @@ options_help_llds_llds_optimization -->
 options_help_mlds_mlds_optimization -->
 	io__write_string("\n    MLDS -> MLDS optimizations:\n"),
 	write_tabbed_lines([
-		"--no-llds-optimize",
+		"--no-mlds-optimize",
 		"\tDisable the MLDS->MLDS optimization passes."
 	]).
 

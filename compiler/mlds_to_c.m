@@ -2136,61 +2136,6 @@ no_code_address(const(code_addr_const(proc(qual(Module, PredLabel - _), _)))) :-
 	SymName = qualified(unqualified("mercury"), "private_builtin"),
 	PredLabel = pred(predicate, _, "unsafe_type_cast", 2).
 
-	% Assign the specified list of rvals to the arguments.
-	% This is used as part of tail recursion optimization (see above).
-:- pred mlds_output_assign_args(indent, mlds_module_name, mlds__context,
-		mlds__arguments, list(mlds__rval), io__state, io__state).
-:- mode mlds_output_assign_args(in, in, in, in, in, di, uo) is det.
-
-mlds_output_assign_args(_, _, _, [_|_], []) -->
-	{ error("mlds_output_assign_args: length mismatch") }.
-mlds_output_assign_args(_, _, _, [], [_|_]) -->
-	{ error("mlds_output_assign_args: length mismatch") }.
-mlds_output_assign_args(_, _, _, [], []) --> [].
-mlds_output_assign_args(Indent, ModuleName, Context,
-		[Name - Type | Rest], [Arg | Args]) -->
-	%
-	% extract the variable name
-	%
-	{ Name = data(var(VarName1)) ->
-		VarName = VarName1
-	;
-		error("mlds_output_assign_args: arg is not a variable!")
-	},
-	(
-		%
-		% don't bother assigning a variable to itself
-		%
-		{ Arg = lval(var(qual(ModuleName, VarName))) }
-	->
-		mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args)
-	;
-		% Declare a temporary variable, initialized it to the arg,
-		% recursively process the remaining args,
-		% and then assign the temporary to the parameter:
-		%
-		%	SomeType argN__tmp_copy = new_argN_value;
-		%	...
-		%	new_argN_value = argN_tmp_copy;
-		%
-
-		{ string__append(VarName, "__tmp_copy", TempName) },
-		{ QualTempName = qual(ModuleName, data(var(TempName))) },
-		{ Initializer = init_obj(Arg) },
-		{ TempDefn = ml_gen_mlds_var_decl(var(TempName), Type,
-			Initializer, Context) },
-		mlds_output_defn(Indent, ModuleName, TempDefn),
-
-		mlds_output_assign_args(Indent, ModuleName, Context, Rest,
-			Args),
-
-		mlds_indent(Context, Indent),
-		mlds_output_fully_qualified_name(qual(ModuleName, Name)),
-		io__write_string(" = "),
-		mlds_output_fully_qualified_name(QualTempName),
-		io__write_string(";\n")
-	).
-
 %-----------------------------------------------------------------------------%
 
 	%

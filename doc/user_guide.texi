@@ -3470,7 +3470,7 @@ and grade modifier; they are followed by descriptions of those options.
 @itemx @code{--il}, @code{--target il} (grades: ilc)
 Specify the target language used for compilation: C or IL.
 C means ANSI/ISO C, optionally with GNU C extensions (see below).
-IL means the Microsoft COM+ 2.0 Intermediate Language.
+IL means the Microsoft .NET Intermediate Language.
 @samp{--target il} implies @samp{--high-level-code}.
 
 @sp 1
@@ -3741,6 +3741,7 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 @menu
 * Overall optimization options::
 * High-level (HLDS -> HLDS) optimization options::
+* MLDS backend (MLDS -> MLDS) optimization options::
 * Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
@@ -3971,6 +3972,18 @@ that have to be saved across calls.
 Enable deforestation. Deforestation is a program transformation whose aim
 is to avoid the construction of intermediate data structures and to avoid
 repeated traversals over data structures within a conjunction.
+
+@end table
+
+@node MLDS backend (MLDS -> MLDS) optimization options
+@subsection MLDS backend (MLDS -> MLDS) optimization options
+
+These optimizations are applied to the medium level 
+intermediate code.
+
+@table @code
+@item --no-mlds-optimize
+Disable the MLDS -> MLDS optimization passes.
 
 @end table
 

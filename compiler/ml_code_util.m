@@ -1422,7 +1422,7 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 %
 % Only the `func_label', `commit_label', `cond_var', `conv_var',
 % `var_lvals', `success_cont_stack', and `extra_defns' fields are mutable;
-% the others are set when the % ml_gen_info' is created and then never
+% the others are set when the `ml_gen_info' is created and then never
 % modified.
 % 
 
