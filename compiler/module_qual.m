@@ -49,8 +49,11 @@
 
 :- type mq_info.
 
-:- pred init_mq_info_module(module_info, mq_info).
-:- mode init_mq_info_module(in, out) is det.
+:- pred init_mq_info_module(module_info::in, mq_info::out) is det.
+
+:- pred mq_info_get_num_errors(mq_info::in, int::out) is det.
+:- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
+:- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -912,9 +915,9 @@ init_mq_info_module(ModuleInfo, Info0) :-
 :- pred mq_info_get_interface_modules(mq_info::in,
 					set(module_name)::out) is det.
 :- pred mq_info_get_import_status(mq_info::in, import_status::out) is det.
-:- pred mq_info_get_num_errors(mq_info::in, int::out) is det.
-:- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
-:- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
+% :- pred mq_info_get_num_errors(mq_info::in, int::out) is det.
+% :- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
+% :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_error_context(mq_info::in, error_context::out) is det.
 :- pred mq_info_get_junk(mq_info::in, unit::out) is det.

@@ -366,7 +366,10 @@
 				% (XXX For disjuncts in model_det or model_semi
 				% disjunctions, it should perhaps be the set of
 				% variables live at the start of the next
-				% disjunct.  But we don't handle them yet.)
+				% disjunct.  But we don't use cont-lives
+				% for them at the moment.  Instead, we just
+				% make some fairly conservative assumptions
+				% about what might be live.)
 				% These are the only kinds of goal that
 				% use this field.
 				% (Computed by store_alloc.m.)

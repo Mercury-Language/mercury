@@ -261,7 +261,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 					ShortDeps, Items0, _) },
 	write_dependency_file(Module, LongDeps, ShortDeps),
 	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
-					Stats, _, UndefTypes0, UndefModes),
+					Stats, _, UndefTypes0, UndefModes0),
 		% Items from optimization interfaces are needed before
 		% equivalence types are expanded, but after module
 		% qualification.
@@ -273,9 +273,11 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 	{ ModuleImports2 = module_imports(_, _, _, Items2, _) },
 	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
 					Items, CircularTypes, EqvMap),
-	{ bool__or(UndefTypes0, CircularTypes, UndefTypes) },
+	{ bool__or(UndefTypes0, CircularTypes, UndefTypes1) },
 	mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
-					HLDS0, FoundError),
+				HLDS0, UndefTypes2, UndefModes2, FoundError),
+	{ bool__or(UndefTypes1, UndefTypes2, UndefTypes) },
+	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
 	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
 
 	( { FoundError = yes } ->
@@ -329,15 +331,15 @@ mercury_compile__expand_equiv_types(Items0, Verbose, Stats,
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__make_hlds(module_name, item_list, eqv_map, bool, bool,
-	module_info, bool, io__state, io__state).
+	module_info, bool, bool, bool, io__state, io__state).
 :- mode mercury_compile__make_hlds(in, in, in, in, in,
-	out, out, di, uo) is det.
+	out, out, out, out, di, uo) is det.
 
 mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
-		HLDS, FoundSemanticError) -->
+		HLDS, UndefTypes, UndefModes, FoundSemanticError) -->
 	maybe_write_string(Verbose, "% Converting parse tree to hlds...\n"),
 	{ Prog = module(Module, Items) },
-	parse_tree_to_hlds(Prog, EqvMap, HLDS),
+	parse_tree_to_hlds(Prog, EqvMap, HLDS, UndefTypes, UndefModes),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors > 0 } ->
 		{ FoundSemanticError = yes },

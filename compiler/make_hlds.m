@@ -27,9 +27,14 @@
 
 :- import_module io, std_util.
 
-:- pred parse_tree_to_hlds(program, eqv_map, module_info,
+% parse_tree_to_hlds(ParseTree, EqvMap, HLDS, UndefTypes, UndefModes):
+%	Given EqvMap, converts ParseTree to HLDS.
+%	Any errors found are recorded in the HLDS num_errors field.
+%	Returns UndefTypes = yes if undefined types found.
+%	Returns UndefModes = yes if undefined modes found.
+:- pred parse_tree_to_hlds(program, eqv_map, module_info, bool, bool,
 			io__state, io__state).
-:- mode parse_tree_to_hlds(in, in, out, di, uo) is det.
+:- mode parse_tree_to_hlds(in, in, out, out, out, di, uo) is det.
 
 :- pred create_atomic_unification(var, unify_rhs, term__context,
 			unify_main_context, unify_sub_contexts, hlds__goal).
@@ -57,7 +62,8 @@
 :- import_module code_util, unify_proc, special_pred, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 
-parse_tree_to_hlds(module(Name, Items), EqvMap, Module) -->
+parse_tree_to_hlds(module(Name, Items), EqvMap, Module, UndefTypes, UndefModes)
+		-->
 	globals__io_get_globals(Globals),
 	{ module_info_init(Name, Globals, Module0) },
 	add_item_list_decls_pass_1(Items, local, Module0, Module1),
@@ -71,10 +77,17 @@ parse_tree_to_hlds(module(Name, Items), EqvMap, Module) -->
 	{ init_mq_info_module(Module3, MQInfo0) },
 	{ init_qual_info(MQInfo0, EqvMap, Info0) },
 	add_item_list_clauses(Items, local, Module3, Module4,
-				Info0, _Info),
+				Info0, Info),
+	{ qual_info_get_mq_info(Info, MQInfo) },
+	{ mq_info_get_type_error_flag(MQInfo, UndefTypes) },
+	{ mq_info_get_mode_error_flag(MQInfo, UndefModes) },
+	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
+	{ module_info_num_errors(Module4, NumErrors0) },
+	{ NumErrors is NumErrors0 + MQ_NumErrors },
+	{ module_info_set_num_errors(Module4, NumErrors, Module5) },
 		% the predid list is constructed in reverse order, for
 		% efficiency, so we return it to the correct order here.
-	{ module_info_reverse_predids(Module4, Module) }.
+	{ module_info_reverse_predids(Module5, Module) }.
 
 %-----------------------------------------------------------------------------%
 
