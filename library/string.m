@@ -1096,7 +1096,6 @@ string__format_calc_exp(F, Fstring, Precision, Exp) :-
 :- mode string__format_calc_prec(in, out, in) is det.
 string__format_calc_prec(Istring, Ostring, Precision) :-
 	(
-	(
 		string__default_precision_and_width(Precision)
 	->
 		Prec = 6
@@ -1137,12 +1136,11 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 	;
 		Space = Spa
 	),
-	string__split(Mstring, Space, Ostring, _)
-	).
+	string__split(Mstring, Space, Ostring, _).
 
 %	string__find_index is a funky little predicate to find the first
-%	occourance of a particular character in a string.
-%
+%	occurrence of a particular character in a string.
+
 :- pred string__find_index( string, char, int).
 :- mode string__find_index( in, in, out) is semidet.
 string__find_index(Str, C, Index) :-
