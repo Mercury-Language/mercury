@@ -3,12 +3,16 @@ cord.h
 ec.h
 gc.h
 gc_alloc.h
+gc_allocator.h
 gc_copy_descr.h
 gc_cpp.h
 gc_gcj.h
 gc_inl.h
 gc_inline.h
+gc_local_alloc.h
+gc_mark.h
 gc_nursery.h
+gc_pthread_redirects.h
 gc_typed.h
 javaxfc.h
 leak_detector.h

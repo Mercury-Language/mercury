@@ -1,5 +1,10 @@
-config.h
 cord_pos.h
+dbg_mlc.h
 gc_hdrs.h
+gc_locks.h
+gc_mark.h
+gc_pmark.h
 gc_priv.h
 gcconfig.h
+solaris_threads.h
+specific.h
