@@ -379,6 +379,7 @@ case $HOST in murlibobo)
 	# later parts of this script assume that we've already run configure,
 	# so we need to redo that
 	cd $DIR/mercury && sh configure --prefix=$INSTALL_DIR
+	cd $DIR
 	;;
 esac
 
