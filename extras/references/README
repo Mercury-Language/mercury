@@ -18,6 +18,9 @@ This directory contains
 	global.m		a wrapper module used for building a
 				library containing the above modules
 
+	c_reference.h		C types used to implement the reference
+				types
+
 The samples directory contains
 
 	max_of.m		an example of non-backtrackable references
@@ -25,6 +28,8 @@ The samples directory contains
 
 The tests directory contains
 
-	test_refs.m		tests of reference.m, nb_reference.m
+	ref_test.m		tests of reference.m, nb_reference.m
 				and scoped_update.m
+	glob_test.m		tests use of c_reference.h to implement
+				global variables
 
