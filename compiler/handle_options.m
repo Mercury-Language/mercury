@@ -812,6 +812,21 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% For the MLDS back-end, `--gc accurate' requires just typeinfo
 	% liveness.
 	%
+	% XXX Currently we also need to disable heap reclamation on failure
+	% if accurate GC is enabled.
+	% There are two issues with heap reclamation on failure:
+	% (i) For heap reclamation on failure to work at all,
+	%      we also need at least some degree of liveness-accuracy.
+	%      Otherwise a local variable may get initialized to point
+	%      to the heap, then the heap is reset, then the memory
+	%      is overwritten with new allocations, and then a collection
+	%      occurs, at which point the local variable now points to
+	%      a value of the wrong type.
+	% (ii) The current method of handling saved heap pointers during GC
+	%      means that we lose heap reclamation on failure after a
+	%      GC occurs. A better method would be to just allocate a
+	%      word of heap space at each choice point.
+	%
 	% XXX currently accurate GC also requires disabling the higher-order
 	% specialization pass, since that pass creates procedures
 	% which don't respect left-to-right scoping of type_info parameters,
@@ -824,6 +839,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
 		globals__io_set_option(allow_hijacks, bool(no)),
 		globals__io_set_option(optimize_frames, bool(no)),
+		globals__io_set_option(
+			reclaim_heap_on_semidet_failure, bool(no)),
+		globals__io_set_option(
+			reclaim_heap_on_nondet_failure, bool(no)),
 		globals__io_set_option(optimize_higher_order, bool(no))
 	;
 		[]
