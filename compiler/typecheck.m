@@ -2272,7 +2272,7 @@ write_types_of_vars([Var | Vars], VarSet, Context, TypeInfo, TypeAssignSet) -->
 :- mode write_argument_name(in, in, di, uo) is det.
 
 write_argument_name(VarSet, VarId) -->
-	( { varset__lookup_name(VarSet, VarId, _) } ->
+	( { varset__search_name(VarSet, VarId, _) } ->
 		io__write_string("variable `"),
 		mercury_output_var(VarId, VarSet),
 		io__write_string("'")

@@ -1089,15 +1089,9 @@ code_info__make_vars_live_2([V|Vs]) -->
 		{ Lval = Lval0 }
 	;
 		code_info__get_varset(Varset),
-		{ varset__lookup_name(Varset, V, Name) ->
-			Name_str = Name
-		;
-			term__var_to_int(V, Id),
-			string__int_to_string(Id, V_str),
-			string__append("V_", V_str, Name_str)
-		},
+		{ varset__lookup_name(Varset, V, Name) },
 		{ string__append("I don't know where to put variable ",
-			Name_str, Msg) },
+			Name, Msg) },
 		{ error(Msg) }
 	),
 	code_info__get_exprn_info(Exprn0),
@@ -2510,17 +2504,9 @@ code_info__slap_code_info(C0, C1, C) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__variable_to_string(Var, VarName) -->
+code_info__variable_to_string(Var, Name) -->
 	code_info__get_varset(Varset),
-	(
-		{ varset__lookup_name(Varset, Var, Name) }
-	->
-		{ VarName = Name }
-	;
-		{ term__var_to_int(Var, Id) },
-		{ string__int_to_string(Id, Num) },
-		{ string__append("V_", Num, VarName) }
-	).
+	{ varset__lookup_name(Varset, Var, Name) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

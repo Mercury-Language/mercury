@@ -32,7 +32,7 @@
 	;	high.
 
 :- type args_method
-	--->	old
+	--->	simple
 	;	compact.
 
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
@@ -132,7 +132,7 @@ convert_tags_method("none", none).
 convert_tags_method("low", low).
 convert_tags_method("high", high).
 
-convert_args_method("old", old).
+convert_args_method("simple", simple).
 convert_args_method("compact", compact).
 
 %-----------------------------------------------------------------------------%

@@ -66,7 +66,7 @@ goal_util__create_variables([V|Vs], Varset0, VarTypes0, Subn0, OldVarTypes,
 	;
 		varset__new_var(Varset0, NV, Varset1),
 		(
-			varset__lookup_name(Varset1, V, Name)
+			varset__search_name(Varset1, V, Name)
 		->
 			varset__name_var(Varset1, NV, Name, Varset2)
 		;

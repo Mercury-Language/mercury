@@ -795,7 +795,7 @@ goedel_output_vars_2([Var | Vars], VarSet) -->
 
 goedel_output_var(Var, VarSet) -->
 	(
-		{ varset__lookup_name(VarSet, Var, Name) }
+		{ varset__search_name(VarSet, Var, Name) }
 	->
 		{ convert_var_name(Name, GoedelName) },
 		io__write_string(GoedelName)

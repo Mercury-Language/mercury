@@ -1814,8 +1814,7 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 		VarTerm = term__variable(Var)
 	->
 		(
-		
-			varset__lookup_name(VarSet, Var, VarName)
+			varset__search_name(VarSet, Var, VarName)
 		->
 			(
 				convert_mode(ModeTerm, Mode)

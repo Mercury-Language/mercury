@@ -545,7 +545,10 @@ code_exprn__var_becomes_dead(Var) -->
 		% code_info needs to know which args (etc) have
 		% been explicitly killed off during the generation
 		% of the goal.
-		% { error("code_exprn__var_becomes_dead: var not found!") }
+		% code_exprn__get_var_name(Var, Name),
+		% { string__append_list(["code_exprn__var_becomes_dead: var ",
+		% 	Name, " not found!"], Msg) },
+		% { error(Msg) }
 		[]
 	).
 
@@ -840,25 +843,12 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		code_exprn__produce_vars(VarList, VarLocList, Code0),
 		code_exprn__rem_rval_reg_dependencies(Exprn1),
 		{ exprn_aux__substitute_vars_in_rval(VarLocList,
-					Exprn1, Exprn2) },
-%		(
-%			{ Exprn2 = create(_, _, _) }
-%		->
-%			% XXX why is this necessary?
-%			code_exprn__get_var_rvals(Var, Rvals7),
-%			{ set__to_sorted_list(Rvals7, RvalList7) },
-%			{ code_exprn__select_rval(RvalList7, Exprn3) },
-%			{ exprn_aux__substitute_vars_in_rval(VarLocList,
-%						Exprn3, Exprn) }
-%		;
-%			{ Exprn = Exprn2 }
-%		),
-		{ Exprn = Exprn2 },
+					Exprn1, Exprn) },
 		code_exprn__add_rval_reg_dependencies(Exprn),
 		{ set__list_to_set([Exprn, lval(Lval)], Rvals) },
 		{ Stat = evaled(Rvals) },
 		code_exprn__get_var_name(Var, VarName),
-		{ code_exprn__construct_code(Lval, VarName, Exprn, Code1) },
+		code_exprn__construct_code(Lval, VarName, Exprn, Code1),
 		{ ExprnCode = tree(Code0, Code1) }
 	),
 	code_exprn__get_vars(Vars1),
@@ -893,7 +883,7 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ set__insert(Rvals1, lval(Lval), Rvals) },
 		{ Stat = evaled(Rvals) },
 		code_exprn__get_var_name(Var, VarName),
-		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
+		code_exprn__construct_code(Lval, VarName, Rval, ExprnCode)
 	;
 		{set__to_sorted_list(Rvals0, RvalList0) },
 		code_exprn__get_options(ExprnOpts),
@@ -940,7 +930,7 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ set__insert(Rvals1, lval(Lval), Rvals) },
 		{ Stat = evaled(Rvals) },
 		code_exprn__get_var_name(Var, VarName),
-		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
+		code_exprn__construct_code(Lval, VarName, Rval, ExprnCode)
 	),
 	code_exprn__get_vars(Vars1),
 	{ map__set(Vars1, Var, Stat, Vars) },
@@ -1031,56 +1021,77 @@ code_exprn__relocate_lval_2([R0|Rs0], OldVal, NewVal, [R|Rs]) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__construct_code(lval, string, rval, code_tree).
-:- mode code_exprn__construct_code(in, in, in, out) is det.
+:- pred code_exprn__construct_code(lval, string, rval, code_tree,
+	exprn_info, exprn_info).
+:- mode code_exprn__construct_code(in, in, in, out, in, out) is det.
 
-code_exprn__construct_code(Lval, VarName, Rval0, Code) :-
-	exprn_aux__simplify_rval(Rval0, Rval),
+code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
+	{ exprn_aux__simplify_rval(Rval0, Rval) },
 	(
-		Rval = create(Tag, Rvals, _Label)
+		{ Rval = create(Tag, Rvals, _Label) }
 	->
-		list__length(Rvals, Arity),
+		{ list__length(Rvals, Arity) },
 		(
-			Arity = 0
+			{ Arity = 0 }
 		->
-			Code = node([
+			{ Code = node([
 				assign(Lval, mkword(Tag, const(int_const(0)))) -
 					"Construct constant"
-			])
+			]) }
 		;
-			string__append("Allocating heap for ", VarName,
-							Comment),
-			Code0 = node([
-				incr_hp(Lval, yes(Tag), const(int_const(Arity)))
-					- Comment
-			]),
-			code_exprn__construct_args(Rvals, Tag, Lval, 0, Code1),
-			Code = tree(Code0, Code1)
+			( { Lval = field(_, _, _) } ->
+				code_exprn__acquire_reg(Reg),
+				code_exprn__construct_cell(reg(Reg),
+					VarName, Tag, Arity, Rvals, Code0),
+				{ string__append(VarName, " placement",
+					Comment) },
+				{ Code1 = node([
+					assign(Lval, lval(reg(Reg))) - Comment
+				]) },
+				{ Code = tree(Code0, Code1) },
+				code_exprn__release_reg(Reg)
+			;
+				code_exprn__construct_cell(Lval,
+					VarName, Tag, Arity, Rvals, Code)
+			)
 		)
 	;
-		string__append("Assigning from ", VarName, Comment),
-		Code = node([
+		{ string__append("Assigning from ", VarName, Comment) },
+		{ Code = node([
 			assign(Lval, Rval) - Comment
-		])
+		]) }
 	).
 
-:- pred code_exprn__construct_args(list(maybe(rval)), int, lval, int,code_tree).
-:- mode code_exprn__construct_args(in, in, in, in, out) is det.
+:- pred code_exprn__construct_cell(lval, string, tag, int, list(maybe(rval)),
+	code_tree, exprn_info, exprn_info).
+:- mode code_exprn__construct_cell(in, in, in, in, in, out, in, out) is det.
 
-code_exprn__construct_args([], _, _, _, empty).
-code_exprn__construct_args([R|Rs], Tag, Lval, N0, Code) :-
+code_exprn__construct_cell(Lval, VarName, Tag, Arity, Rvals, Code) -->
+	{ string__append("Allocating heap for ", VarName, Comment) },
+	{ Code0 = node([
+		incr_hp(Lval, yes(Tag), const(int_const(Arity))) - Comment
+	]) },
+	code_exprn__construct_args(Rvals, Tag, Lval, 0, Code1),
+	{ Code = tree(Code0, Code1) }.
+
+:- pred code_exprn__construct_args(list(maybe(rval)), int, lval, int,
+	code_tree, exprn_info, exprn_info).
+:- mode code_exprn__construct_args(in, in, in, in, out, in, out) is det.
+
+code_exprn__construct_args([], _, _, _, empty) --> [].
+code_exprn__construct_args([R|Rs], Tag, Lval, N0, Code) -->
 	(
-		R = yes(Rval)
+		{ R = yes(Rval) }
 	->
 		% XXX the "" is a bug
 		code_exprn__construct_code(
 			field(Tag, lval(Lval), const(int_const(N0))),
-							"", Rval, Code0)
+			"", Rval, Code0)
 	;
-		Code0 = empty
+		{ Code0 = empty }
 	),
-	N1 is N0 + 1,
-	Code = tree(Code0, Code1),
+	{ N1 is N0 + 1 },
+	{ Code = tree(Code0, Code1) },
 	code_exprn__construct_args(Rs, Tag, Lval, N1, Code1).
 
 %------------------------------------------------------------------------------%
@@ -1227,22 +1238,12 @@ code_exprn__unlock_reg(Reg) -->
 
 %------------------------------------------------------------------------------%
 
-	% This predicate treats variable names the way mercury_output_var does.
-
 :- pred code_exprn__get_var_name(var, string, exprn_info, exprn_info).
 :- mode code_exprn__get_var_name(in, out, in, out) is det.
 
 code_exprn__get_var_name(Var, Name) -->
 	code_exprn__get_varset(Varset),
-	(
-		{ varset__lookup_name(Varset, Var, VarName) }
-	->
-		{ VarName = Name }
-	;
-		{ term__var_to_int(Var, Id) },
-		{ string__int_to_string(Id, Num) },
-		{ string__append("V_", Num, Name) }
-	).
+	{ varset__lookup_name(Varset, Var, Name) }.
 
 %------------------------------------------------------------------------------%
 

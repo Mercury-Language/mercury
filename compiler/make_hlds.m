@@ -1531,12 +1531,12 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 	{ solutions(lambda([Var::out] is nondet, (
 		  	list__member(Var, GoalVars),
 			\+ set__member(Var, NonLocals),
-			varset__lookup_name(VarSet, Var, Name),
+			varset__search_name(VarSet, Var, Name),
 			\+ string__prefix(Name, "_"),
 			\+ string__prefix(Name, "DCG_"),
 			\+ (	
 				set__member(QuantVar, QuantVars),
-				varset__lookup_name(VarSet, QuantVar, Name)
+				varset__search_name(VarSet, QuantVar, Name)
 			)
 		)), SingletonVars) },
 
@@ -1568,7 +1568,7 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 	{ solutions(lambda([Var2::out] is nondet, (
 		  	list__member(Var2, GoalVars),
 			set__member(Var2, NonLocals),
-			varset__lookup_name(VarSet, Var2, Name2),
+			varset__search_name(VarSet, Var2, Name2),
 			string__prefix(Name2, "_")
 		)), MultiVars) },
 

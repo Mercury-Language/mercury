@@ -624,11 +624,11 @@ det_report_unify_context(Context, UnifyContext, MiscInfo, LT, RT) -->
 	{ proc_info_variables(ProcInfo, Varset) },
 	{ MiscInfo = misc_info(ModuleInfo, _, _) },
 	(
-		{ varset__lookup_name(Varset, LT, _) }
+		{ varset__search_name(Varset, LT, _) }
 	->
 		(
 			{ RT = var(RV) },
-			\+ { varset__lookup_name(Varset, RV, _) }
+			\+ { varset__search_name(Varset, RV, _) }
 		->
 			io__write_string("  unification with `"),
 			mercury_output_var(LT, Varset)

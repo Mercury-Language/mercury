@@ -103,7 +103,7 @@ make_arg_infos(ProcInfo0, Method, ModuleInfo, ProcInfo) :-
 		StartReg = 1
 	),
 	(
-		Method = old,
+		Method = simple,
 		make_arg_infos_list(ArgModes, StartReg, ModuleInfo, ArgInfo)
 	;
 		Method = compact,

@@ -247,14 +247,8 @@ code_aux__explain_call_info_2([Var - Lval | Rest], VarSet, String0, String) :-
 	;
 		LvalString = "some lval"
 	),
-	( varset__lookup_name(VarSet, Var, VarName) ->
-		VarString = VarName
-	;
-		term__var_to_int(Var, VarNum),
-		string__int_to_string(VarNum, VarNumString),
-		string__append("variable number ", VarNumString, VarString)
-	),
-	string__append_list([VarString, "\t ->\t", LvalString, "\n", String1],
+	varset__lookup_name(VarSet, Var, VarName),
+	string__append_list([VarName, "\t ->\t", LvalString, "\n", String1],
 		String).
 
 %---------------------------------------------------------------------------%

@@ -471,7 +471,7 @@ polymorphism__process_goal_2(pragma_c_code(C_Code, PredId, ProcId,
 polymorphism__c_code_add_typeinfos([], [], _, ArgNameMap, ArgNameMap).
 polymorphism__c_code_add_typeinfos([Var|Vars], [TVar|TVars], TypeVarSet,
 		ArgNameMap0, ArgNameMap) :-
-	( varset__lookup_name(TypeVarSet, TVar, TypeVarName) ->
+	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
 		map__set(ArgNameMap0, Var, C_VarName, ArgNameMap1)
 	;
@@ -972,7 +972,7 @@ polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet,
 	Type = term__variable(TypeVar),
 	polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
 					Var, VarSet1, VarTypes1),
-	( varset__lookup_name(TypeVarSet, TypeVar, TypeVarName) ->
+	( varset__search_name(TypeVarSet, TypeVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, VarName),
 		varset__name_var(VarSet1, Var, VarName, VarSet2)
 	;
