@@ -770,6 +770,10 @@ typedef enum MR_TypeCtorRepresentation {
 	MR_TYPECTOR_REP_REDOIP,
 	MR_TYPECTOR_REP_TRAIL_PTR,
 	MR_TYPECTOR_REP_TICKET,
+	/*
+	** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
+	** MR_CTOR_REP_STATS depends on this.
+	*/
 	MR_TYPECTOR_REP_UNKNOWN
 } MR_TypeCtorRepresentation;
 

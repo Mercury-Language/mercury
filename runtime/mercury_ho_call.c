@@ -264,6 +264,11 @@ Define_entry(mercury__unify_2_0);
 
 unify_start:
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+
+#ifdef	MR_CTOR_REP_STATS
+	MR_ctor_rep_unify[type_ctor_info->type_ctor_rep]++;
+#endif
+
 	switch (type_ctor_info->type_ctor_rep) {
 
 			/*
@@ -489,6 +494,11 @@ Define_entry(mercury__index_2_0);
 	x = r2;
 
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+
+#ifdef	MR_CTOR_REP_STATS
+	MR_ctor_rep_index[type_ctor_info->type_ctor_rep]++;
+#endif
+
 	switch (type_ctor_info->type_ctor_rep) {
 
 			/*
@@ -679,6 +689,11 @@ Define_entry(mercury__compare_3_3);
 
 compare_start:
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+
+#ifdef	MR_CTOR_REP_STATS
+	MR_ctor_rep_compare[type_ctor_info->type_ctor_rep]++;
+#endif
+
 	switch (type_ctor_info->type_ctor_rep) {
 
 			/*

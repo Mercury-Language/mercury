@@ -167,4 +167,10 @@ extern	enum MR_TimeProfileMethod
 
 extern	bool MR_profiling;
 
+#ifdef  MR_CTOR_REP_STATS
+extern	long	MR_ctor_rep_unify[];
+extern	long	MR_ctor_rep_index[];
+extern	long	MR_ctor_rep_compare[];
+#endif
+
 #endif /* not MERCURY_WRAPPER_H */
