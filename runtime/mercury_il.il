@@ -22,6 +22,8 @@
 }
 
 .assembly extern 'mscorlib'{
+	// Another version number.  You can find this by using the Reflection
+	// API or ildasm or gacutil or you can just browse the assembly cache.
 	.ver 1:0:2411:0
 	.publickeytoken = ( B7 7A 5C 56 19 34 E0 89 ) 
 
