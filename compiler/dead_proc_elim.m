@@ -415,35 +415,42 @@ dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 
 %-----------------------------------------------------------------------------%
 
-dead_proc_elim__eliminate(ModuleInfo0, Needed, ModuleInfo, State0, State) :-
+
+		% information used during the elimination phase.
+
+:- type elim_info
+	--->	elimination_info(
+			needed_map,	% collected usage counts 
+			module_info,	% ye olde module_info
+			pred_table	% table of predicates in this module:
+					% preds and procs in this table
+					% may be eliminated
+		).
+			
+dead_proc_elim__eliminate(ModuleInfo0, Needed0, ModuleInfo, State0, State) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	module_info_preds(ModuleInfo0, PredTable0),
-	dead_proc_elim__eliminate_preds(PredIds, Needed, ModuleInfo0,
-		PredTable0, PredTable, State0, State),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
-	module_info_base_gen_infos(ModuleInfo1, BaseGenInfos0),
+
+	ElimInfo0 = elimination_info(Needed0, ModuleInfo0, PredTable0),
+	list__foldl2(dead_proc_elim__eliminate_pred, PredIds, ElimInfo0, 
+		ElimInfo, State0, State),
+	ElimInfo = elimination_info(Needed, ModuleInfo1, PredTable),
+
+	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
+	module_info_base_gen_infos(ModuleInfo2, BaseGenInfos0),
 	dead_proc_elim__eliminate_base_gen_infos(BaseGenInfos0, Needed,
 		BaseGenInfos),
 	module_info_set_base_gen_infos(ModuleInfo1, BaseGenInfos, ModuleInfo).
 
-:- pred dead_proc_elim__eliminate_preds(list(pred_id), needed_map, module_info,
-	pred_table, pred_table, io__state, io__state).
-:- mode dead_proc_elim__eliminate_preds(in, in, in, in, out, di, uo) is det.
 
-dead_proc_elim__eliminate_preds([], _Needed, _, PredTable, PredTable) --> [].
-dead_proc_elim__eliminate_preds([PredId | PredIds], Needed, ModuleInfo,
-		PredTable0, PredTable) -->
-	dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
-		PredTable0, PredTable1),
-	dead_proc_elim__eliminate_preds(PredIds, Needed, ModuleInfo,
-		PredTable1, PredTable).
+		% eliminate any unused procedures for this pred
 
-:- pred dead_proc_elim__eliminate_pred(pred_id, needed_map, module_info,
-	pred_table, pred_table, io__state, io__state).
-:- mode dead_proc_elim__eliminate_pred(in, in, in, in, out, di, uo) is det.
+:- pred dead_proc_elim__eliminate_pred(pred_id, elim_info, elim_info,
+	io__state, io__state).
+:- mode dead_proc_elim__eliminate_pred(in, in, out, di, uo) is det.
 
-dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
-		PredTable0, PredTable, State0, State) :-
+dead_proc_elim__eliminate_pred(PredId, ElimInfo0, ElimInfo, State0, State) :-
+	ElimInfo0 = elimination_info(Needed, ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_import_status(PredInfo0, Status),
 	(
@@ -459,13 +466,11 @@ dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
 			Keep = yes(InitProcId)
 		)
 	->
-		pred_info_procids(PredInfo0, ProcIds0),
+		pred_info_procids(PredInfo0, ProcIds),
 		pred_info_procedures(PredInfo0, ProcTable0),
-		pred_info_name(PredInfo0, Name),
-		pred_info_arity(PredInfo0, Arity),
-		dead_proc_elim__eliminate_procs(PredId, ProcIds0, Needed, Keep,
-			Name, Arity, ModuleInfo, ProcTable0, ProcTable,
-			State0, State),
+		list__foldl2(dead_proc_elim__eliminate_proc(PredId, Keep, 
+			ElimInfo0),
+			ProcIds, ProcTable0, ProcTable, State0, State),
 		pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
 		map__det_update(PredTable0, PredId, PredInfo, PredTable)
 	;
@@ -503,18 +508,19 @@ dead_proc_elim__eliminate_pred(PredId, Needed, ModuleInfo,
 		% This predicate is not defined in this module.
 		State = State0,
 		PredTable = PredTable0
-	).
+	),
+	ElimInfo = elimination_info(Needed, ModuleInfo, PredTable).
 
-:- pred dead_proc_elim__eliminate_procs(pred_id, list(proc_id),
-	needed_map, maybe(proc_id), string, int, module_info,
-	proc_table, proc_table, io__state, io__state).
-:- mode dead_proc_elim__eliminate_procs(in, in, in, in, in, in, in, in, out,
-	di, uo) is det.
 
-dead_proc_elim__eliminate_procs(_, [], _, _, _, _, _, ProcTable, ProcTable)
-		--> [].
-dead_proc_elim__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name,
-		Arity, ModuleInfo, ProcTable0, ProcTable) -->
+		% eliminate a procedure, if unused
+
+:- pred dead_proc_elim__eliminate_proc(pred_id, maybe(proc_id), elim_info,
+	proc_id, proc_table, proc_table, io__state, io__state).
+:- mode dead_proc_elim__eliminate_proc(in, in, in, in, in, out, di, uo) is det.
+
+dead_proc_elim__eliminate_proc(PredId, Keep, ElimInfo, ProcId, 
+		ProcTable0, ProcTable) -->
+	{ ElimInfo = elimination_info(Needed, ModuleInfo, _PredTable) },
 	(
 		% Keep the procedure if it is in the needed map
 		% or if it is to be kept because it is exported.
@@ -522,7 +528,7 @@ dead_proc_elim__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name,
 		; { Keep = yes(ProcId) }
 		)
 	->
-		{ ProcTable1 = ProcTable0 }
+		{ ProcTable = ProcTable0 }
 	;
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
@@ -532,10 +538,8 @@ dead_proc_elim__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name,
 		;
 			[]
 		),
-		{ map__delete(ProcTable0, ProcId, ProcTable1) }
-	),
-	dead_proc_elim__eliminate_procs(PredId, ProcIds, Needed, Keep, Name,
-		Arity, ModuleInfo, ProcTable1, ProcTable).
+		{ map__delete(ProcTable0, ProcId, ProcTable) }
+	).
 
 :- pred dead_proc_elim__eliminate_base_gen_infos(list(base_gen_info),
 	needed_map, list(base_gen_info)).
