@@ -77,7 +77,7 @@ into another language, under the above conditions for modified versions.
 @author Tyson Dowd
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-2002 The University of Melbourne.
+Copyright @copyright{} 1995--2002 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -251,7 +251,7 @@ Following a long Unix tradition,
 the Mercury compiler is called @samp{mmc}
 (for ``Melbourne Mercury Compiler'').
 @pindex mmc
-Some of its options (e.g. @samp{-c}, @samp{-o}, and @samp{-I})
+Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in other Unix compilers.
 
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
@@ -260,7 +260,7 @@ as the module qualifier.  For a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in files @file{foo.bar.baz.m},
 @file{bar.baz.m}, and @file{baz.m}, in that order.
 Note that if the file name does not include all the module
-qualifiers (e.g. if it is @file{bar.baz.m} or @file{baz.m}
+qualifiers (e.g.@: if it is @file{bar.baz.m} or @file{baz.m}
 rather than @file{foo.bar.baz.m}), then the module name in the
 @samp{:- module} declaration for that module must be fully qualified.
 To make the compiler look in another file for a module, use
@@ -499,7 +499,7 @@ or it can add additional rules, dependencies, and actions.
 Mmake's builtin rules are defined by the file
 @file{@var{prefix}/lib/mercury/mmake/Mmake.rules}
 (where @var{prefix} is @file{/usr/local/mercury-@var{version}} by default,
-and @var{version} is the version number, e.g. @samp{0.6}),
+and @var{version} is the version number, e.g.@: @samp{0.6}),
 as well as the rules and variables in the automatically-generated
 @file{.dep} and @file{.dv} files.
 These rules define the following targets:
@@ -739,7 +739,7 @@ Options to pass to the linker and the c2init program.
 for @code{MLFLAGS} and @code{EXTRA_MLFLAGS} (@code{ml} and @code{c2init}
 take the same set of options).
 (Note that compilation model options and extra files to be processed by
-c2init should not be specified in @code{C2INITFLAGS} - they should be
+c2init should not be specified in @code{C2INITFLAGS} --- they should be
 specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
 
 @item C2INITARGS and EXTRA_C2INITARGS
@@ -768,7 +768,7 @@ looking for extra libraries.  @xref{Using libraries}.
 @item INSTALL_PREFIX
 @vindex INSTALL_PREFIX
 The path to the root of the directory hierarchy where the libraries,
-etc. you are building should be installed.  The default is to install in
+etc.@: you are building should be installed.  The default is to install in
 the same location as the Mercury compiler being used to do the install.
 
 @item INSTALL
@@ -795,7 +795,7 @@ the library is built in each of the listed grades, so you may not get what
 you expect if those options are not subsumed by each of the grades listed.
 @end table
 
-Other variables also exist - see
+Other variables also exist --- see
 @file{@var{prefix}/lib/mercury/mmake/Mmake.vars} for a complete list.
 
 If you wish to temporarily change the flags passed to an executable,
@@ -886,7 +886,7 @@ Options to pass to the Mercury compiler only when using @samp{mmc --make}.
 
 Often you will want to use a particular set of Mercury modules
 in more than one program.  The Mercury implementation
-includes support for developing libraries, i.e. sets of Mercury modules
+includes support for developing libraries, i.e.@: sets of Mercury modules
 intended for reuse.  It allows separate compilation of libraries
 and, on many platforms, it supports shared object libraries.
 
@@ -1053,7 +1053,7 @@ including the different subdirectories for different grades and different
 machine architectures.
 
 In order to support the installation of a library into such a tree, you
-simply need to specify (e.g. in your @file{Mmakefile}) the path prefix
+simply need to specify (e.g.@: in your @file{Mmakefile}) the path prefix
 and the list of grades to install:
 
 @example
@@ -1218,12 +1218,12 @@ For each trace event, the debugger prints out several pieces of
 information.  The three numbers at the start of the display are the
 event number, the call sequence number, and the call depth. 
 (You don't really need to pay too much attention to those.)
-They are followed by the event type (e.g. @samp{CALL} or @samp{EXIT}).
+They are followed by the event type (e.g.@: @samp{CALL} or @samp{EXIT}).
 After that comes the identification of the procedure
 in which the event occurred, consisting of the module-qualified name
 of the predicate or function to which the procedure belongs,
 followed by its arity, mode number and determinism.
-This may sometimes be followed by a "path"
+This may sometimes be followed by a ``path''
 (@pxref{Tracing of Mercury programs}).
 At the end is the file name and line number of the
 called procedure and (if available) also the file name
@@ -1285,7 +1285,7 @@ In addition, most of the mdb commands are accessible via menus.
 
 To start the Emacs interface, you first need to put the following
 text in the file @file{.emacs} in your home directory,
-replacing "/usr/local/mercury-1.0" with the directory
+replacing ``/usr/local/mercury-1.0'' with the directory
 that your Mercury implementation was installed in.
 
 @example
@@ -1297,7 +1297,7 @@ that your Mercury implementation was installed in.
 
 Build your program with debugging enabled, as described
 in @ref{Quick overview} or @ref{Preparing a program for debugging}.
-Then start up Emacs, e.g. using the command @samp{emacs},
+Then start up Emacs, e.g.@: using the command @samp{emacs},
 and type @kbd{M-x mdb @key{RET}}. Emacs will then prompt you for
 the mdb command to invoke
 
@@ -1313,21 +1313,21 @@ and any arguments that you want to pass to it:
 Run mdb (like this): mdb ./hello arg1 arg2 ...
 @end example
 
-Emacs will then create several "buffers": one for the debugger prompt,
+Emacs will then create several ``buffers'': one for the debugger prompt,
 one for the input and output of the program being executed, and one or more
 for the source files.  By default, Emacs will split the display into two
-parts, called "windows", so that two of these buffers will be visible.
+parts, called ``windows'', so that two of these buffers will be visible.
 You can use the command @kbd{C-x o} to switch between windows,
 and you can use the command @kbd{C-x 2} to split a window into two
-windows.  You can use the "Buffers" menu to select which buffer is
+windows.  You can use the ``Buffers'' menu to select which buffer is
 displayed in each window.
 
 If you're using X-Windows, then it is a good idea
 to set the Emacs variable @samp{pop-up-frames} to @samp{t}
 before starting mdb, since this will cause each buffer to be
-displayed in a new "frame" (i.e. a new X window).
+displayed in a new ``frame'' (i.e.@: a new X window).
 You can set this variable interactively using the
-@samp{set-variable} command, i.e.
+@samp{set-variable} command, i.e.@: 
 @kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
 Or you can put @samp{(setq pop-up-frames t)} in the @file{.emacs}
 file in your home directory.
@@ -1368,16 +1368,16 @@ Several of the debugger features can be accessed by moving
 the cursor to the relevant part of the source code and then
 selecting a command from the menu.
 You can set a break point on a line by moving the cursor to the
-appropriate line in your source code (e.g. with the arrow keys,
+appropriate line in your source code (e.g.@: with the arrow keys,
 or by clicking the mouse there), and then selecting
-the "Set breakpoint on line" command from the "Breakpoints"
-sub-menu of the "MDB" menu.  You can set a breakpoint on
+the ``Set breakpoint on line'' command from the ``Breakpoints''
+sub-menu of the ``MDB'' menu.  You can set a breakpoint on
 a procedure by moving the cursor over the procedure name
-and then selecting the "Set breakpoint on procedure"
+and then selecting the ``Set breakpoint on procedure''
 command from the same menu.  And you can display the value of
 a variable by moving the cursor over the variable name
-and then selecting the "Print variable" command from the
-"Data browsing" sub-menu of the "MDB" menu.
+and then selecting the ``Print variable'' command from the
+``Data browsing'' sub-menu of the ``MDB'' menu.
 Most of the menu commands also have keyboard short-cuts,
 which are displayed on the menu.
 
@@ -1526,7 +1526,7 @@ such as a call or a unification,
 then this will be the only goal with whose path has @samp{d2;c3;} as a prefix.
 If it is a compound goal,
 then its components will all have paths that have @samp{d2;c3;} as a prefix,
-e.g. if it is an if-then-else,
+e.g.@: if it is an if-then-else,
 then its three components will have the paths
 @samp{d2;c3;?;}, @samp{d2;c3;t;} and @samp{d2;c3;e;}.
 
@@ -1577,7 +1577,7 @@ allowing you to examine the state of the computation and issue commands.
 Mercury supports two broad ways of preparing a program for debugging.
 The simpler way is to compile a program in a debugging grade,
 which you can do directly by specifying a grade
-that includes the word ``debug'' (e.g. @samp{asm_fast.gc.debug}),
+that includes the word ``debug'' (e.g.@: @samp{asm_fast.gc.debug}),
 or indirectly by specifying the @samp{--debug} grade option
 to the compiler, linker, and other tools
 (in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
@@ -1832,7 +1832,7 @@ just because a break point in the stop state applies to it.
 @cindex debugger interrupt
 @cindex interrupt, in debugger
 @cindex control-C
-If the debugger receives an interrupt (e.g. if the user presses control-C),
+If the debugger receives an interrupt (e.g.@: if the user presses control-C),
 it will stop at the next event regardless of what command it is executing
 at the time.
 @sp 1
@@ -1878,7 +1878,7 @@ changes the environment yet again or execution continues to another event.
 @item procedure specification
 @cindex procedure specification (in mdb)
 @cindex debugger procedure specification
-Some debugger commands, e.g. @samp{break},
+Some debugger commands, e.g.@: @samp{break},
 require a parameter that specifies a procedure.
 Such a procedure specification has
 the following components in the following order:
@@ -1971,7 +1971,7 @@ or by typing @samp{quit.}.
 The module names @var{module1}, @var{module2}, @dots{} specify
 which modules will be imported.  Note that you can also
 add new modules to the list of imports directly at the query prompt,
-by using a command of the form @samp{[@var{module}]}, e.g. @samp{[int]}.
+by using a command of the form @samp{[@var{module}]}, e.g.@: @samp{[int]}.
 You need to import all the modules that define symbols used in your query.
 Queries can only use symbols that are exported from a module;
 entities which are declared in a module's implementation section
@@ -2124,7 +2124,7 @@ By default, this command is strict, and it uses the default print level.
 @item return [-NSans]
 @kindex return (mdb command)
 Continues the program until the program finished returning,
-i.e. until it reaches a port other than EXIT.
+i.e.@: until it reaches a port other than EXIT.
 Reports an error if the current event already refers to such a port.
 @sp 1
 The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
@@ -2139,7 +2139,7 @@ By default, this command is strict, and it uses the default print level.
 @item forward [-NSans]
 @kindex forward (mdb command)
 Continues the program until the program resumes forward execution,
-i.e. until it reaches a port other than REDO or FAIL.
+i.e.@: until it reaches a port other than REDO or FAIL.
 Reports an error if the current event already refers to such a port.
 @sp 1
 The options @samp{-n} or @samp{--none}, @samp{-s} or @samp{--some},
@@ -2290,7 +2290,7 @@ with the given name, or with the given ordinal number.
 This is a non-interactive version of the @samp{browse}
 command (see below).  Various settings
 which affect the way that terms are printed out
-(including e.g. the maximum term depth) can be set using
+(including e.g.@: the maximum term depth) can be set using
 the @samp{set} command.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
@@ -2710,7 +2710,7 @@ has already been deleted.
 @item modules
 @kindex modules (mdb command)
 Lists all the debuggable modules
-(i.e. modules that have debugging information).
+(i.e.@: modules that have debugging information).
 @sp 1
 @item procedures @var{module}
 @kindex procedures (mdb command)
@@ -2779,7 +2779,7 @@ Turns off user control over the scrolling of sequences of event reports.
 @item scroll @var{size}
 Sets the scroll window size to @var{size},
 which tells scroll control to stop and print a @samp{--more--} prompt
-after every @var{size - 1} events.
+after every @var{size} @minus{} 1 events.
 The default value of @var{size}
 is the value of the @samp{LINES} environment variable,
 which should correspond to the number of lines available on the terminal.
@@ -2824,18 +2824,18 @@ after the identification of the event or call to which they refer.
 Reports where contexts are being printed.
 @sp 1
 @item scope all
-Sets the default scope of new breakpoints to "all",
-i.e. by default, new breakpoints on procedures
+Sets the default scope of new breakpoints to ``all'',
+i.e.@: by default, new breakpoints on procedures
 will stop at all events in the procedure.
 @sp 1
 @item scope interface
-Sets the default scope of new breakpoints to "interface",
-i.e. by default, new breakpoints on procedures
+Sets the default scope of new breakpoints to ``interface'',
+i.e.@: by default, new breakpoints on procedures
 will stop at all interface events in the procedure.
 @sp 1
 @item scope entry
-Sets the default scope of new breakpoints to "entry",
-i.e. by default, new breakpoints on procedures
+Sets the default scope of new breakpoints to ``entry'',
+i.e.@: by default, new breakpoints on procedures
 will stop only at events representing calls to the procedure.
 @sp 1
 @item scope
@@ -2919,7 +2919,7 @@ only in some experimental versions of the Mercury runtime system.
 @item clear_histogram
 @kindex clear_histogram (mdb command)
 Clears the histogram printed by @samp{histogram_exp},
-i.e. sets the counts for all depths to zero.
+i.e.@: sets the counts for all depths to zero.
 @end table
 @node Developer commands
 @subsection Developer commands
@@ -3131,7 +3131,7 @@ pass the @samp{--deep-profiling} option to @samp{mmc},
 If you are using Mmake,
 then you pass these options to all the relevant programs
 by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
-e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
+e.g.@: by adding the line @samp{GRADEFLAGS=--profiling}. 
 (For more information about the different grades,
 see @ref{Compilation model options}.)
 
@@ -3212,7 +3212,7 @@ The default is user time plus system time,
 which counts all time spent executing the process,
 including time spent by the operating system working on behalf of the process,
 but not including time that the process was suspended
-(e.g. due to time slicing, or while waiting for input).
+(e.g.@: due to time slicing, or while waiting for input).
 When measuring real time,
 profiling counts even periods during which the process was suspended.
 When measuring user time only,
@@ -3250,7 +3250,7 @@ the parents (callers) and children (callees) of that procedure,
 and shows the execution time and call counts for each parent and child.
 It is sorted on the total amount of time spent
 in the procedure and all of its descendents
-(i.e. all of the procedures that it calls, directly or indirectly.)
+(i.e.@: all of the procedures that it calls, directly or indirectly.)
 
 @cindex Flat profile
 The flat profile presents the just execution time spent in each procedure.
@@ -3285,7 +3285,7 @@ and hence its output is significantly more reliable.)
 
 @cindex Garbage collection, profiling
 Note that any time spent in a C function
-(e.g. time spent in @samp{GC_malloc()},
+(e.g.@: time spent in @samp{GC_malloc()},
 which does memory allocation and garbage collection)
 is credited to the Mercury procedure that called that C function.
 
@@ -3483,7 +3483,7 @@ The name of this file must not have dollar signs in it.
 
 On some operating systems,
 Mercury's profiling doesn't work properly with shared libraries.
-The symptom is errors ("map__lookup failed") or warnings from @samp{mprof}.
+The symptom is errors (@samp{map__lookup failed}) or warnings from @command{mprof}.
 On some systems, the problem occurs because the C implementation
 fails to conform to the semantics specified by the ISO C standard
 for programs that use shared libraries.
@@ -3494,7 +3494,7 @@ where we have been able to analyze it).
 If you get errors or warnings from @samp{mprof},
 and your program is dynamically linked,
 try rebuilding your application statically linked,
-e.g. by using @samp{MLFLAGS=--static} in your Mmakefile.
+e.g.@: by using @samp{MLFLAGS=--static} in your Mmakefile.
 Another work-around that sometimes works is to set the environment variable
 @samp{LD_BIND_NOW} to a non-null value before running the program.
 
@@ -3546,11 +3546,11 @@ Options are either short (single-letter) options preceded by a single @samp{-},
 or long options preceded by @samp{--}.
 Options are case-sensitive.
 We call options that do not take arguments @dfn{flags}.
-Single-letter flags may be grouped with a single @samp{-}, e.g. @samp{-vVc}.
+Single-letter flags may be grouped with a single @samp{-}, e.g.@: @samp{-vVc}.
 Single-letter flags may be negated
-by appending another trailing @samp{-}, e.g. @samp{-v-}.
+by appending another trailing @samp{-}, e.g.@: @samp{-v-}.
 Long flags may be negated by preceding them with @samp{no-},
-e.g. @samp{--no-verbose}.
+e.g.@: @samp{--no-verbose}.
 @findex --no-
 
 @node Warning options
@@ -3956,7 +3956,7 @@ Check the module for errors, but do not generate any code.
 @itemx --target-code-only
 @findex -C
 @findex --target-code-only
-Generate target code (i.e. C in @file{@var{module}.c},
+Generate target code (i.e.@: C in @file{@var{module}.c},
 assembler in @file{@var{module}.s} or @file{@var{module}.pic_s},
 IL in @file{@var{module}.il} or Java in @file{@var{module}.java}),
 but not object code.
@@ -4046,7 +4046,7 @@ by an experimental debugger.
 Output comments in the @file{@var{module}.c} file.
 This is primarily useful for trying to understand
 how the generated C code relates to the source code,
-e.g. in order to debug the compiler.
+e.g.@: in order to debug the compiler.
 The code may be easier to understand if you also use the
 @samp{--no-llds-optimize} option.
 @findex --no-llds-optimize
@@ -4693,7 +4693,7 @@ This option is not supported for the high-level C, IL and Java back-ends.
 @findex --profile-calls
 Similar to @samp{--profiling}, except that this option only gathers
 call counts, not timing information.  Useful on systems where time
-profiling is not supported -- but not as useful as @samp{--memory-profiling}.
+profiling is not supported --- but not as useful as @samp{--memory-profiling}.
 
 @sp 1
 @item @code{--profile-time} (grades: any grade containing @samp{.proftime})
@@ -4779,7 +4779,7 @@ is determined by the auto-configuration script.
 @cindex Addresses, reserved
 @cindex Data representation
 (This option is not intended for general use.)@*
-Treat the integer values from 0 up to @var{n} - 1 as reserved
+Treat the integer values from 0 up to @var{n} @minus{} 1 as reserved
 addresses that can be used to represent nullary constructors
 (constants) of discriminated union types.
 
@@ -4792,7 +4792,7 @@ addresses that can be used to represent nullary constructors
 @cindex Objects, reserved
 @cindex Data representation
 (This option is not intended for general use.)@*
-Allocate up to @var{n} - 1 global objects for representing nullary
+Allocate up to @var{n} @minus{} 1 global objects for representing nullary
 constructors (constants) of discriminated union types.
 
 Note that reserved objects will only be used if reserved addresses
@@ -4817,7 +4817,7 @@ for use with HAL.
 (This option is not intended for general use.)@*
 Don't output base_type_layout structures or references to them.
 This option will generate smaller executables, but will not allow the
-use of code that uses the layout information (e.g. @samp{functor},
+use of code that uses the layout information (e.g.@: @samp{functor},
 @samp{arg}). Using such code will result in undefined behaviour at
 runtime.  The C code also needs to be compiled with
 @samp{-DNO_TYPE_LAYOUT}.
@@ -5056,13 +5056,13 @@ closure of the imports.
 @item --use-opt-files
 @findex --use-opt-files
 Perform inter-module optimization using any @samp{.opt} files which are 
-already built, e.g. those for the standard library, but do not build any
+already built, e.g.@: those for the standard library, but do not build any
 others.
 
 @item --use-trans-opt-files
 @findex --use-trans-opt-files
 Perform inter-module optimization using any @samp{.trans_opt} files which are 
-already built, e.g. those for the standard library, but do not build any
+already built, e.g.@: those for the standard library, but do not build any
 others.
 
 @sp 1
@@ -5080,7 +5080,7 @@ eliminating unused procedures.
 This option significantly increases compilation time,
 link time, and intermediate disk space requirements,
 but in return reduces the size of the final
-executable, typically by about 10-20%.
+executable, typically by about 10--20%.
 This option is only useful with @samp{--procs-per-c-function 1},
 so this option automatically sets @samp{--procs-per-c-function 1}.
 
@@ -5090,7 +5090,7 @@ The @samp{--high-level-code} back-end does not support
 
 N.B.  When using @samp{mmake}, the @samp{--split-c-files} option should
 not be placed in the @samp{MCFLAGS} variable.  Instead, use the
-@samp{@var{MODULE}.split} target, i.e. type @samp{mmake foo.split}
+@samp{@var{MODULE}.split} target, i.e.@: type @samp{mmake foo.split}
 rather than @samp{mmake foo}.
 
 @end table
@@ -5777,7 +5777,7 @@ of the @samp{USER} environment variable. If @samp{USER} is not set,
 @cindex Target code compilation options
 
 If you are using Mmake, you need to pass these options
-to the target code compiler (e.g. @samp{mgnuc}) rather
+to the target code compiler (e.g.@: @samp{mgnuc}) rather
 than to @samp{mmc}.
 
 @table @code
@@ -6250,7 +6250,7 @@ rather than to standard error.
 @itemx --mdb-tty @var{filename}
 @findex -m (runtime option)
 @findex --mdb-tty (runtime option)
-Redirect all three debugger I/O streams -- input, output, and error messages --
+Redirect all three debugger I/O streams --- input, output, and error messages ---
 to the file or device specified by @var{filename}.
 
 @c --mdb-in-window is for use only by the mdb script, so it's
@@ -6282,7 +6282,7 @@ environment variable, by adding
 @samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
 or by using the @samp{--cc} option to @samp{mmc}.
 You may need to specify some option(s) to the C compiler
-to ensure that it uses an ANSI preprocessor (e.g. if you
+to ensure that it uses an ANSI preprocessor (e.g.@: if you
 are using the DEC Alpha/OSF 3.2 C compiler, you would need to
 pass @samp{--cc="cc -std"} to @samp{mmc} so that it will pass the
 @samp{-std} option to @samp{cc}).

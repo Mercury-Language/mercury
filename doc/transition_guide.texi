@@ -45,7 +45,7 @@ into another language, under the above conditions for modified versions.
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-2001 The University of Melbourne.
+Copyright @copyright{} 1995--2002 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -313,7 +313,7 @@ and easier for the compiler to optimize.
 The cut operator is not part of the Mercury language.
 In addition, the conditional operator @samp{-> ;}
 does not do a hard cut across the condition
-- only a soft cut which prunes away either the `then' goal or the `else' goal.
+--- only a soft cut which prunes away either the `then' goal or the `else' goal.
 If there are multiple solutions to the condition,
 they will all be found on backtracking.
 
@@ -411,7 +411,7 @@ appending elements to the tail of a difference list to produce the
 output, Mercury will in fact reorder the code so that it traverses
 the input list right-to-left and constructs the output list bottom-up
 rather than top-down.  In this particular case, the reordered code is still
-tail recursive - but it is tail-recursive on the first recursive call,
+tail recursive --- but it is tail-recursive on the first recursive call,
 not the second one!
 
 If the occasional loss of tail recursion causes efficiency problems,
@@ -503,7 +503,7 @@ factorial(N, F) :-
 Prolog's various different all-solutions predicates (findall/3, bagof/3,
 and setof/3) all have semantic problems.
 Mercury has a different set of all-solutions predicates (solutions/2,
-solutions_set/2, and unsorted_solutions/2 -- all defined in the library
+solutions_set/2, and unsorted_solutions/2 --- all defined in the library
 module @samp{std_util}) that
 address the problems of the Prolog versions.
 To avoid the variable scoping problems of the Prolog

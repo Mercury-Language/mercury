@@ -54,7 +54,7 @@ into another language, under the above conditions for modified versions.
 @author Ralph Becket
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-2001 The University of Melbourne.
+Copyright @copyright{} 1995--2002 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -298,7 +298,7 @@ A left curly bracket, @samp{@{}.
 A right curly bracket, @samp{@}}.
 
 @item ht_sep
-A ``head-tail separator'', i.e. a vertical bar, @samp{|}.
+A ``head-tail separator'', i.e.@: a vertical bar, @samp{|}.
 
 @item comma
 A comma, @samp{,}.
@@ -334,14 +334,14 @@ A compound term is a simple compound term, a list term, a tuple term,
 an operator term, or a parenthesized term.
 
 A simple compound term is a name followed without any intervening
-whitespace by an open parenthesis (i.e. an open_ct token),
+whitespace by an open parenthesis (i.e.@: an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  
 
-A list term is an open square bracket (i.e. an open_list token)
+A list term is an open square bracket (i.e.@: an open_list token)
 followed by a sequence of argument terms separated by commas,
-optionally followed by a vertical bar (i.e. a close_list token)
-followed by a term, followed by a close square bracket (i.e. a
+optionally followed by a vertical bar (i.e.@: a close_list token)
+followed by a term, followed by a close square bracket (i.e.@: a
 close_list token).  An empty list term is an open_list token
 followed by a close_list token.  List terms are parsed as follows:
 @example
@@ -361,7 +361,7 @@ The following terms are all equivalent:
 '[|]'(1, '[|]'(2, '[|]'(3, [])))
 @end example
 
-A tuple term is a left curly bracket (i.e. an open_curly token)
+A tuple term is a left curly bracket (i.e.@: an open_curly token)
 followed by a sequence of argument terms separated by commas,
 and a right curly bracket.  For example, @code{@{1, '2', "three"@}}
 is a valid tuple term.
@@ -380,7 +380,7 @@ followed by a term and a close parenthesis.
 
 A higher-order term is a ``closure'' term, which can be any term 
 other than a name or an operator term, followed without
-any intervening whitespace by an open parenthesis (i.e. an open_ct token), 
+any intervening whitespace by an open parenthesis (i.e.@: an open_ct token), 
 a sequence of argument terms separated by commas, and a close
 parenthesis.  A higher-order term is equivalent to a simple compound term
 whose functor is the empty name, and whose arguments are the 
@@ -678,9 +678,9 @@ The declarative semantics of an if-then-else is given by
 but the operational semantics are different, and it is treated
 differently for the purposes of determinism inference (@pxref{Determinism}).
 Operationally, it executes the @var{CondGoal}, and if that succeeds, then
-execution continues with the @var{ThenGoal}; otherwise, i.e. if @var{CondGoal}
+execution continues with the @var{ThenGoal}; otherwise, i.e.@: if @var{CondGoal}
 fails, it executes the @var{ElseGoal}.  Note that @var{CondGoal} can be
-nondeterministic -- unlike Prolog, Mercury's if-then-else does not commit
+nondeterministic --- unlike Prolog, Mercury's if-then-else does not commit
 to the first solution of the condition if the condition succeeds.
 
 @item @code{@var{Term1} = @var{Term2}}
@@ -712,7 +712,7 @@ arguments onto the argument list of the closure before calling it.
 A higher-order predicate call.
 @var{Var} must be a variable.
 The semantics are exactly the same as for the corresponding
-higher-order call using the @code{call/N} syntax, i.e.
+higher-order call using the @code{call/N} syntax, i.e.@: 
 @samp{call(Var)}, @samp{call(Var, Arg1)}, etc.
 
 @ifset aditi
@@ -1358,7 +1358,7 @@ whose value is the predicate or function of the specified arguments
 determined by the specified goal.  @xref{Higher-order}.
 
 A lambda expression introduces a new scope: any variables occurring in
-the arguments Arg1, Arg2, ... are locally quantified, i.e.
+the arguments Arg1, Arg2, @dots{} are locally quantified, i.e.@: 
 any occurrences of variables with that name in the lambda
 expression are considered to name a different variable than any
 variables with the same name that occur outside of the
@@ -1593,7 +1593,7 @@ A derived type is defined using @samp{:- type @var{type} ---> @var{body}}.
 It should not be confused with the two-dash arrow used for DCGs
 or the one-dash arrow used for if-then-else.)
 If the @var{type} term is a functor of arity zero
-(i.e. one having zero arguments),
+(i.e.@: one having zero arguments),
 it names a monomorphic type.
 Otherwise, it names a polymorphic type;
 the arguments of the functor must be distinct type variables.
@@ -1851,7 +1851,7 @@ of the data-terms. It also allows type qualifications to refer to the
 types of the results of existentially typed predicates or functions.}.
 
 (Here ``match'' means to be an instance of,
-i.e. to be identical to for some substitution of the type parameters,
+i.e.@: to be identical to for some substitution of the type parameters,
 and ``exactly match'' means to be identical up to renaming of type parameters.)
 
 One type assignment @var{A} is said to be
@@ -2358,7 +2358,7 @@ A mode set is an assertion by the programmer
 that the predicate should only be called with argument terms
 that satisfy the initial instantiatedness trees
 of one of the mode declarations in the set
-(i.e. the specified modes and the modes they imply
+(i.e.@: the specified modes and the modes they imply
 are the only allowed modes for this predicate or function).
 We refer to the assertion associated with a mode set
 as the @dfn{mode set constraint};
@@ -2504,7 +2504,7 @@ indicate that particular clauses should only be used for particular modes.
 To specify that a clause only applies to a given mode, each argument
 @var{Arg} of the clause head should be annotated with the corresponding
 argument mode @var{Mode}, using the @samp{::} mode qualification operator,
-i.e. @samp{@var{Arg} :: @var{Mode}}.
+i.e.@: @samp{@var{Arg} :: @var{Mode}}.
 
 For example, if append was declared as
 
@@ -2658,7 +2658,7 @@ after backtracking --- Mercury also provides ``mostly unique''
 modes.  The insts @samp{mostly_unique} and @samp{mostly_dead}
 are equivalent to @samp{unique} and @samp{dead},
 except that only references which will be encountered during 
-forward execution are counted - it is OK for @samp{mostly_unique} or
+forward execution are counted --- it is OK for @samp{mostly_unique} or
 @samp{mostly_dead} values to be needed again on backtracking.
 
 Mercury defines some standard modes for manipulating ``mostly unique''
@@ -2679,7 +2679,7 @@ values, just as it does for unique values:
 @section Limitations of the current implementation
 
 The implementation of the mode analysis algorithm is not quite complete;
-as a result, it is not possible to use nested unique modes, i.e.
+as a result, it is not possible to use nested unique modes, i.e.@: 
 modes in which anything but the top level of a variable is unique.
 If you do, you will get unique mode errors when you try
 to get a unique field of a unique data structure.
@@ -2688,7 +2688,7 @@ only destructive-input and unique-output modes work.
 
 The Mercury compiler does not (yet) reuse @samp{dead}
 values.  The only destructive update in the current implementation occurs
-in library modules, e.g. for I/O and arrays.  We do however plan to
+in library modules, e.g.@: for I/O and arrays.  We do however plan to
 implement structure reuse and compile-time garbage collection
 in the very near future.
 
@@ -2754,9 +2754,9 @@ no              erroneous       det             multi
 yes             failure         semidet         nondet
 @end example
 
-(Note: the "Can fail?" column here indicates only whether the procedure
+(Note: the ``Can fail?'' column here indicates only whether the procedure
 can fail before producing at least one solution; attempts to find a
-@emph{second} solution to a particular call, e.g. for a procedure
+@emph{second} solution to a particular call, e.g.@: for a procedure
 with determinism @samp{multi}, are always allowed to fail.)
 
 The determinism of each mode of a predicate or function
@@ -2814,14 +2814,14 @@ q :- fail.
 
 If there is no mode declaration for a function, then the default
 mode for that function is considered to have been declared as @samp{det}.
-If you want to write a partial function, i.e. one whose determinism
+If you want to write a partial function, i.e.@: one whose determinism
 is @samp{semidet}, then you must explicitly declare the mode and determinism.
 
 In Mercury, a function is supposed to be a true mathematical function
 of its arguments; that is, the value of the function's result should
 be determined only by the values of its arguments.  Hence, for
 any mode of a function that specifies that all the arguments are fully
-input (i.e. for which the initial inst of all the arguments is a ground inst),
+input (i.e.@: for which the initial inst of all the arguments is a ground inst),
 the determinism of that mode can only be
 @samp{det}, @samp{semidet}, @samp{erroneous}, or @samp{failure}.
 
@@ -2925,10 +2925,10 @@ if either @var{A} or @var{B} can succeed at most zero times.
 The conjunction can succeed more than once
 if either @var{A} or @var{B} can succeed more than once
 and both @var{A} and @var{B} can succeed at least once.
-(If e.g. @var{A} can succeed at most zero times,
+(If e.g.@: @var{A} can succeed at most zero times,
 then even if @var{B} can succeed many times
 the maximum number of solutions of the conjunction is still zero.)
-Otherwise, i.e. if both @var{A} and @var{B} succeed at most once,
+Otherwise, i.e.@: if both @var{A} and @var{B} succeed at most once,
 the conjunction can succeed at most once.
 
 @item Switches
@@ -2999,7 +2999,7 @@ if both @var{A} and @var{B} can succeed at most zero times.
 It can succeed at most once
 if one of @var{A} and @var{B} can succeed at most once
 and the other can succeed at most zero times.
-Otherwise, i.e. if either @var{A} or @var{B} can succeed more than once,
+Otherwise, i.e.@: if either @var{A} or @var{B} can succeed more than once,
 or if both @var{A} and @var{B} can succeed at least once,
 it can succeed more than once.
 
@@ -3130,7 +3130,7 @@ then you need to ask yourself
 which one of possibly many solutions to a goal do you want?
 If you want all of them, you need to use the predicate
 @samp{solutions/2} in the standard library module @samp{std_util},
-which collects all of the solutions to a goal into a list --
+which collects all of the solutions to a goal into a list ---
 @pxref{Higher-order}.
 
 If you just want one solution and don't care which,
@@ -3174,9 +3174,9 @@ as a builtin function in the Mercury standard library.
 @end example
 
 @noindent
-A call to that function, e.g. @samp{promise_only_solution(Pred)}, constitutes a
+A call to that function, e.g.@: @samp{promise_only_solution(Pred)}, constitutes a
 promise on the part of the caller that the argument @samp{Pred} has at most
-one solution, i.e. that
+one solution, i.e.@: that
 
 @example
 not some [X1, X2] (Pred(X1), Pred(X2), X1 \= X2)
@@ -3228,7 +3228,7 @@ the right-most conjunct is in a single-solution context,
 and if the right-most conjunct cannot fail,
 then rest of the conjunction is also in a single-solution
 context. 
-("Right-most" here refers to the order @emph{after} mode reordering.)
+(``Right-most'' here refers to the order @emph{after} mode reordering.)
 
 @item
 If an if-then-else is in a single-solution context, then the
@@ -3237,7 +3237,7 @@ and if the ``then'' part cannot fail, then the condition of the
 if-then-else is also in a single-solution context.
 
 @item
-For other compound goals, i.e. disjunctions, negations, and
+For other compound goals, i.e.@: disjunctions, negations, and
 (explicitly) existentially quantified goals, if the compound goal
 is in a single-solution context, then the immediate sub-goals of that
 compound goal are also in single-solution contexts.
@@ -3248,7 +3248,7 @@ The compiler will check that all calls to a committed-choice
 mode of a predicate (or function) do indeed occur in a single-solution context.
 
 You can declare two different modes of a predicate (or function) which differ
-only in ``cc-ness'' (i.e. one being @samp{multi} and the other
+only in ``cc-ness'' (i.e.@: one being @samp{multi} and the other
 @samp{cc_multi}, or one being @samp{nondet} and the other @samp{cc_nondet}).
 In that case, the compiler will select the appropriate one for each
 call depending on whether the call comes from a single-solution context
@@ -3373,9 +3373,9 @@ Typically the equality predicate would have type
 and mode @samp{(in, in) is semidet}, but it is also legal
 for the type, mode and determinism to be more permissive:
 the type or the mode's initial insts may be more general
-(e.g. the type could be just the polymorphic type @samp{pred(T, T)})
+(e.g.@: the type could be just the polymorphic type @samp{pred(T, T)})
 and the mode's final insts or the determinism may be more
-specific (e.g. the determinism could be any of @samp{det},
+specific (e.g.@: the determinism could be any of @samp{det},
 @samp{failure} or @samp{erroneous}).
 The equality predicate must also be ``pure'' (@pxref{Impurity}).
 
@@ -3403,7 +3403,7 @@ has determinism @samp{cc_multi}.
 
 @item
 Any attempts to examine the representation of a variable of type @var{T}
-using facilities of the standard library (e.g. @samp{argument}/3
+using facilities of the standard library (e.g.@: @samp{argument}/3
 and @samp{functor/3} in @samp{std_util}) that do not have determinism
 @samp{cc_multi} or @samp{cc_nondet} will result in a run-time error.
 
@@ -3425,7 +3425,7 @@ then the program is inconsistent: its declarative semantics
 contains a contradiction, because the additional axioms for the user-defined
 equality contradict the standard equality axioms.  That implies that the
 implementation may compute any answer at all (@pxref{Semantics}),
-i.e. the behaviour of the program is undefined.}.
+i.e.@: the behaviour of the program is undefined.}.
 
 @end itemize
 
@@ -3512,7 +3512,7 @@ lambda expression to specify which mode you want.
 
 You can also create higher-order function terms of non-zero arity
 and higher-order predicate terms by ``currying'',
-i.e. specifying the first few arguments to a predicate or function, but
+i.e.@: specifying the first few arguments to a predicate or function, but
 leaving the remaining arguments unspecified.  For example, the
 unification
 
@@ -3558,7 +3558,7 @@ Pred = (pred(Strings::in, Num::out, IO0::di, IO::uo) is det :-
 @end example
 
 Higher-order function terms of zero arity can only be created using
-an explicit lambda expression; you have to use e.g. @samp{(func) = foo}
+an explicit lambda expression; you have to use e.g.@: @samp{(func) = foo}
 rather than plain @samp{foo}, because the latter denotes the result
 of evaluating the function, rather than the function itself.
 
@@ -3631,7 +3631,7 @@ call(Sum123, Result)
 @end example
 
 @noindent
-would bind @samp{Result} to the sum of @samp{[1, 2, 3]}, i.e. to 6.
+would bind @samp{Result} to the sum of @samp{[1, 2, 3]}, i.e.@: to 6.
 
 For functions, you use the builtin expression apply/N:
 
@@ -3848,7 +3848,7 @@ type classes, data constructors, instantiation states, and
 modes, and declarations for abstract data types, abstract type class
 instances, functions, predicates, and (sub-)modules.
 The interface section may not contain definitions for functions or
-predicates (i.e. clauses), or definitions of (sub-)modules. 
+predicates (i.e.@: clauses), or definitions of (sub-)modules. 
 
 An @samp{:- implementation.} declaration indicates
 the start of the module's implementation section. 
@@ -3885,7 +3885,7 @@ the implementation section.
 The names of predicates, functions, constructors, constructor fields,
 types, modes, insts, type classes,
 and (sub-)modules can be explicitly module qualified using the @samp{:}
-operator, e.g. @samp{module:name} or @samp{module:submodule:name}.
+operator, e.g.@: @samp{module:name} or @samp{module:submodule:name}.
 This is useful both for readability and for resolving name conflicts.
 Uses of entities imported using @code{use_module} declarations
 @emph{must} be explicitly module qualified.
@@ -4106,13 +4106,13 @@ is equivalent to
 
 Any declarations in the parent module, including those in the
 parent module's implementation section, are visible in the parent's
-sub-modules, including indirect sub-modules (i.e. sub-sub-modules, etc.).
+sub-modules, including indirect sub-modules (i.e.@: sub-sub-modules, etc.).
 Similarly, declarations in the interfaces of any modules imported using an
 @samp{:- import_module} or a @samp{:- use_module} in the parent module
 are visible in the parent's sub-modules, including indirect sub-modules.
 
 Declarations in a child module are not visible in the parent module,
-or in "sibling" modules (other children of the same parent), or in
+or in ``sibling'' modules (other children of the same parent), or in
 other unrelated modules unless the child is explicitly imported using
 an @samp{:- import_module} or @samp{:- use_module} declaration.  It
 is an error to import a module without importing all of its parent
@@ -4139,10 +4139,10 @@ The compiler sometimes reports spurious errors if you
 define an equivalence type in a sub-module and export it
 as abstract type.
 @item
-Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
+Using @samp{mmake} to do parallel makes (e.g.@: @samp{mmake --jobs 2})
 doesn't always work correctly if you're using nested sub-modules.
 (The work-around is to use separate sub-modules instead of nested
-sub-modules, i.e. to put the sub-modules in separate source files.)
+sub-modules, i.e.@: to put the sub-modules in separate source files.)
 @end itemize
 
 @node Type classes
@@ -4176,7 +4176,7 @@ considered to be an instance of that type class.
 The @code{typeclass} declaration gives the name of the type class that
 it is defining, the
 names of the type variables which are parameters to the type class, and the
-operations (i.e. methods) which form the interface of the type class.
+operations (i.e.@: methods) which form the interface of the type class.
 
 For example,
 
@@ -4209,7 +4209,7 @@ declaration get the usual default mode (@pxref{Modes}): all arguments
 have mode @samp{in}, the result has mode @samp{out}, and the determinism
 is @samp{det}.
 
-The number of parameters to the type class (e.g. @code{T}) is not limited. 
+The number of parameters to the type class (e.g.@: @code{T}) is not limited. 
 For example, the following is allowed:
 
 @example
@@ -4255,7 +4255,7 @@ A program may not contain more than one instance
 declaration for a particular type (or sequence of types, in
 the case of a multi-parameter type class) and typeclass.
 These restrictions ensure that there are no overlapping
-instance declarations, i.e. for each typeclass there is at
+instance declarations, i.e.@: for each typeclass there is at
 most one instance declaration that may be applied to any
 type (or sequence of types). 
 
@@ -4416,7 +4416,7 @@ If we call @samp{translate/3} with the first argument having type
 Likewise, if we call @samp{translate/3} with the first argument having type
 @samp{coordinate}, this will invoke @samp{coordinate_translate}.
 
-Further instances of the type class could be made, e.g. a type which represents
+Further instances of the type class could be made, e.g.@: a type that represents
 the point using polar coordinates.
 
 @node Abstract instance declarations
@@ -4607,9 +4607,9 @@ defines that instance.
 @node Existential types
 @chapter Existential types
 
-Existentially quantified type variables (or simply "existential types"
+Existentially quantified type variables (or simply ``existential types''
 for short) are useful tools for data abstraction.  In combination with
-type classes, they allow you to write code in an "object oriented"
+type classes, they allow you to write code in an ``object oriented''
 style that is similar to the use of interfaces in Java or abstract
 base classes in C++.
 
@@ -4691,14 +4691,14 @@ or function declaration, or a type that occurs as an existentially
 quantified type variable in the declaration of one of the predicates
 or functions that it calls, then its type is treated as an opaque type.
 This means that there are very few things which it is legal to do with
-such a variable -- basically you can only pass it to another procedure
+such a variable --- basically you can only pass it to another procedure
 expecting the same type, unify it with another value of the same
 type, put it in a polymorphic data structure, or pass it to a
 polymorphic procedure whose argument type is universally quantified.
 (Note, however, that the standard library includes some quite powerful
 procedures such as `io__write' which can be useful in this context.)
 
-A non-variable type (i.e. a type which is not a type variable)
+A non-variable type (i.e.@: a type that is not a type variable)
 is considered @emph{more general} than an
 existentially quantified type variable.  Type inference will therefore
 never infer an existentially quantified type for a predicate or
@@ -4808,11 +4808,11 @@ Existentially quantified type variables are especially useful in
 combination with type class constraints.
 
 Type class constraints can be either universal or existential.
-Universal type class constraints are written using "<=",
+Universal type class constraints are written using @samp{<=},
 as described in @ref{Type class constraints on predicates and functions};
 they signify a constraint that the @emph{caller} must satisfy.
 Existential type class constraints are written in the same syntax
-as universal constraints, but using "=>" instead of "<=";
+as universal constraints, but using @samp{=>} instead of @samp{<=};
 they signify a constraint that the @emph{callee} must satisfy.
 (If a declaration has both universal and existential constraints,
 then the existential constraints must precede the universal constraints.)
@@ -4936,7 +4936,7 @@ The standard library module @samp{std_util} provides an abstract
 type named @samp{univ} which can hold values of any type. 
 You can form heterogeneous containers (containers that can hold values of
 different types at the same time) by using data structures
-that contain @code{univ}s, e.g. @samp{list(univ)}.
+that contain @code{univ}s, e.g.@: @samp{list(univ)}.
 
 The interface to @samp{std_util} includes the following:
 
@@ -5081,7 +5081,7 @@ semantics if and only if the implementation-defined
 semantics guarantees to compute an answer in finite time for
 any program for which an answer would be computed in finite time for all
 possible executions under the strict commutative semantics
-(i.e. for all possible orderings of conjunctions and disjunctions).
+(i.e.@: for all possible orderings of conjunctions and disjunctions).
 
 Thus, to summarize, there are in fact a variety of different operational
 semantics for Mercury.  In one of them, the strict sequential semantics, there
@@ -5120,7 +5120,7 @@ in general not sufficient to test your programs on just one
 implementation if you are to be sure that it will be able to use the
 maximally efficient operational semantics on any implementation.
 However, if you do write code which works for all possible executions
-under commutative semantics (i.e. for all possible orderings of
+under commutative semantics (i.e.@: for all possible orderings of
 conjunctions and disjunctions), then you can be guaranteed that it
 will work correctly on every implementation, under every possible
 implementation-defined semantics.
@@ -5368,9 +5368,9 @@ and @code{string} are mapped to the Common Language Runtime types
 Mercury variables whose type is a type variable will be passed as
 @code{System.Object}.
 Mercury array types are mapped to CLR array types.
-When compiling with --no-high-level-data, all other Mercury variables
+When compiling with @option{--no-high-level-data}, all other Mercury variables
 are passed as @code{System.Object[]}.
-When compiling with --high-level-data,
+When compiling with @option{--high-level-data},
 Mercury variables whose type is a Mercury discriminated union type
 will be passed as a CLR type whose type name is determined from
 the Mercury type name (ignoring any type parameters) followed by
@@ -5555,16 +5555,16 @@ interfacing with the following languages:
 @c Please keep this table in alphabetical order
 
 @item @samp{C}
-Use the string "C" to set the foreign language to C.
+Use the string @code{"C"} to set the foreign language to C.
 
 @item @samp{C#}
-Use the string "C#" to set the foreign language to C#.
+Use the string @code{"C#"} to set the foreign language to C#.
 
 @item @samp{IL}
-Use the string "IL" to set the foreign language to IL.
+Use the string @code{"IL"} to set the foreign language to IL.
 
 @item @samp{Managed C++}
-Use the string "MC++" to set the foreign language to Managed C++.
+Use the string @code{"MC++"} to set the foreign language to Managed C++.
 
 @end table
 
@@ -5659,7 +5659,7 @@ or it may contain any C declarations, for example
         #define SIZE 200
         struct Employee @{
                 char name[SIZE];
-        @}
+        @};
         extern int bar;
         extern void foo(void);
 ").
@@ -6071,7 +6071,7 @@ another polymorphic Mercury procedure (@pxref{Calling Mercury code from C}).
 You may not give a @samp{pragma import} declaration for a procedure
 with determinism @samp{nondet} or @samp{multi}.
 (It is however possible to define a @samp{nondet} or @samp{multi} procedure
-using @samp{pragma c_code} -- @pxref{Nondet pragma c_code}).
+using @samp{pragma c_code}.  @xref{Nondet pragma c_code}.)
 
 @node pragma c_code
 @subsection pragma c_code
@@ -6165,7 +6165,7 @@ set @code{SUCCESS_INDICATOR} to false (zero).
 @subsection Nondet pragma c_code
 
 For procedures that can return more than one result on backtracking,
-i.e. those with determinism @samp{nondet} or @samp{multi},
+i.e.@: those with determinism @samp{nondet} or @samp{multi},
 the form of @samp{pragma c_code} declaration described previously
 does not suffice.  Instead, you should use a declaration of the form
 shown below:
@@ -6213,7 +6213,7 @@ may use the macro @samp{LOCALS}, which is defined to be a pointer to a struct
 containing the fields specified by @var{LocalVars}, to access this saved state.
 
 Note @var{RetryCode} and @var{CommonCode} may not access the input
-variables -- only @var{FirstCode} should access the input variables.
+variables --- only @var{FirstCode} should access the input variables.
 If @var{RetryCode} or @var{CommonCode} need to access any of the input
 variables, then @var{FirstCode} should copy the values needed to the
 @var{LocalVars}.
@@ -6376,14 +6376,14 @@ but the Mercury interface includes @samp{io__state} arguments
 to ensure that the predicate has a proper declarative
 semantics.  If the @samp{io__state} arguments were
 left off, then the Mercury implementation might apply
-undesirable optimizations (e.g. reordering, duplicate
+undesirable optimizations (e.g.@: reordering, duplicate
 call elimination, tabling, lazy evaluation, @dots{})
 to this procedure, which could effect the behaviour
 of the program in unpredictable ways.
 
 Impure C code relaxes some of these restrictions.  
 Impure C code may perform I/O and although it cannot update its
-arguments directly (unless they have an appropriate unique mode, e.g.
+arguments directly (unless they have an appropriate unique mode, e.g.@: 
 @samp{di}) it may update something pointed to by its arguments.
 Impure C code procedures must still be type correct and mode correct.
 
@@ -6457,7 +6457,7 @@ Such code is copied verbatim into the generated C file.
 
 It is also possible to export Mercury procedures to C,
 so that you can call Mercury code from C (or from
-other languages that can interface to C, e.g. C++).
+other languages that can interface to C, e.g.@: C++).
 
 A declaration of the form
 
@@ -6841,7 +6841,7 @@ then @code{(*@var{untrail_func})(@var{value}, @var{reason})} will be called,
 where @var{reason} will be @samp{MR_undo} if the backtracking was due to
 a goal failing, @samp{MR_exception} if the backtracking was due to
 a goal throwing an exception, or @samp{MR_retry} if the backtracking
-was due to the use of the "retry" command in mdb, the Mercury debugger,
+was due to the use of the ``retry'' command in @command{mdb}, the Mercury debugger,
 or any similar user request in a debugger.
 The Mercury implementation also ensures that if the current choice point is
 pruned because execution commits to never backtracking to it,
@@ -6849,9 +6849,9 @@ then @code{(*@var{untrail_func})(@var{value}, MR_commit)} will be called.
 It also ensures that if execution requires that the current goal be
 solvable, then @code{(*@var{untrail_func})(@var{value}, MR_solve)}
 will be called.  This happens in calls to @code{solutions/2}, for example.
-(@code{MR_commit} is used for ``hard'' commits, i.e. when we commit
+(@code{MR_commit} is used for ``hard'' commits, i.e.@: when we commit
 to a solution and prune away the alternative solutions; @code{MR_solve}
-is used for ``soft'' commits, i.e. when we must commit to a solution
+is used for ``soft'' commits, i.e.@: when we must commit to a solution
 but do not prune away all the alternatives.)
 
 MR_gc is currently not used ---
@@ -6965,7 +6965,7 @@ bool MR_choicepoint_newer(MR_ChoicepointId, MR_ChoicepointId);
 @end example
 
 @code{MR_choicepoint_newer(x, y)} true iff the choicepoint indicated by
-@samp{x} is newer than (i.e. was created more recently than) the
+@samp{x} is newer than (i.e.@: was created more recently than) the
 choicepoint indicated by @samp{y}.  The null ChoicepointId is considered
 older than any non-null ChoicepointId.  If either of the choice points
 have been backtracked over, the behaviour is undefined.
@@ -6995,7 +6995,7 @@ the update to your data structure without trailing it.
 
 For an example, see the sample module below.
 
-Note that there is a cost to this -- you have to include
+Note that there is a cost to this --- you have to include
 an extra field in your data structure for each part of
 the data structure which you might update, you
 need to perform a test for each update to decide whether
@@ -7772,7 +7772,7 @@ required by (minimal model) tabling.
 @cartouche
 @strong{Please note:}
 the current implementation of tabling does not support all the
-possible compilation grades (see the "Compilation model options"
+possible compilation grades (see the ``Compilation model options''
 section of the Mercury User's Guide) allowed by the Mercury
 implementation.  In particular, if you enable the use of trailing,
 or if you select a garbage collection method other than the default
@@ -7917,7 +7917,7 @@ are only called from within transactions and that updates and database
 calls are ordered correctly, in the same way that @samp{io__state} arguments
 are used to ensure ordering of I/O operations. Within the clauses for
 predicates with a @samp{pragma aditi} declaration variables with
-type @samp{aditi__state} may only be passed to other database predicates --
+type @samp{aditi__state} may only be passed to other database predicates ---
 they may not be packaged into terms or passed to top-down Mercury predicates.
 This allows the compiler to remove all instances of @samp{aditi__state}
 variables from database predicates, and enforces the restriction that
