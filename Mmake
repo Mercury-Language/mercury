@@ -21,6 +21,20 @@ SUBDIR_MMAKE =	PATH=../scripts:$$PATH \
 
 #-----------------------------------------------------------------------------#
 
+# `mmake dep' ensures that the .dep files exist;
+# `mmake depend' forces them to be remade to ensure that they are up-to-date.
+
+.PHONY: dep
+dep: dep_library dep_compiler
+
+.PHONY: dep_library
+dep_library: library/library.dep
+	cd library && $(SUBDIR_MMAKE) depend
+
+.PHONY: dep_compiler
+dep_compiler: compiler/mercury_compile.dep
+	cd compiler && $(SUBDIR_MMAKE) depend
+
 .PHONY: depend
 depend: depend_library depend_compiler
 
@@ -50,11 +64,11 @@ boehm_gc: scripts
 	cd boehm_gc && $(SUBDIR_MMAKE)
 
 .PHONY: library
-library: scripts
+library: dep_library scripts
 	cd library && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
-compiler: scripts runtime boehm_gc library 
+compiler: dep_compiler scripts runtime boehm_gc library 
 	cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
@@ -68,7 +82,9 @@ doc: scripts
 .PHONY: tar
 tar:
 	cd scripts && mmake
+	cd library && $(SUBDIR_MMAKE) depend
 	cd library && $(SUBDIR_MMAKE) ints cs
+	cd compiler && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) ints cs
 	cd scripts && mmake -s realclean
 	cd .. && (tar -cf - mercury | gzip > mercury.tar.gz)
@@ -145,11 +161,11 @@ install_boehm_gc: boehm_gc
 	cd boehm_gc && $(SUBDIR_MMAKE) install
 
 .PHONY: install_library
-install_library: library
+install_library: dep_library library
 	cd library && $(SUBDIR_MMAKE) install
 
 .PHONY: install_compiler
-install_compiler: compiler
+install_compiler: dep_compiler compiler
 	cd compiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_doc
@@ -169,7 +185,7 @@ install_runtime_grades:
 	(mv tmp_dir/* . || true)
 
 .PHONY: install_library_grades
-install_library_grades:
+install_library_grades: dep_library
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
