@@ -48,6 +48,13 @@ Changes to the Mercury standard library:
 * We've made the outputs of the string concatenation primitives unique.
 
 Changes to the Mercury implementation:
+  
+* The Mercury compiler can now perform smart recompilation, enabled by the
+  `--smart-recompilation' option. With smart recompilation, when the
+  interface of a module changes, only modules which use the changed
+  declarations are recompiled. Smart recompilation does not yet work
+  with `--intermodule-optimization'.
+
 * We've fixed a long-standing bug in the handling of module imports.
   Previously, if `module1' imported `module2' which imported `module3' in
   its interface section, then any types, insts, modes and typeclasses defined
