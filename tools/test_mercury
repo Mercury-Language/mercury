@@ -37,8 +37,11 @@ TEST_MCFLAGS="$OPTIMIZE --opt-space"
 TEST_CFLAGS=""
 
 # directories to use
-DIR=/home/mercury/public/test_mercury/test_dirs/$HOST
+
+TESTDIR=/home/mercury/public/test_mercury
+DIR=$TESTDIR/test_dirs/$HOST
 INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH
+
 case $ARCH in
 	alpha)
 		# due to a bug in the DEC loader, INSTALL_DIR should be
@@ -112,6 +115,8 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+: checkout sources and run bootcheck
+
 echo "test_mercury starting cvs checkout at `date`" 1>&2
 
 set -x	# trace execution
@@ -142,66 +147,22 @@ mmake clean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 tools/bootcheck -r -t $PARALLEL || { false; exit 1; }
 cd .. || { false; exit 1; }
 
-: run the regression tests on the stage2 compiler
-MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
-export MERCURY_COMPILER
-case $HOST in
-	mundook|murlibobo)
-		GRADES="none none.gc
-			reg reg.gc
-			asm_fast asm_fast.gc
-			asm_fast.prof asm_fast.gc.prof
-			"
-		;;
-	kryten)
-		GRADES="none jump fast asm_jump asm_fast none.gc
-			jump.gc fast.gc asm_jump.gc
-			asm_fast.gc asm_fast.gc.prof asm_fast.prof"
-		;;
-	muse)
-		GRADES="reg.gc asm_fast asm_fast.gc
-			reg.gc.prof asm_fast.gc.prof"
-		;;
-	mercury)
-		GRADES="asm_fast.gc asm_fast \
-			asm_fast.gc.prof asm_fast.prof"
-		;;
-esac
+#-----------------------------------------------------------------------------#
 
-cd tests || { false; exit 1; }
-# rebuild the `.exp' files on kryten only
-case $HOST in
-	kryten) ./generate_exp ;;
-	*) ;;
-esac
-for grade in $GRADES
-do
-	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
-	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
-		$PARALLEL || status=1
-	case $grade in
-		*.prof)	cd benchmarks
-			./poly
-			mprof -V > poly.$grade.mprof 2>&1 
-			cp -f Prof.CallPair poly.$grade.CallPair
-			cp -f Prof.Counts poly.$grade.Counts
-			cp -f Prof.Decl poly.$grade.Decl
-			cd ..
-			;;
-	esac
-done
-
-echo "test_mercury starting installation at `date`" 1>&2
-
-mmake realclean $PARALLEL || status=1
-cd .. || { false; exit 1; }
+# Tests can fail if linked against an old library, and compiled
+# with a new compiler, so we'll install the libraries first (so
+# long as we bootcheck), then run all the tests in all the grades.
+#
+# Eventually, when we add more support for builing multiple grades,
+# we can test in all grades _before_ installing, but presently this
+# is quite difficult.
 
 : install the compiler
-# The test for status=0 below is commented out because the tests
-# can fail due to bugs in the installed library; in that case,
-# we need to install even though the tests fail, so that we can
-# install the fix.
-### case $status in 0)
+
+echo "test_mercury starting installation at `date`" 1>&2
+echo "current directory `pwd`" 1>&2
+
+case $status in 0)
     cd mercury/stage2 || { false; exit 1; }
     case $ARCH in
 	sgi)
@@ -255,9 +216,15 @@ cd .. || { false; exit 1; }
 		;;
     esac
     cd ../.. || status=1
-### esac
+esac
 
-date >> /home/mercury/public/test_mercury/logs/install.$HOST
+
+[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
+date >> $TESTDIR/logs/install.$HOST
+
+#-----------------------------------------------------------------------------#
+
+: create distribution
 
 echo "test_mercury starting to create distribution at `date`" 1>&2
 
@@ -282,10 +249,72 @@ case $HOST in murlibobo)
 	;;
 esac
 
+: run the regression tests on the stage2 compiler
+
+# The stage2 compiler got installed, so we don't need to set this.
+# In fact, we should unset it, so it isn't set to something
+# inappropriate by some other part of this script.
+
+unset MERCURY_COMPILER
+
+#MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
+#export MERCURY_COMPILER
+case $HOST in
+	mundook|murlibobo)
+		GRADES="none none.gc
+			reg reg.gc
+			asm_fast asm_fast.gc
+			asm_fast.prof asm_fast.gc.prof
+			"
+		;;
+	kryten)
+		GRADES="none jump fast asm_jump asm_fast none.gc
+			jump.gc fast.gc asm_jump.gc
+			asm_fast.gc asm_fast.gc.prof asm_fast.prof"
+		;;
+	muse)
+		GRADES="reg.gc asm_fast asm_fast.gc
+			reg.gc.prof asm_fast.gc.prof"
+		;;
+	mercury)
+		GRADES="asm_fast.gc asm_fast \
+			asm_fast.gc.prof asm_fast.prof"
+		;;
+esac
+
+cd tests || { false; exit 1; }
+# rebuild the `.exp' files on kryten only
+case $HOST in
+	kryten) ./generate_exp ;;
+	*) ;;
+esac
+for grade in $GRADES
+do
+	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
+	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
+		$PARALLEL || status=1
+	case $grade in
+		*.prof)	cd benchmarks
+			./poly
+			mprof -V > poly.$grade.mprof 2>&1 
+			cp -f Prof.CallPair poly.$grade.CallPair
+			cp -f Prof.Counts poly.$grade.Counts
+			cp -f Prof.Decl poly.$grade.Decl
+			cd ..
+			;;
+	esac
+done
+
+
+#-----------------------------------------------------------------------------#
+
+: check for success
+
 case $status in
     0)
 	: if we get this far, then it worked.
-	date >> /home/mercury/public/test_mercury/logs/successful_tests.$HOST
+	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
+	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
 		cd $DIR &&
 		rm -f mercury-latest-stable.tar.gz &&
