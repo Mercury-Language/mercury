@@ -24,7 +24,7 @@ main -->
 #include <stdio.h>
 ").
 
-:- pragma c_code(bar(IO0::di, IO::uo), "
+:- pragma c_code(bar(IO0::di, IO::uo), will_not_call_mercury, "
 	/* START INLINING */
 {
 	static int i = 0;
@@ -46,7 +46,7 @@ main -->
 ").
 
 
-:- pragma c_code(baz(IO0::di, IO::uo), "
+:- pragma c_code(baz(IO0::di, IO::uo), will_not_call_mercury, "
 	IO = IO0;
 	proceed();
 ").
