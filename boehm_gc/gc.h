@@ -145,8 +145,13 @@ extern GC_word GC_free_space_divisor;
  * do so.  The same applies to dropping stubborn objects that are still
  * changeable.
  */
+#if defined(__STDC__) || defined(__cplusplus)
+void GC_change_stubborn(void *p);
+void GC_end_stubborn_change(void *p);
+#else
 void GC_change_stubborn(/* p */);
 void GC_end_stubborn_change(/* p */);
+#endif
 
 /* Return a pointer to the base (lowest address) of an object given	*/
 /* a pointer to a location within the object.				*/
@@ -184,18 +189,30 @@ void GC_end_stubborn_change(/* p */);
 
 /* Explicitly increase the heap size.	*/
 /* Returns 0 on failure, 1 on success.  */
+# if defined(__STDC__) || defined(__cplusplus)
+extern int GC_expand_hp(size_t number_of_bytes);
+# else
 extern int GC_expand_hp(/* number_of_bytes */);
+# endif
 
 /* Limit the heap size to n bytes.  Useful when you're debugging, 	*/
 /* especially on systems that don't handle running out of memory well.	*/
 /* n == 0 ==> unbounded.  This is the default.				*/
+# if defined(__STDC__) || defined(__cplusplus)
+extern void GC_set_max_heap_size(GC_word n);
+# else
 extern void GC_set_max_heap_size(/* n */);
+# endif
 
 /* Clear the set of root segments.  Wizards only. */
 extern void GC_clear_roots(NO_PARAMS);
 
 /* Add a root segment.  Wizards only. */
+# if defined(__STDC__) || defined(__cplusplus)
+extern void GC_add_roots(char * low_address, char * high_address_plus_1);
+# else
 extern void GC_add_roots(/* low_address, high_address_plus_1 */);
+# endif
 
 /* Add a displacement to the set of those considered valid by the	*/
 /* collector.  GC_register_displacement(n) means that if p was returned */
@@ -209,11 +226,19 @@ extern void GC_add_roots(/* low_address, high_address_plus_1 */);
 /* retention.								*/
 /* This is a no-op if the collector was compiled with recognition of	*/
 /* arbitrary interior pointers enabled, which is now the default.	*/
+# if defined(__STDC__) || defined(__cplusplus)
+void GC_register_displacement(GC_word n);
+# else
 void GC_register_displacement(/* GC_word n */);
+# endif
 
 /* The following version should be used if any debugging allocation is	*/
 /* being done.								*/
+# if defined(__STDC__) || defined(__cplusplus)
+void GC_debug_register_displacement(GC_word n);
+# else
 void GC_debug_register_displacement(/* GC_word n */);
+# endif
 
 /* Explicitly trigger a full, world-stop collection. 	*/
 void GC_gcollect(NO_PARAMS);
@@ -310,8 +335,15 @@ int GC_collect_a_little(NO_PARAMS);
   extern char * GC_debug_realloc(/* old_object, new_size_in_bytes,
   			            descr_string, descr_int */);
 # endif
+
+# if defined(__STDC__) || defined(__cplusplus)
+void GC_debug_change_stubborn(void * p);
+void GC_debug_end_stubborn_change(void * p);
+#else
 void GC_debug_change_stubborn(/* p */);
 void GC_debug_end_stubborn_change(/* p */);
+#endif
+
 # ifdef GC_DEBUG
 #   define GC_MALLOC(sz) GC_debug_malloc(sz, __FILE__, __LINE__)
 #   define GC_MALLOC_ATOMIC(sz) GC_debug_malloc_atomic(sz, __FILE__, __LINE__)
