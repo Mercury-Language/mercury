@@ -44,8 +44,9 @@ all:
 	@echo "-- Use \`make install' to install"
 
 .PHONY: install
-install: install_lib install_info install_man install_scripts install_mmake \
-		install_mdb install_util
+install: install_lib install_info install_man \
+		install_scripts install_emacs_scripts \
+		install_mmake install_mdb install_util
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
