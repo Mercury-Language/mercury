@@ -2214,7 +2214,7 @@ output_pragma_decls([Decl | Decls], !IO) :-
 
 output_pragma_input_rval_decls([], !DeclSet, !IO).
 output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
-	Input = pragma_c_input(_VarName, _Type, Rval, _),
+	Input = pragma_c_input(_VarName, _VarType, _OrigType, Rval, _),
 	output_rval_decls(Rval, "\t", "\t", 0, _N, !DeclSet, !IO),
 	output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
 
@@ -2224,8 +2224,9 @@ output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
 
 output_pragma_inputs([], !IO).
 output_pragma_inputs([Input | Inputs], !IO) :-
-	Input = pragma_c_input(_VarName, Type, _Rval, _MaybeForeignTypeInfo),
-	( is_dummy_argument_type(Type) ->
+	Input = pragma_c_input(_VarName, VarType, _OrigType, _Rval,
+		_MaybeForeignTypeInfo),
+	( is_dummy_argument_type(VarType) ->
 		true
 	;
 		output_pragma_input(Input, !IO)
@@ -2237,7 +2238,8 @@ output_pragma_inputs([Input | Inputs], !IO) :-
 :- pred output_pragma_input(pragma_c_input::in, io::di, io::uo) is det.
 
 output_pragma_input(Input, !IO) :-
-	Input = pragma_c_input(VarName, Type, Rval, MaybeForeignTypeInfo),
+	Input = pragma_c_input(VarName, _VarType, OrigType, Rval,
+		MaybeForeignTypeInfo),
 	io__write_string("\t", !IO),
 	(
 		MaybeForeignTypeInfo = yes(ForeignTypeInfo),
@@ -2272,10 +2274,10 @@ output_pragma_input(Input, !IO) :-
 		MaybeForeignTypeInfo = no,
 		io__write_string(VarName, !IO),
 		io__write_string(" = ", !IO),
-		( Type = term__functor(term__atom("string"), [], _) ->
+		( OrigType = term__functor(term__atom("string"), [], _) ->
 			output_llds_type_cast(string, !IO),
 			output_rval_as_type(Rval, word, !IO)
-		; Type = term__functor(term__atom("float"), [], _) ->
+		; OrigType = term__functor(term__atom("float"), [], _) ->
 			output_rval_as_type(Rval, float, !IO)
 		;
 			output_rval_as_type(Rval, word, !IO)
@@ -2289,7 +2291,7 @@ output_pragma_input(Input, !IO) :-
 
 output_pragma_output_lval_decls([], !DeclSet, !IO).
 output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
-	O = pragma_c_output(Lval, _Type, _VarName, _),
+	O = pragma_c_output(Lval, _VarType, _OrigType, _VarName, _),
 	output_lval_decls(Lval, "\t", "\t", 0, _N, !DeclSet, !IO),
 	output_pragma_output_lval_decls(Outputs, !DeclSet, !IO).
 
@@ -2300,8 +2302,9 @@ output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
 
 output_pragma_outputs([], !IO).
 output_pragma_outputs([Output | Outputs], !IO) :-
-	Output = pragma_c_output(_Lval, Type, _VarName, _MaybeForeignType),
-	( is_dummy_argument_type(Type) ->
+	Output = pragma_c_output(_Lval, VarType, _OrigType, _VarName,
+		_MaybeForeignType),
+	( is_dummy_argument_type(VarType) ->
 		true
 	;
 		output_pragma_output(Output, !IO)
@@ -2313,7 +2316,8 @@ output_pragma_outputs([Output | Outputs], !IO) :-
 :- pred output_pragma_output(pragma_c_output::in, io::di, io::uo) is det.
 
 output_pragma_output(Output, !IO) :-
-	Output = pragma_c_output(Lval, Type, VarName, MaybeForeignType),
+	Output = pragma_c_output(Lval, _VarType, OrigType, VarName,
+		MaybeForeignType),
 	io__write_string("\t", !IO),
 	(
 		MaybeForeignType = yes(ForeignTypeInfo),
@@ -2338,12 +2342,12 @@ output_pragma_output(Output, !IO) :-
 		output_lval_as_word(Lval, !IO),
 		io__write_string(" = ", !IO),
 		(
-			Type = term__functor(term__atom("string"), [], _)
+			OrigType = term__functor(term__atom("string"), [], _)
 		->
 			output_llds_type_cast(word, !IO),
 			io__write_string(VarName, !IO)
 		;
-			Type = term__functor(term__atom("float"), [], _)
+			OrigType = term__functor(term__atom("float"), [], _)
 		->
 			io__write_string("MR_float_to_word(", !IO),
 			io__write_string(VarName, !IO),

@@ -390,9 +390,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	% Generate code to <save live variables on stack>
 	%
-	( MayCallMercury = will_not_call_mercury ->
+	(
+		MayCallMercury = will_not_call_mercury,
 		SaveVarsCode = empty
 	;
+		MayCallMercury = may_call_mercury,
 		% The C code might call back Mercury code
 		% which clobbers the succip.
 		code_info__succip_is_used(!CI),
@@ -491,10 +493,12 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	% Code fragments to obtain and release the global lock
 	%
-	( ThreadSafe = thread_safe ->
+	(
+		ThreadSafe = thread_safe,
 		ObtainLock = pragma_c_raw_code("", live_lvals_info(set__init)),
 		ReleaseLock = pragma_c_raw_code("", live_lvals_info(set__init))
 	;
+		ThreadSafe = not_thread_safe,
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		Name = pred_info_name(PredInfo),
 		c_util__quote_string(Name, MangledName),
@@ -530,9 +534,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%   MR_restore_registers(); /* see notes (1) and (3) above */
 	% #endif
 	%
-	( MayCallMercury = will_not_call_mercury ->
+	(
+		MayCallMercury = will_not_call_mercury,
 		RestoreRegsComp = pragma_c_noop
 	;
+		MayCallMercury = may_call_mercury,
 		RestoreRegsComp = pragma_c_raw_code(
 			"#ifndef MR_CONSERVATIVE_GC\n\t" ++
 				"MR_restore_registers();\n#endif\n",
@@ -1061,30 +1067,22 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 :- pred make_c_arg_list(list(foreign_arg)::in, list(arg_info)::in,
 	list(c_arg)::out) is det.
 
-make_c_arg_list(Args, ArgInfos, CArgs) :-
+make_c_arg_list([], [], []).
+make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
+	Arg = foreign_arg(Var, MaybeNameMode, Type),
 	(
-		Args = [],
-		ArgInfos = []
-	->
-		CArgs = []
+		MaybeNameMode = yes(Name - _),
+		MaybeName = yes(Name)
 	;
-		Args = [Arg | ArgTail],
-		ArgInfos = [ArgInfo | ArgInfoTail]
-	->
-		Arg = foreign_arg(Var, MaybeNameMode, Type),
-		(
-			MaybeNameMode = yes(Name - _),
-			MaybeName = yes(Name)
-		;
-			MaybeNameMode = no,
-			MaybeName = no
-		),
-		CArg = c_arg(Var, MaybeName, Type, ArgInfo),
-		make_c_arg_list(ArgTail, ArgInfoTail, CArgTail),
-		CArgs = [CArg | CArgTail]
-	;
-		error("pragma_c_gen__make_c_arg_list length mismatch")
-	).
+		MaybeNameMode = no,
+		MaybeName = no
+	),
+	CArg = c_arg(Var, MaybeName, Type, ArgInfo),
+	make_c_arg_list(ArgTail, ArgInfoTail, CArgTail).
+make_c_arg_list([], [_|_], _) :-
+	error("pragma_c_gen__make_c_arg_list length mismatch").
+make_c_arg_list([_|_], [], _) :-
+	error("pragma_c_gen__make_c_arg_list length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -1141,13 +1139,13 @@ get_c_arg_list_vars([Arg | Args], [Var | Vars]) :-
 
 pragma_select_out_args([], []).
 pragma_select_out_args([Arg | Rest], Out) :-
-	pragma_select_out_args(Rest, Out0),
+	pragma_select_out_args(Rest, OutTail),
 	Arg = c_arg(_, _, _, ArgInfo),
 	ArgInfo = arg_info(_Loc, Mode),
 	( Mode = top_out ->
-		Out = [Arg | Out0]
+		Out = [Arg | OutTail]
 	;
-		Out = Out0
+		Out = OutTail
 	).
 
 	% pragma_select_in_args returns the list of variables
@@ -1157,13 +1155,13 @@ pragma_select_out_args([Arg | Rest], Out) :-
 
 pragma_select_in_args([], []).
 pragma_select_in_args([Arg | Rest], In) :-
-	pragma_select_in_args(Rest, In0),
+	pragma_select_in_args(Rest, InTail),
 	Arg = c_arg(_, _, _, ArgInfo),
 	ArgInfo = arg_info(_Loc, Mode),
 	( Mode = top_in ->
-		In = [Arg | In0]
+		In = [Arg | InTail]
 	;
-		In = In0
+		In = InTail
 	).
 
 %---------------------------------------------------------------------------%
@@ -1179,8 +1177,7 @@ pragma_select_in_args([Arg | Rest], In) :-
 % 	- they could clash with the system name space
 %
 
-:- pred var_is_not_singleton(maybe(string), string) is semidet.
-:- mode var_is_not_singleton(in, out) is semidet.
+:- pred var_is_not_singleton(maybe(string)::in, string::out) is semidet.
 
 var_is_not_singleton(yes(Name), Name) :-
 	\+ string__first_char(Name, '_', _).
@@ -1192,20 +1189,20 @@ var_is_not_singleton(yes(Name), Name) :-
 % variable name, so that declarations of the form "Type Name;" can be made.
 
 :- pred make_pragma_decls(list(c_arg)::in, module_info::in,
-		list(pragma_c_decl)::out) is det.
+	list(pragma_c_decl)::out) is det.
 
 make_pragma_decls([], _, []).
 make_pragma_decls([Arg | Args], Module, Decls) :-
+	make_pragma_decls(Args, Module, DeclsTail),
 	Arg = c_arg(_Var, ArgName, OrigType, _ArgInfo),
 	( var_is_not_singleton(ArgName, Name) ->
 		OrigTypeString = foreign__to_type_string(c, Module, OrigType),
 		Decl = pragma_c_arg_decl(OrigType, OrigTypeString, Name),
-		make_pragma_decls(Args, Module, Decls1),
-		Decls = [Decl | Decls1]
+		Decls = [Decl | DeclsTail]
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
-		make_pragma_decls(Args, Module, Decls)
+		Decls = DeclsTail
 	).
 
 %---------------------------------------------------------------------------%
@@ -1213,15 +1210,15 @@ make_pragma_decls([Arg | Args], Module, Decls) :-
 :- pred find_dead_input_vars(list(c_arg)::in, set(prog_var)::in,
 	set(prog_var)::in, set(prog_var)::out) is det.
 
-find_dead_input_vars([], _, DeadVars, DeadVars).
-find_dead_input_vars([Arg | Args], PostDeaths, DeadVars0, DeadVars) :-
+find_dead_input_vars([], _, !DeadVars).
+find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
 	Arg = c_arg(Var, _MaybeName, _Type, _ArgInfo),
 	( set__member(Var, PostDeaths) ->
-		set__insert(DeadVars0, Var, DeadVars1)
+		set__insert(!.DeadVars, Var, !:DeadVars)
 	;
-		DeadVars1 = DeadVars0
+		true
 	),
-	find_dead_input_vars(Args, PostDeaths, DeadVars1, DeadVars).
+	find_dead_input_vars(Args, PostDeaths, !DeadVars).
 
 %---------------------------------------------------------------------------%
 
@@ -1234,13 +1231,13 @@ find_dead_input_vars([Arg | Args], PostDeaths, DeadVars0, DeadVars) :-
 
 get_pragma_input_vars([], [], empty, !CI).
 get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
-	Arg = c_arg(Var, MaybeName, Type, _ArgInfo),
+	Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo),
 	( var_is_not_singleton(MaybeName, Name) ->
+		VarType = variable_type(!.CI, Var),
 		code_info__produce_variable(Var, FirstCode, Rval, !CI),
-		% code_info__produce_variable_in_reg(Var, FirstCode, Lval, !CI)
-		% Rval = lval(Lval),
-		MaybeForeign = get_maybe_foreign_type_info(!.CI, Type),
-		Input = pragma_c_input(Name, Type, Rval, MaybeForeign),
+		MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
+		Input = pragma_c_input(Name, VarType, OrigType, Rval,
+			MaybeForeign),
 		get_pragma_input_vars(Args, Inputs1, RestCode, !CI),
 		Inputs = [Input | Inputs1],
 		Code = tree(FirstCode, RestCode)
@@ -1262,7 +1259,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 		map__search(Types, TypeId, Defn),
 		hlds_data__get_type_defn_body(Defn, Body),
 		Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC,
-				_MaybeJava))
+			_MaybeJava))
 	->
 		(
 			MaybeC = yes(Data),
@@ -1305,21 +1302,22 @@ pragma_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
 
 place_pragma_output_args_in_regs([], [], [], !CI).
 place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs, !CI) :-
-	place_pragma_output_args_in_regs(Args, Regs, Outputs0, !CI),
+	place_pragma_output_args_in_regs(Args, Regs, OutputsTail, !CI),
 	Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo),
 	code_info__release_reg(Reg, !CI),
 	( code_info__variable_is_forward_live(!.CI, Var) ->
 		code_info__set_var_location(Var, Reg, !CI),
 		MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
 		( var_is_not_singleton(MaybeName, Name) ->
-			PragmaCOutput = pragma_c_output(Reg, OrigType,
+			VarType = variable_type(!.CI, Var),
+			PragmaCOutput = pragma_c_output(Reg, VarType, OrigType,
 				Name, MaybeForeign),
-			Outputs = [PragmaCOutput | Outputs0]
+			Outputs = [PragmaCOutput | OutputsTail]
 		;
-			Outputs = Outputs0
+			Outputs = OutputsTail
 		)
 	;
-		Outputs = Outputs0
+		Outputs = OutputsTail
 	).
 place_pragma_output_args_in_regs([_|_], [], _, !CI) :-
 	error("place_pragma_output_args_in_regs: length mismatch").
@@ -1336,17 +1334,18 @@ place_pragma_output_args_in_regs([], [_|_], _, !CI) :-
 
 input_descs_from_arg_info(_, [], []).
 input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
-	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
+	input_descs_from_arg_info(CI, Args, InputsTail),
+	Arg = c_arg(Var, MaybeName, OrigType, ArgInfo),
 	( var_is_not_singleton(MaybeName, Name) ->
+		VarType = variable_type(CI, Var),
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
 		MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-		Input = pragma_c_input(Name, OrigType, lval(Reg),
+		Input = pragma_c_input(Name, VarType, OrigType, lval(Reg),
 			MaybeForeign),
-		input_descs_from_arg_info(CI, Args, Inputs1),
-		Inputs = [Input | Inputs1]
+		Inputs = [Input | InputsTail]
 	;
-		input_descs_from_arg_info(CI, Args, Inputs)
+		Inputs = InputsTail
 	).
 
 %---------------------------------------------------------------------------%
@@ -1360,16 +1359,18 @@ input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
 
 output_descs_from_arg_info(_, [], []).
 output_descs_from_arg_info(CI, [Arg | Args], Outputs) :-
-	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
-	output_descs_from_arg_info(CI, Args, Outputs0),
+	output_descs_from_arg_info(CI, Args, OutputsTail),
+	Arg = c_arg(Var, MaybeName, OrigType, ArgInfo),
 	( var_is_not_singleton(MaybeName, Name) ->
+		VarType = variable_type(CI, Var),
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
 		MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-		Outputs = [pragma_c_output(Reg, OrigType, Name, MaybeForeign) |
-			Outputs0]
+		Output = pragma_c_output(Reg, VarType, OrigType, Name,
+			MaybeForeign),
+		Outputs = [Output | OutputsTail]
 	;
-		Outputs = Outputs0
+		Outputs = OutputsTail
 	).
 
 %---------------------------------------------------------------------------%

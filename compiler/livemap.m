@@ -314,7 +314,7 @@ livemap__build_live_lval_info(live_lvals_info(LiveLvalSet), !Livevals,
 
 livemap__build_livemap_pragma_inputs([], !Livevals).
 livemap__build_livemap_pragma_inputs([Input | Inputs], !Livevals) :-
-	Input = pragma_c_input(_, _, Rval, _),
+	Input = pragma_c_input(_, _, _, Rval, _),
 	( Rval = lval(Lval) ->
 		livemap__insert_proper_liveval(Lval, !Livevals)
 	;

@@ -589,26 +589,48 @@
 	% of the input variables for a pragma_c instruction.
 :- type pragma_c_input
 	--->	pragma_c_input(
-			string, % the variable's name
-			type,	% the variable's type
-			rval,	% the variable's value
-			maybe(pragma_c_foreign_type)
-				% if type is a foreign type,
-				% info about that foreign type
+			% The name of the foreign language variable.
+			in_foreign_lang_var_name :: string,
+
+			% The type of the Mercury variable being passed.
+			in_var_type		:: (type),
+
+			% The type of the argument in original foreign_proc
+			% procedure. If the foreign_proc was inlined in some
+			% other procedure, then the in_var_type can be an
+			% instance of in_original_type; otherwise, the two
+			% should be the same.
+			in_original_type	:: (type),
+
+			% The value being passed.
+			in_arg_value		:: rval,
+
+			% If in_original_type is a foreign type, info about
+			% that foreign type.
+			in_maybe_foreign_type	:: maybe(pragma_c_foreign_type)
 		).
 
 	% A pragma_c_output represents the code that stores one of
 	% of the outputs for a pragma_c instruction.
 :- type pragma_c_output
 	--->	pragma_c_output(
-			lval,	% where to put the output val,
-			type,
-			string,
-				% type and name of the variable containing
-				% the output val
-			maybe(pragma_c_foreign_type)
-				% if type is a foreign type,
-				% info about that foreign type
+			% The place where the foreign_proc should put this
+			% output.
+			out_arg_dest		:: lval,
+
+			% The type of the Mercury variable being passed.
+			out_var_type		:: (type),
+
+			% The type of the argument in original foreign_proc
+			% procedure; see in_original_type above.
+			out_original_type	:: (type),
+
+			% The name of the foreign language variable.
+			out_var_name		:: string,
+
+			% If in_original_type is a foreign type, info about
+			% that foreign type.
+			out_maybe_foreign_type	:: maybe(pragma_c_foreign_type)
 		).
 
 :- type pragma_c_foreign_type

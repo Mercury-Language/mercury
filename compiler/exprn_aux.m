@@ -537,20 +537,20 @@ exprn_aux__substitute_lval_in_live_lval_info(OldLval, NewLval,
 
 exprn_aux__substitute_lval_in_pragma_c_input(OldLval, NewLval, Out0, Out,
 		N0, N) :-
-	Out0 = pragma_c_input(Name, Type, Rval0, MaybeForeign),
+	Out0 = pragma_c_input(Name, VarType, OrigType, Rval0, MaybeForeign),
 	exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval,
 		N0, N),
-	Out = pragma_c_input(Name, Type, Rval, MaybeForeign).
+	Out = pragma_c_input(Name, VarType, OrigType, Rval, MaybeForeign).
 
 :- pred exprn_aux__substitute_lval_in_pragma_c_output(lval::in, lval::in,
 	pragma_c_output::in, pragma_c_output::out, int::in, int::out) is det.
 
 exprn_aux__substitute_lval_in_pragma_c_output(OldLval, NewLval, Out0, Out,
 		N0, N) :-
-	Out0 = pragma_c_output(Lval0, Type, Name, MaybeForeign),
+	Out0 = pragma_c_output(Lval0, VarType, OrigType, Name, MaybeForeign),
 	exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval,
 		N0, N),
-	Out = pragma_c_output(Lval, Type, Name, MaybeForeign).
+	Out = pragma_c_output(Lval, VarType, OrigType, Name, MaybeForeign).
 
 :- pred exprn_aux__substitute_lval_in_rval_count(lval::in, lval::in,
 	rval::in, rval::out, int::in, int::out) is det.
