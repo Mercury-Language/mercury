@@ -792,7 +792,7 @@ debug_tag(complicated_constant_tag(Primary, Secondary)) -->
 	debug_int(Primary),
 	debug_int(Secondary).
 debug_tag(enum_tag(Enum)) -->
-	debug_string("enum"),
+	debug_string("enum_tag"),
 	debug_int(Enum).
 debug_tag(no_tag) -->
 	debug_string("no_tag").
