@@ -339,11 +339,12 @@ typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 	(if some [PredInfo]
 		map__search(Preds, PredId, PredInfo)
 	then
-		predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
+		predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 			% rename apart the type variables in called
 			% predicate's arg types
 		typeinfo_get_typevarset(TypeInfo0, TypeVarSet0),
-		varset__merge(TypeVarSet0, PredTypeVarSet, TypeVarSet),
+		varset__merge(TypeVarSet0, PredTypeVarSet, PredArgTypes0,
+				  TypeVarSet, PredArgTypes),
 		typeinfo_set_typevarset(TypeInfo0, TypeVarSet, TypeInfo1),
 			% unify the types of the call arguments with the
 			% called predicates' arg types
@@ -397,6 +398,9 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 	else
 		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
 	).
+
+	% Given a type assignment set and a variable id,
+	% return the list of possible different types for the variable.
 
 :- pred get_type_of_var(type_assign_set, variable, list(type)).
 :- mode get_type_of_var(input, input, output).

@@ -53,6 +53,11 @@
 %		replace all occurrences of Var in Term0 with Replacement,
 %		and return the result in Term.
 
+:- pred term__substitute_list(list(term), variable, term, list(term)).
+:- mode term__substitute_list(input, input, input, output).
+%		as above, except for a list of terms rather than
+%		a single term
+
 :- pred term__substitute_corresponding(list(variable), list(term), term, term).
 :- mode term__substitute_corresponding(input, input, input, output).
 %       term__substitute_corresponding(Vars, Repls, Term0, Term).
@@ -339,9 +344,6 @@ term__substitute(term_variable(Var), SearchVar, Replacement, Term) :-
 term__substitute(term_functor(Name, Args0, Context), Var, Replacement,
 		 term_functor(Name, Args, Context)) :-
 	term__substitute_list(Args0, Var, Replacement, Args).
-
-:- pred term__substitute_list(list(term), variable, term, list(term)).
-:- mode term__substitute_list(input, input, input, output).
 
 term__substitute_list([], _Var, _Replacement, []).
 term__substitute_list([Term0 | Terms0], Var, Replacement, [Term | Terms]) :-

@@ -23,6 +23,7 @@
 
 :- module varset.
 :- interface.
+:- import_module string, term.
 
 :- type var_id.
 :- type varset.
@@ -54,17 +55,22 @@
 :- pred varset__lookup_var(varset, var_id, term).
 :- mode varset__lookup_var(input, input, output).
 
-	% Combine two different varsets, renaming apart.
-	% For efficiency, the biggest one should be the
-	% first parameter, as this is O(size of second parameter).
-:- pred varset__merge(varset, varset, varset).
-:- mode varset__merge(input, input, output).
+	% Combine two different varsets, renaming apart:
+	% varset__merge(VarSet0, NewVarSet, Terms0, VarSet, Terms) is
+	% true iff VarSet is the varset that results from joining
+	% VarSet0 to a suitably renamed version of NewVarSet,
+	% and Terms is Terms0 renamed accordingly.
+
+:- pred varset__merge(varset, varset, list(term), varset, list(term)).
+:- mode varset__merge(input, input, input, output, output).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, string, map, term.
+:- import_module int, map.
 
 :- type var_id	==	variable.
+
 :- type varset	--->	varset(var_id, map(var_id, string), map(var_id, term)).
 
 %-----------------------------------------------------------------------------%
@@ -117,20 +123,21 @@ varset__lookup_var(varset(_, _, Vals), Id, Val) :-
 	% This also has the same efficiency problem because it
 	% calls varset__name_var.
 
-varset__merge(VarSet0, varset(MaxId, Names, Vals),
-		VarSet) :-
-	varset__merge_2(0, MaxId, Names, Vals, VarSet0, VarSet).
+varset__merge(VarSet0, varset(MaxId, Names, Vals), TermList0,
+		VarSet, TermList) :-
+	varset__merge_2(0, MaxId, Names, Vals, VarSet0, TermList0,
+				VarSet, TermList).
 
 :- pred varset__merge_2(var_id, var_id, map(var_id, string), map(var_id, term),
-			varset, varset).
-:- mode varset__merge_2(input, input, input, input, input, output).
+			varset, list(term), varset, list(term)).
+:- mode varset__merge_2(input, input, input, input, input, input,
+			output, output).
 
-varset__merge_2(N, Max, Names, Vals, VarSet0, VarSet) :-
-	(if
-		N = Max
-	then
-		VarSet = VarSet0
-	else
+varset__merge_2(N, Max, Names, Vals, VarSet0, TermList0, VarSet, TermList) :-
+	( N = Max ->
+		VarSet = VarSet0,
+		TermList = TermList0
+	;
 		varset__new_var(VarSet0, VarId, VarSet1),
 		(if some [Name]
 			map__search(Names, N, Name)
@@ -139,8 +146,11 @@ varset__merge_2(N, Max, Names, Vals, VarSet0, VarSet) :-
 		else
 			VarSet2 = VarSet1
 		),
+		term__substitute_list(TermList0, N, term_variable(VarId),
+				TermList1),
 		N1 is N + 1,
-		varset__merge_2(N1, Max, Names, Vals, VarSet2, VarSet)
+		varset__merge_2(N1, Max, Names, Vals, VarSet2, TermList1,
+				VarSet, TermList)
 	).
 
 %-----------------------------------------------------------------------------%
