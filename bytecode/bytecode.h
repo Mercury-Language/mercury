@@ -1,9 +1,10 @@
-
 /*
- *	$Id: bytecode.h,v 1.7 1997-03-20 08:15:46 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: bytecode.h,v 1.8 1997-03-25 02:08:53 aet Exp $
+*/
 
 #if	! defined(BYTECODE_H)
 #define	BYTECODE_H
@@ -16,7 +17,7 @@
  *	sizeof(short) = 2
  *	sizeof(int) = 4
  *	sizeof(long) = 8
- *	sizeof(float) = 4 (IEEE)
+ *	sizeof(float) = 4 (IEEE)	// We don't really need float.
  *	sizeof(double) = 8 (IEEE)
  *
  * We should have platform-dependent #defines to ensure that each of
@@ -49,7 +50,7 @@ typedef struct Tag {
 			Byte	primary;
 			Word	secondary; 
 		} pair;
-		Word	enum_tag;
+		Byte	enum_tag;
 	} opt;
 } Tag;
 
@@ -57,11 +58,11 @@ typedef struct Tag {
 /* 
  *	Possible values for Tag.id ...
  */
-#define	SIMPLE_TAG			0
-#define	COMPLICATED_TAG			1
-#define	COMPLICATED_CONSTANT_TAG	2
-#define	ENUM_TAG			3
-#define	NO_TAG				4
+#define	TAG_SIMPLE			0
+#define	TAG_COMPLICATED			1
+#define	TAG_COMPLICATED_CONSTANT	2
+#define	TAG_ENUM			3
+#define	TAG_NONE			4
 
 
 typedef Byte
@@ -69,19 +70,19 @@ typedef Byte
 /*
  *	Possible values for Determinism ...
  */
-#define	DET		0
-#define	SEMIDET		1
-#define	MULTIDET	2
-#define	NONDET		3
-#define	CC_MULTIDET	4
-#define	CC_NONDET	5
-#define	ERRONEOUS	6
-#define	FAILURE		7
+#define	DET_DET			0
+#define	DET_SEMIDET		1
+#define	DET_MULTIDET		2
+#define	DET_NONDET		3
+#define	DET_CC_MULTIDET		4
+#define	DET_CC_NONDET		5
+#define	DET_ERRONEOUS		6
+#define	DET_FAILURE		7
 
 typedef struct Op_arg {
 	Byte	id;
 	union {
-		short	var;
+		Short	var;
 		Int	int_const;
 		Float	float_const;
 	} opt;
@@ -90,25 +91,25 @@ typedef struct Op_arg {
 /*
  *	Possible values for Op_arg.id
  */
-#define	ARG_VAR	0
-#define	ARG_INT_CONST	1
-#define	ARG_FLOAT_CONST	2
+#define	ARG_VAR			0
+#define	ARG_INT_CONST		1
+#define	ARG_FLOAT_CONST		2
 
 
 typedef Byte
 	Direction;
 
 typedef struct Var_dir {
-	short		var;
+	Short		var;
 	Direction	dir;
 } Var_dir;
 
 /*
  *	Possible values for Direction ...
  */
-#define	TO_ARG		0
-#define	TO_VAR		1
-#define	TO_NONE		2
+#define	DIR_TO_ARG		0
+#define	DIR_TO_VAR		1
+#define	DIR_TO_NONE		2
 
 
 typedef struct Cons_id {
@@ -117,22 +118,22 @@ typedef struct Cons_id {
 		struct {
 			CString		module_id;
 			CString		string;
-			short		arity;
+			Short		arity;
 			Tag		tag;
 		} cons;
-		Int 	int_const;	
-		CString	string_const;
-		Float	float_const;
+		Int 		int_const;	
+		CString		string_const;
+		Float		float_const;
 		struct {
 			CString		module_id;
 			CString		pred_id;
-			short		arity;
+			Short		arity;
 			Byte		proc_id;
 		} pred_const;
 		struct {
 			CString		module_id;
 			CString		pred_id;
-			short		arity;
+			Short		arity;
 			Byte		proc_id;
 		} code_addr_const;
 		struct {
@@ -149,14 +150,14 @@ typedef struct Cons_id {
 /*
  *	Possible values for Cons_id.id ...
  */
-#define	CONSID_CONS		0
-#define	CONSID_INT_CONST	1
-#define	CONSID_STRING_CONST	2
-#define	CONSID_FLOAT_CONST	3
-#define	CONSID_PRED_CONST	4
-#define	CONSID_CODE_ADDR_CONST	5
+#define	CONSID_CONS			0
+#define	CONSID_INT_CONST		1
+#define	CONSID_STRING_CONST		2
+#define	CONSID_FLOAT_CONST		3
+#define	CONSID_PRED_CONST		4
+#define	CONSID_CODE_ADDR_CONST		5
 #define	CONSID_BASE_TYPE_INFO_CONST	6
-#define	CONSID_CHAR_CONST	7
+#define	CONSID_CHAR_CONST		7
 
 
 typedef struct Bytecode {
@@ -164,7 +165,7 @@ typedef struct Bytecode {
 	union {
 		struct {
 			CString		pred_name;	/* XXX: malloc */
-			short		proc_count;
+			Short		proc_count;
 		} enter_pred;
 
 		/* endof_pred */
@@ -172,135 +173,135 @@ typedef struct Bytecode {
 		struct {
 			Byte		proc_id;
 			Determinism	det;
-			short		label_count;
-			short		temp_count;
-			short		list_length;
+			Short		label_count;
+			Short		temp_count;
+			Short		list_length;
 			CString		*var_info_list; /* XXX: malloc */
 		} enter_proc;
 
 		struct {
-			short		label;
+			Short		label;
 		} label;
 
 		struct {
-			short		end_label;
+			Short		end_label;
 		} enter_disjunction;
 
 		/* endof_disjunction */
 
 		struct {
-			short		next_label;
+			Short		next_label;
 		} enter_disjunct;
 
 		struct {
-			short		label; /* XXX: what's label for? */
+			Short		label; /* XXX: what's label for? */
 		} endof_disjunct;
 
 		struct {
-			short		var;
-			short		end_label;
+			Short		var;
+			Short		end_label;
 		} enter_switch;
 			
 		/* endof_switch */
 
 		struct {
 			Cons_id		cons_id;
-			short		next_label;
+			Short		next_label;
 		} enter_switch_arm;
 
 		struct {
-			short	label;	/* XXX: what's this label for? */
+			Short	label;	/* XXX: what's this label for? */
 		} endof_switch_arm;
 
 		struct {
-			short	else_label;
-			short	end_label;
-			short	frame_ptr_tmp;
+			Short		else_label;
+			Short		end_label;
+			Short		frame_ptr_tmp;
 		} enter_if;
 
 		struct {
-			short	frame_ptr_tmp;
+			Short		frame_ptr_tmp;
 		} enter_then;
 		
 		struct {
-			short	follow_label;
+			Short		follow_label;
 		} endof_then;	/* XXX: should rename to enter_else */
 
 		/* endof_if */
 	
 		struct {
-			short	end_label;
+			Short		end_label;
 		} enter_negation;
 
 		/* endof_negation */
 
 		struct {
-			short	temp;	
+			Short		temp;	
 		} enter_commit;
 
 		struct {
-			short	temp;	
+			Short		temp;	
 		} endof_commit;
 
 		struct {
-			short	to_var;
-			short	from_var;
+			Short		to_var;
+			Short		from_var;
 		} assign;
 
 		struct {
-			short	var1;
-			short	var2;
+			Short		var1;
+			Short		var2;
 		} test;
 
 		struct {
-			short		to_var;
+			Short		to_var;
 			Cons_id		consid;
-			short		list_length;
-			short		*var_list;	/* XXX: malloc */
+			Short		list_length;
+			Short		*var_list;	/* XXX: malloc */
 		} construct;
 
 		struct {
-			short		from_var;
+			Short		from_var;
 			Cons_id		consid;
-			short		list_length;
-			short		*var_list;	/* XXX: malloc */
+			Short		list_length;
+			Short		*var_list;	/* XXX: malloc */
 		} deconstruct;
 
 		struct {
-			short		to_var;
+			Short		to_var;
 			Cons_id		consid;
-			short		list_length;
+			Short		list_length;
 			Var_dir		*var_dir_list;/* XXX: malloc */	
 		} complex_construct;
 
 		struct {
-			short		from_var;
+			Short		from_var;
 			Cons_id		consid;
-			short		list_length;
+			Short		list_length;
 			Var_dir		*var_dir_list;/* XXX: malloc */
 		} complex_deconstruct;
 
 		struct {
 			Byte		to_reg;
-			short		from_var;
+			Short		from_var;
 		} place_arg;
 
 		struct {
 			Byte		from_reg;
-			short		to_var;
+			Short		to_var;
 		} pickup_arg;
 			
 		struct {
 			CString		module_id;	/* XXX: malloc */
 			CString		pred_id;	/* XXX: malloc */
-			short		arity;
+			Short		arity;
 			Byte		proc_id;
 		} call;
 
 		struct  {
-			short		pred_var;
-			short		in_var_count;
-			short		out_var_count;
+			Short		pred_var;
+			Short		in_var_count;
+			Short		out_var_count;
 			Determinism	det;
 		} higher_order_call;
 
@@ -308,13 +309,13 @@ typedef struct Bytecode {
 			Byte		binop;
 			Op_arg		arg1;
 			Op_arg		arg2;
-			short		to_var;
+			Short		to_var;
 		} builtin_binop;
 
 		struct {
 			Byte		unop;
 			Op_arg		arg;
-			short		to_var;
+			Short		to_var;
 		} builtin_unop;
 
 		struct {
@@ -336,7 +337,7 @@ typedef struct Bytecode {
 
 		struct {
 			/* XXX: is this int or short?? */
-			short		line_number;
+			Short		line_number;
 		} context;
 
 		/* not_supported */
@@ -408,6 +409,6 @@ read_bytecode(FILE *fp, Bytecode *bc_p);
  *	Otherwise, return TRUE.
  */
 Bool
-read_bytecode_version_number(FILE *fp, short *version_number_p);
+read_bytecode_version_number(FILE *fp, Short *version_number_p);
 
 #endif	/* BYTECODE_H */

@@ -1,9 +1,11 @@
 
 /*
- *	$Id: mem.c,v 1.1 1997-02-11 09:15:04 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: mem.c,v 1.2 1997-03-25 02:15:39 aet Exp $
+*/
 
 /* Imports */
 #include	<stdlib.h>
@@ -17,10 +19,14 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: mem.c,v 1.1 1997-02-11 09:15:04 aet Exp $";
+rcs_id[]	= "$Id: mem.c,v 1.2 1997-03-25 02:15:39 aet Exp $";
 
+/* 
+ * Make sure the size of guard_bytes is a multiple of 8 to ensure we 
+ * don't get unaligned accesses, even on 64-bit architectures.
+ */
 static uchar
-guard_bytes[] = {0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5};
+guard_bytes[] = {0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5,0xa5};
 
 /* Implementation */
 
@@ -42,6 +48,7 @@ mem_malloc(size_t size)
 
 	/* 
 	 * Now check all allocated memory for corruption.
+	 * XXX: Fill this in later...
 	 */
 	
 	mem = real_mem + guard_size;
@@ -61,6 +68,11 @@ mem_free(void *mem)
 	 * Hans Boehm's conservative garbage collector.
 	 */
 
+	/*
+	 * Check all allocated memory for corruption.
+	 * XXX: Do this later...
+	 */
+
 	guard_size = sizeof(guard_bytes) / sizeof(uchar);
 	real_mem = (uchar*) mem - guard_size;
 	free((void*)real_mem);
@@ -69,14 +81,26 @@ mem_free(void *mem)
 }
 
 void*
-mem_realloc(size_t size, void *mem)
+mem_realloc(void *mem, size_t size)
 {
+
+	void	*newmem;
+
+	/*
+	 * Check all allocated memory for corruption.
+	 * XXX: Do this later...
+	 */
+
+	newmem = mem_malloc(size);
+	memcpy(newmem, mem, size);
+
 	/*
 	 * Check mem was actually allocated.
+	 * XXX: Do later...
 	 */
 	mem_free(mem);
 
-	return mem_malloc(size);
+	return newmem;
 }
 
 

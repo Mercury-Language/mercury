@@ -1,20 +1,24 @@
 /*
- *	$Id: mdis.c,v 1.2 1997-02-11 07:51:24 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: mdis.c,v 1.3 1997-03-25 02:14:35 aet Exp $
+*/
 
 /* Imports */
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<unistd.h>
+#include	<getopt.h>
 
 #include	<util.h>
+#include	<mem.h>
 #include	<disasm.h>
 #include	<mdis.h>
 
 static char
-rcs_id[]	= "$Id: mdis.c,v 1.2 1997-02-11 07:51:24 aet Exp $";
+rcs_id[]	= "$Id: mdis.c,v 1.3 1997-03-25 02:14:35 aet Exp $";
 
 /* Local declarations */
 static void
@@ -30,7 +34,7 @@ program_name	= NULL;
 void
 main(int argc, char* argv[])
 {
-	char	c;
+	int	c;
 
 	/* We do this in case we change the program name. */
 	program_name = argv[0];
@@ -44,47 +48,53 @@ main(int argc, char* argv[])
 		switch (c) 
 		{
 		case 'h':
+			usage();
+			exit(EXIT_SUCCESS);
 			break;
 		default:
 			usage();
+			exit(EXIT_FAILURE);
 			break;
 		}
 	}
 
-	if (optind != argc-1)
+	/* If no arguments, then assume bytecode stream is on stdin */
+	if (optind == argc)
 	{
-		/* XXX: Should be able to read bytecodes from stdin */
-		usage();
+		disassemble(stdin);
 	}
-	else
+	else /* Process each bytecode file in order */
 	{
-		char*	filename;
-		FILE*	fp;
+		int 	i;
+		char	*filename;
+		FILE	*fp;
 
-		filename = argv[optind];
-		if ((fp = fopen(filename, "r")) != NULL)
+		for (i=optind; i < argc; i++)
 		{
-			disassemble(fp);
+			filename = argv[i];
+			if ((fp = fopen(filename, "r")) != NULL)
+			{
+				disassemble(fp);
+			}
+			else
+			{
+				/* XXX: Give better error message */
+				util_error("can not open bytecode file \"%s\"",
+					filename);
+			}
 		}
-		else
-		{
-			/* XXX: Give better error message */
-			util_error("Can't open bytecode file");
-			usage();
-		}
-	}
+	} /* else */
 
 	exit(EXIT_SUCCESS);
-}
+} /* main */
 
 #endif	/* UNIT_TESTING */
 
 void
 usage()
 {
-	fprintf(stderr, "Usage: %s [-h heapsize] <bytecode files>\n",
-		program_name
-	);
-	exit(EXIT_FAILURE);
+	fprintf(stderr, "usage: %s [-h] [files]\n",
+		program_name);
+	return;
 }
 

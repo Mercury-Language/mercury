@@ -1,8 +1,10 @@
 /*
- *	$Id: disasm.c,v 1.9 1997-03-20 08:16:50 aet Exp $
- *
- *	Copyright: The University of Melbourne, 1996
- */
+** Copyright (C) 1997 University of Melbourne.
+** This file may only be copied under the terms of the GNU Library General
+** Public License - see the file COPYING.LIB in the Mercury distribution.
+**
+** $Id: disasm.c,v 1.10 1997-03-25 02:09:28 aet Exp $
+*/
 
 /* Imports */
 
@@ -19,7 +21,7 @@
 /* Local declarations */
 
 static char
-rcs_id[]	= "$Id: disasm.c,v 1.9 1997-03-20 08:16:50 aet Exp $";
+rcs_id[]	= "$Id: disasm.c,v 1.10 1997-03-25 02:09:28 aet Exp $";
 
 static void
 print_bytecode(Bytecode bytecode);
@@ -60,7 +62,7 @@ void
 disassemble(FILE* fp)
 {
 	/*int		byte_count = 0; */
-	short		bytecode_version_number = 0;
+	Short		bytecode_version_number = 0;
 	Bytecode	bytecode;
 
 	/* Read two-byte version number */
@@ -109,8 +111,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_enter_proc:
 		{
-		int	i;
-		short	len;
+		Short	i;
+		Short	len;
 
 		printf(" %d %s %d %d %d", 
 			bc.opt.enter_proc.proc_id,
@@ -239,8 +241,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_construct:
 		{
-			short	len;
-			short	i;
+			Short	len;
+			Short	i;
 
 			printf(" %d ", bc.opt.construct.to_var);
 			print_cons_id(bc.opt.construct.consid);
@@ -256,8 +258,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_deconstruct:
 		{
-			short	len;
-			short	i;
+			Short	len;
+			Short	i;
 
 			printf(" %d ", bc.opt.deconstruct.from_var);
 			print_cons_id(bc.opt.deconstruct.consid);
@@ -273,8 +275,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_complex_construct:
 		{
-			short	len;
-			short	i;
+			Short	len;
+			Short	i;
 
 			printf(" %d ", bc.opt.complex_construct.to_var);
 			print_cons_id(bc.opt.complex_construct.consid);
@@ -290,8 +292,8 @@ print_bytecode(Bytecode bc)
 		break;
 	case BC_complex_deconstruct:
 		{
-			short	len;
-			short	i;
+			Short	len;
+			Short	i;
 
 			printf(" %d ", bc.opt.complex_deconstruct.from_var);
 			print_cons_id(bc.opt.complex_deconstruct.consid);
@@ -493,31 +495,31 @@ print_tag(Tag tag)
 {
 	switch (tag.id)
 	{
-	case SIMPLE_TAG:
+	case TAG_SIMPLE:
 		{
 			printf("%s %d", "simple_tag", tag.opt.primary);
 		}
 		break;
-	case COMPLICATED_TAG:
+	case TAG_COMPLICATED:
 		{
 			printf("%s %d %d", "complicated_tag", 
 				tag.opt.pair.primary, 
 				tag.opt.pair.secondary);
 		}
 		break;
-	case COMPLICATED_CONSTANT_TAG:
+	case TAG_COMPLICATED_CONSTANT:
 		{
 			printf("%s %d %d", "complicated_constant_tag", 
 				tag.opt.pair.primary, 
 				tag.opt.pair.secondary);
 		}
 		break;
-	case ENUM_TAG:
+	case TAG_ENUM:
 		{
 			printf("%s %d", "enum_tag", tag.opt.enum_tag);
 		}
 		break;
-	case NO_TAG:
+	case TAG_NONE:
 		{
 			printf("%s", "no_tag");
 		}
@@ -571,6 +573,9 @@ print_op_arg(Op_arg op_arg)
 } /* print_op_arg */
 
 
+/*
+ *	XXX: Currently we depend on the order of elements in the table.
+ */
 static CString
 bytecode_table[] =
 	{
@@ -670,6 +675,7 @@ binop_table[] = {
 	"-",
 	"*",
 	"/",
+	"mod",
 	"<<",
 	">>",
 	"&",
@@ -688,7 +694,7 @@ binop_table[] = {
 	"str_ge",
 	"<",
 	">",
-	"<=",
+	"=<",	/* XXX: In bytecode.m, this is "<=", which is wrong. */
 	">=",
 	"float_plus",
 	"float_minus",
@@ -775,13 +781,13 @@ quote_cstring(CString str)
 		if (i+2 > str_size_s)
 		{
 			str_size_s *= 2; /* Double buffer size */
-			str_s = realloc(str_s, str_size_s * sizeof(char));
+			str_s = mem_realloc(str_s, str_size_s * sizeof(char));
 			assert(str_s != NULL); /* XXX */
 		}
 
 		/*
 		 * XXX: According to K&R 2nd ed, page 194, string literals
-		 * may do not have newline or double-quotes; they must be
+		 * may not contain newline or double-quote; they must be
 		 * quoted. (And of course the backslash must also be
 		 * quoted. There is no mention of other limitations
 		 * on what characters may be within a string literal.
