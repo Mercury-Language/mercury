@@ -154,6 +154,10 @@ in an HLDS goal.
 			structure used for storing the information
 			for scheduling: which goals are currently
 			delayed, what variables they are delayed on, etc.)
+		instmap.m
+			Defines the instmap and instmap_delta ADTs
+			which store information on what instantiations
+			a set of variables may be bound to.
 		inst_match.m
 			This contains the code for dealing with insts:
 			abstractly unifying them, checking whether two
