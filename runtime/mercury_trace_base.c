@@ -113,6 +113,9 @@ MR_trace(const MR_Stack_Layout_Label *layout, MR_Trace_Port port,
 		return NULL;
 	}
 
+	/* in case MR_sp or MR_curfr is transient */
+	restore_transient_registers();
+
 	maybe_from_full = layout->MR_sll_entry->MR_sle_maybe_from_full;
 	if (MR_DETISM_DET_STACK(layout->MR_sll_entry->MR_sle_detism)) {
 		if (maybe_from_full > 0 && ! MR_stackvar(maybe_from_full)) {
