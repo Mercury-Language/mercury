@@ -1210,8 +1210,8 @@ long_option("pic-object-file-extension", pic_object_file_extension).
 long_option("shared-library-extension",	shared_library_extension).
 long_option("library-extension",	library_extension).
 long_option("executable-file-extension", executable_file_extension).
-long_option("create-archive-comand",	create_archive_command).
-long_option("create-archive-comand-flags", create_archive_command_flags).
+long_option("create-archive-command",	create_archive_command).
+long_option("create-archive-command-flags", create_archive_command_flags).
 
 long_option("java-compiler",		java_compiler).
 long_option("javac",			java_compiler).
