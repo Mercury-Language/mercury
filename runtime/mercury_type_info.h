@@ -74,9 +74,9 @@ typedef	Word	MR_PseudoTypeInfo;
 ** Definitions for handwritten code, mostly for mercury_compare_typeinfo.
 */
 
-#define COMPARE_EQUAL 0
-#define COMPARE_LESS 1
-#define COMPARE_GREATER 2
+#define MR_COMPARE_EQUAL 0
+#define MR_COMPARE_LESS 1
+#define MR_COMPARE_GREATER 2
 
 /*---------------------------------------------------------------------------*/
 
@@ -675,7 +675,7 @@ typedef struct {
 	*/
 
 #define MR_TYPEINFO_GET_TYPE_CTOR_INFO(TypeInfo)			\
-	((MR_TypeCtorInfo) ((*TypeInfo) ? *TypeInfo : (Word) TypeInfo))
+	((MR_TypeCtorInfo) ((*(TypeInfo)) ? *(TypeInfo) : (Word) (TypeInfo)))
 
 #define MR_TYPEINFO_GET_HIGHER_ARITY(TypeInfo)				\
 	((Integer) (Word *) (TypeInfo)[TYPEINFO_OFFSET_FOR_PRED_ARITY]) 
@@ -730,7 +730,7 @@ void MR_deallocate(MR_MemoryList allocated_memory_cells);
 /*---------------------------------------------------------------------------*/
 
 /*
-** defintions and functions for categorizing data representations.
+** definitions and functions for categorizing data representations.
 */
 
 /*
@@ -792,7 +792,7 @@ typedef	Word *	MR_TypeCtorLayout;
 	*/
 
 struct MR_TypeCtorInfo_struct {
-	int				arity;
+	Integer				arity;
 	Code				*unify_pred;
 	Code				*index_pred;
 	Code				*compare_pred;
@@ -820,7 +820,10 @@ struct MR_TypeCtorInfo_struct {
 typedef struct MR_TypeCtorInfo_struct *MR_TypeCtorInfo;
 
 	/* 
-	** Macros for retreiving things from type_ctor_infos.
+	** Macros for retrieving things from type_ctor_infos.
+	**
+	** XXX zs: these macros should be deleted; the code using them
+	** would be clearer if it referred to TypeCtorInfo fields directly.
 	*/
 #define MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(TypeCtorInfo)		\
 	((TypeCtorInfo)->type_ctor_functors)

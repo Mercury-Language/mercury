@@ -249,13 +249,182 @@ Define_entry(mercury__do_call_class_method);
 /*
 ** mercury__unify_2_0 is called as `unify(TypeInfo, X, Y)'
 ** in the mode `unify(in, in, in) is semidet'.
-**
-** We call the type-specific unification routine as
-** `UnifyPred(...ArgTypeInfos..., X, Y)' is semidet, with all arguments input.
 */
 
 Define_entry(mercury__unify_2_0);
 {
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP
+	Word		type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	Word		x, y;
+
+	type_info = r1;
+	x = r2;
+	y = r3;
+
+unify_start:
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+	switch (type_ctor_info->type_ctor_rep) {
+
+			/*
+			** For notag and equiv types, we should probably
+			** set type_info to refer to the appropriate type
+			** and then goto start. However, the code that we
+			** have here now works, even though it could be
+			** improved.
+			*/
+
+		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_ARRAY:
+		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_EQUIV:
+		case MR_TYPECTOR_REP_EQUIV_VAR:
+
+			/*
+			** We call the type-specific unify routine as
+			** `UnifyPred(...ArgTypeInfos..., X, Y)' is semidet.
+			** The ArgTypeInfo arguments are input, and are passed
+			** in r1, r2, ... rN. The X and Y arguments are also
+			** input, and are passed in rN+1 and rN+2.
+			** The success indication is output in r1.
+			**
+			** We specialize the case where the type_ctor arity 
+			** is zero, since in this case we don't need the loop.
+			** We could also specialize other arities; 1 and 2
+			** may be worthwhile.
+			*/
+
+			if (type_ctor_info->arity == 0) {
+				r1 = x;
+				r2 = y;
+			}
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
+			else if (type_ctor_info->arity == 1) {
+				Word	*args_base;
+
+				args_base = (Word *) type_info;
+				r1 = args_base[1];
+				r2 = x;
+				r3 = y;
+			}
+#endif
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
+			else if (type_ctor_info->arity == 2) {
+				Word	*args_base;
+
+				args_base = (Word *) type_info;
+				r1 = args_base[1];
+				r2 = args_base[2];
+				r3 = x;
+				r4 = y;
+			}
+#endif
+			else {
+				int	i;
+				int	type_arity;
+				Word	*args_base;
+
+				type_arity = type_ctor_info->arity;
+				args_base = (Word *) type_info;
+				save_registers();
+
+				/* CompPred(...ArgTypeInfos..., Res, X, Y) * */
+				for (i = 1; i <= type_arity; i++) {
+					virtual_reg(i) = args_base[i];
+				}
+				virtual_reg(type_arity + 1) = x;
+				virtual_reg(type_arity + 2) = y;
+
+				restore_registers();
+			}
+
+			tailcall(type_ctor_info->unify_pred,
+				LABEL(mercury__unify_2_0));
+
+		case MR_TYPECTOR_REP_ENUM:
+		case MR_TYPECTOR_REP_INT:
+		case MR_TYPECTOR_REP_CHAR:
+			r1 = ((Integer) x == (Integer) y);
+			proceed();
+
+		case MR_TYPECTOR_REP_FLOAT:
+			{
+				Float	fx, fy;
+
+				fx = word_to_float(x);
+				fy = word_to_float(y);
+				r1 = (fx == fy);
+				proceed();
+			}
+
+		case MR_TYPECTOR_REP_STRING:
+			r1 = (strcmp((char *) x, (char *) y) == 0);
+			proceed();
+
+		case MR_TYPECTOR_REP_UNIV:
+			{
+				Word	type_info_x, type_info_y;
+				int	result;
+
+				/* First compare the type_infos */
+				type_info_x = MR_field(MR_mktag(0), x,
+						UNIV_OFFSET_FOR_TYPEINFO);
+				type_info_y = MR_field(MR_mktag(0), y,
+						UNIV_OFFSET_FOR_TYPEINFO);
+				save_transient_registers();
+				result = MR_compare_type_info(
+						type_info_x, type_info_y);
+				restore_transient_registers();
+				if (result != MR_COMPARE_EQUAL) {
+					r1 = FALSE;
+					proceed();
+				}
+
+				/*
+				** If the types are the same, then unify
+				** the unwrapped args.
+				*/
+
+				type_info = type_info_x;
+				x = MR_field(MR_mktag(0), x,
+						UNIV_OFFSET_FOR_DATA);
+				y = MR_field(MR_mktag(0), y,
+						UNIV_OFFSET_FOR_DATA);
+				goto unify_start;
+			}
+
+		case MR_TYPECTOR_REP_C_POINTER:
+			r1 = ((void *) x == (void *) y);
+			proceed();
+
+		case MR_TYPECTOR_REP_TYPEINFO:
+			{
+				int	result;
+
+				save_transient_registers();
+				result = MR_compare_type_info(x, y);
+				restore_transient_registers();
+				r1 = (result == MR_COMPARE_EQUAL);
+				proceed();
+			}
+
+		case MR_TYPECTOR_REP_VOID:
+			fatal_error("attempt to unify terms of type `void'");
+
+		case MR_TYPECTOR_REP_PRED:
+			fatal_error("attempt to unify higher-order terms");
+
+		case MR_TYPECTOR_REP_TYPECLASSINFO:
+			fatal_error("attempt to unify typeclass_infos");
+
+		case MR_TYPECTOR_REP_UNKNOWN:
+			fatal_error("attempt to unify terms of unknown type");
+
+		default:
+			fatal_error("attempt to unify terms "
+					"of unknown representation");
+	}
+#else
 	Code	*unify_pred;	/* address of the unify pred for this type */
 	int	type_arity;	/* number of type_info args */
 	Word	args_base;	/* the address of the word before the first */
@@ -296,6 +465,7 @@ Define_entry(mercury__unify_2_0);
 	restore_registers();
 
 	tailcall(unify_pred, LABEL(mercury__unify_2_0));
+#endif
 }
 
 /*
@@ -310,6 +480,127 @@ Define_entry(mercury__unify_2_0);
 
 Define_entry(mercury__index_2_0);
 {
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP
+	Word		type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	Word		x;
+
+	type_info = r1;
+	x = r2;
+
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+	switch (type_ctor_info->type_ctor_rep) {
+
+			/*
+			** For notag and equiv types, we should probably
+			** set type_info to refer to the appropriate type
+			** and then goto start. However, the code that we
+			** have here now works, even though it could be
+			** improved.
+			*/
+
+		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_EQUIV:
+		case MR_TYPECTOR_REP_EQUIV_VAR:
+		case MR_TYPECTOR_REP_ARRAY:
+
+			/*
+			** We call the type-specific unify routine as
+			** `IndexPred(...ArgTypeInfos..., X, Index)' is det.
+			** The ArgTypeInfo arguments are input, and are passed
+			** in r1, r2, ... rN. The X argument is also input
+			** and is passed in rN+1. The index is output in r1.
+			**
+			** We specialize the case where the type_ctor arity 
+			** is zero, since in this case we don't need the loop.
+			** We could also specialize other arities; 1 and 2
+			** may be worthwhile.
+			*/
+
+			if (type_ctor_info->arity == 0) {
+				r1 = x;
+			}
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
+			else if (type_ctor_info->arity == 1) {
+				Word	*args_base;
+
+				args_base = (Word *) type_info;
+				r1 = args_base[1];
+				r2 = x;
+			}
+#endif
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
+			else if (type_ctor_info->arity == 2) {
+				Word	*args_base;
+
+				args_base = (Word *) type_info;
+				r1 = args_base[1];
+				r2 = args_base[2];
+				r3 = x;
+			}
+#endif
+			else {
+				int	i;
+				int	type_arity;
+				Word	*args_base;
+
+				type_arity = type_ctor_info->arity;
+				args_base = (Word *) type_info;
+				save_registers();
+
+				/* IndexPred(...ArgTypeInfos..., X, Index) */
+				for (i = 1; i <= type_arity; i++) {
+					virtual_reg(i) = args_base[i];
+				}
+				virtual_reg(type_arity + 1) = x;
+
+				restore_registers();
+			}
+
+			tailcall(type_ctor_info->index_pred,
+				LABEL(mercury__index_2_0));
+
+		case MR_TYPECTOR_REP_ENUM:
+		case MR_TYPECTOR_REP_INT:
+		case MR_TYPECTOR_REP_CHAR:
+			r1 = x;
+			proceed();
+
+		case MR_TYPECTOR_REP_FLOAT:
+			fatal_error("attempt to index a float");
+
+		case MR_TYPECTOR_REP_STRING:
+			fatal_error("attempt to index a string");
+			proceed();
+
+		case MR_TYPECTOR_REP_UNIV:
+			fatal_error("attempt to index a term of type `univ'");
+
+		case MR_TYPECTOR_REP_C_POINTER:
+			r1 = x;
+			proceed();
+
+		case MR_TYPECTOR_REP_TYPEINFO:
+			fatal_error("attempt to index a type_info");
+
+		case MR_TYPECTOR_REP_VOID:
+			fatal_error("attempt to index a term of type `void'");
+
+		case MR_TYPECTOR_REP_PRED:
+			fatal_error("attempt to index a higher-order term");
+
+		case MR_TYPECTOR_REP_TYPECLASSINFO:
+			fatal_error("attempt to index a typeclass_info");
+
+		case MR_TYPECTOR_REP_UNKNOWN:
+			fatal_error("attempt to index a term of unknown type");
+
+		default:
+			fatal_error("attempt to index a term "
+					"of unknown representation");
+	}
+#else
 	Code	*index_pred;	/* address of the index pred for this type */
 	int	type_arity;	/* number of type_info args */
 	Word	args_base;	/* the address of the word before the first */
@@ -347,6 +638,7 @@ Define_entry(mercury__index_2_0);
 	restore_registers();
 
 	tailcall(index_pred, LABEL(mercury__index_2_0));
+#endif
 }
 
 /*
@@ -354,12 +646,6 @@ Define_entry(mercury__index_2_0);
 ** in the mode `compare(in, out, in, in) is det'.
 **
 ** (The additional entry points replace either or both "in"s with "ui"s.)
-**
-** We call the type-specific compare routine as
-** `ComparePred(...ArgTypeInfos..., Result, X, Y)' is det.
-** The ArgTypeInfo arguments are input, and are passed in r1, r2, ... rN.
-** The X and Y arguments are also input, and are passed in rN+1 and rN+2.
-** The Index argument is output.
 */
 
 Define_entry(mercury__compare_3_0);
@@ -382,6 +668,211 @@ Define_entry(mercury__compare_3_2);
 #endif
 Define_entry(mercury__compare_3_3);
 {
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP
+	Word		type_info;
+	MR_TypeCtorInfo	type_ctor_info;
+	Word		x, y;
+
+	type_info = r1;
+	x = r2;
+	y = r3;
+
+compare_start:
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *) type_info);
+	switch (type_ctor_info->type_ctor_rep) {
+
+			/*
+			** For notag and equiv types, we should probably
+			** set type_info to refer to the appropriate type
+			** and then goto start. However, the code that we
+			** have here now works, even though it could be
+			** improved.
+			*/
+
+		case MR_TYPECTOR_REP_DU:
+		case MR_TYPECTOR_REP_NOTAG:
+		case MR_TYPECTOR_REP_EQUIV:
+		case MR_TYPECTOR_REP_EQUIV_VAR:
+		case MR_TYPECTOR_REP_ARRAY:
+
+			/*
+			** We call the type-specific compare routine as
+			** `CompPred(...ArgTypeInfos..., Result, X, Y)' is det.
+			** The ArgTypeInfo arguments are input, and are passed
+			** in r1, r2, ... rN. The X and Y arguments are also
+			** input, and are passed in rN+1 and rN+2.
+			** The Result argument is output in r1.
+			**
+			** We specialize the case where the type_ctor arity 
+			** is zero, since in this case we don't need the loop.
+			** We could also specialize other arities; 1 and 2
+			** may be worthwhile.
+			*/
+
+			if (type_ctor_info->arity == 0) {
+				r1 = x;
+				r2 = y;
+			}
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
+			else if (type_ctor_info->arity == 1) {
+				Word	*args_base;
+
+				args_base = (Word *) type_info;
+				r1 = args_base[1];
+				r2 = x;
+				r3 = y;
+			}
+#endif
+#ifdef	MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
+			else if (type_ctor_info->arity == 2) {
+				Word	*args_base;
+
+				args_base = (Word *) type_info;
+				r1 = args_base[1];
+				r2 = args_base[2];
+				r3 = x;
+				r4 = y;
+			}
+#endif
+			else {
+				int	i;
+				int	type_arity;
+				Word	*args_base;
+
+				type_arity = type_ctor_info->arity;
+				args_base = (Word *) type_info;
+				save_registers();
+
+				/* CompPred(...ArgTypeInfos..., Res, X, Y) * */
+				for (i = 1; i <= type_arity; i++) {
+					virtual_reg(i) = args_base[i];
+				}
+				virtual_reg(type_arity + 1) = x;
+				virtual_reg(type_arity + 2) = y;
+
+				restore_registers();
+			}
+
+			tailcall(type_ctor_info->compare_pred,
+				LABEL(mercury__compare_3_3));
+
+		case MR_TYPECTOR_REP_ENUM:
+		case MR_TYPECTOR_REP_INT:
+		case MR_TYPECTOR_REP_CHAR:
+			if ((Integer) x == (Integer) y) {
+				r1 = MR_COMPARE_EQUAL;
+			} else if ((Integer) x < (Integer) y) {
+				r1 = MR_COMPARE_LESS;
+			} else {
+				r1 = MR_COMPARE_GREATER;
+			}
+
+			proceed();
+
+		case MR_TYPECTOR_REP_FLOAT:
+			{
+				Float	fx, fy;
+
+				fx = word_to_float(x);
+				fy = word_to_float(y);
+				if (fx == fy) {
+					r1 = MR_COMPARE_EQUAL;
+				} else if (fx < fy) {
+					r1 = MR_COMPARE_LESS;
+				} else {
+					r1 = MR_COMPARE_GREATER;
+				}
+
+				proceed();
+			}
+
+		case MR_TYPECTOR_REP_STRING:
+			{
+				int	result;
+
+				result = strcmp((char *) x, (char *) y);
+				if (result == 0) {
+					r1 = MR_COMPARE_EQUAL;
+				} else if (result < 0) {
+					r1 = MR_COMPARE_LESS;
+				} else {
+					r1 = MR_COMPARE_GREATER;
+				}
+
+				proceed();
+			}
+
+		case MR_TYPECTOR_REP_UNIV:
+			{
+				Word	type_info_x, type_info_y;
+				int	result;
+
+				/* First compare the type_infos */
+				type_info_x = MR_field(MR_mktag(0), x,
+						UNIV_OFFSET_FOR_TYPEINFO);
+				type_info_y = MR_field(MR_mktag(0), y,
+						UNIV_OFFSET_FOR_TYPEINFO);
+				save_transient_registers();
+				result = MR_compare_type_info(
+						type_info_x, type_info_y);
+				restore_transient_registers();
+				if (result != MR_COMPARE_EQUAL) {
+					r1 = result;
+					proceed();
+				}
+
+				/*
+				** If the types are the same, then compare
+				** the unwrapped args.
+				*/
+
+				type_info = type_info_x;
+				x = MR_field(MR_mktag(0), x,
+						UNIV_OFFSET_FOR_DATA);
+				y = MR_field(MR_mktag(0), y,
+						UNIV_OFFSET_FOR_DATA);
+				goto compare_start;
+			}
+
+		case MR_TYPECTOR_REP_C_POINTER:
+			if ((void *) x == (void *) y) {
+				r1 = MR_COMPARE_EQUAL;
+			} else if ((void *) x < (void *) y) {
+				r1 = MR_COMPARE_LESS;
+			} else {
+				r1 = MR_COMPARE_GREATER;
+			}
+
+			proceed();
+
+		case MR_TYPECTOR_REP_TYPEINFO:
+			{
+				int	result;
+
+				save_transient_registers();
+				result = MR_compare_type_info(x, y);
+				restore_transient_registers();
+				r1 = result;
+				proceed();
+			}
+
+		case MR_TYPECTOR_REP_VOID:
+			fatal_error("attempt to compare terms of type `void'");
+
+		case MR_TYPECTOR_REP_PRED:
+			fatal_error("attempt to compare higher-order terms");
+
+		case MR_TYPECTOR_REP_TYPECLASSINFO:
+			fatal_error("attempt to compare typeclass_infos");
+
+		case MR_TYPECTOR_REP_UNKNOWN:
+			fatal_error("attempt to compare terms of unknown type");
+
+		default:
+			fatal_error("attempt to compare terms "
+					"of unknown representation");
+	}
+#else
 	Code	*compare_pred;	/* address of the compare pred for this type */
 	int	type_arity;	/* number of type_info args */
 	Word	args_base;	/* the address of the word before the first */
@@ -422,6 +913,7 @@ Define_entry(mercury__compare_3_3);
 	restore_registers();
 
 	tailcall(compare_pred, LABEL(mercury__compare_3_3));
+#endif
 }
 END_MODULE
 
