@@ -358,6 +358,13 @@ if $runtests
 then
 	echo "finishing stage3 at `date`"
 
+	# we'll use the stage 2 libraries to link against
+	MERCURY_LIBS="$root/stage2/library/libmercury.a
+                $root/stage2/runtime/libmer.a
+                $root/boehm_gc/libgc.a
+                -lm"
+	export MERCURY_LIBS
+
 	if test -d ../tests
 	then
 		cd ../tests
