@@ -16,20 +16,32 @@ exiting from signal handler
 
 :- module partition.
 :- interface.
-:- import_module io, int, list.
+:- import_module io, int, list, std_util.
 
 :- pred main(io__state::di, io__state::uo) is multidet.
 
 :- implementation.
 
 main -->
-        ( { part(3,[4,2,1,3], Le, Gr) } ->
-		print_intlist(Le),
-		print_intlist(Gr),
-		nl
-	;
+	solutions(bug, List), 
+	( List = [] ->
 		io__write_string("No solution\n")
+	;
+		print_solnlist(List)
 	).
+		
+
+print_solnlist([]) --> [].
+print_solnlist([Le - Gr | Rest]) -->
+	print_intlist(Le),
+	print_intlist(Gr),
+	nl,
+	print_solnlist(Rest).
+
+:- pred bug(pair(list(int))::out) is nondet.
+
+bug(Le - Gr) :-
+        part(3,[4,2,1,3], Le, Gr).
 
 :- pred part(int,list(int),list(int),list(int)).
 :- mode part(in,in,out,out) is nondet.
