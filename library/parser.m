@@ -866,6 +866,7 @@ parser__could_start_term(junk(_), no).
 parser__could_start_term(error(_), no).
 parser__could_start_term(io_error(_), no).
 parser__could_start_term(eof, no).
+parser__could_start_term(integer_dot(_), no).
 
 %-----------------------------------------------------------------------------%
 

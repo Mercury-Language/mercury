@@ -38,7 +38,15 @@
 	;	junk(char)		% junk character in the input stream
 	;	error(string)		% some other invalid token
 	;	io_error(io__error)	% error reading from the input stream
-	;	eof.			% end-of-file
+	;	eof			% end-of-file
+	;	integer_dot(int).	% the lexer will never return this.
+					% The integer_dot/1 token is used
+					% internally in the lexer, to keep
+					% the grammar LL(1) so that only one
+					% character of pushback is needed.
+					% But the lexer will convert
+					% integer_dot/1 tokens to integer/1
+					% tokens before returning them.
 
 % For every token, we record the line number of the line on
 % which the token occurred.
@@ -158,6 +166,9 @@ lexer__token_to_string(io_error(IO_Error), String) :-
 	string__append("I/O error: ", IO_ErrorMessage, String).
 lexer__token_to_string(error(Message), String) :-
 	string__append_list(["illegal token (", Message, ")"], String).
+lexer__token_to_string(integer_dot(Int), String) :-
+	string__int_to_string(Int, IntString),
+	string__append_list(["integer `", IntString, "'."], String).
 
 	% We build the tokens up as lists of characters in reverse order.
 	% When we get to the end of each token, we call
@@ -171,13 +182,25 @@ lexer__token_to_string(error(Message), String) :-
 
 lexer__get_token_list(Tokens) -->
 	lexer__get_token(Token, Context),
-	( { Token = eof } ->
+	lexer__get_token_list_2(Token, Context, Tokens).
+
+:- pred lexer__get_token_list_2(token, token_context, token_list,
+		io__state, io__state).
+:- mode lexer__get_token_list_2(in, in, out, di, uo) is det.
+lexer__get_token_list_2(Token0, Context0, Tokens) -->
+	( { Token0 = eof } ->
 		{ Tokens = token_nil }
-	; { Token = end ; Token = error(_) ; Token = io_error(_) } ->
-		{ Tokens = token_cons(Token, Context, token_nil) }
+	; { Token0 = end ; Token0 = error(_) ; Token0 = io_error(_) } ->
+		{ Tokens = token_cons(Token0, Context0, token_nil) }
+	; { Token0 = integer_dot(Int) } ->
+		lexer__get_context(Context1),
+		lexer__get_dot(Token1),
+		lexer__get_token_list_2(Token1, Context1, Tokens1),
+		{ Tokens = token_cons(integer(Int), Context0, Tokens1) }
 	;
-		{ Tokens = token_cons(Token, Context, Tokens1) },
-		lexer__get_token_list(Tokens1)
+		lexer__get_token(Token1, Context1),
+		lexer__get_token_list_2(Token1, Context1, Tokens1),
+		{ Tokens = token_cons(Token0, Context0, Tokens1) }
 	).
 
 lexer__string_get_token_list(String, Tokens) -->
@@ -1741,8 +1764,17 @@ lexer__get_int_dot(Chars, Token) -->
 			lexer__get_float_decimals([Char, '.' | Chars], Token)
 		;
 			io__putback_char(Char),
-			io__putback_char('.'),
-			{ lexer__rev_char_list_to_int(Chars, 10, Token) }
+			% We can't putback the ".", because io__putback_char
+			% only guarantees one character of pushback.
+			% So instead, we return an `integer_dot' token;
+			% the main loop of lexer__get_token_list_2 will
+			% handle this appropriately.
+			{ lexer__rev_char_list_to_int(Chars, 10, Token0) },
+			{ Token0 = integer(Int) ->
+				Token = integer_dot(Int)
+			;
+				Token = Token0
+			}
 		)
 	).
 
