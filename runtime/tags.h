@@ -29,28 +29,10 @@
 #define	TAG_CONS	mktag(bTAG_CONS)
 #define	TAG_VAR		mktag(bTAG_VAR)
 
-	/* the macro is more efficient than a function, but it requires
-	   GNU C's statement-expressions extension, since we need a loop
-	   inside an expression */
-#ifdef __GNUC__
-#define	deref(p)	__extension__ ({			\
-				reg	Word	pt;		\
-								\
-				pt = p;				\
-				while (tag(pt) == TAG_VAR)	\
-					pt = * (Word *)		\
-						body(pt, TAG_VAR);\
-				/* return */ pt;		\
-			})
-#else	/* not __GNUC__ */
-static Word deref(Word p) {
-	reg	Word	pt;		
-					
-	pt = p;				
-	while (tag(pt) == TAG_VAR)	
-		pt = * (Word *)	body(pt, TAG_VAR);
-	return pt;
-}
-#endif	/* not __GNUC__ */
+#define	deref(pt)	do {						\
+				while (tag(pt) == TAG_VAR)		\
+					(pt) = * (Word *)		\
+						body((pt), TAG_VAR);	\
+			} while(0)
 
 #endif	/* TAGS_H */
