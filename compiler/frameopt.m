@@ -495,7 +495,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 			Uinstr0 = if_val(_, _),
 			frameopt__generate_if(Instr0, Instrs0, FrameSize, First,
 				SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
-				TeardownMap, ProcLabel, N0, N, Instrs0, Instrs)
+				TeardownMap, ProcLabel, N0, N, Instrs)
 		;
 			Uinstr0 = incr_sp(_),
 			error("incr_sp in frameopt__doit")
@@ -528,13 +528,13 @@ frameopt__label_without_frame(Label0, FrameSet, TeardownMap, Label) :-
 
 :- pred frameopt__generate_if(instruction, list(instruction), int,
 	bool, bool, bool, set(label), set(label), map(label, label),
-	proc_label, int, int, list(instruction), list(instruction)).
+	proc_label, int, int, list(instruction)).
 :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in,
-	in, out, in, out) is det.
+	in, out, out) is det.
 
 frameopt__generate_if(Instr0, Instrs0, FrameSize, First, SetupFrame0,
 		SetupSuccip0, FrameSet, SuccipSet, TeardownMap,
-		ProcLabel, N0, N, Instrs0, Instrs) :-
+		ProcLabel, N0, N, Instrs) :-
 	( Instr0 = if_val(Rval, label(Label)) - Comment ->
 		opt_util__rval_refers_stackvars(Rval, Use),
 		(

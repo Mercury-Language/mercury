@@ -319,8 +319,6 @@ bintree__from_sorted_list(List, Tree) :-
 
 :- pred bintree__from_sorted_list_2(int, assoc_list(K,V),
 				bintree(K,V), assoc_list(K, V)).
-:- mode bintree__from_sorted_list_2(in, in(non_empty_list),
-				out, out(non_empty_list)) is det.
 :- mode bintree__from_sorted_list_2(in, in, out, out) is det.
 
 bintree__from_sorted_list_2(Num, List0, Tree, List) :-
@@ -333,9 +331,14 @@ bintree__from_sorted_list_2(Num, List0, Tree, List) :-
 		BigHalf is Num1 - SmallHalf,
 		bintree__from_sorted_list_2(SmallHalf, List0, LeftSubTree,
 				List1),
-		List1 = [HeadKey - HeadValue | List2],
-		Tree = tree(HeadKey, HeadValue, LeftSubTree, RightSubTree),
-		bintree__from_sorted_list_2(BigHalf, List2, RightSubTree, List)
+		( List1 = [HeadKey - HeadValue | List2] ->
+			Tree = tree(HeadKey, HeadValue, LeftSubTree,
+				RightSubTree),
+			bintree__from_sorted_list_2(BigHalf, List2,
+				RightSubTree, List)
+		;
+			error("bintree__from_sorted_list_2")
+		)
 	).
 
 %-----------------------------------------------------------------------------%

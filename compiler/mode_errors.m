@@ -213,8 +213,8 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	;
 		[]
 	),
-	{ Error = mode_error_info(_, ModeError, Context, ModeContext) },
-	{ mode_info_set_context(Context, ModeInfo, ModeInfo1) },
+	{ Error = mode_error_info(_, ModeError, ErrorContext, ModeContext) },
+	{ mode_info_set_context(ErrorContext, ModeInfo, ModeInfo1) },
 	{ mode_info_set_mode_context(ModeContext, ModeInfo1, ModeInfo2) },
 	report_mode_error(ModeError, ModeInfo2),
 	report_mode_error_conj_2(Rest, VarSet, Context, ModeInfo).
