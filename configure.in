@@ -1641,44 +1641,6 @@ if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
 	AC_DEFINE(MR_CANNOT_USE_STRUCTURE_ASSIGNMENT)
 fi
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(whether structures can include variable sized arrays)
-AC_CACHE_VAL(mercury_cv_support_variable_sized_array,
-	AC_TRY_COMPILE([], [
-	changequote(<<,>>) 
-	typedef struct tagname {
-		int	num;
-		int	items[];
-	} typename;
-	changequote([,]) 
-	],
-	[mercury_cv_support_variable_sized_array=yes],
-	[mercury_cv_support_variable_sized_array=no])
-)
-AC_MSG_RESULT($mercury_cv_support_variable_sized_array)
-if test "$mercury_cv_support_variable_sized_array" = yes; then
-	AC_DEFINE(MR_SUPPORT_VARIABLE_SIZED_ARRAY)
-fi
-AC_SUBST(MR_SUPPORT_VARIABLE_SIZED_ARRAY)
-#-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(whether variable sized arrays in structures can be faked)
-AC_CACHE_VAL(mercury_cv_faked_variable_sized_array,
-	AC_TRY_COMPILE([], [
-	changequote(<<,>>) 
-	typedef struct tagname {
-		int	num;
-		int	items[0];
-	} typename;
-	changequote([,]) 
-	],
-	[mercury_cv_faked_variable_sized_array=yes],
-	[mercury_cv_faked_variable_sized_array=no])
-)
-AC_MSG_RESULT($mercury_cv_faked_variable_sized_array)
-if test "$mercury_cv_faked_variable_sized_array" = yes; then
-	AC_DEFINE(MR_FAKED_VARIABLE_SIZED_ARRAY)
-fi
-AC_SUBST(MR_FAKED_VARIABLE_SIZED_ARRAY)
-#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.

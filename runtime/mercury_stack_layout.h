@@ -17,7 +17,7 @@
 */
 
 #include "mercury_types.h"
-#include "mercury_conf_param.h"		/* for MR_VARIABLE_SIZED */
+#include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
 
 /*-------------------------------------------------------------------------*/
 /*

@@ -238,20 +238,6 @@
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
 /*
-** Does the C compiler support structures including, as their last element,
-** a variable sized array indicated by an empty pair of brackets?
-** (The draft C9X standard allows this syntax.)
-*/
-#undef	MR_SUPPORT_VARIABLE_SIZED_ARRAY
-
-/*
-** Does the C compiler support structures including, as their last element,
-** a variable sized array indicated by specifying a size of zero?
-** (GNU C allows this syntax.)
-*/
-#undef	MR_FAKED_VARIABLE_SIZED_ARRAY
-
-/*
 ** On some platforms, structure assignments can cause gcc to abort
 ** with the message "fixed or forbidden register was spilled." in some grades.
 */

@@ -285,33 +285,4 @@
 
 /*---------------------------------------------------------------------------*/
 
-/*
-** MR_VARIABLE_SIZED -- what to put between the []s when declaring
-**			a variable sized array at the end of a struct.
-**
-** The preferred values, if the compiler understands them, convey to the
-** implementation that the array has a variable size. The default value
-** is the maximum size of the variable-sized arrays that we construct,
-** since giving too small a value may lead the compiler to use inappropriate
-** optimizations (e.g. using small offsets to index into the array).
-** At the moment, we use variable sized arrays that are indexed by
-** closure argument numbers or by type parameter numbers. We therefore
-** use a default MR_VARIABLE_SIZED value that is at least as big as
-** both MAX_VIRTUAL_REG and TYPE_CTOR_LAYOUT_MAX_VARINT.
-*/
-
-#ifdef MR_VARIABLE_SIZED
-  #error "MR_VARIABLE_SIZED should not be defined on the command line"
-#endif
-
-#if defined(MR_SUPPORT_VARIABLE_SIZED_ARRAY)
-  #define	MR_VARIABLE_SIZED	/* nothing */
-#elif defined(MR_FAKED_VARIABLE_SIZED_ARRAY)
-  #define	MR_VARIABLE_SIZED	0
-#else
-  #define	MR_VARIABLE_SIZED	1024
-#endif
-
-/*---------------------------------------------------------------------------*/
-
 #endif /* MERCURY_CONF_PARAM_H */
