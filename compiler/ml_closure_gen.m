@@ -61,7 +61,7 @@
 
 :- implementation.
 
-:- import_module hlds_module.
+:- import_module hlds_module, prog_util.
 :- import_module code_model, pseudo_type_info, rtti.
 :- import_module ml_unify_gen, ml_call_gen, rtti_to_mlds.
 :- import_module type_util, mode_util, error_util.
@@ -100,9 +100,27 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% this is a static constant that holds information
 	% about how the structure of this closure.
 	%
-	ml_gen_closure_layout(PredId, ProcId, Context,
-		ClosureLayoutRval, ClosureLayoutType,
-		ClosureLayoutDecls),
+	=(MLGenInfo),
+	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__get_target(Globals, Target) },
+	( { Target = c } ->
+		ml_gen_closure_layout(PredId, ProcId, Context,
+			ClosureLayoutRval, ClosureLayoutType,
+			ClosureLayoutDecls)
+	;
+		% XXX for targets other than C, there are apparently some
+		% problems (type errors?) with the code generated for
+		% closure layouts, so just fill in a dummy value instead
+		{ mercury_private_builtin_module(PrivateBuiltinModule) },
+		{ MLDS_PrivateBuiltinModule = mercury_module_name_to_mlds(
+			PrivateBuiltinModule) },
+		{ ClosureLayoutType = mlds__class_type(
+			qual(MLDS_PrivateBuiltinModule,
+				"closure_layout"), 0, mlds__class) },
+		{ ClosureLayoutRval = const(null(ClosureLayoutType)) },
+		{ ClosureLayoutDecls = [] }
+	),
 
 	%
 	% Generate a wrapper function which just unboxes the
