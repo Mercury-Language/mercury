@@ -22,6 +22,18 @@
 	% node is represented implicitly.  In this case, the analyser
 	% must request that it be made explicit before continuing.
 	%
+	% The first argument is intuitively a "store", which maps
+	% references to the things they reference.  The second argument
+	% is the type of trees themselves.  By convention, we use the
+	% names S and T for type variables which are constrained by
+	% mercury_edt.
+	%
+	% By convention, we also use the names S and T in type declarations
+	% where it is *intended* that the type variables be constrained by
+	% mercury_edt.
+	%
+	% (Compare with the similar conventions for annotated_trace/2.)
+	%
 :- typeclass mercury_edt(S, T) where [
 		
 		% Gives the root node of an EDT.

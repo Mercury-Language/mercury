@@ -189,10 +189,17 @@
 :- type event_number == int.
 
 	% Members of this typeclass represent an entire annotated
-	% trace.  The second parameter is the type of identifiers
-	% for trace nodes, and the first parameter is the type of
-	% an abstract mapping from identifiers to the nodes they
-	% identify.
+	% trace.  The second parameter is the type of references
+	% to trace nodes, and the first parameter is the type of
+	% a "store": an abstract mapping from references to the
+	% nodes they refer to.
+	%
+	% By convention, we use the names S and R for type variables
+	% which are constrained by annotated_trace.  We also use
+	% these names in type declarations where it is *intended* that
+	% the type variables be constrained by annotated_trace.
+	%
+	% (Compare with the similar conventions for mercury_edt/2.)
 	%
 :- typeclass annotated_trace(S, R) where [
 

@@ -347,6 +347,12 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
 	% any instance of execution tree.
 	%
 
+	% The type of nodes in our implementation of EDTs.  The parameter
+	% is meant to be the type of references to trace nodes.  In
+	% particular, the references should be to trace nodes that could
+	% be considered nodes in the EDT, namely those for exit, fail
+	% and exception events.
+	% 
 :- type edt_node(R)
 	--->	dynamic(R).
 
