@@ -542,11 +542,14 @@ long_option("debug-vn",			debug_vn).
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
 long_option("make-short-interface",	make_short_interface).
+long_option("make-short-int",		make_short_interface).
 long_option("make-interface",		make_interface).
+long_option("make-int",			make_interface).
 long_option("make-optimization-interface",
 					make_optimization_interface).
 long_option("make-optimisation-interface",
 					make_optimization_interface).
+long_option("make-opt-int",		make_optimization_interface).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury). 
 long_option("pretty-print", 		convert_to_mercury).
@@ -1062,14 +1065,14 @@ options_help_output -->
 	io__write_string("\t-M, --generate-dependencies\n"),
 	io__write_string("\t\tOutput `Make'-style dependencies for the module\n"),
 	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
-	io__write_string("\t-i, --make-interface\n"),
+	io__write_string("\t-i, --make-int, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int',\n"),
 	io__write_string("\t\tand write the short interface to `<module>.int2'\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
-	io__write_string("\t--make-short-interface\n"),
+	io__write_string("\t--make-short-int, --make-short-interface\n"),
 	io__write_string("\t\tWrite the unqualified short interface to `<module>.int3'.\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
-	io__write_string("\t--make-optimization-interface\n"),
+	io__write_string("\t--make-opt-int, --make-optimization-interface\n"),
 	io__write_string("\t\tWrite inter-module optimization information to\n"),
 	io__write_string("\t\t`<module>.opt'.\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),

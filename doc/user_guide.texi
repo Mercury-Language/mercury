@@ -129,10 +129,12 @@ the @samp{.m} extension.
 
 Files ending in @file{.int}, @file{.int2} and @file{.int3} are interface files;
 these are generated automatically by the compiler,
-using the @samp{--make-interface} and @samp{--make-short-interface} options.
+using the @samp{--make-interface} (or @samp{--make-int})
+and @samp{--make-short-interface} (or @samp{--make-short-int}) options.
 Files ending in @file{.opt} are 
 interface files used in inter-module optimization,
-and are created using the @samp{--make-optimization-interface} option.
+and are created using the @samp{--make-optimization-interface} 
+(or @samp{--make-opt-int}) option.
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int2}, @file{.int3}, and @file{.opt}
@@ -205,15 +207,15 @@ for the modules that it imports (directly or indirectly).
 You can create the interface files for one or more modules using the commands
 
 @example
-mc --make-short-interface @var{module1}.m @var{module2}.m ...
-mc --make-interface @var{module1}.m @var{module2}.m ...
+mc --make-short-int @var{module1}.m @var{module2}.m ...
+mc --make-int @var{module1}.m @var{module2}.m ...
 @end example
 
 If you are going to compile with @samp{--intermodule-optimization} enabled,
 then you also need to create the optimization interface files.
 
 @example
-mc --make-optimization-interface @var{module1}.m @var{module2}.m ...
+mc --make-opt-int @var{module1}.m @var{module2}.m ...
 @end example
 
 Given that you have made all the interface files,
@@ -1101,17 +1103,20 @@ and all of its dependencies to @file{@var{module}.dep}.
 
 @sp 1
 @item -i
+@itemx --make-int
 @itemx --make-interface
 Write the module interface to @file{@var{module}.int}.
 Also write the short interface to @file{@var{module}.int2}.
 
 @sp 1
-@item --make-short-interface
+@item --make-short-int
+@itemx --make-short-interface
 Write the unqualified version of the short interface to
 @file{@var{module}.int3}.
 
 @sp 1
-@item --make-optimization-interface
+@item --make-opt-int
+@itemx --make-optimization-interface
 Write information used for inter-module optimization to
 @file{@var{module}.opt}.
 
