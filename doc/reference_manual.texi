@@ -17,7 +17,7 @@
 @ifnottex
 This file documents the Mercury programming language, version <VERSION>.
 
-Copyright (C) 1995-2003 The University of Melbourne.
+Copyright (C) 1995-2004 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -6019,7 +6019,13 @@ Such code is copied verbatim into the generated C file.
 A C @samp{pragma foreign_type} declaration has the form:
 
 @example
-:- pragma foreign_type("C", @var{MercuryTypeName}, @var{CForeignType}).
+:- pragma foreign_type("C", @var{MercuryTypeName}, "@var{CForeignType}").
+@end example
+
+For example,
+
+@example
+:- pragma foreign_type("C", long_double, "long double").
 @end example
 
 The @var{CForeignType} can be any C type name that obeys the following
@@ -6030,6 +6036,9 @@ type, that no part of the type name is required after the variable name.
 (This rule prohibits, for example, function pointer types such as
 @samp{void (*)(void)}.  However, it would be OK to use a typedef name
 which was defined as a function pointer type.)
+
+C preprocessor directives (such as @samp{#if}) may not be used in
+@var{CForeignType}.
 
 @strong{With @samp{--gc accurate}, foreign_types which are C pointer types
 must not point to the Mercury heap.}
@@ -6316,7 +6325,7 @@ Runtime types as specified in @ref{IL and C# data passing conventions}.
 A Java @samp{pragma foreign_type} declaration has the form:
 
 @example
-:- pragma foreign_type("Java", @var{MercuryTypeName}, @var{JavaType}).
+:- pragma foreign_type("Java", @var{MercuryTypeName}, "@var{JavaType}").
 @end example
 
 The @var{JavaType} can be any accessible Java type.
