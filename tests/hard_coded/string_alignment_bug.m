@@ -1,5 +1,5 @@
 % mercury 0.8 failed this test on some architectures,
-% because string literals were not aligned by deep_copy()
+% because string literals were not aligned but deep_copy()
 % was assuming that they were.
 
 :- module string_alignment_bug.
