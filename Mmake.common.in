@@ -250,11 +250,15 @@ OBJ_CHECKS        = $(CHECK_OBJS:%=%.obj_check)
 # 		normal Mercury source distributions)
 # Exceptions to this policy must be listed in the RESERVED_MACRO_NAMES file
 # in the relevant directory.
+#
+# XXX The base_typeclass_info prefix is allowed only temporarily; it should
+# be fixed by adding a prefix giving the name of the module defining the
+# typeclass.
 
 GEN_MACRO_PREFIX_EXPRS = \
 	-e '^MR_' -e '^MERCURY_' -e '^GC_' -e '^MPS_' -e '^mps_'
 GEN_OBJ_PREFIX_EXPRS = \
-	-e '^MR_' -e '^_entry' -e '^mercury_'
+	-e '^MR_' -e '^_entry' -e '^mercury_'  -e '^base_typeclass_info_' 
 
 ifeq ("$(ALLOW_LIB_PREFIX)","yes")
 LIB_MACRO_PREFIX_EXPRS = \
@@ -329,6 +333,10 @@ HEADER_CLEAN_FILTER = \
 # that the automatically created header file for module x is allowed to have
 # two macros, X_H and X_DECL_GUARD over and above what HEADER_CLEAN_FILTER
 # allows.
+#
+# XXX We should consider deleting the special handling of these macros, and
+# requiring instead that the compiler put MERCURY_ prefixes in front of them,
+# considering them to be honorary submodules of the "mercury" module.
 
 AWK = awk
 
