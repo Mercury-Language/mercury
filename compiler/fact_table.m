@@ -223,7 +223,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 		infer_determinism_pass_2(ProcStreams, ProcFiles,
 		    ExistsAllInMode, ProcTable0, ProcTable),
 		{ pred_info_set_procedures(PredInfo1, ProcTable, PredInfo) },
-		io__tmpnam(DataFileName),
+		io__make_temp(DataFileName),
 		write_fact_table_arrays(ProcFiles, DataFileName, StructName, 
 		    ProcTable, ModuleInfo, NumFacts, FactArgInfos,
 		    WriteHashTables, WriteDataAfterSorting, OutputStream,
@@ -951,7 +951,7 @@ fact_table_mode_type([Mode | Modes], ModuleInfo, ModeType) :-
 
 open_sort_files([], []) --> [].
 open_sort_files([ProcID | ProcIDs], ProcStreams) -->
-	io__tmpnam(SortFileName),
+	io__make_temp(SortFileName),
 	io__open_output(SortFileName, Result),
 	(
 		{ Result = ok(Stream) },

@@ -1250,7 +1250,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 	% when we've finished.
 	%
 	{ dir__dirname(DependencyFileName, DirName) },
-	io__tmpnam(DirName, "tmp_d", TmpDependencyFileName),
+	io__make_temp(DirName, "tmp_d", TmpDependencyFileName),
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
 	maybe_write_string(Verbose, DependencyFileName),
 	maybe_write_string(Verbose, "'..."),
