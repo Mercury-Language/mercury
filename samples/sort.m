@@ -79,11 +79,11 @@ handle_args(InArg, OutArg) -->
 sort -->
 	sort_2([]).
 
-:- pred sort_2(list(list(char)), io__state, io__state).
+:- pred sort_2(list(string), io__state, io__state).
 :- mode sort_2(in, di, uo) is det.
 
 sort_2(Lines0) -->
-	io__read_line(Result),
+	io__read_line_as_string(Result),
 	(
 		{ Result = error(Error) },
 		{ io__error_message(Error, Msg) },
@@ -110,11 +110,10 @@ insert([H | T], I, L) :-
 		L = [H | NT]
 	).
 
-:- pred sort_output(list(list(char)), io__state, io__state).
+:- pred sort_output(list(string), io__state, io__state).
 :- mode sort_output(in, di, uo) is det.
 
 sort_output([]) --> [].
 sort_output([Line | Lines]) -->
-	{ string__from_char_list(Line, LineStr) },
-	io__write_string(LineStr),
+	io__write_string(Line),
 	sort_output(Lines).

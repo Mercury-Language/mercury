@@ -113,7 +113,13 @@
 
 :- pred io__read_line(io__result(list(char)), io__state, io__state).
 :- mode io__read_line(out, di, uo) is det.
-%		Reads a line from the current input stream.
+%		Reads a line from the current input stream, returns the
+%		the result as a list of chars.
+
+:- pred io__read_line_as_string(io__result(string), io__state, io__state).
+:- mode io__read_line_as_string(out, di, uo) is det.
+%		Reads a line from the current input stream, returns the
+%		result as a string.
 
 :- pred io__read_file(io__result(list(char)), io__state, io__state).
 :- mode io__read_file(out, di, uo) is det.
@@ -145,7 +151,14 @@
 :- pred io__read_line(io__input_stream, io__result(list(char)),
 							io__state, io__state).
 :- mode io__read_line(in, out, di, uo) is det.
-%		Reads a line from specified stream.
+%		Reads a line from specified stream, returning the result
+%		as a list of chars.
+
+:- pred io__read_line_as_string(io__input_stream, io__result(string),
+		io__state, io__state).
+:- mode io__read_line_as_string(in, out, di, uo) is det.
+%		Reads a line from specified stream, returning the
+%		result as a string.
 
 :- pred io__read_file(io__input_stream, io__result(list(char)),
 							io__state, io__state).
@@ -1203,31 +1216,126 @@ io__read_line(Result) -->
 	io__read_line(Stream, Result).
 
 io__read_line(Stream, Result) -->
-	io__read_char(Stream, CharResult),
+	io__read_char_code(Stream, Code),
 	(
-		{ CharResult = error(Error) },
-		{ Result = error(Error) }
-	;
-		{ CharResult = eof },
+		{ Code = -1 }
+	->
 		{ Result = eof }
 	;
-		{ CharResult = ok(Char) },
+		{ char__to_int(Char, Code) }
+	->
 		( { Char = '\n' } ->
 			{ Result = ok([Char]) }
 		;
-			io__read_line(Stream, Result0),
-			(
-				{ Result0 = ok(Chars) },
-				{ Result = ok([Char | Chars]) }
-			;
-				{ Result0 = error(_) },
-				{ Result = Result0 }
-			;
-				{ Result0 = eof },
-				{ Result = ok([Char]) }
-			)
+			io__read_line_2(Stream, Result0),
+			{ Result = ok([Char | Result0]) }
 		)
+	;
+		io__make_err_msg("read failed: ", Msg),
+		{ Result = error(Msg) }
 	).
+
+:- pred io__read_line_2(io__input_stream, list(char), io__state, io__state).
+:- mode io__read_line_2(in, out, di, uo) is det.
+
+io__read_line_2(Stream, Result) -->
+	io__read_char_code(Stream, Code),
+	(
+		{ Code = -1 }
+	->
+		{ Result = [] }
+	;
+		{ char__to_int(Char, Code) }
+	->
+		( { Char = '\n' } ->
+			{ Result = [Char] }
+		;
+			io__read_line_2(Stream, Chars),
+			{ Result = [Char | Chars] }
+		)
+	;
+		{ Result = [] }
+	).
+
+io__read_line_as_string(Result) -->
+	io__input_stream(Stream),
+	io__read_line_as_string(Stream, Result).
+
+io__read_line_as_string(Stream, Result, IO0, IO) :-
+	io__read_line_as_string_2(Stream, Res, String, IO0, IO1),
+	( Res < 0 ->
+		( Res = -1 ->
+			Result = eof,
+			IO = IO1
+		;
+			io__make_err_msg("read failed: ", Msg, IO1, IO),
+			Result = error(Msg)
+		)
+	;
+		Result = ok(String),
+		IO = IO1
+	).
+
+:- pred io__read_line_as_string_2(io__input_stream, int, string,
+		io__state, io__state).
+:- mode io__read_line_as_string_2(in, out, out, di, uo) is det.
+
+:- pragma c_code(io__read_line_as_string_2(File::in, Res :: out,
+			RetString::out, IO0::di, IO::uo),
+		[will_not_call_mercury, thread_safe],
+"
+#define ML_IO_READ_LINE_GROW(n)	((n) * 3 / 2)
+#define ML_IO_BYTES_TO_WORDS(n)	(((n) + sizeof(Word) - 1) / sizeof(Word))
+#define ML_IO_READ_LINE_START	1024
+
+	Char initial_read_buffer[ML_IO_READ_LINE_START];
+	Char *read_buffer = initial_read_buffer;
+	size_t read_buf_size = ML_IO_READ_LINE_START;
+	size_t i;
+	int char_code = '\\0';
+
+	Res = 0;
+	for (i = 0; char_code != '\\n'; ) {
+		char_code = mercury_getc((MercuryFile *) File);
+		if (char_code == EOF) {
+			if (i == 0) {
+				Res = -1;
+			}
+			break;
+		}
+		if (char_code != (Char) char_code) {
+			Res = -2;
+			break;
+		}
+		read_buffer[i++] = char_code;
+		MR_assert(i <= read_buf_size);
+		if (i == read_buf_size) {
+			/* Grow the read buffer */
+			read_buf_size = ML_IO_READ_LINE_GROW(read_buf_size);
+			if (read_buffer == initial_read_buffer) {
+				read_buffer = checked_malloc(read_buf_size
+						* sizeof(Char));
+				memcpy(read_buffer, initial_read_buffer,
+					ML_IO_READ_LINE_START);
+			} else {
+				read_buffer = checked_realloc(read_buffer,
+						read_buf_size * sizeof(Char));
+			}
+		}
+	}
+	if (Res == 0) {
+		incr_hp_atomic(RetString,
+			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(Char)));
+		memcpy((void *) RetString, read_buffer, i * sizeof(Char));
+		((Char *) RetString)[i] = '\\0';
+	} else {
+		RetString = NULL;
+	}
+	if (read_buffer != initial_read_buffer) {
+		free(read_buffer);
+	}
+	update_io(IO0, IO);
+").
 
 io__read_file(Result) -->
 	io__input_stream(Stream),
@@ -2527,7 +2635,7 @@ mercury_close(MercuryFile* mf)
 
 :- pragma c_code(io__putback_char(File::in, Character::in, IO0::di, IO::uo),
 		will_not_call_mercury, "{
-	MercuryFile* mf = (MercuryFile *)File;
+	MercuryFile* mf = (MercuryFile *) File;
 	if (Character == '\\n') {
 		mf->line_number--;
 	}
@@ -2540,7 +2648,7 @@ mercury_close(MercuryFile* mf)
 
 :- pragma c_code(io__putback_byte(File::in, Character::in, IO0::di, IO::uo),
 		will_not_call_mercury, "{
-	MercuryFile* mf = (MercuryFile *)File;
+	MercuryFile* mf = (MercuryFile *) File;
 	/* XXX should work even if ungetc() fails */
 	if (ungetc(Character, mf->file) == EOF) {
 		fatal_error(""io__putback_byte: ungetc failed"");
@@ -2843,7 +2951,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__set_input_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
 	OutStream = (Word) mercury_current_text_input;
-	mercury_current_text_input = (MercuryFile*) NewStream;
+	mercury_current_text_input = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
 
@@ -2851,7 +2959,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__set_output_stream(NewStream::in, OutStream::out, IO0::di, IO::uo),
 		will_not_call_mercury, "
 	OutStream = (Word) mercury_current_text_output;
-	mercury_current_text_output = (MercuryFile*) NewStream;
+	mercury_current_text_output = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
 
@@ -2859,7 +2967,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__set_binary_input_stream(NewStream::in, OutStream::out,
 			IO0::di, IO::uo), will_not_call_mercury, "
 	OutStream = (Word) mercury_current_binary_input;
-	mercury_current_binary_input = (MercuryFile*) NewStream;
+	mercury_current_binary_input = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
 
@@ -2867,7 +2975,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 	io__set_binary_output_stream(NewStream::in, OutStream::out,
 			IO0::di, IO::uo), will_not_call_mercury, "
 	OutStream = (Word) mercury_current_binary_output;
-	mercury_current_binary_output = (MercuryFile*) NewStream;
+	mercury_current_binary_output = (MercuryFile *) NewStream;
 	update_io(IO0, IO);
 ").
 
@@ -2888,25 +2996,25 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 
 :- pragma c_code(io__close_input(Stream::in, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury_close((MercuryFile*)Stream);
+	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__close_output(Stream::in, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury_close((MercuryFile*)Stream);
+	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__close_binary_input(Stream::in, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury_close((MercuryFile*)Stream);
+	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 
 :- pragma c_code(io__close_binary_output(Stream::in, IO0::di, IO::uo),
 		[will_not_call_mercury, thread_safe], "
-	mercury_close((MercuryFile*)Stream);
+	mercury_close((MercuryFile *) Stream);
 	update_io(IO0, IO);
 ").
 

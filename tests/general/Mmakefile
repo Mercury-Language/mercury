@@ -53,6 +53,7 @@ PROGS=		\
 		prune_switch \
 		semi_fail_in_non_ite \
 		semidet_lambda \
+		read_line_as_string \
 		semidet_map \
 		set_test \
 		string_format_test \

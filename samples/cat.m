@@ -60,16 +60,15 @@ cat_stream(Stream) -->
 :- pred cat(io__state::di, io__state::uo) is det.
 
 cat -->
-	io__read_line(Result),
+	io__read_line_as_string(Result),
 	cat_2(Result).
 
-:- pred cat_2(io__result(list(char))::in, io__state::di, io__state::uo) is det.
+:- pred cat_2(io__result(string)::in, io__state::di, io__state::uo) is det.
 
 cat_2(Result) -->
-	( { Result = ok(CharList) },
-		{ string__from_char_list(CharList, String) },
-		io__write_string(String),
-		io__read_line(NextResult),
+	( { Result = ok(Line) },
+		io__write_string(Line),
+		io__read_line_as_string(NextResult),
 		cat_2(NextResult)
 	; { Result = eof }
 	; { Result = error(Error) },
