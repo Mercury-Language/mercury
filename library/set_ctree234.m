@@ -28,12 +28,12 @@
 :- type set_ctree234(_T).
 
     % `set_ctree234__init = Set' is true iff `Set' is an empty set.
-
+    %
 :- func set_ctree234__init = set_ctree234(T).
 
     % `set_ctree234__singleton_set(Elem, Set)' is true iff `Set' is the set
     % containing just the single element `Elem'.
-
+    %
 :- pred set_ctree234__singleton_set(T, set_ctree234(T)).
 :- mode set_ctree234__singleton_set(in, out) is det.
 :- mode set_ctree234__singleton_set(out, in) is semidet.
@@ -41,66 +41,66 @@
 :- func set_ctree234__make_singleton_set(T) = set_ctree234(T).
 
     % `set_ctree234__empty(Set)' is true iff `Set' is an empty set.
-
+    %
 :- pred set_ctree234__empty(set_ctree234(_T)::in) is semidet.
 
     % `set_ctree234__one_member(X, Set)' is true iff `X' is a member of `Set'.
-
+    %
 :- pred set_ctree234__one_member(set_ctree234(T)::in, T::out) is nondet.
 
     % `set_ctree234__is_member(Set, X, Result)' returns
     % `Result = yes' iff `X' is a member of `Set'.
-
+    %
 :- pred set_ctree234__is_member(set_ctree234(T)::in, T::in, bool::out) is det.
 :- func set_ctree234__is_member(set_ctree234(T), T) = bool.
 
     % `set_ctree234__contains(Set, X)' is true iff `X' is a member of `Set'.
-
+    %
 :- pred set_ctree234__contains(set_ctree234(T)::in, T::in) is semidet.
 
     % `set_ctree234__list_to_set(List) = Set' is true iff `Set' is the set
     % containing only the members of `List'.
-
+    %
 :- func set_ctree234__list_to_set(list(T)) = set_ctree234(T).
 
     % `set_ctree234__sorted_list_to_set(List) = Set' is true iff `Set' is
     % the set containing only the members of `List'. `List' must be sorted.
-
+    %
 :- func set_ctree234__sorted_list_to_set(list(T)) = set_ctree234(T).
 
     % `set_ctree234__to_sorted_list(Set) = List' is true iff `List' is the
     % list of all the members of `Set', in sorted order.
-
+    %
 :- func set_ctree234__to_sorted_list(set_ctree234(T)) = list(T).
 
     % `set_ctree234__equal(SetA, SetB)' is true iff
     % `SetA' and `SetB' contain the same elements.
-
+    %
 :- pred set_ctree234__equal(set_ctree234(T)::in, set_ctree234(T)::in)
     is semidet.
 
     % `set_ctree234__subset(SetA, SetB)' is true iff `SetA' is a subset of
     % `SetB'.
-
+    %
 :- pred set_ctree234__subset(set_ctree234(T)::in, set_ctree234(T)::in)
     is semidet.
 
     % `set_ctree234__superset(SetA, SetB)' is true iff `SetA' is a
     % superset of `SetB'.
-
+    %
 :- pred set_ctree234__superset(set_ctree234(T)::in, set_ctree234(T)::in)
     is semidet.
 
     % `set_ctree234__insert(X, Set0, Set)' is true iff `Set' is the union
     % of `Set0' and the set containing only `X'.
-
+    %
 :- pred set_ctree234__insert(T::in, set_ctree234(T)::in, set_ctree234(T)::out)
     is det.
 :- func set_ctree234__insert(T, set_ctree234(T)) = set_ctree234(T).
 
     % `set_ctree234__insert_list(Xs, Set0, Set)' is true iff `Set' is the
     % union of `Set0' and the set containing only the members of `Xs'.
-
+    %
 :- pred set_ctree234__insert_list(list(T)::in,
     set_ctree234(T)::in, set_ctree234(T)::out) is det.
 :- func set_ctree234__insert_list(list(T), set_ctree234(T)) = set_ctree234(T).
@@ -109,7 +109,7 @@
     % relative complement of `Set0' and the set containing only `X', i.e.
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
-
+    %
 :- pred set_ctree234__delete(T::in, set_ctree234(T)::in, set_ctree234(T)::out)
     is det.
 :- func set_ctree234__delete(T, set_ctree234(T)) = set_ctree234(T).
@@ -117,7 +117,7 @@
     % `set_ctree234__delete_list(Xs, Set0, Set)' is true iff `Set' is the
     % relative complement of `Set0' and the set containing only the members
     % of `Xs'.
-
+    %
 :- pred set_ctree234__delete_list(list(T)::in,
     set_ctree234(T)::in, set_ctree234(T)::out) is det.
 :- func set_ctree234__delete_list(list(T), set_ctree234(T)) = set_ctree234(T).
@@ -126,7 +126,7 @@
     % and `Set' is the relative complement of `Set0' and the set
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
-
+    %
 :- pred set_ctree234__remove(T::in, set_ctree234(T)::in, set_ctree234(T)::out)
     is semidet.
 
@@ -134,20 +134,20 @@
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
-
+    %
 :- pred set_ctree234__remove_list(list(T)::in,
     set_ctree234(T)::in, set_ctree234(T)::out) is semidet.
 
     % `set_ctree234__remove_least(X, Set0, Set)' is true iff `X' is the
     % least element in `Set0', and `Set' is the set which contains all the
     % elements of `Set0' except `X'.
-
+    %
 :- pred set_ctree234__remove_least(T::out,
     set_ctree234(T)::in, set_ctree234(T)::out) is semidet.
 
     % `set_ctree234(SetA, SetB) = Set' is true iff `Set' is the union
     % of `SetA' and `SetB'.
-
+    %
 :- pred set_ctree234__union(set_ctree234(T)::in, set_ctree234(T)::in,
     set_ctree234(T)::out) is det.
 :- func set_ctree234__union(set_ctree234(T), set_ctree234(T)) = set_ctree234(T).
@@ -161,7 +161,7 @@
 
     % `set_ctree234__power_union(A) = B' is true iff `B' is the union of
     % all the sets in `A'
-
+    %
 :- pred set_ctree234__power_union(set_ctree234(set_ctree234(T))::in,
     set_ctree234(T)::out) is det.
 :- func set_ctree234__power_union(set_ctree234(set_ctree234(T)))
@@ -169,7 +169,7 @@
 
     % `set_ctree234__intersect(SetA, SetB) = Set' is true iff `Set' is the
     % intersection of `SetA' and `SetB'.
-
+    %
 :- pred set_ctree234__intersect(set_ctree234(T)::in, set_ctree234(T)::in,
     set_ctree234(T)::out) is det.
 :- func set_ctree234__intersect(set_ctree234(T), set_ctree234(T))
@@ -177,19 +177,19 @@
 
     % `set_ctree234__power_intersect(A, B)' is true iff `B' is the
     % intersection of all the sets in `A'.
-
+    %
 :- func set_ctree234__power_intersect(set_ctree234(set_ctree234(T)))
     = set_ctree234(T).
 
     % `set_ctree234__intersect_list(A, B)' is true iff `B' is the
     % intersection of all the sets in `A'.
-
+    %
 :- func set_ctree234__intersect_list(list(set_ctree234(T))) = set_ctree234(T).
 
     % `set_ctree234__difference(SetA, SetB, Set)' is true iff `Set' is the
     % set containing all the elements of `SetA' except those that
     % occur in `SetB'.
-
+    %
 :- pred set_ctree234__difference(set_ctree234(T)::in, set_ctree234(T)::in,
     set_ctree234(T)::out) is det.
 :- func set_ctree234__difference(set_ctree234(T), set_ctree234(T))
@@ -197,7 +197,7 @@
 
     % `set_ctree234__count(Set, Count)' is true iff `Set' has
     % `Count' elements.
-
+    %
 :- func set_ctree234__count(set_ctree234(T)) = int.
 
 :- pred set_ctree234__map(pred(T1, T2)::in(pred(in, out) is det),
@@ -218,6 +218,7 @@
     % set_ctree234__divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
+    %
 :- pred set_ctree234__divide(pred(T)::in(pred(in) is semidet),
     set_ctree234(T)::in, set_ctree234(T)::out, set_ctree234(T)::out) is det.
 
@@ -225,11 +226,13 @@
     % InPart consists of those elements of Set which are also in
     % DivideBySet; OutPart consists of those elements of which are
     % not in DivideBySet.
+    %
 :- pred set_ctree234__divide_by_set(set_ctree234(T)::in, set_ctree234(T)::in,
     set_ctree234(T)::out, set_ctree234(T)::out) is det.
 
 :- pred verify_depths(set_ctree234(T)::in, list(int)::out) is det.
 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- implementation.

@@ -25,35 +25,36 @@
 	% Make an element known to the equivalence class.
 	% The element may already be known to the class;
 	% if it isn't, it is created without any equivalence relationships.
-
+	%
 :- pred sveqvclass__ensure_element(T::in, eqvclass(T)::in, eqvclass(T)::out)
 	is det.
 
 	% Make an element known to the equivalence class.
 	% The element must not already be known to the class;
 	% it is created without any equivalence relationships.
-
+	%	
 :- pred sveqvclass__new_element(T::in, eqvclass(T)::in, eqvclass(T)::out)
 	is det.
 
 	% Make two elements of the equivalence class equivalent.
 	% It is ok if they already are.
-
+	%
 :- pred sveqvclass__ensure_equivalence(T::in, T::in,
 	eqvclass(T)::in, eqvclass(T)::out) is det.
 
 	% Make two elements of the equivalence class equivalent.
 	% It is an error if they are already equivalent.
-
+	%
 :- pred sveqvclass__new_equivalence(T::in, T::in,
 	eqvclass(T)::in, eqvclass(T)::out) is det.
 
 	% Remove the given element and all other elements equivalent to it
 	% from the given equivalence class.
-
+	%
 :- pred sveqvclass__remove_equivalent_elements(T::in,
 	eqvclass(T)::in, eqvclass(T)::out) is det.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
