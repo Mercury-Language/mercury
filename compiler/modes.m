@@ -507,6 +507,7 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 
 modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), NonLocals, Goal)
 		-->
+	mode_checkpoint(enter, "call"),
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
 	=(ModeInfo0),
