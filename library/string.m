@@ -1614,7 +1614,7 @@ string__special_precision_and_width(-1).
 
 :- pragma c_code(string__to_int_list(Str::in, IntList::out),
 		[will_not_call_mercury, thread_safe], "{
-	const char *p = Str + strlen(Str);
+	MR_ConstString p = Str + strlen(Str);
 	IntList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
 		p--;
@@ -1645,7 +1645,7 @@ string__special_precision_and_width(-1).
 */
 	incr_hp_atomic_msg(str_ptr, size / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
-	Str = (char *) str_ptr;
+	Str = (MR_String) str_ptr;
 /*
 ** loop to copy the characters from the int_list to the string
 */
@@ -1767,7 +1767,7 @@ string__special_precision_and_width(-1).
 	incr_hp_atomic_msg(tmp,
 		(len_1 + len_2 + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
-	S3 = (char *) tmp;
+	S3 = (MR_String) tmp;
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
 }").
@@ -1886,7 +1886,7 @@ string__special_precision_and_width(-1).
 		incr_hp_atomic_msg(tmp,
 			(Count + sizeof(MR_Word)) / sizeof(MR_Word),
 			MR_PROC_LABEL, ""string:string/0"");
-		Left = (char *) tmp;
+		Left = (MR_String) tmp;
 		memcpy(Left, Str, Count);
 		Left[Count] = '\\0';
 		/*
