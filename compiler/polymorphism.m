@@ -186,9 +186,10 @@
 %		  * ...
 %		  * type info #n
 %
-% The base_type_info is produced statically, and there is one for each instance
-% declaration. For each constraint on the instance declaration, the
-% corresponding typeclass info is stored in the second part.
+% The base_typeclass_info is produced statically, and there is one for
+% each instance declaration. For each constraint on the instance
+% declaration, the corresponding typeclass_info is stored in the second
+% part.
 %
 % eg. for the following program:
 %
@@ -205,7 +206,7 @@
 %
 %		The typeclass_info:
 %		  * a pointer to the base typeclass info
-%		  * type info for int
+%		  * type_info for int
 %
 %	The typeclass_info for foo(list(T)) is:
 %		The base_typeclass_info:
@@ -217,7 +218,7 @@
 %		The typeclass_info contains:
 %		  * a pointer to the base typeclass info
 %		  * typeclass info for foo(T)
-%		  * type info for list(T)
+%		  * type_info for list(T)
 %
 % If the "T" for the list is known, the whole typeclass_info will be static
 % data. When we do not know until runtime, the typeclass_info is constructed
@@ -236,8 +237,8 @@
 %
 %	p(X) :- q([X], 0), r(X, 0).
 %
-% We add an extra argument for each typeclass constraint, and one argument for
-% each unconstrained type variable.
+% We add an extra argument for each type class constraint, and one
+% argument for each unconstrained type variable.
 %
 %	:- pred p(typeclass_info(foo(T1)), T1).
 %	:- pred q(typeclass_info(foo(T2)), typeclass_info(bar(T3)), T2, T3).
@@ -254,7 +255,7 @@
 %			...
 %			),
 %		TypeClassInfoT2 = typeclass_info(
-%			BaseClassTypeInfoT2,
+%			BaseTypeClassInfoT2,
 %			TypeClassInfoT1,
 %			<type_info for list(T1)>),
 %		BaseTypeClassInfoT3 = base_typeclass_info(
@@ -265,7 +266,7 @@
 %			...
 %			),
 %		TypeClassInfoT3 = typeclass_info(
-%			BaseClassTypeInfoT3,
+%			BaseTypeClassInfoT3,
 %			<type_info for int>),
 %		q(TypeClassInfoT2, TypeClassInfoT3, [X], 0),
 %		BaseTypeClassInfoT4 = baseclass_type_info(
