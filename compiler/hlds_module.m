@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1997 The University of Melbourne.
+% Copyright (C) 1996-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,7 +100,7 @@
 :- mode module_info_set_predicate_table(in, in, out) is det.
 
 	% For an explanation of the unify_requests structure,
-	% see unify_info.m.
+	% see unify_proc.m.
 :- pred module_info_get_unify_requests(module_info, unify_requests).
 :- mode module_info_get_unify_requests(in, out) is det.
 
