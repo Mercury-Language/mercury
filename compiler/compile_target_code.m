@@ -673,6 +673,7 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	globals__io_get_globals(Globals),
 	{ compute_grade(Globals, Grade) },
 
+	standard_library_directory_option(StdLibOpt),
 	globals__io_lookup_string_option(object_file_extension, Obj),
 	{ string__append("_init", Obj, InitObj) },
 	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
@@ -695,11 +696,16 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName,
 	globals__io_lookup_accumulating_option(init_files, InitFileNamesList),
 	{ join_string_list(InitFileNamesList, "", "", " ", InitFileNames) },
 
+	globals__io_lookup_accumulating_option(trace_init_files,
+		TraceInitFileNamesList),
+	{ join_string_list(TraceInitFileNamesList, "--trace-init-file ",
+		"", " ", TraceInitFileNames) },
+
 	{ TmpInitCFileName = InitCFileName ++ ".tmp" },
 	{ MkInitCmd = string__append_list(
-		["c2init --grade ", Grade, " ", TraceOpt, LinkFlags,
-		" --init-c-file ", TmpInitCFileName, " ",
-		InitFileDirs, " ", InitFileNames, " ", CFileNames]) },
+		["c2init --grade ", Grade, " ", TraceOpt, StdLibOpt, LinkFlags,
+		" --init-c-file ", TmpInitCFileName, " ", InitFileDirs, " ",
+		TraceInitFileNames, " ", InitFileNames, " ", CFileNames]) },
 	invoke_shell_command(ErrorStream, verbose, MkInitCmd, MkInitOK0),
 	maybe_report_stats(Stats),
 	( { MkInitOK0 = yes } ->
@@ -797,6 +803,7 @@ link(ErrorStream, LinkTargetType, ModuleName,
 		;
 			Target_Debug_Opt = ""
 		},
+		standard_library_directory_option(StdLibOpt),
 		{ join_string_list(ObjectsList, "", "", " ", Objects) },
 		globals__io_lookup_accumulating_option(link_flags,
 				LinkFlagsList),
@@ -812,7 +819,7 @@ link(ErrorStream, LinkTargetType, ModuleName,
 				LinkLibraries) },
 		{ string__append_list(
 			["ml --grade ", Grade, " ", SharedLibOpt,
-			Target_Debug_Opt, TraceOpt, LinkFlags,
+			Target_Debug_Opt, TraceOpt, StdLibOpt, LinkFlags,
 			" -o ", OutputFileName, " ", Objects, " ", 
 			LinkLibraryDirectories, " ", LinkLibraries],
 			LinkCmd) },
@@ -841,6 +848,25 @@ create_archive(ErrorStream, LibFileName, ObjectList, MakeLibCmdOK) -->
 	{ string__append_list(MakeLibCmdList, MakeLibCmd) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		MakeLibCmd, MakeLibCmdOK).
+
+%-----------------------------------------------------------------------------%
+
+:- pred standard_library_directory_option(string, io__state, io__state).
+:- mode standard_library_directory_option(out, di, uo) is det.
+
+standard_library_directory_option(Opt) -->
+	globals__io_lookup_maybe_string_option(
+		mercury_standard_library_directory, MaybeStdLibDir),
+	{
+		MaybeStdLibDir = yes(StdLibDir),
+		Opt = "--mercury-standard-library-directory "
+				++ StdLibDir ++ " "
+	;
+		MaybeStdLibDir = no,
+		Opt = "--no-mercury-standard-library-directory "
+	}.
+
+%-----------------------------------------------------------------------------%
 
 	% join_string_list(Strings, Prefix, Suffix, Serarator, Result)
 	%

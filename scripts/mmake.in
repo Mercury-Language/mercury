@@ -34,6 +34,12 @@ Options:
 	#--target il:
 	#	Compile via IL, rather than going via C or assembler.
 Help="$Help
+	--mercury-standard-library-directory <directory>
+	--mercury-stdlib-dir <directory>:
+		The directory containing the installed Mercury standard
+		library.
+	--no-mercury-standard-library-directory, --no-mercury-stdlib-dir:
+		Don't use an installed Mercury standard library.
 	-s, --save-makefile:
 		Save the generated makefile to \`Mmake.makefile'.
 		This is useful for tracking down syntax errors in
@@ -71,11 +77,8 @@ Targets:
 		dependency files, and executables.
 "
 
+MERCURY_STDLIB_DIR=${MERCURY_STDLIB_DIR=@LIBDIR@}
 MMAKE_MAKE=${MMAKE_MAKE=@GNU_MAKE@}
-MMAKE_DIR=${MMAKE_DIR=@LIBDIR@/mmake}
-MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
-MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
-MERCURY_INT_DIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 MKTEMP=@MKTEMP@
 TMPDIR=${TMPDIR=/tmp}
@@ -156,6 +159,14 @@ while [ $# -gt 0 ]; do
 			shift
 			shift
 			;;
+
+		--mercury-standard-library-directory|--mercury-stdlib-dir)
+			MERCURY_STDLIB_DIR="$2"
+			shift
+			;;
+		--no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
+			unset MERCURY_STDLIB_DIR ;;
+
 		--)	
 			MMAKE="$MMAKE $1"
 			shift
@@ -166,6 +177,22 @@ while [ $# -gt 0 ]; do
 			;;
 	esac
 done
+
+if [ "$MERCURY_STDLIB_DIR" != "" ]
+then
+	MMAKE_DIR=${MMAKE_DIR=$MERCURY_STDLIB_DIR/mmake}
+fi
+
+case "$MMAKE_DIR" in
+	"")
+		echo "mmake: MMAKE_DIR not set"
+		exit 1
+		;;
+	*)
+		MMAKE_VARS=${MMAKE_VARS=$MMAKE_DIR/Mmake.vars}
+		MMAKE_RULES=${MMAKE_RULES=$MMAKE_DIR/Mmake.rules}
+		;;
+esac
 
 if [ -f Mmakefile ]; then
 	mmake="Mmakefile"
@@ -282,8 +309,6 @@ if $verbose; then
 	echo export MMAKE_MAKE_CMD
 	echo MMAKE_USE_SUBDIRS=$MMAKE_USE_SUBDIRS
 	echo export MMAKE_USE_SUBDIRS
-	echo MERCURY_INT_DIR=$MERCURY_INT_DIR
-	echo export MERCURY_INT_DIR
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
 	echo cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps \
@@ -293,7 +318,6 @@ fi
 export MMAKE
 export MMAKE_MAKE_CMD
 export MMAKE_USE_SUBDIRS
-export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
 # XXX The $dvs and $ds variables can be so long as to overflow the
 # command line size limits, so we use xargs.  However echo doesn't quote

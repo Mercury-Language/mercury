@@ -35,7 +35,7 @@ MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
 # occurrence of $(patsubst ...), since GNU Make does not respect quotes.
 nullstring	=
 MMAKE_VPATH	= $(subst $(nullstring) ,:,$(strip \
-			$(MERCURY_EXTRA_INT_DIRS) $(MERCURY_INT_DIR)\
+			$(MERCURY_EXTRA_INT_DIRS) $(MERC_INT_DIR)\
 			$(MERCURY_EXTRA_INIT_DIRS)))
 VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
 #			 the above comment works around a misfeature of
@@ -163,8 +163,10 @@ MS_CL_NOASM	=
 MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
 # The system libraries were once needed here, but are currently unnecessary.
 MS_CL_LIBS	= 
-MERC_C_INCL_DIR = @LIBDIR@/inc
-MERC_DLL_DIR    = @LIBDIR@/lib/ilc/@FULLARCH@
+
+# XXX handle the case where MERCURY_STDLIB_DIR is not set.
+MERC_C_INCL_DIR = $(MERCURY_STDLIB_DIR)/inc
+MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/ilc/@FULLARCH@
 
 # MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
 # into bytecode.

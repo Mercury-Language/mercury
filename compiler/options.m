@@ -524,6 +524,7 @@
 		;	mercury_standard_library_directory
 		;	init_file_directories
 		;	init_files
+		;	trace_init_files
 
 			% auto-configured options.
 		;	shared_library_extension
@@ -1048,6 +1049,7 @@ option_defaults_2(link_option, [
 	mercury_standard_library_directory - maybe_string(no),
 	init_file_directories -		accumulating([]),
 	init_files -			accumulating([]),
+	trace_init_files -		accumulating([]),
 
 					% the `mmc' script will override the
 					% following seven defaults with a value
@@ -1620,8 +1622,10 @@ long_option("mercury-library-directory", mercury_library_directory_special).
 long_option("mld",			mercury_library_directory_special).
 long_option("mercury-standard-library-directory",
 					mercury_standard_library_directory).
+long_option("mercury-stdlib-dir",	mercury_standard_library_directory).
 long_option("init-file-directory",	init_file_directories).
 long_option("init-file",		init_files).
+long_option("trace-init-file",		trace_init_files).
 long_option("shared-library-extension",	shared_library_extension).
 long_option("library-extension",	library_extension).
 long_option("executable-file-extension", executable_file_extension).
@@ -3328,8 +3332,10 @@ options_help_link -->
 		"\t`--init-file-directory' and `--c-include-directory'",
 		"\toptions as needed.",
 		"--mercury-standard-library-directory <directory>",
+		"--mercury-stdlib-dir <directory>",
 		"\tSearch <directory> for the Mercury standard library.",
 		"--no-mercury-standard-library-directory",
+		"--no-mercury-stdlib-dir",
 		"\tDon't use the Mercury standard library.",
 		"--ml <library>, --mercury-library <library>",
 		"\tLink with the specified Mercury library.",
@@ -3338,7 +3344,10 @@ options_help_link -->
 		"\tbe searched for `.init' files by c2init.",
 		"--init-file <init-file>",
 		"\tAppend <init-file> to the list of `.init' files to",
-		"\tbe passed to c2init."
+		"\tbe passed to c2init.",
+		"--trace-init-file <init-file>",
+		"\tAppend <init-file> to the list of `.init' files to",
+		"\tbe passed to c2init when tracing is enabled."
 		
 		% The --shared-library-extension,
 		% --library-extension, --executable-file-extension

@@ -33,8 +33,6 @@ STD_LIB_NAME=mer_std
 TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 
-MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR=@LIBDIR@/modules}
-MERCURY_TRACE_LIB_DIR=${MERCURY_TRACE_LIB_DIR=@LIBDIR@/modules}
 MKINIT=${MERCURY_MKINIT=mkinit}
 
 case $require_tracing in
@@ -47,12 +45,15 @@ case $stack_trace in
 		init_opt="-i" ;;
 esac
 
-MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
-		$MERCURY_MOD_LIB_DIR/$RT_LIB_NAME.init \
-		$MERCURY_MOD_LIB_DIR/$STD_LIB_NAME.init"}
-
-MERCURY_TRACE_LIB_MODS=${MERCURY_TRACE_LIB_MODS="\
-		$MERCURY_TRACE_LIB_DIR/$BROWSER_LIB_NAME.init"}
+if [ "$mercury_stdlib_dir" != "" ]
+then
+	MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS="\
+			$mercury_stdlib_dir/modules/$RT_LIB_NAME.init \
+			$mercury_stdlib_dir/modules/$STD_LIB_NAME.init"}
+	MERCURY_TRACE_LIB_MODS=${MERCURY_TRACE_LIB_MODS="\
+			$mercury_stdlib_dir/modules/$BROWSER_LIB_NAME.init"}
+fi
+MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
 
 case "$trace_opt" in
 	-t)
@@ -69,11 +70,13 @@ case $# in
 	0) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
 		-g "$GRADE" -o "$init_c_file" \
-		$extra_init_dirs $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+		$extra_init_dirs $EXTRA_INIT_FILES $TRACE_INIT_FILES \
+		$MERCURY_ALL_LIB_MODS
 	   ;;
 	*) exec $MKINIT $aditi_opt -c"$maxcalls" $init_opt $trace_opt \
 		$library_opt $defentry_opt $extra_inits_opt \
 		-g "$GRADE" -o "$init_c_file" -r "$runtime_flags" \
-		$extra_init_dirs "$@" $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+		$extra_init_dirs "$@" $EXTRA_INIT_FILES $TRACE_INIT_FILES \
+		$MERCURY_ALL_LIB_MODS
 	   ;;
 esac

@@ -16,6 +16,9 @@
 # The invoking script must also define FULLARCH and DEFAULT_GRADE.
 #---------------------------------------------------------------------------#
 
+# initialize common options
+mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
+
 # initialize ml options
 verbose=false
 allow_undef=false
@@ -55,6 +58,7 @@ library_opt=""
 extra_inits_opt=""
 aditi_opt=""
 extra_init_dirs=""
+trace_init_files=""
 init_c_file="-"
 runtime_flags=""
 
@@ -115,6 +119,11 @@ Dynamic/static linking options:
 		Produce a shared library, rather than an executable.
 
 Directory options:
+	--mercury-standard-library-directory <directory>
+	--mercury-stdlib-dir <directory>
+		The directory in which to find the Mercury standard library.
+	--no-mercury-standard-library-directory, --no-mercury-stdlib-dir
+		Same as \`--mercury-libs none'.
 	-L <directory>, --lib-dir <directory>
 		Include <directory> in the list of directories that the
 		linker will use to search for libraries.
@@ -191,8 +200,7 @@ $grade_usage
 Environment variables:
 		MERCURY_DEFAULT_GRADE, MERCURY_C_COMPILER,
 		MERCURY_C_LIB_DIR, MERCURY_NONSHARED_LIB_DIR,
-		MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS,
-		MERCURY_TRACE_LIB_DIR, MERCURY_TRACE_LIB_MODS,
+		MERCURY_MOD_LIB_MODS, MERCURY_TRACE_LIB_MODS,
 		MERCURY_MKINIT."
 
 # The following options are not generally useful, so they are not documented:
@@ -270,8 +278,12 @@ EOF
 		;;
 	--mercury-libs)
 		case "$2" in
-			shared|static|none|default)
+			shared|static|default)
 				mercury_libs="$2"
+				shift ;;
+			none)
+				mercury_libs=none
+				unset mercury_stdlib_dir
 				shift ;;
 			*)
 				progname=`basename $0`
@@ -296,6 +308,16 @@ EOF
 			mercury_libs=static ;;
 		esac
 		;;
+
+	--mercury-standard-library-directory|--mercury-stdlib-dir)
+		mercury_stdlib_dir="$2"
+		shift
+		;;
+	--no-mercury-standard-library-directory|--no-mercury-stdlib-dir)
+		mercury_libs=none
+		unset mercury_stdlib_dir
+		;;
+
 	-L|--lib-dir)
 		dir="$2"
 		user_libdir_opts="$user_libdir_opts @LIB_LIBPATH@$dir"
@@ -387,9 +409,12 @@ EOF
 
 	-I|--init-file-directory)
 		extra_init_dirs="$extra_init_dirs -I $2"; shift;;
-	
+
 	--init-c-file)
 		init_c_file="$2"; shift;;
+
+	--trace-init-file)
+		trace_init_files="$trace_init_files $2"; shift;;
 
 	--runtime-flags)
 		runtime_flags="$runtime_flags $2"; shift;;

@@ -10,15 +10,22 @@
 #
 # Use `mmc -h' for help.
 #
-# Environment variables: MERCURY_INT_DIR, MERCURY_C_INCL_DIR,
-# MERCURY_ALL_MC_C_INCL_DIRS,
-# MERCURY_COMPILER, MERCURY_C_COMPILER,
+# Environment variables: MERCURY_STDLIB_DIR, MERCURY_INT_DIR,
+# MERCURY_ALL_MC_C_INCL_DIRS, MERCURY_COMPILER, MERCURY_C_COMPILER,
 # MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
 
-MERC_C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
-MERC_ALL_MC_C_INCL_DIRS=${MERCURY_ALL_MC_C_INCL_DIRS="--c-include-directory $MERC_C_INCL_DIR"}
 MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
-INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
+case "$MERCURY_INT_DIR" in
+    "")
+	INT_DIR_OPT=
+	STDLIB_DIR=${MERCURY_STDLIB_DIR=@LIBDIR@}
+	STDLIB_DIR_OPT="--mercury-standard-library-directory \"${STDLIB_DIR}\""
+	;;
+    *)
+	INT_DIR_OPT="-I $MERCURY_INT_DIR"
+	STDLIB_DIR_OPT=--no-mercury-standard-library-directory
+	;;
+esac
 
 # The default options settings are passed in the DEFAULT_MCFLAGS enviroment
 # variable, rather than on the command line, so that they can be overridden
@@ -27,7 +34,7 @@ INTDIR=${MERCURY_INT_DIR=@LIBDIR@/ints}
 # The default optimization level should be after
 # all the options that describe the machine configuration.
 DEFAULT_MCFLAGS="\
-		$MERC_ALL_MC_C_INCL_DIRS \
+		$MERCURY_ALL_MC_C_INCL_DIRS \
 		--cc \"${MERCURY_C_COMPILER=@CC@}\" \
 		--grade \"${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}\" \
 		--cflags-for-threads \"@CFLAGS_FOR_THREADS@\" \
@@ -46,11 +53,12 @@ DEFAULT_MCFLAGS="\
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
 		${MERCURY_DEFAULT_OPT_LEVEL=-O2} \
+		$STDLIB_DIR_OPT
 		"
 export DEFAULT_MCFLAGS
 
 case $# in
-	0) exec $MC -I "$INTDIR" ;;
-	*) exec $MC "$@" -I "$INTDIR" ;;
+	0) exec $MC $INT_DIR_OPT ;;
+	*) exec $MC "$@" $INT_DIR_OPT ;;
 esac
 

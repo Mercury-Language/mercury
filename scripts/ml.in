@@ -26,9 +26,6 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 
 
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
-DEFAULT_LIBDIR=@LIBDIR@/lib
-LIBDIR=${MERCURY_C_LIB_DIR=$DEFAULT_LIBDIR}
-# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
 DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 CC=${MERCURY_C_COMPILER="@CC@"}
 MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
@@ -97,6 +94,11 @@ MAYBE_STATIC_OPT=""
 case $require_tracing in
 	true)	trace=true ;;
 	false)	;;
+esac
+
+case "$mercury_stdlib_dir" in
+    "")	LIBDIR=$MERCURY_C_LIB_DIR ;;
+    *)	LIBDIR=${MERCURY_C_LIB_DIR=$mercury_stdlib_dir/lib} ;;
 esac
 
 # If you haven't set mercury_libs, set it to the default value

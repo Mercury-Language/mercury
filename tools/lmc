@@ -28,8 +28,6 @@
 
 MERCURY_COMPILER=$WORKSPACE/compiler/mercury_compile
 export MERCURY_COMPILER
-MERCURY_INT_DIR=$WORKSPACE/library
-export MERCURY_INT_DIR
 
 if test ! -d $WORKSPACE
 then
@@ -49,18 +47,8 @@ else
 	echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
-MERCURY_LIBS="$WORKSPACE/trace/libmer_trace.a $WORKSPACE/browser/libmer_browser.a $WORKSPACE/library/libmer_std.a $WORKSPACE/runtime/libmer_rt.a $gclib -lm"
-export MERCURY_LIBS
-MERCURY_ALL_C_INCL_DIRS="-I$WORKSPACE/library -I$WORKSPACE/runtime -I$WORKSPACE/trace -I$WORKSPACE/boehm_gc -I$WORKSPACE/boehm_gc/include"
-export MERCURY_ALL_C_INCL_DIRS
-MMAKE_DIR=$WORKSPACE/scripts
-export MMAKE_DIR
-MERCURY_TRACE_LIB_MODS="$WORKSPACE/browser/mer_browser.init"
-export MERCURY_TRACE_LIB_MODS
-MERCURY_MOD_LIB_MODS="$WORKSPACE/library/mer_std.init $WORKSPACE/runtime/mer_rt.init"
-export MERCURY_MOD_LIB_MODS
-PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
-export PATH
+LIB_FLAGS="--link-object $WORKSPACE/trace/libmer_trace.a --link-object $WORKSPACE/browser/libmer_browser.a --link-object $WORKSPACE/library/libmer_std.a --link-object $WORKSPACE/runtime/libmer_rt.a --link-object $gclib -lm"
+INIT_FLAGS="--trace-init-file $WORKSPACE/browser/mer_browse.init --init-file $WORKSPACE/library/mer_std.init --init-file $WORKSPACE/runtime/mer_rt.init"
 
 if test "$MMC_CDEBUG" != ""
 then
@@ -69,7 +57,7 @@ else
 	CDEBUG_FLAGS=""
 fi
 
-DIR_FLAGS="--cflags -I$WORKSPACE/trace --cflags -I$WORKSPACE/library --cflags -I$WORKSPACE/runtime --cflags -I$WORKSPACE/boehm_gc --cflags -I$WORKSPACE/boehm_gc/include -I$WORKSPACE/library"
+C_FLAGS="--c-include-directory $WORKSPACE/trace --c-include-directory $WORKSPACE/library --c-include-directory $WORKSPACE/runtime --c-include-directory $WORKSPACE/boehm_gc --c-include-directory $WORKSPACE/boehm_gc/include"
 
 if test "$MMC_UNDER_GDB" != ""
 then
@@ -77,4 +65,6 @@ then
 	export MERCURY_COMPILER
 fi
 
-mmc $CDEBUG_FLAGS $DIR_FLAGS "$@"
+PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
+export PATH
+mmc --no-mercury-stdlib-dir -I $WORKSPACE/library $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS "$@"
