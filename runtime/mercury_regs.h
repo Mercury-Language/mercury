@@ -234,7 +234,7 @@
 
 /*
 ** MR_clear_regs_for_GC() clears all of the Mercury general-purpose
-** registers.  It is used to avoid unwanted memory retition due to
+** registers.  It is used to avoid unwanted memory retention due to
 ** false hits in the conservative garbage collector.
 */
 #define MR_clear_regs_for_GC()						\
