@@ -1,0 +1,164 @@
+Bug reports should be sent to mercury-bugs@cs.mu.oz.au.
+If you're reporting more than one bug, please use separate emails
+for each bug.  Please include all the relevant information,
+including which version of Mercury you're using, what operating
+system you're using, and a complete source file that
+demonstrates the problem.  (If it's something that only shows
+up in multi-module programs, send a shar archive or uuencoded
+tar archive containing your source files.)  Please try to ensure
+that bug reports contain all the information that we need to be
+able to reproduce the problem.  Make sure that all bug reports are
+fully self-contained.
+
+Below is a list of the known outstanding bugs.
+We'll try to record any other bugs that are discovered in 0.6
+on our WWW page <http://www.cs.mu.oz.au/mercury>.
+See also the LIMITATIONS file.
+
+-----------------------------------------------------------------------------
+Subject: bug report - Inf and NaN
+Date: Wed, 4 Oct 1995 02:48:19 +1000 (EST)
+
+The following module causes an "undefined variable Inf" error in the
+generated C code, because 1E400 == Infinity, which gets printed as `Inf'.
+
+:- module hello.
+:- interface.
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+main -->
+	io__write_float(1E400),
+	io__write_string("\n").
+
+-----------------------------------------------------------------------------
+Subject: bug with no_tag tags and partially instantiated data structures
+Date: Fri, 19 Apr 1996 19:47:18 +1000 (EST)
+
+> :- module bug.
+> :- interface.
+> :- type foo ---> foo(int).
+> :- pred bug(foo::out) is det.
+> :- implementation.
+> bug(Y) :-
+> 	Y = foo(_),
+> 	Z = 42,
+> 	Y = foo(Z).
+
+This gives the error "code_exprn__cache_exprn: existing definition of var".
+
+-----------------------------------------------------------------------------
+Subject: problem with lookup_switch
+Date: Sun, 5 May 1996 16:00:17 +1000 (EST)
+
+I think there's a bug in lookup_switch.  What happens if you try to
+cross-compile for a 64 bit architecture on a 32 bit machine?  I think
+it tries to compute the 64-bit bitmap table entries using 32-bit ints,
+which overflow.
+
+-----------------------------------------------------------------------------
+Subject: Det stack overflow in profiler
+Date: Tue, 7 May 1996 11:58:08 +1000 (EST)
+
+I am getting the following error message in the profiler.  The profiler is
+compiled with profiling turned on.
+
+--------------------
+murlibobo 11:49 profiler (1)>lmprof -P Bug2Prof.CallPair -D Bug2Prof.Decl -C Bug2Prof.Counts | & l
+
+Warning address 6337336 not found!  Ignoring address and continuing computation
+
+Mercury runtime: det stack overflow
+PC at signal: 4832692096 (1200d0780)
+--------------------
+
+[This problem only occurs when profiling programs using shared
+libraries on the Alpha; a work-around is to compile with -static.]
+
+
+-----------------------------------------------------------------------------
+Subject: nit in error msg
+Date: Thu, 16 May 1996 10:25:42 +1000 (EST)
+
+Here's another small error in an error message.  If you comment out
+the [] clause for the functions car/1 or cdr/1, you get this message:
+
+fntest.m:023: In `car(in) = out':
+fntest.m:023:   Error: determinism declaration not satisfied.
+fntest.m:023:   Declared `det', inferred `semidet'.
+fntest.m:023:   in argument 1 of clause head:
+fntest.m:023:   unification of `HeadVar__1' and `[X | V_4]' can fail.
+
+It says Declared `det', inferred `semidet', but I never declared it at
+all.  It's a bit misleading.  Certainly not a major problem, and the
+later part of the message makes it quite clear what the problem is,
+but I thought I'd point it out to you before I forgot it.
+
+-----------------------------------------------------------------------------
+Subject: obscure bug with identical function and constructor
+Date: Sat, 25 May 1996 19:24:12 +1000 (EST)
+
+% This test case shows up an obscure bug in the compiler.
+% The compiler reports spurious mode errors in the compiler-generated
+% unification/compare/index predicates.
+% It's not quite clear whether or not this should be legal,
+% but the compiler ought to at least report a better error message.
+% If you write obfuscated code like this, you really deserve
+% what you get, but I guess we should fix the bug someday anyway...
+
+:- module nasty_func_test.
+:- type foo ---> f(int) ; g.
+
+:- func f(int) = foo.
+f(_) = g.
+
+
+-----------------------------------------------------------------------------
+Subject: missed mode error
+Date: Tue, 28 May 1996 02:27:34 +1000 (EST)
+
+Another one for the bug report file:
+
+The goal `some [X, Y] X \= Y' should be a mode error,
+but the current mode checker doesn't report an error.
+Instead, the compiler goes on to generate code which gives
+the wrong answer.  For example, the following program prints out `no'.
+The same problem also occurs with `some [X, Y] (X = Y -> fail ; true)'.
+
+:- module bug.
+:- interface.
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+main --> 
+	( { p } -> io__write_string("yes\n") ; io__write_string("no\n") ).
+
+:- pred p is semidet.
+p :-
+	some [X, Y] X \= Y.
+
+The bug occurs only when the variables being unified inside a negated
+context are not live, i.e. when it is the last occurrence of those variables.
+
+-----------------------------------------------------------------------------
+Subject: bug with PC values on Alpha
+Date: Wed, 12 Jun 1996 15:45:59 +1000
+
+On the alpha, if the Mercury runtime catches a signal, it
+sometimes prints out the wrong value for the PC.
+
+
+-----------------------------------------------------------------------------
+Subject: inference bug
+Date: Mon, 24 Jun 1996 15:48:12 +1000 (EST)
+
+The compiler sometimes aborts with a map_lookup failed
+after mode inference finds some mode errors.
+
+-----------------------------------------------------------------------------
