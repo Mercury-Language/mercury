@@ -38,6 +38,9 @@ Date: Tue, 26 June 2001
     This may be due to a compiler bug or to impossible asm
     statements or clauses.
 
+    mercury_trace_alias.c:98: Unable to find a register to spill in class
+    `SIREG'.
+
 This problem occurs with several different combinations of GCC version
 and C source file.
    
