@@ -30,7 +30,7 @@
 ** 	succip corresponds to the topmost stack frame).
 ** 	(See library/require.m for a technique for calling MR_dump_stack
 ** 	from Mercury).
-** 	If you need a more conveinent way of calling from Mercury code,
+** 	If you need a more convenient way of calling from Mercury code,
 ** 	it would probably be best to make an impure predicate defined
 ** 	using `:- external'.
 */
