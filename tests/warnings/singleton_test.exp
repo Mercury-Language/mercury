@@ -1,0 +1,2 @@
+singleton_test.m:012: In clause for predicate `singleton_test:append/3':
+singleton_test.m:012:   Warning: variables `L1, L2' occur only once in this scope.

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Test whether the compiler is producing the right warnings.
+# Return a status of 0 (true) if everything is all right, and 1 otherwise.
+
+set -x
+
+/bin/rm *.err *.res *.depend > /dev/null 2>&1
+mmake depend || exit 1
+mmake check || exit 1
+
+cat *.res > .allres
+if test -s .allres
+then
+	echo "the tests in the warnings directory failed"
+	echo "the differences are:"
+	cat .allres
+	exit 1
+fi
+
+echo "the tests in the warnings directory succeeded"
+exit 0
