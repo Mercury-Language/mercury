@@ -36,6 +36,7 @@ SOURCES= \
 	higher_order3.m \
 	higher_order_implied_mode.m \
 	ho_inst.m \
+	ho_func_call.m \
 	implied_mode.m \
 	indexing.m \
 	intermod_lambda.m \
