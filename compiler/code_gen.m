@@ -1352,7 +1352,7 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 	string__int_to_string(Arity, ArityStr),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(ProcNum, ProcNumStr),
-	string__append_list([PredOrFuncString, ModuleNameString, ":",
+	string__append_list([PredOrFuncString, " ", ModuleNameString, ":",
 		FullPredName, "/", ArityStr, "-", ProcNumStr], PushMsg).
 
 :- pred code_gen__find_arg_type_ctor_name((type)::in, string::out) is det.
