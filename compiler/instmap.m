@@ -637,7 +637,12 @@ instmap_delta_apply_sub_2([V - I | AL], Must, Sub, IM0, IM) :-
 			error("instmap_delta_apply_sub_2: no substitute")
 		)
 	),
-	map__det_insert(IM0, N, I, IM1),
+	% XXX temporary hack alert XXX
+	% this should be a call to to map__det_insert,
+	% rather than a call to map__set.  However, if we
+	% do that, then the compiler breaks, due to a problem
+	% with excess.m not preserving super-homogenous form.
+	map__set(IM0, N, I, IM1),
 	instmap_delta_apply_sub_2(AL, Must, Sub, IM1, IM).
 
 %-----------------------------------------------------------------------------%
