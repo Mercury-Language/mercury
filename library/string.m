@@ -1552,7 +1552,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 
 
 	% Create a string from a float using the format string.
-	% Note is is the responsibility of the caller to ensure that the
+	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_float(string, float) = string.
 :- pragma foreign_proc("C",
@@ -1569,7 +1569,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 }").
 
 	% Create a string from a int using the format string.
-	% Note is is the responsibility of the caller to ensure that the
+	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_int(string, int) = string.
 :- pragma foreign_proc("C",
@@ -1586,7 +1586,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 }").
 
 	% Create a string from a string using the format string.
-	% Note is is the responsibility of the caller to ensure that the
+	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_string(string, string) = string.
 :- pragma foreign_proc("C", 
@@ -1601,7 +1601,7 @@ make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0) = String :-
 }").
 
 	% Create a string from a char using the format string.
-	% Note is is the responsibility of the caller to ensure that the
+	% Note it is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_char(string, char) = string.
 :- pragma foreign_proc("C", 
