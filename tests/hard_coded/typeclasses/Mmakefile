@@ -6,7 +6,7 @@ include ../../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-TYPECLASS_PROGS=	\
+PROGS=	\
 	constrained_lambda \
 	extract_typeinfo \
 	existential_type_classes \
@@ -40,23 +40,6 @@ TYPECLASS_PROGS=	\
 # The following tests are not enabled:
 #	complicated_constraint --
 #		because we don't support that feature yet
-
-# These tests are all failing in jump and fast grades b/c we can't use static
-# code initialisers.
-
-ifneq "$(findstring asm_,$(GRADE))" ""
-    PROGS=$(TYPECLASS_PROGS)
-else
-    ifneq "$(findstring jump,$(GRADE))" ""
-        PROGS=
-    else
-        ifneq "$(findstring fast,$(GRADE))" ""
-            PROGS=
-        else
-            PROGS=$(TYPECLASS_PROGS)
-        endif
-    endif
-endif
 
 MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
 				--body-typeinfo-liveness
