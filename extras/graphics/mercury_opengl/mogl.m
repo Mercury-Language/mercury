@@ -2,7 +2,6 @@
 % Copyright (C) 1997, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 %
 % file: mogl.m
@@ -10,11 +9,12 @@
 %
 % This file provides a binding to OpenGL 1.1. (It won't work with OpenGL 1.0.)
 %
+% It will work with OpenGL 1.2 - 1.4 but it doesn't (currently)
+% implement any of the extended functionality in those versions.
+%
 %------------------------------------------------------------------------------%
 
 :- module mogl.
-
-%------------------------------------------------------------------------------%
 
 :- interface.
 
@@ -22,31 +22,28 @@
 
 %------------------------------------------------------------------------------%
 %
-% 2.5	GL Errors
+% GL Errors.
 %
-%------------------------------------------------------------------------------%
 
-:- type error	--->
-		no_error
+:- type mogl__error	
+	--->	no_error
 	;	invalid_enum
 	;	invalid_value
 	;	invalid_operation
 	;	stack_overflow
 	;	stack_underflow
-	;	out_of_memory
-	.
+	;	out_of_memory.
 
-:- pred get_error(mogl__error, io__state, io__state).
+:- pred get_error(mogl__error, io, io).
 :- mode get_error(out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 2.6	Begin/End Objects
+% Begin/End objects.
 %
-%------------------------------------------------------------------------------%
 
-:- type block_mode	--->
-		points
+:- type block_mode	
+	--->	points
 	;	line_strip
 	;	line_loop
 	;	lines
@@ -55,73 +52,67 @@
 	;	triangle_fan
 	;	triangles
 	;	quad_strip
-	;	quads
-	.
+	;	quads.
 
-:- pred begin(block_mode, io__state, io__state).
+:- pred begin(block_mode, io, io).
 :- mode begin(in, di, uo) is det.
 
-:- pred end(io__state, io__state).
+:- pred end(io, io).
 :- mode end(di, uo) is det.
 
-	% 2.6.2	Polygon Edges
-
-:- pred edge_flag(bool, io__state, io__state).
+:- pred edge_flag(bool, io, io).
 :- mode edge_flag(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 2.7	Vertex Specification
+% Vertex specification
 %
-%------------------------------------------------------------------------------%
 
-:- pred vertex2(float, float, io__state, io__state).
+:- pred vertex2(float, float, io, io).
 :- mode vertex2(in, in, di, uo) is det.
 
-:- pred vertex3(float, float, float, io__state, io__state).
+:- pred vertex3(float, float, float, io, io).
 :- mode vertex3(in, in, in, di, uo) is det.
 
-:- pred vertex4(float, float, float, float, io__state, io__state).
+:- pred vertex4(float, float, float, float, io, io).
 :- mode vertex4(in, in, in, in, di, uo) is det.
 
-:- pred tex_coord1(float, io__state, io__state).
+:- pred tex_coord1(float, io, io).
 :- mode tex_coord1(in, di, uo) is det.
 
-:- pred tex_coord2(float, float, io__state, io__state).
+:- pred tex_coord2(float, float, io, io).
 :- mode tex_coord2(in, in, di, uo) is det.
 
-:- pred tex_coord3(float, float, float, io__state, io__state).
+:- pred tex_coord3(float, float, float, io, io).
 :- mode tex_coord3(in, in, in, di, uo) is det.
 
-:- pred tex_coord4(float, float, float, float, io__state, io__state).
+:- pred tex_coord4(float, float, float, float, io, io).
 :- mode tex_coord4(in, in, in, in, di, uo) is det.
 
-:- pred normal3(float, float, float, io__state, io__state).
+:- pred normal3(float, float, float, io, io).
 :- mode normal3(in, in, in, di, uo) is det.
 
-:- pred color3(float, float, float, io__state, io__state).
+:- pred color3(float, float, float, io, io).
 :- mode color3(in, in, in, di, uo) is det.
 
-:- pred color4(float, float, float, float, io__state, io__state).
+:- pred color4(float, float, float, float, io, io).
 :- mode color4(in, in, in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 2.10	Coordinate Transformations
+% Coordinate transformations.
 %
-%------------------------------------------------------------------------------%
 
-:- pred depth_range(float, float, io__state, io__state).
+:- pred depth_range(float, float, io, io).
 :- mode depth_range(in, in, di, uo) is det.
 
-:- pred viewport(int, int, int, int, io__state, io__state).
+:- pred viewport(int, int, int, int, io, io).
 :- mode viewport(in, in, in, in, di, uo) is det.
 
 :- type matrix_mode
 	--->	texture
 	;	modelview
-	;	projection
-	.
+	;	projection.
 
 :- type	matrix
 	--->	m(float, float, float, float,	% a[11], a[12], ...
@@ -129,39 +120,37 @@
 		  float, float, float, float,	% a[31], a[32], ...
 		  float, float, float, float).	% a[41], a[42], ...
 
-:- pred matrix_mode(matrix_mode, io__state, io__state).
+:- pred matrix_mode(matrix_mode, io, io).
 :- mode matrix_mode(in, di, uo) is det.
 
-:- pred load_matrix(matrix, io__state, io__state).
+:- pred load_matrix(matrix, io, io).
 :- mode load_matrix(in, di, uo) is det.
 
-:- pred mult_matrix(matrix, io__state, io__state).
+:- pred mult_matrix(matrix, io, io).
 :- mode mult_matrix(in, di, uo) is det.
 
-:- pred load_identity(io__state, io__state).
+:- pred load_identity(io, io).
 :- mode load_identity(di, uo) is det.
 
-:- pred rotate(float, float, float, float, io__state, io__state).
+:- pred rotate(float, float, float, float, io, io).
 :- mode rotate(in, in, in, in, di, uo) is det.
 
-:- pred translate(float, float, float, io__state, io__state).
+:- pred translate(float, float, float, io, io).
 :- mode translate(in, in, in, di, uo) is det.
 
-:- pred scale(float, float, float, io__state, io__state).
+:- pred scale(float, float, float, io, io).
 :- mode scale(in, in, in, di, uo) is det.
 
-:- pred frustum(float, float, float, float, float, float,
-		io__state, io__state).
+:- pred frustum(float, float, float, float, float, float, io, io).
 :- mode frustum(in, in, in, in, in, in, di, uo) is det.
 
-:- pred ortho(float, float, float, float, float, float,
-		io__state, io__state).
+:- pred ortho(float, float, float, float, float, float, io, io).
 :- mode ortho(in, in, in, in, in, in, di, uo) is det.
 
-:- pred push_matrix(io__state, io__state).
+:- pred push_matrix(io, io).
 :- mode push_matrix(di, uo) is det.
 
-:- pred pop_matrix(io__state, io__state).
+:- pred pop_matrix(io, io).
 :- mode pop_matrix(di, uo) is det.
 
 :- type texture_coord --->	s ; t ; r ; q.
@@ -169,166 +158,152 @@
 :- type texture_parameter(T) --->
 		texture_gen_mode(texture_gen_parameter)
 	;	object_plane(T)
-	;	eye_plane(T)
-	.
+	;	eye_plane(T).
 
-:- type texture_gen_parameter --->
-		object_linear
+:- type texture_gen_parameter 
+	---> 	object_linear
 	;	eye_linear
-	;	sphere_map
-	.
+	;	sphere_map.
 
-:- pred tex_gen(texture_coord, texture_parameter(float), io__state, io__state).
+:- pred tex_gen(texture_coord, texture_parameter(float), io, io).
 :- mode tex_gen(in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 2.11	Clipping
+% Clipping.
 %
-%------------------------------------------------------------------------------%
 
-:- type	clip_plane	--->
+:- type	clip_plane --->
 		clip(float, float, float, float).
 
-:- pred clip_plane(int, clip_plane, io__state, io__state).
+:- pred clip_plane(int, clip_plane, io, io).
 :- mode clip_plane(in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 2.12	Current Raster Position
+% Current raster position.
 %
-%------------------------------------------------------------------------------%
 
-:- pred raster_pos2(float, float, io__state, io__state).
+:- pred raster_pos2(float, float, io, io).
 :- mode raster_pos2(in, in, di, uo) is det.
 
-:- pred raster_pos3(float, float, float, io__state, io__state).
+:- pred raster_pos3(float, float, float, io, io).
 :- mode raster_pos3(in, in, in, di, uo) is det.
 
-:- pred raster_pos4(float, float, float, float, io__state, io__state).
+:- pred raster_pos4(float, float, float, float, io, io).
 :- mode raster_pos4(in, in, in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 2.13	Colors and Coloring
+% Colors and coloring.
 %
-%------------------------------------------------------------------------------%
 
 :- type face_direction	--->	cw ; ccw .
 
 :- type face_side	--->	front ; back ; front_and_back .
 
 :- type material
-		--->	ambient(float, float, float, float)
-		;	diffuse(float, float, float, float)
-		;	ambient_and_diffuse(float, float, float, float)
-		;	specular(float, float, float, float)
-		;	emission(float, float, float, float)
-		;	shininess(float)
-		;	color_indexes(float, float, float)
-		.
+	--->	ambient(float, float, float, float)
+	;	diffuse(float, float, float, float)
+	;	ambient_and_diffuse(float, float, float, float)
+	;	specular(float, float, float, float)
+	;	emission(float, float, float, float)
+	;	shininess(float)
+	;	color_indexes(float, float, float).
 
-:- type light_no ==	int.
+:- type light_no == int.
 
 :- type light
-		--->	ambient(float, float, float, float)
-		;	diffuse(float, float, float, float)
-		;	specular(float, float, float, float)
-		;	position(float, float, float, float)
-		;	spot_direction(float, float, float)
-		;	spot_exponent(float)
-		;	spot_cutoff(float)
-		;	constant_attenuation(float)
-		;	linear_attenuation(float)
-		;	quadratic_attenuation(float)
-		.
+	--->	ambient(float, float, float, float)
+	;	diffuse(float, float, float, float)
+	;	specular(float, float, float, float)
+	;	position(float, float, float, float)
+	;	spot_direction(float, float, float)
+	;	spot_exponent(float)
+	;	spot_cutoff(float)
+	;	constant_attenuation(float)
+	;	linear_attenuation(float)
+	;	quadratic_attenuation(float).
 
 :- type lighting_model
 		--->	light_model_ambient(float, float, float, float)
 		;	light_model_local_viewer(bool)
-		;	light_model_two_side(bool)
-		.
+		;	light_model_two_side(bool).
 
 :- type color_material_mode
 		--->	ambient
 		;	diffuse
 		;	ambient_and_diffuse
 		;	specular
-		;	emission
-		.
+		;	emission.
 
-:- type shade_model --->	smooth ; flat .
+:- type shade_model ---> smooth ; flat.
 
-:- pred front_face(face_direction, io__state, io__state).
+:- pred front_face(face_direction, io, io).
 :- mode front_face(in, di, uo) is det.
 
-:- pred material(face_side, material, io__state, io__state).
+:- pred material(face_side, material, io, io).
 :- mode material(in, in, di, uo) is det.
 
-:- pred light(light_no, light, io__state, io__state).
+:- pred light(light_no, light, io, io).
 :- mode light(in, in, di, uo) is det.
 
-:- pred light_model(lighting_model, io__state, io__state).
+:- pred light_model(lighting_model, io, io).
 :- mode light_model(in, di, uo) is det.
 
-:- pred color_material(face_side, color_material_mode, io__state, io__state).
+:- pred color_material(face_side, color_material_mode, io, io).
 :- mode color_material(in, in, di, uo) is det.
 
-:- pred shade_model(shade_model, io__state, io__state).
+:- pred shade_model(shade_model, io, io).
 :- mode shade_model(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 3.3	Points
+% Points.
 %
-%------------------------------------------------------------------------------%
 
-:- pred point_size(float, io__state, io__state).
+:- pred point_size(float, io, io).
 :- mode point_size(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 3.4	Lines Segments
+% Line segments.
 %
-%------------------------------------------------------------------------------%
 
-:- pred line_width(float, io__state, io__state).
+:- pred line_width(float, io, io).
 :- mode line_width(in, di, uo) is det.
 
-:- pred line_stipple(int, int, io__state, io__state).
+:- pred line_stipple(int, int, io, io).
 :- mode line_stipple(in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 3.5	Polygons
+% Polygons.
 %
-%------------------------------------------------------------------------------%
 
-:- type polygon_stipple	==	int.	% use bottom 32 bits of each int.
+:- type polygon_stipple == int.		% use bottom 32 bits of each int.
 
 :- type polygon_mode
 		--->	point
 		;	line
-		;	fill
-		.
+		;	fill.
 
-:- pred cull_face(face_side, io__state, io__state).
+:- pred cull_face(face_side, io, io).
 :- mode cull_face(in, di, uo) is det.
 
-:- pred polygon_stipple(polygon_stipple, io__state, io__state).
+:- pred polygon_stipple(polygon_stipple, io, io).
 :- mode polygon_stipple(in, di, uo) is det.
 
-:- pred polygon_mode(face_side, polygon_mode, io__state, io__state).
+:- pred polygon_mode(face_side, polygon_mode, io, io).
 :- mode polygon_mode(in, in, di, uo) is det.
 
-:- pred polygon_offset(float, float, io__state, io__state).
+:- pred polygon_offset(float, float, io, io).
 :- mode polygon_offset(in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 3.6	Pixel Rectangles
+% Pixel Rectangles.
 %
-%------------------------------------------------------------------------------%
 
 /*
 
@@ -396,9 +371,8 @@
 
 %------------------------------------------------------------------------------%
 %
-% 3.7	Bitmaps
+% Bitmaps.
 %
-%------------------------------------------------------------------------------%
 
 /*
 :- pred bitmap(int, int, float, float, float, float, list(int),
@@ -408,9 +382,8 @@
 
 %------------------------------------------------------------------------------%
 %
-% 3.8	Texturing
+% Texturing.
 %
-%------------------------------------------------------------------------------%
 
 /*
 
@@ -436,34 +409,29 @@
 
 %------------------------------------------------------------------------------%
 %
-% 3.9	Fog
+% Fog.
 %
-%------------------------------------------------------------------------------%
 
 :- type fog_parameter
 		--->	fog_mode(fog_mode)
 		;	fog_density(float)
 		;	fog_start(float)
-		;	fog_end(float)
-		.
+		;	fog_end(float).
 
 :- type fog_mode
 		--->	linear
 		;	exp
-		;	exp2
-		.
+		;	exp2.
 
-:- pred fog(fog_parameter, io__state, io__state).
+:- pred fog(fog_parameter, io, io).
 :- mode fog(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 4.1	Per-Fragment Operations
+% Per-fragment operations.
 %
-%------------------------------------------------------------------------------%
 
 /*
-
 :- pred scissor(int, int, int, int, io__state, io__state).
 :- mode scissor(in, in, in, in, di, uo) is det.
 
@@ -543,67 +511,63 @@
 		;	nand
 		;	set
 		.
-
 */
 
 %------------------------------------------------------------------------------%
 %
-% 4.2	Whole Framebuffer Operations
+% Whole framebuffer operations.
 %
-%------------------------------------------------------------------------------%
 
 :- type buffer
-		--->	none
-		;	front_left
-		;	front_right
-		;	back_left
-		;	back_right
-		;	front
-		;	back
-		;	left
-		;	right
-		;	front_and_back
-		;	aux(int)
-		.
+	--->	none
+	;	front_left
+	;	front_right
+	;	back_left
+	;	back_right
+	;	front
+	;	back
+	;	left
+	;	right
+	;	front_and_back
+	;	aux(int).
 
-:- pred draw_buffer(buffer, io__state, io__state).
+:- pred draw_buffer(buffer, io, io).
 :- mode draw_buffer(in, di, uo) is det.
 
-:- pred index_mask(int, io__state, io__state).
+:- pred index_mask(int, io, io).
 :- mode index_mask(in, di, uo) is det.
 
-:- pred color_mask(bool, bool, bool, bool, io__state, io__state).
+:- pred color_mask(bool, bool, bool, bool, io, io).
 :- mode color_mask(in, in, in, in, di, uo) is det.
 
-:- pred depth_mask(bool, io__state, io__state).
+:- pred depth_mask(bool, io, io).
 :- mode depth_mask(in, di, uo) is det.
 
-:- pred stencil_mask(int, io__state, io__state).
+:- pred stencil_mask(int, io, io).
 :- mode stencil_mask(in, di, uo) is det.
 
 :- type buffer_bit
-		--->	color
-		;	depth
-		;	stencil
-		;	accum
-		.
+	--->	color
+	;	depth
+	;	stencil
+	;	accum.
 
-:- pred clear(list(buffer_bit), io__state, io__state).
+:- pred clear(list(buffer_bit), io, io).
 :- mode clear(in, di, uo) is det.
 
-:- pred clear_color(float, float, float, float, io__state, io__state).
+:- pred clear_color(float, float, float, float, io, io).
 :- mode clear_color(in, in, in, in, di, uo) is det.
 
-:- pred clear_index(float, io__state, io__state).
+:- pred clear_index(float, io, io).
 :- mode clear_index(in, di, uo) is det.
 
-:- pred clear_depth(float, io__state, io__state).
+:- pred clear_depth(float, io, io).
 :- mode clear_depth(in, di, uo) is det.
 
-:- pred clear_stencil(int, io__state, io__state).
+:- pred clear_stencil(int, io, io).
 :- mode clear_stencil(in, di, uo) is det.
 
-:- pred clear_accum(float, float, float, float, io__state, io__state).
+:- pred clear_accum(float, float, float, float, io, io).
 :- mode clear_accum(in, in, in, in, di, uo) is det.
 
 :- type accum_op
@@ -611,25 +575,22 @@
 		;	load
 		;	return
 		;	mult
-		;	add
-		.
+		;	add.
 
-:- pred accum(accum_op, float, io__state, io__state).
+:- pred accum(accum_op, float, io, io).
 :- mode accum(in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 5.1 Evaluators
+% Evaluators.
 %
-%------------------------------------------------------------------------------%
 
 % Evalutators not implemented
 
 %------------------------------------------------------------------------------%
 %
-% 5.2 Selection
+% Selection.
 %
-%------------------------------------------------------------------------------%
 
 /*
 
@@ -658,75 +619,70 @@
 
 %------------------------------------------------------------------------------%
 %
-% 5.4 Display Lists
+% Display lists.
 %
-%------------------------------------------------------------------------------%
 
-:- type display_list_mode --->
-		compile
-	;	compile_and_execute
-	.
+:- type display_list_mode 
+	--->	compile
+	;	compile_and_execute.
 
-:- pred new_list(int, display_list_mode, io__state, io__state).
+:- pred new_list(int, display_list_mode, io, io).
 :- mode new_list(in, in, di, uo) is det.
 
-:- pred end_list(io__state, io__state).
+:- pred end_list(io, io).
 :- mode end_list(di, uo) is det.
 
-:- pred call_list(int, io__state, io__state).
+:- pred call_list(int, io, io).
 :- mode call_list(in, di, uo) is det.
 
-:- pred gen_lists(int, int, io__state, io__state).
+:- pred gen_lists(int, int, io, io).
 :- mode gen_lists(in, out, di, uo) is det.
 
-:- pred delete_lists(int, int, io__state, io__state).
+:- pred delete_lists(int, int, io, io).
 :- mode delete_lists(in, in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% 5.5 Flush and Finish
+% Flush and Finish.
 %
-%------------------------------------------------------------------------------%
 
-:- pred flush(io__state, io__state).
+:- pred flush(io, io).
 :- mode flush(di, uo) is det.
 
-:- pred finish(io__state, io__state).
+:- pred finish(io, io).
 :- mode finish(di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
-% Enable/Disable
+% Enable/Disable.
 %
-%------------------------------------------------------------------------------%
 
 :- type	control_flag
-		--->	normalize		% 2.10.3
-		;	clip_plane(int)		% 2.11
-		;	lighting		% 2.13.1
-		;	light(int)		% 2.13.2
-		;	color_material		% 2.13.3
-		;	line_stipple		% 3.4.2
-		;	cull_face		% 3.5.1
-		;	polygon_stipple		% 3.5.2
-		;	polygon_offset_point	% 3.5.5
-		;	polygon_offset_line	% 3.5.5
-		;	polygon_offset_fill	% 3.5.5
-		;	fog			% 3.9
-		;	scissor_test		% 4.1.2
-		;	alpha_test		% 4.1.3
-		;	stencil_test		% 4.1.4
-		;	depth_test		% 4.1.5
-		;	blend			% 4.1.6
-		;	dither			% 4.1.7
-		;	index_logic_op		% 4.1.8
-		;	color_logic_op		% 4.1.8
-		.
+		--->	normalize			
+		;	clip_plane(int)		
+		;	lighting			
+		;	light(int)			
+		;	color_material
+		;	line_stipple		
+		;	cull_face		
+		;	polygon_stipple		
+		;	polygon_offset_point
+		;	polygon_offset_line	
+		;	polygon_offset_fill	
+		;	fog					
+		;	scissor_test		
+		;	alpha_test			
+		;	stencil_test		
+		;	depth_test			
+		;	blend				
+		;	dither				
+		;	index_logic_op		
+		;	color_logic_op.		
 
-:- pred enable(control_flag, io__state, io__state).
+:- pred enable(control_flag, io, io).
 :- mode enable(in, di, uo) is det.
 
-:- pred disable(control_flag, io__state, io__state).
+:- pred disable(control_flag, io, io).
 :- mode disable(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
@@ -736,7 +692,7 @@
 
 :- import_module list, int, float, require, std_util.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include <stdio.h>
 	#include <math.h>
 	#include <GL/gl.h>
@@ -744,14 +700,12 @@
 
 %------------------------------------------------------------------------------%
 %
-% 2.5	GL Errors
+% GL Errors.
 %
-%------------------------------------------------------------------------------%
-
 
 :- func error_to_int(int::in) = (mogl__error::out) is semidet.
 
-error_to_int(0)	= no_error.
+error_to_int(0) = no_error.
 error_to_int(1) = invalid_enum.
 error_to_int(2) = invalid_value.
 error_to_int(3) = invalid_operation.
@@ -759,22 +713,21 @@ error_to_int(4) = stack_overflow.
 error_to_int(5) = stack_underflow.
 error_to_int(6) = out_of_memory.
 
-get_error(Err) -->
-	get_error2(ErrNo),
-	(
-		{ Err0 = error_to_int(ErrNo) }
-	->
-		{ Err = Err0 }
-	;
-		{ error("GetError returned an unexpected value") }
+get_error(Err, !IO) :-
+	get_error2(ErrNo, !IO),
+	( if	Err0 = error_to_int(ErrNo)
+	  then	Err = Err0
+	  else	error("GetError returned an unexpected value.")
 	).
 
-:- pred get_error2(int, io__state, io__state).
+:- pred get_error2(int, io, io).
 :- mode get_error2(out, di, uo) is det.
 
-:- pragma c_code(get_error2(Err::out, IO0::di, IO::uo), "
-{
-	static GLenum	errcodes[] = {
+:- pragma foreign_proc("C", 
+	get_error2(Err::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
+	static GLenum errcodes[] = {
 		GL_NO_ERROR,
 		GL_INVALID_ENUM,
 		GL_INVALID_VALUE,
@@ -802,80 +755,88 @@ get_error(Err) -->
 
 %------------------------------------------------------------------------------%
 %
-% 2.6	Begin/End Objects
+% Begin/End objects.
 %
-%------------------------------------------------------------------------------%
 
 :- func block_mode_to_int(block_mode) = int.
 
-block_mode_to_int(points)	  = 0.
-block_mode_to_int(line_strip)	  = 1.
-block_mode_to_int(line_loop)	  = 2.
-block_mode_to_int(lines)	  = 3.
-block_mode_to_int(polygon)	  = 4.
+block_mode_to_int(points)	= 0.
+block_mode_to_int(line_strip)	= 1.
+block_mode_to_int(line_loop)	= 2.
+block_mode_to_int(lines)	= 3.
+block_mode_to_int(polygon)	= 4.
 block_mode_to_int(triangle_strip) = 5.
-block_mode_to_int(triangle_fan)	  = 6.
-block_mode_to_int(triangles)	  = 7.
-block_mode_to_int(quad_strip)	  = 8.
-block_mode_to_int(quads)	  = 9.
+block_mode_to_int(triangle_fan) = 6.
+block_mode_to_int(triangles) 	= 7.
+block_mode_to_int(quad_strip)	= 8.
+block_mode_to_int(quads)	= 9.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern const GLenum block_mode_flags[];
 ").
 
-:- pragma c_code("
-const GLenum block_mode_flags[] = {
-	GL_POINTS,
-	GL_LINE_STRIP,
-	GL_LINE_LOOP,
-	GL_LINES,
-	GL_POLYGON,
-	GL_TRIANGLE_STRIP,
-	GL_TRIANGLE_FAN,
-	GL_TRIANGLES,
-	GL_QUAD_STRIP,
-	GL_QUADS
-};
+:- pragma foreign_code("C", "
+	const GLenum block_mode_flags[] = {
+		GL_POINTS,
+		GL_LINE_STRIP,
+		GL_LINE_LOOP,
+		GL_LINES,
+		GL_POLYGON,
+		GL_TRIANGLE_STRIP,
+		GL_TRIANGLE_FAN,
+		GL_TRIANGLES,
+		GL_QUAD_STRIP,
+		GL_QUADS
+	};
 ").
 
-begin(Blk) -->
-	begin2(block_mode_to_int(Blk)).
+begin(Blk, !IO) :-
+	begin2(block_mode_to_int(Blk), !IO).
 
-:- pred begin2(int, io__state, io__state).
+:- pred begin2(int, io, io).
 :- mode begin2(in, di, uo) is det.
 
-:- pragma c_code(begin2(Mode::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	begin2(Mode::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glBegin(block_mode_flags[Mode]);
 	IO = IO0;
 ").
 
-:- pragma c_code(end(IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	end(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glEnd();
 	IO = IO0;
 ").
 
-	% 2.6.2	Polygon Edges
+edge_flag(no, !IO) :-
+	edge_flag2(0, !IO).
+edge_flag(yes, !IO) :- 
+	edge_flag2(1, !IO).
 
-edge_flag(no) -->
-	edge_flag2(0).
-edge_flag(yes) -->
-	edge_flag2(1).
-
-:- pred edge_flag2(int, io__state, io__state).
+:- pred edge_flag2(int, io, io).
 :- mode edge_flag2(in, di, uo) is det.
 
-:- pragma c_code(edge_flag2(F::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	edge_flag2(F::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glEdgeFlag((GLboolean) F);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 2.7	Vertex Specification
+% Vertex specification
 %
-%------------------------------------------------------------------------------%
 
-:- pragma c_code(vertex2(X::in, Y::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	vertex2(X::in, Y::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glVertex2f((GLfloat) X, (GLfloat) Y);
@@ -887,7 +848,10 @@ edge_flag(yes) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(vertex3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	vertex3(X::in, Y::in, Z::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glVertex3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -899,7 +863,10 @@ edge_flag(yes) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(vertex4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	vertex4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glVertex4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z, (GLfloat) W);
@@ -914,7 +881,10 @@ edge_flag(yes) -->
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_code(tex_coord1(X::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	tex_coord1(X::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord1f((GLfloat) X);
@@ -926,7 +896,10 @@ edge_flag(yes) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(tex_coord2(X::in, Y::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	tex_coord2(X::in, Y::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord2f((GLfloat) X, (GLfloat) Y);
@@ -938,7 +911,10 @@ edge_flag(yes) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(tex_coord3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	tex_coord3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -950,7 +926,10 @@ edge_flag(yes) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(tex_coord4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	tex_coord4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTexCoord4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
@@ -966,7 +945,10 @@ edge_flag(yes) -->
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_code(normal3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	normal3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glNormal3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -980,7 +962,10 @@ edge_flag(yes) -->
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_code(color3(R::in, G::in, B::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	color3(R::in, G::in, B::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glColor3f((GLfloat) R, (GLfloat) G, (GLfloat) B);
@@ -992,7 +977,10 @@ edge_flag(yes) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(color4(R::in, G::in, B::in, A::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	color4(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glColor4f((GLfloat) R, (GLfloat) G, (GLfloat) B, (GLfloat) A);
@@ -1007,16 +995,21 @@ edge_flag(yes) -->
 
 %------------------------------------------------------------------------------%
 %
-% 2.10	Coordinate Transformations
+% Coordinate transformations.
 %
-%------------------------------------------------------------------------------%
 
-:- pragma c_code(depth_range(Near::in, Far::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	depth_range(Near::in, Far::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glDepthRange((GLclampd) Near, (GLclampd) Far);
 	IO = IO0;
 ").
 
-:- pragma c_code(viewport(X::in, Y::in, Wdth::in, Hght::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	viewport(X::in, Y::in, Wdth::in, Hght::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glViewport((GLint) X, (GLint) Y, (GLsizei) Wdth, (GLsizei) Hght);
 	IO = IO0;
 ").
@@ -1029,56 +1022,61 @@ matrix_mode_to_int(texture)	= 0.
 matrix_mode_to_int(modelview)	= 1.
 matrix_mode_to_int(projection)	= 2.
 
-:- pragma c_header_code("
-	extern const GLenum	matrix_mode_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum matrix_mode_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	matrix_mode_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum matrix_mode_flags[] = {
 		GL_TEXTURE,
 		GL_MODELVIEW,
 		GL_PROJECTION
 	};
 ").
 
-matrix_mode(Mode) -->
-	matrix_mode2(matrix_mode_to_int(Mode)).
+matrix_mode(Mode, !IO) :-
+	matrix_mode2(matrix_mode_to_int(Mode), !IO).
 
-:- pred matrix_mode2(int, io__state, io__state).
+:- pred matrix_mode2(int, io, io).
 :- mode matrix_mode2(in, di, uo) is det.
 
-:- pragma c_code(matrix_mode2(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	matrix_mode2(I::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glMatrixMode(matrix_mode_flags[I]);
 	IO = IO0;
 ").
 
-load_matrix(Matrix) -->
-	{ Matrix = m(
-		A1, A5, A9, A13,
+load_matrix(Matrix, !IO) :-
+	Matrix = m(
+		A1, A5, A9,  A13,
 		A2, A6, A10, A14,
 		A3, A7, A11, A15,
 		A4, A8, A12, A16
-	) },
+	),
 	load_matrix2(A1, A2, A3, A4, A5, A6, A7, A8,
-		A9, A10, A11, A12, A13, A14, A15, A16).
+		A9, A10, A11, A12, A13, A14, A15, A16, !IO).
 
 :- pred load_matrix2(
 		float, float, float, float,
 		float, float, float, float,
 		float, float, float, float,
-		float, float, float, float, io__state, io__state).
+		float, float, float, float, io, io).
 :- mode load_matrix2(
 		in, in, in, in,
 		in, in, in, in,
 		in, in, in, in,
 		in, in, in, in, di, uo) is det.
 
-:- pragma c_code(
+:- pragma foreign_proc("C", 
 	load_matrix2(A1::in, A2::in, A3::in, A4::in,
 		A5::in, A6::in, A7::in, A8::in,
 		A9::in, A10::in, A11::in, A12::in,
-		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		GLfloat	a[16];
 		a[0] = (GLfloat) A1; a[1] = (GLfloat) A2;
@@ -1105,33 +1103,35 @@ load_matrix(Matrix) -->
 	IO = IO0;
 ").
 
-mult_matrix(Matrix) -->
-	{ Matrix = m(
+mult_matrix(Matrix, !IO) :-
+	Matrix = m(
 		A1, A5, A9, A13,
 		A2, A6, A10, A14,
 		A3, A7, A11, A15,
 		A4, A8, A12, A16
-	) },
+	),
 	mult_matrix2(A1, A2, A3, A4, A5, A6, A7, A8,
-		A9, A10, A11, A12, A13, A14, A15, A16).
+		A9, A10, A11, A12, A13, A14, A15, A16, !IO).
 
 :- pred mult_matrix2(
 		float, float, float, float,
 		float, float, float, float,
 		float, float, float, float,
-		float, float, float, float, io__state, io__state).
+		float, float, float, float, io, io).
 :- mode mult_matrix2(
 		in, in, in, in,
 		in, in, in, in,
 		in, in, in, in,
 		in, in, in, in, di, uo) is det.
 
-:- pragma c_code(
+:- pragma foreign_proc("C",
 	mult_matrix2(A1::in, A2::in, A3::in, A4::in,
 		A5::in, A6::in, A7::in, A8::in,
 		A9::in, A10::in, A11::in, A12::in,
-		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), "
-	if (sizeof(Float) == sizeof(GLfloat))
+		A13::in, A14::in, A15::in, A16::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
+	if (sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		GLfloat	a[16];
 		a[0] = (GLfloat) A1; a[1] = (GLfloat) A2;
@@ -1158,12 +1158,18 @@ mult_matrix(Matrix) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(load_identity(IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	load_identity(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glLoadIdentity();
 	IO = IO0;
 ").
 
-:- pragma c_code(rotate(Theta::in, X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	rotate(Theta::in, X::in, Y::in, Z::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRotatef((GLfloat) Theta,
@@ -1175,7 +1181,10 @@ mult_matrix(Matrix) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(translate(X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	translate(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glTranslatef((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -1185,7 +1194,10 @@ mult_matrix(Matrix) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(scale(X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	scale(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glScalef((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -1195,26 +1207,36 @@ mult_matrix(Matrix) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(frustum(L::in, R::in, B::in, T::in, N::in, F::in,
-		IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	frustum(L::in, R::in, B::in, T::in, N::in, F::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFrustum((GLdouble) L, (GLdouble) R, (GLdouble) B,
 		(GLdouble) T, (GLdouble) N, (GLdouble) F);
 	IO = IO0;
 ").
 
-:- pragma c_code(ortho(L::in, R::in, B::in, T::in, N::in, F::in,
-		IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	ortho(L::in, R::in, B::in, T::in, N::in, F::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glOrtho((GLdouble) L, (GLdouble) R, (GLdouble) B,
 		(GLdouble) T, (GLdouble) N, (GLdouble) F);
 	IO = IO0;
 ").
 
-:- pragma c_code(push_matrix(IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	push_matrix(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glPushMatrix();
 	IO = IO0;
 ").
 
-:- pragma c_code(pop_matrix(IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	pop_matrix(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glPopMatrix();
 	IO = IO0;
 ").
@@ -1226,12 +1248,12 @@ texture_coord_to_int(t)	= 1.
 texture_coord_to_int(r)	= 2.
 texture_coord_to_int(q)	= 3.
 
-:- pragma c_header_code("
-	extern const GLenum	texture_coord_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_coord_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	texture_coord_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum texture_coord_flags[] = {
 		GL_S,
 		GL_T,
 		GL_R,
@@ -1241,70 +1263,79 @@ texture_coord_to_int(q)	= 3.
 
 :- func texture_gen_parameter_to_int(texture_gen_parameter) = int.
 
-texture_gen_parameter_to_int(object_linear)	= 0.
-texture_gen_parameter_to_int(eye_linear)	= 1.
-texture_gen_parameter_to_int(sphere_map)	= 2.
+texture_gen_parameter_to_int(object_linear) = 0.
+texture_gen_parameter_to_int(eye_linear)    = 1.
+texture_gen_parameter_to_int(sphere_map)    = 2.
 
-:- pragma c_header_code("
-	extern const GLenum	texture_gen_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum texture_gen_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	texture_gen_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum texture_gen_flags[] = {
 		GL_OBJECT_LINEAR,
 		GL_EYE_LINEAR,
 		GL_SPHERE_MAP
 	};
 ").
 
-tex_gen(Coord, texture_gen_mode(Param)) -->
+tex_gen(Coord, texture_gen_mode(Param), !IO) :-
 	tex_genf2a(texture_coord_to_int(Coord),
-		texture_gen_parameter_to_int(Param)).
-tex_gen(Coord, object_plane(Param)) -->
-	tex_genf2b(texture_coord_to_int(Coord), Param).
-tex_gen(Coord, eye_plane(Param)) -->
-	tex_genf2c(texture_coord_to_int(Coord), Param).
+		texture_gen_parameter_to_int(Param), !IO).
+tex_gen(Coord, object_plane(Param), !IO) :-
+	tex_genf2b(texture_coord_to_int(Coord), Param, !IO).
+tex_gen(Coord, eye_plane(Param), !IO) :-
+	tex_genf2c(texture_coord_to_int(Coord), Param, !IO).
 
-:- pred tex_genf2a(int, int, io__state, io__state).
+:- pred tex_genf2a(int, int, io, io).
 :- mode tex_genf2a(in, in, di, uo) is det.
 
-:- pragma c_code(tex_genf2a(Coord::in, Param::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	tex_genf2a(Coord::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glTexGeni(texture_coord_flags[Coord], GL_TEXTURE_GEN_MODE,
 		texture_gen_flags[Param]);
 	IO = IO0;
 ").
 
-:- pred tex_genf2b(int, float, io__state, io__state).
+:- pred tex_genf2b(int, float, io, io).
 :- mode tex_genf2b(in, in, di, uo) is det.
 
-:- pragma c_code(tex_genf2b(Coord::in, Param::in, IO0::di, IO::uo), "
-	glTexGend(texture_coord_flags[Coord], GL_OBJECT_PLANE, (GLdouble) Param);
+:- pragma foreign_proc("C", 
+	tex_genf2b(Coord::in, Param::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+" 
+	glTexGend(texture_coord_flags[Coord], GL_OBJECT_PLANE, (GLdouble)Param);
 	IO = IO0;
 ").
 
-:- pred tex_genf2c(int, float, io__state, io__state).
+:- pred tex_genf2c(int, float, io, io).
 :- mode tex_genf2c(in, in, di, uo) is det.
 
-:- pragma c_code(tex_genf2c(Coord::in, Param::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	tex_genf2c(Coord::in, Param::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+" 
 	glTexGend(texture_coord_flags[Coord], GL_EYE_PLANE, (GLdouble) Param);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 2.11	Clipping
+% Clipping.
 %
-%------------------------------------------------------------------------------%
 
-clip_plane(Num, clip(X, Y, Z, W)) -->
-	clip_plane2(Num, X, Y, Z, W).
+clip_plane(Num, clip(X, Y, Z, W), !IO) :-
+	clip_plane2(Num, X, Y, Z, W, !IO).
 
-:- pred clip_plane2(int, float, float, float, float, io__state, io__state).
+:- pred clip_plane2(int, float, float, float, float, io, io).
 :- mode clip_plane2(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(clip_plane2(I::in, X::in, Y::in, Z::in, W::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	clip_plane2(I::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLdouble p[4];
 
 	p[0] = (GLdouble) X;
@@ -1317,11 +1348,13 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 
 %------------------------------------------------------------------------------%
 %
-% 2.12	Current Raster Position
+% Current raster position.
 %
-%------------------------------------------------------------------------------%
 
-:- pragma c_code(raster_pos2(X::in, Y::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	raster_pos2(X::in, Y::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+" 
 	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRasterPos2f((GLfloat) X, (GLfloat) Y);
@@ -1331,7 +1364,10 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(raster_pos3(X::in, Y::in, Z::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	raster_pos3(X::in, Y::in, Z::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+" 
 	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRasterPos3f((GLfloat) X, (GLfloat) Y, (GLfloat) Z);
@@ -1341,7 +1377,10 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 	IO = IO0;
 ").
 
-:- pragma c_code(raster_pos4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	raster_pos4(X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+" 
 	if(sizeof(MR_Float) == sizeof(GLfloat))
 	{
 		glRasterPos4f((GLfloat) X, (GLfloat) Y, (GLfloat) Z,
@@ -1355,38 +1394,37 @@ clip_plane(Num, clip(X, Y, Z, W)) -->
 
 %------------------------------------------------------------------------------%
 %
-% 2.13	Colors and Coloring
+% Colors and coloring.
 %
-%------------------------------------------------------------------------------%
 
 :- func face_direction_to_int(face_direction) = int.
 
-face_direction_to_int(cw)	= 0.
-face_direction_to_int(ccw)	= 1.
+face_direction_to_int(cw)  = 0.
+face_direction_to_int(ccw) = 1.
 
-:- pragma c_header_code("
-	extern	const GLenum	face_direction_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum face_direction_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	face_direction_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum face_direction_flags[] = {
 		GL_CW,
 		GL_CCW
 	};
 ").
 
-:- func face_side_to_int(face_side)	= int.
+:- func face_side_to_int(face_side) = int.
 
-face_side_to_int(front)		 = 0.
-face_side_to_int(back)		 = 1.
+face_side_to_int(front) = 0.
+face_side_to_int(back)  = 1.
 face_side_to_int(front_and_back) = 2.
 
-:- pragma c_header_code("
-	extern	const GLenum	face_side_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum face_side_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	face_side_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum face_side_flags[] = {
 		GL_FRONT,
 		GL_BACK,
 		GL_FRONT_AND_BACK
@@ -1401,12 +1439,12 @@ color_material_mode_to_int(ambient_and_diffuse)	= 2.
 color_material_mode_to_int(specular)		= 3.
 color_material_mode_to_int(emission)		= 4.
 
-:- pragma c_header_code("
-	extern	const GLenum	color_material_mode_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum color_material_mode_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	color_material_mode_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum color_material_mode_flags[] = {
 		GL_AMBIENT,
 		GL_DIFFUSE,
 		GL_AMBIENT_AND_DIFFUSE,
@@ -1415,54 +1453,58 @@ color_material_mode_to_int(emission)		= 4.
 	};
 ").
 
-:- func shade_model_to_int(shade_model)	= int.
+:- func shade_model_to_int(shade_model) = int.
 
-shade_model_to_int(smooth)	= 0.
-shade_model_to_int(flat)	= 1.
+shade_model_to_int(smooth) = 0.
+shade_model_to_int(flat)   = 1.
 
-:- pragma c_header_code("
-	extern GLenum	shade_model_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum shade_model_flags[];
 ").
 
-:- pragma c_code("
-	GLenum	shade_model_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum shade_model_flags[] = {
 		GL_SMOOTH,
 		GL_FLAT
 	};
 ").
 
-front_face(Face) -->
-	front_face2(face_direction_to_int(Face)).
+front_face(Face, !IO) :-
+	front_face2(face_direction_to_int(Face), !IO).
 
-:- pred front_face2(int, io__state, io__state).
+:- pred front_face2(int, io, io).
 :- mode front_face2(in, di, uo) is det.
 
-:- pragma c_code(front_face2(F::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	front_face2(F::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFrontFace(face_direction_flags[F]);
 	IO = IO0;
 ").
 
-material(Face, ambient(R, G, B, A)) -->
-	material_ambient(face_side_to_int(Face), R, G, B, A).
-material(Face, diffuse(R, G, B, A)) -->
-	material_diffuse(face_side_to_int(Face), R, G, B, A).
-material(Face, ambient_and_diffuse(R, G, B, A)) -->
-	material_ambient_and_diffuse(face_side_to_int(Face), R, G, B, A).
-material(Face, specular(R, G, B, A)) -->
-	material_specular(face_side_to_int(Face), R, G, B, A).
-material(Face, emission(R, G, B, A)) -->
-	material_emission(face_side_to_int(Face), R, G, B, A).
-material(Face, shininess(S)) -->
-	material_shininess(face_side_to_int(Face), S).
-material(Face, color_indexes(R, G, B)) -->
-	material_color_indexes(face_side_to_int(Face), R, G, B).
+material(Face, ambient(R, G, B, A), !IO) :-
+	material_ambient(face_side_to_int(Face), R, G, B, A, !IO).
+material(Face, diffuse(R, G, B, A), !IO)  :-
+	material_diffuse(face_side_to_int(Face), R, G, B, A, !IO).
+material(Face, ambient_and_diffuse(R, G, B, A), !IO) :- 
+	material_ambient_and_diffuse(face_side_to_int(Face), R, G, B, A, !IO).
+material(Face, specular(R, G, B, A), !IO) :-
+	material_specular(face_side_to_int(Face), R, G, B, A, !IO).
+material(Face, emission(R, G, B, A), !IO) :-
+	material_emission(face_side_to_int(Face), R, G, B, A, !IO).
+material(Face, shininess(S), !IO) :-
+	material_shininess(face_side_to_int(Face), S, !IO).
+material(Face, color_indexes(R, G, B), !IO) :-
+	material_color_indexes(face_side_to_int(Face), R, G, B, !IO).
 
-:- pred material_ambient(int, float, float, float, float, io__state, io__state).
+:- pred material_ambient(int, float, float, float, float, io, io).
 :- mode material_ambient(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(material_ambient(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1473,12 +1515,13 @@ material(Face, color_indexes(R, G, B)) -->
 	IO = IO0;
 }").
 
-:- pred material_diffuse(int, float, float, float, float, io__state, io__state).
+:- pred material_diffuse(int, float, float, float, float, io, io).
 :- mode material_diffuse(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(material_diffuse(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1489,13 +1532,14 @@ material(Face, color_indexes(R, G, B)) -->
 	IO = IO0;
 }").
 
-:- pred material_ambient_and_diffuse(int, float, float, float, float,
-		io__state, io__state).
+:- pred material_ambient_and_diffuse(int, float, float, float, float, io, io).
 :- mode material_ambient_and_diffuse(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(material_ambient_and_diffuse(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_ambient_and_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di,
+		IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1506,13 +1550,13 @@ material(Face, color_indexes(R, G, B)) -->
 	IO = IO0;
 }").
 
-:- pred material_specular(int, float, float, float, float,
-		io__state, io__state).
+:- pred material_specular(int, float, float, float, float, io, io).
 :- mode material_specular(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(material_specular(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1523,13 +1567,13 @@ material(Face, color_indexes(R, G, B)) -->
 	IO = IO0;
 }").
 
-:- pred material_emission(int, float, float, float, float,
-		io__state, io__state).
+:- pred material_emission(int, float, float, float, float, io, io).
 :- mode material_emission(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(material_emission(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_emission(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1540,22 +1584,24 @@ material(Face, color_indexes(R, G, B)) -->
 	IO = IO0;
 }").
 
-:- pred material_shininess(int, float, io__state, io__state).
+:- pred material_shininess(int, float, io, io).
 :- mode material_shininess(in, in, di, uo) is det.
 
-:- pragma c_code(material_shininess(F::in, S::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_shininess(F::in, S::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
 	glMaterialf(face_side_flags[F], GL_SHININESS, (GLfloat) S);
 	IO = IO0;
 }").
 
-:- pred material_color_indexes(int, float, float, float,
-		io__state, io__state).
+:- pred material_color_indexes(int, float, float, float, io, io).
 :- mode material_color_indexes(in, in, in, in, di, uo) is det.
 
-:- pragma c_code(material_color_indexes(F::in, R::in, G::in, B::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	material_color_indexes(F::in, R::in, G::in, B::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[3];
 
 	params[0] = (GLfloat) R;
@@ -1565,33 +1611,34 @@ material(Face, color_indexes(R, G, B)) -->
 	IO = IO0;
 }").
 
-light(Num, ambient(R, G, B, A)) -->
-	light_ambient(Num, R, G, B, A).
-light(Num, diffuse(R, G, B, A)) -->
-	light_diffuse(Num, R, G, B, A).
-light(Num, specular(R, G, B, A)) -->
-	light_specular(Num, R, G, B, A).
-light(Num, position(X, Y, Z, W)) -->
-	light_position(Num, X, Y, Z, W).
-light(Num, spot_direction(I, J, K)) -->
-	light_spot_direction(Num, I, J, K).
-light(Num, spot_exponent(K)) -->
-	light_spot_exponent(Num, K).
-light(Num, spot_cutoff(K)) -->
-	light_spot_cutoff(Num, K).
-light(Num, constant_attenuation(K)) -->
-	light_constant_attenuation(Num, K).
-light(Num, linear_attenuation(K)) -->
-	light_linear_attenuation(Num, K).
-light(Num, quadratic_attenuation(K)) -->
-	light_quadratic_attenuation(Num, K).
+light(Num, ambient(R, G, B, A), !IO) :-
+	light_ambient(Num, R, G, B, A, !IO).
+light(Num, diffuse(R, G, B, A), !IO) :-
+	light_diffuse(Num, R, G, B, A, !IO).
+light(Num, specular(R, G, B, A), !IO) :-
+	light_specular(Num, R, G, B, A, !IO).
+light(Num, position(X, Y, Z, W), !IO) :- 
+	light_position(Num, X, Y, Z, W, !IO).
+light(Num, spot_direction(I, J, K), !IO) :-
+	light_spot_direction(Num, I, J, K, !IO).
+light(Num, spot_exponent(K), !IO) :-
+	light_spot_exponent(Num, K, !IO).
+light(Num, spot_cutoff(K), !IO)  :-
+	light_spot_cutoff(Num, K, !IO).
+light(Num, constant_attenuation(K), !IO) :-
+	light_constant_attenuation(Num, K, !IO).
+light(Num, linear_attenuation(K), !IO) :-
+	light_linear_attenuation(Num, K, !IO).
+light(Num, quadratic_attenuation(K), !IO) :-
+	light_quadratic_attenuation(Num, K, !IO).
 
-:- pred light_ambient(int, float, float, float, float, io__state, io__state).
+:- pred light_ambient(int, float, float, float, float, io, io).
 :- mode light_ambient(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(light_ambient(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_ambient(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1602,12 +1649,13 @@ light(Num, quadratic_attenuation(K)) -->
 	IO = IO0;
 }").
 
-:- pred light_diffuse(int, float, float, float, float, io__state, io__state).
+:- pred light_diffuse(int, float, float, float, float, io, io).
 :- mode light_diffuse(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(light_diffuse(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_diffuse(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1618,12 +1666,13 @@ light(Num, quadratic_attenuation(K)) -->
 	IO = IO0;
 }").
 
-:- pred light_specular(int, float, float, float, float, io__state, io__state).
+:- pred light_specular(int, float, float, float, float, io, io).
 :- mode light_specular(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(light_specular(F::in, R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_specular(F::in, R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) R;
@@ -1634,12 +1683,13 @@ light(Num, quadratic_attenuation(K)) -->
 	IO = IO0;
 }").
 
-:- pred light_position(int, float, float, float, float, io__state, io__state).
+:- pred light_position(int, float, float, float, float, io, io).
 :- mode light_position(in, in, in, in, in, di, uo) is det.
 
-:- pragma c_code(light_position(F::in, X::in, Y::in, Z::in, W::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_position(F::in, X::in, Y::in, Z::in, W::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[4];
 
 	params[0] = (GLfloat) X;
@@ -1650,12 +1700,13 @@ light(Num, quadratic_attenuation(K)) -->
 	IO = IO0;
 }").
 
-:- pred light_spot_direction(int, float, float, float, io__state, io__state).
+:- pred light_spot_direction(int, float, float, float, io, io).
 :- mode light_spot_direction(in, in, in, in, di, uo) is det.
 
-:- pragma c_code(light_spot_direction(F::in, I::in, J::in, K::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_spot_direction(F::in, I::in, J::in, K::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat	params[3];
 
 	params[0] = (GLfloat) I;
@@ -1665,69 +1716,80 @@ light(Num, quadratic_attenuation(K)) -->
 	IO = IO0;
 }").
 
-:- pred light_spot_exponent(int, float, io__state, io__state).
+:- pred light_spot_exponent(int, float, io, io).
 :- mode light_spot_exponent(in, in, di, uo) is det.
 
-:- pragma c_code(light_spot_exponent(F::in, E::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_spot_exponent(F::in, E::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightf(F + GL_LIGHT0, GL_SPOT_EXPONENT, (GLfloat) E);
 	IO = IO0;
 }").
 
-:- pred light_spot_cutoff(int, float, io__state, io__state).
+:- pred light_spot_cutoff(int, float, io, io).
 :- mode light_spot_cutoff(in, in, di, uo) is det.
 
-:- pragma c_code(light_spot_cutoff(F::in, E::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C", 
+	light_spot_cutoff(F::in, E::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightf(F + GL_LIGHT0, GL_SPOT_CUTOFF, (GLfloat) E);
 	IO = IO0;
 }").
 
-:- pred light_constant_attenuation(int, float, io__state, io__state).
+:- pred light_constant_attenuation(int, float, io, io).
 :- mode light_constant_attenuation(in, in, di, uo) is det.
 
-:- pragma c_code(light_constant_attenuation(F::in, E::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C",
+	light_constant_attenuation(F::in, E::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightf(F + GL_LIGHT0, GL_CONSTANT_ATTENUATION, (GLfloat) E);
 	IO = IO0;
 }").
 
-:- pred light_linear_attenuation(int, float, io__state, io__state).
+:- pred light_linear_attenuation(int, float, io, io).
 :- mode light_linear_attenuation(in, in, di, uo) is det.
 
-:- pragma c_code(light_linear_attenuation(F::in, E::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C",
+	light_linear_attenuation(F::in, E::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightf(F + GL_LIGHT0, GL_LINEAR_ATTENUATION, (GLfloat) E);
 	IO = IO0;
 }").
 
-:- pred light_quadratic_attenuation(int, float, io__state, io__state).
+:- pred light_quadratic_attenuation(int, float, io, io).
 :- mode light_quadratic_attenuation(in, in, di, uo) is det.
 
-:- pragma c_code(light_quadratic_attenuation(F::in, E::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C",
+	light_quadratic_attenuation(F::in, E::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightf(F + GL_LIGHT0, GL_QUADRATIC_ATTENUATION, (GLfloat) E);
 	IO = IO0;
 }").
 
 :- func bool_to_int(bool) = int.
 
-bool_to_int(no) = 0.
+bool_to_int(no)  = 0.
 bool_to_int(yes) = 1.
 
-light_model(light_model_ambient(R, G, B, A)) -->
-	light_model_ambient(R, G, B, A).
-light_model(light_model_local_viewer(Bool)) -->
-	light_model_local_viewer(bool_to_int(Bool)).
-light_model(light_model_two_side(Bool)) -->
-	light_model_two_side(bool_to_int(Bool)).
+light_model(light_model_ambient(R, G, B, A), !IO) :-
+	light_model_ambient(R, G, B, A, !IO).
+light_model(light_model_local_viewer(Bool), !IO) :-
+	light_model_local_viewer(bool_to_int(Bool), !IO).
+light_model(light_model_two_side(Bool), !IO) :-
+	light_model_two_side(bool_to_int(Bool), !IO).
 
-:- pred light_model_ambient(float, float, float, float, io__state, io__state).
+:- pred light_model_ambient(float, float, float, float, io, io).
 :- mode light_model_ambient(in, in, in, in, di, uo) is det.
 
-:- pragma c_code(light_model_ambient(R::in, G::in, B::in, A::in,
-		IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C",
+	light_model_ambient(R::in, G::in, B::in, A::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	GLfloat params[4];
 
 	params[0] = (GLfloat) R;
@@ -1738,105 +1800,124 @@ light_model(light_model_two_side(Bool)) -->
 	IO = IO0;
 }").
 
-:- pred light_model_local_viewer(int, io__state, io__state).
+:- pred light_model_local_viewer(int, io, io).
 :- mode light_model_local_viewer(in, di, uo) is det.
 
-:- pragma c_code(light_model_local_viewer(F::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C",
+	light_model_local_viewer(F::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, (GLint) F);
 	IO = IO0;
 }").
 
-:- pred light_model_two_side(int, io__state, io__state).
+:- pred light_model_two_side(int, io, io).
 :- mode light_model_two_side(in, di, uo) is det.
 
-:- pragma c_code(light_model_two_side(F::in, IO0::di, IO::uo), "
-{
+:- pragma foreign_proc("C",
+	light_model_two_side(F::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"{
 	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, (GLint) F);
 	IO = IO0;
 }").
 
-color_material(Face, Mode) -->
+color_material(Face, Mode, !IO) :-
 	color_material2(face_side_to_int(Face),
-		color_material_mode_to_int(Mode)).
+		color_material_mode_to_int(Mode), !IO).
 
-:- pred color_material2(int, int, io__state, io__state).
+:- pred color_material2(int, int, io, io).
 :- mode color_material2(in, in, di, uo) is det.
 
-:- pragma c_code(color_material2(Face::in, Mode::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	color_material2(Face::in, Mode::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glColorMaterial(face_side_flags[Face], color_material_mode_flags[Mode]);
 	IO = IO0;
 ").
 
-shade_model(Model) -->
-	shade_model2(shade_model_to_int(Model)).
+shade_model(Model, !IO) :-
+	shade_model2(shade_model_to_int(Model), !IO).
 
-:- pred shade_model2(int, io__state, io__state).
+:- pred shade_model2(int, io, io).
 :- mode shade_model2(in, di, uo) is det.
 
-:- pragma c_code(shade_model2(Model::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	shade_model2(Model::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glShadeModel(shade_model_flags[Model]);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 3.3	Points
+% Points.
 %
-%------------------------------------------------------------------------------%
 
-:- pragma c_code(point_size(Size::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	point_size(Size::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glPointSize((GLfloat) Size);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 3.4	Lines Segments
+% Line segments.
 %
-%------------------------------------------------------------------------------%
 
-:- pragma c_code(line_width(Size::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	line_width(Size::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glLineWidth((GLfloat) Size);
 	IO = IO0;
 ").
 
-:- pragma c_code(line_stipple(Fac::in, Pat::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	line_stipple(Fac::in, Pat::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glLineStipple((GLint) Fac, (GLushort) Pat);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 3.5	Polygons
+% Polygons.
 %
-%------------------------------------------------------------------------------%
 
 :- func polygon_mode_to_int(polygon_mode) = int.
 
-polygon_mode_to_int(point)	= 0.
-polygon_mode_to_int(line)	= 1.
-polygon_mode_to_int(fill)	= 2.
+polygon_mode_to_int(point) = 0.
+polygon_mode_to_int(line)  = 1.
+polygon_mode_to_int(fill)  = 2.
 
-:- pragma c_header_code("
-	extern const GLenum	polygon_mode_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum polygon_mode_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	polygon_mode_flags[] = {
+:- pragma foreign_code("C", "
+	const GLenum polygon_mode_flags[] = {
 		GL_POINT,
 		GL_LINE,
 		GL_FILL
 	};
 ").
 
-cull_face(Face) -->
-	cull_face2(face_side_to_int(Face)).
+cull_face(Face, !IO) :-
+	cull_face2(face_side_to_int(Face), !IO).
 
-:- pred cull_face2(int, io__state, io__state).
+:- pred cull_face2(int, io, io).
 :- mode cull_face2(in, di, uo) is det.
 
-:- pragma c_code(cull_face2(F::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	cull_face2(F::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glCullFace(face_side_flags[F]);
 	IO = IO0;
 ").
@@ -1844,35 +1925,35 @@ cull_face(Face) -->
 %:- pred polygon_stipple(polygon_stipple, io__state, io__state).
 %:- mode polygon_stipple(in, di, uo) is det.
 
-polygon_stipple(_) -->
-		% Avoid a determinism warning
-	( { semidet_succeed } ->
-		{ error("sorry, polygon_stipple uniplemented") }
-	;
-		[]
-	).
+polygon_stipple(_, _, _) :-
+	error("sorry, polygon_stipple unimplemented").	
 
-polygon_mode(Face, Mode) -->
-	polygon_mode2(face_side_to_int(Face), polygon_mode_to_int(Mode)).
+polygon_mode(Face, Mode, !IO) :-
+	polygon_mode2(face_side_to_int(Face), polygon_mode_to_int(Mode), !IO).
 
-:- pred polygon_mode2(int, int, io__state, io__state).
+:- pred polygon_mode2(int, int, io, io).
 :- mode polygon_mode2(in, in, di, uo) is det.
 
-:- pragma c_code(polygon_mode2(Face::in, Mode::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	polygon_mode2(Face::in, Mode::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glPolygonMode(face_side_flags[Face], polygon_mode_flags[Mode]);
 	IO = IO0;
 ").
 
-:- pragma c_code(polygon_offset(Fac::in, Units::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	polygon_offset(Fac::in, Units::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glPolygonOffset((GLfloat) Fac, (GLfloat) Units);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 3.6	Pixel Rectangles
+% Pixel Rectangles.
 %
-%------------------------------------------------------------------------------%
 
 /*
 
@@ -1940,9 +2021,8 @@ polygon_mode(Face, Mode) -->
 
 %------------------------------------------------------------------------------%
 %
-% 3.7	Bitmaps
+% Bitmaps
 %
-%------------------------------------------------------------------------------%
 
 /*
 :- pred bitmap(int, int, float, float, float, float, list(int),
@@ -1952,9 +2032,8 @@ polygon_mode(Face, Mode) -->
 
 %------------------------------------------------------------------------------%
 %
-% 3.8	Texturing
+% Texturing
 %
-%------------------------------------------------------------------------------%
 
 /*
 :- type texture_target
@@ -1978,9 +2057,8 @@ polygon_mode(Face, Mode) -->
 
 %------------------------------------------------------------------------------%
 %
-% 3.9	Fog
+% Fog.
 %
-%------------------------------------------------------------------------------%
 
 :- func fog_mode_to_int(fog_mode) = int.
 
@@ -1988,11 +2066,11 @@ fog_mode_to_int(linear)	= 0.
 fog_mode_to_int(exp)	= 1.
 fog_mode_to_int(exp2)	= 2.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern const GLenum fog_mode_flags[];
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	const GLenum fog_mode_flags[] = {
 		GL_LINEAR,
 		GL_EXP,
@@ -2000,54 +2078,66 @@ fog_mode_to_int(exp2)	= 2.
 	};
 ").
 
-fog(fog_mode(Mode)) -->
-	fog_mode(fog_mode_to_int(Mode)).
-fog(fog_density(Density)) -->
-	fog_density(Density).
-fog(fog_start(Start)) -->
-	fog_start(Start).
-fog(fog_end(End)) -->
-	fog_end(End).
+fog(fog_mode(Mode), !IO) :-
+	fog_mode(fog_mode_to_int(Mode), !IO).
+fog(fog_density(Density), !IO) :-
+	fog_density(Density, !IO).
+fog(fog_start(Start), !IO) :-
+	fog_start(Start, !IO).
+fog(fog_end(End), !IO)  :-
+	fog_end(End, !IO).
 
-:- pred fog_mode(int, io__state, io__state).
+:- pred fog_mode(int, io, io).
 :- mode fog_mode(in, di, uo) is det.
 
-:- pragma c_code(fog_mode(M::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	fog_mode(M::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFogi(GL_FOG_MODE, (GLint) fog_mode_flags[M]);
 	IO = IO0;
 ").
 
-:- pred fog_density(float, io__state, io__state).
+:- pred fog_density(float, io, io).
 :- mode fog_density(in, di, uo) is det.
 
-:- pragma c_code(fog_density(P::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	fog_density(P::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFogf(GL_FOG_DENSITY, (GLfloat) P);
 	IO = IO0;
 ").
 
-:- pred fog_start(float, io__state, io__state).
+:- pred fog_start(float, io, io).
 :- mode fog_start(in, di, uo) is det.
 
-:- pragma c_code(fog_start(P::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	fog_start(P::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFogf(GL_FOG_START, (GLfloat) P);
 	IO = IO0;
 ").
 
-:- pred fog_end(float, io__state, io__state).
+:- pred fog_end(float, io, io).
 :- mode fog_end(in, di, uo) is det.
 
-:- pragma c_code(fog_end(P::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	fog_end(P::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFogf(GL_FOG_END, (GLfloat) P);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
 %
-% 4.1	Per-Fragment Operations
+% Per-fragment operations.
 %
-%------------------------------------------------------------------------------%
 
 /*
+
 :- pred scissor(int, int, int, int, io__state, io__state).
 :- mode scissor(in, in, in, in, di, uo) is det.
 
@@ -2127,13 +2217,13 @@ fog(fog_end(End)) -->
 		;	nand
 		;	set
 		.
+
 */
 
 %------------------------------------------------------------------------------%
 %
-% 4.2	Whole Framebuffer Operations
+% Whole framebuffer operations.
 %
-%------------------------------------------------------------------------------%
 
 :- func buffer_to_int(buffer) = int.
 
@@ -2146,14 +2236,14 @@ buffer_to_int(front)		= 5.
 buffer_to_int(back)		= 6.
 buffer_to_int(left)		= 7.
 buffer_to_int(right)		= 8.
-buffer_to_int(front_and_back)	= 9.
+buffer_to_int(front_and_back) 	= 9.
 buffer_to_int(aux(I))		= 10 + I.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern const GLenum buffer_flags[];
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	const GLenum buffer_flags[] = {
 		GL_NONE,
 		GL_FRONT_LEFT,
@@ -2172,61 +2262,68 @@ buffer_to_int(aux(I))		= 10 + I.
 	};
 ").
 
-draw_buffer(Buffer) -->
-	draw_buffer2(buffer_to_int(Buffer)).
+draw_buffer(Buffer, !IO) :-
+	draw_buffer2(buffer_to_int(Buffer), !IO).
 
-:- pred draw_buffer2(int, io__state, io__state).
+:- pred draw_buffer2(int, io, io).
 :- mode draw_buffer2(in, di, uo) is det.
 
-:- pragma c_code(draw_buffer2(B::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	draw_buffer2(B::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glDrawBuffer(buffer_flags[B]);
 	IO = IO0;
 ").
 
-:- pragma c_code(index_mask(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	index_mask(I::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glIndexMask((GLuint) I);
 	IO = IO0;
 ").
 
-color_mask(A, B, C, D) -->
+color_mask(A, B, C, D, !IO) :-
 	color_mask2(bool_to_int(A), bool_to_int(B),
-		bool_to_int(C), bool_to_int(D)).
+		bool_to_int(C), bool_to_int(D), !IO).
 
-:- pred color_mask2(int, int, int, int, io__state, io__state).
+:- pred color_mask2(int, int, int, int, io, io).
 :- mode color_mask2(in, in, in, in, di, uo) is det.
 
-:- pragma c_code(color_mask2(A::in, B::in, C::in, D::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	color_mask2(A::in, B::in, C::in, D::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glColorMask((GLboolean) A, (GLboolean) B, (GLboolean) C, (GLboolean) D);
 	IO = IO0;
 ").
 
-depth_mask(Bool) -->
-	depth_mask2(bool_to_int(Bool)).
+depth_mask(Bool, !IO) :-
+	depth_mask2(bool_to_int(Bool), !IO).
 
-:- pred depth_mask2(int, io__state, io__state).
+:- pred depth_mask2(int, io, io).
 :- mode depth_mask2(in, di, uo) is det.
 
-:- pragma c_code(depth_mask2(M::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	depth_mask2(M::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glDepthMask((GLboolean) M);
 	IO = IO0;
 ").
 
-:- pragma c_code(stencil_mask(M::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	stencil_mask(M::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glStencilMask((GLuint) M);
 	IO = IO0;
 ").
 
-
-clear(BitList) -->
-	{ make_mask(BitList, 0, Mask) },
-	clear2(Mask).
-
-:- pred make_mask(list(buffer_bit), int, int).
-:- mode make_mask(in, in, out) is det.
-
-make_mask([], Acc, Acc).
-make_mask([Flag|Flags], Acc0, Acc) :-
-	make_mask(Flags, Acc0 \/ buffer_bit_to_bit(Flag), Acc).
+clear(BitList, !IO) :-
+	Mask = list.foldr((\/), list.map(buffer_bit_to_bit, BitList), 0),
+	clear2(Mask, !IO).
 
 :- func buffer_bit_to_bit(buffer_bit) = int.
 
@@ -2234,15 +2331,17 @@ buffer_bit_to_bit(Flag) = lookup_buffer_bit(buffer_bit_to_int(Flag)).
 
 :- func buffer_bit_to_int(buffer_bit) = int.
 
-buffer_bit_to_int(color)	= 0.
-buffer_bit_to_int(depth)	= 1.
-buffer_bit_to_int(stencil)	= 2.
-buffer_bit_to_int(accum)	= 3.
+buffer_bit_to_int(color)   = 0.
+buffer_bit_to_int(depth)   = 1.
+buffer_bit_to_int(stencil) = 2.
+buffer_bit_to_int(accum)   = 3.
 
 :- func lookup_buffer_bit(int)	= int.
 
-:- pragma c_code(lookup_buffer_bit(F::in) = (B::out),"
-{
+:- pragma foreign_proc("C",
+	lookup_buffer_bit(F::in) = (B::out),
+	[will_not_call_mercury, promise_pure],
+"{
 	static GLbitfield a[] = {
 		GL_COLOR_BUFFER_BIT,
 		GL_DEPTH_BUFFER_BIT,
@@ -2253,34 +2352,52 @@ buffer_bit_to_int(accum)	= 3.
 	B = a[F];
 }").
 
-:- pred clear2(int::in, io__state::di, io__state::uo) is det.
+:- pred clear2(int::in, io::di, io::uo) is det.
 
-:- pragma c_code(clear2(Mask::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	clear2(Mask::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glClear(Mask);
 	IO = IO0;
 ").
 
-:- pragma c_code(clear_color(R::in, G::in, B::in, A::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	clear_color(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glClearColor((GLclampf) R, (GLclampf) G, (GLclampf) B, (GLclampf) A);
 	IO = IO0;
 ").
 
-:- pragma c_code(clear_index(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	clear_index(I::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glClearIndex((GLfloat) I);
 	IO = IO0;
 ").
 
-:- pragma c_code(clear_depth(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	clear_depth(I::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glClearDepth((GLfloat) I);
 	IO = IO0;
 ").
 
-:- pragma c_code(clear_stencil(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	clear_stencil(I::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glClearStencil((GLint) I);
 	IO = IO0;
 ").
 
-:- pragma c_code(clear_accum(R::in, G::in, B::in, A::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C", 
+	clear_accum(R::in, G::in, B::in, A::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	glClearAccum((GLfloat) R, (GLfloat) G, (GLfloat) B, (GLfloat) A);
 	IO = IO0;
 ").
@@ -2293,11 +2410,11 @@ accum_op_to_int(return)	= 2.
 accum_op_to_int(mult)	= 3.
 accum_op_to_int(add)	= 4.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern const GLenum accum_op_flags[];
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	const GLenum accum_op_flags[] = {
 		GL_ACCUM,
 		GL_LOAD,
@@ -2307,30 +2424,28 @@ accum_op_to_int(add)	= 4.
 	};
 ").
 
-accum(Op, Param) -->
-	accum2(accum_op_to_int(Op), Param).
+accum(Op, Param, !IO) :-
+	accum2(accum_op_to_int(Op), Param, !IO).
 
-:- pred accum2(int, float, io__state, io__state).
+:- pred accum2(int, float, io, io).
 :- mode accum2(in, in, di, uo) is det.
 
-:- pragma c_code(accum2(Op::in, Param::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	accum2(Op::in, Param::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glAccum(accum_op_flags[Op], Param);
 	IO = IO0;
 ").
 
-%------------------------------------------------------------------------------%
-%
-% 5.1 Evaluators
-%
 %------------------------------------------------------------------------------%
 
 % Evalutators not implemented
 
 %------------------------------------------------------------------------------%
 %
-% 5.2 Selection
+% Selection.
 %
-%------------------------------------------------------------------------------%
 
 /*
 
@@ -2359,108 +2474,121 @@ accum(Op, Param) -->
 
 %------------------------------------------------------------------------------%
 %
-% 5.4 Display Lists
-%
-%------------------------------------------------------------------------------%
+% Display lists.
+% 
 
 :- func display_list_mode_to_int(display_list_mode) = int.
 
-display_list_mode_to_int(compile)		= 0.
-display_list_mode_to_int(compile_and_execute)	= 1.
+display_list_mode_to_int(compile) = 0.
+display_list_mode_to_int(compile_and_execute) = 1.
 
-:- pragma c_header_code("
-	extern const GLenum	display_list_mode_flags[];
+:- pragma foreign_decl("C", "
+	extern const GLenum display_list_mode_flags[];
 ").
 
-:- pragma c_code("
-	const GLenum	display_list_mode_flags[] ={
+:- pragma foreign_code("C", "
+	const GLenum display_list_mode_flags[] ={
 		GL_COMPILE,
 		GL_COMPILE_AND_EXECUTE
 	};
 ").
 
-new_list(Num, Mode) -->
-	new_list2(Num, display_list_mode_to_int(Mode)).
+new_list(Num, Mode, !IO) :-
+	new_list2(Num, display_list_mode_to_int(Mode), !IO).
 
-:- pred new_list2(int, int, io__state, io__state).
+:- pred new_list2(int, int, io, io).
 :- mode new_list2(in, in, di, uo) is det.
 
-:- pragma c_code(new_list2(N::in, M::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	new_list2(N::in, M::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glNewList((GLuint) N, display_list_mode_flags[M]);
 	IO = IO0;
 ").
 
-:- pragma c_code(end_list(IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	end_list(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glEndList();
 	IO = IO0;
 ").
 
-:- pragma c_code(call_list(N::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	call_list(N::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glCallList((GLuint) N);
 	IO = IO0;
 ").
 
-:- pragma c_code(gen_lists(N::in, M::out, IO0::di, IO::uo), "
-	M = (Integer) glGenLists((GLsizei) N);
+:- pragma foreign_proc("C",
+	gen_lists(N::in, M::out, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
+	M = (MR_Integer) glGenLists((GLsizei) N);
 	IO = IO0;
 ").
 
-:- pragma c_code(delete_lists(N::in, M::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	delete_lists(N::in, M::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glDeleteLists((GLuint) N, (GLsizei) M);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
-%
-% 5.5 Flush and Finish
-%
-%------------------------------------------------------------------------------%
 
-:- pragma c_code(flush(IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	flush(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFlush();
 	IO = IO0;
 	assert(glGetError() == GL_NO_ERROR);
 ").
 
-:- pragma c_code(finish(IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	finish(IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glFinish();
 	IO = IO0;
 	assert(glGetError() == GL_NO_ERROR);
 ").
 
 %------------------------------------------------------------------------------%
-%
-% Enable/Disable
-%
-%------------------------------------------------------------------------------%
 
 :- func control_flag_to_int(control_flag) = int.
-control_flag_to_int(normalize)		= 0.
-control_flag_to_int(clip_plane(_))	= 1.
-control_flag_to_int(lighting)		= 2.
-control_flag_to_int(light(_))		= 3.
-control_flag_to_int(color_material)	= 4.
-control_flag_to_int(line_stipple)	= 5.
-control_flag_to_int(cull_face)		= 6.
-control_flag_to_int(polygon_stipple)	= 7.
-control_flag_to_int(polygon_offset_point) = 8.
-control_flag_to_int(polygon_offset_line)= 9.
-control_flag_to_int(polygon_offset_fill)= 10.
-control_flag_to_int(fog)		= 11.
-control_flag_to_int(scissor_test)	= 12.
-control_flag_to_int(alpha_test)		= 13.
-control_flag_to_int(stencil_test)	= 14.
-control_flag_to_int(depth_test)		= 15.
-control_flag_to_int(blend)		= 16.
-control_flag_to_int(dither)		= 17.
-control_flag_to_int(index_logic_op)	= 18.
-control_flag_to_int(color_logic_op)	= 19.
 
-:- pragma c_header_code("
+control_flag_to_int(normalize)       = 0.
+control_flag_to_int(clip_plane(_))   = 1.
+control_flag_to_int(lighting)        = 2.
+control_flag_to_int(light(_))        = 3.
+control_flag_to_int(color_material)  = 4.
+control_flag_to_int(line_stipple)    = 5.
+control_flag_to_int(cull_face)       = 6.
+control_flag_to_int(polygon_stipple) = 7.
+control_flag_to_int(polygon_offset_point) = 8.
+control_flag_to_int(polygon_offset_line)  = 9.
+control_flag_to_int(polygon_offset_fill)  = 10.
+control_flag_to_int(fog)            = 11.
+control_flag_to_int(scissor_test)   = 12.
+control_flag_to_int(alpha_test)     = 13.
+control_flag_to_int(stencil_test)   = 14.
+control_flag_to_int(depth_test)     = 15.
+control_flag_to_int(blend)          = 16.
+control_flag_to_int(dither)         = 17.
+control_flag_to_int(index_logic_op) = 18.
+control_flag_to_int(color_logic_op) = 19.
+
+:- pragma foreign_decl("C", "
 	extern const GLenum control_flag_flags[];
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	const GLenum control_flag_flags[] = {
 		GL_NORMALIZE,
 		GL_CLIP_PLANE0,
@@ -2485,55 +2613,68 @@ control_flag_to_int(color_logic_op)	= 19.
 	};
 ").
 
-enable(Flag) -->
-	( { Flag = clip_plane(I) } ->
-		enable3(control_flag_to_int(Flag), I)
-	; { Flag = light(I) } ->
-		enable3(control_flag_to_int(Flag), I)
-	;
-		enable2(control_flag_to_int(Flag))
+enable(Flag, !IO) :-
+	( Flag = clip_plane(I) ->
+	  	enable3(control_flag_to_int(Flag), I, !IO)
+	; Flag = light(I) ->
+	  	enable3(control_flag_to_int(Flag), I, !IO)
+	;	
+		enable2(control_flag_to_int(Flag), !IO)
 	).
 
-:- pred enable2(int, io__state, io__state).
+:- pred enable2(int, io, io).
 :- mode enable2(in, di, uo) is det.
 
-:- pragma c_code(enable2(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	enable2(I::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glEnable(control_flag_flags[I]);
 	IO = IO0;
 ").
 
-:- pred enable3(int, int, io__state, io__state).
+:- pred enable3(int, int, io, io).
 :- mode enable3(in, in, di, uo) is det.
 
-:- pragma c_code(enable3(I::in, J::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	enable3(I::in, J::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glEnable(control_flag_flags[I]+J);
 	IO = IO0;
 ").
 
-disable(Flag) -->
-	( { Flag = clip_plane(I) } ->
-		disable3(control_flag_to_int(Flag), I)
-	; { Flag = light(I) } ->
-		disable3(control_flag_to_int(Flag), I)
+disable(Flag, !IO) :-
+	( Flag = clip_plane(I)  ->
+		disable3(control_flag_to_int(Flag), I, !IO)
+	; Flag = light(I) ->
+		disable3(control_flag_to_int(Flag), I, !IO)
 	;
-		disable2(control_flag_to_int(Flag))
+		disable2(control_flag_to_int(Flag), !IO)
 	).
 
-:- pred disable2(int, io__state, io__state).
+:- pred disable2(int, io, io).
 :- mode disable2(in, di, uo) is det.
 
-:- pragma c_code(disable2(I::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	disable2(I::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glDisable(control_flag_flags[I]);
 	IO = IO0;
 ").
 
-:- pred disable3(int, int, io__state, io__state).
+:- pred disable3(int, int, io, io).
 :- mode disable3(in, in, di, uo) is det.
 
-:- pragma c_code(disable3(I::in, J::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	disable3(I::in, J::in, IO0::di, IO::uo), 
+	[will_not_call_mercury, promise_pure],
+"
 	glDisable(control_flag_flags[I]+J);
 	IO = IO0;
 ").
 
 %------------------------------------------------------------------------------%
+:- end_module mogl.
 %------------------------------------------------------------------------------%
