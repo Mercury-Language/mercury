@@ -87,7 +87,7 @@ match([T|Ts], Chars, Match0, Match) :-
 			% Match against a variable.
 		match_2(T, Chars, [], Ts, Match0, Match)
 	;
-		T = ('\\') % don't you love ISO compiant syntax :-(
+		T = ('\\') % don't you love ISO compliant syntax :-(
 	->
 		Ts = [T1|Ts1],
 		Chars = [T1|Chars1],
