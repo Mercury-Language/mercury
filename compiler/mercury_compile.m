@@ -528,11 +528,16 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 		%
 		% work out whether we encountered any errors
 		%
+		io__get_exit_status(ExitStatus),
 		(
 			{ FoundModeError = no },
 			{ FoundDetError = no },
 			{ FoundUniqError = no },
-			{ FoundStratError = no }
+			{ FoundStratError = no },
+			% Strictly speaking, we shouldn't need to check
+			% the exit status.  But the values returned for
+			% FoundModeError etc. aren't always correct.
+			{ ExitStatus = 0 }
 		->
 			{ FoundError = no },
 			globals__io_lookup_bool_option(intermodule_optimization,
@@ -1070,8 +1075,7 @@ mercury_compile__maybe_base_type_layouts(HLDS0, Verbose, Stats, HLDS) -->
 mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 	globals__io_lookup_bool_option(generate_bytecode, GenBytecode),
 	( { GenBytecode = yes } ->
-		globals__io_get_args_method(Args),
-		{ generate_arg_info(HLDS0, Args, HLDS1) },
+		mercury_compile__map_args_to_regs(HLDS0, Verbose, Stats, HLDS1),
 		maybe_write_string(Verbose,
 			"% Generating bytecodes...\n"),
 		maybe_flush_output(Verbose),
