@@ -241,7 +241,13 @@ else
 
 # Run multiple rm commands at once to speed up
 # `mmake realclean' on slow NFS filesystems.
-RM_JFACTOR=-j10
+# XXX We used to do this, but if the tests are being
+# run with parallel make it results a huge number of
+# processes being run because make's jobserver mechanism
+# is disabled if `-j' is specified on the command line
+# of a sub-make.
+# RM_JFACTOR=-j10
+RM_JFACTOR=
 
 #
 # Clean up after any previous test run.
