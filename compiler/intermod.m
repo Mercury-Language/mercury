@@ -215,6 +215,7 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 			)
 		)
 	->
+		=(IntermodInfo0),
 		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
 		{ pred_info_typevarset(PredInfo0, TVarSet) },
 		{ clauses_info_vartypes(ClausesInfo0, VarTypes) },
@@ -251,13 +252,18 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 			),
 			intermod_info_set_module_info(ModuleInfo)
 		;
-			[]
+			% Remove any items added for the clauses
+			% for this predicate.
+			dcg_set(IntermodInfo0)
 		)
 	;
 		[]
 	),
 	intermod__gather_preds(PredIds, CollectTypes,
 		InlineThreshold, Deforestation).
+
+:- pred dcg_set(T::in, T::unused, T::out) is det.
+dcg_set(T, _, T).
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -542,6 +548,30 @@ intermod_info_add_proc(PredId, DoWrite) -->
 			proc_info_declared_determinism(ProcInfo, no)
 		}
 	->
+		{ DoWrite = no }
+	;
+		% Goals which call impure predicates cannot be written
+		% due to limitations in mode analysis. The problem is that
+		% only head unifications are allowed to be reordered with
+		% impure goals.
+		% 	
+		% e.g
+		%	p(A::in, B::in, C::out) :- impure foo(A, B, C).
+		% becomes
+		% 	p(HeadVar1, HeadVar2, HeadVar3) :-
+		%		A = HeadVar1, B = HeadVar2, C = HeadVar3,
+		% 		impure_goal(A, B, C).
+		% 
+		% In the clauses written to `.opt' files, the head
+		% unifications are already expanded, and are expanded
+		% again when the `.opt' file is read in. The `C = HeadVar3'
+		% unficiation cannot be reordered with the impure goal,
+		% resulting in a mode error. Fixing this in mode analysis
+		% would be tricky.
+		%
+		% See tests/valid/impure_intermod.m.
+		{ pred_info_get_purity(PredInfo, impure) }
+	->	
 		{ DoWrite = no }
 	;
 		%
