@@ -61,7 +61,7 @@ extern	char		*MP_timeout_file1;
 extern	char		*MP_timeout_file2;
 extern	char		*MP_timeout_file3;
 
-#define	MDPROF_NUM_SIGNAL_NUMBERS	12
+#define	MDPROF_NUM_SIGNAL_NUMBERS	11
 
 extern	const int	signal_numbers[MDPROF_NUM_SIGNAL_NUMBERS];
 
@@ -99,7 +99,6 @@ const int	signal_numbers[MDPROF_NUM_SIGNAL_NUMBERS] =
 
 	SIGILL,
 	SIGABRT,
-	SIGIOT,
 	SIGBUS,
 	SIGFPE,
 
