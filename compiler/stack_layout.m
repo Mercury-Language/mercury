@@ -487,8 +487,7 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaxVarNum, VarNameVector),
 	stack_layout__get_trace_level(TraceLevel),
 	stack_layout__get_trace_suppress(TraceSuppress),
-	{ trace_needs_proc_body_reps(TraceLevel, TraceSuppress)
-		= BodyReps },
+	{ BodyReps = trace_needs_proc_body_reps(TraceLevel, TraceSuppress) },
 	(
 		{ BodyReps = no },
 		{ MaybeGoalRepRval = no }
@@ -503,9 +502,11 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 			CellCounter0, CellCounter) },
 		stack_layout__set_cell_counter(CellCounter)
 	),
-	{ MaybeCallLabel = yes(CallLabelPrime) ->
+	{
+		MaybeCallLabel = yes(CallLabelPrime),
 		CallLabel = CallLabelPrime
 	;
+		MaybeCallLabel = no,
 		error("stack_layout__construct_trace_layout: call label not present")
 	},
 	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
@@ -534,8 +535,8 @@ stack_layout__construct_var_name_vector(VarSet, UsedVarNameMap, Count, Offsets)
 		-->
 	stack_layout__get_trace_level(TraceLevel),
 	stack_layout__get_trace_suppress(TraceSuppress),
-	{ trace_needs_all_var_names(TraceLevel, TraceSuppress)
-		= NeedsAllNames },
+	{ NeedsAllNames = trace_needs_all_var_names(TraceLevel,
+		TraceSuppress) },
 	(
 		{ NeedsAllNames = yes },
 		{ varset__var_name_list(VarSet, VarNameList) },
