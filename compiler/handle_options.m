@@ -809,6 +809,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% we are expecting some to be missing.
 	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
 
+	% --warn-non-tail-recursion requires both --high-level-code
+	% and --optimize-tailcalls.  It also doesn't work if you use
+	% --errorcheck-only.
+	option_requires(warn_non_tail_recursion, highlevel_code, bool(yes),
+		"--warn-non-tail-recursion requires --high-level-code"),
+	option_requires(warn_non_tail_recursion, optimize_tailcalls, bool(yes),
+		"--warn-non-tail-recursion requires --optimize-tailcalls"),
+	option_requires(warn_non_tail_recursion, errorcheck_only, bool(no),
+		"--warn-non-tail-recursion is incompatible with --errorcheck-only"),
 
 	% The backend foreign languages depend on the target.
 	( 	
@@ -913,6 +922,23 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
 	( { SourceOptionValue = no } ->
 		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
+	;
+		[]
+	).
+
+% option_requires(SourceBoolOption, RequiredOption, RequiredOptionValue,
+%	ErrorMsg):
+% If the SourceBoolOption is set to yes, and RequiredOption is not set
+% to RequiredOptionValue, then report a usage error.
+:- pred option_requires(option::in, option::in, option_data::in,
+		string::in, io__state::di, io__state::uo) is det.
+
+option_requires(SourceOption, RequiredOption, RequiredOptionValue,
+		ErrorMessage) -->
+	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
+	globals__io_lookup_option(RequiredOption, OptionValue),
+	( { SourceOptionValue = yes, OptionValue \= RequiredOptionValue } ->
+		usage_error(ErrorMessage)
 	;
 		[]
 	).

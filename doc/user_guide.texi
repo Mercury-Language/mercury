@@ -3549,9 +3549,15 @@ does not match the module's file name.
 
 @sp 1
 @item --no-warn-smart-recompilation
+@findex --warn-smart-recompilation
 @findex --no-warn-smart-recompilation
 Disable warnings from the smart recompilation system.
 
+@sp 1
+@item --warn-non-tail-recursion
+@findex --warn-non-tail-recursion
+Warn about any directly recursive calls that are not tail recursive.
+This option also requires @samp{--high-level-code}.
 @end table
 
 @node Verbosity options

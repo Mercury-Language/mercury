@@ -61,7 +61,8 @@
 :- import_module mark_static_terms.		% HLDS -> HLDS
 :- import_module mlds.				% MLDS data structure
 :- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
-:- import_module ml_elim_nested, ml_tailcall.	% MLDS -> MLDS
+:- import_module ml_elim_nested.		% MLDS -> MLDS
+:- import_module ml_tailcall.			% MLDS -> MLDS
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 :- import_module mlds_to_java.			% MLDS -> Java
@@ -3262,6 +3263,19 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	),
 	maybe_report_stats(Stats),
 	mercury_compile__maybe_dump_mlds(MLDS20, "20", "tailcalls"),
+
+	% Warning about non-tail calls needs to come after detection
+	% of tail calls
+	globals__io_lookup_bool_option(warn_non_tail_recursion, WarnTailCalls),
+	( { OptimizeTailCalls = yes, WarnTailCalls = yes } ->
+		maybe_write_string(Verbose, 
+			"% Warning about non-tail recursive calls...\n"),
+		ml_warn_tailcalls(MLDS20),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		[]
+	),
+	maybe_report_stats(Stats),
 
 	% run the ml_optimize pass before ml_elim_nested,
 	% so that we eliminate as many local variables as possible

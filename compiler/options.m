@@ -71,6 +71,7 @@
 		;	warn_missing_module_name
 		;	warn_wrong_module_name
 		;	warn_smart_recompilation
+		;	warn_non_tail_recursion
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -566,7 +567,8 @@ option_defaults_2(warning_option, [
 	warn_duplicate_calls	-	bool(no),
 	warn_missing_module_name -	bool(yes),
 	warn_wrong_module_name -	bool(yes),
-	warn_smart_recompilation -	bool(yes)
+	warn_smart_recompilation -	bool(yes),
+	warn_non_tail_recursion -	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -1036,6 +1038,7 @@ long_option("warn-duplicate-calls",	warn_duplicate_calls).
 long_option("warn-missing-module-name",	warn_missing_module_name).
 long_option("warn-wrong-module-name",	warn_wrong_module_name).
 long_option("warn-smart-recompilation",	warn_smart_recompilation).
+long_option("warn-non-tail-recursion",	warn_non_tail_recursion).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -1929,7 +1932,10 @@ options_help_warning -->
 		"\tDisable warnings for modules whose `:- module'",
 		"\tdeclaration does not match the module's file name.",
 		"--no-warn-smart-recompilation",
-		"\tDisable warnings from the smart recompilation system."
+		"\tDisable warnings from the smart recompilation system.",
+		"--warn-non-tail-recursion",
+		"\tWarn about any directly recursive calls that are not tail calls.",
+		"\tThis requires --high-level-code."
 	]).
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
