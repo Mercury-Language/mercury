@@ -20,9 +20,11 @@ include $(MERCURY_DIR)/Mmake.common
 
 .PHONY: lib$(GC_GRADE)
 
-ifneq ("$(filter il% java%,$(GRADE))","")        
+ifneq ("$(filter nogc mps,$(GC_GRADE))","")
 
-# no need to build a garbage collector for the .NET or Java backends.
+# No need to build the Boehm garbage collector for grades which don't use it
+# (this includes the .NET and Java backends, and for the C backend
+# grades with `--gc none', `--gc mps', or `--gc accurate').
 
 lib$(GC_GRADE):
 
@@ -139,9 +141,9 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_GC_LIB_DIR) ] || \
 		mkdir -p $(INSTALL_MERC_GC_LIB_DIR)
 
-ifneq ("$(filter il% java%,$(GRADE))","")        
+ifneq ("$(filter nogc mps,$(GC_GRADE))","")
 
-# no need to build a garbage collector for the .NET or Java backends.
+# No need to install the Boehm collector for grades which don't use it.
 
 .PHONY: install_headers
 install_headers:
