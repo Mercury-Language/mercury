@@ -384,12 +384,28 @@ read_module_dependencies(RebuildDeps, ModuleName, Info0, Info) -->
 			ContainsForeignCode = contains_foreign_code(
 				set__list_to_set(ForeignLanguages))
 		},
-		{ Imports = module_imports(SourceFileName,
-			SourceFileModuleName, ModuleName, Parents,
-			IntDeps, ImplDeps, [], [], Children,
-			NestedChildren, FactDeps, ContainsForeignCode,
-			ForeignImports, ContainsForeignExport,
-			[], no_module_errors, no, HasMain, ModuleDir) },
+
+		% { Imports = module_imports(^...) },
+		{ Imports ^ source_file_name = SourceFileName },
+		{ Imports ^ source_file_module_name = SourceFileModuleName },
+		{ Imports ^ module_name = ModuleName },
+		{ Imports ^ parent_deps = Parents },
+		{ Imports ^ int_deps = IntDeps },
+		{ Imports ^ impl_deps = ImplDeps },
+		{ Imports ^ indirect_deps = [] },	% not used.
+		{ Imports ^ children = Children },
+		{ Imports ^ public_children = [] },	% not used.
+		{ Imports ^ nested_children = NestedChildren },
+		{ Imports ^ fact_table_deps = FactDeps },
+		{ Imports ^ foreign_code = ContainsForeignCode },
+		{ Imports ^ foreign_import_module_info = ForeignImports },
+		{ Imports ^ contains_foreign_export = ContainsForeignExport },
+		{ Imports ^ items = [] },		% not used.
+		{ Imports ^ error = no_module_errors },	% not used.
+		{ Imports ^ maybe_timestamps = no },	% not used.
+		{ Imports ^ has_main = HasMain },
+		{ Imports ^ module_dir = ModuleDir },
+
 		{ Info1 = Info0 ^ module_dependencies
 				^ elem(ModuleName) := yes(Imports) },
 
