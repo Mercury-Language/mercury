@@ -28,8 +28,8 @@
 :- implementation.
 
 :- import_module hlds_out, prog_out, prog_data, prog_util.
-:- import_module typecheck.
-:- import_module bool, require, int, string, set.
+:- import_module typecheck, modules.
+:- import_module bool, require, int, string, set, multi_map.
 
 %-----------------------------------------------------------------------------%
 
@@ -1722,49 +1722,49 @@ predicate_table_insert(PredicateTable0, PredInfo, NeedQual,
 predicate_table_do_insert(Module, Name, Arity, NeedQual, PredId, 
 		N_Index0, N_Index, NA_Index0, NA_Index, 
 		MNA_Index0, MNA_Index) :-
-	( NeedQual = may_be_unqualified ->
-			% insert the pred_id into the name index
-		( map__search(N_Index0, Name, N_PredIdList0) ->
-			N_PredIdList = [PredId | N_PredIdList0],
-			map__det_update(N_Index0, Name,
-				N_PredIdList, N_Index)
-		;
-			N_PredIdList = [PredId],
-			map__det_insert(N_Index0, Name, 
-				N_PredIdList, N_Index)
-		),
 
-			% insert it into the name/arity index
+	% XXX the code below doesn't handle mixing of
+	% `import_module' and `use_module' for
+	% parent & child modules properly.
+
+	( NeedQual = may_be_unqualified ->
+			% insert the unqualified name into the name index
+		multi_map__set(N_Index0, Name, PredId, N_Index),
+
+			% insert the unqualified name/arity into the
+			% name/arity index
 		NA = Name / Arity,
-		( map__search(NA_Index0, NA, NA_PredIdList0) ->
-			NA_PredIdList = [PredId | NA_PredIdList0],
-			map__det_update(NA_Index0, NA,
-				NA_PredIdList, NA_Index)
-		;
-			NA_PredIdList = [PredId],
-			map__det_insert(NA_Index0, NA,
-				NA_PredIdList,	NA_Index)
-		)
+		multi_map__set(NA_Index0, NA, PredId, NA_Index),
+
+			% insert partially module-qualified versions
+			% of the name into the module:name/arity index
+		get_partial_qualifiers(Module, PartialQuals),
+		list__map_foldl(lambda([AncModule::in, AncModule::out,
+				MNAs0::in, MNAs::out] is det,
+			insert_into_mna_index(AncModule, Name, Arity, PredId,
+					MNAs0, MNAs)),
+			PartialQuals, _, MNA_Index0, MNA_Index1)
 	;
 		N_Index = N_Index0,
-		NA_Index = NA_Index0
+		NA_Index = NA_Index0,
+		MNA_Index1 = MNA_Index0
 	),
+		% insert the fully-qualified name into the
+		% module:name/arity index
+	insert_into_mna_index(Module, Name, Arity, PredId,
+			MNA_Index1, MNA_Index).
 
-		% insert it into the module:name/arity index
+:- pred insert_into_mna_index(module_name, string, arity, pred_id,
+			module_name_arity_index, module_name_arity_index).
+:- mode insert_into_mna_index(in, in, in, in, in, out) is det.
+insert_into_mna_index(Module, Name, Arity, PredId, MNA_Index0, MNA_Index) :-
 	( map__search(MNA_Index0, Module - Name, MN_Arities0) ->
-		( map__search(MN_Arities0, Arity, MNA_PredIdList0) ->
-			map__det_update(MN_Arities0, Arity, 
-				[PredId | MNA_PredIdList0], MN_Arities)
-		;
-			map__det_insert(MN_Arities0, Arity, 
-				[PredId], MN_Arities)
-		),
+		multi_map__set(MN_Arities0, Arity, PredId, MN_Arities),
 		map__det_update(MNA_Index0, Module - Name, MN_Arities,
 			MNA_Index)
 	;
 		map__init(MN_Arities0),
-		map__det_insert(MN_Arities0, Arity, 
-			[PredId], MN_Arities),
+		map__det_insert(MN_Arities0, Arity, [PredId], MN_Arities),
 		map__det_insert(MNA_Index0, Module - Name, MN_Arities,
 			MNA_Index)
 	).

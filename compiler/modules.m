@@ -281,11 +281,19 @@
 
 	% get_ancestors(ModuleName, ParentDeps):
 	%	ParentDeps is the list of ancestor modules for this
-	%	module, oldest first (e.g. if the ModuleName is 
-	%	`foo:bar:baz', then ParentDeps would be [`foo', `foo:bar']).
+	%	module, oldest first; e.g. if the ModuleName is 
+	%	`foo:bar:baz', then ParentDeps would be [`foo', `foo:bar'].
 	%
 :- pred get_ancestors(module_name, list(module_name)).
 :- mode get_ancestors(in, out) is det.
+
+	% get_partial_qualifiers(ModuleName, PartialQualifiers):
+	%	PartialQualifiers is the list of partial module
+	%	qualifiers for ModuleName; e.g. if the ModuleName is 
+	%	`foo:bar:baz', then ParentDeps would be [`bar:baz', `baz']).
+	%
+:- pred get_partial_qualifiers(module_name, list(module_name)).
+:- mode get_partial_qualifiers(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -2302,6 +2310,28 @@ get_ancestors_2(unqualified(_), Ancestors, Ancestors).
 get_ancestors_2(qualified(Parent, _), Ancestors0, Ancestors) :-
 	Ancestors1 = [Parent | Ancestors0],
 	get_ancestors_2(Parent, Ancestors1, Ancestors).
+
+%-----------------------------------------------------------------------------%
+
+get_partial_qualifiers(unqualified(_), []).
+get_partial_qualifiers(qualified(ParentQual, ChildName),
+			[PartialQual | PartialQuals]) :-
+	drop_one_qualifier(ParentQual, ChildName, PartialQual),
+	get_partial_qualifiers(PartialQual, PartialQuals).
+	
+:- pred drop_one_qualifier(module_name, string, module_name).
+:- mode drop_one_qualifier(in, in, out) is det.
+
+drop_one_qualifier(ParentQual, ChildName, PartialQual) :-
+	(
+		ParentQual = unqualified(_ParentName),
+		PartialQual = unqualified(ChildName)
+	;
+		ParentQual = qualified(GrandParentQual, ParentName), 
+		drop_one_qualifier(GrandParentQual, ParentName,
+				PartialGrantParentQual),
+		PartialQual = qualified(PartialGrantParentQual, ChildName)
+	).
 
 %-----------------------------------------------------------------------------%
 

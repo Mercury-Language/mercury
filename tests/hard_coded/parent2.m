@@ -9,6 +9,8 @@
 
 :- implementation.
 
+:- type foo ---> bar ; baz(int).
+
 :- pred hello(io__state::di, io__state::uo) is det.
 
-hello --> print("Hello world\n").
+hello --> print("parent2:hello\n").

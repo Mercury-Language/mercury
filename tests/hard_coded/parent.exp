@@ -1,2 +1,14 @@
-Hello, world
-Hello, world
+parent:child:hello
+parent:child:hello
+parent:child:hello
+parent:child2:hello
+t1 = parent:child:foo
+t2 = parent:child:foo
+t3 = parent:child:foo
+t4 = parent:child2:foo
+t5 = parent:child2:foo
+has_type_t1 = bar
+has_type_t2 = bar
+has_type_t3 = bar
+has_type_t4 = bar
+has_type_t5 = bar

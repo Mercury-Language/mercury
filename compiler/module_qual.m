@@ -94,10 +94,16 @@ module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
 
 :- type mq_info
 	--->	mq_info(
-			type_id_set,	% Sets of all types, modes and
-			inst_id_set,	% insts visible in this module.
+				% Sets of all types, insts, modes,
+				% and typeclasses visible
+				% in this module.
+				% XXX we ought to also keep track of
+				% which modules are visible.
+			type_id_set,
+			inst_id_set,
 			mode_id_set,
 			class_id_set,
+
 			set(module_name), % modules imported in the
 				% interface that are not definitely
 				% needed in the interface.
@@ -810,69 +816,45 @@ add_module_qualifier(DefaultModule, qualified(SymModule, SymName),
 
 	% Find the unique match in the current name space for a given id
 	% from a list of ids. If none exists, either because no match was
-	% found or mulitiple matches were found, report an error.
+	% found or multiple matches were found, report an error.
 	% This predicate assumes that type_ids, inst_ids, mode_ids and
 	% class_ids have the same representation.
 :- pred find_unique_match(id::in, id::out, id_set::in, id_type::in,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
-	(
-		{ Id0 = qualified(Module, Name) - Arity },
+
+	% Find all IDs which match the current id.
+	{ Id0 = SymName - Arity },
+	{ id_set_search_sym_arity(Ids, SymName, Arity, Modules) },
+
+	( { Modules = [] } ->
+		% No matches for this id.
 		{ Id = Id0 },
-		( { id_set_search_m_n_a(Ids, Module, Name, Arity) } ->
-			{ mq_info_set_module_used(Info0, Module, Info) }
+		( { mq_info_get_report_error_flag(Info0, yes) } ->
+			{ mq_info_get_error_context(Info0, ErrorContext) },
+			report_undefined(ErrorContext, Id0, TypeOfId),
+			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
+			{ mq_info_incr_errors(Info1, Info) }
 		;
-			( { mq_info_get_report_error_flag(Info0, yes) } ->
-				{ mq_info_get_error_context(Info0,
-							ErrorContext) },
-				report_undefined(ErrorContext, Id, TypeOfId),
-				{ mq_info_set_error_flag(Info0,
-							TypeOfId, Info1) },
-				{ mq_info_incr_errors(Info1, Info) }
-			;
-				{ Info = Info0 }
-			)
+			{ Info = Info0 }
 		)
+	; { Modules = [Module] } ->
+		% A unique match for this ID.
+		{ unqualify_name(SymName, IdName) },
+		{ Id = qualified(Module, IdName) - Arity },
+		{ mq_info_set_module_used(Info0, Module, Info) }
 	;
-		{ Id0 = unqualified(IdName) - Arity },
-
-		% Find all IDs which match the current ID's name and
-		% arity and which come from modules imported by the
-		% module where the current ID is used.
-
-		{ id_set_search_name_arity(Ids, IdName, Arity, Modules) },
-		( { Modules = [] } ->
-			% No matches for this id.
-			{ Id = Id0 },
-			( { mq_info_get_report_error_flag(Info0, yes) } ->
-				{ mq_info_get_error_context(Info0,
-							ErrorContext) },
-				report_undefined(ErrorContext, Id0, TypeOfId),
-				{ mq_info_set_error_flag(Info0,
-							TypeOfId, Info1) },
-				{ mq_info_incr_errors(Info1, Info) }
-			;
-				{ Info = Info0 }
-			)
-		; { Modules = [Module] } ->
-			% A unique match for this ID.
-			{ Id = qualified(Module, IdName) - Arity },
-			{ mq_info_set_module_used(Info0, Module, Info) }
+		% There are multiple matches.
+		{ Id = Id0 },
+		( { mq_info_get_report_error_flag(Info0, yes) } ->
+			{ mq_info_get_error_context(Info0, ErrorContext) },
+			report_multiply_defined(ErrorContext, Id0, TypeOfId,
+						Modules),
+			{ mq_info_set_error_flag(Info0, TypeOfId, Info1) },
+			{ mq_info_incr_errors(Info1, Info) }
 		;
-			% There are multiple matches.
-			{ Id = Id0 },
-			( { mq_info_get_report_error_flag(Info0, yes) } ->
-				{ mq_info_get_error_context(Info0,
-							ErrorContext) },
-				report_multiply_defined(ErrorContext, Id0,
-							TypeOfId, Modules),
-				{ mq_info_set_error_flag(Info0,
-							TypeOfId, Info1) },
-				{ mq_info_incr_errors(Info1, Info) }
-			;
-				{ Info = Info0 }
-			)
+			{ Info = Info0 }
 		)
 	).
 				
@@ -1277,25 +1259,41 @@ id_set_insert(NeedQualifier, qualified(Module, Name) - Arity, IdSet0, IdSet) :-
 	),
 	map__set(IdSet0, Name - Arity, ImportModules - UseModules, IdSet).
 
-:- pred id_set_search_name_arity(id_set::in, string::in, int::in,
+:- pred id_set_search_sym_arity(id_set::in, sym_name::in, int::in,
 				list(module_name)::out) is det.
 
-id_set_search_name_arity(IdSet0, Name, Arity, Modules) :-
-	( map__search(IdSet0, Name - Arity, ImportModules - _) ->
-		set__to_sorted_list(ImportModules, Modules)
+id_set_search_sym_arity(IdSet, Sym, Arity, Modules) :-
+	unqualify_name(Sym, UnqualName),
+	(
+		map__search(IdSet, UnqualName - Arity,
+			ImportModules - UseModules)
+	->
+		(
+			Sym = unqualified(_),
+			set__to_sorted_list(ImportModules, Modules)
+		;
+			Sym = qualified(Module, _),
+			% XXX The code below is not quite right -
+			% it doesn't handle the cases where
+			% a module is imported but its parent module is used,
+			% or vice versa.
+			% E.g. It allows the use of `bar:baz' to match
+			% `:foo:bar:baz' if `bar' is imported,
+			% whereas this ought to be allowed only if `foo'
+			% is imported.
+			FindMatch =
+				lambda([MatchModule::out] is nondet, (
+				    (   
+					set__member(MatchModule, ImportModules)
+				    ;   
+					set__member(MatchModule, UseModules)
+				    ),
+				    match_sym_name(Module, MatchModule)
+				)),
+			solutions(FindMatch, Modules)
+		)
 	;
 		Modules = []
-	).
-
-:- pred id_set_search_m_n_a(id_set::in, module_name::in,
-			 	string::in, int::in) is semidet.
-
-id_set_search_m_n_a(IdSet0, Module, Name, Arity) :-
-	map__search(IdSet0, Name - Arity, ImportModules - UseModules),
-	( 
-		set__member(Module, ImportModules)
-	;
-		set__member(Module, UseModules)
 	).
 
 %----------------------------------------------------------------------------%
