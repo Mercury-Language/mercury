@@ -2468,10 +2468,16 @@ get_pred_id_and_proc_id(Name, Arity, PredArgTypes, ModuleInfo,
 		map__lookup(Preds, PredId, PredInfo),
 		pred_info_procedures(PredInfo, Procs),
 		map__keys(Procs, ProcIds),
-		(
-		    ProcIds = [ProcId0]
-		->
+		( ProcIds = [ProcId0] ->
 		    ProcId = ProcId0
+		; ProcIds = [] ->
+		    string__append_list([
+			    "cannot take address of predicate\n(`",
+			    Name,
+			    "') with no modes.\n",
+			    "(Sorry, confused by earlier errors -- bailing out.)"],
+			    Message),
+		    error(Message)
 		;
 		    string__append_list([
 			    "sorry, not implemented: ",
