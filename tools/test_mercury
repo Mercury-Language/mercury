@@ -405,7 +405,7 @@ case $status in
 	    rm -f mercury-latest-stable/* &&
 	    ln mercury-latest-unstable/mercury-$version.tar.gz \
 	        mercury-latest-stable/mercury-$version.tar.gz &&
-	    ln mercury-latest-unstable/mercury-$version-extras.tar.gz
+	    ln mercury-latest-unstable/mercury-$version-extras.tar.gz \
 	        mercury-latest-stable/mercury-$version-extras.tar.gz &&
 	    rm -f /home/tsa/ftp/pub/mercury/beta-releases/mercury-rotd-*.tar.gz
 	    cp mercury-latest-stable/mercury-$version.tar.gz \
