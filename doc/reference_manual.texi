@@ -42,7 +42,6 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@c @finalout
 @title The Mercury Language Reference Manual
 @subtitle April, 1996
 @author Fergus Henderson
@@ -352,7 +351,7 @@ the @samp{pragma} declarations are for the C interface, and for
 compiler hints about inlining, and the remainder are for the module system. 
 They are described in more detail in their respective chapters.
 
-(The current implementation allows @samp{when/2} declarations,
+(The current implementation also allows @samp{when/2} declarations,
 but ignores them.
 This helps when one wants to write a program
 that is both a Mercury program and an NU-Prolog program.)
@@ -552,7 +551,8 @@ Semantics:
 @c XXX too indented
 @example
 transform(V_in, V_out, (DCG-goal1, DCG-goal2)) =
-transform(V_in, V_new, DCG_goal1), transform(V_new, V_out, DCG_goal2)
+(transform(V_in, V_new, DCG_goal1),
+ transform(V_new, V_out, DCG_goal2))
 @end example
 where V_new is a fresh variable.
 
@@ -565,7 +565,8 @@ Semantics:
 @c XXX too indented
 @example
 transform(V_in, V_out, (DCG_goal1 ; DCG_goal2)) =
-transform(V_in, V_out, DCG_goal1) ; transform(V_in, V_out, DCG_goal2)
+( transform(V_in, V_out, DCG_goal1)
+; transform(V_in, V_out, DCG_goal2) )
 @end example
 
 @item @{ @var{Goal} @}
@@ -941,8 +942,6 @@ For example:
 
 There must only be one predicate with a given name and arity in each module,
 and only one function with a given name and arity in each module.
-The current implementation does not support defining a function of arity
-@var{N} and a predicate of arity @var{N+1} in the same module.
 
 The compiler infers the types of data-terms, and in particular the types
 of variables and overloaded constructors, functions, and predicates.
@@ -1861,7 +1860,7 @@ The @samp{unique} quantifier could then be used for sets
 even though the lists used to represent the sets
 might not be in the same order in every solution.
 
-However, the current implementation does not yet support
+However, the language does not yet support
 either the @samp{unique} quantifier or user-defined equivalence relations.
 
 @node Committed choice nondeterminism
@@ -2498,17 +2497,15 @@ conjunctions and disjunctions), then you can be guaranteed that it
 will work correctly on every implementation, under every possible
 implementation-defined semantics.
 
-The University of Melbourne Mercury implementation will offer eight
-different semantics, which will be selected with different
+The University of Melbourne Mercury implementation offers eight
+different semantics, which can be selected with different
 combinations of the @samp{--no-reorder-conj}, @samp{--no-reorder-disj},
 and @samp{--fully-strict} options.  (The @samp{--fully-strict} option
-will prevent
-the compiler from improving completeness by optimizing away infinite
-loops or calls to @code{error/1}.)  The default semantics will be the
-commutative semantics.  Enabling all of these options will give you the
-the strict sequential semantics.  Enabling just some of them will give
-you a semantics somewhere in between.  (At the time of writing, however,
-these options had not been implemented.)
+prevents the compiler from improving completeness by optimizing away infinite
+loops or calls to @code{error/1}.)  The default semantics are the
+commutative semantics.  Enabling all of these options gives you the
+the strict sequential semantics.  Enabling just some of them gives
+you a semantics somewhere in between.
 
 Future implementations of Mercury may wish to offer other operational semantics.
 For example, they may wish to provide semantics in which function
@@ -2527,12 +2524,12 @@ There are several uses for @code{pragma} declarations:
                                 from Mercury code, and vice versa.
 * Inlining::                    Pragmas can be used to suggest or prevent
                                 procedure inlining.
-* Obsolescence::		Library developers can declare old versions
-				of predicates or functions to be obsolete.
-* Source file name::		The @samp{source_file} pragma and
-				@samp{#@var{line}} directives provide support
-				for preprocessors and other tools that
-				generate Mercury code.
+* Obsolescence::                Library developers can declare old versions
+                                of predicates or functions to be obsolete.
+* Source file name::            The @samp{source_file} pragma and
+                                @samp{#@var{line}} directives provide support
+                                for preprocessors and other tools that
+                                generate Mercury code.
 @end menu
 @c * Tabling::                     Mercury predicates can be evaluated
 @c                                 using a three different forms of tabled
@@ -2543,27 +2540,35 @@ There are several uses for @code{pragma} declarations:
 @section C interface
 
 @menu
-* Calling C code::                      How to call C code whenever there is
-                                        a call to a Mercury predicate.
+* Calling C code from Mercury::         How to implement a Mercury predicate
+                                        or function as a call to C code.
 * Including C headers::                 Using functions with prototypes from a
                                         non-standard header file.
 * Including C code::                    Including definitions of C
-					functions in your Mercury code.
+                                        functions in your Mercury code.
 * Linking with C object files::         Linking with C object files and 
                                         libraries.
+* Calling Mercury code from C::         How to export a Mercury function or
+                                        predicate for use by C code.
 * Passing data to and from C::          Exchanging simple data types between
                                         Mercury and C.
 * Using C pointers::                    Maintaining a reference to C data
                                         structures in Mercury code.
 @end menu
 
-@node Calling C code
-@subsection Calling C code
+The Mercury distribution includes a number of examples of the
+use of the C interface that show how to interface C++ with Mercury
+and how to set up @samp{Mmake} files to automate the build process.
+See the @samp{samples/c_interface} directory in the Mercury distribution.
+
+@node Calling C code from Mercury
+@subsection Calling C code from Mercury
 
 A declaration of the form
 
 @example
-:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), may_call_mercury, @var{C_Code}).
+:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
+	may_call_mercury, @var{C_Code}).
 @end example
 
 @noindent
@@ -2571,7 +2576,7 @@ results in any calls to @var{Pred} with variables in modes (@var{Mode1},
 @var{Mode2}, ...) being replaced by the C code given in @var{C_Code}.
 
 If there is a @code{pragma c_code} declaration for a mode of a predicate,
-then that mode of the predicate must be det or semidet,
+then that mode of the predicate may not be @samp{multi} or @samp{nondet},
 there must not be any clauses for that predicate,
 and there must be a @code{pragma c_code} goal for every mode of the predicate.
 
@@ -2583,7 +2588,8 @@ predicate @samp{io__write_string/3}:
 :- pred c_write_string(string, io__state, io__state).
 :- mode c_write_string(in, di, uo) is det.
 
-:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo), may_call_mercury,
+:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
+	may_call_mercury,
         "puts(S); IO = IO0;").
 @end example
 
@@ -2591,31 +2597,39 @@ If the C code does not recursively invoke Mercury code,
 as in the above example, then you can use a declaration of the form
 
 @example
-:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), will_not_call_mercury, @var{C_Code}).
+:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...),
+	will_not_call_mercury, @var{C_Code}).
 @end example
 
 This allows the compiler to use a more efficient calling convention.
 (If you use this form, and the C code @emph{does} invoke Mercury code,
 then the behaviour is undefined --- your program may misbehave or crash.)
 
-@c XXX may assume vars of input args are defined; must assign to output args
-
 The C code in a @code{pragma c_code} declaration
-for a semidet mode of a predicate
+for any procedure whose determinism indicates that it could fail
 must assign a truth value to the macro @var{SUCCESS_INDICATOR}.
-SUCCESS_INDICATOR should not be used other as the target of an assignment.
-(For example, it may be @code{#define}d to a register, so you should not try to
-take its address.)
-
-@c XXX must assign to output args iff SUCCESS_INDICATOR is set to true
+For example:
 
 @example
 :- pred string__contains_char(string, character).
 :- mode string__contains_char(in, in) is semidet.
 
-:- pragma(c_code, string__contains_char(Str::in, Ch::in), will_not_call_mercury,
-	"SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
+:- pragma c_code(string__contains_char(Str::in, Ch::in),
+        will_not_call_mercury,
+        "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
 @end example
+
+SUCCESS_INDICATOR should not be used other than as the target of an assignment.
+(For example, it may be @code{#define}d to a register, so you should not
+try to take its address.) 
+Procedures whose determinism indicates that that they cannot fail
+should not access SUCCESS_INDICATOR.
+
+Arguments whose mode is input will have their values set by the
+Mercury implementation on entry to the C code.  If the procedure
+succeeds, the C code must set the values of all output arguments
+before returning.  If the procedure fails, the C code need only
+set SUCCESS_INDICATOR to false (zero).
 
 @node Including C headers
 @subsection Including C headers
@@ -2652,8 +2666,8 @@ or it may contain any C declarations, for example
         struct Employee @{
                 char name[SIZE];
         @}
-	extern int bar;
-	extern void foo(void);
+        extern int bar;
+        extern void foo(void);
 ").
 @end example
 
@@ -2675,15 +2689,76 @@ For example,
 
 @example
 :- pragma c_code("
-	int bar = 42;
-	void foo(void) @{@}
+        int bar = 42;
+        void foo(void) @{@}
 ").
 @end example
 
 Such code is copied verbatim into the generated C file.
 
+@node Calling Mercury code from C
+@subsection Calling Mercury code from C
+
+It is also possible to export Mercury procedures to C,
+so that you can call Mercury code from C (or from
+other languages that can interface to C, e.g. C++).
+
+A declaration of the form
+
+@example
+:- pragma export(@var{Pred}(@var{Mode1}, @var{Mode2}, ...), "@var{C_Name_1}").
+@end example
+
+@noindent
+or
+
+@example
+:- pragma export(@var{Func}(@var{Mode1}, @var{Mode2}, ...) = @var{Mode}, "@var{C_Name_2}").
+@end example
+
+@noindent
+exports a procedure for use by C.
+
+For each Mercury module containing @samp{pragma export} declarations,
+the Mercury implementation will automatically create a header file
+for that module which declares a C function @var{C_Name()}
+for each of the @samp{pragma export} declarations.
+Each such C function is the C interface to the specified mode of
+the specified Mercury predicate or function.
+
+The interface to a Mercury procedure is determined as follows.
+Input arguments are passed by value.  For output arguments, the
+caller must pass the address in which to store the result.
+If the Mercury procedure can fail, then its C interface function
+returns a truth value indicating success or failure.
+If the Mercury procedure is a Mercury function that cannot fail, and
+the function result has an output mode, then the C interface
+function will return the Mercury function result value.
+Otherwise the function result is appended as an extra argument.
+
+Calling polymorphically typed Mercury procedures from C is a little bit
+more difficult than calling ordinary (monomorphically typed) Mercury procedures.
+The simplest method is to just create monomorphic forwarding
+procedures that call the polymorphic procedures, and export them,
+rather than exporting the polymorphic procedures.
+
+If you do export a polymorphically typed Mercury procedure, the compiler
+will prepend one @samp{type_info} argument to the parameter list of
+the C interface function for each polymorphic type variable in the
+Mercury procedure's type signature.  The caller must arrange to pass
+in appropriate @samp{type_info} values corresponding to the types
+of the other arguments passed.  These @samp{type_info} arguments can
+be obtained using the Mercury @samp{type_of} function in the Mercury
+standard library module @samp{std_util}.
+
 @node Linking with C object files 
 @subsection Linking with C object files 
+
+A Mercury implementation should allow you to link with
+object files or libraries that were produced by compiling C code.
+The exact mechanism for linking with C object files is
+implementation-dependent.  The following text describes how
+it is done for the University of Melbourne Mercury implementation.
 
 To link an existing object file or library into the Mercury executable,
 set the @samp{Mmake} variable @samp{MLLIBS} in the
@@ -2696,6 +2771,9 @@ MLLIBS = my_functions.o -L/usr/local/contrib/lib -lfancy_library
 
 As illustrated by the example, the values for @samp{MLLIBS} are similar to
 those taken by the Unix linker.
+
+For more information, see the ``Libraries'' chapter of the
+Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 @node Passing data to and from C
 @subsection Passing data to and from C
@@ -2765,11 +2843,11 @@ between C functions which are called from Mercury.  For example:
 ");
 
 :- pragma c_code(initialise_complicated_structure(Structure::uo),
-	may_call_mercury,
+        may_call_mercury,
         "Structure = init_struct();").
 
 :- pragma c_code(do_calculation(Value::in, Structure0::di, Structure::uo,
-	may_call_mercury,
+        may_call_mercury,
         "Structure = perform_calculation(Value, Structure0);").
 @end example
 

@@ -42,7 +42,6 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@finalout
 @title The Mercury Library Reference Manual
 @c @author Fergus Henderson
 @c @author Thomas Conway

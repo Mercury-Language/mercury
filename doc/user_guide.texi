@@ -42,7 +42,6 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@c @finalout
 @title The Mercury User's Guide
 @author Fergus Henderson
 @author Thomas Conway
@@ -569,7 +568,7 @@ Error messages are placed in @file{.err} files.
 
 @item @var{main-module}.split
 Compiles and links @var{main-module} using the Mercury compiler,
-with the @samp{--split-c-files} option enabled.
+with the Mercury compiler's @samp{--split-c-files} option enabled.
 @xref{Output-level (LLDS->C) optimization options} for more information
 about @samp{--split-c-files}.
 
@@ -614,7 +613,7 @@ or its imported modules.
 Removes all the automatically generated files.
 In addition to the files removed by @var{main-module}.clean, this
 removes the @samp{.date}, @samp{.int}, @samp{.int2}, @samp{.int3},
-@samp{.opt},
+@samp{.opt}, @samp{.optdate},
 @samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
 and also the various possible executables for the program ---
 @samp{@var{main-module}}, 
@@ -638,7 +637,7 @@ directory.
 @end table
 
 The variables used by the builtin rules (and their default values) are
-defined in @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
+defined in the file @file{@var{prefix}/lib/mercury/mmake/Mmake.vars}, however
 these may be overridden by user @samp{Mmake} files. Some of the more
 useful variables are:
 
@@ -1385,8 +1384,8 @@ The code may be easier to understand if you also use the
 @item -n
 @itemx --line-numbers
 Output source line numbers in the generated code.
-Only works with the @samp{--convert-to-goedel} and @samp{--convert-to-mercury}
-options.
+This option only works in conjunction with the
+@samp{--convert-to-goedel} and @samp{--convert-to-mercury} options.
 
 @sp 1
 @item --show-dependency-graph
@@ -1551,8 +1550,8 @@ for inline assembler labels.
 @item @code{--gc @{none, conservative, accurate@}}
 @itemx @code{--garbage-collection @{none, conservative, accurate@}}
 Specify which method of garbage collection to use.
-@samp{.gc} grades use @samp{--gc conservative}, other grades use
-@samp{--gc none}.
+Grades containing in @samp{.gc} use @samp{--gc conservative},
+other grades use @samp{--gc none}.
 @samp{accurate} is not yet implemented.
 
 @sp 1
@@ -2180,7 +2179,7 @@ it is possible to do so.  Here's what you need to do.
 @itemize @bullet
 @item You must specify the name of the new compiler. 
 You can do this either by setting the @samp{MERCURY_C_COMPILER}
-environment variable, by adding a line
+environment variable, by adding
 @samp{MGNUC=MERCURY_C_COMPILER=@dots{} mgnuc} to your @samp{Mmake} file,
 or by using the @samp{--cc} option to @samp{mmc}.
 You may need to specify some option(s) to the C compiler

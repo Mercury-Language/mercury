@@ -42,7 +42,6 @@ into another language, under the above conditions for modified versions.
 @end ifinfo
 
 @titlepage
-@c @finalout
 @title The Prolog to Mercury transition guide
 @author Thomas Conway
 @author Zoltan Somogyi
