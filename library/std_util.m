@@ -1539,8 +1539,8 @@ Word ML_make_ctor_info(Word *type_info, Word *type_ctor_info)
 	}
 
 	arg_type = ArgTypes; 
-	for (list_length = 0; !list_is_empty(arg_type); list_length++) {
-		arg_type = list_tail(arg_type);
+	for (list_length = 0; !MR_list_is_empty(arg_type); list_length++) {
+		arg_type = MR_list_tail(arg_type);
 	}
 
 	if (list_length != arity) {
@@ -1886,10 +1886,10 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		/* Type check list of arguments */
 
 	for (i = 0; i < arity; i++) {
-		if (list_is_empty(arg_list)) {
+		if (MR_list_is_empty(arg_list)) {
 			return FALSE;
 		}
-		list_arg_type_info = field(0, list_head(arg_list), 
+		list_arg_type_info = field(0, MR_list_head(arg_list), 
 			UNIV_OFFSET_FOR_TYPEINFO);
 
 		arg_type_info = (Word) MR_create_type_info(
@@ -1899,11 +1899,11 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		if (comp != COMPARE_EQUAL) {
 			return FALSE;
 		}
-		arg_list = list_tail(arg_list);
+		arg_list = MR_list_tail(arg_list);
 	}
 
 		/* List should now be empty */
-	return list_is_empty(arg_list);
+	return MR_list_is_empty(arg_list);
 }
 
 	/*
@@ -1923,9 +1923,9 @@ ML_copy_arguments_from_list_to_vector(int arity, Word arg_list,
 
 	for (i = 0; i < arity; i++) {
 		field(mktag(0), term_vector, i) = 
-			field(mktag(0), list_head(arg_list), 
+			field(mktag(0), MR_list_head(arg_list), 
 				UNIV_OFFSET_FOR_DATA);
-		arg_list = list_tail(arg_list);
+		arg_list = MR_list_tail(arg_list);
 	}
 }
 
@@ -1978,8 +1978,8 @@ ML_make_type(int arity, Word *type_ctor, Word arg_types_list)
 		}
 		for (i = 0; i < arity; i++) {
 			field(mktag(0), type_info, i + extra_args) = 
-				list_head(arg_types_list);
-			arg_types_list = list_tail(arg_types_list);
+				MR_list_head(arg_types_list);
+			arg_types_list = MR_list_tail(arg_types_list);
 		}
 
 		return (Word) type_info;
@@ -2028,7 +2028,7 @@ ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
 	Word type_info_list, *functors;
 
 	restore_transient_registers();
-	type_info_list = list_empty(); 
+	type_info_list = MR_list_empty(); 
 
 	while (--arity >= 0) {
 		Word argument;
@@ -2048,7 +2048,7 @@ ML_copy_argument_typeinfos(int arity, Word type_info, Word *arg_vector)
 		restore_transient_registers();
 
 			/* Join the argument to the front of the list */
-		type_info_list = list_cons(argument, type_info_list);
+		type_info_list = MR_list_cons(argument, type_info_list);
 	}
 	save_transient_registers();
 
@@ -2706,7 +2706,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	Arity = info.arity;
 
 		/* Build argument list */
-	Arguments = list_empty();
+	Arguments = MR_list_empty();
 	i = info.arity;
 
 	while (--i >= 0) {
@@ -2715,7 +2715,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 		incr_hp(Argument, 2);
 
 			/* Join the argument to the front of the list */
-		Arguments = list_cons(Argument, Arguments);
+		Arguments = MR_list_cons(Argument, Arguments);
 
 			/* Fill in the arguments */
 		arg_pseudo_type_info = info.type_info_vector[i];

@@ -927,19 +927,19 @@ print_register_usage_counts(void)
 			switch (i) {
 
 			case SI_RN:
-				printf("succip");
+				printf("MR_succip");
 				break;
 			case HP_RN:
-				printf("hp");
+				printf("MR_hp");
 				break;
 			case SP_RN:
-				printf("sp");
+				printf("MR_sp");
 				break;
 			case CF_RN:
-				printf("curfr");
+				printf("MR_curfr");
 				break;
 			case MF_RN:
-				printf("maxfr");
+				printf("MR_maxfr");
 				break;
 			case MR_TRAIL_PTR_RN:
 				printf("MR_trail_ptr");
@@ -995,10 +995,12 @@ BEGIN_MODULE(interpreter_module)
 BEGIN_CODE
 
 Define_entry(do_interpreter);
-	push(MR_hp);
-	push(MR_succip);
-	push(MR_maxfr);
-	mkframe("interpreter", 1, LABEL(global_fail));
+	MR_incr_sp(3);
+	MR_stackvar(1) = MR_hp;
+	MR_stackvar(2) = MR_succip;
+	MR_stackvar(3) = MR_maxfr;
+
+	MR_mkframe("interpreter", 1, LABEL(global_fail));
 
 	MR_nondet_stack_trace_bottom = MR_maxfr;
 	MR_stack_trace_bottom = LABEL(global_success);
@@ -1045,9 +1047,10 @@ Define_label(all_done);
 	if (MR_profiling) MR_prof_turn_off_time_profiling();
 #endif
 
-	MR_maxfr = (Word *) pop();
-	MR_succip = (Code *) pop();
-	MR_hp = (Word *) pop();
+	MR_hp     = MR_stackvar(1);
+	MR_succip = MR_stackvar(2);
+	MR_maxfr  = MR_stackvar(3);
+	MR_decr_sp(3);
 
 #ifdef MR_LOWLEVEL_DEBUG
 	if (MR_finaldebug && MR_detaildebug) {

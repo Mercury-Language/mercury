@@ -1368,7 +1368,7 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 	(
 		{ FrameInfo = ordinary_frame(Msg, Num, MaybeStruct) },
 		( { MaybeStruct = yes(pragma_c_struct(StructName, _, _)) } ->
-			io__write_string("\tmkpragmaframe("""),
+			io__write_string("\tMR_mkpragmaframe("""),
 			output_c_quoted_string(Msg),
 			io__write_string(""", "),
 			io__write_int(Num),
@@ -1378,7 +1378,7 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 			output_code_addr(FailCont),
 			io__write_string(");\n")
 		;
-			io__write_string("\tmkframe("""),
+			io__write_string("\tMR_mkframe("""),
 			output_c_quoted_string(Msg),
 			io__write_string(""", "),
 			io__write_int(Num),
@@ -1390,12 +1390,12 @@ output_instruction(mkframe(FrameInfo, FailCont), _) -->
 		{ FrameInfo = temp_frame(Kind) },
 		(
 			{ Kind = det_stack_proc },
-			io__write_string("\tmkdettempframe("),
+			io__write_string("\tMR_mkdettempframe("),
 			output_code_addr(FailCont),
 			io__write_string(");\n")
 		;
 			{ Kind = nondet_stack_proc },
-			io__write_string("\tmktempframe("),
+			io__write_string("\tMR_mktempframe("),
 			output_code_addr(FailCont),
 			io__write_string(");\n")
 		)
@@ -1481,14 +1481,14 @@ output_instruction(discard_tickets_to(Rval), _) -->
 	io__write_string(");\n").
 
 output_instruction(incr_sp(N, Msg), _) -->
-	io__write_string("\tincr_sp_push_msg("),
+	io__write_string("\tMR_incr_sp_push_msg("),
 	io__write_int(N),
 	io__write_string(", """),
 	output_c_quoted_string(Msg),
 	io__write_string(""");\n").
 
 output_instruction(decr_sp(N), _) -->
-	io__write_string("\tdecr_sp_pop_msg("),
+	io__write_string("\tMR_decr_sp_pop_msg("),
 	io__write_int(N),
 	io__write_string(");\n").
 
@@ -1850,7 +1850,7 @@ output_temp_decls_2(Next, Max, Type) -->
 		;
 			[]
 		),
-		io__write_string("temp"),
+		io__write_string("MR_temp"),
 		io__write_string(Type),
 		io__write_int(Next),
 		{ Next1 is Next + 1 },
@@ -2643,16 +2643,16 @@ output_goto(succip, _) -->
 output_goto(do_succeed(Last), _) -->
 	(
 		{ Last = no },
-		io__write_string("succeed();\n")
+		io__write_string("MR_succeed();\n")
 	;
 		{ Last = yes },
-		io__write_string("succeed_discard();\n")
+		io__write_string("MR_succeed_discard();\n")
 	).
 output_goto(do_redo, _) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes },
-		io__write_string("redo();\n")
+		io__write_string("MR_redo();\n")
 	;
 		{ UseMacro = no },
 		io__write_string("GOTO(ENTRY(do_redo));\n")
@@ -2661,7 +2661,7 @@ output_goto(do_fail, _) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes },
-		io__write_string("fail();\n")
+		io__write_string("MR_fail();\n")
 	;
 		{ UseMacro = no },
 		io__write_string("GOTO(ENTRY(do_fail));\n")
@@ -3075,7 +3075,7 @@ output_reg(f, _) -->
 :- mode output_tag(in, di, uo) is det.
 
 output_tag(Tag) -->
-	io__write_string("mktag("),
+	io__write_string("MR_mktag("),
 	io__write_int(Tag),
 	io__write_string(")").
 
@@ -3287,23 +3287,23 @@ XXX broken for C == minint
 		io__write_string(")")
 	).
 output_rval(mkword(Tag, Exprn)) -->
-	io__write_string("mkword("),
+	io__write_string("MR_mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_rval_as_type(Exprn, data_ptr),
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	% if a field is used as an rval, then we need to use
-	% the const_field() macro, not the field() macro,
+	% the MR_const_field() macro, not the MR_field() macro,
 	% to avoid warnings about discarding const,
-	% and similarly for mask_field.
+	% and similarly for MR_mask_field.
 	( { Lval = field(MaybeTag, Rval, FieldNum) } ->
 		( { MaybeTag = yes(Tag) } ->
-			io__write_string("const_field("),
+			io__write_string("MR_const_field("),
 			output_tag(Tag),
 			io__write_string(", ")
 		;
-			io__write_string("const_mask_field(")
+			io__write_string("MR_const_mask_field(")
 		),
 		output_rval(Rval),
 		io__write_string(", "),
@@ -3315,7 +3315,7 @@ output_rval(lval(Lval)) -->
 output_rval(create(Tag, _Args, _Unique, CellNum, _Msg)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
-	io__write_string("mkword(mktag("),
+	io__write_string("MR_mkword(MR_mktag("),
 	io__write_int(Tag),
 	io__write_string("), "),
 	io__write_string("&mercury_const_"),
@@ -3336,7 +3336,7 @@ output_rval(mem_addr(MemRef)) -->
 		io__write_string(")")
 	;
 		{ MemRef = heap_ref(Rval, Tag, FieldNum) },
-		io__write_string("(Word *) &field("),
+		io__write_string("(Word *) &MR_field("),
 		output_tag(Tag),
 		io__write_string(", "),
 		output_rval(Rval),
@@ -3349,17 +3349,17 @@ output_rval(mem_addr(MemRef)) -->
 :- mode output_unary_op(in, di, uo) is det.
 
 output_unary_op(mktag) -->
-	io__write_string("mktag").
+	io__write_string("MR_mktag").
 output_unary_op(tag) -->
-	io__write_string("tag").
+	io__write_string("MR_tag").
 output_unary_op(unmktag) -->
-	io__write_string("unmktag").
+	io__write_string("MR_unmktag").
 output_unary_op(mkbody) -->
-	io__write_string("mkbody").
+	io__write_string("MR_mkbody").
 output_unary_op(body) -->
-	io__write_string("body").
+	io__write_string("MR_body").
 output_unary_op(unmkbody) -->
-	io__write_string("unmkbody").
+	io__write_string("MR_unmkbody").
 output_unary_op(hash_string) -->
 	io__write_string("hash_string").
 output_unary_op(bitwise_complement) -->
@@ -3475,42 +3475,42 @@ output_lval(framevar(N)) -->
 	io__write_int(N),
 	io__write_string(")").
 output_lval(succip) -->
-	io__write_string("succip").
+	io__write_string("MR_succip").
 output_lval(sp) -->
-	io__write_string("sp").
+	io__write_string("MR_sp").
 output_lval(hp) -->
-	io__write_string("hp").
+	io__write_string("MR_hp").
 output_lval(maxfr) -->
-	io__write_string("maxfr").
+	io__write_string("MR_maxfr").
 output_lval(curfr) -->
-	io__write_string("curfr").
+	io__write_string("MR_curfr").
 output_lval(succfr(Rval)) -->
-	io__write_string("bt_succfr("),
+	io__write_string("MR_succfr_slot("),
 	output_rval(Rval),
 	io__write_string(")").
 output_lval(prevfr(Rval)) -->
-	io__write_string("bt_prevfr("),
+	io__write_string("MR_prevfr_slot("),
 	output_rval(Rval),
 	io__write_string(")").
 output_lval(redofr(Rval)) -->
-	io__write_string("bt_redofr("),
+	io__write_string("MR_redofr_slot("),
 	output_rval(Rval),
 	io__write_string(")").
 output_lval(redoip(Rval)) -->
-	io__write_string("bt_redoip("),
+	io__write_string("MR_redoip_slot("),
 	output_rval(Rval),
 	io__write_string(")").
 output_lval(succip(Rval)) -->
-	io__write_string("bt_succip("),
+	io__write_string("MR_succip_slot("),
 	output_rval(Rval),
 	io__write_string(")").
 output_lval(field(MaybeTag, Rval, FieldNum)) -->
 	( { MaybeTag = yes(Tag) } ->
-		io__write_string("field("),
+		io__write_string("MR_field("),
 		output_tag(Tag),
 		io__write_string(", ")
 	;
-		io__write_string("mask_field(")
+		io__write_string("MR_mask_field(")
 	),
 	output_rval(Rval),
 	io__write_string(", "),
@@ -3521,11 +3521,11 @@ output_lval(lvar(_)) -->
 output_lval(temp(Type, Num)) -->
 	(
 		{ Type = r },
-		io__write_string("tempr"),
+		io__write_string("MR_tempr"),
 		io__write_int(Num)
 	;
 		{ Type = f },
-		io__write_string("tempf"),
+		io__write_string("MR_tempf"),
 		io__write_int(Num)
 	).
 output_lval(mem_ref(Rval)) -->

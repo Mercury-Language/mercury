@@ -3143,9 +3143,9 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 		[will_not_call_mercury, thread_safe], "
 	/* convert mercury_argv from a vector to a list */
 	{ int i = mercury_argc;
-	  Args = list_empty();
+	  Args = MR_list_empty();
 	  while (--i >= 0) {
-		Args = list_cons((Word) mercury_argv[i], Args);
+		Args = MR_list_cons((Word) mercury_argv[i], Args);
 	  }
 	}
 	update_io(IO0, IO);

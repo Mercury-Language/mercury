@@ -72,6 +72,11 @@
 **
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
+**
+** MR_NO_BACKWARDS_COMPAT
+**	Disable backwards compatibility with C code using obsolete low-level
+**	constructs, e.g. referring to variables and macros without their MR_
+**	prefixes.
 */
 
 /*
@@ -121,11 +126,6 @@
 **	Enables low-level debugging of gotos.
 **	Causes the generated code to become bigger and less efficient.
 **	Slows down compilation.
-**
-** MR_DEBUG_NONDET_STACK
-**	Include a "name" field in the nondet stack frames.
-**	(Since this affects binary compatibility,
-**	this is a "compilation model" option which affects the grade.)
 **
 ** MR_DEBUG_AGC_SCHEDULING
 **	Display debugging information while scheduling accurate garbage
