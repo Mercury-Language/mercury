@@ -75,6 +75,19 @@ mercury_to_goedel.nl
 
 - see comments at the start of that file
 
+module system
+-------------
+
+- check that the interface for a module is type-correct
+  independently of any declarations or imports in the implementation
+  section
+
+- handle module qualifiers properly
+
+- imports should not be transitive
+  (currently we get this right for predicates, constants, and functors,
+  but wrong for types, insts, and modes).
+
 *******************************************************************************
 
 WISH LIST
@@ -95,8 +108,6 @@ general
 -------
 
 - switch detection: handle multi-level indexing
-
-- handle module qualifiers properly
 
 - more work on module system, separate compilation, and the multiple
   specialization problem
