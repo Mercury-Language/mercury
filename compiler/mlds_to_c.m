@@ -2686,7 +2686,7 @@ mlds_output_rval(lval(Lval)) -->
 ****/
 
 mlds_output_rval(mkword(Tag, Rval)) -->
-	io__write_string("(MR_Word) MR_mkword("),
+	io__write_string("MR_mkword("),
 	mlds_output_tag(Tag),
 	io__write_string(", "),
 	mlds_output_rval(Rval),
@@ -2741,6 +2741,12 @@ mlds_output_cast(Type) -->
 	
 mlds_output_boxed_rval(Type, Exprn) -->
 	(
+		{ Exprn = unop(cast(OtherType), InnerExprn) },
+		{ Type = OtherType }
+	->
+		% avoid unnecessary double-casting -- strip away the inner cast
+		mlds_output_boxed_rval(Type, InnerExprn)
+	;
 		{ Type = mlds__mercury_type(term__functor(term__atom("float"),
 				[], _), _)
 		; Type = mlds__native_float_type
