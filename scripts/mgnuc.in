@@ -213,19 +213,10 @@ esac
 # gcc 2.6.3 gets an internal error compiling library/int.c.
 # As a work-around, we compile that file with -O1.
 #
-# Kludge for gcc-2.7.0 bug on sparc: if you use gcc global registers and -O[12],
-# gcc 2.7.0 miscompiles library/parser.c.
-# As a work-around, we compile that file with -O0.
-#
 case $COMPILER in gcc)
-	case "$FULLARCH" in
-	    mips*)
+	case "$FULLARCH" in mips*)
 		case "$*" in *" int.c "*)
 			ARCH_OPTS="$ARCH_OPTS -O1" ;;
-		esac ;;
-	    sparc*)
-		case "$*" in *" parser.c "*)
-			ARCH_OPTS="$ARCH_OPTS -O0" ;;
 		esac ;;
 	esac ;;
 esac
