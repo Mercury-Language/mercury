@@ -214,7 +214,7 @@ ref_functor(Ref, Functor, Arity) -->
 	MR_save_transient_registers();
 
 	if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) Ref, ArgNum,
-		&arg_type_info, &arg_ref, FALSE, ""arg_ref/5""))
+		&arg_type_info, &arg_ref, MR_NONCANON_ALLOW))
 	{
 		MR_fatal_error(""tr_store__arg_ref: ""
 			""argument number out of range"");
@@ -241,7 +241,7 @@ ref_functor(Ref, Functor, Arity) -->
 	MR_save_transient_registers();
 
 	if (!MR_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) &Val, ArgNum,
-		&arg_type_info, &arg_ref, FALSE, ""new_arg_ref/5""))
+		&arg_type_info, &arg_ref, MR_NONCANON_ALLOW))
 	{
 		MR_fatal_error(""tr_store__new_arg_ref: ""
 			""argument number out of range"");

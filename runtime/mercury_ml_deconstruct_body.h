@@ -10,8 +10,8 @@
 /*
 ** mercury_ml_deconstruct_body.h
 **
-** This file is included several times in library/std_util.m. Each inclusion
-** defines the body of one of several variants of `deconstruct' function.
+** This file is included several times in library/deconstruct.m. Each inclusion
+** defines the body of one of several variants of the `deconstruct' function.
 **
 ** The code including this file must define these macros:
 **
@@ -40,24 +40,16 @@
 **                      univs representing the arguments of the term should
 **                      be assigned.
 **
-** The code including this file may define these macros:
+** NONCANON             Gives a value of type MR_noncanon_handling; its value
+**                      will govern the handling of values of noncanonical
+**                      types.
 **
-** ALLOW_NONCANONICAL   If defined, allow the deconstruction of non-canonical
-**                      types. If not defined, abort if the type being
-**                      deconstructed is non-canonical.
+** The code including this file may define these macros:
 **
 ** MAX_ARITY_ARG        If defined, gives the name of the argument whose value
 **                      gives the maximum number of arguments we want to
 **                      succeed for.
 */
-
-#ifdef	ALLOW_NONCANONICAL
-  #define maybe_abort_if_noncanonical(expand_info, msg)            \
-	((void) 0)
-#else
-  #define maybe_abort_if_noncanonical(expand_info, msg)            \
-	MR_abort_if_type_is_noncanonical(expand_info, msg)
-#endif
 
 #ifdef  MAX_ARITY_ARG
   #define   maybe_max_arity_arg     MAX_ARITY_ARG,
@@ -79,10 +71,9 @@
     type_info = (MR_TypeInfo) TYPEINFO_ARG;
 
     MR_save_transient_registers();
-    EXPAND_INFO_CALL(type_info, &TERM_ARG, maybe_max_arity_arg &expand_info);
+    EXPAND_INFO_CALL(type_info, &TERM_ARG, NONCANON,
+            maybe_max_arity_arg &expand_info);
     MR_restore_transient_registers();
-
-    maybe_abort_if_noncanonical(expand_info, MR_noncanon_msg(PREDNAME));
 
     max_arity_check_start
         MR_deconstruct_get_functor(expand_info, functor, FUNCTOR_ARG);
@@ -91,7 +82,6 @@
         MR_deconstruct_free_allocated_arg_type_infos(expand_info, args);
     max_arity_check_end
 
-#undef  maybe_abort_if_noncanonical
 #undef  maybe_max_arity_arg
 #undef  max_arity_check_start
 #undef  max_arity_check_end

@@ -692,7 +692,18 @@
 :- implementation.
 
 :- import_module require, set, int, string, bool.
-:- use_module    construct, deconstruct.
+:- import_module construct, deconstruct.
+
+% XXX This should not be necessary, but the current compiler is broken in that
+% it puts foreign_proc clauses into deconstruct.opt without also putting the
+% foreign_decl they require into deconstruct.opt as well.
+
+:- pragma foreign_decl("C", "
+
+#include ""mercury_deconstruct.h""
+#include ""mercury_deconstruct_macros.h""
+
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -1307,9 +1318,6 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 
 %-----------------------------------------------------------------------------%
 
-% The type `std_util:type_desc/0' happens to use much the same
-	% representation as `private_builtin:type_info/1'.
-
 	% We call the constructor for univs `univ_cons' to avoid ambiguity
 	% with the univ/1 function which returns a univ.
 :- type univ --->
@@ -1439,60 +1447,87 @@ construct_tuple(Args) =
 % the file deconstruct.m.
 
 functor(Term, Functor, Arity) :-
-	deconstruct__functor(Term, Functor, Arity).
+	deconstruct__functor(Term, canonicalize, Functor, Arity).
 
 functor_cc(Term, Functor, Arity) :-
-	deconstruct__functor_cc(Term, Functor, Arity).
+	deconstruct__functor(Term, include_details_cc, Functor, Arity).
 
-arg(Term, ArgumentIndex) = Argument :-
-	deconstruct__arg(Term, ArgumentIndex) = Argument.
+arg(Term, Index) = Argument :-
+	deconstruct__arg(Term, canonicalize, Index, Argument0),
+	private_builtin__typed_unify(Argument0, Argument).
 
-arg_cc(Term, ArgumentIndex, Argument) :-
-	deconstruct__arg_cc(Term, ArgumentIndex, Argument).
+arg_cc(Term, Index, Argument) :-
+	deconstruct__arg(Term, include_details_cc, Index, Argument0),
+	( private_builtin__typed_unify(Argument0, Argument1) ->
+		Argument = Argument1
+	;
+		error("arg_cc: argument has wrong type")
+	).
 
-argument(Term, ArgumentIndex) = ArgumentUniv :-
-	deconstruct__argument(Term, ArgumentIndex) = ArgumentUniv.
+argument(Term, Index) = ArgumentUniv :-
+	deconstruct__arg(Term, canonicalize, Index, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
-argument_cc(Term, ArgumentIndex, ArgumentUniv) :-
-	deconstruct__argument_cc(Term, ArgumentIndex, ArgumentUniv).
+argument_cc(Term, Index, ArgumentUniv) :-
+	deconstruct__arg(Term, include_details_cc, Index, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
-named_argument(Term, ArgumentName) = ArgumentUniv :-
-	deconstruct__named_argument(Term, ArgumentName) = ArgumentUniv.
+named_argument(Term, Name) = ArgumentUniv :-
+	deconstruct__named_arg(Term, canonicalize, Name, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
-named_argument_cc(Term, ArgumentName, ArgumentUniv) :-
-	deconstruct__named_argument_cc(Term, ArgumentName, ArgumentUniv).
+named_argument_cc(Term, Name, ArgumentUniv) :-
+	deconstruct__named_arg(Term, include_details_cc,
+		Name, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
 deconstruct(Term, Functor, Arity, Arguments) :-
-	deconstruct__deconstruct(Term, Functor, Arity, Arguments).
+	deconstruct__deconstruct(Term, canonicalize,
+		Functor, Arity, Arguments).
 
 deconstruct_cc(Term, Functor, Arity, Arguments) :-
-	deconstruct__deconstruct_cc(Term, Functor, Arity, Arguments).
+	deconstruct__deconstruct(Term, include_details_cc,
+		Functor, Arity, Arguments).
 
 limited_deconstruct(Term, MaxArity, Functor, Arity, Arguments) :-
-	deconstruct__limited_deconstruct(Term, MaxArity, Functor, Arity,
-		Arguments).
+	deconstruct__limited_deconstruct(Term, canonicalize,
+		MaxArity, Functor, Arity, Arguments).
 
 limited_deconstruct_cc(Term, MaxArity, Functor, Arity, Arguments) :-
-	deconstruct__limited_deconstruct_cc(Term, MaxArity, Functor, Arity,
-		Arguments).
+	deconstruct__limited_deconstruct(Term, include_details_cc,
+		MaxArity, Functor, Arity, Arguments).
 
-det_arg(Type, ArgumentIndex) = Argument :-
-	deconstruct__det_arg(Type, ArgumentIndex) = Argument.
+det_arg(Type, Index) = Argument :-
+	deconstruct__det_arg(Type, canonicalize, Index, Argument0),
+	( private_builtin__typed_unify(Argument0, Argument1) ->
+		Argument = Argument1
+	;
+		error("det_arg: argument has wrong type")
+	).
 
-det_arg_cc(Type, ArgumentIndex, Argument) :-
-	deconstruct__det_arg_cc(Type, ArgumentIndex, Argument).
+det_arg_cc(Type, Index, Argument) :-
+	deconstruct__det_arg(Type, include_details_cc, Index, Argument0),
+	( private_builtin__typed_unify(Argument0, Argument1) ->
+		Argument = Argument1
+	;
+		error("det_arg_cc: argument has wrong type")
+	).
 
-det_argument(Type, ArgumentIndex) = Argument :-
-	deconstruct__det_argument(Type, ArgumentIndex) = Argument.
+det_argument(Type, Index) = ArgumentUniv :-
+	deconstruct__det_arg(Type, canonicalize, Index, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
-det_argument_cc(Type, ArgumentIndex, Argument) :-
-	deconstruct__det_argument_cc(Type, ArgumentIndex, Argument).
+det_argument_cc(Type, Index, ArgumentUniv) :-
+	deconstruct__det_arg(Type, include_details_cc, Index, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
-det_named_argument(Type, ArgumentName) = Argument :-
-	deconstruct__det_named_argument(Type, ArgumentName) = Argument.
+det_named_argument(Type, Name) = ArgumentUniv :-
+	deconstruct__det_named_arg(Type, canonicalize, Name, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
-det_named_argument_cc(Type, ArgumentName, Argument) :-
-	deconstruct__det_named_argument_cc(Type, ArgumentName, Argument).
+det_named_argument_cc(Type, Name, ArgumentUniv) :-
+	deconstruct__det_named_arg(Type, include_details_cc, Name, Argument),
+	type_to_univ(Argument, ArgumentUniv).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

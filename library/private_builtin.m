@@ -1220,6 +1220,14 @@ unused :-
 :- 	  mode nonvar(in) is det.
 :- 	  mode nonvar(unused) is failure.
 
+% sorry/1 is used to apologize about the fact that we have not implemented
+% some predicate or function in the library for a given back end. The argument
+% should give the name of the predicate or function.
+
+:- pred sorry(string::in) is erroneous.
+
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 var(_::ui) :- fail.
@@ -1230,9 +1238,6 @@ nonvar(_::ui) :- true.
 nonvar(_::in) :- true.
 nonvar(_::unused) :- fail.
 
-%-----------------------------------------------------------------------------%
-
-:- pred sorry(string::in) is erroneous.
 sorry(PredName) :-
 	error("sorry, `" ++ PredName ++ "' not implemented\n" ++
 		"for this target language (or compiler back-end).").

@@ -1016,7 +1016,7 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 			}
 
 			if (MR_arg(typeinfo, value, arg_num, &new_typeinfo,
-				&new_value, TRUE, "debugger"))
+				&new_value, MR_NONCANON_CC))
 			{
 				typeinfo = new_typeinfo;
 				value = new_value;

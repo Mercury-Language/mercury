@@ -18,6 +18,8 @@
 #include "mercury_deconstruct.h"
 #include "mercury_deconstruct_macros.h"
 
+static  MR_ConstString  MR_expand_type_name(MR_TypeCtorInfo tci);
+
 #define EXPAND_FUNCTION_NAME        MR_expand_functor_args
 #define EXPAND_TYPE_NAME            MR_Expand_Functor_Args_Info
 #define EXPAND_FUNCTOR_FIELD        functor
@@ -73,42 +75,20 @@
 #undef  EXPAND_NAMED_ARG
 
 /*
-** MR_arg() is a subroutine used to implement arg/2, argument/2,
-** and also store__arg_ref/5 in store.m.
-** It takes the address of a term, its type, and an argument index.
-** If the selected argument exists, it succeeds and returns the address
-** of the argument, and its type; if it doesn't, it fails (i.e. returns FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
+** N.B. any modifications to the signature of this function will require
+** changes not only to library/deconstruct.m, but also to library/store.m
+** and extras/trailed_update/tr_store.m.
 */
 
 bool
 MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
-    MR_non_canon_handling noncanon_handling, MR_ConstString msg)
+    MR_noncanon_handling noncanon)
 {
     MR_Expand_Chosen_Arg_Only_Info  expand_info;
 
-    MR_expand_chosen_arg_only(type_info, term_ptr, arg_index, &expand_info);
-    if (expand_info.non_canonical_type) {
-        switch (noncanon_handling) {
-            case MR_ALLOW_NONCANONICAL:
-                break;
-
-            case MR_FAIL_ON_NONCANONICAL:
-                return FALSE;
-                break;
-
-            case MR_ABORT_ON_NONCANONICAL:
-                MR_fatal_error(msg);
-                break;
-
-            default:
-                MR_fatal_error("MR_arg: bad noncanon_handling");
-                break;
-        }
-	}
+    MR_expand_chosen_arg_only(type_info, term_ptr, noncanon, arg_index,
+            &expand_info);
 
         /* Check range */
     if (expand_info.chosen_index_exists) {
@@ -119,43 +99,16 @@ MR_arg(MR_TypeInfo type_info, MR_Word *term_ptr, int arg_index,
 
     return FALSE;
 }
-
-/*
-** MR_named_arg() is a subroutine used to implement named_arg/2.
-** It takes the address of a term, its type, and an argument name.
-** If an argument with that name exists, it succeeds and returns the address
-** of the argument, and its type; if it doesn't, it fails (i.e. returns FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
 
 bool
 MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
     MR_TypeInfo *arg_type_info_ptr, MR_Word **arg_ptr,
-    MR_non_canon_handling noncanon_handling, MR_ConstString msg)
+    MR_noncanon_handling noncanon)
 {
     MR_Expand_Chosen_Arg_Only_Info  expand_info;
 
-    MR_expand_named_arg_only(type_info, term_ptr, arg_name, &expand_info);
-    if (expand_info.non_canonical_type) {
-        switch (noncanon_handling) {
-            case MR_ALLOW_NONCANONICAL:
-                break;
-
-            case MR_FAIL_ON_NONCANONICAL:
-                return FALSE;
-                break;
-
-            case MR_ABORT_ON_NONCANONICAL:
-                MR_fatal_error(msg);
-                break;
-
-            default:
-                MR_fatal_error("MR_named_arg: bad noncanon_handling");
-                break;
-        }
-	}
+    MR_expand_named_arg_only(type_info, term_ptr, noncanon, arg_name,
+            &expand_info);
 
         /* Check range */
     if (expand_info.chosen_index_exists) {
@@ -166,16 +119,6 @@ MR_named_arg(MR_TypeInfo type_info, MR_Word *term_ptr, MR_ConstString arg_name,
 
     return FALSE;
 }
-
-/*
-** MR_named_arg_num() takes the address of a term, its type, and an argument
-** name. If the given term has an argument with the given name, it succeeds and
-** returns the argument number (counted starting from 0) of the argument;
-** if it doesn't, it fails (i.e. returns FALSE).
-**
-** You need to wrap MR_{save/restore}_transient_hp() around
-** calls to this function.
-*/
 
 bool
 MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
@@ -315,4 +258,37 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         default:
             return FALSE;
     }
+}
+
+static MR_ConstString
+MR_expand_type_name(MR_TypeCtorInfo tci)
+{
+    MR_String   str;
+    int         len;
+
+    len = 0;
+    len += 2;   /* << */
+    len += strlen(tci->MR_type_ctor_module_name);
+    len += 1;   /* : */
+    len += strlen(tci->MR_type_ctor_name);
+    len += 1;   /* / */
+    len += 4;   /* arity; we do not support arities above 1024 */
+    len += 2;   /* >> */
+    len += 1;   /* NULL */
+
+    if (tci->MR_type_ctor_arity > 9999) {
+        MR_fatal_error("MR_expand_type_name: arity > 9999");
+    }
+
+    MR_restore_transient_hp();
+    MR_allocate_aligned_string_msg(str, len, "MR_expand_type_name");
+    MR_save_transient_hp();
+
+    sprintf(str, "<<%s:%s/%d>>",
+        tci->MR_type_ctor_module_name,
+        tci->MR_type_ctor_name,
+        tci->MR_type_ctor_arity);
+
+
+   return (MR_ConstString) str;
 }

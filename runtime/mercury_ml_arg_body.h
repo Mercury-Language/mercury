@@ -10,16 +10,10 @@
 /*
 ** mercury_ml_arg_body.h
 **
-** This file is included several times in library/std_util.m. Each inclusion
-** defines the body of one of several variants of `arg' function.
+** This file is included several times in library/deconstruct.m. Each inclusion
+** defines the body of one of several variants of the `arg' function.
 **
 ** The code including this file must define these macros:
-**
-** PREDNAME             Gives the name of the function or predicate being
-**                      defined.
-**
-** NONCANON_HANDLING    Gives the desired handling of non-canonical types
-**                      as a value of C type MR_noncanon_handling.
 **
 ** TYPEINFO_ARG         Gives the name of the argument that contains the
 **                      typeinfo of the term being deconstructed.
@@ -33,13 +27,17 @@
 ** SELECTED_ARG         Gives the name of the argument to which the value of
 **                      the selected field should be assigned.
 **
+** SELECTED_TYPE_INFO   Gives the name of the argument to which the typeinfo of
+**                      the selected field should be assigned.
+**
+** NONCANON             Gives a value of type MR_noncanon_handling; its value
+**                      will govern the handling of values of noncanonical
+**                      types.
+**
 ** The code including this file may define these macros:
 **
 ** SELECT_BY_NAME       If defined, the argument is selected by name; if it is
 **                      not defined, the argument is selected by position.
-**
-** EXPECTED_TYPE_INFO   If defined, gives a C expression containing the
-**                      typeinfo of the expected type
 */
 
 #ifdef  SELECT_BY_NAME
@@ -57,29 +55,21 @@
 
     MR_save_transient_registers();
     success = arg_func(type_info, &TERM_ARG, SELECTOR_ARG, &arg_type_info,
-        &argument_ptr, NONCANON_HANDLING, MR_noncanon_msg(PREDNAME));
-#ifdef EXPECTED_TYPE_INFO
-    if (success) {                                                          \
-        /* compare the actual type of the argument with its expected type */\
-        int         comparison_result;                                      \
-        comparison_result = MR_compare_type_info(arg_type_info,             \
-            (MR_TypeInfo) EXPECTED_TYPE_INFO);                              \
-        success = (comparison_result == MR_COMPARE_EQUAL);                  \
-                                                                            \
-        if (success) {                                                      \
-            SELECTED_ARG = *argument_ptr;                                   \
-        }                                                                   \
-    }                                                                       \
-                                                                            \
-    MR_restore_transient_registers();                                       \
+        &argument_ptr, NONCANON);
+    MR_restore_transient_registers();
+    if (success) {
+        /*
+        ** The following code is what *should* be here. The reason it is
+        ** commented out, and the code to create a univ used instead, is
+        ** the typechecking bug reported on 30 Jan, 2002.
+        **
+        ** SELECTED_ARG = *argument_ptr;                               
+        ** SELECTED_TYPE_INFO = arg_type_info;
+        */
+
+        MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, *argument_ptr);
+    }
+
     SUCCESS_INDICATOR = success;
-#else
-    MR_restore_transient_registers();                                       \
-    if (success) {                                                          \
-        MR_new_univ_on_hp(SELECTED_ARG, arg_type_info, *argument_ptr);      \
-    }                                                                       \
-                                                                            \
-    SUCCESS_INDICATOR = success;
-#endif
 
 #undef  arg_func

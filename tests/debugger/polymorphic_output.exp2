@@ -65,6 +65,6 @@ mdb> P
        HeadVar__2             	3
 mdb> c
 Uncaught exception:
-Software Error: det_arg: argument had wrong type
+Software Error: det_arg: argument has wrong type
 Last trace event was event #15.
 Last trace event before the unhandled exception was event #9.
