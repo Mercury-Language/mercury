@@ -758,7 +758,25 @@ fixup_atomic_stmt(restore_hp(Rval0), restore_hp(Rval)) -->
 	fixup_rval(Rval0, Rval).
 fixup_atomic_stmt(trail_op(TrailOp0), trail_op(TrailOp)) -->
 	fixup_trail_op(TrailOp0, TrailOp).
-fixup_atomic_stmt(target_code(Lang, String), target_code(Lang, String)) --> [].
+fixup_atomic_stmt(target_code(Lang, Components0),
+		target_code(Lang, Components)) -->
+	list__map_foldl(fixup_target_code_component,
+		Components0, Components).
+
+:- pred fixup_target_code_component(target_code_component,
+		target_code_component, elim_info, elim_info).
+:- mode fixup_target_code_component(in, out, in, out) is det.
+
+fixup_target_code_component(raw_target_code(Code),
+		raw_target_code(Code)) --> [].
+fixup_target_code_component(user_target_code(Code, Context),
+		user_target_code(Code, Context)) --> [].
+fixup_target_code_component(target_code_input(Rval0),
+		target_code_input(Rval)) -->
+	fixup_rval(Rval0, Rval).
+fixup_target_code_component(target_code_output(Lval0),
+		target_code_output(Lval)) -->
+	fixup_lval(Lval0, Lval).
 
 :- pred fixup_trail_op(trail_op, trail_op, elim_info, elim_info).
 :- mode fixup_trail_op(in, out, in, out) is det.

@@ -861,14 +861,12 @@ XXX Full exception handling support is not yet implemented.
 	% foreign language interfacing
 	%
 
-	;	target_code(target_lang, string)
-			% Do whatever is specified by the string,
+	;	target_code(target_lang, list(target_code_component))
+			% Do whatever is specified by the target_code_compoenents,
 			% which can be any piece of code in the specified
 			% target language (C, assembler, or whatever)
 			% that does not have any non-local flow of control.
-
 	.
-
 
 	%
 	% This is just a random selection of possible languages
@@ -881,6 +879,20 @@ XXX Full exception handling support is not yet implemented.
 	;	lang_asm
 	;	lang_java_asm
 	;	lang_java_bytecode
+	.
+
+:- type target_code_component
+	--->	user_target_code(string, maybe(prog_context))
+			% user_target_code holds C code from
+			% the user's `pragma c_code' declaration
+	;	raw_target_code(string)
+			% raw_target_code holds C code that the
+			% compiler has generated.  To ensure that
+			% following `#line' directives work OK,
+			% the string in a raw_target_code must
+			% end in `\n' (or `\n' followed by whitespace).
+	;	target_code_input(mlds__rval)
+	;	target_code_output(mlds__lval)
 	.
 
 	% XXX I'm not sure what representation we should use here

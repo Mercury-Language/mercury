@@ -1570,6 +1570,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% For model_non pragma c_code,
 	% we generate code of the following form:
 	%
+	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
 	%		struct {
@@ -1592,6 +1593,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	%			<release global lock>
 	%			if (MR_succeeded) {
 	%				<assign output args>
+	% 				<boxing/unboxing of outputs>
 	%				CONT();
 	%			}
 	%			if (MR_done) break;
@@ -1607,8 +1609,8 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	%		
 ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
-		LocalVarsDecls, _LocalVarsContext, FirstCode, _FirstContext,
-		LaterCode, _LaterContext, SharedCode, _SharedContext,
+		LocalVarsDecls, LocalVarsContext, FirstCode, FirstContext,
+		LaterCode, LaterContext, SharedCode, SharedContext,
 		MLDS_Decls, MLDS_Statements) -->
 	%
 	% Combine all the information about the each arg
@@ -1641,12 +1643,13 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate code to set the values of the input variables.
 	%
-	list__map_foldl(ml_gen_pragma_c_input_arg, ArgList, AssignInputsList),
+	ml_gen_pragma_c_input_arg_list(ArgList, AssignInputsList),
 
 	%
 	% Generate code to assign the values of the output variables.
 	%
-	list__map_foldl(ml_gen_pragma_c_output_arg, ArgList, AssignOutputsList),
+	ml_gen_pragma_c_output_arg_list(ArgList, Context,
+		AssignOutputsList, ConvDecls, ConvStatements),
 
 	%
 	% Generate code fragments to obtain and release the global lock
@@ -1658,61 +1661,61 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%
 	% Put it all together
 	%
-	{ string__append_list(ArgDeclsList, ArgDecls) },
-	{ string__append_list(AssignInputsList, AssignInputsCode) },
-	{ string__append_list(AssignOutputsList, AssignOutputsCode) },
-	{ string__append_list([
-			"{\n",
-			ArgDecls,
-			"\tstruct {\n",
-			LocalVarsDecls, "\n",
-			"\t} MR_locals;\n",
-			"\tbool MR_succeeded = FALSE;\n",
-			"\tbool MR_done = FALSE;\n",
-			"\n",
-			HashDefines,
-			"\n",
-			AssignInputsCode,
-			ObtainLock,
-			"\t{\n",
-			FirstCode,
-			"\n\t;}\n",
-			"\twhile (1) {\n",
-			"\t\t{\n",
-			SharedCode,
-			"\n\t\t;}\n",
-			ReleaseLock,
-			"\t\tif (MR_succeeded) {\n",
-			AssignOutputsCode],
-		Starting_C_Code) },
+	{ Starting_C_Code = list__condense([
+			[raw_target_code("{\n")],
+			ArgDeclsList,
+			[raw_target_code("\tstruct {\n"),
+			user_target_code(LocalVarsDecls, LocalVarsContext),
+			raw_target_code("\n"),
+			raw_target_code("\t} MR_locals;\n"),
+			raw_target_code("\tbool MR_succeeded = FALSE;\n"),
+			raw_target_code("\tbool MR_done = FALSE;\n"),
+			raw_target_code("\n"),
+			raw_target_code(HashDefines),
+			raw_target_code("\n")],
+			AssignInputsList,
+			[raw_target_code(ObtainLock),
+			raw_target_code("\t{\n"),
+			user_target_code(FirstCode, FirstContext),
+			raw_target_code("\n\t;}\n"),
+			raw_target_code("\twhile (1) {\n"),
+			raw_target_code("\t\t{\n"),
+			user_target_code(SharedCode, SharedContext),
+			raw_target_code("\n\t\t;}\n"),
+			raw_target_code(ReleaseLock),
+			raw_target_code("\t\tif (MR_succeeded) {\n")],
+			AssignOutputsList
+	]) },
 	( { CodeModel = model_non } ->
 		ml_gen_call_current_success_cont(Context, CallCont)
 	;
 		{ error("ml_gen_nondet_pragma_c_code: unexpected code model") }
 	),
-	{ string__append_list([
-			"\t\t}\n",
-			"\t\tif (MR_done) break;\n",
-			ObtainLock,
-			"\t\t{\n",
-			LaterCode,
-			"\n\t\t;}\n",
-			"\t}\n",
-			"\n",
-			HashUndefs,
-			"}\n"],
-		Ending_C_Code) },
+	{ Ending_C_Code = [
+			raw_target_code("\t\t}\n"),
+			raw_target_code("\t\tif (MR_done) break;\n"),
+			raw_target_code(ObtainLock),
+			raw_target_code("\t\t{\n"),
+			user_target_code(LaterCode, LaterContext),
+			raw_target_code("\n\t\t;}\n"),
+			raw_target_code("\t}\n"),
+			raw_target_code("\n"),
+			raw_target_code(HashUndefs),
+			raw_target_code("}\n")
+	] },
 	{ Starting_C_Code_Stmt = target_code(lang_C, Starting_C_Code) },
 	{ Starting_C_Code_Statement = mlds__statement(
 		atomic(Starting_C_Code_Stmt), mlds__make_context(Context)) },
 	{ Ending_C_Code_Stmt = target_code(lang_C, Ending_C_Code) },
 	{ Ending_C_Code_Statement = mlds__statement(
 		atomic(Ending_C_Code_Stmt), mlds__make_context(Context)) },
-	{ MLDS_Statements = [
-		Starting_C_Code_Statement,
-		CallCont,
-		Ending_C_Code_Statement] },
-	{ MLDS_Decls = [] }.
+	{ MLDS_Statements = list__condense([
+		[Starting_C_Code_Statement],
+		ConvStatements,
+		[CallCont,
+		Ending_C_Code_Statement]
+	]) },
+	{ MLDS_Decls = ConvDecls }.
 
 :- pred ml_gen_ordinary_pragma_c_code(code_model, pragma_c_code_attributes,
 		pred_id, proc_id, list(prog_var),
@@ -1727,21 +1730,24 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%
 	% model_det pragma_c_code:
 	%
+	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
 	%
 	%		<assign input args>
 	%		<obtain global lock>
 	%		<c code>
+	% 		<boxing/unboxing of outputs>
 	%		<release global lock>
 	%		<assign output args>
 	%	}
 	%		
 	% model_semi pragma_c_code:
 	%
+	% 	<declaration of locals needed for boxing/unboxing>
 	%	{
 	% 		<declaration of one local variable for each arg>
-	%		#define SUCCESS_INDICATOR <succeeded>
+	%		bool SUCCESS_INDICATOR;
 	%
 	%		<assign input args>
 	%		<obtain global lock>
@@ -1749,9 +1755,10 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%		<release global lock>
 	%		if (SUCCESS_INDICATOR) {
 	%			<assign output args>
+	% 			<boxing/unboxing of outputs>
 	%		}
 	%		
-	%		#undef SUCCESS_INDICATOR
+	%		<succeeded> = SUCCESS_INDICATOR;
 	%	}
 	%		
 	% Note that we generate this code directly as
@@ -1780,12 +1787,13 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate code to set the values of the input variables.
 	%
-	list__map_foldl(ml_gen_pragma_c_input_arg, ArgList, AssignInputsList),
+	ml_gen_pragma_c_input_arg_list(ArgList, AssignInputsList),
 
 	%
 	% Generate code to assign the values of the output variables.
 	%
-	list__map_foldl(ml_gen_pragma_c_output_arg, ArgList, AssignOutputsList),
+	ml_gen_pragma_c_output_arg_list(ArgList, Context,
+		AssignOutputsList, ConvDecls, ConvStatements),
 
 	%
 	% Generate code fragments to obtain and release the global lock
@@ -1797,56 +1805,57 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Put it all together
 	%
-	{ string__append_list(ArgDeclsList, ArgDecls) },
-	{ string__append_list(AssignInputsList, AssignInputsCode) },
-	{ string__append_list(AssignOutputsList, AssignOutputsCode) },
 	( { CodeModel = model_det } ->
-		{ string__append_list([
-				"{\n",
-				ArgDecls,
-				"\n",
-				AssignInputsCode,
-				ObtainLock,
-				"\t\t{\n",
-				C_Code,
-				"\n\t\t;}\n",
-				ReleaseLock,
-				AssignOutputsCode,
-				"}\n"],
-			Combined_C_Code) }
+		{ Starting_C_Code = list__condense([
+				[raw_target_code("{\n")],
+				ArgDeclsList,
+				[raw_target_code("\n")],
+				AssignInputsList,
+				[raw_target_code(ObtainLock),
+				raw_target_code("\t\t{\n"),
+				user_target_code(C_Code, yes(Context)),
+				raw_target_code("\n\t\t;}\n"),
+				raw_target_code(ReleaseLock)],
+				AssignOutputsList
+		]) },
+		{ Ending_C_Code = [raw_target_code("}\n")] }
 	; { CodeModel = model_semi } ->
 		ml_success_lval(SucceededLval),
-		{ ml_gen_c_code_for_rval(lval(SucceededLval), SucceededVar) },
-		{ DefineSuccessIndicator = string__format(
-			"\t#define SUCCESS_INDICATOR %s\n",
-			[s(SucceededVar)]) },
-		{ MaybeAssignOutputsCode = string__format(
-			"\tif (SUCCESS_INDICATOR) {\n%s\n\t}\n",
-			[s(AssignOutputsCode)]) },
-		{ UndefSuccessIndicator = "\t#undef SUCCESS_INDICATOR\n" },
-		{ string__append_list([
-				"{\n",
-				ArgDecls,
-				DefineSuccessIndicator,
-				"\n",
-				AssignInputsCode,
-				ObtainLock,
-				"\t\t{\n",
-				C_Code,
-				"\n\t\t;}\n",
-				ReleaseLock,
-				MaybeAssignOutputsCode,
-				UndefSuccessIndicator,
-				"}\n"],
-			Combined_C_Code) }
+		{ Starting_C_Code = list__condense([
+				[raw_target_code("{\n")],
+				ArgDeclsList,
+				[raw_target_code("\tbool SUCCESS_INDICATOR;\n"),
+				raw_target_code("\n")],
+				AssignInputsList,
+				[raw_target_code(ObtainLock),
+				raw_target_code("\t\t{\n"),
+				user_target_code(C_Code, yes(Context)),
+				raw_target_code("\n\t\t;}\n"),
+				raw_target_code(ReleaseLock),
+				raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
+				AssignOutputsList
+		]) },
+		{ Ending_C_Code = [
+				raw_target_code("\t}\n"),
+				target_code_output(SucceededLval),
+				raw_target_code(" = SUCCESS_INDICATOR;\n"),
+				raw_target_code("}\n")
+		] }
 	;
 		{ error("ml_gen_ordinary_pragma_c_code: unexpected code model") }
 	),
-	{ C_Code_Stmt = target_code(lang_C, Combined_C_Code) },
-	{ C_Code_Statement = mlds__statement(atomic(C_Code_Stmt),
+	{ Starting_C_Code_Stmt = target_code(lang_C, Starting_C_Code) },
+	{ Ending_C_Code_Stmt = target_code(lang_C, Ending_C_Code) },
+	{ Starting_C_Code_Statement = mlds__statement(atomic(Starting_C_Code_Stmt),
 		mlds__make_context(Context)) },
-	{ MLDS_Statements = [C_Code_Statement] },
-	{ MLDS_Decls = [] }.
+	{ Ending_C_Code_Statement = mlds__statement(atomic(Ending_C_Code_Stmt),
+		mlds__make_context(Context)) },
+	{ MLDS_Statements = list__condense([
+		[Starting_C_Code_Statement],
+		ConvStatements,
+		[Ending_C_Code_Statement]
+	]) },
+	{ MLDS_Decls = ConvDecls }.
 
 	% Generate code fragments to obtain and release the global lock
 	% (this is used for ensuring thread safety in a concurrent
@@ -1916,7 +1925,8 @@ ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
 % ml_gen_pragma_c_decls generates C code to declare the arguments
 % for a `pragma c_code' declaration.
 %
-:- pred ml_gen_pragma_c_decls(list(ml_c_arg)::in, list(string)::out) is det.
+:- pred ml_gen_pragma_c_decls(list(ml_c_arg)::in,
+		list(target_code_component)::out) is det.
 
 ml_gen_pragma_c_decls([], []).
 ml_gen_pragma_c_decls([Arg|Args], [Decl|Decls]) :-
@@ -1926,9 +1936,9 @@ ml_gen_pragma_c_decls([Arg|Args], [Decl|Decls]) :-
 % ml_gen_pragma_c_decl generates C code to declare an argument
 % of a `pragma c_code' declaration.
 %
-:- pred ml_gen_pragma_c_decl(ml_c_arg::in, string::out) is det.
+:- pred ml_gen_pragma_c_decl(ml_c_arg::in, target_code_component::out) is det.
 
-ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), DeclString) :-
+ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), Decl) :-
 	(
 		MaybeNameAndMode = yes(ArgName - _Mode),
 		\+ var_is_singleton(ArgName)
@@ -1940,7 +1950,8 @@ ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), DeclString) :-
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
 		DeclString = ""
-	).
+	),
+	Decl = raw_target_code(DeclString).
 
 %-----------------------------------------------------------------------------%
 
@@ -1961,14 +1972,23 @@ var_is_singleton(Name) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred ml_gen_pragma_c_input_arg_list(list(ml_c_arg)::in,
+		list(target_code_component)::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_c_input_arg_list(ArgList, AssignInputs) -->
+	list__map_foldl(ml_gen_pragma_c_input_arg, ArgList, AssignInputsList),
+	{ list__condense(AssignInputsList, AssignInputs) }.
+
 % ml_gen_pragma_c_input_arg generates C code to assign the value of an input
 % arg for a `pragma c_code' declaration.
 %
-:- pred ml_gen_pragma_c_input_arg(ml_c_arg::in, string::out,
+:- pred ml_gen_pragma_c_input_arg(ml_c_arg::in,
+		list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
-		AssignInputString) -->
+		AssignInput) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	(
@@ -1985,33 +2005,55 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			% using private_builtin__dummy_var, which is
 			% what ml_gen_var will have generated for this
 			% variable.
-			Var_ArgName = "0"
+			ArgRval = const(int_const(0))
 		;
 			ml_gen_box_or_unbox_rval(VarType, OrigType, lval(VarLval),
-				ArgRval),
-			ml_gen_c_code_for_rval(ArgRval, Var_ArgName)
+				ArgRval)
 		},
 		{ type_util__var(VarType, _) ->
 			Cast = "(MR_Word) "
 		;
 			Cast = ""
 		},
-		{ string__format("\t%s = %s%s;\n", [s(ArgName), s(Cast),
-			s(Var_ArgName)], AssignInputString) }
+		{ string__format("\t%s = %s\n", [s(ArgName), s(Cast)],
+			AssignToArgName) },
+		{ AssignInput = [
+			raw_target_code(AssignToArgName),
+			target_code_input(ArgRval),
+			raw_target_code(";\n")
+		] }
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
-		{ AssignInputString = "" }
+		{ AssignInput = [] }
 	).
+
+:- pred ml_gen_pragma_c_output_arg_list(list(ml_c_arg)::in, prog_context::in,
+		list(target_code_component)::out,
+		mlds__defns::out, mlds__statements::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_pragma_c_output_arg_list([], _, [], [], []) --> [].
+ml_gen_pragma_c_output_arg_list([C_Arg | C_Args], Context, Components,
+		ConvDecls, ConvStatements) -->
+	ml_gen_pragma_c_output_arg(C_Arg, Context, Components1,
+			ConvDecls1, ConvStatements1),
+	ml_gen_pragma_c_output_arg_list(C_Args, Context, Components2,
+			ConvDecls2, ConvStatements2),
+	{ Components = list__append(Components1, Components2) },
+	{ ConvDecls = list__append(ConvDecls1, ConvDecls2) },
+	{ ConvStatements = list__append(ConvStatements1, ConvStatements2) }.
 
 % ml_gen_pragma_c_output_arg generates C code to assign the value of an output
 % arg for a `pragma c_code' declaration.
 %
-:- pred ml_gen_pragma_c_output_arg(ml_c_arg::in, string::out,
+:- pred ml_gen_pragma_c_output_arg(ml_c_arg::in, prog_context::in,
+		list(target_code_component)::out,
+		mlds__defns::out, mlds__statements::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
-		AssignOutputString) -->
+		Context, AssignOutput, ConvDecls, ConvStatements) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	(
@@ -2022,46 +2064,26 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 	->
 		ml_variable_type(Var, VarType),
 		ml_gen_var(Var, VarLval),
-		{ ml_gen_box_or_unbox_rval(OrigType, VarType, lval(VarLval),
-			ArgRval) },
-		{ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) },
+		ml_gen_box_or_unbox_lval(VarType, OrigType, VarLval, ArgName,
+			Context, ArgLval, ConvDecls, ConvStatements),
 		{ type_util__var(VarType, _) ->
 			Cast = "(MR_Box) "
 		;
 			Cast = ""
 		},
-		{ string__format("\t%s = %s%s;\n", [s(Var_ArgName), s(Cast),
-			s(ArgName)], AssignOutputString) }
+		{ string__format(" = %s%s;\n", [s(Cast), s(ArgName)],
+			AssignFromArgName) },
+		{ AssignOutput = [
+			raw_target_code("\t"),
+			target_code_output(ArgLval),
+			raw_target_code(AssignFromArgName)
+		] }
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
-		{ AssignOutputString = "" }
-	).
-
-	%
-	% XXX this is a bit of a hack --
-	% for `pragma c_code', we generate the C code for an mlds__rval
-	% directly rather than going via the MLDS
-	%
-:- pred ml_gen_c_code_for_rval(mlds__rval::in, string::out) is det.
-ml_gen_c_code_for_rval(ArgRval, Var_ArgName) :-
-	( ArgRval = lval(var(qual(ModuleName, VarName))) ->
-		SymName = mlds_module_name_to_sym_name(ModuleName),
-		llds_out__sym_name_mangle(SymName, MangledModuleName),
-		llds_out__name_mangle(VarName, MangledVarName),
-		string__append_list([MangledModuleName, "__",
-			MangledVarName], Var_ArgName)
-	; ArgRval = lval(mem_ref(lval(var(qual(ModuleName, VarName))), _)) ->
-		SymName = mlds_module_name_to_sym_name(ModuleName),
-		llds_out__sym_name_mangle(SymName, MangledModuleName),
-		llds_out__name_mangle(VarName, MangledVarName),
-		string__append_list(["*", MangledModuleName, "__",
-			MangledVarName], Var_ArgName)
-	;
-		% XXX don't complain until run-time
-		% sorry("complicated pragma c_code")
-		Var_ArgName =
-		"*(MR_fatal_error(""complicated pragma c_code""),(MR_Word *)0)"
+		{ AssignOutput = [] },
+		{ ConvDecls = [] },
+		{ ConvStatements = [] }
 	).
 
 %-----------------------------------------------------------------------------%

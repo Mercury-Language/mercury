@@ -61,6 +61,22 @@
 :- pred ml_gen_box_or_unbox_rval(prog_type, prog_type, mlds__rval, mlds__rval).
 :- mode ml_gen_box_or_unbox_rval(in, in, in, out) is det.
 
+	% This is like `ml_gen_box_or_unbox_rval', except that it
+	% works on lvals rather than rvals.
+	% Given a source type and a destination type,
+	% a source lval holding a value of the source type,
+	% and a name to base the name of the local temporary variable on,
+	% this procedure produces an lval of the destination type,
+	% code to assign the destination lval (suitably converted)
+	% to the source lval, and the declaration for the local
+	% temporary used (if any).
+	%
+:- pred ml_gen_box_or_unbox_lval(prog_type, prog_type, mlds__lval, var_name,
+		prog_context, mlds__lval, mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, out, out, out,
+		in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -535,12 +551,6 @@ ml_gen_box_or_unbox_rval(SourceType, DestType, VarRval, ArgRval) :-
 		ArgRval = VarRval
 	).
 	
-:- pred ml_gen_box_or_unbox_lval(prog_type, prog_type, mlds__lval, var_name,
-		prog_context, mlds__lval, mlds__defns, mlds__statements,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_box_or_unbox_lval(in, in, in, in, in, out, out, out,
-		in, out) is det.
-
 ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		ArgLval, ConvDecls, ConvStatements) -->
 	%
