@@ -263,8 +263,16 @@ else
   endif
 endif
 
+# string_hash tests features of the Mercury C runtime.
+ifeq "$(filter il% java%,$(GRADE))" ""
+	C_ONLY_PROGS=string_hash
+else
+	C_ONLY_PROGS=
+endif	
+
 PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) $(CLOSURE_LAYOUT_PROGS) \
-	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS) $(CHAR_REP_PROGS)
+	$(EXCEPTION_PROGS) $(BACKEND_PROGS) $(NONDET_C_PROGS) \
+	$(C_ONLY_PROGS) $(CHAR_REP_PROGS)
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
