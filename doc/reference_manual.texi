@@ -409,6 +409,23 @@ An existential quantification.
 @var{Vars} must be a list of variables.
 @var{Goal} must be a valid goal.
 
+Each existential quantification introduces a new scope.
+The variables in @var{Vars} are local to the goal @var{Goal}:
+for each variable named in @var{Vars},
+any occurrences of variables with that name in @var{Goal}
+are considered to name a different variable than any
+variables with the same name that occur outside of the
+existential quantification.
+
+Operationally, existential quantification has no effect,
+so apart from its effect on variable scoping,
+@samp{some @var{Vars} @var{Goal}} is the
+same as @samp{@var{Goal}}.
+
+Mercury's rules for implicit quantification (@pxref{Implicit quantification})
+mean that variables are often implicitly existentially quantified.
+There is usually no need to write existential quantifiers explicitly.
+
 @item @code{all @var{Vars} @var{Goal}}
 A universal quantification.
 @var{Vars} must be a list of variables.
@@ -437,6 +454,7 @@ Always fails.
 A negation.
 The two different syntaxes have identical semantics.
 @var{Goal} must be a valid goal.
+Both forms are equivalent to @samp{if @var{Goal} then fail else true}.
 
 @item @code{@var{Goal1} => @var{Goal2}}
 An implication.
