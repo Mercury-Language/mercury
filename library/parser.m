@@ -325,7 +325,7 @@ parser__parse_args(List) -->
 parser__init_state(Tokens, ParserState) -->
 	{ ops__init_op_table(OpTable) },
 	{ varset__init(VarSet) },
-	io__output_stream_name(FileName),
+	io__input_stream_name(FileName),
 	{ ParserState = parser__state(FileName, OpTable, VarSet, Tokens) }.
 
 :- pred parser__final_state(parser__state, varset).

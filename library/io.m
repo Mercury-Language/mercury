@@ -363,6 +363,18 @@
 %		code.
 
 %-----------------------------------------------------------------------------%
+
+% For use by term_io.nl:
+
+:- import_module ops.
+
+:- pred io__get_op_table(ops__table, io__state, io__state).
+:- mode io__get_op_table(out, di, uo) is det.
+
+:- pred io__set_op_table(ops__table, io__state, io__state).
+:- mode io__set_op_table(in, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -373,6 +385,7 @@
 			io__stream_names,	% map from stream to stream name
 			io__stream_putback,	% map from input stream to
 						% list of pushback characters
+			ops__table, 		% current operators
 			univ,			% for use by the application
 			io__external_state
 		).
@@ -478,7 +491,7 @@ io__read_char(Result) -->
 	io__read_char(Stream, Result).
 
 io__read_char(Stream, Result, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D),
+	IO_0 = io__state(A, PutBack0, C, D, E),
 		% XXX inefficient
 	( map__search(PutBack0, Stream, [Char | Chars]) ->
 		( Chars = [] ->
@@ -486,7 +499,7 @@ io__read_char(Stream, Result, IO_0, IO) :-
 		;
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
-		IO = io__state(A, PutBack, C, D),
+		IO = io__state(A, PutBack, C, D, E),
 		Result = ok(Char)
 	;
 		io__read_char_code(Stream, Code, IO_0, IO),
@@ -540,13 +553,13 @@ io__putback_char(Char) -->
 	io__putback_char(Stream, Char).
 
 io__putback_char(Stream, Char, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D),
+	IO_0 = io__state(A, PutBack0, C, D, E),
 	( map__search(PutBack0, Stream, Chars) ->
 		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
 	;
 		map__det_insert(PutBack0, Stream, [Char], PutBack)
 	),
-	IO = io__state(A, PutBack, C, D).
+	IO = io__state(A, PutBack, C, D, E).
 
 %-----------------------------------------------------------------------------%
 
@@ -654,7 +667,7 @@ io__output_stream_name(Stream, Name) -->
 :- mode io__stream_name(in, out, di, uo) is det.
 
 io__stream_name(Stream, Name, IOState, IOState) :-
-	IOState = io__state(StreamNames, _, _, _),
+	IOState = io__state(StreamNames, _, _, _, _),
 	( map__search(StreamNames, Stream, Name1) ->
 		Name = Name1
 	;
@@ -664,16 +677,16 @@ io__stream_name(Stream, Name, IOState, IOState) :-
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
 :- mode io__delete_stream_name(in, di, uo) is det.
 
-io__delete_stream_name(Stream, io__state(StreamNames0, PutBack, Globals, S),
-		io__state(StreamNames, PutBack, Globals, S)) :-
+io__delete_stream_name(Stream, io__state(StreamNames0, B, C, D, E),
+		io__state(StreamNames, B, C, D, E)) :-
 	map__delete(StreamNames0, Stream, StreamNames).
 
 :- pred io__insert_stream_name(io__stream, string, io__state, io__state).
 :- mode io__insert_stream_name(in, in, di, uo) is det.
 
 io__insert_stream_name(Stream, Name,
-		io__state(StreamNames0, PutBack, Globals, S),
-		io__state(StreamNames, PutBack, Globals, S)) :-
+		io__state(StreamNames0, B, C, D, E),
+		io__state(StreamNames, B, C, D, E)) :-
 	map__set(StreamNames0, Stream, Name, StreamNames).
 
 %-----------------------------------------------------------------------------%
@@ -682,10 +695,10 @@ io__insert_stream_name(Stream, Name,
 % global state predicates
 
 io__get_globals(Globals, IOState, IOState) :-
-	IOState = io__state(_StreamNames, _PutBack, Globals, _S).
+	IOState = io__state(_, _, _, Globals, _).
 
-io__set_globals(Globals, io__state(StreamNames, PutBack, _, S),
-		io__state(StreamNames, PutBack, Globals, S)).
+io__set_globals(Globals, io__state(A, B, C, _, E),
+		io__state(A, B, C, Globals, E)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -712,6 +725,14 @@ io__call_system(Command, Result) -->
 :- type io__error	==	string.		% This is subject to change.
 
 io__error_message(Error, Error).
+
+%-----------------------------------------------------------------------------%
+
+io__get_op_table(OpTable) -->
+	=(io__state(_, _, OpTable, _, _)).
+
+io__set_op_table(OpTable,	io__state(A, B, _, D, E),
+				io__state(A, B, OpTable, D, E)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

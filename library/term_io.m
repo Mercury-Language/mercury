@@ -18,6 +18,7 @@
 
 % External interface: exported predicates
 
+/***** not yet implemented
 :- type op_type ---> fx; fy; xf; yf; xfx; xfy; yfx; fxx; fxy; fyx; fyy.
 :- pred term_io__op(int, op_type, string, io__state, io__state).
 :- mode term_io__op(in, in, in, di, uo) is det.
@@ -30,6 +31,7 @@
 :- mode term_io__current_ops(out, di, uo) is det.
 %		Return a list containing all the current operator definitions.
 %		Does not modify the io__state.
+*****/
 
 :- type read_term ---> eof ; error(string, int) ; term(varset, term).
 :- pred term_io__read_term(read_term, io__state, io__state).
@@ -83,10 +85,14 @@
 
 :- implementation.
 :- import_module std_util, require.
+:- import_module parser, ops.
 
-:- external(term_io__op/5).
-:- external(term_io__current_ops/3).
 :- external(term_io__read_term/3).
+
+/***
+term_io__read_term(Result) -->
+	parser__read_term(Result).
+****/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -140,6 +146,7 @@ term_io__write_term_2(term__variable(Id), VarSet0, N0, VarSet, N) -->
 	term_io__write_variable_2(Id, VarSet0, N0, VarSet, N).
 term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		-->
+	io__get_op_table(OpTable),
 	(
 		{ Functor = term__atom(".") },
 		{ Args = [ListHead, ListTail] }
@@ -157,8 +164,8 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_string(" }")
 	;
 		{ Args = [PrefixArg] },
-		term_io__unary_prefix_op(Functor, Result),
-		{ Result = yes }
+		{ Functor = term__atom(OpName) },
+		{ ops__lookup_prefix_op(OpTable, OpName, _, _) }
 	->
 		io__write_char('('),
 		term_io__write_constant(Functor),
@@ -167,8 +174,8 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_char(')')
 	;
 		{ Args = [PostfixArg] },
-		term_io__unary_postfix_op(Functor, Result),
-		{ Result = yes }
+		{ Functor = term__atom(OpName) },
+		{ ops__lookup_postfix_op(OpTable, OpName, _, _) }
 	->
 		io__write_char('('),
 		term_io__write_term_2(PostfixArg, VarSet0, N0, VarSet, N),
@@ -177,13 +184,25 @@ term_io__write_term_2(term__functor(Functor, Args, _), VarSet0, N0, VarSet, N)
 		io__write_char(')')
 	;
 		{ Args = [Arg1, Arg2] },
-		term_io__infix_op(Functor, Result),
-		{ Result = yes }
+		{ Functor = term__atom(OpName) },
+		{ ops__lookup_infix_op(OpTable, OpName, _, _, _) }
 	->
 		io__write_char('('),
 		term_io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
 		term_io__write_constant(Functor),
+		io__write_char(' '),
+		term_io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
+		io__write_char(')')
+	;
+		{ Args = [Arg1, Arg2] },
+		{ Functor = term__atom(OpName) },
+		{ ops__lookup_binary_prefix_op(OpTable, OpName, _, _, _) }
+	->
+		io__write_char('('),
+		term_io__write_constant(Functor),
+		io__write_char(' '),
+		term_io__write_term_2(Arg1, VarSet0, N0, VarSet1, N1),
 		io__write_char(' '),
 		term_io__write_term_2(Arg2, VarSet1, N1, VarSet, N),
 		io__write_char(')')
@@ -227,19 +246,6 @@ term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 		io__write_string(" | "),
 		term_io__write_term_2(Term, VarSet0, N0, VarSet, N)
 	).
-
-:- pred term_io__infix_op(const, bool, io__state, io__state).
-:- mode term_io__infix_op(in, out, di, uo) is det.
-
-:- pred term_io__unary_prefix_op(const, bool, io__state, io__state).
-:- mode term_io__unary_prefix_op(in, out, di, uo) is det.
-
-:- pred term_io__unary_postfix_op(const, bool, io__state, io__state).
-:- mode term_io__unary_postfix_op(in, out, di, uo) is det.
-
-:- external(term_io__infix_op/4).
-:- external(term_io__unary_prefix_op/4).
-:- external(term_io__unary_postfix_op/4).
 
 %-----------------------------------------------------------------------------%
 

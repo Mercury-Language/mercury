@@ -360,8 +360,9 @@ io__get_line_number(LineNumber) -->
 	% used again.
 
 :- pred io__init_state(io__state).
-io__init_state(io__state(Names, PutBack, Globals, current)) :-
+io__init_state(io__state(Names, PutBack, OpTable, Globals, current)) :-
 	map__init(PutBack),
+	ops__init_op_table(OpTable),
 	type_to_univ("<globals>", Globals),
 	map__init(Names0),
 	map__insert(Names0, user_input, "<standard input>", Names1),
