@@ -132,7 +132,6 @@ struct MR_TypeStat_Struct {
 /* we depend on these five structs being initialized to zero */
 MR_TypeStat	MR_type_stat_mer_unify;
 MR_TypeStat	MR_type_stat_c_unify;
-MR_TypeStat	MR_type_stat_mer_index;
 MR_TypeStat	MR_type_stat_mer_compare;
 MR_TypeStat	MR_type_stat_c_compare;
 
@@ -1026,7 +1025,6 @@ MR_print_type_ctor_stats(void)
 
 	MR_print_one_type_ctor_stat(fp, "UNIFY", &MR_type_stat_mer_unify);
 	MR_print_one_type_ctor_stat(fp, "UNIFY_C", &MR_type_stat_c_unify);
-	MR_print_one_type_ctor_stat(fp, "INDEX", &MR_type_stat_mer_index);
 	MR_print_one_type_ctor_stat(fp, "COMPARE", &MR_type_stat_mer_compare);
 	MR_print_one_type_ctor_stat(fp, "COMPARE_C", &MR_type_stat_c_compare);
 

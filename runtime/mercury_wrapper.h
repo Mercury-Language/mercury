@@ -203,7 +203,6 @@ typedef	struct MR_TypeStat_Struct	MR_TypeStat;
 
 extern	MR_TypeStat	MR_type_stat_mer_unify;
 extern	MR_TypeStat	MR_type_stat_c_unify;
-extern	MR_TypeStat	MR_type_stat_mer_index;
 extern	MR_TypeStat	MR_type_stat_mer_compare;
 extern	MR_TypeStat	MR_type_stat_c_compare;
 
