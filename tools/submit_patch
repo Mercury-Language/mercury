@@ -9,14 +9,12 @@
 #	This implements a "commit server".
 #	It takes as input a log message and a patch.
 #	It checks out the Mercury sources, applies the patch,
-#	tests it (by bootchecking in a couple of grades),
-#	and if the tests pass, it commits the patch.
+#	and tests it (by bootchecking in a couple of grades).
+#	If the tests pass, and --commit was specified,
+#	it also commits the patch.
 #	It locks the test directory, so you can submit
 #	multiple patches at once and it will only run
 #	one of them at a time.
-#
-# TODO:
-#	- support testing the native-code back-end
 
 usage="\
 Usage: $0 [options] <cvs log message file> <patch file>
@@ -27,7 +25,6 @@ Options:
 		Require this amount of free disk space.
 	--gcc
 		Test the GCC-based native code back-end.
-		(XXX not yet implemented)
 	-r <CVSROOT>, --repository <CVSROOT>
 		Use the specified CVS repository for checking out mercury.
 	-g <CVSROOT>, --gcc-repository <CVSROOT>
@@ -53,8 +50,8 @@ Options:
 		Specify a name for this patch.
 		The patch title is used in the test sub-directory name,
 		and is also included in the email subject line.
-	-c-, --no-commit
-		Do not commit the patch, even if the tests pass.
+	-c, --commit
+		Commit the patch, if the tests pass.
 	-h, --help
 		Display this usage message.
 "
@@ -77,7 +74,6 @@ disk_space_required=300
 
 # "true" if we should build with the GCC back-end,
 # so that `--target asm' works.
-# XXX not yet implemented
 do_gcc=false
 
 # CVS Repositories
@@ -102,7 +98,7 @@ gcc_configure_opts="--enable-checking --enable-languages=c,mercury"
 bootchecks="--grade asm_fast.gc # --grade hlc.gc".
 
 # "true" if we should commit the patch if/when the tests pass.
-commit=true
+commit=false
 
 #-----------------------------------------------------------------------------#
 #
@@ -332,6 +328,7 @@ main() {
 		CVSROOT=$gcc_cvsroot
 		export CVSROOT
 		cvs checkout $gcc_branch gcc || die "GCC cvs checkout failed"
+		(cd gcc && ./contrib/gcc_update --touch)
 		CVSROOT=$mercury_cvsroot
 		export CVSROOT
 		cvs checkout $mercury_gcc_branch mercury-gcc \
@@ -344,7 +341,7 @@ main() {
 	export CVSROOT
 	cvs checkout $branch mercury	|| die "cvs checkout mercury failed"
 	cvs checkout $branch tests	|| die "cvs checkout tests failed"
-	> FILES.old FILES.new
+	touch FILES.old FILES.new
 	find . | sort > FILES.old
 	apply_patch			|| die "apply_patch failed"
 	find . | sort > FILES.new
@@ -357,7 +354,7 @@ main() {
 		cd ../gcc		|| die "cd ../gcc failed"
 		sh configure --prefix=$test_dir/install $gcc_configure_opts \
 					|| die "gcc configure failed"
-		make			|| die "gcc make failed"
+		make bootstrap		|| die "gcc make bootstrap failed"
 		cd ../mercury		|| die "cd ../mercury failed"
 		;;
 	esac
