@@ -6,7 +6,7 @@
 % File: rl_relops
 % Main author: stayl
 %
-% Generate intermediate code for relation operations.
+% Generate intermediate code for relational operations.
 %-----------------------------------------------------------------------------%
 :- module rl_relops.
 
@@ -15,7 +15,7 @@
 :- import_module hlds_goal, instmap, prog_data, rl, rl_info.
 :- import_module bool, list, std_util.
 
-	/*
+/*
 	% Perform projections and selections before joins. In some cases
 	% this may worsen performance (reducing tuple size by removing
 	% a single integer from each tuple is not likely to improve the
