@@ -1,0 +1,2447 @@
+%---------------------------------------------------------------------------%
+% vim:ts=4 sw=4 expandtab
+%---------------------------------------------------------------------------%
+% Copyright (C) 2005 The University of Melbourne.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
+
+% set_ctree234.m:
+%
+% This module implements sets using 2-3-4 trees extended with element counts.
+% This representation has higher constant factors for most operations than
+% ordered lists, but it has much better worst-case complexity, and is likely
+% to be faster for large sets. Specifically,
+%
+% - the cost of lookups is only logarithmic in the size of the set, not linear
+% - for operations that are intrinsically linear in the size of one input
+%   operand or the other, the counts allow us to choose to be linear in the
+%   size of the smaller set.
+
+%--------------------------------------------------------------------------%
+
+:- module set_ctree234.
+:- interface.
+
+:- import_module bool, list.
+
+:- type set_ctree234(_T).
+
+    % `set_ctree234__init = Set' is true iff `Set' is an empty set.
+
+:- func set_ctree234__init = set_ctree234(T).
+
+    % `set_ctree234__singleton_set(Elem, Set)' is true iff `Set' is the set
+    % containing just the single element `Elem'.
+
+:- pred set_ctree234__singleton_set(T, set_ctree234(T)).
+:- mode set_ctree234__singleton_set(in, out) is det.
+:- mode set_ctree234__singleton_set(out, in) is semidet.
+
+:- func set_ctree234__make_singleton_set(T) = set_ctree234(T).
+
+    % `set_ctree234__empty(Set)' is true iff `Set' is an empty set.
+
+:- pred set_ctree234__empty(set_ctree234(_T)::in) is semidet.
+
+    % `set_ctree234__one_member(X, Set)' is true iff `X' is a member of `Set'.
+
+:- pred set_ctree234__one_member(set_ctree234(T)::in, T::out) is nondet.
+
+    % `set_ctree234__is_member(Set, X, Result)' returns
+    % `Result = yes' iff `X' is a member of `Set'.
+
+:- pred set_ctree234__is_member(set_ctree234(T)::in, T::in, bool::out) is det.
+:- func set_ctree234__is_member(set_ctree234(T), T) = bool.
+
+    % `set_ctree234__contains(Set, X)' is true iff `X' is a member of `Set'.
+
+:- pred set_ctree234__contains(set_ctree234(T)::in, T::in) is semidet.
+
+    % `set_ctree234__list_to_set(List) = Set' is true iff `Set' is the set
+    % containing only the members of `List'.
+
+:- func set_ctree234__list_to_set(list(T)) = set_ctree234(T).
+
+    % `set_ctree234__sorted_list_to_set(List) = Set' is true iff `Set' is
+    % the set containing only the members of `List'. `List' must be sorted.
+
+:- func set_ctree234__sorted_list_to_set(list(T)) = set_ctree234(T).
+
+    % `set_ctree234__to_sorted_list(Set) = List' is true iff `List' is the
+    % list of all the members of `Set', in sorted order.
+
+:- func set_ctree234__to_sorted_list(set_ctree234(T)) = list(T).
+
+    % `set_ctree234__equal(SetA, SetB)' is true iff
+    % `SetA' and `SetB' contain the same elements.
+
+:- pred set_ctree234__equal(set_ctree234(T)::in, set_ctree234(T)::in)
+    is semidet.
+
+    % `set_ctree234__subset(SetA, SetB)' is true iff `SetA' is a subset of
+    % `SetB'.
+
+:- pred set_ctree234__subset(set_ctree234(T)::in, set_ctree234(T)::in)
+    is semidet.
+
+    % `set_ctree234__superset(SetA, SetB)' is true iff `SetA' is a
+    % superset of `SetB'.
+
+:- pred set_ctree234__superset(set_ctree234(T)::in, set_ctree234(T)::in)
+    is semidet.
+
+    % `set_ctree234__insert(X, Set0, Set)' is true iff `Set' is the union
+    % of `Set0' and the set containing only `X'.
+
+:- pred set_ctree234__insert(T::in, set_ctree234(T)::in, set_ctree234(T)::out)
+    is det.
+:- func set_ctree234__insert(T, set_ctree234(T)) = set_ctree234(T).
+
+    % `set_ctree234__insert_list(Xs, Set0, Set)' is true iff `Set' is the
+    % union of `Set0' and the set containing only the members of `Xs'.
+
+:- pred set_ctree234__insert_list(list(T)::in,
+    set_ctree234(T)::in, set_ctree234(T)::out) is det.
+:- func set_ctree234__insert_list(list(T), set_ctree234(T)) = set_ctree234(T).
+
+    % `set_ctree234__delete(X, Set0, Set)' is true iff `Set' is the
+    % relative complement of `Set0' and the set containing only `X', i.e.
+    % if `Set' is the set which contains all the elements of `Set0'
+    % except `X'.
+
+:- pred set_ctree234__delete(T::in, set_ctree234(T)::in, set_ctree234(T)::out)
+    is det.
+:- func set_ctree234__delete(T, set_ctree234(T)) = set_ctree234(T).
+
+    % `set_ctree234__delete_list(Xs, Set0, Set)' is true iff `Set' is the
+    % relative complement of `Set0' and the set containing only the members
+    % of `Xs'.
+
+:- pred set_ctree234__delete_list(list(T)::in,
+    set_ctree234(T)::in, set_ctree234(T)::out) is det.
+:- func set_ctree234__delete_list(list(T), set_ctree234(T)) = set_ctree234(T).
+
+    % `set_ctree234__remove(X, Set0, Set)' is true iff `Set0' contains `X',
+    % and `Set' is the relative complement of `Set0' and the set
+    % containing only `X', i.e.  if `Set' is the set which contains
+    % all the elements of `Set0' except `X'.
+
+:- pred set_ctree234__remove(T::in, set_ctree234(T)::in, set_ctree234(T)::out)
+    is semidet.
+
+    % `set_ctree234__remove_list(Xs, Set0, Set)' is true iff Xs does not
+    % contain any duplicates, `Set0' contains every member of `Xs',
+    % and `Set' is the relative complement of `Set0' and the set
+    % containing only the members of `Xs'.
+
+:- pred set_ctree234__remove_list(list(T)::in,
+    set_ctree234(T)::in, set_ctree234(T)::out) is semidet.
+
+    % `set_ctree234__remove_least(X, Set0, Set)' is true iff `X' is the
+    % least element in `Set0', and `Set' is the set which contains all the
+    % elements of `Set0' except `X'.
+
+:- pred set_ctree234__remove_least(T::out,
+    set_ctree234(T)::in, set_ctree234(T)::out) is semidet.
+
+    % `set_ctree234(SetA, SetB) = Set' is true iff `Set' is the union
+    % of `SetA' and `SetB'.
+
+:- pred set_ctree234__union(set_ctree234(T)::in, set_ctree234(T)::in,
+    set_ctree234(T)::out) is det.
+:- func set_ctree234__union(set_ctree234(T), set_ctree234(T)) = set_ctree234(T).
+
+    % `set_ctree234__union_list(A, B)' is true iff `B' is the union of
+    % all the sets in `A'
+
+:- pred set_ctree234__union_list(list(set_ctree234(T))::in,
+    set_ctree234(T)::out) is det.
+:- func set_ctree234__union_list(list(set_ctree234(T))) = set_ctree234(T).
+
+    % `set_ctree234__power_union(A) = B' is true iff `B' is the union of
+    % all the sets in `A'
+
+:- pred set_ctree234__power_union(set_ctree234(set_ctree234(T))::in,
+    set_ctree234(T)::out) is det.
+:- func set_ctree234__power_union(set_ctree234(set_ctree234(T)))
+    = set_ctree234(T).
+
+    % `set_ctree234__intersect(SetA, SetB) = Set' is true iff `Set' is the
+    % intersection of `SetA' and `SetB'.
+
+:- pred set_ctree234__intersect(set_ctree234(T)::in, set_ctree234(T)::in,
+    set_ctree234(T)::out) is det.
+:- func set_ctree234__intersect(set_ctree234(T), set_ctree234(T))
+    = set_ctree234(T).
+
+    % `set_ctree234__power_intersect(A, B)' is true iff `B' is the
+    % intersection of all the sets in `A'.
+
+:- func set_ctree234__power_intersect(set_ctree234(set_ctree234(T)))
+    = set_ctree234(T).
+
+    % `set_ctree234__intersect_list(A, B)' is true iff `B' is the
+    % intersection of all the sets in `A'.
+
+:- func set_ctree234__intersect_list(list(set_ctree234(T))) = set_ctree234(T).
+
+    % `set_ctree234__difference(SetA, SetB, Set)' is true iff `Set' is the
+    % set containing all the elements of `SetA' except those that
+    % occur in `SetB'.
+
+:- pred set_ctree234__difference(set_ctree234(T)::in, set_ctree234(T)::in,
+    set_ctree234(T)::out) is det.
+:- func set_ctree234__difference(set_ctree234(T), set_ctree234(T))
+    = set_ctree234(T).
+
+    % `set_ctree234__count(Set, Count)' is true iff `Set' has
+    % `Count' elements.
+
+:- func set_ctree234__count(set_ctree234(T)) = int.
+
+:- pred set_ctree234__map(pred(T1, T2)::in(pred(in, out) is det),
+    set_ctree234(T1)::in, set_ctree234(T2)::out) is det.
+:- func set_ctree234__map(func(T1) = T2, set_ctree234(T1)) = set_ctree234(T2).
+
+:- pred set_ctree234__filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    set_ctree234(T1)::in, set_ctree234(T2)::out) is det.
+
+:- func set_ctree234__filter_map(func(T1) = T2, set_ctree234(T1))
+    = set_ctree234(T2).
+:- mode set_ctree234__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- pred set_ctree234__fold(pred(T1, T2, T2)::in(pred(in, in, out) is det),
+    set_ctree234(T1)::in, T2::in, T2::out) is det.
+:- func set_ctree234__fold(func(T1, T2) = T2, set_ctree234(T1), T2) = T2.
+
+    % set_ctree234__divide(Pred, Set, TruePart, FalsePart):
+    % TruePart consists of those elements of Set for which Pred succeeds;
+    % FalsePart consists of those elements of Set for which Pred fails.
+:- pred set_ctree234__divide(pred(T)::in(pred(in) is semidet),
+    set_ctree234(T)::in, set_ctree234(T)::out, set_ctree234(T)::out) is det.
+
+    % set_ctree234__divide_by_set(DivideBySet, Set, InPart, OutPart):
+    % InPart consists of those elements of Set which are also in
+    % DivideBySet; OutPart consists of those elements of which are
+    % not in DivideBySet.
+:- pred set_ctree234__divide_by_set(set_ctree234(T)::in, set_ctree234(T)::in,
+    set_ctree234(T)::out, set_ctree234(T)::out) is det.
+
+:- pred verify_depths(set_ctree234(T)::in, list(int)::out) is det.
+
+%--------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module term.  % for var/1.
+:- import_module int, string, require.
+
+:- pragma type_spec(set_ctree234__contains/2, T = var(_)).
+:- pragma type_spec(set_ctree234__do_is_member/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_list_to_set/5, T = var(_)).
+:- pragma type_spec(set_ctree234__do_to_sorted_list/3, T = var(_)).
+:- pragma type_spec(set_ctree234__subset/2, T = var(_)).
+:- pragma type_spec(set_ctree234__do_subset/2, T = var(_)).
+:- pragma type_spec(set_ctree234__insert/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_insert/4, T = var(_)).
+:- pragma type_spec(set_ctree234__insert2/4, T = var(_)).
+:- pragma type_spec(set_ctree234__insert3/4, T = var(_)).
+:- pragma type_spec(set_ctree234__insert_list/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_insert_list/5, T = var(_)).
+:- pragma type_spec(set_ctree234__delete/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_delete/5, T = var(_)).
+:- pragma type_spec(set_ctree234__remove/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_remove/4, T = var(_)).
+:- pragma type_spec(set_ctree234__remove_least/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_remove_least/4, T = var(_)).
+:- pragma type_spec(set_ctree234__union/2, T = var(_)).
+:- pragma type_spec(set_ctree234__union/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_union/5, T = var(_)).
+:- pragma type_spec(set_ctree234__union_list/2, T = var(_)).
+:- pragma type_spec(set_ctree234__do_union_list/3, T = var(_)).
+:- pragma type_spec(set_ctree234__power_union/2, T = var(_)).
+:- pragma type_spec(set_ctree234__do_power_union/5, T = var(_)).
+:- pragma type_spec(set_ctree234__intersect/2, T = var(_)).
+:- pragma type_spec(set_ctree234__intersect/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_intersect/6, T = var(_)).
+:- pragma type_spec(set_ctree234__difference/2, T = var(_)).
+:- pragma type_spec(set_ctree234__difference/3, T = var(_)).
+:- pragma type_spec(set_ctree234__do_difference/5, T = var(_)).
+:- pragma type_spec(set_ctree234__divide/4, T = var(_)).
+:- pragma type_spec(set_ctree234__do_divide/6, T = var(_)).
+:- pragma type_spec(set_ctree234__divide_by_set/4, T = var(_)).
+
+:- type set_ctree234(T)
+    --->    ct(int, set_tree234(T)).
+
+% The set_tree234 type is modeled closely on the tree234 type in tree234.m,
+% and consequently the same is true for the code operating values of this type.
+% The only difference is that each node contains simple elements instead of
+% key-value pairs.
+
+:- type set_tree234(T)
+    --->    empty
+    ;       two(T, set_tree234(T), set_tree234(T))
+    ;       three(T, T, set_tree234(T), set_tree234(T), set_tree234(T))
+    ;       four(T, T, T, set_tree234(T), set_tree234(T),
+                set_tree234(T), set_tree234(T)).
+
+%-----------------------------------------------------------------------------%
+
+set_ctree234__init = ct(0, empty).
+
+set_ctree234__singleton_set(X, ct(1, two(X, empty, empty))).
+
+set_ctree234__make_singleton_set(X) = ct(1, two(X, empty, empty)).
+
+set_ctree234__empty(ct(0, _)).
+
+set_ctree234__one_member(ct(_, Tin), E) :-
+    set_ctree234__do_one_member(Tin, E).
+
+:- pred set_ctree234__do_one_member(set_tree234(T)::in, T::out) is nondet.
+
+set_ctree234__do_one_member(empty, _) :- fail.
+set_ctree234__do_one_member(two(E0, T0, T1), E) :-
+    (
+        E = E0
+    ;
+        set_ctree234__do_one_member(T0, E)
+    ;
+        set_ctree234__do_one_member(T1, E)
+    ).
+set_ctree234__do_one_member(three(E0, E1, T0, T1, T2), E) :-
+    (
+        E = E0
+    ;
+        E = E1
+    ;
+        set_ctree234__do_one_member(T0, E)
+    ;
+        set_ctree234__do_one_member(T1, E)
+    ;
+        set_ctree234__do_one_member(T2, E)
+    ).
+set_ctree234__do_one_member(four(E0, E1, E2, T0, T1, T2, T3), E) :-
+    (
+        E = E0
+    ;
+        E = E1
+    ;
+        E = E2
+    ;
+        set_ctree234__do_one_member(T0, E)
+    ;
+        set_ctree234__do_one_member(T1, E)
+    ;
+        set_ctree234__do_one_member(T2, E)
+    ;
+        set_ctree234__do_one_member(T3, E)
+    ).
+
+set_ctree234__is_member(ct(_, Tin), E, R) :-
+    set_ctree234__do_is_member(Tin, E, R).
+
+:- pred set_ctree234__do_is_member(set_tree234(T)::in, T::in, bool::out)
+    is det.
+
+set_ctree234__do_is_member(T, E, R) :-
+    (
+        T = empty,
+        R = no
+    ;
+        T = two(E0, T0, T1),
+        compare(Result, E, E0),
+        (
+            Result = (<),
+            set_ctree234__do_is_member(T0, E, R)
+        ;
+            Result = (=),
+            R = yes
+        ;
+            Result = (>),
+            set_ctree234__do_is_member(T1, E, R)
+        )
+    ;
+        T = three(E0, E1, T0, T1, T2),
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            set_ctree234__do_is_member(T0, E, R)
+        ;
+            Result0 = (=),
+            R = yes
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                set_ctree234__do_is_member(T1, E, R)
+            ;
+                Result1 = (=),
+                R = yes
+            ;
+                Result1 = (>),
+                set_ctree234__do_is_member(T2, E, R)
+            )
+        )
+    ;
+        T = four(E0, E1, E2, T0, T1, T2, T3),
+        compare(Result1, E, E1),
+        (
+            Result1 = (<),
+            compare(Result0, E, E0),
+            (
+                Result0 = (<),
+                set_ctree234__do_is_member(T0, E, R)
+            ;
+                Result0 = (=),
+                R = yes
+            ;
+                Result0 = (>),
+                set_ctree234__do_is_member(T1, E, R)
+            )
+        ;
+            Result1 = (=),
+            R = yes
+        ;
+            Result1 = (>),
+            compare(Result2, E, E2),
+            (
+                Result2 = (<),
+                set_ctree234__do_is_member(T2, E, R)
+            ;
+                Result2 = (=),
+                R = yes
+            ;
+                Result2 = (>),
+                set_ctree234__do_is_member(T3, E, R)
+            )
+        )
+    ).
+
+set_ctree234__is_member(ct(_, T), E) = R :-
+    set_ctree234__do_is_member(T, E, R).
+
+set_ctree234__contains(ct(_, T), E) :-
+    set_ctree234__do_contains(T, E).
+
+:- pragma inline(set_ctree234__do_contains/2).
+:- pred set_ctree234__do_contains(set_tree234(T)::in, T::in) is semidet.
+
+set_ctree234__do_contains(Tree, E) :-
+    set_ctree234__do_is_member(Tree, E, yes).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__list_to_set(List) = ct(Size, Tree) :-
+    set_ctree234__do_list_to_set(List, 0, Size, empty, Tree).
+
+:- pred set_ctree234__do_list_to_set(list(T)::in, int::in, int::out,
+    set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_list_to_set([], !Size, !Tree).
+set_ctree234__do_list_to_set([E | Es], !Size, !Tree) :-
+    set_ctree234__do_insert(E, Incr, !Tree),
+    !:Size = !.Size + Incr,
+    set_ctree234__do_list_to_set(Es, !Size, !Tree).
+
+:- pred max_level_sizes(int::in, int::in, int::in,
+    list(int)::in, list(int)::out) is det.
+
+max_level_sizes(AllSize, LevelSize, Max, !LevelSizes) :-
+    ( AllSize >= Max ->
+        true
+    ;
+        !:LevelSizes = [AllSize | !.LevelSizes],
+        max_level_sizes(AllSize + LevelSize, LevelSize * 3, Max, !LevelSizes)
+    ).
+
+set_ctree234__sorted_list_to_set(List0) = ct(Size, Tree) :-
+    list__length(List0, Size),
+    max_level_sizes(2, 6, Size, [], LevelSizes),
+    set_ctree234__do_sorted_list_to_set(List0, _Tail, Size, LevelSizes, Tree).
+    % you can enable the following for debugging.
+    % require(unify(Tail, []), "set_ctree234__sorted_list_to_set").
+    % do_verify_depths(Tree, 0, [], Depths),
+    % ( Depths = [_] ->
+    %     true
+    % ;
+    %     error("set_ctree234__sorted_list_to_set: uneven depths")
+    % ).
+
+:- pred set_ctree234__do_sorted_list_to_set(list(T)::in, list(T)::out,
+    int::in, list(int)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_sorted_list_to_set(List0, Tail, Bite, LevelSizes0, Tree) :-
+    (
+        LevelSizes0 = [],
+        ( Bite = 0 ->
+            Tail = List0,
+            Tree = empty
+        ; Bite = 1 ->
+            (
+                List0 = [E0 | List1]
+            ->
+                Tail = List1,
+                Tree = two(E0, empty, empty)
+            ;
+                error("set_ctree234__do_sorted_list_to_set: bite 1")
+            )
+        ; Bite = 2 ->
+            (
+                List0 = [E0 | List1],
+                List1 = [E1 | List2]
+            ->
+                Tail = List2,
+                Tree = three(E0, E1, empty, empty, empty)
+            ;
+                error("set_ctree234__do_sorted_list_to_set: bite 2")
+            )
+        ;
+            error("set_ctree234__do_sorted_list_to_set: " ++
+                "too big bite in base case")
+        )
+    ;
+        LevelSizes0 = [LevelSize | LevelSizes],
+        ( LevelSize * 2 + 1 >= Bite ->
+            SubBite = Bite - 1,
+            Bite1 = SubBite / 2,
+            Bite0 = SubBite -
+            Bite1,
+            set_ctree234__do_sorted_list_to_set(List0, List1, Bite0,
+                LevelSizes, T0),
+            ( List1 = [E0Prime | List2Prime] ->
+                E0 = E0Prime,
+                List2 = List2Prime
+            ;
+                error("set_ctree234__do_sorted_list_to_set: no mid")
+            ),
+            set_ctree234__do_sorted_list_to_set(List2, Tail, Bite1,
+                LevelSizes, T1),
+            Tree = two(E0, T0, T1)
+        ;
+            SubBite = Bite - 2,
+            Bite2 = SubBite / 3,
+            Bite1 = (SubBite - Bite2) / 2,
+            Bite0 = SubBite - Bite2 - Bite1,
+            set_ctree234__do_sorted_list_to_set(List0, List1, Bite0,
+                LevelSizes, T0),
+            ( List1 = [E0Prime | List2Prime] ->
+                E0 = E0Prime,
+                List2 = List2Prime
+            ;
+                error("set_ctree234__do_sorted_list_to_set: no key1")
+            ),
+            set_ctree234__do_sorted_list_to_set(List2, List3, Bite1,
+                LevelSizes, T1),
+            ( List3 = [E1Prime | List4Prime] ->
+                E1 = E1Prime,
+                List4 = List4Prime
+            ;
+                error("set_ctree234__do_sorted_list_to_set: no key2")
+            ),
+            set_ctree234__do_sorted_list_to_set(List4, Tail, Bite2,
+                LevelSizes, T2),
+            Tree = three(E0, E1, T0, T1, T2)
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__to_sorted_list(ct(_, Tree)) = List :-
+    set_ctree234__do_to_sorted_list(Tree, [], List).
+
+:- pred set_ctree234__do_to_sorted_list(set_tree234(T)::in,
+    list(T)::in, list(T)::out) is det.
+
+set_ctree234__do_to_sorted_list(empty, L, L).
+set_ctree234__do_to_sorted_list(two(E0, T0, T1), L0, L) :-
+    set_ctree234__do_to_sorted_list(T1, L0, L1),
+    set_ctree234__do_to_sorted_list(T0, [E0 | L1], L).
+set_ctree234__do_to_sorted_list(three(E0, E1, T0, T1, T2), L0, L) :-
+    set_ctree234__do_to_sorted_list(T2, L0, L1),
+    set_ctree234__do_to_sorted_list(T1, [E1 | L1], L2),
+    set_ctree234__do_to_sorted_list(T0, [E0 | L2], L).
+set_ctree234__do_to_sorted_list(four(E0, E1, E2, T0, T1, T2, T3), L0, L) :-
+    set_ctree234__do_to_sorted_list(T3, L0, L1),
+    set_ctree234__do_to_sorted_list(T2, [E2 | L1], L2),
+    set_ctree234__do_to_sorted_list(T1, [E1 | L2], L3),
+    set_ctree234__do_to_sorted_list(T0, [E0 | L3], L).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__equal(SetA, SetB) :-
+    SetA = ct(SizeA, TreeA),
+    SetB = ct(SizeB, TreeB),
+    SizeA = SizeB,
+    set_ctree234__do_to_sorted_list(TreeA, [], ListA),
+    set_ctree234__do_to_sorted_list(TreeB, [], ListB),
+    ListA = ListB.
+
+set_ctree234__subset(ct(SizeA, TreeA), ct(SizeB, TreeB)) :-
+    SizeA =< SizeB,
+    set_ctree234__do_subset(TreeA, TreeB).
+
+:- pred set_ctree234__do_subset(set_tree234(T)::in, set_tree234(T)::in)
+    is semidet.
+
+    % XXX We could take advantage of the sortedness of TreeA to speed up
+    % lookups on TreeB, but doing so is difficult because their structures
+    % are not isomorphic.
+
+set_ctree234__do_subset(empty, _Set).
+set_ctree234__do_subset(two(E, T0, T1), Set) :-
+    set_ctree234__do_subset(T0, Set),
+    set_ctree234__do_is_member(Set, E, yes),
+    set_ctree234__do_subset(T1, Set).
+set_ctree234__do_subset(three(E0, E1, T0, T1, T2), Set) :-
+    set_ctree234__do_subset(T0, Set),
+    set_ctree234__do_is_member(Set, E0, yes),
+    set_ctree234__do_subset(T1, Set),
+    set_ctree234__do_is_member(Set, E1, yes),
+    set_ctree234__do_subset(T2, Set).
+set_ctree234__do_subset(four(E0, E1, E2, T0, T1, T2, T3), Set) :-
+    set_ctree234__do_subset(T0, Set),
+    set_ctree234__do_is_member(Set, E0, yes),
+    set_ctree234__do_subset(T1, Set),
+    set_ctree234__do_is_member(Set, E1, yes),
+    set_ctree234__do_subset(T2, Set),
+    set_ctree234__do_is_member(Set, E2, yes),
+    set_ctree234__do_subset(T3, Set).
+
+set_ctree234__superset(SuperSet, Set) :-
+    set_ctree234__subset(Set, SuperSet).
+
+%------------------------------------------------------------------------------%
+
+:- inst two(E, T)   ---> two(E, T, T).
+:- inst three(E, T) ---> three(E, E, T, T, T).
+:- inst four(E, T)  ---> four(E, E, E, T, T, T, T).
+
+:- mode out_two == out(two(ground, ground)).
+:- mode in_two  == in(two(ground, ground)).
+:- mode in_three  == in(three(ground, ground)).
+:- mode in_four  == in(four(ground, ground)).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__insert(E, Tin) = Tout :-
+    set_ctree234__insert(E, Tin, Tout).
+
+set_ctree234__insert(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
+    set_ctree234__do_insert(E, Incr, Tin, Tout),
+    Sizeout = Sizein + Incr.
+
+:- pred set_ctree234__do_insert(T::in, int::out, set_tree234(T)::in,
+    set_tree234(T)::out) is det.
+
+set_ctree234__do_insert(E, Incr, Tin, Tout) :-
+    (
+        Tin = empty,
+        Incr = 1,
+        Tout = two(E, empty, empty)
+    ;
+        Tin = two(_, _, _),
+        set_ctree234__insert2(E, Incr, Tin, Tout)
+    ;
+        Tin = three(_, _, _, _, _),
+        set_ctree234__insert3(E, Incr, Tin, Tout)
+    ;
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        compare(Result1, E, E1),
+        (
+            Result1 = (<),
+            Sub0 = two(E0, T0, T1),
+            Sub1 = two(E2, T2, T3),
+            set_ctree234__insert2(E, Incr, Sub0, NewSub0),
+            Tout = two(E1, NewSub0, Sub1)
+        ;
+            Result1 = (=),
+            Incr = 0,
+            Tout = Tin
+        ;
+            Result1 = (>),
+            Sub0 = two(E0, T0, T1),
+            Sub1 = two(E2, T2, T3),
+            set_ctree234__insert2(E, Incr, Sub1, NewSub1),
+            Tout = two(E1, Sub0, NewSub1)
+        )
+    ).
+
+:- pred set_ctree234__insert2(T::in, int::out,
+    set_tree234(T)::in_two, set_tree234(T)::out) is det.
+
+set_ctree234__insert2(E, Incr, Tin, Tout) :-
+    Tin = two(E0, T0, T1),
+    (
+        T0 = empty
+        % T1 = empty implied by T0 = empty
+    ->
+        compare(Result, E, E0),
+        (
+            Result = (<),
+            Incr = 1,
+            Tout = three(E, E0, empty, empty, empty)
+        ;
+            Result = (=),
+            Incr = 0,
+            Tout = Tin
+        ;
+            Result = (>),
+            Incr = 1,
+            Tout = three(E0, E, empty, empty, empty)
+        )
+    ;
+        compare(Result, E, E0),
+        (
+            Result = (<),
+            (
+                T0 = four(_, _, _, _, _, _, _),
+                set_ctree234__split_four(T0, MT0E, T00, T01),
+                compare(Result1, E, MT0E),
+                (
+                    Result1 = (<),
+                    set_ctree234__insert2(E, Incr, T00, NewT00),
+                    Tout = three(MT0E, E0, NewT00, T01, T1)
+                ;
+                    Result1 = (=),
+                    Incr = 0,
+                    Tout = three(MT0E, E0, T00, T01, T1)
+                ;
+                    Result1 = (>),
+                    set_ctree234__insert2(E, Incr, T01, NewT01),
+                    Tout = three(MT0E, E0, T00, NewT01, T1)
+                )
+            ;
+                T0 = three(_, _, _, _, _),
+                set_ctree234__insert3(E, Incr, T0, NewT0),
+                Tout = two(E0, NewT0, T1)
+            ;
+                T0 = two(_, _, _),
+                set_ctree234__insert2(E, Incr, T0, NewT0),
+                Tout = two(E0, NewT0, T1)
+            ;
+                T0 = empty,
+                Incr = 1,
+                NewT0 = two(E, empty, empty),
+                Tout = two(E0, NewT0, T1)
+            )
+        ;
+            Result = (=),
+            Incr = 0,
+            Tout = two(E, T0, T1)
+        ;
+            Result = (>),
+            (
+                T1 = four(_, _, _, _, _, _, _),
+                set_ctree234__split_four(T1, MT1E, T10, T11),
+                compare(Result1, E, MT1E),
+                (
+                    Result1 = (<),
+                    set_ctree234__insert2(E, Incr, T10, NewT10),
+                    Tout = three(E0, MT1E, T0, NewT10, T11)
+                ;
+                    Result1 = (=),
+                    Incr = 0,
+                    Tout = three(E0, MT1E, T0, T10, T11)
+                ;
+                    Result1 = (>),
+                    set_ctree234__insert2(E, Incr, T11, NewT11),
+                    Tout = three(E0, MT1E, T0, T10, NewT11)
+                )
+            ;
+                T1 = three(_, _, _, _, _),
+                set_ctree234__insert3(E, Incr, T1, NewT1),
+                Tout = two(E0, T0, NewT1)
+            ;
+                T1 = two(_, _, _),
+                set_ctree234__insert2(E, Incr, T1, NewT1),
+                Tout = two(E0, T0, NewT1)
+            ;
+                T1 = empty,
+                Incr = 1,
+                NewT1 = two(E, empty, empty),
+                Tout = two(E0, T0, NewT1)
+            )
+        )
+    ).
+
+:- pred set_ctree234__insert3(T::in, int::out,
+    set_tree234(T)::in_three, set_tree234(T)::out) is det.
+
+set_ctree234__insert3(E, Incr, Tin, Tout) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    (
+        T0 = empty
+        % T1 = empty implied by T0 = empty
+        % T2 = empty implied by T0 = empty
+    ->
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            Incr = 1,
+            Tout = four(E, E0, E1, empty, empty, empty, empty)
+        ;
+            Result0 = (=),
+            Incr = 0,
+            Tout = Tin
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                Incr = 1,
+                Tout = four(E0, E, E1, empty, empty, empty, empty)
+            ;
+                Result1 = (=),
+                Incr = 0,
+                Tout = Tin
+            ;
+                Result1 = (>),
+                Incr = 1,
+                Tout = four(E0, E1, E, empty, empty, empty, empty)
+            )
+        )
+    ;
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            (
+                T0 = four(_, _, _, _, _, _, _),
+                set_ctree234__split_four(T0, MT0E, T00, T01),
+                compare(ResultM, E, MT0E),
+                (
+                    ResultM = (<),
+                    set_ctree234__insert2(E, Incr, T00, NewT00),
+                    Tout = four(MT0E, E0, E1, NewT00, T01, T1, T2)
+                ;
+                    ResultM = (=),
+                    Incr = 0,
+                    Tout = four(MT0E, E0, E1, T00, T01, T1, T2)
+                ;
+                    ResultM = (>),
+                    set_ctree234__insert2(E, Incr, T01, NewT01),
+                    Tout = four(MT0E, E0, E1, T00, NewT01, T1, T2)
+                )
+            ;
+                T0 = three(_, _, _, _, _),
+                set_ctree234__insert3(E, Incr, T0, NewT0),
+                Tout = three(E0, E1, NewT0, T1, T2)
+            ;
+                T0 = two(_, _, _),
+                set_ctree234__insert2(E, Incr, T0, NewT0),
+                Tout = three(E0, E1, NewT0, T1, T2)
+            ;
+                T0 = empty,
+                Incr = 1,
+                NewT0 = two(E, empty, empty),
+                Tout = three(E0, E1, NewT0, T1, T2)
+            )
+        ;
+            Result0 = (=),
+            Incr = 0,
+            Tout = Tin
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                (
+                    T1 = four(_, _, _, _, _, _, _),
+                    set_ctree234__split_four(T1, MT1E, T10, T11),
+                    compare(ResultM, E, MT1E),
+                    (
+                        ResultM = (<),
+                        set_ctree234__insert2(E, Incr, T10, NewT10),
+                        Tout = four(E0, MT1E, E1, T0, NewT10, T11, T2)
+                    ;
+                        ResultM = (=),
+                        Incr = 0,
+                        Tout = four(E0, MT1E, E1, T0, T10, T11, T2)
+                    ;
+                        ResultM = (>),
+                        set_ctree234__insert2(E, Incr, T11, NewT11),
+                        Tout = four(E0, MT1E, E1, T0, T10, NewT11, T2)
+                    )
+                ;
+                    T1 = three(_, _, _, _, _),
+                    set_ctree234__insert3(E, Incr, T1, NewT1),
+                    Tout = three(E0, E1, T0, NewT1, T2)
+                ;
+                    T1 = two(_, _, _),
+                    set_ctree234__insert2(E, Incr, T1, NewT1),
+                    Tout = three(E0, E1, T0, NewT1, T2)
+                ;
+                    T1 = empty,
+                    Incr = 1,
+                    NewT1 = two(E, empty, empty),
+                    Tout = three(E0, E1, T0, NewT1, T2)
+                )
+            ;
+                Result1 = (=),
+                Incr = 0,
+                Tout = Tin
+            ;
+                Result1 = (>),
+                (
+                    T2 = four(_, _, _, _, _, _, _),
+                    set_ctree234__split_four(T2, MT2E, T20, T21),
+                    compare(ResultM, E, MT2E),
+                    (
+                        ResultM = (<),
+                        set_ctree234__insert2(E, Incr, T20, NewT20),
+                        Tout = four(E0, E1, MT2E, T0, T1, NewT20, T21)
+                    ;
+                        ResultM = (=),
+                        Incr = 0,
+                        Tout = four(E0, E1, MT2E, T0, T1, T20, T21)
+                    ;
+                        ResultM = (>),
+                        set_ctree234__insert2(E, Incr, T21, NewT21),
+                        Tout = four(E0, E1, MT2E, T0, T1, T20, NewT21)
+                    )
+                ;
+                    T2 = three(_, _, _, _, _),
+                    set_ctree234__insert3(E, Incr, T2, NewT2),
+                    Tout = three(E0, E1, T0, T1, NewT2)
+                ;
+                    T2 = two(_, _, _),
+                    set_ctree234__insert2(E, Incr, T2, NewT2),
+                    Tout = three(E0, E1, T0, T1, NewT2)
+                ;
+                    T2 = empty,
+                    Incr = 1,
+                    NewT2 = two(E, empty, empty),
+                    Tout = three(E0, E1, T0, T1, NewT2)
+                )
+            )
+        )
+    ).
+
+set_ctree234__insert_list(Es, Set0) = Set :-
+    set_ctree234__insert_list(Es, Set0, Set).
+
+set_ctree234__insert_list(Es, ct(Size0, Tree0), ct(Size, Tree)) :-
+    set_ctree234__do_insert_list(Es, Size0, Size, Tree0, Tree).
+
+:- pred set_ctree234__do_insert_list(list(T)::in, int::in, int::out,
+    set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_insert_list([], !Size, !Set).
+set_ctree234__do_insert_list([E | Es], !Size, !Set) :-
+    set_ctree234__do_insert(E, Incr, !Set),
+    !:Size = !.Size + Incr,
+    set_ctree234__do_insert_list(Es, !Size, !Set).
+
+%------------------------------------------------------------------------------%
+
+:- pragma inline(set_ctree234__split_four/4).
+
+:- pred set_ctree234__split_four(set_tree234(T)::in_four, T::out,
+    set_tree234(T)::out_two, set_tree234(T)::out_two) is det.
+
+set_ctree234__split_four(Tin, MidE, Sub0, Sub1) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    Sub0 = two(E0, T0, T1),
+    MidE = E1,
+    Sub1 = two(E2, T2, T3).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__delete(E, Tin) = Tout :-
+    set_ctree234__delete(E, Tin, Tout).
+
+set_ctree234__delete(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
+    set_ctree234__do_delete(E, Decr, Tin, Tout, _),
+    Sizeout = Sizein - Decr.
+
+    % When deleting an item from a tree, the height of the tree may be
+    % reduced by one. The last argument says whether this has occurred.
+
+:- pred set_ctree234__do_delete(T::in, int::out, set_tree234(T)::in,
+    set_tree234(T)::out, bool::out) is det.
+
+set_ctree234__do_delete(E, Decr, Tin, Tout, RH) :-
+    (
+        Tin = empty,
+        Decr = 0,
+        Tout = empty,
+        RH = no
+    ;
+        Tin = two(E0, T0, T1),
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            set_ctree234__do_delete(E, Decr, T0, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_2node_t0(E0, NewT0, T1, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = two(E0, NewT0, T1),
+                RH = no
+            )
+        ;
+            Result0 = (=),
+            (
+                set_ctree234__do_remove_least(T1, ST1E, NewT1, RHT1)
+            ->
+                (
+                    RHT1 = yes,
+                    fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = two(ST1E, T0, NewT1),
+                    RH = no
+                )
+            ;
+                % T1 must be empty
+                Tout = T0,
+                RH = yes
+            ),
+            Decr = 1
+        ;
+            Result0 = (>),
+            set_ctree234__do_delete(E, Decr, T1, NewT1, RHT1),
+            (
+                RHT1 = yes,
+                fix_2node_t1(E0, T0, NewT1, Tout, RH)
+            ;
+                RHT1 = no,
+                Tout = two(E0, T0, NewT1),
+                RH = no
+            )
+        )
+    ;
+        Tin = three(E0, E1, T0, T1, T2),
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            set_ctree234__do_delete(E, Decr, T0, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = three(E0, E1, NewT0, T1, T2),
+                RH = no
+            )
+        ;
+            Result0 = (=),
+            (
+                set_ctree234__do_remove_least(T1, ST1E, NewT1, RHT1)
+            ->
+                (
+                    RHT1 = yes,
+                    fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = three(ST1E, E1, T0, NewT1, T2),
+                    RH = no
+                )
+            ;
+                % T1 must be empty
+                Tout = two(E1, T0, T2),
+                RH = no
+            ),
+            Decr = 1
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                set_ctree234__do_delete(E, Decr, T1, NewT1, RHT1),
+                (
+                    RHT1 = yes,
+                    fix_3node_t1(E0, E1, T0, NewT1, T2, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = three(E0, E1, T0, NewT1, T2),
+                    RH = no
+                )
+            ;
+                Result1 = (=),
+                (
+                    set_ctree234__do_remove_least(T2, ST2E, NewT2, RHT2)
+                ->
+                    (
+                        RHT2 = yes,
+                        fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
+                    ;
+                        RHT2 = no,
+                        Tout = three(E0, ST2E, T0, T1, NewT2),
+                        RH = no
+                    )
+                ;
+                    % T2 must be empty
+                    Tout = two(E0, T0, T1),
+                    RH = no
+                ),
+                Decr = 1
+            ;
+                Result1 = (>),
+                set_ctree234__do_delete(E, Decr, T2, NewT2, RHT2),
+                (
+                    RHT2 = yes,
+                    fix_3node_t2(E0, E1, T0, T1, NewT2, Tout, RH)
+                ;
+                    RHT2 = no,
+                    Tout = three(E0, E1, T0, T1, NewT2),
+                    RH = no
+                )
+            )
+        )
+    ;
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        compare(Result1, E, E1),
+        (
+            Result1 = (<),
+            compare(Result0, E, E0),
+            (
+                Result0 = (<),
+                set_ctree234__do_delete(E, Decr, T0, NewT0, RHT0),
+                (
+                    RHT0 = yes,
+                    fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
+                ;
+                    RHT0 = no,
+                    Tout = four(E0, E1, E2, NewT0, T1, T2, T3),
+                    RH = no
+                )
+            ;
+                Result0 = (=),
+                (
+                    set_ctree234__do_remove_least(T1, ST1E, NewT1, RHT1)
+                ->
+                    (
+                        RHT1 = yes,
+                        fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
+                    ;
+                        RHT1 = no,
+                        Tout = four(ST1E, E1, E2, T0, NewT1, T2, T3),
+                        RH = no
+                    )
+                ;
+                    % T1 must be empty
+                    Tout = three(E1, E2, T0, T2, T3),
+                    RH = no
+                ),
+                Decr = 1
+            ;
+                Result0 = (>),
+                set_ctree234__do_delete(E, Decr, T1, NewT1, RHT1),
+                (
+                    RHT1 = yes,
+                    fix_4node_t1(E0, E1, E2, T0, NewT1, T2, T3, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = four(E0, E1, E2, T0, NewT1, T2, T3),
+                    RH = no
+                )
+            )
+        ;
+            Result1 = (=),
+            (
+                set_ctree234__do_remove_least(T2, ST2E, NewT2, RHT2)
+            ->
+                (
+                    RHT2 = yes,
+                    fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
+                ;
+                    RHT2 = no,
+                    Tout = four(E0, ST2E, E2, T0, T1, NewT2, T3),
+                    RH = no
+                )
+            ;
+                % T2 must be empty
+                Tout = three(E0, E2, T0, T1, T3),
+                RH = no
+            ),
+            Decr = 1
+        ;
+            Result1 = (>),
+            compare(Result2, E, E2),
+            (
+                Result2 = (<),
+                set_ctree234__do_delete(E, Decr, T2, NewT2, RHT2),
+                (
+                    RHT2 = yes,
+                    fix_4node_t2(E0, E1, E2, T0, T1, NewT2, T3, Tout, RH)
+                ;
+                    RHT2 = no,
+                    Tout = four(E0, E1, E2, T0, T1, NewT2, T3),
+                    RH = no
+                )
+            ;
+                Result2 = (=),
+                (
+                    set_ctree234__do_remove_least(T3, ST3E, NewT3, RHT3)
+                ->
+                    (
+                        RHT3 = yes,
+                        fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
+                    ;
+                        RHT3 = no,
+                        Tout = four(E0, E1, ST3E, T0, T1, T2, NewT3),
+                        RH = no
+                    )
+                ;
+                    % T3 must be empty
+                    Tout = three(E0, E1, T0, T1, T2),
+                    RH = no
+                ),
+                Decr = 1
+            ;
+                Result2 = (>),
+                set_ctree234__do_delete(E, Decr, T3, NewT3, RHT3),
+                (
+                    RHT3 = yes,
+                    fix_4node_t3(E0, E1, E2, T0, T1, T2, NewT3, Tout, RH)
+                ;
+                    RHT3 = no,
+                    Tout = four(E0, E1, E2, T0, T1, T2, NewT3),
+                    RH = no
+                )
+            )
+        )
+    ).
+
+set_ctree234__delete_list(SetA, SetB) = Set:-
+    set_ctree234__delete_list(SetA, SetB, Set).
+
+set_ctree234__delete_list(Es, ct(Size0, Tree0), ct(Size, Tree)) :-
+    set_ctree234__do_delete_list(Es, Size0, Size, Tree0, Tree).
+
+:- pred set_ctree234__do_delete_list(list(T)::in, int::in, int::out,
+    set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_delete_list([], !Size, !Set).
+set_ctree234__do_delete_list([E | Es], !Size, !Set) :-
+    set_ctree234__do_delete(E, Decr, !Set, _),
+    !:Size = !.Size - Decr,
+    set_ctree234__do_delete_list(Es, !Size, !Set).
+
+%------------------------------------------------------------------------------%
+
+    % We use the same algorithm as set_ctree234__delete.
+
+set_ctree234__remove(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
+    set_ctree234__do_remove(E, Tin, Tout, _),
+    Sizeout = Sizein - 1.
+
+:- pred set_ctree234__do_remove(T::in, set_tree234(T)::in, set_tree234(T)::out,
+    bool::out) is semidet.
+
+set_ctree234__do_remove(E, Tin, Tout, RH) :-
+    (
+        Tin = empty,
+        fail
+    ;
+        Tin = two(E0, T0, T1),
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            set_ctree234__do_remove(E, T0, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_2node_t0(E0, NewT0, T1, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = two(E0, NewT0, T1),
+                RH = no
+            )
+        ;
+            Result0 = (=),
+            (
+                set_ctree234__do_remove_least(T1, ST1E, NewT1, RHT1)
+            ->
+                (
+                    RHT1 = yes,
+                    fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = two(ST1E, T0, NewT1),
+                    RH = no
+                )
+            ;
+                % T1 must be empty
+                Tout = T0,
+                RH = yes
+            )
+        ;
+            Result0 = (>),
+            set_ctree234__do_remove(E, T1, NewT1, RHT1),
+            (
+                RHT1 = yes,
+                fix_2node_t1(E0, T0, NewT1, Tout, RH)
+            ;
+                RHT1 = no,
+                Tout = two(E0, T0, NewT1),
+                RH = no
+            )
+        )
+    ;
+        Tin = three(E0, E1, T0, T1, T2),
+        compare(Result0, E, E0),
+        (
+            Result0 = (<),
+            set_ctree234__do_remove(E, T0, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = three(E0, E1, NewT0, T1, T2),
+                RH = no
+            )
+        ;
+            Result0 = (=),
+            (
+                set_ctree234__do_remove_least(T1, ST1E, NewT1, RHT1)
+            ->
+                (
+                    RHT1 = yes,
+                    fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = three(ST1E, E1, T0, NewT1, T2),
+                    RH = no
+                )
+            ;
+                % T1 must be empty
+                Tout = two(E1, T0, T2),
+                RH = no
+            )
+        ;
+            Result0 = (>),
+            compare(Result1, E, E1),
+            (
+                Result1 = (<),
+                set_ctree234__do_remove(E, T1, NewT1, RHT1),
+                (
+                    RHT1 = yes,
+                    fix_3node_t1(E0, E1, T0, NewT1, T2, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = three(E0, E1, T0, NewT1, T2),
+                    RH = no
+                )
+            ;
+                Result1 = (=),
+                (
+                    set_ctree234__do_remove_least(T2, ST2E, NewT2, RHT2)
+                ->
+                    (
+                        RHT2 = yes,
+                        fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
+                    ;
+                        RHT2 = no,
+                        Tout = three(E0, ST2E, T0, T1, NewT2),
+                        RH = no
+                    )
+                ;
+                    % T2 must be empty
+                    Tout = two(E0, T0, T1),
+                    RH = no
+                )
+            ;
+                Result1 = (>),
+                set_ctree234__do_remove(E, T2, NewT2, RHT2),
+                (
+                    RHT2 = yes,
+                    fix_3node_t2(E0, E1, T0, T1, NewT2, Tout, RH)
+                ;
+                    RHT2 = no,
+                    Tout = three(E0, E1, T0, T1, NewT2),
+                    RH = no
+                )
+            )
+        )
+    ;
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        compare(Result1, E, E1),
+        (
+            Result1 = (<),
+            compare(Result0, E, E0),
+            (
+                Result0 = (<),
+                set_ctree234__do_remove(E, T0, NewT0, RHT0),
+                (
+                    RHT0 = yes,
+                    fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
+                ;
+                    RHT0 = no,
+                    Tout = four(E0, E1, E2, NewT0, T1, T2, T3),
+                    RH = no
+                )
+            ;
+                Result0 = (=),
+                (
+                    set_ctree234__do_remove_least(T1, ST1E, NewT1, RHT1)
+                ->
+                    (
+                        RHT1 = yes,
+                        fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
+                    ;
+                        RHT1 = no,
+                        Tout = four(ST1E, E1, E2, T0, NewT1, T2, T3),
+                        RH = no
+                    )
+                ;
+                    % T1 must be empty
+                    Tout = three(E1, E2, T0, T2, T3),
+                    RH = no
+                )
+            ;
+                Result0 = (>),
+                set_ctree234__do_remove(E, T1, NewT1, RHT1),
+                (
+                    RHT1 = yes,
+                    fix_4node_t1(E0, E1, E2, T0, NewT1, T2, T3, Tout, RH)
+                ;
+                    RHT1 = no,
+                    Tout = four(E0, E1, E2, T0, NewT1, T2, T3),
+                    RH = no
+                )
+            )
+        ;
+            Result1 = (=),
+            (
+                set_ctree234__do_remove_least(T2, ST2E, NewT2, RHT2)
+            ->
+                (
+                    RHT2 = yes,
+                    fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
+                ;
+                    RHT2 = no,
+                    Tout = four(E0, ST2E, E2, T0, T1, NewT2, T3),
+                    RH = no
+                )
+            ;
+                % T2 must be empty
+                Tout = three(E0, E2, T0, T1, T3),
+                RH = no
+            )
+        ;
+            Result1 = (>),
+            compare(Result2, E, E2),
+            (
+                Result2 = (<),
+                set_ctree234__do_remove(E, T2, NewT2, RHT2),
+                (
+                    RHT2 = yes,
+                    fix_4node_t2(E0, E1, E2, T0, T1, NewT2, T3, Tout, RH)
+                ;
+                    RHT2 = no,
+                    Tout = four(E0, E1, E2, T0, T1, NewT2, T3),
+                    RH = no
+                )
+            ;
+                Result2 = (=),
+                (
+                    set_ctree234__do_remove_least(T3, ST3E, NewT3, RHT3)
+                ->
+                    (
+                        RHT3 = yes,
+                        fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
+                    ;
+                        RHT3 = no,
+                        Tout = four(E0, E1, ST3E, T0, T1, T2, NewT3),
+                        RH = no
+                    )
+                ;
+                    % T3 must be empty
+                    Tout = three(E0, E1, T0, T1, T2),
+                    RH = no
+                )
+            ;
+                Result2 = (>),
+                set_ctree234__do_remove(E, T3, NewT3, RHT3),
+                (
+                    RHT3 = yes,
+                    fix_4node_t3(E0, E1, E2, T0, T1, T2, NewT3, Tout, RH)
+                ;
+                    RHT3 = no,
+                    Tout = four(E0, E1, E2, T0, T1, T2, NewT3),
+                    RH = no
+                )
+            )
+        )
+    ).
+
+set_ctree234__remove_list(Es, ct(Size0, Tree0), ct(Size, Tree)) :-
+    set_ctree234__do_remove_list(Es, Size0, Size, Tree0, Tree).
+
+:- pred set_ctree234__do_remove_list(list(T)::in, int::in, int::out,
+    set_tree234(T)::in, set_tree234(T)::out) is semidet.
+
+set_ctree234__do_remove_list([], !Size, !Set).
+set_ctree234__do_remove_list([E | Es], !Size, !Set) :-
+    set_ctree234__do_remove(E, !Set, _),
+    !:Size = !.Size - 1,
+    set_ctree234__do_remove_list(Es, !Size, !Set).
+
+%------------------------------------------------------------------------------%
+
+    % The algorithm we use similar to set_ctree234__delete, except that we
+    % always go down the left subtree.
+
+set_ctree234__remove_least(E, ct(Sizein, Tin), ct(Sizeout, Tout)) :-
+    set_ctree234__do_remove_least(Tin, E, Tout, _),
+    Sizeout = Sizein - 1.
+
+:- pred set_ctree234__do_remove_least(set_tree234(T)::in, T::out,
+    set_tree234(T)::out, bool::out) is semidet.
+
+set_ctree234__do_remove_least(Tin, E, Tout, RH) :-
+    (
+        Tin = empty,
+        fail
+    ;
+        Tin = two(E0, T0, T1),
+        (
+            T0 = empty
+        ->
+            E = E0,
+            Tout = T1,
+            RH = yes
+        ;
+            set_ctree234__do_remove_least(T0, E, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_2node_t0(E0, NewT0, T1, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = two(E0, NewT0, T1),
+                RH = no
+            )
+        )
+    ;
+        Tin = three(E0, E1, T0, T1, T2),
+        (
+            T0 = empty
+        ->
+            E = E0,
+            Tout = two(E1, T1, T2),
+            RH = no
+        ;
+            set_ctree234__do_remove_least(T0, E, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_3node_t0(E0, E1, NewT0, T1, T2, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = three(E0, E1, NewT0, T1, T2),
+                RH = no
+            )
+        )
+    ;
+        Tin = four(E0, E1, E2, T0, T1, T2, T3),
+        (
+            T0 = empty
+        ->
+            E = E0,
+            Tout = three(E1, E2, T1, T2, T3),
+            RH = no
+        ;
+            set_ctree234__do_remove_least(T0, E, NewT0, RHT0),
+            (
+                RHT0 = yes,
+                fix_4node_t0(E0, E1, E2, NewT0, T1, T2, T3, Tout, RH)
+            ;
+                RHT0 = no,
+                Tout = four(E0, E1, E2, NewT0, T1, T2, T3),
+                RH = no
+            )
+        )
+    ).
+
+%------------------------------------------------------------------------------%
+
+    % The input to the following group of predicates are the components
+    % of a two-, three- or four-node in which the height of the indicated
+    % subtree is one less that it should be. If it is possible to increase
+    % the height of that subtree by moving into it elements from its
+    % neighboring subtrees, do so, and return the resulting tree with RH
+    % set to no. Otherwise, return a balanced tree whose height is reduced
+    % by one, with RH set to yes to indicate the reduced height.
+
+:- pred fix_2node_t0(T::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::out, bool::out) is det.
+
+fix_2node_t0(E0, T0, T1, Tout, RH) :-
+    (
+        % steal T1's leftmost subtree and combine it with T0
+        T1 = four(E10, E11, E12, T10, T11, T12, T13),
+        NewT1 = three(E11, E12, T11, T12, T13),
+        Node = two(E0, T0, T10),
+        Tout = two(E10, Node, NewT1),
+        RH = no
+    ;
+        % steal T1's leftmost subtree and combine it with T0
+        T1 = three(E10, E11, T10, T11, T12),
+        NewT1 = two(E11, T11, T12),
+        Node = two(E0, T0, T10),
+        Tout = two(E10, Node, NewT1),
+        RH = no
+    ;
+        % move T0 one level down and combine it with the subtrees of T1
+        % this reduces the depth of the tree
+        T1 = two(E10, T10, T11),
+        Tout = three(E0, E10, T0, T10, T11),
+        RH = yes
+    ;
+        T1 = empty,
+        error("unbalanced 234 tree")
+        % Tout = two(E0, T0, T1),
+        % RH = yes
+    ).
+
+:- pred fix_2node_t1(T::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::out, bool::out) is det.
+
+fix_2node_t1(E0, T0, T1, Tout, RH) :-
+    (
+        % steal T0's leftmost subtree and combine it with T1
+        T0 = four(E00, E01, E02, T00, T01, T02, T03),
+        NewT0 = three(E00, E01, T00, T01, T02),
+        Node = two(E0, T03, T1),
+        Tout = two(E02, NewT0, Node),
+        RH = no
+    ;
+        % steal T0's leftmost subtree and combine it with T1
+        T0 = three(E00, E01, T00, T01, T02),
+        NewT0 = two(E00, T00, T01),
+        Node = two(E0, T02, T1),
+        Tout = two(E01, NewT0, Node),
+        RH = no
+    ;
+        % move T1 one level down and combine it with the subtrees of T0
+        % this reduces the depth of the tree
+        T0 = two(E00, T00, T01),
+        Tout = three(E00, E0, T00, T01, T1),
+        RH = yes
+    ;
+        T0 = empty,
+        error("unbalanced 234 tree")
+        % Tout = two(E0, T0, T1),
+        % RH = yes
+    ).
+
+:- pred fix_3node_t0(T::in, T::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_3node_t0(E0, E1, T0, T1, T2, Tout, RH) :-
+    (
+        % steal T1's leftmost subtree and combine it with T0
+        T1 = four(E10, E11, E12, T10, T11, T12, T13),
+        NewT1 = three(E11, E12, T11, T12, T13),
+        Node = two(E0, T0, T10),
+        Tout = three(E10, E1, Node, NewT1, T2),
+        RH = no
+    ;
+        % steal T1's leftmost subtree and combine it with T0
+        T1 = three(E10, E11, T10, T11, T12),
+        NewT1 = two(E11, T11, T12),
+        Node = two(E0, T0, T10),
+        Tout = three(E10, E1, Node, NewT1, T2),
+        RH = no
+    ;
+        % move T0 one level down to become the leftmost subtree of T1
+        T1 = two(E10, T10, T11),
+        NewT1 = three(E0, E10, T0, T10, T11),
+        Tout = two(E1, NewT1, T2),
+        RH = no
+    ;
+        T1 = empty,
+        error("unbalanced 234 tree")
+        % Tout = three(E0, E1, T0, T1, T2),
+        % The heights of T1 and T2 are unchanged
+        % RH = no
+    ).
+
+:- pred fix_3node_t1(T::in, T::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_3node_t1(E0, E1, T0, T1, T2, Tout, RH) :-
+    (
+        % steal T0's rightmost subtree and combine it with T1
+        T0 = four(E00, E01, E02, T00, T01, T02, T03),
+        NewT0 = three(E00, E01, T00, T01, T02),
+        Node = two(E0, T03, T1),
+        Tout = three(E02, E1, NewT0, Node, T2),
+        RH = no
+    ;
+        % steal T0's rightmost subtree and combine it with T1
+        T0 = three(E00, E01, T00, T01, T02),
+        NewT0 = two(E00, T00, T01),
+        Node = two(E0, T02, T1),
+        Tout = three(E01, E1, NewT0, Node, T2),
+        RH = no
+    ;
+        % move T1 one level down to become the rightmost subtree of T0
+        T0 = two(E00, T00, T01),
+        NewT0 = three(E00, E0, T00, T01, T1),
+        Tout = two(E1, NewT0, T2),
+        RH = no
+    ;
+        T0 = empty,
+        error("unbalanced 234 tree")
+        % Tout = three(E0, E1, T0, T1, T2),
+        % The heights of T0 and T2 are unchanged
+        % RH = no
+    ).
+
+:- pred fix_3node_t2(T::in, T::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_3node_t2(E0, E1, T0, T1, T2, Tout, RH) :-
+    (
+        % steal T1's rightmost subtree and combine it with T2
+        T1 = four(E10, E11, E12, T10, T11, T12, T13),
+        NewT1 = three(E10, E11, T10, T11, T12),
+        Node = two(E1, T13, T2),
+        Tout = three(E0, E12, T0, NewT1, Node),
+        RH = no
+    ;
+        % steal T1's rightmost subtree and combine it with T2
+        T1 = three(E10, E11, T10, T11, T12),
+        NewT1 = two(E10, T10, T11),
+        Node = two(E1, T12, T2),
+        Tout = three(E0, E11, T0, NewT1, Node),
+        RH = no
+    ;
+        % move T2 one level down to become the rightmost subtree of T1
+        T1 = two(E10, T10, T11),
+        NewT1 = three(E10, E1, T10, T11, T2),
+        Tout = two(E0, T0, NewT1),
+        RH = no
+    ;
+        T1 = empty,
+        error("unbalanced 234 tree")
+        % Tout = three(E0, E1, T0, T1, T2),
+        % The heights of T0 and T1 are unchanged
+        % RH = no
+    ).
+
+:- pred fix_4node_t0(T::in, T::in, T::in,
+    set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_4node_t0(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
+    (
+        % steal T1's leftmost subtree and combine it with T0
+        T1 = four(E10, E11, E12, T10, T11, T12, T13),
+        NewT1 = three(E11, E12, T11, T12, T13),
+        Node = two(E0, T0, T10),
+        Tout = four(E10, E1, E2, Node, NewT1, T2, T3),
+        RH = no
+    ;
+        % steal T1's leftmost subtree and combine it with T0
+        T1 = three(E10, E11, T10, T11, T12),
+        NewT1 = two(E11, T11, T12),
+        Node = two(E0, T0, T10),
+        Tout = four(E10, E1, E2, Node, NewT1, T2, T3),
+        RH = no
+    ;
+        % move T0 one level down to become the leftmost subtree of T1
+        T1 = two(E10, T10, T11),
+        NewT1 = three(E0, E10, T0, T10, T11),
+        Tout = three(E1, E2, NewT1, T2, T3),
+        RH = no
+    ;
+        T1 = empty,
+        error("unbalanced 234 tree")
+        % Tout = four(E0, E1, E2, T0, T1, T2, T3),
+        % The heights of T1, T2 and T3 are unchanged
+        % RH = no
+    ).
+
+:- pred fix_4node_t1(T::in, T::in, T::in,
+    set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_4node_t1(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
+    (
+        % steal T2's leftmost subtree and combine it with T1
+        T2 = four(E20, E21, E22, T20, T21, T22, T23),
+        NewT2 = three(E21, E22, T21, T22, T23),
+        Node = two(E1, T1, T20),
+        Tout = four(E0, E20, E2, T0, Node, NewT2, T3),
+        RH = no
+    ;
+        % steal T2's leftmost subtree and combine it with T1
+        T2 = three(E20, E21, T20, T21, T22),
+        NewT2 = two(E21, T21, T22),
+        Node = two(E1, T1, T20),
+        Tout = four(E0, E20, E2, T0, Node, NewT2, T3),
+        RH = no
+    ;
+        % move T1 one level down to become the leftmost subtree of T2
+        T2 = two(E20, T20, T21),
+        NewT2 = three(E1, E20, T1, T20, T21),
+        Tout = three(E0, E2, T0, NewT2, T3),
+        RH = no
+    ;
+        T2 = empty,
+        error("unbalanced 234 tree")
+        % Tout = four(E0, E1, E2, T0, T1, T2, T3),
+        % The heights of T0, T2 and T3 are unchanged
+        % RH = no
+    ).
+
+:- pred fix_4node_t2(T::in, T::in, T::in,
+    set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_4node_t2(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
+    (
+        % steal T3's leftmost subtree and combine it with T2
+        T3 = four(E30, E31, E32, T30, T31, T32, T33),
+        NewT3 = three(E31, E32, T31, T32, T33),
+        Node = two(E2, T2, T30),
+        Tout = four(E0, E1, E30, T0, T1, Node, NewT3),
+        RH = no
+    ;
+        % steal T3's leftmost subtree and combine it with T2
+        T3 = three(E30, E31, T30, T31, T32),
+        NewT3 = two(E31, T31, T32),
+        Node = two(E2, T2, T30),
+        Tout = four(E0, E1, E30, T0, T1, Node, NewT3),
+        RH = no
+    ;
+        % move T2 one level down to become the leftmost subtree of T3
+        T3 = two(E30, T30, T31),
+        NewT3 = three(E2, E30, T2, T30, T31),
+        Tout = three(E0, E1, T0, T1, NewT3),
+        RH = no
+    ;
+        T3 = empty,
+        error("unbalanced 234 tree")
+        % Tout = four(E0, E1, E2, T0, T1, T2, T3),
+        % The heights of T0, T1 and T3 are unchanged
+        % RH = no
+    ).
+
+:- pred fix_4node_t3(T::in, T::in, T::in,
+    set_tree234(T)::in, set_tree234(T)::in, set_tree234(T)::in,
+    set_tree234(T)::in, set_tree234(T)::out, bool::out) is det.
+
+fix_4node_t3(E0, E1, E2, T0, T1, T2, T3, Tout, RH) :-
+    (
+        % steal T2's rightmost subtree and combine it with T3
+        T2 = four(E20, E21, E22, T20, T21, T22, T23),
+        NewT2 = three(E20, E21, T20, T21, T22),
+        Node = two(E2, T23, T3),
+        Tout = four(E0, E1, E22, T0, T1, NewT2, Node),
+        RH = no
+    ;
+        % steal T2's rightmost subtree and combine it with T3
+        T2 = three(E20, E21, T20, T21, T22),
+        NewT2 = two(E20, T20, T21),
+        Node = two(E2, T22, T3),
+        Tout = four(E0, E1, E21, T0, T1, NewT2, Node),
+        RH = no
+    ;
+        % move T3 one level down to become the rightmost subtree of T2
+        T2 = two(E20, T20, T21),
+        NewT2 = three(E20, E2, T20, T21, T3),
+        Tout = three(E0, E1, T0, T1, NewT2),
+        RH = no
+    ;
+        T2 = empty,
+        error("unbalanced 234 tree")
+        % Tout = four(E0, E1, E2, T0, T1, T2, T3),
+        % The heights of T0, T1 and T2 are unchanged
+        % RH = no
+    ).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__union(SetA, SetB) = Set :-
+    set_ctree234__union(SetA, SetB, Set).
+
+set_ctree234__union(ct(SizeA, TreeA), ct(SizeB, TreeB), ct(Size, Tree)) :-
+    ( SizeA < SizeB ->
+        set_ctree234__do_union(TreeA, SizeB, Size, TreeB, Tree)
+    ;
+        set_ctree234__do_union(TreeB, SizeA, Size, TreeA, Tree)
+    ).
+
+:- pred set_ctree234__do_union(set_tree234(T)::in, int::in, int::out,
+    set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_union(empty, !Size, !Tree).
+set_ctree234__do_union(two(E0, T0, T1), !Size, !Tree) :-
+    set_ctree234__do_union(T0, !Size, !Tree),
+    set_ctree234__do_insert(E0, Incr0, !Tree),
+    !:Size = !.Size + Incr0,
+    set_ctree234__do_union(T1, !Size, !Tree).
+set_ctree234__do_union(three(E0, E1, T0, T1, T2), !Size, !Tree) :-
+    set_ctree234__do_union(T0, !Size, !Tree),
+    set_ctree234__do_insert(E0, Incr0, !Tree),
+    !:Size = !.Size + Incr0,
+    set_ctree234__do_union(T1, !Size, !Tree),
+    set_ctree234__do_insert(E1, Incr1, !Tree),
+    !:Size = !.Size + Incr1,
+    set_ctree234__do_union(T2, !Size, !Tree).
+set_ctree234__do_union(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
+    set_ctree234__do_union(T0, !Size, !Tree),
+    set_ctree234__do_insert(E0, Incr0, !Tree),
+    !:Size = !.Size + Incr0,
+    set_ctree234__do_union(T1, !Size, !Tree),
+    set_ctree234__do_insert(E1, Incr1, !Tree),
+    !:Size = !.Size + Incr1,
+    set_ctree234__do_union(T2, !Size, !Tree),
+    set_ctree234__do_insert(E2, Incr2, !Tree),
+    !:Size = !.Size + Incr2,
+    set_ctree234__do_union(T3, !Size, !Tree).
+
+set_ctree234__union_list(Sets) = Union :-
+    set_ctree234__union_list(Sets, Union).
+
+set_ctree234__union_list(Sets, Union) :-
+    list__sort(Sets, SortedSets),
+    set_ctree234__do_union_list(SortedSets, Size, Tree),
+    Union = ct(Size, Tree).
+
+:- pred set_ctree234__do_union_list(list(set_ctree234(T))::in,
+    int::out, set_tree234(T)::out) is det.
+
+set_ctree234__do_union_list([], 0, empty).
+set_ctree234__do_union_list([ct(_Size0, Tree0) | Sets], Size, Tree) :-
+    set_ctree234__do_union_list(Sets, Size1, Tree1),
+    set_ctree234__do_union(Tree0, Size1, Size, Tree1, Tree).
+
+set_ctree234__power_union(Sets) = Union :-
+    set_ctree234__power_union(Sets, Union).
+
+set_ctree234__power_union(ct(_, SetTree), Union) :-
+    set_ctree234__do_power_union(SetTree, 0, Size, empty, Tree),
+    Union = ct(Size, Tree).
+
+:- pred set_ctree234__do_power_union(set_tree234(set_ctree234(T))::in,
+    int::in, int::out, set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_power_union(empty, !Size, !Tree).
+set_ctree234__do_power_union(two(E0, T0, T1), !Size, !Tree) :-
+    set_ctree234__do_power_union(T0, !Size, !Tree),
+    E0 = ct(_, ET0),
+    set_ctree234__do_union(ET0, !Size, !Tree),
+    set_ctree234__do_power_union(T1, !Size, !Tree).
+set_ctree234__do_power_union(three(E0, E1, T0, T1, T2), !Size, !Tree) :-
+    set_ctree234__do_power_union(T0, !Size, !Tree),
+    E0 = ct(_, ET0),
+    set_ctree234__do_union(ET0, !Size, !Tree),
+    set_ctree234__do_power_union(T1, !Size, !Tree),
+    E1 = ct(_, ET1),
+    set_ctree234__do_union(ET1, !Size, !Tree),
+    set_ctree234__do_power_union(T2, !Size, !Tree).
+set_ctree234__do_power_union(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
+    set_ctree234__do_power_union(T0, !Size, !Tree),
+    E0 = ct(_, ET0),
+    set_ctree234__do_union(ET0, !Size, !Tree),
+    set_ctree234__do_power_union(T1, !Size, !Tree),
+    E1 = ct(_, ET1),
+    set_ctree234__do_union(ET1, !Size, !Tree),
+    set_ctree234__do_power_union(T2, !Size, !Tree),
+    E2 = ct(_, ET2),
+    set_ctree234__do_union(ET2, !Size, !Tree),
+    set_ctree234__do_power_union(T3, !Size, !Tree).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__intersect(SetA, SetB) = Set :-
+    set_ctree234__intersect(SetA, SetB, Set).
+
+set_ctree234__intersect(ct(SizeA, TreeA), ct(SizeB, TreeB), ct(Size, Tree)) :-
+    ( SizeA < SizeB ->
+        set_ctree234__do_intersect(TreeA, TreeB, 0, Size, empty, Tree)
+    ;
+        set_ctree234__do_intersect(TreeB, TreeA, 0, Size, empty, Tree)
+    ).
+
+:- pred set_ctree234__do_intersect(set_tree234(T)::in, set_tree234(T)::in,
+    int::in, int::out, set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_intersect(empty, _SetB, !Size, !Tree).
+set_ctree234__do_intersect(two(E0, T0, T1), SetB, !Size, !Tree) :-
+    set_ctree234__do_intersect(T0, SetB, !Size, !Tree),
+    ( set_ctree234__do_is_member(SetB, E0, yes) ->
+        set_ctree234__do_insert(E0, _, !Tree),
+        !:Size = !.Size + 1
+    ;
+        true
+    ),
+    set_ctree234__do_intersect(T1, SetB, !Size, !Tree).
+set_ctree234__do_intersect(three(E0, E1, T0, T1, T2), SetB, !Size, !Tree) :-
+    set_ctree234__do_intersect(T0, SetB, !Size, !Tree),
+    ( set_ctree234__do_is_member(SetB, E0, yes) ->
+        set_ctree234__do_insert(E0, _, !Tree),
+        !:Size = !.Size + 1
+    ;
+        true
+    ),
+    set_ctree234__do_intersect(T1, SetB, !Size, !Tree),
+    ( set_ctree234__do_is_member(SetB, E1, yes) ->
+        set_ctree234__do_insert(E1, _, !Tree),
+        !:Size = !.Size + 1
+    ;
+        true
+    ),
+    set_ctree234__do_intersect(T2, SetB, !Size, !Tree).
+set_ctree234__do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB,
+        !Size, !Tree) :-
+    set_ctree234__do_intersect(T0, SetB, !Size, !Tree),
+    ( set_ctree234__do_is_member(SetB, E0, yes) ->
+        set_ctree234__do_insert(E0, _, !Tree),
+        !:Size = !.Size + 1
+    ;
+        true
+    ),
+    set_ctree234__do_intersect(T1, SetB, !Size, !Tree),
+    ( set_ctree234__do_is_member(SetB, E1, yes) ->
+        set_ctree234__do_insert(E1, _, !Tree),
+        !:Size = !.Size + 1
+    ;
+        true
+    ),
+    set_ctree234__do_intersect(T2, SetB, !Size, !Tree),
+    ( set_ctree234__do_is_member(SetB, E2, yes) ->
+        set_ctree234__do_insert(E2, _, !Tree),
+        !:Size = !.Size + 1
+    ;
+        true
+    ),
+    set_ctree234__do_intersect(T3, SetB, !Size, !Tree).
+
+set_ctree234__intersect_list(Sets) = Intersect :-
+    list__sort(Sets, SortedSets),
+    (
+        SortedSets = [],
+        Intersect = set_ctree234__init
+    ;
+        SortedSets = [Head | Tail],
+        Head = ct(HeadSize, HeadTree),
+        set_ctree234__do_intersect_list(HeadSize, HeadTree, Tail,
+            IntersectSize, IntersectTree),
+        Intersect = ct(IntersectSize, IntersectTree)
+    ).
+
+:- pred set_ctree234__do_intersect_list(int::in, set_tree234(T)::in,
+    list(set_ctree234(T))::in, int::out, set_tree234(T)::out) is det.
+
+set_ctree234__do_intersect_list(SizeIn, TreeIn, [], SizeIn, TreeIn).
+set_ctree234__do_intersect_list(SizeIn, TreeIn, [Head | Tail], Size, Tree) :-
+    ( SizeIn = 0 ->
+        Size = SizeIn,
+        Tree = TreeIn
+    ;
+        Head = ct(_HeadSize, HeadTree),
+        set_ctree234__do_intersect(TreeIn, HeadTree, 0, Size1, empty, Tree1),
+        set_ctree234__do_intersect_list(Size1, Tree1, Tail, Size, Tree)
+    ).
+
+    % XXX We could implement this without converting the tree to a sorted list.
+set_ctree234__power_intersect(Sets) =
+    set_ctree234__intersect_list(set_ctree234__to_sorted_list(Sets)).
+
+%------------------------------------------------------------------------------%
+
+    % `set_ctree234__difference(SetA, SetB, Set)' is true iff `Set' is the
+    % set containing all the elements of `SetA' except those that
+    % occur in `SetB'.
+
+set_ctree234__difference(SetA, SetB) = Diff :-
+    set_ctree234__difference(SetA, SetB, Diff).
+
+set_ctree234__difference(ct(SizeA, TreeA), ct(_SizeB, TreeB),
+        ct(Size, Tree)) :-
+    set_ctree234__do_difference(TreeB, SizeA, Size, TreeA, Tree).
+
+:- pred set_ctree234__do_difference(set_tree234(T)::in,
+    int::in, int::out, set_tree234(T)::in, set_tree234(T)::out) is det.
+
+set_ctree234__do_difference(empty, !Size, !Tree).
+set_ctree234__do_difference(two(E0, T0, T1), !Size, !Tree) :-
+    set_ctree234__do_difference(T0, !Size, !Tree),
+    set_ctree234__do_delete(E0, Decr0, !Tree, _),
+    !:Size = !.Size - Decr0,
+    set_ctree234__do_difference(T1, !Size, !Tree).
+set_ctree234__do_difference(three(E0, E1, T0, T1, T2), !Size, !Tree) :-
+    set_ctree234__do_difference(T0, !Size, !Tree),
+    set_ctree234__do_delete(E0, Decr0, !Tree, _),
+    !:Size = !.Size - Decr0,
+    set_ctree234__do_difference(T1, !Size, !Tree),
+    set_ctree234__do_delete(E1, Decr1, !Tree, _),
+    !:Size = !.Size - Decr1,
+    set_ctree234__do_difference(T2, !Size, !Tree).
+set_ctree234__do_difference(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
+    set_ctree234__do_difference(T0, !Size, !Tree),
+    set_ctree234__do_delete(E0, Decr0, !Tree, _),
+    !:Size = !.Size - Decr0,
+    set_ctree234__do_difference(T1, !Size, !Tree),
+    set_ctree234__do_delete(E1, Decr1, !Tree, _),
+    !:Size = !.Size - Decr1,
+    set_ctree234__do_difference(T2, !Size, !Tree),
+    set_ctree234__do_delete(E2, Decr2, !Tree, _),
+    !:Size = !.Size - Decr2,
+    set_ctree234__do_difference(T3, !Size, !Tree).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__count(ct(N, Tree)) = N :-
+    require(unify(N, set_ctree234__do_count(Tree)),
+        "set_ctree234__count: mismatch").
+
+:- func set_ctree234__do_count(set_tree234(T)) = int.
+
+set_ctree234__do_count(empty) = 0.
+set_ctree234__do_count(two(_, T0, T1)) = N :-
+    N0 = set_ctree234__do_count(T0),
+    N1 = set_ctree234__do_count(T1),
+    N = 1 + N0 + N1.
+set_ctree234__do_count(three(_, _, T0, T1, T2)) = N :-
+    N0 = set_ctree234__do_count(T0),
+    N1 = set_ctree234__do_count(T1),
+    N2 = set_ctree234__do_count(T2),
+    N = 2 + N0 + N1 + N2.
+set_ctree234__do_count(four(_, _, _, T0, T1, T2, T3)) = N :-
+    N0 = set_ctree234__do_count(T0),
+    N1 = set_ctree234__do_count(T1),
+    N2 = set_ctree234__do_count(T2),
+    N3 = set_ctree234__do_count(T3),
+    N = 3 + N0 + N1 + N2 + N3.
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__fold(Pred, ct(_, Tin), !A) :-
+    set_ctree234__do_fold_pred(Pred, Tin, !A).
+
+:- pred set_ctree234__do_fold_pred(
+    pred(T1, T2, T2)::in(pred(in, in, out) is det),
+    set_tree234(T1)::in, T2::in, T2::out) is det.
+
+set_ctree234__do_fold_pred(_Pred, empty, !A).
+set_ctree234__do_fold_pred(Pred, two(E, T0, T1), !A) :-
+    set_ctree234__do_fold_pred(Pred, T0, !A),
+    call(Pred, E, !A),
+    set_ctree234__do_fold_pred(Pred, T1, !A).
+set_ctree234__do_fold_pred(Pred, three(E0, E1, T0, T1, T2), !A) :-
+    set_ctree234__do_fold_pred(Pred, T0, !A),
+    call(Pred, E0, !A),
+    set_ctree234__do_fold_pred(Pred, T1, !A),
+    call(Pred, E1, !A),
+    set_ctree234__do_fold_pred(Pred, T2, !A).
+set_ctree234__do_fold_pred(Pred, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
+    set_ctree234__do_fold_pred(Pred, T0, !A),
+    call(Pred, E0, !A),
+    set_ctree234__do_fold_pred(Pred, T1, !A),
+    call(Pred, E1, !A),
+    set_ctree234__do_fold_pred(Pred, T2, !A),
+    call(Pred, E2, !A),
+    set_ctree234__do_fold_pred(Pred, T3, !A).
+
+set_ctree234__fold(Pred, ct(_, Tin), A0) = A :-
+    set_ctree234__do_fold_func(Pred, Tin, A0, A).
+
+:- pred set_ctree234__do_fold_func(
+    (func(T1, T2) = T2)::in((func(in, in) = out) is det),
+    set_tree234(T1)::in, T2::in, T2::out) is det.
+
+set_ctree234__do_fold_func(_Func, empty, !A).
+set_ctree234__do_fold_func(Func, two(E, T0, T1), !A) :-
+    set_ctree234__do_fold_func(Func, T0, !A),
+    !:A = Func(E, !.A),
+    set_ctree234__do_fold_func(Func, T1, !A).
+set_ctree234__do_fold_func(Func, three(E0, E1, T0, T1, T2), !A) :-
+    set_ctree234__do_fold_func(Func, T0, !A),
+    !:A = Func(E0, !.A),
+    set_ctree234__do_fold_func(Func, T1, !A),
+    !:A = Func(E1, !.A),
+    set_ctree234__do_fold_func(Func, T2, !A).
+set_ctree234__do_fold_func(Func, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
+    set_ctree234__do_fold_func(Func, T0, !A),
+    !:A = Func(E0, !.A),
+    set_ctree234__do_fold_func(Func, T1, !A),
+    !:A = Func(E1, !.A),
+    set_ctree234__do_fold_func(Func, T2, !A),
+    !:A = Func(E2, !.A),
+    set_ctree234__do_fold_func(Func, T3, !A).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__map(Pred, ct(_, TreeA), SetB) :-
+    set_ctree234__map_pred(Pred, TreeA, [], ListB),
+    SetB = set_ctree234__list_to_set(ListB).
+
+:- pred set_ctree234__map_pred(pred(T1, T2)::in(pred(in, out) is det),
+    set_tree234(T1)::in, list(T2)::in, list(T2)::out) is det.
+
+set_ctree234__map_pred(_Pred, empty, !List).
+set_ctree234__map_pred(Pred, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    set_ctree234__map_pred(Pred, T0, !List),
+    call(Pred, E0, N0),
+    !:List = [N0 | !.List],
+    set_ctree234__map_pred(Pred, T1, !List).
+set_ctree234__map_pred(Pred, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    set_ctree234__map_pred(Pred, T0, !List),
+    call(Pred, E0, N0),
+    !:List = [N0 | !.List],
+    set_ctree234__map_pred(Pred, T1, !List),
+    call(Pred, E1, N1),
+    !:List = [N1 | !.List],
+    set_ctree234__map_pred(Pred, T2, !List).
+set_ctree234__map_pred(Pred, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    set_ctree234__map_pred(Pred, T0, !List),
+    call(Pred, E0, N0),
+    !:List = [N0 | !.List],
+    set_ctree234__map_pred(Pred, T1, !List),
+    call(Pred, E1, N1),
+    !:List = [N1 | !.List],
+    set_ctree234__map_pred(Pred, T2, !List),
+    call(Pred, E2, N2),
+    !:List = [N2 | !.List],
+    set_ctree234__map_pred(Pred, T3, !List).
+
+set_ctree234__map(Func, ct(_, TreeA)) = SetB :-
+    set_ctree234__map_func(Func, TreeA, [], ListB),
+    SetB = set_ctree234__list_to_set(ListB).
+
+:- pred set_ctree234__map_func((func(T1) = T2)::in((func(in) = out) is det),
+    set_tree234(T1)::in, list(T2)::in, list(T2)::out) is det.
+
+set_ctree234__map_func(_Func, empty, !List).
+set_ctree234__map_func(Func, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    set_ctree234__map_func(Func, T0, !List),
+    N0 = Func(E0),
+    !:List = [N0 | !.List],
+    set_ctree234__map_func(Func, T1, !List).
+set_ctree234__map_func(Func, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    set_ctree234__map_func(Func, T0, !List),
+    N0 = Func(E0),
+    !:List = [N0 | !.List],
+    set_ctree234__map_func(Func, T1, !List),
+    N1 = Func(E1),
+    !:List = [N1 | !.List],
+    set_ctree234__map_func(Func, T2, !List).
+set_ctree234__map_func(Func, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    set_ctree234__map_func(Func, T0, !List),
+    N0 = Func(E0),
+    !:List = [N0 | !.List],
+    set_ctree234__map_func(Func, T1, !List),
+    N1 = Func(E1),
+    !:List = [N1 | !.List],
+    set_ctree234__map_func(Func, T2, !List),
+    N2 = Func(E2),
+    !:List = [N2 | !.List],
+    set_ctree234__map_func(Func, T3, !List).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__filter_map(Pred, ct(_, TreeA), SetB) :-
+    set_ctree234__filter_map_pred(Pred, TreeA, [], ListB),
+    SetB = set_ctree234__list_to_set(ListB).
+
+:- pred set_ctree234__filter_map_pred(
+    pred(T1, T2)::in(pred(in, out) is semidet), set_tree234(T1)::in,
+    list(T2)::in, list(T2)::out) is det.
+
+set_ctree234__filter_map_pred(_Pred, empty, !List).
+set_ctree234__filter_map_pred(Pred, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    set_ctree234__filter_map_pred(Pred, T0, !List),
+    ( Pred(E0, N0) ->
+        !:List = [N0 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_pred(Pred, T1, !List).
+set_ctree234__filter_map_pred(Pred, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    set_ctree234__filter_map_pred(Pred, T0, !List),
+    ( Pred(E0, N0) ->
+        !:List = [N0 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_pred(Pred, T1, !List),
+    ( Pred(E1, N1) ->
+        !:List = [N1 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_pred(Pred, T2, !List).
+set_ctree234__filter_map_pred(Pred, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    set_ctree234__filter_map_pred(Pred, T0, !List),
+    ( Pred(E0, N0) ->
+        !:List = [N0 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_pred(Pred, T1, !List),
+    ( Pred(E1, N1) ->
+        !:List = [N1 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_pred(Pred, T2, !List),
+    ( Pred(E2, N2) ->
+        !:List = [N2 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_pred(Pred, T3, !List).
+
+set_ctree234__filter_map(Func, ct(_, TreeA)) = SetB :-
+    set_ctree234__filter_map_func(Func, TreeA, [], ListB),
+    SetB = set_ctree234__list_to_set(ListB).
+
+:- pred set_ctree234__filter_map_func(
+    (func(T1) = T2)::in((func(in) = out) is semidet),
+    set_tree234(T1)::in, list(T2)::in, list(T2)::out) is det.
+
+set_ctree234__filter_map_func(_Func, empty, !List).
+set_ctree234__filter_map_func(Func, Tin, !List) :-
+    Tin = two(E0, T0, T1),
+    set_ctree234__filter_map_func(Func, T0, !List),
+    ( N0 = Func(E0) ->
+        !:List = [N0 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_func(Func, T1, !List).
+set_ctree234__filter_map_func(Func, Tin, !List) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    set_ctree234__filter_map_func(Func, T0, !List),
+    ( N0 = Func(E0) ->
+        !:List = [N0 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_func(Func, T1, !List),
+    ( N1 = Func(E1) ->
+        !:List = [N1 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_func(Func, T2, !List).
+set_ctree234__filter_map_func(Func, Tin, !List) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    set_ctree234__filter_map_func(Func, T0, !List),
+    ( N0 = Func(E0) ->
+        !:List = [N0 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_func(Func, T1, !List),
+    ( N1 = Func(E1) ->
+        !:List = [N1 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_func(Func, T2, !List),
+    ( N2 = Func(E2) ->
+        !:List = [N2 | !.List]
+    ;
+        true
+    ),
+    set_ctree234__filter_map_func(Func, T3, !List).
+
+%------------------------------------------------------------------------------%
+
+set_ctree234__divide(Pred, ct(_, Tree), TrueSet, FalseSet) :-
+    set_ctree234__do_divide(Pred, Tree,
+        set_ctree234__init, TrueSet, set_ctree234__init, FalseSet).
+
+:- pred set_ctree234__do_divide(pred(T)::in(pred(in) is semidet),
+    set_tree234(T)::in,
+    set_ctree234(T)::in, set_ctree234(T)::out,
+    set_ctree234(T)::in, set_ctree234(T)::out) is det.
+
+set_ctree234__do_divide(_Pred, empty, !TrueSet, !FalseSet).
+set_ctree234__do_divide(Pred, Tin, !TrueSet, !FalseSet) :-
+    Tin = two(E0, T0, T1),
+    set_ctree234__do_divide(Pred, T0, !TrueSet, !FalseSet),
+    ( Pred(E0) ->
+        set_ctree234__insert(E0, !TrueSet)
+    ;
+        set_ctree234__insert(E0, !FalseSet)
+    ),
+    set_ctree234__do_divide(Pred, T1, !TrueSet, !FalseSet).
+set_ctree234__do_divide(Pred, Tin, !TrueSet, !FalseSet) :-
+    Tin = three(E0, E1, T0, T1, T2),
+    set_ctree234__do_divide(Pred, T0, !TrueSet, !FalseSet),
+    ( Pred(E0) ->
+        set_ctree234__insert(E0, !TrueSet)
+    ;
+        set_ctree234__insert(E0, !FalseSet)
+    ),
+    set_ctree234__do_divide(Pred, T1, !TrueSet, !FalseSet),
+    ( Pred(E1) ->
+        set_ctree234__insert(E1, !TrueSet)
+    ;
+        set_ctree234__insert(E1, !FalseSet)
+    ),
+    set_ctree234__do_divide(Pred, T2, !TrueSet, !FalseSet).
+set_ctree234__do_divide(Pred, Tin, !TrueSet, !FalseSet) :-
+    Tin = four(E0, E1, E2, T0, T1, T2, T3),
+    set_ctree234__do_divide(Pred, T0, !TrueSet, !FalseSet),
+    ( Pred(E0) ->
+        set_ctree234__insert(E0, !TrueSet)
+    ;
+        set_ctree234__insert(E0, !FalseSet)
+    ),
+    set_ctree234__do_divide(Pred, T1, !TrueSet, !FalseSet),
+    ( Pred(E1) ->
+        set_ctree234__insert(E1, !TrueSet)
+    ;
+        set_ctree234__insert(E1, !FalseSet)
+    ),
+    set_ctree234__do_divide(Pred, T2, !TrueSet, !FalseSet),
+    ( Pred(E2) ->
+        set_ctree234__insert(E2, !TrueSet)
+    ;
+        set_ctree234__insert(E2, !FalseSet)
+    ),
+    set_ctree234__do_divide(Pred, T3, !TrueSet, !FalseSet).
+
+set_ctree234__divide_by_set(DivideBySet, Set, TrueSet, FalseSet) :-
+    set_ctree234__divide(set_ctree234__contains(DivideBySet), Set,
+        TrueSet, FalseSet).
+
+%------------------------------------------------------------------------------%
+
+verify_depths(ct(_, Tree), Depths) :-
+    do_verify_depths(Tree, 0, [], Depths).
+
+:- pred do_verify_depths(set_tree234(T)::in, int::in,
+    list(int)::in, list(int)::out) is det.
+
+do_verify_depths(empty, Depth, !Depths) :-
+    ( list__member(Depth, !.Depths) ->
+        true
+    ;
+        !:Depths = [Depth | !.Depths]
+    ).
+do_verify_depths(two(_, T0, T1), Depth, !Depths) :-
+    do_verify_depths(T0, Depth + 1, !Depths),
+    do_verify_depths(T1, Depth + 1, !Depths).
+do_verify_depths(three(_, _, T0, T1, T2), Depth, !Depths) :-
+    do_verify_depths(T0, Depth + 1, !Depths),
+    do_verify_depths(T1, Depth + 1, !Depths),
+    do_verify_depths(T2, Depth + 1, !Depths).
+do_verify_depths(four(_, _, _, T0, T1, T2, T3), Depth, !Depths) :-
+    do_verify_depths(T0, Depth + 1, !Depths),
+    do_verify_depths(T1, Depth + 1, !Depths),
+    do_verify_depths(T2, Depth + 1, !Depths),
+    do_verify_depths(T3, Depth + 1, !Depths).

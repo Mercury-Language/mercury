@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module bool, int, list, map, require, set, std_util, string.
+:- import_module bool, int, list, map, require, set_ordlist, std_util, string.
 
 main -->
 	init_globals,
@@ -31,12 +31,12 @@ init_file(no).
 
 :- type pos      ==      pair(int).
 
-:- type selection	==	set(pos).
+:- type selection	==	set_ordlist(pos).
 
 :- pred init_selection(selection::out) is det.
 
 init_selection(Sel) :-
-	set__init(Sel).
+	set_ordlist__init(Sel).
 
 %------------------------------------------------------------------------------%
 
@@ -46,7 +46,6 @@ init_selection(Sel) :-
 :- type chirality ---> clock ; anti.
 :- type attr ---> wall(dir) ; start ; flag(int).
 :- type dir ---> north ; south ; east ; west.
-
 
 :- pred gen_tiles(int, int, map(pos, tile)).
 :- mode gen_tiles(in, in, out) is det.

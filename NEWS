@@ -22,9 +22,12 @@ Changes to the Mercury standard library:
   version_array2d, version_bitmap, version_hash_table, and version_store,
   implementing non-unique versions of these types supporting O(1) access for
   non-persistent use.  A new module term_to_xml has been added for converting
-  arbitrary terms to XML documents. Seven new modules, svarray, sveqvclass,
-  svmap, svbimap, svset, svbag and svqueue now provide more convenient ways
-  to update arrays, equivalence classes, maps, bimaps, sets, bags and queues
+  arbitrary terms to XML documents. Two new modules, set_tree234 and
+  set_ctree234, have been added to provide operations on sets with better
+  worst-case behavior (but worse constant factors) than the current
+  implementation.s Seven new modules, svarray, sveqvclass, svmap, svbimap,
+  svset, svbag and svqueue now provide more convenient ways to update
+  arrays, equivalence classes, maps, bimaps, sets, bags and queues
   in code that uses state variables.
 * New procedures have been added to many of the existing standard library
   modules.  Most notably, these include procedures for creating

@@ -2,35 +2,34 @@
 :- interface.
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module std_util, list, relation.
+:- import_module std_util, list, set, relation.
 
 main -->
 	{ relation__from_assoc_list(
-			["a" - "b",
-			"b" - "c",
-			"c" - "d",
-			"l1" - "l2",
-			"l2" - "l3",
-			"l3" - "l1",
-			"x" - "x"],
-			Rel) },
+		["a" - "b",
+		"b" - "c",
+		"c" - "d",
+		"l1" - "l2",
+		"l2" - "l3",
+		"l3" - "l1",
+		"x" - "x"],
+		Rel) },
 	{ relation__from_assoc_list(
-			["a" - "a1",
-			"b" - "b1",
-			"c" - "c1",
-			"d" - "d1"],
-			Rel2) },
+		["a" - "a1",
+		"b" - "b1",
+		"c" - "c1",
+		"d" - "d1"],
+		Rel2) },
 	test_rel("Rel", Rel),
 	test_rel("Rel2", Rel2),
 	{ relation__compose(Rel, Rel2, ComposedRel) },
 	print("composition of Rel and Rel2 ="), nl,
-			print_rel(ComposedRel), nl.
+	print_rel(ComposedRel), nl.
 
-:- pred test_rel(string::in, relation(T)::in,
-		io__state::di, io__state::uo) is det.
+:- pred test_rel(string::in, relation(T)::in, io::di, io::uo) is det.
 
 test_rel(Name, Rel) -->
 	{ relation__dfs(Rel, DfsKeys) },
@@ -45,7 +44,7 @@ test_rel(Name, Rel) -->
 	print("rtc ="), nl, print_rel(RTC_Rel), nl,
 	print("sc ="), nl, print_rel(SC_Rel), nl,
 	print("dfs ="), nl, print(Dfs), nl,
-	print("atsort ="), nl, print(ATSort), nl,
+	print("atsort ="), nl, list__foldl(print_set, ATSort), nl,
 	( { relation__tsort(Rel, TSort) } ->
 		print("tsort ="), nl, print(TSort), nl
 	;
@@ -57,8 +56,14 @@ test_rel(Name, Rel) -->
 		io__write_string("is_dag failed\n")
 	).
 
-:- pred print_rel(relation(T), state, state).
-:- mode print_rel(in, di, uo) is det.
+:- pred print_set(set(T)::in, io::di, io::uo) is det.
+
+print_set(Set, !IO) :-
+	io__write_string("[", !IO),
+	io__write_list(set__to_sorted_list(Set), ", ", print, !IO),
+	io__write_string("]\n", !IO).
+
+:- pred print_rel(relation(T)::in, io::di, io::uo) is det.
 
 print_rel(Relation) -->
 	{ relation__to_assoc_list(Relation, AssocList0) },

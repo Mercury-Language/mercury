@@ -167,7 +167,7 @@
 
 	% library modules
 :- import_module int, list, map, set, std_util, require, string, bool, dir.
-:- import_module library, getopt, set_bbbtree, term, varset, assoc_list.
+:- import_module library, getopt, term, varset, assoc_list.
 :- import_module gc, benchmarking.
 :- import_module pprint.
 

@@ -65,7 +65,13 @@ sc =
 dfs =
 ["d", "c", "b", "a", "l3", "l2", "l1", "x"]
 atsort =
-[["x"], ["l1", "l2", "l3"], ["a"], ["b"], ["c"], ["d"]]
+[x]
+[l1, l2, l3]
+[a]
+[b]
+[c]
+[d]
+
 tsort failed
 is_dag failed
 Rel2 =
@@ -107,7 +113,15 @@ sc =
 dfs =
 ["a1", "a", "b1", "b", "c1", "c", "d1", "d"]
 atsort =
-[["d"], ["d1"], ["c"], ["c1"], ["b"], ["b1"], ["a"], ["a1"]]
+[d]
+[d1]
+[c]
+[c1]
+[b]
+[b1]
+[a]
+[a1]
+
 tsort =
 ["d", "d1", "c", "c1", "b", "b1", "a", "a1"]
 is_dag succeeded

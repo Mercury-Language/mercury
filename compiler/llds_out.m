@@ -183,23 +183,23 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module dir, int, char, string, std_util.
-:- import_module multi_map, set, bintree_set, assoc_list, require.
+:- import_module dir, int, char, string, std_util, require.
+:- import_module multi_map, set, set_tree234, bintree_set, assoc_list.
 :- import_module varset, term.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
 
-:- type decl_set ==	map(decl_id, unit).
+:- type decl_set ==	set_tree234(decl_id).
 
 decl_set_init(DeclSet) :-
-	map__init(DeclSet).
+	DeclSet = set_tree234__init.
 
 decl_set_insert(DeclId, DeclSet0, DeclSet) :-
-	map__set(DeclSet0, DeclId, unit, DeclSet).
+	set_tree234__insert(DeclId, DeclSet0, DeclSet).
 
 decl_set_is_member(DeclId, DeclSet) :-
-	map__search(DeclSet, DeclId, _).
+	set_tree234__contains(DeclSet, DeclId).
 
 %-----------------------------------------------------------------------------%
 
