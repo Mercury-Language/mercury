@@ -362,12 +362,7 @@ status=0
 case $HOST in
 	murlibobo)
 		CONFIG_OPTS="--enable-inefficient-grades" ;;
-	kryten)		
-		# On kryten & taifun, there is a bug in readline which causes
-		# it to go into an infinite loop when reading from a file.
-		#CONFIG_OPTS="--enable-all-grades --without-readline" ;;
-		CONFIG_OPTS="--without-readline" ;;
-	taifun)		
+	kryten|taifun)		
 		# On kryten & taifun, there is a bug in readline which causes
 		# it to go into an infinite loop when reading from a file.
 		CONFIG_OPTS="--without-readline" ;;
@@ -377,12 +372,17 @@ case $HOST in
 		CONFIG_OPTS="--enable-hlc-prof-grades \
 			--enable-new-mercuryfile-struct" ;;
 	roy|ceres)
+		# On these hosts, test the high-level back-end more:
+		# bootstrap the compiler in hlc.gc,
+		# use hlc.gc as the default grade,
+		# and install & test various other hlc-related grades.
+		# Also test the asm_fast.gc.tr.rt grade.
 		CONFIG_OPTS=""
 		DEFAULT_GRADE="hlc.gc"
 		export DEFAULT_GRADE
 		INSTALL_GRADE="hlc.gc"
 		INSTALL_LIBGRADES="hlc.gc.prof hlc.gc.memprof \
-				hlc.gc.tr hlc.par.gc"
+			hlc.gc.tr hlc.par.gc asm_fast.gc asm_fast.gc.tr.debug"
 		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
 		# since the asm_fast.gc.tr.rt grade is not yet implemented
 		# in the 0.10 branch.
@@ -402,11 +402,9 @@ case $HOST in
 	hg)
 		CONFIG_OPTS=""
 		case "$C_COMPILER" in asm)
+			# Build the compiler in grade hlc.gc, because
+			# --target asm requires an hl* grade.
 			INSTALL_GRADE="hlc.gc"
-			INSTALL_LIBGRADES="asm_fast.gc asm_fast \
-				asm_fast.gc.prof asm_fast.prof  \
-				asm_fast.gc.memprof asm_fast.gc.tr \
-				asm_fast.gc.tr.debug hlc.par.gc"
 			;;
 		esac
 		;;
@@ -423,11 +421,13 @@ case $HOST in
 			;;
 		esac
 		;;
-	mars|ceres)
+	mars)
 		# Portable .NET is installed on mars, and the
 		# test in configure.in doesn't test whether the
 		# ilasm it finds is suitable for use with Mercury.
 		CONFIG_OPTS="--disable-dotnet-grades"
+
+		# Test --use-subdirs
 		MMAKE_USE_SUBDIRS=yes
 		export MMAKE_USE_SUBDIRS
 
@@ -442,6 +442,11 @@ case $HOST in
 			;;
 		esac
 		;;
+	earth)
+		# ensure that the nogc grades get installed and tested
+		# on at least one host
+		CONFIG_OPTS="--enable-nogc-grades"
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -451,6 +456,9 @@ esac
 case $HOST in $ROTD_HOST)
 	CONFIG_OPTS="$CONFIG_OPTS \
 	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
+	if test "$INSTALL_LIBGRADES" != ""; then
+		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
+	fi
 	;;
 esac
 
@@ -547,13 +555,10 @@ case "$with_asm" in
 		date
 		;;
 esac
-case $HOST in
-	murlibobo|kryten|taifun|mundroo|quicksilver|hg|hydra|roy|venus|ender|earth|mars|ceres)
-		[ -d mercury/extras/clpr/CVS ] ||
-		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
-			{ false; exit 1; }
-		;;
-esac
+[ -d mercury/extras/clpr/CVS ] ||
+(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
+	set_status "clpr checkout"
+;;
 
 : make sure the installation directory exists
 [ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
@@ -660,7 +665,7 @@ case $status in 0)
 	    	# --split-c-files is not supported for the hl* grades
 	    	;;
 	*)	mmake install_split_library \
-			LIBGRADES= MMAKEFLAGS=$PARALLEL || \
+			LIBGRADES=$INSTALL_GRADE MMAKEFLAGS=$PARALLEL || \
     			set_status "install_split_library"
 		;;
     esac
@@ -697,36 +702,15 @@ esac
 
 : test and install the CLPR interface
 # CLPR requires trailing, so here we only test the trailing grades.
+GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
 case $HOST in
-	murlibobo)
-		# requires --enable-all-grades
-		GRADES="asm_fast.gc.tr asm_fast.tr"
-		;;
-	hg|quicksilver|hydra|ender|kryten|taifun|mundroo|venus|earth|mars)
-		case "$C_COMPILER" in
-			gcc)	GRADES="asm_fast.gc.tr" ;;
-			*)	GRADES="" ;;
-		esac
-		;;
-	roy|ceres)
-		GRADES="hlc.gc.tr"
-
-		# The hl.* grades don't work on the release branch because
-		# we can only install the header files for one grade, and the 
-		# headers for hl.gc and hlc.gc are different. This has been
-		# fixed on the main branch.
-		case $BRANCH in
-			0.10)	;;
-			*)	GRADES="$GRADES hl.gc.tr" ;;
-		esac
-		;;
-	*)
-		GRADES=""
-		;;
+   hg)
+   	GRADES="$GRADES asm_fast.par.gc"
+	;;
 esac
-for grade in $GRADES kludge_for_broken_shells
+for grade in $GRADES
 do
-	if [ "$grade" != kludge_for_broken_shells ]; then
+	case "$grade" in *.tr*)
 		echo "test clpr stuff for grade $grade" 1>&2
 		{
 			echo "GRADE = $grade"
@@ -752,7 +736,8 @@ do
 			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 			    set_status "trailed_update realclean"
-	fi
+		;;
+	esac
 done
 
 #-----------------------------------------------------------------------------#
@@ -823,121 +808,6 @@ unset MERCURY_COMPILER
 
 #MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
 #export MERCURY_COMPILER
-
-# Any grade here that is not installed by default needs to be explicitly
-# installed above, before the tests are run.
-case $HOST in
-	mundook|murlibobo)
-		# XXX currently we don't bother to test hlc.gc.par,
-		#     since that is just the same as hlc.gc
-		#     (threads are not yet supported on Digital Unix --
-		#     see configure.in).
-		# XXX should we test asm_fast.gc.profdeep?
-		GRADES="none none.gc
-			reg reg.gc
-			hlc.gc
-			asm_fast asm_fast.gc
-			asm_fast.prof asm_fast.gc.prof
-			asm_fast.gc.memprof
-			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr
-			asm_fast.gc.tr.debug
-			"
-		;;
-# requires --enable-all-grades
-#	kryten)
-#		GRADES="none jump fast asm_jump asm_fast none.gc
-#			jump.gc fast.gc asm_jump.gc
-#			asm_fast.gc asm_fast.gc.prof asm_fast.prof asm_fast.gc.memprof
-#			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr asm_fast.gc.tr.debug"
-#		;;
-	kryten|taifun|mundroo|rimmer)
-		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr
-			asm_fast.gc.tr.debug"
-		;;
-	hydra)
-		GRADES="asm_fast.gc asm_fast
-			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug"
-		;;
-	hg)
-		GRADES="asm_fast.gc asm_fast
-			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr
-			asm_fast.gc.tr.debug
-			asm_fast.par.gc hlc.gc"
-		;;
-
-	earth)	GRADES="asm_fast.gc asm_fast
-			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-			hlc.gc hlc.par.gc"
-		;;
-
-	mars)	
-		case "$C_COMPILER" in
-			gcc)	GRADES="asm_fast.gc asm_fast
-					asm_fast.gc.prof asm_fast.prof
-					asm_fast.gc.memprof asm_fast.gc.tr
-					asm_fast.gc.tr.debug
-					hlc.gc hlc.par.gc" ;;
-			*)	# We don't test none.gc.tr.debug
-				# because it wasn't installed,
-				# due to lcc 4.1 internal error (see above)
-				GRADES="none.gc none none.gc.prof
-				none.prof none.gc.memprof none.gc.tr
-				hlc.gc hlc.par.gc" ;;
-		esac
-		;;
-
-	venus)
-		case "$C_COMPILER" in
-			gcc)	GRADES="asm_fast.gc asm_fast
-				asm_fast.gc.prof asm_fast.prof
-				asm_fast.gc.memprof asm_fast.gc.tr
-				asm_fast.gc.tr.debug
-				hlc.gc hlc.par.gc" ;;
-			*)	# We don't test none.gc.tr.debug
-				# because it wasn't installed,
-				# due to lcc 4.1 internal error (see above)
-				GRADES="none.gc none none.gc.prof
-				none.prof none.gc.memprof none.gc.tr
-				hlc.gc hlc.par.gc" ;;
-		esac
-		;;
-	roy|ceres)
-		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc"
-		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
-		# since the asm_fast.gc.tr.rt grade is not yet implemented
-		# in the 0.10 branch.
-		#
-		# The hl.* grades don't work on the release branch because
-		# we can only install the header files for one grade, and the 
-		# headers for hl.gc and hlc.gc are different. This has been
-		# fixed on the main branch.
-		case $BRANCH in
-			0.10)	;;
-			*)	GRADES="$GRADES asm_fast.gc.tr.rt
-					hl.gc hl.gc.prof hl.gc.memprof
-					hl.gc.tr hl.par.gc" ;;
-		esac
-		;;
-	ender)
-		GRADES="asm_fast.gc asm_fast
-			asm_fast.gc.prof asm_fast.prof
-			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
-			hlc.gc hlc.par.gc hlc.gc.prof hlc.gc.memprof"
-		;;
-	quicksilver)
-		GRADES="asm_fast.gc asm_fast asm_fast.gc.tr.debug"
-		# Don't bother with these, otherwise it would take forever...
-		#	asm_fast.gc.prof asm_fast.prof
-		#	asm_fast.gc.memprof asm_fast.gc.tr"
-		;;
-	*)
-		GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
-		;;
-esac
 
 cd tests || { false; exit 1; }
 
