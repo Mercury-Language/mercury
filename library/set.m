@@ -10,7 +10,7 @@
 
 % This module provides a set ADT.
 % The implementation represents sets using ordered lists.
-% This file just calls the equivalent predicates in set_ctree234.
+% This file just calls the equivalent predicates in set_ordlist.
 
 %--------------------------------------------------------------------------%
 
@@ -50,7 +50,7 @@
 
 	% `set__init(Set)' is true iff `Set' is an empty set.
 
-:- pred set__init(set(T)::out) is det.
+:- pred set__init(set(T)::uo) is det.
 :- func set__init = set(T).
 
 	% `set__singleton_set(Set, Elem)' is true iff `Set' is the set
@@ -98,7 +98,9 @@
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
 
-:- pred set__insert(set(T)::in, T::in, set(T)::out) is det.
+:- pred set__insert(set(T), T, set(T)).
+:- mode set__insert(di, di, uo) is det.
+:- mode set__insert(in, in, out) is det.
 
 	% XXX rwab1: I think we should reverse the args. here for
 	% higher order programming.
@@ -303,98 +305,95 @@
 
 :- implementation.
 
-:- import_module set_ctree234, require.
+:- import_module set_ordlist, set_unordlist, require.
 
-:- type set(T) ==	set_ctree234(T).
+:- type set(T) ==	set_ordlist(T).
 
 set__list_to_set(List, Set) :-
-	Set = set_ctree234__list_to_set(List).
+	set_ordlist__list_to_set(List, Set).
 
-set__from_list(List) = set_ctree234__list_to_set(List).
+set__from_list(List) = set_ordlist__from_list(List).
 
 set__sorted_list_to_set(List, Set) :-
-	Set = set_ctree234__sorted_list_to_set(List).
+	set_ordlist__sorted_list_to_set(List, Set).
 
-set__from_sorted_list(List) = set_ctree234__sorted_list_to_set(List).
+set__from_sorted_list(List) = set_ordlist__from_sorted_list(List).
 
 set__to_sorted_list(Set, List) :-
-	List = set_ctree234__to_sorted_list(Set).
+	set_ordlist__to_sorted_list(Set, List).
 
 set__insert_list(Set0, List, Set) :-
-	set_ctree234__insert_list(List, Set0, Set).
+	set_ordlist__insert_list(Set0, List, Set).
 
 set__insert(Set0, X, Set) :-
-	set_ctree234__insert(X, Set0, Set).
+	set_ordlist__insert(Set0, X, Set).
 
 set__init(Set) :-
-	Set = set_ctree234__init.
+	set_ordlist__init(Set).
 
 set__singleton_set(Set, X) :-
-	set_ctree234__singleton_set(X, Set).
+	set_ordlist__singleton_set(Set, X).
 
 set__equal(SetA, SetB) :-
-	set_ctree234__equal(SetA, SetB).
+	set_ordlist__equal(SetA, SetB).
 
 set__empty(Set) :-
-	set_ctree234__empty(Set).
+	set_ordlist__empty(Set).
 
 set__non_empty(Set) :-
-	\+ set_ctree234__empty(Set).
+	\+ set_ordlist__empty(Set).
 
 set__subset(SetA, SetB) :-
-	set_ctree234__subset(SetA, SetB).
+	set_ordlist__subset(SetA, SetB).
 
 set__superset(SetA, SetB) :-
-	set_ctree234__superset(SetA, SetB).
+	set_ordlist__superset(SetA, SetB).
 
-:- pragma promise_pure(set__member/2).
-set__member(X::out, Set::in) :-
-	set_ctree234__one_member(Set, X).
-set__member(X::in, Set::in) :-
-	set_ctree234__contains(Set, X).
+set__member(X, Set) :-
+	set_ordlist__member(X, Set).
 
 set__is_member(X, Set, Result) :-
-	set_ctree234__is_member(Set, X, Result).
+	set_ordlist__is_member(X, Set, Result).
 
 set__contains(Set, X) :-
-	set_ctree234__contains(Set, X).
+	set_ordlist__contains(Set, X).
 
 set__delete_list(Set0, List, Set) :-
-	set_ctree234__delete_list(List, Set0, Set).
+	set_ordlist__delete_list(Set0, List, Set).
 
 set__delete(Set0, X, Set) :-
-	set_ctree234__delete(X, Set0, Set).
+	set_ordlist__delete(Set0, X, Set).
 
 set__remove_list(Set0, List, Set) :-
-	set_ctree234__remove_list(List, Set0, Set).
+	set_ordlist__remove_list(Set0, List, Set).
 
 set__remove(Set0, X, Set) :-
-	set_ctree234__remove(X, Set0, Set).
+	set_ordlist__remove(Set0, X, Set).
 
 set__remove_least(Set0, X, Set) :-
-	set_ctree234__remove_least(X, Set0, Set).
+	set_ordlist__remove_least(Set0, X, Set).
 
 set__union(SetA, SetB, Set) :-
-	set_ctree234__union(SetA, SetB, Set).
+	set_ordlist__union(SetA, SetB, Set).
 
-set__union_list(Sets) = set_ctree234__union_list(Sets).
+set__union_list(Sets) = set_ordlist__union_list(Sets).
 
 set__power_union(Sets, Set) :-
-	set_ctree234__power_union(Sets, Set).
+	set_ordlist__power_union(Sets, Set).
 
 set__intersect(SetA, SetB, Set) :-
-	set_ctree234__intersect(SetA, SetB, Set).
+	set_ordlist__intersect(SetA, SetB, Set).
 
 set__power_intersect(Sets, Set) :-
-	Set = set_ctree234__power_intersect(Sets).
+	set_ordlist__power_intersect(Sets, Set).
 
-set__intersect_list(Sets) = set_ctree234__intersect_list(Sets).
+set__intersect_list(Sets) = set_ordlist__intersect_list(Sets).
 
 set__difference(SetA, SetB, Set) :-
-	set_ctree234__difference(SetA, SetB, Set).
+	set_ordlist__difference(SetA, SetB, Set).
 
 set__count(Set, Count) :-
-	Count = set_ctree234__count(Set).
+	set_ordlist__count(Set, Count).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
@@ -467,7 +466,7 @@ set__fold(F, S, A) = B :-
 	B = list__foldl(F, set__to_sorted_list(S), A).
 
 set__divide(P, Set, TruePart, FalsePart) :-
-	set_ctree234__divide(P, Set, TruePart, FalsePart).
+	set_ordlist__divide(P, Set, TruePart, FalsePart).
 
 set__divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
-	set_ctree234__divide_by_set(DivideBySet, Set, TruePart, FalsePart).
+	set_ordlist__divide_by_set(DivideBySet, Set, TruePart, FalsePart).
