@@ -25,9 +25,17 @@
 
 :- import_module hlds_module, hlds_pred.
 
+	% Add liveness annotations to the goal of the procedure.
+	% This consists of the {pre,post}{birth,death} sets and
+	% (for the time being) the nondetlive set.
+
 :- pred detect_liveness_proc(proc_info, module_info, proc_info).
-% :- mode detect_liveness_proc(di, in, uo) is det.
 :- mode detect_liveness_proc(in, in, out) is det.
+
+	% Return the set of variables live at the start of the procedure.
+
+:- pred initial_liveness(proc_info, module_info, set(var)).
+:- mode initial_liveness(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -48,11 +56,11 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_vartypes(ProcInfo0, VarTypes),
 
-	detect_initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
 	detect_liveness_in_goal(Goal0, Liveness0, VarTypes, ModuleInfo, 
 				_Liveness1, Goal1),
 
-	detect_initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
+	initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, ModuleInfo, ProcInfo0,
 				_Deadness1, Goal2),
 
@@ -459,31 +467,28 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0)|Goals0], Deadness0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_initial_liveness(proc_info, module_info, set(var)).
-:- mode detect_initial_liveness(in, in, out) is det.
-
-detect_initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
+initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
 	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Liveness0),
 	(
-		detect_initial_liveness_2(Vars, Modes, Types, ModuleInfo,
+		initial_liveness_2(Vars, Modes, Types, ModuleInfo,
 			Liveness0, Liveness1)
 	->
 		Liveness = Liveness1
 	;
-		error("detect_initial_liveness: list length mismatch")
+		error("initial_liveness: list length mismatch")
 	).
 
-:- pred detect_initial_liveness_2(list(var), list(mode), list(type),
-				module_info, set(var), set(var)).
-:- mode detect_initial_liveness_2(in, in, in, in, in, out) is semidet.
+:- pred initial_liveness_2(list(var), list(mode), list(type), module_info,
+	set(var), set(var)).
+:- mode initial_liveness_2(in, in, in, in, in, out) is semidet.
 
-detect_initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
-detect_initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
-						Liveness0, Liveness) :-
+initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
+initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
+		Liveness0, Liveness) :-
 	(
 		mode_to_arg_mode(ModuleInfo, M, T, top_in)
 	->
@@ -491,26 +496,26 @@ detect_initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 	;
 		Liveness1 = Liveness0
 	),
-	detect_initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
+	initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_initial_deadness(proc_info, module_info, set(var)).
-:- mode detect_initial_deadness(in, in, out) is det.
+:- pred initial_deadness(proc_info, module_info, set(var)).
+:- mode initial_deadness(in, in, out) is det.
 
-detect_initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
+initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_headvars(ProcInfo, Vars),
 	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
 	(
-		detect_initial_deadness_2(Vars, Modes, Types, ModuleInfo,
+		initial_deadness_2(Vars, Modes, Types, ModuleInfo,
 			Deadness0, Deadness1)
 	->
 		Deadness2 = Deadness1
 	;
-		error("detect_initial_deadness: list length mis-match")
+		error("initial_deadness: list length mis-match")
 	),
 		% If doing accurate garbage collection, the corresponding
 		% typeinfos need to be added to these.
@@ -526,12 +531,12 @@ detect_initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 		Deadness = Deadness2
 	).
 
-:- pred detect_initial_deadness_2(list(var), list(mode), list(type),
+:- pred initial_deadness_2(list(var), list(mode), list(type),
 				module_info, set(var), set(var)).
-:- mode detect_initial_deadness_2(in, in, in, in, in, out) is semidet.
+:- mode initial_deadness_2(in, in, in, in, in, out) is semidet.
 
-detect_initial_deadness_2([], [], [], _ModuleInfo, Deadness, Deadness).
-detect_initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
+initial_deadness_2([], [], [], _ModuleInfo, Deadness, Deadness).
+initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 		Deadness0, Deadness) :-
 	(
 		mode_to_arg_mode(ModuleInfo, M, T, top_out)
@@ -540,7 +545,7 @@ detect_initial_deadness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 	;
 		Deadness1 = Deadness0
 	),
-	detect_initial_deadness_2(Vs, Ms, Ts, ModuleInfo, Deadness1, Deadness).
+	initial_deadness_2(Vs, Ms, Ts, ModuleInfo, Deadness1, Deadness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
