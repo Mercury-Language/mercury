@@ -8,12 +8,8 @@ include ../Mmake.common
 
 SIMPLE_PROGS = \
 	boyer \
-	fib \
-	tc_loop \
-	tc_minimal
+	fib
 
-# make sure that all the tests here have a GRADEFLAGS that specifies
-# --use-minimal-model
 NONDET_PROGS = \
 	coup \
 	coup_det_frame \
@@ -21,7 +17,9 @@ NONDET_PROGS = \
 	coup_non_tabled_frame \
 	generator_in_commit \
 	repeat \
-	seq
+	seq \
+	tc_loop \
+	tc_minimal
 
 # We don't yet pass the following minimal model tests. The reason is that
 # they contain interactions between tabling and constructs that function
