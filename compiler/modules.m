@@ -2957,27 +2957,6 @@ read_mod_2(IgnoreErrors, ModuleName, PartialModuleName,
 		Error0, ActualModuleName, Messages, Items0),
 	check_module_has_expected_name(FileName0,
 		ModuleName, ActualModuleName),
-	( { IgnoreErrors = yes } ->
-		(
-			{ Error0 = fatal },
-			{ Items0 = [] }
-		->
-			maybe_write_string(VeryVerbose, "not found.\n")
-		;
-			maybe_write_string(VeryVerbose, "done.\n")
-		)
-	;
-		( { Error0 = fatal } ->
-			maybe_write_string(VeryVerbose, "fatal error(s).\n"),
-			io__set_exit_status(1)
-		; { Error0 = yes } ->
-			maybe_write_string(VeryVerbose, "parse error(s).\n"),
-			io__set_exit_status(1)
-		;
-			maybe_write_string(VeryVerbose, "successful parse.\n")
-		),
-		prog_out__write_messages(Messages)
-	),
 	%
 	% if that didn't work, and we're reading in the source (.m)
 	% file for a nested module, try again after dropping one 
@@ -2989,10 +2968,35 @@ read_mod_2(IgnoreErrors, ModuleName, PartialModuleName,
 		{ Extension = ".m" },
 		{ PartialModuleName = qualified(Parent, Child) }
 	->
+		maybe_write_string(VeryVerbose, "not found...\n"),
 		{ drop_one_qualifier(Parent, Child, PartialModuleName2) },
 		read_mod_2(IgnoreErrors, ModuleName, PartialModuleName2,
 			Extension, Descr, Search, Items, Error, FileName)
 	;
+		( { IgnoreErrors = yes } ->
+			(
+				{ Error0 = fatal },
+				{ Items0 = [] }
+			->
+				maybe_write_string(VeryVerbose, "not found.\n")
+			;
+				maybe_write_string(VeryVerbose, "done.\n")
+			)
+		;
+			( { Error0 = fatal } ->
+				maybe_write_string(VeryVerbose,
+					"fatal error(s).\n"),
+				io__set_exit_status(1)
+			; { Error0 = yes } ->
+				maybe_write_string(VeryVerbose,
+					"parse error(s).\n"),
+				io__set_exit_status(1)
+			;
+				maybe_write_string(VeryVerbose,
+					"successful parse.\n")
+			),
+			prog_out__write_messages(Messages)
+		),
 		{ Error = Error0 },
 		{ Items = Items0 },
 		{ FileName = FileName0 }
@@ -3212,7 +3216,7 @@ very_long_name.m:123: In module `very_long_name':
 very_long_name.m:123:   error in `import_module' declaration:
 very_long_name.m:123:   module `parent_module:sub_module' is inaccessible.
 very_long_name.m:123:   Either there was no prior `import_module' or 
-very_long_name.m:123:  `use_module' declaration to import module
+very_long_name.m:123:   `use_module' declaration to import module
 very_long_name.m:123:   `parent_module', or the interface for module
 very_long_name.m:123:   `parent_module' does not contain an `include_module'
 very_long_name.m:123:   declaration for module `sub_module'.
