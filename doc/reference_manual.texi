@@ -7385,6 +7385,9 @@ of the other arguments passed.  These @samp{type_info} arguments can
 be obtained using the Mercury @samp{type_of} function in the Mercury
 standard library module @samp{std_util}.
 
+It is an error to export Mercury procedures that have a determinism
+of multi or nondet to C.
+
 To use the C declarations produced for @samp{pragma export} declarations
 in C code within a Mercury module, use a @samp{pragma c_import_module}
 declaration, for example 
