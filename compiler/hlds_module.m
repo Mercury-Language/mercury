@@ -490,7 +490,7 @@
 			int,		% lambda predicate counter
 			list(pragma_exported_proc),
 					% list of the procs for which
-					% there is a pragma(export, ...)
+					% there is a pragma export(...)
 					% declaration
 			list(base_gen_info),
 			list(base_gen_layout),
@@ -545,7 +545,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 % G			int,		% lambda predicate counter
 % H			list(pragma_exported_proc),
 %					% list of the procs for which
-%					% there is a pragma(export, ...)
+%					% there is a pragma export(...)
 %					% declaration
 % I			list(base_gen_info),
 % J			list(base_gen_layout)
