@@ -70,6 +70,10 @@
 		pred_info, pred_info, io__state, io__state).
 :- mode post_typecheck__finish_imported_pred(in, in, in, out, di, uo) is det.
 
+:- pred post_typecheck__finish_ill_typed_pred(module_info, pred_id,
+		pred_info, pred_info, io__state, io__state).
+:- mode post_typecheck__finish_ill_typed_pred(in, in, in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -301,15 +305,40 @@ post_typecheck__resolve_pred_overloading(PredId0, Args0, CallerPredInfo,
 post_typecheck__finish_pred(ModuleInfo, PredId, PredInfo1, PredInfo) -->
 	{ maybe_add_default_mode(ModuleInfo, PredInfo1, PredInfo2, _) },
 	{ copy_clauses_to_procs(PredInfo2, PredInfo3) },
-	post_typecheck__finish_imported_pred(ModuleInfo, PredId,
+	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
 			PredInfo3, PredInfo).
+
+	%
+	% For ill-typed preds, we just need to set the modes up correctly
+	% so that any calls to that pred from correctly-typed predicates
+	% won't result in spurious mode errors.
+	%
+post_typecheck__finish_ill_typed_pred(ModuleInfo, PredId,
+		PredInfo0, PredInfo) -->
+	{ maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo1, _) },
+	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
+		PredInfo1, PredInfo).
+
+	% 
+	% For imported preds, we just need to ensure that all
+	% constructors occurring in predicate mode declarations are
+	% module qualified.
+	% 
+post_typecheck__finish_imported_pred(ModuleInfo, PredId,
+		PredInfo0, PredInfo) -->
+	post_typecheck__propagate_types_into_modes(ModuleInfo, PredId,
+		PredInfo0, PredInfo).
 
 	% 
 	% Ensure that all constructors occurring in predicate mode
 	% declarations are module qualified.
 	% 
-post_typecheck__finish_imported_pred(ModuleInfo, PredId, PredInfo0, PredInfo)
-		-->
+:- pred post_typecheck__propagate_types_into_modes(module_info, pred_id,
+		pred_info, pred_info, io__state, io__state).
+:- mode post_typecheck__propagate_types_into_modes(in, in, in, out, di, uo)
+		is det.
+post_typecheck__propagate_types_into_modes(ModuleInfo, PredId, PredInfo0,
+		PredInfo) -->
 	{ pred_info_arg_types(PredInfo0, ArgTypes) },
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ pred_info_procids(PredInfo0, ProcIds) },

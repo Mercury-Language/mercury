@@ -50,7 +50,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, mode_util, make_hlds.
+:- import_module hlds_goal, hlds_data, prog_data, mode_util, make_hlds, purity.
 :- import_module globals.
 :- import_module int, set, map.
 
@@ -143,11 +143,16 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 	( GoalList = [SingleGoal] ->
 		Goal = SingleGoal
 	;
-		% Construct a goal_info for the disjunction.
+		%
+		% Convert the list of clauses into a disjunction,
+		% and construct a goal_info for the disjunction.
+		%
+
+		%
 		% We use the context of the first clause, unless
 		% there weren't any clauses at all, in which case
 		% we use the context of the mode declaration.
-		% The non-local vars are just the head variables.
+		%
 		goal_info_init(GoalInfo0),
 		( GoalList = [FirstGoal | _] ->
 			FirstGoal = _ - FirstGoalInfo,
@@ -156,12 +161,39 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 			proc_info_context(Proc0, Context)
 		),
 		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+
+		%
+		% The non-local vars are just the head variables.
+		%
 		set__list_to_set(HeadVars, NonLocalVars),
-		goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo),
+		goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo2),
+
+		%
+		% The disjunction is impure/semipure if any of the disjuncts
+		% is impure/semipure.
+		%
+		(
+			list__member(_SubGoal - SubGoalInfo, GoalList),
+			\+ goal_info_is_pure(SubGoalInfo)
+		->
+			list__map(get_purity, GoalList, PurityList),
+			list__foldl(worst_purity, PurityList, (pure), Purity),
+			add_goal_info_purity_feature(GoalInfo2, Purity,
+				GoalInfo)
+		;
+			GoalInfo2 = GoalInfo
+		),
+
 		map__init(Empty),
 		Goal = disj(GoalList, Empty) - GoalInfo
 	),
 	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal, Proc).
+
+:- pred get_purity(hlds_goal, purity).
+:- mode get_purity(in, out) is det.
+
+get_purity(_Goal - GoalInfo, Purity) :-
+	infer_goal_info_purity(GoalInfo, Purity).
 
 :- pred select_matching_clauses(list(clause), proc_id, list(clause)).
 :- mode select_matching_clauses(in, in, out) is det.

@@ -945,6 +945,7 @@ dupelim__replace_labels_code_addr(succip, _, succip).
 dupelim__replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
 dupelim__replace_labels_code_addr(do_redo, _, do_redo).
 dupelim__replace_labels_code_addr(do_fail, _, do_fail).
+dupelim__replace_labels_code_addr(do_trace_redo_fail, _, do_trace_redo_fail).
 dupelim__replace_labels_code_addr(do_det_closure, _, do_det_closure).
 dupelim__replace_labels_code_addr(do_semidet_closure, _, do_semidet_closure).
 dupelim__replace_labels_code_addr(do_nondet_closure, _, do_nondet_closure).

@@ -153,6 +153,7 @@ exprn_aux__addr_is_constant(succip, _, no).
 exprn_aux__addr_is_constant(do_succeed(_), _, no).
 exprn_aux__addr_is_constant(do_redo, _, no).
 exprn_aux__addr_is_constant(do_fail, _, no).
+exprn_aux__addr_is_constant(do_trace_redo_fail, _, no).
 exprn_aux__addr_is_constant(do_det_closure, _, no).
 exprn_aux__addr_is_constant(do_semidet_closure, _, no).
 exprn_aux__addr_is_constant(do_nondet_closure, _, no).

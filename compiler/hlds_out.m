@@ -1514,10 +1514,20 @@ hlds_out__write_unify_rhs_3(
 	).
 
 hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums) -->
+	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
+		not_next_to_graphic_token).
+
+:- pred hlds_out__write_functor(const, list(var), varset, bool, needs_quotes,
+	io__state, io__state).
+:- mode hlds_out__write_functor(in, in, in, in, in, di, uo) is det.
+
+hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums, 
+		NextToGraphicToken) -->
 	{ term__context_init(Context) },
 	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
 	{ Term = term__functor(Functor, ArgTerms, Context) },
-	mercury_output_term(Term, VarSet, AppendVarnums).
+	mercury_output_term(Term, VarSet, AppendVarnums, NextToGraphicToken).
+
 
 :- pred hlds_out__write_qualified_functor(module_name, const, list(var),
 		varset, bool, io__state, io__state).
@@ -1527,7 +1537,8 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet,
 		AppendVarnums) -->
 	mercury_output_bracketed_sym_name(ModuleName),
 	io__write_string(":"),
-	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums).
+	hlds_out__write_functor(Functor, ArgVars, VarSet, AppendVarnums,
+		next_to_graphic_token).
 
 hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, AppendVarnums) -->
 	(
@@ -1905,6 +1916,7 @@ hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
 hlds_out__write_typeclass_info_varmap_2(Indent, AppendVarnums, VarSet, TVarSet,
 		Constraint, Var) -->
 	hlds_out__write_indent(Indent),
+	io__write_string("% "),
 	mercury_output_constraint(TVarSet, Constraint),
 	io__write_string(" -> "),
 	mercury_output_var(Var, VarSet, AppendVarnums),

@@ -314,16 +314,16 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
 			InstanceTypesString),
 		string__append_list([
-			"In instance declaration for ",
+			"In instance declaration for `",
 			ClassNameString,
 			"(",
 			InstanceTypesString,
-			"): ",
-			"multiple implementations of type class method ",
+			")': ",
+			"multiple implementations of type class method `",
 			MethodNameString,
 			"/",
 			PredArityString,
-			"."],
+			"'."],
 			ErrorHeader),
 		I1 = _ - I1Context, 
 		Heading = 
@@ -352,16 +352,16 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 		mercury_type_list_to_string(InstanceVarSet, InstanceTypes,
 			InstanceTypesString),
 		string__append_list([
-			"In instance declaration for ",
+			"In instance declaration for `",
 			ClassNameString,
 			"(",
 			InstanceTypesString,
-			"): ",
-			"no implementation for type class method ",
+			")': ",
+			"no implementation for type class method `",
 			MethodNameString,
 			"/",
 			PredArityString,
-			"."],
+			"'."],
 			NewError),
 		Errors = [InstanceContext - [words(NewError)] | Errors0],
 		Info = instance_method_info(ModuleInfo, PredName, PredArity,
@@ -632,11 +632,11 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		constraint_list_to_string(ClassVarSet, UnprovenConstraints, 
 			ConstraintsString),
 		string__append_list([
-			"In instance declaration for ",
+			"In instance declaration for `",
 			ClassNameString,
 			"(",
 			InstanceTypesString,
-			"): ",
+			")': ",
 			"superclass constraint(s) not satisfied: ",
 			ConstraintsString,
 			"."],
@@ -652,7 +652,7 @@ constraint_list_to_string(_, [], "").
 constraint_list_to_string(VarSet, [C|Cs], String) :-
 	mercury_constraint_to_string(VarSet, C, String0),
 	constraint_list_to_string_2(VarSet, Cs, String1),
-	string__append(String0, String1, String).
+	string__append_list(["`", String0, "'", String1], String).
 
 :- pred constraint_list_to_string_2(varset, list(class_constraint), string).
 :- mode constraint_list_to_string_2(in, in, out) is det.
@@ -661,6 +661,6 @@ constraint_list_to_string_2(_VarSet, [], "").
 constraint_list_to_string_2(VarSet, [C|Cs], String) :-
 	mercury_constraint_to_string(VarSet, C, String0),
 	constraint_list_to_string_2(VarSet, Cs, String1),
-	string__append_list([", ", String0, String1], String).
+	string__append_list([", `", String0, "'", String1], String).
 
 %---------------------------------------------------------------------------%

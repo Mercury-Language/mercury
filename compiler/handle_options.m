@@ -32,7 +32,6 @@
 	% Display long usage message for help
 :- pred long_usage(io__state::di, io__state::uo) is det.
 
-
 	% Given the current set of options, figure out
 	% which grade to use.
 :- pred compute_grade(globals::in, string::out) is det.
@@ -180,7 +179,7 @@ postprocess_options(ok(OptionTable), Error) -->
                                     { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
                                 )
                             ;
-                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `interfaces', `all', or `default').") }
+                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
                             )
                         ;
                             { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
@@ -303,27 +302,33 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	% Execution tracing requires
 	% 	- disabling optimizations that would change
-	% 	  the trace being generated
+	% 	  the trace being generated (except with --trace-optimized)
 	%	- enabling some low level optimizations to ensure consistent
 	%	  paths across optimization levels
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
-	( { trace_level_trace_interface(TraceLevel, yes) } ->
+	globals__io_lookup_bool_option(trace_optimized, TraceOptimized),
+	( { TraceLevel \= none } ->
+		( { TraceOptimized = no } ->
 			% The following options modify the structure
 			% of the program, which makes it difficult to
 			% relate the trace to the source code (although
 			% it can be easily related to the transformed HLDS).
-		globals__io_set_option(inline_simple, bool(no)),
-		globals__io_set_option(inline_single_use, bool(no)),
-		globals__io_set_option(inline_compound_threshold, int(0)),
-		globals__io_set_option(optimize_unused_args, bool(no)),
-		globals__io_set_option(optimize_higher_order, bool(no)),
-		globals__io_set_option(type_specialization, bool(no)),
-		globals__io_set_option(deforestation, bool(no)),
-		globals__io_set_option(optimize_duplicate_calls, bool(no)),
-		globals__io_set_option(optimize_constructor_last_call,
-			bool(no)),
-
+			globals__io_set_option(inline_simple, bool(no)),
+			globals__io_set_option(inline_single_use, bool(no)),
+			globals__io_set_option(inline_compound_threshold,
+				int(0)),
+			globals__io_set_option(optimize_unused_args, bool(no)),
+			globals__io_set_option(optimize_higher_order, bool(no)),
+			globals__io_set_option(type_specialization, bool(no)),
+			globals__io_set_option(deforestation, bool(no)),
+			globals__io_set_option(optimize_duplicate_calls,
+				bool(no)),
+			globals__io_set_option(optimize_constructor_last_call,
+				bool(no))
+		;
+			[]
+		),
 			% The following option prevents useless variables
 			% from cluttering the trace. Its explicit setting
 			% removes a source of variability in the goal paths
@@ -379,6 +384,12 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% XXX deforestation does not perform folding on polymorphic
 	% predicates correctly with --typeinfo-liveness.
 	option_implies(typeinfo_liveness, deforestation, bool(no)),
+
+	% XXX middle_rec doesn't work with --typeinfo-liveness,
+	% because --typeinfo-liveness causes the stack to be used
+	% in places where middle_rec is not expecting it and has
+	% hence not set up a stack frame.
+	option_implies(typeinfo_liveness, middle_rec, bool(no)),
 
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),

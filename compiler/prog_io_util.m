@@ -42,6 +42,14 @@
 :- pred add_context(maybe1(item), term__context, maybe_item_and_context).
 :- mode add_context(in, in, out) is det.
 
+%
+% Various predicates to parse small bits of syntax.
+% These predicates simply fail if they encounter a syntax error.
+%
+
+:- pred parse_list_of_vars(term, list(var)).
+:- mode parse_list_of_vars(in, out) is semidet.
+
 :- pred convert_mode_list(list(term), list(mode)).
 :- mode convert_mode_list(in, out) is semidet.
 
@@ -51,9 +59,6 @@
 :- pred convert_inst_list(list(term), list(inst)).
 :- mode convert_inst_list(in, out) is semidet.
 
-	% Parse an inst.
-	% Fails on syntax errors.
-	%
 :- pred convert_inst(term, inst).
 :- mode convert_inst(in, out) is semidet.
 
@@ -101,6 +106,11 @@
 
 add_context(error(M, T), _, error(M, T)).
 add_context(ok(Item), Context, ok(Item, Context)).
+
+parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
+parse_list_of_vars(term__functor(term__atom("."), [Head, Tail], _), [V|Vs]) :-
+	Head = term__variable(V),
+	parse_list_of_vars(Tail, Vs).
 
 convert_mode_list([], []).
 convert_mode_list([H0|T0], [H|T]) :-

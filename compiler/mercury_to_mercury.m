@@ -171,6 +171,10 @@
 :- pred mercury_output_term(term, varset, bool, io__state, io__state).
 :- mode mercury_output_term(in, in, in, di, uo) is det.
 
+:- pred mercury_output_term(term, varset, bool, needs_quotes,
+				io__state, io__state).
+:- mode mercury_output_term(in, in, in, in, di, uo) is det.
+
 :- pred mercury_type_to_string(varset, term, string).
 :- mode mercury_type_to_string(in, in, out) is det.
 
@@ -1311,14 +1315,14 @@ mercury_output_ctor(Ctor, VarSet) -->
 		io__write_string("(")
 	),
 
-	% we need to quote ';'/2, '{}'/2, '&'/2, and 'some'/2
+	% we need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2
 	{ list__length(Args, Arity) },
 	(
 		{ Arity = 2 },
 		{ Name = unqualified(";")
 		; Name = unqualified("{}")
 		; Name = unqualified("some")
-		; Name = unqualified("&")
+		; Name = unqualified("=>")
 		}
 	->
 		io__write_string("{ ")
@@ -1341,7 +1345,7 @@ mercury_output_ctor(Ctor, VarSet) -->
 		{ Name = unqualified(";")
 		; Name = unqualified("{}")
 		; Name = unqualified("some")
-		; Name = unqualified("&")
+		; Name = unqualified("=>")
 		}
 	->
 		io__write_string(" }")
@@ -1349,7 +1353,7 @@ mercury_output_ctor(Ctor, VarSet) -->
 		[]
 	),
 
-	mercury_output_class_constraint_list(Constraints, VarSet, "&"),
+	mercury_output_class_constraint_list(Constraints, VarSet, "=>"),
 	(
 		{ ExistQVars = [] }
 	->
@@ -1567,7 +1571,7 @@ mercury_output_quantifier(VarSet, ExistQVars) -->
 
 mercury_output_class_context(ClassContext, ExistQVars, VarSet) -->
 	{ ClassContext = constraints(UnivCs, ExistCs) },
-	mercury_output_class_constraint_list(ExistCs, VarSet, "&"),
+	mercury_output_class_constraint_list(ExistCs, VarSet, "=>"),
 	( { ExistQVars = [], ExistCs = [] } -> 
 		[] 
 	; 
@@ -2423,10 +2427,6 @@ mercury_output_pragma_c_attributes(Attributes) -->
 mercury_output_term(Term, VarSet, AppendVarnums) -->
 	mercury_output_term(Term, VarSet, AppendVarnums,
 		not_next_to_graphic_token).
-
-:- pred mercury_output_term(term, varset, bool, needs_quotes,
-				io__state, io__state).
-:- mode mercury_output_term(in, in, in, in, di, uo) is det.
 
 mercury_output_term(term__variable(Var), VarSet, AppendVarnums, _) -->
 	mercury_output_var(Var, VarSet, AppendVarnums).

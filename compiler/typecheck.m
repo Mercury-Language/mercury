@@ -159,6 +159,7 @@
 
 :- implementation.
 
+:- import_module post_typecheck.
 :- import_module hlds_goal, prog_util, type_util, modules, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
@@ -263,33 +264,47 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 	(
 		{ pred_info_is_imported(PredInfo0) }
 	->
-		{ Error1 = Error0 },
-		{ ModuleInfo1 = ModuleInfo0 },
+		{ Error2 = Error0 },
+		{ ModuleInfo2 = ModuleInfo0 },
 		{ Changed2 = Changed0 }
 	;
 		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, 
-			MaybePredInfo, Changed1),
-		{
-			MaybePredInfo = yes(PredInfo),
-			Error1 = Error0,
-			map__det_update(Preds0, PredId, PredInfo, Preds),
-			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
+			PredInfo1, Error1, Changed1),
+		(
+			{ Error1 = no },
+			{ map__det_update(Preds0, PredId, PredInfo1, Preds) },
+			{ module_info_set_preds(ModuleInfo0, Preds,
+				ModuleInfo2) }
 		;
-			MaybePredInfo = no,
-			Error1 = yes,
-			module_info_remove_predid(ModuleInfo0, PredId,
-				ModuleInfo1)
-		},
+			{ Error1 = yes },
+			%
+			% if we get an error, we need to call
+			% post_typecheck__finish_ill_typed_pred on the
+			% pred, to ensure that its mode declaration gets
+			% properly module qualified; then we call
+			% `remove_predid', so that the predicate's definition
+			% will be ignored by later passes (the declaration
+			% will still be used to check any calls to it).
+			%
+			post_typecheck__finish_ill_typed_pred(ModuleInfo0,
+				PredId, PredInfo1, PredInfo),
+			{ map__det_update(Preds0, PredId, PredInfo, Preds) },
+			{ module_info_set_preds(ModuleInfo0, Preds,
+				ModuleInfo1) },
+			{ module_info_remove_predid(ModuleInfo1, PredId,
+				ModuleInfo2) }
+		),
+		{ bool__or(Error0, Error1, Error2) },
 		{ bool__or(Changed0, Changed1, Changed2) }
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, 
-		Error1, Error, Changed2, Changed).
+	typecheck_pred_types_2(PredIds, ModuleInfo2, ModuleInfo, 
+		Error2, Error, Changed2, Changed).
 
 :- pred typecheck_pred_type(pred_id, pred_info, module_info,
-	maybe(pred_info), bool, io__state, io__state).
-:- mode typecheck_pred_type(in, in, in, out, out, di, uo) is det.
+		pred_info, bool, bool, io__state, io__state).
+:- mode typecheck_pred_type(in, in, in, out, out, out, di, uo) is det.
 
-typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
+typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		IOState0, IOState) :-
 	(
 	    % Compiler-generated predicates are created already type-correct,
@@ -308,7 +323,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    ;
 	        PredInfo = PredInfo0
 	    ),
-	    MaybePredInfo = yes(PredInfo),
+	    Error = no,
 	    Changed = no,
 	    IOState = IOState0
 	;
@@ -334,12 +349,13 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				VarTypes, HeadVars, Clauses0),
 			pred_info_set_clauses_info(PredInfo0, ClausesInfo,
 				PredInfo),
-			MaybePredInfo = yes(PredInfo),
+			Error = no,
 			Changed = no
 		;
 			report_error_no_clauses(PredId, PredInfo0, ModuleInfo,
 			    IOState0, IOState),
-			MaybePredInfo = no,
+			PredInfo = PredInfo0,
+			Error = yes,
 			Changed = no
 		)
 	    ;
@@ -513,13 +529,6 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 			Changed = no
 		),
 		typecheck_info_get_found_error(TypeCheckInfo4, Error),
-		(
-			Error = yes,
-			MaybePredInfo = no
-		;
-			Error = no,
-			MaybePredInfo = yes(PredInfo)
-		),
 		typecheck_info_get_io_state(TypeCheckInfo4, IOState)
 	    )
 	).
@@ -2880,7 +2889,7 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		% in the inferred types, plus any existentially typed
 		% variables that will remain in the declaration.
 		%
-		% There may also be some types in the HeadTypeParams
+		% There may also be some type variables in the HeadTypeParams
 		% which do not occur in the type of any variable (e.g. this
 		% can happen in the case of code containing type errors).
 		% We'd better keep those, too, to avoid errors
@@ -3185,10 +3194,10 @@ report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :
 			list__sort_and_remove_dups(UnprovenConstraints1,
 				UnprovenConstraints),
 			prog_out__write_context(Context, IO0, IO1),
-			io__write_string("  ", IO1, IO2),
-			io__write_list(UnprovenConstraints, ", ",
+			io__write_string("  `", IO1, IO2),
+			io__write_list(UnprovenConstraints, "', `",
 				mercury_output_constraint(VarSet), IO2, IO3),
-			io__write_string(".\n", IO3, IO)
+			io__write_string("'.\n", IO3, IO)
 		)),
 
 		% XXX this won't be very pretty when there are
@@ -4697,6 +4706,14 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
+		{ PredName = unqualified("some"), Arity = 2 }
+	->
+		io__write_string(
+		    "  syntax error in existential quantification: first\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+		    "  argument of `some' should be a list of variables.\n")
+	;
 		io__write_string("  error: undefined predicate `"),
 		hlds_out__write_pred_call_id(PredCallId),
 		io__write_string("'"),
@@ -4968,6 +4985,8 @@ language_builtin("<=", 2).
 language_builtin("call", _).
 language_builtin("impure", 1).
 language_builtin("semipure", 1).
+language_builtin("all", 2).
+language_builtin("some", 2).
 
 :- pred write_call_context(term__context, pred_call_id, int, unify_context,
 				io__state, io__state).

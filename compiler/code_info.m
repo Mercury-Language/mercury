@@ -61,12 +61,14 @@
 
 :- type code_info.
 
-		% Create a new code_info structure.
+		% Create a new code_info structure. Also return the
+		% outermost resumption point, and the number of stack slot
+		% (if any) that contains the from_full tracing flag.
 :- pred code_info__init(varset, set(var), stack_slots, bool, globals,
 	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int, resume_point_info, code_info).
+	int, resume_point_info, maybe(int), code_info).
 :- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in,
-	out, out) is det.
+	out, out, out) is det.
 
 		% Get the globals table.
 :- pred code_info__get_globals(globals, code_info, code_info).
@@ -265,10 +267,11 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, Instmap, FollowVars,
-		ModuleInfo, CellCount, ResumePoint, CodeInfo) :-
+		PredId, ProcId, ProcInfo, Instmap, FollowVars, ModuleInfo,
+		CellCount, ResumePoint, MaybeFromFullSlot, CodeInfo) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
+	proc_info_interface_code_model(ProcInfo, CodeModel),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
 	arg_info__build_input_arg_list(Args, ArgList),
 	globals__get_options(Globals, Options),
@@ -289,15 +292,9 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	map__init(TempsInUse),
 	set__init(Zombies),
 	map__init(LayoutMap),
-	code_info__max_var_slot(StackSlots, VarSlotCount0),
-	proc_info_interface_code_model(ProcInfo, CodeModel),
-	(
-		CodeModel = model_non
-	->
-		VarSlotCount is VarSlotCount0 + 1
-	;
-		VarSlotCount = VarSlotCount0
-	),
+	code_info__max_var_slot(StackSlots, VarSlotMax),
+	trace__reserved_slots(ProcInfo, Globals, FixedSlots),
+	int__max(VarSlotMax, FixedSlots, SlotMax),
 	CodeInfo0 = code_info(
 		Globals,
 		ModuleInfo,
@@ -305,7 +302,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		ProcId,
 		ProcInfo,
 		Varset,
-		VarSlotCount,
+		SlotMax,
 		no,
 
 		Liveness,
@@ -322,25 +319,26 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		0,
 		AvailSlots
 	),
-	globals__get_trace_level(Globals, TraceLevel),
-	code_info__init_maybe_trace_info(TraceLevel, ModuleInfo, ProcInfo,
-		MaybeFailVars, CodeInfo0, CodeInfo1),
+	code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
+		MaybeFailVars, MaybeFromFullSlot, CodeInfo0, CodeInfo1),
 	code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint,
 		CodeInfo1, CodeInfo).
 
-:- pred code_info__init_maybe_trace_info(trace_level, module_info, proc_info,
-	maybe(set(var)), code_info, code_info).
-:- mode code_info__init_maybe_trace_info(in, in, in, out, in, out) is det.
+:- pred code_info__init_maybe_trace_info(globals, module_info, proc_info,
+	maybe(set(var)), maybe(int), code_info, code_info).
+:- mode code_info__init_maybe_trace_info(in, in, in, out, out, in, out) is det.
 
-code_info__init_maybe_trace_info(TraceLevel, ModuleInfo, ProcInfo,
-		MaybeFailVars) -->
-	( { trace_level_trace_interface(TraceLevel, yes) } ->
-		trace__setup(TraceLevel, TraceInfo),
+code_info__init_maybe_trace_info(Globals, ModuleInfo, ProcInfo,
+		MaybeFailVars, MaybeFromFullSlot) -->
+	{ globals__get_trace_level(Globals, TraceLevel) },
+	( { TraceLevel \= none } ->
+		trace__setup(Globals, MaybeFromFullSlot, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo)),
 		{ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) },
 		{ MaybeFailVars = yes(FailVars) }
 	;
-		{ MaybeFailVars = no }
+		{ MaybeFailVars = no },
+		{ MaybeFromFullSlot = no }
 	).
 
 %---------------------------------------------------------------------------%
@@ -550,11 +548,11 @@ code_info__set_avail_temp_slots(PF, CI0, CI) :-
 	code_info, code_info).
 :- mode code_info__lookup_type_defn(in, out, in, out) is det.
 
-	% Given a list of type variables, find the lvals where the
-	% corresponding type_infos and typeclass_infos are being stored.
-:- pred code_info__find_type_infos(list(var), assoc_list(var, lval),
-	code_info, code_info).
-:- mode code_info__find_type_infos(in, out, in, out) is det.
+	% For each type variable in the given list, find out where the
+	% typeinfo var for that type variable is.
+:- pred code_info__find_typeinfos_for_tvars(list(tvar),
+	map(tvar, set(layout_locn)), code_info, code_info).
+:- mode code_info__find_typeinfos_for_tvars(in, out, in, out) is det.
 
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
@@ -578,6 +576,11 @@ code_info__set_avail_temp_slots(PF, CI0, CI) :-
 :- pred code_info__get_pred_proc_arginfo(pred_id, proc_id, list(arg_info),
 	code_info, code_info).
 :- mode code_info__get_pred_proc_arginfo(in, in, out, in, out) is det.
+
+	% Get the set of variables currently needed by the resume
+	% points of enclosing goals.
+:- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
+:- mode code_info__current_resume_point_vars(out, in, out) is det.
 
 :- pred code_info__variable_to_string(var, string, code_info, code_info).
 :- mode code_info__variable_to_string(in, out, in, out) is det.
@@ -717,29 +720,42 @@ code_info__lookup_type_defn(Type, TypeDefn) -->
 	{ module_info_types(ModuleInfo, TypeTable) },
 	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
-code_info__find_type_infos([], []) --> [].
-code_info__find_type_infos([TVar | TVars], [TVar - Lval | Lvals]) -->
+code_info__find_typeinfos_for_tvars(TypeVars, TypeInfoDataMap) -->
+	code_info__variable_locations(VarLocs),
+	code_info__get_varset(VarSet),
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	{
-		map__search(TypeInfoMap, TVar, Locn)
-	->
-		type_info_locn_var(Locn, Var)
-	;
-		error("cannot find var for type variable")
-	},
-	{ proc_info_stack_slots(ProcInfo, StackSlots) },
-	(
-		{ map__search(StackSlots, Var, Lval0) }
-	->
-		{ Lval = Lval0 }
-	;
-		code_info__variable_to_string(Var, VarString),
-		{ string__format("code_info__find_type_infos: can't find lval for type_info var %s",
-			[s(VarString)], ErrStr) },
-		{ error(ErrStr) }
-	),
-	code_info__find_type_infos(TVars, Lvals).
+	{ map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns) },
+	{ FindLocn = lambda([TypeInfoLocn::in, Locns::out] is det, (
+		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+		(
+			map__search(VarLocs, TypeInfoVar, TypeInfoRvalSet)
+		->
+			ConvertRval = lambda([Locn::out] is nondet, (
+				set__member(Rval, TypeInfoRvalSet),
+				Rval = lval(Lval),
+				( 
+					TypeInfoLocn = typeclass_info(_,
+						FieldNum),
+					Locn = indirect(Lval, FieldNum)
+				;
+					TypeInfoLocn = type_info(_),
+					Locn = direct(Lval)
+				)
+			)),
+			solutions_set(ConvertRval, Locns)
+		;
+			varset__lookup_name(VarSet, TypeInfoVar, VarString),
+			string__format("%s: %s %s",
+				[s("code_info__find_typeinfos_for_tvars"),
+				s("can't find lval for type_info var"),
+				s(VarString)], ErrStr),
+			error(ErrStr)
+		)
+	)) },
+	{ list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns) },
+	{ map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
+		TypeInfoDataMap) }.
 
 code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),
@@ -769,11 +785,6 @@ code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo) -->
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
 	{ proc_info_arg_info(ProcInfo, ArgInfo) }.
 
-%---------------------------------------------------------------------------%
-
-:- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
-:- mode code_info__current_resume_point_vars(out, in, out) is det.
-
 code_info__current_resume_point_vars(ResumeVars) -->
 	code_info__get_fail_info(FailInfo),
 	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
@@ -781,8 +792,6 @@ code_info__current_resume_point_vars(ResumeVars) -->
 	{ code_info__pick_first_resume_point(ResumePointInfo, ResumeMap, _) },
 	{ map__keys(ResumeMap, ResumeMapVarList) },
 	{ set__list_to_set(ResumeMapVarList, ResumeVars) }.
-
-%---------------------------------------------------------------------------%
 
 code_info__variable_to_string(Var, Name) -->
 	code_info__get_varset(Varset),
@@ -3203,20 +3212,10 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	code_info__generate_var_livelvals(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GC_Method) },
-	{ globals__get_trace_level(Globals, TraceLevel) },
-	{
-		( GC_Method = accurate
-		; trace_level_trace_returns(TraceLevel, yes)
-		)
-	->
-		NeedVarInfo = yes
-	;
-		NeedVarInfo = no
-	},
+	{ globals__want_return_layouts(Globals, WantReturnLayout) },
 	code_info__get_inst_table(InstTable),
-	code_info__livevals_to_livelvals(LiveVals2, NeedVarInfo, InstTable,
-		AfterCallInstMap, LiveVals3),
+	code_info__livevals_to_livelvals(LiveVals2, WantReturnLayout, 
+		InstTable, AfterCallInstMap, LiveVals3),
 	code_info__get_temps_in_use(TempsSet),
 	{ map__to_assoc_list(TempsSet, Temps) },
 	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals) }.
@@ -3237,7 +3236,9 @@ code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
 
 code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
 code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
-		[live_lvalue(Slot, LiveValueType, "", []) | LiveInfo1]) :-
+		[live_lvalue(direct(Slot), LiveValueType, Empty) | LiveInfo1])
+		:-
+	map__init(Empty),
 	code_info__get_live_value_type(StoredLval, LiveValueType),
 	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
 
@@ -3246,25 +3247,26 @@ code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0,
 :- mode code_info__livevals_to_livelvals(in, in, in, in, out, in, out) is det.
 
 code_info__livevals_to_livelvals([], _, _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], NeedVarInfo, InstTable,
-		AfterCallInstMap, [LiveLval | Lives]) -->
+code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnLayout,
+		InstTable, AfterCallInstMap, [LiveLval | Lives]) -->
 	code_info__get_varset(VarSet),
-	{ varset__lookup_name(VarSet, Var, Name) },
 	(
-		{ NeedVarInfo = yes }
+		{ WantReturnLayout = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+		{ varset__lookup_name(VarSet, Var, Name) },
 
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
-		code_info__find_type_infos(TypeVars, TypeParams),
-		{ LiveLval = live_lvalue(Lval, var(Type, QualInst), Name,
-				TypeParams) },
-		{ QualInst = qualified_inst(InstTable, Inst) }
+		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
+		{ QualInst = qualified_inst(InstTable, Inst) },
+		{ LiveLval = live_lvalue(direct(Lval),
+			var(Var, Name, Type, QualInst), TypeParams) }
 	;
-		{ LiveLval = live_lvalue(Lval, unwanted, Name, []) }
+		{ map__init(Empty) },
+		{ LiveLval = live_lvalue(direct(Lval), unwanted, Empty) }
 	),
-	code_info__livevals_to_livelvals(Ls, NeedVarInfo, InstTable,
+	code_info__livevals_to_livelvals(Ls, WantReturnLayout, InstTable,
 		AfterCallInstMap, Lives).
 
 :- pred code_info__get_live_value_type(slot_contents, live_value_type).
@@ -3437,10 +3439,9 @@ code_info__max_var_slot_2([L | Ls], Max0, Max) :-
 code_info__stack_variable(Num, Lval) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ Num1 is Num - 1 },		% framevars start at zero
-		{ Lval = framevar(Num1) }
+		{ Lval = framevar(Num) }
 	;
-		{ Lval = stackvar(Num) }	% stackvars start at one
+		{ Lval = stackvar(Num) }
 	).
 
 :- pred code_info__stack_variable_reference(int, rval, code_info, code_info).
@@ -3449,10 +3450,9 @@ code_info__stack_variable(Num, Lval) -->
 code_info__stack_variable_reference(Num, mem_addr(Ref)) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ Num1 is Num - 1 },		% framevars start at zero
-		{ Ref = framevar_ref(Num1) }
+		{ Ref = framevar_ref(Num) }
 	;
-		{ Ref = stackvar_ref(Num) }	% stackvars start at one
+		{ Ref = stackvar_ref(Num) }
 	).
 
 %---------------------------------------------------------------------------%

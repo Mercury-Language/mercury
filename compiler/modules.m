@@ -467,6 +467,14 @@
 :- pred pragma_allowed_in_interface(pragma_type, bool).
 :- mode pragma_allowed_in_interface(in, out) is det.
 
+	% Given a module name and a list of the items in that module,
+	% this procedure checks if the module doesn't export anything,
+	% and if so, and --warn-nothing-exported is set, it reports
+	% a warning.
+
+:- pred check_for_no_exports(item_list, module_name, io__state, io__state).
+:- mode check_for_no_exports(in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -713,7 +721,7 @@ make_interface(SourceFileName, ModuleName, Items0) -->
 							InterfaceItems3) },
 			check_for_clauses_in_interface(InterfaceItems3,
 							InterfaceItems),
-			check_for_no_exports(InterfaceItems, ModuleName),
+			check_int_for_no_exports(InterfaceItems, ModuleName),
 			write_interface_file(ModuleName, ".int",
 							InterfaceItems),
 			{ get_short_interface(InterfaceItems,
@@ -848,12 +856,25 @@ pragma_allowed_in_interface(terminates(_, _), yes).
 pragma_allowed_in_interface(does_not_terminate(_, _), yes).
 pragma_allowed_in_interface(check_termination(_, _), yes).
 
-:- pred check_for_no_exports(item_list, module_name, io__state, io__state).
-:- mode check_for_no_exports(in, in, di, uo) is det.
+check_for_no_exports(Items, ModuleName) -->
+	globals__io_lookup_bool_option(warn_nothing_exported, ExportWarning),
+	( { ExportWarning = no } ->
+		[]
+	;
+		{ get_interface(Items, no, InterfaceItems) },
+		check_int_for_no_exports(InterfaceItems, ModuleName)
+	).
 
-check_for_no_exports([], ModuleName) -->
+	% Given a module name and a list of the items in that module's
+	% interface, this procedure checks if the module doesn't export
+	% anything, and if so, and --warn-nothing-exported is set, it reports
+	% a warning.
+:- pred check_int_for_no_exports(item_list, module_name, io__state, io__state).
+:- mode check_int_for_no_exports(in, in, di, uo) is det.
+
+check_int_for_no_exports([], ModuleName) -->
 	warn_no_exports(ModuleName).
-check_for_no_exports([Item - _Context | Items], ModuleName) -->
+check_int_for_no_exports([Item - _Context | Items], ModuleName) -->
 	(
 		{ Item = nothing
 		; Item = module_defn(_, ModuleDefn),
@@ -861,7 +882,7 @@ check_for_no_exports([Item - _Context | Items], ModuleName) -->
 		}
 	->
 		% nothing useful - keep searching
-		check_for_no_exports(Items, ModuleName)
+		check_int_for_no_exports(Items, ModuleName)
 	;
 		% we found something useful - don't issue the warning
 		[]
@@ -1538,6 +1559,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				"ifneq ($(RM_C),:)\n",
 				ObjFileName, " : ", SourceFileName, "\n",
 				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) ",
+					"MC=""$(MC)"" ",
+					"ALL_MCFLAGS=""$(ALL_MCFLAGS)"" ",
 					"ALL_GRADEFLAGS=""$(ALL_GRADEFLAGS)"" ",
 					CFileName, "\n",
 				"\t$(MGNUC) $(ALL_GRADEFLAGS) ",
@@ -1546,6 +1569,8 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				"\t$(RM_C) ", CFileName, "\n",
 				PicObjFileName, " : ", SourceFileName, "\n",
 				"\t$(MMAKE_MAKE_CMD) $(MFLAGS) ",
+					"MC=""$(MC)"" ",
+					"ALL_MCFLAGS=""$(ALL_MCFLAGS)"" ",
 					"ALL_GRADEFLAGS=""$(ALL_GRADEFLAGS)"" ",
 					CFileName, "\n",
 				"\t$(MGNUC) $(ALL_GRADEFLAGS) ",
@@ -3111,11 +3136,11 @@ The error message should come out like this
 very_long_name.m:123: In module `very_long_name':
 very_long_name.m:123:   error in `import_module' declaration:
 very_long_name.m:123:   module `parent_module:sub_module' is inaccessible.
-very_long_name.m:123:   Either there was no `import_module' or `use_module'
-very_long_name.m:123:   declaration importing module `parent_module',
-very_long_name.m:123:   or the interface for module `parent_module'
-very_long_name.m:123:   does not contain an `include_module' declaration
-very_long_name.m:123:   for module `sub_module'.
+very_long_name.m:123:   Either there was no prior `import_module' or 
+very_long_name.m:123:  `use_module' declaration to import module
+very_long_name.m:123:   `parent_module', or the interface for module
+very_long_name.m:123:   `parent_module' does not contain an `include_module'
+very_long_name.m:123:   declaration for module `sub_module'.
 */
 
 report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
@@ -3140,21 +3165,21 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
 		prog_out__write_context(Context),
-		io__write_string("  Either there was no `import_module' or "),
-		io__write_string("`use_module'\n"),
+		io__write_string("  Either there was no prior "),
+		io__write_string("`import_module' or\n"),
 		prog_out__write_context(Context),
-		io__write_string("  declaration to import module `"),
+		io__write_string("  `use_module' declaration to import "),
+		io__write_string("module\n"),
+		prog_out__write_context(Context),
+		io__write_string("  `"),
 		prog_out__write_sym_name(ParentModule),
-		io__write_string("',\n"),
+		io__write_string("', or the interface for module\n"),
 		prog_out__write_context(Context),
-		io__write_string("  or the interface for module `"),
+		io__write_string("  `"),
 		prog_out__write_sym_name(ParentModule),
-		io__write_string("\n"),
+		io__write_string("' does not contain an `include_module'\n"),
 		prog_out__write_context(Context),
-		io__write_strings(["  does not contain an `include_module' ",
-					"declaration\n"]),
-		prog_out__write_context(Context),
-		io__write_string("  for module `"),
+		io__write_string("  declaration for module `"),
 		io__write_string(SubModule),
 		io__write_string("'.\n")
 	;
@@ -3537,6 +3562,7 @@ report_error_implementation_in_interface(ModuleName, Context) -->
 
 :- pred get_interface(item_list, bool, item_list).
 :- mode get_interface(in, in, out) is det.
+
 get_interface(Items0, IncludeImported, Items) :-
 	get_interface_2(Items0, no, IncludeImported, [], RevItems),
 	list__reverse(RevItems, Items).

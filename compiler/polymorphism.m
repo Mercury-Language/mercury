@@ -186,9 +186,10 @@
 %		  * ...
 %		  * type info #n
 %
-% The base_type_info is produced statically, and there is one for each instance
-% declaration. For each constraint on the instance declaration, the
-% corresponding typeclass info is stored in the second part.
+% The base_typeclass_info is produced statically, and there is one for
+% each instance declaration. For each constraint on the instance
+% declaration, the corresponding typeclass_info is stored in the second
+% part.
 %
 % eg. for the following program:
 %
@@ -205,7 +206,7 @@
 %
 %		The typeclass_info:
 %		  * a pointer to the base typeclass info
-%		  * type info for int
+%		  * type_info for int
 %
 %	The typeclass_info for foo(list(T)) is:
 %		The base_typeclass_info:
@@ -217,7 +218,7 @@
 %		The typeclass_info contains:
 %		  * a pointer to the base typeclass info
 %		  * typeclass info for foo(T)
-%		  * type info for list(T)
+%		  * type_info for list(T)
 %
 % If the "T" for the list is known, the whole typeclass_info will be static
 % data. When we do not know until runtime, the typeclass_info is constructed
@@ -236,8 +237,8 @@
 %
 %	p(X) :- q([X], 0), r(X, 0).
 %
-% We add an extra argument for each typeclass constraint, and one argument for
-% each unconstrained type variable.
+% We add an extra argument for each type class constraint, and one
+% argument for each unconstrained type variable.
 %
 %	:- pred p(typeclass_info(foo(T1)), T1).
 %	:- pred q(typeclass_info(foo(T2)), typeclass_info(bar(T3)), T2, T3).
@@ -254,7 +255,7 @@
 %			...
 %			),
 %		TypeClassInfoT2 = typeclass_info(
-%			BaseClassTypeInfoT2,
+%			BaseTypeClassInfoT2,
 %			TypeClassInfoT1,
 %			<type_info for list(T1)>),
 %		BaseTypeClassInfoT3 = base_typeclass_info(
@@ -265,7 +266,7 @@
 %			...
 %			),
 %		TypeClassInfoT3 = typeclass_info(
-%			BaseClassTypeInfoT3,
+%			BaseTypeClassInfoT3,
 %			<type_info for int>),
 %		q(TypeClassInfoT2, TypeClassInfoT3, [X], 0),
 %		BaseTypeClassInfoT4 = baseclass_type_info(
@@ -669,13 +670,9 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 	poly_info_get_type_info_map(PolyInfo1, TypeInfoMap1),
 	map__keys(TypeInfoMap1, ExistConstrainedTVars),
 
-		% the above call inserts entries into the typeinfo map
-		% which we don't want, so we must reset it
-	map__init(TypeInfoMap2),
-	poly_info_set_type_info_map(TypeInfoMap2, PolyInfo1, PolyInfo2),
 	polymorphism__make_typeclass_info_head_vars(UnivConstraints,
-		UnivHeadTypeClassInfoVars, PolyInfo2, PolyInfo3),
-	poly_info_get_type_info_map(PolyInfo3, TypeInfoMap3),
+		UnivHeadTypeClassInfoVars, PolyInfo1, PolyInfo2),
+	poly_info_get_type_info_map(PolyInfo2, TypeInfoMap3),
 	map__keys(TypeInfoMap3, UnivConstrainedTVars),
 
 	list__append(UnivHeadTypeClassInfoVars, ExistHeadTypeClassInfoVars,
@@ -693,7 +690,7 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 		UnconstrainedUnivTVars = UnconstrainedTVars,
 		UnconstrainedExistTVars = [],
 		ExistHeadTypeInfoVars = [],
-		PolyInfo4 = PolyInfo3
+		PolyInfo3 = PolyInfo2
 	;
 		list__delete_elems(UnconstrainedTVars, ExistQVars,
 			UnconstrainedUnivTVars),
@@ -701,10 +698,10 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 			UnconstrainedExistTVars),
 		polymorphism__make_head_vars(UnconstrainedExistTVars,
 			ArgTypeVarSet, ExistHeadTypeInfoVars,
-			PolyInfo3, PolyInfo4)
+			PolyInfo2, PolyInfo3)
 	),
 	polymorphism__make_head_vars(UnconstrainedUnivTVars, ArgTypeVarSet,
-		UnivHeadTypeInfoVars, PolyInfo4, PolyInfo5),
+		UnivHeadTypeInfoVars, PolyInfo3, PolyInfo4),
 	list__append(UnivHeadTypeInfoVars, ExistHeadTypeInfoVars,
 		ExtraHeadTypeInfoVars),
 
@@ -739,15 +736,21 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 	%
 	ToLocn = lambda([TheVar::in, TheLocn::out] is det,
 			TheLocn = type_info(TheVar)),
+
 	list__map(ToLocn, UnivHeadTypeInfoVars, UnivTypeLocns),
 	map__det_insert_from_corresponding_lists(TypeInfoMap3,
-		UnconstrainedUnivTVars, UnivTypeLocns, TypeInfoMap6),
-	poly_info_set_type_info_map(TypeInfoMap6, PolyInfo5, PolyInfo6),
+		UnconstrainedUnivTVars, UnivTypeLocns, TypeInfoMap4),
+
+	list__map(ToLocn, ExistHeadTypeInfoVars, ExistTypeLocns),
+	map__det_insert_from_corresponding_lists(TypeInfoMap4,
+		UnconstrainedExistTVars, ExistTypeLocns, TypeInfoMap5),
+
+	poly_info_set_type_info_map(TypeInfoMap5, PolyInfo4, PolyInfo5),
 
 	% Make a map of the locations of the typeclass_infos
 	map__from_corresponding_lists(UnivConstraints,
 			UnivHeadTypeClassInfoVars, TypeClassInfoMap),
-	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo6, PolyInfo).
+	poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo5, PolyInfo).
 
 
 % XXX the following code ought to be rewritten to handle
@@ -806,6 +809,8 @@ polymorphism__produce_existq_tvars(PredInfo, ProcInfo,
 		ExistConstraints, ExistQVarsForCall, Context,
 		ExistTypeClassVars, ExtraTypeClassGoals,
 		Info0, Info1),
+	polymorphism__update_typeclass_infos(ExistConstraints,
+		ExistTypeClassVars, Info1, Info2),
 	polymorphism__assign_var_list(
 		ExistTypeClassInfoHeadVars, ExistTypeClassVars,
 		ExtraTypeClassUnifyGoals),
@@ -827,7 +832,7 @@ polymorphism__produce_existq_tvars(PredInfo, ProcInfo,
 	term__apply_substitution_to_list(UnconstrainedTVarTerms,
 		TypeSubst, ActualTypes),
 	polymorphism__make_type_info_vars(ActualTypes, UnivQTVars, Context,
-		TypeInfoVars, ExtraTypeInfoGoals, Info1, Info),
+		TypeInfoVars, ExtraTypeInfoGoals, Info2, Info),
 	polymorphism__assign_var_list(TypeInfoHeadVars, TypeInfoVars,
 		ExtraTypeInfoUnifyGoals),
 	list__condense([[Goal0],
@@ -1457,28 +1462,35 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 		% the goal, so they don't need to be mentioned in the
 		% instmap delta)
 		%
-
-% 		poly_info_get_type_info_map(Info, TypeVarMap),
-% 		poly_info_get_typeclass_info_map(Info, TypeClassVarMap),
-% 		goal_info_get_instmap_delta(GoalInfo1, InstmapDelta0),
-% 		AddInstDelta = lambda([TVar::in, IMD0::in, IMD::out] is det, (
-% 			map__lookup(TypeVarMap, TVar, TypeInfoLocn),
-% 			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-% 			instmap_delta_set(IMD0, TypeInfoVar,
-% 				ground(shared, no), IMD)
-% 			)),
-% 		AddTCInstDelta = lambda([Constraint::in, IMD0::in, IMD::out]
-% 					is det, (
-% 			map__lookup(TypeClassVarMap, Constraint,
-% 				TypeClassInfoVar),
-% 			instmap_delta_set(IMD0, TypeClassInfoVar,
-% 				ground(shared, no), IMD)
-% 			)),
-% 		list__foldl(AddInstDelta, PredExistQVars,
-% 			InstmapDelta0, InstmapDelta1),
-% 		list__foldl(AddTCInstDelta, ExistentialConstraints,
-% 			InstmapDelta1, InstmapDelta),
-% 		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo)
+% YYY Andrew, why is this commented out? - dmo
+%		poly_info_get_type_info_map(Info, TypeVarMap),
+%		poly_info_get_typeclass_info_map(Info, TypeClassVarMap),
+%		goal_info_get_instmap_delta(GoalInfo1, InstmapDelta0),
+%		AddInstDelta = lambda([TVar::in, IMD0::in, IMD::out] is det, (
+%			map__lookup(TypeVarMap, TVar, TypeInfoLocn),
+%			(
+%				TypeInfoLocn = type_info(TypeInfoVar),
+%				instmap_delta_set(IMD0, TypeInfoVar,
+%					ground(shared, no), IMD)
+%			;
+%				TypeInfoLocn = typeclass_info(_, _),
+%				% the instmap delta for the type class info
+%				% variable will be added by AddTCInstDelta
+%				% (below)
+%				IMD = IMD0
+%			))),
+%		AddTCInstDelta = lambda([Constraint::in, IMD0::in, IMD::out]
+%					is det, (
+%			map__lookup(TypeClassVarMap, Constraint,
+%				TypeClassInfoVar),
+%			instmap_delta_set(IMD0, TypeClassInfoVar,
+%				ground(shared, no), IMD)
+%			)),
+%		list__foldl(AddInstDelta, PredExistQVars,
+%			InstmapDelta0, InstmapDelta1),
+%		list__foldl(AddTCInstDelta, ExistentialConstraints,
+%			InstmapDelta1, InstmapDelta),
+%		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo)
 		GoalInfo = GoalInfo1
 	).
 
@@ -1488,9 +1500,24 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 
 polymorphism__update_typeclass_infos(Constraints, Vars, Info0, Info) :-
 	poly_info_get_typeclass_info_map(Info0, TypeClassInfoMap0),
-	map__det_insert_from_corresponding_lists(TypeClassInfoMap0,
-		Constraints, Vars, TypeClassInfoMap),
+	insert_typeclass_info_locns( Constraints, Vars, TypeClassInfoMap0, 
+		TypeClassInfoMap),
 	poly_info_set_typeclass_info_map(TypeClassInfoMap, Info0, Info).
+
+:- pred insert_typeclass_info_locns(list(class_constraint), list(var), 
+	map(class_constraint, var), map(class_constraint, var)).
+:- mode insert_typeclass_info_locns(in, in, in, out) is det.
+
+insert_typeclass_info_locns([], [], TypeClassInfoMap, TypeClassInfoMap).
+insert_typeclass_info_locns([C|Cs], [V|Vs], TypeClassInfoMap0, 
+		TypeClassInfoMap) :-
+	map__set(TypeClassInfoMap0, C, V, TypeClassInfoMap1),
+	insert_typeclass_info_locns(Cs, Vs, 
+	TypeClassInfoMap1, TypeClassInfoMap).
+insert_typeclass_info_locns([], [_|_], _, _) :-
+	error("polymorphism:insert_typeclass_info_locns").
+insert_typeclass_info_locns([_|_], [], _, _) :-
+	error("polymorphism:insert_typeclass_info_locns").
 
 %-----------------------------------------------------------------------------%
 
@@ -1635,11 +1662,6 @@ polymorphism__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 % Constraints which are already in the TypeClassInfoMap are assumed to
 % have already had their typeclass_infos initialized; for them, we
 % just return the variable in the TypeClassInfoMap.
-%
-% If the called predicate is a class method, and we know which instance
-% it is, then instead of creating a type_info variable for the type class
-% instance, we just return the pred_proc_id for that instance.
-% Otherwise we return the original pred_proc_id unchanged.
 
 :- pred polymorphism__make_typeclass_info_vars(list(class_constraint),
 	existq_tvars, term__context,
@@ -3070,7 +3092,6 @@ poly_info_get_module_info(PolyInfo, ModuleInfo) :-
 
 poly_info_get_inst_table(PolyInfo, InstTable) :-
 	PolyInfo = poly_info(_, _, _, _, _, _, _, _, InstTable).
-
 
 :- pred poly_info_set_varset(varset, poly_info, poly_info).
 :- mode poly_info_set_varset(in, in, out) is det.

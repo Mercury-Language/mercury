@@ -202,7 +202,8 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% execution tracing.
 	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, OutsideResumePoint, CodeInfo0),
+		ModuleInfo, CellCount0, OutsideResumePoint, MaybeFromFullSlot,
+		CodeInfo0),
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,
@@ -234,7 +235,8 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 			no, EntryLabel),
 		continuation_info__add_proc_info(proc(PredId, ProcId),
 			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
-			MaybeTraceCallLabel, LayoutInfo, ContInfo0, ContInfo)
+			MaybeTraceCallLabel, MaybeFromFullSlot,
+			LayoutInfo, ContInfo0, ContInfo)
 	;
 		ContInfo = ContInfo0
 	),
@@ -487,7 +489,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint,
 	),
 	code_info__get_maybe_trace_info(MaybeTraceInfo),
 	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ trace__generate_slot_fill_code(TraceInfo, TraceFillCode) }
+		trace__generate_slot_fill_code(TraceInfo, TraceFillCode)
 	;
 		{ TraceFillCode = empty }
 	),
@@ -653,7 +655,17 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 		( { MaybeTraceInfo = yes(TraceInfo) } ->
 			trace__generate_external_event_code(exit, TraceInfo,
 				_, TypeInfoDatas, TraceExitCode),
-			{ assoc_list__values(TypeInfoDatas, TypeInfoLvals) }
+			{ map__values(TypeInfoDatas, TypeInfoLocnSets) },
+			{ FindBaseLvals = lambda([Lval::out] is nondet, (
+				list__member(LocnSet, TypeInfoLocnSets),
+				set__member(Locn, LocnSet),
+				(
+					Locn = direct(Lval)
+				;
+					Locn = indirect(Lval, _)
+				)
+			)) },
+			{ solutions(FindBaseLvals, TypeInfoLvals) }
 		;
 			{ TraceExitCode = empty },
 			{ TypeInfoLvals = [] }
@@ -693,14 +705,21 @@ code_gen__generate_exit(CodeModel, FrameInfo, RestoreDeallocCode, ExitCode) -->
 			}
 		;
 			{ CodeModel = model_non },
+			{ MaybeTraceInfo = yes(TraceInfo2) ->
+				trace__maybe_setup_redo_event(TraceInfo2,
+					SetupRedoCode)
+			;
+				SetupRedoCode = empty
+			},
 			{ SuccessCode = node([
 				livevals(LiveArgs) - "",
 				goto(do_succeed(no))
 					- "Return from procedure call"
 			]) },
 			{ AllSuccessCode =
+				tree(SetupRedoCode,
 				tree(TraceExitCode,
-				     SuccessCode)
+				     SuccessCode))
 			}
 		),
 		{ ExitCode =
@@ -880,8 +899,10 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
         ;
 		Instrn0 = call(Target, ReturnLabel, LiveVals0, CM)
 	->
+		map__init(Empty),
 		Instrn  = call(Target, ReturnLabel, 
-			[live_lvalue(stackvar(StackLoc), succip, "", []) |
+			[live_lvalue(direct(stackvar(StackLoc)),
+				succip, Empty) |
 			LiveVals0], CM)
 	;
 		Instrn = Instrn0

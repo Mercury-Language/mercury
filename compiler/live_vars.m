@@ -50,18 +50,20 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	set__init(LiveSets0),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),
-	( trace_level_trace_interface(TraceLevel, yes) ->
+	( TraceLevel \= none ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0),
 		set__insert(LiveSets0, ResumeVars0, LiveSets1)
 	;
 		set__init(ResumeVars0),
 		LiveSets1 = LiveSets0
 	),
+	trace__reserved_slots(ProcInfo0, Globals, NumReservedSlots),
 	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets1,
 		ModuleInfo, ProcInfo0, _Liveness, _ResumeVars, LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
-	allocate_stack_slots(ColourList, CodeModel, StackSlots),
+	allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
+		StackSlots),
 
 	proc_info_set_stack_slots(ProcInfo0, StackSlots, ProcInfo).
 
@@ -588,19 +590,15 @@ find_output_vars_2([Var - arg_info(_, Mode) | Rest], OutVars0, OutVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots(list(set(var)), code_model, stack_slots).
-:- mode allocate_stack_slots(in, in, out) is det.
+:- pred allocate_stack_slots(list(set(var)), code_model, int, stack_slots).
+:- mode allocate_stack_slots(in, in, in, out) is det.
 
-allocate_stack_slots(ColourList, CodeModel, StackSlots) :-
+allocate_stack_slots(ColourList, CodeModel, NumReservedSlots, StackSlots) :-
 	map__init(StackSlots0),
-	(
-		CodeModel = model_non
-	->
-		First = 0
-	;
-		First = 1
-	),
-	allocate_stack_slots_2(ColourList, First, CodeModel,
+		% The reserved slots are referred to by fixed number
+		% (e.g. framevar(1)) in trace__setup.
+	FirstVarSlot is 1 + NumReservedSlots,
+	allocate_stack_slots_2(ColourList, FirstVarSlot, CodeModel,
 		StackSlots0, StackSlots).
 
 :- pred allocate_stack_slots_2(list(set(var)), int, code_model,
