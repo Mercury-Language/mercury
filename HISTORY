@@ -142,7 +142,7 @@ Mercury 0.5, 15 Febuary 1996
   - In portable C mode, we now generate better code for loops.
   - We've made a few other minor improvements in the generated code.
   - Unary plus and minus are now implemented.
-  - Updated the documentation to reflect changes in unique modes,
+  - Updated the documentation to reflect changes in unique modes.
   - Corrected a lot of typos in the documentation.
   - Fixed quite a few bugs.
 
