@@ -13,6 +13,7 @@
 #include "mercury_types.h"	/* for `Code *' */
 #include "mercury_debug.h"	/* for debuggoto() */
 #include "mercury_label.h"	/* for insert_{entry,internal}_label() */
+#include "mercury_dummy.h"	/* for dummy_identify_function() */
 
 #define paste(a,b) a##b
 #define stringify(string) #string
@@ -484,13 +485,21 @@
   ** cannot be live, when in fact they really are).
   ** That is what the two occurrences of the PRETEND_ADDRESS_IS_USED
   ** macro are for.
+  ** We also need to include at least one `goto *' with an unknown
+  ** target, so that gcc doesn't optimize away all the labels
+  ** because it thinks they are unreachable.
+  ** The dummy_identify_function() function just returns the address
+  ** passed to it, so `goto *dummy_identify_function(&& dummy_label); dummy_label:'
+  ** is the same as `goto dummy_label; label:', i.e. it just falls through.
   */
-  #define BEGIN_MODULE(module_name)	\
-	MR_MODULE_STATIC_OR_EXTERN void module_name(void); \
-	MR_MODULE_STATIC_OR_EXTERN void module_name(void) { \
-		PRETEND_ADDRESS_IS_USED(module_name); \
-		PRETEND_ADDRESS_IS_USED(&& paste(module_name, _dummy_label)); \
-		paste(module_name,_dummy_label): \
+  #define BEGIN_MODULE(module_name)					\
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void);		\
+	MR_MODULE_STATIC_OR_EXTERN void module_name(void) {		\
+		PRETEND_ADDRESS_IS_USED(module_name);			\
+		PRETEND_ADDRESS_IS_USED(&&paste(module_name,_dummy_label)); \
+		goto *dummy_identify_function(				\
+			&&paste(module_name,_dummy_label));		\
+		paste(module_name,_dummy_label):			\
 		{
   /* initialization code for module goes here */
   #define BEGIN_CODE } return; {

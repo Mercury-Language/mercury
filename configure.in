@@ -1353,8 +1353,11 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 	void *entry_bar_1;
 	void *succip;
 	int global;
+	void *dummy_identity_function(void *);
 	foo() {
 		entry_foo_1 = && foo_1;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
 		return;
 	foo_1:
 		if (global != 42) exit(1);
@@ -1362,6 +1365,8 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 	}
 	bar() {
 		entry_bar_1 = && bar_1;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
 		return;
 	bar_1:
 		if (global != 42) exit(1);
@@ -1372,12 +1377,18 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 		foo();
 		bar();
 		succip = &&last;
+		goto *dummy_identity_function(&&return_label);
+	return_label:
 		goto *entry_foo_1;
 		exit(1);
 	last:
 		if (global != 42) exit(1);
 		exit(0);
-	}], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
+	}
+	void *dummy_identity_function(void *p) {
+		return p;
+	}
+	], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
 		[mercury_cv_gcc_labels=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
