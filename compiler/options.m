@@ -189,7 +189,7 @@ option_defaults_2(optimization_option, [
 	peephole_repeat		-	int(4),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
-	inlining		-	bool(yes)
+	inlining		-	bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
