@@ -135,7 +135,6 @@ ORDINARY_PROGS=	\
 	shift_test \
 	solve_quadratic \
 	space \
-	split_c_files \
 	stable_sort \
 	string_alignment \
 	string_alignment_bug \
@@ -321,7 +320,6 @@ endif
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
 # The same is true for deep profiling grades and `mmc --make'.
-# The modules in SPLIT_PROGS should also be in ORDINARY_PROGS above.
 ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(filter hl% il% java%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	SPLIT_PROGS = mapped_module split_c_files
 else
