@@ -385,26 +385,6 @@ endif # $(findstring il,$(GRADE)) != ""
 
 #-----------------------------------------------------------------------------#
 #
-# Code to handle dependencies on $(ALL_MLOBJS) and $(ALL_MLPICOBJS).
-#
-
-# The generated `.dep' files include rules for targets which may depend
-# on $(ALL_MLOBJS) or $(ALL_MLPICOBJS).  However, the definition of $(MLOBJS)
-# or $(MLPICOBJS) is in the user's Mmakefile, and the `.dep' files get
-# included *before* the Mmakefile.  The `.dep' files cannot contain
-# those dependency directly, because $(MLOBJS) and $(MLPICOBJS) variables
-# have not yet been defined.
-#
-# Instead, the generated `.dep' files just add the appropriate targets to
-# the $(MLOBJS_DEPS) or $(MLPICOBJS_DEPS) variables, and then we record the
-# dependency of those files on $(ALL_MLOBJS) or $(ALL_MLPICOBJS) here in
-# Mmake.rules, which gets included after the user's Mmakefile.
-
-$(MLOBJS_DEPS) : $(ALL_MLOBJS)
-$(MLPICOBJS_DEPS) : $(ALL_MLPICOBJS)
-
-#-----------------------------------------------------------------------------#
-#
 # Targets for cleaning up.
 #
 # Note that the actions for most of these targets are in the
