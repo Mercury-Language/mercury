@@ -335,7 +335,7 @@ struct MR_Label_Layout_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
-	MR_int_least16_t		MR_sll_goal_path;
+	MR_uint_least16_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* >= 0 */
 	const void			*MR_sll_locns_types;
 	const MR_uint_least16_t		*MR_sll_var_nums;
@@ -346,7 +346,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	const MR_Proc_Layout		*MR_sll_entry;
 	MR_int_least8_t			MR_sll_port;
 	MR_int_least8_t			MR_sll_hidden;
-	MR_int_least16_t		MR_sll_goal_path;
+	MR_uint_least16_t		MR_sll_goal_path;
 	MR_Integer			MR_sll_var_count; /* < 0 */
 } MR_Label_Layout_No_Var_Info;
 
@@ -679,11 +679,11 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_Word			*MR_exec_proc_rep;
 	MR_TrieNode		MR_exec_tabling_pointer;
 	MR_Table_Info		MR_exec_table_info;
-	const MR_int_least16_t	*MR_exec_head_var_nums;
-	const MR_int_least16_t	*MR_exec_used_var_names;
-	MR_int_least16_t	MR_exec_num_head_vars;
-	MR_int_least16_t	MR_exec_max_named_var_num;
-	MR_int_least16_t	MR_exec_max_r_num;
+	const MR_uint_least16_t	*MR_exec_head_var_nums;
+	const MR_uint_least16_t	*MR_exec_used_var_names;
+	MR_uint_least16_t	MR_exec_num_head_vars;
+	MR_uint_least16_t	MR_exec_max_named_var_num;
+	MR_uint_least16_t	MR_exec_max_r_num;
 	MR_int_least8_t		MR_exec_maybe_from_full;
 	MR_int_least8_t		MR_exec_maybe_io_seq;
 	MR_int_least8_t		MR_exec_maybe_trail;
