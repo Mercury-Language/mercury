@@ -1229,7 +1229,7 @@ det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
 			words("backtracking over all possible"),
 			words("representations, but I'm not going to do that"),
 			words("implicitly. (If that's really what you want,"),
-			words("you must do it explicitly.")],
+			words("you must do it explicitly.)")],
 		write_error_pieces_not_first_line(Context, 0, VerbosePieces,
 			!IO)
 	;
@@ -1279,7 +1279,7 @@ det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
 			words("backtracking over all possible"),
 			words("representations, but I'm not going to do that"),
 			words("implicitly. (If that's really what you want,"),
-			words("you must do it explicitly.")],
+			words("you must do it explicitly.)")],
 		write_error_pieces_not_first_line(Context, 0, VerbosePieces,
 			!IO)
 	;
