@@ -12,6 +12,8 @@
 **
 **	WORD_TYPE		the base type for the definition of Word.
 **	LOW_TAG_BITS		the number of low-order tag bits we can use.
+**	BOXED_FLOAT		double precision floats do not fit in a Word,
+**				and must be boxed.
 **	HAVE_SYSCONF		the machine has the sysconf() syscall.
 **	HAVE_GETPAGESIZE	the machine has the getpagesize() syscall.
 **	HAVE_MEMALIGN		the machine has the memalign() function.
@@ -35,6 +37,7 @@
 
 #undef	WORD_TYPE
 #undef	LOW_TAG_BITS
+#undef	BOXED_FLOAT
 #undef	HAVE_SYSCONF
 #undef	HAVE_GETPAGESIZE
 #undef	HAVE_MEMALIGN

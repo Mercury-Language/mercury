@@ -226,7 +226,6 @@ typedef float Float;
 #else
 
 typedef double Float;
-#define BOXED_FLOAT
 
 #endif
 
