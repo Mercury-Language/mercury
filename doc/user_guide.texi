@@ -3395,6 +3395,7 @@ use @samp{mmc --help} to get the most up-to-date list.
 * Compilation model options::
 * Code generation options::
 * Optimization options::
+* Target code compilation options::
 * Link options::
 * Miscellaneous options::
 @end menu
@@ -4632,17 +4633,6 @@ The generated assembler will be written to @samp{@var{module}.pic_s}
 rather than to @samp{@var{module}.s}.
 
 @sp 1
-@item @code{--target-debug}
-@findex @code{--target-debug}
-@findex @code{--c-debug}
-@findex @code{/debug}
-Enable debugging of the generated target code.
-If the target language is C, this has the same effect as
-@samp{--c-debug} (see below).
-If the target language is IL, this causes the compiler to
-pass @samp{/debug} to the IL assembler.
-
-@sp 1
 @item --no-trad-passes
 @findex --no-trad-passes
 @findex --trad-passes
@@ -4675,68 +4665,6 @@ Don't reclaim heap on backtracking in semidet code.
 @findex --no-reclaim-heap-on-failure
 @findex --reclaim-heap-on-failure
 Combines the effect of the two options above.
-
-@sp 1
-@item --cc @var{compiler-name}
-@findex --cc
-@cindex C compiler
-Specify which C compiler to use.
-
-@sp 1
-@item --c-include-directory @var{dir}
-@findex --c-include-directory
-@cindex Include directories
-@cindex Directories
-Append @var{dir} to the list of directories to be searched for
-C header files.  Note that if you want to override this list, rather than
-append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
-environment variable to a sequence of @samp{--c-include-directory} options.
-
-@sp 1
-@item --cflags @var{options}
-@findex --cflags
-@cindex C compiler options
-Specify options to be passed to the C compiler.
-
-@sp 1
-@item @code{--c-debug}
-@findex --c-debug
-@cindex C debugging
-@cindex Debugging the generated C code
-Pass the @samp{-g} flag to the C compiler, to enable debugging
-of the generated C code, and also pass @samp{--no-strip} to the Mercury
-linker, to tell it not to strip the C debugging information.
-Since the generated C code is very low-level, this option is not likely
-to be useful to anyone except the Mercury implementors, except perhaps
-for debugging code that uses Mercury's C interface extensively.
-
-@sp 1
-@item --javac @var{compiler-name}
-@item --java-compiler @var{compiler-name}
-@findex --javac
-@findex --java-compiler
-@cindex Java compiler
-Specify which Java compiler to use.  The default is @samp{javac}.
-
-@sp 1
-@item --java-flags @var{options}
-@findex --java-flags
-@cindex Java compiler options
-Specify options to be passed to the Java compiler.
-
-@sp 1
-@item --java-classpath @var{dir}
-@findex --java-classpath
-@cindex classpath
-@cindex Directories
-Set the classpath for the Java compiler.
-
-@sp 1
-@item --java-object-file-extension @var{extension}
-@findex --java-object-file-extension
-@cindex File extensions
-Specify an extension for Java object (bytecode) files.  By default this
-is @samp{.class}. 
 
 @sp 1
 @item --fact-table-max-array-size @var{size}
@@ -4823,7 +4751,6 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 * Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
-* Object-level (C -> object code) optimization options::
 @ifset aditi
 * Aditi-RL optimization options::
 @end ifset
@@ -5430,29 +5357,6 @@ but tends to severely stress the C compiler.
 
 @end table
 
-@node Object-level (C -> object code) optimization options
-@subsection Object-level (C -> object code) optimization options
-
-These optimizations are applied during the process of compiling
-the generated C code to machine code object files.
-
-If you are using Mmake, you need to pass these options
-to @samp{mgnuc} rather than to @samp{mmc}.
-
-@table @code
-@item --no-c-optimize
-@findex --no-c-optimize
-Don't enable the C compiler's optimizations.
-
-@sp 1
-@item --inline-alloc
-@findex --inline-alloc
-Inline calls to @samp{GC_malloc()}.
-This can improve performance a fair bit,
-but may significantly increase code size.
-This option has no effect if @samp{--gc conservative}
-is not set or if the C compiler is not GNU C.
-
 @ifset aditi
 @node Aditi-RL optimization options
 @subsection Aditi-RL optimization options
@@ -5489,8 +5393,6 @@ do not need to be materialised.
 @end table
 @end ifset
 @c aditi
-
-@end table
 
 @node Miscellaneous options
 @section Miscellaneous options
@@ -5564,6 +5466,103 @@ of the @samp{USER} environment variable. If @samp{USER} is not set,
 
 @end ifset
 @c aditi
+@end table
+
+@node Target code compilation options
+@section Target code compilation options
+@cindex Target code compilation options
+
+If you are using Mmake, you need to pass these options
+to the target code compiler (e.g. @samp{mgnuc}) rather
+than to @samp{mmc}.
+
+@table @code
+@sp 1
+@item @code{--target-debug}
+@findex @code{--target-debug}
+@findex @code{--c-debug}
+@findex @code{/debug}
+Enable debugging of the generated target code.
+If the target language is C, this has the same effect as
+@samp{--c-debug} (see below).
+If the target language is IL, this causes the compiler to
+pass @samp{/debug} to the IL assembler.
+
+@sp 1
+@item --cc @var{compiler-name}
+@findex --cc
+@cindex C compiler
+Specify which C compiler to use.
+
+@sp 1
+@item --c-include-directory @var{dir}
+@findex --c-include-directory
+@cindex Include directories
+@cindex Directories
+Append @var{dir} to the list of directories to be searched for
+C header files.  Note that if you want to override this list, rather than
+append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
+environment variable to a sequence of @samp{--c-include-directory} options.
+
+@sp 1
+@item @code{--c-debug}
+@findex --c-debug
+@cindex C debugging
+@cindex Debugging the generated C code
+Pass the @samp{-g} flag to the C compiler, to enable debugging
+of the generated C code, and also pass @samp{--no-strip} to the Mercury
+linker, to tell it not to strip the C debugging information.
+Since the generated C code is very low-level, this option is not likely
+to be useful to anyone except the Mercury implementors, except perhaps
+for debugging code that uses Mercury's C interface extensively.
+
+@item --no-c-optimize
+@findex --no-c-optimize
+Don't enable the C compiler's optimizations.
+
+@sp 1
+@item --inline-alloc
+@findex --inline-alloc
+Inline calls to @samp{GC_malloc()}.
+This can improve performance a fair bit,
+but may significantly increase code size.
+This option has no effect if @samp{--gc conservative}
+is not set or if the C compiler is not GNU C.
+
+@sp 1
+@item --cflags @var{options}
+@findex --cflags
+@cindex C compiler options
+Specify options to be passed to the C compiler.
+
+@sp 1
+@item --javac @var{compiler-name}
+@item --java-compiler @var{compiler-name}
+@findex --javac
+@findex --java-compiler
+@cindex Java compiler
+Specify which Java compiler to use.  The default is @samp{javac}.
+
+@sp 1
+@item --java-flags @var{options}
+@findex --java-flags
+@cindex Java compiler options
+Specify options to be passed to the Java compiler.
+
+@sp 1
+@item --java-classpath @var{dir}
+@findex --java-classpath
+@cindex classpath
+@cindex Directories
+Set the classpath for the Java compiler.
+
+@sp 1
+@item --java-object-file-extension @var{extension}
+@findex --java-object-file-extension
+@cindex File extensions
+Specify an extension for Java object (bytecode) files.  By default this
+is @samp{.class}. 
+
 @end table
 
 @node Link options
