@@ -1,0 +1,19 @@
+This is the lp_solve 2.0 release
+
+bug reports, succes stories and requests for changes are welcome at:
+
+Michel Berkelaar
+michel@es.ele.tue.nl
+
+Most of the changes between 1.5 and 2.0 were contributed by:
+
+Jeroen Dirks
+j.j.dirks@twi.tudelft.nl
+kac209@amsi34.ksla.nl
+
+BUILDING LP_SOLVE
+
+Just edit the Makefile to pick the compiler of your choice, and to set the
+desired compiler options. Then type 'make'. After a succesful make, type 'make
+test' to run a couple of examples and to test the results against the ones I
+got. Also run program 'demo' to test the procedural interface.

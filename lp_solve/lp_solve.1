@@ -1,0 +1,220 @@
+.TH LP_SOLVE 1ES
+.SH NAME
+lp_solve	- Solve (mixed integer) linear programming problem.
+.SH SYNOPSIS
+lp_solve [option]* "<" <input-file>
+.SH OPTIONS
+.TP 1.2i
+-v
+Verbose mode. Among other things, shows all the pivots.
+.TP
+-h
+Help mode, prints the usage.
+.TP
+-d
+Debug mode, all intermediate results are printed, and the branch-and-bound
+decisions in case of (mixed) integer problems.
+.TP
+-p
+Only functional for pure LP problems. Print the values of the dual
+variables as well in the result. They are named r_1 until r_XXXXX unless
+specified by the user.  Note that bounds (constraints on just one variable)
+are not considered real constraints, and are not given a row in the matrix,
+and are therefore not printed here.
+.TP
+-b <bound>
+Specify an upper (when minimizing) or lower (when maximizing) limit for the
+value of the objective function to
+the program. Only useful for (mixed) integer problems.  If close enough, may
+speed up the calculations. The same result can be obtained by adding an extra
+constraint to the problem.
+.TP
+-c
+When branching in MILP problems, take the ceiling of the selected non-integer
+variable first instead of the floor. This can influence the speed of MILP
+problems.
+.TP
+-e <value>
+Specify the accuracy with which it is checked whether the value of a variable
+is really integer. <value> must be between 0 and 0.5. Default value is 1e-6
+and should be OK for most applications. Of course only useful for MILP
+problems.
+.TP
+-i
+Print all intermediate valid solutions. Can give you useful
+solutions even if the total run time is too long.
+Only useful for (mixed) integer problems.
+.TP
+-s
+Both rows and columns are scaled according to the geometric mean of the
+coefficients on them before solving. This might improve the numerical
+stability of your problem.
+.TP
+-I
+Print info after reinverting.
+.TP
+-t
+Trace pivot selection.
+.TP
+-mps
+Read from MPS file instead of lp file.
+.TP
+-degen
+Use random perturbations to reduce degeneracy, can increase numerical
+instability.
+.SH DESCRIPTION
+The linear programming problem can be formulated as: Solve A.x >= V1, with
+V2.x maximal. A is a matrix, x a vector of (nonnegative) variables, V1 a
+vector called the right hand side, and V2 a vector specifying the objective
+function.
+.br
+Any number of the variables may be specified to be of type integer.
+.br
+This program solves problems of this kind. It is slightly more general than
+the above problem, in that every row of A (specifying one constraint) can have
+its own (in)equality, <=, >= or =. The result specifies values for all
+variables.
+.br
+Uses a 'Simplex' algorithm and sparse matrix methods, for pure LP problems.
+If one or more of the variables is declared integer, the Simplex algorithm is
+iterated with a branch and bound algorithm, until the desired optimal
+solution is found.
+.SH "INTERRUPT"
+In order to make it possible to get useful solutions for a mixed integer
+problem which takes too long to finish completely, the "interrupt" signal
+(kill -INT, ^C for many people) will not terminate the program when it is
+solving a MILP problem, but rather print the best valid solution found so
+far. This feature is not useful and thus disabled when you are solving a pure
+LP problem. If you see all zeros, it implies that no valid solution has been
+found yet. To really terminate the program, use a different signal, like KILL.
+.br
+The "-i" option will print all intermediate valid solutions.
+.SH "INPUT SYNTAX"
+The default input syntax is a set of algebraic expressions and "int"
+declarations in the following order:
+.sp
+<objective function>
+.br
+<constraint>+
+.br
+<declaration>*
+.sp
+where:
+.TP 0.2i
+-
+<objective function> is a linear combination of variables, ending with a
+semicolon, optionally preceded by "max: " or "min: " to indicate whether you
+want it to be minimized or maximized. The case is not important, "Max:" or
+"MAX:" will work as well. Maximization is the default.
+.TP
+-
+<constraint> is an optional constraint name followed by a colon plus a
+linear combination of variables and constants, followed by a relational
+operator, followed again by a linear combination of variables and constants,
+ending with a semicolon. The relational operator can be any of the following:
+"<" "<=" "=" ">" ">=". There is no semantic difference between "<" and "<="
+nor between ">" and ">=" (even for integer variables!).
+.TP
+-
+<declaration> is of the form: "int" <var>+ ";" Commas are allowed between
+variables.
+.sp
+So, the simplest linear problem consists of an objective function and 1
+constraint.
+.SH EXAMPLE
+The simple problem:
+.sp
+x1 >= 1
+.br
+x2 >= 1
+.br
+x1 + x2 >= 2
+.br
+minimize x1 + x2 (= maximize -(x1 + x2)), with x1 integer
+.sp
+can be written as follows:
+.sp
+-x1 + -x2;
+.br
+(or min: x1 + x2;)
+.br
+x1 > 1;
+.br
+x2 > 1;
+.br
+x1 + x2 > 2;
+.br
+int x1;
+.sp
+The correct result for (x1, x2) is of course (1, 1).
+.br
+With the -mps option, lp_solve will accept MPS as input format.
+.SH BUGS
+Specifying a constraint name for a bound (constraints on just single
+variables) does not have an effect: they are not stored inside the main matrix
+and are not assigned a dual variable.
+.TP
+-
+The problem consists entirely of constraints on just single variables
+(so-called "bounds", like x < 1; ) and no constraint with more than 1
+variable (like x + 3 y > 17; ). This leaves lp_solve with an empty problem
+matrix, as bounds are not stored in the main matrix. No real-life examples
+should be of this form, so I am not really chasing this problem.
+.TP
+-
+Many people forget that lp_solve can only handle POSITIVE values for the
+variables. While reading MPS files it will however handle free or negative
+variables by replacing them with a variable pair <var>_neg and <var>_pos or
+-<var> respectively. It is up to the user to interpret the result of this
+transformation.
+.TP
+- Sometimes problems are numerically unstable, and the unavoidable rounding
+errors inside lp_solve will cause aborts. It is very hard to give general
+solutions to this problem, but try to keep all values in your problem in the
+order of magnitude of 1 by proper scaling. This is almost always better than
+using lp_solves built-in scaling (with -s). Almost parallel constraints are
+also not very good for numerical stability. Use "lp_solve -v" and observe the
+values of the pivots to see if there are any dangerously large or low numbers
+there.
+.br
+Building lp_solve with long doubles (see the Makefile) can help to increase
+numerical stability, but will also increase the run time considerably.
+.br
+You can consult the author as well if you encounter numerical problems, but
+please remember that it is very easy to formulate an infeasible LP problem, so
+be sure there is a solution.
+.SH SEE ALSO
+The implementation of the simplex kernel was mainly based on:
+.br
+W. Orchard-Hays: "Advanced Linear Programming Computing Techniques",
+McGraw-Hill 1968
+.br
+The mixed integer branch and bound part was inspired by:
+.br
+section 6.4 of "An Introduction to Linear Programming and Game Theory" by
+Paul R. Thie, second edition published by John Wiley and Sons in 1988.
+.br
+This book refers to:
+.br
+Dakin, R.J., "A Tree Search Algorithm for MILP Problems", Comput. J., 8 (1965)
+pp. 250-255
+.SH ACKNOWLEDGEMENTS
+The work of Jeroen Dirks made the transition from the basic version 1.5 to
+the full version 2.0 possible. He contributed the procedural interface, a
+built-in MPS reader, and many fixes and enhancements to the code.
+.SH CONTRIBUTED BY
+M.R.C.M. Berkelaar
+.br
+Eindhoven University of Technology
+.br
+Design Automation Section
+.br
+P.O. Box 513
+.br
+NL-5600 MB Eindhoven, The Netherlands
+.br
+phone ...-31-40-473345
+.br
+E-mail: michel@es.ele.tue.nl
+.SH STATUS
+Use at own risk. Bug reports are welcome, as well as success stories.
