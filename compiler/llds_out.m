@@ -2177,16 +2177,25 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 		[]
 	),
 	io__write_string("struct "),
-	output_decl_id(DeclId),
-	io__write_string("_struct"),
+
+	% If it's a type_ctor_info struct, use the MR_TypeCtorInfo_struct
+	% type, and don't emit a definition.
 	(
-		{ Def = yes }
+		{ decl_id_is_type_ctor_info(DeclId) }
 	->
-		io__write_string(" {\n"),
-		output_cons_arg_types(ArgVals, CreateArgTypes, "\t", 1),
-		io__write_string("} ")
+		io__write_string("MR_TypeCtorInfo_struct")
 	;
-		[]
+		output_decl_id(DeclId),
+		io__write_string("_struct"),
+		(
+			{ Def = yes }
+		->
+			io__write_string(" {\n"),
+			output_cons_arg_types(ArgVals, CreateArgTypes, "\t", 1),
+			io__write_string("} ")
+		;
+			[]
+		)
 	),
 	(
 		{ Decl = yes }
@@ -2206,6 +2215,13 @@ output_const_term_decl(ArgVals, CreateArgTypes, DeclId, Exported,
 	;
 		io__write_string(";\n")
 	).
+
+	% Succeed if the decl_id is for a type constructor info structure.
+
+:- pred decl_id_is_type_ctor_info(decl_id).
+:- mode decl_id_is_type_ctor_info(in) is semidet.
+
+decl_id_is_type_ctor_info(data_addr(data_addr(_, type_ctor(info, _, _)))).
 
 	% Return true if a data structure of the given type will eventually
 	% include code addresses. Note that we can't just test the data
@@ -2704,8 +2720,17 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 		io__write_string("const ")
 	),
 	io__write_string("struct "),
-	output_data_addr(ModuleName, VarName), 
-	io__write_string("_struct\n"),
+
+	% If it's a type_ctor_info struct, use the
+	% MR_TypeCtorInfo_struct type.
+	(
+		{ VarName = type_ctor(info, _, _) }
+	->
+		io__write_string("MR_TypeCtorInfo_struct\n")
+	;
+		output_data_addr(ModuleName, VarName), 
+		io__write_string("_struct\n")
+	),
 	io__write_string(LaterIndent),
 	io__write_string("\t"),
 	output_data_addr(ModuleName, VarName), 
@@ -3642,14 +3667,14 @@ output_rval_static_const(int_const(N)) -->
 output_rval_static_const(float_const(FloatVal)) -->
 	io__write_float(FloatVal).
 output_rval_static_const(string_const(String)) -->
-	io__write_string("(String) string_const("""),
+	io__write_string("string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
 	io__write_int(StringLength),
 	io__write_string(")").
 output_rval_static_const(multi_string_const(Length, String)) -->
-	io__write_string("(String) string_const("""),
+	io__write_string("string_const("""),
 	output_c_quoted_multi_string(Length, String),
 	io__write_string(""", "),
 	io__write_int(Length),

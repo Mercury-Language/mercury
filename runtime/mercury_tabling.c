@@ -447,8 +447,8 @@ MR_type_info_lookup_or_add(MR_TrieNode table, Word * type_info)
 ** This part defines the MR_table_type() function.
 */
 
-MR_DECLARE_STRUCT(mercury_data___type_ctor_info_pred_0);
-MR_DECLARE_STRUCT(mercury_data___type_ctor_info_func_0);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 /*
 ** Due to the depth of the control here, we'll use 4 space indentation.

@@ -134,6 +134,8 @@ typedef	Word	MR_PseudoTypeInfo;
 
 #define MR_DECLARE_STRUCT(T)			\
 	extern const struct T##_struct T
+#define MR_DECLARE_TYPE_CTOR_INFO_STRUCT(T)			\
+	extern const struct MR_TypeCtorInfo_struct T
 
 /*
 ** Typelayouts for builtins are often defined as X identical
@@ -788,7 +790,7 @@ typedef	Word *	MR_TypeCtorLayout;
 	** `:- type' declaration.
 	*/
 
-typedef struct {
+struct MR_TypeCtorInfo_struct {
 	int arity;
 	Code *unify_pred;
 	Code *index_pred;
@@ -812,7 +814,8 @@ typedef struct {
 	MR_TypeCtorLayout type_ctor_layout;
 	String type_ctor_module_name;
 	String type_ctor_name;
-} *MR_TypeCtorInfo;
+};
+typedef struct MR_TypeCtorInfo_struct *MR_TypeCtorInfo;
 
 	/* 
 	** Macros for retreiving things from type_ctor_infos.

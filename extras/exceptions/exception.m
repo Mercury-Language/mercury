@@ -466,7 +466,8 @@ wrap_exception(Exception, exception(Exception)).
 	#include <assert.h>
 	#include ""mercury_deep_copy.h""
 
-	MR_DECLARE_STRUCT(mercury_data_std_util__type_ctor_info_univ_0);
+	MR_DECLARE_TYPE_CTOR_INFO_STRUCT( \
+			mercury_data_std_util__type_ctor_info_univ_0);
 ").
 
 :- pragma c_code("

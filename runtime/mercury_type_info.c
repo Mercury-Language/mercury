@@ -50,26 +50,17 @@ const struct mercury_data___type_ctor_functors_pred_0_struct {
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-	Word  f5;
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-} mercury_data___type_ctor_info_func_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_func_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 	MR_TYPECTOR_REP_PRED,
-	(const Word *) & mercury_data___type_ctor_functors_pred_0,
-	(const Word *) & mercury_data___type_ctor_layout_pred_0,
-	(const Word *) string_const("builtin", 7),
-	(const Word *) string_const("func", 4)
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
+	string_const("builtin", 7),
+	string_const("func", 4)
 };
 
 	/*
@@ -80,26 +71,17 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
 Declare_entry(mercury__builtin_compare_pred_3_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_pred_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-	Word  f5;
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-} mercury_data___type_ctor_info_pred_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_pred_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_pred_3_0)),
 	MR_TYPECTOR_REP_PRED,
-	(const Word *) & mercury_data___type_ctor_functors_pred_0,
-	(const Word *) & mercury_data___type_ctor_layout_pred_0,
-	(const Word *) string_const("builtin", 7),
-	(const Word *) string_const("pred", 4)
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
+	string_const("builtin", 7),
+	string_const("pred", 4)
 };
 
 Define_extern_entry(mercury__builtin_unify_pred_2_0);

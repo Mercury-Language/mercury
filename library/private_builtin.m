@@ -270,17 +270,13 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 
 :- pragma c_header_code("
 
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_int_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_int_0;
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_string_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_string_0;
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_float_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_float_0;
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_character_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_character_0;
 
 ").
@@ -304,18 +300,8 @@ extern const struct
 	** type_ctor_infos.
 	*/
 
-MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__type_ctor_info_type_ctor_info_1_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-	Word f5;
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-} mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Unify___private_builtin__type_info_1_0)),
@@ -324,26 +310,16 @@ mercury_data_private_builtin__type_ctor_info_type_ctor_info_1_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Compare___private_builtin__type_info_1_0)),
 	MR_TYPECTOR_REP_TYPEINFO,
-	(const Word *) &
+	(MR_TypeCtorFunctors) &
 	    mercury_data_private_builtin__type_ctor_functors_type_info_1,
-	(const Word *) &
+	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	(const Word *) string_const(""private_builtin"", 15),
-	(const Word *) string_const(""type_ctor_info"", 14)
+	string_const(""private_builtin"", 15),
+	string_const(""type_ctor_info"", 14)
 };
 
-MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__type_ctor_info_type_info_1_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-	Word f5;
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-} mercury_data_private_builtin__type_ctor_info_type_info_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_type_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Unify___private_builtin__type_info_1_0)),
@@ -352,12 +328,12 @@ mercury_data_private_builtin__type_ctor_info_type_info_1_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Compare___private_builtin__type_info_1_0)),
 	MR_TYPECTOR_REP_TYPEINFO,
-	(const Word *) &
+	(MR_TypeCtorFunctors) &
 		mercury_data_private_builtin__type_ctor_functors_type_info_1,
-	(const Word *) &
+	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	(const Word *) string_const(""private_builtin"", 15),
-	(const Word *) string_const(""type_info"", 9)
+	string_const(""private_builtin"", 15),
+	string_const(""type_info"", 9)
 };
 
 
@@ -385,18 +361,8 @@ extern const struct
 	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct
 	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1;
 
-MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-	Word f5;
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-} mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Unify___private_builtin__typeclass_info_1_0)),
@@ -405,26 +371,16 @@ mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Compare___private_builtin__typeclass_info_1_0)),
 	MR_TYPECTOR_REP_TYPECLASSINFO,
-	(const Word *) &
+	(MR_TypeCtorFunctors) &
 	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
-	(const Word *) &
+	(MR_TypeCtorLayout) &
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
-	(const Word *) string_const(""private_builtin"", 15),
-	(const Word *) string_const(""base_typeclass_info"", 19)
+	string_const(""private_builtin"", 15),
+	string_const(""base_typeclass_info"", 19)
 };
 
-MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__type_ctor_info_typeclass_info_1_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-	Word f5;
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-} mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Unify___private_builtin__typeclass_info_1_0)),
@@ -433,12 +389,12 @@ mercury_data_private_builtin__type_ctor_info_typeclass_info_1_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Compare___private_builtin__typeclass_info_1_0)),
 	MR_TYPECTOR_REP_TYPECLASSINFO,
-	(const Word *) &
+	(MR_TypeCtorFunctors) &
 	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
-	(const Word *) &
+	(MR_TypeCtorLayout) &
 	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
-	(const Word *) string_const(""private_builtin"", 15),
-	(const Word *) string_const(""typeclass_info"", 14)
+	string_const(""private_builtin"", 15),
+	string_const(""typeclass_info"", 14)
 };
 
 const struct

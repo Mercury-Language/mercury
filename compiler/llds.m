@@ -1006,8 +1006,8 @@ llds__const_type(true, bool).
 llds__const_type(false, bool).
 llds__const_type(int_const(_), integer).
 llds__const_type(float_const(_), float).
-llds__const_type(string_const(_), data_ptr).
-llds__const_type(multi_string_const(_, _), data_ptr).
+llds__const_type(string_const(_), string).
+llds__const_type(multi_string_const(_, _), string).
 llds__const_type(code_addr_const(_), code_ptr).
 llds__const_type(data_addr_const(_), data_ptr).
 llds__const_type(label_entry(_), code_ptr).

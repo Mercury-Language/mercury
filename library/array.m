@@ -281,18 +281,8 @@ const struct mercury_data_array__type_ctor_functors_array_1_struct
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_array__type_ctor_layout_array_1_struct
 	mercury_data_array__type_ctor_layout_array_1;
-MR_STATIC_CODE_CONST struct
-mercury_data_array__type_ctor_info_array_1_struct {
-	Integer f1;
-	Code * f2;
-	Code * f3;
-	Code * f4;
-	Word   f5;
-	Word * f6;
-	Word * f7;
-	Word * f8;
-	Word * f9;
-} mercury_data_array__type_ctor_info_array_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_array__type_ctor_info_array_1 = {
 	(Integer) 1,
 	ENTRY(mercury____Unify___array__array_1_0),
 	ENTRY(mercury____Index___array__array_1_0),

@@ -214,6 +214,25 @@
 #define mercury_data_private_builtin__base_type_info_type_info_1_struct \
 	mercury_data_private_builtin__type_ctor_info_type_info_1_struct
 
+
+/*
+** These definitions are needed to bootstrap the change of all
+** type_ctor_info structures to use the MR_TypeCtorInfo type.
+*/
+
+#define mercury_data___type_ctor_info_int_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_string_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_float_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_character_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_pred_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_func_0_struct \
+	MR_TypeCtorInfo_struct
+
 #endif	/* not MR_NO_BACKWARDS_COMPAT */
 
 #endif	/* MERCURY_BOOTSTRAP_H */

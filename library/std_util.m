@@ -1070,18 +1070,8 @@ MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_std_util__type_ctor_layout_univ_0_struct
 	mercury_data_std_util__type_ctor_layout_univ_0;
 
-MR_STATIC_CODE_CONST struct
-mercury_data_std_util__type_ctor_info_univ_0_struct {
-	Integer f1;
-	Code * f2;
-	Code * f3;
-	Code * f4;
-	Word   f5;
-	Word * f6;
-	Word * f7;
-	Word * f8;
-	Word * f9;
-}  mercury_data_std_util__type_ctor_info_univ_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_std_util__type_ctor_info_univ_0 = {
 	(Integer) 0,
 	ENTRY(mercury____Unify___std_util__univ_0_0),
 	ENTRY(mercury____Index___std_util__univ_0_0),
@@ -1451,8 +1441,8 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info);
 	** Several predicates use these (the MR_TYPE_CTOR_INFO_IS_HO_*
 	** macros need access to these addresses).
 	*/
-MR_DECLARE_STRUCT(mercury_data___type_ctor_info_pred_0);
-MR_DECLARE_STRUCT(mercury_data___type_ctor_info_func_0);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 
 ").

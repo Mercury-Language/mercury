@@ -45,17 +45,8 @@ Define_extern_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
 
 
 
-const struct mercury_data_std_util__type_ctor_info_type_info_0_struct_bootstrap {
-	Integer f1;
-	Code * f2;
-	Code * f3;
-	Code * f4;
-	Integer f5;
-	Word * f6;
-	Word * f7;
-	Word * f8;
-	Word * f9;
-}  mercury_data_std_util__type_ctor_info_type_info_0 = {
+const struct MR_TypeCtorInfo_struct
+mercury_data_std_util__type_ctor_info_type_info_0 = {
 	(Integer) 0,
 	ENTRY(mercury____Unify___std_util__type_info_0_0_bootstrap),
 	ENTRY(mercury____Index___std_util__type_info_0_0_bootstrap),
