@@ -3111,7 +3111,8 @@ predlabel_to_id(pred(PredOrFunc, MaybeModuleName, Name, Arity, CodeModel,
 			s(MaybeModuleStr), s(Name),
 			i(Arity), s(PredOrFuncStr), s(MaybeProcIdInt),
 			s(MaybeSeqNumStr)], UnMangledId),
-		llds_out__name_mangle(UnMangledId, Id).
+		Id = UnMangledId.
+		% llds_out__name_mangle(UnMangledId, Id).
 
 predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 			ProcId, MaybeSeqNum, Id) :-
@@ -3130,7 +3131,8 @@ predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
 		string__format("special_%s%s_%s_%d_%d%s", 
 			[s(MaybeModuleStr), s(PredName), s(TypeName), i(Arity),
 				i(ProcIdInt), s(MaybeSeqNumStr)], UnMangledId),
-		llds_out__name_mangle(UnMangledId, Id).
+		Id = UnMangledId.
+		% llds_out__name_mangle(UnMangledId, Id).
 
 
 	% If an mlds__var is not an argument or a local, what is it?
