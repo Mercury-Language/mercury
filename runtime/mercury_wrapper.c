@@ -267,7 +267,7 @@ void	(*MR_address_of_init_modules_debugger)(void);
 void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
 
-int	(*MR_address_of_do_load_aditi_rl_code)(void);
+MR_Box	(*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 
 char	*(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 char	*(*MR_address_of_trace_get_command)(const char *, FILE *, FILE *);
@@ -1873,11 +1873,12 @@ mercury_runtime_terminate(void)
 
 /*---------------------------------------------------------------------------*/
 
-int
-MR_load_aditi_rl_code(void)
+MR_Box
+MR_load_aditi_rl_code(MR_Box connection, MR_Box bytecode_transaction)
 {
 	if (MR_address_of_do_load_aditi_rl_code != NULL) {
-		return (*MR_address_of_do_load_aditi_rl_code)();	
+		return (*MR_address_of_do_load_aditi_rl_code)(connection,
+			bytecode_transaction);
 	} else {
 		MR_fatal_error(
 			"attempt to load Aditi-RL code from an executable\n"

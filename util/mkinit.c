@@ -225,7 +225,8 @@ static const char aditi_header[] =
 	"** has a connection, returning a status value as described in\n"
 	"** aditi2/src/api/aditi_err.h in the Aditi sources.\n"
 	"*/\n"
-	"static int MR_do_load_aditi_rl_code(void);\n"
+	"static MR_Box MR_do_load_aditi_rl_code(MR_Box connection,\n"
+	"			MR_Box transaction);\n"
 	;
 
 static const char mercury_funcs1[] =
@@ -1087,8 +1088,10 @@ output_aditi_load_function(void)
 
 	printf("\n/*\n** Load the Aditi-RL code for the program into the\n");
 	printf("** currently connected database.\n*/\n");
-	printf("#include \"aditi_api_config.h\"\n");
-	printf("#include \"aditi_clnt.h\"\n");
+	printf("#include \"mercury_heap.h\"\n");
+	printf("#include \"v2_api_without_engine.h\"\n");
+	printf("#include \"v2_api_misc.h\"\n");
+	printf("#include \"AditiStatus.h\"\n");
 
 	/*
 	** Declare all the RL data constants.
@@ -1100,8 +1103,9 @@ output_aditi_load_function(void)
 	}
 
 	printf("\n");
-	printf("static int\n");
-	printf("MR_do_load_aditi_rl_code(void)\n{\n"),
+	printf("extern MR_Box\n");
+	printf("MR_do_load_aditi_rl_code(MR_Box boxed_connection, "
+		"MR_Box boxed_transaction)\n{\n"),
 
 	/* Build an array containing the addresses of the RL data constants. */
 	printf("\tstatic const char *rl_data[] = {\n\t\t");
@@ -1120,24 +1124,44 @@ output_aditi_load_function(void)
 	printf("0};\n");
 	
 	printf("\tconst int num_rl_modules = %d;\n", num_rl_modules);
-	printf("\tint status;\n");
-	printf("\tint i;\n\n");
 
-	/*
-	** Output code to load the Aditi-RL for each module in turn.
-	*/
-	printf("\tfor (i = 0; i < num_rl_modules; i++) {\n");
-	printf("\t\tif (*rl_data_lengths[i] != 0\n");
-
-	/* The ADITI_NAME macro puts a prefix on the function name. */
-	printf("\t\t    && (status = ADITI_NAME(load_immed)"
-		"(*rl_data_lengths[i],\n");
-	printf("\t\t\t\trl_data[i])) != ADITI_OK) {\n");
-	printf("\t\t\treturn status;\n");
-	printf("\t\t}\n");
-	printf("\t}\n");
-	printf("\treturn ADITI_OK;\n");
-	printf("}\n");
+	printf(
+"        /* The ADITI_TYPE macro puts a prefix on the type name. */\n"
+"        ADITI_TYPE(AditiStatus) status = ADITI_ENUM(AditiStatus_OK);\n"
+"        int i;\n"
+"        char *bytecode;\n"
+"        MR_Box result;\n"
+"        apiID connection;\n"
+"        apiID transaction;\n"
+"\n"
+"        MR_MAYBE_UNBOX_FOREIGN_TYPE(apiID, boxed_connection, \n"
+"                        connection);\n"
+"        MR_MAYBE_UNBOX_FOREIGN_TYPE(apiID, boxed_transaction, \n"
+"                        transaction);\n"
+"\n"
+"        /*\n"
+"        ** Load the Aditi-RL for each module in turn.\n"
+"        */\n"
+"        for (i = 0; i < num_rl_modules; i++) {\n"
+"            if (*rl_data_lengths[i] != 0) {\n"
+"                /* The ADITI_FUNC macro puts a prefix on the function name. */\n"
+"                status = ADITI_FUNC(api_blob_to_string)(*rl_data_lengths[i],\n"
+"                                (char *) rl_data[i], &bytecode);\n"
+"                /* The ADITI_ENUM macro puts a prefix on the enum constant. */\n"
+"                if (status != ADITI_ENUM(AditiStatus_OK)) {\n"
+"                    break;\n"
+"                }\n"
+"                status = ADITI_FUNC(module_load)(connection,\n"
+"                        transaction, bytecode);\n"
+"                free(bytecode);\n"
+"                if (status != ADITI_ENUM(AditiStatus_OK)) {\n"
+"                    break;\n"
+"                }\n"
+"            }\n"
+"        }\n"
+"        MR_MAYBE_BOX_FOREIGN_TYPE(ADITI_TYPE(AditiStatus), status, result);\n"
+"        return result;\n"
+"}\n");
 }
 
 /*---------------------------------------------------------------------------*/

@@ -42,12 +42,16 @@ extern	int	mercury_runtime_terminate(void);
 
 /*
 ** MR_load_aditi_rl_code() uploads all the Aditi-RL code for
-** the program to a database to which the program currently has a
-** connection, returning a status value as described in
-** aditi2/src/api/aditi_err.h in the Aditi sources.
-** It aborts if the executable was not compiled for Aditi execution. 
+** the program to a database specified by connection. The code
+** will be stored in the context of the given transaction.
+** The return value is described by aditi2/src/AditiStatus/AditiStatus.h
+** in the Aditi sources.
+** Aborts if the executable was not compiled for Aditi execution. 
+** The return value is an Aditi error code.
+** We use MR_Box here rather than the actual argument types to
+** avoid dependencies on the Aditi headers.
 */
-extern	int	MR_load_aditi_rl_code(void);
+extern	MR_Box	MR_load_aditi_rl_code(MR_Box connection, MR_Box transaction);
 
 /*
 ** MR_init_conservative_GC() initializes the conservative collector.
@@ -97,7 +101,7 @@ extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
 extern	void		(*MR_address_of_init_gc)(void);
 #endif
 
-extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
+extern	MR_Box		(*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 
 /*
 ** MR_trace_getline(const char *, FILE *, FILE *) and

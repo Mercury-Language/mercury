@@ -24,6 +24,8 @@
 :- import_module io.
 :- import_module aditi.
 
+:- type aditi_private_builtin__relation.
+
 :- pred connect(string, string, string, int, aditi__connection,
 		io__state, io__state).
 :- mode connect(in, in, in, out, out, di, uo) is det.
@@ -41,8 +43,6 @@
 :- pred abort_transaction(aditi__state, io__state, io__state).
 :- mode abort_transaction(in, di, uo) is det.
 
-:- type relation_ticket == c_pointer.
-
 	% do_call_returning_relation(ProcName, InputSchema, InputTuple,
 	%		OutputRel).
 	%
@@ -50,40 +50,48 @@
 	% relation. InputTuple is a tuple containing the
 	% input arguments. InputSchema is an Aditi schema string
 	% describing the tuple of input arguments.
-:- impure pred do_call_returning_relation(string, string,
-			T, relation_ticket).
-:- mode do_call_returning_relation(in, in, in, out) is det.
+:- impure pred do_call_returning_relation(aditi__state, string, string,
+		T, relation).
+:- mode do_call_returning_relation(aditi_mui, in, in, in, out) is det.
 
 	% Find the single solution for a deterministic database call.
 	% Abort the transaction if the call does not succeed at
 	% least once.
 	% InputTuple and OutputTuple must have type '{}/N' (the arity
 	% depends on the relation being called).
-:- impure pred do_det_call(string, string, InputTuple, OutputTuple).
-:- mode do_det_call(in, in, in, out) is det.
+:- impure pred do_det_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_det_call(aditi_mui, in, in, in, out) is det.
 
-:- impure pred do_semidet_call(string, string, InputTuple, OutputTuple).
-:- mode do_semidet_call(in, in, in, out) is semidet.
+:- impure pred do_semidet_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_semidet_call(aditi_mui, in, in, in, out) is semidet.
 
-:- impure pred do_nondet_call(string, string, InputTuple, OutputTuple).
-:- mode do_nondet_call(in, in, in, out) is nondet.
+:- impure pred do_nondet_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_nondet_call(aditi_mui, in, in, in, out) is nondet.
 
-:- impure pred do_multi_call(string, string, InputTuple, OutputTuple).
-:- mode do_multi_call(in, in, in, out) is multi.
+:- impure pred do_multi_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_multi_call(aditi_mui, in, in, in, out) is multi.
 
 	% XXX I'm not sure whether it makes sense to have
 	% committed choice Aditi predicates.
-:- impure pred do_cc_nondet_call(string, string, InputTuple, OutputTuple).
-:- mode do_cc_nondet_call(in, in, in, out) is cc_nondet.
+:- impure pred do_cc_nondet_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_cc_nondet_call(aditi_mui, in, in, in, out) is cc_nondet.
 
-:- impure pred do_cc_multi_call(string, string, InputTuple, OutputTuple).
-:- mode do_cc_multi_call(in, in, in, out) is cc_multi.
+:- impure pred do_cc_multi_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_cc_multi_call(aditi_mui, in, in, in, out) is cc_multi.
 
-:- impure pred do_erroneous_call(string, string, InputTuple, OutputTuple).
-:- mode do_erroneous_call(in, in, in, out) is erroneous.
+:- impure pred do_erroneous_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_erroneous_call(aditi_mui, in, in, in, out) is erroneous.
 
-:- impure pred do_failure_call(string, string, InputTuple, OutputTuple).
-:- mode do_failure_call(in, in, in, out) is failure.
+:- impure pred do_failure_call(aditi__state, string, string,
+		InputTuple, OutputTuple).
+:- mode do_failure_call(aditi_mui, in, in, in, out) is failure.
 
 	% do_insert_tuple(BaseRelationName, Tuple).
 	%
@@ -99,8 +107,8 @@
 		aditi__state, aditi__state).
 :- mode do_delete_tuple(in, in, in, in, aditi_di, aditi_uo) is det.
 
-:- type update_closure == pred(relation_ticket).
-:- inst update_closure == (pred(out) is det).
+:- type update_closure == pred(aditi__state, relation).
+:- inst update_closure == (pred(aditi_ui, out) is det).
 
 	% do_bulk_insert(BaseRelationName, UpdateProcName, Closure).
 :- pred do_bulk_insert(string, string, update_closure,
@@ -127,16 +135,23 @@
 
 :- import_module bool, char, exception, int, list, require, std_util, string.
 
-:- type cursor == c_pointer.
+:- pragma foreign_type("C", relation, "apiID").
 
-:- pragma c_header_code("
+:- type cursor.
+:- pragma foreign_type("C", cursor, "MADITI_Output_Info *").
 
+:- pragma foreign_import_module("C", aditi).
+
+:- pragma foreign_decl("C",
+"
 #include ""mercury_wrapper.h""
 #include ""mercury_string.h""
+#include ""mercury_reg_workarounds.h""
 
-/* aditi_api_config.h must be included before aditi_clnt.h */
-#include ""aditi_api_config.h""
-#include ""aditi_clnt.h""
+#include ""v2_api_without_engine.h""
+#include ""AditiStatus.h""
+
+#define MADITI_OK ADITI_ENUM(AditiStatus_OK)
 
 	/*
 	** MADITI_check can only be used within functions which return
@@ -148,7 +163,7 @@
 		MADITI_check_status_xxx = status;			\\
 		MADITI_do_debug_status(MADITI_check_status_xxx,		\\
 			MADITI_line_xxx);				\\
-		if (MADITI_check_status_xxx != ADITI_OK) {		\\
+		if (MADITI_check_status_xxx != MADITI_OK) {		\\
 			MADITI_status = MADITI_check_status_xxx;	\\
     			return MADITI_check_status_xxx;			\\
 		}							\\
@@ -165,53 +180,51 @@
 #define MADITI_do_debug_status(status, line)				\\
     do {	int MADITI_do_debug_status_xxx;				\\
 		MADITI_do_debug_status_xxx = status;			\\
-		if (MADITI_do_debug_status_xxx != ADITI_OK) {		\\
+		if (MADITI_do_debug_status_xxx != MADITI_OK) {		\\
 			MR_DEBUG(fprintf(stderr, ""\\naditi_private_builtin.m:%d: API call failed, returned %d\\n"", \\
 			line, MADITI_do_debug_status_xxx));		\\
 	}								\\
     } while(0)
 
-/*
-** Maximum time allowed for a query (in seconds)
-*/
-#define MADITI_QUERY_TIMEOUT 600
-
-typedef enum { MADITI_INSERT_TUPLE, MADITI_DELETE_TUPLE } MADITI_insert_delete;
-typedef enum { MADITI_INSERT, MADITI_DELETE, MADITI_MODIFY } MADITI_bulk_op;
+typedef enum { MADITI_INSERT_TUPLE, MADITI_DELETE_TUPLE } MADITI_Insert_Delete;
+typedef enum { MADITI_INSERT, MADITI_DELETE, MADITI_MODIFY } MADITI_Bulk_Op;
 
 /*
 ** Information used to clean up a call result if there is a commit
 ** or an exception across a database call.
 */
 typedef struct {
-	ticket *output_rel;
-	ticket *output_cursor;
-	bool cleaned_up;
-} MADITI_output_info;
+	MADITI_State	state;
+	apiID		relation;
+	apiID		cursor;
+	bool		cleaned_up;
+} MADITI_Output_Info;
 
-static ticket MADITI_ticket;		/* Current connection ticket. */
+static apiID MADITI_session;		/* Current connection ticket. */
 static int MADITI_status;		/* Return code of the last
 					** Aditi API call.
 					*/
 
-static int  MADITI_run_procedure(MR_String proc_name,
-		MR_String input_schema, String input_tuple, ticket **result);
-static int MADITI_create_cursor(ticket *output_ticket,
-		MADITI_output_info **result);
-static int MADITI_do_insert_delete_tuple(MADITI_insert_delete operation,
+static int MADITI_run_procedure(MADITI_State *DB, MR_String proc_name,
+		MR_String input_schema, MR_String input_tuple,
+		apiID *output_relation);
+static int MADITI_create_cursor(MADITI_State *DB, apiID relation,
+		MADITI_Output_Info **output_info_ptr);
+static int MADITI_do_insert_delete_tuple(MADITI_State *DB,
+		MADITI_Insert_Delete operation,
 		MR_String relation_name, MR_String update_proc,
 		MR_String update_schema, MR_String tuple);
-static int MADITI_do_bulk_operation(MADITI_bulk_op operation,
+static int MADITI_do_bulk_operation(MADITI_State *DB, MADITI_Bulk_Op operation,
 		MR_String relation_name, MR_String update_proc,
-		ticket *closure_result);
-static int MADITI_cleanup_call_output(MADITI_output_info *);
+		apiID closure_result);
+static int MADITI_cleanup_call_output(MADITI_Output_Info *);
 
 #ifdef MR_USE_TRAIL
 static void MADITI_trail_cleanup_call_output(void *cleanup_data,
 		MR_untrail_reason reason);
 #endif
 
-static int MADITI_list_rel(ticket* rel);
+static int MADITI_list_rel(MADITI_State DB, apiID rel);
 ").
 
 :- pragma c_code("
@@ -236,57 +249,98 @@ static int MADITI_list_rel(ticket* rel);
 	%
 	% Code to handle connections.
 	%
-:- pragma c_code(
-	connect(Host::in, User::in, Passwd::in,
+:- pragma foreign_proc("C",
+	connect(_XXXHost::in, User::in, Passwd::in,
 		Stat::out, Connection::out, IO0::di, IO::uo),
-		will_not_call_mercury,
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "
 {
-	/* connect */
-	if ((Stat = init_aditi_clnt()) == ADITI_OK
-		&& (Stat = ADITI_NAME(recon)(Host)) == ADITI_OK) {
+    apiID transport_id;
+    char *challenge = NULL;
+    MR_Box boxed_connection;
+    MR_Box boxed_bytecode_transaction;
 
-		MR_DEBUG(fprintf(stderr, ""connected\\n""));
+    Stat = ADITI_FUNC(api_init)((apiString) ""D"", 0,
+    		NULL, NULL, &transport_id);
+    if (Stat == MADITI_OK) {
+        /*
+        ** Log in.
+        ** XXX handle extra authentication using
+        ** ADITI_FUNC(session_authenticate)
+        */
+        Stat = ADITI_FUNC(session_create)(User, Passwd, 0,
+                &(Connection.connection), &challenge);
+        if (Stat == MADITI_OK) {
 
-		/*
-		** Login and upload all the RL code for the program to 
-		** the database.
-		*/
-		if ((Stat = ADITI_NAME(login)(User, Passwd)) == ADITI_OK) {
+            MR_DEBUG(fprintf(stderr, ""connected\\n""));
 
-			MR_DEBUG(ADITI_NAME(set_debug)());
+            /*
+            ** Create a transaction which will run as long as the connection.
+            ** The bytecode will be stored in this transaction.
+            */
+            Stat = ADITI_FUNC(transaction_begin)(Connection.connection,
+                                    &(Connection.bytecode_transaction));
+            if (Stat == MADITI_OK) {
+                /*
+                ** Upload all the RL code for the program to 
+                ** the database.
+                */
 
-			MR_DEBUG(fprintf(stderr, ""logged in\\n""));
-			if ((Stat = MR_load_aditi_rl_code())
-					== ADITI_OK) {
-				MR_DEBUG(fprintf(stderr, ""code loaded\\n""));
-			} else {
-				ADITI_NAME(discon)(FORCE_LOGOUT);
-			}
-		} else {
-			ADITI_NAME(discon)(FORCE_LOGOUT);
-		}
-	}
-	MADITI_debug_status(Stat);
-	Connection = 1;
-	IO = IO0;
+                /* XXX The new API doesn't provide any way to do this */
+                /* MR_DEBUG(ADITI_FUNC(set_debug)()); */
+
+                MR_DEBUG(fprintf(stderr, ""logged in\\n""));
+
+                /*
+                ** The casts to `void *' are to avoid the Mercury runtime
+                ** depending on Aditi headers.
+                */
+		MR_MAYBE_BOX_FOREIGN_TYPE(apiID, Connection.connection,
+			boxed_connection);
+		MR_MAYBE_BOX_FOREIGN_TYPE(apiID,
+			Connection.bytecode_transaction,
+			boxed_bytecode_transaction);
+                Stat = MR_load_aditi_rl_code(boxed_connection,
+                        boxed_bytecode_transaction);
+                if (Stat == MADITI_OK) {
+                    MR_DEBUG(fprintf(stderr, ""code loaded\\n""));
+                } else {
+                    ADITI_FUNC(transaction_abort)(Connection.connection,
+                            Connection.bytecode_transaction);
+                    ADITI_FUNC(session_disconnect)(Connection.connection);
+                    ADITI_FUNC(api_close)();
+                }
+            } else {
+                ADITI_FUNC(session_disconnect)(Connection.connection);
+                ADITI_FUNC(api_close)();
+            }
+        } else {
+            ADITI_FUNC(api_close)();
+        }
+    }
+    MADITI_debug_status(Stat);
+    IO = IO0;
 }
 ").
 
-:- pragma c_code(
-		disconnect(_Connection::in, Stat::out, IO0::di, IO::uo),
-		will_not_call_mercury,
-"
-{
-	Stat = ADITI_NAME(discon)(FORCE_LOGOUT);
-	MADITI_debug_status(Stat);
-	if (Stat == ADITI_OK) {
-		Stat = fin_aditi_clnt();
-		MADITI_debug_status(Stat);
+:- pragma foreign_proc("C",
+	disconnect(Connection::in, Stat::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
+"{
+	ADITI_TYPE(AditiStatus) status;
+        Stat = ADITI_FUNC(transaction_abort)(Connection.connection,
+                Connection.bytecode_transaction);
+        status = ADITI_FUNC(session_disconnect)(Connection.connection);
+	if (Stat == MADITI_OK) {
+		Stat = status;
 	}
-	IO = IO0;
-}
-").
+        status = ADITI_FUNC(api_close)();
+	if (Stat == MADITI_OK) {
+		Stat = status;
+	}
+        MADITI_debug_status(Stat);
+        IO = IO0;
+}").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -295,40 +349,44 @@ static int MADITI_list_rel(ticket* rel);
 	% This section handles starting, committing and aborting transactions.
 	%
 
-start_transaction(_, Result) -->
-	start_transaction_2(Status, State),
+start_transaction(Connection, Result) -->
+	start_transaction_2(Connection, Status, DB),
 	{ Status = 0 ->
-		Result = ok(State)
+		Result = ok(DB)
 	;
 		error_code(Status, Error, String),
 		Result = error(Error, String)
 	}.
 
-:- pred start_transaction_2(int, aditi__state, io__state, io__state).
-:- mode start_transaction_2(out, out, di, uo) is det.
+:- pred start_transaction_2(aditi__connection, int,
+		aditi__state, io__state, io__state).
+:- mode start_transaction_2(in, out, out, di, uo) is det.
 
-:- pragma c_code(start_transaction_2(Stat::out, DB::out, IO0::di, IO::uo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	start_transaction_2(Connection::in, Stat::out,
+		DB::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	IO = IO0;
 	MR_DEBUG(fprintf(stderr, ""starting transaction...""));
-	Stat = ADITI_NAME(trans_begin)(&MADITI_ticket);
+	DB.connection = Connection.connection;
+	DB.bytecode_transaction = Connection.bytecode_transaction;
+	Stat = ADITI_FUNC(transaction_begin)(Connection.connection,
+		&(DB.transaction));
 	MADITI_debug_status(Stat);
 	MADITI_status = Stat;
 	MR_DEBUG(fprintf(stderr, ""done\\n""));
-	DB = (MR_Word) 0;
-
 }").
 
-:- pragma c_code(abort_transaction(DB::in, IO0::di, IO::uo),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	abort_transaction(DB::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
 	/*
 	** Ignore the return code -- we're more interested
 	** in the error which caused the abort.
 	*/
-	ADITI_NAME(trans_abort)(&MADITI_ticket);
-	DB = 0;
+	ADITI_FUNC(transaction_abort)(DB.connection, DB.transaction);
 	IO = IO0;
 }").
 
@@ -344,20 +402,20 @@ commit_transaction(DB) -->
 :- pragma c_code(commit_transaction_2(DB::in, Stat::out, IO0::di, IO::uo),
 		will_not_call_mercury,
 "{
-	Stat = ADITI_NAME(trans_commit)(&MADITI_ticket);
+	Stat = ADITI_FUNC(transaction_commit)(DB.connection, DB.transaction);
 	MADITI_debug_status(Stat);
-	DB = 0;
 	IO = IO0;
 }").
 
 	% Throw an exception to abort the transaction if the status
-	% is not ADITI_OK.
+	% is not MADITI_OK.
 	% This needs to be impure to stop it being reordered with
 	% other calls.
 :- semipure pred maybe_throw_aditi_exception(int).
 :- mode maybe_throw_aditi_exception(in) is det.
 
 maybe_throw_aditi_exception(Status) :-
+	semipure get_aditi_status(_),
 	( Status = 0 ->
 		true
 	;
@@ -406,25 +464,25 @@ check_for_old_error -->
 	% This section handles calls to Aditi predicates and functions.
 	%
 
-do_det_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
-	impure do_call_returning_relation(ProcName, 
+do_det_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
+	impure do_call_returning_relation(DB, ProcName, 
 		InputSchema, InputTuple, OutputRel),
-	impure create_cursor(OutputRel, CursorStatus, Cursor0),
+	impure create_cursor(DB, OutputRel, CursorStatus, Cursor0),
 	semipure maybe_throw_aditi_exception(CursorStatus),
 	( get_next_tuple(OutputTuple0, Cursor0, Cursor) ->
 		OutputTuple = OutputTuple0,
-		impure destroy_cursor(Cursor, DestroyStatus),
+		impure destroy_cursor(DB, Cursor, DestroyStatus),
 		semipure maybe_throw_aditi_exception(DestroyStatus)
 	;
-		impure destroy_cursor(Cursor0, DestroyStatus),
+		impure destroy_cursor(DB, Cursor0, DestroyStatus),
 		semipure maybe_throw_aditi_exception(DestroyStatus),
 		determinism_error("no solution", "det", ProcName)
 	).
 
-do_semidet_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
-	impure do_call_returning_relation(ProcName,
+do_semidet_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
+	impure do_call_returning_relation(DB, ProcName,
 		InputSchema, InputTuple, OutputRel),
-	impure create_cursor(OutputRel, CursorStatus, Cursor0),
+	impure create_cursor(DB, OutputRel, CursorStatus, Cursor0),
 	semipure maybe_throw_aditi_exception(CursorStatus),
 	( get_next_tuple(OutputTuple0, Cursor0, Cursor) ->
 		%
@@ -432,24 +490,24 @@ do_semidet_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
 		% the other solutions are just duplicates.
 		%
 		OutputTuple = OutputTuple0,
-		impure destroy_cursor(Cursor, DestroyStatus),
+		impure destroy_cursor(DB, Cursor, DestroyStatus),
 		semipure maybe_throw_aditi_exception(DestroyStatus)
 	;
-		impure destroy_cursor(Cursor0, DestroyStatus),
+		impure destroy_cursor(DB, Cursor0, DestroyStatus),
 		semipure maybe_throw_aditi_exception(DestroyStatus),
 		fail
 	).
 
-do_nondet_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
-	impure do_call_returning_relation(ProcName, InputSchema,
+do_nondet_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
+	impure do_call_returning_relation(DB, ProcName, InputSchema,
 		InputTuple, OutputRel),
-	impure create_cursor(OutputRel, CursorStatus, Cursor),
+	impure create_cursor(DB, OutputRel, CursorStatus, Cursor),
 	semipure maybe_throw_aditi_exception(CursorStatus),
-	impure collect_nondet_output_tuples(Cursor, OutputTuple).
+	impure collect_nondet_output_tuples(DB, Cursor, OutputTuple).
 
-do_multi_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
+do_multi_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
 	(
-		impure do_nondet_call(ProcName, InputSchema,
+		impure do_nondet_call(DB, ProcName, InputSchema,
 			InputTuple, OutputTuple0)
 	->
 		OutputTuple = OutputTuple0
@@ -457,19 +515,21 @@ do_multi_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
 		determinism_error("no solution", "multi", ProcName)
 	).
 
-do_cc_nondet_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
-	impure do_nondet_call(ProcName, InputSchema, InputTuple, OutputTuple).
+do_cc_nondet_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
+	impure do_nondet_call(DB, ProcName, InputSchema,
+		InputTuple, OutputTuple).
 
-do_cc_multi_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
-	impure do_multi_call(ProcName, InputSchema, InputTuple, OutputTuple).
+do_cc_multi_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
+	impure do_multi_call(DB, ProcName, InputSchema,
+		InputTuple, OutputTuple).
 
-do_erroneous_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
-	impure do_det_call(ProcName, InputSchema, InputTuple, OutputTuple),
+do_erroneous_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
+	impure do_det_call(DB, ProcName, InputSchema, InputTuple, OutputTuple),
 	determinism_error("solution", "erroneous", ProcName).
 
-do_failure_call(ProcName, InputSchema, InputTuple, OutputTuple) :-
+do_failure_call(DB, ProcName, InputSchema, InputTuple, OutputTuple) :-
 	(
-		impure do_semidet_call(ProcName, InputSchema,
+		impure do_semidet_call(DB, ProcName, InputSchema,
 			InputTuple, OutputTuple0)
 	->
 		OutputTuple = OutputTuple0,
@@ -487,10 +547,10 @@ determinism_error(Solution, Det, ProcName) :-
 		[s(Solution), s(Det), s(ProcName)], Msg),
 	throw(aditi__exception(determinism_error, Msg)).
 
-:- impure pred collect_nondet_output_tuples(cursor, T).
-:- mode collect_nondet_output_tuples(in, out) is nondet.
+:- impure pred collect_nondet_output_tuples(aditi__state, cursor, T).
+:- mode collect_nondet_output_tuples(in, in, out) is nondet.
 
-collect_nondet_output_tuples(Cursor0, OutputTuple) :-
+collect_nondet_output_tuples(DB, Cursor0, OutputTuple) :-
 	semipure check_for_old_error,
 	(
 		get_next_tuple(OutputTuple0, Cursor0, Cursor)
@@ -498,55 +558,57 @@ collect_nondet_output_tuples(Cursor0, OutputTuple) :-
 		(
 			OutputTuple = OutputTuple0
 		;
-			impure collect_nondet_output_tuples(Cursor,
+			impure collect_nondet_output_tuples(DB, Cursor,
 				OutputTuple)
 		)
 	;
-		impure destroy_cursor(Cursor0, DestroyStatus),
+		impure destroy_cursor(DB, Cursor0, DestroyStatus),
 		semipure maybe_throw_aditi_exception(DestroyStatus),
 		fail
 	).
 
-do_call_returning_relation(ProcName, InputSchema, InputTuple, OutputRel) :-
+% XXX Work around GCC register bug.
+:- pragma no_inline(do_call_returning_relation/5).
+
+do_call_returning_relation(DB, ProcName, InputSchema, InputTuple, OutputRel) :-
 	construct_input_tuple(InputTuple, InputTupleStr),
-	impure do_call_returning_relation_2(ProcName, InputSchema,
+	impure do_call_returning_relation_2(DB, ProcName, InputSchema,
 		InputTupleStr, Status, OutputRel),
 	semipure maybe_throw_aditi_exception(Status).
 
-:- impure pred do_call_returning_relation_2(string, string,
-		string, int, relation_ticket).
-:- mode do_call_returning_relation_2(in, in, in, out, out) is det.
+:- impure pred do_call_returning_relation_2(aditi__state, string, string,
+		string, int, relation).
+:- mode do_call_returning_relation_2(aditi_mui, in, in, in, out, out) is det.
 
-:- pragma c_code(do_call_returning_relation_2(ProcName::in, InputSchema::in,
-		InputTuple::in, Stat::out, OutputRel::out),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	do_call_returning_relation_2(DB::aditi_mui, ProcName::in,
+		InputSchema::in, InputTuple::in, Stat::out, OutputRel::out),
+	[will_not_call_mercury],
 "{
-	ticket *output_rel;
-	Stat = (MR_Word) MADITI_run_procedure(ProcName,
-			InputSchema, InputTuple, &output_rel);
-	OutputRel = (MR_Word) output_rel;
+	Stat = MADITI_run_procedure(&DB, ProcName, InputSchema,
+			InputTuple, &OutputRel);
 }").
 
 	% Create a cursor, adding an entry to the trail if possible
 	% to make sure that it is cleaned up.
-:- impure pred create_cursor(relation_ticket, int, cursor).
-:- mode create_cursor(in, out, out) is det.
+:- impure pred create_cursor(aditi__state, relation, int, cursor).
+:- mode create_cursor(aditi_mui, in, out, out) is det.
 
-:- pragma c_code(create_cursor(Relation::in, Stat::out, Cursor::out),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	create_cursor(DB::aditi_mui, Relation::in, Stat::out, Cursor::out),
+	[will_not_call_mercury],
 "{
-	MADITI_output_info *output_info;
-	Stat = MADITI_create_cursor((ticket *)Relation, &output_info);
-	Cursor = (MR_Word) output_info;
+	Stat = MADITI_create_cursor(&DB, Relation, &Cursor);
 }").
 
-:- impure pred destroy_cursor(cursor, int).
-:- mode destroy_cursor(in, out) is det.
+:- impure pred destroy_cursor(aditi__state, cursor, int).
+:- mode destroy_cursor(aditi_mui, in, out) is det.
 
-:- pragma c_code(destroy_cursor(Cursor::in, Stat::out),
-		will_not_call_mercury,
+:- pragma foreign_proc("C",
+	destroy_cursor(_DB::aditi_mui, Cursor::in, Stat::out),
+	[will_not_call_mercury],
 "
-	Stat = MADITI_cleanup_call_output((MADITI_output_info *) Cursor);
+	Stat = MADITI_cleanup_call_output(Cursor);
 ").
 
 :- pred get_next_tuple(T, cursor, cursor).
@@ -571,34 +633,46 @@ get_next_tuple(OutputTuple, Cursor0, Cursor) :-
 :- pred cursor_next(string, cursor, cursor).
 :- mode cursor_next(out, in, out) is semidet.
 
-:- pragma c_code(cursor_next(Tuple::out, Cursor0::in, Cursor::out),
-		will_not_call_mercury,
-"
-{
+:- pragma foreign_proc("C",
+	cursor_next(Tuple::out, Cursor0::in, Cursor::out),
+	[will_not_call_mercury, promise_pure],
+"{
 	int rc;
 	char *tuple_str;
-	int tuple_str_len;
-	MADITI_output_info *output_info;
+#ifdef MR_INT_LEAST64_TYPE
+	MR_uint_least64_t file_page_slot;
+#else
+	#error ""The Aditi interface needs a 64 bit integer type""
+#endif
 
 	Cursor = Cursor0;
-	output_info = (MADITI_output_info *) Cursor;
-	rc = ADITI_NAME(cursor_next)(output_info->output_cursor,
-		&tuple_str_len, &tuple_str);
+	rc = ADITI_FUNC(cursor_get_next)((Cursor->state).connection,
+		(Cursor->state).transaction, Cursor->relation,
+		Cursor->cursor, &file_page_slot);
+	MADITI_debug_status(rc);
 
 	/*
 	** XXX This check should be more specific, but there is no
 	** Aditi return code for no more tuples. 
 	*/
-	if (rc == ADITI_OK) {
-		MR_DEBUG(fprintf(stderr, ""received tuple: %s\\n"", tuple_str));
-		MR_make_aligned_string_copy(Tuple, tuple_str);
-		free(tuple_str);
-		SUCCESS_INDICATOR = TRUE;
+	if (rc == MADITI_OK) {
+		rc = ADITI_FUNC(cursor_get_current)((Cursor->state).connection,
+			(Cursor->state).transaction, Cursor->relation,
+			Cursor->cursor, &tuple_str);
+		MADITI_debug_status(rc);
+		if (rc == MADITI_OK) {
+			MR_DEBUG(fprintf(stderr,
+				""received tuple: %s\\n"", tuple_str));
+			MR_make_aligned_string_copy(Tuple, tuple_str);
+			free(tuple_str);
+			SUCCESS_INDICATOR = TRUE;
+		} else {
+			SUCCESS_INDICATOR = FALSE;
+		}
 	} else {
 		SUCCESS_INDICATOR = FALSE;
 	}
-}
-").
+}").
 
 :- pred parse_output_tuple(list(type_desc), string, int,
 		io__posn, list(univ)).
@@ -640,108 +714,145 @@ has_read_result_type(Result, TypeDesc) :-
 
 read_result_type(_, _).
 
-:- pragma c_code("
-
+:- pragma foreign_decl("C",
+"
 /* 
 ** Given an RL procedure name, the schema of the input relation and a tuple
 ** to insert into the input relation, run the procedure, returning a ticket
 ** for the output relation.
 */
 static int
-MADITI_run_procedure(MR_String proc_name, MR_String input_schema,
-	MR_String input_tuple, ticket **output_ticket_ptr)
+MADITI_run_procedure(MADITI_State *DB, MR_String proc_name,
+	MR_String input_schema, MR_String input_tuple, apiID *output_relation)
 {
-
-	ticket input_ticket;	/* Ticket identifying the input relation. */
-	ticket *output_ticket;	/* Ticket identifying the input relation. */
-	
+	apiID input_relation;
 
 	/*
 	** Create a temporary relation to hold the input tuple.
 	*/
 	MR_DEBUG(fprintf(stderr, ""creating input temporary (schema %s)..."",
 		input_schema));
-	MADITI_check(ADITI_NAME(tmp_create)(&MADITI_ticket,
-		input_schema, &input_ticket));
+	MADITI_check(ADITI_FUNC(relation_create)(DB->connection,
+		DB->transaction, input_schema,
+		(apiString) """", /* unnamed */
+		0, /* temporary relation */
+		&input_relation));
 	MR_DEBUG(fprintf(stderr, ""done\\n""));
 
 	/*
 	** Insert the input tuple into the relation.
 	*/
 	MR_DEBUG(fprintf(stderr, ""adding input tuple...%s"", input_tuple));
-	MADITI_check(ADITI_NAME(tmp_addtup)(&input_ticket, input_tuple));
+	MADITI_check(ADITI_FUNC(relation_tuple_add)(DB->connection,
+		DB->transaction, input_relation, input_tuple,
+		0 /* !use_internal_save_point */));
 	MR_DEBUG(fprintf(stderr, ""done\\n""));
 
 	/*
 	** Run the procedure.
 	*/
 	MR_DEBUG(fprintf(stderr, ""running procedure... ""));
-	output_ticket = (ticket *) MR_GC_NEW(ticket);
-	MADITI_check(ADITI_NAME(run2_s)(proc_name, MADITI_QUERY_TIMEOUT,
-		&MADITI_ticket, &input_ticket, output_ticket));
+	MADITI_check(ADITI_FUNC(procedure_run)(DB->connection, DB->transaction,
+		proc_name, input_relation, DB->bytecode_transaction,
+		1 /* output is used */,
+		output_relation));
 	MR_DEBUG(fprintf(stderr, ""done\\n""));
 
 	/*
 	** Drop the input relation.
 	*/
 	MR_DEBUG(fprintf(stderr, ""dropping input temporary...""));
-	MADITI_check(ADITI_NAME(tmp_destroy)(&input_ticket));
+	MADITI_check(ADITI_FUNC(relation_destroy)(DB->connection,
+		DB->transaction, input_relation));
 	MR_DEBUG(fprintf(stderr, ""done\\n""));
 
-	MR_DEBUG(fprintf(stderr, ""output tuples\n""));
-	MR_DEBUG(MADITI_check(MADITI_list_rel(output_ticket)));
+	MR_DEBUG(fprintf(stderr, ""output tuples\\n""));
+	MR_DEBUG(MADITI_check(MADITI_list_rel(DB, *output_relation)));
 	MR_DEBUG(fprintf(stderr, ""\\n\\n""));
 	
-	*output_ticket_ptr = output_ticket;
-	return ADITI_OK;
+	return MADITI_OK;
 }
 
 static int
-MADITI_create_cursor(ticket *relation, MADITI_output_info **output_info_ptr)
+MADITI_create_cursor(MADITI_State *DB, apiID relation,
+		MADITI_Output_Info **output_info_ptr)
 {
-	ticket *cursor;
-	MADITI_output_info *output_info;
+	apiID cursor;
+	MADITI_Output_Info *output_info;
 
 	/* create cursor on the output relation */
 	MR_DEBUG(fprintf(stderr, ""opening output cursor...""));
-	cursor = (ticket *) MR_GC_NEW(ticket);
-	MADITI_check(ADITI_NAME(rel_cursor_create)(relation, cursor));
-	MADITI_check(ADITI_NAME(cursor_open)(cursor, CUR_FORWARD));
+	MADITI_check(ADITI_FUNC(cursor_create)(DB->connection,
+		DB->transaction, relation,
+		(apiString) """" /* no index */,
+		&cursor));
+	MADITI_check(ADITI_FUNC(cursor_open)(DB->connection,
+		DB->transaction, relation, cursor,
+		0 /* forwards */,
+		(apiString) """", 0, (apiString) """", 0 /* not used */));
 	MR_DEBUG(fprintf(stderr, ""done\\n""));
 
-	output_info = MR_GC_NEW(MADITI_output_info);
-	output_info->output_rel = relation;
-	output_info->output_cursor = cursor;
+	output_info = MR_GC_NEW(MADITI_Output_Info);
+	MR_assign_structure(output_info->state, DB);
+	output_info->relation = relation;
+	output_info->cursor = cursor;
 	output_info->cleaned_up = FALSE;
 #ifdef MR_USE_TRAIL
 	MR_trail_function(MADITI_trail_cleanup_call_output,
 		(void *) output_info);
 #endif
 	*output_info_ptr = output_info;
-	return ADITI_OK;
+	return MADITI_OK;
 }
 
 static int
-MADITI_list_rel(ticket* rel)
+MADITI_list_rel(MADITI_State DB, apiID relation)
 {
 	size_t len;
-	char* ptr;
-	ticket cur;
+	apiID cursor;
+	char *tuple_str;
+	int rc;
+#ifdef MR_INT_LEAST64_TYPE
+	MR_uint_least64_t file_page_slot;
+#else
+	#error ""The Aditi interface needs a 64 bit integer type""
+#endif
 
-	MADITI_check(ADITI_NAME(tmp_cursor_create)(rel,&cur));
-	MADITI_check(ADITI_NAME(cursor_open)(&cur,CUR_FORWARD));
+
+	MADITI_check(ADITI_FUNC(cursor_create)(DB.connection,
+		DB.transaction, relation,
+		(apiString) """" /* no index */,
+		&cursor));
+	MADITI_check(ADITI_FUNC(cursor_open)(DB.connection,
+		DB.transaction, relation, cursor,
+		0 /* forwards */,
+		(apiString) """", 0, (apiString) """", 0 /* not used */));
+
 	len = 0;
-	ptr = NULL;
 	fflush(stdout);
-	while (ADITI_NAME(cursor_next)(&cur,&len,&ptr) == ADITI_OK) {
-		fprintf(stderr, ""tuple: [%.*s]\n"",(int)len,ptr);
-		free(ptr);
-		len = 0;
-		ptr = NULL;
+
+	/*
+	** XXX This check should be more specific, but there is no
+	** Aditi return code for no more tuples. 
+	*/
+	while (ADITI_FUNC(cursor_get_next)(DB.connection, DB.transaction,
+			relation, cursor, &file_page_slot) == MADITI_OK)
+	{
+		rc = ADITI_FUNC(cursor_get_current)(DB.connection,
+			DB.transaction, relation, cursor, &tuple_str);
+		if (rc == MADITI_OK) {
+			fprintf(stderr, ""tuple: %s\\n"", tuple_str);
+			free(tuple_str);
+			len = 0;
+			tuple_str = NULL;
+		}
 	}
-	MADITI_check(ADITI_NAME(cursor_close)(&cur));
-	MADITI_check(ADITI_NAME(cursor_destroy)(&cur));
-	return ADITI_OK;
+
+	MADITI_check(ADITI_FUNC(cursor_close)(DB.connection,
+		DB.transaction, relation, cursor));
+	MADITI_check(ADITI_FUNC(cursor_destroy)(DB.connection,
+		DB.transaction, relation, cursor));
+	return MADITI_OK;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -760,11 +871,11 @@ MADITI_trail_cleanup_call_output(void *data, MR_untrail_reason reason)
 	case MR_retry:
 	    /*
 	    ** Clean up the output relation. If the transaction
-	    ** status is not ADITI_OK, the transaction is about
+	    ** status is not MADITI_OK, the transaction is about
 	    ** to be aborted, so it's best not to try to clean up.
 	    ** The database will do any cleaning up that is required.
 	    */
-	    if (MADITI_status == ADITI_OK) {
+	    if (MADITI_status == MADITI_OK) {
 		MR_DEBUG(fprintf(stderr, 
 		    ""MADITI_trail_cleanup_call_output: cleaning up %d\\n"",
 		    reason));
@@ -774,7 +885,7 @@ MADITI_trail_cleanup_call_output(void *data, MR_untrail_reason reason)
 		** called will abort the transaction if there were any errors.
 		*/
 		MADITI_status = MADITI_cleanup_call_output(
-			(MADITI_output_info *)data);
+			(MADITI_Output_Info *)data);
 	    }
 	    break;
 	case MR_solve:
@@ -794,7 +905,7 @@ MADITI_trail_cleanup_call_output(void *data, MR_untrail_reason reason)
 #endif /* MR_USE_TRAIL */
 
 static int 
-MADITI_cleanup_call_output(MADITI_output_info *output_info)
+MADITI_cleanup_call_output(MADITI_Output_Info *output_info)
 {
 	if (output_info->cleaned_up) {
 
@@ -804,39 +915,48 @@ MADITI_cleanup_call_output(MADITI_output_info *output_info)
 		** the trail.
 		*/
 		MR_DEBUG(fprintf(stderr, 
-			""MADITI_cleanup_call_output: already cleaned up\n""
+			""MADITI_cleanup_call_output: already cleaned up\\n""
 		));
 
 	} else {
 
 		MR_DEBUG(fprintf(stderr, 
-			""MADITI_cleanup_call_output: cleaning up\n""
+			""MADITI_cleanup_call_output: cleaning up\\n""
 		));
 
 		/* close cursor */
 		MR_DEBUG(fprintf(stderr, ""closing cursor\\n""));
 		MADITI_check(
-			ADITI_NAME(cursor_close)(output_info->output_cursor)
+			ADITI_FUNC(cursor_close)(
+				(output_info->state).connection,
+				(output_info->state).transaction,
+				output_info->relation,
+				output_info->cursor)
 		);
 
 		/* destroy cursor */
 		MR_DEBUG(fprintf(stderr, ""destroying cursor\\n""));
 		MADITI_check(
-			ADITI_NAME(cursor_destroy)(output_info->output_cursor)
+			ADITI_FUNC(cursor_destroy)(
+				(output_info->state).connection,
+				(output_info->state).transaction,
+				output_info->relation,
+				output_info->cursor)
 		);
-		MR_GC_free(output_info->output_cursor);
 
 		/* close output temporary */
 		MR_DEBUG(fprintf(stderr,
 			""closing output temporary relation\\n""));
-		MADITI_check(ADITI_NAME(rel_close)(output_info->output_rel));
-		MR_GC_free(output_info->output_rel);
+		MADITI_check(ADITI_FUNC(relation_close)(
+			(output_info->state).connection,
+			(output_info->state).transaction,
+			output_info->relation));
 
 		/* Make sure we don't do this again. */
 		output_info->cleaned_up = TRUE;
 	}
 
-	return ADITI_OK;
+	return MADITI_OK;
 }
 ").
 
@@ -877,24 +997,33 @@ do_insert_delete_tuple(InsertDelete, RelationName,
 :- mode do_insert_delete_tuple_2(in, in, in, in, in, out,
 		aditi_di, aditi_uo) is det.
 
-:- pragma c_code(do_insert_delete_tuple_2(InsertDelete::in, RelationName::in,
+:- pragma foreign_proc("C",
+	do_insert_delete_tuple_2(InsertDelete::in, RelationName::in,
 		UpdateProc::in, UpdateSchema::in, Tuple::in, Stat::out,
-		DB0::aditi_di, DB::aditi_uo), will_not_call_mercury,
+		DB0::aditi_di, DB::aditi_uo),
+	[will_not_call_mercury, promise_pure],
 "{
-	Stat = MADITI_do_insert_delete_tuple(
-			(MADITI_insert_delete) InsertDelete,
+	MR_assign_structure(DB, DB0);
+	Stat = MADITI_do_insert_delete_tuple(&DB,
+			(MADITI_Insert_Delete) InsertDelete,
 			RelationName, UpdateProc, UpdateSchema, Tuple);
-	DB = DB0;
 }").
 
 :- func insert_tuple = int.
-:- pragma c_code(insert_tuple = (InsertTuple::out),
-		[will_not_call_mercury, thread_safe],
-		"InsertTuple = MADITI_INSERT_TUPLE;").
+:- pragma foreign_proc("C",
+	insert_tuple = (InsertTuple::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	InsertTuple = MADITI_INSERT_TUPLE;
+}").
+
 :- func delete_tuple = int.
-:- pragma c_code(delete_tuple = (DeleteTuple::out),
-		[will_not_call_mercury, thread_safe],
-		"DeleteTuple = MADITI_DELETE_TUPLE;").
+:- pragma foreign_proc("C",
+	delete_tuple = (DeleteTuple::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	DeleteTuple = MADITI_DELETE_TUPLE;
+}").
 
 do_bulk_insert(RelationName, InsertProcName, Closure) -->
 	do_bulk_operation(bulk_insert, RelationName, InsertProcName, Closure).
@@ -912,12 +1041,13 @@ do_bulk_modify(RelationName, ModifyProcName, Closure) -->
 
 do_bulk_operation(Op, RelationName, UpdateProc, Closure) -->
 	check_for_old_error,
-	{ Closure(ResultRelation) },
+	=(DB),
+	{ Closure(DB, ResultRelation) },
 	do_bulk_operation_2(Op, RelationName, UpdateProc,
 		ResultRelation, Status),
 	maybe_throw_aditi_exception(Status).
 
-:- pred do_bulk_operation_2(int, string, string, relation_ticket, int,
+:- pred do_bulk_operation_2(int, string, string, relation, int,
 		aditi__state, aditi__state).
 :- mode do_bulk_operation_2(in, in, in, in, out,
 		aditi_di, aditi_uo) is det.
@@ -926,43 +1056,60 @@ do_bulk_operation(Op, RelationName, UpdateProc, Closure) -->
 		ResultRelation::in, Stat::out, DB0::aditi_di, DB::aditi_uo),
 		will_not_call_mercury,
 "{
-	Stat = MADITI_do_bulk_operation((MADITI_bulk_op) Op,
-			RelationName, UpdateProc, (ticket *) ResultRelation);
-	DB = DB0;
+	MR_assign_structure(DB, DB0);
+	Stat = MADITI_do_bulk_operation(&DB, (MADITI_Bulk_Op) Op,
+			RelationName, UpdateProc, ResultRelation);
 }").			
 
 :- func bulk_insert = int.
-:- pragma c_code(bulk_insert = (Insert::out),
-		[will_not_call_mercury, thread_safe],
-		"Insert = MADITI_INSERT;").
+:- pragma foreign_proc("C",
+	bulk_insert = (Insert::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	Insert = MADITI_INSERT;
+}").
 
 :- func bulk_delete = int.
-:- pragma c_code(bulk_delete = (Delete::out),
-		[will_not_call_mercury, thread_safe],
-		"Delete = MADITI_DELETE;").
+:- pragma foreign_proc("C",
+	bulk_delete = (Delete::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	Delete = MADITI_DELETE;
+}").
 
 :- func bulk_modify = int.
-:- pragma c_code(bulk_modify = (Modify::out),
-		[will_not_call_mercury, thread_safe],
-		"Modify = MADITI_MODIFY;").
+:- pragma foreign_proc("C",
+	bulk_modify = (Modify::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"{
+	Modify = MADITI_MODIFY;
+}").
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code("
-
+:- pragma foreign_code("C",
+"
 static int
-MADITI_do_insert_delete_tuple(MADITI_insert_delete operation,
+MADITI_do_insert_delete_tuple(MADITI_State *DB, MADITI_Insert_Delete operation,
 		MR_String relation_name, MR_String update_proc,
 		MR_String update_schema, MR_String tuple)
 {
-	ticket *delete_output_rel;
+	apiID delete_output_rel;
+	apiID relation;
 
 	switch (operation) {
 		case MADITI_INSERT_TUPLE:
 			MR_DEBUG(fprintf(stderr, 
 				""inserting tuple %s into relation %s\\n"",
 				tuple, relation_name));
-			MADITI_check(ADITI_NAME(addtup)(relation_name, tuple));
+			MADITI_check(ADITI_FUNC(relation_open)(DB->connection,
+				DB->transaction, relation_name, &relation));
+			MADITI_check(ADITI_FUNC(relation_tuple_add)(
+				DB->connection, DB->transaction,
+				relation, tuple,
+				0 /* !use_internal_save_point */));
+			MADITI_check(ADITI_FUNC(relation_close)(DB->connection,
+				DB->transaction, relation));
 			MR_DEBUG(fprintf(stderr, ""finished insertion\\n""));
 			break;
 
@@ -970,22 +1117,23 @@ MADITI_do_insert_delete_tuple(MADITI_insert_delete operation,
 			MR_DEBUG(fprintf(stderr, 
 				""deleting tuple %s from relation %s\\n"",
 				tuple , relation_name));
-			MADITI_check(MADITI_run_procedure(update_proc,
-					update_schema, tuple,
-					&delete_output_rel));
-			MADITI_check(
-				ADITI_NAME(rel_close)(delete_output_rel));
+			MADITI_check(MADITI_run_procedure(DB,
+				update_proc, update_schema, tuple,
+				&delete_output_rel));
+			MADITI_check(ADITI_FUNC(relation_close)(DB->connection,
+				DB->transaction, delete_output_rel));
 			MR_DEBUG(fprintf(stderr, ""finished deletion\\n""));
 			break;
 	}
-	return ADITI_OK;
+	return MADITI_OK;
 }
 
 static int
-MADITI_do_bulk_operation(MADITI_bulk_op operation, MR_String relation_name,
-		MR_String update_proc, ticket *closure_result)
+MADITI_do_bulk_operation(MADITI_State *DB, MADITI_Bulk_Op operation,
+		MR_String relation_name, MR_String update_proc,
+		apiID closure_result)
 {
-	ticket dummy_output_ticket;
+	apiID output_relation;
 
 	MR_DEBUG(
 	    switch (operation) {
@@ -1009,18 +1157,18 @@ MADITI_do_bulk_operation(MADITI_bulk_op operation, MR_String relation_name,
 	*/
 	MR_DEBUG(fprintf(stderr, ""Calling update procedure %s\\n"",
 		update_proc));
-	MADITI_check(ADITI_NAME(run2_s)(update_proc, MADITI_QUERY_TIMEOUT,
-		&MADITI_ticket, closure_result, &dummy_output_ticket)
-	);
+	MADITI_check(ADITI_FUNC(procedure_run)(DB->connection,
+		DB->transaction, update_proc, closure_result,
+		DB->bytecode_transaction,
+		0 /* output is not used */,
+		&output_relation));
 
 	/*
 	** Clean up.
 	*/
-	MADITI_check(ADITI_NAME(rel_close)(&dummy_output_ticket));
-	MADITI_check(ADITI_NAME(rel_close)((ticket *)closure_result));
-	MR_GC_free((ticket *)closure_result);
-
-	return ADITI_OK;
+	MADITI_check(ADITI_FUNC(relation_close)(DB->connection,
+		DB->transaction, closure_result));
+	return MADITI_OK;
 }
 
 ").
@@ -1181,6 +1329,8 @@ error_code_2(-37, timeout).
 :- pragma c_code(error_message(Stat::in, Msg::out),
 		will_not_call_mercury,
 "
-	Msg = aditi_strerror((int) Stat);
+	MR_make_aligned_string_copy(Msg,
+		ADITI_FUNC(AditiError_as_string)(
+			(ADITI_TYPE(AditiStatus)) Stat));
 ").
 

@@ -179,9 +179,10 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	% InputSchema = "<RL input schema for p>",
 	% InputTuple = <tuple of InputArgs>,
 	% TypeInfo = <type-info for InputTuple>,
-	% NewVar = (pred(Relation::out) is det :-
-	%	aditi_private_builtin__do_call_returning_relation(TypeInfo,
-	%		ProcName, InputSchema, InputTuple, Relation)
+	% NewVar = (pred(DB::aditi_ui, Relation::out) is det :-
+	%	aditi_private_builtin__do_call_returning_relation(
+	%		TypeInfo, ProcName, InputSchema, InputTuple, DB,
+	%		Relation)
 	%	),
 	% unsafe_cast(NewVar, Var).
 	%
@@ -198,7 +199,7 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	ModuleInfo0 =^ module_info,
 	{ lookup_builtin_pred_proc_id(ModuleInfo0,
 		aditi_private_builtin_module, "do_call_returning_relation",
-		predicate, 4, only_mode, BuiltinPredId, BuiltinProcId) },
+		predicate, 6, only_mode, BuiltinPredId, BuiltinProcId) },
 
 	%
 	% Build the input arguments describing the procedure to call.
@@ -216,14 +217,15 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	handle_input_tuple(Args, InputTupleVar, InputTupleTypeInfo,
 		TupleGoals),
 
-	{ BuiltinArgs = list__append([InputTupleTypeInfo | ConstArgVars],
-				[InputTupleVar]) },
+	{ BuiltinArgs = [InputTupleTypeInfo | ConstArgVars] ++
+				[InputTupleVar] },
 	{ list__length(BuiltinArgs, NumBuiltinArgs) },
 
 	{ Functor = cons(qualified(aditi_private_builtin_module,
-			"do_call_returning_relation"), 5) },
+			"do_call_returning_relation"), NumBuiltinArgs) },
 	{ Rhs = functor(Functor, no, BuiltinArgs) },
 
+	% XXX This is wrong - closure is not ground.
 	{ UniMode = ((free_inst - ground_inst) ->
 			(ground_inst - ground_inst)) },
 	{ list__duplicate(NumBuiltinArgs, UniMode, UniModes) },
@@ -284,7 +286,7 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 
 	{ CastInputInst = ground(shared,
 			higher_order(pred_inst_info(predicate,
-				[out_mode], det))) },
+				[aditi_ui_mode, out_mode], det))) },
 	{ CastModes = [(CastInputInst -> CastInputInst),
 			(free_inst -> CastOutputInst)] },
 	{ CastGoal = generic_call(unsafe_cast, [NewVar, Var],
@@ -408,7 +410,8 @@ transform_aditi_builtin_2(
 		higher_order(pred_inst_info(ClosurePredOrFunc,
 			ClosureModes, nondet))) },
 	{ CastOutputInst = ground(shared,
-		higher_order(pred_inst_info(predicate, [out_mode], det))) },
+		higher_order(pred_inst_info(predicate,
+			[aditi_ui_mode, out_mode], det))) },
 	{ CastModes = [(CastInputInst -> CastInputInst),
 			(free_inst -> CastOutputInst)] },
 
@@ -478,7 +481,7 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	; Det = erroneous, Proc = "do_erroneous_call"
 	},
 	{ lookup_builtin_pred_proc_id(ModuleInfo0,
-		aditi_private_builtin_module, Proc, predicate, 4, only_mode,
+		aditi_private_builtin_module, Proc, predicate, 5, only_mode,
 		BuiltinPredId, BuiltinProcId) },
 	{ BuiltinSymName = qualified(aditi_private_builtin_module, Proc) },
 
@@ -486,17 +489,34 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	{ map__apply_to_list(HeadVars0, VarTypes, ArgTypes0) },
 
 	%
-	% Remove `aditi__state' arguments -- they do not appear as attributes
-	% in Aditi relations.
+	% Find the aditi__state argument.
+	%
+	{ TypesVarsAL = assoc_list__from_corresponding_lists(ArgTypes0,
+				HeadVars0) },
+	{ list__filter_map(
+		(pred(Type - Var::in, Var::out) is semidet :-
+			type_is_aditi_state(Type)
+		), TypesVarsAL, AditiStateVars) },
+	{ AditiStateVars = [FirstStateVar | _] ->
+		AditiStateVar = FirstStateVar	
+	;
+		% post_typecheck.m ensures that all Aditi predicates
+		% have an aditi__state argument.
+		error("create_aditi_call_goal: no aditi__state")
+	},
+
+	%
+	% Dont pass `aditi__state' arguments to Aditi -- they do not appear
+	% as attributes in Aditi relations.
 	%
 	{ type_util__remove_aditi_state(ArgTypes0, ArgModes0, ArgModes) },
 	{ type_util__remove_aditi_state(ArgTypes0, HeadVars0, HeadVars) },
-	{ partition_args(ModuleInfo0, ArgModes, HeadVars,
-		InputArgs, OutputArgs) },
 
 	%
 	% Generate arguments to describe the procedure to call.
 	%
+	{ partition_args(ModuleInfo0, ArgModes, HeadVars,
+		InputArgs, OutputArgs) },
 	{ map__apply_to_list(InputArgs, VarTypes, InputTypes) },
 	{ rl__schema_to_string(ModuleInfo0, InputTypes, InputSchema) },
 	{ ConstArgs = [string(ProcName), string(InputSchema)] },  
@@ -518,9 +538,10 @@ create_aditi_call_goal(ProcName, HeadVars0, ArgModes0, Det, Goal) -->
 	%
 	% Build the call.
 	%
-	{ CallArgs = list__append(
-		[InputTupleTypeInfo, OutputTupleTypeInfo | ConstArgVars],
-		[InputTupleVar, OutputTupleVar]) },
+	{ CallArgs =
+		[InputTupleTypeInfo, OutputTupleTypeInfo, AditiStateVar
+			| ConstArgVars] ++
+		[InputTupleVar, OutputTupleVar] },
 	{ set__list_to_set(CallArgs, NonLocals) },
 	{ determinism_components(Det, _, at_most_zero) ->
 		instmap_delta_init_unreachable(InstMapDelta)
@@ -623,8 +644,10 @@ generate_const_args([ConstArg | ConstArgs], [ConstArgVar | ConstArgVars],
 :- mode create_bulk_update_closure_var(out, in, out) is det.
 
 create_bulk_update_closure_var(NewVar, Info0, Info) :-
+	construct_type(qualified(aditi_private_builtin_module, "relation") - 0,
+		[], RelationType),
 	construct_higher_order_pred_type(pure, normal,
-		[c_pointer_type], PredType),
+		[aditi_state_type, RelationType], PredType),
 	proc_info_create_var_from_type(Info0 ^ proc_info, PredType, no,
 		NewVar, ProcInfo),
 	Info = Info0 ^ proc_info := ProcInfo.

@@ -60,9 +60,11 @@
 
 :- type aditi__state.
 
+% XXX This will change to unique when the mode system is fully implemented.
 :- inst aditi_unique = ground.
 :- mode aditi_di :: in(aditi_unique).
 :- mode aditi_uo :: out(aditi_unique).
+:- mode aditi_ui :: in(aditi_unique).
 :- mode aditi_mui :: in(aditi_unique).
 
 :- type aditi__result(T)
@@ -174,7 +176,7 @@
 
 /*
 	This should be translated into the equivalent
-	aggregate_compute_initial , but that hasn't been
+	aggregate_compute_initial, but that hasn't been
 	done yet. The main problem is collecting the initial
 	value - it may not be constant.
 
@@ -197,11 +199,37 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- type aditi__state ---> aditi__state(c_pointer).
-:- type aditi__connection ---> aditi_connection(c_pointer).
+:- interface.
+
+% These are used by aditi_private_builtin.m, but otherwise
+% shouldn't be in the interface.
+:- pragma foreign_type("C", aditi__connection, "MADITI_Connection").
+:- pragma foreign_type("C", aditi__state, "MADITI_State").
+
+:- implementation.
 
 :- import_module bool, char, exception, list, require, std_util, string.
 :- import_module aditi_private_builtin.
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C",
+"
+#include ""v2_api_without_engine.h""
+
+typedef struct {
+	apiID		connection;
+	apiID		bytecode_transaction;
+} MADITI_Connection;
+
+typedef struct {
+	apiID		connection;
+	apiID		bytecode_transaction;
+	apiID		transaction;
+} MADITI_State;
+").
+
+%-----------------------------------------------------------------------------%
 
 	% These are handled by the RL code generator.
 :- external(aditi__aggregate_compute_initial/5).

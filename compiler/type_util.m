@@ -202,6 +202,7 @@
 :- func sample_type_info_type = (type).
 :- func sample_typeclass_info_type = (type).
 :- func comparison_result_type = (type).
+:- func aditi_state_type = (type).
 
 	% Given a constant and an arity, return a type_ctor.
 	% Fails if the constant is not an atom.
@@ -1001,6 +1002,11 @@ comparison_result_type = Type :-
 	mercury_public_builtin_module(BuiltinModule),
 	construct_type(qualified(BuiltinModule,
 		"comparison_result") - 0, [], Type).
+
+aditi_state_type = Type :-
+	aditi_public_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule,
+		"state") - 0, [], Type).
 
 %-----------------------------------------------------------------------------%
 

@@ -240,6 +240,7 @@
 	% XXX These should be unique, but are not yet because that
 	% would require alias tracking.
 :- func aditi_mui_mode = (mode).
+:- func aditi_ui_mode = (mode).
 :- func aditi_di_mode = (mode).
 :- func aditi_uo_mode = (mode).
 
@@ -1913,6 +1914,7 @@ uo_mode = make_std_mode("uo", []).
 unused_mode = make_std_mode("unused", []).
 
 aditi_mui_mode = Mode :- in_mode(Mode). 
+aditi_ui_mode = Mode :- in_mode(Mode). 
 aditi_di_mode = Mode :- in_mode(Mode).
 aditi_uo_mode = Mode :- out_mode(Mode).
 
