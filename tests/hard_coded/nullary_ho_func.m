@@ -43,5 +43,7 @@ main -->
 		print("Z = "), print(Z), nl
 	;
 		print("Y = apply(G) failed"), nl
-	).
+	),
+	print("type_of(F) = "), print(type_of(F)), nl,
+	print("type_name(type_of(F)) = "), print(type_name(type_of(F))), nl.
 
