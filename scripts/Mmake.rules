@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne.
+# Copyright (C) 1995-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -11,12 +11,15 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 # Beware that the order of suffixes is significant.
-.SUFFIXES: .m .nl .no .err .int .int2 .int3 .opt .dep .depend .doit \
-		.ugly .date .date3 .optdate .c .nu .o .pic_o \
+.SUFFIXES: .m .nl .no .err \
+		.int .int2 .int3 .opt .trans_opt \
+		.dep .depend .doit .ugly \
+		.date .date3 .optdate .trans_opt_date \
+		.c .nu .o .pic_o \
 		.i .s .pic_s \
 		.ql .pl
 
-.PRECIOUS: %.date %.date3 %.optdate
+.PRECIOUS: %.date %.date3 %.optdate %.trans_opt_date
 
 # All the builtin rules must use $@ as the target, so that they work
 # when $(VPATH) is set.
@@ -58,6 +61,9 @@ main_target: $(MAIN_TARGET)
 .m.optdate:
 	$(MCOI) $(MCOIFLAGS) $<
 
+.m.trans_opt_date:
+	$(MCTOI) $(MCTOIFLAGS) $<
+
 # Be very careful about changing the following rules.
 # The `@:' is a silent do-nothing command.
 # It is used to force GNU Make to recheck the timestamp
@@ -74,6 +80,9 @@ main_target: $(MAIN_TARGET)
 	@:
 
 .optdate.opt:
+	@:
+
+.trans_opt_date.trans_opt:
 	@:
 
 .m.ugly:
@@ -136,10 +145,11 @@ main_target: $(MAIN_TARGET)
 
 .PHONY: clean realclean clean_nu clean_sicstus
 
-realclean: clean clean_prof_files
+realclean: clean
+
+clean: clean_prof_files
 
 clean_prof_files:
-	-rm -f Prof.CallPair Prof.Counts Prof.Decl
-	-rm -f *.prof
+	-rm -f Prof.CallPair Prof.Counts Prof.Decl Prof.MemWords Prof.MemCells
 
 #-----------------------------------------------------------------------------#

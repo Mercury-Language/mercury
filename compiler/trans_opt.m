@@ -120,7 +120,7 @@ trans_opt__write_optfile(Module) -->
 
 		{ string__append(ModuleName, ".trans_opt", OptName) },
 		update_interface(OptName),
-		touch_interface_datestamp(ModuleName, ".trans_optdate")
+		touch_interface_datestamp(ModuleName, ".trans_opt_date")
 	).
 	
 :- pred trans_opt__write_preds(list(pred_id), module_info, 

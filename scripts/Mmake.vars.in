@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1997 The University of Melbourne.
+# Copyright (C) 1996-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -34,10 +34,12 @@ MCD		= $(MC) --generate-dependencies
 MCI		= $(MC) --make-interface
 MCSI		= $(MC) --make-short-interface
 MCOI		= $(MC) --make-optimization-interface
+MCTOI		= $(MC) --make-transitive-optimization-interface
 MCFLAGS		= $(EXTRA_MCFLAGS)
 MCIFLAGS	= $(MCFLAGS)
 MCSIFLAGS	= $(MCFLAGS)
 MCOIFLAGS	= $(MCFLAGS)
+MCTOIFLAGS	= $(MCFLAGS)
 MCDFLAGS	= $(MCFLAGS)
 MCGFLAGS	= $(MCFLAGS)
 MCSFLAGS	= $(MCFLAGS)

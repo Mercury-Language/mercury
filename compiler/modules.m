@@ -492,7 +492,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 			{ set__to_sorted_list(TransOptDepsSet, 
 				TransOptDateDeps) },
 			io__write_strings(DepStream,
-				[ModuleName, ".trans_optdate : "]),
+				[ModuleName, ".trans_opt_date : "]),
 			write_dependencies_list(TransOptDateDeps, ".trans_opt", 
 				DepStream)
 		;
@@ -533,7 +533,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 
 
 		io__write_strings(DepStream, ["\n\n",
-			ModuleName, ".trans_optdate ",
+			ModuleName, ".trans_opt_date ",
 			ModuleName, ".optdate ",
 			ModuleName, ".c ",
 			ModuleName, ".err ",
@@ -562,7 +562,7 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0,
 			io__write_strings(DepStream, [
 				"\n\n", 
 				ModuleName, ".c ",
-				ModuleName, ".trans_optdate ",
+				ModuleName, ".trans_opt_date ",
 				ModuleName, ".err ", 
 				ModuleName, ".o :"
 			]),
@@ -638,7 +638,7 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
 		io__open_input(DependencyFileName, OpenResult),
 		( { OpenResult = ok(Stream) } ->
 			io__set_input_stream(Stream, OldStream),
-			{ string__append(ModuleName, ".trans_optdate", 
+			{ string__append(ModuleName, ".trans_opt_date", 
 				TransOptFileName0) },
 			{ string__to_char_list(TransOptFileName0, 
 				TransOptFileName) },
@@ -1072,6 +1072,12 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".trans_opt_dates = "),
+	write_compact_dependencies_list(Modules, ".trans_opt_date", Basis,
+								DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ds = "),
 	write_compact_dependencies_list(Modules, ".d", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
@@ -1096,6 +1102,17 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".opts = "),
 	write_compact_dependencies_list(Modules, ".opt", Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".trans_opts = "),
+	write_compact_dependencies_list(Modules, ".trans_opt", Basis,
+								DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".profs = "),
+	write_compact_dependencies_list(Modules, ".prof", Basis, DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	io__write_strings(DepStream, [
@@ -1199,6 +1216,9 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".cs) ", ModuleName, "_init.c\n",
 		"\t-rm -f $(", ModuleName, ".ss) ", ModuleName, "_init.s\n",
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
+		"\t-rm -f $(", ModuleName, ".trans_opt_dates)\n",
+		"\t-rm -f $(", ModuleName, ".trans_opts)\n",
+		"\t-rm -f $(", ModuleName, ".profs)\n",
 		"\t-rm -f $(", ModuleName, ".nos)\n",
 		"\t-rm -f $(", ModuleName, ".qls)\n",
 		"\t-rm -f $(", ModuleName, ".errs)\n"
