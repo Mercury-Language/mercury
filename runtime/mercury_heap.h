@@ -135,13 +135,13 @@
 #ifdef	PROFILE_MEMORY
   #define tag_incr_hp_msg(dest, tag, count, proclabel, type)		\
 	(								\
-		MR_record_allocation((count), LABEL(proclabel), 	\
+		MR_record_allocation((count), ENTRY(proclabel), 	\
 			MR_STRINGIFY(proclabel), (type)),		\
 		tag_incr_hp((dest), (tag), (count))			\
 	)
   #define tag_incr_hp_atomic_msg(dest, tag, count, proclabel, type) 	\
 	(								\
-		MR_record_allocation((count), LABEL(proclabel), 	\
+		MR_record_allocation((count), ENTRY(proclabel), 	\
 			MR_STRINGIFY(proclabel), (type)),		\
 		tag_incr_hp_atomic((dest), (tag), (count))		\
 	)

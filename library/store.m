@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -237,7 +237,8 @@ I wonder whether it is worth it?  Hmm, probably not.
 :- pragma c_code(new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp(Mutvar, 1);
+	incr_hp_msg(Mutvar, 1, mercury__store__new_mutvar_4_0,
+		""store:mutvar/2"");
 	*(Word *)Mutvar = Val;
 	S = S0;
 ").
@@ -263,7 +264,9 @@ I wonder whether it is worth it?  Hmm, probably not.
 :- pragma c_code(unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp(Mutvar, 1);
+	incr_hp_msg(Mutvar, 1,
+		mercury__store__unsafe_new_uninitialized_mutvar_3_0,
+		""store:mutvar/2"");
 	S = S0;
 ").
 
@@ -277,7 +280,7 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 :- pragma c_code(new_ref(Val::di, Ref::out, S0::di, S::uo),
 		will_not_call_mercury,
 "
-	incr_hp(Ref, 1);
+	incr_hp_msg(Ref, 1, mercury__store__new_ref_4_0, ""store:ref/2"");
 	*(Word *)Ref = Val;
 	S = S0;
 ").
@@ -367,7 +370,8 @@ ref_functor(Ref, Functor, Arity) -->
 	** to copy it to the heap before returning.
 	*/
 	if (arg_ref == &Val) {
-		incr_hp(ArgRef, 1);
+		incr_hp_msg(ArgRef, 1, mercury__store__new_arg_ref_5_0,
+			""store:ref/2"");
 		*(Word *)ArgRef = Val;
 	} else {
 		ArgRef = (Word) arg_ref;
