@@ -149,12 +149,12 @@ void MR_CALL mercury__builtin__compare_representation_3_p_0(
 
 #else	/* ! MR_HIGHLEVEL_CODE */
 
-MR_declare_entry(mercury__unify_2_0);
-MR_declare_entry(mercury__compare_3_0);
-MR_declare_entry(mercury__compare_3_1);
-MR_declare_entry(mercury__compare_3_2);
-MR_declare_entry(mercury__compare_3_3);
-MR_declare_entry(mercury__compare_representation_3_0);
+MR_declare_entry(mercury__builtin__unify_2_0);
+MR_declare_entry(mercury__builtin__compare_3_0);
+MR_declare_entry(mercury__builtin__compare_3_1);
+MR_declare_entry(mercury__builtin__compare_3_2);
+MR_declare_entry(mercury__builtin__compare_3_3);
+MR_declare_entry(mercury__builtin__compare_representation_3_0);
 
 #endif	/* MR_HIGHLEVEL_CODE */
 

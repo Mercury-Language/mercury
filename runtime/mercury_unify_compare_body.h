@@ -11,9 +11,10 @@
 ** This file contains a piece of code that is included by mercury_ho_call.c
 ** six times:
 ** 
-** - as the body of the mercury__unify_2_0 Mercury procedure,
-** - as the body of the mercury__compare_3_3 Mercury procedure,
-** - as the body of the mercury__compare_representation_3_0 Mercury procedure,
+** - as the body of the mercury__builtin__unify_2_0 Mercury procedure,
+** - as the body of the mercury__builtin__compare_3_3 Mercury procedure,
+** - as the body of the mercury__builtin__compare_representation_3_0
+**   Mercury procedure,
 ** - as the body of the MR_generic_unify C function,
 ** - as the body of the MR_generic_compare C function, and
 ** - as the body of the MR_generic_compare_representation C function.
