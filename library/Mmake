@@ -131,7 +131,7 @@ library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS)
 library.nu.debug: error.no debug.no
 library.sicstus.debug: error.ql
 
-sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS): sicstus_compile
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) error.ql: sicstus_compile
 
 #-----------------------------------------------------------------------------#
 
