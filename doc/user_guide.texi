@@ -1674,6 +1674,20 @@ Specify the directory containing the Mercury C header files.
 @item --cflags @var{options}
 Specify options to be passed to the C compiler.
 
+@sp 1
+@item --fact-table-max-array-size @var{size}
+Specify the maximum number of elements in a single 
+@samp{pragma fact_table} data array (default: 1024).
+The data for fact tables is placed into multiple C arrays, each with a
+maximum size given by this option.  The reason for doing this is that
+most C compilers have trouble compiling very large arrays.
+
+@sp 1
+@item --fact-table-hash-percent-full @var{percentage}
+Specify how full the @samp{pragma fact_table} hash tables should be
+allowed to get.  Given as an integer percentage (valid range: 1 to 100,
+default: 90).
+
 @end table
 
 @node Optimization options
