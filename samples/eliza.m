@@ -48,7 +48,7 @@ eliza__main_loop(Prev, StateIn) -->
 		;
 		    eliza__generate_response(Line1, StateIn, StateOut) 
 		),
-	    eliza__main_loop(Line1, StateOut) 
+	        eliza__main_loop(Line1, StateOut) 
 	    )
 	;
 	    { true }
