@@ -20,17 +20,16 @@ at some time in the future:
   <a href="http://www.cs.mu.oz.au/mercury/dotnet.html">`--target il'</a>
   option, which generates MSIL code for Microsoft's new
   <a href="http://msdn.microsoft.com/net/">.NET Common Language Runtime</a>.
-
-<li> There is a
-  <a href=http://www.cs.mu.oz.au/mercury/download/gcc-backend.html>`--target asm'</a>
-  option, which generates assembler by
-  interfacing directly with the GCC back-end, rather than going via C.
+  We're still working on this.
 
 <li> There is a `--target java' option, which generates Java.
+     We still need to add support for Java foreign language interfacing,
+     and implement the Mercury standard library for Java.
 
 <li> Thread-safe engine (the `.par' grades).
 
 <li> Independent AND-parallelism (the `&' parallel conjunction operator).
+     See Tom Conway's PhD thesis.
 
 <li> We have added support for dynamic link libraries (DLLs) on Windows.
   This is not yet enabled by default because it has not yet been tested
@@ -83,6 +82,10 @@ distribution.
   This is on the "reuse" branch of our CVS repository.
 
 <li> Better support for inter-module analysis and optimization.
+
+<li> Support for GCC 3.3 in the native code back-end.
+  This is on the "gcc_3_3" branch of our CVS repository.
+
 </ul>
 
 <hr>
@@ -111,6 +114,6 @@ if someone has the time for it.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2002-10-23 06:30:07 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-11-21 08:55:48 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
