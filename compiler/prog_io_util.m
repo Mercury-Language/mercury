@@ -251,7 +251,7 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	% anything else must be a user-defined inst
 	;
 		parse_qualified_term(term__functor(Name, Args0, Context),
-			"", ok(QualifiedName, Args1)),
+			"inst", ok(QualifiedName, Args1)),
 		convert_inst_list(Args1, Args),
 		Result = defined_inst(user_inst(QualifiedName, Args))
 	).
@@ -287,7 +287,7 @@ convert_bound_inst_list([H0|T0], [H|T]) :-
 convert_bound_inst(InstTerm, functor(ConsId, Args)) :-
 	InstTerm = term__functor(Functor, Args0, _),
 	( Functor = term__atom(_) ->
-		parse_qualified_term(InstTerm, "", ok(SymName, Args1)),
+		parse_qualified_term(InstTerm, "inst", ok(SymName, Args1)),
 		list__length(Args1, Arity),
 		ConsId = cons(SymName, Arity)
 	;

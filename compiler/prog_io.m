@@ -998,8 +998,8 @@ convert_constructor(ModuleName, Term, Result) :-
 	;
 		Term2 = Term
 	),
-	parse_qualified_term(ModuleName, Term2,
-		"convert_constructor/2", ok(F, As)),
+	parse_qualified_term(ModuleName, Term2, "constructor definition",
+		ok(F, As)),
 	convert_constructor_arg_list(As, Args),
 	Result = F - Args.
 
