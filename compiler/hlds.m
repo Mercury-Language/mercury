@@ -1309,6 +1309,8 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 
 :- interface.
 
+:- type pred_id == int.
+
 	% Various predicates for accessing the predicate_table type.
 	% The predicate_table holds information about the predicates
 	% defined in this module or imported from other modules.
@@ -1394,14 +1396,11 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module random.
-	% we allocate pred_ids randomly, not sequentially, so
-	% that the tree remains reasonably balanced.
 
 :- type predicate_table --->
 	predicate_table(
 		pred_table,		% map from pred_id to pred_info
-		random__supply,		% used to compute the next pred_id
+		pred_id,		% next available pred_id
 		list(pred_id),		% the keys of the pred_table -
 					% cached here for efficiency
 		pred_name_index,	% map from pred name to pred_id
@@ -1410,8 +1409,6 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 					% map from pred module, name & arity
 					% to pred_id
 	).
-
-:- type pred_id == int.
 
 :- type pred_name_index	== map(string, list(pred_id)).
 
@@ -1425,7 +1422,7 @@ predicate_table_init(PredicateTable) :-
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				N_Index, NA_Index, MNA_Index),
 	map__init(Preds),
-	random__init(0, NextPredId),
+	NextPredId = 0,
 	PredIds = [],
 	map__init(N_Index),
 	map__init(NA_Index),
@@ -1496,7 +1493,8 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 	pred_info_arity(PredInfo, Arity),
 
 		% allocate a new pred_id
-	predicate_table_next_pred_id(Preds0, NextPredId0, PredId, NextPredId),
+	PredId = NextPredId0,
+	NextPredId is PredId + 1,
 
 		% insert the pred_id into the name index
 	( map__search(N_Index0, Name, N_PredIdList0) ->
@@ -1532,25 +1530,6 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 	PredicateTable = predicate_table(Preds, NextPredId, PredIds,
 				N_Index, NA_Index, MNA_Index).
-
-:- pred predicate_table_next_pred_id(map(pred_id, pred_info), random__supply,
-					pred_id, random__supply).
-:- mode predicate_table_next_pred_id(in, in, out, out) is det.
-
-	% get the next available pred id
-predicate_table_next_pred_id(Preds, NextPredId0, PredId, NextPredId) :-
-	copy(NextPredId0, RandSupply),
-	random__random(PredId0, RandSupply, NextPredId1),
-	(
-		\+ map__contains(Preds, PredId0),
-		\+ invalid_pred_id(PredId0)
-	->
-		PredId = PredId0,
-		NextPredId = NextPredId1
-	;
-		predicate_table_next_pred_id(Preds, NextPredId1,
-						PredId, NextPredId)
-	).
 
 invalid_pred_id(-1).
 
@@ -1656,6 +1635,11 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 	% of this predicate that are not imported.
 :- pred pred_info_non_imported_procids(pred_info, list(proc_id)).
 :- mode pred_info_non_imported_procids(in, out) is det.
+
+	% Return a list of the proc_ids for all the modes
+	% of this predicate that are exported.
+:- pred pred_info_exported_procids(pred_info, list(proc_id)).
+:- mode pred_info_exported_procids(in, out) is det.
 
 :- pred pred_info_arg_types(pred_info, tvarset, list(type)).
 :- mode pred_info_arg_types(in, out, out) is det.
@@ -1790,6 +1774,16 @@ pred_info_non_imported_procids(PredInfo, ProcIds) :-
 		list__delete_all(ProcIds0, 0, ProcIds)
 	;
 		pred_info_procids(PredInfo, ProcIds)
+	).
+
+pred_info_exported_procids(PredInfo, ProcIds) :-
+	pred_info_import_status(PredInfo, ImportStatus),
+	( ImportStatus = exported ->
+		pred_info_procids(PredInfo, ProcIds)
+	; ImportStatus = pseudo_exported ->
+		ProcIds = [0]
+	;
+		ProcIds = []
 	).
 
 pred_info_clauses_info(PredInfo, Clauses) :-

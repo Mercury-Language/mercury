@@ -124,6 +124,7 @@
 		;	emit_c_loops
 	% Optimisation Options
 		;	optimize
+		;	optimize_dead
 		;	optimize_peep
 		;	optimize_jumps
 		;	optimize_fulljumps
@@ -133,6 +134,8 @@
 		;	optimize_value_number
 		;	optimize_frames
 		;	optimize_delay_slot
+		;	optimize_unused_args
+		;	optimize_higher_order
 		;	optimize_repeat
 		;	optimize_vnrepeat
 		;	pred_value_number
@@ -153,8 +156,6 @@
 		;	procs_per_c_function
 		;	split_c_files
 		;	constraint_propagation
-		;	optimize_unused_args
-		;	optimize_higher_order
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -283,6 +284,7 @@ option_defaults_2(optimization_option, [
 					% above default with a value determined
 					% at configuration time
 	optimize		-	bool(yes),
+	optimize_dead		-	bool(no),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_fulljumps	-	bool(yes),
@@ -430,6 +432,8 @@ long_option("emit-c-loops",		emit_c_loops).
 long_option("auto-comments",		auto_comments).
 long_option("optimize",			optimize).
 long_option("optimise",			optimize).
+long_option("optimize-dead",		optimize_dead).
+long_option("optimise-dead",		optimize_dead).
 long_option("optimize-peep",		optimize_peep).
 long_option("optimise-peep",		optimize_peep).
 long_option("optimize-jumps",		optimize_jumps).
@@ -686,6 +690,8 @@ options_help -->
 	io__write_string("\nOptimization Options\n"),
 	io__write_string("\t--no-optimize\n"),
 	io__write_string("\t\tDisable the optimisation passes.\n"),
+	io__write_string("\t--optimize-dead\n"),
+	io__write_string("\t\tEnable dead predicate elimination.\n"),
 	io__write_string("\t--no-optimize-peep\n"),
 	io__write_string("\t\tDisable local peephole optimisations.\n"),
 	io__write_string("\t--no-optimize-jumps\n"),

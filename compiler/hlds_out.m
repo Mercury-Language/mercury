@@ -303,6 +303,12 @@ hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 		no, Context),
 	{ pred_info_import_status(PredInfo, ImportStatus) },
 	{ ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, Clauses) },
+	hlds_out__write_indent(Indent),
+	io__write_string("% pred id: "),
+	io__write_int(PredId),
+	io__write_string(", status: "),
+	hlds_out__write_import_status(ImportStatus),
+	io__write_string("\n"),
 	hlds_out__write_var_types(Indent, VarSet, VarTypes, TVarSet),
 
 		% Never write the clauses out verbosely -
@@ -880,6 +886,20 @@ hlds_out__write_instmap_2([Var - Inst | Rest], VarSet, Indent) -->
 		io__write_string("%            "),
 		hlds_out__write_instmap_2(Rest, VarSet, Indent)
 	).
+
+:- pred hlds_out__write_import_status(import_status, io__state, io__state).
+:- mode hlds_out__write_import_status(in, di, uo) is det.
+
+hlds_out__write_import_status(local) -->
+	io__write_string("local").
+hlds_out__write_import_status(exported) -->
+	io__write_string("exported").
+hlds_out__write_import_status(pseudo_exported) -->
+	io__write_string("pseudo_exported").
+hlds_out__write_import_status(imported) -->
+	io__write_string("imported").
+hlds_out__write_import_status(pseudo_imported) -->
+	io__write_string("pseudo_imported").
 
 :- pred hlds_out__write_var_types(int, varset, map(var, type), varset,
 					io__state, io__state).

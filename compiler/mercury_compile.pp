@@ -39,9 +39,9 @@
 :- import_module undef_modes, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module (lambda), polymorphism, higher_order, inlining, common.
-:- import_module constraint, unused_args, excess, liveness, follow_code.
-:- import_module follow_vars, live_vars, arg_info, store_alloc, code_gen.
-:- import_module optimize, llds.
+:- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
+:- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
+:- import_module code_gen, optimize, llds.
 
 	% miscellaneous compiler modules
 :- import_module prog_util, hlds_out, dependency_graph.
@@ -746,50 +746,6 @@ mercury_compile__semantic_pass_2_by_preds(HLDS1, HLDS8, FoundError) -->
 	mercury_compile__semantic_pass_2_by_phases(HLDS1, HLDS8, FoundError).
 
 %-----------------------------------------------------------------------------%
-
-% semantic_analyze_predicate(PredId, ModuleInfo0, ModuleInfo) -->
-% 	{ module_info_preds(ModuleInfo0, Preds0) },
-% 	{ map__lookup(Preds0, PredId, PredInfo0) },
-% 	( { pred_info_is_imported(PredInfo0) } ->
-%		{ pred_info_procids(PredInfo, ProcIds) },
-% 		{ ModuleInfo = ModuleInfo0 }
-% 	;
-% 		semantic_analyze_predicate_1(PredId, ModuleInfo0, ModuleInfo)
-% 	).
-% 
-% semantic_analyze_predicate_1(PredId, ModuleInfo0, ModuleInfo) -->
-% 	write_progress_message("% Type-checking predicate ", PredId,
-% 		ModuleInfo0),
-% 	typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, MaybePredInfo1),
-% 	(
-% 		{ MaybePredInfo1 = no },
-% 		{ module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo) }
-% 	;
-% 		{ MaybePredInfo1 = yes(PredInfo1) },
-% 		{ map__set(Preds0, PredId, PredInfo1, Preds1) },
-% 		{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1) },
-% 		semantic_analyze_predicate_2(PredId, PredInfo1, ModuleInfo1,
-% 			ModuleInfo)
-% 	).
-% 
-% semantic_analyze_predicate_2(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
-% 	write_progress_message("% Mode-checking predicate ", PredId,
-% 		ModuleInfo0),
-% 	modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0, ModuleInfo1, Errs),
-% 	( { Errs \= 0 } ->
-% 		{ module_info_num_errors(ModuleInfo1, NumErrors1) },
-% 		{ NumErrors is NumErrors1 + Errs },
-% 		{ module_info_set_num_errors(ModuleInfo1, NumErrors,
-% 			ModuleInfo2) },
-% 		{ module_info_remove_predid(ModuleInfo2, PredId,
-% 			ModuleInfo) }
-% 	;
-% 		semantic_analyze_predicate_3(PredId, ModuleInfo1, ModuleInfo)
-% 	).
-% 
-% semantic_analyze_predicate_3(PredId, ModuleInfo1, ModuleInfo) -->
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__middle_pass(module_info, module_info,
@@ -797,7 +753,7 @@ mercury_compile__semantic_pass_2_by_preds(HLDS1, HLDS8, FoundError) -->
 % :- mode mercury_compile__middle_pass(di, uo, di, uo) is det.
 :- mode mercury_compile__middle_pass(in, out, di, uo) is det.
 
-mercury_compile__middle_pass(HLDS7, HLDS14) -->
+mercury_compile__middle_pass(HLDS7, HLDS15) -->
 	%
 	% polymorphism affects the pred declarations, so it must be done
 	% in one phase, not per-pred.
@@ -809,9 +765,9 @@ mercury_compile__middle_pass(HLDS7, HLDS14) -->
 
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
 	( { TradPasses = no } ->
-		mercury_compile__middle_pass_by_phases(HLDS8, HLDS14)
+		mercury_compile__middle_pass_by_phases(HLDS8, HLDS15)
 	;
-		mercury_compile__middle_pass_by_preds(HLDS8, HLDS14)
+		mercury_compile__middle_pass_by_preds(HLDS8, HLDS15)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -821,7 +777,7 @@ mercury_compile__middle_pass(HLDS7, HLDS14) -->
 % :- mode mercury_compile__middle_pass_by_phases(di, uo, di, uo) is det.
 :- mode mercury_compile__middle_pass_by_phases(in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_phases(HLDS8, HLDS14) -->
+mercury_compile__middle_pass_by_phases(HLDS8, HLDS15) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__maybe_optimize_higher_order(HLDS8, HLDS9),
@@ -844,9 +800,13 @@ mercury_compile__middle_pass_by_phases(HLDS8, HLDS14) -->
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS13, "13", "unused_args"),
 
-	mercury_compile__maybe_remove_excess_assigns(HLDS13, HLDS14),
+	mercury_compile__maybe_eliminate_dead_procs(HLDS13, HLDS14),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS14, "14", "excessassign").
+	mercury_compile__maybe_dump_hlds(HLDS14, "14", "dead_procs"),
+
+	mercury_compile__maybe_remove_excess_assigns(HLDS14, HLDS15),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS15, "15", "excessassign").
 
 %-----------------------------------------------------------------------------%
 
@@ -855,8 +815,8 @@ mercury_compile__middle_pass_by_phases(HLDS8, HLDS14) -->
 % :- mode mercury_compile__middle_pass_by_preds(di, uo, di, uo) is det.
 :- mode mercury_compile__middle_pass_by_preds(in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_preds(HLDS8, HLDS14) -->
-	mercury_compile__middle_pass_by_phases(HLDS8, HLDS14).
+mercury_compile__middle_pass_by_preds(HLDS8, HLDS15) -->
+	mercury_compile__middle_pass_by_phases(HLDS8, HLDS15).
 
 %-----------------------------------------------------------------------------%
 
@@ -865,23 +825,23 @@ mercury_compile__middle_pass_by_preds(HLDS8, HLDS14) -->
 % :- mode mercury_compile__backend_pass(di, uo, out, di, uo) is det.
 :- mode mercury_compile__backend_pass(in, out, out, di, uo) is det.
 
-mercury_compile__backend_pass(HLDS14, HLDS21, LLDS2) -->
+mercury_compile__backend_pass(HLDS15, HLDS22, LLDS2) -->
 	%
 	% map_args_to_regs affects the interface to a predicate,
 	% so it must be done in one phase before code generation
 	%
-	mercury_compile__map_args_to_regs(HLDS14, HLDS15),
+	mercury_compile__map_args_to_regs(HLDS15, HLDS16),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS15, "15", "args_to_regs"),
+	mercury_compile__maybe_dump_hlds(HLDS16, "16", "args_to_regs"),
 
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
 	(
 		{ TradPasses = no },
-		mercury_compile__backend_pass_by_phases(HLDS15, HLDS21, LLDS2)
+		mercury_compile__backend_pass_by_phases(HLDS16, HLDS22, LLDS2)
 	;
 		{ TradPasses = yes },
-		mercury_compile__backend_pass_by_preds(HLDS15, HLDS21, LLDS2)
+		mercury_compile__backend_pass_by_preds(HLDS16, HLDS22, LLDS2)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -890,54 +850,54 @@ mercury_compile__backend_pass(HLDS14, HLDS21, LLDS2) -->
 	list(c_procedure), io__state, io__state).
 :- mode mercury_compile__backend_pass_by_phases(in, out, out, di, uo) is det.
 
-mercury_compile__backend_pass_by_phases(HLDS15, HLDS21, LLDS2) -->
+mercury_compile__backend_pass_by_phases(HLDS16, HLDS22, LLDS2) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
-	mercury_compile__maybe_migrate_followcode(HLDS15, HLDS16),
+	mercury_compile__maybe_migrate_followcode(HLDS16, HLDS17),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS16, "16", "followcode"),
+	mercury_compile__maybe_dump_hlds(HLDS17, "17", "followcode"),
 
-	mercury_compile__compute_liveness(HLDS16, HLDS17),
+	mercury_compile__compute_liveness(HLDS17, HLDS18),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS17, "17", "liveness"),
+	mercury_compile__maybe_dump_hlds(HLDS18, "18", "liveness"),
 
-	mercury_compile__maybe_compute_followvars(HLDS17, HLDS18),
+	mercury_compile__maybe_compute_followvars(HLDS18, HLDS19),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS18, "18", "followvars"),
+	mercury_compile__maybe_dump_hlds(HLDS19, "19", "followvars"),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS18), fail }.
+	{ putprop(mc, mc, HLDS19), fail }.
 mercury_compile__backend_pass_by_phases(_, _, _) -->
-	{ getprop(mc, mc, HLDS18, Ref), erase(Ref) },
+	{ getprop(mc, mc, HLDS19, Ref), erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 #endif
 
-	mercury_compile__compute_stack_vars(HLDS18, HLDS19),
+	mercury_compile__compute_stack_vars(HLDS19, HLDS20),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS19, "19", "stackvars"),
+	mercury_compile__maybe_dump_hlds(HLDS20, "20", "stackvars"),
 
-	mercury_compile__allocate_store_map(HLDS19, HLDS20),
+	mercury_compile__allocate_store_map(HLDS20, HLDS21),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS20, "20", "store_map"),
+	mercury_compile__maybe_dump_hlds(HLDS21, "21", "store_map"),
 
-	mercury_compile__maybe_report_sizes(HLDS20),
+	mercury_compile__maybe_report_sizes(HLDS21),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS20), fail }.
+	{ putprop(mc, mc, HLDS21), fail }.
 mercury_compile__backend_pass_by_phases(_, _, _) -->
-	{ getprop(mc, mc, HLDS20, Ref), erase(Ref) },
+	{ getprop(mc, mc, HLDS21, Ref), erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 #endif
 
-	mercury_compile__generate_code(HLDS20, HLDS21, LLDS1),
+	mercury_compile__generate_code(HLDS21, HLDS22, LLDS1),
 	maybe_report_stats(Statistics),
-	mercury_compile__maybe_dump_hlds(HLDS21, "21", "codegen"),
-	mercury_compile__maybe_dump_hlds(HLDS21, "99", "final"),
+	mercury_compile__maybe_dump_hlds(HLDS22, "22", "codegen"),
+	mercury_compile__maybe_dump_hlds(HLDS22, "99", "final"),
 
 #if NU_PROLOG
-	{ putprop(mc, mc, HLDS21 - LLDS1), fail }.
-mercury_compile__backend_pass_by_phases(_, HLDS21, LLDS2) -->
-	{ getprop(mc, mc, HLDS21 - LLDS1, Ref), erase(Ref) },
+	{ putprop(mc, mc, HLDS22 - LLDS1), fail }.
+mercury_compile__backend_pass_by_phases(_, HLDS22, LLDS2) -->
+	{ getprop(mc, mc, HLDS22 - LLDS1, Ref), erase(Ref) },
 	globals__io_lookup_bool_option(statistics, Statistics),
 #endif
 
@@ -949,9 +909,9 @@ mercury_compile__backend_pass_by_phases(_, HLDS21, LLDS2) -->
 % :- mode mercury_compile__backend_pass_by_preds(di, uo, out, di, uo) is det.
 :- mode mercury_compile__backend_pass_by_preds(in, out, out, di, uo) is det.
 
-mercury_compile__backend_pass_by_preds(HLDS15, HLDS21, LLDS2) -->
-	{ module_info_predids(HLDS15, PredIds) },
-	mercury_compile__backend_pass_by_preds_2(PredIds, HLDS15, HLDS21,
+mercury_compile__backend_pass_by_preds(HLDS16, HLDS22, LLDS2) -->
+	{ module_info_predids(HLDS16, PredIds) },
+	mercury_compile__backend_pass_by_preds_2(PredIds, HLDS16, HLDS22,
 		LLDS2).
 
 :- pred mercury_compile__backend_pass_by_preds_2(list(pred_id),
@@ -984,7 +944,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
 			PredInfo, ModuleInfo0, ModuleInfo1, Code1),
 		( { Verbose = yes } ->
-			io__write_string("% done\n"),
+			io__write_string("% done.\n"),
 			io__flush_output
 		;
 			[]
@@ -1190,7 +1150,7 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 			dependency_graph__write_dependency_graph(ModuleInfo0,
 							ModuleInfo),
 			io__told,
-			maybe_write_string(Verbose, " done\n")
+			maybe_write_string(Verbose, " done.\n")
 		;
 			report_error("unable to write dependency graph."),
 			{ ModuleInfo0 = ModuleInfo }
@@ -1278,7 +1238,7 @@ mercury_compile__maybe_optimize_higher_order(HLDS0, HLDS) -->
 				"% Specializing higher-order predicates...\n"),
 		maybe_flush_output(Verbose),
 		specialize_higher_order(HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n")
+		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ HLDS0 = HLDS }
 	).
@@ -1335,6 +1295,22 @@ mercury_compile__maybe_unused_args(HLDS0, HLDS) -->
                 { HLDS0 = HLDS }
         ).
 	
+
+:- pred mercury_compile__maybe_eliminate_dead_procs(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__maybe_eliminate_dead_procs(in, out, di, uo) is det.
+
+mercury_compile__maybe_eliminate_dead_procs(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(optimize_dead, Dead),
+	( { Dead = yes } ->
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Eliminating dead procedures...\n"),
+		maybe_flush_output(Verbose),
+		dead_proc_elim(HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		{ HLDS0 = HLDS }
+	).
 
 :- pred mercury_compile__maybe_remove_excess_assigns(module_info, module_info,
 	io__state, io__state).
@@ -1866,7 +1842,7 @@ mercury_compile__invoke_system_command(Command, Succeeded) -->
 	maybe_write_string(Verbose, "'...\n"),
 	io__call_system(Command, Result),
 	( { Result = ok(0) } ->
-		maybe_write_string(Verbose, "% done\n"),
+		maybe_write_string(Verbose, "% done.\n"),
 		{ Succeeded = yes }
 	; { Result = ok(_) } ->
 		report_error("system command returned non-zero exit status."),

@@ -4,9 +4,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% Switch detection - replace disjunctions with (semi)deterministic switch
-% statements, where we can determine that the disjunction is actually
-% just a switch.
+% Switch detection - when a disjunction contains disjuncts that unify the
+% same input variable with different function symbols, replace (part of)
+% the disjunction with a switch.
 %
 % Main author: fjh.
 %
@@ -20,11 +20,6 @@
 
 :- pred detect_switches(module_info, module_info, io__state, io__state).
 :- mode detect_switches(in, out, di, uo) is det.
-
-:- pred detect_switches_in_pred(pred_id, pred_info, module_info, module_info,
-	io__state, io__state).
-% :- mode detect_switches_in_pred(in, in, di, uo, di, uo) is det.
-:- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
 :- pred detect_switches_in_proc(proc_id, pred_id, module_info, module_info).
 % :- mode detect_switches_in_proc(in, in, di, uo) is det.
@@ -60,6 +55,11 @@ detect_switches_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ map__lookup(PredTable, PredId, PredInfo) },
 	detect_switches_in_pred(PredId, PredInfo, ModuleInfo0, ModuleInfo1),
 	detect_switches_in_preds(PredIds, ModuleInfo1, ModuleInfo).
+
+:- pred detect_switches_in_pred(pred_id, pred_info, module_info, module_info,
+	io__state, io__state).
+% :- mode detect_switches_in_pred(in, in, di, uo, di, uo) is det.
+:- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
 detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
 		IOstate, IOstate) :-
@@ -131,10 +131,6 @@ detect_switches_in_goal_1(Goal0 - GoalInfo, InstMap0, VarTypes, ModuleInfo,
 		instmap, map(var, type), module_info, hlds__goal_expr).
 :- mode detect_switches_in_goal_2(in, in, in, in, in, in, out) is det.
 
-detect_switches_in_goal_2(conj(Goals0), _GoalInfo, InstMap0, _InstMapDelta,
-		VarTypes, ModuleInfo, conj(Goals)) :-
-	detect_switches_in_conj(Goals0, InstMap0, VarTypes, ModuleInfo, Goals).
-
 detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
 		VarTypes, ModuleInfo, Goal) :-
 	( Goals0 = [] ->
@@ -146,6 +142,10 @@ detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
 			InstMap0, InstMapDelta, VarTypes,
 			NonLocalsList, ModuleInfo, [], Goal)
 	).
+
+detect_switches_in_goal_2(conj(Goals0), _GoalInfo, InstMap0, _InstMapDelta,
+		VarTypes, ModuleInfo, conj(Goals)) :-
+	detect_switches_in_conj(Goals0, InstMap0, VarTypes, ModuleInfo, Goals).
 
 detect_switches_in_goal_2(not(Goal0), _GoalInfo, InstMap0, _InstMapDelta,
 		VarTypes, ModuleInfo, not(Goal)) :-

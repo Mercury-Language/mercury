@@ -82,10 +82,10 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 
 	{ init_var_usage(ModuleInfo0, VarUsage0, PredProcs) },
-	maybe_write_string(VeryVerbose, "\t% Finished initialisation\n"),
+	% maybe_write_string(VeryVerbose, "% Finished initialisation.\n"),
 
 	{ unused_args_pass(PredProcs, VarUsage0, VarUsage) },
-	maybe_write_string(VeryVerbose, "\t% Finished analysis\n"),
+	% maybe_write_string(VeryVerbose, "% Finished analysis.\n"),
 
 	{ map__init(UnusedArgInfo0) },
 	{ get_unused_arg_info(ModuleInfo0, PredProcs, VarUsage,
@@ -101,8 +101,8 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 				PredProcsToFix, WarningsMap0, WarningsMap) },
 		{ map__values(WarningsMap, Warnings0) },
 		{ list__sort(Warnings0, Warnings) },
-		report_unused_args(Warnings),
-		maybe_write_string(VeryVerbose, "\t% Finished warnings\n")	
+		report_unused_args(Warnings)
+		% maybe_write_string(VeryVerbose, "% Finished warnings.\n")	
 	;
 		[]
 	),
@@ -114,8 +114,8 @@ unused_args__process_module(ModuleInfo0, ModuleInfo) -->
 		{ create_new_preds(PredProcsToFix, UnusedArgInfo, ProcCallInfo0,
 				ProcCallInfo, ModuleInfo0, ModuleInfo1) }, 
 		fixup_unused_args(VarUsage, PredProcsToFix, ProcCallInfo,
-					ModuleInfo1, ModuleInfo, VeryVerbose),
-		maybe_write_string(VeryVerbose, "\t% Fixed up goals\n")
+					ModuleInfo1, ModuleInfo, VeryVerbose)
+		% maybe_write_string(VeryVerbose, "% Fixed up goals.\n")
 	;
 		{ ModuleInfo = ModuleInfo0 }
 	).
@@ -743,7 +743,7 @@ fixup_unused_args(VarUsage, [PredProc | PredProcs], ProcCallInfo,
 		{ VeryVerbose = yes }
 	->
 		{ PredProc = PredId - ProcId },
-		io__write_string("% Fixing up proc_info for '"),
+		io__write_string("% Fixing up `"),
 		{ predicate_name(ModuleInfo0, PredId, Name) },
 		{ predicate_arity(ModuleInfo0, PredId, Arity) },
 		io__write_string(Name),
