@@ -20,4 +20,6 @@ mdb.dv
 browse_test.dv
 declarative_test.dv
 mdb.init
+*.ilk
+*.pdb
 libmer_browser.lib
