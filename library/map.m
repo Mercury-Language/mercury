@@ -41,7 +41,7 @@ map__init(M) :- bintree__init(M).
 :- pred map__contains(map(K,_V), K).
 :- mode map__contains(input, input).
 map__contains(Map, K) :-
-	some [V] map_search(Map, K, V).
+	some [V] map__search(Map, K, V).
 
 %-----------------------------------------------------------------------------%
 
