@@ -297,13 +297,16 @@ implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E), _,
 		higher_order_call(PredVar, ArgVars, C, D, E)) -->
 	implicitly_quantify_atomic_goal([PredVar|ArgVars]).
 
-implicitly_quantify_goal_2(unify(A, B0, X, Y, Z), Context,
-		unify(A, B, X, Y, Z)) -->
+implicitly_quantify_goal_2(
+		unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
+		Context,
+		unify(Var, UnifyRHS, Mode, Unification, UnifyContext)) -->
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
-	implicitly_quantify_unify_rhs(B0, Context, B),
-	quantification__get_nonlocals(VarsB),
-	{ set__insert(VarsB, A, GoalVars) },
+	implicitly_quantify_unify_rhs(UnifyRHS0, Unification0, Context,
+		UnifyRHS, Unification),
+	quantification__get_nonlocals(VarsUnifyRHS),
+	{ set__insert(VarsUnifyRHS, Var, GoalVars) },
 	quantification__update_seen_vars(GoalVars),
 	{ set__intersect(GoalVars, OutsideVars, NonLocalVars1) },
 	{ set__intersect(GoalVars, LambdaOutsideVars, NonLocalVars2) },
@@ -327,21 +330,25 @@ implicitly_quantify_atomic_goal(HeadVars) -->
 	{ set__union(NonLocals1, NonLocals2, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
-:- pred implicitly_quantify_unify_rhs(unify_rhs, term__context, unify_rhs,
+:- pred implicitly_quantify_unify_rhs(unify_rhs, unification, term__context,
+					unify_rhs, unification,
 					quant_info, quant_info).
-:- mode implicitly_quantify_unify_rhs(in, in, out, in, out) is det.
+:- mode implicitly_quantify_unify_rhs(in, in, in, out, out, in, out) is det.
 
-implicitly_quantify_unify_rhs(var(X), _, var(X)) -->
+implicitly_quantify_unify_rhs(var(X), Unification, _, var(X), Unification) -->
 	{ set__singleton_set(Vars, X) },
 	quantification__set_nonlocals(Vars).
-implicitly_quantify_unify_rhs(functor(Functor, ArgVars), _,
-				functor(Functor, ArgVars)) -->
+implicitly_quantify_unify_rhs(functor(Functor, ArgVars), Unification, _,
+				functor(Functor, ArgVars), Unification) -->
 	{ set__list_to_set(ArgVars, Vars) },
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(
 		lambda_goal(PredOrFunc, LambdaVars0, Modes, Det, Goal0),
+		Unification0,
 		Context,
-		lambda_goal(PredOrFunc, LambdaVars, Modes, Det, Goal)) -->
+		lambda_goal(PredOrFunc, LambdaVars, Modes, Det, Goal),
+		Unification
+		) -->
 
 	quantification__get_outside(OutsideVars0),
 	{ set__list_to_set(LambdaVars0, QVars) },
@@ -390,7 +397,31 @@ implicitly_quantify_unify_rhs(
 	quantification__set_quant_vars(QuantVars0),
 	quantification__set_outside(OutsideVars0),
 	quantification__set_lambda_outside(LambdaOutsideVars0),
-	quantification__set_nonlocals(NonLocals).
+	quantification__set_nonlocals(NonLocals),
+
+	%
+	% For a unification that constructs a lambda expression,
+	% the argument variables of the construction are the non-local
+	% variables of the lambda expression.  So if we recompute the
+	% non-locals, we need to recompute the argument variables of
+	% the construction, and hence we also need to recompute their modes.
+	% The non-locals set must only ever decrease, not increase,
+	% so we can just use the old modes.
+	%
+	{
+		Unification0 = construct(ConstructVar, ConsId, Args0, ArgModes0)
+	->
+		map__from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
+		set__to_sorted_list(NonLocals, Args),
+		map__apply_to_list(Args, ArgModesMap, ArgModes),
+		Unification = construct(ConstructVar, ConsId, Args, ArgModes)
+	;
+		% after mode analysis, unifications with lambda variables
+		% should always be construction unifications, but
+		% quantification gets invoked before mode analysis,
+		% so we need to allow this case...
+		Unification = Unification0
+	}.
 
 :- pred implicitly_quantify_conj(list(hlds_goal), list(hlds_goal), 
 					quant_info, quant_info).
