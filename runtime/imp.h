@@ -36,16 +36,16 @@ typedef void			Code;	/* code addresses are `void *' */
 
 #define	WORDSIZE	sizeof(Word)
 
-#include	<stddef.h>
-#include	"std.h"
 #include	"regs.h"	/* must come before system headers */
 
+#include	<stddef.h>
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
 #include	<assert.h>
 #include	<sys/types.h>
 
+#include	"std.h"
 #include	"tags.h"
 #include	"goto.h"
 #include	"engine.h"
