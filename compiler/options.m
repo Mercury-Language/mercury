@@ -1971,6 +1971,7 @@ long_option("bug-intermod-2002-06-13",	compiler_sufficiently_recent).
 long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
 long_option("read-config-file-2003-03-01", compiler_sufficiently_recent).
+long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent).
  
 %-----------------------------------------------------------------------------%
 

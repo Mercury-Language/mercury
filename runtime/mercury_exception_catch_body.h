@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -81,11 +81,10 @@ MR_define_entry(proc_label);
 	MR_r1 = MR_r2;		/* The Goal to call */
 #endif
 	MR_r2 = 0;		/* Zero additional input arguments */
-	MR_r3 = 1;		/* One output argument */
 	/*
 	** Now call `Goal(Result)'.
 	*/
-	MR_call(MR_ENTRY(mercury__do_call_closure),
+	MR_call(MR_ENTRY(mercury__do_call_closure_compact),
 		MR_LABEL(CLOSURE_RETURN_LABEL(proc_label)),
 		MR_ENTRY(proc_label));
 

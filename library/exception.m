@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 The University of Melbourne.
+% Copyright (C) 1997-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1544,7 +1544,7 @@ MR_define_extern_entry(mercury__exception__builtin_catch_3_5); /* nondet */
 MR_define_extern_entry(mercury__exception__builtin_throw_1_0);
 
 /* the following is defined in runtime/mercury_ho_call.c */
-MR_declare_entry(mercury__do_call_closure);
+MR_declare_entry(mercury__do_call_closure_compact);
 
 /* the following is defined in runtime/mercury_trace_base.c */
 MR_declare_entry(MR_do_trace_redo_fail);
@@ -2173,8 +2173,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 
 	MR_r1 = handler;	/* get the Handler closure */
 	MR_r2 = 1;		/* One additional input argument */
-	MR_r3 = 1;		/* One output argument */
-	MR_r4 = exception;	/* This is our one input argument */
+	MR_r3 = exception;	/* This is our one input argument */
 
 	/*
 	** Restore the value of MR_trace_from_full that we saved at the
@@ -2185,23 +2184,23 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	/*
 	** If the catch was semidet, we need to set the success indicator
 	** MR_r1 to MR_TRUE and return the result in MR_r2; otherwise, we return
-	** the result in MR_r1, which is where mercury__do_call_closure puts
-	** it, so we can do a tailcall.
+	** the result in MR_r1, which is where mercury__do_call_closure_compact
+	** puts it, so we can do a tailcall.
 	*/
 	if (catch_code_model != MR_MODEL_SEMI_HANDLER) {
-		MR_tailcall(MR_ENTRY(mercury__do_call_closure), 
+		MR_tailcall(MR_ENTRY(mercury__do_call_closure_compact),
 			MR_ENTRY(mercury__exception__builtin_throw_1_0));
 	}
 	MR_incr_sp_push_msg(1, ""pred builtin_throw/1"");
 	MR_stackvar(1) = (MR_Word) MR_succip;
-	MR_call(MR_ENTRY(mercury__do_call_closure), 
+	MR_call(MR_ENTRY(mercury__do_call_closure_compact), 
 		MR_LABEL(mercury__exception__builtin_throw_1_0_i1),
 		MR_ENTRY(mercury__exception__builtin_throw_1_0));
 }
 MR_define_label(mercury__exception__builtin_throw_1_0_i1);
 	MR_update_prof_current_proc(
 		MR_LABEL(mercury__exception__builtin_throw_1_0));
-	/* we've just returned from mercury__do_call_closure */
+	/* we've just returned from mercury__do_call_closure_compact */
 	MR_r2 = MR_r1;
 	MR_r1 = MR_TRUE;
 	MR_succip = (MR_Code *) MR_stackvar(1);
