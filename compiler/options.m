@@ -1393,7 +1393,7 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tDon't migrate into the end of branched goals.\n"),
 	io__write_string("\t--excess-assign\n"),
 	io__write_string("\t\tRemove excess assignment unifications.\n"),
-	io__write_string("\t\t--optimize-duplicate-calls\n"),
+	io__write_string("\t--optimize-duplicate-calls\n"),
 	io__write_string("\t\tOptimize away multiple calls to a predicate\n"),
 	io__write_string("\t\twith the same input arguments.\n"),
 	io__write_string("\t--optimize-saved-vars\n"),
