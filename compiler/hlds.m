@@ -809,12 +809,16 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 			% the argument vector. (If it is a constant, then
 			% in this case there is an argument vector of size 1
 			% which just holds the secondary tag.)
-	;	complicated_constant_tag(tag_bits, int).
+	;	complicated_constant_tag(tag_bits, int)
 			% This is for constants which require more than a
 			% two-bit tag. In this case, we use both a primary
 			% and a secondary tag, but this time the secondary
 			% tag is stored in the rest of the main word rather
 			% than in the first word of the argument vector.
+	;	no_tag.
+			% This is for types with a single functor of arity one.
+			% In this case, we don't need to store the functor,
+			% and instead we store the argument directly.
 
 	% The type `tag_bits' holds a simple tag value.
 :- type tag_bits	==	int.	% actually only 2 (or maybe 3) bits

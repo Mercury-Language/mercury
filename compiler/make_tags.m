@@ -16,6 +16,11 @@
 	% For types which are just enumerations (all the constructors
 	% are constants), we just assign a different value for each
 	% constructor.
+	%
+	% For types which have only one functor of arity one, there is
+	% no need to store the functor, and we just store the argument
+	% value directly; construction and deconstruction unifications
+	% on these type are no-ops.
 	% 
 	% For other types, we use a couple of bits of the word as a
 	% tag.  We split the constructors into constants and functors,
@@ -68,7 +73,11 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		assign_enum_constants(Ctors, 0, CtorTags0, CtorTags)
 	;
 		IsEnum = no,
-		( NumTagBits = 0 ->
+		( Ctors = [SingleFunc - [SingleArg]] ->
+			% assign single functor of arity one a `no_tag' tag
+			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
+			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
+		; NumTagBits = 0 ->
 			( Ctors = [_SingleCtor] ->
 				assign_simple_tags(Ctors, 0, 1,
 					CtorTags0, CtorTags)

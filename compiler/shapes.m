@@ -267,11 +267,11 @@ shapes__tag_match(bit_three, 3).
 :- mode shapes__create_shape(in, in, out, in, out) is det.
 
 shapes__create_shape(Type_Tab, Shape_Id, Shape, S_Tab0, S_Tab) :-
-	Shape_Id = Type - _Inst,
+	Shape_Id = Type - Inst,
 	(
 		type_to_type_id(Type, Type_Id, TypeArgs) 
 	->
-		shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs,
+		shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs,
 				Shape, S_Tab0, S_Tab)
 	;
 		( 
@@ -292,11 +292,11 @@ shapes__create_shape(Type_Tab, Shape_Id, Shape, S_Tab0, S_Tab) :-
 % XXX What happens when the abstract shape refers to a local shape as an
 % XXX argument? At link time there is no entry for that shape, so KABOOM.
 %-----------------------------------------------------------------------------%
-:- pred shapes__create_shape_2(type_table, type, type_id, list(type), shape,
-					shape_table, shape_table).
-:- mode shapes__create_shape_2(in, in, in, in, out, in, out) is det.
+:- pred shapes__create_shape_2(type_table, type, inst, type_id, list(type),
+				shape, shape_table, shape_table).
+:- mode shapes__create_shape_2(in, in, in, in, in, out, in, out) is det.
 
-shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape, 
+shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape, 
 				S_Tab0, S_Tab) :-
 	(
 		map__search(Type_Tab, Type_Id, Hlds_Type)
@@ -305,20 +305,44 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			Hlds_Type = hlds__type_defn(_TypeVarSet, TypeParams,
 				du_type(Ctors0, TagVals, _), _, _) 
 		->
-			term__term_list_to_var_list(TypeParams, TypeParamVars),
-			map__from_corresponding_lists(TypeParamVars, TypeArgs,
-				TypeSubst),
-			shapes__apply_to_ctors(Ctors0, TypeSubst, Ctors),
+			% check for a type with only one functor of arity one:
+			% such a type will have a `no_tag' functor.
+			( Ctors0 = [_SingleCtor - [SingleArgType]] ->
+				% the shape is just the shape of the argument
+				% we just need to figure out its inst,
+				% and then recursively call shapes__create_shape
+				( 	
+					Inst = bound(_, [SingleInst]),
+					SingleInst = functor(_,
+							[SingleArgInst0])
+				->
+					SingleArgInst = SingleArgInst0
+				;	
+					% must have been `free' or `ground',
+					% etc., so inst of arg is the same
+					SingleArgInst = Inst
+				),
+				shapes__create_shape(Type_Tab,
+					SingleArgType - SingleArgInst,
+					Shape, S_Tab0, S_Tab)
+			;
+				term__term_list_to_var_list(TypeParams,
+					TypeParamVars),
+				map__from_corresponding_lists(TypeParamVars,
+					TypeArgs, TypeSubst),
+				shapes__apply_to_ctors(Ctors0, TypeSubst,
+					Ctors),
 
-			Shape = quad(A,B,C,D),
-			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-				bit_zero, A, Type_Tab, S_Tab0, S_Tab1),
-			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-		 		bit_one, B, Type_Tab, S_Tab1, S_Tab2),
-			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-		 		bit_two, C, Type_Tab, S_Tab2, S_Tab3),
-			shapes__create_shapeA(Type_Id, Ctors, TagVals,
-				bit_three, D, Type_Tab, S_Tab3, S_Tab) 
+				Shape = quad(A,B,C,D),
+				shapes__create_shapeA(Type_Id, Ctors, TagVals,
+					bit_zero, A, Type_Tab, S_Tab0, S_Tab1),
+				shapes__create_shapeA(Type_Id, Ctors, TagVals,
+					bit_one, B, Type_Tab, S_Tab1, S_Tab2),
+				shapes__create_shapeA(Type_Id, Ctors, TagVals,
+					bit_two, C, Type_Tab, S_Tab2, S_Tab3),
+				shapes__create_shapeA(Type_Id, Ctors, TagVals,
+					bit_three, D, Type_Tab, S_Tab3, S_Tab) 
+			)
 		;
 			Hlds_Type = hlds__type_defn(_, _TypeParams, 
 				abstract_type, _, _) 
@@ -424,6 +448,12 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 	->
 		A = constant,
 		S_Tab = S_Tab0
+	;	
+		C_Tag = no_tag
+	->
+		% no_tag functors should be handled above, in
+		% shapes__create_shape_2
+		error("shapes__create_shapesA: unexpected `no_tag'")
 	;	
 		C_Tag = simple_tag(X),
 		shapes__tag_match(Bits, X) 

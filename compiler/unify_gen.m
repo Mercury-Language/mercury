@@ -189,6 +189,8 @@ unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
 unify_gen__generate_tag_rval_2(address_constant(_, _), _Rval, _TestRval) :-
 	% This should never happen
 	error("Attempted address unification").
+unify_gen__generate_tag_rval_2(no_tag, _Rval, TestRval) :-
+	TestRval = const(true).
 unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Rval, TestRval) :-
 	TestRval = binop(eq,	unop(tag, Rval),
 				unop(mktag, const(int_const(SimpleTag)))).
@@ -232,6 +234,14 @@ unify_gen__generate_construction_2(float_constant(Float),
 		Var, _Args, _Modes, Code) -->
 	{ Code = empty },
 	code_info__cache_expression(Var, const(float_const(Float))).
+unify_gen__generate_construction_2(no_tag, Var, Args, _Modes, Code) -->
+	{ Code = empty },
+	( { Args = [Arg] } ->
+		code_info__cache_expression(Var, var(Arg))
+	;
+		{ error(
+		"unify_gen__generate_construction_2: no_tag: arity != 2") }
+	).
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
@@ -445,28 +455,30 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	% For constants, if the deconstruction is det, then we already know
 	% the value of the constant, so Code = empty.
 	(
-		{ Tag = string_constant(_String) }
-	->
+		{ Tag = string_constant(_String) },
 		{ Code = empty }
 	;
-		{ Tag = int_constant(_Int) }
-	->
+		{ Tag = int_constant(_Int) },
 		{ Code = empty }
 	;
-		{ Tag = float_constant(_Float) }
-	->
+		{ Tag = float_constant(_Float) },
 		{ Code = empty }
 	;
-		{ Tag = address_constant(_, _) }
-	->
+		{ Tag = address_constant(_, _) },
 		{ Code = empty }
 	;
-		{ Tag = pred_closure_tag(_, _) }
-	->
+		{ Tag = pred_closure_tag(_, _) },
 		{ Code = empty }
 	;
-		{ Tag = simple_tag(SimpleTag) }
-	->
+		{ Tag = no_tag },
+		( { Args = [Arg], Modes = [Mode] } ->
+			unify_gen__generate_det_sub_unify(ref(Var), ref(Arg),
+				Mode, Code)
+		;
+			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 2") }
+		)
+	;
+		{ Tag = simple_tag(SimpleTag) },
 		code_info__produce_variable(Var, CodeA, Rval),
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
 						SimpleTag, Fields, ArgVars) },
@@ -474,8 +486,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 								Modes, CodeB),
 		{ Code = tree(CodeA, CodeB) }
 	;
-		{ Tag = complicated_tag(Bits0, _Num0) }
-	->
+		{ Tag = complicated_tag(Bits0, _Num0) },
 		code_info__produce_variable(Var, CodeA, Rval),
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
 						Bits0, Fields, ArgVars) },
@@ -483,11 +494,8 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 								Modes, CodeB),
 		{ Code = tree(CodeA, CodeB) }
 	;
-		{ Tag = complicated_constant_tag(_Bits1, _Num1) }
-	->
+		{ Tag = complicated_constant_tag(_Bits1, _Num1) },
 		{ Code = empty } % if this is det, then nothing happens
-	;
-		{ error("Unrecognised tag in deconstruction") }
 	).
 
 %---------------------------------------------------------------------------%
@@ -629,7 +637,7 @@ unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
 							code_info, code_info).
 :- mode unify_gen__generate_sub_assign(in, in, out, in, out) is det.
 
-	% Assignment between to lvalues - cannot cache [yet]
+	% Assignment between two lvalues - cannot cache [yet]
 	% so generate immediate code
 unify_gen__generate_sub_assign(lval(Lval), lval(Rval), Code) -->
 	{ Code = node([
