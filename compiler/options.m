@@ -162,6 +162,7 @@
 		;	suppress_trace
 		;	stack_trace_higher_order
 		;	tabling_via_extra_args
+		;	allow_table_reset
 		;	generate_bytecode
 		;	line_numbers
 		;	auto_comments
@@ -844,6 +845,7 @@ option_defaults_2(aux_output_option, [
 	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
 	tabling_via_extra_args	-	bool(yes),
+	allow_table_reset	-	bool(no),
 	generate_bytecode	-	bool(no),
 	line_numbers		-	bool(yes),
 	auto_comments		-	bool(no),
@@ -1511,6 +1513,7 @@ long_option("suppress-trace",		suppress_trace).
 long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("tabling-via-extra-args",	tabling_via_extra_args).
+long_option("allow-table-reset",	allow_table_reset).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("line-numbers",		line_numbers).
 long_option("auto-comments",		auto_comments).
@@ -2891,6 +2894,8 @@ options_help_aux_output -->
 		"\tsupported in general.",
 %		"--tabling-via-extra-args",
 %		"\tGenerate output via extra_args in foreign_procs.",
+%		"--allow-table-reset",
+%		"\tGenerate C code for resetting tabling data structures.",
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",

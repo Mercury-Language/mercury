@@ -1,0 +1,48 @@
+      E1:     C1 CALL pred fib.main/2-0 (cc_multi) fib.m:13
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> step
+      E2:     C2 CALL pred fib.perform_trials/3-0 (cc_multi)
+mdb> finish
+tabling works
+      E3:     C2 EXIT pred fib.perform_trials/3-0 (cc_multi)
+mdb> table mfib
+memo table for pred fib.mfib/2-0 (det):
+<0>: succeeded <1>
+<1>: succeeded <1>
+<2>: succeeded <2>
+<3>: succeeded <3>
+<4>: succeeded <5>
+<5>: succeeded <8>
+<6>: succeeded <13>
+<7>: succeeded <21>
+<8>: succeeded <34>
+<9>: succeeded <55>
+<10>: succeeded <89>
+<11>: succeeded <144>
+<12>: succeeded <233>
+<13>: succeeded <377>
+<14>: succeeded <610>
+<15>: succeeded <987>
+<16>: succeeded <1597>
+<17>: succeeded <2584>
+<18>: succeeded <4181>
+<19>: succeeded <6765>
+<20>: succeeded <10946>
+<21>: succeeded <17711>
+<22>: succeeded <28657>
+<23>: succeeded <46368>
+<24>: succeeded <75025>
+<25>: succeeded <121393>
+<26>: succeeded <196418>
+end of table (27 entries)
+mdb> step 2
+      E4:     C3 EXIT pred fib.reset/2-0 (det)
+mdb> table mfib
+memo table for pred fib.mfib/2-0 (det):
+end of table (0 entries)
+mdb> continue
+tabling works

@@ -5435,6 +5435,10 @@ supported in general.
 @c into a single piece of foreign language code
 @c and passing the required data as extra arguments.
 
+@c @item --allow-table-reset
+@c @findex --allow-table-reset
+@c Generate C code for resetting tabling data structures.
+
 @item --generate-bytecode
 @findex --generate-bytecode
 @c Output a bytecode version of the module

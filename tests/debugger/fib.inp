@@ -1,0 +1,9 @@
+echo on
+context none
+register --quiet
+step
+finish
+table mfib
+step 2
+table mfib
+continue

@@ -45,3 +45,5 @@ MCFLAGS-solver_test = -O2 --no-optimize-dead-procs
 # The following is necessary for shared libraries to work on Linux.
 GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
+
+MCFLAGS-fib = --allow-table-reset

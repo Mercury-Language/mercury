@@ -214,7 +214,7 @@ output_llds(C_File, ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO) :-
 			!IO),
 		dir__make_directory(ObjDirName, _, !IO),
 
-		output_split_c_file_init(ModuleName, Modules, Datas,
+		output_split_c_file_init(ModuleName, Modules, Datas, Vars,
 			ComplexityProcs, StackLayoutLabels, MaybeRLFile, !IO),
 		output_split_user_foreign_codes(UserForeignCodes, ModuleName,
 			C_HeaderInfo, ComplexityProcs, StackLayoutLabels,
@@ -323,10 +323,11 @@ output_split_comp_gen_c_modules([Module | Modules], ModuleName, C_HeaderLines,
 		ComplexityProcs, StackLayoutLabels, !Num, !IO).
 
 :- pred output_split_c_file_init(module_name::in, list(comp_gen_c_module)::in,
-	list(comp_gen_c_data)::in, list(complexity_proc_info)::in,
-	map(label, data_addr)::in, maybe(rl_file)::in, io::di, io::uo) is det.
+	list(comp_gen_c_data)::in, list(comp_gen_c_var)::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
+	maybe(rl_file)::in, io::di, io::uo) is det.
 
-output_split_c_file_init(ModuleName, Modules, Datas, ComplexityProcs,
+output_split_c_file_init(ModuleName, Modules, Datas, Vars, ComplexityProcs,
 		StackLayoutLabels, MaybeRLFile, !IO) :-
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName, !IO),
@@ -341,7 +342,7 @@ output_split_c_file_init(ModuleName, Modules, Datas, ComplexityProcs,
 		output_c_file_mercury_headers(!IO),
 		io__write_string("\n", !IO),
 		decl_set_init(DeclSet0),
-		output_c_module_init_list(ModuleName, Modules, Datas,
+		output_c_module_init_list(ModuleName, Modules, Datas, Vars,
 			ComplexityProcs, StackLayoutLabels,
 			DeclSet0, _DeclSet, !IO),
 		c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
@@ -469,7 +470,7 @@ do_output_single_c_file(CFile, SplitFiles, ComplexityProcs, StackLayoutLabels,
 	;
 		SplitFiles = no,
 		io__write_string("\n", !IO),
-		output_c_module_init_list(ModuleName, Modules, Datas,
+		output_c_module_init_list(ModuleName, Modules, Datas, Vars,
 			ComplexityProcs, StackLayoutLabels, !DeclSet, !IO)
 	),
 	c_util__output_rl_file(ModuleName, MaybeRLFile, !IO),
@@ -505,11 +506,11 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
 		!OtherLayouts).
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
-	list(comp_gen_c_data)::in, list(complexity_proc_info)::in,
-	map(label, data_addr)::in, decl_set::in, decl_set::out,
-	io::di, io::uo) is det.
+	list(comp_gen_c_data)::in, list(comp_gen_c_var)::in,
+	list(complexity_proc_info)::in, map(label, data_addr)::in,
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_module_init_list(ModuleName, Modules, Datas, ComplexityProcs,
+output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
 		StackLayoutLabels, !DeclSet, !IO) :-
 	MustInit = (pred(Module::in) is semidet :-
 		module_defines_label_with_layout(Module, StackLayoutLabels)
@@ -554,6 +555,16 @@ output_c_module_init_list(ModuleName, Modules, Datas, ComplexityProcs,
 	output_init_name(ModuleName, !IO),
 	io__write_string("init_complexity_procs(void);\n", !IO),
 	io__write_string("#endif\n", !IO),
+
+	globals__io_lookup_bool_option(allow_table_reset, TableReset, !IO),
+	(
+		TableReset = yes,
+		io__write_string("void ", !IO),
+		output_init_name(ModuleName, !IO),
+		io__write_string("reset_tables(void);\n", !IO)
+	;
+		TableReset = no
+	),
 
 	io__write_string("\n", !IO),
 
@@ -634,6 +645,18 @@ output_c_module_init_list(ModuleName, Modules, Datas, ComplexityProcs,
 	output_init_complexity_proc_list(ComplexityProcs, !IO),
 	io__write_string("}\n", !IO),
 	io__write_string("\n#endif\n\n", !IO),
+
+	(
+		TableReset = yes,
+		io__write_string("void ", !IO),
+		output_init_name(ModuleName, !IO),
+		io__write_string("reset_tables(void)\n", !IO),
+		io__write_string("{\n", !IO),
+		list__foldl(output_init_reset_table, Vars, !IO),
+		io__write_string("}\n\n", !IO)
+	;
+		TableReset = no
+	),
 
 	io__write_string(
 		"/* ensure everything is compiled with the same grade */\n",
@@ -896,6 +919,14 @@ output_init_complexity_proc_list([Info | Infos], !IO) :-
 
 complexity_arg_is_profiled(complexity_arg_info(_, Kind)) :-
 	Kind = complexity_input_variable_size.
+
+:- pred output_init_reset_table(comp_gen_c_var::in, io::di, io::uo) is det.
+
+output_init_reset_table(Var, !IO) :-
+	Var = tabling_pointer_var(_Module, ProcLabel),
+	io__write_string("\t", !IO),
+	output_tabling_pointer_var_name(ProcLabel, !IO),
+	io__write_string(".MR_integer = 0;\n", !IO).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
