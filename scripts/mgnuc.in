@@ -38,6 +38,7 @@
 # Environment variables: MERCURY_C_INCL_DIR, MERCURY_DEFAULT_GRADE.
 
 FULLARCH=@FULLARCH@
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
@@ -168,7 +169,7 @@ case "$FULLARCH" in
 		# we need to disable PIC with -non_shared -mno-abicalls.
 		case $GRADE_OPTS in
 			*-DUSE_GCC_NONLOCAL_GOTOS*)
-LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
+LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 				export LIBRARY_PATH
 				ARCH_OPTS="-non_shared -mno-abicalls"
 				AS_OPTS="-non_shared"

@@ -22,6 +22,7 @@
 #
 # Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE
 
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
 LIBDIR=${MERCURY_C_LIB_DIR=@LIBDIR@/lib}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 # DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
@@ -103,7 +104,7 @@ case @FULLARCH@ in
 		case "$GRADE" in
 			*fast*|*jump*)
 				ARCH_OPTS=-non_shared
-LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
+LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
 				export LIBRARY_PATH
 				;;
 		esac
