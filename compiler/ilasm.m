@@ -274,7 +274,7 @@
 
 :- import_module char, string, pprint, getopt.
 :- import_module require, int, term_io, varset, bool.
-:- import_module globals, options.
+:- import_module globals, options, error_util.
 
 
 	% Some versions of the IL assembler enforce a rule that if you output 
@@ -1462,7 +1462,7 @@ output_custom_decl(custom_decl(Type, MaybeOwner, StringOrBytes),
 		io__write_list(Bytes, " ", output_hexbyte),
 		io__write_string(")")
 	;
-		[]
+		{ sorry(this_file, "custom_decl of this sort") }
 	),
 	io__write_string("\n").
 
@@ -1472,7 +1472,6 @@ output_custom_type(type(Type), Info0, Info) -->
 	output_type(Type, Info0, Info).
 output_custom_type(methodref(MethodRef), Info0, Info) -->
 	output_methodref(MethodRef, Info0, Info).
-
 
 :- pred output_index(index::in, io__state::di, io__state::uo) is det.
 output_index(Index) -->
@@ -1714,5 +1713,7 @@ escape_special_char('\t', 't').
 escape_special_char('\b', 'b').
 
 
+:- func this_file = string.
+this_file = "ilasm.m".
 
 :- end_module ilasm.
