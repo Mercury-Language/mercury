@@ -613,7 +613,7 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors, ModuleInfo,
 propagate_ctor_info(ground(Uniq), _Type, Constructors, ModuleInfo, Inst) :-
 	constructors_to_bound_insts(Constructors, Uniq, ModuleInfo,
 		BoundInsts0),
-	list__sort(BoundInsts0, BoundInsts),
+	list__sort_and_remove_dups(BoundInsts0, BoundInsts),
 	Inst = bound(Uniq, BoundInsts).
 propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).

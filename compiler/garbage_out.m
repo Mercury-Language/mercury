@@ -373,7 +373,7 @@ garbage_out__write_liveval(temp(_)) -->
 :- mode garbage_out__write_shape_table(in, di, uo) is det.
 garbage_out__write_shape_table(ShapeTable - _NextNum) -->
 	{ map__values(ShapeTable, Shapes) },
-	{ list__sort(Shapes, Sort_Shapes) },
+	{ list__sort_and_remove_dups(Shapes, Sort_Shapes) },
 	garbage_out__write_shapes(Sort_Shapes).
 
 

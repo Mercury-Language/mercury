@@ -538,8 +538,8 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 	maybe_flush_output(Verbose),
 	io__open_output(DependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
-		{ list__sort(LongDeps0, LongDeps) },
-		{ list__sort(ShortDeps0, ShortDeps) },
+		{ list__sort_and_remove_dups(LongDeps0, LongDeps) },
+		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps) },
 
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".err : "),

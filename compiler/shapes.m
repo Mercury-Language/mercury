@@ -157,7 +157,7 @@ shapes__request_shape_number(ShapeId0, Type_Table, S_Tab0 - Next_S_Num0,
 shapes__construct_shape_lists(S_Tab, S_List, L_List, C_List) :-
 	S_Tab = Shape_Tab - _,
 	map__values(Shape_Tab, Temp_List),
-	list__sort(Temp_List, TS_List),
+	list__sort_and_remove_dups(Temp_List, TS_List),
 	shapes__make_shape_tag_list(TS_List, Tag_List),
 	shapes__construct_lists(Tag_List, S_Tab, S_List, L_List, _,
 		C_List, _).

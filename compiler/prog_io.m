@@ -2017,18 +2017,18 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	; Name = term__atom("bound"), Args0 = [Disj] ->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
-		list__sort(Functors0, Functors),
+		list__sort_and_remove_dups(Functors0, Functors),
 		Result = bound(shared, Functors)
 /* backwards compatibility */
 	; Name = term__atom("bound_unique"), Args0 = [Disj] ->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
-		list__sort(Functors0, Functors),
+		list__sort_and_remove_dups(Functors0, Functors),
 		Result = bound(unique, Functors)
 	; Name = term__atom("unique"), Args0 = [Disj] ->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
-		list__sort(Functors0, Functors),
+		list__sort_and_remove_dups(Functors0, Functors),
 		Result = bound(unique, Functors)
 	;
 		parse_qualified_term(term__functor(Name, Args0, Context),
