@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -102,6 +102,11 @@
 #define compare_output  r1
 #define index_input     r1
 #define index_output    r1
+#ifdef MR_USE_SOLVE_EQUAL
+#define solve_equal_input1    r1
+#define solve_equal_input2    r2
+#define solve_equal_output    r1
+#endif
 #else
 #define	mercury__unify__typeinfo	r2
 #define	mercury__unify__x		r3
@@ -129,6 +134,11 @@
 #define compare_output  r1
 #define index_input     r1
 #define index_output    r2
+#ifdef MR_USE_SOLVE_EQUAL
+#define solve_equal_input1    r2
+#define solve_equal_input2    r3
+#define solve_equal_output    r1
+#endif
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -415,7 +425,7 @@ enum MR_TypeLayoutValue {
 		OFFSET_FOR_INDEX_PRED);					\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
 		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal_non_solver##2_0, \
+	MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
 		OFFSET_FOR_SOLVE_EQUAL_PRED);				\
 	MR_INIT_CODE_ADDR(B, mercury__builtin_type_to_term##T##2_0,	\
 		OFFSET_FOR_TYPE_TO_TERM_PRED);				\
@@ -485,13 +495,13 @@ enum MR_TypeLayoutValue {
 
       #define	MR_INIT_BUILTIN_BASE_TYPE_INFO(B, T) \
       do {								\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 	\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_unify##T##2_0, 		\
 		OFFSET_FOR_UNIFY_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 	\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_index##T##2_0, 		\
 		OFFSET_FOR_INDEX_PRED);					\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 	\
+	MR_INIT_CODE_ADDR(B, mercury__builtin_compare##T##3_0, 		\
 		OFFSET_FOR_COMPARE_PRED);				\
-	MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal_non_solver##2_0, \
+	MR_INIT_CODE_ADDR(B, mercury__builtin_solve_equal##T##2_0,	\
 		OFFSET_FOR_SOLVE_EQUAL_PRED);				\
       } while (0)
 

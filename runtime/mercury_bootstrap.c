@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -31,6 +31,9 @@
 Define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 Define_extern_entry(mercury____Index___private_builtin__typeclass_info_1_0);
 Define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Define_extern_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
+#endif
 
 extern const struct
 	mercury_data_private_builtin__base_type_layout_typeclass_info_1_struct 
@@ -62,7 +65,7 @@ mercury_data_private_builtin__base_type_info_base_typeclass_info_1_struct {
 		mercury____Compare___private_builtin__typeclass_info_1_0)),
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(
-		mercury____Unify___private_builtin__typeclass_info_1_0)),
+		mercury____SolveEqual___private_builtin__typeclass_info_1_0)),
 #endif
 	(const Word *) &
 	    mercury_data_private_builtin__base_type_layout_typeclass_info_1,
@@ -78,10 +81,13 @@ mercury_data_private_builtin__base_type_info_typeclass_info_1_struct {
 	Code *f2;
 	Code *f3;
 	Code *f4;
-	const Word *f5;
+#ifdef MR_USE_SOLVE_EQUAL
+	Code *f5;
+#endif
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 } mercury_data_private_builtin__base_type_info_typeclass_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
@@ -90,6 +96,10 @@ mercury_data_private_builtin__base_type_info_typeclass_info_1_struct {
 		mercury____Index___private_builtin__typeclass_info_1_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Compare___private_builtin__typeclass_info_1_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____SolveEqual___private_builtin__typeclass_info_1_0)),
+#endif
 	(const Word *) &
 	    mercury_data_private_builtin__base_type_layout_typeclass_info_1,
 	(const Word *) &
@@ -116,6 +126,9 @@ BEGIN_MODULE(typeclass_info_module)
 	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 	init_entry(mercury____Index___private_builtin__typeclass_info_1_0);
 	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+	init_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
+#endif
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
@@ -130,6 +143,13 @@ Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 {
 	fatal_error("attempt to compare typeclass_info");
 }
+
+#ifdef MR_USE_SOLVE_EQUAL
+Define_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
+{
+	fatal_error("attempt to solve_equal typeclass_info");
+}
+#endif
 END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -357,22 +357,31 @@ const struct mercury_data___base_type_functors_void_0_struct {
 Declare_entry(mercury__builtin_unify_int_2_0);
 Declare_entry(mercury__builtin_index_int_2_0);
 Declare_entry(mercury__builtin_compare_int_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury__builtin_solve_equal_int_2_0);
+#endif
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
 	Code *f4;
+#ifdef MR_USE_SOLVE_EQUAL
+	Code *f5;
+#endif
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___base_type_info_int_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_int_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_int_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_int_3_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_int_2_0)),
+#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_int_0,
 	(const Word *) & mercury_data___base_type_functors_int_0,
@@ -386,23 +395,32 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_int_0_struct {
 Declare_entry(mercury__builtin_unify_character_2_0);
 Declare_entry(mercury__builtin_index_character_2_0);
 Declare_entry(mercury__builtin_compare_character_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury__builtin_solve_equal_character_2_0);
+#endif
 MR_STATIC_CODE_CONST struct 
 mercury_data___base_type_info_character_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
 	Code *f4;
+#ifdef MR_USE_SOLVE_EQUAL
+	Code *f5;
+#endif
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___base_type_info_character_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_character_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_character_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_character_3_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_character_2_0)),
+#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_character_0,
 	(const Word *) & mercury_data___base_type_functors_character_0,
@@ -416,22 +434,31 @@ mercury_data___base_type_info_character_0_struct {
 Declare_entry(mercury__builtin_unify_string_2_0);
 Declare_entry(mercury__builtin_index_string_2_0);
 Declare_entry(mercury__builtin_compare_string_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury__builtin_solve_equal_string_2_0);
+#endif
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
 	Code *f4;
+#ifdef MR_USE_SOLVE_EQUAL
+	Code *f5;
+#endif
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___base_type_info_string_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_string_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_string_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_string_3_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_string_2_0)),
+#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_string_0,
 	(const Word *) & mercury_data___base_type_functors_string_0,
@@ -445,22 +472,31 @@ MR_STATIC_CODE_CONST struct mercury_data___base_type_info_string_0_struct {
 Declare_entry(mercury__builtin_unify_float_2_0);
 Declare_entry(mercury__builtin_index_float_2_0);
 Declare_entry(mercury__builtin_compare_float_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Declare_entry(mercury__builtin_solve_equal_float_2_0);
+#endif
 MR_STATIC_CODE_CONST struct mercury_data___base_type_info_float_0_struct {
 	Integer f1;
 	Code *f2;
 	Code *f3;
 	Code *f4;
+#ifdef MR_USE_SOLVE_EQUAL
+	Code *f5;
+#endif
 #ifdef USE_TYPE_LAYOUT
-	const Word *f5;
 	const Word *f6;
 	const Word *f7;
 	const Word *f8;
+	const Word *f9;
 #endif
 } mercury_data___base_type_info_float_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_float_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_float_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_compare_float_3_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_float_2_0)),
+#endif
 #ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___base_type_layout_float_0,
 	(const Word *) & mercury_data___base_type_functors_float_0,

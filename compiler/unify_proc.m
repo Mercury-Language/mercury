@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -490,7 +490,8 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	is det.
 
 unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
-	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no } ->
+	( { TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred), IsEnum = no,
+			\+ type_is_no_tag_type(Ctors, _, _) } ->
 		( { MaybeEqPred = yes(PredName) } ->
 			%
 			% Just generate a call to the specified predicate,
@@ -510,8 +511,25 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			unify_proc__quantify_clause_body([H1, H2], Goal,
 				Context, Clauses)
 		;
-			unify_proc__generate_du_unify_clauses(Ctors, H1, H2,
-				Context, Clauses)
+			% Check to see if it's a single zero-arity functor.
+			% This hack is required for --reserve-tag, which
+			% disables enumeration types, so that the compiler
+			% does not warn about inferring the unify to be
+			% det rather than semidet.
+			( { Ctors = [ctor(_ExistQVars, _Constraints, _FunctorName, [])] } ->
+				% Is this permitted?
+				% Yes but it's wrong.  :-)
+				% { Clauses = [] }
+				% We must at least pretend a unification is
+				% required?
+				{ create_atomic_unification(H1, var(H2),
+						Context, explicit, [], Goal) },
+				unify_proc__quantify_clause_body([H1, H2],
+						Goal, Context, Clauses)
+			;
+				unify_proc__generate_du_unify_clauses(Ctors,
+						H1, H2, Context, Clauses)
+			)
 		)
 	;
 		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
