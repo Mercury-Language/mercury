@@ -69,7 +69,7 @@ LN	=	ln
 
 ifeq ($(USE_DLLS),yes)
 
-# XXX what do we need here for MDCOMP_LIB_NAME?
+# XXX what do we need here for MDBCOMP_LIB_NAME?
 DLL_CFLAGS = -Dlib$(BROWSER_LIB_NAME)_DEFINE_DLL
 
 include $(MERCURY_DIR)/Makefile.DLLs
@@ -125,10 +125,10 @@ $(BROWSER_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
 	awk -f $(COMPILER_DIR)/source_stats.awk \
 		`vpath_find $($(BROWSER_LIB_NAME).ms)` > $@
 
-$(MDCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
-		$($(MDCOMP_LIB_NAME).ms)
+$(MDBCOMP_LIB_NAME).stats: $(COMPILER_DIR)/source_stats.awk \
+		$($(MDBCOMP_LIB_NAME).ms)
 	awk -f $(COMPILER_DIR)/source_stats.awk \
-		`vpath_find $($(MDCOMP_LIB_NAME).ms)` > $@
+		`vpath_find $($(MDBCOMP_LIB_NAME).ms)` > $@
 
 #-----------------------------------------------------------------------------#
 
