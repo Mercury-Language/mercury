@@ -38,7 +38,7 @@ MCI	=	MERCURY_INT_DIR=. \
 MCG	=	MERCURY_INT_DIR=. \
 		MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(MC) --compile-to-c
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
+MGNUCFLAGS =	-I $(RUNTIME_DIR) -I $(BOEHM_GC_DIR) $(EXTRA_CFLAGS)
 
 #-----------------------------------------------------------------------------#
 
@@ -102,6 +102,7 @@ os: $(library.os)
 cs: $(library.cs)
 
 library.pic_os=$(library.os:.o=.$(EXT_FOR_PIC_OBJECTS))
+library.dir_os=$(library.os:.o=.dir/*.o)
 
 #-----------------------------------------------------------------------------#
 
@@ -111,6 +112,10 @@ libmercury : libmercury.a libmercury.$(EXT_FOR_SHARED_LIB) library.init
 libmercury.a : $(library.os)
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
+
+libmercury.opt.a : $(library.ms)
+	-$(MC) --optimize-value-number --split-c-files -c $(library.ms)
+	ar cr libmercury.opt.a $(library.dir_os)
 
 libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
