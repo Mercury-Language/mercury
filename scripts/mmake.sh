@@ -13,7 +13,7 @@ MMAKE_VARS=${MMAKE_VARS:-@LIBDIR@/mmake/Mmake.vars}
 MMAKE_RULES=${MMAKE_RULES:-@LIBDIR@/mmake/Mmake.rules}
 MERCURY_INT_DIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
 
-VPATH=${MMAKE_VPATH}:${MERCURY_INT_DIR}
+VPATH=${MMAKE_VPATH:-${MERCURY_INT_DIR}}
 MMAKE=$0
 verbose=false
 save_makefile=false
