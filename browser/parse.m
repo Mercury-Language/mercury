@@ -39,6 +39,7 @@
 %		"clipx" num
 %		"clipy" num
 %		"format" fmt
+%		"num_io_actions" num
 %
 %	numlist:
 %		num
@@ -343,6 +344,9 @@ parse_setting([Tok | Toks], Setting) :-
 	; Tok = name("lines") ->
 		Toks = [num(Y)],
 		Setting = lines(Y)
+	; Tok = name("num_io_actions") ->
+		Toks = [num(Y)],
+		Setting = num_io_actions(Y)
 	; Tok = name("format") ->
 		Toks = [Fmt],
 		( Fmt = name("flat") ->
@@ -364,6 +368,7 @@ parse_setting([Tok | Toks], Setting) :-
 
 :- pred show_command(command, io__state, io__state).
 :- mode show_command(in, di, uo) is det.
+
 show_command(ls(Path)) -->
 	io__write_string("ls "),
 	show_path(Path),
@@ -407,6 +412,7 @@ show_command(unknown) -->
 
 :- pred show_path(path, io__state, io__state).
 :- mode show_path(in, di, uo) is det.
+
 show_path(root_rel(Dirs)) -->
 	io__write_string("/"),
 	show_dirs(Dirs).
@@ -415,6 +421,7 @@ show_path(dot_rel(Dirs)) -->
 
 :- pred show_dirs(list(dir), io__state, io__state).
 :- mode show_dirs(in, di, uo) is det.
+
 show_dirs([]) -->
 	io__nl.
 show_dirs([child_num(Num) | Dirs]) -->
@@ -431,6 +438,7 @@ show_dirs([parent | Dirs]) -->
 
 :- pred show_setting(setting, io__state, io__state).
 :- mode show_setting(in, di, uo) is det.
+
 show_setting(depth(Depth)) -->
 	io__write_string("depth "),
 	io__write_int(Depth),
@@ -451,9 +459,14 @@ show_setting(format(Fmt)) -->
 	io__write_string("format "),
 	show_format(Fmt),
 	io__nl.
+show_setting(num_io_actions(N)) -->
+	io__write_string("num_io_actions "),
+	io__write_int(N),
+	io__nl.
 
 :- pred show_format(portray_format, io__state, io__state).
 :- mode show_format(in, di, uo) is det.
+
 show_format(flat) -->
 	io__write_string("flat").
 show_format(raw_pretty) -->

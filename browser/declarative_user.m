@@ -123,6 +123,12 @@ query_user_2([Question | Questions], Skipped, Response, User0, User) -->
 			{ User = User2 }
 		)
 	;
+		{ Command = print_arg(From, To) },
+		{ edt_node_trace_atom(Question, TraceAtom) },
+		print_atom_arguments(TraceAtom, From, To, User1),
+		query_user_2([Question | Questions], Skipped, Response,
+			User1, User)
+	;
 		{ Command = browse_io(ActionNum) },
 		{ edt_node_io_actions(Question, IoActions) },
 		% We don't have code yet to trace a marked I/O action.
@@ -130,6 +136,12 @@ query_user_2([Question | Questions], Skipped, Response, User0, User) -->
 			User1, User2),
 		query_user_2([Question | Questions], Skipped, Response,
 			User2, User)
+	;
+		{ Command = print_io(From, To) },
+		{ edt_node_io_actions(Question, IoActions) },
+		print_chosen_io_actions(IoActions, From, To, User1),
+		query_user_2([Question | Questions], Skipped, Response,
+			User1, User)
 	;
 		{ Command = pd },
 		{ Response = exit_diagnosis(Node) },
@@ -205,6 +217,29 @@ browse_chosen_io_action(IoActions, ActionNum, MaybeMark, User0, User) -->
 		{ User = User0 }
 	).
 
+:- pred print_chosen_io_actions(list(io_action)::in, int::in, int::in,
+	user_state::in, io__state::di, io__state::uo) is cc_multi.
+
+print_chosen_io_actions(Atom, From, To, User0) -->
+	print_chosen_io_action(Atom, From, User0, OK),
+	( { OK = yes, From + 1 =< To } ->
+		print_chosen_io_actions(Atom, From + 1, To, User0)
+	;
+		[]
+	).
+
+:- pred print_chosen_io_action(list(io_action)::in, int::in, user_state::in,
+	bool::out, io__state::di, io__state::uo) is cc_multi.
+
+print_chosen_io_action(IoActions, ActionNum, User0, OK) -->
+	( { list__index1(IoActions, ActionNum, IoAction) } ->
+		print_io_action(User0, IoAction),
+		{ OK = yes }
+	;
+		io__write_string("No such IO action.\n"),
+		{ OK = no }
+	).
+
 :- pred browse_io_action(io_action::in, maybe(term_path)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
@@ -246,6 +281,35 @@ browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User) -->
 		{ User = User0 }
 	).
 
+:- pred print_atom_arguments(trace_atom::in, int::in, int::in, user_state::in,
+	io__state::di, io__state::uo) is cc_multi.
+
+print_atom_arguments(Atom, From, To, User0) -->
+	print_atom_argument(Atom, From, User0, OK),
+	( { OK = yes, From + 1 =< To } ->
+		print_atom_arguments(Atom, From + 1, To, User0)
+	;
+		[]
+	).
+
+:- pred print_atom_argument(trace_atom::in, int::in, user_state::in, bool::out,
+	io__state::di, io__state::uo) is cc_multi.
+
+print_atom_argument(Atom, ArgNum, User0, OK) -->
+	{ Atom = atom(_, _, Args0) },
+	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
+	(
+		{ list__index1(Args, ArgNum, ArgInfo) },
+		{ ArgInfo = arg_info(_, _, MaybeArg) },
+		{ MaybeArg = yes(Arg) }
+	->
+		print(univ_value(Arg), User0 ^ outstr, print, User0 ^ browser),
+		{ OK = yes }
+	;
+		io__write_string(User0 ^ outstr, "Invalid argument number\n"),
+		{ OK = no }
+	).
+
 :- pred maybe_convert_dirs_to_path(maybe(list(dir)), maybe(term_path)).
 :- mode maybe_convert_dirs_to_path(in, out) is det.
 
@@ -274,6 +338,10 @@ reverse_and_append([A | As], Bs, Cs) :-
 					% answering.
 	;	browse_io(int)		% Browse the nth IO action before
 					% answering.
+	;	print_arg(int, int)	% Print the nth to the mth arguments
+					% before answering.
+	;	print_io(int, int)	% Print the nth to the mth IO actions
+					% before answering.
 	;	pd			% Commence procedural debugging from
 					% this point.
 	;	abort			% Abort this diagnosis session.
@@ -293,7 +361,12 @@ user_help_message(User) -->
 		"\ts\tskip\t\tskip this question\n",
 		"\tr\trestart\t\task the skipped questions again\n",
 		"\tb <n>\tbrowse <n>\tbrowse the nth argument of the atom\n",
-		"\t\tpd\t\tcommence procedural debugging from this point\n",
+		"\tb io <n>\tbrowse io <n>\tbrowse the atom's nth I/O action\n",
+		"\tp <n>\tprint <n>\tprint the nth argument of the atom\n",
+		"\tp <n-m>\tprint <n-m>\tprint the nth to the mth arguments of the atom\n",
+		"\tp io <n>\tprint io <n>\tprint the atom's nth I/O action\n",
+		"\tp io <n-m>\tprint io <n-m>\tprint the atom's nth to mth I/O actions\n",
+		"\tpd\t\tcommence procedural debugging from this point\n",
 		"\ta\tabort\t\t",
 			"abort this diagnosis session and return to mdb\n",
 		"\th, ?\thelp\t\tthis help message\n"
@@ -351,7 +424,6 @@ cmd_handler("n",	one_word_cmd(no)).
 cmd_handler("no",	one_word_cmd(no)).
 cmd_handler("in",	one_word_cmd(inadmissible)).
 cmd_handler("inadmissible", one_word_cmd(inadmissible)).
-cmd_handler("io",	browse_io_cmd).
 cmd_handler("s",	one_word_cmd(skip)).
 cmd_handler("skip",	one_word_cmd(skip)).
 cmd_handler("r",	one_word_cmd(restart)).
@@ -364,6 +436,8 @@ cmd_handler("h",	one_word_cmd(help)).
 cmd_handler("help",	one_word_cmd(help)).
 cmd_handler("b",	browse_arg_cmd).
 cmd_handler("browse",	browse_arg_cmd).
+cmd_handler("p",	print_arg_cmd).
+cmd_handler("print",	print_arg_cmd).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
 	is semidet.
@@ -374,11 +448,38 @@ one_word_cmd(Cmd, []) = Cmd.
 
 browse_arg_cmd([Arg]) = browse_arg(ArgNum) :-
 	string__to_int(Arg, ArgNum).
-
-:- func browse_io_cmd(list(string)::in) = (user_command::out) is semidet.
-
-browse_io_cmd([Arg]) = browse_io(ArgNum) :-
+browse_arg_cmd(["io", Arg]) = browse_io(ArgNum) :-
 	string__to_int(Arg, ArgNum).
+
+:- func print_arg_cmd(list(string)::in) = (user_command::out) is semidet.
+
+print_arg_cmd([Arg]) = print_arg(From, To) :-
+	string_to_range(Arg, From, To).
+print_arg_cmd(["io", Arg]) = print_io(From, To) :-
+	string_to_range(Arg, From, To).
+
+:- pred string_to_range(string::in, int::out, int::out) is semidet.
+
+string_to_range(Arg, From, To) :-
+	( string__to_int(Arg, Num) ->
+		From = Num,
+		To = Num
+	;
+		[FirstStr, SecondStr] = string__words(is_dash, Arg),
+		string__to_int(FirstStr, First),
+		string__to_int(SecondStr, Second),
+		( First =< Second ->
+			From = First,
+			To = Second
+		;
+			From = Second,
+			To = First
+		)
+	).
+
+:- pred is_dash(char::in) is semidet.
+
+is_dash('-').
 
 %-----------------------------------------------------------------------------%
 
@@ -529,8 +630,8 @@ write_io_actions(User, IoActions) -->
 			io__write_int(User ^ outstr, NumIoActions),
 			io__write_string(User ^ outstr, " io actions:")
 		),
-		% XXX the 6 should be configurable
- 		( { NumIoActions < 6 } ->
+ 		{ NumPrinted = get_num_printed_io_actions(User ^ browser) },
+ 		( { NumIoActions =< NumPrinted } ->
 			io__nl(User ^ outstr),
 			list__foldl(print_io_action(User), IoActions)
 		;

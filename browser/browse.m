@@ -452,8 +452,8 @@ help(Debugger) -->
 "\th              -- help\n",
 "\n",
 "-- settings:\n",
-"--    size; depth; path; format (flat raw_pretty verbose pretty); width; ",
-"lines\n",
+"--    size <n>; depth <n>; path <n>; width <n>; lines <n>; num_io_actions <n>;\n",
+"--    format <flat,raw_pretty,verbose,pretty>; ",
 "--    Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
 "\n"],
 		HelpMessage) },
@@ -1144,6 +1144,10 @@ show_settings(Debugger, Info, MaybeFormat) -->
 	{ browser_info__get_format(Info, print, no, PrintFormat) },
 	write_string_debugger(Debugger, "Print format is "),
 		print_format_debugger(Debugger, PrintFormat),
+		nl_debugger(Debugger),
+	write_string_debugger(Debugger, "Number of I/O actions printed is: "),
+		write_int_debugger(Debugger,
+			get_num_printed_io_actions(Info ^ state)),
 		nl_debugger(Debugger).
 
 :- pred string_to_path(string, path).

@@ -97,7 +97,8 @@
 	;	size(int)
 	;	format(portray_format)
 	;	width(int)
-	;	lines(int).
+	;	lines(int)
+	;	num_io_actions(int).
 
 	% Initialise a new browser_info.  The optional portray_format
 	% overrides the default format.
@@ -117,6 +118,9 @@
 :- pred browser_info__get_format_params(browser_info, browse_caller_type,
 		portray_format, format_params).
 :- mode browser_info__get_format_params(in, in, in, out) is det.
+
+:- func browser_info__get_num_printed_io_actions(browser_persistent_state)
+	= int.
 
 %---------------------------------------------------------------------------%
 
@@ -271,7 +275,8 @@ browser_info__get_format_params(Info, Caller, Format, Params) :-
 	--->	browser_persistent_state(
 			print_params		:: caller_params,
 			browse_params		:: caller_params,
-			print_all_params	:: caller_params
+			print_all_params	:: caller_params,
+			num_printed_io_actions	:: int
 		).
 
 :- type caller_params
@@ -305,7 +310,8 @@ browser_info__init_persistent_state(State) :-
 	caller_type_print_defaults(Print),
 	caller_type_browse_defaults(Browse),
 	caller_type_print_all_defaults(PrintAll),
-	State = browser_persistent_state(Print, Browse, PrintAll).
+	State = browser_persistent_state(Print, Browse, PrintAll,
+		num_printed_io_actions_default).
 
 :- pred caller_type_print_defaults(caller_params).
 :- mode caller_type_print_defaults(out) is det.
@@ -337,8 +343,15 @@ caller_type_print_all_defaults(Params) :-
 	Flat	  = format_params(3, 10, 80, 2),
 	RawPretty = format_params(3, 10, 80, 2),
 	Verbose   = format_params(3, 10, 80, 5),
-	Pretty = format_params(3, 10, 80, 2),
+	Pretty    = format_params(3, 10, 80, 2),
 	Params = caller_params(DefaultFormat, Flat, RawPretty, Verbose, Pretty).
+
+:- func num_printed_io_actions_default = int.
+
+% Since each I/O action typically takes one line, this usually leaves room
+% on the typical 24-line screen for the atom, the query, and some previous
+% context.
+num_printed_io_actions_default = 20.
 
 browser_info__set_param(MaybeCallerType, F0, Pr0, V0, NPr0, Setting, State0,
 		State) :-
@@ -348,15 +361,20 @@ browser_info__set_param(MaybeCallerType, F0, Pr0, V0, NPr0, Setting, State0,
 
 browser_info__set_param(P0, B0, A0, F0, Pr0, V0, NPr0, Setting, State0,
 		State) :-
-	default_all_yes(P0, B0, A0, P, B, A),
-	default_all_yes(F0, Pr0, V0, NPr0, F, Pr, V, NPr),
-	PParams0 = State0 ^ print_params,
-	BParams0 = State0 ^ browse_params,
-	AParams0 = State0 ^ print_all_params,
-	maybe_set_param(P, F, Pr, V, NPr, Setting, PParams0, PParams),
-	maybe_set_param(B, F, Pr, V, NPr, Setting, BParams0, BParams),
-	maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
-	State = browser_persistent_state(PParams, BParams, AParams).
+	( Setting = num_io_actions(NumIoActions) ->
+		State = State0 ^ num_printed_io_actions := NumIoActions
+	;
+		default_all_yes(P0, B0, A0, P, B, A),
+		default_all_yes(F0, Pr0, V0, NPr0, F, Pr, V, NPr),
+		PParams0 = State0 ^ print_params,
+		BParams0 = State0 ^ browse_params,
+		AParams0 = State0 ^ print_all_params,
+		maybe_set_param(P, F, Pr, V, NPr, Setting, PParams0, PParams),
+		maybe_set_param(B, F, Pr, V, NPr, Setting, BParams0, BParams),
+		maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
+		State = browser_persistent_state(PParams, BParams, AParams,
+			State0 ^ num_printed_io_actions)
+	).
 
 :- pred affected_caller_types(maybe(browse_caller_type)::in,
 	bool::out, bool::out, bool::out) is det.
@@ -423,9 +441,7 @@ default_all_yes(A0, B0, C0, D0, A, B, C, D) :-
 
 maybe_set_param(no, _, _, _, _, _, Params, Params).
 maybe_set_param(yes, F, Pr, V, NPr, Setting, Params0, Params) :-
-	(
-		Setting = format(NewFormat)
-	->
+	( Setting = format(NewFormat) ->
 		Params = Params0 ^ default_format := NewFormat
 	;
 		Format0 = Params0 ^ default_format,
@@ -451,6 +467,8 @@ maybe_set_param_2(yes, format(_), _, _) :-
 	error("maybe_set_param_2: cannot set format here").
 maybe_set_param_2(yes, width(W), Params, Params ^ width := W).
 maybe_set_param_2(yes, lines(L), Params, Params ^ lines := L).
+maybe_set_param_2(yes, num_io_actions(_), _, _) :-
+	error("maybe_set_param_2: num_io_actions").
 
 :- pred get_caller_params(browser_persistent_state, browse_caller_type,
 		caller_params).
@@ -467,6 +485,9 @@ get_caller_format_params(Params, flat, Params ^ flat_params).
 get_caller_format_params(Params, raw_pretty, Params ^ raw_pretty_params).
 get_caller_format_params(Params, verbose, Params ^ verbose_params).
 get_caller_format_params(Params, pretty, Params ^ pretty_params).
+
+browser_info__get_num_printed_io_actions(State) =
+	State ^ num_printed_io_actions.
 
 %---------------------------------------------------------------------------%
 
