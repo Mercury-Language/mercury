@@ -23,7 +23,7 @@ RESS=	$(PROGS:%=%.res)
 #-----------------------------------------------------------------------------#
 
 duplicate_call.err:
-	$(MC) --grade $(GRADE) -C --misc-warnings --errorcheck-only \
+	$(MC) --grade $(GRADE) -C --warn-simple-code --errorcheck-only \
 		duplicate_call > duplicate_call.err 2>&1
 
 unused_args_test.err:
