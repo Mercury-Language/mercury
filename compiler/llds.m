@@ -852,10 +852,15 @@
 					% rather than a succeed().
 	;	do_redo
 	;	do_fail
-	;	do_trace_redo_fail
-					% A label in the runtime, the code
+
+	;	do_trace_redo_fail_shallow
+	;	do_trace_redo_fail_deep
+					% Labels in the runtime, the code
 					% at which calls MR_trace with a
-					% REDO event and then fails.
+					% REDO event and then fails. The
+					% shallow variety only does this
+					% if the from_full flag was set
+					% on entry to the given procedure.
 	;	do_call_closure
 	;	do_call_class_method
 	;	do_det_aditi_call

@@ -229,6 +229,15 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 	% trace events, the runtime will know that this slot exists and
 	% what its number must be; if we do not, the runtime will never
 	% refer to such a slot.
+	%
+	% We need two redo labels in the runtime. Deep traced procedures
+	% do not have a from-full slot, but their slots 1 through 4 are always
+	% valid; the label handling their redos accesses those slots directly.
+	% Shallow traced procedures do have a from-full slot, and their slots
+	% 1-4 are valid only if the from-full slot is TRUE; the label handling
+	% their redos thus checks this slot to see whether it can (or should)
+	% access the other slots. In shallow-traced model_non procedures
+	% that generate redo events, the from-full flag is always in slot 5.
 
 trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 	globals__get_trace_level(Globals, TraceLevel),
@@ -544,13 +553,28 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	}.
 
 trace__maybe_setup_redo_event(TraceInfo, Code) :-
-	TraceInfo = trace_info(_, _, _, TraceRedo),
+	TraceInfo = trace_info(TraceType, _, _, TraceRedo),
 	( TraceRedo = yes(_) ->
-		Code = node([
-			mkframe(temp_frame(nondet_stack_proc),
-				do_trace_redo_fail)
-				- "set up deep redo event"
-		])
+		(
+			TraceType = shallow_trace(Lval),
+			% The code in the runtime looks for the from-full
+			% flag in framevar 5; see the comment before
+			% trace__reserved_slots.
+			require(unify(Lval, framevar(5)),
+				"from-full flag not stored in expected slot"),
+			Code = node([
+				mkframe(temp_frame(nondet_stack_proc),
+					do_trace_redo_fail_shallow)
+					- "set up shallow redo event"
+			])
+		;
+			TraceType = deep_trace,
+			Code = node([
+				mkframe(temp_frame(nondet_stack_proc),
+					do_trace_redo_fail_deep)
+					- "set up deep redo event"
+			])
+		)
 	;
 		Code = empty
 	).

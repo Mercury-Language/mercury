@@ -767,7 +767,9 @@ opt_debug__dump_code_addr(do_succeed(Last), Str) :-
 	).
 opt_debug__dump_code_addr(do_redo, "do_redo").
 opt_debug__dump_code_addr(do_fail, "do_fail").
-opt_debug__dump_code_addr(do_trace_redo_fail, "do_trace_redo_fail").
+opt_debug__dump_code_addr(do_trace_redo_fail_shallow,
+	"do_trace_redo_fail_shallow").
+opt_debug__dump_code_addr(do_trace_redo_fail_deep, "do_trace_redo_fail_deep").
 opt_debug__dump_code_addr(do_call_closure, "do_nondet_closure").
 opt_debug__dump_code_addr(do_call_class_method, "do_nondet_class_method").
 opt_debug__dump_code_addr(do_det_aditi_call, "do_det_aditi_call").

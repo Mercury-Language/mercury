@@ -393,7 +393,8 @@ livemap__special_code_addr(imported(_), no).
 livemap__special_code_addr(succip, yes(succip)).
 livemap__special_code_addr(do_succeed(_), yes(succip(lval(curfr)))).
 livemap__special_code_addr(do_redo, yes(redoip(lval(maxfr)))).
-livemap__special_code_addr(do_trace_redo_fail, no).
+livemap__special_code_addr(do_trace_redo_fail_shallow, no).
+livemap__special_code_addr(do_trace_redo_fail_deep, no).
 livemap__special_code_addr(do_fail, no).
 livemap__special_code_addr(do_call_closure, no).
 livemap__special_code_addr(do_call_class_method, no).
