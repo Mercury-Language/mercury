@@ -109,9 +109,9 @@ Word	*heapend;
 Word	*detstackend;
 Word	*nondstackend;
 
-caddr_t	heap_zone;
-caddr_t	detstack_zone;
-caddr_t	nondstack_zone;
+char *	heap_zone;
+char *	detstack_zone;
+char *	nondstack_zone;
 
 int	heap_zone_left = 0;
 int	detstack_zone_left = 0;
@@ -322,7 +322,7 @@ void init_memory(void)
 static void setup_mprotect(void)
 {
 	heap_zone_left = heap_zone_size;
-	heap_zone = (caddr_t) (heapend) - heap_zone_size;
+	heap_zone = (char *) (heapend) - heap_zone_size;
 	if (heap_zone_size > 0
 	&& mprotect(heap_zone, heap_zone_size, MY_PROT) != 0)
 	{
@@ -331,7 +331,7 @@ static void setup_mprotect(void)
 	}
 
 	detstack_zone_left = detstack_zone_size;
-	detstack_zone = (caddr_t) (detstackend) - detstack_zone_size;
+	detstack_zone = (char *) (detstackend) - detstack_zone_size;
 	if (detstack_zone_size > 0
 	&& mprotect(detstack_zone, detstack_zone_size, MY_PROT) != 0)
 	{
@@ -340,7 +340,7 @@ static void setup_mprotect(void)
 	}
 
 	nondstack_zone_left = nondstack_zone_size;
-	nondstack_zone = (caddr_t) (nondstackend) - nondstack_zone_size;
+	nondstack_zone = (char *) (nondstackend) - nondstack_zone_size;
 	if (nondstack_zone_size > 0
 	&& mprotect(nondstack_zone, nondstack_zone_size, MY_PROT) != 0)
 	{
@@ -367,19 +367,19 @@ static void fatal_abort(const char *str)
 
 static bool try_munprotect(void *addr)
 {
-	caddr_t	fault_addr;
-	caddr_t	new_zone;
+	char *	fault_addr;
+	char *	new_zone;
 
-	fault_addr = (caddr_t) addr;
+	fault_addr = (char *) addr;
 
 	if (heap_zone != NULL && heap_zone <= fault_addr
 	&& fault_addr <= heap_zone + heap_zone_size)
 	{
 		if (memdebug) printf("address is in heap red zone\n");
-		new_zone = (caddr_t) round_up((int) fault_addr+4, unit);
+		new_zone = (char *) round_up((int) fault_addr+4, unit);
 		if (new_zone <= heap_zone + heap_zone_left)
 		{
-			if (new_zone >= (caddr_t) heapend)
+			if (new_zone >= (char *) heapend)
 			{
 				if (memdebug)
 				{
@@ -418,7 +418,7 @@ static bool try_munprotect(void *addr)
 	&& fault_addr <= detstack_zone + detstack_zone_size)
 	{
 		if (memdebug) printf("address is in detstack red zone\n");
-		new_zone = (caddr_t) round_up((int) fault_addr+4, unit);
+		new_zone = (char *) round_up((int) fault_addr+4, unit);
 		if (new_zone <= detstack_zone + detstack_zone_left)
 		{
 			if (memdebug)
@@ -427,7 +427,7 @@ static bool try_munprotect(void *addr)
 					(void *) detstack_zone, (void *) new_zone);
 			}
 
-			if (new_zone >= (caddr_t) detstackend)
+			if (new_zone >= (char *) detstackend)
 			{
 				if (memdebug)
 				{
@@ -459,7 +459,7 @@ static bool try_munprotect(void *addr)
 	&& fault_addr <= nondstack_zone + nondstack_zone_size)
 	{
 		if (memdebug) printf("address is in nondstack red zone\n");
-		new_zone = (caddr_t) round_up((int) fault_addr+4, unit);
+		new_zone = (char *) round_up((int) fault_addr+4, unit);
 		if (new_zone <= nondstack_zone + nondstack_zone_left)
 		{
 			if (memdebug)
@@ -468,7 +468,7 @@ static bool try_munprotect(void *addr)
 					(void *) nondstack_zone, (void *) new_zone);
 			}
 
-			if (new_zone >= (caddr_t) nondstackend)
+			if (new_zone >= (char *) nondstackend)
 			{
 				if (memdebug) {
 					printf("cannot unprotect last page\n");
