@@ -224,7 +224,7 @@ case $HOST in
 		# Test out these options, to make sure they continue
 		# to work
 		CONFIG_OPTS="--enable-hlc-grades \
-			--enable-new-mercuryfile-struct"
+			--enable-new-mercuryfile-struct" ;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
