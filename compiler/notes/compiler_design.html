@@ -136,8 +136,6 @@ stored in the io__state, using the type globals defined in globals.m.
  	  are module qualified during type checking.
  	<li> predicate and function calls and constructors within goals 
  	  are module qualified during mode analysis.
- 	<li> predicate and function names in typeclass instance declarations
-	  are qualified in check_typeclass.m (after mode analysis).
 	</ul>
  
 
@@ -205,6 +203,26 @@ so that the compiler does the right thing for options such as
 	<dd>
 	quantification.m handles implicit quantification and computes
 	the set of non-local variables for each sub-goal
+
+<dt> checking typeclass instances (check_typeclass.m)
+	<dd>
+	check_typeclass.m both checks that instance declarations satisfy all 
+	the appropriate superclass constraints and
+	performs a source-to-source transformation on the
+	methods methods from the instance declarations.
+	The transformed code is checked for type, mode, uniqueness, purity
+	and determinism correctness by the later passes, which has the effect
+	of checking the correctness of the instance methods themselves
+	(ie. that the instance methods match those expected by the typeclass
+	declaration).
+	During the transformation,
+	pred_ids and proc_ids are assigned to the methods for each instance. 
+
+	In
+	addition, while checking that the superclasses of a class are satisfied
+	by the instance declaration, a set of constraint_proofs are built up 
+	for the superclass constraints. These are used by polymorphism.m when
+	generating the base_typeclass_info for the instance.
 
 <dt> type checking
 
@@ -325,19 +343,6 @@ so that the compiler does the right thing for options such as
 	Note that what unique_modes.m does is quite similar to
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
-
-<dt> checking typeclass instances (check_typeclass.m)
-	<dd>
-	check_typeclass.m checks that, each instance declaration, that the
-	types, modes and determinism of each predicate/function that is a
-	method of the class is correct (ie. that it matches the typeclass
-	declaration). This pass is performed at the end of semantic analysis
-	because it needs mode and determinism information. In this pass,
-	pred_ids and proc_ids are assigned to the methods for each instance. In
-	addition, while checking that the superclasses of a class are satisfied
-	by the instance declaration, a set of constraint_proofs are built up 
-	for the superclass constraints. These are used by polymorphism.m when
-	generating the base_typeclass_info for the instance.
 
 <dt> simplification (simplify.m)
 
@@ -914,6 +919,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-12-07 05:27:51 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-03-30 05:38:14 $ by $Author: dgj $@cs.mu.oz.au. <br>
 </body>
 </html>
