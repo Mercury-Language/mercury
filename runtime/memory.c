@@ -642,6 +642,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 		fprintf(stderr, "address involved: %p\n",
 			(void *) info->si_addr);
 	}
+
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
