@@ -184,6 +184,15 @@ checked_setitimer(int which, struct itimerval *value)
 static void
 checked_signal(int sig, void (*handler)(int))
 {
+	/*
+	   We really need sigaction and SA_RESTART, otherwise profiling signals
+	   might interrupt I/O, causing a profiled program to get I/O errors.
+	   But if we haven't got it, I guess we just have to punt...
+	*/
+#ifndef SA_RESTART
+#define SA_RESTART 0
+#endif
+
 #ifdef HAVE_SIGACTION
 	struct sigaction	act;
 	act.sa_flags = SA_RESTART;
