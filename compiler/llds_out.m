@@ -3174,7 +3174,6 @@ output_rval_const(code_addr_const(CodeAddress)) -->
 output_rval_const(data_addr_const(data_addr(ModuleName, VarName))) -->
 	% data addresses are all assumed to be of type `Word *';
 	% we need to cast them here to avoid type errors
-	% XXX No we don't to make lcc accept it.
 	io__write_string("(Word *) &"),
 	output_data_addr(ModuleName, VarName).
 output_rval_const(label_entry(Label)) -->
