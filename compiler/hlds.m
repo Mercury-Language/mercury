@@ -94,10 +94,11 @@
 							% not the clause.	
 					call_info,	% stack allocations
 					category,	% _inferred_ det'ism
-					list(arg_info)	% information about
+					list(arg_info),	% information about
 							% the arguments
 							% derived from the
 							% modes etc
+					liveness_info	% the initial liveness
 				).
 
 %%% :- export_type category.
@@ -124,6 +125,11 @@
 	% not to be confused with a mode_id, which is the name of a
 	% user-defined mode.
 :- type proc_id		==	int.
+
+:- type liveness_info   ==      map(var, liveness).
+
+:- type liveness        --->    live
+                        ;       dead.
 
 %-----------------------------------------------------------------------------%
 
@@ -829,6 +835,9 @@ pred_info_is_imported(PredInfo) :-
 :- pred proc_info_arg_registers(proc_info, list(var), map(var, int)).
 :- mode proc_info_arg_registers(in, in, out) is det.
 
+:- pred proc_info_liveness_info(proc_info, liveness_info).
+:- mode proc_info_liveness_info(in, out) is det.
+
 :- pred proc_info_set_inferred_determinism(proc_info, category, proc_info).
 :- mode proc_info_set_inferred_determinism(in, in, out) is det.
 
@@ -844,6 +853,9 @@ pred_info_is_imported(PredInfo) :-
 :- pred proc_info_get_initial_instmap(proc_info, module_info, map(var, inst)).
 :- mode proc_info_get_initial_instmap(in, in, out) is det.
 
+:- pred proc_info_set_liveness_info(proc_info, liveness_info, proc_info).
+:- mode proc_info_set_liveness_info(in, in, out) is det.
+
 :- implementation.
 
 	% Some parts of the procedure aren't known yet.  We initialize
@@ -856,11 +868,13 @@ proc_info_init(Modes, Det, MContext, NewProc) :-
 	HeadVars = [],
 	determinism_to_category(Det, Category),
 	map__init(CallInfo),
+	map__init(Liveness),
 	ArgInfo = [],
 	ClauseBody = conj([]) - GoalInfo,
 	NewProc = procedure(
 		Det, BodyVarSet, BodyTypes, HeadVars, Modes,
-		ClauseBody, MContext, CallInfo, Category, ArgInfo
+		ClauseBody, MContext, CallInfo, Category, ArgInfo,
+		Liveness
 	).
 
 	% This predicate (and the types it operates on) are
@@ -879,38 +893,44 @@ determinism_to_category(failure, semideterministic).
 determinism_to_category(unspecified, deterministic).
 
 proc_info_declared_determinism(ProcInfo, Determinism) :-
-	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(Determinism, _, _, _, _, _, _, _, _, _, _).
 proc_info_variables(ProcInfo, VarSet) :-
-	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, VarSet, _, _, _, _, _, _, _, _, _).
 proc_info_vartypes(ProcInfo, VarTypes) :-
-	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, VarTypes, _, _, _, _, _, _, _, _).
 proc_info_headvars(ProcInfo, HeadVars) :-
-	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, HeadVars, _, _, _, _, _, _, _).
 proc_info_argmodes(ProcInfo, ModeInfo) :-
-	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _, _).
+	ProcInfo = procedure(_, _, _, _, ModeInfo, _, _, _, _, _, _).
 proc_info_goal(ProcInfo, Goal) :-
-	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _, _).
+	ProcInfo = procedure(_, _, _, _, _, Goal, _, _, _, _, _).
 proc_info_context(ProcInfo, Context) :-
-	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _, _).
+	ProcInfo = procedure(_, _, _, _, _, _, Context, _, _, _, _).
 proc_info_call_info(ProcInfo, CallInfo) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _).
+	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _, _).
 proc_info_inferred_determinism(ProcInfo, Category) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category, _).
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, Category, _, _).
 proc_info_arg_info(ProcInfo, ArgInfo) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, ArgInfo).
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, ArgInfo, _).
+proc_info_liveness_info(ProcInfo, Liveness) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, Liveness).
 
 
 proc_info_set_inferred_determinism(ProcInfo0, Category, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category, J).
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, Category, J, K).
 
 proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J),
-	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J).
+	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K),
+	ProcInfo = procedure(A, B, C, D, E, Goal, G, H, I, J, K).
 
 proc_info_set_arg_info(ProcInfo0, ArgInfo, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, ArgInfo).
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, ArgInfo, K).
+
+proc_info_set_liveness_info(ProcInfo0, K, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _),
+	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 	proc_info_headvars(ProcInfo, HeadVars),

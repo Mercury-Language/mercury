@@ -57,6 +57,8 @@
 
 :- implementation.
 
+:- import_module require.
+
 /*
 :- external("NU-Prolog", (is)/2).
 :- external("NU-Prolog", (<)/2).
@@ -64,6 +66,18 @@
 :- external("NU-Prolog", (>)/2).
 :- external("NU-Prolog", (>=)/2).
 */
+
+:- pred builtin_plus(int, int, int).
+:- mode builtin_plus(in, in, out) is det.
+
+:- pred builtin_minus(int, int, int).
+:- mode builtin_minus(in, in, out) is det.
+
+:- pred builtin_times(int, int, int).
+:- mode builtin_times(in, in, out) is det.
+
+:- pred builtin_div(int, int, int).
+:- mode builtin_div(in, in, out) is det.
 
 int__abs(I0, I) :-
 	(

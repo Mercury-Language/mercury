@@ -36,32 +36,32 @@
 % array__init creates an array with bounds from Low to High, with each
 % element initialized to Init.
 :- pred array__init(int, int, T, array(T)).
-:- mode array__init(in, in, in, out). % want an array_skeleton?
+:- mode array__init(in, in, in, out) is det. % want an array_skeleton?
 
 % array__bounds returns the upper and lower bounds of an array.
 :- pred array__bounds(array(_T), int, int).
-:- mode array__bounds(in, out, out).
+:- mode array__bounds(in, out, out) is det.
 
 % array__search returns the Nth element of an array - or fails if the index
 % is out of bounds.
 :- pred array__search(array(T), int, T).
-:- mode array__search(in, in, out).
+:- mode array__search(in, in, out) is det.
 
 % array__set sets the nth element of an array, and returns the resulting 
 % array (good oppertunity for destructive update ;-). It fails if the
 % index is out of bounds.
 :- pred array__set(array(T), int, T, array(T)).
-:- mode array__set(in, in, in, out).
+:- mode array__set(in, in, in, out) is det.
 
 % array__from_list takes a list (of nonzero length), and returns an array
 % containing those elements in the same order that they occured in the list.
 :- pred array__from_list(list(T), array(T)).
-:- mode array__from_list(in, out).
+:- mode array__from_list(in, out) is det.
 
 % array__to_list takes an array and returns a list containing the elements
 % of the array in the same order that they occured in the array.
 :- pred array__to_list(array(T), list(T)).
-:- mode array__to_list(in, out).
+:- mode array__to_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -130,7 +130,7 @@ array__search(Array, Index, Item) :-
 	).
 
 :- pred array__search_2(array(T), int, T).
-:- mode array__search_2(in, in, out).
+:- mode array__search_2(in, in, out) is det.
 
 array__search_2(node(Item), _Index, Item).
 array__search_2(two(Low, High, Left, Right), Index, Item) :-
@@ -208,7 +208,7 @@ array__from_list(List, Array) :-
 	array__insert_items(Array0, 1, Tail, Array).
 
 :- pred array__insert_items(array(T), int, list(T), array(T)).
-:- mode array__insert_items(in, in, in, out).
+:- mode array__insert_items(in, in, in, out) is det.
 
 array__insert_items(Array, _N, [], Array).
 array__insert_items(Array0, N, [Head|Tail], Array) :-
@@ -221,7 +221,7 @@ array__to_list(Array, List) :-
 	array__fetch_items(Array, Low, High, List).
 
 :- pred array__fetch_items(array(T), int, int, list(T)).
-:- mode array__fetch_items(in, in, in, out).
+:- mode array__fetch_items(in, in, in, out) is det.
 
 array__fetch_items(Array, Low, High, List) :-
 	(if

@@ -202,9 +202,10 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	),
 	map__lookup(Procs0, ProcId, Proc0),
 	Proc0 = procedure(DeclaredDet, _, _, _, ArgModes, _, Context, CallInfo,
-			InferredDet, ArgInfo),
+			InferredDet, ArgInfo, Liveness),
 	Proc = procedure(DeclaredDet, VarSet, VarTypes, HeadVars, ArgModes,
-			Goal, Context, CallInfo, InferredDet, ArgInfo),
+			Goal, Context, CallInfo, InferredDet,
+			ArgInfo, Liveness),
 	map__set(Procs0, ProcId, Proc, Procs1),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 

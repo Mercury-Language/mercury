@@ -65,23 +65,23 @@
 :- type substitution == map(var, term).
 
 :- pred term__unify(term, term, substitution, substitution).
-:- mode term__unify(in, in, in, out).
+:- mode term__unify(in, in, in, out) is semidet.
 %	term__unify(Term1, Term2, Bindings0, Bindings)
 %		unify (with occur check) two terms with respect to a set
 %	 	of bindings and possibly update the set of bindings
 
 :- pred term__substitute(term, var, term, term).
-:- mode term__substitute(in, in, in, out).
+:- mode term__substitute(in, in, in, out) is det.
 %	term__substitute(Term0, Var, Replacement, Term) :
 %		replace all occurrences of Var in Term0 with Replacement,
 %		and return the result in Term.
 
 :- pred term__substitute_list(list(term), var, term, list(term)).
-:- mode term__substitute_list(in, in, in, out).
+:- mode term__substitute_list(in, in, in, out) is det.
 %		as above, except for a list of terms rather than a single term
 
 :- pred term__substitute_corresponding(list(var), list(term), term, term).
-:- mode term__substitute_corresponding(in, in, in, out).
+:- mode term__substitute_corresponding(in, in, in, out) is det.
 %       term__substitute_corresponding(Vars, Repls, Term0, Term).
 %		replace all occurrences of variables in Vars with
 %		the corresponding term in Repls (which should be the
@@ -100,19 +100,19 @@
 %		apply substitution to Term0 and return the result in Term.
 
 :- pred term__apply_substitution_to_list(list(term), substitution, list(term)).
-:- mode term__apply_substitution_to_list(in, in, out).
+:- mode term__apply_substitution_to_list(in, in, out) is det.
 %	term__apply_substitution_to_list(TermList0, Substitution, TermList) :
 %		as above, except for a list of terms rather than a single term
 
 
 :- pred term__occurs(term, var, substitution).
-:- mode term__occurs(in, in, in).
+:- mode term__occurs(in, in, in) is semidet.
 %	term__occurs(Term0, Var, Substitution) :
 %		true iff Var occurs in the term resulting after
 %		applying Substitution to Term0.
 
 :- pred term__occurs_list(list(term), var, substitution).
-:- mode term__occurs_list(in, in, in).
+:- mode term__occurs_list(in, in, in) is semidet.
 %		as above, except for a list of terms rather than a single term
 
 :- pred term__relabel_variable(term, var, var, term).
@@ -128,12 +128,12 @@
 
 
 :- pred term__is_ground(term, substitution).
-:- mode term__is_ground(in, in).
+:- mode term__is_ground(in, in) is semidet.
 %	term__is_ground(Term, Bindings) is true iff no variables contained
 %		in Term are non-ground in Bindings.
 
 :- pred term__compare(comparison, term, term, substitution).
-:- mode term__compare(out, in, in, in).
+:- mode term__compare(out, in, in, in) is det.
 %	term__compare(Comparison, Term1, Term2, Bindings) is true iff
 %		there is a binding of Comparison to <, =, or > such
 %		that the binding holds for the two ground terms Term1
@@ -156,7 +156,7 @@
 %		updated var_supply.
 
 :- pred term__var_to_int(var, int).
-:- mode term__var_to_int(in, out).
+:- mode term__var_to_int(in, out) is det.
 %		Convert a variable to an int.
 %		Different variables map to different ints.
 %		Other than that, the mapping is unspecified.
@@ -166,21 +166,21 @@
 	% Given a term context, return the source line number.
 
 :- pred term__context_line(term__context, int).
-:- mode term__context_line(in, out).
+:- mode term__context_line(in, out) is det.
 
 	% Given a term context, return the source file.
 
 :- pred term__context_file(term__context, string).
-:- mode term__context_file(in, out).
+:- mode term__context_file(in, out) is det.
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
 
 :- pred term__context_init(int, term__context).
-:- mode term__context_init(in, out).
+:- mode term__context_init(in, out) is det.
 
 :- pred term__context_init(string, int, term__context).
-:- mode term__context_init(in, in, out).
+:- mode term__context_init(in, in, out) is det.
 
 	% Convert a list of terms which are all vars into a list
 	% of vars (or vice versa).

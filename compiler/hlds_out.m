@@ -621,7 +621,8 @@ hlds_out__write_proc(Indent, PredId, ProcId, IsImported, Proc) -->
 			ModeContext,
 			_CallInfo,
 			Category,
-			_ArgInfo
+			_ArgInfo,
+			_Liveness
 		),
 		Indent1 is Indent + 1
 	},

@@ -45,10 +45,10 @@
 :- mode bintree__search(in, in, out) is semidet.
 
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
-:- mode bintree__delete(in, in, out).
+:- mode bintree__delete(in, in, out) is det.
 
 :- pred bintree__remove(bintree(K,V), K, V, bintree(K,V)).
-:- mode bintree__remove(in, in, out, out).
+:- mode bintree__remove(in, in, out, out) is semidet.
 
 :- pred bintree__keys(bintree(K,_V), list(K)).
 :- mode bintree__keys(in, out) is det.
@@ -63,7 +63,7 @@
 :- mode bintree__from_sorted_list(in, out) is det.
 
 :- pred bintree__from_corresponding_lists(list(K), list(V), bintree(K,V)).
-:- mode bintree__from_corresponding_lists(in, in, out).
+:- mode bintree__from_corresponding_lists(in, in, out) is det.
 
 :- pred bintree__to_list(bintree(K,V), assoc_list(K,V)).
 :- mode bintree__to_list(in, out) is det.

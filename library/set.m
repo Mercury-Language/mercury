@@ -55,13 +55,13 @@
 	% `set__subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
 
 :- pred set__subset(set(T), set(T)).
-:- mode set__subset(in, in).
+:- mode set__subset(in, in) is semidet.
 
 	% `set__superset(SetA, SetB)' is true iff `SetA' is a
 	% superset of `SetB'.
 
 :- pred set__superset(set(T), set(T)).
-:- mode set__superset(in, in).
+:- mode set__superset(in, in) is semidet.
 
 	% `set_member(X, Set)' is true iff `X' is a member of `Set'.
 
@@ -133,7 +133,7 @@
 	% intersection of `SetA' and `SetB'.
 
 :- pred set__intersect(set(T), set(T), set(T)).
-:- mode set__intersect(in, in, out).
+:- mode set__intersect(in, in, out) is det.
 
 	% `set__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that

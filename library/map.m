@@ -27,7 +27,7 @@
 
 	% Initialize an empty map.
 :- pred map__init(map(_,_)).
-:- mode map__init(out).
+:- mode map__init(out) is det.
 
 	% Check whether a map is empty.
 :- pred map__is_empty(map(_,_)).
@@ -35,36 +35,36 @@
 
 	% Check whether map contains key
 :- pred map__contains(map(K,_V), K).
-:- mode map__contains(in, in).
+:- mode map__contains(in, in) is semidet.
 
 	% Search map for key.
 :- pred map__search(map(K,V), K, V).
-:- mode map__search(in, in, out).
+:- mode map__search(in, in, out) is semidet.
 
 	% Search map for key, but abort if search fails.
 :- pred map__lookup(map(K,V), K, V).
-:- mode map__lookup(in, in, out).
+:- mode map__lookup(in, in, out) is det.
 
 	% Search map for data.
 :- pred map__inverse_search(map(K,V), V, K).
-:- mode map__inverse_search(in, in, out).
+:- mode map__inverse_search(in, in, out) is nondet.
 
 	% Insert a new key and corresponding value into a map.
 :- pred map__insert(map(K,V), K, V, map(K,V)).
-:- mode map__insert(in, in, in, out).
+:- mode map__insert(in, in, in, out) is semidet.
 
 	% Insert a new key and corresponding value into a map,
 	% or unify value with existing value in map.
 :- pred map__search_insert(map(K,V), K, V, map(K,V)).
-:- mode map__search_insert(in, in, in, out).
+:- mode map__search_insert(in, in, in, out) is semidet.
 
 	% Update the value corresponding to a given key
 :- pred map__update(map(K,V), K, V, map(K,V)).
-:- mode map__update(in, in, in, out).
+:- mode map__update(in, in, in, out) is semidet.
 
 	% Update value if it's already there, otherwise insert it
 :- pred map__set(map(K,V), K, V, map(K,V)).
-:- mode map__set(in, in, in, out).
+:- mode map__set(in, in, in, out) is det.
 
 	% Given a map, return a list of all the keys in the map
 :- pred map__keys(map(K, _V), list(K)).
@@ -76,32 +76,32 @@
 
 	% convert a map to an association list
 :- pred map__to_assoc_list(map(K,V), assoc_list(K,V)).
-:- mode map__to_assoc_list(in, out).
+:- mode map__to_assoc_list(in, out) is det.
 
 	% convert an association list to a map
 :- pred map__from_assoc_list(assoc_list(K,V), map(K,V)).
-:- mode map__from_assoc_list(in, out).
+:- mode map__from_assoc_list(in, out) is det.
 
 	% convert a sorted association list to a map
 :- pred map__from_sorted_assoc_list(assoc_list(K,V), map(K,V)).
-:- mode map__from_sorted_assoc_list(in, out).
+:- mode map__from_sorted_assoc_list(in, out) is det.
 
 	% delete a key-value pair from a map
 :- pred map__delete(map(K,V), K, map(K,V)).
-:- mode map__delete(in, in, out).
+:- mode map__delete(in, in, out) is det.
 
 	% delete a key-value pair from a map and return the value.
 :- pred map__remove(map(K,V), K, V, map(K,V)).
-:- mode map__remove(in, in, out, out).
+:- mode map__remove(in, in, out, out) is semidet.
 
 :- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
-:- mode map__from_corresponding_lists(in, in, out).
+:- mode map__from_corresponding_lists(in, in, out) is det.
 
 :- pred map__merge(map(K, V), map(K, V), map(K, V)).
-:- mode map__merge(in, in, out).
+:- mode map__merge(in, in, out) is det.
 
 :- pred map__optimize(map(K, V), map(K, V)).
-:- mode map__optimize(in, out).
+:- mode map__optimize(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
