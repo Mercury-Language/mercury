@@ -108,8 +108,8 @@
 	% structures describing the types. Since the RTTI will be hand defined,
 	% the compiler shouldn't generate RTTI for these types.
 
-:- pred type_ctor_has_hand_defined_rtti(type_ctor).
-:- mode type_ctor_has_hand_defined_rtti(in) is semidet.
+:- pred type_ctor_has_hand_defined_rtti(type_ctor, hlds_type_body).
+:- mode type_ctor_has_hand_defined_rtti(in, in) is semidet.
 
 	% A test for type_info-related types that are introduced by
 	% polymorphism.m.  These need to be handled specially in certain
@@ -558,14 +558,14 @@ type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
 
 type_util__var(term__variable(Var), Var).
 
-type_ctor_has_hand_defined_rtti(qualified(PB, "type_info") - 1) :-
-	mercury_private_builtin_module(PB).
-type_ctor_has_hand_defined_rtti(qualified(PB, "type_ctor_info") - 1) :-
-	mercury_private_builtin_module(PB).
-type_ctor_has_hand_defined_rtti(qualified(PB, "typeclass_info") - 1) :-
-	mercury_private_builtin_module(PB).
-type_ctor_has_hand_defined_rtti(qualified(PB, "base_typeclass_info") - 1) :-
-	mercury_private_builtin_module(PB).
+type_ctor_has_hand_defined_rtti(Type, Body) :-
+	Type = qualified(mercury_private_builtin_module, Name) - 1,
+	( Name = "type_info"
+	; Name = "type_ctor_info"
+	; Name = "typeclass_info"
+	; Name = "base_typeclass_info"
+	),
+	\+ ( Body = du_type(_, _, _, _, _, yes(_)) ; Body = foreign_type(_) ).
 
 is_introduced_type_info_type(Type) :-
 	sym_name_and_args(Type, TypeName, _),

@@ -113,7 +113,7 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 			map__lookup(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			TypeBody \= abstract_type,
-			\+ type_ctor_has_hand_defined_rtti(TypeCtor),
+			\+ type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
 			( are_equivalence_types_expanded(ModuleInfo)
 				=> TypeBody \= eqv_type(_) )
 		->
@@ -224,8 +224,8 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 	;
 		TypeBody = foreign_type(_),
 		(
-			ModuleName = unqualified(ModuleStr),
-			builtin_type_ctor(ModuleStr, TypeName, TypeArity,
+			ModuleName = unqualified(ModuleStr1),
+			builtin_type_ctor(ModuleStr1, TypeName, TypeArity,
 				BuiltinCtor)
 		->
 			Details = builtin(BuiltinCtor)
@@ -282,12 +282,26 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 	( TypeBody = du_type(_, _, _, _, _, _) ->
 		Flags1 = set__insert(Flags0, kind_of_du_flag),
 		( TypeBody ^ du_type_reserved_tag = yes ->
-			Flags = set__insert(Flags1, reserve_tag_flag)
+			Flags2 = set__insert(Flags1, reserve_tag_flag)
 		;
-			Flags = Flags1
+			Flags2 = Flags1
 		)
 	;
-		Flags = Flags0
+		Flags2 = Flags0
+	),
+	(
+		ModuleName = unqualified(ModuleStr2),
+		ModuleStr2 = "private_builtin",
+		TypeArity = 1,
+		( TypeName = "type_info"
+		; TypeName = "type_ctor_info"
+		; TypeName = "typeclass_info"
+		; TypeName = "base_typeclass_info"
+		)
+	->
+		Flags = set__insert(Flags2, typeinfo_fake_arity_flag)
+	;
+		Flags = Flags2
 	),
 	TypeCtorData = type_ctor_data(Version, ModuleName, TypeName, TypeArity,
 		UnifyUniv, CompareUniv, Flags, Details),

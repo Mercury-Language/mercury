@@ -47,7 +47,7 @@
 
 %-----------------------------------------------------------------------------%
 
-% Utilities for generating C code which interfaces with Mercury.  
+% Utilities for generating C code which interfaces with Mercury.
 % The {MLDS,LLDS}->C backends and fact tables use this code.
 
 	% Generate C code to convert an rval (represented as a string), from
@@ -61,6 +61,10 @@
 	% floats if required) and return the resulting C code as a string.
 :- pred convert_type_from_mercury(string, type, string).
 :- mode convert_type_from_mercury(in, in, out) is det.
+
+	% Succeeds iff the given C type is known by the compiler to be
+	% an integer or pointer type the same size as MR_Word.
+:- pred c_type_is_word_sized_int_or_ptr(string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -139,7 +143,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% #else
 	%   void
 	% #endif
-	% <function name>(MR_Word Mercury__Argument1, 
+	% <function name>(MR_Word Mercury__Argument1,
 	%			MR_Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
@@ -151,7 +155,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% #endif
 	% #if MR_THREAD_SAFE
 	% 	MR_bool must_finalize_engine;
-	% #endif 
+	% #endif
 	% #if MR_DEEP_PROFILING
 	%	MR_CallSiteDynamic *saved_call_site_addr
 	%				= MR_current_callback_site;
@@ -161,21 +165,21 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%		/* save the registers that our C caller may be using */
 	%	MR_save_regs_to_mem(c_regs);
 	%
-	%		/* 
-	%		** start a new Mercury engine inside this POSIX 
-	%		** thread, if necessary (the C code may be 
+	%		/*
+	%		** start a new Mercury engine inside this POSIX
+	%		** thread, if necessary (the C code may be
 	%		** multi-threaded itself).
 	%		*/
 	%
 	% #if MR_THREAD_SAFE
 	% 	must_finalize_engine = MR_init_thread(MR_use_now);
-	% #endif 
+	% #endif
 	%
 	% #if MR_DEEP_PROFILING
 	%	saved_csd = MR_current_call_site_dynamic;
 	%	MR_setup_callback(MR_ENTRY(<label of called proc>));
 	% #endif
-	%		/* 
+	%		/*
 	%		** restore Mercury's registers that were saved as
 	%		** we entered C from Mercury.  For single threaded
 	%		** programs the process must always start in Mercury
@@ -213,7 +217,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	% 	if (must_finalize_engine) {
 	% 		MR_finalize_thread_engine();
 	% 	}
-	% #endif 
+	% #endif
 	%	MR_restore_regs_from_mem(c_regs);
 	% #if SEMIDET
 	%	return MR_TRUE;
@@ -238,7 +242,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 		% and copy to/from the mercury registers.
 	get_input_args(ArgInfoTypes, 0, Module, InputArgs),
 	copy_output_args(ArgInfoTypes, 0, Module, OutputArgs),
-	
+
 	ProcLabel = make_proc_label(Module, PredId, ProcId),
 	ProcLabelString = proc_label_to_c_string(ProcLabel, yes),
 
@@ -246,13 +250,13 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 		"\n",
 				DeclareString, "(", ProcLabelString, ");\n",
 				"\n",
-				C_RetType, "\n", 
+				C_RetType, "\n",
 				C_Function, "(", ArgDecls, ")\n{\n",
 				"#if MR_NUM_REAL_REGS > 0\n",
 				"\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
 				"#endif\n",
 				"#if MR_THREAD_SAFE\n",
-				"\tMR_bool must_finalize_engine;\n", 
+				"\tMR_bool must_finalize_engine;\n",
 				"#endif\n",
 		"#if MR_DEEP_PROFILING\n",
 		"\tMR_CallSiteDynList **saved_cur_callback;\n",
@@ -260,16 +264,16 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 		"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
-				"\tMR_save_regs_to_mem(c_regs);\n", 
+				"\tMR_save_regs_to_mem(c_regs);\n",
 				"#if MR_THREAD_SAFE\n",
-				"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n", 
+				"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n",
 				"#endif\n",
 		"#if MR_DEEP_PROFILING\n",
 		"\tsaved_cur_callback = MR_current_callback_site;\n",
 		"\tsaved_cur_csd = MR_current_call_site_dynamic;\n",
 		"\tMR_setup_callback(MR_ENTRY(", ProcLabelString, "));\n",
 		"#endif\n",
-				"\tMR_restore_registers();\n", 
+				"\tMR_restore_registers();\n",
 				InputArgs,
 				"\tMR_save_transient_registers();\n",
 				"\t(void) MR_call_engine(MR_ENTRY(",
@@ -282,11 +286,11 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				MaybeFail,
 				OutputArgs,
 				"#if MR_THREAD_SAFE\n",
-				"\tif (must_finalize_engine) {\n", 
-				"\t\t MR_finalize_thread_engine();\n", 
-				"\t}\n", 
+				"\tif (must_finalize_engine) {\n",
+				"\t\t MR_finalize_thread_engine();\n",
+				"\t}\n",
 				"#endif\n",
-				"\tMR_restore_regs_from_mem(c_regs);\n", 
+				"\tMR_restore_regs_from_mem(c_regs);\n",
 				MaybeSucceed,
 				"}\n\n"],
 				Code),
@@ -453,8 +457,8 @@ get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
 		string__append_list([TypeString, ArgName, ", ", TheRest],
 			Result)
 	).
-	
-:- pred get_argument_declaration(arg_info, type, int, bool, module_info, 
+
+:- pred get_argument_declaration(arg_info, type, int, bool, module_info,
 		string, string).
 :- mode get_argument_declaration(in, in, in, in, in, out, out) is det.
 
@@ -553,7 +557,7 @@ copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 	),
 	copy_output_args(ATs, Num, ModuleInfo, TheRest),
 	string__append(OutputArg, TheRest, Result).
-	
+
 	% convert an argument location (currently just a register number)
 	% to a string representing a C code fragment that names it.
 :- pred argloc_to_string(arg_loc, string).
@@ -561,17 +565,17 @@ copy_output_args([AT|ATs], Num0, ModuleInfo, Result) :-
 
 argloc_to_string(RegNum, RegName) :-
 	string__int_to_string(RegNum, RegNumString),
-	( 
+	(
 			% XXX We should handle float registers
 			% XXX This magic number can't be good
-		RegNum > 32 
+		RegNum > 32
 	->
 		string__append_list(["MR_r(", RegNumString, ")"], RegName)
 	;
 		string__append("MR_r", RegNumString, RegName)
 	).
 
-convert_type_to_mercury(Rval, Type, ConvertedRval) :-	
+convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	(
         	Type = term__functor(term__atom("string"), [], _)
 	->
@@ -592,7 +596,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 		ConvertedRval = Rval
 	).
 
-convert_type_from_mercury(Rval, Type, ConvertedRval) :-	
+convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	(
         	Type = term__functor(term__atom("string"), [], _)
 	->
@@ -626,7 +630,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName) -->
 		io__set_output_stream(FileStream, OutputStream),
 		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 		{ library__version(Version) },
-		io__write_strings(["/*\n** Automatically generated from `", 
+		io__write_strings(["/*\n** Automatically generated from `",
 			SourceFileName,
 			"' by the\n** Mercury compiler, version ", Version,
 			".\n** Do not edit.\n*/\n"]),
@@ -684,7 +688,7 @@ export__produce_header_file(ForeignExportDecls, ModuleName) -->
 export__produce_header_file_2([]) --> [].
 export__produce_header_file_2([E|ExportedProcs]) -->
 	{ E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls) },
-	( 
+	(
 		{ Lang = c }
 	->
 			% output the function header
@@ -709,7 +713,15 @@ export__output_foreign_decl(foreign_decl_code(Lang, Code, _Context)) -->
 	;
 		[]
 	).
-	
+
+%-----------------------------------------------------------------------------%
+
+c_type_is_word_sized_int_or_ptr("MR_Word").
+c_type_is_word_sized_int_or_ptr("MR_TypeInfo").
+c_type_is_word_sized_int_or_ptr("MR_TypeCtorInfo").
+c_type_is_word_sized_int_or_ptr("MR_TypeClassInfo").
+c_type_is_word_sized_int_or_ptr("MR_BaseTypeclassInfo").
+
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

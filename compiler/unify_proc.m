@@ -286,16 +286,19 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 			unify_proc__search_mode_num(ModuleInfo1, TypeCtor,
 				UnifyMode, Determinism, _)
 		; 
-			TypeCtor = TypeName - _TypeArity,
-			TypeName = qualified(TypeModuleName, _),
-			module_info_name(ModuleInfo1, ModuleName),
-			ModuleName = TypeModuleName,
 			module_info_types(ModuleInfo1, TypeTable),
 			map__search(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-			TypeBody = abstract_type
-		; 
-			type_ctor_has_hand_defined_rtti(TypeCtor)
+			(
+				TypeCtor = TypeName - _TypeArity,
+				TypeName = qualified(TypeModuleName, _),
+				module_info_name(ModuleInfo1, ModuleName),
+				ModuleName = TypeModuleName,
+				TypeBody = abstract_type
+			; 
+				type_ctor_has_hand_defined_rtti(TypeCtor,
+					TypeBody)
+			)
 		)
 	->
 		ModuleInfo = ModuleInfo1

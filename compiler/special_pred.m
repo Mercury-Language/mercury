@@ -220,6 +220,6 @@ special_pred_for_type_needs_typecheck(ModuleInfo, Body) :-
 
 can_generate_special_pred_clauses_for_type(TypeCtor, Body) :-
 	Body \= abstract_type,
-	\+ type_ctor_has_hand_defined_rtti(TypeCtor).
+	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body).
 
 %-----------------------------------------------------------------------------%
