@@ -121,8 +121,8 @@ main_target: $(MAIN_TARGET)
 	$(RM_C) $*.c
 
 .m.pic_o:
-	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
 	$(RM_C) $*.c
 
 %.dir/*.o: %.m
