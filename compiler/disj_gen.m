@@ -43,8 +43,7 @@ disj_gen__generate_semi_disj(Goals, Code) -->
 
 %---------------------------------------------------------------------------%
 
-disj_gen__generate_non_disj(Goals0, Code) -->
-	{ disj_gen__sort_cases(Goals0, Goals1) },
+disj_gen__generate_non_disj(Goals1, Code) -->
 
 		% Sanity check
 	{ Goals1 = [] ->

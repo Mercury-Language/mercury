@@ -538,11 +538,11 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 
 	set__union(Liveness1, PreBirths0, Liveness2),
 
+	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras0, Extras1,
+						Goal, Liveness3, Extras),
+
 	set__difference(PostDeaths0, Extras1, PostDeaths),
 	PostDelta = PostBirths0 - PostDeaths,
-
-	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras1,
-						Goal, Liveness3, Extras),
 
 	set__difference(Liveness3, PostDeaths0, Liveness4),
 	set__union(Liveness4, PostBirths0, Liveness),
@@ -550,28 +550,28 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
         goal_info_set_pre_delta_liveness(GoalInfo0, PreDelta, GoalInfo1),
 	goal_info_set_post_delta_liveness(GoalInfo1, PostDelta, GoalInfo).
 
-:- pred add_nondet_lives_to_goal_2(hlds__goal_expr, set(var), set(var),
+:- pred add_nondet_lives_to_goal_2(hlds__goal_expr, set(var), set(var),set(var),
 					hlds__goal_expr, set(var), set(var)).
-:- mode add_nondet_lives_to_goal_2(in, in, in, out, out, out) is det.
+:- mode add_nondet_lives_to_goal_2(in, in, in, in, out, out, out) is det.
 
-add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, _, Extras0,
 				conj(Goals), Liveness, Extras) :-
 	add_nondet_lives_to_conj(Goals0, Liveness0, Extras0,
 					Goals, Liveness, Extras).
 
-add_nondet_lives_to_goal_2(disj(Goals0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(disj(Goals0), Liveness0, OutsideExtras, Extras0,
 				disj(Goals), Liveness, Extras) :-
-	add_nondet_lives_to_disj(Goals0, Liveness0, Extras0,
+	add_nondet_lives_to_disj(Goals0, Liveness0, OutsideExtras, Extras0,
 					Goals, Liveness, Extras).
 
-add_nondet_lives_to_goal_2(switch(Var, CF, Goals0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(switch(Var, CF, Goals0), Liveness0, _, Extras0,
 				switch(Var, CF, Goals), Liveness, Extras) :-
 	set__init(Empty),
 	add_nondet_lives_to_switch(Goals0, Liveness0, Extras0,
 					Empty, Goals, Liveness, Extras).
 
 add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
-		Extras0, if_then_else(Vars, Cond, Then, Else),
+		_, Extras0, if_then_else(Vars, Cond, Then, Else),
 							Liveness, Extras) :-
 	add_nondet_lives_to_goal(Cond0, Liveness0, Extras0,
 					Cond, Liveness1, Extras1),
@@ -596,7 +596,7 @@ add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 	% are quantified to that quantifier.
 	% XXX until variables are properly renamed apart,
 	% variables with overlapping scopes will cause problems.
-add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, _, Extras0,
 				some(Vars, Goal), Liveness, Extras) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
 					Goal1, Liveness, Extras1),
@@ -607,7 +607,7 @@ add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0,
 	add_deadness_to_goal(Goal1, QExtras, Goal).
 
 	% Nondet lives cannot escape from a negation
-add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0,
+add_nondet_lives_to_goal_2(not(Goal0), Liveness0, _, Extras0,
 				not(Goal), Liveness, Extras0) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
 					Goal1, Liveness, Extras1),
@@ -619,10 +619,10 @@ add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0,
 	set__difference(NExtras1, Liveness, NExtras),
 	add_deadness_to_goal(Goal1, NExtras, Goal).
 
-add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, Extras,
+add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, _, Extras,
 				call(A,B,C,D,E,F,G), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, Extras,
+add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, _, Extras,
 				unify(A,B,C,D,E), Liveness, Extras).
 
 :- pred add_nondet_lives_to_conj(list(hlds__goal), set(var), set(var),
@@ -645,14 +645,20 @@ add_nondet_lives_to_conj([G0|Gs0], Liveness0, Extras0,
 							Gs, Liveness, Extras)
 	).
 
-:- pred add_nondet_lives_to_disj(list(hlds__goal), set(var), set(var),
+:- pred add_nondet_lives_to_disj(list(hlds__goal), set(var), set(var), set(var),
 				list(hlds__goal), set(var), set(var)).
-:- mode add_nondet_lives_to_disj(in, in, in, out, out, out) is det.
+:- mode add_nondet_lives_to_disj(in, in, in, in, out, out, out) is det.
 
-add_nondet_lives_to_disj([], Liveness, Extras, [], Liveness, Extras).
-add_nondet_lives_to_disj([G0|Gs0], Liveness0, Extras0,
+add_nondet_lives_to_disj([], Liveness, _, Extras, [], Liveness, Extras).
+add_nondet_lives_to_disj([G0], Liveness0, OutsideExtras, Extras0,
+					[G], Liveness, Extras) :-
+	add_nondet_lives_to_goal(G0, Liveness0, OutsideExtras,
+						G, Liveness, Extras1),
+	set__union(Extras0, Extras1, Extras).
+add_nondet_lives_to_disj([G0|Gs0], Liveness0, OutsideExtras, Extras0,
 					[G|Gs], Liveness, Extras) :-
-	add_nondet_lives_to_disj(Gs0, Liveness0, Extras0,
+	Gs0 = [_|_],
+	add_nondet_lives_to_disj(Gs0, Liveness0, OutsideExtras, Extras0,
 						Gs, _Liveness1, Extras1),
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G, Liveness, Extras2),
 	set__union(Extras1, Extras2, Extras).
