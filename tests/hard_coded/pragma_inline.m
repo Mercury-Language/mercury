@@ -30,6 +30,9 @@ will_not_call_mercury, "
 
 :- pragma(inline, c_write_string/3).
 
+:- pragma(c_header_code, "#include <string.h>").
+:- pragma(c_header_code, "#include ""mercury_heap.h""").
+
 :- pred append_strings(string::in, string::in, string::out) is det.
 :- pragma inline(append_strings/3).
 :- pragma c_code(append_strings(S1::in, S2::in, S3::out),
@@ -44,4 +47,3 @@ will_not_call_mercury, "{
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
 }").
-

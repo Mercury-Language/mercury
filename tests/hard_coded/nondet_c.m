@@ -50,6 +50,11 @@ split_pairs3(Whole, Left - Right) :-
 :- pred break_string1(string, string, string).
 :- mode break_string1(out, out, in) is multi.
 
+:- pragma c_header_code("
+	#include <string.h>
+	#include ""mercury_heap.h""
+").
+
 :- pragma c_code(break_string1(LeftHalf::out, RightHalf::out, WholeString::in),
 will_not_call_mercury,
 local_vars("
