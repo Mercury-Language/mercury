@@ -112,6 +112,9 @@ New library packages in the Mercury extras distribution:
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
 
+* We've added some use-at-your-own-risk bindings to POSIX.3 functionality.
+  At this stage it's quite incomplete.
+
 Changes to the Mercury implementation:
 **************************************
 
