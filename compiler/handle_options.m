@@ -677,7 +677,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			globals__io_set_option(optimize_constructor_last_call,
 				bool(no)),
 			globals__io_set_option(optimize_saved_vars_cell,
-				bool(no))
+				bool(no)),
+			globals__io_set_option(loop_invariants, bool(no))
 		;
 			[]
 		),
