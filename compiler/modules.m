@@ -261,25 +261,47 @@ check_for_clauses_in_interface([ItemAndContext0 | Items0], Items) -->
 		report_warning("Warning: clause in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)
 	;
-		% pragma `obsolete', `terminates', `does_not_terminate' 
-		% `termination_info' and `check_termination' declarations
-		% are supposed to go in the interface, but all other pragma
-		% declarations should go in the implementation.
 		{ Item0 = pragma(Pragma) },
-		{ Pragma \= obsolete(_, _) },
-		{ Pragma \= terminates(_, _) },
-		{ Pragma \= does_not_terminate(_, _) },
-		{ Pragma \= check_termination(_, _) },
-		{ Pragma \= termination_info(_, _, _, _, _) }
+		{ pragma_allowed_in_interface(Pragma, no) }
 	->
 		prog_out__write_context(Context),
 		report_warning("Warning: pragma in module interface.\n"),
 		check_for_clauses_in_interface(Items0, Items)
-
 	;
 		{ Items = [ItemAndContext0 | Items1] },
 		check_for_clauses_in_interface(Items0, Items1)
 	).
+
+:- pred pragma_allowed_in_interface(pragma_type::in, bool::out) is det.
+
+% pragma `obsolete', `terminates', `does_not_terminate' 
+% `termination_info' and `check_termination' declarations
+% are supposed to go in the interface,
+% but all other pragma declarations are implementation
+% details only, and should go in the implementation.
+
+% XXX we should allow c_header_code;
+% but if we do allow it, we should put it in the generated
+% header file, which currently we don't.
+
+pragma_allowed_in_interface(c_header_code(_), no).
+pragma_allowed_in_interface(c_code(_), no).
+pragma_allowed_in_interface(c_code(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(memo(_, _), no).
+pragma_allowed_in_interface(inline(_, _), no).
+pragma_allowed_in_interface(no_inline(_, _), no).
+pragma_allowed_in_interface(obsolete(_, _), yes).
+pragma_allowed_in_interface(export(_, _, _, _), no).
+pragma_allowed_in_interface(import(_, _, _, _, _), no).
+pragma_allowed_in_interface(source_file(_), yes).
+	% yes, but the parser will strip out `source_file' pragmas anyway...
+pragma_allowed_in_interface(fact_table(_, _, _), no).
+pragma_allowed_in_interface(promise_pure(_, _), no).
+pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
+pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).
+pragma_allowed_in_interface(terminates(_, _), yes).
+pragma_allowed_in_interface(does_not_terminate(_, _), yes).
+pragma_allowed_in_interface(check_termination(_, _), yes).
 
 :- pred check_for_no_exports(item_list, string, io__state, io__state).
 :- mode check_for_no_exports(in, in, di, uo) is det.
