@@ -28,6 +28,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module list.
 
 :- typeclass foo(A) where [
 	pred b(A::in) is semidet
