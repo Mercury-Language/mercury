@@ -1,5 +1,3 @@
-make_opt_error.m:101: Error: clause for automatically generated field access
-make_opt_error.m:101:   function `make_opt_error.x/1'.
-make_opt_error.m:102: Error: clause for automatically generated field access
-make_opt_error.m:102:   function `make_opt_error.y/1'.
+make_opt_error.m:035: Error: pragma foreign_type `make_opt_error:coord/0' must
+make_opt_error.m:035:   have the same visibility as the type declaration.
 For more information, try recompiling with `-E'.

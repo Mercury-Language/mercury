@@ -29,9 +29,13 @@ main -->
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
+:- interface.
+
 % IL implementation
 :- pragma foreign_type(il, coord,
 	"class [foreign_type__csharp_code]coord").
+
+:- implementation.
 
 :- pragma foreign_decl("C#", "
 public class coord {
