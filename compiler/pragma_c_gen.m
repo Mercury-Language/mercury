@@ -118,8 +118,6 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 		% so that it is safe to assign to SUCCESS_INDICATOR.
 		code_info__clear_r1(ShuffleR1_Code),
 
-		% C code goes here
-
 		( { MayCallMercury = will_not_call_mercury } ->
 			[]
 		;
@@ -127,6 +125,8 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, MayCallMercury,
 			% the regs
 			code_info__clear_all_registers
 		),
+
+		% C code goes here
 
 		code_info__get_next_label(SkipLab),
 		code_info__generate_failure(FailCode),
@@ -276,7 +276,7 @@ make_pragma_decls([c_arg(Arg, ArgName) | ArgNames], Decls) -->
 		{ Decls = [Decl | Decls1] },
 		make_pragma_decls(ArgNames, Decls1)
 	;
-		% if the variable doesn't occur in the ArgNameMap,
+		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
 		make_pragma_decls(ArgNames, Decls)
 	).
@@ -300,7 +300,7 @@ get_pragma_input_vars([c_arg(Arg, MaybeName) | Args], Inputs, Code) -->
 		{ Code = tree(Code0, Code1) },
 		get_pragma_input_vars(Args, Inputs1, Code1)
 	;
-		% if the variable doesn't occur in the ArgNameMap,
+		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
 		get_pragma_input_vars(Args, Inputs, Code)
 	).
