@@ -165,6 +165,7 @@
 	classdecls	:: list(classdecl),	% class methods and fields 
 	has_main	:: bool,		% class contains main
 	class_foreign_langs :: set(foreign_language),% class foreign code
+	field_names	:: field_names_set,	% field names
 		% method-wide attributes (accumulating)
 	locals 		:: locals_map,		% The current locals
 	instr_tree 	:: instr_tree,		% The instruction tree (unused)
@@ -181,6 +182,7 @@
 :- type locals_map == map(ilds__id, mlds__type).
 :- type arguments_map == assoc_list(ilds__id, mlds__type). 
 :- type mlds_vartypes == map(ilds__id, mlds__type).
+:- type field_names_set == set(string).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -244,7 +246,8 @@ transform_mlds(MLDS0) = MLDS :-
 			)
 		), MLDS0 ^ defns, MercuryCodeMembers, Others),
 	MLDS = MLDS0 ^ defns := [wrapper_class(
-			list__map(rename_defn, MercuryCodeMembers)) | Others].
+			list__map(rename_defn, MercuryCodeMembers)) | 
+			list__map(rename_defn, Others)].
 
 
 :- func wrapper_class(mlds__defns) = mlds__defn.
@@ -272,8 +275,12 @@ rename_defn(defn(Name, Context, Flags, Entity0))
 			FunctionBody = external
 		),
 		Entity = function(MaybePredProcId, Params, FunctionBody)
-	; Entity0 = class(_),
-		unexpected(this_file, "nested class")
+	; Entity0 = class(ClassDefn),
+		ClassDefn = class_defn(Kind, Imports, Inherits, Implements,
+				Ctors, Members),
+		Entity = class(class_defn(Kind, Imports, Inherits, Implements,
+				list__map(rename_defn, Ctors),
+				list__map(rename_defn, Members)))
 	).
 
 :- func rename_statement(mlds__statement) = mlds__statement.
@@ -449,7 +456,7 @@ mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
 	sorry(this_file, "top level function definition!").
 mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 		Decl, Info0, Info) :-
-	il_info_new_class(Info0, Info1),
+	il_info_new_class(ClassDefn, Info0, Info1),
 
 	generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends,
 			Interfaces, MethodsAndFieldsAndCtors, Info1, Info2),
@@ -654,6 +661,7 @@ decl_flags_to_fieldattrs(Flags)
 	; AccessFlag = default,
 		Access = [assembly]
 	; AccessFlag = local,
+		% Access = [private]
 		error("decl_flags_to_fieldattrs: local access flag")
 	),
 	PerInstanceFlag = per_instance(Flags),
@@ -1645,6 +1653,8 @@ load(lval(Lval), Instrs) -->
 			Instrs = instr_node(ldloc(name(MangledVarStr)))
 		; is_argument(MangledVarStr, Info) ->
 			Instrs = instr_node(ldarg(name(MangledVarStr)))
+		; is_local_field(Var, VarType, Info, FieldRef) ->
+			Instrs = instr_node(ldsfld(FieldRef))
 		;
 			FieldRef = make_static_fieldref(DataRep, Var, VarType),
 			Instrs = instr_node(ldsfld(FieldRef))
@@ -1730,6 +1740,8 @@ load(mem_addr(Lval), Instrs) -->
 			Instrs = instr_node(ldloca(name(MangledVarStr)))
 		; is_argument(MangledVarStr, Info) ->
 			Instrs = instr_node(ldarga(name(MangledVarStr)))
+		; is_local_field(Var, VarType, Info, FieldRef) ->
+			Instrs = instr_node(ldsfld(FieldRef))
 		;
 			FieldRef = make_static_fieldref(DataRep, Var, VarType),
 			Instrs = instr_node(ldsfld(FieldRef))
@@ -2732,6 +2744,17 @@ is_argument(VarName, Info) :-
 is_local(VarName, Info) :-
 	map__contains(Info ^ locals, VarName).
 
+:- pred is_local_field(mlds__var, mlds__type, il_info, fieldref).
+:- mode is_local_field(in, in, in, out) is semidet.
+is_local_field(Var, VarType, Info, FieldRef) :-
+	mangle_mlds_var(Var, VarName),
+	set__member(VarName, Info ^ field_names),
+	Var = qual(ModuleName, _),
+	ClassName = mlds_module_name_to_class_name(ModuleName),
+	FieldRef = make_fieldref(
+			mlds_type_to_ilds_type(Info ^ il_data_rep, VarType),
+			ClassName, VarName).
+
 %-----------------------------------------------------------------------------%
 %
 % Preds and funcs to find the types of rvals.
@@ -3230,21 +3253,28 @@ runtime_init_method_name = id("init_runtime").
 
 il_info_init(ModuleName, AssemblyName, Imports, ILDataRep, DebugIlAsm) =
 	il_info(ModuleName, AssemblyName, Imports, set__init, ILDataRep,
-		DebugIlAsm, empty, empty, [], no, set__init,
+		DebugIlAsm, empty, empty, [], no, set__init, set__init,
 		map__init, empty, counter__init(1), counter__init(1), no,
 		Args, MethodName, DefaultSignature) :-
 	Args = [],
 	DefaultSignature = signature(call_conv(no, default), void, []),
 	MethodName = id("").
 
-:- pred il_info_new_class(il_info::in, il_info::out) is det.
+:- pred il_info_new_class(class_defn::in, il_info::in, il_info::out) is det.
 
-il_info_new_class -->
+il_info_new_class(ClassDefn) -->
+	{ ClassDefn = class_defn(_, _, _, _, _, Members) },
+	{ list__filter_map((pred(M::in, S::out) is semidet :-
+			M = mlds__defn(Name, _, _, data(_, _)),
+			S = entity_name_to_ilds_id(Name)
+		), Members, FieldNames)
+	},
 	^ alloc_instrs := empty,
 	^ init_instrs := empty,
 	^ classdecls := [],
 	^ has_main := no,
-	^ class_foreign_langs := set__init.
+	^ class_foreign_langs := set__init,
+	^ field_names := set__list_to_set(FieldNames).
 	
 	% reset the il_info for processing a new method
 :- pred il_info_new_method(arguments_map, signature, member_name, 
