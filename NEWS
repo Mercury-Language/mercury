@@ -164,22 +164,21 @@ Changes to the Mercury implementation:
   are likely to be smaller (though this will depend on the platform,
   optimization options, etc.).  Speed of the generated code varies:
   sometimes it is better than the old back-end, sometimes it is worse.
-  There are a few important optimizations that we have not yet
-  implemented for the new back-end that would make a significant
-  difference for some applications.  But we encourage those for whom
-  performance is important to try their application with both the old
-  and new back-ends and compare for themselves.
+  There are a few optimizations that we have not yet implemented for
+  the new back-end that might make a significant difference for some
+  applications.  But we encourage those for whom performance is
+  important to try their application with both the old and new
+  back-ends and compare for themselves.
 
-  The new back-end is not yet as mature or complete as the old back-end.
+  The new back-end is not yet quite as mature or complete as the old back-end.
   It does not yet support the following standard Mercury features:
   	- abstractly exported equivalence types defined as `float'
 	- calling compare/3, or the `in = in' mode of unification,
-	  for certain standard library types (array__array/1,
-	  std_util__type_desc/0, and std_util__type_ctor_desc/0).
+	  for certain standard library types (std_util__type_desc/0,
+	  and std_util__type_ctor_desc/0).
 	- calling copy/2 on higher-order terms
   It also does not support the following implemention-specific
   features that the old back-end supports:
-	- trailing
 	- fact tables
   	- the Mercury debugger (mdb)
   	- the Morphine trace analysis system
