@@ -3430,13 +3430,21 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	% run the ml_optimize pass before ml_elim_nested,
 	% so that we eliminate as many local variables as possible
 	% before the ml_elim_nested transformations.
+	%
 	% However, we don't want to do tail call elimination at
 	% this point, because that would result in loops
 	% with no call to MR_GC_check().
 	% So we explicitly disable that here.
+	% [XXX The preceding comment is wrong -- it is based on
+	% the assumption that we insert calls to MR_GC_check()
+	% at the start of each function, but now we instead
+	% call MR_GC_check() at each allocation.
+	% XXX FIXME Probably we should change the code here.]
+	%
 	% Also, we need to disable optimize_initializations,
 	% because ml_elim_nested doesn't correctly handle
 	% code containing initializations.
+	%
 	% The only optimization that ml_optimize will do on this
 	% pass is eliminating variables.
 	globals__io_lookup_bool_option(optimize, Optimize),
