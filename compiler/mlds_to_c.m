@@ -2378,7 +2378,12 @@ mlds_maybe_output_heap_profile_instr(Context, Indent, Args, FuncName,
 			c_util__output_quoted_string(CtorName),
 			io__write_char('"')
 		;
-			io__write_string("NULL")
+			/*
+			** Just use an empty string.  Note that we can't use
+			** a null pointer here, because MR_record_allocation()
+			** requires its string arguments to not be NULL.
+			*/
+			io__write_string("\"\"")
 		),
 		io__write_string(");\n")
 	;
