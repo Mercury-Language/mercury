@@ -12,14 +12,14 @@ The overall structure for the compiler is as follows:
 3. simplify - convert parse tree to simplified high-level data structure
    (including conversion to superhomogeneous form) and construct symbol
    tables (make_hlds.nl); also handle imports and exports (done in
-   toplevel.nl)
+   mercury_compile.nl)
 
 4. type checking, overloading resolution & module name resolution
    fully qualify all names
    (typecheck.nl)
 
 5. mode analysis (also computes liveness information) (modes.nl),
-   switch detection (not yet implemented),
+   switch detection (switch_detection.nl),
    determinism analysis (det_analysis.nl)
 
 6. code generation.  This comprises several subpasses:
