@@ -28,18 +28,18 @@ typecheck.nl
 
 - improve error messages for unification of var & functor
 
-- see also wish list comments at the start of that file
+- see also wish list comments at the start of typecheck.nl
 
 modes.nl
 --------
-
-- avoid mode errors for code which always fails
 
 - detect incorrect usage of `bound(...)' insts.
 
 - handle undefined insts/modes gracefully
 
 - handle polymorphic modes
+
+- see also comments at the start of modes.nl
 
 stack_alloc.nl
 --------------
