@@ -24,17 +24,14 @@
 :- type goal		--->	goal_expr - liveness_info.
 
 :- type goal_expr    	--->	conj(goals)
-				
+
 				% Initially only the pred_id and arguments
 				% are filled in.  Mode analysis fills in the
-				% mode_id.
-			;	call(pred_id, mode_id, list(term))
-
-				% Just before code generation, we
-				% do a pass over the hlds which recognizes
-				% the builtins and converts them to
-				% call_builtin(...).
-			;	call_builtin(buildin_id, list(term))
+				% mode_id.  Just before code generation,
+				% we do a pass over the hlds which recognizes
+				% the builtins and fills in the is_builtin
+				% field.
+			;	call(pred_id, mode_id, list(term), is_builtin)
 
 				% Deterministic disjunctions are converted
 				% into case statements by the determinism
@@ -57,6 +54,14 @@
 			;	some(vars,goal)
 			;	if_then_else(vars,goal,goal,goal)
 			;	error.
+
+	% Record whether a call is a builtin or not, and if so, which one.
+:- type is_builtin	--->	not_builtin
+			;	is_builtin(builtin).
+
+:- type builtin		--->	plus
+			;	times.
+				% etc.
 
 :- type case		--->	case(const, list(var), goal).
 			%	functor to match with, arguments to extract,
