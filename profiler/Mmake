@@ -3,11 +3,11 @@
 # Mmake - this is Mmake file for building the Mercury profiler
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 MAIN_TARGET=mercury_profile
 
-VPATH=../library
+VPATH=$(LIBRARY_DIR)
 
 #-----------------------------------------------------------------------------#
 
@@ -19,14 +19,14 @@ MCD	=	MERCURY_INT_DIR=. $(MC) --generate-dependencies
 MCI	=	MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --make-interface
 MCG	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
 		MERCURY_INT_DIR=$(LIBRARY_DIR) $(MC) --compile-to-c
-MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
+MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	-I $(BOEHM_GC_DIR) $(PROFFLAGS)
 C2INIT =	\
-MERCURY_MOD_LIB_MODS="../runtime/runtime.init ../library/library.init" \
-		MERCURY_MKINIT=../util/mkinit c2init
-ML	=	MERCURY_C_LIB_DIR=. ml
+MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/library.init \
+		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
+ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	-- -static -L$(RUNTIME_DIR) -L$(LIBRARY_DIR) -L$(BOEHM_GC_DIR)
-MSL	=	MERCURY_SP_LIB_DIR=../library msl
+MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
 MNLFLAGS =	-u 6000
 
 #-----------------------------------------------------------------------------#
@@ -56,7 +56,7 @@ ints		: mercury_profile.ints
 #-----------------------------------------------------------------------------#
 
 tags		: $(mercury_profile.ms)
-	mtags $(mercury_profile.ms) ../library/*.m
+	mtags $(mercury_profile.ms) $(LIBRARY_DIR)/*.m
 
 #-----------------------------------------------------------------------------#
 
