@@ -306,11 +306,11 @@ output_rval(binop(Op, X, Y)) -->
 	io__write_string(")").
 output_rval(const(N)) -->
 	io__write_int(N).
-output_rval(mkword(Tag, Reg)) -->
+output_rval(mkword(Tag, Exprn)) -->
 	io__write_string("mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_reg(Reg),
+	output_rval(Exprn),
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_lval(Lval).
@@ -320,11 +320,11 @@ output_rval(lval(Lval)) -->
 
 output_lval(reg(R)) -->
 	output_reg(R).
-output_lval(field(Tag, Reg, FieldNum)) -->
+output_lval(field(Tag, Lval, FieldNum)) -->
 	io__write_string("field("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_reg(Reg),
+	output_lval(Lval),
 	io__write_string(", "),
 	io__write_int(FieldNum),
 	io__write_string(")").
