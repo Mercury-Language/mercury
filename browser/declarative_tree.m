@@ -645,8 +645,20 @@ step_left_to_call(Store, Node, ParentCallNode) :-
 	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		ParentCallNode = Node
 	;
-		( Node = neg(NegPrec, _, _) ->
+		%
+		% We wish to step through negated contexts, so we handle NEGE
+		% and COND events seperately, since step_left_in_contour/2
+		% will throw an exception if it reaches the boundary of a
+		% negated context.
+		%
+		( 
+			Node = neg(NegPrec, _, _)
+		->
 			PrevNodeId = NegPrec
+		;	
+			Node = cond(CondPrec, _, _)
+		->
+			PrevNodeId = CondPrec
 		;
 			PrevNodeId = step_left_in_contour(Store, Node)
 		),
@@ -662,8 +674,19 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
 	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		Nodes = Nodes0
 	;
-		( Node = neg(NegPrec, _, _) ->
+		%
+		% We include NEGE and (possibly failed) COND events in the
+		% contour so we can track input sub-terms through negated
+		% contexts.
+		%
+		(
+			Node = neg(NegPrec, _, _)
+		->
 			PrevNodeId = NegPrec
+		;
+			Node = cond(CondPrec, _, _)
+		->
+			PrevNodeId = CondPrec
 		;
 			PrevNodeId = step_left_in_contour(Store, Node)
 		),

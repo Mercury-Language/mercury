@@ -18,6 +18,7 @@ DECLARATIVE_PROGS=		\
 	dependency		\
 	dependency2		\
 	empty_command		\
+	failed_cond		\
 	family			\
 	filter			\
 	func_call		\
@@ -170,6 +171,9 @@ empty_command.out: empty_command empty_command.inp
 
 family.out: family family.inp
 	$(MDB) ./family < family.inp > family.out 2>&1
+
+failed_cond.out: failed_cond failed_cond.inp
+	$(MDB_STD) ./failed_cond < failed_cond.inp > failed_cond.out 2>&1
 
 filter.out: filter filter.inp
 	$(MDB_STD) ./filter < filter.inp > filter.out 2>&1

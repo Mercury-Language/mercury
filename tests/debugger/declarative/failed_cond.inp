@@ -1,0 +1,12 @@
+register --quiet
+context none
+echo on
+step
+finish
+dd
+no
+no
+browse 1
+mark
+yes
+quit -y
