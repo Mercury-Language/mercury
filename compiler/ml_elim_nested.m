@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -156,28 +156,108 @@
 %
 % XXX Accurate GC is still not yet fully implemented.
 % TODO:
-%	- heap reclamation on failure is not yet supported.
+%	- Support type classes: currently we generate code for type class
+%	  method wrappers which calls MR_materialize_closure_type_params(),
+%	  which only works for closures, not for typeclass_infos.
+%
+%	- The garbage collector should resize the heap if/when it fills up.
+%         We should allocate a large amount of virtual memory for each heap,
+%         but we should collect when we've allocated a small part of it.
+%
+%	- Heap reclamation on failure is not yet supported.
 %	  One difficulty is that when resetting the heap,
 %	  we need to also reset all the local variables which might
 %	  point to reclaimed garbage, otherwise the collector might
 %	  try to trace through them, which can result in an error
 %	  since the data pointed to isn't of the right type
 %	  because it has been overwritten.
-%	- the garbage collector should resize the heap if/when it fills up
-%	- the garbage collector should collect the solutions heap
-%	  and the global heap as well as the ordinary heap
-%	- handle `pragma export'
-%	- support type classes: currently we generate code for type class
-%	  method wrappers which calls MR_materialize_closure_type_params(),
-%	  which only works for closures, not for typeclass_infos.
-%	- support --nondet-copy-out (see comment in flatten_nested_defn)
-%	- support --high-level-data (fixup_newobj_in_atomic_statement
+%
+%	- The garbage collector should collect the solutions heap
+%	  and the global heap as well as the ordinary heap.
+%
+%	  Note that this is currently not an issue, since
+%	  currently we don't use these heaps, because we don't support
+%	  heap reclamation on failure or tabling (respectively).
+%
+%	  Actually I think GC of these heaps should almost work already,
+%	  or would once we start using these heaps, because we never
+%	  allocate on the solutions heap or the global heap directly,
+%	  instead we swap heaps to make the heap that we want to
+%	  allocate on the main heap.  Then if that heap runs out of
+%	  space, we will invoke a garbage collection, and everything
+%	  should work fine.  However, there are a couple of problems.
+%	
+%	  First, GC will swap the to-space heap and the from-space heap.
+%         So if the different heaps are different sizes, we may end up
+%         with the to-space heap being too small (e.g. because it was
+%	  originally the solutions heap).  To fix that, we can just
+%	  allocate large total sizes for all the heaps; see the point above
+%	  about heap resizing.
+%
+%	  Second, for GC of the global heap to work,
+%	  the runtime routines which allocate stuff on that heap need
+%	  to be modified to support GC.  In particular, MR_deep_copy()
+%	  and MR_make_long_lived() and its callers need be modified so that
+%	  they are safe for GC (i.e. they must record all parameters
+%	  and locals that point to the heap on the GC's shadow stack),
+%	  and MR_deep_copy() needs to call MR_GC_check() before each
+%	  heap allocation.
+%
+%	- We need to handle `pragma export'.
+%
+%	  The C interface in general is a bit problematic for GC.
+%	  But for code which does not call back to Mercury, 
+%	  the way we currently handle it is fairly safe even
+%	  if the C code uses pointers to the Mercury heap
+%	  or allocates on the Mercury heap, because such code will
+%	  not invoke the GC.  So the worst that can go wrong is a heap
+%	  overflow.  Provided that the C code does not allocate too
+%	  much (more than MR_heap_margin_size), it won't overflow
+%	  the heap, and the heap will get GC'd next time you call
+%	  some Mercury code which does a heap allocation.
+%	  Of course you may run into problems if there is
+%	  a loop that calls C code which allocates on the Mercury heap,
+%	  and the loop contains no intervening calls to Mercury code that
+%	  allocates heap space (and hence calls MR_GC_check()).
+%	
+%	  But if Mercury code calls C code which calls back to Mercury
+%	  code, and the C code uses pointers to the Mercury heap,
+%	  then there could be serious problems (i.e. dangling pointers).
+%	  Even you just use `pragma export' to export a procedure
+%	  and `pragma import' to import it back again, there may be
+%	  trouble.
+%         The code generated for the exported functions can include
+%         calls to MR_MAYBE_BOX_FOREIGN_TYPE, which may allocate heap;
+%	  we ought to register the frame and call MR_GC_check() before
+%	  each call to MR_MAYBE_BOX_FOREIGN_TYPE, but currently we don't.
+%
+%	  Even if that was solved, there is still
+%	  the issue of what to do about any heap pointers
+%         held by user-written C code; we need to provide an API for
+%         registering pointers on the stack.
+%	  (MR_agc_add_root() only works for globals, really, since
+%	  there's no MR_agc_remove_root()).
+
+% Various optional features of Mercury are not yet supported, e.g.
+%
+%	- `--nondet-copy-out' (see comment in flatten_nested_defn)
+%
+%	- `--high-level-data' (fixup_newobj_in_atomic_statement
 %	  gets the types wrong; see comment in ml_code_util.m)
+%
+%	- trailing
+%
+%	- tabling
+%
+%	- multithreading
 %
 % There are also some things that could be done to improve efficiency,
 % e.g.
+%
 %	- optimize away temporary variables
+%
 %	- put stack_chain and/or heap pointer in global register variables
+%
 %	- move termination conditions (check for base case)
 %	  outside of stack frame setup & GC check where possible
 %

@@ -1059,6 +1059,11 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo,
 			% need to trace through the global variable
 			% that we generate for the table pointer.
 			% Support for this is not yet implemented.
+			% Also, we'd need to add GC support (stack
+			% frame registration, and calls to MR_GC_check())
+			% to MR_make_long_lived() and MR_deep_copy()
+			% so that we do garbage collection of the
+			% "global heap" which is used to store the tables.
 			sorry(this_file, "tabling and `--gc accurate'")
 		;
 			GC_TraceCode = no
