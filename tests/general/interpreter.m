@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 
-% File: interpreter.nl.
+% File: interpreter.m.
 % Main author: fjh.
 
 % This is an interpreter for definite logic programs

@@ -1,3 +1,5 @@
+% This tests two successive disjunctions within the same clause.
+
 :- module disj_disj.
 :- interface.
 :- import_module io.
@@ -18,5 +20,5 @@ main -->
 
 q(X, Y) :-
 	( X = 1 ; X = 2 ),
-	( Y = 41 ; Y = 42).
+	( Y = 41 ; Y = 42 ).
 

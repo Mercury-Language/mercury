@@ -1,3 +1,5 @@
+% Some very simple tests of type_to_univ and univ_to_type.
+
 :- module univ.
 :- interface.
 :- import_module io.

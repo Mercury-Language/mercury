@@ -1,3 +1,5 @@
+% A very basic check of integer arithmetic.
+
 :- module arithmetic.
 :- interface.
 :- import_module io.

@@ -1,4 +1,6 @@
-:- module test.
+% A very basic check of floating point arithmetic and string__to_float.
+
+:- module float_test.
 :- interface.
 :- import_module io.
 

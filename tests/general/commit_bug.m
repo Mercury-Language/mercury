@@ -1,3 +1,6 @@
+% This tests the case of committting across a nondet goal in a nondet
+% context. There was a bug in this, which this test case exercised.
+
 :- module commit_bug.
 
 :- interface.
@@ -32,5 +35,4 @@ main -->
 
 foo(X, X).
 foo(_, 7).
-
 

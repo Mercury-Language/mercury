@@ -1,3 +1,5 @@
+% This tests the case of a nondet call followed by a disjunction.
+
 :- module nondet_disj.
 :- interface.
 :- import_module io.
