@@ -157,6 +157,10 @@
 :- pred mercury_output_term(term, varset, bool, io__state, io__state).
 :- mode mercury_output_term(in, in, in, di, uo) is det.
 
+:- pred mercury_output_term(term, varset, bool, needs_quotes,
+				io__state, io__state).
+:- mode mercury_output_term(in, in, in, in, di, uo) is det.
+
 :- pred mercury_type_to_string(varset, term, string).
 :- mode mercury_type_to_string(in, in, out) is det.
 
@@ -2291,10 +2295,6 @@ mercury_output_pragma_c_attributes(Attributes) -->
 mercury_output_term(Term, VarSet, AppendVarnums) -->
 	mercury_output_term(Term, VarSet, AppendVarnums,
 		not_next_to_graphic_token).
-
-:- pred mercury_output_term(term, varset, bool, needs_quotes,
-				io__state, io__state).
-:- mode mercury_output_term(in, in, in, in, di, uo) is det.
 
 mercury_output_term(term__variable(Var), VarSet, AppendVarnums, _) -->
 	mercury_output_var(Var, VarSet, AppendVarnums).
