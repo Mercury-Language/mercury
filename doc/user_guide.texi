@@ -1186,7 +1186,17 @@ a call event and a fail event
 a call event
 @end table
 
-Besides the event types call, exit, redo and fail,
+In addition to these four event types,
+Mercury supports @emph{exception} events.
+An exception event occurs
+when an exception has been thrown inside a procedure,
+and control is about to propagate this exception to the caller.
+An exception event can replace the final exit or fail event
+in the event sequences above
+or, in the case of erroneous procedures,
+can come after the call event.
+
+Besides the event types call, exit, redo, fail and exception,
 which describe the @emph{interface} of a call,
 Mercury also supports several types of events
 that report on what is happening @emph{internal} to a call.
