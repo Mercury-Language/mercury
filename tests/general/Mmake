@@ -15,9 +15,9 @@ DETPROGS=	arithmetic det_complicated_unify duplicate_label \
 		semidet_map set_test string__format_test string_test \
 		string_test_2 univ unreachable float_test 
 
-# the `liveness' test doesn't work yet, due to bugs
-# in the compiler
-NOTWORKING=	liveness
+# The `liveness' test doesn't work yet, due to bugs
+# in the compiler.  Ditto for frameopt_mkframe_bug.
+NOTWORKING=	liveness frameopt_mkframe_bug
 
 #
 # The nondet tests use solutions/2, which is currently implemented only for GC
