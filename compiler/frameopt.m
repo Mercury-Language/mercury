@@ -687,7 +687,14 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
-possible_targets(pragma_c(_, _, _, _), []).
+possible_targets(pragma_c(_, _, _, MaybeLabel), List) :-
+	(	
+		MaybeLabel = no,
+		List = []
+	;
+		MaybeLabel = yes(Label),
+		List = [Label]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

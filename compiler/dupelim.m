@@ -114,8 +114,8 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	),
 	AddPragmaReferredLabels = lambda(
 		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
-		( Instr = pragma_c(_, _, _, yes(Label)) - _ ->
-			set__insert(FoldFixed0, Label, FoldFixed)
+		( Instr = pragma_c(_, _, _, yes(PragmaLabel)) - _ ->
+			set__insert(FoldFixed0, PragmaLabel, FoldFixed)
 		;
 			FoldFixed = FoldFixed0
 		)

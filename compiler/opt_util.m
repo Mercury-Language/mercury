@@ -1012,6 +1012,8 @@ opt_util__can_components_branch_away([Component | Components], BranchAway) :-
 	% The input and output components get expanded to straight line code.
 	% Some of the raw_code components we generate for nondet pragma C codes
 	% invoke succeed(), which definitely does branch away.
+	% Also the raw_code components for semidet pragma C codes can
+	% branch to a label on failure.
 	% User-written C code cannot branch away because users do not know
 	% how to do that. (They can call other functions, but those functions
 	% will return, so control will still go to the instruction following
@@ -1021,7 +1023,8 @@ opt_util__can_components_branch_away([Component | Components], BranchAway) :-
 
 opt_util__can_component_branch_away(pragma_c_inputs(_), no).
 opt_util__can_component_branch_away(pragma_c_outputs(_), no).
-opt_util__can_component_branch_away(pragma_c_raw_code(_), yes).
+opt_util__can_component_branch_away(pragma_c_raw_code(Code), CanBranchAway) :-
+	( Code = "" -> CanBranchAway = yes ; CanBranchAway = no ).
 opt_util__can_component_branch_away(pragma_c_user_code(_, _), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).

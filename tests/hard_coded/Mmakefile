@@ -70,10 +70,6 @@ MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 
-# XXX the `pragma_import' test does not yet work in non-gc grades
-
-GRADEFLAGS-pragma_import =	--gc conservative
-
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
 no_fully_strict.out: no_fully_strict

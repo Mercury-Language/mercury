@@ -46,23 +46,30 @@
 % must be able to fit into the middle of a procedure, since such
 % pragma_c_codes can be inlined. This code is of the following form:
 %
-% <save live variables onto the stack> /* see note (1) below */
-% {
+%    <save live variables onto the stack> /* see note (1) below */
+%    {
 %	<declaration of one local variable for each arg>
+%
 %	<assignment of input values from registers to local variables>
 %	save_registers(); /* see notes (1) and (2) below */
 %	{ <the c code itself> }
+%	<for semidet code, check of r1>
 %	#ifndef CONSERVATIVE_GC
 %	  restore_registers(); /* see notes (1) and (3) below */
 %	#endif
 %	<assignment of the output values from local variables to registers>
-% }
+%    }
 %
-% In the case of a semidet pragma c_code, this is followed by
+% In the case of a semidet pragma c_code, the above is followed by
 %
-%	if (r1) goto label;
-%	<code to fail>
-%	label:
+%    goto skip_label;
+%    fail_label:
+%    <code to fail>
+%    skip_label:
+%
+% and the <check of r1> is of the form
+%
+%	if (!r1) GOTO_LABEL(fail_label);
 %
 % The code we generate for nondet pragma_c_code assumes that this code is
 % the only thing between the procedure prolog and epilog; such pragma_c_codes
@@ -300,13 +307,17 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, MayCallMercury,
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, Code) -->
+	%
 	% First we need to get a list of input and output arguments
+	%
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
 	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
 	{ pragma_select_in_args(Args, InArgs) },
 	{ pragma_select_out_args(Args, OutArgs) },
-	{ make_pragma_decls(Args, Decls) },
 
+	%
+	% Generate code to <save live variables on stack>
+	%
 	( { MayCallMercury = will_not_call_mercury } ->
 		{ SaveVarsCode = empty }
 	;
@@ -322,86 +333,141 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
 		call_gen__save_variables(OutArgsSet, SaveVarsCode)
 	),
 
+	%
+	% Generate the values of input variables.
+	% (NB we need to be careful that the rvals generated here
+	% remain valid below.)
+	%
 	get_pragma_input_vars(InArgs, InputDescs, InputVarsCode),
+
+	%
+	% For semidet pragma c_code, we have to move anything that is
+	% currently in r1 elsewhere, so that the C code can assign to
+	% SUCCESS_INDICATOR without clobbering anything important.
+	%
 	( { CodeModel = model_semi } ->
-		% We have to clear r1 for C code that gets inlined
-		% so that it is safe to assign to SUCCESS_INDICATOR.
-		code_info__clear_r1(ShuffleR1_Code),
-
-		( { MayCallMercury = will_not_call_mercury } ->
-			[]
-		;
-			% the C code may call Mercury code which clobbers
-			% the regs
-			code_info__clear_all_registers
-		),
-
-		% C code goes here
-
-		code_info__get_next_label(SkipLabel),
-		code_info__generate_failure(FailCode),
-		{ TestCode = node([
-			if_val(lval(reg(r, 1)), label(SkipLabel)) -
-				"Test for success of pragma_c_code"
-		]) },
-		{ SkipLabelCode = node([
-			label(SkipLabel) - ""
-		]) },
-		{ CheckFailureCode =
-			tree(TestCode,
-			tree(FailCode,
-			     SkipLabelCode))
-		},
-
-		code_info__lock_reg(reg(r, 1)),
-		pragma_acquire_regs(OutArgs, Regs),
-		code_info__unlock_reg(reg(r, 1))
+		code_info__clear_r1(ShuffleR1_Code)
 	;
-		{ ShuffleR1_Code = empty },
-
-		% c code goes here
-
-		( { MayCallMercury = will_not_call_mercury } ->
-			[]
-		;
-			% the C code may call Mercury code which clobbers
-			% the regs
-			code_info__clear_all_registers
-		),
-
-		{ CheckFailureCode = empty },
-
-		pragma_acquire_regs(OutArgs, Regs)
+		{ ShuffleR1_Code = empty }
 	),
-	place_pragma_output_args_in_regs(OutArgs, Regs, OutputDescs),
 
-	{ C_Code_Comp = pragma_c_user_code(Context, C_Code) },
+	%
+	% Generate <declaration of one local variable for each arg>
+	%
+	{ make_pragma_decls(Args, Decls) },
+
+	%
+	% <assignment of input values from registers to local vars>
+	%
+	{ InputComp = pragma_c_inputs(InputDescs) },
+
+	%
+	% save_registers(); /* see notes (1) and (2) above */
+	%
 	{ MayCallMercury = will_not_call_mercury ->
-		WrappedComp = [C_Code_Comp]
+		SaveRegsComp = pragma_c_raw_code("")
 	;
 		SaveRegsComp = pragma_c_raw_code(
 			"\tsave_registers();\n"
-		),
-		RestoreRegsComp = pragma_c_raw_code(
-		"#ifndef CONSERVATIVE_GC\n\trestore_registers();\n#endif\n"
-		),
-		WrappedComp = [SaveRegsComp, C_Code_Comp, RestoreRegsComp]
+		)
 	},
-	{ InputComp = pragma_c_inputs(InputDescs) },
-	{ OutputComp = pragma_c_outputs(OutputDescs) },
-	{ list__append([InputComp | WrappedComp], [OutputComp], Components) },
 
+	%
+	% <The C code itself>
+	%
+	{ C_Code_Comp = pragma_c_user_code(Context, C_Code) },
+
+	%
+	% <for semidet code, check of r1>
+	%
+	( { CodeModel = model_semi } ->
+		code_info__get_next_label(FailLabel),
+		{ llds_out__get_label(FailLabel, yes, FailLabelStr) },
+                { string__format("\tif (!r1) GOTO_LABEL(%s);\n",
+				[s(FailLabelStr)], CheckR1_String) },
+		{ CheckR1_Comp = pragma_c_raw_code(CheckR1_String) },
+		{ MaybeFailLabel = yes(FailLabel) }
+	;
+		{ CheckR1_Comp = pragma_c_raw_code("") },
+		{ MaybeFailLabel = no }
+	),
+
+	%
+	% #ifndef CONSERVATIVE_GC
+	%   restore_registers(); /* see notes (1) and (3) above */
+	% #endif
+	%
+	{ MayCallMercury = will_not_call_mercury ->
+		RestoreRegsComp = pragma_c_raw_code("")
+	;
+		RestoreRegsComp = pragma_c_raw_code(
+		    "#ifndef CONSERVATIVE_GC\n\trestore_registers();\n#endif\n"
+		)
+	},
+
+	%
+	% The C code may have called Mercury code which clobbered the regs,
+	% in which case we need to tell the code_info that they have been
+	% clobbered.
+	%
+	( { MayCallMercury = will_not_call_mercury } ->
+		[]
+	;
+		code_info__clear_all_registers
+	),
+
+	%
+	% <assignment of the output values from local variables to registers>
+	%
+	pragma_acquire_regs(OutArgs, Regs),
+	place_pragma_output_args_in_regs(OutArgs, Regs, OutputDescs),
+	{ OutputComp = pragma_c_outputs(OutputDescs) },
+
+	%
+	% join all the components of the pragma_c together
+	%
+	{ Components = [InputComp, SaveRegsComp, C_Code_Comp,
+			CheckR1_Comp, RestoreRegsComp, OutputComp] },
 	{ PragmaCCode = node([
-		pragma_c(Decls, Components, MayCallMercury, no) -
+		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel) -
 			"Pragma C inclusion"
 	]) },
 
+	%
+	% for semidet code, we need to insert the failure handling code here:
+	%
+	%	goto skip_label;
+	%	fail_label:
+	%	<code to fail>
+	%	skip_label:
+	%
+	( { MaybeFailLabel = yes(TheFailLabel) } ->
+		code_info__get_next_label(SkipLabel),
+		code_info__generate_failure(FailCode),
+		{ GotoSkipLabelCode = node([
+			goto(label(SkipLabel)) - "Skip past failure code"
+		]) },
+		{ SkipLabelCode = node([ label(SkipLabel) - "" ]) },
+		{ FailLabelCode = node([ label(TheFailLabel) - "" ]) },
+		{ FailureCode =
+			tree(GotoSkipLabelCode,
+			tree(FailLabelCode,
+			tree(FailCode,
+			     SkipLabelCode)))
+		}
+	;
+		{ FailureCode = empty }
+	),
+
+	%
+	% join all code fragments together
+	%
 	{ Code =
 		tree(SaveVarsCode,
 		tree(InputVarsCode,
 		tree(ShuffleR1_Code, 
 		tree(PragmaCCode,
-		     CheckFailureCode))))
+		     FailureCode))))
 	}.
 
 %---------------------------------------------------------------------------%
