@@ -20,6 +20,7 @@ TRAIL_SOURCES= \
 	semi_fail_in_non_ite.m
 
 TYPECLASS_SOURCES= \
+	constraint_proof_bug.m \
 	func_method.m \
 	instance_superclass.m \
 	instance_unconstrained_tvar.m
