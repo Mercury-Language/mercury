@@ -54,6 +54,7 @@ Word get_reg(int num)
 	/* NOTREACHED */
 	fprintf(stderr, "register %d out of range in get_reg\n", num);
 	abort();
+	return 0;
 }
 
 Word set_reg(int num, Word val)
@@ -114,7 +115,7 @@ Word get_mem(Word *addr)
 		return *addr;
 
 	/* NOTREACHED */
-	fprintf(stderr, "address %p out of range in set_mem\n", addr);
+	fprintf(stderr, "address %p out of range in set_mem\n", (void *) addr);
 	abort();
 	return 0;
 }
@@ -140,7 +141,7 @@ Word set_mem(Word *addr, Word val)
 	}
 
 	/* NOTREACHED */
-	fprintf(stderr, "address %p out of range in set_mem\n", addr);
+	fprintf(stderr, "address %p out of range in set_mem\n", (void *) addr);
 	abort();
 	return 0;
 }

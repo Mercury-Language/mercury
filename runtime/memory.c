@@ -1,5 +1,7 @@
 #include <unistd.h>
 #include "imp.h"
+#include "ext_stdlib.h"
+#include "ext_signal.h"
 
 /*
 ** The important global variables of the execution algorithm.
@@ -31,7 +33,6 @@
 #include <signal.h>
 
 #ifdef	HAVE_SIGINFO
-#include <siginfo.h>
 static	void	complex_bushandler(int, siginfo_t *, void *);
 static	void	complex_segvhandler(int, siginfo_t *, void *);
 #else
@@ -231,45 +232,45 @@ void init_memory(void)
 		printf("unit         = %d (%x)\n", unit, unit);
 
 		printf("\n");
-		printf("saved_regs     = %p (%d)\n", saved_regs,
+		printf("saved_regs     = %p (%d)\n", (void *) saved_regs,
 			(int) saved_regs & (unit-1));
-		printf("num_uses       = %p (%d)\n", num_uses,
+		printf("num_uses       = %p (%d)\n", (void *) num_uses,
 			(int) num_uses & (unit-1));
 
 		printf("\n");
-		printf("heap           = %p (%d)\n", heap,
+		printf("heap           = %p (%d)\n", (void *) heap,
 			(int) heap & (unit-1));
-		printf("heapmin        = %p (%d)\n", heapmin,
+		printf("heapmin        = %p (%d)\n", (void *) heapmin,
 			(int) heapmin & (unit-1));
-		printf("heapend        = %p (%d)\n", heapend,
+		printf("heapend        = %p (%d)\n", (void *) heapend,
 			(int) heapend & (unit-1));
-		printf("heap_zone      = %p (%d)\n", heap_zone,
+		printf("heap_zone      = %p (%d)\n", (void *) heap_zone,
 			(int) heap_zone & (unit-1));
 
 		printf("\n");
-		printf("detstack       = %p (%d)\n", detstack,
+		printf("detstack       = %p (%d)\n", (void *) detstack,
 			(int) detstack & (unit-1));
-		printf("detstackmin    = %p (%d)\n", detstackmin,
+		printf("detstackmin    = %p (%d)\n", (void *) detstackmin,
 			(int) detstackmin & (unit-1));
-		printf("detstackend    = %p (%d)\n", detstackend,
+		printf("detstackend    = %p (%d)\n", (void *) detstackend,
 			(int) detstackend & (unit-1));
-		printf("detstack_zone  = %p (%d)\n", detstack_zone,
+		printf("detstack_zone  = %p (%d)\n", (void *) detstack_zone,
 			(int) detstack_zone & (unit-1));
 
 		printf("\n");
-		printf("nondstack      = %p (%d)\n", nondstack,
+		printf("nondstack      = %p (%d)\n", (void *) nondstack,
 			(int) nondstack & (unit-1));
-		printf("nondstackmin   = %p (%d)\n", nondstackmin,
+		printf("nondstackmin   = %p (%d)\n", (void *) nondstackmin,
 			(int) nondstackmin & (unit-1));
-		printf("nondstackend   = %p (%d)\n", nondstackend,
+		printf("nondstackend   = %p (%d)\n", (void *) nondstackend,
 			(int) nondstackend & (unit-1));
-		printf("nondstack_zone = %p (%d)\n", detstack_zone,
+		printf("nondstack_zone = %p (%d)\n", (void *) detstack_zone,
 			(int) nondstack_zone & (unit-1));
 
 		printf("\n");
-		printf("arena start    = %p (%d)\n", arena,
+		printf("arena start    = %p (%d)\n", (void *) arena,
 			(int) arena & (unit-1));
-		printf("arena end      = %p (%d)\n", arena+total_size,
+		printf("arena end      = %p (%d)\n", (void *) (arena+total_size),
 			(int) (arena+total_size) & (unit-1));
 
 		printf("\n");
@@ -352,7 +353,14 @@ bool try_munprotect(void *addr)
 		if (new_zone <= heap_zone + heap_zone_left)
 		{
 			printf("trying to unprotect from %p to %p\n",
-				heap_zone, new_zone);
+				(void *) heap_zone, (void *) new_zone);
+
+			if (new_zone >= (caddr_t) heapend)
+			{
+				printf("cannot unprotect last page\n");
+				return FALSE;
+			}
+
 			if (mprotect(heap_zone, new_zone-heap_zone, PROT_READ|PROT_WRITE) != 0)
 			{
 				perror("cannot unprotect heap\n");
@@ -361,10 +369,11 @@ bool try_munprotect(void *addr)
 
 			heap_zone_left -= new_zone-heap_zone;
 			heap_zone = new_zone;
-			printf("successful, heap_zone now %p\n", heap_zone);
+			printf("successful, heap_zone now %p\n",
+				(void *) heap_zone);
 
-			/* printf("value at fault addr %p is %d\n", addr,
-				* ((Word *) addr)); */
+			/* printf("value at fault addr %p is %d\n",
+				(void *) addr, * ((Word *) addr)); */
 			return TRUE;
 		}
 	}
@@ -376,7 +385,14 @@ bool try_munprotect(void *addr)
 		if (new_zone <= detstack_zone + detstack_zone_left)
 		{
 			printf("trying to unprotect from %p to %p\n",
-				detstack_zone, new_zone);
+				(void *) detstack_zone, (void *) new_zone);
+
+			if (new_zone >= (caddr_t) detstackend)
+			{
+				printf("cannot unprotect last page\n");
+				return FALSE;
+			}
+
 			if (mprotect(detstack_zone, new_zone-detstack_zone, PROT_READ|PROT_WRITE) != 0)
 			{
 				perror("cannot unprotect detstack\n");
@@ -385,10 +401,11 @@ bool try_munprotect(void *addr)
 
 			detstack_zone_left -= new_zone-detstack_zone;
 			detstack_zone = new_zone;
-			printf("successful, detstack_zone now %p\n", detstack_zone);
+			printf("successful, detstack_zone now %p\n",
+				(void *) detstack_zone);
 
-			/* printf("value at fault addr %p is %d\n", addr,
-				* ((Word *) addr)); */
+			/* printf("value at fault addr %p is %d\n",
+				(void *) addr, * ((Word *) addr)); */
 			return TRUE;
 		}
 	}
@@ -400,7 +417,14 @@ bool try_munprotect(void *addr)
 		if (new_zone <= nondstack_zone + nondstack_zone_left)
 		{
 			printf("trying to unprotect from %p to %p\n",
-				nondstack_zone, new_zone);
+				(void *) nondstack_zone, (void *) new_zone);
+
+			if (new_zone >= (caddr_t) nondstackend)
+			{
+				printf("cannot unprotect last page\n");
+				return FALSE;
+			}
+
 			if (mprotect(nondstack_zone, new_zone-nondstack_zone, PROT_READ|PROT_WRITE) != 0)
 			{
 				perror("cannot unprotect nondstack\n");
@@ -409,10 +433,11 @@ bool try_munprotect(void *addr)
 
 			nondstack_zone_left -= new_zone-nondstack_zone;
 			nondstack_zone = new_zone;
-			printf("successful, nondstack_zone now %p\n", nondstack_zone);
+			printf("successful, nondstack_zone now %p\n",
+				(void *) nondstack_zone);
 
-			/* printf("value at fault addr %p is %d\n", addr,
-				* ((Word *) addr)); */
+			/* printf("value at fault addr %p is %d\n",
+				(void *) addr, * ((Word *) addr)); */
 			return TRUE;
 		}
 	}
@@ -487,7 +512,7 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 
 		}
 
-		printf("address involved: %p\n", info->si_addr);
+		printf("address involved: %p\n", (void *) info->si_addr);
 	}
 
 	exit(1);
@@ -518,7 +543,7 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 		printf("PC at signal: %d (%x)\n",
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX],
 			((ucontext_t *) context)->uc_mcontext.gregs[PC_INDEX]);
-		printf("address involved: %p\n", info->si_addr);
+		printf("address involved: %p\n", (void *) info->si_addr);
 
 		if (try_munprotect(info->si_addr))
 		{

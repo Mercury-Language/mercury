@@ -277,5 +277,8 @@ do_succeed:
 do_not_reached:
 	printf("reached not_reached\n");
 	exit(1);
+#ifndef	USE_GCC_NONLOCAL_GOTOS
+	return 0;
+#endif
 
 END_MODULE

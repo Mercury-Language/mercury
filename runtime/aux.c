@@ -176,24 +176,24 @@ void printint(Word n)
 
 void printstring(const char *s)
 {
-	printf("string 0x%p %s\n", s, s);
+	printf("string 0x%p %s\n", (const void *) s, s);
 }
 
 void printheap(const Word *h)
 {
-	printf("ptr 0x%p, offset %3d words\n", h, h - heapmin);
+	printf("ptr 0x%p, offset %3d words\n", (const void *) h, h - heapmin);
 }
 
 void printdetstack(const Word *s)
 {
 	printf("ptr 0x%p, offset %3d words\n",
-		s, s - detstackmin);
+		(const void *) s, s - detstackmin);
 }
 
 void printnondstack(const Word *s)
 {
 	printf("ptr 0x%p, offset %3d words, procedure %s\n",
-		s, s - nondstackmin, (const char *) s[PREDNM]);
+		(const void *) s, s - nondstackmin, (const char *) s[PREDNM]);
 }
 
 void dumpframe(const Word *fr)
@@ -203,7 +203,7 @@ void dumpframe(const Word *fr)
 	if ((fr - bt_prevfr(fr)) == RECLAIM_SIZE)
 	{
 		printf("reclaim frame at ptr 0x%p, offset %3d words\n",
-			fr, fr - nondstackmin);
+			(const void *) fr, fr - nondstackmin);
 		printf("\t predname  %s\n", bt_prednm(fr));
 		printf("\t redoip    "); printlabel(bt_redoip(fr));
 		printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
@@ -212,7 +212,7 @@ void dumpframe(const Word *fr)
 	else
 	{
 		printf("frame at ptr 0x%p, offset %3d words\n",
-			fr, fr - nondstackmin);
+			(const void *) fr, fr - nondstackmin);
 		printf("\t predname  %s\n", bt_prednm(fr));
 		printf("\t succip    "); printlabel(bt_succip(fr));
 		printf("\t redoip    "); printlabel(bt_redoip(fr));
@@ -258,7 +258,8 @@ void printlist(Word p)
 			printf("0x%x (%d)\n", t, t);
 			return;
 		}
-		printf("(0x%p)%d.", & field(TAG_CONS,t,0), field(TAG_CONS,t,0));
+		printf("(0x%p)%d.", (void *) & field(TAG_CONS,t,0),
+			field(TAG_CONS,t,0));
 		fflush(stdout);
 		t = field(TAG_CONS, t, 1);
 
@@ -276,7 +277,8 @@ void printlist(Word p)
 			t = field(TAG_CONS, t, 1);
 		}
 
-		printf("(0x%p)%d.", & field(TAG_CONS, lastt, 0), field(TAG_CONS, lastt, 0));
+		printf("(0x%p)%d.", (void *) & field(TAG_CONS, lastt, 0),
+			field(TAG_CONS, lastt, 0));
 		fflush(stdout);
 	}
 

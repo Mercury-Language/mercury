@@ -13,6 +13,7 @@ extern	void	tailcall_msg(const Code *proc);
 extern	void	proceed_msg(void);
 extern	void	cr1_msg(Word val0, const Word *addr);
 extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
+extern	void	incr_hp_msg(Word val, const Word *addr);
 extern	void	incr_sp_msg(Word val, const Word *addr);
 extern	void	decr_sp_msg(Word val, const Word *addr);
 extern	void	push_msg(Word val, const Word *addr);

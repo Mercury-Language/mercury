@@ -1,5 +1,5 @@
-#ifndef	TEST_HARNESS_H
-#define	TEST_HARNESS_H
+#ifndef	WRAPPER_H
+#define	WRAPPER_H
 
 
 extern	int	heap_size;

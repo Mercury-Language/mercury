@@ -3,13 +3,14 @@
 #include	"timing.h"
 #include	"getopt.h"
 #include	"init.h"
+#include	"ext_stdio.h"
 
 /* global variables concerned with testing (i.e. not with the engine) */
 
 /* command-line options */
 
 /* size of data areas, in kilobytes */
-int		heap_size =      8192;
+int		heap_size =     40960;
 int		detstack_size =   128;
 int		nondstack_size =  128;
 
@@ -51,6 +52,7 @@ static	char	*progname;
 
 #endif
 
+extern	int	main(int argc, char **argv);
 static	void	process_options(int argc, char **argv);
 static	void	usage(void);
 static	void	run_code(void);
@@ -88,7 +90,7 @@ int main(int argc, char **argv)
 	init_engine();
 	run_code();
 
-	exit(0);
+	return 0;
 }
 
 static void process_options(int argc, char *argv[])
@@ -251,7 +253,7 @@ static void usage(void)
 	printf("Usage: %s [-clt] [-d[abcdghs]] [-[sz][hdn]#] [-p#] [-r#] [-1#] [-2#] [-3#] -w name\n",
 		progname);
 	printf("-c \t\tcheck cross-function stack usage\n");
-	printf("-t \t\tprint all labels\n");
+	printf("-l \t\tprint all labels\n");
 	printf("-t \t\tuse own timer\n");
 	printf("-dg \t\tdebug gotos\n");
 	printf("-dc \t\tdebug calls\n");
@@ -443,5 +445,8 @@ global_fail:
 	}
 
 	proceed();
+#ifndef	USE_GCC_NONLOCAL_GOTOS
+	return 0;
+#endif
 
 END_MODULE

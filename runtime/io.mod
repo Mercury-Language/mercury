@@ -15,5 +15,8 @@ mercury__io__write_int_3_0:
 mercury__error_1_0:
 	fprintf(stderr, "Software error: %s\n", (char *) r1);
 	abort();
+#ifndef	USE_GCC_NONLOCAL_GOTOS
+	return 0;
+#endif
 
 END_MODULE
