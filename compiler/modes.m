@@ -627,7 +627,7 @@ modecheck_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap), 
+modecheck_goal_2(pragma_c_code(C_Code, PredId, _ProcId0, Args0, ArgNameMap), 
 		GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
 	=(ModeInfo0),
@@ -641,7 +641,7 @@ modecheck_goal_2(pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap),
 	mode_info_set_call_context(call(unqualified(PredName)/Arity)),
 	
 	=(ModeInfo2),
-	modecheck_call_pred(PredId, Args0, _Mode, Args, ExtraGoals),
+	modecheck_call_pred(PredId, Args0, ProcId, Args, ExtraGoals),
 	{ Pragma = pragma_c_code(C_Code, PredId, ProcId, Args0, ArgNameMap) },
 	{ handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
 				InstMap1, ModeInfo2, Goal) },
