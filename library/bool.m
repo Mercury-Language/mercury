@@ -26,7 +26,7 @@
 % rather than `true' and `false'.  This is to avoid confusion
 % with the predicates `true' and `fail'.
 
-:- type bool ---> yes ; no.
+:- type bool ---> no ; yes.
 
 :- pred bool__or(bool, bool, bool).
 :- mode bool__or(in, in, out) is det.
