@@ -30,6 +30,7 @@ jfactor=-j1
 runtests=""
 objects=""
 cfiles="false"
+errfiles="false"
 compile_times=""
 testparams=""
 
@@ -39,6 +40,9 @@ do
 
 	-c|--c-files)
 		cfiles="true" ;;
+
+	-e|--err-files)
+		errfiles="true" ;;
 
 	-j|--jobs)
 		jfactor="-j$2" ; shift ;;
@@ -229,6 +233,19 @@ do
 		/bin/rm -fr batch/cfiles/$batch.compiler.$visn/*
 		cp stage2/compiler/*.c batch/cfiles/$batch.compiler.$visn
 		gzip batch/cfiles/$batch.compiler.$visn/*
+	fi
+
+	if "$errfiles"
+	then
+		echo saving err files
+		mkdir -p batch/errfiles/$batch.library.$visn
+		/bin/rm -fr batch/errfiles/$batch.library.$visn/*
+		cp stage2/library/*.err batch/errfiles/$batch.library.$visn
+		# gzip batch/errfiles/$batch.library.$visn/*
+		mkdir -p batch/errfiles/$batch.compiler.$visn
+		/bin/rm -fr batch/errfiles/$batch.compiler.$visn/*
+		cp stage2/compiler/*.err batch/errfiles/$batch.compiler.$visn
+		# gzip batch/errfiles/$batch.compiler.$visn/*
 	fi
 
 	n=`expr $n + 1`
