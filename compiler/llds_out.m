@@ -830,7 +830,7 @@ output_comp_gen_c_var_list([Var | Vars], DeclSet0, DeclSet) -->
 
 output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
 		DeclSet0, DeclSet) -->
-	io__write_string("\nWord mercury_var__tabling__"),
+	io__write_string("\nMR_Word mercury_var__tabling__"),
 	output_proc_label(ProcLabel),
 	io__write_string(" = 0;\n"),
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
@@ -1554,14 +1554,14 @@ output_instruction(livevals(LiveVals), _) -->
 output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
 	io__write_string("\t{\n"),
 	( { TempR > 0 } ->
-		io__write_string("\tWord "),
+		io__write_string("\tMR_Word "),
 		output_temp_decls(TempR, "r"),
 		io__write_string(";\n")
 	;
 		[]
 	),
 	( { TempF > 0 } ->
-		io__write_string("\tFloat "),
+		io__write_string("\tMR_Float "),
 		output_temp_decls(TempF, "f"),
 		io__write_string(";\n")
 	;
@@ -1811,7 +1811,7 @@ output_pragma_decls([]) --> [].
 output_pragma_decls([D|Decls]) -->
 	(
 		{ D = pragma_c_arg_decl(Type, VarName) },
-		% Apart from special cases, the local variables are Words
+		% Apart from special cases, the local variables are MR_Words
 		{ export__type_to_type_string(Type, VarType) },
 		io__write_string("\t"),
 		io__write_string(VarType),
@@ -1853,7 +1853,7 @@ output_pragma_inputs([I|Inputs]) -->
 	(
         	{ Type = term__functor(term__atom("string"), [], _) }
 	->
-		io__write_string("(String) "),
+		output_llds_type_cast(string),
 		output_rval_as_type(Rval, word)
 	;
         	{ Type = term__functor(term__atom("float"), [], _) }
@@ -1890,7 +1890,8 @@ output_pragma_outputs([O|Outputs]) -->
 	(
         	{ Type = term__functor(term__atom("string"), [], _) }
 	->
-		io__write_string("(Word) "),
+		output_llds_type_cast(word),
+		io__write_string(" "),
 		io__write_string(VarName)
 	;
         	{ Type = term__functor(term__atom("float"), [], _) }
@@ -2103,7 +2104,7 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 				output_indent(FirstIndent, LaterIndent, N0),
 				{ N is N0 + 1 },
 				io__write_strings([
-					"static const Float ",
+					"static const MR_Float ",
 					"mercury_float_const_", FloatName,
 					" = ", FloatString, ";\n"
 				])
@@ -2149,8 +2150,9 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 			{ decl_set_insert(DeclSet2, FloatLabel, DeclSet) },
 			output_indent(FirstIndent, LaterIndent, N2),
 			{ N is N2 + 1 },
-			io__write_string(
-				"static const Float mercury_float_const_"),
+			io__write_string("static const "),
+			output_llds_type(float),
+			io__write_string(" mercury_float_const_"),
 			io__write_string(FloatName),
 			io__write_string(" = "),
 				% note that we just output the expression
@@ -2275,9 +2277,9 @@ llds_out__float_op_name(float_divide, "divide").
 	% We output constant terms as follows:
 	%
 	%	static const struct <foo>_struct {
-	%		Word field1;			// Def
-	%		Float field2;
-	%		Word * field3;
+	%		MR_Word field1;			// Def
+	%		MR_Float field2;
+	%		MR_Word * field3;
 	%		...
 	%	}
 	%	<foo> 					// Decl
@@ -2511,6 +2513,15 @@ llds_out__rval_type_as_arg(Rval, ArgType) -->
 		{ ArgType = Type }
 	).
 
+	% Same as output_llds_type, but will put parentheses
+	% around the llds_type.
+:- pred output_llds_type_cast(llds_type::in, 
+			io__state::di, io__state::uo) is det.
+output_llds_type_cast(LLDSType)   --> 
+	io__write_string("("),
+	output_llds_type(LLDSType),
+	io__write_string(")").
+
 :- pred output_llds_type(llds_type::in, io__state::di, io__state::uo) is det.
 
 output_llds_type(int_least8)   --> io__write_string("MR_int_least8_t").
@@ -2519,14 +2530,14 @@ output_llds_type(int_least16)  --> io__write_string("MR_int_least16_t").
 output_llds_type(uint_least16) --> io__write_string("MR_uint_least16_t").
 output_llds_type(int_least32)  --> io__write_string("MR_int_least32_t").
 output_llds_type(uint_least32) --> io__write_string("MR_uint_least32_t").
-output_llds_type(bool)         --> io__write_string("Integer").
-output_llds_type(integer)      --> io__write_string("Integer").
-output_llds_type(unsigned)     --> io__write_string("Unsigned").
-output_llds_type(float)        --> io__write_string("Float").
-output_llds_type(word)         --> io__write_string("Word").
-output_llds_type(string)       --> io__write_string("String").
-output_llds_type(data_ptr)     --> io__write_string("Word *").
-output_llds_type(code_ptr)     --> io__write_string("Code *").
+output_llds_type(bool)         --> io__write_string("MR_Integer").
+output_llds_type(integer)      --> io__write_string("MR_Integer").
+output_llds_type(unsigned)     --> io__write_string("MR_Unsigned").
+output_llds_type(float)        --> io__write_string("MR_Float").
+output_llds_type(word)         --> io__write_string("MR_Word").
+output_llds_type(string)       --> io__write_string("MR_String").
+output_llds_type(data_ptr)     --> io__write_string("MR_Word *").
+output_llds_type(code_ptr)     --> io__write_string("MR_Code *").
 
 :- pred output_cons_arg_decls(list(maybe(rval))::in, string::in, string::in,
 	int::in, int::out, decl_set::in, decl_set::out,
@@ -3572,9 +3583,7 @@ output_rval_as_type(Rval, DesiredType) -->
 			)
 		;
 			% cast value to desired type
-			io__write_string("("),
-			output_llds_type(DesiredType),
-			io__write_string(") "),
+			output_llds_type_cast(DesiredType),
 			output_rval(Rval)
 		)
 	).
@@ -3595,7 +3604,7 @@ types_match(bool, unsigned).
 types_match(bool, word).
 types_match(integer, bool).
 
-	% output a float rval, converted to type `Word *'
+	% output a float rval, converted to type `MR_Word *'
 	%
 :- pred output_float_rval_as_data_ptr(rval, io__state, io__state).
 :- mode output_float_rval_as_data_ptr(in, di, uo) is det.
@@ -3613,15 +3622,17 @@ output_float_rval_as_data_ptr(Rval) -->
 		{ UnboxFloat = no, StaticGroundTerms = yes },
 		{ llds_out__float_const_expr_name(Rval, FloatName) }
 	->
-		io__write_string("(Word *) &mercury_float_const_"),
+		output_llds_type_cast(data_ptr),
+		io__write_string(" &mercury_float_const_"),
 		io__write_string(FloatName)
 	;
-		io__write_string("(Word *) float_to_word("),
+		output_llds_type_cast(data_ptr),
+		io__write_string(" float_to_word("),
 		output_rval(Rval),
 		io__write_string(")")
 	).
 
-	% output a float rval, converted to type `Word'
+	% output a float rval, converted to type `MR_Word'
 	%
 :- pred output_float_rval_as_word(rval, io__state, io__state).
 :- mode output_float_rval_as_word(in, di, uo) is det.
@@ -3639,7 +3650,8 @@ output_float_rval_as_word(Rval) -->
 		{ UnboxFloat = no, StaticGroundTerms = yes },
 		{ llds_out__float_const_expr_name(Rval, FloatName) }
 	->
-		io__write_string("(Word) &mercury_float_const_"),
+		output_llds_type_cast(word),
+		io__write_string(" &mercury_float_const_"),
 		io__write_string(FloatName)
 	;
 		io__write_string("float_to_word("),
@@ -3778,17 +3790,20 @@ output_rval(var(_)) -->
 output_rval(mem_addr(MemRef)) -->
 	(
 		{ MemRef = stackvar_ref(N) },
-		io__write_string("(Word *) &MR_stackvar("),
+		output_llds_type_cast(data_ptr),
+		io__write_string(" &MR_stackvar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = framevar_ref(N) },
-		io__write_string("(Word *) &MR_framevar("),
+		output_llds_type_cast(data_ptr),
+		io__write_string(" &MR_framevar("),
 		io__write_int(N),
 		io__write_string(")")
 	;
 		{ MemRef = heap_ref(Rval, Tag, FieldNum) },
-		io__write_string("(Word *) &MR_field("),
+		output_llds_type_cast(data_ptr),
+		io__write_string(" &MR_field("),
 		output_tag(Tag),
 		io__write_string(", "),
 		output_rval(Rval),
@@ -3811,13 +3826,15 @@ output_rval_const(int_const(N)) -->
 	% we need to cast to (Integer) to ensure
 	% things like 1 << 32 work when `Integer' is 64 bits
 	% but `int' is 32 bits.
-	io__write_string("(Integer) "),
+	output_llds_type_cast(integer),
+	io__write_string(" "),
 	io__write_int(N).
 output_rval_const(float_const(FloatVal)) -->
 	% the cast to (Float) here lets the C compiler
 	% do arithmetic in `float' rather than `double'
 	% if `Float' is `float' not `double'.
-	io__write_string("(Float) "),
+	output_llds_type_cast(float),
+	io__write_string(" "),
 	io__write_float(FloatVal).
 output_rval_const(string_const(String)) -->
 	io__write_string("MR_string_const("""),
@@ -3839,9 +3856,10 @@ output_rval_const(false) -->
 output_rval_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
 output_rval_const(data_addr_const(DataAddr)) -->
-	% data addresses are all assumed to be of type `Word *';
+	% data addresses are all assumed to be of type `MR_Word *';
 	% we need to cast them here to avoid type errors
-	io__write_string("(Word *) &"),
+	output_llds_type_cast(data_ptr),
+	io__write_string(" &"),
 	output_data_addr(DataAddr).
 output_rval_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
@@ -3851,7 +3869,7 @@ output_rval_const(label_entry(Label)) -->
 	% Output an rval as an initializer in a static struct.
 	% Make sure it has the C type the corresponding field would have.
 	% This is the "really" natural type of the rval, free of the
-	% Mercury abstract engine's need to shoehorn things into Words.
+	% Mercury abstract engine's need to shoehorn things into MR_Words.
 
 :- pred output_static_rval(rval, io__state, io__state).
 :- mode output_static_rval(in, di, uo) is det.
@@ -3863,7 +3881,8 @@ output_static_rval(unop(_, _)) -->
 output_static_rval(binop(_, _, _)) -->
 	{ error("Cannot output a binop(_, _, _) in a static initializer") }.
 output_static_rval(mkword(Tag, Exprn)) -->
-	io__write_string("(Word *) MR_mkword("),
+	output_llds_type_cast(data_ptr),
+	io__write_string(" MR_mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
 	output_static_rval(Exprn),
@@ -3913,7 +3932,8 @@ output_rval_static_const(false) -->
 output_rval_static_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
 output_rval_static_const(data_addr_const(DataAddr)) -->
-	io__write_string("(Word *) &"),
+	output_llds_type_cast(data_ptr),
+	io__write_string(" &"),
 	output_data_addr(DataAddr).
 output_rval_static_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),
@@ -3931,7 +3951,7 @@ output_lval_as_word(Lval) -->
 		% sanity check -- if this happens, the llds is ill-typed
 		{ error("output_lval_as_word: got float") }
 	;
-		io__write_string("LVALUE_CAST(Word,"),
+		io__write_string("LVALUE_CAST(MR_Word,"),
 		output_lval(Lval),
 		io__write_string(")")
 	).

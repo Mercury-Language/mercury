@@ -42,7 +42,7 @@
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
 	% Convert the type, to a string corresponding to its C type.
-	% (Defaults to Word).
+	% (Defaults to MR_Word).
 :- pred export__type_to_type_string(type, string).
 :- mode export__type_to_type_string(in, out) is det.
 
@@ -109,11 +109,12 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	% #if SEMIDET
 	%   bool
 	% #elif FUNCTION
-	%   Word
+	%   MR_Word
 	% #else
 	%   void
 	% #endif
-	% <function name>(Word Mercury__Argument1, Word *Mercury__Argument2...)
+	% <function name>(MR_Word Mercury__Argument1, 
+	%			MR_Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
 	% #if NUM_REAL_REGS > 0
@@ -190,7 +191,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				C_RetType, "\n", 
 				C_Function, "(", ArgDecls, ")\n{\n",
 				"#if NUM_REAL_REGS > 0\n",
-				"\tWord c_regs[NUM_REAL_REGS];\n",
+				"\tMR_Word c_regs[NUM_REAL_REGS];\n",
 				"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
@@ -433,7 +434,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	(
         	Type = term__functor(term__atom("string"), [], _)
 	->
-		string__append("(Word) ", Rval, ConvertedRval)
+		string__append("(MR_Word) ", Rval, ConvertedRval)
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
@@ -454,7 +455,7 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	(
         	Type = term__functor(term__atom("string"), [], _)
 	->
-		string__append("(String) ", Rval, ConvertedRval)
+		string__append("(MR_String) ", Rval, ConvertedRval)
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
@@ -534,18 +535,20 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 
 	% Convert a term representation of a variable type to a string which
 	% represents the C type of the variable
-	% Apart from special cases, local variables become Words
+	% Apart from special cases, local variables become MR_Words
 export__type_to_type_string(Type, Result) :-
 	( Type = term__functor(term__atom("int"), [], _) ->
-		Result = "Integer"
+		Result = "MR_Integer"
 	; Type = term__functor(term__atom("float"), [], _) ->
-		Result = "Float"
+		Result = "MR_Float"
 	; Type = term__functor(term__atom("string"), [], _) ->
-		Result = "String"
+		Result = "MR_String"
 	; Type = term__functor(term__atom("character"), [], _) ->
-		Result = "Char"
+		Result = "MR_Char"
+	; Type = term__variable(_) ->
+		Result = "MR_Box"
 	;
-		Result = "Word"
+		Result = "MR_Word"
 	).
 
 %-----------------------------------------------------------------------------%

@@ -514,34 +514,34 @@ mlds_output_pragma_export_type(prefix, mercury_type(Type, _)) -->
 	{ export__type_to_type_string(Type, String) },
 	io__write_string(String).
 mlds_output_pragma_export_type(prefix, mlds__cont_type) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__commit_type) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__native_bool_type) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__native_int_type) -->
-	io__write_string("Integer").
+	io__write_string("MR_Integer").
 mlds_output_pragma_export_type(prefix, mlds__native_float_type) -->
-	io__write_string("Float").
+	io__write_string("MR_Float").
 mlds_output_pragma_export_type(prefix, mlds__native_char_type) -->
-	io__write_string("Char").
+	io__write_string("MR_Char").
 mlds_output_pragma_export_type(prefix, mlds__class_type(_, _, _)) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__array_type(_)) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__ptr_type(Type)) -->
 	mlds_output_pragma_export_type(prefix, Type),
 	io__write_string(" *").
 mlds_output_pragma_export_type(prefix, mlds__func_type(_)) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__generic_type) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__generic_env_ptr_type) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__pseudo_type_info_type) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
-	io__write_string("Word").
+	io__write_string("MR_Word").
 	
 
 	%
@@ -2713,7 +2713,8 @@ mlds_output_std_unop(UnaryOp, Exprn) -->
 	io__write_string(UnaryOpString),
 	io__write_string("("),
 	( { UnaryOp = tag } ->
-		% The MR_tag macro requires its argument to be of type `Word'.
+		% The MR_tag macro requires its argument to be of type 
+		% `MR_Word'.
 		% XXX should we put this cast inside the definition of MR_tag?
 		io__write_string("(MR_Word) ")
 	;
@@ -2809,16 +2810,16 @@ mlds_output_rval_const(true) -->
 mlds_output_rval_const(false) -->
 	io__write_string("FALSE").	% XXX should we use `MR_FALSE'?
 mlds_output_rval_const(int_const(N)) -->
-	% we need to cast to (Integer) to ensure
+	% we need to cast to (MR_Integer) to ensure
 	% things like 1 << 32 work when `Integer' is 64 bits
 	% but `int' is 32 bits.
-	io__write_string("(Integer) "),
+	io__write_string("(MR_Integer) "),
 	io__write_int(N).
 mlds_output_rval_const(float_const(FloatVal)) -->
-	% the cast to (Float) here lets the C compiler
+	% the cast to (MR_Float) here lets the C compiler
 	% do arithmetic in `float' rather than `double'
-	% if `Float' is `float' not `double'.
-	io__write_string("(Float) "),
+	% if `MR_Float' is `float' not `double'.
+	io__write_string("(MR_Float) "),
 	io__write_float(FloatVal).
 mlds_output_rval_const(string_const(String)) -->
 	% the cast avoids the following gcc warning
