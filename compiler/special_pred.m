@@ -48,11 +48,11 @@
 
 :- implementation.
 
-% special_pred_list([unify, index, compare]).
+special_pred_list([unify, index, compare]).
 
 % **** Replace the above definition of special_pred_list with the following ****
 % **** to have term_to_type and type_to_term as special preds also.	    ****
-special_pred_list([unify, index, compare, term_to_type, type_to_term]).
+% special_pred_list([unify, index, compare, term_to_type, type_to_term]).
 
 special_pred_name_arity(unify, "unify", "__Unify__", 2).
 special_pred_name_arity(index, "index", "__Index__", 2).
