@@ -1,10 +1,16 @@
 %-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+
+% File: mercury-compile.m.
+% Main author: bromage.
+
 %-----------------------------------------------------------------------------%
 
 :- module eliza.
-
 :- interface.
-
 :- import_module io.
 
 :- pred main(io__state :: di, io__state :: uo) is det.
@@ -16,8 +22,13 @@
 
 :- import_module char, list, string, std_util, map, require.
 
+%-----------------------------------------------------------------------------%
+
+	% Print the opening banner, initialise the response state,
+	% run the main loop.
+
 main -->
-	io__write_string("\nHi! I'm Eliza.  Please tell me your problem.\n"),
+	io__write_string("\nHi!  I'm Eliza.  Please tell me your problem.\n"),
 	{ eliza__initial_state(State) },
 	eliza__main_loop([], State),
 	io__write_string("\nGoodbye.\n").
@@ -34,23 +45,39 @@ eliza__main_loop(Prev, StateIn) -->
 		( { Line1 = Prev } ->
 		    eliza__generate_repeat(StateIn, StateOut)
 		;
-		    eliza__generate_response(Line1, StateIn, StateOut) ),
-	    eliza__main_loop(Line1, StateOut) )
+		    eliza__generate_response(Line1, StateIn, StateOut) 
+		),
+	    eliza__main_loop(Line1, StateOut) 
+	    )
 	;
 	    { true } ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type eliza__state ---> state(
-		assoc_list(message_type, list(message)),
-		list(string)
-		).
+	% Response state processing functions
+
+	% The response state consists of two parts: a set of
+	% (type - messages) pairs and a list of repeat messages.
+	% The response messages are used in response to a context,
+	% and the repeat messages are used in response to a repeated
+	% input line.
+
+:- type response_state == assoc_list(message_type, list(message)).
+:- type repeat_state   == list(string).
+
+:- type eliza__state ---> state(response_state, repeat_state).
+
+	% Initialise the state by reading in the initial message
+	% database.
 
 :- pred eliza__initial_state(eliza__state :: out) is det.
 eliza__initial_state(state(ResMsg,RepMsg)) :-
 	repeat_messages(RepMsg),
 	response_messages(ResMsg).
+
+	% Get a repeat message, and then cycle the list so that
+	% a new one will come up next time.
 
 :- pred eliza__get_repeat(string, eliza__state, eliza__state).
 :- mode eliza__get_repeat(out, in, out) is det.
@@ -59,16 +86,19 @@ eliza__get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
 	    MsgOut = Msg,
 	    list__append(Rest, [Msg], RepOut)
 	;
-	    error("Error: No repeat messages.\n") ).
+	    error("Error: No repeat messages.\n")
+	).
+
+	% Get a response message, and then cycle the list so that
+	% a new one will come up next time.
 
 :- pred eliza__get_response(message_type, message, eliza__state, eliza__state).
 :- mode eliza__get_response(in, out, in, out) is det.
 eliza__get_response(Type, MsgOut, state(ResIn, Rep), state(ResOut, Rep)) :-
 	eliza__get_response2(Type, MsgOut, ResIn, ResOut).
 
-:- pred eliza__get_response2(message_type, message, 
-		assoc_list(message_type, list(message)),
-		assoc_list(message_type, list(message))).
+:- pred eliza__get_response2(message_type, message,
+		response_state, response_state).
 :- mode eliza__get_response2(in, out, in, out) is det.
 eliza__get_response2(_Type, _MsgOut, [], []) :-
 	error("Error: Cannot match message type.\n").
@@ -81,13 +111,17 @@ eliza__get_response2(Type, MsgOut,
 		RestOut = RestIn,
 		list__append(MsgOutRest, [MsgOut], Msgs3)
 	    ;
-		error("Error: Empty response list.\n") )
+		error("Error: Empty response list.\n") 
+	    )
 	;
 	    Msgs2 = Msgs3,
-	    eliza__get_response2(Type, MsgOut, RestIn, RestOut) ).
+	    eliza__get_response2(Type, MsgOut, RestIn, RestOut) 
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+	% Write a prompt, then read a line.
 
 :- pred eliza__read_line(list(char), bool, io__state, io__state).
 :- mode eliza__read_line(out, out, di, uo) is det.
@@ -99,20 +133,35 @@ eliza__read_line(Line, Ok) -->
 	( { Result = ok(Line1) } ->
 	   { Ok = yes, Line = Line1 }
 	;
-	   { Ok = no, Line = [] } ).
+	   { Ok = no, Line = [] }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred char__is_punct(char).
-:- mode char__is_punct(in) is semidet.
-char__is_punct('.').
-char__is_punct(',').
-char__is_punct('!').
-char__is_punct('?').
+	% These are the characters that we must strip from a
+	% line during parsing.
+
+:- pred eliza__is_punct(char).
+:- mode eliza__is_punct(in) is semidet.
+eliza__is_punct('.').
+eliza__is_punct(',').
+eliza__is_punct('!').
+eliza__is_punct('?').
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+	% Parse the input string into words.  This is
+	% achieved in three phases:
+	%
+	%     - Strip leading whitespace and intermediate
+	%       punctuation symbols.
+	%
+	%     - Turn the resulting line into a list of words (each
+	%       word stored as a list of characters).
+	%
+	%     - Turn each word into a string.
 
 :- pred eliza__parse(list(char) :: in, list(string) :: out) is det.
 eliza__parse -->
@@ -126,19 +175,22 @@ eliza__strip([ X | Xs ], Ys) :-
 	( char__is_whitespace(X) ->
 	    eliza__strip(Xs, Ys)
 	;
-	    eliza__strip2([ X | Xs ], Ys) ).
+	    eliza__strip2([ X | Xs ], Ys)
+	).
 
 :- pred eliza__strip2(list(char) :: in, list(char) :: out) is det.
 eliza__strip2([], []).
 eliza__strip2([ X | Xs ], Ys) :-
-	( char__is_punct(X) ->
+	( eliza__is_punct(X) ->
 	    eliza__strip2([ ' ' | Xs ], Ys)
 	;
 	     eliza__strip2(Xs, Ys1),
 	    ( char__is_whitespace(X), Ys1 = [] ->
 		Ys = []
 	    ;
-		Ys = [ X | Ys1 ] ) ).
+		Ys = [ X | Ys1 ] 
+	    ) 
+	).
 
 :- pred eliza__form_words(list(char), list(list(char))).
 :- mode eliza__form_words(in, out) is det.
@@ -149,7 +201,8 @@ eliza__form_words([ X | Xs ], Ys) :-
 	;
 	    eliza__form_word(Xs, [X], Word, Rest),
 	    eliza__form_words(Rest, Words),
-	    Ys = [ Word | Words ] ).
+	    Ys = [ Word | Words ] 
+	).
 
 :- pred eliza__form_word(list(char), list(char), list(char), list(char)).
 :- mode eliza__form_word(in, in, out, out) is det.
@@ -159,7 +212,8 @@ eliza__form_word([ X | Xs ], WordIn, WordOut, Rest) :-
 	( char__is_whitespace(X) ->
 	    list__reverse(WordIn, WordOut), Rest = Xs
 	;
-	    eliza__form_word(Xs, [ X | WordIn ], WordOut, Rest) ).
+	    eliza__form_word(Xs, [ X | WordIn ], WordOut, Rest) 
+	).
 
 :- pred eliza__words_to_strings(list(list(char)), list(string)).
 :- mode eliza__words_to_strings(in, out) is det.
@@ -171,6 +225,8 @@ eliza__words_to_strings([X | Xs], [Y | Ys]) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+	% Generate and display a repeat message
+
 :- pred eliza__generate_repeat(eliza__state, eliza__state,
 		io__state, io__state).
 :- mode eliza__generate_repeat(in, out, di, uo) is det.
@@ -179,21 +235,35 @@ eliza__generate_repeat(StateIn, StateOut) -->
 	io__write_string(Msg),
 	io__write_string("\n").
 
+	% Generate and display a repeat message
+
 :- pred eliza__generate_response(list(string),
 		eliza__state, eliza__state,
 		io__state, io__state).
 :- mode eliza__generate_response(in, in, out, di, uo) is det.
 eliza__generate_response(Words, StateIn, StateOut) -->
+
+	% Find out what sort of message we are dealing with.
+
 	{ eliza__find_handle(Words, MsgType, Rest) },
 	{ eliza__get_response(MsgType, Maybe-String, StateIn, StateOut) },
-	{ eliza__perform_conjugate(Rest, Postfix) },
 	io__write_string(String),
+
+	% If we must parrot back part of the original message,
+	% resolve conjugates, write that string and then add
+	% a trailing punctuation mark.
+
 	( { Maybe = yes(C) } ->
+	    { eliza__perform_conjugate(Rest, Postfix) },
 	    eliza__write_strings(Postfix),
 	    io__write_char(C)
 	;
-	    { true } ),
+	    { true } 
+	),
 	io__write_string("\n").
+
+	% Write a list of strings to the output stream with
+	% words thrown in between.
 
 :- pred eliza__write_strings(list(string), io__state, io__state).
 :- mode eliza__write_strings(in, di, uo) is det.
@@ -224,7 +294,8 @@ eliza__find_handle2(In, Type, Out, [ Prefix - Type2 | Handles ]) :-
 	( eliza__find_handle3(In, Prefix, Rest) ->
 	    Out = Rest, Type = Type2
 	;
-	    eliza__find_handle2(In, Type, Out, Handles) ).
+	    eliza__find_handle2(In, Type, Out, Handles) 
+	).
 
 :- pred eliza__find_handle3(list(string), list(string), list(string)).
 :- mode eliza__find_handle3(in, in, out) is semidet.
@@ -232,13 +303,14 @@ eliza__find_handle3([ X | Xs ], Prefix, Rest) :-
 	( eliza__match_prefix(Prefix, [X|Xs], Rest2) ->
 	    Rest = Rest2
 	;
-	    eliza__find_handle3(Xs, Prefix, Rest) ).
+	    eliza__find_handle3(Xs, Prefix, Rest) 
+	).
 
 :- pred eliza__perform_conjugate(list(string), list(string)).
 :- mode eliza__perform_conjugate(in, out) is det.
 eliza__perform_conjugate([], []).
 eliza__perform_conjugate([X | Xs], [Y | Ys]) :-
-	( ( X = "I", Xs = []) ->
+	( ( X = "I", Xs = [] ) ->
 	    Y = "me", Ys = []
 	;
 	    eliza__conjugate_map(Map),
@@ -246,8 +318,10 @@ eliza__perform_conjugate([X | Xs], [Y | Ys]) :-
 	    ( map__search(Map, Xupp, Result) ->
 		Y = Result
 	    ;
-		Y = X ),
-	    eliza__perform_conjugate(Xs, Ys)).
+		Y = X 
+	    ),
+	    eliza__perform_conjugate(Xs, Ys)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -270,6 +344,16 @@ eliza__conjugate_map(MapOut) :-
 	list__append(AL12, AL3, AL123),
 	prepare_conj(AL123, ALFinal),
 	map__from_assoc_list(ALFinal, MapOut).
+
+:- pred prepare_conj(assoc_list(string, string), assoc_list(string, string)).
+:- mode prepare_conj(in, out) is det.
+prepare_conj([], []).
+prepare_conj([X-V|Xs], [Y-V|Ys]) :-
+	string__to_upper(X,Y),
+	prepare_conj(Xs, Ys).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- pred response_handles(assoc_list(list(string), message_type) :: out) is det.
 response_handles([
@@ -314,15 +398,6 @@ response_handles([
         ["YOU"]                	- you
 	]).
 
-
-:- pred prepare_conj(assoc_list(string, string), assoc_list(string, string)).
-:- mode prepare_conj(in, out) is det.
-prepare_conj([], []).
-prepare_conj([X-V|Xs], [Y-V|Ys]) :-
-	string__to_upper(X,Y),
-	prepare_conj(Xs, Ys).
-
-
 :- pred one_way_conjugates(assoc_list(string, string) :: out) is det.
 one_way_conjugates([
 	"me" - "you"
@@ -338,7 +413,7 @@ two_way_conjugates([
 	"I'm" - "you're"
 	]).
 
-:- pred repeat_messages(list(string) :: out) is det.
+:- pred repeat_messages(repeat_state :: out) is det.
 repeat_messages([
  	"Why did you repeat yourself?",
 	"Do you expect a different answer by repeating yourself?",
@@ -346,7 +421,7 @@ repeat_messages([
 	"Please don't repeat yourself!" 
 	]).
 
-:- pred response_messages(assoc_list(message_type, list(message)) :: out) is det.
+:- pred response_messages(response_state :: out) is det.
 response_messages(
 	[
 	can_you - [
@@ -522,7 +597,7 @@ response_messages(
 		no       - "What resemblence do you see?",
 		no       - "What does the similarity suggest to you?",
 		no       - "What other connections do you see?",
-		no       - "Cound there really be some connection?",
+		no       - "Could there really be some connection?",
 		no       - "How?"
 		],
 
@@ -544,3 +619,4 @@ response_messages(
 		]
 	]).
 
+% eliza.m %
