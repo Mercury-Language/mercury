@@ -245,9 +245,6 @@
 :- import_module check_hlds__inst_match, check_hlds__mode_util.
 :- import_module check_hlds__type_util.
 
-		%  XXX for code_util__builtin_state.
-:- import_module ll_backend, ll_backend__code_util.
-
 :- import_module int, string, require, varset.
 
 %-----------------------------------------------------------------------------%
@@ -1225,12 +1222,11 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
 	lookup_builtin_pred_proc_id(Module, ModuleName, PredName, 
 		Arity, ModeNo, PredId, ProcId),
 
-	% code_util__buitin_state only uses this to work out whether
+	% builtin_state only uses this to work out whether
 	% this is the "recursive" clause generated for the compiler
 	% for each builtin, so an invalid pred_id won't cause problems.
 	invalid_pred_id(InvalidPredId),
-	code_util__builtin_state(Module, InvalidPredId,
-		PredId, ProcId, BuiltinState),
+	builtin_state(Module, InvalidPredId, PredId, ProcId, BuiltinState),
 
 	Call = call(PredId, ProcId, Args, BuiltinState, no,
 		qualified(ModuleName, PredName)),

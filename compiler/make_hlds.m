@@ -111,7 +111,7 @@
 :- import_module check_hlds__purity, check_hlds__unify_proc.
 :- import_module transform_hlds__term_util.
 :- import_module ll_backend, ll_backend__llds.
-:- import_module ll_backend__code_util, ll_backend__fact_table.
+:- import_module ll_backend__fact_table.
 :- import_module hlds__hlds_code_util.
 :- import_module backend_libs__export, backend_libs__foreign.
 :- import_module recompilation.
@@ -3376,7 +3376,7 @@ add_new_pred(Module0, TVarSet, ExistQVars, PredName, Types, Cond, Purity,
 			{ predicate_table_insert(PredicateTable0, PredInfo0, 
 				NeedQual, PQInfo, PredId, PredicateTable1) },
 			(
-				{ code_util__predinfo_is_builtin(PredInfo0) }
+				{ pred_info_is_builtin(PredInfo0) }
 			->
 				{ add_builtin(PredId, Types,
 					PredInfo0, PredInfo) },
@@ -4316,7 +4316,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args0, Body,
 	;
 		% Ignore clauses for builtins. This makes bootstrapping
 		% easier when redefining builtins to use normal Mercury code.
-		{ code_util__predinfo_is_builtin(PredInfo1) }
+		{ pred_info_is_builtin(PredInfo1) }
 	->
 		prog_out__write_context(Context),
 		report_warning("Warning: clause for builtin.\n"),

@@ -89,8 +89,7 @@
 :- import_module assoc_list, dir, getopt, int, list, map, multi_map, require.
 :- import_module set, std_util, string, term, varset.
 
-:- import_module ll_backend__code_util, libs__globals, hlds__goal_util, term.
-:- import_module varset.
+:- import_module libs__globals, hlds__goal_util.
 :- import_module hlds__hlds_data, hlds__hlds_goal, hlds__hlds_pred.
 :- import_module hlds__hlds_out, transform_hlds__inlining, ll_backend__llds.
 :- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
@@ -353,8 +352,8 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 
 		% Don't export builtins since they will be
 		% recreated in the importing module anyway.
-		\+ code_util__compiler_generated(PredInfo),
-		\+ code_util__predinfo_is_builtin(PredInfo),
+		\+ compiler_generated(PredInfo),
+		\+ pred_info_is_builtin(PredInfo),
 
 		% These will be recreated in the importing module.
 		\+ set__member(PredId, TypeSpecForcePreds),
@@ -595,7 +594,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% the `.opt' file, since they will be recreated every
 		% time anyway.
 		%
-		{ code_util__compiler_generated(PredInfo) }
+		{ compiler_generated(PredInfo) }
 	->
 		{ DoWrite = yes }
 	;

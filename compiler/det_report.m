@@ -139,7 +139,7 @@
 :- import_module hlds__hlds_data, check_hlds__type_util.
 :- import_module check_hlds__mode_util, check_hlds__inst_match.
 :- import_module hlds__hlds_out, parse_tree__mercury_to_mercury.
-:- import_module ll_backend__code_util, hlds__passes_aux.
+:- import_module hlds__passes_aux.
 :- import_module libs__globals, libs__options.
 
 :- import_module assoc_list, bool, int, map, set, std_util, require, string.
@@ -207,7 +207,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 				% happen for the Unify pred for the unit type,
 				% if such types are not boxed (as they are not
 				% boxed for the IL backend).
-				{ \+ code_util__compiler_generated(PredInfo0) },
+				{ \+ compiler_generated(PredInfo0) },
 
 				% Don't warn about predicates which are
 				% inferred erroneous when the appropiate

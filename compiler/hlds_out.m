@@ -800,7 +800,7 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 			% need that information to understand how the program
 			% has been transformed.
 			{ \+ string__contains_char(Verbose, 'U') },
-			{ code_util__compiler_generated(PredInfo) }
+			{ compiler_generated(PredInfo) }
 		->
 			[]
 		;

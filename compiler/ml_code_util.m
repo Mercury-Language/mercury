@@ -807,7 +807,6 @@
 :- import_module backend_libs__foreign.
 :- import_module parse_tree__prog_util, check_hlds__type_util.
 :- import_module check_hlds__mode_util, hlds__special_pred, hlds__error_util.
-:- import_module ll_backend__code_util. % XXX for `code_util__compiler_generated'.
 :- import_module ml_backend__ml_code_gen, ml_backend__ml_call_gen.
 :- import_module libs__globals, libs__options.
 

@@ -182,7 +182,7 @@
 
 :- import_module hlds__hlds_data, hlds__hlds_goal, parse_tree__prog_io_util.
 :- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module ll_backend__code_util, parse_tree__prog_data.
+:- import_module parse_tree__prog_data.
 :- import_module check_hlds__unify_proc.
 :- import_module libs__globals, libs__options, parse_tree__mercury_to_mercury.
 :- import_module hlds__hlds_out.
@@ -870,7 +870,7 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity) -->
 	; 
 		% Don't require purity annotations on calls in
 		% compiler-generated code.
-		{ code_util__compiler_generated(PredInfo) }
+		{ compiler_generated(PredInfo) }
 	->
 		[]
 	; 
@@ -1068,7 +1068,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	io__write_string(".\n"),
 	prog_out__write_context(Context),
 	{ pred_info_get_purity(PredInfo, DeclaredPurity) },
-	( { code_util__compiler_generated(PredInfo) } ->
+	( { compiler_generated(PredInfo) } ->
 		io__write_string("  It must be pure.\n")
 	;
 		io__write_string("  It must be declared `"),

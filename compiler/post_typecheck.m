@@ -120,7 +120,7 @@
 
 :- implementation.
 
-:- import_module (hlds__assertion), ll_backend__code_util.
+:- import_module (hlds__assertion).
 :- import_module check_hlds__typecheck, check_hlds__clause_to_proc.
 :- import_module check_hlds__mode_util, check_hlds__inst_match.
 :- import_module (parse_tree__inst), parse_tree__prog_util, hlds__error_util.
@@ -1228,7 +1228,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% a type ambiguity error, but compiler-generated
 		% predicates are not type-checked.)
 		%
-		\+ code_util__compiler_generated(PredInfo0),
+		\+ compiler_generated(PredInfo0),
 
 		%
 		% We don't do this for the clause introduced by the
@@ -1319,7 +1319,7 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		% We don't do this for compiler-generated predicates --
 		% they will never contain calls to field access functions.
 		%
-		\+ code_util__compiler_generated(PredInfo0),
+		\+ compiler_generated(PredInfo0),
 
 		%
 		% If there is a constructor for which the argument types

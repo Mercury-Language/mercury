@@ -53,7 +53,6 @@
 :- import_module hlds__hlds_goal, hlds__hlds_data, parse_tree__prog_util.
 :- import_module ll_backend__llds.
 :- import_module hlds__passes_aux, libs__globals, libs__options.
-:- import_module ll_backend__code_util.
 
 :- import_module int, string, list, set, queue, bool, require.
 
@@ -774,7 +773,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			% Don't eliminate special preds since they won't
 			% be actually called from the HLDS until after 
 			% polymorphism.
-			code_util__compiler_generated(PredInfo)
+			compiler_generated(PredInfo)
 		;
 			% Don't eliminate preds from builtin modules,
 			% since later passes of the compiler may introduce

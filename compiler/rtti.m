@@ -625,7 +625,6 @@
 :- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
 :- import_module hlds__hlds_data.
 :- import_module check_hlds__type_util, check_hlds__mode_util.
-:- import_module ll_backend__code_util.	% for code_util__compiler_generated
 :- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
 
 :- import_module int, string, require, varset.
@@ -747,7 +746,7 @@ rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	IsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
 	IsExported = (procedure_is_exported(PredInfo, ProcId) -> yes ; no),
 	IsSpecialPredInstance =
-		(code_util__compiler_generated(PredInfo) -> yes ; no),
+		(compiler_generated(PredInfo) -> yes ; no),
 	ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
 			Name = varset__lookup_name(ProcVarSet, Var)
 		), ProcHeadVars),

@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -91,7 +91,7 @@
 :- import_module libs__globals.
 :- import_module hlds__hlds_data, hlds__hlds_goal.
 :- import_module transform_hlds__dependency_graph, varset.
-:- import_module check_hlds__mode_util, hlds__hlds_out, ll_backend__code_util.
+:- import_module check_hlds__mode_util, hlds__hlds_out.
 :- import_module parse_tree__prog_out, parse_tree__prog_util.
 :- import_module parse_tree__mercury_to_mercury, check_hlds__type_util.
 :- import_module hlds__special_pred.
@@ -475,7 +475,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 set_compiler_gen_terminates(PredInfo, ProcIds, PredId, Module,
 		ProcTable0, ProcTable) :-
 	(
-		code_util__predinfo_is_builtin(PredInfo)
+		pred_info_is_builtin(PredInfo)
 	->
 		set_builtin_terminates(ProcIds, PredId, PredInfo, Module,
 			ProcTable0, ProcTable)
@@ -709,7 +709,7 @@ termination__write_pred_termination_info(Module, PredId) -->
 		;
 			ImportStatus = opt_exported
 		},
-		{ \+ code_util__compiler_generated(PredInfo) },
+		{ \+ compiler_generated(PredInfo) },
 
 		% XXX These should be allowed, but the predicate
 		% declaration for the specialized predicate is not produced

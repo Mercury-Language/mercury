@@ -37,7 +37,7 @@
 
 :- import_module hlds__hlds_pred, hlds__hlds_goal, hlds__hlds_data.
 :- import_module hlds__instmap, (parse_tree__inst).
-:- import_module ll_backend__code_util, libs__globals, check_hlds__mode_util.
+:- import_module libs__globals, check_hlds__mode_util.
 :- import_module hlds__goal_util.
 :- import_module check_hlds__type_util, libs__options, parse_tree__prog_data.
 :- import_module parse_tree__prog_out, hlds__quantification.
@@ -979,8 +979,7 @@ construct_specialized_higher_order_call(PredId, ProcId,
 	pred_info_name(PredInfo, PredName),
 	SymName = qualified(ModuleName, PredName),
 	proc(CallerPredId, _) = Info0 ^ pred_proc_id,
-	code_util__builtin_state(ModuleInfo, CallerPredId,
-		PredId, ProcId, Builtin),
+	builtin_state(ModuleInfo, CallerPredId, PredId, ProcId, Builtin),
 
 	MaybeContext = no,
 	Goal1 = call(PredId, ProcId, AllArgs, Builtin, MaybeContext, SymName),

@@ -156,7 +156,6 @@
 
 :- import_module hlds__hlds_goal, hlds__goal_util, parse_tree__prog_util.
 :- import_module check_hlds__type_util, parse_tree__modules.
-:- import_module ll_backend__code_util.
 :- import_module parse_tree__prog_io, parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out, hlds__hlds_out, hlds__error_util.
 :- import_module parse_tree__mercury_to_mercury, check_hlds__mode_util.
@@ -320,9 +319,9 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 	    % But, compiler-generated unify predicates are not guaranteed
 	    % to be type-correct if they call a user-defined equality pred
 	    % or if it is a special pred for an existentially typed data type.
-	    ( code_util__compiler_generated(!.PredInfo),
+	    ( compiler_generated(!.PredInfo),
 	      \+ special_pred_needs_typecheck(!.PredInfo, ModuleInfo0)
-	    ; code_util__predinfo_is_builtin(!.PredInfo)
+	    ; pred_info_is_builtin(!.PredInfo)
 	    )
 	->
 	    pred_info_clauses_info(!.PredInfo, ClausesInfo0),
@@ -4850,7 +4849,7 @@ convert_cons_defn(TypeCheckInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 		typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
 		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		\+ pred_info_get_goal_type(PredInfo, clauses_and_pragmas),
-		\+ code_util__compiler_generated(PredInfo),
+		\+ compiler_generated(PredInfo),
 		\+ pred_info_import_status(PredInfo, opt_imported)
 	->
 		ConsTypeInfo = error(foreign_type_constructor(TypeCtor,

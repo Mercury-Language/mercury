@@ -48,7 +48,7 @@
 :- import_module check_hlds__mode_info, check_hlds__modes.
 :- import_module check_hlds__mode_errors.
 :- import_module check_hlds__inst_match, check_hlds__inst_util.
-:- import_module check_hlds__unify_proc, ll_backend__code_util.
+:- import_module check_hlds__unify_proc.
 :- import_module check_hlds__unique_modes.
 :- import_module check_hlds__typecheck, check_hlds__modecheck_call.
 :- import_module (parse_tree__inst), hlds__quantification, hlds__make_hlds.
@@ -975,7 +975,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 				PredInfo),
 		mode_info_get_instmap(ModeInfo3, InstMap0),
 		( 
-			( code_util__compiler_generated(PredInfo) 
+			( compiler_generated(PredInfo) 
 			; instmap__is_unreachable(InstMap0)
 			)
 		->

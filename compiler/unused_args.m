@@ -74,7 +74,6 @@
 :- import_module check_hlds__type_util, check_hlds__mode_util.
 :- import_module check_hlds__inst_match, check_hlds__polymorphism.
 :- import_module transform_hlds__mmc_analysis.
-:- import_module ll_backend__code_util.
 :- import_module libs__options, libs__globals.
 
 :- import_module bool, int, char, string, list, assoc_list, set, map.
@@ -259,7 +258,7 @@ setup_local_var_usage([PredId | PredIds], UnusedArgInfo,
 		% as if they use all of their arguments,
 		% to avoid spurious warnings in their callers.
 		(
-			code_util__predinfo_is_builtin(PredInfo)
+			pred_info_is_builtin(PredInfo)
 		; 
 			pred_info_get_markers(PredInfo, Markers),
 			check_marker(Markers, stub)
@@ -1550,8 +1549,8 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 			\+ pred_info_import_status(PredInfo, opt_imported),
 				% Don't warn about builtins
 				% that have unused arguments.
-			\+ code_util__predinfo_is_builtin(PredInfo),
-			\+ code_util__compiler_generated(PredInfo),
+			\+ pred_info_is_builtin(PredInfo),
+			\+ compiler_generated(PredInfo),
 				% Don't warn about stubs for procedures
 				% with no clauses -- in that case,
 				% we *expect* that none of the arguments

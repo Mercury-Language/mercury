@@ -126,7 +126,7 @@
 
 :- implementation.
 
-:- import_module ll_backend__code_util, hlds__hlds_pred, hlds__hlds_data.
+:- import_module hlds__hlds_pred, hlds__hlds_data.
 :- import_module check_hlds__inst_match.
 :- import_module hlds__instmap, check_hlds__mode_util, libs__tree.
 :- import_module check_hlds__type_util, parse_tree__prog_out.
@@ -940,10 +940,10 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 		% in Aditi predicates so the types must be known.
 		\+ {
 			% `index/2' doesn't work in Aditi.
-			code_util__compiler_generated(PredInfo),
+			compiler_generated(PredInfo),
 			\+ pred_info_name(PredInfo, "__Index__")
 		},
-		{ \+ code_util__predinfo_is_builtin(PredInfo) },
+		{ \+ pred_info_is_builtin(PredInfo) },
 		{ \+ rl_exprn__is_simple_extra_aditi_builtin(PredInfo,
 			ProcId, _) }
 	->
@@ -988,7 +988,7 @@ rl_exprn__call_body(PredId, ProcId, PredInfo, ProcInfo, Fail, Args, Code) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ pred_info_arity(PredInfo, Arity) },
 	(
-		{ code_util__predinfo_is_builtin(PredInfo) }
+		{ pred_info_is_builtin(PredInfo) }
 	->
 		rl_exprn__generate_builtin_call(PredId, ProcId, PredInfo,
 			Args, Fail, Code)
