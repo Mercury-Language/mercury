@@ -56,6 +56,12 @@ case @FULLARCH@ in
 		-R@LIBDIR@/lib/$GRADE/@FULLARCH@ -L$LIBDIR/$GRADE/@FULLARCH@
 		"
 		;;
+	*-sgi-irix5*)
+		LIBDIR_OPTS="
+		-rpath @LIBDIR@/lib/@FULLARCH@ -L$LIBDIR/@FULLARCH@
+		-rpath @LIBDIR@/lib/$GRADE/@FULLARCH@
+		-L$LIBDIR/$GRADE/@FULLARCH@
+		"
 	*)
 		LIBDIR_OPTS="
 		-L$LIBDIR/@FULLARCH@
