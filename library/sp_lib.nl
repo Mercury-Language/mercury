@@ -114,6 +114,11 @@ string__float_to_f_string(Float, String) :-
 duplicate(Term, Copy) :-
 	copy_term(Term, Copy).
 
+getenv(Var, Val) :-
+	use_module(library(system), []),
+	system:environ(Var, Val0),
+	atom_chars(Val0, Val).
+
 %-----------------------------------------------------------------------------%
 
 % Sheesh - do I really have to define these myself!

@@ -539,12 +539,7 @@ io__final_state(IOState) :-
 
 % The following routines work only under SICStus, not under NU-Prolog.
 
-io__tmpnam_2(Name) -->
-	{ use_module(library(system)) }, % for tmpnam/1
-	{ tmpnam(Atom) },
-	{ name(Atom, Name) }.
-
-io__tmpnam(Dir, Prefix, Name) -->
+io__make_temp(Dir, Prefix, Name) -->
 	{ use_module(library(system)) }, % for mktemp/2
 	{ dir__directory_separator(SepChar) },
 	{ string__char_to_string(SepChar, Sep) },
@@ -552,7 +547,13 @@ io__tmpnam(Dir, Prefix, Name) -->
 	{ string__append_list([Dir, Sep, LeftPrefix, "XXXXXX"], TemplateName) },
 	{ name(TemplateAtom, TemplateName) },
 	{ mktemp(TemplateAtom, TmpAtom) },
-	{ name(TmpAtom, Name) }.
+	{ name(TmpAtom, Name) },
+	io__open_output(Name, Res),
+	( { Res = ok(Stream) } ->	
+		io__close_output(Stream)
+	;
+		{ error("io__make_temp: error opening temporary file") }
+	).
 
 io__rename_file_2(OldName, NewName, Result, ResultStr) -->
 	{ use_module(library(system)) }, % for rename_file/2
@@ -657,6 +658,11 @@ io__call_system_code(Command, Status) -->
 		Status = -1
 	},
 	io__update_state.
+
+io__getenv(Var, Val) -->
+	{ getenv(Var, Val) }.
+
+io__make_err_msg(Msg, Msg) --> [].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
