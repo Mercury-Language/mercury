@@ -1,0 +1,50 @@
+abc
+  abc
+{a,b}
+  a
+  b
+a{b,c}d
+  abd
+  acd
+aa{bb,cc}dd
+  aabbdd
+  aaccdd
+aa{bb,cc,{d,e}}ff
+  aabbff
+  aaccff
+  aadff
+  aaeff
+aa{{b1,b2,b3},cc,{d,e}}ff
+  aab1ff
+  aab2ff
+  aab3ff
+  aaccff
+  aadff
+  aaeff
+aa{{b1,{b21,b22,b23},b3},cc,{d,e}}ff
+  aab1ff
+  aab21ff
+  aab22ff
+  aab23ff
+  aab3ff
+  aaccff
+  aadff
+  aaeff
+a{b,c}d{e,f,g}h
+  abdeh
+  abdfh
+  abdgh
+  acdeh
+  acdfh
+  acdgh
+aa{bb,cc,{{d1,d2},e}}ff{g,hh}
+  aabbffg
+  aabbffhh
+  aaccffg
+  aaccffhh
+  aad1ffg
+  aad1ffhh
+  aad2ffg
+  aad2ffhh
+  aaeffg
+  aaeffhh

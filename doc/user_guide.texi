@@ -6384,6 +6384,8 @@ The configuration file is just an options file (@pxref{Using Mmake}).
 @findex --options-search-directory
 Add @var{dir} to the list of directories to be searched for
 options files.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @sp 1
 @item --mercury-configuration-directory @var{dir}
@@ -6401,6 +6403,8 @@ Search @var{dir} for Mercury system's configuration files.
 @cindex Search path
 Append @var{dir} to the list of directories to be searched for
 imported modules.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @sp 1
 @item --intermod-directory @var{dir}
@@ -6409,6 +6413,8 @@ imported modules.
 @cindex Search path
 Append @var{dir} to the list of directories to be searched for
 @samp{.opt} files.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @sp 1
 @item --use-search-directories-for-intermod
@@ -6522,6 +6528,8 @@ Append @var{dir} to the list of directories to be searched for
 C header files.  Note that if you want to override this list, rather than
 append to it, then you can set the @samp{MERCURY_MC_ALL_C_INCL_DIRS}
 environment variable to a sequence of @samp{--c-include-directory} options.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @sp 1
 @item @code{--c-debug}
@@ -6648,6 +6656,8 @@ to be quoted when passed to the shell.
 @cindex Search path for libraries
 Append @var{directory} to the list of directories in which
 to search for libraries.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @sp 1
 @item -R @var{directory}
@@ -6656,6 +6666,8 @@ to search for libraries.
 @findex --runtime-library-directory
 Append @var{directory} to the list of directories in which
 to search for shared libraries at runtime.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @item -l @var{library}
 @itemx --library @var{library}
@@ -6713,6 +6725,8 @@ Implies @samp{--no-mercury-configuration-directory}.
 @findex --init-file-directory
 Append @var{directory} to the list of directories to
 be searched for @samp{.init} files by @samp{c2init}.
+If @var{dir} contains braces,
+it may specify more than one directory via brace expansion.
 
 @sp 1
 @item --init-file @var{file}

@@ -272,6 +272,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		TermNorm, TraceLevel, TraceSuppress),
 
+	list__foldl(brace_expand_accumulating_option,
+		[c_include_directory, link_library_directories,
+		runtime_link_library_directories, mercury_library_directories,
+		init_file_directories, options_search_directories,
+		search_directories, intermod_directories]),
+
 	% Conservative GC implies --no-reclaim-heap-*
 	( { gc_is_conservative(GC_Method) = yes } ->
 		globals__io_set_option(
@@ -419,7 +425,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%	  Because Java doesn't provide any mechanism for tagging
 	%	  pointers.
 	%   - box no-tag types
-	%         We require no-tag types to be boxed since in Java 
+	%         We require no-tag types to be boxed since in Java
 	%         java.lang.Object is the only type that all other types
 	%         can be successfully cast to and then cast back from.
 	%   - store nondet environments on the heap
@@ -859,7 +865,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	% i.e. in which a parameter X may have a type whose type_info var
 	% (in the type_info_varmap) occurs to the right of X in the
 	% procedure's parameter list.
-	% 
+	%
 	( { GC_Method = accurate } ->
 		globals__io_set_option(agc_stack_layout, bool(yes)),
 		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
@@ -1008,7 +1014,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 		%
 		% Add `-L' and `-R' options for the location
-		% of the GC libraries. 
+		% of the GC libraries.
 		%
 		globals__io_lookup_accumulating_option(
 			link_library_directories, LinkLibDirs0),
@@ -1236,6 +1242,14 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	;
 		[]
 	).
+
+:- pred brace_expand_accumulating_option(option::in,
+	io__state::di, io__state::uo) is det.
+
+brace_expand_accumulating_option(Option) -->
+	globals__io_lookup_accumulating_option(Option, Strings0),
+	{ list__condense(list__map(expand_braces, Strings0), Strings) },
+	globals__io_set_option(Option, accumulating(Strings)).
 
 	% These option implications only affect the low-level (LLDS) code
 	% generator.  They may in fact be harmful if set for the high-level
