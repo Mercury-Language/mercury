@@ -2963,17 +2963,17 @@ llds_out__make_stack_layout_name(Label, Name) :-
 
 output_data_addr(ModuleName, VarName) -->
 	(
+		{ VarName = common(N) },
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		io__write_string("mercury_data_"),
-		{ VarName = common(N) },
 		io__write_string(MangledModuleName),
 		io__write_string("__common_"),
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
+		{ VarName = type_ctor(BaseData, TypeName0, TypeArity) },
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		io__write_string("mercury_data_"),
-		{ VarName = type_ctor(BaseData, TypeName0, TypeArity) },
 		io__write_string(MangledModuleName),
 		{ llds_out__make_type_ctor_name(BaseData, TypeName0, TypeArity,
 			Str) },
