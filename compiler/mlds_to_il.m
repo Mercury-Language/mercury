@@ -1019,11 +1019,22 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 			)
 		)},
 
-		{ UnivMercuryType = term__functor(term__atom("univ"), [], 
-			context("", 0)) },
+		{ construct_qualified_term(
+			qualified(unqualified("std_util"), "univ"),
+			[], UnivMercuryType) },	
 		{ UnivMLDSType = mercury_type(UnivMercuryType,
 				user_type, non_foreign_type(UnivMercuryType)) },
-		{ UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType) },
+		%
+		% XXX Nasty hack alert!
+		%
+		% Currently the library doesn't build with --high-level-data.
+		% So here we explicitly set --high-level-data to `no'
+		% to reflect the fact that we're linking against the
+		% version of the library compiled with --low-level-data.
+		%
+		{ XXX_LibraryDataRep = DataRep ^ highlevel_data := no },
+		{ UnivType = mlds_type_to_ilds_type(XXX_LibraryDataRep,
+			UnivMLDSType) },
 
 		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
 
