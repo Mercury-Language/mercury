@@ -102,6 +102,7 @@
 			;	tag
 			;	mkbody
 			;	body
+			;	cast_to_unsigned
 			;	not.
 
 :- type rval_const	--->	true
@@ -309,7 +310,7 @@ output_instruction(mkframe(Str, Num, FailureContinuation)) -->
 	io__write_string("); }").
 
 output_instruction(modframe(FailureContinuation)) -->
-	io__write_string("\t{"),
+	io__write_string("\t{ "),
 	output_code_addr_decls(FailureContinuation),
 	io__write_string("modframe("),
 	output_code_addr(FailureContinuation),
@@ -326,9 +327,11 @@ output_instruction(goto(CodeAddr)) -->
 	io__write_string(" }").
 
 output_instruction(computed_goto(Rval, Labels)) -->
-	io__write_string("\t{"),
+	io__write_string("\t{ "),
 	output_rval_decls(Rval),
 	io__write_string("COMPUTED_GOTO("),
+	output_rval(Rval),
+	io__write_string(",\n\t\t"),
 	output_label_list(Labels),
 	io__write_string("); }").
 
@@ -434,13 +437,13 @@ output_call(Target, Continuation) -->
 	( { Target = label(Label) } ->
 		io__write_string("localcall("),
 		output_label(Label),
-		io__write_string(", "),
+		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation),
 		io__write_string(");")
 	;
 		io__write_string("call("),
 		output_code_addr(Target),
-		io__write_string(", "),
+		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation),
 		io__write_string(");")
 	).
@@ -470,7 +473,9 @@ output_code_addr(imported(ProcLabel)) -->
 
 output_label_list([]) --> [].
 output_label_list([Label | Labels]) -->
+	io__write_string("LABEL("),
 	output_label(Label),
+	io__write_string(")"),
 	output_label_list_2(Labels).
 
 :- pred output_label_list_2(list(label), io__state, io__state).
@@ -478,8 +483,10 @@ output_label_list([Label | Labels]) -->
 
 output_label_list_2([]) --> [].
 output_label_list_2([Label | Labels]) -->
-	io__write_string(" AND "),
+	io__write_string(" AND\n\t\t"),
+	io__write_string("LABEL("),
 	output_label(Label),
+	io__write_string(")"),
 	output_label_list_2(Labels).
 
 :- pred output_label(label, io__state, io__state).
@@ -612,6 +619,8 @@ output_unary_op(body) -->
 	io__write_string("body").
 output_unary_op(not) -->
 	io__write_string("!").
+output_unary_op(cast_to_unsigned) -->
+	io__write_string("(unsigned)").
 
 :- pred output_rval_const(rval_const, io__state, io__state).
 :- mode output_rval_const(in, di, uo) is det.

@@ -423,31 +423,50 @@ peephole__label_elim(Instructions0, Instructions, Mod) :-
 peephole__label_elim_build_usemap([], Usemap, Usemap).
 peephole__label_elim_build_usemap([Instr - _Comment|Instructions],
 		Usemap0, Usemap) :-
-	( Instr = call(Code_addr, label(Label)) ->
-		bintree_set__insert(Usemap0, Label, Usemap1),
-		peephole__code_addr_build_usemap(Code_addr, Usemap1, Usemap2)
-	; Instr = goto(label(Label)) ->
-		bintree_set__insert(Usemap0, Label, Usemap2)
-	; Instr = mkframe(_, _, label(Label)) ->
-		bintree_set__insert(Usemap0, Label, Usemap2)
-	; Instr = modframe(label(Label)) ->
-		bintree_set__insert(Usemap0, Label, Usemap2)
-	; Instr = if_val(_, label(Label)) ->
-		bintree_set__insert(Usemap0, Label, Usemap2)
-	;
-		Usemap2 = Usemap0
-	),
+	peephole__instr_labels(Instr, Labels, CodeAddresses),
+	peephole__label_list_build_usemap(Labels, Usemap0, Usemap1),
+	peephole__code_addr_list_build_usemap(CodeAddresses, Usemap1, Usemap2),
 	peephole__label_elim_build_usemap(Instructions, Usemap2, Usemap).
 
-:- pred peephole__code_addr_build_usemap(code_addr, usemap, usemap).
-:- mode peephole__code_addr_build_usemap(in, di, uo) is det.
+:- pred peephole__instr_labels(instr, list(label), list(code_addr)).
+:- mode peephole__instr_labels(in, out, out) is det.
 
-peephole__code_addr_build_usemap(Code_addr, Usemap0, Usemap) :-
+	% Determine all the labels and code addresses which are referenced
+	% by the instruction.
+
+peephole__instr_labels(label(_), [], []).
+peephole__instr_labels(call(Target, Ret), [], [Target, Ret]).
+peephole__instr_labels(goto(Addr), [], [Addr]).
+peephole__instr_labels(computed_goto(_, Labels), Labels, []).
+peephole__instr_labels(mkframe(_, _, Addr), [], [Addr]).
+peephole__instr_labels(modframe(Addr), [], [Addr]).
+peephole__instr_labels(if_val(_, Addr), [], [Addr]).
+peephole__instr_labels(comment(_), [], []).
+peephole__instr_labels(c_code(_), [], []).
+peephole__instr_labels(incr_hp(_), [], []).
+peephole__instr_labels(incr_sp(_), [], []).
+peephole__instr_labels(decr_sp(_), [], []).
+peephole__instr_labels(assign(_,_), [], []).
+
+:- pred peephole__code_addr_list_build_usemap(list(code_addr), usemap, usemap).
+:- mode peephole__code_addr_list_build_usemap(in, di, uo) is det.
+
+peephole__code_addr_list_build_usemap([], Usemap, Usemap).
+peephole__code_addr_list_build_usemap([Code_addr | Rest], Usemap0, Usemap) :-
 	( Code_addr = label(Label) ->
-		bintree_set__insert(Usemap0, Label, Usemap)
+		bintree_set__insert(Usemap0, Label, Usemap1)
 	;
-		Usemap = Usemap0
-	).
+		Usemap1 = Usemap0
+	),
+	peephole__code_addr_list_build_usemap(Rest, Usemap1, Usemap).
+
+:- pred peephole__label_list_build_usemap(list(label), usemap, usemap).
+:- mode peephole__label_list_build_usemap(in, di, uo) is det.
+
+peephole__label_list_build_usemap([], Usemap, Usemap).
+peephole__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
+	bintree_set__insert(Usemap0, Label, Usemap1),
+	peephole__label_list_build_usemap(Labels, Usemap1, Usemap).
 
 :- pred peephole__label_elim_instr_list(list(instruction),
 	usemap, list(instruction), bool).
