@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 University of Melbourne.
+% Copyright (C) 2002-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,24 +19,27 @@
 	%
 
 	% foldl2_pred_with_status(T, Succeeded, !Info).
+	%
 :- type foldl2_pred_with_status(T, Info, IO) ==
 	pred(T, bool, Info, Info, IO, IO).
 :- inst foldl2_pred_with_status == (pred(in, out, in, out, di, uo) is det).
 
-	% foldl2_maybe_stop_at_error(KeepGoing, P, List,
-	%	Succeeded, Info0, Info).
+	% foldl2_maybe_stop_at_error(KeepGoing, P, List, Succeeded, !Info).
+	%
 :- pred foldl2_maybe_stop_at_error(bool::in,
 	foldl2_pred_with_status(T, Info, IO)::in(foldl2_pred_with_status),
 	list(T)::in, bool::out, Info::in, Info::out, IO::di, IO::uo) is det.
 
-	% foldl3_pred_with_status(T, Succeeded, Acc0, Acc, Info0, Info).
+	% foldl3_pred_with_status(T, Succeeded, !Acc, !Info).
+	%
 :- type foldl3_pred_with_status(T, Acc, Info, IO) ==
 	pred(T, bool, Acc, Acc, Info, Info, IO, IO).
 :- inst foldl3_pred_with_status ==
 	(pred(in, out, in, out, in, out, di, uo) is det).
 
-	% foldl3_maybe_stop_at_error(KeepGoing, P, List,
-	%	Succeeded, Acc0, Acc, Info0, Info).
+	% foldl3_maybe_stop_at_error(KeepGoing, P, List, Succeeded, !Acc,
+	%	!Info).
+	%
 :- pred foldl3_maybe_stop_at_error(bool::in,
 	foldl3_pred_with_status(T, Acc, Info, IO)::in(foldl3_pred_with_status),
 	list(T)::in, bool::out, Acc::in, Acc::out, Info::in, Info::out,
@@ -50,7 +53,7 @@
 :- inst build == (pred(in, out, in, out, di, uo) is det).
 
 	% build_with_module_options(ModuleName, ExtraArgs, Builder,
-	%	Succeeded, Info0, Info).
+	%	Succeeded, !Info).
 	%
 	% Perform the given closure after updating the option_table in
 	% the globals in the io__state to contain the module-specific
@@ -59,12 +62,13 @@
 	% Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option
 	% list.
 	% The old option table will be restored afterwards.
+	%
 :- pred build_with_module_options(module_name::in,
 	list(string)::in, build(list(string))::in(build), bool::out,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
 	% build_with_module_options(ModuleName, OptionsVariables,
-	%	OptionArgs, ExtraArgs, Builder, Succeeded, Info0, Info).
+	%	OptionArgs, ExtraArgs, Builder, Succeeded, !Info).
 	%
 	% Perform the given closure after updating the option_table in
 	% the globals in the io__state to contain the module-specific
@@ -73,6 +77,7 @@
 	% Does not add `--invoked-by-mmc-make' and `--use-subdirs'
 	% to the option list.
 	% The old option table will be restored afterwards.
+	%
 :- pred build_with_module_options(module_name::in, options_variables::in,
 	list(string)::in, list(string)::in,
 	build(list(string), Info1, Info2)::in(build),
@@ -80,16 +85,19 @@
 
 	% Perform the given closure with an output stream created
 	% to append to the error file for the given module.
+	%
 :- pred build_with_output_redirect(module_name::in,
 	build(io__output_stream)::in(build), bool::out,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
 	% Produce an output stream which writes to the error file
 	% for the given module.
+	%
 :- pred redirect_output(module_name::in, maybe(io__output_stream)::out,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
 	% Close the module error output stream.
+	%
 :- pred unredirect_output(module_name::in, io__output_stream::in,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -107,11 +115,13 @@
 	% Timestamp handling.
 
 	% Find the timestamp updated when a target is produced.
+	%
 :- pred get_timestamp_file_timestamp(target_file::in,
 	maybe_error(timestamp)::out, make_info::in, make_info::out,
 	io::di, io::uo) is det.
 
 	% Find the timestamp for the given dependency file.
+	%
 :- pred get_dependency_timestamp(dependency_file::in,
 	maybe_error(timestamp)::out, make_info::in, make_info::out,
 	io::di, io::uo) is det.
@@ -121,6 +131,7 @@
 	% Find the timestamp for the given target file.
 	% `Search' should be `yes' if the file could be part of an
 	% installed library.
+	%
 :- pred get_target_timestamp(bool::in, target_file::in,
 	maybe_error(timestamp)::out, make_info::in, make_info::out,
 	io::di, io::uo) is det.
@@ -130,32 +141,39 @@
 	% Compute a file name for the given target file.
 	% `Search' should be `yes' if the file could be part of an
 	% installed library.
+	%
 :- pred get_file_name(bool::in, target_file::in, file_name::out,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
 	% Find the timestamp of the first file matching the given
 	% file name in one of the given directories.
+	%
 :- pred get_file_timestamp(list(dir_name)::in, file_name::in,
 	maybe_error(timestamp)::out, make_info::in, make_info::out,
 	io::di, io::uo) is det.
 
 	% Return the oldest of the timestamps if both are of the form
 	% `ok(Timestamp)', returning `error(Error)' otherwise.
+	%
 :- func find_oldest_timestamp(maybe_error(timestamp),
 	maybe_error(timestamp)) = maybe_error(timestamp).
 
 %-----------------------------------------------------------------------------%
+
 	% Remove file a file, deleting the cached timestamp.
 
 	% Remove the target file and the corresponding timestamp file.
+	%
 :- pred remove_target_file(target_file::in, make_info::in, make_info::out,
 	io::di, io::uo) is det.
 
 	% Remove the target file and the corresponding timestamp file.
+	%
 :- pred remove_target_file(module_name::in, module_target_type::in,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
-	% remove_file(ModuleName, Extension, Info0, Info).
+	% remove_file(ModuleName, Extension, !Info).
+	%
 :- pred remove_file(module_name::in, string::in, make_info::in, make_info::out,
 	io::di, io::uo) is det.
 
@@ -178,6 +196,7 @@
 
 	% Find the extension for the timestamp file for the
 	% given target type, if one exists.
+	%
 :- func timestamp_extension(globals, module_target_type) = string is semidet.
 
 :- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
@@ -187,13 +206,16 @@
 	% Debugging, verbose and error messages.
 
 	% Apply the given predicate if `--debug-make' is set.
+	%
 :- pred debug_msg(pred(io, io)::(pred(di, uo) is det), io::di, io::uo) is det.
 
 	% Apply the given predicate if `--verbose-make' is set.
+	%
 :- pred verbose_msg(pred(io, io)::(pred(di, uo) is det),
 	io::di, io::uo) is det.
 
 	% Write a debugging message relating to a given target file.
+	%
 :- pred debug_file_msg(target_file::in, string::in, io::di, io::uo) is det.
 
 :- pred write_dependency_file(dependency_file::in, io::di, io::uo) is det.
@@ -201,22 +223,27 @@
 :- pred write_target_file(target_file::in, io::di, io::uo) is det.
 
 	% Write a message "Making <filename>" if `--verbose-make' is set.
+	%
 :- pred maybe_make_linked_target_message(file_name::in, io::di, io::uo) is det.
 
 	% Write a message "Making <filename>" if `--verbose-make' is set.
+	%
 :- pred maybe_make_target_message(target_file::in, io::di, io::uo) is det.
 
 :- pred maybe_make_target_message(io__output_stream::in, target_file::in,
 	io::di, io::uo) is det.
 
 	% Write a message "** Error making <filename>".
+	%
 :- pred target_file_error(target_file::in, io::di, io::uo) is det.
 
 	% Write a message "** Error making <filename>".
+	%
 :- pred file_error(file_name::in, io::di, io::uo) is det.
 
 	% If the given target was specified on the command
 	% line, warn that it was already up to date.
+	%
 :- pred maybe_warn_up_to_date_target(pair(module_name, target_type)::in,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -354,10 +381,12 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
 		% --use-subdirs is needed because the code to install
 		% libraries uses `--use-grade-subdirs' and assumes the
 		% interface files were built with `--use-subdirs'.
-		( InvokedByMmcMake = yes ->
+		(
+			InvokedByMmcMake = yes,
 			UseSubdirs = ["--use-subdirs"],
 			InvokedByMake = ["--invoked-by-mmc-make"]
 		;
+			InvokedByMmcMake = no,
 			UseSubdirs = [],
 			InvokedByMake = []
 		),
@@ -634,7 +663,9 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
 	io::di, io::uo) is det.
 
 get_search_directories(FileType, SearchDirs, !IO) :-
-	( yes(SearchDirOpt) = search_for_file_type(FileType) ->
+	MaybeOpt = search_for_file_type(FileType),
+	(
+		MaybeOpt = yes(SearchDirOpt),
 		globals__io_lookup_accumulating_option(SearchDirOpt,
 			SearchDirs0, !IO),
 		% Make sure the current directory is searched
@@ -646,6 +677,7 @@ get_search_directories(FileType, SearchDirs, !IO) :-
 				[dir__this_directory | SearchDirs0]
 			)
 	;
+		MaybeOpt = no,
 		SearchDirs = [dir__this_directory]
 	).
 
@@ -808,7 +840,7 @@ timestamp_extension(_, c_code) = ".c_date".
 timestamp_extension(Globals, c_header(_)) = Ext :-
 	globals__get_target(Globals, Target),
 	Ext = timestamp_extension(Globals,
-			(Target = asm -> asm_code(non_pic) ; c_code)).
+		(Target = asm -> asm_code(non_pic) ; c_code)).
 timestamp_extension(_, il_code) = ".il_date".
 timestamp_extension(_, java_code) = ".java_date".
 timestamp_extension(_, asm_code(non_pic)) = ".s_date".
@@ -840,7 +872,7 @@ target_is_grade_or_arch_dependent(Target) :-
 	target_is_grade_or_arch_dependent(Target, yes).
 
 :- pred target_is_grade_or_arch_dependent(module_target_type::in,
-		bool::out) is det.
+	bool::out) is det.
 
 target_is_grade_or_arch_dependent(source, no).
 target_is_grade_or_arch_dependent(errors, no).

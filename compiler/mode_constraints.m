@@ -154,7 +154,7 @@ mode_constraints__process_module(!ModuleInfo, !IO) :-
 :- pred mode_constraints__process_scc(bool::in, list(pred_id)::in,
 	module_info::in, module_info::out,
 	pred_constraint_map::in, pred_constraint_map::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 mode_constraints__process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
 		!IO) :-
@@ -457,7 +457,7 @@ number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring,
 	list(pred_id)::in, module_info::in,
 	module_info::out, mode_constraint::in, mode_constraint::out,
 	mode_constraint_info::in, mode_constraint_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 mode_constraints__process_scc_pass_1([], _, !ModuleInfo,
 		!ModeConstraint, !ModeConstraintInfo, !IO).
@@ -471,7 +471,7 @@ mode_constraints__process_scc_pass_1([PredId | PredIds], SCC,
 
 :- pred mode_constraints__process_scc_pass_2(list(pred_id)::in,
 	mode_constraint::in, mode_constraint_info::in, module_info::in,
-	module_info::out, io__state::di, io__state::uo) is det.
+	module_info::out, io::di, io::uo) is det.
 
 mode_constraints__process_scc_pass_2([], _, _, !ModuleInfo, !IO).
 mode_constraints__process_scc_pass_2([PredId | PredIds], ModeConstraint,
@@ -484,7 +484,7 @@ mode_constraints__process_scc_pass_2([PredId | PredIds], ModeConstraint,
 :- pred mode_constraints__process_pred(pred_id::in, list(pred_id)::in,
 	module_info::in, module_info::out, mode_constraint::in,
 	mode_constraint::out, mode_constraint_info::in,
-	mode_constraint_info::out, io__state::di, io__state::uo) is det.
+	mode_constraint_info::out, io::di, io::uo) is det.
 
 mode_constraints__process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
 		!ModeConstraintInfo, !IO) :-
@@ -539,7 +539,7 @@ mode_constraints__process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
 
 :- pred mode_constraints__process_pred_2(pred_id::in, mode_constraint::in,
 	mode_constraint_info::in, module_info::in, module_info::out,
-	io__state::di, io__state::uo) is det.
+	io::di, io::uo) is det.
 
 mode_constraints__process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
 		!ModuleInfo, !IO) :-
@@ -909,17 +909,18 @@ mode_constraints__do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
 :- pred mode_constraints__process_clauses_info(module_info::in,
 	list(pred_id)::in, clauses_info::in, clauses_info::out, inst_graph::in,
 	ho_modes::in, mode_constraint::in, mode_constraint::out,
-	mode_constraint_info::in, mode_constraint_info::out, io__state::di,
-	io__state::uo) is det.
+	mode_constraint_info::in, mode_constraint_info::out,
+	io::di, io::uo) is det.
 
 mode_constraints__process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
 		InstGraph, HOModes0, !Constraint, !ConstraintInfo, !IO) :-
 	clauses_info_varset(!.ClausesInfo, VarSet0),
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-	( VeryVerbose = yes ->
+	(
+		VeryVerbose = yes,
 		inst_graph__dump(InstGraph, VarSet0, !IO)
 	;
-		true
+		VeryVerbose = no
 	),
 
 	clauses_info_headvars(!.ClausesInfo, HeadVars),
@@ -2009,7 +2010,7 @@ proc_can_succeed(ProcInfo) :-
 % DEBUGGING CODE
 %
 % :- impure pred conj_to_dot(mode_constraint::in, prog_varset::in,
-% 	mode_constraint_info::in, io__state::di, io__state::uo) is det.
+% 	mode_constraint_info::in, io::di, io::uo) is det.
 %
 % conj_to_dot(MC, VS, CI) -->
 % 	robdd_to_dot(MC, VS, CI, string__format("conj%d.dot", [i(conjnum)])).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,7 +50,10 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
 	find_reachable_local_modules(MainModuleName, DepsSuccess,
 		AllModules, !Info, !IO),
 	globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
-	( DepsSuccess = no, KeepGoing = no ->
+	(
+		DepsSuccess = no,
+		KeepGoing = no
+	->
 		Succeeded = no 
 	;
 		get_object_code_type(FileType, PIC, !IO),

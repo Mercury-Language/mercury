@@ -1,3 +1,4 @@
+%-----------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2005 The University of Melbourne.
@@ -153,8 +154,7 @@ do_get_module_dependencies(RebuildDeps, ModuleName, !:MaybeImports, !Info,
                 MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
                 (
                     ( RebuildDeps = no
-                    ; compare((>), DepFileTimestamp,
-                        SourceFileTimestamp1)
+                    ; compare((>), DepFileTimestamp, SourceFileTimestamp1)
                     )
                 ->
                     true
@@ -215,54 +215,50 @@ write_module_dep_file(Imports0, !IO) :-
         Imports0 ^ module_name - Items, Imports),
     do_write_module_dep_file(Imports, !IO).
 
-:- pred do_write_module_dep_file(module_imports::in,
-    io::di, io::uo) is det.
+:- pred do_write_module_dep_file(module_imports::in, io::di, io::uo) is det.
 
-do_write_module_dep_file(Imports) -->
-    { ModuleName = Imports ^ module_name },
+do_write_module_dep_file(Imports, !IO) :-
+    ModuleName = Imports ^ module_name,
     module_name_to_file_name(ModuleName, module_dep_file_extension,
-        yes, ProgDepFile),
-    io__open_output(ProgDepFile, ProgDepResult),
+        yes, ProgDepFile, !IO),
+    io__open_output(ProgDepFile, ProgDepResult, !IO),
     (
-        { ProgDepResult = ok(ProgDepStream) },
-        io__set_output_stream(ProgDepStream, OldOutputStream),
-        io__write_string("module("),
-        io__write_int(module_dependencies_version_number),
-        io__write_string(", """),
-        io__write_string(Imports ^ source_file_name),
-        io__write_string(""",\n\t"),
+        ProgDepResult = ok(ProgDepStream),
+        io__set_output_stream(ProgDepStream, OldOutputStream, !IO),
+        io__write_string("module(", !IO),
+        io__write_int(module_dependencies_version_number, !IO),
+        io__write_string(", """, !IO),
+        io__write_string(Imports ^ source_file_name, !IO),
+        io__write_string(""",\n\t", !IO),
         mercury_output_bracketed_sym_name(
-            Imports ^ source_file_module_name),
-        io__write_string(",\n\t{"),
+            Imports ^ source_file_module_name, !IO),
+        io__write_string(",\n\t{", !IO),
         io__write_list(Imports ^ parent_deps,
-            ", ", mercury_output_bracketed_sym_name),
-        io__write_string("},\n\t{"),
+            ", ", mercury_output_bracketed_sym_name, !IO),
+        io__write_string("},\n\t{", !IO),
         io__write_list(Imports ^ int_deps,
-            ", ", mercury_output_bracketed_sym_name),
-        io__write_string("},\n\t{"),
+            ", ", mercury_output_bracketed_sym_name, !IO),
+        io__write_string("},\n\t{", !IO),
         io__write_list(Imports ^ impl_deps,
-            ", ", mercury_output_bracketed_sym_name),
-        io__write_string("},\n\t{"),
+            ", ", mercury_output_bracketed_sym_name, !IO),
+        io__write_string("},\n\t{", !IO),
         io__write_list(Imports ^ children,
-            ", ", mercury_output_bracketed_sym_name),
-        io__write_string("},\n\t{"),
+            ", ", mercury_output_bracketed_sym_name, !IO),
+        io__write_string("},\n\t{", !IO),
         io__write_list(Imports ^ nested_children,
-            ", ", mercury_output_bracketed_sym_name),
-        io__write_string("},\n\t{"),
+            ", ", mercury_output_bracketed_sym_name, !IO),
+        io__write_string("},\n\t{", !IO),
         io__write_list(Imports ^ fact_table_deps,
-            ", ", io__write),
-        io__write_string("},\n\t{"),
-        {
-            Imports ^ foreign_code =
-                contains_foreign_code(ForeignLanguages0)
-        ->
+            ", ", io__write, !IO),
+        io__write_string("},\n\t{", !IO),
+        ( Imports ^ foreign_code = contains_foreign_code(ForeignLanguages0) ->
             ForeignLanguages = set__to_sorted_list(ForeignLanguages0)
         ;
             ForeignLanguages = []
-        },
+        ),
         io__write_list(ForeignLanguages, ", ",
-            mercury_output_foreign_language_string),
-        io__write_string("},\n\t{"),
+            mercury_output_foreign_language_string, !IO),
+        io__write_string("},\n\t{", !IO),
         io__write_list(Imports  ^ foreign_import_module_info, ", ",
             (pred(ForeignImportModule::in, di, uo) is det -->
                 { ForeignImportModule = foreign_import_module(Lang,
@@ -270,20 +266,20 @@ do_write_module_dep_file(Imports) -->
                 mercury_output_foreign_language_string(Lang),
                 io__write_string(" - "),
                 mercury_output_bracketed_sym_name(ForeignImport)
-            )),
-        io__write_string("},\n\t"),
-        io__write(Imports ^ contains_foreign_export),
-        io__write_string(",\n\t"),
-        io__write(Imports ^ has_main),
-        io__write_string("\n).\n"),
-        io__set_output_stream(OldOutputStream, _),
-        io__close_output(ProgDepStream)
+            ), !IO),
+        io__write_string("},\n\t", !IO),
+        io__write(Imports ^ contains_foreign_export, !IO),
+        io__write_string(",\n\t", !IO),
+        io__write(Imports ^ has_main, !IO),
+        io__write_string("\n).\n", !IO),
+        io__set_output_stream(OldOutputStream, _, !IO),
+        io__close_output(ProgDepStream, !IO)
     ;
-        { ProgDepResult = error(Error) },
-        { io__error_message(Error, Msg) },
+        ProgDepResult = error(Error),
+        io__error_message(Error, Msg),
         io__write_strings(["Error opening ", ProgDepFile,
-            " for output: ", Msg, "\n"]),
-        io__set_exit_status(1)
+            " for output: ", Msg, "\n"], !IO),
+        io__set_exit_status(1, !IO)
     ).
 
 :- pred read_module_dependencies(bool::in, module_name::in,
@@ -295,7 +291,8 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
     globals__io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
     io__input_stream(OldInputStream, !IO),
     search_for_file_returning_dir(SearchDirs, ModuleDepFile, SearchResult, !IO),
-    ( SearchResult = ok(ModuleDir) ->
+    (
+        SearchResult = ok(ModuleDir),
         parser__read_term(ImportsTermResult, !IO),
         io__set_input_stream(OldInputStream, ModuleDepStream, !IO),
         io__close_input(ModuleDepStream, !IO),
@@ -318,12 +315,11 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
                 HasMainTerm
             ],
             VersionNumberTerm = term__functor(
-                term__integer(module_dependencies_version_number),
-                [], _),
+                term__integer(module_dependencies_version_number), [], _),
             SourceFileTerm = term__functor(
                 term__string(SourceFileName), [], _),
-            sym_name_and_args(SourceFileModuleNameTerm,
-                SourceFileModuleName, []),
+            sym_name_and_args(SourceFileModuleNameTerm, SourceFileModuleName,
+                []),
             parse_sym_name_list(ParentsTerm, Parents),
             parse_sym_name_list(IntDepsTerm, IntDeps),
             parse_sym_name_list(ImplDepsTerm, ImplDeps),
@@ -405,8 +401,8 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
             Imports ^ has_main = HasMain,
             Imports ^ module_dir = ModuleDir,
 
-            !:Info = !.Info ^ module_dependencies
-                ^ elem(ModuleName) := yes(Imports),
+            !:Info = !.Info ^ module_dependencies ^ elem(ModuleName)
+                := yes(Imports),
 
             %
             % Read the dependencies for the nested children.
@@ -440,8 +436,10 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
                 "parse error", !Info, !IO)
         )
     ;
-    read_module_dependencies_remake(RebuildDeps, ModuleName,
-        "couldn't find `.module_dep' file", !Info, !IO)
+        SearchResult = error(_),
+        % XXX should use the error message.
+        read_module_dependencies_remake(RebuildDeps, ModuleName,
+            "couldn't find `.module_dep' file", !Info, !IO)
     ).
 
     % Something went wrong reading the dependencies, so just rebuild them.
@@ -451,8 +449,7 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
 read_module_dependencies_remake(RebuildDeps, ModuleName, Msg, !Info, !IO) :-
     (
         RebuildDeps = yes,
-        debug_msg(read_module_dependencies_remake_msg(ModuleName, Msg),
-            !IO),
+        debug_msg(read_module_dependencies_remake_msg(ModuleName, Msg), !IO),
         make_module_dependencies(ModuleName, !Info, !IO)
     ;
         RebuildDeps = no
@@ -462,8 +459,8 @@ read_module_dependencies_remake(RebuildDeps, ModuleName, Msg, !Info, !IO) :-
     io::di, io::uo) is det.
 
 read_module_dependencies_remake_msg(ModuleName, Msg, !IO) :-
-    module_name_to_file_name(ModuleName,
-        module_dep_file_extension, no, ModuleDepsFile, !IO),
+    module_name_to_file_name(ModuleName, module_dep_file_extension, no,
+        ModuleDepsFile, !IO),
     io__write_string("Error reading file `", !IO),
     io__write_string(ModuleDepsFile, !IO),
     io__write_string("rebuilding: ", !IO),
@@ -556,7 +553,7 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
             ),
 
             build_with_check_for_interrupt(
-                    (pred(yes::out, MakeInfo::in, MakeInfo::out, di, uo)
+                (pred(yes::out, MakeInfo::in, MakeInfo::out, di, uo)
                         is det -->
                     list__foldl(do_write_module_dep_file,
                         ModuleImportList)

@@ -135,7 +135,7 @@ output_rtti_data_defn(aditi_proc_info(ProcLabel, InputTypeInfo,
 
 :- pred output_aditi_proc_info_defn(rtti_proc_label::in,
 	rtti_type_info::in, rtti_type_info::in,
-	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+	decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_aditi_proc_info_defn(ProcLabel, InputTypeInfo, OutputTypeInfo,
 		!DeclSet, !IO) :-
@@ -1663,7 +1663,8 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles, !IO) :-
 	string::in, io::di, io::uo) is det.
 
 output_init_method_pointers(_, [], _, _, !IO).
-output_init_method_pointers(FieldNum, [Arg|Args], TCName, InstanceStr, !IO) :-
+output_init_method_pointers(FieldNum, [Arg | Args], TCName, InstanceStr,
+		!IO) :-
 	io__write_string("\t\t", !IO),
 	io__write_string("MR_field(MR_mktag(0), ", !IO),
 	output_base_typeclass_info_name(TCName, InstanceStr, !IO),

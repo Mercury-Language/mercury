@@ -503,8 +503,7 @@ dead_proc_elim__examine_expr(shorthand(_), _, _, _, _, _) :-
 	% Given the information about which entities are needed,
 	% eliminate procedures which are not needed.
 :- pred dead_proc_elim__eliminate(dead_proc_pass::in, needed_map::in,
-	module_info::in, module_info::out, io__state::di, io__state::uo)
-	is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
 dead_proc_elim__eliminate(Pass, !.Needed, !ModuleInfo, !IO) :-
 	module_info_predids(!.ModuleInfo, PredIds),

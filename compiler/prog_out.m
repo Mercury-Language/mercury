@@ -68,8 +68,7 @@
 	io::di, io::uo) is det.
 
 :- pred prog_out__write_list(list(T)::in,
-	pred(T, io__state, io__state)::in(pred(in, di, uo) is det),
-	io::di, io::uo) is det.
+	pred(T, io, io)::in(pred(in, di, uo) is det), io::di, io::uo) is det.
 
 :- pred prog_out__write_promise_type(promise_type::in, io::di, io::uo) is det.
 
@@ -243,7 +242,7 @@ prog_out__write_module_spec(ModuleSpec) -->
 prog_out__write_module_list(Modules, !IO) :-
 	prog_out__write_list(Modules, write_module, !IO).
 
-:- pred write_module(module_name::in, io__state::di, io__state::uo) is det.
+:- pred write_module(module_name::in, io::di, io::uo) is det.
 
 write_module(Module, !IO) :-
 	io__write_string("`", !IO),
@@ -488,7 +487,7 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
 % 	io__write_string("some "),
 % 	io__write_anything(Vars).		% XXX
 %
-% :- pred prog_out__beforelit(context, int, io__state, io__state).
+% :- pred prog_out__beforelit(context, int, io, io).
 % :- mode prog_out__beforelit(in, in, di, uo) is det.
 %
 % prog_out__beforelit('(', _) -->
@@ -510,7 +509,7 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
 % 	io__write_string("\n"),
 % 	prog_out__indent(I).
 %
-% :- pred prog_out__indent(int, io__state, io__state).
+% :- pred prog_out__indent(int, io, io).
 % :- mode prog_out__indent(int, di, uo) is det.
 % prog_out__indent(N) -->
 % 	(if {N > 0} then
@@ -521,7 +520,7 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
 % 		[]
 % 	).
 %
-% :- pred prog_out__qwrite(int, varset, term, io__state, io__state).
+% :- pred prog_out__qwrite(int, varset, term, io, io).
 % :- mode prog_out__qwrite(in, in, in, di, uo) is det.
 %
 % 	% XXX problems with precedence
@@ -529,7 +528,7 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
 % prog_out__qwrite(_Prec, VarSet, X) -->
 % 	term_io__write_term(VarSet, X).
 %
-% :- pred prog_out__get_op_prec(string, int, int, io__state, io__state).
+% :- pred prog_out__get_op_prec(string, int, int, io, io).
 % :- mode prog_out__get_op_prec(in, in, out, di, uo) is det.
 %
 % prog_out__get_op_prec(Op, Pos, Prec) -->
@@ -539,7 +538,7 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
 % 	  Prec is Prec1 - Adj
 % 	}.
 %
-% get_prec_and_type(ThisOp, [Op|Ops], Prec, Type) :-
+% get_prec_and_type(ThisOp, [Op | Ops], Prec, Type) :-
 % 	(if some [Prec1, Type1]
 % 		Op = op(Prec1, Type1, ThisOp)
 % 	then

@@ -1543,7 +1543,7 @@ option_requires(SourceOption, RequiredOption, RequiredOptionValue,
 	% and `--no-target-code-only'). Disable smart recompilation
 	% if such an option is set, maybe issuing a warning.
 :- pred maybe_disable_smart_recompilation(bool::in, option::in, bool::in,
-	string::in, io__state::di, io__state::uo) is det.
+	string::in, io::di, io::uo) is det.
 
 maybe_disable_smart_recompilation(Smart, ConflictingOption,
 		ValueToDisableSmart, OptionDescr, !IO) :-
