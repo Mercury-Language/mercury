@@ -266,7 +266,7 @@ mercury_runtime_init(int argc, char **argv)
 		int i;
 
 		for (i = 1; i < (1 << TAGBITS); i++) {
-			GC_register_displacement(i);
+			GC_REGISTER_DISPLACEMENT(i);
 		}
 	}
 #endif
