@@ -58,7 +58,7 @@
 :- mode mode_info_get_io_state(mode_info_get_io_state, uo) is det.
 
 :- pred mode_info_set_io_state(mode_info, io__state, mode_info).
-:- mode mode_info_set_io_state(mode_info_set_io_state, ui, mode_info_uo) is det.
+:- mode mode_info_set_io_state(mode_info_set_io_state, di, mode_info_uo) is det.
 
 :- pred mode_info_get_module_info(mode_info, module_info).
 :- mode mode_info_get_module_info(mode_info_ui, out) is det.

@@ -1050,10 +1050,10 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 	->
 		FirstError = mode_error_info(WaitingVars2, _, _, _),
 		set__union(WaitingVars, WaitingVars2, WaitingVars3),
-
+		mode_info_set_errors([], ModeInfo1, ModeInfo2),
 		modecheck_call_pred_2(ProcIds, PredId, Procs, ArgVars0,
 				WaitingVars3, TheProcId, ArgVars, ExtraGoals,
-				ModeInfo0, ModeInfo)
+				ModeInfo2, ModeInfo)
 	;
 			% if there are no errors, then set their insts to the
 			% final insts specified in the mode for the called pred
@@ -1242,7 +1242,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		;
 			% We've bound part of the var.  If the var was locked,
 			% then we need to report an error.
-			mode_info_var_is_locked(ModeInfo0, Var0)
+			mode_info_var_is_locked(ModeInfo1, Var0)
 		->
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,

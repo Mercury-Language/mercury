@@ -1711,7 +1711,7 @@ type_info_get_io_state(type_info(IOState0,_,_,_,_,_,_,_,_,_,_,_), IOState) :-
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_io_state(type_info, io__state, type_info).
-:- mode type_info_set_io_state(type_info_set_io_state, ui, type_info_uo) is det.
+:- mode type_info_set_io_state(type_info_set_io_state, di, type_info_uo) is det.
 
 type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L), IOState0,
 			type_info(IOState,B,C,D,E,F,G,H,I,J,K,L)) :-
