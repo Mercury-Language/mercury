@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999 The University of Melbourne.
+** Copyright (C) 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,8 +25,14 @@
 #include "mercury_grade.h"
 #include "mercury_thread.h"	/* for the MR_*_GLOBAL_LOCK() macros */
 #include "mercury_std.h"
+#include "mercury_type_info.h"
 
-#include "gc.h"
+#ifdef CONSERVATIVE_GC
+  #include "gc.h"
+  #ifdef INLINE_ALLOC
+    #include "gc_inl.h"
+  #endif
+#endif
 
 #include <setjmp.h>	/* for jmp_buf etc., which are used for commits */
 #include <string.h>	/* for strcmp(), which is used for =/2 on strings */
@@ -57,66 +63,100 @@ typedef Word	MR_Box;
 typedef Word	MR_Word;
 
 /*
-** The MR_BaseTypeInfo struct holds information about
-** a type constructor.
-** This is essentially the same as MR_TypeCtorInfo
-** in runtime/mercury_type_info.h, but for the MLDS back-end
-** rather than the LLDS back-end.
+** Typedefs used for the types of RTTI data structures.
+** Many of these types are defined in mercury_type_info.h,
+** but the ones which are used only by the MLDS back-end
+** are defined here.
 */
-typedef struct MR_BaseTypeInfo_struct {
-	/*
-	** The unify, index, and compare fields hold pointers
-	** to functions which take N type_info arguments, followed
-	** by their other parameters, where the value of N is given
-	** by the type_arity field.
-	*/
-	Integer		type_arity;
-	MR_Box		unify;	 /* bool (*)(..., MR_Box, MR_Box); */
-	MR_Box		index;   /* void (*)(..., MR_Box, Integer *); */
-	MR_Box		compare; /* void (*)(..., Word *, MR_Box, MR_Box)' */
-	/*
-	** The type_ctor_rep holds an enumeration value
-	** (of type `enum MR_TypeCtorRepresentation') indicating
-	** what kind of type it is and how the type is represented.
-	*/
-	Integer		type_ctor_rep;
-	void *		base_type_functors; /* XXX currently always NULL */
-	void *		base_type_layout; /* XXX currently always NULL */
-	/*
-	** The module_name and type_name, together with the type_arity
-	** field above, serve to identify the type constructor.
-	*/
-	const char *	module_name;
-	const char *	type_name;
-	/*
-	** This field indicates which version of the various RRTI
-	** structures this is.
-	*/
-	Integer		rtti_version;
-} MR_BaseTypeInfo;
+typedef struct MR_TypeCtorInfo_Struct	MR_TypeCtorInfo_Struct;
+typedef MR_DuExistLocn			MR_DuExistLocnArray[];
+typedef ConstString			MR_ConstStringArray[];
+typedef MR_PseudoTypeInfo		MR_PseudoTypeInfoArray[];
+typedef const MR_EnumFunctorDesc *	MR_EnumFunctorDescPtrArray[];
+typedef const MR_DuFunctorDesc *	MR_DuFunctorDescPtrArray[];
+typedef MR_DuPtagLayout			MR_DuPtagLayoutArray[];
+typedef union MR_TableNode_Union * *	MR_TableNodePtrPtr[];
+
+/*
+** XXX Currently we hard-code the declarations of the first
+** few of these type-info struct types; this imposes a fixed
+** limit on the arity of types.  Fortunately types with a high
+** arity tend not to be used very often, so this is probably OK
+** for now...
+*/
+
+#ifndef MR_HO_PseudoTypeInfo_Struct1_GUARD
+#define MR_HO_PseudoTypeInfo_Struct1_GUARD
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct1, 1);
+#endif
+
+#ifndef MR_HO_PseudoTypeInfo_Struct2_GUARD
+#define MR_HO_PseudoTypeInfo_Struct2_GUARD
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct2, 2);
+#endif
+
+#ifndef MR_HO_PseudoTypeInfo_Struct3_GUARD
+#define MR_HO_PseudoTypeInfo_Struct3_GUARD
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct3, 3);
+#endif
+
+#ifndef MR_HO_PseudoTypeInfo_Struct4_GUARD
+#define MR_HO_PseudoTypeInfo_Struct4_GUARD
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct4, 4);
+#endif
+
+#ifndef MR_FO_PseudoTypeInfo_Struct1_GUARD
+#define MR_FO_PseudoTypeInfo_Struct1_GUARD
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct1, 1);
+#endif
+
+#ifndef MR_FO_PseudoTypeInfo_Struct2_GUARD
+#define MR_FO_PseudoTypeInfo_Struct2_GUARD
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct2, 2);
+#endif
+
+#ifndef MR_FO_PseudoTypeInfo_Struct3_GUARD
+#define MR_FO_PseudoTypeInfo_Struct3_GUARD
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct3, 3);
+#endif
+
+#ifndef MR_FO_PseudoTypeInfo_Struct4_GUARD
+#define MR_FO_PseudoTypeInfo_Struct4_GUARD
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct4, 4);
+#endif
+
+typedef struct MR_HO_PseudoTypeInfo_Struct1 MR_HO_PseudoTypeInfo_Struct1;
+typedef struct MR_HO_PseudoTypeInfo_Struct2 MR_HO_PseudoTypeInfo_Struct2;
+typedef struct MR_HO_PseudoTypeInfo_Struct3 MR_HO_PseudoTypeInfo_Struct3;
+typedef struct MR_HO_PseudoTypeInfo_Struct4 MR_HO_PseudoTypeInfo_Struct4;
+
+typedef struct MR_FO_PseudoTypeInfo_Struct1 MR_FO_PseudoTypeInfo_Struct1;
+typedef struct MR_FO_PseudoTypeInfo_Struct2 MR_FO_PseudoTypeInfo_Struct2;
+typedef struct MR_FO_PseudoTypeInfo_Struct3 MR_FO_PseudoTypeInfo_Struct3;
+typedef struct MR_FO_PseudoTypeInfo_Struct4 MR_FO_PseudoTypeInfo_Struct4;
 
 /*---------------------------------------------------------------------------*/
 /*
 ** Declarations of contants and variables
 */
 
-/* declare MR_BaseTypeInfos for the builtin types */
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_int_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_string_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_float_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_character_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_void_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_c_pointer_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_pred_0;
-extern const MR_BaseTypeInfo mercury__builtin__base_type_info_func_0;
-extern const MR_BaseTypeInfo mercury__array__base_type_info_array_1;
-extern const MR_BaseTypeInfo mercury__std_util__base_type_info_univ_0;
-extern const MR_BaseTypeInfo mercury__std_util__base_type_info_type_info_0;
-extern const MR_BaseTypeInfo
-	mercury__private_builtin__base_type_info_type_ctor_info_1,
-	mercury__private_builtin__base_type_info_type_info_1,
-	mercury__private_builtin__base_type_info_typeclass_info_1,
-	mercury__private_builtin__base_type_info_base_typeclass_info_1;
+/* declare MR_TypeCtorInfo_Structs for the builtin types */
+extern const MR_TypeCtorInfo_Struct
+	mercury__builtin__builtin__type_ctor_info_int_0,
+	mercury__builtin__builtin__type_ctor_info_string_0,
+	mercury__builtin__builtin__type_ctor_info_float_0,
+	mercury__builtin__builtin__type_ctor_info_character_0,
+	mercury__builtin__builtin__type_ctor_info_void_0,
+	mercury__builtin__builtin__type_ctor_info_c_pointer_0,
+	mercury__builtin__builtin__type_ctor_info_pred_0,
+	mercury__builtin__builtin__type_ctor_info_func_0,
+	mercury__array__array__type_ctor_info_array_1,
+	mercury__std_util__std_util__type_ctor_info_univ_0,
+	mercury__std_util__std_util__type_ctor_info_type_info_0,
+	mercury__private_builtin__private_builtin__type_ctor_info_type_ctor_info_1,
+	mercury__private_builtin__private_builtin__type_ctor_info_type_info_1,
+	mercury__private_builtin__private_builtin__type_ctor_info_typeclass_info_1,
+	mercury__private_builtin__private_builtin__type_ctor_info_base_typeclass_info_1;
 
 /*
 ** The compiler generates references to this constant.

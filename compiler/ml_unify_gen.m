@@ -54,6 +54,7 @@
 
 :- import_module hlds_pred, hlds_module, hlds_out, builtin_ops.
 :- import_module ml_call_gen, prog_util, type_util, mode_util.
+:- import_module rtti.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 
 :- import_module int, string, list, require, std_util, term, varset.
@@ -245,10 +246,14 @@ ml_gen_construct_rep(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
 		ModuleName = ModuleName0
 	},
 	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
+	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
 	{ DataAddr = data_addr(MLDS_Module,
-		type_ctor(info, TypeName, TypeArity)) },
+		rtti(RttiTypeId, type_ctor_info)) },
+	ml_variable_type(Var, VarType),
 	{ MLDS_Statement = ml_gen_assign(VarLval, 
-		const(data_addr_const(DataAddr)), Context) }.
+		unop(cast(mercury_type(VarType)),
+			const(data_addr_const(DataAddr))),
+		Context) }.
 ml_gen_construct_rep(base_typeclass_info_constant(ModuleName, ClassId,
 			Instance), _ConsId, Var, Args, _ArgModes, Context,
 		[], [MLDS_Statement]) -->

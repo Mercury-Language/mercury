@@ -88,6 +88,7 @@ extern void ML_report_full_memory_stats(void);
 #include <stdlib.h>
 #include ""mercury_prof_mem.h""
 #include ""mercury_heap_profile.h""
+#include ""mercury_wrapper.h""		/* for time_at_last_stat */
 
 #ifdef PROFILE_MEMORY
 

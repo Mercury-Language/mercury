@@ -234,6 +234,8 @@ promise_only_solution(Pred) = OutVal :-
 
 :- pragma c_code("
 
+#ifndef HIGHLEVEL_CODE
+
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , int, 0,
 	MR_TYPECTOR_REP_INT,
 	mercury__builtin_unify_int_2_0,
@@ -345,6 +347,8 @@ void sys_init_builtin_types_module(void) {
 	MR_INIT_TYPE_CTOR_INFO_WITH_PRED(
 		mercury_data___type_ctor_info_void_0, mercury__unused_0_0);
 }
+
+#endif /* ! HIGHLEVEL_CODE */
 
 ").
 

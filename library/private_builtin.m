@@ -1137,7 +1137,8 @@ unused :-
 
 :- pragma c_header_code("
 
-#include ""mercury_misc.h""	/* for fatal_error(); */
+#include ""mercury_misc.h""		/* for fatal_error(); */
+#include ""mercury_type_info.h""	/* for MR_TypeCtorInfo_Struct; */
 
 extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct
 	mercury_data___type_ctor_info_int_0;

@@ -2269,8 +2269,8 @@ mercury_compile__mlds_backend(HLDS50, MLDS) -->
 
 mercury_compile__mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
 	type_ctor_info__generate_rtti(HLDS, TypeCtorRtti),
-	TypeCtorDefns = rtti_data_list_to_mlds(TypeCtorRtti),
 	MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),
+	TypeCtorDefns = rtti_data_list_to_mlds(ModuleName, TypeCtorRtti),
 	list__append(TypeCtorDefns, Defns0, Defns),
 	MLDS = mlds(ModuleName, ForeignCode, Imports, Defns).
 

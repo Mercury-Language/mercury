@@ -487,6 +487,9 @@
 	;	mlds__ptr_type(mlds__type)
 
 		% Function types.
+		% For the C back-end, these are mapped to function
+		% pointer types, since C doesn't have first-class
+		% function types.
 	;	mlds__func_type(mlds__func_params)
 
 		% A generic type (e.g. `Word') that can hold any Mercury value.
@@ -502,7 +505,7 @@
 		% closures for higher-order code.
 	;	mlds__generic_env_ptr_type
 
-	;	mlds__base_type_info_type
+	;	mlds__pseudo_type_info_type
 	
 	;	mlds__rtti_type(rtti_name).
 
@@ -1012,12 +1015,9 @@ XXX Full exception handling support is not yet implemented.
 			% global constants.  These are called "common"
 			% because they may be common sub-expressions.
 	%
-	% Stuff for handling polymorphism and type classes,
-	% and RTTI.
+	% Stuff for handling polymorphism/RTTI and type classes.
 	%
 	;	rtti(rtti_type_id, rtti_name)
-	;	type_ctor(mlds__base_data, string, arity)
-			% base_data, type name, type arity
 	;	base_typeclass_info(hlds_data__class_id, string)
 			% class name & class arity, names and arities of the
 			% types

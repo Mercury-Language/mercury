@@ -16,11 +16,11 @@
 
 :- module rtti_to_mlds.
 :- interface.
-:- import_module rtti, mlds.
+:- import_module rtti, mlds, prog_data.
 :- import_module list.
 
 	% return a list of MLDS definitions for the given rtti_data list.
-:- func rtti_data_list_to_mlds(list(rtti_data)) = mlds__defns.
+:- func rtti_data_list_to_mlds(module_name, list(rtti_data)) = mlds__defns.
 
 	% return a name, consisting only of alphabetic characters,
 	% that would be suitable for the type name for the type
@@ -31,12 +31,12 @@
 :- import_module pseudo_type_info, ml_code_util, prog_util, prog_out.
 :- import_module bool, list, std_util, string, term, require.
 
-rtti_data_list_to_mlds(RttiDatas) =
-	list__condense(list__map(rtti_data_to_mlds, RttiDatas)).
+rtti_data_list_to_mlds(ModuleName, RttiDatas) =
+	list__condense(list__map(rtti_data_to_mlds(ModuleName), RttiDatas)).
 
 	% return a list of MLDS definitions for the given rtti_data.
-:- func rtti_data_to_mlds(rtti_data) = mlds__defns.
-rtti_data_to_mlds(RttiData) = MLDS_Defns :-
+:- func rtti_data_to_mlds(module_name, rtti_data) = mlds__defns.
+rtti_data_to_mlds(ModuleName, RttiData) = MLDS_Defns :-
 	( RttiData = pseudo_type_info(type_var(_)) ->
 		% These just get represented as integers,
 		% so we don't need to define them.
@@ -68,7 +68,7 @@ rtti_data_to_mlds(RttiData) = MLDS_Defns :-
 		% i.e. the type and the initializer
 		%
 		MLDS_Type = rtti_type(RttiName),
-		Initializer = gen_init_rtti_data_defn(RttiData),
+		Initializer = gen_init_rtti_data_defn(RttiData, ModuleName),
 		DefnBody = mlds__data(MLDS_Type, Initializer),
 
 		%
@@ -98,36 +98,42 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
 
 %-----------------------------------------------------------------------------%
 
-	% Return an MLDS initializer for the given RTTI definition.
-:- func gen_init_rtti_data_defn(rtti_data) = mlds__initializer.
+	% Return an MLDS initializer for the given RTTI definition
+	% occurring in the given module.
+:- func gen_init_rtti_data_defn(rtti_data, module_name) = mlds__initializer.
 
-gen_init_rtti_data_defn(exist_locns(_RttiTypeId, _Ordinal, Locns)) =
+gen_init_rtti_data_defn(exist_locns(_RttiTypeId, _Ordinal, Locns), _) =
 	gen_init_array(gen_init_exist_locn, Locns).
 gen_init_rtti_data_defn(exist_info(RttiTypeId, _Ordinal, Plain, InTci, Tci,
-		Locns)) =
+		Locns), ModuleName) =
 	init_struct([
 		gen_init_int(Plain),
 		gen_init_int(InTci),
 		gen_init_int(Tci),
-		gen_init_rtti_name(RttiTypeId, Locns)
+		gen_init_rtti_name(ModuleName, RttiTypeId, Locns)
 	]).
-gen_init_rtti_data_defn(field_names(_RttiTypeId, _Ordinal, MaybeNames)) =
+gen_init_rtti_data_defn(field_names(_RttiTypeId, _Ordinal, MaybeNames), _) =
 	gen_init_array(gen_init_maybe(gen_init_string), MaybeNames).
-gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types)) =
-	gen_init_array(gen_init_cast_rtti_data, Types).
-gen_init_rtti_data_defn(enum_functor_desc(_RttiTypeId, FunctorName, Ordinal)) =
+gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types),
+		ModuleName) =
+	gen_init_array(gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
+		ModuleName), Types).
+gen_init_rtti_data_defn(enum_functor_desc(_RttiTypeId, FunctorName, Ordinal),
+		_ModuleName) =
 	init_struct([
 		gen_init_string(FunctorName),
 		gen_init_int(Ordinal)
 	]).
-gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType)) =
+gen_init_rtti_data_defn(notag_functor_desc(_RttiTypeId, FunctorName, ArgType),
+		ModuleName) =
 	init_struct([
 		gen_init_string(FunctorName),
-		gen_init_cast_rtti_data(ArgType)
+		gen_init_cast_rtti_data(mlds__pseudo_type_info_type,
+			ModuleName, ArgType)
 	]).
 gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		Locn, Ordinal, Arity, ContainsVarBitVector, ArgTypes,
-		MaybeNames, MaybeExist)) =
+		MaybeNames, MaybeExist), ModuleName) =
 	init_struct([
 		gen_init_string(FunctorName),
 		gen_init_int(Arity),
@@ -136,26 +142,34 @@ gen_init_rtti_data_defn(du_functor_desc(RttiTypeId, FunctorName, Ptag, Stag,
 		gen_init_int(Ptag),
 		gen_init_int(Stag),
 		gen_init_int(Ordinal),
-		gen_init_rtti_name(RttiTypeId, ArgTypes),
-		gen_init_maybe(gen_init_rtti_name(RttiTypeId), MaybeNames),
-		gen_init_maybe(gen_init_rtti_name(RttiTypeId), MaybeExist)
+		gen_init_rtti_name(ModuleName, RttiTypeId, ArgTypes),
+		gen_init_maybe(gen_init_rtti_name(ModuleName, RttiTypeId),
+			MaybeNames),
+		gen_init_maybe(gen_init_rtti_name(ModuleName, RttiTypeId),
+			MaybeExist)
 	]).
-gen_init_rtti_data_defn(enum_name_ordered_table(RttiTypeId, Functors)) =
-	gen_init_rtti_names_array(RttiTypeId, Functors).
-gen_init_rtti_data_defn(enum_value_ordered_table(RttiTypeId, Functors)) =
-	gen_init_rtti_names_array(RttiTypeId, Functors).
-gen_init_rtti_data_defn(du_name_ordered_table(RttiTypeId, Functors)) =
-	gen_init_rtti_names_array(RttiTypeId, Functors).
-gen_init_rtti_data_defn(du_stag_ordered_table(RttiTypeId, _Ptag, Sharers)) =
-	gen_init_rtti_names_array(RttiTypeId, Sharers).
-gen_init_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts)) =
-	gen_init_array(gen_init_ptag_layout_defn(RttiTypeId), PtagLayouts).
+gen_init_rtti_data_defn(enum_name_ordered_table(RttiTypeId, Functors),
+		ModuleName) =
+	gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
+gen_init_rtti_data_defn(enum_value_ordered_table(RttiTypeId, Functors),
+		ModuleName) =
+	gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
+gen_init_rtti_data_defn(du_name_ordered_table(RttiTypeId, Functors),
+		ModuleName) =
+	gen_init_rtti_names_array(ModuleName, RttiTypeId, Functors).
+gen_init_rtti_data_defn(du_stag_ordered_table(RttiTypeId, _Ptag, Sharers),
+		ModuleName) =
+	gen_init_rtti_names_array(ModuleName, RttiTypeId, Sharers).
+gen_init_rtti_data_defn(du_ptag_ordered_table(RttiTypeId, PtagLayouts),
+		ModuleName) =
+	gen_init_array(gen_init_ptag_layout_defn(ModuleName, RttiTypeId),
+		PtagLayouts).
 gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		CtorRep, SolverProc, InitProc, Version, NumPtags, NumFunctors,
 		FunctorsInfo, LayoutInfo, _MaybeHashCons,
-		_PrettyprinterProc)) = Initializer :-
-	RttiTypeId = rtti_type_id(Module, Type, TypeArity),
-	prog_out__sym_name_to_string(Module, ModuleName),
+		_PrettyprinterProc), ModuleName) = Initializer :-
+	RttiTypeId = rtti_type_id(TypeModule, Type, TypeArity),
+	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
 	Initializer = init_struct([
 		gen_init_int(TypeArity),
 		gen_init_maybe_proc_id(UnifyProc),
@@ -164,11 +178,18 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		gen_init_type_ctor_rep(CtorRep),
 		gen_init_maybe_proc_id(SolverProc),
 		gen_init_maybe_proc_id(InitProc),
-		gen_init_string(ModuleName),
+		gen_init_string(TypeModuleName),
 		gen_init_string(Type),
 		gen_init_int(Version),
-		gen_init_functors_info(FunctorsInfo, RttiTypeId),
-		gen_init_layout_info(LayoutInfo, RttiTypeId),
+		% In the C back-end, these two "structs" are actually unions.
+		% We need to use `init_struct' here so that the initializers
+		% gets inclosed in curly braces.
+		init_struct([
+			gen_init_functors_info(FunctorsInfo, ModuleName, RttiTypeId)
+		]),
+		init_struct([
+			gen_init_layout_info(LayoutInfo, ModuleName, RttiTypeId)
+		]),
 		gen_init_int(NumFunctors),
 		gen_init_int(NumPtags)
 			% These two are commented out while the corresponding
@@ -178,33 +199,42 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		%	MaybeHashCons),
 		% gen_init_maybe_proc_id(PrettyprinterProc)
 	]).
-gen_init_rtti_data_defn(pseudo_type_info(Pseudo)) =
-	gen_init_pseudo_type_info_defn(Pseudo).
+gen_init_rtti_data_defn(pseudo_type_info(Pseudo), ModuleName) =
+	gen_init_pseudo_type_info_defn(Pseudo, ModuleName).
 
-:- func gen_init_functors_info(type_ctor_functors_info, rtti_type_id) =
-	mlds__initializer.
-
-gen_init_functors_info(enum_functors(EnumFunctorsInfo), RttiTypeId) =
-	gen_init_cast_rtti_name(RttiTypeId, EnumFunctorsInfo).
-gen_init_functors_info(notag_functors(NotagFunctorsInfo), RttiTypeId) =
-	gen_init_cast_rtti_name(RttiTypeId, NotagFunctorsInfo).
-gen_init_functors_info(du_functors(DuFunctorsInfo), RttiTypeId) =
-	gen_init_cast_rtti_name(RttiTypeId, DuFunctorsInfo).
-gen_init_functors_info(no_functors, _) =
+:- func gen_init_functors_info(type_ctor_functors_info, module_name,
+		rtti_type_id) = mlds__initializer.
+gen_init_functors_info(enum_functors(EnumFunctorsInfo), ModuleName,
+		RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type,
+		ModuleName, RttiTypeId, EnumFunctorsInfo).
+gen_init_functors_info(notag_functors(NotagFunctorsInfo), ModuleName,
+		RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type,
+		ModuleName, RttiTypeId, NotagFunctorsInfo).
+gen_init_functors_info(du_functors(DuFunctorsInfo), ModuleName,
+		RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type,
+		ModuleName, RttiTypeId, DuFunctorsInfo).
+gen_init_functors_info(no_functors, _, _) =
 	gen_init_null_pointer.
 
-:- func gen_init_layout_info(type_ctor_layout_info, rtti_type_id) =
-	mlds__initializer.
+:- func gen_init_layout_info(type_ctor_layout_info, module_name,
+		rtti_type_id) = mlds__initializer.
 
-gen_init_layout_info(enum_layout(EnumLayoutInfo), RttiTypeId) =
-	gen_init_cast_rtti_name(RttiTypeId, EnumLayoutInfo).
-gen_init_layout_info(notag_layout(NotagLayoutInfo), RttiTypeId) =
-	gen_init_cast_rtti_name(RttiTypeId, NotagLayoutInfo).
-gen_init_layout_info(du_layout(DuLayoutInfo), RttiTypeId) =
-	gen_init_cast_rtti_name(RttiTypeId, DuLayoutInfo).
-gen_init_layout_info(equiv_layout(EquivTypeInfo), _RttiTypeId) =
-	gen_init_cast_rtti_data(EquivTypeInfo).
-gen_init_layout_info(no_layout, _RttiTypeId) =
+gen_init_layout_info(enum_layout(EnumLayoutInfo), ModuleName, RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type, ModuleName, RttiTypeId,
+		EnumLayoutInfo).
+gen_init_layout_info(notag_layout(NotagLayoutInfo), ModuleName, RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type, ModuleName, RttiTypeId,
+		NotagLayoutInfo).
+gen_init_layout_info(du_layout(DuLayoutInfo), ModuleName, RttiTypeId) =
+	gen_init_cast_rtti_name(mlds__generic_type, ModuleName, RttiTypeId,
+		DuLayoutInfo).
+gen_init_layout_info(equiv_layout(EquivTypeInfo), ModuleName, _RttiTypeId) =
+	gen_init_cast_rtti_data(mlds__generic_type, ModuleName,
+		EquivTypeInfo).
+gen_init_layout_info(no_layout, _, _) =
 	gen_init_null_pointer.
 
 :- func gen_init_maybe_proc_id(maybe(rtti_proc_label)) = mlds__initializer.
@@ -212,95 +242,141 @@ gen_init_layout_info(no_layout, _RttiTypeId) =
 gen_init_maybe_proc_id(MaybeProcLabel) =
 	gen_init_maybe(gen_init_proc_id, MaybeProcLabel).
 
-:- func gen_init_pseudo_type_info_defn(pseudo_type_info) = mlds__initializer.
-
-gen_init_pseudo_type_info_defn(type_var(_)) = _ :-
-	error("gen_init_pseudo_type_info_defn: type_var").
-gen_init_pseudo_type_info_defn(type_ctor_info(_)) = _ :-
-	error("gen_init_pseudo_type_info_defn: type_ctor_info").
-gen_init_pseudo_type_info_defn(type_info(RttiTypeId, ArgTypes)) = Init :-
-	ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes),
-	Init = init_struct([
-		gen_init_rtti_name(RttiTypeId, type_ctor_info),
-		gen_init_cast_rtti_datas_array(ArgRttiDatas)
-	]).
-gen_init_pseudo_type_info_defn(higher_order_type_info(RttiTypeId,
-		Arity, ArgTypes)) = Init :-
-	ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes),
-	Init = init_struct([
-		gen_init_rtti_name(RttiTypeId, type_ctor_info),
-		gen_init_int(Arity),
-		gen_init_cast_rtti_datas_array(ArgRttiDatas)
-	]).
-
-:- func gen_init_ptag_layout_defn(rtti_type_id, du_ptag_layout) =
+:- func gen_init_pseudo_type_info_defn(pseudo_type_info, module_name) =
 	mlds__initializer.
 
-gen_init_ptag_layout_defn(RttiTypeId, DuPtagLayout) = Init :-
+gen_init_pseudo_type_info_defn(type_var(_), _) = _ :-
+	error("gen_init_pseudo_type_info_defn: type_var").
+gen_init_pseudo_type_info_defn(type_ctor_info(_), _) = _ :-
+	error("gen_init_pseudo_type_info_defn: type_ctor_info").
+gen_init_pseudo_type_info_defn(type_info(RttiTypeId, ArgTypes), ModuleName) =
+		Init :-
+	ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes),
+	Init = init_struct([
+		gen_init_rtti_name(ModuleName, RttiTypeId, type_ctor_info),
+		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
+			ModuleName, ArgRttiDatas)
+	]).
+gen_init_pseudo_type_info_defn(higher_order_type_info(RttiTypeId,
+		Arity, ArgTypes), ModuleName) = Init :-
+	ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes),
+	Init = init_struct([
+		gen_init_rtti_name(ModuleName, RttiTypeId, type_ctor_info),
+		gen_init_int(Arity),
+		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
+			ModuleName, ArgRttiDatas)
+	]).
+
+:- func gen_init_ptag_layout_defn(module_name, rtti_type_id, du_ptag_layout) =
+	mlds__initializer.
+
+gen_init_ptag_layout_defn(ModuleName, RttiTypeId, DuPtagLayout) = Init :-
 	DuPtagLayout = du_ptag_layout(NumSharers, Locn, Descriptors) ,
 	Init = init_struct([
 		gen_init_int(NumSharers),
 		gen_init_sectag_locn(Locn),
-		gen_init_rtti_name(RttiTypeId, Descriptors)
+		gen_init_rtti_name(ModuleName, RttiTypeId, Descriptors)
 	]).
 
 %-----------------------------------------------------------------------------%
 
-:- func gen_init_rtti_names_array(rtti_type_id, list(rtti_name)) =
+:- func gen_init_rtti_names_array(module_name, rtti_type_id,
+		list(rtti_name)) = mlds__initializer.
+gen_init_rtti_names_array(ModuleName, RttiTypeId, RttiNames) =
+	gen_init_array(gen_init_rtti_name(ModuleName, RttiTypeId), RttiNames).
+
+:- func gen_init_rtti_datas_array(module_name, list(rtti_data)) =
 	mlds__initializer.
-gen_init_rtti_names_array(RttiTypeId, RttiNames) =
-	gen_init_array(gen_init_rtti_name(RttiTypeId), RttiNames).
+gen_init_rtti_datas_array(ModuleName, RttiDatas) =
+	gen_init_array(gen_init_rtti_data(ModuleName), RttiDatas).
 
-:- func gen_init_rtti_datas_array(list(rtti_data)) = mlds__initializer.
-gen_init_rtti_datas_array(RttiDatas) =
-	gen_init_array(gen_init_rtti_data, RttiDatas).
-
-:- func gen_init_cast_rtti_datas_array(list(rtti_data)) = mlds__initializer.
-gen_init_cast_rtti_datas_array(RttiDatas) =
-	gen_init_array(gen_init_cast_rtti_data, RttiDatas).
+:- func gen_init_cast_rtti_datas_array(mlds__type, module_name,
+		list(rtti_data)) = mlds__initializer.
+gen_init_cast_rtti_datas_array(Type, ModuleName, RttiDatas) =
+	gen_init_array(gen_init_cast_rtti_data(Type, ModuleName), RttiDatas).
 
 	% Generate the MLDS initializer comprising the rtti_name
 	% for a given rtti_data, converted to mlds__generic_type.
-:- func gen_init_cast_rtti_data(rtti_data) = mlds__initializer.
+:- func gen_init_cast_rtti_data(mlds__type, module_name, rtti_data) =
+	mlds__initializer.
 
-gen_init_cast_rtti_data(RttiData) = Initializer :-
+gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
 	( RttiData = pseudo_type_info(type_var(VarNum)) ->
 		% rtti_data_to_name/3 does not handle this case
-		Initializer = init_obj(unop(box(mlds__native_int_type),
+		SrcType = mlds__native_int_type,
+		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 			const(int_const(VarNum))))
 	;
 		rtti_data_to_name(RttiData, RttiTypeId, RttiName),
-		Initializer = gen_init_cast_rtti_name(RttiTypeId, RttiName)
+		Initializer = gen_init_cast_rtti_name(DestType,
+			ModuleName, RttiTypeId, RttiName)
 	).
+
+	% currently casts only store the destination type
+:- func gen_cast(mlds__type, mlds__type) = mlds__unary_op.
+gen_cast(_SrcType, DestType) = cast(DestType).
 
 	% Generate the MLDS initializer comprising the rtti_name
 	% for a given rtti_data.
-:- func gen_init_rtti_data(rtti_data) = mlds__initializer.
+:- func gen_init_rtti_data(module_name, rtti_data) = mlds__initializer.
 
-gen_init_rtti_data(RttiData) = Initializer :-
+gen_init_rtti_data(ModuleName, RttiData) = Initializer :-
 	rtti_data_to_name(RttiData, RttiTypeId, RttiName),
-	Initializer = gen_init_rtti_name(RttiTypeId, RttiName).
+	Initializer = gen_init_rtti_name(ModuleName, RttiTypeId, RttiName).
 
 	% Generate an MLDS initializer comprising just the
 	% the rval for a given rtti_name
-:- func gen_init_rtti_name(rtti_type_id, rtti_name) = mlds__initializer.
+:- func gen_init_rtti_name(module_name, rtti_type_id, rtti_name) =
+	mlds__initializer.
 
-gen_init_rtti_name(RttiTypeId, RttiName) =
-	init_obj(gen_rtti_name(RttiTypeId, RttiName)).
+gen_init_rtti_name(ModuleName, RttiTypeId, RttiName) =
+	init_obj(gen_rtti_name(ModuleName, RttiTypeId, RttiName)).
 
 	% Generate the MLDS initializer comprising the rtti_name
-	% for a given rtti_name, converted to mlds__generic_type.
-:- func gen_init_cast_rtti_name(rtti_type_id, rtti_name) = mlds__initializer.
+	% for a given rtti_name, converted to the given type.
+:- func gen_init_cast_rtti_name(mlds__type, module_name, rtti_type_id,
+	rtti_name) = mlds__initializer.
 
-gen_init_cast_rtti_name(RttiTypeId, RttiName) =
-	init_obj(unop(box(rtti_type(RttiName)), 
-		gen_rtti_name(RttiTypeId, RttiName))).
+gen_init_cast_rtti_name(DestType, ModuleName, RttiTypeId, RttiName) =
+	% SrcType = rtti_type(RttiName), 
+	init_obj(unop(cast(DestType),
+		gen_rtti_name(ModuleName, RttiTypeId, RttiName))).
 
 	% Generate the MLDS rval for an rtti_name.
-:- func gen_rtti_name(rtti_type_id, rtti_name) = mlds__rval.
+:- func gen_rtti_name(module_name, rtti_type_id, rtti_name) = mlds__rval.
 
-gen_rtti_name(RttiTypeId, RttiName) = Rval :-
-	RttiTypeId = rtti_type_id(ModuleName, _Type, _TypeArity),
+gen_rtti_name(ThisModuleName, RttiTypeId0, RttiName) = Rval :-
+	%
+	% Typeinfos are defined locally to each module.
+	% Other kinds of RTTI data are defining in the module
+	% corresponding to the type which they are for.
+	%
+	(
+		RttiName = pseudo_type_info(PseudoTypeInfo),
+		( PseudoTypeInfo = type_info(_, _)
+		; PseudoTypeInfo = higher_order_type_info(_, _, _)
+		)
+	->
+		ModuleName = ThisModuleName,
+		RttiTypeId = RttiTypeId0
+	;
+		RttiTypeId0 = rtti_type_id(RttiModuleName,
+			RttiTypeName, RttiTypeArity),
+		%
+		% Although the builtin types `int', `float', etc. are treated as part
+		% of the `builtin' module, for historical reasons they don't have
+		% any qualifiers at this point, so we need to add the `builtin'
+		% qualifier now.
+		%
+		( RttiModuleName = unqualified("") ->
+			mercury_public_builtin_module(ModuleName),
+			RttiTypeId = rtti_type_id(RttiModuleName,
+				RttiTypeName, RttiTypeArity)
+		;
+			ModuleName = RttiModuleName,
+			RttiTypeId = RttiTypeId0
+		)
+	),
 	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 	MLDS_DataName = rtti(RttiTypeId, RttiName),
 	DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),

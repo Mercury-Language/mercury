@@ -758,14 +758,6 @@ mlds_output_data_name(common(Num)) -->
 mlds_output_data_name(rtti(RttiTypeId, RttiName)) -->
 	{ rtti__addr_to_string(RttiTypeId, RttiName, RttiAddrName) },
 	io__write_string(RttiAddrName).
-mlds_output_data_name(type_ctor(BaseData, Name, Arity)) -->
-	{ llds_out__name_mangle(Name, MangledName) },
-	io__write_string("base_type_"),
-	io__write(BaseData),
-	io__write_string("_"),
-	io__write_string(MangledName),
-	io__write_string("_"),
-	io__write_int(Arity).
 mlds_output_data_name(base_typeclass_info(_ClassId, _InstanceId)) -->
 	{ error("mlds_to_c.m: NYI: basetypeclass_info") }.
 mlds_output_data_name(module_layout) -->
@@ -823,8 +815,8 @@ mlds_output_type(mlds__generic_type) -->
 	io__write_string("MR_Box").
 mlds_output_type(mlds__generic_env_ptr_type) -->
 	io__write_string("void *").
-mlds_output_type(mlds__base_type_info_type) -->
-	io__write_string("MR_BaseTypeInfo").
+mlds_output_type(mlds__pseudo_type_info_type) -->
+	io__write_string("MR_PseudoTypeInfo").
 mlds_output_type(mlds__cont_type) -->
 	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFuncs),
 	( { GCC_NestedFuncs = yes } ->
@@ -1481,7 +1473,7 @@ mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 	mlds_output_lval(Target),
 	io__write_string(", "),
 	io__write_int(ArgNum),
-	io__write_string(") = "),
+	io__write_string(") = (Word) "),
 	mlds_output_boxed_rval(ArgType, Arg),
 	io__write_string(";\n"),
 	mlds_output_init_args(Args, ArgTypes, Context,
@@ -1496,6 +1488,11 @@ mlds_output_init_args([Arg|Args], [ArgType|ArgTypes], Context,
 :- mode mlds_output_lval(in, di, uo) is det.
 
 mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval), _, _)) -->
+	% XXX this generated code is ugly;
+	% it would be nicer to use a different macro
+	% than MR_field(), one which had type `MR_Box'
+	% rather than `Word'.
+	io__write_string("(* (MR_Box *) &"),
 	( { MaybeTag = yes(Tag) } ->
 		io__write_string("MR_field("),
 		mlds_output_tag(Tag),
@@ -1503,10 +1500,11 @@ mlds_output_lval(field(MaybeTag, Rval, offset(OffsetRval), _, _)) -->
 	;
 		io__write_string("MR_mask_field(")
 	),
+	io__write_string("(Word) "),
 	mlds_output_rval(Rval),
 	io__write_string(", "),
 	mlds_output_rval(OffsetRval),
-	io__write_string(")").
+	io__write_string("))").
 mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldId), _, _)) -->
 	( { MaybeTag = yes(0) } ->
 		( { PtrRval = mem_addr(Lval) } ->
@@ -1839,13 +1837,44 @@ mlds_output_proc_label(PredLabel - ProcId) -->
 :- mode mlds_output_data_addr(in, di, uo) is det.
 
 mlds_output_data_addr(data_addr(ModuleName, DataName)) -->
-	% XXX the cast to (Word) is needed for base_type_infos,
-	% but it might not be right for other data_addr values.
-	io__write_string("((Word) &"),
+	(
+		% if its an array type, then we just use the name,
+		% otherwise we must prefix the name with `&'.
+		{ DataName = rtti(_, RttiName) },
+		{ rtti_name_has_array_type(RttiName) = yes }
+	->
+		mlds_output_data_var_name(ModuleName, DataName)
+	;
+		io__write_string("(&"),
+		mlds_output_data_var_name(ModuleName, DataName),
+		io__write_string(")")
+	).
+
+:- func rtti_name_has_array_type(rtti_name) = bool.
+rtti_name_has_array_type(exist_locns(_))		= yes.
+rtti_name_has_array_type(exist_info(_))			= no.
+rtti_name_has_array_type(field_names(_))		= yes.
+rtti_name_has_array_type(field_types(_))		= yes.
+rtti_name_has_array_type(enum_functor_desc(_))		= no.
+rtti_name_has_array_type(notag_functor_desc)		= no.
+rtti_name_has_array_type(du_functor_desc(_))		= no.
+rtti_name_has_array_type(enum_name_ordered_table)	= yes.
+rtti_name_has_array_type(enum_value_ordered_table)	= yes.
+rtti_name_has_array_type(du_name_ordered_table)		= yes.
+rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
+rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
+rtti_name_has_array_type(type_ctor_info)		= no.
+rtti_name_has_array_type(pseudo_type_info(_))		= no.
+rtti_name_has_array_type(type_hashcons_pointer)		= no.
+
+:- pred mlds_output_data_var_name(mlds_module_name, mlds__data_name,
+		io__state, io__state).
+:- mode mlds_output_data_var_name(in, in, di, uo) is det.
+
+mlds_output_data_var_name(ModuleName, DataName) -->
 	mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName)),
 	io__write_string("__"),
-	mlds_output_data_name(DataName),
-	io__write_string(")").
+	mlds_output_data_name(DataName).
 
 %-----------------------------------------------------------------------------%
 %

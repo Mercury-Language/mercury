@@ -579,7 +579,7 @@ ML_call_handler_det(MR_Word type_info, MR_Word closure, MR_Word exception,
 	typedef void FuncType(void *, MR_Box, MR_Box *);
 	FuncType *code = (FuncType *)
 		MR_field(MR_mktag(0), closure, (Integer) 1);
-	(*code)((void *) closure, exception, result);
+	(*code)((void *) closure, (MR_Box) exception, result);
 }
 
 static bool
@@ -589,7 +589,7 @@ ML_call_handler_semi(MR_Word type_info, MR_Word closure, MR_Word exception,
 	typedef bool FuncType(void *, MR_Box, MR_Box *);
 	FuncType *code = (FuncType *)
 		MR_field(MR_mktag(0), closure, (Integer) 1);
-	return (*code)((void *) closure, exception, result);
+	return (*code)((void *) closure, (MR_Box) exception, result);
 }
 
 #ifdef MR_USE_GCC_NESTED_FUNCTIONS
@@ -601,7 +601,7 @@ ML_call_handler_non(MR_Word type_info, MR_Word closure, MR_Word exception,
 	typedef void FuncType(void *, MR_Box, MR_Box *, MR_NestedCont);
 	FuncType *code = (FuncType *)
 		MR_field(MR_mktag(0), closure, (Integer) 1);
-	(*code)((void *) closure, exception, result, cont);
+	(*code)((void *) closure, (MR_Box) exception, result, cont);
 }
 
 #else
@@ -613,7 +613,7 @@ ML_call_handler_non(MR_Word type_info, MR_Word closure, MR_Word exception,
 	typedef void FuncType(void *, MR_Box, MR_Box *, MR_Cont, void *);
 	FuncType *code = (FuncType *)
 		MR_field(MR_mktag(0), closure, (Integer) 1);
-	(*code)((void *) closure, exception, result, cont, cont_env);
+	(*code)((void *) closure, (MR_Box) exception, result, cont, cont_env);
 }
 
 #endif
