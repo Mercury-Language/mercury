@@ -412,6 +412,7 @@ do
 				EXTRA_MLFLAGS="-static" &&
 			./poly > poly.$grade.out &&
 			mprof -v -m -c > poly.$grade.mprof 2>&1  &&
+			diff -c poly.mprof-exp poly.$grade.mprof &&
 			cp Prof.CallPair poly.$grade.CallPair &&
 			cp Prof.MemoryWords poly.$grade.MemoryWords &&
 			cp Prof.MemoryCells poly.$grade.MemoryCells &&
