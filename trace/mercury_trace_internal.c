@@ -136,6 +136,24 @@ static const char	*MR_context_report_msg[] = {
 	"Contexts are printed on the next line.",
 };
 
+static	MR_Spy_When		MR_default_breakpoint_scope = MR_SPY_INTERFACE;
+
+static const char	*MR_scope_set_msg[] = {
+	"The default scope of `break' commands is now all matching events.",
+	"The default scope of `break' commands is now all matching interface events.",
+	"The default scope of `break' commands is now all matching entry events.",
+	"MDB INTERNAL ERROR: scope set to MR_SPY_SPECIFIC",
+	"MDB INTERNAL ERROR: scope set to MR_SPY_LINENO",
+};
+
+static const char	*MR_scope_report_msg[] = {
+	"The default scope of `break' commands is all matching events.",
+	"The default scope of `break' commands is all matching interface events.",
+	"The default scope of `break' commands is all matching entry events.",
+	"MDB INTERNAL ERROR: scope set to MR_SPY_SPECIFIC",
+	"MDB INTERNAL ERROR: scope set to MR_SPY_LINENO",
+};
+
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
 
 MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
@@ -156,15 +174,20 @@ static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static	void	MR_maybe_print_spy_point(int slot, const char *problem);
 static	void	MR_print_unsigned_var(FILE *fp, const char *var,
 			MR_Unsigned value);
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
-static	bool	MR_trace_options_when_action_multi(MR_Spy_When *when,
+static	bool	MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
 			MR_Spy_Action *action, MR_MultiMatch *multi_match,
+			MR_Spy_Ignore_When *ignore_when, int *ignore_count,
 			char ***words, int *word_count,
+			const char *cat, const char *item);
+static	bool	MR_trace_options_ignore_count(MR_Spy_Ignore_When *ignore_when,
+			int *ignore_count, char ***words, int *word_count,
 			const char *cat, const char *item);
 static	bool	MR_trace_options_quiet(bool *verbose, char ***words,
 			int *word_count, const char *cat, const char *item);
@@ -1113,13 +1136,16 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("browsing", "set");
 		}
 	} else if (streq(words[0], "break")) {
-		MR_Proc_Spec	spec;
-		MR_Spy_When	when;
-		MR_Spy_Action	action;
-		MR_MultiMatch	multi_match;
-		const char	*file;
-		int		line;
-		int		breakline;
+		MR_Proc_Spec		spec;
+		MR_Spy_When		when;
+		MR_Spy_Action		action;
+		MR_MultiMatch		multi_match;
+		MR_Spy_Ignore_When	ignore_when;
+		int			ignore_count;
+		const char		*file;
+		int			line;
+		int			breakline;
+		const char		*problem;
 
 		if (word_count == 2 && streq(words[1], "info")) {
 			int	i;
@@ -1141,21 +1167,47 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			return KEEP_INTERACTING;
 		}
 
-		when = MR_SPY_INTERFACE;
+		when = MR_default_breakpoint_scope;
 		action = MR_SPY_STOP;
 		multi_match = MR_MULTIMATCH_ASK;
-		if (! MR_trace_options_when_action_multi(&when, &action,
-				&multi_match, &words, &word_count,
-				"breakpoint", "break"))
+		/*
+		** The value of ignore_when doesn't matter
+		** while ignore_count contains zero.
+		*/
+		ignore_when = MR_SPY_DONT_IGNORE;
+		ignore_count = 0;
+		if (! MR_trace_options_when_action_multi_ignore(&when, &action,
+				&multi_match, &ignore_when, &ignore_count,
+				&words, &word_count, "breakpoint", "break"))
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 2 && streq(words[1], "here")) {
-			int	slot;
+			int		slot;
+			MR_Trace_Port	port;
+
+			port = event_info->MR_trace_port;
+			if (ignore_count > 0 &&
+				ignore_when == MR_SPY_IGNORE_ENTRY &&
+				! MR_port_is_entry(port))
+			{
+				fprintf(MR_mdb_out, "That breakpoint "
+					"would never become enabled.\n");
+				return KEEP_INTERACTING;
+			} else if (ignore_count > 0 &&
+				ignore_when == MR_SPY_IGNORE_INTERFACE &&
+				! MR_port_is_interface(port))
+			{
+				fprintf(MR_mdb_out, "That breakpoint "
+					"would never become enabled.\n");
+				return KEEP_INTERACTING;
+			}
 
 			MR_register_all_modules_and_procs(MR_mdb_out, TRUE);
 			slot = MR_add_proc_spy_point(MR_SPY_SPECIFIC, action,
-					layout->MR_sll_entry, layout);
-			MR_print_spy_point(MR_mdb_out, slot);
+					ignore_when, ignore_count,
+					layout->MR_sll_entry, layout,
+					&problem);
+			MR_maybe_print_spy_point(slot, problem);
 		} else if (word_count == 2 &&
 				MR_parse_proc_spec(words[1], &spec))
 		{
@@ -1170,17 +1222,21 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					"mdb: there is no such procedure.\n");
 			} else if (matches.match_proc_next == 1) {
 				slot = MR_add_proc_spy_point(when, action,
-					matches.match_procs[0], NULL);
-				MR_print_spy_point(MR_mdb_out, slot);
+					ignore_when, ignore_count,
+					matches.match_procs[0], NULL,
+					&problem);
+				MR_maybe_print_spy_point(slot, problem);
 			} else if (multi_match == MR_MULTIMATCH_ALL) {
 				int	i;
 
 				for (i = 0; i < matches.match_proc_next; i++) {
 					slot = MR_add_proc_spy_point(
 						when, action,
-						matches.match_procs[i],
-						NULL);
-					MR_print_spy_point(MR_mdb_out, slot);
+						ignore_when, ignore_count,
+						matches.match_procs[i], NULL,
+						&problem);
+					MR_maybe_print_spy_point(slot,
+						problem);
 				}
 			} else {
 				char	buf[80];
@@ -1218,10 +1274,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					{
 						slot = MR_add_proc_spy_point(
 							when, action,
+							ignore_when,
+							ignore_count,
 							matches.match_procs[i],
-							NULL);
-						MR_print_spy_point(MR_mdb_out,
-							slot);
+							NULL, &problem);
+						MR_maybe_print_spy_point(
+							slot, problem);
 					}
 
 					MR_free(line2);
@@ -1231,10 +1289,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					{
 						slot = MR_add_proc_spy_point(
 							when, action,
+							ignore_when,
+							ignore_count,
 							matches.match_procs[i],
-							NULL);
-						MR_print_spy_point(MR_mdb_out,
-							slot);
+							NULL, &problem);
+						MR_maybe_print_spy_point(
+							slot, problem);
 					} else {
 						fprintf(MR_mdb_out,
 							"no such match\n");
@@ -1250,37 +1310,86 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		{
 			int	slot;
 
-			slot = MR_add_line_spy_point(action, file, line);
-			if (slot >= 0) {
-				MR_print_spy_point(MR_mdb_out, slot);
-			} else {
-				fflush(MR_mdb_out);
-				fprintf(MR_mdb_err,
-					"mdb: there is no event at %s:%d.\n",
-					file, line);
-			}
+			slot = MR_add_line_spy_point(action, ignore_when,
+				ignore_count, file, line, &problem);
+			MR_maybe_print_spy_point(slot, problem);
 		} else if (word_count == 2 &&
 				MR_trace_is_number(words[1], &breakline))
 		{
 			int	slot;
 
 			if (MR_find_context(layout, &file, &line)) {
-				slot = MR_add_line_spy_point(action, file,
-					breakline);
-				if (slot >= 0) {
-					MR_print_spy_point(MR_mdb_out, slot);
-				} else {
-					fflush(MR_mdb_out);
-					fprintf(MR_mdb_err,
-						"mdb: there is no event "
-						"at %s:%d.\n",
-						file, breakline);
-				}
+				slot = MR_add_line_spy_point(action,
+					ignore_when, ignore_count,
+					file, breakline, &problem);
+				MR_maybe_print_spy_point(slot, problem);
 			} else {
 				MR_fatal_error("cannot find current filename");
 			}
 		} else {
 			MR_trace_usage("breakpoint", "break");
+		}
+	} else if (streq(words[0], "ignore")) {
+		int			n;
+		MR_Spy_Ignore_When	ignore_when;
+		int			ignore_count;
+		const char		*problem;
+
+		ignore_when = MR_SPY_IGNORE_ENTRY;
+		ignore_count = 1;
+		if (! MR_trace_options_ignore_count(&ignore_when, &ignore_count,
+				&words, &word_count, "breakpoint", "ignore"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
+		{
+			if (0 <= n && n < MR_spy_point_next
+					&& MR_spy_points[n]->spy_exists)
+			{
+				problem = MR_ignore_spy_point(n, ignore_when,
+					ignore_count);
+				MR_maybe_print_spy_point(n, problem);
+			} else {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: break point #%d "
+					"does not exist.\n",
+					n);
+			}
+		} else if (word_count == 2 && streq(words[1], "*")) {
+			int	i;
+			int	count;
+
+			count = 0;
+			for (i = 0; i < MR_spy_point_next; i++) {
+				if (MR_spy_points[i]->spy_exists) {
+					problem = MR_ignore_spy_point(n,
+						ignore_when, ignore_count);
+					MR_maybe_print_spy_point(n, problem);
+					count++;
+				}
+			}
+
+			if (count == 0) {
+				fprintf(MR_mdb_err,
+					"There are no break points.\n");
+			}
+		} else if (word_count == 1) {
+			if (0 <= MR_most_recent_spy_point
+				&& MR_most_recent_spy_point < MR_spy_point_next
+				&& MR_spy_points[MR_most_recent_spy_point]->
+					spy_exists)
+			{
+				n = MR_most_recent_spy_point;
+				problem = MR_ignore_spy_point(n, ignore_when,
+					ignore_count);
+				MR_maybe_print_spy_point(n, problem);
+			} else {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: there is no "
+					"most recent break point.\n");
+			}
+		} else {
+			MR_trace_usage("breakpoint", "ignore");
 		}
 	} else if (streq(words[0], "enable")) {
 		int	n;
@@ -1617,6 +1726,41 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			}
 		} else {
 			MR_trace_usage("parameter", "context");
+		}
+	} else if (streq(words[0], "scope")) {
+		if (word_count == 2) {
+			if (streq(words[1], "all")) {
+				MR_default_breakpoint_scope = MR_SPY_ALL;
+			} else if (streq(words[1], "interface")) {
+				MR_default_breakpoint_scope = MR_SPY_INTERFACE;
+			} else if (streq(words[1], "entry")) {
+				MR_default_breakpoint_scope = MR_SPY_ENTRY;
+			} else {
+				MR_trace_usage("parameter", "scope");
+				return KEEP_INTERACTING;
+			}
+
+			if (MR_trace_internal_interacting) {
+				fprintf(MR_mdb_out, "%s\n",
+					MR_scope_set_msg[
+						MR_default_breakpoint_scope]);
+			}
+		} else if (word_count == 1) {
+			switch (MR_default_breakpoint_scope) {
+			case MR_SPY_ALL:
+			case MR_SPY_INTERFACE:
+			case MR_SPY_ENTRY:
+				fprintf(MR_mdb_out, "%s\n",
+					MR_scope_report_msg[
+						MR_default_breakpoint_scope]);
+				break;
+
+			default:
+				MR_fatal_error(
+					"invalid MR_default_breakpoint_scope");
+			}
+		} else {
+			MR_trace_usage("parameter", "scope");
 		}
 	} else if (streq(words[0], "echo")) {
 		if (word_count == 2) {
@@ -2018,6 +2162,24 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_print_all_aliases(fp, TRUE);
 			found_error = MR_save_spy_points(fp, MR_mdb_err);
 
+			switch (MR_default_breakpoint_scope) {
+				case MR_SPY_ALL:
+					fprintf(fp, "scope all\n");
+					break;
+
+				case MR_SPY_INTERFACE:
+					fprintf(fp, "scope interface\n");
+					break;
+
+				case MR_SPY_ENTRY:
+					fprintf(fp, "scope entry\n");
+					break;
+
+				default:
+					MR_fatal_error("save cmd: "
+						"invalid default scope");
+			}
+
 			if (found_error) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: could not save "
@@ -2127,6 +2289,17 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static void
+MR_maybe_print_spy_point(int slot, const char *problem)
+{
+	if (slot < 0) {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+	} else {
+		MR_print_spy_point(MR_mdb_out, slot);
+	}
+}
+
+static void
 MR_print_unsigned_var(FILE *fp, const char *var, MR_Unsigned value)
 {
 	fprintf(fp, "%s = %" MR_INTEGER_LENGTH_MODIFIER "u\n", var, value);
@@ -2156,12 +2329,12 @@ MR_parse_source_locn(char *word, const char **file, int *line)
 
 static struct MR_option MR_trace_strict_print_opts[] =
 {
-	{ "all",	FALSE,	NULL,	'a' },
-	{ "none",	FALSE,	NULL,	'n' },
-	{ "some",	FALSE,	NULL,	's' },
-	{ "nostrict",	FALSE,	NULL,	'N' },
-	{ "strict",	FALSE,	NULL,	'S' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "all",	MR_no_argument,	NULL,	'a' },
+	{ "none",	MR_no_argument,	NULL,	'n' },
+	{ "some",	MR_no_argument,	NULL,	's' },
+	{ "nostrict",	MR_no_argument,	NULL,	'N' },
+	{ "strict",	MR_no_argument,	NULL,	'S' },
+	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static bool
@@ -2207,28 +2380,31 @@ MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 	return TRUE;
 }
 
-static struct MR_option MR_trace_when_action_multi_opts[] =
+static struct MR_option MR_trace_when_action_multi_ignore_opts[] =
 {
-	{ "all",	FALSE,	NULL,	'a' },
-	{ "entry",	FALSE,	NULL,	'e' },
-	{ "interface",	FALSE,	NULL,	'i' },
-	{ "print",	FALSE,	NULL,	'P' },
-	{ "stop",	FALSE,	NULL,	'S' },
-	{ "select-all",	FALSE,	NULL,	'A' },
-	{ "select-one",	FALSE,	NULL,	'O' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "all",		MR_no_argument,		NULL,	'a' },
+	{ "entry",		MR_no_argument,		NULL,	'e' },
+	{ "interface",		MR_no_argument,		NULL,	'i' },
+	{ "ignore-entry",	MR_required_argument,	NULL,	'E' },
+	{ "ignore-interface",	MR_required_argument,	NULL,	'I' },
+	{ "print",		MR_no_argument,		NULL,	'P' },
+	{ "stop",		MR_no_argument,		NULL,	'S' },
+	{ "select-all",		MR_no_argument,		NULL,	'A' },
+	{ "select-one",		MR_no_argument,		NULL,	'O' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
 };
 
 static bool
-MR_trace_options_when_action_multi(MR_Spy_When *when, MR_Spy_Action *action,
-	MR_MultiMatch *multi_match, char ***words, int *word_count,
-	const char *cat, const char *item)
+MR_trace_options_when_action_multi_ignore(MR_Spy_When *when,
+	MR_Spy_Action *action, MR_MultiMatch *multi_match,
+	MR_Spy_Ignore_When*ignore_when, int *ignore_count,
+	char ***words, int *word_count, const char *cat, const char *item)
 {
 	int	c;
 
 	MR_optind = 0;
-	while ((c = MR_getopt_long(*word_count, *words, "AOPSaei",
-			MR_trace_when_action_multi_opts, NULL)) != EOF)
+	while ((c = MR_getopt_long(*word_count, *words, "AE:I:OPSaei",
+			MR_trace_when_action_multi_ignore_opts, NULL)) != EOF)
 	{
 		switch (c) {
 
@@ -2242,6 +2418,24 @@ MR_trace_options_when_action_multi(MR_Spy_When *when, MR_Spy_Action *action,
 
 			case 'i':
 				*when = MR_SPY_INTERFACE;
+				break;
+
+			case 'E':
+				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				{
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*ignore_when = MR_SPY_IGNORE_ENTRY;
+				break;
+
+			case 'I':
+				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				{
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*ignore_when = MR_SPY_IGNORE_INTERFACE;
 				break;
 
 			case 'A':
@@ -2271,10 +2465,59 @@ MR_trace_options_when_action_multi(MR_Spy_When *when, MR_Spy_Action *action,
 	return TRUE;
 }
 
+static struct MR_option MR_trace_ignore_count_opts[] =
+{
+	{ "ignore-entry",	MR_required_argument,	NULL,	'E' },
+	{ "ignore-interface",	MR_required_argument,	NULL,	'I' },
+	{ NULL,			MR_no_argument,		NULL,	0 }
+};
+
+static bool
+MR_trace_options_ignore_count(MR_Spy_Ignore_When*ignore_when,
+	int *ignore_count, char ***words, int *word_count,
+	const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "E:I:",
+			MR_trace_ignore_count_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'E':
+				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				{
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*ignore_when = MR_SPY_IGNORE_ENTRY;
+				break;
+
+			case 'I':
+				if (sscanf(MR_optarg, "%d", ignore_count) != 1)
+				{
+					MR_trace_usage(cat, item);
+					return FALSE;
+				}
+				*ignore_when = MR_SPY_IGNORE_INTERFACE;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
 static struct MR_option MR_trace_detailed_opts[] =
 {
-	{ "detailed",	FALSE,	NULL,	'd' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "detailed",	MR_no_argument,	NULL,	'd' },
+	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static bool
@@ -2337,9 +2580,9 @@ MR_trace_options_confirmed(bool *confirmed, char ***words, int *word_count,
 
 static struct MR_option MR_trace_quiet_opts[] =
 {
-	{ "quiet",	FALSE,	NULL,	'q' },
-	{ "verbose",	FALSE,	NULL,	'v' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "quiet",	MR_no_argument,	NULL,	'q' },
+	{ "verbose",	MR_no_argument,	NULL,	'v' },
+	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static bool
@@ -2375,8 +2618,8 @@ MR_trace_options_quiet(bool *verbose, char ***words, int *word_count,
 
 static struct MR_option MR_trace_ignore_opts[] =
 {
-	{ "ignore-errors",	FALSE,	NULL,	'i' },
-	{ NULL,			FALSE,	NULL,	0 }
+	{ "ignore-errors",	MR_no_argument,	NULL,	'i' },
+	{ NULL,			MR_no_argument,	NULL,	0 }
 };
 
 static bool
@@ -2408,11 +2651,11 @@ MR_trace_options_ignore(bool *ignore_errors, char ***words, int *word_count,
 
 static struct MR_option MR_trace_format_opts[] = 
 {
-	{ "flat",	FALSE,	NULL,	'f' },
-	{ "raw_pretty",	FALSE,	NULL,	'r' },
-	{ "verbose",	FALSE,	NULL,	'v' },
-	{ "pretty",	FALSE,	NULL,	'p' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "flat",	MR_no_argument,	NULL,	'f' },
+	{ "raw_pretty",	MR_no_argument,	NULL,	'r' },
+	{ "verbose",	MR_no_argument,	NULL,	'v' },
+	{ "pretty",	MR_no_argument,	NULL,	'p' },
+	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static bool
@@ -2457,14 +2700,14 @@ MR_trace_options_format(MR_Browse_Format *format, char ***words,
 
 static struct MR_option MR_trace_param_set_opts[] = 
 {
-	{ "flat",	FALSE,	NULL,	'f' },
-	{ "raw_pretty",	FALSE,	NULL,	'r' },
-	{ "verbose",	FALSE,	NULL,	'v' },
-	{ "pretty",	FALSE,	NULL,	'p' },	
-	{ "print",	FALSE,	NULL,	'P' },
-	{ "browse",	FALSE,	NULL,	'B' },
-	{ "print-all",	FALSE,	NULL,	'A' },
-	{ NULL,		FALSE,	NULL,	0 }
+	{ "flat",	MR_no_argument,	NULL,	'f' },
+	{ "raw_pretty",	MR_no_argument,	NULL,	'r' },
+	{ "verbose",	MR_no_argument,	NULL,	'v' },
+	{ "pretty",	MR_no_argument,	NULL,	'p' },	
+	{ "print",	MR_no_argument,	NULL,	'P' },
+	{ "browse",	MR_no_argument,	NULL,	'B' },
+	{ "print-all",	MR_no_argument,	NULL,	'A' },
+	{ NULL,		MR_no_argument,	NULL,	0 }
 };
 
 static bool
@@ -3084,6 +3327,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "browsing", "current" },
 	{ "browsing", "set" },
 	{ "breakpoint", "break" },
+	{ "breakpoint", "ignore" },
 	{ "breakpoint", "enable" },
 	{ "breakpoint", "disable" },
 	{ "breakpoint", "delete" },
@@ -3095,6 +3339,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "parameter", "echo" },
 	{ "parameter", "scroll" },
 	{ "parameter", "context" },
+	{ "parameter", "scope" },
 	{ "parameter", "alias" },
 	{ "parameter", "unalias" },
 	{ "help", "document_category" },

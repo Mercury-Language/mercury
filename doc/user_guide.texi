@@ -1734,7 +1734,7 @@ is based on the following concepts.
 The user may associate a break point
 with some events that occur inside a procedure;
 the invocation condition of the break point says which events these are.
-The four possible invocation conditions are:
+The four possible invocation conditions (also called scopes) are:
 @sp 1
 @itemize @bullet
 @item
@@ -2390,7 +2390,7 @@ these options are ignored.
 @cindex Breakpoints
 @sp 1
 @table @code
-@item break [-PS] @var{filename}:@var{linenumber}
+@item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] @var{filename}:@var{linenumber}
 @kindex break (mdb command)
 Puts a break point on the specified line of the specified source file,
 if there is an event or a call at that position.
@@ -2400,8 +2400,20 @@ it defaults to the filename from the context of the current event.
 The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
 specify the action to be taken at the break point.
 @sp 1
-By default, the initial state of the break point is @samp{stop}.
-@item break [-AOPSaei] @var{proc-spec}
+The options @samp{-E@var{ignore-count}}
+and @samp{--ignore-entry @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of a call event
+that matches the breakpoint.
+The options @samp{-I@var{ignore-count}}
+and @samp{--ignore-interface @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of interface events
+that match the breakpoint.
+@sp 1
+By default, the initial state of the break point is @samp{stop},
+and the ignore count is zero.
+@item break [-AOPSaei] [-E@var{ignore-count}] [-I@var{ignore-count}] @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
 @sp 1
@@ -2417,15 +2429,32 @@ By default, mdb will ask you whether you want to put a breakpoint
 on all matched procedures or just one, and if so, which one.
 @sp 1
 The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
-specify the action to be taken at the break point,
-while the options @samp{-a} or @samp{--all},
+specify the action to be taken at the break point.
+@sp 1
+The options @samp{-a} or @samp{--all},
 @samp{-e} or @samp{--entry}, and @samp{-i} or @samp{--interface}
 specify the invocation conditions of the break point.
+If none of these options are specified,
+the default is the one indicated by the current scope
+(see the @samp{scope} command below).
+The initial scope is @samp{interface}.
+@sp 1
+The options @samp{-E@var{ignore-count}}
+and @samp{--ignore-entry @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of a call event
+that matches the breakpoint.
+The options @samp{-I@var{ignore-count}}
+and @samp{--ignore-interface @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of interface events
+that match the breakpoint.
 @sp 1
 By default, the action of the break point is @samp{stop},
-and its invocation condition is @samp{interface}.
+its invocation condition is @samp{interface},
+and the ignore count is zero.
 @sp 1
-@item break [-PS] here
+@item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] here
 Puts a break point on the procedure referred to by the current event,
 with the invocation condition being the event at the current location
 in the procedure body.
@@ -2433,10 +2462,56 @@ in the procedure body.
 The options @samp{-P} or @samp{--print}, and @samp{-S} or @samp{--stop}
 specify the action to be taken at the break point.
 @sp 1
-By default, the initial state of the break point is @samp{stop}.
+The options @samp{-E@var{ignore-count}}
+and @samp{--ignore-entry @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of a call event
+that matches the breakpoint.
+The options @samp{-I@var{ignore-count}}
+and @samp{--ignore-interface @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of interface events
+that match the breakpoint.
+@sp 1
+By default, the initial state of the break point is @samp{stop},
+and the ignore count is zero.
 @sp 1
 @item break info
 Lists the details and status of all break points.
+@sp 1
+@item ignore [-E@var{ignore-count}] [-I@var{ignore-count}] @var{num}
+@sp 1
+The options @samp{-E@var{ignore-count}}
+and @samp{--ignore-entry @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of a call event
+that matches the breakpoint with the specified number.
+The options @samp{-I@var{ignore-count}}
+and @samp{--ignore-interface @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of interface events
+that match the breakpoint with the specified number.
+If neither option is given,
+the default is to ignore one call event
+that matches the breakpoint with the specified number.
+Reports an error if there is no break point with the specified number.
+@sp 1
+@item ignore [-E@var{ignore-count}] [-I@var{ignore-count}]
+@sp 1
+The options @samp{-E@var{ignore-count}}
+and @samp{--ignore-entry @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of a call event
+that matches the most recently added breakpoint.
+The options @samp{-I@var{ignore-count}}
+and @samp{--ignore-interface @var{ignore-count}}
+tell the debugger to ignore the breakpoint
+until after @var{ignore-count} occurrences of interface events
+that match the most recently added breakpoint.
+If neither option is given,
+the default is to ignore one call event
+that matches the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
 @sp 1
 @item disable @var{num}
 @kindex disable (mdb command)
@@ -2590,6 +2665,24 @@ after the identification of the event or call to which they refer.
 @sp 1
 @item context
 Reports where contexts are being printed.
+@sp 1
+@item scope all
+Sets the default scope of new breakpoints to "all",
+i.e. by default, new breakpoints on procedures
+will stop at all events in the procedure.
+@sp 1
+@item scope interface
+Sets the default scope of new breakpoints to "interface",
+i.e. by default, new breakpoints on procedures
+will stop at all interface events in the procedure.
+@sp 1
+@item scope entry
+Sets the default scope of new breakpoints to "entry",
+i.e. by default, new breakpoints on procedures
+will stop only at events representing calls to the procedure.
+@sp 1
+@item scope
+Reports the current default scope of new breakpoints.
 @sp 1
 @item alias @var{name} @var{command} [@var{command-parameter} ...]
 @kindex alias (mdb command)

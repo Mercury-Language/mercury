@@ -92,6 +92,10 @@ static	int	MR_search_spy_table_for_label(const MR_Label_Layout *label);
 static	void	MR_add_line_spy_point_callback(const MR_Label_Layout *label,
 			int spy_point_num);
 static	int	MR_compare_spied_labels(const void *, const void *);
+static	void	MR_update_enabled_action(MR_Spy_Point *point,
+			MR_Trace_Port port, MR_Spy_Action *action_ptr,
+			bool *enabled_ptr);
+static	const char *MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when);
 
 /*
 ** Compare two addresses, and return an integer which is <0, 0, or >0
@@ -179,17 +183,13 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 		if (slot >= 0) {
 			point = MR_spy_points[
 				MR_spied_labels[slot].spy_point_num];
-			if (point->spy_enabled) {
-				if (point->spy_when != MR_SPY_LINENO) {
-					MR_fatal_error("non-lineno spy "
-						"point in "
-						"spied labels array");
-				}
-
-				enabled = TRUE;
-				action = max(action,
-					point->spy_action);
+			if (point->spy_when != MR_SPY_LINENO) {
+				MR_fatal_error("non-lineno spy point in "
+					"spied labels array");
 			}
+
+			MR_update_enabled_action(point, port,
+				&action, &enabled);
 		}
 
 		if (MR_port_is_interface(port)) {
@@ -203,17 +203,14 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 			{
 				point = MR_spy_points[MR_spied_labels[slot].
 					spy_point_num];
-				if (point->spy_enabled) {
-					if (point->spy_when != MR_SPY_LINENO) {
-						MR_fatal_error("non-lineno "
-							"spy point in "
-							"spied labels array");
-					}
-
-					enabled = TRUE;
-					action = max(action,
-						point->spy_action);
+				if (point->spy_when != MR_SPY_LINENO) {
+					MR_fatal_error("non-lineno "
+						"spy point in "
+						"spied labels array");
 				}
+
+				MR_update_enabled_action(point, port,
+					&action, &enabled);
 			}
 		}
 	}
@@ -221,24 +218,21 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 	slot = MR_search_spy_table_for_proc(layout->MR_sll_entry);
 	if (slot >= 0) {
 		for (point = MR_spied_procs[slot].spy_points; point != NULL;
-				point = point->spy_next) {
-			if (! point->spy_enabled) {
-				continue;
-			}
-
+				point = point->spy_next)
+		{
 			switch (point->spy_when) {
 
 				case MR_SPY_ALL:
-					enabled = TRUE;
-					action = max(action,
-						point->spy_action);
+					MR_update_enabled_action(point,
+						port, &action,
+						&enabled);
 				break;
 
 				case MR_SPY_ENTRY:
 					if (MR_port_is_entry(port)) {
-						enabled = TRUE;
-						action = max(action,
-							point->spy_action);
+						MR_update_enabled_action(point,
+							port, &action,
+							&enabled);
 					} else {
 						continue;
 					}
@@ -247,9 +241,9 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 
 				case MR_SPY_INTERFACE:
 					if (MR_port_is_interface(port)) {
-						enabled = TRUE;
-						action = max(action,
-							point->spy_action);
+						MR_update_enabled_action(point,
+							port, &action,
+							&enabled);
 					} else {
 						continue;
 					}
@@ -258,9 +252,9 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 
 				case MR_SPY_SPECIFIC:
 					if (layout == point->spy_label) {
-						enabled = TRUE;
-						action = max(action,
-							point->spy_action);
+						MR_update_enabled_action(point,
+							port, &action,
+							&enabled);
 					} else {
 						continue;
 					}
@@ -286,14 +280,56 @@ MR_event_matches_spy_point(const MR_Label_Layout *layout,
 	}
 }
 
+static void
+MR_update_enabled_action(MR_Spy_Point *point, MR_Trace_Port port,
+	MR_Spy_Action *action_ptr, bool *enabled_ptr)
+{
+	if (point->spy_enabled) {
+		if (point->spy_ignore_count == 0) {
+			*enabled_ptr = TRUE;
+			*action_ptr = max(*action_ptr, point->spy_action);
+		}
+
+		if (point->spy_ignore_count > 0) {
+			switch (point->spy_ignore_when) {
+			case MR_SPY_DONT_IGNORE:
+				break;
+
+			case MR_SPY_IGNORE_ENTRY:
+				if (port == MR_PORT_CALL) {
+					--point->spy_ignore_count;
+				}
+				break;
+
+			case MR_SPY_IGNORE_INTERFACE:
+				if (MR_port_is_interface(port)) {
+					--point->spy_ignore_count;
+				}
+				break;
+
+			default:
+				MR_fatal_error("MR_update_enabled_action: "
+					"invalid ignore_when");
+			}
+		}
+	}
+}
+
+static const char *incompatible =
+	"Ignore count is not compatible with break point specification";
+
 int
 MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
-	const MR_Proc_Layout *entry, const MR_Label_Layout *label)
+	MR_Spy_Ignore_When ignore_when, int ignore_count,
+	const MR_Proc_Layout *entry, const MR_Label_Layout *label,
+	const char **problem)
 {
 	MR_Spy_Point	*point;
 	int		point_slot;
 	int		proc_slot;
 	int		i;
+
+	*problem = NULL;
 
 	proc_slot = MR_search_spy_table_for_proc(entry);
 	if (proc_slot < 0) {
@@ -313,6 +349,8 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 	point->spy_exists  = TRUE;
 	point->spy_enabled = TRUE;
 	point->spy_action  = action;
+	point->spy_ignore_when  = ignore_when;
+	point->spy_ignore_count = ignore_count;
 	point->spy_proc    = entry;
 	point->spy_label   = label;
 	point->spy_next    = MR_spied_procs[proc_slot].spy_points;
@@ -335,14 +373,25 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 	return point_slot;
 }
 
+/* 1024 characters should be big enough ... */
+#define		MR_ERROR_MSG_BUF_SIZE	1024
+static char	MR_error_msg_buf[MR_ERROR_MSG_BUF_SIZE];
+
 int
-MR_add_line_spy_point(MR_Spy_Action action,
-	const char *orig_filename, int linenumber)
+MR_add_line_spy_point(MR_Spy_Action action, MR_Spy_Ignore_When ignore_when,
+	int ignore_count, const char *orig_filename, int linenumber,
+	const char **problem)
 {
 	MR_Spy_Point	*point;
 	int		point_slot;
 	int		old_size, new_size;
 	char 		*filename;
+
+	*problem = NULL;
+	if (ignore_when != MR_SPY_DONT_IGNORE) {
+		*problem = incompatible;
+		return -1;
+	}
 
 	/*
 	** The original filename string may have come from a buffer
@@ -360,6 +409,20 @@ MR_add_line_spy_point(MR_Spy_Action action,
 
 	if (new_size == old_size) {
 		/* there were no matching labels */
+#ifdef	HAVE_SNPRINTF
+		snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
+			"there is no event at %s:%d",
+			filename, linenumber);
+#else
+		/* not absolutely safe, but the risk of overflow is minimal */
+		sprintf(MR_error_msg_buf,
+			"there is no event at %s:%d",
+			filename, linenumber);
+		if (strlen(MR_error_msg_buf) >= MR_ERROR_MSG_BUF_SIZE) {
+			MR_fatal_error("MR_add_line_spy_point: buf overflow");
+		}
+#endif
+		*problem = MR_error_msg_buf;
 		return -1;
 	}
 
@@ -376,6 +439,8 @@ MR_add_line_spy_point(MR_Spy_Action action,
 	point->spy_exists     = TRUE;
 	point->spy_enabled    = TRUE;
 	point->spy_action     = action;
+	point->spy_ignore_when  = ignore_when;
+	point->spy_ignore_count = ignore_count;
 	point->spy_filename   = filename;
 	point->spy_linenumber = linenumber;
 
@@ -411,6 +476,31 @@ MR_compare_spied_labels(const void *l1, const void *l2)
 
 	return (int) ((MR_Integer) label1->spy_label
 		- (MR_Integer) label2->spy_label);
+}
+
+const char *
+MR_ignore_spy_point(int point_slot, MR_Spy_Ignore_When ignore_when,
+	int ignore_count)
+{
+	switch (MR_spy_points[point_slot]->spy_when) {
+		case MR_SPY_ENTRY:
+		case MR_SPY_INTERFACE:
+		case MR_SPY_ALL:
+			break;
+
+		case MR_SPY_SPECIFIC:
+		case MR_SPY_LINENO:
+			return incompatible;
+			break;
+
+		default:
+			MR_fatal_error("MR_add_proc_spy_point: bad when");
+			break;
+	}
+
+	MR_spy_points[point_slot]->spy_ignore_when  = ignore_when;
+	MR_spy_points[point_slot]->spy_ignore_count = ignore_count;
+	return NULL;
 }
 
 void
@@ -493,11 +583,36 @@ MR_print_spy_point(FILE *fp, int spy_point_num)
 		MR_spy_action_string(point->spy_action),
 		MR_spy_when_names[point->spy_when]);
 	if (point->spy_when == MR_SPY_LINENO) {
-		fprintf(fp, "%s:%d\n",
+		fprintf(fp, "%s:%d",
 			point->spy_filename, point->spy_linenumber);
 	} else {
 		MR_print_proc_id(fp, point->spy_proc);
+	}
+
+	if (point->spy_ignore_count > 1) {
+		fprintf(fp, "\n%12s(ignore next %d %s events)\n",
+			"", point->spy_ignore_count,
+			MR_ignore_when_to_string(point->spy_ignore_when));
+	} else if (point->spy_ignore_count > 0) {
+		fprintf(fp, "\n%12s(ignore next %s event)\n",
+			"", MR_ignore_when_to_string(point->spy_ignore_when));
+	} else {
 		fprintf(fp, "\n");
+	}
+}
+
+static const char *
+MR_ignore_when_to_string(MR_Spy_Ignore_When ignore_when)
+{
+	switch (ignore_when) {
+		case MR_SPY_IGNORE_ENTRY:
+			return "call";
+
+		case MR_SPY_IGNORE_INTERFACE:
+			return "interface";
+
+		default:
+			MR_fatal_error("MR_ignore_when_to_string: invalid ignore_when");
 	}
 }
 
@@ -527,6 +642,24 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
 				fprintf(err_fp, "internal error: "
 					"unknown spy action\n");
 				return TRUE;
+		}
+
+		if (point->spy_ignore_count > 0) {
+			switch (point->spy_ignore_when) {
+				case MR_SPY_IGNORE_INTERFACE:
+					fprintf(fp, " -I%d",
+						point->spy_ignore_count);
+					break;
+
+				case MR_SPY_IGNORE_ENTRY:
+					fprintf(fp, " -E%d",
+						point->spy_ignore_count);
+					break;
+
+				default:
+					MR_fatal_error("MR_save_spy_points: "
+						"invalid ignore_when");
+			}
 		}
 
 		switch (point->spy_when) {

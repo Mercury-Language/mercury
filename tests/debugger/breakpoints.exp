@@ -78,5 +78,21 @@ mdb> break info
 There are no break points.
 mdb> delete *
 There are no break points.
+mdb> break -i -I3 qperm
+ 0: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+            (ignore next 3 interface events)
+mdb> continue
+      50:     11  6 REDO pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
+mdb> print *
+       HeadVar__1             	[4, 5]
+mdb> ignore -E4 0
+ 0: + stop  interface pred breakpoints:qperm/2-0 (nondet)
+            (ignore next 4 call events)
+mdb> continue
+     123:     32  8 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:50 (breakpoints.m:54)
+mdb> print *
+       HeadVar__1             	[]
+mdb> delete *
+ 0: E stop  interface pred breakpoints:qperm/2-0 (nondet)
 mdb> continue
 [1, 3, 5, 2, 4]

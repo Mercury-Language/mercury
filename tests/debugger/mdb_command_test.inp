@@ -22,6 +22,7 @@ level                xyzzy xyzzy xyzzy xyzzy xyzzy
 current              xyzzy xyzzy xyzzy xyzzy xyzzy
 set                  xyzzy xyzzy xyzzy xyzzy xyzzy
 break                xyzzy xyzzy xyzzy xyzzy xyzzy
+ignore               xyzzy xyzzy xyzzy xyzzy xyzzy
 disable              xyzzy xyzzy xyzzy xyzzy xyzzy
 enable               xyzzy xyzzy xyzzy xyzzy xyzzy
 delete               xyzzy xyzzy xyzzy xyzzy xyzzy
@@ -33,6 +34,7 @@ printlevel           xyzzy xyzzy xyzzy xyzzy xyzzy
 echo                 xyzzy xyzzy xyzzy xyzzy xyzzy
 scroll               xyzzy xyzzy xyzzy xyzzy xyzzy
 context              xyzzy xyzzy xyzzy xyzzy xyzzy
+scope                xyzzy xyzzy xyzzy xyzzy xyzzy
 unalias              xyzzy xyzzy xyzzy xyzzy xyzzy
 histogram_all        xyzzy xyzzy xyzzy xyzzy xyzzy
 histogram_exp        xyzzy xyzzy xyzzy xyzzy xyzzy

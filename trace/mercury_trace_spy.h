@@ -33,6 +33,12 @@ typedef enum {
 	MR_SPY_LINENO
 } MR_Spy_When;
 
+typedef enum {
+	MR_SPY_DONT_IGNORE,
+	MR_SPY_IGNORE_INTERFACE,
+	MR_SPY_IGNORE_ENTRY
+} MR_Spy_Ignore_When;
+
 extern	const char	*MR_spy_when_names[];
 
 typedef struct MR_Spy_Point_Struct MR_Spy_Point;
@@ -42,6 +48,8 @@ struct MR_Spy_Point_Struct {
 	bool			spy_enabled;
 	MR_Spy_When		spy_when;
 	MR_Spy_Action		spy_action;
+	MR_Spy_Ignore_When	spy_ignore_when;
+	int			spy_ignore_count;
 	const MR_Proc_Layout	*spy_proc;      /* if not LINENO */
 	const MR_Label_Layout	*spy_label;	/* if SPECIFIC */
 	char			*spy_filename;  /* if LINENO */
@@ -72,21 +80,39 @@ extern	bool		MR_event_matches_spy_point(const MR_Label_Layout
 
 /*
 ** Add a new spy point on a procedure (as opposed to on a line number)
-** to the table.
+** to the table. If this cannot be done, return a negative number and set
+** *problem to point to an error message.
 */
 
 extern	int		MR_add_proc_spy_point(MR_Spy_When when,
 				MR_Spy_Action action,
+				MR_Spy_Ignore_When ignore_when,
+				int ignore_count,
 				const MR_Proc_Layout *entry,
-				const MR_Label_Layout *label);
+				const MR_Label_Layout *label,
+				const char **problem);
 
 /*
 ** Add a new spy point on a line number (as opposed to on a procedure)
-** to the table.
+** to the table. If this cannot be done, return a negative number and set
+** *problem to point to an error message.
 */
 
 extern	int		MR_add_line_spy_point(MR_Spy_Action action,
-				const char *filename, int linenumber);
+				MR_Spy_Ignore_When ignore_when,
+				int ignore_count,
+				const char *filename, int linenumber,
+				const char **problem);
+
+/*
+** Apply the given ignore specification to the given spy point.
+** If the ignore specification is not appropriate for the spy point,
+** return a non-NULL problem report.
+*/
+
+extern	const char 	*MR_ignore_spy_point(int point_slot,
+				MR_Spy_Ignore_When ignore_when,
+				int ignore_count);
 
 /*
 ** Delete a spy point from the table.

@@ -107,6 +107,7 @@ HAVE_SYS_UCONTEXT
 HAVE_SYS_WAIT
 HAVE_UCONTEXT
 HAVE_UNISTD_H
+HAVE_SNPRINTF
 HAVE_VSNPRINTF
 HAVE__VSNPRINTF
 #-----------------------------------------------------------------------------#
