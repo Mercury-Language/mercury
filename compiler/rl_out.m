@@ -1037,8 +1037,7 @@ rl_out__generate_instr(sort(Output, Input, Attrs) - _, Code) -->
 	)) },
 	rl_out__generate_stream_instruction(Output, InstrCode, Code).
 rl_out__generate_instr(add_index(output_rel(Rel, Indexes)) - _, Code) -->
-	rl_out_info_get_relation_addr(Rel, Addr),
-	rl_out__add_indexes_to_rel(Addr, Indexes, IndexCodes),
+	rl_out__add_indexes_to_rel(Rel, Indexes, IndexCodes),
 	{ Code = node(IndexCodes) }.
 rl_out__generate_instr(clear(Rel) - _, Code) -->
 	rl_out_info_get_relation_addr(Rel, Addr),
@@ -1046,7 +1045,7 @@ rl_out__generate_instr(clear(Rel) - _, Code) -->
 rl_out__generate_instr(init(output_rel(Rel, Indexes)) - _, Code) -->
 	rl_out_info_get_relation_addr(Rel, Addr),
 	rl_out_info_get_relation_schema_offset(Rel, SchemaOffset),
-	rl_out__add_indexes_to_rel(Addr, Indexes, IndexCodes),
+	rl_out__add_indexes_to_rel(Rel, Indexes, IndexCodes),
 	{ Code = node([
 		rl_PROC_unsetrel(Addr),
 		rl_PROC_createtemprel(Addr, SchemaOffset) |
@@ -1365,21 +1364,21 @@ rl_out__index_attr_to_string(Attr, Str) :-
 rl_out__add_indexes_to_rels([], empty) --> [].
 rl_out__add_indexes_to_rels([output_rel(Output, Indexes) | Outputs],
 		IndexCode) -->
-	rl_out_info_get_relation_addr(Output, OutputAddr),
-	rl_out__add_indexes_to_rel(OutputAddr, Indexes, Instrs),
+	rl_out__add_indexes_to_rel(Output, Indexes, Instrs),
 	rl_out__add_indexes_to_rels(Outputs, IndexCode1),
 	{ IndexCode = tree(node(Instrs), IndexCode1) }.
 
-:- pred rl_out__add_indexes_to_rel(int::in, list(index_spec)::in,
+:- pred rl_out__add_indexes_to_rel(relation_id::in, list(index_spec)::in,
 		list(bytecode)::out, rl_out_info::in, rl_out_info::out) is det.
 
 rl_out__add_indexes_to_rel(_, [], []) --> [].
-rl_out__add_indexes_to_rel(Addr, [Index | Indexes],
+rl_out__add_indexes_to_rel(Output, [Index | Indexes],
 		[IndexInstr | IndexInstrs]) -->
+	rl_out_info_get_relation_addr(Output, OutputAddr),
 	{ rl_out__index_spec_to_string(Index, IndexStr) },
 	rl_out_info_assign_const(string(IndexStr), IndexConst),
-	{ IndexInstr = rl_PROC_addindextorel(Addr, IndexConst) },
-	rl_out__add_indexes_to_rel(Addr, Indexes, IndexInstrs).
+	{ IndexInstr = rl_PROC_addindextorel(OutputAddr, IndexConst) },
+	rl_out__add_indexes_to_rel(OutputAddr, Indexes, IndexInstrs).
 
 %-----------------------------------------------------------------------------%
 
@@ -1414,7 +1413,7 @@ rl_out__generate_stream_instruction(output_rel(Output, Indexes),
 			TmpVar, TmpClearCode),
 
 		{ LockSpec = 0 },	% default lock spec
-		rl_out__add_indexes_to_rel(OutputAddr, Indexes, IndexInstrs),
+		rl_out__add_indexes_to_rel(Output, Indexes, IndexInstrs),
 		{ Code = 
 			tree(node([
 				rl_PROC_createtemprel(TmpVar, SchemaOffset) |
