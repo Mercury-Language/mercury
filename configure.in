@@ -186,13 +186,14 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- implementation.
 
-		:- import_module int.
+		:- import_module int, list.
         
 		main(!IO) :-
 			return_rtti_version(Version),
 			(
 				Version >= 8,
-				ac(2) ^ elem(3, 5) = 17
+				ac(2) ^ elem(3, 5) = 17,
+				(1 .. 2) = [[1, 2]]
 			->
 				io.print("Hello, world\n", !IO)
 			;
