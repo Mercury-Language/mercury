@@ -2933,6 +2933,8 @@ case "$host" in
 		AC_MSG_RESULT(disabled for now because it is untested)
 
 		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		DEFAULT_LINKAGE=static
 		;;
 	*)
@@ -2940,6 +2942,7 @@ case "$host" in
 		# libgc.a.  If the system doesn't support shared libraries,
 		# then we should set it to empty, not `-fpic'.
 		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
 		EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 		DEFAULT_LINKAGE=static
 		AC_MSG_RESULT(no)
