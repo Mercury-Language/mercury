@@ -71,6 +71,9 @@ GRADE			= @GRADE@
 # Specify the additional compilation models to install the library for
 LIBGRADES  		= @LIBGRADES@
 
+# Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
+EXT_FOR_EXE	= @EXT_FOR_EXE@
+
 # Specify EXT_FOR_SHARED_LIB as `so' if the operating system
 # supports `.so' shared libraries,
 # `.dll' if it supports DLLs,
@@ -190,6 +193,14 @@ LIBRARY_INTERMODULE = yes
 # the changed value (tools/bootcheck will do this automatically for
 # the stage2 and stage3 directories). 
 INCLUDE_ADITI_OUTPUT = yes
+
+#-----------------------------------------------------------------------------#
+
+INSTALL_INFO=@INSTALL_INFO@
+TEXI2DVI=@TEXI2DVI@
+DVIPS=@DVIPS@
+MAKEINFO=@MAKEINFO@
+PERL=@PERL@
 
 #-----------------------------------------------------------------------------#
 

@@ -34,15 +34,6 @@ SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 
 #-----------------------------------------------------------------------------#
 
-PREINSTALL_HACK = 
-POSTINSTALL_HACK = 
-
-# For Windows 95 or Windows NT, uncomment the following two lines:
-# PREINSTALL_HACK = preinstall_hack_for_windows
-# POSTINSTALL_HACK = postinstall_hack_for_windows
-
-#-----------------------------------------------------------------------------#
-
 # `mmake dep' ensures that the .dep files exist;
 # `mmake depend' forces them to be remade to ensure that they are up-to-date.
 
@@ -287,11 +278,10 @@ install: install_main install_grades
 	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_main
-install_main: all $(PREINSTALL_HACK) \
+install_main: all \
 		install_scripts install_util install_runtime install_boehm_gc \
   		install_library install_browser install_trace \
-		install_compiler install_profiler install_doc \
-		$(POSTINSTALL_HACK)
+		install_compiler install_profiler install_doc 
  
 .PHONY: install_scripts
 install_scripts: scripts
@@ -435,26 +425,6 @@ touch_files:
 	touch compiler/*.c
 	touch profiler/*.c
 	touch doc/*.info doc/*.dvi doc/*.html config.status
-
-# Another work-around for Windows:
-# the executable files need `.exe' filenames, otherwise they won't work.
-# But the Mmake files expect them to not have `.exe' filenames.
-
-.PHONY: preinstall_hack_for_windows
-preinstall_hack_for_windows:
-	cd compiler && mv mercury_compile.exe xyzzy && mv xyzzy mercury_compile
-	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
-	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
-	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
-	cd util && mv info_to_mdb.exe xyzzy && mv xyzzy info_to_mdb
-
-.PHONY: postinstall_hack_for_windows
-postinstall_hack_for_windows:
-	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_compile mercury_compile.exe
-	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
-	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
-	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
-	cd $(INSTALL_BINDIR) && mv info_to_mdb info_to_mdb.exe
 
 #-----------------------------------------------------------------------------#
 

@@ -178,6 +178,18 @@ AC_SUBST(MKTEMP)
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
 #-----------------------------------------------------------------------------#
+AC_PATH_PROG(TEXI2DVI,texi2dvi)
+AC_SUBST(TEXI2DVI)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(DVIPS,dvips)
+AC_SUBST(DVIPS)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(MAKEINFO,makeinfo)
+AC_SUBST(MAKEINFO)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(PERL,perl)
+AC_SUBST(PERL)
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
 
@@ -1993,6 +2005,17 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+case "$host" in
+	*-cygwin*)
+		EXT_FOR_EXE=".exe"
+		;;
+	*)
+		EXT_FOR_EXE=
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
+
 AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(ERROR_UNDEFINED)
 AC_SUBST(ALLOW_UNDEFINED)
@@ -2003,6 +2026,7 @@ AC_SUBST(SHLIB_RPATH_SEP)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
+AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(DEFAULT_RM_C)

@@ -113,6 +113,6 @@ install: install_profiler
 .PHONY: install_profiler
 install_profiler: mercury_profile
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
-	cp `vpath_find mercury_profile` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mercury_profile$(EXT_FOR_EXE)` $(INSTALL_MERC_BIN_DIR)
 
 #-----------------------------------------------------------------------------#

@@ -193,6 +193,6 @@ install_dirs:
 
 .PHONY: install_compiler
 install_compiler: mercury_compile install_dirs
-	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mercury_compile$(EXT_FOR_EXE)` $(INSTALL_MERC_BIN_DIR)
 
 #-----------------------------------------------------------------------------#
