@@ -84,7 +84,7 @@ endif
 # to print out the contents, because that precedes each line of output with
 # the filename, which is helpful when running a parallel make.
 #
-%.out: %$(EXT_FOR_EXE)
+%.out: %
 	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
