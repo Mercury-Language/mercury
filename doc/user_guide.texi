@@ -1525,6 +1525,19 @@ directory, so make sure you don't name your source file @file{query.m}.
 Note that dynamic linking may not be supported on some systems;
 if you are using a system for which dynamic linking is not supported,
 you will get an error message when you try to run these commands.
+@sp 1
+You may also need to build your program using shared libraries
+for interactive queries to work.
+With Linux on the Intel x86 architecture, the default is for
+executables to be statically linked, which means that dynamic
+linking won't work, and hence interactive queries won't work either
+(the error message is rather obscure: the dynamic linker complains
+about the symbol @samp{__data_start} being undefined).
+To build with shared libraries, you can use
+@samp{MGNUCFLAGS=--pic-reg} and @samp{MLFLAGS=--shared} in your
+Mmakefile.  See the @file{README.Linux} file in the Mercury
+distribution for more details.
+
 @end table
 
 @node Forward movement commands
