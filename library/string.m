@@ -1327,27 +1327,27 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			% valid float conversion specifiers
 		Spec = e(Float),
 		String = format_float(
-			make_format(Flags, Width, Prec, "L", "e"), Float)
+			make_format(Flags, Width, Prec, "", "e"), Float)
 	;
 		Spec = cE(Float),
 		String = format_float(
-			make_format(Flags, Width, Prec, "L", "E"), Float)
+			make_format(Flags, Width, Prec, "", "E"), Float)
 	;
 		Spec = f(Float),
 		String = format_float(
-			make_format(Flags, Width, Prec, "L", "f"), Float)
+			make_format(Flags, Width, Prec, "", "f"), Float)
 	;
 		Spec = cF(Float),
 		String = format_float(
-			make_format(Flags, Width, Prec, "L", "F"), Float)
+			make_format(Flags, Width, Prec, "", "F"), Float)
 	;
 		Spec = g(Float),
 		String = format_float(
-			make_format(Flags, Width, Prec, "L", "g"), Float)
+			make_format(Flags, Width, Prec, "", "g"), Float)
 	;
 		Spec = cG(Float),
 		String = format_float(
-			make_format(Flags, Width, Prec, "L", "G"), Float)
+			make_format(Flags, Width, Prec, "", "G"), Float)
 	;
 			% valid char conversion Specifiers
 		Spec = c(Char),
@@ -1410,7 +1410,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	format_float(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_save_transient_hp();
-	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (long double) Val);
+	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
 	MR_restore_transient_hp();
 }").
 :- pragma foreign_code("MC++",
