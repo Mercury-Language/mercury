@@ -287,21 +287,21 @@ void
 mercury__builtin__compare_3_p_1(
 	MR_Word type_info, MR_Word *res, MR_Box x, MR_Box y)
 {
-	return mercury__builtin__compare_3_p_0(type_info, res, x, y);
+	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
 
 void
 mercury__builtin__compare_3_p_2(
 	MR_Word type_info, MR_Word *res, MR_Box x, MR_Box y)
 {
-	return mercury__builtin__compare_3_p_0(type_info, res, x, y);
+	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
 
 void
 mercury__builtin__compare_3_p_3(
 	MR_Word type_info, MR_Word *res, MR_Box x, MR_Box y)
 {
-	return mercury__builtin__compare_3_p_0(type_info, res, x, y);
+	mercury__builtin__compare_3_p_0(type_info, res, x, y);
 }
 
 /*---------------------------------------------------------------------------*/
