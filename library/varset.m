@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000,2002 The University of Melbourne.
+% Copyright (C) 1993-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -424,7 +424,7 @@ varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
 	% second, and building up a substitution which maps
 	% the variables in the second varset into the corresponding
 	% fresh variable in the first varset.  We then apply
-	% this substition to the list of terms.
+	% this substitution to the list of terms.
 
 varset__merge(VarSet0, VarSet1, TermList0, VarSet, TermList) :-
 	IncludeNames = yes,
