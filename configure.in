@@ -1652,7 +1652,7 @@ case "$host" in
 
 	*cygwin*)
 		case "$CC" in
-			*cl*)	# cl is the Microsoft C compiler
+			*cl* | *CL*)	# cl is the Microsoft C compiler
 				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD" ;;
 			*)
 				CFLAGS_FOR_THREADS="" ;;
