@@ -777,6 +777,8 @@ unused :-
 	% Return all of the answer blocks stored in the given table.
 :- semipure pred table_nondet_return_all_ans(ml_subgoal_table_node::in,
 	ml_answer_block::out) is nondet.
+:- semipure pred table_multi_return_all_ans(ml_subgoal_table_node::in,
+	ml_answer_block::out) is multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -961,7 +963,59 @@ unused :-
 #endif
 ").
 
+/*
+** Note that the code for this is identical to the code for 
+** table_multi_return_all_ans/2 (below).
+** Any changes to this code should also be made there.
+*/
 :- pragma c_code(table_nondet_return_all_ans(T::in, A::out),
+	will_not_call_mercury,
+	local_vars("
+#ifdef MR_USE_MINIMAL_MODEL
+		MR_AnswerList	cur_node;
+#else
+		/* ensure local var struct is non-empty */
+		char	bogus;
+#endif
+	"),
+	first_code("
+#ifdef MR_USE_MINIMAL_MODEL
+		MR_TrieNode	table;
+
+		table = (MR_TrieNode) T;
+		LOCALS->cur_node = table->MR_subgoal->answer_list;
+
+  #ifdef MR_TABLE_DEBUG
+		if (MR_tabledebug) {
+			printf(""restoring all answers in %p -> %p\\n"",
+				table, table->MR_subgoal);
+		}
+  #endif
+#endif
+	"),
+	retry_code("
+	"),
+	shared_code("
+#ifdef MR_USE_MINIMAL_MODEL
+		if (LOCALS->cur_node == NULL) {
+			FAIL;
+		} else {
+			A = (Word) &LOCALS->cur_node->answer_data;
+			LOCALS->cur_node = LOCALS->cur_node->next_answer;
+			SUCCEED;
+		}
+#else
+		fatal_error(""minimal model code entered when not enabled"");
+#endif
+	")
+).
+
+/*
+** Note that the code for this is identical to the code for 
+** table_nondet_return_all_ans/2 (above).
+** Any changes to this code should also be made there.
+*/
+:- pragma c_code(table_multi_return_all_ans(T::in, A::out),
 	will_not_call_mercury,
 	local_vars("
 #ifdef MR_USE_MINIMAL_MODEL
