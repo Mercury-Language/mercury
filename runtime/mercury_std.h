@@ -36,7 +36,7 @@
 ** Hence we define `MR_' versions of these that do the cast -- you should
 ** make sure to always use the `MR_' versions rather than the standard ones.
 */
-#define	MR_isalnum(c)	isdigit((unsigned char) (c))
+#define	MR_isalnum(c)	isalnum((unsigned char) (c))
 #define	MR_isdigit(c)	isdigit((unsigned char) (c))
 #define	MR_isspace(c)	isspace((unsigned char) (c))
 
