@@ -106,6 +106,94 @@ extern	int	hash_string(const char *);
 				GOTO(proc);			\
 			} while (0)
 
+#define	call_closure(succcont)					\
+			do {					\
+				Word tmp;			\
+				tmp = r1;			\
+				switch(field(0, tmp, 0)) {	\
+					default: fatal_error("call_closure: too many arguments (> 32)"); \
+					case 32: r32 = field(0, tmp, 33); \
+					case 31: r31 = field(0, tmp, 32); \
+					case 30: r30 = field(0, tmp, 31); \
+					case 29: r29 = field(0, tmp, 30); \
+					case 28: r28 = field(0, tmp, 29); \
+					case 27: r27 = field(0, tmp, 28); \
+					case 26: r26 = field(0, tmp, 27); \
+					case 25: r25 = field(0, tmp, 26); \
+					case 24: r24 = field(0, tmp, 25); \
+					case 23: r23 = field(0, tmp, 24); \
+					case 22: r22 = field(0, tmp, 23); \
+					case 21: r21 = field(0, tmp, 22); \
+					case 20: r20 = field(0, tmp, 21); \
+					case 19: r19 = field(0, tmp, 20); \
+					case 18: r18 = field(0, tmp, 19); \
+					case 17: r17 = field(0, tmp, 18); \
+					case 16: r16 = field(0, tmp, 17); \
+					case 15: r15 = field(0, tmp, 16); \
+					case 14: r14 = field(0, tmp, 15); \
+					case 13: r13 = field(0, tmp, 14); \
+					case 12: r12 = field(0, tmp, 13); \
+					case 11: r11 = field(0, tmp, 12); \
+					case 10: r10 = field(0, tmp, 11); \
+					case 9: r9 = field(0, tmp, 10);	\
+					case 8: r8 = field(0, tmp, 9);	\
+					case 7: r7 = field(0, tmp, 8);	\
+					case 6: r6 = field(0, tmp, 7);	\
+					case 5: r5 = field(0, tmp, 6);	\
+					case 4: r4 = field(0, tmp, 5);	\
+					case 3: r3 = field(0, tmp, 4);	\
+					case 2: r2 = field(0, tmp, 3);	\
+					case 1: r1 = field(0, tmp, 2);	\
+					case 0: ;			\
+				}				\
+				succip = (succcont);		\
+				GOTO(field(0, tmp, 1));		\
+			} while (0)
+
+#define	call_semidet_closure(succcont)				\
+			do {					\
+				Word tmp;			\
+				tmp = r1;			\
+				switch(field(0, tmp, 0)) {	\
+					default: fatal_error("call_closure: too many arguments (> 32)"); \
+					case 32: r33 = field(0, tmp, 33); \
+					case 31: r32 = field(0, tmp, 32); \
+					case 30: r31 = field(0, tmp, 31); \
+					case 29: r30 = field(0, tmp, 30); \
+					case 28: r29 = field(0, tmp, 29); \
+					case 27: r28 = field(0, tmp, 28); \
+					case 26: r27 = field(0, tmp, 27); \
+					case 25: r26 = field(0, tmp, 26); \
+					case 24: r25 = field(0, tmp, 25); \
+					case 23: r24 = field(0, tmp, 24); \
+					case 22: r23 = field(0, tmp, 23); \
+					case 21: r22 = field(0, tmp, 22); \
+					case 20: r21 = field(0, tmp, 21); \
+					case 19: r20 = field(0, tmp, 20); \
+					case 18: r19 = field(0, tmp, 19); \
+					case 17: r18 = field(0, tmp, 18); \
+					case 16: r17 = field(0, tmp, 17); \
+					case 15: r16 = field(0, tmp, 16); \
+					case 14: r15 = field(0, tmp, 15); \
+					case 13: r14 = field(0, tmp, 14); \
+					case 12: r13 = field(0, tmp, 13); \
+					case 11: r12 = field(0, tmp, 12); \
+					case 10: r11 = field(0, tmp, 11); \
+					case 9: r10 = field(0, tmp, 10); \
+					case 8: r9 = field(0, tmp, 9);	\
+					case 7: r8 = field(0, tmp, 8);	\
+					case 6: r7 = field(0, tmp, 7);	\
+					case 5: r6 = field(0, tmp, 6);	\
+					case 4: r5 = field(0, tmp, 5);	\
+					case 3: r4 = field(0, tmp, 4);	\
+					case 2: r3 = field(0, tmp, 3);	\
+					case 1: r2 = field(0, tmp, 2);	\
+					case 0: ;			\
+				}				\
+				succip = (succcont);		\
+				GOTO(field(0, tmp, 1));		\
+			} while (0)
+
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define	callentry(procname, succcont)				\
