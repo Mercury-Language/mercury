@@ -147,12 +147,16 @@
 
 	% Convert a switch back into a disjunction. This is needed 
 	% for the magic set transformation.
+	% This aborts if any of the constructors are existentially typed.
 :- pred goal_util__switch_to_disjunction(prog_var, list(case), instmap, 
 		list(hlds_goal), prog_varset, prog_varset, map(prog_var, type),
 		map(prog_var, type), module_info, module_info).
 :- mode goal_util__switch_to_disjunction(in, in, in, out,
 		in, out, in, out, in, out) is det.
 
+	% Convert a case into a conjunction by adding a tag test 
+	% (deconstruction unification) to the case goal.
+	% This aborts if the constructor is existentially typed.
 :- pred goal_util__case_to_disjunct(prog_var, cons_id, hlds_goal, instmap,
 		hlds_goal, prog_varset, prog_varset, map(prog_var, type),
 		map(prog_var, type), module_info, module_info).

@@ -417,12 +417,23 @@ really ought to warn.
 		Goal1 = Goal0,
 		Info3 = Info0
 	),
-	simplify_info_maybe_clear_structs(before, Goal1, Info3, Info4),
-	Goal1 = GoalExpr1 - GoalInfo1,
-	simplify__goal_2(GoalExpr1, GoalInfo1, Goal, GoalInfo2, Info4, Info5),
-	simplify_info_maybe_clear_structs(after, Goal - GoalInfo2,
+
+	%
+	% Remove unnecessary explicit quantifications before working
+	% out whether the goal can cause a stack flush.
+	%
+	( Goal1 = some(SomeVars, CanRemove, SomeGoal1) - GoalInfo1 ->
+		simplify__nested_somes(CanRemove, SomeVars, SomeGoal1,
+			GoalInfo1, Goal2)
+	;
+		Goal2 = Goal1	
+	),
+	simplify_info_maybe_clear_structs(before, Goal2, Info3, Info4),
+	Goal2 = GoalExpr2 - GoalInfo2,
+	simplify__goal_2(GoalExpr2, GoalInfo2, Goal, GoalInfo3, Info4, Info5),
+	simplify_info_maybe_clear_structs(after, Goal - GoalInfo3,
 		Info5, Info6),
-	simplify__enforce_invariant(GoalInfo2, GoalInfo, Info6, Info).
+	simplify__enforce_invariant(GoalInfo3, GoalInfo, Info6, Info).
 
 :- pred simplify__enforce_invariant(hlds_goal_info, hlds_goal_info,
 		simplify_info, simplify_info).
@@ -571,9 +582,33 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 		% a possibly can_fail unification with the functor on the front.
 		cons_id_arity(ConsId, Arity),
 		(
-			SwitchCanFail = can_fail,
-			MaybeConsIds \= yes([ConsId])
+		    SwitchCanFail = can_fail,
+		    MaybeConsIds \= yes([ConsId])
 		->
+			%
+			% Don't optimize in the case of an existentially
+			% typed constructor because currently 
+			% simplify__create_test_unification does not
+			% handle the existential type variables
+			% in the types of the constructor arguments
+			% or their type-infos.
+			%
+		    simplify_info_get_var_types(Info1, VarTypes1),
+		    map__lookup(VarTypes1, Var, Type),
+		    simplify_info_get_module_info(Info1, ModuleInfo1),
+		    ( 
+			type_util__is_existq_cons(ModuleInfo1,
+					Type, ConsId)
+		    ->
+		    	Goal = switch(Var, SwitchCanFail, Cases, SM),
+			goal_info_get_nonlocals(GoalInfo0, NonLocals),
+			merge_instmap_deltas(InstMap0, NonLocals, InstMaps,
+				NewDelta, ModuleInfo1, ModuleInfo2),
+			simplify_info_set_module_info(Info1,
+				ModuleInfo2, Info4),
+			goal_info_set_instmap_delta(GoalInfo0,
+				NewDelta, GoalInfo)
+		    ;
 			simplify__create_test_unification(Var, ConsId, Arity,
 				UnifyGoal, Info1, Info2),
 
@@ -587,11 +622,9 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 			set__insert(NonLocals0, Var, NonLocals),
 			goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
 			simplify_info_get_instmap(Info2, InstMap),
-			simplify_info_get_var_types(Info2, VarTypes),
-			map__lookup(VarTypes, Var, Type),
 			instmap_delta_bind_var_to_functor(Var, Type, ConsId, 	
 				InstMap, InstMapDelta0, InstMapDelta, 
-				ModuleInfo0, ModuleInfo),
+				ModuleInfo1, ModuleInfo),
 			simplify_info_set_module_info(Info2, 
 				ModuleInfo, Info3),	
 			goal_info_get_determinism(GoalInfo0, CaseDetism),
@@ -602,11 +635,12 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 			simplify_info_set_requantify(Info3, Info4),
 			Goal = conj(GoalList),
 			GoalInfo = CombinedGoalInfo
+		    )
 		;
-			% The var can only be bound to this cons_id, so
-			% a test is unnecessary.
-			SingleGoal = Goal - GoalInfo,
-			Info4 = Info1
+		    % The var can only be bound to this cons_id, so
+		    % a test is unnecessary.
+		    SingleGoal = Goal - GoalInfo,
+		    Info4 = Info1
 		),
 		pd_cost__eliminate_switch(CostDelta),
 		simplify_info_incr_cost_delta(Info4, CostDelta, Info)
@@ -1027,23 +1061,25 @@ simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	).
 
 simplify__goal_2(some(Vars1, CanRemove0, Goal1), SomeInfo,
-		Goal, GoalInfo, Info0, Info) :-
-	simplify__goal(Goal1, Goal2, Info0, Info),
-	simplify__nested_somes(CanRemove0, Vars1, Goal2,
-		CanRemove, Vars, Goal3),
-	Goal3 = GoalExpr3 - GoalInfo3,
-	(
-		goal_info_get_determinism(GoalInfo3, Detism),
-		goal_info_get_determinism(SomeInfo, Detism),
-		CanRemove = can_remove
-	->
-		% If the inner and outer detisms match the `some'
-		% is unnecessary.
-		Goal = GoalExpr3,
-		GoalInfo = GoalInfo3
+		GoalExpr, GoalInfo, Info0, Info) :-
+	simplify_info_get_common_info(Info0, Common),
+	simplify__goal(Goal1, Goal2, Info0, Info1),
+	simplify__nested_somes(CanRemove0, Vars1, Goal2, SomeInfo, Goal),
+	Goal = GoalExpr - GoalInfo,
+	( Goal = some(_, _, _) - _ ->
+		% Replacing calls, constructions or deconstructions
+		% outside a commit with references to variables created
+		% inside the commit would increase the set of output
+		% variables of the goal inside the commit. This is not
+		% allowed because it could change the determinism.
+		%
+		% Thus we need to reset the common_info to what it
+		% was before processing the goal inside the commit,
+		% to ensure that we don't make any such replacements
+		% when processing the rest of the goal.
+		simplify_info_set_common_info(Info1, Common, Info)
 	;
-		Goal = some(Vars, CanRemove, Goal3),
-		GoalInfo = SomeInfo
+		Info = Info1
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
@@ -1300,10 +1336,29 @@ simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
 
 	% replace nested `some's with a single `some',
 :- pred simplify__nested_somes(can_remove::in, list(prog_var)::in,
+		hlds_goal::in, hlds_goal_info::in, hlds_goal::out) is det.
+
+simplify__nested_somes(CanRemove0, Vars1, Goal0, OrigGoalInfo, Goal) :-
+	simplify__nested_somes_2(CanRemove0, Vars1, Goal0,
+		CanRemove, Vars, Goal1),
+	Goal1 = GoalExpr1 - GoalInfo1,
+	(
+		goal_info_get_determinism(GoalInfo1, Detism),
+		goal_info_get_determinism(OrigGoalInfo, Detism),
+		CanRemove = can_remove
+	->
+		% If the inner and outer detisms match the `some'
+		% is unnecessary.
+		Goal = GoalExpr1 - GoalInfo1
+	;
+		Goal = some(Vars, CanRemove, Goal1) - OrigGoalInfo
+	).
+
+:- pred simplify__nested_somes_2(can_remove::in, list(prog_var)::in,
 		hlds_goal::in, can_remove::out, list(prog_var)::out,
 		hlds_goal::out) is det.
 
-simplify__nested_somes(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
+simplify__nested_somes_2(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
 	( Goal0 = some(Vars1, CanRemove1, Goal1) - _ ->
 		(
 			( CanRemove0 = cannot_remove
@@ -1315,7 +1370,7 @@ simplify__nested_somes(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
 			CanRemove2 = can_remove
 		),
 		list__append(Vars0, Vars1, Vars2),
-		simplify__nested_somes(CanRemove2, Vars2, Goal1,
+		simplify__nested_somes_2(CanRemove2, Vars2, Goal1,
 			CanRemove, Vars, Goal)
 	;
 		CanRemove = CanRemove0,
@@ -1548,6 +1603,7 @@ simplify__switch(Var, [Case0 | Cases0], RevCases0, Cases, InstMaps0, InstMaps,
 
 	% Create a semidet unification at the start of a singleton case
 	% in a can_fail switch.
+	% This will abort if the cons_id is existentially typed.
 :- pred simplify__create_test_unification(prog_var::in, cons_id::in, int::in,
 		hlds_goal::out, simplify_info::in, simplify_info::out) is det.
 

@@ -1358,6 +1358,8 @@ magic__preprocess_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo) -->
 		magic_info_get_module_info(ModuleInfo0),
 		{ proc_info_get_initial_instmap(ProcInfo0, 
 			ModuleInfo0, InstMap) },
+		% XXX check for existentially typed constructors first -
+		% they will cause an abort.
 		{ goal_util__switch_to_disjunction(Var, Cases,
 			InstMap, Disjuncts, VarSet0, VarSet1, 
 			VarTypes0, VarTypes1, ModuleInfo0, ModuleInfo1) },

@@ -166,6 +166,7 @@
 :- mode type_constructors(in, in, out) is semidet.
 
 	% Work out the types of the arguments of a functor.
+	% Aborts if the functor is existentially typed.
 :- pred type_util__get_cons_id_arg_types(module_info::in, (type)::in,
 		cons_id::in, list(type)::out) is det.
 
@@ -174,6 +175,9 @@
 	% otherwise fail.
 :- pred type_util__get_existq_cons_defn(module_info::in,
 		(type)::in, cons_id::in, ctor_defn::out) is semidet.
+
+:- pred type_util__is_existq_cons(module_info::in,
+		(type)::in, cons_id::in) is semidet.
 
 	% This type is used to return information about a constructor
 	% definition, extracted from the hlds_type_defn and hlds_cons_defn
@@ -660,7 +664,7 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 				ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
 			)),
 		list__filter(CorrectCons, ConsDefns,
-			[hlds_cons_defn(_ExistQVars0, _Constraints0, ArgTypes0,
+			[hlds_cons_defn(ExistQVars0, _Constraints0, ArgTypes0,
 				_, _)]),
 		ArgTypes0 \= []
 	->
@@ -668,28 +672,43 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 		map__lookup(Types, TypeId, TypeDefn),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),
 		term__term_list_to_var_list(TypeDefnParams, TypeDefnVars),
+
 		% XXX handle ExistQVars
+		require(unify(ExistQVars0, []),
+	"type_util__get_cons_id_arg_types: existentially typed cons_id"),
+
 		map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
 		term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes)
 	;
 		ArgTypes = []
 	).
 
-	% Given a type and a cons_id, look up the definition of that
-	% constructor; if it is existentially typed, return its definition,
-	% otherwise fail.
-type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
+type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
+	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _). 
+	
+:- pred type_util__is_existq_cons(module_info::in,
+		(type)::in, cons_id::in, hlds_cons_defn::out) is semidet.
+
+type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
 	type_to_type_id(VarType, TypeId, _TypeArgs),
 	module_info_ctors(ModuleInfo, Ctors),
 	% will fail for builtin cons_ids.
 	map__search(Ctors, ConsId, ConsDefns),
-	MatchingCons = lambda([ConsDefn::in] is semidet, (
-			ConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
+	MatchingCons = lambda([ThisConsDefn::in] is semidet, (
+			ThisConsDefn = hlds_cons_defn(_, _, _, TypeId, _)
 		)),
-	list__filter(MatchingCons, ConsDefns,
-		[hlds_cons_defn(ExistQVars, Constraints, ArgTypes, _, _)]),
-	ExistQVars \= [],
+	list__filter(MatchingCons, ConsDefns, [ConsDefn]), 
+	ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
+	ExistQVars \= [].
+
+	% Given a type and a cons_id, look up the definition of that
+	% constructor; if it is existentially typed, return its definition,
+	% otherwise fail.
+type_util__get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
+	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
+	ConsDefn = hlds_cons_defn(ExistQVars, Constraints, ArgTypes, _, _),
 	module_info_types(ModuleInfo, Types),
+	type_to_type_id(VarType, TypeId, _),
 	map__lookup(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
 	hlds_data__get_type_defn_tparams(TypeDefn, TypeDefnParams),

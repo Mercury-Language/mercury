@@ -35,6 +35,7 @@ PROGS=	\
 	existential_bound_tvar \
 	existential_reordering \
 	existential_type_switch \
+	existential_type_switch_opt \
 	existential_types_test \
 	eqv_type_bug \
 	error_func \
