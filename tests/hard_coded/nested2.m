@@ -16,6 +16,13 @@
 
 :- pred main(io__state::di, io__state::uo) is det.
 
+:- end_module nested2:child.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- module nested2:child.
 :- implementation.
 :- import_module std_util.
 
@@ -47,10 +54,6 @@ main -->
 	print("has_type_t4 = "), print(has_type_t4), nl.
 
 :- end_module nested2:child.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
 
 :- type foo ---> bar ; baz(int).
 
