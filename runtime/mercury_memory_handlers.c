@@ -813,6 +813,7 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
 	fprintf(stderr, "\n*** Mercury runtime: Unhandled exception ");
 	MR_dump_exception_record(exception_ptrs->ExceptionRecord);
 
+	printf("\n");
 	print_dump_stack();
 	dump_prev_locations();
 	
