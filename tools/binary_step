@@ -18,6 +18,9 @@ Options:
 	-c, --compile-only
 		Check the successful creation of the stage3 .c files,
 		but do not compare stage2.ok and stage3.
+	-C, --compare-to-bad
+		Compile stage3 using the parameter settings in the stage2.bad
+		directory, and compare stage3 to stage2.bad, not stage2.ok.
 	-d, --dependency-only
 		Check only that the dependencies can be made in stage3.
 	-h, --help
@@ -46,6 +49,7 @@ mmake_opts=""
 outfile="DIFF.BINARY"
 single_command=""
 testdirs=""
+basis="ok"
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -55,6 +59,9 @@ while [ $# -gt 0 ]; do
 
 	-c|--compile-only)
 		compile_only="true" ;;
+
+	-C|--compare-to-bad)
+		basis="bad" ;;
 
 	-d|--dependency-only)
 		dependency_only="true" ;;
@@ -203,11 +210,19 @@ then
 
 	/bin/rm -f stage3/library/*.c
 	/bin/rm -f stage3/library/*.d
+	/bin/rm -f stage3/library/*.optdate
+	/bin/rm -f stage3/library/*.date3
+	/bin/rm -f stage3/library/*.date
+	/bin/rm -f stage3/library/*.opt
 	/bin/rm -f stage3/library/*.int3
 	/bin/rm -f stage3/library/*.int2
 	/bin/rm -f stage3/library/*.int
 	/bin/rm -f stage3/compiler/*.c
 	/bin/rm -f stage3/compiler/*.d
+	/bin/rm -f stage3/compiler/*.optdate
+	/bin/rm -f stage3/compiler/*.date3
+	/bin/rm -f stage3/compiler/*.date
+	/bin/rm -f stage3/compiler/*.opt
 	/bin/rm -f stage3/compiler/*.int3
 	/bin/rm -f stage3/compiler/*.int2
 	/bin/rm -f stage3/compiler/*.int
@@ -251,7 +266,7 @@ then
 		cat /dev/null > $outfile
 		for dir in library compiler
 		do
-			for file in stage2.ok/$dir/*.c
+			for file in stage2.$basis/$dir/*.c
 			do
 				stage3file="stage3/$dir/`basename $file`"
 				diff -u $file $stage3file >> $outfile ||
@@ -261,10 +276,10 @@ then
 
 		if "$founddiff" = true
 		then
-			echo "error - stage2.ok and stage3 differ!"
+			echo "error - stage2.$basis and stage3 differ!"
 			exit 1
 		else
-			echo "stage2.ok and stage3 compare ok"
+			echo "stage2.$basis and stage3 compare ok"
 		fi
 	fi
 fi

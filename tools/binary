@@ -20,9 +20,13 @@ Options:
 	-b, --no-bootcheck
 		Do not perform a bootcheck; check only the tests directory.
 	-c, --compile-only
-		Compile only. Do not compare stage2.ok and stage3.
+		Check the successful creation of the stage3 .c files,
+		but do not compare stage2.ok and stage3.
+	-C, --compare-to-bad
+		Compile stage3 using the parameter settings in the stage2.bad
+		directory, and compare stage3 to stage2.bad, not stage2.ok.
 	-d, --dependency-only
-		Compile only. Do not compare stage2.ok and stage3.
+		Make dependencies for stage3 only. Do not compile stage3.
 	-D <dirname>, --dir <dirname>
 		Confine the search to one directory, library or compiler.
 		(Usually useful only after a previous search.)
@@ -62,6 +66,8 @@ testdirs=""
 negative=false
 alldirs=""
 allmodules=""
+compare_to_bad=""
+basis="ok"
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -71,6 +77,10 @@ while [ $# -gt 0 ]; do
 
 	-c|--compile-only)
 		compile_only="-c" ;;
+
+	-C|--compare-to-bad)
+		compare_to_bad="-C"
+		basis="bad" ;;
 
 	-d|--dependency-only)
 		dependency_only="-d" ;;
@@ -156,6 +166,7 @@ fi
 echo "starting at `date`"
 
 root=`/bin/pwd`
+trueroot=`echo $root | sed 's:/mount/munkora/mercury:/home/mercury:'`
 PATH=$root/tools:$PATH
 export PATH
 
@@ -164,9 +175,12 @@ then
 	RMSTAGECMD="/bin/rm -fr"
 fi
 
-[ -d stage2 ] || mkdir stage2
-/bin/rm -fr stage2/*
 set +x
+[ -d stage2 ] || mkdir stage2
+$RMSTAGECMD $trueroot/stage2/compiler < /dev/null &
+$RMSTAGECMD $trueroot/stage2/library < /dev/null &
+wait
+$RMSTAGECMD $trueroot/stage2/* < /dev/null
 echo linking stage 2... 1>&2
 cd stage2
 mkdir compiler
@@ -250,12 +264,13 @@ cd $root/stage3
 ln -s $root/boehm_gc .
 ln -s $root/doc .
 ln -s $root/scripts .
-ln -s $root/util .
 ln -s $root/profiler .
+ln -s $root/runtime .
+ln -s $root/util .
 ln -s $root/conf* .
 rm -f config*.log
 /bin/rm -f Mmake*
-cp $root/stage2.ok/Mmake* .
+cp $root/stage2.$basis/Mmake* .
 cp $root/stage2.ok/so_locations .
 cd $root
 
@@ -285,7 +300,7 @@ then
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			testeddir=library
 		else
@@ -293,7 +308,7 @@ then
 		fi
 		echo "solution seems to be in the $testeddir directory"
 	else
-		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			testeddir=compiler
 		else
@@ -354,7 +369,7 @@ do
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -373,7 +388,7 @@ do
 			doubtful="$newdoubtful"
 		fi
 	else
-		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -466,7 +481,7 @@ do
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -485,7 +500,7 @@ do
 			doubtful="$newdoubtful"
 		fi
 	else
-		if binary_step $bootcheck $compile_only $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
+		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
