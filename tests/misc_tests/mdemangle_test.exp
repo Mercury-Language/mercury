@@ -14,6 +14,10 @@ Each symbol is followed by the correct decoding.
 <type layout for type 'mercury_builtin:term__context'/0>
 <type layout for type 'mercury_builtin:term__context'/0>
 
+	a base type functors
+<type functors for type 'eliza:message'/0>
+<type functors for type 'eliza:message'/0>
+
 	an unqualified base type info
 <base type_info for type 'int'/0>
 <base type_info for type 'int'/0>
