@@ -291,6 +291,14 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 			accumulating(IntermodDirs))
 	;
 		[]
+	),
+	
+	% --optimize-frames implies --optimize-labels
+	globals__io_lookup_bool_option(optimize_frames, OptFrames),
+	( { OptFrames = yes } ->
+		globals__io_set_option(optimize_labels, bool(yes))
+	;
+		[]
 	).
 
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)

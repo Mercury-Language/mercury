@@ -67,6 +67,16 @@
 %
 % Since the second transformation is a bigger win, we prefer to use it
 % whenever both transformations are possible.
+%
+% NOTE: This module requires label optimisation to be turned on because
+% it cannot handle code sequences of the form
+%
+%	label1:
+%	label2:
+%
+% The "null block" between the labels makes frameopt choke.  This should
+% be handled by handle_options, but if you see an error of the form
+% "label in substitute_labels_instr", this is a possible cause.
 
 %-----------------------------------------------------------------------------%
 
