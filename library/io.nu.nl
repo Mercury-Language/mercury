@@ -75,7 +75,6 @@ io__progname("<argv[0] not available>", X, X).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- io__get_line_number(_, IO0, _) when IO0.
 io__get_line_number(LineNumber) -->
 	{ currentInput(Stream) },
 	{ lineCount(Stream, LineNumber) }.
@@ -83,9 +82,27 @@ io__get_line_number(LineNumber) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+io__input_stream(Stream) -->
+	{ currentInput(Stream) }.
+
+io__output_stream(Stream) -->
+	{ currentOutput(Stream) }.
+
+io__set_input_stream(NewStream, OldStream) -->
+	{ currentInput(OldStream) },
+	{ see(NewStream) },
+	io__update_state.
+
+io__set_output_stream(NewStream, OldStream) -->
+	{ currentOutput(OldStream) },
+	{ tell(NewStream) },
+	io__update_state.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 	% Declarative versions of Prolog's see/1 and seen/0.
 
-:- io__see(File, _, IO0, _) when ground(File) and IO0.
 io__see(File, Result) -->
 	{
 		name(FileName, File),
@@ -97,7 +114,6 @@ io__see(File, Result) -->
 	},
 	io__update_state.
 
-:- io__seen(IO0, _) when IO0.
 io__seen -->
 	{ seen },
 	io__update_state.
@@ -107,7 +123,6 @@ io__seen -->
 
 	% Declarative versions of Prolog's tell/1 and told/0.
 
-:- io__tell(File, _, IO0, _) when ground(File) and IO0.
 io__tell(File, Result) -->
 	{
 		name(FileName, File),
@@ -119,7 +134,6 @@ io__tell(File, Result) -->
 	},
 	io__update_state.
 
-:- io__told(IO0, _) when IO0.
 io__told -->
 	{ told },
 	io__update_state.
@@ -127,49 +141,38 @@ io__told -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- io__write_int(I, IO0, _) when I and IO0.
-io__write_int(I) -->
-	{ write(I) },
+io__write_int(S, I) -->
+	{ write(S, I) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
 
-:- io__write_char(C, IO0, _) when C and IO0.
-io__write_char(C) -->
-	{ write(C) },
+io__write_char(S, C) -->
+	{ write(S, C) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
 
-:- io__write_float(F, IO0, _) when F and IO0.
-io__write_float(F) -->
-	{ write(F) },
+io__write_float(S, F) -->
+	{ write(S, F) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
 
-:- io__write_string(S, IO0, _) when ground(S) and IO0.
-io__write_string(S) -->
-	{ write_string(S) },
+io__write_string(Stream, String) -->
+	{ format(Stream, "~s", [String]) },
 	io__update_state.
 	
-write_string(S) :-
-	format("~s",[S]).
-
 %-----------------------------------------------------------------------------%
 
-:- io__write_anything(I, IO0, _) when I and IO0.
-io__write_anything(I) -->
-	{ write(I) },
+io__write_anything(S, I) -->
+	{ write(S, I) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
 
-io__flush_output -->
-	{ 
-	  currentOutput(Stream),
-	  flushOutput(Stream)
-	},
+io__flush_output(Stream) -->
+	{ flushOutput(Stream) },
 	io__update_state.
 
 %-----------------------------------------------------------------------------%
@@ -185,6 +188,8 @@ io__init_state(io__state(current)).
 
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-
+	require(nonvar(IOState0),
+		"\nio.nl: I/O predicate called with free io__state"),
 	require(IOState0 = io__state(current),
 		"\nio.nl: cannot retry I/O operation"),
 	$replacn(1, IOState0, old),

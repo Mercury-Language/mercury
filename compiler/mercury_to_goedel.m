@@ -6,7 +6,6 @@
 
 % TODO:
 % (Crucial)
-%	handle Mercury's non-alphanumeric functors
 %	handle Mercury's overloaded functors 
 %
 % (Important)
@@ -15,8 +14,7 @@
 %	implement various NU-Prolog predicates in Goedel; 
 %	handle undiscriminated union types;
 %
-% (Desireably but not crucial)
-%	write error messages to stderr instead of stdout
+% (Wish list)
 %	indent `ELSE IF' properly
 % 	translate mode declarations into delay declarations;
 %	translate Mercury's module system declarations into Goedel;
@@ -49,10 +47,11 @@ main_predicate([_, Progname, File | Files]) -->
 :- mode usage(di, uo).
 usage -->
 	io__progname(Progname),
- 	io__write_string("Mercury-to-Goedel converter version 0.1\n"),
- 	io__write_string("Usage: "),
-	io__write_string(Progname),
-	io__write_string(" progname filenames\n").
+	io__stderr_stream(StdErr),
+ 	io__write_string(StdErr, "Mercury-to-Goedel converter version 0.1\n"),
+ 	io__write_string(StdErr, "Usage: "),
+	io__write_string(StdErr, Progname),
+	io__write_string(StdErr, " progname filenames\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -69,10 +68,11 @@ process_files(Progname, Files) -->
 process_files_2([], Progname, Items) -->
 	convert_to_goedel(Progname, Items).
 process_files_2([File | Files], Progname, Items0) -->
-	io__write_string("% Reading "),
-	io__write_string(File),
-	io__write_string(" ..."),
-	io__flush_output,
+	io__stderr_stream(StdErr),
+	io__write_string(StdErr, "% Reading "),
+	io__write_string(StdErr, File),
+	io__write_string(StdErr, "..."),
+	io__flush_output(StdErr),
 	io__gc_call(prog_io__read_program(File, Result)),
 	process_files_3(Result, Files, Progname, Items0).
 
@@ -81,16 +81,29 @@ process_files_2([File | Files], Progname, Items0) -->
 :- mode process_files_3(input, input, input, input, di, uo).
 
 process_files_3(ok(Warnings, Prog), Files, Progname, Items) -->
-	io__write_string("successful parse.\n"),
+		% switch to stderr
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, OldStream),
+		% print error messages
+	io__write_string(" successful parse.\n"),
 	prog_out__write_messages(Warnings),
+		% switch back to stdout
+	io__set_output_stream(OldStream, _),
+		% process the remaining files
 	{ Prog = module(_Name, Items2),
 	  append(Items, Items2, Items3)
 	},
 	process_files_2(Files, Progname, Items3).
 
 process_files_3(error(Errors), _, _, _) -->
-	io__write_string("parse error(s).\n"),
-	prog_out__write_messages(Errors).
+		% switch to stderr
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, OldStream),
+		% print error messages
+	io__write_string(" parse error(s).\n"),
+	prog_out__write_messages(Errors),
+		% switch back to stdout
+	io__set_output_stream(OldStream, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -106,16 +119,22 @@ goedel_write_context(Context) -->
 :- mode convert_to_goedel(input, input, di, uo).
 
 convert_to_goedel(ProgName, Items) -->
+	io__stderr_stream(StdErr),
+	io__write_string(StdErr, "% Expanding equivalence types..."),
+	io__flush_output(StdErr),
+	{ goedel_replace_all_eqv_types(Items, [], Items2),
+	  reverse(Items2, Items3) },
+	{ goedel_replace_int_integer(Items3, Items4) },
+	io__write_string(StdErr, " done\n"),
+	io__write_string(StdErr, "% Writing output...\n"),
 	io__write_string("MODULE       "),
 	{ convert_functor_name(ProgName, GoedelName) },
 	io__write_string(GoedelName),
 	io__write_string(".\n"),
 	io__write_string("IMPORT       MercuryCompat.\n"),
 	io__write_string("\n"),
-	{ goedel_replace_all_eqv_types(Items, [], Items2),
-	  reverse(Items2, Items3) },
-	{ goedel_replace_int_integer(Items3, Items4) },
-	goedel_output_item_list(Items4).
+	goedel_output_item_list(Items4),
+	io__write_string(StdErr, "% done\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -312,12 +331,18 @@ goedel_output_item_list([Item - Context | Items]) -->
 	( goedel_output_item(Item, Context) ->
 		[]
 	;
+		% goedel_output_item should always succeed
+		% if it fails, report an internal error
+
+		io__stderr_stream(StdErr),
+		io__set_output_stream(StdErr, OldStream),
 		io__write_string("\n"),
 		goedel_write_context(Context),
 		io__write_string("mercury_to_goedel internal error.\n"),
 		io__write_string("Failed to process the following item:\n"),
 		io__write_anything(Item),
-		io__write_string("\n")
+		io__write_string("\n"),
+		io__set_output_stream(OldStream, _)
 	),
 	goedel_output_item_list(Items).
 
@@ -392,10 +417,20 @@ goedel_output_type_defn(VarSet, TypeDefn, Context) -->
 :- mode goedel_output_type_defn_2(input, input, input, di, uo).
 
 goedel_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, OldStream),
 	goedel_write_context(Context),
-	io__write_string("warning: undiscriminated union types not yet supported.\n").
-goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, _Context) -->
-	io__write_string("% warning: equivalence types not yet supported.\n").
+	io__write_string("warning: undiscriminated union types not yet supported.\n"),
+	io__set_output_stream(OldStream, _).
+
+goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, Context) -->
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, OldStream),
+	goedel_write_context(Context),
+	io__write_string("mercury_to_goedel internal error:\n"),
+	io__write_string("equivalence type unexpected.\n"),
+	io__set_output_stream(OldStream, _).
+
 goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
 	( { option_write_line_numbers } ->
 		goedel_write_context(Context),
@@ -1009,7 +1044,7 @@ goedel_infix_op("^").
 goedel_infix_op("++").
 goedel_infix_op("\\").
 goedel_infix_op("//").
-goedel_infix_op("div").		% NB. This is NOT capitalized.
+goedel_infix_op("div").
 goedel_infix_op("mod").
 
 :- pred goedel_unary_prefix_op(string).

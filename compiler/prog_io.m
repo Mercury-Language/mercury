@@ -1050,7 +1050,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 
 :- pred convert_constructors(term, list(constructor)).
 :- mode convert_constructors(input, output).
-convert_constructors(Body,Constrs) :-
+convert_constructors(Body, Constrs) :-
 	disjunction_to_list(Body, List),
 	convert_constructors_2(List, Constrs).
 
@@ -1119,8 +1119,8 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 	(if some [L, R, Context]
 		Term = term_functor(term_atom(Op), [L, R], Context)
 	then
-		binop_term_to_list_2(Op, L, List0, List1),
-		binop_term_to_list_2(Op, R, List1, List)
+		binop_term_to_list_2(Op, R, List0, List1),
+		binop_term_to_list_2(Op, L, List1, List)
 	else
 		List = [Term|List0]
 	).
