@@ -320,7 +320,7 @@
 :- import_module recompilation_version, purity, term_util.
 :- import_module globals, options, termination, foreign.
 
-:- import_module assoc_list, char, int, string, set, lexer, require.
+:- import_module assoc_list, char, int, string, set, lexer, ops, require.
 :- import_module term, term_io, varset.
 
 %-----------------------------------------------------------------------------%
@@ -3272,143 +3272,31 @@ mercury_format_quoted_atom(Name, NextToGraphicToken) -->
 :- mode mercury_op(in) is semidet.
 
 mercury_op(Op) :-
-	(
-	    (
-		mercury_infix_op(Op)
-	    ;
-		mercury_binary_prefix_op(Op)
-	    ;
-		mercury_unary_prefix_op(Op)
-	    ;
-		mercury_unary_postfix_op(Op)
-	    )
-	->
-		true
-	;
-		fail
-	).
+	ops__lookup_op(ops__init_op_table, Op).
 
 :- pred mercury_binary_prefix_op(string).
 :- mode mercury_binary_prefix_op(in) is semidet.
 
-mercury_binary_prefix_op("some").
-mercury_binary_prefix_op("all").
-mercury_binary_prefix_op("gSome").	/* NU-Prolog */
-mercury_binary_prefix_op("gAll").	/* NU-Prolog */
-mercury_binary_prefix_op("lambda").
+mercury_binary_prefix_op(Op) :-
+	ops__lookup_binary_prefix_op(ops__init_op_table, Op, _, _, _).
 
 :- pred mercury_infix_op(string).
 :- mode mercury_infix_op(in) is semidet.
 
-mercury_infix_op("--->").
-mercury_infix_op("-->").
-mercury_infix_op(":-").
-mercury_infix_op("::").
-mercury_infix_op(":=").
-mercury_infix_op("where").
-mercury_infix_op("sorted").	/* NU-Prolog */
-mercury_infix_op("else").
-mercury_infix_op("then").
-mercury_infix_op(";").
-mercury_infix_op("->").
-mercury_infix_op(",").
-mercury_infix_op("&").
-mercury_infix_op("to").		/* NU-Prolog */
-mercury_infix_op("<=").
-mercury_infix_op("<=>").
-mercury_infix_op("==>").
-mercury_infix_op("=>").
-mercury_infix_op("when").	/* NU-Prolog */
-mercury_infix_op("or").		/* NU-Prolog */
-mercury_infix_op("and").	/* NU-Prolog */
-mercury_infix_op("=").
-mercury_infix_op("=..").
-mercury_infix_op("=:=").	/* Prolog */
-mercury_infix_op("==").		/* Prolog (also for constraints, in cfloat.m) */
-mercury_infix_op("\\=").	/* Prolog */
-mercury_infix_op("\\==").	/* Prolog */
-mercury_infix_op("=\\=").	/* Prolog */
-mercury_infix_op("=^").
-mercury_infix_op(">").
-mercury_infix_op(">=").
-mercury_infix_op("<").
-mercury_infix_op("=<").
-mercury_infix_op("@<").		/* Prolog */
-mercury_infix_op("@=<").	/* Prolog */
-mercury_infix_op("@>").		/* Prolog */
-mercury_infix_op("@>=").	/* Prolog */
-mercury_infix_op("~=").		/* NU-Prolog */
-mercury_infix_op("is").		
-mercury_infix_op(".").		
-mercury_infix_op(":").		
-mercury_infix_op("+").
-mercury_infix_op("++").
-mercury_infix_op("-").
-mercury_infix_op("--").
-mercury_infix_op("/\\").
-mercury_infix_op("\\/").
-mercury_infix_op("*").
-mercury_infix_op("/").
-mercury_infix_op("//").
-mercury_infix_op(">>").
-mercury_infix_op("<<").
-mercury_infix_op("**").
-mercury_infix_op("div").
-mercury_infix_op("mod").
-mercury_infix_op("rem").
-mercury_infix_op("^").
+mercury_infix_op(Op) :-
+	ops__lookup_infix_op(ops__init_op_table, Op, _, _, _).
 
 :- pred mercury_unary_prefix_op(string).
 :- mode mercury_unary_prefix_op(in) is semidet.
 
-mercury_unary_prefix_op("+").
-mercury_unary_prefix_op("-").
-mercury_unary_prefix_op(":-").
-mercury_unary_prefix_op("::").
-mercury_unary_prefix_op("?-").
-mercury_unary_prefix_op("\\").
-mercury_unary_prefix_op("\\+").
-mercury_unary_prefix_op("aditi_bottom_up").
-mercury_unary_prefix_op("aditi_top_down").
-mercury_unary_prefix_op("delete").
-mercury_unary_prefix_op("dynamic").
-mercury_unary_prefix_op("end_module").
-mercury_unary_prefix_op("func").
-mercury_unary_prefix_op("if").
-mercury_unary_prefix_op("import_module").
-mercury_unary_prefix_op("include_module").
-mercury_unary_prefix_op("impure").
-mercury_unary_prefix_op("insert").
-mercury_unary_prefix_op("instance").
-mercury_unary_prefix_op("inst").
-mercury_unary_prefix_op("lib").
-mercury_unary_prefix_op("listing").
-mercury_unary_prefix_op("man").
-mercury_unary_prefix_op("mode").
-mercury_unary_prefix_op("module").
-mercury_unary_prefix_op("nospy").
-mercury_unary_prefix_op("not").
-mercury_unary_prefix_op("once").
-mercury_unary_prefix_op("pragma").
-mercury_unary_prefix_op("pred").
-mercury_unary_prefix_op("promise").
-mercury_unary_prefix_op("pure").
-mercury_unary_prefix_op("rule").	/* NU-Prolog */
-mercury_unary_prefix_op("semipure").
-mercury_unary_prefix_op("sorted").
-mercury_unary_prefix_op("spy").
-mercury_unary_prefix_op("type").
-mercury_unary_prefix_op("typeclass").
-mercury_unary_prefix_op("update").
-mercury_unary_prefix_op("useIf").
-mercury_unary_prefix_op("wait").
-mercury_unary_prefix_op("~").
-mercury_unary_prefix_op("^").
+mercury_unary_prefix_op(Op) :-
+	ops__lookup_prefix_op(ops__init_op_table, Op, _, _).
 
 :- pred mercury_unary_postfix_op(string).
 :- mode mercury_unary_postfix_op(in) is semidet.
 
-mercury_unary_postfix_op("sorted").
+mercury_unary_postfix_op(Op) :-
+	ops__lookup_postfix_op(ops__init_op_table, Op, _, _).
 
 %-----------------------------------------------------------------------------%
 
