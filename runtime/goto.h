@@ -182,9 +182,9 @@
   #endif /* PIC */
 
   /* For Linux-ELF shared libraries, we need to declare that the type of labels
-     is @function (i.e. code, not data), otherwise the dynamic linker seems
-     to get confused, and we end up jumping into the data section.
-     Hence the `.type' directive below.
+  ** is @function (i.e. code, not data), otherwise the dynamic linker seems
+  ** to get confused, and we end up jumping into the data section.
+  ** Hence the `.type' directive below.
   */
   #ifdef __ELF__
     #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
@@ -244,9 +244,9 @@
   #endif /* PIC */
 
   /* For Solaris 5.5.1, we need to declare that the type of labels is
-     #function (i.e. code, not data), otherwise the dynamic linker seems
-     to get confused, and we end up jumping into the data section.
-     Hence the `.type' directive below.
+  ** #function (i.e. code, not data), otherwise the dynamic linker seems
+  ** to get confused, and we end up jumping into the data section.
+  ** Hence the `.type' directive below.
   */
   #define INLINE_ASM_ENTRY_LABEL_TYPE(label) \
 	"	.type entry_" stringify(label) ",#function\n"
@@ -383,12 +383,12 @@
   typedef void ModuleFunc(void);
 
   /* The following macro expands to a dummy assembler statement which
-     contains no code, but which tells gcc that it uses the specified
-     address as an input value.  This is used to trick gcc into
-     thinking that the address is used, in order to suppress unwanted
-     optimizations.  (We used to use `volatile_global_pointer =
-     address' to suppress optimization, but this way is better because
-     it doesn't generate any code.)
+  ** contains no code, but which tells gcc that it uses the specified
+  ** address as an input value.  This is used to trick gcc into
+  ** thinking that the address is used, in order to suppress unwanted
+  ** optimizations.  (We used to use `volatile_global_pointer =
+  ** address' to suppress optimization, but this way is better because
+  ** it doesn't generate any code.)
   */
   #define PRETEND_ADDRESS_IS_USED(address)		\
 	__asm__ __volatile__("" : : "g"(address))
@@ -407,14 +407,14 @@
 
 
   /* Since we're jumping into and out of the middle of functions,
-     we need to make sure that gcc thinks that (1) the function's address
-     is used (otherwise it may optimize the whole function away) and
-     (2) the `return' statement is reachable (otherwise its dataflow
-     analysis for delay slot scheduling may think that global
-     register variables which are only assigned to in the function
-     cannot be live, when in fact they really are).
-     That is what the two occurrences of the PRETEND_ADDRESS_IS_USED
-     macro are for.
+  ** we need to make sure that gcc thinks that (1) the function's address
+  ** is used (otherwise it may optimize the whole function away) and
+  ** (2) the `return' statement is reachable (otherwise its dataflow
+  ** analysis for delay slot scheduling may think that global
+  ** register variables which are only assigned to in the function
+  ** cannot be live, when in fact they really are).
+  ** That is what the two occurrences of the PRETEND_ADDRESS_IS_USED
+  ** macro are for.
   */
   #define BEGIN_MODULE(module_name)	\
 	MODULE_STATIC_OR_EXTERN void module_name(void); \
@@ -448,9 +448,9 @@
 	PRETEND_ADDRESS_IS_USED(&&entry(label));	\
 	{
     /*
-       The PRETEND_ADDRESS_IS_USED macro is necessary to 
-       prevent an over-zealous gcc from optimizing away `label'
-       and the code that followed. 
+    ** The PRETEND_ADDRESS_IS_USED macro is necessary to 
+    ** prevent an over-zealous gcc from optimizing away `label'
+    ** and the code that followed. 
     */
     #define init_entry(label)	\
 	PRETEND_ADDRESS_IS_USED(&&label); \
