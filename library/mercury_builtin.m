@@ -474,10 +474,34 @@ unused :-
 #ifdef	SHARED_ONE_OR_TWO_CELL_TYPE_INFO
 
 
+#ifdef  USE_TYPE_LAYOUT
+
 Word * mercury_data___base_type_layout_int_0[] = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_INT_VALUE))
 };
+
+Word * mercury_data___base_type_layout_character_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_CHARACTER_VALUE))
+};
+
+Word * mercury_data___base_type_layout_string_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_STRING_VALUE))
+};
+
+Word * mercury_data___base_type_layout_float_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_FLOAT_VALUE))
+};
+
+Word * mercury_data___base_type_layout_pred_0[] = {
+	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
+		mkbody(TYPELAYOUT_PREDICATE_VALUE))
+};
+
+#endif
 
 Declare_entry(mercury__builtin_unify_int_2_0);
 Declare_entry(mercury__builtin_index_int_2_0);
@@ -493,13 +517,11 @@ Word * mercury_data___base_type_info_int_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_int_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_int_2_0),
 #endif
+#ifdef  USE_TYPE_LAYOUT
 	(Word *) (Integer) mercury_data___base_type_layout_int_0
+#endif
 };
 
-Word * mercury_data___base_type_layout_character_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_CHARACTER_VALUE))
-};
 
 Declare_entry(mercury__builtin_unify_character_2_0);
 Declare_entry(mercury__builtin_index_character_2_0);
@@ -515,13 +537,11 @@ Word * mercury_data___base_type_info_character_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_character_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_character_2_0),
 #endif
+#ifdef  USE_TYPE_LAYOUT
 	(Word *) (Integer) mercury_data___base_type_layout_character_0
+#endif
 };
 
-Word * mercury_data___base_type_layout_string_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_STRING_VALUE))
-};
 
 Declare_entry(mercury__builtin_unify_string_2_0);
 Declare_entry(mercury__builtin_index_string_2_0);
@@ -537,13 +557,11 @@ Word * mercury_data___base_type_info_string_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_string_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_string_2_0)
 #endif
+#ifdef  USE_TYPE_LAYOUT
 	(Word *) (Integer) mercury_data___base_type_layout_string_0
+#endif
 };
 
-Word * mercury_data___base_type_layout_float_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_FLOAT_VALUE))
-};
 
 Declare_entry(mercury__builtin_unify_float_2_0);
 Declare_entry(mercury__builtin_index_float_2_0);
@@ -559,13 +577,11 @@ Word * mercury_data___base_type_info_float_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_float_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_float_2_0)
 #endif
+#ifdef  USE_TYPE_LAYOUT
 	(Word *) (Integer) mercury_data___base_type_layout_float_0
+#endif
 };
 
-Word * mercury_data___base_type_layout_pred_0[] = {
-	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
-		mkbody(TYPELAYOUT_PREDICATE_VALUE))
-};
 
 Declare_entry(mercury__builtin_unify_pred_2_0);
 Declare_entry(mercury__builtin_index_pred_2_0);
@@ -581,7 +597,9 @@ Word * mercury_data___base_type_info_pred_0[] = {
 	(Word *) (Integer) ENTRY(mercury__builtin_term_to_type_pred_2_0),
 	(Word *) (Integer) ENTRY(mercury__builtin_type_to_term_pred_2_0)
 #endif
+#ifdef  USE_TYPE_LAYOUT
 	(Word *) (Integer) mercury_data___base_type_layout_pred_0
+#endif
 };
 
 #endif

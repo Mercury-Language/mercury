@@ -1710,7 +1710,7 @@ void sys_init_io_run_module(void) {
 
 :- pragma(c_code, "
 
-#ifdef  SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+#ifdef  USE_TYPE_LAYOUT
 
 	/* Rest of word is pointer to 2 cell struct */
 
@@ -1992,7 +1992,7 @@ void sys_init_io_stream_module(void) {
 
 :- pragma(c_code, "
 
-#ifdef  SHARED_ONE_OR_TWO_CELL_TYPE_INFO
+#ifdef  USE_TYPE_LAYOUT
 
 	/* 
 	 * We'll just pretend the io__external_state is an

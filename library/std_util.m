@@ -324,10 +324,14 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
  *
  */
 
+#ifdef  USE_TYPE_LAYOUT
+
 Word * mercury_data_std_util__base_type_layout_univ_0[] = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_UNIV_VALUE))
 };
+
+#endif
 
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);
 Define_extern_entry(mercury____Index___std_util__univ_0_0);
