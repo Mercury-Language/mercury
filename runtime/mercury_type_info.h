@@ -171,15 +171,6 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
     }
 
 /*
-** The next two #defines are needed for bootstrapping.
-*/
-
-#define MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(a, b) \
-	MR_FIXED_ARITY_PSEUDOTYPEINFO_STRUCT(a, b)
-#define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(a, b) \
-	MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(a, b)
-
-/*
 ** Now define specific versions of these struct types,
 ** which are used by the MR_TypeInfo and MR_PseudoTypeInfo
 ** typedefs above.
@@ -953,16 +944,11 @@ typedef union {
     ** files listed at the top of this file, as well as in the macros below.
     */
 
-/*
-** The type of the MR_type_ctor_rep_CAST_ME field should be returned
-** to MR_TypeCtorRepInt when bootstrapping is complete.
-*/
-
 struct MR_TypeCtorInfo_Struct {
     MR_Integer          MR_type_ctor_arity;
     MR_int_least8_t     MR_type_ctor_version;
     MR_int_least8_t     MR_type_ctor_num_ptags;         /* if DU */
-    MR_int_least16_t    MR_type_ctor_rep_CAST_ME;
+    MR_TypeCtorRepInt   MR_type_ctor_rep_CAST_ME;
     MR_ProcAddr         MR_type_ctor_unify_pred;
     MR_ProcAddr         MR_type_ctor_compare_pred;
     MR_ConstString      MR_type_ctor_module_name;
