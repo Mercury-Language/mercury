@@ -227,6 +227,7 @@ void init_memory(void)
 
 	init_memory_arena();
 	init_zones();
+	setup_signal();
 }
 
 /*
@@ -867,16 +868,16 @@ static char *explain_context(ucontext_t *context)
 		(long) context->uc_mcontext.PC_ACCESS,
 		(long) context->uc_mcontext.PC_ACCESS);
 #endif
-#else
+#else /* ! PC_ACCESS */
 	/* if PC_ACCESS is not set, we don't know the context */
 	/* therefore we return an empty string to be printed  */
 	buf[0] = '\0';
-#endif
+#endif /* ! PC_ACCESS */
 
 	return buf;
 }
 
-#else
+#else /* ! HAVE_SIGINFO */
 
 static void setup_signal(void)
 {
@@ -918,7 +919,7 @@ default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
 	exit(1);
 }
 
-#endif
+#endif /* ! HAVE_SIGINFO */
 
 #ifdef	CONSERVATIVE_GC
 
