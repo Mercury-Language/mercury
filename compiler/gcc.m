@@ -1065,12 +1065,7 @@ build_float(Val, Expr) -->
 :- pragma c_code(build_real(Type::in, Value::in, Expr::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
-	/* XXX should move to mercury-gcc.c */
-	/* XXX this won't work if cross-compiling */
-	union { double dbl; HOST_WIDE_INT ints[20]; } u;
-	u.dbl = Value;
-	Expr = (MR_Word) build_real((tree) Type,
-		REAL_VALUE_FROM_TARGET_DOUBLE(u.ints));
+	Expr = (MR_Word) merc_build_real((tree) Type, Value);
 ").
 
 build_string(String, Expr) -->
