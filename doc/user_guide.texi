@@ -202,9 +202,10 @@ and @file{.trans_opt_date}
 files associated with the module are used as date stamps;
 they are used when deciding whether the interface files need to be regenerated.
 
-@file{.c_date}, @file{.il_date}, @file{.s_date} and @file{.pic_s_date} files
-perform a similar function for @file{.c}, @file{.il}, @file{.s} and
-@file{.pic_s} files respectively. When smart recompilation
+@file{.c_date}, @file{.il_date}, @file{.java_date},
+@file{.s_date} and @file{.pic_s_date} files
+perform a similar function for @file{.c}, @file{.il}, @file{.java},
+@file{.s} and @file{.pic_s} files respectively. When smart recompilation
 (@pxref{Auxiliary output options}) works out that a module
 does not need to be recompiled, the timestamp file for the
 target file is updated, and the timestamp of the target file
@@ -224,9 +225,15 @@ which contain variable definitions for an entire program.
 
 As usual, @file{.c} files are C source code,
 @file{.h} files are C header files,
-@file{.o} files are object code,
+and @file{.o} files are object code.
 In addition, @file{.pic_o} files are object code files
 that contain position-independent code (PIC).
+@file{.s} files and @file{.pic_s} files are assembly language.
+@file{.java} and @file{.class} files are Java source code
+and Java bytecode respectively.
+@file{.il} files are Microsoft Intermediate Language (MSIL) files
+for the .NET Common Language Runtime.
+@c XXX mention .dll and .exe?
 
 @ifset aditi
 Files ending in @file{.rlo} are Aditi-RL bytecode files, which are
@@ -513,6 +520,18 @@ with the Mercury compiler's @samp{--split-c-files} option enabled.
 For more information about @samp{--split-c-files}, see
 @ref{Output-level (LLDS -> C) optimization options}.
 
+@item @var{main-module}.javas
+Compiles @var{main-module} to Java source files (@file{*.java}).
+
+@item @var{main-module}.classes
+Compiles @var{main-module} to Java bytecode files (@file{*.class}).
+
+@item @var{main-module}.ils
+Compiles @var{main-module} to MSIL files (@file{*.il})
+for the .NET Common Language Runtime.
+
+@c XXX mention .dlls and .exe targets?
+
 @item lib@var{main-module}
 Builds a library whose top-level module is @var{main-module}.
 This will build a static object library, a shared object library
@@ -639,6 +658,11 @@ Options to pass to the mgnuc script.
 @vindex CFLAGS
 @vindex EXTRA_CFLAGS
 Options to pass to the C compiler.
+
+@item JAVACLAGS and EXTRA_JAVACFLAGS
+@vindex JAVACFLAGS
+@vindex EXTRA_JAVACFLAGS
+Options to pass to the Java compiler (if you are using it).
 
 @item MS_CLFLAGS and EXTRA_MS_CLFLAGS
 @vindex MS_CLFLAGS
