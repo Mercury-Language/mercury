@@ -1371,7 +1371,11 @@ intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
 		PredOrFunc, Clause0) -->
 	{ strip_headvar_unifications(HeadVars, Clause0,
 		ClauseHeadVars, Clause) },
-	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, no,
+	% Variable numbers need to be appended for the case
+	% where the added arguments for a DCG pred expression
+	% are named the same as variables in the enclosing clause.
+	{ AppendVarNums = yes },
+	hlds_out__write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
 		ClauseHeadVars, PredOrFunc, Clause, no).
 
 	% Strip the `Headvar__n = Term' unifications from each clause,

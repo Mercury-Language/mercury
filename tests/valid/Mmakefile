@@ -71,6 +71,7 @@ OTHER_SOURCES= \
 	inlining_bug.m \
 	inst_perf_bug_1.m \
 	int64.m \
+	intermod_dcg_bug.m \
 	intermod_impure.m \
 	intermod_lambda.m \
 	intermod_nested_module.m \
@@ -211,6 +212,8 @@ MCFLAGS-double_vn		= -O4
 MCFLAGS-explicit_quant		= --halt-at-warn
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
+MCFLAGS-intermod_dcg_bug2	= --intermodule-optimization
 MCFLAGS-intermod_impure		= --intermodule-optimization
 MCFLAGS-intermod_impure2	= --intermodule-optimization
 MCFLAGS-intermod_lambda		= --intermodule-optimization
