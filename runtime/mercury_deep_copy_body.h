@@ -483,7 +483,8 @@ try_again:
 
                 old_array = (MR_ArrayType *) data_value;
                 array_size = old_array->size;
-                new_array = MR_make_array(array_size);
+                MR_incr_saved_hp(new_data, array_size + 1);
+                new_array = (MR_ArrayType *) new_data;
                 new_array->size = array_size;
                 for (i = 0; i < array_size; i++) {
                     new_array->elements[i] = copy_arg(NULL,
@@ -491,7 +492,6 @@ try_again:
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                         (const MR_PseudoTypeInfo) 1, lower_limit, upper_limit);
                 }
-                new_data = (MR_Word) new_array;
                 leave_forwarding_pointer(data_ptr, new_data);
             } else if (in_traverse_range(data_value)) {
                 MR_ArrayType *old_array;

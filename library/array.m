@@ -733,22 +733,23 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 ").
 
 :- pragma foreign_decl("C", "
-MR_ArrayType *ML_make_array(MR_Integer size, MR_Word item);
+void ML_init_array(MR_ArrayType *, MR_Integer size, MR_Word item);
 ").
 
 :- pragma foreign_code("C", "
-MR_ArrayType *
-ML_make_array(MR_Integer size, MR_Word item)
+/*
+** The caller is responsible for allocating the memory for the array.
+** This routine does the job of initializing the already-allocated memory.
+*/
+void
+ML_init_array(MR_ArrayType *array, MR_Integer size, MR_Word item)
 {
 	MR_Integer i;
-	MR_ArrayType *array;
 
-	array = MR_make_array(size);
 	array->size = size;
 	for (i = 0; i < size; i++) {
 		array->elements[i] = item;
 	}
-	return array;
 }
 ").
 
@@ -765,15 +766,15 @@ array__init(Size, Item, Array) :-
 :- pragma foreign_proc("C", 
 		array__init_2(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (MR_Word) ML_make_array(Size, Item);
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_init_array((MR_ArrayType *)Array, Size, Item);
 ").
 
 :- pragma foreign_proc("C",
 		array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	MR_maybe_record_allocation(1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (MR_Word) ML_make_array(0, 0);
+	MR_incr_hp_msg(Array, 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_init_array((MR_ArrayType *)Array, 0, 0);
 ").
 
 :- pragma foreign_proc("C#", 
@@ -964,26 +965,29 @@ array__set(Array0, Index, Item, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-MR_ArrayType * ML_resize_array(MR_ArrayType *old_array,
+void ML_resize_array(MR_ArrayType *new_array, MR_ArrayType *old_array,
 					MR_Integer array_size, MR_Word item);
 ").
 
 :- pragma foreign_code("C", "
-MR_ArrayType *
-ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
-				MR_Word item)
+/*
+** The caller is responsible for allocating the storage for the new array.
+** This routine does the job of copying the old array elements to the
+** new array, initializing any additional elements in the new array,
+** and deallocating the old array.
+*/
+void
+ML_resize_array(MR_ArrayType *array, MR_ArrayType *old_array,
+	MR_Integer array_size, MR_Word item)
 {
 	MR_Integer i;
-	MR_ArrayType* array;
 	MR_Integer elements_to_copy;
 
 	elements_to_copy = old_array->size;
-	if (elements_to_copy == array_size) return old_array;
 	if (elements_to_copy > array_size) {
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -996,9 +1000,9 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 	** since the mode on the old array is `array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	MR_GC_free(old_array);
-
-	return array;
+#ifdef MR_CONSERVATIVE_GC
+	GC_free(old_array);
+#endif
 }
 ").
 
@@ -1006,9 +1010,14 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 		array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (MR_Word) ML_resize_array(
-				(MR_ArrayType *) Array0, Size, Item);
+	if (((MR_ArrayType *)Array0)->size == Size) {
+		Array = Array0;
+	} else {
+		MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL,
+			""array:array/1"");
+		ML_resize_array((MR_ArrayType *) Array,
+			(MR_ArrayType *) Array0, Size, Item);
+	}
 ").
 
 :- pragma foreign_proc("C#",
@@ -1034,22 +1043,22 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-MR_ArrayType * ML_shrink_array(MR_ArrayType *old_array,
+void ML_shrink_array(MR_ArrayType *array, MR_ArrayType *old_array,
 					MR_Integer array_size);
 ").
 
 :- pragma foreign_code("C", "
-MR_ArrayType *
-ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
+/*
+** The caller is responsible for allocating the storage for the new array.
+** This routine does the job of copying the old array elements to the
+** new array and deallocating the old array.
+*/
+void
+ML_shrink_array(MR_ArrayType *array, MR_ArrayType *old_array,
+	MR_Integer array_size)
 {
 	MR_Integer i;
-	MR_ArrayType* array;
-	MR_Integer old_array_size;
 
-	old_array_size = old_array->size;
-	if (old_array_size == array_size) return old_array;
-
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -1059,15 +1068,18 @@ ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 	** since the mode on the old array is `array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	MR_GC_free(old_array);
-
-	return array;
+#ifdef MR_CONSERVATIVE_GC
+	GC_free(old_array);
+#endif
 }
 ").
 
 array__shrink(Array0, Size, Array) :-
-	( Size > array__size(Array0) ->
+	OldSize = array__size(Array0),
+	( Size > OldSize ->
 		error("array__shrink: can't shrink to a larger size")
+	; Size = OldSize ->
+		Array = Array0
 	;
 		array__shrink_2(Array0, Size, Array)
 	).
@@ -1078,9 +1090,9 @@ array__shrink(Array0, Size, Array) :-
 :- pragma foreign_proc("C",
 		array__shrink_2(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
-	Array = (MR_Word) ML_shrink_array(
-				(MR_ArrayType *) Array0, Size);
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_shrink_array((MR_ArrayType *)Array, (MR_ArrayType *) Array0,
+		Size);
 ").
 
 :- pragma foreign_proc("C#",
@@ -1095,12 +1107,16 @@ array__shrink(Array0, Size, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-MR_ArrayType *ML_copy_array(MR_ArrayType *old_array);
+void ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array);
 ").
 
 :- pragma foreign_code("C", "
-MR_ArrayType *
-ML_copy_array(MR_ArrayType *old_array)
+/*
+** The caller is responsible for allocating the storage for the new array.
+** This routine does the job of copying the array elements.
+*/
+void
+ML_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 {
 	/*
 	** Any changes to this function will probably also require
@@ -1108,33 +1124,31 @@ ML_copy_array(MR_ArrayType *old_array)
 	*/
 
 	MR_Integer i;
-	MR_ArrayType* array;
 	MR_Integer array_size;
 
 	array_size = old_array->size;
-	array = MR_make_array(array_size);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
 	}
-	return array;
+
 }
 ").
 
 :- pragma foreign_proc("C",
 		array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
+	MR_incr_hp_msg(Array, (((const MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
-	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
+	ML_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *) Array0);
 ").
 
 :- pragma foreign_proc("C",
 		array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "
-	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
+	MR_incr_hp_msg(Array, (((const MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
-	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
+	ML_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *) Array0);
 ").
 
 :- pragma foreign_proc("C#",

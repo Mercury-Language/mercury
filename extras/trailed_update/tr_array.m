@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -285,26 +285,23 @@ tr_array__slow_set(Array0, Index, Item, Array) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_header_code("
-MR_ArrayType * ML_tr_resize_array(MR_ArrayType *old_array,
+void ML_tr_resize_array(MR_ArrayType *array, const MR_ArrayType *old_array,
 					MR_Integer array_size, MR_Word item);
 ").
 
 :- pragma c_code("
-MR_ArrayType *
-ML_tr_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
-				MR_Word item)
+void
+ML_tr_resize_array(MR_ArrayType *array, const MR_ArrayType *old_array,
+	MR_Integer array_size, MR_Word item)
 {
 	MR_Integer i;
-	MR_ArrayType* array;
 	MR_Integer elements_to_copy;
 
 	elements_to_copy = old_array->size;
-	if (elements_to_copy == array_size) return old_array;
 	if (elements_to_copy > array_size) {
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -317,8 +314,6 @@ ML_tr_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 	** since the mode on the old array is `array_mdi', it is NOT safe to
 	** deallocate the storage for it
 	*/
-
-	return array;
 }
 ").
 
@@ -327,7 +322,8 @@ ML_tr_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 		Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (MR_Word) ML_tr_resize_array((MR_ArrayType *) Array0,
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_tr_resize_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0,
 		Size, Item);
 ").
 
@@ -336,7 +332,8 @@ ML_tr_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 		Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (MR_Word) ML_tr_resize_array((MR_ArrayType *) Array0,
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_tr_resize_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0,
 		Size, Item);
 ").
 
@@ -344,26 +341,24 @@ ML_tr_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 %-----------------------------------------------------------------------------%
 
 :- pragma c_header_code("
-MR_ArrayType * ML_tr_shrink_array(MR_ArrayType *old_array,
+void ML_tr_shrink_array(MR_ArrayType *, const MR_ArrayType *old_array,
 					MR_Integer array_size);
 ").
 
 :- pragma c_code("
-MR_ArrayType *
-ML_tr_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
+void
+ML_tr_shrink_array(MR_ArrayType *array, const MR_ArrayType *old_array,
+	MR_Integer array_size)
 {
 	MR_Integer i;
-	MR_ArrayType* array;
 	MR_Integer old_array_size;
 
 	old_array_size = old_array->size;
-	if (old_array_size == array_size) return old_array;
 	if (old_array_size < array_size) {
 		MR_fatal_error(
 			""tr_array__shrink: can't shrink to a larger size"");
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -373,8 +368,6 @@ ML_tr_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 	** since the mode on the old array is `array_mdi', it is NOT safe to
 	** deallocate the storage for it
 	*/
-
-	return array;
 }
 ").
 
@@ -382,27 +375,29 @@ ML_tr_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 	tr_array__shrink(Array0::array_mui, Size::in, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (MR_Word) ML_tr_shrink_array(
-				(MR_ArrayType *) Array0, Size);
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_tr_shrink_array((MR_ArrayType *) Array,
+		(const MR_ArrayType *) Array0, Size);
 ").
 
 :- pragma c_code(
 	tr_array__shrink(Array0::in, Size::in, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (MR_Word) ML_tr_shrink_array(
-				(MR_ArrayType *) Array0, Size);
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	ML_tr_shrink_array((MR_ArrayType *) Array,
+		(const MR_ArrayType *) Array0, Size);
 ").
 
 %-----------------------------------------------------------------------------%
 
 :- pragma c_header_code("
-MR_ArrayType *ML_tr_copy_array(MR_ArrayType *old_array);
+void ML_tr_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array);
 ").
 
 :- pragma c_code("
-MR_ArrayType *
-ML_tr_copy_array(MR_ArrayType *old_array)
+void
+ML_tr_copy_array(MR_ArrayType *array, const MR_ArrayType *old_array)
 {
 	/*
 	** Any changes to this function will probably also require
@@ -410,16 +405,13 @@ ML_tr_copy_array(MR_ArrayType *old_array)
 	*/
 
 	MR_Integer i;
-	MR_ArrayType* array;
 	MR_Integer array_size;
 
 	array_size = old_array->size;
-	array = MR_make_array(array_size);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
 	}
-	return array;
 }
 ").
 
@@ -427,14 +419,18 @@ ML_tr_copy_array(MR_ArrayType *old_array)
 	tr_array__copy(Array0::array_mui, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (MR_Word) ML_tr_copy_array((MR_ArrayType *) Array0);
+	MR_incr_hp_msg(Array, ((const MR_ArrayType *)Array0)->size + 1,
+		MR_PROC_LABEL, ""array:array/1"");
+	ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
 ").
 
 :- pragma c_code(
 	tr_array__copy(Array0::in, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (MR_Word) ML_tr_copy_array((MR_ArrayType *) Array0);
+	MR_incr_hp_msg(Array, ((const MR_ArrayType *)Array0)->size + 1,
+		MR_PROC_LABEL, ""array:array/1"");
+	ML_tr_copy_array((MR_ArrayType *)Array, (const MR_ArrayType *)Array0);
 ").
 
 %-----------------------------------------------------------------------------%

@@ -148,15 +148,15 @@
 #endif	/* MR_NEW_MERCURYFILE_STRUCT */
 
 /*
-** definitions for accessing the representation of the
-** Mercury `array' type
+** Definitions for accessing the representation of the
+** Mercury `array' type.
+** Note that arrays should be allocated on the Mercury heap,
+** using MR_incr_hp_msg().
 */
 
 typedef struct {
 	MR_Integer size;
 	MR_Word elements[MR_VARIABLE_SIZED];
 } MR_ArrayType;
-
-#define MR_make_array(sz) ((MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, (sz) + 1))
 
 #endif /* not MERCURY_LIBRARY_TYPES_H */
