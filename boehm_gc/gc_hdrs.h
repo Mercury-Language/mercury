@@ -11,7 +11,7 @@
  * provided the above notices are retained, and a notice that the code was
  * modified is included with the above copyright notice.
  */
-/* Boehm, July 14, 1994 12:49 pm PDT */
+/* Boehm, July 11, 1995 11:54 am PDT */
 # ifndef GC_HEADERS_H
 # define GC_HEADERS_H
 typedef struct hblkhdr hdr;
@@ -80,11 +80,12 @@ typedef struct bi {
 
 # define MAX_JUMP (HBLKSIZE - 1)
 
+# define HDR_FROM_BI(bi, p) \
+		((bi)->index[((word)(p) >> LOG_HBLKSIZE) & (BOTTOM_SZ - 1)])
 # ifndef HASH_TL
 #   define BI(p) (GC_top_index \
 		[(word)(p) >> (LOG_BOTTOM_SZ + LOG_HBLKSIZE)])
-#   define HDR_INNER(p) (BI(p)->index \
-		[((word)(p) >> LOG_HBLKSIZE) & (BOTTOM_SZ - 1)])
+#   define HDR_INNER(p) HDR_FROM_BI(BI(p),p)
 #   ifdef SMALL_CONFIG
 #	define HDR(p) GC_find_header((ptr_t)(p))
 #   else
@@ -113,8 +114,7 @@ typedef struct bi {
 	    register bottom_index * bi; \
 	    \
 	    GET_BI(p, bi);	\
-	    (ha) = &(bi->index[((unsigned long)(p)>>LOG_HBLKSIZE) \
-	        	  	& (BOTTOM_SZ - 1)]); \
+	    (ha) = &(HDR_FROM_BI(bi, p)); \
 	}
 #   define GET_HDR(p, hhdr) { register hdr ** _ha; GET_HDR_ADDR(p, _ha); \
 			      (hhdr) = *_ha; }
