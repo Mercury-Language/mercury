@@ -1,0 +1,58 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../../Mmake.common
+-include ../../Mmake.params
+
+#-----------------------------------------------------------------------------#
+
+ifeq ($(HAVE_NUPROLOG),yes)
+%.exp: %.nu
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
+endif
+
+#-----------------------------------------------------------------------------#
+
+# Any program added here should also be added to the `.cvsignore' file.
+
+PROGS=	internal_alias
+
+ACC_FLAGS = --infer-structure-reuse -d structure_reuse -D sr
+
+	# Optimizations to turn off/on.
+OPT_FLAGS = --no-static-ground-terms
+
+	# Ensure that the accumulator introduction flags are passed
+	# after EXTRA_MCFLAGS, so that we can override things set in
+	# EXTRA_MCFLAGS.
+#ALL_MCDFLAGS+= $(ACC_FLAGS)
+#ALL_MCGFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
+EXTRA_MCFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
+
+    # programs which aren't working.
+NOT_WORKING =
+
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+EXPS=	$(PROGS:%=%.exp)
+RESS=	$(PROGS:%=%.res)
+MODS=	$(PROGS:%=%.mod)
+
+depend: $(DEPENDS)
+
+exp:	$(EXPS)
+
+check:	$(OUTS) $(RESS)
+
+mods:	$(MODS)
+
+all:	$(PROGS)
+
+realclean_local: clean_hlds_dump
+
+clean_hlds_dump:
+	-rm -f *hlds_dump*
+	-rm -f *.profile
+
+#-----------------------------------------------------------------------------#
