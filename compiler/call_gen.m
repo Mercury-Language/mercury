@@ -572,8 +572,8 @@ call_gen__insert_arg_livelvals([Var - L|As], Module_Info, LiveVals0, LiveVals,
 	code_util__arg_loc_to_register(L, R),
 	code_info__variable_type(Var, Type, Code0, Code1),
 	module_info_types(Module_Info, Type_Table),
-		% XXX what does this do?  Is `ground(shared)' right???
-	shapes__request_shape_number(Type - ground(shared), Type_Table,
+		% XXX what does this do?  Is `ground(shared, no)' right???
+	shapes__request_shape_number(Type - ground(shared, no), Type_Table,
 			S_Tab0, S_Tab1, S_Number),
 	LiveVal = live_lvalue(reg(R), num(S_Number)),
 	call_gen__insert_arg_livelvals(As, Module_Info, 
@@ -616,10 +616,15 @@ call_gen__generate_higher_call(CodeModel, Var, InVars, OutVars, Code) -->
 		])
 	) },
 	code_info__get_next_label(ReturnLabel),
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_pred_id(CallerPredId),
+	code_info__get_proc_id(CallerProcId),
+	code_info__make_entry_label(ModuleInfo, CallerPredId, 
+		CallerProcId, CallerAddress),
 	{ TryCallCode = node([
 		livevals(LiveVals) - "",
-		call_closure(CodeModel, label(ReturnLabel), OutLiveVals) -
-			"setup and call higher order pred",
+		call_closure(CodeModel, label(ReturnLabel), CallerAddress,
+			OutLiveVals) - "setup and call higher order pred",
 		label(ReturnLabel) - "Continuation label"
 	]) },
 	(
