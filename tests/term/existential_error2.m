@@ -1,4 +1,4 @@
-% Regression test for term_util.m
+% Regression test for term_norm.m
 % Symptom: "Software Error: Unmatched lists in functor_norm_filter_args."
 % (see existential_error1.m for a description of the cause)
 

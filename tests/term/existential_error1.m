@@ -1,4 +1,4 @@
-% Regression test for term_util.m
+% Regression test for term_norm.m
 % Symptom: "Software Error: Unmatched lists in functor_norm_filter_args."
 % This was caused by the list of counted arguments in the weight table differing
 % from the list of arguments the termination analyser provided when it called

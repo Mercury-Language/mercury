@@ -146,26 +146,24 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 :- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,
 	constructor::in, weight_table::in, weight_table::out) is det.
 
-% XXX Currently, the weight of a functor is not affected by the presence
-% of any arguments that are type_info related.  However, the set of 
-% arguments whose sizes should be counted towards the total size of 
-% the term will include any type-info related arguments.
+% For existentially typed data items the compiler may insert some 
+% type-info related arguments into the functor.  We ignore these
+% arguments when calculating the weight of a functor and we do not
+% include them in the list of counted arguments.  
 
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
-	Ctor = ctor(ExistQVars, _Constraints, SymName, Args),
-	list__length(ExistQVars, NumExistQVars),
+	Ctor = ctor(_ExistQVars, _Constraints, SymName, Args),
 	list__length(Args, Arity),
 	( Arity > 0 ->
 		find_and_count_nonrec_args(Args, TypeCtor, Params,
 			NumNonRec, ArgInfos0),
 		( NumNonRec = 0 ->
 			Weight = 1,
-			list__duplicate(Arity, yes, ArgInfos1)
+			list__duplicate(Arity, yes, ArgInfos)
 		;
 			Weight = NumNonRec,
-			ArgInfos1 = ArgInfos0
+			ArgInfos = ArgInfos0
 		),
-		ArgInfos = list__duplicate(NumExistQVars, no) ++ ArgInfos1,
 		WeightInfo = weight(Weight, ArgInfos)
 	;
 		WeightInfo = weight(0, [])

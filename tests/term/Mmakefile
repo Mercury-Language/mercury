@@ -21,6 +21,7 @@ TERM_PROGS= \
 	dds3_8 \
 	existential_error1 \
 	existential_error2 \
+	existential_error3 \
 	fold \
 	my_list \
 	lte \
@@ -69,11 +70,6 @@ TERM_PROGS= \
 	vangelder
 endif	# $(MMAKE_USE_MMC_MAKE) == no
 
-TESTS=$(PROGS)
-SUBDIRS=
-TESTS_DIR=..
-include $(TESTS_DIR)/Mmake.common
-
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
@@ -84,6 +80,13 @@ ifneq "$(findstring java,$(GRADE))" ""
 else
 	PROGS=$(TERM_PROGS)
 endif
+
+#-----------------------------------------------------------------------------#
+
+TESTS=$(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.trans_opt_res ;
 

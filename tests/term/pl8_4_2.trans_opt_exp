@@ -1,2 +1,2 @@
 :- module pl8_4_2.
-:- pragma termination_info(pl8_4_2:e((builtin.in), (builtin.out)), finite(-1, [yes, no]), cannot_loop).
+:- pragma termination_info(pl8_4_2.e((builtin.in), (builtin.out)), finite(-1, [yes, no]), cannot_loop).

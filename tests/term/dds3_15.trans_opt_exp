@@ -1,2 +1,2 @@
 :- module dds3_15.
-:- pragma termination_info(dds3_15:merge((builtin.in), (builtin.in), (builtin.out)), finite(0, [yes, yes, no]), cannot_loop).
+:- pragma termination_info(dds3_15.merge((builtin.in), (builtin.in), (builtin.out)), finite(0, [yes, yes, no]), cannot_loop).

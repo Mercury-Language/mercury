@@ -10,6 +10,7 @@ MCFLAGS-dds3_17=--term-norm=simple
 MCFLAGS-dds3_8=--term-norm=simple
 MCFLAGS-existential_error1=--term-norm=num-data-elems
 MCFLAGS-existential_error2=--term-norm=num-data-elems
+MCFLAGS-existential_error3=--term-norm=num-data-elems
 MCFLAGS-fold=--term-norm=simple
 MCFLAGS-my_list=--term-norm=simple
 MCFLAGS-lte=--term-norm=simple

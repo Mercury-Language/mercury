@@ -105,7 +105,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 
-:- import_module bool, int, require.
+:- import_module assoc_list, bool, int, require.
 
 traverse_goal(Goal, Params, Info0, Info) :-
 	Goal = GoalExpr - GoalInfo,
@@ -453,12 +453,25 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
 	\+ type_is_higher_order(Type, _, _, _, _),
 	( type_to_ctor_and_args(Type, TypeCtor, _) ->
 		params_get_module_info(Params, Module),
+		filter_args_and_modes(VarTypes, Args0, Args1, Modes0, Modes1),
 		functor_norm(FunctorInfo, TypeCtor, ConsId, Module,
-			Gamma, Args0, Args, Modes0, Modes),
+			Gamma, Args1, Args, Modes1, Modes),
 		split_unification_vars(Args, Modes, Module, InVars, OutVars)
 	;
 		error("variable type in traverse_goal_2")
 	).
+
+:- pred filter_args_and_modes(map(prog_var, (type))::in, list(prog_var)::in,
+	list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out) is det.
+
+filter_args_and_modes(VarTypes, Args0, Args, Modes0, Modes) :-
+	assoc_list__from_corresponding_lists(Args0, Modes0, ArgsAndModes0),
+	IsNotTypeInfo = (pred(ArgMode::in) is semidet :-
+		map__lookup(VarTypes, fst(ArgMode), Type),
+		not is_introduced_type_info_type(Type)
+	),
+	list__filter(IsNotTypeInfo, ArgsAndModes0, ArgsAndModes),
+	assoc_list__keys_and_values(ArgsAndModes, Args, Modes).
 
 %-----------------------------------------------------------------------------%
 

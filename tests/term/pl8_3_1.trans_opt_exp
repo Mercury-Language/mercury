@@ -1,2 +1,2 @@
 :- module pl8_3_1.
-:- pragma termination_info(pl8_3_1:xminsort((builtin.in), (builtin.out)), infinite, can_loop).
+:- pragma termination_info(pl8_3_1.xminsort((builtin.in), (builtin.out)), infinite, can_loop).

@@ -1,2 +1,2 @@
 :- module dds3_8.
-:- pragma termination_info(dds3_8:reverse((builtin.in), (builtin.out), (builtin.in)), finite(0, [no, yes, no, yes]), cannot_loop).
+:- pragma termination_info(dds3_8.reverse((builtin.in), (builtin.out), (builtin.in)), finite(0, [no, yes, no, yes]), cannot_loop).

@@ -1,2 +1,2 @@
 :- module dds1_2.
-:- pragma termination_info(dds1_2:permute((builtin.in), (builtin.out)), finite(0, [no, yes, no]), cannot_loop).
+:- pragma termination_info(dds1_2.permute((builtin.in), (builtin.out)), finite(0, [no, yes, no]), cannot_loop).

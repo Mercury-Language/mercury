@@ -1,0 +1,2 @@
+:- module existential_error3.
+:- pragma termination_info(existential_error3.test((builtin.in)), finite(0, [no]), cannot_loop).
