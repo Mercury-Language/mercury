@@ -346,13 +346,6 @@ best(W, K, X)           = be(W, K, ["" - X]).
 
 %------------------------------------------------------------------------------%
 
-    % XXX We could do with a spot of laziness to avoid exponential
-    % run-times in the worst case here.  The problem is that flatten/1
-    % need only be evaluated to the point where it can be decided
-    % (by better/4 and fits/2) whether a structure is going to fit on
-    % the remainder of the line or not.  In practice, eagerness doesn't
-    % seem to be a problem.
-
 :- func be(int, int, list(pair(string, doc))) = simple_doc.
 
 be(_, _, [])                      = nil.
@@ -364,8 +357,8 @@ be(W, K, [_ - 'TEXT'(S)     | Z]) = S `text` be(W, (K + string__length(S)), Z).
 be(W, _, [I - 'LINE'        | Z]) = I `line` be(W, string__length(I), Z).
 be(W, K, [I - 'GROUP'(X)    | Z]) =
     ( if
-        K =< W,                         % Really want an ordered conjunction...
-        Flattened = be(W, K, [I - flatten(X) | Z]),
+        try_flatten(X, FlatX, W - K, _),
+        Flattened = be(W, K, [I - FlatX | Z]),
         fits(W - K, Flattened)
       then
         Flattened
@@ -381,15 +374,31 @@ extend(I, J) = string__append(I, string__duplicate_char(' ', J)).
 
 %------------------------------------------------------------------------------%
 
-:- func flatten(doc) = doc.
+    % While flattening documents, we keep track of the amount of
+    % space available on the line.  This predicate fails if there
+    % is not enough space for the flattened term.
+    %
+:- pred try_flatten(doc, doc, int, int).
+:- mode try_flatten(in, out, in, out) is semidet.
 
-flatten('NIL')          = 'NIL'.
-flatten('SEQ'(X, Y))    = 'SEQ'(flatten(X), flatten(Y)).
-flatten('NEST'(_, X))   = flatten(X).
-flatten('LABEL'(_, X))  = flatten(X).
-flatten('TEXT'(S))      = 'TEXT'(S).
-flatten('LINE')         = 'NIL'.
-flatten('GROUP'(X))     = flatten(X).
+try_flatten('NIL', 'NIL') -->
+    [].
+try_flatten('SEQ'(X, Y), 'SEQ'(FX, FY)) -->
+    try_flatten(X, FX),
+    try_flatten(Y, FY).
+try_flatten('NEST'(_, X), FX) -->
+    try_flatten(X, FX).
+try_flatten('LABEL'(_, X), FX) -->
+    try_flatten(X, FX).
+try_flatten('TEXT'(S), 'TEXT'(S)) -->
+    =(W0),
+    { W = W0 - string__length(S) },
+    { W >= 0 },
+    :=(W).
+try_flatten('LINE', 'NIL') -->
+    [].
+try_flatten('GROUP'(X), FX) -->
+    try_flatten(X, FX).
 
 %------------------------------------------------------------------------------%
 
