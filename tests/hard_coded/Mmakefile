@@ -38,6 +38,7 @@ PROGS=	\
 	expand \
 	export_test \
 	factt \
+	factt_non \
 	float_map \
 	float_reg \
 	float_rounding_bug \
