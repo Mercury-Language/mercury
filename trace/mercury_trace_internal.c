@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -2847,7 +2847,7 @@ MR_trace_cmd_mmc_options(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		strcat(MR_mmc_options, words[i]);
 		strcat(MR_mmc_options, " ");
 	}
-	MR_mmc_options[len] = '\0';
+	MR_mmc_options[len - 1] = '\0';
 
 	return KEEP_INTERACTING;
 }
