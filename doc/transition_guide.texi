@@ -110,7 +110,7 @@ Prolog and Mercury have very similar syntax.
 Although there are a few differences,
 by and large if a program is accepted by a Prolog system,
 it will be accepted by Mercury.
-There are however a few extra operators defined by the Mercruy term parser.
+There are however a few extra operators defined by the Mercury term parser.
 Here's a complete list of the operators in Mercury.
 
 @example
@@ -322,7 +322,7 @@ and output takes place outside it:
 @chapter Failure driven loops, assert and retract
 
 Because Mercury is purely declarative,
-the goal @samp{Goal, fail} is interchangable with the goal @samp{fail, Goal}.
+the goal @samp{Goal, fail} is interchangeable with the goal @samp{fail, Goal}.
 Also because it is purely declarative, there are no side effects to goals
 (see also the section on input and output).
 As a consequence of these two facts,
@@ -482,7 +482,7 @@ pair of lists proposed by Richard O'Keefe).
 
 The Mercury language requires that the determinism of all predicates
 exported by a module be declared. The determinism of predicates that
-are local to a module may either be declared or infered. By default,
+are local to a module may either be declared or inferred. By default,
 the compiler issues a warning message where such declarations are
 omitted, but this warning can be disabled using the
 @samp{--no-warn-missing-det-decls} option if you want to use
@@ -517,7 +517,7 @@ factorial(N, F) :-
 @end example
 
 @noindent
-would be infered ``nondeterministic''. The compiler would infer that
+would be inferred ``nondeterministic''. The compiler would infer that
 the two clauses are not mutually exclusive because it does not know
 about the semantics of @samp{>/2}, and it would infer that
 the predicate as a whole could fail because the call to @samp{>/2}
@@ -581,7 +581,7 @@ expressions.
 
 The current implementation of solutions/2 is a "zero-copy" implementation,
 so the cost of solutions/2 is proportional the number of solutions, but
-independant of the size of the solutions.  (This may change in
+independent of the size of the solutions.  (This may change in
 future implementations.)
 
 @bye
