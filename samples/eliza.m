@@ -597,7 +597,7 @@ response_messages(
 
 	alike - [
 		no       - "In what way?",
-		no       - "What resemblence do you see?",
+		no       - "What resemblance do you see?",
 		no       - "What does the similarity suggest to you?",
 		no       - "What other connections do you see?",
 		no       - "Could there really be some connection?",
