@@ -73,3 +73,10 @@ Each symbol is followed by the correct decoding.
 	mangled name with unused args
 <predicate '!'/2 mode 0 (minus unused args)>
 <predicate '!'/2 mode 0 (minus unused args)>
+
+	some tests of symbols that should not be demangled
+	(this is a regression test: previous versions of mdemangle
+	seg faulted for this case)
+mercury_data_foo
+mercury_data_foo
+

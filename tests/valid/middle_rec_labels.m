@@ -9,6 +9,8 @@
 
 :- interface.
 
+:- import_module list, std_util.
+
 :- type liveinfo	--->	live_lvalue(
 					lval,
 					shape_num,
@@ -20,9 +22,6 @@
 			;	reg(int).
 
 :- type shape_num	==	int.
-
-:- type maybe(T)	--->	yes(T)
-			;	no.
 
 :- type det		---> 	deterministic
 			;	nondeterministic

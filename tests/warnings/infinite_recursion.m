@@ -6,7 +6,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module std_util.
+:- import_module std_util, list.
 
 main -->
 	( { funny_append([1,2,3], [4,5,6], [5,6,7]) } ->

@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module std_util, list.
 
 main -->
 	{ solutions(lambda([Pair::out] is multi,

@@ -32,7 +32,7 @@
 
 :- implementation.
 
-:- import_module string, int, require.
+:- import_module string, int, require, list.
 
 :- pred stringify_config(tcl_interp, config, string, io__state, io__state).
 :- mode stringify_config(in, in(widget), out, di, uo) is det.
