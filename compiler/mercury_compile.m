@@ -217,6 +217,7 @@ mercury_compile(Module, FactDeps) -->
 		globals__io_set_option(optimize_unused_args, bool(no)),
 		mercury_compile__maybe_unused_args(HLDS21, Verbose, Stats, _)
 	    ; { MakeOptInt = yes } ->
+		% only run up to typechecking when making the .opt file
 	    	[]
 	    ;
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
