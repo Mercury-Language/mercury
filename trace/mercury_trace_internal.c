@@ -145,6 +145,10 @@ static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_Event_Info *event_info, 
 			MR_Event_Details *event_details, int *ancestor_level,
 			Code **jumpaddr);
+static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
+			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+			MR_Event_Details *event_details, int *ancestor_level,
+			Code **jumpaddr);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -417,15 +421,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	int		word_count;
 	const char	*problem;
 	char		*semicolon;
-	int		i;
-	int		n;
-
-	Unsigned	depth = event_info->MR_call_depth;
-	MR_Trace_Port	port = event_info->MR_trace_port;
-	const MR_Stack_Layout_Label
-			*layout = event_info->MR_event_sll;
-	Word		*saved_regs = event_info->MR_saved_regs;
-
+	MR_Next		next;
 
 	if (line == NULL) {
 		/*
@@ -433,7 +429,6 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		** We arrange things so we don't have to treat this case
 		** specially in the command interpreter below.
 		*/
-
 		line = MR_copy_string("quit");
 	}
 
@@ -443,7 +438,6 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		** Execute only the first command now; put the others
 		** back in the input to be processed later.
 		*/
-
 		*semicolon = '\0';
 		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
 	}
@@ -457,7 +451,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	if (problem != NULL) {
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "%s.\n", problem);
-		goto return_keep_interacting;
+		return KEEP_INTERACTING;
 	}
 
 	MR_trace_expand_aliases(&words, &word_max, &word_count);
@@ -468,27 +462,49 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	** freeing just before return, since the variable words itself
 	** can be overwritten by option processing.
 	*/
-
 	orig_words = words;
+
+	/*
+	** Now we check for a special case.
+	*/
 	if (word_count == 0) {
-		cmd->MR_trace_cmd = MR_CMD_GOTO;
-		cmd->MR_trace_stop_event = MR_trace_event_number + 1;
-		cmd->MR_trace_strict = FALSE;
-		cmd->MR_trace_print_level = MR_default_print_level;
-		goto return_stop_interacting;
-	} else if (MR_trace_is_number(words[0], &n)) {
-		if (word_count == 1) {
-			cmd->MR_trace_cmd = MR_CMD_GOTO;
-			cmd->MR_trace_stop_event = MR_trace_event_number + n;
-			cmd->MR_trace_strict = FALSE;
-			cmd->MR_trace_print_level = MR_default_print_level;
-			goto return_stop_interacting;
-		} else {
-			fflush(MR_mdb_out);
-			fprintf(MR_mdb_err, "One of the first two words "
-				"must be a command.\n");
-		}
-	} else if (streq(words[0], "step")) {
+		/*
+		** Normally EMPTY is aliased to "step", so this won't happen.
+		** This can only occur if the user has unaliased EMPTY.
+		** In that case, if we get an empty command line, we ignore it.
+		*/
+		next = KEEP_INTERACTING;
+	} else {
+		/*
+		** Call the command dispatcher
+		*/
+		next = MR_trace_handle_cmd(words, word_count, cmd,
+			event_info, event_details, ancestor_level, jumpaddr);
+	}
+
+	free(line);
+	free(orig_words);
+
+	return next;
+}
+
+/*
+** IMPORTANT: if you add any new commands, you will need to
+**	(a) include them in MR_trace_valid_command_list, defined below.
+**	(b) document them in doc/user_guide.texi
+*/
+static MR_Next
+MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	int *ancestor_level, Code **jumpaddr)
+{
+	const MR_Stack_Layout_Label
+		*layout = event_info->MR_event_sll;
+	Word 	*saved_regs = event_info->MR_saved_regs;
+
+	if (streq(words[0], "step")) {
+		int	n;
+
 		cmd->MR_trace_strict = FALSE;
 		cmd->MR_trace_print_level = MR_default_print_level;
 		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
@@ -498,16 +514,19 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 1) {
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
 			cmd->MR_trace_stop_event = MR_trace_event_number + 1;
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else if (word_count == 2
-				&& MR_trace_is_number(words[1], &n)) {
+				&& MR_trace_is_number(words[1], &n))
+		{
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
 			cmd->MR_trace_stop_event = MR_trace_event_number + n;
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else {
 			MR_trace_usage("forward", "step");
 		}
 	} else if (streq(words[0], "goto")) {
+		int	n;
+
 		cmd->MR_trace_strict = TRUE;
 		cmd->MR_trace_print_level = MR_default_print_level;
 		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
@@ -519,7 +538,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			if (MR_trace_event_number < n) {
 				cmd->MR_trace_cmd = MR_CMD_GOTO;
 				cmd->MR_trace_stop_event = n;
-				goto return_stop_interacting;
+				return STOP_INTERACTING;
 			} else {
 				/* XXX this message is misleading */
 				fflush(MR_mdb_out);
@@ -530,7 +549,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("forward", "goto");
 		}
 	} else if (streq(words[0], "finish")) {
-		int	stop_depth;
+		Unsigned	depth = event_info->MR_call_depth;
+		int		stop_depth;
+		int		n;
 
 		cmd->MR_trace_strict = TRUE;
 		cmd->MR_trace_print_level = MR_default_print_level;
@@ -538,7 +559,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				"forward", "finish"))
 		{
 			; /* the usage message has already been printed */
-			goto return_keep_interacting;
+			return KEEP_INTERACTING;
 		} else if (word_count == 2 && MR_trace_is_number(words[1], &n))
 		{
 			stop_depth = depth - n;
@@ -546,15 +567,17 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			stop_depth = depth;
 		} else {
 			MR_trace_usage("forward", "finish");
-			goto return_keep_interacting;
+			return KEEP_INTERACTING;
 		}
 
-		if (depth == stop_depth && MR_port_is_final(port)) {
+		if (depth == stop_depth &&
+			MR_port_is_final(event_info->MR_trace_port))
+		{
 			MR_trace_do_noop();
 		} else {
 			cmd->MR_trace_cmd = MR_CMD_FINISH;
 			cmd->MR_trace_stop_depth = stop_depth;
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		}
 	} else if (streq(words[0], "return")) {
 		cmd->MR_trace_strict = TRUE;
@@ -564,9 +587,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 1) {
-			if (port == MR_PORT_EXIT) {
+			if (event_info->MR_trace_port == MR_PORT_EXIT) {
 				cmd->MR_trace_cmd = MR_CMD_RETURN;
-				goto return_stop_interacting;
+				return STOP_INTERACTING;
 			} else {
 				MR_trace_do_noop();
 			}
@@ -581,12 +604,13 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 1) {
+			MR_Trace_Port	port = event_info->MR_trace_port;
 			if (port == MR_PORT_FAIL ||
 			    port == MR_PORT_REDO ||
 			    port == MR_PORT_EXCEPTION)
 			{
 				cmd->MR_trace_cmd = MR_CMD_RESUME_FORWARD;
-				goto return_stop_interacting;
+				return STOP_INTERACTING;
 			} else {
 				MR_trace_do_noop();
 			}
@@ -607,7 +631,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		{
 			cmd->MR_trace_cmd = MR_CMD_MIN_DEPTH;
 			cmd->MR_trace_stop_depth = newdepth;
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else {
 			MR_trace_usage("forward", "mindepth");
 		}
@@ -625,7 +649,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		{
 			cmd->MR_trace_cmd = MR_CMD_MAX_DEPTH;
 			cmd->MR_trace_stop_depth = newdepth;
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else {
 			MR_trace_usage("forward", "maxdepth");
 		}
@@ -652,13 +676,16 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 						MR_PRINT_LEVEL_SOME;
 				}
 			}
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else {
 			MR_trace_usage("forward", "continue");
 		}
 	} else if (streq(words[0], "retry")) {
+		int		n;
 		int		stop_depth;
 		const char   	*message;
+		Unsigned	depth = event_info->MR_call_depth;
+		MR_Trace_Port	port = event_info->MR_trace_port;
 
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			stop_depth = depth - n;
@@ -666,7 +693,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			stop_depth = depth;
 		} else {
 			MR_trace_usage("backward", "retry");
-			goto return_keep_interacting;
+			return KEEP_INTERACTING;
 		}
 
 		if (stop_depth == depth && MR_port_is_final(port)) {
@@ -675,13 +702,13 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			if (message != NULL) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "%s\n", message);
-				goto return_keep_interacting;
+				return KEEP_INTERACTING;
 			}
 			cmd->MR_trace_cmd = MR_CMD_GOTO;
 			cmd->MR_trace_stop_event = MR_trace_event_number + 1;
 			cmd->MR_trace_strict = FALSE;
 			cmd->MR_trace_print_level = MR_default_print_level;
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else if (stop_depth == depth && MR_port_is_entry(port)) {
 			MR_trace_do_noop();
 		} else {
@@ -695,9 +722,10 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 			/* Arrange to retry the call once it is finished. */
 			MR_insert_line_at_head("retry");
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		}
 	} else if (streq(words[0], "level")) {
+		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			MR_trace_set_level(layout, saved_regs, ancestor_level,
 				n);
@@ -705,6 +733,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("browsing", "level");
 		}
 	} else if (streq(words[0], "up")) {
+		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			MR_trace_set_level(layout, saved_regs, ancestor_level,
 				*ancestor_level + n);
@@ -715,6 +744,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("browsing", "up");
 		}
 	} else if (streq(words[0], "down")) {
+		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			MR_trace_set_level(layout, saved_regs, ancestor_level,
 				*ancestor_level - n);
@@ -734,6 +764,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "print")) {
 		if (word_count == 2) {
 			MR_Var_Spec	var_spec;
+			int		n;
 
 			if streq(words[1], "*") {
 				MR_trace_browse_all(layout, saved_regs,
@@ -755,6 +786,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "browse")) {
 		if (word_count == 2) {
 			MR_Var_Spec	var_spec;
+			int		n;
 
 			if (MR_trace_is_number(words[1], &n)) {
 				var_spec.MR_var_spec_kind = VAR_NUMBER;
@@ -806,11 +838,12 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		MR_Spy_Action	action;
 
 		if (word_count == 2 && streq(words[1], "info")) {
+			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_print_spy_point(i);
 			}
 
-			goto return_keep_interacting;
+			return STOP_INTERACTING;
 		}
 
 		when = MR_SPY_INTERFACE;
@@ -855,6 +888,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("breakpoint", "break");
 		}
 	} else if (streq(words[0], "enable")) {
+		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			if (0 <= n && n < MR_spy_point_next) {
 				MR_spy_points[n]->spy_enabled = TRUE;
@@ -866,6 +900,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					n);
 			}
 		} else if (word_count == 2 && streq(words[1], "*")) {
+			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_spy_points[i]->spy_enabled = TRUE;
 				MR_print_spy_point(n);
@@ -879,6 +914,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("breakpoint", "enable");
 		}
 	} else if (streq(words[0], "disable")) {
+		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
 			if (0 <= n && n < MR_spy_point_next) {
 				MR_spy_points[n]->spy_enabled = FALSE;
@@ -890,6 +926,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					n);
 			}
 		} else if (word_count == 2 && streq(words[1], "*")) {
+			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_spy_points[i]->spy_enabled = FALSE;
 				MR_print_spy_point(n);
@@ -989,6 +1026,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			word_count - 1, words + 1);
 	} else if (streq(words[0], "mmc_options")) {
 		size_t len;
+		size_t i;
 
 		/* allocate the right amount of space */
 		len = 0;
@@ -1006,6 +1044,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		MR_mmc_options[len] = '\0';
 
 	} else if (streq(words[0], "scroll")) {
+		int	n;
 		if (word_count == 2) {
 			if (streq(words[1], "off")) {
 				MR_scroll_control = FALSE;
@@ -1078,7 +1117,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				MR_trace_add_alias(words[1],
 					words+2, word_count-2);
 				if (MR_trace_internal_interacting) {
-					MR_trace_print_alias(MR_mdb_out, words[1]);
+					MR_trace_print_alias(MR_mdb_out,
+						words[1]);
 				}
 			} else {
 				fprintf(MR_mdb_out,
@@ -1209,6 +1249,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "clear_histogram")) {
 		if (word_count == 1) {
+			int i;
 			for (i = 0; i <= MR_trace_histogram_hwm; i++) {
 				MR_trace_histogram_exp[i] = 0;
 			}
@@ -1268,7 +1309,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					/* This means the user input EOF. */
 					confirmed = TRUE;
 				} else {
-					i = 0;
+					int i = 0;
 					while (line2[i] != '\0' &&
 							MR_isspace(line2[i]))
 					{
@@ -1303,7 +1344,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				"available from EXIT events.\n");
 		} else if (MR_trace_start_wrong_answer(cmd, event_info,
 				event_details, jumpaddr)) {
-			goto return_stop_interacting;
+			return STOP_INTERACTING;
 		} else {
 			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "mdb: unable to start declarative "
@@ -1315,17 +1356,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		fprintf(MR_mdb_err, "Unknown command `%s'. "
 			"Give the command `help' for help.\n", words[0]);
 	}
-
-	/* fall through */
-return_keep_interacting:
-	free(line);
-	free(orig_words);
 	return KEEP_INTERACTING;
-
-return_stop_interacting:
-	free(line);
-	free(orig_words);
-	return STOP_INTERACTING;
 }
 
 static struct MR_option MR_trace_strict_print_opts[] =
@@ -2424,6 +2455,9 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	** experimental commands.
 	*/
 
+	{ "interactive", "query" },
+	{ "interactive", "cc_query" },
+	{ "interactive", "io_query" },
 	{ "forward", "step" },
 	{ "forward", "goto" },
 	{ "forward", "finish" },
@@ -2435,6 +2469,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "backward", "retry" },
 	{ "browsing", "vars" },
 	{ "browsing", "print" },
+	{ "browsing", "browse" },
 	{ "browsing", "stack" },
 	{ "browsing", "up" },
 	{ "browsing", "down" },
@@ -2446,6 +2481,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "breakpoint", "modules" },
 	{ "breakpoint", "procedures" },
 	{ "breakpoint", "register" },
+	{ "parameter", "mmc_options" },
 	{ "parameter", "printlevel" },
 	{ "parameter", "echo" },
 	{ "parameter", "scroll" },
