@@ -8106,7 +8106,7 @@ mode error.  However, @emph{pure} and @emph{semipure} goals may be
 reordered as the compiler desires (within the bounds of the semantics
 the user has specified for the program) as long as they are not moved
 across an impure goal.  Execution of impure goals is strict: they must
-be executed if they are reached, even if it can be determined that that
+be executed if they are reached, even if it can be determined that the
 computation cannot lead to successful termination.
 
 Semipure goals can be given a ``contextual'' declarative semantics.
