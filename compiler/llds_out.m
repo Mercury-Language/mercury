@@ -212,6 +212,9 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 :- mode output_c_module_init_list(in, in, di, uo) is det.
 
 output_c_module_init_list(BaseName, Modules) -->
+
+		% Output initialization functions, bunched into groups
+		% of 40.
 	io__write_string("#if (defined(USE_GCC_NONLOCAL_GOTOS) && "),
 	io__write_string("!defined(USE_ASM_LABELS)) \\\n\t|| "),
 	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
@@ -223,6 +226,9 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("{\n"),
 	output_c_module_init_list_2(Modules, BaseName, 0, 40, 0, InitFuncs),
 	io__write_string("}\n\n#endif\n\n"),
+
+		% Output code to call each of the init functions created
+		% above.
 	io__write_string("void "),
 	output_init_name(BaseName),
 	io__write_string("(void);"),
@@ -236,7 +242,11 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("defined(PROFILE_CALLS) || defined(DEBUG_GOTOS) \\\n"),
 	io__write_string("\t|| defined(DEBUG_LABELS) || !defined(SPEED) \\\n"),
 	io__write_string("\t|| defined(NATIVE_GC) \n\n"),
+	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tif (!done) {\n"),
+	io__write_string("\t\tdone = TRUE;\n"),
 	output_c_module_init_list_3(0, BaseName, InitFuncs),
+	io__write_string("\t}\n"),
 	io__write_string("#endif\n"),
 	output_c_data_init_list(Modules),
 	io__write_string("}\n").
@@ -282,6 +292,8 @@ output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
 	output_c_module_init_list_2(Ms, BaseName,
 		Calls1, MaxCalls, InitFunc1, InitFunc).
 
+	% Output calls to all the bunched initialization functions.
+
 :- pred output_c_module_init_list_3(int, string, int, io__state, io__state).
 :- mode output_c_module_init_list_3(in, in, in, di, uo) is det.
 
@@ -289,7 +301,7 @@ output_c_module_init_list_3(InitFunc0, BaseName, MaxInitFunc) -->
 	( { InitFunc0 > MaxInitFunc } ->
 		[]
 	;
-		io__write_string("\t"),
+		io__write_string("\t\t"),
 		output_bunch_name(BaseName, InitFunc0),
 		io__write_string("();\n"),
 		{ InitFunc1 is InitFunc0 + 1},
