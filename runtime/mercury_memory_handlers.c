@@ -946,7 +946,7 @@ print_dump_stack(void)
 #ifndef	MR_LOWLEVEL_DEBUG
 
 	const char *msg =
-		"You can get a stack dump by using `--low-level-debug'\n";
+		"This may have been caused by a stack overflow, due to unbounded recursion.\n";
 	write(STDERR, msg, strlen(msg));
 
 #else /* MR_LOWLEVEL_DEBUG */
