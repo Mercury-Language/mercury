@@ -55,6 +55,10 @@
 :- type io__res(T)	--->	ok(T)
 			;	error(io__error).
 
+:- type io__result	--->	ok
+			;	eof
+			;	error(io__error).
+
 :- type io__result(T)	--->	ok(T)
 			;	eof
 			;	error(io__error).
@@ -131,11 +135,11 @@
 %		The argument may be of (almost) any type.
 %		The term read had better be of the right type!
 
-:- pred io__ignore_whitespace(io__res, io__state, io__state).
+:- pred io__ignore_whitespace(io__result, io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
 %		Discards all the whitespace from the current stream.
 
-:- pred io__ignore_whitespace(io__input_stream, io__res,
+:- pred io__ignore_whitespace(io__input_stream, io__result,
 				io__state, io__state).
 :- mode io__ignore_whitespace(in, out, di, uo) is det.
 %		Discards all the whitespace from the specified stream.
@@ -636,6 +640,9 @@ io__read_word(Stream, Result) -->
 		{ WSResult = error(Error) },
 		{ Result = error(Error) }
 	;
+		{ WSResult = eof },
+		{ Result = eof }
+	;
 		{ WSResult = ok },
 		io__read_word_2(Stream, Result)
 	).
@@ -741,20 +748,13 @@ io__ignore_whitespace(Stream, Result) -->
 		{ Result = error(Error) }
 	;
 		{ CharResult = eof },
-		{ Result = ok }
+		{ Result = eof }
 	;
 		{ CharResult = ok(Char) },
 		(
 			{ char__is_whitespace(Char) }
 		->
-			io__ignore_whitespace(Stream, Result0),
-			(
-				{ Result0 = ok },
-				{ Result = ok }
-			;
-				{ Result0 = error(_) },
-				{ Result = Result0 }
-			)
+			io__ignore_whitespace(Stream, Result)
 		;
 			io__putback_char(Stream, Char),
 			{ Result = ok }
