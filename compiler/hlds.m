@@ -247,7 +247,7 @@ out_mode(user_defined_mode(unqualified("out"), [])).
 					 shape_tag)
 			;	abstract(type, list(shape_num))
 			;	equivalent(shape_num)
-			;	polymorphic(type)
+			;	polymorphic(type, int)
 			;	closure(type).
 
 :- type shape_tag	--->	constant

@@ -72,7 +72,7 @@
 :- mode shapes__request_shape_number(in, in, in, out, out) is det.
 
 :- pred shapes__construct_shape_lists(shape_table, shape_list, 
-		length_list, contents_list). 
+			length_list, contents_list). 
 :- mode shapes__construct_shape_lists(in, out, out, out) is det. 
 
 :- pred shapes__do_abstract_exports(module_info, module_info).
@@ -93,7 +93,7 @@
 
 %-----------------------------------------------------------------------------%
 % Initialization is done rather simply.
-% XXX We manually insert some non-standard builtin types. This may cause
+% XXX We manually insert some standard builtin types. This may cause
 % problems if the types are redefined in some way... These and other
 % low numbered cases need to be treated specially at runtime...
 % Note : still have to deal with succip etc.
@@ -184,19 +184,20 @@ shapes__do_abstract_exports(HLDS0, HLDS) :-
 				assoc_list(type_id, maybe_shape_num)).
 :- mode shapes__add_shape_numbers(in, in, in, out, out) is det.
 
-shapes__add_shape_numbers([], _, S, S, []).
-shapes__add_shape_numbers([T - S | Ts] , Types, S0, S2, [ N | Ns] ) :-
-	shapes__add_shape_numbers(Ts, Types, S0, S1, Ns),
+shapes__add_shape_numbers([], _, ShapeTab, ShapeTab, []).
+shapes__add_shape_numbers([T - S | Ts] , Types, ShapeTab0, ShapeTab, 
+			[ N | Ns] ) :-
+	shapes__add_shape_numbers(Ts, Types, ShapeTab0, ShapeTab1, Ns),
 	(
 		S = yes(_)
 	->
 		N = T - S,
-		S2 = S1
+		ShapeTab = ShapeTab1
 	;	
 		S = no(Type)
 	->
 		shapes__request_shape_number(Type - ground(shared), Types,  
- 			S1, S2, S_Num),
+ 			ShapeTab1, ShapeTab, S_Num),
 		N = T - yes(num(S_Num))
 	;
 		error("shapes__add_shape_numbers: Unreachable case reached!") 
@@ -265,9 +266,15 @@ shapes__create_shape(Type_Tab, Shape_Id, Shape, S_Tab0, S_Tab) :-
 		shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs,
 				Shape, S_Tab0, S_Tab)
 	;
-	%% XXX should really check if it is a type variable first.
-		Shape = polymorphic(Type),
-		S_Tab = S_Tab0
+		( 
+			Type = term__variable(Var)
+		->
+			term__var_to_int(Var, VarInt),
+			Shape = polymorphic(Type, VarInt),
+			S_Tab = S_Tab0
+		;
+			error("shapes: unexpected term")
+		)
 	).
 
 
@@ -292,8 +299,8 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 		->
 			term__term_list_to_var_list(TypeParams, TypeParamVars),
 			map__from_corresponding_lists(TypeParamVars, TypeArgs,
-				TypeSubstitution),
-			apply_to_ctors(Ctors0, TypeSubstitution, Ctors),
+				TypeSubst),
+			shapes__apply_to_ctors(Ctors0, TypeSubst, Ctors),
 			
 			Shape = quad(A,B,C,D),
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
@@ -305,15 +312,21 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 			shapes__create_shapeA(Type_Id, Ctors, TagVals,
 				bit_three, D, Type_Tab, S_Tab3, S_Tab) 
 		;
-			Hlds_Type = hlds__type_defn(_, _, abstract_type, _, _) 
-		% An abstract type that is imported from elsewhere.
-		% Later we find the real definition.
+			
+			Hlds_Type = hlds__type_defn(_, _TypeParams, 
+				abstract_type, _, _) 
+
+				% An abstract type that is imported from 
+				% elsewhere. We find the constructors of
+				% this type only at linktime, but we
+				% store the types of the arguments now.
 		->
 			(
 				type_to_type_id(Type, _, TypeArgs)
 			->
 				shapes__lookup_simple_info(TypeArgs, 
 					ShapeList, Type_Tab, S_Tab0, S_Tab),
+
 				shapes__get_snums(ShapeList, SNums),
 				Shape = abstract(Type, SNums) 
 			;
@@ -321,10 +334,12 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 				S_Tab = S_Tab0
 			) 
 		;
+	
 			Hlds_Type = hlds__type_defn(_, _, eqv_type(ET), _, _)
-		% The case where an abstract type is equivalent to another
- 		% abstract type...
-		% XXX I think we want to look up a new shape number here.
+		
+			% The case where a type is equivalent to 
+			% another type - we just find the type it is 
+			% equivalent to and store it as a reference.
 		->
 			shapes__replace_context(ET - ground(shared),
 				EqvType - G),
@@ -345,20 +360,21 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
 
 :- pred shapes__get_snums(list(pair(shape_num,shape_id)),list(shape_num)).
 :- mode shapes__get_snums(in, out) is det.
+
 shapes__get_snums([], []).
-shapes__get_snums([N-_I | NIs], [N | Ns]) :-
+shapes__get_snums([N - _I | NIs], [N | Ns]) :-
 	shapes__get_snums(NIs, Ns).
 
 
-:- pred apply_to_ctors(list(constructor), tsubst, list(constructor)).
-:- mode apply_to_ctors(in, in, out) is det.
+:- pred shapes__apply_to_ctors(list(constructor), tsubst, list(constructor)).
+:- mode shapes__apply_to_ctors(in, in, out) is det.
 
-apply_to_ctors([], _, []).
-apply_to_ctors([Ctor0 | Ctors0], Subst, [Ctor | Ctors]) :-
+shapes__apply_to_ctors([], _, []).
+shapes__apply_to_ctors([Ctor0 | Ctors0], Subst, [Ctor | Ctors]) :-
 	Ctor0 = SymName - ArgTypes0,
 	term__apply_substitution_to_list(ArgTypes0, Subst, ArgTypes),
 	Ctor = SymName - ArgTypes,
-	apply_to_ctors(Ctors0, Subst, Ctors).
+	shapes__apply_to_ctors(Ctors0, Subst, Ctors).
 
 %-----------------------------------------------------------------------------%
 % We pass seperate the head from the rest as we are going to want to

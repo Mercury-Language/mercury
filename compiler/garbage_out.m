@@ -393,8 +393,10 @@ garbage_out__write_shape(abstract(Type, Shape_List)) -->
 	io__write_string(", ["),
 	garbage_out__write_int_list(Shape_List),
 	io__write_string("])").
-garbage_out__write_shape(polymorphic(_Type)) -->
-	io__write_string("polymorphic").
+garbage_out__write_shape(polymorphic(_Type, Var)) -->
+	io__write_string("polymorphic("),
+	io__write_int(Var),
+	io__write_string(")").
 garbage_out__write_shape(closure(Type)) -->
 	io__write_string("closure("),
 	garbage_out__write_type(Type),
