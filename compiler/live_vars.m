@@ -127,7 +127,9 @@ detect_live_vars_in_goal(Goal0 - GoalInfo, ExtraLives0, Liveness0,
 		% Add extra interference for variables that become live
 		% and variables that be come dead in this goal.
 	(
-		goal_is_atomic(Goal0)
+		% goal_is_atomic(Goal0)
+		fail
+		% XXX this is not quite right
 	->
 		set__union(PreBirths, PostDeaths, ExtraInterference),
 		set__insert(LiveSets1, ExtraInterference, LiveSets)
