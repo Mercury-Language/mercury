@@ -463,21 +463,25 @@ mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
 :- mode mlds_output_pragma_export_defn_body(in, in, in, di, uo) is det.
 
 mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
-	{ Signature = mlds__func_params(_Parameters, RetTypes) },
-	{ QualNames = argument_names(ModuleName, Signature) },
+	{ Signature = mlds__func_params(Parameters, RetTypes) },
 
 	( { RetTypes = [] } ->
 		io__write_string("\t")
-	; { RetTypes = [_] } ->
-		io__write_string("\treturn ")
+	; { RetTypes = [RetType] } ->
+		io__write_string("\treturn ("),
+		mlds_output_pragma_export_type(prefix, RetType),
+		mlds_output_pragma_export_type(suffix, RetType),
+		io__write_string(") ")
 	;
 		{ error("mlds_output_pragma_export: multiple return types") }
 	),
 
 	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
 	io__write_string("("),
-	io__write_list(QualNames, ", ", mlds_output_fully_qualified_name),
+	io__write_list(Parameters, ", ",
+			mlds_output_name_with_cast(ModuleName)),
 	io__write_string(");\n").
+
 
 	%
 	% Output the definition body for a pragma export when it is
@@ -489,8 +493,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 
 mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
 	{ ExportedSignature = det_func_signature(Signature) },
-	{ ExportedSignature = mlds__func_params(_Parameters, RetTypes) },
-	{ QualNames = argument_names(ModuleName, Signature) },
+	{ ExportedSignature = mlds__func_params(Parameters, RetTypes) },
 
 	( { RetTypes = [RetType0] } ->
 		{ RetType = RetType0 }
@@ -509,42 +512,46 @@ mlds_output_pragma_export_func_defn_body(ModuleName, FuncName, Signature) -->
 	io__write_string("\t"),
 	mlds_output_fully_qualified_name(qual(ModuleName, FuncName)),
 	io__write_string("("),
-	write_func_args(QualNames),
+	write_func_args(ModuleName, Parameters),
 	io__write_string(");\n"),
 
 		% return the function result.
 	io__write_string("\t"),
-	io__write_string("return arg;\n").
+	io__write_string("return ("),
+	mlds_output_pragma_export_type(prefix, RetType),
+	mlds_output_pragma_export_type(suffix, RetType),
+	io__write_string(") arg;\n").
 
 	%
 	% Write out the arguments to the MLDS function.  Note the last
 	% in the list of the arguments is the return value, so it must
 	% be "&arg"
 	%
-:- pred write_func_args(list(mlds__qualified_entity_name)::in,
+:- pred write_func_args(mlds_module_name::in, mlds__arguments::in,
 		io__state::di, io__state::uo) is det.
 
-write_func_args([]) -->
+write_func_args(_ModuleName, []) -->
 	{ error("write_func_args: empty list") }.
-write_func_args([_Arg]) -->
+write_func_args(_ModuleName, [_Arg]) -->
 	io__write_string("&arg").
-write_func_args([Arg | Args]) -->
+write_func_args(ModuleName, [Arg | Args]) -->
 	{ Args = [_|_] },
-	mlds_output_fully_qualified_name(Arg),
+	mlds_output_name_with_cast(ModuleName, Arg),
 	io__write_string(", "),
-	write_func_args(Args).
+	write_func_args(ModuleName, Args).
 
 	%
-	% Generate a list of entity_names corresponding to each function
-	% parameter.
+	% Output a fully qualified name preceded by a cast.
 	%
-:- func argument_names(mlds_module_name, mlds__func_params)
-		= list(mlds__qualified_entity_name).
+:- pred mlds_output_name_with_cast(mlds_module_name::in,
+		pair(mlds__entity_name, mlds__type)::in,
+		io__state::di, io__state::uo) is det.
 
-argument_names(ModuleName, mlds__func_params(Parameters, _RetTypes))
-		= QualNames :-
-	Names = list__map(fst, Parameters),
-	QualNames = list__map((func(Name) = qual(ModuleName, Name)), Names).
+mlds_output_name_with_cast(ModuleName, Name - Type) -->
+	io__write_char('('),
+	mlds_output_type(Type),
+	io__write_string(") "),
+	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
 
 	%
 	% Generates the signature for det functions in the forward mode.
@@ -1144,7 +1151,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
 	( { RetTypes = [] } ->
 		io__write_string("void")
 	; { RetTypes = [RetType] } ->
-		mlds_output_type_prefix(RetType)
+		OutputPrefix(RetType)
 	;
 		{ error("mlds_output_func: multiple return types") }
 	),
@@ -1154,7 +1161,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
 	mlds_output_params(OutputPrefix, OutputSuffix,
 			Indent, ModuleName, Context, Parameters),
 	( { RetTypes = [RetType2] } ->
-		mlds_output_type_suffix(RetType2)
+		OutputSuffix(RetType2)
 	;
 		[]
 	).
