@@ -15,9 +15,7 @@
 
 #define	HASHDEBUG
 
-#ifdef USE_DLLS
-  #include	"libmer_dll.h"
-#endif
+#include	"mercury_imp.h" 
 
 #include	<stdio.h>
 #include	"mercury_std.h"

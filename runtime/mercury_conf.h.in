@@ -11,8 +11,11 @@
 */
 
 /*
-** Note -- this file must not contain any #include statements,
-** for reasons explained in imp.h.
+** IMPORTANT NOTE:
+** This file must not contain any #include statements,
+** and may not define any global variables,
+** for reasons explained in mercury_imp.h.
+** This file should contain _only_ configuration macros.
 */
 
 #ifndef MERCURY_CONF_H

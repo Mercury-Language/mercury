@@ -29,11 +29,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef USE_DLLS
-  #include "libmer_dll.h"
-#endif
-#include "mercury_regs.h"	/* must come first, due to global register vars */
-#include "mercury_conf.h"	/* must come second */
+#include "mercury_imp.h"
 
 #ifdef HAVE_SIGCONTEXT_STRUCT
   /*
