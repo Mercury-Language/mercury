@@ -946,7 +946,7 @@ string__append_list(Lists, string__append_list(Lists)).
 	MR_Word	tmp;
 	size_t	len;
 
-		/* Determine the total len of all strings */
+		/* Determine the total length of all strings */
 	len = 0;
 	while (!MR_list_is_empty(list)) {
 		len += strlen((MR_String) MR_list_head(list));
@@ -981,17 +981,19 @@ string__append_list(Lists, string__append_list(Lists)).
 
 	sep_len = strlen(Sep);
 
-		/* Determine the total len of all strings */
-	len = -sep_len; /* compensate for no separator before first string */
+		/* Determine the total length of all strings */
+	len = 0;
+	add_sep = FALSE;
 	while (!MR_list_is_empty(list)) {
-		len += sep_len + strlen((MR_String) MR_list_head(list));
+		if (add_sep) {
+			len += sep_len;
+		}
+		
+		len += strlen((MR_String) MR_list_head(list));
 		list = MR_list_tail(list);
+		add_sep = TRUE;
 	}
 
-		/* Allocate enough word aligned memory for the string */
-	if (len <= 0) {
-		len = 0;
-	}
 	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 
 		/* Copy the strings into the new memory */

@@ -1,0 +1,36 @@
+
+
+
+
+a, b
+a b
+a x b
+ab
+a, b, c
+a b c
+a x b x c
+abc
+a, , c
+a  c
+a x  x c
+ac
+abc, def, ghi
+abc def ghi
+abc x def x ghi
+abcdefghi
+the, quick, brown, fox, jumped, over, the, lazy, dog
+the quick brown fox jumped over the lazy dog
+the x quick x brown x fox x jumped x over x the x lazy x dog
+thequickbrownfoxjumpedoverthelazydog
+this, is, a, test, to, check, the correctness,  of the, join_list , predicate
+
+this is a test to check the correctness  of the join_list  predicate
+
+this x is x a x test x to x check x the correctness x  of the x join_list  x predicate
+
+thisisatesttocheckthe correctness of thejoin_list predicate
+
+ , 	,  	 , x
+  	  	  x
+  x 	 x  	  x x
+ 	 	 x
