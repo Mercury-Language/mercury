@@ -1030,10 +1030,11 @@ output_class(Indent, Name, _Context, ClassDefn) -->
 	;
 		io__write_string("class ")
 	),
-	output_class_name(UnqualName),
-	output_extends_list(BaseClasses),
-	output_implements_list(Implements),
-	io__write_string(" {\n"),
+	output_class_name(UnqualName), io__nl,
+	output_extends_list(Indent + 1, BaseClasses),
+	output_implements_list(Indent + 1, Implements),
+	indent_line(Indent),
+	io__write_string("{\n"),
 	output_class_body(Indent + 1, Kind, Name, AllMembers, ModuleName),
 	io__nl,
 	output_defns(Indent + 1, ModuleName, cname(UnqualName),	Ctors),
@@ -1044,29 +1045,33 @@ output_class(Indent, Name, _Context, ClassDefn) -->
 	% not support multiple inheritance, so more than one superclass
 	% is an error.
 	%
-:- pred output_extends_list(list(mlds__class_id), io__state, io__state).
-:- mode output_extends_list(in, di, uo) is det.
+:- pred output_extends_list(indent, list(mlds__class_id), io__state, io__state).
+:- mode output_extends_list(in, in, di, uo) is det.
 
-output_extends_list([]) --> [].
-output_extends_list([SuperClass]) -->
-	io__write_string(" extends "),
-	output_type(SuperClass).
-output_extends_list([_, _ | _]) -->
+output_extends_list(_, []) --> [].
+output_extends_list(Indent, [SuperClass]) -->
+	indent_line(Indent),
+	io__write_string("extends "),
+	output_type(SuperClass),
+	io__nl.
+output_extends_list(_, [_, _ | _]) -->
 	{ unexpected(this_file, 
 		"output_extends_list: multiple inheritance not supported in Java") }.
 
 	% Output list of interfaces that this class implements.
 	%
-:- pred output_implements_list(list(mlds__interface_id), 
+:- pred output_implements_list(indent, list(mlds__interface_id), 
 		io__state, io__state).
-:- mode output_implements_list(in, di, uo) is det.
+:- mode output_implements_list(in, in, di, uo) is det.
 
-output_implements_list(InterfaceList) --> 
+output_implements_list(Indent, InterfaceList) --> 
 	( { InterfaceList = [] }  ->
 		[]
 	;
-		io__write_string(" implements "),
-		io__write_list(InterfaceList, ",", output_interface) 
+		indent_line(Indent),
+		io__write_string("implements "),
+		io__write_list(InterfaceList, ",", output_interface) ,
+		io__nl
 	).
 
 :- pred output_interface(mlds__interface_id, io__state, io__state).
