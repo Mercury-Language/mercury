@@ -168,7 +168,7 @@ SINGLEMODULE= \
 USE_SUBDIR_MODULES = \
 	nonexistent_import
 
-# The following require that num_tag_bits > 1
+# The following require that num_tag_bits >= 1
 RESERVE_TAG_MODULES = \
 	reserve_tag
 
