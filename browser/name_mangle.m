@@ -46,7 +46,9 @@
 
 :- type pred_name == string.
 
-:- type arity == int.
+:- type arity == int.		% note that for functions that arity here
+				% does *not* include the function result
+				% e.g. int:'*' has arity 2, not 3.
 
 :- type mode_num == int.	% mode numbers start from zero
 
@@ -88,12 +90,7 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
 		qualify_name(ModuleName, Name0, LabelName0)
 	),
 	name_mangle(LabelName0, LabelName1),
-	( PredOrFunc = function ->
-		OrigArity is Arity - 1
-	;
-		OrigArity = Arity
-	),
-	string__int_to_string(OrigArity, ArityString),
+	string__int_to_string(Arity, ArityString),
 	string__int_to_string(ModeNum, ModeNumString),
 	string__append_list([LabelName1, "_", ArityString, "_", ModeNumString],
 		LabelName2),
@@ -129,17 +126,14 @@ mlds_proc_name_mangle(MercuryProc) = LabelName :-
 	name_mangle(LabelName0, LabelName1),
 	(
 		PredOrFunc = predicate,
-		PredOrFuncString = "p"
+		PredOrFuncString = "p",
+		ArityAsPred = Arity
 	;
 		PredOrFunc = function,
-		PredOrFuncString = "f"
+		PredOrFuncString = "f",
+		ArityAsPred = Arity + 1
 	),
-	( PredOrFunc = function ->
-		OrigArity is Arity - 1
-	;
-		OrigArity = Arity
-	),
-	string__int_to_string(OrigArity, ArityString),
+	string__int_to_string(ArityAsPred, ArityString),
 	string__int_to_string(ModeNum, ModeNumString),
 	string__append_list([LabelName1, "_", ArityString, "_",
 		PredOrFuncString, "_", ModeNumString],
