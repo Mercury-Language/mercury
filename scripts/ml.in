@@ -71,6 +71,13 @@ case @FULLARCH@ in
 	-Wl,-rpath,@LIBDIR@/lib/@FULLARCH@:@LIBDIR@/lib/$GRADE/@FULLARCH@
 		-L$LIBDIR/@FULLARCH@ -L$LIBDIR/$GRADE/@FULLARCH@
 		"
+		case "$GRADE" in
+			*fast*|*jump*)
+				ARCH_OPTS=-non_shared
+LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
+				export LIBRARY_PATH
+				;;
+		esac
 		;;
 	*)
 		LIBDIR_OPTS="
@@ -90,8 +97,8 @@ case "`hostname`" in
 esac
 
 if $verbose; then
-	echo $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC \
+	echo $GCC $ARCH_OPTS "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC \
 		"2>&1 | $DEMANGLER 1>&2"
 fi
-exec $GCC "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC 2>&1 |
+exec $GCC $ARCH_OPTS "$@" $LIBDIR_OPTS -lmer -lmercury -lmer $LIBGC 2>&1 |
 exec $DEMANGLER 1>&2

@@ -8,11 +8,11 @@
 #
 # MGNUC - Mercury GNU C
 #
-# Usage: mgnuc [-v|--verbose] [-s<grade>] -- [<gcc options>] files...
-#
+# Usage: mgnuc [<options>] [-- <gcc options>] files...
+# Options:
 # -v, --verbose
 #	Echo gcc command before executing it.
-# -s<grade>
+# -s <grade>, --grade <grade>
 #	Select optimization/debug/gc options according to <grade>, which
 #	must be one of debug, none, jump, asm_jump, reg, fast, or asm_fast,
 #	or one of those with .gc appended.
@@ -35,6 +35,7 @@
 
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+CC=${MERCURY_C_COMPILER=@CC@}
 
 CHECK_OPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
@@ -51,7 +52,7 @@ while true; do
 		verbose=true
 		shift
 		;;
-	-s)
+	-s|--grade)
 		shift
 		grade="$1";
 		shift
@@ -115,39 +116,30 @@ case "$grade" in
 		exit 1
 esac
 
+#
+# Special case hacks for particular architectures
+# Any code here needs to be duplicated in ../configure.in.
+#
+
 ARCH_OPTS=""
 case @FULLARCH@ in
-	mips-sgi-irix5*)
+	mips-sgi-irix5.*)
 		# nonlocal gotos don't work with PIC, which is the
 		# default for Irix 5, so if nonlocal gotos are enabled
-		# we need to disable PIC with -non_shared.
+		# we need to disable PIC with -non_shared -mno-abicalls.
 		case $GRADE_OPTS in
 			*-DUSE_GCC_NONLOCAL_GOTOS*)
-				ARCH_OPTS=-non_shared
+LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
+				export LIBRARY_PATH
+				ARCH_OPTS="-non_shared -mno-abicalls"
 			;;
 		esac
 	;;
 esac
 
-HOST_OPTS=""
-case "`hostname`" in
-	cadillac.*)
-		GCC=/usr/local/bin/gcc ;;
-	kryten.*)
-		GCC="/usr/local/contrib/bin/gcc"
-		HOST_OPTS="-msupersparc" ;;
-	*)
-		GCC=gcc
-esac
-
-if [ "`uname -r -s`" = "SunOS 4.1.2" ]; then
-	# the header files on cadillac are stuffed, so don't
-	# enable any warnings
-	CHECK_OPTS=
-fi
 if $verbose; then
-	echo $GCC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
+	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
 		$GRADE_OPTS $GC_OPTS "$@"
 fi
-exec $GCC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
+exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $CHECK_OPTS \
 	$GRADE_OPTS $GC_OPTS "$@"
