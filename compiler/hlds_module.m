@@ -2035,14 +2035,14 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 	(
 		(
 			PredOrFunc = predicate,
-		predicate_table_search_pred_m_n_a(PredTable,
+			predicate_table_search_pred_m_n_a(PredTable,
 				is_fully_qualified, ModuleName, ProcName, Arity,
 				[PredId0])
 		;
 			PredOrFunc = function,
 			predicate_table_search_func_m_n_a(PredTable,
 				is_fully_qualified, ModuleName, ProcName, Arity,
-			[PredId0])
+				[PredId0])
 		)
 	->
 		PredId = PredId0
@@ -2056,7 +2056,7 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 		% as well as inefficient.
 		(
 			PredOrFunc = predicate,
-		predicate_table_search_pred_m_n_a(PredTable,
+			predicate_table_search_pred_m_n_a(PredTable,
 				is_fully_qualified, ModuleName, ProcName,
 				Arity - 1, [PredId0])
 		;
