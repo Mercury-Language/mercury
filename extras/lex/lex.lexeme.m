@@ -1,18 +1,25 @@
 %-----------------------------------------------------------------------------
-% lex.lexeme.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Sat Aug 19 08:22:32 BST 2000
+%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+%
+% lex.lexeme.m
+% Sat Aug 19 08:22:32 BST 2000
+% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+%   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
+%   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
+%   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
+% Thu Jul 26 07:45:47 UTC 2001
+% Copyright (C) 2001 The Rationalizer Intelligent Software AG
+%   The changes made by Rationalizer are contributed under the terms 
+%   of the GNU Lesser General Public License, see the file COPYING.LGPL
+%   in this directory.
 %
 % A lexeme combines a token with a regexp.  The lexer compiles
 % lexemes and returns the longest successul parse in the input
 % stream or an error if no match occurs.
 %
-%   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
-%   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
-%   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
 %
-%----------------------------------------------------------------------------- %
+%------------------------------------------------------------------------------%
 
 :- module lex__lexeme.
 
@@ -22,15 +29,17 @@
 
 :- type compiled_lexeme(T)
     --->    compiled_lexeme(
-                clxm_token              :: T,
-                clxm_state              :: state_no,
-                clxm_transition_map     :: transition_map
+                token              :: token_creator(T),
+                state              :: state_no,
+                transition_map     :: transition_map
             ).
+:- inst compiled_lexeme(Inst)
+    --->    compiled_lexeme(Inst, ground, ground).
 
 :- type transition_map
     --->    transition_map(
-                trm_accepting_states    :: bitmap,
-                trm_rows                :: array(row)
+                accepting_states    :: bitmap,
+                rows                :: array(row)
             ).
 
     % A transition row is an array of byte_transitions.
@@ -59,15 +68,15 @@
     % an accepting state_no.
     %
 :- pred next_state(compiled_lexeme(T), state_no, char, state_no, bool).
-:- mode next_state(in, in, in, out, out) is semidet.
+:- mode next_state(in(live_lexeme), in, in, out, out) is semidet.
 
     % Succeeds iff a compiled_lexeme is in an accepting state_no.
     %
-:- pred in_accepting_state(compiled_lexeme(T)).
-:- mode in_accepting_state(in) is semidet.
+:- pred in_accepting_state(live_lexeme(T)).
+:- mode in_accepting_state(in(live_lexeme)) is semidet.
 
-%----------------------------------------------------------------------------- %
-%----------------------------------------------------------------------------- %
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -77,7 +86,7 @@
 %------------------------------------------------------------------------------%
 
 compile_lexeme(Lexeme) = CompiledLexeme :-
-    Lexeme         = lexeme(Token, RegExp),
+    Lexeme         = (RegExp - TokenCreator),
     NFA            = remove_null_transitions(regexp_to_NFA(RegExp)),
     DFA            = convert_NFA_to_DFA(NFA),
     StartState     = DFA ^ smc_start_state,
@@ -87,7 +96,7 @@ compile_lexeme(Lexeme) = CompiledLexeme :-
     Accepting      = set_accepting_states(StopStates, bitmap__new(N, no)),
     Rows           = array(set_up_rows(0, N, Transitions)),
     TransitionMap  = transition_map(Accepting, Rows),
-    CompiledLexeme = compiled_lexeme(Token, StartState, TransitionMap).
+    CompiledLexeme = compiled_lexeme(TokenCreator, StartState, TransitionMap).
 
 %------------------------------------------------------------------------------%
 
@@ -157,8 +166,8 @@ btr_state(BT) = BT `unchecked_right_shift` 8.
 %------------------------------------------------------------------------------%
 
 next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
-    Rows            = CLXM ^ clxm_transition_map ^ trm_rows,
-    AcceptingStates = CLXM ^ clxm_transition_map ^ trm_accepting_states,
+    Rows            = CLXM ^ transition_map ^ rows,
+    AcceptingStates = CLXM ^ transition_map ^ accepting_states,
     find_next_state(char__to_int(Char), Rows ^ elem(CurrentState), NextState),
     IsAccepting     = bitmap__get(AcceptingStates, NextState).
 
@@ -189,7 +198,7 @@ find_next_state_0(Lo, Hi, Byte, ByteTransitions, State) :-
 
 in_accepting_state(CLXM) :-
     bitmap__is_set(
-        CLXM ^ clxm_transition_map ^ trm_accepting_states, CLXM ^ clxm_state
+        CLXM ^ transition_map ^ accepting_states, CLXM ^ state
     ).
 
 %------------------------------------------------------------------------------%
