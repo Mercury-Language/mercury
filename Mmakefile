@@ -156,7 +156,7 @@ tar:
 	cd util && mmake
 	cd runtime && $(SUBDIR_MMAKE) cs runtime.init
 	cd library && $(SUBDIR_MMAKE) depend
-	cd library && $(SUBDIR_MMAKE) ints opts cs library.init tags
+	cd library && $(SUBDIR_MMAKE) ints opts cs libmercury.init tags
 	cd compiler && $(SUBDIR_MMAKE) depend
 	cd compiler && $(SUBDIR_MMAKE) ints cs tags
 	cd profiler && $(SUBDIR_MMAKE) depend
