@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module vn_type, vn_table, vn_temploc.
-:- import_module llds, list.
+:- import_module llds, list, io.
 
 	% Flush the given nodes in the given order.
 
