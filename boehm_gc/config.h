@@ -663,8 +663,8 @@
   	/* minumum/maximum of the two.			*/
 #   	define MAX(x,y) ((x) > (y) ? (x) : (y))
 #   	define MIN(x,y) ((x) < (y) ? (x) : (y))
-#       define DATASTART ((ptr_t) MIN(_data_start__, _bss_start__))
-#       define DATAEND	 ((ptr_t) MAX(_data_end__, _bss_end__))
+#       define DATASTART ((ptr_t) MIN(&_data_start__, &_bss_start__))
+#       define DATAEND	 ((ptr_t) MAX(&_data_end__, &_bss_end__))
 #	undef STACK_GRAN
 #       define STACK_GRAN 0x10000
 #       define HEURISTIC1
