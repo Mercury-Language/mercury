@@ -28,7 +28,7 @@ debug=false
 save_temp=false
 target=a.out
 
-while true; do
+while : ; do
 	case "$1" in
 		-v|--verbose)
 			verbose=true
@@ -55,6 +55,9 @@ while true; do
 	esac
 done
 
+if $debug; then
+	LIBRARY_OBJS="$LIBRARY_OBJS portray.ql"
+fi
 objlist=
 for obj in $LIBRARY_OBJS 'kludge for broken shells'; do
 	if [ "$obj" = 'kludge for broken shells' ]; then
