@@ -4,7 +4,7 @@
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Makefile.main - this is the main part of the Makefile
+# library/Mmake - this is the main part of the Makefile
 # for building the Mercury libraries.
 
 MERCURY_DIR=..
