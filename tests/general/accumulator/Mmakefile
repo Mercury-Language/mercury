@@ -41,7 +41,7 @@ ACC_FLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
 		--intermodule-optimization
 
 	# Optimizations to turn off/on.
-OPT_FLAGS = --trace-optimized --excess-assign
+OPT_FLAGS = --trace-optimized --excess-assign --common-struct
 
 	# Ensure that the accumulator introduction flags are passed
 	# after EXTRA_MCFLAGS, so that we can override things set in
