@@ -42,7 +42,7 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
 	new_dcg_var(VarSet0, 0, VarSet1, N0, DCG_0_Var),
 	parse_dcg_goal(DCG_Body, VarSet1, N0, DCG_0_Var,
 			Body, VarSet, _N, DCG_Var),
-	parse_qualified_term(ModuleName, DCG_Head, "DCG clause head",
+	parse_qualified_term(ModuleName, DCG_Head, DCG_Body, "DCG clause head",
 			HeadResult),
 	process_dcg_clause(HeadResult, VarSet, DCG_0_Var, DCG_Var, Body, R),
 	add_context(R, DCG_Context, Result).

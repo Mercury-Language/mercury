@@ -85,23 +85,29 @@
 :- pred sym_name_and_args(term, sym_name, list(term)).
 :- mode sym_name_and_args(in, out, out) is semidet.
 
-	% parse_qualified_term takes a term and an error message,
+	% parse_qualified_term/4 takes a term (and also the containing
+	% term, and a string describing the context from which it
+	% was called [e.g. "clause head"] and the containing term)
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input.
-:- pred parse_qualified_term(term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, out) is det.
+:- pred parse_qualified_term(term, term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, in, out) is det.
 
-	% parse_qualified_term(DefaultModName, Term, Msg, Result).
-	% parse_qualified_term takes a default module name and a term,
+	% parse_qualified_term(DefaultModName, Term,
+	%	ContainingTerm, Msg, Result):
+	%
+	% parse_qualified_term/5 takes a default module name and a term,
+	% (and also the containing term, and a string describing
+	% the context from which it was called (e.g. "clause head"),
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input or a module qualifier that
 	% doesn't match the DefaultModName, if DefaultModName is not ""
 	% and not "mercury_builtin".
-	% parse_qualified_term/3 calls parse_qualified_term/4, and is 
+	% parse_qualified_term/4 calls parse_qualified_term/5, and is 
 	% used when no default module name exists.
 
-:- pred parse_qualified_term(string, term, string, maybe_functor).
-:- mode parse_qualified_term(in, in, in, out) is det.
+:- pred parse_qualified_term(string, term, term, string, maybe_functor).
+:- mode parse_qualified_term(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -353,12 +359,12 @@ parse_dcg_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
 %-----------------------------------------------------------------------------%
 
 sym_name_and_args(Term, SymName, Args) :-
-	parse_qualified_term(Term, "", ok(SymName, Args)).
+	parse_qualified_term(Term, Term, "", ok(SymName, Args)).
 
-parse_qualified_term(Term, Msg, Result) :-
-	parse_qualified_term("", Term, Msg, Result).
+parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
+	parse_qualified_term("", Term, ContainingTerm, Msg, Result).
 
-parse_qualified_term(DefaultModName, Term, Msg, Result) :-
+parse_qualified_term(DefaultModName, Term, ContainingTerm, Msg, Result) :-
     (
        	Term = term__functor(term__atom(":"), [ModuleTerm, NameArgsTerm],
 		_Context)
@@ -416,7 +422,17 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
 	    )
         ;
 	    string__append("atom expected in ", Msg, ErrorMsg),
-            Result = error(ErrorMsg, Term)
+	    %
+	    % since variables don't have any term__context,
+	    % if Term is a variable, we use ContainingTerm instead
+	    % (hopefully that _will_ have a term__context).
+	    %
+	    ( Term = term__variable(_) ->
+	    	ErrorTerm = ContainingTerm
+	    ;
+	    	ErrorTerm = Term
+	    ),
+	    Result = error(ErrorMsg, ErrorTerm)
         )
     ).
 

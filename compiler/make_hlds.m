@@ -2849,10 +2849,10 @@ unravel_unification(term__variable(X), term__variable(Y), Context,
 	%	NewVar3 = A3.
 	% In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification(term__variable(X), Rhs,
+unravel_unification(term__variable(X), RHS,
 			Context, MainContext, SubContext, VarSet0,
 			Goal, VarSet, Info0, Info) -->
-	{ Rhs = term__functor(F, Args, FunctorContext) },
+	{ RHS = term__functor(F, Args, FunctorContext) },
 	(
 		% Handle explicit type qualification.
 		{ semidet_fail },
@@ -2996,7 +2996,7 @@ unravel_unification(term__variable(X), Rhs,
 		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 		{ Goal = IfThenElse - GoalInfo }
 	;
-		{ parse_qualified_term(Rhs, "", MaybeFunctor) },
+		{ parse_qualified_term(RHS, RHS, "", MaybeFunctor) },
 		(
 			{ MaybeFunctor = ok(FunctorName, FunctorArgs) },
 			{ list__length(FunctorArgs, Arity) },

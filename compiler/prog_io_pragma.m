@@ -163,7 +163,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		    PredAndModesTerm = term__functor(term__atom("="),
 				[FuncAndArgModesTerm, RetModeTerm], _)
 		->
-		    parse_qualified_term(FuncAndArgModesTerm,
+		    parse_qualified_term(FuncAndArgModesTerm, PredAndModesTerm,
 			"pragma export declaration", FuncAndArgModesResult),  
 		    (
 		        FuncAndArgModesResult = ok(FuncName, ArgModeTerms),
@@ -185,7 +185,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms,
 		        Result = error(Msg, Term)
 		    )
 		;
-		    parse_qualified_term(PredAndModesTerm,
+		    parse_qualified_term(PredAndModesTerm, ErrorTerm,
 			"pragma export declaration", PredAndModesResult),  
 		    (
 		        PredAndModesResult = ok(PredName, ModeTerms),
@@ -267,7 +267,7 @@ parse_pragma_type(_ModuleName, "unused_args", PragmaTerms,
 					term__atom("function"), [], _),
 			PredOrFunc = function 
 		),
-		parse_qualified_term(PredNameTerm,
+		parse_qualified_term(PredNameTerm, ErrorTerm,
 			"predicate name", PredNameResult),
 		PredNameResult = ok(PredName, []),
 		convert_int_list(UnusedArgsTerm, UnusedArgsResult),
@@ -290,7 +290,8 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms,
 	    ->
 	    	(
 		    parse_qualified_term(ModuleName, PredNameTerm,
-			    "pragma fact_table declaration", ok(PredName, [])),
+		            PredAndArityTerm, "pragma fact_table declaration",
+			    ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
 		->
 		    (
@@ -347,7 +348,7 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
 		PredAndModesTerm = PredAndModesTerm0,
 		FuncResultTerm = []
 	    ),
-	    parse_qualified_term(ModuleName, PredAndModesTerm,
+	    parse_qualified_term(ModuleName, PredAndModesTerm, ErrorTerm,
 		"`pragma termination_info' declaration", PredNameResult),
 	    PredNameResult = ok(PredName, ModeListTerm0),
 	    (
@@ -445,8 +446,8 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 	    		[PredNameTerm, ArityTerm], _)
 	    ->
 		(
-		    parse_qualified_term(ModuleName, PredNameTerm, "",
-							ok(PredName, [])),
+		    parse_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
+		    		"", ok(PredName, [])),
 		    ArityTerm = term__functor(term__integer(Arity), [], _)
 		->
 		    call(MakePragma, PredName, Arity, Pragma),
@@ -518,7 +519,7 @@ parse_pragma_c_code(ModuleName, MayCallMercury, PredAndVarsTerm0, ExtraInfo,
 	    PredAndVarsTerm = PredAndVarsTerm0,
 	    FuncResultTerms = []
 	),
-	parse_qualified_term(ModuleName, PredAndVarsTerm,
+	parse_qualified_term(ModuleName, PredAndVarsTerm, PredAndVarsTerm0,
 			"pragma c_code declaration", PredNameResult),
 	(
 	    PredNameResult = ok(PredName, VarList0),
