@@ -114,16 +114,23 @@ A. When using a Java version earlier than 1.4, there are limitations on treating
    documentation for io.m in the standard library for more details.
 
 
-Q. What features are not yet implemented?
+Q. What features are not yet implemented for the Java back-end?
 
-A. The following standard library modules are completely unimplemented:
+A. The following language features are not yet fully supported:
+
+	Type classes
+	Sub-modules
+
+   The following implementation features are not supported:
+
+	Mercury-level debugging
+	Mercury-level profiling
+
+   The following standard library modules are completely unimplemented:
 
 	construct
 	deconstruct
 	type_desc
-
-   Type classes are not yet fully supported, nor are Mercury-level debugging
-   and profiling for the Java back-end.
 
    In addition, the following individual procedures are incompletely
    implemented:
