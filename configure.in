@@ -684,7 +684,7 @@ if test "$HAVE_INTTYPES_H" = 1 && test "$HAVE_SYS_TYPES_H" = 1; then
 	# If <inttypes.h> is not compatible with <sys/types.h>, then
 	# don't use it.
 	if test "$mercury_cv_inttypes_compat" = no; then
-		HAVE_INTYPES_H=0
+		HAVE_INTTYPES_H=0
 	fi
 fi
 
