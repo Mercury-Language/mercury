@@ -3886,6 +3886,12 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% If you change the clean targets below, please also update the
 	% documentation in doc/user_guide.texi.
 	%
+	% XXX The use of xargs in the clean targets doesn't handle
+	% special characters in the file names correctly.  This is
+	% currently not a problem in practice as we never generate
+	% names containing special characters, any fix for this problem
+	% will also require a fix in `mmake.in'.
+	%
 
 	module_name_to_file_name(SourceModuleName, ".clean", no,
 				CleanTargetName),
@@ -3895,24 +3901,27 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		".PHONY : ", CleanTargetName, "\n",
 		CleanTargetName, " :\n",
-		"\t-rm -rf $(", MakeVarName, ".dirs)\n",
-		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".all_ss) ", InitAsmFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".all_pic_ss) ",
-					InitAsmFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".all_os) ", InitObjFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".all_pic_os) ",
-					InitPicObjFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".c_dates)\n",
-		"\t-rm -f $(", MakeVarName, ".il_dates)\n",
-		"\t-rm -f $(", MakeVarName, ".all_s_dates)\n",
-		"\t-rm -f $(", MakeVarName, ".all_pic_s_dates)\n",
-		"\t-rm -f $(", MakeVarName, ".useds)\n",
-		"\t-rm -f $(", MakeVarName, ".ils)\n",
-		"\t-rm -f $(", MakeVarName, ".profs)\n",
-		"\t-rm -f $(", MakeVarName, ".errs)\n",
-		"\t-rm -f $(", MakeVarName, ".foreign_cs)\n",
-		"\t-rm -f $(", MakeVarName, ".schemas)\n"
+		"\t-echo $(", MakeVarName, ".dirs) | xargs rm -rf \n",
+		"\t-echo $(", MakeVarName, ".cs) ", InitCFileName,
+				" | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_ss) ", InitAsmFileName,
+				" | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_pic_ss) ",
+					InitAsmFileName, " | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_os) ", InitObjFileName,
+				" | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_pic_os) ",
+					InitPicObjFileName, " | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".c_dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".il_dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_s_dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_pic_s_dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".useds) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".ils) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".profs) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".errs) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".schemas) | xargs rm -f\n"
 	]),
 
 	io__write_string(DepStream, "\n"),
@@ -3925,21 +3934,21 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		".PHONY : ", RealCleanTargetName, "\n",
 		RealCleanTargetName, " : ", CleanTargetName, "\n",
-		"\t-rm -f $(", MakeVarName, ".dates)\n",
-		"\t-rm -f $(", MakeVarName, ".date0s)\n",
-		"\t-rm -f $(", MakeVarName, ".date3s)\n",
-		"\t-rm -f $(", MakeVarName, ".optdates)\n",
-		"\t-rm -f $(", MakeVarName, ".trans_opt_dates)\n",
-		"\t-rm -f $(", MakeVarName, ".ints)\n",
-		"\t-rm -f $(", MakeVarName, ".int0s)\n",
-		"\t-rm -f $(", MakeVarName, ".int3s)\n",
-		"\t-rm -f $(", MakeVarName, ".opts)\n",
-		"\t-rm -f $(", MakeVarName, ".trans_opts)\n",
-		"\t-rm -f $(", MakeVarName, ".ds)\n",
-		"\t-rm -f $(", MakeVarName, ".all_hs)\n",
-		"\t-rm -f $(", MakeVarName, ".dlls)\n",
-		"\t-rm -f $(", MakeVarName, ".foreign_dlls)\n",
-		"\t-rm -f $(", MakeVarName, ".rlos)\n"
+		"\t-echo $(", MakeVarName, ".dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".date0s) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".date3s) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".optdates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".trans_opt_dates) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".ints) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".int0s) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".int3s) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".opts) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".trans_opts) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".ds) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".all_hs) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".dlls) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".foreign_dlls) | xargs rm -f\n",
+		"\t-echo $(", MakeVarName, ".rlos) | xargs rm -f\n"
 	]),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1999, 2001 The University of Melbourne.
+# Copyright (C) 1995-1999,2001-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -287,7 +287,7 @@ if $verbose; then
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
 	echo cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps \
-		${MMAKE_RULES} ">>" $tmp
+		${MMAKE_RULES}">>" $tmp
 	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ${set_target_asm} "$@"
 fi
 export MMAKE
@@ -295,7 +295,17 @@ export MMAKE_MAKE_CMD
 export MMAKE_USE_SUBDIRS
 export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
-cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps ${MMAKE_RULES} > $tmp
+# XXX The $dvs and $ds variables can be so long as to overflow the
+# command line size limits, so we use xargs.  However echo doesn't quote
+# the file names correctly, but this is not a problem in practice because
+# the way the file names are constructed no special characters are
+# included currently.  If fixed, the fix needs to be replicated in
+# `modules.m'.
+{
+cat ${MMAKE_VARS}
+echo $dvs $ds | xargs cat
+cat $include_makefile $mmake $deps ${MMAKE_RULES}
+} > $tmp
 case $# in
 	# Note that we can't use `exec' here, because if we did that,
 	# that `trap' code which removes $tmp would never get executed.
