@@ -100,14 +100,17 @@ fatal_error() {
 # Figure out which version we are going to build
 #
 
+pat="mercury-compiler-*[0-9][0-9][0-9][0-9]_[0-9][0-9]_[0-9][0-9]"
 case $stability in
 	stable)
 		base_version=`cat $BETA_WEBDIR/latest-stable-version`
 		version=$base_version
+		pattern="$pat"
 		;;
 	unstable)
 		base_version=`cat $BETA_WEBDIR/latest-unstable-version`
 		version=$base_version-unstable
+		pattern="$pat"_unstable
 		;;
 esac
 
@@ -143,9 +146,19 @@ cp \
    $BETA_WEBDIR/mercury-compiler-$version_with_underscores-$rel.$arch.rpm" \
 	|| failed 'copying RPM to web site'
 su mercury -c "\
+rm -f `find $BETA_WEBDIR -name "$pattern-$rel.$arch.rpm" -a -! -name \
+       mercury-compiler-$version_with_underscores-$rel.$arch.rpm`" \
+	|| failed 'to delete old RPM'
+
+su mercury -c "\
 cp $RPMDIR/SRPMS/mercury-compiler-$base_vsn_with_us-$rel.src.rpm \
    $BETA_WEBDIR/mercury-compiler-$version_with_underscores-$rel.src.rpm" \
 	|| failed "copying SRPM to web site"
+su mercury -c "\
+rm -f `find $BETA_WEBDIR -name "$pattern-$rel.src.rpm" -a -! -name \
+       mercury-compiler-$version_with_underscores-$rel.src.rpm`" \
+	|| failed 'to delete old source RPM'
+
 su mercury -c "\
 	cd $BETA_WEBDIR; \
 	PATH=/home/mercury/public/cron/scripts:$PATH; \
