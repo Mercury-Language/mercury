@@ -4,7 +4,7 @@
 
 :- interface.
 
-:- import_module io, std_util.
+:- import_module io.
 
 :- type widget.
 
@@ -73,6 +73,7 @@ stringify_config(_Interp, title(Text), Str, IO, IO) :-
 	Int = tk_direct_thingy_counter;
 	IO = IO0;
 ").
+get_thingy_counter(5) --> [].
 
 :- pred set_thingy_counter(int::in, io__state::di, io__state::uo) is det.
 
@@ -80,6 +81,7 @@ stringify_config(_Interp, title(Text), Str, IO, IO) :-
 	tk_direct_thingy_counter = Int;
 	IO = IO0;
 ").
+set_thingy_counter(_) --> [].
 
 :- pred command_wrapper(pred(tcl_interp, io__state, io__state), tcl_interp,
 		list(string), tcl_status, string, io__state, io__state).

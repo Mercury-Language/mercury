@@ -5,12 +5,20 @@
 :- impure pred bar(int::in) is det.
 
 :- implementation.
-:- import_module require.
+:- import_module require, std_util.
 
-foo(_::out) :-
-	error("foo/1").
+foo(X::out) :-
+	( semidet_succeed ->
+		error("foo/1")
+	;
+		X = 5
+	).
 bar(_::in) :-
-	error("bar/1").
+	( semidet_succeed ->
+		error("bar/1")
+	;
+		true
+	).
 
 :- pragma foreign_proc("C", foo(X::out),
 	[will_not_call_mercury, thread_safe],

@@ -19,8 +19,6 @@
 
 :- typeclass answer_pattern(Answer) where [].
 
-:- type analysis_info.
-
 :- pred lookup_call_pattern(Call::in, list(analysis)::in,
 	list(Answer)::out) is det <= analysis(Call, Answer).
 

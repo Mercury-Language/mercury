@@ -18,3 +18,5 @@
 
 :- pragma(c_code, c_int_unify(Int::out, Int0::in), "Int = Int0;").
 
+c_int_unify(X, X).
+

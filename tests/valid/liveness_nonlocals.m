@@ -43,6 +43,7 @@ foo(Foo, IsFoo) :-
 
 :- pragma c_code(foo_int(_V2::in, Res::out(bound(0))),
  	will_not_call_mercury, "Res = 0").
+foo_int(_, 0).
 
 :- pred int_to_bool(int, bool).
 :- mode int_to_bool(in(bound(1)), out(bound(yes))) is det.

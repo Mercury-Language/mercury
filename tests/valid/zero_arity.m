@@ -44,3 +44,6 @@ quux :- semidet_fail.
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+
+use_asm_labels :-
+	fail.

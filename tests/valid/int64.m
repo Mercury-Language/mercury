@@ -16,3 +16,6 @@
 :- type int64 == int.
 
 :- pragma c_code((A::in) /\ (B::in) = (C::out), [], "C = A & B;").
+
+% implementation for the other backends.
+A /\ _B = A.
