@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -133,6 +133,12 @@ bool		MR_profiling = TRUE;
 
 void	(*address_of_mercury_init_io)(void);
 void	(*address_of_init_modules)(void);
+
+#ifdef	MR_USE_EXTERNAL_DEBUGGER
+void	(*MR_address_of_trace_init_external)(void);
+void	(*MR_address_of_trace_final_external)(void);
+#endif
+
 #ifdef CONSERVATIVE_GC
 void	(*address_of_init_gc)(void);
 #endif

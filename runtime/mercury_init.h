@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -115,6 +115,10 @@ extern	void	ML_io_stdout_stream(Word *);
 extern	void	ML_io_stdin_stream(Word *);
 extern	void	ML_io_print_to_cur_stream(Word, Word);
 extern	void	ML_io_print_to_stream(Word, Word, Word);
+
+/* in trace/mercury_trace_external.h */
+extern	void	MR_trace_init_external(void);
+extern	void	MR_trace_final_external(void);
 
 /* in browser/debugger_interface.h */
 extern	void	ML_DI_output_current_vars(Word, Word, Word);

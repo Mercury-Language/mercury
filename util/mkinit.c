@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -151,15 +151,8 @@ static const char mercury_funcs[] =
 	"	MR_io_print_to_cur_stream = ML_io_print_to_cur_stream;\n"
 	"	MR_io_print_to_stream = ML_io_print_to_stream;\n"
 	"#ifdef MR_USE_EXTERNAL_DEBUGGER\n"
-	"	MR_type_name = ML_type_name;\n"
-	"	MR_DI_output_current_vars = ML_DI_output_current_vars;\n"
-  	"	MR_DI_output_current_nth_var = ML_DI_output_current_nth_var;\n"
-	"	MR_DI_output_current_live_var_names = "
-			"ML_DI_output_current_live_var_names;\n"
-	"	MR_DI_output_current_slots = ML_DI_output_current_slots;\n"
-  	"	MR_DI_get_var_number = ML_DI_get_var_number;\n"
-	"	MR_DI_found_match = ML_DI_found_match;\n"
-	"	MR_DI_read_request_from_socket = ML_DI_read_request_from_socket;\n"
+	"	MR_address_of_trace_init_external = MR_trace_init_external;\n"
+	"	MR_address_of_trace_final_external = MR_trace_final_external;\n"
 	"#endif\n"
 	"	MR_trace_func_ptr = %s;\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"

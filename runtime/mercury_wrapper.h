@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998 The University of Melbourne.
+** Copyright (C) 1994-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -61,35 +61,15 @@ extern	void		(*address_of_init_gc)(void);
 #endif
 
 /*
-** Similarly, these are for the debugger interface; they're defined in
-** browser/debugger_interface.m.
-** XXX These are obsolete; the browser can call the ML_ versions directly.
-*/
-extern	void	(*MR_DI_output_current_vars)(Word, Word, Word);
-		/* output_current_vars/3 */
-extern	void	(*MR_DI_output_current_nth_var)(Word, Word);
-		/* output_current_nth_var/2 */
-extern	void	(*MR_DI_output_current_live_var_names)(Word, Word, Word);
-		/* output_current_live_var_names/5 */
-extern	void	(*MR_DI_output_current_slots)(Integer, Integer, Integer, Word,
-		String, String, Integer, Integer, Integer, String, Word);
-		/* output_current_slots/13 */
-extern	bool	(*MR_DI_found_match)(Integer, Integer, Integer, Word, String,
-		String, Integer, Integer, Integer, Word, String, Word);
-		/* found_match/12 */
-extern	int	(*MR_DI_get_var_number)(Word);
-		/* get_var_number/1 */
-extern	void	(*MR_DI_read_request_from_socket)(Word, Word *, Integer *);
-		/* read_request_from_socket/5 */
-
-/*
-** ML_type_name() is defined in library/std_util.m and used in
-** trace/mercury_trace_external.c.
-** XXX This is obsolete; the tracer can call the ML_ version directly.
+** MR_trace_init_external() and MR_trace_final_external() are defined 
+** in trace/mercury_trace_external.c but are called in
+** runtime/mercury_trace_base.c. As we can not do direct calls from
+** runtime/ to trace/, we do an indirect call via a function
+** pointer MR_address_of_trace_init_external.
 */
 
-extern	String	(*MR_type_name)(Word);
-		/* normally ML_type_name (type_name/1) */ 
+extern	void		(*MR_address_of_trace_init_external)(void);
+extern	void		(*MR_address_of_trace_final_external)(void);
 
 /*
 ** XXX This is obsolete too.

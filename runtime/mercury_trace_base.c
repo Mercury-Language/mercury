@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -159,7 +159,7 @@ MR_trace_init(void)
 {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL)
-		MR_trace_init_external(); /* should be in this module */
+		MR_address_of_trace_init_external();
 #endif
 }
 
@@ -168,7 +168,7 @@ MR_trace_final(void)
 {
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL)
-		MR_trace_final_external(); /* should be in this module */
+		MR_address_of_trace_final_external();
 #endif
 }
 
