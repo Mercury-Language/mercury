@@ -2,20 +2,21 @@
 # Test whether the compiler is producing the right warnings.
 # Return a status of 0 (true) if everything is all right, and 1 otherwise.
 
-set -x
+. ../handle_options
 
-/bin/rm *.err *.res *.depend > /dev/null 2>&1
-mmake depend || exit 1
-mmake check || exit 1
+mmake $jfactor clean > /dev/null 2>&1
+mmake $jfactor depend || exit 1
+mmake -k $jfactor $gradeopt $flagsopt check
+checkstatus=$?
 
 cat *.res > .allres
-if test -s .allres
+if test ! -s .allres -a "$checkstatus" = 0
 then
+	echo "the tests in the warnings directory succeeded"
+	exit 0
+else
 	echo "the tests in the warnings directory failed"
 	echo "the differences are:"
 	cat .allres
 	exit 1
 fi
-
-echo "the tests in the warnings directory succeeded"
-exit 0
