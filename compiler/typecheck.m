@@ -289,8 +289,6 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 %-----------------------------------------------------------------------------%
 
 	% If there are still multiple type assignments for the clause,
-	% or if some of the type variables which occur only in the body
-	% of the clause haven't been bound,
 	% then we issue an error message here.
 
 :- pred typecheck_finish_clause(type_info, type_info).
@@ -298,10 +296,8 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 
 typecheck_finish_clause(TypeInfo0, TypeInfo) :-
 	typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet),
-	( TypeAssignSet = [TypeAssign] ->
-			% XXX we should only report an unresolved polymorphism
-			% error if there weren't any other errors in the clause
-		check_type_bindings(TypeAssign, TypeInfo0, TypeInfo)
+	( TypeAssignSet = [_TypeAssign] ->
+		TypeInfo = TypeInfo0
 	; TypeAssignSet = [TypeAssign1, TypeAssign2 | _] ->
 			% XXX we should only report an ambiguity error if
 			% there weren't any other errors in the clause
@@ -314,6 +310,10 @@ typecheck_finish_clause(TypeInfo0, TypeInfo) :-
 		error("internal error in typechecker: no type-assignment"),
 		TypeInfo = TypeInfo0
 	).
+
+/************************ BEGIN JUNK
+This section is commented out, since the error which it attempts
+to detect is in fact not an error at all!
 
 	% Check that the all of the types which have been inferred
 	% for the variables in the clause do not contain any unbound type
@@ -405,6 +405,8 @@ write_type_var_list_2([V|Vs], VarSet) -->
 	io__write_string(", "),
 	io__write_variable(V, VarSet),
 	write_type_var_list_2(Vs, VarSet).
+
+END JUNK ***************************/
 
 %-----------------------------------------------------------------------------%
 
