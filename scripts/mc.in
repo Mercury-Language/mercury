@@ -20,22 +20,28 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
 LOW_TAG_BITS=@LOW_TAG_BITS@
 NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
+NUM_REAL_TEMPS=@NUM_REAL_TEMPS@
+BRANCH_DELAY_SLOT=@BRANCH_DELAY_SLOT@
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
 
 case $# in
 	0) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
-		--num-real-r-regs "$NUM_REAL_R_REGS" \
-		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--num-real-r-regs "$NUM_REAL_R_REGS" \
+		--num-real-temps "$NUM_REAL_TEMPS" \
+		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		$BRANCH_DELAY_SLOT \
 		;;
 	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
-		--num-real-r-regs "$NUM_REAL_R_REGS" \
-		--conf-low-tag-bits "$LOW_TAG_BITS" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--num-real-r-regs "$NUM_REAL_R_REGS" \
+		--num-real-temps "$NUM_REAL_TEMPS" \
+		--conf-low-tag-bits "$LOW_TAG_BITS" \
+		$BRANCH_DELAY_SLOT \
 		"$@" ;;
 esac
