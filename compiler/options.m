@@ -38,8 +38,6 @@
 		;	halt_at_syntax_errors
 		;	warn_singleton_vars
 		;	warn_overlapping_scopes
-		;	warn_missing_det_decls % obsolete
-				% (use infer_determinism instead)
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
 		;	warn_unused_args
@@ -218,11 +216,10 @@ option_defaults_2(warning_option, [
 	inhibit_warnings	-	bool_special,
 	halt_at_warn		-	bool(no),
 	halt_at_syntax_errors	-	bool(no),
-	% if you add any new warn_xxx options, you will need
-	% to modify the handling of inhibit_warnings in handle_options.m
+	% if you add any new warning options, you will need
+	% to modify the handling of inhibit_warnings
 	warn_singleton_vars	-	bool(yes),
 	warn_overlapping_scopes	-	bool(yes),
-	warn_missing_det_decls	-	bool(yes),	 % obsolete
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
 	warn_unused_args	-	bool(no),
@@ -682,7 +679,7 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0, ok(OptionTable))
 	override_options([
 			warn_singleton_vars	-	bool(Inhibit),
 			warn_overlapping_scopes	-	bool(Inhibit),
-			warn_missing_det_decls	-	bool(Inhibit),
+			warn_det_decls_too_lax	-	bool(Inhibit),
 			warn_nothing_exported	-	bool(Inhibit)
 		], OptionTable0, OptionTable).
 special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
