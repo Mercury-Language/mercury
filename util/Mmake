@@ -19,9 +19,11 @@ MGNUC	= $(SCRIPTS_DIR)/mgnuc
 CFLAGS	= -I $(RUNTIME_DIR) $(EXTRA_CFLAGS)
 # we need -I ../runtime for "getopt.h"
 
+PROGS=mkinit mdemangle
+
 #-----------------------------------------------------------------------------#
 
-all: mkinit mdemangle
+all: $(PROGS)
 
 .c:
 	$(MGNUC) --grade $(GRADE) $(CFLAGS) -o $@ $<
@@ -29,13 +31,17 @@ all: mkinit mdemangle
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: mkinit mdemangle
+install: $(PROGS)
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
-	cp `vpath_find mkinit mdemangle` $(INSTALL_BINDIR)
+	cp `vpath_find $(PROGS)` $(INSTALL_BINDIR)
+
+.PHONY: uninstall
+uninstall:
+	cd $(INSTALL_BINDIR) && rm -f $(PROGS)
 
 #-----------------------------------------------------------------------------#
 
 realclean:
-	-rm -f mkinit mdemangle
+	-rm -f $(PROGS)
 
 #-----------------------------------------------------------------------------#

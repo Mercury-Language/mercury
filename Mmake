@@ -248,6 +248,14 @@ install_library_grades: dep_library
 
 #-----------------------------------------------------------------------------#
 
+.PHONY: uninstall
+uninstall:
+	cd scripts; $(SUBDIR_MMAKE) uninstall
+	cd util; $(SUBDIR_MMAKE) uninstall
+	rm -rf $(INSTALL_LIBDIR)
+
+#-----------------------------------------------------------------------------#
+
 clean: clean_subdirs
 
 .PHONY: clean_subdirs
