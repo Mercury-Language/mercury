@@ -17,7 +17,7 @@
 
 extern	void	dummy_function_call(void);
 extern	void	*dummy_identify_function(void *);
-extern	void	*global_pointer;
-extern	void	*global_pointer_2;
+extern	void	*volatile global_pointer;
+extern	void	*volatile global_pointer_2;
 
 #endif /* not MERCURY_DUMMY_H */
