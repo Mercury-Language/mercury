@@ -270,6 +270,7 @@ type_is_atomic(Type, ModuleInfo) :-
 
 type_util__var(term__variable(Var), Var).
 
+type_id_is_hand_defined(qualified(unqualified("builtin"), "c_pointer") - 0).
 type_id_is_hand_defined(qualified(unqualified("std_util"), "univ") - 0).
 type_id_is_hand_defined(qualified(unqualified("array"), "array") - 1).
 type_id_is_hand_defined(qualified(PrivateBuiltin, "type_info") - 1) :-

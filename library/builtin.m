@@ -929,8 +929,6 @@ void sys_init_copy_module(void) {
  * be handled as a special case.
  */
 
-#ifdef  USE_TYPE_LAYOUT
-
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct {
 	TYPE_LAYOUT_FIELDS
@@ -946,8 +944,6 @@ mercury_data_builtin__type_ctor_functors_c_pointer_0_struct {
 } mercury_data_builtin__type_ctor_functors_c_pointer_0 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
-
-#endif
 
 Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___builtin__c_pointer_0_0);
@@ -986,6 +982,8 @@ END_MODULE
 /*
 INIT sys_init_unify_c_pointer_module
 */
+
+
 extern ModuleFunc unify_c_pointer_module;
 void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */

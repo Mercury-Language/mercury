@@ -21,4 +21,81 @@
 
 #include "mercury_imp.h"
 
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct_bootstrap {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_builtin__type_ctor_layout_c_pointer_0_bootstrap = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE))
+};
 
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_builtin__type_ctor_functors_c_pointer_0_struct_bootstrap {
+	Integer f1;
+} mercury_data_builtin__type_ctor_functors_c_pointer_0_bootstrap = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+Declare_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
+Declare_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
+Declare_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
+
+const struct mercury_data_builtin__type_ctor_info_c_pointer_0_struct {
+	Integer f1;
+	Code * f2;
+	Code * f3;
+	Code * f4;
+	Integer f5;
+	Word * f6;
+	Word * f7;
+	Word * f8;
+	Word * f9;
+}  mercury_data_builtin__type_ctor_info_c_pointer_0 = {
+	(Integer) 0,
+	ENTRY(mercury____Unify___builtin__c_pointer_0_0_bootstrap),
+	ENTRY(mercury____Index___builtin__c_pointer_0_0_bootstrap),
+	ENTRY(mercury____Compare___builtin__c_pointer_0_0_bootstrap),
+	MR_TYPE_CTOR_REP_C_POINTER,
+	(Word *) &mercury_data_builtin__type_ctor_functors_c_pointer_0_bootstrap,
+	(Word *) &mercury_data_builtin__type_ctor_layout_c_pointer_0_bootstrap,
+	string_const("builtin", 7),
+	string_const("c_pointer", 9)
+};
+
+Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
+Define_extern_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
+Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
+
+BEGIN_MODULE(unify_c_pointer_module_bootstrap)
+	init_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
+	init_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
+	init_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
+
+BEGIN_CODE
+Define_entry(mercury____Unify___builtin__c_pointer_0_0_bootstrap);
+	/*
+	** For c_pointer, we assume that equality and comparison
+	** can be based on object identity (i.e. using address comparisons).
+	** This is correct for types like io__stream, and necessary since
+	** the io__state contains a map(io__stream, filename).
+	** However, it might not be correct in general...
+	*/
+	r1 = (r1 == r2);
+	proceed();
+
+Define_entry(mercury____Index___builtin__c_pointer_0_0_bootstrap);
+	r1 = -1;
+	proceed();
+
+Define_entry(mercury____Compare___builtin__c_pointer_0_0_bootstrap);
+	r1 = (r1 == r2 ? COMPARE_EQUAL :
+			  r1 < r2 ? COMPARE_LESS :
+			  COMPARE_GREATER);
+	proceed();
+
+END_MODULE
+
+/* Ensure that the initialization code for the above module gets run. */
+/*
+INIT sys_init_unify_c_pointer_module
+*/
