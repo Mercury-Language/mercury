@@ -252,6 +252,9 @@ Changes to the Mercury standard library:
 * builtin.m now contains types and insts `unify' and `compare' for use
   in defining user-defined equality and comparison predicates.
 
+* builtin.m now defines inst `old' as a synonym for `any', since some of the
+  literature uses this terminology.
+
 * We've fixed some problems with the use of `cc_nondet'.
 
   The incorrect cc_nondet modes of the following predicates have been removed:

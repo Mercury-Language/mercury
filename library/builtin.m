@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,6 +50,10 @@
 :- inst mostly_dead == mostly_clobbered.
 
 % The `any' inst used for the constraint solver interface is also builtin.
+% The inst `old' is allowed as a synonym for `any', since some of the
+% literature uses this terminology.
+
+:- inst old == any.
 
 % Higher-order predicate insts `pred(<modes>) is <detism>'
 % and higher-order functions insts `func(<modes>) = <mode> is det'
