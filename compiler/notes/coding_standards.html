@@ -31,9 +31,16 @@ major algorithms and data structures it uses, etc.
 
 <p>
 
-Each type or predicate that is exported from a module should have
+Everything that is exported from a module should have
 sufficient documentation that it can be understood without reference
 to the module's implementation section.
+
+<p>
+
+Each procedure that is implemented using foreign code
+should have sufficient documentation about its interface that it
+can be implemented just by referring to that documentation,
+without reference to the module's implementation section.
 
 <p>
 
@@ -120,7 +127,8 @@ scripts, or if you are interfacing with the OS.)
 
 Calls to error/1 should always indicate an internal software error, not
 merely incorrect inputs from the user, or failure of some library routine
-or system call.
+or system call.  In the compiler,
+use unexpected/2 or sorry/2 from error_util.m rather than error/1.
 
 <p>
 
@@ -329,6 +337,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2002-03-25 05:30:02 $ by $Author: dougl $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-26 01:17:05 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
