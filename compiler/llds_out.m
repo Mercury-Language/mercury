@@ -168,6 +168,7 @@
 :- import_module backend_libs__name_mangle.
 :- import_module backend_libs__proc_label.
 :- import_module backend_libs__rtti.
+:- import_module check_hlds__type_util.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__passes_aux.
 :- import_module libs__options.
@@ -2223,6 +2224,19 @@ output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
 
 output_pragma_inputs([], !IO).
 output_pragma_inputs([Input | Inputs], !IO) :-
+	Input = pragma_c_input(_VarName, Type, _Rval, _MaybeForeignTypeInfo),
+	( is_dummy_argument_type(Type) ->
+		true
+	;
+		output_pragma_input(Input, !IO)
+	),
+	output_pragma_inputs(Inputs, !IO).
+
+	% Output the input variable assignments at the top of the
+	% pragma foreign_code code for C.
+:- pred output_pragma_input(pragma_c_input::in, io::di, io::uo) is det.
+
+output_pragma_input(Input, !IO) :-
 	Input = pragma_c_input(VarName, Type, Rval, MaybeForeignTypeInfo),
 	io__write_string("\t", !IO),
 	(
@@ -2267,8 +2281,7 @@ output_pragma_inputs([Input | Inputs], !IO) :-
 			output_rval_as_type(Rval, word, !IO)
 		)
 	),
-	io__write_string(";\n", !IO),
-	output_pragma_inputs(Inputs, !IO).
+	io__write_string(";\n", !IO).
 
 	% Output declarations for any lvals used for the outputs
 :- pred output_pragma_output_lval_decls(list(pragma_c_output)::in,
@@ -2286,8 +2299,21 @@ output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
 	is det.
 
 output_pragma_outputs([], !IO).
-output_pragma_outputs([O | Outputs], !IO) :-
-	O = pragma_c_output(Lval, Type, VarName, MaybeForeignType),
+output_pragma_outputs([Output | Outputs], !IO) :-
+	Output = pragma_c_output(_Lval, Type, _VarName, _MaybeForeignType),
+	( is_dummy_argument_type(Type) ->
+		true
+	;
+		output_pragma_output(Output, !IO)
+	),
+	output_pragma_outputs(Outputs, !IO).
+
+	% Output the output variable assignments at the bottom of the
+	% pragma foreign code for C
+:- pred output_pragma_output(pragma_c_output::in, io::di, io::uo) is det.
+
+output_pragma_output(Output, !IO) :-
+	Output = pragma_c_output(Lval, Type, VarName, MaybeForeignType),
 	io__write_string("\t", !IO),
 	(
 		MaybeForeignType = yes(ForeignTypeInfo),
@@ -2326,8 +2352,7 @@ output_pragma_outputs([O | Outputs], !IO) :-
 			io__write_string(VarName, !IO)
 		)
 	),
-	io__write_string(";\n", !IO),
-	output_pragma_outputs(Outputs, !IO).
+	io__write_string(";\n", !IO).
 
 :- pred output_reset_trail_reason(reset_trail_reason::in, io::di, io::uo)
 	is det.

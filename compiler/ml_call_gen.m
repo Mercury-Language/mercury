@@ -1006,14 +1006,12 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
 				% as io__state
 				Lval = var(_VarName, VarType),
 				VarType = mercury_type(ProgDataType, _, _),
-				type_util__is_dummy_argument_type(
-					ProgDataType)
+				type_util__is_dummy_argument_type(ProgDataType)
 			->
 				Statements = []
 			;
 				Rval = ml_gen_simple_expr(SimpleExpr),
-				Statement = ml_gen_assign(Lval, Rval,
-					Context),
+				Statement = ml_gen_assign(Lval, Rval, Context),
 				Statements = [Statement]
 			)
 		;

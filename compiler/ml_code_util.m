@@ -1150,11 +1150,12 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
 		->
 			pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
 			RetArg = mlds__argument(_RetArgName, RetTypePtr,
-					_GC_TraceCode),
+				_GC_TraceCode),
 			( RetTypePtr = mlds__ptr_type(RetType) ->
 				RetTypes = [RetType]
 			;
-				error("output mode function result doesn't have pointer type")
+				error("output mode function result " ++
+					"doesn't have pointer type")
 			)
 		;
 			FuncArgs = FuncArgs0,

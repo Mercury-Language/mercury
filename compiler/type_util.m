@@ -842,15 +842,14 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
 	% include arguments with these types.
 
 type_util__is_dummy_argument_type(Type) :-
-	Type = term__functor(term__atom(FunctorName), [
-			term__functor(term__atom(ModuleName), [], _),
-			term__functor(term__atom(TypeName), TypeArgs, _)
-		], _),
-	(	FunctorName = "."
-	;	FunctorName = ":"
-	),
-	list__length(TypeArgs, TypeArity),
-	type_util__is_dummy_argument_type_2(ModuleName, TypeName, TypeArity).
+	( type_to_ctor_and_args(Type, TypeCtor, _) ->
+		TypeCtor = CtorSymName - TypeArity,
+		CtorSymName = qualified(unqualified(ModuleName), TypeName),
+		type_util__is_dummy_argument_type_2(ModuleName, TypeName,
+			TypeArity)
+	;
+		fail
+	).
 
 :- pred type_util__is_dummy_argument_type_2(string::in, string::in, arity::in)
 	is semidet.

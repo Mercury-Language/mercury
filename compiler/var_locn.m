@@ -22,6 +22,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
+:- import_module hlds__hlds_pred.
 :- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 :- import_module libs__options.
@@ -30,16 +31,17 @@
 
 :- type var_locn_info.
 
-%	init_state(Arguments, Liveness, Varset, StackSlots, FollowVars, Opts,
-%			VarLocnInfo)
+%	init_state(Arguments, Liveness, VarSet, VarTypes, StackSlots,
+%			FollowVars, Opts, VarLocnInfo)
 %		Produces an initial state of the VarLocnInfo given
 %		an association list of variables and lvalues. The initial
 %		state places the given variables at their corresponding
 %		locations, with the exception of variables which are not in
 %		Liveness (this corresponds to input arguments that are not
-%		used in the body). The Varset parameter contains a mapping from
+%		used in the body). The VarSet parameter contains a mapping from
 %		variables to names, which is used when code is generated
-%		to provide meaningful comments. StackSlots maps each variable
+%		to provide meaningful comments. VarTypes gives the types of
+%		of all the procedure's variables. StackSlots maps each variable
 %		to its stack slot, if it has one. FollowVars is the initial
 %		follow_vars set; such sets give guidance as to what lvals
 %		(if any) each variable will be needed in next. Opts gives
@@ -47,7 +49,7 @@
 %		are considered constants.
 
 :- pred init_state(assoc_list(prog_var, lval)::in, set(prog_var)::in,
-	prog_varset::in, stack_slots::in, abs_follow_vars::in,
+	prog_varset::in, vartypes::in, stack_slots::in, abs_follow_vars::in,
 	option_table::in, var_locn_info::out) is det.
 
 %	reinit_state(VarLocs, !VarLocnInfo)
@@ -324,6 +326,7 @@
 
 :- implementation.
 
+:- import_module check_hlds__type_util.
 :- import_module libs__options.
 :- import_module libs__tree.
 :- import_module ll_backend__code_util.
@@ -399,6 +402,8 @@
 	var_locn_info(
 		varset		:: prog_varset,	% The varset from the
 						% proc_info.
+		vartypes	:: vartypes,	% The vartypes from the
+						% proc_info.
 		stack_slots 	:: stack_slots, % Maps each var to its stack
 						% slot, if it has one.
 		exprn_opts	:: exprn_opts,	% The values of the options
@@ -437,8 +442,8 @@
 
 %----------------------------------------------------------------------------%
 
-init_state(VarLocs, Liveness, Varset, StackSlots, FollowVars, Options,
-		VarLocnInfo) :-
+init_state(VarLocs, Liveness, VarSet, VarTypes, StackSlots, FollowVars,
+		Options, VarLocnInfo) :-
 	map__init(VarStateMap0),
 	map__init(LocVarMap0),
 	init_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
@@ -446,7 +451,7 @@ init_state(VarLocs, Liveness, Varset, StackSlots, FollowVars, Options,
 	exprn_aux__init_exprn_opts(Options, ExprnOpts),
 	FollowVars = abs_follow_vars(FollowVarMap, NextNonReserved),
 	set__init(AcquiredRegs),
-	VarLocnInfo = var_locn_info(Varset, StackSlots, ExprnOpts,
+	VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
 		FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
 		AcquiredRegs, 0, []).
 
@@ -456,9 +461,9 @@ reinit_state(VarLocs, !VarLocnInfo) :-
 	init_state_2(VarLocs, no, VarStateMap0, VarStateMap,
 		LocVarMap0, LocVarMap),
 	set__init(AcquiredRegs),
-	!.VarLocnInfo = var_locn_info(Varset, StackSlots, ExprnOpts,
+	!.VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
 		FollowVarMap, NextNonReserved, _, _, _, _, _),
-	!:VarLocnInfo = var_locn_info(Varset, StackSlots, ExprnOpts,
+	!:VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
 		FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
 		AcquiredRegs, 0, []).
 
@@ -854,21 +859,28 @@ assign_cell_args([MaybeRval0 | MaybeRvals0], Ptag, Base, Offset, Code, !VLI) :-
 				materialize_var(Var, no, no, [],
 					Rval, EvalCode, !VLI)
 			),
-			add_additional_lval_for_var(Var, Target,
-				!VLI),
-			get_var_name(!.VLI, Var, VarName),
-			Comment = string__append("assigning from ",
-				VarName)
+			get_vartypes(!.VLI, VarTypes),
+			map__lookup(VarTypes, Var, Type),
+			( is_dummy_argument_type(Type) ->
+				AssignCode = empty
+			;
+				add_additional_lval_for_var(Var, Target, !VLI),
+				get_var_name(!.VLI, Var, VarName),
+				Comment = string__append("assigning from ",
+					VarName),
+				AssignCode = node([
+					assign(Target, Rval) - Comment
+				])
+			)
 		; Rval0 = const(_) ->
-			Rval = Rval0,
 			EvalCode = empty,
-			Comment = "assigning field from const"
+			Comment = "assigning field from const",
+			AssignCode = node([
+				assign(Target, Rval0) - Comment
+			])
 		;
 			error("assign_cell_args: unknown rval")
 		),
-		AssignCode = node([
-			assign(Target, Rval) - Comment
-		]),
 		ThisCode = tree(EvalCode, AssignCode)
 	;
 		ThisCode = empty
@@ -930,8 +942,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
 	),
 	State = state(Lvals, MaybeConstRval, MaybeExprRval,
 		Using, DeadOrAlive),
-	map__det_update(VarStateMap0, ContainedVar, State,
-		VarStateMap),
+	map__det_update(VarStateMap0, ContainedVar, State, VarStateMap),
 	set_var_state_map(VarStateMap, !VLI),
 	(
 		set__empty(Using),
@@ -961,8 +972,7 @@ check_and_set_magic_var_location(Var, Lval, !VLI) :-
 
 set_magic_var_location(Var, Lval, !VLI) :-
 	get_loc_var_map(!.VLI, LocVarMap0),
-	make_var_depend_on_lval_roots(Var, Lval,
-		LocVarMap0, LocVarMap),
+	make_var_depend_on_lval_roots(Var, Lval, LocVarMap0, LocVarMap),
 	set_loc_var_map(LocVarMap, !VLI),
 
 	get_var_state_map(!.VLI, VarStateMap0),
@@ -1138,10 +1148,16 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
 				string__append_list(["Placing ", VarName,
 					" (depth ", LengthStr, ")"], Msg)
 			),
-			AssignCode = node([
-				assign(Target, Rval)
-					- Msg
-			])
+			get_vartypes(!.VLI, VarTypes),
+			map__lookup(VarTypes, Var, Type),
+			( is_dummy_argument_type(Type) ->
+				AssignCode = empty
+			;
+				AssignCode = node([
+					assign(Target, Rval)
+						- Msg
+				])
+			)
 		),
 		Code = tree(FreeCode, tree(EvalCode, AssignCode))
 	).
@@ -2197,8 +2213,8 @@ set_follow_vars(abs_follow_vars(FollowVarMap, NextNonReserved), !VLI) :-
 :- pred get_var_name(var_locn_info::in, prog_var::in, string::out) is det.
 
 get_var_name(VLI, Var, Name) :-
-	get_varset(VLI, Varset),
-	varset__lookup_name(Varset, Var, Name).
+	get_varset(VLI, VarSet),
+	varset__lookup_name(VarSet, Var, Name).
 
 %----------------------------------------------------------------------------%
 
@@ -2214,6 +2230,7 @@ nonempty_state(State) :-
 %----------------------------------------------------------------------------%
 
 :- pred get_varset(var_locn_info::in, prog_varset::out) is det.
+:- pred get_vartypes(var_locn_info::in, vartypes::out) is det.
 :- pred get_exprn_opts(var_locn_info::in, exprn_opts::out) is det.
 :- pred get_var_state_map(var_locn_info::in, var_state_map::out) is det.
 :- pred get_loc_var_map(var_locn_info::in, loc_var_map::out) is det.
@@ -2222,8 +2239,6 @@ nonempty_state(State) :-
 :- pred get_exceptions(var_locn_info::in, assoc_list(prog_var, lval)::out)
 	is det.
 
-:- pred set_varset(prog_varset::in,
-	var_locn_info::in, var_locn_info::out) is det.
 :- pred set_follow_var_map(abs_follow_vars_map::in,
 	var_locn_info::in, var_locn_info::out) is det.
 :- pred set_next_non_reserved(int::in,
@@ -2240,6 +2255,7 @@ nonempty_state(State) :-
 	var_locn_info::in, var_locn_info::out) is det.
 
 get_varset(VI, VI ^ varset).
+get_vartypes(VI, VI ^ vartypes).
 get_stack_slots(VI, VI ^ stack_slots).
 get_exprn_opts(VI, VI ^ exprn_opts).
 get_follow_var_map(VI, VI ^ follow_vars_map).
@@ -2250,7 +2266,6 @@ get_acquired(VI, VI ^ acquired).
 get_locked(VI, VI ^ locked).
 get_exceptions(VI, VI ^ exceptions).
 
-set_varset(VS, VI, VI ^ varset := VS).
 set_follow_var_map(FVM, VI, VI ^ follow_vars_map := FVM).
 set_next_non_reserved(NNR, VI, VI ^ next_non_res := NNR).
 set_var_state_map(VSM, VI, VI ^ var_state_map := VSM).
