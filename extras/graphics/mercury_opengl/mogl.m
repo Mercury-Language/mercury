@@ -4317,7 +4317,7 @@ server_attrib_group_to_int(viewport) = 18.
 	IO = IO0;
 ").
 
-push_attrib([], !IO) :- error("No server attribute groups specified").
+push_attrib([], _, _) :- error("No server attribute groups specified.").
 push_attrib(Groups @ [_|_], !IO) :-
 	Mask = list__foldr((\/), list__map(server_attrib_group_to_bit, Groups),
 		0),
