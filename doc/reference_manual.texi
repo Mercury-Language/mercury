@@ -171,8 +171,9 @@ for clauses.
 @section Tokens
 
 Tokens in Mercury are the same as in ISO Prolog.
-The only difference is the @samp{#@var{line}} token, which
-is used as a line number directive (see below).
+The only differences are the @samp{#@var{line}} token, which
+is used as a line number directive (see below) and the
+@samp{backquote (`) token} token.
 
 The different tokens are as follows.  Tokens may be separated by
 whitespace or line number directives.
@@ -294,8 +295,9 @@ The end of file.
 @section Terms
 
 Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
-except that as an extension we permit higher-order terms, as described
-below.
+except that as extensions we permit higher-order terms and the
+introduction of infix operators by the use of grave accents (backquotes)
+, as described below.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  @xref{Data-terms}.
 
@@ -309,6 +311,13 @@ whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  Compound terms may also be specified using
 operator notation, as in Prolog.
+
+Operators can also be formed by enclosing an variable or name between grave
+accents (backquotes).  Any variable or name may
+be used as an operator in this way.  If @var{fun} is a variable or name,
+then a term of the form @code{x `fun` y} is equivalent to 
+@code{fun(x,y)}.  The operator is treated as having the highest precedence
+possible and is left associative.
 
 A higher-order term is a variable followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),

@@ -18,6 +18,8 @@ asis
 asm
 assoc
 au
+backquote
+backquotes
 backtrackable
 barfs
 baz
@@ -65,6 +67,7 @@ debugflag
 debuggable
 decl
 decls
+deconstruct
 deconstruction
 demangler
 Demoen
@@ -110,6 +113,7 @@ FirstCode
 fixpoint
 foldl
 foo
+fooable
 fpic
 fr
 fulljumps
@@ -211,6 +215,8 @@ MGNUCFLAGS
 mindepth
 minimize
 MKINIT
+mkshowable
+mkuniv
 MLFLAGS
 MLLIBS
 MLOBJS
@@ -319,6 +325,7 @@ rl
 rla
 rlo
 rm
+RTTI
 Sagonas
 samp
 Schachte
@@ -332,6 +339,7 @@ setfilename
 settitle
 sh
 shar
+showable
 sicstus
 skel
 SLDNF
