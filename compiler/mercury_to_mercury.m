@@ -200,6 +200,9 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = c_code(Pred, Vars, VarSet, C_CodeString) }, 
 		mercury_output_pragma_c_code(Pred, Vars, VarSet, C_CodeString)
 	;
+		{ Pragma = export(Pred, ModeList, C_Function) },
+		mercury_output_pragma_export(Pred, ModeList, C_Function)
+	;
 		{ Pragma = memo(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, "memo")
 	;
@@ -1106,6 +1109,27 @@ mercury_output_pragma_decl(PredName, Arity, PragmaName) -->
 	mercury_output_sym_name(PredName),
 	io__write_string("/"),
 	io__write_int(Arity),
+	io__write_string(").\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_export(sym_name, list(mode), string, io__state, 
+	io__state).
+:- mode mercury_output_pragma_export(in, in, in, di, uo) is det.
+
+mercury_output_pragma_export(Pred, ModeList, C_Function) -->
+	io__write_string(":- pragma(export, "),
+	mercury_output_sym_name(Pred),
+	io__write_string("("),
+
+		% XXX Okay... this might seem dodgy... but the varset isn't 
+		% actually used.
+
+	{ varset__init(Varset) },
+	mercury_output_mode_list(ModeList, Varset),
+
+	io__write_string("), "),
+	io__write_string(C_Function),
 	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%

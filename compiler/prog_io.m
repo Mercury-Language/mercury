@@ -124,8 +124,10 @@
 				% PredName, Vars/Mode, VarNames, C Code
 			;	memo(sym_name, int)
 				% Predname, Arity
-			;	inline(sym_name, int).
+			;	inline(sym_name, int)
 				% Predname, Arity
+			;	export(sym_name, list(mode), string).
+				% Predname, Modes, C Function
 
 :- type pragma_var    --->	pragma_var(var, string, mode).
 			  	% variable, name, mode
@@ -1783,6 +1785,40 @@ parse_pragma(VarSet, Pragma, Result) :-
 		PragmaType)
        )
     ;
+       PragmaType = term__functor(term__atom("export"),[], _)
+    ->
+       (
+       PragmaTerms = [PredAndModesTerm, C_FunctionTerm]
+       ->
+	    (
+		(
+                PredAndModesTerm = term__functor(term__atom(PredName), 
+	    		ModeTerms, _),
+	        C_FunctionTerm = term__functor(term__string(C_Function), [], _)
+		)
+	    ->
+		(
+		    convert_mode_list(ModeTerms, Modes)
+		->
+		    Result = 
+			ok(pragma(export(unqualified(PredName), Modes, 
+				C_Function)))
+		;
+	    	    Result = error("Expected pragma(export, PredName(ModeList), C_Function).",
+			PredAndModesTerm)
+		)
+	    ;
+	    	Result = error(
+		     "Expected pragma(export, PredName(ModeList), C_Function).",
+		     PredAndModesTerm)
+	    )
+	;
+	    Result = 
+	    	error(
+		"wrong number of arguments in pragma(export, ...) declaration.",
+		PragmaType)
+       )
+    ;
        PragmaType = term__functor(term__atom("memo"),[], _)
     ->
        (
@@ -1858,7 +1894,6 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 		PragmaVars = [],	% return any old junk in PragmaVars
 		Error = yes("arguments not in form 'Var :: mode'")
 	).
-
 %-----------------------------------------------------------------------------%
 
 	% get_determinism(Term0, Term, Determinism) binds Determinism

@@ -177,6 +177,60 @@ add_item_decl(pragma(Pragma), Context, Status, Module0, Status, Module) -->
 		{ Pragma = inline(Pred, Arity) },
 		add_pred_marker(Module0, "inline", Pred, Arity, Context,
 			[request(inline)], Module)
+	;
+		{ Pragma = export(Pred, Modes, C_Function) },
+		{ module_info_get_predicate_table(Module0, PredTable) },
+		{ list__length(Modes, Arity) },
+		(
+			{ predicate_table_search_sym_arity(PredTable, Pred, 
+				Arity, [PredId]) }
+		->
+			{ predicate_table_get_preds(PredTable, Preds) },
+			{ map__lookup(Preds, PredId, PredInfo) },
+			{ pred_info_procedures(PredInfo, Procs) },
+			{ map__to_assoc_list(Procs, ExistingProcs) },
+			(
+				{ get_matching_procedure(ExistingProcs, Modes, 
+					ProcId) }
+			->
+				{ module_info_get_pragma_exported_procs(Module0,
+					PragmaExportedProcs0) },
+				{ NewExportedProc = pragma_exported_proc(PredId,
+					ProcId, C_Function) },
+				{ PragmaExportedProcs = 
+					[NewExportedProc|PragmaExportedProcs0]},
+				{ module_info_set_pragma_exported_procs(Module0,
+					PragmaExportedProcs, Module) }
+			;
+				io__stderr_stream(StdErr),
+				io__set_output_stream(StdErr, OldStream),
+				prog_out__write_context(Context),
+				io__write_strings(
+					["Warning: pragma(export, ...) ",
+					"declaration for predicate\n"]),
+				prog_out__write_context(Context),
+				prog_out__write_sym_name(Pred),
+				io__write_string("/"),
+				io__write_int(Arity),
+				io__write_string(" specifies non-existent mode.\n"),
+				io__set_output_stream(OldStream, _),
+				{ Module = Module0 }
+			)
+		;
+			io__stderr_stream(StdErr),
+			io__set_output_stream(StdErr, OldStream),
+			prog_out__write_context(Context),
+			io__write_string(
+			      "Warning: pragma(export, ...) declaration for\n"),
+			prog_out__write_context(Context),
+			io__write_string("non-existent predicate "),
+			prog_out__write_sym_name(Pred),
+			io__write_string("/"),
+			io__write_int(Arity),
+			io__write_string("\n"),
+			io__set_output_stream(OldStream, _),
+			{ Module = Module0 }
+		)
 	).
 
 add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,

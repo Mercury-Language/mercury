@@ -35,7 +35,7 @@
 :- import_module (lambda), polymorphism, higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
-:- import_module code_gen, optimize, llds.
+:- import_module code_gen, optimize, export, llds.
 
 	% miscellaneous compiler modules
 :- import_module hlds_module, hlds_pred, prog_util, hlds_out, dependency_graph.
@@ -1172,7 +1172,8 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 		{ bool__not(CompileOK, CompileErrors) }
 	;
 		{ CompileErrors = no }
-	).
+	),
+	export__produce_header_file(HLDS16, ModuleName).
 
 	% Split the code up into bite-size chunks for the C compiler.
 
@@ -1198,9 +1199,10 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
 			ModuleList0) }
 	),
-	{ list__append(C_BodyCode, ModuleList0, ModuleList) },
+	{ list__append(C_BodyCode, ModuleList0, ModuleList1) },
+	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
+	{ list__append(ModuleList1, [c_export(PragmaExports)], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
-
 
 :- pred get_c_body_code(c_body_info, list(c_module)).
 :- mode get_c_body_code(in, out) is det.
@@ -1230,7 +1232,8 @@ mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
 	Num1 is Num + 1,
 	mercury_compile__combine_chunks_2(Chunks, ModName, Num1, Modules).
 
-:- pred mercury_compile__output_llds(module_name, c_file, io__state, io__state).
+:- pred mercury_compile__output_llds(module_name, c_file, 
+		io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, di, uo) is det.
 
 mercury_compile__output_llds(ModuleName, LLDS) -->
