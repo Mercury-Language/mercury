@@ -48,8 +48,12 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 		%
 		% Generate the name
 		%
-		( RttiData = base_typeclass_info(ClassId, InstanceStr, _) ->
-			RttiName = base_typeclass_info(ClassId, InstanceStr),
+		(
+			RttiData = base_typeclass_info(InstanceModule,
+				ClassId, InstanceStr, _)
+		->
+			RttiName = base_typeclass_info(InstanceModule,
+				ClassId, InstanceStr),
 			Name = data(base_typeclass_info(ClassId, InstanceStr))
 		;
 			rtti_data_to_name(RttiData, RttiTypeId, RttiName),
@@ -220,8 +224,8 @@ gen_init_rtti_data_defn(type_ctor_info(RttiTypeId, UnifyProc, CompareProc,
 		%	MaybeHashCons),
 		% gen_init_maybe_proc_id(ModuleInfo, PrettyprinterProc)
 	]).
-gen_init_rtti_data_defn(base_typeclass_info(_ClassId, _InstanceStr,
-		BaseTypeClassInfo), _ModuleName, ModuleInfo,
+gen_init_rtti_data_defn(base_typeclass_info(_InstanceModule, _ClassId,
+		_InstanceStr, BaseTypeClassInfo), _ModuleName, ModuleInfo,
 		Init, ExtraDefns) :-
 	BaseTypeClassInfo = base_typeclass_info(N1, N2, N3, N4, N5,
 		Methods),
@@ -338,20 +342,27 @@ gen_init_cast_rtti_datas_array(Type, ModuleName, RttiDatas) =
 
 	% Generate the MLDS initializer comprising the rtti_name
 	% for a given rtti_data, converted to mlds__generic_type.
+	% XXX we don't need to pass the module_name down to here
 :- func gen_init_cast_rtti_data(mlds__type, module_name, rtti_data) =
 	mlds__initializer.
 
 gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
-	( RttiData = pseudo_type_info(type_var(VarNum)) ->
+	(
+		RttiData = pseudo_type_info(type_var(VarNum))
+	->
 		% rtti_data_to_name/3 does not handle this case
 		SrcType = mlds__native_int_type,
 		Initializer = init_obj(unop(gen_cast(SrcType, DestType),
 			const(int_const(VarNum))))
-	; RttiData = base_typeclass_info(ClassId, InstanceString, _) ->
+	;
+		RttiData = base_typeclass_info(InstanceModuleName, ClassId,
+			InstanceString, _)
+	->
 		% rtti_data_to_name/3 does not handle this case
-		SrcType = rtti_type(base_typeclass_info(ClassId,
-			InstanceString)),
-		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+		SrcType = rtti_type(base_typeclass_info(InstanceModuleName,
+			ClassId, InstanceString)),
+		MLDS_ModuleName = mercury_module_name_to_mlds(
+			InstanceModuleName),
 		MLDS_DataName = base_typeclass_info(ClassId, InstanceString),
 		DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
 		Rval = const(data_addr_const(DataAddr)),
@@ -598,7 +609,7 @@ mlds_rtti_type_name(du_name_ordered_table) =	"DuFunctorDescPtrArray".
 mlds_rtti_type_name(du_stag_ordered_table(_)) =	"DuFunctorDescPtrArray".
 mlds_rtti_type_name(du_ptag_ordered_table) =	"DuPtagLayoutArray".
 mlds_rtti_type_name(type_ctor_info) =		"TypeCtorInfo_Struct".
-mlds_rtti_type_name(base_typeclass_info(_, _)) = "BaseTypeclassInfo".
+mlds_rtti_type_name(base_typeclass_info(_, _, _)) = "BaseTypeclassInfo".
 mlds_rtti_type_name(pseudo_type_info(Pseudo)) =
 	mlds_pseudo_type_info_type_name(Pseudo).
 mlds_rtti_type_name(type_hashcons_pointer) =	"TableNodePtrPtr".

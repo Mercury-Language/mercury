@@ -827,6 +827,7 @@ determinism_to_code_model(failure,     model_semi).
 	% Information about a single `instance' declaration
 :- type hlds_instance_defn 
 	--->	hlds_instance_defn(
+			module_name,		% module of the instance decl
 			import_status,		% import status of the instance
 						% declaration
 			prog_context,		% context of declaration

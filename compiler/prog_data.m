@@ -91,9 +91,9 @@
 		%	ClassMethods, VarNames
 
 	;	instance(list(class_constraint), class_name, list(type),
-			instance_body, tvarset)
+			instance_body, tvarset, module_name)
 		%	DerivingClass, ClassName, Types, 
-		%	MethodInstances, VarNames
+		%	MethodInstances, VarNames, ModuleContainingInstance
 
 	;	nothing.
 		% used for items that should be ignored (currently only

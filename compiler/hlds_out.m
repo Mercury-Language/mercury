@@ -2702,8 +2702,8 @@ hlds_out__write_instance_defns(Indent, ClassId - InstanceDefns) -->
 
 hlds_out__write_instance_defn(Indent, InstanceDefn) -->
 
-	{ InstanceDefn = hlds_instance_defn(_, Context,
-		Constraints, Types, Body,
+	{ InstanceDefn = hlds_instance_defn(_InstanceModule, _Status,
+		Context, Constraints, Types, Body,
 		MaybePredProcIds, VarSet, Proofs) },
 
 	{ term__context_file(Context, FileName) },

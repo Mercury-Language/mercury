@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module hlds_data.
+:- import_module prog_data, hlds_data.
 :- import_module rtti, llds_out.
 :- import_module bool, io.
 
@@ -67,8 +67,9 @@
 
 	% The same as output_rtti_addr_storage_type_name,
 	% but for a base_typeclass_info.
-:- pred output_base_typeclass_info_storage_type_name(class_id::in, string::in,
-		bool::in, io__state::di, io__state::uo) is det.
+:- pred output_base_typeclass_info_storage_type_name(module_name::in,
+		class_id::in, string::in, bool::in,
+		io__state::di, io__state::uo) is det.
 
         % Return true iff the given type of RTTI data structure includes
 	% code addresses.
@@ -379,25 +380,25 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Compare,
 %	io__write_string(",\n\t"),
 %	output_maybe_static_code_addr(Prettyprinter),
 	io__write_string("\n};\n").
-output_rtti_data_defn(base_typeclass_info(ClassId, InstanceString,
-		BaseTypeClassInfo), DeclSet0, DeclSet) -->
-	output_base_typeclass_info_defn(ClassId, InstanceString,
-		BaseTypeClassInfo, DeclSet0, DeclSet).
+output_rtti_data_defn(base_typeclass_info(InstanceModuleName, ClassId,
+		InstanceString, BaseTypeClassInfo), DeclSet0, DeclSet) -->
+	output_base_typeclass_info_defn(InstanceModuleName, ClassId,
+		InstanceString, BaseTypeClassInfo, DeclSet0, DeclSet).
 output_rtti_data_defn(pseudo_type_info(Pseudo), DeclSet0, DeclSet) -->
 	output_pseudo_type_info_defn(Pseudo, DeclSet0, DeclSet).
 
-:- pred output_base_typeclass_info_defn(class_id, string, base_typeclass_info,
-		decl_set, decl_set, io__state, io__state).
-:- mode output_base_typeclass_info_defn(in, in, in, in, out, di, uo) is det.
+:- pred output_base_typeclass_info_defn(module_name, class_id, string,
+		base_typeclass_info, decl_set, decl_set, io__state, io__state).
+:- mode output_base_typeclass_info_defn(in, in, in, in, in, out, di, uo) is det.
 
-output_base_typeclass_info_defn(ClassId, InstanceString,
+output_base_typeclass_info_defn(InstanceModuleName, ClassId, InstanceString,
 		base_typeclass_info(N1, N2, N3, N4, N5, Methods),
 		DeclSet0, DeclSet) -->
 	{ CodeAddrs = list__map(make_code_addr, Methods) },
 	output_code_addrs_decls(CodeAddrs, "", "", 0, _, DeclSet0, DeclSet1),
 	io__write_string("\n"),
-	output_base_typeclass_info_storage_type_name(ClassId, InstanceString,
-		yes),
+	output_base_typeclass_info_storage_type_name(InstanceModuleName,
+		ClassId, InstanceString, yes),
 	% XXX It would be nice to avoid generating redundant declarations
 	% of base_typeclass_infos, but currently we don't.
 	{ DeclSet1 = DeclSet },
@@ -528,9 +529,12 @@ output_rtti_data_decl(RttiData, DeclSet0, DeclSet) -->
 		% so we don't need to declare them.
 		% Also rtti_data_to_name/3 does not handle this case.
 		{ DeclSet = DeclSet0 }
-	; { RttiData = base_typeclass_info(ClassId, InstanceStr, _) } ->
+	;
+		{ RttiData = base_typeclass_info(InstanceModuleName, ClassId,
+			InstanceStr, _) }
+	->
 		% rtti_data_to_name/3 does not handle this case
-		output_base_typeclass_info_decl(ClassId,
+		output_base_typeclass_info_decl(InstanceModuleName, ClassId,
 			InstanceStr, no, DeclSet0, DeclSet)
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeId, RttiName) },
@@ -538,24 +542,25 @@ output_rtti_data_decl(RttiData, DeclSet0, DeclSet) -->
 			DeclSet0, DeclSet)
 	).
 
-:- pred output_base_typeclass_info_decl(class_id::in, string::in,
-		bool::in, decl_set::in, decl_set::out,
+:- pred output_base_typeclass_info_decl(module_name::in, class_id::in,
+		string::in, bool::in, decl_set::in, decl_set::out,
 		io__state::di, io__state::uo) is det.
 
-output_base_typeclass_info_decl(ClassId, InstanceStr,
+output_base_typeclass_info_decl(InstanceModuleName, ClassId, InstanceStr,
 		BeingDefined, DeclSet0, DeclSet) -->
-	output_base_typeclass_info_storage_type_name(ClassId, InstanceStr,
-			BeingDefined),
+	output_base_typeclass_info_storage_type_name(InstanceModuleName,
+			ClassId, InstanceStr, BeingDefined),
 	io__write_string(";\n"),
 	% XXX It would be nice to avoid generating redundant declarations
 	% of base_typeclass_infos, but currently we don't.
 	{ DeclSet = DeclSet0 }.
 
-output_base_typeclass_info_storage_type_name(ClassId, InstanceStr,
-		BeingDefined) -->
+output_base_typeclass_info_storage_type_name(InstanceModuleName, ClassId,
+		InstanceStr, BeingDefined) -->
 	output_rtti_name_storage_type_name(
 		output_base_typeclass_info_name(ClassId, InstanceStr),
-		base_typeclass_info(ClassId, InstanceStr), BeingDefined).
+		base_typeclass_info(InstanceModuleName, ClassId, InstanceStr),
+			BeingDefined).
 
 %-----------------------------------------------------------------------------%
 
@@ -667,7 +672,7 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		io__write_int(Arity),
 		io__write_string("_0);\n")
 	;
-		{ Data = base_typeclass_info(ClassName, ClassArity,
+		{ Data = base_typeclass_info(_ModName, ClassName, ClassArity,
 			base_typeclass_info(_N1, _N2, _N3, _N4, _N5,
 				Methods)) }
 	->
@@ -706,8 +711,8 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles) -->
 			io__write_string(");\n")
 		)
 	;
-		{ Data = base_typeclass_info(_ClassId, _InstanceString,
-			_BaseTypeClassInfo) }
+		{ Data = base_typeclass_info(_InstanceModuleName, _ClassId,
+			_InstanceString, _BaseTypeClassInfo) }
 	->
 		% XXX Registering base_typeclass_infos by themselves is not
 		% enough. A base_typeclass_info doesn't say which types it
@@ -716,8 +721,8 @@ rtti_out__register_rtti_data_if_nec(Data, SplitFiles) -->
 		% to describe such membership information.
 		%
 		% io__write_string("\tMR_register_base_typeclass_info(\n\t\t&"),
-		% output_base_typeclass_info_storage_type_name(ClassId,
-		% 	InstanceString, no),
+		% output_base_typeclass_info_storage_type_name(
+		%	InstanceModuleName, ClassId, InstanceString, no),
 		% io__write_string(");\n")
 		[]
 	;
@@ -795,11 +800,14 @@ output_rtti_data_decls(RttiData, FirstIndent, LaterIndent,
 		% Also rtti_data_to_name/3 does not handle this case.
 		{ DeclSet = DeclSet0 },
 		{ N = N0 }
-	; { RttiData = base_typeclass_info(ClassId, InstanceStr, _) } ->
+	;
+		{ RttiData = base_typeclass_info(InstanceModuleName, ClassId,
+			InstanceStr, _) }
+	->
 		% rtti_data_to_name/3 does not handle this case,
 		% so we need to handle it here
-		output_base_typeclass_info_decl(ClassId, InstanceStr, no,
-			DeclSet0, DeclSet),
+		output_base_typeclass_info_decl(InstanceModuleName, ClassId,
+			InstanceStr, no, DeclSet0, DeclSet),
 		{ N = N0 }
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeId, RttiName) },
@@ -864,9 +872,13 @@ output_addr_of_rtti_data(RttiData) -->
 		% rtti_data_to_name/3 does not handle this case
 		io__write_string("(MR_PseudoTypeInfo) "),
 		io__write_int(VarNum)
-	; { RttiData = base_typeclass_info(ClassId, InstanceStr, _) } ->
+	;
+		{ RttiData = base_typeclass_info(_InstanceModuleName, ClassId,
+			InstanceStr, _) }
+	->
 		% rtti_data_to_name/3 does not handle this case
-		output_base_typeclass_info_name(ClassId, InstanceStr)
+		output_base_typeclass_info_name(ClassId,
+			InstanceStr)
 	;
 		{ rtti_data_to_name(RttiData, RttiTypeId, RttiName) },
 		output_addr_of_rtti_addr(RttiTypeId, RttiName)
@@ -990,7 +1002,7 @@ rtti_name_would_include_code_addr(du_name_ordered_table,     no).
 rtti_name_would_include_code_addr(du_stag_ordered_table(_),  no).
 rtti_name_would_include_code_addr(du_ptag_ordered_table,     no).
 rtti_name_would_include_code_addr(type_ctor_info,            yes).
-rtti_name_would_include_code_addr(base_typeclass_info(_, _), yes).
+rtti_name_would_include_code_addr(base_typeclass_info(_, _, _), yes).
 rtti_name_would_include_code_addr(pseudo_type_info(Pseudo),
 		pseudo_type_info_would_incl_code_addr(Pseudo)).
 rtti_name_would_include_code_addr(type_hashcons_pointer,     no).
@@ -1031,7 +1043,7 @@ rtti_name_c_type(du_stag_ordered_table(_), "MR_DuFunctorDesc *", "[]").
 rtti_name_c_type(du_ptag_ordered_table,    "MR_DuPtagLayout", "[]").
 rtti_name_c_type(type_ctor_info,           "struct MR_TypeCtorInfo_Struct",
 						"").
-rtti_name_c_type(base_typeclass_info(_, _), "MR_Code *", "[]").
+rtti_name_c_type(base_typeclass_info(_, _, _), "MR_Code *", "[]").
 rtti_name_c_type(pseudo_type_info(Pseudo), TypePrefix, TypeSuffix) :-
 	pseudo_type_info_name_c_type(Pseudo, TypePrefix, TypeSuffix).
 rtti_name_c_type(type_hashcons_pointer,    "union MR_TableNode_Union **", "").

@@ -3004,7 +3004,7 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 		LaterIndent) -->
 	( { DataVarName = base_typeclass_info(ClassId, Instance) } ->
 		output_base_typeclass_info_storage_type_name(
-			ClassId, Instance, no)
+			ModuleName, ClassId, Instance, no)
 	;
 		{ data_name_linkage(DataVarName, Linkage) },
 		globals__io_get_globals(Globals),

@@ -488,7 +488,7 @@ mercury_output_item(typeclass(Constraints, ClassName, Vars, Methods,
 	
 	io__write_string("\n].\n").
 mercury_output_item(instance(Constraints, ClassName, Types, Body, 
-		VarSet), _) --> 
+		VarSet, _InstanceModuleName), _) --> 
 	io__write_string(":- instance "),
 
 		% We put an extra set of brackets around the class name in

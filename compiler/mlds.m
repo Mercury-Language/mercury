@@ -1126,9 +1126,13 @@ XXX Full exception handling support is not yet implemented.
 	% Stuff for handling polymorphism/RTTI and type classes.
 	%
 	;	rtti(rtti_type_id, rtti_name)
-	;	base_typeclass_info(hlds_data__class_id, string)
-			% class name & class arity, names and arities of the
-			% types
+	;	base_typeclass_info(
+			hlds_data__class_id,	% class name & class arity,
+			string			% a mangled string that encodes
+						% the names and arities of the
+						% types in the instance
+						% declaration
+		)
 	%
 	% Stuff for handling debugging and accurate garbage collection.
 	% (Those features are not yet implemented for the MLDS back-end,

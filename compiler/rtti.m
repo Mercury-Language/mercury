@@ -300,6 +300,7 @@
 		)
 	;	pseudo_type_info(pseudo_type_info)
 	;	base_typeclass_info(
+			module_name,	% module containing instance decl.
 			class_id,	% specifies class name & class arity
 			string,		% encodes the names and arities of the
 					% types in the instance declaration
@@ -324,6 +325,7 @@
 	;	type_ctor_info
 	;	pseudo_type_info(pseudo_type_info)
 	;	base_typeclass_info(
+			module_name,	% module containing instance decl.
 			class_id,	% specifies class name & class arity
 			string		% encodes the names and arities of the
 					% types in the instance declaration
@@ -461,7 +463,7 @@ rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
 	RttiTypeId, du_ptag_ordered_table).
 rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
 	RttiTypeId, type_ctor_info).
-rtti_data_to_name(base_typeclass_info(_, _, _), _, _) :-
+rtti_data_to_name(base_typeclass_info(_, _, _, _), _, _) :-
 	% there's no rtti_type_id associated with a base_typeclass_info
 	error("rtti_data_to_name: base_typeclass_info").
 rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeId,
@@ -490,7 +492,7 @@ rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
 rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
 rtti_name_has_array_type(type_ctor_info)		= no.
 rtti_name_has_array_type(pseudo_type_info(_))		= no.
-rtti_name_has_array_type(base_typeclass_info(_, _))	= yes.
+rtti_name_has_array_type(base_typeclass_info(_, _, _))	= yes.
 rtti_name_has_array_type(type_hashcons_pointer)		= no.
 
 rtti_name_is_exported(exist_locns(_))		= no.
@@ -508,7 +510,7 @@ rtti_name_is_exported(du_ptag_ordered_table)    = no.
 rtti_name_is_exported(type_ctor_info)           = yes.
 rtti_name_is_exported(pseudo_type_info(Pseudo)) =
 	pseudo_type_info_is_exported(Pseudo).
-rtti_name_is_exported(base_typeclass_info(_, _)) = yes.
+rtti_name_is_exported(base_typeclass_info(_, _, _)) = yes.
 rtti_name_is_exported(type_hashcons_pointer)    = no.
 
 :- func pseudo_type_info_is_exported(pseudo_type_info) = bool.
@@ -606,7 +608,8 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 		RttiName = pseudo_type_info(PseudoTypeInfo),
 		rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str)
 	;
-		RttiName = base_typeclass_info(ClassId, InstanceStr),
+		RttiName = base_typeclass_info(_ModuleName, ClassId,
+			InstanceStr),
 		ClassId = class_id(ClassSym, ClassArity),
 		llds_out__sym_name_mangle(ClassSym, MangledClassString),
 		string__int_to_string(ClassArity, ArityString),

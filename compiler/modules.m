@@ -4334,10 +4334,12 @@ make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 :- pred make_abstract_instance(item, item).
 :- mode make_abstract_instance(in, out) is semidet.
 
-make_abstract_instance(Item, Item1) :-
-	Item = instance(Constraints, Class, ClassTypes, Body0, TVarSet),
+make_abstract_instance(Item0, Item) :-
+	Item0 = instance(Constraints, Class, ClassTypes, Body0, TVarSet,
+		ModName),
 	Body0 = concrete(_),
 	Body = abstract,
-	Item1 = instance(Constraints, Class, ClassTypes, Body, TVarSet).
+	Item = instance(Constraints, Class, ClassTypes, Body, TVarSet,
+		ModName).
 
 %-----------------------------------------------------------------------------%

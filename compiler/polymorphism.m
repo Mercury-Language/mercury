@@ -2012,7 +2012,7 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			list__index1_det(InstanceList, InstanceNum,
 				ProofInstanceDefn),
 
-			ProofInstanceDefn = hlds_instance_defn(_, _,
+			ProofInstanceDefn = hlds_instance_defn(_, _, _,
 				InstanceConstraints0, InstanceTypes0, _, _, 
 				InstanceTVarset, SuperClassProofs0),
 
@@ -2257,12 +2257,14 @@ polymorphism__construct_typeclass_info(ArgUnconstrainedTypeInfoVars,
 	polymorphism__new_typeclass_info_var(VarSet0, VarTypes0,
 		Constraint, ClassNameString, BaseVar, VarSet1, VarTypes1),
 
-		% XXX I don't think we actually need to carry the module name
-		% around.
-	ModuleName = unqualified("some bogus module name"),
+	module_info_instances(ModuleInfo, InstanceTable),
+	map__lookup(InstanceTable, ClassId, InstanceList),
+	list__index1_det(InstanceList, InstanceNum, InstanceDefn),
+	InstanceDefn = hlds_instance_defn(InstanceModuleName,
+		_, _, _, _, _, _, _, _),
 	base_typeclass_info__make_instance_string(InstanceTypes,
 		InstanceString),
-	ConsId = base_typeclass_info_const(ModuleName, ClassId,
+	ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
 		InstanceNum, InstanceString),
 	BaseTypeClassInfoTerm = functor(ConsId, []),
 

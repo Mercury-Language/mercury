@@ -818,8 +818,8 @@ intermod__gather_instances_2(ModuleInfo, ClassId, InstanceDefns) -->
 	hlds_instance_defn::in, intermod_info::in, intermod_info::out) is det.
 		
 intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
-	{ InstanceDefn = hlds_instance_defn(Status, B, C, D, Interface0,
-				MaybePredProcIds, F, G) },
+	{ InstanceDefn = hlds_instance_defn(A, Status, C, D, E, Interface0,
+				MaybePredProcIds, H, I) },
 	(
 		%
 		% The bodies are always stripped from instance declarations
@@ -894,9 +894,9 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 				status_is_exported(Status, no)
 			}
 		->
-			{ InstanceDefnToWrite = hlds_instance_defn(Status,
-					B, C, D, Interface, MaybePredProcIds,
-					F, G) },
+			{ InstanceDefnToWrite = hlds_instance_defn(A, Status,
+					C, D, E, Interface, MaybePredProcIds,
+					H, I) },
 			intermod_info_get_instances(Instances0),
 			intermod_info_set_instances(
 				[ClassId - InstanceDefnToWrite | Instances0])
@@ -1269,10 +1269,11 @@ intermod__write_instances(Instances) -->
 		io__state::di, io__state::uo) is det.
 
 intermod__write_instance(ClassId - InstanceDefn) -->
-	{ InstanceDefn = hlds_instance_defn(_, Context, Constraints,
-				Types, Body, _, TVarSet, _) },
+	{ InstanceDefn = hlds_instance_defn(ModuleName, _, Context,
+			Constraints, Types, Body, _, TVarSet, _) },
 	{ ClassId = class_id(ClassName, _) },
-	{ Item = instance(Constraints, ClassName, Types, Body, TVarSet) },
+	{ Item = instance(Constraints, ClassName, Types, Body, TVarSet,
+		ModuleName) },
 	mercury_output_item(Item, Context).
 
 	% We need to write all the declarations for local predicates so
@@ -1913,16 +1914,17 @@ adjust_instance_status_2(ClassId - InstanceList0, ClassId - InstanceList,
 	hlds_instance_defn::out, module_info::in, module_info::out) is det.
 
 adjust_instance_status_3(Instance0, Instance, ModuleInfo0, ModuleInfo) :-
-	Instance0 = hlds_instance_defn(Status0, Context, Constraints, Types,
-			Body, HLDSClassInterface, TVarSet, ConstraintProofs),
+	Instance0 = hlds_instance_defn(InstanceModule, Status0, Context,
+			Constraints, Types, Body, HLDSClassInterface,
+			TVarSet, ConstraintProofs),
 	(
 		( Status0 = local
 		; Status0 = abstract_exported
 		)
 	->
-		Instance = hlds_instance_defn(exported, Context, Constraints,
-				Types, Body, HLDSClassInterface, TVarSet,
-				ConstraintProofs),
+		Instance = hlds_instance_defn(InstanceModule, exported,
+			Context, Constraints, Types, Body, HLDSClassInterface,
+			TVarSet, ConstraintProofs),
 		( HLDSClassInterface = yes(ClassInterface) ->
 			class_procs_to_pred_ids(ClassInterface, PredIds),
 			set_list_of_preds_exported(PredIds,

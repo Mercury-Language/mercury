@@ -157,10 +157,10 @@ equiv_type__replace_in_item(
 
 equiv_type__replace_in_item(
 			instance(Constraints0, ClassName, Ts0, 
-				InstanceBody, VarSet0),
+				InstanceBody, VarSet0, ModName),
 			EqvMap,
 			instance(Constraints, ClassName, Ts, 
-				InstanceBody, VarSet),
+				InstanceBody, VarSet, ModName),
 			no) :-
 	equiv_type__replace_in_class_constraint_list(Constraints0, VarSet0, 
 				EqvMap, Constraints, VarSet1),

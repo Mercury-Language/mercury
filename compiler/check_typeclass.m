@@ -166,7 +166,8 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		IO0, IO):-
 		
 		% check conformance of the instance body
-	InstanceDefn0 = hlds_instance_defn(_, _, _, _, InstanceBody, _, _, _),
+	InstanceDefn0 = hlds_instance_defn(_, _, _, _, _, InstanceBody,
+		_, _, _),
 	(
 		InstanceBody = abstract,
 		InstanceDefn2 = InstanceDefn0,
@@ -192,8 +193,8 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		% handled by check_instance_pred, but we also need to handle
 		% it below, in case the class has no methods.
 		%
-		InstanceDefn1 = hlds_instance_defn(A, B, C, D, _, 
-				MaybePredProcs1, G, H),
+		InstanceDefn1 = hlds_instance_defn(A, B, C, D, E, _, 
+				MaybePredProcs1, H, I),
 		(
 			MaybePredProcs1 = yes(_),
 			MaybePredProcs = MaybePredProcs1
@@ -208,16 +209,16 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		% relies on this
 		OrderedInstanceMethods = list__reverse(RevInstanceMethods),
 
-		InstanceDefn2 = hlds_instance_defn(A, B, C, D,
+		InstanceDefn2 = hlds_instance_defn(A, B, C, D, E,
 				concrete(OrderedInstanceMethods),
-				MaybePredProcs, G, H),
+				MaybePredProcs, H, I),
 
 		%
 		% Check if there are any instance methods left over,
 		% which did not match any of the methods from the
 		% class interface.
 		%
-		InstanceDefn2 = hlds_instance_defn(_, Context,
+		InstanceDefn2 = hlds_instance_defn(_, _, Context,
 			_, _, _, _, _, _),
 		check_for_bogus_methods(InstanceMethods, ClassId, PredIds,
 			Context, ModuleInfo1, Errors1, Errors2)
@@ -403,7 +404,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ProcIds, 
 		ArgModes),
 	
-	InstanceDefn0 = hlds_instance_defn(Status, _, _, InstanceTypes, 
+	InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes, 
 		_, _, _, _),
 
 		% Work out the name of the predicate that we will generate
@@ -440,10 +441,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
 		OrderedInstanceMethods, Info0, Info, IO0, IO) :-
-	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
+	InstanceDefn0 = hlds_instance_defn(A, B, InstanceContext, 
 				InstanceConstraints, InstanceTypes,
 				InstanceBody, MaybeInstancePredProcs,
-				InstanceVarSet, H),
+				InstanceVarSet, I),
 	Info0 = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
@@ -478,9 +479,9 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			MaybeInstancePredProcs = no,
 			InstancePredProcs = InstancePredProcs1
 		),
-		InstanceDefn = hlds_instance_defn(A, Context, 
+		InstanceDefn = hlds_instance_defn(A, B, Context, 
 			InstanceConstraints, InstanceTypes, InstanceBody,
-			yes(InstancePredProcs), InstanceVarSet, H)
+			yes(InstancePredProcs), InstanceVarSet, I)
 	;
 		MatchingInstanceMethods = [I1, I2 | Is]
 	->
@@ -767,8 +768,8 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		InstanceDefn0, InstanceDefn, 
 		Errors0 - ModuleInfo, Errors - ModuleInfo) :-
 
-	InstanceDefn0 = hlds_instance_defn(A, Context, InstanceConstraints,
-		InstanceTypes, E, F, InstanceVarSet0, Proofs0),
+	InstanceDefn0 = hlds_instance_defn(A, B, Context, InstanceConstraints,
+		InstanceTypes, F, G, InstanceVarSet0, Proofs0),
 	varset__merge_subst(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
 		Subst),
 
@@ -805,8 +806,8 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		UnprovenConstraints = []
 	->
 		Errors = Errors0,
-		InstanceDefn = hlds_instance_defn(A, Context, 
-			InstanceConstraints, InstanceTypes, E, F, 
+		InstanceDefn = hlds_instance_defn(A, B, Context, 
+			InstanceConstraints, InstanceTypes, F, G,
 			InstanceVarSet2, Proofs1)
 	;
 		ClassId = class_id(ClassName, _ClassArity),

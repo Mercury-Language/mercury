@@ -228,7 +228,7 @@ collect_mq_info_2(assertion(Goal, _ProgVarSet), Info0, Info) :-
 collect_mq_info_2(nothing, Info, Info).
 collect_mq_info_2(typeclass(_, Name, Vars, _, _), Info0, Info) :-
 	add_typeclass_defn(Name, Vars, Info0, Info).
-collect_mq_info_2(instance(_,_,_,_,_), Info, Info).
+collect_mq_info_2(instance(_,_,_,_,_,_), Info, Info).
 
 
 % Predicates to add the type, inst, mode and typeclass ids visible
@@ -571,9 +571,9 @@ module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
 	qualify_class_constraint_list(Constraints0, Constraints, Info1, Info2),
 	qualify_class_interface(Interface0, Interface, Info2, Info).
 
-module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet) -
-			Context, 
-		instance(Constraints, Name, Types, Body, VarSet) -
+module_qualify_item(instance(Constraints0, Name0, Types0, Body0, VarSet,
+		ModName) - Context, 
+		instance(Constraints, Name, Types, Body, VarSet, ModName) -
 			Context, 
 		Info0, Info, yes) -->
 	{ list__length(Types0, Arity) },

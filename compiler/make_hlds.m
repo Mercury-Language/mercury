@@ -352,7 +352,7 @@ add_item_decl_pass_1(typeclass(Constraints, Name, Vars, Interface, VarSet),
 
 	% We add instance declarations on the second pass so that we don't add
 	% an instance declaration before its class declaration.
-add_item_decl_pass_1(instance(_, _, _, _, _), _, Status, Module, Status,
+add_item_decl_pass_1(instance(_, _, _, _, _, _), _, Status, Module, Status,
 	Module) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -577,16 +577,17 @@ add_item_decl_pass_2(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
 add_item_decl_pass_2(nothing, _, Status, Module, Status, Module) --> [].
 add_item_decl_pass_2(typeclass(_, _, _, _, _)
 	, _, Status, Module, Status, Module) --> [].
-add_item_decl_pass_2(instance(Constraints, Name, Types, Body, VarSet), 
-		Context, Status, Module0, Status, Module) -->
+add_item_decl_pass_2(instance(Constraints, Name, Types, Body, VarSet,
+		InstanceModuleName), Context,
+		Status, Module0, Status, Module) -->
 	{ Status = item_status(ImportStatus, _) },
 	{ Body = abstract ->
 		make_status_abstract(ImportStatus, BodyStatus)
 	;
 		BodyStatus = ImportStatus
 	},
-	module_add_instance_defn(Module0, Constraints, Name, Types, Body,
-		VarSet, BodyStatus, Context, Module).
+	module_add_instance_defn(Module0, InstanceModuleName, Constraints,
+		Name, Types, Body, VarSet, BodyStatus, Context, Module).
 
 %------------------------------------------------------------------------------
 
@@ -779,7 +780,7 @@ add_item_clause(assertion(Goal0, VarSet),
 add_item_clause(nothing, Status, Status, _, Module, Module, Info, Info) --> [].
 add_item_clause(typeclass(_, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
-add_item_clause(instance(_, _, _, _, _),
+add_item_clause(instance(_, _, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -2504,14 +2505,15 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 	add_default_class_method_func_modes(Ms, PredProcIds1, PredProcIds,
 		Module1, Module).
 
-:- pred module_add_instance_defn(module_info, list(class_constraint), sym_name,
-	list(type), instance_body, tvarset, import_status, prog_context, 
-	module_info, io__state, io__state).
-:- mode module_add_instance_defn(in, in, in, in, in, in, in, in, out, 
-	di, uo) is det.
+:- pred module_add_instance_defn(module_info, module_name,
+		list(class_constraint), sym_name, list(type), instance_body,
+		tvarset, import_status, prog_context, module_info,
+		io__state, io__state).
+:- mode module_add_instance_defn(in, in, in, in, in, in, in, in, in, out, 
+		di, uo) is det.
 
-module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
-		Status, Context, Module) -->
+module_add_instance_defn(Module0, InstanceModuleName, Constraints, ClassName,
+		Types, Body, VarSet, Status, Context, Module) -->
 	{ module_info_classes(Module0, Classes) },
 	{ module_info_instances(Module0, Instances0) },
 	{ list__length(Types, ClassArity) },
@@ -2520,8 +2522,9 @@ module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 		{ map__search(Classes, ClassId, _) }
 	->
 		{ map__init(Empty) },
-		{ NewInstanceDefn = hlds_instance_defn(Status, Context,
-			Constraints, Types, Body, no, VarSet, Empty) },
+		{ NewInstanceDefn = hlds_instance_defn(InstanceModuleName,
+			Status, Context, Constraints, Types, Body, no,
+			VarSet, Empty) },
 		{ map__lookup(Instances0, ClassId, InstanceDefns) },
 		check_for_overlapping_instances(NewInstanceDefn, InstanceDefns,
 			ClassId),
@@ -2540,11 +2543,11 @@ module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 
 check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId) -->
 	{ IsOverlapping = lambda([(Context - OtherContext)::out] is nondet, (
-		NewInstanceDefn = hlds_instance_defn(_Status, Context,
+		NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
 				_, Types, Body, _, VarSet, _),
 		Body \= abstract, % XXX
 		list__member(OtherInstanceDefn, InstanceDefns),
-		OtherInstanceDefn = hlds_instance_defn(_OtherStatus,
+		OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
 				OtherContext, _, OtherTypes, OtherBody,
 				_, OtherVarSet, _),
 		OtherBody \= abstract, % XXX
