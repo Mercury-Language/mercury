@@ -275,6 +275,9 @@ extern	MR_IoActionNum	MR_io_tabling_end;
 /* The flag that controls whether we should generate diagnostics. */
 extern	MR_bool		MR_io_tabling_debug;
 
+/* The flag that controls whether I/O tabling is allowed at all. */
+extern	MR_bool		MR_io_tabling_allowed;
+
 /*
 ** These functions will report the number of the last event,
 ** if there have been some events, and will do nothing otherwise.

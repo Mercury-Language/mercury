@@ -30,6 +30,7 @@ delete               xyzzy xyzzy xyzzy xyzzy xyzzy
 modules              xyzzy xyzzy xyzzy xyzzy xyzzy
 procedures           xyzzy xyzzy xyzzy xyzzy xyzzy
 register             xyzzy xyzzy xyzzy xyzzy xyzzy
+table_io             xyzzy xyzzy xyzzy xyzzy xyzzy
 mmc_options          xyzzy xyzzy xyzzy xyzzy xyzzy
 printlevel           xyzzy xyzzy xyzzy xyzzy xyzzy
 echo                 xyzzy xyzzy xyzzy xyzzy xyzzy
@@ -43,7 +44,6 @@ clear_histogram      xyzzy xyzzy xyzzy xyzzy xyzzy
 nondet_stack         xyzzy xyzzy xyzzy xyzzy xyzzy
 stack_regs           xyzzy xyzzy xyzzy xyzzy xyzzy
 all_regs             xyzzy xyzzy xyzzy xyzzy xyzzy
-table_io             xyzzy xyzzy xyzzy xyzzy xyzzy
 proc_stats           xyzzy xyzzy xyzzy xyzzy xyzzy
 label_stats          xyzzy xyzzy xyzzy xyzzy xyzzy
 print_optionals      xyzzy xyzzy xyzzy xyzzy xyzzy

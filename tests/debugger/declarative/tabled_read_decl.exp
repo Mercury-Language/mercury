@@ -4,6 +4,7 @@ Command echo enabled.
 mdb> register --quiet
 mdb> context none
 Contexts will not be printed.
+mdb> table_io allow
 mdb> table_io start
 io tabling started
 mdb> break tabled_read_decl__test

@@ -141,7 +141,7 @@
 		;	trace
 		;	trace_optimized
 		;	trace_table_io
-		;	trace_table_io_decl
+		;	trace_table_io_only_retry
 		;	trace_table_io_states
 		;	trace_table_io_require
 		;	trace_table_io_all
@@ -717,7 +717,7 @@ option_defaults_2(aux_output_option, [
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
 	trace_table_io		-	bool(no),
-	trace_table_io_decl	-	bool(no),
+	trace_table_io_only_retry -	bool(no),
 	trace_table_io_states	-	bool(no),
 	trace_table_io_require	-	bool(no),
 	trace_table_io_all	-	bool(no),
@@ -1278,13 +1278,12 @@ long_option("smart-recompilation",	smart_recompilation).
 long_option("assume-gmake",		assume_gmake).
 long_option("generate-mmc-make-module-dependencies",
 					generate_mmc_make_module_dependencies).
-long_option("generate-mmc-deps",
-					generate_mmc_make_module_dependencies).
+long_option("generate-mmc-deps",	generate_mmc_make_module_dependencies).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
 long_option("trace-table-io",		trace_table_io).
-long_option("trace-table-io-decl",	trace_table_io_decl).
+long_option("trace-table-io-only-retry", trace_table_io_only_retry).
 long_option("trace-table-io-states",	trace_table_io_states).
 long_option("trace-table-io-require",	trace_table_io_require).
 long_option("trace-table-io-all",	trace_table_io_all).
@@ -2439,14 +2438,18 @@ options_help_aux_output -->
 %		"\tSuppress the named aspects of the execution tracing system.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
-% tabling io is documented yet, since it is mean to be switched on only
-% automatically (in certain grades)
+% I/O tabling is deliberately not documented. It is mean to be switched on,
+% with consistent parameters, in debugging grades, and to be consistently
+% switched off in non-debugging grades. Inconsistent use of the options
+% governing I/O tabling can yield core dumps from the debugger, so these
+% options are for implementors only.
 %		"--trace-table-io",
 %		"\tEnable the tabling of I/O actions, to allow the debugger",
 %		"\tto execute retry commands across I/O actions.",
-%		"--trace-table-io-decl",
-%		"\tSet up I/O tabling so that the declarative debugger can",
-%		"\tmake use of it.",
+%		"--trace-table-io-only-retry",
+%		"\tSet up I/O tabling to support only retries across I/O",
+%		"\tactions, not the printing of actions or declarative",
+%		"\tdebugging. This reduces the size of the I/O action table.",
 %		"--trace-table-io-states",
 %		"\tWhen tabling I/O actions, table the io__state arguments",
 %		"\ttogether with the others. This should be required iff",

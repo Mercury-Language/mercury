@@ -360,12 +360,13 @@ table_gen__process_proc(PredId, ProcId, ProcInfo0, PredInfo0,
 		;
 			TransformPrimitive = yes(Unitize),
 			globals__lookup_bool_option(Globals,
-				trace_table_io_decl, TraceTableIoDecl),
+				trace_table_io_only_retry,
+				TraceTableIoOnlyRetry),
 			(
-				TraceTableIoDecl = yes,
+				TraceTableIoOnlyRetry = no,
 				Decl = table_io_decl
 			;
-				TraceTableIoDecl = no,
+				TraceTableIoOnlyRetry = yes,
 				Decl = table_io_proc
 			),
 			TableIoMethod = eval_table_io(Decl, Unitize),

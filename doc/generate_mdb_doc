@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-1999 The University of Melbourne.
+# Copyright (C) 1998-1999,2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -16,12 +16,16 @@ info -f ./mercury_user_guide.info -o $tmp -n "Mercury debugger concepts"
 
 debug_cmd_path="debug debugger"
 for section in interactive forward backward browsing breakpoint \
-	parameter help exp developer misc 
+	i/o parameter help exp developer misc 
 do
 	case $section in
 		interactive)	category=queries ;;
+		i/o)		category=table_io ;;
 		*)		category=$section ;;
 	esac
 	info -f ./mercury_user_guide.info -o $tmp $debug_cmd_path $section
 	../util/info_to_mdb $category $tmp >> mdb_doc
 done
+
+mv mdb_doc $tmp
+./squeeze < $tmp > mdb_doc

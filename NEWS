@@ -24,6 +24,7 @@ Major improvements to the Mercury debugger, including:
 * Command-line completion.
 * Ability to display values of higher-order terms.
 * Declarative debugging.
+* Support for transparent retries across I/O.
 
 Numerous minor improvements to the Mercury standard library.
 
@@ -384,5 +385,11 @@ Changes to the Mercury debugger:
 * The debugger now includes support for declarative debugging.  The `dd'
   command starts diagnosis at any exit, fail or exception port in mdb.  See
   the Mercury User's Guide for more details.
+
+* When a program is compiled in a debugging grade, the debugger can be
+  asked, via the command `table_io start', to make I/O primitives (such as
+  io__open_file, io__write_string etc) idempotent. This means that a given
+  call to e.g. io__open_file will open the specified file only once,
+  even if retry commands cause the call to be executed more than once.
 
 For news about earlier versions, see the HISTORY file.

@@ -4,6 +4,7 @@ Command echo enabled.
 mdb> register --quiet
 mdb> context none
 Contexts will not be printed.
+mdb> table_io allow
 mdb> table_io
 io tabling has not yet started
 mdb> break tabled_read_decl__test
@@ -68,7 +69,7 @@ mdb> continue
 456
       E6:     C4  2 CALL pred tabled_read_decl:part_2/3-0 (det)
 mdb> table_io end
-io tabling ended
+io tabling stopped
 mdb> print action 0
 open_input("tabled_read_decl.data", 0, '<<c_pointer>>')
 mdb> print action 1

@@ -3154,6 +3154,13 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Code **jumpaddr)
 {
 	if (word_count == 1) {
+		if (! MR_io_tabling_allowed) {
+			fprintf(MR_mdb_err,
+				"This executable wasn't prepared "
+				"for I/O tabling.\n");
+			return KEEP_INTERACTING;
+		}
+
 		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
 		{
 			fprintf(MR_mdb_out,
@@ -3165,12 +3172,21 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
 		{
 			fprintf(MR_mdb_out,
-				"io tabling has finished\n");
+				"io tabling has stopped\n");
 		} else {
 			MR_fatal_error(
 				"io tabling in impossible phase\n");
 		}
-	} else if (word_count == 2 && MR_streq(words[1], "start")) {
+	} else if (word_count == 2 && (MR_streq(words[1], "start")
+		|| MR_streq(words[1], "begin")))
+	{
+		if (! MR_io_tabling_allowed) {
+			fprintf(MR_mdb_err,
+				"This executable wasn't prepared "
+				"for I/O tabling.\n");
+			return KEEP_INTERACTING;
+		}
+
 		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
 			MR_io_tabling_phase = MR_IO_TABLING_DURING;
 			MR_io_tabling_start = MR_io_tabling_counter;
@@ -3186,12 +3202,21 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
 		{
 			fprintf(MR_mdb_out,
-				"io tabling has already ended\n");
+				"io tabling has already stopped\n");
 		} else {
 			MR_fatal_error(
 				"io tabling in impossible phase\n");
 		}
-	} else if (word_count == 2 && MR_streq(words[1], "end")) {
+	} else if (word_count == 2 && (MR_streq(words[1], "stop")
+		|| MR_streq(words[1], "end")))
+	{
+		if (! MR_io_tabling_allowed) {
+			fprintf(MR_mdb_err,
+				"This executable wasn't prepared "
+				"for I/O tabling.\n");
+			return KEEP_INTERACTING;
+		}
+
 		if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
 		{
 			fprintf(MR_mdb_out,
@@ -3200,18 +3225,24 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		{
 			MR_io_tabling_phase = MR_IO_TABLING_AFTER;
 			MR_io_tabling_end = MR_io_tabling_counter_hwm;
-			fprintf(MR_mdb_out, "io tabling ended\n");
+			fprintf(MR_mdb_out, "io tabling stopped\n");
 		} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
 		{
 			fprintf(MR_mdb_out,
-				"io tabling has already ended\n");
+				"io tabling has already stopped\n");
 		} else {
 			MR_fatal_error(
 				"io tabling in impossible phase\n");
 		}
 	} else if (word_count == 2 && MR_streq(words[1], "stats")) {
-		fprintf(MR_mdb_out, "phase = %d\n",
-			MR_io_tabling_phase);
+		if (! MR_io_tabling_allowed) {
+			fprintf(MR_mdb_err,
+				"This executable wasn't prepared "
+				"for I/O tabling.\n");
+			return KEEP_INTERACTING;
+		}
+
+		fprintf(MR_mdb_out, "phase = %d\n", MR_io_tabling_phase);
 		MR_print_unsigned_var(MR_mdb_out, "counter",
 			MR_io_tabling_counter);
 		MR_print_unsigned_var(MR_mdb_out, "hwm",
@@ -3220,6 +3251,17 @@ MR_trace_cmd_table_io(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_io_tabling_start);
 		MR_print_unsigned_var(MR_mdb_out, "end",
 			MR_io_tabling_end);
+	} else if (word_count == 2 && MR_streq(words[1], "allow")) {
+		/*
+		** The "table_io allow" command allows the programmer to give
+		** the command "table_io start" even in grades in which there
+		** is no guarantee that all I/O primitives are tabled. It is
+		** for developers only, because its use on programs in which
+		** some but not all I/O primitives are tabled, the results of
+		** turning on I/O tabling can be weird.
+		*/
+
+		MR_io_tabling_allowed = MR_TRUE;
 	} else {
 		MR_trace_usage("developer", "table_io");
 	}
@@ -4995,8 +5037,13 @@ static const char *const	MR_trace_context_cmd_args[] =
 static const char *const	MR_trace_scope_cmd_args[] =
 		{"all", "interface", "entry", NULL};
 
+/*
+** "table_io allow" is deliberately not documented as it is developer only
+** "table_io begin" and "table_io end" are deliberately not documented in an
+** effort to encourage consistent use of start/stop.
+*/
 static const char *const	MR_trace_table_io_cmd_args[] =
-		{"stats", "start", "end", NULL};
+		{"stats", "start", "stop", NULL};
 
 		/*
 		** It's better to have a single completion where possible,
@@ -5088,6 +5135,9 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "queries", "io_query", MR_trace_cmd_io_query,
 		NULL, MR_trace_module_completer },
 
+	{ "table_io", "table_io", MR_trace_cmd_table_io,
+		MR_trace_table_io_cmd_args, MR_trace_null_completer },
+
 	{ "parameter", "printlevel", MR_trace_cmd_printlevel,
 		MR_trace_printlevel_cmd_args, MR_trace_null_completer },
 	{ "parameter", "mmc_options", MR_trace_cmd_mmc_options,
@@ -5131,8 +5181,6 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_null_completer },
 	{ "developer", "all_regs", MR_trace_cmd_all_regs,
 		NULL, MR_trace_null_completer },
-	{ "developer", "table_io", MR_trace_cmd_table_io,
-		MR_trace_table_io_cmd_args, MR_trace_null_completer },
 	{ "developer", "proc_stats", MR_trace_cmd_proc_stats,
 		NULL, MR_trace_filename_completer },
 	{ "developer", "label_stats", MR_trace_cmd_label_stats,

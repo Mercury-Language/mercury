@@ -1,6 +1,7 @@
 echo on
 register --quiet
 context none
+table_io allow
 table_io start
 break tabled_read_decl__test
 continue

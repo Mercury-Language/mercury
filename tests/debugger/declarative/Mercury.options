@@ -6,5 +6,5 @@ MCFLAGS-input_term_dep=--trace rep
 MCFLAGS-output_term_dep=--trace rep
 MCFLAGS-shallow_2=--trace shallow
 MCFLAGS-special_term_dep=--trace rep
-MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-decl --trace-table-io-all
+MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-all
 MCFLAGS-untraced_subgoal_sub=--trace minimum

@@ -1,0 +1,23 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2002 The University of Melbourne.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+# Replace any sequence of blank lines in the input with a single blank line.
+# If invoked with arguments, the input is the concatenation of the named files;
+# if invoked without arguments, the input is standard input.
+
+awk '
+$0 ~ /^[ \t]*$/		{
+				if (empties == 0)
+					print;
+
+				empties++;
+			}
+$0 !~ /^[ \t]*$/	{
+				empties = 0;
+				print;
+			}
+' $@

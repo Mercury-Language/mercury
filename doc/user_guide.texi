@@ -1161,6 +1161,7 @@ EXTRA_LIBRARIES-foo = mylib4foo
 * Tracing optimized code::
 * Mercury debugger invocation::
 * Mercury debugger concepts::
+* I/O tabling::
 * Debugger commands::
 * Declarative debugging::
 @end menu
@@ -1965,6 +1966,69 @@ within the predicate or function to which the procedure belongs.
 @end itemize
 @end table
 
+@node I/O tabling
+@section I/O tabling
+
+In Mercury, predicates that want to do I/O
+must take a di/uo pair of I/O state arguments.
+Some of these predicates call other predicates to do I/O for them,
+but some are @emph{I/O primitives}, i.e. they perform the I/O themselves.
+The Mercury standard library provides a large set of these primitives,
+and programmers can write their own through the foreign language interface.
+An I/O action is the execution of one call to an I/O primitive.
+
+In debugging grades, the Mercury implementation has the ability
+to automatically record, for every I/O action,
+the identity of the I/O primitive involved in the action
+and the values of all its arguments.
+The size of the table storing this information
+is proportional to the number of @emph{tabled} I/O actions,
+which are the I/O actions whose details are entered into the table.
+Therefore the tabling of I/O actions is never turned on automatically;
+instead, users must ask for I/O tabling to start
+with the @samp{table_io start} command in mdb.
+
+The purpose of I/O tabling is to enable transparent retries across I/O actions.
+(The mdb @samp{retry} command
+restores the computation to a state it had earlier,
+allowing the programmer to explore code that the program has already executed;
+see its documentation in the Debugger commands section below.)
+In the absence of I/O tabling,
+retries across I/O actions can have bad consequences.
+Retry of a goal that reads some input requires that input to be provided twice;
+retry of a goal that writes some output generates duplicate output.
+Retry of a goal that opens a file leads to a file descriptor leak;
+retry of a goal that closes a file can lead to errors
+(duplicate closes, reads from and writes to closed files).
+
+I/O tabling avoids these problems by making I/O primitives @emph{idempotent}.
+This means that they will generate their desired effect
+when they are first executed,
+but reexecuting them after a retry won't have any further effect.
+The Mercury implementation achieves this
+by looking up the action (which is identified by a I/O action number)
+in the table and returning the output arguments stored in the table
+for the given action @emph{without} executing the code of the primitive.
+
+Starting I/O tabling when the program starts execution
+and leaving it enabled for the entire program run
+will work well for program runs that don't do lots of I/O.
+For program runs that @emph{do} lots of I/O,
+the table can fill up all available memory.
+In such cases, the programmer may enable I/O tabling with @samp{table_io start}
+just before the program enters the part they wish to debug
+and in which they wish to be able to perform
+transparent retries across I/O actions,
+and turn it off with @samp{table_io stop} after execution leaves that part.
+
+The commands @samp{table_io start} and @samp{table_io stop}
+can each be given only once during an mdb session.
+They divide the execution of the program into three phases:
+before @samp{table_io start},
+between @samp{table_io start} and @samp{table_io stop},
+and after @samp{table_io stop}.
+Retries across I/O will be transparent only in the middle phase.
+
 @node Debugger commands
 @section Debugger commands
 
@@ -1998,6 +2062,7 @@ even if the number and the command are not separated by white space.
 * Backward movement commands::
 * Browsing commands::
 * Breakpoint commands::
+* I/O tabling commands::
 * Parameter commands::
 * Help commands::
 * Experimental commands::
@@ -2073,12 +2138,13 @@ To build with shared libraries, you can use
 @samp{MGNUCFLAGS=--pic-reg} and @samp{MLFLAGS=--shared} in your
 Mmakefile.  See the @file{README.Linux} file in the Mercury
 distribution for more details.
-
 @end table
 
+@sp 1
 @node Forward movement commands
 @subsection Forward movement commands
 
+@sp 1
 @table @code
 @item step [-NSans] [@var{num}]
 @kindex step (mdb command)
@@ -2258,14 +2324,15 @@ By default, this command is not strict. The print level used
 by the command by default depends on the final strictness level:
 if the command is strict, it is @samp{none}, otherwise it is @samp{some}.
 @end table
+
 @sp 1
 @node Backward movement commands
 @subsection Backward movement commands
+
 @sp 1
 @table @code
 @item retry [-f]
 @kindex retry (mdb command)
-If
 Restarts execution at the call port
 of the call corresponding to the current event.
 @sp 1
@@ -2302,15 +2369,17 @@ and tells the debugger that retrying over I/O is OK.
 @c is not also in the repeated code
 @c may cause later file open actions to fail due to file descriptor leak.
 @c @end itemize
-@sp 1
-The debugger can perform a retry only from an exit or fail port;
-only at these ports does the debugger have enough information
-to figure out how to reset the stacks.
-If the debugger is not at such a port when a retry command is given,
-the debugger will continue forward execution
-until it reaches an exit or fail port of the call to be retried
-before it performs the retry.
-This may require a noticeable amount of time.
+@c @sp 1
+@c XXX the following limitation applies only in minimal model grades,
+@c which are not officially supported:
+@c The debugger can perform a retry only from an exit or fail port;
+@c only at these ports does the debugger have enough information
+@c to figure out how to reset the stacks.
+@c If the debugger is not at such a port when a retry command is given,
+@c the debugger will continue forward execution
+@c until it reaches an exit or fail port of the call to be retried
+@c before it performs the retry.
+@c This may require a noticeable amount of time.
 @c XXX not yet
 @c and may result in the execution of I/O and/or other side-effects.
 @sp 1
@@ -2334,9 +2403,11 @@ the debugger will normally ask the user if they really want to do this.
 The option @samp{-f} or @samp{--force} suppresses the question,
 and tells the debugger that retrying over I/O is OK.
 @end table
+
 @sp 1
 @node Browsing commands
 @subsection Browsing commands
+
 @sp 1
 @table @code
 @item vars
@@ -2378,6 +2449,13 @@ Reports an error if the current event does not refer to such a port.
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
+@item print [-fpv] action @var{num}
+Prints a representation
+of the @var{num}'th I/O action executed by the program.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@sp 1
 @item browse [-fpv] @var{name}
 @itemx browse [-fpv] @var{num}
 @kindex browse (mdb command)
@@ -2411,6 +2489,13 @@ and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
 Invokes the interactive term browser to browse
 the value of the exception at an EXCP port.
 Reports an error if the current event does not refer to such a port.
+@sp 1
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+@sp 1
+@item browse [-fpv] action @var{num}
+Invokes an interactive term browser to browse a representation
+of the @var{num}'th I/O action executed by the program.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
@@ -2603,10 +2688,12 @@ mdb will attempt to connect to the existing one.
 The option @samp{-t} (or @samp{--timeout}) specifies
 the maximum number of seconds to wait for the server to start.
 @end table
+
 @sp 1
 @node Breakpoint commands
 @subsection Breakpoint commands
 @cindex Breakpoints
+
 @sp 1
 @table @code
 @item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] @var{filename}:@var{linenumber}
@@ -2785,9 +2872,37 @@ Has no effect if this registration has already been done.
 The debugger will perform this registration when creating breakpoints
 and when listing debuggable modules and/or procedures.
 @end table
+
+@sp 1
+@node I/O tabling commands
+@subsection I/O tabling commands
+
+@sp 1
+@table @code
+@item table_io
+@kindex table_io (mdb command)
+Reports which phase of I/O tabling we are in at the moment.
+@sp 1
+@item table_io start
+Tells the debugger to start tabling I/O actions.
+@sp 1
+@item table_io stop
+Tells the debugger to stop tabling I/O actions.
+@sp 1
+@item table_io stats
+Reports statistics about I/O tabling.
+@c "table_io allow" is not documented because its use by a non-expert
+@c can yield weird results.
+@c @sp 1
+@c @item table_io allow
+@c Allow I/O tabling to be started, even in grades in which
+@c not all I/O primitives are guaranteed to be tabled.
+@end table
+
 @sp 1
 @node Parameter commands
 @subsection Parameter commands
+
 @sp 1
 @table @code
 @item mmc_options @var{option1} @var{option2} @dots{}
@@ -2925,9 +3040,11 @@ whenever the user types in a command line that consists of a single number.
 @kindex unalias (mdb command)
 Removes any existing alias for @var{name}.
 @end table
+
 @sp 1
 @node Help commands
 @subsection Help commands
+
 @sp 1
 @table @code
 @item document_category @var{slot} @var{category}
@@ -2957,9 +3074,11 @@ which may be the name of a help category or a help item.
 @item help
 Prints summary information about all the available help categories.
 @end table
+
 @sp 1
 @node Experimental commands
 @subsection Experimental commands
+
 @sp 1
 @table @code
 @item histogram_all @var{filename}
@@ -2983,8 +3102,11 @@ only in some experimental versions of the Mercury runtime system.
 Clears the histogram printed by @samp{histogram_exp},
 i.e.@: sets the counts for all depths to zero.
 @end table
+
+@sp 1
 @node Developer commands
 @subsection Developer commands
+
 @sp 1
 The following commands are intended for use by the developers
 of the Mercury implementation.
@@ -3005,19 +3127,6 @@ that point to the det and nondet stacks.
 @item all_regs
 @kindex all_regs (mdb command)
 Prints the contents of all the virtual machine registers.
-@sp 1
-@item table_io
-@kindex table_io (mdb command)
-Reports which phase of I/O tabling we are in at the moment.
-@sp 1
-@item table_io stats
-Reports statistics about I/O tabling.
-@sp 1
-@item table_io start
-Tells the debugger to start tabling I/O actions.
-@sp 1
-@item table_io end
-Tells the debugger to stop tabling I/O actions.
 @sp 1
 @item proc_stats
 @kindex proc_stats (mdb command)
@@ -3058,8 +3167,11 @@ Tells the debugger to expose events that are normally hidden.
 @item unhide_events off
 Tells the debugger to hide events that are normally hidden.
 @end table
+
+@sp 1
 @node Miscellaneous commands
 @subsection Miscellaneous commands
+
 @sp 1
 @table @code
 @item source [-i] @var{filename}

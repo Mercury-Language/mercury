@@ -65,14 +65,20 @@ MR_Unsigned		MR_io_tabling_start = 0;
 MR_Unsigned		MR_io_tabling_end = 0;
 MR_bool			MR_io_tabling_debug = MR_FALSE;
 
+#ifdef	MR_REQUIRE_TRACING
+  MR_bool		MR_io_tabling_allowed = MR_TRUE;
+#else
+  MR_bool		MR_io_tabling_allowed = MR_FALSE;
+#endif
+
 #ifdef	MR_TRACE_HISTOGRAM
 
-int		*MR_trace_histogram_all = NULL;
-int		*MR_trace_histogram_exp = NULL;
-int		MR_trace_histogram_max  = 0;
-int		MR_trace_histogram_hwm  = 0;
+  int		*MR_trace_histogram_all = NULL;
+  int		*MR_trace_histogram_exp = NULL;
+  int		MR_trace_histogram_max  = 0;
+  int		MR_trace_histogram_hwm  = 0;
 
-#define	MR_TRACE_HISTOGRAM_FILENAME	".mercury_histogram"
+  #define	MR_TRACE_HISTOGRAM_FILENAME	".mercury_histogram"
 
 #endif
 
