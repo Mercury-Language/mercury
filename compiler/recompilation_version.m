@@ -218,7 +218,8 @@ distribute_pragma_items(ItemId - ItemAndContext,
 :- type instance_item_map == map(item_name, item_list).
 
 	% The constructors set should always be empty.
-:- type gathered_items == item_id_set(map(pair(string, arity), item_list)).
+:- type gathered_items == item_id_set(gathered_item_map).
+:- type gathered_item_map == map(pair(string, arity), item_list).
 
 :- pred recompilation_version__gather_items_2(item_and_context::in,
 		gathered_item_info::in, gathered_item_info::out) is det.
