@@ -21,6 +21,7 @@
 :- include_module hlds_llds.
 :- include_module hlds_module.
 :- include_module hlds_pred.
+:- include_module inst_graph.
 :- include_module instmap.
 :- include_module special_pred.
 
@@ -28,6 +29,7 @@
 :- include_module make_hlds.
 :- include_module make_tags.
 :- include_module quantification.
+:- include_module hhf.
 
 % Modules for pretty-printing it.
 :- include_module hlds_out.

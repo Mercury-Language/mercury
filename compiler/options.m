@@ -171,6 +171,10 @@
 		;	generate_schemas
 		;	dump_rl
 		;	dump_rl_bytecode
+		;	mode_constraints
+		;	simple_mode_constraints
+		;	benchmark_modes
+		;	benchmark_modes_repeat
 		;	sign_assembly
 		;	separate_assemblies
 	% Language semantics options
@@ -835,6 +839,10 @@ option_defaults_2(aux_output_option, [
 	verbose_dump_mlds	-	accumulating([]),
 	dump_rl			-	bool(no),
 	dump_rl_bytecode	-	bool(no),
+	mode_constraints	-	bool(no),
+	simple_mode_constraints	-	bool(no),
+	benchmark_modes		-	bool(no),
+	benchmark_modes_repeat	-	int(1),
 	sign_assembly		-	bool(no),
 		% XXX should default to no but currently broken
 	separate_assemblies	-	bool(yes),
@@ -1491,6 +1499,10 @@ long_option("dump-rl-bytecode",		dump_rl_bytecode).
 long_option("sign-assembly",		sign_assembly).
 long_option("separate-assemblies",	separate_assemblies).
 long_option("generate-schemas",		generate_schemas).
+long_option("mode-constraints",		mode_constraints).
+long_option("simple-mode-constraints",	simple_mode_constraints).
+long_option("benchmark-modes",		benchmark_modes).
+long_option("benchmark-modes-repeat",	benchmark_modes_repeat).
 
 % language semantics options
 long_option("reorder-conj",		reorder_conj).

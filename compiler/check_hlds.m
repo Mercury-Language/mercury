@@ -37,9 +37,12 @@
    :- include_module delay_info.
    :- include_module inst_match.
    :- include_module inst_util.
+   :- include_module mode_constraint_robdd.
+   :- include_module mode_constraints.
    :- include_module mode_debug.
    :- include_module mode_errors.
    :- include_module mode_info.
+   :- include_module mode_ordering.
    :- include_module mode_util.
    :- include_module modecheck_call.
    :- include_module modecheck_unify.

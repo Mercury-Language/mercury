@@ -91,9 +91,11 @@ Taking all this into account, the structure looks like this:
           <ul type=disc>
           <li> 1. parsing (source files -&gt; HLDS)
                <br> Packages: parse_tree.m and hlds.m
-          <li> 2. semantic analysis and error checking (HLDS -&gt; annotated HLDS)
+          <li> 2. semantic analysis and error checking
+	       (HLDS -&gt; annotated HLDS)
                <br> Package: check_hlds.m
-          <li> 3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
+	  <li> 3. high-level transformations
+	       (annotated HLDS -&gt; annotated HLDS)
                <br> Package: transform_hlds.m
           </ul>
      <li> back-ends
@@ -437,12 +439,22 @@ and utility predicates on that type.
 <dd> Utility routines that the various backends use
 to analyze procedures' argument lists
 and decide on parameter passing conventions.
+
+<dt> hhf.m:
+<dd> Facilities for translating the bodies of predicates
+to hyperhomogeneous form, for constraint based mode analysis.
+
+<dt> inst_graph.m:
+<dd> Defines the inst_graph data type,
+which describes the structures of insts for constraint based mode analysis,
+as well as predicates operating on that type.
 </dl>
 
 <h4> 2. Semantic analysis and error checking </h4>
 
 <p>
-This is the check_hlds.m package.
+This is the check_hlds.m package,
+with support from the mode_robdd.m package for constraint based mode analysis.
 
 <p>
 
@@ -464,6 +476,7 @@ so that the compiler does the right thing for options such as
 	of implication and universal quantification, this expansion
 	cannot be done until after quantification).
 	This pass is called from the `transform' predicate in make_hlds.m.
+	<p>
 
 <dt> checking typeclass instances (check_typeclass.m)
 	<dd>
@@ -480,11 +493,12 @@ so that the compiler does the right thing for options such as
 	pred_ids and proc_ids are assigned to the methods for each instance. 
 
 	<p>
-	In
-	addition, while checking that the superclasses of a class are satisfied
+	In addition,
+	while checking that the superclasses of a class are satisfied
 	by the instance declaration, a set of constraint_proofs are built up 
 	for the superclass constraints. These are used by polymorphism.m when
 	generating the base_typeclass_info for the instance.
+	<p>
 
 <dt> type checking
 
@@ -511,6 +525,7 @@ so that the compiler does the right thing for options such as
 	  for unsatisified type class constraints, for indistinguishable
 	  predicate or function modes, and for invalid Aditi calls and updates.
 	</ul>
+	<p>
 
 <dt> assertions
 
@@ -521,6 +536,7 @@ so that the compiler does the right thing for options such as
 	record for each predicate that is used in an assertion, which
 	assertion it is used in.  The set up of the assertion table occurs
 	in post_typecheck__finish_assertion.
+	<p>
 
 <dt> purity analysis
 	
@@ -535,6 +551,7 @@ so that the compiler does the right thing for options such as
 	be done after quantification analysis and before mode analysis.
 	Calls to `private_builtin__unsafe_type_cast/2' are converted
 	into `generic_call(unsafe_cast, ...)' goals here.
+	<p>
 
 <dt> polymorphism transformation
 
@@ -562,6 +579,7 @@ so that the compiler does the right thing for options such as
 	When it has finished, polymorphism.m calls clause_to_proc.m to
 	make duplicate copies of the clauses for each different mode of
 	a predicate; all later stages work on procedures, not predicates.
+	<p>
 
 <dt> mode analysis
 
@@ -614,6 +632,29 @@ so that the compiler does the right thing for options such as
 	<li> mode_debug.m contains utility code for tracing the actions
 	  of the mode checker.
 	</ul>
+	<p>
+
+<dt> constraint based mode analysis
+
+	<dd> This is an experimental alternative
+	to the usual mode analysis algorithm.
+	It works by building a system of boolean constraints
+	about where (parts of) variables can be bound,
+	and then solving those constraints.
+
+	<ul>
+	<li> mode_constraints.m is the module that finds the constraints
+	and adds them to the constraint store.
+	<li> mode_ordering.m is the module that uses solutions of the
+	constraint system to find an ordering for the goals in conjunctions.
+	<li> mode_constraint_robdd.m is the interface to the modules
+	that perform constraint solving using reduced ordered binary decision
+	diagrams (robdds).
+	<li> We have several implementations of solvers using robdds.
+	Each solver is in a module named mode_robdd.X.m, and they all belong
+	to the top-level mode_robdd.m.
+	</ul>
+	<p>
 
 <dt> indexing and determinism analysis
  
@@ -634,6 +675,7 @@ so that the compiler does the right thing for options such as
 	  det_report.m.
 	  det_util.m contains utility predicates used in several modules.
 	</ul>
+	<p>
 
 <dt> checking of unique modes (unique_modes.m)
 
@@ -643,6 +685,7 @@ so that the compiler does the right thing for options such as
 	Note that what unique_modes.m does is quite similar to
 	what modes.m does, and unique_modes calls lots of predicates
 	defined in modes.m to do it.
+	<p>
 
 <dt> stratification checking
 
@@ -650,6 +693,7 @@ so that the compiler does the right thing for options such as
 	The module stratify.m implements the `--warn-non-stratification'
 	warning, which is an optional warning that checks for loops
 	through negation.
+	<p>
 
 <dt> simplification (simplify.m)
 
@@ -669,6 +713,7 @@ so that the compiler does the right thing for options such as
 	simplify.m also attempts to partially evaluate calls to builtin
 	procedures if the inputs are all constants (this is const_prop.m
 	in the transform_hlds.m package).
+	<p>
 
 </dl>
 
@@ -1468,16 +1513,15 @@ The following modules are part of the backend_libs.m package.
 		This module defines utility routines useful for generating
 		C code.  It is used by both llds_out.m and mlds_to_c.m.
 
+	<dt> name_mangle:
+		<dd>
+		This module defines utility routines useful for mangling
+		names to forms acceptable as identifiers in target languages.
+
 	<dt> compile_target_code.m
 		<dd>
 		Invoke C, C#, IL, Java, etc. compilers and linkers to compile
 		and link the generated code.
-
-	<dt> det_util:
-		<dd>
-		This module contains utility predicates needed by the parts
-		of the semantic analyzer and optimizer concerned with
-		determinism.
 
 	</dl>
 
@@ -1501,11 +1545,11 @@ The following modules are part of the libs.m package.
 		This is used by the LLDS back-end for register allocation
 
 	<dt> tree.m
+		<dd>
 		A simple tree data type. <br>
 		Used by the LLDS, RL, and IL back-ends for collecting
 		together the different fragments of the generated code.
 
-	<dd> Graph colouring.
 	</dl>
 
 <hr>
@@ -1540,6 +1584,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2004-10-16 15:08:09 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-12-20 01:15:46 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

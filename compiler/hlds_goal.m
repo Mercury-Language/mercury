@@ -311,7 +311,6 @@
 					% polymorphism.m strips off
 					% the `new ' prefix from
 					% existentially typed constructions.
-
 			rhs_args	:: list(prog_var)
 		)
 	;	lambda_goal(
@@ -702,6 +701,40 @@
 	hlds_goal_info::out) is det.
 :- pred goal_info_set_code_gen_info(hlds_goal_info::in,
 	hlds_goal_code_gen_info::in, hlds_goal_info::out) is det.
+
+:- pred goal_info_get_occurring_vars(hlds_goal_info::in, set(prog_var)::out)
+	is det.
+:- pred goal_info_get_producing_vars(hlds_goal_info::in, set(prog_var)::out)
+	is det.
+:- pred goal_info_get_consuming_vars(hlds_goal_info::in, set(prog_var)::out)
+	is det.
+:- pred goal_info_get_make_visible_vars(hlds_goal_info::in, set(prog_var)::out)
+	is det.
+:- pred goal_info_get_need_visible_vars(hlds_goal_info::in, set(prog_var)::out)
+	is det.
+
+:- pred goal_info_set_occurring_vars(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_producing_vars(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_consuming_vars(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_make_visible_vars(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+:- pred goal_info_set_need_visible_vars(hlds_goal_info::in, set(prog_var)::in,
+	hlds_goal_info::out) is det.
+
+:- func producing_vars(hlds_goal_info) = set(prog_var).
+:- func 'producing_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+
+:- func consuming_vars(hlds_goal_info) = set(prog_var).
+:- func 'consuming_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+
+:- func make_visible_vars(hlds_goal_info) = set(prog_var).
+:- func 'make_visible_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
+
+:- func need_visible_vars(hlds_goal_info) = set(prog_var).
+:- func 'need_visible_vars :='(hlds_goal_info, set(prog_var)) = hlds_goal_info.
 
 :- pred goal_get_nonlocals(hlds_goal::in, set(prog_var)::out) is det.
 
@@ -1278,7 +1311,29 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 				% The path to this goal from the root in
 				% reverse order.
 
+		maybe_mode_constraint_info :: maybe(mode_constraint_goal_info),
+
 		code_gen_info	:: hlds_goal_code_gen_info
+	).
+
+:- type mode_constraint_goal_info --->
+	mode_constraint_goal_info(
+		mci_occurring_vars :: set(prog_var),
+				% Inst_graph nodes that are reachable from
+				% variables that occur in the goal.
+
+		mci_producing_vars :: set(prog_var),
+				% Inst_graph nodes produced by this goal.
+
+		mci_consuming_vars :: set(prog_var),
+				% Inst_graph nodes consumed by this goal.
+
+		mci_make_visible_vars :: set(prog_var),
+				% Variables that this goal makes visible.
+
+		mci_need_visible_vars :: set(prog_var)
+				% Variables that this goal need to be visible
+				% before it is executed.
 	).
 
 :- pragma inline(goal_info_init/1).
@@ -1289,7 +1344,7 @@ goal_info_init(GoalInfo) :-
 	term__context_init(Context),
 	set__init(Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		Features, [], no_code_gen_info).
+		Features, [], no, no_code_gen_info).
 
 :- pragma inline(goal_info_init/2).
 goal_info_init(Context, GoalInfo) :-
@@ -1298,18 +1353,18 @@ goal_info_init(Context, GoalInfo) :-
 	set__init(NonLocals),
 	set__init(Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		Features, [], no_code_gen_info).
+		Features, [], no, no_code_gen_info).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
 	term__context_init(Context),
 	purity_features(Purity, _, Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		list_to_set(Features), [], no_code_gen_info).
+		list_to_set(Features), [], no, no_code_gen_info).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
 	purity_features(Purity, _, Features),
 	GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
-		list_to_set(Features), [], no_code_gen_info).
+		list_to_set(Features), [], no, no_code_gen_info).
 
 goal_info_get_determinism(GoalInfo, GoalInfo ^ determinism).
 goal_info_get_instmap_delta(GoalInfo, GoalInfo ^ instmap_delta).
@@ -1318,6 +1373,41 @@ goal_info_get_nonlocals(GoalInfo, GoalInfo ^ nonlocals).
 goal_info_get_features(GoalInfo, GoalInfo ^ features).
 goal_info_get_goal_path(GoalInfo, GoalInfo ^ goal_path).
 goal_info_get_code_gen_info(GoalInfo, GoalInfo ^ code_gen_info).
+
+goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
+	( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
+		OccurringVars = MCI ^ mci_occurring_vars
+	;
+		OccurringVars = set__init
+	).
+
+goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
+	( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
+		ProducingVars = MCI ^ mci_producing_vars
+	;
+		ProducingVars = set__init
+	).
+
+goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
+	( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
+		ConsumingVars = MCI ^ mci_consuming_vars
+	;
+		ConsumingVars = set__init
+	).
+
+goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
+	( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
+		MakeVisibleVars = MCI ^ mci_make_visible_vars
+	;
+		MakeVisibleVars = set__init
+	).
+
+goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
+	( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
+		NeedVisibleVars = MCI ^ mci_need_visible_vars
+	;
+		NeedVisibleVars = set__init
+	).
 
 goal_info_set_determinism(GoalInfo0, Determinism,
 		GoalInfo0 ^ determinism := Determinism).
@@ -1340,6 +1430,95 @@ goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals) :-
 	% non-locals when structure reuse is not being performed.
 goal_info_set_code_gen_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo).
+
+goal_info_set_occurring_vars(GoalInfo0, OccurringVars, GoalInfo) :-
+	( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+		MCI = MCI0 ^ mci_occurring_vars := OccurringVars
+	;
+		set__init(ProducingVars),
+		set__init(ConsumingVars),
+		set__init(MakeVisibleVars),
+		set__init(NeedVisibleVars),
+		MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
+			ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+	),
+	GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+
+goal_info_set_producing_vars(GoalInfo0, ProducingVars, GoalInfo) :-
+	( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+		MCI = MCI0 ^ mci_producing_vars := ProducingVars
+	;
+		set__init(OccurringVars),
+		set__init(ConsumingVars),
+		set__init(MakeVisibleVars),
+		set__init(NeedVisibleVars),
+		MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
+			ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+	),
+	GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+
+goal_info_set_consuming_vars(GoalInfo0, ConsumingVars, GoalInfo) :-
+	( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+		MCI = MCI0 ^ mci_consuming_vars := ConsumingVars
+	;
+		set__init(OccurringVars),
+		set__init(ProducingVars),
+		set__init(MakeVisibleVars),
+		set__init(NeedVisibleVars),
+		MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
+			ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+	),
+	GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+
+goal_info_set_make_visible_vars(GoalInfo0, MakeVisibleVars, GoalInfo) :-
+	( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+		MCI = MCI0 ^ mci_make_visible_vars := MakeVisibleVars
+	;
+		set__init(OccurringVars),
+		set__init(ProducingVars),
+		set__init(ConsumingVars),
+		set__init(NeedVisibleVars),
+		MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
+			ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+	),
+	GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+
+goal_info_set_need_visible_vars(GoalInfo0, NeedVisibleVars, GoalInfo) :-
+	( GoalInfo0 ^ maybe_mode_constraint_info = yes(MCI0) ->
+		MCI = MCI0 ^ mci_need_visible_vars := NeedVisibleVars
+	;
+		set__init(OccurringVars),
+		set__init(ProducingVars),
+		set__init(ConsumingVars),
+		set__init(MakeVisibleVars),
+		MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
+			ConsumingVars, MakeVisibleVars, NeedVisibleVars)
+	),
+	GoalInfo = GoalInfo0 ^ maybe_mode_constraint_info := yes(MCI).
+
+producing_vars(GoalInfo) = ProducingVars :-
+	goal_info_get_producing_vars(GoalInfo, ProducingVars).
+
+'producing_vars :='(GoalInfo0, ProducingVars) = GoalInfo :-
+	goal_info_set_producing_vars(GoalInfo0, ProducingVars, GoalInfo).
+
+consuming_vars(GoalInfo) = ConsumingVars :-
+	goal_info_get_consuming_vars(GoalInfo, ConsumingVars).
+
+'consuming_vars :='(GoalInfo0, ConsumingVars) = GoalInfo :-
+	goal_info_set_consuming_vars(GoalInfo0, ConsumingVars, GoalInfo).
+
+make_visible_vars(GoalInfo) = MakeVisibleVars :-
+	goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars).
+
+'make_visible_vars :='(GoalInfo0, MakeVisibleVars) = GoalInfo :-
+	goal_info_set_make_visible_vars(GoalInfo0, MakeVisibleVars, GoalInfo).
+
+need_visible_vars(GoalInfo) = NeedVisibleVars :-
+	goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars).
+
+'need_visible_vars :='(GoalInfo0, NeedVisibleVars) = GoalInfo :-
+	goal_info_set_need_visible_vars(GoalInfo0, NeedVisibleVars, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

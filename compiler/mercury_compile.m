@@ -49,6 +49,7 @@
 :- import_module check_hlds__purity.
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__modes.
+:- import_module check_hlds__mode_constraints.
 :- import_module check_hlds__switch_detection.
 :- import_module check_hlds__cse_detection.
 :- import_module check_hlds__det_analysis.
@@ -166,7 +167,7 @@
 	% library modules
 :- import_module int, list, map, set, std_util, require, string, bool, dir.
 :- import_module library, getopt, set_bbbtree, term, varset, assoc_list.
-:- import_module gc.
+:- import_module gc, benchmarking.
 :- import_module pprint.
 
 %-----------------------------------------------------------------------------%
@@ -2203,6 +2204,11 @@ mercury_compile__frontend_pass_by_phases(!HLDS, FoundError, !IO) :-
 	mercury_compile__maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 30, "polymorphism", !IO),
 
+	mercury_compile__maybe_mode_constraints(Verbose, Stats,
+		!.HLDS, HHF_HLDS, !IO),
+	mercury_compile__maybe_dump_hlds(HHF_HLDS, 33, "mode_constraints",
+		!IO),
+
 	mercury_compile__modecheck(Verbose, Stats, !HLDS,
 		FoundModeError, UnsafeToContinue, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 35, "modecheck", !IO),
@@ -2727,7 +2733,9 @@ mercury_compile__puritycheck(Verbose, Stats, !HLDS, FoundTypeError,
 mercury_compile__modecheck(Verbose, Stats, !HLDS, FoundModeError,
 		UnsafeToContinue, !IO) :-
 	module_info_num_errors(!.HLDS, NumErrors0),
-	modecheck(!HLDS, UnsafeToContinue, !IO),
+	maybe_benchmark_modes((pred(H0::in, {H,U}::out, di, uo) is det -->
+			modecheck(H0, H, U)),
+		"modecheck", !.HLDS, {!:HLDS, UnsafeToContinue}, !IO),
 	module_info_num_errors(!.HLDS, NumErrors),
 	( NumErrors \= NumErrors0 ->
 		FoundModeError = yes,
@@ -2740,6 +2748,45 @@ mercury_compile__modecheck(Verbose, Stats, !HLDS, FoundModeError,
 			"% Program is mode-correct.\n", !IO)
 	),
 	maybe_report_stats(Stats, !IO).
+
+:- pred mercury_compile__maybe_mode_constraints(bool::in, bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile__maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
+	globals__io_lookup_bool_option(mode_constraints, ModeConstraints, !IO),
+	( ModeConstraints = yes ->
+		maybe_write_string(Verbose,
+			"% Dumping mode constraints...\n", !IO),
+		maybe_flush_output(Verbose, !IO),
+		maybe_benchmark_modes(mode_constraints__process_module,
+			"mode-constraints", !HLDS, !IO),
+		maybe_write_string(Verbose, "% done.\n", !IO),
+		maybe_report_stats(Stats, !IO)
+	;
+		true
+	).
+
+:- pred maybe_benchmark_modes(pred(T1, T2, io, io)::in(pred(in, out, di, uo)
+	is det), string::in, T1::in, T2::out, io::di, io::uo) is det.
+
+maybe_benchmark_modes(Pred, Stage, A0, A, !IO) :-
+	globals__io_lookup_bool_option(benchmark_modes, BenchmarkModes, !IO),
+	( BenchmarkModes = yes ->
+		globals__io_lookup_int_option(benchmark_modes_repeat, Repeats,
+			!IO),
+		io__format("%s %d ", [s(Stage), i(Repeats)], !IO),
+		promise_only_solution_io(do_io_benchmark(Pred, Repeats, A0),
+			A - Time, !IO),
+		io__format("%d ms\n", [i(Time)], !IO)
+	;
+		Pred(A0, A, !IO)
+	).
+
+:- pred do_io_benchmark(pred(T1, T2, io, io)::in(pred(in, out, di, uo) is det),
+	int::in, T1::in, pair(T2, int)::out, io::di, io::uo) is cc_multi.
+
+do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
+	benchmark_det_io(Pred, A0, A, !IO, Repeats, Time).
 
 :- pred mercury_compile__detect_switches(bool::in, bool::in,
 	module_info::in, module_info::out, io::di, io::uo) is det.

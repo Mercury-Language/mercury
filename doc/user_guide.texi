@@ -5148,6 +5148,7 @@ t - results of termination analysis,
 u - unification categories and other implementation details of unifications,
 v - variable numbers in variable names,
 A - argument passing information,
+B - mode constraint information,
 C - clause information,
 D - instmap deltas of goals,
 G - compile-time garbage collection information,
@@ -5181,6 +5182,37 @@ Multiple dump options accumulate.
 Dump the internal compiler representation of the MLDS,
 after the specified stage number or stage name, to
 @file{@var{module}.mlds_dump.@var{num}-@var{name}}.
+
+@sp 1
+@item --mode-constraints
+@findex --mode-constraints
+Perform constraint based mode analysis on the given modules.
+At the moment, the only effect of this
+is to include more information in HDLS dumps,
+to allow the constraint based mode analysis algorithm to be debugged.
+
+@sp 1
+@item --simple-mode-constraints
+@findex --simple-mode-constraints
+Ask for the simplified variant of constraint based mode analysis,
+in which there is only one constraint variable per program variable,
+rather than one constraint variable
+per node in the inst graph of a program variable.
+This option is ignored unless --mode-constraints is also given.
+
+@sp 1
+@item --benchmark-modes
+@findex --benchmark-modes
+Output information about the performance
+of the constraint based mode analysis algorithm.
+
+@sp 1
+@item --benchmark-modes-repeat @var{num}
+@findex --benchmark-modes-repeat @var{num}
+Specifies the number of times the mode analysis algorithm should run.
+More repetitions may smooth out fluctuations
+due to background load or clock granularity.
+This option is ignored unless --benchmark-modes is also given.
 
 @ifset aditi
 @sp 1

@@ -1384,6 +1384,41 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums,
 	;
 		true
 	),
+	( string__contains_char(Verbose, 'B') ->
+		ProducingVars = GoalInfo ^ producing_vars,
+		set__to_sorted_list(ProducingVars, ProducingVarsList),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% producing vars: ", !IO),
+		mercury_output_vars(ProducingVarsList, VarSet, AppendVarNums,
+			!IO),
+		io__write_string("\n", !IO),
+
+		ConsumingVars = GoalInfo ^ consuming_vars,
+		set__to_sorted_list(ConsumingVars, ConsumingVarsList),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% consuming vars: ", !IO),
+		mercury_output_vars(ConsumingVarsList, VarSet, AppendVarNums,
+			!IO),
+		io__write_string("\n", !IO),
+
+		MakeVisibleVars = GoalInfo ^ make_visible_vars,
+		set__to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% make_visible vars: ", !IO),
+		mercury_output_vars(MakeVisibleVarsList, VarSet, AppendVarNums,
+			!IO),
+		io__write_string("\n", !IO),
+
+		NeedVisibleVars = GoalInfo ^ need_visible_vars,
+		set__to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
+		hlds_out__write_indent(Indent, !IO),
+		io__write_string("% need_visible vars: ", !IO),
+		mercury_output_vars(NeedVisibleVarsList, VarSet, AppendVarNums,
+			!IO),
+		io__write_string("\n", !IO)
+	;
+		true
+	),
 	( string__contains_char(Verbose, 'd') ->
 		hlds_out__write_indent(Indent, !IO),
 		io__write_string("% determinism: ", !IO),

@@ -16,6 +16,7 @@
 % the front-end phases
 :- import_module check_hlds.
 :- import_module hlds.
+:- import_module mode_robdd.
 :- import_module parse_tree.
 :- import_module transform_hlds.
 
