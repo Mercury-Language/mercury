@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,15 +65,39 @@
 :- pred rbtree__insert_duplicate(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__insert_duplicate(in, in, in, out) is det.
 
+	% Search for a key-value pair using the key.  Fails if key doesn't
+	% exist.
+:- pred rbtree__search(rbtree(K, V), K, V).
+:- mode rbtree__search(in, in, out) is semidet.
+
 	% Lookup a value associated with a key.  Program abort's if key
 	% doesn't exist.
 :- pred rbtree__lookup(rbtree(K, V), K, V).
 :- mode rbtree__lookup(in, in, out) is det.
 
-	% Search for a key-value pair using the key.  Fails if key doesn't
-	% exist.
-:- pred rbtree__search(rbtree(K, V), K, V).
-:- mode rbtree__search(in, in, out) is semidet.
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next lower key instead.
+	% Fails if there is no key with the given or lower value.
+:- pred rbtree__lower_bound_search(rbtree(K, V), K, K, V).
+:- mode rbtree__lower_bound_search(in, in, out, out) is semidet.
+
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next lower key instead.
+	% Aborts if there is no key with the given or lower value.
+:- pred rbtree__lower_bound_lookup(rbtree(K, V), K, K, V).
+:- mode rbtree__lower_bound_lookup(in, in, out, out) is det.
+
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next higher key instead.
+	% Fails if there is no key with the given or higher value.
+:- pred rbtree__upper_bound_search(rbtree(K, V), K, K, V).
+:- mode rbtree__upper_bound_search(in, in, out, out) is semidet.
+
+	% Search for a key-value pair using the key.  If there is no entry
+	% for the given key, returns the pair for the next higher key instead.
+	% Aborts if there is no key with the given or higher value.
+:- pred rbtree__upper_bound_lookup(rbtree(K, V), K, K, V).
+:- mode rbtree__upper_bound_lookup(in, in, out, out) is det.
 
 	% Delete the key value pair associated with a key.  Does nothing
 	% if the key doesn't exist.
@@ -560,17 +584,6 @@ rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
-rbtree__lookup(T, K, V) :-
-        (
-                rbtree__search(T, K, V0)
-        ->
-                V = V0
-        ;
-                error("rbtree__lookup: key not found.")
-        ).
-
-%-----------------------------------------------------------------------------%
-
 rbtree__search(Tree, K, V) :-
 	( Tree = red(K0, V0, Left, Right)
 	; Tree = black(K0, V0, Left, Right)
@@ -586,6 +599,83 @@ rbtree__search(Tree, K, V) :-
 		rbtree__search(Left, K, V)
 	;
 		rbtree__search(Right, K, V)
+	).
+
+rbtree__lookup(T, K, V) :-
+	( rbtree__search(T, K, V0) ->
+		V = V0
+	;
+		report_lookup_error("rbtree__lookup: key not found", K, V)
+	).
+
+%-----------------------------------------------------------------------------%
+
+rbtree__lower_bound_search(Tree, SearchK, K, V) :-
+	( Tree = red(K0, V0, Left, Right)
+	; Tree = black(K0, V0, Left, Right)
+	),
+	compare(Result, SearchK, K0),
+	(
+		Result = (=)
+	->
+		K = K0,
+		V = V0
+	;
+		Result = (<)
+	->
+		rbtree__lower_bound_search(Left, SearchK, K, V)
+	;
+		( rbtree__lower_bound_search(Right, SearchK, Kp, Vp) ->
+			K = Kp,
+			V = Vp
+		;
+			K = K0,
+			V = V0
+		)
+	).
+
+rbtree__lower_bound_lookup(T, SearchK, K, V) :-
+	( rbtree__lower_bound_search(T, SearchK, K0, V0) ->
+		K = K0,
+		V = V0
+	;
+		report_lookup_error("rbtree__lower_bound_lookup: key not found",
+			SearchK, V)
+	).
+
+%-----------------------------------------------------------------------------%
+
+rbtree__upper_bound_search(Tree, SearchK, K, V) :-
+	( Tree = red(K0, V0, Left, Right)
+	; Tree = black(K0, V0, Left, Right)
+	),
+	compare(Result, SearchK, K0),
+	(
+		Result = (=)
+	->
+		K = K0,
+		V = V0
+	;
+		Result = (<)
+	->
+		( rbtree__upper_bound_search(Left, SearchK, Kp, Vp) ->
+			K = Kp,
+			V = Vp
+		;
+			K = K0,
+			V = V0
+		)
+	;
+		rbtree__upper_bound_search(Right, SearchK, K, V)
+	).
+
+rbtree__upper_bound_lookup(T, SearchK, K, V) :-
+	( rbtree__upper_bound_search(T, SearchK, K0, V0) ->
+		K = K0,
+		V = V0
+	;
+		report_lookup_error("rbtree__upper_bound_lookup: key not found",
+			SearchK, V)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -699,16 +789,16 @@ rbtree__get_tree_max(red(K0, V0, L, R), NewK, NewV, Tree) :-
 		Tree = red(K0, V0, L, NewR)
 	).
 rbtree__get_tree_max(black(K0, V0, L, R), NewK, NewV, Tree) :-
-        (
-                R = empty
-        ->
-                NewK = K0,
-                NewV = V0,
-                Tree = L
-        ;
-                rbtree__get_tree_max(R, NewK, NewV, NewR),
-                Tree = black(K0, V0, L, NewR)
-        ).
+	(
+		R = empty
+	->
+		NewK = K0,
+		NewV = V0,
+		Tree = L
+	;
+		rbtree__get_tree_max(R, NewK, NewV, NewR),
+		Tree = black(K0, V0, L, NewR)
+	).
 
 % rbtree__get_tree_min:
 %	Delete's the node with the minimum K from the tree, and returns the
@@ -731,16 +821,16 @@ rbtree__get_tree_min(red(K0, V0, L, R), NewK, NewV, Tree) :-
 		Tree = red(K0, V0, NewL, R)
 	).
 rbtree__get_tree_min(black(K0, V0, L, R), NewK, NewV, Tree) :-
-        (
-                L = empty
-        ->
-                NewK = K0,
-                NewV = V0,
-                Tree = R
-        ;
-                rbtree__get_tree_min(L, NewK, NewV, NewL),
-                Tree = black(K0, V0, NewL, R)
-        ).
+	(
+		L = empty
+	->
+		NewK = K0,
+		NewV = V0,
+		Tree = R
+	;
+		rbtree__get_tree_min(L, NewK, NewV, NewL),
+		Tree = black(K0, V0, NewL, R)
+	).
 
 
 
@@ -784,19 +874,19 @@ rbtree__count(black(_K, _V, L, R), N) :-
 
 rbtree__assoc_list_to_rbtree([], empty).
 rbtree__assoc_list_to_rbtree([K - V|T], Tree) :-
-        rbtree__assoc_list_to_rbtree(T, Tree0),
-        rbtree__set(Tree0, K, V, Tree).
+	rbtree__assoc_list_to_rbtree(T, Tree0),
+	rbtree__set(Tree0, K, V, Tree).
 
 %-----------------------------------------------------------------------------%
 
 rbtree__rbtree_to_assoc_list(empty, []).
 rbtree__rbtree_to_assoc_list(red(K0, V0, Left, Right), L) :-
-        rbtree__rbtree_to_assoc_list(Left, L0),
-        rbtree__rbtree_to_assoc_list(Right, L1),
-        list__append(L0, [K0 - V0|L1], L).
+	rbtree__rbtree_to_assoc_list(Left, L0),
+	rbtree__rbtree_to_assoc_list(Right, L1),
+	list__append(L0, [K0 - V0|L1], L).
 rbtree__rbtree_to_assoc_list(black(K0, V0, Left, Right), L) :-
-        rbtree__rbtree_to_assoc_list(Left, L0),
-        rbtree__rbtree_to_assoc_list(Right, L1),
-        list__append(L0, [K0 - V0|L1], L).
+	rbtree__rbtree_to_assoc_list(Left, L0),
+	rbtree__rbtree_to_assoc_list(Right, L1),
+	list__append(L0, [K0 - V0|L1], L).
 
 %-----------------------------------------------------------------------------%

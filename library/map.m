@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,8 +52,19 @@
 
 	% Search map for key, but abort if search fails.
 :- pred map__lookup(map(K,V), K, V).
-:- mode map__lookup(in, in, in) is semidet.	% implied
 :- mode map__lookup(in, in, out) is det.
+
+:- pred map__lower_bound_search(map(K,V), K, K, V).
+:- mode map__lower_bound_search(in, in, out, out) is semidet.
+
+:- pred map__lower_bound_lookup(map(K,V), K, K, V).
+:- mode map__lower_bound_lookup(in, in, out, out) is det.
+
+:- pred map__upper_bound_search(map(K,V), K, K, V).
+:- mode map__upper_bound_search(in, in, out, out) is semidet.
+
+:- pred map__upper_bound_lookup(map(K,V), K, K, V).
+:- mode map__upper_bound_lookup(in, in, out, out) is det.
 
 	% Search map for data.
 :- pred map__inverse_search(map(K,V), V, K).
@@ -267,33 +278,32 @@ map__lookup(Map, K, V) :-
 	( tree234__search(Map, K, V1) ->
 		V = V1
 	;
-		map__lookup_error("map__lookup: key_not_found", K, V)
+		report_lookup_error("map__lookup: key not found", K, V)
 	).
 
-:- pred map__lookup_error(string, K, V).
-:- mode map__lookup_error(in, in, unused) is erroneous.
-map__lookup_error(Msg, K, V) :-
-	KeyType = type_name(type_of(K)),
-	ValueType = type_name(type_of(V)),
-	functor(K, Functor, Arity),
-	( Arity = 0 ->
-		FunctorStr = Functor
+map__lower_bound_search(Map, SearchK, K, V) :-
+	tree234__lower_bound_search(Map, SearchK, K, V).
+
+map__lower_bound_lookup(Map, SearchK, K, V) :-
+	( tree234__lower_bound_search(Map, SearchK, K1, V1) ->
+		K = K1,
+		V = V1
 	;
-		string__int_to_string(Arity, ArityStr),
-		string__append_list([Functor, "/", ArityStr],
-			FunctorStr)
-	),
-	string__append_list(
-		[Msg,
-		"\n\tKey Type: ",
-		KeyType,
-		"\n\tKey Functor: ",
-		FunctorStr,
-		"\n\tValue Type: ",
-		ValueType
-		],
-		ErrorString),
-	error(ErrorString).
+		report_lookup_error("map__lower_bound_lookup: key not found",
+			SearchK, V)
+	).
+
+map__upper_bound_search(Map, SearchK, K, V) :-
+	tree234__upper_bound_search(Map, SearchK, K, V).
+
+map__upper_bound_lookup(Map, SearchK, K, V) :-
+	( tree234__upper_bound_search(Map, SearchK, K1, V1) ->
+		K = K1,
+		V = V1
+	;
+		report_lookup_error("map__upper_bound_lookup: key not found",
+			SearchK, V)
+	).
 
 map__insert(Map0, K, V, Map) :-
 	tree234__insert(Map0, K, V, Map).
@@ -302,7 +312,8 @@ map__det_insert(Map0, K, V, Map) :-
 	( tree234__insert(Map0, K, V, Map1) ->
 		Map = Map1
 	;
-		map__lookup_error("map__det_insert: key already present", K, V)
+		report_lookup_error("map__det_insert: key already present",
+			K, V)
 	).
 
 map__det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
@@ -330,7 +341,7 @@ map__det_update(Map0, K, V, Map) :-
 	( tree234__update(Map0, K, V, Map1) ->
 		Map = Map1
 	;
-		map__lookup_error("map__det_update: key not found", K, V)
+		report_lookup_error("map__det_update: key not found", K, V)
 	).
 
 map__set(Map0, K, V, Map) :-
@@ -375,7 +386,8 @@ map__det_remove(Map0, Key, Value, Map) :-
 		Value = Value1,
 		Map = Map1
 	;
-		map__lookup_error("map__det_remove: key not found", Key, Value)
+		report_lookup_error("map__det_remove: key not found",
+			Key, Value)
 	).
 
 map__count(Map, Count) :-

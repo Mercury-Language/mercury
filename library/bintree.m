@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,21 @@
 :- pred bintree__search(bintree(K,V), K, V).
 :- mode bintree__search(in, in, in) is semidet.	% implied
 :- mode bintree__search(in, in, out) is semidet.
+
+:- pred bintree__lookup(bintree(K,V), K, V).
+:- mode bintree__lookup(in, in, out) is det.
+
+:- pred bintree__lower_bound_search(bintree(K,V), K, K, V).
+:- mode bintree__lower_bound_search(in, in, out, out) is semidet.
+
+:- pred bintree__lower_bound_lookup(bintree(K,V), K, K, V).
+:- mode bintree__lower_bound_lookup(in, in, out, out) is det.
+
+:- pred bintree__upper_bound_search(bintree(K,V), K, K, V).
+:- mode bintree__upper_bound_search(in, in, out, out) is semidet.
+
+:- pred bintree__upper_bound_lookup(bintree(K,V), K, K, V).
+:- mode bintree__upper_bound_lookup(in, in, out, out) is det.
 
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
 :- mode bintree__delete(in, in, out) is det.
@@ -177,13 +192,88 @@ bintree__search(tree(K0, V0, Left, Right), K, V) :-
 	(
 		Result = (=)
 	->
-		V0 = V
+		V = V0
 	;
 		Result = (<)
 	->
 		bintree__search(Right, K, V)
 	;
 		bintree__search(Left, K, V)
+	).
+
+bintree__lookup(Tree, K, V) :-
+	( bintree__search(Tree, K, V0) ->
+		V = V0
+	;
+		report_lookup_error("bintree__lookup: key not found", K, V)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- bintree__lower_bound_search(A, B, _, _) when A and B.
+
+bintree__lower_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
+	compare(Result, K0, SearchK),
+	(
+		Result = (=)
+	->
+		K = K0,
+		V = V0
+	;
+		Result = (<)
+	->
+		( bintree__lower_bound_search(Right, SearchK, Kp, Vp) ->
+			K = Kp,
+			V = Vp
+		;
+			K = K0,
+			V = V0
+		)
+	;
+		bintree__lower_bound_search(Left, SearchK, K, V)
+	).
+
+bintree__lower_bound_lookup(Tree, SearchK, K, V) :-
+	( bintree__lower_bound_search(Tree, SearchK, K0, V0) ->
+		K = K0,
+		V = V0
+	;
+		report_lookup_error("bintree__lower_bound_lookup: key not found",
+			SearchK, V)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- bintree__upper_bound_search(A, B, _, _) when A and B.
+
+bintree__upper_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
+	compare(Result, K0, SearchK),
+	(
+		Result = (=)
+	->
+		K = K0,
+		V = V0
+	;
+		Result = (<)
+	->
+		bintree__upper_bound_search(Right, SearchK, K, V)
+	;
+		( bintree__upper_bound_search(Left, SearchK, Kp, Vp) ->
+			K = Kp,
+			V = Vp
+		;
+			K = K0,
+			V = V0
+		)
+	).
+
+bintree__upper_bound_lookup(Tree, SearchK, K, V) :-
+	( bintree__upper_bound_search(Tree, SearchK, K0, V0) ->
+		K = K0,
+		V = V0
+	;
+		report_lookup_error("bintree__lower_bound_lookup: key not found",
+			SearchK, V)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -318,7 +408,8 @@ bintree__from_list_2([K - V | List], Tree0, Tree) :-
 	( bintree__insert(Tree0, K, V, Tree1) ->
 		Tree2 = Tree1
 	;
-		error("bintree__from_list: duplicate key")
+		report_lookup_error("bintree__from_list: key already present",
+			K, V)
 	),
 	bintree__from_list_2(List, Tree2, Tree).
 
@@ -364,9 +455,7 @@ bintree__from_corresponding_lists(Keys, Values, Tree) :-
 	( bintree__from_corresponding_lists_2(Keys, Values, empty, Tree0) ->
 		Tree = Tree0
 	;
-		% Either the list weren't the same length, or the
-		% key list contained duplicates
-		error("bintree__from_corresponding_lists")
+		error("bintree__from_corresponding_lists: lists are of different lengths")
 	).
 
 :- pred bintree__from_corresponding_lists_2(list(K), list(V), bintree(K,V),
@@ -375,8 +464,12 @@ bintree__from_corresponding_lists(Keys, Values, Tree) :-
 
 bintree__from_corresponding_lists_2([], [], Tree, Tree).
 bintree__from_corresponding_lists_2([K | Ks], [V | Vs], Tree0, Tree) :-
-	bintree__insert(Tree0, K, V, Tree1),
-	bintree__from_corresponding_lists_2(Ks, Vs, Tree1, Tree).
+	( bintree__insert(Tree0, K, V, Tree1) ->
+		Tree2 = Tree1
+	;
+		report_lookup_error("bintree__from_corresponding_lists: key already present", K, V)
+	),
+	bintree__from_corresponding_lists_2(Ks, Vs, Tree2, Tree).
 
 %-----------------------------------------------------------------------------%
 

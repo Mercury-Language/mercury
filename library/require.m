@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,9 +31,20 @@
 %		most circumstances you should use an explicit if-then-else
 %		with a call to error/1 in the "else".
 
+:- pred report_lookup_error(string, K, V).
+:- mode report_lookup_error(in, in, unused) is erroneous.
+
+%	report_lookup_error(Message, Key, Value)
+%		Call error/1 with an error message that is appropriate for
+%		the failure of a lookup operation involving the specified
+%		Key and Value.  The error message will include Message
+%		and information about Key and Value.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module string, list, std_util.
 
 require(Goal, Message) :-
 	( call(Goal) ->
@@ -42,6 +53,28 @@ require(Goal, Message) :-
 		error(Message),
 		fail
 	).
+
+report_lookup_error(Msg, K, V) :-
+	KeyType = type_name(type_of(K)),
+	ValueType = type_name(type_of(V)),
+	functor(K, Functor, Arity),
+	( Arity = 0 ->
+		FunctorStr = Functor
+	;
+		string__int_to_string(Arity, ArityStr),
+		string__append_list([Functor, "/", ArityStr], FunctorStr)
+	),
+	string__append_list(
+		[Msg,
+		"\n\tKey Type: ",
+		KeyType,
+		"\n\tKey Functor: ",
+		FunctorStr,
+		"\n\tValue Type: ",
+		ValueType
+		],
+		ErrorString),
+	error(ErrorString).
 
 %-----------------------------------------------------------------------------%
 
