@@ -2011,7 +2011,7 @@ mercury_runtime_terminate(void)
 
 		fp = NULL;
 		for (i = 1; i < MAX_MEM_USAGE_REPORT_ATTEMPTS; i++) {
-			sprintf(buf, ".mem_usage_report%2d", i);
+			sprintf(buf, ".mem_usage_report%02d", i);
 
 			fd = open(buf, O_WRONLY | O_CREAT | O_EXCL, 0600);
 			if (fd >= 0) {
