@@ -203,7 +203,7 @@ void printlist(Word p)
 
 		ptr = (Word *) body(t, TAG_CONS);
 		if (((int)ptr & 0x3) || ptr == 0
-		    || ptr < heap || ptr > heapmax)
+		    || ptr < heap || ptr >= heap + MAXHEAP)
 		{
 			printf("0x%x (%d)\n", t, t);
 			return;
