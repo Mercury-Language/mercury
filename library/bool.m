@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module enum, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -27,6 +27,8 @@
 % with the predicates `true' and `fail'.
 
 :- type bool ---> no ; yes.
+
+:- instance enum(bool).
 
 :- func bool__or(bool, bool) = bool.
 :- pred bool__or(bool, bool, bool).
@@ -51,6 +53,18 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- instance enum(bool) where [
+	to_int(Bool) = bool_to_int(Bool),
+	from_int(bool_to_int(Bool)) = Bool
+].
+
+:- func bool_to_int(bool) = int.
+:- mode bool_to_int(in) = out is det.
+:- mode bool_to_int(out) = in is semidet.
+
+bool_to_int(no) = 0.
+bool_to_int(yes) = 1.
 
 bool__or(X, Y) = Result :- bool__or(X, Y, Result).
 

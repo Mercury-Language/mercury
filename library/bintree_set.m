@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %--------------------------------------------------------------------------%
@@ -78,10 +78,17 @@
 :- mode bintree_set__member(in, in) is semidet.
 :- mode bintree_set__member(out, in) is nondet.
 
-	% `bintree_set_member(X, Set)' is true iff `X' is a member of `Set'.
+	% `bintree_set__is_member(X, Set)' is true
+	% iff `X' is a member of `Set'.
 
 :- pred bintree_set__is_member(T, bintree_set(T)).
 :- mode bintree_set__is_member(in, in) is semidet.
+
+	% `bintree_set__contains(Set, X)' is true
+	% iff `X' is a member of `Set'.
+
+:- pred bintree_set__contains(bintree_set(T), T).
+:- mode bintree_set__contains(in, in) is semidet.
 
 	% `bintree_set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
@@ -210,6 +217,9 @@ bintree_set__member(E, S) :-
 
 bintree_set__is_member(E, S) :-
 	bintree__search(S, E, _).
+
+bintree_set__contains(S, E) :-
+	bintree_set__is_member(E, S).
 
 %--------------------------------------------------------------------------%
 

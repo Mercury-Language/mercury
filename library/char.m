@@ -20,10 +20,13 @@
 
 :- module char.
 :- interface.
+:- import_module enum.
 
 %-----------------------------------------------------------------------------%
 
 :- type char == character.
+
+:- instance enum(character).
 
 :- pred char__to_int(char, int).
 :- mode char__to_int(in, out) is det.
@@ -123,6 +126,11 @@
 
 :- implementation.
 :- import_module require.
+
+:- instance enum(character) where [
+	(to_int(X) = Y :- char__to_int(X, Y)),
+	(from_int(X) = Y :- char__to_int(Y, X))
+].
 
 char__is_whitespace(' ').
 char__is_whitespace('\t').

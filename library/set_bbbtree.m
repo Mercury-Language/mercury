@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -53,6 +53,12 @@
 
 :- pred set_bbbtree__is_member(T, set_bbbtree(T), bool).
 :- mode set_bbbtree__is_member(in, in, out) is det.
+
+	% `set_bbbtree__contains(Set, X)' is true iff `X' is a member of `Set'.
+	% O(lg n).
+
+:- pred set_bbbtree__contains(set_bbbtree(T), T).
+:- mode set_bbbtree__contains(in, in) is semidet.
 
 
 	% `set_bbbtree__least(Set, X)' is true iff `X' is smaller than all
@@ -336,6 +342,9 @@ set_bbbtree__member(X, tree(V, _N, L, R)) :-
 		Result = (=),
 		X = V
 	).
+
+set_bbbtree__contains(Set, X) :-
+	set_bbbtree__member(X, Set).
 
 %------------------------------------------------------------------------------%
 

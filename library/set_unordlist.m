@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -83,6 +83,12 @@
 
 :- pred set_unordlist__is_member(T, set_unordlist(T), bool).
 :- mode set_unordlist__is_member(in, in, out) is det.
+
+	% `set_unordlist__contains(Set, X)' is true iff
+	% `X' is a member of `Set'.
+
+:- pred set_unordlist__contains(set_unordlist(T), T).
+:- mode set_unordlist__contains(in, in) is semidet.
 
 	% `set_unordlist__insert(Set0, X, Set)' is true iff `Set' is the union
 	% of `Set0' and the set containing only `X'.
@@ -223,6 +229,9 @@ set_unordlist__is_member(E, S, R) :-
 	;
 		R = no
 	).
+
+set_unordlist__contains(S, E) :-
+	set_unordlist__member(E, S).
 
 set_unordlist__delete_list(S, [], S).
 set_unordlist__delete_list(S0, [X | Xs], S) :-

@@ -100,6 +100,11 @@
 :- pred set__is_member(T, set(T), bool).
 :- mode set__is_member(in, in, out) is det.
 
+	% `set__contains(Set, X)' is true iff `X' is a member of `Set'.
+
+:- pred set__contains(set(T), T).
+:- mode set__contains(in, in) is semidet.
+
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
 
@@ -259,6 +264,8 @@
 
 :- pragma type_spec(set__member(in, in), T = var(_)).
 
+:- pragma type_spec(set__contains(in, in), T = var(_)).
+
 :- pragma type_spec(set__insert/3, T = var(_)).
 :- pragma type_spec(set__insert/2, T = var(_)).
 
@@ -323,6 +330,9 @@ set__member(X, Set) :-
 
 set__is_member(X, Set, Result) :-
 	set_ordlist__is_member(X, Set, Result).
+
+set__contains(Set, X) :-
+	set_ordlist__contains(Set, X).
 
 set__delete_list(Set0, List, Set) :-
 	set_ordlist__delete_list(Set0, List, Set).

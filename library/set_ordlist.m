@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 1999 The University of Melbourne.
+% Copyright (C) 1996-1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -83,6 +83,11 @@
 
 :- pred set_ordlist__is_member(T, set_ordlist(T), bool).
 :- mode set_ordlist__is_member(in, in, out) is det.
+
+	% `set_ordlist__contains(Set, X)' is true iff `X' is a member of `Set'.
+
+:- pred set_ordlist__contains(set_ordlist(T), T).
+:- mode set_ordlist__contains(in, in) is semidet.
 
 	% `set_ordlist__insert(Set0, X, Set)' is true iff `Set' is the union
 	% of `Set0' and the set containing only `X'.
@@ -197,6 +202,8 @@
 
 :- pragma type_spec(set_ordlist__member(in, in), T = var(_)).
 
+:- pragma type_spec(set_ordlist__contains(in, in), T = var(_)).
+
 :- pragma type_spec(set_ordlist__insert/3, T = var(_)).
 
 :- pragma type_spec(set_ordlist__insert_list/3, T = var(_)).
@@ -265,6 +272,9 @@ set_ordlist__is_member(E, S, R) :-
 	;
 		R = no
 	).
+
+set_ordlist__contains(S, E) :-
+	set_ordlist__member(E, S).
 
 set_ordlist__delete_list(S0, D, S) :-
 	list__sort_and_remove_dups(D, DS),

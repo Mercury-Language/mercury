@@ -17,7 +17,7 @@
 
 :- module term.
 :- interface.
-:- import_module list, map, std_util.
+:- import_module enum, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -252,6 +252,14 @@
 %	term__create_var(VarSupply0, Variable, VarSupply) :
 %		create a fresh variable (var) and return the
 %		updated var_supply.
+
+%-----------------------------------------------------------------------------%
+
+	% from_int/1 should only be passed integers returned
+	% by to_int/1. This instance declaration is needed to
+	% allow sets of variables to be represented using
+	% sparse_bitset.m.
+:- instance enum(var(_)).
 
 :- pred term__var_to_int(var(T), int).
 :- mode term__var_to_int(in, out) is det.
@@ -1022,7 +1030,16 @@ term__create_var(var_supply(V0), var(V), var_supply(V)) :-
 
 %-----------------------------------------------------------------------------%
 
+:- instance enum(var(_)) where [
+	to_int(X) = term__var_to_int(X),
+	from_int(X) = term__unsafe_int_to_var(X)
+].
+
 term__var_to_int(var(Var), Var).
+
+	% Cast an integer to a var(T), subverting the type-checking.
+:- func unsafe_int_to_var(int) = var(T).
+term__unsafe_int_to_var(Var) = var(Var).
 
 %-----------------------------------------------------------------------------%
 

@@ -22,6 +22,10 @@
 
 :- interface.
 
+:- import_module enum.
+
+:- instance enum(int).
+
 	% less than
 :- pred int < int.
 :- mode in  < in is semidet.
@@ -205,6 +209,27 @@
 
 %-----------------------------------------------------------------------------%
 
+	% floor_to_multiple_of_bits_per_int(Int)
+	%
+	% Returns the largest multiple of bits_per_int which
+	% is less than or equal to `Int'.
+	%
+	% Used by sparse_bitset.m. Makes it clearer to gcc that parts
+	% of this operation can be optimized into shifts, without
+	% turning up the optimization level.
+:- func floor_to_multiple_of_bits_per_int(int) = int.
+
+	% Used by floor_to_multiple_of_bits_per_int, placed
+	% here to make sure they go in the `.opt' file.
+
+	% int__quot_bits_per_int(X) = X // bits_per_int.		
+:- func int__quot_bits_per_int(int) = int.
+
+	% int__times_bits_per_int(X) = X * bits_per_int.		
+:- func int__times_bits_per_int(int) = int.
+
+%-----------------------------------------------------------------------------%
+
 %
 % The following routines are builtins that the compiler knows about.
 % Don't use them; use the functions above.
@@ -267,7 +292,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, std_util.
+
+:- instance enum(int) where [
+	to_int(X) = X,
+	from_int(X) = X
+].
 
 % Most of the arithmetic and comparison operators are recognized by
 % the compiler as builtins, so we don't need to define them here.
@@ -283,6 +313,16 @@ X div Y = Div :-
 		Div = Trunc
 	;
 		Div = Trunc - 1
+	).
+
+:- pragma inline(floor_to_multiple_of_bits_per_int/1).
+floor_to_multiple_of_bits_per_int(X) = Floor :-
+	Trunc = quot_bits_per_int(X),
+	Floor0 = times_bits_per_int(Trunc),
+	( Floor0 > X ->
+		Floor = Floor0 - bits_per_int
+	;
+		Floor = Floor0
 	).
 
 X mod Y = X - (X div Y) * Y.
@@ -410,10 +450,13 @@ is(X, X).
 
 :- pragma c_header_code("
 	#include <limits.h>
+
+	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
 ").
 
 
-:- pragma c_code(int__max_int(Max::out), will_not_call_mercury, "
+:- pragma c_code(int__max_int(Max::out),
+		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Max = INT_MAX;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -422,7 +465,8 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
-:- pragma c_code(int__min_int(Min::out), will_not_call_mercury, "
+:- pragma c_code(int__min_int(Min::out),
+		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Min = INT_MIN;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -431,8 +475,19 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
-:- pragma c_code(int__bits_per_int(Bits::out), will_not_call_mercury, "
-	Bits = sizeof(MR_Integer) * CHAR_BIT;
+:- pragma c_code(int__bits_per_int(Bits::out),
+		[will_not_call_mercury, thread_safe], "
+	Bits = ML_BITS_PER_INT;
+").
+
+:- pragma c_code(int__quot_bits_per_int(Int::in) = (Div::out),
+		[will_not_call_mercury, thread_safe], "
+	Div = Int / ML_BITS_PER_INT;
+").
+
+:- pragma c_code(int__times_bits_per_int(Int::in) = (Result::out),
+		[will_not_call_mercury, thread_safe], "
+	Result = Int * ML_BITS_PER_INT;
 ").
 
 %-----------------------------------------------------------------------------%

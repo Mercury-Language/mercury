@@ -89,6 +89,12 @@ Changes to the standard library:
 
 * There is a new library module `counter' for managing counters.
 
+* We've added a new library module `sparse_bitset', which implements
+  an abstract data type for storing sets of integers.
+
+* There is a new library module `enum' which contains a typeclass
+  describing types which can be converted to and from integers.
+
 * Four new parametric instantiations `maybe/1', `maybe_error/1',
   `pair/2' and `pair/1' have been added to the `std_util' library
   module.  These make it more convenient to work with non-ground

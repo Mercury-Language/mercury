@@ -527,6 +527,7 @@ mercury_std_library_module("builtin").
 mercury_std_library_module("char").
 mercury_std_library_module("counter").
 mercury_std_library_module("dir").
+mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
 mercury_std_library_module("exception").
 mercury_std_library_module("float").
@@ -560,6 +561,7 @@ mercury_std_library_module("set").
 mercury_std_library_module("set_bbbtree").
 mercury_std_library_module("set_ordlist").
 mercury_std_library_module("set_unordlist").
+mercury_std_library_module("sparse_bitset").
 mercury_std_library_module("stack").
 mercury_std_library_module("std_util").
 mercury_std_library_module("store").
