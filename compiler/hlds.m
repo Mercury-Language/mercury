@@ -11,8 +11,7 @@
 % This file contains the data types for the high-level data structure.
 % The file is arranged as follows: first all the data structures are
 % listed. Most of these are private to this module, with access
-% predicates provided. Those that are not are explicitly exported
-% using a `:- export_type' directive.
+% predicates provided.
 % Then for each data structure, we give the interface and then
 % the implementation for the access predicates for that data structure.
 %
@@ -390,7 +389,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% proc_id and the is_builtin field.
 				% `follow_vars.m' fills in
 				% the follow_vars field.
-			;	call(pred_id, proc_id, list(term), is_builtin,
+			;	call(pred_id, proc_id, list(var), is_builtin,
 					sym_name, follow_vars)
 
 				% Deterministic disjunctions are converted

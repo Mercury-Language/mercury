@@ -562,11 +562,12 @@ hlds_out__write_goal_2(disj(List), ModuleInfo, VarSet, Indent) -->
 		io__write_string("fail")
 	).
 
-hlds_out__write_goal_2(call(_PredId, _ProcId, Args, _, PredName, _Follow),
+hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
 	{ unqualify_name(PredName, Name) },
 	{ term__context_init(Context) },
+	{ term__var_list_to_term_list(ArgVars, Args) },
 	mercury_output_term(term__functor(term__atom(Name), Args, Context),
 				VarSet).
 

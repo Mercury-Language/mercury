@@ -213,7 +213,7 @@ detect_live_vars_in_goal_2(some(_Vs, Goal0), ExtraLives0, Liveness0, LiveSets0,
 		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(
-		call(PredId, ProcId, ArgTerms, Builtin, _SymName, _Follow),
+		call(PredId, ProcId, ArgVars, Builtin, _SymName, _Follow),
 		ExtraLives0, Liveness, LiveSets0,
 		CodeModel, ModuleInfo, ExtraLives, Liveness, LiveSets) :-
 	(
@@ -227,7 +227,6 @@ detect_live_vars_in_goal_2(
 		% after the call, except for the output arguments produced
 		% by the call, plus all the variables that are nondet
 		% live at the call.
-		term__vars_list(ArgTerms, ArgVars),
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
 		set__difference(Liveness, OutVars, LiveVars0),
 		set__union(LiveVars0, ExtraLives0, LiveVars),

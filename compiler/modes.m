@@ -450,7 +450,9 @@ modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), NonLocals, Goal)
 				Mode, UnifyInfo),
 	=(ModeInfo),
 	{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
-	{ handle_extra_goals(Unify, ExtraGoals, NonLocals, [A0, B0], [A, B],
+	{ term__vars_list([A0, B0], Vars0) },
+	{ term__vars_list([A, B], Vars) },
+	{ handle_extra_goals(Unify, ExtraGoals, NonLocals, Vars0, Vars,
 				ModeInfo0, ModeInfo, Goal) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
@@ -472,7 +474,7 @@ modecheck_goal_2(switch(Var, CanFail, Cases0), NonLocals,
 	% hlds__goal_expr.
 
 :- pred handle_extra_goals(hlds__goal_expr, pair(list(hlds__goal)), set(var),
-			list(term), list(term), mode_info, mode_info,
+			list(var), list(var), mode_info, mode_info,
 			hlds__goal_expr).
 :- mode handle_extra_goals(in, in, in, in, in, mode_info_ui, mode_info_ui, out)
 	is det.
@@ -484,10 +486,8 @@ handle_extra_goals(MainGoal, ExtraGoals, NonLocals0, Args0, Args,
 		Goal = MainGoal	% no
 	;
 		% recompute the new set of non-local variables for the main goal
-		term__vars_list(Args0, OldArgList),
-		term__vars_list(Args, NewArgList),
-		set__list_to_set(OldArgList, OldArgVars),
-		set__list_to_set(NewArgList, NewArgVars),
+		set__list_to_set(Args0, OldArgVars),
+		set__list_to_set(Args, NewArgVars),
 		set__difference(NewArgVars, OldArgVars, IntroducedVars),
 		set__union(NonLocals0, IntroducedVars, OutsideVars),
 		set__intersect(NewArgVars, OutsideVars, NonLocals),
@@ -855,14 +855,13 @@ instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_call_pred(pred_id, list(term), proc_id, list(term),
+:- pred modecheck_call_pred(pred_id, list(var), proc_id, list(var),
 				pair(list(hlds__goal)), mode_info, mode_info).
 :- mode modecheck_call_pred(in, in, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-modecheck_call_pred(PredId, Args0, TheProcId, Args, ExtraGoals,
+modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		ModeInfo0, ModeInfo) :-
-	term__term_list_to_var_list(Args0, ArgVars0),
 
 		% Get the list of different possible modes for the called
 		% predicate
@@ -926,8 +925,7 @@ modecheck_call_pred(PredId, Args0, TheProcId, Args, ExtraGoals,
 		mode_info_get_errors(ModeInfo2, NewErrors),
 		list__append(OldErrors, NewErrors, Errors),
 		mode_info_set_errors(Errors, ModeInfo2, ModeInfo)
-	),
-	term__var_list_to_term_list(ArgVars, Args).
+	).
 
 :- pred modecheck_call_pred_2(list(proc_id), pred_id, proc_table, list(var),
 			set(var), proc_id, list(var), pair(list(hlds__goal)),

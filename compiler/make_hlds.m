@@ -1135,10 +1135,9 @@ transform_goal_2(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 		SymName = unqualified(PredName),
 		PredCallId = SymName/Arity,
 		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
-		term__var_list_to_term_list(HeadVars, HeadArgs),
 		invalid_pred_id(PredId),
 		map__init(Follow),
-		Goal2 = call(PredId, ModeId, HeadArgs, Builtin,
+		Goal2 = call(PredId, ModeId, HeadVars, Builtin,
 							SymName, Follow) -
 				GoalInfo,
 		goal_info_init(GoalInfo),

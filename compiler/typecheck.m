@@ -348,7 +348,7 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	type_info_set_context(Context),
 		% typecheck the clause - first the head unification, and
 		% then the body
-	typecheck_var_has_type_list(HeadVars, ArgTypes, 1),
+	typecheck_var_has_type_list(HeadVars, ArgTypes, 0),
 	typecheck_goal(Body0, Body),
 	{ Clause = clause(Modes, Body, Context) },
 		% check for type ambiguities
@@ -555,7 +555,7 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_call_pred(sym_name, list(term), pred_id, type_info,
+:- pred typecheck_call_pred(sym_name, list(var), pred_id, type_info,
 				type_info).
 :- mode typecheck_call_pred(in, in, out, type_info_di, type_info_uo) is det.
 
@@ -600,8 +600,8 @@ typecheck_call_pred(PredName, Args, PredId, TypeInfo0, TypeInfo) :-
 		),
 			% unify the types of the call arguments with the
 			% called predicates' arg types
-		typecheck_term_has_type_list(Args, PredArgTypes, 0, TypeInfo2,
-				TypeInfo)
+		typecheck_var_has_type_list(Args, PredArgTypes, 0,
+				TypeInfo2, TypeInfo)
 	
 	;
 		invalid_pred_id(PredId),
@@ -695,9 +695,9 @@ typecheck_var_has_type_list([_|_], [], _) -->
 	{ error("typecheck_var_has_type_list: length mismatch") }.
 typecheck_var_has_type_list([], [], _) --> [].
 typecheck_var_has_type_list([Var|Vars], [Type|Types], ArgNum) -->
-	type_info_set_arg_num(ArgNum),
-	typecheck_var_has_type(Var, Type),
 	{ ArgNum1 is ArgNum + 1 },
+	type_info_set_arg_num(ArgNum1),
+	typecheck_var_has_type(Var, Type),
 	typecheck_var_has_type_list(Vars, Types, ArgNum1).
 
 :- pred typecheck_var_has_type(var, type, type_info, type_info).

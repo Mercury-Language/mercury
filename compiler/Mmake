@@ -84,7 +84,7 @@ mods		: $(mercury_compile.mods)
 #-----------------------------------------------------------------------------#
 
 tags		: $(mercury_compile.srcs)
-	mtags *.pp $(mercury_compile.srcs)
+	mtags *.pp $(mercury_compile.srcs) ../library/*.m
 
 mercury_compile.stats : source_stats.awk $(mercury_compile.srcs)
 	awk -f `vpath_find source_stats.awk` \

@@ -245,16 +245,14 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 :- mode polymorphism__process_goal_2(in, in, out, in, out) is det.
 
 polymorphism__process_goal_2(
-			call(PredId, ProcId, Args0, Builtin, Name, FollowVars),
-			GoalInfo, Goal) -->
-	{ term__term_list_to_var_list(Args0, ArgVars0) },
+		call(PredId, ProcId, ArgVars0, Builtin, Name, FollowVars),
+		GoalInfo, Goal) -->
 	polymorphism__process_call(PredId, ProcId, ArgVars0, 
 			ArgVars, ExtraVars, ExtraGoals),
-	{ term__var_list_to_term_list(ArgVars, Args) },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
 	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
 	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
-	{ Call = call(PredId, ProcId, Args, Builtin, Name, FollowVars)
+	{ Call = call(PredId, ProcId, ArgVars, Builtin, Name, FollowVars)
 			- CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
@@ -264,7 +262,8 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 	(
 		{ Unification = complicated_unify(UniMode, _Category,
 			FollowVars) },
-		{ X = term__variable(XVar) }
+		{ X = term__variable(XVar) },
+		{ Y = term__variable(YVar) }
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, ModuleInfo)),
 		{ map__lookup(VarTypes, XVar, Type) },
@@ -288,10 +287,10 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 			{ ProcId = 0 },
 			{ map__lookup(TypeInfoMap, TypeVar, TypeInfoVar) },
 			{ SymName = unqualified("unify") },
-			{ Args = [term__variable(TypeInfoVar), X, Y] },
+			{ ArgVars = [TypeInfoVar, XVar, YVar] },
 			{ code_util__is_builtin(ModuleInfo, PredId, ProcId,
 				IsBuiltin) },
-			{ Goal = call(PredId, ProcId, Args, IsBuiltin,
+			{ Goal = call(PredId, ProcId, ArgVars, IsBuiltin,
 					SymName, FollowVars) - GoalInfo }
 
 		; { type_to_type_id(Type, TypeId, _) } ->
@@ -329,9 +328,9 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 			),
 
 			{ SymName = unqualified("__Unify__") },
-			{ Args = [X, Y] },
+			{ ArgVars = [XVar, YVar] },
 			{ is_builtin__make_builtin(no, no, Builtin) },
-			{ Call = call(PredId, ProcId,  Args, Builtin,
+			{ Call = call(PredId, ProcId,  ArgVars, Builtin,
 					SymName, FollowVars) },
 			polymorphism__process_goal_2(Call, GoalInfo, Goal)
 		;

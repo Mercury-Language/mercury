@@ -130,7 +130,7 @@ inlining__inlining_in_goal_2(some(Vars, Goal0), Varset0, VarTypes0, ModuleInfo,
 		Goal, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(
-		call(PredId, ProcId, Args, Builtin, SymName, Follow),
+		call(PredId, ProcId, ArgVars, Builtin, SymName, Follow),
 		Varset0, VarTypes0, ModuleInfo, Goal, Varset, VarTypes) :-
 	(
 		\+ is_builtin__is_internal(Builtin),
@@ -148,7 +148,6 @@ inlining__inlining_in_goal_2(
         	proc_info_variables(ProcInfo, PVarset),
 		proc_info_vartypes(ProcInfo, CVarTypes),
 		varset__vars(PVarset, Vars0),
-		term__vars_list(Args, ArgVars),
 		map__init(Subn0),
 		assoc_list__from_corresponding_lists(ArgVars, HeadVars, ArgSub),
 		inlining__init_subn(ArgSub, Subn0, Subn1),
@@ -156,7 +155,7 @@ inlining__inlining_in_goal_2(
 			Subn1, CVarTypes, Varset, VarTypes, Subn),
 		inlining__name_apart(CalledGoal, Subn, Goal - _GoalInfo)
 	;
-		Goal = call(PredId, ProcId, Args, Builtin, SymName, Follow),
+		Goal = call(PredId, ProcId, ArgVars, Builtin, SymName, Follow),
 		Varset = Varset0,
 		VarTypes = VarTypes0
 	).
@@ -303,7 +302,7 @@ inlining__name_apart_2(some(Vars0, Goal0), Subn, some(Vars, Goal)) :-
 inlining__name_apart_2(
 		call(PredId, ProcId, Args0, Builtin, SymName, Follow0), Subn,
 		call(PredId, ProcId, Args, Builtin, SymName, Follow)) :-
-	inlining__rename_args(Args0, Subn, Args),
+	map__apply_to_list(Args0, Subn, Args),
 	inlining__rename_follow_vars(Follow0, Subn, Follow).
 
 inlining__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Subn,
@@ -334,6 +333,8 @@ inlining__name_apart_cases([case(Cons, G0)|Gs0], Subn, [case(Cons, G)|Gs]) :-
 	inlining__name_apart_cases(Gs0, Subn, Gs).
 
 %-----------------------------------------------------------------------------%
+
+	% These predicates probably belong in term.m.
 
 :- pred inlining__rename_args(list(term), map(var, var), list(term)).
 :- mode inlining__rename_args(in, in, out) is det.
