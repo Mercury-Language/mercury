@@ -100,7 +100,7 @@ case "$grade" in
 		GRADE_OPTS="$OPT_OPTS"
 		;;
 	init)
-		echo "$0: the `-s init' option is no longer supported" 1>&2
+		echo "$0: the \`-s init' option is no longer supported" 1>&2
 		exit 1
 		;;
 	debug)
