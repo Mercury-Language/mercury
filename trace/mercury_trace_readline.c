@@ -57,8 +57,6 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 
 #else /* use readline */
 
-	size_t	len;
-
 	rl_instream = in;
 	rl_outstream = out;
 
