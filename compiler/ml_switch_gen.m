@@ -78,7 +78,15 @@
 % The following types are exported to the modules that implement
 % specialized kinds of switches.
 
+	% Generate an appropriate default for a switch.
+	%
+:- pred ml_switch_generate_default(can_fail::in, code_model::in,
+		prog_context::in, switch_default::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
+
 % An ml_extended_case is an HLDS case annotated with some additional info.
+% XXX this is duplicated from switch_gen.m and should be moved to a new
+% module switch_util.m
 :- type ml_extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
 :- type ml_cases_list == list(ml_extended_case).
 
@@ -93,13 +101,15 @@
 :- implementation.
 
 % These ones are not yet implemented yet:
-% :- import_module ml_tag_switch, ml_lookup_switch.
-:- import_module ml_dense_switch, ml_string_switch.
+% :- import_module ml_lookup_switch.
+:- import_module ml_tag_switch, ml_dense_switch, ml_string_switch.
 :- import_module ml_code_gen, ml_unify_gen, ml_code_util, type_util.
 :- import_module options.
 
 :- import_module bool, int, string, map, tree, std_util, require.
 
+% XXX this is duplicated from switch_gen.m and should be moved to a new
+% module switch_util.m
 :- type ml_switch_category
 	--->	atomic_switch	% a switch on int/char/enum
 	;	string_switch
@@ -207,8 +217,6 @@ XXX Lookup switches are NYI
 		ml_string_switch__generate(TaggedCases, CaseVar, CodeModel,
 			CanFail, Context, MLDS_Decls, MLDS_Statements)
 	;
-/**********
-XXX Tag switches are NYI
 		%
 		% Try using a tag switch
 		%
@@ -217,12 +225,12 @@ XXX Tag switches are NYI
 		{ list__length(TaggedCases, NumCases) },
 		{ globals__lookup_int_option(Globals, tag_switch_size,
 			TagSize) },
-		{ NumCases >= TagSize }
+		{ NumCases >= TagSize },
+		{ target_supports_int_switch(Globals) }
 	->
 		ml_tag_switch__generate(TaggedCases, CaseVar, CodeModel, CanFail,
 			Context, MLDS_Decls, MLDS_Statements)
 	;
-**********/
 		%
 		% Try using a "direct-mapped" switch
 		%
@@ -316,6 +324,9 @@ ml_switch_gen__determine_category(CaseVar, SwitchCategory) -->
 :- pred ml_switch_gen__type_cat_to_switch_cat(builtin_type, ml_switch_category).
 :- mode ml_switch_gen__type_cat_to_switch_cat(in, out) is det.
 
+% XXX this is duplicated from switch_gen.m and should be moved to a new
+% module switch_util.m
+
 ml_switch_gen__type_cat_to_switch_cat(enum_type, atomic_switch).
 ml_switch_gen__type_cat_to_switch_cat(int_type,  atomic_switch).
 ml_switch_gen__type_cat_to_switch_cat(char_type, atomic_switch).
@@ -351,6 +362,9 @@ ml_switch_lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
 	%
 :- pred ml_switch_priority(cons_tag, int).
 :- mode ml_switch_priority(in, out) is det.
+
+% XXX this is duplicated from switch_gen.m and should be moved to a new
+% module switch_util.m
 
 ml_switch_priority(no_tag, 0).			% should never occur
 ml_switch_priority(int_constant(_), 1).
@@ -460,10 +474,6 @@ ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case) -->
 
 	% Generate an appropriate default for a switch.
 	%
-:- pred ml_switch_generate_default(can_fail::in, code_model::in,
-		prog_context::in, switch_default::out,
-		ml_gen_info::in, ml_gen_info::out) is det.
-
 ml_switch_generate_default(CanFail, CodeModel, Context, Default) -->
 	(
 		{ CanFail = can_fail },

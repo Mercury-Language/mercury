@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module hlds_pred, hlds_data, hlds_goal.
+:- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
 :- import_module mlds, ml_code_util.
 :- import_module llds. % XXX for `code_model'
 
@@ -47,6 +47,12 @@
 		mlds__rval, ml_gen_info, ml_gen_info).
 :- mode ml_gen_tag_test(in, in, out, out, out, in, out) is det.
 
+	% ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
+	%	Return the rval for the secondary tag field of VarRval,
+	%	assuming that VarRval has the specified VarType and PrimaryTag.
+:- func ml_gen_secondary_tag_rval(tag_bits, prog_type, module_info, mlds__rval)
+	= mlds__rval.
+
 	%
 	% ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%	Context, WrapperFuncRval, WrapperFuncType):
@@ -74,7 +80,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_out, builtin_ops.
+:- import_module hlds_out, builtin_ops.
 :- import_module ml_call_gen, ml_type_gen, prog_util, type_util, mode_util.
 :- import_module rtti, error_util.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
@@ -1708,6 +1714,34 @@ ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
 ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
 		VarType, ModuleInfo, Rval) = TagTest :-
+	SecondaryTagField = ml_gen_secondary_tag_rval(PrimaryTagVal,
+		VarType, ModuleInfo, Rval),
+	SecondaryTagTest = binop(eq, SecondaryTagField,
+		const(int_const(SecondaryTagVal))),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
+	( NumTagBits = 0 ->
+		% no need to test the primary tag
+		TagTest = SecondaryTagTest
+	;
+		PrimaryTagTest = binop(eq,
+			unop(std_unop(tag), Rval),
+			unop(std_unop(mktag),
+				const(int_const(PrimaryTagVal)))), 
+		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
+	).
+ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
+		TestRval :-
+	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
+	TestRval = binop(eq, Rval,
+		  unop(cast(MLDS_VarType), mkword(Bits,
+		  	unop(std_unop(mkbody), const(int_const(Num)))))).
+
+	% ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
+	%	Return the rval for the secondary tag field of VarRval,
+	%	assuming that VarRval has the specified VarType and PrimaryTag.
+ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
+		SecondaryTagField :-
 	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
@@ -1726,26 +1760,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
 			"data_tag"),
 		SecondaryTagField = lval(field(yes(PrimaryTagVal), Rval,
 			FieldId, mlds__native_int_type, MLDS_VarType))
-	),
-	SecondaryTagTest = binop(eq, SecondaryTagField,
-		const(int_const(SecondaryTagVal))),
-	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
-	( NumTagBits = 0 ->
-		% no need to test the primary tag
-		TagTest = SecondaryTagTest
-	;
-		PrimaryTagTest = binop(eq,
-			unop(std_unop(tag), Rval),
-			unop(std_unop(mktag),
-				const(int_const(PrimaryTagVal)))), 
-		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
 	).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
-		TestRval :-
-	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
-	TestRval = binop(eq, Rval,
-		  unop(cast(MLDS_VarType), mkword(Bits,
-		  	unop(std_unop(mkbody), const(int_const(Num)))))).
 
 :- func ml_gen_field_id(prog_type, mlds__class_name, arity, mlds__field_name) =
 	mlds__field_id.
