@@ -26,7 +26,6 @@
 %	(Partly done; we now mangle names less often than we used to.
 %	The only way to mangle less would be to use a context-sensitive
 %	name mangling algorithm, which may not be a good idea.)
-% [ ] solutions
 % [ ] Type classes
 %	- now work, but...
 %	- type class hierarchies don't work due to unimplemented pragma
