@@ -59,7 +59,7 @@ endif
 # find exactly how to trigger the bug. Oh well...
 
 MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
-				--typeinfo-liveness
+				--body-typeinfo-liveness
 MCFLAGS-inference_test = --infer-all
 MCFLAGS-inference_test_2 = --infer-all
 MCFLAGS-existential_type_classes = --infer-all

@@ -157,8 +157,6 @@ detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	proc_info_varset(ProcInfo1, Varset),
 	proc_info_vartypes(ProcInfo1, VarTypes),
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, typeinfo_liveness,
-		TypeInfoLiveness0),
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),
@@ -170,7 +168,7 @@ detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	->
 		TypeInfoLiveness = no
 	;
-		TypeInfoLiveness = TypeInfoLiveness0
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness)
 	),
 	live_info_init(ModuleInfo, ProcInfo1, TypeInfoLiveness,
 		VarTypes, Varset, LiveInfo),
@@ -972,9 +970,8 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness) :-
 	module_info_globals(ModuleInfo, Globals),
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	globals__lookup_bool_option(Globals, typeinfo_liveness, 
-		TypeinfoLiveness),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(Globals, TypeinfoLiveness),
 	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, PredArity),

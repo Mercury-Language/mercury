@@ -363,18 +363,10 @@ lambda__transform_lambda(PredOrFunc, EvalMethod, OrigPredName, Vars, Modes,
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals1),
-	module_info_globals(ModuleInfo0, Globals),
 
-	% If typeinfo_liveness is set, all type_infos for the
-	% arguments should be included, not just the ones
-	% that are used.
-	globals__lookup_bool_option(Globals,
-		typeinfo_liveness, TypeInfoLiveness),
-	( TypeInfoLiveness = yes ->
-		set__union(NonLocals1, ExtraTypeInfos, NonLocals)
-	;
-		NonLocals = NonLocals1
-	),
+	% We need all the typeinfos, including the ones that are not used,
+	% for the layout structure describing the closure.
+	set__union(NonLocals1, ExtraTypeInfos, NonLocals),
 
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 

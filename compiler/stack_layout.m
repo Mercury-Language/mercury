@@ -235,7 +235,7 @@
 	set_bbbtree(label)::out) is det.
 
 :- pred stack_layout__construct_closure_layout(proc_label::in,
-	maybe(closure_layout_info)::in, list(maybe(rval))::out,
+	closure_layout_info::in, list(maybe(rval))::out,
 	create_arg_types::out, int::in, int::out) is det.
 
 :- implementation.
@@ -936,26 +936,20 @@ stack_layout__construct_liveval_name_rvals(var_info(_, LiveValueType),
 	% with runtime/mercury_ho_call.h, which contains macros to access
 	% the data structures we build here.
 
-stack_layout__construct_closure_layout(ProcLabel, MaybeClosureLayoutInfo,
+stack_layout__construct_closure_layout(ProcLabel, ClosureLayoutInfo,
 		Rvals, ArgTypes, CNum0, CNum) :-
 	stack_layout__construct_procid_rvals(ProcLabel, ProcIdRvals,
 		ProcIdTypes),
-	( MaybeClosureLayoutInfo = yes(ClosureLayoutInfo) ->
-		ClosureLayoutInfo = closure_layout_info(ClosureArgs,
-			TVarLocnMap),
-		stack_layout__construct_closure_arg_rvals(ClosureArgs,
-			ClosureArgRvals, ClosureArgTypes, CNum0, CNum),
-		stack_layout__construct_tvar_rvals(TVarLocnMap, TVarRvals,
-			TvarRvalTypes),
-		list__append(ClosureArgRvals, TVarRvals, LayoutRvals),
-		LayoutTypes = initial(ClosureArgTypes, TvarRvalTypes)
-	;
-		LayoutRvals = [yes(const(int_const(-1)))],
-		LayoutTypes = initial([1 - yes(integer)], none),
-		CNum = CNum0
-	),
+	ClosureLayoutInfo = closure_layout_info(ClosureArgs,
+		TVarLocnMap),
+	stack_layout__construct_closure_arg_rvals(ClosureArgs,
+		ClosureArgRvals, ClosureArgTypes, CNum0, CNum),
+	stack_layout__construct_tvar_rvals(TVarLocnMap, TVarRvals,
+		TVarRvalTypes),
+	list__append(ClosureArgRvals, TVarRvals, LayoutRvals),
 	list__append(ProcIdRvals, LayoutRvals, Rvals),
-	ArgTypes = initial(ProcIdTypes, LayoutTypes).
+	ArgTypes = initial(ProcIdTypes, initial(ClosureArgTypes,
+		TVarRvalTypes)).
 
 :- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
 	list(maybe(rval))::out, initial_arg_types::out, int::in, int::out)

@@ -47,13 +47,18 @@
 	% Iterate collecting requests and processing them until there
 	% are no more requests remaining.
 specialize_higher_order(ModuleInfo0, ModuleInfo) -->
-	globals__io_lookup_bool_option(optimize_higher_order, HigherOrder),
-	globals__io_lookup_bool_option(type_specialization, TypeSpec),
-	globals__io_lookup_bool_option(user_guided_type_specialization,
-		UserTypeSpec),
-	globals__io_lookup_int_option(higher_order_size_limit, SizeLimit),
-	globals__io_lookup_bool_option(typeinfo_liveness,
-		TypeInfoLiveness),
+	globals__io_get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, optimize_higher_order,
+		HigherOrder) },
+	{ globals__lookup_bool_option(Globals, type_specialization,
+		TypeSpec) },
+	{ globals__lookup_bool_option(Globals, user_guided_type_specialization,
+		UserTypeSpec) },
+	{ globals__lookup_int_option(Globals, higher_order_size_limit,
+		SizeLimit) },
+		% A newly created procedure is local and cannot have had
+		% its address taken.
+	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
 	{ Params = ho_params(HigherOrder, TypeSpec,
 		UserTypeSpec, SizeLimit, TypeInfoLiveness) },
 	{ map__init(NewPredMap) },

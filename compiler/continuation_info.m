@@ -13,7 +13,7 @@
 % garbage collection, for stack tracing, execution tracing and perhaps
 % other purposes.
 %
-% Information is collected in several passes. 
+% Information is collected in several passes.
 %
 % 	1 Before we start generating code for a procedure,
 %	  we initialize the set of internal labels for which we have
@@ -192,7 +192,7 @@
 				% RTTI access.
 		).
 
-:- type slot_contents 
+:- type slot_contents
 	--->	ticket			% a ticket (trail pointer)
 	;	ticket_counter		% a copy of the ticket counter
 	;	trace_data
@@ -313,7 +313,7 @@ continuation_info__process_proc_llds(PredProcId, Instructions,
 	% and add it to the internals.
 	%
 :- pred continuation_info__process_continuation(bool::in,
-	pair(label, list(liveinfo))::in, 
+	pair(label, list(liveinfo))::in,
 	proc_label_layout_info::in, proc_label_layout_info::out) is det.
 
 continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
@@ -559,42 +559,48 @@ continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo,
 
 continuation_info__generate_closure_layout(ModuleInfo, PredId, ProcId,
 		ClosureLayout) :-
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
-	proc_info_vartypes(ProcInfo, VarTypes),
+	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
 	map__init(VarLocs0),
 	set__init(TypeVars0),
-	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
-	continuation_info__build_closure_info(VarArgInfos, ArgLayouts,
-		VarTypes, InstMap, VarLocs0, VarLocs, TypeVars0, TypeVars),
-	set__to_sorted_list(TypeVars, TypeVarsList),
-	continuation_info__find_typeinfos_for_tvars(TypeVarsList, VarLocs,
-		ProcInfo, TypeInfoDataMap),
-	ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap).
+	(
+		continuation_info__build_closure_info(HeadVars, ArgTypes,
+			ArgInfos, ArgLayouts, InstMap, VarLocs0, VarLocs,
+			TypeVars0, TypeVars)
+	->
+		set__to_sorted_list(TypeVars, TypeVarsList),
+		continuation_info__find_typeinfos_for_tvars(TypeVarsList,
+			VarLocs, ProcInfo, TypeInfoDataMap),
+		ClosureLayout = closure_layout_info(ArgLayouts,
+			TypeInfoDataMap)
+	;
+		error("proc headvars and pred argtypes disagree on arity")
+	).
 
-:- pred continuation_info__build_closure_info(
-	assoc_list(prog_var, arg_info)::in,  list(closure_arg_info)::out,
-	map(prog_var, type)::in, instmap::in,
-	map(prog_var, set(rval))::in, map(prog_var, set(rval))::out,
-	set(tvar)::in, set(tvar)::out) is det.
+:- pred continuation_info__build_closure_info(list(prog_var)::in,
+	list(type)::in, list(arg_info)::in,  list(closure_arg_info)::out,
+	instmap::in, map(prog_var, set(rval))::in,
+	map(prog_var, set(rval))::out, set(tvar)::in, set(tvar)::out)
+	is semidet.
 
-continuation_info__build_closure_info([], [], _, _, VarLocs, VarLocs,
+continuation_info__build_closure_info([], [], [], [], _, VarLocs, VarLocs,
 		TypeVars, TypeVars).
-continuation_info__build_closure_info([Var - ArgInfo | VarArgInfos],
-		[Layout | Layouts], VarTypes, InstMap,
+continuation_info__build_closure_info([Var | Vars], [Type | Types],
+		[ArgInfo | ArgInfos], [Layout | Layouts], InstMap,
 		VarLocs0, VarLocs, TypeVars0, TypeVars) :-
 	ArgInfo = arg_info(ArgLoc, _ArgMode),
-	map__lookup(VarTypes, Var, Type),
 	instmap__lookup_var(InstMap, Var, Inst),
 	Layout = closure_arg_info(Type, Inst),
 	set__singleton_set(Locations, lval(reg(r, ArgLoc))),
 	map__det_insert(VarLocs0, Var, Locations, VarLocs1),
 	type_util__vars(Type, VarTypeVars),
 	set__insert_list(TypeVars0, VarTypeVars, TypeVars1),
-	continuation_info__build_closure_info(VarArgInfos, Layouts,
-		VarTypes, InstMap, VarLocs1, VarLocs, TypeVars1, TypeVars).
+	continuation_info__build_closure_info(Vars, Types, ArgInfos, Layouts,
+		InstMap, VarLocs1, VarLocs, TypeVars1, TypeVars).
 
 %---------------------------------------------------------------------------%
 
@@ -611,7 +617,7 @@ continuation_info__find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo,
 			ConvertRval = lambda([Locn::out] is nondet, (
 				set__member(Rval, TypeInfoRvalSet),
 				Rval = lval(Lval),
-				( 
+				(
 					TypeInfoLocn = typeclass_info(_,
 						FieldNum),
 					Locn = indirect(Lval, FieldNum)

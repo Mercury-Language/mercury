@@ -351,7 +351,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 			% The following options cause the info required
 			% by tracing to be generated.
 		globals__io_set_option(trace_stack_layout, bool(yes)),
-		globals__io_set_option(typeinfo_liveness, bool(yes))
+		globals__io_set_option(body_typeinfo_liveness, bool(yes))
 	;
 		[]
 	),
@@ -369,7 +369,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% and needs hijacks and frameopt to be switched off.
 	( { GC_Method = accurate } ->
 		globals__io_set_option(agc_stack_layout, bool(yes)),
-		globals__io_set_option(typeinfo_liveness, bool(yes)),
+		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
 		globals__io_set_option(allow_hijacks, bool(no)),
 		globals__io_set_option(optimize_frames, bool(no))
 	;
@@ -381,14 +381,8 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	option_implies(agc_stack_layout, basic_stack_layout, bool(yes)),
 
 	% XXX deforestation does not perform folding on polymorphic
-	% predicates correctly with --typeinfo-liveness.
-	option_implies(typeinfo_liveness, deforestation, bool(no)),
-
-	% XXX middle_rec doesn't work with --typeinfo-liveness,
-	% because --typeinfo-liveness causes the stack to be used
-	% in places where middle_rec is not expecting it and has
-	% hence not set up a stack frame.
-	option_implies(typeinfo_liveness, middle_rec, bool(no)),
+	% predicates correctly with --body-typeinfo-liveness.
+	option_implies(body_typeinfo_liveness, deforestation, bool(no)),
 
 	% XXX value numbering implements the wrong semantics for LLDS
 	% operations involving tickets, which are generated only with

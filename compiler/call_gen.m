@@ -438,10 +438,9 @@ call_gen__save_variables(Args, Code) -->
 	{ set__list_to_set(Variables0, Vars0) },
 	{ set__difference(Vars0, Args, Vars1) },
 	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, typeinfo_liveness, 
-		TypeinfoLiveness) },
+	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
 	( 
-		{ TypeinfoLiveness = yes }
+		{ TypeInfoLiveness = yes }
 	->
 		code_info__get_proc_info(ProcInfo),
 		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars1, 

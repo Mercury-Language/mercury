@@ -506,10 +506,6 @@ unify_gen__generate_construction_2(
 	    )
 	;
 		{ Code = empty },
-		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
-			CodeAddr),
-		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
-			ProcLabel) },
 		(
 			{ EvalMethod = normal }
 		;
@@ -525,29 +521,15 @@ unify_gen__generate_construction_2(
 			{ error(
 			"Sorry, not implemented: `aditi_top_down' closures") }
 		),
-		{ module_info_globals(ModuleInfo, Globals) },
-		{ globals__lookup_bool_option(Globals, typeinfo_liveness,
-			TypeInfoLiveness) },
-		{
-			TypeInfoLiveness = yes,
-			continuation_info__generate_closure_layout(
-				ModuleInfo, PredId, ProcId, ClosureInfo),
-			MaybeClosureInfo = yes(ClosureInfo)
-		;
-			TypeInfoLiveness = no,
-			% In the absence of typeinfo liveness, procedures
-			% are not guaranteed to have typeinfos for all the
-			% type variables in their signatures. Such a missing
-			% typeinfo would cause a compile-time abort in
-			% continuation_info__generate_closure_layout,
-			% and even if that predicate was modified,
-			% we still couldn't generate a usable layout
-			% structure.
-			MaybeClosureInfo = no
-		},
+		{ continuation_info__generate_closure_layout(
+			ModuleInfo, PredId, ProcId, ClosureInfo) },
+		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
+			CodeAddr),
+		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
+			ProcLabel) },
 		code_info__get_cell_count(CNum0),
 		{ stack_layout__construct_closure_layout(ProcLabel,
-			MaybeClosureInfo, ClosureLayoutMaybeRvals,
+			ClosureInfo, ClosureLayoutMaybeRvals,
 			ClosureLayoutArgTypes, CNum0, CNum) },
 		code_info__set_cell_count(CNum),
 		code_info__get_next_cell_number(ClosureLayoutCellNo),
