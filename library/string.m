@@ -1799,7 +1799,7 @@ format_char(_, _) = _ :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__float_to_string(FloatVal::in, FloatString::out),
+	string__float_to_string(FloatVal::in, FloatString::uo),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	FloatString = System::Convert::ToString(FloatVal);
 }").
@@ -2214,7 +2214,7 @@ string__append_iii(X, Y, Z) :-
 :- pred string__append_ioi(string::in, string::uo, string::in) is semidet.
 
 :- pragma foreign_proc("C",
-	string__append_ioi(S1::in, S2::uo,S3::in),
+	string__append_ioi(S1::in, S2::uo, S3::in),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	size_t len_1, len_2, len_3;
 
@@ -2235,7 +2235,7 @@ string__append_iii(X, Y, Z) :-
 }").
 
 :- pragma foreign_proc("MC++",
-	string__append_ioi(S1::in, S2::out, S3::in),
+	string__append_ioi(S1::in, S2::uo, S3::in),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	if (S3->StartsWith(S1)) {
 		S2 = S3->Remove(0, S1->Length);
