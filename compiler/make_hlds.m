@@ -930,10 +930,10 @@ insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
 insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				List, VarSet) :-
 	N1 is N0 + 1,
+		% skip unifications of the form `X = X'
 	( Arg = term__variable(Var) ->
-		% just skip unifications of the form `X = X'
-		List = List1,
-		VarSet1 = VarSet0
+		insert_arg_unifications_2(Vars, Args, Context, N1,
+				List0, VarSet0, List, VarSet)
 	;
 		arg_context_to_unify_context(Context, N1,
 				UnifyMainContext, UnifySubContext),
@@ -943,10 +943,10 @@ insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 			append(ConjList, List1, List)
 		;
 			List = [Goal | List1]
-		)
-	),
-	insert_arg_unifications_2(Vars, Args, Context, N1, List0, VarSet1,
-				List1, VarSet).
+		),
+		insert_arg_unifications_2(Vars, Args, Context, N1,
+				List0, VarSet1, List1, VarSet)
+	).
 
 :- pred arg_context_to_unify_context(arg_context, int,
 				unify_main_context, unify_sub_contexts).
