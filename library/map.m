@@ -265,7 +265,7 @@
 :- func map__apply_to_list(list(K), map(K, V)) = list(V).
 
 	% Declaratively, a NOP.
-	% Operationally, a suggestion that the implemention
+	% Operationally, a suggestion that the implementation
 	% optimize the representation of the map in the expectation
 	% of a number of lookups but few or no modifications.
 :- pred map__optimize(map(K, V), map(K, V)).
