@@ -20,8 +20,15 @@ Usage: ml [<ml options>] [-- <gcc options>] files...
 Options:
 	-h, --help
 		Print this help message.
+
+Diagnostics options:
 	-v, --verbose
 		Echo the gcc command line before executing it.
+	--no-demangle
+		Don't pipe the output of the linker through the Mercury
+		demangler.
+
+Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
 		Specify which version of the standard Mercury libraries to
 		link with:
@@ -40,17 +47,28 @@ Options:
 		libraries, not just the standard Mercury libraries.
 	--make-shared-lib
 		Produce a shared library, rather than an executable.
+
+Directory options:
 	-L <directory>, --lib-dir <directory>
 		Include <directory> in the list of directories that the
 		linker will use to search for libraries.
 	-R <directory>, --shared-lib-dir <directory>
 		Include <directory> in the list of directories that the
 		dynamic linker will use to search for shared libraries.
-	--no-demangle
-		Don't pipe the output of the linker through the Mercury
-		demangler.
-	-g, --no-strip, --c-debug
-		Do not strip debugging information.
+
+Debugging options:
+	-t, --trace
+		Link in the Mercury debugging libraries.
+		This option is needed if any of the modules being linked
+		were compiled with tracing enabled.  However, \`--debug'
+		implies \`--trace', so if you're using \`--debug',
+		then you don't need to explicilty specify \`--trace'.
+		Note that \`--trace' is incompatible with \`--static'
+		on some platforms (e.g. sparc-sun-solaris2.6).
+	-g, --c-debug, --no-strip
+		Do not strip C debugging information.
+
+Grade options:
 	-s <grade>, --grade <grade>
 	--asm-labels
 	--gcc-non-local-gotos
@@ -88,7 +106,10 @@ SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 # On some systems (Solaris for exemple), we need libraries to be able to 
 # use sockets. The name of the needed libraries is determined by autoconf
 # and passed through this variable.
-SOCKET_LIBRARY=" @SOCKET_LIBRARY@"
+SOCKET_LIBRARY="@SOCKET_LIBRARY@"
+
+# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
+DL_LIBRARY="@DL_LIBRARY@"
 
 # If you change these, you will also need to change Mmake.common.in,
 # scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
@@ -99,6 +120,7 @@ TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 
 verbose=false
+trace=false
 case $FULLARCH in
 	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
 		# `gcc -s' is broken in gnu-win32
@@ -132,6 +154,12 @@ while : ; do
 		;;
 	--no-demangle)
 		demangle=false
+		;;
+	-t|--trace)
+		trace=true
+		;;
+	-t-|--no-trace)
+		trace=false
 		;;
 	-g-|--no-c-debug|--strip)
 		strip=true
@@ -214,6 +242,12 @@ done
 
 # include the file `final_grade_options.sh-subr'
 @FINAL_GRADE_OPTIONS@
+
+# --require-tracing (which is implied by --debug) implies --trace
+case $require_tracing in
+	true)	trace=true ;;
+	false)	;;
+esac
 
 # If you haven't set mercury_libs, set it to the default value
 # (shared on most systems). Note that if you have set all_libs,
@@ -331,6 +365,19 @@ case "$GRADE" in
 		;;
 esac
 
+case $trace in
+	true)	TRACE_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME \
+			$SOCKET_LIBRARY $DL_LIB"
+		TRACE_STATIC_LIBS="\
+			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
+			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a \
+			$SOCKET_LIBRARY $DL_LIB"
+		;;
+	false)	TRACE_LIBS=
+		TRACE_STATIC_LIBS=
+		;;
+esac
+		
 case $strip in
 	true)	STRIP_OPTS="-s" ;;
 	false)  STRIP_OPTS="" ;;
@@ -344,8 +391,8 @@ case $thread_safe in
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
 		*)		echo "$0: warning: don't know which" \
 					"library to use for pthreads" 1>&2
-				 THREAD_LIBS=""
-				 ;;
+				THREAD_LIBS=""
+				;;
 		esac ;;
 	false)	THREAD_LIBS="" ;;
 esac
@@ -373,14 +420,12 @@ LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 
 case $mercury_libs in
 	shared)
-		LIBS=${MERCURY_LIBS="-l$TRACE_LIB_NAME -l$BROWSER_LIB_NAME -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC $STDLIBS"}
+		LIBS=${MERCURY_LIBS="$TRACE_LIBS -l$STD_LIB_NAME -l$RT_LIB_NAME $LIBGC $STDLIBS"}
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$GRADE/$FULLARCH"
 		merc_shlib_dirs="$merc_shlib_dirs $LIBDIR/$FULLARCH"
 		;;
 	static)
-		LIBS=${MERCURY_LIBS="\
-			$LIBDIR/$GRADE/$FULLARCH/lib$TRACE_LIB_NAME.a \
-			$LIBDIR/$GRADE/$FULLARCH/lib$BROWSER_LIB_NAME.a \
+		LIBS=${MERCURY_LIBS="$TRACE_STATIC_LIBS
 			$LIBDIR/$GRADE/$FULLARCH/lib$STD_LIB_NAME.a \
 			$LIBDIR/$GRADE/$FULLARCH/lib$RT_LIB_NAME.a \
 			$LIBGC_STATIC \
@@ -392,7 +437,6 @@ case $mercury_libs in
 		merc_shlib_dirs=""
 		;;
 esac
-LIBS=${LIBS}${SOCKET_LIBRARY}
 
 
 RPATH_OPT_LIST=

@@ -245,6 +245,8 @@ AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
 if test "$HAVE_DLFCN_H" = 1; then
 	AC_DEFINE(HAVE_DLFCN_H)
 fi
+AC_CHECK_LIB(dl,dlopen,DL_LIBRARY="-ldl",DL_LIBRARY="")
+AC_SUBST(DL_LIBRARY)
 AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
 #-----------------------------------------------------------------------------#
 #
@@ -1806,40 +1808,190 @@ AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
-# test if sockets are available to be able to use Opium-M
-# XXX It would be better to use AC_TRY_RUN() to do that
 
-SOCKET_LIBRARY= 
-
-case "$host" in
-	i?86-*-linux|i?86-*-linux-gnu)
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
-		;;
-	m68*-linux|m68*-linux-gnu)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	i?86-*-freebsd*)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	sparc-sun-solaris2.*)
-		AC_MSG_RESULT(yes)        
-		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
-		SOCKET_LIBRARY=" -lsocket"
-		;;
-	alpha-dec-osf*)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	*-cygwin*)
-		AC_MSG_RESULT(disabled for now because it is untested)
-		;;
-	*)
-		AC_MSG_RESULT(unknown system, assuming no)
-		;;
-esac
- 
+#
+# check whether we need -lsocket
+#
+AC_CHECK_LIB(socket,socket,SOCKET_LIBRARY=-lsocket,SOCKET_LIBRARY="")
 AC_SUBST(SOCKET_LIBRARY)
+
+#
+# temporarily add -lsocket to LIBS, for use by AC_TRY_LINK
+#
+save_LIBS="$LIBS"
+LIBS="$LIBS $SOCKET_LIBRARY"
+
+#
+# use AC_TRY_LINK to see whether we can use sockets
+#
+AC_MSG_CHECKING(whether we can use sockets (for Opium-M))
+AC_CACHE_VAL(mercury_cv_sockets_work,
+AC_TRY_LINK([
+	changequote(<<,>>) 
+	/*
+	** The following code was copied from
+	** runtime/mercury_trace_external.c
+	*/
+
+	#include <stdio.h>
+	#include <string.h>
+	#include <errno.h>
+	#include <stdarg.h>
+	#include <sys/types.h>
+	#include <unistd.h>
+	#include <sys/socket.h>
+	#include <sys/un.h>
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
+	#include <netdb.h>
+],[
+	static int MR_debug_socket = 1;
+
+	void
+	fatal_error(const char *s)
+	{
+		fprintf(stderr, "", s);
+		exit(1);
+	}
+
+	void
+	MR_trace_init_external(void)
+	{
+		int fd;
+		int len;
+		FILE *file_in;
+		FILE *file_out;
+		int addr_family;
+		char *unix_socket;
+		char *inet_socket;
+		struct sockaddr_un unix_address;
+		struct sockaddr_in inet_address;
+		struct sockaddr* addr;
+
+		/*
+		** We presume that the user's program has been invoked from
+		** within the debugger (e.g. Opium).
+		** The debugger (or the user) should set the
+		** MERCURY_DEBUGGER_UNIX_SOCKET or MERCURY_DEBUGGER_INET_SOCKET
+		** environment variable to tell the user's program which socket
+		** it needs to connect to.
+		*/
+		unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
+		inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
+		if (unix_socket == NULL && inet_socket == NULL) {
+			fatal_error("you must set either the "
+				"MERCURY_DEBUGGER_UNIX_SOCKET\n"
+				"or MERCURY_DEBUGGER_INET_SOCKET "
+				"environment variable");
+		}
+		if (unix_socket != NULL && inet_socket != NULL) {
+			fatal_error("you must set only one of the "
+				"MERCURY_DEBUGGER_UNIX_SOCKET "
+				"and MERCURY_DEBUGGER_INET_SOCKET\n"
+				"environment variables");
+		}
+		if (unix_socket) {
+		
+			addr_family = AF_UNIX;
+			memset(&unix_address, 0, sizeof(unix_address));
+			unix_address.sun_family = AF_UNIX;
+			strcpy(unix_address.sun_path, unix_socket);
+			addr = (struct sockaddr *) &unix_address;
+			len = strlen(unix_address.sun_path) + 
+				sizeof(unix_address.sun_family);
+		} else {
+			char hostname[255];
+			char port_string[255];
+			unsigned short port;
+			int host_addr;
+
+			/*
+			** Parse the MERCURY_DEBUGGER_INET_SOCKET environment variable.
+			** It should be in the format "<hostname> <port>",
+			** where <hostname> is numeric (e.g. "123.456.78.90").
+			*/
+
+			if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
+				!= 2)
+			{
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
+			}
+			host_addr = inet_network(hostname);
+			if (host_addr == -1) {
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+					"invalid address");
+			}
+			if (sscanf(port_string, "%hu", &port) != 1) {
+				fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+					"invalid port");
+			}
+
+			fprintf(stderr, "Mercury runtime: host = %s, port = %d\n",
+					hostname, port);
+		
+			inet_address.sin_family = AF_INET;
+			inet_address.sin_addr.s_addr = host_addr;
+			inet_address.sin_port = htons(port);
+			addr_family = AF_INET;
+			addr = (struct sockaddr *) &inet_address;
+			len = sizeof(inet_address);
+		}
+
+		/*
+		** Open the socket.
+		*/
+
+		fd = socket(addr_family, SOCK_STREAM, 0);
+		if (fd < 0) {
+			fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
+				strerror(errno));
+			fatal_error("cannot open socket for debugger");
+		} else if (MR_debug_socket) {
+			fprintf(stderr,"Mercury runtime: creation of socket ok\n");
+		}
+
+		/*
+		** Connect to the socket
+		*/
+		if (connect(fd, addr, len) < 0) {
+			fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
+				strerror(errno));
+			fatal_error("can't connect to debugger socket");
+		} else if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
+		}
+
+		/*
+		** Convert the socket fd to a Mercury stream
+		*/
+		file_in = fdopen(fd, "r");
+		file_out = fdopen(fd, "w");
+		if ((file_in == NULL)||(file_out == NULL)) {
+			fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
+				strerror(errno));
+			fatal_error("cannot open debugger socket");
+		} else if (MR_debug_socket) {
+			fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
+		}
+	}
+	changequote([,]) 
+],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
+
+#
+# figure out whether the test succeeded, and if so,
+# enable the external debugger
+#
+if test "$mercury_cv_sockets_work" = yes; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#
+# restore the previous value of LIBS
+#
+LIBS="$save_LIBS"
 
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof

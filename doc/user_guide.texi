@@ -1034,17 +1034,26 @@ and full debugging capability in debugging grades.
 The table also shows that in a debugging grade,
 no module can be compiled with trace level @samp{none}.
 
-A small but vital part of preparing an executable for debugging
-is the setup of the initialization file for debugging.
-The initialization file is created by the c2init command,
-which can be told to set up the initialization file for debugging
-in one of two ways.
-First, c2init accepts the same set of grade options the compiler accepts.
-If these options specify a debugging grade,
-c2init will set up the initialization file for debugging.
-Even if these options specify a non-debugging grade,
-you can ask c2init to set up the initialization file for debugging
-by giving it the @samp{-t} (for @emph{trace}) option.
+@strong{Important note}:
+If you are not using a debugging grade, but you compile
+some modules with @samp{--trace shallow} or @samp{--trace deep},
+then you must also pass the @samp{--trace} (or @samp{-t}) option
+to c2init and to the Mercury linker.
+If you're using Mmake, then you can do this by including @samp{--trace}
+in the @samp{C2INITFLAGS} and @samp{MLFLAGS} variables.
+
+If you're using Mmake, then you can also set the compilation options
+for a single module named @var{Module} by setting the Mmake variable
+@samp{MCFLAGS-@var{Module}}.  For example, to compile the file
+@file{foo.m} with deep tracing, @file{bar.m} with shallow tracing,
+and everything else with no tracing, you could use the following:
+
+@example
+C2INITFLAGS = --trace
+MLFLAGS     = --trace
+MCFLAGS-foo = --trace deep
+MCFLAGS-bar = --trace shalow
+@end example
 
 @node Selecting trace events
 @section Selecting trace events
