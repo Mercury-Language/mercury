@@ -140,7 +140,7 @@
 
 	% `bt_array__from_list(Low, List, BtArray)' takes a list (of
 	% possibly zero length), and returns a bt_array containing
-	% those elements in the same order that they occured in the
+	% those elements in the same order that they occurred in the
 	% list.  The lower bound of the new array is `Low'.
 :- pred bt_array__from_list(int, list(T), bt_array(T)).
 :- mode bt_array__from_list(in, in, out) is det.
@@ -459,7 +459,7 @@ bt_array__bsearch_2(A, Lo, Hi, El, Compare, I) :-
 % For more details on the implementation:
 %
 %	Chris Okasaki, "Purely Functional Random-Access Lists"
-%	Functional Programming Languages and Computer Architecutre,
+%	Functional Programming Languages and Computer Architecture,
 %	June 1995, pp 86-95.
 
 % :- module ra_list.

@@ -1309,7 +1309,7 @@
 %		The ExitStatus will be 0 if the command completed
 %		successfully or the return value of the system call.  If a
 %		signal kills the system call, then Result will be an error
-%		indicating which signal occured.
+%		indicating which signal occurred.
 
 :- type io__system_result
 	--->	exited(int)

@@ -9,7 +9,7 @@
 % Stability: low.
 %
 % This file provides facilities for manipulating mutable stores.
-% A store can be consider a mapping from abstract keys to their values.
+% A store can be considered a mapping from abstract keys to their values.
 % A store holds a set of nodes, each of which may contain a value of any
 % type.
 %

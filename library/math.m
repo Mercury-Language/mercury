@@ -199,7 +199,7 @@
 
 	% A domain error exception, indicates that the inputs to a function
 	% were outside the domain of the function.  The string indicates
-	% where the error occured.
+	% where the error occurred.
 	%
 	% It is possible to switch domain checking off, in which case,
 	% depending on the backend, a domain error may cause a program

@@ -264,7 +264,7 @@
 
 	% array__from_list takes a list,
 	% and returns an array containing those elements in
-	% the same order that they occured in the list.
+	% the same order that they occurred in the list.
 :- pred array__from_list(list(T), array(T)).
 :- mode array__from_list(in, array_uo) is det.
 
