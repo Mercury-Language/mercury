@@ -172,6 +172,11 @@ check_err_file () {
 	module=$1
 	error_file_version=$2	
 
+	# In `.hl*' grades, the compiler sometimes puts an extra line in
+	# the `.err' file ("foo.h has CHANGED"). Filter it out here.
+	grep -v "has CHANGED" $module.err > $module.err2
+	mv $module.err2 $module.err
+
 	compare_files $module.err_exp.$error_file_version $module.err
 }
 
