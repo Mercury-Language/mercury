@@ -2491,7 +2491,7 @@ There are several uses for @code{pragma} declarations:
 A declaration of the form
 
 @example
-:- pragma c_code(recursive, @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), @var{C_Code}).
+:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), may_call_mercury, @var{C_Code}).
 @end example
 
 @noindent
@@ -2499,9 +2499,9 @@ results in any calls to @var{Pred} with variables in modes (@var{Mode1},
 @var{Mode2}, ...) being replaced by the C code given in @var{C_Code}.
 
 If there is a @code{pragma c_code} declaration for a mode of a predicate,
-then that mode of the predicate must be deterministic, there must not be
-any clauses for that predicate, and there must be a
-@code{pragma c_code} goal for every mode of the predicate.
+then that mode of the predicate must be det or semidet,
+there must not be any clauses for that predicate,
+and there must be a @code{pragma c_code} goal for every mode of the predicate.
 
 For example, the following piece of code gives a predicate, 
 @samp{c_write_string/3}, which has a similar effect to the Mercury library 
@@ -2511,21 +2511,36 @@ predicate @samp{io__write_string/3}:
 :- pred c_write_string(string, io__state, io__state).
 :- mode c_write_string(in, di, uo) is det.
 
-:- pragma c_code(recursive, c_write_string(S::in, IO0::di, IO::uo),
+:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo), may_call_mercury,
         "puts(S); IO = IO0;").
 @end example
 
-If the C code does not recursively invoke Mercury code, as in the
-above example, then you can use a declaration of the form
+If the C code does not recursively invoke Mercury code,
+as in the above example, then you can use a declaration of the form
 
 @example
-:- pragma c_code(non_recursive, @var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), @var{C_Code}).
+:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, ...), will_not_call_mercury, @var{C_Code}).
 @end example
 
 This allows the compiler to use a more efficient calling convention.
 (If you use this form, and the C code @emph{does} invoke Mercury code,
-then the behaviour is undefined --- your program may misbehave or
-crash.)
+then the behaviour is undefined --- your program may misbehave or crash.)
+
+@c XXX may assume vars of input args are defined; must assign to output args
+
+The C code in a @code{pragma c_code} declaration
+for a semidet mode of a predicate
+must assign a truth value to the variable @var{SUCCESS_INDICATOR}.
+
+@c XXX must assign to output args iff SUCCESS_INDICATOR is set to true
+
+@example
+:- pred string__contains_char(string, character).
+:- mode string__contains_char(in, in) is semidet.
+
+:- pragma(c_code, string__contains_char(Str::in, Ch::in), will_not_call_mercury,
+	"SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
+@end example
 
 @node Including C headers
 @subsection Including C headers
@@ -2625,8 +2640,7 @@ Mercury variables of type @code{int}, @code{float}, @code{char}, or
 @code{string} are passed to and from C as C variables whose type is
 given by the corresponding typedef.  Mercury variables of any other
 type are passed as a @samp{Word}, which in the current implementation
-is a typedef for an unsigned type whose size is the same size as a
-pointer.
+is a typedef for an unsigned type whose size is the same size as a pointer.
 
 Mercury lists can be manipulated by C code using the following macros,
 which are defined by the Mercury implementation.
@@ -2640,7 +2654,10 @@ list_cons(head,tail)    /* construct a list with the given head and tail */
 @end example
 
 The @samp{list_cons} macro should only be used in C code called
-using the @samp{non_recursive} calling convention.
+using the @samp{will_not_call_mercury} calling convention.
+XXX I am not sure about this - zs
+
+XXX we need a more extensive discussion on memory allocation here
 
 @node Using C pointers
 @subsection Using C pointers
@@ -2672,11 +2689,12 @@ between C functions which are called from Mercury.  For example:
         extern struct foo *perform_calculation(int, struct foo *);
 ");
 
-:- pragma c_code(recursive, initialise_complicated_structure(Structure::uo),
+:- pragma c_code(initialise_complicated_structure(Structure::uo),
+	may_call_mercury,
         "Structure = init_struct();").
 
-:- pragma c_code(recursive,
-	do_calculation(Value::in, Structure0::di, Structure::uo,
+:- pragma c_code(do_calculation(Value::in, Structure0::di, Structure::uo,
+	may_call_mercury,
         "Structure = perform_calculation(Value, Structure0);").
 @end example
 
