@@ -1525,6 +1525,23 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 
 /*-----------------------------------------------------------------------*/
 
+:- pragma c_header_code("
+#ifdef USE_GCC_GLOBAL_REGISTERS
+	/*
+	** GNU C version egcs-1.1.2 crashes with `fixed or forbidden
+	** register spilled' in grade asm_fast.gc.tr.debug
+	** if we write this inline.
+	*/
+	static void MR_set_char(String str, MR_Integer ind, MR_Char ch)
+	{
+		str[ind] = ch;
+	}
+#else
+	#define MR_set_char(str, ind, ch) \\
+		((str)[ind] = (ch))
+#endif
+").
+
 /*
 :- pred string__set_char(char, int, string, string).
 :- mode string__set_char(in, in, in, out) is semidet.
@@ -1538,7 +1555,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		SUCCESS_INDICATOR = TRUE;
 		MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 		strcpy(Str, Str0);
-		Str[Index] = Ch;
+		MR_set_char(Str, Index, Ch);
 	}
 ").
 
@@ -1553,7 +1570,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	} else {
 		SUCCESS_INDICATOR = TRUE;
 		Str = Str0;
-		Str[Index] = Ch;
+		MR_set_char(Str, Index, Ch);
 	}
 ").
 
@@ -1568,7 +1585,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	size_t len = strlen(Str0);
 	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 	strcpy(Str, Str0);
-	Str[Index] = Ch;
+	MR_set_char(Str, Index, Ch);
 ").
 
 /*
@@ -1578,7 +1595,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- pragma c_code(string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
 		[will_not_call_mercury, thread_safe], "
 	Str = Str0;
-	Str[Index] = Ch;
+	MR_set_char(Str, Index, Ch);
 ").
 
 /*-----------------------------------------------------------------------*/
