@@ -54,6 +54,9 @@ case "$CC" in
     *cl* | *CL*)
 	COMPILER=cl
 	;;
+    cc* | */cc*)
+	COMPILER=cc
+	;;
     *)
 	COMPILER=unknown
 	;;
@@ -391,6 +394,10 @@ esac
 # Defaults have been set, now set options.
 
 case $all_libs in static)
+	case $COMPILER in gcc|lcc)
+		MAYBE_STATIC_OPT=-static
+		;;
+	esac
 	case $FULLARCH in
 		*-linux*)
 			# On Linux, if we're linking statically, we need to
@@ -399,18 +406,36 @@ case $all_libs in static)
 			# boehm_gc/dyn_load.c.
 			# (We might eventually need similar treatment
 			# for other OSs too)
-			case $compiler in
-			gcc)
-			    MAYBE_STATIC_OPT="-static -Wl-defsym -Wl_DYNAMIC=0"
-			    ;;
+			case $COMPILER in
+	 		gcc)
+				MAYBE_STATIC_OPT="-static \
+					-Wl-defsym -Wl_DYNAMIC=0"
+				;;
 			lcc)
-			    MAYBE_STATIC_OPT="-static -Wl,-defsym -Wl,_DYNAMIC=0"
-			    ;;
+				MAYBE_STATIC_OPT="-static \
+					-Wl,-defsym -Wl,_DYNAMIC=0"
+				;;
 			esac
 			;;
-		*)
-			MAYBE_STATIC_OPT=-static
+		alpha*-dec-osf*)
+			case $COMPILER in cc)
+				MAYBE_STATIC_OPT=-non_shared
+				;;
+			esac
 			;;
+		*-sun-solaris*)
+			case $COMPILER in cc)
+				MAYBE_STATIC_OPT="-B static"
+				;;
+			esac
+			;;
+	esac
+	case "$MAYBE_STATIC_OPT" in "")
+		echo "ml: warning: \`--static' ignored, since I don't" 1>&2
+		echo "	know how to enable static linking with this" 1>&2
+		echo "	C compiler (\`$CC')." 1>&2
+		echo "	Using \`--mercury-libs static' instead." 1>&2
+		;;
 	esac
 esac
 
