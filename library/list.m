@@ -175,6 +175,16 @@
 :- pred list__chunk(list(T), int, list(list(T))).
 :- mode list__chunk(in, in, out) is det.
 
+	% Non deterministic insert.  Keeps insertling T into different places
+	% in the list.
+:- pred list__insert(T, list(T), list(T)).
+:- mode	list__insert(in, in, out) is multidet.
+
+	% list__perm(List0, List) is true iff if List0 is a permutation of List
+:- pred	list__perm(list(T), list(T)).
+:- mode list__perm(in, out) is nondet.
+
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -495,3 +505,21 @@ list__chunk_2([X|Xs], ChunkSize, List0, N, Lists) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+
+list__insert(X, L, [X|L]).
+list__insert(X, [H|T], [H|L]) :-
+	list__insert(X, T, L).
+
+
+%-----------------------------------------------------------------------------%
+
+
+list__perm([], []).
+list__perm([X|Xs], Ys) :-
+	list__perm(Xs, Ys0),
+	list__insert(X, Ys0, Ys).
+
+
+%-----------------------------------------------------------------------------%
+
