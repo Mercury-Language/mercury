@@ -136,6 +136,7 @@ try_munprotect(void *addr, void *context)
 	}
 
 	while(zone != NULL) {
+  #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
 		if (MR_memdebug) {
 			fprintf(stderr, "checking %s#%d: %p - %p\n",
 				zone->name, zone->id, (void *) zone->redzone,
@@ -151,6 +152,7 @@ try_munprotect(void *addr, void *context)
 
 			return zone->handler(fault_addr, zone, context);
 		}
+  #endif
 		zone = zone->next;
 	}
 
