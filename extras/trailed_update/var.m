@@ -908,7 +908,7 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
 "{
-	Word *ptr = (Word *) strip_tag(MercuryTerm); /* strip off tag bits */
+	Word *ptr = (Word *) MR_strip_tag(MercuryTerm); /* strip off tag bits */
 	MR_trail_current_value(&ptr[ArgNum - 1]);
 	ptr[ArgNum - 1] = NewValue;
 }").
@@ -922,7 +922,7 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	untrailed_setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
 "{
-	Word *ptr = (Word *) strip_tag(MercuryTerm); /* strip off tag bits */
+	Word *ptr = (Word *) MR_strip_tag(MercuryTerm); /* strip off tag bits */
 	ptr[ArgNum - 1] = NewValue;
 }").
 
