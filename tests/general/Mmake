@@ -6,17 +6,27 @@ include ../Mmake
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	set_test arithmetic disj_disj interpreter \
-	nasty_nondet nondet_disj nondet_ite nondet_ite_2 petdr1 \
-	string__format_test string_test string_test_2 univ \
-	environment duplicate_label \
-	commit_bug \
-	det_complicated_unify \
-	higher_order semidet_lambda semidet_map parse_list hello_again
+NONDETPROGS=	commit_bug disj_disj hello_again interpreter nasty_nondet \
+		nondet_disj nondet_ite nondet_ite_2 semidet_lambda
+
+DETPROGS=	arithmetic det_complicated_unify duplicate_label environment \
+		higher_order parse_list partition petdr1 \
+		semidet_map set_test string__format_test string_test \
+		string_test_2 univ
 
 # float_test doesn't work yet
+NOTWORKING=	float_test
 
-# string__format_test doesn't work in NU-Prolog, for as yet unknown reasons
+#
+# The nondet tests use solutions/2, which is currently implemented only for GC
+# grades.  So only include thoses tests if the grade is a GC grade.
+#
+
+ifeq ("$(findstring .gc, $(GRADE))","")
+PROGS=$(DETPROGS)
+else
+PROGS=$(DETPROGS) $(NONDETPROGS)
+endif
 
 DEPENDS=$(PROGS:%=%.depend)
 OUTS=	$(PROGS:%=%.out)
