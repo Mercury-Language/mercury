@@ -169,8 +169,8 @@ mercury__private_builtin____Unify____heap_pointer_0_0(MR_Heap_Pointer x,
 }
 
 MR_bool MR_CALL
-mercury__private_builtin____Unify____ref_1_0(MR_Reference x,
-	MR_Reference y)
+mercury__private_builtin____Unify____ref_1_0(MR_Mercury_Type_Info type_info,
+	MR_Reference x, MR_Reference y)
 {
 	return x == y;
 }
@@ -323,7 +323,7 @@ mercury__private_builtin____Compare____heap_pointer_0_0(
 }
 
 void MR_CALL
-mercury__private_builtin____Compare____ref_1_0(
+mercury__private_builtin____Compare____ref_1_0(MR_Mercury_Type_Info type_info,
 	MR_Comparison_Result *result, MR_Reference x, MR_Reference y)
 {
 	MR_fatal_error(
@@ -457,9 +457,10 @@ mercury__private_builtin__do_unify__heap_pointer_0_0(MR_Box x, MR_Box y)
 }
 
 MR_bool MR_CALL
-mercury__private_builtin__do_unify__ref_1_0(MR_Box x, MR_Box y)
+mercury__private_builtin__do_unify__ref_1_0(MR_Mercury_Type_Info type_info,
+	MR_Box x, MR_Box y)
 {
-	return mercury__private_builtin____Unify____ref_1_0(
+	return mercury__private_builtin____Unify____ref_1_0(type_info,
 		(MR_Reference) x, (MR_Reference) y);
 }
 
@@ -598,7 +599,8 @@ mercury__private_builtin__do_compare__heap_pointer_0_0(
 
 void MR_CALL
 mercury__private_builtin__do_compare__ref_1_0(
-	MR_Comparison_Result *result, MR_Box x, MR_Box y)
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
 {
 	MR_fatal_error(
 		"called compare/3 for `private_builtin.ref' type");

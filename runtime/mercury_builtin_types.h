@@ -80,7 +80,7 @@ MR_bool MR_CALL mercury__builtin____Unify____c_pointer_0_0(
 MR_bool MR_CALL mercury__private_builtin____Unify____heap_pointer_0_0(
 	MR_Heap_Pointer x, MR_Heap_Pointer y); 
 MR_bool MR_CALL mercury__private_builtin____Unify____ref_1_0(
-	MR_Reference x, MR_Reference y); 
+	MR_Mercury_Type_Info type_info, MR_Reference x, MR_Reference y); 
 MR_bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
 MR_bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
 MR_bool MR_CALL mercury__builtin____Unify____tuple_0_0(MR_Tuple x, MR_Tuple y); 
@@ -116,7 +116,8 @@ void MR_CALL mercury__builtin____Compare____c_pointer_0_0(
 void MR_CALL mercury__private_builtin____Compare____heap_pointer_0_0(
 	MR_Comparison_Result *result, MR_Heap_Pointer x, MR_Heap_Pointer y);
 void MR_CALL mercury__private_builtin____Compare____ref_1_0(
-	MR_Comparison_Result *result, MR_Reference x, MR_Reference y);
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Reference x, MR_Reference y);
 void MR_CALL mercury__builtin____Compare____func_0_0(
 	MR_Comparison_Result *result, MR_Func x, MR_Func y);
 void MR_CALL mercury__builtin____Compare____pred_0_0(
