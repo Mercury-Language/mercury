@@ -39,7 +39,7 @@
 
 :- import_module float, int, list, map, multi_map, require.
 :- import_module string, set_bbbtree, std_util.
-:- import_module writeln.
+% :- import_module writeln.
 
 :- type cycle_info ==	pair(
 				map(string, int),	% predicate - cycle

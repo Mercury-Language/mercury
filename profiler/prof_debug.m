@@ -15,11 +15,8 @@
 %-----------------------------------------------------------------------------%
 
 :- module prof_debug.
-
 :- interface.
-
-:- import_module io.
-:- import_module assoc_list, set, list, string, std_util.
+:- import_module set, list, string, io.
 
 :- pred output_cliques(list(set(string)), io__state, io__state).
 :- mode output_cliques(in, di, uo) is det.
@@ -32,8 +29,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module assoc_list, std_util.
 
-:- import_module writeln.
+% :- import_module writeln.
 
 %-----------------------------------------------------------------------------%
 

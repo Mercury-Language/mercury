@@ -19,10 +19,7 @@
 :- module generate_output.
 
 :- interface.
-
-:- import_module globals, options.
-:- import_module output_prof_info, prof_info.
-:- import_module bool, float, int, io, list, map, rbtree, relation, string.
+:- import_module float, int, string, map, io, prof_info.
 
 :- pred generate_output__main(prof, map(string, int), output,  
 							io__state, io__state).
@@ -34,8 +31,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module globals, options.
+:- import_module output_prof_info.
+:- import_module bool, list, rbtree, relation.
 
-:- import_module writeln.
+% :- import_module writeln.
 
 	% rbtrees are used because they allow duplicate values to be stored.
 	% This means that we can then convert to a sorted list of names which
