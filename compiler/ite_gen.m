@@ -69,7 +69,7 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% of the if-then-else
 	{ ThenCode = tree(
 		tree(HPPopCode, ThenGoalCode),
-		node([ goto(EndLab) - "Jump the end of if-then-else" ])
+		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
 		tree(
@@ -107,7 +107,7 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 			node([comment("then-case") - ""]),
 			ThenGoalCode
 		),
-		node([ goto(EndLab) - "Jump the end of if-then-else" ])
+		node([ goto(EndLab) - "Jump to the end of if-then-else" ])
 	) },
 	{ ElseCode = tree(
 		tree(
