@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -870,7 +870,8 @@ magic__create_input_join_proc(CPredProcId, AditiPredProcId, JoinPredProcId) -->
 		magic_info_set_module_info(ModuleInfo),
 		{ JoinPredProcId = AditiPredProcId }
 	;	
-		{ hlds_pred__pred_info_is_base_relation(CPredInfo) }
+		{ hlds_pred__pred_info_is_base_relation(CPredInfo) },
+		{ InputArgModes = [] }
 	->
 		% No join with the input is needed for a base relation
 		% with no input arguments.

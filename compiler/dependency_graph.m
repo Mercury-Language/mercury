@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -603,8 +603,8 @@ dependency_graph__build_aditi_scc_info([SCC | SCCs]) -->
 		{ list__member(PredProcId, SCC) },
 		{ PredProcId = proc(PredId, _) },
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-		{ pred_info_get_markers(PredInfo, Markers) },
-		{ check_marker(Markers, aditi) }
+		{ hlds_pred__pred_info_is_aditi_relation(PredInfo) },
+		{ \+ hlds_pred__pred_info_is_base_relation(PredInfo) }
 	->
 		aditi_scc_info_add_scc(SCC, SCCs, SCCid),
 		list__foldl(dependency_graph__process_aditi_pred_proc_id(SCCid),
