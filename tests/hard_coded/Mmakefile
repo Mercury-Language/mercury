@@ -80,7 +80,6 @@ PROGS=	\
 	pragma_c_code \
 	pragma_inline \
 	pragma_import \
-	purity \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
@@ -116,6 +115,7 @@ SPLIT_PROGS = \
 	split_c_files
 
 # we do no pass the following tests
+#	purity -- executable name clashes with the `purity' subdirectory
 #	var_not_found -- "sorry, not implemented" in polymorphism.m.
 
 #-----------------------------------------------------------------------------#
