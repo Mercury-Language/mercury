@@ -188,7 +188,7 @@ extern	Word	*nondstackmin;
    use gcc's expression statements here */
 
 #define create1(w1)	(					\
-				hp += 1,			\
+				hp = hp + 1,			\
 				hp[-1] = (Word) (w1),		\
 				debugcr1(hp[-1], hp),		\
 				heap_overflow_check(),		\
@@ -196,7 +196,7 @@ extern	Word	*nondstackmin;
 			)
 
 #define create2(w1, w2)	(					\
-				hp += 2,			\
+				hp = hp + 2,			\
 				hp[-2] = (Word) (w1),		\
 				hp[-1] = (Word) (w2),		\
 				debugcr2(hp[-2], hp[-1], hp),	\
@@ -209,13 +209,13 @@ extern	Word	*nondstackmin;
 #define	detstackvar(n)	sp[-n]
 
 #define	incr_sp(n)	(					\
-				sp += (n),			\
+				sp = sp + (n),			\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	decr_sp(n)	(					\
-				sp -= (n),			\
+				sp = sp - (n),			\
 				detstack_underflow_check(),	\
 				(void)0				\
 			)
@@ -224,13 +224,13 @@ extern	Word	*nondstackmin;
 #define	push(w)		(					\
 				*sp = (Word) (w),		\
 				debugpush(*sp, sp),		\
-				sp += 1,			\
+				sp = sp + 1,			\
 				detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	pop()		(					\
-				sp -= 1,			\
+				sp = sp - 1,			\
 				debugpop(*sp, sp),		\
 				detstack_underflow_check(),	\
 				/* return */ *sp		\
@@ -280,7 +280,7 @@ extern	Word	*nondstackmin;
 								\
 				prevfr = maxfr;			\
 				succfr = curfr;			\
-				maxfr += (CHOICE_POINT_SIZE + n);	\
+				maxfr = maxfr + (CHOICE_POINT_SIZE + n);\
 				curfr = maxfr;			\
 				curfr[PREDNM] = (Word) prednm;	\
 				curfr[REDOIP] = (Word) redoip;	\
@@ -296,7 +296,7 @@ extern	Word	*nondstackmin;
 				reg	Word	*prevfr;	\
 								\
 				prevfr = maxfr;			\
-				maxfr += 4;			\
+				maxfr = maxfr + 4;		\
 				maxfr[PREDNM] = (Word) prednm;	\
 				maxfr[REDOIP] = (Word) doresethpfail;	\
 				maxfr[PREVFR] = (Word) prevfr;	\
