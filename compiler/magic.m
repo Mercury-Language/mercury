@@ -1274,9 +1274,9 @@ magic__create_magic_pred(CPredProcId, PredProcId, MagicTypes, MagicModes,
 	{ map__init(TVarMap) },
 	{ map__init(TCVarMap) },
 
-	{ proc_info_create(VarSet, VarTypes, AllArgs, AllArgModes, InstVarSet,
-		nondet, Goal, Context, TVarMap, TCVarMap, address_is_not_taken,
-		ProcInfo) },
+	{ proc_info_create(Context, VarSet, VarTypes, AllArgs, InstVarSet,
+		AllArgModes, nondet, Goal, TVarMap, TCVarMap,
+		address_is_not_taken, ProcInfo) },
 
 	%
 	% Fill in the pred_info.

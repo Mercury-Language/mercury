@@ -148,7 +148,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	map__det_update(Procs0, ProcId, Proc, Procs1),
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
-copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
+copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 	ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, Clauses,
 		TI_VarMap, TCI_VarMap, _),
 	select_matching_clauses(Clauses, ProcId, MatchingClauses),
@@ -186,7 +186,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 			FirstGoal = _ - FirstGoalInfo,
 			goal_info_get_context(FirstGoalInfo, Context)
 		;
-			proc_info_context(Proc0, Context)
+			proc_info_context(!.Proc, Context)
 		),
 		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 
@@ -214,8 +214,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc) :-
 
 		Goal = disj(GoalList) - GoalInfo
 	),
-	proc_info_set_body(Proc0, VarSet, VarTypes, HeadVars, Goal,
-		TI_VarMap, TCI_VarMap, Proc).
+	proc_info_set_body(VarSet, VarTypes, HeadVars, Goal,
+		TI_VarMap, TCI_VarMap, !Proc).
 
 :- func set_arg_names(foreign_arg, prog_varset) = prog_varset.
 

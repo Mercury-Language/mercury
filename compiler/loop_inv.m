@@ -832,35 +832,24 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
             in, in,
             in, out) is det.
 
-gen_aux_proc(InvGoals, PredProcId,
-        AuxPredProcId, CallAux, Body,
-        AuxPredInfo, AuxProcInfo0,
-        ModuleInfo0, ModuleInfo) :-
+gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
+        AuxPredInfo, !.AuxProcInfo, !ModuleInfo) :-
 
         % Compute the aux proc body.
         %
-    GapInfo = gen_aux_proc_info(ModuleInfo0, InvGoals, PredProcId, CallAux),
+    GapInfo = gen_aux_proc_info(!.ModuleInfo, InvGoals, PredProcId, CallAux),
     AuxBody = gen_aux_proc_2(GapInfo, Body),
 
         % Put the new proc body and instmap into the module_info.
         %
     AuxPredProcId = proc(AuxPredId, AuxProcId),
+    hlds_pred__proc_info_set_goal(AuxBody, !AuxProcInfo),
 
-    hlds_pred__proc_info_varset(AuxProcInfo0, AuxVarSet),
-    hlds_pred__proc_info_vartypes(AuxProcInfo0, AuxVarTypes),
-    hlds_pred__proc_info_headvars(AuxProcInfo0, AuxHeadVars),
-    hlds_pred__proc_info_typeinfo_varmap(AuxProcInfo0, AuxTVarMap),
-    hlds_pred__proc_info_typeclass_info_varmap(AuxProcInfo0, AuxTCVarMap),
-
-    hlds_pred__proc_info_set_body(AuxProcInfo0, AuxVarSet, AuxVarTypes,
-            AuxHeadVars, AuxBody, AuxTVarMap, AuxTCVarMap, AuxProcInfo1),
-
-    quantification__requantify_proc(AuxProcInfo1, AuxProcInfo2),
-    mode_util__recompute_instmap_delta_proc(no, AuxProcInfo2, AuxProcInfo,
-            ModuleInfo0, ModuleInfo1),
+    quantification__requantify_proc(!AuxProcInfo),
+    mode_util__recompute_instmap_delta_proc(no, !AuxProcInfo, !ModuleInfo),
 
     hlds_module__module_info_set_pred_proc_info(AuxPredId, AuxProcId,
-        AuxPredInfo, AuxProcInfo, ModuleInfo1, ModuleInfo).
+        AuxPredInfo, !.AuxProcInfo, !ModuleInfo).
 
 %------------------------------------------------------------------------------%
 
@@ -965,8 +954,8 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
     hlds_pred__proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
     hlds_pred__proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap),
 
-    hlds_pred__proc_info_set_body(ProcInfo0, VarSet, VarTypes,
-            HeadVars, Body, TVarMap, TCVarMap, ProcInfo1),
+    hlds_pred__proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
+        TVarMap, TCVarMap, ProcInfo0, ProcInfo1),
 
     quantification__requantify_proc(ProcInfo1, ProcInfo2),
     mode_util__recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,

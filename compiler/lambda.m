@@ -542,9 +542,10 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% Now construct the proc_info and pred_info for the new
 		% single-mode predicate, using the information computed above
 
-		proc_info_create(VarSet, VarTypes, AllArgVars, AllArgModes,
-			InstVarSet, Detism, LambdaGoal, LambdaContext,
-			TVarMap, TCVarMap, address_is_taken, ProcInfo0),
+		proc_info_create(LambdaContext, VarSet, VarTypes,
+			AllArgVars, InstVarSet, AllArgModes, Detism,
+			LambdaGoal, TVarMap, TCVarMap, address_is_taken,
+			ProcInfo0),
 		% If we previously already needed to recompute the nonlocals,
 		% then we'd better to that recomputation for the procedure
 		% that we just created.

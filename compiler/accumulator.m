@@ -1566,9 +1566,9 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 
 	list__map(map__lookup(VarTypes), Accs, AccTypes),
 
-	proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
-		Detism, Goal, Context, TVarMap, TCVarsMap, IsAddressTaken,
-		AccProcInfo).
+	proc_info_create(Context, VarSet, VarTypes, HeadVars,
+		InstVarSet, HeadModes, Detism, Goal, TVarMap, TCVarsMap,
+		IsAddressTaken, AccProcInfo).
 
 %-----------------------------------------------------------------------------%
 
