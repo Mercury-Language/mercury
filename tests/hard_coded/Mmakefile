@@ -177,6 +177,49 @@ ORDINARY_PROGS=	\
 	write_reg1 \
 	write_reg2
 
+# JAVA_PASS_PROGS lists those tests which will succeed in grade Java.
+
+JAVA_PASS_PROGS= \
+	address_of_builtins \
+	brace \
+	c_write_string \
+	compare_spec \
+	contains_char \
+	constraint \
+	curry \
+	cut_test \
+	deforest_cc_bug \
+	division_test \
+	dot_separator \
+	dst_test \
+	existential_type_switch_opt \
+	failure_unify \
+	foreign_and_mercury \
+	foreign_type \
+	free_free_mode \
+	func_and_pred \
+	func_test \
+	higher_order_func_test \
+	higher_order_syntax \
+	ho_func_reg \
+	join_list \
+	mapped_module \
+	no_inline_builtins \
+	no_warn_singleton \
+	nondet_ctrl_vn \
+	nondet_copy_out \
+	pragma_inline \
+	qual_basic_test \
+	reorder_di \
+	rev_arith \
+	reverse_arith \
+	solve_quadratic \
+	string_alignment \
+	string_loop \
+	string_suffix_bug \
+	target_mlobjs \
+	time_test
+
 # Tests of the C#, MC++, and IL foreign language interfaces only
 # work in IL grades
 ifeq "$(filter il%,$(GRADE))" ""
@@ -347,10 +390,9 @@ ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	endif
 endif
 
-# We currently don't do any testing in grade java on this directory,
-# except for java_test.m.
+# We currently test only a limited selection in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""
-	PROGS = $(JAVA_PROGS)
+	PROGS = $(JAVA_PROGS) $(JAVA_PASS_PROGS)
 else
 	PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
