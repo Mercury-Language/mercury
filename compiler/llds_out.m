@@ -773,43 +773,54 @@ output_c_label_init_list([Label | Labels], StackLayoutLabels) -->
 :- mode output_c_label_init(in, in, di, uo) is det.
 
 output_c_label_init(Label, StackLayoutLabels) -->
+	{ set_bbbtree__member(Label, StackLayoutLabels) ->
+		SuffixOpen = "_sl(",
+		( label_is_proc_entry(Label, yes) ->
+			% Labels whose stack layouts are proc layouts may need
+			% to have the code address in that layout initialized
+			% at run time (if code addresses are not static).
+			InitProcLayout = yes
+		;
+			% Labels whose stack layouts are internal layouts
+			% do not have code addresses in their layouts.
+			InitProcLayout = no
+		)
+	;
+		SuffixOpen = "(",
+		% This label has no stack layout to initialize.
+		InitProcLayout = no
+	},
 	(
 		{ Label = exported(_) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_entry_sl(")
-		;
-			io__write_string("\tinit_entry(")
-		),
-		output_label(Label),
-		io__write_string(");\n")
+		{ TabInitMacro = "\tinit_entry" }
 	;
 		{ Label = local(_) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_entry_sl(")
-		;
-			io__write_string("\tinit_entry(")
-		),
-		output_label(Label),
-		io__write_string(");\n")
+		{ TabInitMacro = "\tinit_entry" }
 	;
 		{ Label = c_local(_) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_local_sl(")
-		;
-			io__write_string("\tinit_local(")
-		),
+		{ TabInitMacro = "\tinit_local" }
+	;
+		{ Label = local(_, _) },
+		{ TabInitMacro = "\tinit_label" }
+	),
+	io__write_string(TabInitMacro),
+	io__write_string(SuffixOpen),
+	output_label(Label),
+	io__write_string(");\n"),
+	( { InitProcLayout = yes } ->
+		io__write_string("\tMR_INIT_PROC_LAYOUT_ADDR("),
 		output_label(Label),
 		io__write_string(");\n")
 	;
-		{ Label = local(_, _) },
-		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
-			io__write_string("\tinit_label_sl(")
-		;
-			io__write_string("\tinit_label(")
-		),
-		output_label(Label),
-		io__write_string(");\n")
+		[]
 	).
+
+:- pred label_is_proc_entry(label::in, bool::out) is det.
+
+label_is_proc_entry(local(_, _), no).
+label_is_proc_entry(c_local(_), yes).
+label_is_proc_entry(local(_), yes).
+label_is_proc_entry(exported(_), yes).
 
 :- pred output_c_procedure_list_decls(list(c_procedure), decl_set, decl_set,
 	io__state, io__state).
@@ -2034,11 +2045,13 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 		globals__io_get_globals(Globals),
 		{ globals__have_static_code_addresses(Globals, StaticCode) },
 		(
-				% Don't make decls of base_type_infos `const' 
-				% if we don't have static code addresses.
+				% Don't make the structure `const' 
+				% if the structure will eventually include
+				% code addresses but we don't have static code
+				% addresses.
 			{ StaticCode = no },
-			{ DeclId = data_addr(
-					data_addr(_, base_type(info, _, _))) }
+			{ DeclId = data_addr(data_addr(_, DataName)) },
+			{ data_name_would_include_code_address(DataName, yes) }
 		->
 			[]
 		;
@@ -2078,6 +2091,23 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 		io__write_string(";\n")
 	).
 
+	% Return true if a data structure of the given type will eventually
+	% include code addresses. Note that we can't just test the data
+	% structure itself, since in the absence of code addresses the earlier
+	% passes will have replaced any code addresses with dummy values
+	% that will have to be overridden with the real code address at
+	% initialization time.
+
+:- pred data_name_would_include_code_address(data_name, bool).
+:- mode data_name_would_include_code_address(in, out) is det.
+
+data_name_would_include_code_address(common(_), no).
+data_name_would_include_code_address(base_type(info, _, _), yes).
+data_name_would_include_code_address(base_type(layout, _, _), no).
+data_name_would_include_code_address(base_type(functors, _, _), no).
+data_name_would_include_code_address(base_typeclass_info(_, _), yes).
+data_name_would_include_code_address(proc_layout(_), yes).
+data_name_would_include_code_address(internal_layout(_), no).
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -2435,12 +2465,13 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 :- type linkage ---> extern ; static.
 
 :- pred linkage(data_name::in, linkage::out) is det.
-linkage(base_typeclass_info(_, _), extern).
+linkage(common(_),                 static).
 linkage(base_type(info, _, _),     extern).
 linkage(base_type(layout, _, _),   static).
 linkage(base_type(functors, _, _), static).
-linkage(common(_),                 static).
-linkage(stack_layout(_),           static).
+linkage(base_typeclass_info(_, _), extern).
+linkage(proc_layout(_),            static).
+linkage(internal_layout(_),        static).
 
 %-----------------------------------------------------------------------------%
 
@@ -2693,7 +2724,12 @@ output_data_addr(ModuleName, VarName) -->
 		io__write_string(Str)
 	;
 		% Keep this code in sync with make_stack_layout_name/3.
-		{ VarName = stack_layout(Label) },
+		{ VarName = proc_layout(Label) },
+		io__write_string("_layout__"),
+		output_label(Label)
+	;
+		% Keep this code in sync with make_stack_layout_name/3.
+		{ VarName = internal_layout(Label) },
 		io__write_string("_layout__"),
 		output_label(Label)
 	).

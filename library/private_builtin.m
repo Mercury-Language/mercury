@@ -858,6 +858,7 @@ MR_MAKE_PROC_LAYOUT(mercury__table_suspend_2_0,
 	MR_PREDICATE, ""private_builtin"", ""table_suspend"", 2, 0);
 BEGIN_MODULE(table_suspend_module)
 	init_entry_sl(mercury__table_suspend_2_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_suspend_2_0);
 BEGIN_CODE
 
 Define_entry(mercury__table_suspend_2_0);
@@ -1045,6 +1046,7 @@ MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
 
 BEGIN_MODULE(table_resume_module)
 	init_entry_sl(mercury__table_resume_1_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_resume_1_0);
 	init_label_sl(mercury__table_resume_1_0_ChangeLoop);
 	init_label_sl(mercury__table_resume_1_0_ChangeLoopDone);
 	init_label_sl(mercury__table_resume_1_0_SolutionsListLoop);

@@ -500,6 +500,7 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 3);
 
 BEGIN_MODULE(builtin_aggregate_module)
 	init_entry_sl(mercury__std_util__builtin_aggregate_4_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__std_util__builtin_aggregate_4_0);
 	init_entry(mercury__std_util__builtin_aggregate_4_1);
 	init_entry(mercury__std_util__builtin_aggregate_4_2);
 	init_entry(mercury__std_util__builtin_aggregate_4_3);
@@ -1113,6 +1114,7 @@ BEGIN_MODULE(unify_univ_module)
 	init_entry(mercury____Compare___std_util__univ_0_0);
 #else
 	init_entry_sl(mercury____Compare___std_util__univ_0_0);
+	MR_INIT_PROC_LAYOUT_ADDR.(mercury____Compare___std_util__univ_0_0);
 	init_label_sl(mercury____Compare___std_util__univ_0_0_i1);
 #endif
 

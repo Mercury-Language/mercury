@@ -648,8 +648,11 @@
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
-	;	stack_layout(label).	
-			% stack_layout for a given label
+	;	proc_layout(label)
+			% layout structure for the procedure with the given
+			% entry label
+	;	internal_layout(label).
+			% layout structure for the given internal label
 
 :- type base_data
 	--->	info
@@ -715,10 +718,13 @@
 	;	f.		% floating point regs
 
 :- type label
-	--->	local(proc_label, int)	% internal to procedure
-	;	c_local(proc_label)	% internal to C module
-	;	local(proc_label)	% internal to Mercury module
-	;	exported(proc_label).	% exported from Mercury module
+	--->	local(proc_label, int)	% not proc entry; internal to a
+					% procedure
+	;	c_local(proc_label)	% proc entry; internal to a C module
+	;	local(proc_label)	% proc entry; internal to a Mercury
+					% module
+	;	exported(proc_label).	% proc entry; exported from a Mercury
+					% module
 
 :- type code_addr
 	--->	label(label)		% A label defined in this Mercury

@@ -586,6 +586,7 @@ Declare_entry(do_call_det_closure);
 
 BEGIN_MODULE(benchmark_nondet_module)
 	init_entry_sl(mercury__benchmarking__benchmark_nondet_5_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__benchmarking__benchmark_nondet_5_0);
 	init_label_sl(mercury__benchmarking__benchmark_nondet_5_0_i1);
 	init_label_sl(mercury__benchmarking__benchmark_nondet_5_0_i2);
 BEGIN_CODE
@@ -695,6 +696,7 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_det_5_0, 1);
 
 BEGIN_MODULE(benchmark_det_module)
 	init_entry_sl(mercury__benchmarking__benchmark_det_5_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__benchmarking__benchmark_det_5_0);
 	init_label_sl(mercury__benchmarking__benchmark_det_5_0_i1);
 BEGIN_CODE
 

@@ -185,6 +185,7 @@
 		bool,		% generate agc layout info?
 		bool,		% generate tracing layout info?
 		bool,		% generate procedure id layout info?
+		bool,		% have static code addresses?
 		list(c_module),	% generated data
 		set_bbbtree(label)
 				% the set of labels with stack layouts
@@ -208,10 +209,12 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, CModules,
 	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
 	globals__lookup_bool_option(Globals, procid_stack_layout,
 		ProcInfoLayout),
+	globals__have_static_code_addresses(Globals, StaticCodeAddr),
 	set_bbbtree__init(StackLayoutLabels0),
 
 	LayoutInfo0 = stack_layout_info(ModuleName, CellCount, AgcLayout,
-		TraceLayout, ProcInfoLayout, [], StackLayoutLabels0),
+		TraceLayout, ProcInfoLayout, StaticCodeAddr,
+		[], StackLayoutLabels0),
 	list__foldl(stack_layout__construct_layouts, ProcLayoutList,
 		LayoutInfo0, LayoutInfo),
 
@@ -291,7 +294,14 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	},
 	{ stack_layout__represent_locn(direct(SuccipLval), SuccipRval) },
 	{ StackSlotsRval = const(int_const(StackSlots)) },
-	{ CodeAddrRval = const(code_addr_const(label(EntryLabel))) },
+	stack_layout__get_static_code_addresses(StaticCodeAddr),
+	{ StaticCodeAddr = yes ->
+		CodeAddrRval = const(code_addr_const(label(EntryLabel)))
+	;
+		% This is a lie; the slot will be filled in for real
+		% at initialization time.
+		CodeAddrRval = const(int_const(0))
+	},
 
 	{ stack_layout__represent_determinism(Detism, DetismRval) },
 	{ MaybeRvals0 = [yes(CodeAddrRval), yes(DetismRval),
@@ -320,7 +330,7 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 		( MaybeCallLabel = yes(CallLabel) ->
 			CallRval = yes(const(data_addr_const(
 					data_addr(ModuleName,
-						stack_layout(CallLabel)))))
+						internal_layout(CallLabel)))))
 		;
 			error("stack_layout__construct_proc_layout: call label not present")
 		),
@@ -348,7 +358,7 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 				% is given and if the procedure is exported.
 				% Beware however that linkage/2 in llds_out.m
 				% assumes that this is `no'.
-	{ CModule = c_data(ModuleName, stack_layout(EntryLabel), Exported,
+	{ CModule = c_data(ModuleName, proc_layout(EntryLabel), Exported,
 		MaybeRvals, []) },
 	stack_layout__add_cmodule(CModule, EntryLabel).
 
@@ -415,7 +425,7 @@ stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
 		% generate the required rvals
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
-		stack_layout(EntryLabel)))) },
+		proc_layout(EntryLabel)))) },
 	stack_layout__construct_internal_rvals(Internal, VarInfoRvals),
 	% Reenable this code if you want label numbers in label layouts.
 	% { Label = local(_, LabelNum0) ->
@@ -427,7 +437,7 @@ stack_layout__construct_internal_layout(EntryLabel, Label - Internal) -->
 	% { LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval
 	% 	| VarInfoRvals] }
 	{ LayoutRvals = [yes(EntryAddrRval) | VarInfoRvals] },
-	{ CModule = c_data(ModuleName, stack_layout(Label), no,
+	{ CModule = c_data(ModuleName, internal_layout(Label), no,
 		LayoutRvals, []) },
 	stack_layout__add_cmodule(CModule, Label).
 
@@ -906,68 +916,75 @@ stack_layout__represent_determinism(Detism, const(int_const(Code))) :-
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_module_name(ModuleName, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(ModuleName, _, _, _, _, _, _).
+	LayoutInfo = stack_layout_info(ModuleName, _, _, _, _, _, _, _).
 
 :- pred stack_layout__get_next_cell_number(int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_next_cell_number(CNum0, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, CNum0, C, D, E, F, G),
+	LayoutInfo0 = stack_layout_info(A, CNum0, C, D, E, F, G, H),
 	CNum is CNum0 + 1,
-	LayoutInfo = stack_layout_info(A, CNum, C, D, E, F, G).
+	LayoutInfo = stack_layout_info(A, CNum, C, D, E, F, G, H).
 
 :- pred stack_layout__get_cell_number(int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_cell_number(CNum, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, CNum, _, _, _, _, _).
+	LayoutInfo = stack_layout_info(_, CNum, _, _, _, _, _, _).
 
 :- pred stack_layout__get_agc_stack_layout(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_agc_stack_layout(AgcStackLayout, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, AgcStackLayout, _, _, _, _).
+	LayoutInfo = stack_layout_info(_, _, AgcStackLayout, _, _, _, _, _).
 
 :- pred stack_layout__get_trace_stack_layout(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_trace_stack_layout(TraceStackLayout, LayoutInfo,
 		LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, TraceStackLayout, _, _, _).
+	LayoutInfo = stack_layout_info(_, _, _, TraceStackLayout, _, _, _, _).
 
 :- pred stack_layout__get_procid_stack_layout(bool::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_procid_stack_layout(ProcIdStackLayout, LayoutInfo,
 		LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, ProcIdStackLayout, _, _).
+	LayoutInfo = stack_layout_info(_, _, _, _, ProcIdStackLayout, _, _, _).
+
+:- pred stack_layout__get_static_code_addresses(bool::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__get_static_code_addresses(StaticCodeAdddr, LayoutInfo,
+		LayoutInfo) :-
+	LayoutInfo = stack_layout_info(_, _, _, _, _, StaticCodeAdddr, _, _).
 
 :- pred stack_layout__get_cmodules(list(c_module)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_cmodules(CModules, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, CModules, _).
+	LayoutInfo = stack_layout_info(_, _, _, _, _, _, CModules, _).
 
 :- pred stack_layout__get_label_set(set_bbbtree(label)::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__get_label_set(StackLayoutLabels, LayoutInfo, LayoutInfo) :-
-	LayoutInfo = stack_layout_info(_, _, _, _, _, _, StackLayoutLabels).
+	LayoutInfo = stack_layout_info(_, _, _, _, _, _, _, StackLayoutLabels).
 
 :- pred stack_layout__add_cmodule(c_module::in, label::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__add_cmodule(CModule, Label, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, B, C, D, E, CModules0,
-		StackLayoutLabels0),
+	LayoutInfo0 = stack_layout_info(A, B, C, D, E, F,
+		CModules0, StackLayoutLabels0),
 	CModules = [CModule | CModules0],
 	set_bbbtree__insert(StackLayoutLabels0, Label, StackLayoutLabels),
-	LayoutInfo = stack_layout_info(A, B, C, D, E, CModules,
-		StackLayoutLabels).
+	LayoutInfo = stack_layout_info(A, B, C, D, E, F,
+		CModules, StackLayoutLabels).
 
 :- pred stack_layout__set_cell_number(int::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__set_cell_number(CNum, LayoutInfo0, LayoutInfo) :-
-	LayoutInfo0 = stack_layout_info(A, _, C, D, E, F, G),
-	LayoutInfo = stack_layout_info(A, CNum, C, D, E, F, G).
+	LayoutInfo0 = stack_layout_info(A, _, C, D, E, F, G, H),
+	LayoutInfo = stack_layout_info(A, CNum, C, D, E, F, G, H).

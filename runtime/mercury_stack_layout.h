@@ -335,14 +335,34 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 ** For the procedure identification, we always use the same module name
 ** for the defining and declaring modules, since procedures whose code
 ** is hand-written as C modules cannot be inlined in other Mercury modules.
+**
+** Due to the possibility that code addresses are not static, any use of
+** the MR_MAKE_PROC_LAYOUT macro has to be accompanied by a call to the
+** MR_INIT_PROC_LAYOUT_ADDR macro in the initialization code of the C module
+** that defines the entry. (The cast in the body of MR_INIT_PROC_LAYOUT_ADDR
+** is needed because compiler-generated layout structures have their own
+** compiler-generated type.)
 */ 
 
 #define	MR_ENTRY_NO_SLOT_COUNT		-1
 
+#ifdef	MR_STATIC_CODE_ADDRESSES
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		STATIC(entry)
+ #define	MR_INIT_PROC_LAYOUT_ADDR(entry)		do { } while (0)
+#else
+ #define	MR_MAKE_PROC_LAYOUT_ADDR(entry)		((Code *) NULL)
+ #define	MR_INIT_PROC_LAYOUT_ADDR(entry)				\
+		do {							\
+			((MR_Stack_Layout_Entry *) &			\
+			mercury_data__layout__##entry)			\
+				->MR_sle_code_addr = ENTRY(entry);	\
+		} while (0)
+#endif
+
 #define MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn,		\
 		pf, module, name, arity, mode) 				\
 	MR_Stack_Layout_Entry mercury_data__layout__##entry = {		\
-		STATIC(entry),						\
+		MR_MAKE_PROC_LAYOUT_ADDR(entry),			\
 		detism,							\
 		slots,							\
 		succip_locn,						\
