@@ -33,19 +33,19 @@ typedef struct MR_AllocRecord_Struct		MR_AllocRecord;
 struct MR_IntHashTableSlot_Struct {
 	MR_IntHashTableSlot	*next;
 	MR_TableNode		data;
-	MR_Integer			key;
+	MR_Integer		key;
 };
 
 struct MR_FloatHashTableSlot_Struct {
 	MR_FloatHashTableSlot	*next;
 	MR_TableNode		data;
-	MR_Float			key;
+	MR_Float		key;
 };
 
 struct MR_StringHashTableSlot_Struct {
 	MR_StringHashTableSlot	*next;
 	MR_TableNode		data;
-	MR_String			key;
+	MR_ConstString		key;
 };
 
 typedef	union {
@@ -103,12 +103,12 @@ struct MR_AllocRecord_Struct {
 */
 
 struct MR_HashTable_Struct {
-	MR_Integer			size;
-	MR_Integer			threshold;
-	MR_Integer			value_count;
+	MR_Integer		size;
+	MR_Integer		threshold;
+	MR_Integer		value_count;
 	MR_HashTableSlotPtr	*hash_table;
 	MR_HashTableSlotPtr	freespace;
-	MR_Integer			freeleft;
+	MR_Integer		freeleft;
 	MR_AllocRecord		*allocrecord;
 };
 
@@ -287,8 +287,8 @@ static	MR_Unsigned	MR_table_hash_insert_probes = 0;
 #define	MR_GENERIC_HASH_LOOKUP_OR_ADD					      \
 	MR_HashTable	*table;						      \
 	table_type	*slot;						      \
-	MR_Integer		abs_hash;					      \
-	MR_Integer		home;						      \
+	MR_Integer	abs_hash;					      \
+	MR_Integer	home;						      \
 	DECLARE_PROBE_COUNT						      \
 									      \
 	debug_key_msg(key, key_format, key_cast);			      \
@@ -445,10 +445,10 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 }
 
 MR_TrieNode
-MR_string_hash_lookup_or_add(MR_TrieNode t, MR_String key)
+MR_string_hash_lookup_or_add(MR_TrieNode t, MR_ConstString key)
 {
 #define	key_format		"%s"
-#define	key_cast		char *
+#define	key_cast		const char *
 #define	table_type		MR_StringHashTableSlot
 #define	table_field		string_slot_ptr
 #define	hash(key)		(MR_hash_string((MR_Word) key))
@@ -501,7 +501,8 @@ MR_int_fix_index_lookup_or_add(MR_TrieNode t, MR_Integer range, MR_Integer key)
 #define	MR_START_TABLE_INIT_SIZE	1024
 
 MR_TrieNode
-MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start, MR_Integer key)
+MR_int_start_index_lookup_or_add(MR_TrieNode table,
+	MR_Integer start, MR_Integer key)
 {
 	MR_Integer	diff, size;
 
@@ -526,7 +527,7 @@ MR_int_start_index_lookup_or_add(MR_TrieNode table, MR_Integer start, MR_Integer
 
 	if (diff >= size) {
 		MR_TableNode	*new_array;
-		MR_Integer		new_size, i;
+		MR_Integer	new_size, i;
 
 		new_size = max(2 * size, diff + 1);
 		new_array = MR_TABLE_NEW_ARRAY(MR_TableNode, new_size + 1);
@@ -641,8 +642,8 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 const MR_DuExistInfo    *exist_info;
                 MR_TypeInfo             arg_type_info;
                 int                     ptag;
-                MR_Word                    sectag;
-                MR_Word                    *arg_vector;
+                MR_Word                 sectag;
+                MR_Word                 *arg_vector;
                 int                     meta_args;
                 int                     i;
 
@@ -796,7 +797,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 */
         #if 0
                 MR_closure  closure;
-                MR_Word        num_hidden_args;
+                MR_Word     num_hidden_args;
                 int         i;
 
                 closure = (MR_Closure *) data;
@@ -870,7 +871,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_TypeInfo     new_type_info;
                 MR_MemoryList   allocated_memory_cells = NULL;
                 MR_ArrayType    *array;
-                MR_Integer         array_size;
+                MR_Integer      array_size;
                 int             i;
 
                 array = (MR_ArrayType *) data;
@@ -1474,8 +1475,8 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	MR_Subgoal	*subgoal;
 	MR_Consumer	*consumer;
 	MR_ConsumerList	listnode;
-	MR_Integer		cur_gen;
-	MR_Integer		cur_cut;
+	MR_Integer	cur_gen;
+	MR_Integer	cur_cut;
 	MR_Word		*fr;
 	MR_Word		*prev_fr;
 	MR_Word		*stop_addr;

@@ -84,6 +84,7 @@ HDRS		=	\
 			mercury_trail.h		\
 			mercury_types.h		\
 			mercury_type_info.h	\
+			mercury_type_tables.h	\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 
@@ -149,6 +150,7 @@ CFILES		= 	\
 			mercury_trace_base.c	\
 			mercury_trail.c 	\
 			mercury_type_info.c	\
+			mercury_type_tables.c	\
 			mercury_wrapper.c
 
 OBJS		= $(CFILES:.c=.$O)

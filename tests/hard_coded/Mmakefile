@@ -108,6 +108,7 @@ PROGS=	\
 	test_imported_no_tag \
 	tim_qual1 \
 	type_qual \
+	type_tables \
 	type_to_term_bug \
 	tuple_test \
 	user_defined_equality \

@@ -171,6 +171,8 @@ MR_TypeStat	MR_type_stat_c_compare;
 
 void	(*address_of_mercury_init_io)(void);
 void	(*address_of_init_modules)(void);
+void	(*address_of_init_modules_type_tables)(void);
+void	(*address_of_init_modules_debugger)(void);
 
 int	(*MR_address_of_do_load_aditi_rl_code)(void);
 
@@ -423,6 +425,28 @@ do_init_modules(void)
 	if (! done) {
 		(*address_of_init_modules)();
 		MR_close_prof_decl_file();
+		done = TRUE;
+	}
+}
+
+void 
+do_init_modules_type_tables(void)
+{
+	static	bool	done = FALSE;
+
+	if (! done) {
+		(*address_of_init_modules_type_tables)();
+		done = TRUE;
+	}
+}
+
+void 
+do_init_modules_debugger(void)
+{
+	static	bool	done = FALSE;
+
+	if (! done) {
+		(*address_of_init_modules_debugger)();
 		done = TRUE;
 	}
 }

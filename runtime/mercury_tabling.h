@@ -7,9 +7,9 @@
 /*
 ** mercury_tabling.h - definitions of some basic stuff used for tabling.
 ** For tabling code, the Mercury compiler (compiler/table_gen.m) generates
-** references to special procedures defined in library/private_builtin.m.
+** references to special procedures defined in library/table_builtin.m.
 ** The types and macros defined here are used by the procedures defined in
-** library/private_builtin.m.
+** library/table_builtin.m.
 */
 
 #ifndef	MERCURY_TABLING_H
@@ -19,6 +19,7 @@
 #include "mercury_type_info.h"
 #include "mercury_float.h"
 #include "mercury_reg_workarounds.h"
+#include "mercury_dlist.h"
 
 #ifndef CONSERVATIVE_GC
   #include "mercury_deep_copy.h"
@@ -123,16 +124,21 @@ typedef	MR_ConsumerListNode			*MR_ConsumerList;
 ** there will be no insertions into the same (or any other) table between
 ** getting back a tip node on the one hand and updating it and releasing the
 ** pointer to it on the other hand.
+** 
+** NOTE: the mercury_type_tables module uses the expandable hash table routines
+** defined in this module to implement its tables. This is the only use of the
+** MR_type_table field.
 */
 
 union MR_TableNode_Union {
-	MR_Integer		MR_integer;
+	MR_Integer	MR_integer;
 	MR_HashTable	*MR_hash_table;
 	MR_TableNode	*MR_fix_table;
 	MR_TableNode	*MR_start_table;
 	MR_Unsigned	MR_simpletable_status;
 	MR_Subgoal	*MR_subgoal;
 	MR_Word		*MR_answerblock;
+	MR_Dlist	*MR_type_table;
 };
 
 #define	MR_SIMPLETABLE_UNINITIALIZED	0
@@ -147,7 +153,7 @@ typedef enum {
 } MR_SubgoalStatus;
 
 struct MR_AnswerListNode_Struct {
-	MR_Integer		answer_num;
+	MR_Integer	answer_num;
 	MR_TableNode	answer_data; /* always uses the MR_answerblock member */
 	MR_AnswerList	next_answer;
 };
@@ -182,31 +188,31 @@ struct MR_AnswerListNode_Struct {
 */
 
 typedef struct {
-	MR_Code	*succ_ip;
-	MR_Word	*s_p;
-	MR_Word	*cur_fr;
-	MR_Word	*max_fr;
-	MR_Word	*non_stack_block_start;
-	MR_Word	non_stack_block_size;
-	MR_Word	*non_stack_block;
-	MR_Word	*det_stack_block_start;
-	MR_Word	det_stack_block_size;
-	MR_Word	*det_stack_block;
-	MR_Integer	gen_next;
-	char	*generator_stack_block;
-	MR_Integer	cut_next;
-	char	*cut_stack_block;
+	MR_Code			*succ_ip;
+	MR_Word			*s_p;
+	MR_Word			*cur_fr;
+	MR_Word			*max_fr;
+	MR_Word			*non_stack_block_start;
+	MR_Word			non_stack_block_size;
+	MR_Word			*non_stack_block;
+	MR_Word			*det_stack_block_start;
+	MR_Word			det_stack_block_size;
+	MR_Word			*det_stack_block;
+	MR_Integer		gen_next;
+	char			*generator_stack_block;
+	MR_Integer		cut_next;
+	char			*cut_stack_block;
 } MR_SavedState;
 
 /* The state of a consumer subgoal */
 typedef struct {
-	MR_SavedState	saved_state;
-	MR_AnswerList	*remaining_answer_list_ptr;
+	MR_SavedState		saved_state;
+	MR_AnswerList		*remaining_answer_list_ptr;
 } MR_Consumer;
 
 struct MR_ConsumerListNode_Struct {
-	MR_Consumer			*item;
-	MR_ConsumerList			next;
+	MR_Consumer		*item;
+	MR_ConsumerList		next;
 };
 
 /*
@@ -238,9 +244,9 @@ struct MR_Subgoal_Struct {
 	MR_ResumeInfo		*resume_info;
 	MR_Word			answer_table;	/* Table of answers returned */
 						/* by the subgoal */
-	MR_Integer			num_ans;	/* # of answers returned */
+	MR_Integer		num_ans;	/* # of answers returned */
 						/* by the subgoal */
-	MR_Integer			num_committed_ans;
+	MR_Integer		num_committed_ans;
 						/* # of answers our leader */
 						/* is committed to returning */
 						/* to every consumer. */
@@ -283,7 +289,7 @@ extern	MR_TrieNode	MR_int_hash_lookup_or_add(MR_TrieNode table,
 extern	MR_TrieNode	MR_float_hash_lookup_or_add(MR_TrieNode table,
 				MR_Float key);
 extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
-				MR_String key);
+				MR_ConstString key);
 
 /*
 ** This function assumes that the table is a statically sized array,

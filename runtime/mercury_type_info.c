@@ -5,7 +5,7 @@
 */
 
 /*
-** type_info.c -
+** mercury_type_info.c -
 **	Definitions for dealing with type_infos needed by the Mercury
 **	runtime system.
 */
@@ -35,7 +35,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 #define	ALLOCATE_WORDS(target, size)					      \
 				do {					      \
 					MR_MemoryList node;		      \
-					(target) = MR_GC_NEW_ARRAY(MR_Word,      \
+					(target) = MR_GC_NEW_ARRAY(MR_Word,   \
 						(size));		      \
 					node = MR_GC_malloc(sizeof(*node));   \
 					node->data = (target);		      \
@@ -57,7 +57,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 #define	MAYBE_DECLARE_ALLOC_ARG
 #define	MAYBE_PASS_ALLOC_ARG
 #define	ALLOCATE_WORDS(target, size)					      \
-				incr_saved_hp(LVALUE_CAST(MR_Word, (target)),    \
+				incr_saved_hp(LVALUE_CAST(MR_Word, (target)), \
 					(size))
 #include "mercury_make_type_info_body.h"
 #undef	usual_func

@@ -32,32 +32,38 @@
 :- pred output_addr_of_rtti_data(rtti_data::in, io__state::di, io__state::uo)
 	is det.
 
-	% output a C declaration for the rtti_data
+	% Output a C declaration for the rtti_data.
 :- pred output_rtti_data_decl(rtti_data::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
-	% output a C definition for the rtti_data
+	% Output a C definition for the rtti_data.
 :- pred output_rtti_data_defn(rtti_data::in, decl_set::in, decl_set::out,
 	io__state::di, io__state::uo) is det.
 
-	% output C code (e.g. a call to the MR_INIT_TYPE_CTOR_INFO() macro)
+	% Output C code (e.g. a call to the MR_INIT_TYPE_CTOR_INFO() macro)
 	% to initialize the rtti_data if necessary.
 :- pred rtti_out__init_rtti_data_if_nec(rtti_data::in,
 	io__state::di, io__state::uo) is det.
 
-	% output the C name of the rtti_data specified by the given
+	% Output C code (e.g. a call to MR_register_type_ctor_info())
+	% to register the rtti_data in the type tables, if it represents a data
+	% structure that should be so registered.
+:- pred rtti_out__register_rtti_data_if_nec(rtti_data::in,
+	io__state::di, io__state::uo) is det.
+
+	% Output the C name of the rtti_data specified by the given
 	% rtti_type_id and rtti_name.
 :- pred output_rtti_addr(rtti_type_id::in, rtti_name::in,
 	io__state::di, io__state::uo) is det.
 
-	% output the C storage class, C type, and C name of the rtti_data 
+	% Output the C storage class, C type, and C name of the rtti_data 
 	% specified by the given rtti_type_id and rtti_name,
 	% for use in a declaration or definition.
 	% The bool should be `yes' iff it is for a definition.
 :- pred output_rtti_addr_storage_type_name(rtti_type_id::in, rtti_name::in,
 	bool::in, io__state::di, io__state::uo) is det.
 
-	% the same as output_rtti_addr_storage_type_name,
+	% The same as output_rtti_addr_storage_type_name,
 	% but for a base_typeclass_info.
 :- pred output_base_typeclass_info_storage_type_name(class_id::in, string::in,
 		bool::in, io__state::di, io__state::uo) is det.
@@ -639,9 +645,9 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		{ Data = type_ctor_info(RttiTypeId,
 			_,_,_,_,_,_,_,_,_,_,_,_) }
 	->
-		io__write_string("\t\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
+		io__write_string("\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
 		output_rtti_addr(RttiTypeId, type_ctor_info),
-		io__write_string(",\n\t\t\t"),
+		io__write_string(",\n\t\t"),
 		{ RttiTypeId = rtti_type_id(ModuleName, TypeName, Arity) },
 		{ llds_out__sym_name_mangle(ModuleName, ModuleNameString) },
 		{ string__append(ModuleNameString, "__", UnderscoresModule) },
@@ -671,6 +677,33 @@ rtti_out__init_rtti_data_if_nec(Data) -->
 		output_init_method_pointers(FirstFieldNum, CodeAddrs,
 			ClassName, ClassArity),
 		io__write_string("#endif /* MR_STATIC_CODE_ADDRESSES */\n")
+	;
+		[]
+	).
+
+rtti_out__register_rtti_data_if_nec(Data) -->
+	(
+		{ Data = type_ctor_info(RttiTypeId,
+			_,_,_,_,_,_,_,_,_,_,_,_) }
+	->
+		io__write_string("\tMR_register_type_ctor_info(\n\t\t&"),
+		output_rtti_addr(RttiTypeId, type_ctor_info),
+		io__write_string(");\n")
+	;
+		{ Data = base_typeclass_info(_ClassId, _InstanceString,
+			_BaseTypeClassInfo) }
+	->
+		% XXX Registering base_typeclass_infos by themselves is not
+		% enough. A base_typeclass_info doesn't say which types it
+		% declares to be members of which typeclass, and for now
+		% we don't even have any data structures in the runtime system
+		% to describe such membership information.
+		%
+		% io__write_string("\tMR_register_base_typeclass_info(\n\t\t&"),
+		% output_base_typeclass_info_storage_type_name(ClassId,
+		% 	InstanceString, no),
+		% io__write_string(");\n")
+		[]
 	;
 		[]
 	).

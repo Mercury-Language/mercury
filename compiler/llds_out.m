@@ -398,7 +398,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
-		output_c_data_init_list_decls(Datas),
+		output_debugger_init_list_decls(Datas),
 		io__write_string("\n"),
 		output_c_module_init_list(ModuleName, Modules, Datas,
 			StackLayoutLabels),
@@ -541,17 +541,27 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 		io__write_string("#endif\n\n")
 	),
 
+	io__write_string("/* suppress gcc -Wmissing-decls warnings */\n"),
 	io__write_string("void "),
 	output_init_name(ModuleName),
-	io__write_string("(void);"),
-	io__write_string("/* suppress gcc -Wmissing-decls warning */\n"),
+	io__write_string("(void);\n"),
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_type_tables(void);\n"),
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_debugger(void);\n"),
+	io__write_string("\n"),
+
 	io__write_string("void "),
 	output_init_name(ModuleName),
 	io__write_string("(void)\n"),
 	io__write_string("{\n"),
 	io__write_string("\tstatic bool done = FALSE;\n"),
-	io__write_string("\tif (!done) {\n"),
-	io__write_string("\t\tdone = TRUE;\n"),
+	io__write_string("\tif (done) {\n"),
+	io__write_string("\t\treturn;\n"),
+	io__write_string("\t}\n"),
+	io__write_string("\tdone = TRUE;\n"),
 
 	output_init_bunch_calls(AlwaysInitModuleBunches, ModuleName,
 		"always", 0),
@@ -566,8 +576,40 @@ output_c_module_init_list(ModuleName, Modules, Datas, StackLayoutLabels) -->
 	),
 
 	output_c_data_init_list(Datas),
-	io__write_string("\t}\n"),
+		% The call to the debugger initialization function
+		% is for bootstrapping; once the debugger has been modified
+		% to call do_init_modules_debugger() and all debuggable
+		% object files created before this change have been
+		% overwritten, it can be deleted.
+	io__write_string("\t"),
+	output_init_name(ModuleName),
+	io__write_string("_debugger();\n"),
 	io__write_string("}\n\n"),
+
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_type_tables(void)\n"),
+	io__write_string("{\n"),
+	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tif (done) {\n"),
+	io__write_string("\t\treturn;\n"),
+	io__write_string("\t}\n"),
+	io__write_string("\tdone = TRUE;\n"),
+	output_type_tables_init_list(Datas),
+	io__write_string("}\n\n"),
+
+	io__write_string("void "),
+	output_init_name(ModuleName),
+	io__write_string("_debugger(void)\n"),
+	io__write_string("{\n"),
+	io__write_string("\tstatic bool done = FALSE;\n"),
+	io__write_string("\tif (done) {\n"),
+	io__write_string("\t\treturn;\n"),
+	io__write_string("\t}\n"),
+	io__write_string("\tdone = TRUE;\n"),
+	output_debugger_init_list(Datas),
+	io__write_string("}\n\n"),
+
 	io__write_string(
 		"/* ensure everything is compiled with the same grade */\n"),
 	io__write_string(
@@ -634,13 +676,44 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	{ NextSeq is Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
-	% Output declarations for each module layout defined in this module
-	% (there should only be one, of course).
-:- pred output_c_data_init_list_decls(list(comp_gen_c_data)::in,
+	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
+	% for each type_ctor_info defined in this module.
+
+:- pred output_c_data_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
 
-output_c_data_init_list_decls([]) --> [].
-output_c_data_init_list_decls([Data | Datas]) -->
+output_c_data_init_list([]) --> [].
+output_c_data_init_list([Data | Datas]) -->
+	( { Data = rtti_data(RttiData) } ->
+		rtti_out__init_rtti_data_if_nec(RttiData)
+	;
+		[]
+	),
+	output_c_data_init_list(Datas).
+
+	% Output code to register each type_ctor_info defined in this module.
+
+:- pred output_type_tables_init_list(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_type_tables_init_list([]) --> [].
+output_type_tables_init_list([Data | Datas]) -->
+	(
+		{ Data = rtti_data(RttiData) }
+	->
+		rtti_out__register_rtti_data_if_nec(RttiData)
+	;
+		[]
+	),
+	output_type_tables_init_list(Datas).
+
+	% Output declarations for each module layout defined in this module
+	% (there should only be one, of course).
+:- pred output_debugger_init_list_decls(list(comp_gen_c_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_debugger_init_list_decls([]) --> [].
+output_debugger_init_list_decls([Data | Datas]) -->
 	(
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
@@ -651,24 +724,18 @@ output_c_data_init_list_decls([Data | Datas]) -->
 	;
 		[]
 	),
-	output_c_data_init_list_decls(Datas).
+	output_debugger_init_list_decls(Datas).
 
-	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
-	% for each type_ctor_info defined in this module.
-	% Also output calls to MR_register_module_layout()
+	% Output calls to MR_register_module_layout()
 	% for each module layout defined in this module
 	% (there should only be one, of course).
 
-:- pred output_c_data_init_list(list(comp_gen_c_data)::in,
+:- pred output_debugger_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
 
-output_c_data_init_list([]) --> [].
-output_c_data_init_list([Data | Datas]) -->
+output_debugger_init_list([]) --> [].
+output_debugger_init_list([Data | Datas]) -->
 	(
-		{ Data = rtti_data(RttiData) }
-	->
-		rtti_out__init_rtti_data_if_nec(RttiData)
-	;
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _, _) },
 		{ DataName = module_layout }
 	->
@@ -680,7 +747,7 @@ output_c_data_init_list([Data | Datas]) -->
 	;
 		[]
 	),
-	output_c_data_init_list(Datas).
+	output_debugger_init_list(Datas).
 
 	% Output a comment to tell mkinit what functions to
 	% call from <module>_init.c.
