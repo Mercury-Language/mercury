@@ -1,8 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../../Mmake.common
+THIS_DIR = hard_coded/purity
 
 #-----------------------------------------------------------------------------#
 
@@ -11,21 +9,15 @@ PROGS=	\
 	impure_func_t1 \
 	impure_func_t6 
 
-#-----------------------------------------------------------------------------#
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
 
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-RESS=	$(PROGS:%=%.res)
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-#-----------------------------------------------------------------------------#
-
-dep:	$(DEPS)
-
-depend:	$(DEPENDS)
-
-check:	$(OUTS) $(RESS)
-
-all:	$(PROGS)
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#

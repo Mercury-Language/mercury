@@ -1,0 +1,21 @@
+
+# The completion test requires mdb to use readline, even though
+# the input is not a terminal.
+MLFLAGS-completion = --runtime-flags --force-readline
+
+MCFLAGS-queens_rep = --trace rep
+MCFLAGS-shallow = --trace shallow
+MCFLAGS-tabled_read = --trace-table-io
+MCFLAGS-tabled_read_unitize = --trace-table-io
+MCFLAGS-tabled_read_decl = --trace-table-io-decl
+# By default, we reclaim heap on failure in non-Boehm-gc grades.
+# The extra stack slots required for this reclamation cause spurious
+# differences from the expected output on the nondet_stack test case.
+# The optimization level also affects stack frame sizes.
+MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
+
+# We need to use shared libraries for interactive queries to work.
+# The following is necessary for shared libraries to work on Linux.
+GRADEFLAGS-interactive = --pic-reg
+MLFLAGS-interactive = --shared
+

@@ -1,4 +1,28 @@
 #-----------------------------------------------------------------------------#
+# Mmake.common - shared Mmake variables and rules for the test directories.
+#
+# The including Mmakefile must set the following variables:
+# THIS_DIR - the name of the directory containing tests
+#		(e.g. benchmarks, hard_coded/typeclasses)
+# TESTS_DIR - the directory containing this file.
+# SUBDIRS - the names of any subdirectories containing tests.
+# PROGS - the names of the main modules of the test programs.
+# TESTS- the names of the tests. For each test there must be targets
+#	test.depend, test.runtest and test.realclean, unless the test ends
+#	in `-nodepend', in which case the `-nodepend' suffix will be stripped
+#	off and the test.depend target is not required.
+#
+# If the variable ERROR_FILE is set, only the tests which failed in
+# the test run which produced the specified error log file will be run.
+#
+#-----------------------------------------------------------------------------#
+
+MAIN_TARGET = runtests
+
+-include $(TESTS_DIR)/Mmake.params
+
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+$(TESTS_DIR)/Mmake.params: ;
 
 # Set up to test a particular workspace.
 ifdef WORKSPACE
@@ -15,10 +39,6 @@ endif
 # file by setting both GRADEFLAGS-foo.
 #
 
-# Override this with `mmake HAVE_NUPROLOG=yes'
-# if you want to rebuild the `.exp' files.
-HAVE_NUPROLOG=no
-
 DIFF_OPTS=-c
 
 # Override this with `RUN_RECOMPILATION_TESTS=no'
@@ -31,7 +51,7 @@ RUN_RECOMPILATION_TESTS=yes
 
 #-----------------------------------------------------------------------------#
 
-# .PRECIOUS: %.mod %.c %.o %_init.c %.no %.nu %_init.nl %_init.no
+# .PRECIOUS: %.c %.o %_init.c
 
 %_init.c: Entry
 
@@ -82,44 +102,214 @@ RUN_RECOMPILATION_TESTS=yes
 		echo "** $*.out did not match the expected output"; \
 		echo "** (closest match was $$shortest)"; \
 		cp $$shortest $@; \
+		cat $@; \
 		exit 1; }
+
+# Some tests have more than one possible valid output, so
+# we allow the test to pass if it matches any of the .err_exp* files.
+%.err_res: %.err %.err_exp
+	@-rm -f $@
+	@diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
+		{ [ -f $*.err_exp2 ] && \
+		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
+		{ [ -f $*.err_exp3 ] && \
+		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
+		{ [ -f $*.err_exp4 ] && \
+		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; } || \
+		{ cat $*.err && exit 1; }
 
 #-----------------------------------------------------------------------------#
 
-clean_local: clean_out clean_res
+MERCURY_MAIN_MODULES = $(PROGS)
+
+ERROR_OUTPUT_FILE = runtests.errs
+
+realclean_local: clean_errors
+clean_local: clean_out clean_res clean_zip
 
 clean_mc: clean_c clean_o clean_out clean_res
 
 clean_out:
 	rm -f *.out
 
-clean_exp:
-	rm -f *.exp
-
 clean_res:
 	rm -f *.res*
 
+clean_errors:
+	rm -f $(ERROR_OUTPUT_FILE)
+
+# Remove gzipped executables for tests which have failed.
+clean_zip:
+	for test in $(TESTS); do \
+		rm -f `basename $$test -nodepend`.gz; \
+	done
+
 #
-# The `foo' targets make `foo_local' in the current directory before
-# recursively making `foo' in all subdirectories.  The recursive part
-# is handled in individual Mmakefiles.
+# The `foo' targets make recursively make `foo' in all subdirectories.
+# before making `foo_local' in the current directory 
 # 
 
-.PHONY: check_local dep_local depend_local all_local
+.PHONY: runtests runtests_local runtests_subdirs
+.PHONY: check check_local check_subdirs
+.PHONY: realclean_subdirs clean_subdirs
 
-.PHONY: check_subdirs dep_subdirs depend_subdirs realclean_subdirs \
-        clean_subdirs all_subdirs
-
-check:          check_local check_subdirs
-dep:            dep_local dep_subdirs
-depend:         depend_local depend_subdirs
 realclean:      realclean_subdirs
 clean:          clean_subdirs
-all:            all_local all_subdirs
+all:		runtests
 
-SUBDIR_MMAKE = mmake \
-                GRADE='$(GRADE)' \
-                EXTRA_CFLAGS='$(EXTRA_CFLAGS)' \
-                EXTRA_MCFLAGS='$(EXTRA_MCFLAGS)'
+check:		runtests
+check_local:	runtests_local
+check_subdirs:	runtests_subdirs
+
+#
+# We want to run all the tests, even if some fail, so
+# run the tests using `mmake -k'.
+# 
+runtests:
+	+@if mmake -k runtests_local runtests_subdirs; then \
+		echo ALL TESTS SUCCEEDED; \
+		rm -f $(ERROR_OUTPUT_FILE); \
+	else \
+		for subdir in $(SUBDIRS) x; do \
+		    if [ -f $$subdir/$(ERROR_OUTPUT_FILE) ]; then \
+			cat $$subdir/$(ERROR_OUTPUT_FILE) \
+				>> $(ERROR_OUTPUT_FILE); \
+			rm -f $$subdir/$(ERROR_OUTPUT_FILE); \
+		    fi; \
+		done; \
+		echo SOME TESTS FAILED: see $(ERROR_OUTPUT_FILE); \
+		exit 1; \
+	fi
+
+#
+# If the variable ERROR_FILE is set, only the tests which failed in
+# the test run which produced the specified error log file will be run.
+#
+ifdef ERROR_FILE
+ifndef TESTS_TO_RUN
+TESTS_TO_RUN := $(shell awk '/^FAILED TEST/ { print $$3 }' $(ERROR_FILE))
+export TESTS_TO_RUN
+endif
+endif
+
+ifdef TESTS_TO_RUN
+THIS_DIR_TESTS_TO_RUN := $(patsubst $(THIS_DIR)/%,%,\
+		$(filter $(THIS_DIR)/%,$(TESTS_TO_RUN)))
+else
+THIS_DIR_TESTS_TO_RUN := $(TESTS)
+endif
+
+ifeq ($(THIS_DIR_TESTS_TO_RUN),)
+
+runtests_local: ;
+
+else
+
+# Run multiple rm commands at once to speed up
+# `mmake realclean' on slow NFS filesystems.
+RM_JFACTOR=-j10
+
+#
+# Clean up after any previous test run.
+#
+.PHONY: start_runtests_local
+start_runtests_local:
+	@echo STARTING tests in $(THIS_DIR) in grade $(GRADE)
+	@echo cleaning up the directory before the tests
+	+@if ls -lt | head -2 | egrep CLEAN > /dev/null 2>&1; then \
+		rm -f CLEAN > /dev/null 2>&1; \
+	else \
+		rm -f CLEAN > /dev/null 2>&1; \
+		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \
+		rm -f *.d *.dep *.int *.int2 *.int3 > /dev/null 2>&1; \
+		rm -f *.date *.date3 *.opt *.optdate > /dev/null 2>&1; \
+		rm -f *.trans_opt *.trans_opt_date > /dev/null 2>&1; \
+	fi
+
+#
+# Run a single test, cleaning up if it succeeds, or producing
+# a log file and gzipping the executable the test fails.
+# Note that the %.log target does not fail if the test fails --
+# we really want `--keep-going' to be the default for this Mmakefile.
+#
+.PHONY: %.log
+%.log: start_runtests_local
+	+@test=$(*:%-nodepend=%); \
+	echo RUNNING TEST $(THIS_DIR)/$* in grade $(GRADE) | tee $@; \
+	case $* in \
+		*-nodepend) \
+			rm -f $*.failed;; \
+		*) \
+			rm -f $*.failed; \
+			{ mmake $$test.depend 2>&1 || touch $*.failed; } \
+				| tee -a $@ ;; \
+	esac; \
+	if [ -f $*.failed ]; then \
+		echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
+			| tee -a $@; \
+	else \
+		{ mmake $$test.runtest 2>&1 || touch $*.failed; } \
+			| tee -a $@; \
+		if [ -f $*.failed ]; then \
+			rm -f $*.failed; \
+		    	if [ -f $$test ]; then \
+				rm -f $$test.gz; gzip $$test; \
+			fi; \
+			echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
+				| tee -a $@; \
+		else \
+			rm -f $@; \
+			rm -f $$test.out* $$test.*res*; \
+			mmake $$test.realclean > /dev/null 2>&1; \
+			echo FINISHED TEST $(THIS_DIR)/$*; \
+		fi; \
+	fi
+
+TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
+runtests_local: $(TEST_LOGS)
+	@touch DUMMY.log
+	@cat *.log > $(ERROR_OUTPUT_FILE)
+	@rm -f *.log
+	@if [ -s $(ERROR_OUTPUT_FILE) ]; then \
+		echo "FAILED tests in $(THIS_DIR) in grade $(GRADE)"; \
+		exit 1; \
+	else \
+		echo "FINISHED tests in $(THIS_DIR) in grade $(GRADE)"; \
+		echo cleaning up the directory after the tests; \
+		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \
+		rm core > /dev/null 2>&1; \
+		touch CLEAN; \
+	fi
+
+endif	# THIS_DIR_TESTS_TO_RUN != ""
+
+ifeq ($(SUBDIRS),)
+
+runtests_subdirs realclean_subdirs clean_subdirs : ;
+
+else
+
+RUNTESTS_IN_SUBDIRS=$(SUBDIRS:%=runtests_in_%)
+runtests_subdirs: $(RUNTESTS_IN_SUBDIRS)
+
+.PHONY: $(RUNTESTS_IN_SUBDIRS)
+$(RUNTESTS_IN_SUBDIRS): runtests_in_%:
+	+cd $* && mmake runtests
+
+realclean_subdirs:
+	+succeeded=true; \
+	for dir in $(SUBDIRS); do \
+	    (cd $$dir && mmake realclean) || succeeded=false; \
+	done
+	case $$succeeded in false) exit 1 ;; esac
+
+clean_subdirs:
+	+succeeded=true; \
+	for dir in $(SUBDIRS); do \
+		(cd $$dir && mmake clean) || succeeded=false; \
+	done; \
+	case $$succeeded in false) exit 1 ;; esac
+
+endif	# SUBDIRS != ""
 
 #-----------------------------------------------------------------------------#

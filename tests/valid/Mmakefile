@@ -1,251 +1,260 @@
 #-----------------------------------------------------------------------------#
 
-main_target: all
-
-include ../Mmake.common
--include ../Mmake.params
+THIS_DIR = valid
 
 #-----------------------------------------------------------------------------#
 
 # please keep these lists sorted
-AGC_SOURCES= \
-	agc_graph.m \
-	agc_ho_pred.m \
-	agc_ite.m \
-	agc_unbound_typevars.m \
-	agc_unbound_typevars2.m \
-	agc_unused_in.m 
+AGC_PROGS= \
+	agc_graph \
+	agc_ho_pred \
+	agc_ite \
+	agc_unbound_typevars \
+	agc_unbound_typevars2 \
+	agc_unused_in 
 
-TRAIL_SOURCES= \
-	complex_failure.m \
-	semi_fail_in_non_ite.m
+TRAIL_PROGS= \
+	complex_failure \
+	semi_fail_in_non_ite
 
-TYPECLASS_SOURCES= \
-	abstract_typeclass.m \
-	constraint_proof_bug.m \
-	func_method.m \
-	instance_superclass.m \
-	instance_unconstrained_tvar.m \
-	repeated_class_constraint.m \
-	typeclass_det_warning.m
+TYPECLASS_PROGS= \
+	abstract_typeclass \
+	constraint_proof_bug \
+	func_method \
+	instance_superclass \
+	instance_unconstrained_tvar \
+	repeated_class_constraint \
+	typeclass_det_warning
 
-ADITI_SOURCES= \
-	aditi_error_bug.m \
-	aditi_update.m \
-	base_relation.m \
-	base_relation2.m \
-	context_anc.m \
-	ite_to_disj.m
+ADITI_PROGS= \
+	aditi_error_bug \
+	aditi_update \
+	base_relation \
+	base_relation2 \
+	context_anc \
+	ite_to_disj
 
 	# This test is compiled with --no-special-preds,
 	# which doesn't work in jump.* and fast.* grades.
-NO_SPECIAL_PREDS_SOURCES= \
-	unify_typeinfo_bug.m
+NO_SPECIAL_PREDS_PROGS= \
+	unify_typeinfo_bug
 
 	# This test does not produce a `.c' file.
-RLO_SOURCES= \
-	aditi_query.m
+RLO_PROGS= \
+	aditi_query
 
 	# Tests for which we should only produce a `.il' file.
-IL_SOURCES = \
-	foreign_type_spec.m
+IL_PROGS = \
+	foreign_type_spec
 
-OTHER_SOURCES= \
-	any_inst_merge.m \
-	common_struct_bug.m \
-	compl_unify_bug.m \
-	complicated_unify.m \
-	constrained_poly_bound_arg.m \
-	constrained_poly_insts.m \
-	constructor_arg_names.m \
-	dcg_test.m \
-	deforest_bug.m \
-	deforest_loop.m \
-	deforest_rerun_det.m \
-	det_condition.m \
-	det_inference.m \
-	det_switch.m \
-	double_vn.m \
-	easy_nondet_test.m \
-	easy_nondet_test_2.m \
-	empty_bound_inst_list.m \
-	empty_switch.m \
-	error.m \
-	existential_cons.m \
-	explicit_quant.m \
-	fail_ite.m \
-	followcode_det_problem.m \
-	foreign_underscore_var.m \
-	func_int_bug_main.m \
-	func_default_modes.m \
-	headvar_not_found.m \
-	higher_order.m \
-	higher_order2.m \
-	higher_order3.m \
-	higher_order_implied_mode.m \
-	ho_func_call.m \
-	ho_inst.m \
-	ho_unify.m \
-	implied_mode.m \
-	indexing.m \
-	inhibit_warn_test.m \
-	inlining_bug.m \
-	inst_perf_bug_1.m \
-	int64.m \
-	intermod_dcg_bug.m \
-	intermod_impure.m \
-	intermod_lambda.m \
-	intermod_nested_module.m \
-	intermod_nested_module_bug.m \
-	intermod_nested_uniq.m \
-	intermod_pragma_import.m \
-	intermod_quote.m \
-	intermod_record.m \
-	intermod_test.m \
-	intermod_typeclass.m \
-	intermod_type_spec.m \
-	intermod_user_equality.m \
-	intermod_user_equality_nested.m \
-	lambda_inference.m\
-	lambda_instmap_bug.m \
-	lambda_output.m \
-	lambda_quant.m \
-	lambda_quant_bug.m \
-	lambda_recompute.m \
-	lambda_struct_bug.m \
-	lambda_switch.m \
-	lambda_type.m \
-	lazy_list.m \
-	liveness_nonlocals.m \
-	livevals_seq.m \
-	loop.m \
-	loop_in_disj.m \
-	merge_ground_any.m \
-	middle_rec_labels.m \
-	modes_bug.m \
-	mode_syntax.m \
-	module_a.m \
-	module_b.m \
-	module_c.m \
-	module_d.m \
-	module_e.m \
-	mostly_uniq_bug.m \
-	mostly_uniq_neg.m \
-	mostly_uniq_mode_inf.m \
-	multidet_prune1.m \
-	multidet_test.m \
-	nasty_func_test.m \
-	nested_mod_type_bug.m \
-	nondet_live.m \
-	parsing_bug_main.m \
-	pred_with_no_modes.m \
-	qualified_cons_id.m \
-	quantifier_warning.m \
-	record_syntax_bug.m \
-	record_syntax_bug_2.m \
-	record_syntax_bug_3.m \
-	record_syntax_bug_4.m \
-	record_syntax_bug_5.m \
-	recursive_no_tag_type.m \
-	same_length_2.m \
-	semidet_disj.m \
-	shape_type.m \
-	simplify_bug.m \
-	simplify_bug2.m \
-	soln_context.m \
-	some_switch.m \
-	spurious_purity_warning.m \
-	stack_alloc.m \
-	static.m \
-	subtype_switch.m \
-	switch_detection_bug.m \
-	switch_detection_bug2.m \
-	switches.m \
-	tabled_io.m \
-	tabled_for_io.m \
-	transitive_instance.m \
-	tricky_assert2.m \
-	tricky_ite.m \
-	tuple_eqv.m \
-	two_pragma_c_codes.m \
-	two_way_unif.m \
-	typeclass_inlining_bug.m \
-	type_inf_ambig_test.m \
-	unbound_inst_var.m \
-	unbound_tvar_in_lambda.m \
-	undead_proc.m \
-	uniq_unify.m \
-	uniq_mode_inf_bug.m \
-	unreachable_code.m \
-	unused_args_test2.m \
-	vn_float.m \
-	zero_arity.m
+OTHER_PROGS= \
+	any_inst_merge \
+	common_struct_bug \
+	compl_unify_bug \
+	complicated_unify \
+	constrained_poly_bound_arg \
+	constrained_poly_insts \
+	constructor_arg_names \
+	dcg_test \
+	deforest_bug \
+	deforest_loop \
+	deforest_rerun_det \
+	det_condition \
+	det_inference \
+	det_switch \
+	double_vn \
+	easy_nondet_test \
+	easy_nondet_test_2 \
+	empty_bound_inst_list \
+	empty_switch \
+	error \
+	existential_cons \
+	explicit_quant \
+	fail_ite \
+	followcode_det_problem \
+	foreign_underscore_var \
+	func_int_bug_main \
+	func_default_modes \
+	headvar_not_found \
+	higher_order \
+	higher_order2 \
+	higher_order3 \
+	higher_order_implied_mode \
+	ho_func_call \
+	ho_inst \
+	ho_unify \
+	implied_mode \
+	indexing \
+	inhibit_warn_test \
+	inlining_bug \
+	inst_perf_bug_1 \
+	int64 \
+	intermod_dcg_bug \
+	intermod_impure \
+	intermod_lambda \
+	intermod_nested_module \
+	intermod_nested_module_bug \
+	intermod_nested_uniq \
+	intermod_pragma_import \
+	intermod_quote \
+	intermod_record \
+	intermod_test \
+	intermod_typeclass \
+	intermod_type_spec \
+	intermod_user_equality \
+	intermod_user_equality_nested \
+	lambda_inference\
+	lambda_instmap_bug \
+	lambda_output \
+	lambda_quant \
+	lambda_quant_bug \
+	lambda_recompute \
+	lambda_struct_bug \
+	lambda_switch \
+	lambda_type \
+	lazy_list \
+	liveness_nonlocals \
+	livevals_seq \
+	loop \
+	loop_in_disj \
+	merge_ground_any \
+	middle_rec_labels \
+	modes_bug \
+	mode_syntax \
+	module_a \
+	module_b \
+	module_c \
+	module_d \
+	module_e \
+	mostly_uniq_bug \
+	mostly_uniq_neg \
+	mostly_uniq_mode_inf \
+	multidet_prune1 \
+	multidet_test \
+	nasty_func_test \
+	nested_mod_type_bug \
+	nondet_live \
+	parsing_bug_main \
+	pred_with_no_modes \
+	qualified_cons_id \
+	quantifier_warning \
+	record_syntax_bug \
+	record_syntax_bug_2 \
+	record_syntax_bug_3 \
+	record_syntax_bug_4 \
+	record_syntax_bug_5 \
+	recursive_no_tag_type \
+	same_length_2 \
+	semidet_disj \
+	shape_type \
+	simplify_bug \
+	simplify_bug2 \
+	soln_context \
+	some_switch \
+	spurious_purity_warning \
+	stack_alloc \
+	static \
+	subtype_switch \
+	switch_detection_bug \
+	switch_detection_bug2 \
+	switches \
+	tabled_io \
+	tabled_for_io \
+	transitive_instance \
+	tricky_assert2 \
+	tricky_ite \
+	tuple_eqv \
+	two_pragma_c_codes \
+	two_way_unif \
+	typeclass_inlining_bug \
+	type_inf_ambig_test \
+	unbound_inst_var \
+	unbound_tvar_in_lambda \
+	undead_proc \
+	uniq_unify \
+	uniq_mode_inf_bug \
+	unreachable_code \
+	unused_args_test2 \
+	vn_float \
+	zero_arity
 
 # XXX The mode system can't handle the following test cases yet:
-#	assoc_list_bug.m
-#	determinism.m
-#	mode_merge_insts.m
-#	inst_perf_bug_2.m
+#	assoc_list_bug
+#	determinism
+#	mode_merge_insts
+#	inst_perf_bug_2
 #
 # XXX We also don't pass this one (see the comments in it for details):
-#	mode_selection.m
+#	mode_selection
 
 # The agc.* tests don't yet work in --high-level-code grades.
 ifneq "$(findstring hl,$(GRADE))" ""
-	SOURCES0 = $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+	PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
-	SOURCES0 = $(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+	PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
 endif
 
 # Base grades `jump' and `fast'
 # cannot be used with `--no-special-preds'
 
 ifneq "$(findstring asm_,$(GRADE))" ""
-    SOURCES1=$(NO_SPECIAL_PREDS_SOURCES) $(SOURCES0)
+    PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
 else
     ifneq "$(findstring jump,$(GRADE))" ""
-        SOURCES1=$(SOURCES0)
+        PROGS1=$(PROGS0)
     else
         ifneq "$(findstring fast,$(GRADE))" ""
-            SOURCES1=$(SOURCES0)
+            PROGS1=$(PROGS0)
         else
-	    SOURCES1=$(NO_SPECIAL_PREDS_SOURCES) $(SOURCES0)
+	    PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
         endif
     endif
 endif
 
 ifneq "$(findstring .mm,$(GRADE))" ""
-    SOURCES2=$(SOURCES1)
+    PROGS2=$(PROGS1)
 else
-    SOURCES2=$(SOURCES1) $(TRAIL_SOURCES)
+    PROGS2=$(PROGS1) $(TRAIL_PROGS)
 endif
 
 # Aditi is not yet implemented for the MLDS back-end
 # (i.e. grades hl*).
 # It will never be implemented for deep profiling grades.
 ifneq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-    SOURCES=$(SOURCES2)
+    OBJ_PROGS=$(PROGS2)
 else
-    SOURCES=$(SOURCES2) $(ADITI_SOURCES)
+    OBJ_PROGS=$(PROGS2) $(ADITI_PROGS)
 endif
 
 ifneq "$(findstring profdeep,$(GRADE))" ""
-	ALL_RLO_SOURCES =
+	ALL_RLO_PROGS =
 else
-	ALL_RLO_SOURCES = $(RLO_SOURCES)
+	ALL_RLO_PROGS = $(RLO_PROGS)
 endif
 
-ALL_SOURCES = $(SOURCES) $(ALL_RLO_SOURCES) $(IL_SOURCES)
-DEPS =	$(ALL_SOURCES:%.m=%.depend)
-OBJS =	$(SOURCES:%.m=$(os_subdir)%.$O) \
-		$(ALL_RLO_SOURCES:%.m=$(rlos_subdir)%.rlo) \
-		$(IL_SOURCES:%.m=$(ils_subdir)%.il)
-PROGS =	$(SOURCES:%.m=%)
+PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS)
 
-all:	objs
+# `mmc --make' doesn't expect subdirectories to appear in targets.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+OS_SUBDIR=
+RLOS_SUBDIR=
+ILS_SUBDIR=
+else
+OS_SUBDIR=$(os_subdir)
+RLOS_SUBDIR=$(rlos_subdir)
+ILS_SUBDIR=$(ils_subdir)
+endif
 
-# some regression tests only failed with particular options enabled
-# (please keep these lists sorted)
+OBJS =	$(OBJ_PROGS:%=$(OS_SUBDIR)%.$O) \
+		$(ALL_RLO_PROGS:%=$(RLOS_SUBDIR)%.rlo) \
+		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
+
+#-----------------------------------------------------------------------------#
+
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
 # When compiling using the installed libraries, setting GRADEFLAGS may
 # may cause mgnuc to look for the `.mih' files for a non-installed grade.
@@ -253,84 +262,24 @@ all:	objs
 # won't be set, but test_mercury runs the tests in at least one `.tr' grade
 # on all machines, so it isn't a problem.
 ifneq ($(origin WORKSPACE),undefined)
-GRADEFLAGS-complex_failure	= --use-trail
-GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
+GRADEFLAGS_TRAIL = --use-trail
+else
+GRADEFLAGS_TRAIL =
 endif
+# Make sure GRADEFLAGS_TRAIL is passed to `mmc --make'.
+export GRADEFLAGS_TRAIL
 
-# The `agc*' tests currently aren't run in grades for which `.mih'
-# files are created, and no header files are generated in `il' grades,
-# so it's OK to set GRADEFLAGS for these tests.
-GRADEFLAGS-agc_graph		= --gc accurate
-GRADEFLAGS-agc_ho_pred		= --gc accurate
-GRADEFLAGS-agc_ite		= --gc accurate
-GRADEFLAGS-agc_unbound_typevars	= --gc accurate
-GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
-GRADEFLAGS-agc_unused_in	= --gc accurate
-GRADEFLAGS-foreign_type_spec	= --grade il
-GRADEFLAGS-foreign_type_spec.foreign	= --grade il
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-MCFLAGS-aditi_error_bug		= --aditi
-MCFLAGS-aditi_error_bug2	= --aditi
-MCFLAGS-aditi_error_bug3	= --aditi
-MCFLAGS-aditi_query		= --aditi-only
-MCFLAGS-aditi_update		= --aditi
-MCFLAGS-base_relation		= --aditi
-MCFLAGS-base_relation2		= --aditi
-MCFLAGS-compl_unify_bug		= -O3
-MCFLAGS-context_anc		= --aditi
-MCFLAGS-deforest_bug		= -O3
-MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
-MCFLAGS-deforest_rerun_det	= -O3 --check-termination
-MCFLAGS-double_vn		= -O4
-MCFLAGS-explicit_quant		= --halt-at-warn
-MCFLAGS-foreign_underscore_var	= --halt-at-warn
-MCFLAGS-higher_order_implied_mode = -O-1
-MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
-MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
-MCFLAGS-intermod_dcg_bug2	= --intermodule-optimization
-MCFLAGS-intermod_impure		= --intermodule-optimization
-MCFLAGS-intermod_impure2	= --intermodule-optimization
-MCFLAGS-intermod_lambda		= --intermodule-optimization
-MCFLAGS-intermod_lambda2	= --intermodule-optimization
-MCFLAGS-intermod_nested_module	= --intermodule-optimization
-MCFLAGS-intermod_nested_module2	= --intermodule-optimization
-MCFLAGS-intermod_nested_module_bug = --intermodule-optimization
-MCFLAGS-intermod_nested_module_bug2 = --intermodule-optimization
-MCFLAGS-intermod_nested_uniq	= --intermodule-optimization
-MCFLAGS-intermod_nested_uniq2	= --intermodule-optimization
-MCFLAGS-intermod_pragma_import	= --intermodule-optimization
-MCFLAGS-intermod_pragma_import2	= --intermodule-optimization
-MCFLAGS-intermod_quote		= --intermodule-optimization
-MCFLAGS-intermod_quote2		= --intermodule-optimization
-MCFLAGS-intermod_record		= --intermodule-optimization
-MCFLAGS-intermod_record2	= --intermodule-optimization
-MCFLAGS-intermod_test		= --intermodule-optimization
-MCFLAGS-intermod_test2		= --intermodule-optimization
-MCFLAGS-intermod_typeclass	= --intermodule-optimization
-MCFLAGS-intermod_typeclass2	= --intermodule-optimization
-MCFLAGS-intermod_type_spec	= --intermodule-optimization
-MCFLAGS-intermod_type_spec2	= --intermodule-optimization
-MCFLAGS-intermod_user_equality	= --intermodule-optimization
-MCFLAGS-intermod_user_equality2	= --intermodule-optimization
-MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
-MCFLAGS-intermod_user_equality_nested2	= --intermodule-optimization
-MCFLAGS-ite_to_disj		= --aditi
-MCFLAGS-livevals_seq		= -O5 --opt-space
-MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
-MCFLAGS-mostly_uniq_mode_inf	= --infer-all
-MCFLAGS-pred_with_no_modes	= --infer-all
-MCFLAGS-quantifier_warning	= --halt-at-warn
-MCFLAGS-simplify_bug		= -O-1
-MCFLAGS-simplify_bug2		= -O3
-MCFLAGS-spurious_purity_warning	= --halt-at-warn
-MCFLAGS-tuple_eqv		= --smart-recompilation
-MCFLAGS-two_way_unif		= -O-1
-MCFLAGS-type_inf_ambig_test	= --infer-all
-MCFLAGS-typeclass_det_warning	= --halt-at-warn
-MCFLAGS-unify_typeinfo_bug	= -O3 --no-special-preds
-MCFLAGS-uniq_mode_inf_bug	= --infer-all
-MCFLAGS-vn_float		= -O5
-MCFLAGS-zero_arity		= --infer-modes
+$(OBJ_PROGS:%=%.runtest): %.runtest: %.$O ;
+
+$(ALL_RLO_PROGS:%=%.runtest): %.runtest: %.rlo ;
+
+$(IL_PROGS:%=%.runtest): %.runtest: %.il ;
+
+#-----------------------------------------------------------------------------#
 
 # XXX mmake should automatically handle these two dependencies.
 $(dates_subdir)intermod_nested_module2.date: \
@@ -338,11 +287,7 @@ $(dates_subdir)intermod_nested_module2.date: \
 $(dates_subdir)intermod_user_equality_nested2.date: \
 	$(date0s_subdir)intermod_user_equality_nested2.date0
 
-check:	objs
-
 objs:	$(OBJS)
-
-depend: $(DEPS)
 
 printtests:
 	@echo $(PROGS)

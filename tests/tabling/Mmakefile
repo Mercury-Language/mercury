@@ -1,9 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../Mmake.common
--include ../Mmake.params
+THIS_DIR = tabling
 
 #-----------------------------------------------------------------------------#
 
@@ -53,12 +50,18 @@ else
 	PROGS=
 endif
 
-#-----------------------------------------------------------------------------#
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
-# With the Mercury system as of 17 September 1998,
-# tc_minimal works on some machines even in the presence of a known bug
-# if inlining is turned on, so we turn inlining off to make the test tougher.
-MCFLAGS-tc_minimal	=	--no-inlining
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
+
+#-----------------------------------------------------------------------------#
 
 # Some test cases are expected to abort.
 # We also need to pipe the output for these test cases through sed to avoid
@@ -86,28 +89,5 @@ loopcheck.out: loopcheck
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
-
-#-----------------------------------------------------------------------------#
-
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-RESS=	$(PROGS:%=%.res)
-
-#-----------------------------------------------------------------------------#
-
-MMAKEFLAGS =
-
-dep:	$(DEPS)
-
-depend:	$(DEPENDS)
-
-check:	$(OUTS) $(RESS)
-
-all:	$(PROGS)
-
-clean_local:
-
-realclean_local:
 
 #-----------------------------------------------------------------------------#

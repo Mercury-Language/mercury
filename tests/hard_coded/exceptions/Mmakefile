@@ -7,17 +7,16 @@
 # These rules define the main targets: depend, all, check.
 #
 
-MAIN_TARGET = check
+THIS_DIR = hard_coded/exceptions
 
-include ../../Mmake.common
--include ../../Mmake.params
+#-----------------------------------------------------------------------------#
 
 EXCEPTION_PROGS = \
-	test_exceptions.m \
-	test_exceptions_func.m \
-	test_try_all.m \
-	test_uncaught_exception.m \
-	tricky_try_store.m
+	test_exceptions \
+	test_exceptions_func \
+	test_try_all \
+	test_uncaught_exception \
+	tricky_try_store
 
 #
 # XXX the following tests are not enabled because we do not pass them yet:
@@ -43,13 +42,18 @@ else
 	PROGS=$(EXCEPTION_PROGS)
 endif
 
-depend: $(PROGS:.m=.depend)
-all: $(PROGS:.m=)
-check: $(PROGS:.m=.res)
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#
-
-MCFLAGS-looptest = --infer-all
 
 # test_uncaught_exception is *supposed* to return an error exit status.
 # We also need to pipe the output through sed to avoid hard-coding

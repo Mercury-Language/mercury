@@ -1,0 +1,19 @@
+# mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
+# with `--infer-all'.
+MCFLAGS-mode_inf = --infer-all
+MCFLAGS-mode_inf_bug = --infer-all
+MCFLAGS-mode_inference_reorder = --infer-all
+MCFLAGS-intermod_type = --intermodule-optimization
+MCFLAGS-intermod_type2 = --intermodule-optimization
+
+# In grade `none' with options `-O1 --opt-space' on kryten
+# (a sparc-sun-solaris2.5 system), string_test needs to be linked
+# with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/mode_choice suffers from a similar problem.
+# This is probably a bug in one of the underlying tools (e.g. the Solaris
+# linker) rather than a bug in Mercury, and since it is goes away when you
+# compile with debugging information, it is very difficult to debug.
+# It is much easier to just work around it this way rather than
+# tracking it down.
+MLFLAGS-string_test = --no-strip
+

@@ -1,0 +1,65 @@
+MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
+MCFLAGS-bigtest		=	--intermodule-optimization -O3
+MCFLAGS-constraint	=	--constraint-propagation --enable-termination
+MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
+MCFLAGS-deforest_cc_bug =	--deforestation
+MCFLAGS-lp		=	--intermodule-optimization -O3
+MCFLAGS-boyer		=	--infer-all
+MCFLAGS-func_test	=	--infer-all
+MCFLAGS-ho_order	=	--optimize-higher-order
+MCFLAGS-ho_order2	=	--optimize-higher-order
+MCFLAGS-no_fully_strict	=	--no-fully-strict
+MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
+MCFLAGS-intermod_c_code =	--intermodule-optimization
+MCFLAGS-intermod_c_code2 =	--intermodule-optimization
+MCFLAGS-intermod_foreign_type = --intermodule-optimization
+MCFLAGS-intermod_foreign_type2 = --intermodule-optimization
+MCFLAGS-intermod_pragma_clause = --intermodule-optimization
+MCFLAGS-intermod_pragma_clause_sub = --intermodule-optimization
+MCFLAGS-intermod_type_qual =	--intermodule-optimization
+MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
+MCFLAGS-intermod_multimode =	--intermodule-optimization
+MCFLAGS-intermod_multimode_main = --intermodule-optimization
+MCFLAGS-no_warn_singleton =	--halt-at-warn
+MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
+MCFLAGS-redoip_clobber	=	--no-inlining
+MCFLAGS-rnd		=	-O6
+MCFLAGS-split_c_files	=	--trace deep
+MCFLAGS-type_qual	= 	--infer-all
+MCFLAGS-type_spec	=	--user-guided-type-specialization
+MCFLAGS-existential_types_test = --infer-all
+MCFLAGS-existential_float = --infer-all
+MCFLAGS-user_defined_equality	= --infer-all
+MCFLAGS-parse		=	--trace deep
+MCFLAGS-unused_float_box_test =	--infer-all
+
+MCFLAGS-target_mlobjs	= 	--pre-link-command "mmake target_mlobjs_c.o"
+MLOBJS-target_mlobjs	=	target_mlobjs_c.o
+
+# In grade `none' with options `-O1 --opt-space' on kryten
+# (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
+# with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/string_test suffers from a similar problem.
+# This is probably a bug in one of the underlying tools (e.g. the Solaris
+# linker) rather than a bug in Mercury, and since it is goes away when you
+# compile with debugging information, it is very difficult to debug.
+# It is much easier to just work around it this way rather than
+# tracking it down.
+MLFLAGS-mode_choice = --no-strip
+
+MLFLAGS-parse		=	--trace --static
+
+MLFLAGS-split-c-files	=	--trace
+
+MLFLAGS-needs_init	= 	--include-initialization-code --extra-inits
+
+# These tests run out of memory in non-GC grades
+# unless we increase the heap size from the default 4M.
+# The sizes specified here (70 Mb and 20 Mb respectively)
+# are sufficient for running these tests on 64-bit systems.
+# The setting of `--mdb-out' tests the quoting of runtime
+# options containing special characters.
+
+MLFLAGS-integer_test = \
+		--runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
+MLFLAGS-rational_test = --runtime-flags "--heap-size 20000"

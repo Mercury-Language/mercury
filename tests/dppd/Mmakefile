@@ -1,4 +1,9 @@
-include ../Mmake.common
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
 MCFLAGS=#--pd --no-inlining -d 35 -D petdr #-d 99
 #GRADE=asm_fast.gc.prof

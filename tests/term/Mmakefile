@@ -1,12 +1,13 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../Mmake.common
--include ../Mmake.params
+THIS_DIR = term
 
 #-----------------------------------------------------------------------------#
 
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+# `mmc --make' doesn't know how to create `.trans_opt' files.
+PROGS=
+else
 PROGS=	\
 	ack \
 	append \
@@ -62,10 +63,18 @@ PROGS=	\
 	subset \
 	sum \
 	vangelder
+endif	# $(MMAKE_USE_MMC_MAKE) == no
 
-DEPENDS = $(PROGS:%=%.depend)
-TRANS_OPTS = $(PROGS:%=$(trans_opts_subdir)%.trans_opt)
-TRANS_OPT_RESS = $(PROGS:%=%.trans_opt_res)
+TESTS=$(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.trans_opt_res ;
 
 #-----------------------------------------------------------------------------#
 
@@ -85,12 +94,6 @@ ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 	diff -c $*.trans_opt_exp $(trans_opts_subdir)$*.trans_opt > $@
 
 #-----------------------------------------------------------------------------#
-
-depend: $(DEPENDS)
-
-trans_opts: $(TRANS_OPTS)
-
-check: $(TRANS_OPT_RESS)
 
 clean_local:
 	rm -f *.trans_opt_err

@@ -1,0 +1,4 @@
+# With the Mercury system as of 17 September 1998,
+# tc_minimal works on some machines even in the presence of a known bug
+# if inlining is turned on, so we turn inlining off to make the test tougher.
+MCFLAGS-tc_minimal	=	--no-inlining

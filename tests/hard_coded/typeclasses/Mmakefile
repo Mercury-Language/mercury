@@ -1,9 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../../Mmake.common
--include ../../Mmake.params
+THIS_DIR = hard_coded/typeclasses
 
 #-----------------------------------------------------------------------------#
 
@@ -69,41 +66,15 @@ PROGS=	\
 #	complicated_constraint --
 #		because we don't support that feature yet
 
-MCFLAGS-abstract_instance = --infer-all
-MCFLAGS-existential_type_classes = --infer-all
-MCFLAGS-extra_typeinfo = --optimize-higher-order --no-type-specialization \
-				--body-typeinfo-liveness
-MCFLAGS-inference_test = --infer-all
-MCFLAGS-inference_test_2 = --infer-all
-MCFLAGS-intermod_typeclass_bug = --intermodule-optimization
-MCFLAGS-intermod_typeclass_bug2 = --intermodule-optimization
-MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
 
-	# Check that the exported specialized versions are still created.
-MCFLAGS-type_spec_2 = --no-user-guided-type-specialization
-MCFLAGS-unbound_tvar = --no-user-guided-type-specialisation
-MCFLAGS-unqualified_method = --intermodule-optimization
-MCFLAGS-unqualified_method2 = --intermodule-optimization
-MCFLAGS-unqualified_method3 = --intermodule-optimization
-MCFLAGS-module_test_m1 = --infer-all
-MCFLAGS-module_test_m2 = --infer-all
-MCFLAGS-module_test = --infer-all
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-#-----------------------------------------------------------------------------#
-
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-RESS=	$(PROGS:%=%.res)
-
-#-----------------------------------------------------------------------------#
-
-dep:	$(DEPS)
-
-depend:	$(DEPENDS)
-
-check:	$(OUTS) $(RESS)
-
-all:	$(PROGS)
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#

@@ -1,9 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-include ../Mmake.common
--include ../Mmake.params
-
-main_target: check
+THIS_DIR = warnings
 
 #-----------------------------------------------------------------------------#
 
@@ -26,67 +23,45 @@ ERRORCHECK_PROGS= \
 	unused_args_test \
 	unused_import
 
-#-----------------------------------------------------------------------------#
+PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS)
 
-# some files need to be compiled with special options
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
-	# XXX The warnings for this module are reported twice when
-	# compiling with --intermodule-optimization due to a
-	# performance bug in the handling of assertions
-	# which causes typechecking to be run twice.
-MCFLAGS-ambiguous_overloading	= --no-intermodule-optimization
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-	# We need to explicitly enable these optimizations because
-	# the arg_order_rearrangement warning doesn't show up at
-	# lower optimization levels.
-MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
-					--excess-assign --common-struct \
-					--trace-optimized
+# With `mmc --make', the errors should only go to the 
+# `.err' files, not stderr.
+MCFLAGS += --output-compile-error-lines 0
 
-MCFLAGS-duplicate_call		= --warn-duplicate-calls
-MCFLAGS-unused_args_test	= --warn-unused-args
-MCFLAGS-unused_import		= --warn-interface-imports
-MCFLAGS-inference_test		= --infer-all
+$(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
 
-	# We need to explicitly enable these optimizations because
-	# some of the infinite recursion warnings don't show up at
-	# lower optimization levels.
-MCFLAGS-infinite_recursion	= --excess-assign --common-struct
+$(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
 
 #-----------------------------------------------------------------------------#
 
 %.res_error:	%.exp %.err
 	-rm -f $@
-	diff -c $*.exp $*.err > $@
+	diff -c $*.exp $*.err > $@ || { cat $@ && exit 1; }
 
-%.res_compile:	%.exp $(cs_subdir)%.c
+%.res_compile:	%.exp %.c
 	-rm -f $@
-	diff -c $*.exp $*.err > $@
+	diff -c $*.exp $*.err > $@ || { cat $@ && exit 1; }
+
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+%.c: %.m
+	$(MCM) $@
+endif
 
 #-----------------------------------------------------------------------------#
-
-PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS)
-DEPENDS=$(PROGS:%=%.depend)
-
-RES_ERRORS=	$(ERRORCHECK_PROGS:%=%.res_error)
-RES_COMPILES=	$(COMPILE_PROGS:%=%.res_compile)
-
-#-----------------------------------------------------------------------------#
-
-depend:	$(DEPENDS)
-
-check:	$(RES_COMPILES) $(RES_ERRORS)
-
-all:	$(PROGS)
 
 clean_local:	clean_err clean_res
 
-clean_mc: clean_c clean_o clean_err clean_res
-
 clean_err:
 	rm -f *.err
-
-clean_res:
-	rm -f *.res_compile *.res_error
 
 #-----------------------------------------------------------------------------#

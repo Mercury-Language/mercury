@@ -1,9 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target:	check
-
-include ../../Mmake.common
--include ../../Mmake.params
+THIS_DIR = debugger/declarative
 
 #-----------------------------------------------------------------------------#
 
@@ -54,18 +51,6 @@ NONDEBUG_DECLARATIVE_PROGS=	\
 NONWORKING_DECLARATIVE_PROGS=	\
 	solutions
 
-MCFLAGS += --trace decl
-MLFLAGS += --trace
-
-MCFLAGS-deep_sub=--trace deep
-MCFLAGS-dependency=--trace rep
-MCFLAGS-dependency2=--trace rep
-MCFLAGS-input_term_dep=--trace rep
-MCFLAGS-output_term_dep=--trace rep
-MCFLAGS-special_term_dep=--trace rep
-MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-decl
-MCFLAGS-untraced_subgoal_sub=--trace minimum
-
 ifneq "$(findstring .debug,$(GRADE))" ""
     PROGS_2=$(DECLARATIVE_PROGS)
 else
@@ -103,6 +88,20 @@ ifeq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 else
     PROGS=
 endif
+
+SUBDIRS=
+TESTS=$(PROGS)
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+MCFLAGS += --trace decl
+MLFLAGS += --trace
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#
 
@@ -209,22 +208,5 @@ throw.out: throw throw.inp
 untraced_subgoal.out: untraced_subgoal untraced_subgoal.inp
 	$(MDB) ./untraced_subgoal < untraced_subgoal.inp \
 			> untraced_subgoal.out 2>&1
-
-#-----------------------------------------------------------------------------#
-
-DEPS=		$(PROGS:%=$(deps_subdir)%.dep)
-DEPENDS=	$(PROGS:%=%.depend)
-OUTS=		$(PROGS:%=%.out)
-RESS=		$(PROGS:%=%.res)
-
-#-----------------------------------------------------------------------------#
-
-dep:		$(DEPS)
-
-depend:		$(DEPENDS)
-
-check:		$(OUTS) $(RESS)
-
-all:		$(PROGS)
 
 #-----------------------------------------------------------------------------#

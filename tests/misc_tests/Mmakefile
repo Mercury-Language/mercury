@@ -1,11 +1,18 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
+THIS_DIR = misc_tests
 
-include ../Mmake.common
--include ../Mmake.params
+SUBDIRS = 
+PROGS =
+TESTS = mdemangle_test-nodepend pretty_print_test-nodepend
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
-MCFLAGS-pretty_print_test = --no-line-numbers
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#
 
@@ -17,30 +24,13 @@ pretty_print_test.out: pretty_print_test.ugly
 
 #-----------------------------------------------------------------------------#
 
-PROGS =
+mdemangle_test.realclean:
+	rm -f mdemangle_test.out mdemangle_test.res
 
-OTHER_TESTS = mdemangle_test pretty_print_test
+pretty_print_test.realclean:
+	rm -f pretty_print_test.ugly pretty_print_test.out
+	rm -f pretty_print_test.res
 
-#-----------------------------------------------------------------------------#
-
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out) $(OTHER_TESTS:%=%.out)
-RESS=	$(PROGS:%=%.res) $(OTHER_TESTS:%=%.res)
-
-#-----------------------------------------------------------------------------#
-
-dep:	$(DEPS)
-
-depend:	$(DEPENDS)
-
-check:	$(OUTS) $(RESS)
-
-all:	$(PROGS)
-
-clean_local:	clean_ugly
-
-clean_ugly:
-	rm -fr *.ugly
+clean_local:	mdemangle_test.realclean pretty_print_test.realclean
 
 #-----------------------------------------------------------------------------#

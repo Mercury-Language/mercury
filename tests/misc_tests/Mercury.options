@@ -1,0 +1,1 @@
+MCFLAGS-pretty_print_test = --no-line-numbers

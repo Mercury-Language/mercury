@@ -1,16 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../Mmake.common
--include ../Mmake.params
-
-#-----------------------------------------------------------------------------#
-
-ifeq ($(HAVE_NUPROLOG),yes)
-%.exp: %.nu
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
-endif
+THIS_DIR = general
 
 #-----------------------------------------------------------------------------#
 
@@ -87,29 +77,21 @@ endif
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
 NOT_WORKING =	dnf
 
+SUBDIRS = accumulator
+TESTS=$(PROGS)
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
+
 #-----------------------------------------------------------------------------#
 #
 # Some test cases need special handling.
 #
-
-# mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
-# with `--infer-all'.
-MCFLAGS-mode_inf = --infer-all
-MCFLAGS-mode_inf_bug = --infer-all
-MCFLAGS-mode_inference_reorder = --infer-all
-MCFLAGS-intermod_type = --intermodule-optimization
-MCFLAGS-intermod_type2 = --intermodule-optimization
-
-# In grade `none' with options `-O1 --opt-space' on kryten
-# (a sparc-sun-solaris2.5 system), string_test needs to be linked
-# with `--no-strip', otherwise it gets a seg fault. 
-# The test case ../hard_coded/mode_choice suffers from a similar problem.
-# This is probably a bug in one of the underlying tools (e.g. the Solaris
-# linker) rather than a bug in Mercury, and since it is goes away when you
-# compile with debugging information, it is very difficult to debug.
-# It is much easier to just work around it this way rather than
-# tracking it down.
-MLFLAGS-string_test = --no-strip
 
 # string_format_test_2 and string__format_test_3 are expected to fail
 # (string__format should call error/1 for these test cases)
@@ -136,52 +118,5 @@ string_format_test_3.out: string_format_test_3
 	# io_foldl `cat's its input to its output.
 io_foldl.out: io_foldl io_foldl.exp
 	./io_foldl < io_foldl.exp > io_foldl.out 2>&1
-
-#-----------------------------------------------------------------------------#
-
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-EXPS=	$(PROGS:%=%.exp)
-RESS=	$(PROGS:%=%.res)
-
-exp:	$(EXPS)
-
-depend_local:	$(DEPENDS)
-check_local:	$(OUTS) $(RESS)
-all_local:	$(PROGS)
-
-#-----------------------------------------------------------------------------#
-
-SUBDIRS = accumulator
-
-check_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
-	done
-
-dep_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
-	done
-
-depend_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
-	done
-
-realclean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
-	done
-
-clean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
-	done
-
-all_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
-	done
 
 #-----------------------------------------------------------------------------#

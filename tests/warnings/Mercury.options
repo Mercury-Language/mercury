@@ -1,0 +1,23 @@
+	# XXX The warnings for this module are reported twice when
+	# compiling with --intermodule-optimization due to a
+	# performance bug in the handling of assertions
+	# which causes typechecking to be run twice.
+MCFLAGS-ambiguous_overloading	= --no-intermodule-optimization
+
+	# We need to explicitly enable these optimizations because
+	# the arg_order_rearrangement warning doesn't show up at
+	# lower optimization levels.
+MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
+					--excess-assign --common-struct \
+					--trace-optimized
+
+MCFLAGS-duplicate_call		= --warn-duplicate-calls
+MCFLAGS-unused_args_test	= --warn-unused-args
+MCFLAGS-unused_import		= --warn-interface-imports
+MCFLAGS-inference_test		= --infer-all
+
+	# We need to explicitly enable these optimizations because
+	# some of the infinite recursion warnings don't show up at
+	# lower optimization levels.
+MCFLAGS-infinite_recursion	= --excess-assign --common-struct
+

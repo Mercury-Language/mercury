@@ -1,9 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../Mmake.common
--include ../Mmake.params
+THIS_DIR = hard_coded
 
 #-----------------------------------------------------------------------------#
 
@@ -237,9 +234,9 @@ PROGS = $(ORDINARY_PROGS) $(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
 # because it hasn't yet been implemented yet.
-# The same is true for deep profiling grades.
+# The same is true for deep profiling grades and `mmc --make'.
 # The modules in SPLIT_PROGS should also be in ORDINARY_PROGS above.
-ifeq "$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifeq "$(findstring yes,$(MMAKE_USE_MMC_MAKE))$(findstring hl,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	SPLIT_PROGS = mapped_module split_c_files
 else
 	SPLIT_PROGS =
@@ -247,71 +244,23 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-# some tests need to be compiled with particular options
+TESTS = $(PROGS) $(SPLIT_PROGS:%=%.split)
+SUBDIRS = typeclasses sub-modules exceptions purity
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
-MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
-MCFLAGS-bigtest		=	--intermodule-optimization -O3
-MCFLAGS-constraint	=	--constraint-propagation --enable-termination
-MCFLAGS-constraint_order =	--constraint-propagation --enable-termination
-MCFLAGS-deforest_cc_bug =	--deforestation
-MCFLAGS-lp		=	--intermodule-optimization -O3
-MCFLAGS-boyer		=	--infer-all
-MCFLAGS-func_test	=	--infer-all
-MCFLAGS-ho_order	=	--optimize-higher-order
-MCFLAGS-ho_order2	=	--optimize-higher-order
-MCFLAGS-no_fully_strict	=	--no-fully-strict
-MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
-MCFLAGS-intermod_c_code =	--intermodule-optimization
-MCFLAGS-intermod_c_code2 =	--intermodule-optimization
-MCFLAGS-intermod_foreign_type = --intermodule-optimization
-MCFLAGS-intermod_foreign_type2 = --intermodule-optimization
-MCFLAGS-intermod_pragma_clause = --intermodule-optimization
-MCFLAGS-intermod_type_qual =	--intermodule-optimization
-MCFLAGS-intermod_type_qual2 =	--intermodule-optimization
-MCFLAGS-intermod_multimode =	--intermodule-optimization
-MCFLAGS-intermod_multimode_main = --intermodule-optimization
-MCFLAGS-no_warn_singleton =	--halt-at-warn
-MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
-MCFLAGS-redoip_clobber	=	--no-inlining
-MCFLAGS-rnd		=	-O6
-MCFLAGS-split_c_files	=	--trace deep
-MCFLAGS-type_qual	= 	--infer-all
-MCFLAGS-type_spec	=	--user-guided-type-specialization
-MCFLAGS-existential_types_test = --infer-all
-MCFLAGS-existential_float = --infer-all
-MCFLAGS-user_defined_equality	= --infer-all
-MCFLAGS-parse		=	--trace deep
-MCFLAGS-unused_float_box_test =	--infer-all
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-MLOBJS-target_mlobjs	=	target_mlobjs_c.o
+%.runtest: %.res ;
 
-# In grade `none' with options `-O1 --opt-space' on kryten
-# (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
-# with `--no-strip', otherwise it gets a seg fault. 
-# The test case ../hard_coded/string_test suffers from a similar problem.
-# This is probably a bug in one of the underlying tools (e.g. the Solaris
-# linker) rather than a bug in Mercury, and since it is goes away when you
-# compile with debugging information, it is very difficult to debug.
-# It is much easier to just work around it this way rather than
-# tracking it down.
-MLFLAGS-mode_choice = --no-strip
+$(SPLIT_PROGS:%=%.split.depend): %.split.depend: %.depend ;
+$(SPLIT_PROGS:%=%.split.realclean): %.split.realclean: %.realclean ;
 
-MLFLAGS-parse			=	--trace --static
+mapped_module.depend: Mercury.modules
 
-MLFLAGS-split-c-files		=	--trace
-
-MLFLAGS-needs_init		= 	--include-initialization-code --extra-inits
-
-# These tests run out of memory in non-GC grades
-# unless we increase the heap size from the default 4M.
-# The sizes specified here (70 Mb and 20 Mb respectively)
-# are sufficient for running these tests on 64-bit systems.
-# The setting of `--mdb-out' tests the quoting of runtime
-# options containing special characters.
-
-MLFLAGS-integer_test = \
-		--runtime-flags "--heap-size 70000 --mdb-out \"mdb\\mdb out\""
-MLFLAGS-rational_test = --runtime-flags "--heap-size 20000"
+#-----------------------------------------------------------------------------#
 
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding
@@ -329,16 +278,6 @@ no_fully_strict.out: no_fully_strict
 
 #-----------------------------------------------------------------------------#
 
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out) $(SPLIT_PROGS:%=%.split.out)
-RESS=	$(PROGS:%=%.res) $(SPLIT_PROGS:%=%.split.res)
-
-dep_local:	$(DEPS)
-depend_local:	Mercury.modules $(DEPENDS)
-check_local:	$(OUTS) $(RESS)
-all_local:	$(PROGS) $(SPLIT_PROGS:%=%.split)
-
 clean_local:
 	rm -f target_mlobjs_c.o		
 
@@ -347,40 +286,8 @@ realclean_local:
 
 #-----------------------------------------------------------------------------#
 
-SUBDIRS = typeclasses sub-modules exceptions purity
-
 .PHONY: Mercury.modules
 Mercury.modules:
 	$(MC) -f $(ALL_MCFLAGS) source_file_map.m
-
-dep_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
-	done
-
-depend_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
-	done
-
-check_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
-	done
-
-all_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
-	done
-
-clean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
-	done
-
-realclean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
-	done
 
 #-----------------------------------------------------------------------------#

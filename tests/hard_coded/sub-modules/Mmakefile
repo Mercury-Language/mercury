@@ -5,10 +5,7 @@
 #
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../../Mmake.common
--include ../../Mmake.params
+THIS_DIR = hard_coded/sub-modules
 
 #-----------------------------------------------------------------------------#
 
@@ -29,24 +26,15 @@ PROGS=	\
 	class \
 	nested_intermod_main
 
-MCFLAGS-nested_intermod	=	--intermodule-optimization
-MCFLAGS-nested_intermod_main =	--intermodule-optimization
+TESTS = $(PROGS)
+TESTS_DIR=../..
+SUBDIRS=
+include $(TESTS_DIR)/Mmake.common
 
-#-----------------------------------------------------------------------------#
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-DEPS=	$(PROGS:%=%.dep)
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-RESS=	$(PROGS:%=%.res)
-
-#-----------------------------------------------------------------------------#
-
-dep:	$(DEPS)
-
-depend:	$(DEPENDS)
-
-check:	$(OUTS) $(RESS)
-
-all:	$(PROGS)
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#

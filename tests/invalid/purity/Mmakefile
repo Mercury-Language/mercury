@@ -1,45 +1,43 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
+THIS_DIR = invalid/purity
 
-include ../../Mmake.common
+PROGS= \
+	impure_func_t2 \
+	impure_func_t3 \
+	impure_func_t4 \
+	impure_func_t5 \
+	impure_func_t7 \
+	impure_pred_t1 \
+	impure_pred_t2 \
+	purity \
+	purity_nonsense \
+	purity_type_error
+
+TESTS=$(PROGS)
+SUBDIRS=
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.err_res ;
 
 #-----------------------------------------------------------------------------#
 
-SOURCES= \
-	impure_func_t2.m \
-	impure_func_t3.m \
-	impure_func_t4.m \
-	impure_func_t5.m \
-	impure_func_t7.m \
-	impure_pred_t1.m \
-	impure_pred_t2.m \
-	purity.m \
-	purity_nonsense.m \
-	purity_type_error.m
-
-DEPS=		$(SOURCES:%.m=%.dep)
-DEPENDS=	$(SOURCES:%.m=%.depend)
-ERRS=		$(SOURCES:%.m=%.err)
-ERR_RESS=	$(SOURCES:%.m=%.err_res)
-
+# With `mmc --make', errors should go only to the `.err' file,
+# not stderr.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 %.err: %.m
-	if $(MC) $(ALL_MCFLAGS) --errorcheck-only $* > $*.err 2>&1; \
+	if $(MCM) $*.err > /dev/null 2>&1 ; then false; else true; fi
+else
+%.err: %.m
+	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --errorcheck-only $* \
+		> $*.err 2>&1; \
 	then false; else true; fi
-
-# Some tests have more than one possible valid output, so
-# we allow the test to pass if it matches *either* the .err_exp
-# or the .err_exp2 file. 
-%.err_res: %.err %.err_exp
-	-rm -f $@
-	diff -c $*.err_exp $*.err > $@ || \
-		{ [ -f $*.err_exp2 ] && diff -c $*.err_exp2 $*.err > $@; }
-
-all:	check
-
-check:	$(ERRS) $(ERR_RESS)
-
-errs:	$(ERRS)
+endif
 
 clean_local:
 	rm -f *.err *.err_res

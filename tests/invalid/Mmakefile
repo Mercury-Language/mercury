@@ -1,11 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../Mmake.common
--include ../Mmake.params
-
-#-----------------------------------------------------------------------------#
+THIS_DIR = invalid
 
 # Note: multi-module tests (including tests of nested modules)
 # need to be listed separately from single-module tests, since
@@ -14,207 +9,166 @@ include ../Mmake.common
 # building the dependencies (e.g. duplicate_module_test.m) should 
 # not be included in this list; we handle those specially (see below).
 
-MULTIMODULE_SOURCES= \
-	aditi_errors.m \
-	aditi_state_errors.m \
-	aditi_update_derived_relation.m \
-	aditi_update_errors.m \
-	aditi_update_mode_errors.m \
-	duplicate_instance_2.m \
-	ho_default_func_2.sub.m \
-	imported_mode.m \
-	missing_parent_import.m \
-	partial_implied_mode.m \
-	sub_c.m \
-	test_nested.m \
-	transitive_import.m \
-	transitive_import_class.m \
-	undef_mod_qual.m
+MULTIMODULE_PROGS= \
+	aditi_errors \
+	aditi_state_errors \
+	aditi_update_derived_relation \
+	aditi_update_errors \
+	aditi_update_mode_errors \
+	duplicate_instance_2 \
+	ho_default_func_2.sub \
+	imported_mode \
+	missing_parent_import \
+	partial_implied_mode \
+	sub_c \
+	test_nested \
+	transitive_import \
+	transitive_import_class \
+	undef_mod_qual
 
-SINGLEMODULE_SOURCES= \
-	any_mode.m \
-	assert_in_interface.m \
-	bigtest.m \
-	bind_var_errors.m \
-	builtin_int.m \
-	builtin_proc.m \
-	circ_type.m \
-	constrained_poly_insts.m \
-	constructor_warning.m \
-	det_errors.m \
-	duplicate_modes.m \
-	duplicate_module_test.m \
-	errors.m \
-	errors1.m \
-	errors2.m \
-	external.m \
-	ext_type.m \
-	ext_type_bug.m \
-	exported_mode.m \
-	field_syntax_error.m \
-	foreign_decl_line_number.m \
-	foreign_singleton.m \
-	foreign_type_2.m \
-	foreign_type_visibility.m \
-	func_errors.m \
-	funcs_as_preds.m \
-	ho_default_func_1.m \
-	ho_default_func_3.m \
-	ho_type_mode_bug.m \
-	ho_unique_error.m \
-	impure_method_impl.m \
-	inline_conflict.m \
-	inst_list_dup.m \
-	invalid_main.m \
-	invalid_typeclass.m \
-	io_in_ite_cond.m \
-	lambda_syntax_error.m \
-	merge_ground_any.m \
-	method_impl.m \
-	missing_det_decls.m \
-	missing_interface_import.m \
-	mode_inf.m \
-	modes_erroneous.m \
-	mostly_uniq1.m \
-	mostly_uniq2.m \
-	multimode_missing_impure.m \
-	multimode_dcg.m \
-	multimode_syntax.m \
-	multisoln_func.m \
-	nested_impl_in_int.m \
-	no_exports.m \
-	nonexistent_import.m \
-	not_a_switch.m \
-	nullary_ho_func_error.m \
-	occurs.m \
-	overloading.m \
-	polymorphic_unification.m \
-	pragma_c_code_dup_var.m \
-	pragma_c_code_no_det.m \
-	predmode.m \
-	prog_io_erroneous.m \
-	qual_basic_test2.m \
-	qualified_cons_id2.m \
-	record_syntax_errors.m \
-	some.m \
-	spurious_mode_error.m \
-	state_vars_test1.m \
-	state_vars_test2.m \
-	state_vars_test3.m \
-	state_vars_test4.m \
-	tc_err1.m \
-	tc_err2.m \
-	tricky_assert1.m \
-	type_inf_loop.m \
-	type_loop.m \
-	type_mismatch.m \
-	type_vars.m \
-	typeclass_bogus_method.m \
-	typeclass_constraint_extra_var.m \
-	typeclass_constraint_no_var.m \
-	typeclass_mode.m \
-	typeclass_missing_det.m \
-	typeclass_missing_det_2.m \
-	typeclass_missing_det_3.m \
-	typeclass_missing_mode.m \
-	typeclass_missing_mode_2.m \
-	typeclass_test_1.m \
-	typeclass_test_2.m \
-	typeclass_test_3.m \
-	typeclass_test_4.m \
-	typeclass_test_5.m \
-	typeclass_test_7.m \
-	typeclass_test_9.m \
-	types.m	\
-	type_spec.m \
-	unbound_type_vars.m \
-	undef_lambda_mode.m \
-	undef_mode.m \
-	undef_mode_and_no_clauses.m \
-	undef_symbol.m \
-	undef_type.m \
-	undef_type_mod_qual.m \
-	unify_mode_error.m \
-	uniq_modes.m \
-	uniq_neg.m \
-	uu_type.m \
-	vars_in_wrong_places.m \
-	with_type.m
-
-SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
+SINGLEMODULE_PROGS= \
+	any_mode \
+	assert_in_interface \
+	bigtest \
+	bind_var_errors \
+	builtin_int \
+	builtin_proc \
+	circ_type \
+	constrained_poly_insts \
+	constructor_warning \
+	det_errors \
+	duplicate_modes \
+	duplicate_module_test \
+	errors \
+	errors1 \
+	errors2 \
+	external \
+	ext_type \
+	ext_type_bug \
+	exported_mode \
+	field_syntax_error \
+	foreign_decl_line_number \
+	foreign_singleton \
+	foreign_type_2 \
+	foreign_type_visibility \
+	func_errors \
+	funcs_as_preds \
+	ho_default_func_1 \
+	ho_default_func_3 \
+	ho_type_mode_bug \
+	ho_unique_error \
+	impure_method_impl \
+	inline_conflict \
+	inst_list_dup \
+	invalid_main \
+	invalid_typeclass \
+	io_in_ite_cond \
+	lambda_syntax_error \
+	merge_ground_any \
+	method_impl \
+	missing_det_decls \
+	missing_interface_import \
+	mode_inf \
+	modes_erroneous \
+	mostly_uniq1 \
+	mostly_uniq2 \
+	multimode_missing_impure \
+	multimode_dcg \
+	multimode_syntax \
+	multisoln_func \
+	nested_impl_in_int \
+	no_exports \
+	nonexistent_import \
+	not_a_switch \
+	nullary_ho_func_error \
+	occurs \
+	overloading \
+	polymorphic_unification \
+	pragma_c_code_dup_var \
+	pragma_c_code_no_det \
+	predmode \
+	prog_io_erroneous \
+	qual_basic_test2 \
+	qualified_cons_id2 \
+	record_syntax_errors \
+	some \
+	spurious_mode_error \
+	state_vars_test1 \
+	state_vars_test2 \
+	state_vars_test3 \
+	state_vars_test4 \
+	tc_err1 \
+	tc_err2 \
+	tricky_assert1 \
+	type_inf_loop \
+	type_loop \
+	type_mismatch \
+	type_vars \
+	typeclass_bogus_method \
+	typeclass_constraint_extra_var \
+	typeclass_constraint_no_var \
+	typeclass_mode \
+	typeclass_missing_det \
+	typeclass_missing_det_2 \
+	typeclass_missing_det_3 \
+	typeclass_missing_mode \
+	typeclass_missing_mode_2 \
+	typeclass_test_1 \
+	typeclass_test_2 \
+	typeclass_test_3 \
+	typeclass_test_4 \
+	typeclass_test_5 \
+	typeclass_test_7 \
+	typeclass_test_9 \
+	types	\
+	type_spec \
+	unbound_type_vars \
+	undef_lambda_mode \
+	undef_mode \
+	undef_mode_and_no_clauses \
+	undef_symbol \
+	undef_type \
+	undef_type_mod_qual \
+	unify_mode_error \
+	uniq_modes \
+	uniq_neg \
+	uu_type \
+	vars_in_wrong_places \
+	with_type
 
 # we do not yet pass the following tests:
 #	duplicate_instance_3 (the error is only detected when doing
 #		normal static linking; the error goes undetected
 #		when doing dynamic linking, or when the library
 #		was built with `--split-c-files')
-#	parent.undeclared_child.m (just not yet implemented)
-#	freefree.m 	(need bromage's aliasing stuff)
-#	typeclass_test_8.m (minor formatting error in the output --
+#	parent.undeclared_child (just not yet implemented)
+#	freefree 	(need bromage's aliasing stuff)
+#	typeclass_test_8 (minor formatting error in the output --
 #			the type class name should be in quotes)
-#	typeclass_mode_{2,3,4}.m (compiler calls error/1)
-#	cyclic_typeclass.m (compiler goes into an infinite loop)
-#	ho_default_func_4.m (due to a bug in the mode-checker ---
+#	typeclass_mode_{2,3,4} (compiler calls error/1)
+#	cyclic_typeclass (compiler goes into an infinite loop)
+#	ho_default_func_4 (due to a bug in the mode-checker ---
 #			see XXX comment in inst_match:inst_matches_final_3)
-#	inst_matches_final_bug.m (due to same bug as ho_default_func_4.m)
+#	inst_matches_final_bug (due to same bug as ho_default_func_4)
 #	foreign_type (the error is only detected when trying to compile 
 #		the generated C code).
 
-# Inter-module optimization changes the diagnostics for some
-# tests (in most cases reporting diagnostics when writing the `.opt'
-# file). For those tests, we just disable inter-module optimization.
+#-----------------------------------------------------------------------------#
 
-MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization
-MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization
-MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization
-MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization
-MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization
-MCFLAGS-any_mode	=	--infer-types
+PROGS= $(SINGLEMODULE_PROGS) $(MULTIMODULE_PROGS)
 
-# XXX This test should work with --intermodule-optimization, but
-# the compiler doesn't know whether items imported from `.opt' files
-# were imported in the interface or the implementation. The error
-# is reported correctly when building the `.opt' file.
-MCFLAGS-assert_in_interface =	--no-intermodule-optimization
+TESTS = $(MULTIMODULE_PROGS) $(SINGLEMODULE_PROGS:%=%-nodepend)
+SUBDIRS = purity
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
 
-MCFLAGS-children =		--no-intermodule-optimization
-MCFLAGS-duplicate_modes	=	--verbose-error-messages
-MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
-MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers --compile-only
-MCFLAGS-foreign_type =		--compile-only
-MCFLAGS-foreign_singleton =	--halt-at-warn
-MCFLAGS-foreign_type_2 =	--no-intermodule-optimization
-MCFLAGS-foreign_type_visibility  = --no-intermodule-optimization
-MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
-MCFLAGS-missing_det_decls =	--no-infer-det
-MCFLAGS-missing_interface_import = --make-interface
-MCFLAGS-missing_parent_import = --no-intermodule-optimization
-MCFLAGS-multisoln_func	=	--infer-types
-MCFLAGS-mode_inf	=	--infer-all
-MCFLAGS-no_exports = 		--halt-at-warn
-MCFLAGS-nonexistent_import =	--no-verbose-make --make nonexistent_import
-MCFLAGS-overloading = 		--no-intermodule-optimization
-MCFLAGS-sub_c = 	--verbose-error-messages --no-intermodule-optimization
-MCFLAGS-record_syntax_errors =	--verbose-error-messages
-MCFLAGS-test_nested =		--no-intermodule-optimization
-MCFLAGS-transitive_import = --no-intermodule-optimization
-MCFLAGS-transitive_import2 = --no-intermodule-optimization
-MCFLAGS-transitive_import_class = --no-intermodule-optimization
-MCFLAGS-transitive_import_class2 = --no-intermodule-optimization
-MCFLAGS-transitive_import_class3 = --no-intermodule-optimization
-MCFLAGS-typeclass_mode =	--infer-all
-MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization
-MCFLAGS-undef_symbol = 		--no-intermodule-optimization
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
 
-# For these test cases, the bug is caught when generating dependencies,
-# so it is easiest just to do that step.
-MCFLAGS-nested_impl_in_int =	--generate-dependencies
-MCFLAGS-duplicate_module_test =	--generate-dependencies
+%.runtest: %.err_res ;
 
-MULTIMODULE_DEPENDS=	$(MULTIMODULE_SOURCES:%.m=%.depend)
-
-ERRS=		$(SOURCES:%.m=%.err)
-ERR_RESS=	$(SOURCES:%.m=%.err_res)
+#-----------------------------------------------------------------------------#
 
 %.err: %.m
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
@@ -226,74 +180,23 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)
 # The exact error message varies a lot from system to system,
 # so we don't check the error output, we just check the command
 # return status.
-duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m \
-		$(ints_subdir)duplicate_instance_1.int
-	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-		--link-flags "$(ALL_MLFLAGS)" \
-		duplicate_instance_1.m duplicate_instance_2.m \
-		> $*.err 2>&1; \
+duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
+	if $(MCM) duplicate_instance_2 > /dev/null 2>&1; \
 	then	false; \
 	else	echo "Error was successfully detected" > $*.err; \
 	fi
 
+# For these test cases, the bug is caught when generating dependencies,
+# so it is easiest just to do that step.
+nested_impl_in_int.err duplicate_module_test.err: %.err: %.m
+	if $(MC) --generate-dependencies $* > $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
 $(dates_subdir)undef_mod_qual.date: $(int0s_subdir)undef_mod_qual.int0
-
-# Some tests have more than one possible valid output, so
-# we allow the test to pass if it matches any of the .err_exp* files.
-DIFF_OPTS=-c
-%.err_res: %.err %.err_exp
-	-rm -f $@
-	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
-		{ [ -f $*.err_exp2 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
-		{ [ -f $*.err_exp3 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
-		{ [ -f $*.err_exp4 ] && \
-		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; }
-
-all:	check
-
-check:	$(ERRS) $(ERR_RESS)
-
-errs:	$(ERRS)
-
-depend:	$(MULTIMODULE_DEPENDS)
 
 clean_local:
 	rm -f *.err *.err_res
-
-#-----------------------------------------------------------------------------#
-
-SUBDIRS = purity
-
-dep_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
-	done
-
-depend_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
-	done
-
-check_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
-	done
-
-all_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
-	done
-
-clean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
-	done
-
-realclean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
-	done
 
 #-----------------------------------------------------------------------------#

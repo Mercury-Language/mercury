@@ -1,22 +1,10 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../Mmake.common
--include ../Mmake.params
-
-#-----------------------------------------------------------------------------#
+THIS_DIR = benchmarks
 
 # uncomment the following line to test the performance
 # of the benchmarks (with I/O suppressed)
 # MLFLAGS=-w "`extract $(*:_init=) '' BenchEntry`"
-
-#-----------------------------------------------------------------------------#
-
-ifeq ($(HAVE_NUPROLOG),yes)
-%.exp: %.nu
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
-endif
 
 #-----------------------------------------------------------------------------#
 
@@ -33,30 +21,26 @@ PROGS=	\
 	query \
 	tak
 
-DEPENDS=$(PROGS:%=%.depend)
-DEPS=	$(PROGS:%=%.dep)
-OUTS=	$(PROGS:%=%.out)
-EXPS=	$(PROGS:%=%.exp)
-RESS=	$(PROGS:%=%.res)
+TESTS=$(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+#-----------------------------------------------------------------------------#
+
+%.runtest: %.res ;
+
 SS=	$(PROGS:%=%.s)
 CS=	$(PROGS:%=%.c)
 TIMES=	$(PROGS:%=%.time)
 
-dep:	$(DEPS)
-
-depend:	$(DEPENDS)
-
-exp:	$(EXPS)
-
-check:	$(OUTS) $(RESS)
-
-outs:	$(OUTS)
-
 cs:	$(CS)
 
 ss:	$(SS)
-
-all:	$(PROGS)
 
 times:	$(TIMES)
 
@@ -64,9 +48,6 @@ dir.%:	$(PROGS) $(SS)
 	-mkdir $@
 	cp $(PROGS) $(SS) $@
 	cp BenchEntry $@
-
-clean_exes:	
-	rm -f $(PROGS)
 
 %.time: %
 	{ count=`awk '/$*/ { print $$2; exit; }' < BenchRepeatCounts`; \

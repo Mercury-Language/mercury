@@ -1,18 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target: check
-
-include ../../Mmake.common
--include ../../Mmake.params
-
-#-----------------------------------------------------------------------------#
-
-ifeq ($(HAVE_NUPROLOG),yes)
-%.exp: %.nu
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1;
-endif
-
-#-----------------------------------------------------------------------------#
+THIS_DIR = general/structure_reuse
 
 # Any program added here should also be added to the `.cvsignore' file.
 
@@ -20,7 +8,17 @@ PROGS=	if_then_else		\
 	internal_alias		\
 	interpret
 
-MCFLAGS-interpret=--cell-cache
+TESTS=$(PROGS)
+TESTS_DIR=../..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
+
+#-----------------------------------------------------------------------------#
 
 ACC_FLAGS = --infer-structure-reuse -d structure_reuse -D sr
 
@@ -36,22 +34,6 @@ EXTRA_MCFLAGS+= $(OPT_FLAGS) $(ACC_FLAGS)
 
     # programs which aren't working.
 NOT_WORKING =
-
-DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out)
-EXPS=	$(PROGS:%=%.exp)
-RESS=	$(PROGS:%=%.res)
-MODS=	$(PROGS:%=%.mod)
-
-depend: $(DEPENDS)
-
-exp:	$(EXPS)
-
-check:	$(OUTS) $(RESS)
-
-mods:	$(MODS)
-
-all:	$(PROGS)
 
 realclean_local: clean_hlds_dump
 

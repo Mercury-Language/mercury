@@ -1,9 +1,6 @@
 #-----------------------------------------------------------------------------#
 
-main_target:	check
-
-include ../Mmake.common
--include ../Mmake.params
+THIS_DIR = debugger
 
 #-----------------------------------------------------------------------------#
 
@@ -51,28 +48,6 @@ NONRETRY_PROGS = \
 	shallow				\
 	type_desc_test
 
-# The completion test requires mdb to use readline, even though
-# the input is not a terminal.
-MLFLAGS-completion = --runtime-flags --force-readline
-
-MCFLAGS-queens_rep = --trace rep
-MCFLAGS-shallow = --trace shallow
-MCFLAGS-tabled_read = --trace-table-io
-MCFLAGS-tabled_read_unitize = --trace-table-io
-MCFLAGS-tabled_read_decl = --trace-table-io-decl
-# By default, we reclaim heap on failure in non-Boehm-gc grades.
-# The extra stack slots required for this reclamation cause spurious
-# differences from the expected output on the nondet_stack test case.
-# The optimization level also affects stack frame sizes.
-MCFLAGS-nondet_stack = -O2 --no-reclaim-heap-on-failure
-
-MCFLAGS += --trace deep
-MLFLAGS += --trace
-
-# We need to use shared libraries for interactive queries to work.
-# The following is necessary for shared libraries to work on Linux.
-GRADEFLAGS-interactive = --pic-reg
-MLFLAGS-interactive = --shared
 
 # Since the `interactive' test case requires the use of shared libraries,
 # this means it won't work properly if the static libraries are linked
@@ -116,6 +91,20 @@ else
         endif
     endif
 endif
+
+SUBDIRS=declarative
+TESTS=$(PROGS)
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+MCFLAGS += --trace deep
+MLFLAGS += --trace
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#
 
@@ -309,15 +298,15 @@ type_desc_test.out: type_desc_test type_desc_test.inp
 	$(MDB) ./type_desc_test < type_desc_test.inp \
 		> type_desc_test.out 2>&1
 
-# Note that interactive.out.orig depends on $(interactive.ints) because
-# interactive.inp contains interactive queries that require interactive.ints
-# to have been built.
 # When WORKSPACE is set, use $(WORKSPACE)/tools/lmc to compile the query.
 ifneq ($(origin WORKSPACE), undefined)
 export WORKSPACE
 endif
 
-interactive.out.orig: interactive $(interactive.ints)
+# Note that interactive.out.orig depends on $(interactive.ints) because
+# interactive.inp contains interactive queries that require interactive.ints
+# to have been built.
+interactive.out.orig: interactive interactive.ints
 ifneq ($(origin WORKSPACE),undefined)
 	rm -rf lmc
 	mkdir ./lmc
@@ -397,53 +386,3 @@ mdb_command_test.out: mdb_command_test mdb_command_test.inp
 		> mdb_command_test.out
 
 #-----------------------------------------------------------------------------#
-
-DEPS=		$(PROGS:%=$(deps_subdir)%.dep)
-DEPENDS=	$(PROGS:%=%.depend)
-OUTS=		$(PROGS:%=%.out)
-RESS=		$(PROGS:%=%.res)
-
-dep_local:	$(DEPS)
-depend_local:	$(DEPENDS)
-check_local:	$(OUTS) $(RESS)
-all_local:	$(PROGS)
-
-realclean_local:
-	rm -f Mercury.options.interactive
-
-#-----------------------------------------------------------------------------#
-
-SUBDIRS = declarative
-
-check_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
-	done
-
-dep_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
-	done
-
-depend_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
-	done
-
-realclean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
-	done
-
-clean_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
-	done
-
-all_subdirs:
-	+for dir in $(SUBDIRS); do \
-		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
-	done
-
-#-----------------------------------------------------------------------------#
-

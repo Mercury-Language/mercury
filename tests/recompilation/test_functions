@@ -27,6 +27,9 @@ test_module () {
 		chmod -w $module.m
 	done
 
+	rm -f $main_module.res
+	touch $main_module.res
+
 	# XXX Avoid producing output files with the same timestamp
 	# as the input source file. The up-to-date check for the output
 	# file in recompilation_check.m checks that the output file's
@@ -134,7 +137,8 @@ mmake_test () {
 		# The `-k' option to mmake avoids differences in the output
 		# when using parallel mmakes.
 		#
-		eval mmake $mmakeopts -k $main_module > $failing_make_output 2>&1
+		eval mmake $mmakeopts -k \
+			$main_module > $main_module.failing_make_output 2>&1
 		;;
 	    false)
 		eval mmake $mmakeopts $main_module

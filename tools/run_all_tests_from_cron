@@ -137,8 +137,10 @@ esac
 
 mv -f $tm_dir/logs/old/$logname $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/old/$logname.errs $tm_dir/logs/old2 2>/dev/null
+mv -f $tm_dir/logs/old/$logname.test_errs $tm_dir/logs/old2 2>/dev/null
 mv -f $tm_dir/logs/$logname $tm_dir/logs/old 2>/dev/null
 mv -f $tm_dir/logs/$logname.errs $tm_dir/logs/old 2>/dev/null
+mv -f $tm_dir/logs/$logname.test_errs $tm_dir/logs/old 2>/dev/null
 logfile="$tm_dir/logs/$logname"
 
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
@@ -152,6 +154,12 @@ then
 	else
 		rm -f $logfile.errs
 		echo "test passed"
+	fi
+	if [ ! -s $logfile.test_errs ]; then
+		test_status="FAILED"
+		echo "Error: test passed but $logfile.test_errs not empty"
+	else
+		rm -f $logfile.test_errs
 	fi
 	echo
 	case $HOST in
@@ -173,12 +181,22 @@ else
 	echo test FAILED
 	echo log file in $logfile
 	echo log file summary in $logfile.errs
+	echo test failure summary in $logfile.test_errs
 fi
 
-if [ -s $logfile.errs ]; then
-	echo
-	echo first 100 lines of log file summary:
-	head -100 $logfile.errs
+if [ -f $logfile.errs -o -f $logfile.test_errs ]; then
+	if [ ! -f $logfile.errs ]; then
+		# Failures building the compiler or library should
+		# occur early in the log summary.
+		echo first 10 lines of log file summary:
+		head -10 $logfile.errs
+		echo
+		echo
+	fi
+	if [ ! -f $logfile.test_errs ]; then
+		echo first 100 test failures:
+		grep "FAILED TEST" $logfile.test_errs | head - 100
+	fi
 elif [ $test_status = "FAILED" ]; then
 	echo
 	echo last 20 lines of log file:

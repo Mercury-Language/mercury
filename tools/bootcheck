@@ -16,6 +16,9 @@ Options:
 		as a whole is disabled).
 	-e, --extras
 		Test the programs in the extras directory.
+	-f, --failing-tests
+		Run only the tests which failed on the last run. This
+		requires the tests/runtests.errs file from the previous run.
 	-h, --help
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
@@ -115,6 +118,7 @@ Options:
 
 unset WORKSPACE
 testdirs=""
+failing_tests_only=false
 extras=false
 jfactor=""
 keep_objs=false
@@ -184,6 +188,9 @@ while [ $# -gt 0 ]; do
 
 	-e|--extras)
 		extras=true ;;
+
+	-f|--failing-tests)
+		failing_tests_only=true ;;
 
 	-h|--help)
 		echo "$usage"
@@ -967,7 +974,7 @@ then
 
 	if test "$test_grade" != ""
 	then
-		test_grade_opt="-g $test_grade"
+		test_grade_opt="GRADE=$test_grade"
 	else
 		test_grade_opt=""
 	fi
@@ -995,18 +1002,46 @@ then
 		fi
 
 		cp $root/doc/mdb_command_test.inp ${tests_prefix}tests/debugger
+
+		case $failing_tests_only in
+			true)
+				if [ ! -f ${tests_prefix}tests/runtests.errs ]
+				then
+					echo \
+		"bootcheck: \`--failing-tests' specified but" 1>&2
+					echo \
+		"\`${tests_prefix}tests/runtests.errs' does not exist." 1>&2
+					exit 1
+				fi
+
+				mv ${tests_prefix}tests/runtests.errs \
+					${tests_prefix}tests/runtests.$$
+				test_log_opt=\
+			"ERROR_FILE=${tests_prefix}tests/runtests.$$"
+				;;
+			false)
+				test_log_opt=""
+				;;
+		esac
+			
 		if test "$testdirs" = ""
 		then
 			cd ${tests_prefix}tests
-			./runtests $target_opt $jfactor $test_grade_opt
+			mmake $target_opt $jfactor $test_grade_opt \
+				$test_log_opt runtests
 		else
 			for testdir in $testdirs
 			do
 				cd $root/${tests_prefix}tests/$testdir
-				./runtests $target_opt $jfactor $test_grade_opt
+				mmake $target_opt $jfactor $test_grade_opt \
+					$test_log_opt runtests
 			done
 		fi
 		test_status=$?
+
+		case $failing_tests_only in
+			true)	rm -f ${tests_prefix}tests/runtests.$$ ;;
+		esac
 
 		if test "$type_stats" != ""
 		then

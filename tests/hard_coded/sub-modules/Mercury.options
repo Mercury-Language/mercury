@@ -1,0 +1,4 @@
+
+MCFLAGS-nested_intermod	=	--intermodule-optimization
+MCFLAGS-nested_intermod_main =	--intermodule-optimization
+

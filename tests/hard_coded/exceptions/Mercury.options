@@ -1,0 +1,2 @@
+
+MCFLAGS-looptest = --infer-all

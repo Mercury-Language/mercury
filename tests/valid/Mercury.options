@@ -1,0 +1,85 @@
+# some regression tests only failed with particular options enabled
+# (please keep these lists sorted)
+
+# When compiling using the installed libraries, setting GRADEFLAGS may
+# may cause mgnuc to look for the `.mih' files for a non-installed grade.
+# test_mercury runs the tests using the installed libraries, so GRADEFLAGS
+# won't be set, but test_mercury runs the tests in at least one `.tr' grade
+# on all machines, so it isn't a problem.
+GRADEFLAGS-complex_failure	= $(GRADEFLAGS_TRAIL)
+GRADEFLAGS-semi_fail_in_non_ite	= $(GRADEFLAGS_TRAIL)
+
+# The `agc*' tests currently aren't run in grades for which `.mih'
+# files are created, and no header files are generated in `il' grades,
+# so it's OK to set GRADEFLAGS for these tests.
+GRADEFLAGS-agc_graph		= --gc accurate
+GRADEFLAGS-agc_ho_pred		= --gc accurate
+GRADEFLAGS-agc_ite		= --gc accurate
+GRADEFLAGS-agc_unbound_typevars	= --gc accurate
+GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
+GRADEFLAGS-agc_unused_in	= --gc accurate
+GRADEFLAGS-foreign_type_spec	= --grade il
+GRADEFLAGS-foreign_type_spec.foreign	= --grade il
+
+MCFLAGS-aditi_error_bug		= --aditi
+MCFLAGS-aditi_error_bug2	= --aditi
+MCFLAGS-aditi_error_bug3	= --aditi
+MCFLAGS-aditi_query		= --aditi-only
+MCFLAGS-aditi_update		= --aditi
+MCFLAGS-base_relation		= --aditi
+MCFLAGS-base_relation2		= --aditi
+MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-context_anc		= --aditi
+MCFLAGS-deforest_bug		= -O3
+MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
+MCFLAGS-deforest_rerun_det	= -O3 --check-termination
+MCFLAGS-double_vn		= -O4
+MCFLAGS-explicit_quant		= --halt-at-warn
+MCFLAGS-foreign_underscore_var	= --halt-at-warn
+MCFLAGS-higher_order_implied_mode = -O-1
+MCFLAGS-inhibit_warn_test       = --inhibit-warnings --halt-at-warn
+MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
+MCFLAGS-intermod_dcg_bug2	= --intermodule-optimization
+MCFLAGS-intermod_impure		= --intermodule-optimization
+MCFLAGS-intermod_impure2	= --intermodule-optimization
+MCFLAGS-intermod_lambda		= --intermodule-optimization
+MCFLAGS-intermod_lambda2	= --intermodule-optimization
+MCFLAGS-intermod_nested_module	= --intermodule-optimization
+MCFLAGS-intermod_nested_module2	= --intermodule-optimization
+MCFLAGS-intermod_nested_module_bug = --intermodule-optimization
+MCFLAGS-intermod_nested_module_bug2 = --intermodule-optimization
+MCFLAGS-intermod_nested_uniq	= --intermodule-optimization
+MCFLAGS-intermod_nested_uniq2	= --intermodule-optimization
+MCFLAGS-intermod_pragma_import	= --intermodule-optimization
+MCFLAGS-intermod_pragma_import2	= --intermodule-optimization
+MCFLAGS-intermod_quote		= --intermodule-optimization
+MCFLAGS-intermod_quote2		= --intermodule-optimization
+MCFLAGS-intermod_record		= --intermodule-optimization
+MCFLAGS-intermod_record2	= --intermodule-optimization
+MCFLAGS-intermod_test		= --intermodule-optimization
+MCFLAGS-intermod_test2		= --intermodule-optimization
+MCFLAGS-intermod_typeclass	= --intermodule-optimization
+MCFLAGS-intermod_typeclass2	= --intermodule-optimization
+MCFLAGS-intermod_type_spec	= --intermodule-optimization
+MCFLAGS-intermod_type_spec2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality	= --intermodule-optimization
+MCFLAGS-intermod_user_equality2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested2	= --intermodule-optimization
+MCFLAGS-ite_to_disj		= --aditi
+MCFLAGS-livevals_seq		= -O5 --opt-space
+MCFLAGS-middle_rec_labels	= --middle-rec --no-follow-vars 
+MCFLAGS-mostly_uniq_mode_inf	= --infer-all
+MCFLAGS-pred_with_no_modes	= --infer-all
+MCFLAGS-quantifier_warning	= --halt-at-warn
+MCFLAGS-simplify_bug		= -O-1
+MCFLAGS-simplify_bug2		= -O3
+MCFLAGS-spurious_purity_warning	= --halt-at-warn
+MCFLAGS-tuple_eqv               = --smart-recompilation
+MCFLAGS-two_way_unif		= -O-1
+MCFLAGS-type_inf_ambig_test	= --infer-all
+MCFLAGS-typeclass_det_warning	= --halt-at-warn
+MCFLAGS-unify_typeinfo_bug	= -O3 --no-special-preds
+MCFLAGS-uniq_mode_inf_bug	= --infer-all
+MCFLAGS-vn_float		= -O5
+MCFLAGS-zero_arity		= --infer-modes

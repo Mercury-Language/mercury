@@ -1,17 +1,23 @@
 The Mercury test suite is (dis)organized into a directory hierarchy.
-Each subdirectory has a script named "runtests" that runs the tests
-in that subdirectory; these indicate the presence of any errors by
-returning a nonzero exit status. The runtests script in each directory
-invokes the runtests scripts in all subdirectories, and propagates
-any nonzero exit status upwards.
 
-Both the bootcheck script and the nightly script use the main runtests
-script to run all the tests.
+`mmake' will run the tests in the directory it is
+invoked in and all subdirectories of that subdirectory.
+Use `mmake runtests_local' to just run the local tests without
+the subdirectories.
+
+To run just the tests that failed in a previous test run,
+use `mmake ERROR_FILE=FILE', where FILE is a copy of the
+runtests.errs file from the previous run.
+
+Both the bootcheck script and the nightly script use `mmake'
+to run all the tests.
+
+Unless otherwise stated, the tests in each directory compile
+the test programs and compare their output against hand-coded
+`.exp' (or `.exp2', `.exp3', etc) files.
 
 benchmarks
 	This directory contains Mercury versions of the benchmarks.
-	These tests work by comparing the output of the Mercury and
-	the NU-Prolog versions.
 
 debugger
 	This directory is for testing mdb, the Mercury debugger.
@@ -24,22 +30,27 @@ debugger/declarative
 	features of mdb.
 
 general
-	This directory is for general test cases.
+hard_coded
+	These directories are for general test cases.
+
 	(It might be a good idea to split this into tests
 	of particular features and regression tests that check
 	for old bugs.  But for the moment, just about everything
 	goes in here.)
-	These tests work by comparing the output of the Mercury and
-	the NU-Prolog versions.
 
-hard_coded
-	This directory is for tests of features that don't work in
-	NU-Prolog.  The expected output of the program has to be
-	hard-coded in a hand-written `.exp' file, rather having the
-	`.exp' file be generated automatically using NU-Prolog.
+	The historical reason for the separate `general' and `hard_coded'
+	directories was that the tests in `general' worked with NU-Prolog
+	and compared the Mercury output with the NU-Prolog output,
+	but the tests in `hard_coded' didn't work with NU-Prolog, so
+	their expected output needed to be hard-coded. We no longer
+	support compilation with NU-Prolog, so everything goes
+	in hard_coded now.
 
 recompilation
 	This directory contains tests of the smart recompilation system.
+	As well as checking for the correct output from the test
+	programs these tests also examine the `.err' files to
+	make sure that all necessary recompilations are performed.
 
 valid
 	This directory is for test cases that are not complete
@@ -47,12 +58,12 @@ valid
 
 invalid
 	This directory is for test cases that are invalid
-	programs. We check that the files do *not* compile.
+	programs. We check that the files do *not* compile,
+	and check that the errors match those in the hand-written
+	`.err_exp' file.
 
 warnings
 	This directory is for tests of compiler warnings. These work by
 	comparing the warnings emitted by the compiler with those given
 	in the hand-written `.exp' file. 
 
-To regenerate the expected output files for the benchmark and general
-directories, execute the "generate_exp" script in this directory.
