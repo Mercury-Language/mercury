@@ -490,7 +490,7 @@ output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
 	( { SplitFiles = yes } ->
 		io__write_string("\t{ extern ModuleFunc "),
 		output_module_name(ModuleName),
-		io__write_string("(void);\n"),
+		io__write_string(";\n"),
 		io__write_string("\t  "),
 		output_module_name(ModuleName),
 		io__write_string("(); }\n")
