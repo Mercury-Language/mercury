@@ -467,7 +467,7 @@ MR_output_current_nth_var(Word var)
 	ML_DI_output_current_nth_var(
 		var,
 		(Word) &MR_debugger_socket_out);
-    ):
+    );
 }
 
 static void
