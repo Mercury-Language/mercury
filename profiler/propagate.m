@@ -20,8 +20,8 @@
 
 :- interface.
 
+:- import_module list, set, string, io.
 :- import_module prof_info.
-:- import_module io.
 
 :- pred propagate__counts(list(set(string)), prof, prof, io__state, io__state).
 :- mode propagate__counts(in, in, out, di, uo) is det.
@@ -31,10 +31,8 @@
 
 :- implementation.
 
-:- import_module float, int.
-:- import_module list, map, set.
-:- import_module require, std_util.
-
+:- import_module float, int, map, std_util, require.
+:- import_module generate_output.
 
 % propagate_counts:
 %	Propagates counts around the call_graph.  Starts from the end of the
@@ -83,7 +81,7 @@ propagate_counts_3([ Pred - Calls | Ps], TotalCounts, TotalCalls, AddrMap,
 	% Work out the number of counts to propagate.
 	int__to_float(Calls, FloatCalls),
 	int__to_float(TotalCalls, FloatTotalCalls),
-	builtin_float_divide(FloatCalls, FloatTotalCalls, Proportion),
+	checked_float_divide(FloatCalls, FloatTotalCalls, Proportion),
 	builtin_float_times(Proportion, TotalCounts, ToPropCount),
 
 	% Add new counts to current propagated counts

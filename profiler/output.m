@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module output_prof_info, options.
-:- import_module bool, float, globals, int, io, list, map, std_util, string.
+:- import_module string, int, map, io.
+:- import_module output_prof_info.
 
 :- pred output__main(output, map(string, int), io__state, io__state).
 :- mode output__main(in, in, di, uo) is det.
@@ -30,6 +30,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module bool, float, list, std_util.
+:- import_module globals, options, generate_output.
 
 output__main(Output, IndexMap) -->
 	{ Output = output(InfoMap, CallList, FlatList) },
@@ -305,8 +308,8 @@ output__flat_profile([LabelName | LNs], CumTime0, InfoMap, IndexMap) -->
 	int__to_float(TotalCalls, FloatTotalCalls),
 
 	builtin_float_plus(Self, CumTime0, CumTime),
-	builtin_float_divide(Self, FloatTotalCalls, Self1),
-	builtin_float_divide(Descendant, FloatTotalCalls, Desc1),
+	checked_float_divide(Self, FloatTotalCalls, Self1),
+	checked_float_divide(Descendant, FloatTotalCalls, Desc1),
 	builtin_float_times(1000.0, Self1, SelfMs),
 	builtin_float_times(1000.0, Desc1, DescMs),
 

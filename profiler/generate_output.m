@@ -28,6 +28,8 @@
 							io__state, io__state).
 :- mode generate_output__main(in, out, out, di, uo) is det.
 
+:- pred checked_float_divide(float::in, float::in, float::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -123,12 +125,12 @@ process_prof_node(ProfNode, Prof, OutputProf0, OutputProf) :-
 		% descendents as a percentage.
 		int__to_float(Initial, InitialFloat),
 		builtin_float_plus(InitialFloat, Prop, CurrentCount),
-		builtin_float_divide(CurrentCount, TotalCounts, Proportion),
+		checked_float_divide(CurrentCount, TotalCounts, Proportion),
 		builtin_float_times(100.0, Proportion, DescPercentage),
 
 		% Calculate proportion of time in current predicate 
 		% as a percentage.
-		builtin_float_divide(InitialFloat, TotalCounts, Proportion2),
+		checked_float_divide(InitialFloat, TotalCounts, Proportion2),
 		builtin_float_times(100.0, Proportion2, FlatPercentage),
 
 		% Calculate the self time spent in the current predicate.
@@ -201,7 +203,7 @@ process_prof_node_parents_2([], _, _, _, Output, Output).
 process_prof_node_parents_2([pred_info(LabelName, Calls) | PNs], Selftime, 
 				DescTime, TotalCalls, Output0, Output) :-
         int__to_float(Calls, FloatCalls),
-        builtin_float_divide(FloatCalls, TotalCalls, Proportion),
+        checked_float_divide(FloatCalls, TotalCalls, Proportion),
 
 	% Calculate the amount of the current predicate's self-time spent
         % due to the parent.
@@ -245,12 +247,12 @@ process_prof_node_children_2([pred_info(LabelName, Calls) | PNs], Prof,
 
 	int__to_float(TotalCalls, FloatTotalCalls),
         int__to_float(Calls, FloatCalls),
-        builtin_float_divide(FloatCalls, FloatTotalCalls, Proportion),
+        checked_float_divide(FloatCalls, FloatTotalCalls, Proportion),
 
 	% Calculate the self time spent in the current predicate.
 	int__to_float(Hertz, HertzFloat),
 	int__to_float(ClockTicks, ClockTicksFloat),
-	builtin_float_divide(InitialFloat, HertzFloat, InterA),
+	checked_float_divide(InitialFloat, HertzFloat, InterA),
 	builtin_float_times(InterA, ClockTicksFloat, Selftime),
 
 	% Calculate the descendant time, which is the time spent in the 
@@ -305,4 +307,11 @@ profiling_init(Profiling) :-
 	rbtree__init(CallTree),
 	rbtree__init(FlatTree),
 	Profiling = profiling(InfoMap, CallTree, FlatTree).
+
+checked_float_divide(A, B, C) :-
+	( B = 0.0 ->
+		C = 0.0
+	;
+		builtin_float_divide(A, B, C)
+	).
 
