@@ -1009,8 +1009,9 @@ mercury_op(Op) :-
 
 mercury_binary_prefix_op("some").
 mercury_binary_prefix_op("all").
-mercury_binary_prefix_op("gSome").
-mercury_binary_prefix_op("gAll").
+mercury_binary_prefix_op("gSome").	/* NU-Prolog */
+mercury_binary_prefix_op("gAll").	/* NU-Prolog */
+mercury_binary_prefix_op("lambda").
 
 :- pred mercury_infix_op(string).
 :- mode mercury_infix_op(in) is semidet.
