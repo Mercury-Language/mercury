@@ -1793,8 +1793,9 @@ magic__process_proc(PredProcId0) -->
 			context__process_disjuncts(PredProcId0, Inputs,
 				Outputs, DisjList0, DisjList)
 		;
-			{ set__list_to_set(Inputs, InputSet) },
-			magic__process_disjuncts(InputSet, DisjList0, DisjList)
+			{ set__list_to_set(HeadVars, HeadVarSet) },
+			magic__process_disjuncts(HeadVarSet,
+				DisjList0, DisjList)
 		),
 
 		{ disj_list_to_goal(DisjList, GoalInfo0, Goal) },
@@ -1814,15 +1815,15 @@ magic__process_proc(PredProcId0) -->
 		list(hlds_goal)::out, magic_info::in, magic_info::out) is det.	
 
 magic__process_disjuncts(_, [], []) --> [].
-magic__process_disjuncts(Inputs, [Disjunct0 | Disjuncts0],
+magic__process_disjuncts(HeadVars, [Disjunct0 | Disjuncts0],
 		[Disjunct | Disjuncts]) -->
-	magic__process_disjunct(Inputs, Disjunct0, Disjunct),
-	magic__process_disjuncts(Inputs, Disjuncts0, Disjuncts).
+	magic__process_disjunct(HeadVars, Disjunct0, Disjunct),
+	magic__process_disjuncts(HeadVars, Disjuncts0, Disjuncts).
 
 :- pred magic__process_disjunct(set(prog_var)::in, hlds_goal::in,
 		hlds_goal::out, magic_info::in, magic_info::out) is det.	
 
-magic__process_disjunct(_Inputs, Disjunct0, Disjunct) --> 
+magic__process_disjunct(HeadVars, Disjunct0, Disjunct) --> 
 	{ Disjunct0 = _ - DisjInfo },
 	{ goal_to_conj_list(Disjunct0, GoalList0) },
 	{ list__reverse(GoalList0, RevGoalList0) },
@@ -1832,8 +1833,7 @@ magic__process_disjunct(_Inputs, Disjunct0, Disjunct) -->
 	( { MaybeDBCall = yes(DBCall1) } ->
 		{ magic_util__db_call_nonlocals(DBCall1, NonLocals1) },
 		{ goal_list_nonlocals(AfterGoals, AfterNonLocals) },
-		{ goal_info_get_nonlocals(DisjInfo, NonLocals0) },
-		{ set__union(NonLocals0, AfterNonLocals, SubConjNonLocals0) },
+		{ set__union(HeadVars, AfterNonLocals, SubConjNonLocals0) },
 		{ set__union(SubConjNonLocals0, NonLocals1,
 			SubConjNonLocals1) },
 		magic_util__restrict_nonlocals(SubConjNonLocals1,
@@ -1855,9 +1855,6 @@ magic__process_disjunct(_Inputs, Disjunct0, Disjunct) -->
 		magic_info::in, magic_info::out) is det.
 
 magic__process_disjunct_2(RevBeforeGoals1, DBCall1, NonLocals0, Goals) -->
-
-	% Work out the nonlocals of the goals after the part of the 
-	% disjunct being processed here.
 
 	% Find the next database call.
 	magic__get_next_db_pred(RevBeforeGoals1, RevBeforeGoals2, 
