@@ -171,7 +171,7 @@ int mercury_main(int argc, char **argv)
 	init_engine();
 	run_code();
 
-	return mercury_exit_status;
+	exit(mercury_exit_status);
 }
 
 void do_init_modules(void)
