@@ -209,10 +209,19 @@ MLFLAGS-parse			=	--trace --static
 C2INITFLAGS-split-c-files	= 	--trace
 MLFLAGS-split-c-files		=	--trace
 
-# no_fully_strict is expected to fail (it calls error/1)
-# so we need to ignore the exit status (hence the leading `-')
+# no_fully_strict is expected to fail (it calls error/1).
+# We also need to pipe the output through sed to avoid hard-coding
+# dependencies on particular line numbers in the standard library source code.
 no_fully_strict.out: no_fully_strict
-	-./no_fully_strict > no_fully_strict.out 2>&1;
+	if ./no_fully_strict > $@.tmp 2>&1; then \
+		grep . $@.tmp; \
+		exit 1; \
+	else \
+                sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
+			< $@.tmp > $@; \
+		rm -f $@.tmp; \
+	fi
 
 #-----------------------------------------------------------------------------#
 

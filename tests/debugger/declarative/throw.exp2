@@ -7,7 +7,7 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred throw:q/1-0 (semidet)
 mdb> continue
-       3:      3  3 CALL pred throw:p/1-0 (cc_nondet) throw.m:20 (exception.m:320)
+       3:      3  3 CALL pred throw:p/1-0 (cc_nondet) throw.m:20 (exception.m:NNNN)
 mdb> finish
       34:      3  3 EXCP pred throw:p/1-0 (cc_nondet)
 mdb> dd
@@ -26,7 +26,7 @@ Is this a bug? yes
       34:      3  3 EXCP pred throw:p/1-0 (cc_nondet)
 mdb> continue
 exception(univ("Too big" : string))
-      41:     11  3 CALL pred throw:q/1-0 (semidet) throw.m:48 (exception.m:320)
+      41:     11  3 CALL pred throw:q/1-0 (semidet) throw.m:48 (exception.m:NNNN)
 mdb> finish
       76:     11  3 EXCP pred throw:q/1-0 (semidet)
 mdb> dd

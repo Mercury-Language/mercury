@@ -25,8 +25,17 @@ check: $(PROGS:.m=.res)
 
 #-----------------------------------------------------------------------------#
 
-# test_uncaught_exception is *supposed* to return an error exit status
+# test_uncaught_exception is *supposed* to return an error exit status.
+# We also need to pipe the output through sed to avoid hard-coding
+# dependencies on particular line numbers in the standard library source code.
 test_uncaught_exception.out: test_uncaught_exception
-	if ./$< > $@ 2>&1; then false; else true; fi
+	if ./$< > $@.tmp 2>&1; then \
+		grep . $@.tmp; \
+		exit 1; \
+	else \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+			< $@.tmp > $@ ; \
+		rm -f $@.tmp; \
+	fi
 
 #-----------------------------------------------------------------------------#
