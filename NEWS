@@ -118,6 +118,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We've added a function to io.m to construct io__error codes from error
+  messages: `io__make_io_error'.
+
 * The assumptions that we make about user supplied comparison predicates and
   functions have been relaxed to allow more general orderings.  The new
   assumptions are documented in builtin.m.

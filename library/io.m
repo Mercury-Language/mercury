@@ -1211,6 +1211,10 @@
 %		The `ExitStatus' will be 0 if the command completed
 %		successfully or the return value of the command otherwise.
 
+:- func io__make_io_error(string) = io__error.
+%	io__make_io_error(ErrorMessage) = ErrorCode.
+%		Construct an error code including the specified error message.
+
 :- func io__error_message(io__error) = string.
 :- pred io__error_message(io__error, string).
 :- mode io__error_message(in, out) is det.
@@ -3282,6 +3286,8 @@ io__call_system_return_signal(Command, Result) -->
 	% because io__print, which may be called to print out the uncaught
 	% exception if there is no exception hander, does not print out
 	% the module name.
+
+io__make_io_error(Error) = io_error(Error).
 
 io__error_message(io_error(Error), Error).
 
