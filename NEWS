@@ -1,3 +1,24 @@
+DRAFT NEWS for Mercury release 0.7
+----------------------------
+
+* --args, --type-info
+  incompatible, requires recompilation of everything
+
+* We now allow a function of arity N to coexist with a predicate of arity N+1.
+
+* We now support some inter-module optimizations: inlining and the
+  specialization of higher-order predicates.
+
+* We have made a few changes to the Mercury standard library.
+  The changes are listed here, but see the library reference manual for
+  details such as documentation on the new predicates.
+
+  - We have a new module called XXX to make benchmarking easier.
+    The predicate report_stats, which used to be in std_util, is now
+    in this module.
+
+  - relation.m
+
 NEWS for Mercury release 0.6
 ----------------------------
 

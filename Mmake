@@ -11,6 +11,8 @@ MAIN_TARGET=all
 MERCURY_DIR=.
 include Mmake.common
 
+VERSION=0.6
+
 #-----------------------------------------------------------------------------#
 
 SUBDIRS = scripts util boehm_gc runtime library compiler doc profiler
@@ -170,9 +172,12 @@ tar:
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/conf.h
 	-rm -f Mmake.common
-	cd .. && (mv mercury mercury-0.6; \
-		tar -cf - mercury-0.6 | gzip -9 > mercury-0.6.tar.gz; \
-		mv mercury-0.6 mercury)
+	cd .. && (mv mercury mercury-$(VERSION); \
+		tar -cf - mercury-$(VERSION) | gzip -9 > mercury-$(VERSION).tar.gz; \
+		mv mercury-$(VERSION) mercury)
+
+version:
+	@echo $(VERSION)
 
 #-----------------------------------------------------------------------------#
 
