@@ -1,0 +1,12 @@
+:- module type_spec_unname_var_r_2.
+
+:- interface.
+
+:- import_module list, std_util.
+
+:- pred p(T::in, U::in, V::in, pair(T, U)::out) is det.
+:- pragma type_spec(p/4, T = list(V)).
+
+:- implementation.
+
+p(T, U, _, T - U).

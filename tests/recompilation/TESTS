@@ -24,6 +24,7 @@ TESTS_SHOULD_SUCCEED="\
 	pred_overloading_r \
 	typeclass_method_pragma_r \
 	type_spec_rename_var_r \
+	type_spec_unname_var_r \
 	unchanged_pred_nr"
 
 # Parallel mmake with nested sub-modules is broken.

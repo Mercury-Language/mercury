@@ -1,4 +1,4 @@
-:- module unchanged_pred_nr.
+:- module type_spec_unname_var_r.
 
 :- interface.
 
@@ -8,10 +8,10 @@
 
 :- implementation.
 
-:- import_module unchanged_pred_nr_2.
+:- import_module type_spec_unname_var_r_2.
 :- import_module list.
 
 main -->
-	{ unchanged_pred([1], [1], "OK\n", Str) },
-	io__write_string(Str).
-
+	{ p([1], 2.0, 2, Result) },
+	io__write(Result),
+	io__nl.
