@@ -17,6 +17,8 @@
 #include	<sys/param.h>
 #include	<sys/time.h>
 #include	<unistd.h>
+#include	<errno.h>
+#include	<string.h>
 
 
 /*******************
@@ -24,7 +26,7 @@
 *******************/
 #define CALL_TABLE_SIZE 4096
 #define TIME_TABLE_SIZE 4096
-#define CLOCK_TICKS     1
+#define CLOCK_TICKS     5
 
 #define USEC            1000000
 
@@ -86,9 +88,10 @@ void prof_init_time_profile()
 	struct itimerval *itime = NULL;
 
 	/* output the value of HZ */
+	errno = 0;
 	if ( !(fptr = fopen("addr.out", "w")) ) {
-		fprintf(stderr, "%s %s", "prof_init_time_profile: Couldn't ",
-			"open the file 'addr.out'!\n");
+		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't open",
+			"the file 'addr.out'!", strerror(errno));
 		exit(1);
 	}
 
@@ -226,7 +229,7 @@ void prof_turn_off_time_profiling()
 /*
 **	prof_output_addr_pair_table :
 **		Writes the hash table to a file called "addrpair.out".
-**		Callee then caller followed by count.
+**		Caller then callee followed by count.
 */
 
 void prof_output_addr_pair_table(void)
@@ -234,18 +237,20 @@ void prof_output_addr_pair_table(void)
 	FILE *fptr;
 	int  i;
 	prof_call_node *current;
+	errno = 0;
 	if ( (fptr = fopen("addrpair.out", "w")) ) {
 		for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 			current = addr_pair_table[i];
 			while (current) {
-				fprintf(fptr, "%p %p %lu\n", current->Callee,
-					current->Caller, current->count);
+				fprintf(fptr, "%p %p %lu\n", current->Caller,
+					current->Callee, current->count);
 				current = current->next;
 			}
 		}
 	}
 	else {
-		fprintf(stderr, "%p\nCouldn't create addrpair.out\n", fptr);
+		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't",
+			"create addrpair.out", strerror(errno));
 		exit(1);
 	}
 
@@ -267,11 +272,13 @@ void prof_output_addr_decls(const char *name, const Code *address)
 		fprintf(declfptr, "%p\t%s\n", address, name);
 	}
 	else {
+		errno = 0;
 		if ( (declfptr = fopen("addrdecl.out", "w") ) ) {
 			fprintf(declfptr, "%p\t%s\n", address, name);
 		}
 		else {
-			fprintf(stderr, "\nCouldn't create addrdecl.out\n");
+			fprintf(stderr, "%s %s\n%s\n", "Mercury runtime:",
+			       "Couldn't create addrdecl.out", strerror(errno));
 			exit(1);
 		}
 	}
@@ -292,6 +299,7 @@ void prof_output_addr_table()
 	int  i;
 	prof_time_node *current;
 
+	errno = 0;
 	if ( (fptr = fopen("addr.out", "a")) ) {
 		for (i = 0; i < TIME_TABLE_SIZE ; i++) {
 			current = addr_table[i];
@@ -303,7 +311,8 @@ void prof_output_addr_table()
 		}
 	}
 	else {
-		fprintf(stderr, "%p\nCouldn't create addrpair.out\n", fptr);
+		fprintf(stderr, "%s %s\n%s\n", "Mercury runtime: Couldn't",
+				"create addrpair.out", strerror(errno));
 		exit(1);
 	}
 }
