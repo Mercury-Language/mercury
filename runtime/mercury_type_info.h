@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000 The University of Melbourne.
+** Copyright (C) 1995-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -280,6 +280,61 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define MR_fill_in_tuple_type_info(arena, type_ctor_info, arity, vector) \
     MR_fill_in_higher_order_type_info(arena, type_ctor_info, arity, vector)
+
+/*
+** Used to define MR_TypeCtorInfos for the builtin types in the hlc grades.
+** This needs to be exported for use by the array type in the library.
+*/
+#ifdef MR_HIGHLEVEL_CODE
+
+#define MR_type_ctor_info_name(MODULE, TYPE, ARITY)			      \
+	MR_PASTE2(mercury__,						      \
+	MR_PASTE2(MODULE,						      \
+	MR_PASTE2(__,							      \
+	MR_PASTE2(MODULE,						      \
+	MR_PASTE2(__type_ctor_info_,					      \
+	MR_PASTE2(TYPE,							      \
+	MR_PASTE2(_,							      \
+	          ARITY)))))))
+
+#define MR_type_ctor_info_func_name(MODULE, TYPE, ARITY, FUNC)		      \
+	MR_PASTE2(mercury__,						      \
+	MR_PASTE2(MODULE,						      \
+	MR_PASTE2(__,							      \
+	MR_PASTE2(FUNC,							      \
+	MR_PASTE2(__,							      \
+	MR_PASTE2(TYPE,							      \
+	MR_PASTE2(_,							      \
+	MR_PASTE2(ARITY,						      \
+	          _0))))))))
+
+#define MR_special_func_type(NAME, ARITY) \
+	MR_PASTE2(MR_, MR_PASTE2(NAME, MR_PASTE2(Func_, ARITY)))
+
+#define MR_define_type_ctor_info(module, type, arity, type_rep)		      \
+	const struct MR_TypeCtorInfo_Struct				      \
+		MR_type_ctor_info_name(module, type, arity) =		      \
+	{								      \
+		arity,							      \
+		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
+				do_unify),				      \
+		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
+				do_unify),				      \
+		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
+				do_compare),				      \
+		type_rep,						      \
+		NULL,							      \
+		NULL,							      \
+		MR_STRINGIFY(module),					      \
+		MR_STRINGIFY(type),					      \
+		MR_RTTI_VERSION,					      \
+		{ 0 },							      \
+		{ 0 },							      \
+		-1,							      \
+		-1							      \
+	}
+
+#endif /* MR_HIGHLEVEL_CODE */
 
 /*---------------------------------------------------------------------------*/
 

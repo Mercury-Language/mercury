@@ -86,7 +86,6 @@ static MR_UnifyFunc_0
 	mercury__std_util__do_unify__type_desc_0_0;
 
 static MR_UnifyFunc_1
-	mercury__array__do_unify__array_1_0,
 	mercury__builtin__do_unify__tuple_0_0,
 	mercury__private_builtin__do_unify__type_ctor_info_1_0,
 	mercury__private_builtin__do_unify__type_info_1_0,
@@ -106,7 +105,6 @@ static MR_CompareFunc_0
 	mercury__std_util__do_compare__type_desc_0_0;
 
 static MR_CompareFunc_1
-	mercury__array__do_compare__array_1_0,
 	mercury__builtin__do_compare__tuple_0_0,
 	mercury__private_builtin__do_compare__type_ctor_info_1_0,
 	mercury__private_builtin__do_compare__type_info_1_0,
@@ -122,53 +120,6 @@ static MR_CompareFunc_1
 ** Define MR_TypeCtorInfos for the builtin types
 */
 
-#define MR_type_ctor_info_name(MODULE, TYPE, ARITY)			      \
-	MR_PASTE2(mercury__,						      \
-	MR_PASTE2(MODULE,						      \
-	MR_PASTE2(__,							      \
-	MR_PASTE2(MODULE,						      \
-	MR_PASTE2(__type_ctor_info_,					      \
-	MR_PASTE2(TYPE,							      \
-	MR_PASTE2(_,							      \
-	          ARITY)))))))
-
-#define MR_type_ctor_info_func_name(MODULE, TYPE, ARITY, FUNC)		      \
-	MR_PASTE2(mercury__,						      \
-	MR_PASTE2(MODULE,						      \
-	MR_PASTE2(__,							      \
-	MR_PASTE2(FUNC,							      \
-	MR_PASTE2(__,							      \
-	MR_PASTE2(TYPE,							      \
-	MR_PASTE2(_,							      \
-	MR_PASTE2(ARITY,						      \
-	          _0))))))))
-
-#define MR_special_func_type(NAME, ARITY) \
-	MR_PASTE2(MR_, MR_PASTE2(NAME, MR_PASTE2(Func_, ARITY)))
-
-#define MR_define_type_ctor_info(module, type, arity, type_rep)		      \
-	const struct MR_TypeCtorInfo_Struct				      \
-		MR_type_ctor_info_name(module, type, arity) =		      \
-	{								      \
-		arity,							      \
-		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
-				do_unify),				      \
-		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
-				do_unify),				      \
-		(MR_Box) MR_type_ctor_info_func_name(module, type, arity,     \
-				do_compare),				      \
-		type_rep,						      \
-		NULL,							      \
-		NULL,							      \
-		MR_STRINGIFY(module),					      \
-		MR_STRINGIFY(type),					      \
-		MR_RTTI_VERSION,					      \
-		{ 0 },							      \
-		{ 0 },							      \
-		-1,							      \
-		-1							      \
-	}
-
 MR_define_type_ctor_info(builtin, int, 0, MR_TYPECTOR_REP_INT);
 MR_define_type_ctor_info(builtin, string, 0, MR_TYPECTOR_REP_STRING);
 MR_define_type_ctor_info(builtin, float, 0, MR_TYPECTOR_REP_FLOAT);
@@ -178,7 +129,6 @@ MR_define_type_ctor_info(builtin, c_pointer, 0, MR_TYPECTOR_REP_C_POINTER);
 MR_define_type_ctor_info(builtin, pred, 0, MR_TYPECTOR_REP_PRED);
 MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_PRED);
 MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
-MR_define_type_ctor_info(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 MR_define_type_ctor_info(std_util, univ, 0, MR_TYPECTOR_REP_UNIV);
 MR_define_type_ctor_info(std_util, type_desc, 0, MR_TYPECTOR_REP_TYPEINFO);
 MR_define_type_ctor_info(private_builtin, type_ctor_info, 1,
@@ -742,14 +692,6 @@ mercury__builtin__do_unify__tuple_0_0(MR_Mercury_Type_Info type_info,
 }
 
 static bool MR_CALL
-mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
-	MR_Box x, MR_Box y)
-{
-	return mercury__array____Unify____array_1_0(
-		type_info, (MR_Array) x, (MR_Array) y);
-}
-
-static bool MR_CALL
 mercury__std_util__do_unify__univ_0_0(MR_Box x, MR_Box y)
 {
 	return mercury__std_util____Unify____univ_0_0(
@@ -871,15 +813,6 @@ mercury__builtin__do_compare__tuple_0_0(
 {
 	mercury__builtin____Compare____tuple_0_0(
 		type_info, result, (MR_Tuple) x, (MR_Tuple) y);
-}
-
-static void MR_CALL
-mercury__array__do_compare__array_1_0(
-	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
-	MR_Box x, MR_Box y)
-{
-	mercury__array____Compare____array_1_0(
-		type_info, result, (MR_Array) x, (MR_Array) y);
 }
 
 static void MR_CALL
