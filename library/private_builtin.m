@@ -915,6 +915,7 @@ BEGIN_MODULE(private_builtin_module_XXX)
 	init_label(mercury__table_nondet_return_all_ans_2_0_i1);
 BEGIN_CODE
 Define_entry(mercury__table_nondet_return_all_ans_2_0);
+#ifdef	MR_USE_MINIMAL_MODEL
 	mkframe(""private_builtin:table_nondet_return_all_ans/2"", 1,
 		LABEL(mercury__table_nondet_return_all_ans_2_0_i1));
 	MR_framevar(1) = (Word) MR_SUBGOAL(r1)->answer_list;
@@ -947,6 +948,9 @@ Define_label(mercury__table_nondet_return_all_ans_2_0_i1);
 			((MR_AnswerList) MR_framevar(1))->next_answer;
 		succeed();
 	}
+#else
+	fatal_error(""minimal model code entered when not enabled"");
+#endif
 END_MODULE
 ").
 
