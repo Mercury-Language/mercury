@@ -83,12 +83,11 @@ library.mods	: $(library.mods)
 
 #-----------------------------------------------------------------------------#
 
-tags		: $(library.srcs)
-	mtags $(library.srcs)
+tags		: $(library.ms)
+	mtags $(library.ms)
 
-library.stats : ../compiler/source_stats.awk $(library.srcs)
-	awk -f ../compiler/source_stats.awk \
-		`vpath_find $(library.srcs)` > $@
+library.stats : ../compiler/source_stats.awk $(library.ms)
+	awk -f ../compiler/source_stats.awk `vpath_find $(library.ms)` > $@
 	
 #-----------------------------------------------------------------------------#
 
