@@ -248,6 +248,10 @@ install_ints: $(library.ints) $(library.int3s) $(library.opts)
 install_init: libmercury.init
 	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
 	cp `vpath_find libmercury.init` $(INSTALL_MODULE_DIR)
+	# "libmercury.init" used to be called "library.init".
+	# If there is still a version with the old name lying around,
+	# then delete it; otherwise the initialization would get done twice.
+	rm -f $(INSTALL_MODULE_DIR)/library.init
 
 .PHONY: install_library
 install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
