@@ -1315,11 +1315,11 @@ pragma_get_vars([P|PragmaVars], [V|Vars]) :-
 
 	% from the list of pragma_vars, extract the names.
 
-:- pred pragma_get_var_names(list(pragma_var), list(string)).
+:- pred pragma_get_var_names(list(pragma_var), list(maybe(string))).
 :- mode pragma_get_var_names(in, out) is det.
 
 pragma_get_var_names([], []).
-pragma_get_var_names([P|PragmaVars], [N|Names]) :-
+pragma_get_var_names([P|PragmaVars], [yes(N)|Names]) :-
         P = pragma_var(_Var, N, _Mode),
         pragma_get_var_names(PragmaVars, Names).
 
@@ -1527,10 +1527,10 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId).
 
-warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, Args, ArgNameMap), 
+warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames), 
 		GoalInfo, _QuantVars, _VarSet, PredCallId) --> 
 	{ goal_info_context(GoalInfo, Context) },
-	warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap, Context, 
+	warn_singletons_in_pragma_c_code(C_Code, ArgNames, Context, 
 		PredCallId).
 
 :- pred warn_singletons_in_goal_list(list(hlds__goal), set(var), varset,
@@ -1597,14 +1597,14 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% a substring of the given c code. If not, it gives a warning
-:- pred warn_singletons_in_pragma_c_code(string, list(var), map(var, string),
+:- pred warn_singletons_in_pragma_c_code(string, list(maybe(string)),
 	term__context, pred_call_id, io__state, io__state).
-:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, di, uo) is det.
+:- mode warn_singletons_in_pragma_c_code(in, in, in, in, di, uo) is det.
 
-warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap, 
+warn_singletons_in_pragma_c_code(C_Code, ArgNames, 
 		Context, PredCallId) -->
 	{ c_code_to_name_list(C_Code, C_CodeList) },
-	{ warn_singletons_in_pragma_c_code_2(C_CodeList, Args, ArgNameMap,
+	{ warn_singletons_in_pragma_c_code_2(C_CodeList, ArgNames,
 		Context, SingletonVars) },
 	( { SingletonVars = [] } ->
 		[]
@@ -1631,26 +1631,28 @@ warn_singletons_in_pragma_c_code(C_Code, Args, ArgNameMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred warn_singletons_in_pragma_c_code_2(list(string), list(var), 
-	map(var, string), term__context, list(string)).
-:- mode warn_singletons_in_pragma_c_code_2(in, in, in, in, out) is det.
+:- pred warn_singletons_in_pragma_c_code_2(list(string), list(maybe(string)), 
+				term__context, list(string)).
+:- mode warn_singletons_in_pragma_c_code_2(in, in, in, out) is det.
 
-warn_singletons_in_pragma_c_code_2(_, [], _, _, []).
-warn_singletons_in_pragma_c_code_2(C_CodeList, [Arg|Args], ArgNameMap,
+warn_singletons_in_pragma_c_code_2(_, [], _, []).
+warn_singletons_in_pragma_c_code_2(C_CodeList, [Arg|Args],
 		Context, SingletonVars) :-
-	warn_singletons_in_pragma_c_code_2(C_CodeList, Args, 
-		ArgNameMap, Context, SingletonVars0),
-	map__lookup(ArgNameMap, Arg, Name),
-	(
-		( string__prefix(Name, "_")
-		; list__member(Name, C_CodeList)
+	warn_singletons_in_pragma_c_code_2(C_CodeList, Args,
+		 Context, SingletonVars0),
+	( Arg = yes(Name) ->
+		(
+			( string__prefix(Name, "_")
+			; list__member(Name, C_CodeList)
+			)
+		->
+			SingletonVars = SingletonVars0
+		;
+			SingletonVars = [Name|SingletonVars0]
 		)
-	->
-		SingletonVars = SingletonVars0
 	;
-		SingletonVars = [Name|SingletonVars0]
+		SingletonVars = SingletonVars0
 	).
-
 %-----------------------------------------------------------------------------%
 
 	% c_code_to_name_list(Code, List) is true iff List is a list of the 
@@ -1862,11 +1864,10 @@ clauses_info_add_pragma_c_code(ClausesInfo0, IsRecursive, PredId, ModeId,
 
 
 		% build the pragma_c_code
-	map__from_corresponding_lists(Args, Names, ArgNameMap),
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	HldsGoal0 = pragma_c_code(C_Code, IsRecursive, PredId, ModeId, Args,
-				ArgNameMap) - GoalInfo, 
+				Names) - GoalInfo, 
 
 		% Insert unifications with the head args.
 	insert_arg_unifications(HeadVars, TermArgs, Context, head, HldsGoal0,

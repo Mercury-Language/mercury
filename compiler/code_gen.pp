@@ -767,23 +767,27 @@ code_gen__generate_det_goal_2(unify(L, R, _U, Uni, _C), _GoalInfo, Instr) -->
 
 code_gen__generate_det_goal_2(
 		pragma_c_code(C_Code, IsRecursive, PredId, ModeId, Args,
-				ArgNameMap), GoalInfo, Instr) -->
+				ArgNames), GoalInfo, Instr) -->
 	code_gen__generate_pragma_c_code(model_det, C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNameMap, GoalInfo, Instr).
+		PredId, ModeId, Args, ArgNames, GoalInfo, Instr).
 
 %---------------------------------------------------------------------------%
 
+:- type c_arg
+	--->	c_arg(var, maybe(string)).
+
 :- pred code_gen__generate_pragma_c_code(code_model, string, c_is_recursive,
-		pred_id, proc_id, list(var), map(var, string), hlds__goal_info,
-		code_tree, code_info, code_info).
+		pred_id, proc_id, list(var), list(maybe(string)),
+		hlds__goal_info, code_tree, code_info, code_info).
 :- mode code_gen__generate_pragma_c_code(in, in, in, in, in, in, in, in, out,
 		in, out) is det.
 
 code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
-		PredId, ModeId, Args, ArgNameMap, _GoalInfo, Instr) -->
+		PredId, ModeId, Args, Names, _GoalInfo, Instr) -->
 	% First we need to get a list of input and output arguments
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
-	{ assoc_list__from_corresponding_lists(Args, ArgInfo, ArgModes) },
+	{ make_c_arg_list(Args, Names, ArgNames) },
+	{ assoc_list__from_corresponding_lists(ArgNames, ArgInfo, ArgModes) },
 	{ pragma_select_in_args(ArgModes, InArgs) },
 	{ pragma_select_out_args(ArgModes, OutArgs) },
 
@@ -839,12 +843,13 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 		% the C code might call back Mercury code which clobbers the
 		% other registers, so we need to save any live variables
 		% (other than the output args) onto the stack
-		{ set__list_to_set(OutArgs, OutArgsSet) },
+		{ get_c_arg_list_vars(OutArgs, OutArgs1) },
+		{ set__list_to_set(OutArgs1, OutArgsSet) },
 		call_gen__save_variables(OutArgsSet, SaveVarsCode)
 	),
 
-	make_pragma_decls(Args, ArgNameMap, Decls),
-	get_pragma_input_vars(InArgs, ArgNameMap, Inputs, InputVarsCode),
+	make_pragma_decls(ArgNames, Decls),
+	get_pragma_input_vars(InArgs, Inputs, InputVarsCode),
 	( { CodeModel = model_semi } ->
 		% We have to clear r1 for C code that gets inlined
 		% so that it is safe to assign to SUCCESS_INDICATOR.
@@ -888,7 +893,7 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 
 		pragma_acquire_regs(OutArgs, Regs)
 	),
-	place_pragma_output_args_in_regs(OutArgs, ArgNameMap, Regs, Outputs),
+	place_pragma_output_args_in_regs(OutArgs, Regs, Outputs),
 
 	( { IsRecursive = non_recursive } ->
 		{ Wrapped_C_Code = C_Code }
@@ -908,10 +913,37 @@ code_gen__generate_pragma_c_code(CodeModel, C_Code, IsRecursive,
 
 %---------------------------------------------------------------------------%
 
+:- pred make_c_arg_list(list(var), list(maybe(string)), list(c_arg)).
+:- mode make_c_arg_list(in, in, out) is det.
+
+make_c_arg_list(Vars, Names, ArgNames) :-
+	make_c_arg_list_2(Vars, Names, [], ArgNames0),
+	list__reverse(ArgNames0, ArgNames).
+
+:- pred make_c_arg_list_2(list(var), list(maybe(string)),
+				list(c_arg), list(c_arg)).
+:- mode make_c_arg_list_2(in, in, in, out) is det.
+
+make_c_arg_list_2([], [], ArgNames, ArgNames).
+make_c_arg_list_2([Var | Vars], [Name | Names], ArgNames0, ArgNames) :-
+	make_c_arg_list_2(Vars, Names, [c_arg(Var, Name) | ArgNames0],
+						ArgNames).
+make_c_arg_list_2([], [_|_], _, _) :-
+	error("code_gen:make_c_arg_list_2 - length mismatch").
+make_c_arg_list_2([_|_], [], _, _) :-
+	error("code_gen:make_c_arg_list_2 - length mismatch").
+
+:- pred get_c_arg_list_vars(list(c_arg)::in, list(var)::out) is det.
+
+get_c_arg_list_vars([], []).
+get_c_arg_list_vars([c_arg(Var, _) | Args], [Var | Vars1]) :-
+	get_c_arg_list_vars(Args, Vars1).
+
+
 % pragma_select_out_args returns the list of variables which are outputs for
 % a procedure
 
-:- pred pragma_select_out_args(assoc_list(var, arg_info), list(var)).
+:- pred pragma_select_out_args(assoc_list(c_arg, arg_info), list(c_arg)).
 :- mode pragma_select_out_args(in, out) is det.
 
 pragma_select_out_args([], []).
@@ -930,7 +962,7 @@ pragma_select_out_args([V - arg_info(_Loc, Mode)|Rest], Out) :-
 % pragma_select_in_args returns the list of variables which are inputs for
 % a procedure
 
-:- pred pragma_select_in_args(assoc_list(var, arg_info), list(var)).
+:- pred pragma_select_in_args(assoc_list(c_arg, arg_info), list(c_arg)).
 :- mode pragma_select_in_args(in, out) is det.
 
 pragma_select_in_args([], []).
@@ -950,21 +982,21 @@ pragma_select_in_args([V - arg_info(_Loc, Mode)|Rest], In) :-
 % data structure in the llds. It is essentially a list of pairs of type and
 % variable name, so that declarations of the form "Type Name;" can be made.
 
-:- pred make_pragma_decls(list(var), map(var, string), 
-			list(pragma_c_decl), code_info, code_info).
-:- mode make_pragma_decls(in, in, out, in, out) is det.
+:- pred make_pragma_decls(list(c_arg), list(pragma_c_decl),
+				code_info, code_info).
+:- mode make_pragma_decls(in, out, in, out) is det.
 
-make_pragma_decls([], _, []) --> [].
-make_pragma_decls([Arg|Args], ArgNameMap, Decls) -->
-	( { map__search(ArgNameMap, Arg, Name) } ->
+make_pragma_decls([], []) --> [].
+make_pragma_decls([c_arg(Arg, ArgName) | ArgNames], Decls) -->
+	( { ArgName = yes(Name) } ->
 		code_info__variable_type(Arg, Type),
 		{ Decl = pragma_c_decl(Type, Name) },
 		{ Decls = [Decl | Decls1] },
-		make_pragma_decls(Args, ArgNameMap, Decls1)
+		make_pragma_decls(ArgNames, Decls1)
 	;
 		% if the variable doesn't occur in the ArgNameMap,
 		% it can't be used, so we just ignore it
-		make_pragma_decls(Args, ArgNameMap, Decls)
+		make_pragma_decls(ArgNames, Decls)
 	).
 
 %---------------------------------------------------------------------------%
@@ -973,23 +1005,23 @@ make_pragma_decls([Arg|Args], ArgNameMap, Decls) -->
 % data structure in the llds. It is essentially a list of the input variables,
 % and the corresponding rvals assigned to those (C) variables.
 
-:- pred get_pragma_input_vars(list(var), map(var, string), list(pragma_c_input),
+:- pred get_pragma_input_vars(list(c_arg), list(pragma_c_input),
 			code_tree, code_info, code_info).
-:- mode get_pragma_input_vars(in, in, out, out, in, out) is det.
+:- mode get_pragma_input_vars(in, out, out, in, out) is det.
 
-get_pragma_input_vars([], _, [], empty) --> [].
-get_pragma_input_vars([Arg|Args], ArgNameMap, Inputs, Code) -->
-	( { map__search(ArgNameMap, Arg, Name) } ->
+get_pragma_input_vars([], [], empty) --> [].
+get_pragma_input_vars([c_arg(Arg, MaybeName) | Args], Inputs, Code) -->
+	( { MaybeName = yes(Name) } ->
 		code_info__variable_type(Arg, Type),
 		code_info__produce_variable(Arg, Code0, Rval),
 		{ Input = pragma_c_input(Name, Type, Rval) },
 		{ Inputs = [Input | Inputs1] },
 		{ Code = tree(Code0, Code1) },
-		get_pragma_input_vars(Args, ArgNameMap, Inputs1, Code1)
+		get_pragma_input_vars(Args, Inputs1, Code1)
 	;
 		% if the variable doesn't occur in the ArgNameMap,
 		% it can't be used, so we just ignore it
-		get_pragma_input_vars(Args, ArgNameMap, Inputs, Code)
+		get_pragma_input_vars(Args, Inputs, Code)
 	).
 
 %---------------------------------------------------------------------------%
@@ -997,7 +1029,7 @@ get_pragma_input_vars([Arg|Args], ArgNameMap, Inputs, Code) -->
 % pragma_acquire_regs acquires a list of registers in which to place each
 % of the given variables.
 
-:- pred pragma_acquire_regs(list(var), list(reg), code_info, code_info).
+:- pred pragma_acquire_regs(list(c_arg), list(reg), code_info, code_info).
 :- mode pragma_acquire_regs(in, out, in, out) is det.
 
 pragma_acquire_regs([], []) --> [].
@@ -1011,23 +1043,25 @@ pragma_acquire_regs([_V|Vars], [Reg|Regs]) -->
 % are pairs of names of output registers and (C) variables which hold the
 % output value.
 
-:- pred place_pragma_output_args_in_regs(list(var), map(var, string),
-			list(reg), list(pragma_c_output), code_info, code_info).
-:- mode place_pragma_output_args_in_regs(in, in, in, out, in, out) is det.
+:- pred place_pragma_output_args_in_regs(list(c_arg), list(reg),
+			list(pragma_c_output), code_info, code_info).
+:- mode place_pragma_output_args_in_regs(in, in, out, in, out) is det.
 
-place_pragma_output_args_in_regs([], _, [], []) --> [].
-place_pragma_output_args_in_regs([_X|_Xs], _, [], []) --> 
+place_pragma_output_args_in_regs([], [], []) --> [].
+place_pragma_output_args_in_regs([_X|_Xs], [], []) --> 
 	{ error("place_pragma_output_args_in_regs: list length mismatch") }.
-place_pragma_output_args_in_regs([], _, [_X|_Xs], []) -->
+place_pragma_output_args_in_regs([], [_X|_Xs], []) -->
 	{ error("place_pragma_output_args_in_regs: list length mismatch") }.
-place_pragma_output_args_in_regs([A|Args], ArgNameMap, [Reg|Regs], 
-		[O|Outputs]) -->
-	{ map__lookup(ArgNameMap, A, Name) },
-	code_info__variable_type(A, Type),
-	code_info__release_reg(Reg),
-	code_info__set_var_location(A, reg(Reg)),
-	{ O = pragma_c_output(reg(Reg), Type, Name) },
-	place_pragma_output_args_in_regs(Args, ArgNameMap, Regs, Outputs).
+place_pragma_output_args_in_regs([Arg|Args], [Reg|Regs], [O|Outputs]) -->
+	( { Arg = c_arg(A, yes(Name)) } ->
+		code_info__variable_type(A, Type),
+		code_info__release_reg(Reg),
+		code_info__set_var_location(A, reg(Reg)),
+		{ O = pragma_c_output(reg(Reg), Type, Name) },
+		place_pragma_output_args_in_regs(Args, Regs, Outputs)
+	;
+		{ error("code_gen:place_pragma_output_args_in_regs") }
+	).
 
 %---------------------------------------------------------------------------%
 

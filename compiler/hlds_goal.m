@@ -148,17 +148,22 @@
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
 			list(var),	% The (Mercury) argument variables
-			map(var, string)
-				%  A map from the (Mercury) argument
-				%  variables to the C variable names used
-				%  in the C code.  If a variable in the
-				%  argument list does not occur in this
-				%  map, it means that it is not used by
-				%  the C code.  (In particular, the
-				%  type_info variables introduced by
-				%  polymorphism.m might not occur in this
-				%  map.)
+			list(maybe(string))
+					% C variable names for each of the
+					% arguments. A no for a particular 
+					% argument means that it is not used
+					% by the C code.  (In particular, the
+					% type_info variables introduced by
+					% polymorphism.m might be represented
+					% in this way).
 		).
+
+
+	% Given the variable name field from a pragma c_code, get all the
+	% variable names.
+:- pred get_pragma_c_var_names(list(maybe(string)), list(string)).
+:- mode get_pragma_c_var_names(in, out) is det.
+
 
 	% Record whether a call should be inlined or not,
 	% and whether it is a builtin or not.
@@ -363,6 +368,26 @@
 				% (Computed by liveness.m.)
 	).
 
+
+get_pragma_c_var_names(MaybeVarNames, VarNames) :-
+	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
+	list__reverse(VarNames0, VarNames).
+
+:- pred get_pragma_c_var_names_2(list(maybe(string))::in, list(string)::in,
+					list(string)::out) is det.
+
+get_pragma_c_var_names_2([], Names, Names).
+get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
+	(
+		MaybeName = yes(Name),
+		Names1 = [Name | Names0]
+	;
+		MaybeName = no,
+		Names1 = Names0
+	),
+	get_pragma_c_var_names_2(MaybeNames, Names1, Names).
+		
+
 :- interface.
 
 :- type unify_mode	==	pair(mode, mode).
@@ -372,6 +397,7 @@
 					% of insts to a pair of new insts
 					% Each pair represents the insts
 					% of the LHS and the RHS respectively
+
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for the hlds__goal_info data structure.

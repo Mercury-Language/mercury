@@ -221,14 +221,9 @@ goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 	goal_util__rename_unify_rhs(TermR0, Must, Subn, TermR),
 	goal_util__rename_unify(Unify0, Must, Subn, Unify).
 
-goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,ArgNameMap0), Must, Subn,
-		pragma_c_code(A,B,C,D,Vars,ArgNameMap)) :-
-	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
-		% also update the arg/name map since the vars have changed
-	map__keys(ArgNameMap0, NArgs0),
-	map__values(ArgNameMap0, Names),
-	goal_util__rename_var_list(NArgs0, Must, Subn, NArgs),
-	map__from_corresponding_lists(NArgs, Names, ArgNameMap).
+goal_util__name_apart_2(pragma_c_code(A,B,C,D,Vars0,E), Must, Subn,
+		pragma_c_code(A,B,C,D,Vars,E)) :-
+	goal_util__rename_var_list(Vars0, Must, Subn, Vars).
 
 %-----------------------------------------------------------------------------%
 

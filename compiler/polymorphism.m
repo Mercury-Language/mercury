@@ -422,7 +422,7 @@ polymorphism__process_goal_2(if_then_else(Vars, A0, B0, C0, FV), GoalInfo,
 	polymorphism__process_goal(C0, C).
 
 polymorphism__process_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId,
-		ArgVars0, ArgNameMap0), GoalInfo, Goal) -->
+		ArgVars0, ArgNames0), GoalInfo, Goal) -->
 	polymorphism__process_call(PredId, ProcId, ArgVars0, 
 		ArgVars, ExtraVars, ExtraGoals),
 	%
@@ -443,31 +443,31 @@ polymorphism__process_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId,
 	{ term__vars_list(PredArgTypes, PredTypeVars0) },
 	{ list__remove_dups(PredTypeVars0, PredTypeVars) },
 	{ polymorphism__c_code_add_typeinfos(ExtraVars, PredTypeVars,
-			PredTypeVarSet, ArgNameMap0, ArgNameMap) },
+			PredTypeVarSet, ArgNames0, ArgNames) },
 
 	%
 	% plug it all back together
 	%
 	{ Call = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, ArgVars,
-			ArgNameMap) - CallGoalInfo },
+			ArgNames) - CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 :- pred polymorphism__c_code_add_typeinfos(list(var), list(tvar),
-			tvarset, map(var, string), map(var, string)).
+			tvarset, list(maybe(string)), list(maybe(string))).
 :- mode polymorphism__c_code_add_typeinfos(in, in, in, in, out) is det.
 
-polymorphism__c_code_add_typeinfos([], [], _, ArgNameMap, ArgNameMap).
-polymorphism__c_code_add_typeinfos([Var|Vars], [TVar|TVars], TypeVarSet,
-		ArgNameMap0, ArgNameMap) :-
+polymorphism__c_code_add_typeinfos([], [], _, ArgNames, ArgNames).
+polymorphism__c_code_add_typeinfos([_Var|Vars], [TVar|TVars], TypeVarSet,
+		ArgNames0, ArgNames) :-
+	polymorphism__c_code_add_typeinfos(Vars, TVars, TypeVarSet,
+		ArgNames0, ArgNames1),
 	( varset__search_name(TypeVarSet, TVar, TypeVarName) ->
 		string__append("TypeInfo_for_", TypeVarName, C_VarName),
-		map__set(ArgNameMap0, Var, C_VarName, ArgNameMap1)
+		ArgNames = [yes(C_VarName) | ArgNames1]
 	;
-		ArgNameMap1 = ArgNameMap0
-	),
-	polymorphism__c_code_add_typeinfos(Vars, TVars, TypeVarSet,
-		ArgNameMap1, ArgNameMap).
+		ArgNames = [no | ArgNames1]
+	).
 polymorphism__c_code_add_typeinfos([], [_|_], _, _, _) :-
 	error("polymorphism__c_code_add_typeinfos: length mismatch").
 polymorphism__c_code_add_typeinfos([_|_], [], _, _, _) :-
