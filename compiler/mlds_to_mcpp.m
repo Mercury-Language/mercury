@@ -102,7 +102,11 @@ generate_mcplusplus_code(MLDS) -->
 		"#include ""mercury_mcpp.h""\n",
 		"#using ""mercury_mcpp.dll""\n",
 		"#using ""mercury_il.dll""\n",
-		"#using """, ModuleNameStr, ".dll""\n",
+		% XXX This line will need to be re-enabled for high
+		% level data.  This will also require that the build
+		% rules be changed so that the mercury code dlls are
+		% always built first.
+		"// #using """, ModuleNameStr, ".dll""\n",
 
 		% XXX We have to use the mercury namespace, as
 		% llds_out still generates some of the code used in the

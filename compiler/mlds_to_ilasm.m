@@ -79,7 +79,7 @@ output_foreign_file(MLDS, ForeignLang) -->
 		pred(mlds, io__state, io__state)::out(pred(in, di, uo) is det))
 		is det.
 
-handle_foreign_lang(managed_cplusplus, "__c_code.cpp", output_mcpp_code).
+handle_foreign_lang(managed_cplusplus, "__cpp_code.cpp", output_mcpp_code).
 handle_foreign_lang(csharp, "__csharp_code.cs", output_csharp_code).
 handle_foreign_lang(c, _, _) :-
 	sorry(this_file, "language C foreign code not supported").

@@ -247,9 +247,9 @@ $(il_dates_subdir)%.il_date : %.m
 # IL to generate a DLL if we are in a non-IL grade.
 ifeq ($(findstring il,$(GRADE)),il)        
 $(os_subdir)%.dll : %.cpp
-	$(MS_CL) -CLR$(MS_CL_NOASM) -I$(MERC_C_INCL_DIR) \
-		-I$(MERC_DLL_DIR) $(ALL_MS_CLFLAGS) $< -link -noentry \
-		mscoree.lib -dll $(MS_CL_LIBS) -out:$@
+	$(MS_CL) -CLR$(MS_CL_NOASM) -I`cygpath -w $(MERC_C_INCL_DIR)` \
+		-AI`cygpath -w $(MERC_DLL_DIR)` $(ALL_MS_CLFLAGS) $< \
+		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 
 $(os_subdir)%.dll : %.il
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<

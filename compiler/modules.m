@@ -1776,7 +1776,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 	{ Module = module_imports(SourceFileName, ModuleName, ParentDeps,
 			IntDeps, ImplDeps, IndirectDeps, _InclDeps, FactDeps0,
-			_ContainsForeignCode, _Items, _Error, _Timestamps) },
+			ContainsForeignCode, Items, _Error, _Timestamps) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ module_name_to_make_var_name(ModuleName, MakeVarName) },
 	module_name_to_file_name(ModuleName, ".d", yes, DependencyFileName),
@@ -2030,8 +2030,47 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				SourceFileName, "\n",
 			"\trm -rf ", DirFileName, "\n",
 			"\t$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) ",
-				SourceFileName, "\n"
+				SourceFileName, "\n\n"
 		]),
+
+		% If we are on the IL backend and the current module
+		% contains some foreign code, generate a dependency
+		% between the dll containing the mercury code and the
+		% dll containing the foreign code.  Also generate
+		% dependencies between the foreign code dll and how to
+		% it relates to the il file (dll -> cpp -> il).
+		globals__io_get_target(Target),
+		(
+			{ Target = il },
+			{
+				ContainsForeignCode = contains_foreign_code
+			;
+				ContainsForeignCode = unknown,
+				item_list_contains_foreign_code(Items)
+			}
+		->
+			globals__io_lookup_foreign_language_option(
+					backend_foreign_language, ForeignLang),
+			{ ForeignExt = simple_foreign_language_string(
+					ForeignLang) },
+			{ ForeignCodeExt = "__" ++ ForeignExt ++ "_code." },
+			module_name_to_file_name(ModuleName,
+					ForeignCodeExt ++ ForeignExt,
+					no, ForeignFileName),
+			module_name_to_file_name(ModuleName, ".il", no,
+					IlFileName),
+			module_name_to_file_name(ModuleName, ".dll", no,
+					DllFileName),
+			module_name_to_file_name(ModuleName,
+					ForeignCodeExt ++ "dll",
+					no, ForeignDllFileName),
+			io__write_strings(DepStream, [
+				DllFileName, " : ", ForeignDllFileName, "\n",
+				ForeignDllFileName, " : ", ForeignFileName,"\n",
+				ForeignFileName, " : ", IlFileName, "\n\n"])
+		;
+			[]
+		),
 
 		module_name_to_file_name(ModuleName, ".int0", no,
 							Int0FileName),
@@ -2862,18 +2901,59 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".mods ="),
 	write_dependencies_list(Modules, "", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	globals__io_get_target(Target),
+	globals__io_lookup_foreign_language_option(
+			backend_foreign_language, ForeignLang),
+	{ ForeignExt = "." ++ simple_foreign_language_string(ForeignLang) },
+	( { Target = il } ->
+		{ ForeignModules = foreign_modules(ForeignLang,
+				Modules, DepsMap) }
+	;
+		{ ForeignModules = [] }
+	),
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".foreign ="),
+	write_dependencies_list(ForeignModules, "", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	globals__io_lookup_bool_option(assume_gmake, Gmake),
 	( { Gmake = yes } ->
 		{ string__append(MakeVarName, ".mods", ModsVarName) },
-		{ Basis = yes(ModsVarName - "") }
+		{ Basis = yes(ModsVarName - "") },
+
+		{ string__append(MakeVarName, ".foreign", ForeignVarName) },
+		{ ForeignBasis = yes(ForeignVarName - "") }
 	;
-		{ Basis = no }
+		{ Basis = no },
+		{ ForeignBasis = no }
 	),
 
-	globals__io_get_target(Target),
 	{ get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
+
+		% .foreign_cs are the source files which have had
+		% foreign code placed in them.
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".foreign_cs = "),
+	write_compact_dependencies_list(ForeignModules, "$(os_subdir)",
+					ForeignExt, ForeignBasis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+		% .foreign_os are the object files which are generated
+		% by the MC++ compiler.
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".foreign_os = "),
+	write_compact_dependencies_list(ForeignModules, "$(os_subdir)", ".obj",
+					ForeignBasis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+		% The dlls which contain the foreign_code.
+	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".foreign_dlls = "),
+	write_compact_dependencies_list(ForeignModules, "$(dlls_subdir)",
+					".dll", ForeignBasis, DepStream),
+	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".init_cs = "),
@@ -3507,7 +3587,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		CleanTargetName, " :\n",
 		"\t-rm -rf $(", MakeVarName, ".dirs)\n",
 		"\t-rm -f $(", MakeVarName, ".cs) ", InitCFileName, "\n",
-		"\t-rm -f $(", MakeVarName, ".dlls)\n",
 		"\t-rm -f $(", MakeVarName, ".all_ss) ", InitAsmFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".all_pic_ss) ",
 					InitAsmFileName, "\n",
@@ -3522,6 +3601,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".ils)\n",
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
 		"\t-rm -f $(", MakeVarName, ".errs)\n",
+		"\t-rm -f $(", MakeVarName, ".foreign_cs)\n",
+		"\t-rm -f $(", MakeVarName, ".foreign_os)\n",
 		"\t-rm -f $(", MakeVarName, ".schemas)\n"
 	]),
 
@@ -3547,6 +3628,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".trans_opts)\n",
 		"\t-rm -f $(", MakeVarName, ".ds)\n",
 		"\t-rm -f $(", MakeVarName, ".all_hs)\n",
+		"\t-rm -f $(", MakeVarName, ".dlls)\n",
+		"\t-rm -f $(", MakeVarName, ".foreign_dlls)\n",
 		"\t-rm -f $(", MakeVarName, ".rlos)\n"
 	]),
 	io__write_strings(DepStream, [
@@ -3598,6 +3681,22 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 
 modules_that_need_headers(Modules, DepsMap) =
 	list__filter(module_needs_header(DepsMap), Modules).
+
+:- func foreign_modules(foreign_language, list(module_name), deps_map)  =
+		list(module_name).
+
+foreign_modules(ForeignLang, Modules, DepsMap) = ForeignModules :-
+	P = (pred(M::in, FM::out) is semidet :-
+		Ext = "__" ++ simple_foreign_language_string(ForeignLang) ++
+				"_code",
+		module_needs_header(DepsMap, M),
+		( M = unqualified(Name),
+			FM = unqualified(Name ++ Ext)
+		; M = qualified(Module, Name),
+			FM = qualified(Module, Name ++ Ext)
+		)
+	),
+	list__filter_map(P, Modules, ForeignModules).
 
 	% Succeed iff we need to generate a C header file for the specified
 	% module, assuming we're compiling with `--target asm'.
@@ -3912,10 +4011,11 @@ init_dependencies(FileName, Error, Globals, ModuleName - Items,
 	get_fact_table_dependencies(Items, FactTableDeps),
 
 	% Figure out whether the items contain foreign code.
-	% As an optimization, we do this only if target = asm,
-	% since that is the only time we'll need that field.
+	% As an optimization, we do this only if target = asm or target = il
+	% since those are the only times we'll need that field.
+	globals__get_target(Globals, Target),
 	ContainsForeignCode =
-		(if globals__get_target(Globals, asm) then
+		(if (Target = asm ; Target = il) then
 			(if item_list_contains_foreign_code(Items) then
 				contains_foreign_code
 			else

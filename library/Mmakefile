@@ -211,44 +211,6 @@ lib_std: dlls mercury.dll
 # runtime files.
 RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
 
-MODULES_CONTAINING_C_CODE=	\
-		array 		\
-		benchmarking	\
-		builtin		\
-		char		\
-		exception	\
-		float		\
-		gc		\
-		int		\
-		io		\
-		library		\
-		math		\
-		private_builtin	\
-		sparse_bitset	\
-		std_util	\
-		store		\
-		string		\
-		table_builtin	\
-		time
-
-CPP_DLLS=$(MODULES_CONTAINING_C_CODE:%=%__c_code.dll)
-
-ALL_DLLS=$(CPP_DLLS) $(library.dlls) $(RUNTIME_DLLS) 
-
-ALL_DLLS_BASE  = $(ALL_DLLS:%.dll=%)
-EMBED_ALL_DLLS = $(foreach dll_name,$(ALL_DLLS_BASE),$(EMBED_ONE_DLL))
-EMBED_ONE_DLL  = /embed:$(dll_name).dll,$(dll_name)
-
-# For the moment we generate the library using one big DLL, as there are bugs
-# in the assembly cache installer (gacutil) that prevent us from installing
-# large numbers of assemblies.  The HACK_* versions of the variables implement
-# the big file hack.
-HACK_ALL_DLLS=$(CPP_DLLS) mercury_all.dll $(RUNTIME_DLLS)
-
-HACK_ALL_DLLS_BASE  = $(HACK_ALL_DLLS:%.dll=%)
-HACK_EMBED_ALL_DLLS = $(foreach dll_name,$(HACK_ALL_DLLS_BASE),$(EMBED_ONE_DLL))
-
-
 # Turn this on if you wish to enable .NET debugging.
 #MS_ILASMFLAGS = /debug
 
@@ -265,15 +227,9 @@ $(os_subdir)mercury_all.dll : $(library.ils)
 	rm -f $@
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $(library.ils)
 
-mercury.dll: $(HACK_ALL_DLLS) mercury_all.dll library_strong_name.sn
+mercury.dll: mercury_all.dll $(library.foreign_dlls) library_strong_name.sn
 	cp $(RUNTIME_DLLS) .
-	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll $(HACK_ALL_DLLS)
-
-
-# al is the assembly linker, it will create an assembly that references
-# all the modules (.dll files) in the library and runtime.
-#mercury.dll: $(ALL_DLLS) library_strong_name.sn
-#	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll $(ALL_DLLS) $(EMBED_ALL_DLLS) 
+	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll mercury_all.dll $(library.foreign_dlls) $(RUNTIME_DLLS) 
 
 else
 
@@ -379,8 +335,8 @@ install_init: $(STD_LIB_NAME).init install_lib_dirs
 ifneq (,$(findstring il,$(GRADE)))
 
 .PHONY: install_library
-install_library: $(library.dlls) $(CPP_DLLS) install_grade_dirs
-	cp `vpath_find $(library.dlls) $(CPP_DLLS) mercury.dll` \
+install_library: $(library.dlls) $(library.foreign_dlls) install_grade_dirs
+	cp `vpath_find $(library.dlls) $(library.foreign_dlls) mercury.dll` \
 		$(INSTALL_MERC_LIB_DIR)
 	
 else
