@@ -1,36 +1,22 @@
 -----------------------------------------------------------------------------
 
 This file lists what you need to do to get Mercury to work on an
-RS/6000 running AIX.
+RS/6000 running AIX using GNU C.
 
-1.  Use mercury-0.5.1-no-static-ground-terms.tar.gz rather than
-    using mercury-0.5.1.tar.gz.
+1.  Put the following line in the file Mmake.params
 
-2.  Apply the patch below to scripts/mc.in.
+	EXTRA_CFLAGS=-mminimal-toc
 
-3.  Run configure, make and make install (as per the INSTALL file).
+    This works around a fixed limit on the size of the TOC (Table of Contents)
+    in the RS/6000 object file format.
 
------------------------------------------------------------------------------
+2.  Change directory to the `compiler' directory, and run the command
 
-RCS file: /home/staff/zs/imp/mercury/scripts/mc.in,v
-retrieving revision 1.9
-diff -u -r1.9 mc.in
---- mc.in	1995/12/28 07:23:53	1.9
-+++ mc.in	1996/04/01 15:56:12
-@@ -30,6 +30,7 @@
- 		--conf-low-tag-bits "$LOW_TAG_BITS" \
- 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
- 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-+		--no-static-ground-terms \
- 		;;
- 	*) exec $MC -I "$INTDIR" --c-include-directory "$C_INCL" \
- 		--cc "$CC" --grade "$DEFAULT_GRADE" \
-@@ -37,5 +38,6 @@
- 		--conf-low-tag-bits "$LOW_TAG_BITS" \
- 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
- 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
-+		--no-static-ground-terms \
- 		"$@" ;;
- esac
+	sh ../scripts/rs6000_hack
+
+    This works around a fixed limit of 32k on the size of relative jumps
+    in the RS/6000 object file format.
+
+3.  Follow the instructions in the INSTALL file.
 
 -----------------------------------------------------------------------------
