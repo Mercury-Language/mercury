@@ -1437,9 +1437,10 @@ code_info__replace_lval(Lval0, Match, Repl, Result) :-
 
 code_info__replace_lval_in_rval(Rval0, Match, Repl, Result) :-
 	(
-		Rval0 = lval(Match)
+		Rval0 = lval(Lval0)
 	->
-		Result = lval(Repl)
+		code_info__replace_lval(Lval0, Match, Repl, Lval),
+		Result = lval(Lval)
 	;
 		error("code_info__replace_lval_in_rval: sanity check failed")
 	).
