@@ -11,10 +11,19 @@ codegen.nl
   routine allocated the memory.  Then we can do heap-allocation
   profiling to identify which routines use up all the bloody memory.
 
+- Generate constant compound terms at compile time rather than at runtime.
+
 mercury_to_goedel.nl
 --------------------
 
 - see comments at the start of that file
+
+typecheck.nl
+------------
+
+- fix bug with synchronization of typevarsets
+
+- improve error messages
 
 other
 -----
@@ -32,8 +41,6 @@ other
   term_int, term_variable with term__functor, term__atom, term__string,
   term__float, term__variable respectively.
 
-- finish type checking (see typecheck.nl for details)
-
 - mode anaylsis (see ~fjh/thesis/strep/ for details)
 
 - determinism analysis 
@@ -43,24 +50,13 @@ other
 - warn about multiple occurrences of variables whose name starts with
   underscore.
 
-- implicit quantification; renaming apart of different occurences
+- improve efficiency of implicit quantification
+
+- renaming apart of different occurences
   of the same variable; warning about variables which occur in
   overlapping scopes.
 
 - optimization of various sorts
-
-- handle module qualifiers properly
-
-- more work on module system & seperate compilation
-
-- better error handling
-
-- implement user-defined operators:
-	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
-	change prog_io.nl to parse this construct and call io__op
-	accordingly.
-
-- fix all the XXX's and %%%'s.
 
 - write a pass over hlds to recognize the builtin predicates,
   including arithmetic predicates such as "+" and arithmetic tests
@@ -71,4 +67,20 @@ other
   this in the paper.)
 
 - array.nl: write a predicate to resize arrays.
+
+- better error handling
+
+- fix all the `XXX's, `xxx's, `YYY's and `%%%'s.
+
+WISH LIST
+---------
+
+- handle module qualifiers properly
+
+- more work on module system & seperate compilation
+
+- implement user-defined operators:
+	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
+	change prog_io.nl to parse this construct and call io__op
+	accordingly.
 
