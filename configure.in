@@ -64,14 +64,17 @@ esac
 MERCURY_MSG("looking for an already installed Mercury compiler to bootstrap with...")
 AC_PATH_PROG(BOOTSTRAP_MC,mc)
 if test "$BOOTSTRAP_MC" != ""; then
-	AC_MSG_CHECKING(that $BOOTSTRAP_MC works)
+	AC_MSG_CHECKING(whether $BOOTSTRAP_MC works and is sufficiently recent)
 	cat > conftest.m << EOF
+		% this module contains features which didn't work in
+		% previous versions of the Mercury compiler
 		:- module conftest.
 		:- interface.
 		:- import_module io.
 		:- pred main(io__state::unique->clobbered, io__state::uo)
 			is det.
 		:- implementation.
+		:- pragma(c_code, "").
 		:- type type_containing_pred(T) ---> foo(pred(T)).
 		main --> io__write_string("Hello, world\n").
 EOF
