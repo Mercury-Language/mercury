@@ -2,7 +2,7 @@
 
 # Mmake - Mmake file for Hans Boehm's conservative garbage collector.
 
-MAIN_TARGET=libgc
+MAIN_TARGET=libgc$(PROF)
 
 MERCURY_DIR=..
 include $(MERCURY_DIR)/Mmake.common
