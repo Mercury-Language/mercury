@@ -623,7 +623,7 @@ continuation_info__generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo,
 		LldsInst = partial(Inst)
 	),
 	LiveValueType = var(Var, Name, Type, LldsInst),
-	type_util__vars(Type, TypeVars).
+	type_util__real_vars(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
 
@@ -667,7 +667,7 @@ continuation_info__build_closure_info([Var | Vars], [Type | Types],
 	Layout = closure_arg_info(Type, Inst),
 	set__singleton_set(Locations, lval(reg(r, ArgLoc))),
 	map__det_insert(VarLocs0, Var, Locations, VarLocs1),
-	type_util__vars(Type, VarTypeVars),
+	type_util__real_vars(Type, VarTypeVars),
 	set__insert_list(TypeVars0, VarTypeVars, TypeVars1),
 	continuation_info__build_closure_info(Vars, Types, ArgInfos, Layouts,
 		InstMap, VarLocs1, VarLocs, TypeVars1, TypeVars).

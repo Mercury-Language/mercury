@@ -1995,7 +1995,7 @@ proc_info_get_typeinfo_vars_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
 	( 
 		map__search(VarTypeMap, Var, Type)
 	->
-		type_util__vars(Type, TypeVars),
+		type_util__real_vars(Type, TypeVars),
 		(
 			% Optimize common case
 			TypeVars = []

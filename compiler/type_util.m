@@ -224,6 +224,13 @@
 :- pred type_util__vars(type, list(tvar)).
 :- mode type_util__vars(in, out) is det.
 
+	% Return a list of the type variables of a type,
+	% ignoring any type variables if the variable in
+	% question is a type-info
+
+:- pred type_util__real_vars(type, list(tvar)).
+:- mode type_util__real_vars(in, out) is det.
+
 	% type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
 	% TypesA subsumes (is more general than) TypesB, producing a
 	% type substitution which when applied to TypesA will give TypesB.
@@ -993,6 +1000,14 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 
 type_util__vars(Type, Tvars) :-
 	term__vars(Type, Tvars).
+
+type_util__real_vars(Type, Tvars) :-
+	( is_introduced_type_info_type(Type) ->
+		% for these types, we don't add the type parameters
+		Tvars = []
+	;
+		type_util__vars(Type, Tvars)
+	).
 
 %-----------------------------------------------------------------------------%
 

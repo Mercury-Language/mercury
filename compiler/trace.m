@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -714,7 +714,8 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 	),
 	LiveType = var(Var, Name, Type, LldsInst),
 	VarInfo = var_info(direct(Lval), LiveType),
-	type_util__vars(Type, TypeVars),
+	type_util__real_vars(Type, TypeVars),
+
 	set__insert_list(Tvars0, TypeVars, Tvars1)
 	},
 	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
