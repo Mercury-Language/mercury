@@ -44,7 +44,8 @@ ml mgnuc: final_grade_options.sh-subr
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: install_mmake install_scripts install_debugger_scripts
+install: install_mmake install_scripts \
+	install_debugger_scripts install_emacs_scripts
 
 .PHONY: install_dirs
 install_dirs:
@@ -69,7 +70,7 @@ install_scripts: $(SCRIPTS) install_dirs
 	done
 
 .PHONY: install_emacs_scripts
-install_emacs_scripts: $(EMACS_SCRIPTS) install_libdir install_dirs
+install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs
 	cp $(EMACS_SCRIPTS) $(INSTALL_ELISP_DIR)
 
 .PHONY: install_debugger_scripts
