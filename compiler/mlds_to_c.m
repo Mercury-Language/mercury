@@ -969,14 +969,9 @@ mlds_output_class(Indent, Name, Context, ClassDefn) -->
 	% not when compiling to C++
 	%
 	{ ClassDefn = class_defn(Kind, _Imports, BaseClasses, _Implements,
-		Ctors, AllMembers) },
-
-	{ Ctors = [] ->
-		true
-	;
-		unexpected(this_file,
-			"mlds_output_class: non empty constructor list")
-	},
+		Ctors, Members) },
+	
+	{ AllMembers = Ctors ++ Members },
 
 	( { Kind = mlds__enum } ->
 		{ StaticMembers = [] },
