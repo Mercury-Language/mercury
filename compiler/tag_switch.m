@@ -1042,7 +1042,9 @@ tag_switch__generate_secondary_binary_search(StagGoals, MinStag, MaxStag,
 				tree(GoalCode,
 				     SaveCode))
 		;
-			error("goallist not singleton or empty when binary search ends")
+			error("generate_secondary_binary_search: " ++
+				"goallist not singleton or empty " ++
+				"when binary search ends")
 		)
 	;
 		LowRangeEnd = (MinStag + MaxStag) // 2,
