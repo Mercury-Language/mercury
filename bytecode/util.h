@@ -4,12 +4,14 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: util.h,v 1.9 1997-04-26 05:57:14 fjh Exp $
+** $Id: util.h,v 1.10 1997-05-28 09:32:14 aet Exp $
 */
 
 
 #ifndef MB_UTIL_H
 #define	MB_UTIL_H
+
+#include	<stdio.h>	/* for fprintf */
 
 typedef int
 	MB_Bool;
@@ -44,8 +46,13 @@ typedef int
 	do { \
 		fprintf(stderr, "%s: %s = %" #fmt "\n", msg, #val, val); \
 	} while(0)
+#define	XXXdebug1(msg) \
+	do { \
+		fprintf(stderr, "%s\n", msg); \
+	} while(0)
 #else
 #define	XXXdebug(msg, fmt, val)	do {} while(0)
+#define	XXXdebug1(msg) do {} while(0)
 #endif	/* DEBUGGING */
 
 void

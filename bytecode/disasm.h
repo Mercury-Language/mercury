@@ -3,11 +3,13 @@
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: disasm.h,v 1.6 1997-04-26 05:56:52 fjh Exp $
+** $Id: disasm.h,v 1.7 1997-05-28 09:32:07 aet Exp $
 */
 
 #ifndef MB_DISASM_H
 #define	MB_DISASM_H
+
+#include	<stdio.h>	/* for FILE */
 
 
 /*
