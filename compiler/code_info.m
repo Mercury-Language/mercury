@@ -1713,7 +1713,7 @@ code_info__generate_failure_continuation([C|Cs], Code) -->
 		code_info__set_var_locations(Map0)
 	;
 		{ Cs = [_|_] },
-		{ ThisCode = node([ label(Label) - "Failure Continuation" ]) },
+		{ ThisCode = node([ label(Label) - "End of failure continuation" ]) },
 		code_info__generate_failure_cont_2(Cs, Map0, Map, RestCode),
 		code_info__set_var_locations(Map),
 		{ Code = tree(RestCode, ThisCode) }
@@ -1733,7 +1733,7 @@ code_info__generate_failure_cont_2([C0|Cs], Map0, Map, Code) -->
 		code_info__place_cont_vars(VarLvalList, Map0, Map1,
 							PlaceVarsCode),
 		{ ThisContCode = tree(
-			node([ label(Label) - "Failure Continuation" ]),
+			node([ label(Label) - "Part of the failure continuation" ]),
 			PlaceVarsCode
 		) }
 	;

@@ -226,13 +226,13 @@ garbage_out__write_cont_list([G|Gs]) -->
 	( 
 		{ Det = nondeterministic }   % We treat semi = det
         ->
-		io__write_string(",nondeterministic")
+		io__write_string(", nondeterministic")
 	;
-		io__write_string(",deterministic")
+		io__write_string(", deterministic")
 	),
-	io__write_string(","),
+	io__write_string(", "),
 	io__write_int(Num_Slots),
-	io__write_string(",["),
+	io__write_string(", ["),
 	garbage_out__write_liveinfo_list(Live_Info_List),
 	io__write_string("])"),
 	garbage_out__maybe_write_comma_newline(Gs),
@@ -254,6 +254,14 @@ garbage_out__maybe_write_comma_newline([_ | _]) --> io__write_string(",\n").
 :- mode garbage_out__maybe_write_comma(in, di, uo) is det.
 garbage_out__maybe_write_comma([]) --> { true }.
 garbage_out__maybe_write_comma([_ | _]) --> io__write_string(",").
+
+%-----------------------------------------------------------------------------%
+% Perhaps write a comma and a space 
+%-----------------------------------------------------------------------------%
+:- pred garbage_out__maybe_write_comma_space(list(T), io__state, io__state).
+:- mode garbage_out__maybe_write_comma_space(in, di, uo) is det.
+garbage_out__maybe_write_comma_space([]) --> { true }.
+garbage_out__maybe_write_comma_space([_ | _]) --> io__write_string(", ").
 
 %-----------------------------------------------------------------------------%
 % Write a continuation label (don't write anything that isn't a label).
@@ -280,9 +288,9 @@ garbage_out__write_code_addr(L) -->
 garbage_out__write_liveinfo_list([]) --> { true }.
 garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) --> 
 	garbage_out__write_liveval(L),
-	io__write_string("-"),
+	io__write_string(" - "),
 	shapes__write_shape_num(S),
-	garbage_out__maybe_write_comma(Ls),
+	garbage_out__maybe_write_comma_space(Ls),
 	garbage_out__write_liveinfo_list(Ls).
 
 %-----------------------------------------------------------------------------%
@@ -356,7 +364,7 @@ garbage_out__write_shape_table(ShapeTable - _NextNum) -->
 garbage_out__write_shapes([]) --> { true }.
 garbage_out__write_shapes([ShapeNum - Shape | Shapes]) --> 
 	shapes__write_shape_num(ShapeNum),
-	io__write_string("-"),
+	io__write_string(" - "),
 	garbage_out__write_shape(Shape),
 	garbage_out__maybe_write_comma_newline(Shapes),
 	garbage_out__write_shapes(Shapes).
@@ -377,17 +385,17 @@ garbage_out__write_shapes([ShapeNum - Shape | Shapes]) -->
 garbage_out__write_shape(quad(S1, S2, S3, S4)) -->
 	io__write_string("quad("),
 	garbage_out__write_shape_tag(S1),
-	io__write_string(","),
+	io__write_string(", "),
 	garbage_out__write_shape_tag(S2),
-	io__write_string(","),
+	io__write_string(", "),
 	garbage_out__write_shape_tag(S3),
-	io__write_string(","),
+	io__write_string(", "),
 	garbage_out__write_shape_tag(S4),
 	io__write_string(")").
 garbage_out__write_shape(abstract(Type, Shape_List)) -->
 	io__write_string("abstract("),
 	garbage_out__write_type(Type),
-	io__write_string(",["),
+	io__write_string(", ["),
 	garbage_out__write_int_list(Shape_List),
 	io__write_string("])").
 garbage_out__write_shape(polymorphic(_Type)) -->
@@ -435,7 +443,7 @@ garbage_out__write_shape_tag(complicated(Shape_List_List)) -->
 garbage_out__write_complicated([]) --> { true }.
 garbage_out__write_complicated([Simple | Complicateds]) -->
 	garbage_out__write_shape_tag(simple(Simple)),
-	garbage_out__maybe_write_comma(Complicateds),
+	garbage_out__maybe_write_comma_space(Complicateds),
 	garbage_out__write_complicated(Complicateds).
 
 
@@ -470,7 +478,7 @@ garbage_out__write_type(Type) -->
 garbage_out__write_shape_list([]) --> {true}.
 garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
 	shapes__write_shape_num(ShapeNum),
-	garbage_out__maybe_write_comma(Shape_List),
+	garbage_out__maybe_write_comma_space(Shape_List),
 	garbage_out__write_shape_list(Shape_List).
 
 %-----------------------------------------------------------------------------%
@@ -481,7 +489,7 @@ garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
 garbage_out__write_int_list([]) --> {true}.
 garbage_out__write_int_list([ShapeNum | Shape_List]) -->
 	shapes__write_shape_num(ShapeNum),
-	garbage_out__maybe_write_comma(Shape_List),
+	garbage_out__maybe_write_comma_space(Shape_List),
 	garbage_out__write_int_list(Shape_List).
 
 
@@ -509,11 +517,11 @@ garbage_out__write_abs_list([T_Id - M_SN | As]) -->
 	garbage_out__write_type_id(T_Id),
 	(
 		{ M_SN = no(Type) },
-		io__write_string("-no("),
+		io__write_string(" - no("),
 		garbage_out__write_type(Type)
 	;
 		{ M_SN = yes(S_Num) },
-		io__write_string("-yes("),
+		io__write_string(" - yes("),
 		shapes__write_shape_num(S_Num)
 	),
 	io__write_string(")"),
@@ -526,13 +534,9 @@ garbage_out__write_abs_list([T_Id - M_SN | As]) -->
 :- pred garbage_out__write_type_id(type_id, io__state, io__state).
 :- mode garbage_out__write_type_id(in, di, uo) is det.
 garbage_out__write_type_id(unqualified(TypeName) - Arity) -->
-	io__write_string(TypeName),
-	io__write_string("-"),
+	io__write_strings(["unqualified(", TypeName, ")", " - "]),
 	io__write_int(Arity).
 garbage_out__write_type_id(qualified(Module,TypeName) - Arity) -->
-	io__write_string(Module),
-	io__write_string("-"),
-	io__write_string(TypeName),
-	io__write_string("-"),
+	io__write_strings(["qualified(", Module, ", ", TypeName, ") - "]),
 	io__write_int(Arity).
 	
