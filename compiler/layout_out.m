@@ -316,7 +316,7 @@ output_layout_name_storage_type_name(proc_layout(ProcLabel, Kind),
 output_layout_name_storage_type_name(proc_layout_head_var_nums(ProcLabel),
 		_BeingDefined) -->
 	io__write_string("static const "),
-	io__write_string("MR_int_least16_t "),
+	io__write_string("MR_uint_least16_t "),
 	output_layout_name(proc_layout_head_var_nums(ProcLabel)),
 	io__write_string("[]").
 output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel),
