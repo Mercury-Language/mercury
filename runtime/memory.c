@@ -507,7 +507,11 @@ MemoryZone *create_zone(const char *name, int id, unsigned size,
 
 	base = memalign(unit, total_size);
 	if (base == NULL)
-		fatal_error("failed to allocate zone");
+	{
+		char buf[2560];
+		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
+		fatal_error(buf);
+	}
 
 #if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 	return construct_zone(name, id, base, size, offset, redsize, handler);
@@ -751,7 +755,13 @@ static bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 	    fflush(stdout);
 	}
 
-	fatal_abort(context, "\nMercury runtime: zone overflow\n", FALSE);
+	{
+		char buf[2560];
+		sprintf(buf,
+		    "\nMercury runtime: memory zone %s#%d overflowed\n",
+		    zone->name, zone->id);
+		fatal_abort(context, buf, FALSE);
+	}
     }
 
     return FALSE;
