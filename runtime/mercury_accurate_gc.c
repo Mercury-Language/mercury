@@ -419,6 +419,13 @@ MR_define_entry(mercury__garbage_collect_0_0);
     /* record that the collector is running */
     gc_running = MR_TRUE;
 
+    /*
+    ** Restore the original contents of the saved success location.
+    ** This is needed in case it was on the nondet stack; in that
+    ** case, it might be used again after backtracking.
+    */
+    *saved_success_location = saved_success;
+
     MR_save_registers();
     MR_LLDS_garbage_collect(saved_success, callee_was_model_semi,
         MR_sp, MR_maxfr, MR_curfr);
