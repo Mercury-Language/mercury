@@ -40,6 +40,7 @@
 C_INCL_DIR=${MERCURY_C_INCL_DIR=@LIBDIR@/inc}
 DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER=@CC@}
+AS=as
 
 ANSI_OPTS="-ansi"
 CHECK_OPTS="
@@ -47,12 +48,18 @@ CHECK_OPTS="
       -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 OPT_OPTS="-O2 -fomit-frame-pointer -DSPEED"
 DEBUG_OPTS="-g"
+AS_OPTS=""
 
 grade=$DEFAULT_GRADE
 verbose=false
+assemble=false
 
 while : ; do
     case "$1" in
+	--assemble)
+		assemble=true
+		shift
+		;;
 	--no-ansi)
 		ANSI_OPTS=
 		shift
@@ -163,18 +170,22 @@ case @FULLARCH@ in
 LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 				export LIBRARY_PATH
 				ARCH_OPTS="-non_shared -mno-abicalls"
+				AS_OPTS="-non_shared"
 			;;
 		esac
 		;;
 esac
 
-case $verbose in
-    true)
+case $assemble in true)
+	case $verbose in true)
+		echo $AS $AS_OPTS "$@" ;;
+	esac
+	exec $AS $AS_OPTS "$@" ;;
+esac
+
+case $verbose in true)
 	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"
-	;;
-    false)
-	;;
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@" ;;
 esac
 exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
 	$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"
