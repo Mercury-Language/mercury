@@ -203,8 +203,8 @@ A=@LIB_SUFFIX@
 empty_string=
 OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
 
-# Which makefile to use when compiling the garbage collector.
-BOEHMGC_MAKEFILE=@BOEHMGC_MAKEFILE@
+# Are we compiling using the MS C compiler?
+USING_MICROSOFT_CL_COMPILER=@USING_MICROSOFT_CL_COMPILER@
 
 #-----------------------------------------------------------------------------#
 

@@ -37,21 +37,34 @@ MMAKEFLAGS=
 #	We also need to explicitly pass `-j1' after MMAKEFLAGS,
 #	to avoid doing a parallel make, for reasons explained at the
 #	top of Makefile.
+
+ifeq ("$(USING_MICROSOFT_CL_COMPILER)", "yes")
+
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
-	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) -j1 GRADE=$(GRADE) \
-		GC_GRADE=$(GC_GRADE) \
+	nmake -f NT_MAKEFILE gc.lib; \
+	cp gc.lib libgc.lib 
+
+clean_local:
+	rm -f *.obj gc.lib libgc.$A libpar_gc.$A libpar_gc.dll
+
+else
+
+submake: force
+	MAKEFLAGS=""; export MAKEFLAGS; \
+	$(MAKE) $(MMAKEFLAGS) -j1 GRADE=$(GRADE) GC_GRADE=$(GC_GRADE) \
 		lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) \
 		$(EXT_FOR_SHARED_LIB)
-
-.PHONY: force
-force:
 
 clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
-	rm -rf Release
 	rm -f libgc.$A libgc.so libpar_gc.$A libpar_gc.dll
+
+endif
+
+.PHONY: force
+force:
 
 #-----------------------------------------------------------------------------#
 
