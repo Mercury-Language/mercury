@@ -373,6 +373,11 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		% These will be recreated in the importing module.
 		\+ set__member(PredId, TypeSpecForcePreds),
 
+		% No point exporting code which isn't very inlinable.
+		module_info_globals(ModuleInfo, Globals),
+		globals__get_target(Globals, Target),
+		\+ clauses_contain_noninlinable_foreign_code(Target, Clauses),
+
 		(
 			inlining__is_simple_clause_list(Clauses,
 				InlineThreshold + Arity),
@@ -403,6 +408,22 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		% included in the .opt file.
 		pred_info_get_goal_type(PredInfo, promise(_))
 	).
+
+	% If the clauses contains foreign code which requires an external
+	% definition, there is not much point in exporting it.
+:- pred clauses_contain_noninlinable_foreign_code(compilation_target::in,
+		list(clause)::in) is semidet.
+
+clauses_contain_noninlinable_foreign_code(Target, [C | _Cs]) :-
+	Target = il,
+	Lang = C ^ clause_lang,
+	Lang = foreign_language(ForeignLang),
+	( ForeignLang = csharp
+	; ForeignLang = managed_cplusplus
+	).
+clauses_contain_noninlinable_foreign_code(Target, [_ | Cs]) :-
+	clauses_contain_noninlinable_foreign_code(Target, Cs).
+
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
