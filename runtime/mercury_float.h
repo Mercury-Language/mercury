@@ -11,6 +11,7 @@
 
 #include "mercury_conf.h"	/* for MR_BOXED_FLOAT, MR_CONSERVATIVE_GC */
 #include "mercury_types.h"	/* for `MR_Word' */
+#include "mercury_std.h"	/* for `MR_bool' */
 
 #ifdef MR_USE_SINGLE_PREC_FLOAT
   typedef float MR_Float;
