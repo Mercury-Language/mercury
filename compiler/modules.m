@@ -1414,15 +1414,15 @@ strip_unnecessary_impl_defns(Items0, Items) :-
     is cc_multi.
 
 strip_unnecessary_impl_defns_2(Items0, Items) :-
-    some [!IntTypesMap, !ImplTypesMap] (
-        gather_type_defns(no, Items0, [], IntItems0, [], ImplItems0,
+    some [!IntTypesMap, !ImplTypesMap, !ImplItems] (
+        gather_type_defns(no, Items0, [], IntItems0, [], !:ImplItems,
             map__init, !:IntTypesMap, map__init, !:ImplTypesMap),
 
         % Work out which module imports in the implementation section of
         % the interface are required by the definitions of equivalence
         % types in the implementation.
-        get_impl_imports_required_by_eqv_types(!.IntTypesMap, !.ImplTypesMap,
-            NecessaryImplImports),
+        get_requirements_of_eqv_types(!.IntTypesMap, !.ImplTypesMap,
+            NecessaryTypeCtors, NecessaryImplImports),
 
         % If a type in the implementation section doesn't have
         % foreign type alternatives, make it abstract.
@@ -1454,21 +1454,209 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
                             is det :-
                         !:ImplItems = [Item | !.ImplItems]
                     ), Defns, !ImplItems)
-            ), !.ImplTypesMap, ImplItems0, ImplItems1),
+            ), !.ImplTypesMap, !ImplItems),
 
         IntItems = [make_pseudo_decl(interface) | IntItems0],
 
-        maybe_strip_import_decls(ImplItems1, ImplItems2),
-        strip_unnecessary_impl_imports(NecessaryImplImports, ImplItems2,
-            ImplItems3),
-
+        maybe_strip_import_decls(!ImplItems),
+        strip_unnecessary_impl_imports(NecessaryImplImports, !ImplItems),
+        strip_unnecessary_impl_types(NecessaryTypeCtors, !ImplItems),
         (
-            ImplItems3 = [],
+            !.ImplItems = [],
             Items = IntItems
         ;
-            ImplItems3 = [_ | _],
-            Items = IntItems ++ [make_pseudo_decl(implementation) | ImplItems3]
+            !.ImplItems = [_ | _],
+            standardize_impl_items(!.ImplItems, no, Unexpected,
+                [], RevRemainderItems, [], ImportItems, [], UseItems,
+                [], TypeDefnItems),
+            (
+                Unexpected = yes,
+                error("strip_unnecessary_impl_defns_2: " ++
+                    "unexpected items in implementation section")
+                % XXX If the above exception is thrown and you need a
+                % workaround you, can replace the exception with this code:
+                % Items = IntItems ++ [make_pseudo_decl(implementation)]
+                %    ++ !.ImplItems
+            ;
+                Unexpected = no,
+                list.reverse(RevRemainderItems, RemainderItems),
+                list.condense([IntItems, [make_pseudo_decl(implementation)],
+                    ImportItems, UseItems, TypeDefnItems, RemainderItems],
+                    Items)
+            )
         )
+    ).
+
+:- inst item_context(I) == bound(I - ground).
+
+:- inst one_module_spec ==  bound(module(bound([ground | bound([])]))).
+:- inst import_item     ==  bound(module_defn(ground,
+                                bound(import(one_module_spec)))).
+:- inst use_item        ==  bound(module_defn(ground,
+                                bound(use(one_module_spec)))).
+:- inst type_defn_item  ==  bound(type_defn(ground, ground, ground, ground,
+                                ground)).
+
+:- pred standardize_impl_items(item_list::in, bool::in, bool::out,
+    item_list::in, item_list::out,
+    item_list::in(list_skel(item_context(import_item))),
+    item_list::out(list_skel(item_context(import_item))),
+    item_list::in(list_skel(item_context(use_item))),
+    item_list::out(list_skel(item_context(use_item))),
+    item_list::in(list_skel(item_context(type_defn_item))),
+    item_list::out(list_skel(item_context(type_defn_item))))
+    is det.
+
+standardize_impl_items([], !Unexpected, !RevRemainderItems,
+        !ImportItems, !UseItems, !TypeDefnItems).
+standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
+        !RevRemainderItems, !ImportItems, !UseItems, !TypeDefnItems) :-
+    ItemAndContext = Item - Context,
+    ( Item = module_defn(_VarSet, ModuleDefn) ->
+        (
+            ModuleDefn = import(ImportModules),
+            ( ImportModules = module([_ImportModule]) ->
+                insert_import_module(Context, Item, !ImportItems)
+            ;
+                unexpected(this_file, "standardize_impl_items: " ++
+                    "non-singleton-module import")
+            )
+        ;
+            ModuleDefn = use(UseModules),
+            ( UseModules = module([_UseModule]) ->
+                insert_use_module(Context, Item, !UseItems)
+            ;
+                unexpected(this_file, "standardize_impl_items: " ++
+                    "non-singleton-module use")
+            )
+        ;
+            ModuleDefn = module(_),
+            !:Unexpected = yes
+        ;
+            ModuleDefn = end_module(_),
+            !:Unexpected = yes
+        ;
+            ModuleDefn = imported(_),
+            !:Unexpected = yes
+        ;
+            ModuleDefn = used(_),
+            !:Unexpected = yes
+        ;
+            ModuleDefn = abstract_imported,
+            !:Unexpected = yes
+        ;
+            ModuleDefn = opt_imported,
+            !:Unexpected = yes
+        ;
+            ModuleDefn = transitively_imported,
+            !:Unexpected = yes
+        ;
+            ModuleDefn = external(_),
+            !:Unexpected = yes
+        ;
+            ModuleDefn = export(_),
+            !:Unexpected = yes
+        ;
+            ModuleDefn = include_module(_),
+            !:RevRemainderItems = [ItemAndContext | !.RevRemainderItems]
+        ;
+            ModuleDefn = interface,
+            !:Unexpected = yes
+        ;
+            ModuleDefn = implementation,
+            !:Unexpected = yes
+        ;
+            ModuleDefn = private_interface,
+            !:Unexpected = yes
+        ;
+            ModuleDefn = version_numbers(_, _),
+            !:Unexpected = yes
+        )
+    ; Item = type_defn(_, _, _, _, _) ->
+        insert_type_defn(Context, Item, !TypeDefnItems)
+    ;
+        !:RevRemainderItems = [ItemAndContext | !.RevRemainderItems]
+    ),
+    standardize_impl_items(ItemAndContexts, !Unexpected,
+        !RevRemainderItems, !ImportItems, !UseItems, !TypeDefnItems).
+
+:- pred insert_import_module(prog_context::in, item::in,
+    item_list::in(list_skel(item_context(import_item))),
+    item_list::out(list_skel(item_context(import_item)))) is det.
+
+insert_import_module(Context, Item, [], [Item - Context]).
+insert_import_module(Context, Item, [Head | Tail], Result) :-
+    Head = HeadItem - _HeadContext,
+    % The lack of alias tracking prevents the compiler from figuring out
+    % that this predicate is only called with values of Item for which
+    % this test succeeds.
+    ( Item = module_defn(_, import(module([ModulePrime]))) ->
+        Module = ModulePrime
+    ;
+        unexpected(this_file, "insert_import_module: bad item")
+    ),
+    HeadItem = module_defn(_, import(module([HeadModule]))),
+    compare(CompareSymName, Module, HeadModule),
+    (
+        CompareSymName = (<)
+    ->
+        Result = [Item - Context, Head | Tail]
+    ;
+        insert_import_module(Context, Item, Tail, TailResult),
+        Result = [Head | TailResult]
+    ).
+
+:- pred insert_use_module(prog_context::in, item::in,
+    item_list::in(list_skel(item_context(use_item))),
+    item_list::out(list_skel(item_context(use_item)))) is det.
+
+insert_use_module(Context, Item, [], [Item - Context]).
+insert_use_module(Context, Item, [Head | Tail], Result) :-
+    Head = HeadItem - _HeadContext,
+    % The lack of alias tracking prevents the compiler from figuring out
+    % that this predicate is only called with values of Item for which
+    % this test succeeds.
+    ( Item = module_defn(_, use(module([ModulePrime]))) ->
+        Module = ModulePrime
+    ;
+        unexpected(this_file, "insert_import_module: bad item")
+    ),
+    HeadItem = module_defn(_, use(module([HeadModule]))),
+    compare(CompareSymName, Module, HeadModule),
+    (
+        CompareSymName = (<)
+    ->
+        Result = [Item - Context, Head | Tail]
+    ;
+        insert_use_module(Context, Item, Tail, TailResult),
+        Result = [Head | TailResult]
+    ).
+
+:- pred insert_type_defn(prog_context::in, item::in(type_defn_item),
+    item_list::in(list_skel(item_context(type_defn_item))),
+    item_list::out(list_skel(item_context(type_defn_item)))) is det.
+
+insert_type_defn(Context, Item, [], [Item - Context]).
+insert_type_defn(Context, Item, [Head | Tail], Result) :-
+    Head = HeadItem - _HeadContext,
+    Item = type_defn(_, SymName, Params, _, _),
+    HeadItem = type_defn(_, HeadSymName, HeadParams, _, _),
+    compare(CompareSymName, SymName, HeadSymName),
+    (
+        (
+            CompareSymName = (<)
+        ;
+            CompareSymName = (=),
+            list__length(Params, ParamsLength),
+            list__length(HeadParams, HeadParamsLength),
+            compare(Compare, ParamsLength, HeadParamsLength),
+            Compare = (<)
+        )
+    ->
+        Result = [Item - Context, Head | Tail]
+    ;
+        insert_type_defn(Context, Item, Tail, TailResult),
+        Result = [Head | TailResult]
     ).
 
 :- pred make_impl_type_abstract(type_ctor::in,
@@ -1483,13 +1671,14 @@ make_impl_type_abstract(_TypeCtor, !TypeDefnPairs) :-
         ( Item = Item0 ^ td_ctor_defn := Defn ->
             !:TypeDefnPairs = [Defn - (Item - Context)]
         ;
-            error("make_impl_type_abstract: item is not a type_defn")
+            unexpected(this_file,
+                "make_impl_type_abstract: item is not a type_defn")
         )
     ;
         true
     ).
 
-    % strip_unnecessary_impl_imports(NecssaryModules, !Items):
+    % strip_unnecessary_impl_imports(NecessaryModules, !Items):
     %
     % Remove all import_module and use_module declarations for
     % modules that are not in `NecessaryModules',
@@ -1528,94 +1717,156 @@ is_necessary_impl_import(NecessaryImports, ItemAndContext) :-
         true
     ).
 
-    % Return the set of modules that need to be imported in the implementation
-    % section of an interface file.  The required modules are those that
-    % occur on the rhs of an equivalence type.
+    % strip_unnecessary_impl_types(NecessaryTypeCtors, !Items):
     %
-    % XXX We should probably only do this for abstract equivalence types.
+    % Remove all type declarations for type constructors that are
+    % not in NecessaryTypeCtors.
     %
-:- pred get_impl_imports_required_by_eqv_types(type_defn_map::in,
-    type_defn_map::in, set(module_name)::out) is det.
+:- pred strip_unnecessary_impl_types(set(type_ctor)::in,
+    item_list::in, item_list::out) is det.
 
-get_impl_imports_required_by_eqv_types(_InterfaceTypes, ImplTypes, Modules) :-
-    %
-    % Grab all of the equivalence types that are defined in the
-    % implementation section.
-    %
-    map.foldl(accumulate_eqv_type_rhss, ImplTypes, [], Equivs),
-    %
-    % Now we have a list of types, strip off the module qualifiers.
-    %
-    get_modules_from_types(Equivs, set.init, Modules).
+strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
+    list.filter(is_necessary_impl_type(NecessaryTypeCtors), !Items).
 
-:- pred accumulate_eqv_type_rhss(type_ctor::in,
-    assoc_list(type_defn, item_and_context)::in,
-    list(type)::in, list(type)::out) is det.
+:- pred is_necessary_impl_type(set(type_ctor)::in, item_and_context::in)
+    is semidet.
 
-accumulate_eqv_type_rhss(_TypeCtor, TypeDefnsItemContexts, !Equivs) :-
-    %
-    % A type may have multiple definitions because it may be defined both
-    % as a foreign type and as a mercury type. We grab any equivalence types
-    % that are in there.
-    %
-    list.foldl(accumulate_eqv_type_rhs, TypeDefnsItemContexts, !Equivs).
-
-:- pred accumulate_eqv_type_rhs(pair(type_defn, item_and_context)::in,
-    list(type)::in, list(type)::out) is det.
-
-accumulate_eqv_type_rhs(TypeDefn - _ItemContext, !Equivs) :-
-    ( TypeDefn = eqv_type(Type) ->
-        list.cons(Type, !Equivs)
+is_necessary_impl_type(NecessaryTypeCtors, ItemAndContext) :-
+    ItemAndContext = Item - _,
+    ( Item = type_defn(_, SymName, Params, _, _) ->
+        TypeCtor = SymName - list.length(Params),
+        set.member(TypeCtor, NecessaryTypeCtors)
     ;
         true
     ).
 
-    % Given a list of types, return the set of modules that define these types.
+    % get_requirements_of_eqv_types(InterfaceTypeMap, ImplTypeMap,
+    %   NecessaryTypeCtors, Modules):
+    %
+    % Figure out the set of abstract equivalence type constructors
+    % (i.e. the types that are exported as abstract types and which are defined
+    % in the implementation section as equivalence types or as foreign types).
+    % Return in NecessaryTypeCtors this set, plus the set of private type
+    % constructors referred to by the right hand side of *any* type definition
+    % for those constructors.
+    %
+    % Given a du type definition in the implementation section, we should
+    % include it in AbsEqvRhsTypeCtors if the type constructor is abstract
+    % exported and the implementation section also contains a foreign_type
+    % definition of the type constructor.
+    %
+    % Return in Modules the set of modules that define the type constructors
+    % in NecessaryTypeCtors.
+    %
+:- pred get_requirements_of_eqv_types(type_defn_map::in, type_defn_map::in,
+    set(type_ctor)::out, set(module_name)::out) is det.
+
+get_requirements_of_eqv_types(InterfaceTypeMap, ImplTypeMap,
+        NecessaryTypeCtors, Modules) :-
+    multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
+    list.foldl(accumulate_abs_eqv_type_lhs(InterfaceTypeMap), ImplTypes,
+        set.init, AbsEqvLhsTypeCtors),
+    list.foldl(accumulate_abs_eqv_type_rhs(AbsEqvLhsTypeCtors), ImplTypes,
+        set.init, AbsEqvRhsTypes),
+    get_user_type_ctors_and_modules_from_types(AbsEqvRhsTypes,
+        set.init, AbsEqvRhsTypeCtors, set.init, Modules),
+    set.union(AbsEqvLhsTypeCtors, AbsEqvRhsTypeCtors, NecessaryTypeCtors).
+
+:- pred accumulate_abs_eqv_type_lhs(type_defn_map::in,
+    pair(type_ctor, pair(type_defn, item_and_context))::in,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+accumulate_abs_eqv_type_lhs(InterfaceTypeMap,
+        TypeCtor - (TypeDefn - _ItemAndContext), !AbsEqvLhsTypeCtors) :-
+    %
+    % A type may have multiple definitions because it may be defined both
+    % as a foreign type and as a Mercury type. We grab any equivalence types
+    % that are in there.
+    %
+    (
+        TypeDefn = eqv_type(_RhsType),
+        map__search(InterfaceTypeMap, TypeCtor, _)
+    ->
+        svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+    ;
+        TypeDefn = foreign_type(_, _, _),
+        map__search(InterfaceTypeMap, TypeCtor, _)
+    ->
+        svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
+    ;
+        true
+    ).
+
+:- pred accumulate_abs_eqv_type_rhs(set(type_ctor)::in,
+    pair(type_ctor, pair(type_defn, item_and_context))::in,
+    set(type)::in, set(type)::out) is det.
+
+accumulate_abs_eqv_type_rhs(AbsEqvLhsTypeCtors,
+        TypeCtor - (TypeDefn - _ItemAndContext), !AbsEqvRhsTypes) :-
+    (
+        TypeDefn = eqv_type(RhsType),
+        set.member(TypeCtor, AbsEqvLhsTypeCtors)
+    ->
+        svset.insert(RhsType, !AbsEqvRhsTypes)
+    ;
+        true
+    ).
+
+    % Given a list of types, return the set of user-defined type constructors
+    % occurring in those types, and the set of modules that define these type
+    % constructors.
     %
     % NOTE: This assumes that everything has been module qualified.
     %
-:- pred get_modules_from_types(list(type)::in,
+:- pred get_user_type_ctors_and_modules_from_types(set(type)::in,
+    set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_modules_from_types(Types, !Modules) :-
-    list.foldl(get_modules_from_type, Types, !Modules).
+get_user_type_ctors_and_modules_from_types(Types, !TypeCtors, !Modules) :-
+    list.foldl2(get_user_type_ctors_and_modules_from_type,
+        set__to_sorted_list(Types), !TypeCtors, !Modules).
 
-:- pred get_modules_from_type((type)::in,
+:- pred get_user_type_ctors_and_modules_from_type((type)::in,
+    set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-get_modules_from_type(Type, !Modules) :-
+get_user_type_ctors_and_modules_from_type(Type, !TypeCtors, !Modules) :-
     ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
         TypeCtor = SymName - _Arity,
-        ( sym_name_get_module_name(SymName, ModuleName) ->
-            svset.insert(ModuleName, !Modules),
-            get_modules_from_types(Args, !Modules)
+        (
+            type_ctor_is_higher_order(TypeCtor, _, _, _)
+        ->
+            % Higher-order types are builtin so just get the type_ctors and
+            % modules required by the arguments.
+            list.foldl2(get_user_type_ctors_and_modules_from_type, Args,
+                !TypeCtors, !Modules)
         ;
-            (
-                type_ctor_is_higher_order(TypeCtor, _, _, _ )
-            ->
-                % Higher-order types are builtin so just get
-                % the modules required by the arguments.
-                get_modules_from_types(Args, !Modules)
-            ;
-                type_ctor_is_tuple(TypeCtor)
-            ->
-                % Tuples are builtin so just get the modules
-                % required by the arguments.
-                get_modules_from_types(Args, !Modules)
-            ;
-                ( SymName = unqualified("int")
-                ; SymName = unqualified("float")
-                ; SymName = unqualified("string")
-                ; SymName = unqualified("character")
-                )
-            ->
-                % We don't need to import these modules
-                % as the types are builtin.
-                true
-            ;
-                unexpected(this_file,
-                    "get_modules_from_type/5: unknown type encountered")
+            type_ctor_is_tuple(TypeCtor)
+        ->
+            % Tuples are builtin so just get the type_ctors and modules
+            % required by the arguments.
+            list.foldl2(get_user_type_ctors_and_modules_from_type, Args,
+                !TypeCtors, !Modules)
+        ;
+            ( SymName = unqualified("int")
+            ; SymName = unqualified("float")
+            ; SymName = unqualified("string")
+            ; SymName = unqualified("character")
             )
+        ->
+            % We don't need to import these modules as the types are builtin.
+            true
+        ;
+            sym_name_get_module_name(SymName, ModuleName)
+        ->
+            svset.insert(TypeCtor, !TypeCtors),
+            svset.insert(ModuleName, !Modules),
+            list.foldl2(get_user_type_ctors_and_modules_from_type, Args,
+                !TypeCtors, !Modules)
+        ;
+            unexpected(this_file,
+                "get_user_type_ctors_modules_from_type/5: " ++
+                "unknown type encountered")
         )
     ;
         true
@@ -1679,7 +1930,7 @@ check_for_clauses_in_interface([], [], !IO).
 check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     ItemAndContext0 = Item0 - Context,
     (
-        Item0 = clause(_,_,_,_,_)
+        Item0 = clause(_, _, _, _, _)
     ->
         prog_out__write_context(Context, !IO),
         report_warning("Warning: clause in module interface.\n", !IO),
