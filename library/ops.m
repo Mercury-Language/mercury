@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,6 +167,7 @@ ops__op_table("\\==", after, xfx, 700).		% standard ISO Prolog (*)
 ops__op_table("^", after, xfy, 200).		% standard ISO Prolog
 ops__op_table("all", before, fxy, 950).		% Mercury/NU-Prolog extension
 ops__op_table("and", after, xfy, 720).		% NU-Prolog extension
+ops__op_table("assertion", before, fx, 1199).	% Mercury extension
 ops__op_table("div", after, yfx, 400).		% standard ISO Prolog
 ops__op_table("else", after, xfy, 1170).	% Mercury/NU-Prolog extension
 ops__op_table("end_module", before, fx, 1199).	% Mercury extension
