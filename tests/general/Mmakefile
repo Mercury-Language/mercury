@@ -67,6 +67,7 @@ MCFLAGS-mode_inf_bug = --infer-all
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), string_test needs to be linked
 # with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/mode_choice suffers from a similar problem.
 # This is probably a bug in one of the underlying tools (e.g. the Solaris
 # linker) rather than a bug in Mercury, and since it is goes away when you
 # compile with debugging information, it is very difficult to debug.
