@@ -20,7 +20,7 @@ ENDINIT
 
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
-#include "mercury_engine.h"	/* for `memdebug' */
+#include "mercury_engine.h"	/* for `MR_memdebug' */
 
 MR_Context	*MR_runqueue_head;
 MR_Context	*MR_runqueue_tail;

@@ -595,13 +595,13 @@ process_options(int argc, char **argv)
 
 		case 'd':	
 			if (streq(MR_optarg, "b"))
-				nondstackdebug = TRUE;
+				MR_nondstackdebug = TRUE;
 			else if (streq(MR_optarg, "c"))
-				calldebug    = TRUE;
+				MR_calldebug    = TRUE;
 			else if (streq(MR_optarg, "d"))
-				detaildebug  = TRUE;
+				MR_detaildebug  = TRUE;
 			else if (streq(MR_optarg, "g"))
-				gotodebug    = TRUE;
+				MR_gotodebug    = TRUE;
 			else if (streq(MR_optarg, "G"))
 #ifdef CONSERVATIVE_GC
 			GC_quiet = FALSE;
@@ -609,28 +609,30 @@ process_options(int argc, char **argv)
 			; /* ignore inapplicable option */
 #endif
 			else if (streq(MR_optarg, "s"))
-				detstackdebug   = TRUE;
+				MR_detstackdebug  = TRUE;
 			else if (streq(MR_optarg, "h"))
-				heapdebug    = TRUE;
+				MR_heapdebug    = TRUE;
 			else if (streq(MR_optarg, "f"))
-				finaldebug   = TRUE;
+				MR_finaldebug   = TRUE;
 			else if (streq(MR_optarg, "p"))
-				progdebug   = TRUE;
+				MR_progdebug    = TRUE;
 			else if (streq(MR_optarg, "m"))
-				memdebug    = TRUE;
+				MR_memdebug     = TRUE;
 			else if (streq(MR_optarg, "r"))
-				sregdebug    = TRUE;
+				MR_sregdebug    = TRUE;
 			else if (streq(MR_optarg, "t"))
-				tracedebug   = TRUE;
+				MR_tracedebug   = TRUE;
+			else if (streq(MR_optarg, "T"))
+				MR_tabledebug   = TRUE;
 			else if (streq(MR_optarg, "a")) {
-				calldebug      = TRUE;
-				nondstackdebug = TRUE;
-				detstackdebug  = TRUE;
-				heapdebug      = TRUE;
-				gotodebug      = TRUE;
-				sregdebug      = TRUE;
-				finaldebug     = TRUE;
-				tracedebug     = TRUE;
+				MR_calldebug      = TRUE;
+				MR_nondstackdebug = TRUE;
+				MR_detstackdebug  = TRUE;
+				MR_heapdebug      = TRUE;
+				MR_gotodebug      = TRUE;
+				MR_sregdebug      = TRUE;
+				MR_finaldebug     = TRUE;
+				MR_tracedebug     = TRUE;
 #ifdef CONSERVATIVE_GC
 				GC_quiet = FALSE;
 #endif
@@ -680,13 +682,13 @@ process_options(int argc, char **argv)
 		case 't':	
 			use_own_timer = TRUE;
 
-			calldebug      = FALSE;
-			nondstackdebug = FALSE;
-			detstackdebug  = FALSE;
-			heapdebug      = FALSE;
-			gotodebug      = FALSE;
-			sregdebug      = FALSE;
-			finaldebug     = FALSE;
+			MR_calldebug      = FALSE;
+			MR_nondstackdebug = FALSE;
+			MR_detstackdebug  = FALSE;
+			MR_heapdebug      = FALSE;
+			MR_gotodebug      = FALSE;
+			MR_sregdebug      = FALSE;
+			MR_finaldebug     = FALSE;
 			break;
 
 		case 'T':
@@ -802,12 +804,12 @@ mercury_runtime_main(void)
 	}
 #endif
 
-	if (detaildebug) {
+	if (MR_detaildebug) {
 		debugregs("after final call");
 	}
 
 #ifdef MR_LOWLEVEL_DEBUG
-	if (memdebug) {
+	if (MR_memdebug) {
 		printf("\n");
   #ifndef CONSERVATIVE_GC
 		printf("max heap used:      %6ld words\n",
@@ -938,10 +940,10 @@ Define_entry(do_interpreter);
 
 Define_label(global_success);
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (finaldebug) {
+	if (MR_finaldebug) {
 		save_transient_registers();
 		printregs("global succeeded");
-		if (detaildebug)
+		if (MR_detaildebug)
 			dumpnondstack();
 	}
 #endif
@@ -953,11 +955,11 @@ Define_label(global_success);
 
 Define_label(global_fail);
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (finaldebug) {
+	if (MR_finaldebug) {
 		save_transient_registers();
 		printregs("global failed");
 
-		if (detaildebug)
+		if (MR_detaildebug)
 			dumpnondstack();
 	}
 #endif
@@ -973,7 +975,7 @@ Define_label(all_done);
 	MR_hp = (Word *) pop();
 
 #ifdef MR_LOWLEVEL_DEBUG
-	if (finaldebug && detaildebug) {
+	if (MR_finaldebug && MR_detaildebug) {
 		save_transient_registers();
 		printregs("after popping...");
 	}

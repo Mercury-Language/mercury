@@ -20,7 +20,7 @@
 
 #include	"mercury_table.h"	/* for `Table' */
 #include	"mercury_prof.h"	/* for prof_output_addr_decl() */
-#include	"mercury_engine.h"	/* for `progdebug' */
+#include	"mercury_engine.h"	/* for `MR_progdebug' */
 #include	"mercury_wrapper.h"	/* for do_init_modules() */
 
 /*
@@ -100,7 +100,7 @@ MR_insert_entry_label(const char *name, Code *addr,
 #endif
 
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (progdebug) {
+	if (MR_progdebug) {
 		printf("recording entry label %s at %p\n", name, addr);
 	}
 #endif
@@ -201,7 +201,7 @@ MR_insert_internal_label(const char *name, Code *addr,
 	internal->i_name = name;
 
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (progdebug) {
+	if (MR_progdebug) {
 		printf("inserting internal label %s at %p\n", name, addr);
 	}
 #endif
@@ -219,7 +219,7 @@ MR_lookup_internal_by_addr(const Code *addr)
 	do_init_modules();
 
 #ifdef	MR_LOWLEVEL_DEBUG
-	if (progdebug) {
+	if (MR_progdebug) {
 		printf("looking for internal label at %p\n", addr);
 	}
 #endif

@@ -34,7 +34,7 @@ mkframe_msg(void)
 	printf("succ ip: "); printlabel(cursuccip);
 	printf("redo ip: "); printlabel(curredoip);
 
-	if (detaildebug) {
+	if (MR_detaildebug) {
 		dumpnondstack();
 	}
 
@@ -51,7 +51,7 @@ succeed_msg(void)
 	printf("succ fr: "); printnondstack(cursuccfr);
 	printf("succ ip: "); printlabel(cursuccip);
 
-	if (detaildebug) {
+	if (MR_detaildebug) {
 		printregs("registers at success");
 	}
 	
@@ -68,7 +68,7 @@ succeeddiscard_msg(void)
 	printf("succ fr: "); printnondstack(cursuccfr);
 	printf("succ ip: "); printlabel(cursuccip);
 
-	if (detaildebug) {
+	if (MR_detaildebug) {
 		printregs("registers at success");
 	}
 

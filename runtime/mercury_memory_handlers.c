@@ -129,12 +129,12 @@ try_munprotect(void *addr, void *context)
 
 	zone = get_used_memory_zones();
 
-	if (memdebug) {
+	if (MR_memdebug) {
 		fprintf(stderr, "caught fault at %p\n", (void *)addr);
 	}
 
 	while(zone != NULL) {
-		if (memdebug) {
+		if (MR_memdebug) {
 			fprintf(stderr, "checking %s#%d: %p - %p\n",
 				zone->name, zone->id, (void *) zone->redzone,
 				(void *) zone->top);
@@ -142,7 +142,7 @@ try_munprotect(void *addr, void *context)
 
 		if (zone->redzone <= fault_addr && fault_addr <= zone->top) {
 
-			if (memdebug) {
+			if (MR_memdebug) {
 				fprintf(stderr, "address is in %s#%d redzone\n",
 					zone->name, zone->id);
 			}
@@ -152,7 +152,7 @@ try_munprotect(void *addr, void *context)
 		zone = zone->next;
 	}
 
-	if (memdebug) {
+	if (MR_memdebug) {
 		fprintf(stderr, "address not in any redzone.\n");
 	}
 
@@ -203,7 +203,7 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
     if (new_zone <= zone->hardmax) {
 	zone_size = (char *)new_zone - (char *)zone->redzone;
 
-	if (memdebug) {
+	if (MR_memdebug) {
 	    fprintf(stderr, "trying to unprotect %s#%d from %p to %p (%x)\n",
 	    zone->name, zone->id, (void *) zone->redzone, (void *) new_zone,
 	    (int)zone_size);
@@ -220,7 +220,7 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 
 	zone->redzone = new_zone;
 
-	if (memdebug) {
+	if (MR_memdebug) {
 	    fprintf(stderr, "successful: %s#%d redzone now %p to %p\n",
 		zone->name, zone->id, (void *) zone->redzone,
 		(void *) zone->top);
@@ -232,7 +232,7 @@ default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 	return TRUE;
     } else {
 	char buf[2560];
-	if (memdebug) {
+	if (MR_memdebug) {
 	    fprintf(stderr, "can't unprotect last page of %s#%d\n",
 		zone->name, zone->id);
 	    fflush(stdout);
@@ -323,19 +323,19 @@ complex_sighandler(int sig, struct sigcontext_struct sigcontext)
 			** we're not debugging, only print them if
 			** try_munprotect fails.
 			*/
-			if (memdebug) {
+			if (MR_memdebug) {
 				fflush(stdout);
 				fprintf(stderr, "\n*** Mercury runtime: "
 					"caught segmentation violation ***\n");
 			}
 			if (try_munprotect(address, &sigcontext)) {
-				if (memdebug) {
+				if (MR_memdebug) {
 					fprintf(stderr, "returning from "
 						"signal handler\n\n");
 				}
 				return;
 			}
-			if (!memdebug) {
+			if (!MR_memdebug) {
 				fflush(stdout);
 				fprintf(stderr, "\n*** Mercury runtime: "
 					"caught segmentation violation ***\n");
@@ -470,19 +470,19 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
 	** only print them if try_munprotect fails.
 	*/
 
-	if (memdebug) {
+	if (MR_memdebug) {
 		explain_segv(info, context);
 	}
 
 	if (try_munprotect(info->si_addr, context)) {
-		if (memdebug) {
+		if (MR_memdebug) {
 			fprintf(stderr, "returning from signal handler\n\n");
 		}
 
 		return;
 	}
 
-	if (!memdebug) {
+	if (!MR_memdebug) {
 		explain_segv(info, context);
 	}
 

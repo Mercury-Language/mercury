@@ -13,6 +13,7 @@
 ** info to do this. It returns a pointer to the node found by the 
 ** insertion/lookup.
 */
-TrieNode MR_table_type(Word *type_info, Word data_value, TrieNode Table);
+
+TrieNode MR_table_type(TrieNode Table, Word *type_info, Word data_value);
 
 #endif /* not MERCURY_TABLE_ANY_H */

@@ -126,6 +126,7 @@
 %
 % The following predicates are used in code transformed by the table_gen pass
 % of the compiler. The predicates fall into three categories :
+% 
 % 1) 	Predicates to do lookups or insertions into the tables. This group
 %	also contains function to create and initialise tables. There are
 % 	currently two types of table used by the tabling system. 1) A subgoal
@@ -150,12 +151,12 @@
 % structures. Because the tables are persistent through backtracking, this
 % causes the predicates to become impure. The predicates with the semipure
 % directive only examine the trees but do not have any side effects.
-% 
+%
 
 	% This type is used as a generic table: it can in fact represent two
 	% types, either a subgoal_table or an answer_table. The subgoal_table
 	% and answer_table types are differentiated by what they have at the
-	% table nodes but not by the actual underling trie structure.
+	% table nodes but not by the actual underlying trie structure.
 :- type ml_table.
 
 	% This type is used in contexts where a node of a subgoal table is
@@ -172,8 +173,6 @@
 	% This type is used in contexts where an answer block is expected.
 :- type ml_answer_block.
 
-
-
 	% This is a dummy predicate: its pred_proc_id, but not its code, 
 	% is used. See the comment in compiler/table_gen.m for more 
 	% information. 
@@ -185,13 +184,9 @@
 :- impure pred table_setup(ml_subgoal_table_node, ml_subgoal_table_node).
 :- mode table_setup(in, out) is det.
 
-
-
 	% Return all of the answer blocks stored in the given table.
 :- semipure pred table_return_all_ans(ml_subgoal_table_node, ml_answer_block).
 :- mode table_return_all_ans(in, out) is nondet.
-
-
 
 	% Returns true if the given nondet table has returned some of its
 	% answers.
@@ -203,7 +198,6 @@
 :- semipure pred table_have_all_ans(ml_subgoal_table_node).
 :- mode table_have_all_ans(in) is semidet.
 
-
 	% Mark a table as having some answers.
 :- impure pred table_mark_have_some_ans(ml_subgoal_table_node).
 :- mode table_mark_have_some_ans(in) is det.
@@ -211,7 +205,6 @@
 	% Make a table as having all of its answers.
 :- impure pred table_mark_have_all_ans(ml_subgoal_table_node).
 :- mode table_mark_have_all_ans(in) is det.
-
 
 	% currently being evaluated (working on an answer).
 :- semipure pred table_working_on_ans(ml_subgoal_table_node).
@@ -221,7 +214,6 @@
 	% currently being evaluated (working on an answer).
 :- semipure pred table_not_working_on_ans(ml_subgoal_table_node).
 :- mode table_not_working_on_ans(in) is semidet.
-
 
 	% Mark the subgoal represented by the given table as currently 
 	% being evaluated (working on an answer).
@@ -233,13 +225,9 @@
 :- impure pred table_mark_done_working(ml_subgoal_table_node).
 :- mode table_mark_done_working(in) is det.
 	
-
-
 	% Report an error message about the current subgoal looping. 
 :- pred table_loopcheck_error(string).
 :- mode table_loopcheck_error(in) is erroneous.
-
-
 
 %
 % The following table_lookup_insert... predicates lookup or insert the second
@@ -275,12 +263,10 @@
 :- impure pred table_lookup_insert_poly(ml_table, T, ml_table).
 :- mode table_lookup_insert_poly(in, in, out) is det.
 
-
 	% Return true if the subgoal represented by the given table has an
 	% answer. NOTE : this is only used for det and semidet procedures.
 :- semipure pred table_have_ans(ml_subgoal_table_node).
 :- mode table_have_ans(in) is semidet. 
-
 
 	% Save the fact the the subgoal has succeeded in the given table.
 :- impure pred table_mark_as_succeeded(ml_subgoal_table_node).
@@ -289,7 +275,6 @@
 	% Save the fact the the subgoal has failed in the given table.
 :- impure pred table_mark_as_failed(ml_subgoal_table_node).
 :- mode table_mark_as_failed(in) is det.
-
 
 	% Return true if the subgoal represented by the given table has a
 	% true answer. NOTE : this is only used for det and semidet 
@@ -301,7 +286,6 @@
 	% failed. NOTE : this is only used for semidet procedures.
 :- semipure pred table_has_failed(ml_subgoal_table_node).
 :- mode table_has_failed(in) is semidet.
-
 
 	% Create an answer block with the given number of slots and add it
 	% to the given table.
@@ -338,7 +322,6 @@
 :- impure pred table_save_any_ans(ml_answer_block, int, T).
 :- mode table_save_any_ans(in, in, in) is det.
 
-
 	% Restore an integer answer from the given answer block at the 
 	% given offset. 
 :- semipure pred table_restore_int_ans(ml_answer_block, int, int).
@@ -363,7 +346,6 @@
 	% given offset.
 :- semipure pred table_restore_any_ans(ml_answer_block, int, T).
 :- mode table_restore_any_ans(in, in, out) is det.
-
 
 	% Return the table of answers already return to the given nondet
 	% table. 
@@ -393,6 +375,21 @@
 	% to them.
 :- impure pred table_resume(ml_subgoal_table_node).
 :- mode table_resume(in) is det. 
+
+	% These equivalences should be local to private_builtin. However,
+	% at the moment table_gen.m assumes that it can use a single variable
+	% sometimes as an ml_table and other times as an ml_subgoal_table_node
+	% (e.g. by giving the output of table_lookup_insert_int as input to
+	% table_have_all_ans). The proper fix would be for table_gen.m to
+	% use additional variables and insert unsafe casts. However, this
+	% would require significant work for no real gain, so for now
+	% we fix the problem by exposing the equivalences to code generated
+	% by table_gen.m.
+:- type ml_table == c_pointer.
+:- type ml_subgoal_table_node == c_pointer.
+:- type ml_answer_table_node == c_pointer.
+:- type ml_answer_slot == c_pointer.
+:- type ml_answer_block == c_pointer.
 
 %-----------------------------------------------------------------------------%
 
@@ -515,12 +512,6 @@ compare_error :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type ml_table == c_pointer.
-:- type ml_subgoal_table_node == c_pointer.
-:- type ml_answer_table_node == c_pointer.
-:- type ml_answer_slot == c_pointer.
-:- type ml_answer_block == c_pointer.
-
 :- pragma c_header_code("
 
 #include ""mercury_deep_copy.h""
@@ -557,45 +548,44 @@ compare_error :-
 	*((Word*) T) = ML_UNINITIALIZED;
 ").
 
-
 table_loopcheck_error(Message) :-
 	error(Message).
 
-
 :- pragma c_code(table_lookup_insert_int(T0::in, I::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_INT((Word**)T0, I);
+	MR_DEBUG_NEW_TABLE_INT(T, T0, I);
 ").
 
 :- pragma c_code(table_lookup_insert_char(T0::in, C::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_CHAR((Word **) T0, C);
+	MR_DEBUG_NEW_TABLE_CHAR(T, T0, C);
 ").
 
 :- pragma c_code(table_lookup_insert_string(T0::in, S::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_STRING((Word **) T0, S);
+	MR_DEBUG_NEW_TABLE_STRING(T, T0, S);
 ").
 
 :- pragma c_code(table_lookup_insert_float(T0::in, F::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_FLOAT((Word **) T0, F);
+	MR_DEBUG_NEW_TABLE_FLOAT(T, T0, F);
 ").
 
 :- pragma c_code(table_lookup_insert_enum(T0::in, R::in, V::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_ENUM((Word **) T0, R, V);
+	MR_DEBUG_NEW_TABLE_ENUM(T, T0, R, V);
 ").
 
 :- pragma c_code(table_lookup_insert_user(T0::in, V::in, T::out), 
 		will_not_call_mercury, "
-	T = (Word) MR_TABLE_ANY((Word **) T0, TypeInfo_for_T, V);
+	MR_DEBUG_NEW_TABLE_ANY(T, T0, TypeInfo_for_T, V);
 ").
 
 :- pragma c_code(table_lookup_insert_poly(T0::in, V::in, T::out), 
 		will_not_call_mercury, "
-	Word T1 = (Word) MR_TABLE_TYPE_INFO((Word **) T0, TypeInfo_for_T);
-	T = (Word) MR_TABLE_ANY((Word **) T1, TypeInfo_for_T, V);
+	Word T1;
+	MR_DEBUG_NEW_TABLE_TYPEINFO(T1, T0, TypeInfo_for_T);
+	MR_DEBUG_NEW_TABLE_ANY(T, T1, TypeInfo_for_T, V);
 ").
 
 :- pragma c_code(table_have_ans(T::in), will_not_call_mercury, "
@@ -673,7 +663,6 @@ extern MR_STATIC_CODE_CONST struct
 	*((Word*) T) = ML_FAILED;
 ").
 
-
 :- pragma c_code(table_restore_int_ans(T::in, Offset::in, I::out), 
 		will_not_call_mercury, "
 	I = (Integer) MR_TABLE_GET_ANSWER(Offset, T);
@@ -698,7 +687,6 @@ extern MR_STATIC_CODE_CONST struct
 		will_not_call_mercury, "
 	V = (Word) MR_TABLE_GET_ANSWER(Offset, T);
 ").
-
 
 :- pragma c_header_code("
 
@@ -767,7 +755,6 @@ typedef struct {
 #define NON_TABLE(T)  (*(NondetTable **)T)
 ").
 
-
 :- pragma c_code(table_setup(T0::in, T::out), will_not_call_mercury, "
 	/* Init the table if this is the first time me see it */
 	if (NON_TABLE(T0) == NULL) {
@@ -787,7 +774,6 @@ typedef struct {
 	}
 	T = T0;
 ").
-
 
 table_return_all_ans(T, A) :-
 	semipure table_return_all_ans_list(T, AnsList),
@@ -827,8 +813,6 @@ table_return_all_ans(T, A) :-
 	SUCCESS_INDICATOR = (*((Word*) T) == ML_ANS_NOT_RET);
 ").
 
-
-
 :- pragma c_code(table_mark_have_all_ans(T::in), will_not_call_mercury, "
 	NON_TABLE(T)->status = have_all_ans; 
 ").
@@ -840,7 +824,6 @@ table_return_all_ans(T, A) :-
 :- pragma c_code(table_mark_as_returned(T::in), will_not_call_mercury, "
 	*((Word *) T) = ML_ANS_RET;
 ").
-
 
 :- external(table_suspend/2).
 :- external(table_resume/1).
@@ -929,7 +912,6 @@ typedef struct {
 	Word ans_list;
 	AnswerListNode *ansNode;
 } ResumeStackNode;
-
 
 Integer ML_resumption_sp = -1;
 Word ML_resumption_stack_size = 4;	/* Half the initial size of 
@@ -1024,7 +1006,6 @@ Define_entry(mercury__table_resume_1_0);
 			list_is_empty(NON_TABLE(r1)->suspend_list)) 
 		proceed(); 
 	
-
 	/* Save the current state. */	
 	ML_RESUME_PUSH();
 	ML_RESUME_VAR->table = NON_TABLE(r1);
@@ -1087,14 +1068,12 @@ Define_label(mercury__table_resume_1_0_SolutionsListLoop);
 	ML_RESUME_VAR->ansNode = (AnswerListNode *)list_head(
 		ML_RESUME_VAR->ans_list);
 
-
 	/* 
 	** Restore the state of the suspended node and return the answer 
 	** through the redoip we saved when the node was originally 
 	** suspended 
 	*/ 
 	
-								
 	table_copy_mem(ML_RESUME_VAR->table->non_stack_bottom, 
 		ML_RESUME_VAR->suspend_node->non_stack_block,
 		ML_RESUME_VAR->suspend_node->non_stack_block_size);
@@ -1146,7 +1125,6 @@ Define_label(mercury__table_resume_1_0_AnsListLoopDone1);
 	else 
 		ML_RESUME_VAR->changed = 1;
 	
-
 	ML_RESUME_VAR->suspend_node->last_ret_ans =
 		 &ML_RESUME_VAR->ans_list;
 
@@ -1217,7 +1195,6 @@ void sys_init_table_resume_module(void) {
 
 	Slot = (Word) &n->ans;
 ").
-
 
 :- end_module private_builtin.
 

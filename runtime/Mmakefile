@@ -121,11 +121,11 @@ CFILES		= 	\
 			mercury_signal.c	\
 			mercury_stack_trace.c	\
 			mercury_table.c		\
-			mercury_thread.c	\
 			mercury_table_any.c	\
 			mercury_table_enum.c	\
 			mercury_table_builtins.c \
 			mercury_table_type_info.c \
+			mercury_thread.c	\
 			mercury_timing.c	\
 			mercury_trace.c		\
 			mercury_trace_base.c	\

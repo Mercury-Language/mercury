@@ -12,6 +12,7 @@
 **	table of size Range. The return value is a pointer to the table
 ** 	node found by the lookup/insert. 
 */
-TrieNode MR_int_index_lookup_or_add(TrieNode, Integer, Integer);
+
+TrieNode MR_int_index_lookup_or_add(TrieNode table, Integer range, Integer key);
 
 #endif /* not MERCURY_TABLE_ENUM_H */
