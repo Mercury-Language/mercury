@@ -1087,9 +1087,22 @@ output_defns(Indent, ModuleName, CtorData, Defns) -->
 output_defn(Indent, ModuleName, CtorData, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
 	indent_line(Context, Indent),
-	output_decl_flags(Flags, Name),
-	output_defn_body(Indent, qual(ModuleName, Name), CtorData, Context,
-			DefnBody).
+	( { DefnBody = mlds__function(_, _, external, _) } ->
+		% This is just a function declaration, with no body.
+		% Java doesn't support separate declarations and definitions,
+		% so just output the declaration as a comment.
+		% (Note that the actual definition of an external procedure
+		% must be given in `pragma java_code' in the same module.)
+		io__write_string("/* external:\n"),
+		output_decl_flags(Flags, Name),
+		output_defn_body(Indent, qual(ModuleName, Name), CtorData,
+			Context, DefnBody),
+		io__write_string("*/\n")
+	;
+		output_decl_flags(Flags, Name),
+		output_defn_body(Indent, qual(ModuleName, Name), CtorData,
+			Context, DefnBody)
+	).
 
 :- pred output_defn_body(indent, mlds__qualified_entity_name, ctor_data,
 		mlds__context, mlds__entity_defn, io__state, io__state).
@@ -1465,9 +1478,9 @@ output_pred_proc_id(proc(PredId, ProcId)) -->
 
 output_func(Indent, Name, CtorData, Context, Signature, MaybeBody)
 		-->
-	output_func_decl(Indent, Name, CtorData, Context, Signature),
 	(
 		{ MaybeBody = defined_here(Body) },
+		output_func_decl(Indent, Name, CtorData, Context, Signature),
 		io__write_string("\n"),
 		indent_line(Context, Indent),
 		io__write_string("{\n"),
@@ -1476,17 +1489,7 @@ output_func(Indent, Name, CtorData, Context, Signature, MaybeBody)
 		indent_line(Context, Indent),
 		io__write_string("}\n")	% end the function
 	;
-		{ MaybeBody = external },
-		% Java requires that all function definitions have a body.
-		% So for each external function "Foo", we emit a body
-		% which is just a call to "extern_Foo" with the same
-		% parameters.
-		io__write_string("\n"),
-		indent_line(Context, Indent),
-		io__write_string("{\n"),
-		output_extern_call(Indent + 1, Name, Context, Signature),
-		indent_line(Context, Indent),
-		io__write_string("}\n")	% end the function
+		{ MaybeBody = external }
 	).
 
 :- pred output_func_decl(indent, qualified_entity_name, ctor_data,
@@ -1539,55 +1542,6 @@ output_param(Indent, ModuleName, Context, Arg) -->
 	indent_line(Context, Indent),
 	output_type(Type),
 	io__write_char(' '),
-	output_fully_qualified_name(qual(ModuleName, Name)).
-
-%-----------------------------------------------------------------------------%
-
-	% Java requires that all function declarations have a body.
-	% So for each function "Foo" which is declared as "external",
-	% we emit a body which is just a call to "extern_Foo" with the same
-	% parameters.
-
-:- pred output_extern_call(indent, qualified_entity_name,
-		mlds__context, func_params, io__state, io__state).
-:- mode output_extern_call(in, in, in, in, di, uo) is det.
-
-output_extern_call(Indent, QualifiedName, Context, Signature) -->
-	{ Signature = mlds__func_params(Parameters, RetTypes) },
-	{ QualifiedName = qual(ModuleName, Name) },
-	indent_line(Context, Indent),
-	( { RetTypes \= [] } ->
-		io__write_string("return ")
-	;
-		[]
-	),
-	io__write_string("extern_"),
-	output_name(Name),
-	output_extern_call_args(Indent, ModuleName, Context, Parameters),
-	io__write_string(";\n").
-
-:- pred output_extern_call_args(indent, mlds_module_name, mlds__context,
-		mlds__arguments, io__state, io__state).
-:- mode output_extern_call_args(in, in, in, in, di, uo) is det.
-
-output_extern_call_args(Indent, ModuleName, Context, Parameters) -->
-	io__write_char('('),
-	( { Parameters = [] } ->
-		[]
-	;
-		io__nl,
-		io__write_list(Parameters, ",\n",
-			output_extern_call_arg(Indent + 1, ModuleName, Context))
-	),
-	io__write_char(')').
-
-:- pred output_extern_call_arg(indent, mlds_module_name, mlds__context,
-		mlds__argument, io__state, io__state).
-:- mode output_extern_call_arg(in, in, in, in, di, uo) is det.
-
-output_extern_call_arg(Indent, ModuleName, Context, Arg) -->
-	{ Arg = mlds__argument(Name, _Type, _GC_TraceCode) },
-	indent_line(Context, Indent),
 	output_fully_qualified_name(qual(ModuleName, Name)).
 
 %-----------------------------------------------------------------------------%
@@ -1719,7 +1673,7 @@ output_data_name(common(Num)) -->
 :- pred output_mlds_var_name(mlds__var_name, io__state, io__state).
 :- mode output_mlds_var_name(in, di, uo) is det.
 output_mlds_var_name(var_name(Name, no)) -->
-	output_mangled_name(Name).
+	output_valid_mangled_name(Name).
 output_mlds_var_name(var_name(Name, yes(Num))) -->
 	output_mangled_name(string__format("%s_%d", [s(Name), i(Num)])).
 
@@ -1759,9 +1713,18 @@ output_type(mercury_type(Type, TypeCategory, _)) -->
 		output_mercury_type(Type, TypeCategory)
 	).
 
-output_type(mercury_array_type(MLDSType)) -->
-	output_type(MLDSType),
-	io__write_string("[]").
+output_type(mercury_array_type(ElementType)) -->
+	( { ElementType = mlds__mercury_type(_, polymorphic_type, _) } ->
+		% We can't use `java.lang.Object []', since we want
+		% a generic type that is capable of holding any kind
+		% of array, including e.g. `int []'.
+		% Java doesn't have any equivalent of .NET's System.Array
+		% class, so we just use the universal base `java.lang.Object'.
+		io__write_string("java.lang.Object")
+	;
+		output_type(ElementType),
+		io__write_string("[]")
+	).
 output_type(mlds__native_int_type)   --> io__write_string("int").
 output_type(mlds__native_float_type) --> io__write_string("double").
 output_type(mlds__native_bool_type) --> io__write_string("boolean").
@@ -2809,7 +2772,7 @@ output_lval(field(_MaybeTag, PtrRval, named_field(FieldName, CtorType),
 		io__write_string(").")
 	),
 	{ FieldName = qual(_, UnqualFieldName) },
-	output_mangled_name(UnqualFieldName).    % the field name
+	output_valid_mangled_name(UnqualFieldName).    % the field name
 
 output_lval(mem_ref(Rval, _Type)) -->
 	output_bracketed_rval(Rval).
@@ -2821,6 +2784,13 @@ output_lval(var(qual(_ModuleName, Name), _VarType)) -->
 :- mode output_mangled_name(in, di, uo) is det.
 
 output_mangled_name(Name) -->
+	{ MangledName = name_mangle(Name) },
+	io__write_string(MangledName).
+
+:- pred output_valid_mangled_name(string, io__state, io__state).
+:- mode output_valid_mangled_name(in, di, uo) is det.
+
+output_valid_mangled_name(Name) -->
 	{ MangledName = name_mangle(Name) },
 	{ JavaSafeName = valid_symbol_name(MangledName) },
 	io__write_string(JavaSafeName).
