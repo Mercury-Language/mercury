@@ -44,8 +44,8 @@
 		% structures and the counter for ensuring the uniqueness
 		% of cell numbers.
 
-:- pred generate_proc_code(proc_info::in, proc_id::in, pred_id::in,
-	module_info::in, globals::in,
+:- pred generate_proc_code(pred_info::in, proc_info::in,
+	proc_id::in, pred_id::in, module_info::in, globals::in,
 	continuation_info::in, continuation_info::out, int::in, int::out,
 	c_procedure::out) is det.
 
@@ -144,8 +144,8 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 		Procs0, Procs) :-
 	pred_info_procedures(PredInfo, ProcInfos),
 	map__lookup(ProcInfos, ProcId, ProcInfo),
-	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0, Globals,
-		ContInfo0, ContInfo1, CellCount0, CellCount1, Proc),
+	generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
+		Globals, ContInfo0, ContInfo1, CellCount0, CellCount1, Proc),
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
 		Globals, ContInfo1, ContInfo, CellCount1, CellCount,
 		[Proc | Procs0], Procs).
@@ -169,7 +169,7 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 
 %---------------------------------------------------------------------------%
 
-generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
+generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		ContInfo0, ContInfo, CellCount0, CellCount, Proc) :-
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
@@ -186,8 +186,8 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		MaybeFollowVars = no,
 		map__init(FollowVars)
 	),
-	globals__lookup_bool_option(Globals, basic_stack_layout,
-		BasicStackLayout),
+	continuation_info__basic_stack_layout_for_proc(PredInfo, Globals,
+		BasicStackLayout, ForceProcId),
 	( BasicStackLayout = yes ->
 		SaveSuccip = yes
 	;
@@ -236,7 +236,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		continuation_info__add_proc_info(proc(PredId, ProcId),
 			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
 			MaybeTraceCallLabel, MaybeFromFullSlot,
-			LayoutInfo, ContInfo0, ContInfo)
+			ForceProcId, LayoutInfo, ContInfo0, ContInfo)
 	;
 		ContInfo = ContInfo0
 	),

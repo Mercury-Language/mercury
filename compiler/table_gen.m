@@ -26,6 +26,9 @@
 % the semantics behind the transformation. Currently only SLGd is 
 % implemented. 
 %
+% XXX the current implementation of minimal_model tabling is buggy;
+% e.g. it fails for tests/tabling/coup.m.
+%
 % Example of transformation for semidet minimal_model :
 %
 %	Given the following code for left recursive transitive closure :

@@ -198,13 +198,7 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	(
-		(
-			pred_info_is_exported(PredInfo)
-		;
-			pred_info_is_pseudo_exported(PredInfo),
-			% only the (in, in) mode of a unification is exported
-			hlds_pred__in_in_unification_proc_id(ProcId)
-		)
+		procedure_is_exported(PredInfo, ProcId)
 	->
 		(
 			Immed = no,

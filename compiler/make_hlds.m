@@ -467,6 +467,8 @@ module_defn_update_import_status(interface,
 		item_status(exported, may_be_unqualified)).
 module_defn_update_import_status(implementation,
 		item_status(local, may_be_unqualified)).
+module_defn_update_import_status(private_interface,
+		item_status(exported_to_submodules, may_be_unqualified)).
 module_defn_update_import_status(imported, 
 		item_status(imported, may_be_unqualified)).
 module_defn_update_import_status(used, 
@@ -1870,7 +1872,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 	(
 		{ MaybeDet = no }
 	->
-		( { pred_info_is_exported(PredInfo0) } ->
+		{ pred_info_import_status(PredInfo0, ImportStatus) },
+		( { status_is_exported(ImportStatus, yes) } ->
 			unspecified_det_for_exported(PredName, Arity,
 				PredOrFunc, MContext)
 		;

@@ -95,6 +95,7 @@
 		;	trace_return
 		;	trace_redo
 		;	trace_optimized
+		;	stack_trace_higher_order
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -153,6 +154,7 @@
 		;	unboxed_float
 		;	sync_term_size % in words
 		;	type_layout
+		;	max_jump_table_size
 	% Options for internal use only
 	% (the values of these options are implied by the
 	% settings of other options)
@@ -385,6 +387,7 @@ option_defaults_2(aux_output_option, [
 	trace_return		-	bool(yes),
 	trace_redo		-	bool(yes),
 	trace_optimized		-	bool(no),
+	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -451,6 +454,8 @@ option_defaults_2(compilation_model_option, [
 					% of writing) - will usually be over-
 					% ridden by a value from configure.
 	type_layout		-	bool(yes),
+	max_jump_table_size	-	int(0),
+					% 0 indicates any size.
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -721,6 +726,7 @@ long_option("trace-return",		trace_return).
 long_option("trace-redo",		trace_redo).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -776,6 +782,7 @@ long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("args",			args).
 long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
+long_option("max-jump-table-size",	max_jump_table_size).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
@@ -1410,6 +1417,10 @@ options_help_aux_output -->
 		"\tDo not generate code to trace REDO events.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
+		"--stack-trace-higher-order",
+		"\tEnable stack traces through predicates and functions with",
+		"\thigher-order arguments, even if stack tracing is not",
+		"\tsupported in general.",
 		"--generate-bytecode",
 		"\tOutput a bytecode form of the module for use",
 		"\tby an experimental debugger.",
@@ -1644,7 +1655,13 @@ your program compiled with different options.
 		"\tDon't output base_type_layout structures or references",
 		"\tto them. (The C code also needs to be compiled with",
 		"\t`-DNO_TYPE_LAYOUT').",
-	
+
+		"--max-jump-table-size",
+		"\tThe maximum number of entries a jump table can have.",
+		"\tThe special value 0 indicates the table size is unlimited.",
+		"\tThis option can be useful to avoid exceeding fixed limits",
+		"\timposed by some C compilers.\n",
+
 		% This is a developer only option.
 %		"--basic-stack-layout",
 %		"(This option is not for general use.)",

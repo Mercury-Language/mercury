@@ -548,6 +548,14 @@
 	;	interface
 	;	implementation
 
+	;	private_interface
+		% This is used internally by the compiler,
+		% to identify items which originally
+		% came from an implementation section
+		% for a module that contains sub-modules;
+		% such items need to be exported to the
+		% sub-modules.
+
 	;	imported
 		% This is used internally by the compiler,
 		% to identify declarations which originally

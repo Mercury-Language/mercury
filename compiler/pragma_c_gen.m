@@ -531,7 +531,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		StructName) },
 	{ SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS") },
 	{ string__format("\tLOCALS = (struct %s *) (
-		(char *) (curfr - MR_ORDINARY_SLOTS - NONDET_FIXED_SIZE)
+		(char *) (curfr - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
 		- sizeof(struct %s));\n",
 		[s(StructName), s(StructName)],
 		InitSaveStruct) },

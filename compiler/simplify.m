@@ -225,29 +225,48 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		simplify_info_set_varset(Info1, VarSet, Info2),
 		simplify_info_set_var_types(Info2, VarTypes, Info3),
 
-		simplify_info_get_module_info(Info3, ModuleInfo1),
+		simplify_info_get_module_info(Info3, ModuleInfo3),
 		simplify_info_get_inst_table(Info3, InstTable0),
 		simplify_info_get_det_info(Info3, DetInfo0),
 		det_get_proc_info(DetInfo0, ProcInfo),
 		proc_info_headvars(ProcInfo, ArgVars),
-		proc_info_arglives(ProcInfo, ModuleInfo1, ArgLives),
+		proc_info_arglives(ProcInfo, ModuleInfo3, ArgLives),
 		recompute_instmap_delta(ArgVars, ArgLives, VarTypes, Goal2,
-			Goal3, InstMap0, InstTable0, InstTable, _, ModuleInfo1,
-			ModuleInfo),
-		simplify_info_set_module_info(Info3, ModuleInfo, Info4),
-		simplify_info_set_inst_table(Info4, InstTable, Info)
+			Goal3, InstMap0, InstTable0, InstTable, _, ModuleInfo3,
+			ModuleInfo4),
+		simplify_info_set_module_info(Info3, ModuleInfo4, Info4),
+		simplify_info_set_inst_table(Info4, InstTable, Info5)
 	;
 		Goal3 = Goal1,
-		Info = Info1
+		Info5 = Info1
 	),
-	( simplify_info_rerun_det(Info) ->
+	( simplify_info_rerun_det(Info5) ->
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_determinism(GoalInfo0, Det),
 		det_get_soln_context(Det, SolnContext),
+
+		% det_infer_goal looks up the proc_info in the module_info
+		% for the vartypes, so we'd better stick them back in the
+		% module_info.
+		simplify_info_get_module_info(Info5, ModuleInfo5),
+		simplify_info_get_varset(Info5, VarSet4),
+		simplify_info_get_var_types(Info5, VarTypes4),
+		simplify_info_get_det_info(Info5, DetInfo4),
+		det_info_get_pred_id(DetInfo4, PredId),
+		det_info_get_proc_id(DetInfo4, ProcId),
+		module_info_pred_proc_info(ModuleInfo5, PredId, ProcId,
+			PredInfo, PredProcInfo0),
+		proc_info_set_vartypes(PredProcInfo0, VarTypes4, PredProcInfo1),
+		proc_info_set_varset(PredProcInfo1, VarSet4, PredProcInfo),
+		module_info_set_pred_proc_info(ModuleInfo5, PredId, ProcId,
+			PredInfo, PredProcInfo, ModuleInfo6),
+		simplify_info_set_module_info(Info5, ModuleInfo6, Info),
+
 		simplify_info_get_det_info(Info, DetInfo),
 		det_infer_goal(Goal3, InstMap0, SolnContext,
 			DetInfo, Goal, _, _)
 	;
+		Info = Info5,
 		Goal = Goal3
 	).
 

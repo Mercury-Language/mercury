@@ -106,10 +106,12 @@ value_number_main(Instrs0, Instrs) -->
 	% Our caller will break the code sequence at these labels.
 	%
 	% Mkframe operations also change curfr, and therefore get the
-	% same treatment. We also apply this treatment to assignments
-	% to the control slots in nondet stack frames, since otherwise
-	% a bug in the rest of value numbering may cause them to be
-	% improperly deleted.
+	% same treatment. We also apply this treatment to (1) assignments to
+	% the control slots in nondet stack frames, since otherwise a bug
+	% in the rest of value numbering may cause them to be improperly
+	% deleted, and (b) uses of those control slots in the form of
+	% branches to do_redo and do_fail, since otherwise assignments
+	% to stack variables may be moved across them.
 
 :- pred value_number__prepare_for_vn(list(instruction), proc_label,
 	bool, set(label), set(label), int, int, list(instruction)).
@@ -122,24 +124,41 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 		SeenAlloc, AllocSet, BreakSet, N0, N, Instrs) :-
 	Instr0 = Uinstr0 - _Comment,
 	( Uinstr0 = if_val(Test, TrueAddr) ->
-		( Instrs0 = [label(FalseLabelPrime) - _ | _] ->
-			FalseLabel = FalseLabelPrime,
-			FalseAddr = label(FalseLabel),
-			N1 = N0
-		;
-			FalseLabel = local(ProcLabel, N0),
-			FalseAddr = label(FalseLabel),
+		( ( TrueAddr = do_redo ; TrueAddr = do_fail ) ->
+			MaybeBeforeLabel = yes(local(ProcLabel, N0)),
 			N1 is N0 + 1
-		),
-		value_number__breakup_complex_if(Test, TrueAddr, FalseAddr,
-			FalseAddr, ProcLabel, N1, N2, IfInstrs),
-		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			SeenAlloc, AllocSet, BreakSet, N2, N, Instrs1),
-		( N1 = N0 ->
-			list__append(IfInstrs, Instrs1, Instrs)
 		;
-			LabelInstr = label(FalseLabel) - "vn false label",
-			list__append(IfInstrs, [LabelInstr | Instrs1], Instrs)
+			MaybeBeforeLabel = no,
+			N1 = N0
+		),
+		( Instrs0 = [label(OldFalseLabel) - _ | _] ->
+			FalseLabel = OldFalseLabel,
+			MaybeNewFalseLabel = no,
+			N2 = N1
+		;
+			FalseLabel = local(ProcLabel, N1),
+			MaybeNewFalseLabel = yes(FalseLabel),
+			N2 is N1 + 1
+		),
+		FalseAddr = label(FalseLabel),
+		value_number__breakup_complex_if(Test, TrueAddr, FalseAddr,
+			FalseAddr, ProcLabel, N2, N3, IfInstrs),
+		value_number__prepare_for_vn(Instrs0, ProcLabel,
+			SeenAlloc, AllocSet, BreakSet0, N3, N, Instrs1),
+		( MaybeNewFalseLabel = yes(NewFalseLabel) ->
+			FalseInstr = label(NewFalseLabel) - "vn false label",
+			list__append(IfInstrs, [FalseInstr | Instrs1], Instrs2)
+		;
+			list__append(IfInstrs, Instrs1, Instrs2)
+		),
+		( MaybeBeforeLabel = yes(BeforeLabel) ->
+			set__insert(BreakSet0, BeforeLabel, BreakSet1),
+			set__insert(BreakSet1, FalseLabel, BreakSet),
+			BeforeInstr = label(BeforeLabel) - "vn before label",
+			Instrs = [BeforeInstr | Instrs2]
+		;
+			BreakSet = BreakSet0,
+			Instrs = Instrs2
 		)
 	; Uinstr0 = incr_hp(_, _, _, _) ->
 		( SeenAlloc = yes ->

@@ -718,53 +718,71 @@ pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	% 	optimization, not loss of correctness.
 
 inst_MSG(InstA, InstMapA, InstB, InstMapB, InstTable, ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_MSG_1(InstA, InstMapA, InstB, InstMapB, Expansions, InstTable,
+		ModuleInfo, Inst).
+
+:- type expansions == set(pair(inst)).
+
+:- pred inst_MSG_1(inst, instmap, inst, instmap, expansions, inst_table,
+		module_info, inst).
+:- mode inst_MSG_1(in, in, in, in, in, in, in, out) is semidet.
+
+inst_MSG_1(InstA, InstMapA, InstB, InstMapB, Expansions, InstTable,
+		ModuleInfo, Inst) :-
 	( InstA = InstB ->
 		Inst = InstA
 	;
+		% We don't do recursive MSGs (we could,
+		% but it's probably not worth it).
+		\+ set__member(InstA - InstB, Expansions),
 		inst_expand(InstMapA, InstTable, ModuleInfo, InstA, InstA2),
 		inst_expand(InstMapB, InstTable, ModuleInfo, InstB, InstB2),
+		set__insert(Expansions, InstA - InstB, Expansions1),
 		( InstB2 = not_reached ->
 			Inst = InstA2
 		;
 			inst_MSG_2(InstA2, InstMapA, InstB2, InstMapB,
-					InstTable, ModuleInfo, Inst)
+				Expansions1, InstTable, ModuleInfo, Inst)
 		)
 	).
 
-:- pred inst_MSG_2(inst, instmap, inst, instmap, inst_table, module_info, inst).
-:- mode inst_MSG_2(in, in, in, in, in, in, out) is semidet.
+:- pred inst_MSG_2(inst, instmap, inst, instmap, expansions, inst_table,
+		module_info, inst).
+:- mode inst_MSG_2(in, in, in, in, in, in, in, out) is semidet.
 
-inst_MSG_2(any(_), _, any(Uniq), _, _IT, _M, any(Uniq)).
-inst_MSG_2(free(Aliasing), _, free(Aliasing), _, _IT, _M, free(Aliasing)).
+inst_MSG_2(any(_), _, any(Uniq), _, _, _IT, _M, any(Uniq)).
+inst_MSG_2(free(Aliasing), _, free(Aliasing), _, _, _IT, _M, free(Aliasing)).
 
 inst_MSG_2(bound(_, ListA), InstMapA, bound(UniqB, ListB), InstMapB,
-		InstTable, ModuleInfo, Inst) :-
-	bound_inst_list_MSG(ListA, InstMapA, ListB, InstMapB, InstTable,
-		ModuleInfo, UniqB, ListB, InstMapB, Inst).
-inst_MSG_2(bound(_, _), _, ground(UniqB, InfoB), _, _, _,
+		Expansions, InstTable, ModuleInfo, Inst) :-
+	bound_inst_list_MSG(ListA, InstMapA, ListB, InstMapB, Expansions,
+		InstTable, ModuleInfo, UniqB, ListB, InstMapB, Inst).
+inst_MSG_2(bound(_, _), _, ground(UniqB, InfoB), _, _, _, _,
 		ground(UniqB, InfoB)).
 
 	% fail here, since the increasing inst size could 
 	% cause termination problems for deforestation.
-inst_MSG_2(ground(_, _), _, bound(_UniqB, _ListB), _, _, _, _) :- fail.
-inst_MSG_2(ground(_, _), _, ground(UniqB, InfoB), _, _, _,
+inst_MSG_2(ground(_, _), _, bound(_UniqB, _ListB), _, _, _, _, _) :- fail.
+inst_MSG_2(ground(_, _), _, ground(UniqB, InfoB), _, _, _, _,
 		ground(UniqB, InfoB)). 
 inst_MSG_2(abstract_inst(Name, ArgsA), InstMapA,
-		abstract_inst(Name, ArgsB), InstMapB,
+		abstract_inst(Name, ArgsB), InstMapB, Expansions,
 		InstTable, ModuleInfo, abstract_inst(Name, Args)) :-
-	inst_list_MSG(ArgsA, InstMapA, ArgsB, InstMapB, InstTable,
+	inst_list_MSG(ArgsA, InstMapA, ArgsB, InstMapB, Expansions, InstTable,
 		ModuleInfo, Args).
-inst_MSG_2(not_reached, _, Inst, _, _, _, Inst).
+inst_MSG_2(not_reached, _, Inst, _, _, _, _, Inst).
 
-:- pred inst_list_MSG(list(inst), instmap, list(inst), instmap,
+:- pred inst_list_MSG(list(inst), instmap, list(inst), instmap, expansions,
 		inst_table, module_info, list(inst)).
-:- mode inst_list_MSG(in, in, in, in, in, in, out) is semidet.
+:- mode inst_list_MSG(in, in, in, in, in, in, in, out) is semidet.
 
-inst_list_MSG([], _, [], _, _InstTable, _ModuleInfo, []).
-inst_list_MSG([ArgA | ArgsA], InstMapA, [ArgB | ArgsB], InstMapB,
+inst_list_MSG([], _, [], _, _, _InstTable, _ModuleInfo, []).
+inst_list_MSG([ArgA | ArgsA], InstMapA, [ArgB | ArgsB], InstMapB, Expansions,
 		InstTable, ModuleInfo, [Arg | Args]) :-
-	inst_MSG(ArgA, InstMapA, ArgB, InstMapB, InstTable, ModuleInfo, Arg),
-	inst_list_MSG(ArgsA, InstMapA, ArgsB, InstMapB, InstTable,
+	inst_MSG_1(ArgA, InstMapA, ArgB, InstMapB, Expansions,
+		InstTable, ModuleInfo, Arg),
+	inst_list_MSG(ArgsA, InstMapA, ArgsB, InstMapB, Expansions, InstTable,
 		ModuleInfo, Args).
 
 	% bound_inst_list_MSG(Xs, Ys, InstTable, ModuleInfo, Zs):
@@ -777,12 +795,13 @@ inst_list_MSG([ArgA | ArgsA], InstMapA, [ArgB | ArgsB], InstMapB,
 	% Otherwise, the take the msg of the argument insts.
 
 :- pred bound_inst_list_MSG(list(bound_inst), instmap, list(bound_inst),
-		instmap, inst_table, module_info, uniqueness,
+		instmap, expansions, inst_table, module_info, uniqueness,
 		list(bound_inst), instmap, inst).
-:- mode bound_inst_list_MSG(in, in, in, in, in, in, in, in, in, out) is semidet.
+:- mode bound_inst_list_MSG(in, in, in, in, in, in, in, in, in, in, out)
+		is semidet.
 
-bound_inst_list_MSG(Xs, InstMapX, Ys, InstMapY, InstTable, ModuleInfo,
-		Uniq, List, InstMap, Inst) :-
+bound_inst_list_MSG(Xs, InstMapX, Ys, InstMapY, Expansions, InstTable,
+		ModuleInfo, Uniq, List, InstMap, Inst) :-
 	(
 		Xs = [],
 		Ys = []
@@ -794,10 +813,10 @@ bound_inst_list_MSG(Xs, InstMapX, Ys, InstMapY, InstTable, ModuleInfo,
 		X = functor(ConsId, ArgsX),
 		Y = functor(ConsId, ArgsY)
 	->
-		inst_list_MSG(ArgsX, InstMapX, ArgsY, InstMapY, InstTable,
-				ModuleInfo, Args),
+		inst_list_MSG(ArgsX, InstMapX, ArgsY, InstMapY, Expansions,
+			InstTable, ModuleInfo, Args),
 		Z = functor(ConsId, Args),
-		bound_inst_list_MSG(Xs1, InstMapX, Ys1, InstMapY,
+		bound_inst_list_MSG(Xs1, InstMapX, Ys1, InstMapY, Expansions,
 			InstTable, ModuleInfo, Uniq, List, InstMap, Inst1),
 		( Inst1 = bound(Uniq, Zs) ->
 			Inst = bound(Uniq, [Z | Zs])

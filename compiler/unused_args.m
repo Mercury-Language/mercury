@@ -1629,7 +1629,9 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 write_unused_args_to_opt_file(no, _, _, _) --> [].
 write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs) -->
 	(
-		{ pred_info_is_exported(PredInfo) },
+		( { pred_info_is_exported(PredInfo) }
+		; { pred_info_is_exported_to_submodules(PredInfo) }
+		),
 		{ UnusedArgs \= [] }
 	->
 		{ pred_info_module(PredInfo, Module) },

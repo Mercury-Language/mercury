@@ -180,15 +180,15 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 					automatic, Shared, yes(SharedContext)),
 				    VarSet, Result)
 		            ;
-		                Result = error("invalid sixth argument in `:- pragma c_code' declaration -- expecting `shared_code(<code>')",
+		                Result = error("invalid sixth argument in `:- pragma c_code' declaration -- expecting `common_code(<code>)'",
 			            LaterTerm)
 			    )
 		        ;
-		            Result = error("invalid fifth argument in `:- pragma c_code' declaration -- expecting `later_code(<code>')",
+		            Result = error("invalid fifth argument in `:- pragma c_code' declaration -- expecting `retry_code(<code>)'",
 			        LaterTerm)
 			)
 		    ;
-		        Result = error("invalid fourth argument in `:- pragma c_code' declaration -- expecting `first_code(<code>')",
+		        Result = error("invalid fourth argument in `:- pragma c_code' declaration -- expecting `first_code(<code>)'",
 			    FirstTerm)
 		    )
 		;

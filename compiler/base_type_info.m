@@ -148,13 +148,7 @@ It would be more efficient if we could make base_type_infos local,
 but linkage/2 in llds_out.m requires that we make them all exported
 if any of them are exported, so that we can compute the linkage
 from the data_name, for use in forward declarations.
-	( 	
-		( Status = exported ; Status = abstract_exported )
-	->
-		Exported = yes
-	;
-		Exported = no
-	),
+	status_is_exported(Status, Exported),
 ******/
 	Exported = yes,
 

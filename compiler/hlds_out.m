@@ -1870,6 +1870,8 @@ hlds_out__write_import_status(opt_imported) -->
 	io__write_string("opt_imported").
 hlds_out__write_import_status(pseudo_imported) -->
 	io__write_string("pseudo_imported").
+hlds_out__write_import_status(exported_to_submodules) -->
+	io__write_string("exported_to_submodules").
 
 :- pred hlds_out__write_var_types(int, varset, bool, map(var, type), varset,
 	io__state, io__state).

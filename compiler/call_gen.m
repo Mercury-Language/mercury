@@ -662,8 +662,8 @@ call_gen__generate_return_livevals(OutArgs, OutputArgs, AfterCallInstMap,
 	code_info__generate_stack_livelvals(OutArgs, AfterCallInstMap, 
 		LiveVals0),
 	code_info__get_globals(Globals),
-	{ globals__want_return_layouts(Globals, WantReturnLayout) },
-	call_gen__insert_arg_livelvals(OutputArgs, WantReturnLayout,
+	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
+	call_gen__insert_arg_livelvals(OutputArgs, WantReturnVarLayout,
 		AfterCallInstMap, LiveVals0, LiveVals).
 
 % Maybe a varlist to type_id list would be a better way to do this...
@@ -675,13 +675,13 @@ call_gen__generate_return_livevals(OutArgs, OutputArgs, AfterCallInstMap,
 :- mode call_gen__insert_arg_livelvals(in, in, in, in, out, in, out) is det.
 
 call_gen__insert_arg_livelvals([], _, _, LiveVals, LiveVals) --> [].
-call_gen__insert_arg_livelvals([Var - L | As], WantReturnLayout,
+call_gen__insert_arg_livelvals([Var - L | As], WantReturnVarLayout,
 		AfterCallInstMap, LiveVals0, LiveVals) -->
 	code_info__get_varset(VarSet),
 	{ varset__lookup_name(VarSet, Var, Name) },
 	{ code_util__arg_loc_to_register(L, R) },
 	(
-		{ WantReturnLayout = yes }
+		{ WantReturnVarLayout = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
 
@@ -696,8 +696,8 @@ call_gen__insert_arg_livelvals([Var - L | As], WantReturnLayout,
 		{ map__init(Empty) },
 		{ LiveVal = live_lvalue(direct(R), unwanted, Empty) }
 	),
-	call_gen__insert_arg_livelvals(As, WantReturnLayout, AfterCallInstMap, 
-		[LiveVal | LiveVals0], LiveVals).
+	call_gen__insert_arg_livelvals(As, WantReturnVarLayout,
+		AfterCallInstMap, [LiveVal | LiveVals0], LiveVals).
 
 %---------------------------------------------------------------------------%
 
