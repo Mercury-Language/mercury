@@ -19,7 +19,7 @@
 :- import_module bool, list, io, std_util.
 
 
-	% Are we generating position indepedent code (for use in a
+	% Are we generating position independent code (for use in a
 	% shared library)? On some architectures, pic and non-pic
 	% code is incompatible, so we need to generate `.o' and `.pic_o'
 	% files.
