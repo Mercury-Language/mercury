@@ -192,6 +192,8 @@ extern	void	MR_tracing_not_enabled(void);
 ** true iff procedure is a function in *is_func_ptr, and a Mercury
 ** representation of the argument list (minus the IO state arguments)
 ** in *arg_list_ptr.
+** This function uses the heap pointer, so calls to it must be wrapped
+** with MR_save_transient_hp() and MR_restore_transient_hp().
 */
 
 extern	const char

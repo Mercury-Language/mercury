@@ -92,7 +92,9 @@ update_io_action_map(IoActionNum, ProcName, IsFunc, Args,
 	const char	*problem;
 	const char	*proc_name;
 
+	MR_save_transient_hp();
 	problem = MR_trace_get_action(SeqNum, &proc_name, &IsFunc, &Args);
+	MR_restore_transient_hp();
 	if (problem != NULL) {
 		MR_fatal_error(""pickup_io_action: MR_trace_get_action"");
 	}

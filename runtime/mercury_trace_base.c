@@ -383,12 +383,16 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
 			table_io_decl->MR_table_io_decl_type_params,
 			answer_block, filtered_arity);
 
+	MR_restore_transient_hp();
 	arg_list = MR_list_empty();
+	MR_save_transient_hp();
 	for (hv = filtered_arity; hv >= 1; hv--) {
 		type_info = MR_create_type_info(type_params,
 			table_io_decl->MR_table_io_decl_ptis[hv - 1]);
+		MR_restore_transient_hp();
 		MR_new_univ_on_hp(arg, type_info, answer_block[hv]);
 		arg_list = MR_list_cons(arg, arg_list);
+		MR_save_transient_hp();
 	}
 
 	MR_free(type_params);

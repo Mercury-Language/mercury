@@ -790,6 +790,8 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
         MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
                 &is_func);
 
+    MR_TRACE_USE_HP(
+
         vars = MR_point.MR_point_vars;
         arg_list = MR_list_empty();
         for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
@@ -844,6 +846,7 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
                 }
             }
         }
+    );
 
         (*browser)(proc_name, arg_list, is_func, caller, format);
         return NULL;
