@@ -217,7 +217,7 @@ lexer__get_dot(Token) -->
 	; { Result = eof }, !,
 		{ Token = end }
 	; { Result = ok(Char) },
-		( { Char = ' ' ; Char = '\t' ; Char =  '\n' ; Char = '%' } ->
+		( { lexer__whitespace_after_dot(Char) } ->
 			io__putback_char(Char),
 			{ Token = end }
 		; { lexer__graphic_token_char(Char) } ->
@@ -227,6 +227,14 @@ lexer__get_dot(Token) -->
 			{ Token = name(".") }
 		)
 	).
+
+:- pred lexer__whitespace_after_dot(character).
+:- mode lexer__whitespace_after_dot(in) is semidet.
+
+lexer__whitespace_after_dot(' ').
+lexer__whitespace_after_dot('\t').
+lexer__whitespace_after_dot('\n').
+lexer__whitespace_after_dot('%').
 
 %-----------------------------------------------------------------------------%
 
@@ -573,9 +581,9 @@ lexer__get_zero(Token) -->
 		; { Char = 'x' } ->
 			lexer__get_hex(Token)
 		; { Char = '.' } ->
-			lexer__get_float_decimals([Char], Token)
+			lexer__get_int_dot(['0'], Token)
 		; { Char = 'e' ; Char = 'E' } ->
-			lexer__get_float_exponent([Char], Token)
+			lexer__get_float_exponent([Char, '0'], Token)
 		;
 			io__putback_char(Char),
 			{ Token = integer(0) }
@@ -717,7 +725,7 @@ lexer__get_number(Chars, Token) -->
 		( { char__is_digit(Char) } ->
 			lexer__get_number([Char | Chars], Token)
 		; { Char = '.' } ->
-			lexer__get_float_decimals([Char | Chars], Token)
+			lexer__get_int_dot(Chars, Token)
 		; { Char = 'e' ; Char = 'E' } ->
 			lexer__get_float_exponent([Char | Chars], Token)
 		;
@@ -728,10 +736,30 @@ lexer__get_number(Chars, Token) -->
 
 	% XXX the float literal syntax doesn't match ISO Prolog
 
+:- pred lexer__get_int_dot(list(character), token, io__state, io__state).
+:- mode lexer__get_int_dot(in, out, di, uo) is det.
+
+lexer__get_int_dot(Chars, Token) -->
+	io__read_char(Result),
+	( { Result = error(Error) }, !,
+		{ Token = io_error(Error) }
+	; { Result = eof }, !,
+		io__putback_char('.'),
+		{ lexer__rev_char_list_to_int(Chars, 10, Token) }
+	; { Result = ok(Char) },
+		( { char__is_digit(Char) } ->
+			lexer__get_float_decimals([Char, '.' | Chars], Token)
+		;
+			io__putback_char(Char),
+			io__putback_char('.'),
+			{ lexer__rev_char_list_to_int(Chars, 10, Token) }
+		)
+	).
+
 :- pred lexer__get_float_decimals(list(character), token, io__state, io__state).
 :- mode lexer__get_float_decimals(in, out, di, uo) is det.
 
-	% float --> int '.' . {int} {exponent}
+	% we've read past the decimal point, so now get the decimals
 
 lexer__get_float_decimals(Chars, Token) -->
 	io__read_char(Result),
@@ -752,8 +780,6 @@ lexer__get_float_decimals(Chars, Token) -->
 
 :- pred lexer__get_float_exponent(list(character), token, io__state, io__state).
 :- mode lexer__get_float_exponent(in, out, di, uo) is det.
-
-	% float --> decimal exp . {sign} int
 
 lexer__get_float_exponent(Chars, Token) -->
 	io__read_char(Result),
@@ -777,7 +803,9 @@ lexer__get_float_exponent(Chars, Token) -->
 				io__state, io__state).
 :- mode lexer__get_float_exponent_2(in, out, di, uo) is det.
 
-	% float --> decimal exp {sign} . int
+	% we've read past the E signalling the start of the exponent -
+	% make sure that there's at least one digit following,
+	% and then get the remaining digits
 
 lexer__get_float_exponent_2(Chars, Token) -->
 	io__read_char(Result),
@@ -799,7 +827,8 @@ lexer__get_float_exponent_2(Chars, Token) -->
 					io__state, io__state).
 :- mode lexer__get_float_exponent_3(in, out, di, uo) is det.
 
-	% float --> decimal exp {sign} int .
+	% we've read past the first digit of the exponent -
+	% now get the remaining digits
 
 lexer__get_float_exponent_3(Chars, Token) -->
 	io__read_char(Result),
