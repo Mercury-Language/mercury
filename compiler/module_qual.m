@@ -893,14 +893,13 @@ qualify_type(Type0, Type, Info0, Info) -->
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
-qualify_pragma(source_file(File), source_file(File), Info, Info) --> [].
-qualify_pragma(foreign_decl(L, Code), foreign_decl(L, Code), Info, Info) --> [].
-qualify_pragma(foreign_code(L, C), foreign_code(L, C), Info, Info) --> [].
-qualify_pragma(foreign_type(ForeignType, Type0, SymName),
+qualify_pragma(X@source_file(_), X, Info, Info) --> [].
+qualify_pragma(X@foreign_decl(_, _), X, Info, Info) --> [].
+qualify_pragma(X@foreign_code(_, _), X, Info, Info) --> [].
+qualify_pragma(foreign_type(ForeignType, Type0, SymName), 
 		foreign_type(ForeignType, Type, SymName), Info0, Info) -->
 	qualify_type(Type0, Type, Info0, Info).
-qualify_pragma(foreign_import_module(L, M), foreign_import_module(L, M),
-		Info, Info) --> [].
+qualify_pragma(X@foreign_import_module(_, _), X, Info, Info) --> [].
 qualify_pragma(
 	    foreign_proc(Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),
 	    foreign_proc(Rec, SymName, PredOrFunc, PragmaVars, Varset, Code), 
@@ -917,9 +916,9 @@ qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes),
 		{ Info = Info0 },
 		{ MModes = no }
 	).
-qualify_pragma(inline(A, B), inline(A, B), Info, Info) --> [].
-qualify_pragma(no_inline(A, B), no_inline(A, B), Info, Info) --> [].
-qualify_pragma(obsolete(A, B), obsolete(A, B), Info, Info) --> [].
+qualify_pragma(X@inline(_, _), X, Info, Info) --> [].
+qualify_pragma(X@no_inline(_, _), X, Info, Info) --> [].
+qualify_pragma(X@obsolete(_, _), X, Info, Info) --> [].
 qualify_pragma(import(Name, PredOrFunc, Modes0, Attributes, CFunc),
 		import(Name, PredOrFunc, Modes, Attributes, CFunc),
 		Info0, Info) -->
@@ -927,8 +926,7 @@ qualify_pragma(import(Name, PredOrFunc, Modes0, Attributes, CFunc),
 qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 		export(Name, PredOrFunc, Modes, CFunc), Info0, Info) -->
 	qualify_mode_list(Modes0, Modes, Info0, Info).
-qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
-				Info, Info) --> [].
+qualify_pragma(X@unused_args(_, _, _, _, _), X, Info, Info) --> [].
 qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
 		type_spec(A, B, C, D, MaybeModes, Subst, G, H),
 		Info0, Info) -->
@@ -942,40 +940,26 @@ qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
 		{ MaybeModes = no }
 	),
 	qualify_type_spec_subst(Subst0, Subst, Info1, Info).
-qualify_pragma(fact_table(SymName, Arity, FileName),
-		fact_table(SymName, Arity, FileName), Info, Info) --> [].
-qualify_pragma(aditi(SymName, Arity), aditi(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(base_relation(SymName, Arity), base_relation(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(aditi_index(SymName, Arity, Index),
-		aditi_index(SymName, Arity, Index), Info, Info) --> [].
-qualify_pragma(supp_magic(SymName, Arity), supp_magic(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(context(SymName, Arity), context(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(aditi_memo(A, B), aditi_memo(A, B), Info, Info) --> [].
-qualify_pragma(aditi_no_memo(SymName, Arity), aditi_no_memo(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(naive(SymName, Arity), naive(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(psn(SymName, Arity), psn(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(owner(SymName, Arity, Owner), owner(SymName, Arity, Owner),
-		Info, Info) --> [].
-qualify_pragma(promise_pure(SymName, Arity), promise_pure(SymName, Arity),
-		Info, Info) --> [].
-qualify_pragma(promise_semipure(SymName, Arity), 
-		promise_semipure(SymName, Arity), Info, Info) --> [].
+qualify_pragma(X@fact_table(_, _, _), X, Info, Info) --> [].
+qualify_pragma(X@aditi(_, _), X, Info, Info) --> [].
+qualify_pragma(X@base_relation(_, _), X, Info, Info) --> [].
+qualify_pragma(X@aditi_index(_, _, _), X, Info, Info) --> [].
+qualify_pragma(X@supp_magic(_, _), X, Info, Info) --> [].
+qualify_pragma(X@context(_, _), X, Info, Info) --> [].
+qualify_pragma(X@aditi_memo(_, _), X, Info, Info) --> [].
+qualify_pragma(X@aditi_no_memo(_, _), X, Info, Info) --> [].
+qualify_pragma(X@naive(_, _), X, Info, Info) --> [].
+qualify_pragma(X@psn(_, _), X, Info, Info) --> [].
+qualify_pragma(X@owner(_, _, _), X, Info, Info) --> [].
+qualify_pragma(X@promise_pure(_, _), X, Info, Info) --> [].
+qualify_pragma(X@promise_semipure(_, _), X, Info, Info) --> [].
 qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term), 
 		termination_info(PredOrFunc, SymName, ModeList, Args, Term), 
 		Info0, Info) --> 
 	qualify_mode_list(ModeList0, ModeList, Info0, Info).
-qualify_pragma(terminates(A, B), terminates(A, B), Info, Info) --> [].
-qualify_pragma(does_not_terminate(A, B), does_not_terminate(A, B), 
-		Info, Info) --> [].
-qualify_pragma(check_termination(A, B), check_termination(A, B), Info, 
-		Info) --> [].
+qualify_pragma(X@terminates(_, _), X, Info, Info) --> [].
+qualify_pragma(X@does_not_terminate(_, _), X, Info, Info) --> [].
+qualify_pragma(X@check_termination(_, _), X, Info, Info) --> [].
 
 :- pred qualify_pragma_vars(list(pragma_var)::in, list(pragma_var)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
