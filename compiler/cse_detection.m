@@ -36,7 +36,7 @@
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
 :- import_module modes, mode_util, make_hlds, quantification, switch_detection.
 
-:- import_module bool, list, map, set, std_util, require, term, varset.
+:- import_module int, bool, list, map, set, std_util, require, term, varset.
 
 %-----------------------------------------------------------------------------%
 
