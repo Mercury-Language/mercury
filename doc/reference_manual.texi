@@ -5461,7 +5461,7 @@ parameters whose Mercury type is @var{MercuryTypeName}.
 The CIL assembler syntax is used to specify type names for all the .NET CLR
 languages (IL, C# and Managed C++) supported by Mercury's
 @samp{foreign_proc} mechanism.  
-This syntax is documented in the ECMA specifications for .NET).
+This syntax is documented in the ECMA specifications for .NET.
 The .NET CLR backend supports reference and value types 
 using @samp{pragma foreign_type}, where DotNetForeignType is
 specified using the syntax 
