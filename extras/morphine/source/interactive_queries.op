@@ -31,7 +31,7 @@ opium_command(
 (goals) interactively in the debugger. When you use one of these commands, the \
 debugger will respond with a query prompt (`?-' or `run <--'), at which you \
 can type in a goal; the debugger will the compile and execute the goal and \
-display the answer(s). You can return from the query prompt to the Opium-M \
+display the answer(s). You can return from the query prompt to the Morphine \
 prompt by typing the end-of-file indicator (typically control-D or \
 control-Z), or by typing `quit.'. \n\
 \n\
@@ -70,7 +70,7 @@ query_Op(ModuleList) :-
 	any_query(ModuleList, query).
 
 any_query(ModuleList, QueryType) :-
-	( not getval(state_of_opium, running) ->
+	( not getval(state_of_morphine, running) ->
 		write("No program is running, you can't make a query.\n")
 	;
 		true
@@ -94,7 +94,7 @@ loop_for_queries(QueryType) :-
 	send_message_to_socket(Term2),
 	nl,
 	read_message_from_socket(Response),
-	get_parameter(debug_opium, OnOff),
+	get_parameter(debug_morphine, OnOff),
 	( OnOff == on ->
 		printf("response to query = %w\n", [Response])
 	;
@@ -198,7 +198,7 @@ sometimes be helpful to use mmc_options(\"--verbose-errors\").\
 
 
 mmc_options_Op(Options) :- 
-	( not getval(state_of_opium, running) ->
+	( not getval(state_of_morphine, running) ->
 		write("No program is running, you can't set mmc options.\n")
 	;
 		true

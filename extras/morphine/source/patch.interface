@@ -7,7 +7,7 @@
  /*
   * 	INTERFACE scenario
 - * It has to be compiled in opium_kernel module.
-+ * It has to be compiled in 'Opium-M' module.
++ * It has to be compiled in morphine module.
   */
  
  opium_scenario(

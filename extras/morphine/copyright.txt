@@ -1,4 +1,6 @@
-The software Opium-M in its 0.2 release of November 1999, hereinafter referred
+
+
+The software Morphine in its 0.2 release of November 1999, hereinafter referred
 to as « the software » has been designed and produced by Erwan Jahier and
 Mireille Ducassé, researchers of the LANDE project, a research project of the
 National Computer and Automatics Institute - INRIA - Rennes Research Unit.
@@ -52,7 +54,7 @@ indirect damages sustained by the user.
 
 
 %------------------------------------------------------------------------------%
-Le logiciel Opium-M dans sa version 0.2 (novembre 1999), ci-après dénommé "Le
+Le logiciel Morphine dans sa version 0.2 (novembre 1999), ci-après dénommé "Le
 LOGICIEL", a été conçu et réalisé par Erwan Jahier et Mireille Ducassé,
 chercheurs du projet LANDE, projet de recherche de l'Institut National de
 Recherche en Informatique et en Automatique - INRIA - Unité de Recherche de

@@ -837,6 +837,7 @@ llds_out__trace_port_to_string(call, "MR_PORT_CALL").
 llds_out__trace_port_to_string(exit, "MR_PORT_EXIT").
 llds_out__trace_port_to_string(redo, "MR_PORT_REDO").
 llds_out__trace_port_to_string(fail, "MR_PORT_FAIL").
+llds_out__trace_port_to_string(exception, "MR_PORT_EXCEPTION").
 llds_out__trace_port_to_string(ite_cond, "MR_PORT_COND").
 llds_out__trace_port_to_string(ite_then, "MR_PORT_THEN").
 llds_out__trace_port_to_string(ite_else, "MR_PORT_ELSE").
@@ -852,7 +853,8 @@ llds_out__trace_port_to_num(call, 0).
 llds_out__trace_port_to_num(exit, 1).
 llds_out__trace_port_to_num(redo, 2).
 llds_out__trace_port_to_num(fail, 3).
-llds_out__trace_port_to_num(ite_cond, 5).	% exception is 4
+llds_out__trace_port_to_num(exception, 4).
+llds_out__trace_port_to_num(ite_cond, 5).
 llds_out__trace_port_to_num(ite_then, 6).
 llds_out__trace_port_to_num(ite_else, 7).
 llds_out__trace_port_to_num(neg_enter,   8).

@@ -171,18 +171,16 @@ The "mercury-compiler" distribution contains:
      o  the Prolog to Mercury transition guide
      o  some sample Mercury programs
 
-The "mercury-extras" distribution contains:
-     o  some extra libraries for
-	- processing HTML forms using the CGI interface
-	- arithmetic on complex and imaginary numbers
-	- graphics using Tk and OpenGL
-	- lazy evaluation
-	- dynamic linking
-	- POSIX interface
-	- backtrackable (trailed) destructive update
-	- an ODBC database interface
-	- a CLP(R) interface, i.e. constraint solving over real numbers
-     o  the OPIUM-M trace analysis system
+The "mercury-extras" distribution contains some extra libraries for:
+     o  processing HTML forms using the CGI interface
+     o  arithmetic on complex and imaginary numbers
+     o  graphics using Tk and OpenGL
+     o  lazy evaluation
+     o  dynamic linking
+     o  POSIX interface
+     o  backtrackable (trailed) destructive update
+     o  an ODBC database interface
+     o  a CLP(R) interface, i.e. constraint solving over real numbers
 
 The "mercury-tests" distribution contains a test suite.
 

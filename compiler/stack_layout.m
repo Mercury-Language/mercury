@@ -838,19 +838,11 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 	(
 		{ Trace = no },
 		{ set__init(TraceLiveVarSet) },
-		{ map__init(TraceTypeVarMap) },
-		{ TraceRvals = [yes(const(int_const(-1))),
-				yes(const(int_const(-1)))] }
+		{ map__init(TraceTypeVarMap) }
 	;
-		{ Trace = yes(trace_port_layout_info(_, Port, Path,
-			TraceLayout)) },
+		{ Trace = yes(trace_port_layout_info(_, _, _, TraceLayout)) },
 		{ TraceLayout = layout_label_info(TraceLiveVarSet,
-			TraceTypeVarMap) },
-		{ llds_out__trace_port_to_num(Port, PortNum) },
-		{ trace__path_to_string(Path, PathStr) },
-		stack_layout__lookup_string_in_table(PathStr, PathNum),
-		{ TraceRvals = [yes(const(int_const(PortNum))),
-				yes(const(int_const(PathNum)))] }
+			TraceTypeVarMap) }
 	),
 	{ TraceArgTypes = [2 - yes(int_least16)] },
 	{
@@ -862,6 +854,31 @@ stack_layout__construct_internal_rvals(Internal, RvalList, ArgTypes) -->
 		ResumeLayout = layout_label_info(ResumeLiveVarSet,
 			ResumeTypeVarMap)
 	},
+	(
+		{ Trace = yes(trace_port_layout_info(_, Port, Path, _)) },
+		{ Return = no },
+		{ llds_out__trace_port_to_num(Port, PortNum) },
+		{ trace__path_to_string(Path, PathStr) },
+		stack_layout__lookup_string_in_table(PathStr, PathNum)
+	;
+		{ Trace = no },
+		{ Return = yes(_) },
+			% We only ever use the port and path fields of these
+			% layout structures when we process exception events.
+		{ llds_out__trace_port_to_num(exception, PortNum) },
+		{ PathNum = 0 }
+	;
+		{ Trace = no },
+		{ Return = no },
+		{ PortNum = -1 },
+		{ PathNum = -1 }
+	;
+		{ Trace = yes(_) },
+		{ Return = yes(_) },
+		{ error("label has both trace and return layout info") }
+	),
+	{ TraceRvals = [yes(const(int_const(PortNum))),
+			yes(const(int_const(PathNum)))] },
 	stack_layout__get_agc_stack_layout(AgcStackLayout),
 	{
 		Return = no,

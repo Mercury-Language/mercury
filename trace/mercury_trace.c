@@ -136,7 +136,7 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 				port = (MR_Trace_Port) layout->MR_sll_port;
 
 				if (! MR_port_is_final(port)) {
-				goto check_stop_print;
+					goto check_stop_print;
 				} else {
 					return MR_trace_event(&MR_trace_ctrl,
 						TRUE, layout, port,

@@ -9,7 +9,7 @@
 -get_parameter_value(c, Parameter, _, [Value], _) :-
 -	!,	
 -	remote_once(getval(Parameter, Value), sepia_kernel).
-+% XXX  remote_once is not available in Opium-M
++% XXX  remote_once is not available in Morphine
 +% get_parameter_value(c, Parameter, _, [Value], _) :-
 +% 	!,	
 +% 	remote_once(getval(Parameter, Value), sepia_kernel).
@@ -23,7 +23,7 @@
  
 -set_parameter_value(c, Parameter, _, [NewVal], _) :-
 -	remote_once(setval(Parameter, NewVal), sepia_kernel).
-+% XXX  remote_once is not available in Opium-M
++% XXX  remote_once is not available in Morphine
 +% set_parameter_value(c, Parameter, _, [NewVal], _) :-
 +% 	remote_once(setval(Parameter, NewVal), sepia_kernel).
  set_parameter_value(single, Parameter, ArgList, NewValueList, Module) :-
@@ -45,7 +45,7 @@
 -set_default_value(c, Parameter, _, [DefaultVal], _) :-
 -	/* there is always a default value for c parameters */
 -	remote_once(setval(Parameter, DefaultVal), sepia_kernel).
-+% XXX  remote_once is not available in Opium-M
++% XXX  remote_once is not available in Morphine
 +% set_default_value(c, Parameter, _, [DefaultVal], _) :-
 +% 	/* there is always a default value for c parameters */
 +% 	remote_once(setval(Parameter, DefaultVal), sepia_kernel).
@@ -70,12 +70,12 @@
 -	remote_once(getval(Parameter, Val), sepia_kernel),
 -	G =.. [Parameter | [Val]],
 -	opium_printf(help, "    %w\n", [G]).
-+% XXX  remote_once is not available in Opium-M
++% XXX  remote_once is not available in Morphine
 +% list_parameter(c, Parameter, _, _) :-
 +% 	!,
 +% 	remote_once(getval(Parameter, Val), sepia_kernel),
 +% 	G =.. [Parameter | [Val]],
-+% 	opium_printf(help, "    %w\n", [G]).
++% 	printf(help, "    %w\n", [G]).
  list_parameter(single, Parameter, ArgList, Module) :-
  	!,
  	length(ArgList, L),
@@ -86,7 +86,7 @@
 -get_current_values(c, Name, Module, ArgList, [Val]) :-
 -	remote_once(getval(Name, Val), sepia_kernel),
 -	!.
-+% XXX  remote_once is not available in Opium-M
++% XXX  remote_once is not available in Morphine
 +% get_current_values(c, Name, Module, ArgList, [Val]) :-
 +% 	remote_once(getval(Name, Val), sepia_kernel),
 +% 	!.

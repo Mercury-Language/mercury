@@ -37,7 +37,7 @@ Note: to be able to retrieve library procedures or types with \
 listing/3, you need to have the source of the Mercury library somewhere \
 and you need \
 to make sure that the environment variable LIB_MERCURY has been set correctly \
-to the path of the Mercury library in the sh script Opium-M. \
+to the path of the Mercury library in the sh script morphine. \
 "
 	).
 

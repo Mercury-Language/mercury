@@ -131,12 +131,13 @@ of type collected_type is first initialized (with initialize/1) and \
 then updated (with filter/4) for all the events of the remaining \
 execution. When the fourth argument of filter is equal to yes, or when \
 the end of the execution is reached, the last value of \
-the collecting variable is send to Opium-M.\n\
+the collecting variable is send to Morphine.\n\
 \n\
 collect/2 can be seen as fold/4 meta-predicate except that (1) the \
 initialization and the updating of the accumulator is done via Mercury \
 predicates defined in a separate file (2) it does not take a list as \
-argument but operates on the fly on a list of events (3) ."
+argument but operates on the fly on a list of events (3) we can stop \
+the process at anytime thanks the fourth argument of filter\4."
 	).
 
 %------------------------------------------------------------------------------%
@@ -254,7 +255,7 @@ compile_collect_Op :-
 	sh(Command2), 
 	exists("collect.so"),
 	!,
-	opium_write_debug("collect.m has been compiled successfully.\n").
+	morphine_write_debug("collect.m has been compiled successfully.\n").
 
 compile_collect_Op :-
 	write("\n\n***** Compilation of module collect failed.\n"),
@@ -293,8 +294,8 @@ initialize/1 and filter/4 predicates."
 generate_collect_Op(File) :-
 	sh("rm -f collect.m"),
 	open("collect.m", write, collect),
-	getenv("MERCURY_OPIUM_DIR", OpiumDir),
-	append_strings(OpiumDir, "/source/collect.in", CollectIn),
+	getenv("MERCURY_MORPHINE_DIR", MorphineDir),
+	append_strings(MorphineDir, "/source/collect.in", CollectIn),
 	open(CollectIn, read, collect_in),
 	open(File, read, collect_body),
 	read_string(collect_in, "", _, In),
@@ -377,10 +378,20 @@ dyn_link_collect_Op :-
 	send_message_to_socket(link_collect("\"./collect.so\"")),
 	read_message_from_socket(Result),
 	( Result = link_collect_succeeded ->
-		opium_write_debug("collect.so has been linked successfully.\n")
+		morphine_write_debug("collect.so has been linked successfully.\n")
 	;
-		print("**** collect.so has not been linked.\n"),
-		abort
+		% if the Mercury program has been compiled in another grade, the 
+		% linking will fail here. So if it fails, we recompile the collect
+		% module and try again.
+		compile_collect,
+		send_message_to_socket(link_collect("\"./collect.so\"")),
+		read_message_from_socket(Result2),
+		( Result2 = link_collect_succeeded ->
+			morphine_write_debug("collect.so has been linked successfully.\n")
+		;
+			print("**** collect.so has not been linked.\n"),
+			abort
+		)
 	).
 
 
@@ -453,7 +464,7 @@ run_collect_Op(Result) :-
 
 check_a_program_is_running(CommandStr) :-
 	(
-		getval(state_of_opium, State),
+		getval(state_of_morphine, State),
 		State = running,
 		!
 	;

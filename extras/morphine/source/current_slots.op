@@ -90,7 +90,7 @@ behaviour, but arguments will be retrieved through the socket."
 	).
 
 current_Op(ListOrConj) :-
-	getval(state_of_opium, running),
+	getval(state_of_morphine, running),
 	(
 		is_list(ListOrConj),
 		current_list(ListOrConj),
@@ -151,7 +151,7 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 				/*, RetrievedLineNumber */ )
 	->
 		write("The current event is compiler generated event, "),
-		write("they are not handled yet in Opium-M.\n"),
+		write("they are not handled yet in Morphine.\n"),
 		fail
 		% XXX 
 		% Anyway, this should never arrive here as long as we 
@@ -185,10 +185,10 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 		),
 
 		% for 'port' attribute, the name the Mercury process sends is 
-		% not the ones we use at the Opium-M side.
+		% not the ones we use at the Morphine side.
 		( not(Port == '-') ->
-			convert_mercury_port_opium_port_exact(
-				RetrievedPort, OpiumPort)
+			convert_mercury_port_morphine_port_exact(
+				RetrievedPort, MorphinePort)
 		;
 			true
 		),
@@ -210,7 +210,7 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 		unify_attribute(RetrievedChrono, Chrono),
 		unify_attribute(RetrievedCall, Call),
 		unify_attribute(RetrievedDepth, Depth),
-		unify_attribute(OpiumPort, Port),
+		unify_attribute(MorphinePort, Port),
 		unify_attribute(RetrievedPredOrFunc, PredOrFunc),
 		unify_attribute(RetrievedDeclModule, DeclModule),
 		unify_attribute(RetrievedDefModule, DefModule),
@@ -232,13 +232,13 @@ current_attributes_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule,
 		write(stderr, "Error in current_attributes/11 (current_slots.op)\n"),
 		write(stderr, "   An error occured in the Mercury process: "),
 		write(stderr, ErrorMessage),
-		opium_abort
+		morphine_abort
 	 ;
 		write(stderr, "Error in current_attributes/11 (current_slots.op)\n"),
 		write(stderr, "The Mercury process sends: "),
 		write(Response),
 		write(stderr, "\n"),
-		opium_abort
+		morphine_abort
 	).
 
 
@@ -588,7 +588,7 @@ stack_hl([X|Tail], Level, Stack0, Stack) :-
 	stack_hl(Tail, [X|Level], Stack0, Stack).
 
 stack_ll_Op(StackList) :-
-	getval(state_of_opium, running),
+	getval(state_of_morphine, running),
 	send_message_to_socket(stack),
 	read_message_until_end_stack([], StackList),
  	read_message_from_socket(Message), 
@@ -649,7 +649,7 @@ of the Mercury implementation."
 	).
 
 nondet_stack_Op :-
-	getval(state_of_opium, running),
+	getval(state_of_morphine, running),
 	send_message_to_socket(nondet_stack),
 	read_message_from_socket(ok),
 	!.
@@ -672,7 +672,7 @@ of the Mercury implementation."
 	).
 
 stack_regs_Op :-
-	getval(state_of_opium, running),
+	getval(state_of_morphine, running),
 	send_message_to_socket(stack_regs),
 	read_message_from_socket(Message),
 	Message = stack_regs(SP, CURFR, MAXFR),

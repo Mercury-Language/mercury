@@ -8,9 +8,9 @@
  make_scenario_Op(S, Mod, OptionList) :-
 -	get_opiumdir(ODS),
 -	append_strings(ODS, "opiumfiles/", ObjDirS),
-+	getenv('MERCURY_OPIUM_DIR', OpiumDir),
-+	append_strings(OpiumDir, "/source/", ODS),
-+	append_strings(ODS, "/opiumfiles/", ObjDirS),
++	getenv('MERCURY_MORPHINE_DIR', MorphineDir),
++	append_strings(MorphineDir, "/source/", ODS),
++	append_strings(ODS, "/morphinefiles/", ObjDirS),
  	atom_string(OD, ODS),
  	atom_string(ObjDir, ObjDirS),
  	make_scenario_Op(S, Mod, OptionList, OD, ObjDir).
@@ -49,7 +49,7 @@
   	update(Scenario, Mod, [A, T, GL], FileList, Time, SrcDir, ObjDir),
  	retract_all(current_options(_)),
 -	make_interface_list(Scenario, GL, Mod),	% for windowing user-interface
-+% [R1] Not available for Opium-M.
++% [R1] Not available for Morphine.
 +%	make_interface_list(Scenario, GL, Mod),	% for windowing user-interface
  	(opium_level(0) ->
  		/* we are booting Opium, so c parameters cannot be set */
@@ -90,7 +90,7 @@
  	!,
 -	call(current_options(O), opium_kernel),
 -	opium_printf(output, "loading %w\n", [SrcF]),
-+	call(current_options(O), 'Opium-M'),
++	call(current_options(O), morphine),
 +	printf(output, "loading %w\n", [SrcF]),
  	compile(SrcF, Mod),
  	compile(LoadF, Mod),
@@ -130,7 +130,7 @@
  
  add_gloloc_directive(Clause, Module) :-
 -	call(current_options([_,_,GloLoc]), opium_kernel),
-+	call(current_options([_,_,GloLoc]), 'Opium-M'),
++	call(current_options([_,_,GloLoc]), morphine),
  	add_gloloc_directive(Clause, Module, GloLoc).
  
  add_gloloc_directive(_, _, global) :-
@@ -149,7 +149,7 @@
 -	get_opium_file("opium_module", File),
 -	compile(File, Mod).
 +
-+% [R1] Removed because update_opium_module_menu is not available in Opium-M
++% [R1] Removed because update_opium_module_menu is not available in Morphine
 +% provide_opium_module(Mod) :-
 +% 	update_opium_module_menu(Mod),		% for wui interface
 +% 	printf(output, "creating opium module %w\n", [Mod]),

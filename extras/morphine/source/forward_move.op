@@ -10,10 +10,10 @@
 
 %------------------------------------------------------------------------------%
 % New operator to denotate intervals (ex: 2..9).
-% Also defined in Opium-M.pl 
+% Also defined in Morphine.pl 
 :- op(350, xfx, ..).
 
-% Also defined in Opium-M.pl and current_slots.op
+% Also defined in Morphine.pl and current_slots.op
 :- op(900, xfy, and).
 
 
@@ -74,7 +74,7 @@ an interval       (attribute = bottom..up). \n\
 Each attribute has a list of possible aliases that you can list with the \
 command list_alias_attributes/0.\n\
 \n\
-Example: the Opium-M goal fget(chrono = [20, 789] and depth = 3..6 and \
+Example: the Morphine goal fget(chrono = [20, 789] and depth = 3..6 and \
 proc = foo/2)  \
 will make the execution move forwards until the first event \
 which chronological event number is 20 or 789, depth is 3, 4, 5 or 6, \
@@ -87,7 +87,7 @@ same effect as the previous goal.\
 
 
 fget_Op(ConjOrList) :-
-	getval(state_of_opium, running),
+	getval(state_of_morphine, running),
 	(
 		is_list(ConjOrList),
 		fget_1_list(ConjOrList)
@@ -421,7 +421,7 @@ fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, Pred,
 	Arity, ModeNumber, Det, Arg, GoalPath) :-
     (
  	( not(Port == '-') ->
-		convert_mercury_port_opium_port(MercuryPort, Port)
+		convert_mercury_port_morphine_port(MercuryPort, Port)
 	;
 		MercuryPort = '-'
 	),
@@ -453,7 +453,7 @@ fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, Pred,
 		Response = forward_move_match_not_found 
 	->
 		write("last event is reached\n"),
-		setval(state_of_opium, eot),
+		setval(state_of_morphine, eot),
 	% we should not end the connection anymore here when [EOT] is fix
 		end_connection,
 		fail
@@ -463,17 +463,17 @@ fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, Pred,
 		write(stderr, "Error in fget_ll/13 (forward_move.op)\n"),
 		write(stderr, "   An error occured in the Mercury process: "),
 		write(stderr, ErrorMessage),
-		opium_abort
+		morphine_abort
 	;	
 		write(stderr, "Error in fget_ll/13 (forward_move.op)\n"),
 		write(stderr, "The Mercury process sends: "),
 		write(stderr, Response),
 		write(stderr, "\n"),
-		opium_abort
+		morphine_abort
 	)
    ;
 	% to make fget backtrackable.
-	( getval(state_of_opium, running) ->
+	( getval(state_of_morphine, running) ->
 		fget_ll(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, 
 			DefModule, Pred,  Arity, ModeNumber, Det, Arg, GoalPath)
 	;
@@ -507,9 +507,9 @@ convert_goal_path_string_list(String, List) :-
 		!
 	; 
 		% Should never occurs.
-		write(stderr, "Software error in Opium-M.\n"),
+		write(stderr, "Software error in Morphine.\n"),
 		write(stderr, "--> convert_integer_determinism_/2\n"),
-		opium_abort	
+		morphine_abort	
 	). 
 
 % :- pred convert_goal_path_string_list_list(list(integer), list(determinism)).
@@ -552,9 +552,9 @@ convert_integer_determinism(IntDet, Det) :-
 		!
 	;
 		% Should never occurs.
-		write(stderr, "Software error in Opium-M.\n"),
+		write(stderr, "Software error in Morphine.\n"),
 		write(stderr, "--> convert_integer_determinism_/2\n"),
-		opium_abort	
+		morphine_abort	
 	). 
 
 % :- pred convert_integer_determinism_list(list(integer), list(determinism)).
@@ -573,116 +573,116 @@ convert_integer_determinism_list([], []).
 %:- mode convert_integer_determinism_exact(in, out) is semidet.
 convert_integer_determinism_exact(-, -) :-
 	!.
-convert_integer_determinism_exact(0, OpiumAtt) :-
-	(OpiumAtt = failure ; OpiumAtt = 'FAIL'),
+convert_integer_determinism_exact(0, MorphineAtt) :-
+	(MorphineAtt = failure ; MorphineAtt = 'FAIL'),
 	!.
-convert_integer_determinism_exact(2, OpiumAtt) :-
-	(OpiumAtt = semidet ; OpiumAtt = 'SEMI'),
+convert_integer_determinism_exact(2, MorphineAtt) :-
+	(MorphineAtt = semidet ; MorphineAtt = 'SEMI'),
 	!.
-convert_integer_determinism_exact(3, OpiumAtt) :-
-	(OpiumAtt = nondet ; OpiumAtt = 'NON'),
+convert_integer_determinism_exact(3, MorphineAtt) :-
+	(MorphineAtt = nondet ; MorphineAtt = 'NON'),
 	!.
-convert_integer_determinism_exact(4, OpiumAtt) :-
-	(OpiumAtt = erroneous ; OpiumAtt = 'ERR'),
+convert_integer_determinism_exact(4, MorphineAtt) :-
+	(MorphineAtt = erroneous ; MorphineAtt = 'ERR'),
 	!.
-convert_integer_determinism_exact(6, OpiumAtt) :-
-	(OpiumAtt = det ; OpiumAtt = 'DET'),
+convert_integer_determinism_exact(6, MorphineAtt) :-
+	(MorphineAtt = det ; MorphineAtt = 'DET'),
 	!.
-convert_integer_determinism_exact(7, OpiumAtt) :-
-	(OpiumAtt = multidet ; OpiumAtt = 'MUL'),
+convert_integer_determinism_exact(7, MorphineAtt) :-
+	(MorphineAtt = multidet ; MorphineAtt = 'MUL'),
 	!.
-convert_integer_determinism_exact(10, OpiumAtt) :-
-	(OpiumAtt = cc_nondet ; OpiumAtt = 'CCNON'),
+convert_integer_determinism_exact(10, MorphineAtt) :-
+	(MorphineAtt = cc_nondet ; MorphineAtt = 'CCNON'),
 	!.
-convert_integer_determinism_exact(14, OpiumAtt) :-
-	(OpiumAtt = cc_multidet ; OpiumAtt = 'CCMUL'),
+convert_integer_determinism_exact(14, MorphineAtt) :-
+	(MorphineAtt = cc_multidet ; MorphineAtt = 'CCMUL'),
 	!.
 
 
 %------------------------------------------------------------------------------%
-%:- pred convert_mercury_port_opium_port(mercury_port, opium_port).
-%:- mode convert_mercury_port_opium_port(out, in) is det.
-convert_mercury_port_opium_port(Mport, Oport) :-
+%:- pred convert_mercury_port_morphine_port(mercury_port, morphine_port).
+%:- mode convert_mercury_port_morphine_port(out, in) is det.
+convert_mercury_port_morphine_port(Mport, Oport) :-
 	(
 		Oport = '-',
 		Mport = '-',
 		!
 	; 
 		is_list(Oport),
-		convert_mercury_port_opium_port_list(Mport, Oport),
+		convert_mercury_port_morphine_port_list(Mport, Oport),
 		!
 	;
 		is_negated_value(Oport, NegOport),
-		convert_mercury_port_opium_port(NegMport, NegOport),
+		convert_mercury_port_morphine_port(NegMport, NegOport),
 		Mport = not(NegMport),
 		!
 	;
 		is_exact_value(Oport),
-		convert_mercury_port_opium_port_exact(Mport, Oport),
+		convert_mercury_port_morphine_port_exact(Mport, Oport),
 		!
 	;
-		write(stderr, "Software error in Opium-M !\n"),
-		write(stderr, "--> convert_mercury_port_opium_port/2 \n"),
-		opium_abort	
+		write(stderr, "Software error in Morphine !\n"),
+		write(stderr, "--> convert_mercury_port_morphine_port/2 \n"),
+		morphine_abort	
 	). 
 
-%:- pred convert_mercury_port_opium_port_list(list(mercury_port), 
-%	list(opium_port)).
-%:- mode convert_mercury_port_opium_port_list(out, in) is semidet.
-convert_mercury_port_opium_port_list([], []).
-convert_mercury_port_opium_port_list([Mport | MportTail], 
+%:- pred convert_mercury_port_morphine_port_list(list(mercury_port), 
+%	list(morphine_port)).
+%:- mode convert_mercury_port_morphine_port_list(out, in) is semidet.
+convert_mercury_port_morphine_port_list([], []).
+convert_mercury_port_morphine_port_list([Mport | MportTail], 
     [Oport | OportTail]) :-
-	convert_mercury_port_opium_port_exact(Mport, Oport),
-	convert_mercury_port_opium_port_list(MportTail, OportTail).
+	convert_mercury_port_morphine_port_exact(Mport, Oport),
+	convert_mercury_port_morphine_port_list(MportTail, OportTail).
 
-%:- pred convert_mercury_port_opium_port_exact(trace_port_type, atom).
-%:- mode convert_mercury_port_opium_port_exact(in, out) is semidet.
-%:- mode convert_mercury_port_opium_port_exact(out, in) is semidet.
-convert_mercury_port_opium_port_exact(-, -) :- 
+%:- pred convert_mercury_port_morphine_port_exact(trace_port_type, atom).
+%:- mode convert_mercury_port_morphine_port_exact(in, out) is semidet.
+%:- mode convert_mercury_port_morphine_port_exact(out, in) is semidet.
+convert_mercury_port_morphine_port_exact(-, -) :- 
 	!.
-convert_mercury_port_opium_port_exact(call, Ocall) :- 
+convert_mercury_port_morphine_port_exact(call, Ocall) :- 
 	(Ocall = call ; Ocall = 'CALL'),
 	!.
-convert_mercury_port_opium_port_exact(exit, Oexit) :- 
+convert_mercury_port_morphine_port_exact(exit, Oexit) :- 
 	(Oexit = exit ; Oexit = 'EXIT'),
 	!.
-convert_mercury_port_opium_port_exact(redo, Oredo) :-  
+convert_mercury_port_morphine_port_exact(redo, Oredo) :-  
 	(Oredo = redo ; Oredo = 'REDO'),
 	!.
-convert_mercury_port_opium_port_exact(fail, Ofail) :-  
+convert_mercury_port_morphine_port_exact(fail, Ofail) :-  
 	(Ofail = fail ; Ofail = 'FAIL'),
 	!.
-convert_mercury_port_opium_port_exact(ite_cond, Ocond) :-  
+convert_mercury_port_morphine_port_exact(ite_cond, Ocond) :-  
 	(Ocond = cond ; Ocond = 'COND'),
 	!.
-convert_mercury_port_opium_port_exact(ite_then, Othen) :-  
+convert_mercury_port_morphine_port_exact(ite_then, Othen) :-  
 	(Othen = then ; Othen = 'THEN'),
 	!.
-convert_mercury_port_opium_port_exact(ite_else, Oelse) :-  
+convert_mercury_port_morphine_port_exact(ite_else, Oelse) :-  
 	(Oelse = else ; Oelse = 'ELSE'),
 	!.
-convert_mercury_port_opium_port_exact(neg_enter, Oneg_enter) :-  
+convert_mercury_port_morphine_port_exact(neg_enter, Oneg_enter) :-  
 	(Oneg_enter = neg_enter ; Oneg_enter = 'NEGE'),
 	!.
-convert_mercury_port_opium_port_exact(neg_success, Oneg_success) :-  
+convert_mercury_port_morphine_port_exact(neg_success, Oneg_success) :-  
 	(Oneg_success = neg_success ; Oneg_success = 'NEGS'),
 	!.
-convert_mercury_port_opium_port_exact(neg_failure, Oneg_failure) :-  
+convert_mercury_port_morphine_port_exact(neg_failure, Oneg_failure) :-  
 	(Oneg_failure = neg_failure ; Oneg_failure = 'NEGF'),
 	!.
-convert_mercury_port_opium_port_exact(disj, Odisj) :-  
+convert_mercury_port_morphine_port_exact(disj, Odisj) :-  
 	(Odisj = disj ; Odisj = 'DISJ'),
 	!.
-convert_mercury_port_opium_port_exact(switch, Oswitch) :-  
+convert_mercury_port_morphine_port_exact(switch, Oswitch) :-  
 	(Oswitch = switch ; Oswitch = 'SWITCH' ; Oswitch = 'SWTC'),
 	!.
-convert_mercury_port_opium_port_exact(nondet_pragma_first, Ofirst) :-  
+convert_mercury_port_morphine_port_exact(nondet_pragma_first, Ofirst) :-  
 	(Ofirst = first ; Ofirst = 'FIRST' ; Ofirst = 'FRST'),
 	!.
-convert_mercury_port_opium_port_exact(nondet_pragma_later, Olater) :-  
+convert_mercury_port_morphine_port_exact(nondet_pragma_later, Olater) :-  
 	(Olater = later ; Olater =  'LATER' ; Olater = 'LATR'),
 	!.
-convert_mercury_port_opium_port_exact(exception, Oexception) :-  
+convert_mercury_port_morphine_port_exact(exception, Oexception) :-  
 	(Oexception = exception ; Oexception =  'EXCEPTION' ; 
 		Oexception = 'EXCP'),
 	!.
@@ -750,9 +750,9 @@ attribute_to_match(Attribute, AttributeMatch) :-
 		AttributeMatch = exact(Attribute),
 		!
 	;
-		write(stderr, "Software error in Opium-M !\n"),
+		write(stderr, "Software error in Morphine !\n"),
 		write(stderr, "--> attribute_to_match/2 \n"),
-		opium_abort	
+		morphine_abort	
 	).
 
 
@@ -819,7 +819,7 @@ attribute_to_match_str(Attribute, AttributeMatch) :-
 		AttributeMatch = exact(AttrStrQuoted)
 	;
 		write(stderr, "error in forward_move/attribute_to_match_str\n"),
-		opium_abort	
+		morphine_abort	
 	).
 
 
@@ -855,9 +855,9 @@ attribute_to_match_gp(Attribute, AttributeMatch) :-
 		AttributeMatch = exact(AttrQuoted),
 		!
 	;
-		write(stderr, "Software error in Opium-M !\n"),
+		write(stderr, "Software error in Morphine !\n"),
 		write(stderr, "--> attribute_to_match_gp/2 \n"),
-		opium_abort	
+		morphine_abort	
 	).
 
 det_fget_Op(Chrono, Call, Depth, Port, PredOrFunc, DeclModule, DefModule, 
@@ -914,7 +914,7 @@ a noticeable amount of time. \
 	).
 
 retry_Op :-
-	getval(state_of_opium, running),
+	getval(state_of_morphine, running),
 	send_message_to_socket(retry),
 	read_message_from_socket(Message), 
 	( 

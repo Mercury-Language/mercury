@@ -1,4 +1,4 @@
-[Opium-M 1]: 
+[morphine 1]: 
 **************************************************
 **** Testing test_vars.m...
 Start debugging test_vars program.
@@ -14,5 +14,5 @@ End of connection with the traced program
 test_vars: ok.
 
 Arg = [3 - 8]
-[Opium-M 2]: 
+[morphine 2]: 
 bye

@@ -30,7 +30,7 @@
 -def_module_ok(P/A, CallMod, DefMod) :-
 -	exchange_with_prolog_asynchronously(def_module_pk(P/A, CallMod, D), 
 -					def_module_pk(P/A, CallMod, DefMod)).
-+% Useless in Opium-M ???
++% Useless in Morphine ???
 +% /*
 +%  *	DEF-MODULE
 +%  */
@@ -84,7 +84,7 @@
 -get_prolog_filename_Op(F, File) :-
 -	remote_once(get_flag(prolog_suffix, Suffixes), sepia_kernel),
 -	get_filename(F, Suffixes, File).
-+% XXX R1 remote_once is not available in Opium-M
++% XXX R1 remote_once is not available in Morphine
 +% /*
 +%  *	GET-PROLOG-FILENAME
 +%  */

@@ -512,16 +512,15 @@
 	;	gc
 	.
 
-	% The kinds of ports for which the code we generate will
-	% call MR_trace. The exception port is not on this list, because for
-	% that port the code that calls MR_trace is not in compiler-generated
-	% code, but in the runtime system. (The same comment applies to the
-	% type `external_trace_port' in trace.m.)
+	% The kinds of events with which MR_trace may be called, either
+	% by compiler-generated code, or by code in the standard library
+	% referring to compiler-generated data structures.
 :- type trace_port
 	--->	call
 	;	exit
 	;	fail
 	;	redo
+	;	exception
 	;	ite_cond
 	;	ite_then
 	;	ite_else
