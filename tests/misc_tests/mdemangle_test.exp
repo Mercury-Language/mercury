@@ -31,8 +31,8 @@ Each symbol is followed by the correct decoding.
 <compare/3 predicate for type 'mercury_builtin:comparison_result'/0>
 
 	an index predicate
-<index/3 predicate for type 'mercury_builtin:list'/1>
-<index/3 predicate for type 'mercury_builtin:list'/1>
+<index/2 predicate for type 'mercury_builtin:list'/1>
+<index/2 predicate for type 'mercury_builtin:list'/1>
 
 	a unify predicate
 <unification predicate for type 'mercury_builtin:term'/0 mode 0>

@@ -32,7 +32,7 @@ entry_mercury____Compare___mercury_builtin__comparison_result_0_0
 
 	an index predicate
 entry_mercury____Index___mercury_builtin__list_1_0
-<index/3 predicate for type 'mercury_builtin:list'/1>
+<index/2 predicate for type 'mercury_builtin:list'/1>
 
 	a unify predicate
 entry_mercury____Unify___mercury_builtin__term_0_0
