@@ -593,7 +593,7 @@
 :- import_module globals, options.
 
 :- import_module string, int, bool, varset, term.
-:- import_module list, assoc_list, map, set, stack.
+:- import_module list, map, set, stack.
 :- import_module require, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -3454,7 +3454,7 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
 	% and modes, generate the MLDS argument list declaration.
 	%
 :- pred ml_gen_arg_decls(module_info, list(prog_var), list(prog_type),
-		list(mode), prog_varset, assoc_list(entity_name, mlds__type)).
+		list(mode), prog_varset, mlds__arguments).
 :- mode ml_gen_arg_decls(in, in, in, in, in, out) is det.
 
 ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, VarSet,

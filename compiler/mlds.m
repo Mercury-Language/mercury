@@ -399,9 +399,11 @@
 
 :- type mlds__func_params
 	---> mlds__func_params(
-		assoc_list(entity_name, mlds__type), % arguments (inputs)
-		list(mlds__type)		% return values (outputs)
+		mlds__arguments,	% names and types of arguments (inputs)
+		list(mlds__type)	% types of return values (outputs)
 	).
+
+:- type mlds__arguments == assoc_list(mlds__entity_name, mlds__type).
 
 	% An mlds__func_signature is like an mlds__func_params
 	% except that it only includes the function's type, not

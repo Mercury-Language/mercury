@@ -28,7 +28,7 @@
 :- import_module hlds_pred. % for `pred_proc_id'.
 :- import_module prog_data, prog_out.
 
-:- import_module bool, int, string, list, assoc_list, term, std_util, require.
+:- import_module bool, int, string, list, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -456,8 +456,8 @@ mlds_output_func_decl(Indent, Name, Signature) -->
 	mlds_output_fully_qualified_name(Name, mlds_output_name),
 	mlds_output_params(Indent, Name, Parameters).
 
-:- pred mlds_output_params(int, qualified_entity_name,
-		assoc_list(entity_name, mlds__type), io__state, io__state).
+:- pred mlds_output_params(int, qualified_entity_name, mlds__arguments,
+		io__state, io__state).
 :- mode mlds_output_params(in, in, in, di, uo) is det.
 
 mlds_output_params(Indent, FuncName, Parameters) -->

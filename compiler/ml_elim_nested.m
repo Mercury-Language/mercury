@@ -129,7 +129,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, assoc_list, std_util, string, require.
+:- import_module int, list, std_util, string, require.
 % the following imports are needed for mangling pred names
 :- import_module hlds_pred, prog_data, prog_out.
 
@@ -223,7 +223,7 @@ ml_elim_nested_defns(ModuleName, OuterVars, Defn0) = FlatDefns :-
 	% Add any arguments which are used in nested functions
 	% to the local_vars field in the elim_info.
 	%
-:- pred ml_maybe_add_args(assoc_list(mlds__entity_name, mlds__type), mlds__statement,
+:- pred ml_maybe_add_args(mlds__arguments, mlds__statement,
 		mlds_module_name, mlds__context, elim_info, elim_info).
 :- mode ml_maybe_add_args(in, in, in, in, in, out) is det.
 
@@ -244,7 +244,7 @@ ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
 	% Generate code to copy any arguments which are used in nested functions
 	% to the environment struct.
 	%
-:- pred ml_maybe_copy_args(assoc_list(mlds__entity_name, mlds__type), mlds__statement,
+:- pred ml_maybe_copy_args(mlds__arguments, mlds__statement,
 		mlds_module_name, mlds__context, mlds__defns, mlds__statements).
 :- mode ml_maybe_copy_args(in, in, in, in, out, out) is det.
 
