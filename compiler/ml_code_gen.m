@@ -732,7 +732,8 @@
 
 :- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_switch_gen.
 :- import_module ml_code_util.
-:- import_module arg_info, export, llds_out. % XXX needed for pragma C code
+:- import_module arg_info, llds_out. % XXX needed for pragma foreign code
+:- import_module export, foreign. % XXX needed for pragma foreign code
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
 :- import_module passes_aux, modules.
@@ -758,14 +759,20 @@ ml_code_gen(ModuleInfo, MLDS) -->
 :- mode ml_gen_foreign_code(in, out, di, uo) is det.
 
 ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
-	{ module_info_get_foreign_header(ModuleInfo, C_Header_Info) },
-	{ module_info_get_foreign_body_code(ModuleInfo, C_Body_Info) },
-		% XXX This assumes the language is C.
-	{ ConvBody = (func(S - C) = user_foreign_code(c, S, C)) },
-	{ User_C_Code = list__map(ConvBody, C_Body_Info) },
+	{ module_info_get_foreign_decl(ModuleInfo, ForeignDecls) },
+	{ module_info_get_foreign_body_code(ModuleInfo, ForeignBodys) },
+	globals__io_lookup_foreign_language_option(use_foreign_language,
+		UseForeignLanguage),
+	{ foreign__filter_decls(UseForeignLanguage, ForeignDecls,
+		WantedForeignDecls, _OtherForeignDecls) },
+	{ foreign__filter_bodys(UseForeignLanguage, ForeignBodys,
+		WantedForeignBodys, _OtherForeignBodys) },
+	{ ConvBody = (func(foreign_body_code(L, S, C)) = 
+		user_foreign_code(L, S, C)) },
+	{ MLDSWantedForeignBodys = list__map(ConvBody, WantedForeignBodys) },
 	{ ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) },
-	{ MLDS_ForeignCode = mlds__foreign_code(C_Header_Info, User_C_Code,
-			MLDS_PragmaExports) }.
+	{ MLDS_ForeignCode = mlds__foreign_code(WantedForeignDecls,
+			MLDSWantedForeignBodys, MLDS_PragmaExports) }.
 
 :- pred ml_gen_imports(module_info, mlds__imports).
 :- mode ml_gen_imports(in, out) is det.
@@ -1791,7 +1798,7 @@ ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 	ml_gen_unification(Unification, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(pragma_foreign_code(_Lang, Attributes,
+ml_gen_goal_expr(pragma_foreign_code(Attributes,
                 PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
 		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
         (

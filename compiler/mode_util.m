@@ -1393,8 +1393,8 @@ recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo,
 	).
 
 recompute_instmap_delta_2(_, 
-		pragma_foreign_code(A, B, PredId, ProcId, Args, F, G, H), _,
-		pragma_foreign_code(A, B, PredId, ProcId, Args, F, G, H), 
+		pragma_foreign_code(A, PredId, ProcId, Args, E, F, G), _,
+		pragma_foreign_code(A, PredId, ProcId, Args, E, F, G), 
 		VarTypes, InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, VarTypes, InstMap, InstMapDelta).

@@ -887,11 +887,11 @@ qualify_type(Type0, Type, Info0, Info) -->
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
 qualify_pragma(source_file(File), source_file(File), Info, Info) --> [].
-qualify_pragma(c_header_code(Code), c_header_code(Code), Info, Info) --> [].
+qualify_pragma(foreign_decl(L, Code), foreign_decl(L, Code), Info, Info) --> [].
 qualify_pragma(foreign(L, C), foreign(L, C), Info, Info) --> [].
 qualify_pragma(
-	    foreign(Lang, Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),
-	    foreign(Lang, Rec, SymName, PredOrFunc, PragmaVars, Varset, Code), 
+	    foreign(Rec, SymName, PredOrFunc, PragmaVars0, Varset, Code),
+	    foreign(Rec, SymName, PredOrFunc, PragmaVars, Varset, Code), 
 		Info0, Info) -->
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info0, Info).
 qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes), 

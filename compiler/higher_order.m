@@ -500,7 +500,7 @@ traverse_goal_2(some(Vars, CanRemove, Goal0) - Info,
 	traverse_goal_2(Goal0, Goal).
 
 traverse_goal_2(Goal, Goal) -->
-	{ Goal = pragma_foreign_code(_, _, _, _, _, _, _, _) - _ }.
+	{ Goal = pragma_foreign_code(_, _, _, _, _, _, _) - _ }.
 
 traverse_goal_2(Goal, Goal) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ },

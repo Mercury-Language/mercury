@@ -620,7 +620,7 @@
 	%
 :- type mlds__foreign_code
 	---> mlds__foreign_code(
-		foreign_header_info,
+		foreign_decl_info,
 		list(user_foreign_code),
 		list(mlds__pragma_export)
 	).

@@ -312,7 +312,7 @@ output_llds(C_File, StackLayoutLabels, MaybeRLFile) -->
 	).
 
 :- pred output_split_user_foreign_codes(list(user_foreign_code)::in,
-	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_user_foreign_codes([], _, _, _, Num, Num) --> [].
@@ -326,7 +326,7 @@ output_split_user_foreign_codes([UserForeignCode | UserForeignCodes],
 		C_HeaderLines, StackLayoutLabels, Num1, Num).
 
 :- pred output_split_c_exports(list(foreign_export)::in,
-	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_c_exports([], _, _, _, Num, Num) --> [].
@@ -340,7 +340,7 @@ output_split_c_exports([Export | Exports], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_vars(list(comp_gen_c_var)::in,
-	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_vars([], _, _, _, Num, Num) --> [].
@@ -353,7 +353,7 @@ output_split_comp_gen_c_vars([Var | Vars], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_datas(list(comp_gen_c_data)::in,
-	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_datas([], _, _, _, Num, Num) --> [].
@@ -366,7 +366,7 @@ output_split_comp_gen_c_datas([Data | Datas], ModuleName, C_HeaderLines,
 		StackLayoutLabels, Num1, Num).
 
 :- pred output_split_comp_gen_c_modules(list(comp_gen_c_module)::in,
-	module_name::in, list(foreign_header_code)::in, set_bbbtree(label)::in,
+	module_name::in, list(foreign_decl_code)::in, set_bbbtree(label)::in,
 	int::in, int::out, io__state::di, io__state::uo) is det.
 
 output_split_comp_gen_c_modules([], _, _, _, Num, Num) --> [].
@@ -997,48 +997,59 @@ output_user_foreign_code_list([UserForeignCode | UserCCodes]) -->
 :- pred output_user_foreign_code(user_foreign_code::in,
 	io__state::di, io__state::uo) is det.
 
-output_user_foreign_code(user_foreign_code(c, Foreign_Code, Context)) -->
-	globals__io_lookup_bool_option(auto_comments, PrintComments),
-	( { PrintComments = yes } ->
-		io__write_string("/* "),
-		prog_out__write_context(Context),
-		io__write_string(" pragma foreign_code */\n")
+output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context)) -->
+	( { Lang = c } ->
+		globals__io_lookup_bool_option(auto_comments, PrintComments),
+		( { PrintComments = yes } ->
+			io__write_string("/* "),
+			prog_out__write_context(Context),
+			io__write_string(" pragma foreign_code */\n")
+		;
+			[]
+		),
+		output_set_line_num(Context),
+		io__write_string(Foreign_Code),
+		io__write_string("\n"),
+		output_reset_line_num
 	;
-		[]
-	),
-	output_set_line_num(Context),
-	io__write_string(Foreign_Code),
-	io__write_string("\n"),
-	output_reset_line_num.
+		{ error("llds_out__output_user_foreign_code: unimplemented: foreign code other than C") }
+	).
 
 	% output_foreign_header_include_lines reverses the list of c
 	% header lines and passes them to
 	% output_c_header_include_lines_2 which outputs them.  The list
 	% must be reversed since they are inserted in reverse order.
-:- pred output_foreign_header_include_lines(list(foreign_header_code)::in,
+:- pred output_foreign_header_include_lines(list(foreign_decl_code)::in,
 	io__state::di, io__state::uo) is det.
 
 output_foreign_header_include_lines(Headers) -->
 	{ list__reverse(Headers, RevHeaders) },
 	output_foreign_header_include_lines_2(RevHeaders).
 
-:- pred output_foreign_header_include_lines_2(list(foreign_header_code)::in,
+:- pred output_foreign_header_include_lines_2(list(foreign_decl_code)::in,
 	io__state::di, io__state::uo) is det.
 
 output_foreign_header_include_lines_2([]) --> [].
-output_foreign_header_include_lines_2([Code - Context | Hs]) -->
-	globals__io_lookup_bool_option(auto_comments, PrintComments),
-	( { PrintComments = yes } ->
-		io__write_string("/* "),
-		prog_out__write_context(Context),
-		io__write_string(" pragma(foreign_header_code) */\n")
+output_foreign_header_include_lines_2(
+		[foreign_decl_code(Lang, Code, Context) | Hs]) -->
+	( { Lang = c } ->
+		globals__io_lookup_bool_option(auto_comments, PrintComments),
+		( { PrintComments = yes } ->
+			io__write_string("/* "),
+			prog_out__write_context(Context),
+			io__write_string(" pragma foreign_decl_code( "),
+			io__write(Lang),
+			io__write_string(" */\n")
+		;
+			[]
+		),
+		output_set_line_num(Context),
+		io__write_string(Code),
+		io__write_string("\n"),
+		output_reset_line_num
 	;
-		[]
+		{ error("llds_out__output_user_foreign_code: unexpected: foreign code other than C") }
 	),
-	output_set_line_num(Context),
-	io__write_string(Code),
-	io__write_string("\n"),
-	output_reset_line_num,
 	output_foreign_header_include_lines_2(Hs).
 
 :- pred output_exported_c_functions(list(string), io__state, io__state).

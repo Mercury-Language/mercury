@@ -80,10 +80,12 @@
 		io__state, io__state).
 :- mode mercury_output_pragma_decl(in, in, in, in, di, uo) is det.
 
-:- pred mercury_output_pragma_c_code(pragma_foreign_code_attributes, sym_name,
+:- pred mercury_output_pragma_foreign_code(
+		pragma_foreign_code_attributes, sym_name,
 		pred_or_func, list(pragma_var), prog_varset,
 		pragma_foreign_code_impl, io__state, io__state).
-:- mode mercury_output_pragma_c_code(in, in, in, in, in, in, di, uo) is det.
+:- mode mercury_output_pragma_foreign_code(
+		in, in, in, in, in, in, di, uo) is det.
 
 :- inst type_spec == bound(type_spec(ground, ground, ground, ground,
 			ground, ground, ground)).
@@ -101,9 +103,9 @@
 :- pred mercury_output_index_spec(index_spec, io__state, io__state). 
 :- mode mercury_output_index_spec(in, di, uo) is det.
 
-	% Output the given c_header_code declaration
-:- pred mercury_output_pragma_c_header(string, io__state, io__state).
-:- mode mercury_output_pragma_c_header(in, di, uo) is det.
+	% Output the given foreign_decl declaration
+:- pred mercury_output_pragma_foreign_decl(foreign_language, string,				io__state, io__state).
+:- mode mercury_output_pragma_foreign_decl(in, in, di, uo) is det.
 
 :- pred mercury_output_type_defn(tvarset, type_defn, prog_context,
 		io__state, io__state).
@@ -343,18 +345,16 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = source_file(SourceFile) },
 		mercury_output_pragma_source_file(SourceFile)
 	;
-		{ Pragma = c_header_code(C_HeaderString) },
-		mercury_output_pragma_c_header(C_HeaderString)
+		{ Pragma = foreign_decl(Lang, ForeignHeaderString) },
+		mercury_output_pragma_foreign_decl(Lang, ForeignHeaderString)
 	;
-		{ Pragma = foreign(_Lang, Code) }, 
-		% XXX if it is C code only
-		mercury_output_pragma_c_body_code(Code)
+		{ Pragma = foreign(Lang, Code) }, 
+		mercury_output_pragma_foreign_body_code(Lang, Code)
 	;
-		{ Pragma = foreign(_Lang, Attributes, Pred, PredOrFunc, Vars,
+		{ Pragma = foreign(Attributes, Pred, PredOrFunc, Vars,
 			VarSet, PragmaCode) }, 
-		% XXX if it is C code only
-		mercury_output_pragma_c_code(Attributes, Pred, PredOrFunc, 
-			Vars, VarSet, PragmaCode)
+		mercury_output_pragma_foreign_code(Attributes, Pred,
+			PredOrFunc, Vars, VarSet, PragmaCode)
 	;
 		{ Pragma = import(Pred, PredOrFunc, ModeList, Attributes,
 			C_Function) },
@@ -2061,10 +2061,17 @@ mercury_output_some(Vars, VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_pragma_c_header(C_HeaderString) -->
-	io__write_string(":- pragma c_header_code("),
-	mercury_output_c_code_string(C_HeaderString),
+mercury_output_pragma_foreign_decl(Lang, ForeignDeclString) -->
+	io__write_string(":- pragma foreign_decl("),
+	mercury_output_foreign_language_string(Lang),
+	io__write_string(", "),
+	mercury_output_foreign_code_string(ForeignDeclString),
 	io__write_string(").\n").
+
+:- pred mercury_output_foreign_language_string(foreign_language::in,
+		io__state::di, io__state::uo) is det.
+mercury_output_foreign_language_string(Lang) -->
+	io__write_string("""" ++ foreign_language_string(Lang) ++ """").
 
 %-----------------------------------------------------------------------------%
 
@@ -2072,9 +2079,9 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 % but \n and \t are output directly, rather than escaped.
 % Any changes here may require corresponding changes to term_io and vice versa.
 
-:- pred mercury_output_c_code_string(string::in, io__state::di, io__state::uo)
-	is det.
-mercury_output_c_code_string(S) -->
+:- pred mercury_output_foreign_code_string(string::in, 
+		io__state::di, io__state::uo) is det.
+mercury_output_foreign_code_string(S) -->
 	io__write_char('"'),
 	mercury_write_escaped_string(S),
 	io__write_char('"').
@@ -2173,7 +2180,8 @@ is_mercury_punctuation_char('|').
 	% escape_special_char(Char, EscapeChar)
 	% is true iff Char is character for which there is a special
 	% backslash-escape character EscapeChar that can be used
-	% after a backslash in Mercury c_code string literals represent Char.
+	% after a backslash in Mercury foreign_code string literals 
+	% represent Char.
 
 :- pred escape_special_char(char, char).
 :- mode escape_special_char(in, out) is semidet.
@@ -2196,26 +2204,31 @@ mercury_output_pragma_source_file(SourceFileString) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Output the given c_body_code declaration
-:- pred mercury_output_pragma_c_body_code(string, io__state, io__state).
-:- mode mercury_output_pragma_c_body_code(in, di, uo) is det.
+	% Output the given foreign_body_code declaration
+:- pred mercury_output_pragma_foreign_body_code(foreign_language, 
+		string, io__state, io__state).
+:- mode mercury_output_pragma_foreign_body_code(in, in, di, uo) is det.
 
-mercury_output_pragma_c_body_code(C_CodeString) -->
-	io__write_string(":- pragma c_code("),
-	mercury_output_c_code_string(C_CodeString),
+mercury_output_pragma_foreign_body_code(Lang, ForeignCodeString) -->
+	io__write_string(":- pragma foreign_code("),
+	mercury_output_foreign_language_string(Lang),
+	mercury_output_foreign_code_string(ForeignCodeString),
 	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 
-	% Output the given pragma c_code declaration
-mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
+	% Output the given pragma foreign_code declaration
+mercury_output_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
 		VarSet, PragmaCode) -->
 	(
 		{ PragmaCode = import(_, _, _, _) }
 	->
 		io__write_string(":- pragma import(")
 	;
-		io__write_string(":- pragma c_code(")
+		io__write_string(":- pragma foreign_code("),
+		{ foreign_language(Attributes, Lang) },
+		mercury_output_foreign_language_string(Lang),
+		io__write_string(", ")
 	),
 	mercury_output_sym_name(PredName),
 	{
@@ -2231,7 +2244,7 @@ mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 		[]
 	;
 		io__write_string("("),
-		mercury_output_pragma_c_code_vars(Vars, VarSet),
+		mercury_output_pragma_foreign_code_vars(Vars, VarSet),
 		io__write_string(")")
 	),
 	(
@@ -2239,26 +2252,26 @@ mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 	;
 		{ PredOrFunc = function },
 		io__write_string(" = ("),
-		mercury_output_pragma_c_code_vars(ResultVars, VarSet),
+		mercury_output_pragma_foreign_code_vars(ResultVars, VarSet),
 		io__write_string(")")
 	),
 	io__write_string(", "),
-	mercury_output_pragma_c_attributes(Attributes),
+	mercury_output_pragma_foreign_attributes(Attributes),
 	io__write_string(", "),
 	(
 		{ PragmaCode = ordinary(C_Code, _) },
-		mercury_output_c_code_string(C_Code)
+		mercury_output_foreign_code_string(C_Code)
 	;
 		{ PragmaCode = nondet(Fields, _, First, _,
 			Later, _, Treat, Shared, _) },
 		io__write_string("local_vars("),
-		mercury_output_c_code_string(Fields),
+		mercury_output_foreign_code_string(Fields),
 		io__write_string("), "),
 		io__write_string("first_code("),
-		mercury_output_c_code_string(First),
+		mercury_output_foreign_code_string(First),
 		io__write_string("), "),
 		io__write_string("retry_code("),
-		mercury_output_c_code_string(Later),
+		mercury_output_foreign_code_string(Later),
 		io__write_string("), "),
 		(
 			{ Treat = share },
@@ -2270,7 +2283,7 @@ mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 			{ Treat = automatic },
 			io__write_string("common_code(")
 		),
-		mercury_output_c_code_string(Shared),
+		mercury_output_foreign_code_string(Shared),
 		io__write_string(")")
 	;
 		{ PragmaCode = import(Name, _, _, _) },
@@ -2280,35 +2293,15 @@ mercury_output_pragma_c_code(Attributes, PredName, PredOrFunc, Vars0,
 	),
 	io__write_string(").\n").
 
-:- pred mercury_output_c_ident_list(list(string), io__state, io__state).
-:- mode mercury_output_c_ident_list(in, di, uo) is det.
-
-mercury_output_c_ident_list([]) -->
-	io__write_string("[]").
-mercury_output_c_ident_list([First | Rest]) -->
-	io__write_string("["),
-	io__write_string(First),
-	mercury_output_c_ident_list_2(Rest),
-	io__write_string("]").
-
-:- pred mercury_output_c_ident_list_2(list(string), io__state, io__state).
-:- mode mercury_output_c_ident_list_2(in, di, uo) is det.
-
-mercury_output_c_ident_list_2([]) --> [].
-mercury_output_c_ident_list_2([First | Rest]) -->
-	io__write_string(", "),
-	io__write_string(First),
-	mercury_output_c_ident_list_2(Rest).
-
 %-----------------------------------------------------------------------------%
 
 	% Output the varnames of the pragma vars
-:- pred mercury_output_pragma_c_code_vars(list(pragma_var), prog_varset,
+:- pred mercury_output_pragma_foreign_code_vars(list(pragma_var), prog_varset,
 		io__state, io__state).
-:- mode mercury_output_pragma_c_code_vars(in, in, di, uo) is det.
+:- mode mercury_output_pragma_foreign_code_vars(in, in, di, uo) is det.
 
-mercury_output_pragma_c_code_vars([], _) --> [].
-mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
+mercury_output_pragma_foreign_code_vars([], _) --> [].
+mercury_output_pragma_foreign_code_vars([V|Vars], VarSet) -->
 	{ V = pragma_var(_Var, VarName, Mode) },
 	io__write_string(VarName),
 	io__write_string(" :: "),
@@ -2321,7 +2314,7 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 	;
 		io__write_string(", ")
 	),
-	mercury_output_pragma_c_code_vars(Vars, VarSet).
+	mercury_output_pragma_foreign_code_vars(Vars, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -2449,7 +2442,7 @@ mercury_output_pragma_import(Name, PredOrFunc, ModeList, Attributes,
 		io__write_string(")")
 	),
 	io__write_string(", "),
-	mercury_output_pragma_c_attributes(Attributes),
+	mercury_output_pragma_foreign_attributes(Attributes),
 	io__write_string(", "),
 	io__write_string(C_Function),
 	io__write_string(").\n").
@@ -2551,29 +2544,18 @@ mercury_output_tabs(Indent) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_pragma_c_attributes(pragma_foreign_code_attributes,
-		io__state, io__state).
-:- mode mercury_output_pragma_c_attributes(in, di, uo) is det.
+:- pred mercury_output_pragma_foreign_attributes(
+		pragma_foreign_code_attributes, io__state, io__state).
+:- mode mercury_output_pragma_foreign_attributes(in, di, uo) is det.
 
-mercury_output_pragma_c_attributes(Attributes) -->
+mercury_output_pragma_foreign_attributes(Attributes) -->
+	% This is one case where it is a bad idea to use field
+	% accessors.  
+	{ attributes_to_strings(Attributes, AttrStrings) },
 	io__write_string("["),
-	{ may_call_mercury(Attributes, MayCallMercury) },
-	(
-		{ MayCallMercury = may_call_mercury },
-		io__write_string("may_call_mercury, ")
-	;
-		{ MayCallMercury = will_not_call_mercury },
-		io__write_string("will_not_call_mercury, ")
-	),
-	{ thread_safe(Attributes, ThreadSafe) },
-	(
-		{ ThreadSafe = not_thread_safe },
-		io__write_string("not_thread_safe")
-	;
-		{ ThreadSafe = thread_safe },
-		io__write_string("thread_safe")
-	),
+	io__write_list(AttrStrings, ", ", io__write_string),
 	io__write_string("]").
+
 
 %-----------------------------------------------------------------------------%
 

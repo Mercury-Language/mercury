@@ -1231,7 +1231,7 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_expr(pragma_foreign_code(Language, Attributes, PredId, ProcId0,
+modecheck_goal_expr(pragma_foreign_code(Attributes, PredId, ProcId0,
 		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
 		GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_foreign_code"),
@@ -1245,7 +1245,7 @@ modecheck_goal_expr(pragma_foreign_code(Language, Attributes, PredId, ProcId0,
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				ProcId, Args, ExtraGoals),
 
-	{ Pragma = pragma_foreign_code(Language, Attributes, PredId, ProcId,
+	{ Pragma = pragma_foreign_code(Attributes, PredId, ProcId,
 			Args0, ArgNameMap, OrigArgTypes, PragmaCode) },
 	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
 			InstMap0, Goal),

@@ -334,7 +334,7 @@ build_live_sets_in_goal_2(Goal, Liveness, NondetLiveness,
 		true
 	).
 
-build_live_sets_in_goal_2(pragma_foreign_code(_Language, Attributes,
+build_live_sets_in_goal_2(pragma_foreign_code(Attributes,
 		PredId, ProcId, Args, _, _, _),
 		Liveness, NondetLiveness0, ResumeVars0, LiveSets0,
 		GoalInfo, AllocData,

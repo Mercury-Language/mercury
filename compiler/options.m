@@ -177,9 +177,19 @@
 		;       unboxed_no_tag_types
 		;	sync_term_size % in words
 		;	type_layout
+	% Foreign language interface options
+				% The foreign language that the user has
+				% selected for use in this module
+				% (defaults to the value of backend
+				% foreign target).
+		;	use_foreign_language
 	% Options for internal use only
 	% (the values of these options are implied by the
 	% settings of other options)
+				% The language that this backend can
+				% interface to most easily (probably the
+				% target language of the backend).
+		; 	backend_foreign_language 
 				% Stack layout information required to do
 				% a stack trace.
 		;       basic_stack_layout
@@ -566,6 +576,11 @@ option_defaults_2(compilation_model_option, [
 					% of writing) - will usually be over-
 					% ridden by a value from configure.
 	type_layout		-	bool(yes),
+	use_foreign_language	-	string(""),
+	backend_foreign_language-	string(""),
+					% The previous two options
+					% depend on the target and are
+					% set in handle_options.
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -948,6 +963,7 @@ long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("type-layout",		type_layout).
+long_option("use-foreign-language",	use_foreign_language).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
@@ -1974,6 +1990,15 @@ your program compiled with different options.
 
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
+		%
+		"--use-foreign-language <foreign language>",
+		"\tUse the given foreign language to implement predicates",
+		"\twritten in foreign languages.  Any name that can be used",
+		"\tto specify foreign languages in pragma foreign declarations",
+		"\tis valid, but not all foreign languages are implemented",
+		"\tin all backends.",
+		"\tDefault value is `C' for the LLDS and MLDS->C backends,",
+		"\tor `ManagedC++' for the .NET backend.",
 
 		"--no-type-layout",
 		"(This option is not for general use.)",

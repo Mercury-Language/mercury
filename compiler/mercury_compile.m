@@ -43,7 +43,7 @@
 	% the LLDS back-end
 :- import_module saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
-:- import_module code_gen, optimize, export.
+:- import_module code_gen, optimize, foreign, export.
 :- import_module base_typeclass_info.
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
@@ -2180,25 +2180,32 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, GlobalData0, LLDS0,
 %-----------------------------------------------------------------------------%
 
 %
-% Gather together the information from the HLDS that is
-% used for the C interface.  This stuff mostly just gets
-% passed directly to the LLDS unchanged, but we do do
-% a bit of code generation -- for example, we call
-% export__get_c_export_{decls,defns} here, which do the
-% generation of C code for `pragma export' declarations.
+% Gather together the information from the HLDS, given the foreign
+% language we are going to use, that is used for the foreign language
+% interface.  
+% This stuff mostly just gets passed directly to the LLDS unchanged, but
+% we do do a bit of code generation -- for example, we call
+% export__get_foreign_export_{decls,defns} here, which do the generation
+% of C code for `pragma export' declarations.
 %
 
-:- pred get_c_interface_info(module_info, foreign_interface_info).
-:- mode get_c_interface_info(in, out) is det.
+:- pred get_c_interface_info(module_info, foreign_language, 
+		foreign_interface_info).
+:- mode get_c_interface_info(in, in, out) is det.
 
-get_c_interface_info(HLDS, C_InterfaceInfo) :-
+get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	module_info_name(HLDS, ModuleName),
-	module_info_get_foreign_header(HLDS, C_HeaderCode),
-	module_info_get_foreign_body_code(HLDS, C_BodyCode),
-	export__get_c_export_decls(HLDS, C_ExportDecls),
-	export__get_c_export_defns(HLDS, C_ExportDefns),
-	C_InterfaceInfo = foreign_interface_info(ModuleName,
-		C_HeaderCode, C_BodyCode, C_ExportDecls, C_ExportDefns).
+	module_info_get_foreign_decl(HLDS, ForeignDecls),
+	module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
+	foreign__filter_decls(UseForeignLanguage, ForeignDecls, 
+		WantedForeignDecls, _OtherDecls),
+	foreign__filter_bodys(UseForeignLanguage, ForeignBodyCode,
+		WantedForeignBodys, _OtherBodys),
+	export__get_foreign_export_decls(HLDS, Foreign_ExportDecls),
+	export__get_foreign_export_defns(HLDS, Foreign_ExportDefns),
+	Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
+		WantedForeignDecls, WantedForeignBodys,
+		Foreign_ExportDecls, Foreign_ExportDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2234,7 +2241,9 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	% XXX this should perhaps be part of backend_pass
 	% rather than output_pass.
 	%
-	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
+	globals__io_lookup_foreign_language_option(use_foreign_language,
+		UseForeignLanguage),
+	{ get_c_interface_info(HLDS, UseForeignLanguage, C_InterfaceInfo) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
@@ -2311,7 +2320,7 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
 
 :- pred maybe_add_header_file_include(foreign_export_decls, module_name,
-	foreign_header_info, foreign_header_info, io__state, io__state).
+	foreign_decl_info, foreign_decl_info, io__state, io__state).
 :- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
 
 maybe_add_header_file_include(C_ExportDecls, ModuleName, 
@@ -2327,16 +2336,16 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 			SplitFiles = yes,
                         string__append_list(
                                 ["#include ""../", HeaderFileName, """\n"],
-				Include0)
+				IncludeString)
                 ;
 			SplitFiles = no,
                         string__append_list(
 				["#include """, HeaderFileName, """\n"],
-				Include0)
+				IncludeString)
                 },
 
 		{ term__context_init(Context) },
-		{ Include = Include0 - Context },
+		{ Include = foreign_decl_code(c, IncludeString, Context) },
 
 			% We put the new include at the end since the list is
 			% stored in reverse, and we want this include to come
@@ -2348,8 +2357,8 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 :- mode get_c_body_code(in, out) is det.
 
 get_c_body_code([], []).
-get_c_body_code([Code - Context | CodesAndContexts],
-		[user_foreign_code(c, Code, Context) | C_Modules]) :-
+get_c_body_code([foreign_body_code(Lang, Code, Context) | CodesAndContexts],
+		[user_foreign_code(Lang, Code, Context) | C_Modules]) :-
 	get_c_body_code(CodesAndContexts, C_Modules).
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,

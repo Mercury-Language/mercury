@@ -478,7 +478,9 @@ code_util__goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
 	% We cannot safely say that a C code fragment does not allocate memory
 	% without knowing all the #defined macros that expand to incr_hp and
 	% variants thereof.
-code_util__goal_may_allocate_heap_2(pragma_foreign_code(_,_,_,_,_,_,_,_), yes).
+	% XXX although you could make it an attribute of the C code and
+	% trust the programmer
+code_util__goal_may_allocate_heap_2(pragma_foreign_code(_,_,_,_,_,_,_), yes).
 code_util__goal_may_allocate_heap_2(some(_Vars, _, Goal), May) :-
 	code_util__goal_may_allocate_heap(Goal, May).
 code_util__goal_may_allocate_heap_2(not(Goal), May) :-
@@ -546,7 +548,7 @@ code_util__goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
 	% temporary nondet frames without knowing all the #defined macros
 	% that expand to mktempframe and variants thereof. The performance
 	% impact of being too conservative is probably not too bad.
-code_util__goal_may_alloc_temp_frame_2(pragma_foreign_code(_,_,_,_,_,_,_,_),
+code_util__goal_may_alloc_temp_frame_2(pragma_foreign_code(_,_,_,_,_,_,_),
 		yes).
 code_util__goal_may_alloc_temp_frame_2(some(_Vars, _, Goal), May) :-
 	Goal = _ - GoalInfo,
@@ -809,7 +811,7 @@ code_util__count_recursive_calls_2(some(_, _, Goal),
 code_util__count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 code_util__count_recursive_calls_2(generic_call(_, _, _, _), _, _,
 		0, 0).
-code_util__count_recursive_calls_2(pragma_foreign_code(_, _, _, _, _, _, _, _),
+code_util__count_recursive_calls_2(pragma_foreign_code(_, _, _, _, _, _, _),
 		_, _, 0, 0).
 code_util__count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
 		PredId, ProcId, Count, Count) :-

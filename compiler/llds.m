@@ -36,20 +36,22 @@
 	---> foreign_interface_info(
 		module_name,
 		% info about stuff imported from C:
-		foreign_header_info,
+		foreign_decl_info,
 		foreign_body_info,
 		% info about stuff exported to C:
 		foreign_export_decls,
 		foreign_export_defns
 	).
 
-:- type foreign_header_info ==	list(foreign_header_code).	
+:- type foreign_decl_info ==	list(foreign_decl_code).	
 		% in reverse order
 :- type foreign_body_info   ==	list(foreign_body_code).
 		% in reverse order
 
-:- type foreign_header_code	==	pair(string, prog_context).
-:- type foreign_body_code	==	pair(string, prog_context).
+:- type foreign_decl_code	--->	
+		foreign_decl_code(foreign_language, string, prog_context).
+:- type foreign_body_code	--->
+		foreign_body_code(foreign_language, string, prog_context).
 
 :- type foreign_export_defns == list(foreign_export).
 :- type foreign_export_decls == list(foreign_export_decl).
@@ -109,7 +111,7 @@
 :- type c_file	
 	--->	c_file(
 			module_name,
-			foreign_header_info,
+			foreign_decl_info,
 			list(user_foreign_code),
 			list(foreign_export),
 			list(comp_gen_c_var),

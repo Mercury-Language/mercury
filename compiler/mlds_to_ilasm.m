@@ -201,7 +201,7 @@ generate_c_code(MLDS) -->
 		ForeignCode),
 
 	io__write_strings([
-		"__gc public class ", ModuleNameStr, "__c_code\n",
+		"\n__gc public class ", ModuleNameStr, "__c_code\n",
 		"{\n",
 		"public:\n"]),
 
@@ -237,10 +237,15 @@ generate_foreign_code(_ModuleName,
 			_ExportDefns)) -->
 	{ BodyCode = list__reverse(RevBodyCode) },
 	io__write_list(BodyCode, "\n", 
-		(pred(llds__user_foreign_code(c, Code, _Context)::in,
+		(pred(llds__user_foreign_code(Lang, Code, _Context)::in,
 				di, uo) is det -->
-			io__write_string(Code))
-			).
+			( { Lang = managed_cplusplus } ->
+				io__write_string(Code)
+			;
+				{ sorry(this_file, 
+					"foreign code other than MC++") }
+			)					
+	)).
 
 	% XXX we don't handle export decls.
 :- pred generate_foreign_header_code(mlds_module_name, mlds__foreign_code,
@@ -251,10 +256,15 @@ generate_foreign_header_code(_ModuleName,
 			_ExportDefns)) -->
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", 
-		(pred(Code - _Context::in, di, uo) is det -->
-			io__write_string(Code))
-			).
-
+		(pred(llds__foreign_decl_code(Lang, Code, _Context)::in,
+			di, uo) is det -->
+			( { Lang = managed_cplusplus } ->
+				io__write_string(Code)
+			;
+				{ sorry(this_file, 
+					"foreign code other than MC++") }
+			)					
+	)).
 
 :- pred generate_method_c_code(mlds_module_name, mlds__defn,
 		io__state, io__state).

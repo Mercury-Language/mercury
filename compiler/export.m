@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % This module defines predicates to produce the functions which are
-% exported to C via a `pragma export' declaration.
+% exported to a foreign language via a `pragma export' declaration.
 
 % Note: any changes here might also require similar changes to the handling
 % of `pragma import' declarations, which are handled in make_hlds.m.
@@ -21,27 +21,34 @@
 :- import_module hlds_module, prog_data, llds.
 :- import_module io.
 
-	% From the module_info, get a list of c_export_decls,
+	% From the module_info, get a list of foreign_export_decls,
 	% each of which holds information about the declaration
-	% of a C function named in a `pragma export' declaration,
+	% of a foreign function named in a `pragma export' declaration,
 	% which is used to allow a call to be made to a Mercury
-	% procedure from C.
-:- pred export__get_c_export_decls(module_info, foreign_export_decls).
-:- mode export__get_c_export_decls(in, out) is det.
+	% procedure from the foreign language.
+:- pred export__get_foreign_export_decls(module_info, foreign_export_decls).
+:- mode export__get_foreign_export_decls(in, out) is det.
 
-	% From the module_info, get a list of c_export_defns,
-	% each of which is a string containing the C code
-	% for defining a C function named in a `pragma export' decl.
-:- pred export__get_c_export_defns(module_info, foreign_export_defns).
-:- mode export__get_c_export_defns(in, out) is det.
+	% From the module_info, get a list of foreign_export_defns,
+	% each of which is a string containing the foreign code
+	% for defining a foreign function named in a `pragma export' decl.
+:- pred export__get_foreign_export_defns(module_info, foreign_export_defns).
+:- mode export__get_foreign_export_defns(in, out) is det.
 
-	% Produce a header file containing prototypes for the exported C
-	% functions
+	% Produce an interface file containing declarations for the
+	% exported foreign functions (if required in this foreign
+	% language).
 :- pred export__produce_header_file(foreign_export_decls, module_name,
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
-	% Convert the type, to a string corresponding to its C type.
+
+%-----------------------------------------------------------------------------%
+
+% Utilities for generating C code which interfaces with Mercury.  
+% The {MLDS,LLDS}->C backends and fact tables use this code.
+
+	% Convert the type to a string corresponding to its C type.
 	% (Defaults to MR_Word).
 :- pred export__type_to_type_string(type, string).
 :- mode export__type_to_type_string(in, out) is det.
@@ -72,30 +79,31 @@
 
 %-----------------------------------------------------------------------------%
 
-export__get_c_export_decls(HLDS, C_ExportDecls) :-
+export__get_foreign_export_decls(HLDS, C_ExportDecls) :-
 	module_info_get_predicate_table(HLDS, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
-	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
+	export__get_foreign_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
 
-:- pred export__get_c_export_decls_2(pred_table, list(pragma_exported_proc),
-	list(foreign_export_decl)).
-:- mode export__get_c_export_decls_2(in, in, out) is det.
+:- pred export__get_foreign_export_decls_2(pred_table,
+	list(pragma_exported_proc), list(foreign_export_decl)).
+:- mode export__get_foreign_export_decls_2(in, in, out) is det.
 
-export__get_c_export_decls_2(_Preds, [], []).
-export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
+export__get_foreign_export_decls_2(_Preds, [], []).
+export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
 	C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
-	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls0),
+	export__get_foreign_export_decls_2(Preds, ExportedProcs,
+		C_ExportDecls0),
 	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
 
 %-----------------------------------------------------------------------------%
 
-export__get_c_export_defns(Module, ExportedProcsCode) :-
+export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
 	module_info_get_predicate_table(Module, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
@@ -555,16 +563,20 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 :- mode export__produce_header_file_2(in, di, uo) is det.
 export__produce_header_file_2([]) --> [].
 export__produce_header_file_2([E|ExportedProcs]) -->
-	{ E = foreign_export_decl(c, C_RetType, C_Function, ArgDecls) },
-
-		% output the function header
-	io__write_string(C_RetType),
-	io__write_string(" "),
-	io__write_string(C_Function),
-	io__write_string("("),
-	io__write_string(ArgDecls),
-	io__write_string(");\n"),
-
+	{ E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls) },
+	( 
+		{ Lang = c }
+	->
+			% output the function header
+		io__write_string(C_RetType),
+		io__write_string(" "),
+		io__write_string(C_Function),
+		io__write_string("("),
+		io__write_string(ArgDecls),
+		io__write_string(");\n")
+	;
+		{ error("export__produce_header_file_2: foreign languages other than C unimplemented") }
+	),
 	export__produce_header_file_2(ExportedProcs).
 
 	% Convert a term representation of a variable type to a string which

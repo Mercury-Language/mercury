@@ -46,6 +46,7 @@
 :- implementation.
 
 :- import_module options, globals, prog_io_util, trace_params, unify_proc.
+:- import_module prog_data.
 :- import_module char, int, string, map, set, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->
@@ -567,6 +568,44 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	% --use-opt-files implies --no-warn-missing-opt-files since
 	% we are expecting some to be missing.
 	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
+
+
+	% The preferred backend foreign language depends on the target.
+	( 	
+		{ Target = c },
+		{ BackendForeignLanguage = foreign_language_string(c) }
+	;
+		{ Target = il },
+		{ BackendForeignLanguage =
+			foreign_language_string(managed_cplusplus) }
+	;
+		% XXX We don't generate java or handle it as a foreign
+		% language just yet, but if we did, we should fix this
+		{ Target = java },
+		{ BackendForeignLanguage = foreign_language_string(c) }
+	),
+	globals__io_set_option(backend_foreign_language,
+		string(BackendForeignLanguage)),
+	% The default foreign language we use is the same as the backend.
+	globals__io_lookup_string_option(use_foreign_language,
+		UseForeignLanguage),
+	( 
+		{ UseForeignLanguage = "" }
+	->
+		globals__io_set_option(use_foreign_language, 
+			string(BackendForeignLanguage))
+	; 
+		{ convert_foreign_language(UseForeignLanguage, FL) }
+	->
+		{ CanonicalLangName = foreign_language_string(FL) },
+		globals__io_set_option(use_foreign_language, 
+			string(CanonicalLangName))
+	;
+		usage_error(
+			string__format(
+			"unrecognized foreign language argument `%s' for --use-foreign-language",
+			[s(UseForeignLanguage)]))
+	),
 
 	globals__io_lookup_bool_option(highlevel_code, HighLevel),
 	( { HighLevel = no } ->

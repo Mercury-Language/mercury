@@ -45,7 +45,7 @@
 :- import_module export.	% for export__type_to_type_string
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules.
-:- import_module prog_data, prog_out, type_util.
+:- import_module prog_data, prog_out, type_util, error_util.
 
 :- import_module bool, int, string, library, list.
 :- import_module assoc_list, term, std_util, require.
@@ -485,12 +485,17 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode) -->
 			mlds_output_pragma_export_decl(ModuleName, Indent)).
 
 :- pred mlds_output_c_hdr_decl(indent,
-	foreign_header_code, io__state, io__state).
+	foreign_decl_code, io__state, io__state).
 :- mode mlds_output_c_hdr_decl(in, in, di, uo) is det.
 
-mlds_output_c_hdr_decl(_Indent, Code - Context) -->
-	mlds_output_context(mlds__make_context(Context)),
-	io__write_string(Code).
+mlds_output_c_hdr_decl(_Indent, foreign_decl_code(Lang, Code, Context)) -->
+		% only output C code in the C header file.
+	( { Lang = c } ->
+		mlds_output_context(mlds__make_context(Context)),
+		io__write_string(Code)
+	;
+		{ sorry(this_file, "foreign code other than C") }
+	).
 
 :- pred mlds_output_c_decls(indent, mlds__foreign_code,
 	io__state, io__state).
@@ -519,6 +524,8 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode) -->
 mlds_output_c_defn(_Indent, user_foreign_code(c, Code, Context)) -->
 	mlds_output_context(mlds__make_context(Context)),
 	io__write_string(Code).
+mlds_output_c_defn(_Indent, user_foreign_code(managed_cplusplus, _, _)) -->
+	{ sorry(this_file, "foreign code other than C") }.
 
 :- pred mlds_output_pragma_export_decl(mlds_module_name, indent,
 		mlds__pragma_export, io__state, io__state).
@@ -2971,5 +2978,10 @@ mlds_indent(N) -->
 		io__write_string("  "),
 		mlds_indent(N - 1)
 	).
+
+:- func this_file = string.
+this_file = "mlds_to_c.m".
+
+:- end_module mlds_to_c.
 
 %-----------------------------------------------------------------------------%

@@ -678,7 +678,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		{ code_info__resume_point_stack_addr(OutsideResumePoint,
 			OutsideResumeAddress) },
 		(
-			{ Goal = pragma_foreign_code(_, _, _, _, _, _, _,
+			{ Goal = pragma_foreign_code(_, _, _, _, _, _,
 				PragmaCode) - _},
 			{ PragmaCode = nondet(Fields, FieldsContext,
 				_,_,_,_,_,_,_) }
@@ -1042,12 +1042,18 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
 			Code)
 	).
-code_gen__generate_goal_2(pragma_foreign_code(c, Attributes,
+code_gen__generate_goal_2(pragma_foreign_code(Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Instr) -->
-	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
-		PragmaCode, Instr).
+	( 
+		{ foreign_language(Attributes, c) } 
+	->
+		pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
+			PredId, ModeId, Args, ArgNames, OrigArgTypes,
+			GoalInfo, PragmaCode, Instr)
+	;
+		{ error("code_gen__generate_goal_2: foreign code other than C unexpected") }
+	).
 code_gen__generate_goal_2(bi_implication(_, _), _, _, _) -->
 	% these should have been expanded out by now
 	{ error("code_gen__generate_goal_2: unexpected bi_implication") }.

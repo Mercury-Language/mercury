@@ -509,7 +509,7 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-unique_modes__check_goal_2(pragma_foreign_code(Language, Attributes,
+unique_modes__check_goal_2(pragma_foreign_code(Attributes,
 		PredId, ProcId0, Args, ArgNameMap, OrigArgTypes, PragmaCode),
 		_GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_c_code"),
@@ -517,7 +517,7 @@ unique_modes__check_goal_2(pragma_foreign_code(Language, Attributes,
 	{ mode_info_get_call_id(ModeInfo, PredId, CallId) },
 	mode_info_set_call_context(call(call(CallId))),
 	unique_modes__check_call(PredId, ProcId0, Args, ProcId),
-	{ Goal = pragma_foreign_code(Language, Attributes, PredId, ProcId, Args,
+	{ Goal = pragma_foreign_code(Attributes, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, PragmaCode) },
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code").

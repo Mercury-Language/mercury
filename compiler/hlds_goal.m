@@ -163,7 +163,6 @@
 		% Foreign code from a pragma foreign_code(...) decl.
 
 	;	pragma_foreign_code(
-			foreign_language, % the language we are using
 			pragma_foreign_code_attributes,
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
@@ -1481,7 +1480,7 @@ goal_is_atomic(disj([], _)).
 goal_is_atomic(generic_call(_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
-goal_is_atomic(pragma_foreign_code(_,_,_,_,_,_,_,_)).
+goal_is_atomic(pragma_foreign_code(_,_,_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1576,7 +1575,7 @@ set_goal_contexts_2(_, Goal, Goal) :-
 set_goal_contexts_2(_, Goal, Goal) :-
 	Goal = unify(_, _, _, _, _).
 set_goal_contexts_2(_, Goal, Goal) :-
-	Goal = pragma_foreign_code(_, _, _, _, _, _, _, _).
+	Goal = pragma_foreign_code(_, _, _, _, _, _, _).
 set_goal_contexts_2(Context, bi_implication(LHS0, RHS0),
 		bi_implication(LHS, RHS)) :-
 	set_goal_contexts(Context, LHS0, LHS),
