@@ -90,7 +90,7 @@ array__init_2(Low, High, Item, ArrayIn, ArrayOut) :-
 	    ArrayIn = ArrayOut
 	;
 	    map__det_insert(ArrayIn, Low, Item, Array1),
-	    Low1 is Low+1,
+	    Low1 is Low + 1,
 	    array__init_2(Low1, High, Item, Array1, ArrayOut)
 	).
 
