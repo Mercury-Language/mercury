@@ -34,7 +34,7 @@
 	% from `.opt' files, the defining module's name may need to be added
 	% as a qualifier to the label.
 
-:.- type proc_label
+:- type proc_label
 	--->	proc(
 			module_name,	% defining module
 			pred_or_func,
