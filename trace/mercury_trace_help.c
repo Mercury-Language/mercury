@@ -27,6 +27,7 @@
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
 #include "mercury_deep_copy.h"
+#include "mercury_trace_util.h"
 #include "std_util.h"
 #include "help.h"
 #include "io.h"
@@ -46,9 +47,9 @@ MR_trace_add_cat(const char *category, int slot, const char *text)
 	Word	path;
 
 	MR_trace_help_ensure_init();
-	restore_transient_registers();
-	path = list_empty();
-	save_transient_registers();
+	MR_TRACE_USE_HP(
+		path = list_empty();
+	);
 	return MR_trace_help_add_node(path, category, slot, text);
 }
 
@@ -58,13 +59,16 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 {
 	Word	path;
 	char	*category_on_heap;
+	const char *result;
 
 	MR_trace_help_ensure_init();
-	restore_transient_registers();
-	make_aligned_string_copy(category_on_heap, category);
-	path = list_empty();
-	path = list_cons(category_on_heap, path);
-	save_transient_registers();
+
+	MR_TRACE_USE_HP(
+		make_aligned_string_copy(category_on_heap, category);
+		path = list_empty();
+		path = list_cons(category_on_heap, path);
+	);
+
 	return MR_trace_help_add_node(path, item, slot, text);
 }
 
@@ -75,30 +79,34 @@ MR_trace_help_add_node(Word path, const char *name, int slot, const char *text)
 	char	*msg;
 	char	*name_on_heap;
 	char	*text_on_heap;
+	bool	error;
 
-	restore_transient_registers();
-	make_aligned_string_copy(name_on_heap, name);
-	make_aligned_string_copy(text_on_heap, text);
-	save_transient_registers();
+	MR_TRACE_USE_HP(
+		make_aligned_string_copy(name_on_heap, name);
+		make_aligned_string_copy(text_on_heap, text);
+	);
 
-	ML_HELP_add_help_node(MR_trace_help_system, path, slot,
-		name_on_heap, text_on_heap, &result, &MR_trace_help_system);
+	MR_TRACE_CALL_MERCURY(
+		ML_HELP_add_help_node(MR_trace_help_system, path, slot,
+			name_on_heap, text_on_heap, &result,
+			&MR_trace_help_system);
+		error = ML_HELP_result_is_error(result, &msg);
+	);
 
 	MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 				(Word *) MR_trace_help_system_type);
 
-	if (ML_HELP_result_is_error(result, &msg)) {
-		return msg;
-	} else {
-		return NULL;
-	}
+	return (error ? msg : NULL);
 }
 
 void
 MR_trace_help(void)
 {
 	MR_trace_help_ensure_init();
-	ML_HELP_help(MR_trace_help_system, MR_trace_help_stdout);
+
+	MR_TRACE_CALL_MERCURY(
+		ML_HELP_help(MR_trace_help_system, MR_trace_help_stdout);
+	);
 }
 
 void
@@ -108,12 +116,14 @@ MR_trace_help_word(const char *word)
 
 	MR_trace_help_ensure_init();
 
-	restore_transient_registers();
-	make_aligned_string_copy(word_on_heap, word);
-	save_transient_registers();
+	MR_TRACE_USE_HP(
+		make_aligned_string_copy(word_on_heap, word);
+	);
 
-	ML_HELP_name(MR_trace_help_system, word_on_heap,
-		MR_trace_help_stdout);
+	MR_TRACE_CALL_MERCURY(
+		ML_HELP_name(MR_trace_help_system, word_on_heap,
+			MR_trace_help_stdout);
+	);
 }
 
 void
@@ -124,19 +134,24 @@ MR_trace_help_cat_item(const char *category, const char *item)
 	char	*msg;
 	char	*category_on_heap;
 	char	*item_on_heap;
+	bool	error;
 
 	MR_trace_help_ensure_init();
 
-	restore_transient_registers();
-	make_aligned_string_copy(category_on_heap, category);
-	make_aligned_string_copy(item_on_heap, item);
-	path = list_empty();
-	path = list_cons(item_on_heap, path);
-	path = list_cons(category_on_heap, path);
-	save_transient_registers();
+	MR_TRACE_USE_HP(
+		make_aligned_string_copy(category_on_heap, category);
+		make_aligned_string_copy(item_on_heap, item);
+		path = list_empty();
+		path = list_cons(item_on_heap, path);
+		path = list_cons(category_on_heap, path);
+	);
 
-	ML_HELP_path(MR_trace_help_system, path, MR_trace_help_stdout, &result);
-	if (ML_HELP_result_is_error(result, &msg)) {
+	MR_TRACE_CALL_MERCURY(
+		ML_HELP_path(MR_trace_help_system, path, MR_trace_help_stdout, &result);
+		error = ML_HELP_result_is_error(result, &msg);
+	);
+
+	if (error) {
 		printf("internal error in the trace help system: %s\n", msg);
 	}
 }
@@ -149,19 +164,19 @@ MR_trace_help_ensure_init(void)
 	Word		output_stream_type;
 
 	if (! done) {
-		ML_get_type_info_for_type_info(&typeinfo_type);
-		ML_HELP_help_system_type(&MR_trace_help_system_type);
-		MR_trace_help_system = MR_make_permanent(
+		MR_TRACE_CALL_MERCURY(
+			ML_get_type_info_for_type_info(&typeinfo_type);
+			ML_HELP_help_system_type(&MR_trace_help_system_type);
+			ML_HELP_init(&MR_trace_help_system);
+			ML_io_output_stream_type(&output_stream_type);
+			ML_io_stdout_stream(&MR_trace_help_stdout);
+		);
+
+		MR_trace_help_system_type = MR_make_permanent(
 					MR_trace_help_system_type,
 					(Word *) typeinfo_type);
-
-		ML_HELP_init(&MR_trace_help_system);
-
 		MR_trace_help_system = MR_make_permanent(MR_trace_help_system,
 					(Word *) MR_trace_help_system_type);
-
-		ML_io_output_stream_type(&output_stream_type);
-		ML_io_stdout_stream(&MR_trace_help_stdout);
 		MR_trace_help_stdout = MR_make_permanent(MR_trace_help_stdout,
 					(Word *) output_stream_type);
 

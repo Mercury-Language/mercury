@@ -17,6 +17,7 @@
 #include "mercury_trace_help.h"
 #include "mercury_trace_spy.h"
 #include "mercury_trace_tables.h"
+#include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
 #include "mercury_getopt.h"
@@ -1715,11 +1716,13 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	** are not of interest to the user.
 	*/
 
-	if (MR_get_type_and_value_base(var, saved_regs,
-			base_sp, base_curfr, type_params, &type_info, &value))
-	{
+	print_value = MR_get_type_and_value_base(var, saved_regs,
+			base_sp, base_curfr, type_params, &type_info, &value);
+	if (print_value) {
 		printf("\t");
-		MR_write_variable(type_info, value);
+		MR_TRACE_CALL_MERCURY(
+			MR_write_variable(type_info, value);
+		);
 	}
 
 	printf("\n");
