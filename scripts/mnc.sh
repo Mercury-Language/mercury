@@ -1,8 +1,12 @@
 #!/bin/sh
 
-# mnc - Mercury NU-Prolog Compiler.
+# MNC - Mercury NU-Prolog Compiler.
 #
 # Compiles Mercury programs to NU-Prolog object code (*.no).
+#
+# Usage: same as for `nc'.
+#
+# Environment variables: MERCURY_NC_BUILTIN
 
 nc_builtin_nl=${MERCURY_NC_BUILTIN:-@LIBDIR@/nuprolog/nc_builtin.nl}
 

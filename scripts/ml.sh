@@ -1,11 +1,32 @@
 #!/bin/sh
+#
+# ML - Mercury Linker.
+#
+# Invokes GCC with the appropriate options to link in the Mercury library.
+#
+# Usage: ml [-v|--verbose] [-s <grade>] [<gcc options>] files...
+#
+# Environment variables: MERCURY_C_LIB_DIR
 
 LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
 
+case "$1" in)
+	-v|--verbose)
+		verbose=true
+		shift;;
+	*)
+		verbose=false
+		;;
+esac
+
 GRADE=none
 case "$1" in
+	-s)
+		shift
+		GRADE="$1"
+		shift ;;
 	-s*)
-		GRADE=` expr $1 : '-s\(.*\)' `
+		GRADE="` expr $1 : '-s\(.*\)' `"
 		shift ;;
 esac
 

@@ -4,6 +4,10 @@
 #
 # Links NU-Prolog object files together with the Mercury library
 # to produce an executable binary.
+#
+# Usage: mnl [-v|--verbose] [<nc link options>] files...
+#
+# Environment variables: MERCURY_LIB_DIR, MERCURY_LIB_OBJS
 
 NULIBDIR=${MERCURY_LIB_DIR:-@LIBDIR@/nuprolog/@FULLARCH@}
 LIBRARY_OBJS=${MERCURY_LIB_OBJS:-"@LIBOBJS@"}
@@ -13,7 +17,7 @@ verbose=false
 
 while true; do
 	case "$1" in
-		-v)
+		-v|--verbose)
 			verbose=true
 			shift
 			;;

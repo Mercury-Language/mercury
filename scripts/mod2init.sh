@@ -1,6 +1,12 @@
 #!/bin/sh
 
+# MOD2INIT - Convert *.mod to *_init.c
+#
 # This script outputs an appropriate init.c, given the .mod files.
+#
+# Usage: mod2init [-w<entry_point>] modules...
+#
+# Environment variables: MERCURY_MOD_LIB_DIR, MERCURY_MOD_LIB_MODS.
 
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR:-@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*.mod}

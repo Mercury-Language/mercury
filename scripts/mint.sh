@@ -1,6 +1,8 @@
 #!/bin/sh
 #
 # mint - Mercury interface browser.
+#
+# Usage: mint module-name ...
 
 INTDIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
 

@@ -1,5 +1,15 @@
 #!/bin/sh
 
+# MGNUC - Mercury GNU C
+#
+# Usage: mgnuc [-v|--verbose] [-s<grade>] [<gcc options>] files...
+#
+# -v, --verbose
+#	Echo gcc command before executing it.
+# -s<grade>
+#	Select optimization/debug options according to <grade>, which
+#	must be one of debug, none, jump, reg, or fast
+#
 # This runs gcc with all warnings enabled, except for the following
 # exceptions:
 #
@@ -18,6 +28,15 @@ C_INCL_DIR=${MERCURY_C_INCL_DIR:-@LIBDIR@/inc}
 CHECKOPTS="-ansi
       -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional -Wshadow
       -Wstrict-prototypes -Wmissing-prototypes"
+
+case "$1" in)
+	-v|--verbose)
+		verbose=true
+		shift;;
+	*)
+		verbose=false
+		;;
+esac
 
 case "$1" in
 	-sfast)
@@ -61,7 +80,9 @@ esac
 if [ "`uname -r -s`" = "SunOS 4.1.2" ]; then
 	# the header files on cadillac are stuffed, so don't
 	# enable any warnings
-	exec $GCC -I $C_INCL_DIR $HOSTOPTS $GRADEOPTS "$@"
-else
-	exec $GCC -I $C_INCL_DIR $HOSTOPTS $CHECKOPTS $GRADEOPTS "$@"
+	CHECKOPTS=
 fi
+if $verbose; then
+	echo $GCC -I $C_INCL_DIR $HOSTOPTS $CHECKOPTS $GRADEOPTS "$@"
+fi
+exec $GCC -I $C_INCL_DIR $HOSTOPTS $CHECKOPTS $GRADEOPTS "$@"

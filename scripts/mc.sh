@@ -1,4 +1,11 @@
 #!/bin/sh
+#
+# MC - Mercury Compiler (compiled with NU-Prolog).
+#
+# Use `mc -h' for help.
+#
+# Environment variables: MERCURY_INT_DIR, MERCURY_DEP_DIR, MERCURY_C_INCL_DIR,
+# MERCURY_COMPILER.
 
 INTDIR=${MERCURY_INT_DIR:-@LIBDIR@/ints}
 DEPDIR=${MERCURY_DEP_DIR:-@LIBDIR@/deps}

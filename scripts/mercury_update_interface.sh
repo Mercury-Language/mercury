@@ -1,6 +1,6 @@
 #!/bin/sh
-
-#-----------------------------------------------------------------------------#
+#
+# MERCURY_UPDATE_INTERFACE
 #
 # usage:
 #	mercury_update_interface [-v] filename
@@ -12,7 +12,7 @@
 # If the `-v' (verbose) option is specified, then appropriate progress messages
 # will be printed.
 #
-#-----------------------------------------------------------------------------#
+# Enviroment variables: none.
 
 PATH=/bin:/usr/bin
 
