@@ -1,0 +1,17 @@
+% This module is indirectly imported from change_type_nr.m
+% (via change_type_nr_3.m) so that change_type_nr.m uses the
+% abstract declaration of foo2 from change_type_nr_2.int2.
+% 
+% This test checks that the extra type variable in the body of foo2 does not
+% cause problems with the code in recompilation_version.m to check whether
+% an item has changed.
+:- module change_type_nr_2.
+
+:- interface.
+
+:- type foo2
+	--->	c
+	;	some [T] d(T)
+	.
+
+:- type t == int.

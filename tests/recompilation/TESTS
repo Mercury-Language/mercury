@@ -10,6 +10,8 @@ TESTS_SHOULD_SUCCEED="\
 	change_class_r \
 	change_instance_r \
 	change_mode_r \
+	change_type_nr \
+	combined_type_mode_nr \
 	field_r \
 	func_overloading_nr \
 	func_overloading_r \
@@ -17,7 +19,8 @@ TESTS_SHOULD_SUCCEED="\
 	no_version_numbers_r \
 	pragma_type_spec_r \
 	pred_ctor_ambiguity_r \
-	pred_overloading_r"
+	pred_overloading_r \
+	typeclass_method_pragma_r"
 
 # Parallel mmake with nested sub-modules is broken.
 # The commands to create `.c' files from the `.m' file containing the
@@ -32,4 +35,4 @@ TESTS_SHOULD_FAIL="\
 	remove_type_re \
 	type_qual_re"
 
-ALL_TESTS=$TESTS_SHOULD_SUCCEED $NO_PARALLEL_MAKE_TESTS $TESTS_SHOULD_FAIL
+ALL_TESTS="$TESTS_SHOULD_SUCCEED $NO_PARALLEL_MAKE_TESTS $TESTS_SHOULD_FAIL"

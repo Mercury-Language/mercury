@@ -33,11 +33,13 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module mercury_to_mercury, prog_io, prog_util.
-:- import_module assoc_list, bool, list, map, require, string.
+:- import_module mercury_to_mercury, mode_util, prog_io, prog_util, type_util.
+:- import_module hlds_out, (inst).
+:- import_module assoc_list, bool, list, map, require, string, varset.
 
 recompilation_version__compute_version_numbers(SourceFileTime, Items,
-		MaybeOldItems, version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-
+		MaybeOldItems,
+		version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-
 	recompilation_version__gather_items(Items,
 		GatheredItems, InstanceItems),
 	(
@@ -161,7 +163,7 @@ distribute_pragma_items(ItemId - ItemAndContext,
 		recompilation_version__add_gathered_item(Item,
 			item_id(ItemType, SymName - Arity),
 			ItemContext, AddIfNotExisting,
-			GatheredItems0, GatheredItems)
+			GatheredItems0, GatheredItems2)
 	;
 		MaybePredOrFunc = no,
 
@@ -174,9 +176,35 @@ distribute_pragma_items(ItemId - ItemAndContext,
 		recompilation_version__add_gathered_item(Item,
 			item_id(function, SymName - FuncArity),
 			ItemContext, AddIfNotExisting,
-			GatheredItems1, GatheredItems)
-	).
+			GatheredItems1, GatheredItems2)
+	),
 
+	% Pragmas can apply to typeclass methods.
+	map__map_values(
+	    (pred(_::in, ClassItems0::in, ClassItems::out) is det :-
+		( 
+			% Does this pragma match any of the methods
+			% of this class.
+			list__member(ClassItem, ClassItems0),
+			ClassItem = typeclass(_, _, _, Interface, _) - _,
+			Interface = concrete(Methods),
+			list__member(Method, Methods),
+			Method = pred_or_func(_, _, _, MethodPredOrFunc,
+				SymName, TypesAndModes, _, _, _, _, _),
+			( MaybePredOrFunc = yes(MethodPredOrFunc)
+			; MaybePredOrFunc = no
+			),
+			adjust_func_arity(MethodPredOrFunc,
+				Arity, list__length(TypesAndModes))
+		->
+			% XXX O(N^2), but shouldn't happen too often.
+			ClassItems = ClassItems0 ++ [ItemAndContext]
+		;
+			ClassItems = ClassItems0
+		)
+	    ), extract_ids(GatheredItems2, typeclass), GatheredTypeClasses),
+	GatheredItems = update_ids(GatheredItems2, typeclass,
+				GatheredTypeClasses).
 
 :- type gathered_item_info
 	--->	gathered_item_info(
@@ -305,16 +333,15 @@ recompilation_version__add_gathered_item_2(Item, ItemType, NameArity,
 		Item = pred_or_func(TVarSet, InstVarSet, ExistQVars,
 			PredOrFunc, PredName, TypesAndModes, Det,
 			Cond, Purity, ClassContext),
-		split_types_and_modes(TypesAndModes,
-			Types, MaybeModes),
+		split_types_and_modes(TypesAndModes, Types, MaybeModes),
 		MaybeModes = yes(Modes)
 	->
 		TypesWithoutModes = list__map(
 			(func(Type) = type_only(Type)), Types),
-		PredOrFuncItem = pred_or_func(TVarSet, InstVarSet,
-			ExistQVars, PredOrFunc, PredName,
-			TypesWithoutModes, no, Cond, Purity,
-			ClassContext),
+		varset__init(EmptyInstVarSet),
+		PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet,
+			ExistQVars, PredOrFunc, PredName, TypesWithoutModes,
+			no, Cond, Purity, ClassContext),
 		PredOrFuncModeItem = pred_or_func_mode(InstVarSet,
 			PredOrFunc, PredName, Modes, Det, Cond),
 		MatchingItems =
@@ -361,7 +388,8 @@ split_class_method_types_and_modes(Method0) = Items :-
 		TypesWithoutModes = TypesAndModes,
 		PredOrFuncModeItems = []
 	),
-	PredOrFuncItem = pred_or_func(TVarSet, InstVarSet,
+	varset__init(EmptyInstVarSet),
+	PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet,
 		ExistQVars, PredOrFunc, SymName,
 		TypesWithoutModes, no, Cond, Purity,
 		ClassContext, term__context_init),
@@ -407,9 +435,10 @@ item_to_item_id_2(assertion(_, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	Item = typeclass(_, ClassName, ClassVars, _, _),
 	list__length(ClassVars, ClassArity).	
-item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
-	Item = instance(_, ClassName, ClassArgs, _, _, _),
-	list__length(ClassArgs, ClassArity).	
+	% Instances are handled separately (unlike other items, the module
+	% qualifier on an instance declaration is the module containing
+	% the class, not the module containing the instance).
+item_to_item_id_2(instance(_, _, _, _, _, _), no).
 item_to_item_id_2(nothing(_), no).
 
 :- type maybe_pred_or_func_id ==
@@ -466,8 +495,229 @@ is_pred_pragma(check_termination(Name, Arity), yes(no - Name / Arity)).
 :- pred items_are_unchanged(item_list::in, item_list::in) is semidet.
 
 items_are_unchanged([], []).
-items_are_unchanged([Item - _ | Items1], [Item - _ | Items2]) :-
+items_are_unchanged([Item1 - _ | Items1], [Item2 - _ | Items2]) :-
+	yes = item_is_unchanged(Item1, Item2),
 	items_are_unchanged(Items1, Items2).
+
+:- func item_is_unchanged(item, item) = bool.
+
+	% We don't need to compare the varsets. What matters is that
+	% the variable numbers in the arguments and body are the same,
+	% the names are irrelevant.
+	%
+	% It's important not to compare the varsets for type and instance
+	% declarations because the declarations we get here may be abstract
+	% declarations produced from concrete declarations for use in an
+	% interface file. The varsets may contain variables from the
+	% discarded bodies which will not be present in the items read
+	% in from the interface files for comparison. 
+	%
+	% This code assumes that the variables in the head of a
+	% type or instance declaration are added to the varset before
+	% those from the body, so that the variable numbers in the head of
+	% the declaration match those from an abstract declaration read
+	% from an interface file.
+item_is_unchanged(type_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
+		( Item2 = type_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(mode_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
+		( Item2 = mode_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(inst_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
+		( Item2 = inst_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(module_defn(_VarSet, Defn), Item2) =
+		( Item2 = module_defn(_, Defn) -> yes ; no ).
+item_is_unchanged(instance(Constraints, Name, Types, Body, _VarSet, Module),
+		Item2) =
+	( Item2 = instance(Constraints, Name, Types, Body, _, Module) ->
+		yes
+	;
+		no
+	).
+
+	% XXX Need to compare the goals properly in clauses and assertions.
+	% That's not necessary at the moment because smart recompilation
+	% doesn't work with inter-module optimization yet.
+item_is_unchanged(clause(_VarSet, PorF, SymName, Args, Goal), Item2) =
+		( Item2 = clause(_, PorF, SymName, Args, Goal) -> yes ; no ).
+item_is_unchanged(assertion(Goal, _VarSet), Item2) =
+		( Item2 = assertion(Goal, _) -> yes ; no ).
+
+item_is_unchanged(pragma(PragmaType), Item2) =
+		( Item2 = pragma(PragmaType) -> yes ; no ).
+item_is_unchanged(nothing(A), Item2) =
+		( Item2 = nothing(A) -> yes ; no ).
+
+item_is_unchanged(Item1, Item2) = Result :-
+	Item1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
+		Name, TypesAndModes1, Detism, Cond, Purity, Constraints1),
+	(
+		Item2 = pred_or_func(TVarSet2, _, ExistQVars2,
+			PredOrFunc, Name, TypesAndModes2, Detism, Cond, Purity,
+			Constraints2),
+		pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
+			TypesAndModes1, Constraints1, TVarSet2,
+			ExistQVars2, TypesAndModes2, Constraints2)
+	->
+		Result = yes
+	;
+		Result = no
+	).
+
+item_is_unchanged(Item1, Item2) = Result :-
+	Item1 = pred_or_func_mode(InstVarSet1, PredOrFunc, Name, Modes1,
+			Det, Cond),
+	(
+		Item2 = pred_or_func_mode(InstVarSet2, PredOrFunc,
+			Name, Modes2, Det, Cond),
+		pred_or_func_mode_is_unchanged(InstVarSet1, Modes1,
+			InstVarSet2, Modes2)
+	->
+		Result = yes
+	;
+		Result = no
+	).
+
+
+item_is_unchanged(Item1, Item2) = Result :-
+	Item1 = typeclass(Constraints, Name, Vars, Interface1, _VarSet),
+	(
+		Item2 = typeclass(Constraints, Name, Vars, Interface2, _),
+		class_interface_is_unchanged(Interface1, Interface2)
+	->
+		Result = yes
+	;
+		Result = no
+	).
+
+	%
+	% Apply a substitution to the existq_tvars, types_and_modes, and
+	% class_constraints so that the type variables from both declarations
+	% being checked are contained in the same tvarset, then check that
+	% they are identical.
+	%
+	% We can't just assume that the varsets will be identical for
+	% identical declarations because mercury_to_mercury.m splits
+	% combined type and mode declarations into separate declarations.
+	% When they are read back in the variable numbers will be different
+	% because parser stores the type and inst variables for a combined
+	% declaration in a single varset (it doesn't know which are which).
+	%
+:- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
+		list(type_and_mode)::in, class_constraints::in,
+		tvarset::in, existq_tvars::in, list(type_and_mode)::in,
+		class_constraints::in) is semidet. 
+
+pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
+		Constraints1, TVarSet2, ExistQVars2,
+		TypesAndModes2, Constraints2) :-
+
+	varset__merge_subst(TVarSet1, TVarSet2, _, Subst),
+
+	GetArgTypes =
+		(func(TypeAndMode0) = Type :-
+			(
+				TypeAndMode0 = type_only(Type)
+			;
+				% This should have been split out into a
+				% separate mode declaration by gather_items.
+				TypeAndMode0 = type_and_mode(_, _),
+				error(
+			"pred_or_func_type_matches: type_and_mode")
+			)
+		),
+	Types1 = list__map(GetArgTypes, TypesAndModes1),
+	Types2 = list__map(GetArgTypes, TypesAndModes2),
+	term__apply_substitution_to_list(Types2, Subst, SubstTypes2),
+
+	%
+	% Check that the types are equivalent
+	%
+	type_list_subsumes(SubstTypes2, Types1, Types2ToTypes1Subst),
+	type_list_subsumes(Types1, SubstTypes2, _),
+
+	%
+	% Check that the existentially quantified variables are equivalent.
+	%
+	SubstExistQVars2 =
+		term_list_to_var_list(
+			term__apply_rec_substitution_to_list(
+				apply_substitution_to_list(
+					var_list_to_term_list(ExistQVars2),
+					Subst),
+				Types2ToTypes1Subst)),
+	ExistQVars1 = SubstExistQVars2,
+
+	%
+	% Check that the class constraints are identical.
+	%
+	apply_subst_to_constraints(Subst, Constraints2, RenamedConstraints2),
+	apply_rec_subst_to_constraints(Types2ToTypes1Subst,
+		RenamedConstraints2, SubstConstraints2),
+	Constraints1 = SubstConstraints2.
+
+:- pred pred_or_func_mode_is_unchanged(inst_varset::in, list(mode)::in,
+		inst_varset::in, list(mode)::in) is semidet.
+
+pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, InstVarSet2, Modes2) :-
+	varset__coerce(InstVarSet1, VarSet1),
+	varset__coerce(InstVarSet2, VarSet2),
+
+	%
+	% Apply the substitution to the modes so that the inst variables
+	% from both declarations being checked are contained in the same
+	% inst_varset, then check that they are identical.
+	%
+	varset__merge_subst(VarSet1, VarSet2, _, InstSubst),
+
+	%
+	% Treat modes as types here to use type_list_subsumes, which
+	% does just what we want here. (XXX shouldn't type_list_subsumes
+	% be in term.m and apply to generic terms anyway?).
+	%
+	ModeToTerm = (func(Mode) = term__coerce(mode_to_term(Mode))),
+	ModeTerms1 = list__map(ModeToTerm, Modes1),
+	ModeTerms2 = list__map(ModeToTerm, Modes2),
+	term__apply_substitution_to_list(ModeTerms2,
+		InstSubst, SubstModeTerms2),
+	type_list_subsumes(ModeTerms1, SubstModeTerms2, _),
+	type_list_subsumes(SubstModeTerms2, ModeTerms1, _).
+
+	%
+	% Combined typeclass method type and mode declarations are split
+	% as for ordinary predicate declarations, so the varsets won't
+	% necessarily match up if a typeclass declration is read back
+	% from an interface file.
+	%
+:- pred class_interface_is_unchanged(class_interface::in,
+		class_interface::in) is semidet.
+
+class_interface_is_unchanged(abstract, abstract).
+class_interface_is_unchanged(concrete(Methods1), concrete(Methods2)) :-
+	class_methods_are_unchanged(Methods1, Methods2).
+
+:- pred class_methods_are_unchanged(list(class_method)::in,
+		list(class_method)::in) is semidet.
+
+class_methods_are_unchanged([], []).
+class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
+	(
+		Method1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
+			Name, TypesAndModes1, Detism, Cond, Purity,
+			Constraints1, _),
+		Method2 = pred_or_func(TVarSet2, _, ExistQVars2, PredOrFunc,
+			Name, TypesAndModes2, Detism, Cond, Purity,
+			Constraints2, _),
+		pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
+			TypesAndModes1, Constraints1, TVarSet2, ExistQVars2,
+			TypesAndModes2, Constraints2)
+	;
+		Method1 = pred_or_func_mode(InstVarSet1, PredOrFunc, Name,
+			Modes1, Det, Cond, _),
+		Method2 = pred_or_func_mode(InstVarSet2, PredOrFunc, Name,
+			Modes2, Det, Cond, _),
+		pred_or_func_mode_is_unchanged(InstVarSet1, Modes1,
+			InstVarSet2, Modes2)
+	),
+	class_methods_are_unchanged(Methods1, Methods2).
 
 %-----------------------------------------------------------------------------%
 

@@ -33,7 +33,7 @@
 :- interface.
 
 % Parse tree modules
-:- import_module prog_data.
+:- import_module prog_data, (inst).
 % HLDS modules
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 
@@ -240,6 +240,10 @@
 :- type maybe_vartypes
 	--->	yes(tvarset, vartypes)
 	;	no.
+
+	% Convert a mode or inst to a term representation.
+:- func mode_to_term(mode) = prog_term.
+:- func inst_to_term(inst) = prog_term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -3255,6 +3259,8 @@ add_mode_qualifier(Context, HeadTerm - Mode) = AnnotatedTerm :-
 		[HeadTerm, mode_to_term(Context, Mode)],
 		Context, AnnotatedTerm).
 
+mode_to_term(Mode) = mode_to_term(term__context_init, Mode).
+
 :- func mode_to_term(term__context, mode) = prog_term.
 mode_to_term(Context, (InstA -> InstB)) = Term :-
 	( 
@@ -3283,6 +3289,8 @@ make_atom(Name, Context) =
 
 :- func map_inst_to_term(prog_context, inst) = prog_term.
 map_inst_to_term(Context, Inst) = inst_to_term(Inst, Context).
+
+inst_to_term(Inst) = inst_to_term(Inst, term__context_init).
 
 :- func inst_to_term(inst, prog_context) = prog_term.
 inst_to_term(any(Uniq), Context) =

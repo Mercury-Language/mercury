@@ -19,6 +19,10 @@ realclean_local:
 should_run_recompilation_tests:
 	@echo $(RUN_RECOMPILATION_TESTS)
 
+	# typeclass_method_pragma_r calls a predicate with a
+	# `:- pragma obsolete' declaration.
+MCFLAGS-typeclass_method_pragma_r = --no-halt-at-warn
+
 # Smart recompilation doesn't yet work with --intermodule-optimization.
 # The `override' is needed because otherwise make ignores the assignment if
 # EXTRA_MCFLAGS is set on the command line, as it is for the nightly tests.

@@ -1,0 +1,22 @@
+:- module combined_type_mode_nr_2.
+
+:- interface.
+
+:- import_module io.
+
+:- pred p(T::in(I), T::out(I)) is det.
+
+:- typeclass io(T) where [
+	pred id(T::in(I), T::out(I)) is det,
+	some [U] pred output(T::in(I), U::out(I), T::in,
+			io__state::di, io__state::uo) is det
+].
+
+:- instance io(int) where [
+	id(T, T),
+	(output(U, U, T) --> io__write(T))
+].
+
+:- implementation.
+
+p(T, T).
