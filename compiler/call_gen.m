@@ -283,7 +283,7 @@ call_gen__generate_complicated_unify(Var1, Var2, UniMode, Det, Code) -->
 	( { type_to_type_id(VarType, VarTypeId0, _) } ->
 		{ VarTypeId = VarTypeId0 }
 	;
-		{ error("type_to_type_id failed") }
+		{ error("sorry, polymorphic unifications not implemented") }
 	),
 	code_info__request_unify(VarTypeId, UniMode),
 	code_info__get_requests(Requests),
