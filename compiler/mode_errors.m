@@ -178,6 +178,9 @@
 		pred_id, pred_info, module_info, io__state, io__state).
 :- mode report_indistinguishable_modes_error(in, in, in, in, in, di, uo) is det.
 
+:- pred output_mode_decl(proc_id, pred_info, io__state, io__state).
+:- mode output_mode_decl(in, in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1187,9 +1190,6 @@ report_indistinguishable_modes_error(OldProcId, NewProcId,
 	prog_out__write_context(OldContext),
 	io__write_string(
 		"  Here is the conflicting mode declaration.\n").
-
-:- pred output_mode_decl(proc_id, pred_info, io__state, io__state).
-:- mode output_mode_decl(in, in, di, uo) is det.
 
 output_mode_decl(ProcId, PredInfo) -->
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },

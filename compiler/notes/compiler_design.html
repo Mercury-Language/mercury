@@ -184,9 +184,9 @@ stored in the io__state, using the type globals defined in globals.m.
 	<li> all types, typeclasses, insts and modes occuring in pred, func,
 	  type, typeclass and mode declarations are module qualified by
 	  module_qual.m.
- 	<li> all types, insts and modes occuring in lambda expressions and
- 	  explicit type qualifications are module qualified in
- 	  make_hlds.m.
+ 	<li> all types, insts and modes occuring in lambda expressions,
+ 	  explicit type qualifications, and clause mode annotations
+	  are module qualified in make_hlds.m.
  	<li> constructors occuring in predicate and function mode declarations
  	  are module qualified during type checking.
  	<li> predicate and function calls and constructors within goals 
@@ -1139,6 +1139,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2001-05-15 07:12:01 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-05-16 04:50:55 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>

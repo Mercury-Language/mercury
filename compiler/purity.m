@@ -14,6 +14,8 @@
 %  The main purpose of this module is check the consistency of the
 %  `impure' and `promise_pure' (etc.) declarations, and to thus report
 %  error messages if the program is not "purity-correct".
+%  This includes treating procedures with different clauses for
+%  different modes as impure, unless promised pure.
 %
 %  This module also does two final parts of type analysis:
 %	- it resolves predicate overloading
@@ -429,13 +431,14 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 		{ NumErrors0 = 0 }
 	;   
 		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
+		{ pred_info_procids(PredInfo0, ProcIds) },
 		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
 		{ clauses_info_vartypes(ClausesInfo0, VarTypes0) },
 		{ clauses_info_varset(ClausesInfo0, VarSet0) },
 		{ RunPostTypecheck = yes },
 		{ PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
 			PredInfo0, VarTypes0, VarSet0, []) },
-		{ compute_purity(Clauses0, Clauses, pure, Purity,
+		{ compute_purity(Clauses0, Clauses, ProcIds, pure, Purity,
 			PurityInfo0, PurityInfo) },
 		{ PurityInfo = purity_info(_, _, PredInfo1,
 			VarTypes, VarSet, RevMessages) },
@@ -552,18 +555,45 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 
 % Infer the purity of a single (non-pragma c_code) predicate
 
-:- pred compute_purity(list(clause), list(clause),
+:- pred compute_purity(list(clause), list(clause), list(proc_id),
 	purity, purity, purity_info, purity_info).
-:- mode compute_purity(in, out, in, out, in, out) is det.
+:- mode compute_purity(in, out, in, in, out, in, out) is det.
 
-compute_purity([], [], Purity, Purity) --> [].
-compute_purity([Clause0|Clauses0], [Clause|Clauses], Purity0, Purity) -->
+compute_purity([], [], _, Purity, Purity) --> [].
+compute_purity([Clause0|Clauses0], [Clause|Clauses], ProcIds,
+		Purity0, Purity) -->
 	{ Clause0 = clause(Ids, Body0 - Info0, Context) },
-	compute_expr_purity(Body0, Body, Info0, no, Bodypurity),
+	compute_expr_purity(Body0, Body, Info0, no, Bodypurity0),
+	% If this clause doesn't apply to all modes of this procedure,
+	% i.e. the procedure has different clauses for different modes,
+	% then we must treat it as impure.
+	{
+		applies_to_all_modes(Clause0, ProcIds)
+	->
+		Clausepurity = (pure)
+	;
+		Clausepurity = (impure)
+	},
+	{ worst_purity(Bodypurity0, Clausepurity, Bodypurity) },
 	{ add_goal_info_purity_feature(Info0, Bodypurity, Info) },
 	{ worst_purity(Purity0, Bodypurity, Purity1) },
 	{ Clause = clause(Ids, Body - Info, Context) },
-	compute_purity(Clauses0, Clauses, Purity1, Purity).
+	compute_purity(Clauses0, Clauses, ProcIds, Purity1, Purity).
+
+:- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
+
+applies_to_all_modes(clause(ClauseProcIds, _, _), ProcIds) :-
+	(
+		% an empty list here means that the clause applies
+		% to *all* procedures
+		ClauseProcIds = []
+	;
+		% Otherwise the clause applies to the procids in the
+		% list.  Check if this is the same as the procids for
+		% this procedure.
+		list__sort(ClauseProcIds, SortedIds),
+		SortedIds = ProcIds
+	).
 
 :- pred compute_expr_purity(hlds_goal_expr, hlds_goal_expr,
 	hlds_goal_info, bool, purity, purity_info, purity_info).

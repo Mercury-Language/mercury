@@ -534,7 +534,10 @@ The top-level functor of the @var{Head}
 determines which predicate or function the fact belongs to;
 the predicate or function must have been declared
 in a preceding @samp{pred} or @samp{func} declaration in this module.
-The arguments of the head must be valid data-terms.
+The @var{Result} (if any) and the arguments of the @var{Head} must
+be valid data-terms (optionally annotated with a mode qualifier;
+see @pxref{Different clauses for different modes}).
+
 A fact is equivalent to a rule whose body is @samp{true}.
 
 @node Rules
@@ -550,7 +553,9 @@ The top-level functor of the @var{Head} determines which predicate or
 function the clause belongs to; the predicate or function must have
 been declared in a preceding @samp{pred} or @samp{func} declaration in
 this module.
-The arguments of the head must be valid data-terms.
+The @var{Result} and the arguments of the @var{Head} must be
+valid data-terms (optionally annotated with a mode qualifier;
+see @pxref{Different clauses for different modes}).
 The @var{Body} must be a valid goal.
 
 @node Goals
@@ -1123,7 +1128,7 @@ specified arguments.  @xref{Higher-order}.
 @node Explicit type qualification
 @subsection Explicit type qualification
 
-Explicit type qualifications are occaisionally useful
+Explicit type qualifications are occasionally useful
 to resolve ambiguities that can arise from overloading
 or polymorphic types.
 
@@ -1732,6 +1737,15 @@ update_field_in_map(Map, Index, Value) =
 @node Modes
 @chapter Modes
 
+@menu
+* Insts modes and mode definitions::
+* Predicate and function mode declarations::
+* Different clauses for different modes::
+@end menu
+
+@node Insts modes and mode definitions
+@section Insts, modes, and mode definitions
+
 The @dfn{mode} of a predicate, or function, is a mapping
 from the initial state of instantiation of the arguments of the predicate,
 or the arguments and result of a function,
@@ -1884,6 +1898,9 @@ There must not be more than one inst definition with the same name
 and arity in the same module.  Similarly, there must not be more
 than one mode definition with the same name and arity in the same module.
 
+@node Predicate and function mode declarations
+@section Predicate and function mode declarations
+
 A @dfn{predicate mode declaration}
 assigns a mode mapping to each argument of a predicate.
 A @dfn{function mode declaration}
@@ -2009,8 +2026,8 @@ A predicate or function @var{p} is @dfn{well-moded
 with respect to a given mode declaration}
 if given that the predicates and functions called by @var{p}
 all satisfy their mode declaration constraints,
-there exists an ordering of the literals in the definition of @var{p}
-such that
+there exists an ordering of the conjuncts in each conjunction
+in the clauses of @var{p} such that
 
 @itemize @bullet
 @item
@@ -2039,6 +2056,118 @@ the resulting instantiatedness of the procedure's arguments
 is the same as the one given by the procedure's declaration.
 
 The mode analysis algorithm annotates each call with the mode used.
+
+@node Different clauses for different modes
+@section Different clauses for different modes
+
+Because the compiler automatically reorders conjunctions to
+satisfy the modes, it is often possible for a single clause
+to satisfy different modes.  However, occaisionally reordering
+of conjunctions is not sufficient; you may want to write different
+code for different modes.
+
+For example, the usual code for list append
+
+@example
+	append([], Ys, Ys).
+	append([X|Xs], Ys, [X|Zs]) :- append(Xs, Ys, Zs).
+@end example
+
+@noindent
+works fine in most modes, but is not very satisfactory for the
+@samp{append(out, in, in)} mode of append, because although
+every call in this mode only has at most one solution,
+the compiler's determinism inference will not be able to
+infer that.  This means that using the usual code for append in
+this mode will be inefficient, and the overly conservative determinism
+inference may cause spurious determinism errors later.
+
+For this mode, it is better to use a completely different algorithm:
+
+@example
+	append(Prefix, Suffix, List) :-
+		list__length(List, ListLength),
+		list__length(Suffix, SuffixLength),
+		PrefixLength is ListLength - SuffixLength,
+		list__split_list(PrefixLength, List, Prefix, Suffix).
+@end example
+
+@noindent
+However, that code doesn't work in the other modes of append.
+
+To handle such cases, you can use mode annotations on clauses, which
+indicate that particular clauses should only be used for particular modes.
+To specify that a clause only applies to a given mode, each argument
+@var{Arg} of the clause head should be annotated with the corresponding
+argument mode @var{Mode}, using the @samp{::} mode qualification operator,
+i.e. @samp{@var{Arg} :: @var{Mode}}.
+
+For example, if append was declared as
+
+@example
+	:- pred append(list(T), list(T), list(T)).
+	:- mode append(in, in, out).
+	:- mode append(out, out, in).
+	:- mode append(in, out, in).
+	:- mode append(out, in, in).
+@end example
+
+@noindent
+then you could implement it as
+
+@example
+	append(L1::in,  L2::in,  L3::out) :- usual_append(L1, L2, L3).
+	append(L1::out, L2::out, L3::in)  :- usual_append(L1, L2, L3).
+	append(L1::in,  L2::out, L3::in)  :- usual_append(L1, L2, L3).
+	append(L1::out, L2::in,  L3::in)  :- other_append(L1, L2, L3).
+
+	usual_append([], Ys, Ys).
+	usual_append([X|Xs], Ys, [X|Zs]) :- usual_append(Xs, Ys, Zs).
+
+	other_append(Prefix, Suffix, List) :-
+		list__length(List, ListLength),
+		list__length(Suffix, SuffixLength),
+		PrefixLength is ListLength - SuffixLength,
+		list__split_list(PrefixLength, List, Prefix, Suffix).
+@end example
+
+This language feature can be used to write ``impure'' code that
+doesn't have any consistent declarative semantics.  For example,
+you can easily use it to write something similar to Prolog's (in)famous
+var/1 predicate:
+
+@example
+	:- mode var(in).
+	:- mode var(free>>free).
+	var(_::in) :- fail.
+	var(_::free>>free) :- true.
+@end example
+
+@noindent
+As you can see, in this case the two clauses are @emph{not} equivalent.
+
+Because of this possibility, predicates or functions which are defined
+using different code for different modes are by default assumed to be
+impure; the programmer must either (1) carefully ensure that the
+logical meaning of the clauses is the same for all modes,
+in which case a @samp{pragma promise_pure} declaration can be used
+or (2) declare the predicate or function as impure.
+@xref{Impurity}.
+
+In the example with @samp{append} above, the two ways of implementing
+append do have the same declarative semantics, so we can safely use
+the first approach:
+
+@example
+	:- pragma promise_pure(append/3).
+@end example
+
+In the example with @samp{var/1} above, the two clauses have different
+semantics, so the predicate must be declared as impure:
+
+@example
+	:- impure pred var(T).
+@end example
 
 @node Unique modes
 @chapter Unique modes
@@ -5068,7 +5197,7 @@ exports a procedure for use by C.
 
 For each Mercury module containing @samp{pragma export} declarations,
 the Mercury implementation will automatically create a header file
-for that module which declares a C function @var{C_Name()}
+for that module which declares a C function @var{C_Name}()
 for each of the @samp{pragma export} declarations.
 Each such C function is the C interface to the specified mode of
 the specified Mercury predicate or function.

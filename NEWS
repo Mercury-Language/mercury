@@ -7,6 +7,21 @@ and split development of that version off onto a separate branch
 of our CVS repository (the `version-0_10_y' branch).
 
 Changes to the Mercury language:
+* We've extended the language to allow you to specify different clauses
+  for different modes of a predicate or function.  This is done by
+  putting mode annotations in the head of each clause.
+  For example, you can write
+
+	:- mode p(in).
+	:- mode p(out).
+	p(X::in) :- ... /* clause for the `in' mode */
+	p(X::out) :- ... /* clause for the `out' mode */
+
+  For predicates or functions which have different clauses for different
+  modes, you need to either (1) add a `pragma promise_pure' declaration
+  for the predicate or function, and ensure that the declarative semantics
+  remains the same in each mode, or (2) declare the predicate as impure.
+
 * We now allow `:- pragma promise_semipure' declarations. For more
   information, see the "Impurity" chapter of the Mercury Language
   Reference Manual.

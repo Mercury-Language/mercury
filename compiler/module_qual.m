@@ -44,6 +44,14 @@
 :- mode module_qual__qualify_lambda_mode_list(in, out, 
 		in, in, out, di, uo) is det.
 
+	% This is called from make_hlds.m to qualify the modes in a
+	% clause mode annotation.
+:- pred module_qual__qualify_clause_mode_list(list(mode), list(mode),
+		prog_context, mq_info, mq_info,
+		io__state, io__state) is det.
+:- mode module_qual__qualify_clause_mode_list(in, out, 
+		in, in, out, di, uo) is det.
+
 	% This is called from make_hlds.m to qualify an 
 	% explicit type qualification.
 :- pred module_qual__qualify_type_qualification(type, type, prog_context,
@@ -124,6 +132,11 @@ module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 
 module_qual__qualify_lambda_mode_list(Modes0, Modes, Context, Info0, Info) -->
 	{ mq_info_set_error_context(Info0, lambda_expr - Context, Info1) },
+	qualify_mode_list(Modes0, Modes, Info1, Info).
+
+module_qual__qualify_clause_mode_list(Modes0, Modes, Context, Info0, Info) -->
+	{ mq_info_set_error_context(Info0, clause_mode_annotation - Context,
+		Info1) },
 	qualify_mode_list(Modes0, Modes, Info1, Info).
 
 module_qual__qualify_type_qualification(Type0, Type, Context, Info0, Info) -->
@@ -1213,6 +1226,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 	;	func_mode(id)
 	;	(pragma)
 	;	lambda_expr
+	;	clause_mode_annotation
 	;	type_qual
 	;	class(id)
 	;	instance(id).
@@ -1313,6 +1327,8 @@ write_error_context2(func_mode(Id)) -->
 	write_id(Id).
 write_error_context2(lambda_expr) -->
 	io__write_string("mode declaration for lambda expression").
+write_error_context2(clause_mode_annotation) -->
+	io__write_string("clause mode annotation").
 write_error_context2(pragma) -->
 	io__write_string("pragma").
 write_error_context2(type_qual) -->

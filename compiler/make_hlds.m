@@ -94,7 +94,7 @@
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
 :- import_module modules, module_qual, prog_util, options, hlds_out, typecheck.
 :- import_module make_tags, quantification, (inst), globals.
-:- import_module code_util, unify_proc, type_util, mode_util.
+:- import_module code_util, unify_proc, type_util, mode_util, mode_errors.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
 :- import_module error_util, foreign.
@@ -3716,12 +3716,14 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ pred_info_clauses_info(PredInfo1, Clauses0) },
 		{ pred_info_typevarset(PredInfo1, TVarSet0) },
 		{ maybe_add_default_func_mode(PredInfo1, PredInfo2, _) },
-		{ pred_info_all_procids(PredInfo2, ProcIds) },
-		clauses_info_add_clause(Clauses0, ProcIds,
-			ClauseVarSet, TVarSet0, Args, Body, Context,
+		select_applicable_modes(Args, ClauseVarSet, Context,
+			PredId, PredInfo2, ModuleInfo1, Info0,
+			ArgTerms, ProcIdsForThisClause, ModuleInfo2, Info1),
+		clauses_info_add_clause(Clauses0, ProcIdsForThisClause,
+			ClauseVarSet, TVarSet0, ArgTerms, Body, Context,
 			Status, PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, TVarSet, Clauses, Warnings,
-			ModuleInfo1, ModuleInfo2, Info0, Info),
+			ModuleInfo2, ModuleInfo3, Info1, Info),
 		{
 		pred_info_set_clauses_info(PredInfo2, Clauses, PredInfo3),
 		(
@@ -3741,6 +3743,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		% check if there are still no modes for the predicate,
 		% and if so, set the `infer_modes' flag for that predicate
 		%
+		pred_info_all_procids(PredInfo6, ProcIds),
 		( ProcIds = [] ->
 			pred_info_get_markers(PredInfo6, Markers0),
 			add_marker(Markers0, infer_modes, Markers),
@@ -3751,7 +3754,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		map__det_update(Preds0, PredId, PredInfo, Preds),
 		predicate_table_set_preds(PredicateTable2, Preds,
 			PredicateTable),
-		module_info_set_predicate_table(ModuleInfo2, PredicateTable,
+		module_info_set_predicate_table(ModuleInfo3, PredicateTable,
 			ModuleInfo)
 		},
 		( { Status \= opt_imported } ->
@@ -3764,6 +3767,130 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		;
 			[]
 		)
+	).
+
+	% Extract the mode annotations (if any) from the clause arguments,
+	% and determine which mode(s) this clause should apply to.
+
+:- pred select_applicable_modes(list(prog_term)::in, prog_varset::in,
+		prog_context::in, pred_id::in, pred_info::in,
+		module_info::in, qual_info::in,
+		list(prog_term)::out, list(proc_id)::out,
+		module_info::out, qual_info::out,
+		io__state::di, io__state::uo) is det.
+
+select_applicable_modes(Args0, VarSet, Context, PredId, PredInfo, ModuleInfo0,
+		Info0, Args, ProcIds, ModuleInfo, Info) -->
+	{ get_mode_annotations(Args0, Args, empty, ModeAnnotations) },
+	(
+		{ ModeAnnotations = modes(ModeList0) },
+
+		%
+		% The user specified some mode annotations on this clause.
+		% First module-qualify the mode annotations.
+		%
+		{ qual_info_get_mq_info(Info0, MQInfo0) },
+		module_qual__qualify_clause_mode_list(ModeList0, ModeList,
+			Context, MQInfo0, MQInfo),
+		{ qual_info_set_mq_info(Info0, MQInfo, Info) },
+
+		%
+		% Now find the procedure which matches these mode annotations.
+		%
+		{ pred_info_procedures(PredInfo, Procs) },
+		{ map__to_assoc_list(Procs, ExistingProcs) },
+		(
+			{ get_procedure_matching_declmodes(ExistingProcs,
+				ModeList, ModuleInfo0, ProcId) }
+		->
+			{ ProcIds = [ProcId] },
+			{ ModuleInfo = ModuleInfo0 }
+		;
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+			undeclared_mode_error(
+				ModeList, VarSet, PredId, PredInfo,
+				ModuleInfo, Context),
+			% apply the clause to all modes
+			% XXX would it be better to apply it to none?
+			{ pred_info_all_procids(PredInfo, ProcIds) }
+		)
+	;
+		{ ModeAnnotations = empty },
+		{ pred_info_all_procids(PredInfo, ProcIds) },
+		{ ModuleInfo = ModuleInfo0 },
+		{ Info = Info0 }
+	;
+		{ ModeAnnotations = none },
+		{ pred_info_all_procids(PredInfo, ProcIds) },
+		{ ModuleInfo = ModuleInfo0 },
+		{ Info = Info0 }
+	;
+		{ ModeAnnotations = mixed },
+		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+		{ Info = Info0 },
+		io__set_exit_status(1),
+		prog_out__write_context(Context),
+		io__write_string("In clause for "),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		io__write_string(":\n"),
+		prog_out__write_context(Context),
+		io__write_string(
+	"  syntax error: some but not all arguments have mode annotations.\n"),
+		% apply the clause to all modes
+		% XXX would it be better to apply it to none?
+		{ pred_info_all_procids(PredInfo, ProcIds) }
+	).
+			
+	% Clauses can have mode annotations on them, to indicate that the
+	% clause should only be used for particular modes of a predicate.
+	% This type specifies the mode annotations on a clause.
+:- type mode_annotations
+	--->	empty	% No arguments.
+	;	none	% One or more arguments,
+			% each without any mode annotations.
+	;	modes(list(mode))
+			% One or more arguments, each with a mode annotation.
+	;	mixed   % Two or more arguments, including some with mode
+			% annotations and some without.  (This is not allowed.)
+	.
+
+
+	% Extract the mode annotations (if any) from a list of arguments.
+:- pred get_mode_annotations(list(prog_term)::in, list(prog_term)::out,
+		mode_annotations::in, mode_annotations::out) is det.
+
+get_mode_annotations([], [], Annotations, Annotations).
+get_mode_annotations([Arg0 | Args0], [Arg | Args],
+		Annotations0, Annotations) :-
+	get_mode_annotation(Arg0, Arg, MaybeAnnotation),
+	add_annotation(Annotations0, MaybeAnnotation, Annotations1),
+	get_mode_annotations(Args0, Args, Annotations1, Annotations).
+
+:- pred add_annotation(mode_annotations::in, maybe(mode)::in,
+		mode_annotations::out) is det.
+
+add_annotation(empty, no, none).
+add_annotation(empty, yes(Mode), modes([Mode])).
+add_annotation(modes(_), no, mixed).
+add_annotation(modes(Modes), yes(Mode), modes(Modes ++ [Mode])).
+add_annotation(none, no, none).
+add_annotation(none, yes(_), mixed).
+add_annotation(mixed, _, mixed).
+
+	% Extract the mode annotations (if any) from a single argument.
+:- pred get_mode_annotation(prog_term::in, prog_term::out, maybe(mode)::out)
+		is det.
+
+get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
+	(
+		Arg0 = term__functor(term__atom("::"), [Arg1, ModeTerm], _),
+		convert_mode(term__coerce(ModeTerm), Mode)
+	->
+		Arg = Arg1,
+		MaybeAnnotation = yes(Mode)
+	;
+		Arg = Arg0,
+		MaybeAnnotation = no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -7603,6 +7730,9 @@ pred_method_with_no_modes_error(PredInfo) -->
 	prog_out__write_sym_name_and_arity(qualified(Module,Name)/Arity),
 	io__write_string("'.\n").
 
+	% Similar to undeclared_mode_error, but gives less information.
+	% XXX perhaps we should get rid of this, and change the callers to
+	% instead call undeclared_mode_error.
 :- pred undefined_mode_error(sym_name, int, prog_context, string,
 				io__state, io__state).
 :- mode undefined_mode_error(in, in, in, in, di, uo) is det.
@@ -7617,6 +7747,60 @@ undefined_mode_error(Name, Arity, Context, Description) -->
 	io__write_string("  `"),
 	prog_out__write_sym_name_and_arity(Name/Arity),
 	io__write_string("' specifies non-existent mode.\n").
+
+	% Similar to undefined_mode_error, but gives more information.
+:- pred undeclared_mode_error(list(mode)::in, prog_varset::in,
+		pred_id::in, pred_info::in, module_info::in, prog_context::in,
+		io__state::di, io__state::uo) is det.
+
+undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
+		Context) -->
+	prog_out__write_context(Context),
+	io__write_string("In clause for "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string(
+		"  error: mode annotation specifies undeclared mode\n"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
+	{ strip_builtin_qualifiers_from_mode_list(ModeList,
+		StrippedModeList) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	{ pred_info_name(PredInfo, Name) },
+	{ MaybeDet = no },
+	mercury_output_mode_subdecl(PredOrFunc,
+		varset__coerce(VarSet),
+		unqualified(Name), StrippedModeList,
+		MaybeDet, Context),
+	io__write_string("'\n"),
+	prog_out__write_context(Context),
+	io__write_string("  of "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(".\n"),
+	globals__io_lookup_bool_option(verbose_errors,
+		VerboseErrors),
+	{ pred_info_all_procids(PredInfo, ProcIds) },
+	( { ProcIds = [] } ->
+		prog_out__write_context(Context),
+		io__write_string(
+		"  (There are no declared modes for this "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string(".)\n")
+	; { VerboseErrors = yes } ->
+		io__write_string(
+		"\tThe declared modes for this "),
+		hlds_out__write_pred_or_func(PredOrFunc),
+		io__write_string(" are the following:\n"),
+		{ OutputProc =
+		    (pred(ProcId::in, di, uo) is det -->
+			io__write_string("\t\t:- mode "),
+			output_mode_decl(ProcId, PredInfo),
+			io__write_string(".\n")) },
+		list__foldl(OutputProc, ProcIds)
+	;
+		[]
+	).
 
 :- pred maybe_undefined_pred_error(sym_name, int, pred_or_func, import_status,
 		bool, prog_context, string, io__state, io__state).
