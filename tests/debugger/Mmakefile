@@ -33,6 +33,7 @@ DEBUGGER_PROGS=	\
 	loopcheck			\
 	mdb_command_test		\
 	multi_parameter			\
+	output_term_dep			\
 	polymorphic_output		\
 	queens				\
 	resume_typeinfos		\
@@ -40,9 +41,6 @@ DEBUGGER_PROGS=	\
 	shallow				\
 	tabled_read
 
-# mdb reports incorrect line numbers when the following test is compiled
-# with --opt-space
-#	output_term_dep
 
 # The following tests are disabled, since currently they get some spurious
 # failures if readline support is enabled:
