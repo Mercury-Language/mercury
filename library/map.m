@@ -67,9 +67,9 @@ map__search(Map, K, V) :-
 	% code, and we don't want to rely on that feature (at least
 	% until we've implemented it) so we can bootstrap.
 
-:- pred map__inverse_search(map(K,V), K, V).
-:- mode map__inverse_search(input, output, input).
-map__inverse_search(Map, K, V) :-
+:- pred map__inverse_search(map(K,V), V, K).
+:- mode map__inverse_search(input, input, output).
+map__inverse_search(Map, V, K) :-
 	assoc_list_member(K-V, Map).
 
 %-----------------------------------------------------------------------------%

@@ -58,10 +58,8 @@ varset__new_var(varset(MaxId0,Names,Vals), MaxId0, varset(MaxId,Names,Vals)) :-
 :- mode varset__name_var(input, input, input, output).
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
-	(if
-		some [OtherId] (
-			map_inverse_search(Names0, Name)
-		)
+	(if some []
+		(some [OtherId] map__inverse_search(Names0, Name, OtherId))
 	then
 		string__append(Name, "'", Name2),
 		varset__name_var(VarSet0, Id, Name2, VarSet)
