@@ -10,6 +10,7 @@
 #
 # Step 3.  Check the permissions on the installed files.
 
+PATH=`pwd`/scripts:$PATH
+export PATH
 (cd scripts && make -f Mmake.makefile) &&
-PATH=`pwd`/scripts:$PATH &&
 mmake install

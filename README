@@ -4,13 +4,14 @@ Mercury compiler.
 The Mercury implementation is free software, but it is
 Copyright (C) 1994, 1995 University of Melbourne.
 See the file COPYING for copying permission.
-
-THE MERCURY IMPLEMENTATION IS PROVIDED AS IS, WITH ABSOLUTELY NO
-WARRANTY EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
-
 The subdirectory `boehm_gc' contains a conservative garbage collector
 distributed by Hans Boehm - see the file README in that directory for
-copyright information about those files.
+copyright information about those files.  A couple of files
+(scripts/fullarch, runtime/timing.c) are derived from code that is
+copyright by the Free Software Foundation, Inc.
+
+THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
+EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
 
 See the file INSTALL for installation instructions.
 
@@ -19,7 +20,7 @@ process will install INFO, HTML, and DVI versions in /usr/local/info,
 /usr/local/lib/mercury/html, and /usr/local/lib/mercury/doc respectively.
 
 For more information about Mercury, see http://www.cs.mu.oz.au/~zs/mercury,
-or send mail to fjh@cs.mu.oz.au, zs@cs.mu.oz.au and conway@cs.mu.oz.au.
+or send mail to fjh@cs.mu.oz.au, zs@cs.mu.oz.au and/or conway@cs.mu.oz.au.
 To subscribe to the Mercury mailing list, send mail to fjh@cs.mu.oz.au.
 
 Please send bug reports, enhancement requests, suggestions for improvements
