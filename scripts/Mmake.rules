@@ -123,27 +123,43 @@ clean: sub_clean
 
 .PHONY: sub_clean
 sub_clean:
-	for dep in *.dep ; do mmake "`basename $$dep .dep`.clean" ; done
+	for dep in *.dep ; do \
+		if test "$$dep" != '*.dep' ; then \
+			mmake "`basename $$dep .dep`.clean" ;
+		fi ; \
+	done
 
 .PHONY: realclean
 realclean: sub_realclean
 
 .PHONY: sub_realclean
 sub_realclean:
-	for dep in *.dep ; do mmake "`basename $$dep .dep`.realclean" ; done
+	for dep in *.dep ; do \
+		if test "$$dep" != '*.dep' ; then \
+			mmake "`basename $$dep .dep`.realclean" ;
+		fi ; \
+	done
 
 .PHONY: clean_nu
 clean_nu: sub_clean_nu
 
 .PHONY: sub_clean_nu
 sub_clean_nu:
-	for dep in *.dep ; do mmake "`basename $$dep .dep`.clean_nu" ; done
+	for dep in *.dep ; do \
+		if test "$$dep" != '*.dep' ; then \
+			mmake "`basename $$dep .dep`.clean_nu" ;
+		fi ; \
+	done
 
 .PHONY: clean_sicstus
 clean_sicstus: sub_clean_sicstus
 
 .PHONY: sub_clean_sicstus
 sub_clean_sicstus:
-	for dep in *.dep ; do mmake "`basename $$dep .dep`.clean_sicstus" ; done
+	for dep in *.dep ; do \
+		if test "$$dep" != '*.dep' ; then \
+			mmake "`basename $$dep .dep`.clean_sicstus" ;
+		fi ; \
+	done
 
 #-----------------------------------------------------------------------------#
