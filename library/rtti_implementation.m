@@ -793,11 +793,18 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		U, int, sectag_locn, du_functor_descriptor, type_info) = T.
 
 get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
+	( ExistInfo = FunctorDesc ^ functor_exist_info ->
+		ExtraArgs = (ExistInfo ^ exist_info_typeinfos_plain) + 
+				(ExistInfo ^ exist_info_tcis)
+	;
+		ExtraArgs = 0
+	),
+
 	ArgTypes = FunctorDesc ^ functor_arg_types,
 	PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
-	get_type_and_extra_args(TypeInfo, PseudoTypeInfo, Term,
-		FunctorDesc, ExtraArgs, ArgTypeInfo),
-	( SecTagLocn = none ->
+	get_arg_type_info(TypeInfo, PseudoTypeInfo, Term,
+			FunctorDesc, ArgTypeInfo),
+	( ( SecTagLocn = none ; high_level_data ) ->
 		TagOffset = 0
 	;
 		TagOffset = 1
@@ -805,18 +812,32 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 	RealArgsOffset = TagOffset + ExtraArgs,
 	Arg = get_subterm(ArgTypeInfo, Term, Index, RealArgsOffset).
 
-:- pred get_type_and_extra_args(type_info::in, P::in, T::in,
-	du_functor_descriptor::in, int::out, type_info::out) is det.
+:- pred high_level_data is semidet.
+:- pragma promise_pure(high_level_data/0).
+:- pragma foreign_proc("MC++", high_level_data,
+		[will_not_call_mercury, thread_safe], "
+#ifdef MR_HIGHLEVEL_DATA
+	SUCCESS_INDICATOR = MR_TRUE;
+#else
+	SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
+high_level_data :-
+	std_util__semidet_succeed,
+	private_builtin__sorry("high_level_data").
 
-get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, Term,
-		FunctorDesc, ExtraArgs, ArgTypeInfo) :-
+:- pred get_arg_type_info(type_info::in, P::in, T::in,
+	du_functor_descriptor::in, type_info::out) is det.
+
+get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term,
+		FunctorDesc, ArgTypeInfo) :-
 	( 
 		typeinfo_is_variable(PseudoTypeInfo, VarNum)
 	->
 		get_type_info_for_var(TypeInfoParams,
-			VarNum, Term, FunctorDesc, ExtraArgs, ExpandedTypeInfo),
+			VarNum, Term, FunctorDesc, ExpandedTypeInfo),
 		( typeinfo_is_variable(ExpandedTypeInfo, _) ->
-			error("get_type_and_extra_args: unbound type variable")
+			error("get_arg_type_info: unbound type variable")
 		;
 			ArgTypeInfo = ExpandedTypeInfo
 		)
@@ -840,9 +861,8 @@ get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, Term,
 			(pred(I::in, TI0::in, TI::out) is det :-
 
 				PTI = get_pti_from_type_info(CastTypeInfo, I),
-				get_type_and_extra_args(TypeInfoParams, PTI,
-					Term, FunctorDesc, _ExtraArgs,
-					ETypeInfo),
+				get_arg_type_info(TypeInfoParams, PTI,
+					Term, FunctorDesc, ETypeInfo),
 				( 
 					same_pointer_value_untyped(
 						ETypeInfo, PTI)
@@ -869,8 +889,7 @@ get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, Term,
 			ArgTypeInfo = ArgTypeInfo1
 		;
 			ArgTypeInfo = CastTypeInfo
-		),
-		ExtraArgs = 0
+		)
 	).
 
 	% XXX this is completely unimplemented.
@@ -926,19 +945,19 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
 	
 :- pred get_type_info_for_var(
 		type_info::in, int::in, T::in, du_functor_descriptor::in,
-		int::out, type_info::out) is det.
+		type_info::out) is det.
 
-get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc,
-			ExtraArgs, ArgTypeInfo) :-
+get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
 	(
 		type_variable_is_univ_quant(VarNum) 
 	->
-		ArgTypeInfo = TypeInfo ^ type_info_index(VarNum),
-		ExtraArgs = 0
+		ArgTypeInfo = TypeInfo ^ type_info_index(VarNum)
 	;
-		ExistInfo = FunctorDesc ^ functor_exist_info,
-		ExtraArgs = (ExistInfo ^ exist_info_typeinfos_plain) + 
-			(ExistInfo ^ exist_info_tcis),
+		( ExistInfo0 = FunctorDesc ^ functor_exist_info ->
+			ExistInfo = ExistInfo0
+		;
+			error("get_type_info_for_var no exist_info")
+		),
 
 		ExistVarNum = VarNum - pseudotypeinfo_exist_var_base - 1,
 		ExistLocn = ExistInfo ^ typeinfo_locns_index(ExistVarNum),
@@ -1239,7 +1258,8 @@ functor_arg_types(X::in) = (unsafe_cast(X)::out) :-
 		
 ").
 
-:- func functor_exist_info(du_functor_descriptor) = exist_info.
+:- func functor_exist_info(du_functor_descriptor::in) =
+		(exist_info::out) is semidet.
 
 functor_exist_info(X::in) = (unsafe_cast(X)::out) :- 
 	det_unimplemented("functor_exist_info").
@@ -1250,6 +1270,12 @@ functor_exist_info(X::in) = (unsafe_cast(X)::out) :-
 	ExistInfo = (object[])
 		FunctorDescriptor[(int)
 			du_functor_field_nums.du_functor_exist_info];
+
+	if (ExistInfo != null) {
+		SUCCESS_INDICATOR = true;
+	} else {
+		SUCCESS_INDICATOR = false;
+	}
 		
 ").
 
