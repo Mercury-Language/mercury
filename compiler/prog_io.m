@@ -97,8 +97,7 @@
 					maybe(determinism), condition)
 				%       VarNames, PredName, ArgModes,
 				%	Deterministicness, Cond
-			;	pragma_c_header(c_header_code)
-				% added by dgj - 1/7/95
+			;	pragma(pragma)
 			;	nothing.
 				% used for items that should be ignored
 				% (currently only NU-Prolog `when' declarations,
@@ -114,6 +113,8 @@
 			;	multidet
 			;	erroneous
 			;	failure.
+
+:- type pragma --->	c_header_code(c_header_code).
 
 :- type c_header_code == string.
 
@@ -1339,10 +1340,8 @@ process_decl(VarSet, "end_module", [ModuleName], Result) :-
 process_decl(_VarSet, "when", [_Goal, _Cond], Result) :-
 	Result = ok(nothing).
 
-process_decl(_VarSet,"pragma", [PragmaType, HeaderTerm], 
-		ok(pragma_c_header(HeaderCode))) :-
-	PragmaType = term__functor(term__atom("c_header_code"),[], _Context0),
-	HeaderTerm = term__functor(term__string(HeaderCode), [], _Context).
+process_decl(_VarSet, "pragma", Pragma, Result):-
+	parse_pragma(Pragma, Result).
 
 :- pred parse_type_decl(varset, term, maybe1(item)).
 :- mode parse_type_decl(in, in, out) is det.
@@ -1469,6 +1468,21 @@ parse_mode_decl_pred_2(ok(MaybeDet), VarSet, Body, Condition, R) :-
 	process_mode(VarSet, Body, MaybeDet, Condition, R).
 parse_mode_decl_pred_2(error(Term, Reason), _, _, _, error(Term, Reason)).
 		% just pass the error up (after conversion to the right type)
+
+
+%-----------------------------------------------------------------------------%
+	% parse the pragma declaration. (At the moment, the only pragma supported
+	% is c_header_code). It fails if the pragma could not be parsed.
+	% XXX Should probably make this det.
+:- pred parse_pragma(list(term), maybe1(item)).
+:- mode parse_pragma(in, out) is semidet.
+
+parse_pragma(Pragma, Result) :-
+	Pragma = [PragmaType | PragmaTerms],
+	PragmaType = term__functor(term__atom("c_header_code"),[], _Context0),
+	PragmaTerms = [HeaderTerm],
+	HeaderTerm = term__functor(term__string(HeaderCode), [], _Context),
+	Result = ok(pragma(c_header_code(HeaderCode))).
 
 %-----------------------------------------------------------------------------%
 

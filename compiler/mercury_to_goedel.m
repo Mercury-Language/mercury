@@ -164,7 +164,8 @@ goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 	maybe_write_line_number(Context),
 	goedel_output_clause(VarSet, PredName, Args, Body, Context).
 
-goedel_output_item(pragma_c_header(_C_Header), _Context) -->
+%Give a warning but ignore pragma declarations.
+goedel_output_item(pragma(_Pragma), _Context) -->
 	io__stderr_stream(Stderr),
 	io__write_string(Stderr, 
 			"warning: C header declarations not allowed. Ignoring\n").

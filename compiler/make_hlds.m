@@ -128,7 +128,7 @@ add_item_decl(mode(VarSet, PredName, Modes, MaybeDet, Cond), Context, Status,
 	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
 		Context, Module).
 
-add_item_decl(pragma_c_header(C_Header), Context, Status, Module0, Status,
+add_item_decl(pragma(c_header_code(C_Header)), Context, Status, Module0, Status,
 		Module) -->
 	{ module_add_c_header(C_Header, Context, Module0, Module) }.
 
@@ -201,7 +201,7 @@ add_item_type_defn(pred(_, _, _, _, _), _, Status, Module, Status, Module) -->
 	[].
 add_item_type_defn(mode(_, _, _, _, _), _, Status, Module, Status, Module) -->
 	[].
-add_item_type_defn(pragma_c_header(_), _, Status, Module, Status, Module) -->
+add_item_type_defn(pragma(_), _, Status, Module, Status, Module) -->
 	[].
 add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
 
@@ -223,7 +223,7 @@ add_item_clause(mode_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(pred(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(mode(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
-add_item_clause(pragma_c_header(_), _, Module, Module) --> [].
+add_item_clause(pragma(_), _, Module, Module) --> [].
 add_item_clause(nothing, _, Module, Module) --> [].
 
 %-----------------------------------------------------------------------------%
