@@ -1368,7 +1368,7 @@ case "$host" in
 	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
 			-quickstart_info -rdata_shared -no_unresolved"
-		EXE_RPATH_OPT="-rpath "
+		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
 		SHLIB_RPATH_OPT="-rpath "
 		SHLIB_RPATH_SEP=":"
