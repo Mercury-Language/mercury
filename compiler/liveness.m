@@ -1,8 +1,27 @@
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module liveness.
+% Main author: conway.
+
+	% This module traverses the goal for each procedure, and adds
+	% liveness annotations to the goal_info for each sub-goal.
+
+	% Note - the concept of `liveness' here is different to that
+	% used in the mode analysis.  The mode analysis is concerned
+	% with the liveness of what is *pointed* to by a variable, for
+	% the purpose of avoiding aliasing and for structure re-use
+	% optimization, whereas here we are concerned with the liveness
+	% of the variable itself, for the purposes of minimizing stack
+	% slot usage and for register re-use.
+
+	% XXX - we will need a different algorithm for determining liveness
+	% for non-deterministic code.  (That may also cause some
+	% difficulties for structure re-use, too!)
+
+%-----------------------------------------------------------------------------%
 
 :- interface.
-
 :- import_module hlds, llds.
 
 :- pred detect_liveness(module_info, module_info).
