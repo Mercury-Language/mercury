@@ -5928,11 +5928,14 @@ report_ambiguity_error(TypeCheckInfo, TypeAssign1, TypeAssign2) -->
 		prog_out__write_context(Context),
 		io__write_string("  Try adding explicit module qualifiers.\n")
 	; { VerboseErrors = yes } ->
-		io__write_string("\tYou will need to add an explicit type qualification to resolve the\n"),
-		io__write_string("\ttype ambiguity.\n"),
-		io__write_string("\tThe way to add an explicit type qualification\n"),
-		io__write_string("\tis to insert a call to a dummy predicate whose `:- pred'\n"),
-		io__write_string("\tdeclaration specifies the appropriate argument types.\n")
+		io__write_strings([
+"\tYou will need to add an explicit type qualification to resolve the\n",
+"\ttype ambiguity.\n",
+"\tThe way to add an explicit type qualification is to use ""with_type"".\n",
+"\tFor details see the ""Explicit type qualification"" sub-section\n",
+"\tof the ""Data-terms"" section of the ""Syntax"" chapter\n",
+"\tof the Mercury langauge reference manual.\n"
+		])
 	;
 		[]
 	).
