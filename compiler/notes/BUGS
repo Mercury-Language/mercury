@@ -1,4 +1,4 @@
-- undefined insts/modes cause an internal error
+- undefined insts/modes cause spurious flow-on errors
 
 - the name mangling code needs to be generalized
 
@@ -23,45 +23,6 @@ special_pred_info(compare, Type,
 	In = (ground -> ground),
 	Out = (free -> ground).
 
-
-- disjunctions or if-then-elses after a call to a nondet predicate cause
-  "Software error: cannot restore unknown failure continuation"
-  Example:
-
-	:- module x.
-	:- interface.
-	:- pred p(int::out) is nondet.
-	:- pred q(int::out, int::out) is nondet.
-
-	:- implementation.
-
-	:- external(p/1).
-
-	q(X, Y) :-
-		p(X),
-		( p(Y1) ->
-			Y = Y1
-		;
-			Y = 42
-		).
-
-	:- module x.
-	:- interface.
-	:- pred p(int::out) is nondet.
-	:- pred q(int::out, int::out) is nondet.
-
-	:- implementation.
-
-	:- external(p/1).
-
-	q(X, Y) :-
-		p(X),
-		(
-			Y = 41
-		;
-			Y = 42
-		).
-
 - The followcode transformation is buggy, in that it can make valid
   code become invalid due to determinism errors.  We need to fix
   this by running determinism analysis once before followcode
@@ -69,6 +30,7 @@ special_pred_info(compare, Type,
   this time ignoring any errors.  Or alternately we could put more
   intelligence into the followcode transformation pass so that it doesn't
   apply the transformation if it would introduce a determinism error.
+  This has never occurred in practice, so it is a very low priority.
 
 - Similarly, inlining flattens conjs which may introduce detism errors.
 
