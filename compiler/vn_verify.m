@@ -373,7 +373,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = pragma_c(_, _, _, _),
+		Instr = pragma_c(_, _, _, _, _),
 		error("found c_code in vn_verify__tags_instr")
 	).
 

@@ -46,15 +46,18 @@
 	;	num_data_elems
 	;	size_data_elems.
 
+:- type trace_level
+	--->	minimal
+	;	interface
+	;	full.
+
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
-
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
-
 :- pred convert_args_method(string::in, args_method::out) is semidet.
-
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
-
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
+:- pred convert_trace_level(string::in, bool::in, trace_level::out) is semidet.
+	% the bool should be the setting of the `require_tracing' option.
 
 %-----------------------------------------------------------------------------%
 
@@ -62,7 +65,7 @@
 
 :- pred globals__init(option_table::di, gc_method::di, tags_method::di,
 	args_method::di, prolog_dialect::di, 
-	termination_norm::di, globals::uo) is det.
+	termination_norm::di, trace_level::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
@@ -71,19 +74,10 @@
 :- pred globals__get_prolog_dialect(globals::in, prolog_dialect::out) is det.
 :- pred globals__get_termination_norm(globals::in, termination_norm::out) 
 	is det.
+:- pred globals__get_trace_level(globals::in, trace_level::out) is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
 	is det.
-:- pred globals__set_gc_method(globals::in, gc_method::in, globals::out)
-	is det.
-:- pred globals__set_tags_method(globals::in, tags_method::in, globals::out)
-	is det.
-:- pred globals__set_args_method(globals::in, args_method::in, globals::out)
-	is det.
-:- pred globals__set_prolog_dialect(globals::in, prolog_dialect::in,
-	globals::out) is det.
-:- pred globals__set_termination_norm(globals::in, termination_norm::in,
-	globals::out) is det.
 
 :- pred globals__lookup_option(globals::in, option::in, option_data::out)
 	is det.
@@ -113,7 +107,7 @@
 
 :- pred globals__io_init(option_table::di, gc_method::in, tags_method::in,
 	args_method::in, prolog_dialect::in, termination_norm::in,
-	io__state::di, io__state::uo) is det.
+	trace_level::in, io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
 	io__state::di, io__state::uo) is det.
@@ -130,16 +124,19 @@
 :- pred globals__io_get_termination_norm(termination_norm::out,
 	io__state::di, io__state::uo) is det.
 
+:- pred globals__io_get_trace_level(trace_level::out,
+	io__state::di, io__state::uo) is det.
+
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
 	is det.
 
 :- pred globals__io_set_globals(globals::di, io__state::di, io__state::uo)
 	is det.
 
-:- pred globals__io_lookup_option(option::in, option_data::out,
+:- pred globals__io_set_option(option::in, option_data::in,
 	io__state::di, io__state::uo) is det.
 
-:- pred globals__io_set_option(option::in, option_data::in,
+:- pred globals__io_lookup_option(option::in, option_data::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_lookup_bool_option(option, bool, io__state, io__state).
@@ -195,6 +192,13 @@ convert_termination_norm("total", total).
 convert_termination_norm("num-data-elems", num_data_elems).
 convert_termination_norm("size-data-elems", size_data_elems).
 
+convert_trace_level("minimum", no, minimal).
+convert_trace_level("minimum", yes, interface).
+convert_trace_level("interfaces", _, interface).
+convert_trace_level("all", _, full).
+convert_trace_level("default", no, minimal).
+convert_trace_level("default", yes, full).
+
 %-----------------------------------------------------------------------------%
 
 :- type globals
@@ -204,35 +208,27 @@ convert_termination_norm("size-data-elems", size_data_elems).
 			tags_method,
 			args_method,
 			prolog_dialect,
-			termination_norm
+			termination_norm,
+			trace_level
 		).
 
 globals__init(Options, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TerminationNorm, 
+		PrologDialect, TerminationNorm, TraceLevel,
 	globals(Options, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TerminationNorm)).
+		PrologDialect, TerminationNorm, TraceLevel)).
 
-globals__get_options(globals(Options, _, _, _, _, _), Options).
-globals__get_gc_method(globals(_, GC_Method, _, _, _, _), GC_Method).
-globals__get_tags_method(globals(_, _, TagsMethod, _, _, _), TagsMethod).
-globals__get_args_method(globals(_, _, _, ArgsMethod, _, _), ArgsMethod).
-globals__get_prolog_dialect(globals(_, _, _, _, PrologDialect, _),
+globals__get_options(globals(Options, _, _, _, _, _, _), Options).
+globals__get_gc_method(globals(_, GC_Method, _, _, _, _, _), GC_Method).
+globals__get_tags_method(globals(_, _, TagsMethod, _, _, _, _), TagsMethod).
+globals__get_args_method(globals(_, _, _, ArgsMethod, _, _, _), ArgsMethod).
+globals__get_prolog_dialect(globals(_, _, _, _, PrologDialect, _, _),
 	PrologDialect).
-globals__get_termination_norm(globals(_, _, _, _, _, TerminationNorm),
+globals__get_termination_norm(globals(_, _, _, _, _, TerminationNorm, _),
 	TerminationNorm).
+globals__get_trace_level(globals(_, _, _, _, _, _, TraceLevel), TraceLevel).
 
-globals__set_options(globals(_, B, C, D, E, F), Options,
-	globals(Options, B, C, D, E, F)).
-globals__set_gc_method(globals(A, _, C, D, E, F), GC_Method,
-	globals(A, GC_Method, C, D, E, F)).
-globals__set_tags_method(globals(A, B, _, D, E, F), TagsMethod,
-	globals(A, B, TagsMethod, D, E, F)).
-globals__set_args_method(globals(A, B, C, _, E, F), ArgsMethod,
-	globals(A, B, C, ArgsMethod, E, F)).
-globals__set_prolog_dialect(globals(A, B, C, D, _, F), PrologDialect,
-	globals(A, B, C, D, PrologDialect, F)).
-globals__set_termination_norm(globals(A, B, C, D, E, _), TerminationNorm,
-	globals(A, B, C, D, E, TerminationNorm)).
+globals__set_options(globals(_, B, C, D, E, F, G), Options,
+	globals(Options, B, C, D, E, F, G)).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -291,14 +287,15 @@ globals__have_static_code_addresses_2(OptionTable, IsConst) :-
 %-----------------------------------------------------------------------------%
 
 globals__io_init(Options, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TerminationNorm) -->
+		PrologDialect, TerminationNorm, TraceLevel) -->
 	{ copy(GC_Method, GC_Method1) },
 	{ copy(TagsMethod, TagsMethod1) },
 	{ copy(ArgsMethod, ArgsMethod1) },
 	{ copy(PrologDialect, PrologDialect1) },
 	{ copy(TerminationNorm, TerminationNorm1) },
+	{ copy(TraceLevel, TraceLevel1) },
 	{ globals__init(Options, GC_Method1, TagsMethod1, ArgsMethod1,
-		PrologDialect1, TerminationNorm1, Globals) },
+		PrologDialect1, TerminationNorm1, TraceLevel1, Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_gc_method(GC_Method) -->
@@ -320,6 +317,10 @@ globals__io_get_prolog_dialect(PrologDIalect) -->
 globals__io_get_termination_norm(TerminationNorm) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_termination_norm(Globals, TerminationNorm) }.
+
+globals__io_get_trace_level(TraceLevel) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_trace_level(Globals, TraceLevel) }.
 
 globals__io_get_globals(Globals) -->
 	io__get_globals(UnivGlobals),

@@ -14,20 +14,21 @@
 :- interface.
 
 :- import_module std_util, list, term.
-:- import_module prog_data.
+:- import_module hlds_pred, prog_data.
 
 %-----------------------------------------------------------------------------%
 
 	% Returns the name of the module containing public builtins;
-	% traditionally this was "mercury_builtin", but it may eventually
-	% be renamed "std:builtin".
+	% originally this was "mercury_builtin", but it later became
+	% just "builtin", and it may eventually be renamed "std:builtin".
 
 :- pred mercury_public_builtin_module(sym_name).
 :- mode mercury_public_builtin_module(out) is det.
 
 	% Returns the name of the module containing private builtins;
-	% traditionally this was "mercury_builtin", but it may eventually
-	% be renamed "std:private_builtin".
+	% traditionally this was "mercury_builtin", but it later became
+	% "private_builtin", and it may eventually be renamed
+	% "std:private_builtin".
 
 :- pred mercury_private_builtin_module(sym_name).
 :- mode mercury_private_builtin_module(out) is det.
@@ -72,6 +73,17 @@
 
 %-----------------------------------------------------------------------------%
 
+	% make_pred_name_with_context(ModuleName, Prefix, PredOrFunc, PredName,
+	%	Line, Counter, SymName).
+	%
+	% Create a predicate name with context, e.g. for introduced
+	% lambda or deforestation predicates.
+:- pred make_pred_name_with_context(module_name, string, pred_or_func,
+		string, int, int, sym_name).
+:- mode make_pred_name_with_context(in, in, in, in, in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 	% A pred declaration may contains just types, as in
 	%	:- pred list__append(list(T), list(T), list(T)).
 	% or it may contain both types and modes, as in
@@ -107,13 +119,13 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% -- not yet:
+% We may eventually want to put the standard library into a package "std":
 %	mercury_public_builtin_module(M) :-
 % 		M = qualified(unqualified("std"), "builtin"))).
 %	mercury_private_builtin_module(M) :-
 % 		M = qualified(unqualified("std"), "private_builtin"))).
-mercury_public_builtin_module(unqualified("mercury_builtin")).
-mercury_private_builtin_module(unqualified("mercury_builtin")).
+mercury_public_builtin_module(unqualified("builtin")).
+mercury_private_builtin_module(unqualified("private_builtin")).
 
 unqualify_name(unqualified(PredName), PredName).
 unqualify_name(qualified(_ModuleName, PredName), PredName).
@@ -280,5 +292,20 @@ match_sym_name(qualified(Module1, Name), qualified(Module2, Name)) :-
 	match_sym_name(Module1, Module2).
 match_sym_name(unqualified(Name), unqualified(Name)).
 match_sym_name(unqualified(Name), qualified(_, Name)).
+
+%-----------------------------------------------------------------------------%
+
+make_pred_name_with_context(ModuleName, Prefix,
+		PredOrFunc, PredName, Line, Counter, SymName) :-
+	(
+		PredOrFunc = predicate,
+		PFS = "pred"
+	;
+		PredOrFunc = function,
+		PFS = "func"
+	),
+	string__format("%s__%s__%s__%d__%d",
+		[s(Prefix), s(PFS), s(PredName), i(Line), i(Counter)], Name),
+		SymName = qualified(ModuleName, Name).
 
 %-----------------------------------------------------------------------------%

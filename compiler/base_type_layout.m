@@ -32,10 +32,11 @@
 % 					  solutions
 % 		array.m			- array type
 % 		io.m			- io__stream type
-% 		mercury_builtin.m	- builtin types
+% 		builtin.m		- builtin types
 %
-% runtime:	type_info.h		- defines layout macros
-% 		deep_copy.{c,h}		- deep_copy
+% runtime:	mercury_type_info.h	- defines layout macros
+% 		mercury_deep_copy.{c,h}	- deep_copy
+%		mercury_table_any.c	- tabling
 % 		
 % Any module that uses base_type_layouts should register itself here.
 % Changes can by minimized by using the macros in type_info.h.

@@ -64,7 +64,7 @@
 
 	% Given a variable type, return its type variable.
 	
-:- pred type_util__var(type, var).
+:- pred type_util__var(type, tvar).
 :- mode type_util__var(in, out) is semidet.
 :- mode type_util__var(out, in) is det.
 
@@ -107,7 +107,7 @@
 	% check whether that type is a no_tag type
 	% (i.e. one with only one constructor, and
 	% whose one constructor has only one argument,
-	% and which is not mercury_builtin:type_info/1),
+	% and which is not private_builtin:type_info/1),
 	% and if so, return its constructor symbol and argument type.
 
 :- pred type_is_no_tag_type(list(constructor), sym_name, type).
@@ -138,8 +138,9 @@
 
 	% type_list_matches_exactly(TypesA, TypesB) succeeds iff TypesA and
 	% TypesB are exactly the same modulo variable renaming. 
-:- pred type_list_matches_exactly(list(type), list(type)).
-:- mode type_list_matches_exactly(in, in) is semidet.
+:- pred type_and_constraint_list_matches_exactly(list(type),
+	list(class_constraint), list(type), list(class_constraint)).
+:- mode type_and_constraint_list_matches_exactly(in, in, in, in) is semidet.
 
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
@@ -180,6 +181,12 @@
 :- pred apply_subst_to_constraint(substitution, class_constraint,
 	class_constraint).
 :- mode apply_subst_to_constraint(in, in, out) is det.
+
+% strip out the term__context fields, replacing them with empty
+% term__contexts (as obtained by term__context_init/1)
+% in a type or list of types
+:- pred strip_term_contexts(list(term)::in, list(term)::out) is det.
+:- pred strip_term_context(term::in, term::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -371,9 +378,9 @@ type_util__get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	% The checks for type_info and base_type_info
 	% are needed because those types lie about their
 	% arity; it might be cleaner to change that in
-	% mercury_builtin.m, but that would cause some
+	% private_builtin.m, but that would cause some
 	% bootstrapping difficulties.
-	% It might be slightly better to check for mercury_builtin:type_info
+	% It might be slightly better to check for private_builtin:type_info
 	% etc. rather than just checking the unqualified type name,
 	% but I found it difficult to verify that the constructors
 	% would always be fully module-qualified at points where
@@ -444,9 +451,14 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 
 	% If this becomes a performance bottleneck, it can probably be coded
 	% more efficiently.
-type_list_matches_exactly(TypesA, TypesB) :-
-	type_list_subsumes(TypesA, TypesB, _),
-	type_list_subsumes(TypesB, TypesA, _).
+type_and_constraint_list_matches_exactly(TypesA, ConstraintsA0, 
+		TypesB, ConstraintsB) :-
+	type_list_subsumes(TypesA, TypesB, Subst),
+	type_list_subsumes(TypesB, TypesA, _),
+	apply_subst_to_constraints(Subst, ConstraintsA0, ConstraintsA),
+	list__sort(ConstraintsA, SortedA),
+	list__sort(ConstraintsB, SortedB),
+	SortedA = SortedB.
 
 %-----------------------------------------------------------------------------%
 
@@ -720,7 +732,10 @@ apply_rec_subst_to_constraints(Subst, Constraints0, Constraints) :-
 
 apply_rec_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
-	term__apply_rec_substitution_to_list(Types0, Subst, Types),
+	term__apply_rec_substitution_to_list(Types0, Subst, Types1),
+	% we need to maintain the invariant that types in class constraints
+	% do not have any information in their term__context fields
+	strip_term_contexts(Types1, Types),
 	Constraint  = constraint(ClassName, Types).
 
 apply_subst_to_constraints(Subst, Constraints0, Constraints) :-
@@ -730,6 +745,14 @@ apply_subst_to_constraint(Subst, Constraint0, Constraint) :-
 	Constraint0 = constraint(ClassName, Types0),
 	term__apply_substitution_to_list(Types0, Subst, Types),
 	Constraint  = constraint(ClassName, Types).
+
+strip_term_contexts(Terms, StrippedTerms) :-
+	list__map(strip_term_context, Terms, StrippedTerms).
+	
+strip_term_context(term__variable(V), term__variable(V)).
+strip_term_context(term__functor(F, As0, _C0), term__functor(F, As, C)) :-
+	term__context_init(C),
+	strip_term_contexts(As0, As).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

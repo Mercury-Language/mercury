@@ -145,7 +145,7 @@
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
-:- import_module prog_data, globals, passes_aux.
+:- import_module prog_data, trace, globals, passes_aux.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module varset, string.
@@ -164,7 +164,13 @@ detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	initial_deadness(ProcInfo1, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
-	set__init(ResumeVars0),
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_trace_level(Globals, TraceLevel),
+	( ( TraceLevel = interface ; TraceLevel = full ) ->
+		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
+	;
+		set__init(ResumeVars0)
+	),
 	detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 
@@ -864,9 +870,8 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 
 initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
+	proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_inst_table(ProcInfo, InstTable),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Liveness0),
 	(
@@ -925,9 +930,8 @@ initial_liveness_2([V | Vs], [M | Ms], [T | Ts], InstTable, ModuleInfo,
 
 initial_deadness(ProcInfo, ModuleInfo, Deadness) :-
 	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, argument_modes(_, Modes)),
+	proc_info_argmodes(ProcInfo, argument_modes(InstTable, Modes)),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_inst_table(ProcInfo, InstTable),
 	map__apply_to_list(Vars, VarTypes, Types),
 	set__init(Deadness0),
 	(

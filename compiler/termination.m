@@ -459,8 +459,12 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 %----------------------------------------------------------------------------%
 
 % This predicate checks each ProcId in the list to see if it is a compiler
-% generated predicate, or a mercury_builtin predicate.  If it is, then the
-% compiler sets the termination property of the ProcIds accordingly.
+% generated predicate, or a predicate from builtin.m or private_builtin.m.
+% If it is, then the compiler sets the termination property of the ProcIds
+% accordingly.
+
+% XXX This does the wrong thing for calls to unify/2,
+% which might not terminate in the case of user-defined equality predicates.
 
 :- pred set_compiler_gen_terminates(pred_info, list(proc_id), pred_id,
 	module_info, proc_table, proc_table).
@@ -671,7 +675,7 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
 
 termination__make_opt_int(PredIds, Module) -->
 	{ module_info_name(Module, ModuleName) },
-	module_name_to_file_name(ModuleName, ".opt.tmp", OptFileName),
+	module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName),
 	io__open_append(OptFileName, OptFileRes),
 	( { OptFileRes = ok(OptFile) } ->
 		io__set_output_stream(OptFile, OldStream),

@@ -41,26 +41,26 @@
 :- interface. 
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module list, map, term, varset.
+:- import_module list, map, set, term, varset.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
 :- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
-		determinism, list(var), hlds_goal, unification,
+		determinism, list(var), set(var), hlds_goal, unification,
 		varset, map(var, type), list(class_constraint), tvarset,
 		map(tvar, type_info_locn), map(class_constraint, var),
 		inst_table, module_info, unify_rhs, unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in, in,
-		in, in, in, in, out, out, out) is det.
+		in, in, in, in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module make_hlds.
-:- import_module prog_util, mode_util, inst_match, llds, arg_info.
+:- import_module make_hlds, globals, options.
+:- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
 :- import_module bool, set, string, std_util, require.
 
@@ -243,18 +243,20 @@ lambda__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
 			TVarMap, TCVarMap, POF, PredName, ModuleInfo0,
 			InstTable),
 	Modes = argument_modes(_ArgInstTable, ArgModes),
+	goal_util__extra_nonlocal_typeinfos(TVarMap, VarTypes,
+		LambdaGoal, ExtraTypeInfos),
 	% YYY Bogus if ArgInstTable is non-empty.
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, ArgModes, Det,
-		OrigNonLocals0, LambdaGoal, Unification0, VarSet, VarTypes,
-		Constraints, TVarSet, TVarMap, TCVarMap, InstTable,
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+		OrigNonLocals0, ExtraTypeInfos, LambdaGoal, Unification0,
+		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
+		InstTable, ModuleInfo0, Functor, Unification, ModuleInfo),
 	LambdaInfo = lambda_info(VarSet, VarTypes, Constraints, TVarSet,
 			TVarMap, TCVarMap, POF, PredName, ModuleInfo,
 			InstTable).
 
 lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
-		OrigVars, LambdaGoal, Unification0, VarSet, VarTypes,
-		Constraints, TVarSet, TVarMap, TCVarMap, InstTable,
+		OrigVars, ExtraTypeInfos, LambdaGoal, Unification0, VarSet,
+		VarTypes, Constraints, TVarSet, TVarMap, TCVarMap, InstTable,
 		ModuleInfo0, Functor, Unification, ModuleInfo) :-
 	(
 		Unification0 = construct(Var0, _, _, UniModes0)
@@ -277,7 +279,20 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
-	set__delete_list(NonLocals0, Vars, NonLocals),
+	set__delete_list(NonLocals0, Vars, NonLocals1),
+	module_info_globals(ModuleInfo0, Globals),
+
+	% If typeinfo_liveness is set, all type_infos for the
+	% arguments should be included, not just the ones
+	% that are used.
+	globals__lookup_bool_option(Globals,
+		typeinfo_liveness, TypeInfoLiveness),
+	( TypeInfoLiveness = yes ->
+		set__union(NonLocals1, ExtraTypeInfos, NonLocals)
+	;
+		NonLocals = NonLocals1
+	),
+
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 
 		LambdaGoal = call(PredId0, ProcId0, CallVars,
@@ -342,8 +357,9 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 					ModuleInfo1),
 		goal_info_get_context(LambdaGoalInfo, OrigContext),
 		term__context_line(OrigContext, OrigLine),
-		make_lambda_name(ModuleName, PredOrFunc, OrigPredName,
-			OrigLine, LambdaCount, PredName),
+		make_pred_name_with_context(ModuleName, "IntroducedFrom",
+			PredOrFunc, OrigPredName, OrigLine,
+			LambdaCount, PredName),
 		goal_info_get_context(LambdaGoalInfo, LambdaContext),
 		% the TVarSet is a superset of what it really ought be,
 		% but that shouldn't matter
@@ -384,7 +400,6 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 		% inputs came before outputs, but that resulted in the
 		% HLDS not being type or mode correct which caused problems
 		% for some transformations and for rerunning mode analysis.
-		module_info_globals(ModuleInfo1, Globals),
 		arg_info__ho_call_args_method(Globals, ArgsMethod),
 
 		% Now construct the proc_info and pred_info for the new
@@ -412,21 +427,6 @@ lambda__transform_lambda(PredOrFunc, OrigPredName, Vars, Modes, Detism,
 	Functor = functor(cons(PredName, NumArgVars), ArgVars),
 	ConsId = pred_const(PredId, ProcId),
 	Unification = construct(Var, ConsId, ArgVars, UniModes).
-
-:- pred make_lambda_name(module_name, pred_or_func, string, int, int, sym_name).
-:- mode make_lambda_name(in, in, in, in, in, out) is det.
-
-make_lambda_name(ModuleName, PredOrFunc, PredName, Line, Counter, SymName) :-
-	(
-		PredOrFunc = predicate,
-		PFS = "pred"
-	;
-		PredOrFunc = function,
-		PFS = "func"
-	),
-	string__format("IntroducedFrom__%s__%s__%d__%d",
-		[s(PFS), s(PredName), i(Line), i(Counter)], Name),
-		SymName = qualified(ModuleName, Name).
 
 :- pred lambda__uni_modes_to_modes(list(uni_mode), list(mode)).
 :- mode lambda__uni_modes_to_modes(in, out) is det.

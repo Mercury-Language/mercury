@@ -659,15 +659,8 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 	->
 		% There is no secondary tag, so there is no switch on it
 		( { GoalList = [-1 - Goal] } ->
-			code_info__get_maybe_trace_info(MaybeTraceInfo),
-			( { MaybeTraceInfo = yes(TraceInfo) } ->
-				{ Goal = _ - GoalInfo },
-				{ goal_info_get_goal_path(GoalInfo, Path) },
-				trace__generate_event_code(switch(Path),
-					TraceInfo, TraceCode)
-			;
-				{ TraceCode = empty }
-			),
+			trace__maybe_generate_internal_event_code(Goal,
+				TraceCode),
 			code_gen__generate_goal(CodeModel, Goal, GoalCode),
 			code_info__generate_branch_end(CodeModel, StoreMap,
 				SaveCode),
@@ -803,15 +796,6 @@ tag_switch__generate_secondary_try_me_else_chain([], _, _, _, _, _, _, _) -->
 tag_switch__generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval,
 		CodeModel, CanFail, StoreMap, EndLabel, FailLabel, Code) -->
 	{ Case0 = Secondary - Goal },
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ Goal = _ - GoalInfo },
-		{ goal_info_get_goal_path(GoalInfo, Path) },
-		trace__generate_event_code(switch(Path), TraceInfo,
-			TraceCode)
-	;
-		{ TraceCode = empty }
-	),
 	( { Cases0 = [_|_] ; CanFail = can_fail } ->
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_next_label(ElseLabel),
@@ -821,6 +805,7 @@ tag_switch__generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval,
 				label(ElseLabel))
 				- "test remote sec tag only"
 		]) },
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ GotoLabelCode = node([
@@ -850,6 +835,7 @@ tag_switch__generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval,
 			{ Code = tree(ThisCode, FailCode) }
 		)
 	;
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ GotoCode = node([
@@ -880,15 +866,6 @@ tag_switch__generate_secondary_try_chain([Case0 | Cases0], StagRval,
 		CodeModel, CanFail, StoreMap, EndLabel, FailLabel,
 		PrevTests0, PrevCases0, Code) -->
 	{ Case0 = Secondary - Goal },
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ Goal = _ - GoalInfo },
-		{ goal_info_get_goal_path(GoalInfo, Path) },
-		trace__generate_event_code(switch(Path), TraceInfo,
-			TraceCode)
-	;
-		{ TraceCode = empty }
-	),
 	( { Cases0 = [_|_] ; CanFail = can_fail } ->
 		code_info__grab_code_info(CodeInfo),
 		code_info__get_next_label(ThisStagLabel),
@@ -902,6 +879,7 @@ tag_switch__generate_secondary_try_chain([Case0 | Cases0], StagRval,
 			label(ThisStagLabel) -
 				"handle next secondary tag"
 		]) },
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ GotoCode = node([
@@ -931,6 +909,7 @@ tag_switch__generate_secondary_try_chain([Case0 | Cases0], StagRval,
 			{ Code = tree(PrevTests, tree(FailCode, PrevCases)) }
 		)
 	;
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ GotoCode = node([
@@ -976,26 +955,15 @@ tag_switch__generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
 				label(NewLabel) -
 					"start of case in secondary tag switch"
 			]) },
-			code_info__get_maybe_trace_info(MaybeTraceInfo),
-			( { MaybeTraceInfo = yes(TraceInfo) } ->
-				{ Goal = _ - GoalInfo },
-				{ goal_info_get_goal_path(GoalInfo, Path) },
-				trace__generate_event_code(switch(Path),
-					TraceInfo, TraceCode)
-			;
-				{ TraceCode = empty }
-			),
+			code_info__grab_code_info(CodeInfo),
+			trace__maybe_generate_internal_event_code(Goal,
+				TraceCode),
+			code_gen__generate_goal(CodeModel, Goal, GoalCode),
+			code_info__generate_branch_end(CodeModel, StoreMap,
+				SaveCode),
 			( { CaseList1 = [] } ->
-				code_gen__generate_goal(CodeModel, Goal,
-					GoalCode),
-				code_info__generate_branch_end(CodeModel,
-					StoreMap, SaveCode)
+				[]
 			;
-				code_info__grab_code_info(CodeInfo),
-				code_gen__generate_goal(CodeModel, Goal,
-					GoalCode),
-				code_info__generate_branch_end(CodeModel,
-					StoreMap, SaveCode),
 				code_info__slap_code_info(CodeInfo)
 			),
 			{ GotoCode = node([
@@ -1059,15 +1027,8 @@ tag_switch__generate_secondary_binary_search(StagGoals, MinStag, MaxStag,
 			),
 			{ MaybeFinalCodeInfo = MaybeFinalCodeInfo0 }
 		; { StagGoals = [CurSec - Goal] } ->
-			code_info__get_maybe_trace_info(MaybeTraceInfo),
-			( { MaybeTraceInfo = yes(TraceInfo) } ->
-				{ Goal = _ - GoalInfo },
-				{ goal_info_get_goal_path(GoalInfo, Path) },
-				trace__generate_event_code(switch(Path),
-					TraceInfo, TraceCode)
-			;
-				{ TraceCode = empty }
-			),
+			trace__maybe_generate_internal_event_code(Goal,
+				TraceCode),
 			code_gen__generate_goal(CodeModel, Goal, GoalCode),
 			code_info__generate_branch_end(CodeModel, StoreMap,
 				SaveCode),

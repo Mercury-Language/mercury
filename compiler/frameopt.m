@@ -537,7 +537,13 @@ block_needs_frame(Instrs, NeedsFrame) :-
 			;
 				Uinstr = c_code(_)
 			;
-				Uinstr = pragma_c(_, _, may_call_mercury, _)
+				Uinstr = pragma_c(_, _,
+					MayCallMercury, _, NeedStack),
+				(
+					MayCallMercury = may_call_mercury
+				;
+					NeedStack = yes
+				)
 			)
 		->
 			NeedsFrame = yes
@@ -687,7 +693,7 @@ possible_targets(mark_ticket_stack(_), []).
 possible_targets(discard_tickets_to(_), []).
 possible_targets(incr_sp(_, _), []).
 possible_targets(decr_sp(_), []).
-possible_targets(pragma_c(_, _, _, MaybeLabel), List) :-
+possible_targets(pragma_c(_, _, _, MaybeLabel, _), List) :-
 	(	
 		MaybeLabel = no,
 		List = []
@@ -712,7 +718,7 @@ can_clobber_succip([Label | Labels], BlockMap, CanClobberSuccip) :-
 			Uinstr = call(_, _, _, _)
 		;
 			% Only may_call_mercury pragma_c's can clobber succip.
-			Uinstr = pragma_c(_, _, may_call_mercury, _)
+			Uinstr = pragma_c(_, _, may_call_mercury, _, _)
 		)
 	->
 		CanClobberSuccip = yes
@@ -1303,8 +1309,7 @@ substitute_labels_instr(mark_ticket_stack(Lval), _, mark_ticket_stack(Lval)).
 substitute_labels_instr(discard_tickets_to(Rval), _, discard_tickets_to(Rval)).
 substitute_labels_instr(incr_sp(Size, Name), _, incr_sp(Size, Name)).
 substitute_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-substitute_labels_instr(pragma_c(Decls, Components, MayCallMercury, MaybeLabel),
-		_, pragma_c(Decls, Components, MayCallMercury, MaybeLabel)).
+substitute_labels_instr(pragma_c(A, B, C, D, E), _, pragma_c(A, B, C, D, E)).
 
 :- pred substitute_labels_list(list(label)::in, assoc_list(label)::in,
 	list(label)::out) is det.

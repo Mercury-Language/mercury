@@ -26,17 +26,18 @@
 
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
-:- import_module library, getopt, term, varset.
+:- import_module library, getopt, term, set_bbbtree, varset.
 
 	% the main compiler passes (in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
 :- import_module equiv_type, make_hlds, typecheck, purity, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module check_typeclass, simplify, intermod, trans_opt.
+:- import_module stratify, check_typeclass, simplify, intermod, trans_opt.
+:- import_module table_gen.
 :- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
-:- import_module dnf, constraint, unused_args, dead_proc_elim, saved_vars.
-:- import_module lco, liveness, stratify.
+:- import_module deforest, dnf, constraint, unused_args, dead_proc_elim.
+:- import_module lco, saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module llds_common, llds_out, continuation_info, stack_layout.
@@ -67,12 +68,12 @@ main_2(no, Args, Link) -->
 	; { Args = [] } ->
 		usage
 	;
-		{ strip_module_suffixes(Args, ModuleNames) },
-		process_module_list(ModuleNames),
+		process_arg_list(Args, ModulesToLink),
 		io__get_exit_status(ExitStatus),
 		( { ExitStatus = 0 } ->
 			( { Link = yes } ->
-				mercury_compile__link_module_list(ModuleNames)
+				mercury_compile__link_module_list(
+					ModulesToLink)
 			;
 				[]
 			)
@@ -97,78 +98,99 @@ main_2(no, Args, Link) -->
 		)
 	).
 
-	% Process a list of module names.
-	% Remove any `.m' extension before processing
-	% the module name.
+:- pred process_arg_list(list(string), list(string), io__state, io__state).
+:- mode process_arg_list(in, out, di, uo) is det.
 
-:- pred strip_module_suffixes(list(string), list(string)).
-:- mode strip_module_suffixes(in, out) is det.
+process_arg_list(Args, Modules) -->
+	process_arg_list_2(Args, ModulesList),
+	{ list__condense(ModulesList, Modules) }.
 
-strip_module_suffixes([], []).
-strip_module_suffixes([Module0 | Modules0], [Module | Modules]) :-
-	(
-		string__remove_suffix(Module0, ".m", Module1)
-	->
-		Module = Module1
-	;
-		Module = Module0
-	),
-	strip_module_suffixes(Modules0, Modules).
+:- pred process_arg_list_2(list(string), list(list(string)),
+			io__state, io__state).
+:- mode process_arg_list_2(in, out, di, uo) is det.
 
-:- pred process_module_list(list(string), io__state, io__state).
-:- mode process_module_list(in, di, uo) is det.
+process_arg_list_2([], []) --> [].
+process_arg_list_2([Arg | Args], [Modules | ModulesList]) -->
+	process_arg(Arg, Modules), !,
+	process_arg_list_2(Args, ModulesList).
 
-process_module_list([]) --> [].
-process_module_list([Module | Modules]) -->
-	process_module(Module), !,
-	process_module_list(Modules).
+	% Figure out whether the argument is a module name or a file name.
+	% Open the specified file or module, and process it.
+	% Return the list of modules (including sub-modules,
+	% if they were compiled to seperate object files)
+	% that should be linked into the final executable.
 
-	% Open the file and process it.
+:- pred process_arg(string, list(string), io__state, io__state).
+:- mode process_arg(in, out, di, uo) is det.
 
-:- pred process_module(string, io__state, io__state).
-:- mode process_module(in, di, uo) is det.
-
-process_module(PathName) -->
+process_arg(Arg, ModulesToLink) -->
 	 	% All messages go to stderr
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, _),
 
-	{ dir__split_name(PathName, DirName, BaseFileName) },
-	( { dir__this_directory(DirName) } ->
-		{ file_name_to_module_name(BaseFileName, ModuleName) },
+	% If the argument name ends in `.m', then we assume it is
+	% a file name.
+	( { string__remove_suffix(Arg, ".m", FileName) } ->
+		globals__io_lookup_bool_option(generate_dependencies,
+			GenerateDeps),
+		( { GenerateDeps = yes } ->
+			generate_file_dependencies(FileName),
+			{ ModulesToLink = [] }
+		;
+			process_file_name(FileName, ModulesToLink)
+		)
+	;
+		% If it doesn't end in `.m', then we assume it is
+		% a module name.  (Is it worth checking that the
+		% name doesn't contain directory seperators, and issuing
+		% a warning or error in that case?)
+		{ file_name_to_module_name(Arg, ModuleName) },
 
 		globals__io_lookup_bool_option(generate_dependencies,
 			GenerateDeps),
 		( { GenerateDeps = yes } ->
-			generate_dependencies(ModuleName)
+			generate_module_dependencies(ModuleName),
+			{ ModulesToLink = [] }
 		;
-			process_module_2(ModuleName)
+			process_module_name(ModuleName, ModulesToLink)
 		)
-	;
-		% Currently we don't allow directory names in the
-		% command-line arguments, because it would confuse
-		% the mapping between module names and file names.
-		io__progname("mercury_compile", ProgName),
-		io__write_strings([
-			ProgName, ": Error in command-line argument `",
-			PathName, "':\n",
-			"arguments may not contain directory names.\n"]),
-		io__set_exit_status(1)
 	).
 
-:- pred process_module_2(module_name, io__state, io__state).
-:- mode process_module_2(in, di, uo) is det.
+:- pred process_module_name(module_name, list(string), io__state, io__state).
+:- mode process_module_name(in, out, di, uo) is det.
 
-process_module_2(ModuleName) -->
+process_module_name(ModuleName, ModulesToLink) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
-	maybe_write_string(Verbose, "% Parsing `"),
-	module_name_to_file_name(ModuleName, ".m", FileName),
-	maybe_write_string(Verbose, FileName),
+	maybe_write_string(Verbose, "% Parsing module `"),
+	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
+	maybe_write_string(Verbose, ModuleNameString),
 	maybe_write_string(Verbose, "' and imported interfaces...\n"),
-	read_mod(ModuleName, ".m", "Reading module", yes, Items0, Error), !,
+	read_mod(ModuleName, ".m", "Reading module", yes, Items, Error,
+		FileName), !,
 	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_report_stats(Stats),
+	process_module(ModuleName, FileName, Items, Error, ModulesToLink).
 
+:- pred process_file_name(file_name, list(string), io__state, io__state).
+:- mode process_file_name(in, out, di, uo) is det.
+
+process_file_name(FileName, ModulesToLink) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Parsing file `"),
+	maybe_write_string(Verbose, FileName),
+	maybe_write_string(Verbose, "' and imported interfaces...\n"),
+	read_mod_from_file(FileName, ".m", "Reading file", yes, Items, Error,
+		ModuleName), !,
+	globals__io_lookup_bool_option(statistics, Stats),
+	maybe_report_stats(Stats),
+	{ string__append(FileName, ".m", SourceFileName) },
+	process_module(ModuleName, SourceFileName, Items, Error, ModulesToLink).
+
+:- pred process_module(module_name, file_name, item_list, module_error,
+			list(string), io__state, io__state).
+:- mode process_module(in, in, in, in, out, di, uo) is det.
+
+process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(make_short_interface,
@@ -178,28 +200,71 @@ process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
 	( { Error = fatal } ->
-		[]
+		{ ModulesToLink = [] }
 	; { Error = yes, HaltSyntax = yes } ->
-		[]
+		{ ModulesToLink = [] }
 	; { MakeInterface = yes } ->
-		make_interface(ModuleName, Items0)
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		list__foldl(make_interface(FileName), SubModuleList),
+		{ ModulesToLink = [] }
 	; { MakeShortInterface = yes } ->
-		make_short_interface(ModuleName, Items0)
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		list__foldl(make_short_interface, SubModuleList),
+		{ ModulesToLink = [] }
 	; { MakePrivateInterface = yes } ->
-		make_private_interface(ModuleName, Items0)
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		list__foldl(make_private_interface(FileName), SubModuleList),
+		{ ModulesToLink = [] }
 	; { ConvertToMercury = yes } ->
-		module_name_to_file_name(ModuleName, ".ugly", OutputFileName),
-		convert_to_mercury(ModuleName, OutputFileName, Items0)
+		module_name_to_file_name(ModuleName, ".ugly", yes,
+					OutputFileName),
+		convert_to_mercury(ModuleName, OutputFileName, Items),
+		{ ModulesToLink = [] }
 	; { ConvertToGoedel = yes } ->
-		convert_to_goedel(ModuleName, Items0)
+		convert_to_goedel(ModuleName, Items),
+		{ ModulesToLink = [] }
 	;
-		grab_imported_modules(ModuleName, Items0, Module, Error2),
-		( { Error2 \= fatal } ->
-			mercury_compile(Module)
-		;
-			[]
-		)
+		{ split_into_submodules(ModuleName, Items, SubModuleList) },
+		list__foldl(compile(FileName), SubModuleList),
+		list__map_foldl(module_to_link, SubModuleList, ModulesToLink)
+
+		% XXX it would be better to do something like
+		%
+		%	list__map_foldl(compile_to_llds, SubModuleList,
+		%		LLDS_FragmentList),
+		%	merge_llds_fragments(LLDS_FragmentList, LLDS),
+		%	output_pass(LLDS_FragmentList)
+		%
+		% i.e. compile nested modules to a single C file.
 	).
+
+:- pred make_interface(file_name, pair(module_name, item_list),
+			io__state, io__state).
+:- mode make_interface(in, in, di, uo) is det.
+
+make_interface(SourceFileName, ModuleName - Items) -->
+	make_interface(SourceFileName, ModuleName, Items).
+
+:- pred make_short_interface(pair(module_name, item_list),
+				io__state, io__state).
+:- mode make_short_interface(in, di, uo) is det.
+
+make_short_interface(ModuleName - Items) -->
+	make_short_interface(ModuleName, Items).
+
+:- pred make_private_interface(file_name, pair(module_name, item_list),
+				io__state, io__state).
+:- mode make_private_interface(in, in, di, uo) is det.
+
+make_private_interface(SourceFileName, ModuleName - Items) -->
+	make_private_interface(SourceFileName, ModuleName, Items).
+
+:- pred module_to_link(pair(module_name, item_list), string,
+			io__state, io__state).
+:- mode module_to_link(in, out, di, uo) is det.
+
+module_to_link(ModuleName - _Items, ModuleToLink) -->
+	module_name_to_file_name(ModuleName, "", no, ModuleToLink).
 
 %-----------------------------------------------------------------------------%
 
@@ -215,6 +280,19 @@ process_module_2(ModuleName) -->
 	%
 	% The initial arrangement has the stage numbers increasing by three
 	% so that new stages can be slotted in without too much trouble.
+
+:- pred compile(file_name, pair(module_name, item_list),
+		io__state, io__state).
+:- mode compile(in, in, di, uo) is det.
+
+compile(SourceFileName, ModuleName - Items) -->
+	grab_imported_modules(SourceFileName, ModuleName, Items,
+		Module, Error2),
+	( { Error2 \= fatal } ->
+		mercury_compile(Module)
+	;
+		[]
+	).
 
 :- pred mercury_compile(module_imports, io__state, io__state).
 :- mode mercury_compile(in, di, uo) is det.
@@ -257,12 +335,13 @@ mercury_compile(Module) -->
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
 		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
 		( { HighLevelC = yes } ->
-			module_name_to_file_name(ModuleName, ".c", C_File),
-			module_name_to_file_name(ModuleName, ".o", O_File),
+			module_name_to_file_name(ModuleName, ".c", no, C_File),
 			mercury_compile__gen_hlds(C_File, HLDS50),
 			globals__io_lookup_bool_option(compile_to_c,
 				CompileToC),
 			( { CompileToC = no } ->
+				module_name_to_file_name(ModuleName, ".o", yes,
+					O_File),
 				mercury_compile__single_c_to_obj(
 					C_File, O_File, _CompileOK)
 			;
@@ -418,7 +497,7 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			% not creating the trans opt file, then import the
 			% trans_opt files for all the modules that are
 			% imported (or used), and for all ancestor modules.
-			{ Imports0 = module_imports(_Module, Ancestors,
+			{ Imports0 = module_imports(_File, _Module, Ancestors,
 				InterfaceImports, ImplementationImports,
 				_IndirectImports, _PublicChildren, _FactDeps,
 				_Items, _Error) },
@@ -490,11 +569,17 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		    "% Program contains undefined type error(s).\n"),
 	    io__set_exit_status(1)
 	;
+		
+	    maybe_write_string(Verbose, 
+		"% Checking typeclass instances...\n"),
+	    check_typeclass__check_instance_decls(HLDS1, HLDS2,
+		FoundTypeclassError),
+	    mercury_compile__maybe_dump_hlds(HLDS2, "2", "typeclass"), !,
 
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS1, HLDS3, FoundUndefModeError, FoundTypeError), !,
+	    typecheck(HLDS2, HLDS3, FoundUndefModeError, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -511,7 +596,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
 	    ( { TypecheckOnly = yes } ->
 		{ HLDS = HLDS3 },
-		{ FoundError = FoundTypeError }
+		{ bool__or(FoundTypeError, FoundTypeclassError, FoundError) }
 	    ;
 		% only write out the `.opt' file if there are no type errors
 		globals__io_lookup_bool_option(make_optimization_interface,
@@ -525,7 +610,8 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		% if our job was to write out the `.opt' file, then we're done
 		( { MakeOptInt = yes } ->
 		    	{ HLDS = HLDS4 },
-		    	{ FoundError = FoundTypeError }
+			{ bool__or(FoundTypeError, FoundTypeclassError,
+				FoundError) }
 		;
 			%
 			% We can't continue after an undefined inst/mode
@@ -545,7 +631,9 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 			    mercury_compile__frontend_pass_2_by_phases(HLDS4,
 			    		HLDS, FoundModeOrDetError),
 			    { bool__or(FoundTypeError, FoundModeOrDetError,
-					FoundError) }
+					FoundError0) },
+			    { bool__or(FoundError0, FoundTypeclassError,
+				FoundError) }
 			)
 		)
 	    )
@@ -594,7 +682,7 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 			{ HLDS = HLDS1 }
 		),
 		{ module_info_name(HLDS, ModuleName) },
-		module_name_to_file_name(ModuleName, ".opt", OptName),
+		module_name_to_file_name(ModuleName, ".opt", yes, OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".optdate")
 	;
@@ -671,21 +759,15 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			HLDS9, FoundUniqError), !,
 		mercury_compile__maybe_dump_hlds(HLDS9, "09", "unique_modes"),
 		!,
-		
+
 		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
-			HLDS10, FoundStratError), !,
-		mercury_compile__maybe_dump_hlds(HLDS10, "10",
+			HLDS11, FoundStratError), !,
+		mercury_compile__maybe_dump_hlds(HLDS11, "11",
 			"stratification"), !,
 
-		globals__io_lookup_bool_option(warn_simple_code, Warn),
-		mercury_compile__simplify(HLDS10, Warn, no,
-			Verbose, Stats, HLDS11), !,
-		mercury_compile__maybe_dump_hlds(HLDS11, "11", "simplify"), !,
-
-		maybe_write_string(Verbose, 
-			"% Mode and type checking typeclass instances...\n"),
-		check_typeclass__check_instance_decls(HLDS11, HLDS12,
-			FoundTypeclassError),
+		mercury_compile__simplify(HLDS11, yes, no,
+			Verbose, Stats, HLDS12), !,
+		mercury_compile__maybe_dump_hlds(HLDS12, "12", "simplify"), !,
 
 		%
 		% work out whether we encountered any errors
@@ -696,7 +778,6 @@ mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS20, FoundError) -->
 			{ FoundDetError = no },
 			{ FoundUniqError = no },
 			{ FoundStratError = no },
-			{ FoundTypeclassError = no },
 			% Strictly speaking, we shouldn't need to check
 			% the exit status.  But the values returned for
 			% FoundModeError etc. aren't always correct.
@@ -740,14 +821,36 @@ mercury_compile__frontend_pass_2_by_preds(HLDS0, HLDS, FoundError) -->
 % :- mode mercury_compile__middle_pass(in, di, uo, di, uo) is det.
 :- mode mercury_compile__middle_pass(in, in, out, di, uo) is det.
 
-mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
+mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
+
+	mercury_compile__tabling(HLDS24, Verbose, HLDS25),
+	mercury_compile__maybe_dump_hlds(HLDS25, "25", "tabling"), !,
 
 	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS26),
 	mercury_compile__maybe_dump_hlds(HLDS26, "26", "polymorphism"), !,
 
-	mercury_compile__maybe_termination(HLDS26, Verbose, Stats, HLDS28),
+	%
+	% Uncomment the following code to check that unique mode analysis
+	% works after polymorphism has been run. Currently it does not
+	% because common.m does not preserve unique mode correctness
+	% (this test fails on about five modules in the compiler and library).
+	% It is important that unique mode analysis work most of the time
+	% after optimizations and polymorphism because deforestation reruns it.
+	%
+
+	{ HLDS27 = HLDS26 },
+	%mercury_compile__check_unique_modes(HLDS26, Verbose, Stats,
+	%		HLDS27, FoundUniqError), !,
+	%
+	%{ FoundUniqError = yes ->
+	%	error("unique modes failed")
+	%;
+	%	true
+	%},
+
+	mercury_compile__maybe_termination(HLDS27, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
 
 	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
@@ -769,9 +872,13 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_do_inlining(HLDS32, Verbose, Stats, HLDS34), !,
 	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"), !,
 
+	mercury_compile__maybe_deforestation(HLDS34, 
+			Verbose, Stats, HLDS36), !,
+	mercury_compile__maybe_dump_hlds(HLDS36, "36", "deforestation"), !,
+
 	% dnf transformations should be after inlining
 	% magic sets transformations should be before constraints
-	mercury_compile__maybe_transform_dnf(HLDS34, Verbose, Stats, HLDS38), !,
+	mercury_compile__maybe_transform_dnf(HLDS36, Verbose, Stats, HLDS38), !,
 	mercury_compile__maybe_dump_hlds(HLDS38, "38", "dnf"), !,
 
 	mercury_compile__maybe_constraints(HLDS38, Verbose, Stats, HLDS40), !,
@@ -941,15 +1048,9 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ProcInfo1 = ProcInfo0 },
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
-	{ globals__lookup_bool_option(Globals, excess_assign, ExcessAssign) },
-	{ globals__lookup_bool_option(Globals, common_struct, Common) },
-	{ globals__lookup_bool_option(Globals, optimize_duplicate_calls,
-		Calls) },
-	{ globals__lookup_bool_option(Globals, constant_propagation, Prop) },
-	simplify__proc(
-		simplify(no, no, yes, yes, Common, ExcessAssign, Calls, Prop),
-		PredId, ProcId, ModuleInfo1, ModuleInfo2,
-		ProcInfo1, ProcInfo2, _, _),
+	{ simplify__find_simplifications(no, Globals, Simplifications) },
+	simplify__proc([do_once | Simplifications], PredId, ProcId,
+		ModuleInfo1, ModuleInfo2, ProcInfo1, ProcInfo2, _, _),
 	{ globals__lookup_bool_option(Globals, optimize_saved_vars,
 		SavedVars) },
 	( { SavedVars = yes } ->
@@ -969,8 +1070,8 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		"% Allocating storage locations for live vars in ",
 				PredId, ProcId, ModuleInfo3),
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo3, ProcInfo6) },
-	{ globals__lookup_bool_option(Globals, generate_trace, Trace) },
-	( { Trace = yes } ->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
 		write_proc_progress_message(
 			"% Calculating goal paths in ",
 					PredId, ProcId, ModuleInfo3),
@@ -999,11 +1100,13 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	( { BasicStackLayout = yes } ->
 		{ Proc = c_procedure(_, _, PredProcId, Instructions) },
 		{ module_info_get_continuation_info(ModuleInfo5, ContInfo2) },
+		{ globals__lookup_bool_option(Globals, agc_stack_layout,
+			AgcStackLayout) },
 		write_proc_progress_message(
-		   "% Generating stack layout continuation information for ",
+			"% Generating call continuation information for ",
 				PredId, ProcId, ModuleInfo5),
 		{ continuation_info__process_instructions(PredProcId,
-			Instructions, ContInfo2, ContInfo3) },
+			Instructions, AgcStackLayout, ContInfo2, ContInfo3) },
 		{ module_info_set_continuation_info(ModuleInfo5, ContInfo3, 
 			ModuleInfo) }
 	;
@@ -1184,20 +1287,15 @@ mercury_compile__check_stratification(HLDS0, Verbose, Stats, HLDS,
 mercury_compile__simplify(HLDS0, Warn, Once, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose, "% Simplifying goals...\n"),
 	maybe_flush_output(Verbose),
-	globals__io_lookup_bool_option(common_struct, Common),
-	globals__io_lookup_bool_option(excess_assign, Excess),
-	globals__io_lookup_bool_option(optimize_duplicate_calls, Calls),
-	globals__io_lookup_bool_option(constant_propagation, Prop),
-	( { Warn = yes } ->
-		globals__io_lookup_bool_option(warn_duplicate_calls,
-			WarnCalls)
+	globals__io_get_globals(Globals),
+	{ simplify__find_simplifications(Warn, Globals, Simplifications0) },
+	( { Once = yes } ->
+		{ Simplifications = [do_once | Simplifications0] }
 	;
-		{ WarnCalls = no }
+		{ Simplifications = Simplifications0 }
 	),
-	{ Simplify = simplify(Warn, WarnCalls, Once,
-			yes, Common, Excess, Calls, Prop) },
 	process_all_nonimported_procs(
-		update_proc_error(simplify__proc(Simplify)),
+		update_proc_error(simplify__proc(Simplifications)),
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
@@ -1215,7 +1313,7 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, Verbose, Stats,
 	( { ShowDepGraph = yes } ->
 		maybe_write_string(Verbose, "% Writing dependency graph..."),
 		{ module_info_name(ModuleInfo0, ModuleName) },
-		module_name_to_file_name(ModuleName, ".dependency_graph",
+		module_name_to_file_name(ModuleName, ".dependency_graph", yes,
 			FileName),
 		io__tell(FileName, Res),
 		( { Res = ok } ->
@@ -1250,7 +1348,8 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, Verbose, Stats,
 		maybe_write_string(Verbose, "% Outputing profiling call graph..."),
 		maybe_flush_output(Verbose),
 		{ module_info_name(ModuleInfo0, ModuleName) },
-		module_name_to_file_name(ModuleName, ".prof", ProfFileName),
+		module_name_to_file_name(ModuleName, ".prof", yes,
+						ProfFileName),
 		io__tell(ProfFileName, Res),
 		(
 			{ Res = ok }
@@ -1270,6 +1369,19 @@ mercury_compile__maybe_output_prof_call_graph(ModuleInfo0, Verbose, Stats,
 
 %-----------------------------------------------------------------------------%
 
+:- pred mercury_compile__tabling(module_info, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__tabling(in, in, out, di, uo) is det.
+
+mercury_compile__tabling(HLDS0, Verbose, HLDS) -->
+	maybe_write_string(Verbose,
+		"% Transforming tabled predicates..."),
+	maybe_flush_output(Verbose),
+	{ table_gen__process_module(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n").
+
+%-----------------------------------------------------------------------------%
+
 :- pred mercury_compile__maybe_polymorphism(module_info, bool, bool,
 	module_info, io__state, io__state).
 :- mode mercury_compile__maybe_polymorphism(in, in, in, out, di, uo) is det.
@@ -1280,7 +1392,7 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose,
 			"% Transforming polymorphic unifications..."),
 		maybe_flush_output(Verbose),
-		{ polymorphism__process_module(HLDS0, HLDS) },
+		polymorphism__process_module(HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;
@@ -1338,7 +1450,7 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 		bytecode_gen__module(HLDS1, Bytecode),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats),
-		module_name_to_file_name(ModuleName, ".bytedebug",
+		module_name_to_file_name(ModuleName, ".bytedebug", yes,
 			BytedebugFile),
 		maybe_write_string(Verbose,
 			"% Writing bytecodes to `"),
@@ -1347,7 +1459,7 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 		maybe_flush_output(Verbose),
 		debug_bytecode_file(BytedebugFile, Bytecode),
 		maybe_write_string(Verbose, " done.\n"),
-		module_name_to_file_name(ModuleName, ".mbc", BytecodeFile),
+		module_name_to_file_name(ModuleName, ".mbc", yes, BytecodeFile),
 		maybe_write_string(Verbose,
 			"% Writing bytecodes to `"),
 		maybe_write_string(Verbose, BytecodeFile),
@@ -1398,6 +1510,22 @@ mercury_compile__maybe_do_inlining(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_report_stats(Stats)
 	;
 		{ HLDS = HLDS0 }
+	).
+
+:- pred mercury_compile__maybe_deforestation(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_deforestation(in, in, in, out, di, uo) is det.
+
+mercury_compile__maybe_deforestation(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(deforestation, Deforest),
+	( { Deforest = yes } ->
+		maybe_write_string(Verbose, "% Deforestation...\n"),
+		maybe_flush_output(Verbose),
+		deforestation(HLDS0, HLDS),
+		maybe_write_string(Verbose, " done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
 	).
 
 :- pred mercury_compile__maybe_transform_dnf(module_info, bool, bool,
@@ -1579,8 +1707,8 @@ mercury_compile__allocate_store_map(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_goal_paths(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_goal_paths(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(generate_trace, Trace),
-	( { Trace = yes } ->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
 		maybe_write_string(Verbose, "% Calculating goal paths..."),
 		maybe_flush_output(Verbose),
 		process_all_nonimported_procs(
@@ -1627,14 +1755,16 @@ mercury_compile__maybe_do_optimize(LLDS0, Verbose, Stats, LLDS) -->
 
 mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose, 
 		Stats, ModuleInfo) -->
-	globals__io_lookup_bool_option(agc_stack_layout, StackLayout),
-	( { StackLayout = yes } ->
+	globals__io_lookup_bool_option(basic_stack_layout, BasicStackLayout),
+	( { BasicStackLayout = yes } ->
 		maybe_write_string(Verbose,
-			"% Generating stack layout continuation information..."),
+			"% Generating call continuation information..."),
 		maybe_flush_output(Verbose),
+		globals__io_lookup_bool_option(agc_stack_layout, 
+			AgcStackLayout),
 		{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
-		{ continuation_info__process_llds(LLDS0, ContInfo0,
-			ContInfo) },
+		{ continuation_info__process_llds(LLDS0, AgcStackLayout,
+			ContInfo0, ContInfo) },
 		{ module_info_set_continuation_info(ModuleInfo0, ContInfo,
 			ModuleInfo) },
 		maybe_write_string(Verbose, " done.\n"),
@@ -1642,6 +1772,30 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, LLDS0, Verbose,
 	;
 		{ ModuleInfo = ModuleInfo0 }
 	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+%
+% Gather together the information from the HLDS that is
+% used for the C interface.  This stuff mostly just gets
+% passed directly to the LLDS unchanged, but we do do
+% a bit of code generation -- for example, we call
+% export__get_pragma_exported_procs here, which does the
+% generation of C code for `pragma export' declarations.
+%
+
+:- pred get_c_interface_info(module_info, c_interface_info).
+:- mode get_c_interface_info(in, out) is det.
+
+get_c_interface_info(HLDS, C_InterfaceInfo) :-
+	module_info_name(HLDS, ModuleName),
+	module_info_get_c_header(HLDS, C_HeaderCode),
+	module_info_get_c_body_code(HLDS, C_BodyCode),
+	export__get_c_export_decls(HLDS, C_ExportDecls),
+	export__get_c_export_defns(HLDS, C_ExportDefns),
+	C_InterfaceInfo = c_interface_info(ModuleName,
+		C_HeaderCode, C_BodyCode, C_ExportDecls, C_ExportDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1660,22 +1814,28 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
 	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
 	{ BasicStackLayout = yes ->
-		stack_layout__generate_llds(HLDS1, HLDS, StackLayouts),
+		stack_layout__generate_llds(HLDS1, HLDS,
+			StackLayouts, StackLayoutLabelMap),
 		list__append(StackLayouts, BaseTypeLayouts, StaticData0)
 	;
 		HLDS = HLDS1,
+		set_bbbtree__init(StackLayoutLabelMap),
 		StaticData0 = BaseTypeLayouts
 	},
+	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
 
 	{ llds_common(LLDS0, StaticData0, ModuleName, LLDS1, 
 		StaticData, CommonData) },
 
 	{ list__append(BaseTypeInfos, StaticData, AllData) },
-	mercury_compile__chunk_llds(HLDS, LLDS1, AllData, CommonData,
-		LLDS2, NumChunks),
-	mercury_compile__output_llds(ModuleName, LLDS2, Verbose, Stats),
+	mercury_compile__chunk_llds(C_InterfaceInfo, LLDS1, AllData,
+		CommonData, LLDS2, NumChunks),
+	mercury_compile__output_llds(ModuleName, LLDS2, StackLayoutLabelMap,
+		Verbose, Stats),
 
-	export__produce_header_file(HLDS, ModuleName),
+	{ C_InterfaceInfo = c_interface_info(_ModuleName,
+		_C_headerCode, _C_BodyCode, C_ExportDecls, _C_ExportDefns) },
+	export__produce_header_file(C_ExportDecls, ModuleName),
 
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	( { CompileToC = no } ->
@@ -1687,19 +1847,19 @@ mercury_compile__output_pass(HLDS0, LLDS0, ModuleName, CompileErrors) -->
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__chunk_llds(module_info, list(c_procedure),
+:- pred mercury_compile__chunk_llds(c_interface_info, list(c_procedure),
 	list(c_module), list(c_module), c_file, int, io__state, io__state).
 % :- mode mercury_compile__chunk_llds(in, di, di, uo, out, di, uo) is det.
 :- mode mercury_compile__chunk_llds(in, in, in, in, out, out, di, uo) is det.
 
-mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
+mercury_compile__chunk_llds(C_InterfaceInfo, Procedures, BaseTypeData,
+		CommonDataModules,
 		c_file(ModuleName, C_HeaderCode, ModuleList), NumChunks) -->
-	{ module_info_name(HLDS, ModuleName) },
+	{ C_InterfaceInfo = c_interface_info(ModuleName,
+		C_HeaderCode0, C_BodyCode0, C_ExportDecls, C_ExportDefns) },
 	{ llds_out__sym_name_mangle(ModuleName, MangledModName) },
 	{ string__append(MangledModName, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
-	{ module_info_get_c_header(HLDS, C_HeaderCode0) },
-	{ module_info_get_c_body_code(HLDS, C_BodyCode0) },
 	{ get_c_body_code(C_BodyCode0, C_BodyCode) },
 	( { ProcsPerFunc = 0 } ->
 		% ProcsPerFunc = 0 really means infinity -
@@ -1710,11 +1870,10 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
 			ProcModules) }
 	),
-	{ export__get_pragma_exported_procs(HLDS, PragmaExports) },
-	maybe_add_header_file_include(PragmaExports, ModuleName, C_HeaderCode0,
+	maybe_add_header_file_include(C_ExportDecls, ModuleName, C_HeaderCode0,
 		C_HeaderCode1),
-	globals__io_lookup_bool_option(generate_trace, Trace),
-	( { Trace = yes } ->
+	globals__io_get_trace_level(TraceLevel),
+	( { TraceLevel = interface ; TraceLevel = full } ->
 		{ term__context_init(Context) },
 		{ TraceInclude = "#include ""mercury_trace.h""\n" - Context },
 		{ list__append(C_HeaderCode1, [TraceInclude], C_HeaderCode) }
@@ -1722,21 +1881,21 @@ mercury_compile__chunk_llds(HLDS, Procedures, BaseTypeData, CommonDataModules,
 		{ C_HeaderCode = C_HeaderCode1 }
 	),
 	{ list__condense([C_BodyCode, BaseTypeData, CommonDataModules,
-		ProcModules, [c_export(PragmaExports)]], ModuleList) },
+		ProcModules, [c_export(C_ExportDefns)]], ModuleList) },
 	{ list__length(ModuleList, NumChunks) }.
 
-:- pred maybe_add_header_file_include(list(c_export), module_name,
+:- pred maybe_add_header_file_include(c_export_decls, module_name,
 	c_header_info, c_header_info, io__state, io__state).
 :- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
 
-maybe_add_header_file_include(PragmaExports, ModuleName, 
+maybe_add_header_file_include(C_ExportDecls, ModuleName, 
 		C_HeaderCode0, C_HeaderCode) -->
-	module_name_to_file_name(ModuleName, ".h", HeaderFileName),
 	(
-		{ PragmaExports = [] },
+		{ C_ExportDecls = [] },
 		{ C_HeaderCode = C_HeaderCode0 }
 	;
-		{ PragmaExports = [_|_] },
+		{ C_ExportDecls = [_|_] },
+		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
                 globals__io_lookup_bool_option(split_c_files, SplitFiles),
                 { 
 			SplitFiles = yes,
@@ -1787,18 +1946,19 @@ mercury_compile__combine_chunks_2([Chunk|Chunks], ModName, Num,
 	Num1 is Num + 1,
 	mercury_compile__combine_chunks_2(Chunks, ModName, Num1, Modules).
 
-:- pred mercury_compile__output_llds(module_name, c_file, bool, bool,
-	io__state, io__state).
-:- mode mercury_compile__output_llds(in, in, in, in, di, uo) is det.
+:- pred mercury_compile__output_llds(module_name, c_file, set_bbbtree(label),
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__output_llds(in, in, in, in, in, di, uo) is det.
 
-mercury_compile__output_llds(ModuleName, LLDS, Verbose, Stats) -->
+mercury_compile__output_llds(ModuleName, LLDS, StackLayoutLabels,
+		Verbose, Stats) -->
 	maybe_write_string(Verbose,
 		"% Writing output to `"),
-	module_name_to_file_name(ModuleName, ".c", FileName),
+	module_name_to_file_name(ModuleName, ".c", yes, FileName),
 	maybe_write_string(Verbose, FileName),
 	maybe_write_string(Verbose, "'..."),
 	maybe_flush_output(Verbose),
-	output_c_file(LLDS),
+	output_c_file(LLDS, StackLayoutLabels),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_flush_output(Verbose),
 	maybe_report_stats(Stats).
@@ -1845,8 +2005,8 @@ mercury_compile__c_to_obj(ModuleName, NumChunks, Succeeded) -->
 		mercury_compile__c_to_obj_list(ModuleName, 0, NumChunks,
 			Succeeded)
 	;
-		module_name_to_file_name(ModuleName, ".c", C_File),
-		module_name_to_file_name(ModuleName, ".o", O_File),
+		module_name_to_file_name(ModuleName, ".c", no, C_File),
+		module_name_to_file_name(ModuleName, ".o", yes, O_File),
 		mercury_compile__single_c_to_obj(C_File, O_File, Succeeded)
 	).
 
@@ -1887,6 +2047,15 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
 	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
 
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	{ UseSubdirs = yes ->
+		% the file will be compiled in the "Mercury/cs" subdir,
+		% so we need to add `-I.' so it can
+		% include header files in the source directory.
+		SubDirInclOpt = "-I. "
+	;
+		SubDirInclOpt = ""
+	},
 	globals__io_lookup_string_option(c_include_directory, C_INCL),
 	{ C_INCL = "" ->
 		InclOpt = ""
@@ -1965,11 +2134,29 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	{ string__int_to_string(NumTagBits, NumTagBitsString) },
 	{ string__append_list(
 		["-DTAGBITS=", NumTagBitsString, " "], NumTagBitsOpt) },
-	globals__io_lookup_bool_option(debug, Debug),
-	{ Debug = yes ->
-		DebugOpt = "-g "
+	globals__io_lookup_bool_option(require_tracing, RequireTracing),
+	{ RequireTracing = yes ->
+		RequireTracingOpt = "-DMR_REQUIRE_TRACING "
 	;
-		DebugOpt = "-DSPEED "
+		RequireTracingOpt = ""
+	},
+	globals__io_lookup_bool_option(stack_trace, StackTrace),
+	{ StackTrace = yes ->
+		StackTraceOpt = "-DMR_STACK_TRACE "
+	;
+		StackTraceOpt = ""
+	},
+	globals__io_lookup_bool_option(c_debug, C_Debug),
+	{ C_Debug = yes ->
+		C_DebugOpt = "-g "
+	;
+		C_DebugOpt = ""
+	},
+	globals__io_lookup_bool_option(low_level_debug, LL_Debug),
+	{ LL_Debug = yes ->
+		LL_DebugOpt = "-DMR_LOW_LEVEL_DEBUG "
+	;
+		LL_DebugOpt = ""
 	},
 	{ string__sub_string_search(CC, "gcc", _) ->
 		CompilerType = gcc
@@ -1997,7 +2184,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		TypeLayoutOpt = ""
 	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
-	{ C_optimize = yes, Debug = no ->
+	{ C_optimize = yes ->
 		( CompilerType = gcc ->
 			OptimizeOpt = "-O2 -fomit-frame-pointer "
 		; CompilerType = lcc ->
@@ -2031,11 +2218,14 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	% e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
 	% it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
 	% Also be careful that each option is separated by spaces.
-	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
+	{ string__append_list([CC, " ", SubDirInclOpt, InclOpt,
+		SplitOpt, OptimizeOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
-		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt, DebugOpt,
+		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
+		C_DebugOpt, LL_DebugOpt,
+		StackTraceOpt, RequireTracingOpt,
 		UseTrailOpt, ArgsOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
@@ -2054,31 +2244,35 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 mercury_compile__link_module_list(Modules) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
-	globals__io_lookup_string_option(output_file_name, OutputFile0),
-	( { OutputFile0 = "" } ->
+	globals__io_lookup_string_option(output_file_name, OutputFileName0),
+	( { OutputFileName0 = "" } ->
 	    ( { Modules = [Module | _] } ->
-		{ dir__basename(Module, OutputFile) }
+		{ OutputFileName = Module }
 	    ;
 		{ error("link_module_list: no modules") }
 	    )
 	;
-	    { OutputFile = OutputFile0 }
+	    { OutputFileName = OutputFileName0 }
 	),
-	{ dir__basename(OutputFile, OutputFileBase) },
+
+	{ file_name_to_module_name(OutputFileName, ModuleName) },
+	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
+	module_name_to_file_name(ModuleName, "_init.o", yes, InitObjFileName),
 
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
-	    { join_module_list(Modules, ".dir/*.o ", [], ObjectList) },
+	    module_name_to_file_name(ModuleName, ".a", yes, SplitLibFileName),
+	    join_module_list(Modules, ".dir/*.o", [], ObjectList),
 	    { list__append(
-		["ar cr ", OutputFileBase, ".a " | ObjectList],
-		[" && ranlib ", OutputFileBase, ".a"],
+		["ar cr ", SplitLibFileName, " " | ObjectList],
+		[" && ranlib ", SplitLibFileName],
 		MakeLibCmdList) },
 	    { string__append_list(MakeLibCmdList, MakeLibCmd) },
 	    invoke_system_command(MakeLibCmd, MakeLibCmdOK),
-	    { string__append(OutputFileBase, ".a", Objects) }
+	    { Objects = SplitLibFileName }
 	;
 	    { MakeLibCmdOK = yes },
-	    { join_module_list(Modules, ".o ", [], ObjectsList) },
+	    join_module_list(Modules, ".o", [], ObjectsList),
 	    { string__append_list(ObjectsList, Objects) }
 	),
 	( { MakeLibCmdOK = no } ->
@@ -2086,9 +2280,7 @@ mercury_compile__link_module_list(Modules) -->
 	;
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
-	    { string__append(OutputFileBase, "_init", C_Init_Base) },
-	    { join_module_list(Modules, ".m ", ["> ", C_Init_Base, ".c"],
-				MkInitCmd0) },
+	    join_module_list(Modules, ".m", ["> ", InitCFileName], MkInitCmd0),
 	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
 	    invoke_system_command(MkInitCmd, MkInitOK),
 	    maybe_report_stats(Stats),
@@ -2098,9 +2290,7 @@ mercury_compile__link_module_list(Modules) -->
 		% compile it
 		maybe_write_string(Verbose,
 			"% Compiling initialization file...\n"),
-		{ string__append(C_Init_Base, ".c", C_InitSrc) },
-		{ string__append(C_Init_Base, ".o", C_InitObj) },
-		mercury_compile__single_c_to_obj(C_InitSrc, C_InitObj,
+		mercury_compile__single_c_to_obj(InitCFileName, InitObjFileName,
 			CompileOK),
 		maybe_report_stats(Stats),
 		( { CompileOK = no } ->
@@ -2127,8 +2317,8 @@ mercury_compile__link_module_list(Modules) -->
 				LinkObjects) },
 		    { string__append_list(
 			["ml --grade ", Grade, " ", LinkFlags,
-			" -o ", OutputFile, " ",
-			OutputFileBase, "_init.o ", Objects, " ",
+			" -o ", OutputFileName, " ",
+			InitObjFileName, " ", Objects, " ",
 			LinkObjects, " ",
 			LinkLibraryDirectories, " ", LinkLibraries],
 			LinkCmd) },
@@ -2162,21 +2352,27 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
 			Result0], Result)
 	).
 
-	% join_module_list(Strings, Separator, Terminator, Result)
+	% join_module_list(ModuleNames, Extension, Terminator, Result)
 	%
-	% The list of strings `Result' is the list of strings `Strings',
-	% where each string in `Strings' has had any directory path 
-	% removed, and is separated by `Separator' from the next string, 
-	% followed by the list of strings `Terminator'.
+	% The list of strings `Result' is computed from the list of strings
+	% `ModuleNames', by removing any directory paths, and
+	% converting the strings to file names and then back,
+	% adding the specified Extension.  (This conversion ensures
+	% that we follow the usual file naming conventions.)
+	% Each file name is separated by a space from the next one, 
+	% and the result is followed by the list of strings `Terminator'.
 
-:- pred join_module_list(list(string), string, list(string), list(string)).
-:- mode join_module_list(in, in, in, out) is det.
+:- pred join_module_list(list(string), string, list(string), list(string),
+			io__state, io__state).
+:- mode join_module_list(in, in, in, out, di, uo) is det.
 
-join_module_list([], _Separator, Terminator, Terminator).
-join_module_list([Module0 | Modules0], Separator, Terminator,
-			[Basename0, Separator | Rest]) :-
-	dir__basename(Module0, Basename0),
-	join_module_list(Modules0, Separator, Terminator, Rest).
+join_module_list([], _Extension, Terminator, Terminator) --> [].
+join_module_list([Module | Modules], Extension, Terminator,
+			[FileName, " " | Rest]) -->
+	{ dir__basename(Module, BaseName) },
+	{ file_name_to_module_name(BaseName, ModuleName) },
+	module_name_to_file_name(ModuleName, Extension, no, FileName),
+	join_module_list(Modules, Extension, Terminator, Rest).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2200,7 +2396,7 @@ mercury_compile__maybe_dump_hlds(HLDS, StageNum, StageName) -->
 		}
 	->
 		{ module_info_name(HLDS, ModuleName) },
-		module_name_to_file_name(ModuleName, ".hlds_dump",
+		module_name_to_file_name(ModuleName, ".hlds_dump", yes,
 			BaseFileName),
 		{ string__append_list(
 			[BaseFileName, ".", StageNum, "-", StageName],

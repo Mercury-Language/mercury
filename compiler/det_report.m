@@ -108,7 +108,7 @@
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
 :- import_module passes_aux.
 
-:- import_module bool, int, map, set, std_util, require.
+:- import_module bool, int, map, set, std_util, require, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -128,20 +128,20 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 		module_info, module_info, io__state, io__state).
 :- mode check_determinism(in, in, in, in, in, out, di, uo) is det.
 
-check_determinism(PredId, ProcId, _PredInfo, ProcInfo,
+check_determinism(PredId, ProcId, PredInfo0, ProcInfo0,
 		ModuleInfo0, ModuleInfo) -->
-	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
-	{ proc_info_inferred_determinism(ProcInfo, InferredDetism) },
-	{ proc_info_inst_table(ProcInfo, InstTable) },
+	{ proc_info_declared_determinism(ProcInfo0, MaybeDetism) },
+	{ proc_info_inferred_determinism(ProcInfo0, InferredDetism) },
+	{ proc_info_inst_table(ProcInfo0, InstTable) },
 	(
 		{ MaybeDetism = no },
-		{ ModuleInfo = ModuleInfo0 }
+		{ ModuleInfo1 = ModuleInfo0 }
 	;
 		{ MaybeDetism = yes(DeclaredDetism) },
 		{ compare_determinisms(DeclaredDetism, InferredDetism, Cmp) },
 		(
 			{ Cmp = sameas },
-			{ ModuleInfo = ModuleInfo0 }
+			{ ModuleInfo1 = ModuleInfo0 }
 		;
 			{ Cmp = looser },
 			globals__io_lookup_bool_option(
@@ -155,25 +155,79 @@ check_determinism(PredId, ProcId, _PredInfo, ProcInfo,
 			;
 				[]
 			),
-			{ ModuleInfo = ModuleInfo0 }
+			{ ModuleInfo1 = ModuleInfo0 }
 		;
 			{ Cmp = tighter },
-			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) },
 			{ Message = "  error: determinism declaration not satisfied.\n" },
 			report_determinism_problem(PredId,
-				ProcId, ModuleInfo, Message,
+				ProcId, ModuleInfo1, Message,
 				DeclaredDetism, InferredDetism),
-			{ proc_info_goal(ProcInfo, Goal) },
+			{ proc_info_goal(ProcInfo0, Goal) },
 			globals__io_get_globals(Globals),
-			{ det_info_init(ModuleInfo, PredId, ProcId, InstTable,
+			{ det_info_init(ModuleInfo1, PredId, ProcId, InstTable,
 				Globals, DetInfo) },
 			det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _)
 			% XXX with the right verbosity options, we want to
 			% call report_determinism_problem only if diagnose
 			% returns false, i.e. it didn't print a message.
 		)
+	),
+	
+	% make sure the code model is valid given the eval method
+	{ proc_info_eval_method(ProcInfo0, EvalMethod) },
+	{ determinism_to_code_model(InferredDetism, CodeMod) },
+	( 
+		{ valid_code_model_for_eval_method(EvalMethod, CodeMod) }
+	->
+		{
+		    proc_info_set_eval_method(ProcInfo0, EvalMethod, ProcInfo),
+		    pred_info_procedures(PredInfo0, ProcTable0),
+		    map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+		    pred_info_set_procedures(PredInfo0, ProcTable, PredInfo),
+		    module_info_set_pred_info(ModuleInfo1, PredId, PredInfo, 
+		    	ModuleInfo)
+		}
+	;
+		{ proc_info_context(ProcInfo0, Context) },
+		prog_out__write_context(Context),
+		{ eval_method_to_string(EvalMethod, EvalMethodS) },
+		io__write_string("Error: `pragma "),
+		io__write_string(EvalMethodS),
+		io__write_string("' declaration not allowed for procedure\n"),
+		prog_out__write_context(Context),
+		io__write_string("  with determinism `"),
+		mercury_output_det(InferredDetism),
+		io__write_string("'.\n"), 
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			io__write_string(
+"\tThe pragma requested is only valid for the folowing determinism(s):\n"),
+			{ solutions(get_valid_dets(EvalMethod), Sols) },
+			print_dets(Sols)
+		;
+			[]
+		),
+		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) }
 	).
 
+:- pred get_valid_dets(eval_method, determinism).
+:- mode get_valid_dets(in, out) is multidet.
+
+get_valid_dets(EvalMethod, Det) :-
+	valid_code_model_for_eval_method(EvalMethod, CodeModel),
+	determinism_to_code_model(Det, CodeModel).
+
+:- pred print_dets(list(determinism), io__state, io__state).
+:- mode print_dets(in, di, uo) is det.
+
+print_dets([]) --> [].
+print_dets([D|Rest]) -->
+	io__write_string("\t\t"),
+	mercury_output_det(D),
+	io__nl,
+	print_dets(Rest).
+	
 :- pred check_if_main_can_fail(pred_id, proc_id, pred_info, proc_info,
 		module_info, module_info, io__state, io__state).
 :- mode check_if_main_can_fail(in, in, in, in, in, out, di, uo) is det.
@@ -194,8 +248,8 @@ check_if_main_can_fail(_PredId, _ProcId, PredInfo, ProcInfo,
 		  determinism_components(DeclaredDeterminism, can_fail, _)
 		}
 	->
-		{ proc_info_context(ProcInfo, Context) },
-		prog_out__write_context(Context),
+		{ proc_info_context(ProcInfo, Context1) },
+		prog_out__write_context(Context1),
 			% The error message is actually a lie -
 			% main/2 can also be `erroneous'.  But mentioning
 			% that would probably just confuse people.
@@ -239,6 +293,7 @@ check_for_multisoln_func(_PredId, _ProcId, PredInfo, ProcInfo,
 	->
 		% ... then it is an error.
 		{ pred_info_name(PredInfo, PredName) },
+
 		{ proc_info_context(ProcInfo, FuncContext) },
 		prog_out__write_context(FuncContext),
 		io__write_string("Error: invalid determinism for function\n"),
@@ -294,7 +349,7 @@ report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
 		DeclaredDetism, InferredDetism) -->
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
 	( { HaltAtWarn = yes } ->
-		 io__set_exit_status(1)
+		io__set_exit_status(1)
 	;
 		[]
 	),
@@ -833,19 +888,20 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 			io__write_string("of `"),
 			mercury_output_var(LT, Varset, no),
 			io__write_string("' and `"),
-			hlds_out__write_unify_rhs(RT, InstTable, ModuleInfo, Varset,
-				no, 3)
+			hlds_out__write_unify_rhs(RT, InstTable, ModuleInfo,
+				Varset, no, 3)
 		)
 	;
 		io__write_string("with `"),
-		hlds_out__write_unify_rhs(RT, InstTable, ModuleInfo, Varset, no, 3)
+		hlds_out__write_unify_rhs(RT, InstTable, ModuleInfo, Varset,
+			no, 3)
 	),
 	io__write_string("'").
 
 
 %-----------------------------------------------------------------------------%
 
-:- type det_msg_type	--->	warning ; error.
+:- type det_msg_type	--->	simple_code_warning ; call_warning ; error.
 
 det_report_and_handle_msgs(Msgs, ModuleInfo0, ModuleInfo) -->
 	( { Msgs = [] } ->
@@ -870,24 +926,34 @@ det_report_and_handle_msgs(Msgs, ModuleInfo0, ModuleInfo) -->
 	).
 
 det_report_msgs(Msgs, ModuleInfo, WarnCnt, ErrCnt) -->
-	globals__io_lookup_bool_option(warn_simple_code, Warn),
-	det_report_msgs_2(Msgs, Warn, ModuleInfo, 0, WarnCnt, 0, ErrCnt).
+	globals__io_lookup_bool_option(warn_simple_code, WarnSimple),
+	globals__io_lookup_bool_option(warn_duplicate_calls, WarnCalls),
+	det_report_msgs_2(Msgs, WarnSimple, WarnCalls, ModuleInfo,
+		0, WarnCnt, 0, ErrCnt).
 
-:- pred det_report_msgs_2(list(det_msg), bool,  module_info, int, int,
+:- pred det_report_msgs_2(list(det_msg), bool, bool, module_info, int, int,
 	int, int, io__state, io__state).
-:- mode det_report_msgs_2(in, in, in, in, out, in, out, di, uo) is det.
+:- mode det_report_msgs_2(in, in, in, in, in, out, in, out, di, uo) is det.
 
-det_report_msgs_2([], _, _ModuleInfo, WarnCnt, WarnCnt, ErrCnt, ErrCnt) --> [].
-det_report_msgs_2([Msg | Msgs], Warn, ModuleInfo,
+det_report_msgs_2([], _, _, _ModuleInfo,
+		WarnCnt, WarnCnt, ErrCnt, ErrCnt) --> [].
+det_report_msgs_2([Msg | Msgs], WarnSimple, WarnCalls, ModuleInfo,
 		WarnCnt0, WarnCnt, ErrCnt0, ErrCnt) -->
 	{ det_msg_get_type(Msg, MsgType) },
-	( { Warn = no, MsgType = warning } ->
+	( { WarnSimple = no, MsgType = simple_code_warning } ->
+		{ WarnCnt1 = WarnCnt0 },
+		{ ErrCnt1 = ErrCnt0 }
+	; { WarnCalls = no, MsgType = call_warning } ->
 		{ WarnCnt1 = WarnCnt0 },
 		{ ErrCnt1 = ErrCnt0 }
 	;
 		det_report_msg(Msg, ModuleInfo),
 		(
-			{ MsgType = warning },
+			{ MsgType = simple_code_warning },
+			{ WarnCnt1 is WarnCnt0 + 1 },
+			{ ErrCnt1 = ErrCnt0 }
+		;
+			{ MsgType = call_warning },
 			{ WarnCnt1 is WarnCnt0 + 1 },
 			{ ErrCnt1 = ErrCnt0 }
 		;
@@ -896,24 +962,26 @@ det_report_msgs_2([Msg | Msgs], Warn, ModuleInfo,
 			{ WarnCnt1 = WarnCnt0 }
 		)
 	),
-	det_report_msgs_2(Msgs, Warn, ModuleInfo,
+	det_report_msgs_2(Msgs, WarnSimple, WarnCalls, ModuleInfo,
 		WarnCnt1, WarnCnt, ErrCnt1, ErrCnt).
 
 :- pred det_msg_get_type(det_msg, det_msg_type).
 :- mode det_msg_get_type(in, out) is det.
 
-det_msg_get_type(multidet_disj(_, _), warning).
-det_msg_get_type(det_disj(_, _), warning).
-det_msg_get_type(semidet_disj(_, _), warning).
-det_msg_get_type(zero_soln_disj(_, _), warning).
-det_msg_get_type(zero_soln_disjunct(_), warning).
-det_msg_get_type(ite_cond_cannot_fail(_), warning).
-det_msg_get_type(ite_cond_cannot_succeed(_), warning).
-det_msg_get_type(negated_goal_cannot_fail(_), warning).
-det_msg_get_type(negated_goal_cannot_succeed(_), warning).
-det_msg_get_type(warn_obsolete(_, _), warning).
-det_msg_get_type(warn_infinite_recursion(_), warning).
-det_msg_get_type(duplicate_call(_, _, _), warning).
+det_msg_get_type(multidet_disj(_, _), simple_code_warning).
+det_msg_get_type(det_disj(_, _), simple_code_warning).
+det_msg_get_type(semidet_disj(_, _), simple_code_warning).
+det_msg_get_type(zero_soln_disj(_, _), simple_code_warning).
+det_msg_get_type(zero_soln_disjunct(_), simple_code_warning).
+det_msg_get_type(ite_cond_cannot_fail(_), simple_code_warning).
+det_msg_get_type(ite_cond_cannot_succeed(_), simple_code_warning).
+det_msg_get_type(negated_goal_cannot_fail(_), simple_code_warning).
+det_msg_get_type(negated_goal_cannot_succeed(_), simple_code_warning).
+	% XXX this isn't really a simple code warning.
+	% We should add a separate warning type for this.
+det_msg_get_type(warn_obsolete(_, _), simple_code_warning).
+det_msg_get_type(warn_infinite_recursion(_), simple_code_warning).
+det_msg_get_type(duplicate_call(_, _, _), call_warning).
 det_msg_get_type(cc_unify_can_fail(_, _, _, _, _), error).
 det_msg_get_type(cc_unify_in_wrong_context(_, _, _, _, _), error).
 det_msg_get_type(cc_pred_in_wrong_context(_, _, _, _), error).

@@ -83,7 +83,8 @@
 
 trans_opt__write_optfile(Module) -->
 	{ module_info_name(Module, ModuleName) },
-	module_name_to_file_name(ModuleName, ".trans_opt.tmp", TmpOptName),
+	module_name_to_file_name(ModuleName, ".trans_opt.tmp", yes,
+					TmpOptName),
 	io__open_output(TmpOptName, Result),
 	(
 		{ Result = error(Error) },
@@ -116,7 +117,8 @@ trans_opt__write_optfile(Module) -->
 		io__set_output_stream(OldStream, _),
 		io__close_output(Stream),
 
-		module_name_to_file_name(ModuleName, ".trans_opt", OptName),
+		module_name_to_file_name(ModuleName, ".trans_opt", no,
+				OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".trans_opt_date")
 	).
@@ -204,8 +206,8 @@ read_trans_opt_files([Import | Imports],
 	maybe_flush_output(VeryVerbose),
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
-	module_name_to_file_name(Import, ".trans_opt", FileName),
-	prog_io__read_module(FileName, Import, yes,
+	module_name_to_file_name(Import, ".trans_opt", no, FileName),
+	prog_io__read_opt_file(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(ModuleError, Messages, Error0, Error1),
 	{ list__append(Items0, Items1, Items2) },

@@ -307,21 +307,13 @@ switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _StoreMap,
 
 switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 		CanFail, StoreMap, EndLabel, CasesCode) -->
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		{ Goal = _ - GoalInfo },
-		{ goal_info_get_goal_path(GoalInfo, Path) },
-		trace__generate_event_code(switch(Path), TraceInfo,
-			TraceCode)
-	;
-		{ TraceCode = empty }
-	),
 	code_info__grab_code_info(CodeInfo0),
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
 	->
 		unify_gen__generate_tag_test(Var, Cons, branch_on_failure,
 			NextLabel, TestCode),
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ ElseCode = node([
@@ -340,6 +332,7 @@ switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 		code_info__grab_code_info(CodeInfo1),
 		code_info__slap_code_info(CodeInfo0)
 	;
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ ThisCaseCode =

@@ -81,8 +81,8 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds_goal, hlds_module.
-:- import_module io.
+:- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
+:- import_module io, list, map, term, varset.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
@@ -90,17 +90,32 @@
 :- pred inlining__is_simple_goal(hlds_goal, int).
 :- mode inlining__is_simple_goal(in, in) is semidet.
 
+	% inlining__do_inline_call(Args, CalledPredInfo, CalledProcInfo,
+	% 	VarSet0, VarSet, VarTypes0, VarTypes, TVarSet0, TVarSet,
+	%	TypeInfoMap0, TypeInfoMap).
+	%
+	% Given the arguments to the call, the pred_info and proc_info
+	% for the called goal and various information about the
+	% procedure currently being analysed, rename the goal for
+	% the called procedure so that it can be inlined.
+:- pred inlining__do_inline_call(list(var), pred_info, proc_info, 
+	varset, varset, map(var, type), map(var, type),
+	tvarset, tvarset, map(tvar, type_info_locn), 
+	map(tvar, type_info_locn), hlds_goal).
+:- mode inlining__do_inline_call(in, in, in, in, out, in, out,
+	in, out, in, out, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, globals, options, llds.
+:- import_module globals, options, llds.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
 :- import_module passes_aux, code_aux, quantification, det_analysis, prog_data.
 
-:- import_module bool, int, list, assoc_list, map, set, std_util.
-:- import_module term, varset, require, hlds_data, dependency_graph.
+:- import_module bool, int, list, assoc_list, set, std_util.
+:- import_module require, hlds_data, dependency_graph.
 
 %-----------------------------------------------------------------------------%
 
@@ -449,62 +464,10 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		TotalVars is ThisMany + CalleeThisMany,
 		TotalVars =< VarThresh
 	->
-		% Yes.  So look up the rest of the info for the
-		% called procedure.
-
-		pred_info_typevarset(PredInfo, CalleeTypeVarSet),
-		proc_info_headvars(ProcInfo, HeadVars),
-		proc_info_goal(ProcInfo, CalledGoal),
-		proc_info_vartypes(ProcInfo, CalleeVarTypes0),
-		proc_info_typeinfo_varmap(ProcInfo, CalledTypeInfoVarMap0),
-
-		% Substitute the appropriate types into the type
-		% mapping of the called procedure.  For example, if we
-		% call `:- pred foo(T)' with an argument of type
-		% `int', then we need to replace all occurrences of
-		% type `T' with type `int' when we inline it.
-
-		% first, rename apart the type variables in the callee.
-		% (we can almost throw away the new typevarset, since we
-		% are about to substitute away any new type variables,
-		% but any unbound type variables in the callee will not
-		% be substituted away)
-
-		varset__merge_subst(TypeVarSet0, CalleeTypeVarSet,
-			TypeVarSet, TypeRenaming),
-		apply_substitution_to_type_map(CalleeVarTypes0, TypeRenaming,
-			CalleeVarTypes1),
-
-		% next, compute the type substitution and then apply it
-
-		map__apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
-		map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
-		(
-			type_list_subsumes(HeadTypes, ArgTypes, TypeSubn)
-		->
-			apply_rec_substitution_to_type_map(CalleeVarTypes1,
-				TypeSubn, CalleeVarTypes)
-		;
-			% The head types should always subsume the
-			% actual argument types, otherwise it is a type error
-			% that should have been detected by typechecking
-			% But polymorphism.m introduces type-incorrect code --
-			% e.g. compare(Res, EnumA, EnumB) gets converted
-			% into builtin_compare_int(Res, EnumA, EnumB), which
-			% is a type error since it assumes that an enumeration
-			% is an int.  In those cases, we don't need to
-			% worry about the type substitution.
-			CalleeVarTypes = CalleeVarTypes1
-		),
-
-		% Now rename apart the variables in the called goal.
-
-		map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
-		goal_util__create_variables(CalleeListOfVars, VarSet0,
-			VarTypes0, Subn0, CalleeVarTypes, CalleeVarset,
-				VarSet, VarTypes, Subn),
-		goal_util__must_rename_vars_in_goal(CalledGoal, Subn,
-			Goal - GoalInfo),
+		inlining__do_inline_call(ArgVars, PredInfo, 
+			ProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
+			TypeVarSet0, TypeVarSet, TypeInfoVarMap0, 
+			TypeInfoVarMap, Goal - GoalInfo),
 
 			% If the inferred determinism of the called
 			% goal differs from the declared determinism,
@@ -517,12 +480,7 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		;
 			DetChanged = yes
 		),
-		DidInlining = yes,
-
-		apply_substitutions_to_var_map(CalledTypeInfoVarMap0, 
-			TypeRenaming, Subn, CalledTypeInfoVarMap1),
-		map__merge(TypeInfoVarMap0, CalledTypeInfoVarMap1,
-			TypeInfoVarMap)
+		DidInlining = yes
 	;
 		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
 		GoalInfo = GoalInfo0,
@@ -548,6 +506,75 @@ inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 
 inlining__inlining_in_goal(pragma_c_code(A, B, C, D, E, F, G) - GoalInfo,
 		pragma_c_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
+
+%-----------------------------------------------------------------------------%
+
+inlining__do_inline_call(ArgVars, PredInfo, ProcInfo, 
+		VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet, 
+		TypeInfoVarMap0, TypeInfoVarMap, Goal) :-
+
+	proc_info_goal(ProcInfo, CalledGoal),
+
+	% look up the rest of the info for the called procedure.
+
+	pred_info_typevarset(PredInfo, CalleeTypeVarSet),
+	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_vartypes(ProcInfo, CalleeVarTypes0),
+	proc_info_varset(ProcInfo, CalleeVarSet),
+	varset__vars(CalleeVarSet, CalleeListOfVars),
+	proc_info_typeinfo_varmap(ProcInfo, CalleeTypeInfoVarMap0),
+
+	% Substitute the appropriate types into the type
+	% mapping of the called procedure.  For example, if we
+	% call `:- pred foo(T)' with an argument of type
+	% `int', then we need to replace all occurrences of
+	% type `T' with type `int' when we inline it.
+
+	% first, rename apart the type variables in the callee.
+	% (we can almost throw away the new typevarset, since we
+	% are about to substitute away any new type variables,
+	% but any unbound type variables in the callee will not
+	% be substituted away)
+
+	varset__merge_subst(TypeVarSet0, CalleeTypeVarSet,
+		TypeVarSet, TypeRenaming),
+	apply_substitution_to_type_map(CalleeVarTypes0, TypeRenaming,
+		CalleeVarTypes1),
+
+	% next, compute the type substitution and then apply it
+
+	map__apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
+	map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
+	(
+		type_list_subsumes(HeadTypes, ArgTypes, TypeSubn)
+	->
+		apply_rec_substitution_to_type_map(CalleeVarTypes1,
+			TypeSubn, CalleeVarTypes)
+	;
+		% The head types should always subsume the
+		% actual argument types, otherwise it is a type error
+		% that should have been detected by typechecking
+		% But polymorphism.m introduces type-incorrect code --
+		% e.g. compare(Res, EnumA, EnumB) gets converted
+		% into builtin_compare_int(Res, EnumA, EnumB), which
+		% is a type error since it assumes that an enumeration
+		% is an int.  In those cases, we don't need to
+		% worry about the type substitution.
+		CalleeVarTypes = CalleeVarTypes1
+	),
+
+	% Now rename apart the variables in the called goal.
+
+	map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
+	goal_util__create_variables(CalleeListOfVars, VarSet0,
+		VarTypes0, Subn0, CalleeVarTypes, CalleeVarSet,
+		VarSet, VarTypes, Subn),
+	goal_util__must_rename_vars_in_goal(CalledGoal, Subn, Goal),
+
+	apply_substitutions_to_var_map(CalleeTypeInfoVarMap0, 
+		TypeRenaming, Subn, CalleeTypeInfoVarMap1),
+	map__merge(TypeInfoVarMap0, CalleeTypeInfoVarMap1,
+		TypeInfoVarMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -612,7 +639,8 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 	% don't try to inline imported predicates, since we don't
 	% have the code for them.
 
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, 
+		ProcInfo),
 	\+ pred_info_is_imported(PredInfo),
 		% this next line catches the case of locally defined
 		% unification predicates for imported types.
@@ -621,6 +649,14 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	),
 
+	% Only try to inline procedures which are evaluated using
+	% normal evaluation. Currently we can't inline procs evaluated
+	% using any of the other methods because the code generator for
+	% the methods can only handle whole procedures not code 
+	% fragments.
+
+	proc_info_eval_method(ProcInfo, eval_normal),
+	
 	% don't inlining anything we have been specifically requested
 	% not to inline.
 

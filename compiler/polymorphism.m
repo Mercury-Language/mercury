@@ -139,7 +139,7 @@
 %			<base_type_layout for int/0>,
 %			<base_type_functors for int/0>,
 %			"int",
-%			"mercury_builtin"),
+%			"builtin"),
 %		r(TypeInfoT3, 0).
 %
 % Note that base_type_infos are actually generated as references to a
@@ -281,19 +281,21 @@
 :- module polymorphism.
 :- interface.
 :- import_module hlds_module.
+:- import_module io.
 
-:- pred polymorphism__process_module(module_info, module_info).
-:- mode polymorphism__process_module(in, out) is det.
+:- pred polymorphism__process_module(module_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_module(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
+:- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda), inst_util.
 :- import_module prog_data, type_util, mode_util, quantification, instmap.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module (inst), hlds_out, base_typeclass_info, inst_util.
+:- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 
 :- import_module bool, int, string, list, set, map.
 :- import_module term, varset, std_util, require, assoc_list.
@@ -308,27 +310,30 @@
 	% the argtypes of the called predicates, and so we need to make
 	% sure we don't muck them up before we've finished the first pass.
 
-polymorphism__process_module(ModuleInfo0, ModuleInfo) :-
+polymorphism__process_module(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__keys(Preds0, PredIds0),
-	polymorphism__process_preds(PredIds0, ModuleInfo0, ModuleInfo1),
+	polymorphism__process_preds(PredIds0, ModuleInfo0, ModuleInfo1,
+				IO0, IO),
 	module_info_preds(ModuleInfo1, Preds1),
 	map__keys(Preds1, PredIds1),
 	polymorphism__fixup_preds(PredIds1, ModuleInfo1, ModuleInfo2),
 	polymorphism__expand_class_method_bodies(ModuleInfo2, ModuleInfo).
 
-:- pred polymorphism__process_preds(list(pred_id), module_info, module_info).
-:- mode polymorphism__process_preds(in, in, out) is det.
+:- pred polymorphism__process_preds(list(pred_id), module_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_preds(in, in, out, di, uo) is det.
 
-polymorphism__process_preds([], ModuleInfo, ModuleInfo).
-polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+polymorphism__process_preds([], ModuleInfo, ModuleInfo) --> [].
+polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo1),
 	polymorphism__process_preds(PredIds, ModuleInfo1, ModuleInfo).
 
-:- pred polymorphism__process_pred(pred_id, module_info, module_info).
-:- mode polymorphism__process_pred(in, in, out) is det.
+:- pred polymorphism__process_pred(pred_id, module_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_pred(in, in, out, di, uo) is det.
 
-polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
+polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
@@ -337,24 +342,29 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 		polymorphism__no_type_info_builtin(PredModule,
 			PredName, PredArity) 
 	->
-		ModuleInfo = ModuleInfo0
+		ModuleInfo = ModuleInfo0,
+		IO = IO0
 	;
 		pred_info_procids(PredInfo, ProcIds),
 		polymorphism__process_procs(PredId, ProcIds,
-			ModuleInfo0, ModuleInfo)
+			ModuleInfo0, ModuleInfo, IO0, IO)
 	).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
-					module_info, module_info).
-:- mode polymorphism__process_procs(in, in, in, out) is det.
+					module_info, module_info,
+					io__state, io__state).
+:- mode polymorphism__process_procs(in, in, in, out, di, uo) is det.
 
-polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
+polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo, IO, IO).
 polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
-		ModuleInfo) :-
+		ModuleInfo, IO0, IO) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
+
+	write_proc_progress_message("% Transforming polymorphism for ",
+				PredId, ProcId, ModuleInfo0, IO0, IO1),
 
 	polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 					ProcInfo, PredInfo1, ModuleInfo1),
@@ -366,7 +376,8 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
-	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
+	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo,
+			IO1, IO).
 
 	% unsafe_type_cast and unsafe_promise_unique are polymorphic
 	% builtins which do not need their type_infos. unsafe_type_cast
@@ -381,7 +392,7 @@ polymorphism__no_type_info_builtin(MercuryBuiltin, "unsafe_type_cast", 2) :-
 	mercury_private_builtin_module(MercuryBuiltin).
 polymorphism__no_type_info_builtin(MercuryBuiltin,
 		"unsafe_promise_unique", 2) :-
-	mercury_private_builtin_module(MercuryBuiltin).
+	mercury_public_builtin_module(MercuryBuiltin).
 
 %---------------------------------------------------------------------------%
 
@@ -544,7 +555,7 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 
 	% process any polymorphic calls inside the goal
 	polymorphism__process_goal(Goal0, Goal1, Info0, Info1),
-	polymorphism__fixup_quantification(Goal1, Goal, Info1, Info),
+	polymorphism__fixup_quantification(Goal1, Goal, _, Info1, Info),
 	Info = poly_info(VarSet, VarTypes, TypeVarSet,
 				TypeInfoMap, TypeclassInfoLocations,
 				_Proofs, _PredName, ModuleInfo, _InstTable),
@@ -652,7 +663,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			->
 				PredId = CallPredId
 			;
-				error("polymorphism.m: can't find `mercury_builtin:unify/2'")
+				error("polymorphism.m: can't find `builtin:unify/2'")
 			},
 			% XXX Bug! - we should check that the mode is (in, in),
 			%     and report an error (e.g. "unification of
@@ -706,7 +717,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			->
 				PredId = PredId0
 			;
-				error("can't locate mercury_builtin:builtin_unify_pred/2")
+				error("can't locate private_builtin:builtin_unify_pred/2")
 			},
 			{ hlds_pred__in_in_unification_proc_id(ProcId) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
@@ -747,10 +758,11 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal1),
-		polymorphism__fixup_quantification(LambdaGoal1, LambdaGoal),
+		polymorphism__fixup_quantification(LambdaGoal1,
+				LambdaGoal, NonLocalTypeInfos),
 		polymorphism__process_lambda(PredOrFunc, Vars, Modes,
-				Det, ArgVars, LambdaGoal, Unification,
-				Y1, Unification1),
+				Det, ArgVars, NonLocalTypeInfos, LambdaGoal,
+				Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
 	;
@@ -958,8 +970,8 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, PredId, ProcId, ArgVars,
 	).
 
 :- pred polymorphism__fixup_quantification(hlds_goal, hlds_goal,
-		poly_info, poly_info).
-:- mode polymorphism__fixup_quantification(in, out, in, out) is det.
+		set(var), poly_info, poly_info).
+:- mode polymorphism__fixup_quantification(in, out, out, in, out) is det.
 
 %
 % If the predicate we are processing is a polymorphic predicate,
@@ -968,36 +980,18 @@ polymorphism__process_call(PredId0, ProcId0, ArgVars0, PredId, ProcId, ArgVars,
 % so that it includes the type-info variables in the non-locals set.
 %
 
-polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
+polymorphism__fixup_quantification(Goal0, Goal, NewOutsideVars, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeVarMap,
 		TypeClassVarMap, Proofs, PredName, ModuleInfo, InstTable),
 	( map__is_empty(TypeVarMap) ->
+		set__init(NewOutsideVars),
 		Info = Info0,
 		Goal = Goal0
 	;
-		%
-		% A type-info variable may be non-local to a goal if any of 
-		% the ordinary non-local variables for that goal are
-		% polymorphically typed with a type that depends on that
-		% type-info variable.
-		%
-		% In addition, a typeclass-info may be non-local to a goal if
-		% any of the non-local variables for that goal are
-		% polymorphically typed and are constrained by the typeclass
-		% constraints for that typeclass-info variable
-		%
+		goal_util__extra_nonlocal_typeinfos(TypeVarMap,
+			VarTypes0, Goal0, NewOutsideVars),
 		Goal0 = _ - GoalInfo0,
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		set__to_sorted_list(NonLocals, NonLocalsList),
-		map__apply_to_list(NonLocalsList, VarTypes0, NonLocalsTypes),
-		term__vars_list(NonLocalsTypes, NonLocalTypeVars),
-			% Find all the type-infos and typeclass-infos that are
-			% non-local
-		solutions_set(lambda([Var::out] is nondet, (
-				list__member(TheVar, NonLocalTypeVars),
-				map__search(TypeVarMap, TheVar, Location),
-				type_info_locn_var(Location, Var)
-			)), NewOutsideVars),
 		set__union(NewOutsideVars, NonLocals, OutsideVars),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
 			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
@@ -1007,14 +1001,15 @@ polymorphism__fixup_quantification(Goal0, Goal, Info0, Info) :-
 	).
 
 :- pred polymorphism__process_lambda(pred_or_func, list(var),
-		argument_modes, determinism, list(var), hlds_goal, unification,
-		unify_rhs, unification, poly_info, poly_info).
-:- mode polymorphism__process_lambda(in, in, in, in, in, in, in, out, out,
+		argument_modes, determinism, list(var), set(var),
+		hlds_goal, unification, unify_rhs, unification,
+		poly_info, poly_info).
+:- mode polymorphism__process_lambda(in, in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
 polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
-		LambdaGoal, Unification0, Functor, Unification,
-		PolyInfo0, PolyInfo) :-
+		NonLocalTypeInfos, LambdaGoal, Unification0, Functor,
+		Unification, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, TVarMap, 
 			TCVarMap, Proofs, PredName, ModuleInfo0, InstTable0),
 
@@ -1032,9 +1027,9 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
 
 	lambda__transform_lambda(PredOrFunc, PredName, Vars, ArgModes, Det,
-		OrigNonLocals, LambdaGoal, Unification0, VarSet, VarTypes,
-		Constraints, TVarSet, TVarMap, TCVarMap, InstTable,
-		ModuleInfo0, Functor, Unification, ModuleInfo),
+		OrigNonLocals, NonLocalTypeInfos, LambdaGoal, Unification0,
+		VarSet, VarTypes, Constraints, TVarSet, TVarMap, TCVarMap,
+		InstTable, ModuleInfo0, Functor, Unification, ModuleInfo),
 	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, TVarMap, 
 			TCVarMap, Proofs, PredName, ModuleInfo, InstTable).
 
@@ -1161,7 +1156,10 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 	term__vars_list(NewConstrainedTypes, NewConstrainedVars),
 	list__append(NewConstrainedVars, ConstrainedVars0, ConstrainedVars),
 	term__apply_rec_substitution_to_list(NewConstrainedTypes, TypeSubst, 
-		ConstrainedTypes),
+		ConstrainedTypes0),
+	% we need to maintain the invariant that types in class constraints
+	% do not contain any information in their term__context fields
+	strip_term_contexts(ConstrainedTypes0, ConstrainedTypes),
 	NewC = constraint(ClassName, ConstrainedTypes),
 
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0, TypeInfoMap0, 
@@ -1320,7 +1318,11 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 			SubClassConstraint0 = 
 				constraint(SubClassName, SubClassTypes0),
 			term__apply_substitution_to_list(SubClassTypes0, Subst,
-				SubClassTypes),
+				SubClassTypes1),
+			% we need to maintain the invariant that types in
+			% class constraints do not contain any information
+			% in their term__context fields
+			strip_term_contexts(SubClassTypes1, SubClassTypes),
 			SubClassConstraint = 
 				constraint(SubClassName, SubClassTypes),
 			list__length(SubClassTypes, SubClassArity),
@@ -1393,7 +1395,7 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 				% We extract the superclass typeclass_info by
 				% inserting a call to
 				% superclass_from_typeclass_info in
-				% mercury_builtin.
+				% private_builtin.
 
 				% Make the goal for the call
 			varset__init(Empty),

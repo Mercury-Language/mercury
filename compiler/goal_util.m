@@ -61,6 +61,27 @@
 :- pred goal_util__goal_vars(hlds_goal, set(var)).
 :- mode goal_util__goal_vars(in, out) is det.
 
+	% Return all the variables in the list of goals.
+	% Unlike quantification:goal_vars, this predicate returns
+	% even the explicitly quantified variables.
+:- pred goal_util__goals_goal_vars(list(hlds_goal), set(var), set(var)).
+:- mode goal_util__goals_goal_vars(in, in, out) is det.
+
+	%
+	% A type-info variable may be non-local to a goal if any of 
+	% the ordinary non-local variables for that goal are
+	% polymorphically typed with a type that depends on that
+	% type-info variable.
+	%
+	% In addition, a typeclass-info may be non-local to a goal if
+	% any of the non-local variables for that goal are
+	% polymorphically typed and are constrained by the typeclass
+	% constraints for that typeclass-info variable.
+	%
+:- pred goal_util__extra_nonlocal_typeinfos(map(var, type_info_locn),
+		map(var, type), hlds_goal, set(var)).
+:- mode goal_util__extra_nonlocal_typeinfos(in, in, in, out) is det.
+
 	% See whether the goal is a branched structure.
 :- pred goal_util__goal_is_branched(hlds_goal_expr).
 :- mode goal_util__goal_is_branched(in) is semidet.
@@ -69,9 +90,19 @@
 :- pred goal_size(hlds_goal, int).
 :- mode goal_size(in, out) is det.
 
+	% Return an indication of the size of the list of goals.
+:- pred goals_size(list(hlds_goal), int).
+:- mode goals_size(in, out) is det.
+
 	% Test whether the goal calls the given procedure.
 :- pred goal_calls(hlds_goal, pred_proc_id).
 :- mode goal_calls(in, in) is semidet.
+
+	% Test whether the goal calls the given predicate.
+	% This is useful before mode analysis when the proc_ids
+	% have not been determined.
+:- pred goal_calls_pred_id(hlds_goal, pred_id).
+:- mode goal_calls_pred_id(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,7 +110,7 @@
 :- implementation.
 
 :- import_module hlds_data, mode_util, code_aux, instmap.
-:- import_module int, std_util, assoc_list, require.
+:- import_module int, std_util, assoc_list, require, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -155,7 +186,11 @@ goal_util__rename_var(V, Must, Subn, N) :-
 			N = V
 		;
 			Must = yes,
-			error("goal_util__rename_var: no substitute")
+			term__var_to_int(V, VInt),
+			string__format(
+			    "goal_util__rename_var: no substitute for var %i", 
+			    [i(VInt)], Msg),
+			error(Msg)
 		)
 	).
 
@@ -460,9 +495,6 @@ goal_util__goal_vars_2(pragma_c_code(_, _, _, ArgVars, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
-:- pred goal_util__goals_goal_vars(list(hlds_goal), set(var), set(var)).
-:- mode goal_util__goals_goal_vars(in, in, out) is det.
-
 goal_util__goals_goal_vars([], Set, Set).
 goal_util__goals_goal_vars([Goal - _ | Goals], Set0, Set) :-
 	goal_util__goal_vars_2(Goal, Set0, Set1),
@@ -493,6 +525,23 @@ goal_util__rhs_goal_vars(
 
 %-----------------------------------------------------------------------------%
 
+goal_util__extra_nonlocal_typeinfos(TypeVarMap, VarTypes,
+		Goal0, NonLocalTypeInfos) :-
+	Goal0 = _ - GoalInfo0,
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	map__apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
+	term__vars_list(NonLocalsTypes, NonLocalTypeVars),
+		% Find all the type-infos and typeclass-infos that are
+		% non-local
+	solutions_set(lambda([Var::out] is nondet, (
+			list__member(TheVar, NonLocalTypeVars),
+			map__search(TypeVarMap, TheVar, Location),
+			type_info_locn_var(Location, Var)
+		)), NonLocalTypeInfos).
+
+%-----------------------------------------------------------------------------%
+
 goal_util__goal_is_branched(if_then_else(_, _, _, _, _)).
 goal_util__goal_is_branched(switch(_, _, _, _)).
 goal_util__goal_is_branched(disj(_, _)).
@@ -501,9 +550,6 @@ goal_util__goal_is_branched(disj(_, _)).
 
 goal_size(GoalExpr - _, Size) :-
 	goal_expr_size(GoalExpr, Size).
-
-:- pred goals_size(list(hlds_goal), int).
-:- mode goals_size(in, out) is det.
 
 goals_size([], 0).
 goals_size([Goal | Goals], Size) :-
@@ -595,3 +641,54 @@ goal_expr_calls(not(Goal), PredProcId) :-
 goal_expr_calls(some(_, Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
 goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
+
+%-----------------------------------------------------------------------------%
+
+goal_calls_pred_id(GoalExpr - _, PredId) :-
+	goal_expr_calls_pred_id(GoalExpr, PredId).
+
+:- pred goals_calls_pred_id(list(hlds_goal), pred_id).
+:- mode goals_calls_pred_id(in, in) is semidet.
+
+goals_calls_pred_id([Goal | Goals], PredId) :-
+	(
+		goal_calls_pred_id(Goal, PredId)
+	;
+		goals_calls_pred_id(Goals, PredId)
+	).
+
+:- pred cases_calls_pred_id(list(case), pred_id).
+:- mode cases_calls_pred_id(in, in) is semidet.
+
+cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
+	(
+		goal_calls_pred_id(Goal, PredId)
+	;
+		cases_calls_pred_id(Cases, PredId)
+	).
+
+:- pred goal_expr_calls_pred_id(hlds_goal_expr, pred_id).
+:- mode goal_expr_calls_pred_id(in, in) is semidet.
+
+goal_expr_calls_pred_id(conj(Goals), PredId) :-
+	goals_calls_pred_id(Goals, PredId).
+goal_expr_calls_pred_id(disj(Goals, _), PredId) :-
+	goals_calls_pred_id(Goals, PredId).
+goal_expr_calls_pred_id(switch(_, _, Goals, _), PredId) :-
+	cases_calls_pred_id(Goals, PredId).
+goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else, _), PredId) :-
+	(
+		goal_calls_pred_id(Cond, PredId)
+	;
+		goal_calls_pred_id(Then, PredId)
+	;
+		goal_calls_pred_id(Else, PredId)
+	).
+goal_expr_calls_pred_id(not(Goal), PredId) :-
+	goal_calls_pred_id(Goal, PredId).
+goal_expr_calls_pred_id(some(_, Goal), PredId) :-
+	goal_calls_pred_id(Goal, PredId).
+goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

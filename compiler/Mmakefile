@@ -53,6 +53,7 @@ MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
 MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
 MNLFLAGS =	-u 6000
 MTAGS	=	$(SCRIPTS_DIR)/mtags
+MTAGSFLAGS =	
 
 #-----------------------------------------------------------------------------#
 
@@ -123,8 +124,8 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs
-os: $(mercury_compile.os) mercury_compile_init.o
-cs: $(mercury_compile.cs) mercury_compile_init.c
+os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.o
+cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 
 #-----------------------------------------------------------------------------#
 

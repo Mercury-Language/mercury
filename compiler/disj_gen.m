@@ -75,7 +75,7 @@ disj_gen__generate_pruned_disj(Goals, StoreMap, Code) -->
 		% disjunct that might allocate some heap space.
 	{ MaybeHpSlot = no },
 
-		% Generate all the disjuncts
+		% Generate all the disjuncts.
 	code_info__get_next_label(EndLabel),
 	disj_gen__generate_pruned_disjuncts(Goals, StoreMap, EndLabel,
 		ReclaimHeap, MaybeHpSlot, MaybeTicketSlot, no, GoalsCode),
@@ -125,7 +125,7 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
 			ModContCode),
 			% The next line is to enable Goal to pass the
-			% pre_goal_update sanity check
+			% pre_goal_update sanity check.
 		{ goal_info_set_resume_point(GoalInfo0, no_resume_point,
 			GoalInfo) },
 		{ Goal = GoalExpr0 - GoalInfo },
@@ -133,11 +133,11 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		( { First = no } ->
 				% Reset the heap pointer to recover memory
 				% allocated by the previous disjunct(s),
-				% if necessary
+				% if necessary.
 			code_info__maybe_restore_hp(MaybeHpSlot0,
 				RestoreHPCode),
 
-				% Reset the solver state if necessary
+				% Reset the solver state if necessary.
 			code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
 				RestoreTicketCode)
 		;
@@ -146,7 +146,7 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		),
 
 			% Save hp if it needs to be saved and hasn't been
-			% saved previously
+			% saved previously.
 		(
 			{ ReclaimHeap = yes },
 			{ code_util__goal_may_allocate_heap(Goal) },
@@ -161,20 +161,13 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 
 		code_info__grab_code_info(CodeInfo),
 
-			% generate the disjunct as a semi-deterministic goal
+			% Generate the disjunct as a semi-deterministic goal.
 		{ CodeModel = model_semi ->
 			true
 		;
 			error("pruned disj non-last goal is not semidet")
 		},
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			{ goal_info_get_goal_path(GoalInfo, Path) },
-			trace__generate_event_code(disj(Path), TraceInfo,
-				TraceCode)
-		;
-			{ TraceCode = empty }
-		),
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 
@@ -203,25 +196,18 @@ disj_gen__generate_pruned_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			      RestCode)))))))))
 		}
 	;
-		% Emit code for the last disjunct
+		% Emit code for the last disjunct.
 
-			% Restore the heap pointer if necessary
+			% Restore the heap pointer if necessary.
 		code_info__maybe_restore_and_discard_hp(MaybeHpSlot0,
 			RestoreHPCode),
 
-			% Restore the solver state if necessary
+			% Restore the solver state if necessary.
 		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, 
 			undo, RestorePopTicketCode),
 
-			% Generate the goal
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			{ goal_info_get_goal_path(GoalInfo0, Path) },
-			trace__generate_event_code(disj(Path), TraceInfo,
-				TraceCode)
-		;
-			{ TraceCode = empty }
-		),
+			% Generate the goal.
+		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal0, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 
@@ -307,7 +293,7 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__make_known_failure_cont(ResumeVars, ResumeLocs, yes,
 			ModContCode),
 			% The next line is to enable Goal to pass the
-			% pre_goal_update sanity check
+			% pre_goal_update sanity check.
 		{ goal_info_set_resume_point(GoalInfo0, no_resume_point,
 			GoalInfo) },
 		{ Goal = GoalExpr0 - GoalInfo },
@@ -315,11 +301,11 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		( { First = no } ->
 				% Reset the heap pointer to recover memory
 				% allocated by the previous disjunct(s),
-				% if necessary
+				% if necessary.
 			code_info__maybe_restore_hp(MaybeHpSlot,
 				RestoreHPCode),
 
-				% Reset the solver state if necessary
+				% Reset the solver state if necessary.
 			code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
 				RestoreTicketCode)
 		;
@@ -329,20 +315,12 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 
 		code_info__grab_code_info(CodeInfo),
 
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			{ goal_info_get_goal_path(GoalInfo, Path) },
-			trace__generate_event_code(disj(Path), TraceInfo,
-				TraceCode)
-		;
-			{ TraceCode = empty }
-		),
-
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(model_non, Goal, GoalCode),
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
 
-			% make sure every variable in the resume set is in its
-			% stack slot
+			% Make sure every variable in the resume set is in its
+			% stack slot.
 		code_info__flush_resume_vars_to_stack(FlushResumeVarsCode),
 
 		{ BranchCode = node([
@@ -353,9 +331,9 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 		code_info__slap_code_info(CodeInfo),
 		code_info__pop_resume_point_vars,
 
-			% make sure that the redoip of the top nondet frame
+			% Make sure that the redoip of the top nondet frame
 			% points to the right label, and set up the start of
-			% the next disjunct
+			% the next disjunct.
 		code_info__restore_failure_cont(RestoreContCode),
 
 		disj_gen__generate_non_disjuncts(Goals, StoreMap, EndLabel,
@@ -373,7 +351,7 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			      RestCode)))))))))
 		}
 	;
-		% Emit code for the last disjunct
+		% Emit code for the last disjunct.
 
 		{ Goals = [] ->
 			true
@@ -381,23 +359,15 @@ disj_gen__generate_non_disjuncts([Goal0 | Goals], StoreMap, EndLabel,
 			error("disj_gen__generate_non_disjuncts: last disjunct followed by others")
 		},
 
-			% Restore the heap pointer if necessary
+			% Restore the heap pointer if necessary.
 		code_info__maybe_restore_and_discard_hp(MaybeHpSlot,
 			RestoreHPCode),
 
-			% Restore the solver state if necessary
+			% Restore the solver state if necessary.
 		code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot,
 			undo, RestorePopTicketCode),
 
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			{ goal_info_get_goal_path(GoalInfo0, Path) },
-			trace__generate_event_code(disj(Path), TraceInfo,
-				TraceCode)
-		;
-			{ TraceCode = empty }
-		),
-
+		trace__maybe_generate_internal_event_code(Goal0, TraceCode),
 		code_gen__generate_goal(model_non, Goal0, GoalCode),
 		code_info__generate_branch_end(model_non, StoreMap, SaveCode),
 

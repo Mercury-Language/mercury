@@ -96,7 +96,7 @@ constraint__propagate_in_proc(PredId, ProcId, ModuleInfo0, ModuleInfo,
 	proc_info_context(ProcInfo0, Context),
 	proc_info_inst_table(ProcInfo0, InstTable0),
 	mode_info_init(IoState0, ModuleInfo0, InstTable0, PredId, ProcId,
-			Context, VarSet1, InstMap0, ModeInfo0),
+			Context, VarSet1, InstMap0, check_modes, ModeInfo0),
 
 	constraint__propagate_goal(Goal0, Goal, ModeInfo0, ModeInfo),
 

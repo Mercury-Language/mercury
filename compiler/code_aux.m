@@ -52,7 +52,7 @@
 
 :- implementation.
 
-:- import_module llds, llds_out, type_util.
+:- import_module hlds_pred, llds, llds_out, type_util, term_util.
 :- import_module string, set, term, std_util, assoc_list, require.
 :- import_module list, map.
 
@@ -140,6 +140,10 @@ code_aux__goal_cannot_loop_2(ModuleInfo,
 	code_aux__goal_cannot_loop(ModuleInfo, Cond),
 	code_aux__goal_cannot_loop(ModuleInfo, Then),
 	code_aux__goal_cannot_loop(ModuleInfo, Else).
+code_aux__goal_cannot_loop_2(ModuleInfo, call(PredId, ProcId, _, _, _, _)) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
+	MaybeTermInfo = yes(cannot_loop).
 code_aux__goal_cannot_loop_2(_, unify(_, _, _, Uni, _)) :-
 	(
 		Uni = assign(_, _)

@@ -79,7 +79,7 @@
 
 intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
-	module_name_to_file_name(ModuleName, ".opt.tmp", TmpName),
+	module_name_to_file_name(ModuleName, ".opt.tmp", yes, TmpName),
 	io__tell(TmpName, Result2),
 	(
 		{ Result2 = error(Err2) },
@@ -94,8 +94,9 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 		{ init_intermod_info(ModuleInfo0, IntermodInfo0) },
 		globals__io_lookup_int_option(
 			intermod_inline_simple_threshold, Threshold),
+		globals__io_lookup_bool_option(deforestation, Deforestation),
 		{ intermod__gather_preds(PredIds, yes, Threshold,
-				IntermodInfo0, IntermodInfo1) },
+			Deforestation, IntermodInfo0, IntermodInfo1) },
 		{ intermod__gather_abstract_exported_types(IntermodInfo1,
 				IntermodInfo2) },
 		{ intermod_info_get_pred_decls(PredDeclsSet,
@@ -156,10 +157,11 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 	% Predicates to gather stuff to output to .opt file.
 
 :- pred intermod__gather_preds(list(pred_id)::in, bool::in, int::in,
-		intermod_info::in, intermod_info::out) is det.
+		bool::in, intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_preds([], _CollectTypes, _) --> [].
-intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
+intermod__gather_preds([], _CollectTypes, _, _) --> [].
+intermod__gather_preds([PredId | PredIds], CollectTypes,
+		InlineThreshold, Deforestation) -->
 	intermod_info_get_module_info(ModuleInfo0),
 	{ module_info_preds(ModuleInfo0, PredTable0) },
 	{ map__lookup(PredTable0, PredId, PredInfo0) },
@@ -178,11 +180,26 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 				{ inlining__is_simple_goal(Goal,
 						InlineThreshold) },
 				{ pred_info_get_markers(PredInfo0, Markers) },
-				{ \+ check_marker(Markers, no_inline) }
+				{ \+ check_marker(Markers, no_inline) },
+				{ proc_info_eval_method(ProcInfo, 
+					eval_normal) }
 			;
 				{ pred_info_requested_inlining(PredInfo0) }
 			;
 				{ has_ho_input(ModuleInfo0, ProcInfo) }
+			;
+				{ Deforestation = yes },
+				% Double the inline-threshold since
+				% goals we want to deforest will have
+				% at least two disjuncts. This allows 
+				% one simple goal in each disjunct.
+				% The disjunction adds one to the goal
+				% size, hence the `+1'.
+				{ DeforestThreshold is
+					InlineThreshold * 2 + 1},
+				{ inlining__is_simple_goal(Goal,
+					DeforestThreshold) },
+				{ goal_is_deforestable(PredId, Goal) }
 			)
 		)
 	->
@@ -227,7 +244,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes, InlineThreshold) -->
 	;
 		[]
 	),
-	intermod__gather_preds(PredIds, CollectTypes, InlineThreshold).
+	intermod__gather_preds(PredIds, CollectTypes,
+		InlineThreshold, Deforestation).
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
 		bool::out, intermod_info::in, intermod_info::out) is det.
@@ -265,6 +283,31 @@ check_for_ho_input_args(InstTable, ModuleInfo, [HeadVar | HeadVars],
 		check_for_ho_input_args(InstTable, ModuleInfo, HeadVars,
 							ArgModes, VarTypes)
 	).
+
+	% Rough guess: a goal is deforestable if it contains a single
+	% top-level branched goal and is recursive.
+:- pred goal_is_deforestable(pred_id::in, hlds_goal::in) is semidet.
+
+goal_is_deforestable(PredId, Goal)  :-
+	goal_calls_pred_id(Goal, PredId),
+	goal_to_conj_list(Goal, GoalList),
+	goal_contains_one_branched_goal(GoalList, no).
+
+:- pred goal_contains_one_branched_goal(list(hlds_goal)::in,
+		bool::in) is semidet.
+
+goal_contains_one_branched_goal([], yes).
+goal_contains_one_branched_goal([Goal | Goals], FoundBranch0) :-
+	Goal = GoalExpr - _,
+	(
+		goal_is_branched(GoalExpr),
+		FoundBranch0 = no,
+		FoundBranch = yes
+	;
+		goal_is_atomic(GoalExpr),
+		FoundBranch = FoundBranch0
+	),
+	goal_contains_one_branched_goal(Goals, FoundBranch).
 
 	% Add all local types used in a type to the intermod info.
 	% It may be sufficient (and much more efficient! to just export
@@ -1181,7 +1224,9 @@ intermod__adjust_pred_import_status(Module0, Module) :-
 	module_info_globals(Module0, Globals),
 	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
 			Threshold),
-	intermod__gather_preds(PredIds, yes, Threshold, Info0, Info1),
+	globals__lookup_bool_option(Globals, deforestation, Deforestation),
+	intermod__gather_preds(PredIds, yes, Threshold,
+		Deforestation, Info0, Info1),
 	intermod__gather_abstract_exported_types(Info1, Info),
 	do_adjust_pred_import_status(Info, Module0, Module).
 
@@ -1252,20 +1297,29 @@ set_list_of_preds_exported([PredId | PredIds], Preds0, Preds) :-
 	% Read in and process the optimization interfaces.
 
 intermod__grab_optfiles(Module0, Module, FoundError) -->
-		%
-		% Let make_hlds know the opt_imported stuff is coming.
-		%
-	{ append_pseudo_decl(Module0, opt_imported, Module1) },
-	{ module_imports_get_items(Module1, Items0) },
 
 		%
 		% Read in the .opt files for imported and ancestor modules.
 		%
-	{ Module1 = module_imports(ModuleName, Ancestors0, InterfaceDeps0,
+	{ Module0 = module_imports(_, ModuleName, Ancestors0, InterfaceDeps0,
 					ImplementationDeps0, _, _, _, _, _) },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },
 	read_optimization_interfaces(OptFiles, [], OptItems, no, OptError),
+
+		%
+		% Append the items to the current item list, using
+		% a `opt_imported' psuedo-declaration to let
+		% make_hlds know the opt_imported stuff is coming.
+		%
+	{ module_imports_get_items(Module0, Items0) },
+	{ make_pseudo_decl(opt_imported, OptImportedDecl) },
+	{ list__append(Items0, [OptImportedDecl | OptItems], Items1) },
+	{ module_imports_set_items(Module0, Items1, Module1) },
+
+		%
+		% Figure out which .int files are needed by the .opt files
+		%
 	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
 	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
@@ -1276,12 +1330,10 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Read in the .int, and .int2 files needed by the .opt files.
 		% (XXX do we also need to read in .int0 files here?)
 		%
-	{ module_imports_set_items(Module1, [], Module2) },
 	process_module_long_interfaces(NewDeps, ".int", [], NewIndirectDeps,
-				Module2, Module3),
+				Module1, Module2),
 	process_module_indirect_imports(NewIndirectDeps, ".int2",
-				Module3, Module4),
-	{ module_imports_get_items(Module4, InterfaceItems) },
+				Module2, Module3),
 
 		%
 		% Get the :- pragma unused_args(...) declarations created
@@ -1298,28 +1350,25 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 					Item = pragma(PragmaType) - _,
 					PragmaType = unused_args(_,_,_,_,_)
 				)) },
-		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) }
+		{ list__filter(IsPragmaUnusedArgs, LocalItems, PragmaItems) },
+
+		{ module_imports_get_items(Module3, Items3) },
+		{ list__append(Items3, PragmaItems, Items) },
+		{ module_imports_set_items(Module3, Items, Module) }
 	;
-		{ PragmaItems = [] },
+		{ Module = Module3 },
 		{ UAError = no }
 	),
 
 		%
 		% Figure out whether anything went wrong
 		%
-	{ module_imports_get_error(Module4, FoundError0) },
+	{ module_imports_get_error(Module, FoundError0) },
 	{ ( FoundError0 \= no ; OptError = yes ; UAError = yes) ->
 		FoundError = yes
 	;
 		FoundError = no
-	},
-
-		%
-		% Concatenate everything together.
-		%
-	{ list__condense([Items0, PragmaItems, OptItems, InterfaceItems],
-		Items) },
-	{ module_imports_set_items(Module4, Items, Module) }.
+	}.
 
 :- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
 			item_list::out, bool::in, bool::out,
@@ -1338,8 +1387,8 @@ read_optimization_interfaces([Import | Imports],
 	maybe_flush_output(VeryVerbose),
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
-	module_name_to_file_name(Import, ".opt", FileName),
-	prog_io__read_module(FileName, Import, yes,
+	module_name_to_file_name(Import, ".opt", no, FileName),
+	prog_io__read_opt_file(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(FileName, ModuleError, Messages, Error0, Error1),
 	{ list__append(Items0, Items1, Items2) },

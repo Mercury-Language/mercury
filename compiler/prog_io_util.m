@@ -357,9 +357,9 @@ report_warning(Stream, Message) -->
 	),
 	io__write_string(Stream, Message).
 
-report_warning(ModuleName, LineNum, Message) -->
-	{ string__format("%s.m:%3d: Warning: %s\n",
-		[s(ModuleName), i(LineNum), s(Message)], FullMessage) },
+report_warning(FileName, LineNum, Message) -->
+	{ string__format("%s:%3d: Warning: %s\n",
+		[s(FileName), i(LineNum), s(Message)], FullMessage) },
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, FullMessage),
 	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),

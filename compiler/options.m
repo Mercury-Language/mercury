@@ -71,7 +71,8 @@
 		;	debug_inst_keys
 		;	debug_det
 		;	debug_opt
-		;	debug_vn
+		;	debug_vn	% vn = value numbering
+		;	debug_pd	% pd = partial deduction/deforestation
 	% Output options
 		;	make_short_interface
 		;	make_interface
@@ -88,7 +89,7 @@
 		;	compile_only
 	% Auxiliary output options
 		;	assume_gmake
-		;	generate_trace
+		;	trace
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -120,11 +121,11 @@
 		;	profile_calls
 		;	profile_time
 		;	profile_memory
+		;	debug
 		;	stack_trace
+		;	require_tracing
 		;	use_trail
 		;	pic_reg
-		;	debug
-		;	debug_data
 		;	tags
 		;	num_tag_bits
 		;	bits_per_word
@@ -161,6 +162,7 @@
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
+		;	low_level_debug
 		;	trad_passes
 		;	polymorphism
 		;	reclaim_heap_on_failure
@@ -176,6 +178,7 @@
 		;	cflags
 		;	cflags_for_regs
 		;	cflags_for_gotos
+		;	c_debug
 		;	c_include_directory
 		;	aditi
 		;	fact_table_max_array_size
@@ -215,6 +218,10 @@
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
+		;	deforestation
+		;	deforestation_depth_limit
+		;	deforestation_cost_factor
+		;	deforestation_vars_threshold
 		;	termination
 		;	check_termination
 		;	verbose_check_termination
@@ -269,6 +276,7 @@
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
+		;	use_subdirs
 		;	help.
 
 :- implementation.
@@ -296,7 +304,6 @@ option_defaults(Option, Default) :-
 :- pred option_defaults_2(option_category, list(pair(option, option_data))).
 :- mode option_defaults_2(in, out) is det.
 :- mode option_defaults_2(out, out) is multidet.
-:- mode option_defaults_2(in(bound(optimization_option)), out) is det.
 
 option_defaults_2(warning_option, [
 		% Warning Options
@@ -334,7 +341,8 @@ option_defaults_2(verbosity_option, [
 	debug_inst_keys		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
-	debug_vn		- 	int(0)
+	debug_vn		- 	int(0),
+	debug_pd		-	bool(no)
 ]).
 option_defaults_2(output_option, [
 		% Output Options (mutually exclusive)
@@ -355,7 +363,7 @@ option_defaults_2(output_option, [
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	assume_gmake		-	bool(yes),
-	generate_trace		-	bool(no),
+	trace			-	string("default"),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -394,10 +402,11 @@ option_defaults_2(compilation_model_option, [
 	profile_calls		-	bool(no),
 	profile_time		-	bool(no),
 	profile_memory		-	bool(no),
+	debug			-	bool_special,
+	require_tracing		-	bool(no),
 	stack_trace		-	bool(no),
 	use_trail		-	bool(no),
 	pic_reg			-	bool(no),
-	debug			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
 					% -1 is a special value which means
@@ -425,6 +434,7 @@ option_defaults_2(compilation_model_option, [
 ]).
 option_defaults_2(code_gen_option, [
 		% Code Generation Options
+	low_level_debug		-	bool(no),
 	trad_passes		-	bool(yes),
 	polymorphism		-	bool(yes),
 	lazy_code		-	bool(yes),
@@ -452,6 +462,7 @@ option_defaults_2(code_gen_option, [
 					% the `mmc' script will override the
 					% above two defaults with values
 					% determined at configuration time
+	c_debug			-	bool(no),
 	c_include_directory	-	string(""),
 					% the `mmc' script will override the
 					% above default with a value determined
@@ -509,6 +520,10 @@ option_defaults_2(optimization_option, [
 	optimize_higher_order	-	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
+	deforestation		-	bool(no),
+	deforestation_depth_limit	-	int(4),
+	deforestation_cost_factor	-	int(1000),
+	deforestation_vars_threshold 	-	int(200),
 
 % HLDS -> LLDS
 	smart_indexing		-	bool(no),
@@ -570,6 +585,7 @@ option_defaults_2(miscellaneous_option, [
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
 				-	bool(yes),
+	use_subdirs		-	bool(no),
 	help 			-	bool(no)
 ]).
 
@@ -632,6 +648,7 @@ long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
 long_option("debug-vn",			debug_vn).
+long_option("debug-pd",			debug_pd).
 
 % output options (mutually exclusive)
 long_option("generate-dependencies",	generate_dependencies).
@@ -665,7 +682,7 @@ long_option("compile-only",		compile_only).
 
 % aux output options
 long_option("assume-gmake",		assume_gmake).
-long_option("generate-trace",		generate_trace).
+long_option("trace",			trace).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -704,10 +721,13 @@ long_option("memory-profiling",		memory_profiling).
 long_option("profile-calls",		profile_calls).
 long_option("profile-time",		profile_time).
 long_option("profile-memory",		profile_memory).
-long_option("stack-trace",		stack_trace).
+long_option("debug",			debug).
+% The following options are not allowed, because they're
+% not very useful and would probably only confuse people.
+% long_option("stack-trace",		stack_trace).
+% long_option("require-tracing",		require_tracking).
 long_option("use-trail",		use_trail).
 long_option("pic-reg",			pic_reg).
-long_option("debug",			debug).
 long_option("tags",			tags).
 long_option("num-tag-bits",		num_tag_bits).
 long_option("bits-per-word",		bits_per_word).
@@ -728,6 +748,7 @@ long_option("high-level-c",		highlevel_c).
 long_option("unboxed-float",		unboxed_float).
 
 % code generation options
+long_option("low-level-debug",		low_level_debug).
 long_option("polymorphism",		polymorphism).
 long_option("trad-passes",		trad_passes).
 long_option("lazy-code",		lazy_code).
@@ -747,6 +768,7 @@ long_option("cc",			cc).
 long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
+long_option("c-debug",			c_debug).
 long_option("c-include-directory",	c_include_directory).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
@@ -798,6 +820,10 @@ long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
+long_option("deforestation",		deforestation).
+long_option("deforestation-depth-limit",	deforestation_depth_limit).
+long_option("deforestation-cost-factor",	deforestation_cost_factor).
+long_option("deforestation-vars-threshold",	deforestation_vars_threshold).
 long_option("enable-termination",	termination).
 long_option("enable-term",		termination).
 long_option("check-termination",	check_termination).
@@ -886,6 +912,7 @@ long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
 					use_search_directories_for_intermod).	
+long_option("use-subdirs",		use_subdirs).	
 
 %-----------------------------------------------------------------------------%
 
@@ -1087,6 +1114,7 @@ opt_level(3, _, [
 	optimize_saved_vars	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
 	optimize_higher_order	-	bool(yes),
+	deforestation		-	bool(no),	% buggy
 	constant_propagation	-	bool(yes),
 	optimize_repeat		-	int(4)
 ]).
@@ -1238,7 +1266,10 @@ options_help_verbosity -->
 	io__write_string("\t\tOutput detailed debugging traces of the value numbering\n"),
 	io__write_string("\t\toptimization pass. The different bits in the number\n"),
 	io__write_string("\t\targument of this option control the printing of\n"),
-	io__write_string("\t\tdifferent types of tracing messages.\n").
+	io__write_string("\t\tdifferent types of tracing messages.\n"),
+	io__write_string("\t--debug-pd\n"),
+	io__write_string("\t\tOutput detailed debugging traces of the partial\n"),
+	io__write_string("\t\tdeduction and deforestation process.\n").
 
 :- pred options_help_output(io__state::di, io__state::uo) is det.
 
@@ -1301,9 +1332,11 @@ options_help_aux_output -->
 	io__write_string("\t\tWhen generating `.dep' files, generate Makefile\n"),
 	io__write_string("\t\tfragments that use only the features of standard make;\n"),
 	io__write_string("\t\tdo not assume the availability of GNU Make extensions.\n"),
-	io__write_string("\t--generate-trace\n"),
-	io__write_string("\t\tInclude code to generate an execution trace in the\n"),
-	io__write_string("\t\tC code output by the compiler.\n"),
+	io__write_string("\t--trace {minimum, interfaces, all, default}\n"),
+	io__write_string("\t\tGenerate code that includes the specified level\n"), 
+	io__write_string("\t\tof execution tracing.\n"),
+	io__write_string("\t\tSee the [XXX not yet written!] chapter of the\n"),
+	io__write_string("\t\tMercury User's Guide for details.\n"),
 	io__write_string("\t--generate-bytecode\n"),
 	io__write_string("\t\tOutput a bytecode form of the module for use\n"),
 	io__write_string("\t\tby an experimental debugger.\n"),
@@ -1482,10 +1515,9 @@ your program compiled with different options.
 ********************/
 	io__write_string("\t--debug\t\t\t"),
 	io__write_string("\t(grade modifier: `.debug')\n"),
-	io__write_string("\t\tEnable debugging.\n"),
-	io__write_string("\t\tDebugging support is currently extremely primitive.\n"),
-	io__write_string("\t\tWe recommend that you use instead use `mnp' or `msp'.\n"),
-	io__write_string("\t\tSee the Mercury User's Guide for details.\n"),
+	io__write_string("\t\tEnable Mercury-level debugging.\n"),
+	io__write_string("\t\tSee the [XXX not yet written!] chapter of the\n"),
+	io__write_string("\t\tMercury User's Guide for details.\n"),
 	io__write_string("\t--pic-reg\t\t"),
 	io__write_string("\t(grade modifier: `.pic_reg')\n"),
 	io__write_string("\t[For Unix with intel x86 architecture only]\n"),
@@ -1593,6 +1625,14 @@ your program compiled with different options.
 
 options_help_code_generation -->
 	io__write_string("\nCode generation options:\n"),
+	io__write_string("\t--low-level-debug\n"),
+	io__write_string("\t\tEnables various low-level debugging stuff, that was in\n"),
+	io__write_string("\t\tthe distant past used to debug the low-level code generation.\n"),
+	io__write_string("\t\tYou don't want to use this option unless you are hacking\n"),
+	io__write_string("\t\tthe Mercury compiler itself (and probably not even then).\n"),
+	io__write_string("\t\tCauses the generated code to become VERY big and VERY\n"),
+	io__write_string("\t\tinefficient.  Slows down compilation a LOT.\n"),
+
 	io__write_string("\t--no-trad-passes\n"),
 	io__write_string("\t\tThe default `--trad-passes' completely processes each predicate\n"),
 	io__write_string("\t\tbefore going on to the next predicate.\n"),
@@ -1615,6 +1655,14 @@ options_help_code_generation -->
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler.\n"),
+		% The --cflags-for-regs and --cflags-for-gotos options
+		% are reserved for use by the `mmc' script;
+		% they are deliberately not documented.
+
+	io__write_string("\t--c-debug\n"),
+	io__write_string("\t\tEnable debugging of the generated C code.\n"),
+	io__write_string("\t\t(This has the same effect as `--cflags -g'.)\n"),
+
 	io__write_string("\t--fact-table-max-array-size <n>\n"),
 	io__write_string("\t\tSpecify the maximum number of elements in a single\n"),
 	io__write_string("\t\t`pragma fact_table' data array (default: 1024).\n"),
@@ -1714,7 +1762,20 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tEnable specialization higher-order predicates.\n"),
 	io__write_string("\t--optimize-constructor-last-call\n"),
 	io__write_string("\t\tEnable the optimization of ""last"" calls that are followed by\n"),
-	io__write_string("\t\tconstructor application.\n").
+	io__write_string("\t\tconstructor application.\n"),
+	io__write_string("\t--deforestation\n"),
+	io__write_string("\t\tEnable deforestation. Deforestation is a program\n"),
+	io__write_string("\t\ttransformation whose aim is to avoid the construction of\n"),
+	io__write_string("\t\tintermediate data structures and to avoid repeated traversals\n"),
+	io__write_string("\t\tover data structures within a conjunction.\n"),
+	io__write_string("\t--deforestation-depth-limit\n"),
+	io__write_string("\t\tSpecify a depth limit for the deforestation algorithm\n"),
+	io__write_string("\t\tin addition to the usual termination checks.\n"),
+	io__write_string("\t\tA value of -1 specifies no depth limit. The default is 4.\n"),
+	io__write_string("\t--deforestation-vars-threshold\n"),
+	io__write_string("\t\tSpecify a rough limit on the number of variables\n"),
+	io__write_string("\t\tin a procedure created by deforestation.\n"),
+	io__write_string("\t\tA value of -1 specifies no limit. The default is 200.\n").
 	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
 
@@ -1864,8 +1925,10 @@ options_help_misc -->
 	io__write_string("\t--no-use-search-directories-for-intermod\n"),
 	io__write_string("\t\tDon't add arguments to `--search-directory' to the list\n"),
 	io__write_string("\t\tof directories to search for `.opt' files - use only the\n"),
-	io__write_string("\t\tdirectories given by `--intermod-directory'.\n").
-
+	io__write_string("\t\tdirectories given by `--intermod-directory'.\n"),
+	io__write_string("\t--use-subdirs\n"),
+	io__write_string("\t\tGenerate intermediate files in a `Mercury' subdirectory,\n"),
+	io__write_string("\t\trather than generating them in the current directory.\n").
 
 :- end_module options.
 

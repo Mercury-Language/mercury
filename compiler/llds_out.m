@@ -17,14 +17,14 @@
 
 :- interface.
 
-:- import_module llds, hlds_data, prog_data, hlds_data.
-:- import_module bool, io.
+:- import_module llds, prog_data, hlds_data.
+:- import_module set_bbbtree, bool, io.
 
 	% Given a 'c_file' structure, open the appropriate .c file
 	% and output the code into that file.
 
-:- pred output_c_file(c_file, io__state, io__state).
-:- mode output_c_file(in, di, uo) is det.
+:- pred output_c_file(c_file, set_bbbtree(label), io__state, io__state).
+:- mode output_c_file(in, in, di, uo) is det.
 
 	% Convert an lval to a string description of that lval.
 
@@ -117,8 +117,8 @@
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 
-:- import_module int, list, char, string, set, std_util, term, varset.
-:- import_module assoc_list, require.
+:- import_module int, list, char, string, std_util, term, varset.
+:- import_module set, bintree_set, assoc_list, require.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
@@ -127,7 +127,7 @@
 % set of symbols we've already declared.  That way, we avoid generating
 % the same symbol twice, which would cause an error in the C code.
 
-:- type decl_set ==	set(decl_id).
+:- type decl_set ==	bintree_set(decl_id).
 
 :- type decl_id --->	create_label(int)
 		;	float_label(string)
@@ -135,16 +135,17 @@
 		;	data_addr(data_addr)
 		;	pragma_c_struct(string).
 
-output_c_file(C_File) -->
+output_c_file(C_File, StackLayoutLabels) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
-		module_name_to_file_name(ModuleName, ".dir", ObjDirName),
+		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_c_file_init(ModuleName, C_Modules),
-		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo)
+		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo,
+			StackLayoutLabels)
 	;
-		output_single_c_file(C_File, no)
+		output_single_c_file(C_File, no, StackLayoutLabels)
 	).
 
 :- pred make_directory(string, io__state, io__state).
@@ -156,21 +157,23 @@ make_directory(DirName) -->
 	io__call_system(Command, _Result).
 
 :- pred output_c_file_list(list(c_module), int, module_name,
-			list(c_header_code), io__state, io__state).
-:- mode output_c_file_list(in, in, in, in, di, uo) is det.
+	list(c_header_code), set_bbbtree(label), io__state, io__state).
+:- mode output_c_file_list(in, in, in, in, in, di, uo) is det.
 
-output_c_file_list([], _, _, _) --> [].
-output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines) -->
+output_c_file_list([], _, _, _, _) --> [].
+output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines,
+		StackLayoutLabels) -->
 	output_single_c_file(c_file(ModuleName, C_HeaderLines, [Module]),
-		yes(Num)),
+		yes(Num), StackLayoutLabels),
 	{ Num1 is Num + 1 },
-	output_c_file_list(Modules, Num1, ModuleName, C_HeaderLines).
+	output_c_file_list(Modules, Num1, ModuleName, C_HeaderLines,
+		StackLayoutLabels).
 
 :- pred output_c_file_init(module_name, list(c_module), io__state, io__state).
 :- mode output_c_file_init(in, in, di, uo) is det.
 
 output_c_file_init(ModuleName, C_Modules) -->
-	module_name_to_file_name(ModuleName, ".m", SourceFileName),
+	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
 
 	io__tell(FileName, Result),
@@ -205,23 +208,24 @@ output_c_file_init(ModuleName, C_Modules) -->
 		io__set_exit_status(1)
 	).
 
-:- pred output_single_c_file(c_file, maybe(int), io__state, io__state).
-:- mode output_single_c_file(in, in, di, uo) is det.
+:- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
+	io__state, io__state).
+:- mode output_single_c_file(in, in, in, di, uo) is det.
 
-output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles) 
-		-->
+output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
+		StackLayoutLabels) -->
 	( { SplitFiles = yes(Num) } ->
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
 			FileName)
 	;
-		module_name_to_file_name(ModuleName, ".c", FileName)
+		module_name_to_file_name(ModuleName, ".c", yes, FileName)
 	),
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ library__version(Version) },
-		module_name_to_file_name(ModuleName, ".m", SourceFileName),
+		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 		io__write_strings(
 			["/*\n",
 			"** Automatically generated from `", SourceFileName,
@@ -243,9 +247,9 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles)
 		output_c_header_include_lines(C_HeaderLines),
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
-		{ set__init(DeclSet0) },
+		{ bintree_set__init(DeclSet0) },
 		output_c_label_decl_list(Labels, DeclSet0, DeclSet),
-		output_c_module_list(Modules, DeclSet),
+		output_c_module_list(Modules, StackLayoutLabels, DeclSet),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
@@ -424,18 +428,21 @@ output_bunch_name(ModuleName, Number) -->
 	io__write_string("_bunch_"),
 	io__write_int(Number).
 
-:- pred output_c_module_list(list(c_module), decl_set, io__state, io__state).
-:- mode output_c_module_list(in, in, di, uo) is det.
+:- pred output_c_module_list(list(c_module), set_bbbtree(label), decl_set,
+	io__state, io__state).
+:- mode output_c_module_list(in, in, in, di, uo) is det.
 
-output_c_module_list([], _) --> [].
-output_c_module_list([M | Ms], DeclSet0) -->
-	output_c_module(M, DeclSet0, DeclSet),
-	output_c_module_list(Ms, DeclSet).
+output_c_module_list([], _, _) --> [].
+output_c_module_list([M | Ms], StackLayoutLabels, DeclSet0) -->
+	output_c_module(M, StackLayoutLabels, DeclSet0, DeclSet),
+	output_c_module_list(Ms, StackLayoutLabels, DeclSet).
 
-:- pred output_c_module(c_module, decl_set, decl_set, io__state, io__state).
-:- mode output_c_module(in, in, out, di, uo) is det.
+:- pred output_c_module(c_module, set_bbbtree(label), decl_set, decl_set,
+	io__state, io__state).
+:- mode output_c_module(in, in, in, out, di, uo) is det.
 
-output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
+output_c_module(c_module(ModuleName, Procedures), StackLayoutLabels,
+		DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	output_c_procedure_list_decls(Procedures, DeclSet0, DeclSet),
 	io__write_string("\n"),
@@ -443,7 +450,7 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
 	io__write_string(ModuleName),
 	io__write_string(")\n"),
 	{ gather_c_module_labels(Procedures, Labels) },
-	output_c_label_init_list(Labels),
+	output_c_label_init_list(Labels, StackLayoutLabels),
 	io__write_string("BEGIN_CODE\n"),
 	io__write_string("\n"),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
@@ -452,7 +459,7 @@ output_c_module(c_module(ModuleName, Procedures), DeclSet0, DeclSet) -->
 	io__write_string("END_MODULE\n").
 
 output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
-		_Refs), DeclSet0, DeclSet) -->
+		_Refs), _, DeclSet0, DeclSet) -->
 	io__write_string("\n"),
 	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
 	output_cons_arg_decls(ArgVals, "", "", 0, _, DeclSet0, DeclSet1),
@@ -469,9 +476,9 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 	),
 	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, "", "",
 		0, _),
-	{ set__insert(DeclSet1, DataAddr, DeclSet) }.
+	{ bintree_set__insert(DeclSet1, DataAddr, DeclSet) }.
 
-output_c_module(c_code(C_Code, Context), DeclSet, DeclSet) -->
+output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
@@ -485,7 +492,7 @@ output_c_module(c_code(C_Code, Context), DeclSet, DeclSet) -->
 	io__write_string("\n"),
 	output_reset_line_num.
 
-output_c_module(c_export(PragmaExports), DeclSet, DeclSet) -->
+output_c_module(c_export(PragmaExports), _, DeclSet, DeclSet) -->
 	output_exported_c_functions(PragmaExports).
 
 	% output_c_header_include_lines reverses the list of c header lines
@@ -522,6 +529,7 @@ output_c_header_include_lines_2([Code - Context|Hs]) -->
 
 :- pred output_exported_c_functions(list(string), io__state, io__state).
 :- mode output_exported_c_functions(in, di, uo) is det.
+
 output_exported_c_functions([]) --> [].
 output_exported_c_functions([F | Fs]) -->
 	io__write_string(F),
@@ -564,40 +572,57 @@ output_c_label_decl(Label, DeclSet0, DeclSet) -->
 		{ Label = local(_, _) },
 		io__write_string("Declare_label(")
 	),
-	{ set__insert(DeclSet0, code_addr(label(Label)), DeclSet) },
+	{ bintree_set__insert(DeclSet0, code_addr(label(Label)), DeclSet) },
 	output_label(Label),
 	io__write_string(");\n").
 
-:- pred output_c_label_init_list(list(label), io__state, io__state).
-:- mode output_c_label_init_list(in, di, uo) is det.
+:- pred output_c_label_init_list(list(label), set_bbbtree(label),
+	io__state, io__state).
+:- mode output_c_label_init_list(in, in, di, uo) is det.
 
-output_c_label_init_list([]) --> [].
-output_c_label_init_list([Label | Labels]) -->
-	output_c_label_init(Label),
-	output_c_label_init_list(Labels).
+output_c_label_init_list([], _) --> [].
+output_c_label_init_list([Label | Labels], StackLayoutLabels) -->
+	output_c_label_init(Label, StackLayoutLabels),
+	output_c_label_init_list(Labels, StackLayoutLabels).
 
-:- pred output_c_label_init(label, io__state, io__state).
-:- mode output_c_label_init(in, di, uo) is det.
+:- pred output_c_label_init(label, set_bbbtree(label), io__state, io__state).
+:- mode output_c_label_init(in, in, di, uo) is det.
 
-output_c_label_init(Label) -->
+output_c_label_init(Label, StackLayoutLabels) -->
 	(
 		{ Label = exported(_) },
-		io__write_string("\tinit_entry("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_entry_sl(")
+		;
+			io__write_string("\tinit_entry(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	;
 		{ Label = local(_) },
-		io__write_string("\tinit_entry("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_entry_sl(")
+		;
+			io__write_string("\tinit_entry(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	;
 		{ Label = c_local(_) },
-		io__write_string("\tinit_local("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_local_sl(")
+		;
+			io__write_string("\tinit_local(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	;
 		{ Label = local(_, _) },
-		io__write_string("\tinit_label("),
+		( { set_bbbtree__member(Label, StackLayoutLabels) } ->
+			io__write_string("\tinit_label_sl(")
+		;
+			io__write_string("\tinit_label(")
+		),
 		output_label(Label),
 		io__write_string(");\n")
 	).
@@ -651,9 +676,9 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 	io__write_int(ModeNum),
 	io__write_string(" */\n"),
 	{ llds_out__find_caller_label(Instrs, CallerLabel) },
-	{ set__init(ContLabelSet0) },
+	{ bintree_set__init(ContLabelSet0) },
 	{ llds_out__find_cont_labels(Instrs, ContLabelSet0, ContLabelSet) },
-	{ set__init(WhileSet0) },
+	{ bintree_set__init(WhileSet0) },
 	( { EmitCLoops = yes } ->
 		{ llds_out__find_while_labels(Instrs, WhileSet0, WhileSet) }
 	;
@@ -685,7 +710,8 @@ llds_out__find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
 	% Locate all the labels which are the continutation labels for calls
 	% or nondet disjunctions, and store them in ContLabelSet.
 
-:- pred llds_out__find_cont_labels(list(instruction), set(label), set(label)).
+:- pred llds_out__find_cont_labels(list(instruction),
+	bintree_set(label), bintree_set(label)).
 :- mode llds_out__find_cont_labels(in, in, out) is det.
 
 llds_out__find_cont_labels([], ContLabelSet, ContLabelSet).
@@ -703,7 +729,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 				const(code_addr_const(label(ContLabel))))
 		)
 	->
-		set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
+		bintree_set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
 	;
 		Instr = block(_, _, Block)
 	->
@@ -731,7 +757,8 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 	%
 	% The second of these is better if we don't have fast jumps.
 
-:- pred llds_out__find_while_labels(list(instruction), set(label), set(label)).
+:- pred llds_out__find_while_labels(list(instruction),
+	bintree_set(label), bintree_set(label)).
 :- mode llds_out__find_while_labels(in, in, out) is det.
 
 llds_out__find_while_labels([], WhileSet, WhileSet).
@@ -741,7 +768,7 @@ llds_out__find_while_labels([Instr0 - _ | Instrs0], WhileSet0, WhileSet) :-
 		llds_out__is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
 		UseCount > 0
 	->
-		set__insert(WhileSet0, Label, WhileSet1),
+		bintree_set__insert(WhileSet0, Label, WhileSet1),
 		llds_out__find_while_labels(Instrs1, WhileSet1, WhileSet)
 	;
 		llds_out__find_while_labels(Instrs0, WhileSet0, WhileSet)
@@ -801,7 +828,7 @@ output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
 		{ MaybeStruct = yes(pragma_c_struct(StructName,
 			StructFields, MaybeStructFieldsContext)) }
 	->
-		{ set__member(pragma_c_struct(StructName), DeclSet0) ->
+		{ bintree_set__is_member(pragma_c_struct(StructName), DeclSet0) ->
 			string__append_list(["struct ", StructName, " has been declared already"], Msg),
 			error(Msg)
 		;
@@ -818,7 +845,7 @@ output_instruction_decls(mkframe(_, _, MaybeStruct, FailureContinuation),
 			io__write_string(StructFields)
 		),
 		io__write_string("\n};\n"),
-		{ set__insert(DeclSet0, pragma_c_struct(StructName), DeclSet1) }
+		{ bintree_set__insert(DeclSet0, pragma_c_struct(StructName), DeclSet1) }
 	;
 		{ DeclSet1 = DeclSet0 }
 	),
@@ -853,8 +880,8 @@ output_instruction_decls(discard_tickets_to(Rval), DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet).
 output_instruction_decls(incr_sp(_, _), DeclSet, DeclSet) --> [].
 output_instruction_decls(decr_sp(_), DeclSet, DeclSet) --> [].
-output_instruction_decls(pragma_c(_, Components, _, _), DeclSet0, DeclSet) -->
-	output_pragma_c_component_list_decls(Components, DeclSet0, DeclSet).
+output_instruction_decls(pragma_c(_, Comps, _, _, _), DeclSet0, DeclSet) -->
+	output_pragma_c_component_list_decls(Comps, DeclSet0, DeclSet).
 
 :- pred output_pragma_c_component_list_decls(list(pragma_c_component),
 	decl_set, decl_set, io__state, io__state).
@@ -881,7 +908,7 @@ output_pragma_c_component_decls(pragma_c_user_code(_, _), DeclSet, DeclSet)
 %-----------------------------------------------------------------------------%
 
 :- pred output_instruction_list(list(instruction), bool,
-	pair(label, set(label)), set(label),
+	pair(label, bintree_set(label)), bintree_set(label),
 	io__state, io__state).
 :- mode output_instruction_list(in, in, in, in, di, uo) is det.
 
@@ -890,7 +917,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
 		WhileSet) -->
 	output_instruction_and_comment(Instr0, Comment0,
 		PrintComments, ProfInfo),
-	( { Instr0 = label(Label), set__member(Label, WhileSet) } ->
+	( { Instr0 = label(Label), bintree_set__is_member(Label, WhileSet) } ->
 		io__write_string("\twhile (1) {\n"),
 		output_instruction_list_while(Instrs, Label,
 			PrintComments, ProfInfo, WhileSet)
@@ -900,7 +927,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
 	).
 
 :- pred output_instruction_list_while(list(instruction), label,
-	bool, pair(label, set(label)), set(label),
+	bool, pair(label, bintree_set(label)), bintree_set(label),
 	io__state, io__state).
 :- mode output_instruction_list_while(in, in, in, in, in, di, uo) is det.
 
@@ -937,7 +964,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
 	).
 
 :- pred output_instruction_and_comment(instr, string, bool,
-	pair(label, set(label)), io__state, io__state).
+	pair(label, bintree_set(label)), io__state, io__state).
 :- mode output_instruction_and_comment(in, in, in, in, di, uo) is det.
 
 output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
@@ -964,7 +991,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo) -->
 	% Normally we use output_instruction_and_comment/6.
 
 output_instruction_and_comment(Instr, Comment, PrintComments) -->
-	{ set__init(ContLabelSet) },
+	{ bintree_set__init(ContLabelSet) },
 	{ hlds_pred__initial_proc_id(ProcId) },
 	{ DummyModule = unqualified("DEBUG") },
 	{ DummyPredName = "DEBUG" },
@@ -976,7 +1003,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments) -->
 	% Normally we use output_instruction/4.
 
 output_instruction(Instr) -->
-	{ set__init(ContLabelSet) },
+	{ bintree_set__init(ContLabelSet) },
 	{ hlds_pred__initial_proc_id(ProcId) },
 	{ DummyModule = unqualified("DEBUG") },
 	{ DummyPredName = "DEBUG" },
@@ -984,8 +1011,8 @@ output_instruction(Instr) -->
 			DummyPredName, 0, ProcId)) - ContLabelSet },
 	output_instruction(Instr, ProfInfo).
 
-:- pred output_instruction(instr, pair(label, set(label)),
-				io__state, io__state).
+:- pred output_instruction(instr, pair(label, bintree_set(label)),
+	io__state, io__state).
 :- mode output_instruction(in, in, di, uo) is det.
 
 output_instruction(comment(Comment), _) -->
@@ -1014,7 +1041,7 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
 		[]
 	),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
-	{ set__init(WhileSet0) },
+	{ bintree_set__init(WhileSet0) },
 	output_instruction_list(Instrs, PrintComments, ProfInfo,
 		WhileSet0),
 	io__write_string("\t}\n").
@@ -1153,7 +1180,7 @@ output_instruction(decr_sp(N), _) -->
 	io__write_int(N),
 	io__write_string(");\n").
 
-output_instruction(pragma_c(Decls, Components, _, _), _) -->
+output_instruction(pragma_c(Decls, Components, _, _, _), _) -->
 	io__write_string("\t{\n"),
 	output_pragma_decls(Decls),
 	output_pragma_c_components(Components),
@@ -1479,11 +1506,11 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
 			N0, N, DeclSet0, DeclSet)
 	; { Const = data_addr_const(DataAddr) } ->
-		( { set__member(data_addr(DataAddr), DeclSet0) } ->
+		( { bintree_set__is_member(data_addr(DataAddr), DeclSet0) } ->
 			{ N = N0 },
 			{ DeclSet = DeclSet0 }
 		;
-			{ set__insert(DeclSet0, data_addr(DataAddr), DeclSet) },
+			{ bintree_set__insert(DeclSet0, data_addr(DataAddr), DeclSet) },
 			output_data_addr_decls(DataAddr,
 				FirstIndent, LaterIndent, N0, N)
 		)
@@ -1500,11 +1527,11 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 		( { UnboxedFloat = no, StaticGroundTerms = yes } ->
 			{ llds_out__float_literal_name(FloatVal, FloatName) },
 			{ FloatLabel = float_label(FloatName) },
-			( { set__member(FloatLabel, DeclSet0) } ->
+			( { bintree_set__is_member(FloatLabel, DeclSet0) } ->
 				{ N = N0 },
 				{ DeclSet = DeclSet0 }
 			;
-				{ set__insert(DeclSet0, FloatLabel, DeclSet) },
+				{ bintree_set__insert(DeclSet0, FloatLabel, DeclSet) },
 				{ string__float_to_string(FloatVal,
 					FloatString) },
 				output_indent(FirstIndent, LaterIndent, N0),
@@ -1549,11 +1576,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 			FloatName) }
 	    ->
 		{ FloatLabel = float_label(FloatName) },
-		( { set__member(FloatLabel, DeclSet2) } ->
+		( { bintree_set__is_member(FloatLabel, DeclSet2) } ->
 			{ N = N2 },
 			{ DeclSet = DeclSet2 }
 		;
-			{ set__insert(DeclSet2, FloatLabel, DeclSet) },
+			{ bintree_set__insert(DeclSet2, FloatLabel, DeclSet) },
 			output_indent(FirstIndent, LaterIndent, N2),
 			{ N is N2 + 1 },
 			io__write_string(
@@ -1584,11 +1611,11 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent, N0, N,
 output_rval_decls(create(_Tag, ArgVals, _, Label, _), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
-	( { set__member(CreateLabel, DeclSet0) } ->
+	( { bintree_set__is_member(CreateLabel, DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ set__insert(DeclSet0, CreateLabel, DeclSet1) },
+		{ bintree_set__insert(DeclSet0, CreateLabel, DeclSet1) },
 		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
 			DeclSet1, DeclSet),
 		output_const_term_decl(ArgVals, CreateLabel, no, FirstIndent,
@@ -1888,11 +1915,11 @@ output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent, N0, N,
 
 output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, N0, N,
 		DeclSet0, DeclSet) -->
-	( { set__member(code_addr(CodeAddress), DeclSet0) } ->
+	( { bintree_set__is_member(code_addr(CodeAddress), DeclSet0) } ->
 		{ N = N0 },
 		{ DeclSet = DeclSet0 }
 	;
-		{ set__insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
+		{ bintree_set__insert(DeclSet0, code_addr(CodeAddress), DeclSet) },
 		need_code_addr_decls(CodeAddress, NeedDecl),
 		( { NeedDecl = yes } ->
 			output_indent(FirstIndent, LaterIndent, N0),
@@ -2057,13 +2084,13 @@ output_indent(FirstIndent, LaterIndent, N0) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_output_update_prof_counter(label, pair(label, set(label)),
-	io__state, io__state).
+:- pred maybe_output_update_prof_counter(label,
+	pair(label, bintree_set(label)), io__state, io__state).
 :- mode maybe_output_update_prof_counter(in, in, di, uo) is det.
 
 maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet) -->
 	(
-		{ set__member(Label, ContLabelSet) }
+		{ bintree_set__is_member(Label, ContLabelSet) }
 	->
 		io__write_string("\tupdate_prof_current_proc(LABEL("),
 		output_label(CallerLabel),
@@ -2282,7 +2309,7 @@ output_data_addr(ModuleName, VarName) -->
 		io__write_string(Str)
 	;
 		{ VarName = stack_layout(Label) },
-		io__write_string("_stack_layout__"),
+		io__write_string("_layout__"),
 		output_label(Label)
 	).
 
@@ -2390,7 +2417,9 @@ llds_out__get_label(c_local(ProcLabel), AddPrefix, ProcLabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr).
 llds_out__get_label(local(ProcLabel, Num), AddPrefix, LabelStr) :-
 	llds_out__get_proc_label(ProcLabel, AddPrefix, ProcLabelStr),
-	string__format("%s_i%i", [s(ProcLabelStr), i(Num)], LabelStr).
+	string__int_to_string(Num, NumStr),
+	string__append("_i", NumStr, NumSuffix),
+	string__append(ProcLabelStr, NumSuffix, LabelStr).
 
 llds_out__get_proc_label(proc(DefiningModule, PredOrFunc, PredModule,
 		PredName, Arity, ModeNum0), AddPrefix, ProcLabelString) :-
@@ -2466,8 +2495,8 @@ get_label_name(DefiningModule, PredOrFunc, DeclaringModule,
 		)
 		% The conditions above define which labels are printed without
 		% module qualification.  XXX Changes to runtime/* are necessary
-		% to allow `mercury_builtin' labels to be qualified/
-		% overloaded.
+		% to allow `builtin' or `private_builtin' labels to be
+		% qualified.
 	->
 		LabelName0 = Name0
 	;

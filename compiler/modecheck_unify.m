@@ -20,14 +20,13 @@
 :- module modecheck_unify.
 :- interface.
 
-:- import_module hlds_goal, hlds_data, prog_data, mode_info, modes.
+:- import_module hlds_goal, hlds_data, prog_data, mode_info.
 :- import_module map, term, list.
 
 	% Modecheck a unification
 :- pred modecheck_unification( var, unify_rhs, unification, unify_context,
-			hlds_goal_info, how_to_check_goal, hlds_goal_expr,
-			mode_info, mode_info).
-:- mode modecheck_unification(in, in, in, in, in, in, out,
+			hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
+:- mode modecheck_unification(in, in, in, in, in, out,
 			mode_info_di, mode_info_uo) is det.
 
 	% Work out what kind of unification a var-var unification is.
@@ -91,7 +90,7 @@ mode_info_make_aliased_insts([V | Vs], [I | Is], ModeInfo0, ModeInfo) :-
 	),
 	mode_info_make_aliased_insts(Vs, Is, ModeInfo2, ModeInfo).
 
-modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
+modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo,
 			Unify, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
@@ -160,14 +159,14 @@ modecheck_unification(X, var(Y), _Unification0, UnifyContext, _GoalInfo, _,
 	).
 
 modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
-			UnifyContext, GoalInfo0, HowToCheckGoal,
-			Goal, ModeInfo0, ModeInfo) :-
+			UnifyContext, GoalInfo0, Goal, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_var_types(ModeInfo0, VarTypes0),
 	map__lookup(VarTypes0, X0, TypeOfX),
 	module_info_get_predicate_table(ModuleInfo0, PredTable),
 	list__length(ArgVars0, Arity),
 	mode_info_get_predid(ModeInfo0, ThisPredId),
+	mode_info_get_how_to_check(ModeInfo0, HowToCheckGoal),
 	(
 		%
 		% is the function symbol apply/N or ''/N,
@@ -177,7 +176,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% then don't bother checking, since they will have already
 		% been expanded.)
 		%
-		HowToCheckGoal \= check_unique_modes,
+		HowToCheckGoal \= check_unique_modes(_),
 		ConsId0 = cons(unqualified(ApplyName), _),
 		( ApplyName = "apply" ; ApplyName = "" ),
 		Arity >= 1,
@@ -201,7 +200,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		% As an optimization, if HowToCheck = check_unique_modes,
 		% then don't bother checking, since they will have already
 		% been expanded.
-		HowToCheckGoal \= check_unique_modes,
+		HowToCheckGoal \= check_unique_modes(_),
 
 		% Find the set of candidate predicates which have the
 		% specified name and arity (and module, if module-qualified)
@@ -374,8 +373,7 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 				argument_modes(ArgInstTable, LambdaModes),
 				LambdaDet, IMDelta, LambdaGoal),
 		modecheck_unification( X0, Functor0, Unification0, UnifyContext,
-				GoalInfo0, HowToCheckGoal, Goal,
-				ModeInfo2, ModeInfo)
+				GoalInfo0, Goal, ModeInfo2, ModeInfo)
 	;
 		%
 		% It's not a higher-order pred unification - just
@@ -383,14 +381,13 @@ modecheck_unification(X0, functor(ConsId0, ArgVars0), Unification0,
 		%
 		modecheck_unify_functor(X0, TypeOfX,
 			ConsId0, ArgVars0, Unification0, UnifyContext,
-			HowToCheckGoal, GoalInfo0,
-			Goal, ModeInfo0, ModeInfo)
+			GoalInfo0, Goal, ModeInfo0, ModeInfo)
 	).
 
 modecheck_unification(X, 
 		lambda_goal(PredOrFunc, ArgVars, Vars, Modes0, Det,
 				_, LambdaGoal0),
-		Unification0, UnifyContext, GoalInfo0, HowToCheckGoal,
+		Unification0, UnifyContext, GoalInfo0, 
 		Goal, ModeInfo0, ModeInfo) :-
 	%
 	% First modecheck the lambda goal itself:
@@ -432,6 +429,7 @@ modecheck_unification(X,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
+	mode_info_get_how_to_check(ModeInfo0, HowToCheckGoal),
 
 	( HowToCheckGoal = check_modes ->
 		% This only needs to be done once.
@@ -525,7 +523,7 @@ modecheck_unification(X,
 		% if we're being called from unique_modes.m, then we need to 
 		% call unique_modes__check_goal rather than modecheck_goal.
 		(
-			HowToCheckGoal = check_unique_modes
+			HowToCheckGoal = check_unique_modes(_)
 		->
 			unique_modes__check_goal(LambdaGoal0, LambdaGoal,
 				ModeInfo9, ModeInfo10)
@@ -651,14 +649,15 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes,
 	).
 
 :- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
-			unify_context, how_to_check_goal, hlds_goal_info,
+			unify_context, hlds_goal_info,
 			hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_unify_functor(in, in, in, in, in, in, in, in,
+:- mode modecheck_unify_functor(in, in, in, in, in, in, in,
 			out, mode_info_di, mode_info_uo) is det.
 
 modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
-			UnifyContext, HowToCheckGoal, GoalInfo0,
-			Goal, ModeInfo0, ModeInfo) :-
+			UnifyContext, GoalInfo0, Goal, ModeInfo0, ModeInfo) :-
+	mode_info_get_how_to_check(ModeInfo0, HowToCheckGoal),
+
 	%
 	% fully module qualify all cons_ids
 	% (except for builtins such as ints and characters).
@@ -840,7 +839,7 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 		% wouldn't have the correct determinism annotations.)
 		%
 		(
-			HowToCheckGoal = check_unique_modes,
+			HowToCheckGoal = check_unique_modes(_),
 			ExtraGoals \= no_extra_goals,
 			instmap__is_reachable(InstMap0)
 		->

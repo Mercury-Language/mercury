@@ -52,9 +52,22 @@
 	% they are indistinguishable; that is, whether any valid call to
 	% one mode would also be a valid call to the other.
 	% (If so, it is a mode error.)
+	% Note that mode declarations which only have different final insts
+	% do not count as distinguishable.
 	%
 :- pred modes_are_indistinguishable(proc_id, proc_id, pred_info, module_info).
 :- mode modes_are_indistinguishable(in, in, in, in) is semidet.
+
+	%
+	% Given two modes of a predicate, figure out whether
+	% they are identical, except that one is cc_nondet/cc_multi
+	% and the other is nondet/multi.
+	% This is used by determinism analysis to substitute
+	% a multi mode for a cc_multi one if the call occurs in a
+	% non-cc context.
+	%
+:- pred modes_are_identical_bar_cc(proc_id, proc_id, pred_info, module_info).
+:- mode modes_are_identical_bar_cc(in, in, in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -537,6 +550,71 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+	%
+	% Given two modes of a predicate, figure out whether
+	% they are identical, except that one is cc_nondet/cc_multi
+	% and the other is nondet/multi.
+	%
+	% The code for this is similar to the code for compare_proc/5 below
+	% and modes_are_indistinguishable/4 above.
+	%
+modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
+	pred_info_procedures(PredInfo, Procs),
+	map__lookup(Procs, ProcId, ProcInfo),
+	map__lookup(Procs, OtherProcId, OtherProcInfo),
+
+	%
+	% Compare the initial insts of the arguments
+	%
+	proc_info_argmodes(ProcInfo, 	
+		argument_modes(ProcArgInstTable, ProcArgModes)),
+	proc_info_argmodes(OtherProcInfo,
+		argument_modes(OtherProcArgInstTable, OtherProcArgModes0)),
+	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
+		Sub, InstTable),
+	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
+		OtherProcArgModes),
+	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
+	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
+							OtherInitialInsts),
+	compare_inst_list(InitialInsts, OtherInitialInsts, no, InstTable,
+		CompareInitialInsts, ModuleInfo),
+	CompareInitialInsts = same,
+
+	%
+	% Compare the final insts of the arguments
+	%
+	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
+	mode_list_get_final_insts(OtherProcArgModes, ModuleInfo,
+							OtherFinalInsts),
+	compare_inst_list(FinalInsts, OtherFinalInsts, no, InstTable,
+		CompareFinalInsts, ModuleInfo),
+	CompareFinalInsts = same,
+
+	%
+	% Compare the expected livenesses of the arguments
+	%
+	get_arg_lives(ProcArgModes, InstTable, ModuleInfo, ProcArgLives),
+	get_arg_lives(OtherProcArgModes, InstTable, ModuleInfo,
+		OtherProcArgLives),
+	compare_liveness_list(ProcArgLives, OtherProcArgLives, CompareLives),
+	CompareLives = same,
+
+	%
+	% Compare the determinisms, ignoring the cc part.
+	%
+	proc_info_interface_determinism(ProcInfo, Detism),
+	proc_info_interface_determinism(OtherProcInfo, OtherDetism),
+	determinism_components(Detism, CanFail, Solns),
+	determinism_components(OtherDetism, OtherCanFail, OtherSolns),
+	CanFail = OtherCanFail,
+	( Solns = OtherSolns
+	; Solns = at_most_many_cc, OtherSolns = at_most_many
+	; Solns = at_most_many, OtherSolns = at_most_many_cc
+	).
+
+%-----------------------------------------------------------------------------%
+
 /*
 The algorithm for choose_best_match is supposed to be equivalent
 to the following specification:
@@ -606,7 +684,8 @@ choose_best_match([ProcId | ProcIds], PredId, Procs, ArgVars, TheProcId,
 	% for calls which could match either mode.
 	%
 	% The code for this is similar to the code for
-	% modes_are_indistiguisable/4 above.
+	% modes_are_indistinguishable/4 and
+	% modes_are_identical_bar_cc/4 above.
 	%
 :- pred compare_proc(proc_id, proc_id, list(var), match, proc_table, mode_info).
 :- mode compare_proc(in, in, in, out, in, mode_info_ui) is det.

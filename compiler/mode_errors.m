@@ -744,13 +744,13 @@ report_mode_error_unify_var_functor(InstTable, ModeInfo, X, ConsId, Args,
 		io__write_string("'\n"),
 		prog_out__write_context(Context),
 		io__write_string("  has instantiatedness `"),
-		mercury_output_cons_id(ConsId, no),
+		mercury_output_cons_id(ConsId, does_not_need_brackets),
 		io__write_string("("),
 		output_inst_list(ArgInsts, InstVarSet, InstTable),
 		io__write_string(")")
 	;
 		io__write_string("' has instantiatedness `"),
-		mercury_output_cons_id(ConsId, no)
+		mercury_output_cons_id(ConsId, does_not_need_brackets)
 	),
 	io__write_string("'.\n").
 

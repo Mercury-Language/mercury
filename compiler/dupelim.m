@@ -114,7 +114,7 @@ dupelim__build_maps([Label | Labels], BlockMap, StdMap0, StdMap,
 	),
 	AddPragmaReferredLabels = lambda(
 		[Instr::in, FoldFixed0::in, FoldFixed::out] is det, (
-		( Instr = pragma_c(_, _, _, yes(PragmaLabel)) - _ ->
+		( Instr = pragma_c(_, _, _, yes(PragmaLabel), _) - _ ->
 			set__insert(FoldFixed0, PragmaLabel, FoldFixed)
 		;
 			FoldFixed = FoldFixed0
@@ -354,7 +354,7 @@ standardize_instr(Instr1, Instr) :-
 		Instr1 = decr_sp(_),
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _),
 		Instr = Instr1
 	).
 
@@ -624,7 +624,7 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		Instr2 = Instr1,
 		Instr = Instr1
 	;
-		Instr1 = pragma_c(_, _, _, _),
+		Instr1 = pragma_c(_, _, _, _, _),
 		Instr2 = Instr1,
 		Instr = Instr1
 	).
@@ -823,7 +823,8 @@ dupelim__replace_labels_instr(discard_tickets_to(Rval0), ReplMap,
 	dupelim__replace_labels_rval(Rval0, ReplMap, Rval).
 dupelim__replace_labels_instr(incr_sp(Size, Msg), _, incr_sp(Size, Msg)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
-dupelim__replace_labels_instr(pragma_c(A,B,C,D), ReplMap, pragma_c(A,B,C,D)) :-
+dupelim__replace_labels_instr(pragma_c(A,B,C,D,E), ReplMap,
+		pragma_c(A,B,C,D,E)) :-
 	(
 		D = no
 	;

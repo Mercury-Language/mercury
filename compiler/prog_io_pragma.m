@@ -450,9 +450,15 @@ parse_pragma_type(ModuleName, "no_inline", PragmaTerms,
 
 parse_pragma_type(ModuleName, "memo", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
-	parse_simple_pragma(ModuleName, "memo",
-		lambda([Name::in, Arity::in, Pragma::out] is det,
-			Pragma = memo(Name, Arity)),
+	parse_tabling_pragma(ModuleName, "memo", eval_memo, 
+		PragmaTerms, ErrorTerm, Result).
+parse_pragma_type(ModuleName, "loop_check", PragmaTerms,
+			ErrorTerm, _VarSet, Result) :-
+	parse_tabling_pragma(ModuleName, "loop_check", eval_loop_check, 
+		PragmaTerms, ErrorTerm, Result).
+parse_pragma_type(ModuleName, "minimal_model", PragmaTerms,
+			ErrorTerm, _VarSet, Result) :-
+	parse_tabling_pragma(ModuleName, "minimal_model", eval_minimal, 
 		PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "obsolete", PragmaTerms,
@@ -799,6 +805,101 @@ parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
 		PragmaVars = [],	% return any old junk in PragmaVars
 		Error = yes("arguments not in form 'Var :: mode'")
 	).
+
+
+:- pred parse_tabling_pragma(module_name, string, eval_method, list(term), 
+		term, maybe1(item)).
+:- mode parse_tabling_pragma(in, in, in, in, in, out) is det.
+
+parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms, 
+		ErrorTerm, Result) :-
+    (
+        PragmaTerms = [PredAndModesTerm0]
+    ->
+        (
+                % Is this a simple pred/arity pragma
+            PredAndModesTerm0 = term__functor(term__atom("/"),
+                [PredNameTerm, ArityTerm], _)
+        ->
+            (
+                parse_implicitly_qualified_term(ModuleName, PredNameTerm, 
+                    PredAndModesTerm0, "", ok(PredName, [])),
+                ArityTerm = term__functor(term__integer(Arity), [], _)
+            ->
+                Result = ok(pragma(tabled(TablingType, PredName, Arity, 
+		    no, no)))    
+            ;
+                string__append_list(
+                    ["expected predname/arity for `pragma ",
+                    PragmaName, "(...)' declaration"], ErrorMsg),
+                Result = error(ErrorMsg, PredAndModesTerm0)
+            )
+        ;
+                % Is this a specific mode pragma
+            PredAndModesTerm0 = term__functor(Const, Terms0, _)
+        ->
+            (
+                % is this a function or a predicate?
+                Const = term__atom("="),
+                Terms0 = [FuncAndModesTerm, FuncResultTerm0]
+            ->
+                % function
+                PredOrFunc = function,
+                PredAndModesTerm = FuncAndModesTerm,
+                FuncResultTerms = [ FuncResultTerm0 ]
+            ;
+                % predicate
+                PredOrFunc = predicate,
+                PredAndModesTerm = PredAndModesTerm0,
+                FuncResultTerms = []
+            ),
+            string__append_list(["`pragma ", PragmaName, "(...)' declaration"],
+	    	ParseMsg), 
+	    parse_qualified_term(PredAndModesTerm, PredAndModesTerm0, 
+                ParseMsg, PredNameResult),
+            (
+                PredNameResult = ok(PredName, ModeList0),
+                (
+                    PredOrFunc = predicate,
+                    ModeList = ModeList0
+                ;
+                    PredOrFunc = function,
+                    list__append(ModeList0, FuncResultTerms, ModeList)
+                ),
+                (
+                    convert_mode_list(ModeList, Modes)
+                ->
+                    list__length(Modes, Arity0),
+                    (
+                        PredOrFunc = function
+                    ->
+                        Arity is Arity0 - 1
+                    ;
+                       Arity = Arity0
+                    ),
+                    inst_table_init(InstTable),
+                    Result = ok(pragma(tabled(TablingType, PredName, Arity, 
+                        yes(PredOrFunc), 
+                        yes(argument_modes(InstTable, Modes)))))
+                ;
+                    string__append_list(["syntax error in pragma '", 
+		        PragmaName, "(...)' declaration"],ErrorMessage),
+                    Result = error(ErrorMessage, PredAndModesTerm)
+                )
+            ;
+                PredNameResult = error(Msg, Term),
+                Result = error(Msg, Term)
+            )
+        ;
+            string__append_list(["unexpected variable in `pragma ", PragmaName,
+                "'"], ErrorMessage),
+            Result = error(ErrorMessage, PredAndModesTerm0)
+        )
+    ;
+    	string__append_list(["wrong number of arguments in `pragma ", 
+            PragmaName, "(...)' declaration"], ErrorMessage),
+        Result = error(ErrorMessage, ErrorTerm)
+    ).
 
 :- pred convert_int_list(term::in, maybe1(list(int))::out) is det.
 

@@ -65,7 +65,8 @@ write_error_pieces(Context, Indent, Components) -->
 			% :
 			% space
 			% indent
-		Context = term__context(FileName, LineNumber),
+		term__context_file(Context, FileName),
+		term__context_line(Context, LineNumber),
 		string__length(FileName, FileNameLength),
 		string__int_to_string(LineNumber, LineNumberStr),
 		string__length(LineNumberStr, LineNumberStrLength0),

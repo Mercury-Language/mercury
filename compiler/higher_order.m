@@ -481,7 +481,6 @@ merge_higher_order_infos(Info1, Info2, Info) :-
 	set__sorted_list_to_set(List12, Requests),
 	Info = info(PredVars, Requests, NewPreds, ModuleInfo, InstTable).
 
-
 :- pred merge_pred_vars(pred_vars::in, pred_vars::in, pred_vars::out) is det.
 
 merge_pred_vars(PredVars1, PredVars2, PredVars) :-

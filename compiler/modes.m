@@ -133,6 +133,7 @@ a variable live if its value will be used later on in the computation.
 
 :- import_module prog_data, hlds_goal, hlds_module, hlds_pred, (inst), instmap.
 :- import_module bool, list, term, io.
+
 	% modecheck(HLDS0, HLDS, UnsafeToContinue):
 	% Perform mode inference and checking for a whole module.
 	% UnsafeToContinue = yes means that mode inference
@@ -188,12 +189,6 @@ a variable live if its value will be used later on in the computation.
 :- import_module mode_info.
 
 	% Modecheck a unification.
-
-	% This argument specifies how to recursively process lambda goals -
-	% using either modes.m or unique_modes.m.
-:- type how_to_check_goal
-	--->	check_modes
-	;	check_unique_modes.
 
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
@@ -333,16 +328,19 @@ check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 	globals__io_lookup_int_option(mode_inference_iteration_limit,
 		MaxIterations),
 	modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, ModuleInfo0,
-					ModuleInfo, UnsafeToContinue),
-	( { WhatToCheck = check_unique_modes },
-		write_mode_inference_messages(PredIds, yes, ModuleInfo)
+					ModuleInfo1, UnsafeToContinue),
+	( { WhatToCheck = check_unique_modes(_) },
+		write_mode_inference_messages(PredIds, yes, ModuleInfo1),
+		{ ModuleInfo2 = ModuleInfo1 }
 	; { WhatToCheck = check_modes },
 		( { UnsafeToContinue = yes } ->
-			write_mode_inference_messages(PredIds, no, ModuleInfo)
+			write_mode_inference_messages(PredIds, no, ModuleInfo1)
 		;
 			[]
-		)
-	).
+		),
+		check_eval_methods(ModuleInfo1, ModuleInfo2)
+	),
+	{ ModuleInfo = ModuleInfo2 }.
 
 	% Iterate over the list of pred_ids in a module.
 
@@ -461,7 +459,7 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
 		(	{ WhatToCheck = check_modes },
 			write_pred_progress_message("% Mode-analysing ",
 				PredId, ModuleInfo)
-		;	{ WhatToCheck = check_unique_modes },
+		;	{ WhatToCheck = check_unique_modes(_) },
 			write_pred_progress_message("% Unique-mode-analysing ",
 				PredId, ModuleInfo)
 		)
@@ -469,7 +467,7 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
 		(	{ WhatToCheck = check_modes },
 			write_pred_progress_message("% Mode-checking ",
 				PredId, ModuleInfo)
-		;	{ WhatToCheck = check_unique_modes },
+		;	{ WhatToCheck = check_unique_modes(_) },
 			write_pred_progress_message("% Unique-mode-checking ",
 				PredId, ModuleInfo)
 		)
@@ -645,7 +643,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck,
 	proc_info_goal(ProcInfo0, Body0),
 	( WhatToCheck = check_modes,
 		InitialInstTable = InstTable0
-	; WhatToCheck = check_unique_modes,
+	; WhatToCheck = check_unique_modes(_),
 		proc_info_inst_table(ProcInfo0, InitialInstTable)
 	),
 
@@ -680,11 +678,11 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck,
 
 		% initialize the mode info
 	mode_info_init(IOState0, ModuleInfo0, InitialInstTable, PredId, ProcId,
-			Context, LiveVars, InstMap0, ModeInfo0),
+			Context, LiveVars, InstMap0, WhatToCheck, ModeInfo0),
 	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
 
 		% modecheck the procedure body
-	( WhatToCheck = check_unique_modes ->
+	( WhatToCheck = check_unique_modes(_) ->
 		unique_modes__check_goal(Body0, Body, ModeInfo1, ModeInfo2)
 	;
 		modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2)
@@ -984,7 +982,7 @@ modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 	mode_checkpoint(enter, "unify", GoalInfo0),
 	mode_info_set_call_context(unify(UnifyContext)),
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-		check_modes, Goal),
+		Goal),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify", GoalInfo0).
 
@@ -1941,6 +1939,128 @@ mode_context_to_unify_context(higher_order_call(_PredOrFunc, _Arg), _ModeInfo,
 		% XXX could do better; it's not really explicit
 mode_context_to_unify_context(uninitialized, _, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred check_eval_methods(module_info, module_info, io__state, io__state).
+:- mode check_eval_methods(in, out, di, uo) is det.
+
+check_eval_methods(ModuleInfo0, ModuleInfo) -->
+	{ module_info_predids(ModuleInfo0, PredIds) },
+	pred_check_eval_methods(PredIds, ModuleInfo0, ModuleInfo).
+
+:- pred pred_check_eval_methods(list(pred_id), module_info, module_info,
+		io__state, io__state).
+:- mode pred_check_eval_methods(in, in, out, di, uo) is det.
+
+pred_check_eval_methods([], M, M) --> [].
+pred_check_eval_methods([PredId|Rest], ModuleInfo0, ModuleInfo) --> 
+	{ module_info_preds(ModuleInfo0, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ pred_info_procids(PredInfo, ProcIds) },
+	proc_check_eval_methods(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
+	pred_check_eval_methods(Rest, ModuleInfo1, ModuleInfo).	
+
+:- pred proc_check_eval_methods(list(proc_id), pred_id, module_info, 
+		module_info, io__state, io__state).
+:- mode proc_check_eval_methods(in, in, in, out, di, uo) is det.
+
+proc_check_eval_methods([], _, M, M) --> [].
+proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) --> 
+	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
+		_, ProcInfo) },
+	{ proc_info_eval_method(ProcInfo, EvalMethod) },
+	( { EvalMethod \= eval_normal } ->
+		{ proc_info_context(ProcInfo, Context) },
+		{ eval_method_to_string(EvalMethod, EvalMethodS) },
+		globals__io_lookup_bool_option(verbose_errors, 
+			VerboseErrors),
+		{ proc_info_argmodes(ProcInfo, 
+			argument_modes(ArgInstTable, Modes)) },
+		( 
+			\+ { only_fully_in_out_modes(Modes, ArgInstTable,
+				ModuleInfo0) } 
+		->
+			prog_out__write_context(Context),
+			io__write_string(" Sorry, not impemented: `pragma "),
+			io__write_string(EvalMethodS),
+			io__write_string("'\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    declaration not allowed for procedure with\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    partially instantiated modes.\n"), 
+			( { VerboseErrors = yes } ->
+				io__write_string(
+"	Tabling of predicates/functions with partially instantiated modes
+	is not currently implemented.\n")
+			;
+				[]
+			),
+			{ module_info_incr_errors(ModuleInfo0, ModuleInfo1) }
+		;
+			{ ModuleInfo1 = ModuleInfo0 }	
+		),	
+		( 
+			\+ { only_nonunique_modes(Modes, ArgInstTable,
+				ModuleInfo1) } 
+		->
+			prog_out__write_context(Context),
+			io__write_string(" Error: `pragma "),
+			io__write_string(EvalMethodS),
+			io__write_string("'\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+"    declaration not allowed for procedure with\n"),
+			prog_out__write_context(Context),
+			io__write_string("    unique modes.\n"), 
+			( { VerboseErrors = yes } ->
+				io__write_string(
+"	Tabling of predicates/functions with unique modes is not allowed
+	as this would lead to a copying of the unique arguments which 
+	would result in them no longer being unique.\n")
+			;
+				[]
+			),
+			{ module_info_incr_errors(ModuleInfo1, ModuleInfo2) }
+		;
+			{ ModuleInfo2 = ModuleInfo1 }	
+		)
+	;
+		{ ModuleInfo2 = ModuleInfo0 }	
+		
+	),
+	proc_check_eval_methods(Rest, PredId, ModuleInfo2, ModuleInfo).
+
+:- pred only_fully_in_out_modes(list(mode), inst_table, module_info).
+:- mode only_fully_in_out_modes(in, in, in) is semidet.
+
+only_fully_in_out_modes([], _, _).
+only_fully_in_out_modes([Mode|Rest], InstTable, ModuleInfo) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	(
+		inst_is_ground(InitialInst, InstTable, ModuleInfo)
+	;
+		inst_is_free(InitialInst, InstTable, ModuleInfo),
+		(
+			inst_is_free(FinalInst, InstTable, ModuleInfo)
+		;
+			inst_is_ground(FinalInst, InstTable, ModuleInfo)
+		)
+	),
+	only_fully_in_out_modes(Rest, InstTable, ModuleInfo).
+
+:- pred only_nonunique_modes(list(mode), inst_table, module_info).
+:- mode only_nonunique_modes(in, in, in) is semidet.
+
+only_nonunique_modes([], _, _).
+only_nonunique_modes([Mode|Rest], InstTable, ModuleInfo) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	inst_is_not_partly_unique(InitialInst, InstTable, ModuleInfo),
+	inst_is_not_partly_unique(FinalInst, InstTable, ModuleInfo),
+	only_nonunique_modes(Rest, InstTable, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -8,9 +8,7 @@
 
 % Main authors: ohutch, conway.
 
-% This module performs stratification analysis. It is highly
-% conservative and will emit errors for any calls outside the module or
-% for any calls to higher order predicates
+% This module performs stratification analysis. 
 % It works by processing the call graph 1 scc at a time. It traverses 
 % the goal for each procedure in the scc and reports an error or 
 % warning (depending on the context) for any negated call to another member 
@@ -41,9 +39,7 @@
 	% If the "warn-non-stratification" option is set this 
 	% pred will check the entire module for stratification
 	% otherwise it will only check preds in the stratified_preds 
-	% set of the module_info structure. If possible non 
-	% stratification is detected in loops containing these preds 
-	% an error will be issued otherwise a warning will be issued.
+	% set of the module_info structure. 
 :- pred stratify__check_stratification(module_info, module_info,
 		io__state, io__state).
 :- mode stratify__check_stratification(in, out, di, uo) is det.
@@ -101,27 +97,24 @@ get_proc_id(proc(PredId, _), PredId).
 :- mode first_order_check_sccs(in, in, in, in, out, di, uo) is det.
 
 first_order_check_sccs([], _, _, Module, Module) --> [].
-first_order_check_sccs([SCCl - SCCs|Rest], StratifiedPreds, Warn, 
+first_order_check_sccs([SCCl - SCCs|Rest], StratifiedPreds, Warn0, 
 		Module0, Module) -->
-	(	% if there is a pred that must be stratified in the 
-		% current scc then emit errors instead of warnings
-		% if we encounter non stratification
+	(
 		{ set__intersect(SCCs, StratifiedPreds, I) },
 		{ set__empty(I) }
 	->
-		{ Error = no }
+		{ Warn = Warn0 }
 	;
-		{ Error = yes }
+		{ Warn = yes }
 	),
 	(
-		{ Error = yes 
-		; Warn = yes }
+		{ Warn = yes }
 	->
-		first_order_check_scc(SCCl, Error, Module0, Module1)
+		first_order_check_scc(SCCl, no, Module0, Module1)
 	;
 		{ Module1 = Module0 }
 	),
-	first_order_check_sccs(Rest, StratifiedPreds, Warn, Module1, Module).
+	first_order_check_sccs(Rest, StratifiedPreds, Warn0, Module1, Module).
 
 :- pred first_order_check_scc(list(pred_proc_id), bool, module_info, 
 	module_info, io__state, io__state).
@@ -195,8 +188,8 @@ first_order_check_goal(pragma_c_code(_IsRec, CPred, CProc, _, _, _, _),
 		{ Module = Module0 }
 	).
 first_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
-		_Negated, _WholeScc, _ThisPredProcId, _, Module, Module) --> [].
-first_order_check_goal(call(CPred, CProc, _Args, BuiltinState, _Contex, _Sym), 
+	_Negated, _WholeScc, _ThisPredProcId, _, Module, Module) --> [].
+first_order_check_goal(call(CPred, CProc, _Args, _BuiltinState, _Contex, _Sym), 
 		GInfo, Negated, WholeScc, ThisPredProcId, 
 		Error, Module0, Module) -->
 	{ Callee = proc(CPred, CProc) },
@@ -209,34 +202,14 @@ first_order_check_goal(call(CPred, CProc, _Args, BuiltinState, _Contex, _Sym),
 			"call introduces a non-stratified loop", 
 			Error, Module0, Module)	
 	;
-		{ BuiltinState = not_builtin },
-		{ \+ local_proc(Module0, Callee) }
-	->
-		{ goal_info_get_context(GInfo, Context) },
-	        emit_message(ThisPredProcId, Context,
-                        "call to non-local predicate may introduce a non-stratified loop",
-                        Error, Module0, Module)
-										
-	;
 		{ Module = Module0 }
 	).
 first_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, 
-			_Det, _PredOrFunc),
-		GInfo, _Negated, _WholeScc, ThisPredProcId, Error,  
-		Module0, Module) --> 
-	{ goal_info_get_context(GInfo, Context) },
-	emit_message(ThisPredProcId, Context,
-		"higher order call may introduce a non-stratified loop",
-		Error, Module0, Module).
-
-	% XXX This is very conservative.
+	_Det, _PredOrFunc), _GInfo, _Negated, _WholeScc, _ThisPredProcId, 
+	_Error,  Module, Module) --> []. 
 first_order_check_goal(class_method_call(_Var, _Num, _Vars, _Types, _Modes, 
-	_Det), GInfo, _Negated, _WholeScc, ThisPredProcId, Error,  
-	Module0, Module) --> 
-	{ goal_info_get_context(GInfo, Context) },
-	emit_message(ThisPredProcId, Context,
-		"class method call may introduce a non-stratified loop",
-		Error, Module0, Module).
+	_Det), _GInfo, _Negated, _WholeScc, _ThisPredProcId, _Error,  
+	Module, Module) --> [].
 
 :- pred first_order_check_goal_list(list(hlds_goal), bool, 
 	list(pred_proc_id), pred_proc_id, bool, module_info, 
@@ -266,13 +239,6 @@ first_order_check_case_list([Case|Goals], Negated, WholeScc, ThisPredProcId,
 	first_order_check_case_list(Goals, Negated, WholeScc, ThisPredProcId,
 		Error, Module1, Module).
 
-:- pred local_proc(module_info, pred_proc_id).
-:- mode local_proc(in, in) is semidet.
-local_proc(Module, proc(PredId, ProcId)) :-
-	module_info_pred_info(Module, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	list__member(ProcId, ProcIds).
-
 %-----------------------------------------------------------------------------%
 
  % XXX : Currently we don't allow the higher order case so this code
@@ -299,14 +265,7 @@ higher_order_check_scc([PredProcId|Remaining], WholeScc, HOInfo, Module0,
 	{ PredProcId = proc(PredId, ProcId) },
 	{ module_info_pred_info(Module0, PredId, PredInfo) },
 	globals__io_lookup_bool_option(warn_non_stratification, Warn),
-	{ pred_info_get_markers(PredInfo, Markers) },
-	( 	
-		{ check_marker(Markers, memo) }
-	->
-		{ Error = yes }
-	;
-		{ Error = no }
-	),
+	{ Error = no },
 	(	( { Error = yes ; Warn = yes } ),
 		{ map__search(HOInfo, PredProcId, HigherOrderInfo) }
 	->

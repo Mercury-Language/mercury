@@ -705,6 +705,7 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 
 :- pred determinism_to_code_model(determinism, code_model).
 :- mode determinism_to_code_model(in, out) is det.
+:- mode determinism_to_code_model(out, in) is multidet.
 
 :- implementation.
 
@@ -785,5 +786,21 @@ determinism_to_code_model(failure,     model_semi).
 			% The constraint is redundant because of the following
 			% class's superclass declaration
 	;	superclass(class_constraint).
+
+%-----------------------------------------------------------------------------%
+
+:- type subclass_details 
+	--->	subclass_details(
+			list(var),		% variables of the superclass
+			class_id,		% name of the subclass
+			list(var),		% variables of the subclass
+			tvarset			% the names of these vars
+		).
+
+:- import_module multi_map.
+
+	% I'm sure there's a very clever way of 
+	% doing this with graphs or relations...
+:- type superclass_table == multi_map(class_id, subclass_details).
 
 %-----------------------------------------------------------------------------%

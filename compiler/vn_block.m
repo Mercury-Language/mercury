@@ -353,7 +353,7 @@ vn_block__handle_instr(decr_sp(N),
 	vn_block__new_ctrl_node(vn_decr_sp(N), Livemap,
 		Params, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(pragma_c(_, _, _, _),
+vn_block__handle_instr(pragma_c(_, _, _, _, _),
 		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
 		SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("value numbering not supported for pragma_c").
@@ -891,7 +891,7 @@ vn_block__is_ctrl_instr(mark_ticket_stack(_), yes).
 vn_block__is_ctrl_instr(discard_tickets_to(_), yes).
 vn_block__is_ctrl_instr(incr_sp(_, _), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).
-vn_block__is_ctrl_instr(pragma_c(_, _, _, _), no).
+vn_block__is_ctrl_instr(pragma_c(_, _, _, _, _), no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -113,73 +113,81 @@ dump_arguments([Arg | Args]) -->
 
 postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
 postprocess_options(ok(OptionTable), Error) -->
-            { map__lookup(OptionTable, gc, GC_Method0) },
+    { map__lookup(OptionTable, gc, GC_Method0) },
+    (
+        { GC_Method0 = string(GC_MethodStr) },
+        { convert_gc_method(GC_MethodStr, GC_Method) }
+    ->
+        { map__lookup(OptionTable, tags, TagsMethod0) },
+        (
+            { TagsMethod0 = string(TagsMethodStr) },
+            { convert_tags_method(TagsMethodStr, TagsMethod) }
+        ->
+            { map__lookup(OptionTable, args, ArgsMethod0) },
             (
-                { GC_Method0 = string(GC_MethodStr) },
-                { convert_gc_method(GC_MethodStr, GC_Method) }
+                { ArgsMethod0 = string(ArgsMethodStr) },
+                { convert_args_method(ArgsMethodStr, ArgsMethod) }
             ->
-                { map__lookup(OptionTable, tags, TagsMethod0) },
+                { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
                 (
-                    { TagsMethod0 = string(TagsMethodStr) },
-                    { convert_tags_method(TagsMethodStr, TagsMethod) }
+                    { PrologDialect0 = string(PrologDialectStr) },
+                    { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
                 ->
-                    { map__lookup(OptionTable, args, ArgsMethod0) },
-                    (
-                        { ArgsMethod0 = string(ArgsMethodStr) },
-                        { convert_args_method(ArgsMethodStr, ArgsMethod) }
+                    { map__lookup(OptionTable,
+                        fact_table_hash_percent_full, PercentFull) },
+                    ( 
+                        { PercentFull = int(Percent) },
+                        { Percent >= 1 },
+                        { Percent =< 100 }
                     ->
-                            { map__lookup(OptionTable, prolog_dialect,
-                                PrologDialect0) },
+                        { map__lookup(OptionTable, termination_norm,
+                                TermNorm0) },
+                        ( 
+                            { TermNorm0 = string(TermNormStr) },
+                            { convert_termination_norm(TermNormStr, TermNorm) }
+                        ->
+                            { map__lookup(OptionTable, trace, Trace) },
+                            { map__lookup(OptionTable, require_tracing,
+			    	RequireTracingOpt) },
                             (
-                                { PrologDialect0 = string(PrologDialectStr) },
-                                { convert_prolog_dialect(PrologDialectStr,
-                                    PrologDialect) }
+                                { Trace = string(TraceStr) },
+                                { RequireTracingOpt = bool(RequireTracing) },
+                                { convert_trace_level(TraceStr, RequireTracing,
+				    TraceLevel) }
                             ->
-				{ map__lookup(OptionTable,
-					fact_table_hash_percent_full,
-					PercentFull) },
-				( 
-				    { PercentFull = int(Percent) },
-				    { Percent >= 1 },
-				    { Percent =< 100 }
-				->
-				    { map__lookup(OptionTable,
-				    	termination_norm, TermNorm0) },
-				    ( 
-					{ TermNorm0 = string(TermNormStr) },
-					{ convert_termination_norm(
-						TermNormStr, TermNorm) }
-				    ->
-				    	postprocess_options_2(OptionTable,
-				    	    GC_Method, TagsMethod, ArgsMethod,
-				    	    PrologDialect, TermNorm),
-				        { Error = no }
-				    ;
-				    	{ Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
-				    )
-				;
-				    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n                 (must be an integer between 1 and 100)") }
-				)
+                                postprocess_options_2(OptionTable,
+                                    GC_Method, TagsMethod, ArgsMethod,
+                                    PrologDialect, TermNorm, TraceLevel),
+                                { Error = no }
                             ;
-                                { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
+                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `interfaces', `all', or `default').") }
                             )
+                        ;
+                            { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+                        )
                     ;
-                        { Error = yes("Invalid args option (must be `simple' or `compact')") }
+                        { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
                     )
                 ;
-                    { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+                    { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                 )
             ;
-                { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
-            ).
+                { Error = yes("Invalid args option (must be `simple' or `compact')") }
+            )
+        ;
+            { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
+        )
+    ;
+        { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+    ).
 
 :- pred postprocess_options_2(option_table, gc_method, tags_method, 
-	args_method, prolog_dialect, termination_norm,
+	args_method, prolog_dialect, termination_norm, trace_level,
 	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, di, uo) is det.
+:- mode postprocess_options_2(in, in, in, in, in, in, in, di, uo) is det.
 
 postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm) -->
+		PrologDialect, TermNorm, TraceLevel) -->
 	% work around for NU-Prolog problems
 	( { map__search(OptionTable, heap_space, int(HeapSpace)) }
 	->
@@ -190,7 +198,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, GC_Method, TagsMethod, ArgsMethod,
-		PrologDialect, TermNorm),
+		PrologDialect, TermNorm, TraceLevel),
 
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
@@ -259,29 +267,58 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
-	% --generate-trace requires 
+	% Tracing requires 
 	% 	- disabling optimizations that would change 
 	% 	  the trace being generated
-	%	- enabling excess_assign to exclude junk vars from the trace
-	%	  (and to ensure consistent paths across optimization levels)
+	%	- enabling some low level optimizations to ensure consistent
+	%	  paths across optimization levels
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
-	globals__io_lookup_bool_option(generate_trace, Trace),
-	( { Trace = yes } ->
+	( { TraceLevel = interface ; TraceLevel = full } ->
+			% The following options modify the structure
+			% of the program, which makes it difficult to
+			% relate the trace to the source code (although
+			% it can be easily related to the transformed HLDS).
 		globals__io_set_option(inline_simple, bool(no)),
 		globals__io_set_option(inline_single_use, bool(no)),
 		globals__io_set_option(inline_compound_threshold, int(0)),
 		globals__io_set_option(optimize_unused_args, bool(no)),
 		globals__io_set_option(optimize_higher_order, bool(no)),
+		globals__io_set_option(deforestation, bool(no)),
 		globals__io_set_option(optimize_duplicate_calls, bool(no)),
 		globals__io_set_option(optimize_constructor_last_call,
 			bool(no)),
+
+			% The following option prevents useless variables
+			% from cluttering the trace. Its explicit setting
+			% removes a source of variability in the goal paths
+			% reported by tracing.
 		globals__io_set_option(excess_assign, bool(yes)),
+			% The explicit setting of the following option
+			% removes a source of variability in the goal paths
+			% reported by tracing.
+		globals__io_set_option(follow_code, bool(yes)),
+			% The following option selects a special-case
+			% code generator that cannot (yet) implement tracing.
+		globals__io_set_option(middle_rec, bool(no)),
+			% Tracing inserts C code into the generated LLDS.
+			% Value numbering cannot optimize such LLDS code.
+			% (If it tried, it would get it wrong due to the
+			% absence of liveness annotations on the introduced
+			% labels.) We turn value numbering off now so that
+			% we don't have to discover this fact anew
+			% for each procedure.
+		globals__io_set_option(optimize_value_number, bool(no)),
+			% The following options cause the info required
+			% by tracing to be generated.
 		globals__io_set_option(trace_stack_layout, bool(yes)),
 		globals__io_set_option(typeinfo_liveness, bool(yes))
 	;
 		[]
 	),
+
+	% --no-reorder-conj implies --no-deforestation.
+	option_neg_implies(reorder_conj, deforestation, bool(no)),
 
 	% --stack-trace requires `procid' stack layouts
 	option_implies(stack_trace, procid_stack_layout, bool(yes)),
@@ -359,6 +396,20 @@ option_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
 		[]
 	).
 
+% option_neg_implies(SourceBoolOption, ImpliedOption, 
+%	ImpliedOptionValue, IO0, IO).
+% If the SourceBoolOption is set to no, then the ImpliedOption is set
+% to ImpliedOptionValue.
+:- pred option_neg_implies(option::in, option::in, option_data::in, 
+	io__state::di, io__state::uo) is det.
+option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue) -->
+	globals__io_lookup_bool_option(SourceOption, SourceOptionValue),
+	( { SourceOptionValue = no } ->
+		globals__io_set_option(ImpliedOption, ImpliedOptionValue)
+	;
+		[]
+	).
+
 	% IMPORTANT: any changes here may require similar changes to
 	%	runtime/mercury_grade.h
 	%	scripts/ml.in
@@ -382,7 +433,8 @@ compute_grade(Globals, Grade) :-
 	globals__lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
 */
 	globals__get_args_method(Globals, ArgsMethod),
-	globals__lookup_bool_option(Globals, debug, Debug),
+	globals__lookup_bool_option(Globals, stack_trace, StackTrace),
+	globals__lookup_bool_option(Globals, require_tracing, RequireTracing),
 /*
 	globals__lookup_bool_option(Globals, pic_reg, PIC_Reg),
 */
@@ -470,10 +522,18 @@ compute_grade(Globals, Grade) :-
 	; ArgsMethod = simple, Part8 = ".sa"
 	),
 
-	( Debug = yes ->
-		Part9 = ".debug"
+	( StackTrace = yes ->
+		( RequireTracing = yes ->
+			Part9 = ".debug"
+		;
+			Part9 = ".strce"
+		)
 	;
-		Part9 = ""
+		( RequireTracing = yes ->
+			Part9 = ".trace"
+		;
+			Part9 = ""
+		)
 	),
 
 /*******
@@ -506,10 +566,20 @@ convert_grade_option(Grade0) -->
 	% part9
 	( { string__remove_suffix(Grade2, ".debug", Grade3) } ->
 		{ Grade4 = Grade3 },
-		set_bool_opt(debug, yes)
+		set_bool_opt(stack_trace, yes),
+		set_bool_opt(require_tracing, yes)
+	; { string__remove_suffix(Grade2, ".trace", Grade3) } ->
+		{ Grade4 = Grade3 },
+		set_bool_opt(stack_trace, no),
+		set_bool_opt(require_tracing, yes)
+	; { string__remove_suffix(Grade2, ".strce", Grade3) } ->
+		{ Grade4 = Grade3 },
+		set_bool_opt(stack_trace, yes),
+		set_bool_opt(require_tracing, no)
 	;
 		{ Grade4 = Grade2 },
-		set_bool_opt(debug, no)
+		set_bool_opt(stack_trace, no),
+		set_bool_opt(require_tracing, no)
 	),
 	% part8
 	( { string__remove_suffix(Grade4, ".sa", Grade5) } ->
@@ -591,44 +661,32 @@ convert_grade_option(Grade0) -->
 	is semidet.
 
 convert_grade_option_2("asm_fast") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, yes).
 convert_grade_option_2("fast") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("asm_jump") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, yes).
 convert_grade_option_2("jump") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, yes),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("reg") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, yes),
 	set_bool_opt(asm_labels, no).
 convert_grade_option_2("none") -->
-	set_bool_opt(debug, no),
 	set_bool_opt(c_optimize, yes),
-	set_bool_opt(gcc_non_local_gotos, no),
-	set_bool_opt(gcc_global_registers, no),
-	set_bool_opt(asm_labels, no).
-convert_grade_option_2("debug") -->
-	set_bool_opt(debug, yes),
-	set_bool_opt(c_optimize, no),
 	set_bool_opt(gcc_non_local_gotos, no),
 	set_bool_opt(gcc_global_registers, no),
 	set_bool_opt(asm_labels, no).
@@ -662,27 +720,22 @@ usage_error(ErrorMessage) -->
 	usage.
 
 usage -->
-	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
 	{ library__version(Version) },
- 	io__write_strings(StdErr,
-			["Mercury Compiler, version ", Version, "\n"]),
- 	io__write_string(StdErr,
-			"Copyright (C) 1993-1998 The University of Melbourne\n"),
-	io__write_string(StdErr, "Usage: "),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " [<options>] <module(s)>\n"),
-	io__write_string(StdErr, "Use `"),
-	io__write_string(StdErr, ProgName),
-	io__write_string(StdErr, " --help' for more information.\n").
+ 	io__write_strings(StdErr, [
+		"Mercury Compiler, version ", Version, "\n",
+		"Copyright (C) 1993-1998 The University of Melbourne\n",
+		"Usage: mmc [<options>] <arguments>\n",
+		"Use `mmc --help' for more information.\n"
+	]).
 
 long_usage -->
-	io__progname_base("mercury_compile", ProgName),
 	{ library__version(Version) },
  	io__write_strings(["Mercury Compiler, version ", Version, "\n"]),
  	io__write_string("Copyright (C) 1993-1998 The University of Melbourne\n"),
-	io__write_string("Usage: "),
-	io__write_string(ProgName),
-	io__write_string(" [<options>] <module(s)>\n"),
+	io__write_string("Usage: mmc [<options>] <arguments>\n"),
+	io__write_string("Arguments:\n"),
+	io__write_string("\t\tArguments ending in `.m' are assumed to be source file names.\n"),
+	io__write_string("\t\tArguments that do not end in `.m' are assumed to be module names.\n"),
 	io__write_string("Options:\n"),
 	options_help.

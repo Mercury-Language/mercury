@@ -429,8 +429,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, MayCallMercury,
 	{ Components = [InputComp, SaveRegsComp, C_Code_Comp,
 			CheckR1_Comp, RestoreRegsComp, OutputComp] },
 	{ PragmaCCode = node([
-		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel) -
-			"Pragma C inclusion"
+		pragma_c(Decls, Components, MayCallMercury, MaybeFailLabel, no)
+			- "Pragma C inclusion"
 	]) },
 
 	%
@@ -532,16 +532,10 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot),
 	code_info__maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
 
-	code_info__get_maybe_trace_info(MaybeTraceInfo),
-	( { MaybeTraceInfo = yes(TraceInfo) } ->
-		trace__generate_event_code(disj([disj(1)]), TraceInfo,
-			FirstTraceCode),
-		trace__generate_event_code(disj([disj(2)]), TraceInfo,
-			LaterTraceCode)
-	;
-		{ FirstTraceCode = empty },
-		{ LaterTraceCode = empty }
-	),
+	trace__maybe_generate_pragma_event_code(nondet_pragma_first,
+		FirstTraceCode),
+	trace__maybe_generate_pragma_event_code(nondet_pragma_later,
+		LaterTraceCode),
 
 	{ FirstDisjunctCode =
 		tree(SaveHeapCode,
@@ -631,7 +625,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
-				MayCallMercury, no)
+				MayCallMercury, no, yes)
 				- "Call and shared pragma C inclusion"
 		]),
 
@@ -658,7 +652,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
-				MayCallMercury, no)
+				MayCallMercury, no, yes)
 				- "Retry and shared pragma C inclusion"
 		]),
 
@@ -713,7 +707,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
-				MayCallMercury, yes(SharedLabel))
+				MayCallMercury, yes(SharedLabel), yes)
 				- "Call pragma C inclusion"
 		]),
 
@@ -740,7 +734,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
-				MayCallMercury, yes(SharedLabel))
+				MayCallMercury, yes(SharedLabel), yes)
 				- "Retry pragma C inclusion"
 		]),
 
@@ -766,7 +760,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, MayCallMercury,
 		],
 		SharedBlockCode = node([
 			pragma_c(SharedDecls, SharedComponents,
-				MayCallMercury, no)
+				MayCallMercury, no, yes)
 				- "Shared pragma C inclusion"
 		]),
 

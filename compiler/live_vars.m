@@ -36,6 +36,7 @@
 
 :- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
 :- import_module liveness, code_aux, globals, graph_colour, instmap, options.
+:- import_module trace.
 :- import_module list, map, set, std_util, assoc_list, bool.
 :- import_module int, term, require.
 
@@ -47,8 +48,16 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 
 	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
 	set__init(LiveSets0),
-	set__init(ResumeVars0),
-	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_trace_level(Globals, TraceLevel),
+	( ( TraceLevel = interface ; TraceLevel = full ) ->
+		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0),
+		set__insert(LiveSets0, ResumeVars0, LiveSets1)
+	;
+		set__init(ResumeVars0),
+		LiveSets1 = LiveSets0
+	),
+	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets1,
 		ModuleInfo, ProcInfo0, _Liveness, _ResumeVars, LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),

@@ -107,9 +107,6 @@
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, C Code Implementation Info
 
-	;	memo(sym_name, arity)
-			% Predname, Arity
-
 	;	inline(sym_name, arity)
 			% Predname, Arity
 
@@ -143,6 +140,10 @@
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
+	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
+				maybe(argument_modes))
+			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
+	
 	;	promise_pure(sym_name, arity)
 			% Predname, Arity
 
@@ -226,7 +227,19 @@
 	;	share
 	;	automatic.
 
-:- type class_constraint	---> constraint(class_name, list(type)).
+	% A class constraint represents a constraint that a given
+	% list of types is a member of the specified type class.
+	% It is an invariant of this data structure that
+	% the types in a class constraint do not contain any
+	% information in their term__context fields.
+	% This invariant is needed to ensure that we can do
+	% unifications, map__lookups, etc., and get the
+	% expected semantics.
+	% Any code that creates new class constraints must
+	% ensure that this invariant is preserved,
+	% probably by using strip_term_contexts/2 in type_util.m.
+:- type class_constraint
+	---> constraint(class_name, list(type)).
 
 :- type class_name == sym_name.
 
@@ -413,7 +426,7 @@
 
 	% Note: `is_live' records liveness in the sense used by
 	% mode analysis.  This is not the same thing as the notion of liveness
-	% used by code generation.  See compiler/notes/GLOSSARY.
+	% used by code generation.  See compiler/notes/glossary.html.
 :- type is_live		--->	live ; dead.
 
 	% Unifications of insts fall into two categories, "real" and "fake".

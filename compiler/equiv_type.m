@@ -203,7 +203,10 @@ equiv_type__replace_in_class_constraints([C0|C0s], VarSet0, EqvMap,
 equiv_type__replace_in_class_constraint(Constraint0, VarSet0, EqvMap,
 				Constraint, VarSet) :-
 	Constraint0 = constraint(ClassName, Ts0),
-	equiv_type__replace_in_type_list(Ts0, VarSet0, EqvMap, Ts, VarSet, _),
+	equiv_type__replace_in_type_list(Ts0, VarSet0, EqvMap, Ts1, VarSet, _),
+	% we must maintain the invariant that types in class constraints
+	% do not contain any info in their term__context fields
+	strip_term_contexts(Ts1, Ts),
 	Constraint = constraint(ClassName, Ts).
 
 %-----------------------------------------------------------------------------%

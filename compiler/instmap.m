@@ -265,7 +265,7 @@
 :- import_module mode_util, inst_match, prog_data, goal_util.
 :- import_module hlds_data, inst_util.
 
-:- import_module std_util, require, multi_map, set_bbbtree.
+:- import_module std_util, require, multi_map, set_bbbtree, string.
 
 :- type instmap_delta	==	instmap.
 
@@ -904,7 +904,11 @@ merge_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
 		InstTable2 = InstTable1,
 		map__det_insert(InstMapping0, Var, Inst, InstMapping1)
 	;
-		error("merge_instmapping_delta_2: unexpected mode error")
+		term__var_to_int(Var, VarInt),
+		string__format(
+			"merge_instmapping_delta_2: error merging var %i",
+			[i(VarInt)], Msg),
+		error(Msg)
 	),
 	merge_instmapping_delta_2(Vars, InstMap, InstMappingA, InstMappingB,
 		InstMapping1, InstMapping, InstTable2, InstTable,

@@ -52,7 +52,7 @@
 :- import_module io, list.
 :- import_module prog_data, hlds_pred, hlds_module.
 
-	% compile the fact table into a separate .o file.
+	% compile the fact table into a separate .c file.
 	% fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, 
 	% 	PredInfo, Context, ModuleInfo, C_HeaderCode, PrimaryProcID)
 :- pred fact_table_compile_facts(sym_name, arity, string, pred_info, pred_info,
@@ -90,7 +90,7 @@
 :- import_module float, math, getopt, term, string.
 :- import_module parser, term_io.
 
-:- import_module prog_util, prog_out, llds_out, hlds_out, hlds_data.
+:- import_module prog_util, prog_out, llds_out, modules, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
 :- import_module code_util, export, inst_match, (inst).
 
@@ -177,7 +177,8 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
     io__see(FileName, Result0),
     (
 	{ Result0 = ok },
-	{ string__append(FileName, ".c", OutputFileName) },
+	{ module_info_name(ModuleInfo, ModuleName) },
+	fact_table_file_name(ModuleName, FileName, ".c", OutputFileName),
 	io__open_output(OutputFileName, Result1),
 	(
 	    { Result1 = ok(OutputStream) },
@@ -296,7 +297,8 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
 	;
 		{ Result0 = error(Message, LineNum) },
 		io__input_stream_name(FileName),
-		prog_out__write_context(term__context(FileName, LineNum)),
+		{ term__context_init(FileName, LineNum, Context) },
+		prog_out__write_context(Context),
 		io__write_strings([Message, "\n"]),
 		io__set_exit_status(1),
 		{ NumFacts = NumFacts0 }

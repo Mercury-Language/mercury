@@ -544,7 +544,8 @@ term_errors__describe_several_proc_names([PPId | PPIds], Module,
 
 term_errors__describe_one_call_site(PPId - Context, Module, Piece) :-
 	term_errors__describe_one_proc_name(PPId, Module, ProcName),
-	Context = term__context(FileName, LineNumber),
+	term__context_file(Context, FileName),
+	term__context_line(Context, LineNumber),
 	string__int_to_string(LineNumber, LineNumberPart),
 	string__append_list([
 		ProcName,

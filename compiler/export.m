@@ -18,17 +18,26 @@
 
 :- interface.
 
-:- import_module hlds_module, prog_data.
-:- import_module io, list, term.
+:- import_module hlds_module, prog_data, llds.
+:- import_module io, term.
 
-	% From the module_info, get a list of functions, each of which allows
-	% a call to be made to a Mercury procedure from C
-:- pred export__get_pragma_exported_procs(module_info, list(string)).
-:- mode export__get_pragma_exported_procs(in, out) is det.
+	% From the module_info, get a list of c_export_decls,
+	% each of which holds information about the declaration
+	% of a C function named in a `pragma export' declaration,
+	% which is used to allow a call to be made to a Mercury
+	% procedure from C.
+:- pred export__get_c_export_decls(module_info, c_export_decls).
+:- mode export__get_c_export_decls(in, out) is det.
+
+	% From the module_info, get a list of c_export_defns,
+	% each of which is a string containing the C code
+	% for defining a C function named in a `pragma export' decl.
+:- pred export__get_c_export_defns(module_info, c_export_defns).
+:- mode export__get_c_export_defns(in, out) is det.
 
 	% Produce a header file containing prototypes for the exported C
 	% functions
-:- pred export__produce_header_file(module_info, module_name,
+:- pred export__produce_header_file(c_export_decls, module_name,
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
@@ -57,14 +66,42 @@
 :- pred export__exclude_argument_type(type).
 :- mode export__exclude_argument_type(in) is semidet.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module code_gen, code_util, hlds_pred, llds, llds_out, modules.
+:- import_module code_gen, code_util, hlds_pred, llds_out, modules.
 
 :- import_module library, map, int, string, std_util, assoc_list, require.
-:- import_module bool.
+:- import_module list, bool.
 
-export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
+%-----------------------------------------------------------------------------%
+
+export__get_c_export_decls(HLDS, C_ExportDecls) :-
+	module_info_get_predicate_table(HLDS, PredicateTable),
+	predicate_table_get_preds(PredicateTable, Preds),
+	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
+	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
+
+:- pred export__get_c_export_decls_2(pred_table, list(pragma_exported_proc),
+	list(c_export_decl)).
+:- mode export__get_c_export_decls_2(in, in, out) is det.
+
+export__get_c_export_decls_2(_Preds, [], []).
+export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
+	E = pragma_exported_proc(PredId, ProcId, C_Function),
+	get_export_info(Preds, PredId, ProcId, C_RetType,
+		_DeclareReturnVal, _FailureAction, _SuccessAction,
+		HeadArgInfoTypes),
+	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
+	C_ExportDecl = c_export_decl(C_RetType, C_Function, ArgDecls),
+	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls0),
+	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
+
+%-----------------------------------------------------------------------------%
+
+export__get_c_export_defns(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
 	module_info_get_predicate_table(Module, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
@@ -442,19 +479,20 @@ export__exclude_argument_type(Type) :-
 export__exclude_argument_type_2("io", "state", 0).	% io:state/0
 export__exclude_argument_type_2("store", "store", 1).	% store:store/1.
 
-export__produce_header_file(Module, ModuleName) -->
-	{ module_info_get_pragma_exported_procs(Module, ExportedProcs) },
+%-----------------------------------------------------------------------------%
+
+% Should this predicate go in llds_out.m?
+
+export__produce_header_file(C_ExportDecls, ModuleName) -->
 	(
-		{ ExportedProcs = [_|_] }
+		{ C_ExportDecls = [_|_] }
 	->
-		{ module_info_get_predicate_table(Module, PredicateTable) },
-		{ predicate_table_get_preds(PredicateTable, Preds) },
-		module_name_to_file_name(ModuleName, ".h", FileName),
+		module_name_to_file_name(ModuleName, ".h", yes, FileName),
 		io__tell(FileName, Result),
 		(
 			{ Result = ok }
 		->
-			module_name_to_file_name(ModuleName, ".m",
+			module_name_to_file_name(ModuleName, ".m", no,
 				SourceFileName),
 			{ library__version(Version) },
 			io__write_strings(
@@ -479,7 +517,7 @@ export__produce_header_file(Module, ModuleName) -->
 					"\n",
 					"#include ""mercury_imp.h""\n",
 					"\n"]),
-			export__produce_header_file_2(Preds, ExportedProcs),
+			export__produce_header_file_2(C_ExportDecls),
 			io__write_strings([
 					"\n",
 					"#ifdef __cplusplus\n",
@@ -501,16 +539,11 @@ export__produce_header_file(Module, ModuleName) -->
 		[]
 	).
 
-:- pred export__produce_header_file_2(pred_table, list(pragma_exported_proc),
-	io__state, io__state).
-:- mode export__produce_header_file_2(in, in, di, uo) is det.
-export__produce_header_file_2(_Preds, []) --> [].
-export__produce_header_file_2(Preds, [E|ExportedProcs]) -->
-	{ E = pragma_exported_proc(PredId, ProcId, C_Function) },
-	{ get_export_info(Preds, PredId, ProcId, C_RetType,
-		_DeclareReturnVal, _FailureAction, _SuccessAction,
-		HeadArgInfoTypes) },
-	{ get_argument_declarations(HeadArgInfoTypes, no, ArgDecls) },
+:- pred export__produce_header_file_2(c_export_decls, io__state, io__state).
+:- mode export__produce_header_file_2(in, di, uo) is det.
+export__produce_header_file_2([]) --> [].
+export__produce_header_file_2([E|ExportedProcs]) -->
+	{ E = c_export_decl(C_RetType, C_Function, ArgDecls) },
 
 		% output the function header
 	io__write_string(C_RetType),
@@ -520,7 +553,7 @@ export__produce_header_file_2(Preds, [E|ExportedProcs]) -->
 	io__write_string(ArgDecls),
 	io__write_string(");\n"),
 
-	export__produce_header_file_2(Preds, ExportedProcs).
+	export__produce_header_file_2(ExportedProcs).
 
 	% Convert a term representation of a variable type to a string which
 	% represents the C type of the variable
@@ -538,3 +571,4 @@ export__term_to_type_string(Type, Result) :-
 		Result = "Word"
 	).
 
+%-----------------------------------------------------------------------------%

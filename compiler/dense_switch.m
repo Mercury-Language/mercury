@@ -236,17 +236,9 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
 	->
 		{ Comment = "case of dense switch" },
 		% We need to save the expression cache, etc.,
-		% and restore them when we've finished
+		% and restore them when we've finished.
 		code_info__grab_code_info(CodeInfoAtStart),
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		( { MaybeTraceInfo = yes(TraceInfo) } ->
-			{ Goal = _ - GoalInfo },
-			{ goal_info_get_goal_path(GoalInfo, Path) },
-			trace__generate_event_code(switch(Path), TraceInfo,
-				TraceCode)
-		;
-			{ TraceCode = empty }
-		),
+		trace__maybe_generate_internal_event_code(Goal, TraceCode),
 		code_gen__generate_goal(CodeModel, Goal, GoalCode),
 		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ Code =

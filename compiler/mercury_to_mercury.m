@@ -14,6 +14,15 @@
 :- module mercury_to_mercury.
 :- interface.
 
+:- type needs_brackets
+	--->	needs_brackets		% needs brackets, if it is an op
+	;	does_not_need_brackets.	% doesn't need brackets
+
+:- type needs_quotes
+	--->	next_to_graphic_token		% needs quotes, if it
+						% is another graphic token
+	;	not_next_to_graphic_token.	% doesn't need quotes
+
 :- import_module hlds_goal, hlds_data, hlds_pred, prog_data, (inst), purity.
 :- import_module bool, std_util, list, io, varset, term.
 
@@ -121,7 +130,7 @@
 		io__state, io__state).
 :- mode mercury_output_mode(in, in, in, di, uo) is det.
 
-:- pred mercury_output_cons_id(cons_id, bool, io__state, io__state).
+:- pred mercury_output_cons_id(cons_id, needs_brackets, io__state, io__state).
 :- mode mercury_output_cons_id(in, in, di, uo) is det.
 
 :- pred mercury_output_mode_list(list(mode), varset, inst_table,
@@ -160,9 +169,6 @@
 
 :- pred mercury_output_newline(int, io__state, io__state).
 :- mode mercury_output_newline(in, di, uo) is det.
-
-:- pred mercury_output_bracketed_constant(const, io__state, io__state).
-:- mode mercury_output_bracketed_constant(in, di, uo) is det.
 
 :- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_bracketed_sym_name(in, di, uo) is det.
@@ -323,8 +329,9 @@ mercury_output_item(pragma(Pragma), Context, InstTable) -->
 		{ Pragma = obsolete(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete")
 	;
-		{ Pragma = memo(Pred, Arity) },
-		mercury_output_pragma_decl(Pred, Arity, predicate, "memo")
+		{ Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode) },
+		{ eval_method_to_string(Type, TypeS) },
+		mercury_output_pragma_decl(Pred, Arity, predicate, TypeS)
 	;
 		{ Pragma = inline(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "inline")
@@ -490,13 +497,13 @@ output_instance_method(Method) -->
 	io__write_char('\t'),
 	(
 		{ Method = func_instance(Name1, Name2, Arity) },
-		io__write_string("func((")
+		io__write_string("func(")
 	;
 		{ Method = pred_instance(Name1, Name2, Arity) },
-		io__write_string("pred((")
+		io__write_string("pred(")
 	),
-	mercury_output_bracketed_sym_name(Name1),
-	io__write_string(")/"),
+	mercury_output_bracketed_sym_name(Name1, next_to_graphic_token),
+	io__write_string("/"),
 	io__write_int(Arity),
 	io__write_string(") is "),
 	mercury_output_bracketed_sym_name(Name2).
@@ -555,6 +562,14 @@ mercury_output_module_defn(_VarSet, ModuleDefn, _Context) -->
 	; { ModuleDefn = include_module(IncludedModules) } ->
 		io__write_string(":- include_module "),
 		mercury_write_module_spec_list(IncludedModules),
+		io__write_string(".\n")
+	; { ModuleDefn = module(Module) } ->
+		io__write_string(":- module "),
+		mercury_output_bracketed_sym_name(Module),
+		io__write_string(".\n")
+	; { ModuleDefn = end_module(Module) } ->
+		io__write_string(":- end_module "),
+		mercury_output_bracketed_sym_name(Module),
 		io__write_string(".\n")
 	;
 		% XXX unimplemented
@@ -1065,11 +1080,11 @@ mercury_output_structured_bound_insts(Expand,
 	{ Indent2 is Indent1 + 1 },
 	( { Args = [] } ->
 		mercury_output_tabs(Indent1),
-		mercury_output_cons_id(ConsId, yes),
+		mercury_output_cons_id(ConsId, needs_brackets),
 		io__write_string("\n")
 	;
 		mercury_output_tabs(Indent1),
-		mercury_output_cons_id(ConsId, no),
+		mercury_output_cons_id(ConsId, does_not_need_brackets),
 		io__write_string("(\n"),
 		mercury_output_structured_inst_list(Expand, Args, Indent2,
 			VarSet, InstTable),
@@ -1093,9 +1108,9 @@ mercury_output_bound_insts(_, [], _, _) --> [].
 mercury_output_bound_insts(Expand, [functor(ConsId, Args) | BoundInsts], VarSet,
 		InstTable) -->
 	( { Args = [] } ->
-		mercury_output_cons_id(ConsId, yes)
+		mercury_output_cons_id(ConsId, needs_brackets)
 	;
-		mercury_output_cons_id(ConsId, no),
+		mercury_output_cons_id(ConsId, does_not_need_brackets),
 		io__write_string("("),
 		mercury_output_inst_list(Expand, Args, VarSet, InstTable),
 		io__write_string(")")
@@ -1108,8 +1123,8 @@ mercury_output_bound_insts(Expand, [functor(ConsId, Args) | BoundInsts], VarSet,
 			InstTable)
 	).
 
-mercury_output_cons_id(cons(Name, _), Bracketed) -->
-	( { Bracketed = yes } ->
+mercury_output_cons_id(cons(Name, _), NeedsBrackets) -->
+	( { NeedsBrackets = needs_brackets } ->
 		mercury_output_bracketed_sym_name(Name)
 	;
 		mercury_output_sym_name(Name)
@@ -1325,7 +1340,7 @@ mercury_output_ctor_arg_name_prefix(Name) -->
 	( { Name = "" } ->
 		[]
 	;
-		io__write_string(Name),
+		mercury_quote_atom(Name, next_to_graphic_token),
 		io__write_string(": ")
 	).
 
@@ -1622,56 +1637,6 @@ mercury_output_det(failure) -->
 mercury_output_det(erroneous) -->
 	io__write_string("erroneous").
 
-	%
-	% Use mercury_output_bracketed_sym_name/3 when the sym_name has
-	% no arguments, otherwise use mercury_output_sym_name/3.
-	%
-
-mercury_output_bracketed_sym_name(Name) -->
-	(	{ Name = qualified(ModuleName, Name2) },
-		mercury_output_bracketed_sym_name(ModuleName),
-		io__write_char(':')
-	;
-		{ Name = unqualified(Name2) }
-	),
-	mercury_output_bracketed_constant(term__atom(Name2)).
-
-:- pred mercury_output_sym_name(sym_name, io__state, io__state).
-:- mode mercury_output_sym_name(in, di, uo) is det.
-
-mercury_output_sym_name(Name) -->
-	(	{ Name = qualified(ModuleName, PredName) },
-		mercury_output_bracketed_sym_name(ModuleName),
-		io__write_char(':'),
-		mercury_quote_qualified_atom(PredName)
-	;
-		{ Name = unqualified(PredName) },
-		term_io__quote_atom(PredName)
-	).
-
-:- pred mercury_quote_qualified_atom(string, io__state, io__state).
-:- mode mercury_quote_qualified_atom(in, di, uo) is det.
-
-mercury_quote_qualified_atom(Name) -->
-	%
-	% If the symname is composed of only graphic token chars,
-	% then term_io__quote_atom will not quote it; but since
-	% ':' is a graphic token char, it needs to be quoted,
-	% otherwise the ':' would be considered part of the
-	% symbol name (e.g. "int:<" tokenizes as ["int", ":<"].)
-	%
-	(
-		{ string__to_char_list(Name, Chars) },
-		{ \+ (  list__member(Char, Chars),
-			\+ lexer__graphic_token_char(Char)) }
-	->
-		io__write_string("'"),
-		term_io__write_escaped_string(Name),
-		io__write_string("'")
-	;
-		term_io__quote_atom(Name)
-	).
-
 %-----------------------------------------------------------------------------%
 
 	% Output a clause.
@@ -1853,14 +1818,18 @@ mercury_output_goal_2(unify(A, B), VarSet, _Indent) -->
 mercury_output_call(Name, Term, VarSet, _Indent) -->
 	(	
 		{ Name = qualified(ModuleName, PredName) },
-		mercury_output_bracketed_sym_name(ModuleName),
-		io__write_string(":")
+		mercury_output_bracketed_sym_name(ModuleName,
+			next_to_graphic_token),
+		io__write_string(":"),
+		{ term__context_init(Context0) },
+		mercury_output_term(term__functor(term__atom(PredName),
+			Term, Context0), VarSet, no, next_to_graphic_token)
 	;
-		{ Name = unqualified(PredName) }
-	),
-	{ term__context_init(Context0) },
-	mercury_output_term(term__functor(term__atom(PredName), Term, Context0),
-		VarSet, no).
+		{ Name = unqualified(PredName) },
+		{ term__context_init(Context0) },
+		mercury_output_term(term__functor(term__atom(PredName),
+			Term, Context0), VarSet, no)
+	).
 
 :- pred mercury_output_disj(goal, varset, int, io__state, io__state).
 :- mode mercury_output_disj(in, in, in, di, uo) is det.
@@ -2160,9 +2129,9 @@ mercury_output_pragma_decl(PredName, Arity, PredOrFunc, PragmaName) -->
 	},
 	io__write_string(":- pragma "),
 	io__write_string(PragmaName),
-	io__write_string("(("),
-	mercury_output_bracketed_sym_name(PredName),
-	io__write_string(")/"),
+	io__write_string("("),
+	mercury_output_bracketed_sym_name(PredName, next_to_graphic_token),
+	io__write_string("/"),
 	io__write_int(DeclaredArity),
 	io__write_string(").\n").
 
@@ -2265,9 +2234,18 @@ mercury_output_tabs(Indent) -->
 
 	% write a term to standard output.
 
-mercury_output_term(term__variable(Var), VarSet, AppendVarnums) -->
+mercury_output_term(Term, VarSet, AppendVarnums) -->
+	mercury_output_term(Term, VarSet, AppendVarnums,
+		not_next_to_graphic_token).
+
+:- pred mercury_output_term(term, varset, bool, needs_quotes,
+				io__state, io__state).
+:- mode mercury_output_term(in, in, in, in, di, uo) is det.
+
+mercury_output_term(term__variable(Var), VarSet, AppendVarnums, _) -->
 	mercury_output_var(Var, VarSet, AppendVarnums).
-mercury_output_term(term__functor(Functor, Args, _), VarSet, AppendVarnums) -->
+mercury_output_term(term__functor(Functor, Args, _), VarSet, AppendVarnums,
+		NextToGraphicToken) -->
 	(
 	    	{ Functor = term__atom(".") },
 		{ Args = [X, Xs] }
@@ -2302,26 +2280,32 @@ mercury_output_term(term__functor(Functor, Args, _), VarSet, AppendVarnums) -->
 		{ mercury_infix_op(FunctorName) }
 	->
 		io__write_string("("),
-		mercury_output_term(Arg1, VarSet, AppendVarnums),
 		( { FunctorName = ":" } ->
-			io__write_string(":")
+			mercury_output_term(Arg1, VarSet, AppendVarnums,
+				next_to_graphic_token),
+			io__write_string(":"),
+			mercury_output_term(Arg2, VarSet, AppendVarnums,
+				next_to_graphic_token)
 		;
+			mercury_output_term(Arg1, VarSet, AppendVarnums,
+				not_next_to_graphic_token),
 			io__write_string(" "),
 			io__write_string(FunctorName),
-			io__write_string(" ")
+			io__write_string(" "),
+			mercury_output_term(Arg2, VarSet, AppendVarnums,
+				not_next_to_graphic_token)
 		),
-		mercury_output_term(Arg2, VarSet, AppendVarnums),
 		io__write_string(")")
 	;
 		{ Args = [Y | Ys] }
 	->
-		term_io__write_constant(Functor),
+		mercury_output_constant(Functor, NextToGraphicToken),
 		io__write_string("("),
 		mercury_output_term(Y, VarSet, AppendVarnums),
 		mercury_output_remaining_terms(Ys, VarSet, AppendVarnums),
 		io__write_string(")")
 	;
-		mercury_output_bracketed_constant(Functor)
+		mercury_output_bracketed_constant(Functor, NextToGraphicToken)
 	).
 
 :- pred mercury_output_list_args(term, varset, bool, io__state, io__state).
@@ -2397,13 +2381,117 @@ mercury_output_var(Var, VarSet, AppendVarnum) -->
 		io__write_string(VarName)
 	).
 
+:- pred mercury_output_bracketed_constant(const, io__state, io__state).
+:- mode mercury_output_bracketed_constant(in, di, uo) is det.
+
 mercury_output_bracketed_constant(Const) -->
+	mercury_output_bracketed_constant(Const, not_next_to_graphic_token).
+
+:- pred mercury_output_bracketed_constant(const, needs_quotes,
+					io__state, io__state).
+:- mode mercury_output_bracketed_constant(in, in, di, uo) is det.
+
+mercury_output_bracketed_constant(Const, NextToGraphicToken) -->
 	( { Const = term__atom(Op), mercury_op(Op) } ->
 		io__write_string("("),
-		term_io__write_constant(Const),
+		term_io__quote_atom(Op),
 		io__write_string(")")
 	;
+		mercury_output_constant(Const, NextToGraphicToken)
+	).
+
+:- pred mercury_output_constant(const, needs_quotes, io__state, io__state).
+:- mode mercury_output_constant(in, in, di, uo) is det.
+
+mercury_output_constant(Const, NextToGraphicToken) -->
+	( { Const = term__atom(Atom) } ->
+		mercury_quote_atom(Atom, NextToGraphicToken)
+	;
 		term_io__write_constant(Const)
+	).
+
+:- pred mercury_output_bracketed_atom(string, needs_quotes,
+				io__state, io__state).
+:- mode mercury_output_bracketed_atom(in, in, di, uo) is det.
+
+mercury_output_bracketed_atom(Name, NextToGraphicToken) -->
+	( { mercury_op(Name) } ->
+		io__write_string("("),
+		term_io__quote_atom(Name),
+		io__write_string(")")
+	;
+		mercury_quote_atom(Name, NextToGraphicToken)
+	).
+
+	%
+	% Use mercury_output_bracketed_sym_name when the sym_name has
+	% no arguments, otherwise use mercury_output_sym_name.
+	%
+
+:- pred mercury_output_sym_name(sym_name, io__state, io__state).
+:- mode mercury_output_sym_name(in, di, uo) is det.
+
+mercury_output_sym_name(SymName) -->
+	mercury_output_sym_name(SymName, not_next_to_graphic_token).
+
+mercury_output_bracketed_sym_name(SymName) -->
+	mercury_output_bracketed_sym_name(SymName, not_next_to_graphic_token).
+
+:- pred mercury_output_bracketed_sym_name(sym_name, needs_quotes,
+					io__state, io__state).
+:- mode mercury_output_bracketed_sym_name(in, in, di, uo) is det.
+
+mercury_output_bracketed_sym_name(Name, NextToGraphicToken) -->
+	(	{ Name = qualified(ModuleName, Name2) },
+		io__write_char('('),
+		mercury_output_bracketed_sym_name(ModuleName,
+			next_to_graphic_token),
+		io__write_char(':'),
+		mercury_output_bracketed_atom(Name2, next_to_graphic_token),
+		io__write_char(')')
+	;
+		{ Name = unqualified(Name2) },
+		mercury_output_bracketed_atom(Name2, NextToGraphicToken)
+	).
+
+:- pred mercury_output_sym_name(sym_name, needs_quotes, io__state, io__state).
+:- mode mercury_output_sym_name(in, in, di, uo) is det.
+
+mercury_output_sym_name(Name, NextToGraphicToken) -->
+	(	{ Name = qualified(ModuleName, PredName) },
+		mercury_output_bracketed_sym_name(ModuleName,
+			next_to_graphic_token),
+		io__write_char(':'),
+		mercury_quote_atom(PredName,
+			next_to_graphic_token)
+	;
+		{ Name = unqualified(PredName) },
+		mercury_quote_atom(PredName, NextToGraphicToken)
+	).
+
+:- pred mercury_quote_atom(string, needs_quotes, io__state, io__state).
+:- mode mercury_quote_atom(in, in, di, uo) is det.
+
+mercury_quote_atom(Name, NextToGraphicToken) -->
+	%
+	% If the symname is composed of only graphic token chars,
+	% then term_io__quote_atom will not quote it; but if
+	% it is next another graphic token, it needs to be quoted,
+	% otherwise the two would be considered part of one
+	% symbol name (e.g. In "int:<", the ":<" parses as one token,
+	% so when writing out the "<" after the ":" we need to quote it.
+	%
+	(
+		{ NextToGraphicToken = next_to_graphic_token },
+		{ string__to_char_list(Name, Chars) },
+		{ \+ (  list__member(Char, Chars),
+			\+ lexer__graphic_token_char(Char)) }
+	->
+		io__write_string("'"),
+		term_io__write_escaped_string(Name),
+		io__write_string("'")
+	;
+		term_io__quote_atom(Name)
 	).
 
 %-----------------------------------------------------------------------------%

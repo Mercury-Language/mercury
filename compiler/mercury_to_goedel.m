@@ -41,9 +41,8 @@
 
 :- implementation.
 :- import_module bool, int, char, std_util, varset, term, require, string.
-:- import_module prog_data, prog_io, prog_out, prog_util, equiv_type, purity.
+:- import_module prog_io, prog_out, prog_util, equiv_type, purity.
 :- import_module globals, options, hlds_data.
-
 %-----------------------------------------------------------------------------%
 
 	% The following is a hard-coded hack.
