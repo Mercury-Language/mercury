@@ -1,0 +1,87 @@
+\input texinfo
+@setfilename mercury_library.info
+@settitle The Mercury Library Reference Manual
+
+@c @ignore
+@ifinfo
+@format
+START-INFO-DIR-ENTRY
+* Mercury Library: (mercury_library). The Mercury Library Reference Manual
+END-INFO-DIR-ENTRY
+@end format
+@end ifinfo
+@c @end ignore
+
+@c @smallbook
+@c @cropmarks
+@c @finalout
+@setchapternewpage off
+@ifinfo
+This file documents the Mercury standard library.
+
+Copyright (C) 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+
+@end ignore
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end ifinfo
+
+@titlepage
+@c @finalout
+@title The Mercury Library Reference Manual
+@subtitle ALPHA TEST version - May, 1995
+@c @author Fergus Henderson
+@page
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1995 University of Melbourne.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@page
+@c ---------------------------------------------------------------------------
+
+@node Top,,, (DIR)
+@ifinfo
+@chapter Mercury Library Reference Manual - ALPHA TEST version, March 1995
+@end ifinfo
+
+The Mercury standard library contains a variety of modules which we
+hope may be of general usefulness.  If you write a module that would
+be useful to others, and you would like us to include it as part of
+the Mercury standard library, please let us know.
+
+The following documentation is simply the interface parts to those
+modules, automatically extracted from the source code.  Some of the
+library modules are not very well documented; we apologize.
+
+@menu
+@include library-menu.texi
+@end menu
+@include library-chapters.texi
+@contents
+@bye

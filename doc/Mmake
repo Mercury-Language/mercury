@@ -25,28 +25,70 @@ all: info dvi html
 #-----------------------------------------------------------------------------#
 
 .PHONY: dvi
-dvi: user_guide.dvi reference_manual.dvi
+dvi: user_guide.dvi reference_manual.dvi library.dvi
 
 .PHONY: info
-info: mercury.info mercury_ref.info
+info: mercury.info mercury_ref.info mercury_user_guide.info mercury_library.info
 
 .PHONY: html
-html: user_guide_toc.html reference_manual_toc.html
+html: mercury.html user_guide_toc.html reference_manual_toc.html library_toc.html
 
 user_guide.dvi: user_guide.texi
-	texi2dvi user_guide.texi
+	$(TEXI2DVI) user_guide.texi
 reference_manual.dvi: reference_manual.texi
-	texi2dvi reference_manual.texi
+	$(TEXI2DVI) reference_manual.texi
+library.dvi: library.texi library-menu.texi library-chapters.texi
+	$(TEXI2DVI) library.texi
 
-mercury.info: user_guide.texi
-	makeinfo user_guide.texi
+mercury_user_guide.info: user_guide.texi
+	$(MAKEINFO) user_guide.texi
 mercury_ref.info: reference_manual.texi
-	makeinfo reference_manual.texi
+	$(MAKEINFO) reference_manual.texi
+mercury_library.info: library.texi library-menu.texi library-chapters.texi
+	$(MAKEINFO) library.texi
 
 user_guide_toc.html: user_guide.texi
-	./texi2html user_guide.texi
+	$(TEXI2HTML) user_guide.texi
 reference_manual_toc.html: reference_manual.texi
-	./texi2html reference_manual.texi
+	$(TEXI2HTML) reference_manual.texi
+library_toc.html: library.texi library-menu.texi library-chapters.texi
+	$(TEXI2HTML) library.texi
+
+# The following rules automatically build the library documentation
+# by extracting the module interfaces from the library source code.
+
+library-menu.texi: ../library/*.m
+	{ \
+	echo ""; \
+	for file in ../library/*.m; do \
+		echo "* `basename $$file .m`::"; \
+	done; \
+	} > library-menu.texi
+
+library-chapters.texi: ../library/*.m
+	for filename in ../library/*.m ""; do \
+		file=$$next; \
+		f=$$n; \
+		if [ "$$filename" = "" ]; then \
+			next=""; \
+		else \
+			n="$$filename"; \
+			next=" `basename $$filename .m`"; \
+		fi; \
+		if [ "$$file" = "" ]; then continue; fi; \
+		echo "@node$$file,$$next,$$prev,Top"; \
+		echo "@chapter$$file"; \
+		echo "@example"; \
+		sed -n -e '/:- implementation/q' \
+			-e 's/^%----*----% *$$/%--------------------------------------------------%/' \
+			-e 's/{/@{/g' \
+			-e 's/}/@}/g' \
+			-e 'p' \
+			"$$f"; \
+		echo "@end example"; \
+		echo ""; \
+		prev=" $$file"; \
+	done > library-chapters.texi
 
 #-----------------------------------------------------------------------------#
 
@@ -75,11 +117,13 @@ clean: clean_texi
 .PHONY: clean_texi
 clean_texi:
 	rm -f *.aux *.cp *.fn *.ky *.log *.pg *.toc *.tp *.vr
+	rm -f library-menu.texi library-chapters.texi
 
 realclean: realclean_texi
 
 .PHONY: realclean_texi
 realclean_texi:
-	rm -f *.info* *.html *.dvi
+	rm -f library*.html user_guide*.html reference_manual*.html
+	rm -f mercury_*.info* *.dvi
 
 #-----------------------------------------------------------------------------#
