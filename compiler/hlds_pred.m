@@ -1101,6 +1101,9 @@ procedure_is_exported(PredInfo, ProcId) :-
 	;
 		pred_info_is_pseudo_exported(PredInfo),
 		hlds_pred__in_in_unification_proc_id(ProcId)
+	;
+		pred_info_import_status(PredInfo, ImportStatus),
+		ImportStatus = external(interface)
 	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-

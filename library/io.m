@@ -2832,8 +2832,14 @@ io__report_stats(Selector) -->
 
 % miscellaneous predicates
 
+:- interface.
+
+	% XXX Since on the IL backend pragma export is NYI, this
+	% predicate must be placed in the interface.
 :- pred io__init_state(io__state, io__state).
 :- mode io__init_state(di, uo) is det.
+
+:- implemenation.
 
 % for use by the Mercury runtime
 :- pragma export(io__init_state(di, uo), "ML_io_init_state").

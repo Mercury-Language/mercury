@@ -329,6 +329,14 @@
 % MLDS package in which this module is defined.
 :- func mercury_module_name_to_mlds(mercury_module_name) = mlds_module_name.
 
+% Given the name of a Mercury module, and a package name, return the
+% name of the corresponding MLDS module name in which this module is
+% defined.
+% In this case, the package is specified as the first parameter (c.f.
+% mercury_module_name_to_mlds above).
+:- func mercury_module_and_package_name_to_mlds(mercury_module_name,
+		mercury_module_name) = mlds_module_name.
+
 % Given the name of a Mercury module return the fully qualified module
 % name.  ie For the name System.Object which is defined in the source
 % package mscorlib it will return System.Object.
@@ -1463,6 +1471,9 @@ mlds__get_func_signature(func_params(Parameters, RetTypes)) =
 		package_name	:: prog_data__module_name,
 		module_name	:: prog_data__module_name
 	).
+
+mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
+	= name(MLDS_Package, MercuryModule).
 
 mercury_module_name_to_mlds(MercuryModule) = name(MLDS_Package, MLDS_Package) :-
 	(

@@ -185,8 +185,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-generate_il(MLDS, AssemblyDecls ++ [assembly(IlInfo ^ assembly_name),
-		namespace(NamespaceName, ILDecls)], set__init, IO0, IO) :-
+generate_il(MLDS, ILAsm, ForeignLangs, IO0, IO) :-
 	mlds(MercuryModuleName, _, Imports, Defns)= transform_mlds(MLDS),
 
 	ModuleName = mercury_module_name_to_mlds(MercuryModuleName),
@@ -195,16 +194,40 @@ generate_il(MLDS, AssemblyDecls ++ [assembly(IlInfo ^ assembly_name),
 	globals__io_lookup_bool_option(highlevel_data, HighLevelData, IO0, IO1),
 	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm, IO1, IO),
 
-	IlInfo = il_info_init(ModuleName, AssemblyName, Imports,
+	IlInfo0 = il_info_init(ModuleName, AssemblyName, Imports,
 			il_data_rep(HighLevelData), DebugIlAsm),
 
-	ILDecls = list__map(mlds_defn_to_ilasm_decl(IlInfo), Defns),
+	list__map_foldl(mlds_defn_to_ilasm_decl, Defns, ILDecls,
+			IlInfo0, IlInfo),
+
+	ForeignLangs = IlInfo ^ file_foreign_langs,
 
 	ClassName = mlds_module_name_to_class_name(ModuleName),
 	ClassName = structured_name(_, NamespaceName),
 
-	generate_extern_assembly(Imports, AssemblyDecls).
-
+		% Make this module an assembly unless it is in the standard
+		% library.  Standard library modules all go in the one
+		% assembly in a separate step during the build (using
+		% AL.EXE).  
+	(
+		PackageName = mlds_module_name_to_package_name(ModuleName),
+		PackageName = qualified(unqualified("mercury"), _)
+	->
+		ThisAssembly = [],
+		AssemblerRefs = Imports
+	;
+		ThisAssembly = [assembly(AssemblyName)],
+			% If not in the library, but we have foreign code,
+			% declare the foreign module as an assembly we
+			% reference
+		list__map(mangle_foreign_code_module(ModuleName),
+			set__to_sorted_list(ForeignLangs),
+			ForeignCodeAssemblerRefs),
+		AssemblerRefs = list__append(ForeignCodeAssemblerRefs, Imports)
+	),
+	generate_extern_assembly(AssemblerRefs, ExternAssemblies),
+	Namespace = [namespace(NamespaceName, ILDecls)],
+	ILAsm = list__condense([ThisAssembly, ExternAssemblies, Namespace]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -415,21 +438,19 @@ rename_initializer(no_initializer) = no_initializer.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func mlds_defn_to_ilasm_decl(il_info, mlds__defn) = ilasm__decl.
+:- pred mlds_defn_to_ilasm_decl(mlds__defn::in, ilasm__decl::out,
+		il_info::in, il_info::out) is det.
 
-mlds_defn_to_ilasm_decl(_, defn(_Name, _Context, _Flags, data(_Type, _Init)))
-	= _ :- sorry(this_file, "top level data definition!").
-mlds_defn_to_ilasm_decl(_, defn(_Name, _Context, _Flags,
-		function(_MaybePredProcId, _Params, _MaybeStmts)))
-	= _ :- sorry(this_file, "top level function definition!").
-mlds_defn_to_ilasm_decl(Info0, defn(Name, _Context, Flags, class(ClassDefn)))
-	= class(
-		decl_flags_to_classattrs(Flags),
-		EntityName,
-		Extends,
-		Interfaces,
-		MethodDecls
-	) :-
+mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags, data(_Type, _Init)),
+		_Decl, Info, Info) :-
+	sorry(this_file, "top level data definition!").
+mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
+		function(_MaybePredProcId, _Params, _MaybeStmts)),
+		_Decl, Info, Info) :-
+	sorry(this_file, "top level function definition!").
+mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
+		Decl, Info0, Info) :-
+	il_info_new_class(Info0, Info1),
 	EntityName = entity_name_to_ilds_id(Name),
 	ClassDefn = class_defn(_Kind, _Imports, Inherits, Implements,
 			Ctors, Members),
@@ -439,7 +460,7 @@ mlds_defn_to_ilasm_decl(Info0, defn(Name, _Context, Flags, class(ClassDefn)))
 	; Inherits = [Parent0 | Rest],
 		( Rest = [] ->
 			Parent = mlds_type_to_ilds_class_name(
-					Info0 ^ il_data_rep, Parent0),
+					Info1 ^ il_data_rep, Parent0),
 			Extends = extends(Parent)
 		;
 			error(this_file ++ 
@@ -450,21 +471,21 @@ mlds_defn_to_ilasm_decl(Info0, defn(Name, _Context, Flags, class(ClassDefn)))
 	Interfaces = implements(
 			list__map(interface_id_to_class_name, Implements)),
 
-	ClassName = class_name(Info0 ^ module_name, EntityName),
+	ClassName = class_name(Info1 ^ module_name, EntityName),
 	list__map_foldl(generate_method(ClassName, no), Members,
-			MethodsAndFields, Info0, Info1),
+			MethodsAndFields, Info1, Info2),
 	list__map_foldl(generate_method(ClassName, yes(Parent)), Ctors,
-			IlCtors, Info1, Info),
+			IlCtors, Info2, Info3),
 	MethodsAndFieldsAndCtors = IlCtors ++ MethodsAndFields,
 
 		% XXX Maybe it would be better to just check to see
 		% whether or not there are any init instructions than
 		% explicitly checking for the name mercury_code.
 	( EntityName = "mercury_code" ->
-		Imports = Info ^ imports,
-		InitInstrs = list__condense(tree__flatten(Info ^ init_instrs)),
+		Imports = Info3 ^ imports,
+		InitInstrs = list__condense(tree__flatten(Info3 ^ init_instrs)),
 		AllocInstrs = list__condense(
-				tree__flatten(Info ^ alloc_instrs)),
+				tree__flatten(Info3 ^ alloc_instrs)),
 
 			% Generate a field that records whether we have
 			% finished RTTI initialization.
@@ -474,13 +495,16 @@ mlds_defn_to_ilasm_decl(Info0, defn(Name, _Context, Flags, class(ClassDefn)))
 			% Generate a class constructor.
 		make_class_constructor_classdecl(AllocDoneFieldRef,
 				Imports, AllocInstrs, InitInstrs, CCtor,
-				Info, _InfoX),
+				Info3, Info),
 
 			% The declarations in this class.
 		MethodDecls = [AllocDoneField, CCtor | MethodsAndFieldsAndCtors]
 	;
-		MethodDecls = MethodsAndFieldsAndCtors
-	).
+		MethodDecls = MethodsAndFieldsAndCtors,
+		Info = Info3
+	),
+	Decl = class(decl_flags_to_classattrs(Flags), EntityName, Extends,
+			Interfaces, MethodDecls).
 
 class_name(Module, Name) = structured_name(Assembly, ClassName ++ [Name]) :-
 	ClassName = sym_name_to_list(mlds_module_name_to_sym_name(Module)),
@@ -1254,7 +1278,10 @@ atomic_statement_to_il(outline_foreign_proc(Lang, ReturnLvals, _Code),
 		Instrs) --> 
 	il_info_get_module_name(ModuleName),
 	( no =^ method_foreign_lang  ->
+		=(Info),
 		^ method_foreign_lang := yes(Lang),
+		^ file_foreign_langs := 
+			set__insert(Info ^ file_foreign_langs, Lang),
 		{ mangle_foreign_code_module(ModuleName, Lang,
 			OutlineLangModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(
@@ -1303,7 +1330,11 @@ atomic_statement_to_il(inline_target_code(_Lang, _Code), node(Instrs)) -->
 	il_info_get_module_name(ModuleName),
 	( no =^ method_foreign_lang  ->
 			% XXX we hardcode managed C++ here
+		=(Info),
 		^ method_foreign_lang := yes(managed_cplusplus),
+		^ file_foreign_langs := 
+			set__insert(Info ^ file_foreign_langs,
+			managed_cplusplus),
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
 		signature(_, RetType, Params) =^ signature, 
@@ -2409,22 +2440,47 @@ make_fieldref_for_handdefined_var(DataRep, Var, VarType) = FieldRef :-
 
 mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
 	LangStr = globals__simple_foreign_language_string(Lang),
+	PackageName0 = mlds_module_name_to_package_name(ModuleName0),
+	( 
+		PackageName0 = qualified(Q, M0),
+		M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
+		PackageName = qualified(Q, M)
+	; 
+		PackageName0 = unqualified(M0),
+		M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
+		PackageName = unqualified(M)
+	),
 	SymName0 = mlds_module_name_to_sym_name(ModuleName0),
-	( SymName0 = qualified(SymName1, Name) ->
+		% Check to see whether or not the name has already been
+		% qualified with a mercury_code.  If not qualify it.
+	( SymName0 = qualified(SymName1, "mercury_code") ->
 		( 
-			SymName1 = qualified(Q, M0),
-			M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
-			SymName = qualified(Q, M)
+			SymName1 = qualified(SQ, SM0),
+			SM = string__format("%s__%s_code",
+				[s(SM0), s(LangStr)]),
+			SymName2 = qualified(SQ, SM)
 		; 
-			SymName1 = unqualified(M0),
-			M = string__format("%s__%s_code", [s(M0), s(LangStr)]),
-			SymName = unqualified(M)
+			SymName1 = unqualified(SM0),
+			SM = string__format("%s__%s_code",
+					[s(SM0), s(LangStr)]),
+			SymName2 = unqualified(SM)
 		),
-		ModuleName = mercury_module_name_to_mlds(
-				qualified(SymName, Name))
+		SymName = qualified(SymName2, "mercury_code")
 	;
-		error("should never occur.")
-	).
+		( 
+			SymName0 = qualified(SQ, SM0),
+			SM = string__format("%s__%s_code",
+					[s(SM0), s(LangStr)]),
+			SymName = qualified(qualified(SQ, SM), "mercury_code")
+		; 
+			SymName0 = unqualified(SM0),
+			SM = string__format("%s__%s_code",
+					[s(SM0), s(LangStr)]),
+			SymName = qualified(unqualified(SM), "mercury_code")
+		)
+	),
+	ModuleName = mercury_module_and_package_name_to_mlds(
+			PackageName, SymName).
 
 	% When generating references to RTTI, we need to mangle the
 	% module name if the RTTI is defined in C code by hand.
@@ -3109,10 +3165,20 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep, DebugIlAsm) =
 	DefaultSignature = signature(call_conv(no, default), void, []),
 	MethodName = id("").
 
+:- pred il_info_new_class(il_info::in, il_info::out) is det.
+
+il_info_new_class -->
+	^ alloc_instrs := empty,
+	^ init_instrs := empty,
+	^ classdecls := [],
+	^ has_main := no,
+	^ class_foreign_langs := set__init.
+	
 	% reset the il_info for processing a new method
 :- pred il_info_new_method(arguments_map, signature, member_name, 
 	il_info, il_info).
 :- mode il_info_new_method(in, in, in, in, out) is det.
+
 
 il_info_new_method(ILArgs, ILSignature, MethodName) -->
 	=(Info),
