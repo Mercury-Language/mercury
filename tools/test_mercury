@@ -396,7 +396,7 @@ case $status in
     *)
 	: one or more tests failed
 	echo "some tests failed" 1>&2
-	fgrep '**' $TESTDIR/logs/test_mercury_$HOST
+	fgrep '**' $TESTDIR/logs/test_mercury_$HOST.out
 	echo "test_mercury exiting unsuccessfully at `date`" 1>&2
 	false
 	exit 1
