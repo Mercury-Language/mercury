@@ -605,6 +605,8 @@ term__det_term_to_type(Term, X) :-
 term__type_to_term(Val, Term) :- type_to_univ(Val, Univ),
 	term__univ_to_term(Univ, Term).
 
+	% convert the value stored in the univ (as distinct from
+	% the univ itself) to a term.
 term__univ_to_term(Univ, Term) :-
 	term__context_init(Context),
 	Type = univ_type(Univ),
@@ -655,15 +657,16 @@ term__univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
 	det_univ_to_type(Univ, TypeInfo),
 	type_info_to_term(Context, TypeInfo, Term).
 term__univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
+	det_univ_to_type(Univ, NestedUniv),
 	Term = term__functor(term__atom("univ"),
 			% XXX what operator should we use for type
 			% qualification?
 			[term__functor(term__atom(":"),	 % TYPE_QUAL_OP
 				[ValueTerm, TypeTerm],
 				Context)], Context),
-	type_info_to_term(Context, univ_type(Univ), TypeTerm),
-	UnivValue = univ_value(Univ),
-	term__type_to_term(UnivValue, ValueTerm).
+	type_info_to_term(Context, univ_type(NestedUniv), TypeTerm),
+	NestedUnivValue = univ_value(NestedUniv),
+	term__type_to_term(NestedUnivValue, ValueTerm).
 
 term__univ_to_term_special_case("array", "array", [ElemType], Univ, Context, 
 		Term) :-
