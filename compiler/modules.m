@@ -554,6 +554,7 @@ mercury_std_library_module("gc").
 mercury_std_library_module("getopt").
 mercury_std_library_module("graph").
 mercury_std_library_module("group").
+mercury_std_library_module("hash_table").
 mercury_std_library_module("int").
 mercury_std_library_module("integer").
 mercury_std_library_module("io").
