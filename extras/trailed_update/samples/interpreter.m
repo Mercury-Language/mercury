@@ -12,6 +12,8 @@
 % There are many extensions/improvements that could be made;
 % they're left as an exercise for the reader.
 
+% This source file is hereby placed in the public domain. -fjh (the author).
+
 %-----------------------------------------------------------------------------%
 
 :- module interpreter.
