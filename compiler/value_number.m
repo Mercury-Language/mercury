@@ -102,6 +102,10 @@ value_number__main(Instrs0, Instrs) -->
 	% together with other statements when doing value numbering. We
 	% therefore insert labels before and after such assignments.
 	% Our caller will break the code sequence at these labels.
+	%
+	% We do the same thing for assignments to the control slots in
+	% nondet stack frames, since otherwise a bug in the rest of value
+	% numbering may cause them to be improperly deleted.
 
 :- pred value_number__prepare_for_vn(list(instruction), proc_label,
 	bool, set(label), set(label), int, int, list(instruction)).
