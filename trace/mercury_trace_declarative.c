@@ -477,6 +477,7 @@ MR_trace_decl_exit(MR_Event_Info *event_info, MR_Trace_Node prev)
 				event_info->MR_saved_regs,
 				MR_PORT_EXIT);
 
+	call = MR_trace_matching_call(prev);
 	MR_decl_checkpoint_match(call);
 	MR_TRACE_CALL_MERCURY(
 		last_interface = MR_DD_call_node_get_last_interface(
