@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 
-% File: interpreter.m.
+% File: interpreter_lib.m.
 % Main author: fjh.
 
 % This is an interpreter for definite logic programs
@@ -19,7 +19,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module interpreter.
+:- module interpreter_lib.
 :- interface.
 :- import_module io.
 

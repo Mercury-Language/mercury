@@ -1,4 +1,4 @@
-:- module queens.
+:- module queens_lib.
 
 :- interface.
 

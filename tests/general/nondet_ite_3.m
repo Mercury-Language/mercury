@@ -1,6 +1,6 @@
 % nondet_ite_3.m: test nondet if-then-else with semidet condition.
 
-:- module nondet_ite.
+:- module nondet_ite_3.
 :- interface.
 :- import_module io.
 

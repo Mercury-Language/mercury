@@ -1,4 +1,3 @@
-prog_io_erroneous.m:001: Warning: incorrect module name in `:- module' declaration: :- module p.
 prog_io_erroneous.m:012: Error: no clauses for predicate `prog_io_erroneous:q/2'
 prog_io_erroneous.m:007: In clause for `p(in, out, out)':
 prog_io_erroneous.m:007:   in argument 1 of call to predicate `prog_io_erroneous:q/2':

@@ -3,7 +3,7 @@
 % At the moment, MAX_REAL_REGS is 32, so a procedure with 41 args
 % is a full test.
 
-:- module debugger_regs.
+:- module debugger_regs_lib.
 
 :- interface.
 

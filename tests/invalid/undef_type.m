@@ -1,4 +1,4 @@
-:- module test1.
+:- module undef_type.
 
 :- type t1 ---> a ; b ; c ; d(undef1).
 

@@ -1,4 +1,4 @@
-:- module list.
+:- module my_list.
 
 :- interface.
 

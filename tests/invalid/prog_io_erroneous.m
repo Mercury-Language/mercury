@@ -1,4 +1,4 @@
-:- module p.
+:- module prog_io_erroneous.
 
 :- pred p(int, int, int).
 :- mode p(in, out, out).

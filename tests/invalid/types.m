@@ -1,4 +1,4 @@
-:- module t.
+:- module types.
 
 :- type t ---> a; a; f(t); f(t).
 

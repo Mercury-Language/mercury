@@ -1,4 +1,3 @@
-typeclass_test_2.m:001: Warning: incorrect module name in `:- module' declaration: :- module foo.
 typeclass_test_2.m:020: Error: expected `pred(<Name> / <Arity>) is <InstanceName>': type_num / 0 is foo_type_num.
 typeclass_test_2.m:023: Error: clause for function `typeclass_test_2:foo_type_num/1'
 typeclass_test_2.m:023:   without preceding `func' declaration.

@@ -1,4 +1,4 @@
-:- module explict_quant.
+:- module explicit_quant.
 
 :- interface.
 :- import_module list, char.

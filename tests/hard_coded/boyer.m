@@ -13,7 +13,7 @@
 
 %	in Mercury by Bart Demoen - started 17 Jan 1997
 
-:- module boy_notypes .
+:- module boyer .
 
 :- interface.
 :- import_module io, int.

@@ -1,4 +1,4 @@
-:- module map.
+:- module my_map.
 
 :- interface.
 
