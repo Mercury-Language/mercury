@@ -413,7 +413,7 @@ mercury_compile(Module) -->
 		mercury_compile__maybe_output_prof_call_graph(HLDS21,
 			Verbose, Stats, HLDS25),
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50), !,
-		globals__io_lookup_bool_option(highlevel_c, HighLevelC),
+		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 
 		% magic sets can report errors.
@@ -428,7 +428,7 @@ mercury_compile(Module) -->
 		    ),
 		    ( { AditiOnly = yes } ->
 		    	[]
-		    ; { HighLevelC = yes } ->
+		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50),
 			globals__io_lookup_bool_option(compile_to_c, 
 				CompileToC),
@@ -2334,6 +2334,24 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		SplitOpt = ""
 	},
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	( { HighLevelCode = yes } ->
+		{ HighLevelCodeOpt = "-DMR_HIGHLEVEL_CODE " }
+	;
+		{ HighLevelCodeOpt = "" }
+	),
+	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFunctions),
+	( { GCC_NestedFunctions = yes } ->
+		{ NestedFunctionsOpt = "-DMR_USE_GCC_NESTED_FUNCTIONS " }
+	;
+		{ NestedFunctionsOpt = "" }
+	),
+	globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+	( { HighLevelData = yes } ->
+		{ HighLevelDataOpt = "-DMR_HIGHLEVEL_DATA " }
+	;
+		{ HighLevelDataOpt = "" }
+	),
 	globals__io_lookup_bool_option(gcc_global_registers, GCC_Regs),
 	( { GCC_Regs = yes } ->
 		globals__io_lookup_string_option(cflags_for_regs,
@@ -2486,6 +2504,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	% Also be careful that each option is separated by spaces.
 	{ string__append_list([CC, " ", SubDirInclOpt, InclOpt,
 		SplitOpt, OptimizeOpt,
+		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,

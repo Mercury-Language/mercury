@@ -19,6 +19,21 @@
 #
 #---------------------------------------------------------------------------#
 
+	--high-level-code)
+		high_level_code=true ;;
+	--no-high-level-code)
+		high_level_code=false ;;
+
+	--high-level-data)
+		high_level_data=true ;;
+	--no-high-level-data)
+		high_level_data=false ;;
+
+	--gcc-nested-functions)
+		gcc_nested_functions=true ;;
+	--no-gcc-nested-functions)
+		gcc_nested_functions=false ;;
+
 	--asm-labels)
 		asm_labels=true ;;
 	--no-asm-labels)
@@ -133,6 +148,9 @@
 		# may also require changes to all the files indicated by
 		# runtime/mercury_grade.h.
 
+		high_level_code=false
+		gcc_nested_functions=false
+		high_level_data=false
 		asm_labels=false
 		non_local_gotos=false
 		global_regs=false
@@ -152,35 +170,85 @@
 		for grade_piece in $grade_pieces
 		do
 			case "$grade_piece" in
+				hl)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					high_level_code=true
+					gcc_nested_functions=false
+					high_level_data=true
+					;;
+				hlc)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					high_level_code=true
+					gcc_nested_functions=false
+					high_level_data=false
+					;;
+				hl_nest)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					high_level_code=true
+					gcc_nested_functions=true
+					high_level_data=true
+					;;
+				hlc_nest)
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					high_level_code=true
+					gcc_nested_functions=true
+					high_level_data=false
+					;;
 				asm_fast)
 					asm_labels=true
 					non_local_gotos=true
 					global_regs=true
+					high_level_code=false
+					gcc_nested_functions=false
+					high_level_data=false
 					;;
 				asm_jump)
 					asm_labels=true
 					non_local_gotos=true
 					global_regs=false
+					high_level_code=false
+					gcc_nested_functions=false
+					high_level_data=false
 					;;
 				fast)
 					asm_labels=false
 					non_local_gotos=true
 					global_regs=true
+					high_level_code=false
+					gcc_nested_functions=false
+					high_level_data=false
 					;;
 				jump)
 					asm_labels=false
 					non_local_gotos=true
 					global_regs=false
+					high_level_code=false
+					gcc_nested_functions=false
+					high_level_data=false
 					;;
 				reg)
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=true
+					high_level_code=false
+					gcc_nested_functions=false
+					high_level_data=false
 					;;
 				none)
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
+					high_level_code=false
+					gcc_nested_functions=false
+					high_level_data=false
 					;;
 
 				par)

@@ -359,6 +359,29 @@ case $asm_labels in
 	true)		GRADE="asm_$GRADE" ;;
 	false)		;;
 esac
+case $highlevel_code,$highlevel_data,$GRADE in
+	true,true,none)		
+		GRADE="hl" ;;
+	true,false,none)	
+		GRADE="hlc" ;;
+	false,false,*)
+		# GRADE was set above
+		;;
+	false,true,*)
+		echo "\`--high-level-data' requires \`--high-level-code'" 1>&2
+		exit 1
+		;;
+	*)
+		echo "\`--high-level-code' is incompatible with the use of" 1>&2
+		echo "low-level gcc extensions implied by grade \`$GRADE'" 1>&2
+		exit 1
+		;;
+esac
+case $gcc_nested_functions,$highlevel_code in
+	true,true)	GRADE="${GRADE}_nest" ;;
+	*)		;;
+esac
+	
 case $thread_safe in
 	true)	GRADE="$GRADE.par" ;;
 	false)	;;
@@ -558,6 +581,15 @@ esac
 
 case "$MKFIFO" in
     none) demangle=false ;;
+esac
+
+#
+# The MLDS (--high-level-code) back-end uses a different
+# name mangling scheme which the current demangler doesn't
+# know how to demangle.
+#
+case "$highlevel_code" in
+    true) demangle=false ;;
 esac
 
 case $verbose in

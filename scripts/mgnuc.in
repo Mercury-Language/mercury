@@ -219,6 +219,21 @@ esac
 # mentioned in runtime/mercury_grade.h.
 #
 
+case $highlevel_code in
+	true)		HLC_OPTS="-DMR_HIGHLEVEL_CODE" ;;
+	false)		HLC_OPTS="" ;;
+esac
+
+case $highlevel_data in
+	true)		HLD_OPTS="-DMR_HIGHLEVEL_DATA" ;;
+	false)		HLD_OPTS="" ;;
+esac
+
+case $gcc_nested_functions in
+	true)		NEST_OPTS="-DMR_USE_GCC_NESTED_FUNCTIONS" ;;
+	false)		NEST_OPTS="" ;;
+esac
+
 case $asm_labels in
 	true)		ASM_OPTS="-DUSE_ASM_LABELS" ;;
 	false)		ASM_OPTS="" ;;
@@ -301,12 +316,12 @@ case $require_tracing in
 	false)		TRACE_OPTS="" ;;
 esac
 
-GRADE_OPTS="$ASM_OPTS $GOTO_OPTS $REG_OPTS"
+GCC_OPTS="$NEST_OPTS $ASM_OPTS $GOTO_OPTS $REG_OPTS"
 
 # check that special grades are only used with gcc
 case $COMPILER in
 	gcc)	;;
-	*)	case "$GRADE_OPTS" in
+	*)	case "$GCC_OPTS" in
 			*USE_GCC*)
 		echo "$0: For compilers other than GNU C, the only" 1>&2
 		echo "$0: base grade allowed is \`none'" 1>&2
@@ -316,13 +331,13 @@ esac
 
 # if we're using global registers, add CFLAGS_FOR_REGS
 case $global_regs in
-	true)	GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_REGS" ;;
+	true)	GCC_OPTS="$GCC_OPTS $CFLAGS_FOR_REGS" ;;
 	false)	;;
 esac
 
 # if we're using non-local gotos, add CFLAGS_FOR_GOTOS
 case $non_local_gotos in
-	true)	GRADE_OPTS="$GRADE_OPTS $CFLAGS_FOR_GOTOS" ;;
+	true)	GCC_OPTS="$GCC_OPTS $CFLAGS_FOR_GOTOS" ;;
 	false)	;;
 esac
 
@@ -443,7 +458,7 @@ esac
 
 
 ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
-		$GRADE_OPTS $GC_OPTS $DEFINE_OPTS \
+		$HLC_OPTS $HLD_OPTS $GCC_OPTS $GC_OPTS $DEFINE_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$INLINE_ALLOC_OPTS $TRAIL_OPTS $MINIMAL_MODEL_OPTS \

@@ -41,7 +41,15 @@ Grade options:
 		of the Mercury User's Guide."
 
 # --profile-deep is not yet documented because it is not yet implemented
+# --high-level-code is not yet documented because it is not yet stable
+# --gcc-nested-functions is not yet documented because it is not yet stable
+# --high-level-data is not yet documented because it is not yet implemented
+# --high-level is not yet documented because --high-level-data is
+#		not yet implemented
 
+highlevel_code=false
+highlevel_data=false
+gcc_nested_functions=false
 asm_labels=true
 non_local_gotos=true
 global_regs=true
