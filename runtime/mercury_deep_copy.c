@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 1997-1998 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,7 +17,6 @@
 /*
 ** Prototypes.
 */
-static Word get_base_type_layout_entry(Word data, Word *type_info);
 static Word deep_copy_arg(Word data, Word *type_info, Word *arg_type_info,
 	Word *lower_limit, Word *upper_limit);
 static Word * deep_copy_type_info(Word *type_info,
@@ -37,205 +36,39 @@ MR_DECLARE_STRUCT(mercury_data___base_type_info_func_0);
 Word 
 deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 {
+    Word *base_type_info, *base_type_layout, *base_type_functors;
+    Word functors_indicator;
     Word layout_entry, *entry_value, *data_value;
-    int data_tag, entry_tag; 
-
-    int arity, i;
-    Word *argument_vector, *type_info_vector;
-
+    enum MR_DataRepresentation data_rep;
+    int data_tag; 
     Word new_data;
-
 	
     data_tag = tag(data);
     data_value = (Word *) body(data, data_tag);
 
-    layout_entry = get_base_type_layout_entry(data_tag, type_info);
+    base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
+    base_type_layout = MR_BASE_TYPEINFO_GET_TYPELAYOUT(base_type_info);
+    layout_entry = base_type_layout[data_tag];
 
-    entry_tag = tag(layout_entry);
-    entry_value = (Word *) body(layout_entry, entry_tag);
+    base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(base_type_info);
+    functors_indicator = MR_TYPEFUNCTORS_INDICATOR(base_type_functors);
 
-    switch(entry_tag) {
+    entry_value = (Word *) strip_tag(layout_entry);
 
-        case TYPELAYOUT_CONST_TAG: /* and TYPELAYOUT_COMP_CONST_TAG */
+    data_rep = MR_categorize_data(functors_indicator, layout_entry);
 
-            /* Some builtins need special treatment */
-            if ((Word) entry_value <= TYPELAYOUT_MAX_VARINT) {
-                int builtin_type = unmkbody(entry_value);
+    switch (data_rep) {
+        case MR_DATAREP_ENUM:                   /* fallthru */
+        case MR_DATAREP_COMPLICATED_CONST:
+            new_data = data;	/* just a copy of the actual item */
+        break;
 
-                switch(builtin_type) {
-
-                    case TYPELAYOUT_UNASSIGNED_VALUE:
-                        fatal_error("Attempt to use an UNASSIGNED tag "
-                            "in deep_copy");
-                        break;
-
-                    case TYPELAYOUT_UNUSED_VALUE:
-                        fatal_error("Attempt to use an UNUSED tag "
-                            "in deep_copy");
-                        break;
-
-                    case TYPELAYOUT_STRING_VALUE:
-                        if (in_range(data_value)) {
-                            incr_saved_hp_atomic(new_data, 
-                                (strlen((String) data_value) + sizeof(Word)) 
-                                / sizeof(Word));
-                            strcpy((String) new_data, (String) data_value);
-                        } else {
-                            new_data = data;
-                        }
-                        break;
-
-                    case TYPELAYOUT_FLOAT_VALUE:
-			#ifdef BOXED_FLOAT
-                	    if (in_range(data_value)) {
-				/*
-				** force a deep copy by converting to float
-				** and back
-				*/
-	 			new_data = float_to_word(word_to_float(data));
-			    } else {
-				new_data = data;
-			    }
-			#else
-			    new_data = data;
-			#endif
-			break;
-
-                    case TYPELAYOUT_INT_VALUE:
-                        new_data = data;
-                        break;
-
-                    case TYPELAYOUT_CHARACTER_VALUE:
-                        new_data = data;
-                        break;
-
-                    case TYPELAYOUT_UNIV_VALUE: 
-                            /* if the univ is stored in range, copy it */ 
-                        if (in_range(data_value)) {
-                            Word *new_data_ptr;
-
-                                /* allocate space for a univ */
-                            incr_saved_hp(new_data, 2);
-                            new_data_ptr = (Word *) new_data;
-                            new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] = 
-				(Word) deep_copy_type_info( (Word *)
-				    data_value[UNIV_OFFSET_FOR_TYPEINFO],
-				    lower_limit, upper_limit);
-                            new_data_ptr[UNIV_OFFSET_FOR_DATA] = deep_copy(
-                                data_value[UNIV_OFFSET_FOR_DATA], 
-                                (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO],
-                                lower_limit, upper_limit);
-                        } else {
-                            new_data = data;
-                        }
-                        break;
-
-                    case TYPELAYOUT_PREDICATE_VALUE:
-                    {
-                        /*
-			** predicate closures store the number of curried
-                        ** arguments as their first argument, the
-                        ** Code * as their second, and then the
-                        ** arguments
-                        **
-                        ** Their type-infos have a pointer to
-                        ** base_type_info for pred/0, arity, and then
-                        ** argument typeinfos.
-                        **/
-                        if (in_range(data_value)) {
-                            int args;
-                            Word *new_closure;
-
-                            /* get number of curried arguments */
-                            args = data_value[0];
-
-                            /* create new closure */
-                            incr_saved_hp(LVALUE_CAST(Word, new_closure),
-				args + 2);
-
-                            /* copy number of arguments */
-                            new_closure[0] = args;
-
-                            /* copy pointer to code for closure */
-                            new_closure[1] = data_value[1];
-
-                            /* copy arguments */
-                            for (i = 0; i < args; i++) {
-                                new_closure[i + 2] = deep_copy(
-				    data_value[i + 2],
-                                    (Word *) type_info[i +
-					TYPEINFO_OFFSET_FOR_PRED_ARGS],
-                                    lower_limit, upper_limit);
-                            }
-                            new_data = (Word) new_closure;
-			} else {
-			    new_data = data;
-			}
-                        break;
-                    }
-
-                    case TYPELAYOUT_VOID_VALUE:
-                        fatal_error("Attempt to use a VOID tag in deep_copy");
-                        break;
-
-                    case TYPELAYOUT_ARRAY_VALUE:
-                        if (in_range(data_value)) {
-			    MR_ArrayType *new_array;
-			    MR_ArrayType *old_array;
-			    Integer array_size;
-
-			    old_array = (MR_ArrayType *) data_value;
-			    array_size = old_array->size;
-			    new_array = MR_make_array(array_size);
-			    new_array->size = array_size;
-			    for (i = 0; i < array_size; i++) {
-				new_array->elements[i] = deep_copy_arg(
-					old_array->elements[i], type_info, 
-					(Word *) 1, lower_limit, upper_limit);
-			    }
-			    new_data = (Word) new_array;
-			} else {
-			    new_data = data;
-			}
-			break;
-
-                    case TYPELAYOUT_TYPEINFO_VALUE:
-			new_data = (Word) deep_copy_type_info(data_value,
-			    lower_limit, upper_limit);
-                        break;
-
-                    case TYPELAYOUT_C_POINTER_VALUE:
-                        if (in_range(data_value)) {
-			    /*
-			    ** This error occurs if we try to deep_copy() a
-			    ** `c_pointer' type that points to memory allocated
-			    ** on the Mercury heap.
-			    */
-                            fatal_error("Attempt to use a C_POINTER tag "
-				    "in deep_copy");
-                        } else {
-                            new_data = data;
-                        }
-                        break;
-
-                    default:
-                        fatal_error("Invalid tag value in deep_copy");
-                        break;
-                }
-            } else {
-                    /* a constant or enumeration */
-                new_data = data;	/* just a copy of the actual item */
-            }
-            break;
-
-        case TYPELAYOUT_SIMPLE_TAG: 
-
+        case MR_DATAREP_SIMPLE: {
+            int arity, i;
+	    Word *argument_vector, *type_info_vector;
             argument_vector = data_value;
 
-                /*
-		** If the argument vector is in range, copy the
-                ** arguments.
-                */
+                /* If the argument vector is in range, copy the arguments */
             if (in_range(argument_vector)) {
                 arity = entry_value[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
                 type_info_vector = entry_value + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
@@ -245,10 +78,9 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                     /* copy arguments */
                 for (i = 0; i < arity; i++) {
-		    field(0, new_data, i) =
-			deep_copy_arg(argument_vector[i],
-				type_info, (Word *) type_info_vector[i],
-				lower_limit, upper_limit);
+                    field(0, new_data, i) = deep_copy_arg(argument_vector[i],
+                        type_info, (Word *) type_info_vector[i], lower_limit,
+                        upper_limit);
                 }
                     /* tag this pointer */
                 new_data = (Word) mkword(data_tag, new_data);
@@ -256,29 +88,26 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                 new_data = data;
             }
             break;
+        }
 
-        case TYPELAYOUT_COMPLICATED_TAG:
-        {
+        case MR_DATAREP_COMPLICATED: {
             Word secondary_tag;
             Word *new_entry;
+	    Word *argument_vector, *type_info_vector;
+            int arity, i;
 
                 /*
-		** if the vector containing the secondary
-                ** tags and the arguments is in range, 
-                ** copy it.
+                ** if the vector containing the secondary tags and the
+                ** arguments is in range, copy it.
                 */
             if (in_range(data_value)) {
                 secondary_tag = *data_value;
                 argument_vector = data_value + 1;
                 new_entry = (Word *) entry_value[secondary_tag +1];
                 arity = new_entry[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
-                type_info_vector = new_entry + 
-                    TYPELAYOUT_SIMPLE_ARGS_OFFSET;
+                type_info_vector = new_entry + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
 
-                /*
-		** allocate space for new args, and 
-                ** secondary tag 
-                */
+                    /* allocate space for new args, and secondary tag */
                 incr_saved_hp(new_data, arity + 1);
 
                     /* copy secondary tag */
@@ -286,57 +115,187 @@ deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 
                     /* copy arguments */
                 for (i = 0; i < arity; i++) {
-                    field(0, new_data, i + 1) = 
-			deep_copy_arg(argument_vector[i],
-				type_info, (Word *) type_info_vector[i],
-				lower_limit, upper_limit);
+                    field(0, new_data, i + 1) = deep_copy_arg(
+                        argument_vector[i], type_info,
+                        (Word *) type_info_vector[i], lower_limit,
+                        upper_limit);
                 }
 
-                /* tag this pointer */
+                    /* tag this pointer */
                 new_data = (Word) mkword(data_tag, new_data);
+            } else {
+                new_data = data;
+            }
+        }
+            break;
+
+        case MR_DATAREP_NOTAG:
+            new_data = deep_copy_arg(data, type_info, 
+                    (Word *) *MR_TYPELAYOUT_NO_TAG_VECTOR_ARGS(entry_value),
+                    lower_limit, upper_limit);
+            break;
+
+        case MR_DATAREP_EQUIV: 
+            new_data = deep_copy_arg(data, type_info, 
+                    (Word *) MR_TYPELAYOUT_EQUIV_TYPE((Word *) entry_value),
+                    lower_limit, upper_limit);
+            break;
+
+        case MR_DATAREP_EQUIV_VAR:
+            new_data = deep_copy(data, (Word *) type_info[(Word) entry_value],
+                    lower_limit, upper_limit);
+            break;
+
+        case MR_DATAREP_INT:
+        case MR_DATAREP_CHAR:
+            new_data = data;
+            break;
+
+        case MR_DATAREP_FLOAT:
+			#ifdef BOXED_FLOAT
+                if (in_range(data_value)) {
+                        /*
+                        ** force a deep copy by converting to float
+                        ** and back
+                        */
+                    new_data = float_to_word(word_to_float(data));
+                } else {
+                    new_data = data;
+			    }
+            #else
+                new_data = data;
+            #endif
+            break;
+
+        case MR_DATAREP_STRING:
+            if (in_range(data_value)) {
+                incr_saved_hp_atomic(new_data, 
+                    (strlen((String) data_value) + sizeof(Word)) 
+                                / sizeof(Word));
+                strcpy((String) new_data, (String) data_value);
+            } else {
+                new_data = data;
+            }
+            break;
+
+        case MR_DATAREP_PRED: {
+                /*
+                ** predicate closures store the number of curried
+                ** arguments as their first argument, the
+                ** Code * as their second, and then the
+                ** arguments
+                **
+                ** Their type-infos have a pointer to
+                ** base_type_info for pred/0, arity, and then
+                ** argument typeinfos.
+                **/
+            if (in_range(data_value)) {
+                int args, i;
+                Word *new_closure;
+
+                    /* get number of curried arguments */
+                args = data_value[0];
+
+                    /* create new closure */
+                incr_saved_hp(LVALUE_CAST(Word, new_closure), args + 2);
+
+                    /* copy number of arguments */
+                new_closure[0] = args;
+
+                    /* copy pointer to code for closure */
+                new_closure[1] = data_value[1];
+
+                    /* copy arguments */
+                for (i = 0; i < args; i++) {
+                    new_closure[i + 2] = deep_copy(data_value[i + 2],
+                        (Word *) type_info[i + TYPEINFO_OFFSET_FOR_PRED_ARGS],
+                        lower_limit, upper_limit);
+                }
+            new_data = (Word) new_closure;
+            } else {
+                new_data = data;
+            }
+        }
+            break;
+        
+        case MR_DATAREP_UNIV: 
+                /* if the univ is stored in range, copy it */ 
+            if (in_range(data_value)) {
+                Word *new_data_ptr;
+
+                    /* allocate space for a univ */
+                incr_saved_hp(new_data, 2);
+                new_data_ptr = (Word *) new_data;
+                new_data_ptr[UNIV_OFFSET_FOR_TYPEINFO] = 
+                    (Word) deep_copy_type_info( (Word *)
+                    data_value[UNIV_OFFSET_FOR_TYPEINFO],
+                    lower_limit, upper_limit);
+                new_data_ptr[UNIV_OFFSET_FOR_DATA] = deep_copy(
+                    data_value[UNIV_OFFSET_FOR_DATA], 
+                    (Word *) data_value[UNIV_OFFSET_FOR_TYPEINFO],
+                    lower_limit, upper_limit);
+            } else {
+                new_data = data;
+            }
+            break;
+
+        case MR_DATAREP_VOID:
+            fatal_error("Cannot deep copy a void type");
+            break;
+
+        case MR_DATAREP_ARRAY: {
+            int i;
+
+            if (in_range(data_value)) {
+                MR_ArrayType *new_array;
+                MR_ArrayType *old_array;
+                Integer array_size;
+
+                old_array = (MR_ArrayType *) data_value;
+                array_size = old_array->size;
+                new_array = MR_make_array(array_size);
+                new_array->size = array_size;
+                for (i = 0; i < array_size; i++) {
+                    new_array->elements[i] = deep_copy_arg(
+                        old_array->elements[i], type_info, 
+                        (Word *) 1, lower_limit, upper_limit);
+                }
+                new_data = (Word) new_array;
             } else {
                 new_data = data;
             }
             break;
         }
 
-        case TYPELAYOUT_EQUIV_TAG: /* and TYPELAYOUT_NO_TAG */
-            /* note: we treat no_tag types just like equivalences */
+        case MR_DATAREP_TYPEINFO:
+            new_data = (Word) deep_copy_type_info(data_value,
+                lower_limit, upper_limit);
+            break;
 
-            if ((Word) entry_value < TYPELAYOUT_MAX_VARINT) {
-                new_data = deep_copy(data,
-		    (Word *) type_info[(Word) entry_value],
-                    lower_limit, upper_limit);
+        case MR_DATAREP_C_POINTER:
+            if (in_range(data_value)) {
+                /*
+                ** This error occurs if we try to deep_copy() a
+                ** `c_pointer' type that points to memory allocated
+                ** on the Mercury heap.
+                */
+                fatal_error("Cannot copy a c_pointer type");
             } else {
-		/*
-		** offset 0 is no-tag indicator
-		** offset 1 is the pseudo-typeinfo
-		** (as per comments in base_type_layout.m)
-		** XXX should avoid use of hard-coded offset `1' here
-		*/
-		new_data = deep_copy_arg(data,
-				type_info, (Word *) entry_value[1],
-				lower_limit, upper_limit);
+                new_data = data;
             }
+            break;
+            
+        case MR_DATAREP_UNKNOWN:
+            fatal_error("Unknown layout type in deep copy");
             break;
 
         default:
-            fatal_error("Unknown layout tag in deep copy");
-            break;
+            fatal_error("Unknown layout type in deep copy");
+        break;
     }
 
     return new_data;
 } /* end deep_copy() */
-
-
-Word 
-get_base_type_layout_entry(Word data_tag, Word *type_info)
-{
-	Word *base_type_info, *base_type_layout;
-	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
-	base_type_layout = MR_BASE_TYPEINFO_GET_TYPELAYOUT(base_type_info);
-	return base_type_layout[data_tag];
-}
 
 /*
 ** deep_copy_arg is like deep_copy() except that it takes a

@@ -799,6 +799,50 @@ Word * MR_make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	MR_MemoryList *allocated);
 void MR_deallocate(MR_MemoryList allocated_memory_cells);
 
+/*---------------------------------------------------------------------------*/
+
+/*
+** defintions and functions for categorizing data representations.
+*/
+
+
+/*
+** These have been ordered so that the most similar cases are next
+** to each other, so a switch on this type can exploit fallthrough
+** to cut down on code duplication.
+*/
+enum MR_DataRepresentation {
+	MR_DATAREP_ENUM,
+	MR_DATAREP_COMPLICATED_CONST,
+	MR_DATAREP_SIMPLE,
+	MR_DATAREP_COMPLICATED,
+	MR_DATAREP_NOTAG,
+	MR_DATAREP_EQUIV,
+	MR_DATAREP_EQUIV_VAR,
+	MR_DATAREP_INT,
+	MR_DATAREP_CHAR,
+	MR_DATAREP_FLOAT,
+	MR_DATAREP_STRING,
+	MR_DATAREP_PRED,
+	MR_DATAREP_UNIV,
+	MR_DATAREP_VOID,
+	MR_DATAREP_ARRAY,
+	MR_DATAREP_TYPEINFO,
+	MR_DATAREP_C_POINTER,
+	MR_DATAREP_UNKNOWN
+};
+
+/*
+** Return the data representation used by the data with the given
+** functors_indicator and layout_entry.
+**
+** functors_indicator is part of the base_type_functors data structure.
+** layout_entry is the base_type_layout entry corresponding to the
+** primary tag of the data.
+**
+*/
+enum MR_DataRepresentation MR_categorize_data(Word functors_indicator,
+		Word layout_entry);
 
 /*---------------------------------------------------------------------------*/
 #endif /* not MERCURY_TYPEINFO_H */
