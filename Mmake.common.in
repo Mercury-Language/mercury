@@ -64,7 +64,7 @@ CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 # just reuse the .o files.
 EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 
-# Set LIBRARY_RM_C as `:' if EXT_FOR_PIC_OBJECTS is `pic_o', or `$(RM_C)'
+# Set LIBRARY_RM_C as `:' if EXT_FOR_PIC_OBJECTS is `pic_o', or `rm'
 # otherwise.  This is used to ensure that in cases when we're building
 # both `.o' and `.pic_o' files, we don't remove the intermediate `.c' files.
 # This avoids compiling things to C twice, and also avoids problems when
