@@ -310,7 +310,7 @@ RPATH_OPT_LIST=
 # only set RPATH_OPT_LIST if the system supports shared libraries
 case $EXT_FOR_SHARED_LIB in so)
 	prev=""
-	for dir in $merc_shlib_dirs $user_shlib_dirs 'kludge for broken shells'
+	for dir in $user_shlib_dirs $merc_shlib_dirs 'kludge for broken shells'
 	do
 	    case "$dir" in
 		'kludge for broken shells')
