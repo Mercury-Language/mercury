@@ -893,7 +893,12 @@ status_defined_in_this_module(local,			yes).
 
 	% The information specific to a predicate, as opposed to a procedure.
 	% (Functions count as predicates.)
-
+	%
+	% Note that it is an invariant that any type_info-related
+	% variables in the arguments of a predicate must precede any
+	% polymorphically-typed arguments whose type depends on the
+	% values of those type_info-related variables;
+	% accurate GC for the MLDS back-end relies on this.
 :- type pred_info
 	--->	predicate(
 			decl_typevarset	:: tvarset,

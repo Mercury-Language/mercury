@@ -1462,16 +1462,21 @@ ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements) -->
 	% but which are not local to a subgoal.
 	% (If they're local to a subgoal, they'll be declared
 	% when we generate code for that subgoal.)
+	%
+	% We need to make sure that we declare any type_info or
+	% type_classinfo variables *before* any other variables,
+	% since the GC tracing code for the other variables may
+	% refer to the type_info variables, so they need to be in scope.
 
 	{ Locals = goal_local_vars(Goal) },
 	{ SubGoalLocals = union_of_direct_subgoal_locals(Goal) },
 	{ set__difference(Locals, SubGoalLocals, VarsToDeclareHere) },
-	{ set__to_sorted_list(VarsToDeclareHere, VarsList) },
+	{ set__to_sorted_list(VarsToDeclareHere, VarsList0) },
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ ml_gen_info_get_var_types(MLDSGenInfo, VarTypes) },
-	ml_gen_local_var_decls(VarSet, VarTypes,
-		Context, VarsList, VarDecls),
+	{ VarsList = put_typeinfo_vars_first(VarsList0, VarTypes) },
+	ml_gen_local_var_decls(VarSet, VarTypes, Context, VarsList, VarDecls),
 
 	%
 	% Generate code for the goal in its own code model.

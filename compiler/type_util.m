@@ -95,12 +95,20 @@
 :- mode type_id_has_hand_defined_rtti(in) is semidet.
 
 	% A test for type_info-related types that are introduced by
-	% polymorphism.m.  Mode inference never infers unique modes
+	% polymorphism.m.  These need to be handled specially in certain
+	% places.  For example, mode inference never infers unique modes
 	% for these types, since it would not be useful, and since we
 	% want to minimize the number of different modes that we infer.
 
 :- pred is_introduced_type_info_type(type).
 :- mode is_introduced_type_info_type(in) is semidet.
+
+	% Given a list of variables, return the permutation
+	% of that list which has all the type_info-related variables
+	% preceding the non-type_info-related variables (with the relative
+	% order of variables within each group being the same as in the
+	% original list).
+:- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
 
 	% In the forwards mode, this predicate checks for a "new " prefix
 	% at the start of the functor name, and removes it if present;
@@ -522,6 +530,13 @@ is_introduced_type_info_type(Type) :-
 	; Name = "base_typeclass_info"
 	),
 	mercury_private_builtin_module(PrivateBuiltin).
+
+put_typeinfo_vars_first(VarsList, VarTypes) =
+		TypeInfoVarsList ++ NonTypeInfoVarsList :-
+	list__filter((pred(Var::in) is semidet :-
+			Type = map__lookup(VarTypes, Var),
+			is_introduced_type_info_type(Type)),
+		VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
 
 remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
 	string__append("new ", Name, Name0).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2001 The University of Melbourne.
+% Copyright (C) 1995-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -456,7 +456,7 @@ lambda__process_lambda(PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		% name, arity, arg types, determinism,
 		% context, status, etc. for the new predicate.
 
-		ArgVars = ArgVars1,
+		ArgVars = put_typeinfo_vars_first(ArgVars1, VarTypes),
 		list__append(ArgVars, Vars, AllArgVars),
 
 		module_info_name(ModuleInfo0, ModuleName),
