@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,14 @@
 			% Do not go via C, instead generate GCC's internal
 			% `tree' data structure.
 			% (Work in progress.)
+
+	% The GC method specifies how we do garbage collection.
+	% This is only relevant for the C and asm back-ends;
+	% when compiling to IL or Java, where the target language
+	% implementation handles garbage collection automatically,
+	% the gc_method is set to `none'.  (XXX Maybe we should
+	% have a different alternative for that case?)
+	% 
 :- type gc_method
 	--->	none
 	;	conservative
@@ -74,6 +82,9 @@
 	is det.
 
 :- pred globals__set_options(globals::in, option_table::in, globals::out)
+	is det.
+
+:- pred globals__set_gc_method(globals::in, gc_method::in, globals::out)
 	is det.
 
 :- pred globals__set_trace_level(globals::in, trace_level::in, globals::out)
@@ -149,6 +160,9 @@
 	is det.
 
 :- pred globals__io_set_option(option::in, option_data::in,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_set_gc_method(gc_method::in,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_set_trace_level(trace_level::in,
@@ -258,6 +272,9 @@ globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
 		), LangStrs).
 
 globals__set_options(Globals, Options, Globals ^ options := Options).
+
+globals__set_gc_method(Globals, GC_Method,
+	Globals ^ gc_method := GC_Method).
 
 globals__set_trace_level(Globals, TraceLevel,
 	Globals ^ trace_level := TraceLevel).
@@ -413,6 +430,14 @@ globals__io_set_option(Option, OptionData) -->
 		% XXX there is a bit of a design flaw with regard to
 		% uniqueness and io__set_globals
 	{ unsafe_promise_unique(Globals1, Globals) },
+	globals__io_set_globals(Globals).
+
+globals__io_set_gc_method(GC_Method) -->
+	globals__io_get_globals(Globals0),
+	{ globals__set_gc_method(Globals0, GC_Method, Globals1) },
+	{ unsafe_promise_unique(Globals1, Globals) },
+		% XXX there is a bit of a design flaw with regard to
+		% uniqueness and io__set_globals
 	globals__io_set_globals(Globals).
 
 globals__io_set_trace_level(TraceLevel) -->

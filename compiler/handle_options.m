@@ -279,11 +279,40 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
 
-	% Generating IL implies high-level code, turning off nested functions,
-	% using copy-out for nondet output arguments,
-	% using zero tags, boxing enums, disabling no_tag_types and no
-	% static ground terms.
+	% Generating IL implies:
+	%   - gc_method `none' and no heap reclamation on failure
+	%	  Because GC is handled automatically by the .NET CLR
+	%	  implementation.
+	%   - high-level code
+	%	  Because only the MLDS back-end supports
+	%	  compiling to IL, not the LLDS back-end.
+	%   - turning off nested functions
+	%	  Because IL doesn't support nested functions.
+	%   - using copy-out for nondet output arguments
+	%	  For reasons explained in the paper "Compiling Mercury
+	%	  to the .NET Common Language Runtime"
+	%   - using no tags
+	%	  Because IL doesn't provide any mechanism for tagging
+	%	  pointers.
+	%   - boxing enums and disabling no_tag_types
+	%	  These are both required to ensure that we have a uniform
+	%	  representation (`object[]') for all data types,
+	%	  which is required to avoid type errors for code using
+	%	  abstract data types.
+	%	  XXX It should not be needed once we have a general solution
+	%	  to the abstract equivalence type problem.
+	%   - store nondet environments on the heap
+	%         Because Java has no way of allocating structs on the stack.
+	%   - no static ground terms
+	%         XXX Previously static ground terms used to not work with
+	%             --high-level-data.  But this has been (mostly?) fixed now.
+	%             So we should investigate re-enabling static ground terms.
 	( { Target = il } ->
+		globals__io_set_gc_method(none),
+		globals__io_set_option(reclaim_heap_on_nondet_failure,
+			bool(no)),
+		globals__io_set_option(reclaim_heap_on_semidet_failure,
+			bool(no)),
 		globals__io_set_option(highlevel_code, bool(yes)),
 		globals__io_set_option(gcc_nested_functions, bool(no)),
 		globals__io_set_option(nondet_copy_out, bool(yes)),
@@ -307,16 +336,42 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 			bool(yes))
 	),
 
-	% Generating Java implies high-level code, turning off nested functions,
-	% using copy-out for both det and nondet output arguments,
-	% using no tags, not optimizing tailcalls, no static ground terms and
-	% store nondet environments on the heap.
-	% XXX no static ground terms should be eliminated in a later
-	%     version.
-	% XXX Optimized tailcalls currently cause compilation errors in the
-	%     Java back-end because javac is unwilling to compile unreachable
-	%     code they generate. For this reason they have been disabled.
+	% Generating Java implies
+	%   - gc_method `none' and no heap reclamation on failure
+	%	  Because GC is handled automatically by the Java
+	%	  implementation.
+	%   - high-level code
+	%	  Because only the MLDS back-end supports
+	%	  compiling to Java, not the LLDS back-end.
+	%   - high-level data
+	%	  Because it is more efficient,
+	%	  and better for interoperability.
+	%	  (In theory --low-level-data should work too,
+	%	  but there's no reason to bother supporting it.)
+	%   - turning off nested functions
+	%	  Because Java doesn't support nested functions.
+	%   - using copy-out for both det and nondet output arguments
+	%	  Because Java doesn't support pass-by-reference.
+	%   - using no tags
+	%	  Because Java doesn't provide any mechanism for tagging
+	%	  pointers.
+	%   - store nondet environments on the heap
+	%         Because Java has no way of allocating structs on the stack.
+	%   - not optimizing tailcalls
+	%         XXX Optimized tailcalls currently cause compilation errors
+	%             in the Java back-end because javac is unwilling to
+	%             compile unreachable code they generate.
+	%	      For this reason they have been disabled.
+	%   - no static ground terms
+	%         XXX Previously static ground terms used to not work with
+	%             --high-level-data.  But this has been (mostly?) fixed now.
+	%             So we should investigate re-enabling static ground terms.
 	( { Target = java } ->
+		globals__io_set_gc_method(none),
+		globals__io_set_option(reclaim_heap_on_nondet_failure,
+			bool(no)),
+		globals__io_set_option(reclaim_heap_on_semidet_failure,
+			bool(no)),
 		globals__io_set_option(highlevel_code, bool(yes)),
 		globals__io_set_option(highlevel_data, bool(yes)),	
 		globals__io_set_option(gcc_nested_functions, bool(no)),
