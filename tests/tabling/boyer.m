@@ -297,7 +297,7 @@ mylength(reverse(X),length(X)).
 :- pred lessp(type_wff,type_wff,type_wff) .
 :- mode lessp(in,in,out) is semidet .
 
-lessp(plus(X,Y), plus(X,Z), lessp(Y,Z)) :- !.
+lessp(plus(X,Y), plus(X,Z), lessp(Y,Z)) :- true.
 
 :- pred plus(type_wff,type_wff,type_wff) .
 :- mode plus(in,in,out) is semidet .
