@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2002 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,6 +61,14 @@
 	% initialized with the specified value
 :- pred store__new_mutvar(T, generic_mutvar(T, S), S, S) <= store(S).
 :- mode store__new_mutvar(in, out, di, uo) is det.
+
+	% copy_mutvar(OldMutvar, NewMutvar, S0, S)
+	% is equivalent to the sequence
+	% 	get_mutvar(OldMutvar, Value, S0, S1),
+	% 	new_mutvar(NewMutvar, Value, S1, S )
+:- pred store__copy_mutvar(generic_mutvar(T, S), generic_mutvar(T, S), S, S)
+		<= store(S).
+:- mode store__copy_mutvar(in, out, di, uo) is det.
 
 	% lookup the value stored in a given mutable variable
 :- pred store__get_mutvar(generic_mutvar(T, S), T, S, S) <= store(S).
@@ -302,6 +310,10 @@ new_mutvar(_, _) -->
 	% matching foreign_proc version.
 	{ private_builtin__sorry("store__new_mutvar") }.
 
+copy_mutvar(Mutvar, Copy) -->
+	get_mutvar(Mutvar, Value),
+	new_mutvar(Value, Copy).
+
 get_mutvar(_, _) -->
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -316,7 +328,8 @@ set_mutvar(_, _) -->
 						S, S) <= store(S).
 :- mode store__unsafe_new_uninitialized_mutvar(out, di, uo) is det.
 
-:- pragma foreign_proc("C", unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
+:- pragma foreign_proc("C",
+		unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
 		[will_not_call_mercury, promise_pure],
 "
 	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");

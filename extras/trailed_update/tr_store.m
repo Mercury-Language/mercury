@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,6 +33,13 @@
 	% initialized with the specified value
 :- pred tr_store__new_mutvar(T, mutvar(T, S), store(S), store(S)).
 :- mode tr_store__new_mutvar(in, out, mdi, muo) is det.
+
+	% copy_mutvar(Mutvar, Copy, S0, S)
+	% is equivalent to
+	% 	get_mutvar(Mutvar, Value, S0, S1),
+	% 	new_mutvar(Value, Copy,   S1, S )
+:- pred tr_store__copy_mutvar(mutvar(T, S), mutvar(T, S), store(S), store(S)).
+:- mode tr_store__copy_mutvar(in, out, mdi, muo) is det.
 
 	% lookup the value stored in a given mutable variable
 :- pred tr_store__get_mutvar(mutvar(T, S), T, store(S), store(S)).
@@ -154,6 +161,10 @@
 	*(MR_Word *)Mutvar = Val;
 	S = S0;
 ").
+
+copy_mutvar(Mutvar, Copy) -->
+	get_mutvar(Mutvar, Val),
+	new_mutvar(Val, Copy).
 
 :- pragma c_code(get_mutvar(Mutvar::in, Val::out, S0::mdi, S::muo),
 		will_not_call_mercury,
