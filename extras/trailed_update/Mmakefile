@@ -11,6 +11,9 @@ RM_C = :
 MGNUCFLAGS = -g -Werror
 MLFLAGS = -g
 
+# We need this to use shared libraries on Linux
+ML = ml --mercury-libs shared
+
 MAIN_TARGET = libtrailed_update
 
 depend : trailed_update.depend
@@ -21,5 +24,12 @@ check : libtrailed_update
 	cd samples && mmake $(MMAKEFLAGS) check
 	cd tests && mmake $(MMAKEFLAGS) check
 
-# We need this to use shared libraries on Linux
-ML = ml --mercury-libs shared
+clean :
+	cd samples && mmake $(MMAKEFLAGS) clean
+	cd tests && mmake $(MMAKEFLAGS) clean
+
+realclean :
+	cd samples && mmake $(MMAKEFLAGS) realclean
+	cd tests && mmake $(MMAKEFLAGS) realclean
+
+#-----------------------------------------------------------------------------#
