@@ -1,42 +1,53 @@
 # Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-#
-#   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
-#   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
-#   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
+# Copyright (C) 2002 The University of Melbourne
 
 # To build, do the following:
 #
 # $ mmake depend
-# $ mmake
-#
-# And to install...
-#
+# $ mmake all
 # $ mmake install
+#
+# If you have problems, try the following instead:
+#
+# $ mmake depend
+# $ mmake all
+# $ mmake liblex.install
+# $ mmake libregex.install
 
 # Omit this line if you want to install in the standard location.
 # Edit this line if you want to install the library elsewhere.
 # A directory $(INSTALL_PREFIX)/lib/mercury will be created, if
 # necessary, and everything put there.
 #
-INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
-#INSTALL_PREFIX = $(HOME)/mercury
+#INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
+INSTALL_PREFIX = .
 
 # Omit this line if you want to install the default grades.
 # Edit this line if you want to install with different grades.
 #
-#LIBGRADES = asm_fast.gc hlc.gc
+LIBGRADES = asm_fast.gc hlc.gc asm_fast.gc.tr.debug
 
-# Any application using this library will also need the following
+# Any application using these libraries will also need the following
 # in its Mmakefile:
 #
-#EXTRA_LIBRARIES = lex
+#EXTRA_LIBRARIES = lex regex
+#
+# and the following must be uncommented if the library was not installed
+# in the standard location (the RHS must match the value of INSTALL_PREFIX
+# used to install the libr ary.)
+#
+#EXTRA_LIB_DIRS = $(INSTALL_PREFIX)/extras
+#EXTRA_LIB_DIRS = .
 
--include ../Mmake.params
+MAIN_TARGET = all
 
-MAIN_TARGET = liblex
-depend: lex.depend
-install: $(MAIN_TARGET).install
+.PHONEY: all depend install check
 
-check: liblex
-	true
+all: liblex libregex
 
+depend: lex.depend regex.depend
+
+install: liblex.install libregex.install
+
+check: install
+	(cd tests; mmake check)

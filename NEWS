@@ -116,6 +116,8 @@ A new profiler, which we call the Mercury deep profiler or mdprof:
 Numerous minor improvements to the Mercury standard library.
 
 A new testing tool in the extras distribution.
+A new regex module for string matching and search-and-replace in the
+extras distribution.
 
 DETAILED LISTING
 ================
@@ -391,6 +393,10 @@ Changes to the Mercury standard library:
   distinct random numbers that can be generated.
 
 Changes to the extras distribution:
+
+* The lex subdirectory now contains a new module, regex, which provides
+  for more traditional string-based ways of defining regular expressions
+  and provides string matching and search-and-replace functionality.
 
 * There's a new testing tool called "quickcheck", which is similar to
   Haskell's "QuickCheck".  See quickcheck/tutes/index.html.

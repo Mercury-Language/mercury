@@ -1,13 +1,14 @@
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
 % lex.buf.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Sat Aug 19 16:56:30 BST 2000
+% Copyright (C) 2002 The University of Melbourne
 %
-%   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
-%   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
-%   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%
+% Sat Aug 19 16:56:30 BST 2000
 %
 % This module implements the rolling char buffer.  The char
 % buffer is optimised for efficiency.
@@ -89,7 +90,7 @@
 % means that the region prior to the cursor in the buffer is
 % now available for garbage collection.
 %
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module lex__buf.
 
@@ -166,8 +167,8 @@
 :- func commit(buf_state(T)) = buf_state(T).
 :- mode commit(in(buf_state)) = out(buf_state) is det.
 
-% -----------------------------------------------------------------------------%
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -192,13 +193,13 @@ initial_buf_size = 1024.
 % :- func initial_buf_size = int.
 % initial_buf_size = 32.
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 init(BufReadPred, BufState, Buf) :-
     BufState = buf_state(0, 0, 0, 0, initial_buf_size, no, BufReadPred),
     Buf      = array__init(initial_buf_size, ('@')).
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 read(Result, BufState0, BufState, Buf0, Buf, Src0, Src) :-
 
@@ -252,7 +253,7 @@ read(Result, BufState0, BufState, Buf0, Buf, Src0, Src) :-
         read(Result, BufState1, BufState, Buf1, Buf, Src0, Src)
     ).
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Garbage collects the chars between the origin and start and
     % extends the buffer if the remaining space is below the low
@@ -275,7 +276,7 @@ adjust_buf(GarbageLength, ExtraLength, Buf0, Buf) :-
 
     Buf = shift_buf(0, Size0 - GarbageLength, GarbageLength, Buf0, Buf1).
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func shift_buf(int, int, int, buf, buf) = buf.
 :- mode shift_buf(in, in, in, array_ui, array_di) = array_uo is det.
@@ -288,24 +289,23 @@ shift_buf(I, Hi, Disp, Src, Tgt) =
         Tgt
     ).
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 start_offset(BufState) = BufState ^ buf_start.
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 cursor_offset(BufState) = BufState ^ buf_cursor.
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 rewind_cursor(Offset, BufState) =
-    ( if ( Offset < BufState ^ buf_start ; BufState ^ buf_cursor < Offset ) then
-        throw("buf: rewind/2: offset arg outside valid range")
-      else
-        BufState ^ buf_cursor := Offset
+    ( if   ( Offset < BufState ^ buf_start ; BufState ^ buf_cursor < Offset )
+      then throw("buf: rewind/2: offset arg outside valid range")
+      else BufState ^ buf_cursor := Offset
     ).
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 string_to_cursor(BufState, Buf) = String :-
     From   = BufState ^ buf_start - BufState ^ buf_origin,
@@ -313,9 +313,9 @@ string_to_cursor(BufState, Buf) = String :-
     To     = From + Length,
     String = string__from_char_list(array__fetch_items(Buf, From, To)).
 
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 commit(BufState) = ( BufState ^ buf_start := BufState ^ buf_cursor ).
 
-% -----------------------------------------------------------------------------%
-% -----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

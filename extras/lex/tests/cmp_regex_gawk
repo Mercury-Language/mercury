@@ -1,0 +1,77 @@
+#! /usr/bin/gawk -f
+#
+# Copyright (C) 2002 The University of Melbourne
+#
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+
+# This is a gawk program that attempts to mirror what test_regex does
+# for global search and replace.  It scans the files test_regex.in
+# and test_regex.exp and tests for differences between the results
+# obtained by gawk and those obtained by regex.  It exits with a non-zero
+# return code if any differences are detected.
+
+BEGIN {
+	IN    = "test_regex.in"
+	EXP   = "test_regex.exp"
+	regex = ""
+
+	while(getline lineIN < IN) {
+
+		if(lineIN ~ "set_regex") {
+			regexp = strip(lineIN)
+		}
+		else if(lineIN ~ "try_match") {
+
+			string = strip(lineIN)
+			gawk   = string
+			gsub(regexp, "<&>", gawk)
+
+			while(getline lineEXP < EXP) {
+
+				if(lineEXP ~ "change_all") {
+					regex = strip(lineEXP)
+					if(regex != gawk) {
+						print "pattern \"" regexp "\""
+						print "string  \"" string "\""
+						print "regex   \"" regex "\""
+						print "gawk    \"" gawk "\""
+						print ""
+
+						failed = 1
+					}
+
+					break
+				}
+				else if(lineEXP ~ "^all matches *: \\[\\]$") {
+					if(gawk != string) {
+						print "pattern \"" regexp "\""
+						print "string  \"" string "\""
+						print "regex finds no match"
+						print "gawk    \"" gawk "\""
+						print ""
+
+						failed = 1
+					}
+
+					while(getline lineEXP < EXP) {
+						if(lineEXP ~ "") { break }
+					}
+
+					break
+				}
+			}
+		}
+	}
+
+	exit failed
+}
+
+	# Remove the outermost level of quotation from a string.
+	#
+function strip(l) {
+	sub(/^[^\"]*\"/, "",   l)
+	sub(/\"[^\"]*$/, "",   l)
+	gsub(/\\\\/,     "\\", l)
+	return l
+}

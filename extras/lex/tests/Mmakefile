@@ -1,12 +1,10 @@
-# Copyright (C) 2001-2002 The University of Melbourne
+# Copyright (C) 2002 The University of Melbourne
 # Ralph Becket <rafe@cs.mu.oz.au>
 #
 # To build do:
 #
 # $ mmake depend
 # $ mmake
-#
-# The targets are called lex_demo and regex_demo.
 #
 # Ensure you have built and installed the lex and regex libraries.
 # Change the following line as appropriate if you installed them
@@ -17,10 +15,14 @@ EXTRA_LIB_DIRS := ../lib/mercury
 
 EXTRA_LIBRARIES = lex regex
 
-.PHONY: all
-
 MAIN_TARGET = all
 
-all: lex_demo regex_demo
+.PHONY: all depend
 
-depend: lex_demo.depend regex_demo.depend
+all: test_regex
+
+depend: test_regex.depend
+
+check: depend test_regex
+	./test_regex < test_regex.in > test_regex.res
+	diff -u test_regex.exp test_regex.res && echo "Passed" || echo "Failed"

@@ -1,28 +1,28 @@
 %----------------------------------------------------------------------------- %
-% demo.m
+% lex_demo.m
 % Sun Aug 20 18:11:42 BST 2000
 %
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+% vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-%   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
-%   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
-%   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
-% Thu Jul 26 07:45:47 UTC 2001
+% Copyright (C) 2001-2002 The University of Melbourne
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU General Public License - see the file COPYING in the
 %   Mercury Distribution.
 %
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%
+%
 %----------------------------------------------------------------------------- %
 
-:- module demo.
+:- module lex_demo.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------- %
 %----------------------------------------------------------------------------- %
@@ -81,31 +81,32 @@ tokenise_stdin -->
     ;       prep(string)
     ;       punc
     ;       space
+    ;       unrecognised(string)
     .
 
 :- func lexemes = list(lexeme(token)).
 
 lexemes = [
 
-    ( "%" ++ junk      -> (func(Match) = comment(Match)) ),
-    ( signed_int       -> (func(Match) = integer(string__det_to_int(Match))) ),
-    ( real             -> (func(Match) = real(det_string_to_float(Match))) ),
+    ( "%" ++ junk       -> (func(Match) = comment(Match)) ),
+    ( signed_int        -> (func(Match) = integer(string__det_to_int(Match))) ),
+    ( real              -> (func(Match) = real(det_string_to_float(Match))) ),
 
         % Multiple regexps can match the same token constructor.
         %
-    ( "cat"            -> (func(Match) = noun(Match)) ),
-    ( "dog"            -> (func(Match) = noun(Match)) ),
-    ( "rat"            -> (func(Match) = noun(Match)) ),
-    ( "mat"            -> (func(Match) = noun(Match)) ),
+    ( "cat"             -> (func(Match) = noun(Match)) ),
+    ( "dog"             -> (func(Match) = noun(Match)) ),
+    ( "rat"             -> (func(Match) = noun(Match)) ),
+    ( "mat"             -> (func(Match) = noun(Match)) ),
 
         % Here we use `or', rather than multiple lexemes.
         %
     ( "sat" or
       "caught" or
-      "chased"         -> (func(Match) = verb(Match)) ),
+      "chased"          -> (func(Match) = verb(Match)) ),
 
     ( "and" or
-      "then"           -> (func(Match) = conj(Match)) ),
+      "then"            -> (func(Match) = conj(Match)) ),
 
         % `\/' is a synonym for `or'.  Tell us which you prefer...
         % 
@@ -113,13 +114,14 @@ lexemes = [
       "it" \/
       "them" \/
       "to" \/
-      "on"             -> (func(Match) = prep(Match)) ),
+      "on"              -> (func(Match) = prep(Match)) ),
 
         % return/1 can be used when you don't care what string was matched.
         %
     ( any("~!@#$%^&*()_+`-={}|[]\\:"";'<>?,./")
-                       -> return(punc) ),
-    ( whitespace       -> return(space) )
+                        -> return(punc) ),
+    ( whitespace        -> return(space) ),
+    ( dot               -> func(Match) = unrecognised(Match) )
 ].
 
 

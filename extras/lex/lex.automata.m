@@ -1,8 +1,13 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % lex.automata.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Fri Aug 18 15:48:09 BST 2000
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2002 The University of Melbourne
+%
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%
+% Fri Aug 18 15:48:09 BST 2000
 % 
 % Basic types and insts etc. for DFAs and NFAs over chars.
 %
@@ -10,7 +15,7 @@
 %   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 %   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module lex__automata.
 
@@ -48,5 +53,5 @@
 :- inst atom_transition == bound(trans(ground, ground, ground)).
 :- inst null_transition == bound(null(ground, ground)).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

@@ -1,116 +1,13 @@
-lex 1.0 (very alpha)
-Fri Aug 25 17:54:28  2000
-Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-    THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
-    BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
-    BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
-Sun Aug  5 16:15:27 UTC 2001
-Copyright (C) 2001 The Rationalizer Intelligent Software AG
-    The changes made by Rationalizer are contributed under the terms 
-    of the GNU Free Documentation License - see the file COPYING.DOC 
-    in this directory.
-
-This package defines a lexer for Mercury.  There is plenty of scope for
-optimization, however it is reasonably efficient and does provide the
-holy grail of piecemeal lexing of stdin (and strings, and lists, and
-...)
-
-The interface is simple.
-
-1. Import module lex.
-
-    :- import_module lex.
-
-2. Set up a token type.
-
-    :- type token
-        --->    comment
-        ;       id(string)
-        ;       num(int)
-        ;       space.
-
-3. Set up a list of annotated_lexemes.
-
-    Lexemes = [
-	( "%" ++ *(dot)        ->  return(comment) ),
-	( identifier           ->  (func(Id) = id(Id)) ),
-	( signed_int           ->  (func(N)  = num(string__det_to_int(N))) ),
-	( whitespace           ->  return(space) )
-    ]
+Copyright (C) 2002 The University of Melbourne
 
 
-A lexeme is a (RegExp - TokFn) pair where RegExp is a regular expression
-and TokFn is a token_creator function mapping the string matched by
-RegExp to a token value.
+Two library modules, lex and regex, provide facilities for the
+construction of lexical analyzers and for string matching and search
+and replace functionality respectively.
 
-4. Set up a lexer with an appropriate read predicate (see the buf module).
+README.lex provides a brief introduction to the lex module.
 
-    Lexer = lex__init(Lexemes, lex__read_from_stdin)
+README.regex provides a brief introduction to the regex module.
 
-or:
-
-    Lexer = lex__init(Lexemes, lex__read_from_stdin, ignore(space))
-     
-5. Obtain a live lexer state.
-
-    State0 = lex__start(Lexer, IO0)
-
-6. Use it to lex the input stream.
-
-    lex__read(Result, State0, State1),
-    (	Result = ok(Token), ...
-    ;	Result = error(Message, OffsetInInputStream), ...
-    ;	Result = eof, ...
-    )
-
-    NOTE: The result type of lex__read is io__read_result(token).
-    io__read_result is documented in the library file io.m as:
-    :- type io__read_result(T)      --->    ok(T)
-                                    ;       eof
-                                    ;       error(string, int).
-                                            % error message, line number
-    In contrast to this the `int' lex returns in the case of an error
-    does not correspond to the line number but to the character offset.
-    Hence be careful when processing lex errors.
-
-7. If you need to manipulate the source object, you can.
-
-    lex__manipulate_source(io__print("Not finished yet?"), State1, State2)
-
-8. When you're done, retrieve the source object.
-
-    IO = lex__stop(State)
-
-And that's basically it.
-
-In future I plan to add several optimizations to the implementation and
-the option to write out a compilable source file for the lexer.
-
-
-OPPORTUNITIES FOR MODULARIZATION
-
-1. Remove regexp functionality from lex.m and lex.regexp.m and put it
-   into a distinct regexp library.
-
-
-OPPORTUNITIES FOR OPTIMIZATION
-
-1. Move from chars to bytes.
-2. Implement a byte_array rather than using a wasteful array(char) for
-   the input buffer.
-3. Implement the first-byte optimization whereby the set of `live
-   lexemes' is decided by the first byte read in on a lexing pass.
-4. Implement state machine minimization (may or may not be worthwhile.)
-
-
-FEATURES TO ADD:
-
-1. Symbol table management (additional parameters for the user-defined
-   predicates containing the symbol table before and after processing
-   a lexeme)
-2. func (string) = regexp, where the function parameter contains a
-   regexp definition in a form like used in languages in Perl, awk etc.
-3. line# as part of the offset
-4. extend the lexer interface somehow to get more detailed information
-   about the token resp. error position
-
+The Mmakefile includes instructions for building and installing these
+libraries.

@@ -1,0 +1,74 @@
+Copyright (C) 2002 The University of Melbourne
+
+
+THE REGEX MODULE
+
+The regex/1 function converts conventional string-type regular expression
+definitions into values of type regex.  These regex values can be used
+for string matching and search-and-replace operations.
+
+EXAMPLE OF REGEXES
+
+regex(".")		matches any char except `\n'
+regex("abc")		matches `abc'
+regex("abc*")		matches zero or more contiguous occurrences of `abc'
+regex("abc+")		matches one or more contiguous occurrences of `abc'
+regex("abc?")		matches zero or one occurrence of `abc'
+regex("abc|xyz")	matches `abc' or `xyz'
+regex("(abc|xyz)?")	matches zero or one occurrence of `abc' or `xyz'
+regex("abc|xyz?")	matches `abc' or zero or one occurrence of `xyz'
+regex("[pqr]")		matches `p', `q' or `r'
+regex("[p-z]")		matches `p', 'q', ..., or `z'
+regex("[abcp-r]")	matches `a', `b', `c', 'p', 'q', ..., or `z'
+regex("[]]")		matches `]'
+regex("[^...]")		matches any char not in the set ... or `\n'
+regex("\\?")		matches `?' (ditto for any other literal char)
+
+There is a corresponding function regexp/1 (note the different spelling)
+which converts standard string-type regular expression definitions into
+values of type regexp, suitable for use with the lex module.
+
+EXAMPLES OF USE
+
+The following predicates and functions all take values of type regex as
+their first argument:
+
+left_match(regex("a+"), "faat cat", Substring, Start, Count)
+	fails.
+
+left_match(regex("a+"), "a faat cat", Substring, Start, Count)
+	succeeds with Substring = "a", Start = 0, Count = 1.
+
+first_match(regex("a+"), "faat cat", Substring, Start, Count)
+	succeeds with Substring = "aa", Start = 1, Count = 2.
+
+right_match(regex("a+"), "faat cat", Substring, Start, Count)
+	fails.
+
+right_match(regex("a+"), "kowabunga", Substring, Start, Count)
+	succeeds with Substring = "a", Start = 8, Count = 1.
+
+exact_match(regex("a+"), "kowabunga", Substring, Start, Count)
+	fails.
+
+exact_match(regex("a+"), "aaaa")
+	succeeds.
+
+matches(regex("a+"), "faat cat") = [{"aa", 1, 2}, {"a", 6, 1}]
+
+replace_first(regex("a+"), "f", "faat cat") = "fft cat"
+
+replace_first(regex("a+"), "f", "xyz") = "xyz"
+
+replace_all(regex("a+"), "f", "faat cat") = "fft cft"
+
+replace_all(regex("a+"), "f", "xyz") = "xyz"
+
+change_first(regex("a+"), string__to_upper, "faat cat") = "fAAt cat"
+
+change_first(regex("a+"), string__to_upper, "xyz") = "xyz"
+
+change_all(regex("a+"), string__to_upper, "faat cat") = "fAAt cAt"
+
+change_all(regex("a+"), string__to_upper, "xyz") = "xyz"
+

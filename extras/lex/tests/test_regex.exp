@@ -1,0 +1,918 @@
+
+
+* Matching against "a"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"a", 3, 1}, {"a", 5, 1}, {"a", 7, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<>br<>c<>d<>br<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a>br<a>c<a>d<a>br<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"a", 4, 1}, {"a", 6, 1}, {"a", 8, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<>br<>c<>d<>br<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a>br<a>c<a>d<a>br<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"a", 3, 1}, {"a", 5, 1}, {"a", 7, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<>br<>c<>d<>br<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a>br<a>c<a>d<a>br<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "ab"
+
+> "abracadabra"
+all matches             : [{"ab", 0, 2}, {"ab", 7, 2}]
+replace_first with `<>' : "<>racadabra"
+replace_all with `<>'   : "<>racad<>ra"
+change_first to `<&>'   : "<ab>racadabra"
+change_all to `<&>'     : "<ab>racad<ab>ra"
+left_match              : {"ab", 0, 2}
+first_match             : {"ab", 0, 2}
+
+> "xabracadabra"
+all matches             : [{"ab", 1, 2}, {"ab", 8, 2}]
+replace_first with `<>' : "x<>racadabra"
+replace_all with `<>'   : "x<>racad<>ra"
+change_first to `<&>'   : "x<ab>racadabra"
+change_all to `<&>'     : "x<ab>racad<ab>ra"
+first_match             : {"ab", 1, 2}
+
+> "abracadabrax"
+all matches             : [{"ab", 0, 2}, {"ab", 7, 2}]
+replace_first with `<>' : "<>racadabrax"
+replace_all with `<>'   : "<>racad<>rax"
+change_first to `<&>'   : "<ab>racadabrax"
+change_all to `<&>'     : "<ab>racad<ab>rax"
+left_match              : {"ab", 0, 2}
+first_match             : {"ab", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "ab|ad"
+
+> "abracadabra"
+all matches             : [{"ab", 0, 2}, {"ad", 5, 2}, {"ab", 7, 2}]
+replace_first with `<>' : "<>racadabra"
+replace_all with `<>'   : "<>rac<><>ra"
+change_first to `<&>'   : "<ab>racadabra"
+change_all to `<&>'     : "<ab>rac<ad><ab>ra"
+left_match              : {"ab", 0, 2}
+first_match             : {"ab", 0, 2}
+
+> "xabracadabra"
+all matches             : [{"ab", 1, 2}, {"ad", 6, 2}, {"ab", 8, 2}]
+replace_first with `<>' : "x<>racadabra"
+replace_all with `<>'   : "x<>rac<><>ra"
+change_first to `<&>'   : "x<ab>racadabra"
+change_all to `<&>'     : "x<ab>rac<ad><ab>ra"
+first_match             : {"ab", 1, 2}
+
+> "abracadabrax"
+all matches             : [{"ab", 0, 2}, {"ad", 5, 2}, {"ab", 7, 2}]
+replace_first with `<>' : "<>racadabrax"
+replace_all with `<>'   : "<>rac<><>rax"
+change_first to `<&>'   : "<ab>racadabrax"
+change_all to `<&>'     : "<ab>rac<ad><ab>rax"
+left_match              : {"ab", 0, 2}
+first_match             : {"ab", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "a*"
+
+> "aardvark"
+all matches             : [{"aa", 0, 2}, {"", 3, 0}, {"", 4, 0}, {"a", 5, 1}, {"", 7, 0}, {"", 8, 0}]
+replace_first with `<>' : "<>rdvark"
+replace_all with `<>'   : "<>r<>d<>v<>r<>k<>"
+change_first to `<&>'   : "<aa>rdvark"
+change_all to `<&>'     : "<aa>r<>d<>v<a>r<>k<>"
+left_match              : {"aa", 0, 2}
+right_match             : {"", 8, 0}
+first_match             : {"aa", 0, 2}
+
+> "xaardvark"
+all matches             : [{"", 0, 0}, {"aa", 1, 2}, {"", 4, 0}, {"", 5, 0}, {"a", 6, 1}, {"", 8, 0}, {"", 9, 0}]
+replace_first with `<>' : "<>xaardvark"
+replace_all with `<>'   : "<>x<>r<>d<>v<>r<>k<>"
+change_first to `<&>'   : "<>xaardvark"
+change_all to `<&>'     : "<>x<aa>r<>d<>v<a>r<>k<>"
+left_match              : {"", 0, 0}
+right_match             : {"", 9, 0}
+first_match             : {"", 0, 0}
+
+> "aardvarkx"
+all matches             : [{"aa", 0, 2}, {"", 3, 0}, {"", 4, 0}, {"a", 5, 1}, {"", 7, 0}, {"", 8, 0}, {"", 9, 0}]
+replace_first with `<>' : "<>rdvarkx"
+replace_all with `<>'   : "<>r<>d<>v<>r<>k<>x<>"
+change_first to `<&>'   : "<aa>rdvarkx"
+change_all to `<&>'     : "<aa>r<>d<>v<a>r<>k<>x<>"
+left_match              : {"aa", 0, 2}
+right_match             : {"", 9, 0}
+first_match             : {"aa", 0, 2}
+
+> "foo"
+all matches             : [{"", 0, 0}, {"", 1, 0}, {"", 2, 0}, {"", 3, 0}]
+replace_first with `<>' : "<>foo"
+replace_all with `<>'   : "<>f<>o<>o<>"
+change_first to `<&>'   : "<>foo"
+change_all to `<&>'     : "<>f<>o<>o<>"
+left_match              : {"", 0, 0}
+right_match             : {"", 3, 0}
+first_match             : {"", 0, 0}
+
+
+* Matching against "aa*"
+
+> "aardvark"
+all matches             : [{"aa", 0, 2}, {"a", 5, 1}]
+replace_first with `<>' : "<>rdvark"
+replace_all with `<>'   : "<>rdv<>rk"
+change_first to `<&>'   : "<aa>rdvark"
+change_all to `<&>'     : "<aa>rdv<a>rk"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "xaardvark"
+all matches             : [{"aa", 1, 2}, {"a", 6, 1}]
+replace_first with `<>' : "x<>rdvark"
+replace_all with `<>'   : "x<>rdv<>rk"
+change_first to `<&>'   : "x<aa>rdvark"
+change_all to `<&>'     : "x<aa>rdv<a>rk"
+first_match             : {"aa", 1, 2}
+
+> "aardvarkx"
+all matches             : [{"aa", 0, 2}, {"a", 5, 1}]
+replace_first with `<>' : "<>rdvarkx"
+replace_all with `<>'   : "<>rdv<>rkx"
+change_first to `<&>'   : "<aa>rdvarkx"
+change_all to `<&>'     : "<aa>rdv<a>rkx"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "a+"
+
+> "aardvark"
+all matches             : [{"aa", 0, 2}, {"a", 5, 1}]
+replace_first with `<>' : "<>rdvark"
+replace_all with `<>'   : "<>rdv<>rk"
+change_first to `<&>'   : "<aa>rdvark"
+change_all to `<&>'     : "<aa>rdv<a>rk"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "xaardvark"
+all matches             : [{"aa", 1, 2}, {"a", 6, 1}]
+replace_first with `<>' : "x<>rdvark"
+replace_all with `<>'   : "x<>rdv<>rk"
+change_first to `<&>'   : "x<aa>rdvark"
+change_all to `<&>'     : "x<aa>rdv<a>rk"
+first_match             : {"aa", 1, 2}
+
+> "aardvarkx"
+all matches             : [{"aa", 0, 2}, {"a", 5, 1}]
+replace_first with `<>' : "<>rdvarkx"
+replace_all with `<>'   : "<>rdv<>rkx"
+change_first to `<&>'   : "<aa>rdvarkx"
+change_all to `<&>'     : "<aa>rdv<a>rkx"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "aa+"
+
+> "aardvark"
+all matches             : [{"aa", 0, 2}]
+replace_first with `<>' : "<>rdvark"
+replace_all with `<>'   : "<>rdvark"
+change_first to `<&>'   : "<aa>rdvark"
+change_all to `<&>'     : "<aa>rdvark"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "xaardvark"
+all matches             : [{"aa", 1, 2}]
+replace_first with `<>' : "x<>rdvark"
+replace_all with `<>'   : "x<>rdvark"
+change_first to `<&>'   : "x<aa>rdvark"
+change_all to `<&>'     : "x<aa>rdvark"
+first_match             : {"aa", 1, 2}
+
+> "aardvarkx"
+all matches             : [{"aa", 0, 2}]
+replace_first with `<>' : "<>rdvarkx"
+replace_all with `<>'   : "<>rdvarkx"
+change_first to `<&>'   : "<aa>rdvarkx"
+change_all to `<&>'     : "<aa>rdvarkx"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "a?"
+
+> "aardvark"
+all matches             : [{"a", 0, 1}, {"a", 1, 1}, {"", 3, 0}, {"", 4, 0}, {"a", 5, 1}, {"", 7, 0}, {"", 8, 0}]
+replace_first with `<>' : "<>ardvark"
+replace_all with `<>'   : "<><>r<>d<>v<>r<>k<>"
+change_first to `<&>'   : "<a>ardvark"
+change_all to `<&>'     : "<a><a>r<>d<>v<a>r<>k<>"
+left_match              : {"a", 0, 1}
+right_match             : {"", 8, 0}
+first_match             : {"a", 0, 1}
+
+> "xaardvark"
+all matches             : [{"", 0, 0}, {"a", 1, 1}, {"a", 2, 1}, {"", 4, 0}, {"", 5, 0}, {"a", 6, 1}, {"", 8, 0}, {"", 9, 0}]
+replace_first with `<>' : "<>xaardvark"
+replace_all with `<>'   : "<>x<><>r<>d<>v<>r<>k<>"
+change_first to `<&>'   : "<>xaardvark"
+change_all to `<&>'     : "<>x<a><a>r<>d<>v<a>r<>k<>"
+left_match              : {"", 0, 0}
+right_match             : {"", 9, 0}
+first_match             : {"", 0, 0}
+
+> "aardvarkx"
+all matches             : [{"a", 0, 1}, {"a", 1, 1}, {"", 3, 0}, {"", 4, 0}, {"a", 5, 1}, {"", 7, 0}, {"", 8, 0}, {"", 9, 0}]
+replace_first with `<>' : "<>ardvarkx"
+replace_all with `<>'   : "<><>r<>d<>v<>r<>k<>x<>"
+change_first to `<&>'   : "<a>ardvarkx"
+change_all to `<&>'     : "<a><a>r<>d<>v<a>r<>k<>x<>"
+left_match              : {"a", 0, 1}
+right_match             : {"", 9, 0}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : [{"", 0, 0}, {"", 1, 0}, {"", 2, 0}, {"", 3, 0}]
+replace_first with `<>' : "<>foo"
+replace_all with `<>'   : "<>f<>o<>o<>"
+change_first to `<&>'   : "<>foo"
+change_all to `<&>'     : "<>f<>o<>o<>"
+left_match              : {"", 0, 0}
+right_match             : {"", 3, 0}
+first_match             : {"", 0, 0}
+
+
+* Matching against "aa?"
+
+> "aardvark"
+all matches             : [{"aa", 0, 2}, {"a", 5, 1}]
+replace_first with `<>' : "<>rdvark"
+replace_all with `<>'   : "<>rdv<>rk"
+change_first to `<&>'   : "<aa>rdvark"
+change_all to `<&>'     : "<aa>rdv<a>rk"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "xaardvark"
+all matches             : [{"aa", 1, 2}, {"a", 6, 1}]
+replace_first with `<>' : "x<>rdvark"
+replace_all with `<>'   : "x<>rdv<>rk"
+change_first to `<&>'   : "x<aa>rdvark"
+change_all to `<&>'     : "x<aa>rdv<a>rk"
+first_match             : {"aa", 1, 2}
+
+> "aardvarkx"
+all matches             : [{"aa", 0, 2}, {"a", 5, 1}]
+replace_first with `<>' : "<>rdvarkx"
+replace_all with `<>'   : "<>rdv<>rkx"
+change_first to `<&>'   : "<aa>rdvarkx"
+change_all to `<&>'     : "<aa>rdv<a>rkx"
+left_match              : {"aa", 0, 2}
+first_match             : {"aa", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "(ab|ad)+"
+
+> "abracadabra"
+all matches             : [{"ab", 0, 2}, {"adab", 5, 4}]
+replace_first with `<>' : "<>racadabra"
+replace_all with `<>'   : "<>rac<>ra"
+change_first to `<&>'   : "<ab>racadabra"
+change_all to `<&>'     : "<ab>rac<adab>ra"
+left_match              : {"ab", 0, 2}
+first_match             : {"ab", 0, 2}
+
+> "xabracadabra"
+all matches             : [{"ab", 1, 2}, {"adab", 6, 4}]
+replace_first with `<>' : "x<>racadabra"
+replace_all with `<>'   : "x<>rac<>ra"
+change_first to `<&>'   : "x<ab>racadabra"
+change_all to `<&>'     : "x<ab>rac<adab>ra"
+first_match             : {"ab", 1, 2}
+
+> "abracadabrax"
+all matches             : [{"ab", 0, 2}, {"adab", 5, 4}]
+replace_first with `<>' : "<>racadabrax"
+replace_all with `<>'   : "<>rac<>rax"
+change_first to `<&>'   : "<ab>racadabrax"
+change_all to `<&>'     : "<ab>rac<adab>rax"
+left_match              : {"ab", 0, 2}
+first_match             : {"ab", 0, 2}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "[abcd]"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"d", 6, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><>r<><><><><><>r<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b>r<a><c><a><d><a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"a", 4, 1}, {"c", 5, 1}, {"a", 6, 1}, {"d", 7, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<><>r<><><><><><>r<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a><b>r<a><c><a><d><a><b>r<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"d", 6, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><>r<><><><><><>r<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b>r<a><c><a><d><a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "[ab-d]"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"d", 6, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><>r<><><><><><>r<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b>r<a><c><a><d><a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"a", 4, 1}, {"c", 5, 1}, {"a", 6, 1}, {"d", 7, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<><>r<><><><><><>r<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a><b>r<a><c><a><d><a><b>r<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"d", 6, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><>r<><><><><><>r<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b>r<a><c><a><d><a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "[]]"
+
+> "]foo["
+all matches             : [{"]", 0, 1}]
+replace_first with `<>' : "<>foo["
+replace_all with `<>'   : "<>foo["
+change_first to `<&>'   : "<]>foo["
+change_all to `<&>'     : "<]>foo["
+left_match              : {"]", 0, 1}
+first_match             : {"]", 0, 1}
+
+> "[foo]"
+all matches             : [{"]", 4, 1}]
+replace_first with `<>' : "[foo<>"
+replace_all with `<>'   : "[foo<>"
+change_first to `<&>'   : "[foo<]>"
+change_all to `<&>'     : "[foo<]>"
+right_match             : {"]", 4, 1}
+first_match             : {"]", 4, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "[[-]]"
+
+> "]foo["
+all matches             : [{"]", 0, 1}, {"[", 4, 1}]
+replace_first with `<>' : "<>foo["
+replace_all with `<>'   : "<>foo<>"
+change_first to `<&>'   : "<]>foo["
+change_all to `<&>'     : "<]>foo<[>"
+left_match              : {"]", 0, 1}
+right_match             : {"[", 4, 1}
+first_match             : {"]", 0, 1}
+
+> "[foo]"
+all matches             : [{"[", 0, 1}, {"]", 4, 1}]
+replace_first with `<>' : "<>foo]"
+replace_all with `<>'   : "<>foo<>"
+change_first to `<&>'   : "<[>foo]"
+change_all to `<&>'     : "<[>foo<]>"
+left_match              : {"[", 0, 1}
+right_match             : {"]", 4, 1}
+first_match             : {"[", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "\["
+
+> "]foo["
+all matches             : [{"[", 4, 1}]
+replace_first with `<>' : "]foo<>"
+replace_all with `<>'   : "]foo<>"
+change_first to `<&>'   : "]foo<[>"
+change_all to `<&>'     : "]foo<[>"
+right_match             : {"[", 4, 1}
+first_match             : {"[", 4, 1}
+
+> "[foo]"
+all matches             : [{"[", 0, 1}]
+replace_first with `<>' : "<>foo]"
+replace_all with `<>'   : "<>foo]"
+change_first to `<&>'   : "<[>foo]"
+change_all to `<&>'     : "<[>foo]"
+left_match              : {"[", 0, 1}
+first_match             : {"[", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "[^abcd]"
+
+> "abracadabra"
+all matches             : [{"r", 2, 1}, {"r", 9, 1}]
+replace_first with `<>' : "ab<>acadabra"
+replace_all with `<>'   : "ab<>acadab<>a"
+change_first to `<&>'   : "ab<r>acadabra"
+change_all to `<&>'     : "ab<r>acadab<r>a"
+first_match             : {"r", 2, 1}
+
+> "xabracadabra"
+all matches             : [{"x", 0, 1}, {"r", 3, 1}, {"r", 10, 1}]
+replace_first with `<>' : "<>abracadabra"
+replace_all with `<>'   : "<>ab<>acadab<>a"
+change_first to `<&>'   : "<x>abracadabra"
+change_all to `<&>'     : "<x>ab<r>acadab<r>a"
+left_match              : {"x", 0, 1}
+first_match             : {"x", 0, 1}
+
+> "abracadabrax"
+all matches             : [{"r", 2, 1}, {"r", 9, 1}, {"x", 11, 1}]
+replace_first with `<>' : "ab<>acadabrax"
+replace_all with `<>'   : "ab<>acadab<>a<>"
+change_first to `<&>'   : "ab<r>acadabrax"
+change_all to `<&>'     : "ab<r>acadab<r>a<x>"
+right_match             : {"x", 11, 1}
+first_match             : {"r", 2, 1}
+
+> "foo"
+all matches             : [{"f", 0, 1}, {"o", 1, 1}, {"o", 2, 1}]
+replace_first with `<>' : "<>oo"
+replace_all with `<>'   : "<><><>"
+change_first to `<&>'   : "<f>oo"
+change_all to `<&>'     : "<f><o><o>"
+left_match              : {"f", 0, 1}
+right_match             : {"o", 2, 1}
+first_match             : {"f", 0, 1}
+
+
+* Matching against "[^ab-d]"
+
+> "abracadabra"
+all matches             : [{"r", 2, 1}, {"r", 9, 1}]
+replace_first with `<>' : "ab<>acadabra"
+replace_all with `<>'   : "ab<>acadab<>a"
+change_first to `<&>'   : "ab<r>acadabra"
+change_all to `<&>'     : "ab<r>acadab<r>a"
+first_match             : {"r", 2, 1}
+
+> "xabracadabra"
+all matches             : [{"x", 0, 1}, {"r", 3, 1}, {"r", 10, 1}]
+replace_first with `<>' : "<>abracadabra"
+replace_all with `<>'   : "<>ab<>acadab<>a"
+change_first to `<&>'   : "<x>abracadabra"
+change_all to `<&>'     : "<x>ab<r>acadab<r>a"
+left_match              : {"x", 0, 1}
+first_match             : {"x", 0, 1}
+
+> "abracadabrax"
+all matches             : [{"r", 2, 1}, {"r", 9, 1}, {"x", 11, 1}]
+replace_first with `<>' : "ab<>acadabrax"
+replace_all with `<>'   : "ab<>acadab<>a<>"
+change_first to `<&>'   : "ab<r>acadabrax"
+change_all to `<&>'     : "ab<r>acadab<r>a<x>"
+right_match             : {"x", 11, 1}
+first_match             : {"r", 2, 1}
+
+> "foo"
+all matches             : [{"f", 0, 1}, {"o", 1, 1}, {"o", 2, 1}]
+replace_first with `<>' : "<>oo"
+replace_all with `<>'   : "<><><>"
+change_first to `<&>'   : "<f>oo"
+change_all to `<&>'     : "<f><o><o>"
+left_match              : {"f", 0, 1}
+right_match             : {"o", 2, 1}
+first_match             : {"f", 0, 1}
+
+
+* Matching against "[^]]"
+
+> "]foo["
+all matches             : [{"f", 1, 1}, {"o", 2, 1}, {"o", 3, 1}, {"[", 4, 1}]
+replace_first with `<>' : "]<>oo["
+replace_all with `<>'   : "]<><><><>"
+change_first to `<&>'   : "]<f>oo["
+change_all to `<&>'     : "]<f><o><o><[>"
+right_match             : {"[", 4, 1}
+first_match             : {"f", 1, 1}
+
+> "[foo]"
+all matches             : [{"[", 0, 1}, {"f", 1, 1}, {"o", 2, 1}, {"o", 3, 1}]
+replace_first with `<>' : "<>foo]"
+replace_all with `<>'   : "<><><><>]"
+change_first to `<&>'   : "<[>foo]"
+change_all to `<&>'     : "<[><f><o><o>]"
+left_match              : {"[", 0, 1}
+first_match             : {"[", 0, 1}
+
+> "foo"
+all matches             : [{"f", 0, 1}, {"o", 1, 1}, {"o", 2, 1}]
+replace_first with `<>' : "<>oo"
+replace_all with `<>'   : "<><><>"
+change_first to `<&>'   : "<f>oo"
+change_all to `<&>'     : "<f><o><o>"
+left_match              : {"f", 0, 1}
+right_match             : {"o", 2, 1}
+first_match             : {"f", 0, 1}
+
+
+* Matching against "[^[-]]"
+
+> "]foo["
+all matches             : [{"f", 1, 1}, {"o", 2, 1}, {"o", 3, 1}]
+replace_first with `<>' : "]<>oo["
+replace_all with `<>'   : "]<><><>["
+change_first to `<&>'   : "]<f>oo["
+change_all to `<&>'     : "]<f><o><o>["
+first_match             : {"f", 1, 1}
+
+> "[foo]"
+all matches             : [{"f", 1, 1}, {"o", 2, 1}, {"o", 3, 1}]
+replace_first with `<>' : "[<>oo]"
+replace_all with `<>'   : "[<><><>]"
+change_first to `<&>'   : "[<f>oo]"
+change_all to `<&>'     : "[<f><o><o>]"
+first_match             : {"f", 1, 1}
+
+> "foo"
+all matches             : [{"f", 0, 1}, {"o", 1, 1}, {"o", 2, 1}]
+replace_first with `<>' : "<>oo"
+replace_all with `<>'   : "<><><>"
+change_first to `<&>'   : "<f>oo"
+change_all to `<&>'     : "<f><o><o>"
+left_match              : {"f", 0, 1}
+right_match             : {"o", 2, 1}
+first_match             : {"f", 0, 1}
+
+
+* Matching against ".*"
+
+> "abracadabra"
+all matches             : [{"abracadabra", 0, 11}]
+replace_first with `<>' : "<>"
+replace_all with `<>'   : "<>"
+change_first to `<&>'   : "<abracadabra>"
+change_all to `<&>'     : "<abracadabra>"
+exact_match
+left_match              : {"abracadabra", 0, 11}
+right_match             : {"abracadabra", 0, 11}
+first_match             : {"abracadabra", 0, 11}
+
+> "xabracadabra"
+all matches             : [{"xabracadabra", 0, 12}]
+replace_first with `<>' : "<>"
+replace_all with `<>'   : "<>"
+change_first to `<&>'   : "<xabracadabra>"
+change_all to `<&>'     : "<xabracadabra>"
+exact_match
+left_match              : {"xabracadabra", 0, 12}
+right_match             : {"xabracadabra", 0, 12}
+first_match             : {"xabracadabra", 0, 12}
+
+> "abracadabrax"
+all matches             : [{"abracadabrax", 0, 12}]
+replace_first with `<>' : "<>"
+replace_all with `<>'   : "<>"
+change_first to `<&>'   : "<abracadabrax>"
+change_all to `<&>'     : "<abracadabrax>"
+exact_match
+left_match              : {"abracadabrax", 0, 12}
+right_match             : {"abracadabrax", 0, 12}
+first_match             : {"abracadabrax", 0, 12}
+
+> "foo"
+all matches             : [{"foo", 0, 3}]
+replace_first with `<>' : "<>"
+replace_all with `<>'   : "<>"
+change_first to `<&>'   : "<foo>"
+change_all to `<&>'     : "<foo>"
+exact_match
+left_match              : {"foo", 0, 3}
+right_match             : {"foo", 0, 3}
+first_match             : {"foo", 0, 3}
+
+
+* Matching against "."
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"r", 2, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"d", 6, 1}, {"a", 7, 1}, {"b", 8, 1}, {"r", 9, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><><><><><><><><><><>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b><r><a><c><a><d><a><b><r><a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"x", 0, 1}, {"a", 1, 1}, {"b", 2, 1}, {"r", 3, 1}, {"a", 4, 1}, {"c", 5, 1}, {"a", 6, 1}, {"d", 7, 1}, {"a", 8, 1}, {"b", 9, 1}, {"r", 10, 1}, {"a", 11, 1}]
+replace_first with `<>' : "<>abracadabra"
+replace_all with `<>'   : "<><><><><><><><><><><><>"
+change_first to `<&>'   : "<x>abracadabra"
+change_all to `<&>'     : "<x><a><b><r><a><c><a><d><a><b><r><a>"
+left_match              : {"x", 0, 1}
+right_match             : {"a", 11, 1}
+first_match             : {"x", 0, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"r", 2, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"d", 6, 1}, {"a", 7, 1}, {"b", 8, 1}, {"r", 9, 1}, {"a", 10, 1}, {"x", 11, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><><><><><><><><><><><>"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b><r><a><c><a><d><a><b><r><a><x>"
+left_match              : {"a", 0, 1}
+right_match             : {"x", 11, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : [{"f", 0, 1}, {"o", 1, 1}, {"o", 2, 1}]
+replace_first with `<>' : "<>oo"
+replace_all with `<>'   : "<><><>"
+change_first to `<&>'   : "<f>oo"
+change_all to `<&>'     : "<f><o><o>"
+left_match              : {"f", 0, 1}
+right_match             : {"o", 2, 1}
+first_match             : {"f", 0, 1}
+
+
+* Matching against "a|b"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b>r<a>c<a>d<a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"a", 4, 1}, {"a", 6, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a><b>r<a>c<a>d<a><b>r<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><>r<>c<>d<><>r<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b>r<a>c<a>d<a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "(a|b)"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b>r<a>c<a>d<a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"a", 4, 1}, {"a", 6, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a><b>r<a>c<a>d<a><b>r<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><>r<>c<>d<><>r<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b>r<a>c<a>d<a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "a|(b|c)"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><>r<><><>d<><>r<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b>r<a><c><a>d<a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"a", 4, 1}, {"c", 5, 1}, {"a", 6, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<><>r<><><>d<><>r<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a><b>r<a><c><a>d<a><b>r<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><>r<><><>d<><>r<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b>r<a><c><a>d<a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "(a|(b|c))"
+
+> "abracadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabra"
+replace_all with `<>'   : "<><>r<><><>d<><>r<>"
+change_first to `<&>'   : "<a>bracadabra"
+change_all to `<&>'     : "<a><b>r<a><c><a>d<a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 10, 1}
+first_match             : {"a", 0, 1}
+
+> "xabracadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"a", 4, 1}, {"c", 5, 1}, {"a", 6, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "x<>bracadabra"
+replace_all with `<>'   : "x<><>r<><><>d<><>r<>"
+change_first to `<&>'   : "x<a>bracadabra"
+change_all to `<&>'     : "x<a><b>r<a><c><a>d<a><b>r<a>"
+right_match             : {"a", 11, 1}
+first_match             : {"a", 1, 1}
+
+> "abracadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"a", 3, 1}, {"c", 4, 1}, {"a", 5, 1}, {"a", 7, 1}, {"b", 8, 1}, {"a", 10, 1}]
+replace_first with `<>' : "<>bracadabrax"
+replace_all with `<>'   : "<><>r<><><>d<><>r<>x"
+change_first to `<&>'   : "<a>bracadabrax"
+change_all to `<&>'     : "<a><b>r<a><c><a>d<a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "a|b+"
+
+> "abbracadabra"
+all matches             : [{"a", 0, 1}, {"bb", 1, 2}, {"a", 4, 1}, {"a", 6, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "<>bbracadabra"
+replace_all with `<>'   : "<><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "<a>bbracadabra"
+change_all to `<&>'     : "<a><bb>r<a>c<a>d<a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 11, 1}
+first_match             : {"a", 0, 1}
+
+> "xabbracadabra"
+all matches             : [{"a", 1, 1}, {"bb", 2, 2}, {"a", 5, 1}, {"a", 7, 1}, {"a", 9, 1}, {"b", 10, 1}, {"a", 12, 1}]
+replace_first with `<>' : "x<>bbracadabra"
+replace_all with `<>'   : "x<><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "x<a>bbracadabra"
+change_all to `<&>'     : "x<a><bb>r<a>c<a>d<a><b>r<a>"
+right_match             : {"a", 12, 1}
+first_match             : {"a", 1, 1}
+
+> "abbracadabrax"
+all matches             : [{"a", 0, 1}, {"bb", 1, 2}, {"a", 4, 1}, {"a", 6, 1}, {"a", 8, 1}, {"b", 9, 1}, {"a", 11, 1}]
+replace_first with `<>' : "<>bbracadabrax"
+replace_all with `<>'   : "<><>r<>c<>d<><>r<>x"
+change_first to `<&>'   : "<a>bbracadabrax"
+change_all to `<&>'     : "<a><bb>r<a>c<a>d<a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
+
+
+* Matching against "a+|b"
+
+> "abbraacadabra"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"b", 2, 1}, {"aa", 4, 2}, {"a", 7, 1}, {"a", 9, 1}, {"b", 10, 1}, {"a", 12, 1}]
+replace_first with `<>' : "<>bbraacadabra"
+replace_all with `<>'   : "<><><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "<a>bbraacadabra"
+change_all to `<&>'     : "<a><b><b>r<aa>c<a>d<a><b>r<a>"
+left_match              : {"a", 0, 1}
+right_match             : {"a", 12, 1}
+first_match             : {"a", 0, 1}
+
+> "xabbraacadabra"
+all matches             : [{"a", 1, 1}, {"b", 2, 1}, {"b", 3, 1}, {"aa", 5, 2}, {"a", 8, 1}, {"a", 10, 1}, {"b", 11, 1}, {"a", 13, 1}]
+replace_first with `<>' : "x<>bbraacadabra"
+replace_all with `<>'   : "x<><><>r<>c<>d<><>r<>"
+change_first to `<&>'   : "x<a>bbraacadabra"
+change_all to `<&>'     : "x<a><b><b>r<aa>c<a>d<a><b>r<a>"
+right_match             : {"a", 13, 1}
+first_match             : {"a", 1, 1}
+
+> "abbraacadabrax"
+all matches             : [{"a", 0, 1}, {"b", 1, 1}, {"b", 2, 1}, {"aa", 4, 2}, {"a", 7, 1}, {"a", 9, 1}, {"b", 10, 1}, {"a", 12, 1}]
+replace_first with `<>' : "<>bbraacadabrax"
+replace_all with `<>'   : "<><><>r<>c<>d<><>r<>x"
+change_first to `<&>'   : "<a>bbraacadabrax"
+change_all to `<&>'     : "<a><b><b>r<aa>c<a>d<a><b>r<a>x"
+left_match              : {"a", 0, 1}
+first_match             : {"a", 0, 1}
+
+> "foo"
+all matches             : []
