@@ -1,4 +1,4 @@
-:- module x.
+:- module det_inference.
 
 :- pred p1.
 :- pred p2.

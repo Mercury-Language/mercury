@@ -1,5 +1,4 @@
-
-:- module t34.
+:- module easy_nondet_test_2.
 
 :- pred p(int::out) is nondet.
 

@@ -1,4 +1,4 @@
-:- module l2.
+:- module same_length_2.
 
 :- type list(T) ---> [] ; [T | list(T)].
 

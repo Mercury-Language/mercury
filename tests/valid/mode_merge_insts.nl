@@ -1,4 +1,4 @@
-:- module t2.
+:- module mode_merge_insts.
 
 :- type triple ---> triple(int, int, int).
 
