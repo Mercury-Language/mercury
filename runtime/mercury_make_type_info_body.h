@@ -37,7 +37,7 @@ exist_func(const MR_TypeInfoParams type_info_params,
 
 	/* 
 	** The pseudo_type_info might be a polymorphic variable.
-	** If so, then substitute it's value, and then we're done.
+	** If so, substitute its value, and we are done.
 	*/
 	if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(pseudo_type_info)) {
 
