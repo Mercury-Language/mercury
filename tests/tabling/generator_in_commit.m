@@ -1,5 +1,7 @@
 % This test case checks whether we get incorrect answers
 % when a generator gets started but not finished inside a commit.
+% One possible problem it tests for is not cleaning up the consumers
+% of such generators properly.
 
 :- module generator_in_commit.
 
@@ -38,7 +40,7 @@ q(X) :-
 	(
 		q(Y),
 		X = Y + 1,
-		X < 10
+		X < 4
 	;
 		X = 1
 	).

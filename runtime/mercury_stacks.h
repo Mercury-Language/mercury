@@ -577,7 +577,7 @@ extern	void			MR_print_any_cut_stack(FILE *fp,
 */
 
 struct MR_PNegConsumerListNodeStruct {
-	MR_Subgoal		*MR_pneg_consumer_ptr;
+	MR_Consumer		*MR_pneg_consumer_ptr;
 	MR_PNegConsumerList	MR_pneg_next_consumer;
 };
 
@@ -588,7 +588,7 @@ struct MR_PNegStackFrameStruct {
 	int			MR_pneg_depth;
 };
 
-extern	void			MR_register_suspension(MR_Subgoal *subgoal);
+extern	void			MR_register_suspension(MR_Consumer *consumer);
 extern	void			MR_pneg_enter_cond(void);
 extern	void			MR_pneg_enter_then(void);
 extern	void			MR_pneg_enter_else(void);

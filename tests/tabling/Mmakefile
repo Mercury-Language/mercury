@@ -24,6 +24,7 @@ NONDET_NONLOOP_PROGS = \
 	combine \
 	completed_consumer_in_solutions \
 	consumer_in_commit \
+	consumer_in_solutions \
 	coup \
 	coup2 \
 	coup3 \
@@ -45,12 +46,6 @@ NONDET_NONLOOP_PROGS = \
 
 NONDET_LOOP_PROGS = \
 	tc_loop
-
-# We don't yet pass the following minimal model tests.
-#
-#	consumer_in_solutions 	it contains interactions between tabling
-#				and constructs that function as committed
-#				or negated contexts.
 
 ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) $(SIMPLE_LOOP_PROGS)
 ALL_NONDET_PROGS = $(NONDET_NONLOOP_PROGS) $(NONDET_LOOP_PROGS)
@@ -113,6 +108,14 @@ loopcheck.out: loopcheck
 			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
+	fi
+
+consumer_in_solutions.out: consumer_in_solutions
+	if ./$< > $@.tmp 2>&1; then \
+		grep . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@ ; \
 	fi
 
 .PHONY: echo_progs

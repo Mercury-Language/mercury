@@ -335,6 +335,8 @@ MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
 #endif
 	} else {
 		/* this generator will never complete the subgoal */
+		MR_ConsumerList	consumer_list;
+
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
 			printf("cleanup: generator %p -> %s deleted\n",
@@ -344,6 +346,22 @@ MR_cleanup_generator_ptr(MR_SubgoalPtr subgoal)
 #endif
 
 		subgoal->MR_sg_back_ptr->MR_subgoal = NULL;
+		subgoal->MR_sg_back_ptr = NULL;
+
+		for (consumer_list = subgoal->MR_sg_consumer_list;
+			consumer_list != NULL;
+			consumer_list = consumer_list->MR_cl_next)
+		{
+#ifdef	MR_TABLE_DEBUG
+			if (MR_tabledebug) {
+				printf("cleanup: consumer %s is deleted",
+					MR_consumer_addr_name(
+						consumer_list->MR_cl_item));
+			}
+#endif
+
+			consumer_list->MR_cl_item->MR_cns_subgoal = NULL;
+		}
 	}
 }
 
@@ -401,7 +419,7 @@ MR_print_cut_stack_entry(FILE *fp, MR_Integer i, MR_CutStackFrame *p)
 /***************************************************************************/
 
 void
-MR_register_suspension(MR_SubgoalPtr subgoal)
+MR_register_suspension(MR_Consumer *consumer)
 {
 	MR_PNegConsumerList	node_ptr;
 
@@ -410,7 +428,7 @@ MR_register_suspension(MR_SubgoalPtr subgoal)
 	}
 
 	node_ptr = MR_TABLE_NEW(MR_PNegConsumerListNode);
-	node_ptr->MR_pneg_consumer_ptr = subgoal;
+	node_ptr->MR_pneg_consumer_ptr = consumer;
 	node_ptr->MR_pneg_next_consumer = 
 		MR_pneg_stack[MR_pneg_next - 1].MR_pneg_consumers;
 	MR_pneg_stack[MR_pneg_next - 1].MR_pneg_consumers = node_ptr;
@@ -470,6 +488,7 @@ MR_pneg_enter_else(void)
 {
 	MR_PNegConsumerList	l;
 	MR_PNegConsumerList	next;
+	MR_PNegConsumerList	consumer_list;
 
 	MR_restore_transient_registers();
 
@@ -483,15 +502,22 @@ MR_pneg_enter_else(void)
 	}
 #endif
 
-	for (l = MR_pneg_stack[MR_pneg_next].MR_pneg_consumers; l != NULL;
-		l = next)
-	{
+	consumer_list = MR_pneg_stack[MR_pneg_next].MR_pneg_consumers;
+	for (l = consumer_list; l != NULL; l = next) {
+		MR_Subgoal	*subgoal;
+		MR_Consumer	*consumer;
+
 		next = l->MR_pneg_next_consumer;
-		if (l->MR_pneg_consumer_ptr->MR_sg_status !=
-			MR_SUBGOAL_COMPLETE)
-		{
-			MR_fatal_error("MR_pneg_enter_else: failing out of "
-				"negated context with incomplete consumer");
+		consumer = l->MR_pneg_consumer_ptr;
+		if (consumer->MR_cns_subgoal == NULL) {
+			/* this consumer has logically been deleted */
+			continue;
+		}
+
+		subgoal = consumer->MR_cns_subgoal;
+		if (subgoal->MR_sg_status != MR_SUBGOAL_COMPLETE) {
+			MR_fatal_error("failing out of negated context "
+				"with incomplete consumer");
 		}
 
 		MR_table_free(l);
@@ -532,13 +558,15 @@ MR_print_pneg_stack_entry(FILE *fp, MR_Integer i, MR_PNegStackFrame *p)
 	if (p->MR_pneg_consumers == NULL) {
 		fprintf(fp, " none");
 	} else {
-		int	n;
+		MR_Consumer	*consumer;
+		int		n;
 
 		for (n = 1, l = p->MR_pneg_consumers; l != NULL;
 			l = l->MR_pneg_next_consumer, n++)
 		{
-			fprintf(fp, " <%d: %s>", n,
-				MR_subgoal_addr_name(l->MR_pneg_consumer_ptr));
+			consumer = l->MR_pneg_consumer_ptr;
+			fprintf(fp, " <%d: %s>",
+				n, MR_consumer_addr_name(consumer));
 		}
 	}
 

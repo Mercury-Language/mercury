@@ -84,14 +84,24 @@ typedef struct {
 	const MR_Label_Layout	*MR_ss_top_layout;
 } MR_SavedState;
 
-/* The state of a consumer subgoal */
+/*
+** The state of a consumer subgoal.
+**
+** The subgoal field points to the generator subgoal. If it is NULL, then the
+** consumer has logically been deleted.
+**
+** The num_returned answers field gives the number of answers returned to this
+** consumer so far.
+**
+** The answer list fields points into the answer list of the generator
+** subgoal. The list of answers it points to expands transparently whenever
+** the generator subgoal adds an answer to its answer list.
+*/
 struct MR_Consumer_Struct {
 	MR_SavedState		MR_cns_saved_state;
+	MR_Subgoal		*MR_cns_subgoal;
 	MR_Integer		MR_cns_num_returned_answers;
 	MR_AnswerList		*MR_cns_remaining_answer_list_ptr;
-#ifdef	MR_TABLE_DEBUG
-	MR_Subgoal		*MR_cns_subgoal;
-#endif
 };
 
 struct MR_ConsumerListNode_Struct {

@@ -874,9 +874,11 @@ maybe_pred(Pred, X, Y) :-
 % for do_while (below).
 
 :- pragma promise_pure(builtin_aggregate/4).
+
 builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	% Save some of the Mercury virtual machine registers
 	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+	impure start_all_soln_neg_context,
 
 	% Initialize the accumulator
 	% /* Mutvar := Accumulator0 */
@@ -904,6 +906,8 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 		fail
 	;
 		% There are no more solutions.
+		impure end_all_soln_neg_context_no_more,
+
 		% So now we just need to copy the final value
 		% of the accumulator from the solutions heap
 		% back onto the ordinary heap, and then we can
@@ -932,6 +936,7 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
 	impure new_mutvar(Accumulator0, Mutvar),
+	impure start_all_soln_neg_context,
 	(
 		GeneratorPred(Answer0),
 
@@ -946,9 +951,10 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 
 		% if More = yes, then backtrack for the next solution.
 		% if More = no, then we're done.
-		More = no
+		More = no,
+		impure end_all_soln_neg_context_more
 	;
-		true
+		impure end_all_soln_neg_context_no_more
 	),
 	impure get_mutvar(Mutvar, Accumulator1),
 	impure partial_deep_copy(SolutionsHeapPtr, Accumulator1, Accumulator),
@@ -1303,6 +1309,47 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 "
 	/* As above, we take no action. */
 ").
+
+:- impure pred start_all_soln_neg_context is det.
+:- impure pred end_all_soln_neg_context_more is det.
+:- impure pred end_all_soln_neg_context_no_more is det.
+
+:- pragma foreign_proc("C", 
+	start_all_soln_neg_context,
+	% In minimal model tabling grades, there are no threads.
+	% In all other grades, this predicate is a noop.
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_MINIMAL_MODEL
+	MR_pneg_enter_cond();
+#endif
+").
+
+:- pragma foreign_proc("C", 
+	end_all_soln_neg_context_more,
+	% In minimal model tabling grades, there are no threads.
+	% In all other grades, this predicate is a noop.
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_MINIMAL_MODEL
+	MR_pneg_enter_then();
+#endif
+").
+
+:- pragma foreign_proc("C", 
+	end_all_soln_neg_context_no_more,
+	% In minimal model tabling grades, there are no threads.
+	% In all other grades, this predicate is a noop.
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef MR_USE_MINIMAL_MODEL
+	MR_pneg_enter_else();
+#endif
+").
+
+start_all_soln_neg_context.
+end_all_soln_neg_context_more.
+end_all_soln_neg_context_no_more.
 
 %-----------------------------------------------------------------------------%
 

@@ -31,8 +31,8 @@ static  MR_Word *saved_to_real_nondet_stack(MR_SavedState *saved_state,
                     MR_Word *saved_ptr);
 static  MR_Word *real_to_saved_nondet_stack(MR_SavedState *saved_state,
                     MR_Word *real_ptr);
-static  void    pickle_stack_segment(MR_SavedState *saved_state,
-                    MR_Integer already_pickled, MR_Subgoal *subgoal);
+static  void    prune_right_branches(MR_SavedState *saved_state,
+                    MR_Integer already_pruned, MR_Subgoal *subgoal);
 static  void    extend_consumer_stacks(MR_Subgoal *leader,
                     MR_Consumer *consumer);
 static  void    make_subgoal_follow_leader(MR_Subgoal *this_follower,
@@ -334,6 +334,9 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
         MR_subgoal_addr_name(subgoal),
         MR_subgoal_status(subgoal->MR_sg_status));
     MR_print_nondstackptr(fp, subgoal->MR_sg_generator_fr);
+    if (subgoal->MR_sg_back_ptr == NULL) {
+        fprintf(fp, ", DELETED");
+    }
     fprintf(fp, "\n");
 
     if (proc != NULL) {
@@ -394,15 +397,16 @@ MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
 
     fprintf(fp, "consumer %s", MR_consumer_addr_name(consumer));
 
-#ifdef  MR_TABLE_DEBUG
-    fprintf(fp, ", of subgoal %s",
-        MR_subgoal_addr_name(consumer->MR_cns_subgoal));
-#endif
-
-    fprintf(fp, "\nreturned answers %d, remaining answers ptr %p\n",
-        consumer->MR_cns_num_returned_answers,
-        consumer->MR_cns_remaining_answer_list_ptr);
-    print_saved_state(fp, &consumer->MR_cns_saved_state);
+    if (consumer->MR_cns_subgoal != NULL) {
+        fprintf(fp, ", of subgoal %s",
+            MR_subgoal_addr_name(consumer->MR_cns_subgoal));
+        fprintf(fp, "\nreturned answers %d, remaining answers ptr %p\n",
+            consumer->MR_cns_num_returned_answers,
+            consumer->MR_cns_remaining_answer_list_ptr);
+        print_saved_state(fp, &consumer->MR_cns_saved_state);
+    } else {
+        fprintf(fp, ", DELETED\n");
+    }
 }
 
 /*---------------------------------------------------------------------------*/
@@ -824,7 +828,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
         cons_saved_state->MR_ss_non_stack_block_size = arena_size;
         cons_saved_state->MR_ss_non_stack_real_start = arena_start;
 
-        pickle_stack_segment(cons_saved_state, arena_size - extension_size,
+        prune_right_branches(cons_saved_state, arena_size - extension_size,
             NULL);
     }
 
@@ -891,25 +895,24 @@ real_to_saved_nondet_stack(MR_SavedState *saved_state, MR_Word *real_ptr)
 MR_declare_entry(MR_table_nondet_commit);
 
 static void
-pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
+prune_right_branches(MR_SavedState *saved_state, MR_Integer already_pruned,
     MR_Subgoal *subgoal)
 {
     MR_Word         *saved_fr;
     MR_Word         *saved_stop_fr;
     MR_Word         *saved_top_fr;
     MR_Word         *saved_next_fr;
-    MR_Word         *real_fr;
     MR_Word         *saved_redoip_addr;
-    MR_Word         *real_redoip_addr;
-    MR_Word         frame_size;
+    MR_Word         *real_fr;
     MR_Word         *real_main_branch_fr;
+    MR_Word         frame_size;
     MR_Integer      cur_gen;
     MR_Integer      cur_cut;
     MR_Integer      cur_pneg;
     MR_bool         ordinary;
     MR_bool         generator_is_at_bottom;
 
-    if (already_pickled > 0) {
+    if (already_pruned > 0) {
         generator_is_at_bottom = MR_TRUE;
     } else {
         generator_is_at_bottom = MR_FALSE;
@@ -917,8 +920,8 @@ pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tablestackdebug) {
-        printf("\nbefore pickling nondet stack, already pickled %d\n",
-            already_pickled);
+        printf("\nbefore pruning nondet stack, already pruned %d\n",
+            already_pruned);
         print_saved_state(stdout, saved_state);
     }
 #endif  /* MR_TABLE_DEBUG */
@@ -927,13 +930,6 @@ pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
     saved_top_fr = saved_state->MR_ss_non_stack_saved_block +
         saved_state->MR_ss_non_stack_block_size - 1;
     saved_fr = saved_top_fr;
-
-    /*
-    real_stop_fr = saved_state->MR_ss_non_stack_real_start - 1;
-    real_top_fr = saved_state->MR_ss_non_stack_real_start +
-        saved_state->MR_ss_non_stack_block_size - 1;
-    real_fr = real_top_fr;
-    */
 
     real_main_branch_fr =
         saved_to_real_nondet_stack(saved_state, saved_top_fr);
@@ -953,12 +949,6 @@ pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
             ordinary = MR_FALSE;
         }
 
-        /*
-        redoip_offset_from_stop = MR_redoip_addr(saved_fr) - real_stop_fr;
-        saved_redoip_addr = saved_stop_fr + redoip_offset_from_stop;
-        real_redoip_addr = saved_stop_fr + redoip_offset_from_stop;
-        */
-
 #if MR_TABLE_DEBUG
         if (MR_tablestackdebug) {
             printf("considering %s frame ",
@@ -966,20 +956,22 @@ pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
             MR_print_nondstackptr(stdout,
                 saved_to_real_nondet_stack(saved_state, saved_fr));
             printf(" with redoip slot at ");
-            MR_print_nondstackptr(stdout, MR_redoip_addr(saved_fr));
+            MR_print_nondstackptr(stdout,
+                saved_to_real_nondet_stack(saved_state,
+                    MR_redoip_addr(saved_fr)));
             printf("\n");
         }
 #endif
 
-        if (already_pickled > 0) {
+        if (already_pruned > 0) {
 #ifdef  MR_TABLE_DEBUG
             if (MR_tabledebug) {
-                printf("already pickled %d -> %d\n",
-                    already_pickled, already_pickled - frame_size);
+                printf("already pruned %d -> %d\n",
+                    already_pruned, already_pruned - frame_size);
             }
 #endif  /* MR_TABLE_DEBUG */
 
-            already_pickled -= frame_size;
+            already_pruned -= frame_size;
 
             if (real_fr == real_main_branch_fr && ordinary) {
 #ifdef  MR_TABLE_DEBUG
@@ -1001,7 +993,7 @@ pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
         } else if (generator_is_at_bottom && saved_next_fr == saved_stop_fr) {
 #ifdef  MR_TABLE_DEBUG
             if (MR_tabledebug) {
-                printf("completing redoip of bottom frame at ");
+                printf("setting redoip to schedule completion in bottom frame ");
                 MR_print_nondstackptr(stdout,
                     saved_to_real_nondet_stack(saved_state, saved_fr));
                 printf(" (in saved copy)\n");
@@ -1024,7 +1016,7 @@ pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
 
 #ifdef  MR_TABLE_DEBUG
                 if (MR_tabledebug) {
-                    printf("completing redoip of frame at ");
+                    printf("setting redoip to schedule completion in frame ");
                     MR_print_nondstackptr(stdout,
                         saved_to_real_nondet_stack(saved_state, saved_fr));
                     printf(" (in saved copy)\n");
@@ -1407,13 +1399,12 @@ MR_define_label(SUSPEND_LABEL(Call));
     MR_Word         *common_ancestor;
 
     subgoal = (MR_SubgoalPtr) MR_r1;
-    MR_register_suspension(subgoal);
     consumer = MR_table_allocate_struct(MR_Consumer);
     consumer->MR_cns_remaining_answer_list_ptr = &subgoal->MR_sg_answer_list;
-
-#ifdef  MR_TABLE_DEBUG
     consumer->MR_cns_subgoal = subgoal;
     consumer->MR_cns_num_returned_answers = 0;
+
+#ifdef  MR_TABLE_DEBUG
     MR_enter_consumer_debug(consumer);
 
     if (MR_tabledebug) {
@@ -1427,9 +1418,10 @@ MR_define_label(SUSPEND_LABEL(Call));
         (const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(SUSPEND_LABEL(Call)));
     MR_restore_transient_registers();
 
+    MR_register_suspension(consumer);
+
     common_ancestor = consumer->MR_cns_saved_state.MR_ss_common_ancestor_fr;
-    if (common_ancestor < subgoal->MR_sg_deepest_nca_fr)
-    {
+    if (common_ancestor < subgoal->MR_sg_deepest_nca_fr) {
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("resetting deepest nca for subgoal %s from ",
@@ -1443,7 +1435,7 @@ MR_define_label(SUSPEND_LABEL(Call));
         subgoal->MR_sg_deepest_nca_fr = common_ancestor;
     }
 
-    pickle_stack_segment(&consumer->MR_cns_saved_state, 0, subgoal);
+    prune_right_branches(&consumer->MR_cns_saved_state, 0, subgoal);
 
   #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
