@@ -217,7 +217,7 @@ $(os_subdir)%.dll : %.cpp
 	rm -f $(os_subdir)$*.dll
 	$(MS_CL) -CLR$(MS_CL_NOASM) -I$(MERC_C_INCL_DIR) \
 		-I$(MERC_DLL_DIR) $(ALL_MS_CLFLAGS) $< -link -noentry \
-		-dll $(MS_CL_LIBS) -out:$@
+		mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 
 $(os_subdir)%.dll : %.il
 	rm -f $(os_subdir)$*.dll
@@ -319,7 +319,8 @@ ifeq ($(findstring il,$(GRADE)),il)
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $< 
 
 .cpp.dll:
-	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -noentry -dll $(MS_CL_LIBS) -out:$@
+	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< \
+		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 
 .cpp.exe:
 	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
