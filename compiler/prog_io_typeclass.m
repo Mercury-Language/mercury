@@ -131,7 +131,7 @@ parse_unconstrained_class(ModuleName, Name, VarSet, Result) :-
 		->
 			Result = ok(typeclass([], ClassName, Vars, [], VarSet))
 		;
-			Result = error("Expected variables as class parameters",
+			Result = error("expected variables as class parameters",
 				Name)
 		)
 	;
@@ -159,7 +159,7 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 			Interface),
 		find_errors(Interface, Result)
 	;
-		Result = error("Expected list of class methods", Methods)
+		Result = error("expected list of class methods", Methods)
 	).
 
 :- pred list_term_to_term_list(term, list(term)).
@@ -266,7 +266,7 @@ parse_class_constraint(_ModuleName, Constraint, Result) :-
 	->
 		Result = ok(constraint(ClassName, Args))
 	;
-		Result = error("Expected atom as class name", Constraint)
+		Result = error("expected atom as class name", Constraint)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -346,7 +346,7 @@ parse_instance_constraints(ModuleName, Constraints, Result) :-
 				)),
 			list__filter_map(NonVarArg, ConstraintList, [E|_Es])
 		->
-			Result = error("Expected variables in constraints of instance declaration", E)
+			Result = error("expected variables in constraints of instance declaration", E)
 		;
 			Result = ParsedConstraints
 		)
@@ -404,7 +404,7 @@ parse_underived_instance(_ModuleName, Name, VarSet, Result) :-
 				% XXX We should report an error for _each_
 				% XXX erroneous type
 			ErroneousTypes = [E|_Es],
-			Result = error("Expected type in instance declaration to be a functor with variables as args", E)
+			Result = error("expected type in instance declaration to be a functor with variables as args", E)
 		)
 	;
 		MaybeClassName = error(String, Term),
@@ -453,7 +453,7 @@ parse_instance_methods(ModuleName, Methods, Result) :-
 			Interface),
 		find_errors(Interface, Result)
 	;
-		Result = error("Expected list of instance methods", Methods)
+		Result = error("expected list of instance methods", Methods)
 	).
 
 	% Turn the term into a method instance
@@ -487,7 +487,7 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					InstanceMethodName, ArityInt))
 			;
 				Result = error(
-				    "Expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
+				    "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
 					MethodTerm)
 			)
 		;
@@ -512,16 +512,16 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					InstanceMethodName, ArityInt))
 			;
 				Result = error(
-				    "Expected `func(<Name> / <Arity>) is <InstanceMethod>'",
+				    "expected `func(<Name> / <Arity>) is <InstanceMethod>'",
 					MethodTerm)
 			)
 		;
 			Result = error(
-				"Expected `pred(<Name> / <Arity>) is <InstanceName>'",
+				"expected `pred(<Name> / <Arity>) is <InstanceName>'",
 				MethodTerm)
 		)
 	;
-		Result = error("Expected `pred(<Name> / <Arity>) is <InstanceName>'",
+		Result = error("expected `pred(<Name> / <Arity>) is <InstanceName>'",
 			MethodTerm)
 	).
 
