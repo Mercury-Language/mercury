@@ -59,6 +59,9 @@ libmer.so: $(PIC_OBJS)
 runtime.init: $(MOD_CS)
 	cat $(MOD_CS) | grep '^INIT ' > runtime.init
 
+conf.h: ../config.status conf.h.in
+	cd ..; CONFIG_FILES= CONFIG_HEADERS=runtime/conf.h ./config.status
+
 .PHONY: cs
 cs: $(MOD_CS)
 
