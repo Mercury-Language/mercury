@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,6 +108,10 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
+:- pred recompute_instmap_delta_proc(bool, proc_info, proc_info,
+				module_info, module_info).
+:- mode recompute_instmap_delta_proc(in, in, out, in, out) is det.
+
 :- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, vartypes, instmap,
 				module_info, module_info).
 :- mode recompute_instmap_delta(in, in, out, in, in, in, out) is det.
@@ -1076,8 +1080,18 @@ mode_id_to_int(_ - X, X).
 	% and deconstructions may become non-local (XXX does this require
 	% rerunning mode analysis rather than just recompute_instmap_delta?).
 
+recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo0, ProcInfo) -->
+	=(ModuleInfo0),
+	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
+	{ proc_info_vartypes(ProcInfo0, VarTypes) },
+	{ proc_info_goal(ProcInfo0, Goal0) },
+	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal,
+		VarTypes, InstMap0),
+	{ proc_info_set_goal(ProcInfo0, Goal, ProcInfo) }.
+
 recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstMap0) -->
-	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstMap0, _).
+	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes,
+		InstMap0, _).
 
 :- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, vartypes, instmap,
 		instmap_delta, module_info, module_info).

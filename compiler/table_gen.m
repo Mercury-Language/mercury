@@ -273,14 +273,21 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 	% and save in the module info
 	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
 	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
-	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo),
+	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
+
+	% Some of the instmap_deltas generated in this module
+	% are pretty dodgy (especially those for if-then-elses), so 
+	% recompute them here.
+	RecomputeAtomic = no,
+	recompute_instmap_delta_proc(RecomputeAtomic,
+		ProcInfo4, ProcInfo, Module1, Module2),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
 	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
 	pred_info_set_procedures(PredInfo1, ProcTable, PredInfo),
-	module_info_preds(Module1, PredTable1),
+	module_info_preds(Module2, PredTable1),
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
-	module_info_set_preds(Module1, PredTable, Module).
+	module_info_set_preds(Module2, PredTable, Module).
 
 %-----------------------------------------------------------------------------%
 
