@@ -3752,6 +3752,13 @@ implementors.  It causes the generated code to become very big and very
 inefficient, and slows down compilation a lot.
 
 @sp 1
+@item @code{--pic}
+Generate position independent code.
+This option is only used by the @samp{--target asm} back-end.
+The generated assembler will be written to @samp{@var{module}.pic_s}
+rather than to @samp{@var{module}.s}.
+
+@sp 1
 @item @code{--target-debug}
 Enable debugging of the generated target code.
 If the target language is C, this has the same effect as

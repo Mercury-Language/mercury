@@ -199,9 +199,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		io__state::di, io__state::uo) is det.
 
 do_call_gcc_backend(ModuleName, Result) -->
-	% XXX should use new --pic option rather than
-	% reusing --pic-reg
-	globals__io_lookup_bool_option(pic_reg, Pic),
+	globals__io_lookup_bool_option(pic, Pic),
 	{ Pic = yes ->
 		PicExt = ".pic_s",
 		PicOpt = "-fpic "
