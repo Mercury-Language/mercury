@@ -55,26 +55,29 @@
   MR_define_extern_entry(mercury__garbage_collect_0_0);
 
   static void   MR_LLDS_garbage_collect(MR_Code *saved_success,
-                        MR_Word *stack_pointer,
+                        MR_bool callee_model_semi, MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
   static void   traverse_det_stack(const MR_Label_Layout *label_layout,
+                        MR_bool callee_model_semi,
                         MR_Word *stack_pointer, MR_Word *current_frame);
   static void   traverse_nondet_stack(const MR_Label_Layout *label_layout,
-                        MR_Word *stack_pointer,
+                        MR_bool callee_model_semi, MR_Word *stack_pointer,
                         MR_Word *max_frame, MR_Word *current_frame);
   static void   traverse_nondet_frame(void *user_data,
                         const MR_Label_Layout *label_layout,
                         MR_Word *stack_pointer, MR_Word *current_frame);
-  static void   traverse_frame(MR_bool is_first_frame,
+  static MR_bool are_registers_live(MR_bool is_first_frame,
+                        MR_bool callee_model_semi);
+  static void   traverse_frame(MR_bool registers_live,
                         const MR_Label_Layout *label_layout,
                         MR_Word *stack_pointer, MR_Word *current_frame);
   static void   resize_and_reset_redzone(MR_MemoryZone *old_heap,
                         MR_MemoryZone *new_heap);
   static void   copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info, 
-                        MR_bool is_first_frame, MR_Word *stack_pointer,
+                        MR_bool registers_live, MR_Word *stack_pointer,
                         MR_Word *current_frame);
   static void   copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-                        MR_bool is_first_frame, MR_Word *stack_pointer,
+                        MR_bool registers_live, MR_Word *stack_pointer,
                         MR_Word *current_frame);
 
 #endif
@@ -97,6 +100,7 @@ static void     maybe_clear_old_heap(MR_MemoryZone *old_heap, MR_Word *old_hp);
 #ifndef MR_HIGHLEVEL_CODE
 static MR_Code  *saved_success = NULL;
 static MR_Code **saved_success_location = NULL;
+static MR_bool  callee_was_model_semi = MR_FALSE;
 static MR_bool  gc_scheduled = MR_FALSE;
 static MR_bool  gc_running = MR_FALSE;
 #endif
@@ -351,6 +355,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     type = MR_LONG_LVAL_TYPE(location);
     number = MR_LONG_LVAL_NUMBER(location);
     if (MR_DETISM_DET_STACK(determinism)) {
+        callee_was_model_semi = MR_DETISM_CAN_FAIL(determinism);
 
         if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
             MR_fatal_error("can only handle stackvars");
@@ -363,6 +368,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
                 & MR_based_stackvar(sp_at_signal, number);
         saved_success = *saved_success_location;
     } else {
+        callee_was_model_semi = MR_FALSE;
         /*
         ** XXX we ought to also overwrite the redoip,
         **     otherwise we might miss failure-driven loops
@@ -414,7 +420,8 @@ MR_define_entry(mercury__garbage_collect_0_0);
     gc_running = MR_TRUE;
 
     MR_save_registers();
-    MR_LLDS_garbage_collect(saved_success, MR_sp, MR_maxfr, MR_curfr);
+    MR_LLDS_garbage_collect(saved_success, callee_was_model_semi,
+        MR_sp, MR_maxfr, MR_curfr);
     MR_restore_registers();
     gc_scheduled = MR_FALSE;
     gc_running = MR_FALSE;
@@ -434,8 +441,8 @@ MR_END_MODULE
 ** code duplication with the version for the MLDS back-end, which is above.
 */
 static void
-MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer, 
-        MR_Word *max_frame, MR_Word *current_frame)
+MR_LLDS_garbage_collect(MR_Code *success_ip, MR_bool callee_model_semi,
+        MR_Word *stack_pointer, MR_Word *max_frame, MR_Word *current_frame)
 {
     MR_MemoryZone                   *old_heap, *new_heap;
     MR_Word                         *old_hp;
@@ -489,9 +496,10 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     ** Traverse the stacks, copying the live data in the old heap to the
     ** new heap.
     */
-    traverse_det_stack(label_layout, stack_pointer, current_frame);
-    traverse_nondet_stack(label_layout, stack_pointer, max_frame,
-        current_frame);
+    traverse_det_stack(label_layout, callee_model_semi,
+        stack_pointer, current_frame);
+    traverse_nondet_stack(label_layout, callee_model_semi,
+        stack_pointer, max_frame, current_frame);
 
     /*
     ** Copy any roots that are not on the stack.
@@ -542,7 +550,7 @@ MR_LLDS_garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 */
 static void
 traverse_det_stack(const MR_Label_Layout *label_layout,
-    MR_Word *stack_pointer, MR_Word *current_frame)
+    MR_bool callee_model_semi, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     /*
     ** Record whether this is the first frame on the call stack.
@@ -564,7 +572,9 @@ traverse_det_stack(const MR_Label_Layout *label_layout,
         */
         proc_layout = label_layout->MR_sll_entry;
         if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
-            traverse_frame(is_first_frame, label_layout, stack_pointer,
+            MR_bool registers_live = are_registers_live(is_first_frame,
+                callee_model_semi);
+            traverse_frame(registers_live, label_layout, stack_pointer,
                 current_frame);
         }
 
@@ -582,6 +592,23 @@ traverse_det_stack(const MR_Label_Layout *label_layout,
     } while (label_layout != NULL); /* end for each stack frame... */
 }
 
+static MR_bool
+are_registers_live(MR_bool is_first_frame, MR_bool callee_model_semi)
+{
+    /*
+    ** The registers are live if this is the first (top) frame.
+    ** However, as an exception, if the called procedure was
+    ** semidet, and the success indicator (MR_r1) is false,
+    ** then the registers are not live (only MR_r1 is live,
+    ** and we don't need to traverse that).
+    */
+    MR_bool registers_live = is_first_frame;
+    if (callee_model_semi && !MR_virtual_reg(1)) {
+        registers_live = MR_FALSE;
+    }
+    return registers_live;
+}
+
 /*
 ** Traverse the whole of the nondet stack.
 */ 
@@ -589,15 +616,18 @@ traverse_det_stack(const MR_Label_Layout *label_layout,
 struct first_frame_data {
     const MR_Label_Layout *first_frame_layout;
     MR_Word *first_frame_curfr;
+    MR_bool first_frame_callee_model_semi;
 };
     
 static void
 traverse_nondet_stack(const MR_Label_Layout *first_frame_layout,
+        MR_bool callee_model_semi,
         MR_Word *stack_pointer, MR_Word *max_frame, MR_Word *current_frame)
 {
     struct first_frame_data data;
     data.first_frame_layout = first_frame_layout;
     data.first_frame_curfr = current_frame;
+    data.first_frame_callee_model_semi = callee_model_semi;
     MR_traverse_nondet_stack_from_layout(max_frame, first_frame_layout,
             stack_pointer, current_frame, traverse_nondet_frame,
             &data);
@@ -609,6 +639,7 @@ traverse_nondet_frame(void *user_data,
         MR_Word *current_frame)
 {   
     MR_bool is_first_frame;
+    MR_bool registers_live;
     struct first_frame_data *data = user_data;
     
     /*
@@ -620,14 +651,17 @@ traverse_nondet_frame(void *user_data,
         && !MR_DETISM_DET_STACK(
             data->first_frame_layout->MR_sll_entry->MR_sle_detism));
 
-    traverse_frame(is_first_frame, label_layout, stack_pointer, current_frame);
+    registers_live = are_registers_live(is_first_frame, 
+        data->first_frame_callee_model_semi);
+
+    traverse_frame(registers_live, label_layout, stack_pointer, current_frame);
 }
 
 /*
 ** Traverse a stack frame (it could be either a det frame or a nondet frame).
 */
 static void
-traverse_frame(MR_bool is_first_frame, const MR_Label_Layout *label_layout,
+traverse_frame(MR_bool registers_live, const MR_Label_Layout *label_layout,
         MR_Word *stack_pointer, MR_Word *current_frame)
 {
     int                             short_var_count, long_var_count;
@@ -658,8 +692,14 @@ traverse_frame(MR_bool is_first_frame, const MR_Label_Layout *label_layout,
     ** will be stored in registers across a call, since we have no
     ** caller-save registers (they are all callee-save).
     */
+    /*
+    ** XXX this won't handle calls to semidet existentially typed procedures:
+    **      we will try to dereference the type_infos for the
+    **      existential type vars here, even if the success
+    **      indicator is false and hence the registers are not live.
+    */
     type_params = MR_materialize_type_params_base(label_layout,
-            (is_first_frame ? MR_fake_reg : NULL),
+            (registers_live ? MR_fake_reg : NULL),
             stack_pointer, current_frame);
     
     /* Copy each live variable */
@@ -670,7 +710,7 @@ traverse_frame(MR_bool is_first_frame, const MR_Label_Layout *label_layout,
 
         type_info = MR_make_type_info(type_params, pseudo_type_info,
                 &allocated_memory_cells);
-        copy_long_value(locn, type_info, is_first_frame,
+        copy_long_value(locn, type_info, registers_live,
                 stack_pointer, current_frame);
         MR_deallocate(allocated_memory_cells);
         allocated_memory_cells = NULL;
@@ -682,7 +722,7 @@ traverse_frame(MR_bool is_first_frame, const MR_Label_Layout *label_layout,
 
         type_info = MR_make_type_info(type_params, pseudo_type_info,
                 &allocated_memory_cells);
-        copy_short_value(locn, type_info, is_first_frame,
+        copy_short_value(locn, type_info, registers_live,
                 stack_pointer, current_frame);
         MR_deallocate(allocated_memory_cells);
         allocated_memory_cells = NULL;
@@ -704,14 +744,14 @@ traverse_frame(MR_bool is_first_frame, const MR_Label_Layout *label_layout,
 
 static void
 copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
-        MR_bool is_first_frame, MR_Word *stack_pointer, MR_Word *current_frame)
+        MR_bool registers_live, MR_Word *stack_pointer, MR_Word *current_frame)
 {
     int locn_num;
 
     locn_num = MR_LONG_LVAL_NUMBER(locn);
     switch (MR_LONG_LVAL_TYPE(locn)) {
     case MR_LONG_LVAL_TYPE_R:
-        if (is_first_frame) {
+        if (registers_live) {
             MR_virtual_reg(locn_num) = MR_agc_deep_copy(
                     MR_virtual_reg(locn_num), type_info,
                     MR_ENGINE(MR_eng_heap_zone2->min),
@@ -778,14 +818,14 @@ copy_long_value(MR_Long_Lval locn, MR_TypeInfo type_info,
 
 static void
 copy_short_value(MR_Short_Lval locn, MR_TypeInfo type_info,
-                 MR_bool is_first_frame, MR_Word *stack_pointer,
+                 MR_bool registers_live, MR_Word *stack_pointer,
                  MR_Word *current_frame)
 {
     int locn_num;
 
     switch (MR_SHORT_LVAL_TYPE(locn)) {
     case MR_SHORT_LVAL_TYPE_R:
-        if (is_first_frame) {
+        if (registers_live) {
             locn_num = MR_SHORT_LVAL_NUMBER(locn);
             MR_virtual_reg(locn_num) =
                     MR_agc_deep_copy(
