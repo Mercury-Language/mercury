@@ -11,11 +11,28 @@
  * provided the above notices are retained, and a notice that the code was
  * modified is included with the above copyright notice.
  */
-/* Boehm, July 28, 1994 10:35 am PDT */
+/* Boehm, January 30, 1995 4:01 pm PST */
  
 
 # ifndef GC_PRIVATE_H
 # define GC_PRIVATE_H
+
+#if defined(mips) && defined(SYSTYPE_BSD) && defined(sony_news)
+    /* sony RISC NEWS, NEWSOS 4 */
+#   define BSD_TIME
+    typedef long ptrdiff_t;
+#endif
+
+#if defined(mips) && defined(SYSTYPE_BSD43)
+    /* MIPS RISCOS 4 */
+#   define BSD_TIME
+#endif
+
+#ifdef BSD_TIME
+#   include <sys/types.h>
+#   include <sys/time.h>
+#   include <sys/resource.h>
+#endif /* BSD_TIME */
 
 # ifndef GC_H
 #   include "gc.h"
@@ -151,7 +168,7 @@ typedef char * ptr_t;	/* A generic pointer to which we can add	*/
 #   define THREADS
 # endif
 
-#ifdef SPARC
+#if defined(SPARC)
 #   define ALIGN_DOUBLE  /* Align objects of size > 1 word on 2 word   */
 			 /* boundaries.  Wasteful of memory, but       */
 			 /* apparently required by SPARC architecture. */
@@ -190,6 +207,18 @@ typedef char * ptr_t;	/* A generic pointer to which we can add	*/
 # define TIME_LIMIT 50	   /* We try to keep pause times from exceeding	 */
 			   /* this by much. In milliseconds.		 */
 
+# define BL_LIMIT (25*HBLKSIZE)
+			   /* If we need a block of N bytes, and we have */
+			   /* a block of N + BL_LIMIT bytes available, 	 */
+			   /* and N > BL_LIMIT,				 */
+			   /* but all possible positions in it are 	 */
+			   /* blacklisted, we just use it anyway (and	 */
+			   /* print a warning, if warnings are enabled). */
+			   /* This risks subsequently leaking the block	 */
+			   /* due to a false reference.  But not using	 */
+			   /* the block risks unreasonable immediate	 */
+			   /* heap growth.				 */
+
 /*********************************/
 /*                               */
 /* Stack saving for debugging	 */
@@ -200,8 +229,9 @@ typedef char * ptr_t;	/* A generic pointer to which we can add	*/
  * Number of frames and arguments to save in objects allocated by
  * debugging allocator.
  */
-#   define NFRAMES 5	/* Number of frames to save. */
-#   define NARGS 2	/* Mumber of arguments to save for each call. */
+#   define NFRAMES 6	/* Number of frames to save. Even for		*/
+			/* alignment reasons.				*/
+#   define NARGS 2	/* Mumber of arguments to save for each call.	*/
 
 
 #ifdef SAVE_CALL_CHAIN
@@ -225,27 +255,43 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 /*                               */
 /*********************************/
 
-#include <time.h>
-#if !defined(__STDC__) && defined(SPARC) && defined(SUNOS4)
-   clock_t clock();	/* Not in time.h, where it belongs	*/
-#endif
-#if !defined(CLOCKS_PER_SEC)
-#   define CLOCKS_PER_SEC 1000000
+#ifdef BSD_TIME
+#   undef CLOCK_TYPE
+#   undef GET_TIME
+#   undef MS_TIME_DIFF
+#   define CLOCK_TYPE struct timeval
+#   define GET_TIME(x) { struct rusage rusage; \
+			 getrusage (RUSAGE_SELF,  &rusage); \
+			 x = rusage.ru_utime; }
+#   define MS_TIME_DIFF(a,b) ((double) (a.tv_sec - b.tv_sec) * 1000.0 \
+                               + (double) (a.tv_usec - b.tv_usec) / 1000.0)
+#else /* !BSD_TIME */
+#   include <time.h>
+#   if !defined(__STDC__) && defined(SPARC) && defined(SUNOS4)
+      clock_t clock();	/* Not in time.h, where it belongs	*/
+#   endif
+#   if defined(FREEBSD) && !defined(CLOCKS_PER_SEC)
+#     include <machine/limits.h>
+#     define CLOCKS_PER_SEC CLK_TCK
+#   endif
+#   if !defined(CLOCKS_PER_SEC)
+#     define CLOCKS_PER_SEC 1000000
 /*
  * This is technically a bug in the implementation.  ANSI requires that
  * CLOCKS_PER_SEC be defined.  But at least under SunOS4.1.1, it isn't.
  * Also note that the combination of ANSI C and POSIX is incredibly gross
  * here. The type clock_t is used by both clock() and times().  But on
- * some machines thes use different notions of a clock tick,  CLOCKS_PER_SEC
+ * some machines these use different notions of a clock tick,  CLOCKS_PER_SEC
  * seems to apply only to clock.  Hence we use it here.  On many machines,
  * including SunOS, clock actually uses units of microseconds (which are
  * not really clock ticks).
  */
-#endif
-#define CLOCK_TYPE clock_t
-#define GET_TIME(x) x = clock()
-#define MS_TIME_DIFF(a,b) ((unsigned long) \
+#   endif
+#   define CLOCK_TYPE clock_t
+#   define GET_TIME(x) x = clock()
+#   define MS_TIME_DIFF(a,b) ((unsigned long) \
 		(1000.0*(double)((a)-(b))/(double)CLOCKS_PER_SEC))
+#endif /* !BSD_TIME */
 
 /* We use bzero and bcopy internally.  They may not be available.	*/
 # if defined(SPARC) && defined(SUNOS4)
@@ -396,9 +442,8 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 		PCR_Th_SetSigMask(&GC_old_sig_mask, NIL)
 # else
 #   if defined(SRC_M3) || defined(AMIGA) || defined(SOLARIS_THREADS) \
-	|| defined(MSWIN32) || defined(MACOS)
-			/* Also useful for debugging, and unusually	*/
-	 		/* correct client code.				*/
+	|| defined(MSWIN32) || defined(MACOS) || defined(NO_SIGNALS)
+			/* Also useful for debugging.		*/
 	/* Should probably use thr_sigsetmask for SOLARIS_THREADS. */
 #     define DISABLE_SIGNALS()
 #     define ENABLE_SIGNALS()
@@ -453,7 +498,8 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 # endif
 
 /* Print warning message, e.g. almost out of memory.	*/
-# define WARN(s) GC_printf0(s)
+# define WARN(msg,arg) (*GC_current_warn_proc)(msg, (GC_word)(arg))
+extern GC_warn_proc GC_current_warn_proc;
 
 /*********************************/
 /*                               */
@@ -465,14 +511,20 @@ void GC_print_callers (/* struct callinfo info[NFRAMES] */);
 #  define WORDS_TO_BYTES(x)   ((x)<<2)
 #  define BYTES_TO_WORDS(x)   ((x)>>2)
 #  define LOGWL               ((word)5)    /* log[2] of CPP_WORDSZ */
-#  define modWORDSZ(n) ((n) & 0x1f)          /* n mod size of word	    */
+#  define modWORDSZ(n) ((n) & 0x1f)        /* n mod size of word	    */
+#  if ALIGNMENT != 4
+#	define UNALIGNED
+#  endif
 #endif
 
 #if CPP_WORDSZ == 64
 #  define WORDS_TO_BYTES(x)   ((x)<<3)
 #  define BYTES_TO_WORDS(x)   ((x)>>3)
 #  define LOGWL               ((word)6)    /* log[2] of CPP_WORDSZ */
-#  define modWORDSZ(n) ((n) & 0x3f)          /* n mod size of word	    */
+#  define modWORDSZ(n) ((n) & 0x3f)        /* n mod size of word	    */
+#  if ALIGNMENT != 8
+#	define UNALIGNED
+#  endif
 #endif
 
 #define WORDSZ ((word)CPP_WORDSZ)
@@ -668,6 +720,7 @@ struct hblk {
 
 struct _GC_arrays {
   word _heapsize;
+  word _max_heapsize;
   ptr_t _last_heap_addr;
   ptr_t _prev_heap_addr;
   word _words_allocd_before_gc;
@@ -810,6 +863,7 @@ extern GC_FAR struct _GC_arrays GC_arrays;
 # define GC_non_gc_bytes_at_gc GC_arrays._non_gc_bytes_at_gc
 # define GC_mem_freed GC_arrays._mem_freed
 # define GC_heapsize GC_arrays._heapsize
+# define GC_max_heapsize GC_arrays._max_heapsize
 # define GC_words_allocd_before_gc GC_arrays._words_allocd_before_gc
 # define GC_heap_sects GC_arrays._heap_sects
 # define GC_last_stack GC_arrays._last_stack
@@ -938,6 +992,11 @@ void GC_apply_to_all_blocks(/*fn, client_data*/);
 struct hblk * GC_next_block(/* struct hblk * h */);
 void GC_mark_init();
 void GC_clear_marks();	/* Clear mark bits for all heap objects. */
+void GC_invalidate_mark_state();	/* Tell the marker that	marked 	   */
+					/* objects may point to	unmarked   */
+					/* ones, and roots may point to	   */
+					/* unmarked objects.		   */
+					/* Reset mark stack.		   */
 void GC_mark_from_mark_stack(); /* Mark from everything on the mark stack. */
 				/* Return after about one pages worth of   */
 				/* work.				   */
@@ -994,6 +1053,9 @@ bool GC_stopped_mark(); /* Stop world and mark from all roots	*/
 			/* and rescuers.			*/
 void GC_clear_hdr_marks(/* hhdr */);  /* Clear the mark bits in a header */
 void GC_add_roots_inner();
+bool GC_is_static_root(/* ptr_t p */);
+		/* Is the address p in one of the registered static	*/
+		/* root sections?					*/
 void GC_register_dynamic_libraries();
 		/* Add dynamic library data sections to the root set. */
 
@@ -1021,6 +1083,10 @@ struct hblk * GC_is_black_listed(/* h, len */);
 			/* these false references.			*/
 void GC_promote_black_lists();
 			/* Declare an end to a black listing phase.	*/
+void GC_unpromote_black_lists();
+			/* Approximately undo the effect of the above.	*/
+			/* This actually loses some information, but	*/
+			/* only in a reasonably safe way.		*/
 		 	
 ptr_t GC_scratch_alloc(/*bytes*/);
 				/* GC internal memory allocation for	*/
@@ -1073,18 +1139,26 @@ void GC_reclaim_or_delete_all();
 				/* Arrange for all reclaim lists to be	*/
 				/* empty.  Judiciously choose between	*/
 				/* sweeping and discarding each page.	*/
+bool GC_reclaim_all(/* GC_stop_func f*/);
+				/* Reclaim all blocks.  Abort (in a	*/
+				/* consistent state) if f returns TRUE. */
 bool GC_block_empty(/* hhdr */); /* Block completely unmarked? 	*/
-void GC_gcollect_inner();
+bool GC_never_stop_func();	/* Returns FALSE.		*/
+bool GC_try_to_collect_inner(/* GC_stop_func f */);
 				/* Collect; caller must have acquired	*/
 				/* lock and disabled signals.		*/
-				/* FALSE return indicates nothing was	*/
-				/* done due to insufficient allocation. */
+				/* Collection is aborted if f returns	*/
+				/* TRUE.  Returns TRUE if it completes	*/
+				/* successfully.			*/
+# define GC_gcollect_inner() \
+	(void) GC_try_to_collect_inner(GC_never_stop_func)
 void GC_finish_collection();	/* Finish collection.  Mark bits are	*/
 				/* consistent and lock is still held.	*/
 bool GC_collect_or_expand(/* needed_blocks */);
 				/* Collect or expand heap in an attempt */
 				/* make the indicated number of free	*/
 				/* blocks available.  Should be called	*/
+				/* until the blocks are available or	*/
 				/* until it fails by returning FALSE.	*/
 void GC_init();			/* Initialize collector.		*/
 void GC_collect_a_little_inner(/* int n */);
