@@ -750,13 +750,13 @@ tree234__keys_2(two(K0, _V0, T0, T1), L0, L) :-
 	tree234__keys_2(T0, [K0|L1], L).
 tree234__keys_2(three(K0, _V0, K1, _V1, T0, T1, T2), L0, L) :-
 	tree234__keys_2(T2, L0, L1),
-	tree234__keys_2(T1, [K0|L1], L2),
-	tree234__keys_2(T0, [K1|L2], L).
+	tree234__keys_2(T1, [K1|L1], L2),
+	tree234__keys_2(T0, [K0|L2], L).
 tree234__keys_2(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
 	tree234__keys_2(T3, L0, L1),
-	tree234__keys_2(T2, [K0|L1], L2),
+	tree234__keys_2(T2, [K2|L1], L2),
 	tree234__keys_2(T1, [K1|L2], L3),
-	tree234__keys_2(T0, [K2|L3], L).
+	tree234__keys_2(T0, [K0|L3], L).
 
 %------------------------------------------------------------------------------%
 
@@ -772,13 +772,13 @@ tree234__values_2(two(_K0, V0, T0, T1), L0, L) :-
 	tree234__values_2(T0, [V0|L1], L).
 tree234__values_2(three(_K0, V0, _K1, V1, T0, T1, T2), L0, L) :-
 	tree234__values_2(T2, L0, L1),
-	tree234__values_2(T1, [V0|L1], L2),
-	tree234__values_2(T0, [V1|L2], L).
+	tree234__values_2(T1, [V1|L1], L2),
+	tree234__values_2(T0, [V0|L2], L).
 tree234__values_2(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
 	tree234__values_2(T3, L0, L1),
-	tree234__values_2(T2, [V0|L1], L2),
+	tree234__values_2(T2, [V2|L1], L2),
 	tree234__values_2(T1, [V1|L2], L3),
-	tree234__values_2(T0, [V2|L3], L).
+	tree234__values_2(T0, [V0|L3], L).
 
 %------------------------------------------------------------------------------%
 
@@ -805,18 +805,18 @@ tree234__tree234_to_assoc_list(Tree, AssocList) :-
 
 tree234__tree234_to_assoc_list_2(empty, List, List).
 tree234__tree234_to_assoc_list_2(two(K0, V0, T0, T1), L0, L) :-
-	tree234__tree234_to_assoc_list_2(T0, L0, L1),
-	tree234__tree234_to_assoc_list_2(T1, [K0 - V0 | L1], L).
+	tree234__tree234_to_assoc_list_2(T1, L0, L1),
+	tree234__tree234_to_assoc_list_2(T0, [K0 - V0 | L1], L).
 tree234__tree234_to_assoc_list_2(three(K0, V0, K1, V1, T0, T1, T2), L0, L) :-
-	tree234__tree234_to_assoc_list_2(T0, L0, L1),
-	tree234__tree234_to_assoc_list_2(T1, [K0 - V0 | L1], L2),
-	tree234__tree234_to_assoc_list_2(T2, [K1 - V1 | L2], L).
+	tree234__tree234_to_assoc_list_2(T2, L0, L1),
+	tree234__tree234_to_assoc_list_2(T1, [K1 - V1 | L1], L2),
+	tree234__tree234_to_assoc_list_2(T0, [K0 - V0 | L2], L).
 tree234__tree234_to_assoc_list_2(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 					L0, L) :-
-	tree234__tree234_to_assoc_list_2(T0, L0, L1),
-	tree234__tree234_to_assoc_list_2(T1, [K0 - V0 | L1], L2),
-	tree234__tree234_to_assoc_list_2(T2, [K1 - V1 | L2], L3),
-	tree234__tree234_to_assoc_list_2(T3, [K2 - V2 | L3], L).
+	tree234__tree234_to_assoc_list_2(T3, L0, L1),
+	tree234__tree234_to_assoc_list_2(T2, [K2 - V2 | L1], L2),
+	tree234__tree234_to_assoc_list_2(T1, [K1 - V1 | L2], L3),
+	tree234__tree234_to_assoc_list_2(T0, [K0 - V0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
