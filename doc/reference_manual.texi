@@ -73,25 +73,33 @@ into another language, under the above conditions for modified versions.
 @top
 @end ifinfo
 @menu
-* Introduction::      A brief introduction to Mercury
-* Syntax::            Mercury's syntax is similar to ISO Prolog
-* Types::             Mercury has a strong parametric polymorphic type system
-* Modes::             Modes allow you to specify the direction of data flow
+* Introduction::      A brief introduction to Mercury.
+* Syntax::            Mercury's syntax is similar to ISO Prolog.
+* Types::             Mercury has a strong parametric polymorphic type system.
+* Modes::             Modes allow you to specify the direction of data flow.
 * Unique modes::      Unique modes allow you to specify when there is only one
                       reference to a particular value, so the compiler can
-                      safely use destructive update to modify that value
+                      safely use destructive update to modify that value.
 * Determinism::       Determinism declarations let you specify that a predicate
-                      should never fail or should never succeed more than once
+                      should never fail or should never succeed more than once.
 * Equality preds::    User-defined types can have user-defined equality
                       predicates.
 * Higher-order::      Mercury supports higher-order predicates and functions,
-                      with closures, lambda expressions, and currying
-* Modules::           Modules allow you to divide a program into smaller parts
-* Type classes::      Constrained polymorphism
-* Existential types:: Support for data abstraction and heterogeneous collections
-* Semantics::         Declarative and operational semantics of Mercury programs
-* Pragmas::           Various compiler directives, used for the C interface
-                      and to control optimization.
+                      with closures, lambda expressions, and currying.
+* Modules::           Modules allow you to divide a program into smaller parts.
+* Type classes::      Constrained polymorphism.
+* Existential types:: Support for data abstraction and heterogeneous
+                      collections.
+* Semantics::         Declarative and operational semantics of Mercury
+                      programs.
+* C interface::       The C interface allows C code to be called
+                      from Mercury code, and vice versa.
+* Impurity::          Users can write impure Mercury code.
+* Pragmas::           Various compiler directives, used for example to
+                      control optimization.
+* Implementation-dependent extensions::       
+                      The University of Melbourne Mercury implementation
+                      supports several extensions to the Mercury language.
 * Bibliography::      References for further reading.
 @end menu
 
@@ -3818,33 +3826,8 @@ For example, they may wish to provide semantics in which function
 evaluation is lazy, rather than strict; semantics with a guaranteed
 fair search rule; and so forth.
 
-@node Pragmas
-@chapter Pragmas
-
-@ifinfo
-There are several uses for @code{pragma} declarations:
-@end ifinfo
-
-@menu
-* C interface::                 The C interface allows C code to be called
-                                from Mercury code, and vice versa.
-* Impurity::                    Users can write impure Mercury code
-* Inlining::                    Pragmas can be used to suggest or prevent
-                                procedure inlining.
-* Type specialization::		Pragmas can be used to produce specialized
-				versions of polymorphic procedures.
-* Obsolescence::                Library developers can declare old versions
-                                of predicates or functions to be obsolete.
-* Source file name::            The @samp{source_file} pragma and
-                                @samp{#@var{line}} directives provide support
-                                for preprocessors and other tools that
-                                generate Mercury code.
-* Implementation-dependent pragmas::
-                                Implementations may support additional pragmas.
-@end menu
-
 @node C interface
-@section C interface
+@chapter C interface
 
 @menu
 * Calling C code from Mercury::         How to implement a Mercury predicate
@@ -3872,7 +3855,7 @@ and how to set up @samp{Mmake} files to automate the build process.
 See the @samp{samples/c_interface} directory in the Mercury distribution.
 
 @node Calling C code from Mercury
-@subsection Calling C code from Mercury
+@section Calling C code from Mercury
 
 There are two slightly different mechanisms for calling C code from Mercury:
 @samp{pragma import} and @samp{pragma c_code}.  @samp{pragma import}
@@ -3887,8 +3870,8 @@ of C code.  @samp{pragma import} is usually simpler, but
 @c e.g. "pragma import" rather than "@samp{pragma import}".
 @c
 @menu
-* pragma import::             Importing C functions
-* pragma c_code::             Defining Mercury procedures using C code
+* pragma import::             Importing C functions.
+* pragma c_code::             Defining Mercury procedures using C code.
 * Nondet pragma c_code::      Using @samp{pragma c_code} for Mercury procedures
                               that can have more than one solution.
 * C code attributes::         Describing properties of C functions or C code.
@@ -3896,7 +3879,7 @@ of C code.  @samp{pragma import} is usually simpler, but
 @end menu
 
 @node pragma import
-@subsubsection pragma import
+@subsection pragma import
 
 A declaration of the form
 
@@ -3965,7 +3948,7 @@ with determinism @samp{nondet} or @samp{multi}.
 using @samp{pragma c_code} -- @pxref{Nondet pragma c_code}).
 
 @node pragma c_code
-@subsubsection pragma c_code
+@subsection pragma c_code
 
 A declaration of the form
 
@@ -4052,7 +4035,7 @@ before returning.  If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
 
 @node Nondet pragma c_code
-@subsubsection Nondet pragma c_code
+@subsection Nondet pragma c_code
 
 For procedures that can return more than one result on backtracking,
 i.e. those with determinism @samp{nondet} or @samp{multi},
@@ -4179,7 +4162,7 @@ two pieces, using @samp{pragma c_code}.
 @end example
 
 @node C code attributes
-@subsubsection C code attributes
+@subsection C code attributes
 
 As described above, @samp{pragma import} and @samp{pragma c_code}
 declarations may include a list of attributes describing properties
@@ -4223,7 +4206,7 @@ and release a mutex.  All non-thread-safe C code shares a single mutex.)
 @end table
 
 @node Purity and side effects
-@subsubsection Purity and side effects
+@subsection Purity and side effects
 
 Note that procedures implemented in C using either
 @samp{pragma import} or @samp{pragma c_code} must still be ``pure'',
@@ -4268,7 +4251,7 @@ to this procedure, which could effect the behaviour
 of the program in unpredictable ways.
 
 @node Including C headers
-@subsection Including C headers
+@section Including C headers
 
 Any macros, function prototypes, or other C declarations
 that are used in @samp{c_code} pragmas must be included using a
@@ -4312,7 +4295,7 @@ but you should not rely on this, as the set of headers which Mercury
 automatically includes is subject to change.
 
 @node Including C code
-@subsection Including C code
+@section Including C code
 
 Definitions of C functions or global variables may be
 included using a declaration of the form
@@ -4333,7 +4316,7 @@ For example,
 Such code is copied verbatim into the generated C file.
 
 @node Calling Mercury code from C
-@subsection Calling Mercury code from C
+@section Calling Mercury code from C
 
 It is also possible to export Mercury procedures to C,
 so that you can call Mercury code from C (or from
@@ -4395,7 +4378,7 @@ be obtained using the Mercury @samp{type_of} function in the Mercury
 standard library module @samp{std_util}.
 
 @node Linking with C object files 
-@subsection Linking with C object files 
+@section Linking with C object files 
 
 A Mercury implementation should allow you to link with
 object files or libraries that were produced by compiling C code.
@@ -4427,7 +4410,7 @@ For more information, see the ``Libraries'' chapter of the
 Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 @node Passing data to and from C
-@subsection Passing data to and from C
+@section Passing data to and from C
 
 For each of the Mercury types @code{int}, @code{float}, @code{char},
 and @code{string}, there is a C typedef for the corresponding type in C:
@@ -4468,7 +4451,7 @@ Note that the use of these macros is subject to some caveats
 (@pxref{Memory management}).
 
 @node Using C pointers
-@subsection Using C pointers
+@section Using C pointers
 
 The inbuilt Mercury type @code{c_pointer} can be used to pass C pointers
 between C functions which are called from Mercury.  For example:
@@ -4507,7 +4490,7 @@ between C functions which are called from Mercury.  For example:
 @end example
 
 @node Memory management
-@subsection Memory management
+@section Memory management
 
 Passing pointers to dynamically-allocated memory from Mercury to code
 written in other languages, or vice versa, is in general
@@ -4545,7 +4528,7 @@ methods of memory management, but more implementation experience is
 needed before we can formulate such an interface.
 
 @node Trailing
-@subsection Trailing
+@section Trailing
 
 In certain compilation grades (see the ``Compilation model options''
 section of the Mercury User's Guide), the University of Melbourne
@@ -4579,7 +4562,7 @@ For examples of the use of this interface, see the modules
 @end menu
 
 @node Choice points
-@subsubsection Choice points
+@subsection Choice points
 
 A ``choice point'' is a point in the computation to
 which execution might backtrack.  The ``current''
@@ -4599,7 +4582,7 @@ because in general they may still be necessary in case we backtrack
 to a prior choice point.
 
 @node Value trailing
-@subsubsection Value trailing
+@subsection Value trailing
 
 The simplest form of trailing is value trailing.
 This allows you to trail updates to memory and have
@@ -4632,7 +4615,7 @@ will be restored.
 @end table
 
 @node Function trailing
-@subsubsection Function trailing
+@subsection Function trailing
 
 For more complicated uses of trailing, you can store the address
 of a C function on the trail and have the Mercury runtime call your
@@ -4697,7 +4680,7 @@ If it is called with anything else (such as @samp{MR_gc}),
 then it should probably abort execution with an error message.
 
 @node Delayed goals and floundering
-@subsubsection Delayed goals and floundering
+@subsection Delayed goals and floundering
 
 Another use for the function trail is check for floundering
 in the presence of delayed goals.
@@ -4730,7 +4713,7 @@ If your function does detect floundering, then it should print
 an error message and then abort execution.
 
 @node Avoiding redundant trailing
-@subsubsection Avoiding redundant trailing
+@subsection Avoiding redundant trailing
 
 If a mutable data structure is updated multiple times, and each update
 is recorded on the trail using the functions described above, then
@@ -4814,7 +4797,7 @@ outweigh these costs will depend on your application.
 @c such as implementing your own exception handling.
 
 @node Impurity
-@section Impurity declarations
+@chapter Impurity declarations
 
 In order to efficiently implement certain predicates, it is occasionally
 necessary to venture outside pure logic programming.  Other predicates
@@ -4845,17 +4828,17 @@ Newcomers to Mercury are hence encouraged to @strong{skip this section}.
 
 
 @menu
-* Purity levels::       Choosing the right level of purity
-* Impurity semantics::  What impure code means
-* Declaring impurity::  Declaring predicates impure
-* Impure calls::        Marking a call as impure
-* Promising purity::    Promising that a predicate is pure
-* Impurity Example::    A simple example using impurity
+* Purity levels::       Choosing the right level of purity.
+* Impurity semantics::  What impure code means.
+* Declaring impurity::  Declaring predicates impure.
+* Impure calls::        Marking a call as impure.
+* Promising purity::    Promising that a predicate is pure.
+* Impurity Example::    A simple example using impurity.
 @end menu
 
 
 @node Purity levels
-@subsection Choosing the right level of purity
+@section Choosing the right level of purity
 
 Mercury distinguishes three ``levels'' of purity:
 
@@ -4888,7 +4871,7 @@ computation.
 
 
 @node Impurity semantics
-@subsection Semantics
+@section Semantics
 
 It is important to the proper operation of impure and semipure code, to
 the flexibility of the compiler to optimize pure code, and to the
@@ -4929,7 +4912,7 @@ compiler may treat a semipure goal as if it were pure.
 
 
 @node Declaring impurity
-@subsection Declaring predicate impurity
+@section Declaring predicate impurity
 
 A predicate is declared to be impure or semipure by preceding the word
 @code{pred} in its @code{pred} declaration with @code{impure}
@@ -4951,7 +4934,7 @@ declares the predicate @var{Pred} to be impure or semipure, respectively.
 
 
 @node Impure calls
-@subsection Marking a call as impure
+@section Marking a call as impure
 
 If a predicate is impure or semipure, all calls to it must be preceded
 with the word @code{impure} or @code{semipure}, respectively.  Note
@@ -4969,7 +4952,7 @@ declarative semantics, without hidden side-effects.
 
 
 @node Promising purity
-@subsection Promising that a predicate is pure
+@section Promising that a predicate is pure
 
 Some predicates which call impure or semipure predicates are themselves
 pure.  In fact, the main purpose of the Mercury impurity system is to
@@ -4988,7 +4971,7 @@ The programmer may promise that a predicate is pure using the
 
 
 @node Impurity Example
-@subsection An example using impurity
+@section An example using impurity
 
 The following example illustrates how a pure predicate may be
 implemented using impure code.  Note that this code is not reentrant,
@@ -5026,6 +5009,28 @@ max_solution(Generator, Max) :-
         ).
 @end example
 
+@node Pragmas
+@chapter Pragmas
+
+The pragma declarations described below are a standard part of the
+Mercury language, as are the pragmas for controlling the C interface
+(@pxref{C interface}) and impurity (@pxref{Impurity}).
+As an extension, implementations may also choose to support additional
+pragmas with implementation-dependent semantics
+(@pxref{Implementation-dependent extensions}).
+
+@menu
+* Inlining::                    Pragmas can be used to suggest or prevent
+                                procedure inlining.
+* Type specialization::         Pragmas can be used to produce specialized
+                                versions of polymorphic procedures.
+* Obsolescence::                Library developers can declare old versions
+                                of predicates or functions to be obsolete.
+* Source file name::            The @samp{source_file} pragma and
+                                @samp{#@var{line}} directives provide support
+                                for preprocessors and other tools that
+                                generate Mercury code.
+@end menu
 
 @node Inlining
 @section Inlining
@@ -5211,16 +5216,11 @@ to reset the source file name and line number to point back to the
 generated file for the automatically generated text, as in the above
 example.
 
-@node Implementation-dependent pragmas
-@section Implementation-dependent pragmas
-
-The @samp{pragma} declarations described above are a standard part of
-the Mercury language.  However, as an extension, implementations may
-also choose to support additional pragmas with implementation-dependent
-semantics.
+@node Implementation-dependent extensions
+@chapter Implementation-dependent extensions
 
 The University of Melbourne Mercury implementation supports the following
-additional pragmas:
+extensions to the Mercury language:
 
 @menu
 * Fact tables::                 Support for very large tables of facts.
@@ -5236,7 +5236,7 @@ additional pragmas:
 @end menu
 
 @node Fact tables
-@subsection Fact tables
+@section Fact tables
 
 Large tables of facts can be compiled using a different algorithm that
 is more efficient and produces more efficient code.
@@ -5271,7 +5271,7 @@ predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
 
 @node Tabled evaluation
-@subsection Tabled evaluation
+@section Tabled evaluation
 
 (Note: ``Tabled evaluation'' has no relation to the ``fact tables''
 described above.)
@@ -5386,7 +5386,7 @@ or if you select a garbage collection method other than the default
 @end cartouche
 
 @node Termination analysis
-@subsection Termination analysis
+@section Termination analysis
 
 The compiler includes a termination analyser which can be used to prove 
 termination of predicates and functions.  Details of the analysis is
@@ -5470,17 +5470,17 @@ function then the compiler will quit with an error message.
 
 @ifset aditi
 @node Aditi deductive database interface
-@subsection Aditi deductive database interface
+@section Aditi deductive database interface
 
 @menu
 * Aditi overview::
-* Aditi pragma declarations::	Controlling Aditi compilation
-* Aditi update syntax::		Changing the contents of Aditi relations
-* Aditi glossary::		Glossary of Aditi terms
+* Aditi pragma declarations::   Controlling Aditi compilation.
+* Aditi update syntax::         Changing the contents of Aditi relations.
+* Aditi glossary::              Glossary of Aditi terms.
 @end menu
 
 @node Aditi overview
-@subsubsection Aditi overview
+@subsection Aditi overview
 
 The University of Melbourne Mercury implementation includes support for
 compiling Mercury predicates for bottom-up evaluation using the Aditi
@@ -5591,7 +5591,7 @@ can be called from Aditi:
 @samp{string__length/2}.
 
 @node Aditi pragma declarations
-@subsubsection Aditi pragma declarations
+@subsection Aditi pragma declarations
 
 The following pragma declarations control compilation of Aditi predicates.
 
@@ -5667,7 +5667,7 @@ retrieval of a tuple or range of tuples from a base relation.
 numbers (argument numbers are counted from one).
 
 @node Aditi update syntax
-@subsubsection Aditi update syntax
+@subsection Aditi update syntax
 
 The Melbourne Mercury compiler provides special syntax to specify updates
 of Aditi base relations.
@@ -5675,8 +5675,6 @@ of Aditi base relations.
 Note: Only error checking is implemented for Aditi updates --- no code is
 generated yet.
 
-@c XXX texinfo doesn't have subsubsubsection.
-@ignore
 @menu 
 * Aditi update notes::
 * Insertion::
@@ -5684,10 +5682,9 @@ generated yet.
 * Bulk insertion and deletion::
 * Modification::
 @end menu
-@end ignore
 
-@c @node Aditi update notes::
-@subsubheading Aditi update notes
+@node Aditi update notes
+@subsubsection Aditi update notes
 
 All Aditi update goals have determinism @samp{det}.
 
@@ -5715,8 +5712,8 @@ The examples make use of the following declarations:
 :- pragma aditi(ancestor/3).
 @end example
 
-@c @node Insertion
-@subsubheading Insertion
+@node Insertion
+@subsubsection Insertion
 
 @example
 aditi_insert(@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}), @var{DB0}, @var{DB}).
@@ -5761,8 +5758,8 @@ insert_example_2(DB0, DB) :-
         aditi_insert(f(_, 1) = 2, DB0, DB).
 @end example
 
-@c @node Deletion
-@subsubheading Deletion
+@node Deletion
+@subsubsection Deletion
 
 @example
 aditi_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
@@ -5874,8 +5871,8 @@ the goal are needed, otherwise the second goal in the conjunction
 in the deletion goal would be parsed as an extra argument of the
 @samp{aditi_delete} call, resulting in a syntax error.
 
-@c @node Bulk insertion and deletion
-@subsubheading Bulk insertion and deletion
+@node Bulk insertion and deletion
+@subsubsection Bulk insertion and deletion
 
 @example
 aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
@@ -5947,8 +5944,8 @@ The type of @samp{InsertP} is
 Its inst is @w{@samp{pred(aditi_ui, out, out) is nondet}},
 as for a normal lambda expression.
 
-@c @node Modification
-@subsubheading Modification
+@node Modification
+@subsubsection Modification
 
 @example
 aditi_modify(
@@ -6076,7 +6073,7 @@ the conjunction in the modification goal would be parsed as extra arguments
 of the @samp{aditi_modify} call, resulting in a syntax error.
 
 @node Aditi glossary
-@subsubsection Aditi glossary
+@subsection Aditi glossary
 
 @table @asis
 

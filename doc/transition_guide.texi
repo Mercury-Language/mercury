@@ -68,15 +68,15 @@ This guide gives some advice about
 translating Prolog programs into Mercury.
 
 @menu
-* Introduction::    Introduction
-* Syntax::          Syntax
-* IO::              Input and output
-* FailLoops::       Failure driven loops, @code{assert} and @code{retract}
-* Commits::         Cuts
-* Accumulators::    Accumulators and difference lists
-* Determinism::     Determinism
-* All-solutions::   All-solutions predicates: @code{findall} and @code{setof}
-@c * Problems::        Common Problems
+* Introduction::    Introduction.
+* Syntax::          Syntax.
+* IO::              Input and output.
+* FailLoops::       Failure driven loops, @code{assert} and @code{retract}.
+* Commits::         Cuts.
+* Accumulators::    Accumulators and difference lists.
+* Determinism::     Determinism.
+* All-solutions::   All-solutions predicates: @code{findall} and @code{setof}.
+@c * Problems::        Common Problems.
 @end menu
 @end ifinfo
 

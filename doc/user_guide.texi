@@ -72,21 +72,21 @@ This guide describes the compilation environment of Mercury ---
 how to build and debug Mercury programs.
 
 @menu
-* Introduction::    General overview
-* Filenames::       File naming conventions
-* Using mmc::       Compiling and linking programs with the Mercury compiler
-* Running::         Execution of programs built with the Mercury compiler
-* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
-* Libraries::       Creating and using libraries of Mercury modules
-* Debugging::       The Mercury debugger @samp{mdb}
+* Introduction::    General overview.
+* Filenames::       File naming conventions.
+* Using mmc::       Compiling and linking programs with the Mercury compiler.
+* Running::         Execution of programs built with the Mercury compiler.
+* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
+* Libraries::       Creating and using libraries of Mercury modules.
+* Debugging::       The Mercury debugger @samp{mdb}.
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
-                    program performance
-* Invocation::      List of options for the Mercury compiler
-* Environment::     Environment variables used by the compiler and utilities
-* C compilers::     How to use a C compiler other than GNU C
+                    program performance.
+* Invocation::      List of options for the Mercury compiler.
+* Environment::     Environment variables used by the compiler and utilities.
+* C compilers::     How to use a C compiler other than GNU C.
 @ifset aditi 
 * Using Aditi::     Executing Mercury predicates using the Aditi
-                    deductive database
+                    deductive database.
 @end ifset 
 @c XXX I'd like to put the Aditi section below the Using libraries section
 @c in the menu but texinfo doesn't seem to like `@ifset's in menus.
@@ -1954,9 +1954,9 @@ information:
 
 @itemize @bullet
 @item
-the ``Aditi deductive database interface'' section in 
-Mercury Language Reference Manual (listed under
-``Implementation dependent pragmas'' in the ``Pragmas'' chapter)
+the ``Aditi deductive database interface'' section of the
+``Implementation-dependent extensions'' chapter in the
+Mercury Language Reference Manual
 @item
 the Aditi Reference Manual (doesn't exist yet) @c XXX
 @item
@@ -2802,8 +2802,8 @@ Perform at most @var{n} passes of mode inference (default: 30).
 @section Termination analysis options
 
 For detailed explanations, see the ``Termination analysis'' section
-in Mercury Language Reference Manual.  (It is listed under
-``Implementation dependent pragmas'' in the ``Pragmas'' chapter.)
+of the ``Implementation-dependent extensions'' chapter in the Mercury
+Language Reference Manual.
 
 @table @code
 @item --enable-term
