@@ -225,12 +225,12 @@ map__lookup(Map, K, V) :-
 	( tree234__search(Map, K, V1) ->
 		V = V1
 	;
-		map__lookup_error(K, V)
+		map__lookup_error("map__lookup: key_not_found", K, V)
 	).
 
-:- pred map__lookup_error(K, V).
-:- mode map__lookup_error(in, unused) is erroneous.
-map__lookup_error(K, V) :-
+:- pred map__lookup_error(string, K, V).
+:- mode map__lookup_error(in, in, unused) is erroneous.
+map__lookup_error(Msg, K, V) :-
 	KeyType = type_name(type_of(K)),
 	ValueType = type_name(type_of(V)),
 	functor(K, Functor, Arity),
@@ -242,8 +242,8 @@ map__lookup_error(K, V) :-
 			FunctorStr)
 	),
 	string__append_list(
-		["map__lookup: key not found\n",
-		"\tKey Type: ",
+		[Msg,
+		"\n\tKey Type: ",
 		KeyType,
 		"\n\tKey Functor: ",
 		FunctorStr,
@@ -260,7 +260,7 @@ map__det_insert(Map0, K, V, Map) :-
 	( tree234__insert(Map0, K, V, Map1) ->
 		Map = Map1
 	;
-		error("map__det_insert: key already present")
+		map__lookup_error("map__det_insert: key already present", K, V)
 	).
 
 map__det_insert_from_corresponding_lists(Map0, Ks, Vs, Map) :-
@@ -283,7 +283,7 @@ map__det_update(Map0, K, V, Map) :-
 	( tree234__update(Map0, K, V, Map1) ->
 		Map = Map1
 	;
-		error("map__det_update: key not found")
+		map__lookup_error("map__det_update: key not found", K, V)
 	).
 
 map__set(Map0, K, V, Map) :-
@@ -320,7 +320,7 @@ map__det_remove(Map0, Key, Value, Map) :-
 		Value = Value1,
 		Map = Map1
 	;
-		error("map__det_remove: key not found")
+		map__lookup_error("map__det_remove: key not found", Key, Value)
 	).
 
 map__count(Map, Count) :-
