@@ -282,12 +282,13 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 		ForeignType = ok(il(value, "mscorlib",
 			qualified(unqualified("System"), "Int64")))
 	;
-		String0 = "natural int"
+		( String0 = "natural int" ; String0 = "native int" )
 	->
 		ForeignType = ok(il(value, "mscorlib",
 			qualified(unqualified("System"), "IntPtr")))
 	;
-		String0 = "natural unsigned int"
+		( String0 = "natural unsigned int" 
+		; String0 = "native unsigned int" )
 	->
 		ForeignType = ok(il(value, "mscorlib",
 			qualified(unqualified("System"), "UIntPtr")))
