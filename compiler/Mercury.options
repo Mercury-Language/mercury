@@ -6,13 +6,15 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-# Compilation of rl_code.c is really slow (about 26 minutes on traveller with
-# --trace deep) at the default level of -O2, due to the C optimizer's use of
-# quadratic algorithms on a couple of 20,000-line functions (the automatically
+# Compilation of rl_code.c is really slow, especially with --trace deep,
+# at the default level of -O2, due to the C optimizer's use of quadratic
+# algorithms on a couple of 20,000-line functions (the automatically
 # generated index and compare routines on the bytecode type). The code in this
-# module can't really benefit from those algorithms anyway. With -O1, the 26
-# minutes drops to less than 26 seconds.
-CFLAGS-aditi_backend.rl_code=-O1
+# module can't really benefit from those algorithms anyway. With -O1 and
+# --trace deep, it still takes 8 minutes on miles. Simon can change the
+# --trace-minimum to --trace deep in his workspaces if he needs to.
+CFLAGS-aditi_backend.rl_code=-O0
+MCFLAGS-aditi_backend.rl_code=--trace minimum
 
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
