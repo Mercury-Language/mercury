@@ -29,6 +29,7 @@
 
 :- implementation.
 
+:- import_module parse_tree__prog_out.
 :- import_module hlds__hlds_data.
 :- import_module string, set, std_util, require, term.
 
@@ -210,9 +211,11 @@ prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 prog_rep__represent_goal_expr(call(PredId, _, Args, _, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
 	module_info_pred_info(Info ^ module_info, PredId, PredInfo),
+	pred_info_module(PredInfo, ModuleSymName),
+	prog_out__sym_name_to_string(ModuleSymName, ModuleName),
 	pred_info_name(PredInfo, PredName),
 	list__map(term__var_to_int, Args, ArgsRep),
-	AtomicGoalRep = plain_call_rep(PredName, ArgsRep),
+	AtomicGoalRep = plain_call_rep(ModuleName, PredName, ArgsRep),
 	prog_rep__represent_atomic_goal(GoalInfo, InstMap0, Info,
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),
 	Rep = atomic_goal_rep(DetismRep, FilenameRep, LinenoRep,

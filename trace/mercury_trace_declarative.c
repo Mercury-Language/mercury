@@ -234,6 +234,9 @@ static	MR_Word
 MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 		MR_Trace_Port port);
 
+static	MR_bool
+MR_hlds_var_is_head_var(const MR_Proc_Layout *entry, int hlds_num);
+
 static	MR_ConstString
 MR_decl_atom_name(const MR_Proc_Layout *entry);
 
@@ -459,8 +462,15 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node			node;
 	MR_Word				atom;
 	MR_bool				at_depth_limit;
-	const MR_Label_Layout		*layout = event_info->MR_event_sll;
+	const MR_Label_Layout		*event_label_layout;
+	const MR_Proc_Layout		*event_proc_layout;
+	const MR_Label_Layout		*return_label_layout;
 	MR_Word				proc_rep;
+	MR_Stack_Walk_Step_Result	result;
+	MR_ConstString			problem;
+	MR_String			goal_path;
+	MR_Word				*base_sp;
+	MR_Word				*base_curfr;
 
 	if (event_info->MR_call_depth == MR_edt_max_depth) {
 		at_depth_limit = MR_TRUE;
@@ -468,9 +478,29 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 		at_depth_limit = MR_FALSE;
 	}
 
-	proc_rep = (MR_Word) layout->MR_sll_entry->MR_sle_proc_rep;
-	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs,
+	event_label_layout = event_info->MR_event_sll;
+	event_proc_layout = event_label_layout->MR_sll_entry;
+	proc_rep = (MR_Word) event_proc_layout->MR_sle_proc_rep;
+	atom = MR_decl_make_atom(event_label_layout, event_info->MR_saved_regs,
 			MR_PORT_CALL);
+	base_sp = MR_saved_sp(event_info->MR_saved_regs);
+	base_curfr = MR_saved_curfr(event_info->MR_saved_regs);
+	result = MR_stack_walk_step(event_proc_layout, &return_label_layout,
+			&base_sp, &base_curfr, &problem);
+
+	/*
+	** We pass goal_path to Mercury code, which expects its type to be
+	** MR_String, not MR_ConstString, even though it treats the string as
+	** constant.
+	*/
+
+	if (result == MR_STEP_OK) {
+		goal_path = (MR_String) (MR_Integer)
+			MR_label_goal_path(return_label_layout);
+	} else {
+		goal_path = (MR_String) (MR_Integer) "";
+	}
+
 	MR_TRACE_CALL_MERCURY(
 		if (proc_rep) {
 			node = (MR_Trace_Node)
@@ -478,13 +508,14 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 					(MR_Word) prev, atom,
 					(MR_Word) event_info->MR_call_seqno,
 					(MR_Word) event_info->MR_event_number,
-					(MR_Word) at_depth_limit, proc_rep);
+					(MR_Word) at_depth_limit, proc_rep,
+					goal_path);
 		} else {
 			node = (MR_Trace_Node)
 				MR_DD_construct_call_node((MR_Word) prev, atom,
 					(MR_Word) event_info->MR_call_seqno,
 					(MR_Word) event_info->MR_event_number,
-					(MR_Word) at_depth_limit);
+					(MR_Word) at_depth_limit, goal_path);
 		}
 	);
 
@@ -1047,15 +1078,14 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	MR_ConstString			name;
 	MR_Word				arity;
 	MR_Word				atom;
-	int				i;
-	int				arg_count;
+	int				hv;   /* any head variable */
 	MR_TypeInfoParams		type_params;
 	const MR_Proc_Layout		*entry = layout->MR_sll_entry;
 
-	MR_trace_init_point_vars(layout, saved_regs, port, MR_FALSE);
+	MR_trace_init_point_vars(layout, saved_regs, port, MR_TRUE);
 
 	name = MR_decl_atom_name(entry);
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(entry)) {
 		arity = entry->MR_sle_comp.MR_comp_arity;
 		pred_or_func = MR_PREDICATE;
 	} else {
@@ -1066,39 +1096,75 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 		atom = MR_DD_construct_trace_atom(
 				(MR_Word) pred_or_func,
 				(MR_String) name,
-				(MR_Word) arity);
+				(MR_Word) entry->MR_sle_num_head_vars);
 	);
 
-	arg_count = MR_trace_var_count();
-	for (i = 1; i <= arg_count; i++) {
+	for (hv = 0; hv < entry->MR_sle_num_head_vars; hv++) {
+		int		hlds_num;
 		MR_Word		arg;
 		MR_TypeInfo	arg_type;
 		MR_Word		arg_value;
-		int		arg_pos;
+		MR_bool		is_prog_visible_headvar;
 		const char	*problem;
 
-		problem = MR_trace_return_var_info(i, NULL, &arg_type,
-					&arg_value);
+		hlds_num = entry->MR_sle_head_var_nums[hv];
+
+		is_prog_visible_headvar = 
+			MR_hlds_var_is_head_var(entry, hlds_num);
+
+		problem = MR_trace_return_hlds_var_info(hlds_num, &arg_type,
+				&arg_value);
 		if (problem != NULL) {
-			MR_fatal_error(problem);
+			/* this head variable is not live at this port */
+
+			MR_TRACE_CALL_MERCURY(
+				atom = MR_DD_add_trace_atom_arg_no_value(atom,
+					(MR_Word) hv + 1, hlds_num,
+					is_prog_visible_headvar);
+			);
+		} else {
+			MR_TRACE_USE_HP(
+				MR_new_univ_on_hp(arg, arg_type, arg_value);
+			);
+
+			MR_TRACE_CALL_MERCURY(
+				atom = MR_DD_add_trace_atom_arg_value(atom,
+					(MR_Word) hv + 1, hlds_num,
+					is_prog_visible_headvar, arg);
+			);
 		}
-
-		problem = MR_trace_headvar_num(i, &arg_pos);
-		if (problem != NULL) {
-			MR_fatal_error(problem);
-		}
-
-		MR_TRACE_USE_HP(
-			MR_new_univ_on_hp(arg, arg_type, arg_value);
-		);
-
-		MR_TRACE_CALL_MERCURY(
-			atom = MR_DD_add_trace_atom_arg(atom,
-						(MR_Word) arg_pos, arg);
-		);
 	}
 
 	return atom;
+}
+
+static MR_bool
+MR_hlds_var_is_head_var(const MR_Proc_Layout *entry, int hlds_num)
+{
+	MR_ConstString	var_name;
+	MR_ConstString	prefix;
+	const char	*s;
+
+	var_name = MR_hlds_var_name(entry, hlds_num);
+	if (var_name == NULL) {
+		return MR_FALSE;
+	}
+
+	prefix = "HeadVar__";
+	if (! MR_strneq(var_name, prefix, strlen(prefix))) {
+		return MR_FALSE;
+	}
+
+	s = var_name + strlen(prefix);
+	while (*s != '\0') {
+		if (! MR_isdigit(*s)) {
+			return MR_FALSE;
+		}
+
+		s++;
+	}
+
+	return MR_TRUE;
 }
 
 static	MR_ConstString

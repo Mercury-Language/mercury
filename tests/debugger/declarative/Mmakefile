@@ -24,6 +24,7 @@ DECLARATIVE_PROGS=		\
 	browse_arg		\
 	comp_gen		\
 	deep_warning		\
+	dependency		\
 	family			\
 	filter			\
 	func_call		\
@@ -54,6 +55,7 @@ MCFLAGS = --trace decl
 MLFLAGS = --trace
 
 MCFLAGS-deep_sub=--trace deep
+MCFLAGS-dependency=--trace rep
 MCFLAGS-input_term_dep=--trace rep
 MCFLAGS-output_term_dep=--trace rep
 MCFLAGS-special_term_dep=--trace rep
@@ -122,6 +124,9 @@ comp_gen.out: comp_gen comp_gen.inp
 
 deep_warning.out: deep_warning deep_warning.inp
 	$(MDB) ./deep_warning < deep_warning.inp > deep_warning.out 2>&1
+
+dependency.out: dependency dependency.inp
+	$(MDB) ./dependency < dependency.inp > dependency.out 2>&1
 
 family.out: family family.inp
 	$(MDB) ./family < family.inp > family.out 2>&1

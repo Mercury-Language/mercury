@@ -420,7 +420,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
 			continue;
 		}
 
-			/* variable number 1 is stored at offset 0 */
+		/* the offset of variable number 1 is stored at index 0 */
 		offset = entry->MR_sle_used_var_names[var_num - 1];
 		if (offset > string_table_size) {
 			MR_fatal_error("array bounds error on string table");
@@ -649,6 +649,29 @@ MR_trace_list_vars(FILE *out)
 	}
 
 	return NULL;
+}
+
+const char *
+MR_trace_return_hlds_var_info(int hlds_num, MR_TypeInfo *type_info_ptr,
+	MR_Word *value_ptr)
+{
+	int	i;
+
+	if (MR_point.MR_point_problem != NULL) {
+		return MR_point.MR_point_problem;
+	}
+
+	for (i = 0; i < MR_point.MR_point_var_count; i++) {
+		if (MR_point.MR_point_vars[i].MR_var_hlds_number == hlds_num) {
+			*type_info_ptr =
+				MR_point.MR_point_vars[i].MR_var_type;
+			*value_ptr =
+				MR_point.MR_point_vars[i].MR_var_value;
+			return NULL;
+		}
+	}
+
+	return "no variable with specified hlds number";
 }
 
 const char *
@@ -1152,6 +1175,31 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 
 	(*browser)((MR_Word) typeinfo, *value, caller, format);
 	return NULL;
+}
+
+MR_ConstString
+MR_hlds_var_name(const MR_Proc_Layout *entry, int hlds_var_num)
+{
+	const char	*string_table;
+	MR_Integer	string_table_size;
+	int		offset;
+
+	string_table = entry->MR_sle_module_layout->MR_ml_string_table;
+	string_table_size =
+		entry->MR_sle_module_layout->MR_ml_string_table_size;
+
+	if (hlds_var_num > entry->MR_sle_max_named_var_num) {
+		/* this value is a compiler-generated variable */
+		return NULL;
+	}
+
+		/* variable number 1 is stored at offset 0 */
+	offset = entry->MR_sle_used_var_names[hlds_var_num - 1];
+	if (offset > string_table_size) {
+		MR_fatal_error("array bounds error on string table");
+	}
+
+	return string_table + offset;
 }
 
 MR_Completer_List *

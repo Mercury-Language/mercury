@@ -1,0 +1,46 @@
+echo on
+register --quiet
+goto 3
+dd
+browse 1
+abort
+step
+finish
+set depth 20
+set size 201
+set format pretty
+proc_body
+dd
+browse 1
+^1
+mark
+abort
+dd
+browse 1
+^2^1
+mark
+browse 2
+print
+mark
+abort
+dd
+browse 1
+^2^2^1
+mark
+abort
+dd
+browse 1
+^2^2^2^1
+mark
+abort
+dd
+browse 1
+^2^2^2^2^1
+mark
+abort
+dd
+browse 1
+^2^2^2^2^2
+mark
+abort
+continue

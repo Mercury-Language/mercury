@@ -2,7 +2,9 @@
 ** Copyright (C) 1999-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
-**
+*/
+
+/*
 ** This module looks after the debugger's information about the variables
 ** that are live at a given program point.
 **
@@ -107,6 +109,17 @@ extern	int		MR_trace_var_count(void);
 extern	const char	*MR_trace_list_vars(FILE *out);
 
 /*
+** Return as a side effect the type and value of the variable with the
+** specified HLDS number, in the specified locations, all of which must be
+** non-NULL. If the variable isn't live or isn't known, return a non-null
+** string giving the problem.
+*/
+
+extern const char *	MR_trace_return_hlds_var_info(int hlds_num,
+				MR_TypeInfo *type_info_ptr,
+				MR_Word *value_ptr);
+
+/*
 ** Return as a side effect the name, type and value of the specified
 ** variable in the specified locations, except those which are NULL.
 ** Variable number n must be in the range 1..MR_trace_var_count().
@@ -200,7 +213,18 @@ extern	const char	*MR_trace_browse_all_on_level(FILE *out,
 				MR_Word *base_sp, MR_Word *base_curfr,
 				int ancestor_level, MR_bool print_optionals);
 
-/* A Readline completer for variable names. */
+/*
+** Return the name (if any) of the variable with the given HLDS variable number
+** in the procedure indicated by the first argument.
+*/
+
+extern	MR_ConstString	MR_hlds_var_name(const MR_Proc_Layout *entry,
+				int hlds_var_num);
+
+/*
+** A Readline completer for variable names.
+*/
+
 extern	MR_Completer_List *MR_trace_var_completer(const char *word,
 				size_t word_len);
 

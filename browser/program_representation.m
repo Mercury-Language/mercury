@@ -33,8 +33,8 @@
 
 :- interface.
 
-:- import_module list, std_util.
 :- import_module mdb__browser_info.
+:- import_module char, list, std_util.
 
 	% A representation of the goal we execute.  These need to be
 	% generated statically and stored inside the executable.
@@ -109,16 +109,17 @@
 		)
 	;	higher_order_call_rep(
 			var_rep,		% the closure to call
-			list(var_rep)		% arguments
+			list(var_rep)		% the call's plain arguments
 		)
 	;	method_call_rep(
 			var_rep,		% typeclass info var
 			int,			% method number
-			list(var_rep)		% arguments
+			list(var_rep)		% the call's plain arguments
 		)
 	;	plain_call_rep(
-			string,			% name of called pred
-			list(var_rep)		% arguments
+			string,			% name of called pred's module
+			string,			% name of the called pred
+			list(var_rep)		% the call's arguments
 		).
 
 :- type var_rep	==	int.
@@ -135,12 +136,16 @@
 	;	erroneous_rep
 	;	failure_rep.
 
-	% If the given atomic goal is a call to a predicate or function
-	% (not including the special predicates `unify' and `compare'),
-	% then return the list of variables that are passed as arguments.
+	% If the given atomic goal behaves like a call in the sense that it
+	% generates events, then return the list of variables that are passed
+	% as arguments.
 	%
-:- pred atomic_goal_rep_is_call(atomic_goal_rep, list(var_rep)).
-:- mode atomic_goal_rep_is_call(in, out) is semidet.
+:- func atomic_goal_generates_event(atomic_goal_rep) = maybe(list(var_rep)).
+
+	% call_is_primitive(ModuleName, PredName): succeeds iff a call to the
+	% named predicate behaves like a primitive operation, in the sense that
+	% it does not generate events.
+:- pred call_is_primitive(string::in, string::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -162,23 +167,42 @@
 	% Does `some G' have a different determinism from plain `G'?
 :- type maybe_cut       --->    cut ; no_cut.
 
+:- pred path_from_string_det(string, goal_path).
+:- mode path_from_string_det(in, out) is det.
+
+:- pred path_from_string(string, goal_path).
+:- mode path_from_string(in, out) is semidet.
+
 :- pred path_step_from_string(string, goal_path_step).
 :- mode path_step_from_string(in, out) is semidet.
 
-	% Head variables are represented by a number from 1..N,
-	% where N is the arity.
+:- pred is_path_separator(char).
+:- mode is_path_separator(in) is semidet.
+
+	% User-visible head variables are represented by a number from 1..N,
+	% where N is the user-visible arity.
+	%
+	% Both user-visible and compiler-generated head variables can be
+	% referred to via their position in the full list of head variables;
+	% the first head variable is at position 1.
 	
-:- type arg_pos ==	var_rep.
+:- type arg_pos
+	--->	user_head_var(int)	% Nth in the list of arguments after
+					% filtering out non-user-visible vars.
+	;	any_head_var(int).	% Nth in the list of all arguments.
 
 	% A particular subterm within a term is represented by a term_path.
 	% This is the list of argument positions that need to be followed
 	% in order to travel from the root to the subterm.  In contrast to
 	% goal_paths, this list is in top-down order.
 
-:- type term_path ==	list(arg_pos).
+:- type term_path ==	list(int).
 
 :- pred convert_dirs_to_term_path(list(dir), term_path).
 :- mode convert_dirs_to_term_path(in, out) is det.
+
+	% Returns type_of(_ `with_type` proc_rep), for use in C code.
+:- func proc_rep_type = type_desc.
 
 	% Returns type_of(_ `with_type` goal_rep), for use in C code.
 :- func goal_rep_type = type_desc.
@@ -188,12 +212,55 @@
 :- implementation.
 :- import_module string, char, require.
 
-atomic_goal_rep_is_call(pragma_foreign_code_rep(Args), Args).
-atomic_goal_rep_is_call(higher_order_call_rep(_, Args), Args).
-atomic_goal_rep_is_call(method_call_rep(_, _, Args), Args).
-atomic_goal_rep_is_call(plain_call_rep(Name, Args), Args) :-
-	Name \= "unify",
-	Name \= "compare".
+atomic_goal_generates_event(unify_construct_rep(_, _, _)) = no.
+atomic_goal_generates_event(unify_deconstruct_rep(_, _, _)) = no.
+atomic_goal_generates_event(unify_assign_rep(_, _)) = no.
+atomic_goal_generates_event(unify_simple_test_rep(_, _)) = no.
+atomic_goal_generates_event(pragma_foreign_code_rep(_)) = no.
+atomic_goal_generates_event(higher_order_call_rep(_, Args)) = yes(Args).
+atomic_goal_generates_event(method_call_rep(_, _, Args)) = yes(Args).
+atomic_goal_generates_event(plain_call_rep(ModuleName, PredName, Args)) =
+	( call_is_primitive(ModuleName, PredName) ->
+		% These calls behave as primitives and do not generate events.
+		no
+	;
+		yes(Args)
+	).
+
+call_is_primitive(ModuleName, PredName) :-
+	ModuleName = "builtin",
+	( PredName = "unify"
+	; PredName = "compare"
+	).
+
+convert_dirs_to_term_path([], []).
+convert_dirs_to_term_path([child_num(N) | Dirs], [N | TermPath]) :-
+	convert_dirs_to_term_path(Dirs, TermPath).
+convert_dirs_to_term_path([child_name(_) | _], _) :-
+	error("convert_dirs_to_term_path: not in canonical form").
+convert_dirs_to_term_path([parent | _], _) :-
+	error("convert_dirs_to_term_path: not in canonical form").
+
+:- pragma export(proc_rep_type = out, "ML_proc_rep_type").
+
+proc_rep_type = type_of(_ `with_type` proc_rep).
+
+:- pragma export(goal_rep_type = out, "ML_goal_rep_type").
+
+goal_rep_type = type_of(_ `with_type` goal_rep).
+
+%-----------------------------------------------------------------------------%
+
+path_from_string_det(GoalPathStr, GoalPath) :-
+	( path_from_string(GoalPathStr, GoalPathPrime) ->
+		GoalPath = GoalPathPrime
+	;
+		error("path_from_string_det: path_from_string failed")
+	).
+
+path_from_string(GoalPathStr, GoalPath) :-
+	StepStrs = string__words(is_path_separator, GoalPathStr),
+	list__map(path_step_from_string, StepStrs, GoalPath).
 
 path_step_from_string(String, Step) :-
 	string__first_char(String, First, Rest),
@@ -217,16 +284,7 @@ path_step_from_string_2('q', "", exist(no_cut)).
 path_step_from_string_2('f', "", first).
 path_step_from_string_2('l', "", later).
 
-convert_dirs_to_term_path([], []).
-convert_dirs_to_term_path([child_num(N) | Dirs], [N | TermPath]) :-
-	convert_dirs_to_term_path(Dirs, TermPath).
-convert_dirs_to_term_path([child_name(_) | _], _) :-
-	error("convert_dirs_to_term_path: not in canonical form").
-convert_dirs_to_term_path([parent | _], _) :-
-	error("convert_dirs_to_term_path: not in canonical form").
-
-:- pragma export(goal_rep_type = out, "ML_goal_rep_type").
-goal_rep_type = type_of(_ `with_type` goal_rep).
+is_path_separator(';').
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

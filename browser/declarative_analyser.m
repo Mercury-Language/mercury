@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,8 +12,8 @@
 
 :- module mdb__declarative_analyser.
 :- interface.
-:- import_module list.
 :- import_module mdb__declarative_debugger, mdb__program_representation.
+:- import_module list, std_util.
 
 	% This typeclass defines how EDTs may be accessed by this module.
 	% An EDT is a tree of nodes, each of which contains a question
@@ -55,18 +55,25 @@
 
 :- type subterm_origin(T)
 
-			% Subterm came from an output of a child or sibling.
+			% Subterm came from an output of a child or sibling
+			% call. The first argument records the child or sibling
+			% edt node. The second and third arguments state which
+			% part of which argument is the origin.
 			%
 	--->	output(T, arg_pos, term_path)
 
-			% Subterm came from an input of the parent.
+			% Subterm came from an input of the parent. The
+			% arguments identify which part of which argument of
+			% the clause head is the origin.
 			%
 	;	input(arg_pos, term_path)
 
 			% Subterm was constructed in the body.  We record
-			% the filename and line number of the unification.
+			% the filename and line number of the primitive
+			% operation (unification or inlined foreign_proc)
+			% that constructed it.
 			%
-	;	unification(string, int)
+	;	primitive_op(string, int)
 
 			% The origin could not be found due to missing
 			% information.
@@ -114,6 +121,12 @@
 		analyser_state(T), analyser_state(T)) <= mercury_edt(S, T).
 :- mode continue_analysis(in, in, out, in, out) is det.
 
+	% Return information within the analyser state that is intended for
+	% debugging the declarative debugger itself.
+	%
+:- pred debug_analyser_state(analyser_state(T)::in,
+	maybe(subterm_origin(T))::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -137,15 +150,25 @@
 
 				% Previous prime suspects.
 				%
-			previous	:: list(suspect(T))
+			previous	:: list(suspect(T)),
+
+				% This field is present only to make it easier
+				% to debug the dependency tracking algorithm;
+				% if bound to yes, it records the result of
+				% the invocation of that algorithm on the last
+				% analysis step.
+				%
+			debug_origin	:: maybe(subterm_origin(T))
 	).
 
-analyser_state_init(analyser(no, [], [])).
+analyser_state_init(analyser(no, [], [], no)).
+
+debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
 start_analysis(Store, Tree, Response, Analyser0, Analyser) :-
 	make_suspects(Store, [Tree], Suspects, Queries),
 	get_all_prime_suspects(Analyser0, OldPrimes),
-	Analyser = analyser(no, Suspects, OldPrimes),
+	Analyser = analyser(no, Suspects, OldPrimes, no),
 	Response = oracle_queries(Queries).
 
 continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
@@ -160,30 +183,30 @@ continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 	%
 	Suspects = Analyser0 ^ suspects,
 	(
-		find_suspicious_subterm(Answers, Suspects, Suspect, ArgPos,
-				TermPath)
+		find_suspicious_subterm(Answers, Suspects,
+			Suspect, ArgPos, TermPath)
 	->
 		follow_suspicious_subterm(Store, Suspect, ArgPos, TermPath,
-				Response, Analyser0, Analyser)
+			Response, Analyser0, Analyser)
 	;
 		find_incorrect_suspect(Answers, Suspects, Suspect)
 	->
-		make_new_prime_suspect(Store, Suspect, Response, Analyser0,
-				Analyser)
+		make_new_prime_suspect(Store, Suspect, Response,
+			Analyser0, Analyser)
 	;
-		remove_suspects(Store, Answers, Response, Analyser0, Analyser)
+		remove_suspects(Store, Answers, Response,
+			Analyser0, Analyser)
 	).
 
 	% Find an answer which is a suspicious subterm, and find the
 	% suspect that corresponds to it, or else fail.
 	%
 :- pred find_suspicious_subterm(list(decl_answer), list(suspect(T)),
-		suspect(T), arg_pos, term_path).
+	suspect(T), arg_pos, term_path).
 :- mode find_suspicious_subterm(in, in, out, out, out) is semidet.
 
 find_suspicious_subterm([Answer | Answers], Suspects, Suspect, ArgPos,
 		TermPath) :-
-	
 	(
 		Answer = suspicious_subterm(Question, ArgPos0, TermPath0),
 		find_matching_suspects(Question, Suspects, [Match | _], _)
@@ -196,9 +219,9 @@ find_suspicious_subterm([Answer | Answers], Suspects, Suspect, ArgPos,
 				TermPath)
 	).
 
-:- pred follow_suspicious_subterm(S, suspect(T), arg_pos, term_path,
-		analyser_response(T), analyser_state(T), analyser_state(T))
-			<= mercury_edt(S, T).
+:- pred follow_suspicious_subterm(S, suspect(R), arg_pos, term_path,
+	analyser_response(R), analyser_state(R), analyser_state(R))
+	<= mercury_edt(S, R).
 :- mode follow_suspicious_subterm(in, in, in, in, out, in, out) is det.
 
 follow_suspicious_subterm(Store, Suspect, ArgPos, TermPath, Response,
@@ -213,12 +236,13 @@ follow_suspicious_subterm(Store, Suspect, ArgPos, TermPath, Response,
 	(
 		SubtermMode = subterm_in,
 		remove_suspects(Store, [truth_value(Query, yes)], Response0,
-				Analyser0, Analyser)
+			Analyser0, Analyser1)
 	;
 		SubtermMode = subterm_out,
-		make_new_prime_suspect(Store, Suspect, Response0, Analyser0,
-				Analyser)
+		make_new_prime_suspect(Store, Suspect, Response0,
+			Analyser0, Analyser1)
 	),
+	Analyser = Analyser1 ^ debug_origin := yes(Origin),
 	(
 		Origin = output(Node, _, _),
 		Response0 = oracle_queries(_)
@@ -255,11 +279,12 @@ find_incorrect_suspect([Answer | Answers], Suspects, Child) :-
 	% Create a new prime suspect from the given suspect, which is
 	% assumed to be incorrect.
 	%
-:- pred make_new_prime_suspect(S, suspect(T), analyser_response(T),
-		analyser_state(T), analyser_state(T)) <= mercury_edt(S, T).
-:- mode make_new_prime_suspect(in, in, out, in, out) is det.
+:- pred make_new_prime_suspect(S::in, suspect(T)::in,
+	analyser_response(T)::out, analyser_state(T)::in,
+	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
-make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
+make_new_prime_suspect(Store, Suspect, Response,
+		Analyser0, Analyser) :-
 	get_all_prime_suspects(Analyser0, OldPrimes),
 	suspect_get_edt_node(Suspect, Tree),
 	(
@@ -284,7 +309,7 @@ make_new_prime_suspect(Store, Suspect, Response, Analyser0, Analyser) :-
 		MaybePrime = no,
 		Response = require_explicit(Tree)
 	),
-	Analyser = analyser(MaybePrime, Suspects, OldPrimes).
+	Analyser = analyser(MaybePrime, Suspects, OldPrimes, no).
 
 	% Make a list of previous prime suspects, and include the current
 	% one if it exists.
@@ -315,9 +340,9 @@ make_suspects(Store, [Tree | Trees], [Suspect | Ss], [Query | Qs]) :-
 	% Go through the answers (none of which should be `no') and
 	% remove the corresponding children from the suspect list.
 	%
-:- pred remove_suspects(S, list(decl_answer), analyser_response(T),
-		analyser_state(T), analyser_state(T)) <= mercury_edt(S, T).
-:- mode remove_suspects(in, in, out, in, out) is det.
+:- pred remove_suspects(S::in, list(decl_answer)::in,
+	analyser_response(T)::out, analyser_state(T)::in,
+	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
 remove_suspects(Store, [], Response, Analyser, Analyser) :-
 	(
@@ -337,16 +362,15 @@ remove_suspects(Store, [], Response, Analyser, Analyser) :-
 		Response = oracle_queries(Queries)
 	).
 
-remove_suspects(Store, [Answer | Answers], Response, Analyser0,
-		Analyser) :-
-
+remove_suspects(Store, [Answer | Answers], Response, Analyser0, Analyser) :-
 	(
 		Answer = truth_value(_, yes)
 	->
 		find_matching_suspects(get_decl_question(Answer),
-				Analyser0 ^ suspects, _, Suspects),
+			Analyser0 ^ suspects, _, Suspects),
 		Analyser1 = Analyser0 ^ suspects := Suspects,
-		remove_suspects(Store, Answers, Response, Analyser1, Analyser)
+		remove_suspects(Store, Answers, Response,
+			Analyser1, Analyser)
 	;
 		error("remove_suspects: unexpected incorrect node")
 	).

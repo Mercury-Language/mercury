@@ -3275,7 +3275,7 @@ MR_trace_cmd_proc_body(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"current procedure has no body info\n");
 	} else {
 		MR_trace_browse_internal(
-			ML_goal_rep_type(),
+			ML_proc_rep_type(),
 			(MR_Word) entry->MR_sle_proc_rep,
 			MR_BROWSE_CALLER_PRINT,
 			MR_BROWSE_DEFAULT_FORMAT);
