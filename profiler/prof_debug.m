@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module set, list, string.
 
 :- pred output_cliques(list(set(string)), io__state, io__state).
 :- mode output_cliques(in, di, uo) is det.
@@ -27,10 +28,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module set, list, string.
-:- import_module getopt, options, globals.
-:- import_module std_util, require.
 
 %-----------------------------------------------------------------------------%
 
