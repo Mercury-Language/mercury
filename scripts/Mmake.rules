@@ -489,6 +489,7 @@ lib%.install_grades:
 	for file in x $$grade_files; do \
 		if [ "$$file" != "x" ]; then \
 			mv -f $$file tmp_dir > /dev/null 2>&1; \
+			true; \
 		fi; \
 	done && \
 	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
@@ -511,6 +512,7 @@ lib%.install_grades:
 	for file in x $$grade_files; do \
 		if [ "$$file" != "x" ]; then \
 		    mv -f tmp_dir/`basename $$file` $$file > /dev/null 2>&1; \
+		    true; \
 		fi; \
 	done && \
 	{ mv -f tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \
