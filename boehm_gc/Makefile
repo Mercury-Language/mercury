@@ -34,7 +34,7 @@ ABI_FLAG=
 # CC=cc $(ABI_FLAG)
 
 # Mercury-specific definition of CC:
-CC=../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
+CC=MERCURY_C_INCL_DIR=. ../scripts/mgnuc --grade $(GRADE) --no-ansi --no-check
 
 CXX=g++ $(ABI_FLAG)
 # Needed only for "make c++", which adds the c++ interface
