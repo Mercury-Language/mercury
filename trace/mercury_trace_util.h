@@ -1,12 +1,13 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998,2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /*
-** mercury_trace_util.h defines macros for dealing with registers.
+** This module provides utility functions for the debugger.
 **
+** This header files defines macros for dealing with registers.
 ** These macros assume, and enforce, the conventions described
 ** in trace/README.
 */
@@ -30,6 +31,7 @@
 ** That in turn needs to be preceded/followed by
 ** restore/save_transient_registers() if it is in a C function.
 */
+
 #define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
 		restore_transient_registers();				\
 		save_registers();					\
@@ -37,5 +39,13 @@
 		restore_registers();					\
 		save_transient_registers();				\
 	} while (0)
+
+/*
+** MR_trace_is_number checks whether the given word contains a natural number,
+** i.e. a sequence of digits. If yes, it puts the value of the number in
+** *value and returns TRUE, otherwise it returns FALSE.
+*/
+
+extern	bool	MR_trace_is_number(const char *word, int *value);
 
 #endif /* MERCURY_TRACE_UTIL_H */

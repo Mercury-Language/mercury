@@ -62,6 +62,7 @@ CFILES		= 	\
 			mercury_trace_readline.c	\
 			mercury_trace_spy.c		\
 			mercury_trace_tables.c		\
+			mercury_trace_util.c		\
 			mercury_trace_vars.c
 
 # The object files in this directory depend on many of the header files

@@ -17,7 +17,7 @@
 #include "mercury_memory.h"
 #include "mercury_layout_util.h"
 #include "mercury_stack_layout.h"
-
+#include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
 
 #include <stdio.h>
@@ -106,14 +106,18 @@ typedef struct {
 	MR_Var_Details			*MR_point_vars;
 } MR_Point;
 
-static	bool	MR_trace_type_is_ignored(MR_PseudoTypeInfo pseudo_type_info);
-static	int	MR_trace_compare_var_details(const void *arg1,
-			const void *arg2);
-static	void	MR_trace_browse_var(FILE *out, MR_Var_Details *var,
-			MR_Browser browser);
-static	int	MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
-static	const char *
-		MR_trace_valid_var_number(int var_number);
+static	bool		MR_trace_type_is_ignored(
+				MR_PseudoTypeInfo pseudo_type_info);
+static	int		MR_trace_compare_var_details(const void *arg1,
+				const void *arg2);
+static	const char *	MR_trace_browse_one_path(FILE *out,
+			MR_Var_Spec var_spec, char *path, MR_Browser browser,
+			bool must_be_unique);
+static	char *		MR_trace_browse_var(FILE *out, MR_Var_Details *var,
+				char *path, MR_Browser browser);
+static	const char *	MR_trace_bad_path(const char *path);
+static	int		MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
+static	const char *	MR_trace_valid_var_number(int var_number);
 
 #define	MR_INIT_VAR_DETAIL_COUNT	20
 #define	MR_TRACE_PADDED_VAR_NAME_LENGTH	23
@@ -628,25 +632,93 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 }
 
 const char *
+MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
+	bool must_be_unique)
+{
+	MR_Var_Spec	var_spec;
+	char		*path;
+	char		*s;
+	int		n;
+
+	s = strpbrk(word_spec, "^/");
+
+	if (s == NULL) {
+		path = NULL;
+	} else {
+		path = s;
+
+		do {
+			if (*s == '^' || *s == '/') {
+				s++;
+			} else {
+				return "bad component selector";
+			}
+
+			if (MR_isdigit(*s)) {
+				s++;
+			} else {
+				return "bad component selector";
+			}
+
+			while (MR_isdigit(*s)) {
+				s++;
+			}
+		} while (*s != '\0');
+
+		*path = '\0';
+		path++;
+	}
+
+	if (MR_trace_is_number(word_spec, &n)) {
+		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
+		var_spec.MR_var_spec_number = n;
+		return MR_trace_browse_one_path(out, var_spec, path,
+			browser, must_be_unique);
+	} else {
+		var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
+		var_spec.MR_var_spec_name = word_spec;
+		return MR_trace_browse_one_path(out, var_spec, path,
+			browser, must_be_unique);
+	}
+}
+
+const char *
 MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 	bool must_be_unique)
+{
+	return MR_trace_browse_one_path(out, var_spec, NULL, browser,
+		must_be_unique);
+}
+
+static const char *
+MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
+	MR_Browser browser, bool must_be_unique)
 {
 	int		i;
 	bool		found;
 	const char	*problem;
+	char		*bad_path;
 
 	if (MR_point.MR_point_problem != NULL) {
 		return MR_point.MR_point_problem;
 	}
 
 	if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NUMBER) {
+		int	varno;
+
 		problem = MR_trace_valid_var_number(
 					var_spec.MR_var_spec_number);
 		if (problem != NULL) {
 			return problem;
 		}
-		MR_trace_browse_var(out, &MR_point.MR_point_vars
-			[var_spec.MR_var_spec_number - 1], browser);
+
+		varno = var_spec.MR_var_spec_number - 1;
+		bad_path = MR_trace_browse_var(out,
+				&MR_point.MR_point_vars[varno],
+				path, browser);
+		if (bad_path != NULL) {
+			return MR_trace_bad_path(bad_path);
+		}
 	} else if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NAME) {
 		found = FALSE;
 		for (i = 0; i < MR_point.MR_point_var_count; i++) {
@@ -663,26 +735,63 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 		}
 
 		if (MR_point.MR_point_vars[i].MR_var_is_ambiguous) {
+			int	success_count;
+
 			if (must_be_unique) {
 				return "variable name is not unique";
 			}
 
+			success_count = 0;
 			do {
-				MR_trace_browse_var(out,
-					&MR_point.MR_point_vars[i], browser);
+				bad_path = MR_trace_browse_var(out,
+					&MR_point.MR_point_vars[i], path,
+					browser);
+
+				if (bad_path == NULL) {
+					success_count++;
+				}
+
 				i++;
 			} while (i < MR_point.MR_point_var_count &&
 				streq(var_spec.MR_var_spec_name,
 				MR_point.MR_point_vars[i].MR_var_fullname));
+
+			if (success_count == 0) {
+				return "the selected path does not exist in any of the variables with that name";
+			}
 		} else {
-			MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
+			bad_path = MR_trace_browse_var(out,
+				&MR_point.MR_point_vars[i], path,
 				browser);
+			if (bad_path != NULL) {
+				return MR_trace_bad_path(bad_path);
+			}
 		}
 	} else {
 		MR_fatal_error("internal error: bad var_spec kind");
 	}
 
 	return NULL;
+}
+
+#define	BAD_PATH_BUFFER_SIZE	128
+#define	BAD_PATH_MSG_PREFIX	"the path "
+#define	BAD_PATH_MSG_SUFFIX	" does not exist"
+
+static const char *
+MR_trace_bad_path(const char *path)
+{
+	static	char	buffer[BAD_PATH_BUFFER_SIZE];
+
+	if (strlen(BAD_PATH_MSG_PREFIX) + strlen(path) +
+		strlen(BAD_PATH_MSG_SUFFIX) < BAD_PATH_BUFFER_SIZE)
+	{
+		sprintf(buffer, "%s%s%s", BAD_PATH_MSG_PREFIX, path,
+			BAD_PATH_MSG_SUFFIX);
+		return buffer;
+	} else {
+		return "the given path does not exist";
+	}
 }
 
 const char *
@@ -699,16 +808,57 @@ MR_trace_browse_all(FILE *out, MR_Browser browser)
 	}
 
 	for (i = 0; i < MR_point.MR_point_var_count; i++) {
-		MR_trace_browse_var(out, &MR_point.MR_point_vars[i], browser);
+		(void) MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
+			NULL, browser);
 	}
 
 	return NULL;
 }
 
-static void
-MR_trace_browse_var(FILE *out, MR_Var_Details *var, MR_Browser browser)
+/* ML_arg() is defined in std_util.m */
+extern	bool 	ML_arg(MR_TypeInfo term_type_info, Word *term, int arg_index,
+			MR_TypeInfo *arg_type_info_ptr, Word **arg_ptr);
+
+static char *
+MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
+	MR_Browser browser)
 {
-	int	len;
+	MR_TypeInfo	typeinfo;
+	MR_TypeInfo	new_typeinfo;
+	Word		*value;
+	Word		*new_value;
+	char		*old_path;
+	int		arg_num;
+	int		len;
+
+	typeinfo = var->MR_var_type;
+	value = &var->MR_var_value;
+
+	if (path != NULL) {
+		while (*path != '\0') {
+			old_path = path;
+
+			arg_num = 0;
+			while (MR_isdigit(*path)) {
+				arg_num = arg_num * 10 + *path - '0';
+				path++;
+			}
+
+			if (*path != '\0') {
+				path++; /* step over / or ^ */
+			}
+
+			/* ML_arg starts indexing fields from 0, not 1 */
+			if (ML_arg(typeinfo, value, arg_num - 1,
+				&new_typeinfo, &new_value))
+			{
+				typeinfo = new_typeinfo;
+				value = new_value;
+			} else {
+				return old_path;
+			}
+		}
+	}
 
 	if (out != NULL) {
 		/*
@@ -731,7 +881,8 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, MR_Browser browser)
 		fflush(out);
 	}
 
-	(*browser)((Word) var->MR_var_type, var->MR_var_value);
+	(*browser)((Word) typeinfo, *value);
+	return NULL;
 }
 
 static int

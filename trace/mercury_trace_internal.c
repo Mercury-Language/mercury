@@ -180,7 +180,6 @@ static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
 		MR_Browser browser);
 
 static	const char *MR_trace_read_help_text(void);
-static	bool	MR_trace_is_number(const char *word, int *value);
 static	const char *MR_trace_parse_line(char *line,
 			char ***words, int *word_max, int *word_count);
 static	int	MR_trace_break_into_words(char *line,
@@ -872,9 +871,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "print")) {
 		if (word_count == 2) {
-			MR_Var_Spec	var_spec;
 			const char	*problem;
-			int		n;
 
 			if (streq(words[1], "*")) {
 				problem = MR_trace_browse_all(MR_mdb_out,
@@ -882,16 +879,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			} else if (streq(words[1], "exception")) {
 				problem = MR_trace_browse_exception(event_info,
 					MR_trace_print_var);
-			} else if (MR_trace_is_number(words[1], &n)) {
-				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
-				var_spec.MR_var_spec_number = n;
-				problem = MR_trace_browse_one(MR_mdb_out,
-					var_spec, MR_trace_print_var, FALSE);
 			} else {
-				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
-				var_spec.MR_var_spec_name = words[1];
-				problem = MR_trace_browse_one(MR_mdb_out,
-					var_spec, MR_trace_print_var, FALSE);
+				problem = MR_trace_parse_browse_one(MR_mdb_out,
+					words[1], MR_trace_print_var, FALSE);
 			}
 
 			if (problem != NULL) {
@@ -903,23 +893,14 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 	} else if (streq(words[0], "browse")) {
 		if (word_count == 2) {
-			MR_Var_Spec	var_spec;
 			const char	*problem;
-			int		n;
 
 			if (streq(words[1], "exception")) {
 				problem = MR_trace_browse_exception(event_info,
 					MR_trace_browse_var);
-			} else if (MR_trace_is_number(words[1], &n)) {
-				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
-				var_spec.MR_var_spec_number = n;
-				problem = MR_trace_browse_one(NULL, var_spec,
-					MR_trace_browse_var, TRUE);
 			} else {
-				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
-				var_spec.MR_var_spec_name = words[1];
-				problem = MR_trace_browse_one(NULL, var_spec,
-					MR_trace_browse_var, TRUE);
+				problem = MR_trace_parse_browse_one(NULL,
+					words[1], MR_trace_browse_var, TRUE);
 			}
 
 			if (problem != NULL) {
@@ -2043,31 +2024,6 @@ MR_trace_read_help_text(void)
 
 	doc_chars[next_char_slot] = '\0';
 	return doc_chars;
-}
-
-/*
-** Is the string pointed to by word a natural number,
-** i.e. a sequence of digits?
-** If yes, return its value in *value.
-*/
-
-static bool
-MR_trace_is_number(const char *word, int *value)
-{
-	if (MR_isdigit(*word)) {
-		*value = *word - '0';
-		word++;
-		while (MR_isdigit(*word)) {
-			*value = (*value * 10) + *word - '0';
-			word++;
-		}
-
-		if (*word == '\0') {
-			return TRUE;
-		}
-	}
-
-	return FALSE;
 }
 
 /*

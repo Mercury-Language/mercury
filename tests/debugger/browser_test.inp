@@ -17,6 +17,8 @@ ls
 cd
 ls
 quit
+print HeadVar__1/1/2
+print 1^1^2^3
 retry
 continue -a
 

@@ -79,6 +79,10 @@ big
   3-small
 
 browser> quit
+mdb> print HeadVar__1/1/2
+       HeadVar__1             	2
+mdb> print 1^1^2^3
+mdb: the path 3 does not exist.
 mdb> retry
        2:      2  2 CALL pred browser_test:big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
 mdb> continue -a

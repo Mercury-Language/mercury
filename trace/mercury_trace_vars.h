@@ -17,10 +17,10 @@
 ** MR_trace_current_level returns this information, while enquiry function
 ** MR_trace_current_level_details returns information about this level.
 **
-** The six functions MR_trace_var_count, MR_trace_list_vars,
-** MR_trace_return_var_info, MR_trace_headvar_num, MR_trace_browse_one
-** and MR_trace_browse_all all work in the context established by the
-** MR_trace_init_point_vars and possibly MR_trace_set_level.
+** The functions MR_trace_var_count, MR_trace_list_vars,
+** MR_trace_return_var_info, MR_trace_headvar_num, MR_trace_parse_browse_one,
+** MR_trace_browse_one and MR_trace_browse_all all work in the context
+** established by MR_trace_init_point_vars and possibly MR_trace_set_level.
 **
 ** This context may say that there is no information available about
 ** the variables live at the current location (this is possible if the
@@ -92,6 +92,21 @@ extern	const char	*MR_trace_return_var_info(int n, const char **name_ptr,
 */
 
 extern	const char	*MR_trace_headvar_num(int n, int *num);
+
+/*
+** Print the (names and) values of (the specified parts of) the specified
+** variables. (The variable is specified by either its name or its sequence
+** number in the set of live variables at the current point; the desired part
+** is specified by zero or more suffixes of the form ^argnum or /argnum.
+**
+** The names are printed to the given file if the file pointer is non-NULL.
+** The values are printed by giving them to the specified browser.
+** The last argument governs whether this function returns an error
+** if the given variable specification is ambiguous.
+*/
+
+extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
+				MR_Browser browser, bool must_be_unique);
 
 /*
 ** Print the (names and) values of the specified variables.
