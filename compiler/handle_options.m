@@ -361,6 +361,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%	  so that abstract equivalence types can be expanded.  They
 	%	  need to be expanded because .NET requires that the structural
 	%	  representation of a type is known at all times.
+	%   - dead procedure optimization
+	%   	  intermodule optimization pulls in a lot of code which isn't
+	%   	  needed, so ensure that this dead code is removed.
 
 	( { Target = il } ->
 		globals__io_set_gc_method(none),
@@ -379,7 +382,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 		( { HighLevelData = yes, AutoIntermodOptimization = yes } ->
 			globals__io_set_option(intermodule_optimization,
-					bool(yes))
+					bool(yes)),
+			globals__io_set_option(optimize_dead_procs, bool(yes))
 		;
 			[]
 		)
@@ -433,6 +437,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%	  so that abstract equivalence types can be expanded.  They
 	%	  need to be expanded because Java requires that the structural
 	%	  representation of a type is known at all times.
+	%   - dead procedure optimization
+	%   	  intermodule optimization pulls in a lot of code which isn't
+	%   	  needed, so ensure that this dead code is removed.
 	( { Target = java } ->
 		globals__io_set_gc_method(none),
 		globals__io_set_option(reclaim_heap_on_nondet_failure,
@@ -451,7 +458,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 		( { AutoIntermodOptimization = yes } ->
 			globals__io_set_option(intermodule_optimization,
-					bool(yes))
+					bool(yes)),
+			globals__io_set_option(optimize_dead_procs, bool(yes))
 		;
 			[]
 		)
