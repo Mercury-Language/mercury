@@ -44,9 +44,9 @@
 
 		% Create a new code_info structure.
 :- pred code_info__init(varset, liveness_info, stack_slots, bool, globals,
-			pred_id, proc_id, proc_info, code_model, instmap,
+			pred_id, proc_id, proc_info, instmap,
 			follow_vars, module_info, shape_table, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in, out)
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
 			is det.
 
 		% Generate the next local label in sequence.
@@ -433,6 +433,12 @@
 :- pred code_info__find_type_infos(list(var), list(lval), code_info, code_info).
 :- mode code_info__find_type_infos(in, out, in, out) is det.
 
+:- pred code_info__push_resume_point_vars(set(var), code_info, code_info).
+:- mode code_info__push_resume_point_vars(in, in, out) is det.
+
+:- pred code_info__pop_resume_point_vars(code_info, code_info).
+:- mode code_info__pop_resume_point_vars(in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -481,15 +487,13 @@
 					% It should be read-only.
 			liveness_info,	% Variables that are live
 					% after this goal
-			stack(map(var, lval)),
-					% Store Map - where to put things
-					% at the ends of branched structures.
-			code_model,	% The model of the current procedure
 			instmap,	% insts of variables
-			pair(int),	% The current and maximum (respectively)
-					% number of extra temporary stackslots
-					% that have been pushed during the
-					% procedure
+			int,		% The current number of extra
+					% temporary stackslots that have been
+					% pushed during the procedure
+			int,		% The maximum number of extra
+					% temporary stackslots that have been
+					% pushed during the procedure
 			globals,	% code generation options
 			stack(pair(lval, lval_or_ticket)),
 					% the locations in use on the stack
@@ -497,6 +501,18 @@
 			set(var),	% Variables that are not quite live
 					% but are only nondet-live (so that
 					% we make sure we save them).
+			stack(set(var)),
+					% Each resumption point has an
+					% associated set of variables
+					% whose values may be needed on
+					% resumption at that point.
+					% This field gives those variables
+					% for a nested set of resumption
+					% points. Each element must be
+					% a superset of the ones below.
+					% When a variable included in the top
+					% set becomes no longer forward live,
+					% we must save its value to the stack.
 			list(pair(lval, lval_or_ticket))
 					% A list of lvalues (ie curfr, maxfr
 					% and redoip) that get saved onto the
@@ -507,12 +523,12 @@
 
 :- type fall_through	==	stack(failure_cont).
 
-:- type lval_or_ticket  ---> ticket ; lval(lval).
+:- type lval_or_ticket  --->	ticket ; lval(lval).
 
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, CodeModel, Requests, FollowVars,
+		PredId, ProcId, ProcInfo, Requests, _FollowVars,
 		ModuleInfo, Shapes, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
@@ -521,11 +537,11 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	globals__get_options(Globals, Options),
 	code_exprn__init_state(ArgList, Varset, Options, ExprnInfo),
 	stack__init(Continue),
-	stack__init(StoreMapStack0),
 	stack__init(PushedVals0),
+	stack__init(ResumeSetStack0),
 	set__init(NondetLives),
-	stack__push(StoreMapStack0, FollowVars, StoreMapStack),
 	code_info__max_slot(StackSlots, SlotCount0),
+	proc_info_interface_code_model(ProcInfo, CodeModel),
 	(
 		CodeModel = model_non
 	->
@@ -547,14 +563,14 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		Continue,
 		ModuleInfo,
 		Liveness,
-		StoreMapStack,
-		CodeModel,
 		Requests,
-		0 - 0,
+		0,
+		0,
 		Globals,
 		PushedVals0,
 		Shapes,
 		NondetLives,
+		ResumeSetStack0,
 		[]
 	).
 
@@ -2195,8 +2211,8 @@ code_info__generate_stack_livelvals_2([V | Vs], Vals0, Vals) -->
 	{ set__insert(Vals0, Slot - V, Vals1) },
 	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
 
-:- pred code_info__generate_stack_livelvals_3(stack(pair(lval, lval_or_ticket)), 
-			list(liveinfo), list(liveinfo)).
+:- pred code_info__generate_stack_livelvals_3(stack(pair(lval,
+	lval_or_ticket)), list(liveinfo), list(liveinfo)).
 :- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
 
 code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
@@ -2301,9 +2317,6 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__set_fall_through(fall_through, code_info, code_info).
 :- mode code_info__set_fall_through(in, in, out) is det.
 
-:- pred code_info__get_proc_model(code_model, code_info, code_info).
-:- mode code_info__get_proc_model(out, in, out) is det.
-
 :- pred code_info__get_push_count(int, code_info, code_info).
 :- mode code_info__get_push_count(out, in, out) is det.
 
@@ -2324,6 +2337,14 @@ code_info__variable_type(Var, Type) -->
 	code_info, code_info).
 :- mode code_info__set_pushed_values(in, in, out) is det.
 
+:- pred code_info__get_resume_point_stack(stack(set(var)),
+	code_info, code_info).
+:- mode code_info__get_resume_point_stack(out, in, out).
+
+:- pred code_info__set_resume_point_stack(stack(set(var)),
+	code_info, code_info).
+:- mode code_info__set_resume_point_stack(in, in, out).
+
 :- pred code_info__get_commit_vals(list(pair(lval, lval_or_ticket)), 
 	code_info, code_info).
 :- mode code_info__get_commit_vals(out, in, out) is det.
@@ -2336,81 +2357,33 @@ code_info__get_stackslot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
 
-% code_info__set_stackslot_count(A, CI0, CI) :-
-% 	CI0 = code_info(_, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-%		T, U, V),
-% 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-%		T, U, V).
-
 code_info__get_label_count(B, CI, CI) :-
 	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
-
-code_info__set_label_count(B, CI0, CI) :-
-	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
 
 code_info__get_varset(C, CI, CI) :-
 	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
 
-code_info__set_varset(C, CI0, CI) :-
-	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
 code_info__get_stack_slots(D, CI, CI) :-
 	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
-
-code_info__set_stack_slots(D, CI0, CI) :-
-	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
 
 code_info__get_pred_id(E, CI, CI) :-
 	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
 
-code_info__set_pred_id(E, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
 code_info__get_proc_id(F, CI, CI) :-
 	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
-
-code_info__set_proc_id(F, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
 
 code_info__get_cell_count(G, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
 
-code_info__set_cell_count(G, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
 code_info__get_exprn_info(H, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _).
-
-code_info__set_exprn_info(H, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
 
 code_info__get_proc_info(I, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, _, _, _,
@@ -2420,126 +2393,256 @@ code_info__get_succip_used(J, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, _, _, _,
 		_, _, _).
 
-code_info__set_succip_used(J, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
 code_info__get_fall_through(K, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, _, _, _,
 		_, _, _).
-
-code_info__set_fall_through(K, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
 
 code_info__get_module_info(L, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, _, _, _,
 		_, _, _).
 
-% It is a bad idea to allow the code generator to module_info
-% in arbitrary ways.
-% code_info__set_module_info(L, CI0, CI) :-
-% 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P, Q, R, S, T, U, V),
-% 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V).
-
 code_info__get_liveness_info(M, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _, _, _, _,
 		_, _, _).
 
-code_info__set_liveness_info(M, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
+code_info__get_instmap(N, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _, _,
+		_, _, _).
 
-code_info__get_proc_model(O, CI, CI) :-
+code_info__get_push_count(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _,
 		_, _, _).
 
-code_info__get_instmap(P, CI, CI) :-
+code_info__get_max_push_count(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _, _,
 		_, _, _).
 
-code_info__set_instmap(P, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q, R, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
+code_info__get_globals(Q, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _, _,
+		_, _, _).
 
-code_info__get_push_count(Q, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		Q - _, _, _, _, _, _).
-
-code_info__get_max_push_count(QMax, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_ - QMax, _, _, _, _, _).
-
-code_info__set_push_count(Q, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		_ - QMax0, R, S, T, U, V),
-	int__max(QMax0, Q, QMax),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q - QMax, R, S, T, U, V).
-
-code_info__set_max_push_count(QMax, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q - _, R, S, T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q - QMax, R, S, T, U, V).
-
-code_info__get_globals(R, CI, CI) :-
+code_info__get_pushed_values(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _,
 		_, _, _).
 
-code_info__set_globals(R, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, _, S,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
-code_info__get_pushed_values(S, CI, CI) :-
+code_info__get_shapes(S, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, S,
 		_, _, _).
 
-code_info__set_pushed_values(S, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, _,
-		T, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
-code_info__get_shapes(T, CI, CI) :-
+code_info__get_nondet_lives(T, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		T, _, _).
 
-code_info__set_shapes(T, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		_, U, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
-
-code_info__get_nondet_lives(U, CI, CI) :-
+code_info__get_resume_point_stack(U, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, U, _).
-
-code_info__set_nondet_lives(U, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, _, V),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
 
 code_info__get_commit_vals(V, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, V).
 
+% :- type code_info	--->
+% 		code_info(
+% 	A		int,		% The number of stack slots allocated.
+% 					% for storing variables.
+% 					% (Some extra stack slots are used
+% 					% for saving and restoring registers.)
+% 	B		int,		% Counter for the local labels used
+% 					% by this procedure.
+% 	C		varset,		% The variables in this procedure.
+% 	D		stack_slots,	% The map giving the stack slot
+% 					% to be used for each variable
+% 					% that will ever need to be stored
+% 					% on the stack.
+% 	E		pred_id,	% The label of the current predicate.
+% 	F		proc_id,	% The label of the current procedure.
+% 	G		int,		% Counter for cells in this proc.
+% 	H		exprn_info,	% A map storing the information about
+% 					% the status of each variable.
+% 	I		proc_info,	% The proc_info for the this procedure.
+% 	J		bool,		% do we need to store succip?
+% 	K		fall_through,	% The failure continuation stack
+% 	L		module_info,	% The module_info structure - you just
+% 					% never know when you might need it.
+% 					% It should be read-only.
+% 	M		liveness_info,	% Variables that are live
+% 					% after this goal
+% 	N		instmap,	% insts of variables
+% 	O		int,		% The current number of extra
+% 					% temporary stackslots that have been
+% 					% pushed during the procedure
+% 	P		int,		% The maximum number of extra
+% 					% temporary stackslots that have been
+% 					% pushed during the procedure
+% 	Q		globals,	% code generation options
+% 	R		stack(pair(lval, lval_or_ticket)),
+% 					% the locations in use on the stack
+% 	S		shape_table,	% Table of shapes.
+% 	T		set(var),	% Variables that are not quite live
+% 					% but are only nondet-live (so that
+% 					% we make sure we save them).
+% 	U		stack(set(var)),
+% 					% Each resumption point has an
+% 					% associated set of variables
+% 					% whose values may be needed on
+% 					% resumption at that point.
+% 					% This field gives those variables
+% 					% for a nested set of resumption
+% 					% points. Each element must be
+% 					% a superset of the ones below.
+% 					% When a variable included in the top
+% 					% set becomes no longer forward live,
+% 					% we must save its value to the stack.
+% 	V		list(pair(lval, lval_or_ticket))
+% 					% A list of lvalues (ie curfr, maxfr
+% 					% and redoip) that get saved onto the
+% 					% det stack even though the current
+% 					% context is nondet. We need to store
+% 					% these for GC purposes.
+% 	).
+
+% we don't need
+% code_info__set_stackslot_count(A, CI0, CI)
+
+code_info__set_label_count(B, CI0, CI) :-
+	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_varset(C, CI0, CI) :-
+	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_stack_slots(D, CI0, CI) :-
+	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_pred_id(E, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_proc_id(F, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_cell_count(G, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_exprn_info(H, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_succip_used(J, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_fall_through(K, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+% It is a bad idea to allow the code generator to modify module_info
+% in arbitrary ways.
+% code_info__set_module_info(L, CI0, CI) :-
+
+code_info__set_liveness_info(M, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_instmap(N, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_push_count(O, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P0, Q,
+		R, S, T, U, V),
+	int__max(P0, O, P),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_max_push_count(P, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_globals(Q, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _,
+		R, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_pushed_values(R, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		_, S, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_shapes(S, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, _, T, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_nondet_lives(T, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, _, U, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+code_info__set_resume_point_stack(U, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, _, V),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
 code_info__set_commit_vals(V, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, _),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,
-		T, U, V).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, _),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__get_proc_model(code_model, code_info, code_info).
+:- mode code_info__get_proc_model(out, in, out) is det.
+
+code_info__get_proc_model(CodeModel) -->
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_interface_code_model(ProcInfo, CodeModel) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__push_resume_point_vars(ResumeVars) -->
+	code_info__get_resume_point_stack(ResumeStack0),
+	{ stack__push(ResumeStack0, ResumeVars, ResumeStack) },
+	code_info__set_resume_point_stack(ResumeStack).
+
+code_info__pop_resume_point_vars -->
+	code_info__get_resume_point_stack(ResumeStack0),
+	{ stack__pop_det(ResumeStack0, _, ResumeStack) },
+	code_info__set_resume_point_stack(ResumeStack).
 
 %---------------------------------------------------------------------------%
 

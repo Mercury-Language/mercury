@@ -726,6 +726,31 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		;
 			[]
 		),
+		{ goal_info_get_resume_point(GoalInfo, Resume) },
+		(
+			{ Resume = none }
+		;
+			{ Resume = orig_only(ResumeVars) },
+			{ set__to_sorted_list(ResumeVars, ResumeVarList) },
+			hlds_out__write_indent(Indent),
+			io__write_string("% resume point orig only: "),
+			mercury_output_vars(ResumeVarList, VarSet),
+			io__write_string("\n")
+		;
+			{ Resume = stack_only(ResumeVars) },
+			{ set__to_sorted_list(ResumeVars, ResumeVarList) },
+			hlds_out__write_indent(Indent),
+			io__write_string("% resume point stack only: "),
+			mercury_output_vars(ResumeVarList, VarSet),
+			io__write_string("\n")
+		;
+			{ Resume = orig_and_stack(ResumeVars) },
+			{ set__to_sorted_list(ResumeVars, ResumeVarList) },
+			hlds_out__write_indent(Indent),
+			io__write_string("% resume point orig and stack: "),
+			mercury_output_vars(ResumeVarList, VarSet),
+			io__write_string("\n")
+		),
 		(
 			( { Goal = disj(_, SM) }
 			; { Goal = switch(_, _, _, SM) }
@@ -1113,15 +1138,41 @@ hlds_out__write_qualified_functor(ModuleName, Functor, ArgVars, VarSet) -->
 	hlds_out__write_functor(Functor, ArgVars, VarSet).
 
 hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet) -->
-	( { cons_id_to_const(ConsId, Functor, _) } ->
-		hlds_out__write_functor(Functor, ArgVars, VarSet)
-	; { ConsId = cons(qualified(Module, Name), _) } ->
-		hlds_out__write_qualified_functor(Module,
-			term__atom(Name), ArgVars, VarSet)
+	(
+		{ ConsId = cons(SymName, _) },
+		(
+			{ SymName = qualified(Module, Name) },
+			hlds_out__write_qualified_functor(Module,
+				term__atom(Name), ArgVars, VarSet)
+		;
+			{ SymName = unqualified(Name) },
+			hlds_out__write_functor(term__atom(Name),
+				ArgVars, VarSet)
+		)
 	;
-		% pred_const, code_addr_const and base_type_info_const
-		% shouldn't occur here.
-		{ error("hlds_out__write_functor_cons_id: invalid unify_rhs") }
+		{ ConsId = int_const(Int) },
+		hlds_out__write_functor(term__integer(Int), ArgVars, VarSet)
+	;
+		{ ConsId = float_const(Float) },
+		hlds_out__write_functor(term__float(Float), ArgVars, VarSet)
+	;
+		{ ConsId = string_const(Str) },
+		hlds_out__write_functor(term__string(Str), ArgVars, VarSet)
+	;
+		{ ConsId = pred_const(_, _) },
+		{ error("hlds_out__write_functor_cons_id: pred_const") }
+	;
+		{ ConsId = code_addr_const(_, _) },
+		{ error("hlds_out__write_functor_cons_id: code_addr_const") }
+	;
+		{ ConsId = base_type_info_const(Module, Name, Arity) },
+		io__write_string("base_type_info("""),
+		io__write_string(Module),
+		io__write_string(""", """),
+		io__write_string(Name),
+		io__write_string(""", "),
+		io__write_int(Arity),
+		io__write_string(")")
 	).
 
 hlds_out__write_var_modes([], [], _) --> [].

@@ -336,6 +336,12 @@
 				% a constraint.  See constraint.m
 				% for the definition of this.
 
+	% see notes/ALLOCATION for what these alternatives mean
+:- type resume_point	--->	none
+			;	orig_only(set(var))
+			;	stack_only(set(var))
+			;	orig_and_stack(set(var)).
+
 :- implementation.
 
 	% NB. Don't forget to check goal_util__name_apart_goalinfo
@@ -387,13 +393,19 @@
 				% The set of used-defined "features" of
 				% this goal, which optimisers may wish
 				% to know about.
-		set(var)
+		set(var),
 				% The "nondet lives" -
 				% Nondet live variables that may be 'dead' but
 				% still nondet live.  In other words, they
 				% will not be accessed on forwards execution,
 				% but may be needed on backtracking.
 				% (Computed by liveness.m.)
+		resume_point
+				% If this goal establishes a resumption point,
+				% state what variables need to be saved for
+				% that resumption point. This field will
+				% eventually replace the cont-lives and
+				% nondet-lives fields.
 	).
 
 get_pragma_c_var_names(MaybeVarNames, VarNames) :-
@@ -527,9 +539,18 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_info_set_nondet_lives(hlds__goal_info, set(var), hlds__goal_info).
 :- mode goal_info_set_nondet_lives(in, in, out) is det.
 
-:- pred goal_set_follow_vars(hlds__goal, maybe(follow_vars),
-				hlds__goal).
+:- pred goal_info_get_resume_point(hlds__goal_info, resume_point).
+:- mode goal_info_get_resume_point(in, out) is det.
+
+:- pred goal_info_set_resume_point(hlds__goal_info, resume_point,
+	hlds__goal_info).
+:- mode goal_info_set_resume_point(in, in, out) is det.
+
+:- pred goal_set_follow_vars(hlds__goal, maybe(follow_vars), hlds__goal).
 :- mode goal_set_follow_vars(in, in, out) is det.
+
+:- pred goal_set_resume_point(hlds__goal, resume_point, hlds__goal).
+:- mode goal_set_resume_point(in, in, out) is det.
 
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
@@ -586,7 +607,46 @@ goal_info_init(GoalInfo) :-
 	set__init(Features),
 	GoalInfo = goal_info(PreBirths, PostBirths, PreDeaths, PostDeaths,
 		ExternalDetism, InstMapDelta, Context, NonLocals, no,
-		no, Features, NondetLives).
+		no, Features, NondetLives, none).
+
+goal_info_pre_births(GoalInfo, PreBirths) :-
+	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _, _).
+
+goal_info_post_births(GoalInfo, PostBirths) :-
+	GoalInfo = goal_info(_, PostBirths, _, _, _, _, _, _, _, _, _, _, _).
+
+goal_info_pre_deaths(GoalInfo, PreDeaths) :-
+	GoalInfo = goal_info(_, _, PreDeaths, _, _, _, _, _, _, _, _, _, _).
+
+goal_info_post_deaths(GoalInfo, PostDeaths) :-
+	GoalInfo = goal_info(_, _, _, PostDeaths, _, _, _, _, _, _, _, _, _).
+
+goal_info_get_determinism(GoalInfo, Determinism) :-
+	GoalInfo = goal_info(_, _, _, _, Determinism, _, _, _, _, _, _, _, _).
+
+goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
+	GoalInfo = goal_info(_, _, _, _, _, InstMapDelta, _, _, _, _, _, _, _).
+
+goal_info_context(GoalInfo, Context) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, Context, _, _, _, _, _, _).
+
+goal_info_get_nonlocals(GoalInfo, NonLocals) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, NonLocals, _, _, _, _, _).
+
+goal_info_follow_vars(GoalInfo, FollowVars) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, FollowVars, _, _, _, _).
+
+goal_info_cont_lives(GoalInfo, ContLives) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, ContLives, _, _, _).
+
+goal_info_get_features(GoalInfo, Features) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, Features, _, _).
+
+goal_info_nondet_lives(GoalInfo, NondetLives) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, NondetLives, _).
+
+goal_info_get_resume_point(GoalInfo, ResumePoint) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, _, ResumePoint).
 
 % :- type hlds__goal_info
 % 	--->	goal_info(
@@ -601,96 +661,65 @@ goal_info_init(GoalInfo) :-
 % 		I	maybe(follow_vars),
 % 		J	maybe(set(var)),% The `cont lives'
 % 		K	set(goal_feature),
-% 		L	set(var)	% The "nondet lives"
+% 		L	set(var),	% The "nondet lives"
+%		M	resume_point
 % 	).
 
-goal_info_pre_births(GoalInfo, PreBirths) :-
-	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _).
-
 goal_info_set_pre_births(GoalInfo0, PreBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(PreBirths, B, C, D, E, F, G, H, I, J, K, L).
-
-goal_info_post_births(GoalInfo, PostBirths) :-
-	GoalInfo = goal_info(_, PostBirths, _, _, _, _, _, _, _, _, _, _).
+	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I, J, K, L, M),
+	GoalInfo = goal_info(PreBirths, B, C, D, E, F, G, H, I, J, K, L, M).
 
 goal_info_set_post_births(GoalInfo0, PostBirths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, PostBirths, C, D, E, F, G, H, I, J, K, L).
-
-goal_info_pre_deaths(GoalInfo, PreDeaths) :-
-	GoalInfo = goal_info(_, _, PreDeaths, _, _, _, _, _, _, _, _, _).
+	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I, J, K, L, M),
+	GoalInfo = goal_info(A, PostBirths, C, D, E, F, G, H, I, J, K, L, M).
 
 goal_info_set_pre_deaths(GoalInfo0, PreDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, PreDeaths, D, E, F, G, H, I, J, K, L).
-
-goal_info_post_deaths(GoalInfo, PostDeaths) :-
-	GoalInfo = goal_info(_, _, _, PostDeaths, _, _, _, _, _, _, _, _).
+	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I, J, K, L, M),
+	GoalInfo = goal_info(A, B, PreDeaths, D, E, F, G, H, I, J, K, L, M).
 
 goal_info_set_post_deaths(GoalInfo0, PostDeaths, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, PostDeaths, E, F, G, H, I, J, K, L).
+	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I, J, K, L, M),
+	GoalInfo = goal_info(A, B, C, PostDeaths, E, F, G, H, I, J, K, L, M).
+
+goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J, K, L, M),
+	GoalInfo = goal_info(A, B, C, D, Determinism, F, G, H, I, J, K, L, M).
+
+goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L, M),
+	GoalInfo = goal_info(A, B, C, D, E, InstMapDelta, G, H, I, J, K, L, M).
+
+goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J, K, L, M),
+	GoalInfo = goal_info(A, B, C, D, E, F, Context, H, I, J, K, L, M).
+
+goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L, M),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, NonLocals, I, J, K, L, M).
+
+goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L, M),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, FollowVars, J, K, L, M).
+
+goal_info_set_cont_lives(GoalInfo0, ContLives, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _, K, L, M),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, ContLives, K, L, M).
+
+goal_info_set_features(GoalInfo0, Features, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, _, L, M),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, Features, L, M).
+
+goal_info_set_nondet_lives(GoalInfo0, NondetLives, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, _, M),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, NondetLives, M).
+
+goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, L, _),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, L, ResumePoint).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
-
-goal_info_get_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, _, _, Determinism, _, _, _, _, _, _, _).
-
-goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, Determinism, F, G, H, I, J, K, L).
-
-goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, _, _, InstMapDelta, _, _, _, _, _, _).
-
-goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, E, InstMapDelta, G, H, I, J, K, L).
-
-goal_info_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, Context, _, _, _, _, _).
-
-goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I, J, K, L),
-	GoalInfo = goal_info(A, B, C, D, E, F, Context, H, I, J, K, L).
-
-goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, NonLocals, _, _, _, _).
-
-goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I, J, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, NonLocals, I, J, K, L).
-
-goal_info_follow_vars(GoalInfo, FollowVars) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, FollowVars, _, _, _).
-
-goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _, J, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, FollowVars, J, K, L).
-
-goal_info_cont_lives(GoalInfo, ContLives) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, ContLives, _, _).
-
-goal_info_set_cont_lives(GoalInfo0, ContLives, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, _, K, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, ContLives, K, L).
-
-goal_info_get_features(GoalInfo, Features) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, Features, _).
-
-goal_info_set_features(GoalInfo0, Features, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, _, L),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, Features, L).
-
-goal_info_nondet_lives(GoalInfo, NondetLives) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, _, _, _, _, NondetLives).
-
-goal_info_set_nondet_lives(GoalInfo0, NondetLives, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, I, J, K, _),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I, J, K, NondetLives).
 
 goal_info_add_feature(GoalInfo0, Feature, GoalInfo) :-
 	goal_info_get_features(GoalInfo0, Features0),
@@ -708,6 +737,9 @@ goal_info_has_feature(GoalInfo, Feature) :-
 
 goal_set_follow_vars(Goal - GoalInfo0, FollowVars, Goal - GoalInfo) :-
 	goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo).
+
+goal_set_resume_point(Goal - GoalInfo0, ResumePoint, Goal - GoalInfo) :-
+	goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -797,4 +829,3 @@ hlds__is_builtin_is_internal(yes - _).
 hlds__is_builtin_is_inline(_ - yes).
 
 hlds__is_builtin_make_builtin(IsInternal, IsInline, IsInternal - IsInline).
-

@@ -858,7 +858,7 @@ proc_info_get_used_typeinfos_setwise(ProcInfo, Vars, TypeInfoVars) :-
 	set__list_to_set(TypeInfoVarList, TypeInfoVars).
 
 	% auxiliary predicate - traverses variables and builds a list of
-	% varaibles that store typeinfos for these variables. 
+	% variables that store typeinfos for these variables. 
 :- pred proc_info_get_used_typeinfos_2(proc_info, list(var), list(var)).
 :- mode proc_info_get_used_typeinfos_2(in, in, out) is det.
 proc_info_get_used_typeinfos_2(_, [], []).
@@ -877,7 +877,7 @@ proc_info_get_used_typeinfos_2(ProcInfo, [Var | Vars1], TypeInfoVars) :-
 		;
 			% It's possible there are some complications with
 			% higher order pred types here -- if so, maybe
-			% treat the specially.
+			% treat them specially.
 			proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 			map__apply_to_list(TypeVars, TVarMap, TypeInfoVars0),
 			proc_info_get_used_typeinfos_2(ProcInfo, Vars1,

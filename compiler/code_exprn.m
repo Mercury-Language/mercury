@@ -1433,7 +1433,10 @@ code_exprn__get_var_status(Var, Stat) -->
 		{ Stat = Stat0 }
 	;
 		code_exprn__get_var_name(Var, Name),
-		{ string__append_list(["variable ", Name, " not found"], Msg) },
+		{ term__var_to_int(Var, Num) },
+		{ string__int_to_string(Num, NumStr) },
+		{ string__append_list(["variable ", Name, " (", NumStr,
+			") not found"], Msg) },
 		{ error(Msg) }
 	).
 

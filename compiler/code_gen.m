@@ -190,7 +190,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 	globals__io_get_globals(Globals),
 		% initialise the code_info structure 
 	{ code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, CodeModel, InitialInst, FollowVars,
+		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
 		ModuleInfo, Shapes0, CodeInfo0) },
 		% generate code for the procedure
 	{ generate_category_code(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
