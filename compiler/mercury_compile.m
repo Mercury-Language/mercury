@@ -1826,6 +1826,12 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		ProfileTimeOpt = ""
 	},
+	globals__io_lookup_bool_option(profile_memory, ProfileMemory),
+	{ ProfileMemory = yes ->
+		ProfileMemoryOpt = "-DPROFILE_MEMORY "
+	;
+		ProfileMemoryOpt = ""
+	},
 	globals__io_lookup_bool_option(pic_reg, PIC_Reg),
 	{ PIC_Reg = yes ->
 		PIC_Reg_Opt = "-DPIC_REG "
@@ -1916,8 +1922,8 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	{ string__append_list([CC, " ", InclOpt, SplitOpt, OptimizeOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
-		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, PIC_Reg_Opt,
-		TagsOpt, NumTagBitsOpt, DebugOpt,
+		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
+		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt, DebugOpt,
 		UseTrailOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
