@@ -42,7 +42,7 @@ typedef	struct {
 extern	void		MR_ht_init_table(MR_Hash_Table *);
 extern	const void	*MR_ht_lookup_table(const MR_Hash_Table *,
 				const void *);
-extern	void		*MR_ht_insert_table(const MR_Hash_Table *, void *);
+extern	const void	*MR_ht_insert_table(const MR_Hash_Table *, void *);
 extern	MR_Dlist	*MR_ht_get_all_entries(const MR_Hash_Table *);
 extern	void		MR_ht_process_all_entries(const MR_Hash_Table *,
 				void f(const void *));

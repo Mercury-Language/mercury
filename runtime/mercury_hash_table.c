@@ -73,7 +73,7 @@ MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 **	Return whether it was there before.
 */
 
-void *
+const void *
 MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 {
 	MR_Dlist	*ptr;
