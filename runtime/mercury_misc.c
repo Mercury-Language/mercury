@@ -444,7 +444,7 @@ MR_warning(const char *fmt, ...)
 */
 
 void 
-fatal_error(const char *fmt, ...)
+MR_fatal_error(const char *fmt, ...)
 {
 	va_list args;
 
@@ -478,16 +478,16 @@ MR_memcpy(void *dest, const void *src, size_t nbytes)
 }
 
 /*
-**  Note that hash_string is actually defined as a macro in mercury_imp.h,
+**  Note that MR_hash_string is actually defined as a macro in mercury_imp.h,
 **  if we're using GNU C.  We define it here whether or not we're using
 **  gcc, so that users can easily switch between gcc and cc without
 **  rebuilding the libraries.
 */
 
-#undef hash_string
+#undef MR_hash_string
 
 int 
-hash_string(Word s)
+MR_hash_string(Word s)
 {
-	HASH_STRING_FUNC_BODY
+	MR_HASH_STRING_FUNC_BODY
 }

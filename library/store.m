@@ -316,7 +316,7 @@ ref_functor(Ref, Functor, Arity) -->
 :- pragma c_header_code("
 	#include ""mercury_type_info.h""
 	#include ""mercury_heap.h""
-	#include ""mercury_misc.h""	/* for fatal_error() */
+	#include ""mercury_misc.h""	/* for MR_fatal_error() */
 
 	/* ML_arg() is defined in std_util.m */
 	bool ML_arg(MR_TypeInfo term_type_info, Word *term, int arg_index,
@@ -340,13 +340,14 @@ ref_functor(Ref, Functor, Arity) -->
 	if (!ML_arg(type_info, (Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
-		fatal_error(""store__arg_ref: argument number out of range"");
+		MR_fatal_error(
+			""store__arg_ref: argument number out of range"");
 	}
 
 	if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
 		MR_COMPARE_EQUAL)
 	{
-		fatal_error(""store__arg_ref: argument has wrong type"");
+		MR_fatal_error(""store__arg_ref: argument has wrong type"");
 	}
 
 	restore_transient_registers();
@@ -371,13 +372,15 @@ ref_functor(Ref, Functor, Arity) -->
 	if (!ML_arg(type_info, (Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
-	      fatal_error(""store__new_arg_ref: argument number out of range"");
+		MR_fatal_error(
+			""store__new_arg_ref: argument number out of range"");
 	}
 
 	if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
 		MR_COMPARE_EQUAL)
 	{
-	      fatal_error(""store__new_arg_ref: argument has wrong type"");
+		MR_fatal_error(
+			""store__new_arg_ref: argument has wrong type"");
 	}
 
 	restore_transient_registers();

@@ -984,7 +984,7 @@ det_univ_to_type(Univ, X) :-
 
 #include ""mercury_type_info.h""
 #include ""mercury_heap.h""	/* for incr_hp_msg() etc. */
-#include ""mercury_misc.h""	/* for fatal_error() */
+#include ""mercury_misc.h""	/* for MR_fatal_error() */
 #include ""mercury_string.h""	/* for MR_make_aligned_string() */
 
 ").
@@ -1470,14 +1470,14 @@ ML_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_PRED(
 			MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info));
 		if (! MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
-			fatal_error(""std_util:ML_make_type_ctor_desc""
+			MR_fatal_error(""std_util:ML_make_type_ctor_desc""
 				""- arity out of range."");
 		}
 	} else if (MR_TYPE_CTOR_INFO_IS_HO_FUNC(type_ctor_info)) {
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FUNC(
 			MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info));
 		if (! MR_TYPECTOR_DESC_IS_HIGHER_ORDER(type_ctor_desc)) {
-			fatal_error(""std_util:ML_make_type_ctor_desc""
+			MR_fatal_error(""std_util:ML_make_type_ctor_desc""
 				""- arity out of range."");
 		}
 	} else {
@@ -1761,7 +1761,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
 
         if (type_ctor_info->type_ctor_rep != construct_info.type_ctor_rep) {
-            fatal_error(""std_util:construct: type_ctor_rep mismatch"");
+            MR_fatal_error(""std_util:construct: type_ctor_rep mismatch"");
         }
 
         switch (type_ctor_info->type_ctor_rep) {
@@ -1777,11 +1777,11 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
         case MR_TYPECTOR_REP_NOTAG_GROUND:
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             if (MR_list_is_empty(ArgList)) {
-                fatal_error(""notag arg list is empty"");
+                MR_fatal_error(""notag arg list is empty"");
             }
 
             if (! MR_list_is_empty(MR_list_tail(ArgList))) {
-                fatal_error(""notag arg list is too long"");
+                MR_fatal_error(""notag arg list is too long"");
             }
 
             new_data = MR_field(MR_mktag(0), MR_list_head(ArgList),
@@ -1799,7 +1799,7 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
 
                 functor_desc = construct_info.functor_info.du_functor_desc;
                 if (functor_desc->MR_du_functor_exist_info != NULL) {
-                    fatal_error(""not yet implemented: construction ""
+                    MR_fatal_error(""not yet implemented: construction ""
                         ""of terms containing existentially types"");
                 }
 
@@ -1845,13 +1845,13 @@ ML_type_ctor_and_args(MR_TypeInfo type_info, bool collapse_equivalences,
                 }
 
                 if (! MR_list_is_empty(arg_list)) {
-                    fatal_error(""excess arguments in std_util:construct"");
+                    MR_fatal_error(""excess arguments in std_util:construct"");
                 }
             }
             break;
 
         default:
-            fatal_error(""bad type_ctor_rep in std_util:construct"");
+            MR_fatal_error(""bad type_ctor_rep in std_util:construct"");
         }
 
         /*
@@ -1908,7 +1908,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             if (functor_number < 0 ||
                 functor_number >= type_ctor_info->type_ctor_num_functors)
             {
-                fatal_error(""ML_get_functor_info: ""
+                MR_fatal_error(""ML_get_functor_info: ""
                     ""du functor_number out of range"");
             }
 
@@ -1930,7 +1930,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             if (functor_number < 0 ||
                 functor_number >= type_ctor_info->type_ctor_num_functors)
             {
-                fatal_error(""ML_get_functor_info: ""
+                MR_fatal_error(""ML_get_functor_info: ""
                     ""enum functor_number out of range"");
             }
 
@@ -1951,7 +1951,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
             MR_NotagFunctorDesc *functor_desc;
 
             if (functor_number != 0) {
-                fatal_error(""ML_get_functor_info: ""
+                MR_fatal_error(""ML_get_functor_info: ""
                     ""notag functor_number out of range"");
             }
 
@@ -1977,7 +1977,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
         ** The current version of the RTTI gives all such equivalence types
         ** the EQUIV type_ctor_rep, not EQUIV_VAR.
         */
-        fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
+        MR_fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
         break;
 
     case MR_TYPECTOR_REP_INT:
@@ -2003,7 +2003,7 @@ ML_get_functor_info(MR_TypeInfo type_info, int functor_number,
 
     case MR_TYPECTOR_REP_UNKNOWN:
     default:
-        fatal_error(""std_util:construct - unexpected type."");
+        MR_fatal_error(""std_util:construct - unexpected type."");
     }
 
     return TRUE;
@@ -2282,7 +2282,7 @@ ML_get_num_functors(MR_TypeInfo type_info)
             ** The current version of the RTTI gives all such equivalence types
             ** the EQUIV type_ctor_rep, not EQUIV_VAR.
             */
-            fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
+            MR_fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
             break;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
@@ -2316,7 +2316,7 @@ ML_get_num_functors(MR_TypeInfo type_info)
 
         case MR_TYPECTOR_REP_UNKNOWN:
         default:
-            fatal_error(""std_util:ML_get_num_functors :""
+            MR_fatal_error(""std_util:ML_get_num_functors :""
                 "" unknown type_ctor_rep"");
     }
 
@@ -2388,8 +2388,6 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 ").
 
 :- pragma c_code("
-
-Declare_entry(mercury__builtin_compare_pred_3_0);
 
 /*
 ** Expand the given data using its type_info, find its
@@ -2596,7 +2594,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
             ** The current version of the RTTI gives all such equivalence types
             ** the EQUIV type_ctor_rep, not EQUIV_VAR.
             */
-            fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
+            MR_fatal_error(""unexpected EQUIV_VAR type_ctor_rep"");
             break;
 
         case MR_TYPECTOR_REP_INT:
@@ -2707,7 +2705,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
             ** There's no way to create values of type `void',
             ** so this should never happen.
             */
-            fatal_error(""ML_expand: cannot expand void types"");
+            MR_fatal_error(""ML_expand: cannot expand void types"");
 
         case MR_TYPECTOR_REP_C_POINTER:
             /* XXX expand_info->non_canonical_type = TRUE; */
@@ -2839,7 +2837,7 @@ ML_expand(MR_TypeInfo type_info, Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_UNKNOWN:    /* fallthru */
         default:
-            fatal_error(""ML_expand: cannot expand -- unknown data type"");
+            MR_fatal_error(""ML_expand: cannot expand -- unknown data type"");
             break;
     }
 }
@@ -2873,7 +2871,7 @@ ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
         ** that allows this.)
         */
     if (expand_info.non_canonical_type) {
-        fatal_error(""called argument/2 for a type with a ""
+        MR_fatal_error(""called argument/2 for a type with a ""
             ""user-defined equality predicate"");
     }
 
@@ -2924,7 +2922,7 @@ ML_arg(MR_TypeInfo type_info, Word *term_ptr, int arg_index,
         ** that allows this.)
         */
     if (expand_info.non_canonical_type) {
-        fatal_error(""called functor/2 for a type with a ""
+        MR_fatal_error(""called functor/2 for a type with a ""
             ""user-defined equality predicate"");
     }
 
@@ -3048,7 +3046,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
         ** that allows this.)
         */
     if (expand_info.non_canonical_type) {
-        fatal_error(""called deconstruct/4 for a type with a ""
+        MR_fatal_error(""called deconstruct/4 for a type with a ""
             ""user-defined equality predicate"");
     }
 

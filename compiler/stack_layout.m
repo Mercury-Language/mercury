@@ -368,7 +368,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		sprintf(msg, ""internal error in creating string table;\\n""
 			""cur_offset = %ld, ArenaSize = %ld\\n"",
 			(long) cur_offset, (long) ArenaSize);
-		fatal_error(msg);
+		MR_fatal_error(msg);
 	}
 }").
 

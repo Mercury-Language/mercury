@@ -33,6 +33,8 @@
 #define make_aligned_string(a,b)	MR_make_aligned_string((a),(b))
 #define string_equal(a,b)		MR_string_equal((a),(b))
 #define string_const(a,b)		MR_string_const((a),(b))
+#define hash_string(s)			MR_hash_string((s))
+#define fatal_error(s)			MR_fatal_error((s))
 
 /*
 ** The list manipulation macros are available for use by ordinary Mercury

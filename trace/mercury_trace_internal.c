@@ -82,7 +82,7 @@ static	MR_Trace_Print_Level	MR_default_print_level = MR_PRINT_LEVEL_SOME;
 ** how many events we have printed so far in this screenful.
 */
 
-static	bool			MR_scroll_control = FALSE;
+static	bool			MR_scroll_control = TRUE;
 static	int			MR_scroll_limit = 24;
 static	int			MR_scroll_next = 0;
 
@@ -1015,7 +1015,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 						file, line);
 				}
 			} else {
-				fatal_error("cannot find current filename");
+				MR_fatal_error("cannot find current filename");
 			}
 		} else {
 			MR_trace_usage("breakpoint", "break");
@@ -1300,7 +1300,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				break;
 
 			default:
-				fatal_error("invalid MR_context_position");
+				MR_fatal_error("invalid MR_context_position");
 			}
 		} else {
 			MR_trace_usage("parameter", "context");

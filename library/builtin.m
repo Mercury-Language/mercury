@@ -304,12 +304,12 @@ BEGIN_CODE
 /* code for predicate 'builtin_unify_pred'/2 in mode 0 */
 Define_entry(mercury__builtin_unify_pred_2_0);
 	MR_incr_sp_push_msg(2, ""private_builtin:builtin_unify_pred"");
-	fatal_error(""attempted unification of higher-order terms"");
+	MR_fatal_error(""attempted unification of higher-order terms"");
 
 /* code for predicate 'builtin_compare_pred'/3 in mode 0 */
 Define_entry(mercury__builtin_compare_pred_3_0);
 	MR_incr_sp_push_msg(2, ""private_builtin:builtin_compare_pred"");
-	fatal_error(""attempted comparison of higher-order terms"");
+	MR_fatal_error(""attempted comparison of higher-order terms"");
 END_MODULE
 
 /*

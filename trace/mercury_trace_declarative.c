@@ -264,7 +264,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
 		/* XXX this should be handled better. */
-		fatal_error("layout has no execution tracing");
+		MR_fatal_error("layout has no execution tracing");
 	}
 
 	if (depth > MR_edt_max_depth || depth < MR_edt_min_depth) {
@@ -331,13 +331,13 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			break;
 		case MR_PORT_PRAGMA_FIRST:
 		case MR_PORT_PRAGMA_LATER:
-			fatal_error("MR_trace_decl_debug: "
+			MR_fatal_error("MR_trace_decl_debug: "
 				"foreign language code is not handled (yet)");
 		case MR_PORT_EXCEPTION:
-			fatal_error("MR_trace_decl_debug: "
+			MR_fatal_error("MR_trace_decl_debug: "
 				"exceptions are not handled (yet)");
 		default:
-			fatal_error("MR_trace_decl_debug: unknown port");
+			MR_fatal_error("MR_trace_decl_debug: unknown port");
 	}
 	MR_decl_checkpoint_alloc(trace);
 	MR_trace_current_node = trace;
@@ -354,7 +354,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				break;
 
 			default:
-				fatal_error("MR_trace_decl_debug: "
+				MR_fatal_error("MR_trace_decl_debug: "
 						"unexpected mode");
 		}
 
@@ -454,7 +454,7 @@ MR_trace_decl_redo(MR_Event_Info *event_info, MR_Trace_Node prev)
 		if (!MR_DD_trace_node_call(MR_trace_node_store, (Word) next,
 					(Word *) &call))
 		{
-			fatal_error("MR_trace_decl_redo: no matching EXIT");
+			MR_fatal_error("MR_trace_decl_redo: no matching EXIT");
 		}
 	);
 #endif /* !MR_USE_DECL_STACK_SLOT */
@@ -941,12 +941,12 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 		problem = MR_trace_return_var_info(i, NULL, &arg_type,
 					&arg_value);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		problem = MR_trace_headvar_num(i, &arg_pos);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_USE_HP(
@@ -1146,7 +1146,7 @@ MR_trace_node_seqno(MR_Trace_Node node)
 					(Word) node,
 					(Word *) &seqno))
 		{
-			fatal_error("MR_trace_node_seqno: "
+			MR_fatal_error("MR_trace_node_seqno: "
 				"not an interface event");
 		}
 	);
@@ -1161,7 +1161,7 @@ MR_trace_node_first_disj(MR_Trace_Node node)
 	MR_TRACE_CALL_MERCURY(
 		if (!MR_DD_trace_node_first_disj((Word) node, (Word *) &first))
 		{
-			fatal_error("MR_trace_node_first_disj: "
+			MR_fatal_error("MR_trace_node_first_disj: "
 				"not a DISJ event");
 		}
 	);

@@ -61,7 +61,7 @@ spawn_call_back_to_mercury_cc_multi:
 	}
 	IO = IO0;
 #else
-	fatal_error(""spawn is not implemented for highlevel code"");
+	MR_fatal_error(""spawn is not implemented for highlevel code"");
 #endif
 }").
 

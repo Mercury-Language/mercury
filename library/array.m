@@ -373,7 +373,7 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 
 :- pragma c_header_code("
 #include ""mercury_library_types.h""	/* for MR_ArrayType */
-#include ""mercury_misc.h""		/* for fatal_error() */
+#include ""mercury_misc.h""		/* for MR_fatal_error() */
 ").
 
 :- pragma c_header_code("
@@ -472,7 +472,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""array__lookup: array index out of bounds"");
+		MR_fatal_error(""array__lookup: array index out of bounds"");
 	}
 #endif
 	Item = array->elements[Index];
@@ -482,7 +482,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""array__lookup: array index out of bounds"");
+		MR_fatal_error(""array__lookup: array index out of bounds"");
 	}
 #endif
 	Item = array->elements[Index];
@@ -496,7 +496,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
 	if ((Unsigned) Index >= (Unsigned) array->size) {
-		fatal_error(""array__set: array index out of bounds"");
+		MR_fatal_error(""array__set: array index out of bounds"");
 	}
 #endif
 	array->elements[Index] = Item;	/* destructive update! */
@@ -568,7 +568,8 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
 	if (old_array_size < array_size) {
-		fatal_error(""array__shrink: can't shrink to a larger size"");
+		MR_fatal_error(
+			""array__shrink: can't shrink to a larger size"");
 	}
 
 	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);

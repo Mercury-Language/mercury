@@ -1451,7 +1451,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		break;
 
 	    default:
-		fatal_error(
+		MR_fatal_error(
 			""odbc.m: invalid attribute type in odbc__get_data"");
 		break;
 	} /* end switch (Type) */
@@ -1732,7 +1732,7 @@ sql_type_to_attribute_type(SWORD sql_type)
 		case SQL_VARBINARY:		return MODBC_STRING;
 		case SQL_VARCHAR:		return MODBC_STRING;
 		default:
-		    fatal_error(
+		    MR_fatal_error(
 		    	""odbc.m: sql_type_to_attribute_type: unknown type"");
 	}
 }
@@ -1751,7 +1751,7 @@ attribute_type_to_sql_c_type(MODBC_AttrType AttrType)
 		case MODBC_VAR_STRING:		return SQL_C_CHAR;
 		default:
 			/* Unsuported MODBC_xxx type */
-		    fatal_error(
+		    MR_fatal_error(
 		    	""odbc.m: attribute_type_to_sql_c_type: unknown type"");
 	}
 }
@@ -1930,7 +1930,7 @@ sql_type_to_size(SWORD sql_type, UDWORD cbColDef,
 			return cbColDef + 1;  /* 1 for NUL */
 
 		default:
-		    fatal_error(""odbc.m: sql_type_to_size: unknown type"");
+		    MR_fatal_error(""odbc.m: sql_type_to_size: unknown type"");
 	}
 }
 ").

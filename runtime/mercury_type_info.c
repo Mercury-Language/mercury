@@ -89,7 +89,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 
 	exist_info = functor_desc->MR_du_functor_exist_info;
 	if (exist_info == NULL) {
-		fatal_error("MR_get_arg_type_info: no exist_info");
+		MR_fatal_error("MR_get_arg_type_info: no exist_info");
 	}
 
 	exist_varnum = arg_num - MR_PSEUDOTYPEINFO_EXIST_VAR_BASE - 1;

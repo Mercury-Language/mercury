@@ -259,7 +259,7 @@ MR_trace_set_level(int ancestor_level)
 		}
 	} else {
 		if (problem == NULL) {
-			fatal_error("MR_find_nth_ancestor failed "
+			MR_fatal_error("MR_find_nth_ancestor failed "
 					"without reporting a problem");
 		}
 
@@ -346,7 +346,7 @@ MR_trace_set_level(int ancestor_level)
 		}
 
 		if (var_info->MR_var_name_offset > string_table_size) {
-			fatal_error("array bounds error on string table");
+			MR_fatal_error("array bounds error on string table");
 		}
 
 		name = string_table + var_info->MR_var_name_offset;
@@ -390,7 +390,8 @@ MR_trace_set_level(int ancestor_level)
 			MR_point.MR_point_vars[slot].MR_var_basename = copy;
 		} else {
 			if (MR_isdigit(*s)) {
-				fatal_error("variable name starts with digit");
+				MR_fatal_error(
+					"variable name starts with digit");
 			}
 
 			MR_point.MR_point_vars[slot].MR_var_has_suffix = TRUE;
@@ -514,7 +515,7 @@ MR_trace_current_level_details(const MR_Stack_Layout_Entry **entry_ptr,
 	Word **base_sp_ptr, Word **base_curfr_ptr)
 {
 	if (MR_point.MR_point_problem != NULL) {
-		fatal_error("cannot get details about current level");
+		MR_fatal_error("cannot get details about current level");
 	}
 
 	if (entry_ptr != NULL) {
@@ -674,7 +675,7 @@ MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
 				browser);
 		}
 	} else {
-		fatal_error("internal error: bad var_spec kind");
+		MR_fatal_error("internal error: bad var_spec kind");
 	}
 
 	return NULL;

@@ -843,7 +843,7 @@ mercury__exception__builtin_catch_model_non(MR_Word type_info,
 /*********
 This causes problems because the LLDS back-end
 does not let you export code with determinism `nondet'.
-Instead we handle-code it... see below.
+Instead we hand-code it... see below.
 
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
@@ -953,7 +953,7 @@ MR_trace_throw(Code *success_pointer, Word *det_stack_pointer,
 		** invoke MR_trace() to trace the exception
 		*/
 		if (return_label_layout->MR_sll_port != MR_PORT_EXCEPTION) {
-			fatal_error(""return layout port is not exception"");
+			MR_fatal_error(""return layout port is not exception"");
 		}
 
 		MR_jumpaddr = MR_trace(return_label_layout);

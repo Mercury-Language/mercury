@@ -1840,7 +1840,7 @@ ml_gen_c_code_for_rval(ArgRval, Var_ArgName) :-
 		% XXX don't complain until run-time
 		% sorry("complicated pragma c_code")
 		Var_ArgName =
-		"*(fatal_error(""complicated pragma c_code""),(MR_Word *)0)"
+		"*(MR_fatal_error(""complicated pragma c_code""),(MR_Word *)0)"
 	).
 
 %-----------------------------------------------------------------------------%

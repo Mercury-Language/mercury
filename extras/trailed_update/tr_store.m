@@ -218,13 +218,14 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
-		fatal_error(""tr_store__arg_ref: argument number out of range"");
+		MR_fatal_error(""tr_store__arg_ref: ""
+			""argument number out of range"");
 	}
 
 	if (MR_compare_type_info(arg_type_info,
 		(MR_TypeInfo) TypeInfo_for_ArgT) != COMPARE_EQUAL)
 	{
-		fatal_error(""tr_store__arg_ref: argument has wrong type"");
+		MR_fatal_error(""tr_store__arg_ref: argument has wrong type"");
 	}
 
 	restore_transient_registers();
@@ -244,13 +245,15 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
-	      fatal_error(""tr_store__new_arg_ref: argument number out of range"");
+		MR_fatal_error(""tr_store__new_arg_ref: ""
+			""argument number out of range"");
 	}
 
 	if (MR_compare_type_info(arg_type_info,
 		(MR_TypeInfo) TypeInfo_for_ArgT) != COMPARE_EQUAL)
 	{
-	      fatal_error(""tr_store__new_arg_ref: argument has wrong type"");
+		MR_fatal_error(""tr_store__new_arg_ref: ""
+			""argument has wrong type"");
 	}
 
 	restore_transient_registers();

@@ -627,7 +627,7 @@ Define_entry(do_det_aditi_call);
 
 	/* Unpack the output tuple into r1 and upwards. */
 	if (!MADITI_get_output_tuple(1)) {
-		fatal_error(""no solution for det Aditi call"");
+		MR_fatal_error(""no solution for det Aditi call"");
 	}
 
 	/*
@@ -864,7 +864,7 @@ MADITI_trail_cleanup_call_output(void *data, MR_untrail_reason reason)
 
 	    case MR_gc:
 	    default:
-		fatal_error(""MADITI_trail_cleanup_call_output"");
+		MR_fatal_error(""MADITI_trail_cleanup_call_output"");
 	}
 }
 #endif /* MR_USE_TRAIL */

@@ -521,7 +521,7 @@ ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
 			break;
 
 		default:
-			fatal_error(""ML_var_untrail_func: ""
+			MR_fatal_error(""ML_var_untrail_func: ""
 				""unknown untrail reason"");
 	}
 }

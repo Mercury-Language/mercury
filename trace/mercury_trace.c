@@ -199,7 +199,7 @@ MR_trace_real(const MR_Stack_Layout_Label *layout)
 			goto check_stop_print;
 
 		default:
-			fatal_error("invalid command in MR_trace");
+			MR_fatal_error("invalid command in MR_trace");
 	}
 
 check_stop_print:
@@ -338,7 +338,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 	if (MR_trace_handler == MR_TRACE_EXTERNAL) {
 		if (!interactive) {
-			fatal_error("reporting event for external debugger");
+			MR_fatal_error("reporting event for external debugger");
 		}
 
 		jumpaddr = MR_trace_event_external(cmd, &event_info);
@@ -440,7 +440,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 				MR_INIT_ARG_COUNT);
 			args[arg_num] = arg_value;
 		} else {
-			fatal_error("illegal location for input argument");
+			MR_fatal_error("illegal location for input argument");
 		}
 	}
 
@@ -461,7 +461,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 		location = entry->MR_sle_succip_locn;
 		if (MR_LONG_LVAL_TYPE(location) != MR_LONG_LVAL_TYPE_STACKVAR)
 		{
-			fatal_error("illegal location for stored succip");
+			MR_fatal_error("illegal location for stored succip");
 		}
 
 		this_frame = MR_saved_sp(saved_regs);
@@ -483,7 +483,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 			MR_reset_ticket(trail_ptr, MR_retry);
 			MR_discard_tickets_to(ticket_counter);
 		} else {
-			fatal_error("retry cannot restore the trail");
+			MR_fatal_error("retry cannot restore the trail");
 		}
 #endif
 	} else {
@@ -515,7 +515,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 			MR_reset_ticket(trail_ptr, MR_retry);
 			MR_discard_tickets_to(ticket_counter);
 		} else {
-			fatal_error("retry cannot restore the trail");
+			MR_fatal_error("retry cannot restore the trail");
 		}
 #endif
 	}

@@ -105,7 +105,7 @@
 ** The definition here and the definition in string.m
 ** must be kept equivalent.
 */
-#define do_hash_string(hash, s)				\
+#define MR_do_hash_string(hash, s)			\
 	{						\
 	   int len = 0;					\
 	   hash = 0;					\
@@ -118,27 +118,28 @@
 	}
 
 /*
-** hash_string(s):
+** MR_hash_string(s):
 **	Given a Mercury string `s', return a hash value for that string.
 */
-int	hash_string(Word);
+int	MR_hash_string(Word);
 
 #ifdef __GNUC__
-#define hash_string(s)							\
+#define MR_hash_string(s)						\
 	({ int hash_string_result;					\
-	   do_hash_string(hash_string_result, s);			\
+	   MR_do_hash_string(hash_string_result, s);			\
 	   hash_string_result;						\
 	})
 #endif
 
 /* 
-** If we're not using gcc, the actual definition of hash_string is in misc.c;
-** it uses the macro HASH_STRING_FUNC_BODY below.
+** If we're not using gcc, the actual definition of hash_string is in
+** runtime/mercury_misc.c;
+** it uses the macro MR_HASH_STRING_FUNC_BODY below.
 */
 
-#define HASH_STRING_FUNC_BODY						\
+#define MR_HASH_STRING_FUNC_BODY					\
 	   int hash_string_result;					\
-	   do_hash_string(hash_string_result, s);			\
+	   MR_do_hash_string(hash_string_result, s);			\
 	   return hash_string_result;
 
 #endif /* not MERCURY_STRING_H */

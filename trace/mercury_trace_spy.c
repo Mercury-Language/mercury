@@ -179,7 +179,7 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 				MR_spied_labels[slot].spy_point_num];
 			if (point->spy_enabled) {
 				if (point->spy_when != MR_SPY_LINENO) {
-					fatal_error("non-lineno spy "
+					MR_fatal_error("non-lineno spy "
 						"point in "
 						"spied labels array");
 				}
@@ -203,8 +203,8 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 					spy_point_num];
 				if (point->spy_enabled) {
 					if (point->spy_when != MR_SPY_LINENO) {
-						fatal_error("non-lineno spy "
-							"point in "
+						MR_fatal_error("non-lineno "
+							"spy point in "
 							"spied labels array");
 					}
 
@@ -266,11 +266,11 @@ MR_event_matches_spy_point(const MR_Stack_Layout_Label *layout,
 					break;
 
 				case MR_SPY_LINENO:
-					fatal_error("lineno spy point in "
+					MR_fatal_error("lineno spy point in "
 						"spied procs array");
 
 				default:
-					fatal_error("bad spy point when in "
+					MR_fatal_error("bad spy point when in "
 						"MR_event_matches_spy_point");
 			}
 		}
@@ -444,7 +444,7 @@ MR_delete_spy_point(int point_table_slot)
 
 		proc_table_slot = MR_search_spy_table_for_proc(point->spy_proc);
 		if (proc_table_slot < 0) {
-			fatal_error("deleted spy point "
+			MR_fatal_error("deleted spy point "
 				"was not indexed by proc addr");
 		}
 
@@ -456,7 +456,7 @@ MR_delete_spy_point(int point_table_slot)
 		}
 
 		if (cur == NULL) {
-			fatal_error("deleted spy point "
+			MR_fatal_error("deleted spy point "
 				"was not on proc index list");
 		}
 

@@ -326,12 +326,12 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 
 Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
 {
-	fatal_error(""attempt to unify typeclass_info"");
+	MR_fatal_error(""attempt to unify typeclass_info"");
 }
 
 Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
 {
-	fatal_error(""attempt to compare typeclass_info"");
+	MR_fatal_error(""attempt to compare typeclass_info"");
 }
 END_MODULE
 
@@ -762,7 +762,7 @@ unused :-
 
 :- pragma c_code(table_nondet_setup(T0::in, T::out), will_not_call_mercury, "
 #ifndef	MR_USE_MINIMAL_MODEL
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
 #ifdef	MR_THREAD_SAFE
 #error ""Sorry, not yet implemented: mixing minimal model tabling and threads""
@@ -804,11 +804,12 @@ unused :-
 		}
 
 		if (MR_maxfr != MR_curfr) {
-			fatal_error(""MR_maxfr != MR_curfr at table setup\\n"");
+			MR_fatal_error(
+				""MR_maxfr != MR_curfr at table setup\\n"");
 		}
 #endif
 #ifdef MR_HIGHLEVEL_CODE
- 		fatal_error(""sorry, not implemented: ""
+ 		MR_fatal_error(""sorry, not implemented: ""
 			""minimal_model tabling with --high-level-code"");
 #else
 		subgoal->generator_maxfr = MR_prevfr_slot(MR_maxfr);
@@ -833,7 +834,7 @@ unused :-
 
 	SUCCESS_INDICATOR = (table->MR_subgoal->status == MR_SUBGOAL_COMPLETE);
 #else
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
@@ -845,7 +846,7 @@ unused :-
 
 	SUCCESS_INDICATOR = (table->MR_subgoal->status == MR_SUBGOAL_ACTIVE);
 #else
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
@@ -859,7 +860,7 @@ unused :-
 	MR_register_generator_ptr(table);
 	table->MR_subgoal->status = MR_SUBGOAL_ACTIVE;
 #else
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
@@ -872,14 +873,14 @@ unused :-
 
 	AT = (Word) &(table->MR_subgoal->answer_table);
 #else
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 ").
 
 :- pragma c_code(table_nondet_answer_is_not_duplicate(T::in),
 		will_not_call_mercury, "
 #ifndef	MR_USE_MINIMAL_MODEL
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
 	MR_TrieNode	table;
 	bool		is_new_answer;
@@ -902,7 +903,7 @@ unused :-
 :- pragma c_code(table_nondet_new_ans_slot(T::in, Slot::out),
 		will_not_call_mercury, "
 #ifndef	MR_USE_MINIMAL_MODEL
-	fatal_error(""minimal model code entered when not enabled"");
+	MR_fatal_error(""minimal model code entered when not enabled"");
 #else
 	MR_TrieNode		table;
 	MR_Subgoal		*subgoal;
@@ -981,7 +982,7 @@ unused :-
 			SUCCEED;
 		}
 #else
-		fatal_error(""minimal model code entered when not enabled"");
+		MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 	")
 ).
@@ -1028,7 +1029,7 @@ unused :-
 			SUCCEED;
 		}
 #else
-		fatal_error(""minimal model code entered when not enabled"");
+		MR_fatal_error(""minimal model code entered when not enabled"");
 #endif
 	")
 ).
@@ -1141,7 +1142,7 @@ unused :-
 
 :- pragma c_header_code("
 
-#include ""mercury_misc.h""		/* for fatal_error(); */
+#include ""mercury_misc.h""		/* for MR_fatal_error(); */
 #include ""mercury_type_info.h""	/* for MR_TypeCtorInfo_Struct; */
 #include ""mercury_tabling.h""		/* for MR_TrieNode, etc. */
 

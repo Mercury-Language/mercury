@@ -47,7 +47,7 @@ exist_func(const MR_TypeInfoParams type_info_params,
 		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(
 			(MR_PseudoTypeInfo) expanded_type_info))
 		{
-			fatal_error(exist_func_string
+			MR_fatal_error(exist_func_string
 				": unbound type variable");
 		}
 
@@ -89,7 +89,7 @@ exist_func(const MR_TypeInfoParams type_info_params,
 		if (MR_PSEUDO_TYPEINFO_IS_VARIABLE(
 			(MR_PseudoTypeInfo) expanded_type_info))
 		{
-			fatal_error(exist_func_string
+			MR_fatal_error(exist_func_string
 				": unbound type variable");
 		}
 

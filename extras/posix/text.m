@@ -135,7 +135,7 @@ text_2([C|Cs], N, Text0, Text) :-
 
 	txtptr = (ME_Text *) Txt;
 	if (Ind < 0 || Ind >= txtptr->len) {
-		fatal_error(""text:index : index out of range"");
+		MR_fatal_error(""text:index : index out of range"");
 	}
 
 	Val = txtptr->data[Ind];
@@ -148,7 +148,7 @@ text_2([C|Cs], N, Text0, Text) :-
 
 	txtptr = (ME_Text *) Txt;
 	if (Ind < 0 || Ind >= txtptr->len) {
-		fatal_error(""text:index : index out of range"");
+		MR_fatal_error(""text:index : index out of range"");
 	}
 
 	Val = txtptr->data[Ind];
@@ -163,7 +163,7 @@ text_2([C|Cs], N, Text0, Text) :-
 
 	txtptr = (ME_Text *) Txt0;
 	if (Ind < 0 || Ind >= txtptr->len) {
-		fatal_error(""text:index : index out of range"");
+		MR_fatal_error(""text:index : index out of range"");
 	}
 	
 	txtptr->data[Ind] = Val;
@@ -204,7 +204,7 @@ text_2([C|Cs], N, Text0, Text) :-
 
 	txtptr1 = (ME_Text *) Text0;
 	if (Where < 0 || Where >= txtptr1->len) {
-		fatal_error(""text:split : index out of range"");
+		MR_fatal_error(""text:split : index out of range"");
 	}
 
 	Text1 = Text0;
@@ -228,7 +228,7 @@ text_2([C|Cs], N, Text0, Text) :-
 	txtptr2 = (ME_Text *) Text1;
 
 	if (txtptr1->data + txtptr1->len != txtptr2->data) {
-		fatal_error(""text:combine : not adjacent text"");
+		MR_fatal_error(""text:combine : not adjacent text"");
 	}
 
 	txtptr1->len = txtptr1->len + txtptr2->len;

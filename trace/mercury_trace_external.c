@@ -254,7 +254,7 @@ MR_init_unix_address(const char *name, struct sockaddr_un *unix_addr)
 		len = strlen(unix_addr->sun_path) +
 			sizeof(unix_addr->sun_family);
 		if (len != 16) {
-			fatal_error("unix socket: length != 16");
+			MR_fatal_error("unix socket: length != 16");
 		}
 	#endif
 }
@@ -295,13 +295,13 @@ MR_trace_init_external(void)
 	unix_socket = getenv("MERCURY_DEBUGGER_UNIX_SOCKET");
 	inet_socket = getenv("MERCURY_DEBUGGER_INET_SOCKET");
 	if (unix_socket == NULL && inet_socket == NULL) {
-		fatal_error("you must set either the "
+		MR_fatal_error("you must set either the "
 			"MERCURY_DEBUGGER_UNIX_SOCKET\n"
 			"or MERCURY_DEBUGGER_INET_SOCKET "
 			"environment variable");
 	}
 	if (unix_socket != NULL && inet_socket != NULL) {
-		fatal_error("you must set only one of the "
+		MR_fatal_error("you must set only one of the "
 			"MERCURY_DEBUGGER_UNIX_SOCKET "
 			"and MERCURY_DEBUGGER_INET_SOCKET\n"
 			"environment variables");
@@ -338,15 +338,15 @@ MR_trace_init_external(void)
 		if (sscanf(inet_socket, "%254s %254s", hostname, port_string) 
 			!= 2)
 		{
-			fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
+			MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET invalid");
 		}
 		host_addr = inet_addr(hostname);
 		if (host_addr == -1) {
-			fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+			MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 				"invalid address");
 		}
 		if (sscanf(port_string, "%hu", &port) != 1) {
-			fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
+			MR_fatal_error("MERCURY_DEBUGGER_INET_SOCKET: "
 				"invalid port");
 		}
 
@@ -370,7 +370,7 @@ MR_trace_init_external(void)
 	if (fd < 0) {
 		fprintf(stderr, "Mercury runtime: socket() failed: %s\n",
 			strerror(errno));
-		fatal_error("cannot open socket for debugger");
+		MR_fatal_error("cannot open socket for debugger");
 	} else if (MR_debug_socket) {
 		fprintf(stderr,"Mercury runtime: creation of socket ok\n");
 	}
@@ -381,7 +381,7 @@ MR_trace_init_external(void)
 	if (connect(fd, addr, len) < 0) {
 		fprintf(stderr, "Mercury runtime: connect() failed: %s\n",
 			strerror(errno));
-		fatal_error("can't connect to debugger socket");
+		MR_fatal_error("can't connect to debugger socket");
 	} else if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: connection to socket: ok\n");
 	}
@@ -394,7 +394,7 @@ MR_trace_init_external(void)
 	if ((file_in == NULL)||(file_out == NULL)) {
 		fprintf(stderr, "Mercury runtime: fdopen() failed: %s\n",
 			strerror(errno));
-		fatal_error("cannot open debugger socket");
+		MR_fatal_error("cannot open debugger socket");
 	} else if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: fdopen(): ok\n");
 	}
@@ -421,7 +421,7 @@ MR_trace_init_external(void)
 	MR_read_request_from_socket(&debugger_request, &debugger_request_type);
 
 	if (debugger_request_type != MR_REQUEST_HELLO_REPLY) {
-		fatal_error("unexpected command on debugger socket");
+		MR_fatal_error("unexpected command on debugger socket");
 	} else if (MR_debug_socket) {
 		fprintf(stderr, "Mercury runtime: read hello_reply\n");
 	}
@@ -457,7 +457,7 @@ MR_trace_final_external(void)
 			break;
 
 		default:
-			fatal_error("Error in the external debugger");
+			MR_fatal_error("Error in the external debugger");
 	}
 	/*
 	** Maybe we should loop to process requests from the
@@ -549,7 +549,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 			break;
 
 		default:
-	       		fatal_error("Software error in the debugger.\n");
+	       		MR_fatal_error("Software error in the debugger.\n");
 	}
 
 	/* loop to process requests read from the debugger socket */
@@ -867,7 +867,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				break;
 			  }
 			default:
-				fatal_error("unexpected request read from "
+				MR_fatal_error("unexpected request read from "
 					"debugger socket");
 		}
 	}
@@ -1098,7 +1098,7 @@ MR_trace_make_var_list(void)
 		problem = MR_trace_return_var_info(i, NULL,
 				&type_info, &value);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_USE_HP(
@@ -1144,7 +1144,7 @@ MR_trace_make_var_names_list(void)
 	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, &name, NULL, NULL);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_USE_HP(
@@ -1182,7 +1182,7 @@ MR_trace_make_type_list(void)
 	for (i = var_count; i > 0; i--) {
 		problem = MR_trace_return_var_info(i, NULL, &type_info, NULL);
 		if (problem != NULL) {
-			fatal_error(problem);
+			MR_fatal_error(problem);
 		}
 
 		MR_TRACE_CALL_MERCURY(
@@ -1228,7 +1228,7 @@ MR_trace_make_nth_var(Word debugger_request)
 		** Should never occur since we check in the external debugger
 		** process if a variable is live before retrieving it.
 		*/
-		fatal_error(problem);
+		MR_fatal_error(problem);
 	}
 
 	return univ;
@@ -1291,7 +1291,7 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 	const char *extra, Word *base_sp, Word *base_curfr)
 {
 	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
-		fatal_error("cannot retrieve procedure id without layout");
+		MR_fatal_error("cannot retrieve procedure id without layout");
 	}
 
 	if (base_sp != NULL && base_curfr != NULL) {
@@ -1369,7 +1369,7 @@ MR_print_proc_id_to_socket(const MR_Stack_Layout_Entry *entry,
 		{
 			MR_send_message_to_socket("func");
 		} else {
-			fatal_error("procedure is not pred or func");
+			MR_fatal_error("procedure is not pred or func");
 		}
 		
 		MR_send_message_to_socket_format(

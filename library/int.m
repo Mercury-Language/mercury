@@ -419,7 +419,7 @@ is(X, X).
 	else if (sizeof(Integer) == sizeof(long))
 		Max = LONG_MAX;
 	else
-		fatal_error(""Unable to figure out max integer size"");
+		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
 :- pragma c_code(int__min_int(Min::out), will_not_call_mercury, "
@@ -428,7 +428,7 @@ is(X, X).
 	else if (sizeof(Integer) == sizeof(long))
 		Min = LONG_MIN;
 	else
-		fatal_error(""Unable to figure out min integer size"");
+		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
 :- pragma c_code(int__bits_per_int(Bits::out), will_not_call_mercury, "

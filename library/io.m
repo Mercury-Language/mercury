@@ -2706,13 +2706,13 @@ mercury_init_io(void)
 #if defined(HAVE_FDOPEN) && (defined(HAVE_FILENO) || defined(fileno))
 	mercury_stdin_binary.file = fdopen(fileno(stdin), ""rb"");
 	if (mercury_stdin_binary.file == NULL) {
-		fatal_error(""error opening standard input stream in ""
+		MR_fatal_error(""error opening standard input stream in ""
 			""binary mode:\\n\\tfdopen() failed: %s"",
 			strerror(errno));
 	}
 	mercury_stdout_binary.file = fdopen(fileno(stdout), ""wb"");
 	if (mercury_stdout_binary.file == NULL) {
-		fatal_error(""error opening standard output stream in ""
+		MR_fatal_error(""error opening standard output stream in ""
 			""binary mode:\\n\\tfdopen() failed: %s"",
 			strerror(errno));
 	}

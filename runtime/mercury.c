@@ -179,7 +179,7 @@ mercury__builtin__unify_2_p_0(Word ti, MR_Box x, MR_Box y)
 				(args[1], args[2], args[3],
 				 args[4], args[5], x, y);
 		default:
-			fatal_error("unify/2: type arity > 5 not supported");
+			MR_fatal_error("unify/2: type arity > 5 not supported");
 	}
 }
 
@@ -224,7 +224,7 @@ mercury__builtin__compare_3_p_0(Word ti, Word *res, MR_Box x, MR_Box y)
 			 (args[1], args[2], args[3],
 			  args[4], args[5], res, x, y);
 		default:
-			fatal_error("index/2: type arity > 5 not supported");
+			MR_fatal_error("index/2: type arity > 5 not supported");
 	}
 }
 

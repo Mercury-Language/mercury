@@ -247,7 +247,7 @@ accept(Fd, Result) -->
 		field(MR_mktag(0), Ptr, 0) = ntohs(ptr->sin_port);
 		field(MR_mktag(0), Ptr, 1) = ptr->sin_addr.s_addr;
 	} else {
-		fatal_error(""cons_sockaddr: unknown type"");
+		MR_fatal_error(""cons_sockaddr: unknown type"");
 	}
 }").
 

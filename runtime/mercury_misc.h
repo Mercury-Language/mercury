@@ -7,7 +7,7 @@
 /*
 ** mercury_misc.h -	debugging messages,
 **			MR_warning(),
-**			fatal_error(),
+**			MR_fatal_error(),
 **			MR_memcpy
 **			MR_fd_zero
 */
@@ -69,7 +69,7 @@ extern	void	printlabel(/* const */ Code *w);
 	#define NO_RETURN
 #endif
 extern	void	MR_warning(const char *msg, ...);
-extern	void	fatal_error(const char *msg, ...) NO_RETURN;
+extern	void	MR_fatal_error(const char *msg, ...) NO_RETURN;
 
 /*
 ** We use our own version of memcpy because gcc recognises calls to the
