@@ -106,7 +106,7 @@ main_target: $(MAIN_TARGET)
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $< -o $@
 
 .c.pic_o:
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(PIC) -c $< -o $@
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
 
 .c.s:
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -S $< -o $@
@@ -121,7 +121,7 @@ main_target: $(MAIN_TARGET)
 
 .m.pic_o:
 	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(PIC) -c $< -o $@
+	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
 	$(RM_C) $*.c
 
 #-----------------------------------------------------------------------------#

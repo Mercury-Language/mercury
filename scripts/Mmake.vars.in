@@ -55,10 +55,21 @@ MSLFLAGS	=
 MSP		= msp
 MSPFLAGS	=
 
-# $(PIC) is passed to the C compiler when creating `.pic_o' files
+# $(CFLAGS_FOR_PIC) is passed to the C compiler when creating `.pic_o' files
 # (We use `.pic_o' as the extension for `.o' files that must have
 # position-independent code.)
-PIC		= -fpic -shared
+CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+
+# $(EXT_FOR_PIC_OBJECTS) will be either `.o', if $(CFLAGS_FOR_PIC) is empty,
+# or `.pic_o', if special flags are required for compiling files that
+# will be put in shared libraries.
+EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
+
+# $(EXT_FOR_SHARED_LIB) will be the extension for shared libraries,
+# if the system supports them (e.g. `.so'), or the extension used
+# for non-shared libraries (e.g. `.a') if the system doesn't support
+# shared libraries.
+EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 
 # Set `RM_C' to `:' if you want to keep the intermediate `.c' files.
 RM_C		= rm
