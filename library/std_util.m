@@ -1142,17 +1142,6 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0,
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, univ, 0,
 	MR_TYPECTOR_REP_UNIV);
 
-#ifndef	COMPACT_ARGS
-
-MR_declare_label(mercury____Compare___std_util__univ_0_0_i1);
-
-MR_MAKE_PROC_LAYOUT(mercury____Compare___std_util__univ_0_0,
-	MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
-	MR_PREDICATE, ""std_util"", ""compare_univ"", 3, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury____Compare___std_util__univ_0_0, 1);
-
-#endif
-
 MR_define_extern_entry(mercury____Unify___std_util__type_desc_0_0);
 MR_define_extern_entry(mercury____Compare___std_util__type_desc_0_0);
 
