@@ -191,6 +191,6 @@
 +	),
 +	display_apropos_result(Xs).
 +
-+% To avoid typing brackets when using the apropos command.
++% To avoid typing brackets when using the apropos command. 
 +:- op(1190, fy, apropos).
 +:- op(1190, fy, a).
