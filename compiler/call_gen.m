@@ -144,7 +144,8 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
 		Modes0, Det, GoalInfo, Code) -->
 	% `unsafe_cast' differs from the other generic call types in
-	% that there is no address.
+	% that there is no address. Also, live_vars.m assumes that
+	% unsafe_casts do not require live variables to be saved to the stack.
 	( { GenericCall = unsafe_cast } ->
 		( { Args0 = [InputArg, OutputArg] } ->
 			call_gen__generate_assign_builtin(OutputArg,

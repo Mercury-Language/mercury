@@ -222,57 +222,54 @@
 	--->	needs_flush
 	;	doesnt_need_flush.
 
-stack_opt_cell(PredId, ProcId, ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo,
-		IO0, IO) :-
-	detect_liveness_proc(PredId, ProcId, ModuleInfo0, ProcInfo0, ProcInfo1,
-		IO0, IO1),
-	initial_liveness(ProcInfo1, PredId, ModuleInfo0, Liveness0),
-	module_info_globals(ModuleInfo0, Globals),
-	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+stack_opt_cell(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
+	detect_liveness_proc(PredId, ProcId, !.ModuleInfo,
+		ProcInfo0, ProcInfo1, !IO),
+	initial_liveness(ProcInfo1, PredId, !.ModuleInfo, Liveness0),
+	module_info_globals(!.ModuleInfo, Globals),
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
 	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	globals__lookup_bool_option(Globals, opt_no_return_calls,
 		OptNoReturnCalls),
-	AllocData = alloc_data(ModuleInfo0, ProcInfo1, TypeInfoLiveness,
+	AllocData = alloc_data(!.ModuleInfo, ProcInfo1, TypeInfoLiveness,
 		OptNoReturnCalls),
-	goal_path__fill_slots(ProcInfo1, ModuleInfo0, ProcInfo2),
+	goal_path__fill_slots(ProcInfo1, !.ModuleInfo, ProcInfo2),
 	proc_info_goal(ProcInfo2, Goal2),
 	OptStackAlloc0 = init_opt_stack_alloc,
 	set__init(FailVars),
 	set__init(NondetLiveness0),
-	build_live_sets_in_goal(Goal2, OptStackAlloc0,
-		Liveness0, NondetLiveness0, FailVars, AllocData,
-		Goal, OptStackAlloc, _Liveness, _NondetLiveness),
+	build_live_sets_in_goal(Goal2, Goal, FailVars, AllocData,
+		OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
+		NondetLiveness0, _NondetLiveness),
 	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
-	allocate_store_maps(for_stack_opt, ProcInfo3, PredId, ModuleInfo0,
+	allocate_store_maps(for_stack_opt, ProcInfo3, PredId, !.ModuleInfo,
 		ProcInfo4),
 	globals__lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
 	pred_id_to_int(PredId, PredIdInt),
 	maybe_write_progress_message("\nbefore stack opt cell",
-		DebugStackOpt, PredIdInt, ProcInfo4, ModuleInfo0, IO1, IO2),
-	optimize_live_sets(ModuleInfo0, ProcInfo4, OptStackAlloc, ProcInfo5,
-		Changed, DebugStackOpt, PredIdInt, IO2, IO3),
+		DebugStackOpt, PredIdInt, ProcInfo4, !.ModuleInfo, !IO),
+	optimize_live_sets(!.ModuleInfo, ProcInfo4, OptStackAlloc, ProcInfo5,
+		Changed, DebugStackOpt, PredIdInt, !IO),
 	(
 		Changed = yes,
 		maybe_write_progress_message(
 			"\nafter stack opt transformation",
-			DebugStackOpt, PredIdInt, ProcInfo5, ModuleInfo0,
-			IO3, IO4),
+			DebugStackOpt, PredIdInt, ProcInfo5, !.ModuleInfo,
+			!IO),
 		requantify_proc(ProcInfo5, ProcInfo6),
 		maybe_write_progress_message(
 			"\nafter stack opt requantify",
-			DebugStackOpt, PredIdInt, ProcInfo6, ModuleInfo0,
-			IO4, IO5),
+			DebugStackOpt, PredIdInt, ProcInfo6, !.ModuleInfo,
+			!IO),
 		recompute_instmap_delta_proc(yes, ProcInfo6, ProcInfo,
-			ModuleInfo0, ModuleInfo),
+			!ModuleInfo),
 		maybe_write_progress_message(
 			"\nafter stack opt recompute instmaps",
-			DebugStackOpt, PredIdInt, ProcInfo, ModuleInfo,
-			IO5, IO)
+			DebugStackOpt, PredIdInt, ProcInfo, !.ModuleInfo,
+			!IO)
 	;
 		Changed = no,
-		ProcInfo = ProcInfo0,
-		ModuleInfo = ModuleInfo0,
-		IO = IO3
+		ProcInfo = ProcInfo0
 	).
 
 :- func init_opt_stack_alloc = opt_stack_alloc.
