@@ -1,0 +1,25 @@
+This directory contains source code for handling Reduced Ordered
+Binary Decision Diagrams (ROBDDs).  bryant.c contains almost all of
+the code; bryantPrint.c contains only code for printing ROBDDs.
+
+This code could really use a good spring cleaning.  My apologies for
+not taking the time to do that yet.  Much of the complication of the
+code stems from maintaining several different versions of the code in
+a single file.  For users of this code these versions are probably not
+very interesting.  They are there for experimenting with various
+implementations.
+
+
+Building the ROBDD code:
+
+A Makefile is provided; if you just wish to link the ROBDD code with
+your own code, making bryant.o and maybe bryantPrint.o should be
+enough.
+
+If you wish to use this ROBDD code as part of my groundness analyzer,
+then you just want to do
+
+	make bryant.so
+
+and then move bryant.so to ../analyzer/rep.so
+
