@@ -75,6 +75,19 @@
 %		Char is the first character of String, and Rest is the
 %		remainder.
 
+
+:- pred string__replace(string, string, string, string).
+:- mode string__replace(in, in, in, out) is semidet.
+% 	string__replace replaces the first occurence of the second string in 
+% 	the first string with the third string to give the fourth string.
+% 	It fails if the second string does not occur in the first.
+
+:- pred string__replace_all(string, string, string, string).
+:- mode string__replace_all(in, in, in, out) is det.
+% 	string__replace_all replaces any occurences of the second string in 
+% 	the first string with the third string to give the fourth string.
+
+
 :- pred string__to_upper(string, string).
 :- mode string__to_upper(in, out) is det.
 :- mode string__to_upper(in, in) is semidet.		% implied
@@ -277,6 +290,92 @@
 :- external(string__append/3).
 :- external(string__split/4).
 :- external(string__first_char/3).
+
+
+string__replace(String, SubString0, SubString1, StringOut) :-
+	string__to_char_list(String, CharList),
+	string__to_char_list(SubString0, SubCharList0),
+	find_sub_charlist(CharList, SubCharList0, Before, After),
+	string__to_char_list(SubString1, SubCharList1),
+	list__append(Before, SubCharList1, Before0),
+	list__append(Before0, After, CharListOut),
+	string__from_char_list(CharListOut, StringOut).
+
+string__replace_all(String, SubString0, SubString1, StringOut) :-
+	string__to_char_list(String, CharList),
+        string__to_char_list(SubString0, SubCharList0),
+        string__to_char_list(SubString1, SubCharList1),
+       	find_all_sub_charlist(CharList, SubCharList0, SubCharList1, 
+		CharListOut),
+       	string__from_char_list(CharListOut, StringOut).
+
+
+	% find_all_sub_charlist replaces any occurences of the second list of
+	% characters (in order) in the first list of characters with the second
+	% list of characters.
+:- pred find_all_sub_charlist(list(character), list(character), list(character),
+	list(character)).
+:- mode find_all_sub_charlist(in, in, in, out) is det.
+
+find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
+		% find the first occurence
+		find_sub_charlist(CharList, SubCharList0, BeforeList, AfterList)
+	->
+		(
+			AfterList = []
+		->
+			% at the end
+			list__append(BeforeList, SubCharList1, CharList0)
+		;
+			% recursively find the rest of the occurences
+			find_all_sub_charlist(AfterList, SubCharList0, 
+				SubCharList1, AfterList0),
+			list__append(BeforeList, SubCharList1, BeforeList0),
+			list__append(BeforeList0, AfterList0, CharList0)
+		)
+	;
+		%no occurences left
+		CharList0 = CharList.
+
+
+	% find_sub_charlist(List, SubList, Before, After) is true iff SubList
+	% is a sublist of List, and Before is the list of characters before
+	% SubList in List, and After is the list after it.
+:- pred find_sub_charlist(list(character), list(character), list(character),
+	list(character)).
+:- mode find_sub_charlist(in, in, out, out) is semidet.
+
+find_sub_charlist(CharList, [], [], CharList).
+find_sub_charlist([C|CharList], [S|SubCharList], Before, After) :-
+		C = S
+	->
+		(
+			find_rest_of_sub_charlist(CharList, SubCharList, After0)
+		->
+			Before = [],
+			After = After0
+		;
+			find_sub_charlist(CharList, [S|SubCharList], Before0, 
+				After0),
+			Before = [C|Before0],
+			After = After0
+
+		)
+	;
+		find_sub_charlist(CharList, [S|SubCharList], Before0, After),
+		Before = [C|Before0].
+
+	% find_rest_of_sub_charlist(List, SubList, After) is true iff List
+	% begins with all the characters in SubList in order, and end with
+	% After.
+:- pred find_rest_of_sub_charlist(list(character), list(character), 
+	list(character)).
+:- mode find_rest_of_sub_charlist(in, in, out) is semidet.
+
+find_rest_of_sub_charlist(CharList, SubCharList, After) :-
+	list__append(SubCharList, After, CharList).
+
+
 
 string__to_int(String, Int) :-
 	string__base_string_to_int(10, String, Int).
