@@ -497,8 +497,6 @@ inst_matches_binding_2(InstA, InstB, ModuleInfo, Expansions) :-
 	ThisExpansion = InstA - InstB,
 	( set__member(ThisExpansion, Expansions) ->
 		true
-	; InstA = InstB ->
-		true
 	;
 		inst_expand(ModuleInfo, InstA, InstA2),
 		inst_expand(ModuleInfo, InstB, InstB2),
