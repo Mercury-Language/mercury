@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-1998, 2000-2001 The University of Melbourne.
+** Copyright (C) 1994-1998, 2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,10 +15,9 @@
 #ifndef	MERCURY_LABEL_H
 #define	MERCURY_LABEL_H
 
-#include "mercury_conf_param.h"	    /* for `MR_NEED_ENTRY_LABEL_ARRAY' etc */
-#include "mercury_types.h"	    /* for `MR_Code *' */
-#include "mercury_dlist.h"	    /* for `List' */
-#include "mercury_stack_layout.h"   /* for `MR_Proc_Layout' etc */
+#include "mercury_conf_param.h"	    /* for MR_NEED_ENTRY_LABEL_ARRAY etc */
+#include "mercury_types.h"	    /* for MR_Code, MR_Proc_Layout etc */
+#include "mercury_dlist.h"	    /* for MR_Dlist */
 
 /*
 ** This struct records information about entry labels. Elements in the

@@ -198,6 +198,13 @@ llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
 	llds_common__process_rval(TVarLocnMap0, TVarLocnMap, Info1, Info),
 	LayoutData = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
 		PTIVector, TVarLocnMap).
+llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
+	LayoutData0 = table_gen_data(RttiProcLabel, NumInputs, NumOutputs,
+		Steps, PTIVector0, TVarLocnMap0),
+	llds_common__process_rval(PTIVector0, PTIVector, Info0, Info1),
+	llds_common__process_rval(TVarLocnMap0, TVarLocnMap, Info1, Info),
+	LayoutData = table_gen_data(RttiProcLabel, NumInputs, NumOutputs,
+		Steps, PTIVector, TVarLocnMap).
 
 :- pred llds_common__process_exec_trace(proc_layout_exec_trace::in,
 	proc_layout_exec_trace::out, common_info::in, common_info::out) is det.

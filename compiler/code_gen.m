@@ -329,10 +329,10 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		Instructions = Instructions0
 	),
 
-	proc_info_get_table_io_decl(ProcInfo, MaybeTableIoDecl),
+	proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
 	(
 		( BasicStackLayout = yes
-		; MaybeTableIoDecl = yes(_TableIoDecl)
+		; MaybeTableInfo = yes(table_io_decl_info(_TableIoDeclInfo))
 		)
 	->
 			% Create the procedure layout structure.
@@ -362,7 +362,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 			Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
 			MaybeTraceCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
 			InstMap0, TraceSlotInfo, ForceProcId, VarSet, VarTypes,
-			InternalMap, MaybeTableIoDecl, IsBeingTraced,
+			InternalMap, MaybeTableInfo, IsBeingTraced,
 			NeedsAllNames),
 		global_data_add_new_proc_layout(GlobalData0,
 			proc(PredId, ProcId), ProcLayout, GlobalData1)

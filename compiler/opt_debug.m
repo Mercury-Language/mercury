@@ -495,6 +495,18 @@ opt_debug__dump_layout_name(table_io_decl(RttiProcLabel), Str) :-
 	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["table_io_decl(", ProcLabelStr, ")"], Str).
+opt_debug__dump_layout_name(table_gen_info(RttiProcLabel), Str) :-
+	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["table_gen_info(", ProcLabelStr, ")"], Str).
+opt_debug__dump_layout_name(table_gen_enum_params(RttiProcLabel), Str) :-
+	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["table_gen_enum_params(", ProcLabelStr, ")"], Str).
+opt_debug__dump_layout_name(table_gen_steps(RttiProcLabel), Str) :-
+	ProcLabel = code_util__make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["table_gen_steps(", ProcLabelStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

@@ -24,7 +24,7 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 }
 
 MR_bool
-MR_trace_is_number(const char *word, int *value)
+MR_trace_is_natural_number(const char *word, int *value)
 {
 	if (MR_isdigit(*word)) {
 		*value = *word - '0';
@@ -40,6 +40,51 @@ MR_trace_is_number(const char *word, int *value)
 	}
 
 	return MR_FALSE;
+}
+
+MR_bool
+MR_trace_is_integer(const char *word, MR_Integer *value)
+{
+	int	sign;
+
+	if (*word == '-') {
+		sign = -1;
+		word++;
+	} else {
+		sign = 1;
+	}
+
+	if (MR_isdigit(*word)) {
+		*value = *word - '0';
+		word++;
+		while (MR_isdigit(*word)) {
+			*value = (*value * 10) + *word - '0';
+			word++;
+		}
+
+		if (*word == '\0') {
+			*value = *value * sign;
+			return MR_TRUE;
+		}
+	}
+
+	return MR_FALSE;
+}
+
+MR_bool
+MR_trace_is_float(const char *word, MR_Float *value)
+{
+	double	tmpf;
+	char   	tmpc;
+	MR_bool	success;
+
+	/* this duplicates the logic of string__to_float */
+	success =
+		(!MR_isspace(word[0])) &&
+		(sscanf(word, "%lf%c", &tmpf, &tmpc) == 1);
+		/* MR_TRUE if sscanf succeeds, MR_FALSE otherwise */
+	*value = tmpf;
+	return success;
 }
 
 void

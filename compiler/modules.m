@@ -1965,11 +1965,12 @@ add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
 	UseDeps1 = [MercuryPrivateBuiltin | UseDeps0],
 	(
 		%
-		% we should include MercuryTableBuiltin if
-		% the Items contain a tabling pragma, or if
-		% --trace-table-io is specified
+		% We should include MercuryTableBuiltin if the Items contain
+		% a tabling pragma, or if one of --use-minimal-model and
+		% --trace-table-io is specified.
 		%
 		( contains_tabling_pragma(Items)
+		; globals__lookup_bool_option(Globals, use_minimal_model, yes)
 		; globals__lookup_bool_option(Globals, trace_table_io, yes)
 		)
 	->

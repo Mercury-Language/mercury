@@ -1,0 +1,361 @@
+      E1:     C1  1 CALL pred print_table:main/2-0 (cc_multi) print_table.m:13
+mdb> echo on
+Command echo enabled.
+mdb> context none
+Contexts will not be printed.
+mdb> register --quiet
+mdb> b p
+ 0: + stop  interface pred print_table:p/3-0 (det)
+mdb> c
+      E2:     C2  2 CALL pred print_table:p/3-0 (det)
+mdb> f -n
+      E3:     C2  2 EXIT pred print_table:p/3-0 (det)
+mdb> table p
+memo table for pred print_table:p/3-0 (det):
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (6 entries)
+mdb> table p 5
+memo table for pred print_table:p/3-0 (det):
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (6 entries)
+mdb> table p 5 2
+<5, 2>: succeeded <15>
+mdb> c
+      E4:     C3  2 CALL pred print_table:p/3-0 (det)
+mdb> f -n
+      E5:     C3  2 EXIT pred print_table:p/3-0 (det)
+mdb> table p
+memo table for pred print_table:p/3-0 (det):
+<4, 0>: succeeded <0>
+<4, 1>: succeeded <4>
+<4, 2>: succeeded <12>
+<4, 3>: succeeded <24>
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (10 entries)
+mdb> table p 5
+memo table for pred print_table:p/3-0 (det):
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (6 entries)
+mdb> table p 5 2
+<5, 2>: succeeded <15>
+mdb> table p 4
+memo table for pred print_table:p/3-0 (det):
+<4, 0>: succeeded <0>
+<4, 1>: succeeded <4>
+<4, 2>: succeeded <12>
+<4, 3>: succeeded <24>
+end of table (4 entries)
+mdb> table p 4 2
+<4, 2>: succeeded <12>
+mdb> c
+      E6:     C4  2 CALL pred print_table:p/3-0 (det)
+mdb> f -n
+      E7:     C4  2 EXIT pred print_table:p/3-0 (det)
+mdb> table p
+memo table for pred print_table:p/3-0 (det):
+<2, 0>: succeeded <0>
+<2, 1>: succeeded <2>
+<2, 2>: succeeded <6>
+<4, 0>: succeeded <0>
+<4, 1>: succeeded <4>
+<4, 2>: succeeded <12>
+<4, 3>: succeeded <24>
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (13 entries)
+mdb> table p 5
+memo table for pred print_table:p/3-0 (det):
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (6 entries)
+mdb> table p 5 2
+<5, 2>: succeeded <15>
+mdb> table p 4
+memo table for pred print_table:p/3-0 (det):
+<4, 0>: succeeded <0>
+<4, 1>: succeeded <4>
+<4, 2>: succeeded <12>
+<4, 3>: succeeded <24>
+end of table (4 entries)
+mdb> table p 2 1
+<2, 1>: succeeded <2>
+mdb> c
+      E8:     C5  2 CALL pred print_table:p/3-0 (det)
+mdb> f -n
+      E9:     C5  2 EXIT pred print_table:p/3-0 (det)
+mdb> table p
+memo table for pred print_table:p/3-0 (det):
+<1, 0>: succeeded <0>
+<2, 0>: succeeded <0>
+<2, 1>: succeeded <2>
+<2, 2>: succeeded <6>
+<4, 0>: succeeded <0>
+<4, 1>: succeeded <4>
+<4, 2>: succeeded <12>
+<4, 3>: succeeded <24>
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (14 entries)
+mdb> table p 5
+memo table for pred print_table:p/3-0 (det):
+<5, 0>: succeeded <0>
+<5, 1>: succeeded <5>
+<5, 2>: succeeded <15>
+<5, 3>: succeeded <30>
+<5, 4>: succeeded <50>
+<5, 5>: succeeded <75>
+end of table (6 entries)
+mdb> table p 5 2
+<5, 2>: succeeded <15>
+mdb> table p 4
+memo table for pred print_table:p/3-0 (det):
+<4, 0>: succeeded <0>
+<4, 1>: succeeded <4>
+<4, 2>: succeeded <12>
+<4, 3>: succeeded <24>
+end of table (4 entries)
+mdb> table p 2 1
+<2, 1>: succeeded <2>
+mdb> table p 1 0
+<1, 0>: succeeded <0>
+mdb> delete 1
+mdb: break point #1 does not exist.
+mdb> b q
+ 1: + stop  interface pred print_table:q/3-0 (semidet)
+mdb> c
+     E10:     C6  2 CALL pred print_table:q/3-0 (semidet)
+mdb> f -n
+     E11:     C6  2 EXIT pred print_table:q/3-0 (semidet)
+mdb> table q
+memo table for pred print_table:q/3-0 (semidet):
+<3, 0>: succeeded <0>
+<3, 1>: succeeded <3>
+<3, 2>: succeeded <9>
+end of table (3 entries)
+mdb> table q 3
+memo table for pred print_table:q/3-0 (semidet):
+<3, 0>: succeeded <0>
+<3, 1>: succeeded <3>
+<3, 2>: succeeded <9>
+end of table (3 entries)
+mdb> table q 3 2
+<3, 2>: succeeded <9>
+mdb> table q 4
+call table does not contain 4 in argument position 1.
+mdb> c
+     E12:     C7  2 CALL pred print_table:q/3-0 (semidet)
+mdb> f -n
+     E13:     C7  2 FAIL pred print_table:q/3-0 (semidet)
+mdb> table q
+memo table for pred print_table:q/3-0 (semidet):
+<3, 0>: succeeded <0>
+<3, 1>: succeeded <3>
+<3, 2>: succeeded <9>
+<4, 1>: failed
+<4, 2>: failed
+end of table (5 entries)
+mdb> table q 3
+memo table for pred print_table:q/3-0 (semidet):
+<3, 0>: succeeded <0>
+<3, 1>: succeeded <3>
+<3, 2>: succeeded <9>
+end of table (3 entries)
+mdb> table q 3 2
+<3, 2>: succeeded <9>
+mdb> table q 3 0
+<3, 0>: succeeded <0>
+mdb> table q 4 2
+<4, 2>: failed
+mdb> table q 4 1
+<4, 1>: failed
+mdb> table q 4 0
+call table does not contain 0 in argument position 2.
+mdb> delete 1
+ 1: E stop  interface pred print_table:q/3-0 (semidet)
+mdb> b r
+ 1: + stop  interface pred print_table:r/2-0 (det)
+mdb> c
+     E14:     C8  2 CALL pred print_table:r/2-0 (det)
+mdb> table r
+memo table for pred print_table:r/2-0 (det):
+end of table (0 entries)
+mdb> s
+     E15:     C8  2 COND pred print_table:r/2-0 (det) c2;e;e;c2;?;
+mdb> table r
+memo table for pred print_table:r/2-0 (det):
+<3>: working
+end of table (1 entry)
+mdb> table r 3
+<3>: working
+mdb> c
+     E16:     C9  3 CALL pred print_table:r/2-0 (det)
+mdb> table r
+memo table for pred print_table:r/2-0 (det):
+<3>: working
+end of table (1 entry)
+mdb> f -n
+     E17:     C9  3 EXIT pred print_table:r/2-0 (det)
+mdb> table r
+memo table for pred print_table:r/2-0 (det):
+<0>: succeeded <0>
+<1>: succeeded <1>
+<2>: succeeded <3>
+<3>: working
+end of table (4 entries)
+mdb> f -n 1
+     E18:     C8  2 EXIT pred print_table:r/2-0 (det)
+mdb> table r
+memo table for pred print_table:r/2-0 (det):
+<0>: succeeded <0>
+<1>: succeeded <1>
+<2>: succeeded <3>
+<3>: succeeded <6>
+end of table (4 entries)
+mdb> delete 1
+ 1: E stop  interface pred print_table:r/2-0 (det)
+mdb> b s
+ 1: + stop  interface pred print_table:s/6-0 (det)
+mdb> c
+     E19:    C10  2 CALL pred print_table:s/6-0 (det)
+mdb> table s
+memo table for pred print_table:s/6-0 (det):
+end of table (0 entries)
+mdb> f -n
+     E20:    C10  2 EXIT pred print_table:s/6-0 (det)
+mdb> table s
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+end of table (1 entry)
+mdb> c
+     E21:    C11  2 CALL pred print_table:s/6-0 (det)
+mdb> f -n
+     E22:    C11  2 EXIT pred print_table:s/6-0 (det)
+mdb> table s
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+<3.500000, 2, "abc", 2>: succeeded <"[3.5abc2][3.5abc2]", 5.500000>
+end of table (2 entries)
+mdb> table s 3.5
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+<3.500000, 2, "abc", 2>: succeeded <"[3.5abc2][3.5abc2]", 5.500000>
+end of table (2 entries)
+mdb> table s 3.51
+call table does not contain 3.510000 in argument position 1.
+mdb> table s 3.5 1
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+end of table (1 entry)
+mdb> table s 3.5 1 abc
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+end of table (1 entry)
+mdb> c
+     E23:    C12  2 CALL pred print_table:s/6-0 (det)
+mdb> f -n
+     E24:    C12  2 EXIT pred print_table:s/6-0 (det)
+mdb> c
+     E25:    C13  2 CALL pred print_table:s/6-0 (det)
+mdb> f -n
+     E26:    C13  2 EXIT pred print_table:s/6-0 (det)
+mdb> c
+     E27:    C14  2 CALL pred print_table:s/6-0 (det)
+mdb> f -n
+     E28:    C14  2 EXIT pred print_table:s/6-0 (det)
+mdb> table s
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+<3.500000, 2, "abc", 2>: succeeded <"[3.5abc2][3.5abc2]", 5.500000>
+<3.500000, 2, "xyz", 3>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2]", 6.500000>
+<3.500000, 2, "xyz", 4>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2][3.5xyz2]", 7.500000>
+<9.200000, 2, "def", 5>: succeeded <"[9.2def2][9.2def2][9.2def2][9.2def2][9.2def2]", 14.200000>
+end of table (5 entries)
+mdb> table s 3.5
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+<3.500000, 2, "abc", 2>: succeeded <"[3.5abc2][3.5abc2]", 5.500000>
+<3.500000, 2, "xyz", 3>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2]", 6.500000>
+<3.500000, 2, "xyz", 4>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2][3.5xyz2]", 7.500000>
+end of table (4 entries)
+mdb> table s 3.51
+call table does not contain 3.510000 in argument position 1.
+mdb> table s 3.5 1
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+end of table (1 entry)
+mdb> table s 3.5 1 abc
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 1, "abc", 1>: succeeded <"[3.5abc1]", 4.500000>
+end of table (1 entry)
+mdb> table s 3.5 2
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 2, "abc", 2>: succeeded <"[3.5abc2][3.5abc2]", 5.500000>
+<3.500000, 2, "xyz", 3>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2]", 6.500000>
+<3.500000, 2, "xyz", 4>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2][3.5xyz2]", 7.500000>
+end of table (3 entries)
+mdb> table s 3.5 2 abc
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 2, "abc", 2>: succeeded <"[3.5abc2][3.5abc2]", 5.500000>
+end of table (1 entry)
+mdb> table s 3.5 2 xyz
+memo table for pred print_table:s/6-0 (det):
+<3.500000, 2, "xyz", 3>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2]", 6.500000>
+<3.500000, 2, "xyz", 4>: succeeded <"[3.5xyz2][3.5xyz2][3.5xyz2][3.5xyz2]", 7.500000>
+end of table (2 entries)
+mdb> table s 9.1 2 abc
+call table does not contain 9.100000 in argument position 1.
+mdb> table s 9.2 2 abc
+call table does not contain abc in argument position 3.
+mdb> table s 9.2 2 def
+memo table for pred print_table:s/6-0 (det):
+<9.200000, 2, "def", 5>: succeeded <"[9.2def2][9.2def2][9.2def2][9.2def2][9.2def2]", 14.200000>
+end of table (1 entry)
+mdb> table s 9.2 2 xyz
+call table does not contain xyz in argument position 3.
+mdb> delete 1
+ 1: E stop  interface pred print_table:s/6-0 (det)
+mdb> c -S -n
+75
+24
+6
+0
+yes(9)
+no
+6
+[3.5abc1] 4.50000000000000
+[3.5abc2][3.5abc2] 5.50000000000000
+[3.5xyz2][3.5xyz2][3.5xyz2] 6.50000000000000
+[3.5xyz2][3.5xyz2][3.5xyz2][3.5xyz2] 7.50000000000000
+[9.2def2][9.2def2][9.2def2][9.2def2][9.2def2] 14.2000000000000

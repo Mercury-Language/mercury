@@ -907,7 +907,7 @@ MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
         path++;
     }
 
-    if (MR_trace_is_number(word_spec, &n)) {
+    if (MR_trace_is_natural_number(word_spec, &n)) {
         var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
         var_spec.MR_var_spec_number = n;
         var_spec.MR_var_spec_name = NULL; /* unused */

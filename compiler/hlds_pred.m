@@ -1566,8 +1566,8 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% left-to-right, from zero.)
 		).
 
-:- type table_io_decl_arg_info
-	--->	table_io_decl_arg_info(
+:- type table_arg_info
+	--->	table_arg_info(
 			headvar		:: prog_var,
 			slot_num	:: int,
 			arg_type	:: (type)
@@ -1576,14 +1576,52 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	% This type is analogous to llds:layout_locn, but it refers to slots in
 	% the extended answer blocks used by I/O action tabling for declarative
 	% debugging, not to lvals.
-:- type table_io_decl_locn
+:- type table_locn
 	--->	direct(int)
 	;	indirect(int, int).
 
-:- type table_io_decl_info
+:- type table_trie_step
+	--->	table_trie_step_int
+	;	table_trie_step_char
+	;	table_trie_step_string
+	;	table_trie_step_float
+	;	table_trie_step_enum(int)	% The int gives the number of 
+						% alternatives in the enum
+						% type, and thus the size of
+						% the corresponding trie node.
+	;	table_trie_step_user(type)
+	;	table_trie_step_poly.
+
+:- type table_arg_infos
+	--->	table_arg_infos(
+			list(table_arg_info),
+			map(tvar, table_locn)
+		).
+
+:- type proc_table_info
+
+		% The information we need to display an I/O action to the user.
+		%
+		% The table_arg_type_infos correspond one to one to the
+		% elements of the block saved for an I/O action. The first
+		% element will be the pointer to the proc_layout of the
+		% action's procedure.
 	--->	table_io_decl_info(
-			list(table_io_decl_arg_info),
-			map(tvar, table_io_decl_locn)
+			table_arg_infos
+		)
+
+		% The information we need to interpret the data structures
+		% created by tabling for a procedure, except the information
+		% (such as determinism) that is already available from
+		% proc_layout structures.
+		%
+		% The table_arg_type_infos list first all the input arguments,
+		% then all the output arguments.
+	;	table_gen_info(
+			num_inputs ::		int,
+			num_outputs ::		int,
+			input_steps ::		list(table_trie_step),
+			gen_arg_infos ::	table_arg_infos
 		).
 
 :- pred proc_info_init(arity, list(type), list(mode), maybe(list(mode)),
@@ -1781,12 +1819,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_call_table_tip(proc_info, maybe(prog_var), proc_info).
 :- mode proc_info_set_call_table_tip(in, in, out) is det.
 
-:- pred proc_info_get_table_io_decl(proc_info, maybe(table_io_decl_info)).
-:- mode proc_info_get_table_io_decl(in, out) is det.
+:- pred proc_info_get_maybe_proc_table_info(proc_info, maybe(proc_table_info)).
+:- mode proc_info_get_maybe_proc_table_info(in, out) is det.
 
-:- pred proc_info_set_table_io_decl(proc_info, maybe(table_io_decl_info),
+:- pred proc_info_set_maybe_proc_table_info(proc_info, maybe(proc_table_info),
 	proc_info).
-:- mode proc_info_set_table_io_decl(in, in, out) is det.
+:- mode proc_info_set_maybe_proc_table_info(in, in, out) is det.
 
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
 	maybe(deep_profile_proc_info)::out) is det.
@@ -2024,18 +2062,24 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% relevant backend must record this
 					% fact in a place accessible to the
 					% debugger.
- 			table_io_decl	:: maybe(table_io_decl_info),
-					% If set, it means that procedure is an
-					% I/O primitive that has been subject
-					% to the --trace-table-decl-io
-					% transformation. The argument will
-					% then describe the structure of the
-					% answer block used by the transformed
-					% code. By putting this information
-					% into a data structure in the
-					% generated code, the compiler
-					% enables the runtime system to print
-					% out I/O action goals.
+ 			maybe_table_info :: maybe(proc_table_info),
+					% If set, it means that procedure
+					% has been subject to a tabling
+					% transformation, either I/O tabling
+					% or the regular kind. In the former
+					% case, the argument will contain all
+					% the information we need to display
+					% I/O actions involving this procedure;
+					% in the latter case, it will contain
+					% all the information we need to display
+					% the call tables, answer tables and
+					% answer blocks of the procedure.
+					% XXX For now, the compiler fully
+					% supports only procedures whose
+					% arguments are all either ints, floats
+					% or strings. However, this is still
+					% sufficient for debugging most
+					% problems in the tabling system.
 			maybe_deep_profile_proc_info
 					:: maybe(deep_profile_proc_info)
 		).
@@ -2201,7 +2245,7 @@ proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
 proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
 proc_info_get_need_maxfr_slot(ProcInfo, ProcInfo^need_maxfr_slot).
 proc_info_get_call_table_tip(ProcInfo, ProcInfo^call_table_tip).
-proc_info_get_table_io_decl(ProcInfo, ProcInfo^table_io_decl).
+proc_info_get_maybe_proc_table_info(ProcInfo, ProcInfo^maybe_table_info).
 proc_info_get_maybe_deep_profile_info(ProcInfo,
 	ProcInfo^maybe_deep_profile_proc_info).
 
@@ -2232,7 +2276,8 @@ proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
 proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
 proc_info_set_need_maxfr_slot(ProcInfo, NMS, ProcInfo^need_maxfr_slot := NMS).
 proc_info_set_call_table_tip(ProcInfo, CTT, ProcInfo^call_table_tip := CTT).
-proc_info_set_table_io_decl(ProcInfo, TID, ProcInfo^table_io_decl := TID).
+proc_info_set_maybe_proc_table_info(ProcInfo, MTI,
+	ProcInfo^maybe_table_info := MTI).
 proc_info_set_maybe_deep_profile_info(ProcInfo, DPI,
 	ProcInfo^maybe_deep_profile_proc_info := DPI).
 

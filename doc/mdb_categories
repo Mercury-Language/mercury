@@ -55,7 +55,7 @@ end
 document_category 900 misc
 misc       - Commands that are of interest to most users but do not fit into
              other categories. The misc commands are `source', `save', `dd'
-	     and `quit'.
+             and `quit'.
 
 end
 document_category 1000 exp
@@ -68,6 +68,7 @@ document_category 1100 developer
 developer  - Commands that are intended to be of use only to developers
              of the Mercury implementation. The developer commands are
              `nondet_stack', `stack_regs', `all_regs', `proc_stats',
-	     `label_stats', `print_optionals', `unhide_events' and `dd_dd'.
+             `label_stats', `print_optionals', `unhide_events', `dd_dd'
+             and `table'.
 
 end

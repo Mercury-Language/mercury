@@ -32,8 +32,11 @@
 
 :- interface.
 
-:- import_module parse_tree__prog_data, libs__trace_params, ll_backend__llds.
-:- import_module backend_libs__rtti, hlds__hlds_goal.
+:- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal, hlds__hlds_pred.
+:- import_module ll_backend__llds.
+:- import_module backend_libs__rtti.
+:- import_module libs__trace_params.
 :- import_module bool, std_util, list, assoc_list.
 
 :- type layout_data
@@ -82,6 +85,15 @@
 			table_io_decl_ptis	:: rval,
 						% pseudo-typeinfos for headvars
 			table_io_decl_type_params :: rval
+		)
+	;	table_gen_data(
+			table_gen_proc_ptr	:: rtti_proc_label,
+			table_gen_num_inputs	:: int,
+			table_gen_num_outputs	:: int,
+			table_gen_steps		:: list(table_trie_step),
+			table_gen_ptis		:: rval,
+						% pseudo-typeinfos for headvars
+			table_gen_type_params	:: rval
 		).
 
 :- type call_site_static_data			% defines MR_CallSiteStatic
@@ -141,7 +153,7 @@
 	--->	proc_layout_exec_trace(
 			call_label_layout	:: layout_name,
 			proc_body		:: maybe(rval),
-			maybe_table_io_decl	:: maybe(layout_name),
+			maybe_table_info	:: maybe(layout_name),
 			head_var_nums		:: list(int),
 						% The variable numbers of the
 						% head variables, including the
@@ -184,6 +196,9 @@
 		% A vector of variable names (represented as offsets into
 		% the string table) for a procedure layout structure.
 	;	table_io_decl(rtti_proc_label)
+	;	table_gen_info(rtti_proc_label)
+	;	table_gen_enum_params(rtti_proc_label)
+	;	table_gen_steps(rtti_proc_label)
 	;	closure_proc_id(proc_label, int, proc_label)
 	;	file_layout(module_name, int)
 	;	file_layout_line_number_vector(module_name, int)

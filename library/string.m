@@ -1877,6 +1877,9 @@ string__float_to_f_string(_, _) :-
 	** double or float.  The %c checks for any erroneous characters
 	** appearing after the float; if there are then sscanf() will
 	** return 2 rather than 1.
+	**
+	** The logic used here is duplicated in the function MR_trace_is_float
+	** in trace/mercury_trace_util.c.
 	*/
 	double tmpf;
 	char   tmpc;

@@ -13,14 +13,14 @@ browse             excp               p                  source
 c                  f                  print              stack
 cc_query           finish             print_optionals    stack_regs
 context            forward            printlevel         step
-continue           g                  proc_body          table_io
-current            goto               proc_stats         unalias
-d                  h                  procedures         unhide_events
-dd                 help               query              up
-dd_dd              ignore             quit               v
-delete             io_query           r                  vars
-disable            label_stats        register           view
-document           level              retry              
+continue           g                  proc_body          table
+current            goto               proc_stats         table_io
+d                  h                  procedures         unalias
+dd                 help               query              unhide_events
+dd_dd              ignore             quit               up
+delete             io_query           r                  v
+disable            label_stats        register           vars
+document           level              retry              view
 h     help  
 vars  view  
 help vars 

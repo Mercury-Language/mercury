@@ -15,7 +15,8 @@
 #ifndef MERCURY_TRACE_UTIL_H
 #define MERCURY_TRACE_UTIL_H
 
-#include "mercury_std.h"		/* for MR_bool        */
+#include "mercury_std.h"		/* for MR_bool     */
+#include "mercury_float.h"		/* for MR_Float    */
 #include "mercury_types.h"		/* for MR_Word etc */
 #include "mercury_library_types.h"	/* for MercuryFile */
 #include <stdio.h>			/* for FILE        */
@@ -58,12 +59,25 @@ extern	void	MR_c_file_to_mercury_file(FILE *c_file,
 			MercuryFile *mercury_file);
 
 /*
-** MR_trace_is_number checks whether the given word contains a natural number,
-** i.e. a sequence of digits. If yes, it puts the value of the number in
-** *value and returns MR_TRUE, otherwise it returns MR_FALSE.
+** MR_trace_is_natural_number checks whether the given word contains a natural
+** number, i.e. a sequence of digits. If yes, it puts the value of the number
+** in *value and returns MR_TRUE, otherwise it returns MR_FALSE.
+**
+** MR_trace_is_integer is similar, but it also allows an initial minus sign
+** to denote a negative number.
+**
+** MR_trace_is_float is similar again, but it also allows an optional
+** fractional part.
+**
+** XXX None of these functions are robust if given numbers too large for their
+** type. MR_trace_is_integer doesn't even work for MININT.
 */
 
-extern	MR_bool	MR_trace_is_number(const char *word, int *value);
+extern	MR_bool	MR_trace_is_natural_number(const char *word, int *value);
+
+extern	MR_bool	MR_trace_is_integer(const char *word, MR_Integer *value);
+
+extern	MR_bool	MR_trace_is_float(const char *word, MR_Float *value);
 
 /*
 ** These functions print the values of sets of Mercury abstract machine
