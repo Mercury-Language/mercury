@@ -23,6 +23,8 @@ other
 
 - warn about predicates with no modes.
 
+- handle abstract modes in the same way abstract types are handled
+
 - report an error if there are clauses in the interface section
   of a module
 
