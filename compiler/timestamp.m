@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 University of Melbourne.
+% Copyright (C) 2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,37 +124,48 @@ maybe_dst_to_int(M) = N :-
 timestamp_to_string(timestamp(Timestamp)) = Timestamp.
 
 string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
-	string__length(Timestamp) `with_type` int =
-		string__length("yyyy-mm-dd hh:mm:ss"),
+	% The if-then-else here is to force order of evaluation --
+	% we need to ensure that the length check occurs before the
+	% calls to unsafe_undex to avoid dereferencing invalid pointers.
+	(
+		string__length(Timestamp) `with_type` int =
+			string__length("yyyy-mm-dd hh:mm:ss")
+	->
+		string__to_int(string__unsafe_substring(Timestamp, 0, 4), _),
 
-	string__to_int(string__unsafe_substring(Timestamp, 0, 4), _),
+		string__unsafe_index(Timestamp, 4, '-'),
 
-	string__unsafe_index(Timestamp, 4, '-'),
+		string__to_int(string__unsafe_substring(Timestamp, 5, 2),
+			Month),
+		Month >= 1,
+		Month =< 12,
 
-	string__to_int(string__unsafe_substring(Timestamp, 5, 2), Month),
-	Month >= 1,
-	Month =< 12,
+		string__unsafe_index(Timestamp, 7, '-'),
 
-	string__unsafe_index(Timestamp, 7, '-'),
+		string__to_int(string__unsafe_substring(Timestamp, 8, 2), Day),
+		Day >= 1,
+		Day =< 31,
 
-	string__to_int(string__unsafe_substring(Timestamp, 8, 2), Day),
-	Day >= 1,
-	Day =< 31,
+		string__unsafe_index(Timestamp, 10, ' '),
 
-	string__unsafe_index(Timestamp, 10, ' '),
+		string__to_int(string__unsafe_substring(Timestamp, 11, 2),
+			Hour),
+		Hour >= 0,
+		Hour =< 23,
 
-	string__to_int(string__unsafe_substring(Timestamp, 11, 2), Hour),
-	Hour >= 0,
-	Hour =< 23,
+		string__unsafe_index(Timestamp, 13, ':'),
 
-	string__unsafe_index(Timestamp, 13, ':'),
+		string__to_int(string__unsafe_substring(Timestamp, 14, 2),
+			Minute),
+		Minute >= 0,
+		Minute =< 59,
 
-	string__to_int(string__unsafe_substring(Timestamp, 14, 2), Minute),
-	Minute >= 0,
-	Minute =< 59,
+		string__unsafe_index(Timestamp, 16, ':'),
 
-	string__unsafe_index(Timestamp, 16, ':'),
-
-	string__to_int(string__unsafe_substring(Timestamp, 17, 2), Second),
-	Second >= 0,
-	Second =< 61.	% Seconds 60 and 61 are for leap seconds.
+		string__to_int(string__unsafe_substring(Timestamp, 17, 2),
+			Second),
+		Second >= 0,
+		Second =< 61	% Seconds 60 and 61 are for leap seconds.
+	;
+		fail
+	).
