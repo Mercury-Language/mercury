@@ -153,11 +153,11 @@ esac
 ARCH_OPTS=""
 case @FULLARCH@ in
 	i?86-*)
-		# on the 386, we need `-fno-builtin' to make global register
-		# variables work
+		# on the 386, we need `-fno-omit-frame-pointer' and
+		# `-fno-builtin' to make global register variables work
 		case $GRADE_OPTS in
 			*-DUSE_GCC_GLOBAL_REGISTERS*)
-				ARCH_OPTS="-fno-builtin"
+				ARCH_OPTS="-fno-builtin -fno-omit-frame-pointer"
 			;;
 		esac
 		;;
@@ -184,8 +184,8 @@ case $assemble in true)
 esac
 
 case $verbose in true)
-	echo $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
-		$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@" ;;
+	echo $CC -I $C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+		$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS "$@" ;;
 esac
-exec $CC -I $C_INCL_DIR $ARCH_OPTS $HOST_OPTS $ANSI_OPTS $CHECK_OPTS \
-	$GRADE_OPTS $GC_OPTS $PROF_OPTS "$@"
+exec $CC -I $C_INCL_DIR $ANSI_OPTS $CHECK_OPTS \
+	$GRADE_OPTS $GC_OPTS $PROF_OPTS $ARCH_OPTS "$@"
