@@ -97,6 +97,8 @@ apply_tail_recursion_to_proc(PredProcId, ModuleInfo0, ModuleInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_interface_determinism(ProcInfo0, Detism),
 	(
+		% Don't transform Aditi procedures; we can't profile them.
+		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo0),
 		determinism_components(Detism, _CanFail, SolnCount),
 		SolnCount \= at_most_many,
 		proc_info_headvars(ProcInfo0, HeadVars),
@@ -460,6 +462,11 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
 		% managing the deep profiling call graph, or we'd get
 		% infinite recursion.
 		mercury_profiling_builtin_module(PredModuleName)
+	->
+		true
+	;
+		% Don't transform Aditi procedures; we can't profile them.
+		hlds_pred__is_aditi_relation(ModuleInfo, PredId)
 	->
 		true
 	;
