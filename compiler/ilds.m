@@ -169,6 +169,8 @@
 	;	native_float
 	;	bool
 	;	char			% A unicode character.
+	;	object
+	;	string
 	;	refany			% a reference to value with an attached
 					% type
 	; 	class(class_name)

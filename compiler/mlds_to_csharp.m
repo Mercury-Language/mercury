@@ -481,6 +481,10 @@ write_il_simple_type_as_csharp_type(bool) -->
 	io__write_string("bool").
 write_il_simple_type_as_csharp_type(char) --> 
 	io__write_string("char").
+write_il_simple_type_as_csharp_type(string) --> 
+	io__write_string("string").
+write_il_simple_type_as_csharp_type(object) --> 
+	io__write_string("object").
 write_il_simple_type_as_csharp_type(refany) --> 
 	io__write_string("mercury.MR_RefAny").
 write_il_simple_type_as_csharp_type(class(ClassName)) --> 

@@ -1225,7 +1225,7 @@ ml_gen_box_const_rval_list([_|_], [], _, _, _) -->
 
 ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 	(
-		{ Type = mercury_type(term__variable(_), _)
+		{ Type = mercury_type(term__variable(_), _, _)
 		; Type = mlds__generic_type
 		}
 	->
@@ -1240,7 +1240,7 @@ ml_gen_box_const_rval(Type, Rval, Context, ConstDefns, BoxedRval) -->
 		% but calls to malloc() are not).
 		%
 		{ Type = mercury_type(term__functor(term__atom("float"),
-				[], _), _)
+				[], _), _, _)
 		; Type = mlds__native_float_type
 		}
 	->

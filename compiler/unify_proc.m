@@ -756,6 +756,16 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
 			Clauses)
 	;
+		{ TypeBody = foreign_type(_, _) },
+			% XXX Is this the correct thing to do?
+			% I assume at code gen time I could examine the types
+			% of the unification and output different code because
+			% they are foreign types.
+		{ create_atomic_unification(H1, var(H2), Context, explicit, [],
+			Goal) },
+		unify_proc__quantify_clauses_body([H1, H2], Goal, Context,
+			Clauses)
+	;
 		{ TypeBody = uu_type(_) },
 		{ error("trying to create unify proc for uu type") }
 	;
@@ -809,6 +819,9 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 		% Therefore the clause body we are generating should never be
 		% invoked.
 		{ error("trying to create index proc for eqv type") }
+	;
+		{ TypeBody = foreign_type(_, _) },
+		{ error("trying to create index proc for a foreign type") }
 	;
 		{ TypeBody = uu_type(_) },
 		{ error("trying to create index proc for uu type") }
@@ -872,6 +885,15 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		%
 		% XXX Somebody should document here what the later stages
 		% of the compiler do to prevent an infinite recursion here.
+		{ ArgVars = [Res, H1, H2] },
+		unify_proc__build_call("compare", ArgVars, Context, Goal),
+		unify_proc__quantify_clauses_body(ArgVars, Goal, Context,
+			Clauses)
+	;
+		{ TypeBody = foreign_type(_, _) },
+		% XXX
+		% I think we should delay handling this for foreign types until
+		% code gen time.
 		{ ArgVars = [Res, H1, H2] },
 		unify_proc__build_call("compare", ArgVars, Context, Goal),
 		unify_proc__quantify_clauses_body(ArgVars, Goal, Context,

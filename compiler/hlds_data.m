@@ -291,6 +291,13 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 		)
 	;	uu_type(list(type))	% not yet implemented!
 	;	eqv_type(type)
+	;	foreign_type(
+			sym_name,	% structured name of foreign type
+					% which represents the mercury type.
+			string		% Location of the definition for this
+					% type (such as assembly or
+					% library name)
+		)
 	;	abstract_type.
 
 	% The `cons_tag_values' type stores the information on how

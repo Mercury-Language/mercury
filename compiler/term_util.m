@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -267,6 +267,10 @@ find_weights_for_type(TypeId, TypeDefn, Weights0, Weights) :-
 		% This type may introduce some functors,
 		% but we will never see them in this analysis
 		TypeBody = abstract_type,
+		Weights = Weights0
+	;
+		% This type does not introduce any functors
+		TypeBody = foreign_type(_, _),
 		Weights = Weights0
 	).
 

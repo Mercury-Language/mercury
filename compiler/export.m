@@ -48,11 +48,6 @@
 % Utilities for generating C code which interfaces with Mercury.  
 % The {MLDS,LLDS}->C backends and fact tables use this code.
 
-	% Convert the type to a string corresponding to its C type.
-	% (Defaults to MR_Word).
-:- pred export__type_to_type_string(type, string).
-:- mode export__type_to_type_string(in, out) is det.
-
 	% Generate C code to convert an rval (represented as a string), from
 	% a C type to a mercury C type (ie. convert strings and floats to
 	% words) and return the resulting C code as a string.
@@ -70,6 +65,7 @@
 
 :- implementation.
 
+:- import_module foreign.
 :- import_module modules.
 :- import_module hlds_pred, type_util.
 :- import_module code_model.
@@ -88,23 +84,24 @@ export__get_foreign_export_decls(HLDS, C_ExportDecls) :-
 	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
 	module_info_globals(HLDS, Globals),
 	export__get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
-		C_ExportDecls).
+		HLDS, C_ExportDecls).
 
 :- pred export__get_foreign_export_decls_2(pred_table,
-	list(pragma_exported_proc), globals, list(foreign_export_decl)).
-:- mode export__get_foreign_export_decls_2(in, in, in, out) is det.
+		list(pragma_exported_proc), globals,
+		module_info, list(foreign_export_decl)).
+:- mode export__get_foreign_export_decls_2(in, in, in, in, out) is det.
 
-export__get_foreign_export_decls_2(_Preds, [], _, []).
-export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], Globals,
+export__get_foreign_export_decls_2(_Preds, [], _, _, []).
+export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], Globals, Module,
 		C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, Globals, _HowToDeclare,
+	get_export_info(Preds, PredId, ProcId, Globals, Module, _HowToDeclare,
 		C_RetType, _DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
-	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
+	get_argument_declarations(HeadArgInfoTypes, no, Module, ArgDecls),
 	C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
 	export__get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
-		C_ExportDecls0),
+		Module, C_ExportDecls0),
 	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
 
 %-----------------------------------------------------------------------------%
@@ -216,10 +213,10 @@ export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
 	module_info_globals(Module, Globals),
-	get_export_info(Preds, PredId, ProcId, Globals, DeclareString,
+	get_export_info(Preds, PredId, ProcId, Globals, Module, DeclareString,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
-	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
+	get_argument_declarations(ArgInfoTypes, yes, Module, ArgDecls),
 
 		% work out which arguments are input, and which are output,
 		% and copy to/from the mercury registers.
@@ -293,13 +290,15 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	%	- the actions on success and failure, and
 	%	- the argument locations/modes/types.
 
-:- pred get_export_info(pred_table, pred_id, proc_id, globals,
+:- pred get_export_info(pred_table, pred_id, proc_id, globals, module_info,
 			string, string, string, string, string,
 			assoc_list(arg_info, type)).
-:- mode get_export_info(in, in, in, in, out, out, out, out, out, out) is det.
+:- mode get_export_info(in, in, in, in, in,
+		out, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId, Globals, HowToDeclareLabel, C_RetType,
-		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
+get_export_info(Preds, PredId, ProcId, Globals, Module,
+		HowToDeclareLabel, C_RetType, MaybeDeclareRetval,
+		MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_import_status(PredInfo, Status),
 	(
@@ -333,7 +332,7 @@ get_export_info(Preds, PredId, ProcId, Globals, HowToDeclareLabel, C_RetType,
 			RetArgMode = top_out,
 			\+ type_util__is_dummy_argument_type(RetType)
 		->
-			export__type_to_type_string(RetType, C_RetType),
+			C_RetType = to_type_string(c, Module, RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
 			convert_type_from_mercury(RetArgString0, RetType,
 				RetArgString),
@@ -391,37 +390,41 @@ export__include_arg(arg_info(_Loc, Mode) - Type) :-
 	% build a string to declare the argument types (and if
 	% NameThem = yes, the argument names) of a C function.
 
-:- pred get_argument_declarations(assoc_list(arg_info, type), bool, string).
-:- mode get_argument_declarations(in, in, out) is det.
+:- pred get_argument_declarations(assoc_list(arg_info, type), bool,
+		module_info, string).
+:- mode get_argument_declarations(in, in, in, out) is det.
 
-get_argument_declarations([], _, "void").
-get_argument_declarations([X|Xs], NameThem, Result) :-
-	get_argument_declarations_2([X|Xs], 0, NameThem, Result).
+get_argument_declarations([], _, _, "void").
+get_argument_declarations([X|Xs], NameThem, Module, Result) :-
+	get_argument_declarations_2([X|Xs], 0, NameThem, Module, Result).
 
 :- pred get_argument_declarations_2(assoc_list(arg_info, type), int, bool,
-				string).
-:- mode get_argument_declarations_2(in, in, in, out) is det.
+				module_info, string).
+:- mode get_argument_declarations_2(in, in, in, in, out) is det.
 
-get_argument_declarations_2([], _, _, "").
-get_argument_declarations_2([AT|ATs], Num0, NameThem, Result) :-
+get_argument_declarations_2([], _, _, _, "").
+get_argument_declarations_2([AT|ATs], Num0, NameThem, Module, Result) :-
 	AT = ArgInfo - Type,
 	Num is Num0 + 1,
-	get_argument_declaration(ArgInfo, Type, Num, NameThem,
+	get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
 			TypeString, ArgName),
 	(
 		ATs = []
 	->
 		string__append(TypeString, ArgName, Result)
 	;
-		get_argument_declarations_2(ATs, Num, NameThem, TheRest),
+		get_argument_declarations_2(ATs, Num, NameThem, Module,
+			TheRest),
 		string__append_list([TypeString, ArgName, ", ", TheRest],
 			Result)
 	).
 	
-:- pred get_argument_declaration(arg_info, type, int, bool, string, string).
-:- mode get_argument_declaration(in, in, in, in, out, out) is det.
+:- pred get_argument_declaration(arg_info, type, int, bool, module_info, 
+		string, string).
+:- mode get_argument_declaration(in, in, in, in, in, out, out) is det.
 
-get_argument_declaration(ArgInfo, Type, Num, NameThem, TypeString, ArgName) :-
+get_argument_declaration(ArgInfo, Type, Num, NameThem, Module,
+		TypeString, ArgName) :-
 	ArgInfo = arg_info(_Loc, Mode),
 	( NameThem = yes ->
 		string__int_to_string(Num, NumString),
@@ -429,7 +432,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, TypeString, ArgName) :-
 	;
 		ArgName = ""
 	),
-	export__type_to_type_string(Type, TypeString0),
+	TypeString0 = to_type_string(c, Module, Type),
 	(
 		Mode = top_out
 	->
@@ -622,21 +625,5 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 		{ error("export__produce_header_file_2: foreign languages other than C unimplemented") }
 	),
 	export__produce_header_file_2(ExportedProcs).
-
-	% Convert a term representation of a variable type to a string which
-	% represents the C type of the variable
-	% Apart from special cases, local variables become MR_Words
-export__type_to_type_string(Type, Result) :-
-	( Type = term__functor(term__atom("int"), [], _) ->
-		Result = "MR_Integer"
-	; Type = term__functor(term__atom("float"), [], _) ->
-		Result = "MR_Float"
-	; Type = term__functor(term__atom("string"), [], _) ->
-		Result = "MR_String"
-	; Type = term__functor(term__atom("character"), [], _) ->
-		Result = "MR_Char"
-	;
-		Result = "MR_Word"
-	).
 
 %-----------------------------------------------------------------------------%

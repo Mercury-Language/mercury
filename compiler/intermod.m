@@ -1175,6 +1175,15 @@ intermod__write_type(TypeId - TypeDefn) -->
 	;
 		{ Body = abstract_type },
 		{ TypeBody = abstract_type }
+	;
+		{ Body = foreign_type(_, _) },
+		{ TypeBody = abstract_type },
+			% XXX trd
+			% Also here we need to output the pragma
+			% for the type body, we output a abstract type for
+			% the type definition which is fine.
+		{ error("foreign_type not yet implemented") }
+
 	),
 	mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true),
 		Context).

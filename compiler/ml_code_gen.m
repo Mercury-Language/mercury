@@ -2767,11 +2767,13 @@ ml_gen_pragma_c_decls(Lang, [Arg|Args], [Decl|Decls]) -->
 
 ml_gen_pragma_c_decl(Lang, ml_c_arg(_Var, MaybeNameAndMode, Type),
 		Decl) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{
 		MaybeNameAndMode = yes(ArgName - _Mode),
 		\+ var_is_singleton(ArgName)
 	->
-		TypeString = foreign_type_to_type_string(Lang, Type),
+		TypeString = to_type_string(Lang, ModuleInfo, Type),
 		string__format("\t%s %s;\n", [s(TypeString), s(ArgName)],
 			DeclString)
 	;
@@ -2780,17 +2782,6 @@ ml_gen_pragma_c_decl(Lang, ml_c_arg(_Var, MaybeNameAndMode, Type),
 		DeclString = ""
 	},
 	{ Decl = raw_target_code(DeclString, []) }.
-
-:- func foreign_type_to_type_string(foreign_language, prog_data__type) = string.
-foreign_type_to_type_string(Lang, Type) = TypeString :-
-	( 
-		type_util__var(Type, _),
-		Lang = managed_cplusplus
-	->
-		TypeString = "MR_Box"
-	;
-		export__type_to_type_string(Type, TypeString)
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2859,8 +2850,7 @@ ml_gen_pragma_c_input_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			% --high-level-data, so we always use a cast here.
 			% (Strictly speaking the cast is not needed for
 			% a few cases like `int', but it doesn't do any harm.)
-			TypeString = foreign_type_to_type_string(Lang,
-				OrigType),
+			TypeString = to_type_string(Lang, ModuleInfo, OrigType),
 			string__format("(%s)", [s(TypeString)], Cast)
 		;
 			% For --no-high-level-data, we only need to use
@@ -2946,8 +2936,7 @@ ml_gen_pragma_c_output_arg(Lang, ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			% Note that we can't easily obtain the type string
 			% for the RHS of the assignment, so instead we
 			% cast the LHS.
-			TypeString = foreign_type_to_type_string(Lang,
-				OrigType),
+			TypeString = to_type_string(Lang, ModuleInfo, OrigType),
 			string__format("*(%s *)&", [s(TypeString)], LHS_Cast),
 			RHS_Cast = ""
 		;

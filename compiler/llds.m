@@ -557,6 +557,8 @@
 	--->	pragma_c_arg_decl(
 			% This local variable corresponds to a procedure arg.
 			type,	% The Mercury type of the argument.
+			string,	% The string which is used to describe the
+				% type in the C code.
 			string	% The name of the local variable that
 				% will hold the value of that argument
 				% inside the C block.

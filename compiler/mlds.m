@@ -280,7 +280,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_data.
 :- import_module prog_data, builtin_ops, rtti, code_model.
-:- import_module type_util.
+:- import_module foreign, type_util.
 
 % To avoid duplication, we use a few things from the LLDS
 % (specifically stuff for the C interface).
@@ -535,8 +535,13 @@
 	--->	% Mercury data types
 		mercury_type(
 			prog_data__type,	% the exact Mercury type
-			builtin_type		% what kind of type it is:
+			builtin_type,		% what kind of type it is:
 						% enum, float, etc.
+			exported_type		% a representation of the type
+						% which can be used to
+						% determine the foreign
+						% language representation of
+						% the type.
 		)
 
 	 	% The Mercury array type is treated specially, some backends
@@ -587,6 +592,10 @@
 	;	mlds__native_int_type
 	;	mlds__native_float_type
 	;	mlds__native_char_type
+
+		% This is a type of the MLDS target language.  Currently
+		% this is only used by the il backend.
+	;	mlds__foreign_type(sym_name, string)
 
 		% MLDS types defined using mlds__class_defn
 	;	mlds__class_type(
@@ -1506,7 +1515,7 @@ XXX Full exception handling support is not yet implemented.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module modules.
+:- import_module foreign, modules.
 :- import_module int, term, string, require.
 
 %-----------------------------------------------------------------------------%
@@ -1540,8 +1549,17 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
 		MLDSType = mlds__mercury_array_type(MLDSElemType)
 	;
+		type_to_type_id(Type, TypeId, _),
+		module_info_types(ModuleInfo, Types),
+		map__search(Types, TypeId, TypeDefn),
+		hlds_data__get_type_defn_body(TypeDefn, Body),
+		Body = foreign_type(ForeignType, ForeignLocation)
+	->
+		MLDSType = mlds__foreign_type(ForeignType, ForeignLocation)
+	;
 		classify_type(Type, ModuleInfo, Category),
-		MLDSType = mercury_type(Type, Category)
+		ExportedType = to_exported_type(ModuleInfo, Type),
+		MLDSType = mercury_type(Type, Category, ExportedType)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -1677,8 +1677,10 @@ build_type(mercury_array_type(_ElemType), _, _, GCC_Type) -->
 	;
 		{ GCC_Type = 'MR_Word' }
 	).
-build_type(mercury_type(Type, TypeCategory), _, _, GCC_Type) -->
+build_type(mercury_type(Type, TypeCategory, _), _, _, GCC_Type) -->
 	build_mercury_type(Type, TypeCategory, GCC_Type).
+build_type(mlds__foreign_type(_, _), _, _, _) --> 
+	{ sorry(this_file, "foreign_type not implemented") }.
 build_type(mlds__native_int_type, _, _, gcc__integer_type_node) --> [].
 build_type(mlds__native_float_type, _, _, gcc__double_type_node) --> [].
 build_type(mlds__native_bool_type, _, _, gcc__boolean_type_node) --> [].
@@ -2843,7 +2845,7 @@ build_lval(field(MaybeTag, Rval, offset(OffsetRval),
 	% sanity check (copied from mlds_to_c.m)
 	(
 		{ FieldType = mlds__generic_type
-		; FieldType = mlds__mercury_type(term__variable(_), _)
+		; FieldType = mlds__mercury_type(term__variable(_), _, _)
 		}
 	->
 		[]
@@ -3045,7 +3047,7 @@ build_unop(std_unop(Unop), Exprn, DefnInfo, GCC_Expr) -->
 :- pred type_is_float(mlds__type::in) is semidet.
 type_is_float(Type) :-
 	( Type = mlds__mercury_type(term__functor(term__atom("float"),
-			[], _), _)
+			[], _), _, _)
 	; Type = mlds__native_float_type
 	).
 

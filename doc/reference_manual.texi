@@ -6833,6 +6833,35 @@ to reset the source file name and line number to point back to the
 generated file for the automatically generated text, as in the above
 example.
 
+@c * Interfacing::                 Pragmas can be used to ease interfacing
+@c                                 with other languages.
+
+@c @node Interfacing
+@c @section Interfacing
+@c 
+@c A declaration of the form
+@c 
+@c @example
+@c :- pragma foreign_type(xmldoc, 'System__Xml__XmlDocument', il("System.Xml")).
+@c @end example
+@c 
+@c ensures that on the IL backend the mercury type @samp{xmldoc} is
+@c represented by the backend as a @samp{System.Xml.XmlDocument}.  This
+@c avoids the need to marshall values when interfacing with libraries
+@c written in other languages.  The following example shows how to do this
+@c interfacing.
+@c 
+@c @example
+@c :- pred loadxml(string::in, xmldoc::di, xmldoc::uo) is det.
+@c 
+@c :- pragma foreign_proc("C#", load(String::in, XML0::di, XML::uo),
+@c         [will_not_call_mercury],
+@c "
+@c     XML0.LoadXml(String);
+@c     XML = XML0;
+@c ").
+@c @end example
+
 @node Implementation-dependent extensions
 @chapter Implementation-dependent extensions
 

@@ -143,6 +143,7 @@
 :- import_module ilasm, il_peephole.
 :- import_module ml_util, ml_code_util, error_util.
 :- import_module ml_type_gen.
+:- import_module foreign.
 :- use_module llds. /* for user_foreign_code */
 
 :- import_module bool, int, map, string, set, list, assoc_list, term.
@@ -1016,7 +1017,8 @@ generate_method(_, IsCons, defn(Name, Context, Flags, Entity), ClassMember) -->
 
 		{ UnivMercuryType = term__functor(term__atom("univ"), [], 
 			context("", 0)) },
-		{ UnivMLDSType = mercury_type(UnivMercuryType, user_type) },
+		{ UnivMLDSType = mercury_type(UnivMercuryType,
+				user_type, non_foreign_type(UnivMercuryType)) },
 		{ UnivType = mlds_type_to_ilds_type(DataRep, UnivMLDSType) },
 
 		{ RenameNode = (func(N) = list__map(RenameRets, N)) },
@@ -1886,7 +1888,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
 			Type = mlds__class_type(_, _, mlds__class) 
 		;
 			DataRep ^ highlevel_data = yes,
-			Type = mlds__mercury_type(_, user_type)
+			Type = mlds__mercury_type(_, user_type, _)
 		}
 	->
 			% If this is a class, we should call the
@@ -2389,7 +2391,7 @@ unaryop_to_il(cast(DestType), SrcRval, Instrs) -->
 		)
 	;
 		( already_boxed(SrcILType) ->
-			( SrcType = mercury_type(_, user_type) ->
+			( SrcType = mercury_type(_, user_type, _) ->
 				% XXX we should look into a nicer way to
 				% generate MLDS so we don't need to do this
 				% XXX This looks wrong for --high-level-data. -fjh.
@@ -2849,7 +2851,7 @@ mlds_type_to_ilds_simple_type(DataRep, MLDSType) = SimpleType :-
 mlds_type_to_ilds_type(_, mlds__rtti_type(_RttiName)) = il_object_array_type.
 
 mlds_type_to_ilds_type(DataRep, mlds__mercury_array_type(ElementType)) = 
-	( ElementType = mlds__mercury_type(_, polymorphic_type) ->
+	( ElementType = mlds__mercury_type(_, polymorphic_type, _) ->
 		il_generic_array_type
 	;
 		ilds__type([], '[]'(mlds_type_to_ilds_type(DataRep,
@@ -2899,19 +2901,29 @@ mlds_type_to_ilds_type(_, mlds__native_int_type) = ilds__type([], int32).
 
 mlds_type_to_ilds_type(_, mlds__native_float_type) = ilds__type([], float64).
 
+mlds_type_to_ilds_type(_, mlds__foreign_type(ForeignType, Assembly))
+	= ilds__type([], Class) :-
+	sym_name_to_class_name(ForeignType, ForeignClassName),
+	Class = class(structured_name(assembly(Assembly),
+			ForeignClassName, [])).
+
 mlds_type_to_ilds_type(ILDataRep, mlds__ptr_type(MLDSType)) =
 	ilds__type([], '&'(mlds_type_to_ilds_type(ILDataRep, MLDSType))).
 
-mlds_type_to_ilds_type(_, mercury_type(_, int_type)) = ilds__type([], int32).
-mlds_type_to_ilds_type(_, mercury_type(_, char_type)) = ilds__type([], char).
-mlds_type_to_ilds_type(_, mercury_type(_, float_type)) =
+mlds_type_to_ilds_type(_, mercury_type(_, int_type, _)) =
+	ilds__type([], int32).
+mlds_type_to_ilds_type(_, mercury_type(_, char_type, _)) =
+	ilds__type([], char).
+mlds_type_to_ilds_type(_, mercury_type(_, float_type, _)) =
 	ilds__type([], float64).
-mlds_type_to_ilds_type(_, mercury_type(_, str_type)) = il_string_type.
-mlds_type_to_ilds_type(_, mercury_type(_, pred_type)) = il_object_array_type.
-mlds_type_to_ilds_type(_, mercury_type(_, tuple_type)) = il_object_array_type.
-mlds_type_to_ilds_type(_, mercury_type(_, enum_type)) = il_object_array_type.
-mlds_type_to_ilds_type(_, mercury_type(_, polymorphic_type)) = il_generic_type.
-mlds_type_to_ilds_type(DataRep, mercury_type(MercuryType, user_type)) = 
+mlds_type_to_ilds_type(_, mercury_type(_, str_type, _)) = il_string_type.
+mlds_type_to_ilds_type(_, mercury_type(_, pred_type, _)) = il_object_array_type.
+mlds_type_to_ilds_type(_, mercury_type(_, tuple_type, _)) =
+	il_object_array_type.
+mlds_type_to_ilds_type(_, mercury_type(_, enum_type, _)) = il_object_array_type.
+mlds_type_to_ilds_type(_, mercury_type(_, polymorphic_type, _)) =
+	il_generic_type.
+mlds_type_to_ilds_type(DataRep, mercury_type(MercuryType, user_type, _)) = 
 	( DataRep ^ highlevel_data = yes ->
 		mercury_type_to_highlevel_class_type(MercuryType)
 	;
@@ -3417,16 +3429,20 @@ rval_const_to_type(data_addr_const(_)) =
 	mlds__array_type(mlds__generic_type).
 rval_const_to_type(code_addr_const(_)) = mlds__func_type(
 		mlds__func_params([], [])).
-rval_const_to_type(int_const(_)) = mercury_type(
-	term__functor(term__atom("int"), [], context("", 0)), int_type).
-rval_const_to_type(float_const(_)) = mercury_type(
-	term__functor(term__atom("float"), [], context("", 0)), float_type).
+rval_const_to_type(int_const(_)) 
+	= mercury_type(IntType, int_type, non_foreign_type(IntType)) :-
+	IntType = term__functor(term__atom("int"), [], context("", 0)).
+rval_const_to_type(float_const(_)) 
+	= mercury_type(FloatType, float_type, non_foreign_type(FloatType)) :-
+	FloatType = term__functor(term__atom("float"), [], context("", 0)).
 rval_const_to_type(false) = mlds__native_bool_type.
 rval_const_to_type(true) = mlds__native_bool_type.
-rval_const_to_type(string_const(_)) = mercury_type(
-	term__functor(term__atom("string"), [], context("", 0)), str_type).
-rval_const_to_type(multi_string_const(_, _)) = mercury_type(
-	term__functor(term__atom("string"), [], context("", 0)), str_type).
+rval_const_to_type(string_const(_)) 
+	= mercury_type(StrType, str_type, non_foreign_type(StrType)) :-
+	StrType = term__functor(term__atom("string"), [], context("", 0)).
+rval_const_to_type(multi_string_const(_, _)) 
+	= mercury_type(StrType, str_type, non_foreign_type(StrType)) :-
+	StrType = term__functor(term__atom("string"), [], context("", 0)).
 rval_const_to_type(null(MldsType)) = MldsType.
 
 %-----------------------------------------------------------------------------%
@@ -3628,6 +3644,12 @@ simple_type_to_value_class(bool) =
 	ilds__type([], value_class(il_system_name(["Boolean"]))).
 simple_type_to_value_class(char) = 
 	ilds__type([], value_class(il_system_name(["Char"]))).
+simple_type_to_value_class(object) = _ :-
+	% ilds__type([], value_class(il_system_name(["Object"]))).
+	error("no value class for System.Object").
+simple_type_to_value_class(string) = _ :-
+	% ilds__type([], value_class(il_system_name(["String"]))).
+	error("no value class for System.String").
 simple_type_to_value_class(refany) = _ :-
 	error("no value class for refany").
 simple_type_to_value_class(class(_)) = _ :-

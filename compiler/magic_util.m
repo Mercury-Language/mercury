@@ -1379,6 +1379,8 @@ magic_util__check_type_defn(eqv_type(_), _, _, _) -->
 	{ error("magic_util__check_type_defn: eqv_type") }.
 magic_util__check_type_defn(abstract_type, _, Errors0, Errors) -->
 	{ set__insert(Errors0, abstract, Errors) }.
+magic_util__check_type_defn(foreign_type(_, _), _, _, _) -->
+	{ error("magic_util__check_type_defn: foreign_type") }.
 
 :- pred magic_util__check_ctor(set(type_id)::in, constructor::in, 
 		set(argument_error)::in, set(argument_error)::out, 

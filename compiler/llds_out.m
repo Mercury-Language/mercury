@@ -1915,11 +1915,10 @@ output_pragma_c_component(pragma_c_noop) --> [].
 output_pragma_decls([]) --> [].
 output_pragma_decls([D|Decls]) -->
 	(
-		{ D = pragma_c_arg_decl(Type, VarName) },
 		% Apart from special cases, the local variables are MR_Words
-		{ export__type_to_type_string(Type, VarType) },
+		{ D = pragma_c_arg_decl(_Type, TypeString, VarName) },
 		io__write_string("\t"),
-		io__write_string(VarType),
+		io__write_string(TypeString),
 		io__write_string("\t"),
 		io__write_string(VarName),
 		io__write_string(";\n")

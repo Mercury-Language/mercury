@@ -112,9 +112,9 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement) -->
 :- pred is_integral_type(mlds__type::in) is semidet.
 is_integral_type(mlds__native_int_type).
 is_integral_type(mlds__native_char_type).
-is_integral_type(mlds__mercury_type(_, int_type)).
-is_integral_type(mlds__mercury_type(_, char_type)).
-is_integral_type(mlds__mercury_type(_, enum_type)).
+is_integral_type(mlds__mercury_type(_, int_type, _)).
+is_integral_type(mlds__mercury_type(_, char_type, _)).
+is_integral_type(mlds__mercury_type(_, enum_type, _)).
 
 :- pred is_dense_switch(list(mlds__switch_case)::in, int::in) is semidet.
 is_dense_switch(Cases, ReqDensity) :-

@@ -22,7 +22,23 @@
 :- import_module hlds_module, hlds_pred.
 :- import_module llds.
 
-:- import_module list, bool.
+:- import_module bool, list, string.
+	% A type which is used to determine the string representation of a
+	% mercury type for various foreign languages.
+:- type exported_type.
+
+	% Given a type which is not defined as a foreign type, get the
+	% exported_type representation of that type.
+:- func foreign__non_foreign_type((type)) = exported_type.
+
+	% Given an arbitary mercury type, get the exported_type representation
+	% of that type.
+:- func foreign__to_exported_type(module_info, (type)) = exported_type.
+
+	% Given a representation of a type determine the string which
+	% corresponds to that type in the specified foreign language.
+:- func foreign__to_type_string(foreign_language, exported_type) = string.
+:- func foreign__to_type_string(foreign_language, module_info, (type)) = string.
 
 	% Filter the decls for the given foreign language. 
 	% The first return value is the list of matches, the second is
@@ -107,10 +123,11 @@
 
 :- implementation.
 
-:- import_module list, map, assoc_list, std_util, string, varset, int.
+:- import_module list, map, assoc_list, std_util, string, varset, int, term.
 :- import_module require.
 
 :- import_module hlds_pred, hlds_module, type_util, mode_util, error_util.
+:- import_module hlds_data, prog_out.
 :- import_module code_model, globals.
 
 	% Currently we don't use the globals to compare foreign language
@@ -496,9 +513,74 @@ foreign_language_module_name(M, L) = FM :-
 		FM = qualified(Module, Name ++ Ending)
 	).
 
+%-----------------------------------------------------------------------------%
 
+:- type exported_type
+	--->	foreign(sym_name)	% A type defined by a
+					% pragma foreign_type.
+	;	mercury((type)).	% Any other mercury type.
 
+non_foreign_type(Type) = mercury(Type).
+
+to_exported_type(ModuleInfo, Type) = ExportType :-
+	module_info_types(ModuleInfo, Types),
+	(
+		type_to_type_id(Type, TypeId, _),
+		map__search(Types, TypeId, TypeDefn)
+	->
+		hlds_data__get_type_defn_body(TypeDefn, Body),
+		( Body = foreign_type(ForeignType, _) ->
+			ExportType = foreign(ForeignType)
+		;
+			ExportType = mercury(Type)
+		)
+	;
+		ExportType = mercury(Type)
+	).
+
+to_type_string(Lang, ModuleInfo, Type) =
+	to_type_string(Lang, to_exported_type(ModuleInfo, Type)).
+
+to_type_string(c, foreign(_ForeignType)) = _ :-
+	sorry(this_file, "foreign types on a C backend").
+to_type_string(csharp, foreign(ForeignType)) = Result :-
+	sym_name_to_string(ForeignType, ".", Result).
+to_type_string(managed_cplusplus, foreign(ForeignType)) = Result ++ " *":-
+	sym_name_to_string(ForeignType, "::", Result).
+to_type_string(il, foreign(ForeignType)) = Result :-
+	sym_name_to_string(ForeignType, ".", Result).
+
+	% XXX does this do the right thing for high level data?
+to_type_string(c, mercury(Type)) = Result :-
+	( Type = term__functor(term__atom("int"), [], _) ->
+		Result = "MR_Integer"
+	; Type = term__functor(term__atom("float"), [], _) ->
+		Result = "MR_Float"
+	; Type = term__functor(term__atom("string"), [], _) ->
+		Result = "MR_String"
+	; Type = term__functor(term__atom("character"), [], _) ->
+		Result = "MR_Char"
+	;
+		Result = "MR_Word"
+	).
+to_type_string(csharp, mercury(_Type)) = _ :-
+	sorry(this_file, "to_type_string for csharp").
+to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
+	( 
+		type_util__var(Type, _)
+	->
+		TypeString = "MR_Box"
+	;
+		TypeString = to_type_string(c, mercury(Type))
+	).
+to_type_string(il, mercury(_Type)) = _ :-
+	sorry(this_file, "to_type_string for il").
+	
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "foreign.m".
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

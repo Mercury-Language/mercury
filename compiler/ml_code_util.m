@@ -706,6 +706,7 @@
 :- implementation.
 
 :- import_module ml_call_gen.
+:- import_module foreign.
 :- import_module prog_util, type_util, mode_util, special_pred, error_util.
 :- import_module code_util. % XXX for `code_util__compiler_generated'.
 :- import_module globals, options.
@@ -963,7 +964,8 @@ ml_gen_array_elem_type(elem_type_string) = ml_string_type.
 ml_gen_array_elem_type(elem_type_int) = mlds__native_int_type.
 ml_gen_array_elem_type(elem_type_generic) = mlds__generic_type.
 
-ml_string_type = mercury_type(string_type, str_type).
+ml_string_type = mercury_type(string_type, str_type,
+				non_foreign_type(string_type)).
 
 %-----------------------------------------------------------------------------%
 %

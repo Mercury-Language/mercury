@@ -1141,6 +1141,7 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 pragma_allowed_in_interface(foreign_decl(_, _), no).
 pragma_allowed_in_interface(foreign_code(_, _), no).
 pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(foreign_type(_, _, _, _), yes).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).

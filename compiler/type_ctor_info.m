@@ -261,6 +261,14 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 		TypeTables = [],
 		NumPtags = -1
 	;
+		TypeBody = foreign_type(_, _),
+		TypeCtorRep = unknown,
+		NumFunctors = -1,
+		FunctorsInfo = no_functors,
+		LayoutInfo = no_layout,
+		TypeTables = [],
+		NumPtags = -1
+	;
 		TypeBody = eqv_type(Type),
 		( term__is_ground(Type) ->
 			TypeCtorRep = equiv(equiv_type_is_ground)

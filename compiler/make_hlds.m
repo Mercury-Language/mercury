@@ -391,6 +391,19 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = foreign_proc(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;	
+		{ Pragma = foreign_type(Backend, _MercuryType, Name,
+				ForeignType) },
+
+		{ Backend = il(ForeignTypeLocation) },
+
+		{ varset__init(VarSet) },
+		{ Args = [] },
+		{ Body = foreign_type(ForeignType, ForeignTypeLocation) },
+		{ Cond = true },
+
+		module_add_type_defn_2(Module0, VarSet, Name, Args, Body,
+			Cond, Context, Status, Module)
+	;	
 		% Handle pragma tabled decls later on (when we process
 		% clauses).
 		{ Pragma = tabled(_, _, _, _, _) },
@@ -1784,13 +1797,27 @@ modes_add(Modes0, VarSet, Name, Args, eqv_mode(Body),
 :- mode module_add_type_defn(in, in, in, in, in,
 		in, in, in, out, di, uo) is det.
 
-module_add_type_defn(Module0, TVarSet, Name, Args, TypeDefn, _Cond, Context,
+module_add_type_defn(Module0, TVarSet, Name, Args, TypeDefn, Cond, Context,
+		item_status(Status0, NeedQual), Module) -->
+	globals__io_get_globals(Globals),
+	{ list__length(Args, Arity) },
+	{ TypeId = Name - Arity },
+	{ convert_type_defn(TypeDefn, TypeId, Globals, Body) },
+	module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, Cond,
+			Context, item_status(Status0, NeedQual), Module).
+
+:- pred module_add_type_defn_2(module_info, tvarset, sym_name, list(type_param),
+		hlds_type_body, condition, prog_context, item_status,
+		module_info, io__state, io__state).
+:- mode module_add_type_defn_2(in, in, in, in, in,
+		in, in, in, out, di, uo) is det.
+
+module_add_type_defn_2(Module0, TVarSet, Name, Args, Body, _Cond, Context,
 		item_status(Status0, NeedQual), Module) -->
 	{ module_info_types(Module0, Types0) },
 	globals__io_get_globals(Globals),
 	{ list__length(Args, Arity) },
 	{ TypeId = Name - Arity },
-	{ convert_type_defn(TypeDefn, TypeId, Globals, Body) },
 	{ Body = abstract_type ->
 		make_status_abstract(Status0, Status1)
 	;

@@ -30,7 +30,7 @@
 :- func mlds_rtti_type_name(rtti_name) = string.
 
 :- implementation.
-:- import_module prog_data, hlds_data.
+:- import_module foreign, prog_data, hlds_data.
 :- import_module pseudo_type_info, prog_util, prog_out, type_util.
 :- import_module ml_code_util, ml_unify_gen.
 :- import_module bool, list, std_util, string, term, require.
@@ -133,10 +133,12 @@ gen_init_rtti_data_defn(exist_info(RttiTypeId, _Ordinal, Plain, InTci, Tci,
 	]).
 gen_init_rtti_data_defn(field_names(_RttiTypeId, _Ordinal, MaybeNames), _, _,
 		Init, []) :-
+	StrType = term__functor(term__atom("string"), [], context("", 0)),
 	Init = gen_init_array(gen_init_maybe(
-			mercury_type(functor(atom("string"), [],
-				context("", 0)), str_type),
+			mercury_type(StrType, str_type,
+				non_foreign_type(StrType)),
 			gen_init_string), MaybeNames).
+	
 gen_init_rtti_data_defn(field_types(_RttiTypeId, _Ordinal, Types),
 		ModuleName, _, Init, []) :-
 	Init = gen_init_array(

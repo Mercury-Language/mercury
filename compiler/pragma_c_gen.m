@@ -42,7 +42,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_pred, llds_out, trace, tree.
-:- import_module code_util.
+:- import_module code_util, foreign.
 :- import_module options, globals.
 
 :- import_module bool, string, int, assoc_list, set, map, require, term.
@@ -438,13 +438,13 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	{ make_pragma_decls(Args, Decls) },
+	code_info__get_module_info(ModuleInfo),
+	{ make_pragma_decls(Args, ModuleInfo, Decls) },
 
 	%
 	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
 	% and #undef MR_PROC_LABEL
 	%
-	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(CallerPredId),
 	code_info__get_proc_id(CallerProcId),
 	{ make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
@@ -665,8 +665,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
 	{ pragma_select_in_args(Args, InArgs) },
 	{ pragma_select_out_args(Args, OutArgs) },
-	{ make_pragma_decls(Args, Decls) },
-	{ make_pragma_decls(OutArgs, OutDecls) },
+	{ make_pragma_decls(Args, ModuleInfo, Decls) },
+	{ make_pragma_decls(OutArgs, ModuleInfo, OutDecls) },
 
 	{ input_descs_from_arg_info(InArgs, InputDescs) },
 	{ output_descs_from_arg_info(OutArgs, OutputDescs) },
@@ -1127,21 +1127,23 @@ var_is_not_singleton(yes(Name), Name) :-
 % data structure in the LLDS. It is essentially a list of pairs of type and
 % variable name, so that declarations of the form "Type Name;" can be made.
 
-:- pred make_pragma_decls(list(c_arg)::in, list(pragma_c_decl)::out) is det.
+:- pred make_pragma_decls(list(c_arg)::in, module_info::in,
+		list(pragma_c_decl)::out) is det.
 
-make_pragma_decls([], []).
-make_pragma_decls([Arg | Args], Decls) :-
+make_pragma_decls([], _, []).
+make_pragma_decls([Arg | Args], Module, Decls) :-
 	Arg = c_arg(_Var, ArgName, OrigType, _ArgInfo),
 	(
 		var_is_not_singleton(ArgName, Name)
 	->
-		Decl = pragma_c_arg_decl(OrigType, Name),
-		make_pragma_decls(Args, Decls1),
+		OrigTypeString = to_type_string(c, Module, OrigType),
+		Decl = pragma_c_arg_decl(OrigType, OrigTypeString, Name),
+		make_pragma_decls(Args, Module, Decls1),
 		Decls = [Decl | Decls1]
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
-		make_pragma_decls(Args, Decls)
+		make_pragma_decls(Args, Module, Decls)
 	).
 
 %---------------------------------------------------------------------------%
