@@ -847,7 +847,7 @@ make_install_dirs(Result, LinkResult) -->
 
 	{ Result4 = Result1 `and` Result2 `and` Result3 },
 
-	{ Subdirs = ["int", "int2", "int3",
+	{ Subdirs = ["int0", "int", "int2", "int3",
 			"opt", "trans_opt", "module_dep"] },
 	list__map_foldl(make_install_symlink(IntsSubdir),
 		Subdirs, LinkResults),
