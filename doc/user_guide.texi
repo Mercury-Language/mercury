@@ -3038,15 +3038,6 @@ supported in general.
 Output a bytecode form of the module for use
 by an experimental debugger.
 
-@item --generate-bytecode
-@c Output a bytecode version of the module
-@c into the @file{@var{module}.bytecode} file,
-@c and a human-readable version of the bytecode
-@c into the @file{@var{module}.bytedebug} file.
-@c The bytecode is for an experimental debugger.
-Output a bytecode form of the module for use
-by an experimental debugger.
-
 @c @item --generate-prolog
 @c Convert the program to Prolog.  Output to file @file{@var{module}.pl}
 @c or @file{@var{module}.nl} (depending the the dialect).
