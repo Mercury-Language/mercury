@@ -43,12 +43,12 @@ clean:
 install: install_lp_solve install_manpages
 
 .PHONY: install_manpages
-install_manpages:
+install_manpages: lp_solve.1
 	-[ -d $(INSTALL_MAN_DIR)/man1 ] || mkdir -p $(INSTALL_MAN_DIR)/man1
 	cp lp_solve.1 $(INSTALL_MAN_DIR)/man1
 
 .PHONY: install_lp_solve
-install_lp_solve:
+install_lp_solve: lp_solve
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	cp `vpath_find lp_solve` $(INSTALL_BINDIR)
 

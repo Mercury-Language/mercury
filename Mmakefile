@@ -111,6 +111,10 @@ util: scripts
 profiler: dep_profiler scripts util runtime boehm_gc library
 	cd profiler && $(SUBDIR_MMAKE)
 
+.PHONY: lp_solve
+lp_solve:
+	cd lp_solve && $(SUBDIR_MMAKE)
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: tags
