@@ -171,7 +171,7 @@ then
 	exit 1
 fi
 
-module="$doubtful"
+module=`echo $doubtful | tr -d ' '`
 arg $module
 
 echo "there is a problem in $problemdir/$module"
@@ -183,6 +183,9 @@ badcnt=`egrep '^END_MODULE' stage2.bad/$problemdir/$module.c | wc -l`
 
 if test $okcnt -ne $badcnt
 then
+	okcnt=`echo $okcnt | tr -d ' '`
+	badcnt=`echo $badcnt | tr -d ' '`
+
 	echo "the two versions of the problem module"
 	echo "differ in the number of C modules they have"
 	echo "ok version: $okcnt vs bad version: $badcnt"
