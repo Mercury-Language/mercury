@@ -896,8 +896,9 @@ non-zero exit status.
 
 @sp 1
 @item --halt-at-syntax-error.
-This option causes the compiler to halt if it finds
-any syntax errors in the program.
+This option causes the compiler to halt immediately
+after syntax checking and not do any semantic checking
+if it finds any syntax errors in the program.
 
 @sp 1
 @item --no-warn-singleton-variables
@@ -1232,7 +1233,15 @@ Don't optimize the assignment of registers in branched goals.
 
 @sp 1
 @item --args @{old, compact@}
-Use the specified argument convention.
+Use the specified argument passing convention
+in the generated low-level C code.
+With the `simple' convention,
+the @samp{n}th argument is passed in or out using register r@samp{n}.
+With the `compact' convention,
+the @samp{n}th input argument is passed using register r@samp{n}
+and the @samp{n}th output argument is returned using register r@samp{n}.
+This generally leads to more efficient code.
+However, currently only the `simple' convention is supported.
 
 @sp 1
 @item --no-reclaim-heap-on-nondet-failure
@@ -1412,10 +1421,14 @@ the higher-order arguments are known.
 
 @sp 1
 @item -O-, --no-c-optimize
+Don't enable the C compiler's optimizations.
 
 @sp 1
 @item --opt-level @var{n}
 Set optimization level to @var{n}.
+Optimimization level 0 means no optimization
+while optimimization level 5 means full optimization.
+@c For a full description of each optimization level, see below.
 @end table
 
 @node Miscellaneous options
