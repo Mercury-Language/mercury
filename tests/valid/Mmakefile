@@ -82,6 +82,7 @@ OTHER_SOURCES= \
 	nasty_func_test.m \
 	nested_mod_type_bug.m \
 	nondet_live.m \
+	parsing_bug_main.m \
 	pred_with_no_modes.m \
 	qualified_cons_id.m \
 	same_length_2.m \
