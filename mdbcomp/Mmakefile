@@ -113,10 +113,13 @@ endif
 main:	library $(TAGS_FILE_EXISTS)
 
 .PHONY: all
-all:	library $(TAGS_FILE_EXISTS)
+all:	library all-ints $(TAGS_FILE_EXISTS)
 
 .PHONY: library
 library: $(LIBS)
+
+.PHONY: all-ints
+all-ints: $(MDBCOMP_LIB_NAME).int3s $(MDBCOMP_LIB_NAME).ints
 
 .PHONY: depend
 depend:	$(DEPENDS)
@@ -253,7 +256,7 @@ install_library: \
 		$(mer_mdbcomp.int3s) $(mer_mdbcomp.ints) \
 		lib$(MDBCOMP_LIB_NAME).$A \
 		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
-		install_dirs
+		all-ints install_dirs
 	cp `vpath_find lib$(MDBCOMP_LIB_NAME).$A \
 		lib$(MDBCOMP_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
