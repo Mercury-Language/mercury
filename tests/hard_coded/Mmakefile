@@ -66,6 +66,7 @@ PROGS=	\
 	impossible_unify \
 	impure_prune \
 	integer_test \
+	inline_nondet_pragma_c \
 	merge_and_remove_dups \
 	minint_bug \
 	mode_choice \

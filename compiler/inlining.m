@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -147,10 +147,16 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type inline_params	--->	params(bool, bool, int, int, int).
-				% simple, single_use,
-				%	size-threshold, simple-goal-threshold
-				%		var-threshold
+	% this structure holds option values, extracted from the globals
+:- type inline_params
+	--->	params(
+			simple				:: bool,
+			single_use			:: bool,
+			size_threshold			:: int,
+			simple_goal_threshold		:: int,
+			var_threshold			:: int,
+			highlevel_code			:: bool
+		).
 
 inlining(ModuleInfo0, ModuleInfo) -->
 		%
@@ -166,6 +172,7 @@ inlining(ModuleInfo0, ModuleInfo) -->
 		%   we want in procedures - if inlining a procedure
 		%   would cause the number of variables to exceed
 		%   this threshold then we don't inline it.
+		% - whether we're in an MLDS grade
 		%
 	globals__io_lookup_bool_option(inline_simple, Simple),
 	globals__io_lookup_bool_option(inline_single_use, SingleUse),
@@ -173,8 +180,9 @@ inlining(ModuleInfo0, ModuleInfo) -->
 							CompoundThreshold),
 	globals__io_lookup_int_option(inline_simple_threshold, SimpleThreshold),
 	globals__io_lookup_int_option(inline_vars_threshold, VarThreshold),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 	{ Params = params(Simple, SingleUse, CompoundThreshold,
-			SimpleThreshold, VarThreshold) },
+			SimpleThreshold, VarThreshold, HighLevelCode) },
 
 		%
 		% Get the usage counts for predicates
@@ -232,11 +240,17 @@ inlining__do_inlining([PPId|PPIds], Needed, Params, Inlined0,
 		io__state, io__state).
 :- mode inlining__mark_predproc(in, in, in, in, in, out, di, uo) is det.
 
+%
+% This predicate effectively adds implicit `pragma inline'
+% directives for procedures that match its heuristic.
+%
+
 inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, 
 		InlinedProcs0, InlinedProcs) -->
 	(
 		{ Params = params(Simple, SingleUse, CompoundThreshold,
-				SimpleThreshold, _VarThreshold) },
+				SimpleThreshold, _VarThreshold,
+				_HighLevelCode) },
 		{ PredProcId = proc(PredId, ProcId) },
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ pred_info_procedures(PredInfo, Procs) },
@@ -265,18 +279,9 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 			{ NumUses = 1 }
 		),
 		% Don't inline recursive predicates
-		{ \+ goal_calls(CalledGoal, PredProcId) },
+		% (unless explicitly requested)
+		{ \+ goal_calls(CalledGoal, PredProcId) }
 
-		% Under no circumstances inline model_non pragma c codes.
-		% The resulting code would not work properly.
-		\+ {
-			CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _,
-			proc_info_interface_code_model(ProcInfo, model_non)
-		},
-
-		% Don't inline memoed Aditi predicates.
-		{ pred_info_get_markers(PredInfo, Markers) },
-		{ \+ check_marker(Markers, aditi_memo) }
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
 			InlinedProcs0, InlinedProcs)
@@ -364,6 +369,7 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 :- type inline_info	
 	---> inline_info(
 		int,			% variable threshold for inlining
+		bool,			% highlevel_code option
 		set(pred_proc_id),	% inlined procs
 		module_info,		% module_info
 		list(tvar),		% universally quantified type vars
@@ -392,8 +398,9 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 
 inlining__in_predproc(PredProcId, InlinedProcs, Params,
 		ModuleInfo0, ModuleInfo, IoState0, IoState) :-
-	Params = params(_Simple, _SingleUse, _CompoundThreshold,
-			_SimpleThreshold, VarThresh),
+	VarThresh = Params^var_threshold,
+	HighLevelCode = Params^highlevel_code,
+
 	PredProcId = proc(PredId, ProcId),
 
 	module_info_preds(ModuleInfo0, PredTable0),
@@ -412,13 +419,13 @@ inlining__in_predproc(PredProcId, InlinedProcs, Params,
 
 	DetChanged0 = no,
 
-	InlineInfo0 = inline_info(
-		VarThresh, InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
+	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
+		InlinedProcs, ModuleInfo0, UnivQTVars, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
 
 	inlining__inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
-	InlineInfo = inline_info(_, _, _, _, _, VarSet, VarTypes, TypeVarSet, 
+	InlineInfo = inline_info(_, _, _, _, _, _, VarSet, VarTypes, TypeVarSet, 
 		TypeInfoVarMap, DetChanged),
 
 	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
@@ -484,14 +491,14 @@ inlining__inlining_in_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
 inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		Sym) - GoalInfo0, Goal - GoalInfo, InlineInfo0, InlineInfo) :-
 
-	InlineInfo0 = inline_info(VarThresh, InlinedProcs, ModuleInfo,
-		HeadTypeParams, Markers,
+	InlineInfo0 = inline_info(VarThresh, HighLevelCode,
+		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet0, VarTypes0, TypeVarSet0, TypeInfoVarMap0, DetChanged0),
 
 	% should we inline this call?
 	(
 		inlining__should_inline_proc(PredId, ProcId, Builtin,
-				InlinedProcs, Markers, ModuleInfo),
+			HighLevelCode, InlinedProcs, Markers, ModuleInfo),
 			% okay, but will we exceed the number-of-variables
 			% threshold?
 		varset__vars(VarSet0, ListOfVars),
@@ -531,8 +538,8 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		TypeInfoVarMap = TypeInfoVarMap0,
 		DetChanged = DetChanged0
 	),
-	InlineInfo = inline_info(
-		VarThresh, InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
+	InlineInfo = inline_info(VarThresh, HighLevelCode,
+		InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DetChanged).
 
 inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,
@@ -721,18 +728,21 @@ inlining__inlining_in_conj([Goal0 | Goals0], Goals) -->
 
 	% Check to see if we should inline a call.
 	%
-	% Fails if the called predicate is a builtin or is imported.
+	% Fails if the called predicate cannot be inlined,
+	% e.g. because it is a builtin, we don't have code for it,
+	% it uses nondet pragma c_code, etc.
 	%
-	% Succeeds if the called predicate has an annotation
-	% indicating that it should be inlined, or if the goal
-	% is a conjunction of builtins.
+	% It succeeds if the called procedure is inlinable,
+	% and in addition either there was a `pragma inline'
+	% for this procedure, or the procedure was marked by
+	% inlining__mark_predproc as having met its heuristic.
 
 :- pred inlining__should_inline_proc(pred_id, proc_id, builtin_state,
-	set(pred_proc_id), pred_markers, module_info).
-:- mode inlining__should_inline_proc(in, in, in, in, in, in) is semidet.
+	bool, set(pred_proc_id), pred_markers, module_info).
+:- mode inlining__should_inline_proc(in, in, in, in, in, in, in) is semidet.
 
-inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
-		CallingPredMarkers, ModuleInfo) :-
+inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
+		InlinedProcs, CallingPredMarkers, ModuleInfo) :-
 
 	% don't inline builtins, the code generator will handle them
 
@@ -763,6 +773,33 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, InlinedProcs,
 	% not to inline.
 
 	\+ pred_info_requested_no_inlining(PredInfo),
+
+	% For the LLDS back-end,
+	% under no circumstances inline model_non pragma c codes.
+	% The resulting code would not work properly.
+	proc_info_goal(ProcInfo, CalledGoal),
+	\+ (
+		HighLevelCode = no,
+		CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _,
+		proc_info_interface_code_model(ProcInfo, model_non)
+	),
+
+	% For the MLDS back-end, don't inline any pragma c codes.
+	% XXX This is a work-around needed because of some problems
+	% with the current MLDS back-end implementation of
+	% pragma c_code.  In particular, ml_elim_nested.m assumes
+	% that target_code instructions don't contain variables,
+	% but with the current implementation sometimes they do.
+	% Also ml_code_gen.m doesn't handle complicated pragma_c_code
+	% goals, which can result from inlining.
+	\+ (
+		HighLevelCode = yes,
+		CalledGoal = pragma_c_code(_,_,_,_,_,_,_) - _
+	),
+
+	% Don't inline memoed Aditi predicates.
+	pred_info_get_markers(PredInfo, CalledPredMarkers),
+	\+ check_marker(CalledPredMarkers, aditi_memo),
 
 	% Don't inline Aditi procedures into non-Aditi procedures,
 	% since this could result in joins being performed by
