@@ -24,6 +24,7 @@ NONDET_PROGS = \
 	consumer_in_commit \
 	coup \
 	coup2 \
+	coup3 \
 	coup_det_frame \
 	coup_no_commit \
 	coup_non_tabled_frame \
