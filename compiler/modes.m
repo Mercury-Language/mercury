@@ -5,8 +5,58 @@
 % Main author: fjh.
 %
 % This file contains a mode-checker.
-% Adapted from the mode-checker; still very incomplete.
-% 
+% Still very incomplete.
+
+/*************************************
+To mode-check a clause:
+	1.  Initialize the insts of the head variables.
+	2.  Mode-check the goal.
+	3.  Check that the final insts of the head variables
+	    matches that specified in the mode declaration.
+
+To mode-check a goal:
+If goal is
+	(a) a disjunction
+		Mode-check the sub-goals;
+		check that the final insts of all the non-local
+		variables are the same for all the sub-goals.
+	(b) a conjunction
+		Attempt to schedule each sub-goal.
+		If a sub-goal can be scheduled, then schedule it,
+		and continue with the remaining sub-goals until
+		there is only one left, which gets mode-checked.
+		If no sub-goals can be scheduled, report a mode error.
+	(c) a negation
+		Mode-check the sub-goal.
+		Check that the sub-goal does not further instantiate
+		any non-local variables.  (Actually, rather than
+		doing this check after we mode-check the subgoal,
+		we instead "lock" the non-local variables, and
+		disallow binding of locked variables.)
+	(d) a unification
+		Check that the unification doesn't attempt to unify
+		two free variables (or in general two free sub-terms).
+	(e) a predicate call
+		Check that there is a mode declaration for the
+		predicate which matches the current instantiation of
+		the arguments.
+	(f) an if-then-else
+		Attempt to schedule the condition.  If successful,
+		then check that it doesn't further instantiate any
+		non-local variables, mode-check the `then' part
+		and the `else' part, and then check that the final
+		insts match.  (Perhaps also think about expanding
+		if-then-elses so that they can be run backwards,
+		if the condition can't be scheduled?)
+
+To attempt to schedule a goal, first mode-check the goal.  If mode-checking
+succeeds, then scheduling succeeds.  If mode-checking would report
+an error due to the binding of a non-local variable, then scheduling
+fails.  If mode-checking would report an error due to the binding of
+a local variable, then report the error.
+
+******************************************/
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -14,21 +64,19 @@
 :- interface.
 :- import_module hlds, io, prog_io.
 
-:- pred modecheck(module_info, module_info, bool, io__state, io__state).
-:- mode modecheck(input, output, output, di, uo).
+:- pred modecheck(module_info, module_info, io__state, io__state).
+:- mode modecheck(in, out, di, uo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module list, map, varset, prog_out, string, require, std_util.
-:- import_module globals, getopt, options.
+:- import_module globals, options, mercury_to_mercury.
 
 %-----------------------------------------------------------------------------%
 
-	% XXX need to pass FoundError to all steps
-
-modecheck(Module0, Module, FoundError) -->
+modecheck(Module0, Module) -->
 	lookup_option(statistics, bool(Statistics)),
 	lookup_option(verbose, bool(Verbose)),
 	io__stderr_stream(StdErr),
@@ -41,44 +89,38 @@ modecheck(Module0, Module, FoundError) -->
 	maybe_report_stats(Statistics),
 
 	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
-	check_pred_modes(Module1, Module, FoundError),
+	check_pred_modes(Module1, Module),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
-
-/*****
-	{ FoundError = no },
-	{ Module = Module1 },
-*****/
 
 %-----------------------------------------------------------------------------%
 	
 	% Mode-check the code for all the predicates in a module.
 
-:- pred check_pred_modes(module_info, module_info, bool, io__state, io__state).
-:- mode check_pred_modes(input, output, output, di, uo).
+:- pred check_pred_modes(module_info, module_info, io__state, io__state).
+:- mode check_pred_modes(in, out, di, uo).
 
-check_pred_modes(Module0, Module, FoundError) -->
+check_pred_modes(Module0, Module) -->
 	{ moduleinfo_predids(Module0, PredIds) },
-	modecheck_pred_modes_2(PredIds, Module0, no, Module, FoundError).
+	modecheck_pred_modes_2(PredIds, Module0, Module).
 
 %-----------------------------------------------------------------------------%
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred modecheck_pred_modes_2(list(pred_id), module_info, bool,
-			module_info, bool, io__state, io__state).
-:- mode modecheck_pred_modes_2(input, input, input, output, output, di, uo).
+:- pred modecheck_pred_modes_2(list(pred_id), module_info, 
+			module_info, io__state, io__state).
+:- mode modecheck_pred_modes_2(in, in, out, di, uo).
 
-modecheck_pred_modes_2([], ModuleInfo, Error, ModuleInfo, Error) --> [].
-modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
-				ModuleInfo, Error) -->
+modecheck_pred_modes_2([], ModuleInfo, ModuleInfo) --> [].
+modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ moduleinfo_preds(ModuleInfo0, Preds0) },
 	{ map__search(Preds0, PredId, PredInfo0) },
 	{ predinfo_clauses_info(PredInfo0, ClausesInfo0) },
 	{ ClausesInfo0 = clauses_info(_, _, _, Clauses0) },
 	( { Clauses0 = [] } ->
-		{ ModuleInfo1 = ModuleInfo0 }
+		{ ModuleInfo3 = ModuleInfo0 }
 	;
 		lookup_option(very_verbose, bool(VeryVerbose)),
 		( { VeryVerbose = yes } ->
@@ -88,23 +130,31 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, Error0,
 		;
 			[]
 		),
-		{ copy_clauses_to_procs(PredInfo0, PredInfo) },
-		{ map__set(Preds0, PredId, PredInfo, Preds) },
-		{ moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1) }
+		{ copy_clauses_to_procs(PredInfo0, PredInfo1) },
+		{ map__set(Preds0, PredId, PredInfo1, Preds1) },
+		{ moduleinfo_set_preds(ModuleInfo0, Preds1, ModuleInfo1) },
+		modecheck_procs(PredId, ModuleInfo1, PredInfo1, PredInfo, Errs),
+		{ map__set(Preds1, PredId, PredInfo, Preds) },
+		{ moduleinfo_set_preds(ModuleInfo1, Preds, ModuleInfo2) },
+		{ moduleinfo_num_errors(ModuleInfo2, NumErrors0) },
+		{ NumErrors is NumErrors0 + Errs },
+		{ moduleinfo_set_num_errors(ModuleInfo2, NumErrors,
+						ModuleInfo3) }
 	),
-/******
-		% XXX fix here
-	{ predinfo_argmodes(PredInfo1, ModeVarSet, ArgModes) },
-	modecheck_clause_list(Clauses0, PredId, ModeVarSet, ArgModes,
-		ModuleInfo0, Error0, Clauses, Error1),
-*****/
-	{ Error1 = Error0 },
-	modecheck_pred_modes_2(PredIds, ModuleInfo1, Error1, ModuleInfo, Error).
+	modecheck_pred_modes_2(PredIds, ModuleInfo3, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
+	% In the hlds, we initially record the clauses for a predicate
+	% in the clauses_info data structure which is part of the
+	% predinfo data structure.  But once the clauses have been
+	% type-checked, we want to have a separate copy of each clause
+	% fo
+	% each clauses record a list of the modes for which it applies.
+	% At this point in the compilation, we must make 
+
 :- pred copy_clauses_to_procs(pred_info, pred_info).
-:- mode copy_clauses_to_procs(input, output).
+:- mode copy_clauses_to_procs(in, out).
 
 copy_clauses_to_procs(PredInfo0, PredInfo) :-
 	predinfo_clauses_info(PredInfo0, ClausesInfo),
@@ -136,7 +186,7 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, Procs0, Procs) :-
 	copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs1, Procs).
 
 :- pred select_matching_clauses(list(clause), proc_id, list(clause)).
-:- mode select_matching_clauses(input, input, output).
+:- mode select_matching_clauses(in, in, out).
 
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
@@ -155,936 +205,777 @@ get_clause_goals([Clause | Clauses], [Goal | Goals]) :-
 	Clause = clause(_, Goal, _),
 	get_clause_goals(Clauses, Goals).
 
+%-----------------------------------------------------------------------------%
 
-/*********************** ALL THIS IS COMMENTED OUT!
+:- pred modecheck_procs(pred_id, module_info, pred_info, pred_info, int,
+			io__state, io__state).
+:- mode modecheck_procs(in, in, in, out, out, di, uo).
 
-	% Iterate over the list of clauses for a predicate.
-	% 
+modecheck_procs(PredId, ModuleInfo, PredInfo0, PredInfo, NumErrors) -->
+	{ predinfo_procedures(PredInfo0, Procs0) },
+	{ map__keys(Procs0, ProcIds) },
+	modecheck_procs_2(ProcIds, PredId, ModuleInfo, Procs0, 0,
+				Procs, NumErrors),
+	{ predinfo_set_procedures(PredInfo0, Procs, PredInfo) }.
 
-:- pred modecheck_clause_list(list(clause), pred_id, tvarset, list(mode),
-		module_info, bool, list(clause), bool, io__state, io__state).
-:- mode modecheck_clause_list(input, input, input, input, input, input,
-			output, output, di, uo).
+	% Iterate over the list of modes for a predicate.
 
-modecheck_clause_list([], _PredId, _ModeVarSet, _ArgModes, _ModuleInfo, Error,
-			[], Error)
-		--> [].
-modecheck_clause_list([Clause0|Clauses0], PredId, ModeVarSet, ArgModes,
-		ModuleInfo, Error0, [Clause|Clauses], Error) -->
-	modecheck_clause(Clause0, PredId, ModeVarSet, ArgModes,
-		ModuleInfo, Error0, Clause, Error1),
-	modecheck_clause_list(Clauses0, PredId, ModeVarSet, ArgModes,
-		ModuleInfo, Error1, Clauses, Error).
+:- pred modecheck_procs_2(list(proc_id), pred_id, module_info,
+		proc_table, int, proc_table, int, io__state, io__state).
+:- mode modecheck_procs_2(in, in, in, in, in, out, out, di, uo).
+
+modecheck_procs_2([], _PredId, _ModuleInfo, Procs, Errs, Procs, Errs) --> [].
+modecheck_procs_2([ProcId|ProcIds], PredId, ModuleInfo, Procs0, Errs0,
+					Procs, Errs) -->
+		% lookup the procinfo
+	{ map__lookup(Procs0, ProcId, ProcInfo0) },
+		% mode-check that mode of the predicate
+	modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0,
+			ProcInfo, NumErrors),
+	{ Errs1 is Errs0 + NumErrors },
+		% save the procinfo
+	{ map__set(Procs0, ProcId, ProcInfo, Procs1) },
+		% recursively process the remaining modes
+	modecheck_procs_2(ProcIds, PredId, ModuleInfo, Procs1, Errs1,
+				Procs, Errs).
 
 %-----------------------------------------------------------------------------%
 
-	% Mode-check a single clause.
+	% Mode-check the code for predicate in a given mode.
 
-	% As we go through a clause, we determine the possible
-	% mode assignments for the clause.  A mode assignment
-	% is an assignment of a mode to each variable in the
-	% clause.
-	%
-	% Note that this may cause exponential time & space usage
-	% in the presence of overloading of predicates and/or
-	% functors.  This is a potentially serious problem, but
-	% there's no easy solution apparent.
-	%
-	% It would be more natural to use non-determinism to write
-	% this code, and perhaps even more efficient.
-	% But doing it deterministically would make bootstrapping more
-	% difficult, and most importantly would make good error
-	% messages very difficult.
+:- pred modecheck_proc(proc_id, pred_id, module_info, proc_info,
+				proc_info, int, io__state, io__state).
+:- mode modecheck_proc(in, in, in, in, out, out, di, uo).
 
-	% XXX we should do manual garbage collection here
+modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
+			IOState0, IOState) :-
+		% extract the useful fields in the procinfo
+	procinfo_goal(ProcInfo0, Body0),
+	procinfo_argmodes(ProcInfo0, ArgModes),
+	procinfo_context(ProcInfo0, Context),
+	procinfo_headvars(ProcInfo0, HeadVars),
+		% modecheck the clause - first set the initial instantiation
+		% of the head arguments, mode-check the body, and
+		% then check that the final instantiation matches that in
+		% the mode declaration
+	mode_list_get_initial_insts(ArgModes, ModuleInfo, ArgInitialInsts),
+	map__from_corresponding_lists(HeadVars, ArgInitialInsts, InstMapping0),
+	modeinfo_init(IOState0, ModuleInfo, PredId, ProcId, Context,
+			InstMapping0, ModeInfo0),
+	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
+	modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo),
+	modeinfo_get_num_errors(ModeInfo, NumErrors),
+	modeinfo_get_io_state(ModeInfo, IOState),
+	procinfo_set_goal(ProcInfo0, Body, ProcInfo).
 
-:- pred modecheck_clause(clause, pred_id, tvarset, list(mode), module_info,
-		bool, clause, bool, io__state, io__state).
-:- mode modecheck_clause(input, input, input, input, input, input,
-		output, output, di, uo).
+:- pred modecheck_final_insts(list(var), list(mode), modeinfo, modeinfo).
+:- mode modecheck_final_insts(in, in, in, out).
 
-modecheck_clause(Clause0, PredId, ModeVarSet, ArgModes, ModuleInfo, Error0,
-		Clause, Error, IOState0, IOState) :-
+modecheck_final_insts(_, _, ModeInfo, ModeInfo).	% XXX Stub only!!!
 
-		% initialize the modeinfo
-		% XXX abstract clause/6
-
-	Clause0 = clause(Modes, VarSet, _DummyVarModes, HeadVars, Body,
-			Context),
-	modeinfo_init(IOState0, ModuleInfo, PredId, Context, ModeVarSet,
-			VarSet, ModeInfo0),
-
-		% modecheck the clause - first the head unification, and
-		% then the body
-
-	modecheck_var_has_mode_list(HeadVars, ArgModes, ModeInfo0, ModeInfo1),
-	modecheck_goal(Body, ModeInfo1, ModeInfo),
-
-		% finish up
-
-	modeinfo_get_mode_assign_set(ModeInfo, ModeAssignSet),
-	modeinfo_get_io_state(ModeInfo, IOState1),
-	modecheck_finish_up(ModeAssignSet, ModeInfo, Error0, VarModes, Error,
-			IOState1, IOState),
-	Clause = clause(Modes, VarSet, VarModes, HeadVars, Body, Context).
-
-	% At this stage, there are three possibilities.
-	% There are either zero, one, or multiple mode assignments
-	% for the clause.  In the first case, we have already
-	% issued an error message.  In the second case, the
-	% clause is mode-correct.  In the third case, we have to
-	% issue an error message here.
-
-:- pred modecheck_finish_up(mode_assign_set, mode_info, bool, map(var, mode),
-		bool, io__state, io__state).
-:- mode modecheck_finish_up(input, input, input, output, output, di, uo).
-
-modecheck_finish_up([], _ModeInfo, _Error, VarModes, yes) -->
-	{ map__init(VarModes) }.
-modecheck_finish_up([ModeAssign], _ModeInfo, Error, VarModes, Error) -->
-	{ mode_assign_get_var_modes(ModeAssign, VarModes) }.
-modecheck_finish_up([ModeAssign1, ModeAssign2 | _], ModeInfo, _Error,
-		VarModes1, yes) -->
-	{ mode_assign_get_var_modes(ModeAssign1, VarModes1) },
-	report_ambiguity_error(ModeInfo, ModeAssign1, ModeAssign2).
+/****
+modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo) :-
+	modeinfo_found_error(ModeInfo, Error),
+	( Error = no ->
+		mode_list_get_final_insts(ArgModes, ModuleInfo, ArgFinalInsts),
+		check_final_insts(
+*/
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_goal(hlds__goal, mode_info, mode_info).
-:- mode modecheck_goal(input, modeinfo_di, modeinfo_uo).
+% Input-output: InstMap - Stored in the ModeInfo, which is passed as an
+%			  argument pair
+%		Goal	- Passed as an argument pair
+% Input only:   Symbol tables	(constant)
+%			- Stored in the ModuleInfo which is in the ModeInfo
+%		Context Info	(changing as we go along the clause)
+%			- Stored in the ModeInfo
+% Output only:	Error Message(s)
+%			- Output directly to stdout.
 
-modecheck_goal(Goal - _GoalInfo, ModeInfo0, ModeInfo) :-
-	(modecheck_goal_2(Goal, ModeInfo0, ModeInfo)).
+:- pred modecheck_goal(hlds__goal, hlds__goal, modeinfo, modeinfo).
+:- mode modecheck_goal(in, out, modeinfo_di, modeinfo_uo) is det.
 
-:- pred modecheck_goal_2(hlds__goal_expr, mode_info, mode_info).
-:- mode modecheck_goal_2(input, modeinfo_di, modeinfo_uo).
+modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
+		%
+		% store the current context in the modeinfo
+		%
+	%%% goalinfo_get_context(GoalInfo0, Context),
+	%%% modeinfo_set_context(ModeInfo0, Context, ModeInfo1)
+		%
+		% modecheck the goal, and then store the changes in
+		% instantiation of the non-local vars in the goal's goalinfo.
+		%
+	goalinfo_get_nonlocals(GoalInfo0, NonLocals),
+	modeinfo_get_vars_instmap(ModeInfo0, NonLocals, InstMap0),
+	modecheck_goal_2(Goal0, NonLocals, Goal, ModeInfo0, ModeInfo),
+	modeinfo_get_vars_instmap(ModeInfo, NonLocals, InstMap),
+	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
+	goalinfo_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
-modecheck_goal_2(conj(List)) -->
-	%%% checkpoint("conj"),
-	modecheck_goal_list(List).
-modecheck_goal_2(disj(List)) -->
-	%%% checkpoint("disj"),
-	modecheck_goal_list(List).
-modecheck_goal_2(if_then_else(_Vs, A, B, C)) -->
-	%%% checkpoint("if"),
-	modecheck_goal(A),
-	%%% checkpoint("then"),
-	modecheck_goal(B),
-	%%% checkpoint("else"),
-	modecheck_goal(C).
-modecheck_goal_2(not(_Vs, A)) -->
-	%%% checkpoint("not"),
-	modecheck_goal(A).
-modecheck_goal_2(some(_Vs, G)) -->
-	%%% checkpoint("some"),
-	modecheck_goal(G).
-modecheck_goal_2(all(_Vs, G)) -->
-	%%% checkpoint("all"),
-	modecheck_goal(G).
-modecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
-	%%% checkpoint("call"),
-	modecheck_call_pred(PredId, Args).
-modecheck_goal_2(unify(A, B, _Mode, _Info)) -->
-	%%% checkpoint("unify"),
-	modecheck_unification(A, B).
+:- pred modecheck_goal_2(hlds__goal_expr, set(var), hlds__goal_expr,
+			modeinfo, modeinfo).
+:- mode modecheck_goal_2(in, in, out, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_goal_2(conj(List0), _, conj(List1)) -->
+	modecheck_conj_list(List0, List1).
+
+/****
+modecheck_goal_2(disj(List0), NonLocals, disj(List), ModeInfo0, ModeInfo) :-
+	modecheck_disj_list(List0, List1, ModeInfo0, ModeInfoList),
+	merge_disj(ModeInfoList, NonLocals, ModeInfo).
+
+modecheck_goal_2(if_then_else(Vs0, A0, B0, C0), NonLocals,
+		if_then_else(Vs, A, B, C), ModeInfo0, ModeInfo) :-
+	modeinfo_lock_vars(NonLocals, ModeInfo0, ModeInfo1),
+	modecheck_goal(A0, A, ModeInfo1, ModeInfo2),
+	modeinfo_unlock_vars(NonLocals, ModeInfo2, ModeInfo3),
+	modecheck_goal(B0, B, ModeInfo3, ModeInfoB),
+	modecheck_goal(C0, C, ModeInfo0, ModeInfoC),
+	modeinfo_merge(ModeInfoB, ModeInfoC, ModeInfo).
+
+*****/
+
+modecheck_goal_2(not(Vs, A0), NonLocals, not(Vs, A)) -->
+	modeinfo_lock_vars(NonLocals),
+	modecheck_goal(A0, A),
+	modeinfo_unlock_vars(NonLocals).
+
+modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
+	modecheck_goal(G0, G).
+
+modecheck_goal_2(all(Vs, G0), NonLocals, all(Vs, G)) -->
+	modeinfo_lock_vars(NonLocals),
+	modecheck_goal(G0, G),
+	modeinfo_unlock_vars(NonLocals).
+
+modecheck_goal_2(call(PredId, _, Args, Builtin), _,
+		 call(PredId, Mode, Args, Builtin)) -->
+	modeinfo_set_call_context(call(PredId)),
+	modecheck_call_pred(PredId, Args, Mode).
+
+modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
+		 unify(A, B, Mode, UnifyInfo, UnifyContext)) -->
+	modeinfo_set_call_context(unify(UnifyContext)),
+	modecheck_unification(A, B, Mode, UnifyInfo).
+
+	% XXX
+
+:- type call_context
+	--->	unify(unify_context)
+	;	call(pred_id).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_goal_list(list(hlds__goal), mode_info, mode_info).
-:- mode modecheck_goal_list(input, modeinfo_di, modeinfo_uo).
+:- pred compute_instmap_delta(instmap, instmap, set(var), instmap_delta).
+:- mode compute_instmap_delta(in, in, in, out) is det.
 
-modecheck_goal_list([]) --> [].
-modecheck_goal_list([Goal | Goals]) -->
-	modecheck_goal(Goal),
-	modecheck_goal_list(Goals).
+compute_instmap_delta(InstMapA, InstMapB, NonLocals, DeltaInstMap) :-
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	compute_instmap_delta_2(NonLocalsList, InstMapA, InstMapB, AssocList),
+	map__from_sorted_assoc_list(AssocList, DeltaInstMap).
+
+:- pred compute_instmap_delta_2(list(var), instmap, instmap,
+					assoc_list(var, inst)).
+:- mode compute_instmap_delta_2(in, in, in, out) is det.
+
+compute_instmap_delta_2([], _, _, []).
+compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
+	instmap_lookup_var(InstMapA, Var, InstA),
+	instmap_lookup_var(InstMapB, Var, InstB),
+		% XXX should use inst_is_compat/3
+	( InstA = InstB ->
+		AssocList1 = AssocList
+	;
+		AssocList = [ Var - InstB | AssocList1 ]
+	),
+	compute_instmap_delta_2(Vars, InstMapA, InstMapB, AssocList1).
+
+:- pred instmap_lookup_var(instmap, var, inst).
+:- mode instmap_lookup_var(in, in, out) is det.
+
+instmap_lookup_var(InstMap, Var, Inst) :-
+	( map__search(InstMap, Var, VarInst) ->
+		Inst = VarInst
+	;
+		Inst = free
+	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_call_pred(pred_id, list(term), mode_info, mode_info).
-:- mode modecheck_call_pred(input, input, modeinfo_di, modeinfo_uo).
+	% XXX we don't reorder conjunctions yet
 
-	% XXX we should handle overloading of predicates
+:- pred modecheck_conj_list(list(hlds__goal), list(hlds__goal),
+				modeinfo, modeinfo).
+:- mode modecheck_conj_list(in, in, modeinfo_di, modeinfo_uo) is det.
 
-modecheck_call_pred(PredId, Args, ModeInfo0, ModeInfo) :-
+modecheck_conj_list([], []) --> [].
+modecheck_conj_list([Goal0 | Goals0], [Goal | Goals]) -->
+	modecheck_goal(Goal0, Goal),
+	modecheck_conj_list(Goals0, Goals).
+
+%-----------------------------------------------------------------------------%
+
+	% XXX we don't handle disjunctions or if-then-else yet
+
+/****
+
+:- pred modecheck_disj_list(list(hlds__goal), list(hlds__goal),
+				modeinfo, modeinfo).
+:- mode modecheck_disj_list(in, out, modeinfo_di, modeinfo_uo).
+
+modecheck_disj_list([], []) --> [].
+modecheck_disj_list([Goal | Goals]) -->
+	modecheck_disj(Goal),
+	modecheck_disj_list(Goals).
+
+*****/
+
+%-----------------------------------------------------------------------------%
+
+:- pred modecheck_call_pred(pred_id, list(term), proc_id, modeinfo, modeinfo).
+:- mode modecheck_call_pred(in, in, in, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_call_pred(PredId, Args, ProcId, ModeInfo0, ModeInfo) :-
 		% look up the called predicate's arg modes
 	modeinfo_get_preds(ModeInfo0, Preds),
-	( % if some [PredInfo]
-		map__search(Preds, PredId, PredInfo)
-	->
-		predinfo_arg_modes(PredInfo, PredModeVarSet, PredArgModes0),
+	modeinfo_get_moduleinfo(ModeInfo0, ModuleInfo),
+	map__lookup(Preds, PredId, PredInfo),
+	predinfo_procedures(PredInfo, Procs),
+		% XXX We should handle multiple modes per predicate!
+		% At the moment we just assume that all calls are to
+		% the first listed mode for each predicate.
+	ProcId = 0,
+	map__lookup(Procs, ProcId, ProcInfo),
+	procinfo_argmodes(ProcInfo, ProcArgModes),
+	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
+	m_var_list_to_term_list(ArgVars, Args),
+	modecheck_var_has_inst_list(ArgVars, InitialInsts,
+				ModeInfo0, ModeInfo1),
+	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
+	modecheck_set_var_inst_list(ArgVars, FinalInsts, ModeInfo1, ModeInfo).
 
-			% rename apart the mode variables in called
-			% predicate's arg modes
-			% (optimize for the common case of
-			% a non-polymorphic predicate)
-		( varset__is_empty(PredModeVarSet) ->
-			PredArgModes = PredArgModes0,
-			ModeInfo1 = ModeInfo0
-		;
-			rename_apart(ModeInfo0, PredModeVarSet, PredArgModes0,
-					ModeInfo1, PredArgModes)
-		),
-			% unify the modes of the call arguments with the
-			% called predicates' arg modes
-		modecheck_term_has_mode_list(Args, PredArgModes, ModeInfo1,
-				ModeInfo)
-	;
-		modeinfo_get_io_state(ModeInfo0, IOState0),
-		modeinfo_get_predid(ModeInfo0, CallingPredId),
-		modeinfo_get_context(ModeInfo0, Context),
-		report_error_undef_pred(CallingPredId, Context, PredId,
-			IOState0, IOState),
-		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfoB1),
-		modeinfo_set_found_error(ModeInfoB1, yes, ModeInfoB2),
-		modeinfo_set_mode_assign_set(ModeInfoB2, [], ModeInfo)
-	).
+:- pred m_var_list_to_term_list(list(var), list(term)).
+:- mode m_var_list_to_term_list(input, output) is det.
+:- mode m_var_list_to_term_list(output, input) is semidet.
+
+:- m_var_list_to_term_list(Vars, Terms) when Vars or Terms. % Indexing
+
+m_var_list_to_term_list([], []).
+m_var_list_to_term_list([V | Vs0], [term_variable(V) | Vs]) :-
+	m_var_list_to_term_list(Vs0, Vs).
 
 %-----------------------------------------------------------------------------%
 
-	% Rename apart the mode variables in called predicate's arg modes.
-	%
-	% Each mode_assign has it's own set of mode variables, but these
-	% are supposed to stay in synch with each other.  We need to
-	% iterate over the set of mode_assigns, but we check that
-	% the resulting renamed apart list of predicate arg modes
-	% is the same for each mode_assign (i.e. that the tvarsets
-	% were indeed in synch).
+	% Given a list of variables and a list of insts, ensure
+	% that each variable has the corresponding inst.
 
-:- pred rename_apart(mode_info, tvarset, list(mode), mode_info, list(mode)).
-:- mode rename_apart(modeinfo_di, input, input, modeinfo_uo, output).
+:- pred modecheck_var_has_inst_list(list(var), list(inst), modeinfo,
+					modeinfo).
+:- mode modecheck_var_has_inst_list(in, in, modeinfo_di, modeinfo_uo) is det.
 
-rename_apart(ModeInfo0, PredModeVarSet, PredArgModes0, ModeInfo, PredArgModes)
-		:-
-	modeinfo_get_mode_assign_set(ModeInfo0, ModeAssignSet0),
-	( ModeAssignSet0 = [ModeAssign0 | ModeAssigns0] ->
-			% process the first mode_assign and get
-			% the resulting PredArgModes
-		mode_assign_rename_apart(ModeAssign0, PredModeVarSet,
-				PredArgModes0, ModeAssign, PredArgModes),
-			% process the remaining mode_assigns and check
-			% that they produce matching PredArgModes
-		rename_apart_2(ModeAssigns0, PredModeVarSet, PredArgModes0,
-				  ModeAssigns, PredArgModes),
-		ModeAssignSet = [ModeAssign | ModeAssigns],
-		modeinfo_set_mode_assign_set(ModeInfo0, ModeAssignSet, ModeInfo)
-	;
+modecheck_var_has_inst_list([], []) --> [].
+modecheck_var_has_inst_list([Var|Vars], [Inst|Insts]) -->
+	modecheck_var_has_inst(Var, Inst),
+	modecheck_var_has_inst_list(Vars, Insts).
+
+:- pred modecheck_var_has_inst(var, inst, modeinfo, modeinfo).
+:- mode modecheck_var_has_inst(in, in, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
+	modeinfo_get_instmap(ModeInfo0, InstMap),
+	instmap_lookup_var(InstMap, VarId, VarInst),
+
+	modeinfo_get_moduleinfo(ModeInfo0, ModuleInfo),
+	( inst_gteq(VarInst, Inst, ModuleInfo) ->
 		ModeInfo = ModeInfo0
-	).
-
-:- pred rename_apart_2(mode_assign_set, tvarset, list(mode),
-			mode_assign_set, list(mode)).
-:- mode rename_apart_2(input, input, input, output, input).
-
-rename_apart_2([], _, _, [], _).
-rename_apart_2([ModeAssign0 | ModeAssigns0], PredModeVarSet, PredArgModes0,
-		[ModeAssign | ModeAssigns], PredArgModes) :-
-	mode_assign_rename_apart(ModeAssign0, PredModeVarSet, PredArgModes0,
-			ModeAssign, NewPredArgModes),
-	(PredArgModes = NewPredArgModes ->
-		true
 	;
-		error("problem synchronizing mode vars")
-	),
-	rename_apart_2(ModeAssigns0, PredModeVarSet, PredArgModes0,
-			ModeAssigns, PredArgModes).
-
-:- pred mode_assign_rename_apart(mode_assign, tvarset, list(mode),
-			mode_assign, list(mode)).
-:- mode mode_assign_rename_apart(input, input, input, output, output).
-
-mode_assign_rename_apart(ModeAssign0, PredModeVarSet, PredArgModes0,
-		ModeAssign, PredArgModes) :-
-	mode_assign_get_modevarset(ModeAssign0, ModeVarSet0),
-	varset__merge(ModeVarSet0, PredModeVarSet, PredArgModes0,
-			  ModeVarSet, PredArgModes),
-	mode_assign_set_modevarset(ModeAssign0, ModeVarSet, ModeAssign).
-
-%-----------------------------------------------------------------------------%
-
-	% Given a list of variables and a list of modes, ensure
-	% that each variable has the corresponding mode.
-
-:- pred modecheck_var_has_mode_list(list(var), list(mode), mode_info,
-					mode_info).
-:- mode modecheck_var_has_mode_list(input, input, input, output).
-
-modecheck_var_has_mode_list([], []) --> [].
-modecheck_var_has_mode_list([Var|Vars], [Mode|Modes]) -->
-	modecheck_var_has_mode(Var, Mode),
-	modecheck_var_has_mode_list(Vars, Modes).
-
-:- pred modecheck_var_has_mode(var, mode, mode_info, mode_info).
-:- mode modecheck_var_has_mode(input, input, modeinfo_di, modeinfo_uo).
-
-modecheck_var_has_mode(VarId, Mode, ModeInfo0, ModeInfo) :-
-	modeinfo_get_mode_assign_set(ModeInfo0, ModeAssignSet0),
-	modeinfo_get_varset(ModeInfo0, VarSet),
-	modecheck_var_has_mode_2(ModeAssignSet0, VarId, Mode, [],
-		ModeAssignSet),
-	(
-		ModeAssignSet = [],
-		(not ModeAssignSet0 = [])
-	->
 		modeinfo_get_io_state(ModeInfo0, IOState0),
-		modeinfo_get_context(ModeInfo0, Context),
-		modeinfo_get_predid(ModeInfo0, PredId),
-		get_mode_stuff(ModeAssignSet0, VarId, ModeStuffList),
-		report_error_var(PredId, Context, VarSet, VarId, ModeStuffList,
-				Mode, ModeAssignSet0, IOState0, IOState),
+		report_mode_error_var_has_inst(ModeInfo0, VarId, VarInst, Inst,
+				IOState0, IOState),
 		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
-		modeinfo_set_found_error(ModeInfo1, yes, ModeInfo2),
-		modeinfo_set_mode_assign_set(ModeInfo2, ModeAssignSet, ModeInfo)
-	;
-		modeinfo_set_mode_assign_set(ModeInfo0, ModeAssignSet, ModeInfo)
+		modeinfo_incr_errors(ModeInfo1, ModeInfo)
 	).
 
-	% Given a mode assignment set and a variable id,
-	% return the list of possible different modes for the variable.
+	% inst_gteq(InstA, InstB, ModuleInfo) is true iff
+	% `InstA' is at least as instantiated as `InstB'.
 
-:- mode mode_stuff ---> mode_stuff(mode, tvarset, tsubst).
+:- pred inst_gteq(inst, inst, module_info).
+:- mode inst_gteq(in, in, in) is semidet.
 
-:- pred get_mode_stuff(mode_assign_set, var, list(mode_stuff)).
-:- mode get_mode_stuff(input, input, output).
-get_mode_stuff([], _VarId, []).
-get_mode_stuff([ModeAssign | ModeAssigns], VarId, L) :-
-	get_mode_stuff(ModeAssigns, VarId, L0),
-	mode_assign_get_mode_bindings(ModeAssign, ModeBindings),
-	mode_assign_get_modevarset(ModeAssign, TVarSet),
-	mode_assign_get_var_modes(ModeAssign, VarModes),
-	( %%% if some [Mode0]
-		map__search(VarModes, VarId, Mode0)
-	->
-		Mode = Mode0
+inst_gteq(InstA, InstB, ModuleInfo) :-
+	inst_expand(ModuleInfo, InstA, InstA2),
+	inst_expand(ModuleInfo, InstB, InstB2),
+	inst_gteq_2(InstA2, InstB2, ModuleInfo).
+
+:- pred inst_gteq_2(inst, inst, module_info).
+:- mode inst_gteq_2(in, in, in) is semidet.
+
+:- inst_gteq_2(InstA, InstB, _) when InstA and InstB.	% Indexing.
+
+	% inst_gteq_2(InstA, InstB, ModuleInfo) is true iff
+	% `InstA' is at least as instantiated as `InstB'.
+
+inst_gteq_2(free, free, _).
+inst_gteq_2(bound(_List), free, _).
+inst_gteq_2(bound(ListA), bound(ListB), ModuleInfo) :-
+	bound_inst_list_gteq(ListA, ListB, ModuleInfo).
+inst_gteq_2(ground, _, _).
+inst_gteq_2(abstract_inst(_Name, _Args), free, _).
+
+:- pred bound_inst_list_gteq(list(bound_inst), list(bound_inst), module_info).
+:- mode bound_inst_list_gteq(in, in, in) is semidet.
+
+bound_inst_list_gteq([], _, _).
+bound_inst_list_gteq([_|_], [], _) :-
+	error("modecheck internal error: bound(...) missing case").
+bound_inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo) :-
+	X = functor(NameX, ArgsX),
+	Y = functor(NameY, ArgsY),
+	length(ArgsX, ArityX),
+	length(ArgsY, ArityY),
+	( NameX = NameY, ArityX = ArityY ->
+		inst_list_gteq(ArgsX, ArgsY, ModuleInfo)
 	;
-		% this shouldn't happen - how can a variable which has
-		% not yet been assigned a mode variable fail to have
-		% the correct mode?
-		error("problem in mode unification")
-	),
-	ModeStuff = mode_stuff(Mode, TVarSet, ModeBindings),
-	(
-		member_chk(ModeStuff, L0)
-	->
-		L = L0
-	;
-		L = [ModeStuff | L0]
+		bound_inst_list_gteq([X|Xs], Ys, ModuleInfo)
 	).
 
-:- pred modecheck_var_has_mode_2(mode_assign_set, var, mode,
-				mode_assign_set, mode_assign_set).
-:- mode modecheck_var_has_mode_2(input, input, input, input, output).
+:- pred inst_list_gteq(list(inst), list(inst), module_info).
+:- mode inst_list_gteq(in, in, in) is semidet.
 
-modecheck_var_has_mode_2([], _, _) --> [].
-modecheck_var_has_mode_2([ModeAssign0 | ModeAssignSet0], VarId, Mode) -->
-	mode_assign_var_has_mode(ModeAssign0, VarId, Mode),
-	modecheck_var_has_mode_2(ModeAssignSet0, VarId, Mode).
+inst_list_gteq([], [], _).
+inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo) :-
+	inst_gteq(X, Y, ModuleInfo),
+	inst_list_gteq(Xs, Ys, ModuleInfo).
 
-:- pred mode_assign_var_has_mode(mode_assign, var, mode,
-				mode_assign_set, mode_assign_set).
-:- mode mode_assign_var_has_mode(input, input, input, input, output).
+%-----------------------------------------------------------------------------%
 
-mode_assign_var_has_mode(ModeAssign0, VarId, Mode,
-		ModeAssignSet0, ModeAssignSet) :-
-	mode_assign_get_var_modes(ModeAssign0, VarModes0),
-	( %%% if some [VarMode]
-		map__search(VarModes0, VarId, VarMode)
-	->
-		( %%% if some [ModeAssign1]
-			mode_assign_unify_mode(ModeAssign0, VarMode, Mode,
-					ModeAssign1)
-		->
-			ModeAssignSet = [ModeAssign1 | ModeAssignSet0]
-		;
-			ModeAssignSet = ModeAssignSet0
-		)
+:- pred inst_expand(module_info, inst, inst).
+:- mode inst_expand(in, in, out) is det.
+
+inst_expand(ModuleInfo, Inst0, Inst) :-
+	( Inst0 = user_defined_inst(Name, Args) ->
+		inst_lookup(ModuleInfo, Name, Args, Inst1),
+		inst_expand(ModuleInfo, Inst1, Inst)
 	;
-		map__set(VarModes0, VarId, Mode, VarModes),
-		mode_assign_set_var_modes(ModeAssign0, VarModes, ModeAssign),
-		ModeAssignSet = [ModeAssign | ModeAssignSet0]
+		Inst = Inst0
 	).
 
 %-----------------------------------------------------------------------------%
-	
-:- pred modecheck_term_has_mode_list(list(term), list(mode), 
-					mode_info, mode_info).
-:- mode modecheck_term_has_mode_list(input, input, modeinfo_di, modeinfo_uo).
 
-modecheck_term_has_mode_list([], []) --> [].
-modecheck_term_has_mode_list([Arg | Args], [Mode | Modes]) -->
-	modecheck_term_has_mode(Arg, Mode),
-	modecheck_term_has_mode_list(Args, Modes).
+:- pred report_mode_error_var_has_inst(modeinfo, var, inst, inst,
+					io__state, io__state).
+:- mode report_mode_error_var_has_inst(in, in, in, in, di, uo) is det.
 
-:- pred modecheck_term_has_mode(term, mode, mode_info, mode_info).
-:- mode modecheck_term_has_mode(input, input, modeinfo_di, modeinfo_uo).
+report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+	{ varset__init(InstVarSet) },
+	modeinfo_write_context(ModeInfo),
+	io__write_string("  mode error: variable `"),
+	io__write_variable(Var, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(VarInst, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  expected instantiatedness was `"),
+	mercury_output_inst(Inst, InstVarSet),
+	io__write_string("'.\n").
 
-modecheck_term_has_mode(term_variable(Var), Mode, ModeInfo0, ModeInfo) :-
-	modecheck_var_has_mode(Var, Mode, ModeInfo0, ModeInfo).
+%-----------------------------------------------------------------------------%
 
-modecheck_term_has_mode(term_functor(F, As, C), Mode, ModeInfo0, ModeInfo) :-
-	length(As, Arity),
-	modeinfo_get_ctor_list(ModeInfo0, F, Arity, ConsDefnList),
-	(ConsDefnList = [] ->
-	    modeinfo_get_io_state(ModeInfo0, IOState0),
-	    modeinfo_get_predid(ModeInfo0, PredId),
-	    report_error_undef_cons(PredId, C, F, Arity, IOState0, IOState),
-	    modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
-	    modeinfo_set_found_error(ModeInfo1, yes, ModeInfo2),
-	    modeinfo_set_mode_assign_set(ModeInfo2, [], ModeInfo)
-	;
-	    modeinfo_get_mode_assign_set(ModeInfo0, ModeAssignSet0),
-	    modecheck_cons_has_mode(ModeAssignSet0, ConsDefnList, As, Mode,
-			ModeInfo0, [], ModeAssignSet),
-	    (
-		ModeAssignSet = [],
-		(\+ ModeAssignSet0 = [])
-	    ->
+:- pred report_mode_error_unify_var_var(modeinfo, var, var, inst, inst,
+					io__state, io__state).
+:- mode report_mode_error_unify_var_var(in, in, in, in, in, di, uo) is det.
+
+report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+		% XXX InstVarSet (here and in a couple of other places)
+	{ varset__init(InstVarSet) },
+	modeinfo_write_context(ModeInfo),
+	io__write_string("  mode error in unification of `"),
+	io__write_variable(X, VarSet),
+	io__write_string("' and `"),
+	io__write_variable(Y, VarSet),
+	io__write_string("':\n"),
+	prog_out__write_context(Context),
+	io__write_string("  variable `"),
+	io__write_variable(X, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(InstX, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  variable `"),
+	io__write_variable(Y, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(InstY, InstVarSet),
+	io__write_string("'.\n").
+
+%-----------------------------------------------------------------------------%
+
+:- pred modecheck_set_term_inst_list(list(term), list(inst),
+					modeinfo, modeinfo).
+:- mode modecheck_set_term_inst_list(in, in, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_set_term_inst_list([], []) --> [].
+modecheck_set_term_inst_list([Arg | Args], [Inst | Insts]) -->
+	{ Arg = term_variable(Var) },
+	modecheck_set_var_inst(Var, Inst),
+	modecheck_set_term_inst_list(Args, Insts).
+
+:- pred modecheck_set_var_inst_list(list(var), list(inst),
+					modeinfo, modeinfo).
+:- mode modecheck_set_var_inst_list(in, in, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_set_var_inst_list([], []) --> [].
+modecheck_set_var_inst_list([Var | Vars], [Inst | Insts]) -->
+	modecheck_set_var_inst(Var, Inst),
+	modecheck_set_var_inst_list(Vars, Insts).
+
+:- pred modecheck_set_var_inst(var, inst, modeinfo, modeinfo).
+:- mode modecheck_set_var_inst(in, in, modeinfo_di, modeinfo_uo) is det.
+
+modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
+	modeinfo_get_instmap(ModeInfo0, InstMap0),
+	modeinfo_get_moduleinfo(ModeInfo0, ModuleInfo),
+	instmap_lookup_var(InstMap0, Var, Inst0),
+	( inst_is_compat(Inst0, Inst, ModuleInfo) ->
+		ModeInfo = ModeInfo0
+	; modeinfo_var_is_locked(ModeInfo0, Var) ->
 		modeinfo_get_io_state(ModeInfo0, IOState0),
-		modeinfo_get_predid(ModeInfo0, PredId),
-		modeinfo_get_varset(ModeInfo0, VarSet),
-		report_error_cons(PredId, C, VarSet, F, As, Mode,
-					ModeAssignSet, IOState0, IOState),
+		report_mode_error_bind_var(ModeInfo0, Var, Inst0, Inst,
+				IOState0, IOState),
 		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
-		modeinfo_set_found_error(ModeInfo1, yes, ModeInfo2),
-		modeinfo_set_mode_assign_set(ModeInfo2, ModeAssignSet, ModeInfo)
-	    ;
-		modeinfo_set_mode_assign_set(ModeInfo0, ModeAssignSet, ModeInfo)
-	    )
-	).
-
-%-----------------------------------------------------------------------------%
-
-	% Check that a constructor has the specified mode
-	% and that the arguments of the constructor have the appropriate
-	% modes for that constructor.
-	% We do this by iterating over all the possible current
-	% mode assignments. 
-	% For each possible current mode assignment, we produce a
-	% list of the possible resulting mode assignments after
-	% we have unified the mode of this constructor with
-	% the specified mode.
-
-:- pred modecheck_cons_has_mode(mode_assign_set, list(hlds__cons_defn),
-		list(term), mode, mode_info, mode_assign_set, mode_assign_set).
-:- mode modecheck_cons_has_mode(input, input, input, input,
-		modeinfo_ui, input, output).
-
-modecheck_cons_has_mode([], _, _, _, _) --> [].
-modecheck_cons_has_mode([ModeAssign|ModeAssigns], ConsDefnList, Args, Mode, 
-		ModeInfo) -->
-	mode_assign_cons_has_mode(ConsDefnList, ModeAssign, Args, Mode,
-		ModeInfo),
-	modecheck_cons_has_mode(ModeAssigns, ConsDefnList, Args, Mode,
-		ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-	% For each possible constructor which matches the
-	% term (overloading means that there may be more than one),
-	% if this constructor matches the specified mode and
-	% the modes of it's arguments are ok, then add the resulting
-	% mode assignment to the mode assignment set.
-
-:- pred mode_assign_cons_has_mode(list(hlds__cons_defn), mode_assign,
-		list(term), mode, mode_info, mode_assign_set, mode_assign_set).
-:- mode mode_assign_cons_has_mode(input, input, input, input, 
-		modeinfo_ui, input, output).
-
-mode_assign_cons_has_mode([], _ModeAssign0, _Args, _Mode, _ModeInfo) -->
-	[].
-mode_assign_cons_has_mode([ConsDefn | ConsDefns], ModeAssign0, Args, Mode,
-		ModeInfo) -->
-	mode_assign_cons_has_mode_2(ConsDefn, ModeAssign0, Args, Mode,
-		ModeInfo),
-	mode_assign_cons_has_mode(ConsDefns, ModeAssign0, Args, Mode, ModeInfo).
-
-:- pred mode_assign_cons_has_mode_2(hlds__cons_defn, mode_assign, list(term),
-		mode, mode_info, mode_assign_set, mode_assign_set).
-:- mode mode_assign_cons_has_mode_2(input, input, input, input,
-		modeinfo_ui, input, output).
-
-mode_assign_cons_has_mode_2(ConsDefn, ModeAssign0, Args, Mode, ModeInfo,
-		ModeAssignSet0, ModeAssignSet) :-
-
-	get_cons_stuff(ConsDefn, ModeAssign0, ModeInfo,
-			ConsMode, ArgModes, ModeAssign1),
-
-	( mode_assign_unify_mode(ModeAssign1, ConsMode, Mode, ModeAssign2) ->
-			% check the modes of the arguments
-		mode_assign_term_has_mode_list(Args, ArgModes, ModeAssign2,
-			ModeInfo, ModeAssignSet0, ModeAssignSet)
+		modeinfo_incr_errors(ModeInfo1, ModeInfo)
 	;
-		ModeAssignSet = ModeAssignSet0
+		map__set(InstMap0, Var, Inst, InstMap),
+		modeinfo_set_instmap(ModeInfo0, InstMap, ModeInfo)
 	).
+
+:- pred inst_is_compat(inst, inst, module_info).
+:- mode inst_is_compat(in, in, in) is semidet.
+
+inst_is_compat(InstA, InstB, ModuleInfo) :-
+	inst_expand(ModuleInfo, InstA, InstA2),
+	inst_expand(ModuleInfo, InstB, InstB2),
+	inst_is_compat_2(InstA2, InstB2, ModuleInfo).
+
+:- pred inst_is_compat_2(inst, inst, module_info).
+:- mode inst_is_compat_2(in, in, in) is semidet.
+
+inst_is_compat_2(free, free, _).
+inst_is_compat_2(bound(ListA), bound(ListB), ModuleInfo) :-
+	bound_inst_list_is_compat(ListA, ListB, ModuleInfo).
+inst_is_compat_2(ground, ground, _).
+inst_is_compat_2(abstract_inst(NameA, ArgsA), abstract_inst(NameB, ArgsB),
+		ModuleInfo) :-
+	NameA = NameB,
+	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo).
+
+
+:- pred inst_is_compat_list(list(inst), list(inst), module_info).
+:- mode inst_is_compat_list(in, in, in) is semidet.
+
+inst_is_compat_list([], [], _ModuleInfo).
+inst_is_compat_list([ArgA | ArgsA], [ArgB | ArgsB], ModuleInfo) :-
+	inst_is_compat(ArgA, ArgB, ModuleInfo),
+	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo).
+
+:- pred bound_inst_list_is_compat(list(bound_inst), list(bound_inst),
+			module_info).
+:- mode bound_inst_list_is_compat(in, in, in) is semidet.
+
+bound_inst_list_is_compat([], [], _).
+bound_inst_list_is_compat([X|Xs], [Y|Ys], ModuleInfo) :-
+	bound_inst_is_compat(X, Y, ModuleInfo),
+	bound_inst_list_is_compat(Xs, Ys, ModuleInfo).
+
+:- pred bound_inst_is_compat(bound_inst, bound_inst, module_info).
+:- mode bound_inst_is_compat(in, in, in) is semidet.
+
+bound_inst_is_compat(functor(Name, ArgsA), functor(Name, ArgsB), ModuleInfo) :-
+	inst_is_compat_list(ArgsA, ArgsB, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-	% mode_assign_term_has_mode_list(Terms, Modes, ModeAssign, ModeInfo,
-	%		ModeAssignSet0, ModeAssignSet):
-	% 	Let TAs = { TA | TA is a an extension of ModeAssign
-	%		    	 for which the modes of the Terms unify with
-	%		    	 their respective Modes },
-	% 	append(TAs, ModeAssignSet0, ModeAssignSet).
+:- pred modeinfo_write_context(modeinfo, io__state, io__state).
+:- mode modeinfo_write_context(modeinfo_no_io, di, uo).
 
-:- pred mode_assign_term_has_mode_list(list(term), list(mode), mode_assign,
-			mode_info, mode_assign_set, mode_assign_set).
-:- mode mode_assign_term_has_mode_list(input, input, input,
-			modeinfo_ui, input, output).
+modeinfo_write_context(ModeInfo) -->
+	{ modeinfo_get_moduleinfo(ModeInfo, ModuleInfo) },
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_predid(ModeInfo, PredId) },
+	{ modeinfo_get_procid(ModeInfo, ProcId) },
+	{ moduleinfo_preds(ModuleInfo, Preds) },
+	{ map__lookup(Preds, PredId, PredInfo) },
+	{ predinfo_procedures(PredInfo, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ procinfo_argmodes(ProcInfo, ArgModes) },
+	{ predicate_name(PredId, PredName) },
+	{ varset__init(InstVarSet) },
 
-mode_assign_term_has_mode_list([], [], ModeAssign, _,
-		ModeAssignSet, [ModeAssign|ModeAssignSet]).
-mode_assign_term_has_mode_list([Arg | Args], [Mode | Modes], ModeAssign0,
-		ModeInfo, ModeAssignSet0, ModeAssignSet) :-
-	mode_assign_term_has_mode(Arg, Mode, ModeAssign0, ModeInfo,
-		[], ModeAssignSet1),
-	mode_assign_list_term_has_mode_list(ModeAssignSet1,
-		Args, Modes, ModeInfo, ModeAssignSet0, ModeAssignSet).
+	prog_out__write_context(Context),
+	io__write_string("In clause for `"),
+	io__write_string(PredName),
+	( { ArgModes \= [] } ->
+		io__write_string("("),
+		mercury_output_mode_list(ArgModes, InstVarSet),
+		io__write_string(")")
+	;
+		[]
+	),
+	io__write_string("':\n"),
+		% XXX mode_context
+	prog_out__write_context(Context).
 
-	% mode_assign_list_term_has_mode_list(TAs, Terms, Modes, 
-	%		ModeInfo, ModeAssignSet0, ModeAssignSet):
-	% 	Let TAs2 = { TA | TA is a an extension of a member of TAs
-	%		    	  for which the modes of the Terms unify with
-	%		    	  their respective Modes },
-	% 	append(TAs, ModeAssignSet0, ModeAssignSet).
+:- pred report_mode_error_bind_var(modeinfo, var, inst, inst,
+					io__state, io__state).
+:- mode report_mode_error_bind_var(in, in, in, in, di, uo).
 
-:- pred mode_assign_list_term_has_mode_list(mode_assign_set, list(term),
-		list(mode), mode_info, mode_assign_set, mode_assign_set).
-:- mode mode_assign_list_term_has_mode_list(input, input, input,
-			modeinfo_ui, input, output).
-
-mode_assign_list_term_has_mode_list([], _, _, _) --> [].
-mode_assign_list_term_has_mode_list([TA | TAs], Args, Modes, ModeInfo) -->
-	mode_assign_term_has_mode_list(Args, Modes, TA, ModeInfo),
-	mode_assign_list_term_has_mode_list(TAs, Args, Modes, ModeInfo).
-	
-:- pred mode_assign_term_has_mode(term, mode, mode_assign,
-			mode_info, mode_assign_set, mode_assign_set).
-:- mode mode_assign_term_has_mode(input, input, input,
-			modeinfo_ui, input, output).
-
-mode_assign_term_has_mode(term_variable(V), Mode, ModeAssign, _ModeInfo) -->
-	mode_assign_var_has_mode(ModeAssign, V, Mode).
-mode_assign_term_has_mode(term_functor(F, Args, _Context), Mode, ModeAssign,
-		ModeInfo) -->
-	{ length(Args, Arity) },
-	{ modeinfo_get_ctor_list(ModeInfo, F, Arity, ConsDefnList) },
-	mode_assign_cons_has_mode(ConsDefnList, ModeAssign, Args, Mode,
-		ModeInfo).
+report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+	{ varset__init(InstVarSet) },
+	modeinfo_write_context(ModeInfo),
+	io__write_string(
+		"  mode error: attempt to bind variable inside a negation.\n"),
+	prog_out__write_context(Context),
+	io__write_string("  Variable `"),
+	io__write_variable(Var, VarSet),
+	io__write_string("' has instantiatedness `"),
+	mercury_output_inst(VarInst, InstVarSet),
+	io__write_string("',\n"),
+	prog_out__write_context(Context),
+	io__write_string("  expected instantiatedness was `"),
+	mercury_output_inst(Inst, InstVarSet),
+	io__write_string("'.\n"),
+	lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { VerboseErrors = yes } ->
+		io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
+		io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
+		io__write_string("\tinside the scope of the negation.\n"),
+		io__write_string("\tNote that the condition of an if-then-else is implicitly\n"),
+		io__write_string("\tnegated in the \"else\" part, so the condition can only bind\n"),
+		io__write_string("\tvariables in the \"then\" part.\n")
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
 	% used for debugging
 
-:- pred checkpoint(string, mode_info, mode_info).
-:- mode checkpoint(input, modeinfo_di, modeinfo_uo).
+:- pred mode_checkpoint(string, modeinfo, modeinfo).
+:- mode mode_checkpoint(in, modeinfo_di, modeinfo_uo).
 
-%%% checkpoint(_, T, T).
-checkpoint(Msg, T0, T) :-
+%%% mode_checkpoint(_, T, T).
+mode_checkpoint(Msg, T0, T) :-
 	modeinfo_get_io_state(T0, I0),
-	checkpoint_2(Msg, T0, I0, I),
+	mode_checkpoint_2(Msg, T0, I0, I),
 	modeinfo_set_io_state(T0, I, T).
 
-:- pred checkpoint_2(string, mode_info, io__state, io__state).
-:- mode checkpoint_2(input, modeinfo_ui, di, uo).
+:- pred mode_checkpoint_2(string, modeinfo, io__state, io__state).
+:- mode mode_checkpoint_2(in, modeinfo_ui, di, uo).
 
-checkpoint_2(Msg, T0) -->
+mode_checkpoint_2(Msg, _T0) -->
 	io__write_string("At "),
 	io__write_string(Msg),
 	io__write_string(": "),
-	%%% { report_stats },
-	io__write_string("\n"),
-	{ modeinfo_get_mode_assign_set(T0, ModeAssignSet) },
-	{ modeinfo_get_varset(T0, VarSet) },
-	write_mode_assign_set(ModeAssignSet, VarSet).
+		% ...
+	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
 
 	% Mode check a unification.
-	% Get the mode assignment set from the mode info and then just
-	% iterate over all the possible mode assignments.
 
-:- pred modecheck_unification(term, term, mode_info, mode_info).
-:- mode modecheck_unification(input, input, modeinfo_di, modeinfo_uo).
+:- pred modecheck_unification(term, term, pair(mode, mode), unification,
+				modeinfo, modeinfo).
+:- mode modecheck_unification(in, in, out, out, modeinfo_di, modeinfo_uo).
 
-modecheck_unification(X, Y, ModeInfo0, ModeInfo) :-
-	modeinfo_get_mode_assign_set(ModeInfo0, ModeAssignSet0),
-	modecheck_unification_2(ModeAssignSet0, X, Y, ModeInfo0,
-		[], ModeAssignSet),
-		% XXX report errors properly!!
-	( ModeAssignSet = [], not (ModeAssignSet0 = []) ->
-		modeinfo_get_predid(ModeInfo0, PredId),
-		modeinfo_get_context(ModeInfo0, Context),
-		modeinfo_get_varset(ModeInfo0, VarSet),
+modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
+			ModeInfo0, ModeInfo) :-
+	modeinfo_get_moduleinfo(ModeInfo0, ModuleInfo),
+	modeinfo_get_instmap(ModeInfo0, InstMap0),
+	instmap_lookup_var(InstMap0, X, InstX),
+	instmap_lookup_var(InstMap0, Y, InstY),
+	( abstractly_unify_inst(InstX, InstY, ModuleInfo, Inst) ->
+		modeinfo_get_instmap(ModeInfo0, InstMap0),
+		map__set(InstMap0, X, Inst, InstMap1),
+		map__set(InstMap1, X, Inst, InstMap),
+		modeinfo_set_instmap(ModeInfo0, InstMap, ModeInfo)
+	;
 		modeinfo_get_io_state(ModeInfo0, IOState0),
-		report_error_unif(PredId, Context, VarSet, X, Y,
-				ModeAssignSet0, IOState0, IOState1),
-		modeinfo_set_io_state(ModeInfo0, IOState1, ModeInfo1),
-		modeinfo_set_found_error(ModeInfo1, yes, ModeInfo2)
-	;
-		ModeInfo2 = ModeInfo0
+		report_mode_error_unify_var_var(ModeInfo0, X, Y, InstX, InstY,
+					IOState0, IOState),
+		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
+		modeinfo_incr_errors(ModeInfo1, ModeInfo),
+			% If we get an error, set the inst to ground
+			% to suppress follow-on errors
+		Inst = ground
 	),
-	modeinfo_set_mode_assign_set(ModeInfo2, ModeAssignSet, ModeInfo).
+	ModeX = (InstX -> Inst),
+	ModeY = (InstY -> Inst),
+	Modes = ModeX - ModeY,
+	categorize_unify_var_var(ModeX, ModeY, X, Y, ModuleInfo, Unification).
 
+modecheck_unification(term_functor(_Functor, _Args, _), term_variable(_Y),
+			_Mode, _Unification, _ModeInfo0, _ModeInfo) :-
+	error("NOT IMPLEMENTED: unification of var with functor\n").
 
-	% iterate over all the possible mode assignments.
-
-:- pred modecheck_unification_2(mode_assign_set, term, term,
-				mode_info, mode_assign_set, mode_assign_set).
-:- mode modecheck_unification_2(input, input, input,
-				modeinfo_ui, input, output).
-
-modecheck_unification_2([], _, _, _) --> [].
-modecheck_unification_2([ModeAssign0 | ModeAssigns0], X, Y, ModeInfo) -->
-	mode_assign_unify_term(X, Y, ModeAssign0, ModeInfo),
-	modecheck_unification_2(ModeAssigns0, X, Y, ModeInfo).
-	
-%-----------------------------------------------------------------------------%
-
-	% Mode-check the unification of two terms,
-	% and update the mode assignment.
-	% ModeAssign0 is the mode assignment we are updating,
-	% ModeAssignSet0 is an accumulator for the list of possible
-	% mode assignments so far, and ModeAssignSet is ModeAssignSet plus
-	% any mode assignment(s) resulting from ModeAssign0 and this
-	% unification.
-
-:- pred mode_assign_unify_term(term, term, mode_assign, mode_info,
-				mode_assign_set, mode_assign_set).
-:- mode mode_assign_unify_term(input, input, input, modeinfo_ui, input, output).
-
-	% NU-Prolog indexing
-:- mode_assign_unify_term(T1, T2, _, _, _, _) when T1 and T2.
-
-mode_assign_unify_term(term_variable(X), term_variable(Y), ModeAssign0,
-		_ModeInfo, ModeAssignSet0, ModeAssignSet) :-
-	mode_assign_get_var_modes(ModeAssign0, VarModes0),
-	( %%% if some [ModeX]
-		map__search(VarModes0, X, ModeX)
-	->
-		( %%% if some [ModeY]
-			map__search(VarModes0, Y, ModeY)
-		->
-			% both X and Y already have modes - just
-			% unify their modes
-			( %%% if some [ModeAssign3]
-				mode_assign_unify_mode(ModeAssign0, ModeX,
-					ModeY, ModeAssign3)
-			->
-				ModeAssignSet = [ModeAssign3 | ModeAssignSet0]
-			;
-				ModeAssignSet = ModeAssignSet0
-			)
-		;
-			% Y is a fresh variable which hasn't been
-			% assigned a mode yet
-			map__set(VarModes0, Y, ModeX, VarModes),
-			mode_assign_set_var_modes(ModeAssign0, VarModes,
-				ModeAssign),
-			ModeAssignSet = [ModeAssign | ModeAssignSet0]
-		)
-	;
-		( %%% if some [ModeY2]
-			map__search(VarModes0, Y, ModeY2)
-		->
-			% X is a fresh variable which hasn't been
-			% assigned a mode yet
-			map__set(VarModes0, X, ModeY2, VarModes),
-			mode_assign_set_var_modes(ModeAssign0, VarModes,
-				ModeAssign),
-			ModeAssignSet = [ModeAssign | ModeAssignSet0]
-		;
-			% both X and Y are fresh variables -
-			% introduce a fresh mode variable to represent
-			% their mode
-			mode_assign_get_modevarset(ModeAssign0, ModeVarSet0),
-			varset__new_var(ModeVarSet0, ModeVar, ModeVarSet),
-			mode_assign_set_modevarset(ModeAssign0, ModeVarSet,
-				ModeAssign1),
-			Mode = term_variable(ModeVar),
-			map__set(VarModes0, X, Mode, VarModes1),
-			map__set(VarModes1, Y, Mode, VarModes),
-			mode_assign_set_var_modes(ModeAssign1, VarModes,
-				ModeAssign),
-			ModeAssignSet = [ModeAssign | ModeAssignSet0]
-		)
-	).
-
-mode_assign_unify_term(term_functor(Functor, Args, _), term_variable(Y),
-		ModeAssign0, ModeInfo, ModeAssignSet0, ModeAssignSet) :-
-	length(Args, Arity),
-	modeinfo_get_ctor_list(ModeInfo, Functor, Arity, ConsDefnList),
-	mode_assign_unify_var_functor(ConsDefnList, Args, Y, ModeAssign0,
-		ModeInfo, ModeAssignSet0, ModeAssignSet).
-
-mode_assign_unify_term(term_variable(Y), term_functor(F, As, _), ModeAssign0,
+modecheck_unification(term_variable(Y), term_functor(F, As, _), ModeAssign0,
 		ModeInfo, ModeAssignSet0, ModeAssignSet) :-
-	mode_assign_unify_term(term_functor(F, As, _), term_variable(Y),
+	modecheck_unification(term_functor(F, As, _), term_variable(Y),
 		ModeAssign0, ModeInfo, ModeAssignSet0, ModeAssignSet).
 	
-mode_assign_unify_term(term_functor(FX, AsX, _), term_functor(FY, AsY, _),
-		ModeAssign0, ModeInfo, ModeAssignSet0, ModeAssignSet) :-
-	    % XXX we should handle this properly
-	error("XXX not implemented: unification of term with term\n"),
-	ModeAssignSet = ModeAssignSet0.
+modecheck_unification(term_functor(_, _, _), term_functor(_, _, _),
+		_, _, _, _) :-
+	error("modecheck internal error: unification of term with term\n").
 
 %-----------------------------------------------------------------------------%
 
-	% Mode-check the unification of a variable with a functor:
-	% for each possible mode of the constructor,
-	% unify the mode of the variable with the mode of
-	% the constructor and if this succeeds insert that
-	% mode assignment into the mode assignment set.
+	% Mode checking is like abstract interpretation.
+	% This is the abstract unification operation which
+	% unifies two instantiatednesses.  If the unification
+	% would be illegal, then abstract unification fails.
+	% If the unification would fail, then the abstract unification
+	% will succeed, and the resulting instantiatedness will be
+	% something like bound([]), which effectively means "this program
+	% point will never be reached".
 
-:- pred mode_assign_unify_var_functor(list(hlds__cons_defn), list(term),
-		var, mode_assign,
-		mode_info, mode_assign_set, mode_assign_set).
-:- mode mode_assign_unify_var_functor(input, input, input, input,
-		modeinfo_ui, input, output).
+:- pred abstractly_unify_inst_list(list(inst), list(inst), module_info,
+					list(inst)).
+:- mode abstractly_unify_inst_list(in, in, in, out).
 
-mode_assign_unify_var_functor([], _, _, _, _, ModeAssignSet, ModeAssignSet).
-mode_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, ModeAssign0,
-		ModeInfo, ModeAssignSet0, ModeAssignSet) :-
+abstractly_unify_inst_list([], [], _, []).
+abstractly_unify_inst_list([X|Xs], [Y|Ys], ModuleInfo, [Z|Zs]) :-
+	abstractly_unify_inst(X, Y, ModuleInfo, Z),
+	abstractly_unify_inst_list(Xs, Ys, ModuleInfo, Zs).
 
-	get_cons_stuff(ConsDefn, ModeAssign0, ModeInfo,
-			ConsMode, ArgModes, ModeAssign1),
+:- pred abstractly_unify_inst(inst, inst, module_info, inst).
+:- mode abstractly_unify_inst(in, in, in, out) is semidet.
+
+abstractly_unify_inst(InstA, InstB, ModuleInfo, Inst) :-
+	inst_expand(ModuleInfo, InstA, InstA2),
+	inst_expand(ModuleInfo, InstB, InstB2),
+	abstractly_unify_inst_2(InstA2, InstB2, ModuleInfo, Inst).
+
+:- pred abstractly_unify_inst_2(inst, inst, module_info, inst).
+:- mode abstractly_unify_inst_2(in, in, in, out) is semidet.
+
+abstractly_unify_inst_2(free,		free,		_, _) :- fail.
+abstractly_unify_inst_2(free,		bound(List),	_, bound(List)).
+abstractly_unify_inst_2(free,		ground,		_, ground).
+abstractly_unify_inst_2(free,		abstract_inst(_,_), _, _) :- fail.
 	
-		% unify the mode of Var with the mode of the constructor
-	mode_assign_get_var_modes(ModeAssign1, VarModes0),
-	( %%% if some [ModeY]
-		map__search(VarModes0, Y, ModeY)
-	->
-		( %%% if some [ModeAssign2]
-			mode_assign_unify_mode(ModeAssign1, ConsMode, ModeY,
-						ModeAssign2)
-		->
-			% check that the modes of the arguments matches the
-			% specified arg modes for this constructor
-			mode_assign_term_has_mode_list(Args, ArgModes,
-				ModeAssign2, ModeInfo,
-				ModeAssignSet0, ModeAssignSet1)
-		;
-			% the top-level modes didn't unify - no need to
-			% check the modes of the arguments, since this
-			% mode-assignment has already been rules out
-			ModeAssignSet1 = ModeAssignSet0
-		)
+abstractly_unify_inst_2(bound(List),	free,		_, bound(List)).
+abstractly_unify_inst_2(bound(ListX),	bound(ListY),	M, bound(List)) :-
+	abstractly_unify_bound_inst_list(ListX, ListY, M, List).
+abstractly_unify_inst_2(bound(_),	ground,		_, ground).
+abstractly_unify_inst_2(bound(List),	abstract_inst(_,_), ModuleInfo,
+							   ground) :-
+	bound_inst_list_is_ground(List, ModuleInfo).
+
+abstractly_unify_inst_2(ground,		_,		_, ground).
+
+abstractly_unify_inst_2(abstract_inst(_,_), free,	_, _) :- fail.
+abstractly_unify_inst_2(abstract_inst(_,_), bound(List), ModuleInfo, ground) :-
+	bound_inst_list_is_ground(List, ModuleInfo).
+abstractly_unify_inst_2(abstract_inst(_,_), ground,	_, ground).
+abstractly_unify_inst_2(abstract_inst(Name, ArgsA),
+			abstract_inst(Name, ArgsB), ModuleInfo, 
+			abstract_inst(Name, Args)) :-
+	abstractly_unify_inst_list(ArgsA, ArgsB, ModuleInfo, Args).
+
+	% The lists of bound_inst are guaranteed to be sorted.
+	% Abstract unification of two bound(...) insts proceeds
+	% like a sorted merge operation.  If two elements have the
+	% same functor name, they are inserted in the output list
+	% iff their argument inst list can be abstractly unified.
+
+:- pred abstractly_unify_bound_inst_list(list(bound_inst), list(bound_inst),
+		module_info, list(bound_inst)).
+:- mode abstractly_unify_bound_inst_list(in, in, in, out).
+
+:- abstractly_unify_bound_inst_list(Xs, Ys, _, _) when Xs and Ys. % Index
+
+abstractly_unify_bound_inst_list([], _, _ModuleInfo, []).
+abstractly_unify_bound_inst_list([_|_], [], _ModuleInfo, []).
+abstractly_unify_bound_inst_list([X|Xs], [Y|Ys], ModuleInfo, L) :-
+	X = functor(NameX, ArgsX),
+	length(ArgsX, ArityX),
+	Y = functor(NameY, ArgsY),
+	length(ArgsY, ArityY),
+	( NameX = NameY, ArityX = ArityY ->
+	    ( abstractly_unify_inst_list(ArgsX, ArgsY, ModuleInfo, Args) ->
+		L = [functor(NameX, Args) | L1],
+		abstractly_unify_bound_inst_list(Xs, Ys, ModuleInfo, L1)
+	    ;
+		abstractly_unify_bound_inst_list(Xs, Ys, ModuleInfo, L)
+	    )
 	;
-		map__set(VarModes0, Y, ConsMode, VarModes),
-		mode_assign_set_var_modes(ModeAssign1, VarModes, ModeAssign3),
-
-			% check that the modes of the arguments matches the
-			% specified arg modes for this constructor
-		mode_assign_term_has_mode_list(Args, ArgModes, ModeAssign3,
-			ModeInfo, ModeAssignSet0, ModeAssignSet1)
-	),
-
-		% recursively handle all the other possible constructors
-		% that match this functor.
-	mode_assign_unify_var_functor(ConsDefns, Args, Y, ModeAssign0,
-		ModeInfo, ModeAssignSet1, ModeAssignSet).
-
-%-----------------------------------------------------------------------------%
-
-	% Given an hlds__cons_defn, construct a mode for the
-	% constructor and a list of modes of the arguments.
-	% First we construct the mode and the arg modes using
-	% the information in the hlds__cons_defn and the information
-	% in the hlds mode table entry for the cons' mode.
-	% Then we rename these apart from the current mode_assign's
-	% modevarset.
-	%
-	% XXX abstract the use of hlds__cons_defn/3 and hlds__mode_defn/5
-
-:- pred get_cons_stuff(hlds__cons_defn, mode_assign, mode_info,
-			mode, list(mode), mode_assign).
-:- mode get_cons_stuff(input, input, input, output, output, output).
-
-get_cons_stuff(ConsDefn, ModeAssign0, ModeInfo, ConsMode, ArgModes,
-			ModeAssign) :-
-
-	ConsDefn = hlds__cons_defn(ArgModes0, ModeId, Context),
-
-	( is_builtin_mode(ModeId) ->
-		% XXX assumes arity = 0
-		varset__init(ConsModeVarSet),
-		ConsModeParams = []
-	;
-		modeinfo_get_modes(ModeInfo, Modes),
-		map__search(Modes, ModeId, ModeDefn),
-		ModeDefn = hlds__mode_defn(ConsModeVarSet, ConsModeParams,
-						_, _, _)
-	),
-
-	ModeId = QualifiedName - _Arity,
-	unqualify_name(QualifiedName, Name),
-	ConsMode0 = term_functor(term_atom(Name), ConsModeParams, Context),
-
-	% Rename apart the mode vars in the mode of the constructor
-	% and the modes of it's arguments.
-	% (Optimize the common case of a non-polymorphic mode)
-	(ConsModeParams = [] ->
-		ConsMode = ConsMode0,
-		ArgModes = ArgModes0,
-		ModeAssign = ModeAssign0
-	;
-		mode_assign_rename_apart(ModeAssign0, ConsModeVarSet,
-			[ConsMode0 | ArgModes0],
-			ModeAssign, [ConsMode | ArgModes])
+	    ( compare(<, X, Y) ->
+		abstractly_unify_bound_inst_list(Xs, [Y|Ys], ModuleInfo, L)
+	    ;
+		abstractly_unify_bound_inst_list([X|Xs], Ys, ModuleInfo, L)
+	    )
 	).
 
 %-----------------------------------------------------------------------------%
 
-	% Unify (with occurs check) two modes in a mode assignment 
-	% and update the mode bindings.
+:- pred bound_inst_list_is_ground(list(bound_inst), module_info).
+:- mode bound_inst_list_is_ground(in, in) is semidet.
 
-:- pred mode_assign_unify_mode(mode_assign, mode, mode, mode_assign).
-:- mode mode_assign_unify_mode(input, input, input, output).
+bound_inst_list_is_ground([], _).
+bound_inst_list_is_ground([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
+	inst_list_is_ground(Args, ModuleInfo),
+	bound_inst_list_is_ground(BoundInsts, ModuleInfo).
 
-mode_assign_unify_mode(ModeAssign0, X, Y, ModeAssign) :-
-	mode_assign_get_mode_bindings(ModeAssign0, ModeBindings0),
-	mode_unify(X, Y, ModeBindings0, ModeBindings),
-	mode_assign_set_mode_bindings(ModeAssign0, ModeBindings, ModeAssign).
+:- pred inst_list_is_ground(list(inst), module_info).
+:- mode inst_list_is_ground(in, in) is semidet.
 
-%-----------------------------------------------------------------------------%
+inst_list_is_ground([], _).
+inst_list_is_ground([Inst | Insts], ModuleInfo) :-
+	inst_is_ground(ModuleInfo, Inst),
+	inst_list_is_ground(Insts, ModuleInfo).
 
-	% Unify (with occurs check) two modes with respect to a mode
-	% substitution and update the mode bindings.
-	% (Modes are represented as terms, but we can't just use term__unify
-	% because we need to handle equivalent modes).
+:- pred categorize_unify_var_var(mode, mode, var, var, module_info,
+				unification).
+:- mode categorize_unify_var_var(in, in, in, in, in, out).
 
-:- mode_unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
-
-:- pred mode_unify(mode, mode, substitution, substitution).
-:- mode mode_unify(input, input, input, output).
-
-mode_unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
-	( %%% if some [BindingOfX]
-		map__search(Bindings0, X, BindingOfX)
-	->
-		( %%% if some [BindingOfY]
-			map__search(Bindings0, Y, BindingOfY)
-		->
-			% both X and Y already have bindings - just
-			% unify the modes they are bound to
-			mode_unify(BindingOfX, BindingOfY, Bindings0, Bindings)
-		;
-			term__apply_rec_substitution(BindingOfX,
-				Bindings0, SubstBindingOfX),
-			% Y is a mode variable which hasn't been bound yet
-			( SubstBindingOfX = term_variable(Y) ->
-				Bindings = Bindings0
-			;
-				\+ term__occurs(SubstBindingOfX, Y, Bindings0),
-				map__set(Bindings0, Y, SubstBindingOfX,
-					Bindings)
-			)
-		)
+categorize_unify_var_var(ModeX, ModeY, X, Y, ModuleInfo, Unification) :-
+	( mode_is_output(ModuleInfo, ModeX) ->
+		Unification = assign(X, Y)
+	; mode_is_output(ModuleInfo, ModeY) ->
+		Unification = assign(Y, X)
 	;
-		( %%% if some [BindingOfY2]
-			map__search(Bindings0, Y, BindingOfY2)
-		->
-			term__apply_rec_substitution(BindingOfY2,
-				Bindings0, SubstBindingOfY2),
-			% X is a mode variable which hasn't been bound yet
-			( SubstBindingOfY2 = term_variable(X) ->
-				Bindings = Bindings0
-			;
-				\+ term__occurs(SubstBindingOfY2, X, Bindings0),
-				map__set(Bindings0, X, SubstBindingOfY2,
-					Bindings)
-			)
-		;
-			% both X and Y are unbound mode variables -
-			% bind one to the other
-			( X = Y ->
-				Bindings = Bindings0
-			;
-				map__set(Bindings0, X, term_variable(Y),
-					Bindings)
-			)
-		)
+		% XXX we should detect simple_tests!!!
+		Unification = complicated_unify(ModeX - ModeY,
+				term_variable(X), term_variable(Y))
 	).
-
-mode_unify(term_variable(X), term_functor(F, As, C), Bindings0, Bindings) :-
-	( %%% if some [BindingOfX]
-		map__search(Bindings0, X, BindingOfX)
-	->
-		mode_unify(BindingOfX, term_functor(F, As, C), Bindings0,
-			Bindings)
-	;
-		\+ term__occurs_list(As, X, Bindings0),
-		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
-	).
-
-mode_unify(term_functor(F, As, C), term_variable(X), Bindings0, Bindings) :-
-	( %%% if some [BindingOfX]
-		map__search(Bindings0, X, BindingOfX)
-	->
-		\+ term__occurs_list(As, X, Bindings0),
-		mode_unify(term_functor(F, As, C), BindingOfX, Bindings0,
-			Bindings)
-	;
-		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
-	).
-
-mode_unify(term_functor(FX, AsX, _), term_functor(FY, AsY, _), Bindings0,
-		Bindings) :-
-	length(AsX, ArityX),
-	length(AsY, ArityY),
-	(
-		FX = FY,
-		ArityX = ArityY
-	->
-		mode_unify_list(AsX, AsY, Bindings0, Bindings)
-	;
-		% XXX check if these modes have been defined to be
-		% equivalent using equivalence modes
-		fail	% XXX stub only!!!
-	).
-
-:- pred mode_unify_list(list(mode), list(mode), substitution, substitution).
-:- mode mode_unify_list(input, input, input, output).
-
-mode_unify_list([], []) --> [].
-mode_unify_list([X | Xs], [Y | Ys]) -->
-	mode_unify(X, Y),
-	mode_unify_list(Xs, Ys).
-
-ALL THIS IS COMMENTED OUT! ***********************/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% XXX - At the moment we don't check for circular modes.
+	% XXX - At the moment we don't check for circular modes or insts.
 	% (If they aren't used, the compiler will probably not
 	% detect the error; if they are, it will probably go into
 	% an infinite loop).
 
 :- pred check_circular_modes(module_info, module_info, io__state, io__state).
-:- mode check_circular_modes(input, output, di, uo).
+:- mode check_circular_modes(in, out, di, uo).
 
 check_circular_modes(Module0, Module) -->
 	{ Module = Module0 }.
-
-/**** JUNK
-	{ moduleinfo_modes(Module0, Modes0 },
-	{ map__keys(Modes0, ModeIds) },
-	check_circular_modes_2(ModeIds, Modes0, Modes),
-	{ moduleinfo_set_modes(Module0, Modes, Module) }.
-
-check_circular_modes_2([], Modes, Modes) --> [].
-check_circular_modes_2([ModeId | ModeIds], Modes0, Modes) -->
-
-JUNK ****/
-	
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% Check for any possible undefined insts/modes.
-	% XXX should we add a definition for undefined modes?
+	% Should we add a definition for undefined insts/modes?
 
 :- pred check_undefined_modes(module_info, module_info, io__state, io__state).
-:- mode check_undefined_modes(input, output, di, uo).
+:- mode check_undefined_modes(in, out, di, uo).
 check_undefined_modes(Module, Module) -->
 	{ moduleinfo_insts(Module, InstDefns) },
 	{ map__keys(InstDefns, InstIds) },
@@ -1100,7 +991,7 @@ check_undefined_modes(Module, Module) -->
 
 :- pred find_undef_pred_modes(list(pred_id), pred_table, mode_table,
 				inst_table, io__state, io__state).
-:- mode find_undef_pred_modes(input, input, input, input, di, uo).
+:- mode find_undef_pred_modes(in, in, in, in, di, uo).
 
 find_undef_pred_modes([], _Preds, _ModeDefns, _InstDefns) --> [].
 find_undef_pred_modes([PredId | PredIds], Preds, ModeDefns, InstDefns) -->
@@ -1112,7 +1003,7 @@ find_undef_pred_modes([PredId | PredIds], Preds, ModeDefns, InstDefns) -->
 
 :- pred find_undef_proc_modes(list(proc_id), pred_id, proc_table, mode_table,
 				inst_table, io__state, io__state).
-:- mode find_undef_proc_modes(input, input, input, input, input, di, uo).
+:- mode find_undef_proc_modes(in, in, in, in, in, di, uo).
 
 find_undef_proc_modes([], _PredId, _Procs, _ModeDefns, _InstDefns) --> [].
 find_undef_proc_modes([ProcId | ProcIds], PredId, Procs, ModeDefns,
@@ -1131,7 +1022,7 @@ find_undef_proc_modes([ProcId | ProcIds], PredId, Procs, ModeDefns,
 
 :- pred find_undef_mode_bodies(list(mode_id), mode_table, inst_table,
 				io__state, io__state).
-:- mode find_undef_mode_bodies(input, input, input, di, uo).
+:- mode find_undef_mode_bodies(in, in, in, di, uo).
 
 find_undef_mode_bodies([], _, _) --> [].
 find_undef_mode_bodies([ModeId | ModeIds], ModeDefns, InstDefns) -->
@@ -1146,7 +1037,7 @@ find_undef_mode_bodies([ModeId | ModeIds], ModeDefns, InstDefns) -->
 
 :- pred find_undef_mode_body(hlds__mode_body, mode_error_context,
 				mode_table, inst_table, io__state, io__state).
-:- mode find_undef_mode_body(input, input, input, input, di, uo).
+:- mode find_undef_mode_body(in, in, in, in, di, uo).
 
 find_undef_mode_body(eqv_mode(Mode), ErrorContext, ModeDefns, InstDefns) -->
 	find_undef_mode(Mode, ErrorContext, ModeDefns, InstDefns).
@@ -1155,7 +1046,7 @@ find_undef_mode_body(eqv_mode(Mode), ErrorContext, ModeDefns, InstDefns) -->
 
 :- pred find_undef_mode_list(list(mode), mode_error_context,
 				mode_table, inst_table, io__state, io__state).
-:- mode find_undef_mode_list(input, input, input, input, di, uo).
+:- mode find_undef_mode_list(in, in, in, in, di, uo).
 
 find_undef_mode_list([], _, _, _) --> [].
 find_undef_mode_list([Mode|Modes], ErrorContext, ModeDefns, InstDefns) -->
@@ -1169,7 +1060,7 @@ find_undef_mode_list([Mode|Modes], ErrorContext, ModeDefns, InstDefns) -->
 
 :- pred find_undef_mode(mode, mode_error_context, mode_table, inst_table,
 				io__state, io__state).
-:- mode find_undef_mode(input, input, input, input, di, uo).
+:- mode find_undef_mode(in, in, in, in, di, uo).
 
 find_undef_mode((InstA -> InstB), ErrorContext, _ModeDefns, InstDefns) -->
 	find_undef_inst(InstA, ErrorContext, InstDefns),
@@ -1194,7 +1085,7 @@ find_undef_mode(user_defined_mode(Name, Args), ErrorContext, ModeDefns,
 	% declarations.
 
 :- pred find_undef_inst_bodies(list(inst_id), inst_table, io__state, io__state).
-:- mode find_undef_inst_bodies(input, input, di, uo).
+:- mode find_undef_inst_bodies(in, in, di, uo).
 
 find_undef_inst_bodies([], _) --> [].
 find_undef_inst_bodies([InstId | InstIds], InstDefns) -->
@@ -1208,7 +1099,7 @@ find_undef_inst_bodies([InstId | InstIds], InstDefns) -->
 
 :- pred find_undef_inst_body(hlds__inst_body, mode_error_context, inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_body(input, input, input, di, uo).
+:- mode find_undef_inst_body(in, in, in, di, uo).
 
 find_undef_inst_body(eqv_inst(Inst), ErrorContext, InstDefns) -->
 	find_undef_inst(Inst, ErrorContext, InstDefns).
@@ -1218,7 +1109,7 @@ find_undef_inst_body(abstract_inst, _, _) --> [].
 
 :- pred find_undef_inst_list(list(inst), mode_error_context, inst_table,
 				io__state, io__state).
-:- mode find_undef_inst_list(input, input, input, di, uo).
+:- mode find_undef_inst_list(in, in, in, di, uo).
 
 find_undef_inst_list([], _ErrorContext, _InstDefns) --> [].
 find_undef_inst_list([Inst|Insts], ErrorContext, InstDefns) -->
@@ -1232,7 +1123,7 @@ find_undef_inst_list([Inst|Insts], ErrorContext, InstDefns) -->
 
 :- pred find_undef_inst(inst, mode_error_context, inst_table,
 				io__state, io__state).
-:- mode find_undef_inst(input, input, input, di, uo).
+:- mode find_undef_inst(in, in, in, di, uo).
 
 find_undef_inst(free, _, _) --> [].
 find_undef_inst(ground, _, _) --> [].
@@ -1255,7 +1146,7 @@ find_undef_inst(abstract_inst(Name, Args), ErrorContext, InstDefns) -->
 
 :- pred find_undef_bound_insts(list(bound_inst), mode_error_context, inst_table,
 				io__state, io__state).
-:- mode find_undef_bound_insts(input, input, input, di, uo).
+:- mode find_undef_bound_insts(in, in, in, di, uo).
 
 find_undef_bound_insts([], _, _) --> [].
 find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
@@ -1274,14 +1165,14 @@ find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
 	% in the specified context.
 
 :- pred report_undef_mode(mode_id, mode_error_context, io__state, io__state).
-:- mode report_undef_mode(input, input, di, uo).
+:- mode report_undef_mode(in, in, di, uo).
 report_undef_mode(ModeId, ErrorContext - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("In "),
 	write_mode_error_context(ErrorContext),
 	io__write_string(":\n"),
 	prog_out__write_context(Context),
-	io__write_string("error: undefined mode "),
+	io__write_string("  error: undefined mode "),
 	write_mode_id(ModeId),
 	io__write_string(".\n").
 
@@ -1289,14 +1180,14 @@ report_undef_mode(ModeId, ErrorContext - Context) -->
 	% in the specified context.
 
 :- pred report_undef_inst(inst_id, mode_error_context, io__state, io__state).
-:- mode report_undef_inst(input, input, di, uo).
+:- mode report_undef_inst(in, in, di, uo).
 report_undef_inst(InstId, ErrorContext - Context) -->
 	prog_out__write_context(Context),
 	io__write_string("In "),
 	write_mode_error_context(ErrorContext),
 	io__write_string(":\n"),
 	prog_out__write_context(Context),
-	io__write_string("error: undefined inst "),
+	io__write_string("  error: undefined inst "),
 	write_inst_id(InstId),
 	io__write_string(".\n").
 
@@ -1304,7 +1195,7 @@ report_undef_inst(InstId, ErrorContext - Context) -->
 	% used.
 
 :- pred write_mode_error_context(mode_error_context_2, io__state, io__state).
-:- mode write_mode_error_context(input, di, uo).
+:- mode write_mode_error_context(in, di, uo).
 
 write_mode_error_context(pred(PredId)) -->
 	io__write_string("mode declaration for predicate "),
@@ -1318,11 +1209,11 @@ write_mode_error_context(inst(InstId)) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Predicates to output mode_ids and pred_ids.
+	% Predicates to out mode_ids and pred_ids.
 	% XXX mode_ids should include the module.
 
 :- pred write_mode_id(mode_id, io__state, io__state).
-:- mode write_mode_id(input, di, uo).
+:- mode write_mode_id(in, di, uo).
 
 write_mode_id(F - N) -->
 	prog_out__write_sym_name(F),
@@ -1332,7 +1223,7 @@ write_mode_id(F - N) -->
 	% XXX inst_ids should include the module.
 
 :- pred write_inst_id(inst_id, io__state, io__state).
-:- mode write_inst_id(input, di, uo).
+:- mode write_inst_id(in, di, uo).
 
 write_inst_id(F - N) -->
 	prog_out__write_sym_name(F),
@@ -1341,548 +1232,305 @@ write_inst_id(F - N) -->
 
 
 :- pred write_pred_id(pred_id, io__state, io__state).
-:- mode write_pred_id(input, di, uo).
-
-write_pred_id(PredId) -->
-	% XXX module name
-	%%% { predicate_module(PredId, Module) },
-	{ predicate_name(PredId, Name) },
-	{ predicate_arity(PredId, Arity) },
-	%%% io__write_string(Module),
-	%%% io__write_string(":"),
-	io__write_string(Name),
-	io__write_string("/"),
-	io__write_int(Arity).
-
-/******************** ALL THIS IS COMMENTED OUT
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% builtin_mode(Term, Mode)
-	%	is true iff 'Term' is a constant of the builtin mode 'Mode'.
-
-:- pred builtin_mode(const, string).
-:- mode builtin_mode(input, output).
-
-builtin_mode(term_integer(_), "int").
-builtin_mode(term_float(_), "float").
-builtin_mode(term_string(_), "string").
-builtin_mode(term_atom(String), "character") :-
-	string__char_to_string(_, String).
-
-	% is_builtin_mode(ModeId)
-	%	is true iff 'ModeId' is the mode_id of a builting mode
-
-:- pred is_builtin_mode(mode_id).
-:- mode is_builtin_mode(input).
-
-is_builtin_mode(unqualified("int") - 0).
-is_builtin_mode(unqualified("float") - 0).
-is_builtin_mode(unqualified("string") - 0).
-is_builtin_mode(unqualified("character") - 0).
-is_builtin_mode(qualified(_,"int") - 0).
-is_builtin_mode(qualified(_,"float") - 0).
-is_builtin_mode(qualified(_,"string") - 0).
-is_builtin_mode(qualified(_,"character") - 0).
+:- mode write_pred_id(in, di, uo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% The modeinfo data structure and access predicates.
 
-:- mode tvarset		==	varset.
+	% XXX
+:- type mode_context
+	--->	pred(	
+			pred_id,	% pred name
+			int		% argument number
+		)
+	;	unify(
+			unify_context,	% original source of the unification
+			side		% LHS or RHS
+		)
+	;	unify_arg(
+			unify_context,
+			side,
+			cons_id,
+			int
+		)
+	;
+		uninitialized.
 
-:- mode tsubst		==	map(var, mode).
 
-:- mode mode_info 	--->	modeinfo(
-					io__state,
-					pred_table,
-					mode_table,
-					cons_table,
-					pred_id,
-					term__context,
-					int,	% XXX this field is never used
-					varset,		% variables
-					mode_assign_set,
-					bool	% did we find any mode errors?
-				).
+:- type instmap == map(var, inst).
 
-	% The normal inst of a mode_info struct: ground, with
+:- type side ---> left ; right.
+
+:- type modeinfo 
+	--->	modeinfo(
+			io__state,
+			module_info,
+			pred_id,	% The pred we are checking
+			proc_id,	% The mode which we are checking
+			term__context,	% The line number of the subgoal we
+					% are currently checking
+			mode_context,	% A description of where in the
+					% goal the error occurred
+			map(var, inst),	% The current instantiatedness
+					% of the variables
+			list(set(var)),	% The "locked" variables,
+					% i.e. variables which cannot be
+					% further instantiated inside a
+					% negated context
+			int		% The number of mode errors found
+		).
+
+	% The normal inst of a modeinfo struct: ground, with
 	% the io_state and the struct itself unique, but with
 	% multiple references allowed for the other parts.
 
-:- inst uniq_mode_info	=	bound_unique(
+:- inst uniq_modeinfo	=	bound_unique(
 					modeinfo(
 						ground_unique, ground,
 						ground, ground, ground, ground,
-						ground, ground, ground, ground
+						ground, ground, ground
 					)
 				).
 
-:- mode modeinfo_di :: uniq_mode_info -> dead.
-:- mode modeinfo_uo :: free -> uniq_mode_info.
+:- mode modeinfo_uo :: free -> uniq_modeinfo.
+:- mode modeinfo_ui :: uniq_modeinfo -> uniq_modeinfo.
+:- mode modeinfo_di :: uniq_modeinfo -> dead.
 
 	% Some fiddly modes used when we want to extract
 	% the io_state from a modeinfo struct and then put it back again.
 
-:- inst mode_info_no_io	=	bound_unique(
+:- inst modeinfo_no_io	=	bound_unique(
 					modeinfo(
 						dead, ground,
 						ground, ground, ground, ground,
-						ground, ground, ground, ground
+						ground, ground, ground
 					)
 				).
 
-:- mode modeinfo_get_io_state :: uniq_mode_info -> mode_info_no_io.
-:- mode modeinfo_set_io_state :: mode_info_no_io -> dead.
+:- mode modeinfo_get_io_state	:: uniq_modeinfo -> modeinfo_no_io.
+:- mode modeinfo_no_io		:: modeinfo_no_io -> modeinfo_no_io.
+:- mode modeinfo_set_io_state	:: modeinfo_no_io -> dead.
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_init(io__state, module_info, pred_id, term__context,
-			varset, varset, mode_info).
-:- mode modeinfo_init(di, input, input, input, input, input, modeinfo_uo).
+	% Initialize the modeinfo
 
-modeinfo_init(IOState, ModuleInfo, PredId, Context, ModeVarSet, VarSet,
+:- pred modeinfo_init(io__state, module_info, pred_id, proc_id,
+			term__context, instmap, modeinfo).
+:- mode modeinfo_init(di, in, in, in, in, in, modeinfo_uo) is det.
+
+modeinfo_init(IOState, ModuleInfo, PredId, ProcId, Context, InstMapping0,
 		ModeInfo) :-
-	moduleinfo_preds(ModuleInfo, Preds),
-	moduleinfo_modes(ModuleInfo, Modes),
-	moduleinfo_ctors(ModuleInfo, Ctors),
-	map__init(ModeBindings),
-	map__init(VarModes),
+	mode_context_init(ModeContext),
+	LockedVars = [],
 	ModeInfo = modeinfo(
-		IOState, Preds, Modes, Ctors, PredId, Context, 0,
-		VarSet, [mode_assign(VarModes, ModeVarSet, ModeBindings)],
-		no
+		IOState, ModuleInfo, PredId, ProcId, Context, ModeContext,
+		InstMapping0, LockedVars, 0
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_get_io_state(mode_info, io__state).
-:- mode modeinfo_get_io_state(modeinfo_get_io_state, uo).
+:- pred mode_context_init(mode_context).
+:- mode mode_context_init(in) is det.
 
-modeinfo_get_io_state(modeinfo(IOState,_,_,_,_,_,_,_,_,_), IOState).
-
-%-----------------------------------------------------------------------------%
-
-:- pred modeinfo_set_io_state(mode_info, io__state, mode_info).
-:- mode modeinfo_set_io_state(modeinfo_set_io_state, ui, modeinfo_uo).
-
-modeinfo_set_io_state( modeinfo(_,B,C,D,E,F,G,H,I,J), IOState,
-			modeinfo(IOState,B,C,D,E,F,G,H,I,J)).
+mode_context_init(uninitialized).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_get_preds(mode_info, pred_table).
-:- mode modeinfo_get_preds(input, output).
+	% Lots of very boring access predicates.
 
-modeinfo_get_preds(modeinfo(_,Preds,_,_,_,_,_,_,_,_), Preds).
+:- pred modeinfo_get_io_state(modeinfo, io__state).
+:- mode modeinfo_get_io_state(modeinfo_get_io_state, uo) is det.
 
-%-----------------------------------------------------------------------------%
-
-:- pred modeinfo_get_modes(mode_info, mode_table).
-:- mode modeinfo_get_modes(input, output).
-
-modeinfo_get_modes(modeinfo(_,_,Modes,_,_,_,_,_,_,_), Modes).
+modeinfo_get_io_state(modeinfo(IOState,_,_,_,_,_,_,_,_), IOState).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_get_ctors(mode_info, cons_table).
-:- mode modeinfo_get_ctors(input, output).
+:- pred modeinfo_set_io_state(modeinfo, io__state, modeinfo).
+:- mode modeinfo_set_io_state(modeinfo_set_io_state, ui, modeinfo_uo) is det.
 
-modeinfo_get_ctors(modeinfo(_,_,_,Ctors,_,_,_,_,_,_), Ctors).
-
-%-----------------------------------------------------------------------------%
-
-:- pred modeinfo_get_predid(mode_info, pred_id).
-:- mode modeinfo_get_predid(input, output).
-
-modeinfo_get_predid(modeinfo(_,_,_,_,PredId,_,_,_,_,_), PredId).
+modeinfo_set_io_state( modeinfo(_,B,C,D,E,F,G,H,I), IOState,
+			modeinfo(IOState,B,C,D,E,F,G,H,I)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_get_context(mode_info, term__context).
-:- mode modeinfo_get_context(input, output).
+:- pred modeinfo_get_moduleinfo(modeinfo, module_info).
+:- mode modeinfo_get_moduleinfo(in, out) is det.
 
-modeinfo_get_context(modeinfo(_,_,_,_,_,Context,_,_,_,_), Context).
-
-%-----------------------------------------------------------------------------%
-
-:- pred modeinfo_get_varset(mode_info, varset).
-:- mode modeinfo_get_varset(input, output).
-
-modeinfo_get_varset(modeinfo(_,_,_,_,_,_,_,VarSet,_,_), VarSet).
+modeinfo_get_moduleinfo(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_get_mode_assign_set(mode_info, mode_assign_set).
-:- mode modeinfo_get_mode_assign_set(input, output).
+:- pred modeinfo_get_preds(modeinfo, pred_table).
+:- mode modeinfo_get_preds(in, out) is det.
 
-modeinfo_get_mode_assign_set(modeinfo(_,_,_,_,_,_,_,_,ModeAssignSet,_),
-			ModeAssignSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred modeinfo_set_mode_assign_set(mode_info, mode_assign_set, mode_info).
-:- mode modeinfo_set_mode_assign_set(modeinfo_di, input, modeinfo_uo).
-
-modeinfo_set_mode_assign_set( modeinfo(A,B,C,D,E,F,G,H,_,J), ModeAssignSet,
-			modeinfo(A,B,C,D,E,F,G,H,ModeAssignSet,J)).
+modeinfo_get_preds(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Preds) :-
+	moduleinfo_preds(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_set_found_error(mode_info, bool, mode_info).
-:- mode modeinfo_set_found_error(modeinfo_di, input, modeinfo_uo).
+:- pred modeinfo_get_modes(modeinfo, mode_table).
+:- mode modeinfo_get_modes(in, out) is det.
 
-modeinfo_set_found_error( modeinfo(A,B,C,D,E,F,G,H,I,_), FoundError,
-			modeinfo(A,B,C,D,E,F,G,H,I,FoundError)).
+modeinfo_get_modes(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Modes) :-
+	moduleinfo_modes(ModuleInfo, Modes).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_get_ctor_list(mode_info, const, int, list(hlds__cons_defn)).
-:- mode modeinfo_get_ctor_list(input, input, input, output).
+:- pred modeinfo_get_insts(modeinfo, inst_table).
+:- mode modeinfo_get_insts(in, out) is det.
 
-modeinfo_get_ctor_list(ModeInfo, Functor, Arity, ConsDefnList) :-
-	modeinfo_get_ctors(ModeInfo, Ctors),
+modeinfo_get_insts(modeinfo(_,ModuleInfo,_,_,_,_,_,_,_), Insts) :-
+	moduleinfo_insts(ModuleInfo, Insts).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_predid(modeinfo, pred_id).
+:- mode modeinfo_get_predid(in, out) is det.
+
+modeinfo_get_predid(modeinfo(_,_,PredId,_,_,_,_,_,_), PredId).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_procid(modeinfo, proc_id).
+:- mode modeinfo_get_procid(in, out) is det.
+
+modeinfo_get_procid(modeinfo(_,_,_,ProcId,_,_,_,_,_), ProcId).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_context(modeinfo, term__context).
+:- mode modeinfo_get_context(in, out).
+
+modeinfo_get_context(modeinfo(_,_,_,_,Context,_,_,_,_), Context).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_mode_context(modeinfo, mode_context).
+:- mode modeinfo_get_mode_context(in, out) is det.
+
+modeinfo_get_mode_context(modeinfo(_,_,_,_,_,ModeContext,_,_,_), ModeContext).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_set_call_context(call_context, modeinfo, modeinfo).
+:- mode modeinfo_set_call_context(in, in, out) is det.
+
+	% XXX stub only
+modeinfo_set_call_context(_, ModeInfo, ModeInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_instmap(modeinfo, instmap).
+:- mode modeinfo_get_instmap(in, out) is det.
+
+modeinfo_get_instmap(modeinfo(_,_,_,_,_,_,InstMap,_,_), InstMap).
+
+:- pred modeinfo_get_vars_instmap(modeinfo, set(var), instmap).
+:- mode modeinfo_get_vars_instmap(in, in, out) is det.
+
+modeinfo_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
+	modeinfo_get_instmap(ModeInfo, InstMap).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_set_instmap(modeinfo, instmap, modeinfo).
+:- mode modeinfo_set_instmap(modeinfo_di, in, modeinfo_uo) is det.
+
+modeinfo_set_instmap( modeinfo(A,B,C,D,E,F,_,H,I), InstMap,
+			modeinfo(A,B,C,D,E,F,InstMap,H,I)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_locked_vars(modeinfo, list(set(var))).
+:- mode modeinfo_get_locked_vars(modeinfo_ui, out) is det.
+
+modeinfo_get_locked_vars(modeinfo(_,_,_,_,_,_,_,LockedVars,_), LockedVars).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_set_locked_vars(modeinfo, list(set(var)), modeinfo).
+:- mode modeinfo_set_locked_vars(modeinfo_di, in, modeinfo_uo) is det.
+
+modeinfo_set_locked_vars( modeinfo(A,B,C,D,E,F,G,_,I), LockedVars,
+			modeinfo(A,B,C,D,E,F,G,LockedVars,I)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_num_errors(modeinfo, int).
+:- mode modeinfo_get_num_errors(modeinfo_ui, out) is det.
+
+modeinfo_get_num_errors(modeinfo(_,_,_,_,_,_,_,_,NumErrors), NumErrors).
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_incr_errors(modeinfo, modeinfo).
+:- mode modeinfo_incr_errors(modeinfo_di, modeinfo_uo) is det.
+
+modeinfo_incr_errors( modeinfo(A,B,C,D,E,F,G,H,NumErrors0),
+			modeinfo(A,B,C,D,E,F,G,H,NumErrors)) :-
+	NumErrors is NumErrors0 + 1.
+
+%-----------------------------------------------------------------------------%
+
+:- pred modeinfo_get_varset(modeinfo, varset).
+:- mode modeinfo_get_varset(modeinfo_ui, out) is det.
+
+	% perhaps we should store it directly in the modeinfo?
+
+modeinfo_get_varset(ModeInfo, VarSet) :-
+	modeinfo_get_moduleinfo(ModeInfo, ModuleInfo),
+	modeinfo_get_predid(ModeInfo, PredId),
+	moduleinfo_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	predinfo_procedures(PredInfo, Procs),
+	modeinfo_get_procid(ModeInfo, ProcId),
+	map__lookup(Procs, ProcId, ProcInfo),
+	procinfo_variables(ProcInfo, VarSet).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+	% The locked variables are stored as a stack 
+	% of sets of variables.  A variable is locked if it is
+	% a member of any of the sets.  To lock a set of vars, we just
+	% push them on the stack, and to unlock a set of vars, we just
+	% pop them off the stack.  The stack is implemented as a list.
+
+:- pred modeinfo_lock_vars(set(var), modeinfo, modeinfo).
+:- mode modeinfo_lock_vars(in, modeinfo_di, modeinfo_uo) is det.
+
+modeinfo_lock_vars(Vars, ModeInfo0, ModeInfo) :-
+	modeinfo_get_locked_vars(ModeInfo0, LockedVars),
+	modeinfo_set_locked_vars(ModeInfo0, [Vars | LockedVars], ModeInfo).
+
+:- pred modeinfo_unlock_vars(set(var), modeinfo, modeinfo).
+:- mode modeinfo_unlock_vars(in, modeinfo_di, modeinfo_uo) is det.
+
+modeinfo_unlock_vars(_, ModeInfo0, ModeInfo) :-
+	modeinfo_get_locked_vars(ModeInfo0, [_ | LockedVars]),
+	modeinfo_set_locked_vars(ModeInfo0, LockedVars, ModeInfo).
+
+:- pred modeinfo_var_is_locked(modeinfo, var).
+:- mode modeinfo_var_is_locked(modeinfo_ui, in) is semidet.
+
+modeinfo_var_is_locked(ModeInfo, Var) :-
+	modeinfo_get_locked_vars(ModeInfo, LockedVarsList),
+	modeinfo_var_is_locked_2(LockedVarsList, Var).
+
+:- pred modeinfo_var_is_locked_2(list(set(var)), var).
+:- mode modeinfo_var_is_locked_2(in, in) is semidet.
+
+modeinfo_var_is_locked_2([Set | Sets], Var) :-
 	(
-		Functor = term_atom(Name),
-		map__search(Ctors, cons(Name, Arity), ConsDefnList0)
+		set__member(Var, Set)
 	->
-		ConsDefnList1 = ConsDefnList0
+		true
 	;
-		ConsDefnList1 = []
-	),
-	(
-		Arity = 0,
-		builtin_mode(Functor, BuiltInMode)
-	->
-		term__context_init("<builtin>", 0, Context),
-		ModeId = unqualified(BuiltInMode) - 0,
-		ConsDefn = hlds__cons_defn([], ModeId, Context),
-		ConsDefnList = [ConsDefn | ConsDefnList1]
-	;
-		ConsDefnList = ConsDefnList1
+		modeinfo_var_is_locked_2(Sets, Var)
 	).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% The mode_assign and mode_assign_set data structures.
-
-:- mode mode_assign_set	==	list(mode_assign).
-
-:- mode mode_assign	--->	mode_assign(
-					map(var, mode),		% var modes
-					tvarset,		% mode names
-					tsubst			% mode bindings
-				).
-
-%-----------------------------------------------------------------------------%
-
-	% Access predicates for the mode_assign data structure.
-	% Excruciatingly boring code.
-
-:- pred mode_assign_get_var_modes(mode_assign, map(var, mode)).
-:- mode mode_assign_get_var_modes(input, output).
-
-mode_assign_get_var_modes(mode_assign(VarModes, _, _), VarModes).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mode_assign_get_modevarset(mode_assign, tvarset).
-:- mode mode_assign_get_modevarset(input, output).
-
-mode_assign_get_modevarset(mode_assign(_, ModeVarSet, _), ModeVarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mode_assign_get_mode_bindings(mode_assign, tsubst).
-:- mode mode_assign_get_mode_bindings(input, output).
-
-mode_assign_get_mode_bindings(mode_assign(_, _, ModeBindings), ModeBindings).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mode_assign_set_var_modes(mode_assign, map(var, mode), mode_assign).
-:- mode mode_assign_set_var_modes(input, input, output).
-
-mode_assign_set_var_modes(mode_assign(_, B, C), VarModes,
-			mode_assign(VarModes, B, C)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mode_assign_set_modevarset(mode_assign, tvarset, mode_assign).
-:- mode mode_assign_set_modevarset(input, input, output).
-
-mode_assign_set_modevarset(mode_assign(A, _, C), ModeVarSet,
-			mode_assign(A, ModeVarSet, C)).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mode_assign_set_mode_bindings(mode_assign, tsubst, mode_assign).
-:- mode mode_assign_set_mode_bindings(input, input, output).
-
-mode_assign_set_mode_bindings(mode_assign(A, B, _), ModeBindings,
-			mode_assign(A, B, ModeBindings)).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-% The next section contains predicates for writing error diagnostics.
-
-%-----------------------------------------------------------------------------%
-
-:- pred report_error_unif(pred_id, term__context, varset, term, term,
-			mode_assign_set, io__state, io__state).
-:- mode report_error_unif(input, input, input, input, input, input, di, uo).
-
-report_error_unif(PredId, Context, VarSet, X, Y, ModeAssignSet) -->
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
-	io__write_string("mode error in unification of `"),
-	io__write_term(VarSet, X),
-	io__write_string("' and `"),
-	io__write_term(VarSet, Y),
-	io__write_string("'.\n"),
-	write_mode_assign_set_msg(ModeAssignSet, VarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_mode_assign_set_msg(mode_assign_set, tvarset,
-				io__state, io__state).
-:- mode write_mode_assign_set_msg(input, input, di, uo).
-
-write_mode_assign_set_msg(ModeAssignSet, VarSet) -->
-	( { ModeAssignSet = [_] } ->
-	    io__write_string("\tThe partial mode assignment was:\n")
-	;
-	    io__write_string("\tThe possible partial mode assignments were:\n")
-	),
-	write_mode_assign_set(ModeAssignSet, VarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_mode_assign_set(mode_assign_set, tvarset, io__state, io__state).
-:- mode write_mode_assign_set(input, input, di, uo).
-
-write_mode_assign_set([], _) --> [].
-write_mode_assign_set([ModeAssign | ModeAssigns], VarSet) -->
-	io__write_string("\t"),
-	write_mode_assign(ModeAssign, VarSet),
-	write_mode_assign_set(ModeAssigns, VarSet).
-
-:- pred write_mode_assign(mode_assign, tvarset, io__state, io__state).
-:- mode write_mode_assign(input, input, di, uo).
-
-write_mode_assign(ModeAssign, VarSet) -->
-	{
-	  mode_assign_get_var_modes(ModeAssign, VarModes),
-	  mode_assign_get_mode_bindings(ModeAssign, ModeBindings),
-	  mode_assign_get_modevarset(ModeAssign, ModeVarSet),
-	  map__keys(VarModes, Vars),
-	  Vars = [Var | Vars1]
-	},
-	( 
-		{ map__search(VarModes, Var, Mode) },
-		{ varset__lookup_name(VarSet, Var, _) }
-	->
-		io__write_variable(Var, VarSet),
-		io__write_string(" :: "),
-		write_mode_b(Mode, ModeVarSet, ModeBindings)
-	;
-		[]
-	),
-	write_mode_assign_2(Vars1, VarSet, VarModes, ModeBindings, ModeVarSet),
-	io__write_string("\n").
-
-:- pred write_mode_assign_2(list(var), varset, map(var, mode),
-			tsubst, tvarset, io__state, io__state).
-:- mode write_mode_assign_2(input, input, input, input, input, di, uo).
-
-write_mode_assign_2([], _, _, _, _) --> [].
-write_mode_assign_2([Var | Vars], VarSet, VarModes, ModeBindings, ModeVarSet)
-		-->
-	( 
-		{ map__search(VarModes, Var, Mode) },
-		{ varset__lookup_name(VarSet, Var, _) }
-	->
-		io__write_string(", "),
-		io__write_variable(Var, VarSet),
-		io__write_string(" :: "),
-		write_mode_b(Mode, ModeVarSet, ModeBindings)
-	;
-		[]
-	),
-	write_mode_assign_2(Vars, VarSet, VarModes, ModeBindings, ModeVarSet).
-
-	% write_mode_b writes out a mode after applying the mode bindings.
-
-:- pred write_mode_b(mode, tvarset, tsubst, io__state, io__state).
-:- mode write_mode_b(input, input, input, di, uo).
-
-write_mode_b(Mode, ModeVarSet, ModeBindings) -->
-	{ term__apply_rec_substitution(Mode, ModeBindings, Mode2) },
-	io__write_term(ModeVarSet, Mode2).
-
-%-----------------------------------------------------------------------------%
-
-:- pred report_error_var(pred_id, term__context, varset, var,
-			list(mode_stuff), mode, mode_assign_set,
-			io__state, io__state).
-:- mode report_error_var(input, input, input, input, input, input, input,
-			di, uo).
-
-report_error_var(PredId, Context, VarSet, VarId, ModeStuffList, Mode,
-			ModeAssignSet0) -->
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
-	io__write_string("mode error: "),
-	io__write_string("variable `"),
-	io__write_variable(VarId, VarSet),
-	( { ModeStuffList = [SingleModeStuff] } ->
-		{ SingleModeStuff = mode_stuff(VMode, TVarSet, TBinding) },
-		io__write_string("' has mode `"),
-		write_mode_b(VMode, TVarSet, TBinding),
-		io__write_string("',\n"),
-		prog_out__write_context(Context),
-		io__write_string("expected mode was `"),
-		write_mode_b(Mode, TVarSet, TBinding),
-		io__write_string("'.\n")
-	;
-		io__write_string("' has overloaded mode { `"),
-		write_mode_stuff_list(ModeStuffList),
-		io__write_string(" },\n"),
-		io__write_string("which doesn't match the expected mode.\n")
-			% XXX improve error message: should output
-			% the expected mode.
-	),
-	write_mode_assign_set_msg(ModeAssignSet0, VarSet).
-
-:- pred write_mode_stuff_list(list(mode_stuff), io__state, io__state).
-:- mode write_mode_stuff_list(input, di, uo).
-
-write_mode_stuff_list([]) --> [].
-write_mode_stuff_list([mode_stuff(T, TVarSet, TBinding) | Ts]) -->
-	write_mode_b(T, TVarSet, TBinding),
-	write_mode_stuff_list_2(Ts).
-
-:- pred write_mode_stuff_list_2(list(mode_stuff), io__state, io__state).
-:- mode write_mode_stuff_list_2(input, di, uo).
-
-write_mode_stuff_list_2([]) --> [].
-write_mode_stuff_list_2([mode_stuff(T, TVarSet, TBinding) | Ts]) -->
-	io__write_string(", "),
-	write_mode_b(T, TVarSet, TBinding),
-	write_mode_stuff_list_2(Ts).
-
-%-----------------------------------------------------------------------------%
-
-:- pred report_error_undef_pred(pred_id, term__context, pred_id,
-			io__state, io__state).
-:- mode report_error_undef_pred(input, input, input, di, uo).
-
-report_error_undef_pred(CallingPredId, Context, PredId) -->
-	write_context_and_predid(Context, CallingPredId),
-	prog_out__write_context(Context),
-	io__write_string("error: undefined predicate `"),
-	write_pred_id(PredId),
-	io__write_string("'.\n").
-
-:- pred report_error_undef_cons(pred_id, term__context, const, int, 
-			io__state, io__state).
-:- mode report_error_undef_cons(input, input, input, input, di, uo).
-
-report_error_undef_cons(PredId, Context, Functor, Arity) -->
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
-	io__write_string("error: undefined symbol `"),
-	io__write_constant(Functor),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("'.\n").
-
-:- pred report_error_cons(pred_id, term__context, varset, const, list(term),
-			mode, mode_assign_set, io__state, io__state).
-:- mode report_error_cons(input, input, input, input, input, input, input,
-			di, uo).
-
-report_error_cons(PredId, Context, VarSet, Functor, Args, Mode,
-			ModeAssignSet) -->
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
-	io__write_string("mode error: term `"),
-	io__write_term(VarSet, term_functor(Functor, Args, Context)),
-	io__write_string("' does not have mode `"),
-	write_mode(Mode),	% XXX
-	io__write_string("'.\n"),
-	write_mode_assign_set_msg(ModeAssignSet, VarSet).
-
-%-----------------------------------------------------------------------------%
-
-:- pred write_context_and_predid(term__context, pred_id, io__state, io__state).
-:- mode write_context_and_predid(input, input, di, uo).
-
-write_context_and_predid(Context, PredId) -->
-	prog_out__write_context(Context),
-	io__write_string("In clause for predicate `"),
-	write_pred_id(PredId),
-	io__write_string("':\n").
-
-%-----------------------------------------------------------------------------%
-
-:- pred report_ambiguity_error(mode_info, mode_assign, mode_assign,
-				io__state, io__state).
-:- mode report_ambiguity_error(input, input, input, di, uo).
-
-report_ambiguity_error(ModeInfo, ModeAssign1, ModeAssign2) -->
-	{ modeinfo_get_context(ModeInfo, Context) },
-	{ modeinfo_get_predid(ModeInfo, PredId) },
-	write_context_and_predid(Context, PredId),
-	prog_out__write_context(Context),
-	io__write_string("error: ambiguous overloading causes mode ambiguity.\n"),
-	io__write_string("\tpossible mode assignments include:\n"),
-	{ modeinfo_get_varset(ModeInfo, VarSet) },
-	{ mode_assign_get_var_modes(ModeAssign1, VarModes1) },
-	{ map__keys(VarModes1, Vars1) },
-	report_ambiguity_error_2(Vars1, VarSet, ModeAssign1, ModeAssign2).
-
-:- pred report_ambiguity_error_2(list(var), varset, mode_assign, mode_assign,
-				io__state, io__state).
-:- mode report_ambiguity_error_2(input, input, input, input, di, uo).
-
-report_ambiguity_error_2([], _VarSet, _ModeAssign1, _ModeAssign2) --> [].
-report_ambiguity_error_2([V | Vs], VarSet, ModeAssign1, ModeAssign2) -->
-	{ mode_assign_get_var_modes(ModeAssign1, VarModes1) },
-	{ mode_assign_get_var_modes(ModeAssign2, VarModes2) },
-	( {
-		map__search(VarModes1, V, T1),
-		map__search(VarModes2, V, T2),
-		not (T1 = T2)
-	} ->
-		io__write_string("\t"),
-		io__write_variable(V, VarSet),
-		io__write_string(" :: "),
-		{ mode_assign_get_modevarset(ModeAssign1, TVarSet1) },
-		{ mode_assign_get_mode_bindings(ModeAssign1, ModeBindings1) },
-		write_mode_b(T1, TVarSet1, ModeBindings1),
-		io__write_string(" OR "),
-		{ mode_assign_get_modevarset(ModeAssign2, TVarSet2) },
-		{ mode_assign_get_mode_bindings(ModeAssign2, ModeBindings2) },
-		write_mode_b(T2, TVarSet2, ModeBindings2),
-		io__write_string("\n")
-	;
-		[]
-	),
-	report_ambiguity_error_2(Vs, VarSet, ModeAssign1, ModeAssign2).
-
-:- pred write_mode(mode, io__state, io__state).
-:- mode write_mode(input, di, uo).
-
-write_mode(Mode) -->
-	{ varset__init(TVarSet) },	% XXX mode parameter names
-	io__write_term(TVarSet, Mode).
-
-ALL THIS IS COMMENTED OUT ********************/
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

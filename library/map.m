@@ -74,9 +74,13 @@
 :- pred map__to_assoc_list(map(K,V), assoc_list(K,V)).
 :- mode map__to_assoc_list(input, output).
 
-	% convert a map to an association list
+	% convert an association list to a map
 :- pred map__from_assoc_list(assoc_list(K,V), map(K,V)).
 :- mode map__from_assoc_list(input, output).
+
+	% convert a sorted association list to a map
+:- pred map__from_sorted_assoc_list(assoc_list(K,V), map(K,V)).
+:- mode map__from_sorted_assoc_list(input, output).
 
 	% delete a key-value pair from a map
 :- pred map__delete(map(K,V), K, map(K,V)).
@@ -137,6 +141,9 @@ map__to_assoc_list(M, L) :-
 
 map__from_assoc_list(L, M) :-
 	bintree__from_list(L, M).
+
+map__from_sorted_assoc_list(L, M) :-
+	bintree__from_sorted_list(L, M).
 
 map__delete(Map0, Key, Map) :-
 	bintree__delete(Map0, Key, Map).

@@ -406,6 +406,9 @@
 :- pred moduleinfo_set_ctors(module_info, cons_table, module_info).
 :- mode moduleinfo_set_ctors(input, input, output).
 
+:- pred moduleinfo_set_num_errors(module_info, int, module_info).
+:- mode moduleinfo_set_num_errors(input, input, output).
+
 :- pred moduleinfo_incr_errors(module_info, module_info).
 :- mode moduleinfo_incr_errors(input, output).
 
@@ -523,6 +526,12 @@ moduleinfo_set_modes(ModuleInfo0, Modes, ModuleInfo) :-
 moduleinfo_set_ctors(ModuleInfo0, Ctors, ModuleInfo) :-
 	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, _, Errs, Warns),
+	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
+				Insts, Modes, Ctors, Errs, Warns).
+
+moduleinfo_set_num_errors(ModuleInfo0, Errs, ModuleInfo) :-
+	ModuleInfo0 = module(Name, Preds, PredIDs, PredNameIndex, Types,
+				Insts, Modes, Ctors, _, Warns),
 	ModuleInfo = module(Name, Preds, PredIDs, PredNameIndex, Types,
 				Insts, Modes, Ctors, Errs, Warns).
 
@@ -772,7 +781,7 @@ procinfo_set_goal(ProcInfo0, Goal, ProcInfo) :-
 	% of the non-local variables whose instantiatedness
 	% changed.
 
-:- type instmap_delta == assoc_list(var, inst).
+:- type instmap_delta == map(var, inst).
 
 :- pred goalinfo_get_instmap_delta(hlds__goal_info, instmap_delta).
 :- mode goalinfo_get_instmap_delta(input, output).
@@ -800,7 +809,7 @@ goalinfo_init(GoalInfo) :-
 	DeclaredDet = unspecified,
 	InferredDet = nondeterministic, 
 	map__init(Liveness),
-	InstMapDelta = [],
+	map__init(InstMapDelta),
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
 	GoalInfo = goalinfo(Liveness, DeclaredDet, InferredDet,
@@ -868,6 +877,9 @@ goalinfo_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(input, input) is semidet.
 
+:- pred inst_is_ground(module_info, inst).
+:- mode inst_is_ground(input, input) is semidet.
+
 :- pred mode_id_to_int(mode_id, int).
 :- mode mode_id_to_int(input, output) is det.
 
@@ -876,6 +888,9 @@ goalinfo_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
 
 :- pred mode_list_get_initial_insts(list(mode), module_info, list(inst)).
 :- mode mode_list_get_initial_insts(input, input, output) is det.
+
+:- pred inst_lookup(module_info, sym_name, list(inst), inst).
+:- mode inst_lookup(input, input, input, output) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -909,6 +924,7 @@ mode_is_output(ModuleInfo, Mode) :-
 
 	% inst_is_free succeeds iff the inst passed is `free'
 	% or is a user-defined inst which is defined as `free'.
+	% Abstract insts must not be free.
 
 :- pred inst_is_free(module_info, inst).
 :- mode inst_is_free(input, input).
@@ -921,11 +937,10 @@ inst_is_free(_, inst_var(_)) :-
 inst_is_free(ModuleInfo, user_defined_inst(Name, Args)) :-
 	inst_lookup(ModuleInfo, Name, Args, Inst),
 	inst_is_free(ModuleInfo, Inst).
-inst_is_free(_, abstract_inst(_, _)) :-
-	error("internal error: abstract insts not yet implemented").
 
 	% inst_is_bound succeeds iff the inst passed is not `free'
 	% or is a user-defined inst which is not defined as `free'.
+	% Abstract insts must be bound.
 
 :- pred inst_is_bound(module_info, inst).
 :- mode inst_is_bound(input, input).
@@ -939,11 +954,19 @@ inst_is_bound(_, inst_var(_)) :-
 inst_is_bound(ModuleInfo, user_defined_inst(Name, Args)) :-
 	inst_lookup(ModuleInfo, Name, Args, Inst),
 	inst_is_bound(ModuleInfo, Inst).
-inst_is_bound(_, abstract_inst(_, _)) :-
-	error("internal error: abstract insts not yet implemented").
+inst_is_bound(_, abstract_inst(_, _)).
 
-:- pred inst_lookup(module_info, sym_name, list(inst), inst).
-:- mode inst_lookup(input, input, input, output).
+	% inst_is_ground succeeds iff the inst passed is `ground'
+	% or the equivalent.  Abstract insts are not considered ground.
+
+:- inst_is_ground(_, X) when X.		% NU-Prolog indexing.
+
+inst_is_ground(_, ground).
+inst_is_ground(_, inst_var(_)) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_ground(ModuleInfo, user_defined_inst(Name, Args)) :-
+	inst_lookup(ModuleInfo, Name, Args, Inst),
+	inst_is_bound(ModuleInfo, Inst).
 
 inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	length(Args, Arity),

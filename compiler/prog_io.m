@@ -174,6 +174,7 @@
 
 :- type (inst)		--->	free
 			;	bound(list(bound_inst))
+					% The list must be sorted
 			;	ground
 			;	inst_var(var)
 			;	abstract_inst(sym_name, list(inst))
@@ -1595,7 +1596,7 @@ convert_inst(term_functor(Name, Args0, Context), Result) :-
 		Result = free
 	; Name = term_atom("ground"), Args0 = [] ->
 		Result = ground
-	; %%% some [Disj]
+	;
 		(   ( Name = term_atom("bound")
 		    ; Name = term_atom("bound_unique")
 		    ),
@@ -1603,7 +1604,8 @@ convert_inst(term_functor(Name, Args0, Context), Result) :-
 		)
 	->
 		disjunction_to_list(Disj, List),
-		convert_bound_inst_list(List, Functors),
+		convert_bound_inst_list(List, Functors0),
+		sort(Functors0, Functors),
 		Result = bound(Functors)
 	;
 		parse_qualified_term(term_functor(Name, Args0, Context),

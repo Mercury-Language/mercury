@@ -2306,7 +2306,7 @@ write_type_of_var(_TypeInfo, TypeAssignSet, Var) -->
 		write_type_b(VType, TVarSet, TBinding),
 		io__write_string("'")
 	;
-		io__write_string(" has overloaded type { `"),
+		io__write_string(" has overloaded type { "),
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" }")
 	).
@@ -2426,7 +2426,7 @@ report_error_var(TypeInfo, VarId, Type, TypeAssignSet0) -->
 		write_type_b(Type, TVarSet, TBinding),
 		io__write_string("'.\n")
 	;
-		io__write_string(" has overloaded type { `"),
+		io__write_string(" has overloaded type { "),
 		write_type_stuff_list(TypeStuffList),
 		io__write_string(" },\n"),
 		prog_out__write_context(Context),

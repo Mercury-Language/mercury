@@ -16,6 +16,12 @@
 				io__state, io__state).
 :- mode convert_to_mercury(input, input, input, di, uo).
 
+:- pred mercury_output_inst(inst, varset, io__state, io__state).
+:- mode mercury_output_inst(in, in, di, uo).
+
+:- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
+:- mode mercury_output_mode_list(in, in, di, uo).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -185,9 +191,6 @@ mercury_output_inst_list([Inst | Insts], VarSet) -->
 		mercury_output_inst_list(Insts, VarSet)
 	).
 
-:- pred mercury_output_inst(inst, varset, io__state, io__state).
-:- mode mercury_output_inst(in, in, di, uo).
-
 mercury_output_inst(free, _) -->
 	io__write_string("free").
 mercury_output_inst(bound(BoundInsts), VarSet) -->
@@ -245,9 +248,6 @@ mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(") :: "),
 	mercury_output_mode(Mode, VarSet),
 	io__write_string(".\n").
-
-:- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
-:- mode mercury_output_mode_list(in, in, di, uo).
 
 mercury_output_mode_list([], _VarSet) --> [].
 mercury_output_mode_list([Mode | Modes], VarSet) -->

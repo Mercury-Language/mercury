@@ -21,6 +21,12 @@
 :- pred set__list_to_set(list(T), set(T)).
 :- mode set__list_to_set(in, out) is det.
 
+	% `set__sorted_list_to_set(List, Set)' is true iff `Set' is the set 
+	% containing only the members of `List'.  `List' must be sorted.
+
+:- pred set__sorted_list_to_set(list(T), set(T)).
+:- mode set__sorted_list_to_set(in, out) is det.
+
 	% `set__list_to_set(Set, List)' is true iff `List' is the list
 	% of all the members of `Set', in sorted order.
 
@@ -121,6 +127,8 @@
 :- type set(T)		  ==	  list(T).
 
 set__list_to_set(List, List).
+
+set__sorted_list_to_set(List, List).
 
 set__to_sorted_list(Set, List) :-
 	sort(Set, List).

@@ -42,7 +42,8 @@
 			;	convert_to_goedel
 			;	help
 			;	line_numbers
-			;	warn_singleton_vars.
+			;	warn_singleton_vars
+			;	modecheck.
 
 :- implementation.
 
@@ -61,7 +62,8 @@ option_defaults([
 	convert_to_goedel 	-	bool(no),
 	help 			-	bool(no),
 	line_numbers		-	bool(no),
-	warn_singleton_vars	-	bool(yes)
+	warn_singleton_vars	-	bool(yes),
+	modecheck		-	bool(no)
 ]).
 
 short_option('v', 			verbose).
@@ -79,6 +81,7 @@ short_option('I', 			search_directories).
 short_option('M', 			convert_to_mercury).
 short_option('G', 			convert_to_goedel).
 short_option('l', 			line_numbers).
+short_option('m', 			modecheck).
 
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -97,6 +100,7 @@ long_option("convert-to-Goedel", 	convert_to_goedel).
 long_option("help",			help).
 long_option("line-numbers",		line_numbers).
 long_option("warn-singleton-variables",	warn_singleton_vars).
+long_option("modecheck",		modecheck).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
@@ -112,6 +116,8 @@ options_help -->
 	io__write_string("\t\detailed texplanation of any errors in your program.\n"),
 	io__write_string("\t-s, --statistics\n"),
 	io__write_string("\t\tOutput messages about the compiler's time/space usage\n"),
+	io__write_string("\t-m, --modecheck\n"),
+	io__write_string("\t\tInvoke the mode analysis pass of the compiler.\n"),
 	io__write_string("\t-d, --dump-hlds\n"),
 	io__write_string("\t\tDump the HLDS to `<module>.hlds'.\n"),
 	io__write_string("\t-g, --generate-code\n"),
