@@ -6,16 +6,46 @@
 #
 # init_grade_options.sh-subr:
 #	An `sh' subroutine for initializing grade-related options.
-#	Used by the `ml' and `mgnuc' scripts.
+#	Used by the `ml', `mgnuc' and `c2init' scripts.
 #
 #	The code here should be inserted before a script's option-parsing
 #	loop.  The invoking script must define a DEFAULT_GRADE option.
 #
+# IMPORTANT: any changes to the handling of grades here may also require
+# changes to all the files indicated by runtime/mercury_grade.h.
+#
+# This file must initialize all the shell variables used by
+# parse_grade_options.sh-subr, and must list all the options processed in
+# parse_grade_options.sh-subr.
+#
 #---------------------------------------------------------------------------#
+
+grade_usage="\
+Grade options:
+	-s <grade>, --grade <grade>
+	--asm-labels
+	--gcc-non-local-gotos
+	--gcc-global-registers
+	--parallel
+	--gc {conservative, accurate, none}
+	-p, --profiling
+	--profile-calls
+	--profile-time
+	--profile-memory
+	--use-trail
+	--use-minimal-model
+	--pic-reg
+	--no-stack-trace
+	--debug
+		See the documentation in the \"Invocation\" section
+		of the Mercury User's Guide."
+
+# --profile-deep is not yet documented because it is not yet implemented
 
 asm_labels=true
 non_local_gotos=true
 global_regs=true
+thread_safe=false
 gc_method=conservative
 profile_time=false
 profile_calls=false
@@ -23,10 +53,9 @@ profile_memory=false
 profile_deep=false
 use_trail=false
 use_minimal_model=false
+pic_reg=false
 stack_trace=false
 require_tracing=false
-low_level_debug=false
-thread_safe=false
 
 case $# in
 	0) set - "--grade $DEFAULT_GRADE" ;;

@@ -573,15 +573,14 @@ long_usage -->
 	% grade of the library, etc for linking (and installation).
 :- type grade_component
 	--->	gcc_ext		% gcc extensions -- see grade_component_table
+	;	par		% parallelism / multithreading
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
 	;	trail		% whether or not to use trailing
 	;	minimal_model	% whether we set up for minimal model tabling
-	;	args		% argument passing convention
-	;	trace		% tracing/debugging options
-	;	par		% parallelism / multithreading
 	;	pic		% Do we need to reserve a register for
 				% PIC (position independent code)?
+	;	trace           % tracing/debugging options
 	.
 
 convert_grade_option(GradeString, Options0, Options) :-
@@ -658,10 +657,8 @@ compute_grade_components(Options, GradeComponents) :-
 :- pred grade_component_table(string, grade_component,
 		list(pair(option, option_data))).
 :- mode grade_component_table(in, out, out) is semidet.
+:- mode grade_component_table(out, in, out) is multi.
 :- mode grade_component_table(out, out, out) is multi.
-
-	% Args method components
-grade_component_table("sa", args, [args - string("simple")]).
 
 	% GCC-hack components
 grade_component_table("none", gcc_ext, [asm_labels - bool(no),
@@ -677,15 +674,12 @@ grade_component_table("fast", gcc_ext, [asm_labels - bool(no),
 grade_component_table("asm_fast", gcc_ext, [asm_labels - bool(yes),
 	gcc_non_local_gotos - bool(yes), gcc_global_registers - bool(yes)]).
 
+	% Parallelism/multithreading components.
+grade_component_table("par", par, [parallel - bool(yes)]).
+
 	% GC components
 grade_component_table("gc", gc, [gc - string("conservative")]).
 grade_component_table("agc", gc, [gc - string("accurate")]).
-
-	% Parallelism/MT components.
-grade_component_table("par", par, [parallel - bool(yes)]).
-
-	% Pic reg components
-grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
 
 	% Profiling components
 grade_component_table("prof", prof, [profile_time - bool(yes),
@@ -707,20 +701,22 @@ grade_component_table("profall", prof, [profile_time - bool(yes),
 	profile_deep - bool(no), profile_calls - bool(yes),
 	profile_memory - bool(yes)]).
 
+	% Trailing components
+grade_component_table("tr", trail, [use_trail - bool(yes)]).
+
+	% Mimimal model tabling components
+grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)]).
+
+	% Pic reg components
+grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
+
 	% Debugging/Tracing components
 grade_component_table("debug", trace,
 	[stack_trace - bool(yes), require_tracing - bool(yes)]).
 grade_component_table("trace", trace,
 	[stack_trace - bool(no), require_tracing - bool(yes)]).
-grade_component_table("strace", trace,
+grade_component_table("strce", trace,
 	[stack_trace - bool(yes), require_tracing - bool(no)]).
-
-	% Trailing components
-grade_component_table("tr", trail, [use_trail - bool(yes)]).
-
-	% Mimimal model tabling components
-grade_component_table("mm", minimal_model,
-	[use_minimal_model - bool(yes)]).
 
 :- pred reset_grade_options(option_table, option_table).
 :- mode reset_grade_options(in, out) is det.
@@ -735,21 +731,20 @@ reset_grade_options(Options0, Options) :-
 :- pred grade_start_values(pair(option, option_data)).
 :- mode grade_start_values(out) is multi.
 
-grade_start_values(args - string("compact")).
 grade_start_values(asm_labels - bool(no)).
 grade_start_values(gcc_non_local_gotos - bool(no)).
 grade_start_values(gcc_global_registers - bool(no)).
-grade_start_values(gc - string("none")).
 grade_start_values(parallel - bool(no)).
-grade_start_values(pic_reg - bool(no)).
+grade_start_values(gc - string("none")).
 grade_start_values(profile_deep - bool(no)).
 grade_start_values(profile_time - bool(no)).
 grade_start_values(profile_calls - bool(no)).
 grade_start_values(profile_memory - bool(no)).
-grade_start_values(stack_trace - bool(no)).
-grade_start_values(require_tracing - bool(no)).
 grade_start_values(use_trail - bool(no)).
 grade_start_values(use_minimal_model - bool(no)).
+grade_start_values(pic_reg - bool(no)).
+grade_start_values(stack_trace - bool(no)).
+grade_start_values(require_tracing - bool(no)).
 
 :- pred split_grade_string(string, list(string)).
 :- mode split_grade_string(in, out) is semidet.

@@ -14,6 +14,70 @@
 #
 # Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE, ...
 
+FULLARCH=@FULLARCH@
+NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
+DEFAULT_LIBDIR=@LIBDIR@/lib
+LIBDIR=${MERCURY_C_LIB_DIR=$DEFAULT_LIBDIR}
+DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
+# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
+DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
+CC=${MERCURY_C_COMPILER="@CC@"}
+MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
+ERROR_UNDEFINED="@ERROR_UNDEFINED@"
+ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
+EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
+EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
+EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
+LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ@"}
+SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
+SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
+SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
+TMPDIR=${TMPDIR=/tmp}
+
+# On some systems (Solaris for exemple), we need libraries to be able to 
+# use sockets. The name of the needed libraries is determined by autoconf
+# and passed through this variable.
+SOCKET_LIBRARY="@SOCKET_LIBRARY@"
+NSL_LIBRARY="@NSL_LIBRARY@"
+
+# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
+DL_LIBRARY="@DL_LIBRARY@"
+
+# Likewise for -lreadline -l{termcap,curses,ncurses}
+READLINE_LIBRARIES="@READLINE_LIBRARIES@"
+
+# If you change these, you will also need to change Mmake.common.in,
+# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
+# and tools/linear.
+RT_LIB_NAME=mer_rt
+STD_LIB_NAME=mer_std
+TRACE_LIB_NAME=mer_trace
+BROWSER_LIB_NAME=mer_browser
+
+verbose=false
+allow_undefined=false
+trace=false
+readline=true
+case $FULLARCH in
+	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
+		# `gcc -s' is broken in gnu-win32
+		strip=false
+		;;
+	*)
+		strip=true
+		;;
+esac
+mercury_libs=default
+all_libs=default
+demangle=true
+MAYBE_STATIC_OPT=""
+make_shared_lib=false
+leave_shlib_dirs_relative=false
+user_shlib_dirs=""
+
+# include the file `init_grade_options.sh-subr'
+@INIT_GRADE_OPTIONS@
+
 Help="\
 Name: ml - Mercury Linker
 Usage: ml [<ml options>] [-- <gcc options>] files...
@@ -84,86 +148,7 @@ Debugging options:
 	-g, --c-debug, --no-strip
 		Do not strip C debugging information.
 
-Grade options:
-	-s <grade>, --grade <grade>
-	--asm-labels
-	--gcc-non-local-gotos
-	--gcc-global-registers
-	--gc {conservative, accurate, none}
-	-p, --profiling
-	--profile-calls
-	--profile-time
-	--profile-memory
-	--debug
-	--low-level-debug
-	--use-trail
-	--pic-reg
-		See the documentation in the \"Invocation\" section
-		of the Mercury User's Guide."
-
-FULLARCH=@FULLARCH@
-NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=@NONSHARED_LIB_DIR@}
-DEFAULT_LIBDIR=@LIBDIR@/lib
-LIBDIR=${MERCURY_C_LIB_DIR=$DEFAULT_LIBDIR}
-DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
-# DEMANGLER=${MERCURY_DEMANGLER=@LIBDIR@/bin/@FULLARCH@/mdemangle}
-DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
-CC=${MERCURY_C_COMPILER="@CC@"}
-MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
-ERROR_UNDEFINED="@ERROR_UNDEFINED@"
-ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
-EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
-EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
-EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
-LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ@"}
-SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
-SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
-SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
-TMPDIR=${TMPDIR=/tmp}
-
-# On some systems (Solaris for exemple), we need libraries to be able to 
-# use sockets. The name of the needed libraries is determined by autoconf
-# and passed through this variable.
-SOCKET_LIBRARY="@SOCKET_LIBRARY@"
-NSL_LIBRARY="@NSL_LIBRARY@"
-
-# Likewise for -ldl (libdl.so), which is often needed for dlopen() etc.
-DL_LIBRARY="@DL_LIBRARY@"
-
-# Likewise for -lreadline -l{termcap,curses,ncurses}
-READLINE_LIBRARIES="@READLINE_LIBRARIES@"
-
-# If you change these, you will also need to change Mmake.common.in,
-# scripts/c2init.in, tools/bootcheck, tools/binary, tools/binary_step
-# and tools/linear.
-RT_LIB_NAME=mer_rt
-STD_LIB_NAME=mer_std
-TRACE_LIB_NAME=mer_trace
-BROWSER_LIB_NAME=mer_browser
-
-verbose=false
-allow_undefined=false
-trace=false
-readline=true
-case $FULLARCH in
-	*-win95|*-winnt|*-win32|*-cygwin32|*-cygwin)
-		# `gcc -s' is broken in gnu-win32
-		strip=false
-		;;
-	*)
-		strip=true
-		;;
-esac
-mercury_libs=default
-all_libs=default
-demangle=true
-MAYBE_STATIC_OPT=""
-make_shared_lib=false
-leave_shlib_dirs_relative=false
-user_shlib_dirs=""
-
-# include the file `init_grade_options.sh-subr'
-@INIT_GRADE_OPTIONS@
+$grade_usage"
 
 while : ; do
     case "$1" in
@@ -374,6 +359,10 @@ case $asm_labels in
 	true)		GRADE="asm_$GRADE" ;;
 	false)		;;
 esac
+case $thread_safe in
+	true)	GRADE="$GRADE.par" ;;
+	false)	;;
+esac
 case $gc_method in
 	conservative)	GRADE="$GRADE.gc" ;;
 	accurate)	GRADE="$GRADE.agc" ;;
@@ -395,15 +384,21 @@ case $use_trail in
 	true)		GRADE="$GRADE.tr" ;;
 	false)		;;
 esac
+case $use_minimal_model in
+	true)	GRADE="$GRADE.mm" ;;
+	false)	;;
+esac
+# We ignore the value of $picreg in computing the name of the grade
+# that we will use as a directory name below.
+# case $picreg in
+# 	true)	GRADE="$GRADE.picreg" ;;
+# 	false)	;;
+# esac
 case $stack_trace,$require_tracing in
 	true,true)	GRADE="$GRADE.debug" ;;
 	false,true)	GRADE="$GRADE.trace" ;;
 	true,false)	GRADE="$GRADE.strce" ;;
 	false,false)	;;
-esac
-case $thread_safe in
-	true)	GRADE="$GRADE.par" ;;
-	false)	;;
 esac
 
 case "$GRADE" in

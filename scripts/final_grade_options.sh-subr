@@ -6,10 +6,16 @@
 #
 # final_grade_options.sh-subr:
 #	An `sh' subroutine for handling implications between grade-related
-#	options. Used by the `ml' and `mgnuc' scripts.
+#	options. Used by the `ml', `mgnuc' and `c2init' scripts.
 #
 #	The code here should be inserted after a script's option-parsing
 #	loop.
+#
+# IMPORTANT: any changes to the handling of grades here may also require
+# changes to compiler/handle_options.m.
+#
+# This file should only use the shell variables initialized by
+# init_grade_options.sh-subr.
 #
 #---------------------------------------------------------------------------#
 

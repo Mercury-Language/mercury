@@ -54,7 +54,6 @@
 **		--gcc-asm-labels
 **		--gc conservative
 **		--gc accurate		[not yet working]
-**		--args compact
 **		--no-type-layout
 **		--unboxed-float
 **		--use-trail

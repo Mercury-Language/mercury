@@ -10,13 +10,16 @@
 ** This is used to get the linker to ensure that different object files
 ** were compiled with consistent grades.
 **
-** Any condition compilation macros that affect link compatibility
-** should be included here.
-** For documentation on the meaning of these macros, see
+** Any condition compilation macros that affect link compatibility should be
+** included here. For documentation on the meaning of these macros, see
 ** runtime/mercury_conf_param.h.
 **
 ** IMPORTANT: any changes here may also require changes to
+**	runtime/mercury_conf_param.h
+** 	scripts/init_grade_options.sh-subr
 ** 	scripts/parse_grade_options.sh-subr
+** 	scripts/final_grade_options.sh-subr
+** 	scripts/mgnuc.in
 ** 	scripts/ml.in
 **	compiler/handle_options.m
 **	compiler/mercury_compile.m
@@ -87,6 +90,7 @@
 #else
   #define MR_GRADE_PART_3	MR_GRADE_PART_2
 #endif
+
 #ifdef CONSERVATIVE_GC
   #define MR_GRADE_PART_4	MR_PASTE2(MR_GRADE_PART_3, _gc)
 #elif defined(NATIVE_GC)
