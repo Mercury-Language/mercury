@@ -9,7 +9,7 @@
 :- module value_number.		
 
 :- interface.
-:- import_module llds.
+:- import_module llds, list.
 
 :- pred value_number__optimize(list(instruction), list(instruction)).
 :- mode value_number__optimize(in, out) is det.
@@ -17,7 +17,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module code_util, map, bintree_set, string, list, require, std_util.
+:- import_module code_util, map, bintree_set, string, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
