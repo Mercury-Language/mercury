@@ -51,9 +51,10 @@
 :- pred varset__name_var(varset, var, string, varset).
 :- mode varset__name_var(in, in, in, out).
 
-	% lookup the name of a variable
+	% lookup the name of a variable, or the variable with a given name.
 :- pred varset__lookup_name(varset, var, string).
 :- mode varset__lookup_name(in, in, out).
+:- mode varset__lookup_name(in, out, in).
 
 	% bind a value to a variable
 :- pred varset__bind_var(varset, var, term, varset).
@@ -98,11 +99,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, list, std_util.
+:- import_module map, bimap, list, std_util.
 
 :- type varset		--->	varset(
 					var_supply,
-					map(var, string),
+					bimap(var, string),
 					map(var, term)
 				).
 
@@ -110,7 +111,7 @@
 
 varset__init(varset(VarSupply, Names, Vals)) :-
 	term__init_var_supply(VarSupply),
-	map__init(Names),
+	bimap__init(Names),
 	map__init(Vals).
 
 %-----------------------------------------------------------------------------%
@@ -144,26 +145,25 @@ varset__vars_2(N, Max, L0, L) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX efficiency problem: this is O(number of names in VarSet0),
-	% because of the map__inverse_search.  We could avoid this
-	% problem by storing both the map and the inverse map.
+	% possible efficiency problem: attempting to name
+	% N variables the same name is O(N*N).
 
 varset__name_var(VarSet0, Id, Name, VarSet) :-
 	VarSet0 = varset(MaxId, Names0, Vals),
 	(
-		map__inverse_search(Names0, Name, _)
+		bimap__search(Names0, _, Name)
 	->
 		string__append(Name, "'", Name2),
 		varset__name_var(VarSet0, Id, Name2, VarSet)
 	;
-		map__search_insert(Names0, Id, Name, Names),
+		bimap__insert(Names0, Id, Name, Names),
 		VarSet = varset(MaxId, Names, Vals)
 	).
 
 %-----------------------------------------------------------------------------%
 
 varset__lookup_name(varset(_, Names, _), Id, Name) :-
-	map__search(Names, Id, Name).
+	bimap__search(Names, Id, Name).
 
 %-----------------------------------------------------------------------------%
 
@@ -202,9 +202,6 @@ varset__set_bindings(varset(C, N, _), S, varset(C, N, S)).
 
 %-----------------------------------------------------------------------------%
 
-	% This also has the same efficiency problem because it
-	% calls varset__name_var.
-
 	% We scan through the second varset, introducing a fresh
 	% variable into the first varset for each var in the
 	% second, and building up a substitution which maps
@@ -222,7 +219,7 @@ varset__merge_subst(VarSet0, varset(MaxId, Names, Vals), VarSet, Subst) :-
 	varset__merge_subst_2(N, MaxId, Names, Vals, VarSet0, Subst0,
 				VarSet, Subst).
 
-:- pred varset__merge_subst_2(var_supply, var_supply, map(var, string),
+:- pred varset__merge_subst_2(var_supply, var_supply, bimap(var, string),
 	map(var, term), varset, substitution, varset, substitution).
 :- mode varset__merge_subst_2(in, in, in, in, in, in,
 	out, out).
@@ -235,8 +232,7 @@ varset__merge_subst_2(N, Max, Names, Vals, VarSet0, Subst0, VarSet, Subst) :-
 		varset__new_var(VarSet0, VarId, VarSet1),
 		term__create_var(N, VarN, N1),
 		(
-			%some [Name]
-			map__search(Names, VarN, Name)
+			bimap__search(Names, VarN, Name)
 		->
 			varset__name_var(VarSet1, VarId, Name, VarSet2)
 		;

@@ -7,8 +7,6 @@
 % This file provides implementations for some of the predicates declared
 % in term_io.nl using non-logical NU-Prolog.
 %
-% XXX:  The prefixes in this module should be changed from io__ to term_io__.
-%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
