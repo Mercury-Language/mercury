@@ -594,7 +594,7 @@
 :- implementation.
 
 :- import_module ml_call_gen.
-:- import_module prog_util, type_util, mode_util, special_pred.
+:- import_module prog_util, type_util, mode_util, special_pred, error_util.
 :- import_module code_util. % XXX for `code_util__compiler_generated'.
 :- import_module globals, options.
 
@@ -789,14 +789,10 @@ ml_gen_label_func_decl_flags = MLDS_DeclFlags :-
 	% Call error/1 with a "Sorry, not implemented" message.
 	%
 sorry(What) :-
-	string__format("ml_code_gen.m: Sorry, not implemented: %s",
-		[s(What)], ErrorMessage),
-	error(ErrorMessage).
+	error_util__sorry("ml_code_gen", What).	
 
 unexpected(What) :-
-	string__format("ml_code_gen.m: Unexpected: %s", 
-		[s(What)], ErrorMessage),
-	error(ErrorMessage).
+	error_util__unexpected("ml_code_gen", What).	
 
 %-----------------------------------------------------------------------------%
 %

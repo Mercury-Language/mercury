@@ -32,7 +32,7 @@
 :- import_module builtin_ops, c_util, modules, tree.
 :- import_module hlds_pred. % for `pred_proc_id'.
 :- import_module prog_data, prog_out, llds_out.
-:- import_module rtti, type_util.
+:- import_module rtti, type_util, error_util.
 
 :- import_module ilds, ilasm, il_peephole.
 :- import_module ml_util, ml_code_util.
@@ -358,7 +358,7 @@ write_managed_cpp_statement(Statement) -->
 			write_managed_cpp_lval(Lval),
 			io__write_string(" = ")
 		;
-			{ sorry("multiple return values") }
+			{ sorry(this_file, "multiple return values") }
 		),
 		write_managed_cpp_rval(Function),
 		io__write_string("("),
@@ -372,7 +372,7 @@ write_managed_cpp_statement(Statement) -->
 			write_managed_cpp_rval(Rval),
 			io__write_string(";\n")
 		;
-			{ sorry("multiple return values") }
+			{ sorry(this_file, "multiple return values") }
 		)
 	;
 		{ Statement = statement(atomic(assign(Lval, Rval)), _) }
@@ -644,7 +644,7 @@ write_il_arg_as_managed_cpp_type(Type - MaybeId) -->
 		io__write_string(Id)
 	;
 		% XXX should make up a name!
-		{ unexpected("unnamed argument in method parameters") }
+		{ sorry(this_file, "unnamed arguments in method parameters") }
 	).
 
 
@@ -655,3 +655,7 @@ drop_assemblies_from_class_name([]) = [].
 drop_assemblies_from_class_name([A | Rest]) = 
 	( ( A = "mscorlib" ; A = "mercury" ) -> Rest ; [A | Rest] ).
 
+:- func this_file = string.
+this_file = "mlds_to_ilasm.m".
+
+:- end_module mlds_to_ilasm.

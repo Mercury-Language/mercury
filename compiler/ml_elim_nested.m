@@ -160,6 +160,13 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 			% EnvTypeName from just EnvName
 		ml_create_env(EnvName, [], Context, ModuleName, Globals,
 			_EnvTypeDefn, EnvTypeName, _EnvDecls, _InitEnv),
+		
+		globals__get_target(Globals, Target),
+		( Target = il ->
+			EnvPtrTypeName = EnvTypeName
+		;
+			EnvPtrTypeName = mlds__ptr_type(EnvTypeName)
+		),
 
 		%
 		% traverse the function body, finding (and removing)
@@ -167,7 +174,8 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 		% to the arguments or to local variables which
 		% occur in nested functions
 		%
-		ElimInfo0 = elim_info_init(ModuleName, OuterVars, EnvTypeName),
+		ElimInfo0 = elim_info_init(ModuleName, OuterVars, EnvTypeName,
+			EnvPtrTypeName),
 		Params = mlds__func_params(Arguments, _RetValues),
 		ml_maybe_add_args(Arguments, FuncBody0, ModuleName,
 			Context, ElimInfo0, ElimInfo1),
@@ -219,8 +227,8 @@ ml_elim_nested_defns(ModuleName, Globals, OuterVars, Defn0) = FlatDefns :-
 				% structure.
 				%
 				ml_maybe_copy_args(Arguments, FuncBody0,
-					ModuleName, EnvTypeName, Context,
-					_ArgsToCopy, CodeToCopyArgs),
+					ModuleName, EnvTypeName, EnvPtrTypeName,
+					Context, _ArgsToCopy, CodeToCopyArgs),
 
 				%
 				% insert the definition and
@@ -280,15 +288,15 @@ ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
 	% to the environment struct.
 	%
 :- pred ml_maybe_copy_args(mlds__arguments, mlds__statement,
-		mlds_module_name, mlds__type, mlds__context, 
+		mlds_module_name, mlds__type, mlds__type, mlds__context, 
 		mlds__defns, mlds__statements).
-:- mode ml_maybe_copy_args(in, in, in, in, in, out, out) is det.
+:- mode ml_maybe_copy_args(in, in, in, in, in, in, out, out) is det.
 
-ml_maybe_copy_args([], _, _, _, _, [], []).
-ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
-		ArgsToCopy, CodeToCopyArgs) :-
-	ml_maybe_copy_args(Args, FuncBody, ModuleName, ClassType, Context,
-			ArgsToCopy0, CodeToCopyArgs0),
+ml_maybe_copy_args([], _, _, _, _, _, [], []).
+ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, EnvPtrTypeName,
+		Context, ArgsToCopy, CodeToCopyArgs) :-
+	ml_maybe_copy_args(Args, FuncBody, ModuleName, ClassType,
+		EnvPtrTypeName,	Context, ArgsToCopy0, CodeToCopyArgs0),
 	(
 		Arg = data(var(VarName)) - FieldType,
 		ml_should_add_local_var(ModuleName, VarName, [], [FuncBody])
@@ -303,11 +311,11 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ModuleName, ClassType, Context,
 		QualVarName = qual(ModuleName, VarName),
 		EnvModuleName = ml_env_module_name(ClassType),
 		FieldName = named_field(qual(EnvModuleName, VarName),
-			mlds__ptr_type(ClassType)),
+			EnvPtrTypeName),
 		Tag = yes(0),
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
-			mlds__ptr_type(ClassType)),
+			EnvPtrTypeName),
 		ArgRval = lval(var(QualVarName)),
 		AssignToEnv = assign(EnvArgLval, ArgRval),
 		CodeToCopyArg = mlds__statement(atomic(AssignToEnv), Context),
@@ -925,6 +933,7 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 	ModuleName = elim_info_get_module_name(ElimInfo),
 	LocalVars = elim_info_get_local_vars(ElimInfo),
 	ClassType = elim_info_get_env_type_name(ElimInfo),
+	EnvPtrVarType = elim_info_get_env_ptr_type_name(ElimInfo),
 	(
 		%
 		% Check for references to local variables
@@ -942,7 +951,7 @@ fixup_var(ThisVar, Lval, ElimInfo, ElimInfo) :-
 		EnvPtr = lval(var(qual(ModuleName, "env_ptr"))),
 		EnvModuleName = ml_env_module_name(ClassType),
 		FieldName = named_field(qual(EnvModuleName, ThisVarName),
-			mlds__ptr_type(ClassType)),
+			EnvPtrVarType),
 		Tag = yes(0),
 		Lval = field(Tag, EnvPtr, FieldName, FieldType, ClassType)
 	;
@@ -1384,7 +1393,14 @@ lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
 			local_vars :: list(mlds__defn),
 				
 				% Type of the introduced environment struct
-			env_type_name :: mlds__type
+			env_type_name :: mlds__type,
+
+				% Type of the introduced environment struct
+				% pointer.  This might not just be just
+				% a pointer to the env_type_name (in the
+				% IL backend we don't necessarily use a
+				% pointer).
+			env_ptr_type_name :: mlds__type
 	).
 
 	% The lists of local variables for
@@ -1392,9 +1408,10 @@ lval_contains_var(var(Name), Name).  /* this is where we can succeed! */
 	% innermost first
 :- type outervars == list(list(mlds__defn)).
 
-:- func elim_info_init(mlds_module_name, outervars, mlds__type) = elim_info.
-elim_info_init(ModuleName, OuterVars, EnvTypeName) =
-	elim_info(ModuleName, OuterVars, [], [], EnvTypeName).
+:- func elim_info_init(mlds_module_name, outervars, mlds__type, mlds__type)
+	= elim_info.
+elim_info_init(ModuleName, OuterVars, EnvTypeName, EnvPtrTypeName) =
+	elim_info(ModuleName, OuterVars, [], [], EnvTypeName, EnvPtrTypeName).
 
 :- func elim_info_get_module_name(elim_info) = mlds_module_name.
 elim_info_get_module_name(ElimInfo) = ElimInfo ^ module_name.
@@ -1407,6 +1424,9 @@ elim_info_get_local_vars(ElimInfo) = ElimInfo ^ local_vars.
 
 :- func elim_info_get_env_type_name(elim_info) = mlds__type.
 elim_info_get_env_type_name(ElimInfo) = ElimInfo ^ env_type_name.
+
+:- func elim_info_get_env_ptr_type_name(elim_info) = mlds__type.
+elim_info_get_env_ptr_type_name(ElimInfo) = ElimInfo ^ env_ptr_type_name.
 
 :- pred elim_info_add_nested_func(mlds__defn, elim_info, elim_info).
 :- mode elim_info_add_nested_func(in, in, out) is det.

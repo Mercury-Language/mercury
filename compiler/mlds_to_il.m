@@ -127,7 +127,7 @@
 :- import_module rtti, type_util.
 
 :- import_module ilasm, il_peephole.
-:- import_module ml_util, ml_code_util.
+:- import_module ml_util, ml_code_util, error_util.
 :- import_module mlds_to_c. /* to output C code for .cpp files */
 :- use_module llds. /* for user_c_code */
 
@@ -542,7 +542,7 @@ generate_defn_initializer(defn(Name, _Context, _DeclFlags, Entity),
 				]) }
 		)
 	;
-		{ unexpected("defn not data(...) in block") }
+		{ unexpected(this_file, "defn not data(...) in block") }
 	).
 
 	% initialize this value, leave it on the stack.
@@ -795,7 +795,7 @@ statement_to_il(statement(return(Rvals), _Context), Instrs) -->
 			instr_node(ret)]) }
 	;
 		% MS IL doesn't support multiple return values
-		{ sorry("multiple return values") }
+		{ sorry(this_file, "multiple return values") }
 	).
 
 statement_to_il(statement(label(Label), _Context), Instrs) -->
@@ -853,7 +853,7 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 	{ RefType = ilds__type(_, class(ClassName0)) ->
 			ClassName = ClassName0
 		;
-			unexpected("non-class for commit ref")
+			unexpected(this_file, "non-class for commit ref")
 	},	
 	{ Instrs = tree__list([
 		comment_node("try_commit/3"),
@@ -986,7 +986,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 		->
 			ClassName = ClassName0
 		;
-			unexpected("non-class for new_object")
+			unexpected(this_file, "non-class for new_object")
 		},	
 		list__map_foldl(load, Args, ArgsLoadInstrsTrees),
 		{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
@@ -1259,7 +1259,7 @@ store(mem_ref(_Rval, _Type), _Instrs, Info, Info) :-
 		% you always need load the reference first, then
 		% the value, then stind it.  There's no swap
 		% instruction.  Annoying, eh?
-	unexpected("store into mem_ref").
+	unexpected(this_file, "store into mem_ref").
 
 store(var(Var), Instrs, Info, Info) :- 
 	mangle_mlds_var(Var, MangledVarStr),
@@ -1409,7 +1409,7 @@ binaryop_to_il(ne, node(Instrs)) -->
 	] }.
 
 binaryop_to_il(body, _) -->
-	{ error("unexpected binop: body") }.
+	{ unexpected(this_file, "binop: body") }.
 
 
 	% XXX we need to know what kind of thing is being indexed
@@ -1547,19 +1547,19 @@ rval_to_function(Rval, MemberName) :-
 					id(ProcLabelStr))
 			)
 		;
-			unexpected(
+			unexpected(this_file,
 				"rval_to_function: const is not a code address")
 		)
 	; Rval = mkword(_, _),
-		unexpected("mkword_function_name")
+		unexpected(this_file, "mkword_function_name")
 	; Rval = lval(_),
-		unexpected("lval_function_name")
+		unexpected(this_file, "lval_function_name")
 	; Rval = unop(_, _),
-		unexpected("unop_function_name")
+		unexpected(this_file, "unop_function_name")
 	; Rval = binop(_, _, _),
-		unexpected("binop_function_name")
+		unexpected(this_file, "binop_function_name")
 	; Rval = mem_addr(_),
-		unexpected("mem_addr_function_name")
+		unexpected(this_file, "mem_addr_function_name")
 	).
 
 %-----------------------------------------------------------------------------
@@ -1685,7 +1685,7 @@ mlds_signature_to_il_return_param(func_signature(_, Returns), Param) :-
 		Param = simple_type(SimpleType)
 	;
 		% IL doesn't support multiple return values
-		sorry("multiple return values")
+		sorry(this_file, "multiple return values")
 	).
 
 params_to_il_signature(ModuleName, mlds__func_params(Inputs, Outputs),
@@ -1699,7 +1699,7 @@ params_to_il_signature(ModuleName, mlds__func_params(Inputs, Outputs),
 		Param = simple_type(SimpleType)
 	;
 		% IL doesn't support multiple return values
-		sorry("multiple return values")
+		sorry(this_file, "multiple return values")
 	),
 	ILSignature = signature(call_conv(no, default), Param, ILInputTypes).
 
@@ -2134,14 +2134,16 @@ get_fieldref(FieldNum, FieldType, ClassType, FieldRef) :-
 		->
 			ClassName = ClassTypeName0
 		;
-			unexpected("not a class for field access")
+			ClassName = ["invalid_field_access_class"]
+			% unexpected(this_file, "not a class for field access")
 		),
 		( 
 			FieldNum = offset(OffsetRval),
 			( OffsetRval = const(int_const(Num)) ->
 				string__format("f%d", [i(Num)], FieldId)
 			;
-				sorry("offsets for non-int_const rvals")
+				sorry(this_file, 
+					"offsets for non-int_const rvals")
 			)
 		; 
 			FieldNum = named_field(qual(_ModuleName, FieldId),
@@ -2639,6 +2641,9 @@ maybe_map_fold(P, yes(T), _, V, U0, U) :-
 	P(T, V, U0, U).
 
 %-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "mlds_to_il.m".
 
 :- end_module mlds_to_il.
 

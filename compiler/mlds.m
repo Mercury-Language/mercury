@@ -1078,8 +1078,11 @@ XXX Full exception handling support is not yet implemented.
 :- type mlds__unary_op
 	--->	box(mlds__type)
 	;	unbox(mlds__type)
-	;	cast(mlds__type) % XXX it might be worthwhile adding the 
-				 % type that we cast from.
+			% cast(MLDSType):
+			% Coerce the type of the rval to be MLDSType.
+			% XXX it might be worthwhile adding the 
+			% type that we cast from.
+	;	cast(mlds__type)
 	;	std_unop(builtin_ops__unary_op).
 
 :- type mlds__rval_const
