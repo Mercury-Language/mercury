@@ -80,11 +80,11 @@ Declare_label(mercury__compare_3_0_i1);
   */
   MR_MAKE_PROC_LAYOUT(mercury__index_2_0,
 	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
-	MR_PREDICATE, ""builtin"", ""index"", 2, 0);
+	MR_PREDICATE, "builtin", "index", 2, 0);
   MR_MAKE_INTERNAL_LAYOUT(mercury__index_2_0, 1);
   MR_MAKE_PROC_LAYOUT(mercury__compare_3_0,
 	MR_DETISM_DET, 2, MR_LIVE_LVAL_STACKVAR(2),
-	MR_PREDICATE, ""builtin"", ""compare"", 3, 0);
+	MR_PREDICATE, "builtin", "compare", 3, 0);
   MR_MAKE_INTERNAL_LAYOUT(mercury__compare_3_0, 1);
 #endif
 
