@@ -26,6 +26,8 @@ PATH="/home/mercury/public/autoconf-2.4/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/sicstus3/$HOST:$PATH"
 PATH="/home/mercury/public/$FULLARCH:$PATH"
 PATH="/home/mercury/public/$HOST:$PATH"
+# generate_index_html needs to be in our PATH too
+PATH="`pwd`:$PATH"
 export PATH
 
 CVSROOT=/home/staff/zs/imp
@@ -653,8 +655,6 @@ esac
 # Now rebuild the index files on the www site
 echo "test_mercury generating index files on www site, starting at `date`" 1>&2
 (
-PATH="`pwd`:$PATH"
-export PATH
 cd $BETA_WEBDIR_TOP
 generate_index_html
 )
