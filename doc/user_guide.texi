@@ -1420,11 +1420,11 @@ Don't specialize calls to higher-order predicates where
 the higher-order arguments are known.
 
 @sp 1
-@item -O-, --no-c-optimize
+@item --no-c-optimize
 Don't enable the C compiler's optimizations.
 
 @sp 1
-@item --opt-level @var{n}
+@item -O @var{n}, --opt-level @var{n}
 Set optimization level to @var{n}.
 Optimimization level 0 means no optimization
 while optimimization level 5 means full optimization.
