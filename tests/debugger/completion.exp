@@ -1,6 +1,7 @@
        1:      1  1 CALL pred completion:main/2-0 (det) completion.m:13
 mdb> echo on
 Command echo enabled.
+mdb> register --quiet
 mdb> 
 ?                  down               maxdepth           return
 P                  e                  mindepth           s
@@ -46,8 +47,6 @@ completion:sub1       completion:sub2:sub3
 
 completion:sub1       completion:sub2       completion:sub2:sub3
 procedures completion:sub1
-Registering debuggable procedures... done.
-There are NNN debuggable modules, with a total of NNN procedures.
 List of procedures in module `completion:sub1'
 
 pred completion:sub1:zp/1-0 (det)
