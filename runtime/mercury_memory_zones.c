@@ -159,7 +159,7 @@ init_offsets()
 } /* end init_offsets() */
 
 
-MemoryZone *
+static MemoryZone *
 get_zone(void)
 {
 	MemoryZone *zone;
@@ -183,7 +183,7 @@ get_zone(void)
 	return zone;
 }
 
-void 
+static void 
 unget_zone(MemoryZone *zone)
 {
 	MemoryZone *prev, *tmp;

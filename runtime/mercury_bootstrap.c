@@ -118,7 +118,7 @@ END_MODULE
 /*
 INIT sys_init_unify_univ_module_bootstrap
 */
-extern ModuleFunc unify_univ_module_bootstrap;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc unify_univ_module_bootstrap;
 void sys_init_unify_univ_module_bootstrap(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module_bootstrap(void) {
 	unify_univ_module_bootstrap();

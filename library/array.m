@@ -340,7 +340,7 @@ END_MODULE
 INIT sys_init_array_module_builtins
 */
 
-extern ModuleFunc array_module_builtins;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc array_module_builtins;
 
 void sys_init_array_module_builtins(void);
 		/* suppress gcc -Wmissing-decl warning */

@@ -1212,7 +1212,7 @@ END_MODULE
 /*
 INIT sys_init_unify_univ_module
 */
-extern ModuleFunc unify_univ_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc unify_univ_module;
 void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module(void) {
 	unify_univ_module();
@@ -1717,7 +1717,7 @@ static int 	ML_get_functor_info(Word type_info, int functor_number,
 	** calls to this function.
 	*/
 
-int 
+static int 
 ML_get_functor_info(Word type_info, int functor_number, ML_Construct_Info *info)
 {
 	Word *type_ctor_functors;

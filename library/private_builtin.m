@@ -480,7 +480,7 @@ END_MODULE
 /*
 INIT sys_init_type_info_module
 */
-extern ModuleFunc type_info_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc type_info_module;
 void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_type_info_module(void) {
 	type_info_module();

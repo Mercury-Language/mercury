@@ -745,7 +745,7 @@ END_MODULE
 /*
 INIT sys_init_builtin_types_module
 */
-extern ModuleFunc builtin_types_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc builtin_types_module;
 extern void mercury__private_builtin__init(void);
 void sys_init_builtin_types_module(void);
 void sys_init_builtin_types_module(void) {
@@ -844,7 +844,7 @@ END_MODULE
 /*
 INIT sys_init_copy_module
 */
-extern ModuleFunc copy_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc copy_module;
 void sys_init_copy_module(void);
 	/* extra declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_copy_module(void) {
@@ -935,7 +935,7 @@ INIT sys_init_unify_c_pointer_module
 */
 
 
-extern ModuleFunc unify_c_pointer_module;
+MR_MODULE_STATIC_OR_EXTERN ModuleFunc unify_c_pointer_module;
 void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_unify_c_pointer_module(void) {
