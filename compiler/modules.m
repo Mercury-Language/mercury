@@ -44,6 +44,11 @@
 
 %-----------------------------------------------------------------------------%
 
+	% Succeeds iff the string is the (unqualified) name of one of the
+	% modules in the Mercury standard library.
+	%
+:- pred mercury_std_library_module(string::in) is semidet.
+
 	% module_name_to_file_name(Module, Extension, Mkdir, FileName):
 	%	Convert a module name and file extension to the
 	%	corresponding file name.  If `MkDir' is yes, then
@@ -489,6 +494,60 @@
 
 %-----------------------------------------------------------------------------%
 
+mercury_std_library_module("array").
+mercury_std_library_module("assoc_list").
+mercury_std_library_module("bag").
+mercury_std_library_module("benchmarking").
+mercury_std_library_module("bimap").
+mercury_std_library_module("bintree").
+mercury_std_library_module("bintree_set").
+mercury_std_library_module("bool").
+mercury_std_library_module("bt_array").
+mercury_std_library_module("builtin").
+mercury_std_library_module("char").
+mercury_std_library_module("dir").
+mercury_std_library_module("eqvclass").
+mercury_std_library_module("exception").
+mercury_std_library_module("float").
+mercury_std_library_module("gc").
+mercury_std_library_module("getopt").
+mercury_std_library_module("graph").
+mercury_std_library_module("group").
+mercury_std_library_module("int").
+mercury_std_library_module("integer").
+mercury_std_library_module("io").
+mercury_std_library_module("lexer").
+mercury_std_library_module("library").
+mercury_std_library_module("list").
+mercury_std_library_module("map").
+mercury_std_library_module("math").
+mercury_std_library_module("mercury_builtin").
+mercury_std_library_module("multi_map").
+mercury_std_library_module("ops").
+mercury_std_library_module("parser").
+mercury_std_library_module("pqueue").
+mercury_std_library_module("private_builtin").
+mercury_std_library_module("prolog").
+mercury_std_library_module("queue").
+mercury_std_library_module("random").
+mercury_std_library_module("rational").
+mercury_std_library_module("rbtree").
+mercury_std_library_module("relation").
+mercury_std_library_module("require").
+mercury_std_library_module("set").
+mercury_std_library_module("set_bbbtree").
+mercury_std_library_module("set_ordlist").
+mercury_std_library_module("set_unordlist").
+mercury_std_library_module("stack").
+mercury_std_library_module("std_util").
+mercury_std_library_module("store").
+mercury_std_library_module("string").
+mercury_std_library_module("term").
+mercury_std_library_module("term_io").
+mercury_std_library_module("time").
+mercury_std_library_module("tree234").
+mercury_std_library_module("varset").
+
 	% It is not really clear what the naming convention
 	% should be.  Currently we assume that the module
 	% `foo:bar:baz' will be in files `foo.bar.baz.{m,int,etc.}'.
@@ -522,10 +581,10 @@ extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, FileName) -->
 			io__state, io__state).
 :- mode choose_file_name(in, in, in, in, out, di, uo) is det.
 
-choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
+choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
 	( { UseSubdirs = no } ->
-		{ FileName = BaseName }
+		{ FileName0 = BaseName }
 	;
 		%
 		% the source files, the final executables,
@@ -566,7 +625,7 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".trans_opts"
 		}
 	->
-		{ FileName = BaseName }
+		{ FileName0 = BaseName }
 	;
 		%
 		% we need to handle a few cases specially
@@ -624,8 +683,24 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		;
 			[]
 		),
-		{ string__append_list([DirName, Slash, BaseName], FileName) }
-	).
+		{ string__append_list([DirName, Slash, BaseName], FileName0) }
+	),
+	%
+	% For --high-level-code, the header files for the standard
+	% library are named specially (they get a `mercury.' prefix).
+	%
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+	{
+		HighLevelCode = yes,
+		Ext = ".h",
+		ModuleName = unqualified(UnqualModuleName),
+		mercury_std_library_module(UnqualModuleName),
+		\+ string__prefix(FileName0, "mercury.")
+	->
+		string__append("mercury.", FileName0, FileName)
+	;
+		FileName = FileName0
+	}.
 
 module_name_to_split_c_file_name(ModuleName, Num, Ext, FileName) -->
 	module_name_to_file_name(ModuleName, ".dir", no, DirName),
@@ -1486,8 +1561,10 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 		{ set__list_to_set(ShortDeps0, ShortDepsSet0) },
 		{ set__difference(ShortDepsSet0, LongDepsSet, ShortDepsSet1) },
 		{ set__delete(ShortDepsSet1, ModuleName, ShortDepsSet) },
+		{ set__union(LongDepsSet, ShortDepsSet, AllDepsSet) },
 		{ set__to_sorted_list(LongDepsSet, LongDeps) },
 		{ set__to_sorted_list(ShortDepsSet, ShortDeps) },
+		{ set__to_sorted_list(AllDepsSet, AllDeps) },
 		{ list__sort_and_remove_dups(FactDeps0, FactDeps) },
 
 		( { MaybeTransOptDeps = yes(TransOptDeps0) } ->
@@ -1639,6 +1716,38 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				write_dependencies_list(OptDeps,
 					".opt", DepStream)
 			)
+		;
+			[]
+		),
+
+		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
+		( { HighLevelCode = yes } ->
+			%
+			% For --high-level-code, we need to make sure that we
+			% generate the header files for imported modules
+			% before compiling the C files, since the generated C
+			% files #include those header files.
+			%
+			io__write_strings(DepStream, [
+				"\n\n", 
+				PicObjFileName, " ",
+				ObjFileName, " ",
+				SplitObjPattern, " :"
+			]),
+			write_dependencies_list(AllDeps, ".h", DepStream),
+
+			%
+			% We also need to tell make how to make the header
+			% files.  The header files are actually built by
+			% the same command that creates the .c files, so
+			% we just make them depend on the .c files.
+			%
+			module_name_to_file_name(ModuleName, ".h", no,
+							HeaderFileName),
+			io__write_strings(DepStream, [
+					"\n\n", HeaderFileName, 
+					" : ", CFileName
+			])
 		;
 			[]
 		),

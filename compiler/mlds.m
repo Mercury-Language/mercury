@@ -1119,6 +1119,7 @@ XXX Full exception handling support is not yet implemented.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+:- import_module modules.
 :- import_module int, term, require.
 
 %-----------------------------------------------------------------------------%
@@ -1166,61 +1167,6 @@ mercury_module_name_to_mlds(MercuryModule) = MLDS_Package :-
 	;
 		MLDS_Package = MercuryModule
 	).
-
-:- pred mercury_std_library_module(string::in) is semidet.
-mercury_std_library_module("array").
-mercury_std_library_module("assoc_list").
-mercury_std_library_module("bag").
-mercury_std_library_module("benchmarking").
-mercury_std_library_module("bimap").
-mercury_std_library_module("bintree").
-mercury_std_library_module("bintree_set").
-mercury_std_library_module("bool").
-mercury_std_library_module("bt_array").
-mercury_std_library_module("builtin").
-mercury_std_library_module("char").
-mercury_std_library_module("dir").
-mercury_std_library_module("eqvclass").
-mercury_std_library_module("exception").
-mercury_std_library_module("float").
-mercury_std_library_module("gc").
-mercury_std_library_module("getopt").
-mercury_std_library_module("graph").
-mercury_std_library_module("group").
-mercury_std_library_module("int").
-mercury_std_library_module("integer").
-mercury_std_library_module("io").
-mercury_std_library_module("lexer").
-mercury_std_library_module("library").
-mercury_std_library_module("list").
-mercury_std_library_module("map").
-mercury_std_library_module("math").
-mercury_std_library_module("mercury_builtin").
-mercury_std_library_module("multi_map").
-mercury_std_library_module("ops").
-mercury_std_library_module("parser").
-mercury_std_library_module("pqueue").
-mercury_std_library_module("private_builtin").
-mercury_std_library_module("prolog").
-mercury_std_library_module("queue").
-mercury_std_library_module("random").
-mercury_std_library_module("rational").
-mercury_std_library_module("rbtree").
-mercury_std_library_module("relation").
-mercury_std_library_module("require").
-mercury_std_library_module("set").
-mercury_std_library_module("set_bbbtree").
-mercury_std_library_module("set_ordlist").
-mercury_std_library_module("set_unordlist").
-mercury_std_library_module("stack").
-mercury_std_library_module("std_util").
-mercury_std_library_module("store").
-mercury_std_library_module("string").
-mercury_std_library_module("term").
-mercury_std_library_module("term_io").
-mercury_std_library_module("time").
-mercury_std_library_module("tree234").
-mercury_std_library_module("varset").
 
 mlds_module_name_to_sym_name(MLDS_Package) = MLDS_Package.
 
