@@ -758,7 +758,12 @@ maybe_warn_singletons(VarSet, PredCallId, Args, Body, Context) -->
 warn_singletons([], _, _, _) --> [].
 warn_singletons([Var | Vars0], VarSet, PredCallId, Context) -->
 	{ delete_all(Vars0, Var, Vars1, Found) },
-	( { varset__lookup_name(VarSet, Var, Name) } ->
+	(
+		{ varset__lookup_name(VarSet, Var, Name) },
+			% suppress warnings for compiler-introduced DCG
+			% variables
+		{ \+ string__append("DCG_", _, Name) }
+	->
 		(
 			{ string__first_char(Name, '_', _) }
 		->
