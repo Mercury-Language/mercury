@@ -278,7 +278,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, FactDeps, HLDS1, UndefTypes,
 	{ bool__or(UndefTypes1, UndefTypes2, UndefTypes) },
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
 
-	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"), !,
+	mercury_compile__maybe_dump_hlds(HLDS0, "01", "initial"), !,
 
 	% Only stop on syntax errors in .opt files.
 	( { FoundError = yes ; IntermodError = yes } ->
@@ -396,7 +396,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    ;
 		maybe_write_string(Verbose, "% Program is type-correct.\n")
 	    ),
-	    mercury_compile__maybe_dump_hlds(HLDS3, "3", "typecheck"),
+	    mercury_compile__maybe_dump_hlds(HLDS3, "03", "typecheck"),
 
 	    %
 	    % Now continue, even if we got a type error,
@@ -512,7 +512,7 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 
 	mercury_compile__modecheck(HLDS4, Verbose, Stats, HLDS5,
 		FoundModeError, UnsafeToContinue),
-	mercury_compile__maybe_dump_hlds(HLDS5, "5", "modecheck"),
+	mercury_compile__maybe_dump_hlds(HLDS5, "05", "modecheck"),
 
 	( { UnsafeToContinue = yes } ->
 		{ FoundError = yes },
@@ -520,19 +520,21 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	;
 		mercury_compile__detect_switches(HLDS5, Verbose, Stats, HLDS6),
 		!,
-		mercury_compile__maybe_dump_hlds(HLDS6, "6", "switch_detect"),
+		mercury_compile__maybe_dump_hlds(HLDS6, "06", "switch_detect"),
 		!,
 
 		mercury_compile__detect_cse(HLDS6, Verbose, Stats, HLDS7), !,
-		mercury_compile__maybe_dump_hlds(HLDS7, "7", "cse"), !,
+		mercury_compile__maybe_dump_hlds(HLDS7, "07", "cse"), !,
 
 		mercury_compile__check_determinism(HLDS7, Verbose, Stats, HLDS8,
 			FoundDetError), !,
-		mercury_compile__maybe_dump_hlds(HLDS8, "8", "determinism"), !,
+		mercury_compile__maybe_dump_hlds(HLDS8, "08", "determinism"),
+		!,
 
 		mercury_compile__check_unique_modes(HLDS8, Verbose, Stats,
 			HLDS9, FoundUniqError), !,
-		mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"), !,
+		mercury_compile__maybe_dump_hlds(HLDS9, "09", "unique_modes"),
+		!,
 		
 		mercury_compile__check_stratification(HLDS9, Verbose, Stats, 
 			HLDS10, FoundStratError), !,
