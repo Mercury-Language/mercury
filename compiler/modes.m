@@ -1959,9 +1959,9 @@ find_matching_function([PredId | PredIds], ModuleInfo, TVarSet, ArgTypes,
 		% the actual argument types
 		%
 		term__vars_list(ArgTypes, ArgTypeVars),
-		map__init(TypeSubst),
-		type_unify_list(ArgTypes, PredArgTypes, ArgTypeVars, TypeSubst,
-			TypeSubst)
+		map__init(TypeSubst0),
+		type_unify_list(ArgTypes, PredArgTypes, ArgTypeVars, TypeSubst0,
+			_TypeSubst)
 	->
 		%
 		% we've found a matching predicate
