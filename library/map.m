@@ -17,16 +17,12 @@
 
 :- module map.
 :- interface.
+:- import_module list, std_util.
+
+:- type map(_K, _V).
 :- export_pred	map__init/1, map__search/3, map__search_insert/4,
 		map__update/4, map__set/3, map__keys/2, map__to_assoc_list/2,
 		map__contains/2, map__inverse_search/3, map__member/3.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-:- import_module bintree, list, std_util.
-
-:- type map(K,V)	==	bintree(K,V).
 
 %-----------------------------------------------------------------------------%
 
@@ -139,4 +135,10 @@ map__delete(Map0, Key, Map) :-
 	bintree__delete(Map0, Key, Map).
 
 %-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module bintree.
+
+:- type map(K,V)	==	bintree(K,V).
+
 %-----------------------------------------------------------------------------%
