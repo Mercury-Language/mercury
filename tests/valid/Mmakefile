@@ -35,6 +35,11 @@ ADITI_SOURCES= \
 	context_anc.m \
 	ite_to_disj.m
 
+	# This test is compiled with --no-special-preds,
+	# which doesn't work in jump.* and fast.* grades.
+NO_SPECIAL_PREDS_SOURCES= \
+	unify_typeinfo_bug.m
+
 	# This test does not produce a `.c' file.
 RLO_SOURCES= \
 	aditi_query.m
@@ -151,7 +156,6 @@ OTHER_SOURCES= \
 	unbound_inst_var.m \
 	unbound_tvar_in_lambda.m \
 	undead_proc.m \
-	unify_typeinfo_bug.m \
 	uniq_unify.m \
 	uniq_mode_inf_bug.m \
 	unreachable_code.m \
@@ -165,36 +169,40 @@ OTHER_SOURCES= \
 #	mode_merge_insts.m
 #	inst_perf_bug_2.m
 
+# There used to be problems with compiling typeclass
+# and AGC stuff in grades jump.* and fast.*, but they should
+# be long since fixed now.
+SOURCES0 = $(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
 
 # Base grades `jump' and `fast'
-# cannot be used with accurate GC or type classes
+# cannot be used with `--no-special-preds'
 
 ifneq "$(findstring asm_,$(GRADE))" ""
-    SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+    SOURCES1=$(NO_SPECIAL_PREDS_SOURCES) $(SOURCES0)
 else
     ifneq "$(findstring jump,$(GRADE))" ""
-        SOURCES0=$(OTHER_SOURCES)
+        SOURCES1=$(SOURCES0)
     else
         ifneq "$(findstring fast,$(GRADE))" ""
-            SOURCES0=$(OTHER_SOURCES)
+            SOURCES1=$(SOURCES0)
         else
-            SOURCES0=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
+	    SOURCES1=$(NO_SPECIAL_PREDS_SOURCES) $(SOURCES0)
         endif
     endif
 endif
 
 ifneq "$(findstring .mm,$(GRADE))" ""
-    SOURCES1=$(SOURCES0)
+    SOURCES2=$(SOURCES1)
 else
-    SOURCES1=$(SOURCES0) $(TRAIL_SOURCES)
+    SOURCES2=$(SOURCES1) $(TRAIL_SOURCES)
 endif
 
 # Aditi is not yet implemented for the MLDS back-end
 # (i.e. grades hl*).
 ifneq "$(findstring hl,$(GRADE))" ""
-    SOURCES=$(SOURCES1)
+    SOURCES=$(SOURCES2)
 else
-    SOURCES=$(SOURCES1) $(ADITI_SOURCES)
+    SOURCES=$(SOURCES2) $(ADITI_SOURCES)
 endif
 
 ALL_SOURCES = $(SOURCES) $(RLO_SOURCES)
