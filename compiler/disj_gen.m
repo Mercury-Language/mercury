@@ -102,29 +102,46 @@ disj_gen__generate_non_disj(Goals0, Code) -->
 	},
 	{ disj_gen__sort_cases(Goals0, Goals1) },
 	code_info__generate_nondet_saves(SaveVarsCode),
+	code_info__failure_cont(Cont),
+	(
+		{ Cont = unknown }
+	->
+		code_info__save_redoip(RedoIpCode),
+		{ RedoSaved = yes }
+	;
+		{ RedoIpCode = empty },
+		{ RedoSaved = no }
+	),
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
 	code_info__get_next_label(EndLab, yes),
-	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
-	{ Code = tree(SaveVarsCode, tree(SaveHeapCode, GoalsCode)) }.
+	disj_gen__generate_non_disj_2(Goals1, EndLab, RedoSaved, GoalsCode),
+	{ Code = tree(tree(SaveVarsCode, RedoIpCode),
+			tree(SaveHeapCode, GoalsCode)) }.
 
-:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, code_tree,
-						code_info, code_info).
-:- mode disj_gen__generate_non_disj_2(in, in, out, in, out) is det.
+:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, bool,
+					code_tree, code_info, code_info).
+:- mode disj_gen__generate_non_disj_2(in, in, in, out, in, out) is det.
 
-disj_gen__generate_non_disj_2([], _EndLab, _EndCode) -->
+disj_gen__generate_non_disj_2([], _EndLab, _MRedoIp, _EndCode) -->
 	{ error("disj_gen__generate_non_disj_2") }.
-disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
+disj_gen__generate_non_disj_2([Goal|Goals], EndLab, MRedoIp, DisjCode) -->
 	(
 		{ Goals = [_|_] }
 	->
 		code_info__get_next_label(ContLab0, yes),
 		code_info__push_failure_cont(known(ContLab0)),
+			% Set the failure continuation for the
+			% maxfr to point to the start of the next
+			% disjunct. If the failure continuation is
+			% known(_) then this is equivalent to a
+			% modframe.
 		{ ContCode = node([
-			modframe(label(ContLab0)) -
-					"Set failure continuation"
+			assign(redoip(lval(maxfr)),
+				const(address_const(label(ContLab0)))) -
+				"Set failure continuation"
 		]) },
 		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
@@ -142,10 +159,16 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_info__pop_failure_cont,
 		{ DisjCode = tree(tree(ContCode, GoalCode),
 			tree(SuccCode, tree(RestoreHeapCode, RestCode))) },
-		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
+		disj_gen__generate_non_disj_2(Goals, EndLab, MRedoIp, RestCode)
 	;
 		code_info__pop_stack(PopCode),
-		code_info__restore_failure_cont(ContCode),
+		(
+			{ MRedoIp = no }
+		->
+			code_info__restore_failure_cont(ContCode)
+		;
+			code_info__restore_redoip(ContCode)
+		),
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		{ EndCode = node([
 			label(EndLab) - "End of disj"

@@ -205,6 +205,9 @@
 :- pred code_info__failure_cont(failure_cont, code_info, code_info).
 :- mode code_info__failure_cont(out, in, out) is det.
 
+:- pred code_info__failure_cont_address(failure_cont, code_addr).
+:- mode code_info__failure_cont_address(in, out) is det.
+
 	% generate some code to restore the current redoip, by looking
 	% at the top of the failure continuation stack.
 
@@ -235,6 +238,12 @@
 
 :- pred code_info__restore_hp(code_tree, code_info, code_info).
 :- mode code_info__restore_hp(out, in, out) is det.
+
+:- pred code_info__save_redoip(code_tree, code_info, code_info).
+:- mode code_info__save_redoip(out, in, out) is det.
+
+:- pred code_info__restore_redoip(code_tree, code_info, code_info).
+:- mode code_info__restore_redoip(out, in, out) is det.
 
 :- pred code_info__get_old_hp(code_tree, code_info, code_info).
 :- mode code_info__get_old_hp(out, in, out) is det.
@@ -942,15 +951,25 @@ code_info__maybe_pop_stack(Maybe, Code) -->
 
 code_info__save_hp(Code) -->
 	code_info__push_temp(hp, HpSlot),
-	{ Code = node([ mark_hp(HpSlot) - "save heap pointer" ]) }.
+	{ Code = node([ mark_hp(HpSlot) - "Save heap pointer" ]) }.
 
 code_info__restore_hp(Code) -->
 	code_info__pop_temp(Lval),
-	{ Code = node([ restore_hp(lval(Lval)) - "restore heap pointer" ]) }.
+	{ Code = node([ restore_hp(lval(Lval)) - "Restore heap pointer" ]) }.
 
 code_info__get_old_hp(Code) -->
 	code_info__get_stack_top(Lval),
-	{ Code = node([ restore_hp(lval(Lval)) - "reset heap pointer" ]) }.
+	{ Code = node([ restore_hp(lval(Lval)) - "Reset heap pointer" ]) }.
+
+code_info__save_redoip(Code) -->
+	code_info__push_temp(redoip(lval(maxfr)), RedoIpSlot),
+	{ Code = node([ assign(RedoIpSlot, lval(redoip(lval(maxfr))))
+				- "Save the redoip" ]) }.
+
+code_info__restore_redoip(Code) -->
+	code_info__pop_temp(Lval),
+	{ Code = node([ assign(redoip(lval(maxfr)), lval(Lval))
+			- "Restore the redoip" ]) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1074,9 +1093,6 @@ code_info__generate_test_and_fail(Rval, Code) -->
 	{ code_util__neg_rval(Rval, NegRval) },
 	{ Code = node([ if_val(NegRval, FailureAddress) -
 				"test for failure" ]) }.
-
-:- pred code_info__failure_cont_address(failure_cont, code_addr).
-:- mode code_info__failure_cont_address(in, out) is det.
 
 code_info__failure_cont_address(known(Label), label(Label)).
 code_info__failure_cont_address(do_fail, do_fail).
