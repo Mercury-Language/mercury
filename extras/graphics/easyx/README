@@ -1,0 +1,7 @@
+xlib.m		A very low-level Mercury wrapper around (parts of) Xlib.
+easyx.m		A nice little graphics library.
+testeasyx.m	A simple demonstration program.
+moveball.m	An orange ball follows the mouse pointer.
+scribble.m	A trivial drawing program.
+bounce.m	A bouncing-ball game.
+mclock.m	A clock.
