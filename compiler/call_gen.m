@@ -48,7 +48,8 @@
 
 :- pred call_gen__generate_nondet_builtin(pred_id, proc_id, list(var),
 					code_tree, code_info, code_info).
-:- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is det.
+:- mode call_gen__generate_nondet_builtin(in, in, in, out, in, out) is
+					erroneous.
 
 /* DEAD CODE
 :- pred call_gen__generate_complicated_unify(var, var, uni_mode, can_fail,

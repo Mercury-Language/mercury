@@ -1019,7 +1019,7 @@ output_int(Val) -->
 	).
 
 :- pred output_float(float, io__state, io__state).
-:- mode output_float(in, di, uo) is det.
+:- mode output_float(in, di, uo) is erroneous.
 
 output_float(_Val) -->
 	{ error("output of floats not supported yet") }.

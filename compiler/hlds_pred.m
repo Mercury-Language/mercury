@@ -673,15 +673,9 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	% Some parts of the procedure aren't known yet. We initialize
 	% them to any old garbage which we will later throw away.
 
-	% If the source code doesn't specify any determinism annotation,
-	% inferred determinism should get initialized to `erroneous'.
+	% Inferred determinism gets initialized to `erroneous'.
 	% This is what `det_analysis.m' wants. det_analysis.m
 	% will later provide the correct inferred determinism for it.
-	% XXX As a work-around for bugs in det_analysis, we need
-	% to set the initial InferredDet to `det', not `erroneous',
-	% because det_analysis incorrectly deletes code if it is `erroneous'.
-	% This means we never infer a determinism of `erroneous' or `failure',
-	% but that is not nearly as bad a bug as generating incorrect code.
 
 proc_info_init(Arity, Modes, MaybeArgLives, MaybeDet, MContext, NewProc) :-
 	map__init(BodyTypes),
@@ -689,13 +683,7 @@ proc_info_init(Arity, Modes, MaybeArgLives, MaybeDet, MContext, NewProc) :-
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, BodyVarSet0,
 		HeadVars, BodyVarSet),
-	( MaybeDet = yes(erroneous) ->
-		InferredDet = erroneous
-	; MaybeDet = yes(failure) ->
-		InferredDet = erroneous
-	;
-		InferredDet = det
-	),
+	InferredDet = erroneous,
 	map__init(CallInfo),
 	set__init(InitialLiveness),
 	ArgInfo = [],
