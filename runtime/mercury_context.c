@@ -163,7 +163,7 @@ flounder(void)
 Define_extern_entry(do_runnext);
 
 BEGIN_MODULE(scheduler_module)
-	init_entry(do_runnext);
+	init_entry_ai(do_runnext);
 BEGIN_CODE
 
 Define_entry(do_runnext);

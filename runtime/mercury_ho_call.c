@@ -89,27 +89,27 @@ Declare_label(mercury__compare_3_0_i1);
 #endif
 
 BEGIN_MODULE(call_module)
-	init_entry(do_call_det_closure);
-	init_entry(do_call_semidet_closure);
-	init_entry(do_call_nondet_closure);
+	init_entry_ai(do_call_det_closure);
+	init_entry_ai(do_call_semidet_closure);
+	init_entry_ai(do_call_nondet_closure);
 
-	init_entry(do_call_det_class_method);
-	init_entry(do_call_semidet_class_method);
-	init_entry(do_call_nondet_class_method);
+	init_entry_ai(do_call_det_class_method);
+	init_entry_ai(do_call_semidet_class_method);
+	init_entry_ai(do_call_nondet_class_method);
 
-	init_entry(mercury__unify_2_0);
+	init_entry_ai(mercury__unify_2_0);
 #ifdef	COMPACT_ARGS
-	init_entry(mercury__index_2_0);
-	init_entry(mercury__compare_3_0);
+	init_entry_ai(mercury__index_2_0);
+	init_entry_ai(mercury__compare_3_0);
 #else
 	init_entry_sl(mercury__index_2_0);
 	init_label_sl(mercury__index_2_0_i1);
 	init_entry_sl(mercury__compare_3_0);
 	init_label_sl(mercury__compare_3_0_i1);
 #endif
-	init_entry(mercury__compare_3_1);
-	init_entry(mercury__compare_3_2);
-	init_entry(mercury__compare_3_3);
+	init_entry_ai(mercury__compare_3_1);
+	init_entry_ai(mercury__compare_3_2);
+	init_entry_ai(mercury__compare_3_3);
 BEGIN_CODE
 
 Define_entry(do_call_det_closure);

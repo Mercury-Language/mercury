@@ -115,7 +115,7 @@ Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
 
 BEGIN_MODULE(mercury__builtin_unify_pred_module)
-	init_entry(mercury__builtin_unify_pred_2_0);
+	init_entry_ai(mercury__builtin_unify_pred_2_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_unify_pred'/2 in mode 0 */
@@ -126,7 +126,7 @@ END_MODULE
 
 
 BEGIN_MODULE(mercury__builtin_index_pred_module)
-	init_entry(mercury__builtin_index_pred_2_0);
+	init_entry_ai(mercury__builtin_index_pred_2_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_index_pred'/2 in mode 0 */
@@ -136,7 +136,7 @@ Define_entry(mercury__builtin_index_pred_2_0);
 END_MODULE
 
 BEGIN_MODULE(mercury__builtin_compare_pred_module)
-	init_entry(mercury__builtin_compare_pred_3_0);
+	init_entry_ai(mercury__builtin_compare_pred_3_0);
 BEGIN_CODE
 
 /* code for predicate 'builtin_compare_pred'/3 in mode 0 */
