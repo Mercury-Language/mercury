@@ -1545,9 +1545,9 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	MercuryEngine MR_engine_base;
 	changequote([,]) 
 	main() {
-		mr0 = 20;
-		mr7 = 22;
-		if (mr0 + mr7 != 42)
+		MR_mr0 = 20;
+		MR_mr7 = 22;
+		if (MR_mr0 + MR_mr7 != 42)
 			exit(1);
 		exit(0);
 	}], [mercury_cv_gcc_model_fast=yes], [mercury_cv_gcc_model_fast=no],
@@ -1574,9 +1574,9 @@ changequote(<<,>>)
 MercuryEngine MR_engine_base;
 changequote([,]) 
 main() {
-	mr0 = 20;
-	mr7 = 22;
-	if (mr0 + mr7 != 42)
+	MR_mr0 = 20;
+	MR_mr7 = 22;
+	if (MR_mr0 + MR_mr7 != 42)
 		exit(1);
 	exit(0);
 }], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
