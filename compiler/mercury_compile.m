@@ -916,9 +916,55 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(termination, Termination),
+	globals__io_get_target(Target),
+	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 
 	( { MakeOptInt = yes } ->
-		intermod__write_optfile(HLDS0, HLDS1),
+		{ module_info_name(HLDS0, ModuleName) },
+		{ module_info_get_pragma_exported_procs(HLDS0,
+			PragmaExportedProcs) },
+
+		%
+		% If the module contains `:- pragma export' declarations,
+		% we need to include a
+		% `:- pragma foreign_decl(c, "#include ModuleName.h").'
+		% declaration in the `.opt' file so the C compiler
+		% can find the function declarations for the exported
+		% procedures.
+		%
+
+		(
+			{ PragmaExportedProcs = [_|_] },
+			{ Target = c },
+
+			% High-level code uses a different mechanism
+			% to handle `:- pragma export' which doesn't
+			% need any special treatment here.
+			{ HighLevelCode = no }
+		->
+			% XXX Normally with `--split-c-files,
+			% `get_header_file_include_string'
+			% will return "#include ../ModuleName.h"
+			% We can't explicitly look for `../ModuleName.h'
+			% here because the `.opt' file might be part
+			% of a library, so we need to use the
+			% include path to find the header file.
+			%
+			% I'm not sure why we ever explicitly need the `../'.
+			% The parent directory should always be in the
+			% include path.
+			{ LookInParentDirectory = no },
+
+			get_header_file_include_string(ModuleName,
+				LookInParentDirectory, IncludeString),
+			{ term__context_init(Context) },
+			{ module_add_foreign_decl(c, IncludeString, Context,
+				HLDS0, HLDS0a) }
+		;
+			{ HLDS0a = HLDS0 }
+		),
+
+		intermod__write_optfile(HLDS0a, HLDS1),
 
 		% If intermod_unused_args is being performed, run polymorphism,
 		% mode analysis and determinism analysis, then run unused_args
@@ -927,6 +973,7 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 		( { IntermodArgs = yes ; Termination = yes } ->
 			mercury_compile__frontend_pass_2_by_phases(
 				HLDS1, HLDS2, FoundModeError),
+			{ DonePolymorphism = yes `with_type` bool },
 			( { FoundModeError = no } ->
 				( { IntermodArgs = yes } ->
 					mercury_compile__maybe_unused_args(
@@ -936,19 +983,58 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 				),
 				( { Termination = yes } ->
 					mercury_compile__maybe_termination(
-						HLDS3, Verbose, Stats, HLDS)
+						HLDS3, Verbose, Stats, HLDS4)
 				;
-					{ HLDS = HLDS3 }
+					{ HLDS4 = HLDS3 }
 				)
 					
 			;
 				io__set_exit_status(1),
-				{ HLDS = HLDS2 }
+				{ HLDS4 = HLDS2 }
 			)
 		;
-			{ HLDS = HLDS1 }
+			{ DonePolymorphism = no },
+			{ HLDS4 = HLDS1 }
 		),
-		{ module_info_name(HLDS, ModuleName) },
+		(
+			{ PragmaExportedProcs = [_|_] },
+			{ Target = c },
+
+			% High-level code uses a different mechanism
+			% to handle `:- pragma export' which doesn't
+			% need any special treatment here.
+			{ HighLevelCode = no }
+		->
+			%
+			% If there are `:- pragma export' declarations
+			% in this module, we need to produce the
+			% `.h' file now, because users of the `.opt'
+			% file may need it.
+			%
+	
+			(
+				{ DonePolymorphism = yes },
+				{ HLDS5 = HLDS4 }
+			;
+				{ DonePolymorphism = no },
+				% Ensure that polymorphism has adjusted the
+				% argument lists of procedures exported to C.
+				% XXX We should only process the
+				% exported predicates.
+				mercury_compile__maybe_polymorphism(HLDS4,
+					Verbose, Stats, HLDS5)
+			),
+
+			% XXX We should only process the exported predicates.
+			mercury_compile__map_args_to_regs(HLDS5,
+				Verbose, Stats, HLDS),
+			{ export__get_foreign_export_decls(HLDS,
+				Foreign_ExportDecls) },
+			export__produce_header_file(Foreign_ExportDecls,
+				ModuleName)
+		;
+			{ HLDS = HLDS4 }
+		),
 		module_name_to_file_name(ModuleName, ".opt", yes, OptName),
 		update_interface(OptName),
 		touch_interface_datestamp(ModuleName, ".optdate")
@@ -2427,19 +2513,10 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 		{ C_HeaderCode = C_HeaderCode0 }
 	;
 		{ C_ExportDecls = [_|_] },
-		module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
-                globals__io_lookup_bool_option(split_c_files, SplitFiles),
-                { 
-			SplitFiles = yes,
-                        string__append_list(
-                                ["#include ""../", HeaderFileName, """\n"],
-				IncludeString)
-                ;
-			SplitFiles = no,
-                        string__append_list(
-				["#include """, HeaderFileName, """\n"],
-				IncludeString)
-                },
+		globals__io_lookup_bool_option(split_c_files,
+			HeaderInParentDirectory),
+		get_header_file_include_string(ModuleName,
+			HeaderInParentDirectory, IncludeString),
 
 		{ term__context_init(Context) },
 		{ Include = foreign_decl_code(c, IncludeString, Context) },
@@ -2449,6 +2526,24 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 			% first.
 		{ list__append(C_HeaderCode0, [Include], C_HeaderCode) }
 	).
+
+:- pred get_header_file_include_string(module_name, bool, string,
+		io__state, io__state).
+:- mode get_header_file_include_string(in, in, out, di, uo) is det.
+
+get_header_file_include_string(ModuleName, SplitFiles, IncludeString) -->
+	module_name_to_file_name(ModuleName, ".h", no, HeaderFileName),
+	{ 
+		SplitFiles = yes,
+		string__append_list(
+			["#include ""../", HeaderFileName, """\n"],
+			IncludeString)
+	;
+		SplitFiles = no,
+		string__append_list(
+			["#include """, HeaderFileName, """\n"],
+			IncludeString)
+	}.
 
 :- pred get_c_body_code(foreign_body_info, list(user_foreign_code)).
 :- mode get_c_body_code(in, out) is det.

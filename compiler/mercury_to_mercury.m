@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2223,15 +2223,38 @@ mercury_output_pragma_foreign_body_code(Lang, ForeignCodeString) -->
 mercury_output_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
 		VarSet, PragmaCode) -->
 	(
-		{ PragmaCode = import(_, _, _, _) }
-	->
-		io__write_string(":- pragma import(")
+		{ PragmaCode = import(C_Function, _, _, _) },
+		% The predicate or function arguments in a `:- pragma import'
+		% declaration are not named.
+		{ ImportModes = list__map(
+			(func(pragma_var(_, _, ImportMode)) = ImportMode),
+			Vars0) },
+
+		mercury_output_pragma_import(PredName, PredOrFunc,
+			ImportModes, Attributes, C_Function)
 	;
-		io__write_string(":- pragma foreign_code("),
-		{ foreign_language(Attributes, Lang) },
-		mercury_output_foreign_language_string(Lang),
-		io__write_string(", ")
-	),
+		{ PragmaCode = ordinary(_, _) },
+		mercury_output_pragma_foreign_code_2(Attributes, PredName,
+			PredOrFunc, Vars0, VarSet, PragmaCode)
+	;
+		{ PragmaCode = nondet(_, _, _, _, _, _, _, _, _) },
+		mercury_output_pragma_foreign_code_2(Attributes, PredName,
+			PredOrFunc, Vars0, VarSet, PragmaCode)
+	).
+
+:- pred mercury_output_pragma_foreign_code_2(
+		pragma_foreign_code_attributes, sym_name,
+		pred_or_func, list(pragma_var), prog_varset,
+		pragma_foreign_code_impl, io__state, io__state).
+:- mode mercury_output_pragma_foreign_code_2(
+		in, in, in, in, in, in, di, uo) is det.
+
+mercury_output_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
+		VarSet, PragmaCode) -->
+	io__write_string(":- pragma foreign_code("),
+	{ foreign_language(Attributes, Lang) },
+	mercury_output_foreign_language_string(Lang),
+	io__write_string(", "),
 	mercury_output_sym_name(PredName),
 	{
 		PredOrFunc = predicate,
@@ -2288,10 +2311,9 @@ mercury_output_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
 		mercury_output_foreign_code_string(Shared),
 		io__write_string(")")
 	;
-		{ PragmaCode = import(Name, _, _, _) },
-		io__write_string(""""),
-		io__write_string(Name),
-		io__write_string("""")
+		{ PragmaCode = import(_, _, _, _) },
+		% This should be handle in mercury_output_pragma_foreign_code.
+		{ error("mercury_output_pragma_foreign_code_2") }
 	),
 	io__write_string(").\n").
 
@@ -2445,9 +2467,9 @@ mercury_output_pragma_import(Name, PredOrFunc, ModeList, Attributes,
 	),
 	io__write_string(", "),
 	mercury_output_pragma_foreign_attributes(Attributes),
-	io__write_string(", "),
+	io__write_string(", """),
 	io__write_string(C_Function),
-	io__write_string(").\n").
+	io__write_string(""").\n").
 
 :- pred mercury_output_pragma_export(sym_name, pred_or_func, list(mode),
 	string, io__state, io__state).
