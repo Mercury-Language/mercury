@@ -25,7 +25,7 @@
 %------------------------------------------------------------------------------%
 :- interface.
 
-:- import_module list, complex_numbers, complex_numbers:complex.
+:- import_module list, complex_numbers, complex_numbers__complex.
 
 :- pred fft(list(complex), list(complex)).
 :- mode fft(in, out) is det.
@@ -40,7 +40,7 @@ fft(Ins, Outs) :-
 	bit_rev(Ins, Shuffle),
 	list__length(Shuffle, NInt),
 	int__log2(NInt, R),
-	int__to_float(NInt, N),
+	N = float(NInt),
 		% Now recombine the component transforms
 	combine(N, 1.0, R, Shuffle, Outs).
 

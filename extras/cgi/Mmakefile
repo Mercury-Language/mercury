@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000, 2002-2003 The University of Melbourne.
+# Copyright (C) 2000, 2002-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -11,6 +11,8 @@ INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 LIBRARY = libmercury_www
 
 MAIN_TARGET = $(LIBRARY)
+
+MCFLAGS-mercury_www = --no-warn-nothing-exported
 
 depend: mercury_www.depend
 

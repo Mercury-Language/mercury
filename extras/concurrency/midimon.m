@@ -4,7 +4,7 @@
 
 :- import_module io.
 
-:- pred main(io:state, io:state).
+:- pred main(io__state, io__state).
 :- mode main(di, uo) is cc_multi.
 
 :- implementation.

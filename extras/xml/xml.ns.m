@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2001 The University of Melbourne.
+% Copyright (C) 2000, 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -123,7 +123,7 @@ traverse(ContentArray, Namespaces0, Default0, ContentRef, Acc0, Acc) :-
 		),
 
 		% extract any namespace declaration and insert into tree
-		extractNamespaceDecls(Attrs1, NSList, Attrs2),
+		extractNamespaceDecls(Attrs1, NSList, _Attrs2),
 		list__foldl((pred((Pref - URI)::in, NSs1::in,
 			NSs2::out) is det :-
 			map__set(NSs1, Pref, URI, NSs2)

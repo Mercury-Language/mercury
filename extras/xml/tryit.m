@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2001 The University of Melbourne.
+% Copyright (C) 2000, 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,11 +13,12 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
 
-:- import_module parsing, xml, xml:cat, xml:encoding, xml:parse, xml:ns.
+:- import_module parsing, xml, xml__cat, xml__encoding.
+:- import_module xml__parse, xml__ns.
 :- import_module char, list, map, std_util, string.
 
 main -->
