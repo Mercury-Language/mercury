@@ -1,10 +1,23 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
+
 # GRADE = asm_fast.gc.debug
 # GRADE = asm_fast.gc.prof
 
 # MCFLAGS = -O6
 # MCFLAGS = --intermodule-optimization -O6
 
-default_target : moose
+.PHONY: default_target
+default_target:	moose
 
-depend : moose.depend
+.PHONY: depend
+depend:		moose.depend
 
+.PHONY: check
+check:
+		true

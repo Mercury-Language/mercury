@@ -1,13 +1,29 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
 
 MLOBJS = posix_workarounds.o
 MLPICOBJS = posix_workarounds.o
 
-depend : hello.depend
+.PHONY: default_target
+default_target: hello
 
-default_target : hello
+.PHONY: depend
+depend: hello.depend
 
-hello : posix_workarounds.o
+hello:	posix_workarounds.o
 
-clean :
+.PHONY: check
+check:
+	true
+
+.PHONY: clean
+clean:
 	-/bin/rm -f posix_workarounds.o
 
+.PHONY: realclean
+realclean: clean

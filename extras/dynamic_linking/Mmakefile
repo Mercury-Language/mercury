@@ -1,3 +1,11 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
+
 # Use shared libraries, since they're needed for dynamic linking
 MGNUCFLAGS = --pic-reg
 MLFLAGS = --shared
@@ -12,6 +20,7 @@ MLFLAGS += --no-strip
 main_target: libdl
 depend: dl.depend dl_test.depend hello.depend
 
-check: dl_test libhello.so
+.PHONY: check
+check:	dl_test libhello.so
 	./dl_test > dl_test.out
 	diff -c dl_test.out dl_test.exp

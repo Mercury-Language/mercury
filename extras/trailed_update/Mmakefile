@@ -14,27 +14,29 @@ MLFLAGS = -g
 # We need this to use shared libraries on Linux
 ML = ml --mercury-libs shared
 
+# The Mmake.params file can be used to override definitions in this file
+-include ../Mmake.params
+
 MAIN_TARGET = libtrailed_update
 
-depend : trailed_update.depend
+.PHONY: depend
+depend: trailed_update.depend
 	cd samples && mmake $(MMAKEFLAGS) depend
 	cd tests && mmake $(MMAKEFLAGS) depend
 
-check : libtrailed_update
+.PHONY: check
+check: libtrailed_update
 	cd samples && mmake $(MMAKEFLAGS) check
 	cd tests && mmake $(MMAKEFLAGS) check
 
-clean :
+.PHONY: clean
+clean:
 	cd samples && mmake $(MMAKEFLAGS) clean
 	cd tests && mmake $(MMAKEFLAGS) clean
 
-realclean :
+.PHONY: realclean
+realclean:
 	cd samples && mmake $(MMAKEFLAGS) realclean
 	cd tests && mmake $(MMAKEFLAGS) realclean
-
-#-----------------------------------------------------------------------------#
-
-# The Mmake.params file can be used to override definitions in this file
--include ../Mmake.params
 
 #-----------------------------------------------------------------------------#

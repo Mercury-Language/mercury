@@ -56,6 +56,9 @@ clean:
 realclean:
 	cd tests && $(MMAKE) realclean
 
+.PHONY: check
+check:	tests
+
 .PHONY: tests
 tests:
 	cd tests && $(MMAKE)
