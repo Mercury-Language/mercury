@@ -1612,7 +1612,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 	(
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, TypeId, T2) },
-		{ hlds_data__get_type_defn_tparams(T2, Params) },
+		{ hlds_data__get_type_defn_tvarset(T2, TVarSet_2) },
+		{ hlds_data__get_type_defn_tparams(T2, Params_2) },
 		{ hlds_data__get_type_defn_body(T2, Body_2) },
 		{ hlds_data__get_type_defn_context(T2, OrigContext) },
 		{ hlds_data__get_type_defn_status(T2, OrigStatus) },
@@ -1628,8 +1629,8 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			->
 				Module = Module0
 			;
-				hlds_data__set_type_defn(TVarSet, Params,
-					Body_2, OrigStatus, OrigContext, T3),
+				hlds_data__set_type_defn(TVarSet_2, Params_2,
+					Body_2, Status, OrigContext, T3),
 				map__det_update(Types0, TypeId, T3, Types),
 				module_info_set_types(Module0, Types, Module)
 			}
