@@ -174,9 +174,15 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	% in the clauses_info data structure which is part of the
 	% pred_info data structure.  But once the clauses have been
 	% type-checked, we want to have a separate copy of each clause
-	% fo
-	% each clauses record a list of the modes for which it applies.
-	% At this point in the compilation, we must make 
+	% for each different mode of the predicate, since we may
+	% end up reordering the clauses differently in different modes.
+	% Here we copy the clauses from the clause_info data structure
+	% into the proc_info data structure.  Each clause is marked
+	% with a list of the modes for which it applies, so that
+	% there can be different code to implement different modes
+	% of a predicate (e.g. sort).  For each mode of the predicate,
+	% we select the clauses for that mode, disjoin them together,
+	% and save this in the proc_info.
 
 :- pred copy_clauses_to_procs(pred_info, pred_info).
 :- mode copy_clauses_to_procs(in, out).
@@ -1263,7 +1269,7 @@ abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, ModuleInfo, [Z|Zs]) :-
 	abstractly_unify_inst(Live, X, Y, ModuleInfo, Z),
 	abstractly_unify_inst_list(Xs, Ys, Live, ModuleInfo, Zs).
 
-	% Abstractly unify two insts, both of which are live.
+	% Abstractly unify two insts.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, module_info, inst).
 :- mode abstractly_unify_inst(in, in, in, in, out) is semidet.
