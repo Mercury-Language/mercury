@@ -582,7 +582,7 @@ options_help -->
 	io__write_string("\t\tUse <n> tag bits.\n"),
 	io__write_string("\t--num-real-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tAssume r1 up to rn are real machine registers.\n"),
+	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
 	io__write_string("\t--profiling\t\t"),
 	io__write_string("\t(grades: any grade ending in `.prof')\n"),
 	io__write_string("\t\tEnable profiling.  Insert profiling hooks in the\n"),

@@ -107,7 +107,7 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 		detect_cse_in_pred(PredId, PredInfo3, ModuleInfo3, ModuleInfo)
 	).
 
-:- type cse_info	--->	triple(varset, map(var, type), module_info).
+:- type cse_info	--->	cse_info(varset, map(var, type), module_info).
 
 :- pred detect_cse_in_procs(list(proc_id), pred_id, bool, bool,
 	module_info, module_info, io__state, io__state).
@@ -131,7 +131,7 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_variables(ProcInfo0, Varset0),
 	proc_info_vartypes(ProcInfo0, VarTypes0),
-	CseInfo0 = triple(Varset0, VarTypes0, ModuleInfo0),
+	CseInfo0 = cse_info(Varset0, VarTypes0, ModuleInfo0),
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo1, Goal1),
 
 	(
@@ -142,7 +142,7 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 		Redo1 = yes,
 
 		% ModuleInfo should not be changed by detect_cse_in_goal
-		CseInfo = triple(Varset1, VarTypes1, _),
+		CseInfo = cse_info(Varset1, VarTypes1, _),
 		proc_info_headvars(ProcInfo0, HeadVars),
 
 		implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
@@ -286,7 +286,7 @@ detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap, CseInfo0, CseInfo,
 		Redo, Goal) :-
 	(
 		instmap_lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = triple(_, _, ModuleInfo),
+		CseInfo0 = cse_info(_, _, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between variables.
 		inst_is_ground(ModuleInfo, VarInst0),
@@ -324,7 +324,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
 	(
 		Var \= SwitchVar,
 		instmap_lookup_var(InstMap, Var, VarInst0),
-		CseInfo0 = triple(_, _, ModuleInfo),
+		CseInfo0 = cse_info(_, _, ModuleInfo),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between variables.
 		inst_is_ground(ModuleInfo, VarInst0),
@@ -365,7 +365,7 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, CseInfo0,
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
 		InstMap, CseInfo0, CseInfo, Redo, Goal) :-
 	(
-		CseInfo0 = triple(_, _, ModuleInfo),
+		CseInfo0 = cse_info(_, _, ModuleInfo),
 		instmap_lookup_var(InstMap, Var, VarInst0),
 		% XXX we only need inst_is_bound, but leave this as it is
 		% until mode analysis can handle aliasing between variables.
@@ -527,11 +527,11 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			UnifyInfo0 = deconstruct(_, _, _, _, _),
 			MaybeUnify0 = no
 		->
-			CseInfo0 = triple(Varset0, Typemap0, ModuleInfo),
+			CseInfo0 = cse_info(Varset0, Typemap0, ModuleInfo),
 			construct_common_unify(Var, Goal0 - GoalInfo, Goal,
 				Varset0, Varset, Typemap0, Typemap,
 				Replacements),
-			CseInfo = triple(Varset, Typemap, ModuleInfo),
+			CseInfo = cse_info(Varset, Typemap, ModuleInfo),
 			MaybeUnify = yes(Goal),
 			list__append(Replacements, Goals0, Goals),
 			Substitution = Substitution2

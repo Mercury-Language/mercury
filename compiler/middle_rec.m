@@ -38,14 +38,14 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		(
 			code_aux__contains_only_builtins(Goal1),
 			code_aux__contains_simple_recursive_call(Goal2,
-				CodeInfo0, no)
+				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
 				GoalInfo, Instrs, CodeInfo0, CodeInfo)
 		;
 			code_aux__contains_only_builtins(Goal2),
 			code_aux__contains_simple_recursive_call(Goal1,
-				CodeInfo0, no)
+				CodeInfo0, _)
 		->
 			middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
 				GoalInfo, Instrs, CodeInfo0, CodeInfo)
@@ -54,19 +54,44 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		)
 	;
 		GoalExpr = if_then_else(Vars, Cond, Then, Else),
-		middle_rec__generate_ite(Vars, Cond, Then, Else,
-			GoalInfo, Instrs, CodeInfo0, CodeInfo)
+		(
+			code_aux__contains_only_builtins(Cond),
+			code_aux__contains_only_builtins(Then),
+			code_aux__contains_simple_recursive_call(Else,
+				CodeInfo0, no)
+		->
+			semidet_fail,
+			middle_rec__generate_ite(Vars, Cond, Then, Else,
+				in_else, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+		;
+			code_aux__contains_only_builtins(Cond),
+			code_aux__contains_simple_recursive_call(Then,
+				CodeInfo0, no),
+			code_aux__contains_only_builtins(Else)
+		->
+			semidet_fail,
+			middle_rec__generate_ite(Vars, Cond, Then, Else,
+				in_then, GoalInfo, Instrs, CodeInfo0, CodeInfo)
+		;
+			fail
+		)
 	).
+
+:- type ite_rec	--->	in_then ; in_else.
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_ite(list(var), hlds__goal, hlds__goal, hlds__goal,
-	hlds__goal_info, code_tree, code_info, code_info).
-:- mode middle_rec__generate_ite(in, in, in, in, in, out, in, out) is semidet.
+:- pred middle_rec__generate_ite(list(var), hlds__goal, hlds__goal,
+	hlds__goal, ite_rec, hlds__goal_info, code_tree, code_info, code_info).
+:- mode middle_rec__generate_ite(in, in, in, in, in, in, out, in, out) is det.
 
-middle_rec__generate_ite(_Vars, Cond, Then, _Else, _IteGoalInfo, Instrs) -->
-	{ Cond = Then },
-	{ Instrs = node([comment("ha ha") - ""]) }.
+middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo,
+		Instrs) -->
+	( { semidet_fail } ->
+		{ Instrs = empty }
+	;
+		{ error("middle_rec__generate_ite reached") }
+	).
 
 %---------------------------------------------------------------------------%
 
