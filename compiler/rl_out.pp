@@ -1456,10 +1456,13 @@ rl_out__generate_aggregate_exprn(ComputeInitial, UpdateAcc,
 
 		% Nothing is built on the stack, so this will be enough.
 		{ StackSize = 10 },
-		rl_out__package_exprn(AggCode, 2, generate, OutputSchemaOffset,
-			EmptySchemaOffset, StackSize, Decls, ExprnNum)
+		{ NumParams = 1 },
+		rl_out__package_exprn(AggCode, NumParams, generate,
+			OutputSchemaOffset, EmptySchemaOffset,
+			StackSize, Decls, ExprnNum)
 	;
-		{ error("rl_out__generate_aggregate_exprn: invalid relation schemas") }
+		{ error(
+		"rl_out__generate_aggregate_exprn: invalid relation schemas") }
 	).
 
 	% Generate an expression to compare tuples with the
