@@ -31,6 +31,14 @@
 
 :- import_module tree, list, map, std_util, require.
 
+	% To generate a call to a deterministic predicate, first
+	% we get the arginfo for the callee.
+	% We then save any live variables onto the stack, clear any
+	% "reserved" registers (which get allocated as temporaries
+	% during expression generation), and then setup the registers
+	% for the procedure call. We then branch to the procedure
+	% and rebuild the register information to reflect the state
+	% when the callee returns.
 call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
@@ -49,6 +57,17 @@ call_gen__generate_det_call(PredId, ModeId, Arguments, Code) -->
 
 %---------------------------------------------------------------------------%
 
+	% To generate a call to a deterministic predicate, first
+	% we get the arginfo for the callee.
+	% We then save any live variables onto the stack, clear any
+	% "reserved" registers (which get allocated as temporaries
+	% during expression generation), and then setup the registers
+	% for the procedure call. We then branch to the procedure
+	% and rebuild the register information to reflect the state
+	% when the callee returns.
+	% On return we test the value in register r1 to see if the
+	% callee succeeded or failed. In the event of failure
+	% we branch to the fall-through for this procedure.
 call_gen__generate_semidet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
@@ -84,16 +103,14 @@ call_gen__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Code) -->
 			{ Lval0 = reg(Reg0) },
 			{ \+ Reg = Reg0 }
 		->
-			code_info__shuffle_register(Var, Reg, Code0),
-			{ CodeA = node(Code0) }
+			code_info__shuffle_register(Var, Reg, CodeA)
 		;
 			code_info__variable_register(Var, Lval1),
 			{ Lval1 = reg(_) }
 		->
 			{ CodeA = empty }
 		;
-			code_info__shuffle_register(Var, Reg, Code2),
-			{ CodeA = node(Code2) }
+			code_info__shuffle_register(Var, Reg, CodeA)
 		),
 		code_info__reserve_register(Reg)
 	;
@@ -116,8 +133,7 @@ call_gen__save_variables(Code) -->
 
 call_gen__save_variables_2([], empty) --> [].
 call_gen__save_variables_2([Var|Vars], Code) -->
-	code_info__save_variable_on_stack(Var, Code0),
-	{ CodeA = node(Code0) },
+	code_info__save_variable_on_stack(Var, CodeA),
         call_gen__save_variables_2(Vars, CodeB),
         { Code = tree(CodeA, CodeB) }.
 
@@ -180,7 +196,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 								FallThrough) -
 				"Perform test and fall though on failure"
 		]) },
-		{ Code = tree(tree(node(CodeX),node(CodeY)), CodeT) }
+		{ Code = tree(tree(CodeX,CodeY), CodeT) }
 	;
 		{ error("Unknown builtin predicate") }
 	).

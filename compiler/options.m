@@ -39,6 +39,7 @@
 			;	builtin_module
 			;	make_interface
 			;	heap_space
+			;	save_succip
 			;	search_directories
 			;	convert_to_mercury
 			;	convert_to_goedel
@@ -65,6 +66,7 @@ option_defaults([
 	builtin_module		-	string("mercury_builtin"),
 	make_interface		-	bool(no),
 	heap_space		-	int(0),
+	save_succip		-	bool(no),
 	search_directories 	-	accumulating(["."]),
 	convert_to_mercury 	-	bool(no),
 	convert_to_goedel 	-	bool(no),
@@ -89,6 +91,7 @@ short_option('g', 			generate_code).
 short_option('b', 			builtin_module).
 short_option('i', 			make_interface).
 short_option('H', 			heap_space).
+short_option('S', 			save_succip).
 short_option('h', 			help).
 short_option('I', 			search_directories).
 short_option('P', 			convert_to_mercury).
@@ -109,6 +112,7 @@ long_option("generate-code",		generate_code).
 long_option("builtin-module",		builtin_module).
 long_option("make-interface",		make_interface).
 long_option("heap-space",		heap_space).
+long_option("save-succip",		save_succip).
 long_option("search-directory",		search_directories).
 long_option("convert-to-mercury", 	convert_to_mercury).
 long_option("convert-to-Mercury", 	convert_to_mercury).
@@ -188,6 +192,8 @@ options_help -->
 	io__write_string("\t\tUse this option to avoid NU-Prolog's\n"),
 	io__write_string("\t\t\t\"Panic: growing stacks has required shifting the heap\"\n"),
 	io__write_string("\t\tmessage.\n"),
+	io__write_string("\t-S, --save_succip\n"),
+	io__write_string("\t\tForce the code generator to save the success IP.\n"),
 	io__write_string("\t-b <builtin>, --builtin-module <builtin>\n"),
 	io__write_string("\t\tUse `<builtin>' instead of `mercury_builtin' as the \n\t\tmodule which always gets automatically imported.\n"),
 	io__write_string("\t-I <dir>, --search-directory <dir>\n"),

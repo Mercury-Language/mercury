@@ -362,20 +362,20 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		%
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	mode_info_get_vars_instmap(ModeInfo0, NonLocals, InstMap0),
-	mode_info_get_liveness(ModeInfo0, Liveness0),
+%	mode_info_get_liveness(ModeInfo0, Liveness0),
 	modecheck_goal_2(Goal0, NonLocals, Goal, ModeInfo0, ModeInfo),
 		%
 		% save the changes in instantiation of the non-local vars
 		%
 	mode_info_get_vars_instmap(ModeInfo, NonLocals, InstMap),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
-	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo1),
+	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 		%
 		% save the changes in liveness
 		%
-	mode_info_get_liveness(ModeInfo, Liveness),
-	compute_liveness_delta(Liveness0, Liveness, DeltaLiveness),
-	goal_info_set_delta_liveness(GoalInfo1, DeltaLiveness, GoalInfo).
+%	mode_info_get_liveness(ModeInfo, Liveness),
+%	compute_liveness_delta(Liveness0, Liveness, DeltaLiveness),
+%	goal_info_set_delta_liveness(GoalInfo1, DeltaLiveness, GoalInfo).
 
 :- pred compute_liveness_delta(set(var), set(var), delta_liveness).
 :- mode compute_liveness_delta(in, in, out) is det.

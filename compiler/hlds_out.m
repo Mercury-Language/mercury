@@ -350,14 +350,14 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		io__write_string("% nonlocals: "),
 		mercury_output_vars(NonLocalsList, VarSet),
 		mercury_output_newline(Indent),
-		{ goal_info_delta_liveness(GoalInfo, Births - Deaths) },
-		{ set__to_sorted_list(Births, BirthList) },
-		{ set__to_sorted_list(Deaths, DeathList) },
-		io__write_string("% births: "),
-		mercury_output_vars(BirthList, VarSet),
+		{ goal_info_pre_delta_liveness(GoalInfo, PreBirths - PreDeaths) },
+		{ set__to_sorted_list(PreBirths, PreBirthList) },
+		{ set__to_sorted_list(PreDeaths, PreDeathList) },
+		io__write_string("% pre-births: "),
+		mercury_output_vars(PreBirthList, VarSet),
 		mercury_output_newline(Indent),
-		io__write_string("% deaths: "),
-		mercury_output_vars(DeathList, VarSet),
+		io__write_string("% pre-deaths: "),
+		mercury_output_vars(PreDeathList, VarSet),
 		mercury_output_newline(Indent),
 		io__write_string("% determinism: "),
 		{ goal_info_inferred_determinism(GoalInfo, Category) },
@@ -370,7 +370,21 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	;
 		[]
 	),
-	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent).
+	hlds_out__write_goal_2(Goal, ModuleInfo, VarSet, Indent),
+	mercury_output_newline(Indent),
+	( { Verbose = yes } ->
+		{ goal_info_post_delta_liveness(GoalInfo, PostBirths - PostDeaths) },
+		{ set__to_sorted_list(PostBirths, PostBirthList) },
+		{ set__to_sorted_list(PostDeaths, PostDeathList) },
+		io__write_string("% post-births: "),
+		mercury_output_vars(PostBirthList, VarSet),
+		mercury_output_newline(Indent),
+		io__write_string("% post-deaths: "),
+		mercury_output_vars(PostDeathList, VarSet),
+		mercury_output_newline(Indent)
+	;
+		[]
+	).
 
 :- pred hlds_out__write_goal_2(hlds__goal_expr, module_info, varset, int,
 					io__state, io__state).

@@ -29,16 +29,16 @@
 :- interface.
 
 :- import_module hlds, llds.
-:- import_module code_util, tree, set.
+:- import_module code_util, tree, set, std_util.
 
 :- type code_info.
 
 :- type code_tree	==	tree(list(instruction)).
 
 		% Create a new code_info structure.
-:- pred code_info__init(int, varset, liveness_info, call_info, pred_id,
-					proc_id, module_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, out) is det.
+:- pred code_info__init(int, varset, liveness_info, call_info, bool,
+				pred_id, proc_id, module_info, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, out) is det.
 
 		% Generate the next local label in sequence.
 :- pred code_info__get_next_label(label, code_info, code_info).
@@ -94,12 +94,12 @@
 :- mode code_info__clear_reserved_registers(in, out) is det.
 
 		% Generate all cached expressions
-:- pred code_info__flush_expression_cache(list(instruction),
+:- pred code_info__flush_expression_cache(code_tree,
 						code_info, code_info).
 :- mode code_info__flush_expression_cache(out, in, out) is det.
 
 		% Flush a single cached expression
-:- pred code_info__flush_variable(var, list(instruction), code_info, code_info).
+:- pred code_info__flush_variable(var, code_tree, code_info, code_info).
 :- mode code_info__flush_variable(in, out, in, out) is det.
 
 		% Enter the expression for a variable into the cache
@@ -115,7 +115,7 @@
 		% Generate code to swap a live value out of the given
 		% register, and place the value for the given variable
 		% into that register.
-:- pred code_info__shuffle_register(var, reg, list(instruction),
+:- pred code_info__shuffle_register(var, reg, code_tree,
 						code_info, code_info).
 :- mode code_info__shuffle_register(in, in, out, in, out) is det.
 
@@ -133,7 +133,7 @@
 
 		% Generate code to store the value of
 		% a given variable on the det stack
-:- pred code_info__save_variable_on_stack(var, list(instruction),
+:- pred code_info__save_variable_on_stack(var, code_tree,
 							code_info, code_info).
 :- mode code_info__save_variable_on_stack(in, out, in, out) is det.
 
@@ -156,7 +156,7 @@
 :- pred code_info__get_headvars(list(var), code_info, code_info).
 :- mode code_info__get_headvars(out, in, out) is det.
 
-:- pred code_info__generate_expression(rval, lval, list(instruction),
+:- pred code_info__generate_expression(rval, lval, code_tree,
 							code_info, code_info).
 :- mode code_info__generate_expression(in, in, out, in, out) is det.
 
@@ -220,7 +220,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module require, list, map, bimap, tree, int, std_util.
+:- import_module require, list, map, bimap, tree, int.
 :- import_module string, varset, term.
 
 :- type code_info	--->
@@ -269,13 +269,12 @@
 
 %---------------------------------------------------------------------------%
 
-code_info__init(SlotCount, Varset, Liveness, CallInfo,
+code_info__init(SlotCount, Varset, Liveness, CallInfo, SaveSuccip,
 					PredId, ProcId, ModuleInfo, C) :-
 	code_info__init_register_info(PredId, ProcId,
 					ModuleInfo, RegisterInfo),
 	code_info__init_variable_info(PredId, ProcId,
 					ModuleInfo, VariableInfo),
-	SuccIPUsed = yes, % succip is always saved.
 	FallThough = none,
 	C = code_info(
 		SlotCount,
@@ -287,7 +286,7 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo,
 		RegisterInfo,
 		VariableInfo,
 		unit,
-		SuccIPUsed,
+		SaveSuccip,
 		FallThough,
 		ModuleInfo,
 		Liveness
@@ -432,15 +431,15 @@ code_info__flush_expression_cache(Code) -->
 	{ map__keys(Variables0, VarList) },
 	code_info__flush_exp_cache_2(VarList, Code).
 
-:- pred code_info__flush_exp_cache_2(list(var), list(instruction),
+:- pred code_info__flush_exp_cache_2(list(var), code_tree,
 						code_info, code_info).
 :- mode code_info__flush_exp_cache_2(in, out, in, out) is det.
 
-code_info__flush_exp_cache_2([], []) --> [].
+code_info__flush_exp_cache_2([], empty) --> [].
 code_info__flush_exp_cache_2([Var|Vars], Code) -->
 	code_info__flush_exp_cache_2(Vars, Code0),
 	code_info__flush_variable(Var, Code1),
-	{ list__append(Code1, Code0, Code) }.
+	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 
@@ -470,20 +469,22 @@ code_info__flush_variable(Var, Code) -->
 		),
 		code_info__add_lvalue_to_variable(TargetReg, Var)
 	;
-		{ Code = [] }
+		{ Code = empty }
 	).
 
 %---------------------------------------------------------------------------%
 
 	% unused - do nothing.
-code_info__generate_expression(unused, _, []) --> [].
+code_info__generate_expression(unused, _, empty) --> [].
 code_info__generate_expression(lval(Lval), TargetReg, Code) -->
 	(
 		{ Lval = TargetReg }
 	->
-		{ Code = [] }
+		{ Code = empty }
 	;
-		{ Code = [assign(TargetReg, lval(Lval)) - "Copy lvalue"] }
+		{ Code = node([
+			assign(TargetReg, lval(Lval)) - "Copy lvalue"
+		]) }
 	).
 code_info__generate_expression(var(Var), TargetReg, Code) -->
 	code_info__get_variable(Var, VarStat),
@@ -496,10 +497,11 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 		->
 			code_info__make_assignment_comment(Var,
 							TargetReg, Comment),
-			{ Code = [ assign(TargetReg, lval(Lval0)) -
-								Comment] }
+			{ Code = node([
+				assign(TargetReg, lval(Lval0)) - Comment
+			]) }
 		;
-			{ Code = [] }
+			{ Code = empty }
 		)
 	;
 		{ VarStat = cached(Exprn, target(TargetReg1)) }
@@ -514,13 +516,14 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 				% Assemble the code
 			code_info__make_assignment_comment(Var,
 							TargetReg, Comment),
-			{ Code1 = [assign(TargetReg, lval(TargetReg1)) -
-								Comment] }
+			{ Code1 = node([
+				assign(TargetReg, lval(TargetReg1)) - Comment
+			]) }
 		;
-			{ Code0 = [] },
-			{ Code1 = [] }
+			{ Code0 = empty },
+			{ Code1 = empty }
 		),
-		{ list__append(Code0, Code1, Code) }
+		{ Code = tree(Code0, Code1) }
 	;
 		{ VarStat = cached(Exprn, none) }
 	->
@@ -531,15 +534,17 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 		{ Code = Code0 }
 	;
 		% { VarStat = unused }
-		{ Code = [] }
+		{ Code = empty }
 	).
 code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
 	code_info__generate_expression_vars(L0, L, Code0),
 	code_info__generate_expression_vars(R0, R, Code1),
-	{ ThisCode = [ assign(TargetReg, binop(Op, L, R)) -
-				"Evaluate binary expression"] },
-	{ list__append(Code1, ThisCode, Code2) },
-	{ list__append(Code0, Code2, Code) }.
+	{ ThisCode = node([
+		assign(TargetReg, binop(Op, L, R)) -
+				"Evaluate binary expression"
+	]) },
+	{ Code2 = tree(Code1, ThisCode) },
+	{ Code = tree(Code0, Code2) }.
 code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
 	{ list__length(Args, Arity) },
 	(
@@ -556,57 +561,65 @@ code_info__generate_expression(create(Tag, Args), TargetReg, Code) -->
 	(
 		{ HInc > 0 }
 	->
-		{ CodeA = [
+		{ CodeA = node([
 			assign(TargetReg, lval(hp)) - "Get the heap memory",
 			incr_hp(HInc) - "Allocate heap space",
 			assign(TargetReg, mkword(TagNum, lval(TargetReg))) -
 							"Tag the pointer"
-		] }
+		]) }
 	;
-		{ CodeA = [
+		{ CodeA = node([
 			assign(TargetReg, mkword(TagNum, iconst(0))) -
 					"Assign a constant"
-		] }
+		]) }
 	),
 	code_info__generate_cons_args(TargetReg, TagNum, Field, Args, CodeB),
-	{ list__append(CodeA, CodeB, Code) }.
+	{ Code = tree(CodeA, CodeB) }.
 code_info__generate_expression(mkword(Tag, Rval0), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = [assign(TargetReg, mkword(Tag, Rval)) - "Tag a word"] },
-	{ list__append(Code0, Code1, Code) }.
+	{ Code1 = node([
+		assign(TargetReg, mkword(Tag, Rval)) - "Tag a word"
+	]) },
+	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression(iconst(Int), TargetReg, Code) -->
-	{ Code = [assign(TargetReg, iconst(Int)) - "Make a integer const"] }.
+	{ Code = node([
+		assign(TargetReg, iconst(Int)) - "Make a integer const"
+	]) }.
 code_info__generate_expression(sconst(Str), TargetReg, Code) -->
-	{ Code = [assign(TargetReg, sconst(Str)) - "Make a string const"] }.
+	{ Code = node([
+		assign(TargetReg, sconst(Str)) - "Make a string const"
+	]) }.
 code_info__generate_expression(field(Tag, Rval0, Field), TargetReg, Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code0),
-	{ Code1 = [assign(TargetReg, field(Tag, Rval, Field)) -
-						"extract a field of a term"] },
-	{ list__append(Code0, Code1, Code) }.
+	{ Code1 = node([
+		assign(TargetReg, field(Tag, Rval, Field)) -
+						"extract a field of a term"
+	]) },
+	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 
 :- pred code_info__generate_cons_args(lval, int, int, list(rval),
-				list(instruction), code_info, code_info).
+				code_tree, code_info, code_info).
 :- mode code_info__generate_cons_args(in, in, in, in, out, in, out) is det.
 
 :- code_info__generate_cons_args(_, _, _, X, _, _, _) when X. % indexing
 
-code_info__generate_cons_args(_Reg, _Tag, _Field0, [], []) --> [].
+code_info__generate_cons_args(_Reg, _Tag, _Field0, [], empty) --> [].
 code_info__generate_cons_args(Reg, Tag, Field0, [Arg|Args], Code) -->
 	code_info__generate_expression(Arg, field(Tag, Reg, Field0), Code0),
 	{ Field1 is Field0 + 1 },
 	code_info__generate_cons_args(Reg, Tag, Field1, Args, Code1),
-	{ list__append(Code0, Code1, Code) }.
+	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__generate_expression_vars(rval, rval, list(instruction),
+:- pred code_info__generate_expression_vars(rval, rval, code_tree,
 							code_info, code_info).
 :- mode code_info__generate_expression_vars(in, out, out, in, out) is det.
 
-code_info__generate_expression_vars(unused, unused, []) --> [].
-code_info__generate_expression_vars(lval(Lval), lval(Lval), []) --> [].
+code_info__generate_expression_vars(unused, unused, empty) --> [].
+code_info__generate_expression_vars(lval(Lval), lval(Lval), empty) --> [].
 code_info__generate_expression_vars(var(Var), Result, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
@@ -614,7 +627,7 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 		{ set__to_sorted_list(Lvals0, [Lval0|_]) }
 	->
 		{ Result = lval(Lval0) },
-		{ Code = [] }
+		{ Code = empty }
 	;
 		{ VarStat = cached(Exprn, Target) }
 	->
@@ -632,21 +645,21 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 	;
 		% { VarStat = unused },
 		{ Result = unused },
-		{ Code = [] }
+		{ Code = empty }
 	).
 code_info__generate_expression_vars(binop(Op, L0, R0),
 						binop(Op, L, R), Code) -->
 	code_info__generate_expression_vars(L0, L, Code0),
 	code_info__generate_expression_vars(R0, R, Code1),
-	{ list__append(Code0, Code1, Code) }.
+	{ Code = tree(Code0, Code1) }.
 code_info__generate_expression_vars(create(Tag, Rvals0), create(Tag, Rvals),
 								Code) -->
 	code_info__generate_expression_vars_2(Rvals0, Rvals, Code).
 code_info__generate_expression_vars(mkword(Tag, Rval0), mkword(Tag, Rval),
 								Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
-code_info__generate_expression_vars(iconst(Int), iconst(Int), []) --> [].
-code_info__generate_expression_vars(sconst(Str), sconst(Str), []) --> [].
+code_info__generate_expression_vars(iconst(Int), iconst(Int), empty) --> [].
+code_info__generate_expression_vars(sconst(Str), sconst(Str), empty) --> [].
 code_info__generate_expression_vars(field(Tag, Rval0, Field),
 					field(Tag, Rval, Field), Code) -->
 	code_info__generate_expression_vars(Rval0, Rval, Code).
@@ -654,14 +667,14 @@ code_info__generate_expression_vars(field(Tag, Rval0, Field),
 %---------------------------------------------------------------------------%
 
 :- pred code_info__generate_expression_vars_2(list(rval), list(rval), 
-				list(instruction), code_info, code_info).
+				code_tree, code_info, code_info).
 :- mode code_info__generate_expression_vars_2(in, out, out, in, out) is det.
 
-code_info__generate_expression_vars_2([], [], []) --> [].
+code_info__generate_expression_vars_2([], [], empty) --> [].
 code_info__generate_expression_vars_2([R0|Rs0], [R|Rs], Code) -->
 	code_info__generate_expression_vars(R0, R, Code0),
 	code_info__generate_expression_vars_2(Rs0, Rs, Code1),
-	{ list__append(Code0, Code1, Code) }.
+	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 
@@ -746,15 +759,15 @@ code_info__shuffle_register(Var, Reg, Code) -->
 			% the register out of the way
 		code_info__shuffle_registers_2(Reg, RegContents, CodeA)
 	;
-		{ CodeA = [] }
+		{ CodeA = empty }
 	),
 		% generate the code to place the variable in
 		% the desired register
 	code_info__generate_expression(var(Var), reg(Reg), CodeB),
 	code_info__remap_variable(Var, reg(Reg)),
-	{ list__append(CodeA, CodeB, Code) }.
+	{ Code = tree(CodeA, CodeB) }.
 
-:- pred code_info__shuffle_registers_2(reg, register_stat, list(instruction),
+:- pred code_info__shuffle_registers_2(reg, register_stat, code_tree,
 						code_info, code_info).
 :- mode code_info__shuffle_registers_2(in, in, out, in, out) is det.
 
@@ -762,7 +775,7 @@ code_info__shuffle_registers_2(Reg, Contents, Code) -->
 	(
 		{ Contents = unused }
 	->
-		{ Code = [] }
+		{ Code = empty }
 	;
 		{ Contents = reserved }
 	->
@@ -782,10 +795,12 @@ code_info__shuffle_registers_2(Reg, Contents, Code) -->
 			% new register.
 		code_info__remap_variables(Vars, reg(NewReg)),
 			% Generate the code fragment.
-		{ Code = [assign(reg(NewReg), lval(reg(Reg))) -
-				"Swap variable to a new register"] }
+		{ Code = node([
+			assign(reg(NewReg), lval(reg(Reg))) -
+				"Swap variable to a new register"
+		]) }
 	;
-		{ Code = [] }
+		{ Code = empty }
 	).
 
 %---------------------------------------------------------------------------%
@@ -795,7 +810,7 @@ code_info__save_variable_on_stack(Var, Code) -->
 	(
 		{ VarStat = unused }
 	->
-		{ Code = [] }
+		{ Code = empty }
 	;
 		{ VarStat = evaluated(_) }
 	->
@@ -819,7 +834,7 @@ code_info__save_variable_on_stack(Var, Code) -->
 		code_info__generate_expression(var(Var),
 						stackvar(Slot1), Code1),
 		code_info__add_lvalue_to_variable(stackvar(Slot1), Var),
-		{ list__append(Code0, Code1, Code) }
+		{ Code = tree(Code0, Code1) }
 	;
 		{ error("This should never happen") }
 	).
@@ -1050,7 +1065,7 @@ code_info__generate_forced_saves([Var - Slot|VarSlots], Code) -->
 								Code0),
 		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
 		code_info__generate_forced_saves(VarSlots, RestCode),
-		{ Code = tree(node(Code0), RestCode) }
+		{ Code = tree(Code0, RestCode) }
 	;
 			% This case should only occur in the presence
 			% of `erroneous' or `failure' procedures, i.e.
