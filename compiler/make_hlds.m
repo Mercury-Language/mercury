@@ -104,6 +104,10 @@ insts_add(Insts0, VarSet, inst_defn(Name, Args, Body), Cond, Insts) -->
 inst_is_compat(I1, I2) :-
 	I1 = I2.
 
+	% XXX should be in hlds.nl.
+make_predid(ModName, unqualified(Name), Arity, pred(ModName, Name, Arity)).
+make_predid(_, qualified(ModName, Name), Arity, pred(ModName, Name, Arity)).
+
 %-----------------------------------------------------------------------------%
 
 module_add_mode_defn(Module0, VarSet, TypeDefn, Cond, Module) -->
@@ -168,12 +172,13 @@ type_is_compat(T1, T2) :-
 module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond, Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
-	preds_add(Preds0, VarSet, PredName, Types, Cond, Preds),
+	{ moduleinfo_name(Module0, ModuleName) },
+	preds_add(Preds0, ModuleName, VarSet, PredName, Types, Cond, Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module1) },
 	(if %%% some [Modes]
 		{ MaybeModes = yes(Modes) }
 	then
-		module_add_modes(Module1, VarSet, PredName, Modes, Cond, Module)
+		module_add_mode(Module1, VarSet, PredName, Modes, Cond, Module)
 	else
 		{ Module = Module1 }
 	).
@@ -199,12 +204,13 @@ split_types_and_modes_2([TM|TMs], [T|Ts], [M|Ms], R0, R) :-
 split_type_and_mode(type_only(T), T, free -> free, _, yes).
 split_type_and_mode(type_and_mode(T,M), T, M, R, R).
 
-preds_add(Preds0, VarSet, Name, Types, Cond, Preds) -->
+preds_add(Preds0, ModNm, VarSet, Name, Types, Cond, Preds) -->
 	{ length(Types, Arity),
 	  map__init(Procs),
-	  I = predicate(VarSet, Types, Cond, Procs) },
+	  make_predid(ModNm, Name, Arity, PredId) },
+	  I = predicate(VarSet, Types, Cond, [], Procs) },
 	(if %%% some [I2]
-		{ map__search(Preds0, Name - Arity, I2) }
+		{ map__search(Preds0, PredId, I2) }
 	then
 		{ Types = Types0 },
 		(if 
@@ -215,25 +221,27 @@ preds_add(Preds0, VarSet, Name, Types, Cond, Preds) -->
 			multiple_def_error(Name, Arity, "pred")
 		)
 	else
-		{ map__insert(Preds0, Name - Arity, I, Preds) }
+		{ map__insert(Preds0, PredId, I, Preds) }
 	).
 
-pred_is_compat(predicate(VarSet, Types, Cond, _),
-	       predicate(VarSet, Types, Cond, _)).
+pred_is_compat(predicate(VarSet, Types, Cond, _, _),
+	       predicate(VarSet, Types, Cond, _, _)).
 
 %-----------------------------------------------------------------------------%
 
 module_add_mode(Module0, VarSet, PredName, Modes, Cond, Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
+	{ moduleinfo_name(Module0, ModuleName) },
 	pred_modes_add(Preds0, VarSet, PredName, Modes, Cond, Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module) }.
 
-pred_modes_add(Preds0, VarSet, PredName, Modes, Cond, Preds) --->
-	{ length(Modes, Arity) },
-	(if %%% some [P]
-		{ map__search(Preds0, Name - Arity, P) }
+pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Cond, Preds) --->
+	{ length(Modes, Arity),
+	  make_predid(ModuleName, PredName, Arity, PredId) },
+	(if %%% some [P0]
+		{ map__search(Preds0, PredId, P0) }
 	then
-		{ P = predicate(VarSet, ArgTypes, Cond, Procs0) },
+		{ P0 = predicate(VarSet, ArgTypes, Cond, Clauses, Procs0) },
 			% XXX we should check that this mode declaration
 			% isn't the same as an existing one
 		
@@ -249,14 +257,16 @@ pred_modes_add(Preds0, VarSet, PredName, Modes, Cond, Preds) --->
 		{ NewProc = procedure(nondeterministic, BodyVarSet,
 			BodyTypes, HeadVars, Modes, conj([]) - GoalInfo) },
 		{ map__insert(Procs0, ModeId, NewProc, Procs) }
+		{ P = predicate(VarSet, ArgTypes, Cond, Clauses, Procs) },
+		{ map__set(Preds0, PredId, P) }
 	else
 		undefined_pred_error(PredName, Arity),
 		Preds = Preds0
 	).
 
-	% XXX we should probably store the next
-	% available ModeId rather than recomputing it all the time
 	% XXX efficiency could be improved
+	% we should probably store the next available ModeId rather
+	% than recomputing it all the time
 next_mode_id(Procs, ModeId) :-
 	map__to_assoc_list(Procs, List),
 	length(List, ModeId).
@@ -265,32 +275,28 @@ next_mode_id(Procs, ModeId) :-
 
 module_add_clause(Module0, VarSet, PredName, Args, Body, Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
-	clauses_add(Preds0, VarSet, PredName, Args, Body, Preds),
+	{ moduleinfo_name(Module0, ModuleName) },
+	clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module) }.
 
-clauses_add(Preds0, VarSet, PredName, Args, Body, Preds) -->
+clauses_add(Preds0, ModuleName, VarSet, PredName, Args, Body, Preds) -->
 	{ length(Args, Arity) },
+	{ make_predid(ModuleName, PredName, Arity, PredId) },
 	(if %%% some [PredInfo0]
-		{ map__search(Preds0, PredName - Arity, PredInfo0) }
+		{ map__search(Preds0, PredId, PredInfo0) }
 	then
 			% XXX abstract predicate/4
-		{ PredInfo0 = predicate(VarSet, Types, Cond, Procs0),
-		  map__keys(Procs0, ModeIds),
-		  clauses_add_list(ModeIds, Procs0, VarSet, Args, Body, Procs),
-		  PredInfo = predicate(VarSet, Typee, Cond, Procs),
-		  map__set(Preds0, PredName - Arity, PredInfo, Preds) }
+		{ PredInfo0 = predicate(TVarSet, Types, Cond, Clauses0, Procs),
+		  map__keys(Procs, ModeIds),
+		  transform(VarSet, Args, Body, NewVarSet, HeadVars, Goal),
+		  map__init(VarTypes),
+		  Clauses = [clause(ModeIds, NewVarSet, VarTypes,
+				HeadVars, Goal) | Clauses0]
+		  PredInfo = predicate(TVarSet, Type, Cond, Clauses, Procs),
+		  map__set(Preds0, PredId, PredInfo, Preds) }
 	else
 		undefined_pred_error(PredName, Arity, "clause")
 	).
-
-clauses_add_list([], Procs, _, _, _, Procs).
-clauses_add_list([ModeId | ModeIds], Procs0, VarSet, Args, Body, Procs) :-
-	map__search(Procs0, ModeId, ProcInfo0),
-	ProcInfo0 = procedure(Cat, _, Types, _, ModeInfo, _),
-	transform(VarSet, Args, Body, NewVarSet, HeadVars, Goal),
-	ProcInfo = procedure(Cat, NewVarSet, Types, HeadVars, ModeInfo, Goal),
-	map__set(Procs0, ModeId, ProcInfo, Procs1),
-	clauses_add_list(ModeIds, Procs1, VarSet, Arg, Body, Procs).
 
 transform(VarSet0, Args, Body, VarSet, HeadVars, Goal) :-
 	length(Args, NumArgs),
@@ -314,8 +320,43 @@ insert_head_unifications([Arg|Args], [Var|Vars], Body0, Body) :-
 	Body = (unify(Arg, Var), Body1),
 	insert_head_unifications(Args, Vars, Body0, Body1).
 
-	% XXX stub only.
-transform_goal(_, _).
+:- type goal		--->	(goal,goal)
+			;	fail	
+					% could use conj(goals) instead 
+			;	{goal;goal}	% {...} quotes ';'/2.
+			;	true	
+					% could use disj(goals) instead
+			;	not(vars,goal)
+			;	some(vars,goal)
+			;	all(vars,goal)
+			;	if_then(vars,goal,goal)
+			;	if_then_else(vars,goal,goal,goal)
+			;	call(term)
+			;	unify(term, term).
+
+
+	% XXX unfinished
+transform_goal(fail, conj([]) - GoalInfo) :-
+	goalinfo_init(GoalInfo).
+
+transform_goal(true, disj([]) - GoalInfo) :-
+	goalinfo_init(GoalInfo).
+
+transform_goal(some(Vars, Goal), some(Vars, Goal) - GoalInfo) :-
+	goalinfo_init(GoalInfo).
+
+transform_goal(all(Vars, Goal), all(Vars, Goal) - GoalInfo) :-
+	goalinfo_init(GoalInfo).
+
+transform_goal((A0,B0), conj(L) - GoalInfo) :-
+	get_conj(A0, [], L0),
+	get_conj(B0, L0, L),
+	goalinfo_init(GoalInfo).
+
+transform_goal((A0;B0), disj(L) - GoalInfo) :-
+	get_disj(A0, [], L0),
+	get_disj(B0, L0, L),
+	goalinfo_init(GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
