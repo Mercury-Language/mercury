@@ -153,7 +153,7 @@ endif
 # targets
 
 .PHONY: all
-all:	mercury $(TAGS_FILE_EXISTS)
+all:	mercury all-ints $(TAGS_FILE_EXISTS)
 
 .PHONY: mercury
 mercury: lib_std
