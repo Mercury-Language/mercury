@@ -1098,7 +1098,8 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 		handle_implied_mode(Var0,
 			VarInst0, VarInst, InitialInst, FinalInst, Det,
 		 	Var, Goals, ModeInfo1, ModeInfo2),
-		modecheck_set_var_inst(Var0, FinalInst, ModeInfo2, ModeInfo)
+		modecheck_set_var_inst(Var0, FinalInst, ModeInfo2, ModeInfo3),
+		modecheck_set_var_inst(Var, FinalInst, ModeInfo3, ModeInfo)
 	;
 		Var = Var0,
 		Goals = [] - [],
@@ -1109,7 +1110,6 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 	% one with arity 7 and one with arity 4.
 	% The former is used for predicate calls, where we may need
 	% to introduce unifications to handle calls to implied modes.
-	% The latter 
 
 :- pred modecheck_set_var_inst(var, inst, mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
@@ -1216,6 +1216,8 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		;
 			% This is the simple case of implied modes,
 			% where the declared mode was free -> ...
+
+			% Introduce a new variable
 			mode_info_get_varset(ModeInfo0, VarSet0),
 			mode_info_get_var_types(ModeInfo0, VarTypes0),
 			varset__new_var(VarSet0, Var, VarSet),
@@ -1223,6 +1225,8 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 			map__set(VarTypes0, Var, VarType, VarTypes),
 			mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
 			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo),
+
+			% Construct the code to do the unification
 			ModeVar0 = (VarInst0 -> VarInst),
 			ModeVar = (FinalInst -> VarInst),
 			categorize_unify_var_var(ModeVar0, ModeVar,
@@ -1237,6 +1241,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 					Unification,
 					UnifyContext
 			),
+
 			% compute the goal_info nonlocal vars & instmap delta
 			set__list_to_set([Var0, Var], NonLocals),
 			map__init(InstMapDelta0),
