@@ -163,8 +163,17 @@
 			string,			% predicate name
 			int,			% arity
 			pred_proc_id,		% the pred_proc_id this code
-			list(instruction)	% the code for this procedure
+			list(instruction),	% the code for this procedure
+			contains_reconstruction	% value numbering needs
+						% to handle goals that
+						% perform structure reuse
+						% specially.
 		).
+
+:- type contains_reconstruction
+	--->	contains_reconstruction
+	;	does_not_contain_reconstruction
+	.
 
 :- type llds_proc_id	==	int.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -297,7 +297,7 @@
 
 continuation_info__maybe_process_llds([], _) --> [].
 continuation_info__maybe_process_llds([Proc | Procs], ModuleInfo) -->
-	{ Proc = c_procedure(_, _, PredProcId, Instrs) },
+	{ Proc = c_procedure(_, _, PredProcId, Instrs, _) },
 	continuation_info__maybe_process_proc_llds(Instrs, PredProcId,
 		ModuleInfo),
 	continuation_info__maybe_process_llds(Procs, ModuleInfo).

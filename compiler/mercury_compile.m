@@ -1272,7 +1272,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 	;
 		{ Proc = Proc0 }
 	),
-	{ Proc = c_procedure(_, _, PredProcId, Instructions) },
+	{ Proc = c_procedure(_, _, PredProcId, Instructions, _) },
 	write_proc_progress_message(
 		"% Generating call continuation information for ",
 			PredId, ProcId, ModuleInfo3),

@@ -64,7 +64,7 @@
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
 :- import_module continuation_info, trace, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux, llds_out.
-:- import_module code_util, type_util, mode_util.
+:- import_module code_util, type_util, mode_util, goal_util.
 :- import_module prog_data, prog_out, instmap.
 :- import_module bool, char, int, string.
 :- import_module map, assoc_list, set, term, tree, std_util, require, varset.
@@ -260,8 +260,16 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 
 	pred_info_name(PredInfo, Name),
 	pred_info_arity(PredInfo, Arity),
+
+	( goal_contains_reconstruction(Goal) ->
+		ContainsReconstruction = contains_reconstruction
+	;
+		ContainsReconstruction = does_not_contain_reconstruction
+	),
+
 		% Construct a c_procedure structure with all the information.
-	Proc = c_procedure(Name, Arity, proc(PredId, ProcId), Instructions).
+	Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
+		Instructions, ContainsReconstruction).
 
 :- pred maybe_add_tabling_pointer_var(module_info, pred_id, proc_id, proc_info,
 		global_data, global_data).
