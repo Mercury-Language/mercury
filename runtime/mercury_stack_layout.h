@@ -592,12 +592,6 @@ typedef union MR_Proc_Id_Union {
 ** We cannot put enums into structures as bit fields. To avoid wasting space,
 ** we put MR_EvalMethodInts into structures instead of MR_EvalMethods
 ** themselves.
-**
-** If --trace-decl is not set, the maybe_decl field will contain a negative
-** number. If it is set, it will contain the number of the first of two stack
-** slots used by the declarative debugger; the other slot is the next higher
-** numbered one. (The determinism of the procedure decides whether the stack
-** slot refers to a stackvar or a framevar.)
 */
 
 typedef	enum {
@@ -627,7 +621,6 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_int_least8_t		MR_exec_maybe_maxfr;
 	MR_EvalMethodInt	MR_exec_eval_method_CAST_ME;
 	MR_int_least8_t		MR_exec_maybe_call_table;
-	MR_int_least8_t		MR_exec_maybe_decl_debug;
 } MR_Exec_Trace;
 
 /*-------------------------------------------------------------------------*/

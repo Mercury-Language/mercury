@@ -513,7 +513,7 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 	},
 	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot,
 		MaybeIoSeqSlot, MaybeTrailSlots, MaybeMaxfrSlot,
-		MaybeCallTableSlot, MaybeDeclSlots) },
+		MaybeCallTableSlot) },
 		% The label associated with an event must have variable info.
 	{ CallLabelLayout = label_layout(CallLabel, label_has_var_info) },
 	{
@@ -527,7 +527,7 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, MaybeCallLabel,
 		MaybeTableIoDeclName, HeadVarNumVector, VarNameVector,
 		MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
 		MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
-		MaybeCallTableSlot, MaybeDeclSlots) }.
+		MaybeCallTableSlot) }.
 
 :- pred stack_layout__construct_var_name_vector(prog_varset::in,
 	map(int, string)::in, int::out, list(int)::out,

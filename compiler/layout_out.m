@@ -176,7 +176,7 @@ output_layout_decl(LayoutName, DeclSet0, DeclSet) -->
 			DeclSet) }
 	).
 
-	% This code should be kept in sync with output_layout_name/2 below.
+	% This code should be kept in sync with output_layout_name/3 below.
 make_label_layout_name(Label) = Name :-
 	llds_out__get_label(Label, yes, LabelName),
 	string__append_list([
@@ -186,7 +186,7 @@ make_label_layout_name(Label) = Name :-
 	], Name).
 
 output_layout_name(label_layout(Label, _)) -->
-	% This code should be kept in sync with make_label_layout_name/2 above.
+	% This code should be kept in sync with make_label_layout_name/1 above.
 	io__write_string(mercury_data_prefix),
 	io__write_string("_label_layout__"),
 	{ llds_out__get_label(Label, yes, LabelName) },
@@ -634,7 +634,7 @@ output_layout_exec_trace_decls(ProcLabel, ExecTrace, DeclSet0, DeclSet) -->
 		MaybeTableIoDecl, _HeadVarNums, _VarNames, _MaxVarNum,
 		_MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
 		_MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
-		_MaybeCallTableSlot, _MaybeDeclDebugSlot) },
+		_MaybeCallTableSlot) },
 	{ ModuleName = get_defining_module_name(ProcLabel) },
 	output_layout_decl(CallLabelLayout, DeclSet0, DeclSet1),
 	output_layout_decl(module_layout(ModuleName), DeclSet1, DeclSet2),
@@ -660,8 +660,7 @@ output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 	{ ExecTrace = proc_layout_exec_trace(CallLabelLayout, MaybeProcBody,
 		MaybeTableIoDecl, HeadVarNums, _VarNames, MaxVarNum,
 		MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
-		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
-		MaybeDeclDebugSlot) },
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot) },
 	io__write_string("\t{\n\t(const MR_Label_Layout *) &"),
 	output_layout_name(CallLabelLayout),
 	io__write_string(",\n\t(const MR_Module_Layout *) &"),
@@ -706,8 +705,6 @@ output_layout_exec_trace_group(ProcLabel, ExecTrace) -->
 	io__write_string(eval_method_to_c_string(EvalMethod)),
 	io__write_string(",\n\t"),
 	write_maybe_slot_num(MaybeCallTableSlot),
-	io__write_string(",\n\t"),
-	write_maybe_slot_num(MaybeDeclDebugSlot),
 	io__write_string("\n\t}\n").
 
 :- pred write_maybe_slot_num(maybe(int)::in, io__state::di, io__state::uo)

@@ -206,15 +206,13 @@ llds_common__process_exec_trace(ExecTrace0, ExecTrace, Info0, Info) :-
 	ExecTrace0 = proc_layout_exec_trace(CallLabel, MaybeProcBody0,
 		MaybeTableIoDecl, HeadVarNums, VarNames, MaxVarNum, MaxReg,
 		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
-		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
-		MaybeDeclDebugSlot),
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot),
 	llds_common__process_maybe_rval(MaybeProcBody0, MaybeProcBody,
 		Info0, Info),
 	ExecTrace = proc_layout_exec_trace(CallLabel, MaybeProcBody,
 		MaybeTableIoDecl, HeadVarNums, VarNames, MaxVarNum, MaxReg,
 		MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
-		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
-		MaybeDeclDebugSlot).
+		MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,
 	list(c_procedure)::out, common_info::in, common_info::out) is det.

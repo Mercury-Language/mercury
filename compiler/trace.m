@@ -109,21 +109,13 @@
 					% at the time of the call. Otherwise,
 					% it will be no.
 
-		slot_call_table		:: maybe(int),
+		slot_call_table		:: maybe(int)
 					% If the procedure's evaluation method
 					% is memo, loopcheck or minimal model, 
 					% this will be yes(M), where stack slot
 					% M holds the variable that represents
 					% the tip of the call table. Otherwise,
 					% it will be no.
-
-		slot_decl		:: maybe(int)
-					% If --trace-decl is set, this will
-					% be yes(M), where stack slots M
-					% and M+1 are reserved for the runtime
-					% system to use in building proof
-					% trees for the declarative debugger.
-					% Otherwise, it will be no.
 	).
 
 	% Return the set of input variables whose values should be preserved
@@ -293,21 +285,14 @@ trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo) :-
 	%		in the maybe_from_full field in the proc layout;
 	%		if there is no such slot, that field will contain -1.
 	%
-	% stage 4:	If --trace-decl is given, allocate the next two
-	%		available slots to hold the pointers to the proof tree
-	%		node of the parent and of this call respectively.
-	%		The number of the first of these two slots is recorded
-	%		in the maybe_decl_debug field in the proc layout;
-	%		if there are no such slots, that field will contain -1.
-	%
-	% stage 5:	If --trace-table-io is given, allocate the next slot
+	% stage 4:	If --trace-table-io is given, allocate the next slot
 	%		to hold the saved value of the io sequence number,
 	%		for use in implementing retry. The number of this slot
 	%		is recorded in the maybe_io_seq field in the proc
 	%		layout; if there is no such slot, that field will
 	%		contain -1.
 	%
-	% stage 6:	If --use-trail is set (given or implied), allocate
+	% stage 5:	If --use-trail is set (given or implied), allocate
 	%		two slots to hold the saved value of the trail pointer
 	%		and the ticket counter at the point of the call, for
 	%		use in implementing retry. The number of the first of
@@ -315,7 +300,7 @@ trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo) :-
 	%		in the proc layout; if there are no such slots, that
 	%		field will contain -1.
 	%
-	% stage 7:	If the procedure lives on the det stack but can put
+	% stage 6:	If the procedure lives on the det stack but can put
 	%		frames on the nondet stack, allocate a slot to hold
 	%		the saved value of maxfr at the point of the call,
 	%		for use in implementing retry. The number of this
@@ -323,7 +308,7 @@ trace__do_we_need_maxfr_slot(Globals, ProcInfo0, ProcInfo) :-
 	%		layout; if there is no such slot, that field will
 	%		contain -1.
 	%
-	% stage 8:	If the procedure's evaluation method is memo, loopcheck
+	% stage 7:	If the procedure's evaluation method is memo, loopcheck
 	%		or minimal model, we allocate a slot to hold the
 	%		variable that represents the tip of the call table.
 	%		The debugger needs this, because when it executes a
@@ -383,11 +368,6 @@ trace__reserved_slots(_ModuleInfo, ProcInfo, Globals, ReservedSlots,
 		;
 			FromFull = 0
 		),
-		( trace_level_needs_decl_debug_slots(TraceLevel) = yes ->
-			DeclDebug = 2
-		;
-			DeclDebug = 0
-		),
 		( TraceTableIo = yes ->
 			IoSeq = 1
 		;
@@ -408,7 +388,7 @@ trace__reserved_slots(_ModuleInfo, ProcInfo, Globals, ReservedSlots,
 			Maxfr = 0
 		),
 		ReservedSlots0 = Fixed + RedoLayout + FromFull + IoSeq
-			+ Trail + Maxfr + DeclDebug,
+			+ Trail + Maxfr,
 		proc_info_get_call_table_tip(ProcInfo, MaybeCallTableVar),
 		( MaybeCallTableVar = yes(CallTableVar) ->
 			ReservedSlots = ReservedSlots0 + 1,
@@ -450,28 +430,18 @@ trace__setup(_ModuleInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo) -->
 		MaybeFromFullSlotLval = yes(CallFromFullSlot),
 		NextSlotAfterFromFull is NextSlotAfterRedoLayout + 1
 	},
-	{ trace_level_needs_decl_debug_slots(TraceLevel) = DeclDebugSlots },
-	{
-		DeclDebugSlots = yes,
-		MaybeDeclSlots = yes(NextSlotAfterFromFull),
-		NextSlotAfterDecl = NextSlotAfterFromFull + 2
-	;
-		DeclDebugSlots = no,
-		MaybeDeclSlots = no,
-		NextSlotAfterDecl = NextSlotAfterFromFull
-	},
 	{
 		TraceTableIo = yes,
-		MaybeIoSeqSlot = yes(NextSlotAfterDecl),
+		MaybeIoSeqSlot = yes(NextSlotAfterFromFull),
 		IoSeqLval = llds__stack_slot_num_to_lval(CodeModel,
-			NextSlotAfterDecl),
+			NextSlotAfterFromFull),
 		MaybeIoSeqLval = yes(IoSeqLval),
-		NextSlotAfterIoSeq = NextSlotAfterDecl + 1
+		NextSlotAfterIoSeq = NextSlotAfterFromFull + 1
 	;
 		TraceTableIo = no,
 		MaybeIoSeqSlot = no,
 		MaybeIoSeqLval = no,
-		NextSlotAfterIoSeq = NextSlotAfterDecl
+		NextSlotAfterIoSeq = NextSlotAfterFromFull
 	},
 	{ globals__lookup_bool_option(Globals, use_trail, yes) ->
 		MaybeTrailSlot = yes(NextSlotAfterIoSeq),
@@ -510,8 +480,7 @@ trace__setup(_ModuleInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo) -->
 		MaybeCallTableLval = no
 	},
 	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
-		MaybeTrailSlot, MaybeMaxfrSlot, MaybeCallTableSlot,
-		MaybeDeclSlots) },
+		MaybeTrailSlot, MaybeMaxfrSlot, MaybeCallTableSlot) },
 	{ TraceInfo = trace_info(TraceLevel, TraceSuppress,
 		MaybeFromFullSlotLval, MaybeIoSeqLval, MaybeTrailLvals,
 		MaybeMaxfrLval, MaybeCallTableLval, MaybeRedoLayoutLabel) }.

@@ -469,7 +469,7 @@ code_info__init_maybe_trace_info(TraceLevel, Globals, ProcInfo, ModuleInfo,
 			TraceSlotInfo, TraceInfo),
 		code_info__set_maybe_trace_info(yes(TraceInfo))
 	;
-		{ TraceSlotInfo = trace_slot_info(no, no, no, no, no, no) }
+		{ TraceSlotInfo = trace_slot_info(no, no, no, no, no) }
 	).
 
 %---------------------------------------------------------------------------%

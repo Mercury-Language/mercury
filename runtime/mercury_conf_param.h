@@ -511,10 +511,6 @@
 /*
 ** MR_USE_DECLARATIVE_DEBUGGER -- include support for declarative
 **				  debugging in the internal debugger.
-**
-** MR_USE_DECL_STACK_SLOT      -- reserve a stack slot for use by the
-**				  declarative debugger.  Requires programs
-**				  to be compiled with the flag `--trace-decl'.
 */
 
 #if defined(MR_CONSERVATIVE_GC) && !defined(MR_DISABLE_DECLARATIVE_DEBUGGER)

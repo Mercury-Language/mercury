@@ -158,8 +158,7 @@
 			maybe_trail_slot	:: maybe(int),
 			maybe_maxfr_slot	:: maybe(int),
 			eval_method		:: eval_method,
-			maybe_call_table_slot	:: maybe(int),
-			maybe_decl_debug_slot	:: maybe(int)
+			maybe_call_table_slot	:: maybe(int)
 		).
 
 :- type file_layout_data

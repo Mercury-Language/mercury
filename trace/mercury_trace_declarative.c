@@ -190,10 +190,6 @@ static	MR_Trace_Node	MR_trace_decl_neg_success(MR_Event_Info *event_info,
 				MR_Trace_Node prev);
 static	MR_Trace_Node	MR_trace_decl_neg_failure(MR_Event_Info *event_info,
 				MR_Trace_Node prev);
-static	MR_Trace_Node	MR_trace_decl_get_slot(const MR_Proc_Layout *entry,
-				MR_Word *saved_regs);
-static	void		MR_trace_decl_set_slot(const MR_Proc_Layout *entry,
-				MR_Word *saved_regs, MR_Trace_Node node);
 static	MR_Trace_Node	MR_trace_matching_call(MR_Trace_Node node);
 static	MR_bool		MR_trace_first_disjunct(MR_Event_Info *event_info);
 static	MR_bool		MR_trace_matching_cond(const char *path,
