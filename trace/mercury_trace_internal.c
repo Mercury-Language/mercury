@@ -5487,6 +5487,12 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				}
 			}
 		}
+	} else if (word_count == 3 && ((MR_streq(words[1], "std") &&
+			MR_streq(words[2], "lib"))
+			|| (MR_streq(words[1], "standard") &&
+			MR_streq(words[2], "library")))) {
+		MR_decl_trust_standard_library();
+		fprintf(MR_mdb_out, "Trusting the Mercury standard library\n");
 	} else {
 		MR_trace_usage("dd", "trust");
 	}

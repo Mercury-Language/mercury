@@ -1,5 +1,6 @@
 echo on
 register --quiet
+untrust 0
 break p
 continue
 finish

@@ -62,6 +62,10 @@
 :- pred add_trusted_pred_or_func(proc_layout::in, oracle_state::in, 
 	oracle_state::out) is det. 
 
+	% Trust all the modules in the Mercury standard library.
+	%
+:- pred trust_standard_library(oracle_state::in, oracle_state::out) is det.
+
 	% remove_trusted(N, !Oracle).
 	% Removes the (N-1)th trusted object from the set of trusted objects.
 	% Fails if there are fewer than N-1 trusted modules (or N < 0).
@@ -116,7 +120,8 @@
 :- import_module mdb__set_cc.
 :- import_module mdb__util.
 
-:- import_module bool, std_util, set, int.
+:- import_module map, bool, std_util, set, int, bimap, counter, assoc_list.
+:- import_module library.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
 	{ query_oracle_list(Oracle0, Questions, Answers) },
@@ -208,51 +213,71 @@ revise_oracle(Question, Oracle0, Oracle) :-
 	).
 
 %-----------------------------------------------------------------------------%
-		
+
 :- type oracle_state
 	--->	oracle(
-			kb_current	:: oracle_kb,
 				% Current information about the intended
 				% interpretation.  These answers have been
 				% given, but have not since been revised.
+			kb_current	:: oracle_kb,
 
-			kb_revised	:: oracle_kb,
 				% Old information about the intended
 				% interpretation.  These answers were given
 				% and subsequently revised, but new answers
 				% to the questions have not yet been given.
+			kb_revised	:: oracle_kb,
 
-			user_state	:: user_state,
 				% User interface.
+			user_state	:: user_state,
 				
-			trusted :: set(trusted_module_or_predicate)
 				% Modules and predicates/functions trusted
-				% by the oracle.
+				% by the oracle. The second argument is an
+				% id used to identify an object to remove.
+			trusted		:: bimap(trusted_object, int),
+
+				% Counter to allocate ids to trusted objects
+			trusted_id_counter	:: counter
 		).
 
 oracle_state_init(InStr, OutStr, Browser, Oracle) :-
 	oracle_kb_init(Current),
 	oracle_kb_init(Old),
 	user_state_init(InStr, OutStr, Browser, User),
-	set.init(TrustedModules),
-	Oracle = oracle(Current, Old, User, TrustedModules).
+	% Trust the standard library by default.
+	bimap.set(bimap.init, standard_library, 0, Trusted),
+	counter.init(1, Counter),
+	Oracle = oracle(Current, Old, User, Trusted, Counter).
 	
 %-----------------------------------------------------------------------------%
 
-:- type trusted_module_or_predicate
-	--->	all(string) % all predicates/functions in a module
-	;	specific(
-			pred_or_func,	
+:- type trusted_object
+	--->	module(string) % all predicates/functions in a module
+	;	predicate(
 			string,		% module name
-			string,		% pred or func name
+			string,		% pred name
 			int		% arity
-		).
+		)
+	;	function(
+			string,		% module name
+			string,		% function name
+			int		% arity including return value
+		)
+	;	standard_library.
 
 add_trusted_module(ModuleName, !Oracle) :-
-	insert(!.Oracle ^ trusted, all(ModuleName), Trusted),
-	!:Oracle = !.Oracle ^ trusted := Trusted.
+	counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
+	(
+		bimap.insert(!.Oracle ^ trusted, module(ModuleName), Id, 
+			Trusted)
+	->
+		!:Oracle = !.Oracle ^ trusted := Trusted,
+		!:Oracle = !.Oracle ^ trusted_id_counter := Counter
+	;
+		true
+	).
 
 add_trusted_pred_or_func(ProcLayout, !Oracle) :-
+	counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
 	ProcId = get_proc_id_from_layout(ProcLayout),
 	(
 		ProcId = proc(ModuleName, PredOrFunc, _, Name, Arity, _)
@@ -260,71 +285,84 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
 		ProcId = uci_proc(ModuleName, _, _, Name, Arity, _),
 		PredOrFunc = predicate
 	),
-	insert(!.Oracle ^ trusted, specific(PredOrFunc, ModuleName, Name, 
-		Arity), Trusted),
-	!:Oracle = !.Oracle ^ trusted := Trusted.
-
-remove_trusted(N, !Oracle) :-
-	TrustedList = to_sorted_list(!.Oracle ^ trusted),
-	index0(TrustedList, N, ObjectToDelete),
-	delete_all(TrustedList, ObjectToDelete, NewTrustedList),
-	!:Oracle = !.Oracle ^ trusted := sorted_list_to_set(NewTrustedList). 
-
-get_trusted_list(Oracle, CommandFormat, List) :-
-	Trusted = to_sorted_list(Oracle ^ trusted),
 	(
-		CommandFormat = yes,
-		foldl(format_trust_command, Trusted, "", List)
-	;
-		CommandFormat = no,
-		foldl(format_trust_display, Trusted, {0, "Trusted Objects:\n"}, 
-			{I, List0}),
 		(
-			I = 0
-		->
-			List = "There are no trusted modules, predicates "++
-				"or functions.\n"
+			PredOrFunc = predicate,
+			bimap.insert(!.Oracle ^ trusted, predicate(ModuleName,
+				Name, Arity), Id, Trusted)
 		;
-			List = List0
+			PredOrFunc = function,
+			bimap.insert(!.Oracle ^ trusted, function(ModuleName,
+				Name, Arity), Id, Trusted)
 		)
+	->
+		!:Oracle = !.Oracle ^ trusted := Trusted,
+		!:Oracle = !.Oracle ^ trusted_id_counter := Counter
+	;
+		true
 	).
 
-:- pred format_trust_command(trusted_module_or_predicate::in, string::in,
+trust_standard_library(!Oracle) :-
+	counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
+	(
+		bimap.insert(!.Oracle ^ trusted, standard_library, Id,
+			Trusted)
+	->
+		!:Oracle = !.Oracle ^ trusted_id_counter := Counter,
+		!:Oracle = !.Oracle ^ trusted := Trusted
+	;
+		true
+	).
+
+remove_trusted(Id, !Oracle) :-
+	bimap.search(!.Oracle ^ trusted, _, Id),
+	bimap.delete_value(Id, !.Oracle ^ trusted, Trusted),
+	!:Oracle = !.Oracle ^ trusted := Trusted. 
+
+get_trusted_list(Oracle, yes, CommandsStr) :-
+	TrustedObjects = bimap.ordinates(Oracle ^ trusted),
+	list.foldl(format_trust_command, TrustedObjects, "", CommandsStr).
+get_trusted_list(Oracle, no, DisplayStr) :-
+	IdToObjectMap = bimap.reverse_map(Oracle ^ trusted),
+	map.foldl(format_trust_display, IdToObjectMap, "", DisplayStr0),
+	(
+		DisplayStr0 = ""
+	->
+		DisplayStr = "There are no trusted modules, predicates " ++
+			"or functions.\n"
+	;
+		DisplayStr = "Trusted Objects:\n" ++ DisplayStr0
+	).
+
+:- pred format_trust_command(trusted_object::in, string::in,
 	string::out) is det.
 
-format_trust_command(all(ModuleName), S, S++"trust "++ModuleName++"\n").
-format_trust_command(specific(PredOrFunc, ModuleName, Name, Arity), S, 
-		S++Command) :-
-	(
-		PredOrFunc = predicate,
-		PredOrFuncStr = "pred*",
-		ArityStr = int_to_string(Arity)
-	;
-		PredOrFunc = function,
-		PredOrFuncStr = "func*",
-		ArityStr = int_to_string(Arity - 1)
-	),
-	Command = "trust "++PredOrFuncStr++ModuleName++"."++Name++"/"++
-		ArityStr++ "\n".
-		
-:- pred format_trust_display(trusted_module_or_predicate::in, {int,string}::in,
-	{int,string}::out) is det.
+format_trust_command(module(ModuleName), S, S ++ "trust " ++ ModuleName++"\n").
+format_trust_command(predicate(ModuleName, Name, Arity), S, S ++ Command) :-
+	ArityStr = int_to_string(Arity),
+	Command = "trust pred*" ++ ModuleName ++ "."++Name ++ "/" ++ ArityStr 
+	++ "\n".
+format_trust_command(function(ModuleName, Name, Arity), S, S ++ Command) :-
+	ArityStr = int_to_string(Arity - 1),
+	Command = "trust func*"++ModuleName ++ "." ++ Name++"/" ++ ArityStr ++
+	"\n".
+format_trust_command(standard_library, S, S ++ "trust std lib\n").
 
-format_trust_display(all(ModuleName), {I, S}, 
-	{I + 1, S++int_to_string(I)++": module "++ModuleName++"\n"}).
-format_trust_display(specific(PredOrFunc, ModuleName, Name, Arity), {I, S}, 
-		{I + 1, S++Display}) :-
-	(
-		PredOrFunc = predicate,
-		PredOrFuncStr = "pred",
-		ArityStr = int_to_string(Arity)
-	;
-		PredOrFunc = function,
-		PredOrFuncStr = "func",
-		ArityStr = int_to_string(Arity - 1)
-	),
-	Display = int_to_string(I)++": "++PredOrFuncStr++" "++ModuleName++"."++
-		Name++"/"++ArityStr++"\n".
+:- pred format_trust_display(int::in, trusted_object::in, string::in, 
+	string::out) is det.
+
+format_trust_display(Id, module(ModuleName), S, S ++ Display) :-
+	Display = int_to_string(Id) ++ ": module " ++ ModuleName ++ "\n".
+format_trust_display(Id, predicate(ModuleName, Name, Arity), S, S ++ Display) 
+		:-
+	Display = int_to_string(Id) ++ ": predicate " ++ ModuleName ++ "." ++
+		Name ++ "/" ++ int_to_string(Arity) ++ "\n".
+format_trust_display(Id, function(ModuleName, Name, Arity), S, S ++ Display)
+		:-
+	Display = int_to_string(Id) ++ ": function " ++ ModuleName ++ "." ++
+		Name++"/" ++ int_to_string(Arity - 1) ++ "\n".
+format_trust_display(Id, standard_library, S, S ++ Display) :-
+	Display = int_to_string(Id) ++ ": the Mercury standard library\n".
 		
 %-----------------------------------------------------------------------------%
 
@@ -441,14 +479,22 @@ query_oracle_list(OS, [Q | Qs0], As) :-
 :- pred trusted(proc_layout::in, oracle_state::in) is semidet.
 
 trusted(ProcLayout, Oracle) :-
+	Trusted = Oracle ^ trusted,
 	ProcId = get_proc_id_from_layout(ProcLayout),
 	(
 		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _),
 		(
-			set.member(all(Module), Oracle ^ trusted)
+			bimap.search(Trusted, standard_library, _),
+			mercury_std_library_module(Module)
 		;
-			set.member(specific(PredOrFunc, Module, Name, Arity),
-				Oracle ^ trusted)
+			bimap.search(Trusted, module(Module), _)
+		;
+			PredOrFunc = predicate,
+			bimap.search(Trusted, predicate(Module, Name, Arity), 
+				_)
+		;
+			PredOrFunc = function,
+			bimap.search(Trusted, function(Module, Name, Arity), _)
 		)
 	;
 		ProcId = uci_proc(_, _, _, _, _, _)

@@ -2,6 +2,7 @@
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
+mdb> untrust 0
 mdb> break p
  0: + stop  interface pred catch.p/2-0 (cc_multi)
 mdb> continue

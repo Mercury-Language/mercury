@@ -1,5 +1,5 @@
       E1:     C1 CALL pred trust.main/2-0 (cc_multi) trust.m:13
-mdb> mdb> Contexts will not be printed.
+mdb> mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
 mdb> trust trust_1.
@@ -12,13 +12,13 @@ Trusting pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
 Trusting pred trust_1.w_cmp/3
 mdb> trusted
 Trusted Objects:
-0: pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
-1: pred trust_1.w_cmp/3
-mdb> untrust 1
+1: predicate trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+2: predicate trust_1.w_cmp/3
+mdb> untrust 2
 mdb> trusted
 Trusted Objects:
-0: pred trust_1.IntroducedFrom__pred__w_cmp__15__1/3
-mdb> untrust 0
+1: predicate trust_1.IntroducedFrom__pred__w_cmp__15__1/3
+mdb> untrust 1
 mdb> trusted
 There are no trusted modules, predicates or functions.
 mdb> trust trust_2
@@ -32,15 +32,15 @@ Which predicate or function do you want to trust (0-1 or *)? 1
 Trusting pred trust.main/2
 mdb> trusted
 Trusted Objects:
-0: module trust_2
-1: pred trust.main/2
+3: module trust_2
+4: predicate trust.main/2
 mdb> trust trust_2
 Trusting module trust_2
 mdb> trusted
 Trusted Objects:
-0: module trust_2
-1: pred trust.main/2
-mdb> untrust 0
+3: module trust_2
+4: predicate trust.main/2
+mdb> untrust 3
 mdb> trust trust_1
 Trusting module trust_1
 mdb> trust no_such_module
@@ -49,14 +49,16 @@ mdb> trust trust_2.
 Trusting pred trust_2.concat/3
 mdb> trusted
 Trusted Objects:
-0: module trust_1
-1: pred trust.main/2
-2: pred trust_2.concat/3
-mdb> untrust 1
+4: predicate trust.main/2
+5: module trust_1
+6: predicate trust_2.concat/3
+mdb> untrust 4
 mdb> trusted
 Trusted Objects:
-0: module trust_1
-1: pred trust_2.concat/3
+5: module trust_1
+6: predicate trust_2.concat/3
+mdb> untrust 4
+mdb: no such trusted object
 mdb> untrust 99
 mdb: no such trusted object
 mdb> step

@@ -1045,6 +1045,17 @@ MR_decl_add_trusted_pred_or_func(const MR_Proc_Layout *entry)
 	);
 }
 
+void
+MR_decl_trust_standard_library(void)
+{
+	MR_trace_decl_ensure_init();
+	MR_TRACE_CALL_MERCURY(
+		MR_DD_decl_trust_standard_library(
+			MR_trace_front_end_state,
+			&MR_trace_front_end_state);
+	);
+}
+
 MR_bool
 MR_decl_remove_trusted(int n)
 {

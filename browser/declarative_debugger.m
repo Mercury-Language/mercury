@@ -555,6 +555,17 @@ add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
 		Oracle),
 	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
 
+:- pred trust_standard_library(diagnoser_state(trace_node_id)::in,
+	diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma export(mdb.declarative_debugger.trust_standard_library(in, out), 
+	"MR_DD_decl_trust_standard_library").
+
+trust_standard_library(!Diagnoser) :-
+	declarative_oracle.trust_standard_library(!.Diagnoser ^ oracle_state,
+		Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+
 :- pred remove_trusted(int::in, diagnoser_state(trace_node_id)::in,
 	diagnoser_state(trace_node_id)::out) is semidet.
 	

@@ -1,12 +1,13 @@
 register --quiet
+untrust 0
 context none
 echo on
 trust trust_1.
 *
 trusted
-untrust 1
+untrust 2
 trusted
-untrust 0
+untrust 1
 trusted
 trust trust_2
 trust trust.
@@ -14,13 +15,14 @@ trust trust.
 trusted
 trust trust_2
 trusted
-untrust 0
+untrust 3
 trust trust_1
 trust no_such_module
 trust trust_2.
 trusted
-untrust 1
+untrust 4
 trusted
+untrust 4
 untrust 99
 step
 finish

@@ -2129,6 +2129,7 @@ even if the number and the command are not separated by white space.
 * I/O tabling commands::
 * Parameter commands::
 * Help commands::
+* Declarative debugging mdb commands::
 * Miscellaneous commands::
 * Experimental commands::
 * Developer commands::
@@ -3200,6 +3201,50 @@ Prints summary information about all the available help categories.
 @end table
 
 @sp 1
+@node Declarative debugging mdb commands
+@subsection Declarative debugging mdb commands
+
+@sp 1
+@table @code
+@item dd
+@c @item dd [--assume-all-io-is-tabled]
+@c The --assume-all-io-is-tabled option is for developers only. Specifying it
+@c makes an assertion, and if the assertion is incorrect, the resulting
+@c behaviour would be hard for non-developers to understand. The option is
+@c therefore deliberately not documented.
+Starts declarative debugging
+using the current event as the initial symptom.
+For details, see @ref{Declarative debugging}.
+@sp 1
+@item trust @var{module-name}|@var{proc-spec}
+@kindex trust (mdb command)
+Tells the declarative debugger to trust the given module, predicate or
+function.  
+@sp 1
+Individual predicates or functions can be trusted by just giving the
+predicate or function name.  If there is more than one predicate or function
+with the given name then a list of alternatives will be shown.  
+@sp 1
+The entire Mercury standard library is trusted by default and can be 
+untrusted in the usual manner using the `untrust' command.  To restore trusted
+status to the Mercury standard library issue the command 
+`trust standard library' or just `trust std lib'.
+@sp 1
+See also `trusted' and `untrust'.
+@sp 1
+@item trusted
+@kindex trusted (mdb command)
+Lists all the trusted modules, predicates and functions.  See also `trust'
+and `untrust'.
+@sp 1
+@item untrust @var{num}
+@kindex untrust (mdb command)
+Removes the object from the list of trusted objects.  @var{num} should 
+correspond with the number shown in the list produced by issuing a `trusted'
+command.  See also `trust' and `trusted'.
+@end table
+
+@sp 1
 @node Experimental commands
 @subsection Experimental commands
 
@@ -3245,35 +3290,6 @@ not to complain if the named file does not exist or is not readable.
 Saves current set of breakpoints and the current set of aliases
 in the named file as a set of @samp{break} and @samp{alias} commands.
 Sourcing the file will recreate the current breakpoints and aliases.
-@sp 1
-@item dd
-@c @item dd [--assume-all-io-is-tabled]
-@c The --assume-all-io-is-tabled option is for developers only. Specifying it
-@c makes an assertion, and if the assertion is incorrect, the resulting
-@c behaviour would be hard for non-developers to understand. The option is
-@c therefore deliberately not documented.
-Starts declarative debugging
-using the current event as the initial symptom.
-For details, see @ref{Declarative debugging}.
-@sp 1
-@item trust [@var{module-name}|@var{proc-spec}]
-@kindex trust (mdb command)
-Tells the declarative debugger to trust the given module, predicate or 
-function.  Individual predicates or functions can be trusted by just giving
-the predicate or function name.  If there is more than one predicate or 
-function with the given name then a list of alternatives will be shown.
-See also `trusted' and `untrust'.
-@sp 1
-@item trusted
-@kindex trusted (mdb command)
-Lists all the trusted modules, predicates and functions.  See also `trust'
-and `untrust'.
-@sp 1
-@item untrust @var{num}
-@kindex untrust (mdb command)
-Removes the object from the list of trusted objects.  @var{num} should 
-correspond with the number shown the the list produced by issuing a `trusted'
-command.  See also `trust' and `trusted'.
 @sp 1
 @item quit [-y]
 @kindex quit (mdb command)

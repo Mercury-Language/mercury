@@ -58,6 +58,7 @@ extern	MR_bool	MR_trace_decl_assume_all_io_is_tabled;
 
 extern	void	MR_decl_add_trusted_module(const char *module_name);
 extern	void	MR_decl_add_trusted_pred_or_func(const MR_Proc_Layout *entry);
+extern	void	MR_decl_trust_standard_library(void);
 extern	MR_bool	MR_decl_remove_trusted(int n);
 
 /*
