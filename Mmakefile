@@ -275,7 +275,7 @@ install: install_main install_grades
 	@echo
 	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
 	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
-	@echo "-- and $(INSTALL_INFODIR) to your INFOPATH,"
+	@echo "-- and $(INSTALL_INFO_DIR) to your INFOPATH,"
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
 	@echo "	(setq load-path (cons (expand-file-name "
