@@ -33,13 +33,24 @@
 % is currently implemented using the C interface,
 % it will end up compiling everything via C.
 
+% See also gcc/mercury/README.
+
 % TODO:
 %	Fix configuration issues:
-%	- mmake support for foreign code
-%	- document installation procedure
-%	- test more
-%	- support in tools/bootcheck and check that it bootchecks
+%	- document installation procedure better
+%	  (there is some documentation in gcc/mercury/README,
+%	  but probably there should also be something in the INSTALL
+%	  file in the Mercury distribution)
 %	- set up nightly tests
+%	- test more
+%
+%	Fix unimplemented standard Mercury features:
+%	- support nested modules
+%	  (They can be compiled using `gcc', but compiling them
+%	  with `mmc' doesn't work, see the XXX comment below.
+%	  Also Mmake support is broken.)
+%	- support modules containing foreign_decls but no
+%	  foreign_procs or foreign code
 %
 %	Implement implementation-specific features that are supported
 %	by other Mercury back-ends:
@@ -54,14 +65,17 @@
 %	- generate gcc trees rather than expanding as we go
 %		This should probably wait until the GCC back-end
 %		has a language-independent representation for switches.
-%	- support gdb
+%	- support gdb (hard!):
 %		- improve accuracy of line numbers (e.g. for decls).
 %		- make variable names match what's in the original source
 %		- use nested functions or something like that to hide
 %		  from the user the environment struct stuff that we
 %		  generate for nondet code
+%		- teach gdb to demangle Mercury symbol names
 %		- extend gdb to print Mercury data structures better
 %		- extend gdb to print Mercury stacks better
+%		- extend gdb to support mdb's `retry' command
+%		...
 %
 %	Improve efficiency of generated code:
 %	- implement annotation in gcc tree to force tailcalls
@@ -820,7 +834,8 @@ gen_defns(ModuleName, [Defn | Defns], GlobalInfo0, GlobalInfo) -->
 :- mode build_local_defns(in, in, in, in, out, di, uo) is det.
 
 build_local_defns([], _, _, SymbolTable, SymbolTable) --> [].
-build_local_defns([Defn|Defns], DefnInfo, ModuleName, SymbolTable0, SymbolTable) -->
+build_local_defns([Defn|Defns], DefnInfo, ModuleName,
+		SymbolTable0, SymbolTable) -->
 	build_local_defn(Defn, DefnInfo, ModuleName, GCC_Defn),
 	% Insert the variable definition into our symbol table.
 	% The MLDS code that the MLDS code generator generates should
@@ -831,7 +846,8 @@ build_local_defns([Defn|Defns], DefnInfo, ModuleName, SymbolTable0, SymbolTable)
 	{ Defn = mlds__defn(Name, _, _, _) },
 	{ SymbolTable1 = map__det_insert(SymbolTable0,
 		qual(ModuleName, Name), GCC_Defn) },
-	build_local_defns(Defns, DefnInfo, ModuleName, SymbolTable1, SymbolTable).
+	build_local_defns(Defns, DefnInfo, ModuleName,
+		SymbolTable1, SymbolTable).
 
 	% Handle MLDS definitions that are nested inside a type, 
 	% i.e. fields of that type.
@@ -976,7 +992,8 @@ build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
 % decl flags for variables
 %
 
-:- pred add_var_decl_flags(mlds__decl_flags, gcc__var_decl, io__state, io__state).
+:- pred add_var_decl_flags(mlds__decl_flags, gcc__var_decl,
+		io__state, io__state).
 :- mode add_var_decl_flags(in, in, di, uo) is det.
 
 add_var_decl_flags(Flags, GCC_Defn) -->
@@ -1049,7 +1066,8 @@ add_var_abstractness_flag(abstract, _GCC_Defn) -->
 % decl flags for fields
 %
 
-:- pred add_field_decl_flags(mlds__decl_flags, gcc__field_decl, io__state, io__state).
+:- pred add_field_decl_flags(mlds__decl_flags, gcc__field_decl,
+		io__state, io__state).
 :- mode add_field_decl_flags(in, in, di, uo) is det.
 
 add_field_decl_flags(Flags, GCC_Defn) -->
@@ -1060,7 +1078,8 @@ add_field_decl_flags(Flags, GCC_Defn) -->
 	add_field_constness_flag(	constness(Flags),	GCC_Defn),
 	add_field_abstractness_flag(	abstractness(Flags),	GCC_Defn).
 
-:- pred add_field_access_flag(mlds__access, gcc__field_decl, io__state, io__state).
+:- pred add_field_access_flag(mlds__access, gcc__field_decl,
+		io__state, io__state).
 :- mode add_field_access_flag(in, in, di, uo) is det.
 
 add_field_access_flag(public, _GCC_Defn) -->
@@ -1874,7 +1893,8 @@ build_type(mlds__cont_type(ArgTypes), _, _, GCC_Type) -->
 			"cont_type (`--nondet-copy-out' & `--target asm')") }
 	).
 build_type(mlds__commit_type, _, _, gcc__jmpbuf_type_node) --> [].
-build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo, GCC_Type) -->
+build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo,
+		GCC_Type) -->
 	build_rtti_type(RttiName, InitializerSize, GCC_Type).
 
 :- pred build_mercury_type(mercury_type, builtin_type, gcc__type,
@@ -2149,7 +2169,8 @@ build_pseudo_type_info_type(higher_order_type_info(_TypeId, _Arity,
 	build_struct_type(StructName,
 		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
 		 'MR_Integer'		- "MR_pti_higher_order_arity",
-		 MR_PseudoTypeInfoArray	- "MR_pti_higher_order_arg_pseudo_typeinfos"],
+		 MR_PseudoTypeInfoArray	-
+		 		"MR_pti_higher_order_arg_pseudo_typeinfos"],
 		GCC_Type).
 
 :- pred build_du_exist_locn_type(gcc__type, io__state, io__state).
@@ -2446,7 +2467,8 @@ gen_stmt(DefnInfo0, block(Defns, Statements), _Context) -->
 	{ FuncName = DefnInfo0 ^ func_name },
 	{ FuncName = qual(ModuleName, _) },
 	{ SymbolTable0 = DefnInfo0 ^ local_vars },
-	build_local_defns(Defns, DefnInfo0, ModuleName, SymbolTable0, SymbolTable),
+	build_local_defns(Defns, DefnInfo0, ModuleName,
+		SymbolTable0, SymbolTable),
 	{ DefnInfo = DefnInfo0 ^ local_vars := SymbolTable },
 	gen_statements(DefnInfo, Statements),
 	gcc__end_block.
@@ -2561,7 +2583,8 @@ gen_stmt(DefnInfo, do_commit(Ref), _Context) -->
 	;
 		unexpected(this_file, "non-lval argument to do_commit")
 	},
-	build_call(gcc__longjmp_func_decl, [mem_addr(RefLval), const(int_const(1))],
+	build_call(gcc__longjmp_func_decl,
+		[mem_addr(RefLval), const(int_const(1))],
 		DefnInfo, GCC_CallLongjmp),
 	gcc__gen_expr_stmt(GCC_CallLongjmp).
 gen_stmt(DefnInfo, try_commit(Ref, Stmt, Handler), _) -->
