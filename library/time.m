@@ -159,6 +159,8 @@
 	#ifdef HAVE_SYS_TIMES_H
 		#include <sys/times.h>
 	#endif
+
+	#define update_io(r_src, r_dest)	((r_dest) = (r_src))
 ").
 
 %-----------------------------------------------------------------------------%
