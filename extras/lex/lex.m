@@ -81,7 +81,7 @@
 :- func  T1 ++ T2  = regexp  <= (regexp(T1), regexp(T2)).
 :- func  *(T)      = regexp  <= (regexp(T)).
     % One of the following two functions may be deprecated
-    % in future, depending upon where there's a concensus
+    % in future, depending upon whether there's a concensus
     % concerning which is preferable.  Both express
     % alternation.
     %
@@ -96,20 +96,20 @@
 
     % Some basic non-primitive regexps.
     %
-:- func any(string) = regexp.        % any("abc") = ('a') \/ ('b') \/ ('c')
+:- func any(string) = regexp.        % any("abc") = ('a') or ('b') or ('c')
 :- func anybut(string) = regexp.     % anybut("abc") is complement of any("abc")
-:- func ?(T) = regexp <= regexp(T).  % ?(R)     = R \/ null
-:- func +(T) = regexp <= regexp(T).  % +(R)    = R \/ *(R)
+:- func ?(T) = regexp <= regexp(T).  % ?(R)       = R or null
+:- func +(T) = regexp <= regexp(T).  % +(R)       = R ++ *(R)
 
     % Some useful single-char regexps.
     %
 :- func digit = regexp.         % digit      = any("0123456789")
 :- func lower = regexp.         % lower      = any("abc...z")
 :- func upper = regexp.         % upper      = any("ABC...Z")
-:- func alpha = regexp.         % alpha      = lower \/ upper
-:- func alphanum = regexp.      % alphanum   = alpha \/ digit
-:- func identstart = regexp.    % identstart = alpha \/ "_"
-:- func ident = regexp.         % ident      = alphanum \/ "_"
+:- func alpha = regexp.         % alpha      = lower or upper
+:- func alphanum = regexp.      % alphanum   = alpha or digit
+:- func identstart = regexp.    % identstart = alpha or "_"
+:- func ident = regexp.         % ident      = alphanum or "_"
 :- func nl = regexp.            % nl         = re("\n")
 :- func tab = regexp.           % tab        = re("\t")
 :- func spc = regexp.           % spc        = re(" ")
@@ -474,7 +474,7 @@ advance_live_lexemes(Char, Offset, [L0 | Ls0], Ls, Winner0, Winner) :-
                 out(token_creator)) is semidet.
 
 live_lexeme_in_accepting_state([L | Ls], Token) :-
-    ( if in_accepting_state(L)
+    ( if   in_accepting_state(L)
       then Token = L ^ token
       else live_lexeme_in_accepting_state(Ls, Token)
     ).
@@ -523,18 +523,17 @@ manipulate_source(P, State0, State) :-
 
 read_from_stdin(_Offset, Result) -->
     io__read_char(IOResult),
-    { IOResult = ok(Char),              Result = ok(Char)
-    ; IOResult = eof,                   Result = eof
-    ; IOResult = error(_E),             throw(IOResult)
+    {   IOResult = ok(Char),              Result = ok(Char)
+    ;   IOResult = eof,                   Result = eof
+    ;   IOResult = error(_E),             throw(IOResult)
     }.
 
 % -----------------------------------------------------------------------------%
 
 read_from_string(Offset, Result, String, String) :-
-    ( if Offset < string__length(String) then
-        Result = ok(string__unsafe_index(String, Offset))
-      else
-        Result = eof
+    ( if   Offset < string__length(String)
+      then Result = ok(string__unsafe_index(String, Offset))
+      else Result = eof
     ).
 
 
@@ -587,7 +586,7 @@ any(S) = R :-
       else
         L = string__length(S),
         C = string__index_det(S, L - 1),
-        R = str_foldr(func(Cx, Rx) = (Cx \/ Rx), S, re(C), L - 2)
+        R = str_foldr(func(Cx, Rx) = (Cx or Rx), S, re(C), L - 2)
     ).
 
 anybut(S0) = R :-
@@ -609,7 +608,7 @@ str_foldr(Fn, S, X, I) =
                else str_foldr(Fn, S, Fn(string__index_det(S, I), X), I - 1)
     ).
 
-?(R)  = (R \/ null).
+?(R) = (R or null).
 
 +(R) = (R ++ *(R)).
 
@@ -631,10 +630,10 @@ lower      = any("abcdefghijklmnopqrstuvwxyz").
 upper      = any("ABCDEFGHIJKLMNOPQRSTUVWXYZ").
 wspc       = any(" \t\n\r\f\v").
 dot        = anybut("\n").
-alpha      = (lower \/ upper).
-alphanum   = (alpha \/ digit).
-identstart = (alpha \/ ('_')).
-ident      = (alphanum \/ ('_')).
+alpha      = (lower or upper).
+alphanum   = (alpha or digit).
+identstart = (alpha or ('_')).
+ident      = (alphanum or ('_')).
 nl         = re('\n').
 tab        = re('\t').
 spc        = re(' ').
