@@ -1193,6 +1193,7 @@ n - nonlocal variables of goals,
 p - pre-birth, post-birth, pre-death and post-death sets of goals,
 r - resume points of goals,
 s - store maps of goals,
+u - unification categories,
 v - variable numbers in variable names.
 The special argument value ``all''
 will cause the printing of all these fields.
