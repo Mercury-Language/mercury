@@ -1516,8 +1516,8 @@ mercury_compile__link_module_list(Modules) -->
 		    globals__io_lookup_string_option(grade, Grade),
 		    globals__io_lookup_string_option(link_flags, LinkFlags),
 		    { string__append_list(
-			["ml --grade ", Grade, " -o ", OutputFile, " ",
-			LinkFlags, " ",
+			["ml --grade ", Grade, LinkFlags, " ",
+			" -o ", OutputFile, " ",
 			OutputFileBase, "_init.o " | Objects],
 			LinkCmd) },
 		    invoke_system_command(LinkCmd, LinkCmdOK),
