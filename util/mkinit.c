@@ -189,6 +189,7 @@ static	void output_sub_init_functions(void);
 static	void output_main_init_function(void);
 static	void output_main(void);
 static	void process_file(char *filename);
+static	void process_m_file(char *filename);
 static	void process_init_file(const char *filename);
 static	void output_init_function(const char *func_name);
 static	int getline(FILE *file, char *line, int line_max);
@@ -208,7 +209,8 @@ extern int sys_nerr;
 extern char *sys_errlist[];
 
 char *
-strerror(int errnum) {
+strerror(int errnum)
+{
 	if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
 		return sys_errlist[errnum];
 	} else {
@@ -234,8 +236,7 @@ main(int argc, char **argv)
 	output_main_init_function();
 	output_main();
 
-	if (num_errors > 0)
-	{
+	if (num_errors > 0) {
 		fputs("/* Force syntax error, since there were */\n", stdout);
 		fputs("/* errors in the generation of this file */\n", stdout);
 		fputs("#error \"You need to remake this file\"\n", stdout);
@@ -251,10 +252,8 @@ static void
 parse_options(int argc, char *argv[])
 {
 	int	c;
-	while ((c = getopt(argc, argv, "c:w:l")) != EOF)
-	{
-		switch (c)
-		{
+	while ((c = getopt(argc, argv, "c:w:l")) != EOF) {
+		switch (c) {
 		case 'c':
 			if (sscanf(optarg, "%d", &maxcalls) != 1)
 				usage();
@@ -295,8 +294,7 @@ output_headers(void)
 
 	fputs(header1, stdout);
 
-	for (filenum = 0; filenum < num_files; filenum++)
-	{
+	for (filenum = 0; filenum < num_files; filenum++) {
 		fputs("** ", stdout);
 		fputs(files[filenum], stdout);
 		putc('\n', stdout);
@@ -315,8 +313,7 @@ output_sub_init_functions(void)
 	fputs("static void init_modules_0(void)\n", stdout);
 	fputs("{\n", stdout);
 
-	for (filenum = 0; filenum < num_files; filenum++)
-	{
+	for (filenum = 0; filenum < num_files; filenum++) {
 		process_file(files[filenum]);
 	}
 
@@ -334,8 +331,9 @@ output_main_init_function(void)
 
 	fputs(if_need_to_init, stdout);
 
-	for (i = 0; i <= num_modules; i++)
+	for (i = 0; i <= num_modules; i++) {
 		printf("\tinit_modules_%d();\n", i);
+	}
 	fputs("#endif\n", stdout);
 
 	fputs("}\n", stdout);
@@ -353,16 +351,14 @@ output_main(void)
 /*---------------------------------------------------------------------------*/
 
 static void 
-process_file(char *filename) {
+process_file(char *filename)
+{
 	int len = strlen(filename);
-	if (strcmp(filename + len - 2, ".m") == 0) {
-		char func_name[1000];
-		filename[len - 2] = '\0';	 /* remove trailing ".m" */
-		sprintf(func_name, "mercury__%s__init", filename);
-		output_init_function(func_name);
-	} else if (strcmp(filename + len - 5, ".init") == 0) {
+	if (len >= 2 && strcmp(filename + len - 2, ".m") == 0) {
+		process_m_file(filename);
+	} else if (len >= 5 && strcmp(filename + len - 5, ".init") == 0) {
 		process_init_file(filename);
-	} else if (strcmp(filename + len - 2, ".c") == 0) {
+	} else if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
 		process_init_file(filename);
 	} else {
 		fprintf(stderr,
@@ -372,8 +368,37 @@ process_file(char *filename) {
 	}
 }
 
+static void
+process_m_file(char *filename)
+{
+	char func_name[1000];
+
+	char *dot;
+
+	/* remove the trailing ".m" */
+	filename[strlen(filename) - 2] = '\0';	
+
+	/*
+	** The func name is "mercury__<modulename>__init",
+	** where <modulename> is the base filename with all
+	** `.'s replaced with `__'.
+	*/
+	strcpy(func_name, "mercury");
+	while ((dot = strchr(filename, '.')) != NULL) {
+		strcat(func_name, "__");
+		strncat(func_name, filename, dot - filename);
+		filename = dot + 1;
+	}
+	strcat(func_name, "__");
+	strcat(func_name, filename);
+	strcat(func_name, "__init");
+
+	output_init_function(func_name);
+}
+
 static void 
-process_init_file(const char *filename) {
+process_init_file(const char *filename)
+{
 	const char * const	init_str = "INIT ";
 	const char * const	endinit_str = "ENDINIT ";
 	const int		init_strlen = strlen(init_str);
