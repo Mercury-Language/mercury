@@ -2,7 +2,7 @@ This file documents the port of Mercury to PowerPC Macs running MacOS X,
 i.e. the "powerpc-apple-darwin" configuration.
 
 The latest version of the Mercury compiler (as at 19 May 2004) doesn't compile
-with gcc 2.95.2 on MacOS 10.3.3, however it does with gcc 3.4.0.
+with gcc 2.95.2 on MacOS 10.3.3, however it does with gcc 3.3 and greater.
 
 The version of tar in /usr/bin/tar on some older versions of MacOS
 (e.g. 10.1) doesn't work properly -- it truncates long path names.
