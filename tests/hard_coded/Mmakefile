@@ -249,13 +249,13 @@ else
 		java_test
 endif
 
-# Fact tables current only work in the C grades.
+# Fact tables currently work only in the C grades.
 ifeq "$(filter il% java%,$(GRADE))" ""
-FACTT_PROGS= \
-	factt \
-	factt_sort_test
+	FACTT_PROGS= \
+		factt \
+		factt_sort_test
 else
-FACTT_PROGS=
+	FACTT_PROGS=
 endif
 
 # XXX test_array2d does not work in at least asm_fast.gc.profdeep; the
