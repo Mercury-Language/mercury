@@ -147,8 +147,6 @@ root=`/bin/pwd`
 
 MERCURY_COMPILER=$root/compiler/mercury_compile
 export MERCURY_COMPILER
-MERCURY_INT_DIR=$root/stage2/library
-export MERCURY_INT_DIR
 
 MMAKE_VPATH=.
 export MMAKE_VPATH
@@ -226,8 +224,6 @@ unset MMAKE_DIR
 
 MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
 export MERCURY_COMPILER
-MERCURY_INT_DIR=$root/stage3/library
-export MERCURY_INT_DIR
 
 ulimit -t 200
 
@@ -336,11 +332,6 @@ then
 			echo "stage2.$basis and stage3 compare ok"
 		fi
 	fi
-else
-	# since we have not created any stage3, we can't let MERCURY_INT_DIR
-	# to continue to refer to stage3/library
-	MERCURY_INT_DIR=$root/stage2/library
-	export MERCURY_INT_DIR
 fi
 
 for testdir in $testdirs

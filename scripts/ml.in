@@ -12,7 +12,7 @@
 #
 # Usage: see below.
 #
-# Environment variables: MERCURY_C_LIB_DIR, MERCURY_DEFAULT_GRADE, ...
+# Environment variables: MERCURY_DEFAULT_GRADE, ...
 #
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
@@ -106,8 +106,8 @@ case $require_tracing in
 esac
 
 case "$mercury_stdlib_dir" in
-    "")	LIBDIR=$MERCURY_C_LIB_DIR ;;
-    *)	LIBDIR=${MERCURY_C_LIB_DIR=$mercury_stdlib_dir/lib} ;;
+    "")	LIBDIR= ;;
+    *)	LIBDIR=$mercury_stdlib_dir/lib ;;
 esac
 
 # If you haven't set mercury_libs, set it to the default value

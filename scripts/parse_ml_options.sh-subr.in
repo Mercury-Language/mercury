@@ -205,9 +205,7 @@ $grade_usage
 
 Environment variables:
 		MERCURY_DEFAULT_GRADE, MERCURY_C_COMPILER,
-		MERCURY_C_LIB_DIR, MERCURY_NONSHARED_LIB_DIR,
-		MERCURY_MOD_LIB_MODS, MERCURY_TRACE_LIB_MODS,
-		MERCURY_MKINIT."
+		MERCURY_NONSHARED_LIB_DIR, MERCURY_MKINIT."
 
 # The following options are not generally useful, so they are not documented:
 # -i, --include-initialization-code

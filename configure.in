@@ -194,10 +194,10 @@ if test "$BOOTSTRAP_MC" != ""; then
 		").
 EOF
 	if
-		# Test for the `--bug-intermod-2002-06-13' option.
+		# Test for the `--read-config-file-2003-03-01' option
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 		$BOOTSTRAP_MC \
-			--bug-foreign_import-2002-08-06 \
+			--read-config-file-2003-03-01 \
 			--halt-at-warn $link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"

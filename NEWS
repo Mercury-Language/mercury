@@ -144,6 +144,11 @@ Changes to the Mercury compiler:
 * The Mercury compiler now uses `.' and not `:' as the module separator
   in all output.
 
+* The environment variables which were previously used to override the
+  location of the standard library (MERCURY_ALL_C_INCL_DIRS,
+  MERCURY_ALL_MC_C_INCL_DIRS, MERCURY_INT_DIR, MERCURY_C_LIB_DIR,
+  MERCURY_MOD_LIB_MODS, MERCURY_TRACE_LIB_MODS) have been removed.
+
 Portability improvements:
 
 * Nothing yet.

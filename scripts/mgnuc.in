@@ -136,7 +136,7 @@ Description:
 	but this can be changed using the \`--no-ansi' or \`--no-check'
 	options.
 Environment variables:
-	MERCURY_ALL_C_INCL_DIRS, MERCURY_DEFAULT_GRADE.
+	MERCURY_DEFAULT_GRADE.
 "
 
 while : ; do
@@ -242,13 +242,13 @@ done
 @CANONICAL_GRADE@
 
 case "$mercury_stdlib_dir" in
-    "")	MERC_ALL_C_INCL_DIRS=$MERCURY_ALL_C_INCL_DIRS
+    "")	MERC_ALL_C_INCL_DIRS=
     	;;
     *) 
 	# The option setting code above guarantees that if
 	# `--mercury-stdlib-dir' is set, `--mercury-config-dir'
 	# is also set.
-    	MERC_ALL_C_INCL_DIRS=${MERCURY_ALL_C_INCL_DIRS="-I$mercury_config_dir/conf -I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/$FULLARCH/inc"}
+    	MERC_ALL_C_INCL_DIRS="-I$mercury_config_dir/conf -I$mercury_stdlib_dir/inc -I$mercury_stdlib_dir/lib/$GRADE/$FULLARCH/inc"}
 	;;
 esac
 

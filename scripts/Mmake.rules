@@ -47,15 +47,11 @@ endif
 #
 # Find the directory containing the interface files for the standard library.
 #
-ifdef MERCURY_INT_DIR
-    MERC_INT_DIR = $(MERCURY_INT_DIR)
+ifdef MERCURY_STDLIB_DIR
+    export MERCURY_STDLIB_DIR
+    MERC_INT_DIR = $(MERCURY_STDLIB_DIR)/ints
 else
-    ifdef MERCURY_STDLIB_DIR
-        export MERCURY_STDLIB_DIR
-        MERC_INT_DIR = $(MERCURY_STDLIB_DIR)/ints
-    else
-        MERC_INT_DIR =
-    endif
+    MERC_INT_DIR =
 endif
 
 #-----------------------------------------------------------------------------#
