@@ -821,17 +821,17 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		%
 		% In this case T is unbound, so there cannot be any objects
 		% of type T, and so q/1 cannot possibly use the unification
-		% predicate for type T.  We just pass a dummy value (0).
+		% predicate for type T.  We pass the type-info for the
+		% type `void'/0.
 		%
 		%	:- pred p.
 		%	:- pred q(type_info(T), list(T)).
-		%	p :- q(0, []).
+		%	p :- q(<void/0>, []).
 		%
-		% (This isn't really type-correct, but we're already past
-		% the type-checker.  Passing 0 should ensure that we get
-		% a core dump if we ever attempt to call the unify pred,
-		% whether we are using one_cell, one_or_two_cell, or
-		% shared_one_or_two_cell typeinfos.)
+		% Passing `void'/0 should ensure that we get a runtime
+		% error if the special predicates for this type are
+		% ever used (void has its special predicates set to
+		% `unused'/0).
 		%
 		% XXX what about io__read_anything/3?
 		% e.g.
@@ -841,10 +841,10 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		% introduce a new variable, and
 		% create a construction unification which initializes the
 		% variable to zero
-		polymorphism__new_type_info_var(Type, "type_info",
-			VarSet0, VarTypes0, Var, VarSet, VarTypes),
-		polymorphism__init_with_int_constant(Var, 0, Goal),
-		ExtraGoals = [Goal]
+		TypeId = unqualified("void") - 0,
+		polymorphism__construct_type_info(Type, TypeId, [],
+			no, ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
+			Var, ExtraGoals, VarSet, VarTypes)
 	).
 
 :- pred polymorphism__construct_type_info(type, type_id, list(type),

@@ -729,21 +729,12 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	Word	base_type_info_1, base_type_info_2;
 #endif
 
-	/* Test to see if either of the type_infos are null
-	 * pointers, which represent a free type variable
-	 * (see compiler/polymorphism.m for
-	 * an explanation of when that can happen).
-	 * We define the ordering so that free type variables precede
-	 * ground types (this choice is arbitrary).
-	 * Free type variables are considered to have been instantiated
-	 * to a single type, so two free type variables compare equal.
-	 */
+	/* 
+	** If type_infos are equal, they must represent the
+	** same type.
+	*/
 	 if (type_info_1 == type_info_2)
 		return COMPARE_EQUAL;
-	 if (type_info_1 == (Word) NULL)
-		return COMPARE_LESS;
-	 if (type_info_2 == (Word) NULL)
-		return COMPARE_GREATER;
 
 	/* Next find the addresses of the unify preds in the type_infos */
 
@@ -2330,8 +2321,6 @@ mercury_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 	** instead of on the heap.
 	*/
 
-MR_DECLARE_STRUCT(mercury_data___base_type_info_void_0);
-
 Word * 
 create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
@@ -2349,13 +2338,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 			term_type_info[(Word) arg_pseudo_type_info];
 	}
 
-		/* 
-		** If it's still a variable, make it a reference to 'void'.
-		*/
-	if (arg_pseudo_type_info == NULL) {
-		return (Word *) (Word) &mercury_data___base_type_info_void_0;
-	}
-	else if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
+	if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
 		fatal_error(""unbound type variable"");
 	}
 
@@ -2373,16 +2356,7 @@ create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	for (i = 0; i <= arity; i++) {
 		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info[i])) {
 			type_info[i] = term_type_info[arg_pseudo_type_info[i]];
-
-			/* 
-			** If it's still a variable, make it a reference 
-			** to `void'.
-			*/
-			if ((Word *) type_info[i] == NULL) {
-				type_info[i] = (Word) 
-					&mercury_data___base_type_info_void_0;
-			}
-			else if (TYPEINFO_IS_VARIABLE(type_info[i])) {
+			if (TYPEINFO_IS_VARIABLE(type_info[i])) {
 				fatal_error(""unbound type variable"");
 			}
 
