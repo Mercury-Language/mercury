@@ -1685,8 +1685,11 @@ inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
 	% The lists of bound_inst are guaranteed to be sorted.
 	% Abstract unification of two bound(...) insts proceeds
 	% like a sorted merge operation.  If two elements have the
-	% same functor name, they are inserted in the output list
-	% iff their argument inst list can be abstractly unified.
+	% same functor name, they are inserted in the output list,
+	% assuming their argument inst list can be abstractly unified.
+	% (If it can't, the whole thing fails).  If a functor name
+	% occurs in only one of the two input lists, it is not inserted
+	% in the output list.
 
 :- pred abstractly_unify_bound_inst_list(is_live, list(bound_inst),
 		list(bound_inst), unify_is_real, module_info,
@@ -1705,9 +1708,8 @@ abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
-	    ( abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real, ModuleInfo0,
-			Args, Det1, ModuleInfo1)
-	    ->
+	    	abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
+			ModuleInfo0, Args, Det1, ModuleInfo1),
 		L = [functor(ConsIdX, Args) | L1],
 		abstractly_unify_bound_inst_list(Live, Xs, Ys, Real,
 					ModuleInfo1, L1, Det2, ModuleInfo),
@@ -1716,19 +1718,15 @@ abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
 		;
 		    Det = Det2
 		)
-	    ;
-		abstractly_unify_bound_inst_list(Live, Xs, Ys, Real,
-						ModuleInfo0, L, Det, ModuleInfo)
-	    )
 	;
-	    Det = semidet,
-	    ( compare(<, ConsIdX, ConsIdY) ->
-		abstractly_unify_bound_inst_list(Live, Xs, [Y|Ys], Real,
-						ModuleInfo0, L, _, ModuleInfo)
-	    ;
-		abstractly_unify_bound_inst_list(Live, [X|Xs], Ys, Real,
-						ModuleInfo0, L, _, ModuleInfo)
-	    )
+		Det = semidet,
+		( compare(<, ConsIdX, ConsIdY) ->
+			abstractly_unify_bound_inst_list(Live, Xs, [Y|Ys],
+				Real, ModuleInfo0, L, _, ModuleInfo)
+		;
+			abstractly_unify_bound_inst_list(Live, [X|Xs], Ys,
+				Real, ModuleInfo0, L, _, ModuleInfo)
+		)
 	).
 
 :- pred abstractly_unify_bound_inst_list_lives(list(bound_inst), cons_id,
