@@ -184,7 +184,7 @@ for clauses.
 Tokens in Mercury are the same as in ISO Prolog.
 The only differences are the @samp{#@var{line}} token, which
 is used as a line number directive (see below) and the
-@samp{backquote (`)} token.
+backquote (@samp{`}) token.
 
 The different tokens are as follows.  Tokens may be separated by
 whitespace or line number directives.
@@ -307,8 +307,8 @@ The end of file.
 
 Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
 except that as extensions we permit higher-order terms and the
-introduction of infix operators by the use of grave accents (backquotes)
-, as described below.
+introduction of infix operators by the use of grave accents (backquotes),
+as described below.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  @xref{Data-terms}.
 
