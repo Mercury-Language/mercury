@@ -5,6 +5,12 @@
 
 . ../handle_options
 
+# Avoid picking up parameter settings from $HOME/.mdbrc that could cause
+# spurious differences between the outputs of these test cases and the
+# expected outputs.
+HOME=/nonexistent
+export HOME
+
 # Run the tests in any subdirectories of this one.  If any of these
 # fail, we still perform the tests in this directory but return a
 # status of 1 regardless of the outcome.
