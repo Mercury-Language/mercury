@@ -10,9 +10,11 @@ errors.m:053: In definition of type `errors:eqv_type_which_references_undefined_
 errors.m:053:   error: undefined type `undefined_type'/0.
 errors.m:100: In definition of type `errors:needs_qualification'/0:
 errors.m:100:   error: undefined type `state'/0.
-errors.m:055: Error: circular equivalence type `errors:circular_eqv_type'/0.
-errors.m:057: Error: circular equivalence type `errors:indirectly_circular_eqv_type_1'/0.
-errors.m:058: Error: circular equivalence type `errors:indirectly_circular_eqv_type_2'/0.
+errors.m:055: Error: circular equivalence type `errors:circular_eqv_type/0'.
+errors.m:057: Error: circular equivalence type
+errors.m:057:   `errors:indirectly_circular_eqv_type_1/0'.
+errors.m:058: Error: circular equivalence type
+errors.m:058:   `errors:indirectly_circular_eqv_type_2/0'.
 errors.m:028: Error: mode declaration for predicate `errors:mode_declaration_without_pred_declaration/0'
 errors.m:028:   without preceding `pred' declaration.
 errors.m:032: Error: mode declaration for predicate `errors:missing_pred_declaration/0'

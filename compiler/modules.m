@@ -4697,9 +4697,21 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 	%
 	(
 		list__member(Item, Items),
-		Item = pred_or_func(_, _, _, predicate,
-				Name, [_, _], _, _, _, _) - _,
-		unqualify_name(Name, "main")
+		Item = pred_or_func(_, _, _, predicate, Name,
+			[_, _], WithType, _, _, _, _, _) - _,
+		unqualify_name(Name, "main"),
+
+		% XXX We should allow `main/2' to be declared using
+		% `with_type`, but equivalences haven't been expanded
+		% at this point. The `has_main' field is only used for
+		% some special case handling of the module containing
+		% main for the IL backend (we generate a `.exe' file
+		% rather than a `.dll' file). This would arguably be
+		% better done by generating a `.dll' file as normal,
+		% and a separate `.exe' file containing initialization
+		% code and a call to `main/2', as we do with the `_init.c'
+		% file in the C backend.
+		WithType = no
 	->
 		HasMain = has_main
 	;

@@ -102,6 +102,33 @@
 	%
 :- func map_maybe(func(T) = U, maybe(T)) = maybe(U).
 
+	% fold_maybe(P, yes(Value), Acc0, Acc) :- P(Value, Acc0, Acc).
+	% fold_maybe(_, no, Acc, Acc).
+:- pred fold_maybe(pred(T, U, U), maybe(T), U, U).
+:- mode fold_maybe(pred(in, in, out) is det, in, in, out) is det.
+:- mode fold_maybe(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode fold_maybe(pred(in, di, uo) is det, in, di, uo) is det.
+
+	% fold_maybe(F, yes(Value), Acc0) = F(Acc0).
+	% fold_maybe(_, no, Acc) = Acc.
+:- func fold_maybe(func(T, U) = U, maybe(T), U) = U.
+
+	% map_fold_maybe(P, yes(Value0), yes(Value), Acc0, Acc) :-
+	%       P(Value, Value, Acc0, Acc).
+	% map_fold_maybe(_, no, no, Acc, Acc).
+	%
+:- pred map_fold_maybe(pred(T, U, Acc, Acc), maybe(T), maybe(U), Acc, Acc).
+:- mode map_fold_maybe(pred(in, out, in, out) is det, in, out, in, out) is det.
+:- mode map_fold_maybe(pred(in, out, di, uo) is det, in, out, di, uo) is det.
+
+	% As above, but with two accumulators.
+:- pred map_fold2_maybe(pred(T, U, Acc1, Acc1, Acc2, Acc2),
+		maybe(T), maybe(U), Acc1, Acc1, Acc2, Acc2).
+:- mode map_fold2_maybe(pred(in, out, in, out, in, out) is det, in, out,
+		in, out, in, out) is det.
+:- mode map_fold2_maybe(pred(in, out, in, out, di, uo) is det,
+		in, out, in, out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 % The "unit" type - stores no information at all.
@@ -720,6 +747,20 @@ map_maybe(P, yes(T0), yes(T)) :- P(T0, T).
 
 map_maybe(_, no) = no.
 map_maybe(F, yes(T)) = yes(F(T)).
+
+fold_maybe(P, yes(Value), Acc0, Acc) :- P(Value, Acc0, Acc).
+fold_maybe(_, no, Acc, Acc).
+
+fold_maybe(F, yes(Value), Acc0) = F(Value, Acc0).
+fold_maybe(_, no, Acc) = Acc.
+
+map_fold_maybe(_, no, no, Acc, Acc).
+map_fold_maybe(P, yes(T0), yes(T), Acc0, Acc) :-
+	P(T0, T, Acc0, Acc).
+
+map_fold2_maybe(_, no, no, A, A, B, B).
+map_fold2_maybe(P, yes(T0), yes(T), A0, A, B0, B) :-
+	P(T0, T, A0, A, B0, B).
 
 /****
 	Is this really useful?

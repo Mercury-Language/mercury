@@ -1,0 +1,26 @@
+:- module with_type_re.
+
+:- interface.
+
+:- import_module io.
+
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+:- import_module with_type_re_2.
+:- import_module list, string.
+
+main -->
+	{ with_type_1([1], [1], "OK\n", Str1) },
+	io__write_string(Str1),
+
+	{ Str2 = with_type_2([1], [1], "OK\n") },
+	io__write_string(Str2),
+
+	{ with_type_3([1], [1], "OK\n", Str3) },
+	io__write_string(Str3).
+	
+:- pred with_type_3(T::in, list(_)::in, string::in, string::out) is det.
+
+with_type_3(_, _, X, X).

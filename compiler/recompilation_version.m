@@ -155,7 +155,16 @@ distribute_pragma_items(ItemId - ItemAndContext,
 		GatheredItems0, GatheredItems) :-
 	ItemId = MaybePredOrFunc - SymName / Arity,
 	ItemAndContext = Item - ItemContext,
-	AddIfNotExisting = no,
+
+	% For predicates defined using `with_type` annotations
+	% we don't know the actual arity, so always we need to add
+	% entries for pragmas, even if the pragma doesn't match any
+	% recorded predicate. For pragmas which don't include enough
+	% information to work out whether they apply to a predicate
+	% or a function this will result in an extra entry in the
+	% version numbers. Pragmas in the interface aren't common
+	% so this won't be too much of a problem.
+	AddIfNotExisting = yes,
 	(
 		MaybePredOrFunc = yes(PredOrFunc),
 		ItemType = pred_or_func_to_item_type(PredOrFunc),
@@ -186,12 +195,20 @@ distribute_pragma_items(ItemId - ItemAndContext,
 			Interface = concrete(Methods),
 			list__member(Method, Methods),
 			Method = pred_or_func(_, _, _, MethodPredOrFunc,
-				SymName, TypesAndModes, _, _, _, _, _),
+				SymName, TypesAndModes, WithType, _,
+				_, _, _, _, _),
 			( MaybePredOrFunc = yes(MethodPredOrFunc)
 			; MaybePredOrFunc = no
 			),
-			adjust_func_arity(MethodPredOrFunc,
-				Arity, list__length(TypesAndModes))
+			(
+				WithType = no,
+				adjust_func_arity(MethodPredOrFunc,
+					Arity, list__length(TypesAndModes))
+			;
+				% We don't know the actual arity, so just
+				% match on the name and pred_or_func.
+				WithType = yes(_)
+			)
 		->
 			% XXX O(N^2), but shouldn't happen too often.
 			ClassItems = ClassItems0 ++ [ItemAndContext]
@@ -270,6 +287,27 @@ recompilation_version__gather_items_2(ItemAndContext) -->
 			[Item - ItemContext | InstanceItems], Instances) },
 		^ instances := Instances
 	;
+		% For predicates or functions defined using `with_inst`
+		% annotations the pred_or_func and arity here won't be
+		% correct, but equiv_type.m will record the dependency
+		% on the version number with the `incorrect' pred_or_func
+		% and arity, so this will work.
+		{ Item = pred_or_func_mode(_, MaybePredOrFunc,
+			SymName, Modes, WithInst, _, _) },
+		{ MaybePredOrFunc = no },
+		{ WithInst = yes(_) }
+	->
+		GatheredItems0 =^ gathered_items,
+		{ ItemName = SymName - list__length(Modes) },
+		{ recompilation_version__add_gathered_item(Item,
+			item_id(predicate, ItemName), ItemContext,
+			yes, GatheredItems0, GatheredItems1) },
+		{ recompilation_version__add_gathered_item(Item,
+			item_id(function, ItemName), ItemContext,
+			yes, GatheredItems1, GatheredItems) },
+		^ gathered_items := GatheredItems
+	;
+
 		{ item_to_item_id(Item, ItemId) }
 	->
 		GatheredItems0 =^ gathered_items,
@@ -324,19 +362,32 @@ recompilation_version__add_gathered_item_2(Item, ItemType, NameArity,
 	% the item list generated here.
 	(
 		Item = pred_or_func(TVarSet, InstVarSet, ExistQVars,
-			PredOrFunc, PredName, TypesAndModes, Det,
-			Cond, Purity, ClassContext),
+			PredOrFunc, PredName, TypesAndModes, WithType,
+			WithInst, Det, Cond, Purity, ClassContext),
 		split_types_and_modes(TypesAndModes, Types, MaybeModes),
-		MaybeModes = yes(Modes)
+		MaybeModes = yes(Modes),
+		( Modes \= []
+		; WithInst = yes(_)
+		)
 	->
 		TypesWithoutModes = list__map(
 			(func(Type) = type_only(Type)), Types),
 		varset__init(EmptyInstVarSet),
 		PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet,
 			ExistQVars, PredOrFunc, PredName, TypesWithoutModes,
-			no, Cond, Purity, ClassContext),
+			WithType, no, no, Cond, Purity, ClassContext),
+		(
+			WithInst = yes(_),
+			% MaybePredOrFunc needs to be `no' here because when
+			% the item is read from the interface file we won't
+			% know whether it is a predicate or a function mode.
+			MaybePredOrFunc = no
+		;
+			WithInst = no,
+			MaybePredOrFunc = yes(PredOrFunc)
+		),
 		PredOrFuncModeItem = pred_or_func_mode(InstVarSet,
-			PredOrFunc, PredName, Modes, Det, Cond),
+			MaybePredOrFunc, PredName, Modes, WithInst, Det, Cond),
 		MatchingItems =
 			[PredOrFuncItem - ItemContext,
 			PredOrFuncModeItem - ItemContext
@@ -366,16 +417,30 @@ split_class_method_types_and_modes(Method0) = Items :-
 	% Always strip the context from the item -- this is needed
 	% so the items can be easily tested for equality.
 	Method0 = pred_or_func(TVarSet, InstVarSet, ExistQVars,
-		PredOrFunc, SymName, TypesAndModes, MaybeDet,
-		Cond, Purity, ClassContext, _),
+		PredOrFunc, SymName, TypesAndModes, WithType, WithInst,
+		MaybeDet, Cond, Purity, ClassContext, _),
 	(
 		split_types_and_modes(TypesAndModes, Types, MaybeModes),
-		MaybeModes = yes(Modes)
+		MaybeModes = yes(Modes),
+		( Modes \= []
+		; WithInst = yes(_)
+		)
 	->
 		TypesWithoutModes = list__map(
 			(func(Type) = type_only(Type)), Types),
-		PredOrFuncModeItem = pred_or_func_mode(InstVarSet, PredOrFunc,
-			SymName, Modes, MaybeDet, Cond, term__context_init),
+		(
+			WithInst = yes(_),
+			% MaybePredOrFunc needs to be `no' here because when
+			% the item is read from the interface file we won't
+			% know whether it is a predicate or a function mode.
+			MaybePredOrFunc = no
+		;
+			WithInst = no,
+			MaybePredOrFunc = yes(PredOrFunc)
+		),
+		PredOrFuncModeItem = pred_or_func_mode(InstVarSet,
+			MaybePredOrFunc, SymName, Modes, WithInst,
+			MaybeDet, Cond, term__context_init),
 		PredOrFuncModeItems = [PredOrFuncModeItem]
 	;
 		TypesWithoutModes = TypesAndModes,
@@ -384,14 +449,14 @@ split_class_method_types_and_modes(Method0) = Items :-
 	varset__init(EmptyInstVarSet),
 	PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet,
 		ExistQVars, PredOrFunc, SymName,
-		TypesWithoutModes, no, Cond, Purity,
+		TypesWithoutModes, WithType, no, no, Cond, Purity,
 		ClassContext, term__context_init),
 	Items = [PredOrFuncItem | PredOrFuncModeItems].
 split_class_method_types_and_modes(Method0) = [Method] :-
 	% Always strip the context from the item -- this is needed
 	% so the items can be easily tested for equality.
-	Method0 = pred_or_func_mode(A, B, C, D, E, F, _),
-	Method = pred_or_func_mode(A, B, C, D, E, F, term__context_init).
+	Method0 = pred_or_func_mode(A, B, C, D, E, F, G, _),
+	Method = pred_or_func_mode(A, B, C, D, E, F, G, term__context_init).
 
 :- pred item_to_item_id(item::in, item_id::out) is semidet.
 
@@ -413,13 +478,34 @@ item_to_item_id_2(mode_defn(_, Name, Params, _, _),
 item_to_item_id_2(module_defn(_, _), no).
 item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
 	Item = pred_or_func(_, _, _, PredOrFunc, SymName,
-			TypesAndModes, _, _, _, _),
-	adjust_func_arity(PredOrFunc, Arity, list__length(TypesAndModes)),
+			TypesAndModes, WithType, _, _, _, _, _),
+	% For predicates or functions defined using `with_type` annotations
+	% the arity here won't be correct, but equiv_type.m will record
+	% the dependency on the version number with the `incorrect' arity,
+	% so this will work.
+	(
+		WithType = no,
+		adjust_func_arity(PredOrFunc, Arity,
+			list__length(TypesAndModes))
+	;
+		WithType = yes(_),
+		Arity = list__length(TypesAndModes)
+	),
 	ItemType = pred_or_func_to_item_type(PredOrFunc).
-item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
-	Item = pred_or_func_mode(_, PredOrFunc, SymName, Modes, _, _),
-	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)),
-	ItemType = pred_or_func_to_item_type(PredOrFunc).
+
+item_to_item_id_2(Item, ItemId) :-
+	Item = pred_or_func_mode(_, MaybePredOrFunc, SymName, Modes,
+			_, _, _),
+	( MaybePredOrFunc = yes(PredOrFunc) ->
+		adjust_func_arity(PredOrFunc, Arity, list__length(Modes)),
+		ItemType = pred_or_func_to_item_type(PredOrFunc),
+		ItemId = yes(item_id(ItemType, SymName - Arity))
+	;
+		% We need to handle these separately because a `:- mode'
+		% declaration with a `with_inst` annotation could be
+		% for a predicate or a funciton.
+		ItemId = no
+	).
 
 	% We need to handle these separately because some pragmas
 	% may affect a predicate and a function.
@@ -428,6 +514,7 @@ item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
 	Item = typeclass(_, ClassName, ClassVars, _, _),
 	list__length(ClassVars, ClassArity).	
+
 	% Instances are handled separately (unlike other items, the module
 	% qualifier on an instance declaration is the module containing
 	% the class, not the module containing the instance).
@@ -582,10 +669,12 @@ item_is_unchanged(nothing(A), Item2) =
 
 item_is_unchanged(Item1, Item2) = Result :-
 	Item1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
-		Name, TypesAndModes1, Det1, Cond, Purity, Constraints1),
+		Name, TypesAndModes1, WithType1, _,
+		Det1, Cond, Purity, Constraints1),
 	(
 		Item2 = pred_or_func(TVarSet2, _, ExistQVars2,
-			PredOrFunc, Name, TypesAndModes2, Det2, Cond, Purity,
+			PredOrFunc, Name, TypesAndModes2, WithType2,
+			_, Det2, Cond, Purity,
 			Constraints2),
 
 		% For predicates, ignore the determinism -- the modes and
@@ -605,8 +694,8 @@ item_is_unchanged(Item1, Item2) = Result :-
 		),
 
 		pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
-			TypesAndModes1, Constraints1, TVarSet2,
-			ExistQVars2, TypesAndModes2, Constraints2)
+			TypesAndModes1, WithType1, Constraints1, TVarSet2,
+			ExistQVars2, TypesAndModes2, WithType2, Constraints2)
 	->
 		Result = yes
 	;
@@ -615,12 +704,12 @@ item_is_unchanged(Item1, Item2) = Result :-
 
 item_is_unchanged(Item1, Item2) = Result :-
 	Item1 = pred_or_func_mode(InstVarSet1, PredOrFunc, Name, Modes1,
-			Det, Cond),
+			WithInst1, Det, Cond),
 	(
 		Item2 = pred_or_func_mode(InstVarSet2, PredOrFunc,
-			Name, Modes2, Det, Cond),
-		pred_or_func_mode_is_unchanged(InstVarSet1, Modes1,
-			InstVarSet2, Modes2)
+			Name, Modes2, WithInst2, Det, Cond),
+		pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
+			InstVarSet2, Modes2, WithInst2)
 	->
 		Result = yes
 	;
@@ -653,13 +742,13 @@ item_is_unchanged(Item1, Item2) = Result :-
 	% declaration in a single varset (it doesn't know which are which).
 	%
 :- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
-		list(type_and_mode)::in, class_constraints::in,
-		tvarset::in, existq_tvars::in, list(type_and_mode)::in,
-		class_constraints::in) is semidet. 
+	list(type_and_mode)::in, maybe(type)::in, class_constraints::in,
+	tvarset::in, existq_tvars::in, list(type_and_mode)::in,
+	maybe(type)::in, class_constraints::in) is semidet. 
 
 pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
-		Constraints1, TVarSet2, ExistQVars2,
-		TypesAndModes2, Constraints2) :-
+		MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
+		TypesAndModes2, MaybeWithType2, Constraints2) :-
 
 	GetArgTypes =
 		(func(TypeAndMode0) = Type :-
@@ -675,8 +764,19 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
 		),
 	Types1 = list__map(GetArgTypes, TypesAndModes1),
 	Types2 = list__map(GetArgTypes, TypesAndModes2),
+	(
+		MaybeWithType1 = yes(WithType1),
+		MaybeWithType2 = yes(WithType2),
+		AllTypes1 = [WithType1 | Types1],
+		AllTypes2 = [WithType2 | Types2]
+	;
+		MaybeWithType1 = no,
+		MaybeWithType2 = no,
+		AllTypes1 = Types1,
+		AllTypes2 = Types2
+	),
 
-	type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
+	type_list_is_unchanged(TVarSet1, AllTypes1, TVarSet2, AllTypes2,
 		_TVarSet, RenameSubst, Types2ToTypes1Subst),
 
 	%
@@ -760,9 +860,11 @@ type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
 	).
 
 :- pred pred_or_func_mode_is_unchanged(inst_varset::in, list(mode)::in,
-		inst_varset::in, list(mode)::in) is semidet.
+		maybe(inst)::in, inst_varset::in, list(mode)::in,
+		maybe(inst)::in) is semidet.
 
-pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, InstVarSet2, Modes2) :-
+pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
+		InstVarSet2, Modes2, MaybeWithInst2) :-
 	varset__coerce(InstVarSet1, VarSet1),
 	varset__coerce(InstVarSet2, VarSet2),
 
@@ -781,10 +883,24 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, InstVarSet2, Modes2) :-
 	ModeToTerm = (func(Mode) = term__coerce(mode_to_term(Mode))),
 	ModeTerms1 = list__map(ModeToTerm, Modes1),
 	ModeTerms2 = list__map(ModeToTerm, Modes2),
-	term__apply_substitution_to_list(ModeTerms2,
-		InstSubst, SubstModeTerms2),
-	type_list_subsumes(ModeTerms1, SubstModeTerms2, _),
-	type_list_subsumes(SubstModeTerms2, ModeTerms1, _).
+	(
+		MaybeWithInst1 = yes(Inst1),
+		MaybeWithInst2 = yes(Inst2),
+		WithInstTerm1 = term__coerce(mode_to_term(free -> Inst1)),
+		WithInstTerm2 = term__coerce(mode_to_term(free -> Inst2)),
+		AllModeTerms1 = [WithInstTerm1 | ModeTerms1],
+		AllModeTerms2 = [WithInstTerm2 | ModeTerms2]
+	;
+		MaybeWithInst1 = no,
+		MaybeWithInst2 = no,
+		AllModeTerms1 = ModeTerms1,
+		AllModeTerms2 = ModeTerms2
+	),	
+
+	term__apply_substitution_to_list(AllModeTerms2,
+		InstSubst, SubstAllModeTerms2),
+	type_list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
+	type_list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
 
 	%
 	% Combined typeclass method type and mode declarations are split
@@ -806,21 +922,22 @@ class_methods_are_unchanged([], []).
 class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
 	(
 		Method1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
-			Name, TypesAndModes1, Detism, Cond, Purity,
-			Constraints1, _),
+			Name, TypesAndModes1, WithType1, _,
+			Detism, Cond, Purity, Constraints1, _),
 		Method2 = pred_or_func(TVarSet2, _, ExistQVars2, PredOrFunc,
-			Name, TypesAndModes2, Detism, Cond, Purity,
-			Constraints2, _),
+			Name, TypesAndModes2, WithType2, _,
+			Detism, Cond, Purity, Constraints2, _),
 		pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
-			TypesAndModes1, Constraints1, TVarSet2, ExistQVars2,
-			TypesAndModes2, Constraints2)
+			TypesAndModes1, WithType1, Constraints1,
+			TVarSet2, ExistQVars2, TypesAndModes2, WithType2,
+			Constraints2)
 	;
 		Method1 = pred_or_func_mode(InstVarSet1, PredOrFunc, Name,
-			Modes1, Det, Cond, _),
+			Modes1, WithInst1, Det, Cond, _),
 		Method2 = pred_or_func_mode(InstVarSet2, PredOrFunc, Name,
-			Modes2, Det, Cond, _),
-		pred_or_func_mode_is_unchanged(InstVarSet1, Modes1,
-			InstVarSet2, Modes2)
+			Modes2, WithInst2, Det, Cond, _),
+		pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
+			InstVarSet2, Modes2, WithInst2)
 	),
 	class_methods_are_unchanged(Methods1, Methods2).
 

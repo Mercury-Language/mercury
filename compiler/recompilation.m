@@ -123,9 +123,14 @@
 	% are used because equiv_type.m removes all references to the
 	% equivalence types, and at that point we don't know which imported
 	% items are going to be used by the compilation.
-:- pred recompilation__record_used_equivalence_types(item_id::in,
-	set(type_ctor)::in, recompilation_info::in,
-	recompilation_info::out) is det.
+	%
+	% For predicates declared using `with_type` annotations,
+	% the version number in the interface file and the
+	% version_numbers map will refer tothe arity before expansion
+	% of the `with_type` annotation, so that needs to be recorded
+	% here as well.
+:- pred recompilation__record_expanded_items(item_id::in, set(item_id)::in,
+	recompilation_info::in, recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -374,8 +379,8 @@ recompilation__record_used_item(ItemType, Id, QualifiedId) -->
 		^ used_items := ItemSet
 	).
 
-recompilation__record_used_equivalence_types(Item, UsedTypes, Info0, Info) :-
-	( set__empty(UsedTypes) ->
+recompilation__record_expanded_items(Item, ExpandedItems, Info0, Info) :-
+	( set__empty(ExpandedItems) ->
 		Info = Info0
 	;
 		DepsMap0 = Info0 ^ dependencies,
@@ -384,10 +389,7 @@ recompilation__record_used_equivalence_types(Item, UsedTypes, Info0, Info) :-
 		;
 			set__init(Deps1)
 		),
-		UsedItems = list__map(
-			(func(TypeCtor) = item_id(type, TypeCtor)),
-			set__to_sorted_list(UsedTypes)),	
-		set__insert_list(Deps1, UsedItems, Deps),
+		set__union(Deps1, ExpandedItems, Deps),
 		map__set(DepsMap0, Item, Deps, DepsMap),
 		Info = Info0 ^ dependencies := DepsMap
 	).

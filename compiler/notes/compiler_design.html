@@ -254,8 +254,11 @@ file.
 
 <li> expansion of equivalence types (equiv_type.m) <br>
 
-	This is really part of type-checking, but is done
-	on the item_list rather than on the HLDS because it
+	`with_type` and `with_inst` annotations on predicate
+	and function type and mode declarations are also expanded.
+
+	Expansion of equivalence types is really part of type-checking,
+	but is done on the item_list rather than on the HLDS because it
 	turned out to be much easier to implement that way.
 
 <li> conversion to superhomogeneous form and into HLDS <br>
@@ -1216,6 +1219,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-03-13 01:01:14 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-15 07:32:06 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

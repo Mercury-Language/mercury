@@ -29,6 +29,13 @@
 :- pred mode_get_insts_semidet(module_info, mode, inst, inst).
 :- mode mode_get_insts_semidet(in, in, out, out) is semidet.
 
+	% inst_substitute_arg_list(Inst0, Params, Args, Inst) is true
+	% iff Inst is the inst that results from substituting all
+	% occurrences of Params in Inst0 with the corresponding
+	% value in Args.
+:- pred inst_substitute_arg_list(inst, list(inst_var), list(inst), inst).
+:- mode inst_substitute_arg_list(in, in, in, out) is det.
+
 	% a mode is considered input if the initial inst is bound
 :- pred mode_is_input(module_info, mode).
 :- mode mode_is_input(in, in) is semidet.
@@ -1001,14 +1008,6 @@ mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
 		map__from_corresponding_lists(Params, Args, Subst),
 		mode_apply_substitution(Mode0, Subst, Mode)
 	).
-
-	% inst_substitute_arg_list(Inst0, Params, Args, Inst) is true
-	% iff Inst is the inst that results from substituting all
-	% occurrences of Params in Inst0 with the corresponding
-	% value in Args.
-
-:- pred inst_substitute_arg_list(inst, list(inst_var), list(inst), inst).
-:- mode inst_substitute_arg_list(in, in, in, out) is det.
 
 inst_substitute_arg_list(Inst0, Params, Args, Inst) :-
 	( Params = [] ->

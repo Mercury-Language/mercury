@@ -228,13 +228,14 @@ list_term_to_term_list(Methods, MethodList) :-
 item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
 	(
-		Item = pred_or_func(A, B, C, D, E, F, G, H, I, J)
+		Item = pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L)
 	->
-		Result = ok(pred_or_func(A, B, C, D, E, F, G, H, I, J, Context))
+		Result = ok(pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L,
+				Context))
 	;
-		Item = pred_or_func_mode(A, B, C, D, E, F)
+		Item = pred_or_func_mode(A, B, C, D, E, F, G)
 	->
-		Result = ok(pred_or_func_mode(A, B, C, D, E, F, Context))
+		Result = ok(pred_or_func_mode(A, B, C, D, E, F, G, Context))
 	;
 		Result = error("Only pred, func and mode declarations allowed in class interface", Term)
 	).

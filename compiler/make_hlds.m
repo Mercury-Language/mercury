@@ -234,8 +234,8 @@ add_item_decl_pass_1(mode_defn(VarSet, Name, Params, ModeDefn, Cond), Context,
 		Cond, Context, Status, Module).
 
 add_item_decl_pass_1(pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
-		PredOrFunc, PredName, TypesAndModes, MaybeDet, Cond,
-		Purity, ClassContext),
+		PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
+		MaybeDet, Cond, Purity, ClassContext),
 		Context, Status, Module0, Status, Module) -->
 	{ init_markers(Markers) },
 	module_add_pred_or_func(Module0, TypeVarSet, InstVarSet, ExistQVars,
@@ -243,13 +243,21 @@ add_item_decl_pass_1(pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 		Purity, ClassContext, Markers, Context, Status, _, Module).
 
 add_item_decl_pass_1(
-		pred_or_func_mode(VarSet, PredOrFunc, PredName,
-			Modes, MaybeDet, Cond),
+		pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
+			Modes, _WithInst, MaybeDet, Cond),
 		Context, Status, Module0, Status, Module) -->
-	{ Status = item_status(ImportStatus, _) },
-	{ IsClassMethod = no },
-	module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet, Cond,
-		ImportStatus, Context, PredOrFunc, IsClassMethod, _, Module).
+	( { MaybePredOrFunc = yes(PredOrFunc) } ->
+		{ Status = item_status(ImportStatus, _) },
+		{ IsClassMethod = no },
+		module_add_mode(Module0, VarSet, PredName, Modes,
+			MaybeDet, Cond, ImportStatus, Context, PredOrFunc,
+			IsClassMethod, _, Module)
+	;
+		% equiv_type.m should have either set the pred_or_func
+		% or removed the item from the list.
+		{ unexpected(this_file,
+		"add_item_decl_pass_1: no pred_or_func on mode declaration") }
+	).
 
 add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
 
@@ -575,7 +583,8 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 
 add_item_decl_pass_2(
 		pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
-			PredOrFunc, SymName, TypesAndModes, _MaybeDet,
+			PredOrFunc, SymName, TypesAndModes,
+			_WithType, _WithInst, _MaybeDet,
 			_Cond, _Purity, _ClassContext),
 		_Context, Status, Module0, Status, Module) -->
 	%
@@ -603,7 +612,6 @@ add_item_decl_pass_2(
 			error("make_hlds.m: can't find func declaration")
 		)
 	}.
-
 add_item_decl_pass_2(promise(_, _, _, _), _, Status, Module, Status, Module) 
 	--> [].
 add_item_decl_pass_2(clause(_, _, _, _, _), _, Status, Module, Status,
@@ -612,7 +620,7 @@ add_item_decl_pass_2(inst_defn(_, _, _, _, _), _, Status, Module,
 		Status, Module) --> [].
 add_item_decl_pass_2(mode_defn(_, _, _, _, _), _, Status, Module,
 		Status, Module) --> [].
-add_item_decl_pass_2(pred_or_func_mode(_, _, _, _, _, _), _,
+add_item_decl_pass_2(pred_or_func_mode(_, _, _, _, _, _, _), _,
 		Status, Module, Status, Module) --> [].
 add_item_decl_pass_2(nothing(_), _, Status, Module, Status, Module) --> [].
 add_item_decl_pass_2(typeclass(_, _, _, _, _)
@@ -698,7 +706,7 @@ add_item_clause(mode_defn(_, _, _, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
 add_item_clause(
 		pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes,
-			_, _, _, _),
+			_WithType, _WithInst, _, _, _, _),
 		Status, Status, Context, Module, Module, Info, Info) -->
 	(
 		{ PredOrFunc = predicate }
@@ -710,7 +718,7 @@ add_item_clause(
 			Status, Context, Module)
 	).
 		
-add_item_clause(pred_or_func_mode(_, _, _, _, _, _), Status, Status, _,
+add_item_clause(pred_or_func_mode(_, _, _, _, _, _, _), Status, Status, _,
 				Module, Module, Info, Info) --> [].
 add_item_clause(module_defn(_, Defn), Status0, Status, _,
 		Module0, Module, Info0, Info) --> 
@@ -980,7 +988,7 @@ add_pragma_type_spec(Pragma, Context, Module0, Module, Info0, Info) -->
 add_pragma_type_spec_2(Pragma0, Context, PredId,
 		transform_info(ModuleInfo0, Info0), TransformInfo) -->
 	{ Pragma0 = type_spec(SymName, SpecName, Arity, _,
-			MaybeModes, Subst, TVarSet0, UsedEquivTypes) },
+			MaybeModes, Subst, TVarSet0, ExpandedItems) },
 	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
 	handle_pragma_type_spec_subst(Context, Subst, TVarSet0, PredInfo0,
 		TVarSet, Types, ExistQVars, ClassContext, SubstOk,
@@ -1097,7 +1105,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 		Pragma = type_spec(SymName, SpecName, Arity,
 				yes(PredOrFunc), MaybeModes,
 				map__to_assoc_list(RenamedSubst), TVarSet,
-				UsedEquivTypes), 
+				ExpandedItems), 
 		multi_map__set(PragmaMap0, PredId, Pragma, PragmaMap),
 		TypeSpecInfo = type_spec_info(ProcsToSpec,
 			ForceVersions, SpecMap, PragmaMap),
@@ -1108,9 +1116,9 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 		( status_is_imported(Status, yes) ->
 		    ItemType = pred_or_func_to_item_type(PredOrFunc),
 		    apply_to_recompilation_info(
-			recompilation__record_used_equivalence_types(
+			recompilation__record_expanded_items(
 				item_id(ItemType, SymName - Arity), 
-				UsedEquivTypes),
+				ExpandedItems),
 			TransformInfo1, TransformInfo)
 		;
 		    TransformInfo = TransformInfo1
@@ -2542,8 +2550,9 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		Module0, Module) -->
 	(
 		{ Method = pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
-			PredOrFunc, PredName, TypesAndModes, MaybeDet,
-			Cond, Purity, ClassContext, Context) },
+			PredOrFunc, PredName, TypesAndModes, _WithType,
+			_WithInst, MaybeDet, Cond, Purity, ClassContext,
+			Context) },
 		{ term__var_list_to_term_list(Vars, VarTerms) },
 		{ ClassContext = constraints(UnivCnstrs, ExistCnstrs) },
 		{ NewUnivCnstrs = [constraint(Name, VarTerms) | UnivCnstrs] },
@@ -2555,14 +2564,22 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 			MaybeDet, Cond, Purity, NewClassContext, Markers,
 			Context, Status, MaybePredIdProcId, Module)
 	;
-		{ Method = pred_or_func_mode(VarSet, PredOrFunc, PredName,
-			Modes, MaybeDet, Cond, Context) },
-		{ Status = item_status(ImportStatus, _) },
-		{ IsClassMethod = yes },
-		module_add_mode(Module0, VarSet, PredName, Modes, MaybeDet,
-			Cond, ImportStatus, Context, PredOrFunc,
-			IsClassMethod, PredIdProcId, Module),
-		{ MaybePredIdProcId = yes(PredIdProcId) }
+		{ Method = pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
+			Modes, _WithInst, MaybeDet, Cond, Context) },
+		( { MaybePredOrFunc = yes(PredOrFunc) } ->
+			{ Status = item_status(ImportStatus, _) },
+			{ IsClassMethod = yes },
+			module_add_mode(Module0, VarSet, PredName, Modes,
+				MaybeDet, Cond, ImportStatus, Context,
+				PredOrFunc, IsClassMethod, PredIdProcId,
+				Module),
+			{ MaybePredIdProcId = yes(PredIdProcId) }
+		;
+			% equiv_type.m should have either set the
+			% pred_or_func or removed the item from the list.
+			{ unexpected(this_file,
+	"module_add_class_method: no pred_or_func on mode declaration") }
+		)
 	).
 
 	% Go through the list of class methods, looking for
@@ -2579,7 +2596,7 @@ check_method_modes([], PredProcIds, PredProcIds, Module, Module) --> [].
 check_method_modes([M|Ms], PredProcIds0, PredProcIds, Module0, Module) -->
 	(
 		{ M = pred_or_func(_, _, _, PorF, QualName, TypesAndModes,
-			_, _, _, _, _) }
+			_WithType, _WithInst, _, _, _, _, _) }
 	->
 		{ QualName = qualified(ModuleName0, Name0) ->
 			ModuleName = ModuleName0,
@@ -8524,5 +8541,8 @@ promise_ex_error(PromiseType, Context, Message) -->
 		words(Message)
 		] },
 	error_util__write_error_pieces(Context, 0, ErrorPieces).
+
+:- func this_file = string.
+this_file = "make_hlds.m".
 
 %------------------------------------------------------------------------------%

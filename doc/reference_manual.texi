@@ -1555,6 +1555,30 @@ declarations can include type variables.  For example:
 :- func length(list(T)) = int.
 @end example
 
+A predicate or function can by declared to have a given higher-order
+type (@pxref{Higher-order}) by using `with_type` in the type declaration.
+This is useful where several predicates or functions need to have the
+same type signature, which often occurs for typeclass method implementations
+(@pxref{Type classes}), and for predicates to be passed as higher-order terms.
+
+For example,
+
+@example
+:- type foldl_pred(T, U) == pred(T, U, U).
+:- type foldl_func(T, U) == (func(T, U) = U).
+
+:- pred p(int) `with_type` foldl_pred(T, U).
+:- func f(int) `with_type` foldl_func(T, U).
+@end example
+
+@noindent
+is equivalent to
+
+@example
+:- pred p(int, T, U, U).
+:- pred f(int, T, U) = U.
+@end example
+
 Type variables in predicate and function declarations
 are implicitly universally quantified by default;
 that is, the predicate or function may be called with arguments
@@ -2024,12 +2048,39 @@ the standard library modes @samp{in/1} and @samp{out/1}:
 :- mode length(out(listskel)) = in.
 @end example
 
+As for type declarations, a predicate or function can be defined
+to have a given higher-order inst (@pxref{Higher-order modes} by using
+`with_inst` in the mode declaration.
+
+For example,
+
+@example
+:- inst foldl_pred == (pred(in, in, out) is det).
+:- inst foldl_func == (func(in, in) = out is det).
+
+:- mode p(in) `with_inst` foldl_pred.
+:- mode f(in) `with_inst` foldl_func.
+@end example
+
+@noindent
+is equivalent to
+
+@example
+:- mode p(in, in, in, out) is det.
+:- mode f(in, in, in) = out is det.
+@end example
+
+@noindent
+(@samp{is det} is explained in @ref{Determinism}.)
+
 If a predicate or function has only one mode, the @samp{pred} and @samp{mode}
 declaration can be combined:
 
 @example
 :- func length(list(T)::in) = (int::out).
 :- pred append(list(T)::in, list(T)::in, list(T)::out).
+
+:- pred p `with_type` foldl_pred(T, U) `with_inst` foldl_pred.
 @end example
 
 If there is no mode declaration for a function, the compiler assumes

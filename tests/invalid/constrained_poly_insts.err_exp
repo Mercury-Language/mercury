@@ -1,5 +1,5 @@
 constrained_poly_insts.m:007: Error: inconsistent constraints on inst variables in predicate mode declaration: p(in(_1), out(_1 =< any)).
-constrained_poly_insts.m:009: Error: inconsistent constraints on inst variables in predicate declaration: q(_1 :: in(_2 =< free), _1 :: out(_2 =< bound(c))).
+constrained_poly_insts.m:009: Error: inconsistent constraints on inst variables in `:- pred' declaration: q(_1 :: in(_2 =< free), _1 :: out(_2 =< bound(c))).
 constrained_poly_insts.m:012: Error: inconsistent constraints on inst variables in function mode declaration: r(in(_1)) = out(_1 =< free).
 constrained_poly_insts.m:014: Error: inconsistent constraints on inst variables in function declaration: s(_1 :: in(_2 =< ground)) = (_1 :: out(_2 =< unique)).
 constrained_poly_insts.m:023: Error: clause for predicate `constrained_poly_insts:q/2'

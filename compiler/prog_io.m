@@ -1376,19 +1376,54 @@ parse_type_decl_type(ModuleName, "==", [H, B], Condition, R) :-
 parse_type_decl_pred(ModuleName, VarSet, Pred, Attributes, R) :-
 	get_condition(Pred, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
-        process_type_decl_pred(ModuleName, MaybeDeterminism, VarSet, Body2,
-                                Condition, Attributes, R).
+	get_with_inst(Body2, Body3, WithInst),	
+	get_with_type(Body3, Body4, WithType),
+	process_type_decl_pred_or_func(predicate, ModuleName,
+		WithType, WithInst, MaybeDeterminism, VarSet, Body4,
+		Condition, Attributes, R).
 
-:- pred process_type_decl_pred(module_name, maybe1(maybe(determinism)), varset,
-				term, condition, decl_attrs, maybe1(item)).
-:- mode process_type_decl_pred(in, in, in, in, in, in, out) is det.
+:- pred process_type_decl_pred_or_func(pred_or_func, module_name, maybe(type),
+		maybe1(maybe(inst)), maybe1(maybe(determinism)), varset,
+		term, condition, decl_attrs, maybe1(item)).
+:- mode process_type_decl_pred_or_func(in, in, in, in, in, in,
+		in, in, in, out) is det.
 
-process_type_decl_pred(_MNm, error(Term, Reason), _, _, _, _,
-			error(Term, Reason)).
-process_type_decl_pred(ModuleName, ok(MaybeDeterminism), VarSet, Body,
+process_type_decl_pred_or_func(PredOrFunc, ModuleName, WithType, WithInst0,
+			MaybeDeterminism0, VarSet, Body,
 			Condition, Attributes, R) :-
-        process_pred(ModuleName, VarSet, Body, Condition, MaybeDeterminism,
-		     Attributes, R).
+    (
+	MaybeDeterminism0 = ok(MaybeDeterminism),
+	(
+	    WithInst0 = ok(WithInst),
+	    ( MaybeDeterminism = yes(_), WithInst = yes(_) ->
+		R = error("`with_inst` and determinism both specified", Body)
+	    ; MaybeDeterminism = yes(_), WithType = yes(_) ->
+		R = error("`with_type` and determinism both specified", Body)
+	    ; WithInst = yes(_), WithType = no ->
+		R = error("`with_inst` specified without `with_type`", Body)
+	    ;
+		(
+		    % Function declarations with `with_type` annotations have
+		    % the same form as predicate declarations.
+		    PredOrFunc = function,
+		    WithType = no
+		->
+		    process_func(ModuleName, VarSet, Body, Condition,
+				MaybeDeterminism, Attributes, R)
+		;
+		    process_pred_or_func(PredOrFunc, ModuleName, VarSet,
+		    		Body, Condition, WithType, WithInst,
+				MaybeDeterminism, Attributes, R)
+		)
+	    )
+	;
+	    WithInst0 = error(E, T),
+	    R = error(E, T)
+	)
+    ;
+	MaybeDeterminism0 = error(E, T),
+	R = error(E, T)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1402,8 +1437,11 @@ process_type_decl_pred(ModuleName, ok(MaybeDeterminism), VarSet, Body,
 parse_type_decl_func(ModuleName, VarSet, Func, Attributes, R) :-
 	get_condition(Func, Body, Condition),
 	get_determinism(Body, Body2, MaybeDeterminism),
-        process_maybe1_to_t(process_func(ModuleName, VarSet, Body2, Condition,
-					 Attributes), MaybeDeterminism, R).
+	get_with_inst(Body2, Body3, WithInst),	
+	get_with_type(Body3, Body4, WithType),
+	process_type_decl_pred_or_func(function, ModuleName,
+		WithType, WithInst, MaybeDeterminism, VarSet, Body4,
+		Condition, Attributes, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -1416,10 +1454,31 @@ parse_type_decl_func(ModuleName, VarSet, Func, Attributes, R) :-
 :- mode parse_mode_decl_pred(in, in, in, in, out) is det.
 
 parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
-	get_condition(Pred, Body, Condition),
-	get_determinism(Body, Body2, MaybeDeterminism),
-	process_maybe1_to_t(process_mode(ModuleName, VarSet, Body2, Condition,
-			Attributes), MaybeDeterminism, Result).
+    get_condition(Pred, Body, Condition),
+    get_determinism(Body, Body2, MaybeDeterminism0),
+    get_with_inst(Body2, Body3, WithInst0),
+    (
+	MaybeDeterminism0 = ok(MaybeDeterminism),
+        (
+	    WithInst0 = ok(WithInst),
+	    (
+	    	MaybeDeterminism = yes(_),
+		WithInst = yes(_)
+	    ->
+		Result = error("`with_inst` and determinism both specified",
+				Body)
+	    ;
+		process_mode(ModuleName, VarSet, Body3, Condition,
+			Attributes, WithInst, MaybeDeterminism, Result)
+	    )
+	;
+    	    WithInst0 = error(E, T),
+    	    Result = error(E, T)
+	)
+    ;
+	MaybeDeterminism0 = error(E, T),
+    	Result = error(E, T)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1487,6 +1546,44 @@ get_determinism(B, Body, Determinism) :-
 	;
 		Body = B,
 		Determinism = ok(no)
+	).
+
+	% Process the `with_inst` part of a declaration of the form:
+	% :- mode p(int) `with_inst` (pred(in, out) is det).
+:- pred get_with_inst(term, term, maybe1(maybe(inst))).
+:- mode get_with_inst(in, out, out) is det.
+
+get_with_inst(Body0, Body, WithInst) :-
+	(
+		Body0 = term__functor(term__atom("with_inst"),
+				[Body1, Inst1], _)
+	->
+		( convert_inst(allow_constrained_inst_var, Inst1, Inst) ->
+			WithInst = ok(yes(Inst))
+		;
+			WithInst = error("invalid inst in `with_inst`",
+					Body0)
+		),
+		Body = Body1
+	;
+		Body = Body0,
+		WithInst = ok(no)
+	).
+
+:- pred get_with_type(term, term, maybe(type)).
+:- mode get_with_type(in, out, out) is det.
+
+get_with_type(Body0, Body, WithType) :-
+	(
+		Body0 = term__functor(term__atom("with_type"),
+			[Body1, Type1], _)
+	->	
+		Body = Body1,
+		convert_type(Type1, Type),
+		WithType = yes(Type)
+	;
+		Body = Body0,
+		WithType = no
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1793,61 +1890,84 @@ convert_constructor(ModuleName, Term0, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-	% parse a `:- pred p(...)' declaration
+	% parse a `:- pred p(...)' declaration or a
+	% `:- func f(...) `with_type` t' declaration
 
-:- pred process_pred(module_name, varset, term, condition, maybe(determinism),
-			decl_attrs, maybe1(item)).
-:- mode process_pred(in, in, in, in, in, in, out) is det.
+:- pred process_pred_or_func(pred_or_func, module_name, varset, term,
+	condition, maybe(type), maybe(inst), maybe(determinism),
+	decl_attrs, maybe1(item)).
+:- mode process_pred_or_func(in, in, in, in, in, in, in, in, in, out) is det.
 
-process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Attributes0,
-		Result) :-
+process_pred_or_func(PredOrFunc, ModuleName, VarSet, PredType, Cond, WithType,
+		WithInst, MaybeDet, Attributes0, Result) :-
 	get_class_context_and_inst_constraints(ModuleName, Attributes0,
 		Attributes, MaybeContext),
 	(
 		MaybeContext = ok(ExistQVars, Constraints, InstConstraints),
 		parse_implicitly_qualified_term(ModuleName,
-			PredType, PredType, "`:- pred' declaration",
-			R),
-		process_pred_2(R, PredType, VarSet, MaybeDet, Cond, ExistQVars,
+			PredType, PredType,
+			pred_or_func_decl_string(PredOrFunc), R),
+		process_pred_or_func_2(PredOrFunc, R, PredType, VarSet,
+			WithType, WithInst, MaybeDet, Cond, ExistQVars,
 			Constraints, InstConstraints, Attributes, Result)
 	;
 		MaybeContext = error(String, Term),
 		Result = error(String, Term)
 	).
 
-:- pred process_pred_2(maybe_functor, term, varset, maybe(determinism),
-			condition, existq_tvars, class_constraints,
-			inst_var_sub, decl_attrs, maybe1(item)).
-:- mode process_pred_2(in, in, in, in, in, in, in, in, in, out) is det.
+:- pred process_pred_or_func_2(pred_or_func, maybe_functor, term, varset,
+		maybe(type), maybe(inst), maybe(determinism), condition,
+		existq_tvars, class_constraints, inst_var_sub,
+		decl_attrs, maybe1(item)).
+:- mode process_pred_or_func_2(in, in, in, in, in, in, in,
+		in, in, in, in, in, out) is det.
 
-process_pred_2(ok(F, As0), PredType, VarSet0, MaybeDet, Cond, ExistQVars,
+process_pred_or_func_2(PredOrFunc, ok(F, As0), PredType, VarSet0,
+		WithType, WithInst, MaybeDet, Cond, ExistQVars,
 		ClassContext, InstConstraints, Attributes0, Result) :-
-	( convert_type_and_mode_list(InstConstraints, As0, As) ->
-	    ( verify_type_and_mode_list(As) ->
+    ( convert_type_and_mode_list(InstConstraints, As0, As) ->
+	( verify_type_and_mode_list(As) ->
+	    (
+		WithInst = yes(_),
+		As = [type_only(_) | _]
+	    ->
+		Result = error("`with_inst` specified without argument modes",
+				PredType)
+	    ;
+		WithInst = no,
+		WithType = yes(_),
+		As = [type_and_mode(_, _) | _]
+	    ->
+		Result = error(
+			"arguments have modes but `with_inst` not specified",
+			PredType)
+	    ;
+		\+ inst_var_constraints_are_consistent_in_type_and_modes(As)
+	    ->
+		Result = error(
+			"inconsistent constraints on inst variables in "
+				++ pred_or_func_decl_string(PredOrFunc),
+			PredType)
+	    ;
 		get_purity(Attributes0, Purity, Attributes),
 		varset__coerce(VarSet0, TVarSet),
 		varset__coerce(VarSet0, IVarSet),
-		(
-		    inst_var_constraints_are_consistent_in_type_and_modes(As)
-		->
-		    Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
-			predicate, F, As, MaybeDet, Cond, Purity,
-			ClassContext)),
-		    check_no_attributes(Result0, Attributes, Result)
-		;
-		    Result = error(
-	"inconsistent constraints on inst variables in predicate declaration",
-			    PredType)
-		)
-	    ;
-		Result = error("some but not all arguments have modes",
-		    PredType)
+		Result0 = ok(pred_or_func(TVarSet, IVarSet,
+			ExistQVars, PredOrFunc, F, As,
+			WithType, WithInst, MaybeDet, Cond,
+			Purity, ClassContext)),
+		check_no_attributes(Result0, Attributes, Result)
 	    )
 	;
-	    Result = error("syntax error in `:- pred' declaration",
-				PredType)
-	).
-process_pred_2(error(M, T), _, _, _, _, _, _, _, _, error(M, T)).
+	    Result = error("some but not all arguments have modes", PredType)
+	)
+    ;
+	Result = error("syntax error in " ++
+			pred_or_func_decl_string(PredOrFunc),
+			PredType)
+    ).
+process_pred_or_func_2(_, error(M, T),
+	_, _, _, _, _, _, _, _, _, _, error(M, T)).
 
 :- pred get_purity(decl_attrs, purity, decl_attrs).
 :- mode get_purity(in, out, out) is det.
@@ -1860,6 +1980,11 @@ get_purity(Attributes0, Purity, Attributes) :-
 		Purity = (pure),
 		Attributes = Attributes0
 	).
+
+:- func pred_or_func_decl_string(pred_or_func) = string.
+
+pred_or_func_decl_string(function) = "`:- func' declaration".
+pred_or_func_decl_string(predicate) = "`:- pred' declaration".
 
 %-----------------------------------------------------------------------------%
 
@@ -2041,11 +2166,11 @@ verify_type_and_mode_list_2([Head | Tail], First) :-
 
 	% parse a `:- func p(...)' declaration
 
-:- pred process_func(module_name, varset, term, condition, decl_attrs,
-			maybe(determinism), maybe1(item)).
+:- pred process_func(module_name, varset, term, condition,
+		maybe(determinism), decl_attrs, maybe1(item)).
 :- mode process_func(in, in, in, in, in, in, out) is det.
 
-process_func(ModuleName, VarSet, Term, Cond, Attributes0, MaybeDet, Result) :-
+process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Attributes0, Result) :-
 	get_class_context_and_inst_constraints(ModuleName, Attributes0,
 		Attributes, MaybeContext),
 	(
@@ -2122,7 +2247,7 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
 		    ->
 				
 			Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
-			    function, F, Args, MaybeDet, Cond, Purity,
+			    function, F, Args, no, no, MaybeDet, Cond, Purity,
 			    ClassContext)),
 			check_no_attributes(Result0, Attributes, Result)
 		    ;
@@ -2147,11 +2272,13 @@ process_func_3(error(M, T), _, _, _, _, _, _, _, _, _, _, error(M, T)).
 	% parse a `:- mode p(...)' declaration
 
 :- pred process_mode(module_name, varset, term, condition, decl_attrs,
-		maybe(determinism), maybe1(item)).
-:- mode process_mode(in, in, in, in, in, in, out) is det.
+		maybe(inst), maybe(determinism), maybe1(item)).
+:- mode process_mode(in, in, in, in, in, in, in, out) is det.
 
-process_mode(ModuleName, VarSet, Term, Cond, Attributes, MaybeDet, Result) :-
+process_mode(ModuleName, VarSet, Term, Cond, Attributes,
+		WithInst, MaybeDet, Result) :-
 	(
+		WithInst = no,
 		Term = term__functor(term__atom("="),
 				[FuncTerm, ReturnTypeTerm], _Context)
 	->
@@ -2161,17 +2288,17 @@ process_mode(ModuleName, VarSet, Term, Cond, Attributes, MaybeDet, Result) :-
 		    Term, VarSet, MaybeDet, Cond, Attributes, Result)
 	;
 		parse_implicitly_qualified_term(ModuleName, Term, Term,
-				"predicate `:- mode' declaration", R),
-		process_pred_mode(R, ModuleName, Term, VarSet, MaybeDet, Cond,
-		    Attributes, Result)
+			"`:- mode' declaration", R),
+		process_pred_or_func_mode(R, ModuleName, Term, VarSet,
+			WithInst, MaybeDet, Cond, Attributes, Result)
 	).
 
-:- pred process_pred_mode(maybe_functor, module_name, term, varset,
-		maybe(determinism), condition, decl_attrs, maybe1(item)).
-:- mode process_pred_mode(in, in, in, in, in, in, in, out) is det.
+:- pred process_pred_or_func_mode(maybe_functor, module_name, term, varset,
+	maybe(inst), maybe(determinism), condition, decl_attrs, maybe1(item)).
+:- mode process_pred_or_func_mode(in, in, in, in, in, in, in, in, out) is det.
 
-process_pred_mode(ok(F, As0), ModuleName, PredMode, VarSet0, MaybeDet, Cond,
-		Attributes0, Result) :-
+process_pred_or_func_mode(ok(F, As0), ModuleName, PredMode, VarSet0, WithInst,
+		MaybeDet, Cond, Attributes0, Result) :-
 	(
 	    convert_mode_list(allow_constrained_inst_var, As0, As1)
 	->
@@ -2183,8 +2310,17 @@ process_pred_mode(ok(F, As0), ModuleName, PredMode, VarSet0, MaybeDet, Cond,
 			As1, As),
 		varset__coerce(VarSet0, VarSet),
 		( inst_var_constraints_are_consistent_in_modes(As) ->
-		    Result0 = ok(pred_or_func_mode(VarSet, predicate, F, As,
-				    MaybeDet, Cond))
+		    (
+			WithInst = no,
+			PredOrFunc = yes(predicate)
+		    ;
+			WithInst = yes(_),
+			% We don't know whether it's a predicate or
+			% a function until we expand out the inst.
+			PredOrFunc = no
+		    ),
+		    Result0 = ok(pred_or_func_mode(VarSet, PredOrFunc, F, As,
+				WithInst, MaybeDet, Cond))
 		;
 		    Result0 = error("inconsistent constraints on inst variables in predicate mode declaration",
 			PredMode)
@@ -2195,10 +2331,9 @@ process_pred_mode(ok(F, As0), ModuleName, PredMode, VarSet0, MaybeDet, Cond,
 	    ),
 	    check_no_attributes(Result0, Attributes, Result)
 	;
-		Result = error("syntax error in predicate mode declaration",
-				PredMode)
+	    Result = error("syntax error in mode declaration", PredMode)
 	).
-process_pred_mode(error(M, T), _, _, _, _, _, _, error(M, T)).
+process_pred_or_func_mode(error(M, T), _, _, _, _, _, _, _, error(M, T)).
 
 :- pred process_func_mode(maybe_functor, module_name, term, term, term, varset,
 		maybe(determinism), condition, decl_attrs, maybe1(item)).
@@ -2223,8 +2358,8 @@ process_func_mode(ok(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
 		    varset__coerce(VarSet0, VarSet),
 		    list__append(As, [RetMode], ArgModes),
 		    ( inst_var_constraints_are_consistent_in_modes(ArgModes) ->
-			Result0 = ok(pred_or_func_mode(VarSet, function,
-			    F, ArgModes, MaybeDet, Cond))
+			Result0 = ok(pred_or_func_mode(VarSet, yes(function),
+			    F, ArgModes, no, MaybeDet, Cond))
 		    ;
 			Result0 = error(
 	"inconsistent constraints on inst variables in function mode declaration",

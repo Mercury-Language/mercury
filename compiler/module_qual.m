@@ -244,8 +244,8 @@ collect_mq_info_2(mode_defn(_, SymName, Params, _, _), Info0, Info) :-
 	mq_info_set_modes(Info0, Modes, Info).
 collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
-collect_mq_info_2(pred_or_func(_,_,__,_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(pred_or_func_mode(_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred_or_func(_,_,_,_,__,_,_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred_or_func_mode(_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(Pragma), Info0, Info) :-
 	( Pragma = foreign_type(_, Type, SymName) ->
 		( type_to_ctor_and_args(Type, _ - Arity0, _) ->
@@ -542,28 +542,31 @@ module_qualify_item(module_defn(A, ModuleDefn) - Context,
 
 module_qualify_item(
 		pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes0,
-			C, D, E, Constraints0) - Context,
+			WithType0, WithInst0, C, D, E, Constraints0) - Context,
 		pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes,
-			C, D, E, Constraints) - Context,
+			WithType, WithInst, C, D, E, Constraints) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
 	{ mq_info_set_error_context(Info0,
 		pred_or_func(PredOrFunc, SymName - Arity) - Context,
 		Info1) },
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, Info1, Info2),
-	qualify_class_constraints(Constraints0, Constraints, Info2, Info).
+	qualify_class_constraints(Constraints0, Constraints, Info2, Info3),
+	map_fold2_maybe(qualify_type, WithType0, WithType, Info3, Info4),
+	map_fold2_maybe(qualify_inst, WithInst0, WithInst, Info4, Info).
 
 module_qualify_item(
 		pred_or_func_mode(A, PredOrFunc, SymName, Modes0,
-			C, D) - Context,
+			WithInst0, C, D) - Context,
 	 	pred_or_func_mode(A, PredOrFunc, SymName, Modes,
-			C, D) - Context,
+			WithInst, C, D) - Context,
 		Info0, Info, yes) -->
 	{ list__length(Modes0, Arity) },
 	{ mq_info_set_error_context(Info0,
 		pred_or_func_mode(PredOrFunc, SymName- Arity) - Context,
 		Info1) },
-	qualify_mode_list(Modes0, Modes, Info1, Info).
+	qualify_mode_list(Modes0, Modes, Info1, Info2),
+	map_fold2_maybe(qualify_inst, WithInst0, WithInst, Info2, Info).
 
 module_qualify_item(pragma(Pragma0) - Context, pragma(Pragma) - Context,
 						Info0, Info, yes) -->
@@ -1043,25 +1046,28 @@ qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
 	% done when the item is parsed.
 qualify_class_method(
 		pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
-			Name, TypesAndModes0, MaybeDet, Cond, Purity,
-			ClassContext0, Context), 
+			Name, TypesAndModes0, WithType0, WithInst0, MaybeDet,
+			Cond, Purity, ClassContext0, Context), 
 		pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
-			Name, TypesAndModes, MaybeDet, Cond, Purity,
-			ClassContext, Context), 
+			Name, TypesAndModes, WithType, WithInst, MaybeDet,
+			Cond, Purity, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
 		MQInfo0, MQInfo1),
 	qualify_class_constraints(ClassContext0, ClassContext, 
-		MQInfo1, MQInfo).
+		MQInfo1, MQInfo2),
+	map_fold2_maybe(qualify_type, WithType0, WithType, MQInfo2, MQInfo3),
+	map_fold2_maybe(qualify_inst, WithInst0, WithInst, MQInfo3, MQInfo).
 qualify_class_method(
 		pred_or_func_mode(Varset, PredOrFunc, Name, Modes0,
-			MaybeDet, Cond, Context), 
+			WithInst0, MaybeDet, Cond, Context), 
 		pred_or_func_mode(Varset, PredOrFunc, Name, Modes,
-			MaybeDet, Cond, Context), 
+			WithInst, MaybeDet, Cond, Context), 
 		MQInfo0, MQInfo
 		) -->
-	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo).
+	qualify_mode_list(Modes0, Modes, MQInfo0, MQInfo1),
+	map_fold2_maybe(qualify_inst, WithInst0, WithInst, MQInfo1, MQInfo).
 
 :- pred qualify_instance_body(sym_name::in, instance_body::in, 
 	instance_body::out) is det. 
@@ -1193,7 +1199,7 @@ convert_simple_item_type(class_id) = (typeclass).
 	;	inst(id)
 	;	mode(id)
 	;	pred_or_func(pred_or_func, id)
-	; 	pred_or_func_mode(pred_or_func, id)
+	; 	pred_or_func_mode(maybe(pred_or_func), id)
 	;	(pragma)
 	;	lambda_expr
 	;	clause_mode_annotation
@@ -1289,11 +1295,17 @@ write_error_context2(pred_or_func(PredOrFunc, SymName - Arity)) -->
 	io__write_string(" "),
 	{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
 	write_id(SymName - OrigArity).
-write_error_context2(pred_or_func_mode(PredOrFunc, SymName - Arity)) -->
+write_error_context2(pred_or_func_mode(MaybePredOrFunc, SymName - Arity)) -->
 	io__write_string("mode declaration for "),
-	io__write(PredOrFunc),
-	io__write_string(" "),
-	{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
+	( 
+		{ MaybePredOrFunc = yes(PredOrFunc) },
+		io__write(PredOrFunc),
+		io__write_string(" "),
+		{ adjust_func_arity(PredOrFunc, OrigArity, Arity) }
+	;
+		{ MaybePredOrFunc = no },
+		{ OrigArity = Arity }
+	),
 	write_id(SymName - OrigArity).
 write_error_context2(lambda_expr) -->
 	io__write_string("mode declaration for lambda expression").

@@ -128,7 +128,8 @@ SINGLEMODULE_SOURCES= \
 	uniq_modes.m \
 	uniq_neg.m \
 	uu_type.m \
-	vars_in_wrong_places.m
+	vars_in_wrong_places.m \
+	with_type.m
 
 SOURCES= $(SINGLEMODULE_SOURCES) $(MULTIMODULE_SOURCES)
 

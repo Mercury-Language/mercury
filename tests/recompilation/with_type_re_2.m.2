@@ -1,0 +1,28 @@
+:- module with_type_re_2.
+
+:- interface.
+
+:- import_module list.
+
+:- type map_pred(T, U) == pred(T, T, U).
+:- inst map_pred = (pred(in, in, out) is det).
+
+:- pred with_type_1(T, list(_)) `with_type` map_pred(string, string).
+:- mode with_type_1(in, in) `with_inst` map_pred.
+
+:- type map_func(T, U) == (func(T) = U).
+:- inst map_func = (func(in) = out is det).
+
+:- func with_type_2(T, list(_)) `with_type` map_func(string, string).
+:- mode with_type_2(in, in) `with_inst` map_func.
+
+:- pred with_type_3(T::in, list(_)::in) `with_type` map_pred(string, string)
+				`with_inst` map_pred.
+
+:- implementation.
+
+with_type_1(_, _, _, X, X).
+
+with_type_2(_, _, X) = X.
+
+with_type_3(_, _, _, X, X).

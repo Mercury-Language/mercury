@@ -1,0 +1,18 @@
+with_type.m:024: Error: `with_inst` and determinism both specified: with_type_4(_1 :: in, list(_2) :: in).
+with_type.m:027: Error: `with_inst` specified without `with_type`: with_type_5(_1 :: in, list(_2) :: in).
+with_type.m:030: Error: invalid inst in `with_inst`: with_inst(with_type(with_type_6(_1 :: in, list(_2) :: in), map_pred(string, string)), pred(in, in, out) is foo).
+with_type.m:032: Error: `with_inst` specified without argument modes: with_type_7(_1, list(_2)).
+with_type.m:012: In type declaration for predicate `with_type:with_type_1':
+with_type.m:012:   error: expected higher order predicate type after
+with_type.m:012:   `with_type`.
+with_type.m:013: In mode declaration for `with_type:with_type_1':
+with_type.m:013:   error: expected higher order inst after `with_inst`.
+with_type.m:018: In type declaration for function `with_type:with_type_2':
+with_type.m:018:   error: expected higher order function type after
+with_type.m:018:   `with_type`.
+with_type.m:021: In type declaration for predicate `with_type:with_type_3':
+with_type.m:021:   error: the `with_type` and `with_inst` annotations are
+with_type.m:021:   incompatible.
+with_type.m:019: Error: mode declaration for function `with_type:with_type_2/3'
+with_type.m:019:   without preceding `func' declaration.
+For more information, try recompiling with `-E'.

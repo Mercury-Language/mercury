@@ -25,7 +25,8 @@ TESTS_SHOULD_SUCCEED="\
 	typeclass_method_pragma_r \
 	type_spec_rename_var_r \
 	type_spec_unname_var_r \
-	unchanged_pred_nr"
+	unchanged_pred_nr \
+	unchanged_with_type_nr"
 
 # Parallel mmake with nested sub-modules is broken.
 # The commands to create `.c' files from the `.m' file containing the
@@ -38,6 +39,7 @@ NO_PARALLEL_MAKE_TESTS="\
 TESTS_SHOULD_FAIL="\
 	add_type_re \
 	remove_type_re \
-	type_qual_re"
+	type_qual_re \
+	with_type_re"
 
 ALL_TESTS="$TESTS_SHOULD_SUCCEED $NO_PARALLEL_MAKE_TESTS $TESTS_SHOULD_FAIL"

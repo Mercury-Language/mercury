@@ -1,4 +1,4 @@
-circ_type.m:006: Error: circular equivalence type `circ_type:circ'/0.
-circ_type.m:008: Error: circular equivalence type `circ_type:circ1'/0.
-circ_type.m:010: Error: circular equivalence type `circ_type:circ2'/0.
+circ_type.m:006: Error: circular equivalence type `circ_type:circ/0'.
+circ_type.m:008: Error: circular equivalence type `circ_type:circ1/0'.
+circ_type.m:010: Error: circular equivalence type `circ_type:circ2/0'.
 For more information, try recompiling with `-E'.

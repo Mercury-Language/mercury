@@ -26,25 +26,25 @@
 			resolved_functor_set).
 
 :- type resolved_pred_or_func_set ==
-		map(pair(string, arity), resolved_pred_or_func_map).
-
+		resolved_item_set(set(pair(pred_id, module_name))).
 :- type resolved_pred_or_func_map ==
-		map(module_qualifier, set(pair(pred_id, module_name))).
+		resolved_item_map(set(pair(pred_id, module_name))).
 
 	% A resolved_functor_set records all possible matches
 	% for each functor application.
-:- type resolved_functor_set == map(string, resolved_functor_list).
+:- type resolved_functor_set == resolved_item_set(set(resolved_functor)).
+:- type resolved_functor_map == resolved_item_map(set(resolved_functor)).
+
+:- type resolved_item_set(T) == map(string, resolved_item_list(T)).
 
 	% The list is sorted on arity.
 	% This is useful because when determining whether
 	% there is an ambiguity we need to test a predicate or
 	% function against all used functors with equal or
 	% lower arity.
-:- type resolved_functor_list ==
-		assoc_list(arity, resolved_functor_map).
+:- type resolved_item_list(T) == assoc_list(arity, resolved_item_map(T)).
 
-:- type resolved_functor_map ==
-		map(module_qualifier, set(resolved_functor)).
+:- type resolved_item_map(T) == map(module_qualifier, T).
 
 :- type resolved_functor
 	--->	pred_or_func(
@@ -337,38 +337,20 @@ write_pred_or_func_matches(ItemType, UsedItems, WriteComma0, WriteComma) -->
 		io__state::di, io__state::uo) is det.
 
 write_pred_or_func_matches_2(ItemType, ItemSet) -->
-	{ string_to_item_type(ItemTypeStr, ItemType) },
-	io__write_string(ItemTypeStr),
-	io__write_string("(\n\t\t"),
-	{ map__to_assoc_list(ItemSet, ItemList) },
-	io__write_list(ItemList, ",\n\t\t",
-	    (pred(((Name - Arity) - Matches)::in, di, uo) is det -->
-		mercury_output_bracketed_sym_name(unqualified(Name),
-			next_to_graphic_token),
-		io__write_string("/"),
-		io__write_int(Arity),
-		io__write_string(" - ("),
-		{ map__to_assoc_list(Matches, MatchList) },
-		io__write_list(MatchList, ",\n\t\t\t",
-		    (pred((Qualifier - PredIdModuleNames)::in,
-		    		di, uo) is det -->
-			{ ModuleNames = assoc_list__values(set__to_sorted_list(
+	write_resolved_item_set(ItemType, ItemSet,
+	    (pred((Qualifier - PredIdModuleNames)::in, di, uo) is det -->
+		{ ModuleNames = assoc_list__values(set__to_sorted_list(
 				PredIdModuleNames)) },
-			mercury_output_bracketed_sym_name(Qualifier),
-			( { ModuleNames = [Qualifier] } ->
-				[]
-			;
-				io__write_string(" => ("),
-				io__write_list(ModuleNames, ", ",
-					mercury_output_bracketed_sym_name),
-				io__write_string(")")
-		    	)
-		    )
-		),
-		io__write_string(")")
-	    )
-	),
-	io__write_string("\n\t)").
+		mercury_output_bracketed_sym_name(Qualifier),
+		( { ModuleNames = [Qualifier] } ->
+			[]
+		;
+			io__write_string(" => ("),
+			io__write_list(ModuleNames, ", ",
+				mercury_output_bracketed_sym_name),
+			io__write_string(")")
+		)
+	    )).
 
 :- pred write_functor_matches(resolved_functor_set::in,
 	bool::in, bool::out, io__state::di, io__state::uo) is det.
@@ -383,14 +365,29 @@ write_functor_matches(Ids, WriteComma0, WriteComma) -->
 			[]
 		),
 		{ WriteComma = yes },
-		write_functor_matches_2(Ids)
+		write_resolved_item_set(functor, Ids,
+		    (pred((Qualifier - MatchingCtors)::in, di, uo) is det -->
+			mercury_output_bracketed_sym_name(Qualifier),
+			io__write_string(" => ("),
+			io__write_list(
+				set__to_sorted_list(MatchingCtors),
+				", ", write_resolved_functor),
+			io__write_string(")")
+		    ))
 	).
 
-:- pred write_functor_matches_2(resolved_functor_set::in,
-		io__state::di, io__state::uo) is det.
+:- type write_resolved_item(T) ==
+		pred(pair(module_qualifier, T), io__state, io__state).
+:- inst write_resolved_item == (pred(in, di, uo) is det).
 
-write_functor_matches_2(ItemSet) -->
-	io__write_string("functor(\n\t\t"),
+:- pred write_resolved_item_set(item_type::in, resolved_item_set(T)::in,
+	write_resolved_item(T)::in(write_resolved_item),
+	io__state::di, io__state::uo) is det.
+
+write_resolved_item_set(ItemType, ItemSet, WriteMatches) -->
+	{ string_to_item_type(ItemTypeStr, ItemType) },
+	io__write_string(ItemTypeStr),
+	io__write_string("(\n\t\t"),
 	{ map__to_assoc_list(ItemSet, ItemList) },
 	io__write_list(ItemList, ",\n\t\t",
 	    (pred((Name - MatchesAL)::in, di, uo) is det -->
@@ -402,16 +399,7 @@ write_functor_matches_2(ItemSet) -->
 			io__write_string(" - ("),
 			{ map__to_assoc_list(Matches, MatchList) },
 			io__write_list(MatchList, ",\n\t\t\t\t",
-			    (pred((Qualifier - MatchingCtors)::in,
-					di, uo) is det -->
-				mercury_output_bracketed_sym_name(Qualifier),
-				io__write_string(" => ("),
-				io__write_list(
-					set__to_sorted_list(MatchingCtors),
-					", ", write_resolved_functor),
-				io__write_string(")")
-			    )
-			),
+			    WriteMatches),
 			io__write_string(")")
 		    )),	
 		io__write_string(")")
@@ -446,7 +434,7 @@ write_resolved_functor(
 	io__write_int(ConsArity),
 	io__write_string(")").
 
-usage_file_version_number = 1.
+usage_file_version_number = 2.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -550,7 +538,7 @@ recompilation_usage__find_all_used_imported_items_2(UsedItems) -->
 		=(Info),
 		{ NameArity = Name - Arity },
 		( { item_is_local(Info, NameArity) } ->
-		    recompilation_usage__record_equivalence_types_used_by_item(
+		    recompilation_usage__record_expanded_items_used_by_item(
 		    	(typeclass), NameArity),
 		    list__foldl(
 		    	recompilation_usage__find_items_used_by_instance(
@@ -624,30 +612,30 @@ recompilation_usage__process_imported_item_queue_2(Queue0) -->
 
 recompilation_usage__record_used_pred_or_func(PredOrFunc, Id) -->
 	{ ItemType = pred_or_func_to_item_type(PredOrFunc) },
-
 	ItemSet0 =^ used_items,
 	{ IdSet0 = extract_pred_or_func_set(ItemSet0, ItemType) },
 	{ Id = SymName - Arity },
-	{ unqualify_name(SymName, UnqualifiedName) },
-	{ ModuleQualifier = find_module_qualifier(SymName) },
-	{ UnqualifiedId = UnqualifiedName - Arity },
+	record_resolved_item(SymName, Arity,
+		recompilation_usage__do_record_used_pred_or_func(PredOrFunc),
+		IdSet0, IdSet),
+	{ ItemSet = update_pred_or_func_set(ItemSet0, ItemType, IdSet) },
+	^ used_items := ItemSet.
 
-	{ map__search(IdSet0, UnqualifiedId, MatchingNames0) ->
-		MatchingNames1 = MatchingNames0
-	;
-		map__init(MatchingNames1)
-	},
+:- pred recompilation_usage__do_record_used_pred_or_func(pred_or_func::in,
+	module_qualifier::in, sym_name::in, arity::in, bool::out,
+	resolved_pred_or_func_map::in, resolved_pred_or_func_map::out,
+	recompilation_usage_info::in, recompilation_usage_info::out) is det.
+
+recompilation_usage__do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
+		SymName, Arity, Recorded, MatchingNames0, MatchingNames) -->
 	ModuleInfo =^ module_info,
 	(
-		{ map__contains(MatchingNames1, ModuleQualifier) }
-	->
-		[]
-	;
 		{ module_info_get_predicate_table(ModuleInfo, PredTable) },
 		{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
 		{ predicate_table_search_pf_sym_arity(PredTable,
 			PredOrFunc, SymName, OrigArity, MatchingPredIds) }
 	->
+		{ Recorded = yes },
 		{ PredModules = set__list_to_set(list__map(
 			(func(PredId) = PredId - PredModule :-
 				module_info_pred_info(ModuleInfo,
@@ -655,18 +643,16 @@ recompilation_usage__record_used_pred_or_func(PredOrFunc, Id) -->
 				pred_info_module(PredInfo, PredModule)
 			),
 			MatchingPredIds)) },
-		{ map__det_insert(MatchingNames1, ModuleQualifier,
+		{ map__det_insert(MatchingNames0, ModuleQualifier,
 			PredModules, MatchingNames) },
-		{ map__set(IdSet0, UnqualifiedId, MatchingNames, IdSet) },
-		{ ItemSet = update_pred_or_func_set(ItemSet0,
-				ItemType, IdSet) },
-		^ used_items := ItemSet,
+		{ unqualify_name(SymName, Name) },
 		set__fold(
 			recompilation_usage__find_items_used_by_pred(
-		    		PredOrFunc, UnqualifiedId),
+		    		PredOrFunc, Name - Arity),
 			PredModules)
 	;
-		[]
+		{ Recorded = no },
+		{ MatchingNames = MatchingNames0 }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -677,99 +663,37 @@ recompilation_usage__record_used_pred_or_func(PredOrFunc, Id) -->
 recompilation_usage__record_used_functor(SymName - Arity) -->
 	ItemSet0 =^ used_items,
 	{ IdSet0 = ItemSet0 ^ functors },
-	{ unqualify_name(SymName, UnqualifiedName) },
-	{ ModuleQualifier = find_module_qualifier(SymName) },
-	{ map__search(IdSet0, UnqualifiedName, MatchingNames0) ->
-		MatchingNames1 = MatchingNames0
-	;
-		MatchingNames1 = []
-	},
-	recompilation_usage__record_used_functor_2(ModuleQualifier,
-		SymName, Arity, Recorded, MatchingNames1, MatchingNames),
-	( { Recorded = yes } ->
-		{ map__set(IdSet0, UnqualifiedName, MatchingNames, IdSet) },
-		{ ItemSet = ItemSet0 ^ functors := IdSet },
-		^ used_items := ItemSet
-	;
-		[]
-	).
+	record_resolved_item(SymName, Arity,
+		recompilation_usage__do_record_used_functor,
+		IdSet0, IdSet),
+	{ ItemSet = ItemSet0 ^ functors := IdSet },
+	^ used_items := ItemSet.
 
-:- pred recompilation_usage__record_used_functor_2(module_qualifier::in,
-	sym_name::in, arity::in, bool::out, resolved_functor_list::in,
-	resolved_functor_list::out, recompilation_usage_info::in,
-	recompilation_usage_info::out) is det.
-
-recompilation_usage__record_used_functor_2(ModuleQualifier,
-		SymName, Arity, Recorded, [], CtorList) -->
-	{ map__init(CtorMap0) },
-	recompilation_usage__record_used_functor_3(ModuleQualifier,
-		SymName, Arity, Recorded, CtorMap0, CtorMap),
-	{ Recorded = yes ->
-		CtorList = [Arity - CtorMap]
-	;
-		CtorList = []
-	}.
-recompilation_usage__record_used_functor_2(ModuleQualifier,
-		SymName, Arity, Recorded, CtorList0, CtorList) -->
-	{ CtorList0 = [CtorArity - ArityCtorMap0 | CtorListRest0] },
-	( { Arity < CtorArity } ->
-		{ map__init(NewArityCtorMap0) },
-		recompilation_usage__record_used_functor_3(ModuleQualifier,
-			SymName, Arity, Recorded, NewArityCtorMap0,
-			NewArityCtorMap),
-		{ Recorded = yes ->
-			CtorList = [Arity - NewArityCtorMap | CtorList0]
-		;
-			CtorList = CtorList0
-		}
-	; { Arity = CtorArity } ->
-		recompilation_usage__record_used_functor_3(ModuleQualifier,
-			SymName, Arity, Recorded, ArityCtorMap0, ArityCtorMap),
-		{ Recorded = yes ->
-			CtorList = [CtorArity - ArityCtorMap | CtorListRest0]
-		;
-			CtorList = CtorList0
-		}
-	;
-		recompilation_usage__record_used_functor_2(ModuleQualifier,
-			SymName, Arity, Recorded, CtorListRest0, CtorListRest),
-		{ Recorded = yes ->
-			CtorList = [CtorArity - ArityCtorMap0 | CtorListRest]
-		;
-			CtorList = CtorList0
-		}
-	).
-
-:- pred recompilation_usage__record_used_functor_3(module_qualifier::in,
+:- pred recompilation_usage__do_record_used_functor(module_qualifier::in,
 	sym_name::in, arity::in, bool::out, resolved_functor_map::in,
 	resolved_functor_map::out, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
 
-recompilation_usage__record_used_functor_3(ModuleQualifier, SymName, Arity,
+recompilation_usage__do_record_used_functor(ModuleQualifier, SymName, Arity,
 		Recorded, ResolvedCtorMap0, ResolvedCtorMap) -->
-	( { map__contains(ResolvedCtorMap0, ModuleQualifier) } ->
-		{ Recorded = no },
-		{ ResolvedCtorMap = ResolvedCtorMap0 }
-	;
-		ModuleInfo =^ module_info,
-		{ recompilation_usage__find_matching_functors(ModuleInfo,
-			SymName, Arity, MatchingCtors) },
-		{ unqualify_name(SymName, Name) },
+	ModuleInfo =^ module_info,
 
-		set__fold(
-			recompilation_usage__find_items_used_by_functor(
-				Name, Arity),
-			MatchingCtors),
-		
-		{ set__empty(MatchingCtors) ->
-			Recorded = no,
-			ResolvedCtorMap = ResolvedCtorMap0
-		;
-			Recorded = yes,
-			map__det_insert(ResolvedCtorMap0, ModuleQualifier,
-				MatchingCtors, ResolvedCtorMap)
-		}
-	).
+	{ recompilation_usage__find_matching_functors(ModuleInfo,
+		SymName, Arity, MatchingCtors) },
+	{ unqualify_name(SymName, Name) },
+	set__fold(
+		recompilation_usage__find_items_used_by_functor(
+			Name, Arity),
+		MatchingCtors),
+	
+	{ set__empty(MatchingCtors) ->
+		Recorded = no,
+		ResolvedCtorMap = ResolvedCtorMap0
+	;
+		Recorded = yes,
+		map__det_insert(ResolvedCtorMap0, ModuleQualifier,
+			MatchingCtors, ResolvedCtorMap)
+	}.
 
 :- pred recompilation_usage__find_matching_functors(module_info::in,
 	sym_name::in, arity::in, set(resolved_functor)::out) is det.
@@ -876,6 +800,103 @@ recompilation_usage__get_pred_or_func_ctors(ModuleInfo, _SymName, Arity,
 
 %-----------------------------------------------------------------------------%
 
+:- type record_resolved_item(T) ==
+		pred(module_qualifier, sym_name, arity, bool,
+			resolved_item_map(T), resolved_item_map(T),
+			recompilation_usage_info, recompilation_usage_info).
+:- inst record_resolved_item ==
+		(pred(in, in, in, out, in, out, in, out) is det).
+
+
+:- pred record_resolved_item(sym_name::in, arity::in,
+	record_resolved_item(T)::in(record_resolved_item),
+	resolved_item_set(T)::in, resolved_item_set(T)::out,
+	recompilation_usage_info::in, recompilation_usage_info::out) is det.
+
+record_resolved_item(SymName, Arity, RecordItem, IdSet0, IdSet) -->
+	{ unqualify_name(SymName, UnqualifiedName) },
+	{ ModuleQualifier = find_module_qualifier(SymName) },
+	{ map__search(IdSet0, UnqualifiedName, MatchingNames0) ->
+		MatchingNames1 = MatchingNames0
+	;
+		MatchingNames1 = []
+	},
+	recompilation_usage__record_resolved_item_2(ModuleQualifier, SymName,
+		Arity, RecordItem, Recorded,
+		MatchingNames1, MatchingNames),
+	{ Recorded = yes ->
+		map__set(IdSet0, UnqualifiedName, MatchingNames, IdSet)
+	;
+		IdSet = IdSet0
+	}.
+
+:- pred recompilation_usage__record_resolved_item_2(
+	module_qualifier::in, sym_name::in, arity::in,
+	record_resolved_item(T)::in(record_resolved_item),
+	bool::out, resolved_item_list(T)::in, resolved_item_list(T)::out,
+	recompilation_usage_info::in, recompilation_usage_info::out) is det.
+
+recompilation_usage__record_resolved_item_2(ModuleQualifier,
+		SymName, Arity, RecordItem, Recorded, [], List) -->
+	{ map__init(Map0) },
+	recompilation_usage__record_resolved_item_3(ModuleQualifier,
+		SymName, Arity, RecordItem, Recorded, Map0, Map),
+	{ Recorded = yes ->
+		List = [Arity - Map]
+	;
+		List = []
+	}.
+recompilation_usage__record_resolved_item_2(ModuleQualifier,
+		SymName, Arity, RecordItem, Recorded, List0, List) -->
+	{ List0 = [ThisArity - ArityMap0 | ListRest0] },
+	( { Arity < ThisArity } ->
+		{ map__init(NewArityMap0) },
+		recompilation_usage__record_resolved_item_3(ModuleQualifier,
+			SymName, Arity, RecordItem, Recorded,
+			NewArityMap0, NewArityMap),
+		{ Recorded = yes ->
+			List = [Arity - NewArityMap | List0]
+		;
+			List = List0
+		}
+	; { Arity = ThisArity } ->
+		recompilation_usage__record_resolved_item_3(ModuleQualifier,
+			SymName, Arity, RecordItem, Recorded,
+			ArityMap0, ArityMap),
+		{ Recorded = yes ->
+			List = [Arity - ArityMap | ListRest0]
+		;
+			List = List0
+		}
+	;
+		recompilation_usage__record_resolved_item_2(ModuleQualifier,
+			SymName, Arity, RecordItem, Recorded,
+			ListRest0, ListRest),
+		{ Recorded = yes ->
+			List = [ThisArity - ArityMap0 | ListRest]
+		;
+			List = List0
+		}
+	).
+
+:- pred recompilation_usage__record_resolved_item_3(
+	module_qualifier::in, sym_name::in, arity::in,
+	record_resolved_item(T)::in(record_resolved_item), bool::out,
+	resolved_item_map(T)::in, resolved_item_map(T)::out,
+	recompilation_usage_info::in, recompilation_usage_info::out) is det.
+
+recompilation_usage__record_resolved_item_3(ModuleQualifier, SymName, Arity,
+		RecordItem, Recorded, ResolvedMap0, ResolvedMap) -->
+	( { map__contains(ResolvedMap0, ModuleQualifier) } ->
+		{ Recorded = no },
+		{ ResolvedMap = ResolvedMap0 }
+	;
+		RecordItem(ModuleQualifier, SymName, Arity, Recorded,
+			ResolvedMap0, ResolvedMap)
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred recompilation_usage__find_items_used_by_item(item_type::in,
 	item_name::in, recompilation_usage_info::in,
 	recompilation_usage_info::out) is det.
@@ -938,14 +959,10 @@ recompilation_usage__find_items_used_by_item((typeclass), ClassItemId) -->
 		[]
 	).
 
-	%
-	% It's simplest to deal with items used by predicates, functions
-	% and functors as we resolve the predicates, functions and functors.
-	%
-recompilation_usage__find_items_used_by_item(predicate, _) --> 
-	{ error("recompilation_usage__find_items_used_by_item: predicate") }.
-recompilation_usage__find_items_used_by_item(function, _) -->
-	{ error("recompilation_usage__find_items_used_by_item: function") }.
+recompilation_usage__find_items_used_by_item(predicate, ItemId) --> 
+	recompilation_usage__record_used_pred_or_func(predicate, ItemId).
+recompilation_usage__find_items_used_by_item(function, ItemId) -->
+	recompilation_usage__record_used_pred_or_func(function, ItemId).
 recompilation_usage__find_items_used_by_item(functor, _) -->
 	{ error("recompilation_usage__find_items_used_by_item: functor") }.
 
@@ -988,8 +1005,8 @@ recompilation_usage__find_items_used_by_instance(ClassId,
 	recompilation_usage_info::out) is det.
 
 recompilation_usage__find_items_used_by_class_method(
-		pred_or_func(_, _, _, _, _, ArgTypesAndModes,
-			_, _, _, Constraints, _)) -->
+		pred_or_func(_, _, _, _, _, ArgTypesAndModes, _,
+			_, _, _, _, Constraints, _)) -->
 	recompilation_usage__find_items_used_by_class_context(
 		Constraints),
 	list__foldl(
@@ -1003,7 +1020,7 @@ recompilation_usage__find_items_used_by_class_method(
 		recompilation_usage__find_items_used_by_type(Type)
 	    ), ArgTypesAndModes).
 recompilation_usage__find_items_used_by_class_method(
-		pred_or_func_mode(_, _, _, Modes, _, _, _)) -->
+		pred_or_func_mode(_, _, _, Modes, _, _, _, _)) -->
 	recompilation_usage__find_items_used_by_modes(Modes).
 
 :- pred recompilation_usage__find_items_used_by_type_body(hlds_type_body::in,
@@ -1109,7 +1126,7 @@ recompilation_usage__find_items_used_by_pred(PredOrFunc, Name - Arity,
 			typeclass, ClassName - ClassArity)
 	;
 		{ NameArity = qualified(PredModule, Name) - Arity },
-		recompilation_usage__record_equivalence_types_used_by_item(
+		recompilation_usage__record_expanded_items_used_by_item(
 			ItemType, NameArity),
 		recompilation_usage__record_imported_item(ItemType, NameArity),
 		{ pred_info_arg_types(PredInfo, ArgTypes) },
@@ -1386,7 +1403,7 @@ recompilation_usage__maybe_record_item_to_process(ItemType, NameArity) -->
 		^ item_queue := Queue,
 
 		recompilation_usage__record_imported_item(ItemType, NameArity),
-		recompilation_usage__record_equivalence_types_used_by_item(
+		recompilation_usage__record_expanded_items_used_by_item(
 			ItemType, NameArity)
 	).
 
@@ -1436,11 +1453,11 @@ recompilation_usage__record_imported_item(ItemType, SymName - Arity) -->
 	% Uses of equivalence types have been expanded away by equiv_type.m.
 	% equiv_type.m records which equivalence types were used by each
 	% imported item.
-:- pred recompilation_usage__record_equivalence_types_used_by_item(
+:- pred recompilation_usage__record_expanded_items_used_by_item(
 		item_type::in, item_name::in, recompilation_usage_info::in,
 		recompilation_usage_info::out) is det.
 
-recompilation_usage__record_equivalence_types_used_by_item(ItemType,
+recompilation_usage__record_expanded_items_used_by_item(ItemType,
 			NameArity) -->
 	Dependencies =^ dependencies,
 	(

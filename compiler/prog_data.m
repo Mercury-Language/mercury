@@ -60,16 +60,27 @@
 	; 	module_defn(prog_varset, module_defn)
 
 	; 	pred_or_func(tvarset, inst_varset, existq_tvars, pred_or_func,
-			sym_name, list(type_and_mode), maybe(determinism),
+			sym_name, list(type_and_mode), maybe(type),
+			maybe(inst), maybe(determinism),
 			condition, purity, class_constraints)
 		%       TypeVarNames, InstVarNames,
 		%	ExistentiallyQuantifiedTypeVars, PredOrFunc, PredName,
-		%	ArgTypes, Determinism, Cond, Purity, TypeClassContext
+		%	ArgTypesAndModes, WithType, WithInst, Determinism,
+		%	Cond, Purity, TypeClassContext
+		%
+		%	The WithType and WithInst fields hold the `with_type`
+		% 	and `with_inst` annotations, which are syntactic
+		%	sugar that is expanded by equiv_type.m
+		%	equiv_type.m will set these fields to `no'.
 
-	; 	pred_or_func_mode(inst_varset, pred_or_func, sym_name,
-			list(mode), maybe(determinism), condition)
-		%       VarNames, PredOrFunc, PredName, ArgModes,
+	; 	pred_or_func_mode(inst_varset, maybe(pred_or_func), sym_name,
+			list(mode), maybe(inst), maybe(determinism), condition)
+		%       VarNames, PredOrFunc, PredName, ArgModes, WithInst,
 		%	Determinism, Cond
+		%
+		%	The WithInst field holds the `with_inst` annotation,
+		%	which is syntactic sugar that is expanded by
+		%	equiv_type.m. equiv_type.m will set the field to `no'.
 
 	;	pragma(pragma_type)
 
@@ -194,7 +205,7 @@
 			% foreign function name.
 	
 	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
-			maybe(list(mode)), type_subst, tvarset, set(type_ctor))
+			maybe(list(mode)), type_subst, tvarset, set(item_id))
 			% PredName, SpecializedPredName, Arity,
 			% PredOrFunc, Modes if a specific procedure was
 			% specified, type substitution (using the variable
@@ -515,19 +526,24 @@
 
 :- type class_method
 	--->	pred_or_func(tvarset, inst_varset, existq_tvars, pred_or_func,
-			sym_name, list(type_and_mode), maybe(determinism),
+			sym_name, list(type_and_mode), maybe(type),
+			maybe(inst), maybe(determinism),
 			condition, purity, class_constraints, prog_context)
 		%       TypeVarNames, InstVarNames,
 		%	ExistentiallyQuantifiedTypeVars,
-		%	PredOrFunc, PredName, ArgTypes, Determinism, Cond
-		%	Purity, ClassContext, Context
+		%	PredOrFunc, PredName, ArgTypes, WithType, Determinism,
+		%	Cond, Purity, ClassContext, Context
 
-	; 	pred_or_func_mode(inst_varset, pred_or_func, sym_name,
-			list(mode), maybe(determinism), condition,
-			prog_context)
-		%       InstVarNames, PredOrFunc, PredName, ArgModes,
-		%	Determinism, Cond
+	; 	pred_or_func_mode(inst_varset, maybe(pred_or_func), sym_name,
+			list(mode), maybe(inst), maybe(determinism),
+			condition, prog_context)
+		%       InstVarNames, MaybePredOrFunc, PredName, ArgModes,
+		%	Determinism, WithInst, Cond
 		%	Context
+		%
+		% 	For mode declarations using `with_inst` we don't
+		%	know whether it's a predicate or function until
+		%	we've expanded the inst.
 	.
 
 :- type instance_method	

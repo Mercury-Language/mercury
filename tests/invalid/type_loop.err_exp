@@ -1,2 +1,2 @@
-type_loop.m:016: Error: circular equivalence type `type_loop:foo'/0.
+type_loop.m:016: Error: circular equivalence type `type_loop:foo/0'.
 For more information, try recompiling with `-E'.

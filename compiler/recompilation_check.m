@@ -455,21 +455,8 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
 		resolved_pred_or_func_set::out) is det.
 
 parse_pred_or_func_item(Info, Term, Set0, Set) :-
-	(
-		Term = term__functor(term__atom("-"),
-				[NameArityTerm, MatchesTerm], _),
-		parse_name_and_arity(NameArityTerm, SymName, Arity)
-	->
-		unqualify_name(SymName, Name),
-		conjunction_to_list(MatchesTerm, MatchTermList),
-		list__foldl(parse_pred_or_func_item_match(Info),
-			MatchTermList, map__init, Matches),
-		map__det_insert(Set0, Name - Arity, Matches, Set)
-	;
-		Reason = syntax_error(get_term_context(Term),
-				"error in pred or func match"),
-		throw_syntax_error(Reason, Info)
-	).
+	parse_resolved_item_set(Info, parse_pred_or_func_item_match,
+		Term, Set0, Set).
 
 :- pred parse_pred_or_func_item_match(recompilation_check_info::in, term::in,
 	resolved_pred_or_func_map::in, resolved_pred_or_func_map::out) is det.
@@ -506,39 +493,7 @@ parse_pred_or_func_item_match(Info, Term, Items0, Items) :-
 	resolved_functor_set::in, resolved_functor_set::out) is det.
 
 parse_functor_item(Info, Term, Set0, Set) :-
-	(
-		Term = term__functor(term__atom("-"),
-				[NameTerm, MatchesTerm], _),
-		NameTerm = term__functor(term__atom(Name), [], _)
-	->
-		conjunction_to_list(MatchesTerm, MatchTermList),
-		list__map(parse_functor_arity_matches(Info),
-			MatchTermList, Matches),
-		map__det_insert(Set0, Name, Matches, Set)
-	;
-		Reason = syntax_error(get_term_context(Term),
-				"error in functor matches"),
-		throw_syntax_error(Reason, Info)
-	).
-
-:- pred parse_functor_arity_matches(recompilation_check_info::in, term::in,
-		pair(arity, resolved_functor_map)::out) is det.
-
-parse_functor_arity_matches(Info, Term, Arity - MatchMap) :-
-	(
-		Term = term__functor(term__atom("-"),
-			[ArityTerm, MatchesTerm], _),
-		ArityTerm = term__functor(term__integer(Arity0), [], _),
-		conjunction_to_list(MatchesTerm, MatchTermList)
-	->
-		Arity = Arity0,
-		list__foldl(parse_functor_matches(Info),
-			MatchTermList, map__init, MatchMap)
-	;
-		Reason = syntax_error(get_term_context(Term),
-				"error in functor match"),
-		throw_syntax_error(Reason, Info)
-	).
+	parse_resolved_item_set(Info, parse_functor_matches, Term, Set0, Set).
 
 :- pred parse_functor_matches(recompilation_check_info::in, term::in,
 	resolved_functor_map::in, resolved_functor_map::out) is det.
@@ -591,6 +546,56 @@ parse_resolved_functor(Info, Term, Ctor) :-
 	;
 		Reason = syntax_error(get_term_context(Term),
 				"error in functor match"),
+		throw_syntax_error(Reason, Info)
+	).
+
+:- type parse_resolved_item_matches(T) ==
+		pred(recompilation_check_info, term, resolved_item_map(T),
+			resolved_item_map(T)).
+:- inst parse_resolved_item_matches == (pred(in, in, in, out) is det).
+
+:- pred parse_resolved_item_set(recompilation_check_info::in,
+	parse_resolved_item_matches(T)::in(parse_resolved_item_matches),
+	term::in, resolved_item_set(T)::in, resolved_item_set(T)::out) is det.
+
+parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
+	(
+		Term = term__functor(term__atom("-"),
+				[NameTerm, MatchesTerm], _),
+		NameTerm = term__functor(term__atom(Name), [], _)
+	->
+		conjunction_to_list(MatchesTerm, MatchTermList),
+		list__map(
+			parse_resolved_item_arity_matches(Info, ParseMatches),
+			MatchTermList, Matches),
+		map__det_insert(Set0, Name, Matches, Set)
+	;
+		Reason = syntax_error(get_term_context(Term),
+				"error in resolved item matches"),
+		throw_syntax_error(Reason, Info)
+	).
+
+:- pred parse_resolved_item_arity_matches(recompilation_check_info::in,
+	parse_resolved_item_matches(T)::in(parse_resolved_item_matches),
+	term::in, pair(arity, resolved_item_map(T))::out) is det.
+
+parse_resolved_item_arity_matches(Info, ParseMatches,
+		Term, Arity - MatchMap) :-
+	(
+		Term = term__functor(term__atom("-"),
+			[ArityTerm, MatchesTerm], _),
+		ArityTerm = term__functor(term__integer(Arity0), [], _),
+		conjunction_to_list(MatchesTerm, MatchTermList)
+	->
+		Arity = Arity0,
+		list__foldl(
+			(pred(MatchTerm::in, Map0::in, Map::out) is det :-
+				ParseMatches(Info, MatchTerm, Map0, Map)
+			),
+			MatchTermList, map__init, MatchMap)
+	;
+		Reason = syntax_error(get_term_context(Term),
+				"error in resolved item matches"),
 		throw_syntax_error(Reason, Info)
 	).
 
@@ -863,8 +868,8 @@ check_for_ambiguities(_, _, _, clause(_, _, _, _, _) - _) -->
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 			type_defn(_, Name, Params, Body, _) - _) -->
 	{ Arity = list__length(Params) },
-	check_for_ambiguity(NeedQualifier, OldTimestamp, VersionNumbers,
-		(type), Name, Arity, NeedsCheck),
+	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+		VersionNumbers, (type), Name, Arity, NeedsCheck),
 	( { NeedsCheck = yes } ->
 		check_type_defn_ambiguity_with_functor(NeedQualifier,
 			Name - Arity, Body)
@@ -873,30 +878,31 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 	).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 			inst_defn(_, Name, Params, _, _) - _) -->
-	check_for_ambiguity(NeedQualifier, OldTimestamp, VersionNumbers,
-		(inst), Name, list__length(Params), _).
+	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+		VersionNumbers, (inst), Name, list__length(Params), _).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 			mode_defn(_, Name, Params, _, _) - _) -->
-	check_for_ambiguity(NeedQualifier, OldTimestamp, VersionNumbers,
-		(mode), Name, list__length(Params), _).
+	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+		VersionNumbers, (mode), Name, list__length(Params), _).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 			typeclass(_, Name, Params, Interface, _) - _) -->
-	check_for_ambiguity(NeedQualifier, OldTimestamp, VersionNumbers,
-		(typeclass), Name, list__length(Params), NeedsCheck),
+	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
+		VersionNumbers, (typeclass), Name, list__length(Params),
+		NeedsCheck),
 	( { NeedsCheck = yes, Interface = concrete(Methods) } ->
 		list__foldl(
 		    (pred(ClassMethod::in, in, out) is det -->
 		    	(
 				{ ClassMethod = pred_or_func(_, _, _,
 					PredOrFunc, MethodName, MethodArgs,
-					_, _, _, _, _) },
+					MethodWithType, _, _, _, _, _, _) },
 				check_for_pred_or_func_item_ambiguity(yes,
 					NeedQualifier, OldTimestamp,
 					VersionNumbers, PredOrFunc,
-					MethodName, MethodArgs)
+					MethodName, MethodArgs, MethodWithType)
 			;
 				{ ClassMethod = pred_or_func_mode(_, _, _, _,
-					_, _, _) }
+					_, _, _, _) }
 		    	)
 		    ),
 		    Methods)
@@ -904,125 +910,73 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 		[]
 	).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-		pred_or_func(_, _, _, PredOrFunc, Name, Args, _, _, _, _) - _)
+		pred_or_func(_, _, _, PredOrFunc, Name, Args,
+			WithType, _, _, _, _, _) - _)
 		-->
 	check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
-		VersionNumbers, PredOrFunc, Name, Args).
-check_for_ambiguities(_, _, _, pred_or_func_mode(_, _, _, _, _, _) - _) --> [].
+		VersionNumbers, PredOrFunc, Name, Args, WithType).
+check_for_ambiguities(_, _, _,
+		pred_or_func_mode(_, _, _, _, _, _, _) - _) --> [].
 check_for_ambiguities(_, _, _, pragma(_) - _) --> [].
 check_for_ambiguities(_, _, _, promise(_, _, _, _) - _) --> [].
 check_for_ambiguities(_, _, _, module_defn(_, _) - _) --> [].
 check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _) --> [].
 check_for_ambiguities(_, _, _, nothing(_) - _) --> [].
 
-:- pred check_for_pred_or_func_item_ambiguity(bool::in, need_qualifier::in,
-	timestamp::in, item_version_numbers::in, pred_or_func::in,
-	sym_name::in, list(T)::in, recompilation_check_info::in,
-	recompilation_check_info::out) is det.
+:- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,
+		item_type::in, sym_name::in, arity::in) is semidet.
 
-check_for_pred_or_func_item_ambiguity(NeedsCheck0, NeedQualifier, OldTimestamp,
-		VersionNumbers, PredOrFunc, Name, Args) -->
-	{ adjust_func_arity(PredOrFunc, Arity, list__length(Args)) },
-	check_for_ambiguity(NeedsCheck0, NeedQualifier, OldTimestamp,
-		VersionNumbers, pred_or_func_to_item_type(PredOrFunc),
-		Name, Arity, NeedsCheck),
-	( { NeedsCheck = yes } ->
-		{ invalid_pred_id(PredId) },
-		( { Name = qualified(ModuleName, _) } ->
-			check_functor_ambiguities(NeedQualifier, Name,
-				less_than_or_equal(Arity),
-				pred_or_func(PredId, ModuleName,
-					PredOrFunc, Arity))
-		;
-			{ error(
-	"check_for_pred_or_func_item_ambiguity: unqualified predicate name") }
-		)
+item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
+		ItemType, SymName, Arity) :-
+	unqualify_name(SymName, Name),
+	(
+		map__search(extract_ids(UsedVersionNumbers, ItemType),
+			Name - Arity, UsedVersionNumber)
+	->
+		% XXX This assumes that version numbers are timestamps.
+		compare((>), UsedVersionNumber, UsedFileTimestamp)
 	;
-		[]
+		true
 	).
 
-:- pred check_for_ambiguity(need_qualifier::in, timestamp::in,
-	item_version_numbers::in, item_type::in, sym_name::in,
+:- pred check_for_simple_item_ambiguity(need_qualifier::in, timestamp::in,
+	item_version_numbers::in, item_type::in(simple_item), sym_name::in,
 	arity::in, bool::out, recompilation_check_info::in,
 	recompilation_check_info::out) is det.
 
-check_for_ambiguity(NeedQualifier, OldTimestamp, VersionNumbers,
-		ItemType, SymName, Arity, NeedsCheck) -->
-	check_for_ambiguity(no, NeedQualifier, OldTimestamp, VersionNumbers,
-		ItemType, SymName, Arity, NeedsCheck). 
-
-:- pred check_for_ambiguity(bool::in, need_qualifier::in, timestamp::in,
-	item_version_numbers::in, item_type::in, sym_name::in,
-	arity::in, bool::out, recompilation_check_info::in,
-	recompilation_check_info::out) is det.
-
-check_for_ambiguity(IsClassMethod, NeedQualifier, UsedFileTimestamp,
-		UsedVersionNumbers, ItemType, SymName, Arity, NeedsCheck) -->
-	{ unqualify_name(SymName, Name) },
+check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
+		VersionNumbers, ItemType, SymName, Arity, NeedsCheck) -->
 	(
-		% For a typeclass method, we've already found out
-		% that the typeclass declaration has changed.
-		{ IsClassMethod = no },
-
-		%
-		% If the item has not changed since the last time we read the
-		% file we don't need to check for ambiguities.
-		%
-		{ map__search(extract_ids(UsedVersionNumbers, ItemType),
-			Name - Arity, UsedVersionNumber) },
-
-		% XXX This assumes that version numbers are timestamps.
-		{ compare(Result, UsedVersionNumber, UsedFileTimestamp) },
-		{ Result = (=)
-		; Result = (<)
-		}
+		{ item_is_new_or_changed(UsedFileTimestamp, VersionNumbers,
+			ItemType, SymName, Arity) }
 	->
-		{ NeedsCheck = no }
-	;
+		{ NeedsCheck = yes },
 		UsedItems =^ used_items,
-		( { is_simple_item_type(ItemType) } ->
-			{ UsedItemMap = extract_simple_item_set(UsedItems,
-						ItemType) },
-			(
-				{ map__search(UsedItemMap, Name - Arity,
-					MatchingQualifiers) }
-			->
-				map__foldl(	
-					check_for_simple_item_ambiguity(
-						ItemType, Name, NeedQualifier,
+		{ UsedItemMap = extract_simple_item_set(UsedItems, ItemType) },
+		{ unqualify_name(SymName, Name) },
+		(
+			{ map__search(UsedItemMap, Name - Arity,
+				MatchingQualifiers) }
+		->
+			map__foldl(	
+				check_for_simple_item_ambiguity_2(
+					ItemType, NeedQualifier,
 						SymName, Arity),
 					MatchingQualifiers)	
-			;
-				[]
-			)
-		; { is_pred_or_func_item_type(ItemType) } ->
-			{ UsedItemMap = extract_pred_or_func_set(UsedItems,
-						ItemType) },	
-			(
-				{ map__search(UsedItemMap, Name - Arity,
-					MatchingQualifiers) }
-			->
-				map__foldl(	
-					check_for_pred_or_func_ambiguity(
-						ItemType, Name, NeedQualifier,
-						SymName, Arity),
-					MatchingQualifiers)	
-			;
-				[]
-			)
 		;
 			[]
-		),
-		{ NeedsCheck = yes }
+		)
+	;
+		{ NeedsCheck = no }
 	).
 
-:- pred check_for_simple_item_ambiguity(item_type::in, string::in,
-	need_qualifier::in, sym_name::in, arity::in, module_qualifier::in,
-	module_name::in, recompilation_check_info::in,
-	recompilation_check_info::out) is det.
+:- pred check_for_simple_item_ambiguity_2(item_type::in, need_qualifier::in,
+	sym_name::in, arity::in, module_qualifier::in, module_name::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_simple_item_ambiguity(ItemType, Name, NeedQualifier, SymName, Arity,
-		OldModuleQualifier, OldMatchingModuleName) -->
+check_for_simple_item_ambiguity_2(ItemType, NeedQualifier,
+		SymName, Arity, OldModuleQualifier, OldMatchingModuleName) -->
+	{ unqualify_name(SymName, Name) },
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
@@ -1046,13 +1000,87 @@ check_for_simple_item_ambiguity(ItemType, Name, NeedQualifier, SymName, Arity,
 		[]
 	).
 
-:- pred check_for_pred_or_func_ambiguity(item_type::in, string::in,
+:- pred check_for_pred_or_func_item_ambiguity(bool::in, need_qualifier::in,
+	timestamp::in, item_version_numbers::in, pred_or_func::in,
+	sym_name::in, list(type_and_mode)::in, maybe(type)::in,
+	recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
+		VersionNumbers, PredOrFunc, SymName, Args, WithType) -->
+	{
+		WithType = no,
+		adjust_func_arity(PredOrFunc, Arity, list__length(Args))
+	;
+		WithType = yes(_),
+		Arity = list__length(Args)
+	},
+	{ ItemType = pred_or_func_to_item_type(PredOrFunc) },
+	(
+		{ NeedsCheck = yes
+		; item_is_new_or_changed(OldTimestamp, VersionNumbers,
+				ItemType, SymName, Arity)
+		}
+	->
+		UsedItems =^ used_items,
+		{ UsedItemMap = extract_pred_or_func_set(UsedItems,
+					ItemType) },	
+		{ unqualify_name(SymName, Name) },
+		( { map__search(UsedItemMap, Name, MatchingArityList) } ->
+		    list__foldl(
+			(pred((MatchArity - MatchingQualifiers)::in,
+					in, out) is det -->
+			    (
+			    	{
+				    WithType = yes(_),
+				    MatchArity >= Arity
+				;
+				    WithType = no,
+				    MatchArity = Arity
+				}
+			    ->
+				map__foldl(	
+				    check_for_pred_or_func_item_ambiguity_2(
+					ItemType, NeedQualifier,
+					SymName, MatchArity),
+				    MatchingQualifiers)
+			    ;
+			    	[]
+			    )
+			), MatchingArityList)
+		;
+		    []
+		),
+
+		{ invalid_pred_id(PredId) },
+		( { SymName = qualified(ModuleName, _) } ->
+			{
+				WithType = yes(_),
+				% We don't know the actual arity.
+				AritiesToMatch = any
+			;
+				WithType = no,
+				AritiesToMatch = less_than_or_equal(Arity)
+			},
+			check_functor_ambiguities(NeedQualifier,
+				SymName, AritiesToMatch,
+				pred_or_func(PredId, ModuleName,
+					PredOrFunc, Arity))
+		;
+			{ error(
+	"check_for_pred_or_func_item_ambiguity: unqualified predicate name") }
+		)
+	;
+		[]
+	).
+
+:- pred check_for_pred_or_func_item_ambiguity_2(item_type::in,
 	need_qualifier::in, sym_name::in, arity::in, module_qualifier::in,
 	set(pair(pred_id, module_name))::in, recompilation_check_info::in,
 	recompilation_check_info::out) is det.
 
-check_for_pred_or_func_ambiguity(ItemType, Name, NeedQualifier,
+check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
 		SymName, Arity, OldModuleQualifier, OldMatchingModuleNames) -->
+	{ unqualify_name(SymName, Name) },
 	(
 		% XXX This is a bit conservative in the
 		% case of partially qualified names but that
@@ -1141,6 +1169,7 @@ check_field_ambiguities(NeedQualifier, ResolvedCtor, yes(FieldName) - _) -->
 :- type functor_match_arity
 	--->	exact(arity)
 	;	less_than_or_equal(arity)
+	;	any
 	.
 
 :- pred check_functor_ambiguities(need_qualifier::in, sym_name::in,
@@ -1188,6 +1217,10 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 			Check = no,
 			Continue = no
 		}
+	;
+		{ MatchArity = any },
+		{ Check = yes },
+		{ Continue = yes }
 	),
 	( { Check = yes } ->
 		map__foldl(

@@ -99,6 +99,8 @@
 
 :- func error_util__describe_sym_name_and_arity(sym_name_and_arity) = string.
 
+:- func error_util__pred_or_func_to_string(pred_or_func) = string.
+
 	% Append a punctuation character to a message, avoiding unwanted
 	% line splitting between the message and the punctuation.
 :- func error_util__append_punctuation(list(format_component), char) =
@@ -406,15 +408,8 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, Arity),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-	(
-		PredOrFunc = predicate,
-		PredOrFuncPart = "predicate",
-		OrigArity = Arity
-	;
-		PredOrFunc = function,
-		PredOrFuncPart = "function",
-		OrigArity is Arity - 1
-	),
+	PredOrFuncPart = pred_or_func_to_string(PredOrFunc),
+	adjust_func_arity(PredOrFunc, OrigArity, Arity),
 	(
 		pred_info_get_goal_type(PredInfo, promise(PromiseType))
 	->
@@ -472,6 +467,8 @@ error_util__describe_sym_name(SymName) =
 		string__append_list(["`", SymNameString, "'"]) :-
 	sym_name_to_string(SymName, SymNameString).
 
+error_util__pred_or_func_to_string(predicate) = "predicate".
+error_util__pred_or_func_to_string(function) = "function".
 
 error_util__append_punctuation([], _) = _ :-
 	error(

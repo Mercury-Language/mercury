@@ -3,7 +3,7 @@ vars_in_wrong_places.m:003: Error: atom expected in equation head: _1 = 42.
 vars_in_wrong_places.m:004: Error: atom expected in equation head: _1 = 42.
 Error: atom expected in `:- pred' declaration: _1.
 vars_in_wrong_places.m:006: Error: atom expected in `:- func' declaration: _1 = int.
-Error: atom expected in predicate `:- mode' declaration: _1.
+Error: atom expected in `:- mode' declaration: _1.
 vars_in_wrong_places.m:008: Error: atom expected in function `:- mode' declaration: _1 = int.
 vars_in_wrong_places.m:  1: Warning: interface for module `vars_in_wrong_places' does not export anything.
 For more information, try recompiling with `-E'.
