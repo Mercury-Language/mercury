@@ -493,9 +493,11 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0), NonLocals,
 
 modecheck_goal_2(not(A0), NonLocals, not(A)) -->
 	mode_checkpoint(enter, "not"),
+	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(NonLocals),
 	modecheck_goal(A0, A),
 	mode_info_unlock_vars(NonLocals),
+	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
 
 modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
