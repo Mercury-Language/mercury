@@ -62,7 +62,8 @@ update_module () {
 	# respect to the `.m' file.
 	sleep 1
 
-	cp -f $module.m.$module_version $module.m
+	rm -f $module.m
+	cp $module.m.$module_version $module.m
 	chmod -w $module.m
 
 	# See comment in test_module().
@@ -130,8 +131,10 @@ mmake_test () {
 		# If the compilation is supposed to fail then the mmake
 		# output should be suppressed to avoid making it harder
 		# to find genuine failures in the nightly test logs.
+		# The `-k' option to mmake avoids differences in the output
+		# when using parallel mmakes.
 		#
-		eval mmake $mmakeopts $main_module > $failing_make_output 2>&1
+		eval mmake -k $mmakeopts $main_module > $failing_make_output 2>&1
 		;;
 	    false)
 		eval mmake $mmakeopts $main_module
