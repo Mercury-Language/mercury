@@ -98,19 +98,19 @@
 
 '<'(R1, R2) :-
 	Cmp = cmp(R1, R2),
-	Cmp = lessthan.
+	Cmp = (<).
 
 '>'(R1, R2) :-
 	Cmp = cmp(R1, R2),
-	Cmp = greaterthan.
+	Cmp = (>).
 
 '=<'(R1, R2) :-
 	Cmp = cmp(R1, R2),
-	(Cmp = lessthan ; Cmp = equal).
+	(Cmp = (<) ; Cmp = (=)).
 
 '>='(R1, R2) :-
 	Cmp = cmp(R1, R2),
-	(Cmp = greaterthan ; Cmp = equal).
+	(Cmp = (>) ; Cmp = (=)).
 
 rational__rational(Int) = rational_norm(integer(Int), integer__one).
 
@@ -203,21 +203,16 @@ signum(N) =
 	; integer__one
 	).
 
-:- type comparison
-	--->	equal
-	;	lessthan
-	;	greaterthan.
-
-:- func cmp(rational, rational) = comparison.
+:- func cmp(rational, rational) = comparison_result.
 
 cmp(R1, R2) = Cmp :-
 	Diff = R1 - R2,
 	( is_zero(Diff) ->
-		Cmp = equal
+		Cmp = (=) 
 	; is_negative(Diff) ->
-		Cmp = lessthan
+		Cmp = (<) 
 	;
-		Cmp = greaterthan
+		Cmp = (>) 
 	).
 
 :- pred is_zero(rational::in) is semidet.
