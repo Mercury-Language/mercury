@@ -705,7 +705,9 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 %---------------------------------------------------------------------------%
 
 code_info__get_live_variables(VarList) -->
-	code_info__get_liveness_info(Vars),
+	code_info__get_liveness_info(NormalLiveVars),
+	code_info__get_nondet_lives(NondetLiveVars),
+	{ set__union(NormalLiveVars, NondetLiveVars, Vars) },
 	{ set__to_sorted_list(Vars, VarList) }.
 
 %---------------------------------------------------------------------------%
@@ -1020,7 +1022,10 @@ code_info__update_deadness_info(_Births - Deaths) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__make_vars_dead(Vars) -->
+code_info__make_vars_dead(Vars0) -->
+	code_info__get_nondet_lives(NondetLives),
+		% Don't kill off nondet-live variables
+	{ set__difference(Vars0, NondetLives, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__make_vars_dead_2(VarList).
 

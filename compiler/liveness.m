@@ -514,6 +514,8 @@ stuff_deadness_residue_into_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 	% are live for the purposes of forward execution, i.e. they have
 	% been bound and may be referenced again (during forward execution).
 	% `Extras' is the variables that may be referenced on backtracking.
+	% Each goal is annotated with the variables that will be live on
+	% backtracking.
 
 :- pred add_nondet_lives_to_goal(hlds__goal, set(var),
 				set(var), hlds__goal, set(var), set(var)).
@@ -525,8 +527,6 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
 
 	PreDelta0 = PreBirths0 - PreDeaths0,
-	set__difference(PreDeaths0, Extras0, PreDeaths),
-	PreDelta = PreBirths0 - PreDeaths,
 
 	PostDelta0 = PostBirths0 - PostDeaths0,
 
@@ -535,105 +535,93 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 	goal_info_get_code_model(GoalInfo0, GoalModel),
 	(
 		GoalModel = model_non,
-		( Goal0 = disj(_) ; Goal0 = call(_,_,_,_,_,_,_) )
+		Goal0 = disj(_)
 	->
+		% If the goal is a nondet disj then all the variables
+		% that are live at the start of the disj will be
+		% needed at later disjuncts (a conservative approximation)
 		set__union(Extras0, Liveness1, Extras1)
+	;
+		GoalModel = model_non,
+		Goal0 = call(_,_,_,_,_,_,_)
+	->
+		% If the goal is a nondet call then all the variables
+		% that are live across the call become nondet live.
+		set__difference(Liveness1, PostDeaths0, LivenessAcross),
+		set__union(Extras0, LivenessAcross, Extras1)
 	;
 		Extras1 = Extras0
 	),
 
 	set__union(Liveness1, PreBirths0, Liveness2),
 
-		% Pass both the old and new sets of variables
-		% that are nondet live (Extras{0,1})
-	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras0, Extras1,
+	add_nondet_lives_to_goal_2(Goal0, Liveness2, Extras1,
 						Goal, Liveness3, Extras),
 
-	set__difference(PostDeaths0, Extras1, PostDeaths),
-	PostDelta = PostBirths0 - PostDeaths,
 
 	set__difference(Liveness3, PostDeaths0, Liveness4),
 	set__union(Liveness4, PostBirths0, Liveness),
 
-        goal_info_set_pre_delta_liveness(GoalInfo0, PreDelta, GoalInfo1),
-	goal_info_set_post_delta_liveness(GoalInfo1, PostDelta, GoalInfo).
+        goal_info_set_nondet_lives(GoalInfo0, Extras1, GoalInfo).
 
-:- pred add_nondet_lives_to_goal_2(hlds__goal_expr, set(var), set(var),set(var),
+:- pred add_nondet_lives_to_goal_2(hlds__goal_expr, set(var), set(var),
 					hlds__goal_expr, set(var), set(var)).
-:- mode add_nondet_lives_to_goal_2(in, in, in, in, out, out, out) is det.
+:- mode add_nondet_lives_to_goal_2(in, in, in, out, out, out) is det.
 
-add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, _, Extras0,
+add_nondet_lives_to_goal_2(conj(Goals0), Liveness0, Extras0,
 				conj(Goals), Liveness, Extras) :-
 	add_nondet_lives_to_conj(Goals0, Liveness0, Extras0,
 					Goals, Liveness, Extras).
 
-add_nondet_lives_to_goal_2(disj(Goals0), Liveness0, OutsideExtras, Extras0,
+add_nondet_lives_to_goal_2(disj(Goals0), Liveness0, Extras0,
 				disj(Goals), Liveness, Extras) :-
-	add_nondet_lives_to_disj(Goals0, Liveness0, OutsideExtras, Extras0,
-					Goals, Liveness, Extras).
+	ExtrasAcc = Extras0,
+	add_nondet_lives_to_disj(Goals0, Liveness0, Extras0,
+					Goals, Liveness, ExtrasAcc, Extras).
 
-add_nondet_lives_to_goal_2(switch(Var, CF, Goals0), Liveness0, _, Extras0,
+add_nondet_lives_to_goal_2(switch(Var, CF, Goals0), Liveness0, Extras0,
 				switch(Var, CF, Goals), Liveness, Extras) :-
-	set__init(Empty),
+	ExtrasAcc = Extras0,
 	add_nondet_lives_to_switch(Goals0, Liveness0, Extras0,
-					Empty, Goals, Liveness, Extras).
+					Goals, Liveness, ExtrasAcc, Extras).
 
 add_nondet_lives_to_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
-		_, Extras0, if_then_else(Vars, Cond, Then, Else),
+		Extras0, if_then_else(Vars, Cond, Then, Else),
 							Liveness, Extras) :-
 	add_nondet_lives_to_goal(Cond0, Liveness0, Extras0,
 					Cond, Liveness1, Extras1),
 	add_nondet_lives_to_goal(Then0, Liveness1, Extras1,
-					Then, _Liveness2, Extras2),
-	add_nondet_lives_to_goal(Else0, Liveness0, Extras0,
+					Then1, _Liveness2, Extras2),
+	add_nondet_lives_to_goal(Else0, Liveness1, Extras0,
 					Else1, Liveness, Extras3),
 	set__union(Extras2, Extras3, Extras),
 
-		% Anything that became nondet-live in the condition
-		% or the "then" can safely be killed off in the "else"
-		% so long as it isn't live!
-	set__difference(Extras2, Extras0, CTExtras0),
-	set__difference(CTExtras0, Liveness0, CTExtras1),
-	set__difference(CTExtras1, Liveness, CTExtras),
+	set__difference(Extras, Extras2, ElseOnlyExtras),
+	stuff_liveness_residue_into_goal(Then1, ElseOnlyExtras, Then),
 
-	stuff_liveness_residue_into_goal(Else1, CTExtras, Else2),
-	stuff_deadness_residue_into_goal(Else2, CTExtras, Else).
-
+	set__difference(Extras, Extras3, ThenOnlyExtras),
+	stuff_liveness_residue_into_goal(Else1, ThenOnlyExtras, Else).
 
 	% Nondet lives cannot escape from a some if they
 	% are quantified to that quantifier.
-	% XXX until variables are properly renamed apart,
-	% variables with overlapping scopes will cause problems.
-add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, _, Extras0,
-				some(Vars, Goal), Liveness, Extras) :-
+add_nondet_lives_to_goal_2(some(Vars, Goal0), Liveness0, Extras0,
+				some(Vars, Goal), Liveness, Extras0) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
-					Goal1, Liveness, Extras1),
-	set__list_to_set(Vars, VarsSet),
-	set__difference(Extras1, VarsSet, Extras),
-	set__intersect(Extras1, VarsSet, QExtras1),
-	set__difference(QExtras1, Liveness, QExtras),
-	add_deadness_to_goal(Goal1, QExtras, Goal).
+					Goal, Liveness, _Extras).
 
 	% Nondet lives cannot escape from a negation
-add_nondet_lives_to_goal_2(not(Goal0), Liveness0, _, Extras0,
+add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0,
 				not(Goal), Liveness, Extras0) :-
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
-					Goal1, Liveness, Extras1),
-		% since nondeterminism cannot escape a negation
-		% ie, you can't backtrack *into* a negation,
-		% any nondet-lives generated in the negation
-		% should be killed off.
-	set__difference(Extras1, Extras0, NExtras1),
-	set__difference(NExtras1, Liveness, NExtras),
-	add_deadness_to_goal(Goal1, NExtras, Goal).
+					Goal, Liveness, _).
 
-add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, _, Extras,
+add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, Extras,
 				call(A,B,C,D,E,F,G), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, _, Extras,
+add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, Extras,
 				unify(A,B,C,D,E), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(pragma_c_code(A,B,C,D,E), Liveness, _, Extras,
+add_nondet_lives_to_goal_2(pragma_c_code(A,B,C,D,E), Liveness, Extras,
 				pragma_c_code(A,B,C,D,E), Liveness, Extras).
 
 
@@ -657,51 +645,56 @@ add_nondet_lives_to_conj([G0|Gs0], Liveness0, Extras0,
 							Gs, Liveness, Extras)
 	).
 
-:- pred add_nondet_lives_to_disj(list(hlds__goal), set(var), set(var), set(var),
-				list(hlds__goal), set(var), set(var)).
-:- mode add_nondet_lives_to_disj(in, in, in, in, out, out, out) is det.
+:- pred add_nondet_lives_to_disj(list(hlds__goal), set(var), set(var),
+				list(hlds__goal), set(var), set(var), set(var)).
+:- mode add_nondet_lives_to_disj(in, in, in, out, out, in, out) is det.
 
-add_nondet_lives_to_disj([], Liveness, _, Extras, [], Liveness, Extras).
+	% We have to add post-births of variables that become nondet
+	% live in some disjuncts but are neither live nor nondet live at
+	% the end of others.
+
+add_nondet_lives_to_disj([], Liveness, _Extras0, [], Liveness, Extras, Extras).
 	% For the last disjunct, we optimize what variables are nondet-
 	% live by observing that in the last disjunct we no longer need
 	% to save the inputs onto the stack for later disjuncts (since
 	% there aren't any.
-add_nondet_lives_to_disj([G0], Liveness0, OutsideExtras, Extras0,
-					[G], Liveness, Extras) :-
-	add_nondet_lives_to_goal(G0, Liveness0, OutsideExtras,
-						G, Liveness, Extras1),
-	set__union(Extras0, Extras1, Extras).
-add_nondet_lives_to_disj([G0|Gs0], Liveness0, OutsideExtras, Extras0,
-					[G|Gs], Liveness, Extras) :-
-	Gs0 = [_|_], % make this clause mutually exclusive with the previous one
-	add_nondet_lives_to_disj(Gs0, Liveness0, OutsideExtras, Extras0,
-						Gs, _Liveness1, Extras1),
-	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G, Liveness, Extras2),
-	set__union(Extras1, Extras2, Extras).
+add_nondet_lives_to_disj([G0], Liveness0, Extras0,
+					[G], Liveness, ExtrasAcc, Extras) :-
+	add_nondet_lives_to_goal(G0, Liveness0, Extras0,
+					G1, Liveness, Extras1),
+	set__union(ExtrasAcc, Extras1, Extras),
+	set__difference(ExtrasAcc, Extras1, OtherGoalExtras),
+			% optimized Extras -> ExtrasAcc
+	stuff_liveness_residue_into_goal(G1, OtherGoalExtras, G).
+add_nondet_lives_to_disj([G0|Gs0], Liveness0, Extras0,
+					[G|Gs], Liveness, ExtrasAcc0, Extras) :-
+		% make this clause mutually exclusive with the previous one
+	Gs0 = [_|_],
+	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G1, Liveness, Extras2),
+	set__union(ExtrasAcc0, Extras2, ExtrasAcc),
+	add_nondet_lives_to_disj(Gs0, Liveness0, Extras0,
+					Gs, _Liveness1, ExtrasAcc, Extras),
+	set__difference(Extras, Extras2, OtherGoalExtras),
+	stuff_liveness_residue_into_goal(G1, OtherGoalExtras, G).
 
-:- pred add_nondet_lives_to_switch(list(case), set(var), set(var), set(var),
-				list(case), set(var), set(var)).
-:- mode add_nondet_lives_to_switch(in, in, in, in, out, out, out) is det.
+:- pred add_nondet_lives_to_switch(list(case), set(var), set(var), 
+				list(case), set(var),set(var), set(var)).
+:- mode add_nondet_lives_to_switch(in, in, in, out, out, in, out) is det.
 
 add_nondet_lives_to_switch([], Liveness, _Extras0,
-				Extras, [], Liveness, Extras).
+				[], Liveness, Extras, Extras).
 add_nondet_lives_to_switch([case(ConsId, G0)|Gs0], Liveness0, Extras0,
-			Extras1, [case(ConsId, G)|Gs], Liveness, Extras) :-
+			[case(ConsId, G)|Gs], Liveness, ExtrasAcc0, Extras) :-
 
 	add_nondet_lives_to_goal(G0, Liveness0, Extras0, G1, Liveness, Extras2),
-	set__union(Extras1, Extras2, Extras3),
+	set__union(ExtrasAcc0, Extras2, ExtrasAcc),
 
 	add_nondet_lives_to_switch(Gs0, Liveness0, Extras0,
-					Extras3, Gs, _Liveness1, Extras),
+					Gs, _Liveness1, ExtrasAcc, Extras),
+	set__difference(Extras, Extras2, OtherGoalExtras),
+	stuff_liveness_residue_into_goal(G1, OtherGoalExtras, G).
 
-		% Anything that became nondet-live in another case
-		% but didn't in this one had better be killed off.
-	set__difference(Extras, Extras2, CTExtras0),
-	goal_vars(G1, GoalVars),
-	set__difference(CTExtras0, GoalVars, CTExtras),
-
-	stuff_liveness_residue_into_goal(G1, CTExtras, G2),
-	stuff_deadness_residue_into_goal(G2, CTExtras, G).
+%------------------------------------------------------------------------------%
 
 :- pred add_deadness_to_goal(hlds__goal, set(var), hlds__goal).
 :- mode add_deadness_to_goal(in, in, out) is det.

@@ -128,10 +128,18 @@ inlining__inlining_in_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Context, Sym, Follow),
 		Varset0, VarTypes0, ModuleInfo, Goal, Varset, VarTypes) :-
 	(
+		% check to see if we are going to inline the call.
+		% We do this if the called predicate has an annotation
+		% indicating that it should be inlined, or if the goal
+		% is a conjunction of builtins.
 		\+ hlds__is_builtin_is_internal(Builtin),
         	module_info_preds(ModuleInfo, Preds),
         	map__lookup(Preds, PredId, PredInfo),
 		\+ pred_info_is_imported(PredInfo),
+			% unify, except in a mode other than (in, in)
+			% because modes other than (in, in) will be
+			% local whether the type was defined locally
+			% or not.
 		\+ (pred_info_is_pseudo_imported(PredInfo), ProcId = 0),
         	pred_info_procedures(PredInfo, Procs),
         	map__lookup(Procs, ProcId, ProcInfo),
@@ -149,8 +157,7 @@ inlining__inlining_in_goal_2(
         	proc_info_variables(ProcInfo, PVarset),
 		proc_info_vartypes(ProcInfo, CVarTypes),
 		varset__vars(PVarset, Vars0),
-		assoc_list__from_corresponding_lists(HeadVars, ArgVars, ArgSub),
-		map__from_assoc_list(ArgSub, Subn0),
+		map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
 		goal_util__create_variables(Vars0, Varset0,
 			VarTypes0, Subn0, CVarTypes, Varset, VarTypes, Subn),
 		goal_util__rename_vars_in_goal(CalledGoal, Subn, Goal - _GInfo)

@@ -25,6 +25,9 @@
 :- pred code_aux__contains_only_builtins(hlds__goal).
 :- mode code_aux__contains_only_builtins(in) is semidet.
 
+	% code_aux__goal_is_flat(Goal) is true if Goal does not contain
+	% any branched structures (ie if-then-else or disjunctions or
+	% switches.)
 :- pred code_aux__goal_is_flat(hlds__goal).
 :- mode code_aux__goal_is_flat(in) is semidet.
 
@@ -38,9 +41,35 @@
 :- pred code_aux__contains_simple_recursive_call(hlds__goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
+	% code_aux__pre_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
+	% updates OldCodeInfo to produce NewCodeInfo with the changes
+	% specified by GoalInfo. The components that change are:
+	%	- The set of live variables has the predeath set from
+	%	  GoalInfo removed (by set difference)
+	%	- The set of live variable has the prebirth set from GoalInfo
+	%	  added (set union)
+	%	- The set of live variables has the postdeath set from GoalInfo
+	%	  removed (by set difference). These variables are removed so
+	%	  that they do not get saved across calls and positioned where
+	%	  branched computations join unnecessarily.
+	%	- The variables that die before a goal (The predeath set)
+	%	  are removed from the exprn_info structure.
+	%	- The variables that die but may still become live on
+	%	  backtracking (and therefore still need to be stored on
+	%	  the stack) are added to the set of nondet-live variables.
 :- pred code_aux__pre_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__pre_goal_update(in, in, out) is det.
 
+	% code_aux__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
+	% updates OldCodeInfo to produce NewCodeInfo with the changes described
+	% by GoalInfo. These are:
+	%	- The variables that died during the goal are removed from the
+	%	  exprn_info structure (from the post-death set).
+	%	- Variables that became live at the end of the goal (the post-
+	%	  birth set) are added to the exprn_info structure and to the
+	%	  set of live variables.
+	%	- Variables that were nondet-live only during the current goal
+	%	  are removed from the set of nondet-live variables.
 :- pred code_aux__post_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__post_goal_update(in, in, out) is det.
 
@@ -177,17 +206,15 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 	% Update the code info structure to be consistent
 	% immediately prior to generating a goal
 code_aux__pre_goal_update(GoalInfo) -->
+	{ goal_info_nondet_lives(GoalInfo, NondetLives) },
+	code_info__set_nondet_lives(NondetLives),
 	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
 	code_info__update_liveness_info(PreDelta),
 	code_info__update_deadness_info(PreDelta),
 	{ PreDelta = _ - PreDeaths },
 	code_info__make_vars_dead(PreDeaths),
 	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_deadness_info(PostDelta),
-	code_info__get_nondet_lives(NondetLives0),
-	{ goal_info_nondet_lives(GoalInfo, NondetLives1) },
-	{ set__union(NondetLives0, NondetLives1, NondetLives) },
-	code_info__set_nondet_lives(NondetLives).
+	code_info__update_deadness_info(PostDelta).
 
 	% Update the code info structure to be consistent
 	% immediately after generating a goal
@@ -196,12 +223,7 @@ code_aux__post_goal_update(GoalInfo) -->
 	code_info__update_liveness_info(PostDelta),
 	code_info__update_deadness_info(PostDelta),
 	{ PostDelta = PostBirths - PostDeaths },
-	{ goal_info_nondet_lives(GoalInfo, NondetLives1) },
-	code_info__get_nondet_lives(NondetLives0),
-	{ set__difference(NondetLives0, NondetLives1, NondetLives) },
-	code_info__set_nondet_lives(NondetLives),
-	{ set__union(PostDeaths, NondetLives1, DeadVars) },
-	code_info__make_vars_dead(DeadVars),
+	code_info__make_vars_dead(PostDeaths),
 	code_info__make_vars_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
 	code_info__apply_instmap_delta(InstMapDelta).
