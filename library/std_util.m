@@ -482,6 +482,13 @@ maybe_pred(Pred, X, Y) :-
 
 %-----------------------------------------------------------------------------%
 
+/*
+** This section defines builtin_aggregate/4 which takes a closure of type
+** pred(T) in which the remaining argument is output, and backtracks over
+** solutions for this, using the second argument to aggregate them however the
+** user wishes.  This is basically a generalization of solutions/2.
+*/
+ 
 :- pred builtin_aggregate(pred(T), pred(T, U, U), U, U).
 :- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is det,
 		in, out) is det. /* really cc_multi */
@@ -495,98 +502,6 @@ maybe_pred(Pred, X, Y) :-
 		in, out) is det. /* really cc_multi */
 :- mode builtin_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
 		di, uo) is det. /* really cc_multi */
-
-:- external(builtin_aggregate/4).
-	% builtin_aggregate is implemented in c_code.
-
-:- pragma c_code("
- 
-/*
-** This module defines builtin_aggregate/4 which takes a closure of type
-** pred(T) in which the remaining argument is output, and backtracks over
-** solutions for this, using the second argument to aggregate them however the
-** user wishes.  This is basically a generalization of solutions/2.
-*/
- 
-#include ""mercury_imp.h""
-#include ""mercury_deep_copy.h""
-
-Declare_entry(mercury__do_call_closure);
-
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_0);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_1);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_2);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_3);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_4);
-Define_extern_entry(mercury__std_util__builtin_aggregate_4_5);
-Declare_label(mercury__std_util__builtin_aggregate_4_0_i1);
-Declare_label(mercury__std_util__builtin_aggregate_4_0_i2);
-Declare_label(mercury__std_util__builtin_aggregate_4_0_i3);
-
-MR_MAKE_PROC_LAYOUT(mercury__std_util__builtin_aggregate_4_0,
-	MR_DETISM_MULTI, MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""std_util"", ""builtin_aggregate"", 4, 0);
-
-MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__std_util__builtin_aggregate_4_0, 3);
-
-BEGIN_MODULE(builtin_aggregate_module)
-	init_entry_sl(mercury__std_util__builtin_aggregate_4_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__std_util__builtin_aggregate_4_0);
-	init_entry(mercury__std_util__builtin_aggregate_4_1);
-	init_entry(mercury__std_util__builtin_aggregate_4_2);
-	init_entry(mercury__std_util__builtin_aggregate_4_3);
-	init_entry(mercury__std_util__builtin_aggregate_4_4);
-	init_entry(mercury__std_util__builtin_aggregate_4_5);
-	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i1);
-	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i2);
-	init_label_sl(mercury__std_util__builtin_aggregate_4_0_i3);
-BEGIN_CODE
-
-/*
-** :- pred builtin_aggregate(pred(T), pred(T,T2,T2), T2, T2).
-** :- mode builtin_aggregate(pred([out/muo]) is [multi/nondet],
-**		pred([in/mdi],[in/di],[out/uo]) is det, in, out) is cc_multi.
-**
-** Polymorphism will add two extra input parameters, type_infos for T and T2,
-** which we don't use at the moment (later they could be used to find
-** the address of the respective deep copy routines).
-**
-** The type_info structures will be in r1 and r2, the closures will be in
-** r3 and r4, and the 'initial value' will be in r5.
-*/
- 
-#ifdef PROFILE_CALLS
-  #define fallthru(target, caller) { tailcall((target), (caller)); }
-#else
-  #define fallthru(target, caller)
-#endif
-
-Define_entry(mercury__std_util__builtin_aggregate_4_1);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_1))
-Define_entry(mercury__std_util__builtin_aggregate_4_2);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_2))
-Define_entry(mercury__std_util__builtin_aggregate_4_3);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_3))
-Define_entry(mercury__std_util__builtin_aggregate_4_4);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_4))
-Define_entry(mercury__std_util__builtin_aggregate_4_5);
-fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
-			LABEL(mercury__std_util__builtin_aggregate_4_5))
-Define_entry(mercury__std_util__builtin_aggregate_4_0);
-
-#ifndef CONSERVATIVE_GC
-
-#ifndef USE_TYPE_LAYOUT
-	fatal_error(""builtin_aggregate/4 not supported with this grade ""
-		    ""on this system.\\n""
-		""Try using a `.gc' (conservative gc) grade.\\n"");
-#endif
 
 /*
 ** In order to implement any sort of code that requires terms to survive
@@ -625,305 +540,266 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 ** are 'swapped.'  This will work out fine, because the real heap isn't needed
 ** while the collector pred is executing, and by the time the nested do_ is
 ** completed, the 'real' heap pointer will have been reset.
+**
+** If the collector predicate throws an exception while they are swapped.
+** then the code for builtin_throw/1 will unswap the heaps.
+** So we don't need to create our own exception handlers to here to
+** cover that case.
+**
+** If we're using conservative GC, then all of the heap-swapping
+** and copying operations are no-ops, so we get a "zero-copy" solution.
 */
 
-/* Define a macro to swap the heap and solutions heap */
-#define swap_heap_and_solutions_heap()				\
-    do {							\
-	Word temp;						\
-	temp = (Word) MR_ENGINE(heap_zone);			\
-	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);	\
-	LVALUE_CAST(Word, MR_ENGINE(solutions_heap_zone)) = temp;	\
-	temp = (Word) MR_hp;					\
-	MR_hp = MR_sol_hp;				\
-	LVALUE_CAST(Word, MR_sol_hp) = temp;		\
-    } while (0)
- 
-/*
-** Define some framevars we will be using - we need to keep the
-** value of hp and the solutions hp (solhp) before we entered 
-** solutions, so we can reset the hp after each solution, and
-** reset the solhp after all solutions have been found.
-** To do a deep copy, we need the type_info of the type of a solution,
-** so we save the type_info in type_info_fv.
-** Finally, we store the collection of solutions so far in sofar_fv.
-*/
+:- pragma promise_pure(builtin_aggregate/4).
 
-#ifdef MR_USE_TRAIL
-  #define num_framevars		7
-#else
-  #define num_framevars		6
-#endif
+builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
+	%
+	% Save some of the Mercury virtual machine registers
+	%
+	impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
 
-#define saved_hp_fv		(MR_framevar(1))
-#define saved_solhp_fv		(MR_framevar(2))
-#define collector_pred_fv	(MR_framevar(3))
-#define sofar_fv		(MR_framevar(4))
-#define element_type_info_fv	(MR_framevar(5))
-#define collection_type_info_fv	(MR_framevar(6))
-#ifdef MR_USE_TRAIL
-  #define saved_trail_ticket_fv	(MR_framevar(7))
-#endif
+	%
+	% Initialize the accumulator
+	%
+	%	Mutvar := Accumulator0
+	%
+	impure new_mutvar(Accumulator0, Mutvar),
 
-	/*
-	** Create a nondet frame and set the failure continuation.
-	** The frame slots are used to hold heap and trail states and the
-	** collector pred and the collection, and type infos for copying
-	** each solution, and for copying the collection back to the heap
-	** when we're done.
-	*/
-	MR_mkframe(""builtin_aggregate"", num_framevars,
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
- 
+	(
+		%
+		% Get a solution
+		% 
+		GeneratorPred(Answer0),
+
+		%
+		% Check that the generator didn't leave any
+		% delayed goals outstanding
+		% 
+		impure check_for_floundering(TrailPtr),
+
+		%
+		% Update the accumulator
+		%
+		%	MutVar := CollectorPred(MutVar)
+		%
+		impure swap_heap_and_solutions_heap,
+		impure partial_deep_copy(HeapPtr, Answer0, Answer),
+		impure get_mutvar(Mutvar, Acc0),
+		CollectorPred(Answer, Acc0, Acc1),
+		impure set_mutvar(Mutvar, Acc1),
+		impure swap_heap_and_solutions_heap,
+
+		%
+		% Force backtracking, so that we get the next solution.
+		% This will automatically reset the heap and trail.
+		%
+		fail
+	;
+		%
+		% There are no more solutions.
+		% So now we just need to copy the final value
+		% of the accumulator from the solutions heap
+		% back onto the ordinary heap, and then we can
+		% reset the solutions heap pointer.
+		%
+		%	Accumulator := MutVar
+		%
+		impure get_mutvar(Mutvar, Accumulator1),
+		impure partial_deep_copy(SolutionsHeapPtr, Accumulator1,
+			Accumulator),
+		impure reset_solutions_heap(SolutionsHeapPtr)
+	).
+
+:- type heap_ptr ---> heap_ptr(c_pointer).
+:- type trail_ptr ---> trail_ptr(c_pointer).
+
+%
+% Save the state of the Mercury heap and trail registers,
+% for later use in partial_deep_copy/3 and reset_solutions_heap/1.
+%
+:- impure pred get_registers(heap_ptr::out, heap_ptr::out, trail_ptr::out)
+	is det.
+:- pragma c_code(get_registers(HeapPtr::out, SolutionsHeapPtr::out,
+		TrailPtr::out), will_not_call_mercury,
+"
 	/* save heap states */
- 	saved_solhp_fv = (Word) MR_sol_hp; 
- 	mark_hp(saved_hp_fv);
-
-#ifdef MR_USE_TRAIL
-	/* save trail state */
-	MR_store_ticket(saved_trail_ticket_fv);
+#ifndef CONSERVATIVE_GC
+ 	HeapPtr = MR_hp; 
+ 	SolutionsHeapPtr = MR_sol_hp; 
+#else
+	HeapPtr = SolutionsHeapPtr = 0;
 #endif
 
-	/* save arguments into framevars */
-	collector_pred_fv = r4;
-	sofar_fv = r5;
-	element_type_info_fv = r1;
-	collection_type_info_fv = r2;
+	/* save trail state */
+#ifdef MR_USE_TRAIL
+	MR_store_ticket(TrailPtr);
+#else
+	TrailPtr = 0;
+#endif
+").
 
-	/* we do not (yet) need the type_info we are passed in r1 */
-	/* call the higher-order pred closure that we were passed in r3 */
-	r1 = r3;
-	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-{
-	Word copied_solution, solution;
-
-	/* we found a solution (in r1) */
-	solution = r1;
-
+:- impure pred check_for_floundering(trail_ptr::in) is det.
+:- pragma c_code(check_for_floundering(TrailPtr::in), [will_not_call_mercury],
+"
 #ifdef MR_USE_TRAIL
 	/* check for outstanding delayed goals (``floundering'') */
-	MR_reset_ticket(saved_trail_ticket_fv, MR_solve);
+	MR_reset_ticket(TrailPtr, MR_solve);
 #endif
+").
 
-	/* swap heaps so we build on solution heap */
-	swap_heap_and_solutions_heap();
- 
-	/*
-	** deep copy solution to the solutions heap, up to the saved_hp.
-	** Note that we need to save/restore the hp register, if it
-	** is transient, before/after calling deep_copy().
-	*/
-	save_transient_registers();
-	copied_solution = deep_copy(&solution, (Word *) element_type_info_fv,
-			(Word *) saved_hp_fv,
-			MR_ENGINE(solutions_heap_zone)->top);
-	restore_transient_registers();
+%
+% Swap the heap with the solutions heap
+%
+:- impure pred swap_heap_and_solutions_heap is det.
+:- pragma c_code(swap_heap_and_solutions_heap,
+	will_not_call_mercury,
+"
+#ifndef CONSERVATIVE_GC
+    {
+	MemoryZone *temp_zone;
+	Word *temp_hp;
 
-	/* call the collector closure */
-	r1 = collector_pred_fv;
-	r2 = (Word) 2;	/* higher-order call has 2 extra input args */
-	r3 = (Word) 1;	/* higher-order call has 1 extra output arg */
-	r4 = copied_solution;
-	r5 = sofar_fv;
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-}
-Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	sofar_fv = r1;
- 
-	/* swap heaps back the way they were */
-	swap_heap_and_solutions_heap();
- 
-	/* look for the next solution */
-	MR_redo();
-	
-Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-{
-	Word copied_collection;
-
-	/* there were no more solutions */
-
-	/* reset heap */
-	restore_hp(saved_hp_fv);
-
-#ifdef MR_USE_TRAIL
-	/*
-	** Reset the trail.  This is necessary to undo any updates performed
-	** by the called goal before it failed, and to avoid leaking memory
-	** on the trail.
-	*/
-	MR_reset_ticket(saved_trail_ticket_fv, MR_undo);
+	temp_zone = MR_ENGINE(heap_zone);
+	MR_ENGINE(heap_zone) = MR_ENGINE(solutions_heap_zone);
+	MR_ENGINE(solutions_heap_zone) = temp_zone;
+	temp_hp = MR_hp;
+	MR_hp = MR_sol_hp;
+	MR_sol_hp = temp_hp;
+    }
 #endif
+").
 
-	/*
-	** deep_copy() the result to the mercury heap, copying
-	** everything between where we started on the solutions
-	** heap, and the top of the solutions heap.
-	** Note that we need to save/restore the hp register, if it
-	** is transient, before/after calling deep_copy().
-	**/
-	save_transient_registers();
-	copied_collection = deep_copy(&sofar_fv,
-		    (Word *) collection_type_info_fv,
-		    (Word *) saved_solhp_fv,
-		    MR_ENGINE(solutions_heap_zone)->top);
-	restore_transient_registers();
+%
+% partial_deep_copy(SolutionsHeapPtr, OldVal, NewVal):
+%	Make a copy of all of the parts of OldVar that occur between
+%	SolutionsHeapPtr and the top of the current solutions heap.
+%
+:- impure pred partial_deep_copy(heap_ptr, T, T) is det.
+:-        mode partial_deep_copy(in, di, uo) is det.
+:-        mode partial_deep_copy(in, mdi, muo) is det.
+:-        mode partial_deep_copy(in, in, out) is det.
 
-	r1 = copied_collection;
+:- pragma c_header_code("
 
- 	/* reset solutions heap to where it was before call to solutions  */
- 	MR_sol_hp = (Word *) saved_solhp_fv;
- 	
-	/* discard the frame we made */
-	MR_succeed_discard();
-}
+#include ""mercury_deep_copy.h""
 
-#undef num_framevars
-#undef saved_hp_fv
-#undef saved_solhp_fv
-#undef collector_pred_fv
-#undef sofar_fv
-#undef element_type_info_fv
-#undef collection_type_info_fv
-#undef saved_trail_ticket_fv
-
+#ifdef CONSERVATIVE_GC
+  /* for conservative GC, shallow copies suffice */
+  #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
+  		OldVar, NewVal, TypeInfo_for_T)				\\
+  	do {								\\
+		NewVal = OldVal;					\\
+	} while (0)
 #else
-
-/*
-** The following algorithm is very straight-forward implementation
-** but only works with `--gc conservative'.
-** Since with conservative gc, we don't reclaim any memory on failure,
-** but instead leave it to the garbage collector, there is no need to
-** make deep copies of the solutions.  This is a `copy-zero' implementation ;-)
-*/
-
-#ifdef MR_USE_TRAIL
-  #define num_framevars		3
-#else
-  #define num_framevars		2
+  /*
+  ** Note that we need to save/restore the MR_hp register, if it
+  ** is transient, before/after calling deep_copy().
+  */
+  #define MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr,			\\
+  		OldVar, NewVal, TypeInfo_for_T)				\\
+  	do {								\\
+		save_transient_hp();					\\
+		NewVal = deep_copy(&OldVal, TypeInfo_for_T,		\\
+				SolutionsHeapPtr,			\\
+				MR_ENGINE(solutions_heap_zone)->top);	\\
+		restore_transient_hp();					\\
+	} while (0)
 #endif
-
-#define collector_pred_fv	(MR_framevar(1))
-#define sofar_fv		(MR_framevar(2))
-#ifdef MR_USE_TRAIL
-  #define saved_trail_ticket_fv	(MR_framevar(3))
-#endif
-
-	/* create a nondet stack frame with two slots, to hold the collector
-	   pred and the collection, and set the failure continuation */
-	MR_mkframe(""builtin_aggregate"", num_framevars,
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
-
-#ifdef MR_USE_TRAIL
-	/* save trail state */
-	MR_store_ticket(saved_trail_ticket_fv);
-#endif
-
-	/* save our arguments in framevars */
-	collector_pred_fv = r4;
-	sofar_fv = r5;
- 
-	/* we do not (yet) need the type_info we are passed in r1 */
-	/* call the higher-order pred closure that we were passed in r3 */
-	r1 = r3;
-	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	/* we found a solution (in r1) */
-
-#ifdef MR_USE_TRAIL
-	/* check for outstanding delayed goals (``floundering'') */
-	MR_reset_ticket(saved_trail_ticket_fv, MR_solve);
-#endif
-
-	/* setup for calling the collector closure */
-	r4 = r1;	/* put solution to be collected where we need it */
-	r1 = collector_pred_fv;
-	r2 = (Word) 2;	/* the higher-order call has 2 extra input arguments */
-	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	r5 = sofar_fv;
-
-	call(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	/*
-	** we inserted the solution into the collection,
-	** and we've now got a new collection (in r1)
-	*/
-	sofar_fv = r1;
-
-	/* look for the next solution */
- 	MR_redo();
- 
-Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
-	update_prof_current_proc(
-		LABEL(mercury__std_util__builtin_aggregate_4_0));
-
-	/* no more solutions */
-
-#ifdef MR_USE_TRAIL
-	/*
-	** Reset the trail.  This is necessary to undo any updates performed
-	** by the called goal before it failed, and to avoid leaking memory
-	** on the trail.
-	*/
-	MR_reset_ticket(saved_trail_ticket_fv, MR_undo);
-#endif
-
-	/* return the collection and discard the frame we made */
-	r1 = sofar_fv;
- 	MR_succeed_discard();
- 
-#undef num_framevars
-#undef collector_pred_fv
-#undef sofar_fv
-#undef saved_trail_ticket_fv
-
-#endif
-
-END_MODULE
-
-#undef swap_heap_and_solutions_heap
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_builtin_aggregate_module
-*/
-extern ModuleFunc builtin_aggregate_module;
-/* the extra declaration is to suppress a gcc -Wmissing-decl warning */
-void sys_init_builtin_aggregate_module(void);
-void sys_init_builtin_aggregate_module(void) {
-	builtin_aggregate_module();
-}
 
 ").
+
+:- pragma c_code(partial_deep_copy(SolutionsHeapPtr::in,
+			OldVal::in, NewVal::out), will_not_call_mercury,
+"
+	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
+").
+:- pragma c_code(partial_deep_copy(SolutionsHeapPtr::in,
+			OldVal::mdi, NewVal::muo), will_not_call_mercury,
+"
+	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
+").
+:- pragma c_code(partial_deep_copy(SolutionsHeapPtr::in,
+			OldVal::di, NewVal::uo), will_not_call_mercury,
+"
+	MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
+").
+
+%
+% reset_solutions_heap(SolutionsHeapPtr):
+%	Reset the solutions heap pointer to the specified value,
+%	thus deallocating everything allocated on the solutions
+%	heap since that value was obtained via get_registers/3.
+%
+:- impure pred reset_solutions_heap(heap_ptr::in) is det.
+:- pragma c_code(reset_solutions_heap(SolutionsHeapPtr::in),
+	will_not_call_mercury,
+"
+#ifndef CONSERVATIVE_GC
+	MR_sol_hp = SolutionsHeapPtr;
+#endif
+").
+
+%-----------------------------------------------------------------------------%
+
+%%% :- module mutvar.
+%%% :- interface.
+
+%  A non-backtrackably destructively modifiable reference type
+:- type mutvar(T).
+
+%  Create a new mutvar given a term for it to reference.
+:- impure pred new_mutvar(T, mutvar(T)).
+:-        mode new_mutvar(in, out) is det.
+:-        mode new_mutvar(di, uo) is det.
+
+%  Get the value currently referred to by a reference.
+:- impure pred get_mutvar(mutvar(T), T) is det.
+:-        mode get_mutvar(in, uo) is det.	% XXX this is a work-around
+/*
+XXX `ui' modes don't work yet
+:-        mode get_mutvar(in, uo) is det.
+:-        mode get_mutvar(ui, uo) is det.	% unsafe, but we use it safely
+*/
+
+%  destructively modify a reference to refer to a new object.
+:- impure pred set_mutvar(mutvar(T), T) is det.
+:-        mode set_mutvar(in, in) is det.
+/*
+XXX `ui' modes don't work yet
+:-        pred set_mutvar(ui, di) is det.
+*/
+
+%%% :- implementation.
+
+%  This type is implemented in C.
+:- type mutvar(T) ---> mutvar(c_pointer).
+
+:- pragma inline(new_mutvar/2).
+:- pragma c_code(new_mutvar(X::in, Ref::out), will_not_call_mercury,
+"
+	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
+	*(Word *) Ref = X;
+").
+:- pragma c_code(new_mutvar(X::di, Ref::uo), will_not_call_mercury,
+"
+	incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
+	*(Word *) Ref = X;
+").
+
+:- pragma inline(get_mutvar/2).
+:- pragma c_code(get_mutvar(Ref::in, X::uo), will_not_call_mercury,
+"
+	X = *(Word *) Ref;
+").
+
+:- pragma inline(set_mutvar/2).
+:- pragma c_code(set_mutvar(Ref::in, X::in), will_not_call_mercury, "
+	*(Word *) Ref = X;
+").
+
+%%% end_module mutvar.
+
+%-----------------------------------------------------------------------------%
 
 solutions(Pred, List) :-
 	builtin_solutions(Pred, UnsortedList),
@@ -1026,16 +902,14 @@ det_univ_to_type(Univ, X) :-
 	% of the type_info for this type, and then store the input argument
 	% in the second field.
 :- pragma c_code(type_to_univ(Type::di, Univ::uo), will_not_call_mercury, "
-	incr_hp_msg(Univ, 2, MR_PROC_LABEL,
-		""std_util:univ/0"");
+	incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
 	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
 		= (Word) TypeInfo_for_T;
 	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA)
 		= (Word) Type;
 ").
 :- pragma c_code(type_to_univ(Type::in, Univ::out), will_not_call_mercury, "
-	incr_hp_msg(Univ, 2, MR_PROC_LABEL,
-		""std_util:univ/0"");
+	incr_hp_msg(Univ, 2, MR_PROC_LABEL, ""std_util:univ/0"");
 	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO)
 		= (Word) TypeInfo_for_T;
 	MR_field(MR_mktag(0), Univ, UNIV_OFFSET_FOR_DATA)
@@ -1760,8 +1634,7 @@ Word ML_make_ctor_info(Word *type_info, MR_TypeCtorInfo type_ctor_info)
 		** Create a univ.
 		*/
 
-		incr_hp_msg(Term, 2,
-			MR_PROC_LABEL, ""std_util:univ/0"");
+		incr_hp_msg(Term, 2, MR_PROC_LABEL, ""std_util:univ/0"");
 		MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_TYPEINFO) = 
 			(Word) TypeInfo;
 		MR_field(MR_mktag(0), Term, UNIV_OFFSET_FOR_DATA) =
