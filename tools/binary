@@ -2,17 +2,19 @@
 # This script finds miscompiled procedures.
 #
 # Given a stage2 directory that works (stage2.ok) and one that doesn't
-# (stage2.bad), this script uses binary search to try to find in stage2.bad
-# first the C source file and then the module within that C source file that
-# when put together with everthing else from the stage2.ok directory, still
-# causes the compiler to fail.
+# (stage2.bad), both of which must have their object files, this script
+# uses binary search to try to find in stage2.bad first the C source file
+# and then the module within that C source file that, when put together
+# with everthing else from the stage2.ok directory, still causes the
+# compiler to fail.
 #
 # If the bad C source file has different numbers of modules in the bad and ok
 # versions, then the script stops after identifying only the file.
 #
 # The test for the composite stage2 compiler is either bootstrap checking
-# (the default), or the successful execution of the all the test cases in
-# one or more subdirectories of the tests directory.
+# (the default), the successful execution of all the test cases in one or
+# more subdirectories of the tests directory, or the successful execution
+# of a single command.
 
 usage="\
 Usage: $0 [options]
@@ -144,7 +146,7 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
-if test "$negative" = true
+if "$negative"
 then
 	base=bad
 	trial=ok
@@ -163,10 +165,21 @@ else
 	exit 1
 fi
 
+if test -f stage2.ok/library/mercury_builtin.o -a -f stage2.bad/library/mercury_builtin.o
+then
+	echo "stage2.ok and stage2.bad both seem to have object files"
+else
+	echo "at least one of stage2.ok and stage2.bad is missing object files"
+	exit 1
+fi
+
 echo "starting at `date`"
 
 root=`/bin/pwd`
-trueroot=`echo $root | sed 's:/mount/munkora/mercury:/home/mercury:'`
+trueroot=`echo $root | sed '
+s:/mount/munkora/mercury:/home/mercury:
+s:/mount/munkora/home/mercury:/home/mercury:
+s:/mount/munkora/clp/mercury:/home/mercury:'`
 PATH=$root/tools:$PATH
 export PATH
 
@@ -197,7 +210,7 @@ ln -s $root/library/[m-z]*.m .
 ln -s $root/library/libmercury.init .
 cp $root/library/Mmake* .
 cd $root/stage2
-if test "$copy_runtime" = "true"
+if "$copy_runtime"
 then
 	mkdir runtime
 	cd runtime
@@ -217,6 +230,9 @@ ln -s $root/scripts .
 ln -s $root/util .
 ln -s $root/profiler .
 ln -s $root/conf* .
+ln -s $root/VERSION .
+ln -s $root/.README.in .
+ln -s $root/.INSTALL.in .
 rm -f config*.log
 cp $root/stage2.ok/Mmake* .
 cd $root
@@ -230,6 +246,7 @@ cp stage2.ok/library/*.int stage2/library
 cp stage2.ok/library/*.int2 stage2/library
 cp stage2.ok/library/*.int3 stage2/library
 cp stage2.ok/library/*.date stage2/library
+cp stage2.ok/library/*.h stage2/library
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.int stage2/compiler
@@ -237,46 +254,53 @@ cp stage2.ok/compiler/*.int2 stage2/compiler
 cp stage2.ok/compiler/*.int3 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
 
-cd $root
-[ -d stage3 ] || mkdir stage3
-$RMSTAGECMD $trueroot/stage3/compiler < /dev/null &
-$RMSTAGECMD $trueroot/stage3/library < /dev/null &
-wait
-$RMSTAGECMD $trueroot/stage3/* < /dev/null
-echo linking stage 3... 1>&2
-cd stage3
-mkdir compiler
-cd compiler
-# Break up the links into several chunks.
-# This is needed to cope with small limits on the size of argument vectors.
-ln -s $root/compiler/[a-h]*.m .
-ln -s $root/compiler/[i-s]*.m .
-ln -s $root/compiler/[t-z]*.m .
-cp $root/compiler/Mmake* .
-cd $root/stage3
-mkdir library
-cd library
-ln -s $root/library/[a-l]*.m .
-ln -s $root/library/[m-z]*.m .
-ln -s $root/library/libmercury.init .
-cp $root/library/Mmake* .
-cd $root/stage3
-ln -s $root/boehm_gc .
-ln -s $root/doc .
-ln -s $root/scripts .
-ln -s $root/profiler .
-ln -s $root/runtime .
-ln -s $root/util .
-ln -s $root/conf* .
-rm -f config*.log
-/bin/rm -f Mmake*
-cp $root/stage2.$basis/Mmake* .
-cp $root/stage2.ok/so_locations .
-cd $root
+if test $bootcheck = ""
+then
+	cd $root
+	[ -d stage3 ] || mkdir stage3
+	$RMSTAGECMD $trueroot/stage3/compiler < /dev/null &
+	$RMSTAGECMD $trueroot/stage3/library < /dev/null &
+	wait
+	$RMSTAGECMD $trueroot/stage3/* < /dev/null
+	echo linking stage 3... 1>&2
+	cd stage3
+	mkdir compiler
+	cd compiler
+	# Break up the links into several chunks.
+	# This is needed to cope with small limits
+	# on the size of argument vectors.
+	ln -s $root/compiler/[a-h]*.m .
+	ln -s $root/compiler/[i-s]*.m .
+	ln -s $root/compiler/[t-z]*.m .
+	cp $root/compiler/Mmake* .
+	cd $root/stage3
+	mkdir library
+	cd library
+	ln -s $root/library/[a-l]*.m .
+	ln -s $root/library/[m-z]*.m .
+	ln -s $root/library/libmercury.init .
+	cp $root/library/Mmake* .
+	cd $root/stage3
+	ln -s $root/boehm_gc .
+	ln -s $root/doc .
+	ln -s $root/scripts .
+	ln -s $root/profiler .
+	ln -s $root/runtime .
+	ln -s $root/util .
+	ln -s $root/conf* .
+	ln -s $root/VERSION .
+	ln -s $root/.README.in .
+	ln -s $root/.INSTALL.in .
+	rm -f config*.log
+	/bin/rm -f Mmake*
+	cp $root/stage2.$basis/Mmake* .
+	cp $root/stage2.ok/so_locations .
+	cd $root
+fi
 
 set -x
 
-if test "$copy_runtime" = "true"
+if "$copy_runtime"
 then
 	if (cd stage2 ; mmake $mmake_opts $jfactor runtime)
 	then
@@ -298,7 +322,7 @@ then
 	cp stage2.ok/compiler/*.[co] stage2/compiler
 	set -x
 
-	if test "$negative" = true
+	if "$negative"
 	then
 		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
@@ -367,7 +391,7 @@ do
 		cp stage2.$trial/$testeddir/$module.[co] stage2/$testeddir
 	done
 
-	if test "$negative" = true
+	if "$negative"
 	then
 		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
@@ -377,6 +401,7 @@ do
 		else
 			echo "test failed"
 			lasttest=failure
+			set +x
 			newdoubtful=""
 			for module in $doubtful
 			do
@@ -385,6 +410,7 @@ do
 					newdoubtful="$newdoubtful $module"
 				fi
 			done
+			set -x
 			doubtful="$newdoubtful"
 		fi
 	else
@@ -393,6 +419,7 @@ do
 			echo "test succeeded"
 			lasttest=success
 			knowngood="$knowngood $tested"
+			set +x
 			newdoubtful=""
 			for module in $doubtful
 			do
@@ -401,6 +428,7 @@ do
 					newdoubtful="$newdoubtful $module"
 				fi
 			done
+			set -x
 			doubtful="$newdoubtful"
 		else
 			echo "test failed"
@@ -429,8 +457,10 @@ fi
 
 module=`echo $doubtful | tr -d ' '`
 
-if test "$negative" = false
+if "$negative"
 then
+	true
+else
 	echo "the modules known to be ok are: $knowngood"
 fi
 echo "there is a problem in $testeddir/$module"
@@ -479,7 +509,7 @@ do
 	mmake $module.o
 	cd $root
 
-	if test "$negative" = true
+	if "$negative"
 	then
 		if binary_step $bootcheck $compile_only $compare_to_bad $dependency_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
@@ -489,6 +519,7 @@ do
 		else
 			echo "test failed"
 			lasttest=failure
+			set +x
 			newdoubtful=""
 			for part in $doubtful
 			do
@@ -497,6 +528,7 @@ do
 					newdoubtful="$newdoubtful $part"
 				fi
 			done
+			set -x
 			doubtful="$newdoubtful"
 		fi
 	else
@@ -505,6 +537,7 @@ do
 			echo "test succeeded"
 			lasttest=success
 			knowngood="$knowngood $tested"
+			set +x
 			newdoubtful=""
 			for part in $doubtful
 			do
@@ -513,6 +546,7 @@ do
 					newdoubtful="$newdoubtful $part"
 				fi
 			done
+			set -x
 			doubtful="$newdoubtful"
 		else
 			echo "test failed"
@@ -536,8 +570,10 @@ fi
 
 doubtful=`echo $doubtful | tr -d ' '`
 
-if test "$negative" = false
+if "$negative"
 then
+	true
+else
 	echo "the parts known to be ok are: $knowngood"
 fi
 echo "there is a problem in $testeddir/$module.c.part.$doubtful"
