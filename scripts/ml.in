@@ -91,7 +91,6 @@ Grade options:
 	--debug
 	--low-level-debug
 	--use-trail
-	--args {simple, compact}
 	--pic-reg
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
@@ -364,10 +363,6 @@ esac
 case $use_trail in
 	true)		GRADE="$GRADE.tr" ;;
 	false)		;;
-esac
-case $args_method in
-	simple)		GRADE="$GRADE.sa" ;;
-	compact)	;;
 esac
 case $stack_trace,$require_tracing in
 	true,true)	GRADE="$GRADE.debug" ;;

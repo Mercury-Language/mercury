@@ -493,7 +493,6 @@ option_defaults_2(compilation_model_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
-	args			-	string("compact"),
 	sync_term_size		-	int(8),
 					% 8 is the size on linux (at the time
 					% of writing) - will usually be over-
@@ -844,8 +843,6 @@ long_option("num-tag-bits",		num_tag_bits).
 long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
-long_option("args",			args).
-long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
@@ -1750,19 +1747,6 @@ your program compiled with different options.
 
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
-
-		"--args {simple, compact}",
-		"--arg-convention {simple, compact}",
-		"(This option is not for general use.)",
-		"\tUse the specified argument passing convention",
-		"\tin the generated low-level C code. With the `simple'",
-		"\tconvention, the <n>th argument is passed in or out",
-		"\tusing register r<n>. With the `compact' convention,",
-		"\tthe <n>th input argument is passed using register r<n>,",
-		"\tand the <n>th output argument is returned using",
-		"\tregister r<n>. The compact convention generally leads to",
-		"\tmore efficient code. Use of the simple convention requires the",
-		"\tC code to be compiled with -UCOMPACT_ARGS.",
 
 		"--no-type-layout",
 		"(This option is not for general use.)",

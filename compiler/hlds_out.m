@@ -2397,7 +2397,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	{ proc_info_get_maybe_termination_info(Proc, MaybeTermination) },
 	{ proc_info_typeinfo_varmap(Proc, TypeInfoMap) },
 	{ proc_info_typeclass_info_varmap(Proc, TypeClassInfoMap) },
-	{ proc_info_args_method(Proc, ArgsMethod) },
+	{ proc_info_is_address_taken(Proc, IsAddressTaken) },
 	{ Indent1 is Indent + 1 },
 
 	hlds_out__write_indent(Indent1),
@@ -2433,9 +2433,11 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 	hlds_out__write_typeclass_info_varmap(Indent, AppendVarnums,
 		TypeClassInfoMap, VarSet, TVarSet),
 
-	io__write_string("% args method: "),
-	hlds_out__write_args_method(ArgsMethod),
-	io__nl,
+	( { IsAddressTaken = address_is_taken } ->
+		io__write_string("% address is taken\n")
+	;
+		io__write_string("% address is not taken\n")
+	),
 
 	hlds_out__write_indent(Indent),
 	{ predicate_name(ModuleInfo, PredId, PredName) },
@@ -2552,14 +2554,6 @@ hlds_out__write_code_model(model_semi) -->
 	io__write_string("model_semi").
 hlds_out__write_code_model(model_non) -->
 	io__write_string("model_non").
-
-:- pred hlds_out__write_args_method(args_method, io__state, io__state).
-:- mode hlds_out__write_args_method(in, di, uo) is det.
-
-hlds_out__write_args_method(simple) -->
-	io__write_string("simple").
-hlds_out__write_args_method(compact) -->
-	io__write_string("compact").
 
 :- pred hlds_out__write_indent(int, io__state, io__state).
 :- mode hlds_out__write_indent(in, di, uo) is det.

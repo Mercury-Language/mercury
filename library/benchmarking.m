@@ -550,28 +550,13 @@ ENDINIT
 ** :- mode benchmark_det(pred(in, out) is det, in, out, in, out) is det.
 **
 ** Polymorphism will add two extra input parameters, type_infos for T1 and T2,
-** which we don't use. With both the simple and compact argument passing
-** conventions, these will be in r1 and r2, while the closure will be in r3,
-** and the input data in r4. The repetition count will be in r6 for simple
-** and r5 for compact.
+** which we don't use. These will be in r1 and r2, while the closure will be
+** in r3, and the input data in r4. The repetition count will be in r5.
 **
 ** The first output is a count of solutions for benchmark_nondet and the
 ** actual solution for benchmark_det; the second output for both is the
-** time taken in milliseconds. The outputs go into r5 and r7 for the simple
-** convention and and r1 and r2 for the compact convention.
+** time taken in milliseconds.
 */
-
-#ifdef	COMPACT_ARGS
-  #define	rep_count	r5
-  #define	count_output	r1
-  #define	soln_output	r1
-  #define	time_output	r2
-#else
-  #define	rep_count	r6
-  #define	count_output	r5
-  #define	soln_output	r5
-  #define	time_output	r7
-#endif
 
 #ifdef MR_USE_TRAIL
   #define BENCHMARK_NONDET_STACK_SLOTS 7
@@ -621,10 +606,11 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	framevar(0) = r3;
 	framevar(1) = r4;
 
-	if (rep_count <= 0) {
+	/* r5 is the repetition count */
+	if ((Integer) r5 <= 0) {
 		framevar(2) = 1;
 	} else {
-		framevar(2) = rep_count;
+		framevar(2) = r5;
 	}
 
 	framevar(3) = 0;
@@ -680,8 +666,8 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 	}
 
 	/* no more iterations */
-	count_output = framevar(3);
-	time_output = MR_get_user_cpu_miliseconds() - framevar(4);
+	r1 = framevar(3);
+	r2 = MR_get_user_cpu_miliseconds() - framevar(4);
 	succeed_discard();
 
 END_MODULE
@@ -734,10 +720,11 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 	detstackvar(1) = r3;
 	detstackvar(2) = r4;
 
-	if (rep_count <= 0) {
+	/* r5 is the repetition count */
+	if ((Integer) r5 <= 0) {
 		detstackvar(3) = 1;
 	} else {
-		detstackvar(3) = rep_count;
+		detstackvar(3) = r5;
 	}
 
 	detstackvar(4) = MR_get_user_cpu_miliseconds();
@@ -778,8 +765,8 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 	}
 
 	/* no more iterations */
-	soln_output = r1; /* the closure *always* returns its output in r1 */
-	time_output = MR_get_user_cpu_miliseconds() - detstackvar(4);
+	/* r1 already contains the right value */
+	r2 = MR_get_user_cpu_miliseconds() - detstackvar(4);
 	succip = (Word *) detstackvar(6);
 	decr_sp(BENCHMARK_DET_STACK_SLOTS);
 	proceed();
