@@ -1,0 +1,22 @@
+#!/bin/sh
+
+if test $# = 0
+then
+	prefix=""
+elif test $# = 1 -a -d $1
+then
+	prefix="$1/"
+else
+	echo "usage: cvsfiles [dirname]"
+	exit 1
+fi
+
+tmpfile=/tmp/cvsfiles$$
+trap "/bin/rm -f $tmpfile" 0 1 2 3 15
+cat > $tmpfile << 'EOF'
+BEGIN	{ FS = "/"; }
+/^\//	{
+		printf "%s\n", $2;
+	}
+EOF
+awk -f $tmpfile ${prefix}CVS/Entries
