@@ -52,6 +52,7 @@ ORDINARY_PROGS=	\
 	expand \
 	export_test \
 	factt \
+	failure_unify \
 	float_field \
 	float_map \
 	float_reg \

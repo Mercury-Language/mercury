@@ -569,7 +569,6 @@ abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
 %-----------------------------------------------------------------------------%
 
 	% This code performs abstract unification of two bound(...) insts.
-	% like a sorted merge operation.  If two elements have the
 	% The lists of bound_inst are guaranteed to be sorted.
 	% Abstract unification of two bound(...) insts proceeds
 	% like a sorted merge operation.  If two elements have the
@@ -578,6 +577,10 @@ abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
 	% (If it can't, the whole thing fails).  If a functor name
 	% occurs in only one of the two input lists, it is not inserted
 	% in the output list.
+	%
+	% One way of looking at this code is that it simulates mode
+	% and determinism checking of the goal for the unification
+	% predicate for the type.
 
 :- pred abstractly_unify_bound_inst_list(is_live, list(bound_inst),
 		list(bound_inst), unify_is_real, module_info,
@@ -587,67 +590,70 @@ abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
 
 abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, ModuleInfo0, L, Det,
 		ModuleInfo) :-
-	abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-		ModuleInfo0, 0, L, Det0, ModuleInfo),
-	( L = [] ->
-		det_par_conjunction_detism(Det0, erroneous, Det)
+	( ( Xs = [] ; Ys = [] ) ->
+		%
+		% This probably shouldn't happen. If we get here,
+		% it means that a previous goal had determinism
+		% `failure' or `erroneous', but we should have optimized
+		% away the rest of the conjunction after that goal.
+		%
+		L = [],
+		Det = erroneous,
+		ModuleInfo = ModuleInfo0
 	;
-		Det = Det0
+		abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
+			ModuleInfo0, L, Det0, ModuleInfo),
+
+		%
+		% If there are multiple alternatives for either of
+		% the inputs, or the constructor of the single
+		% alternative for each input doesn't match, then the
+		% unification can fail, so adjust the determinism.
+		%
+		( Xs = [functor(ConsId, _)], Ys = [functor(ConsId, _)] ->
+			Det = Det0
+		;
+			determinism_components(Det0, _, MaxSoln),
+			determinism_components(Det, can_fail, MaxSoln)
+		)
 	).
 
 :- pred abstractly_unify_bound_inst_list_2(is_live, list(bound_inst),
-		list(bound_inst), unify_is_real, module_info, int,
+		list(bound_inst), unify_is_real, module_info,
 		list(bound_inst), determinism, module_info).
-:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in, in,
+:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in,
 		out, out, out) is semidet.
 
-abstractly_unify_bound_inst_list_2(_, [], [], _, ModuleInfo, N, [], Det,
-		ModuleInfo) :-
-	(
-			% The only time an abstract unification should
-			% be det, is when both of the bound_inst lists
-			% are of length one and have the same cons_ids.
-			%
-			% If N=0, we need to make the determinism det
-			% so that determinism is inferred as erroneous
-			% rather then failure in 
-			% abstractly_unify_bound_inst_list
-		N =< 1
-	->
-		Det = det
-	;
-		Det = semidet
-	).
-abstractly_unify_bound_inst_list_2(_, [], [_|_], _, M, _, [], semidet, M).
-abstractly_unify_bound_inst_list_2(_, [_|_], [], _, M, _, [], semidet, M).
+abstractly_unify_bound_inst_list_2(_, [], [], _, M, [], erroneous, M).
+abstractly_unify_bound_inst_list_2(_, [], [_|_], _, M, [], failure, M).
+abstractly_unify_bound_inst_list_2(_, [_|_], [], _, M, [], failure, M).
 abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, ModuleInfo0,
-		N, L, Det, ModuleInfo) :-
+		L, Det, ModuleInfo) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
 		abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
 			ModuleInfo0, Args, Det1, ModuleInfo1),
 		abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-					ModuleInfo1, N+1, L1, Det2, ModuleInfo),
+					ModuleInfo1, L1, Det2, ModuleInfo),
 
 		% If the unification of the two cons_ids is guaranteed
 		% not to succeed, don't include it in the list.
 		( determinism_components(Det1, _, at_most_zero) ->
-			L = L1,
-			Det = Det2
+			L = L1
 		;
-			L = [functor(ConsIdX, Args) | L1],
-			det_par_conjunction_detism(Det1, Det2, Det)
-		)
+			L = [functor(ConsIdX, Args) | L1]
+		),
+		det_switch_detism(Det1, Det2, Det)
 	;
 		( compare(<, ConsIdX, ConsIdY) ->
 			abstractly_unify_bound_inst_list_2(Live, Xs, [Y|Ys],
-				Real, ModuleInfo0, N+1, L, Det1, ModuleInfo)
+				Real, ModuleInfo0, L, Det1, ModuleInfo)
 		;
 			abstractly_unify_bound_inst_list_2(Live, [X|Xs], Ys,
-				Real, ModuleInfo0, N+1, L, Det1, ModuleInfo)
+				Real, ModuleInfo0, L, Det1, ModuleInfo)
 		),
-		det_par_conjunction_detism(Det1, semidet, Det)
+		det_switch_detism(Det1, failure, Det)
 	).
 
 :- pred abstractly_unify_bound_inst_list_lives(list(bound_inst), cons_id,

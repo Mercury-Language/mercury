@@ -102,6 +102,9 @@
 :- pred det_par_conjunction_detism(determinism, determinism, determinism).
 :- mode det_par_conjunction_detism(in, in, out) is det.
 
+:- pred det_switch_detism(determinism, determinism, determinism).
+:- mode det_switch_detism(in, in, out) is det.
+
 :- pred det_disjunction_maxsoln(soln_count, soln_count, soln_count).
 :- mode det_disjunction_maxsoln(in, in, out) is det.
 
@@ -1038,6 +1041,13 @@ det_par_conjunction_detism(DetismA, DetismB, Detism) :-
 	determinism_components(DetismB, CanFailB, MaxSolnB),
 	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
 	det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
+	determinism_components(Detism, CanFail, MaxSoln).
+
+det_switch_detism(DetismA, DetismB, Detism) :-
+	determinism_components(DetismA, CanFailA, MaxSolnA),
+	determinism_components(DetismB, CanFailB, MaxSolnB),
+	det_switch_canfail(CanFailA, CanFailB, CanFail),
+	det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
 	determinism_components(Detism, CanFail, MaxSoln).
 
 % For the at_most_zero, at_most_one, at_most_many,
