@@ -250,7 +250,7 @@ void init_memory(void)
 			(int) nondstackmin & (unit-1));
 		printf("nondstackend   = %p (offset %d)\n", (void *) nondstackend,
 			(int) nondstackend & (unit-1));
-		printf("nondstack_zone = %p (offset %d)\n", (void *) detstack_zone,
+		printf("nondstack_zone = %p (offset %d)\n", (void *) nondstack_zone,
 			(int) nondstack_zone & (unit-1));
 
 		printf("\n");

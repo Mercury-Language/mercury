@@ -11,7 +11,7 @@
 
 /* size of data areas, in kilobytes */
 int		heap_size =     40960;
-int		detstack_size =   128;
+int		detstack_size =   512;
 int		nondstack_size =  128;
 
 /* size of the redzones at the end of data areas, in kilobytes */
