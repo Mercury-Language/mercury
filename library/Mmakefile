@@ -256,8 +256,9 @@ HACK_EMBED_ALL_DLLS = $(foreach dll_name,$(HACK_ALL_DLLS_BASE),$(EMBED_ONE_DLL))
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
-mercury_all.il: $(library.ils)
-	cat $(library.ils) > mercury_all.il	
+$(os_subdir)mercury_all.dll : $(library.ils)
+	rm -f $@
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $(library.ils)
 
 mercury.dll: $(HACK_ALL_DLLS) mercury_all.dll library_strong_name.sn
 	cp $(RUNTIME_DLLS) .
