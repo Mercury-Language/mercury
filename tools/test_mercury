@@ -113,6 +113,7 @@ case $HOST in
 	# test things at different optimization levels...
 	murlibobo)	OPTIMIZE=-O5 ;;
 	taifun) 	OPTIMIZE=-O1 ;;
+	mundroo) 	OPTIMIZE=-O2 ;;
 	quicksilver) 	OPTIMIZE=-O0 ;;
 	hg) 		OPTIMIZE=-O4 ;;
 	roy) 		OPTIMIZE=-O4 ;;	# hlc
@@ -266,7 +267,7 @@ esac
 # df (disk free) command
 DF=df
 case $HOST in
-	kryten|taifun|rimmer)	DF="df -k" ;;
+	kryten|taifun|mundroo|rimmer)	DF="df -k" ;;
 esac
 
 #-----------------------------------------------------------------------------#
@@ -473,7 +474,7 @@ case $HOST in
 		;;
 esac
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus|ender|earth|mars|ceres)
+	murlibobo|kryten|taifun|mundroo|quicksilver|hg|hydra|roy|venus|ender|earth|mars|ceres)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -623,7 +624,7 @@ case $HOST in
 		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|ender|kryten|taifun|venus|earth|mars)
+	hg|quicksilver|hydra|ender|kryten|taifun|mundroo|venus|earth|mars)
 		case "$C_COMPILER" in
 			gcc)	GRADES="asm_fast.gc.tr" ;;
 			*)	GRADES="" ;;
@@ -749,7 +750,7 @@ case $HOST in
 #			asm_fast.gc asm_fast.gc.prof asm_fast.prof asm_fast.gc.memprof
 #			asm_fast.gc.tr asm_fast.tr asm_fast.gc.prof.tr asm_fast.gc.tr.debug"
 #		;;
-	kryten|taifun|rimmer)
+	kryten|taifun|mundroo|rimmer)
 		GRADES="asm_fast.gc asm_fast asm_fast.gc.prof asm_fast.prof
 			asm_fast.gc.memprof asm_fast.gc.tr
 			asm_fast.gc.tr.debug"

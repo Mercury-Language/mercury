@@ -89,7 +89,16 @@ case "$BRANCH" in
 		# to problems with the GCC back-end.
 	    	BRANCH=latest
 		;;
-	    murlibobo|taifun|hg|hydra|mars)
+	    taifun|mundroo)
+	    	# For these hosts we only run 3 times a week.
+		# On Monday and Thursday, test the main branch.
+		# On Sunday, test the release branch.
+		case `date '+%w'` in
+			6)	BRANCH=0.10 ;;
+			*)	BRANCH=latest ;;
+		esac
+		;;
+	    murlibobo|hg|hydra|mars)
 		#
 		# For these hosts:
 		# On odd-numbered days, test the release branch.
