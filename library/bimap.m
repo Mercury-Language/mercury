@@ -25,25 +25,25 @@
 
 	% Initialize an empty bimap.
 :- pred bimap__init(bimap(_,_)).
-:- mode bimap__init(out).
+:- mode bimap__init(out) is det.
 
 	% Check whether a bimap is empty.
 :- pred bimap__is_empty(bimap(_,_)).
 :- mode bimap__is_empty(in) is semidet.
 
 :- pred bimap__search(bimap(K,V), K, V).
-:- mode bimap__search(in, in, out).
-:- mode bimap__search(in, out, in).
+:- mode bimap__search(in, in, out) is semidet.
+:- mode bimap__search(in, out, in) is semidet.
 
 :- pred bimap__lookup(bimap(K,V), K, V).
-:- mode bimap__lookup(in, in, out).
-:- mode bimap__lookup(in, out, in).
+:- mode bimap__lookup(in, in, out) is det.
+:- mode bimap__lookup(in, out, in) is det.
 
 :- pred bimap__insert(bimap(K,V), K, V, bimap(K,V)).
 :- mode bimap__insert(in, in, in, out).
 
 :- pred bimap__set(bimap(K,V), K, V, bimap(K,V)).
-:- mode bimap__set(in, in, in, out).
+:- mode bimap__set(in, in, in, out) is det.
 
 	% Given a bimap, return a list of all the keys in the bimap
 :- pred bimap__ordinates(bimap(K, _V), list(K)).
@@ -55,11 +55,11 @@
 
 	% convert a bimap to an association list
 :- pred bimap__to_assoc_list(bimap(K,V), assoc_list(K,V)).
-:- mode bimap__to_assoc_list(in, out).
+:- mode bimap__to_assoc_list(in, out) is det.
 
 	% convert an association list to a bimap
 :- pred bimap__from_assoc_list(assoc_list(K,V), bimap(K,V)).
-:- mode bimap__from_assoc_list(in, out).
+:- mode bimap__from_assoc_list(in, out) is det.
 
 	% delete a key-value pair from a bimap
 :- pred bimap__delete(bimap(K,V), K, V, bimap(K,V)).
