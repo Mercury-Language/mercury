@@ -250,11 +250,23 @@
 	.
 
 :- type type_info_locn	
-	--->	type_info(var)		% it is a normal type info 
-					% (ie. the type is not constrained)
+	--->	type_info(var)
+				% It is a normal type_info, i.e. the type
+				% is not constrained.
+
 	;	typeclass_info(var, int).
-					% it is packed inside a typeclass_info,
-					% and is at the given offset
+				% The type_info is packed inside a
+				% typeclass_info. If the int is N, it is
+				% the Nth type_info inside the typeclass_info,
+				% but there may be several superclass pointers
+				% before the block of type_infos, so it won't
+				% be the Nth word of the typeclass_info.
+				%
+				% To find the type_info inside the
+				% typeclass_info, use the predicate
+				% type_info_from_typeclass_info from Mercury
+				% code; from C code use the macro
+				% MR_typeclass_info_superclass_info.
 
 	% type_info_locn_var(TypeInfoLocn, Var): 
 	% 	Var is the variable corresponding to the TypeInfoLocn. Note 

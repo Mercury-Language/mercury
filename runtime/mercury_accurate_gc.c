@@ -369,7 +369,7 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
 ** 	replacing the original with the new copy.
 **
 ** 	The copying is done using agc_deep_copy, which is
-** 	the accurate GC verison of deep_copy (it leaves
+** 	the accurate GC version of deep_copy (it leaves
 ** 	forwarding pointers in the old copy of the data, if
 ** 	it is on the old heap).
 */
@@ -421,6 +421,10 @@ copy_value(MR_Live_Lval locn, Word *type_info, bool copy_regs,
 			break;
 
 		case MR_LVAL_TYPE_SP:
+			break;
+
+		case MR_LVAL_TYPE_INDIRECT:
+			/* XXX Tyson will have to write the code for this */
 			break;
 
 		case MR_LVAL_TYPE_UNKNOWN:

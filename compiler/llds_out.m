@@ -1588,27 +1588,58 @@ output_gc_livevals(LiveVals) -->
 
 output_gc_livevals_2([]) --> [].
 output_gc_livevals_2([LiveInfo | LiveInfos]) -->
-	{ LiveInfo = live_lvalue(Lval, LiveValueType, TypeParams) },
+	{ LiveInfo = live_lvalue(Locn, LiveValueType, TypeParams) },
 	io__write_string(" *\t"),
-	output_lval(Lval),
+	output_layout_locn(Locn),
 	io__write_string("\t"),
 	output_live_value_type(LiveValueType),
 	io__write_string("\t"),
-	output_gc_livevals_params(TypeParams),
+	{ map__to_assoc_list(TypeParams, TypeParamList) },
+	output_gc_livevals_params(TypeParamList),
 	io__write_string("\n"),
 	output_gc_livevals_2(LiveInfos).
 
-:- pred output_gc_livevals_params(assoc_list(var, lval), io__state, io__state).
+:- pred output_gc_livevals_params(assoc_list(var, set(layout_locn)),
+	io__state, io__state).
 :- mode output_gc_livevals_params(in, di, uo) is det.
 
 output_gc_livevals_params([]) --> [].
-output_gc_livevals_params([Var - Lval | Lvals]) -->
+output_gc_livevals_params([Var - LocnSet | Locns]) -->
 	{ term__var_to_int(Var, VarInt) },
 	io__write_int(VarInt),
 	io__write_string(" - "),
-	output_lval(Lval),
+	{ set__to_sorted_list(LocnSet, LocnList) },
+	output_layout_locns(LocnList),
 	io__write_string("  "),
-	output_gc_livevals_params(Lvals).
+	output_gc_livevals_params(Locns).
+
+:- pred output_layout_locns(list(layout_locn), io__state, io__state).
+:- mode output_layout_locns(in, di, uo) is det.
+
+output_layout_locns([]) --> [].
+output_layout_locns([Locn | Locns]) -->
+	output_layout_locn(Locn),
+	( { Locns = [] } ->
+		[]
+	;
+		io__write_string(" and "),
+		output_layout_locns(Locns)
+	).
+
+:- pred output_layout_locn(layout_locn, io__state, io__state).
+:- mode output_layout_locn(in, di, uo) is det.
+
+output_layout_locn(Locn) -->
+	(
+		{ Locn = direct(Lval) },
+		output_lval(Lval)
+	;
+		{ Locn = indirect(Lval, Offset) },
+		io__write_string("offset "),
+		io__write_int(Offset),
+		io__write_string(" from "),
+		output_lval(Lval)
+	).
 
 :- pred output_live_value_type(live_value_type, io__state, io__state).
 :- mode output_live_value_type(in, di, uo) is det.
@@ -1620,8 +1651,11 @@ output_live_value_type(redofr) --> io__write_string("MR_redofr").
 output_live_value_type(redoip) --> io__write_string("MR_redoip").
 output_live_value_type(hp) --> io__write_string("MR_hp").
 output_live_value_type(unwanted) --> io__write_string("unwanted").
-output_live_value_type(var(_, Name, Type, Inst)) --> 
+output_live_value_type(var(Var, Name, Type, Inst)) --> 
 	io__write_string("var("),
+	{ term__var_to_int(Var, VarInt) },
+	io__write_int(VarInt),
+	io__write_string(", "),
 	io__write_string(Name),
 	io__write_string(", "),
 	{ varset__init(NewVarset) },

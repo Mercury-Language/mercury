@@ -47,7 +47,7 @@
 
 :- import_module hlds_goal, hlds_pred, hlds_module.
 :- import_module globals, prog_data, llds, code_info.
-:- import_module std_util, assoc_list, set, term.
+:- import_module map, std_util, set, term.
 
 	% The kinds of external ports for which the code we generate will
 	% call MR_trace. The redo port is not on this list, because for that
@@ -116,8 +116,8 @@
 	% liveness information, since some of our callers also need this
 	% information.
 :- pred trace__generate_external_event_code(external_trace_port::in,
-	trace_info::in, label::out, assoc_list(tvar, lval)::out, code_tree::out,
-	code_info::in, code_info::out) is det.
+	trace_info::in, label::out, map(tvar, set(layout_locn))::out,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 	% If the trace level calls for redo events, generate code that pushes
 	% a temporary nondet stack frame whose redoip slot contains the
@@ -396,16 +396,16 @@ trace__maybe_generate_pragma_event_code(PragmaPort, Code) -->
 	).
 
 trace__generate_external_event_code(ExternalPort, TraceInfo,
-		Label, TvarDataList, Code) -->
+		Label, TvarDataMap, Code) -->
 	{ trace__convert_external_port_type(ExternalPort, Port) },
 	trace__generate_event_code(Port, external, TraceInfo,
-		Label, TvarDataList, Code).
+		Label, TvarDataMap, Code).
 
 :- pred trace__generate_event_code(trace_port::in, trace_port_info::in,
-	trace_info::in, label::out, assoc_list(tvar, lval)::out,
+	trace_info::in, label::out, map(tvar, set(layout_locn))::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
+trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 		Code) -->
 	(
 		{ Port = fail },
@@ -448,16 +448,11 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataList,
 	trace__produce_vars(LiveVars, VarSet, InstMap, TvarSet0, TvarSet,
 		VarInfoList, ProduceCode),
 	{ set__to_sorted_list(TvarSet, TvarList) },
-	code_info__variable_locations(VarLocs),
-        code_info__get_proc_info(ProcInfo),
-	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	{ trace__find_typeinfos_for_tvars(TvarList, VarLocs, TypeInfoMap,
-		TvarDataList) },
+	code_info__find_typeinfos_for_tvars(TvarList, TvarDataMap),
 	code_info__max_reg_in_use(MaxReg),
 	{
 	set__list_to_set(VarInfoList, VarInfoSet),
-	set__list_to_set(TvarDataList, TvarDataSet),
-	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataSet),
+	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
 	llds_out__get_label(Label, yes, LabelStr),
 	Quote = """",
 	Comma = ", ",
@@ -529,39 +524,12 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 	varset__lookup_name(VarSet, Var, "V_", Name),
 	instmap__lookup_var(InstMap, Var, Inst),
 	LiveType = var(Var, Name, Type, Inst),
-	VarInfo = var_info(Lval, LiveType),
+	VarInfo = var_info(direct(Lval), LiveType),
 	type_util__vars(Type, TypeVars),
 	set__insert_list(Tvars0, TypeVars, Tvars1)
 	},
 	trace__produce_vars(Vars, VarSet, InstMap, Tvars1, Tvars,
 		VarInfos, VarsCode).
-
-	% For each type variable in the given list, find out where the
-	% typeinfo var for that type variable is.
-
-:- pred trace__find_typeinfos_for_tvars(list(tvar)::in,
-	map(var, set(rval))::in, map(tvar, type_info_locn)::in,
-	assoc_list(tvar, lval)::out) is det.
-
-trace__find_typeinfos_for_tvars(TypeVars, VarLocs, TypeInfoMap, TypeInfoDatas)
-		:-
-	map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns),
-	list__map(type_info_locn_var, TypeInfoLocns, TypeInfoVars),
-
-	map__apply_to_list(TypeInfoVars, VarLocs, TypeInfoLvalSets),
-	FindSingleLval = lambda([Set::in, Lval::out] is det, (
-		(
-			set__remove_least(Set, Value, _),
-			Value = lval(Lval0)
-		->
-			Lval = Lval0
-		;
-			error("trace__find_typeinfos_for_tvars: typeinfo var not available")
-		))
-	),
-	list__map(FindSingleLval, TypeInfoLvalSets, TypeInfoLvals),
-	assoc_list__from_corresponding_lists(TypeVars, TypeInfoLvals,
-		TypeInfoDatas).
 
 %-----------------------------------------------------------------------------%
 

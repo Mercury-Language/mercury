@@ -1,0 +1,51 @@
+echo on
+alias P print *
+register --quiet
+break -i do_foo
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+
+P
+
+P
+continue -a
+P
+continue -S

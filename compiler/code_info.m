@@ -544,11 +544,11 @@ code_info__set_avail_temp_slots(PF, CI0, CI) :-
 	code_info, code_info).
 :- mode code_info__lookup_type_defn(in, out, in, out) is det.
 
-	% Given a list of type variables, find the lvals where the
-	% corresponding type_infos and typeclass_infos are being stored.
-:- pred code_info__find_type_infos(list(var), assoc_list(var, lval),
-	code_info, code_info).
-:- mode code_info__find_type_infos(in, out, in, out) is det.
+	% For each type variable in the given list, find out where the
+	% typeinfo var for that type variable is.
+:- pred code_info__find_typeinfos_for_tvars(list(tvar),
+	map(tvar, set(layout_locn)), code_info, code_info).
+:- mode code_info__find_typeinfos_for_tvars(in, out, in, out) is det.
 
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
@@ -706,29 +706,42 @@ code_info__lookup_type_defn(Type, TypeDefn) -->
 	{ module_info_types(ModuleInfo, TypeTable) },
 	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
 
-code_info__find_type_infos([], []) --> [].
-code_info__find_type_infos([TVar | TVars], [TVar - Lval | Lvals]) -->
+code_info__find_typeinfos_for_tvars(TypeVars, TypeInfoDataMap) -->
+	code_info__variable_locations(VarLocs),
+	code_info__get_varset(VarSet),
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	{
-		map__search(TypeInfoMap, TVar, Locn)
-	->
-		type_info_locn_var(Locn, Var)
-	;
-		error("cannot find var for type variable")
-	},
-	{ proc_info_stack_slots(ProcInfo, StackSlots) },
-	(
-		{ map__search(StackSlots, Var, Lval0) }
-	->
-		{ Lval = Lval0 }
-	;
-		code_info__variable_to_string(Var, VarString),
-		{ string__format("code_info__find_type_infos: can't find lval for type_info var %s",
-			[s(VarString)], ErrStr) },
-		{ error(ErrStr) }
-	),
-	code_info__find_type_infos(TVars, Lvals).
+	{ map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns) },
+	{ FindLocn = lambda([TypeInfoLocn::in, Locns::out] is det, (
+		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+		(
+			map__search(VarLocs, TypeInfoVar, TypeInfoRvalSet)
+		->
+			ConvertRval = lambda([Locn::out] is nondet, (
+				set__member(Rval, TypeInfoRvalSet),
+				Rval = lval(Lval),
+				( 
+					TypeInfoLocn = typeclass_info(_,
+						FieldNum),
+					Locn = indirect(Lval, FieldNum)
+				;
+					TypeInfoLocn = type_info(_),
+					Locn = direct(Lval)
+				)
+			)),
+			solutions_set(ConvertRval, Locns)
+		;
+			varset__lookup_name(VarSet, TypeInfoVar, VarString),
+			string__format("%s: %s %s",
+				[s("code_info__find_typeinfos_for_tvars"),
+				s("can't find lval for type_info var"),
+				s(VarString)], ErrStr),
+			error(ErrStr)
+		)
+	)) },
+	{ list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns) },
+	{ map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
+		TypeInfoDataMap) }.
 
 code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),
@@ -3107,7 +3120,9 @@ code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
 
 code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
 code_info__generate_temp_livelvals([Slot - StoredLval | Slots], LiveInfo0, 
-		[live_lvalue(Slot, LiveValueType, []) | LiveInfo1]) :-
+		[live_lvalue(direct(Slot), LiveValueType, Empty) | LiveInfo1])
+		:-
+	map__init(Empty),
 	code_info__get_live_value_type(StoredLval, LiveValueType),
 	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
 
@@ -3119,19 +3134,20 @@ code_info__livevals_to_livelvals([], _, _, []) --> [].
 code_info__livevals_to_livelvals([Lval - Var | Ls], WantReturnLayout,
 		AfterCallInstMap, [LiveLval | Lives]) -->
 	code_info__get_varset(VarSet),
-	{ varset__lookup_name(VarSet, Var, Name) },
 	(
 		{ WantReturnLayout = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
+		{ varset__lookup_name(VarSet, Var, Name) },
 
 		code_info__variable_type(Var, Type),
 		{ type_util__vars(Type, TypeVars) },
-		code_info__find_type_infos(TypeVars, TypeParams),
-		{ LiveLval = live_lvalue(Lval, var(Var, Name, Type, Inst),
-			TypeParams) }
+		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
+		{ LiveLval = live_lvalue(direct(Lval),
+			var(Var, Name, Type, Inst), TypeParams) }
 	;
-		{ LiveLval = live_lvalue(Lval, unwanted, []) }
+		{ map__init(Empty) },
+		{ LiveLval = live_lvalue(direct(Lval), unwanted, Empty) }
 	),
 	code_info__livevals_to_livelvals(Ls, WantReturnLayout,
 		AfterCallInstMap, Lives).

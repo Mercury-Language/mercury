@@ -1662,6 +1662,7 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	*/
 
 	if ((strncmp(name, "TypeInfo", 8) == 0)
+	|| (strncmp(name, "TypeClassInfo", 13) == 0)
 	|| (strncmp(name, "ModuleInfo", 10) == 0)
 	|| (strncmp(name, "HLDS", 4) == 0))
 		return;

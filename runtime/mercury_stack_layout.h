@@ -66,26 +66,33 @@ typedef	Word MR_Determinism;
 */
 
 /*
-** MR_Live_Lval is a Word which describes an lval. This includes:
-** 	- stack slots, registers, and special lvals such as succip, hp,
-** 	  etc.
+** MR_Live_Lval is a Word which describes an location. This includes
+** lvals such as stack slots, general registers, and special registers
+** such as succip, hp, etc, as well as locations whose address is given
+** as a particular word offset from the memory address found in an lval.
 **
-** MR_Live_Lval is encoded using an 8 bit low tag, the rest of the word is a
-** data field describing which stack slot number or register number.
+** What kind of of location an MR_Live_Lval refers to is encoded using
+** a low tag with MR_LIVE_LVAL_TAGBITS bits; the type MR_Lval_Type describes
+** the different tag values. The interpretation of the rest of the word
+** depends on the location type:
 **
-**  Lval		Tag	Rest
-**  r(Num)		 0	Num
-**  f(Num)		 1	Num
-**  stackvar(Num)	 2	Num
-**  framevar(Num)	 3	Num
+**  Locn		Tag	Rest
+**  r(Num)		 0	Num (register number)
+**  f(Num)		 1	Num (register number)
+**  stackvar(Num)	 2	Num (stack slot number)
+**  framevar(Num)	 3	Num (stack slot number)
 **  succip		 4
 **  maxfr		 5
 **  curfr		 6
 **  hp			 7
 **  sp			 8
-**  unknown		 9		(The location is not known)
+**  indirect(Base, N)	 9	See below
+**  unknown		10	(The location is not known)
 **
-** The type MR_Lval_Type describes the different tag values.
+** For indirect references, the word exclusive of the tag consists of
+** (a) an integer with MR_LIVE_LVAL_OFFSETBITS bits giving the number of
+** words to offset and (b) a MR_Live_Lval value giving the location of
+** the base address. This MR_Live_Lval valud will *not* have an indirect tag.
 **
 ** This data is generated in compiler/stack_layout.m, which must be kept
 ** in sync with the constants defined here.
@@ -103,16 +110,27 @@ typedef enum {
 	MR_LVAL_TYPE_CURFR,
 	MR_LVAL_TYPE_HP,
 	MR_LVAL_TYPE_SP,
-	MR_LVAL_TYPE_UNKNOWN
+	MR_LVAL_TYPE_INDIRECT,
+	MR_LVAL_TYPE_UNKNOWN 
 } MR_Lval_Type;
 
-#define MR_LIVE_LVAL_TAGBITS	8
+/* This must be in sync with stack_layout__tag_bits */
+#define MR_LIVE_LVAL_TAGBITS	4
 
-#define MR_LIVE_LVAL_TYPE(Lval) 			\
-	((MR_Lval_Type) (((Word) Lval) & ((1 << MR_LIVE_LVAL_TAGBITS) - 1)))
+#define MR_LIVE_LVAL_TYPE(Locn) 				\
+	((MR_Lval_Type) (((Word) Locn) & ((1 << MR_LIVE_LVAL_TAGBITS) - 1)))
 
-#define MR_LIVE_LVAL_NUMBER(Lval) 			\
-	((int) ((Word) Lval) >> MR_LIVE_LVAL_TAGBITS)
+#define MR_LIVE_LVAL_NUMBER(Locn) 				\
+	((int) ((Word) Locn) >> MR_LIVE_LVAL_TAGBITS)
+
+/* This must be in sync with stack_layout__offset_bits */
+#define MR_LIVE_LVAL_OFFSETBITS	6
+
+#define MR_LIVE_LVAL_INDIRECT_OFFSET(LocnNumber) 		\
+	((int) ((LocnNumber) & ((1 << MR_LIVE_LVAL_OFFSETBITS) - 1)))
+
+#define MR_LIVE_LVAL_INDIRECT_BASE_LVAL(LocnNumber)		\
+	(((Word) (LocnNumber)) >> MR_LIVE_LVAL_OFFSETBITS)
 
 /*-------------------------------------------------------------------------*/
 /*

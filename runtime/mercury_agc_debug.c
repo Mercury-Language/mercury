@@ -240,6 +240,12 @@ dump_live_value(MR_Live_Lval locn, MemoryZone *heap_zone, Word *stack_pointer,
 			fprintf(stderr, "sp");
 			break;
 
+		case MR_LVAL_TYPE_INDIRECT:
+			fprintf(stderr, "offset %d from ",
+				MR_LIVE_LVAL_INDIRECT_OFFSET(locn_num));
+			/* XXX Tyson will have to complete this */
+			/* based on what he wants this function to do */
+
 		case MR_LVAL_TYPE_UNKNOWN:
 			fprintf(stderr, "unknown");
 			break;

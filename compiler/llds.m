@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module assoc_list, bool, list, set, term, std_util.
+:- import_module bool, list, set, map, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -421,19 +421,31 @@
 	% the non-conservative garbage collector.
 :- type liveinfo
 	--->	live_lvalue(
-			lval,
-				% What stackslot/reg does
-				% this lifeinfo structure
+			layout_locn,
+				% What location does this lifeinfo structure
 				% refer to?
 			live_value_type,
 				% What is the type of this live value?
-			assoc_list(tvar, lval)
-				% Where are the typeinfos that determine the
-				% types of the actual parameters of the type
-				% parameters of this type (if it is
-				% polymorphic), and the type variable
-				% for each one.
+			map(tvar, set(layout_locn))
+				% For each tvar that is a parameter of the
+				% type of this value, give the set of
+				% locations where the type_info variable
+				% describing the actual type bound to the
+				% type parameter may be found.
+				%
+				% We record all the locations of the typeinfo,
+				% in case different paths of arriving a this
+				% program point leave the typeinfo in different
+				% sets of locations. However, there must be at
+				% least type_info location that is valid
+				% along all paths leading to this point.
 		).
+
+	% For an explanation of this type, see the comment on
+	% stack_layout__represent_locn.
+:- type layout_locn
+	--->	direct(lval)
+	;	indirect(lval, int).
 
 	% live_value_type describes the different sorts of data that
 	% can be considered live.

@@ -8,13 +8,12 @@ RM_C=:
 
 #-----------------------------------------------------------------------------#
 
-# Commented out tests are currently disabled because they fail, but are
-# not vital at the moment because the debugger is still a work in
-# progress.
-
 DEBUGGER_PROGS=	\
-	debugger_regs	\
-	interpreter	\
+	debugger_regs			\
+	existential_type_classes	\
+	implied_instance		\
+	interpreter			\
+	multi_parameter			\
 	queens
 
 MCFLAGS = --trace deep
@@ -45,20 +44,20 @@ ALLPROGS=	$(PROGS)
 debugger_regs.out: debugger_regs debugger_regs.inp
 	mdb ./debugger_regs < debugger_regs.inp > debugger_regs.out
 
+existential_type_classes.out: existential_type_classes queens.inp
+	mdb ./existential_type_classes < existential_type_classes.inp > existential_type_classes.out
+
+implied_instance.out: implied_instance implied_instance.inp
+	mdb ./implied_instance < implied_instance.inp > implied_instance.out
+
 interpreter.out: interpreter interpreter.inp
 	mdb ./interpreter interpreter.m < interpreter.inp > interpreter.out
 
+multi_parameter.out: multi_parameter multi_parameter.inp
+	mdb ./multi_parameter < multi_parameter.inp > multi_parameter.out
+
 queens.out: queens queens.inp
 	mdb ./queens < queens.inp > queens.out
-
-debugger_regs_lib.out: debugger_regs_lib debugger_regs_lib.inp
-	mdb ./debugger_regs_lib < debugger_regs_lib.inp > debugger_regs_lib.out
-
-interpreter_lib.out: interpreter_lib interpreter_lib.inp
-	mdb ./interpreter_lib interpreter_lib.m < interpreter_lib.inp > interpreter_lib.out
-
-queens_lib.out: queens_lib queens_lib.inp
-	mdb ./queens_lib < queens_lib.inp > queens_lib.out
 
 # We ignore the result of this action because
 # the exit status of grep is not useful in this case
