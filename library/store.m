@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2003 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,6 +326,29 @@ I wonder whether it is worth it?  Hmm, probably not.
 	S = S0;
 ").
 
+:- pragma foreign_type(java, generic_mutvar(T, S), "mercury.std_util.Mutvar").
+
+:- pragma foreign_proc("Java",
+	new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Mutvar = new mercury.std_util.Mutvar(Val);
+").
+
+:- pragma foreign_proc("Java",
+	get_mutvar(Mutvar::in, Val::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Val = Mutvar.object;
+").
+
+:- pragma foreign_proc("Java",
+	set_mutvar(Mutvar::in, Val::in, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Mutvar.object = Val;
+").
+
 copy_mutvar(Mutvar, Copy) -->
 	get_mutvar(Mutvar, Value),
 	new_mutvar(Value, Copy).
@@ -342,6 +365,13 @@ copy_mutvar(Mutvar, Copy) -->
 		MR_PROC_LABEL, ""store:mutvar/2"");
 	MR_define_size_slot(0, Mutvar, 1);
 	S = S0;
+").
+
+:- pragma foreign_proc("Java",
+	unsafe_new_uninitialized_mutvar(Mutvar::out, _S0::di, _S::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	Mutvar = new mercury.std_util.Mutvar(null);
 ").
 
 store__new_cyclic_mutvar(Func, MutVar) -->
