@@ -712,6 +712,7 @@ common__generate_assign(ToVar, FromVar, UniMode, _, Goal, Info0, Info) :-
 
 common__types_match_exactly(term__variable(Var), term__variable(Var)).
 common__types_match_exactly(Type1, Type2) :-
+	% XXX should succeed for embedded constraints
 	type_to_ctor_and_args(Type1, TypeCtor1, Args1),
 	type_to_ctor_and_args(Type2, TypeCtor2, Args2),
 	TypeCtor1 = TypeCtor2,
