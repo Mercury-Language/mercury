@@ -37,6 +37,8 @@ MR_DECLARE_STRUCT(mercury_data___base_type_info_pred_0);
 MR_DECLARE_STRUCT(mercury_data___base_type_info_func_0);
 
 /*
+** deep_copy(): see mercury_deep_copy.h for documentation.
+**
 ** Due to the depth of the control here, we'll use 4 space indentation.
 */
 Word 
