@@ -132,8 +132,10 @@ install_cgi_progs: mdprof_cgi
 	#
 	# The mv before the cp is there in case the executable is being
 	# executed when we do the install. The mv is of course expected to
-	# fail during a first-time installation.
+	# fail during a first-time installation. The rm is before the move
+	# in case this is the third or later installation.
 	-if test $(ENABLE_DEEP_PROFILER) = yes ; then \
+		rm $(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
 		mv $(INSTALL_CGI_DIR)/mdprof_cgi \
 			$(INSTALL_CGI_DIR)/mdprof_cgi.was ; \
 		cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
