@@ -930,22 +930,12 @@ then
 	cd $root/${stage2_insert}runtime
 	mmake $mmake_opts check_namespace || {
 		echo '** mmake check_namespace failed!'
-		# XXX Currently we just report the errors;
-		#     we don't yet actually return a non-zero status.
-		#     That's why the line below is commented out.
-		#     This is a transition measure until we're sure
-		#     that everything really is namespace-clean.
-		# check_namespace_status=1
+		check_namespace_status=1
 	}
 	cd $root/${stage2_insert}trace
 	mmake $mmake_opts check_namespace || {
 		echo '** mmake check_namespace failed!'
-		# XXX Currently we just report the errors;
-		#     we don't yet actually return a non-zero status.
-		#     That's why the line below is commented out.
-		#     This is a transition measure until we're sure
-		#     that everything really is namespace-clean.
-		# check_namespace_status=1
+		check_namespace_status=1
 	}
 	cd $root
 fi
