@@ -1,0 +1,5 @@
+invalid_import_detism.m:010: Error: `pragma_import' declaration for a procedure
+invalid_import_detism.m:010:   that has a determinism of nondet.
+invalid_import_detism.m:011: Error: `pragma_import' declaration for a procedure
+invalid_import_detism.m:011:   that has a determinism of multi.
+For more information, try recompiling with `-E'.

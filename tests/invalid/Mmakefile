@@ -86,6 +86,7 @@ SINGLEMODULE= \
 	inline_conflict \
 	inst_list_dup \
 	invalid_export_detism \
+	invalid_import_detism \
 	invalid_main \
 	invalid_typeclass \
 	io_in_ite_cond \
