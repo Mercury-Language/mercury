@@ -20,7 +20,7 @@
 
 #ifdef MR_USE_TRAIL
 
-MR_MR_MemoryZone	*MR_trail_zone;
+MR_MemoryZone		*MR_trail_zone;
 MR_TrailEntry		*MR_trail_ptr_var;
 MR_Unsigned		MR_ticket_counter_var = 1;
 MR_Unsigned		MR_ticket_high_water_var = 1;
