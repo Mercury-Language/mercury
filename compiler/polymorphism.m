@@ -2044,7 +2044,7 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			apply_subst_to_constraint_proofs(RenameSubst,
 				SuperClassProofs0, SuperClassProofs1),
 			apply_rec_subst_to_constraint_proofs(InstanceSubst,
-				SuperClassProofs1, SuperClassProofs),
+				SuperClassProofs1, SuperClassProofs2),
 
 			term__var_list_to_term_list(UnconstrainedTvars0,
 				UnconstrainedTypes0),
@@ -2053,6 +2053,9 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 			term__apply_rec_substitution_to_list(
 				UnconstrainedTypes1, InstanceSubst, 
 				UnconstrainedTypes),
+
+			map__overlay(Proofs, SuperClassProofs2,
+				SuperClassProofs),
 
 				% Make the type_infos for the types
 				% that are constrained by this. These

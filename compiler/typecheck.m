@@ -146,12 +146,11 @@
 	% the instance rules or superclass rules, building up proofs for
 	% redundant constraints
 :- pred typecheck__reduce_context_by_rule_application(instance_table,
-	superclass_table, list(class_constraint), list(tvar),
-	tsubst, tvarset, tvarset, 
+	superclass_table, list(class_constraint), tsubst, tvarset, tvarset, 
 	map(class_constraint, constraint_proof), 
 	map(class_constraint, constraint_proof),
 	list(class_constraint), list(class_constraint)).
-:- mode typecheck__reduce_context_by_rule_application(in, in, in, in, in, 
+:- mode typecheck__reduce_context_by_rule_application(in, in, in, in,
 	in, out, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -3973,7 +3972,7 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 	Constraints0 = constraints(UnprovenConstraints0, AssumedConstraints),
 
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		SuperClassTable, AssumedConstraints, HeadTypeParams,
+		SuperClassTable, AssumedConstraints,
 		Bindings, Tvarset0, Tvarset, Proofs0, Proofs,
 		UnprovenConstraints0, UnprovenConstraints),
 
@@ -3988,7 +3987,7 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 
 
 typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable, 
-		AssumedConstraints, HeadTypeParams, Bindings, Tvarset0, Tvarset,
+		AssumedConstraints, Bindings, Tvarset0, Tvarset,
 		Proofs0, Proofs, Constraints0, Constraints) :-
 	apply_rec_subst_to_constraint_list(Bindings, Constraints0,
 		Constraints1),
@@ -3996,7 +3995,8 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 		Constraints2, Changed1),
 	apply_instance_rules(Constraints2, InstanceTable, 
 		Tvarset0, Tvarset1, Proofs0, Proofs1, Constraints3, Changed2),
-	apply_class_rules(Constraints3, AssumedConstraints, HeadTypeParams,
+	varset__vars(Tvarset1, Tvars),
+	apply_class_rules(Constraints3, AssumedConstraints, Tvars,
 		SuperClassTable, Tvarset0, Proofs1, Proofs2, Constraints4,
 		Changed3),
 	(
@@ -4008,7 +4008,7 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 		Proofs = Proofs2
 	;
 		typecheck__reduce_context_by_rule_application(InstanceTable,
-			SuperClassTable, AssumedConstraints, HeadTypeParams,
+			SuperClassTable, AssumedConstraints,
 			Bindings, Tvarset1, Tvarset, Proofs2, Proofs, 
 			Constraints4, Constraints)
 	).

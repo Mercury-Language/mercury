@@ -802,13 +802,11 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 	module_info_instances(ModuleInfo, InstanceTable),
 	module_info_superclasses(ModuleInfo, SuperClassTable),
 
-	term__vars_list(InstanceTypes, UnivTvars),
-
 		% Try to reduce the superclass constraints,
 		% using the declared instance constraints
 		% and the usual context reduction rules.
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		SuperClassTable, InstanceConstraints, UnivTvars, TypeSubst,
+		SuperClassTable, InstanceConstraints, TypeSubst,
 		InstanceVarSet1, InstanceVarSet2, Proofs0, Proofs1,
 		SuperClasses, UnprovenConstraints),
 
