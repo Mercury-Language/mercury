@@ -1258,7 +1258,17 @@ propagate_ctor_info_lazily(abstract_inst(Name, Args), _, _, _,
 propagate_ctor_info_lazily(defined_inst(InstName0), Type0, Subst, _,
 		defined_inst(InstName)) :-
 	apply_type_subst(Type0, Subst, Type),
-	InstName = typed_inst(Type, InstName0).
+	( InstName0 = typed_inst(_, _) ->
+		% If this happens, it means that we have already
+		% lazily propagated type info into this inst.
+		% We want to avoid creating insts of the form
+		% typed_inst(_, typed_inst(...)), because that would be
+		% unnecessary, and could cause efficiency problems
+		% or perhaps even infinite loops (?).
+		InstName = InstName0
+	;
+		InstName = typed_inst(Type, InstName0)
+	).
 
 	%
 	% If the user does not explicitly specify a higher-order inst

@@ -265,32 +265,48 @@ maybe_pred_inst_matches_initial(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
 	%	This is true if they both have the same PredOrFunc indicator
 	%	and the same determinism, and if the arguments match
 	%	using pred_inst_argmodes_match.
+	% pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions)
+	%	Same as pred_inst_matches/3, except that inst pairs in
+	%	Expansions are assumed to match_final each other.
+	%	(This avoids infinite loops when calling inst_matches_final
+	%	on higher-order recursive insts.)
 	%
 :- pred pred_inst_matches(pred_inst_info, pred_inst_info, module_info).
 :- mode pred_inst_matches(in, in, in) is semidet.
 
-pred_inst_matches(pred_inst_info(PredOrFunc, ModesA, Det),
-		pred_inst_info(PredOrFunc, ModesB, Det), ModuleInfo) :-
-	pred_inst_argmodes_matches(ModesA, ModesB, ModuleInfo).
+pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
+	set__init(Expansions),
+	pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions).
 
-	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo):
+:- pred pred_inst_matches_2(pred_inst_info, pred_inst_info, module_info,
+			expansions).
+:- mode pred_inst_matches_2(in, in, in, in) is semidet.
+
+pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
+		pred_inst_info(PredOrFunc, ModesB, Det),
+		ModuleInfo, Expansions) :-
+	pred_inst_argmodes_matches(ModesA, ModesB, ModuleInfo, Expansions).
+
+	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo, Expansions):
 	% succeeds if the initial insts of ModesB specify at least as
 	% much information as, and the same binding as, the initial
 	% insts of ModesA; and the final insts of ModesA specify at
 	% least as much information as, and the same binding as, the
-	% final insts of ModesB.
+	% final insts of ModesB.  Any inst pairs in Expansions are assumed
+	% to match_final each other.
 	%
-:- pred pred_inst_argmodes_matches(list(mode), list(mode), module_info).
-:- mode pred_inst_argmodes_matches(in, in, in) is semidet.
+:- pred pred_inst_argmodes_matches(list(mode), list(mode),
+				module_info, expansions).
+:- mode pred_inst_argmodes_matches(in, in, in, in) is semidet.
 
-pred_inst_argmodes_matches([], [], _).
+pred_inst_argmodes_matches([], [], _, _).
 pred_inst_argmodes_matches([ModeA|ModeAs], [ModeB|ModeBs],
-		ModuleInfo) :-
+		ModuleInfo, Expansions) :-
 	mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA),
 	mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
-	inst_matches_final(InitialB, InitialA, ModuleInfo),
-	inst_matches_final(FinalA, FinalB, ModuleInfo),
-	pred_inst_argmodes_matches(ModeAs, ModeBs, ModuleInfo).
+	inst_matches_final_2(InitialB, InitialA, ModuleInfo, Expansions),
+	inst_matches_final_2(FinalA, FinalB, ModuleInfo, Expansions),
+	pred_inst_argmodes_matches(ModeAs, ModeBs, ModuleInfo, Expansions).
 
 :- pred unique_matches_initial(uniqueness, uniqueness).
 :- mode unique_matches_initial(in, in) is semidet.
@@ -456,8 +472,9 @@ inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), ModuleInfo,
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
 inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
-		ModuleInfo, _) :-
-	maybe_pred_inst_matches_final(PredInstA, PredInstB, ModuleInfo),
+		ModuleInfo, Expansions) :-
+	maybe_pred_inst_matches_final(PredInstA, PredInstB,
+		ModuleInfo, Expansions),
 	unique_matches_final(UniqA, UniqB).
 /* not yet:
 inst_matches_final_2(abstract_inst(_, _), any(shared), _, _).
@@ -468,13 +485,14 @@ inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 inst_matches_final_3(not_reached, _, _, _).
 
 :- pred maybe_pred_inst_matches_final(maybe(pred_inst_info),
-		maybe(pred_inst_info), module_info).
-:- mode maybe_pred_inst_matches_final(in, in, in) is semidet.
+		maybe(pred_inst_info), module_info, expansions).
+:- mode maybe_pred_inst_matches_final(in, in, in, in) is semidet.
 
-maybe_pred_inst_matches_final(no, no, _).
-maybe_pred_inst_matches_final(yes(_), no, _).
-maybe_pred_inst_matches_final(yes(PredInstA), yes(PredInstB), ModuleInfo) :-
-	pred_inst_matches(PredInstA, PredInstB, ModuleInfo).
+maybe_pred_inst_matches_final(no, no, _, _).
+maybe_pred_inst_matches_final(yes(_), no, _, _).
+maybe_pred_inst_matches_final(yes(PredInstA), yes(PredInstB),
+		ModuleInfo, Expansions) :-
+	pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions).
 
 :- pred inst_list_matches_final(list(inst), list(inst), module_info,
 				expansions).
