@@ -249,6 +249,12 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 		pred_info_procedures(PredInfo, Procs),
 		map__lookup(Procs, ProcId, ProcInfo),
 
+		% At this point, the goal size includes some dummy unifications
+		% HeadVar1 = X, HeadVar2 = Y, etc. which will be optimized away
+		% later.  To counter for this, we add the arity to the
+		% size thresholds.
+		pred_info_arity(PredInfo, Arity),
+
 		% Don't export builtins since they will be
 		% recreated in the importing module anyway.
 		\+ code_util__compiler_generated(PredInfo),
@@ -259,7 +265,7 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 
 		(
 			inlining__is_simple_clause_list(Clauses,
-				InlineThreshold),
+				InlineThreshold + Arity),
 			pred_info_get_markers(PredInfo, Markers),
 			\+ check_marker(Markers, no_inline),
 			proc_info_eval_method(ProcInfo, eval_normal)
@@ -268,7 +274,7 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 		;
 			has_ho_input(ModuleInfo, ProcInfo),
 			clause_list_size(Clauses, GoalSize),
-			GoalSize =< HigherOrderSizeLimit
+			GoalSize =< HigherOrderSizeLimit + Arity
 		;
 			Deforestation = yes,
 			% Double the inline-threshold since
@@ -279,7 +285,7 @@ intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
 			% hence the `+1'.
 			DeforestThreshold is InlineThreshold * 2 + 1,
 			inlining__is_simple_clause_list(Clauses,
-				DeforestThreshold),
+				DeforestThreshold + Arity),
 			clause_list_is_deforestable(PredId, Clauses)
 		)
 	;
