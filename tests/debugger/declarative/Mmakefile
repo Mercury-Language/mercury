@@ -140,8 +140,12 @@ big.out: big big.inp
 browse_arg.out: browse_arg browse_arg.inp
 	$(MDB) ./browse_arg < browse_arg.inp > browse_arg.out 2>&1
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 catch.out: catch catch.$(INP)
-	$(MDB) ./catch < catch.$(INP) > catch.out 2>&1
+	$(MDB) ./catch < catch.$(INP) 2>&1 | \
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		> catch.out 2>&1
 
 comp_gen.out: comp_gen comp_gen.inp
 	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1
