@@ -60,31 +60,25 @@ finish
 dd
 browse 2
 mark
-no
-yes
-continue
+abort
 continue
 finish
 dd
 browse 3
 mark
-no
-yes
-continue
+abort
 continue
 finish
 dd
 browse 3
 mark
-yes
-continue
+abort
 continue
 finish
 dd
 browse 3
 mark
-yes
-continue
+abort
 continue
 finish
 continue

@@ -131,12 +131,8 @@ s(1, 7, 7)
 Valid? browse 2
 browser> mark
 sa(7)
-Valid? no
-Found incorrect contour:
-sa(7)
-Is this a bug? yes
-     104:     42  4 EXIT pred output_term_dep:sa/1-0 (det)
-mdb> continue
+Valid? abort
+Diagnosis aborted.
      108:     41  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
      111:     41  3 REDO pred output_term_dep:s/3-0 (nondet)
@@ -147,12 +143,8 @@ s(1, 7, 155)
 Valid? browse 3
 browser> mark
 sc(155)
-Valid? no
-Found incorrect contour:
-sc(155)
-Is this a bug? yes
-     114:     45  4 EXIT pred output_term_dep:sc/1-0 (det)
-mdb> continue
+Valid? abort
+Diagnosis aborted.
      115:     41  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
      118:     41  3 REDO pred output_term_dep:s/3-0 (nondet)
@@ -162,11 +154,9 @@ mdb> dd
 s(1, 38, 7)
 Valid? browse 3
 browser> mark
-Found incorrect contour:
 sa(7)
-Is this a bug? yes
-     124:     48  4 EXIT pred output_term_dep:sa/1-0 (det)
-mdb> continue
+Valid? abort
+Diagnosis aborted.
      125:     41  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
      128:     41  3 REDO pred output_term_dep:s/3-0 (nondet)
@@ -176,11 +166,9 @@ mdb> dd
 s(1, 38, 155)
 Valid? browse 3
 browser> mark
-Found incorrect contour:
 sc(155)
-Is this a bug? yes
-     131:     50  4 EXIT pred output_term_dep:sc/1-0 (det)
-mdb> continue
+Valid? abort
+Diagnosis aborted.
      132:     41  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
      135:     41  3 REDO pred output_term_dep:s/3-0 (nondet)
