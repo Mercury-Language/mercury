@@ -194,7 +194,7 @@ OTHER_PROGS= \
 	vn_float \
 	zero_arity
 
-DEEP_PROF_CAPABLE_PROGS =
+DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
 # The following programs require that num_tag_bits >= 1
@@ -270,7 +270,7 @@ else
 	PROGS3 = $(PROGS2) $(ADITI_PROGS)
 endif
 
-ifneq "$(filter hl% java% il%,$(GRADE))" ""
+ifeq "$(filter hl% java% il%,$(GRADE))" ""
 	PROGS4 = $(PROGS3) $(DEEP_PROF_CAPABLE_PROGS)
 else
 	PROGS4 = $(PROGS3)
