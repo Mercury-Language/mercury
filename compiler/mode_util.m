@@ -293,7 +293,7 @@ inst_lookup_2(unify_inst(Live, A, B), ModuleInfo, Inst) :-
 	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_unify_insts(InstTable, UnifyInstTable),
 	map__lookup(UnifyInstTable, unify_inst_pair(Live, A, B), MaybeInst),
-	( MaybeInst = known(Inst0) ->
+	( MaybeInst = known(Inst0, _) ->
 		Inst = Inst0
 	;
 		Inst = defined_inst(unify_inst(Live, A, B))

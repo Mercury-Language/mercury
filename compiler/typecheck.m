@@ -197,10 +197,10 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,
 					Clauses0),
 	    ( Clauses0 = [] ->
-		report_warning_no_clauses(PredId, PredInfo0,
+		report_error_no_clauses(PredId, PredInfo0,
 			ModuleInfo0, IOState0, IOState2),
 		module_info_remove_predid(ModuleInfo0, PredId, ModuleInfo2),
-		Error2 = Error0
+		Error2 = yes
 	    ;
 		write_progress_message(PredId, ModuleInfo0, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
@@ -2119,18 +2119,18 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_warning_no_clauses(pred_id, pred_info,
+:- pred report_error_no_clauses(pred_id, pred_info,
 					module_info, io__state, io__state).
-:- mode report_warning_no_clauses(in, in, in, di, uo) is det.
+:- mode report_error_no_clauses(in, in, in, di, uo) is det.
 
-report_warning_no_clauses(PredId, PredInfo, ModuleInfo) -->
+report_error_no_clauses(PredId, PredInfo, ModuleInfo) -->
 	{ code_util__is_builtin(ModuleInfo, PredId, 0, Builtin) },
 	( { Builtin = is_builtin } ->
 		[]
 	;
 		{ pred_info_context(PredInfo, Context) },
 		prog_out__write_context(Context),
-		io__write_string("Warning: no clauses for "),
+		io__write_string("Error: no clauses for "),
 		hlds_out__write_pred_id(ModuleInfo, PredId),
 		io__write_string("\n")
 	).

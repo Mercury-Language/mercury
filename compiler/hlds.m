@@ -148,7 +148,7 @@
 
 :- type user_inst_table	==	map(inst_id, hlds__inst_defn).
 
-:- type unify_inst_table ==	map(unify_inst_pair, maybe_inst).
+:- type unify_inst_table ==	map(unify_inst_pair, maybe_inst_det).
 
 :- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst).
 
@@ -158,6 +158,9 @@
 
 :- type maybe_inst	--->	unknown
 			;	known(inst).
+
+:- type maybe_inst_det	--->	unknown
+			;	known(inst, determinism).
 
 :- pred inst_table_init(inst_table).
 :- mode inst_table_init(out) is det.
