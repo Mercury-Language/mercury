@@ -5736,23 +5736,44 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	MR_update_io(IO0, IO);
 ").
 
-/* XXX Implementation needs to be finished.
-:- pragma foreign_proc("MC++",
-	io__call_system_code(Command::in, Status::out, _Msg::out,
-			IO0::di, IO::uo),
+:- pragma foreign_proc("C#",
+	io__call_system_code(Command::in, Status::out, Msg::out,
+			_IO0::di, _IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io],
 "
-		// XXX This could be better... need to handle embedded spaces.
-	MR_Integer index = Command->IndexOf("" "");
-	MR_String commandstr = Command->Substring(index);
-	MR_String argstr = Command->Remove(0, index);
-		// XXX	This seems to be missing...
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-//	Diagnostics::Process::Start(commandstr, argstr);
-	Status = NULL;
-	MR_update_io(IO0, IO);
+	try {
+		// XXX This could be better... need to handle embedded spaces
+		//     in the command name.
+		int index = Command.IndexOf("" "");
+		string command = Command.Substring(0, index);
+		string arguments = Command.Remove(0, index + 1);
+
+		// debugging...
+		// System.Console.Out.WriteLine(
+		// 	""[command = "" + command + ""]"");
+		// System.Console.Out.WriteLine(
+		// 	""[arguments = "" + arguments + ""]"");
+
+		System.Diagnostics.Process process =
+			System.Diagnostics.Process.Start(command, arguments);
+		process.WaitForExit();
+		Status = process.ExitCode;
+		Msg = """";
+
+		// debugging...
+		// System.Console.Out.WriteLine(
+		// 	""[exitcode = "" + Status + ""]"");
+
+	}
+	catch (System.Exception e) {
+		Status = 127;
+		Msg = e.Message;
+
+		// debugging...
+		// System.Console.Out.WriteLine(
+		// 	""[message = "" + Msg + ""]"");
+	}
 ").
-*/
 
 io__command_line_arguments(_) -->
 	% This version is only used for back-ends for which there is no
