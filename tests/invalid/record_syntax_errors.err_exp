@@ -1,11 +1,13 @@
-record_syntax_errors.m:023: Error: mode declaration for function `record_syntax_errors.field8/1'
+record_syntax_errors.m:023: Error: mode declaration for function
+record_syntax_errors.m:023:   `record_syntax_errors.field8/1'
 record_syntax_errors.m:023:   without preceding `func' declaration.
 record_syntax_errors.m:028: In DCG field update goal:
 record_syntax_errors.m:028:   error: expected field name at term `Field'.
 record_syntax_errors.m:031: Error: expected `Field =^ field1 ^ ... ^ fieldN'
 record_syntax_errors.m:031:   or `^ field1 ^ ... ^ fieldN := Field'.
 record_syntax_errors.m:031:   in DCG field access goal.
-record_syntax_errors.m:048: Error: clause for predicate `record_syntax_errors.term_type_error/1'
+record_syntax_errors.m:048: Error: clause for predicate
+record_syntax_errors.m:048:   `record_syntax_errors.term_type_error/1'
 record_syntax_errors.m:048:   without preceding `pred' declaration.
 record_syntax_errors.m:054: In declaration of
 record_syntax_errors.m:054:   function `record_syntax_errors.field4/1':

@@ -44,11 +44,14 @@ aditi_update_errors.m:089:     DB0, DB)'
 aditi_update_errors.m:089:   or `aditi_bulk_modify(PredOrFunc p/N, Closure, DB0, DB)'.
 aditi_update_errors.m:090: Error: wrong number of arguments (5; should be 3 or 4)
 aditi_update_errors.m:090:   in `aditi_bulk_modify'.
-aditi_update_errors.m:048: In clause for predicate `aditi_update_errors.aditi_update_syntax/2':
+aditi_update_errors.m:048: In clause for predicate
+aditi_update_errors.m:048:   `aditi_update_errors.aditi_update_syntax/2':
 aditi_update_errors.m:048:   warning: variable `X' has overlapping scopes.
-aditi_update_errors.m:070: In clause for predicate `aditi_update_errors.aditi_update_syntax/2':
+aditi_update_errors.m:070: In clause for predicate
+aditi_update_errors.m:070:   `aditi_update_errors.aditi_update_syntax/2':
 aditi_update_errors.m:070:   warning: variable `X' has overlapping scopes.
-aditi_update_errors.m:081: In clause for predicate `aditi_update_errors.aditi_update_syntax/2':
+aditi_update_errors.m:081: In clause for predicate
+aditi_update_errors.m:081:   `aditi_update_errors.aditi_update_syntax/2':
 aditi_update_errors.m:081:   warning: variable `X' has overlapping scopes.
 aditi_update_errors.m:102: In clause for predicate `aditi_update_errors.aditi_update_types/2':
 aditi_update_errors.m:102:   warning: variable `_Y' occurs more than once in this scope.
