@@ -150,6 +150,7 @@
 		;	debug
 		;	grade
 		;	procs_per_c_function
+		;	split_c_files
 		;	constraint_propagation
 	% Miscellaneous Options
 		;	builtin_module
@@ -302,6 +303,7 @@ option_defaults_2(optimization_option, [
 	common_struct		-	bool(yes),
 	common_goal		-	bool(yes),
 	procs_per_c_function	-	int(1),
+	split_c_files		-	bool(no),
 	constraint_propagation	-	bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
@@ -455,6 +457,8 @@ long_option("inlining",			inlining).
 long_option("specialize",		specialize).
 long_option("common-struct",		common_struct).
 long_option("common-goal",		common_goal).
+long_option("split-c-files",		split_c_files).
+long_option("split-C-files",		split_c_files).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
 long_option("constraint-propagation",	constraint_propagation).
@@ -735,6 +739,13 @@ options_help -->
 	io__write_string("\t\tputting all the procedures in a single function,\n"),
 	io__write_string("\t\twhich produces the most efficient code but tends to\n"),
 	io__write_string("\t\tseverely stress the C compiler on large modules.\n"),
+	io__write_string("\t--split-c-files\n"),
+	io__write_string("\t\tGenerate each C function in its own C file,\n"),
+	io__write_string("\t\tso that the linker will optimize away unused code.\n"),
+	io__write_string("\t\tThis option significantly increases compilation time,\n"),
+	io__write_string("\t\tlink time, and intermediate disk space requirements,\n"),
+	io__write_string("\t\tbut in return reduces the size of the final\n"),
+	io__write_string("\t\texecutable, typically by about 10-20%.\n"),
 	% io__write_string("\t--constraint-propagation\n"),
 	% io__write_string("\t\tEnable the C-tranformation.  (Doesn't work.)\n"),
 	io__write_string("\t-O-, --no-c-optimize\n"),

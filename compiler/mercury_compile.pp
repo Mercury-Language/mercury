@@ -509,7 +509,7 @@ mercury_compile(Module) -->
 			globals__io_lookup_bool_option(compile_to_c,
 				CompileToC),
 			( { CompileToC = no } ->
-				mercury_compile__c_to_obj(C_File,
+				mercury_compile__single_c_to_obj(ModuleName,
 					_CompileOK)
 			;
 				[]
@@ -1422,7 +1422,7 @@ mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
 mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
-	mercury_compile__chunk_llds(HLDS16, LLDS2, LLDS3),
+	mercury_compile__chunk_llds(HLDS16, LLDS2, LLDS3, NumChunks),
 	mercury_compile__output_llds(ModuleName, LLDS3),
 	maybe_report_stats(Statistics),
 
@@ -1435,8 +1435,7 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 
 	globals__io_lookup_bool_option(compile_to_c, CompileToC),
 	( { CompileToC = no } ->
-		{ string__append(ModuleName, ".c", C_File) },
-		mercury_compile__c_to_obj(C_File, CompileOK),
+		mercury_compile__c_to_obj(ModuleName, NumChunks, CompileOK),
 		{ bool__not(CompileOK, CompileErrors) }
 	;
 		{ CompileErrors = no }
@@ -1444,13 +1443,13 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__chunk_llds(module_info, list(c_procedure), c_file,
+:- pred mercury_compile__chunk_llds(module_info, list(c_procedure), c_file, int,
 	io__state, io__state).
-% :- mode mercury_compile__chunk_llds(in, di, uo, di, uo) is det.
-:- mode mercury_compile__chunk_llds(in, in, out, di, uo) is det.
+% :- mode mercury_compile__chunk_llds(in, di, uo, out, di, uo) is det.
+:- mode mercury_compile__chunk_llds(in, in, out, out, di, uo) is det.
 
 mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
-		ModuleList)) -->
+		ModuleList), NumChunks) -->
 	{ module_info_name(HLDS, Name) },
 	{ string__append(Name, "_module", ModName) },
 	globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc),
@@ -1464,7 +1463,8 @@ mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 		{ list__chunk(Procedures, ProcsPerFunc, ChunkList) },
 		{ mercury_compile__combine_chunks(ChunkList, ModName,
 			ModuleList) }
-	).
+	),
+	{ list__length(ModuleList, NumChunks) }.
 
 
 :- pred get_c_header_code(c_header_info, list(string)).
@@ -1578,10 +1578,47 @@ mercury_compile__gen_hlds(DumpFile, HLDS) -->
 
 :- type compiler_type ---> gcc ; lcc ; unknown.
 
-:- pred mercury_compile__c_to_obj(string, bool, io__state, io__state).
-:- mode mercury_compile__c_to_obj(in, out, di, uo) is det.
+:- pred mercury_compile__c_to_obj(string, int, bool, io__state, io__state).
+:- mode mercury_compile__c_to_obj(in, in, out, di, uo) is det.
 
-mercury_compile__c_to_obj(C_File, Succeeded) -->
+mercury_compile__c_to_obj(ModuleName, NumChunks, Succeeded) -->
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = yes } ->
+		mercury_compile__c_to_obj_list(ModuleName, 0, NumChunks,
+			Succeeded)
+	;
+		mercury_compile__single_c_to_obj(ModuleName, Succeeded)
+	).
+
+:- pred mercury_compile__c_to_obj_list(string, int, int, bool,
+					io__state, io__state).
+:- mode mercury_compile__c_to_obj_list(in, in, in, out, di, uo) is det.
+
+	% compile each of the C files in `<module>.dir'
+
+mercury_compile__c_to_obj_list(ModuleName, Chunk, NumChunks, Succeeded) -->
+	( { Chunk > NumChunks } ->
+		{ Succeeded = yes }
+	;
+		{ dir__basename(ModuleName, BaseName) },
+		{ string__format("%s.dir/%s_%03d",
+			[s(BaseName), s(BaseName), i(Chunk)], NewName) },
+		mercury_compile__single_c_to_obj(NewName, Succeeded0),
+		( { Succeeded0 = no } ->
+			{ Succeeded = no }
+		;
+			{ Chunk1 is Chunk + 1 },
+			mercury_compile__c_to_obj_list(ModuleName,
+				Chunk1, NumChunks, Succeeded)
+		)
+	).
+
+:- pred mercury_compile__single_c_to_obj(string, bool, io__state, io__state).
+:- mode mercury_compile__single_c_to_obj(in, out, di, uo) is det.
+
+mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
+	{ string__append(ModuleName, ".c", C_File) },
+	{ string__append(ModuleName, ".o", O_File) },
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Compiling `"),
 	maybe_write_string(Verbose, C_File),
@@ -1675,7 +1712,8 @@ mercury_compile__c_to_obj(C_File, Succeeded) -->
 	{ string__append_list([CC, " ", InclOpt, CFLAGS_FOR_REGS, RegOpt,
 		CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		OptimizeOpt, WarningOpt, CFLAGS, " -c ", C_File], Command) },
+		OptimizeOpt, WarningOpt, CFLAGS,
+		" -c ", C_File, " -o ", O_File], Command) },
 	mercury_compile__invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
@@ -1694,18 +1732,36 @@ mercury_compile__link_module_list(Modules) -->
 	globals__io_lookup_string_option(output_file_name, OutputFile0),
 	( { OutputFile0 = "" } ->
 	    ( { Modules = [Module | _] } ->
-		{ OutputFile = Module }
+		{ dir__basename(Module, OutputFile) }
 	    ;
 	        { error("link_module_list: no modules") }
 	    )
 	;
 	    { OutputFile = OutputFile0 }
 	),
+	{ dir__basename(OutputFile, OutputFileBase) },
 
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = yes } ->
+	    { join_module_list(Modules, ".dir/*.o ", [], ObjectList) },
+	    { list__append(
+	        ["ar cr ", OutputFileBase, ".a " | ObjectList],
+	        [" && ranlib ", OutputFileBase, ".a"],
+		MakeLibCmdList) },
+	    { string__append_list(MakeLibCmdList, MakeLibCmd) },
+	    mercury_compile__invoke_system_command(MakeLibCmd, MakeLibCmdOK),
+	    { Objects = [OutputFileBase, ".a"] }
+        ;
+	    { MakeLibCmdOK = yes },
+	    { join_module_list(Modules, ".o ", [], Objects) }
+        ),
+	( { MakeLibCmdOK = no } ->
+	    report_error("creation of object file library failed.")
+	;
 	    % create the initialization C file
 	    maybe_write_string(Verbose, "% Creating initialization file...\n"),
-	    { string__append(OutputFile, "_init.c", C_Init_File) },
-	    { join_string_list(Modules, ".c ", ["> ", C_Init_File],
+	    { string__append(OutputFileBase, "_init", C_Init_Base) },
+	    { join_module_list(Modules, ".m ", ["> ", C_Init_Base, ".c"],
 				MkInitCmd0) },
 	    { string__append_list(["c2init " | MkInitCmd0], MkInitCmd) },
 	    mercury_compile__invoke_system_command(MkInitCmd, MkInitOK),
@@ -1714,19 +1770,20 @@ mercury_compile__link_module_list(Modules) -->
 		report_error("creation of init file failed.")
 	    ;
 		% compile it
-	        maybe_write_string(Verbose, "% Compiling initialization file...\n"),
-		mercury_compile__c_to_obj(C_Init_File, CompileOK),
+	        maybe_write_string(Verbose,
+			"% Compiling initialization file...\n"),
+		mercury_compile__single_c_to_obj(C_Init_Base, CompileOK),
 	        maybe_report_stats(Statistics),
 		( { CompileOK = no } ->
 		    report_error("compilation of init file failed.")
 		;
 	            maybe_write_string(Verbose, "% Linking...\n"),
-		    { join_string_list(Modules, ".o ", [], ObjectList) },
 		    globals__io_lookup_string_option(grade, Grade),
 		    globals__io_lookup_string_option(link_flags, LinkFlags),
 		    { string__append_list(
-			["ml -s ", Grade, " -o ", OutputFile, " ",
-			OutputFile, "_init.o ", LinkFlags, " " | ObjectList],
+			["ml --grade ", Grade, " -o ", OutputFile, " ",
+			LinkFlags, " ",
+			OutputFileBase, "_init.o " | Objects],
 			LinkCmd) },
 		    mercury_compile__invoke_system_command(LinkCmd, LinkCmdOK),
 		    maybe_report_stats(Statistics),
@@ -1736,15 +1793,17 @@ mercury_compile__link_module_list(Modules) -->
 			[]
 		    )
 		)
-	    ).
+	    )
+	).
 
-:- pred join_string_list(list(string), string, list(string), list(string)).
-:- mode join_string_list(in, in, in, out) is det.
+:- pred join_module_list(list(string), string, list(string), list(string)).
+:- mode join_module_list(in, in, in, out) is det.
 
-join_string_list([], _Separator, Terminator, Terminator).
-join_string_list([String0 | Strings0], Separator, Terminator,
-			[String0, Separator | Strings]) :-
-	join_string_list(Strings0, Separator, Terminator, Strings).
+join_module_list([], _Separator, Terminator, Terminator).
+join_module_list([Module0 | Modules0], Separator, Terminator,
+			[Basename0, Separator | Rest]) :-
+	dir__basename(Module0, Basename0),
+	join_module_list(Modules0, Separator, Terminator, Rest).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

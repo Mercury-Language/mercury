@@ -307,7 +307,43 @@
 %-----------------------------------------------------------------------------%
 
 output_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
-	{ string__append(BaseName, ".c", FileName) },
+	globals__io_lookup_bool_option(split_c_files, SplitFiles),
+	( { SplitFiles = yes } ->
+		{ string__append(BaseName, ".dir", ObjDirName) },
+		make_directory(ObjDirName),
+		output_c_file_init(BaseName, Modules),
+		output_c_file_list(Modules, 1, BaseName, C_HeaderLines)
+	;
+		output_single_c_file(c_file(BaseName, C_HeaderLines, Modules))
+	).
+
+:- pred make_directory(string, io__state, io__state).
+:- mode make_directory(in, di, uo) is det.
+
+make_directory(DirName) -->
+	{ string__format("[ -d %s ] || mkdir -p %s", [s(DirName), s(DirName)],
+		Command) },
+	io__call_system(Command, _Result).
+
+:- pred output_c_file_list(list(c_module), int, string, list(string),
+				io__state, io__state).
+:- mode output_c_file_list(in, in, in, in, di, uo) is det.
+
+output_c_file_list([], _, _, _) --> [].
+output_c_file_list([Module|Modules], Num, BaseName, C_HeaderLines) -->
+	{ string__format("%s.dir/%s_%03d", [s(BaseName), s(BaseName), i(Num)],
+		NewName) },
+	output_single_c_file(c_file(NewName, C_HeaderLines, [Module])),
+	{ Num1 is Num + 1 },
+	output_c_file_list(Modules, Num1, BaseName, C_HeaderLines).
+
+:- pred output_c_file_init(string, list(c_module), io__state, io__state).
+:- mode output_c_file_init(in, in, di, uo) is det.
+
+output_c_file_init(BaseName, Modules) -->
+	{ string__format("%s.dir/%s_%03d", [s(BaseName), s(BaseName), i(0)],
+		NewName) },
+	{ string__append(NewName, ".c", FileName) },
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
@@ -324,10 +360,53 @@ output_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
 		io__write_string("#include ""imp.h""\n"),
+		io__write_string("\n"),
+		output_c_module_init_list(BaseName, Modules),
+		io__told
+	;
+		io__progname_base("llds.m", ProgName),
+		io__write_string("\n"),
+		io__write_string(ProgName),
+		io__write_string(": can't open `"),
+		io__write_string(FileName),
+		io__write_string("' for output\n"),
+		io__set_exit_status(1)
+	).
+
+:- pred output_single_c_file(c_file, io__state, io__state).
+:- mode output_single_c_file(in, di, uo) is det.
+
+output_single_c_file(c_file(BaseName, C_HeaderLines, Modules)) -->
+	{ string__append(BaseName, ".c", FileName) },
+	io__tell(FileName, Result),
+	(
+		{ Result = ok }
+	->
+		{ library__version(Version) },
+		io__write_strings(
+			["/*\n** Automatically generated from `", BaseName,
+			".m' by the\n** Mercury compiler, version ", Version,
+			".  Do not edit.\n*/\n"]),
+		globals__io_lookup_bool_option(split_c_files, SplitFiles),
+		( { SplitFiles = yes } ->
+			[]
+		;
+			io__write_string("/*\n"),
+			io__write_string("INIT "),
+			output_init_name(BaseName),
+			io__write_string("\n"),
+			io__write_string("ENDINIT\n"),
+			io__write_string("*/\n\n")
+		),
+		io__write_string("#include ""imp.h""\n"),
 		output_c_header_include_lines(C_HeaderLines),
 		output_c_module_list(Modules),
 		io__write_string("\n"),
-		output_c_module_init_list(BaseName, Modules),
+		( { SplitFiles = yes } ->
+			[]
+		;
+			output_c_module_init_list(BaseName, Modules)
+		),
 		io__told
 	;
 		io__progname_base("llds.m", ProgName),
@@ -386,9 +465,12 @@ output_c_module_init_list_2([c_module(ModuleName, _) | Ms], BaseName,
 		{ InitFunc1 = InitFunc0 },
 		{ Calls1 is Calls0 + 1 }
 	),
-	io__write_string("\t"),
+	io__write_string("\t{ extern void "),
 	output_module_name(ModuleName),
 	io__write_string("();\n"),
+	io__write_string("\t  "),
+	output_module_name(ModuleName),
+	io__write_string("(); }\n"),
 	output_c_module_init_list_2(Ms, BaseName,
 		Calls1, MaxCalls, InitFunc1, InitFunc).
 
@@ -501,29 +583,30 @@ output_c_label_decl_list_2([Label | Labels], ProcsPerFunc) -->
 output_c_label_decl(Label, ProcsPerFunc) -->
 	(
 		{ Label = exported(_) },
-		io__write_string("Define_extern_entry("),
-		output_label(Label),
-		io__write_string(");\n")
+		io__write_string("Define_extern_entry(")
 	;
 		{ Label = local(_) },
 		% if we are splitting procs between functions, then
 		% every procedure could be referred to by a procedure
 		% in a different function, so make them static, not local
+		% similarly if we're splitting between files make them extern
 		( { ProcsPerFunc = 0 } ->
-			io__write_string("Declare_local("),
-			output_label(Label),
-			io__write_string(");\n")
+			io__write_string("Declare_local(")
 		;
-			io__write_string("Declare_static("),
-			output_label(Label),
-			io__write_string(");\n")
+			globals__io_lookup_bool_option(split_c_files,
+				SplitFiles),
+			( { SplitFiles = no } ->
+				io__write_string("Declare_static(")
+			;
+				io__write_string("Define_extern_entry(")
+			)
 		)
 	;
 		{ Label = local(_, _) },
-		io__write_string("Declare_label("),
-		output_label(Label),
-		io__write_string(");\n")
-	).
+		io__write_string("Declare_label(")
+	),
+	output_label(Label),
+	io__write_string(");\n").
 
 :- pred output_c_label_init_list(list(label), io__state, io__state).
 :- mode output_c_label_init_list(in, di, uo) is det.
@@ -1485,14 +1568,22 @@ output_label_defn(local(ProcLabel)) -->
 	% if we are splitting procs between functions, then
 	% every procedure could be referred to by a procedure
 	% in a different function, so make them static, not local
+	% similarly if we're splitting between files make them extern
 	( { ProcsPerFunc = 0 } ->
 		io__write_string("Define_local("),
 		output_proc_label(ProcLabel),
 		io__write_string("_l);")	% l for "local".
 	;
-		io__write_string("Define_static("),
-		output_proc_label(ProcLabel),
-		io__write_string(");")
+		globals__io_lookup_bool_option(split_c_files, SplitFiles),
+		( { SplitFiles = no } ->
+			io__write_string("Define_static("),
+			output_proc_label(ProcLabel),
+			io__write_string(");")
+		;
+			io__write_string("Define_entry("),
+			output_proc_label(ProcLabel),
+			io__write_string(");")
+		)
 	).
 output_label_defn(local(ProcLabel, Num)) -->
 	io__write_string("Define_label("),
