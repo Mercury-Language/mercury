@@ -1,8 +1,10 @@
 %-----------------------------------------------------------------------------
+%
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+%
 % lex.convert_NFA_to_DFA.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Fri Aug 18 12:30:25 BST 2000
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
 % Powerset construction used to transform NFAs into DFAs.
 %

@@ -1,15 +1,20 @@
 %----------------------------------------------------------------------------- %
-% lex.regexp.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Fri Aug 18 06:43:09 BST 2000
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
-% Converts basic regular expressions into non-deterministic finite
-% automata (NFAs).
-%
+% lex.regexp.m
+% Fri Aug 18 06:43:09 BST 2000
+% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 %   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
 %   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 %   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
+% Thu Jul 26 07:45:47 UTC 2001
+% Copyright (C) 2001 The Rationalizer Intelligent Software AG
+%   The changes made by Rationalizer are contributed under the terms 
+%   of the GNU Lesser General Public License, see the file COPYING.LGPL
+%   in this directory.
+%
+% Converts basic regular expressions into non-deterministic finite
+% automata (NFAs).
 %
 %----------------------------------------------------------------------------- %
 
@@ -53,16 +58,16 @@ regexp_to_NFA(R) = NFA :-
 
     % The primitive regexps.
 
-compile(X, null,       Y, [null(X, Y)]) --> [].
+compile(X, eps,        Y, [null(X, Y)]) --> [].
 
 compile(X, atom(C),    Y, [trans(X, C, Y)]) --> [].
 
-compile(X, (RA >> RB), Y, TsA ++ TsB) -->
+compile(X, conc(RA,RB), Y, TsA ++ TsB) -->
     counter__allocate(Z),
     compile(X, RA, Z, TsA),
     compile(Z, RB, Y, TsB).
 
-compile(X, (RA \/ RB), Y, TsA ++ TsB) -->
+compile(X, alt(RA, RB), Y, TsA ++ TsB) -->
     compile(X, RA, Y, TsA),
     compile(X, RB, Y, TsB).
 

@@ -1,8 +1,9 @@
 % ---------------------------------------------------------------------------- %
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+%
 % lex.buf.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Sat Aug 19 16:56:30 BST 2000
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
 %   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
 %   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
@@ -94,7 +95,7 @@
 
 :- interface.
 
-:- import_module int, array, char, bool, string, io.
+:- import_module array, char, bool, string.
 
 
 
@@ -171,7 +172,6 @@
 :- implementation.
 
 :- import_module exception.
-
 
 
     % The amount the buffer is grown by if (a) more space is
