@@ -198,6 +198,8 @@
 		;	opt_level
 		;	opt_space	% default is to optimize time
 		;	intermodule_optimization
+		;	use_opt_files
+		;	use_trans_opt_files
 		;	transitive_optimization
 		;	split_c_files
 	%	- HLDS
@@ -485,6 +487,8 @@ option_defaults_2(special_optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 	intermodule_optimization -	bool(no),
+	use_opt_files		-	bool(no),
+	use_trans_opt_files	-	bool(no),
 	transitive_optimization -	bool(no),
 	check_termination	-	bool(no),
 	verbose_check_termination -	bool(no),
@@ -792,6 +796,8 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 long_option("intermodule-optimization", intermodule_optimization).
 long_option("intermodule-optimisation", intermodule_optimization).
+long_option("use-opt-files",		use_opt_files).
+long_option("use-trans-opt-files",	use_trans_opt_files).
 long_option("transitive-intermodule-optimization", 
 					transitive_optimization).
 long_option("transitive-intermodule-optimisation", 
@@ -1705,6 +1711,16 @@ options_help_optimization -->
 	io__write_string("\t--transitive-intermodule-optimization\n"),
 	io__write_string("\t\tImport the transitive intermodule optimization data.\n"),
 	io__write_string("\t\tThis data is imported from `<module>.trans_opt' files.\n"),
+	io__write_string("\t--use-opt-files\n"),
+	io__write_string("\t\tPerform inter-module optimization using any\n"),
+	io__write_string("\t\t`.opt' files which are already built,\n"),
+	io__write_string("\t\te.g. those for the standard library, but do\n"),
+	io__write_string("\t\tnot build any others.\n"),
+	io__write_string("\t--use-trans-opt-files\n"),
+	io__write_string("\t\tPerform inter-module optimization using any\n"),
+	io__write_string("\t\t`.trans_opt' files which are already built,\n"),
+	io__write_string("\t\te.g. those for the standard library, but do\n"),
+	io__write_string("\t\tnot build any others.\n"),
 	io__write_string("\t--split-c-files\n"),
 	io__write_string("\t\tGenerate each C function in its own C file,\n"),
 	io__write_string("\t\tso that the linker will optimize away unused code.\n"),

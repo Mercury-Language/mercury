@@ -1368,9 +1368,12 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			[]
 		),
 
+		globals__io_lookup_bool_option(use_opt_files, UseOptFiles),
 		globals__io_lookup_bool_option(intermodule_optimization,
 			Intermod),
-		( { Intermod = yes } ->
+		globals__io_lookup_accumulating_option(intermod_directories,
+			IntermodDirs),
+		( { Intermod = yes; UseOptFiles = yes } ->
 			io__write_strings(DepStream, [
 				"\n\n", 
 				CFileName, " ",
@@ -1379,6 +1382,7 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				PicObjFileName, " ",
 				ObjFileName, " :"
 			]),
+
 			% The .c file only depends on the .opt files from 
 			% the current directory, so that inter-module
 			% optimization works when the .opt files for the 
@@ -1388,14 +1392,17 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			% is to make sure the module gets type-checked without
 			% having the definitions of abstract types from other
 			% modules.
-			globals__io_lookup_accumulating_option(
-				intermod_directories, IntermodDirs),
 			globals__io_lookup_bool_option(transitive_optimization,
 				TransOpt),
-			( { TransOpt = yes } ->
-				get_both_opt_deps(LongDeps, IntermodDirs, 
+			globals__io_lookup_bool_option(use_trans_opt_files,
+				UseTransOpt),
+
+			( { TransOpt = yes ; UseTransOpt = yes } ->
+				{ bool__not(UseTransOpt, BuildOptFiles) },
+				get_both_opt_deps(BuildOptFiles,
+					[ModuleName | LongDeps], IntermodDirs,
 					OptDeps, TransOptDeps),
-				write_dependencies_list([ModuleName | OptDeps],
+				write_dependencies_list(OptDeps,
 					".opt", DepStream),
 				io__write_strings(DepStream, [
 					"\n\n", 
@@ -1407,9 +1414,11 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 				write_dependencies_list(TransOptDeps,
 					".trans_opt", DepStream)
 			;
-				get_opt_deps(LongDeps, IntermodDirs, ".opt", 
-					OptDeps),
-				write_dependencies_list([ModuleName | OptDeps],
+				{ bool__not(UseOptFiles, BuildOptFiles) },
+				get_opt_deps(BuildOptFiles,
+					[ModuleName | LongDeps],
+					IntermodDirs, ".opt", OptDeps),
+				write_dependencies_list(OptDeps,
 					".opt", DepStream)
 			)
 		;
@@ -1621,59 +1630,99 @@ read_dependency_file_get_modules(TransOptDeps) -->
 	% If it exists, add it to both output lists. Otherwise, if a .opt
 	% file exists, add it to the OptDeps list, and if a .trans_opt
 	% file exists, add it to the TransOptDeps list.
-:- pred get_both_opt_deps(list(module_name)::in, list(string)::in, 
+	% If --use-opt-files is set, don't look for `.m' files, since
+	% we are not building `.opt' files, only using those which
+	% are available.
+:- pred get_both_opt_deps(bool::in, list(module_name)::in, list(string)::in, 
 	list(module_name)::out, list(module_name)::out, 
 	io__state::di, io__state::uo) is det.
-get_both_opt_deps([], _, [], []) --> [].
-get_both_opt_deps([Dep | Deps], IntermodDirs, OptDeps, TransOptDeps) -->
-	module_name_to_file_name(Dep, ".m", no, DepName), 
-	search_for_file(IntermodDirs, DepName, Result1),
-	get_both_opt_deps(Deps, IntermodDirs, OptDeps0, TransOptDeps0),
-	( { Result1 = yes } ->
-		{ OptDeps = [Dep | OptDeps0] },
-		{ TransOptDeps = [Dep | TransOptDeps0] },
-		io__seen
+get_both_opt_deps(_, [], _, [], []) --> [].
+get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
+		OptDeps, TransOptDeps) -->
+	get_both_opt_deps(BuildOptFiles, Deps, IntermodDirs,
+		OptDeps0, TransOptDeps0),
+	( { BuildOptFiles = yes } ->
+		module_name_to_file_name(Dep, ".m", no, DepName), 
+		search_for_file(IntermodDirs, DepName, Result1),
+		( { Result1 = yes } ->
+			{ OptDeps1 = [Dep | OptDeps0] },
+			{ TransOptDeps1 = [Dep | TransOptDeps0] },
+			io__seen,
+			{ Found = yes }
+		;
+			{ OptDeps1 = OptDeps0 },
+			{ TransOptDeps1 = TransOptDeps0 },
+			{ Found = no }
+		)
 	;
+		{ OptDeps1 = OptDeps0 },
+		{ TransOptDeps1 = TransOptDeps0 },
+		{ Found = no }
+	),
+	{ is_bool(Found) },
+	( { Found = no } ->
 		module_name_to_file_name(Dep, ".opt", no, OptName), 
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
-			{ OptDeps = [Dep | OptDeps0] },
+			{ OptDeps = [Dep | OptDeps1] },
 			io__seen
 		;
-			{ OptDeps = OptDeps0 }
+			{ OptDeps = OptDeps1 }
 		),
 		module_name_to_file_name(Dep, ".trans_opt", no, TransOptName), 
 		search_for_file(IntermodDirs, TransOptName, Result3),
 		( { Result3 = yes } ->
-			{ TransOptDeps = [Dep | TransOptDeps0] },
+			{ TransOptDeps = [Dep | TransOptDeps1] },
 			io__seen
 		;
-			{ TransOptDeps = TransOptDeps0 }
+			{ TransOptDeps = TransOptDeps1 }
 		)
+	;
+		{ TransOptDeps = TransOptDeps1 },
+		{ OptDeps = OptDeps1 }
 	).
 
 	% For each dependency, search intermod_directories for a .Suffix
 	% file or a .m file, filtering out those for which the search fails.
-:- pred get_opt_deps(list(module_name)::in, list(string)::in, string::in,
-	list(module_name)::out, io__state::di, io__state::uo) is det.
-get_opt_deps([], _, _, []) --> [].
-get_opt_deps([Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
-	module_name_to_file_name(Dep, ".m", no, DepName),
-	search_for_file(IntermodDirs, DepName, Result1),
-	get_opt_deps(Deps, IntermodDirs, Suffix, OptDeps0),
-	( { Result1 = yes } ->
-		{ OptDeps = [Dep | OptDeps0] },
-		io__seen
+	% If --use-opt-files is set, only look for `.opt' files,
+	% not `.m' files.
+:- pred get_opt_deps(bool::in, list(module_name)::in, list(string)::in,
+	string::in, list(module_name)::out,
+	io__state::di, io__state::uo) is det.
+get_opt_deps(_, [], _, _, []) --> [].
+get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, OptDeps) -->
+	get_opt_deps(BuildOptFiles, Deps, IntermodDirs, Suffix, OptDeps0),
+	( { BuildOptFiles = yes } ->
+		module_name_to_file_name(Dep, ".m", no, DepName),
+		search_for_file(IntermodDirs, DepName, Result1),
+		( { Result1 = yes } ->
+			{ OptDeps1 = [Dep | OptDeps0] },
+			{ Found = yes },
+			io__seen
+		;
+			{ Found = no },
+			{ OptDeps1 = OptDeps0 }
+		)
 	;
+		{ Found = no },
+		{ OptDeps1 = OptDeps0 }
+	),
+	{ is_bool(Found) },
+	( { Found = no } ->
 		module_name_to_file_name(Dep, Suffix, no, OptName),
 		search_for_file(IntermodDirs, OptName, Result2),
 		( { Result2 = yes } ->
-			{ OptDeps = [Dep | OptDeps0] },
+			{ OptDeps = [Dep | OptDeps1] },
 			io__seen
 		;
-			{ OptDeps = OptDeps0 }
+			{ OptDeps = OptDeps1 }
 		)
+	;
+		{ OptDeps = OptDeps1 }
 	).
+
+:- pred is_bool(bool::in) is det.
+is_bool(_).
 
 %-----------------------------------------------------------------------------%
 
@@ -1736,8 +1785,8 @@ generate_dependencies(ModuleName, DepsMap0) -->
 		{ list__condense(ImplDepsOrdering, TransOptDepsOrdering0) },
 		globals__io_lookup_accumulating_option(intermod_directories, 
 			IntermodDirs),
-		get_opt_deps(TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
-			TransOptDepsOrdering),
+		get_opt_deps(yes, TransOptDepsOrdering0, IntermodDirs,
+			".trans_opt", TransOptDepsOrdering),
 
 		%
 		% compute the indirect dependencies: they are equal to the

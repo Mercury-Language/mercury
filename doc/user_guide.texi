@@ -2319,6 +2319,16 @@ are differents to the @file{@var{module}.opt} files as @samp{.trans_opt}
 files may depend on other @samp{.trans_opt} files, whereas each
 @samp{.opt} file may only depend on the corresponding @samp{.m} file. 
 
+@item --use-opt-files
+Perform inter-module optimization using any @samp{.opt} files which are 
+already built, e.g. those for the standard library, but do not build any
+others.
+
+@item --use-trans-opt-files
+Perform inter-module optimization using any @samp{.trans_opt} files which are 
+already built, e.g. those for the standard library, but do not build any
+others.
+
 @sp 1
 @item --split-c-files
 Generate each C function in its own C file,

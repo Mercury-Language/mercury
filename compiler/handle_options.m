@@ -252,6 +252,13 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		bool(yes)),
 	option_implies(transitive_optimization, intermodule_optimization,
 		bool(yes)),
+	option_implies(use_trans_opt_files, use_opt_files, bool(yes)),
+
+	% If we are doing full inter-module or transitive optimization,
+	% we need to build all `.opt' or `.trans_opt' files.
+	option_implies(intermodule_optimization, use_opt_files, bool(no)),
+	option_implies(transitive_optimization, use_trans_opt_files, bool(no)),
+
 	option_implies(very_verbose, verbose, bool(yes)),
 
 	% --split-c-files implies --procs-per-c-function 1
@@ -390,6 +397,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
+
+	% --use-opt-files implies --no-warn-missing-opt-files since
+	% we are expecting some to be missing.
+	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
+
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
 	option_implies(optimize_frames, optimize_labels, bool(yes)),
 	option_implies(optimize_frames, optimize_jumps, bool(yes)).
