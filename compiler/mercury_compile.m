@@ -2968,7 +2968,11 @@ mercury_compile__expand_equiv_types_hlds(HLDS0, Verbose, HLDS) -->
 	maybe_write_string(Verbose,
 		"% Fully expanding equivalence types..."),
 	maybe_flush_output(Verbose),
-	{ equiv_type_hlds__replace_in_hlds(HLDS0, HLDS) },
+
+	{ HLDS = HLDS0 },
+	% XXX There's a performance bug (excessive memory usage)
+	% in here somewhere.
+	% { equiv_type_hlds__replace_in_hlds(HLDS0, HLDS) },
 	maybe_write_string(Verbose, " done.\n").
 
 %-----------------------------------------------------------------------------%
