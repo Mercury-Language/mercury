@@ -164,14 +164,22 @@ make_dependency_files(TargetFile, DepFilesToMake, TouchedTargetFiles,
 	%
 	globals__io_lookup_bool_option(keep_going, KeepGoing),
 	foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
-		DepFilesToMake, _, Info0, Info1),
+		DepFilesToMake, MakeDepsSuccess, Info0, Info1),
 
 	%
 	% Check that the target files exist.
 	%
 	list__map_foldl2(get_target_timestamp, TouchedTargetFiles,
 			TargetTimestamps, Info1, Info2),
-	( { list__member(error(_), TargetTimestamps) } ->
+	(
+		{ MakeDepsSuccess = no }
+	->
+		debug_file_msg(TargetFile, "error making dependencies"),
+		{ DepsResult = error },
+		{ Info = Info2 }
+	;
+		{ list__member(error(_), TargetTimestamps) }
+	->
 		debug_file_msg(TargetFile, "target file does not exist"),
 		{ DepsResult = out_of_date },
 		{ Info = Info2 }
