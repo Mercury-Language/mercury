@@ -3668,8 +3668,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		InitCFileName, " : ", DepFileName, " ", DvFileName, " ",
 			All_C2InitArgsDepString, "\n",
 		"\t$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) $(",
-			MakeVarName, ".init_cs) $(ALL_C2INITARGS) -o ",
-			InitCFileName, "\n\n"
+			MakeVarName, ".init_cs) $(ALL_C2INITARGS) ",
+			"--init-c-file ", InitCFileName, "\n\n"
 	]),
 
 	module_name_to_lib_file_name("lib", ModuleName, ".install_ints", no,
