@@ -1594,7 +1594,7 @@ The determinism categories form this lattice:
 
 The higher up this lattice a determinism category is,
 the more the compiler knows about the number of solutions
-of predicates of that determinism.
+of procedures of that determinism.
 
 @node Determinism checking and inference
 @section Determinism checking and inference
@@ -1664,7 +1664,7 @@ have different function symbols in the same position,
 in which case the unification has a determinism of failure.
 
 The compiler knows the top function symbol of a variable
-if the previous part of the predicate definition
+if the previous part of the procedure definition
 contains a unification of the variable with a function symbol,
 or if the variable's type has only one function symbol.
 
@@ -1923,14 +1923,18 @@ In addition to the determinism annotations described earlier, there are
 ``committed choice'' versions of @code{multi}
 and @code{nondet}, called @code{cc_multi} and @code{cc_nondet}.
 These can be used instead of @code{multi} or @code{nondet} if all calls
-to that mode of the predicate occur in a context in which only one
-solution is needed.
+to that mode of the predicate (or function) occur in a context in
+which only one solution is needed.
 
 Such single-solution contexts are determined as follows.
 
 @itemize @bullet
 @item
-The program entry point @samp{main/2} is in a single-solution context.
+The body of any procedure declared @code{cc_multi} or
+@code{cc_nondet} is in a single-solution context.
+For example, the program entry point @samp{main/2} may
+be declared @code{cc_multi}, and in that case the clauses
+for @code{main} are in a single-solution context.
 
 @item
 Any goal with no output variables is in a single-solution context.
@@ -1940,20 +1944,27 @@ If a conjunction is in a single-solution context, then
 the right-most conjunct is in a single-solution context,
 and if the right-most conjunct cannot fail,
 then rest of the conjunction is also in a single-solution
-context.
+context. 
+("Right-most" here refers to the order @emph{after} mode reordering.)
 
 @item
 If an if-then-else is in a single-solution context, then the
 ``then'' part and the ``else'' part are in single-solution contexts,
-and if the ``then'' part cannot fail, then condition of the
+and if the ``then'' part cannot fail, then the condition of the
 if-then-else is also in a single-solution context.
+
+@item
+For other compound goals, i.e. disjunctions, negations, and
+(explicitly) existentially quantified goals, if the compound goal
+is in a single-solution context, then the immediate subgoals of that
+compound goal are also in single-solution contexts.
 
 @end itemize
 
 The compiler will check that all calls to a committed-choice
-mode of a predicate do indeed occur in a single-solution context.
+mode of a predicate (or function) do indeed occur in a single-solution context.
 
-You can declare two different modes of a predicate which differ
+You can declare two different modes of a predicate (or function) which differ
 only in ``cc-ness'' (i.e. one being @samp{multi} and the other
 @samp{cc_multi}, or one being @samp{nondet} and the other @samp{cc_nondet}).
 In that case, the compiler will select the appropriate one for each
