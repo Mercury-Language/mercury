@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne. 
+# Copyright (C) 1995-2001 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -44,7 +44,7 @@ C2INIT =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR
 C2INITFLAGS =	--library
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--mercury-libs none
-MLLIBS  =	../main.o \
+MLLIBS  =	../main.$O \
 		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
 		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
@@ -162,14 +162,14 @@ all:		mercury
 mercury:	mercury_compile
 
 .PHONY: libmmc
-libmmc:		libmercury_compile.a mercury_compile_init.o
+libmmc:		libmercury_compile.a mercury_compile_init.$O
 
 #-----------------------------------------------------------------------------#
 
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
-mercury_compile: ../main.o
+mercury_compile: ../main.$O
 mercury_compile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mercury_compile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mercury_compile: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
@@ -206,12 +206,13 @@ dates		:
 #-----------------------------------------------------------------------------#
 
 .PHONY: os cs
-os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.o
+os: $(mercury_compile.os) $(os_subdir)mercury_compile_init.$O
 cs: $(mercury_compile.cs) $(cs_subdir)mercury_compile_init.c
 
 #-----------------------------------------------------------------------------#
 
 clean_local:
+	rm -f ../main.$O
 	for file in *.pp; do \
 		if [ "$$file" != "*.pp" ]; then \
 			rm -f `basename $$file .pp`.m; \

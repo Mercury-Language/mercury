@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne.
+# Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -352,6 +352,7 @@ then
 	set +x
 	echo linking stage 2... 1>&2
 	cd stage2
+	$LN_S $root/main.c .
 	mkdir compiler
 	cd compiler
 	# Break up the links into several chunks.
@@ -562,6 +563,7 @@ then
 	echo linking stage 3... 1>&2
 	set +x
 	cd stage3
+	$LN_S $root/main.c .
 	mkdir compiler
 	cd compiler
 	# Break up the links into several chunks.
