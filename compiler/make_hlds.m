@@ -411,7 +411,6 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 			PredOrFunc, SymName, Arity, PredIds) }
 		->
 		    ( { PredIds = [] } ->
-		    	prog_out__write_context(Context),
 			undefined_pred_or_func_error(SymName, Arity, Context,
 				"`:- pragma termination_info' declaration"),
 			{ module_info_incr_errors(Module0, Module) }
@@ -460,7 +459,6 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 			{ module_info_incr_errors(Module0, Module) }
 		    )
 		;
-		    prog_out__write_context(Context),
 		    undefined_pred_or_func_error(SymName, Arity, Context,
 			"`:- pragma termination_info' declaration"),
 		    { module_info_incr_errors(Module0, Module) }
