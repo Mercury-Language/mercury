@@ -2154,7 +2154,7 @@ even if the number and the command are not separated by white space.
 These commands allow you to type in queries (goals) interactively
 in the debugger.  When you use one of these commands, the debugger
 will respond with a query prompt (@samp{?-} or @samp{run <--}),
-at which you can type in a goal; the debugger will the compile
+at which you can type in a goal; the debugger will then compile
 and execute the goal and display the answer(s).
 You can return from the query prompt to the @samp{mdb>} prompt
 by typing the end-of-file indicator (typically control-D or control-Z),
@@ -3205,6 +3205,9 @@ Prints summary information about all the available help categories.
 @subsection Declarative debugging mdb commands
 
 @sp 1
+The following commands relate to the declarative debugger.  See
+@ref{Declarative debugging} for details.
+@sp 1
 @table @code
 @item dd
 @c @item dd [--assume-all-io-is-tabled]
@@ -3214,7 +3217,6 @@ Prints summary information about all the available help categories.
 @c therefore deliberately not documented.
 Starts declarative debugging
 using the current event as the initial symptom.
-For details, see @ref{Declarative debugging}.
 @sp 1
 @item trust @var{module-name}|@var{proc-spec}
 @kindex trust (mdb command)
@@ -3287,6 +3289,13 @@ not to complain if the named file does not exist or is not readable.
 @sp 1
 @item save @var{filename}
 @kindex save (mdb command)
+Saves current set of breakpoints, the current set of aliases and the
+current set of objects trusted by the declarative debugger
+in the named file as a set of @samp{break}, @samp{alias} and @samp{trust} 
+commands.
+Sourcing the file will recreate the current breakpoints and aliases and will
+trust the currently trusted objects.
+@sp 1
 Saves current set of breakpoints and the current set of aliases
 in the named file as a set of @samp{break} and @samp{alias} commands.
 Sourcing the file will recreate the current breakpoints and aliases.
@@ -3300,7 +3309,6 @@ Any answer starting with @samp{y}, or end-of-file, is considered confirmation.
 End-of-file on the debugger's input is considered a quit command.
 @end table
 
-@sp 1
 @node Developer commands
 @subsection Developer commands
 
@@ -3551,7 +3559,7 @@ The main limitations are pointed out in the following sections.
 * Oracle questions::
 * Declarative debugging commands::
 * Diagnoses::
-@c * Improving the search::
+* Improving the search::
 @end menu
 
 @node Declarative debugging concepts
@@ -3575,6 +3583,7 @@ the events at which control leaves a procedure
 as assertions about the semantics of the program.
 These assertions may be true or false, depending on whether or not
 the program's actual semantics are consistent with its intended semantics.
+
 @sp 1
 @table @asis
 @item EXIT
@@ -3664,6 +3673,14 @@ the declarative debugger prints the call atom
 followed by the exception that was thrown,
 and prints the question @samp{Expected?} for the user to answer.
 
+In addition to asserting whether a call behaved correctly or not 
+the user may also assert that a call should never have occured in the first
+place, because its inputs violated some precondition of the call.  For example
+if an unsorted list is passed to a predicate that is only designed to work with
+sorted lists.  Such calls should be deemed @emph{inadmissible} by the user. 
+This tells the declarative debugger that either the call was given the wrong
+input by its caller or whatever generated the input is incorrect.
+
 In some circumstances
 the declarative debugger provides a default answer to the question.
 If this is the case, the default answer will be shown in square brackets
@@ -3684,14 +3701,30 @@ Answer that the assertion is correct.
 @item no
 Answer that the assertion is wrong.
 @sp 1
+@item inadmissible
+Answer that the call is inadmissible.
 @item skip
 Skip this question and ask a different one if possible.
 @sp 1
-@item restart
-Ask the skipped questions again.
+@item browse [@var{n}]
+Start the interactive term browser and browse the @var{n}th argument 
+before answering.  If the argument number
+is omitted then browse the whole call as if it were a data term.
+While browsing a @samp{mark} command may be issued to assert that
+the current subterm is incorrect (see @ref{Improving the search}).
+To return to the declarative debugger question issue a @samp{quit}
+command from within the interative term browser.  For more information
+on the use of the interactive term browser see the @samp{browse} command
+in @ref{Browsing commands} or type @samp{help} from within the 
+interactive query browser.
 @sp 1
-@item browse @var{n}
-Browse the @var{n}th argument before answering.
+@item mark [@var{term-path}]
+The @samp{mark} command can only be given from within the interactive
+term browser and asserts that the marked subterm is incorrect.  The 
+debugger uses this information to better direct the bug search.  If no
+argument is given the the current subterm is taken to be incorrect.  If a 
+@var{term-path} is given then the subterm at @var{tern-path} relative to
+the current subterm will be considered incorrect.
 @sp 1
 @item pd
 Commence procedural debugging from the current point.
@@ -3718,11 +3751,10 @@ If the oracle keeps providing answers to the asked questions,
 then the declarative debugger will eventually locate a bug.
 A ``bug'', for our purposes,
 is an assertion about some call which is false,
-but for which the assertions about every child of that call are not false.
-There are three different classes of bugs that this debugger can diagnose,
+but for which the assertions about every child of that call are not false
+(i.e. they are either correct or inadmissible).
+There are four different classes of bugs that this debugger can diagnose,
 one associated with each kind of assertion.
-@c XXX The preceding comment, and the following discussion, will need to be
-@c updated when we support three-valued debugging.
 
 Assertions about EXIT events
 lead to a kind of bug we call an ``incorrect contour''.
@@ -3756,6 +3788,14 @@ followed by the exception which was not handled.
 The bug event in this case is the exception event
 for the call in question.
 
+If the assertion made by an EXIT, FAIL or EXCP event is false and one or
+more of the children of the call that resulted in the incorrect EXIT, FAIL or
+EXCP event is inadmissible, while all the other calls are correct, then an
+``inadmissible call'' bug has been found.  This is a call that behaved
+incorrectly (by producing the incorrect output, failing or throwing an 
+exception) because it passed unexpected input to one of it's children.
+The guilty call is displayed as well as the inadmissible child.
+
 After the diagnosis is displayed, the user is asked to confirm
 that the event located by the declarative debugger
 does in fact represent a bug.
@@ -3779,10 +3819,106 @@ or they may be asked entirely new questions.
 If the user aborts the diagnosis,
 they are returned to the event at which the @samp{dd} command was given.
 
-@c @node Improving the search
-@c @subsection Improving the search
+@node Improving the search
+@subsection Improving the search
 
-@c XXX describe how to mark suspicious subterms, and how this can help.
+The number of questions asked by the declarative debugger before it pinpoints
+the location of a bug can be reduced by giving it extra information.  The kind
+of extra information that can be given and how to convey this information are
+exlained in this section.
+
+@subsubsection Marking incorrect subterms
+
+An incorrect subterm can be @emph{marked} by the user from within the 
+interactive term browser (see @ref{Declarative debugging commands}).
+The effect of marking a subterm depends on the whether the subterm was part
+of an input or an output argument.
+
+If the subterm was an input then by marking the subterm the user is asserting 
+that the call was inadmissible and that the marked input subterm is the 
+reason for inadmissibility (i.e. the subterm's value violates a precondition
+of the call).
+
+If the subterm was an output then the user is saying the exit atom is false
+in the intended interpretation and the marked subterm is the reason for the
+atom being false (i.e. if it were some other value then the atom would be 
+true).
+
+In either case the next question asked by the declarative debugger will 
+be about the call that bound the incorrect subterm, unless that call was
+eliminated as a possible bug because of an answer to a previous 
+question or the call that bound the subterm was not traced.
+
+For example consider the following fragment of a program that calculates
+payments for a loan:
+
+@example
+:- type payment
+        --->   payment(
+               date    :: date,
+               amount  :: float
+        ).
+
+:- type date ---> date(int, int, int).  % date(day, month, year).
+
+:- pred get_payment(loan::in, int::in, payment::out) is det.
+
+get_payment(Loan, PaymentNo, Payment) :-
+        get_payment_amount(Loan, PaymentNo, Amount),
+        get_payment_date(Loan, PaymentNo, Date),
+        Payment = payment(Date, Amount).
+@end example
+
+Suppose that @code{get_payment} produces an incorrect result and the
+declarative debugger asks:
+
+@noindent
+@example
+get_payment(loan(...), 10, payment(date(9, 10, 1977), 10.000000000000)).
+Valid?
+@end example
+
+Then if we know that this is the right payment amount for the given loan, 
+but the date is incorrect, we can mark the date(...) subterm and the 
+debugger will then ask us about @code{get_payment_date}:  
+
+@noindent
+@example
+get_payment(loan(...), 10, payment(date(9, 10, 1977), 10.000000000000)).
+Valid? browse
+browser> cd 3/1
+browser> ls
+date(9, 10, 1977)
+browser> mark
+get_payment_date(loan(...), 10, dat(9, 10, 1977)).
+Valid?
+@end example
+	
+Thus irrelevant questions about @code{get_payment_amount} are avoided.
+
+@noindent
+If, say, the date was only wrong in the year part, then we could also have
+marked the year subterm in which case the next question would have been about
+the call that constructed the year part of the date.
+
+@subsubsection Trusting predicates, functions and modules
+
+The declarative debugger can also be told to assume that certain predicates, 
+functions or entire modules do not contain any bugs.  The declarative
+debugger will never ask questions about trusted predicates or functions.  It
+is a good idea to trust standard library modules imported by a program being 
+debugged.
+
+The declarative debugger must be told which predicates/functions it can trust
+before the @samp{dd} command is given.  This is done using the @samp{trust}, 
+@samp{trusted} and @samp{untrust} commands at the mdb prompt (see 
+@ref{Declarative debugging mdb commands} for details on how to use these 
+commands).
+
+Trust commands may be placed in the @samp{.mdbrc} file which contains default
+settings for mdb (see @ref{Mercury debugger invocation}).  Trusted
+predicates will also be exported with a @samp{save} command (see 
+@ref{Miscellaneous commands}).
 
 @c ----------------------------------------------------------------------------
 

@@ -43,12 +43,15 @@
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.browser_info.
 
-:- import_module io, bool, list, std_util, string.
+:- import_module io, list, std_util, string.
 
 	% This type represents the possible truth values for nodes
 	% in the EDT.
 	%
-:- type decl_truth == bool.
+:- type decl_truth
+	--->	correct
+	;	erroneous
+	;	inadmissible.
 
 	% This type represents the possible responses to being
 	% asked to confirm that a node is a bug.
@@ -150,7 +153,15 @@
 			% value, but is suspicious of the subterm at the
 			% given term_path and arg_pos.
 			%
-	;	suspicious_subterm(T, arg_pos, term_path).
+	;	suspicious_subterm(T, arg_pos, term_path)
+
+			% This node should be ignored.  It cannot contain a bug
+			% but it's children may or may not contain a bug.
+			%
+	;	ignore(T)
+	
+			% The oracle has deferred answering this question. 
+	;	skip(T).
 
 	% The evidence that a certain node is a bug.  This consists of the
 	% smallest set of questions whose answers are sufficient to
@@ -186,7 +197,7 @@
 	% The diagnoser eventually responds with a value of this type
 	% after it is called.
 	%
-:- type diagnoser_response
+:- type diagnoser_response(R)
 
 			% There was a bug found and confirmed.  The
 			% event number is for a call port (inadmissible
@@ -212,9 +223,12 @@
 			% depth bound.  The event number and sequence
 			% number are for the final event required (the
 			% first event required is the call event with
-			% the same sequence number).
+			% the same sequence number). 
+			% R is the node preceeding the call node.  This is
+			% needed so the root of the new tree can have the
+			% correct preceding node.
 			%
-	;	require_subtree(event_number, sequence_number).
+	;	require_subtree(event_number, sequence_number, R).
 
 :- type diagnoser_state(R).
 
@@ -223,7 +237,7 @@
 	diagnoser_state(R)::out) is det.
 
 :- pred diagnosis(S::in, R::in, int::in, int::in, int::in,
-	diagnoser_response::out,
+	diagnoser_response(R)::out,
 	diagnoser_state(R)::in, diagnoser_state(R)::out,
 	browser_info.browser_persistent_state::in,
 	browser_info.browser_persistent_state::out,
@@ -254,11 +268,12 @@
 :- implementation.
 
 :- import_module mdb__declarative_analyser.
+:- import_module mdb__declarative_edt.
 :- import_module mdb__declarative_oracle.
 :- import_module mdb__declarative_tree.
 :- import_module mdb__util.
 
-:- import_module exception, int, map.
+:- import_module exception, int, map, bool.
 
 unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-
 	(
@@ -291,22 +306,22 @@ get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) =
 
 diagnoser_get_analyser(diagnoser(Analyser, _), Analyser).
 
-:- pred diagnoser_set_analyser(diagnoser_state(R), analyser_state(edt_node(R)),
-		diagnoser_state(R)).
-:- mode diagnoser_set_analyser(in, in, out) is det.
+:- pred diagnoser_set_analyser(analyser_state(edt_node(R))::in, 
+	diagnoser_state(R)::in,	diagnoser_state(R)::out) is det.
 
-diagnoser_set_analyser(diagnoser(_, B), A, diagnoser(A, B)).
+diagnoser_set_analyser(Analyser, diagnoser(_, Oracle), 
+	diagnoser(Analyser, Oracle)).
 
 :- pred diagnoser_get_oracle(diagnoser_state(R), oracle_state).
 :- mode diagnoser_get_oracle(in, out) is det.
 
 diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
 
-:- pred diagnoser_set_oracle(diagnoser_state(R), oracle_state,
-		diagnoser_state(R)).
-:- mode diagnoser_set_oracle(in, in, out) is det.
+:- pred diagnoser_set_oracle(oracle_state::in, diagnoser_state(R)::in,
+	diagnoser_state(R)::out) is det.
 
-diagnoser_set_oracle(diagnoser(A, _), B, diagnoser(A, B)).
+diagnoser_set_oracle(Oracle, diagnoser(Analyser, _), 
+	diagnoser(Analyser, Oracle)).
 
 diagnoser_state_init(IoActionMap, InStr, OutStr, Browser, Diagnoser) :-
 	analyser_state_init(IoActionMap, Analyser),
@@ -314,7 +329,8 @@ diagnoser_state_init(IoActionMap, InStr, OutStr, Browser, Diagnoser) :-
 	Diagnoser = diagnoser(Analyser, Oracle).
 
 diagnosis(Store, NodeId, UseOldIoActionMap, IoActionStart, IoActionEnd,
-		Response, !Diagnoser, !Browser, !IO) :-
+		Response, !Diagnoser, !Browser,
+		!IO) :-
 	mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
 		oracle_state, Oracle),
 	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
@@ -348,106 +364,107 @@ diagnosis(Store, NodeId, UseOldIoActionMap, IoActionStart, IoActionEnd,
 		!.Diagnoser ^ oracle_state).
 
 :- pred diagnosis_2(S::in, R::in, diagnoser_state(R)::in,
-	{diagnoser_response, diagnoser_state(R)}::out,
+	{diagnoser_response(R), diagnoser_state(R)}::out,
 	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
 
-diagnosis_2(Store, NodeId, Diagnoser0, {Response, Diagnoser}) -->
-	{ Analyser0 = Diagnoser0 ^ analyser_state },
-	{ start_analysis(wrap(Store), dynamic(NodeId), AnalyserResponse,
-		Analyser0, Analyser) },
-	{ diagnoser_set_analyser(Diagnoser0, Analyser, Diagnoser1) },
-	{ debug_analyser_state(Analyser, MaybeOrigin) },
+diagnosis_2(Store, NodeId, Diagnoser0, {Response, Diagnoser}, !IO) :-
+	Analyser0 = Diagnoser0 ^ analyser_state,
+	start_or_resume_analysis(wrap(Store), dynamic(NodeId), 
+		AnalyserResponse, Analyser0, Analyser),
+	diagnoser_set_analyser(Analyser, Diagnoser0, Diagnoser1),
+	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
-		Response, Diagnoser1, Diagnoser).
+		Response, Diagnoser1, Diagnoser, !IO).
 
 :- pred handle_analyser_response(S::in, analyser_response(edt_node(R))::in,
-	maybe(subterm_origin(edt_node(R)))::in, diagnoser_response::out,
-	diagnoser_state(R)::in, diagnoser_state(R)::out,
+	maybe(subterm_origin(edt_node(R)))::in, diagnoser_response(R)::out,
+	diagnoser_state(R)::in, diagnoser_state(R)::out, 
 	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
 
-handle_analyser_response(_, no_suspects, _, no_bug_found, D, D) -->
-	io__write_string("No bug found.\n").
+handle_analyser_response(_, no_suspects, _, no_bug_found, !Diagnoser, !IO) :-
+	io__write_string("No bug found.\n", !IO).
 
 handle_analyser_response(Store, bug_found(Bug, Evidence), _, Response,
-	Diagnoser0, Diagnoser) -->
+		!Diagnoser, !IO) :-
+	confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO).
 
-	confirm_bug(Store, Bug, Evidence, Response, Diagnoser0, Diagnoser).
-
-handle_analyser_response(Store, oracle_queries(Queries), MaybeOrigin, Response,
-		Diagnoser0, Diagnoser) -->
-	{ diagnoser_get_oracle(Diagnoser0, Oracle0) },
-	debug_origin(Flag),
+handle_analyser_response(Store, oracle_question(Question), MaybeOrigin, 
+		Response, !Diagnoser, !IO) :-
+	diagnoser_get_oracle(!.Diagnoser, Oracle0),
+	debug_origin(Flag, !IO),
 	(
-		{ MaybeOrigin = yes(Origin) },
-		{ Flag > 0 }
+		MaybeOrigin = yes(Origin),
+		Flag > 0
 	->
-		io__write_string("Origin: "),
-		write_origin(wrap(Store), Origin),
-		io__nl
+		io__write_string("Origin: ", !IO),
+		write_origin(wrap(Store), Origin, !IO),
+		io__nl(!IO)
 	;
-		[]
+		true
 	),
-	query_oracle(Queries, OracleResponse, Oracle0, Oracle),
-	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser1) },
-	handle_oracle_response(Store, OracleResponse, Response, Diagnoser1,
-			Diagnoser).
+	query_oracle(Question, OracleResponse, Oracle0, Oracle, !IO),
+	diagnoser_set_oracle(Oracle, !Diagnoser),
+	handle_oracle_response(Store, OracleResponse, Response, !Diagnoser,
+		!IO).
 
 handle_analyser_response(Store, require_explicit(Tree), _, Response,
-		Diagnoser, Diagnoser) -->
-	{
-		edt_subtree_details(Store, Tree, Event, Seqno),
-		Response = require_subtree(Event, Seqno)
-	}.
+		Diagnoser, Diagnoser, !IO) :-	
+	edt_subtree_details(Store, Tree, Event, Seqno, CallPreceding),
+	Response = require_subtree(Event, Seqno, CallPreceding).
+
+handle_analyser_response(Store, revise(Question), _, Response, !Diagnoser, !IO)
+		:-
+	Oracle0 = !.Diagnoser ^ oracle_state,
+	revise_oracle(Question, Oracle0, Oracle),
+	!:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
+	handle_analyser_response(Store, oracle_question(Question), no,
+		Response, !Diagnoser, !IO).
 
 :- pred handle_oracle_response(S::in, oracle_response(edt_node(R))::in,
-	diagnoser_response::out,
-	diagnoser_state(R)::in, diagnoser_state(R)::out,
-	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
+	diagnoser_response(R)::out, diagnoser_state(R)::in,
+	diagnoser_state(R)::out, io__state::di, io__state::uo) 
+	is cc_multi <= annotated_trace(S, R).
 
-handle_oracle_response(Store, oracle_answers(Answers), Response, Diagnoser0,
-		Diagnoser) -->
-	{ diagnoser_get_analyser(Diagnoser0, Analyser0) },
-	{ continue_analysis(wrap(Store), Answers, AnalyserResponse,
-		Analyser0, Analyser) },
-	{ diagnoser_set_analyser(Diagnoser0, Analyser, Diagnoser1) },
-	{ debug_analyser_state(Analyser, MaybeOrigin) },
+handle_oracle_response(Store, oracle_answer(Answer), Response, !Diagnoser, 
+		!IO) :-
+	diagnoser_get_analyser(!.Diagnoser, Analyser0),
+	continue_analysis(wrap(Store), Answer, AnalyserResponse,
+		Analyser0, Analyser),
+	diagnoser_set_analyser(Analyser, !Diagnoser),
+	debug_analyser_state(Analyser, MaybeOrigin),
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
-		Response, Diagnoser1, Diagnoser).
+		Response, !Diagnoser, !IO).
 
-handle_oracle_response(_, no_oracle_answers, no_bug_found, D, D) -->
-	[].
+handle_oracle_response(Store, exit_diagnosis(Node), Response, !Diagnoser, !IO)
+		:-
+	edt_subtree_details(Store, Node, Event, _, _),
+	Response = symptom_found(Event).
 
-handle_oracle_response(Store, exit_diagnosis(Node), Response, D, D) -->
-	{ edt_subtree_details(Store, Node, Event, _) },
-	{ Response = symptom_found(Event) }.
-
-handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
-	io__write_string("Diagnosis aborted.\n").
+handle_oracle_response(_, abort_diagnosis, no_bug_found, !Diagnoser, !IO) :-
+	io__write_string("Diagnosis aborted.\n", !IO).
 
 :- pred confirm_bug(S::in, decl_bug::in, decl_evidence(T)::in,
-	diagnoser_response::out, diagnoser_state(R)::in,
+	diagnoser_response(R)::out, diagnoser_state(R)::in,
 	diagnoser_state(R)::out, io__state::di, io__state::uo) is cc_multi
 	<= annotated_trace(S, R).
 
-confirm_bug(Store, Bug, Evidence, Response, Diagnoser0, Diagnoser) -->
-	{ diagnoser_get_oracle(Diagnoser0, Oracle0) },
-	oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle),
-	{ diagnoser_set_oracle(Diagnoser0, Oracle, Diagnoser1) },
+confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO) :-
+	diagnoser_get_oracle(!.Diagnoser, Oracle0),
+	oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO),
+	diagnoser_set_oracle(Oracle, !Diagnoser),
 	(
-		{ Confirmation = confirm_bug },
-		{ decl_bug_get_event_number(Bug, Event) },
-		{ Response = bug_found(Event) },
-		{ Diagnoser = Diagnoser1 }
+		Confirmation = confirm_bug,
+		decl_bug_get_event_number(Bug, Event),
+		Response = bug_found(Event)
 	;
-		{ Confirmation = overrule_bug },
-		overrule_bug(Store, Response, Diagnoser1, Diagnoser)
+		Confirmation = overrule_bug,
+		overrule_bug(Store, Response, !Diagnoser, !IO)
 	;
-		{ Confirmation = abort_diagnosis },
-		{ Response = no_bug_found },
-		{ Diagnoser = Diagnoser1 }
+		Confirmation = abort_diagnosis,
+		Response = no_bug_found
 	).
 
-:- pred overrule_bug(S::in, diagnoser_response::out, diagnoser_state(R)::in,
+:- pred overrule_bug(S::in, diagnoser_response(R)::out, diagnoser_state(R)::in,
 	diagnoser_state(R)::out, io__state::di, io__state::uo) is cc_multi
 	<= annotated_trace(S, R).
 
@@ -478,7 +495,7 @@ diagnoser_state_init_store(InStr, OutStr, Browser, Diagnoser) :-
 	% easier to call from C code.
 	%
 :- pred diagnosis_store(trace_node_store::in, trace_node_id::in,
-	int::in, int::in, int::in, diagnoser_response::out,
+	int::in, int::in, int::in, diagnoser_response(trace_node_id)::out,
 	diagnoser_state(trace_node_id)::in,
 	diagnoser_state(trace_node_id)::out, 
 	browser_info.browser_persistent_state::in, 
@@ -496,14 +513,15 @@ diagnosis_store(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
 	% Export some predicates so that C code can interpret the
 	% diagnoser response.
 	%
-:- pred diagnoser_bug_found(diagnoser_response, event_number).
+:- pred diagnoser_bug_found(diagnoser_response(trace_node_id), event_number).
 :- mode diagnoser_bug_found(in, out) is semidet.
 
 :- pragma export(diagnoser_bug_found(in, out), "MR_DD_diagnoser_bug_found").
 
 diagnoser_bug_found(bug_found(Event), Event).
 
-:- pred diagnoser_symptom_found(diagnoser_response, event_number).
+:- pred diagnoser_symptom_found(diagnoser_response(trace_node_id), 
+	event_number).
 :- mode diagnoser_symptom_found(in, out) is semidet.
 
 :- pragma export(diagnoser_symptom_found(in, out),
@@ -511,21 +529,22 @@ diagnoser_bug_found(bug_found(Event), Event).
 
 diagnoser_symptom_found(symptom_found(Event), Event).
 
-:- pred diagnoser_no_bug_found(diagnoser_response).
+:- pred diagnoser_no_bug_found(diagnoser_response(trace_node_id)).
 :- mode diagnoser_no_bug_found(in) is semidet.
 
 :- pragma export(diagnoser_no_bug_found(in), "MR_DD_diagnoser_no_bug_found").
 
 diagnoser_no_bug_found(no_bug_found).
 
-:- pred diagnoser_require_subtree(diagnoser_response, event_number,
-		sequence_number).
-:- mode diagnoser_require_subtree(in, out, out) is semidet.
+:- pred diagnoser_require_subtree(diagnoser_response(trace_node_id), 
+	event_number, sequence_number, trace_node_id).
+:- mode diagnoser_require_subtree(in, out, out, out) is semidet.
 
-:- pragma export(diagnoser_require_subtree(in, out, out),
+:- pragma export(diagnoser_require_subtree(in, out, out, out),
 		"MR_DD_diagnoser_require_subtree").
 
-diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
+diagnoser_require_subtree(require_subtree(Event, SeqNo, CallPreceding), Event, 
+	SeqNo, CallPreceding).
 
 %-----------------------------------------------------------------------------%
 
@@ -594,32 +613,41 @@ get_trusted_list(Diagnoser, MDBCommandFormat, List) :-
 %-----------------------------------------------------------------------------%
 
 :- pred handle_diagnoser_exception(diagnoser_exception::in,
-	diagnoser_response::out, diagnoser_state(R)::in,
+	diagnoser_response(R)::out, diagnoser_state(R)::in,
 	diagnoser_state(R)::out, io__state::di, io__state::uo) is det.
 
-handle_diagnoser_exception(internal_error(Loc, Msg), Response, D, D) -->
-	io__stderr_stream(StdErr),
-	io__write_strings(StdErr, [
-		"An internal error has occurred; diagnosis will be aborted.  Debugging\n",
-		"message follows:\n",
-		Loc, ": ", Msg, "\n",
-		"Please report bugs to mercury-bugs@cs.mu.oz.au.\n"]),
-	{ Response = no_bug_found }.
+handle_diagnoser_exception(internal_error(Loc, Msg), Response, !Diagnoser, !IO)
+		:-
+	io__stderr_stream(StdErr, !IO),
+	io__write_string(StdErr, "An internal error has occurred; " ++
+		"diagnosis will be aborted.  Debugging\n" ++
+		"message follows:\n" ++ Loc ++ ": " ++ Msg ++ "\n" ++ 
+		"Please report bugs to mercury-bugs@cs.mu.oz.au.\n", !IO),
+	% Reset the analyser, in case it was left in an inconsistent state.
+	reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
+	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+	Response = no_bug_found.
 
-handle_diagnoser_exception(io_error(Loc, Msg), Response, D, D) -->
-	io__stderr_stream(StdErr),
-	io__write_strings(StdErr, [
-		"I/O error: ", Loc, ": ", Msg, ".\n",
-		"Diagnosis will be aborted.\n"]),
-	{ Response = no_bug_found }.
+handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
+	io__stderr_stream(StdErr, !IO),
+	io__write_string(StdErr, "I/O error: "++Loc++": "++Msg++".\n"++
+		"Diagnosis will be aborted.\n", !IO),
+	% Reset the analyser, in case it was left in an inconsistent state.
+	reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
+	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+	Response = no_bug_found.
 
-handle_diagnoser_exception(unimplemented_feature(Feature), Response, D, D) -->
-	io__write_strings([
-		"Sorry, the diagnosis cannot continue because it requires support for\n",
-		"the following: ", Feature, ".\n",
-		"The debugger is a work in progress, and this is not supported in the\n",
-		"current version.\n"]),
-	{ Response = no_bug_found }.
+handle_diagnoser_exception(unimplemented_feature(Feature), Response, 
+		!Diagnoser, !IO) :-
+	io__write_string("Sorry, the diagnosis cannot continue because "++
+		"it requires support for\n"++
+		"the following: "++Feature++".\n"++
+		"The debugger is a work in progress, and this is not "++
+		"supported in the\ncurrent version.\n", !IO),
+	% Reset the analyser, in case it was left in an inconsistent state.
+	reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
+	!:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+	Response = no_bug_found.
 
 %-----------------------------------------------------------------------------%
 

@@ -19,8 +19,7 @@ finish
 dd
 browse 1
 mark 1/2
-browse 1
-mark 1/2
+yes
 yes
 yes
 yes

@@ -1,0 +1,52 @@
+register --quiet
+context none
+echo on
+break a
+c
+f
+dd
+b 1
+mark
+y
+y
+n
+n
+y
+n
+y
+n
+y
+n
+n
+y
+trust binary_search_1
+break b
+delete 0
+c
+f
+dd
+b 1
+mark
+n
+n
+n
+n
+y
+y
+delete 1
+break add1s
+c
+delete 0
+f
+dd
+b 2
+ls
+cdr 9 2
+ls
+cd 1
+mark
+y
+n
+y
+y
+c

@@ -1,127 +1,56 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % File: declarative_analyser.m
-% Author: Mark Brown
+% Authors: Mark Brown, Ian MacLarty
 %
-% This module defines Evaluation Dependency Trees (EDTs), and
-% implements an analysis algorithm which finds bugs in such trees.
+% This module implements some analysis algorithms that search for bugs in
+% Evaluation Dependency Trees (EDTs).  The search algorithms use information
+% provided by the search_space data type which acts as a layer on top of the
+% EDT, storing information relevant to the bug search.  Throughout this module
+% the type variables T and S refer to the types of nodes in the EDT and the
+% store of EDT nodes respectively.
 %
 
-:- module mdb__declarative_analyser.
+:- module mdb.declarative_analyser.
 
 :- interface.
 
-:- import_module mdb__declarative_debugger.
-:- import_module mdb__io_action.
-:- import_module mdbcomp__program_representation.
+:- import_module mdb.declarative_debugger.
+:- import_module mdb.io_action.
+:- import_module mdb.declarative_edt.
 
-:- import_module list, std_util.
-
-	% This typeclass defines how EDTs may be accessed by this module.
-	% An EDT is a tree of nodes, each of which contains a question
-	% about the truth of an assertion.  The children of a node may
-	% not be immediately accessible if the sub-tree beneath that
-	% node is represented implicitly.  In this case, the analyser
-	% must request that it be made explicit before continuing.
-	%
-	% The first argument is intuitively a "store", which maps
-	% references to the things they reference.  The second argument
-	% is the type of trees themselves.  By convention, we use the
-	% names S and T for type variables which are constrained by
-	% mercury_edt.
-	%
-	% By convention, we also use the names S and T in type declarations
-	% where it is *intended* that the type variables be constrained by
-	% mercury_edt.
-	%
-	% (Compare with the similar conventions for annotated_trace/2.)
-	%
-:- typeclass mercury_edt(S, T) where [
-		
-		% Gives the root node of an EDT.
-		%
-	pred edt_root_question(io_action_map, S, T, decl_question(T)),
-	mode edt_root_question(in, in, in, out) is det,
-	
-		% If this node is an e_bug, then find the bug.
-		%
-	pred edt_root_e_bug(io_action_map, S, T, decl_e_bug),
-	mode edt_root_e_bug(in, in, in, out) is det,
-
-		% Gives the list of children of a tree.  If the tree is
-		% represented implicitly, then the procedure fails.
-		%
-	pred edt_children(S, T, list(T)),
-	mode edt_children(in, in, out) is semidet,
-
-		% Given a subterm of a tree, find the mode of that subterm
-		% and the origin of it amongst the parent, siblings or
-		% children.
-		%
-	pred edt_dependency(S, T, arg_pos, term_path, subterm_mode,
-			subterm_origin(T)),
-	mode edt_dependency(in, in, in, in, out, out) is det
-].
-
-:- type subterm_mode
-	--->	subterm_in
-	;	subterm_out.
-
-:- type subterm_origin(T)
-
-			% Subterm came from an output of a child or sibling
-			% call. The first argument records the child or sibling
-			% edt node. The second and third arguments state which
-			% part of which argument is the origin.
-			%
-	--->	output(T, arg_pos, term_path)
-
-			% Subterm came from an input of the parent. The
-			% arguments identify which part of which argument of
-			% the clause head is the origin.
-			%
-	;	input(arg_pos, term_path)
-
-			% Subterm was constructed in the body.  We record
-			% the filename and line number of the primitive
-			% operation (unification or inlined foreign_proc)
-			% that constructed it.
-			%
-	;	primitive_op(string, int)
-
-			% The origin could not be found due to missing
-			% information.
-			%
-	;	not_found.
+:- import_module std_util.
 
 :- type analyser_response(T)
 
 			% There are no suspects left, and no incorrect
 			% nodes have been found.
-			%
 	--->	no_suspects
 	
 			% A suspect who is guilty, along with the evidence
 			% against the suspect.
-			%
 	;	bug_found(decl_bug, decl_evidence(T))
 
-			% The analyser desires answers to any of a list
-			% of queries.
-			%
-	;	oracle_queries(list(decl_question(T)))
+			% The analyser desires an answer to the question.
+	;	oracle_question(decl_question(T))
 
 			% The analyser requires the given implicit sub-tree
 			% to be made explicit.
-			%
-	;	require_explicit(T).
+	;	require_explicit(T)
+	
+			% The analyser would like the oracle to re-ask the user
+			% this question and then for analysis to continue.
+	;	revise(decl_question(T)).
 
 :- type analyser_state(T).
 
 :- pred analyser_state_init(io_action_map::in, analyser_state(T)::out) is det.
+	
+	% Resets the state of the analyser except for the io_action_map.
+:- pred reset_analyser(analyser_state(T)::in, analyser_state(T)::out) is det.
 
 :- pred analyser_state_replace_io_map(io_action_map::in,
 	analyser_state(T)::in, analyser_state(T)::out) is det.
@@ -130,14 +59,14 @@
 	% to diagnose, or a sub-tree that was required to be made
 	% explicit.
 	%
-:- pred start_analysis(S::in, T::in, analyser_response(T)::out,
+:- pred start_or_resume_analysis(S::in, T::in, analyser_response(T)::out,
 	analyser_state(T)::in, analyser_state(T)::out) is det
 	<= mercury_edt(S, T).
 
-	% Continue analysis after the oracle has responded with some
-	% answers.
+	% Continue analysis after the oracle has responded with an
+	% answer.
 	%
-:- pred continue_analysis(S::in, list(decl_answer(T))::in,
+:- pred continue_analysis(S::in, decl_answer(T)::in,
 	analyser_response(T)::out, analyser_state(T)::in,
 	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
@@ -156,371 +85,631 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, bool, exception.
+
+:- import_module mdb.declarative_edt.
+:- import_module mdbcomp.program_representation.
+
+:- import_module bool, exception, string, map, int, counter, array, list.
+
+	% Describes what search strategy is being used by the analyser and the
+	% state of the search.
+	%
+:- type search_mode
+			% Look for the first unknown suspect in a top-down 
+			% fashion, starting at the root.  If no unknown
+			% suspects are found then choose a skipped suspect
+			% to requery.
+	--->	top_down
+
+			%
+			% Follow the subterm all the way to where it's bound or
+			% until it can't be followed any further (for example
+			% when there is a call to a module with no tracing),
+			% and ask a question about the nearest unknown suspect
+			% on the subterm dependency chain.  Then proceed to do
+			% a binary search between this node and the root of the
+			% search space (the binary search will only come into
+			% effect if the oracle asserts the suspect is correct
+			% or inadmissible).  The arguments of this field give
+			% the atom and subterm position in that atom where the
+			% search got up to if it needs to stop to wait for an
+			% explicit subtree to be generated.  The last argument
+			% is the last suspect on the dependency chain whose
+			% status was unknown.  Initially this is no, but as the
+			% sub-term is tracked to where is was initially bound
+			% (which could be above or below the node where it was
+			% marked incorrect), the most recent node through which
+			% the subterm was tracked that has a status of
+			% `unknown' is stored in this field.  This is then used
+			% as the next question if the node that bound the
+			% subterm is trusted or in an excluded part of the
+			% search tree.
+			%
+	;	follow_subterm_end(
+			suspect_id, 
+			arg_pos, 
+			term_path, 
+			maybe(suspect_id)
+		)
+
+			%
+			% Perform a binary search on a path in the search space
+			% between a suspect and an ancestor of the suspect.
+			% The path is represented as an array (the 1st
+			% argument) with the deeper suspect at the end of the
+			% array and its ancestor at the beginning.
+			% The range field gives the inclusive subrange of the
+			% array to search.  last_tested is the index into the
+			% array of the last suspect about which a question was
+			% asked.   
+			%
+	;	binary(
+			suspects	:: array(suspect_id),
+			range		:: pair(int, int),
+			last_tested	:: int
+		).
+
+	% Each search algorithm should respond with either a question
+	% or a request for an explicit subtree to be generated for a suspect 
+	% which is the root of an implicit subtree.
+	% 
+:- type search_response
+	--->	question(suspect_id)
+	;	require_explicit(suspect_id).
 
 	% The analyser state records all of the information that needs
 	% to be remembered across multiple invocations of the analyser.
-	% This includes information about the current set of suspects
-	% in the EDT, that is, the smallest set of EDT nodes which,
-	% together with the prime suspect, is known to contain at least
-	% one bug.
-	%
-	% Note that sometimes we represent a suspect by the question
-	% generated from it.  We can extract the actual suspect from
-	% this question.  We do this in order to avoid recreating the
-	% question repreatedly, for each call to the oracle.
 	%
 :- type analyser_state(T)
 	--->	analyser(
-				% Current incorrect node (initially `no').
-				% This is the most recent node that the
-				% oracle has said is incorrect.
-				%
-			maybe_prime		:: maybe(prime_suspect(T)),
+				
+				% Information about the EDT nodes relevent to 
+				% the bug search.
+			search_space		:: search_space(T),
+				
+				% Previous roots of the search space.  These 
+				% will be revisited if the analysis is
+				% revised (for instance when the user 
+				% overrules a bug found by the analyser).
+			previous_roots		:: list(suspect_id),
+			
+				% This is set to yes when an explicit subtree
+				% needs to be generated.  The suspect_id of the
+				% suspect in the search space is stored here so
+				% we know which node in the search space to
+				% update once the explicit subtree has been
+				% generated.
+			require_explicit :: maybe(suspect_id),
 
-				% Previous prime suspects.
-				%
-			previous		:: list(T),
-
-				% Nodes in the EDT which are the roots of
-				% subtrees which contain suspects.  Every
-				% suspect in the EDT is either in one of
-				% these lists, or is the descendent of a
-				% node in one of these lists.
-				%
-				% Nodes whose descendents are suspects
-				% which are represented implicitly in the
-				% EDT are in the second list.
-				%
-			suspect_roots		:: list(decl_question(T)),
-			suspect_parents		:: list(T),
-
-				% Suspects which, for whatever reason, are
-				% deemed to be particularly suspicious.
-				% For example, the node which is the origin
-				% of a suspicious subterm.
-				%
-			priority_suspects	:: list(decl_question(T)),
+				% The method currently being employed to search
+				% the search space for questions for the 
+				% oracle.
+			search_mode		:: search_mode,
+				
+				% Everytime a search finds a suspect to
+				% ask the oracle about it is put in this field
+				% before asking the oracle, so the analyser
+				% knows how to modify the search space when 
+				% it gets an answer.
+			last_search_question	:: maybe(suspect_id),
 
 				% This field allows us to map I/O action
 				% numbers to the actions themselves.
 			io_action_map		:: io_action_map,
-
+			
 				% This field is present only to make it easier
 				% to debug the dependency tracking algorithm;
 				% if bound to yes, it records the result of
 				% the invocation of that algorithm on the last
 				% analysis step.
-				%
 			debug_origin		:: maybe(subterm_origin(T))
 	).
 
-analyser_state_init(IoActionMap,
-	analyser(no, [], [], [], [], IoActionMap, no)).
+analyser_state_init(IoActionMap, Analyser) :-
+	Analyser = analyser(empty_search_space, [], no, top_down, no, 
+		IoActionMap, no).
 
-analyser_state_replace_io_map(IoActionMap, Analyser0, Analyser) :-
-	Analyser = Analyser0 ^ io_action_map := IoActionMap.
+reset_analyser(!Analyser) :-
+	!:Analyser = analyser(empty_search_space, [], no, top_down, no, 
+		!.Analyser ^ io_action_map, no).
+
+analyser_state_replace_io_map(IoActionMap, !Analyser) :-
+	!:Analyser = !.Analyser ^ io_action_map := IoActionMap.
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
-start_analysis(Store, Tree, Response, Analyser0, Analyser) :-
-	get_all_prime_suspects(Analyser0, OldPrimes),
-	IoActionMap = Analyser0 ^ io_action_map,
-	edt_root_question(IoActionMap, Store, Tree, Question),
-	Analyser = analyser(no, OldPrimes, [Question], [], [], IoActionMap,
-		no),
-	decide_analyser_response(Store, Analyser, Response).
-
-continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
-	list__foldl(process_answer(Store), Answers, Analyser0, Analyser),
-	decide_analyser_response(Store, Analyser, Response).
-
-:- pred process_answer(S::in, decl_answer(T)::in, analyser_state(T)::in,
-	analyser_state(T)::out) is det <= mercury_edt(S, T).
-
-process_answer(Store, truth_value(Suspect, yes), Analyser0, Analyser) :-
-	assert_suspect_is_correct(Store, Suspect, Analyser0, Analyser).
-
-process_answer(Store, truth_value(Suspect, no), Analyser0, Analyser) :-
-	assert_suspect_is_wrong(Store, Suspect, Analyser0, Analyser).
-
-process_answer(Store, Answer, Analyser0, Analyser) :-
-	Answer = suspicious_subterm(Suspect, ArgPos, TermPath),
-	edt_dependency(Store, Suspect, ArgPos, TermPath, SubtermMode, Origin),
-	%
-	% If the selected subterm has mode `in' then we infer that the node
-	% is correct, otherwise we infer that it is wrong.
-	%
+start_or_resume_analysis(Store, Tree, Response, !Analyser) :-
+	MaybeRequireExplicit = !.Analyser ^ require_explicit,
 	(
-		SubtermMode = subterm_in,
-		assert_suspect_is_correct(Store, Suspect, Analyser0, Analyser1)
+		MaybeRequireExplicit = yes(SuspectId),
+		incorporate_explicit_subtree(SuspectId, Tree, 
+			!.Analyser ^ search_space, SearchSpace),
+		!:Analyser = !.Analyser ^ search_space := SearchSpace,
+		!:Analyser = !.Analyser ^ require_explicit := no,
+		decide_analyser_response(Store, Response, !Analyser)
 	;
-		SubtermMode = subterm_out,
-		assert_suspect_is_wrong(Store, Suspect, Analyser0, Analyser1)
-	),
-	Analyser2 = Analyser1 ^ debug_origin := yes(Origin),
-	%
-	% If the origin of the subterm was an output of one of the children,
-	% we flag that child as a priority suspect.  At the moment, we only
-	% follow the suspicious subterm down one level, and we first make
-	% sure that the origin is one of the existing suspects.  In future,
-	% we intend to implement more sophisticated search strategies which
-	% make more use of the term dependencies.
-	%
-	% If the origin of the subterm was an input of the parent, we can't
-	% do anything useful yet.  This is because, since we step down one
-	% level at a time, the parent node is the prime suspect and is thus
-	% known to be wrong.  Therefore we can't infer anything useful from
-	% a suspicious input.
-	%
-	(
-		Origin = output(OriginSuspect, _, _),
-		some [S] (
-			list__member(S, Analyser2 ^ suspect_roots),
-			OriginSuspect = get_decl_question_node(S)
-		)
-	->
-		IoActionMap = Analyser2 ^ io_action_map,
-		edt_root_question(IoActionMap, Store, OriginSuspect,
-			OriginQuestion),
-		Analyser = Analyser2 ^ priority_suspects := [OriginQuestion]
-	;
-		Analyser = Analyser2
+		MaybeRequireExplicit = no,
+		%
+		% An explicit subtree was not requested, so this is the 
+		% start of a new declarative debugging session.
+		%
+		reset_analyser(!Analyser),
+		initialise_search_space(Tree, SearchSpace),
+		!:Analyser = !.Analyser ^ search_space := SearchSpace,
+		root_det(SearchSpace, RootId),
+		!:Analyser = !.Analyser ^ last_search_question := yes(RootId),
+		edt_question(!.Analyser ^ io_action_map, Store, Tree, 
+			Question),
+		Response = revise(Question)
 	).
 
-revise_analysis(Store, Response, Analyser0, Analyser) :-
-	IoActionMap = Analyser0 ^ io_action_map,
+continue_analysis(Store, Answer, Response, !Analyser) :-
 	(
-		Analyser0 ^ maybe_prime = yes(Prime0)
-	->
-		prime_suspect_get_suspect(Prime0, Suspect0),
-		edt_root_question(IoActionMap, Store, Suspect0, Question)
+		!.Analyser ^ last_search_question = yes(SuspectId),
+		process_answer(Store, Answer, SuspectId, !Analyser)
 	;
-		throw(internal_error("revise_analysis", "no prime suspect"))
+		!.Analyser ^ last_search_question = no,
+		throw(internal_error("continue_analysis", 
+			"received answer to unasked question"))
 	),
-	Previous0 = Analyser0 ^ previous,
+	!:Analyser = !.Analyser ^ last_search_question := no,
+	decide_analyser_response(Store, Response, !Analyser).
+
+:- pred process_answer(S::in, decl_answer(T)::in, suspect_id::in, 
+	analyser_state(T)::in, analyser_state(T)::out) 
+	is det <= mercury_edt(S, T).
+
+process_answer(_, skip(_), SuspectId, !Analyser) :-
+	skip_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
+	!:Analyser = !.Analyser ^ search_space := SearchSpace.
+
+process_answer(_, ignore(_), SuspectId, !Analyser) :-
+	ignore_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
+	!:Analyser = !.Analyser ^ search_space := SearchSpace.
+
+process_answer(_, truth_value(_, correct), SuspectId, !Analyser) :-
+	assert_suspect_is_correct(SuspectId, !.Analyser ^ search_space, 
+		SearchSpace),
+	!:Analyser = !.Analyser ^ search_space := SearchSpace.
+
+process_answer(_, truth_value(_, inadmissible), SuspectId, !Analyser) :-
+	assert_suspect_is_inadmissible(SuspectId, !.Analyser ^ search_space, 
+		SearchSpace),
+	!:Analyser = !.Analyser ^ search_space := SearchSpace.
+
+process_answer(_, truth_value(_, erroneous), SuspectId, !Analyser) :-
+	assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space, 
+		SearchSpace),
+	PreviousRoots = !.Analyser ^ previous_roots,
+	!:Analyser = !.Analyser ^ previous_roots := [SuspectId| PreviousRoots],
+	!:Analyser = !.Analyser ^ search_space := SearchSpace.
+
+process_answer(Store, suspicious_subterm(Node, ArgPos, TermPath), SuspectId, 
+		!Analyser) :-
+	% 
+	% XXX The following 2 lines just done so that debugging info can be
+	% printed for tests run when declarative_analyser.m not compiled with
+	% tracing (so can't use dd_dd command in mdb).  Should be removed when
+	% edt_dependency becomes stable enough.
+	%
+	edt_dependency(Store, Node, ArgPos, TermPath, _, DebugOrigin),
+	!:Analyser = !.Analyser ^ debug_origin := yes(DebugOrigin),
+
+	edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
 	(
-		Previous0 = [],
-		Previous = [],
-		MaybePrime = no,
-		SuspectRoots = [Question],
-		SuspectParents = [],
-		PrioritySuspects = []
+		Mode = subterm_in,
+		assert_suspect_is_inadmissible(SuspectId, 
+			!.Analyser ^ search_space, SearchSpace)
 	;
-		Previous0 = [MostRecent | Previous],
-		create_prime_suspect(MostRecent, Prime),
-		MaybePrime = yes(Prime),
+		Mode = subterm_out,
+		assert_suspect_is_erroneous(SuspectId, 
+			!.Analyser ^ search_space, SearchSpace),
+		!:Analyser = !.Analyser ^ previous_roots := 
+			[SuspectId | !.Analyser ^ previous_roots]
+	),
+	!:Analyser = !.Analyser ^ search_space := SearchSpace,
+	!:Analyser = !.Analyser ^ search_mode := follow_subterm_end(SuspectId,
+		ArgPos, TermPath, no).
+
+revise_analysis(Store, Response, !Analyser) :-
+	%
+	% The head of previous_roots in the analyser is just the
+	% current root of the search space, so we make the second element in
+	% previous_roots the new root, make everything below it
+	% unknown and re-query the current root.  If there's only one previous
+	% root (the current root) then we make it and all its descendents
+	% unknown and re-query it.  If there are no previous roots then we give
+	% up the search.
+	%
+	(
+		!.Analyser ^ previous_roots = [Current | PreviousRoots],
 		(
-			edt_children(Store, MostRecent, Children)
-		->
-			list__map(edt_root_question(IoActionMap, Store),
-				Children, SuspectRoots),
-			SuspectParents = []
+			PreviousRoots = [LastRoot | _],
+			revise_suspect(LastRoot, !.Analyser ^ search_space,
+				SearchSpace0),
+			assert_suspect_is_erroneous(LastRoot, SearchSpace0,
+				SearchSpace1)
 		;
-			SuspectRoots = [],
-			SuspectParents = [MostRecent]
+			PreviousRoots = [],
+			revise_suspect(Current, !.Analyser ^ search_space,
+				SearchSpace1)
 		),
-		PrioritySuspects = [Question]
-	),
-	Analyser = ((((Analyser0
-			^ maybe_prime := MaybePrime)
-			^ previous := Previous)
-			^ suspect_roots := SuspectRoots)
-			^ suspect_parents := SuspectParents)
-			^ priority_suspects := PrioritySuspects,
-	decide_analyser_response(Store, Analyser, Response).
-
-%-----------------------------------------------------------------------------%
-
-:- pred assert_suspect_is_correct(S::in, T::in, analyser_state(T)::in,
-	analyser_state(T)::out) is det <= mercury_edt(S, T).
-
-assert_suspect_is_correct(_Store, Suspect, Analyser0, Analyser) :-
-	Suspects0 = Analyser0 ^ suspect_roots,
-	delete_suspect(Suspects0, Suspect, Suspects),
-	Analyser1 = Analyser0 ^ suspect_roots := Suspects,
-	PrioritySuspects0 = Analyser1 ^ priority_suspects,
-	delete_suspect(PrioritySuspects0, Suspect, PrioritySuspects),
-	Analyser2 = Analyser1 ^ priority_suspects := PrioritySuspects,
-	add_correct_evidence(Suspect, Analyser2, Analyser).
-
-:- pred assert_suspect_is_wrong(S::in, T::in, analyser_state(T)::in,
-	analyser_state(T)::out) is det <= mercury_edt(S, T).
-
-assert_suspect_is_wrong(Store, Suspect, Analyser0, Analyser) :-
-	get_all_prime_suspects(Analyser0, OldPrimes),
-	(
-		edt_children(Store, Suspect, Children)
-	->
-		create_prime_suspect(Suspect, Prime),
-		MaybePrime = yes(Prime),
-		IoActionMap = Analyser0 ^ io_action_map,
-		list__map(edt_root_question(IoActionMap, Store), Children,
-			SuspectRoots),
-		SuspectParents = []
+		edt_question(!.Analyser ^ io_action_map, Store, 
+			get_edt_node(SearchSpace1, Current), Question),
+		Response = revise(Question),
+		!:Analyser = !.Analyser ^ search_space := SearchSpace1,
+		!:Analyser = !.Analyser ^ previous_roots := PreviousRoots,
+		!:Analyser = !.Analyser ^ search_mode := top_down,
+		!:Analyser = !.Analyser ^ last_search_question := yes(Current)
 	;
-			% The real suspects cannot be found, so we are
-			% going to need to request a subtree.  In the
-			% meantime, we leave the prime suspect field empty.
-			% The root of the requested subtree will become the
-			% prime suspect when the analyser is next called.
-			%
-		MaybePrime = no,
-		SuspectRoots = [],
-		SuspectParents = [Suspect]
-	),
-	Analyser = analyser(MaybePrime, OldPrimes, SuspectRoots,
-			SuspectParents, [], Analyser0 ^ io_action_map, no).
+		!.Analyser ^ previous_roots = [],
+		Response = no_suspects
+	).
 
-:- pred decide_analyser_response(S::in, analyser_state(T)::in,
+:- pred decide_analyser_response(S::in, analyser_response(T)::out,
+	analyser_state(T)::in, analyser_state(T)::out) 
+	is det <= mercury_edt(S, T).
+
+decide_analyser_response(Store, Response, !Analyser) :-
+	SearchSpace0 = !.Analyser ^ search_space,
+	root_det(SearchSpace0, RootId),
+	(
+		no_more_questions(Store, SearchSpace0, SearchSpace1,
+			CorrectDescendents, InadmissibleChildren)
+	->
+		(
+			suspect_erroneous(SearchSpace1, RootId)
+		->
+			bug_response(Store, !.Analyser ^ io_action_map, 
+				SearchSpace1, RootId, 
+				[RootId | CorrectDescendents], 
+				InadmissibleChildren, Response),
+			!:Analyser = !.Analyser ^ search_space := SearchSpace1
+				
+		;
+			revise_analysis(Store, Response, !Analyser)
+		)
+	;
+		% Search the search space for questions for the oracle.
+		search(Store, SearchSpace0, SearchSpace, 
+			!.Analyser ^ search_mode, NewMode, SearchResponse),
+		!:Analyser = !.Analyser ^ search_mode := NewMode,
+		!:Analyser = !.Analyser ^ search_space := SearchSpace,
+		handle_search_response(Store, SearchResponse, !Analyser,
+			Response)
+	).
+
+:- pred handle_search_response(S::in, search_response::in, 
+	analyser_state(T)::in, analyser_state(T)::out, 
 	analyser_response(T)::out) is det <= mercury_edt(S, T).
 
-decide_analyser_response(Store, Analyser, Response) :-
-	%
-	% If any subtrees need to be made explicit, then request this
-	% for the first one.
-	%
-	% Otherwise, check whether there are any suspects at all.  If not,
-	% we may have found a bug.
-	%
-	% Otherwise, ask the oracle about the priority suspects and the
-	% ordinary suspects, in that order.
-	%
+handle_search_response(Store, question(SuspectId), !Analyser, Response) :-
+	SearchSpace = !.Analyser ^ search_space,
+	Node = get_edt_node(SearchSpace, SuspectId),
+	edt_question(!.Analyser ^ io_action_map, Store, Node,
+		OracleQuestion),
 	(
-		Analyser ^ suspect_parents = [RequiredTree | _]
-	->
-		Response = require_explicit(RequiredTree)
-	;
-		Analyser ^ suspect_roots = []
-	->
-		%
-		% If there is a prime suspect, it is the bug.  Otherwise,
-		% we throw up our hands and end the analysis.
-		%
 		(
-			Analyser ^ maybe_prime = yes(Prime)
-		->
-			IoActionMap = Analyser ^ io_action_map,
-			prime_suspect_get_e_bug(IoActionMap, Store, Prime,
-				EBug),
-			prime_suspect_get_evidence(IoActionMap, Store, Prime,
-				Evidence),
-			Response = bug_found(e_bug(EBug), Evidence)
-		;
-			Response = no_suspects
+			suspect_unknown(SearchSpace, SuspectId) 
+		; 
+			suspect_skipped(SearchSpace, SuspectId)
 		)
-	;
-		list__append(Analyser ^ priority_suspects,
-				Analyser ^ suspect_roots, Questions),
-		Response = oracle_queries(Questions)
-	).
-
-	% Make a list of previous prime suspects, and include the current
-	% one if it exists.
-	%
-:- pred get_all_prime_suspects(analyser_state(T), list(T)).
-:- mode get_all_prime_suspects(in, out) is det.
-
-get_all_prime_suspects(Analyser, OldPrimes) :-
-	(
-		Analyser ^ maybe_prime = yes(Prime)
 	->
-		prime_suspect_get_suspect(Prime, Suspect),
-		OldPrimes = [Suspect | Analyser ^ previous]
+		Response = oracle_question(OracleQuestion)
 	;
-		OldPrimes = Analyser ^ previous
-	).
-
-:- pred delete_suspect(list(decl_question(T)), T, list(decl_question(T))).
-:- mode delete_suspect(in, in, out) is det.
-
-delete_suspect(Suspects0, Target, Suspects) :-
-	Filter = (pred(S::in) is semidet :-
-			Target \= get_decl_question_node(S)
-		),
-	list__filter(Filter, Suspects0, Suspects).
-
-:- pred add_correct_evidence(T, analyser_state(T), analyser_state(T)).
-:- mode add_correct_evidence(in, in, out) is det.
-
-add_correct_evidence(Suspect, Analyser0, Analyser) :-
-	MaybePrime0 = Analyser0 ^ maybe_prime,
-	(
-		MaybePrime0 = yes(Prime0),
-		prime_suspect_add_evidence(Prime0, Suspect, yes, Prime),
-		MaybePrime = yes(Prime)
+		suspect_ignored(SearchSpace, SuspectId)
+	->
+		% Searches should not respond with questions about suspects we
+		% already know to be trusted.
+		throw(internal_error("handle_search_response",
+			"search responded with query about ignored suspect"))
 	;
-		MaybePrime0 = no,
-		MaybePrime = no
+		% We already known something about this suspect, but the search
+		% wants the oracle to be requeried.  This may happen if the
+		% search thinks the user might have answered the question
+		% incorrectly before.
+		Response = revise(OracleQuestion)
 	),
-	Analyser = Analyser0 ^ maybe_prime := MaybePrime.
+	!:Analyser = !.Analyser ^ last_search_question := yes(SuspectId).
+
+handle_search_response(_, require_explicit(SuspectId), !Analyser, 
+		Response) :-
+	!:Analyser = !.Analyser ^ require_explicit := yes(SuspectId),
+	Response = require_explicit(get_edt_node(!.Analyser ^ search_space,
+		SuspectId)).
+
+	% bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence, 
+	%	InadmissibleChildren, Response)
+	% Create a bug analyser-response using the given Evidence.  If 
+	% InadmissibleChildren isn't empty then an i_bug will be created,
+	% otherwise an e_bug will be created.
+	%
+:- pred bug_response(S::in, io_action_map::in, search_space(T)::in, 
+	suspect_id::in, list(suspect_id)::in, list(suspect_id)::in,
+	analyser_response(T)::out) is det <= mercury_edt(S, T).
+
+bug_response(Store, IoActionMap, SearchSpace, BugId, Evidence, 
+		InadmissibleChildren, Response) :-
+	BugNode = get_edt_node(SearchSpace, BugId),
+	(
+		InadmissibleChildren = [InadmissibleChild | _],
+		edt_get_i_bug(Store, BugNode, 
+			get_edt_node(SearchSpace, InadmissibleChild), IBug),
+		Bug = i_bug(IBug)
+	;
+		InadmissibleChildren = [],
+		edt_get_e_bug(IoActionMap, Store, BugNode, EBug),
+		Bug = e_bug(EBug)
+	),
+	EDTNodes = list.map(get_edt_node(SearchSpace), Evidence),
+	list.map(edt_question(IoActionMap, Store), EDTNodes,
+		EvidenceAsQuestions),
+	Response = bug_found(Bug, EvidenceAsQuestions).
 
 %-----------------------------------------------------------------------------%
 
-:- type prime_suspect(T)
-	--->	prime_suspect(
-				% Incorrect node.
-				%
-			T,
+	% Search the search space for a question for the oracle.  The search
+	% should respond with a question about a suspect, or a request for an
+	% explicit subree to be generated.  A new search mode is returned so
+	% that the search algorithm being used can remember its current state
+	% next time round.
+	% 
+:- pred search(S::in, search_space(T)::in, search_space(T)::out, 
+	search_mode::in, search_mode::out, search_response::out) 
+	is det <= mercury_edt(S, T).
 
-				% Evidence: the oracle said these nodes
-				% were either correct or inadmissible.
-				%
-			list(T),
+search(Store, !SearchSpace, top_down, NewMode, Response) :-
+	top_down_search(Store, !SearchSpace, Response, NewMode).
 
-				% Earliest inadmissible child, if there
-				% have been any at all.  This child
-				% is also included in the list of
-				% evidence.
-				%
-			maybe(T)
-		).
+search(Store, !SearchSpace, follow_subterm_end(SuspectId, ArgPos, TermPath,	
+		LastUnknown), NewMode, Response) :-
+	follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, 
+		ArgPos, TermPath, NewMode, Response).
 
-	% Create a prime suspect from a suspect.
+search(Store, !SearchSpace, binary(PathArray, Top - Bottom, LastTested),
+		NewMode, Response) :-
+	binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, 
+		NewMode, Response).
+
+:- pred top_down_search(S::in, search_space(T)::in, search_space(T)::out,
+	search_response::out, search_mode::out) is det <= mercury_edt(S, T).
+
+top_down_search(Store, !SearchSpace, Response, NewMode) :-
+	root_det(!.SearchSpace, RootId),
+	(
+		first_unknown_descendent(Store, RootId, 
+			!.SearchSpace, SearchSpace1, MaybeDescendent)
+	->
+		SearchSpace1 = !:SearchSpace,
+		(
+			MaybeDescendent = yes(Unknown),
+			Response = question(Unknown),
+			NewMode = top_down
+		;
+			MaybeDescendent = no,
+			(
+				choose_skipped_suspect(!.SearchSpace,
+					SkippedSuspect)
+			->
+				Response = question(SkippedSuspect),
+				NewMode = top_down
+			;
+				throw(internal_error("top_down_search",
+					"no unknown or skipped suspects"))
+			)
+		)
+	;
+		%
+		% An explicit subtree is required, so pick an implicit root
+		% to make explicit.  pick_implicit_root/3 will choose an
+		% implicit root that is a descendent of the root id of the 
+		% search space.  There is no point in making an implicit root
+		% that is not a descendent of the root id explicit, since
+		% all suspects above the root id have been excluded from the
+		% bug search.  pick_implicit_root will also not choose an
+		% implicit root that is a descendent of a correct or
+		% inadmissible node, for the same reason.
+		% 
+		(
+			pick_implicit_root(Store, !.SearchSpace, ImplicitRoot)
+		->
+			Response = require_explicit(ImplicitRoot),
+			NewMode = top_down
+		;
+			throw(internal_error("top_down_search",
+				"first_unknown_descendent requires an explicit"
+				++" subtree to be generated, but "++
+				"pick_implicit_root couldn't find an implicit"
+				++" root to generate an explicit subtree from"))
+		)
+	).
+
+:- pred follow_subterm_end_search(S::in, search_space(T)::in,
+	search_space(T)::out, maybe(suspect_id)::in, suspect_id::in,
+	arg_pos::in, term_path::in, search_mode::out, search_response::out) 
+	is det <= mercury_edt(S, T).
+
+follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos, 
+		TermPath, NewMode, SearchResponse) :-
+	find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
+		FindOriginResponse),
+	root_det(!.SearchSpace, RootId),
+	(
+		FindOriginResponse = primitive_op(_, _),
+		%
+		% XXX In future the filename and line number of the primitive
+		% operation could be printed out if the node in which the
+		% primitive operation occured turned out to be a bug.
+		%
+		(
+			LastUnknown = yes(Unknown),
+			SearchResponse = question(Unknown),
+			setup_binary_search(!.SearchSpace, RootId, Unknown,
+				NewMode)
+		;
+			LastUnknown = no,
+			top_down_search(Store, !SearchSpace, 
+				SearchResponse, NewMode)
+		)
+	;
+		FindOriginResponse = not_found,
+		(
+			LastUnknown = yes(Unknown),
+			SearchResponse = question(Unknown),
+			setup_binary_search(!.SearchSpace, RootId, Unknown,
+				NewMode)
+		;
+			LastUnknown = no,
+			top_down_search(Store, !SearchSpace,
+				SearchResponse, NewMode)
+		)
+	;
+		FindOriginResponse = require_explicit,
+		SearchResponse = require_explicit(SuspectId),
+		%
+		% Record the current position of the search so 
+		% we can continue where we left off once the explicit
+		% subtree has been generated.
+		%
+		NewMode = follow_subterm_end(SuspectId, ArgPos, TermPath,
+			LastUnknown)
+	;
+		FindOriginResponse = origin(OriginId, OriginArgPos, 
+			OriginTermPath),
+		(
+			suspect_unknown(!.SearchSpace, OriginId)
+		->
+			NewLastUnknown = yes(OriginId)
+		;
+			NewLastUnknown = LastUnknown
+		),
+		%
+		% This recursive call will not lead to an infinite loop because
+		% eventually either the sub-term will be bound (and
+		% find_subterm_origin will respond with primitive_op/2) or
+		% there will be insufficient tracing information to continue
+		% (and find_subterm_origin will respond with not_found).
+		%
+		follow_subterm_end_search(Store, !SearchSpace, 
+			NewLastUnknown, OriginId, OriginArgPos,
+			OriginTermPath, NewMode, SearchResponse)
+	).
+
+	% setup_binary_search(SearchSpace, TopId, BottomId, Response, 
+	%	SearchMode).
+	% Sets up the search mode to do a binary search between BottomId
+	% and TopId. 
 	%
-:- pred create_prime_suspect(T, prime_suspect(T)).
-:- mode create_prime_suspect(in, out) is det.
+:- pred setup_binary_search(search_space(T)::in, suspect_id::in,
+	suspect_id::in, search_mode::out) is det.
 
-create_prime_suspect(Suspect, Prime) :-
-	Prime = prime_suspect(Suspect, [], no).
+setup_binary_search(SearchSpace, TopId, BottomId, SearchMode) :-
+	(
+		get_path(SearchSpace, BottomId, TopId, Path)
+	->
+		PathArray = array.from_list(Path),
+		array.bounds(PathArray, Top, Bottom),
+		SearchMode = binary(PathArray, Top - Bottom, Bottom)
+	;
+		throw(internal_error("setup_binary_search", 
+			"TopId not an ancestor of BottomId"))
+	).
 
-:- pred prime_suspect_get_suspect(prime_suspect(T), T).
-:- mode prime_suspect_get_suspect(in, out) is det.
+:- pred binary_search(S::in, array(suspect_id)::in, int::in, int::in, int::in,
+	search_space(T)::in, search_space(T)::out, search_mode::out,
+	search_response::out) is det <= mercury_edt(S, T).
 
-prime_suspect_get_suspect(prime_suspect(Suspect, _, _), Suspect).
-
-:- pred prime_suspect_get_e_bug(io_action_map::in, S::in, prime_suspect(T)::in,
-	decl_e_bug::out) is det <= mercury_edt(S, T).
-
-prime_suspect_get_e_bug(IoActionMap, Store, Prime, EBug) :-
-	prime_suspect_get_suspect(Prime, Suspect),
-	edt_root_e_bug(IoActionMap, Store, Suspect, EBug).
-
-	% Get the evidence that implicates the prime suspect.
+binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace, NewMode, 
+		Response) :-
+	SuspectId = PathArray ^ elem(LastTested),
 	%
-:- pred prime_suspect_get_evidence(io_action_map, S, prime_suspect(T),
-	decl_evidence(T)) <= mercury_edt(S, T).
-:- mode prime_suspect_get_evidence(in, in, in, out) is det.
-
-prime_suspect_get_evidence(IoActionMap, Store, Prime, Evidence) :-
-	Prime = prime_suspect(Node, Children, _),
-	Pred = edt_root_question(IoActionMap, Store),
-	list__map(Pred, [Node | Children], Evidence).
-
-	% Add to the evidence against the prime suspect a child who
-	% is deemed correct or inadmissible.
-	% This predicate will be more interesting when decl_truth
-	% has three values.
+	% Check what the result of the query about LastTested was and adjust
+	% the range appropriately.
 	%
-:- pred prime_suspect_add_evidence(prime_suspect(T), T, decl_truth,
-		prime_suspect(T)).
-:- mode prime_suspect_add_evidence(in, in, in, out) is det.
+	(
+		% The oracle answered `erroneous'.
+		suspect_in_excluded_complement(!.SearchSpace, SuspectId)
+	->
+		NewTop = LastTested + 1,
+		NewBottom = Bottom
+	;
+		% The oracle answered `correct' or `inadmissible'
+		suspect_in_excluded_subtree(!.SearchSpace, SuspectId)
+	->
+		NewTop = Top,
+		NewBottom = LastTested - 1
+	;
+		% The suspect is trusted(ignored) or was skipped.
+		NewTop = Top,
+		NewBottom = Bottom
+	),
+	(
+		NewTop > NewBottom
+	->
+		% Revert to top down search when binary search is over.
+		top_down_search(Store, !SearchSpace, Response, NewMode)
+	;
+		(
+			find_unknown_closest_to_middle(!.SearchSpace, 
+				PathArray, NewTop, NewBottom,
+				UnknownClosestToMiddle)
+		->
+			NewMode = binary(PathArray, NewTop - NewBottom, 
+				UnknownClosestToMiddle),
+			Response = question(PathArray ^ elem(
+				UnknownClosestToMiddle))
+		;
+			% No unknown suspects on the path, so revert to
+			% top down search.
+			top_down_search(Store, !SearchSpace, Response, 
+				NewMode)
+		)
+	).
 
-prime_suspect_add_evidence(Prime0, Suspect, yes, Prime) :-
-	Prime0 = prime_suspect(S, Evidence0, M),
-	Evidence = [Suspect | Evidence0],
-	Prime = prime_suspect(S, Evidence, M).
+	% find_unknown_closest_to_middle(SearchSpace, PathArray, Top, Bottom, 
+	%	Unknown).
+	% Unknown is the position in PathArray of the suspect which has status
+	% unknown and is closest to halfway between From and To which are 
+	% also indexes into PathArray.  Fails if there are no unknown suspects
+	% between From and To (inclusive).
+	%
+:- pred find_unknown_closest_to_middle(search_space(T)::in, 
+	array(suspect_id)::in, int::in, int::in, int::out) is semidet.
 
-prime_suspect_add_evidence(_, _, no, _) :-
-	throw(internal_error("prime_suspect_add_evidence", "not evidence")).
+find_unknown_closest_to_middle(SearchSpace, PathArray, Top, Bottom, Unknown) :-
+	Middle = Top + ((Bottom - Top) // 2),
+	find_unknown_closest_to_range(SearchSpace, PathArray, Top, Bottom, 
+		Middle, Middle, Unknown).
 
+	% find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, 
+	%	OuterBottom, InnerTop, InnerBottom, Unknown)
+	% Unknown is a position in PathArray between OuterTop and OuterBottom
+	% (inclusive) where the status of the suspect is unknown. The preferred
+	% position to return is as close as possible to InnerTop and
+	% InnerBottom, with the proviso that elements between InnerTop and
+	% InnerBottom (exclusive) aren't tested, since the caller has already
+	% found they were not unknown.
+	%
+:- pred find_unknown_closest_to_range(search_space(T)::in, 
+	array(suspect_id)::in, int::in, int::in, int::in, int::in, int::out) 
+	is semidet.
+
+find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, OuterBottom,
+		InnerTop, InnerBottom, Unknown) :-
+	InnerTop =< InnerBottom,
+	( OuterTop =< InnerTop ; InnerBottom =< OuterBottom ),
+	(
+		OuterTop =< InnerTop, 
+		suspect_unknown(SearchSpace, PathArray ^ elem(InnerTop))
+	->
+		Unknown = InnerTop
+	;
+		InnerBottom =< OuterBottom,
+		suspect_unknown(SearchSpace, PathArray ^ elem(InnerBottom))
+	->
+		Unknown = InnerBottom
+	;
+		find_unknown_closest_to_range(SearchSpace, PathArray,
+			OuterTop, OuterBottom, InnerTop - 1, InnerBottom + 1,
+			Unknown)
+	).	

@@ -42,11 +42,15 @@ q(27)
 Is this a bug? abort
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
 mdb> dd
+p(27)
+Valid? [no] n
 Found incorrect contour:
 q(27)
 Is this a bug? a
        5:      2  2 EXIT pred confirm_abort.p/1-0 (det) confirm_abort.m:15 (confirm_abort.m:8)
 mdb> dd
+p(27)
+Valid? [no] n
 Found incorrect contour:
 q(27)
 Is this a bug? y

@@ -1,0 +1,20 @@
+register --quiet
+untrust 0
+context none
+echo on
+step
+finish
+dd
+b 2
+mark
+n
+n
+y
+y
+y
+n
+b 1
+mark
+n
+y
+continue

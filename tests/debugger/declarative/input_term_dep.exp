@@ -25,8 +25,9 @@ pa(5)
 Valid? yes
 pb(8)
 Valid? yes
-Found incorrect contour:
-p(5, 8, 13)
+Found inadmissible call:
+Parent p(_, _, _)
+Call pc(5, _)
 Is this a bug? yes
       E3:     C2 EXIT pred input_term_dep.p/3-0 (det) input_term_dep.m:33 (input_term_dep.m:22)
 mdb> continue
@@ -40,12 +41,11 @@ mdb> dd
 q([[2, 3], [], [1]])
 Valid? browse 1
 browser> mark 1/2
-qc([[2, ...], [], [1]], [[2, ...], [], [1]])
-Valid? browse 1
-browser> mark 1/2
 qa([[1], [2, 3]])
 Valid? yes
 qb([])
+Valid? yes
+qc([[2, ...], [], [1]], [[2, ...], [], [1]])
 Valid? yes
 Found incorrect contour:
 q([[2, 3], [], [1]])
@@ -67,8 +67,9 @@ ra(1, 3)
 Valid? yes
 rb(3)
 Valid? yes
-Found incorrect contour:
-r(1, 33)
+Found inadmissible call:
+Parent r(1, _)
+Call rc(3, _)
 Is this a bug? yes
       E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:111 (input_term_dep.m:93)
 mdb> continue
@@ -90,8 +91,9 @@ sa(1, 7)
 Valid? yes
 sb(7)
 Valid? yes
-Found incorrect contour:
-s(1)
+Found inadmissible call:
+Parent s(1)
+Call sc(7)
 Is this a bug? yes
       E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:146 (input_term_dep.m:135)
 mdb> continue

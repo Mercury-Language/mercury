@@ -32,7 +32,7 @@ MCFLAGS-no_warn_singleton =	--halt-at-warn
 MCFLAGS-nondet_copy_out =	--no-inlining --nondet-copy-out
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
-MCFLAGS-split_c_files	=	--trace deep
+MCFLAGS-split_c_files	=	--trace rep
 MCFLAGS-trans_intermod_user_equality = --intermodule-optimization \
 				--transitive-intermodule-optimization
 MCFLAGS-trans_intermod_user_equality2 = --intermodule-optimization \
@@ -44,7 +44,7 @@ MCFLAGS-type_spec	=	--user-guided-type-specialization
 MCFLAGS-existential_types_test = --infer-all
 MCFLAGS-existential_float = --infer-all
 MCFLAGS-user_defined_equality	= --infer-all
-MCFLAGS-parse		=	--trace deep
+MCFLAGS-parse		=	--trace rep
 MCFLAGS-unused_float_box_test =	--infer-all
 
 MCFLAGS-target_mlobjs	= 	--pre-link-command "mmake target_mlobjs_c.o"
@@ -61,7 +61,7 @@ MLOBJS-target_mlobjs	=	target_mlobjs_c.o
 # tracking it down.
 MLFLAGS-mode_choice = --no-strip
 
-# parse.m gets compiled with --trace deep and linked with --trace because
+# parse.m gets compiled with --trace rep and linked with --trace because
 # it is a regression test for a bug that only showed up with tracing enabled.
 # It needs to be compiled with --no-pic-reg, since it is linked
 # statically.  I have no idea why it gets linked statically.

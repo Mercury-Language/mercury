@@ -1,0 +1,23 @@
+register --quiet
+context none
+echo on
+trust int
+trust ignore_1
+step
+finish
+dd
+b 1
+mark
+n
+y
+break 15
+continue
+finish
+dd
+n
+y
+y
+y
+y
+y
+quit -y

@@ -1,0 +1,18 @@
+register --quiet
+context none
+echo on
+trust int
+trust list
+trust std_util
+break p
+continue
+finish
+dd
+no
+yes
+yesy
+yes
+yes
+yes
+yes
+quit -y

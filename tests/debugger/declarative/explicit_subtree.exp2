@@ -1,0 +1,37 @@
+      E1:     C1 CALL pred explicit_subtree.main/2-0 (det) explicit_subtree.m:13
+mdb> mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> step
+      E2:     C2 CALL pred explicit_subtree.p/2-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred explicit_subtree.p/2-0 (det)
+mdb> dd
+p(110, 230)
+Valid? b 2
+browser> mark
++(229, 1) = 230
+Valid? n
+Found incorrect contour:
++(229, 1) = 230
+Is this a bug? n
++(229, 1) = 230
+Valid? [no] y
+q(100, 10, 110)
+Valid? y
+q(200, 30, 230)
+Valid? y
+Found incorrect contour:
+p(110, 230)
+Is this a bug? n
+p(110, 230)
+Valid? b 1
+browser> mark
++(109, 1) = 110
+Valid? n
+Found incorrect contour:
++(109, 1) = 110
+Is this a bug? y
+      E4:     C3 EXIT func int.+/2-0 (det)
+mdb> continue
+{110, 230}

@@ -1,0 +1,82 @@
+      E1:     C1 CALL pred closure_dependency.main/2-0 (det) closure_dependency.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> step
+      E2:     C2 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+      E3:     C2 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(0, [100, 0], t(p([0])))
+Valid? b 2
+browser> mark
+c(t(p([0])), 100, [100, 0])
+Valid? n
+p([0], 100, [100, 0])
+Valid? b 1
+browser> mark
+Found inadmissible call:
+Parent c(t(p([0])), 100, _)
+Call p([0], 100, _)
+Is this a bug? y
+      E4:     C3 EXIT pred closure_dependency.c/3-0 (det)
+mdb> break a
+ 0: + stop  interface pred closure_dependency.a/3-0 (det)
+mdb> c
+      E3:     C2 EXIT pred closure_dependency.a/3-0 (det)
+mdb> c
+      E5:     C4 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+      E6:     C4 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(1, [100, 1], t(p([1])))
+Valid? b 2
+browser> mark
+c(t(p([1])), 100, [100, 1])
+Valid? n
+p([1], 100, [100, 1])
+Valid? b 2
+browser> mark
+Found inadmissible call:
+Parent c(t(p([1])), 100, _)
+Call p([1], 100, _)
+Is this a bug? y
+      E7:     C5 EXIT pred closure_dependency.c/3-0 (det)
+mdb> c
+      E6:     C4 EXIT pred closure_dependency.a/3-0 (det)
+mdb> c
+      E8:     C6 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+      E9:     C6 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(2, [100, 2], t(p([2])))
+Valid? b 2
+browser> mark
+c(t(p([2])), 100, [100, 2])
+Valid? n
+p([2], 100, [100, 2])
+Valid? b 3
+browser> mark
+Found incorrect contour:
+p([2], 100, [100, 2])
+Is this a bug? y
+     E10:     C7 EXIT pred closure_dependency.p/3-0 (det)
+mdb> c
+      E9:     C6 EXIT pred closure_dependency.a/3-0 (det)
+mdb> c
+     E11:     C8 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+     E12:     C8 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(3, [100, 3], t(p([3])))
+Valid? b 3
+browser> ls
+t(p([3]))
+browser> mark
+d([3], t(p([3])))
+Valid? n
+Found incorrect contour:
+d([3], t(p([3])))
+Is this a bug? y
+     E13:     C9 EXIT pred closure_dependency.d/2-0 (det)
+mdb> quit -y

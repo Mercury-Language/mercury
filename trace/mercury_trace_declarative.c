@@ -51,15 +51,6 @@
 #include <errno.h>
 
 /*
-** We only build the annotated trace for events down to a certain
-** depth.  The following macro gives the default depth limit (relative
-** to the starting depth).  In future it would be nice to dynamically
-** adjust this factor based on profiling information.
-*/
-
-#define MR_EDT_DEPTH_STEP_SIZE		30
-
-/*
 ** These macros are to aid debugging of the code which constructs
 ** the annotated trace.
 */
@@ -113,6 +104,25 @@ static	MR_Unsigned	MR_edt_last_event;
 static	MR_bool		MR_edt_inside;
 static	MR_Unsigned	MR_edt_start_seqno;
 static	MR_Unsigned	MR_edt_start_io_counter;
+static	MR_Unsigned	MR_edt_initial_depth;
+
+/*
+** The depth of the EDT is different from the call depth of the events,
+** since the call depth is not guaranteed to be the same for the children
+** of a call eventi - see comments in MR_trace_real in trace/mercury_trace.c.
+** We use the following variable to keep track of the EDT depth.
+*/
+
+static	MR_Integer	MR_edt_depth;
+
+/*
+** We only build the annotated trace for events down to a certain depth.
+** MR_edt_depth_step_size gives the default depth limit (relative to the
+** starting depth).  In future it would be nice to adjust this factor based on
+** profiling information.  
+*/
+		
+static	int	MR_edt_depth_step_size = 3000;
 
 /*
 ** The declarative debugger ignores modules that were not compiled with
@@ -202,11 +212,14 @@ static	MR_Word		MR_decl_atom_args(const MR_Label_Layout *layout,
 				MR_Word *saved_regs);
 static	const char	*MR_trace_start_collecting(MR_Unsigned event,
 				MR_Unsigned seqno, MR_Unsigned maxdepth,
+				MR_Unsigned initial_depth,
 				MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details,
 				MR_Code **jumpaddr);
-static	MR_Code		*MR_trace_restart_decl_debug(MR_Unsigned event,
+static	MR_Code		*MR_trace_restart_decl_debug(
+				MR_Trace_Node call_preceding,
+				MR_Unsigned event,
 				MR_Unsigned seqno, MR_Trace_Cmd_Info *cmd,
 				MR_Event_Info *event_info,
 				MR_Event_Details *event_details);
@@ -239,6 +252,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	MR_Trace_Node		trace;
 	MR_Event_Details	event_details;
 	MR_Integer		trace_suppress;
+	MR_Unsigned		depth_check_adjustment = 0;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
@@ -258,11 +272,47 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		MR_fatal_error("layout has no execution tracing");
 	}
 
-	if (depth > MR_edt_max_depth) {
+	/*
+	** If this event is an interface event then increase or decrease 
+	** the EDT depth appropriately.
+	*/
+	if (event_info->MR_trace_port == MR_PORT_CALL 
+			|| event_info->MR_trace_port == MR_PORT_REDO) {
+		MR_edt_depth++;
+	}
+	if (event_info->MR_trace_port == MR_PORT_EXIT 
+			|| event_info->MR_trace_port == MR_PORT_FAIL
+			|| event_info->MR_trace_port == MR_PORT_EXCEPTION) {
+		/*
+		** The depth of the EXIT, FAIL or EXCP event is actually
+		** MR_edt_depth (not MR_edt_depth-1), however we need to 
+		** adjust the depth here for future events.  This 
+		** inconsistency is neutralised by adjusting the depth
+		** limit check by setting depth_check_adjustment.
+		*/
+		MR_edt_depth--;
+		depth_check_adjustment = 1;
+	}
+
+	if (MR_edt_depth + depth_check_adjustment > MR_edt_max_depth + 1) { 
 		/*
 		** We filter out events which are deeper than a certain
 		** limit given by MR_edt_max_depth.  These events are
 		** implicitly represented in the structure being built.
+		** Adding 1 to the depth limit ensures we get all the 
+		** interface events inside a call at the depth limit.
+		** We need these to build the correct contour.
+		** Note that interface events captured at max-depth + 1
+		** will have their at-depth-limit flag set to no.  This
+		** is not a problem, since the parent's flag will be yes,
+		** so there is no chance that the analyser could ask for the
+		** children of an interface event captured at max-depth + 1,
+		** without the annotated trace being rebuilt from the parent
+		** first.
+		** Adding depth_check_adjustment (which will be 1 for EXIT,
+		** FAIL and EXCP events and 0 otherwise) ensures that EXIT,
+		** FAIL and EXCP events have the same depth as their 
+		** corresponding CALL or REDO events.
 		*/
 		return NULL;
 	}
@@ -406,7 +456,7 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Word				*base_sp;
 	MR_Word				*base_curfr;
 
-	if (event_info->MR_call_depth == MR_edt_max_depth) {
+	if (MR_edt_depth == MR_edt_max_depth) {
 		at_depth_limit = MR_TRUE;
 	} else {
 		at_depth_limit = MR_FALSE;
@@ -973,7 +1023,6 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 				&arg_value);
 		if (problem != NULL) {
 			/* this head variable is not live at this port */
-
 			MR_TRACE_CALL_MERCURY(
 				atom = MR_DD_add_trace_atom_arg_no_value(atom,
 					(MR_Word) hv + 1, hlds_num,
@@ -1162,10 +1211,16 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 	MR_trace_decl_mode = trace_mode;
 
 	MR_trace_decl_ensure_init();
-	depth_limit = event_info->MR_call_depth + MR_EDT_DEPTH_STEP_SIZE;
+	depth_limit = event_info->MR_call_depth + MR_edt_depth_step_size;
+	MR_edt_initial_depth = event_info->MR_call_depth;
+	MR_edt_depth = MR_edt_initial_depth;
+	
+	MR_trace_current_node = (MR_Trace_Node) NULL;
+	
 	message = MR_trace_start_collecting(event_info->MR_event_number,
-			event_info->MR_call_seqno, depth_limit, cmd, event_info,
-			event_details, jumpaddr);
+			event_info->MR_call_seqno, depth_limit,
+			MR_edt_initial_depth, cmd, event_info, event_details,
+			jumpaddr);
 
 	if (message == NULL) {
 		return MR_TRUE;
@@ -1180,7 +1235,8 @@ MR_trace_start_decl_debug(MR_Trace_Mode trace_mode, const char *outfile,
 }
 
 static	MR_Code *
-MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
+MR_trace_restart_decl_debug(
+	MR_Trace_Node call_preceding, MR_Unsigned event, MR_Unsigned seqno,
 	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 	MR_Event_Details *event_details)
 {
@@ -1188,9 +1244,19 @@ MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 	const char		*message;
 	MR_Code			*jumpaddr;
 
-	depth_limit = MR_edt_max_depth + MR_EDT_DEPTH_STEP_SIZE;
+	depth_limit = MR_edt_max_depth + MR_edt_depth_step_size;
+
+	/* 
+	** Set this to the preceding node, so the new subtree's parent is
+	** resolved correcly.
+	*/
+	MR_trace_current_node = call_preceding;
+
+	MR_edt_depth = MR_edt_initial_depth;
+
 	message = MR_trace_start_collecting(event, seqno, depth_limit,
-			cmd, event_info, event_details, &jumpaddr);
+			MR_edt_initial_depth, cmd, event_info, event_details, 
+			&jumpaddr);
 
 	if (message != NULL) {
 		fflush(MR_mdb_out);
@@ -1206,7 +1272,8 @@ MR_trace_restart_decl_debug(MR_Unsigned event, MR_Unsigned seqno,
 
 static	const char *
 MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
-	MR_Unsigned maxdepth, MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
+	MR_Unsigned maxdepth, MR_Unsigned initial_depth, 
+	MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 	MR_Event_Details *event_details, MR_Code **jumpaddr)
 {
 	const char		*problem;
@@ -1215,7 +1282,8 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	/*
 	** Go back to an event before the topmost call.
 	*/
-	retry_result = MR_trace_retry(event_info, event_details, 0,
+	retry_result = MR_trace_retry(event_info, event_details, 
+		event_info->MR_call_depth - initial_depth,
 		MR_RETRY_IO_ONLY_IF_SAFE,
 		MR_trace_decl_assume_all_io_is_tabled, &problem, NULL, NULL,
 		jumpaddr);
@@ -1226,7 +1294,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 			return "internal error: direct retry impossible";
 		}
 	}
-
+	
 	/*
 	** Clear any warnings.
 	*/
@@ -1241,7 +1309,6 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	MR_edt_start_seqno = seqno;
 	MR_edt_start_io_counter = MR_io_tabling_counter;
 	MR_edt_max_depth = maxdepth;
-	MR_trace_current_node = (MR_Trace_Node) NULL;
 
 	/*
 	** Restore globals from the saved copies.
@@ -1249,7 +1316,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
         MR_trace_call_seqno = event_details->MR_call_seqno;
 	MR_trace_call_depth = event_details->MR_call_depth;
 	MR_trace_event_number = event_details->MR_event_number;
-
+	
 	/*
 	** Single step through every event.
 	*/
@@ -1281,6 +1348,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	MR_Unsigned		symptom_event;
 	MR_Unsigned		final_event;
 	MR_Unsigned		topmost_seqno;
+	MR_Trace_Node		call_preceding;
 	MercuryFile		stream;
 	MR_Integer		use_old_io_map;
 	MR_Unsigned		io_start;
@@ -1357,7 +1425,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		no_bug_found = MR_DD_diagnoser_no_bug_found(response);
 		require_subtree = MR_DD_diagnoser_require_subtree(response,
 				(MR_Integer *) &final_event,
-				(MR_Integer *) &topmost_seqno);
+				(MR_Integer *) &topmost_seqno,
+				(MR_Trace_Node *) &call_preceding);
 	);
 
 	MR_trace_call_seqno = event_details->MR_call_seqno;
@@ -1391,7 +1460,8 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		** Restart the declarative debugger with deeper
 		** depth limit.
 		*/
-		return MR_trace_restart_decl_debug(final_event, topmost_seqno,
+		return MR_trace_restart_decl_debug(call_preceding,
+				final_event, topmost_seqno,
 				cmd, event_info, event_details);
 	}
 

@@ -225,14 +225,21 @@ prog_rep__represent_goal_expr(generic_call(GenericCall, Args, _, _),
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),
 	Rep = atomic_goal_rep(DetismRep, FilenameRep, LinenoRep,
 		ChangedVarsRep, AtomicGoalRep).
-prog_rep__represent_goal_expr(call(PredId, _, Args, _, _, _),
+prog_rep__represent_goal_expr(call(PredId, _, Args, Builtin, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
 	module_info_pred_info(Info ^ module_info, PredId, PredInfo),
 	ModuleSymName = pred_info_module(PredInfo),
 	prog_out__sym_name_to_string(ModuleSymName, ModuleName),
 	PredName = pred_info_name(PredInfo),
 	list__map(term__var_to_int, Args, ArgsRep),
-	AtomicGoalRep = plain_call_rep(ModuleName, PredName, ArgsRep),
+	(
+		Builtin = not_builtin
+	->
+		AtomicGoalRep = plain_call_rep(ModuleName, PredName, ArgsRep)
+	;
+		AtomicGoalRep = builtin_call_rep(ModuleName, PredName, 
+			ArgsRep)
+	),
 	prog_rep__represent_atomic_goal(GoalInfo, InstMap0, Info,
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),
 	Rep = atomic_goal_rep(DetismRep, FilenameRep, LinenoRep,

@@ -1,11 +1,4 @@
-
-MCFLAGS-deep_sub=--trace deep --suppress-trace context
-MCFLAGS-dependency=--trace rep
-MCFLAGS-dependency2=--trace rep
-MCFLAGS-input_term_dep=--trace rep
-MCFLAGS-output_term_dep=--trace rep
+MCFLAGS-deep_sub=--trace rep --suppress-trace context
 MCFLAGS-shallow_2=--trace shallow
-MCFLAGS-special_term_dep=--trace rep
 MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-all
-MCFLAGS-unsafe_cast=--trace rep
 MCFLAGS-untraced_subgoal_sub=--trace minimum

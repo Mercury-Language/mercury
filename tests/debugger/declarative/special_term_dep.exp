@@ -34,8 +34,9 @@ Valid? browse 1
 browser> mark
 qa([1, 2])
 Valid? yes
-Found incorrect contour:
-q([1, 2], [3])
+Found inadmissible call:
+Parent q([1, 2], _)
+Call qb([1, 2], _)
 Is this a bug? yes
       E5:     C3 EXIT pred special_term_dep.q/2-0 (semidet) special_term_dep.m:61 (special_term_dep.m:50)
 mdb> continue

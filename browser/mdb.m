@@ -28,6 +28,7 @@
 :- implementation.
 
 :- include_module declarative_analyser.
+:- include_module declarative_edt.
 :- include_module declarative_oracle.
 :- include_module declarative_tree.
 :- include_module declarative_user.

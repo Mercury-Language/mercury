@@ -1,0 +1,53 @@
+register --quiet
+context none
+echo on
+step
+finish
+dd
+skip
+y
+y
+y
+n
+y
+trust b
+trust d
+step
+finish
+dd
+skip
+skip
+n
+y
+untrust 1
+untrust 2
+trusted
+break a
+continue
+step
+finish
+dd
+n
+y
+n
+
+
+skip
+y
+y
+y
+dd
+a
+break a
+c
+retry
+f
+dd
+
+y
+n
+n
+skip
+y
+y
+quit -y

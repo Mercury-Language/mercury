@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 
 :- interface.
 
-:- import_module char, list, std_util.
+:- import_module char, list, std_util, bool.
 
 	% A representation of the goal we execute.  These need to be
 	% generated statically and stored inside the executable.
@@ -123,6 +123,11 @@
 			string,			% name of called pred's module
 			string,			% name of the called pred
 			list(var_rep)		% the call's arguments
+		)
+	;	builtin_call_rep(
+			string,			% name of called pred's module
+			string,			% name of the called pred
+			list(var_rep)		% the call's arguments
 		).
 
 :- type var_rep	==	int.
@@ -145,10 +150,24 @@
 	%
 :- func atomic_goal_generates_event(atomic_goal_rep) = maybe(list(var_rep)).
 
+	% If the given goal generates internal events directly then this
+	% function will return yes and no otherwise. 
+	%
+:- func goal_generates_internal_event(goal_rep) = bool.
+
 	% call_is_primitive(ModuleName, PredName): succeeds iff a call to the
 	% named predicate behaves like a primitive operation, in the sense that
 	% it does not generate events.
 :- pred call_is_primitive(string::in, string::in) is semidet.
+
+	% The atomic goals module, name and arity
+:- type atomic_goal_id 
+	---> atomic_goal_id(string, string, int).
+
+	% Can we find out the atomic goals name, module and arity from
+	% its atomic_goal_rep?  If so return them, otherwise return no.
+:- func atomic_goal_identifiable(atomic_goal_rep) = 
+	maybe(atomic_goal_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -192,7 +211,12 @@
 :- type arg_pos
 	--->	user_head_var(int)	% Nth in the list of arguments after
 					% filtering out non-user-visible vars.
-	;	any_head_var(int).	% Nth in the list of all arguments.
+	;	any_head_var(int)	% Nth in the list of all arguments.
+			
+			% (M-N+1)th argument in the list of all arguments,
+			% where N is the value of the int in the constructor
+			% and M is the total number of arguments.
+	;	any_head_var_from_back(int).
 
 	% A particular subterm within a term is represented by a term_path.
 	% This is the list of argument positions that need to be followed
@@ -220,6 +244,7 @@ atomic_goal_generates_event(unsafe_cast_rep(_, _)) = no.
 atomic_goal_generates_event(pragma_foreign_code_rep(_)) = no.
 atomic_goal_generates_event(higher_order_call_rep(_, Args)) = yes(Args).
 atomic_goal_generates_event(method_call_rep(_, _, Args)) = yes(Args).
+atomic_goal_generates_event(builtin_call_rep(_, _, _)) = no.
 atomic_goal_generates_event(plain_call_rep(ModuleName, PredName, Args)) =
 	( call_is_primitive(ModuleName, PredName) ->
 		% These calls behave as primitives and do not generate events.
@@ -238,7 +263,40 @@ call_is_primitive(ModuleName, PredName) :-
 		ModuleName = "profiling_builtin"
 	;
 		ModuleName = "term_size_prof_builtin"
+	;
+	%
+	% The following are also treated as primitive since
+	% compiler generated predicate events are not 
+	% included in the annotated trace at the moment.
+	%
+		PredName = "__Unify__"
+	;
+		PredName = "__Index__"
+	;
+		PredName = "__Compare__"
 	).
+
+goal_generates_internal_event(conj_rep(_)) = no.
+goal_generates_internal_event(disj_rep(_)) = yes.
+goal_generates_internal_event(switch_rep(_)) = yes.
+goal_generates_internal_event(ite_rep(_, _, _)) = yes.
+goal_generates_internal_event(negation_rep(_)) = yes.
+goal_generates_internal_event(some_rep(_, _)) = no.
+% Atomic goals may generate interface events, not internal events.
+goal_generates_internal_event(atomic_goal_rep(_, _, _, _, _)) = no.
+
+atomic_goal_identifiable(unify_construct_rep(_, _, _)) = no.
+atomic_goal_identifiable(unify_deconstruct_rep(_, _, _)) = no.
+atomic_goal_identifiable(unify_assign_rep(_, _)) = no.
+atomic_goal_identifiable(unify_simple_test_rep(_, _)) = no.
+atomic_goal_identifiable(unsafe_cast_rep(_, _)) = no.
+atomic_goal_identifiable(pragma_foreign_code_rep(_)) = no.
+atomic_goal_identifiable(higher_order_call_rep(_, _)) = no.
+atomic_goal_identifiable(method_call_rep(_, _, _)) = no.
+atomic_goal_identifiable(builtin_call_rep(Module, Name, Args)) = 
+	yes(atomic_goal_id(Module, Name, length(Args))).
+atomic_goal_identifiable(plain_call_rep(Module, Name, Args)) = 
+	yes(atomic_goal_id(Module, Name, length(Args))).
 
 :- pragma export(proc_rep_type = out, "ML_proc_rep_type").
 

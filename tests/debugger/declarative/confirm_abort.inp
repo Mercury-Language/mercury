@@ -11,7 +11,9 @@ h
 ?
 abort
 dd
+n
 a
 dd
+n
 y
 quit -y

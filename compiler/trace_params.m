@@ -150,16 +150,16 @@ trace_level_for_unify_compare(decl_rep) = shallow.
 
 convert_trace_level("minimum", no,  no,  yes(none)).
 convert_trace_level("minimum", yes, no,  yes(shallow)).
-convert_trace_level("minimum", _,   yes, yes(deep)).
+convert_trace_level("minimum", _,   yes, yes(decl_rep)).
 convert_trace_level("shallow", _,   no,  yes(shallow)).
 convert_trace_level("shallow", _,   yes, no).
 convert_trace_level("deep",    _,   no,  yes(deep)).
 convert_trace_level("deep",    _,   yes, no).
-convert_trace_level("decl",    _,   _,   yes(deep)).
+convert_trace_level("decl",    _,   _,   yes(decl_rep)).
 convert_trace_level("rep",     _,   _,   yes(decl_rep)).
 convert_trace_level("default", no,  no,  yes(none)).
 convert_trace_level("default", yes, no,  yes(deep)).
-convert_trace_level("default", _,   yes, yes(deep)).
+convert_trace_level("default", _,   yes, yes(decl_rep)).
 
 eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 	(

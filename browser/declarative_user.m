@@ -19,7 +19,7 @@
 :- import_module mdb__declarative_debugger.
 :- import_module mdb.browser_info.
 
-:- import_module list, io.
+:- import_module io.
 
 :- type user_question(T)
 	--->	plain_question(decl_question(T))
@@ -27,7 +27,6 @@
 
 :- type user_response(T)
 	--->	user_answer(decl_question(T), decl_answer(T))
-	;	no_user_answer
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -41,7 +40,7 @@
 	% possibly with a default answer, and is asked to respond about the
 	% truth of it in the intended interpretation.
 	%
-:- pred query_user(list(user_question(T))::in, user_response(T)::out,
+:- pred query_user(user_question(T)::in, user_response(T)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
@@ -72,7 +71,7 @@
 :- import_module mdbcomp__program_representation.
 :- import_module mdb.parse.
 
-:- import_module std_util, char, string, bool, int, deconstruct, getopt.
+:- import_module std_util, char, string, bool, int, deconstruct, getopt, list.
 
 :- type user_state
 	--->	user(
@@ -85,90 +84,102 @@ user_state_init(InStr, OutStr, Browser, user(InStr, OutStr, Browser)).
 
 %-----------------------------------------------------------------------------%
 
-query_user(Questions, Response, User0, User) -->
-	query_user_2(Questions, [], Response, User0, User).
-
-:- pred query_user_2(list(user_question(T))::in, list(user_question(T))::in,
-	user_response(T)::out, user_state::in, user_state::out,
-	io__state::di, io__state::uo) is cc_multi.
-
-query_user_2([], _, no_user_answer, User, User) -->
-	[].
-query_user_2([UserQuestion | UserQuestions], Skipped, Response, User0, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	write_decl_question(Question, User0),
-	{ user_question_prompt(UserQuestion, Prompt) },
-	get_command(Prompt, Command, User0, User1),
-	handle_command(Command, UserQuestion, UserQuestions, Skipped, Response,
-		User1, User).
+query_user(UserQuestion, Response, !User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	write_decl_question(Question, !.User, !IO),
+	user_question_prompt(UserQuestion, Prompt),
+	get_command(Prompt, Command, !User, !IO),
+	handle_command(Command, UserQuestion, Response, !User, 
+		!IO).
 
 :- pred handle_command(user_command::in, user_question(T)::in,
-	list(user_question(T))::in, list(user_question(T))::in,
-	user_response(T)::out, user_state::in, user_state::out,
-	io__state::di, io__state::uo) is cc_multi.
+	user_response(T)::out, user_state::in, user_state::out, io__state::di,
+	io__state::uo) is cc_multi.
 
-handle_command(yes, UserQuestion, _, _, Response, User, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ Node = get_decl_question_node(Question) },
-	{ Response = user_answer(Question, truth_value(Node, yes)) }.
+handle_command(yes, UserQuestion, Response, !User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	Node = get_decl_question_node(Question),
+	Response = user_answer(Question, truth_value(Node, correct)).
 
-handle_command(no, UserQuestion, _, _, Response, User, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ Node = get_decl_question_node(Question) },
-	{ Response = user_answer(Question, truth_value(Node, no)) }.
+handle_command(no, UserQuestion, Response, !User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	Node = get_decl_question_node(Question),
+	Response = user_answer(Question, truth_value(Node, erroneous)).
 
-handle_command(inadmissible, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User) -->
-	io__write_string("Sorry, not implemented,\n"),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response, User0,
-		User).
+handle_command(inadmissible, UserQuestion, Response, !User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	Node = get_decl_question_node(Question),
+	Response = user_answer(Question, truth_value(Node, inadmissible)).
 
-handle_command(skip, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User) -->
-	query_user_2(UserQuestions, [UserQuestion | Skipped], Response, User0,
-		User).
+handle_command(skip, UserQuestion, Response, !User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	Node = get_decl_question_node(Question),
+	Response = user_answer(Question, skip(Node)).
 
-handle_command(restart, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User) -->
-	{ reverse_and_append(Skipped, [UserQuestion | UserQuestions],
-		RestartedQuestions) },
-	query_user(RestartedQuestions, Response, User0, User).
-
-handle_command(browse_arg(ArgNum), UserQuestion, UserQuestions, Skipped,
-		Response, User0, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ edt_node_trace_atom(Question, TraceAtom) },
-	browse_atom_argument(TraceAtom, ArgNum, MaybeMark, User0, User1),
+handle_command(browse_arg(MaybeArgNum), UserQuestion, Response, 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	edt_node_trace_atom(Question, TraceAtom),
 	(
-		{ MaybeMark = no },
-		query_user_2([UserQuestion | UserQuestions], Skipped, Response,
-			User1, User)
-	;
-		{ MaybeMark = yes(Mark) },
-		{ Which = chosen_head_vars_presentation },
-		{
-			Which = only_user_headvars,
-			ArgPos = user_head_var(ArgNum)
+		MaybeArgNum = yes(ArgNum),
+		browse_atom_argument(TraceAtom, ArgNum, MaybeMark, !User, !IO),
+		(
+			MaybeMark = no,
+			query_user(UserQuestion, Response, 
+				!User, !IO)
 		;
-			Which = all_headvars,
-			ArgPos = any_head_var(ArgNum)
-		},
-		{ Node = get_decl_question_node(Question) },
-		{ Answer = suspicious_subterm(Node, ArgPos, Mark) },
-		{ Response = user_answer(Question, Answer) },
-		{ User = User1 }
+			MaybeMark = yes(Mark),
+			Which = chosen_head_vars_presentation,
+			(
+				Which = only_user_headvars,
+				ArgPos = user_head_var(ArgNum)
+			;
+				Which = all_headvars,
+				ArgPos = any_head_var(ArgNum)
+			),
+			Node = get_decl_question_node(Question),
+			Answer = suspicious_subterm(Node, ArgPos, Mark),
+			Response = user_answer(Question, Answer)
+		)
+	;
+		MaybeArgNum = no,
+		browse_atom(TraceAtom, MaybeMark, !User, !IO),
+		(
+			MaybeMark = no,
+			query_user(UserQuestion, Response, 
+				!User, !IO)
+		;
+			% If the user marks the predicate or function,
+			% we make the call invalid.
+			MaybeMark = yes([]),
+			Node = get_decl_question_node(Question),
+			Answer = truth_value(Node, erroneous),
+			Response = user_answer(Question, Answer)
+		;
+			MaybeMark = yes([ArgNum | Mark]),
+			Which = chosen_head_vars_presentation,
+			(
+				Which = only_user_headvars,
+				ArgPos = user_head_var(ArgNum)
+			;
+				Which = all_headvars,
+				ArgPos = any_head_var(ArgNum)
+			),
+			Node = get_decl_question_node(Question),
+			Answer = suspicious_subterm(Node, ArgPos, Mark),
+			Response = user_answer(Question, Answer)
+		)
 	).
 
-handle_command(print_arg(From, To), UserQuestion, UserQuestions, Skipped,
-		Response, User0, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ edt_node_trace_atom(Question, TraceAtom) },
-	print_atom_arguments(TraceAtom, From, To, User0),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
-		User0, User).
+handle_command(print_arg(From, To), UserQuestion, Response, 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	edt_node_trace_atom(Question, TraceAtom),
+	print_atom_arguments(TraceAtom, From, To, !.User, !IO),
+	query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(set(MaybeOptionTable, Setting), UserQuestion, UserQuestions,
-		Skipped, Response, !User, !IO) :-
+handle_command(set(MaybeOptionTable, Setting), UserQuestion, Response, !User,
+		!IO) :-
 	(
 		MaybeOptionTable = ok(OptionTable),
 		browser_info.set_param(no, OptionTable, Setting, 
@@ -178,63 +189,60 @@ handle_command(set(MaybeOptionTable, Setting), UserQuestion, UserQuestions,
 		MaybeOptionTable = error(Msg),
 		io.write_string(Msg++"\n", !IO)
 	),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response, !User,
-		!IO).
+	query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(browse_io(ActionNum), UserQuestion, UserQuestions, Skipped,
-		Response, User0, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ edt_node_io_actions(Question, IoActions) },
+handle_command(browse_io(ActionNum), UserQuestion, Response, 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	edt_node_io_actions(Question, IoActions),
 	% We don't have code yet to trace a marked I/O action.
-	browse_chosen_io_action(IoActions, ActionNum, _MaybeMark, User0, User1),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
-		User1, User).
+	browse_chosen_io_action(IoActions, ActionNum, _MaybeMark, !User, !IO),
+	query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(print_io(From, To), UserQuestion, UserQuestions, Skipped,
-		Response, User0, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ edt_node_io_actions(Question, IoActions) },
-	print_chosen_io_actions(IoActions, From, To, User0),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
-		User0, User).
+handle_command(print_io(From, To), UserQuestion, Response, 
+		!User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	edt_node_io_actions(Question, IoActions),
+	print_chosen_io_actions(IoActions, From, To, !.User, !IO),
+	query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(pd, UserQuestion, _, _, Response, User, User) -->
-	{ Question = get_decl_question(UserQuestion) },
-	{ Node = get_decl_question_node(Question) },
-	{ Response = exit_diagnosis(Node) }.
+handle_command(pd, UserQuestion, Response, !User, !IO) :-
+	Question = get_decl_question(UserQuestion),
+	Node = get_decl_question_node(Question),
+	Response = exit_diagnosis(Node).
 
-handle_command(abort, _, _, _, Response, User, User) -->
-	{ Response = abort_diagnosis }.
+handle_command(abort, _, Response, !User, !IO) :-
+	Response = abort_diagnosis.
 
-handle_command(help, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User) -->
-	user_help_message(User0),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
-		User0, User).
+handle_command(help, UserQuestion, Response, !User, !IO) :-
+	user_help_message(!.User, !IO),
+	query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(empty_command, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User) -->
-	{
+handle_command(empty_command, UserQuestion, Response, !User, 
+		!IO) :-
+	(
 		UserQuestion = plain_question(_),
 		Command = skip
 	;
 		UserQuestion = question_with_default(_, Truth),
 		(
-			Truth = yes,
+			Truth = correct,
 			Command = yes
 		;
-			Truth = no,
+			Truth = erroneous,
 			Command = no
+		;
+			Truth = inadmissible,
+			Command = inadmissible
 		)
-	},
-	handle_command(Command, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User).
+	),
+	handle_command(Command, UserQuestion, Response, !User, 
+		!IO).
 
-handle_command(illegal_command, UserQuestion, UserQuestions, Skipped, Response,
-		User0, User) -->
-	io__write_string("Unknown command, 'h' for help.\n"),
-	query_user_2([UserQuestion | UserQuestions], Skipped, Response,
-		User0, User).
+handle_command(illegal_command, UserQuestion, Response, !User, 
+		!IO) :-
+	io__write_string("Unknown command, 'h' for help.\n", !IO),
+	query_user(UserQuestion, Response, !User, !IO).
 
 :- func get_decl_question(user_question(T)) = decl_question(T).
 
@@ -262,8 +270,9 @@ decl_question_prompt(unexpected_exception(_, _, _), "Expected? ").
 :- pred default_prompt(decl_truth, string).
 :- mode default_prompt(in, out) is det.
 
-default_prompt(yes, "[yes] ").
-default_prompt(no, "[no] ").
+default_prompt(correct, "[yes] ").
+default_prompt(erroneous, "[no] ").
+default_prompt(inadmissible, "[inadmissible] ").
 
 :- pred edt_node_trace_atom(decl_question(T)::in, trace_atom::out) is det.
 
@@ -347,13 +356,19 @@ browse_io_action(IoAction, MaybeMark, !User, !IO) :-
 	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
 	!:User = !.User ^ browser := Browser.
 
-:- pred browse_decl_bug_arg(decl_bug::in, int::in,
+:- pred browse_decl_bug(decl_bug::in, maybe(int)::in,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-browse_decl_bug_arg(Bug, ArgNum, !User, !IO) :-
+browse_decl_bug(Bug, MaybeArgNum, !User, !IO) :-
 	decl_bug_trace_atom(Bug, Atom),
-	browse_atom_argument(Atom, ArgNum, _, !User, !IO).
+	(
+		MaybeArgNum = yes(ArgNum),
+		browse_atom_argument(Atom, ArgNum, _, !User, !IO)
+	;
+		MaybeArgNum = no,
+		browse_atom(Atom, _, !User, !IO)
+	).
 
 :- pred browse_atom_argument(trace_atom::in, int::in, maybe(term_path)::out,
 	user_state::in, user_state::out, io__state::di, io__state::uo)
@@ -376,6 +391,42 @@ browse_atom_argument(Atom, ArgNum, MaybeMark, !User, !IO) :-
 		io__write_string(!.User ^ outstr, "Invalid argument number\n",
 			!IO),
 		MaybeMark = no
+	).
+
+:- pred browse_atom(trace_atom::in, maybe(term_path)::out,
+	user_state::in, user_state::out, io__state::di, io__state::uo)
+	is cc_multi.
+
+browse_atom(Atom, MaybeMark, !User, !IO) :-
+	Atom = atom(ProcLayout, Args),
+	ProcId = get_proc_id_from_layout(ProcLayout),
+	get_user_arg_values(Args, ArgValues),
+	get_pred_attributes(ProcId, Module, Name, _, PredOrFunc),
+	Function = pred_to_bool(unify(PredOrFunc,function)),
+	BrowserTerm = synthetic_term_to_browser_term(Module++"."++Name, 
+		ArgValues, Function),
+	browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
+		MaybeDirs, !.User ^ browser, Browser, !IO),
+	maybe_convert_dirs_to_path(MaybeDirs, MaybeMark),
+	!:User = !.User ^ browser := Browser.
+
+:- pred get_user_arg_values(list(trace_atom_arg)::in, list(univ)::out) is det.
+	
+get_user_arg_values([], []).
+get_user_arg_values([arg_info(UserVisible, _, MaybeValue) | Args], Values) :-
+	get_user_arg_values(Args, Values0),
+	(
+		UserVisible = yes
+	->
+		(
+			MaybeValue = yes(Value)
+		;
+			MaybeValue = no,
+			Value = univ('_'`with_type`unbound)
+		),
+		Values = [Value | Values0]
+	;
+		Values = Values0
 	).
 
 :- pred print_atom_arguments(trace_atom::in, int::in, int::in, user_state::in,
@@ -435,9 +486,10 @@ reverse_and_append([A | As], Bs, Cs) :-
 	;	no			% The node is incorrect.
 	;	inadmissible		% The node is inadmissible.
 	;	skip			% The user has no answer.
-	;	restart			% Ask the skipped questions again.
-	;	browse_arg(int)		% Browse the nth argument before
-					% answering.
+	;	browse_arg(maybe(int))	% Browse the nth argument before
+					% answering.  Or browse the whole
+					% predicate/function if the maybe is 
+					% no.
 	;	browse_io(int)		% Browse the nth IO action before
 					% answering.
 	;	print_arg(int, int)	% Print the nth to the mth arguments
@@ -462,10 +514,9 @@ user_help_message(User) -->
 		" answer one of:\n",
 		"\ty\tyes\t\tthe node is correct\n",
 		"\tn\tno\t\tthe node is incorrect\n",
-%		"\ti\tinadmissible\tthe input arguments are out of range\n",
+		"\ti\tinadmissible\tthe input arguments are out of range\n",
 		"\ts\tskip\t\tskip this question\n",
-		"\tr\trestart\t\task the skipped questions again\n",
-		"\tb <n>\tbrowse <n>\tbrowse the nth argument of the atom\n",
+		"\tb [<n>]\tbrowse [<n>]\tbrowse the atom, or its nth argument\n",
 		"\tb io <n>\tbrowse io <n>\tbrowse the atom's nth I/O action\n",
 		"\tp <n>\tprint <n>\tprint the nth argument of the atom\n",
 		"\tp <n-m>\tprint <n-m>\tprint the nth to the mth arguments of the atom\n",
@@ -534,12 +585,10 @@ cmd_handler("y",	one_word_cmd(yes)).
 cmd_handler("yes",	one_word_cmd(yes)).
 cmd_handler("n",	one_word_cmd(no)).
 cmd_handler("no",	one_word_cmd(no)).
-cmd_handler("in",	one_word_cmd(inadmissible)).
+cmd_handler("i",	one_word_cmd(inadmissible)).
 cmd_handler("inadmissible", one_word_cmd(inadmissible)).
 cmd_handler("s",	one_word_cmd(skip)).
 cmd_handler("skip",	one_word_cmd(skip)).
-cmd_handler("r",	one_word_cmd(restart)).
-cmd_handler("restart",	one_word_cmd(restart)).
 cmd_handler("pd",	one_word_cmd(pd)).
 cmd_handler("a",	one_word_cmd(abort)).
 cmd_handler("abort",	one_word_cmd(abort)).
@@ -559,8 +608,9 @@ one_word_cmd(Cmd, []) = Cmd.
 
 :- func browse_arg_cmd(list(string)::in) = (user_command::out) is semidet.
 
-browse_arg_cmd([Arg]) = browse_arg(ArgNum) :-
+browse_arg_cmd([Arg]) = browse_arg(yes(ArgNum)) :-
 	string__to_int(Arg, ArgNum).
+browse_arg_cmd([]) = browse_arg(no).
 browse_arg_cmd(["io", Arg]) = browse_io(ArgNum) :-
 	string__to_int(Arg, ArgNum).
 
@@ -602,39 +652,36 @@ is_dash('-').
 
 %-----------------------------------------------------------------------------%
 
-user_confirm_bug(Bug, Response, User0, User) -->
-	write_decl_bug(Bug, User0),
-	get_command("Is this a bug? ", Command, User0, User1),
+user_confirm_bug(Bug, Response, !User, !IO) :-
+	write_decl_bug(Bug, !.User, !IO),
+	get_command("Is this a bug? ", Command, !User, !IO),
 	(
-		{ Command = yes }
+		Command = yes
 	->
-		{ Response = confirm_bug },
-		{ User = User1 }
+		Response = confirm_bug
 	;
-		{ Command = no }
+		Command = no
 	->
-		{ Response = overrule_bug },
-		{ User = User1 }
+		Response = overrule_bug
 	;
-		{ Command = abort }
+		Command = abort
 	->
-		{ Response = abort_diagnosis },
-		{ User = User1 }
+		Response = abort_diagnosis
 	;
-		{ Command = browse_arg(ArgNum) }
+		Command = browse_arg(MaybeArgNum)
 	->
-		browse_decl_bug_arg(Bug, ArgNum, User1, User2),
-		user_confirm_bug(Bug, Response, User2, User)
+		browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
+		user_confirm_bug(Bug, Response, !User, !IO)
 	;
-		{ Command = browse_io(ActionNum) }
+		Command = browse_io(ActionNum)
 	->
-		{ decl_bug_io_actions(Bug, IoActions) },
+		decl_bug_io_actions(Bug, IoActions),
 		browse_chosen_io_action(IoActions, ActionNum, _MaybeMark,
-			User1, User2),
-		user_confirm_bug(Bug, Response, User2, User)
+			!User, !IO),
+		user_confirm_bug(Bug, Response, !User, !IO)
 	;
-		user_confirm_bug_help(User1),
-		user_confirm_bug(Bug, Response, User1, User)
+		user_confirm_bug_help(!.User, !IO),
+		user_confirm_bug(Bug, Response, !User, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -720,12 +767,7 @@ write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 	unravel_decl_atom(DeclAtom, TraceAtom, IoActions),
 	TraceAtom = atom(ProcLabel, Args0),
 	ProcId = get_proc_id_from_layout(ProcLabel),
-	(
-		ProcId = proc(_, PredOrFunc, _, Functor, _, _)
-	;
-		ProcId = uci_proc(_, _, _, Functor, _, _), 
-		PredOrFunc = predicate
-	),
+	get_pred_attributes(ProcId, _, Functor, _, PredOrFunc),
 	Which = chosen_head_vars_presentation,
 	maybe_filter_headvars(Which, Args0, Args1),
 	list__map(trace_atom_arg_to_univ, Args1, Args),

@@ -1,0 +1,39 @@
+       1:      1  1 CALL pred solutions.main/2-0 (det) solutions.m:8
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> trust int
+Trusting module int
+mdb> trust list
+Trusting module list
+mdb> trust std_util
+Trusting module std_util
+mdb> break p
+ 0: + stop  interface pred solutions.p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred solutions.p/2-0 (det)
+mdb> finish
+     233:      2  2 EXIT pred solutions.p/2-0 (det)
+mdb> dd
+p(1, [1, 2, 3])
+Valid? no
+q(1, 1)
+Valid? yes
+q(1, 2)
+Valid? yesy
+Unknown command, 'h' for help.
+q(1, 2)
+Valid? yes
+q(1, 3)
+Valid? yes
+Call q(1, _)
+Solutions:
+	q(1, 1)
+	q(1, 2)
+	q(1, 3)
+Complete? yes
+Found incorrect contour:
+p(1, [1, 2, 3])
+Is this a bug? yes
+     233:      2  2 EXIT pred solutions.p/2-0 (det)
+mdb> quit -y

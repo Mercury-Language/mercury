@@ -227,6 +227,13 @@
 
 :- func get_all_modes_for_layout(proc_layout) = list(proc_layout).
 
+	% get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc).
+	% Return the predicate/function attributes common to both UCI and
+	% regular predicates/functions.  
+	%
+:- pred get_pred_attributes(proc_id::in, string::out, string::out, int::out, 
+	pred_or_func::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% If the following type is modified, some of the macros in
@@ -564,6 +571,28 @@ get_proc_name(uci_proc(_, _, _, ProcName , _, _)) = ProcName.
 
 	Layouts = list;
 	").
+
+:- func get_special_pred_id_name(special_pred_id) = string.
+
+get_special_pred_id_name(unify) = "__Unify__".
+get_special_pred_id_name(index) = "__Index__".
+get_special_pred_id_name(compare) = "__Compare__".
+
+:- func get_special_pred_id_arity(special_pred_id) = int.
+
+get_special_pred_id_arity(unify) = 2.
+get_special_pred_id_arity(index) = 2.
+get_special_pred_id_arity(compare) = 3.
+
+get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
+	(
+		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _)
+	;
+		ProcId = uci_proc(Module, SpecialId, _, _, _, _), 
+		PredOrFunc = predicate,
+		Arity = get_special_pred_id_arity(SpecialId),
+		Name = get_special_pred_id_name(SpecialId)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -974,9 +1003,8 @@ trace_node_seqno(S, Node, SeqNo) :-
 		SeqNo = CallNode ^ call_seq
 	).
 
-:- pred trace_node_call(trace_node_store, trace_node(trace_node_id),
-		trace_node_id).
-:- mode trace_node_call(in, in, out) is semidet.
+:- pred trace_node_call(trace_node_store::in, trace_node(trace_node_id)::in,
+		trace_node_id::out) is semidet.
 
 :- pragma export(trace_node_call(in, in, out), "MR_DD_trace_node_call").
 
@@ -1376,6 +1404,10 @@ select_arg_at_pos(ArgPos, Args0, Arg) :-
 	;
 		ArgPos = any_head_var(N),
 		Which = all_headvars
+	;
+		ArgPos = any_head_var_from_back(M),
+		N = length(Args0) - M + 1,
+		Which = all_headvars
 	),
 	maybe_filter_headvars(Which, Args0, Args),
 	list__index1_det(Args, N, Arg).
@@ -1383,6 +1415,7 @@ select_arg_at_pos(ArgPos, Args0, Arg) :-
 absolute_arg_num(any_head_var(ArgNum), _, ArgNum).
 absolute_arg_num(user_head_var(N), atom(_, Args), ArgNum) :-
 	head_var_num_to_arg_num(Args, N, 1, ArgNum).
+absolute_arg_num(any_head_var_from_back(M), atom(_, Args), length(Args)-M+1).
 
 :- pred head_var_num_to_arg_num(list(trace_atom_arg)::in, int::in, int::in,
 	int::out) is det.

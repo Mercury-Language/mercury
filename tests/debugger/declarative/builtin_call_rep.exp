@@ -1,0 +1,25 @@
+      E1:     C1 CALL pred builtin_call_rep.main/2-0 (det) builtin_call_rep.m:13
+mdb> Contexts will not be printed.
+mdb> mdb> mdb> echo on
+Command echo enabled.
+mdb> step
+      E2:     C2 CALL func int.+/2-0 (det)
+mdb> print proc_body
+	proc_rep([1, 2, 3], atomic_goal_rep(det_rep, "int.m", 82, [3], builtin_call_rep/3))
+mdb> browse proc_body
+browser> cd 2
+browser> ls
+atomic_goal_rep(det_rep, "int.m", 82, [3], builtin_call_rep("int", "+", [1, 2, 3]))
+browser> quit
+mdb> f
+      E3:     C2 EXIT func int.+/2-0 (det)
+mdb> dd
++(1, 2) = 3
+Valid? b 3
+browser> mark
+Found incorrect contour:
++(1, 2) = 3
+Is this a bug? y
+      E3:     C2 EXIT func int.+/2-0 (det)
+mdb> c
+3

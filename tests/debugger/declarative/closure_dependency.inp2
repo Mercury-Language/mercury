@@ -1,0 +1,48 @@
+register --quiet
+context none
+echo on
+break a
+c
+f
+dd
+browse
+cd 3/1
+ls
+mark
+browse
+mark
+y
+c
+c
+f
+dd
+b 2
+mark
+b
+cd 1
+mark
+n
+y
+c
+c
+f
+dd
+b 2
+mark
+b 2
+mark
+n
+y
+c
+c
+f
+dd
+b 2
+mark
+b
+cd 3
+cd 2
+ls
+mark
+y
+quit -y

@@ -1,0 +1,29 @@
+register --quiet
+context none
+echo on
+step
+finish
+dd
+b 1
+mark
+n
+y
+break polytest
+c
+f
+dd
+b 2
+mark
+n
+y
+c
+delete 0
+break tracetest
+c
+f
+dd
+b 1
+mark
+n
+y
+quit -y

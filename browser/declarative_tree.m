@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module mdb__declarative_analyser.
+:- import_module mdb.declarative_edt.
 :- import_module mdb__declarative_execution.
 
 	% The type of nodes in our implementation of EDTs.  The parameter
@@ -33,9 +33,9 @@
 	%
 :- type wrap(S) ---> wrap(S).
 
-:- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number)
-		<= annotated_trace(S, R).
-:- mode edt_subtree_details(in, in, out, out) is det.
+:- pred edt_subtree_details(S, edt_node(R), event_number, sequence_number, R) 
+	<= annotated_trace(S, R).
+:- mode edt_subtree_details(in, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -44,15 +44,20 @@
 :- import_module mdb__declarative_debugger.
 :- import_module mdb__io_action.
 :- import_module mdbcomp__program_representation.
+:- import_module mdb__util.
 
-:- import_module assoc_list, bool, exception, int, list, map, std_util.
+:- import_module assoc_list, bool, exception, int, list, map, std_util, string.
+:- import_module io.
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
 	where [
-		pred(edt_root_question/4) is trace_root_question,
-		pred(edt_root_e_bug/4) is trace_root_e_bug,
+		pred(edt_question/4) is trace_question,
+		pred(edt_get_e_bug/4) is trace_get_e_bug,
+		pred(edt_get_i_bug/4) is trace_get_i_bug,
 		pred(edt_children/3) is trace_children,
-		pred(edt_dependency/6) is trace_dependency
+		pred(edt_dependency/6) is trace_dependency,
+		pred(edt_subterm_mode/5) is trace_subterm_mode,
+		pred(edt_is_implicit_root/2) is trace_is_implicit_root
 	].
 
 %-----------------------------------------------------------------------------%
@@ -87,12 +92,41 @@ make_io_actions(IoActionMap, InitIoSeq, ExitIoSeq) =
 			make_io_actions(IoActionMap, InitIoSeq + 1, ExitIoSeq)]
 	).
 
+:- pred get_edt_node_initial_atom(S::in, R::in, init_decl_atom::out)
+	is det <= annotated_trace(S, R).
+
+get_edt_node_initial_atom(Store, Ref, Atom) :-
+	det_edt_return_node_from_id(Store, Ref, Node),
+	(
+		Node = exit(_, CallId, _, _, _, _),
+		Atom = call_node_decl_atom(Store, CallId)
+	;
+		Node = fail(_, CallId, _, _),
+		Atom = call_node_decl_atom(Store, CallId)
+	;
+		Node = excp(_, CallId, _, _, _),
+		Atom = call_node_decl_atom(Store, CallId)
+	).
+
+:- pred get_edt_node_event_number(S::in, R::in, event_number::out)
+	is det <= annotated_trace(S, R).
+
+get_edt_node_event_number(Store, Ref, Event) :-
+	det_edt_return_node_from_id(Store, Ref, Node),
+	(
+		Node = exit(_, _, _, _, Event, _)
+	;
+		Node = fail(_, _, _, Event)
+	;
+		Node = excp(_, _, _, _, Event)
+	).
+
 %-----------------------------------------------------------------------------%
 
-:- pred trace_root_question(io_action_map::in, wrap(S)::in, edt_node(R)::in,
+:- pred trace_question(io_action_map::in, wrap(S)::in, edt_node(R)::in,
 	decl_question(edt_node(R))::out) is det <= annotated_trace(S, R).
 
-trace_root_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
+trace_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
 		Node = fail(_, CallId, RedoId, _),
@@ -126,10 +160,10 @@ get_answers(IoActionMap, Store, RedoId, DeclAtoms0, DeclAtoms) :-
 		DeclAtoms = DeclAtoms0
 	).
 
-:- pred trace_root_e_bug(io_action_map::in, wrap(S)::in, edt_node(R)::in,
+:- pred trace_get_e_bug(io_action_map::in, wrap(S)::in, edt_node(R)::in,
 	decl_e_bug::out) is det <= annotated_trace(S, R).
 
-trace_root_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
+trace_get_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
 		Node = exit(_, _, _, _, Event, _),
@@ -145,9 +179,18 @@ trace_root_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
 		Bug = unhandled_exception(DeclAtom, Exception, Event)
 	).
 
-:- pred trace_children(wrap(S), edt_node(R), list(edt_node(R)))
-		<= annotated_trace(S, R).
-:- mode trace_children(in, in, out) is semidet.
+:- pred trace_get_i_bug(wrap(S)::in, edt_node(R)::in,
+	edt_node(R)::in, decl_i_bug::out) is det <= annotated_trace(S, R).
+
+trace_get_i_bug(wrap(Store), dynamic(BugRef), 
+		dynamic(InadmissibleRef), inadmissible_call(BugAtom, unit,
+			InadmissibleAtom, Event)) :-
+	get_edt_node_initial_atom(Store, BugRef, BugAtom),
+	get_edt_node_initial_atom(Store, InadmissibleRef, InadmissibleAtom),
+	get_edt_node_event_number(Store, BugRef, Event).
+	
+:- pred trace_children(wrap(S)::in, edt_node(R)::in, list(edt_node(R))::out)
+	is semidet <= annotated_trace(S, R).
 
 trace_children(wrap(Store), dynamic(Ref), Children) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
@@ -156,15 +199,37 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 		not_at_depth_limit(Store, CallId),
 		missing_answer_children(Store, PrecId, CallId, [], Children)
 	;
-		Node = exit(PrecId, CallId, _, _, _, _),
+		Node = exit(PrecId, CallId, _, Atom, _, _),
 		not_at_depth_limit(Store, CallId),
-		wrong_answer_children(Store, PrecId, CallId, [], Children)
+		(
+			missing_answer_special_case(Atom)
+		->
+			missing_answer_children(Store, PrecId, CallId, [], 
+				Children)
+		;
+			wrong_answer_children(Store, PrecId, CallId, [], 
+				Children)
+		)
 	;
 		Node = excp(PrecId, CallId, _, _, _),
 		not_at_depth_limit(Store, CallId),
 		unexpected_exception_children(Store, PrecId, CallId, [],
 			Children)
 	).
+
+:- pred trace_is_implicit_root(wrap(S)::in, edt_node(R)::in) is semidet
+	<= annotated_trace(S, R).
+
+trace_is_implicit_root(wrap(Store), dynamic(Ref)) :-
+	get_edt_call_node(Store, Ref, CallId),
+	\+ not_at_depth_limit(Store, CallId).
+
+:- pred missing_answer_special_case(trace_atom::in) is semidet.
+
+missing_answer_special_case(Atom) :-
+	ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
+	ProcId = proc("std_util", predicate, "std_util", "builtin_aggregate", 
+		4, _).
 
 :- pred not_at_depth_limit(S, R) <= annotated_trace(S, R).
 :- mode not_at_depth_limit(in, in) is semidet.
@@ -478,10 +543,15 @@ unexpected_exception_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 :- type dependency_chain_start(R)
 	--->	chain_start(
 			start_loc(R),
-			int,		% The argument number of the selected
+					% The argument number of the selected
 					% position in the full list of
 					% arguments, including the
-					% compiler-generated ones.
+					% compiler-generated ones.  
+			int,		
+					% The total number of arguments
+					% including the compiler generated 
+					% ones.
+			int,
 			R,		% The id of the node preceding the exit
 					% node, if start_loc is cur_goal
 					% and the id of the node preceding the
@@ -492,7 +562,8 @@ unexpected_exception_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 					% and yes wrapped around the goal path
 					% of the call in the parent procedure
 					% if start_loc is parent_goal.
-			maybe(proc_rep)	% The body of the procedure indicated
+			maybe(proc_rep)
+					% The body of the procedure indicated
 					% by start_loc.
 		).
 
@@ -516,14 +587,22 @@ unexpected_exception_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 					% the id of the call's exit event
 		).
 
-:- pred trace_dependency(wrap(S)::in, edt_node(R)::in,
-	arg_pos::in, term_path::in, subterm_mode::out,
-	subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
+:- pred trace_subterm_mode(wrap(S)::in, edt_node(R)::in, arg_pos::in, 
+	term_path::in, subterm_mode::out) is det <= annotated_trace(S, R).
+
+trace_subterm_mode(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode) :-
+	find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
+	ChainStart = chain_start(StartLoc, _, _, _, _, _),
+	Mode = start_loc_to_subterm_mode(StartLoc).
+
+:- pred trace_dependency(wrap(S)::in, edt_node(R)::in, arg_pos::in,
+	term_path::in, subterm_mode::out, subterm_origin(edt_node(R))::out) 
+	is det <= annotated_trace(S, R).
 
 trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 	find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
-	ChainStart = chain_start(StartLoc, ArgNum, NodeId, StartPath,
-		MaybeProcRep),
+	ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, NodeId, 
+		StartPath, MaybeProcRep),
 	Mode = start_loc_to_subterm_mode(StartLoc),
 	(
 		MaybeProcRep = no,
@@ -540,11 +619,39 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 			Contour = Contour0
 		),
 		ProcRep = proc_rep(HeadVars, GoalRep),
-		make_primitive_list(Store, [goal_and_path(GoalRep, [])],
-			Contour, StartPath, ArgNum, HeadVars, Var,
-			[], Primitives),
-		traverse_primitives(Primitives, Var, TermPath,
-			Store, ProcRep, Origin)
+		is_traced_grade(AllTraced),
+		MaybePrims = make_primitive_list(Store, 
+			[goal_and_path(GoalRep, [])],
+			Contour, StartPath, ArgNum, TotalArgs,
+			HeadVars, AllTraced, []),
+		(
+			MaybePrims = yes(primitive_list_and_var(Primitives, 
+				Var, MaybeClosure)),
+			%
+			% If the subterm is in a closure argument (i.e. an
+			% argument passed to the predicate that originally
+			% formed the closure), then the argument number of the
+			% closure argument is prefixed to the term path, since
+			% the closure is itself a term.  This is done because
+			% at the time of the closure call it's not easy (XXX or
+			% is it?) to decide if the call is higher order or not,
+			% without repeating all the work done in
+			% make_primitive_list, so the original TermPath doesn't
+			% reflect the closure argument position.
+			%
+			(
+				MaybeClosure = yes,
+				AdjustedTermPath = [ArgNum | TermPath]
+			;
+				MaybeClosure = no,
+				AdjustedTermPath = TermPath
+			),
+			traverse_primitives(Primitives, Var, AdjustedTermPath,
+				Store, ProcRep, Origin)
+		;
+			MaybePrims = no,
+			Origin = not_found
+		)
 	).
 
 :- pred find_chain_start(S::in, R::in, arg_pos::in, term_path::in,
@@ -604,11 +711,12 @@ find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
 	path_from_string_det(CallPathStr, CallPath),
 	StartLoc = parent_goal(CallId, CallNode),
 	absolute_arg_num(ArgPos, CallAtom, ArgNum),
+	TotalArgs = length(CallAtom ^ atom_args),
 	StartId = CallPrecId,
 	StartPath = yes(CallPath),
 	parent_proc_rep(Store, CallId, StartRep),
-	ChainStart = chain_start(StartLoc, ArgNum, StartId, StartPath,
-		StartRep).
+	ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, StartId, 
+		StartPath, StartRep).
 
 :- pred find_chain_start_outside(trace_node(R)::in(trace_node_call),
 	trace_node(R)::in(trace_node_exit), arg_pos::in,
@@ -618,10 +726,11 @@ find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
 	StartLoc = cur_goal,
 	ExitAtom = ExitNode ^ exit_atom,
 	absolute_arg_num(ArgPos, ExitAtom, ArgNum),
+	TotalArgs = length(ExitAtom ^ atom_args),
 	StartId = ExitNode ^ exit_preceding,
 	StartPath = no,
 	StartRep = CallNode ^ call_proc_rep,
-	ChainStart = chain_start(StartLoc, ArgNum, StartId,
+	ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, StartId,
 		StartPath, StartRep).
 
 :- pred parent_proc_rep(S::in, R::in, maybe(proc_rep)::out)
@@ -630,18 +739,24 @@ find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
 parent_proc_rep(Store, CallId, ProcRep) :-
 	call_node_from_id(Store, CallId, Call),
 	CallPrecId = Call ^ call_preceding,
-	( trace_node_from_id(Store, CallPrecId, CallPrecNode) ->
-		step_left_to_call(Store, CallPrecNode, ParentCallNode),
+	(
+		step_left_to_call(Store, CallPrecId, ParentCallNode)
+	->
 		ProcRep = ParentCallNode ^ call_proc_rep
 	;
-		% The parent call is outside the annotated trace.
 		ProcRep = no
 	).
+	
+	%
+	% Finds the call node of the parent of the given node.  Fails if
+	% the call node cannot be found because it was not included in the
+	% annotated trace.
+	%
+:- pred step_left_to_call(S::in, R::in, trace_node(R)::out(trace_node_call)) 
+	is semidet <= annotated_trace(S, R).
 
-:- pred step_left_to_call(S::in, trace_node(R)::in,
-	trace_node(R)::out(trace_node_call)) is det <= annotated_trace(S, R).
-
-step_left_to_call(Store, Node, ParentCallNode) :-
+step_left_to_call(Store, NodeId, ParentCallNode) :-
+	trace_node_from_id(Store, NodeId, Node),
 	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		ParentCallNode = Node
 	;
@@ -660,10 +775,13 @@ step_left_to_call(Store, Node, ParentCallNode) :-
 		->
 			PrevNodeId = CondPrec
 		;
+			Node = cond(CondPrec, _, failed)
+		->
+			PrevNodeId = CondPrec
+		;
 			PrevNodeId = step_left_in_contour(Store, Node)
 		),
-		det_trace_node_from_id(Store, PrevNodeId, PrevNode),
-		step_left_to_call(Store, PrevNode, ParentCallNode)
+		step_left_to_call(Store, PrevNodeId, ParentCallNode)
 	).
 
 :- pred materialize_contour(S::in, R::in, trace_node(R)::in,
@@ -672,6 +790,7 @@ step_left_to_call(Store, Node, ParentCallNode) :-
 
 materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
 	( Node = call(_, _, _, _, _, _, _, _, _) ->
+		
 		Nodes = Nodes0
 	;
 		%
@@ -703,27 +822,172 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
 			Nodes1, Nodes)
 	).
 
-:- pred make_primitive_list(S::in, goal_and_path_list::in,
-	assoc_list(R, trace_node(R))::in, maybe(goal_path)::in,
-	int::in, list(var_rep)::in, var_rep::out,
-	list(annotated_primitive(R))::in, list(annotated_primitive(R))::out)
-	is det <= annotated_trace(S, R).
+:- type primitive_list_and_var(R)
+	--->	primitive_list_and_var(
+			primitives	:: list(annotated_primitive(R)),
+				%
+				% The var_rep for the argument which holds the
+				% subterm we are trying to find the origin of.
+				% If the subterm is in one of the arguments
+				% that were passed to a closure when the
+				% closure was created, then this will be the
+				% var_rep for the variable containing the
+				% closure.
+				% 
+			var		:: var_rep,
+				%
+				% Was the subterm inside a closure argument
+				% that was passed in when the closure was
+				% created?
+				%
+			closure		:: bool
+		).
 
-make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
-		Contour, MaybeEnd, ArgNum, HeadVars, Var,
-		Primitives0, Primitives) :-
+	% Constructs a list of the primitive goals along the given contour if
+	% it can.  It might not be able to construct the list in the case where
+	% there are higher order calls and we're not sure if everything is
+	% traced, then there might be extra/missing events on the contour and
+	% we need to make sure the primitive atomic goals match up with the
+	% contour events, but in the case of higher order calls this is not
+	% easily done as the name/module of the higher order call is not
+	% available in the goal_rep.  If it cannot construct the primitive list
+	% reliably then `no' is returned.  MaybeEnd is the goal path of the
+	% call event that should be at the end of the contour for input
+	% subterms.
+	%
+:- func make_primitive_list(S, goal_and_path_list, 
+	assoc_list(R, trace_node(R)), maybe(goal_path), int, int, 
+	list(var_rep), bool, list(annotated_primitive(R))) 
+	= maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
+
+make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
+		HeadVars, AllTraced, Primitives0) = MaybePrims :-
+	(
+		AllTraced = no,
+		(
+			next_goal_generates_internal_event(GoalPaths)
+		;
+			GoalPaths = []
+		)
+	->
+		% There may be extra exit and fail events in the
+		% contour if a call to an untraced module was made, but
+		% then something in the untraced module called
+		% something in a traced module.
+		remove_leading_exit_fail_events(Contour, 
+			AdjustedContour)
+	;
+		AdjustedContour = Contour
+	),
+	(
+		AllTraced = no,
+		contour_at_end_path(AdjustedContour, MaybeEnd),
+		(
+			next_goal_generates_internal_event(GoalPaths)
+		;
+			GoalPaths = []
+		)
+	->
+		% We were unable to identify the goal corresponding to this
+		% call (it might have been a higher order call) so we return no
+		% to indicate this. This is the safest thing to do when we're
+		% not sure what has/hasn't been traced.
+		MaybePrims = no
+	;
+		(
+			GoalPaths = [goal_and_path(Goal, Path) | Tail],
+			MaybePrims = match_goal_to_contour_event(Store, Goal,
+				Path, Tail, AdjustedContour, MaybeEnd,
+				ArgNum, TotalArgs, HeadVars, AllTraced,
+				Primitives0)
+		;
+			GoalPaths = [],
+			decl_require(unify(AdjustedContour, []),
+				"make_primitive_list", 
+				"nonempty contour at end"),
+			decl_require(unify(MaybeEnd, no),
+				"make_primitive_list", 
+				"found end when looking for call"),
+			find_variable_in_args(HeadVars, ArgNum, TotalArgs, 
+				Var),
+			MaybePrims = yes(primitive_list_and_var(
+				Primitives0, Var, no))
+		)
+	).
+
+:- pred contour_at_end_path(assoc_list(R, trace_node(R))::in, 
+	maybe(goal_path)::in) is semidet.
+
+contour_at_end_path([_ - call(_,_,_,_,_,_,_, CallPathStr, _)], yes(EndPath)) :-
+	path_from_string_det(CallPathStr, CallPath),
+	CallPath = EndPath.
+
+:- pred next_goal_generates_internal_event(list(goal_and_path)::in) is semidet.
+
+next_goal_generates_internal_event([goal_and_path(NextGoal, _) | _]) :-
+	goal_generates_internal_event(NextGoal) = yes.
+
+	% match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
+	%	Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
+	%	Primitives) = MaybePrims
+	% Matches the given goal_rep to the first event in the contour for
+	% all goal_reps except atomic goal reps which need to be handled 
+	% differently depending on whether everything is traced (AllTraced).
+	% Returns the list of Primitives appended to the list of 
+	% primitive goals along the remaining contour.  If it cannot match
+	% a higher order call to a contour event and AllTraced is no, then
+	% no is returned.
+	%
+:- func match_goal_to_contour_event(S, goal_rep, goal_path, goal_and_path_list, 
+	assoc_list(R, trace_node(R)), maybe(goal_path), int, int, 
+	list(var_rep), bool, list(annotated_primitive(R))) 
+	= maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
+
+match_goal_to_contour_event(Store, Goal, Path, GoalPaths,
+		Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
+		Primitives0) = MaybePrims :- 
 	(
 		Goal = conj_rep(Conjs),
 		add_paths_to_conjuncts(Conjs, Path, 1, ConjPaths),
-		make_primitive_list(Store, list__append(ConjPaths, GoalPaths),
-			Contour, MaybeEnd, ArgNum, HeadVars, Var,
-			Primitives0, Primitives)
+		MaybePrims = make_primitive_list(Store, 
+			list__append(ConjPaths, GoalPaths),
+			Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, 
+			AllTraced, Primitives0)
+	;
+		Goal = some_rep(InnerGoal, MaybeCut),
+		InnerPath = list__append(Path, [exist(MaybeCut)]),
+		InnerAndPath = goal_and_path(InnerGoal, InnerPath),
+		MaybePrims = make_primitive_list(Store, 
+			[InnerAndPath | GoalPaths],
+			Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, 
+			AllTraced, Primitives0)
+	;
+		Goal = atomic_goal_rep(_, File, Line, BoundVars, AtomicGoal),
+		GeneratesEvent = atomic_goal_generates_event(AtomicGoal),
+		(
+			GeneratesEvent = yes(AtomicGoalArgs),
+			MaybePrims = match_atomic_goal_to_contour_event(Store, 
+				File, Line, BoundVars, AtomicGoal,
+				AtomicGoalArgs, Path, GoalPaths, Contour,
+				MaybeEnd, ArgNum, TotalArgs, HeadVars,
+				AllTraced, Primitives0)
+		;
+			GeneratesEvent = no,
+			Primitive = primitive(File, Line, BoundVars,
+				AtomicGoal, Path, no),
+			Primitives1 = [Primitive | Primitives0],
+			MaybePrims = make_primitive_list(Store, GoalPaths,
+				Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars,
+				AllTraced, Primitives1)
+		)
 	;
 		Goal = disj_rep(Disjs),
 		(
 			Contour = [_ - ContourHeadNode | ContourTail],
-			( ContourHeadNode = first_disj(_, DisjPathStr)
-			; ContourHeadNode = later_disj(_, DisjPathStr, _)
+			( 
+				ContourHeadNode = first_disj(_, DisjPathStr)
+			; 
+				ContourHeadNode = later_disj(_, DisjPathStr, _)
 			),
 			path_from_string_det(DisjPathStr, DisjPath),
 			list__append(Path, PathTail, DisjPath),
@@ -731,11 +995,11 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 		->
 			list__index1_det(Disjs, N, Disj),
 			DisjAndPath = goal_and_path(Disj, DisjPath),
-			make_primitive_list(Store, [DisjAndPath | GoalPaths],
-				ContourTail, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives0, Primitives)
+			MaybePrims = make_primitive_list(Store, [DisjAndPath |
+				GoalPaths], ContourTail, MaybeEnd, ArgNum,
+				TotalArgs, HeadVars, AllTraced, Primitives0)
 		;
-			throw(internal_error("make_primitive_list",
+			throw(internal_error("match_goal_to_contour_event",
 				"mismatch on disj"))
 		)
 	;
@@ -749,11 +1013,11 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 		->
 			list__index1_det(Arms, N, Arm),
 			ArmAndPath = goal_and_path(Arm, ArmPath),
-			make_primitive_list(Store, [ArmAndPath | GoalPaths],
-				ContourTail, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives0, Primitives)
+			MaybePrims = make_primitive_list(Store, [ArmAndPath |
+				GoalPaths], ContourTail, MaybeEnd, ArgNum,
+				TotalArgs, HeadVars, AllTraced, Primitives0)
 		;
-			throw(internal_error("make_primitive_list",
+			throw(internal_error("match_goal_to_contour_event",
 				"mismatch on switch"))
 		)
 	;
@@ -768,10 +1032,10 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 			ThenPath = list__append(Path, [ite_then]),
 			CondAndPath = goal_and_path(Cond, CondPath),
 			ThenAndPath = goal_and_path(Then, ThenPath),
-			make_primitive_list(Store,
-				[CondAndPath, ThenAndPath | GoalPaths],
-				ContourTail, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives0, Primitives)
+			MaybePrims = make_primitive_list(Store, [CondAndPath,
+				ThenAndPath | GoalPaths], ContourTail,
+				MaybeEnd, ArgNum, TotalArgs, HeadVars,
+				AllTraced, Primitives0)
 		;
 			Contour = [_ - ContourHeadNode | ContourTail],
 			ContourHeadNode = else(_, ElseCondId),
@@ -783,11 +1047,11 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 		->
 			ElsePath = list__append(Path, [ite_else]),
 			ElseAndPath = goal_and_path(Else, ElsePath),
-			make_primitive_list(Store, [ElseAndPath | GoalPaths],
-				ContourTail, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives0, Primitives)
+			MaybePrims = make_primitive_list(Store, [ElseAndPath |
+				GoalPaths], ContourTail, MaybeEnd, ArgNum,
+				TotalArgs, HeadVars, AllTraced, Primitives0)
 		;
-			throw(internal_error("make_primitive_list",
+			throw(internal_error("match_goal_to_contour_event",
 				"mismatch on if-then-else"))
 		)
 	;
@@ -797,9 +1061,9 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 			ContourHeadNode = neg_succ(_, _)
 		->
 			% The negated goal cannot contribute any bindings.
-			make_primitive_list(Store, GoalPaths,
-				ContourTail, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives0, Primitives)
+			MaybePrims = make_primitive_list(Store, GoalPaths, 
+				ContourTail, MaybeEnd, ArgNum, TotalArgs,
+				HeadVars, AllTraced, Primitives0)
 		;
 			Contour = [_ - ContourHeadNode | ContourTail],
 			ContourHeadNode = neg(_, _, _)
@@ -808,75 +1072,234 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 			% NegGoal.
 			NegPath = list__append(Path, [neg]),
 			NegAndPath = goal_and_path(NegGoal, NegPath),
-			make_primitive_list(Store, [NegAndPath],
-				ContourTail, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives0, Primitives)
+			MaybePrims = make_primitive_list(Store, [NegAndPath], 
+				ContourTail, MaybeEnd, ArgNum, TotalArgs,
+				HeadVars, AllTraced, Primitives0)
 		;
-			throw(internal_error("make_primitive_list",
+			throw(internal_error("match_goal_to_contour_event",
 				"mismatch on negation"))
 		)
-	;
-		Goal = some_rep(InnerGoal, MaybeCut),
-		InnerPath = list__append(Path, [exist(MaybeCut)]),
-		InnerAndPath = goal_and_path(InnerGoal, InnerPath),
-		make_primitive_list(Store, [InnerAndPath | GoalPaths],
-			Contour, MaybeEnd, ArgNum, HeadVars, Var,
-			Primitives0, Primitives)
-	;
-		Goal = atomic_goal_rep(_, File, Line, BoundVars, AtomicGoal),
-		GeneratesEvent = atomic_goal_generates_event(AtomicGoal),
+	).
+
+:- pred remove_leading_exit_fail_events(
+	assoc_list(R, trace_node(R))::in,
+	assoc_list(R, trace_node(R))::out) is det.
+	
+remove_leading_exit_fail_events([], []).
+remove_leading_exit_fail_events(Contour0, Contour) :-
+	Contour0 = [_ - ContourHeadNode | ContourTail],
+	(
 		(
-			GeneratesEvent = yes(Args),
+			ContourHeadNode = exit(_, _, _, _, _, _)
+		;
+			ContourHeadNode = fail(_, _, _, _)
+		)
+	->
+		remove_leading_exit_fail_events(ContourTail, 
+			Contour)
+	;
+		Contour = Contour0
+	).
+
+	% Trys to match an atomic goal to the first event on the contour.
+	% These should match if AllTraced = yes.  If AllTraced = no, then
+	% if the goal doesn't match the contour event (i.e. they are for
+	% different predicates), then the goal will be treated as a primitive
+	% operation with no children.  The next atomic goal will then be tried
+	% as a match for the first event on the contour.  This will
+	% continue until a non-atomic goal is reached, at which point all
+	% events that could match atomic goals (exit and fail events) are
+	% removed from the top of the contour.  This strategy will work
+	% best when untraced calls do not call traced modules (which seems
+	% more likely for the majority of untraced calls).
+	%
+:- func match_atomic_goal_to_contour_event(S, string, int, 
+	list(var_rep), atomic_goal_rep, list(var_rep), goal_path,
+	list(goal_and_path), assoc_list(R, trace_node(R)), maybe(goal_path),
+	int, int, list(var_rep), bool, list(annotated_primitive(R))) =
+	maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
+
+match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
+		AtomicGoalArgs, Path, GoalPaths, Contour, MaybeEnd, ArgNum,
+		TotalArgs, HeadVars, AllTraced, Primitives0) = MaybePrims :- 
+	(
+		Contour = [_ - ContourHeadNode],
+		MaybeEnd = yes(EndPath)
+	->
+		(
+			ContourHeadNode = 
+				call(_, _, Atom, _, _, _, _, CallPathStr, _),
+			path_from_string_det(CallPathStr, CallPath),
+			CallPath = EndPath
+		->
 			(
-				Contour = [ContourHeadId - ContourHeadNode
-					| ContourTail],
-				CallId = ContourHeadNode ^ exit_call,
-				call_node_from_id(Store, CallId, CallNode),
-				CallPathStr = CallNode ^ call_goal_path,
-				path_from_string_det(CallPathStr, CallPath),
-				CallPath = Path,
-				\+ (
-					MaybeEnd = yes(EndPath),
-					EndPath = Path
+				(
+					atomic_goal_identifiable(AtomicGoal) =
+						yes(AtomicGoalId)
+				->
+					atomic_goal_matches_atom(AtomicGoalId,
+						Atom)
+				;
+					AllTraced = yes
 				)
 			->
-				Primitive = primitive(File, Line, BoundVars,
-					AtomicGoal, Path, yes(ContourHeadId)),
-				Primitives1 = [Primitive | Primitives0],
-				make_primitive_list(Store, GoalPaths,
-					ContourTail, MaybeEnd, ArgNum,
-					HeadVars, Var, Primitives1, Primitives)
+				(
+					% Test to see that the argument is not
+					% a closure argument (passed in when
+					% the closure was created)
+					ArgNum > TotalArgs -
+						length(AtomicGoalArgs)
+				->
+					find_variable_in_args(AtomicGoalArgs, 
+						ArgNum, TotalArgs, Var),
+					MaybePrims = yes(
+						primitive_list_and_var(
+							Primitives0, Var, no))
+					
+				;
+					% Perhaps this is a closure and the 
+					% argument was passed in when the
+					% closure was created.  
+					(
+						AtomicGoal =
+						higher_order_call_rep(
+							Closure, _)
+					->
+						Var = Closure,
+						MaybePrims = yes(
+						    primitive_list_and_var(
+							Primitives0, Var, yes))
+					;
+						throw(internal_error(
+							"make_primitive_list",
+							"argument number "++ 
+							"mismatch"))
+					)
+				)
 			;
-				Contour = [_ContourHeadId - ContourHeadNode],
-				CallPathStr = ContourHeadNode ^ call_goal_path,
-				path_from_string_det(CallPathStr, CallPath),
-				CallPath = Path,
-				MaybeEnd = yes(EndPath),
-				EndPath = Path
-			->
-				list__index1_det(Args, ArgNum, Var),
-				Primitives = Primitives0
-			;
-				throw(internal_error("make_primitive_list",
-					"mismatch on call"))
+				(
+					AllTraced = yes,
+					throw(internal_error(
+						"match_atomic_goal_to_conto"++
+						"ur_event",
+						"name mismatch on call"))
+				;
+					AllTraced = no,
+					Primitive = primitive(File, Line, 
+						BoundVars, AtomicGoal, Path,
+						no),
+					Primitives1 = [Primitive|Primitives0],
+					MaybePrims = make_primitive_list(Store,
+						GoalPaths, Contour, MaybeEnd,
+						ArgNum, TotalArgs, HeadVars,
+						AllTraced, Primitives1)
+				)
 			)
 		;
-			GeneratesEvent = no,
+			throw(internal_error(
+				"match_atomic_goal_to_contour_event",
+				"goalpath mismatch on call"))
+		)
+	;
+		(
+			Contour = [ContourHeadId - ContourHeadNode |
+				ContourTail],
+			(
+				ContourHeadNode = exit(_, _, _, Atom, _, _)
+			->
+				(
+					(
+						atomic_goal_identifiable(
+							AtomicGoal) =
+							yes(AtomicGoalId)
+					->
+						atomic_goal_matches_atom(
+							AtomicGoalId, Atom)
+					;
+						AllTraced = yes
+					)
+				->
+					CallInfo = yes(ContourHeadId),
+					NewContour = ContourTail
+				;
+					(
+						AllTraced = yes,
+						throw(internal_error(
+							"match_atomic_goal_"++
+							"to_contour_event",
+							"atomic goal doesn't"++
+							" match exit event\n"))
+					;
+						AllTraced = no,
+						CallInfo = no,
+						NewContour = Contour
+					)
+				)
+			;
+				(
+					AllTraced = yes,
+					throw(internal_error(
+					  "match_atomic_goal_to_contour_event",
+					  "atomic goal with no exit event "++
+					  "when assuming all traced"))
+				;
+					AllTraced = no,
+					CallInfo = no,
+					NewContour = Contour
+				)
+			),
 			Primitive = primitive(File, Line, BoundVars,
-				AtomicGoal, Path, no),
+				AtomicGoal, Path, CallInfo),
 			Primitives1 = [Primitive | Primitives0],
-			make_primitive_list(Store, GoalPaths,
-				Contour, MaybeEnd, ArgNum, HeadVars, Var,
-				Primitives1, Primitives)
+			MaybePrims = make_primitive_list(Store, GoalPaths,
+				NewContour, MaybeEnd, ArgNum, TotalArgs,
+				HeadVars, AllTraced, Primitives1)
+		;
+			Contour = [],
+			(
+				AllTraced = no,
+				MaybeEnd = no
+			->
+				Primitive = primitive(File, Line, BoundVars,
+					AtomicGoal, Path, no),
+				Primitives1 = [Primitive | Primitives0],
+				MaybePrims = make_primitive_list(Store,
+					GoalPaths, [], MaybeEnd, ArgNum,
+					TotalArgs, HeadVars, AllTraced,
+					Primitives1)
+			;
+				throw(internal_error(
+					"match_atomic_goal_to_contour_event",
+					"premature contour end"))
+			)
 		)
 	).
-make_primitive_list(_, [], Contour, MaybeEnd, ArgNum, HeadVars, Var,
-		Primitives, Primitives) :-
-	decl_require(unify(Contour, []),
-		"make_primitive_list", "nonempty contour at end"),
-	decl_require(unify(MaybeEnd, no),
-		"make_primitive_list", "found end when looking for call"),
-	list__index1_det(HeadVars, ArgNum, Var).
+
+:- pred atomic_goal_matches_atom(atomic_goal_id::in, trace_atom::in) 
+	is semidet.
+
+atomic_goal_matches_atom(AtomicGoalId, Atom) :-	
+	AtomicGoalId = atomic_goal_id(GoalModule, GoalName, GoalArity),
+	ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
+	get_pred_attributes(ProcId, EventModule, EventName, _, _),
+	EventArity = length(Atom ^ atom_args),
+	EventModule = GoalModule, 
+	EventName = GoalName, 
+	EventArity = GoalArity.
+
+:- pred find_variable_in_args(list(var_rep)::in, int::in, int::in, 
+	var_rep::out) is det.
+
+find_variable_in_args(Args, ArgNum, TotalArgs, Var) :-
+	% We reverse the arg list in case this is an argument of a closure call
+	% that is passed in at the time of the call.
+	(
+		index1(reverse(Args), TotalArgs - ArgNum + 1, FoundVar)
+	->
+		Var = FoundVar
+	;
+		throw(internal_error("find_variable_in_args", "arg not found"))
+	).
 
 :- pred traverse_primitives(list(annotated_primitive(R))::in,
 	var_rep::in, term_path::in, S::in, proc_rep::in,
@@ -964,18 +1387,24 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		)
 	;
 		AtomicGoal = higher_order_call_rep(_, Args),
-		traverse_call(BoundVars, no, Args, MaybeNodeId, Prims,
+		traverse_call(BoundVars, File, Line, Args, MaybeNodeId, Prims,
 			Var0, TermPath0, Store, ProcRep, Origin)
 	;
 		AtomicGoal = method_call_rep(_, _, Args),
-		traverse_call(BoundVars, no, Args, MaybeNodeId, Prims,
+		traverse_call(BoundVars, File, Line, Args, MaybeNodeId, Prims,
 			Var0, TermPath0, Store, ProcRep, Origin)
 	;
-		AtomicGoal = plain_call_rep(ModuleName, PredName, Args),
-		PlainCallInfo = plain_call_info(File, Line,
-			ModuleName, PredName),
-		traverse_call(BoundVars, yes(PlainCallInfo), Args, MaybeNodeId,
+		AtomicGoal = plain_call_rep(_, _, Args),
+		traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 			Prims, Var0, TermPath0, Store, ProcRep, Origin)
+	;
+		AtomicGoal = builtin_call_rep(_, _, _),
+		( list__member(Var0, BoundVars) ->
+			Origin = primitive_op(File, Line)
+		;
+			traverse_primitives(Prims, Var0, TermPath0,
+				Store, ProcRep, Origin)
+		)
 	).
 
 :- type plain_call_info
@@ -986,13 +1415,12 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 			pred_name	:: string
 		).
 
-:- pred traverse_call(list(var_rep)::in, maybe(plain_call_info)::in,
-	list(var_rep)::in, maybe(R)::in,
-	list(annotated_primitive(R))::in, var_rep::in, term_path::in,
-	S::in, proc_rep::in, subterm_origin(edt_node(R))::out) is det
-	<= annotated_trace(S, R).
+:- pred traverse_call(list(var_rep)::in, string::in, int::in, 
+	list(var_rep)::in, maybe(R)::in, list(annotated_primitive(R))::in,
+	var_rep::in, term_path::in, S::in, proc_rep::in,
+	subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
 
-traverse_call(BoundVars, MaybePlainCallInfo, Args, MaybeNodeId,
+traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 		Prims, Var, TermPath, Store, ProcRep, Origin) :-
 	( list__member(Var, BoundVars) ->
 		Pos = find_arg_pos(Args, Var),
@@ -1001,17 +1429,7 @@ traverse_call(BoundVars, MaybePlainCallInfo, Args, MaybeNodeId,
 			Origin = output(dynamic(NodeId), Pos, TermPath)
 		;
 			MaybeNodeId = no,
-			(
-				MaybePlainCallInfo = yes(PlainCallInfo),
-				PlainCallInfo = plain_call_info(File, Line,
-					ModuleName, PredName),
-				call_is_primitive(ModuleName, PredName)
-			->
-				Origin = primitive_op(File, Line)
-			;
-				throw(internal_error("traverse_call",
-					"no node id"))
-			)
+			Origin = primitive_op(File, Line)
 		)
 	;
 		traverse_primitives(Prims, Var, TermPath, Store, ProcRep,
@@ -1031,6 +1449,21 @@ add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
 
 %-----------------------------------------------------------------------------%
 
+:- pred is_traced_grade(bool::out) is det.
+
+:- pragma foreign_proc("C", is_traced_grade(TracingOn::out), 
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
+	#ifdef MR_EXEC_TRACE
+		TracingOn = ML_bool_return_yes();
+	#else
+		TracingOn = ML_bool_return_no();
+	#endif
+").
+
+
+%-----------------------------------------------------------------------------%
+
 :- func start_loc_to_subterm_mode(start_loc(R)) = subterm_mode.
 
 start_loc_to_subterm_mode(cur_goal) = subterm_out.
@@ -1041,23 +1474,23 @@ start_loc_to_subterm_mode(parent_goal(_, _)) = subterm_in.
 :- func find_arg_pos(list(var_rep), var_rep) = arg_pos.
 
 find_arg_pos(HeadVars, Var) = ArgPos :-
-	find_arg_pos_2(HeadVars, Var, 1, ArgPos).
+	find_arg_pos_from_back(HeadVars, Var, length(HeadVars), ArgPos).
 
-:- pred find_arg_pos_2(list(var_rep)::in, var_rep::in, int::in, arg_pos::out)
-	is det.
+:- pred find_arg_pos_from_back(list(var_rep)::in, var_rep::in, int::in, 
+	arg_pos::out) is det.
 
-find_arg_pos_2([], _, _, _) :-
+find_arg_pos_from_back([], _, _, _) :-
 	throw(internal_error("find_arg_pos_2", "empty list")).
-find_arg_pos_2([HeadVar | HeadVars], Var, Pos, ArgPos) :-
+find_arg_pos_from_back([HeadVar | HeadVars], Var, Pos, ArgPos) :-
 	( HeadVar = Var ->
-		ArgPos = any_head_var(Pos)
+		ArgPos = any_head_var_from_back(Pos)
 	;
-		find_arg_pos_2(HeadVars, Var, Pos + 1, ArgPos)
+		find_arg_pos_from_back(HeadVars, Var, Pos - 1, ArgPos)
 	).
 
 %-----------------------------------------------------------------------------%
 
-edt_subtree_details(Store, dynamic(Ref), Event, SeqNo) :-
+edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
 		Node = exit(_, Call, _, _, Event, _)
@@ -1067,12 +1500,13 @@ edt_subtree_details(Store, dynamic(Ref), Event, SeqNo) :-
 		Node = excp(_, Call, _, _, Event)
 	),
 	call_node_from_id(Store, Call, CallNode),
-	SeqNo = CallNode ^ call_seq.
+	SeqNo = CallNode ^ call_seq,
+	CallPreceding = CallNode ^ call_preceding.
 
-:- inst edt_return_node
-	--->	exit(ground, ground, ground, ground, ground, ground)
-	;	fail(ground, ground, ground, ground)
-	;	excp(ground, ground, ground, ground, ground).
+:- inst edt_return_node =
+		bound(	exit(ground, ground, ground, ground, ground, ground)
+		;	fail(ground, ground, ground, ground)
+		;	excp(ground, ground, ground, ground, ground)).
 
 :- pred det_edt_return_node_from_id(S::in, R::in,
 	trace_node(R)::out(edt_return_node)) is det <= annotated_trace(S, R).
@@ -1091,6 +1525,26 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
 		Node = Node0
 	;
 		throw(internal_error("det_edt_return_node_from_id",
+			"not a return node"))
+	).
+
+:- pred get_edt_call_node(S::in, R::in, R::out) 
+	is det <= annotated_trace(S, R).
+
+get_edt_call_node(Store, Ref, CallId) :-
+	(
+		trace_node_from_id(Store, Ref, Node0),
+		(
+			Node0 = exit(_, CallId0, _, _, _, _)
+		;
+			Node0 = fail(_, CallId0, _, _)
+		;
+			Node0 = excp(_, CallId0, _, _, _)
+		)
+	->
+		CallId = CallId0
+	;
+		throw(internal_error("get_edt_call_node",
 			"not a return node"))
 	).
 
@@ -1117,4 +1571,3 @@ decl_require(Goal, Loc, Msg) :-
 	;
 		throw(internal_error(Loc, Msg))
 	).
-

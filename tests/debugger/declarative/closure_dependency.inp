@@ -1,0 +1,43 @@
+register --quiet
+context none
+echo on
+step
+f
+dd
+b 2
+mark
+n
+b 1
+mark
+y
+break a
+c
+c
+f
+dd
+b 2
+mark
+n
+b 2
+mark
+y
+c
+c
+f
+dd
+b 2
+mark
+n
+b 3
+mark
+y
+c
+c
+f
+dd
+b 3
+ls
+mark
+n
+y
+quit -y

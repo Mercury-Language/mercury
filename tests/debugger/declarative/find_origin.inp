@@ -1,0 +1,38 @@
+register --quiet
+context none
+echo on
+
+f
+dd
+b 1
+mark
+n
+y
+y
+y
+y
+y
+break polytest
+c
+f
+dd
+b 2
+mark
+browse
+set format pretty
+p
+quit
+no
+y
+y
+y
+delete 0
+break tracetest
+c
+f
+dd
+b 1
+mark
+n
+y
+quit -y

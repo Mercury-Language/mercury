@@ -1,0 +1,85 @@
+      E1:     C1 CALL pred closure_dependency.main/2-0 (det) closure_dependency.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> break a
+ 0: + stop  interface pred closure_dependency.a/3-0 (det)
+mdb> c
+      E2:     C2 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+      E3:     C2 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(0, [100, 0], t(p([0])))
+Valid? browse
+browser> cd 3/1
+browser> ls
+p([0])
+browser> mark
+d([0], t(p([0])))
+Valid? browse
+browser> mark
+Found incorrect contour:
+d([0], t(p([0])))
+Is this a bug? y
+      E4:     C3 EXIT pred closure_dependency.d/2-0 (det)
+mdb> c
+      E3:     C2 EXIT pred closure_dependency.a/3-0 (det)
+mdb> c
+      E5:     C4 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+      E6:     C4 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(1, [100, 1], t(p([1])))
+Valid? b 2
+browser> mark
+p([1], 100, [100, 1])
+Valid? b
+browser> cd 1
+browser> mark
+b(1, [1])
+Valid? n
+Found incorrect contour:
+b(1, [1])
+Is this a bug? y
+      E7:     C5 EXIT pred closure_dependency.b/2-0 (det)
+mdb> c
+      E6:     C4 EXIT pred closure_dependency.a/3-0 (det)
+mdb> c
+      E8:     C6 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+      E9:     C6 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(2, [100, 2], t(p([2])))
+Valid? b 2
+browser> mark
+p([2], 100, [100, 2])
+Valid? b 2
+browser> mark
+e(2, 100)
+Valid? n
+Found incorrect contour:
+e(2, 100)
+Is this a bug? y
+     E10:     C7 EXIT pred closure_dependency.e/2-0 (det)
+mdb> c
+      E9:     C6 EXIT pred closure_dependency.a/3-0 (det)
+mdb> c
+     E11:     C8 CALL pred closure_dependency.a/3-0 (det)
+mdb> f
+     E12:     C8 EXIT pred closure_dependency.a/3-0 (det)
+mdb> dd
+a(3, [100, 3], t(p([3])))
+Valid? b 2
+browser> mark
+p([3], 100, [100, 3])
+Valid? b
+browser> cd 3
+browser> cd 2
+browser> ls
+[3]
+browser> mark
+Found incorrect contour:
+p([3], 100, [100, 3])
+Is this a bug? y
+     E13:     C9 EXIT pred closure_dependency.p/3-0 (det)
+mdb> quit -y

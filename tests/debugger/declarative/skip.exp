@@ -1,0 +1,108 @@
+      E1:     C1 CALL pred skip.main/2-0 (det) skip.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> step
+      E2:     C2 CALL pred skip.a/2-0 (det)
+mdb> finish
+      E3:     C2 EXIT pred skip.a/2-0 (det)
+mdb> dd
+a(1, 70)
+Valid? skip
+b(1, 70)
+Valid? y
+c(70, 70)
+Valid? y
+d(70, 70)
+Valid? y
+a(1, 70)
+Valid? n
+Found incorrect contour:
+a(1, 70)
+Is this a bug? y
+      E3:     C2 EXIT pred skip.a/2-0 (det)
+mdb> trust b
+Trusting pred skip.b/2
+mdb> trust d
+Trusting pred skip.d/2
+mdb> step
+      E4:     C3 CALL pred skip.a/2-0 (det)
+mdb> finish
+      E5:     C3 EXIT pred skip.a/2-0 (det)
+mdb> dd
+a(2, 71)
+Valid? skip
+c(71, 71)
+Valid? skip
+e(71, 71)
+Valid? n
+Found incorrect contour:
+e(71, 71)
+Is this a bug? y
+      E6:     C4 EXIT pred skip.e/2-0 (det)
+mdb> untrust 1
+mdb> untrust 2
+mdb> trusted
+Trusted Objects:
+0: the Mercury standard library
+mdb> break a
+ 0: + stop  interface pred skip.a/2-0 (det)
+mdb> continue
+      E5:     C3 EXIT pred skip.a/2-0 (det)
+mdb> step
+      E7:     C5 CALL pred skip.a/2-0 (det)
+mdb> finish
+      E8:     C5 EXIT pred skip.a/2-0 (det)
+mdb> dd
+a(3, 72)
+Valid? n
+b(3, 72)
+Valid? y
+c(72, 72)
+Valid? n
+e(72, 72)
+Valid? 
+f(72, 72)
+Valid? 
+e(72, 72)
+Valid? skip
+f(72, 72)
+Valid? y
+e(72, 72)
+Valid? y
+Found incorrect contour:
+c(72, 72)
+Is this a bug? y
+      E9:     C6 EXIT pred skip.c/2-0 (det)
+mdb> dd
+c(72, 72)
+Valid? [no] a
+Diagnosis aborted.
+      E9:     C6 EXIT pred skip.c/2-0 (det)
+mdb> break a
+ 1: + stop  interface pred skip.a/2-0 (det)
+mdb> c
+      E8:     C5 EXIT pred skip.a/2-0 (det)
+mdb> retry
+      E7:     C5 CALL pred skip.a/2-0 (det)
+mdb> f
+      E8:     C5 EXIT pred skip.a/2-0 (det)
+mdb> dd
+a(3, 72)
+Valid? [no] 
+c(72, 72)
+Valid? [no] y
+d(72, 72)
+Valid? n
+Found incorrect contour:
+d(72, 72)
+Is this a bug? n
+d(72, 72)
+Valid? [no] skip
+d(72, 72)
+Valid? y
+Found incorrect contour:
+a(3, 72)
+Is this a bug? y
+      E8:     C5 EXIT pred skip.a/2-0 (det)
+mdb> quit -y

@@ -30,14 +30,13 @@
 :- import_module mdb__declarative_execution.
 :- import_module mdb.browser_info.
 
-:- import_module list, io, bool, string.
+:- import_module io, bool, string.
 
 	% A response that the oracle gives to a query about the
 	% truth of an EDT node.
 	%
 :- type oracle_response(T)
-	--->	oracle_answers(list(decl_answer(T)))
-	;	no_oracle_answers
+	--->	oracle_answer(decl_answer(T))
 	;	exit_diagnosis(T)
 	;	abort_diagnosis.
 
@@ -84,12 +83,11 @@
 :- pred get_trusted_list(oracle_state::in, bool::in, string::out) is det.
 
 	% Query the oracle about the program being debugged.  The first
-	% argument is a queue of nodes in the evaluation tree, the second
-	% argument is the oracle response to any of these.  The oracle
-	% state is threaded through so its contents can be updated after
-	% user responses.
+	% argument is a node in the evaluation tree, the second argument is the
+	% oracle response.  The oracle state is threaded through so its
+	% contents can be updated after user responses.
 	%
-:- pred query_oracle(list(decl_question(T))::in, oracle_response(T)::out,
+:- pred query_oracle(decl_question(T)::in, oracle_response(T)::out,
 	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
@@ -100,6 +98,12 @@
 :- pred oracle_confirm_bug(decl_bug::in, decl_evidence(T)::in,
 	decl_confirmation::out, oracle_state::in, oracle_state::out,
 	io__state::di, io__state::uo) is cc_multi.
+
+	% Revise a question in the oracle's knowledge base so that the oracle
+	% will get an answer to the question from the user.
+	%
+:- pred revise_oracle(decl_question(T)::in, oracle_state::in, oracle_state::out)
+	is cc_multi.
 
 	% Returns the state of the term browser.
 	%
@@ -120,20 +124,20 @@
 :- import_module mdb__set_cc.
 :- import_module mdb__util.
 
-:- import_module map, bool, std_util, set, int, bimap, counter, assoc_list.
+:- import_module map, bool, std_util, set, int, bimap, counter, assoc_list,
+	exception, list.
 :- import_module library.
 
-query_oracle(Questions, Response, Oracle0, Oracle) -->
-	{ query_oracle_list(Oracle0, Questions, Answers) },
+query_oracle(Question, Response, !Oracle, !IO) :-
+	answer_known(!.Oracle, Question, MaybeAnswer),
 	(
-		{ Answers = [] }
+		MaybeAnswer = yes(Answer)
 	->
-		{ list__map(make_user_question(Oracle0 ^ kb_revised),
-			Questions, UserQuestions) },
-		query_oracle_user(UserQuestions, Response, Oracle0, Oracle)
+		Response = oracle_answer(Answer)
 	;
-		{ Response = oracle_answers(Answers) },
-		{ Oracle = Oracle0 }
+		make_user_question(!.Oracle ^ kb_revised, Question,
+			UserQuestion),
+		query_oracle_user(UserQuestion, Response, !Oracle, !IO)
 	).
 
 :- pred make_user_question(oracle_kb::in, decl_question(T)::in,
@@ -149,67 +153,58 @@ make_user_question(Revised, DeclQuestion, UserQuestion) :-
 		UserQuestion = plain_question(DeclQuestion)
 	).
 
-:- pred query_oracle_user(list(user_question(T))::in, oracle_response(T)::out,
+:- pred query_oracle_user(user_question(T)::in, oracle_response(T)::out,
 	oracle_state::in, oracle_state::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-query_oracle_user(Questions, OracleResponse, Oracle0, Oracle) -->
-	{ User0 = Oracle0 ^ user_state },
-	query_user(Questions, UserResponse, User0, User),
-	{
+query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
+	User0 = !.Oracle ^ user_state,
+	query_user(UserQuestion, UserResponse, User0, User, !IO),
+	(
 		UserResponse = user_answer(Question, Answer),
-		OracleResponse = oracle_answers([Answer]),
-		Current0 = Oracle0 ^ kb_current,
-		Revised0 = Oracle0 ^ kb_revised,
+		OracleResponse = oracle_answer(Answer),
+		Current0 = !.Oracle ^ kb_current,
+		Revised0 = !.Oracle ^ kb_revised,
 		retract_oracle_kb(Question, Revised0, Revised),
 		assert_oracle_kb(Question, Answer, Current0, Current),
-		Oracle1 = (Oracle0
+		!:Oracle = (!.Oracle
 				^ kb_current := Current)
 				^ kb_revised := Revised
 	;
-		UserResponse = no_user_answer,
-		OracleResponse = no_oracle_answers,
-		Oracle1 = Oracle0
-	;
 		UserResponse = exit_diagnosis(Node),
-		OracleResponse = exit_diagnosis(Node),
-		Oracle1 = Oracle0
+		OracleResponse = exit_diagnosis(Node)
 	;
 		UserResponse = abort_diagnosis,
-		OracleResponse = abort_diagnosis,
-		Oracle1 = Oracle0
-	},
-	{ Oracle = Oracle1 ^ user_state := User }.
+		OracleResponse = abort_diagnosis
+	),
+	!:Oracle = !.Oracle ^ user_state := User.
 
-oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle) -->
-	{ User0 = Oracle0 ^ user_state },
-	user_confirm_bug(Bug, Confirmation, User0, User),
-	{ Oracle1 = Oracle0 ^ user_state := User },
-	{
+oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO) :-
+	User0 = Oracle0 ^ user_state,
+	user_confirm_bug(Bug, Confirmation, User0, User, !IO),
+	Oracle1 = Oracle0 ^ user_state := User,
+	(
 		Confirmation = overrule_bug
 	->
 		list__foldl(revise_oracle, Evidence, Oracle1, Oracle)
 	;
 		Oracle = Oracle1
-	}.
+	).
 
-:- pred revise_oracle(decl_question(T)::in, oracle_state::in, oracle_state::out)
-	is cc_multi.
-
-revise_oracle(Question, Oracle0, Oracle) :-
-	Current0 = Oracle0 ^ kb_current,
+revise_oracle(Question, !Oracle) :-
+	Current0 = !.Oracle ^ kb_current,
 	query_oracle_kb(Current0, Question, MaybeAnswer),
 	(
-		MaybeAnswer = yes(Answer),
+		MaybeAnswer = yes(Answer)
+	->
 		retract_oracle_kb(Question, Current0, Current),
-		Revised0 = Oracle0 ^ kb_revised,
+		Revised0 = !.Oracle ^ kb_revised,
 		assert_oracle_kb(Question, Answer, Revised0, Revised),
-		Oracle = (Oracle0
+		!:Oracle = (!.Oracle
 				^ kb_revised := Revised)
 				^ kb_current := Current
 	;
-		MaybeAnswer = no,
-		Oracle = Oracle0
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -405,8 +400,12 @@ format_trust_display(Id, standard_library, S, S ++ Display) :-
 
 :- type known_exceptions
 	--->	known_excp(
-			set_cc(decl_exception),	% Possible exceptions.
-			set_cc(decl_exception)	% Impossible exceptions.
+				% Possible exceptions
+			possible	:: set_cc(decl_exception),
+				% Impossible exceptions
+			impossible	:: set_cc(decl_exception),
+				% Exceptions from inadmissible calls
+			inadmissible	:: set_cc(decl_exception)
 		).
 
 :- pred oracle_kb_init(oracle_kb).
@@ -454,26 +453,21 @@ set_kb_exceptions_map(KB, M, KB ^ kb_exceptions_map := M).
 
 %-----------------------------------------------------------------------------%
 
-:- pred query_oracle_list(oracle_state::in, list(decl_question(T))::in,
-	list(decl_answer(T))::out) is cc_multi.
+:- pred answer_known(oracle_state::in, decl_question(T)::in,
+	maybe(decl_answer(T))::out) is cc_multi.
 
-query_oracle_list(_, [], []).
-query_oracle_list(OS, [Q | Qs0], As) :-
-	query_oracle_list(OS, Qs0, As0),
-	Atom = get_decl_question_atom(Q),
+answer_known(Oracle, Question, MaybeAnswer) :-
+	Atom = get_decl_question_atom(Question),
 	(
-		trusted(Atom ^ proc_layout, OS)
+		trusted(Atom ^ proc_layout, Oracle)
 	->
-		As = [truth_value(get_decl_question_node(Q), yes) | As0]
+		% We tell the analyser that this node doesn't contain a bug,
+		% however it's children may still contain bugs, since 
+		% trusted procs may call untrusted procs (for example
+		% when an untrusted closure is passed to a trusted predicate).
+		MaybeAnswer = yes(ignore(get_decl_question_node(Question)))
 	;
-		query_oracle_kb(OS ^ kb_current, Q, MaybeA),
-		(
-			MaybeA = yes(A),
-			As = [A | As0]
-		;
-			MaybeA = no,
-			As = As0
-		)
+		query_oracle_kb(Oracle ^ kb_current, Question, MaybeAnswer)
 	).	
 
 :- pred trusted(proc_layout::in, oracle_state::in) is semidet.
@@ -535,20 +529,29 @@ query_oracle_kb(KB, Question, Result) :-
 		MaybeX = no,
 		Result = no
 	;
-		MaybeX = yes(known_excp(Possible, Impossible)),
-		set_cc__member(Exception, Possible, PossibleBool),
+		MaybeX = yes(known_excp(Possible, Impossible, Inadmissible)),
+		member(Exception, Possible, PossibleBool),
 		(
 			PossibleBool = yes,
-			Result = yes(truth_value(Node, yes))
+			Result = yes(truth_value(Node, correct))
 		;
 			PossibleBool = no,
-			set_cc__member(Exception, Impossible, ImpossibleBool),
+			member(Exception, Impossible, ImpossibleBool),
 			(
 				ImpossibleBool = yes,
-				Result = yes(truth_value(Node, no))
+				Result = yes(truth_value(Node, erroneous))
 			;
 				ImpossibleBool = no,
-				Result = no
+				member(Exception, Inadmissible,
+					InadmissibleBool),
+				(
+					InadmissibleBool = yes,
+					Result = yes(truth_value(Node, 
+						inadmissible))
+				;	
+					InadmissibleBool = no,
+					Result = no
+				)
 			)
 		)
 	).
@@ -564,6 +567,10 @@ query_oracle_kb(KB, Question, Result) :-
 
 assert_oracle_kb(_, suspicious_subterm(_, _, _), KB, KB).
 
+assert_oracle_kb(_, ignore(_), KB, KB).
+
+assert_oracle_kb(_, skip(_), KB, KB).
+
 assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
 	% insert all modes of the predicate/function
@@ -571,15 +578,6 @@ assert_oracle_kb(wrong_answer(_, Atom), truth_value(_, Truth), KB0, KB) :-
 		get_all_modes_for_layout(Atom ^ final_atom ^ proc_layout),
 		Map0, Map),
 	set_kb_ground_map(KB0, Map, KB).
-
-:- pred add_atom_to_ground_map(decl_truth::in, final_decl_atom::in, 
-	proc_layout::in, map_cc(final_decl_atom, decl_truth)::in,
-	map_cc(final_decl_atom, decl_truth)::out) is cc_multi.
-
-add_atom_to_ground_map(Truth, FinalAtom, ProcLayout, Map0, Map) :-
-	tree234_cc.set(Map0, final_decl_atom(
-		atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
-		FinalAtom ^ final_io_actions), Truth, Map).
 
 assert_oracle_kb(missing_answer(_, Call, _), truth_value(_, Truth), KB0, KB) :-
 	get_kb_complete_map(KB0, Map0),
@@ -591,30 +589,44 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
 	get_kb_exceptions_map(KB0, Map0),
 	tree234_cc__search(Map0, Call, MaybeX),
 	(
-		MaybeX = yes(known_excp(Possible0, Impossible0))
+		MaybeX = yes(KnownExceptions0)
 	;
 		MaybeX = no,
-		set_cc__init(Possible0),
-		set_cc__init(Impossible0)
+		set_cc.init(Possible0),
+		set_cc.init(Impossible0),
+		set_cc.init(Inadmissible0),
+		KnownExceptions0 = known_excp(Possible0, Impossible0,
+			Inadmissible0)
 	),
 	(
-		Truth = yes,
-		set_cc__insert(Possible0, Exception, Possible),
-		Impossible = Impossible0
+		Truth = correct,
+		insert(KnownExceptions0 ^ possible, Exception, 
+			Possible),
+		KnownExceptions = KnownExceptions0 ^ possible := Possible
 	;
-		Truth = no,
-		Possible = Possible0,
-		set_cc__insert(Impossible0, Exception, Impossible)
+		Truth = erroneous,
+		insert(KnownExceptions0 ^ impossible, Exception, 
+			Impossible),
+		KnownExceptions = KnownExceptions0 ^ impossible := Impossible
+	;
+		Truth = inadmissible,
+		insert(KnownExceptions0 ^ inadmissible, Exception, 
+			Inadmissible),
+		KnownExceptions = KnownExceptions0 ^ inadmissible := 	
+			Inadmissible
 	),
-	tree234_cc__set(Map0, Call, known_excp(Possible, Impossible), Map),
+	tree234_cc__set(Map0, Call, KnownExceptions, Map),
 	set_kb_exceptions_map(KB0, Map, KB).
 
 :- pred retract_oracle_kb(decl_question(T), oracle_kb, oracle_kb).
 :- mode retract_oracle_kb(in, in, out) is cc_multi.
 
-retract_oracle_kb(wrong_answer(_, FinalAtom), KB0, KB) :-
+retract_oracle_kb(wrong_answer(_, Atom), KB0, KB) :-
 	Map0 = KB0 ^ kb_ground_map,
-	tree234_cc__delete(Map0, FinalAtom, Map),
+	% delete all modes of the predicate/function
+	foldl(remove_atom_from_ground_map(Atom),
+		get_all_modes_for_layout(Atom ^ final_atom ^ proc_layout),
+		Map0, Map),
 	KB = KB0 ^ kb_ground_map := Map.
 
 retract_oracle_kb(missing_answer(_, InitAtom, _), KB0, KB) :-
@@ -626,17 +638,38 @@ retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), KB0, KB) :-
 	ExceptionsMap0 = KB0 ^ kb_exceptions_map,
 	tree234_cc__search(ExceptionsMap0, InitAtom, MaybeKnownExceptions0),
 	(
-		MaybeKnownExceptions0 = yes(known_excp(Possible0, Impossible0))
+		MaybeKnownExceptions0 = yes(known_excp(Possible0, Impossible0,
+			Inadmissible0))
 	->
 		set_cc__delete(Possible0, Exception, Possible),
 		set_cc__delete(Impossible0, Exception, Impossible),
-		KnownExceptions = known_excp(Possible, Impossible),
+		set_cc__delete(Inadmissible0, Exception, Inadmissible),
+		KnownExceptions = known_excp(Possible, Impossible,
+			Inadmissible),
 		tree234_cc__set(ExceptionsMap0, InitAtom, KnownExceptions,
 			ExceptionsMap)
 	;
 		ExceptionsMap = ExceptionsMap0
 	),
 	KB = KB0 ^ kb_exceptions_map := ExceptionsMap.
+
+:- pred add_atom_to_ground_map(decl_truth::in, final_decl_atom::in, 
+	proc_layout::in, map_cc(final_decl_atom, decl_truth)::in,
+	map_cc(final_decl_atom, decl_truth)::out) is cc_multi.
+
+add_atom_to_ground_map(Truth, FinalAtom, ProcLayout, Map0, Map) :-
+	tree234_cc.set(Map0, final_decl_atom(
+		atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
+		FinalAtom ^ final_io_actions), Truth, Map).
+
+:- pred remove_atom_from_ground_map(final_decl_atom::in, 
+	proc_layout::in, map_cc(final_decl_atom, decl_truth)::in,
+	map_cc(final_decl_atom, decl_truth)::out) is cc_multi.
+
+remove_atom_from_ground_map(FinalAtom, ProcLayout, Map0, Map) :-
+	tree234_cc.delete(Map0, final_decl_atom(
+		atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
+		FinalAtom ^ final_io_actions), Map).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,0 +1,19 @@
+      E1:     C1 CALL pred mismatch_on_call.main/2-0 (det) mismatch_on_call.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> 
+      E2:     C2 CALL pred mismatch_on_call.p/4-0 (det)
+mdb> f
+      E3:     C2 EXIT pred mismatch_on_call.p/4-0 (det)
+mdb> dd
+p(1, 2, 204, 202)
+Valid? b 4
+browser> mark
+q(102, 202)
+Valid? n
+Found incorrect contour:
+q(102, 202)
+Is this a bug? y
+      E4:     C3 EXIT pred mismatch_on_call.q/2-0 (det)
+mdb> quit -y
