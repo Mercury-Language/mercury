@@ -917,9 +917,18 @@ modecheck_call_pred(PredId, Args0, TheProcId, Args, ExtraGoals,
 	map__keys(Procs, ProcIds),
 
 		% In order to give better diagnostics, we handle the
-		% case where there is only one mode for the called predicate
-		% specially.
+		% cases where there are zero or one modes for the called
+		% predicate specially.
 	(
+		ProcIds = []
+	->
+		set__init(WaitingVars),
+		mode_info_error(WaitingVars, mode_error_no_mode_decl,
+			ModeInfo0, ModeInfo),
+		TheProcId = 0,
+		ArgVars = ArgVars0,
+		ExtraGoals = [] - []
+	;
 		ProcIds = [ProcId]
 	->
 		TheProcId = ProcId,

@@ -46,6 +46,9 @@
 			% mode of the predicate.  XXX This is temporary - 
 			% once we've implemented implied modes we can
 			% get rid of it.
+	;	mode_error_no_mode_decl
+			% a call to a predicate for which there are
+			% no mode declarations
 	;	mode_error_no_matching_mode(list(var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
@@ -116,6 +119,8 @@ report_mode_error(mode_error_unify_pred, ModeInfo) -->
 	report_mode_error_unify_pred(ModeInfo).
 report_mode_error(mode_error_implied_mode(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB).
+report_mode_error(mode_error_no_mode_decl, ModeInfo) -->
+	report_mode_error_no_mode_decl(ModeInfo).
 report_mode_error(mode_error_bind_var(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_bind_var(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
@@ -381,6 +386,15 @@ report_mode_error_implied_mode(ModeInfo, Var, VarInst, Inst) -->
 	;
 		[]
 	).
+
+:- pred report_mode_error_no_mode_decl(mode_info, io__state, io__state).
+:- mode report_mode_error_no_mode_decl(mode_info_ui, di, uo) is det.
+
+report_mode_error_no_mode_decl(ModeInfo) -->
+	{ mode_info_get_context(ModeInfo, Context) },
+	mode_info_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  no mode declaration for called predicate.\n").
 
 :- pred report_mode_error_unify_pred(mode_info, io__state, io__state).
 :- mode report_mode_error_unify_pred(mode_info_ui, di, uo) is det.
