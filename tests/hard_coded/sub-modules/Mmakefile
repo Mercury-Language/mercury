@@ -17,6 +17,7 @@ THIS_DIR = hard_coded/sub-modules
 SUB_MODULE_PROGS= \
 	accessibility \
 	accessibility2 \
+	deeply_nested \
 	use_submodule \
 	parent \
 	parent2 \
