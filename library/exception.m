@@ -879,7 +879,7 @@ ML_call_goal_non_handcoded(MR_Mercury_Type_Info type_info,
 /*---------------------------------------------------------------------------*/
 
 static void
-ML_call_handler_det(MR_Mercury_Type_Info type_info,
+ML_call_handler_det_handcoded(MR_Mercury_Type_Info type_info,
 	MR_Pred closure, MR_Univ exception, MR_Box *result)
 {
 	typedef void MR_CALL HandlerFuncType(void *, MR_Box, MR_Box *);
@@ -940,7 +940,7 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 #endif
 
 		ML_exception_handler = this_handler.prev;
-		ML_call_handler_det(type_info, handler_pred,
+		ML_call_handler_det_handcoded(type_info, handler_pred,
 			this_handler.exception, output);
 	}
 }
@@ -970,7 +970,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 #endif
 
 		ML_exception_handler = this_handler.prev;
-		ML_call_handler_det(type_info, handler_pred,
+		ML_call_handler_det_handcoded(type_info, handler_pred,
 			this_handler.exception, output);
 		return TRUE;
 	}
@@ -1023,7 +1023,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif
 
 		ML_exception_handler = this_handler.prev;
-		ML_call_handler_det(type_info, handler_pred,
+		ML_call_handler_det_handcoded(type_info, handler_pred,
 			this_handler.exception, output);
 		(*cont)();
 	}
@@ -1101,7 +1101,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 
 
 		ML_exception_handler = locals.this_handler.prev;
-		ML_call_handler_det(type_info, handler_pred,
+		ML_call_handler_det_handcoded(type_info, handler_pred,
 			locals.this_handler.exception, output);
 		cont(cont_env);
 	}
