@@ -61,7 +61,13 @@
 
 :- pred io__read_line(list(character), io__result, io__state, io__state).
 :- mode io__read_line(out, out, di, uo) is det.
-%		Reads a character from the current input stream.
+%		Reads a line from the current input stream.
+
+:- pred io__putback_char(character, io__state, io__state).
+:- mode io__putback_char(out, di, uo) is det.
+%		Un-reads a character from the current input stream.
+%		You can put back as many characters as you like.
+%		You can even put back something that you didn't actually read.
 
 :- pred io__read_char(io__input_stream, character, io__result,
 				io__state, io__state).
@@ -71,7 +77,13 @@
 :- pred io__read_line(io__input_stream, list(character), io__result,
 							io__state, io__state).
 :- mode io__read_line(in, out, out, di, uo) is det.
-%		Reads a character from specified stream.
+%		Reads a line from specified stream.
+
+:- pred io__putback_char(io__input_stream, character, io__state, io__state).
+:- mode io__putback_char(in, out, di, uo) is det.
+%		Un-reads a character from specified stream.
+%		You can put back as many characters as you like.
+%		You can even put back something that you didn't actually read.
 
 %-----------------------------------------------------------------------------%
 
@@ -470,6 +482,12 @@ io__read_line(Stream, Str, Result) -->
 		{ Str = [] },
 		{ Result = Result0 }
 	).
+
+io__putback_char(Char) -->
+	io__input_stream(Stream),
+	io__putback_char(Stream, Char).
+
+:- external(io__putback_char/4).
 
 %-----------------------------------------------------------------------------%
 
