@@ -978,14 +978,35 @@
 	% Write complete memory usage statistics to stderr,
 	% including information about all procedures and types.
 	% (You need to compile with memory profiling enabled.)
+	%
+	% OBSOLETE: call io__report_stats/3 instead, with the first
+	% specified as "full_memory_stats".
 
+:- pragma obsolete(io__report_full_memory_stats/2).
 :- pred io__report_full_memory_stats(io__state, io__state).
 :- mode io__report_full_memory_stats(di, uo) is det.
 
-	% Write statistics about the operation of the tabling system to stderr.
+	% Write statistics to stderr; what statistics will be written
+	% is controlled by the first argument, which acts a selector.
+	% What selector values cause what statistics to be printed
+	% is implementation defined.
+	%
+	% The Melbourne implementation supports the following selectors:
+	%
+	% "standard"		Writes memory/time usage statistics.
+	%
+	% "full_memory_stats"	Writes complete memory usage statistics,
+	%			including information about all procedures
+	%			and types. Requires compilation with
+	%			memory profiling enabled.
+	%
+	% "tabling"		Writes statistics about the internals
+	%			of the tabling system. Requires the runtime
+	%			to have been compiled with the macro
+	%			MR_TABLE_STATISTICS defined.
 
-:- pred io__report_tabling_stats(io__state, io__state).
-:- mode io__report_tabling_stats(di, uo) is det.
+:- pred io__report_stats(string, io__state, io__state).
+:- mode io__report_stats(in, di, uo) is det.
 
 /*** no longer supported, sorry
 :- pred io__gc_call(pred(io__state, io__state), io__state, io__state).
@@ -2472,22 +2493,29 @@ io__set_environment_var(Var, Value) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% memory management predicates
-
-:- pragma promise_pure(io__report_stats/2).
+% statistics reporting predicates
 
 io__report_stats -->
-	{ impure report_stats }.
-
-:- pragma promise_pure(io__report_full_memory_stats/2).
+	io__report_stats("standard").
 
 io__report_full_memory_stats -->
-	{ impure report_full_memory_stats }.
+	io__report_stats("full_memory_stats").
 
-:- pragma promise_pure(io__report_tabling_stats/2).
+:- pragma promise_pure(io__report_stats/3).
 
-io__report_tabling_stats -->
-	{ impure private_builtin__table_report_statistics }.
+io__report_stats(Selector) -->
+	{ Selector = "standard" ->
+		impure report_stats
+	; Selector = "full_memory_stats" ->
+		impure report_full_memory_stats
+	; Selector = "tabling" ->
+		impure private_builtin__table_report_statistics
+	;
+		string__format(
+			"io__report_stats: selector `%s' not understood",
+			[s(Selector)], Message),
+		error(Message)
+	}.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -9,6 +9,7 @@
 #include "mercury_type_info.h"
 #include "mercury_ho_call.h"
 #include <stdio.h>
+#include <string.h>
 
 /*---------------------------------------------------------------------------*/
 
@@ -180,27 +181,27 @@ static	Unsigned	MR_table_hash_insert_probes = 0;
 #endif
 
 #ifdef	MR_TABLE_STATISTICS
-  #define declare_probe_count	Integer	probe_count = 0;
-  #define record_probe_count	do { probe_count++; } while (0)
-  #define record_lookup_count	do {					      \
+  #define DECLARE_PROBE_COUNT	Integer	probe_count = 0;
+  #define record_probe_count()	do { probe_count++; } while (0)
+  #define record_lookup_count()	do {					      \
 					MR_table_hash_lookup_probes +=	      \
 						probe_count;		      \
 					MR_table_hash_lookups++;	      \
 				} while (0)
-  #define record_insert_count	do {					      \
+  #define record_insert_count()	do {					      \
 					MR_table_hash_insert_probes +=	      \
 						probe_count;		      \
 					MR_table_hash_inserts++;	      \
 				} while (0)
-  #define record_resize_count	do { MR_table_hash_resizes++; } while (0)
-  #define record_alloc_count	do { MR_table_hash_allocs++; } while (0)
+  #define record_resize_count()	do { MR_table_hash_resizes++; } while (0)
+  #define record_alloc_count()	do { MR_table_hash_allocs++; } while (0)
 #else
-  #define declare_probe_count
-  #define record_probe_count	((void) 0)
-  #define record_lookup_count	((void) 0)
-  #define record_insert_count	((void) 0)
-  #define record_resize_count	((void) 0)
-  #define record_alloc_count	((void) 0)
+  #define DECLARE_PROBE_COUNT
+  #define record_probe_count()	((void) 0)
+  #define record_lookup_count()	((void) 0)
+  #define record_insert_count()	((void) 0)
+  #define record_resize_count()	((void) 0)
+  #define record_alloc_count()	((void) 0)
 #endif
 
 #ifdef	MR_TABLE_DEBUG
@@ -288,7 +289,7 @@ static	Unsigned	MR_table_hash_insert_probes = 0;
 	table_type	*slot;						      \
 	Integer		abs_hash;					      \
 	Integer		home;						      \
-	declare_probe_count						      \
+	DECLARE_PROBE_COUNT						      \
 									      \
 	debug_key_msg(key, key_format, key_cast);			      \
 									      \
@@ -313,7 +314,7 @@ static	Unsigned	MR_table_hash_insert_probes = 0;
 		new_threshold = (Integer) ((float) new_size		      \
 				* MAX_LOAD_FACTOR);			      \
 		debug_resize_msg(table->size, new_size, new_threshold);	      \
-		record_resize_count;					      \
+		record_resize_count();					      \
 									      \
 		new_hash_table = MR_TABLE_NEW_ARRAY(MR_HashTableSlotPtr,      \
 				new_size);				      \
@@ -358,10 +359,10 @@ static	Unsigned	MR_table_hash_insert_probes = 0;
 	slot = table->hash_table[home].table_field;			      \
 	while (slot != NULL) {						      \
 		debug_probe_msg(home);					      \
-		record_probe_count;					      \
+		record_probe_count();					      \
 									      \
 		if (equal_keys(key, slot->key)) {			      \
-			record_lookup_count;				      \
+			record_lookup_count();				      \
 			debug_lookup_msg(home);				      \
 			return &slot->data;				      \
 		}							      \
@@ -370,7 +371,7 @@ static	Unsigned	MR_table_hash_insert_probes = 0;
 	}								      \
 									      \
 	debug_insert_msg(home);						      \
-	record_insert_count;						      \
+	record_insert_count();						      \
 									      \
 	if (table->freeleft == 0) {					      \
 		MR_AllocRecord	*record;				      \
@@ -384,7 +385,7 @@ static	Unsigned	MR_table_hash_insert_probes = 0;
 		record->next = table->allocrecord;			      \
 		table->allocrecord = record;				      \
 									      \
-		record_alloc_count;					      \
+		record_alloc_count();					      \
 	}								      \
 									      \
 	slot = table->freespace.table_field;				      \
@@ -414,9 +415,15 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	key_cast
 #undef	table_type
 #undef	table_field
-#undef	hash(key)
-#undef	equal_keys(k1, k2)
+#undef	hash
+#undef	equal_keys
 }
+
+/*
+** Note that the equal_keys operation should compare two floats for
+** bit-for-bit equality. This is different from the usual == operator
+** in the presence of NaNs, infinities, etc.
+*/
 
 MR_TrieNode
 MR_float_hash_lookup_or_add(MR_TrieNode t, Float key)
@@ -426,15 +433,15 @@ MR_float_hash_lookup_or_add(MR_TrieNode t, Float key)
 #define	table_type		MR_FloatHashTableSlot
 #define	table_field		float_slot_ptr
 #define	hash(key)		(hash_float(key))
-#define	equal_keys(k1, k2)	(k1 == k2)
+#define	equal_keys(k1, k2)	(memcmp(&(k1), &(k2), sizeof(Float)) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	key_format
 #undef	key_cast
 #undef	debug_search_key
 #undef	table_type
 #undef	table_field
-#undef	hash(key)
-#undef	equal_keys(k1, k2)
+#undef	hash
+#undef	equal_keys
 }
 
 MR_TrieNode
@@ -452,8 +459,8 @@ MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	debug_search_key
 #undef	table_type
 #undef	table_field
-#undef	hash(key)
-#undef	equal_keys(k1, k2)
+#undef	hash
+#undef	equal_keys
 }
 
 /*---------------------------------------------------------------------------*/
