@@ -177,6 +177,7 @@
 :- func heap_pointer_type = (type).
 :- func sample_type_info_type = (type).
 :- func sample_typeclass_info_type = (type).
+:- func comparison_result_type = (type).
 
 	% Given a constant and an arity, return a type_ctor.
 	% Fails if the constant is not an atom.
@@ -822,6 +823,11 @@ sample_typeclass_info_type = Type :-
 	mercury_private_builtin_module(BuiltinModule),
 	construct_type(qualified(BuiltinModule,
 		"sample_typeclass_info") - 0, [], Type).
+
+comparison_result_type = Type :-
+	mercury_public_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule,
+		"comparison_result") - 0, [], Type).
 
 %-----------------------------------------------------------------------------%
 

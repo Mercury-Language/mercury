@@ -31,6 +31,7 @@
 :- import_module hlds__hlds_goal, hlds__hlds_module, hlds__hlds_pred.
 :- import_module check_hlds__det_report, check_hlds__det_util.
 :- import_module check_hlds__common, hlds__instmap, libs__globals.
+:- import_module check_hlds__det_util.
 :- import_module io, bool, list, map.
 
 :- pred simplify__pred(list(simplification), pred_id, module_info, module_info,
@@ -746,141 +747,27 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
 	simplify_info_get_module_info(Info0, ModuleInfo),
-	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo,
-		ProcInfo),
-
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	%
-	% check for calls to predicates with `pragma obsolete' declarations
-	%
-	(
-		simplify_do_warn(Info0),
-		pred_info_get_markers(PredInfo, Markers),
-		check_marker(Markers, obsolete),
-		%
-		% Don't warn about directly recursive calls.
-		% (That would cause spurious warnings, particularly
-		% with builtin predicates, or preds defined using
-		% pragma foreign.)
-		%
-		simplify_info_get_det_info(Info0, DetInfo0),
-		det_info_get_pred_id(DetInfo0, ThisPredId),
-		PredId \= ThisPredId
-	->
-
-		goal_info_get_context(GoalInfo0, Context1),
-		simplify_info_add_msg(Info0, warn_obsolete(PredId, Context1),
-			Info1)
-	;
-		Info1 = Info0
-	),
-
-	%
-	% Check for recursive calls with the same input arguments,
-	% and warn about them (since they will lead to infinite loops).
+	% Convert calls to builtin @=<, @<, @>=, @> into the corresponding
+	% calls to builtin__compare/3.
 	%
 	(
-		simplify_do_warn(Info1),
-
-		%
-		% Is this a (directly) recursive call,
-		% i.e. is the procedure being called the same as the
-		% procedure we're analyzing?
-		%
-		simplify_info_get_det_info(Info1, DetInfo),
-		det_info_get_pred_id(DetInfo, PredId),
-		det_info_get_proc_id(DetInfo, ProcId),
-
-		%
-		% Don't count inline builtins.
-		% (The compiler generates code for builtins that looks
-		% recursive, so that you can take their address, but since
-		% the recursive call actually expands into inline
-		% instructions, so it's not infinite recursion.)
-		%
-		IsBuiltin \= inline_builtin,
-
-		%
-		% Don't warn if we're inside a lambda goal, because the
-		% recursive call may not be executed.
-		%
-		\+ simplify_info_inside_lambda(Info1),
-
-		%
-		% Are the input arguments the same (or equivalent)?
-		%
-		simplify_info_get_module_info(Info1, ModuleInfo1),
-		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
-			PredInfo1, ProcInfo1),
-		proc_info_headvars(ProcInfo1, HeadVars),
-		proc_info_argmodes(ProcInfo1, ArgModes),
-		simplify_info_get_common_info(Info1, CommonInfo1),
-		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
-			CommonInfo1, ModuleInfo1),
-
-		% 
-		% Don't count procs using minimal evaluation as they 
-		% should always terminate if they have a finite number
-		% of answers. 
-		%
-		\+ proc_info_eval_method(ProcInfo, eval_minimal),
-
-		% Don't warn about Aditi relations.
-		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo1)
-	->	
-		goal_info_get_context(GoalInfo0, Context2),
-		simplify_info_add_msg(Info1, warn_infinite_recursion(Context2),
-				Info2)
-	;
-		Info2 = Info1
-	),
-
-	%
-	% check for duplicate calls to the same procedure
-	%
-	( simplify_do_calls(Info2),
-	  goal_info_is_pure(GoalInfo0)
-	->	
-		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
-			Goal1, Info2, Info3)
-	; simplify_do_warn_calls(Info0),
-	  goal_info_is_pure(GoalInfo0)
-	->	
-		% we need to do the pass, for the warnings, but we ignore
-		% the optimized goal and instead use the original one
-		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
-			_Goal1, Info2, Info3),
-		Goal1 = Goal0
-	;
-		Goal1 = Goal0,
-		Info3 = Info2
-	),
-
-	%
-	% Try to evaluate the call at compile-time.
-	%
-
-	( simplify_do_const_prop(Info3) ->
-		simplify_info_get_instmap(Info3, Instmap0),
-		simplify_info_get_module_info(Info3, ModuleInfo2),
-		(
-			Goal1 = call(_, _, _, _, _, _),
-			evaluate_builtin(PredId, ProcId, Args, GoalInfo0, 
-				Goal2, GoalInfo2, Instmap0,
-				ModuleInfo2, ModuleInfo3)
-		->
-			Goal = Goal2,
-			GoalInfo = GoalInfo2,
-			simplify_info_set_module_info(Info3, ModuleInfo3, Info4),
-			simplify_info_set_requantify(Info4, Info)
-		;
-			Goal = Goal1,
-			GoalInfo = GoalInfo0,
-			Info = Info3
+		Args                = [TI, X, Y],
+		prog_util__mercury_public_builtin_module(BuiltinModule),
+		hlds_pred__pred_info_module(PredInfo, BuiltinModule),
+		hlds_pred__pred_info_name(PredInfo, Name),
+		(	Name =  "@<", Inequality = "<", Invert = no
+		;	Name = "@=<", Inequality = ">", Invert = yes
+		;	Name = "@>=", Inequality = "<", Invert = yes
+		;	Name = "@>",  Inequality = ">", Invert = no
 		)
+	->
+		simplify__inequality_goal(TI, X, Y, Inequality, Invert,
+			GoalInfo0, Goal, GoalInfo, Info0, Info)
 	;
-		Goal = Goal1,
-		GoalInfo = GoalInfo0,
-		Info = Info3
+		simplify__call_goal(PredId, ProcId, Args, IsBuiltin,
+			Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info)
 	).
 
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
@@ -1220,6 +1107,229 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(shorthand(_), _, _, _, _, _) :-
 	% these should have been expanded out by now
 	error("simplify__goal_2: unexpected shorthand").
+
+%-----------------------------------------------------------------------------%
+
+:- pred simplify__inequality_goal(
+		prog_var, prog_var, prog_var, string, bool, hlds_goal_info,
+		hlds_goal_expr, hlds_goal_info, simplify_info, simplify_info).
+:- mode simplify__inequality_goal(
+		in, in, in, in, in, in,
+		out, out, in, out) is det.
+
+simplify__inequality_goal(TI, X, Y, Inequality, Invert,
+		GoalInfo, GoalExpr, GoalInfo, Info0, Info) :-
+
+		% Construct the variable to hold the comparison result.
+		%
+	VarSet0 = Info0 ^ varset,
+	varset__new_var(VarSet0, R, VarSet),
+	Info1   = Info0 ^ varset := VarSet,
+
+		% We have to add the type of R to the var_types.
+		%
+	simplify_info_get_var_types(Info1, VarTypes0),
+	VarTypes = VarTypes0 ^ elem(R) := comparison_result_type,
+	simplify_info_set_var_types(Info1, VarTypes, Info),
+
+		% Construct the call to compare/3.
+		%
+	prog_util__mercury_public_builtin_module(BuiltinModule),
+	hlds_goal__goal_info_get_context(GoalInfo, Context),
+	Args     = [TI, R, X, Y],
+
+	simplify_info_get_instmap(Info, InstMap),
+	instmap__lookup_var(InstMap, X, XInst),
+	instmap__lookup_var(InstMap, Y, YInst),
+	simplify_info_get_module_info(Info1, ModuleInfo),
+	ModeNo   = ( if inst_is_unique(ModuleInfo, XInst) then
+			( if inst_is_unique(ModuleInfo, YInst) then 1
+							       else 2 )
+		     else
+		     	( if inst_is_unique(ModuleInfo, YInst) then 3
+		     					       else 0 )
+		   ),
+
+	Unique   = ground(unique, none),
+	ArgInsts = [R - Unique],
+	goal_util__generate_simple_call(BuiltinModule, "compare", Args,
+		mode_no(ModeNo), det, no, ArgInsts, ModuleInfo, Context,
+		CmpGoal0),
+	CmpGoal0 = CmpExpr - CmpInfo0,
+	goal_info_get_nonlocals(CmpInfo0, CmpNonLocals0),
+	goal_info_set_nonlocals(CmpInfo0, CmpNonLocals0 `insert` R, CmpInfo),
+	CmpGoal  = CmpExpr - CmpInfo,
+
+		% Construct the unification R = Inequality.
+		%
+	ConsId	 = cons(qualified(BuiltinModule, Inequality), 0),
+	Bound    = bound(shared,  [functor(ConsId, [])]),
+	UMode    = ((Unique -> Bound) - (Bound -> Bound)),
+	RHS      = functor(ConsId, no, []),
+	UKind    = deconstruct(R, ConsId, [], [], can_fail, no),
+	UContext = unify_context(
+			implicit(
+			    "replacement of inequality with call to compare/3"),
+			[]),
+	UfyExpr  = unify(R, RHS, UMode, UKind, UContext),
+	goal_info_get_nonlocals(GoalInfo, UfyNonLocals0),
+	goal_info_set_nonlocals(GoalInfo, UfyNonLocals0 `insert` R, UfyInfo),
+	UfyGoal  = UfyExpr - UfyInfo,
+
+	(
+		Invert   = no,
+		GoalExpr = conj([CmpGoal, UfyGoal])
+	;
+		Invert   = yes,
+		GoalExpr = conj([CmpGoal, not(UfyGoal) - UfyInfo])
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred simplify__call_goal(
+		pred_id, proc_id, list(prog_var), builtin_state,
+		hlds_goal_expr, hlds_goal_info, hlds_goal_expr, hlds_goal_info,
+		simplify_info, simplify_info).
+:- mode simplify__call_goal(in, in, in, in, in, in, out, out, in, out) is det.
+
+simplify__call_goal(PredId, ProcId, Args, IsBuiltin,
+		Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
+	simplify_info_get_module_info(Info0, ModuleInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo),
+	%
+	% check for calls to predicates with `pragma obsolete' declarations
+	%
+	(
+		simplify_do_warn(Info0),
+		pred_info_get_markers(PredInfo, Markers),
+		check_marker(Markers, obsolete),
+		%
+		% Don't warn about directly recursive calls.
+		% (That would cause spurious warnings, particularly
+		% with builtin predicates, or preds defined using
+		% pragma foreign.)
+		%
+		simplify_info_get_det_info(Info0, DetInfo0),
+		det_info_get_pred_id(DetInfo0, ThisPredId),
+		PredId \= ThisPredId
+	->
+
+		goal_info_get_context(GoalInfo0, Context1),
+		simplify_info_add_msg(Info0, warn_obsolete(PredId, Context1),
+			Info1)
+	;
+		Info1 = Info0
+	),
+
+	%
+	% Check for recursive calls with the same input arguments,
+	% and warn about them (since they will lead to infinite loops).
+	%
+	(
+		simplify_do_warn(Info1),
+
+		%
+		% Is this a (directly) recursive call,
+		% i.e. is the procedure being called the same as the
+		% procedure we're analyzing?
+		%
+		simplify_info_get_det_info(Info1, DetInfo),
+		det_info_get_pred_id(DetInfo, PredId),
+		det_info_get_proc_id(DetInfo, ProcId),
+
+		%
+		% Don't count inline builtins.
+		% (The compiler generates code for builtins that looks
+		% recursive, so that you can take their address, but since
+		% the recursive call actually expands into inline
+		% instructions, so it's not infinite recursion.)
+		%
+		IsBuiltin \= inline_builtin,
+
+		%
+		% Don't warn if we're inside a lambda goal, because the
+		% recursive call may not be executed.
+		%
+		\+ simplify_info_inside_lambda(Info1),
+
+		%
+		% Are the input arguments the same (or equivalent)?
+		%
+		simplify_info_get_module_info(Info1, ModuleInfo1),
+		module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
+			PredInfo1, ProcInfo1),
+		proc_info_headvars(ProcInfo1, HeadVars),
+		proc_info_argmodes(ProcInfo1, ArgModes),
+		simplify_info_get_common_info(Info1, CommonInfo1),
+		simplify__input_args_are_equiv(Args, HeadVars, ArgModes,
+			CommonInfo1, ModuleInfo1),
+
+		% 
+		% Don't count procs using minimal evaluation as they 
+		% should always terminate if they have a finite number
+		% of answers. 
+		%
+		\+ proc_info_eval_method(ProcInfo, eval_minimal),
+
+		% Don't warn about Aditi relations.
+		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo1)
+	->	
+		goal_info_get_context(GoalInfo0, Context2),
+		simplify_info_add_msg(Info1, warn_infinite_recursion(Context2),
+				Info2)
+	;
+		Info2 = Info1
+	),
+
+	%
+	% check for duplicate calls to the same procedure
+	%
+	( simplify_do_calls(Info2),
+	  goal_info_is_pure(GoalInfo0)
+	->	
+		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
+			Goal1, Info2, Info3)
+	; simplify_do_warn_calls(Info0),
+	  goal_info_is_pure(GoalInfo0)
+	->	
+		% we need to do the pass, for the warnings, but we ignore
+		% the optimized goal and instead use the original one
+		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
+			_Goal1, Info2, Info3),
+		Goal1 = Goal0
+	;
+		Goal1 = Goal0,
+		Info3 = Info2
+	),
+
+	%
+	% Try to evaluate the call at compile-time.
+	%
+
+	( simplify_do_const_prop(Info3) ->
+		simplify_info_get_instmap(Info3, Instmap0),
+		simplify_info_get_module_info(Info3, ModuleInfo2),
+		(
+			Goal1 = call(_, _, _, _, _, _),
+			evaluate_builtin(PredId, ProcId, Args, GoalInfo0, 
+				Goal2, GoalInfo2, Instmap0,
+				ModuleInfo2, ModuleInfo3)
+		->
+			Goal = Goal2,
+			GoalInfo = GoalInfo2,
+			simplify_info_set_module_info(Info3, ModuleInfo3, Info4),
+			simplify_info_set_requantify(Info4, Info)
+		;
+			Goal = Goal1,
+			GoalInfo = GoalInfo0,
+			Info = Info3
+		)
+	;
+		Goal = Goal1,
+		GoalInfo = GoalInfo0,
+		Info = Info3
+	).
 
 %-----------------------------------------------------------------------------%
 

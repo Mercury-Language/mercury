@@ -184,12 +184,45 @@
 	% depending on wheither X is =, <, or > Y in the
 	% standard ordering.
 :- pred compare(comparison_result, T, T).
-	% Note to implementors: this mode must be first --
-	% compiler/higher_order.m depends on it.
+	% Note to implementors: the modes must appear in this order:
+	% compiler/higher_order.m depends on it, as does
+	% compiler/simplify.m (for the inequality simplification.)
 :- mode compare(uo, in, in) is det.
 :- mode compare(uo, ui, ui) is det.
 :- mode compare(uo, ui, in) is det.
 :- mode compare(uo, in, ui) is det.
+
+	% ordering(X, Y) = R  <=>  compare(R, X, Y)
+	%
+:- func ordering(T, T) = comparison_result.
+
+	% The standard inequalities defined in terms of compare/3.
+	% XXX The ui modes are commented out because they don't yet
+	% work properly.
+	%
+:- pred T  @<  T.
+:- mode in @< in is semidet.
+% :- mode ui @< in is semidet.
+% :- mode in @< ui is semidet.
+% :- mode ui @< ui is semidet.
+
+:- pred T  @=<  T.
+:- mode in @=< in is semidet.
+% :- mode ui @=< in is semidet.
+% :- mode in @=< ui is semidet.
+% :- mode ui @=< ui is semidet.
+
+:- pred T  @>  T.
+:- mode in @> in is semidet.
+% :- mode ui @> in is semidet.
+% :- mode in @> ui is semidet.
+% :- mode ui @> ui is semidet.
+
+:- pred T  @>=  T.
+:- mode in @>= in is semidet.
+% :- mode ui @>= in is semidet.
+% :- mode in @>= ui is semidet.
+% :- mode ui @>= ui is semidet.
 
 	% Values of types comparison_pred/1 and comparison_func/1 are used
 	% by predicates and functions which depend on an ordering on a given
@@ -334,6 +367,16 @@ cc_cast_io(_) = _ :-
 
 :- external(unify/2).
 :- external(compare/3).
+
+ordering(X, Y) = R :-
+	compare(R, X, Y).
+
+	% simplify__goal automatically inlines these definitions.
+	%
+X  @< Y :- compare((<), X, Y).
+X @=< Y :- not compare((>), X, Y).
+X @>  Y :- compare((>), X, Y).
+X @>= Y :- not compare((<), X, Y).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,18 +40,6 @@ is/2 is currently defined in int.m, for historical reasons.
 :- pred T \== T.			% In Mercury, just use \=
 :- mode in \== in is semidet.
 
-:- pred T @< T.
-:- mode in @< in is semidet.
-
-:- pred T @=< T.
-:- mode in @=< in is semidet.
-
-:- pred T @> T.
-:- mode in @> in is semidet.
-
-:- pred T @>= T.
-:- mode in @>= in is semidet.
-
 % Prolog's so-called "univ" operator, `=..'.
 % Note: this is not related to Mercury's "univ" type!
 % In Mercury, use `expand' (defined in module `std_util') instead.
@@ -90,11 +78,6 @@ is/2 is currently defined in int.m, for historical reasons.
 
 'prolog__=:='(X, X).
 'prolog__=\\='(X, Y) :- X \= Y.
-
-'prolog__@<'(X, Y) :- compare(<, X, Y).
-'prolog__@>'(X, Y) :- compare(>, X, Y).
-'prolog__@=<'(X, Y) :- compare(R, X, Y), R \= (>).
-'prolog__@>='(X, Y) :- compare(R, X, Y), R \= (<).
 
 'prolog__=..'(Term, Functor - Args) :-
 	deconstruct(Term, Functor, _Arity, Args).

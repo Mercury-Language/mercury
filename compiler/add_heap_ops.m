@@ -345,7 +345,8 @@ new_var(Name, Type, Var, TOI0, TOI) :-
 generate_call(PredName, Args, Detism, MaybeFeature, InstMap, Module, Context,
 		CallGoal) :-
 	mercury_private_builtin_module(BuiltinModule),
-	goal_util__generate_simple_call(BuiltinModule, PredName, Args, Detism,
-		MaybeFeature, InstMap, Module, Context, CallGoal).
+	goal_util__generate_simple_call(BuiltinModule, PredName, Args,
+		only_mode, Detism, MaybeFeature, InstMap, Module,
+		Context, CallGoal).
 
 %-----------------------------------------------------------------------------%

@@ -1743,8 +1743,9 @@ generate_new_table_var(Name, Type, VarTypes0, VarTypes, VarSet0, VarSet, Var)
 generate_call(PredName, Args, Detism, MaybeFeature, InstMap,
 		ModuleInfo, Context, CallGoal) :-
 	mercury_table_builtin_module(BuiltinModule),
-	goal_util__generate_simple_call(BuiltinModule, PredName, Args, Detism,
-		MaybeFeature, InstMap, ModuleInfo, Context, CallGoal).
+	goal_util__generate_simple_call(BuiltinModule, PredName, Args, 
+		only_mode, Detism, MaybeFeature, InstMap, ModuleInfo,
+		Context, CallGoal).
 
 :- pred append_fail(hlds_goal::in, hlds_goal::out) is det.
 

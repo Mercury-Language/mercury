@@ -199,7 +199,7 @@
 	% - the goals are independent
 	% - the goals are not impure
 	% - any possible change in termination behaviour is allowed
-	% 	according to the semantics options.
+	%	according to the semantics options.
 	%
 :- pred goal_util__can_reorder_goals(module_info::in, vartypes::in, bool::in,
 	instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
@@ -215,21 +215,28 @@
 :- pred goal_util__reordering_maintains_termination(module_info::in, bool::in, 
 		hlds_goal::in, hlds_goal::in) is semidet.
 
-	% generate_simple_call(ModuleName, PredName, Args,
+	% generate_simple_call(ModuleName, PredName, Args, ModeNo,
 	%		Detism, MaybeFeature, InstMapDelta,
 	%		ModuleInfo, Context, CallGoal):
 	% Generate a call to a builtin procedure (e.g.
 	% from the private_builtin or table_builtin module).
 	% This is used by HLDS->HLDS transformation passes that introduce
-	% calls to builtin procedures.  This is restricted in various ways,
-	% e.g. the called procedure must have exactly one mode,
-	% and at most one type parameter.  So it should only be used
-	% for generating calls to known builtin procedures.
+	% calls to builtin procedures.
+	%
+	% If ModeNo = only_mode then the predicate must have exactly one
+	% procedure (an error is raised if this is not the case.)
+	%
+	% If ModeNo = mode_no(N) then the Nth procedure is used, counting
+	% from 0.
 	%
 :- pred goal_util__generate_simple_call(module_name::in, string::in,
-	list(prog_var)::in, determinism::in, maybe(goal_feature)::in,
-	assoc_list(prog_var, inst)::in, module_info::in, term__context::in,
-	hlds_goal::out) is det.
+	list(prog_var)::in, mode_no::in, determinism::in,
+	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
+	module_info::in, term__context::in, hlds_goal::out) is det.
+
+:- type mode_no
+	--->	only_mode		% The pred must have exactly one mode.
+	;	mode_no(int).		% The Nth mode, counting from 0.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -445,10 +452,10 @@ goal_util__rename_unify_rhs(functor(Functor, E, ArgVars0), Must, Subn,
 	goal_util__rename_var_list(ArgVars0, Must, Subn, ArgVars).
 goal_util__rename_unify_rhs(
 	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals0,
-	    		Vars0, Modes, Det, Goal0),
+			Vars0, Modes, Det, Goal0),
 	    Must, Subn, 
 	    lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals,
-	    		Vars, Modes, Det, Goal)) :-
+			Vars, Modes, Det, Goal)) :-
 	goal_util__rename_var_list(NonLocals0, Must, Subn, NonLocals),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
@@ -930,9 +937,9 @@ goal_expr_contains_reconstruction(par_conj(Goals)) :-
 goal_expr_contains_reconstruction(switch(_, _, Cases)) :-
 	list__member(Case, Cases),
 	Case = case(_, Goal),
- 	goal_contains_reconstruction(Goal).
+	goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
- 	goals_contain_reconstruction([Cond, Then, Else]).
+	goals_contain_reconstruction([Cond, Then, Else]).
 goal_expr_contains_reconstruction(not(Goal)) :-
 	goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(some(_, _, Goal)) :-
@@ -1206,7 +1213,7 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-goal_util__generate_simple_call(ModuleName, PredName, Args, Detism,
+goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
 		MaybeFeature, InstMap, Module, Context, CallGoal) :-
 	list__length(Args, Arity),
 	module_info_get_predicate_table(Module, PredTable),
@@ -1232,16 +1239,29 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, Detism,
 		error(ErrorMessage)
 	),
 	module_info_pred_info(Module, PredId, PredInfo),
+	pred_info_procids(PredInfo, ProcIds),
 	(
-		pred_info_procids(PredInfo, [ProcId0])
-	->
-		ProcId = ProcId0
+		ModeNo = only_mode,
+		(
+			ProcIds = [ProcId0]
+		->
+			ProcId = ProcId0
+		;
+			error(string__format( 
+				"expected single mode for %s/%d",
+				[s(PredName), i(Arity)]))
+		)
 	;
-		string__int_to_string(Arity, ArityS),
-		string__append_list(["too many modes for pred ",
-			PredName, "/", ArityS], ErrorMessage),
-		error(ErrorMessage)
-
+		ModeNo = mode_no(N),
+		(	       
+			list__index0(ProcIds, N, ProcId0)
+		->
+			ProcId = ProcId0
+		;
+			error(string__format(
+				"there is no mode %d for %s/%d",
+				[i(N), s(PredName), i(Arity)]))
+		)
 	),
 	Call = call(PredId, ProcId, Args, not_builtin, no,
 		qualified(ModuleName, PredName)),

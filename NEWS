@@ -122,6 +122,11 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* The Prolog-style term comparison operators @<, @=<, @>, @>= are now
+  builtin.
+
+* A new builtin function ordering/2 has been added.
+
 * We've added a function to io.m to construct io__error codes from error
   messages: `io__make_io_error'.
 
