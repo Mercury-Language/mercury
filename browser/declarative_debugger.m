@@ -578,6 +578,12 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 				%
 			missing_answer_children(Store, Prec, Ns0, Ns1)
 		;
+				%
+				% This handles the following cases:
+				% redo, fail, switch, first_disj, later_disj,
+				% then, and neg_fail.  Also handles cond when
+				% the status is anyhing other than failed.
+				%
 			Ns1 = Ns0
 		),
 		Next = step_left_in_contour(Store, Node),
@@ -632,6 +638,12 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 				%
 			missing_answer_children(Store, Prec, Ns0, Ns1)
 		;
+				%
+				% This handles the following cases:
+				% redo, switch, first_disj, later_disj and
+				% then.  Also handles cond when the status
+				% is anything other than failed.
+				%
 			Ns1 = Ns0
 		),
 		Next = step_in_stratum(Store, Node),
@@ -674,6 +686,13 @@ unexpected_exception_children(Store, NodeId, Ns0, Ns) :-
 				%
 			missing_answer_children(Store, Prec, Ns0, Ns1)
 		;
+				%
+				% This handles the following cases:
+				% redo, fail, switch, first_disj, later_disj,
+				% then and neg_fail.  Also handles neg and
+				% cond when the status is anything other than
+				% failed.
+				%
 			Ns1 = Ns0
 		),
 		Next = step_left_in_contour(Store, Node),
