@@ -227,9 +227,9 @@
 :- type hlds__type_defn	--->	hlds__type_defn(varset, list(type_param),
 					hlds__type_body, condition).
 
-:- type hlds__type_body	--->	du_type(string, list(term), list(constructor))
-			;	uu_type(string, list(term), list(type))
-			;	eqv_type(string, list(term), (type)).
+:- type hlds__type_body	--->	du_type(list(constructor))
+			;	uu_type(list(type))
+			;	eqv_type(type).
 
 
 :- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
