@@ -1293,21 +1293,6 @@ mercury_output_pred_type_2(VarSet, PredName, Types, MaybeDet, Purity,
 	io__write_string(Separator).
 
 
-% this works under the assumptions that all purity names but `pure' are prefix
-% operators, and that we never need `pure' indicators/declarations.
-
-:- pred write_purity_prefix(purity, io__state, io__state).
-:- mode write_purity_prefix(in, di, uo) is det.
-
-write_purity_prefix(Purity) -->
-	(   { Purity = pure } ->
-		[]
-	;
-		write_purity(Purity),
-		io__write_string(" ")
-	).
-
-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_output_func_decl(varset, sym_name, list(type_and_mode),

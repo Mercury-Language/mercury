@@ -103,6 +103,12 @@
 :- pred write_purity(purity, io__state, io__state).
 :- mode write_purity(in, di, uo) is det.
 
+%  Print out a purity prefix.
+%  This works under the assumptions that all purity names but `pure' are prefix
+%  Operators, and that we never need `pure' indicators/declarations.
+:- pred write_purity_prefix(purity, io__state, io__state).
+:- mode write_purity_prefix(in, di, uo) is det.
+
 %  Get a purity name as a string.
 :- pred purity_name(purity, string).
 :- mode purity_name(in, out) is det.
@@ -200,6 +206,17 @@ goal_info_is_pure(GoalInfo) :-
 goal_info_is_impure(GoalInfo) :-
 	goal_info_has_feature(GoalInfo, (impure)).
 	
+
+% this works under the assumptions that all purity names but `pure' are prefix
+% operators, and that we never need `pure' indicators/declarations.
+
+write_purity_prefix(Purity) -->
+	(   { Purity = pure } ->
+		[]
+	;
+		write_purity(Purity),
+		io__write_string(" ")
+	).
 
 write_purity(Purity) -->
 	{ purity_name(Purity, String) },
