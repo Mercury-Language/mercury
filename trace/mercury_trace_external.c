@@ -217,7 +217,8 @@ MR_trace_init_external(void)
 		unix_address.sun_family = AF_UNIX;
 		strcpy(unix_address.sun_path, unix_socket);
 		addr = (struct sockaddr *) &unix_address;
-		len = SUN_LEN(&unix_address);
+		len = strlen(unix_address.sun_path) + 
+			sizeof(unix_address.sun_family);
 	} else {
 		char hostname[255];
 		char port_string[255];
@@ -555,29 +556,41 @@ static void
 MR_output_current_slots(const MR_Stack_Layout_Label *layout,
 	MR_Trace_Port port, Unsigned seqno, Unsigned depth, const char *path)
 {
-	/*
-	** XXX This function and the Mercury predicates it calls
-	** ought to be generalized to handle inter-module inlining,
-	** and either further generalized to handle compiler-generated
-	** procedures or to explicitly discard events involving
-	** compiler-generated procedures.
-	*/
-
-    MR_TRACE_CALL_MERCURY(
-	ML_DI_output_current_slots(
-		MR_trace_event_number,
-		seqno,
-		depth,
-		port,
-		layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-		layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-		layout->MR_sll_entry->MR_sle_user.MR_user_name,
-		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
-		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
-		layout->MR_sll_entry->MR_sle_detism,
-		(String) (Word) path,
-		(Word) &MR_debugger_socket_out);
-    );
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+		MR_TRACE_CALL_MERCURY(
+		    ML_DI_output_current_slots_comp(
+			MR_trace_event_number,
+			seqno,
+			depth,
+			port,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
+			layout->MR_sll_entry->MR_sle_detism,
+			(String) (Word) path,
+			(Word) &MR_debugger_socket_out);
+		    );
+	} else {
+		MR_TRACE_CALL_MERCURY(
+		    ML_DI_output_current_slots_user(
+			MR_trace_event_number,
+			seqno,
+			depth,
+			port,
+			layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+			layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+			layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+			layout->MR_sll_entry->MR_sle_user.MR_user_name,
+			layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+			layout->MR_sll_entry->MR_sle_detism,
+			(String) (Word) path,
+			(Word) &MR_debugger_socket_out);
+		    );
+	}
 }
 
 static void
@@ -636,34 +649,45 @@ MR_found_match(const MR_Stack_Layout_Label *layout,
 {
 	bool result;
 
-	/*
-	** XXX This function and the Mercury predicates it calls
-	** ought to be generalized to handle inter-module inlining,
-	** and either further generalized to handle compiler-generated
-	** procedures or to explicitly discard events involving
-	** compiler-generated procedures.
-	*/
-
 	/* XXX get live vars from registers */
 	Word arguments = /* XXX FIXME!!! */ 0;
-
-    MR_TRACE_CALL_MERCURY(
-	result = ML_DI_found_match(
-		MR_trace_event_number,
-		seqno,
-		depth,
-		port,
-		layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
-		layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
-		layout->MR_sll_entry->MR_sle_user.MR_user_name,
-		layout->MR_sll_entry->MR_sle_user.MR_user_arity,
-		layout->MR_sll_entry->MR_sle_user.MR_user_mode,
-		layout->MR_sll_entry->MR_sle_detism,
-		arguments,
-		(String) (Word) path,
-		search_data);
-    );
-
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
+		MR_TRACE_CALL_MERCURY(
+		    result = ML_DI_found_match_comp(
+			MR_trace_event_number,
+			seqno,
+			depth,
+			port,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_arity,
+			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
+			layout->MR_sll_entry->MR_sle_detism,
+			arguments,
+			(String) (Word) path,
+			search_data);
+		    );
+	} else {
+		MR_TRACE_CALL_MERCURY(
+		    result = ML_DI_found_match_user(
+			MR_trace_event_number,
+			seqno,
+			depth,
+			port,
+			layout->MR_sll_entry->MR_sle_user.MR_user_pred_or_func,
+			layout->MR_sll_entry->MR_sle_user.MR_user_decl_module,
+			layout->MR_sll_entry->MR_sle_user.MR_user_def_module,
+			layout->MR_sll_entry->MR_sle_user.MR_user_name,
+			layout->MR_sll_entry->MR_sle_user.MR_user_arity,
+			layout->MR_sll_entry->MR_sle_user.MR_user_mode,
+			layout->MR_sll_entry->MR_sle_detism,
+			arguments,
+			(String) (Word) path,
+			search_data);
+		    );
+	}
 	return result;
 }
 

@@ -17,11 +17,13 @@
 :- interface. 
 
 % This module exports the following C functions:
-% 	ML_DI_output_current_slots
+% 	ML_DI_output_current_slots_user
+% 	ML_DI_output_current_slots_comp
 % 	ML_DI_output_current_vars
 % 	ML_DI_output_current_nth_var
 % 	ML_DI_output_current_live_var_names
-%	ML_DI_found_match
+%	ML_DI_found_match_user
+%	ML_DI_found_match_comp
 %	ML_DI_read_request_from_socket
 % These are used by runtime/mercury_trace_external.c.
 
@@ -72,6 +74,27 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	function.
 
 
+% Depending whether the Opium side is requesting for a user defined procedure
+% or a compiler generated one, the event has not exactly the same structure.
+% The differences between the two types of event are gathered in a forward_move
+% slot of that type.
+
+:- type pred_match --->	
+		% match user-defined preds only
+		match_user_pred(
+			match(pred_or_func),
+			match(string)		% declaration module name
+		)
+	;	
+		% match compiler-generated preds only
+		match_compiler_generated_pred(
+			match(string),		% type name
+			match(string)   	% type module name
+		)
+	;	
+		% match either user-defined or compiler-generated preds
+		match_any_pred.
+
 % This is known as "debugger_query" in the Opium documentation.
 % The debugger_request type is used for request sent
 % from the debugger process to the Mercury program being debugged.
@@ -87,8 +110,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			match(call_number),
 			match(depth_number),
 			match(trace_port_type),
-			match(pred_or_func),
-			match(string),		% module name
+			pred_match,
+			match(string),		% definition module name
 			match(string),		% pred name
 			match(arity),
 			match(int),		% mode number
@@ -168,14 +191,30 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	forward_move_match_found
 	;	forward_move_match_not_found
 	% responses to current 
-	% responses to current_slots 
-	;	current_slots(
+	% responses to current_slots for user event
+	;	current_slots_user(
 			event_number,
 			call_number,
 			depth_number,
 			trace_port_type,
 			pred_or_func,
-			string,		% module name
+			string,		% declaration module name
+			string,		% definition module name
+			string,		% pred name
+			arity,
+			int,		% mode number
+			determinism,
+			goal_path_string
+ 		)
+	% responses to current_slots for compiler generated event
+	;	current_slots_comp(
+			event_number,
+			call_number,
+			depth_number,
+			trace_port_type,
+			string,		% name type
+			string,		% module type
+			string,		% definition module
 			string,		% pred name
 			arity,
 			int,		% mode number
@@ -199,34 +238,63 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 %-----------------------------------------------------------------------------%
 %	send to the debugger (e.g. Opium) the wanted features.
 
-% output_current_slots "ML_DI_output_current_slots":
+% output_current_slots_user "ML_DI_output_current_slots_user":
 %	send to the debugger (e.g. Opium) the attributes of the current event
 %	except the list of arguments.
 
-:- pragma export(output_current_slots(in, in, in, in, in, in, in, in, in, in,
-		in, in, di, uo), "ML_DI_output_current_slots").
+:- pragma export(output_current_slots_user(in, in, in, in, in, in, in, in, 
+	in, in, in, in, in, di, uo), "ML_DI_output_current_slots_user").
 			
-:- pred output_current_slots(event_number, call_number, depth_number, 
-	trace_port_type, pred_or_func, /* module name */ string,
-	/* pred name */ string, arity, /* mode num */ int, determinism, 
-	goal_path_string, io__output_stream, io__state, io__state).
-:- mode output_current_slots(in, in, in, in, in, in, in, in, in, in, in, in,
- 	di, uo) is det.
+:- pred output_current_slots_user(event_number, call_number, depth_number, 
+	trace_port_type, pred_or_func, /* declarated module name */ string,
+	/* definition module name */ string, /* pred name */ string, arity, 
+	/* mode num */ int, determinism, goal_path_string, 
+	io__output_stream, io__state, io__state).
+:- mode output_current_slots_user(in, in, in, in, in, in, in, in, in, in, 
+	in, in, in,di, uo) is det.
 
 
-output_current_slots(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
-	ModuleName, PredName, Arity, ModeNum, Determinism,
-	Path, OutputStream) -->
+output_current_slots_user(EventNumber, CallNumber, DepthNumber, Port, 
+	PredOrFunc, DeclModuleName, DefModuleName, PredName, Arity, ModeNum, 
+	Determinism, Path, OutputStream) -->
 	
-	{ CurrentTraceInfo = current_slots(EventNumber, CallNumber, 
-		DepthNumber, Port, PredOrFunc, ModuleName, PredName, Arity,
-		ModeNum, Determinism, Path) },
+	{ CurrentTraceInfo = current_slots_user(EventNumber, CallNumber, 
+		DepthNumber, Port, PredOrFunc, DeclModuleName, DefModuleName, 
+		PredName, Arity, ModeNum, Determinism, Path) },
+	io__write(OutputStream, CurrentTraceInfo),
+	io__print(OutputStream, ".\n"),
+	io__flush_output(OutputStream).
+
+% output_current_slots_comp "ML_DI_output_current_slots_comp":
+%	send to the debugger (e.g. Opium) the attributes of the current event
+%	except the list of arguments.
+
+:- pragma export(output_current_slots_comp(in, in, in, in, in, in, in, 
+	in, in, in, in, in, in, di, uo), "ML_DI_output_current_slots_comp").
+			
+:- pred output_current_slots_comp(event_number, call_number, depth_number, 
+	trace_port_type, /* name type */ string, /* module type */ string,
+	/* definition module */ string, /* pred name */ string, arity, 
+	/* mode num */ int, determinism, goal_path_string, 
+	io__output_stream, io__state, io__state).
+:- mode output_current_slots_comp(in, in, in, in, in, in, in, in, in, in, 
+	in, in, in, di, uo) is det.
+
+
+output_current_slots_comp(EventNumber, CallNumber, DepthNumber, Port, 
+	NameType, ModuleType, DefModuleName, PredName, Arity, 
+	ModeNum, Determinism, Path, OutputStream) -->
+	
+	{ CurrentTraceInfo = current_slots_comp(EventNumber, CallNumber, 
+		DepthNumber, Port, NameType, ModuleType, DefModuleName, 
+		PredName, Arity, ModeNum, Determinism, Path) },
 	io__write(OutputStream, CurrentTraceInfo),
 	io__print(OutputStream, ".\n"),
 	io__flush_output(OutputStream).
 
 % output_current_vars "ML_DI_output_current_vars":
-%	send to the debugger the list of the live variables of the current event.
+%	send to the debugger the list of the live variables of the current 
+%	event.
 
 :- pragma export(output_current_vars(in, in, in, di, uo), 
 	"ML_DI_output_current_vars").
@@ -298,26 +366,26 @@ get_var_number(DebuggerRequest) = VarNumber :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma export(found_match(in, in, in, in, in, in, in, in, in, in, in,
-			in, in), "ML_DI_found_match").
+:- pragma export(found_match_user(in, in, in, in, in, in, in, in, in, in, in,
+			in, in, in), "ML_DI_found_match_user").
 			
-:- pred found_match(event_number, call_number, depth_number, trace_port_type,
-	pred_or_func, /* module name */ string, 
-	/* pred name */ string, arity, /* mode num */ int, determinism, 
-	/* the arguments */ list(univ),
+:- pred found_match_user(event_number, call_number, depth_number, 
+	trace_port_type, pred_or_func, /* declarated module name */ string, 
+	/* defined module name */ string, /* pred name */ string, arity, 
+	/* mode num */ int, determinism, /* the arguments */ list(univ),
 				% XXX we could provide better ways of
 				% matching on arguments
 	goal_path_string, debugger_request).
-:- mode found_match(in, in, in, in, in, in, in, in, in, in, in, in, in)
+:- mode found_match_user(in, in, in, in, in, in, in, in, in, in, in, in, in, in)
 	is semidet.
 
-found_match(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, ModuleName, 
-		PredName, Arity, ModeNum, Determinism, Args, Path, 
-		DebuggerRequest) :-
+found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, 
+		DeclModuleName, DefModuleName, PredName, Arity, ModeNum, 
+		Determinism, Args, Path, DebuggerRequest) :-
 	(
 		DebuggerRequest = forward_move(MatchEventNumber,
 			MatchCallNumber, MatchDepthNumber, MatchPort,
-			MatchPredOrFunc, MatchModuleName, MatchPredName, 
+			UserPredMatch, MatchDefModuleName, MatchPredName, 
 			MatchArity, MatchModeNum, MatchDeterminism, 
 			MatchArgs, MatchPath)
 	->
@@ -325,8 +393,17 @@ found_match(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc, ModuleName,
 		match(MatchCallNumber, CallNumber),
 		match(MatchDepthNumber, DepthNumber),
 		match(MatchPort, Port),
-		match(MatchPredOrFunc, PredOrFunc),
-		match(MatchModuleName, ModuleName),
+		(
+		if
+			UserPredMatch = match_user_pred(
+				MatchPredOrFunc, MatchDeclModuleName)
+		then
+			match(MatchPredOrFunc, PredOrFunc),
+			match(MatchDeclModuleName, DeclModuleName)
+		else
+			UserPredMatch = match_any_pred
+		),
+		match(MatchDefModuleName, DefModuleName),
 		match(MatchPredName, PredName),
 		match(MatchArity, Arity),
 		match(MatchModeNum, ModeNum),
@@ -352,6 +429,56 @@ match(interval(Low, High), X) :-
 	(LE = (<) ; LE = (=)),
 	compare(GE, X, Low), 
 	(GE = (>) ; GE = (=)).
+
+
+:- pragma export(found_match_comp(in, in, in, in, in, in, in, in, in, in, in,
+			in, in, in), "ML_DI_found_match_comp").
+			
+:- pred found_match_comp(event_number, call_number, depth_number, 
+	trace_port_type, /* name type */ string, /* module type */ string, 
+	/* definition module name */ string, /* pred name */ string, arity, 
+	/* mode num */ int, determinism, /* the arguments */ list(univ),
+				% XXX we could provide better ways of
+				% matching on arguments
+	goal_path_string, debugger_request).
+:- mode found_match_comp(in, in, in, in, in, in, in, in, in, in, in, in, in, in)
+	is semidet.
+
+found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType, 
+		ModuleType, DefModuleName, PredName, Arity, ModeNum, 
+		Determinism, Args, Path, DebuggerRequest) :-
+	(
+		DebuggerRequest = forward_move(MatchEventNumber,
+			MatchCallNumber, MatchDepthNumber, MatchPort,
+			CompilerGeneratedPredMatch,
+			MatchDefModuleName, MatchPredName, MatchArity, 
+			MatchModeNum, MatchDeterminism, MatchArgs, MatchPath)
+	->
+		match(MatchEventNumber, EventNumber),
+		match(MatchCallNumber, CallNumber),
+		match(MatchDepthNumber, DepthNumber),
+		match(MatchPort, Port),
+		(
+		if
+			CompilerGeneratedPredMatch = 
+				match_compiler_generated_pred(MatchNameType,
+			MatchModuleType)
+		then
+			match(MatchNameType, NameType),
+			match(MatchModuleType, ModuleType)
+		else
+			CompilerGeneratedPredMatch = match_any_pred
+		),
+		match(MatchDefModuleName, DefModuleName),
+		match(MatchPredName, PredName),
+		match(MatchArity, Arity),
+		match(MatchModeNum, ModeNum),
+		match(MatchDeterminism, Determinism),
+		match(MatchArgs, Args),
+		match(MatchPath, Path)
+	;
+		error("found_match: forward_move expected")
+	).
 
 
 %-----------------------------------------------------------------------------%
