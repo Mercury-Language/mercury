@@ -477,6 +477,9 @@ cleanup_query(_Options) -->
 	[thread_safe, will_not_call_mercury],
 	"MR_make_aligned_string(GradeOpt, (MR_String) MR_GRADE_OPT);").
 
+grade_option = _ :-
+	private_builtin__sorry("grade_option").
+
 :- func verbose = bool.
 verbose = no.
 
@@ -577,5 +580,8 @@ dynamically_load_and_run -->
 
 :- pragma c_code(inst_cast(X::in) = (Y::out(io_pred)),
 	[will_not_call_mercury, thread_safe], "Y = X").
+
+inst_cast(_) = _ :-
+	private_builtin__sorry("inst_cast").
 
 %-----------------------------------------------------------------------------%

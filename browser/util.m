@@ -149,6 +149,9 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 	IO = IO0;
 ").
 
+call_trace_getline(_, _, _, _, _) -->
+	{ private_builtin__sorry("mdb__util__call_trace_getline") }.
+
 util__trace_get_command(Prompt, Result) -->
 	io__input_stream(MdbIn),
 	io__output_stream(MdbOut),
@@ -177,6 +180,9 @@ util__trace_get_command(Prompt, Result) -->
 
 	State = State0;
 ").
+
+util__trace_get_command(_, _, _, _) -->
+	{ private_builtin__sorry("mdb__util__trace_get_command/6") }.
 
 util__zip_with(Pred, XXs, YYs, Zipped) :-
 	( (XXs = [], YYs = []) ->

@@ -588,3 +588,5 @@ extern	int	MR_DD_debug_origin;
 	Flag = MR_DD_debug_origin;
 	IO = IO0;
 ").
+debug_origin(_) -->
+	{ private_builtin__sorry("declarative_debugger.debug_origin") }.

@@ -257,6 +257,8 @@ convert_to_valid_c_identifier_2(String, Name) :-
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+use_asm_labels :-
+	private_builtin__sorry("use_asm_labels").
 
 :- pred high_level_code is semidet.
 :- pragma foreign_proc("C", high_level_code,
@@ -268,5 +270,7 @@ convert_to_valid_c_identifier_2(String, Name) :-
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+high_level_code :-
+	private_builtin__sorry("high_level_code").
 
 %-----------------------------------------------------------------------------%

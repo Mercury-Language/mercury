@@ -104,3 +104,6 @@ update_io_action_map(IoActionNum, ProcName, IsFunc, Args,
 
 	S = S0;
 }").
+
+pickup_io_action(_, _, _, _) -->
+	{ private_builtin__sorry("pickup_io_action") }.

@@ -97,6 +97,8 @@
 	is_null(Pointer::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "SUCCESS_INDICATOR = ((void *) Pointer == NULL)").
+is_null(_) :-
+	private_builtin__sorry("dl__is_null").
 
 open(FileName, Mode, Scope, Result) -->
 	dlopen(FileName, Mode, Scope, Pointer),
@@ -132,6 +134,8 @@ open(FileName, Mode, Scope, Result) -->
 	Result = (MR_Word) NULL;
 #endif
 }").
+dlopen(_, _, _, _) -->
+	{ private_builtin__sorry("dl__dlopen") }.
 
 mercury_sym(Handle, MercuryProc0, Result) -->
 	{ check_proc_spec_matches_result_type(Result, _,
@@ -216,6 +220,9 @@ int	ML_DL_closure_counter = 0;
 	ClosureLayout = (MR_Word) closure_layout;
 }").
 
+make_closure_layout = _ :-
+	private_builtin__sorry("dl__make_closure_layout").
+
 :- func make_closure(c_pointer, c_pointer, int, c_pointer) = c_pointer.
 
 :- pragma foreign_proc("C",
@@ -244,6 +251,9 @@ int	ML_DL_closure_counter = 0;
 	}
 	Closure = (MR_Word) closure;
 }").
+
+make_closure(_, _, _, _) = _ :-
+	private_builtin__sorry("dl__make_closure").
 
 :- pragma c_header_code("
 extern MR_Box MR_CALL ML_DL_generic_closure_wrapper(void *closure,
@@ -318,6 +328,8 @@ ML_DL_generic_closure_wrapper(void *closure,
 "
 	WrapperFuncAddr = (MR_Word) &ML_DL_generic_closure_wrapper;
 ").
+dl__generic_closure_wrapper = _ :-
+	private_builtin__sorry("dl__generic_closure_wrapper").
 
 %
 % Check that the result type matches the information
@@ -447,6 +459,8 @@ sym(handle(Handle), Name, Result) -->
 	Pointer = (MR_Word) NULL;
 #endif
 }").
+dlsym(_, _, _) -->
+	{ private_builtin__sorry("dl__dlsym") }.
 
 :- pred dlerror(string::out, io__state::di, io__state::uo) is det.
 :- pragma foreign_proc("C",
@@ -465,6 +479,8 @@ sym(handle(Handle), Name, Result) -->
 
 	MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
+dlerror(_) -->
+	{ private_builtin__sorry("dl__dlerror") }.
 
 close(handle(Handle), Result) -->
 	dlclose(Handle), 
@@ -485,6 +501,8 @@ close(handle(Handle), Result) -->
 	dlclose((void *) Handle);
 #endif
 ").
+dlclose(_) -->
+	{ private_builtin__sorry("dl__dlclose") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -499,5 +517,7 @@ close(handle(Handle), Result) -->
 	SUCCESS_INDICATOR = MR_FALSE;
 #endif
 ").
+high_level_code :-
+	private_builtin__sorry("dl__high_level_code").
 
 %-----------------------------------------------------------------------------%

@@ -135,6 +135,8 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
 :- pragma foreign_proc("C", set_to_null_pointer(Pointer::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "(Pointer = (MR_Word) NULL)").
+set_to_null_pointer(_) :-
+	private_builtin__sorry("collect_lib__set_to_null_pointer").
 
 %------------------------------------------------------------------------------%
 

@@ -603,6 +603,8 @@ disj_node_from_id(Store, NodeId, Node) :-
 	SUCCESS_INDICATOR = (Id != (MR_Word) NULL);
 "
 ).
+search_trace_node_store(_, _, _) :-
+	private_builtin__sorry("search_trace_node_store").
 
 	%
 	% Following are some predicates that are useful for
@@ -965,6 +967,10 @@ construct_neg_fail_node(Preceding, Neg) = neg_fail(Preceding, Neg).
 "Id = (MR_Word) NULL;"
 ).
 
+null_trace_node_id(_) :-
+	private_builtin__sorry("null_trace_node_id").
+
+
 :- func construct_trace_atom(pred_or_func, string, int) = trace_atom.
 :- pragma export(construct_trace_atom(in, in, in) = out,
 		"MR_DD_construct_trace_atom").
@@ -1099,12 +1105,18 @@ node_map(Store, NodeId, map(Map0), Map) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "Key = (MR_Integer) Id;").
 
+node_id_to_key(_, _) :-
+	private_builtin__sorry("node_id_to_key").
+
 :- pred convert_node(trace_node(trace_node_id), trace_node(trace_node_key)).
 :- mode convert_node(in, out) is det.
 
 :- pragma foreign_proc("C", convert_node(N1::in, N2::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "N2 = N1;").
+
+convert_node(_, _) :-
+	private_builtin__sorry("convert_node").
 
 	% Given a node in an annotated trace, return a reference to
 	% the preceding node in the trace, or a NULL reference if

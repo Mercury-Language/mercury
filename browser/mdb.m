@@ -42,5 +42,6 @@
 	*/
 	Version = (MR_String) (MR_Word) version_string;
 ").
+mdb__version("unknown version").
 
 %---------------------------------------------------------------------------%
