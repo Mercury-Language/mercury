@@ -163,8 +163,8 @@ mdb_command_test.inp: generate_mdb_command_test mdb_doc
 
 # The following rules automatically build the library documentation
 # by extracting the module interfaces from the library source code.
-# Note that the private_builtin.m module is just an implementation
-# detail of the library, so it is not documented.
+# Note that some modules are just implementation details of the library,
+# so they are not documented.
 
 library-menu.texi: $(LIBRARY_DIR)/*.m
 	{								\
@@ -173,9 +173,11 @@ library-menu.texi: $(LIBRARY_DIR)/*.m
 		case $$filename in					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
-			$(LIBRARY_DIR)/table_builtin.m)			\
-				;;					\
 			$(LIBRARY_DIR)/profiling_builtin.m)		\
+				;;					\
+			$(LIBRARY_DIR)/rtti_implementation.m)		\
+				;;					\
+			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
 			*)						\
 				echo "* `basename $$filename .m`::"; 	\
@@ -189,9 +191,11 @@ library-chapters.texi: $(LIBRARY_DIR)/[a-z]*.m
 		case $$filename in					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
-			$(LIBRARY_DIR)/table_builtin.m)			\
-				;;					\
 			$(LIBRARY_DIR)/profiling_builtin.m)		\
+				;;					\
+			$(LIBRARY_DIR)/rtti_implementation.m)		\
+				;;					\
+			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
 			*)						\
 				file="`basename $$filename .m`"; 	\

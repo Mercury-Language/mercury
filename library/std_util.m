@@ -1411,28 +1411,57 @@ sys_init_type_desc_module_write_out_proc_statics(FILE *fp)
 
 ").
 
+	% We need to call the rtti_implementation module -- so that we get the
+	% dependencies right it's easiest to do it from Mercury.
+:- interface.
+:- use_module rtti_implementation.
+:- pred call_rtti_compare_type_infos(comparison_result::out, 
+	rtti_implementation__type_info::in, rtti_implementation__type_info::in) is det.
+:- implementation.
+
+call_rtti_compare_type_infos(Res, T1, T2) :-
+	rtti_implementation__compare_type_infos(Res, T1, T2).
+
+
 :- pragma foreign_code("MC++", "
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(std_util, type_desc, 0, 
         MR_TYPECTOR_REP_TYPEINFO)
 
-static int MR_compare_type_info(MR_TypeInfo x, MR_TypeInfo y) {
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	return 0;
-}
+static int MR_compare_type_info(MR_Word t1, MR_Word t2) {
+	MR_Word res;
 
-static int
-__Unify____type_desc_0_0(MR_Word x, MR_Word y)
-{
-	mercury::runtime::Errors::SORRY(""unify for type_desc"");
-	return 0;
+	mercury::std_util::mercury_code::call_rtti_compare_type_infos_3(
+		&res, t1, t2);
+	return System::Convert::ToInt32(res[0]);
 }
 
 static void
 __Compare____type_desc_0_0(
     MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""compare for type_desc"");
+	mercury::std_util::mercury_code::call_rtti_compare_type_infos_3(
+		result, x, y);
+}
+
+static int
+__Unify____type_desc_0_0(MR_Word x, MR_Word y)
+{
+	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
+}
+
+static void
+special___Compare___type_desc_0_0(
+    MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::std_util::mercury_code::call_rtti_compare_type_infos_3(
+		result, x, y);
+}
+
+static int
+special___Unify___type_desc_0_0(MR_Word x, MR_Word y)
+{
+	return (MR_compare_type_info(x, y) == MR_COMPARE_EQUAL);
 }
 
 static int

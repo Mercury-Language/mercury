@@ -516,7 +516,7 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 ** information.
 **
 ** Any changes in this definition might also require changes in
-** runtime/mercury_mcpp.{h,cpp}
+** library/rtti_implementation.m and runtime/mercury_mcpp.{h,cpp}
 */
 
 typedef enum {

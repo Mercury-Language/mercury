@@ -669,6 +669,7 @@ mercury_std_library_module("rational").
 mercury_std_library_module("rbtree").
 mercury_std_library_module("relation").
 mercury_std_library_module("require").
+mercury_std_library_module("rtti_implementation").
 mercury_std_library_module("set").
 mercury_std_library_module("set_bbbtree").
 mercury_std_library_module("set_ordlist").
