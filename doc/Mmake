@@ -15,15 +15,18 @@ include $(MERCURY_DIR)/Mmake.common
 
 TEXI2DVI=texi2dvi
 MAKEINFO=makeinfo
-TEXI2HTML=./texi2html
+TEXI2HTML=perl texi2html
 DVIPS=dvips
 
 #-----------------------------------------------------------------------------#
 
-.SUFFIXES: .texi .dvi .ps
+.SUFFIXES: .texi .dvi .ps .text
 
 .texi.dvi:
 	$(TEXI2DVI) $<
+
+.texi.text:
+	$(MAKEINFO) --no-headers -o $@ $<
 
 .dvi.ps:
 	$(DVIPS) $<
@@ -52,6 +55,10 @@ html: mercury.html user_guide_toc.html reference_manual_toc.html \
 
 .PHONY: ps
 ps: user_guide.ps reference_manual.ps library.ps faq.ps transition_guide.ps
+
+.PHONY: text
+text: user_guide.text reference_manual.text library.text faq.text \
+	transition_guide.text
 
 #-----------------------------------------------------------------------------#
 
@@ -97,6 +104,20 @@ library-chapters.texi: $(LIBRARY_DIR)/*.m
 
 library.dvi library_toc.html mercury_library.info: \
 	library-menu.texi library-chapters.texi
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: dist
+dist: tar
+
+.PHONY: tar
+tar: doc.text.tar.gz doc.ps.tar.gz
+
+doc.text.tar.gz: text
+	tar -cf - *.text | gzip > doc.text.tar.gz
+
+doc.ps.tar.gz: ps
+	tar -cf - *.ps | gzip > doc.ps.tar.gz
 
 #-----------------------------------------------------------------------------#
 
