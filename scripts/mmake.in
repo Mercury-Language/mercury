@@ -112,7 +112,7 @@ while [ $# -gt 0 ]; do
 				c)	target_asm=no ;;
 				il)	# XXX we should do something
 					# sensible for `--target il'
-					echo "$0: warning: \`--target il'"
+					echo "$0: warning: \`--target il'" \
 						"option not supported." 1>&2
 					target_asm=no ;;
 				*)	echo "$0: invalid argument to" \
