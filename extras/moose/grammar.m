@@ -135,8 +135,8 @@
 :- pred add_clause(clauses, nonterminal, clause, clauses).
 :- mode add_clause(in, in, in, out) is det.
 
-:- pred construct_grammar(nonterminal, term, clauses, xforms, grammar).
-:- mode construct_grammar(in, in, in, in, out) is det.
+:- pred construct_grammar(nonterminal, clauses, xforms, grammar).
+:- mode construct_grammar(in, in, in, out) is det.
 
 :- pred compute_first(rules, first).
 :- mode compute_first(in, out) is det.
@@ -219,7 +219,7 @@ add_clause(Clauses0, Id, Clause, Clauses) :-
 
 %------------------------------------------------------------------------------%
 
-construct_grammar(Start, _End, AllClauses, XForms, Grammar) :-
+construct_grammar(Start, AllClauses, XForms, Grammar) :-
 	map__to_assoc_list(AllClauses, ClauseList),
 	Nont0 = 1,
 	start_rule(Start, StartRule),

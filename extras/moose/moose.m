@@ -1,7 +1,14 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001 The University of Melbourne.
+% Copyright (C) 1998-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
+%
+% Original author: Tom Conway <conway@cs.mu.oz.au>
+% Extensions: Ralph Becket <rafe@cs.mu.oz.au>
+%
+% There's scope for recoding much of this to use the more recent
+% additions to the language, if anyone feels like something to do.
+%
 %----------------------------------------------------------------------------%
 
 :- module moose.
@@ -84,7 +91,15 @@ figure_out_names(Name0, InName, OutName) :-
 	--->	(interface) ; (implementation) .
 
 :- type parser
-	--->	parser(whereami, nonterminal, term, string, string).
+	--->	parser(
+			whereami,
+			nonterminal,	% Starting nonterminal.
+			term,		% EOF token.
+			string,		% Token type name.
+			string,		% Naming prefix (unused).
+			string,		% Parser state input mode.
+			string		% Parser state output mode.
+		).
 
 :- pred process(options::in, io__state::di, io__state::uo) is det.
 
@@ -108,7 +123,7 @@ process(Options) -->
 		(
 			{ MParser = [] },
 			stderr_stream(StdErr),
-			write_string(StdErr, "error: no parse/4 declaration.\n")
+			write_string(StdErr, "error: no parse/6 declaration.\n")
 		;
 			{ MParser = [Parser] },
 			{ reverse(Remainder0, Remainder) },
@@ -135,7 +150,8 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
 	{ check_clauses(Clauses0, Decls, Clauses, ClauseErrors) },
 	foldl(write_error, ClauseErrors),
 
-	{ Parser = parser(WhereAmI, StartId, EndToken, TokenType, _Prefix) },
+	{ Parser = parser(WhereAmI, StartId, EndTerm, TokenType, _Prefix,
+				InAtom, OutAtom) },
 
 	{ check_useless(StartId, Clauses, Decls, UselessErrors) },
 	foldl(write_error, UselessErrors),
@@ -151,8 +167,10 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
 	->
 		write_module(nolines, Module), nl,
 		{ lookup(Decls, StartId, StartDecl) },
-		write_parser(WhereAmI, StartId, StartDecl, TokenType),
-		write_action_type_class(WhereAmI, XFormList, Decls),
+		write_parser(WhereAmI, StartId, StartDecl, TokenType,
+				InAtom, OutAtom),
+		write_action_type_class(WhereAmI, XFormList, Decls,
+					TokenType, InAtom, OutAtom),
 
 		stderr_stream(StdErr),
 		write_string(StdErr, "constructing grammar...\n"),
@@ -163,8 +181,7 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
 			map__det_insert(Xf0, XfNt, XForm, Xf)
 		), XFormList, Xfns0, XForms) },
 
-		{ construct_grammar(StartId, EndToken, Clauses, XForms,
-			Grammar) },
+		{ construct_grammar(StartId, Clauses, XForms, Grammar) },
 		{ Grammar = grammar(Rules, _, Xfns, _, Index, First, _Follow) },
 		{ reaching(Rules, First, Reaching) },
 
@@ -211,11 +228,12 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
 				)
 			)
 		), ActionErrs, no, _HasErrors),
-		write_action_table(ActionTable, TokenType, EndToken),
+		write_action_table(ActionTable, TokenType, EndTerm),
 		write_string(StdErr, "computing the goto table...\n"),
 		{ gotos(C, States, Gotos, GotoTable) },
 		write_goto_table(GotoTable, Decls),
-		write_reductions(Rules, TokenType, Xfns),
+		write_reductions(Rules, ActionTable, TokenType,
+				InAtom, OutAtom, Xfns),
 		[]
 	;
 		[]
@@ -224,18 +242,25 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList) -->
 %------------------------------------------------------------------------------%
 
 :- pred write_action_type_class(whereami, list(xform), rule_decls, 
-	io__state, io__state).
-:- mode write_action_type_class(in, in, in, di, uo) is det.
+	string, string, string, io__state, io__state).
+:- mode write_action_type_class(in, in, in, in, in, in, di, uo) is det.
 
-write_action_type_class(Where, XForms, Decls) -->
+write_action_type_class(Where, XForms, Decls, TokenType, InAtom, OutAtom) -->
 	( { Where = (interface) } ->
 		write_string(":- interface.\n\n")
 	;
 		[]
 	),
-	io__write_string(":- typeclass parser_state(T) where [\n"),
-	io__write_string("	pred get_token(token, T, T),\n"),
-	io__write_string("	mode get_token(out, in, out) is semidet"),
+	io__format("\
+:- typeclass parser_state(T) where [
+	pred get_token(%s, T, T),
+	mode get_token(out, %s, %s) is det,
+	func unget_token(%s, T) = T,
+	mode unget_token(in, %s) = %s is det\
+",
+		[s(TokenType), s(InAtom), s(OutAtom),
+		 s(TokenType), s(InAtom), s(OutAtom)]
+	),
 	( { not XForms = [] } ->
 		io__write_string(",\n")
 	;
@@ -248,15 +273,15 @@ write_action_type_class(Where, XForms, Decls) -->
 		{ XForm = xform(NT, MethodName) },
 		{ lookup(Decls, NT, RuleDecl) },
 		{ RuleDecl = rule(_NT, Types, VarSet, _Context) },
-		io__write_strings(["\tpred ", MethodName, "("]),
+		io__format("\tfunc %s(", [s(MethodName)]),
 		io__write_list(Types, ", ", term_io__write_term(VarSet)),
 		( { Types \= [] } -> io__write_string(", ") ; [] ),
-		io__write_string("T, T),\n"),
+		io__format("T, T),\n", []),
 
-		io__write_strings(["\tmode ", MethodName, "("]),
+		io__format("\tmode %s(", [s(MethodName)]),
 		io__write_list(Types, ", ", WriteIn),
 		( { Types \= [] } -> io__write_string(", ") ; [] ),
-		io__write_string("in, out) is det")
+		io__format("%s) = %s is det", [s(InAtom), s(OutAtom)])
 		)
 	},
 	io__write_list(XForms, ",\n", WriteXForm),
@@ -406,13 +431,17 @@ rule_term(functor(atom(":-"), [functor(atom("rule"), [RuleTerm], _)], _),
 
 parser_term(functor(atom(":-"), [functor(atom("parse"), Args, _)], _),
 		_VarSet, WhereAmI, Decl) :-
-	Args = [StartIdTerm, EndTok, TokTerm, PrefixTerm],
+	Args = [StartIdTerm, TokTerm, EndTerm,
+			PrefixTerm, InAtomTerm, OutAtomTerm],
 	StartIdTerm = functor(atom("/"), [functor(atom(Name), [], _),
 		functor(integer(Arity), _, _)], _),
 	StartId = Name / Arity,
 	TokTerm = functor(atom(TokAtom), [], _),
 	PrefixTerm = functor(atom(PrefixAtom), [], _),
-	Decl = parser(WhereAmI, StartId, EndTok, TokAtom, PrefixAtom).
+	InAtomTerm = functor(atom(InAtom), [], _),
+	OutAtomTerm = functor(atom(OutAtom), [], _),
+	Decl = parser(WhereAmI, StartId, EndTerm, TokAtom,
+			PrefixAtom, InAtom, OutAtom).
 
 :- pred xform_term(term, xform).
 :- mode xform_term(in, out) is semidet.
@@ -436,16 +465,16 @@ xform_term(Term, XForm) :-
 
 help -->
 	stderr_stream(StdErr),
-	write_strings(StdErr, [
-		"usage: moose <options> file ...\n",
-		"	-h|--help		help\n",
-		"	-a|--dump-action	dump the action table\n",
-		"	-f|--dump-first		dump the FIRST sets\n",
-		"	-a|--dump-follow	dump the FOLLOW sets\n",
-		"	-a|--dump-goto		dump the goto table\n",
-		"	-a|--dump-items		dump the item sets\n",
-		"	-a|--dump-rules		dump the flattened rules\n"
-	]).
+	write_string(StdErr, "\
+usage: moose <options> file ...
+	-h|--help		help
+	-a|--dump-action	dump the action table
+	-f|--dump-first		dump the FIRST sets
+	-a|--dump-follow	dump the FOLLOW sets
+	-a|--dump-goto		dump the goto table
+	-a|--dump-items		dump the item sets
+	-a|--dump-rules		dump the flattened rules
+"	).
 
 %------------------------------------------------------------------------------%
 
@@ -453,27 +482,33 @@ help -->
 :- mode write_action_table(in, in, in, di, uo) is det.
 
 write_action_table(Table, TT, End) -->
-	write_strings([
-		":- type parsing_action\n",
-		"	--->	shift\n",
-		"	;	reduce\n",
-		"	;	accept\n",
-		"	.\n",
-		"\n",
-		":- pred actions(int, ", TT, ", parsing_action, int).\n",
-		":- mode actions(in, in, out, out) is semidet.\n",
-		"\n"
-	]),
+	io__format(":- inst state_no --->\n\t\t", []),
+	io__write_list(map__keys(Table), "\n\t;\t", io__write_int),
+	io__format(".\n:- inst state_nos == list_skel(state_no).\n\n", []),
+	io__format("\
+:- type parsing_action
+	--->	shift
+	;	reduce
+	;	accept.
+
+:- pred actions(int, %s, parsing_action, int).
+:- mode actions(in(state_no), in, out, out(state_no)) is semidet.
+
+",
+		[s(TT)]
+	),
 	foldl((pred(State::in, StateActions::in, di,uo) is det -->
 		{ format("0x%x", [i(State)], SS) },
-		write_strings([
-			"actions(", SS, ",Tok, Action, Value) :-\n",
-			"	actions", SS, "(Tok, Action, Value).\n",
-			"\n",
-			":- pred actions", SS, "(", TT, ", parsing_action, int).\n",
-			":- mode actions", SS, "(in, out, out) is semidet.\n",
-			"\n"
-		]),
+		io__format("\
+actions(%s, Tok, Action, Value) :-
+	actions%s(Tok, Action, Value).
+
+:- pred actions%s(%s, parsing_action, int).
+:- mode actions%s(in, out, out(state_no)) is semidet.
+
+",
+			[s(SS), s(SS), s(SS), s(TT), s(SS)]
+		),
 		write_state_actions(SS, End, StateActions)
 	), Table).
 
@@ -531,21 +566,23 @@ terminal_to_term((*), _, _) :-
 write_goto_table(Table, DeclTable) -->
 	{ values(DeclTable, Decls) },
 	write_nonterminal_type(Decls),
-	write_strings([
-		":- pred gotos(int, nonterminal, int).\n",
-		":- mode gotos(in, in, out) is semidet.\n",
-		"\n"
-	]),
+	write_string("\
+:- pred gotos(int, nonterminal, int).
+:- mode gotos(in(state_no), in, out(state_no)) is semidet.
+
+"	),
 	foldl((pred(State::in, StateActions::in, di,uo) is det -->
 		{ format("0x%x", [i(State)], SS) },
-		write_strings([
-			"gotos(", SS, ", NT, NS) :-\n",
-			"	gotos", SS, "(NT, NS).\n",
-			"\n",
-			":- pred gotos", SS, "(nonterminal, int).\n",
-			":- mode gotos", SS, "(in, out) is semidet.\n",
-			"\n"
-		]),
+		io__format("\
+gotos(%s, NT, NS) :-
+	gotos%s(NT, NS).
+
+:- pred gotos%s(nonterminal, int).
+:- mode gotos%s(in, out) is semidet.
+
+",
+			[s(SS), s(SS), s(SS), s(SS)]
+		),
 		write_state_gotos(SS, StateActions)
 	), Table).
 
@@ -602,11 +639,11 @@ nonterminal_to_term(Name/Arity, Term) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred write_parser(whereami, nonterminal, rule_decl, string,
+:- pred write_parser(whereami, nonterminal, rule_decl, string, string, string,
 		io__state, io__state).
-:- mode write_parser(in, in, in, in, di, uo) is det.
+:- mode write_parser(in, in, in, in, in, in, di, uo) is det.
 
-write_parser(Where, NT, Decl, TT) -->
+write_parser(Where, NT, Decl, TT, InAtom, OutAtom) -->
 	(
 		{ NT = StartName/StartArity }
 	;
@@ -618,7 +655,7 @@ write_parser(Where, NT, Decl, TT) -->
 	{ mkstartargs(StartArity, [], StartArgs, Varset0, Varset) },
 	{ StartTerm = functor(atom(StartName), StartArgs, Ctxt) },
 	{ context_init(Ctxt) },
-	{ ParseResultType = type(disj(functor(atom("presult"), [], Ctxt),
+	{ ParseResultType = type(disj(functor(atom("parse_result"), [], Ctxt),
 		[OkayType, ErrorType]), DeclVarset) },
 	{ OkayType = functor(atom(StartName), DeclArgs, DeclCtxt) },
 	{ ErrorType = functor(atom("error"), [
@@ -630,73 +667,70 @@ write_parser(Where, NT, Decl, TT) -->
 	),
 	write_element(nolines, ParseResultType),
 	nl,
-	write_strings([
-		":- import_module list.\n\n",
-		":- pred parse(P, presult, P) <= parser_state(P).\n",
-		":- mode parse(in, out, out) is det.\n",
-		"\n"
-	]),
+	io__format("\
+:- import_module list.
+
+:- pred parse(parse_result, P, P) <= parser_state(P).
+:- mode parse(out, %s, %s) is det.
+
+",
+		[s(InAtom), s(OutAtom)]
+	),
 	( { Where = (interface) } ->
 		write_string(":- implementation.\n\n")
 	;
 		[]
 	),
-	write_strings([
-"parse(Toks0, Result, Toks) :-\n",
-"	parse(Toks0, Toks, [0], [], Result).\n",
-"\n",
-":- pred parse(P, P, statestack, symbolstack, presult) <= parser_state(P).\n",
-":- mode parse(in, out, in, in, out) is det.\n",
-"\n",
-"parse(Toks0, Toks, St0, Sy0, Res) :-\n",
-"    (\n",
-"        St0 = [S0|_],\n",
-"        ( \n",
-"            get_token(Tok, Toks0, Toks1)\n",
-"        ->\n",
-"            ( \n",
-"                actions(S0, Tok, What, Val)\n",
-"            ->\n",
-"                (\n",
-"                    What = shift,\n",
-"                    Sy1 = [t(Tok)|Sy0],\n",
-"                    St1 = [Val|St0],\n",
-"                    parse(Toks1, Toks, St1, Sy1, Res)\n",
-"                ;\n",
-"                    What = reduce,\n",
-"                    reduce(Val, St0, St1, Sy0, Sy1, Toks0, Toks2),\n",
-"                    parse(Toks2, Toks, St1, Sy1, Res)\n",
-"                ;\n",
-"                    What = accept,\n",
-"                        ( Sy0 = [n("
-        ]),
+	io__format("\
+parse(Result, Toks0, Toks) :-
+	parse(Toks0, Toks, [0], [], Result).
+
+:- pred parse(P, P, statestack, symbolstack, parse_result) <= parser_state(P).
+:- mode parse(%s, %s, in(state_nos), in, out) is det.
+
+parse(Toks0, Toks, St0, Sy0, Res) :-
+    (
+        St0 = [S0|_],
+        get_token(Tok, Toks0, Toks1),
+        ( 
+            actions(S0, Tok, What, Val)
+        ->
+            (
+                What = shift,
+                Sy1 = [t(Tok)|Sy0],
+                St1 = [Val|St0],
+                parse(Toks1, Toks, St1, Sy1, Res)
+            ;
+                What = reduce,
+		Toks2 = unget_token(Tok, Toks1),
+                reduce(Val, St0, St1, Sy0, Sy1, Toks2, Toks3),
+                parse(Toks3, Toks, St1, Sy1, Res)
+            ;
+                What = accept,
+                    ( Sy0 = [n(",
+		[s(InAtom), s(OutAtom)]
+        ),
         write_term(Varset, StartTerm),
-        write_strings([
-")] ->\n",
-"                        Res = ("
-	]),
+        write_string(")] ->
+                            Res = ("
+	),
 	write_term(Varset, StartTerm),
-	write_strings([
-"),\n",
-"                        Toks = Toks1\n",
-"                    ;\n",
-"                        error(""parse: internal accept error"")\n",
-"                    )\n",
-"                )\n",
-"            ;\n",
-"                Res = error(""parse error""),\n",
-"                Toks = Toks0\n",
-"            )\n",
-"        ;\n",
-"            Res = error(""unexpected end of input""),\n",
-"            Toks = Toks0\n",
-"        )\n",
-"    ;\n",
-"        St0 = [],\n",
-"        error(""parse: state stack underflow"")\n",
-"    ).\n",
-"\n"
-	]).
+	write_string("),
+                            Toks = Toks1
+                    ;
+                            error(""parse: internal accept error"")
+                    )
+                )
+        ;
+            Res = error(""parse error""),
+	    Toks = unget_token(Tok, Toks1)
+        )
+    ;
+        St0 = [],
+        error(""parse: state stack underflow"")
+    ).
+"
+	).
 
 :- pred mkstartargs(int, list(term), list(term), varset, varset).
 :- mode mkstartargs(in, in, out, in, out) is det.
@@ -715,57 +749,81 @@ mkstartargs(N, Ts0, Ts, VS0, VS) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred write_reductions(rules, string, xforms, io__state, io__state).
-:- mode write_reductions(in, in, in, di, uo) is det.
+:- pred write_reductions(rules, actiontable, string, string, string, xforms,
+		io__state, io__state).
+:- mode write_reductions(in, in, in, in, in, in, di, uo) is det.
 
-write_reductions(Rules, TT, Xfns) -->
-	write_strings([
-":- import_module require, std_util.\n",
-"\n",
-":- type statestack == list(int).\n",
-":- type symbolstack == list(stacksymbol).\n",
-":- type stacksymbol\n",
-"	--->	n(nonterminal)\n",
-"	;	t(", TT, ").\n",
-"\n",
-":- pred reduce(int, statestack, statestack, symbolstack, symbolstack,\n",
-"		P, P) <= parser_state(P).\n",
-":- mode reduce(in, in, out, in, out, in, out) is det.\n",
-"\n",
-"reduce(RuleNum, States0, States, Symbols0, Symbols, Tokens0, Tokens) :-\n",
-"	(\n",
-"		reduce0(RuleNum, States0, States1, Symbols0, Symbols1,\n",
-"			Tokens0, Tokens1),\n",
-"		States1 = [State0|_States2],\n",
-"		Symbols1 = [n(Non)|_],\n",
-"		gotos(State0, Non, State1),\n",
-"		States3 = [State1|States1]\n",
-"	->\n",
-"		States = States3,\n",
-"		Symbols = Symbols1,\n",
-"		Tokens = Tokens1\n",
-"	;\n",
-"		error(""reduce: reduction failed"")\n",
-"	).\n",
-"\n",
-":- pred reduce0(int, statestack, statestack, symbolstack, symbolstack,\n",
-"		P, P) <= parser_state(P).\n",
-":- mode reduce0(in, in, out, in, out, in, out) is semidet.\n",
-"\n"
-	]),
+write_reductions(Rules, Table, TT, InAtom, OutAtom, Xfns) -->
+	io__format("\
+:- import_module require, std_util.
+
+:- type statestack == list(int).
+:- type symbolstack == list(stacksymbol).
+:- type stacksymbol
+	--->	n(nonterminal)
+	;	t(%s).
+
+",
+		[s(TT)]
+	),
+	io__format("
+:- pred reduce(int, statestack, statestack,
+		symbolstack, symbolstack, P, P) <= parser_state(P).
+:- mode reduce(in(state_no), in(state_nos), out(state_nos),
+		in, out, %s, %s) is det.
+
+reduce(RuleNum, States0, States, Symbols0, Symbols, Tokens0, Tokens) :-
+	reduce0(RuleNum, States0, States1, Symbols0, Symbols1,
+		Tokens0, Tokens1),
+	(
+		States1 = [State0|_States2],
+		Symbols1 = [n(Non)|_],
+		gotos(State0, Non, State1),
+		States3 = [State1|States1]
+	->
+		States = States3,
+		Symbols = Symbols1,
+		Tokens = Tokens1
+	;
+		error(""reduce: reduction failed"")
+	).
+
+",
+		[s(InAtom), s(OutAtom)]
+	),
+	io__format("\
+:- pred reduce0(int, statestack, statestack,
+		symbolstack, symbolstack, P, P) <= parser_state(P).
+:- mode reduce0(in(state_no), in(state_nos), out(state_nos),
+		in, out, %s, %s) is det.
+
+",
+		[s(InAtom), s(OutAtom)]
+	),
 	foldl((pred(Rn::in, Rule::in, di, uo) is det -->
-		( { Rn \= 0 } ->
-		{ format("reduce0x%x", [i(Rn)], RedName) },
-		{ format("0x%x", [i(Rn)], RnS) },
-		write_strings([
-"reduce0(", RnS, ", S0, S, T0, T, U0, U) :-\n",
-"	", RedName, "(S0, S, T0, T, U0, U).\n",
-"\n",
-":- pred ", RedName, "(statestack, statestack, symbolstack, symbolstack,\n",
-"		P, P) <= parser_state(P).\n",
-":- mode ", RedName, "(in, out, in, out, in, out) is det.\n",
-"\n"
-		]),
+		( { Rn = 0 } ->
+
+		io__write_string("\
+reduce0(0x0, _, _, _, _, _, _) :-
+	reduce0_error(0x0).
+
+"		)
+
+		;
+
+		{ RedName = format("reduce0x%x", [i(Rn)]) },
+		{ RnS     = format("0x%x", [i(Rn)]) },
+		io__format("\
+reduce0(%s, S0, S, T0, T, U0, U) :-
+	%s(S0, S, T0, T, U0, U).
+
+:- pred %s(statestack, statestack, symbolstack, symbolstack,
+		P, P) <= parser_state(P).
+:- mode %s(in(state_nos), out(state_nos), in, out, %s, %s) is det.
+",
+			[s(RnS), s(RedName), s(RedName), s(RedName),
+			 s(InAtom), s(OutAtom)]
+		),
 		{ Rule = rule(RNt, Head, _, Body, Actions, Varset0, _C) },
 		{ new_named_var(Varset0, "M_St0", St0v, Varset1) },
 		{ St0 = variable(St0v) },
@@ -834,8 +892,31 @@ write_reductions(Rules, TT, Xfns) -->
 			Goal, Varset12) },
 		write_element(lines, Clause),
 		nl
-		; [] )
-	), Rules).
+		)
+	), Rules),
+	foldl((pred(State::in, _TerminalAction::in, di, uo) is det -->
+			( if not { Rules `contains` State } then
+				io__format("\
+reduce0(0x%x, _, _, _, _, _, _) :-
+	reduce0_error(0x%x).
+
+",
+					[i(State), i(State)]
+				)
+			)
+		),
+		Table
+	),
+	io__format("\
+:- pred reduce0_error(int).
+:- mode reduce0_error(in) is erroneous.
+
+reduce0_error(State) :-
+	error(string__format(""reduce in state 0x%%x"", [i(State)])).
+
+",
+		[]
+	).
 
 :- pred mkstacks(list(bodyterm), term, term, term, term, varset, varset).
 :- mode mkstacks(in, in, out, in, out, in, out) is det.

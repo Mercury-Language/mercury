@@ -18,14 +18,15 @@ Each Moose input file should contain:
 
 - One Moose parser declaration, of the form
 
-	:- parse(<StartSymbol>, <EndToken>, <TokenType>, <Prefix>).
+	:- parse(<StartSymbol>, <TokenType>, <EndToken>, <Prefix>, <In>, <Out>).
 
-  Here <StartSymbol> is the name of the starting symbol for the grammar,
-  <EndToken> is the token that signifies end-of-file,
+  Here <StartSymbol> is the <Name>/<Arity> of the starting symbol for the
+  grammar,
   <TokenType> is the name of the Mercury type for tokens in this grammar,
-  and <Prefix> is unused.  (<Prefix> is intended to be used as a prefix
-  to the generated predicate names, however it is currently
-  unimplemented).
+  <EndToken> is the token that signifies end-of-file,
+  <Prefix> is intended to be used as a prefix to the generated predicate
+  names, however this is currently unimplemented,
+  <In> and <Out> are the modes to use for the parser state.
 
 - One or more Moose rule declarations, of the form
 
@@ -66,28 +67,29 @@ Each Moose input file should contain:
   
 - Zero or more Moose action declarations, of the form
 
-        :- action(<Name>/<Arity>, <PredicateName>).
+        :- action(<Name>/<Arity>, <FuncName>).
 
-  Each action declaration will add a method called PredicateName
-  to the type class parser_state/1.  The method will have the same types
-  as the rule given by Name/Arity, plus a threaded in/out pair of
-  parser_state arguments.
+  Each action declaration will add a method called FuncName
+  to the type class parser state/1.  The method will have the same types
+  as the rule given by Name/Arity, plus an <In> mode argument for the
+  parser state and returning an <Out> mode result of the same type.
 
   For example
         :- rule foo(int).
         :- action(foo/1, process_foo).
   will generate
-        :- typeclass parser_state(T) where [
+        :- typeclass parser state(T) where [
                 ... get_token and any other action methods ...
-                pred process_foo(int, T, T),
-                mode process_foo(in, in, out) is det
+                func process_foo(int, T) = T,
+                mode process_foo(in, <In>) = <Out> is det
         ].
 
   Whenever the parser reduces using a rule, it will invoke the associated
-  action method for that rule (if there is one).  Since the parser_state
+  action method for that rule (if there is one).  Since the parser state
   is threaded through all action methods, it can be used to implement
   inherited attributes.  Actions can also modify the token stream in the
-  parser_state (see below).
+  parser state (see below).
+
 
 
 In order to use the Moose parser, you need to provide a lexer, which
@@ -95,26 +97,49 @@ generates tokens of the type <TokenType> given in the Moose parse
 declaration.  To allow flexibility in implementing the lexer, the parser
 requests tokens using a type class.
 
-The parser_state type class is the set of all operations that must be
-implemented in order to use the parser.  parser_state will contain at
-least one method, called get_token.
+The parser state type class is the set of all operations that must be
+implemented in order to use the parser.  parser state will contain at
+least two methods:
 
         :- typeclass parser_state(T) where [
+
                 pred get_token(token, T, T),
-                mode get_token(out, in, out) is semidet
+                mode get_token(out, in, out) is det,
+
+		func unget_token(token, T) = T,
+		mode unget_token(in, <In>) = <Out> is det,
+
+		... any action methods ...
         ].
 
-get_token returns the next token in the token stream.  The parser state
-typically contains a list of tokens, from which the next token is
-retrieved (although other implementations are possible).  get_token may
-fail if there are no more tokens available.
+get_token returns the next token in the token stream.  get_token should
+return the <EndToken> on reaching the end of the input stream.
 
-The other methods in parser_state will be dictated by the Moose action
+get_token and unget_token should satisfy the following property:
+
+	all [Tok, T0] some [T] get_token(Tok, unget_token(Tok, T0), T)
+
+The other methods in parser state will be dictated by the Moose action
 declarations.  To use the Moose generated parser, simply call the
-generated parse predicate with an instance of the parser_state type
+generated parse predicate with an instance of the parser state type
 class.
+
+The parse predicate will have the following signature
+
+	:- pred parse(parse_result, P, P) <= parser_state(P).
+	:- mode parse(out, <In>, <Out>) is det.
+
+where
+
+	:- type parse_result
+		--->	<StartSymbolName>(...)
+		;	error(string).
+
+and the arguments types of the <StartSymbolName> constructor match those
+for the corresponding rule declaration.
+
 
 
 The samples directory contains some simple grammars, lexers
-and implementations of the parser_state.  
+and implementations of the parser state.  
 

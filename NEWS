@@ -166,6 +166,12 @@ Changes to the Mercury standard library:
   for the arithmetic functions dating from when Mercury didn't
   have functions.
 
+Changes to the extras distribution:
+
+* The interface to Moose has been changed in a non-backwards compatible
+  way to support user-defined modes for the parser state and integrate
+  better with lex.
+
 Changes to the Mercury implementation:
 
 * We've added a new compiler option `--warn-non-tail-recursion', which

@@ -14,23 +14,21 @@
 :- type token_list == list(token).
 
 :- instance parser_state(token_list) where [
-	pred(get_token/3) is uncons
+
+	get_token(eof, [],       []),
+	get_token(T,   [T | Ts], Ts),
+
+	unget_token(T, Ts) = [T | Ts]
 ].
-
-:- pred uncons(T::out, list(T)::in, list(T)::out) is semidet.
-
-uncons(X, Xs, Xs0) :- Xs = [X | Xs0].
 
 main --> 
 	read_line(Res0),
 	(
 		{ Res0 = ok(Chars) },
-		( { scan(Chars, Toks) } ->
-			{ parse(Toks, Res, RemainingToks) },
+		(	{ scan(Chars, Toks) },
+			{ parse(Res, Toks, RemainingToks) },
 			write(Res), nl,
 			write(RemainingToks), nl
-		;
-			write_string("scanning error.\n")
 		),
 		main
 	;

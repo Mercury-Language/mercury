@@ -1,6 +1,6 @@
 :- module small.
 
-:- parse(program/1, ('$'), token, 'x').
+:- parse(program/1, token, ('$'), xx, in, out).
 
 :- rule program(list(defn)).
 program(Defs) --->

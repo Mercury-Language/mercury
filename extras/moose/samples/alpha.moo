@@ -9,17 +9,17 @@
 	;	num(int)
 	;	('(')
 	;	(')')
-	;	('$')
+	;	eof
 	.
 
-:- parse(exprn/1, ('$'), token, xx).
+:- parse(exprn/1, token, eof, xx, in, out).
 
 :- pred scan(list(char), list(token)).
-:- mode scan(in, out) is semidet.
+:- mode scan(in, out) is det.
 
 :- implementation.
 
-:- import_module string.
+:- import_module string, require.
 
 :- rule exprn(int).
 exprn(Num)	--->	exprn(A), [+], term(B), { Num = A + B }.
@@ -37,16 +37,16 @@ scan(Chars, Toks) :-
 	list__reverse(Toks0, Toks).
 
 :- pred scan(list(char), list(token), list(token)).
-:- mode scan(in, in, out) is semidet.
+:- mode scan(in, in, out) is det.
 
-scan([], Toks, ['$'|Toks]).
+scan([], Toks, [eof|Toks]).
 scan([C|Cs], Toks0, Toks) :-
 	( char__is_whitespace(C) ->
 		scan(Cs, Toks0, Toks)
 	; char__is_digit(C) ->
 		takewhile(char__is_digit, [C|Cs], Digits, Rest),
 		string__from_char_list(Digits, NumStr),
-		string__to_int(NumStr, Num),
+		Num = string__det_to_int(NumStr),
 		scan(Rest, [num(Num)|Toks0], Toks)
 	; C = ('+') ->
 		scan(Cs, ['+'|Toks0], Toks)
@@ -55,6 +55,6 @@ scan([C|Cs], Toks0, Toks) :-
 	; C = (')') ->
 		scan(Cs, [')'|Toks0], Toks)
 	;
-		fail
+		error("expr: syntax error in input")
 	).
 

@@ -1,6 +1,4 @@
 To make moose more useful:
-	- allow the parsing state to be unique (so that it can contain
-	  the io:state, just for example).
 	- allow parsing actions to be semidet to allow the imposition
 	  of semantic conditions during parsing.
 	- add error productions to produce nice error messages.

@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- parse(file/0, ('$'), token, 'x').
+:- parse(file/0, token, ('$'), xx, in, out).
 
 :- type token --->
 ('!'); ('!='); ('$'); ('%');
