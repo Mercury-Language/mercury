@@ -35,10 +35,11 @@ will_not_call_mercury, "
 :- pragma c_code(append_strings(S1::in, S2::in, S3::out),
 will_not_call_mercury, "{
         size_t len_1, len_2;
-	Word tmp;
+	MR_Word tmp;
 	len_1 = strlen(S1);
 	len_2 = strlen(S2);
-	incr_hp_atomic(tmp, (len_1 + len_2 + sizeof(Word)) / sizeof(Word));
+	MR_incr_hp_atomic(tmp, (len_1 + len_2 + sizeof(MR_Word))
+		/ sizeof(MR_Word));
 	S3 = (char *) tmp;
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);

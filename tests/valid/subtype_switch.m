@@ -60,11 +60,11 @@ stringify_config(_Interp, title(Text), Str, IO, IO) :-
 	string__format("-title ""%s""", [s(Text)], Str).
 
 :- pragma c_header_code("
-	extern Integer	tk_direct_thingy_counter;
+	extern MR_Integer	tk_direct_thingy_counter;
 ").
 
 :- pragma c_code("
-	Integer	tk_direct_thingy_counter = 0;
+	MR_Integer	tk_direct_thingy_counter = 0;
 ").
 
 :- pred get_thingy_counter(int::out, io__state::di, io__state::uo) is det.

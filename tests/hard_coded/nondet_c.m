@@ -54,7 +54,7 @@ split_pairs3(Whole, Left - Right) :-
 will_not_call_mercury,
 local_vars("
 	/* here we declare any local variables that we need to save */
-	String s;
+	MR_String s;
 	size_t len;
 	size_t count;
 "),
@@ -71,18 +71,18 @@ retry_code("
 	LOCALS->count++;
 "),
 shared_code("
-	Word	temp;
+	MR_Word	temp;
 
 	/* this code gets executed for both calls and retries */
-	incr_hp_atomic(temp,
-		(LOCALS->count + sizeof(Word)) / sizeof(Word));
-	LeftHalf = (String) temp;
+	MR_incr_hp_atomic(temp,
+		(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word));
+	LeftHalf = (MR_String) temp;
 	memcpy(LeftHalf, LOCALS->s, LOCALS->count);
 	LeftHalf[LOCALS->count] = '\\0';
-	incr_hp_atomic(temp,
-		(LOCALS->len - LOCALS->count + sizeof(Word))
-		/ sizeof(Word));
-	RightHalf = (String) temp;
+	MR_incr_hp_atomic(temp,
+		(LOCALS->len - LOCALS->count + sizeof(MR_Word))
+		/ sizeof(MR_Word));
+	RightHalf = (MR_String) temp;
 	strcpy(RightHalf, LOCALS->s + LOCALS->count);
 
 	if (LOCALS->count < LOCALS->len) {
@@ -99,7 +99,7 @@ shared_code("
 will_not_call_mercury,
 local_vars("
 	/* here we declare any local variables that we need to save */
-	String s;
+	MR_String s;
 	size_t len;
 	size_t count;
 "),
@@ -114,18 +114,18 @@ retry_code("
 	LOCALS->count++;
 "),
 duplicated_code("
-	Word	temp;
+	MR_Word	temp;
 
 	/* this code gets executed for both calls and retries */
-	incr_hp_atomic(temp,
-		(LOCALS->count + sizeof(Word)) / sizeof(Word));
-	LeftHalf = (String) temp;
+	MR_incr_hp_atomic(temp,
+		(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word));
+	LeftHalf = (MR_String) temp;
 	memcpy(LeftHalf, LOCALS->s, LOCALS->count);
 	LeftHalf[LOCALS->count] = '\\0';
-	incr_hp_atomic(temp,
-		(LOCALS->len - LOCALS->count + sizeof(Word))
-		/ sizeof(Word));
-	RightHalf = (String) temp;
+	MR_incr_hp_atomic(temp,
+		(LOCALS->len - LOCALS->count + sizeof(MR_Word))
+		/ sizeof(MR_Word));
+	RightHalf = (MR_String) temp;
 	strcpy(RightHalf, LOCALS->s + LOCALS->count);
 
 	if (LOCALS->count < LOCALS->len) {
@@ -142,9 +142,9 @@ duplicated_code("
 will_not_call_mercury,
 local_vars("
 	/* here we declare any local variables that we need to save */
-	String s;
-	size_t len;
-	size_t count;
+	MR_String s;
+	size_t    len;
+	size_t    count;
 "),
 first_code("
 	/* this code gets executed on a call, but not on a retry */
@@ -157,18 +157,18 @@ retry_code("
 	LOCALS->count++;
 "),
 common_code("
-	Word	temp;
+	MR_Word	temp;
 
 	/* this code gets executed for both calls and retries */
-	incr_hp_atomic(temp,
-		(LOCALS->count + sizeof(Word)) / sizeof(Word));
-	LeftHalf = (String) temp;
+	MR_incr_hp_atomic(temp,
+		(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word));
+	LeftHalf = (MR_String) temp;
 	memcpy(LeftHalf, LOCALS->s, LOCALS->count);
 	LeftHalf[LOCALS->count] = '\\0';
-	incr_hp_atomic(temp,
-		(LOCALS->len - LOCALS->count + sizeof(Word))
-		/ sizeof(Word));
-	RightHalf = (String) temp;
+	MR_incr_hp_atomic(temp,
+		(LOCALS->len - LOCALS->count + sizeof(MR_Word))
+		/ sizeof(MR_Word));
+	RightHalf = (MR_String) temp;
 	strcpy(RightHalf, LOCALS->s + LOCALS->count);
 
 	if (LOCALS->count < LOCALS->len) {

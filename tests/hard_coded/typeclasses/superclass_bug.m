@@ -37,7 +37,9 @@
    mode replacechild(in, out, in, out, out, in, out) = out is det
 ].
 
-:- some [A, B, C] (func ixmldomnode_replacechild(T, A, U, B, C, comobj, comobj) = hresult => (ixmldomnode(A), ixmldomnode(B), ixmldomnode(C))) <= (ixmldomnode(T), ixmldomnode(U)).
+:- some [A, B, C] (func ixmldomnode_replacechild(T, A, U, B, C, comobj, comobj)
+	= hresult => (ixmldomnode(A), ixmldomnode(B), ixmldomnode(C)))
+	<= (ixmldomnode(T), ixmldomnode(U)).
 
 :- mode ixmldomnode_replacechild(in, out, in, out, out, in, out) = out is det.
 
@@ -73,7 +75,8 @@ ixmldomnode_replacechild(T, A, U, B, C, InTypeVar, OutTypeVar) = HResult :-
     	% XXX This was this line which caused the problem.
     UPtr = get_interface_pointer(U),
 
-    HResult = ixmldomnode_replacechild_c_code(TPtr, APtr, UPtr, BPtr, CPtr, InTypeVarPtr, OutTypeVarPtr),
+    HResult = ixmldomnode_replacechild_c_code(TPtr, APtr, UPtr, BPtr, CPtr,
+    	InTypeVarPtr, OutTypeVarPtr),
     A = comobj_create(APtr, gc_descriptor(0)),
     B = comobj_create(BPtr, gc_descriptor(0)),
     C = comobj_create(CPtr, gc_descriptor(0)),
@@ -81,17 +84,21 @@ ixmldomnode_replacechild(T, A, U, B, C, InTypeVar, OutTypeVar) = HResult :-
 
 %------------------------------------------------------------------------------%
 
-:- func ixmldomnode_replacechild_c_code(interface_pointer, interface_pointer, interface_pointer, interface_pointer, interface_pointer, interface_pointer, interface_pointer) = hresult.
-:- mode ixmldomnode_replacechild_c_code(in, out, in, out, out, in, out) = out is det.
+:- func ixmldomnode_replacechild_c_code(interface_pointer, interface_pointer,
+	interface_pointer, interface_pointer, interface_pointer,
+	interface_pointer, interface_pointer) = hresult.
+:- mode ixmldomnode_replacechild_c_code(in, out, in, out, out, in, out) = out
+	is det.
+
 :- pragma c_code(ixmldomnode_replacechild_c_code(IntroducedIdlBug_1InPtr::in,
 	   IntroducedIdlBug_1OutPtr::out, IntroducedIdlBug_2InPtr::in,
 	   IntroducedIdlBug_2OutPtr::out, OutOldChildPtr::out,
 	   InTypeVarPtr::in, OutTypeVarPtr::out) = (HResult::out),
-   [will_not_call_mercury, thread_safe],
-   "
-      OutOldChildPtr = (Word)NULL;
+      [will_not_call_mercury, thread_safe],
+"
+      OutOldChildPtr = (MR_Word) NULL;
 
-      HResult = (Word) NULL;
+      HResult = (MR_Word) NULL;
 
       IntroducedIdlBug_1OutPtr = IntroducedIdlBug_1InPtr;
       IntroducedIdlBug_2OutPtr = IntroducedIdlBug_2InPtr;
@@ -100,13 +107,15 @@ ixmldomnode_replacechild(T, A, U, B, C, InTypeVar, OutTypeVar) = HResult :-
 
 %------------------------------------------------------------------------------%
 
-:- func comobj_get_interface_pointer(comobj::in) = (interface_pointer::out) is det.
-:- func comobj_create(interface_pointer::in, gc_descriptor::in) = (comobj::out) is det.
-:- func comobj_duplicate(comobj::in, interface_pointer::in) = (comobj::out) is det.
+:- func comobj_get_interface_pointer(comobj::in) = (interface_pointer::out)
+	is det.
+:- func comobj_create(interface_pointer::in, gc_descriptor::in) = (comobj::out)
+	is det.
+:- func comobj_duplicate(comobj::in, interface_pointer::in) = (comobj::out)
+	is det.
 
 comobj_get_interface_pointer(comobj(A)) = interface_pointer(A).
 comobj_create(interface_pointer(A), _) = comobj(A).
 comobj_duplicate(A, _) = A.
-
 
 %------------------------------------------------------------------------------%

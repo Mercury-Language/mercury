@@ -54,8 +54,8 @@ main -->
 :- pragma import(quux(in, out), may_call_mercury, "cquux").
 
 :- pragma c_header_code("
-	typedef Integer Int;
-	void cfoo(Int, Int *, Float, Float *, String, String *);
+	typedef MR_Integer Int;
+	void cfoo(Int, Int *, MR_Float, MR_Float *, MR_String, MR_String *);
 	Int cbar(Int, Int *);
 	bool cbaz(Int, Int *, Int *);
 	bool cquux(Int, Int *);
@@ -63,7 +63,7 @@ main -->
 
 :- pragma c_code("
 
-void cfoo(Int a1, Int *a2, Float a3, Float *a4, String a5, String *a6) {
+void cfoo(Int a1, Int *a2, MR_Float a3, MR_Float *a4, MR_String a5, MR_String *a6) {
 	*a2 = a1 + 1;
 	*a4 = a3 + 1.0;
 	*a6 = a5;

@@ -23,8 +23,8 @@ main -->
 :- impure func get_counter(int) = int.
 :- impure pred some_pred(int::in, int::out) is det.
 
-:- pragma c_header_code("extern Integer counter;").
-:- pragma c_code("Integer counter = 0;").
+:- pragma c_header_code("extern MR_Integer counter;").
+:- pragma c_code("MR_Integer counter = 0;").
 :- pragma c_code(get_counter(Y::in) = (X::out), will_not_call_mercury,
 	"X = counter + Y;").
 

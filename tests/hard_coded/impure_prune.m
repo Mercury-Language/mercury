@@ -33,8 +33,8 @@ bump_counter :-
 :- semipure pred get_counter(int::out) is det.
 :- impure pred set_counter(int::in) is det.
 
-:- pragma c_header_code("extern Integer counter;").
-:- pragma c_code("Integer counter = 0;").
+:- pragma c_header_code("extern MR_Integer counter;").
+:- pragma c_code("MR_Integer counter = 0;").
 :- pragma c_code(get_counter(X::out), will_not_call_mercury, "X = counter;").
 :- pragma c_code(set_counter(X::in), will_not_call_mercury, "counter = X;").
 
