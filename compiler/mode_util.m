@@ -208,6 +208,14 @@
 						list(mode)::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred normalise_insts(list(inst), module_info, list(inst)).
+:- mode normalise_insts(in, in, out) is det.
+
+:- pred normalise_inst(inst, module_info, inst).
+:- mode normalise_inst(in, in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1518,6 +1526,47 @@ strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 	Pred0 = pred_inst_info(Uniq, Modes0, Det),
 	Pred = pred_inst_info(Uniq, Modes, Det),
 	strip_builtin_qualifiers_from_mode_list(Modes0, Modes).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+normalise_insts([], _, []).
+normalise_insts([Inst0|Insts0], ModuleInfo, [Inst|Insts]) :-
+	normalise_inst(Inst0, ModuleInfo, Inst),
+	normalise_insts(Insts0, ModuleInfo, Insts).
+
+	% This is a bit of a hack.
+	% The aim is to avoid non-termination due to the creation
+	% of ever-expanding insts.
+	% XXX should also normalise partially instantiated insts.
+
+normalise_inst(Inst0, ModuleInfo, NormalisedInst) :-
+	inst_expand(ModuleInfo, Inst0, Inst),
+	( Inst = bound(_, _) ->
+		(
+			inst_is_ground(ModuleInfo, Inst),
+			inst_is_unique(ModuleInfo, Inst)
+		->
+			NormalisedInst = ground(unique, no)
+		;
+			inst_is_ground(ModuleInfo, Inst),
+			inst_is_mostly_unique(ModuleInfo, Inst)
+		->
+			NormalisedInst = ground(mostly_unique, no)
+		;
+			inst_is_ground(ModuleInfo, Inst),
+			\+ inst_is_clobbered(ModuleInfo, Inst)
+		->
+			NormalisedInst = ground(shared, no)
+		;
+			% XXX need to limit the potential size of insts
+			% here in order to avoid infinite loops in
+			% mode inference
+			NormalisedInst = Inst
+		)
+	;
+		NormalisedInst = Inst
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
