@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2003 The University of Melbourne.
+** Copyright (C) 2001-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -476,7 +476,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                     int i;
 
                     for (i = 0; i < expand_info->arity; i++) {
-                        if (functor_desc->MR_du_functor_arg_names[i] != NULL
+                        if (functor_desc->MR_du_functor_arg_names != NULL
+                            && functor_desc->MR_du_functor_arg_names[i] != NULL
                             && MR_streq(
                                 functor_desc->MR_du_functor_arg_names[i],
                                 chosen_name))

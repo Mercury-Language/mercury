@@ -4,6 +4,8 @@ step
 finish
 p 5
 p 5^1x
+p 5^1^x
+p 5^x
 p 5^1
 p 5^2
 p 5^3
@@ -26,6 +28,11 @@ p
 p
 ^..^t1e
 p
+quit
+browse
+^x
+^8
+^5^x
 quit
 step
 finish
@@ -162,4 +169,20 @@ p 2
 p 2/1
 p 2/t5a
 p 2/t6a
+browse 2
+p
+^badname
+quit
+step
+finish
+browse 3
+p
+^badname
+quit
+step
+finish
+browse 1
+p
+^badname
+quit
 continue -S

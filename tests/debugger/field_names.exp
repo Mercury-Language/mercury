@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred field_names.main/2-0 (det) field_names.m:51
+       1:      1  1 CALL pred field_names.main/2-0 (det) field_names.m:60
 mdb> echo on
 Command echo enabled.
 mdb> context none
@@ -11,6 +11,10 @@ mdb> p 5
        HeadVar__5             	t1f1(41, 42, 43, 44)
 mdb> p 5^1x
 mdb: bad component selector.
+mdb> p 5^1^x
+mdb: the path x does not exist.
+mdb> p 5^x
+mdb: the path x does not exist.
 mdb> p 5^1
        HeadVar__5             	41
 mdb> p 5^2
@@ -31,7 +35,7 @@ mdb> p 5^t1e
 mdb: the path t1e does not exist.
 mdb> browse 5
 browser> ^1x
-error: cannot change to subterm
+error: in subdir 1: there is no subterm x
 browser> ^1
 browser> p
 41
@@ -42,14 +46,22 @@ browser> ^..^t1b
 browser> p
 42
 browser> ^..^t1c
-error: cannot change to subterm
+error: there is no subterm t1c
 browser> ^..^t1d
 browser> p
 44
 browser> ^..^t1e
-error: cannot change to subterm
+error: there is no subterm t1e
 browser> p
 44
+browser> quit
+mdb> browse
+browser> ^x
+error: there is no subterm x
+browser> ^8
+error: there is no subterm 8
+browser> ^5^x
+error: in subdir 5: there is no subterm x
 browser> quit
 mdb> step
        4:      3  2 CALL pred field_names.make_t1f2/4-0 (det)
@@ -73,12 +85,12 @@ mdb> p 4^t1g
        HeadVar__4             	53
 mdb> browse 4
 browser> ^t1a
-error: cannot change to subterm
+error: there is no subterm t1a
 browser> ^t1e
 browser> p
 51
 browser> ^..^t1f
-error: cannot change to subterm
+error: there is no subterm t1f
 browser> ^..^t1g
 browser> p
 53
@@ -308,6 +320,32 @@ mdb> p 2/t5a
 mdb: the path t5a does not exist.
 mdb> p 2/t6a
 mdb: the path t6a does not exist.
+mdb> browse 2
+browser> p
+t6f(0.900000000000000)
+browser> ^badname
+error: there is no subterm badname
+browser> quit
+mdb> step
+      16:      9  2 CALL pred field_names.make_t7/3-0 (det)
+mdb> finish
+      17:      9  2 EXIT pred field_names.make_t7/3-0 (det)
+mdb> browse 3
+browser> p
+t7f(0.900000000000000, 77)
+browser> ^badname
+error: there is no subterm badname
+browser> quit
+mdb> step
+      18:     10  2 CALL pred field_names.make_t8/1-0 (det)
+mdb> finish
+      19:     10  2 EXIT pred field_names.make_t8/1-0 (det)
+mdb> browse 1
+browser> p
+t8a
+browser> ^badname
+error: there is no subterm badname
+browser> quit
 mdb> continue -S
 t1f1(41, 42, 43, 44)
 t1f2(51, 52, 53)
@@ -316,3 +354,5 @@ t3f(t1f2(51, 52, 53), 72, "xyzzy", t1f1(41, 42, 43, 44))
 t2f(0.600000000000000, 61, t1f1(41, 42, 43, 44), t1f2(51, 52, 53))
 t5f(t1f1(41, 42, 43, 44))
 t6f(0.900000000000000)
+t7f(0.900000000000000, 77)
+t8a

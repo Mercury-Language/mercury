@@ -40,11 +40,11 @@ browser> ^1
 browser> p
 two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^2
-error: cannot change to subterm
+error: there is no subterm 2
 browser> p
 two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^3
-error: cannot change to subterm
+error: there is no subterm 3
 browser> p
 two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))
 browser> ^..^r

@@ -369,11 +369,13 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
 	;
 		Command = cd(Path),
 		change_dir(!.Info ^ dirs, Path, NewPwd),
-		( deref_subterm(!.Info ^ term, NewPwd, _SubUniv) ->
+		deref_subterm(!.Info ^ term, NewPwd, [], Result),
+		(
+			Result = deref_result(_),
 			!:Info = !.Info ^ dirs := NewPwd
 		;
-			write_string_debugger(Debugger,
-				"error: cannot change to subterm\n", !IO)
+			Result = deref_error(OKPath, ErrorDir),
+			report_deref_error(Debugger, OKPath, ErrorDir, !IO)
 		),
 		Quit = no
 	;
@@ -393,10 +395,13 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
 	;
 		Command = mark(Path),
 		change_dir(!.Info ^ dirs, Path, NewPwd),
-		( deref_subterm(!.Info ^ term, NewPwd, _SubUniv) ->
+		deref_subterm(!.Info ^ term, NewPwd, [], SubResult),
+		(
+			SubResult = deref_result(_),
 			!:Info = !.Info ^ maybe_mark := yes(NewPwd),
 			Quit = yes
 		;
+			SubResult = deref_error(_, _),
 			write_string_debugger(Debugger,
 				"error: cannot mark subterm\n", !IO),
 			Quit = no
@@ -557,9 +562,9 @@ portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
 portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
 	browser_info__get_format(Info, Caller, MaybeFormat, Format),
 	browser_info__get_format_params(Info, Caller, Format, Params),
+	deref_subterm(Info ^ term, Info ^ dirs, [], SubResult),
 	(
-		deref_subterm(Info ^ term, Info ^ dirs, SubUniv)
-	->
+		SubResult = deref_result(SubUniv),
 		(
 			Format = flat,
 			portray_flat(Debugger, SubUniv, Params, !IO)
@@ -574,7 +579,9 @@ portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
 			portray_pretty(Debugger, SubUniv, Params, !IO)
 		)
 	;
-		write_string_debugger(Debugger, "error: no such subterm", !IO)
+		SubResult = deref_error(OKPath, ErrorDir),
+		report_deref_error(Debugger, OKPath, ErrorDir, !IO)
+		% write_string_debugger(Debugger, "error: no such subterm")
 	),
 	nl_debugger(Debugger, !IO).
 
@@ -723,6 +730,21 @@ write_univ_or_unbound(Stream, Univ, !IO) :-
 	;
 		io__write_univ(Stream, include_details_cc, Univ, !IO)
 	).
+
+:- pred report_deref_error(debugger::in, list(dir)::in, dir::in,
+	io::di, io::uo) is det.
+
+report_deref_error(Debugger, OKPath, ErrorDir, !IO) :-
+	write_string_debugger(Debugger, "error: ", !IO),
+	(
+		OKPath = [_ | _],
+		Context = "in subdir " ++ dirs_to_string(OKPath) ++ ": ",
+		write_string_debugger(Debugger, Context, !IO)
+	;
+		OKPath = []
+	),
+	Msg = "there is no subterm " ++ dir_to_string(ErrorDir) ++ "\n",
+	write_string_debugger(Debugger, Msg, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1107,83 +1129,111 @@ write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO) :-
 		write_path_2(Debugger, [Dir2 | Dirs], !IO)
 	).
 
+:- type deref_result(T)
+	--->	deref_result(T)
+	;	deref_error(list(dir), dir).
+
 	% We assume a root-relative path. We assume Term is the entire term
 	% passed into browse/3, not a subterm.
-:- pred deref_subterm(browser_term::in, list(dir)::in, browser_term::out)
-	is semidet.
+:- pred deref_subterm(browser_term::in, list(dir)::in, list(dir)::in,
+	deref_result(browser_term)::out) is det.
 
-deref_subterm(BrowserTerm, Path, SubBrowserTerm) :-
+deref_subterm(BrowserTerm, Path, RevPath0, Result) :-
 	simplify_dirs(Path, SimplifiedPath),
 	(
 		BrowserTerm = plain_term(Univ),
-		deref_subterm_2(Univ, SimplifiedPath, SubUniv),
-		SubBrowserTerm = plain_term(SubUniv)
+		deref_subterm_2(Univ, SimplifiedPath, RevPath0, SubResult),
+		deref_result_univ_to_browser_term(SubResult, Result)
 	;
 		BrowserTerm = synthetic_term(_Functor, Args, MaybeReturn),
 		(
 			SimplifiedPath = [],
-			SubBrowserTerm = BrowserTerm
+			SubBrowserTerm = BrowserTerm,
+			Result = deref_result(SubBrowserTerm)
 		;
 			SimplifiedPath = [Step | SimplifiedPathTail],
 			(
-				Step = child_num(N),
-				% The first argument of a non-array is numbered
-				% argument 1.
-				list__index1(Args, N, ArgUniv)
-			;
-				Step = child_name(Name),
 				(
-					MaybeReturn = yes(ArgUnivPrime),
+					Step = child_num(N),
+					% The first argument of a non-array
+					% is numbered argument 1.
+					list__index1(Args, N, ArgUniv)
+				;
+					Step = child_name(Name),
+					MaybeReturn = yes(ArgUniv),
 					( Name = "r"
 					; Name = "res"
 					; Name = "result"
 					)
-				->
-					ArgUniv = ArgUnivPrime
 				;
-					fail
+					Step = parent,
+					error("deref_subterm: found parent")
 				)
+			->
+				deref_subterm_2(ArgUniv, SimplifiedPathTail,
+					[Step | RevPath0], SubResult),
+				deref_result_univ_to_browser_term(SubResult,
+					Result)
 			;
-				Step = parent,
-				error("deref_subterm: found parent")
-			),
-			deref_subterm_2(ArgUniv, SimplifiedPathTail, SubUniv),
-			SubBrowserTerm = plain_term(SubUniv)
+				Result = deref_error(list__reverse(RevPath0),
+					Step)
+			)
 		)
 	).
 
-:- pred deref_subterm_2(univ::in, list(dir)::in, univ::out) is semidet.
+:- pred deref_result_univ_to_browser_term(deref_result(univ)::in,
+	deref_result(browser_term)::out) is det.
 
-deref_subterm_2(Univ, Path, SubUniv) :-
+deref_result_univ_to_browser_term(SubResult, Result) :-
+	(
+		SubResult = deref_result(SubUniv),
+		SubBrowserTerm = plain_term(SubUniv),
+		Result = deref_result(SubBrowserTerm)
+	;
+		SubResult = deref_error(OKPath, ErrorDir),
+		Result = deref_error(OKPath, ErrorDir)
+	).
+
+:- pred deref_subterm_2(univ::in, list(dir)::in, list(dir)::in,
+	deref_result(univ)::out) is det.
+
+deref_subterm_2(Univ, Path, RevPath0, Result) :-
 	(
 		Path = [],
-		Univ = SubUniv
+		Result = deref_result(Univ)
 	;
 		Path = [Dir | Dirs],
 		(
-			Dir = child_num(N),
 			(
-				TypeCtor = type_ctor(univ_type(Univ)),
-				type_ctor_name(TypeCtor) = "array",
-				type_ctor_module_name(TypeCtor) = "array"
-			->
-					% The first element of an array is at
-					% index zero.
-				ArgN = argument(univ_value(Univ), N)
+				Dir = child_num(N),
+				(
+					TypeCtor = type_ctor(univ_type(Univ)),
+					type_ctor_name(TypeCtor) = "array",
+					type_ctor_module_name(TypeCtor) =
+						"array"
+				->
+						% The first element of an array
+						% is at index zero.
+					ArgN = argument(univ_value(Univ), N)
+				;
+					% The first argument of a non-array is
+					% numbered argument 1 by the user
+					% but argument 0 by std_util:argument.
+					ArgN = argument(univ_value(Univ),
+						N - 1)
+				)
 			;
-				% The first argument of a non-array is numbered
-				% argument 1 by the user but argument 0 by
-				% std_util:argument.
-				ArgN = argument(univ_value(Univ), N - 1)
+				Dir = child_name(Name),
+				ArgN = named_argument(univ_value(Univ), Name)
+			;
+				Dir = parent,
+				error("deref_subterm_2: found parent")
 			)
+		->
+			deref_subterm_2(ArgN, Dirs, [Dir | RevPath0], Result)
 		;
-			Dir = child_name(Name),
-			ArgN = named_argument(univ_value(Univ), Name)
-		;
-			Dir = parent,
-			error("deref_subterm_2: found parent")
-		),
-		deref_subterm_2(ArgN, Dirs, SubUniv)
+			Result = deref_error(list__reverse(RevPath0), Dir)
+		)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1405,6 +1455,22 @@ simplify([First | Rest], Simplified) :-
 	;
 		simplify(Rest, SimplifiedRest),
 		Simplified = [First | SimplifiedRest]
+	).
+
+:- func dir_to_string(dir) = string.
+
+dir_to_string(parent) = "..".
+dir_to_string(child_num(Num)) = int_to_string(Num).
+dir_to_string(child_name(Name)) = Name.
+
+:- func dirs_to_string(list(dir)) = string.
+
+dirs_to_string([]) = "".
+dirs_to_string([Dir | Dirs]) =
+	( Dirs = [] ->
+		dir_to_string(Dir)
+	;
+		dir_to_string(Dir) ++ "/" ++ dirs_to_string(Dirs)
 	).
 
 %---------------------------------------------------------------------------%
