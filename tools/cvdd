@@ -1,0 +1,173 @@
+#!/bin/sh
+#
+# This script performs a diff between the main directories of two Mercury
+# workspaces. It is meant to be useful if you are not connected to a network
+# and therefore unable to "cvs add" files; in such circumstances, doing a
+# "cvdd clean_ws work_ws" can be a sufficiently good substitute for a
+# "cvd diff work_ws". It is not intended to be a full replacement, e.g.
+# it doesn't do anything meaningful if you add an entire new directory.
+
+diffopts=""
+while test $# -gt 0
+do
+	case "$1" in
+	-*)
+		diffopts="$diffopts $1"
+		shift
+		;;
+	*)
+		break ;;
+	esac
+done
+
+if test "$diffopts" = ""
+then
+	# these are the default diff options
+	diffopts="-ubB"
+fi
+
+if test $# -ne 2
+then
+	echo "usage: cvdd dir1 dir2"
+	exit 1
+fi
+
+rawdiff="/tmp/.tmpa_$$"
+script="/tmp/.tmpb_$$"
+newfilelist="/tmp/.tmpc_$$"
+excludefile="/tmp/.tmpd_$$"
+trap "/bin/rm -f $rawdiff $script $newfilelist $excludefile > /dev/null 2>&1" 0 1 2 3 15
+
+exclude_all="
+CVS
+CVU
+INSTALL
+README
+REDUNDANT_FILES
+Log*
+errs
+tags
+.*
+"
+
+exclude_m="
+bindist.build.vars
+configure
+make_all.log
+Mmake.*params*
+Mmake.common
+*.c
+*.h
+*.d*
+*.err
+*.int*
+*.*opt*
+*.*date*
+rl_file.m
+rl_out.m
+"
+
+exclude_c="
+bindist.build.vars
+configure
+make_all.log
+Mmake.params
+Mmake.stage.params
+Mmake.params.runtime
+Mmake.params.trace
+Mmake.common
+mercury_conf.h
+"
+
+exclude_doc="
+library-menu*
+library-chapters*
+mercury_library.info*
+*.html
+*.1
+*.aux
+*.toc
+*.log
+*.info
+*.info-*
+"
+
+exclude_other="
+bindist.build_vars
+"
+
+root=`/bin/pwd`
+cd $1
+
+dirs=""
+for d in *
+do
+	if test -d $d -a -r $d/CVS/Entries
+	then
+		dirs="$dirs $d"
+	fi
+done
+cd $root
+
+for d in $dirs
+do
+	case $d in
+	browser|compiler|deep|library|extras|samples)
+		echo "$exclude_all $exclude_m" | sed -e '/^ *$/d' > $excludefile
+		kind="mercury" ;;
+	runtime|trace|util|bytecode|robdd)
+		echo "$exclude_all $exclude_c" | sed -e '/^ *$/d' > $excludefile
+		kind="c" ;;
+	doc)
+		echo "$exclude_all $exclude_doc" | sed -e '/^ *$/d' > $excludefile
+		kind="dod" ;;
+	*)
+		echo "$exclude_all $exclude_other" | sed -e '/^ *$/d' > $excludefile
+		kind="other" ;;
+	esac
+
+	if test -r $HOME/.cvdd_exclude
+	then
+		cat $HOME/.cvdd_exclude >> $excludefile
+	fi
+
+	if test -r $1/$d/.exclude
+	then
+		cat $1/$d/.exclude >> $excludefile
+	fi
+
+	if test -r $2/$d/.exclude
+	then
+		cat $2/$d/.exclude >> $excludefile
+	fi
+
+	exclude_opt="--exclude-from=$excludefile"
+	diff -r $diffopts $exclude_opt "$1"/$d "$2"/$d | egrep -v '^Binary' > $rawdiff
+	cat > $script << EOF
+BEGIN		{ kind = "$kind"; }
+\$1 == "Only"	{
+			len = length(\$4);
+			suffix = substr(\$4, len-1, 2);
+			if (kind == "c" && (suffix == ".c" || suffix == ".h"))
+			{
+				printf "%s\n", \$4;
+			}
+			else if (kind == "mercury" && suffix == ".m")
+			{
+				printf "%s\n", \$4;
+			}
+		}
+EOF
+
+	echo "Diffing $d"
+	egrep -v '^Only' $rawdiff | egrep -v '^diff'
+	awk -f $script < $rawdiff > $newfilelist
+	if test -s $newfilelist
+	then
+		for f in `cat $newfilelist`
+		do
+			echo new file $f
+			more "$2/$d/$f"
+		done
+	fi
+done
