@@ -9,8 +9,6 @@ mode analysis
 - handle "phantom aliasing", i.e. aliasing within a single procedure.
   This is needed to make partially instantiated modes work.
 
-- handle higher-order pred modes
-
 - handle unique modes
 
 - detect incorrect usage of `bound(...)' insts.
@@ -19,24 +17,8 @@ mode analysis
   "micro-unification" pieces when necessary.
   (When is it necessary?)
 
-determinism analysis
---------------------
-
-- handle higher-order preds
-
-code generation:
----------------
-
-- generate code for complicated unifies in partially instantiated modes
-
 general
 -------
-
-- implement "lambda" expressions.
-
-- handle higher-order pred constants where the pred has a polymorphic type
-  (by converting to lambda expressions)
-
 - renaming apart of different occurences
   of the same variable; warning about variables which occur in
   overlapping scopes.
@@ -77,13 +59,16 @@ mode analysis:
 
 - handle polymorphic modes (some research issues?)
 
-- handle abstract insts in the same way abstract types are handled (a research
-  issue - is this possible at all?)
+- handle abstract insts in the same way abstract types are handled
+  (a research issue - is this possible at all?)
+
+- allow taking the address of a predicate with multiple modes
+  (This would require mode inference.)
 
 code generation:
 ----------------
 
-- The generated code should include some profiling hooks.
+- The generated code should include some more profiling hooks.
   In particular, we should add a version of the heap allocation
   macro which takes an extra string parameter identifying which
   routine allocated the memory.  Then we can do heap-allocation
@@ -95,9 +80,6 @@ general
 -------
 
 - optimization of various sorts
-
-- Combining heap pointer increments in straight-line code into
-  a single increment (should be part of value number)
 
 - "accurate" garbage collection
 
@@ -144,12 +126,14 @@ general
 - give a better error message for type errors involving higher-order pred
   constants
 
+- give better error messages for syntax errors in lambda expressions
+
 - issue a warning if the only use of an argument is in a recursive call
 
 - better error handling
 
 - fix all the `XXX's, `xxx's, `YYY's and `%%%'s.
 
-- implement a debugger and a profiler
+- implement an interpreter/debugger
 
 *******************************************************************************

@@ -19,12 +19,17 @@ The overall structure for the compiler is as follows:
    fully qualify all names
    (typecheck.m)
 
-5. mode analysis (modes.m),
+5. mode analysis (modes.m - plus the sub-modules mode_info.m, mode_util.m,
+				inst_match.m, and delay_info.m),
    common goal hoisting (cse_detection.m)
 	(this is here because it needs to be done before switch_detection
 	so that we can do deep indexing)
    switch detection (switch_detection.m),
-   determinism analysis (det_analysis.m)
+   inlining (inlining.m),
+	(note that inlining does not affect the results of determinism
+	analysis - the only reason it comes before determinism analysis
+	is because it happens to be easier)
+   determinism analysis (det_analysis.m),
 
 6. code generation.  This comprises several subpasses:
 	recognization of builtins (builtins.m),
@@ -42,30 +47,5 @@ The overall structure for the compiler is as follows:
 	value numbering (value_number.m, vn_*.m)
 	peephole optimization (peephole.m)
 
-8. output final code (llds.m).
-
-Structure reuse optimization : we should have a pass after mode
-analysis (or at the same time?) which annotates the hlds with reuse
-information.  The code generator uses this reuse information to
-generate assignments instead of creating terms on the heap.
-
-Debugging/garbage collection information: the compiler should output
-the liveness, type, instantiatedness and location of every variable at
-every label.
-
-Mode analysis and reordering: the mode analysis only imposes a partial
-order on the execution of a clause body.  We should allow later stages of
-the compilation to reorder things; the mode analysis should place dependency
-information in the output specifying the exact ordering constraints,
-and later stages will reorder things only if the reordering satisfies those
-constraints (not yet implemented).
-
-Switch constructs: any builtins after a switch up to the next call
-or the end of the clause are moved into the arms of the switch
-(this is done in followvars.m).
-This means that if there are N branches, then those builtins
-will get duplicated N times.  We will rely a post-code-generation
-optimization pass (or gcc :-) to factorize any duplicate code at the end
-of the branches, but in general the code produced may be different
-because the variables needed may be in different registers.
+8. output C code (llds.m).
 
