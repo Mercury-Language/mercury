@@ -124,7 +124,22 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 		Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	(
 		Unification0 = construct(Var, ConsId, ArgVars, _, _, _, _),
+		Mode = LVarMode - _,
+		simplify_info_get_module_info(Info0, ModuleInfo),
+		mode_get_insts(ModuleInfo, LVarMode, _, Inst),
 		(
+				% Don't optimise partially instantiated
+				% deconstruction unifications, because it's
+				% tricky to work out how to mode the
+				% replacement asssignment unifications.
+				% In the vast majority of cases, the
+				% variable is ground.
+			\+ inst_is_ground(ModuleInfo, Inst)
+		->
+			Goal = Goal0,
+			GoalInfo = GoalInfo0,
+			Info = Info0
+		;
 			% common__generate_assign assumes that the
 			% output variable is in the instmap_delta, which
 			% will not be true if the variable is a local.
@@ -135,8 +150,9 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 				construction, Info0, OldStruct)
 		->
 			OldStruct = structure(OldVar, _, _, _),
-			common__generate_assign(Var, OldVar, GoalInfo0,
-				Goal - GoalInfo, Info0, Info1),
+			UniMode = ((free - Inst) -> (Inst - Inst)),
+			common__generate_assign(Var, OldVar, UniMode,
+				GoalInfo0, Goal - GoalInfo, Info0, Info1),
 			simplify_info_set_requantify(Info1, Info2),
 			pd_cost__goal(Goal0 - GoalInfo0, Cost),
 			simplify_info_incr_cost_delta(Info2, Cost, Info)
@@ -146,20 +162,28 @@ common__optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
 			common__record_cell(Var, ConsId, ArgVars, Info0, Info)
 		)
 	;
-		Unification0 = deconstruct(Var, ConsId, ArgVars, _, _),
+		Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, _),
+		simplify_info_get_module_info(Info0, ModuleInfo),
 		(
-			simplify_info_get_module_info(Info0, ModuleInfo),
+				% Don't optimise partially instantiated
+				% deconstruction unifications, because it's
+				% tricky to work out how to mode the
+				% replacement asssignment unifications.
+				% In the vast majority of cases, the
+				% variable is ground.
 			Mode = LVarMode - _,
-			mode_get_insts(ModuleInfo, LVarMode, Inst0, Inst1),
-				% Don't optimise away partially instantiated
-				% deconstruction unifications.
-			inst_matches_binding(Inst0, Inst1, ModuleInfo),
+			mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
+			\+ inst_is_ground(ModuleInfo, Inst0)
+		->
+			Goal = Goal0,
+			Info = Info0
+		;
 			common__find_matching_cell(Var, ConsId, ArgVars,
 				deconstruction, Info0, OldStruct)
 		->
 			OldStruct = structure(_, _, _, OldArgVars),
 			common__create_output_unifications(GoalInfo0, ArgVars,
-				OldArgVars, Goals, Info0, Info1),
+				OldArgVars, UniModes, Goals, Info0, Info1),
 			simplify_info_set_requantify(Info1, Info2),
 			Goal = conj(Goals),
 			pd_cost__goal(Goal0 - GoalInfo0, Cost),
@@ -383,10 +407,11 @@ common__optimise_call(PredId, ProcId, Args, Goal0,
 			ProcId, _, ProcInfo),
 		proc_info_argmodes(ProcInfo, ArgModes),
 	    	common__partition_call_args(ModuleInfo, ArgModes, Args,
-			InputArgs, OutputArgs)
+			InputArgs, OutputArgs, OutputModes)
 	->
 		common__optimise_call_2(seen_call(PredId, ProcId), InputArgs,
-			OutputArgs, Goal0, GoalInfo, Goal, Info0, Info)
+			OutputArgs, OutputModes, Goal0, GoalInfo, Goal,
+			Info0, Info)
 	;
 		Goal = Goal0,
 		Info = Info0
@@ -398,10 +423,10 @@ common__optimise_higher_order_call(Closure, Args, Modes, Det, Goal0,
 		common__check_call_detism(Det),
 		simplify_info_get_module_info(Info0, ModuleInfo),
 	    	common__partition_call_args(ModuleInfo, Modes, Args,
-			InputArgs, OutputArgs)
+			InputArgs, OutputArgs, OutputModes)
 	->
 		common__optimise_call_2(higher_order_call,
-			[Closure | InputArgs], OutputArgs, Goal0,
+			[Closure | InputArgs], OutputArgs, OutputModes, Goal0,
 			GoalInfo, Goal, Info0, Info)
 	;
 		Goal = Goal0,
@@ -419,11 +444,11 @@ common__check_call_detism(Det) :-
 	).
 
 :- pred common__optimise_call_2(seen_call_id, list(prog_var), list(prog_var),
-		hlds_goal_expr, hlds_goal_info, hlds_goal_expr,
+		list(mode), hlds_goal_expr, hlds_goal_info, hlds_goal_expr,
 		simplify_info, simplify_info).
-:- mode common__optimise_call_2(in, in, in, in, in, out, in, out) is det.
+:- mode common__optimise_call_2(in, in, in, in, in, in, out, in, out) is det.
 
-common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Goal0,
+common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, Goal0,
 		GoalInfo, Goal, Info0, Info) :-
 	simplify_info_get_common_info(Info0, CommonInfo0),
 	CommonInfo0 = common(Eqv0, Structs0, Structs1, SeenCalls0),
@@ -433,8 +458,12 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Goal0,
 		( common__find_previous_call(SeenCallsList0, InputArgs,
 			Eqv0, OutputArgs2, PrevContext)
 		->
+			simplify_info_get_module_info(Info0, ModuleInfo),
+			mode_util__modes_to_uni_modes(Modes, Modes, ModuleInfo,
+				UniModes), 
 			common__create_output_unifications(GoalInfo,
-			    OutputArgs, OutputArgs2, Goals, Info0, Info1),
+			    OutputArgs, OutputArgs2, UniModes,
+			    Goals, Info0, Info1),
 			Goal = conj(Goals),
 			simplify_info_get_var_types(Info0, VarTypes),
 			(
@@ -489,21 +518,22 @@ common__optimise_call_2(SeenCall, InputArgs, OutputArgs, Goal0,
 	% or if any of the outputs contain any `any' insts.
 :- pred common__partition_call_args(module_info::in, list(mode)::in,
 		list(prog_var)::in, list(prog_var)::out,
-		list(prog_var)::out) is semidet.
+		list(prog_var)::out, list(mode)::out) is semidet.
 
-common__partition_call_args(_, [], [_ | _], _, _) :-
+common__partition_call_args(_, [], [_ | _], _, _, _) :-
 	error("common__partition_call_args").
-common__partition_call_args(_, [_ | _], [], _, _) :-
+common__partition_call_args(_, [_ | _], [], _, _, _) :-
 	error("common__partition_call_args").
-common__partition_call_args(_, [], [], [], []).
+common__partition_call_args(_, [], [], [], [], []).
 common__partition_call_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
-		InputArgs, OutputArgs) :-
+		InputArgs, OutputArgs, OutputModes) :-
 	common__partition_call_args(ModuleInfo, ArgModes, Args,
-		InputArgs1, OutputArgs1),
+		InputArgs1, OutputArgs1, OutputModes1),
 	mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
 	( inst_matches_binding(InitialInst, FinalInst, ModuleInfo) ->
 		InputArgs = [Arg | InputArgs1],
-		OutputArgs = OutputArgs1
+		OutputArgs = OutputArgs1,
+		OutputModes = OutputModes1
 	; 
 		% Calls with partly unique outputs cannot be replaced,
 		% since a unique copy of the outputs must be produced.
@@ -517,11 +547,14 @@ common__partition_call_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
 		inst_matches_binding(FinalInst, FinalInst, ModuleInfo),
 
 		% Don't optimize calls where a partially instantiated
-		% variable is further instantiated (XXX why not???).
+		% variable is further instantiated. That case is difficult
+		% to test properly because mode analysis currently
+		% rejects most potential test cases.
 		inst_is_free(ModuleInfo, InitialInst),
 
 		InputArgs = InputArgs1,
-		OutputArgs = [Arg | OutputArgs1]
+		OutputArgs = [Arg | OutputArgs1],
+		OutputModes = [ArgMode | OutputModes1]
 	).
 
 %---------------------------------------------------------------------------%
@@ -543,77 +576,75 @@ common__find_previous_call([SeenCall | SeenCalls], InputArgs,
 %---------------------------------------------------------------------------%
 
 :- pred common__create_output_unifications(hlds_goal_info::in, 
-		list(prog_var)::in, list(prog_var)::in, list(hlds_goal)::out,
-		simplify_info::in, simplify_info::out) is det.
+		list(prog_var)::in, list(prog_var)::in, list(uni_mode)::in,
+		list(hlds_goal)::out, simplify_info::in,
+		simplify_info::out) is det.
 
-	% Create unifications to assign the non-local vars in OutputArgs from 
+	% Create unifications to assign the vars in OutputArgs from 
 	% the corresponding var in OutputArgs2.
-common__create_output_unifications(_, [], [], [], Info, Info).
-common__create_output_unifications(_, [_ | _], [], _, _, _) :-
-	error("common__create_output_unifications").
-common__create_output_unifications(_, [], [_ | _], _, _, _) :-
-	error("common__create_output_unifications").
-common__create_output_unifications(GoalInfo, [OutputArg | OutputArgs],
-		[OutputArg2 | OutputArgs2], Goals, Info0, Info) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	( 
-		set__member(OutputArg, NonLocals),
-		% This can happen if the first cell was created
-		% with a partially instantiated deconstruction.
-		OutputArg \= OutputArg2	
-	->
-		common__generate_assign(OutputArg, OutputArg2,
-			GoalInfo, Goal, Info0, Info1),
-		common__create_output_unifications(GoalInfo,
-			OutputArgs, OutputArgs2, Goals1, Info1, Info),
-		Goals = [Goal | Goals1]
+	% This needs to be done even if OutputArg is not a nonlocal in
+	% the original goal because later goals in the conjunction may
+	% match against the cell and need all the output arguments.
+	% The unneeded assignments will be removed later.
+
+common__create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs,
+		UniModes, Goals, Info0, Info) :-
+	(
+		OutputArgs = [OutputArg | OutputArgs1],
+		OldOutputArgs = [OldOutputArg | OldOutputArgs1],
+		UniModes = [UniMode | UniModes1]
+	->	
+		( 
+			% This can happen if the first cell was created
+			% with a partially instantiated deconstruction.
+			OutputArg \= OldOutputArg
+		->
+			common__generate_assign(OutputArg, OldOutputArg,
+				UniMode, GoalInfo, Goal, Info0, Info1),
+			common__create_output_unifications(GoalInfo,
+				OutputArgs1, OldOutputArgs1, UniModes1,
+				Goals1, Info1, Info),
+			Goals = [Goal | Goals1]
+		;
+			common__create_output_unifications(GoalInfo,
+				OutputArgs1, OldOutputArgs1, UniModes1, Goals,
+				Info0, Info)
+		)
 	;
-		common__create_output_unifications(GoalInfo,
-			OutputArgs, OutputArgs2, Goals, Info0, Info)
+		OutputArgs = [],
+		OldOutputArgs = [],
+		UniModes = []
+	->
+		Goals = [],
+		Info = Info0
+	;
+		error("comon__create_output_unifications: mode mismatch")
 	).
+
 
 %---------------------------------------------------------------------------%
 
-:- pred common__generate_assign(prog_var, prog_var, hlds_goal_info, hlds_goal,
-		simplify_info, simplify_info).
-:- mode common__generate_assign(in, in, in, out, in, out) is det.
+:- pred common__generate_assign(prog_var, prog_var, uni_mode,
+		hlds_goal_info, hlds_goal, simplify_info, simplify_info).
+:- mode common__generate_assign(in, in, in, in, out, in, out) is det.
 	
-common__generate_assign(ToVar, FromVar, GoalInfo0, Goal, Info0, Info) :-
-	simplify_info_get_instmap(Info0, InstMap),
-	instmap__lookup_var(InstMap, FromVar, FromVarInst0),
-
-	( FromVarInst0 = free ->
-		% This may mean that the variable was local 
-		% to the first unification or call. In that
-		% case we need to recompute the instmap_deltas
-		% for atomic goals.
-		simplify_info_set_recompute_atomic(Info0, Info1)
-	;
-		Info1 = Info0
-	),
-
+common__generate_assign(ToVar, FromVar, UniMode,
+		GoalInfo0, Goal, Info0, Info) :-
 	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
 	simplify_info_get_var_types(Info0, VarTypes),
 	map__lookup(VarTypes, ToVar, ToVarType),
 	map__lookup(VarTypes, FromVar, FromVarType),
 
+	set__list_to_set([ToVar, FromVar], NonLocals),
 	( common__types_match_exactly(ToVarType, FromVarType) ->
-		instmap__lookup_var(InstMap, ToVar, ToVarInst0),
-		( instmap_delta_search_var(InstMapDelta0, ToVar, ToVarInst1) ->
-			ToVarInst = ToVarInst1
-		;
-			term__var_to_int(ToVar, ToVarNum),
-			term__var_to_int(FromVar, FromVarNum),
-			string__format(
-		"common__generate_assign: assigned var %i=%i not in instmap_delta",
-				[i(ToVarNum), i(FromVarNum)], Msg),
-			 error(Msg)	 
-		),
-	
+		UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
 		UnifyContext = unify_context(explicit, []),
-		UniMode = (ToVarInst0 -> ToVarInst) - (ToVarInst -> ToVarInst),
-		GoalExpr = unify(ToVar, var(FromVar), UniMode,
-			assign(ToVar, FromVar), UnifyContext)
+		UnifyMode = (ToVarInst0 -> ToVarInst) -
+				(ToVarInst -> ToVarInst),
+		GoalExpr = unify(ToVar, var(FromVar), UnifyMode,
+			assign(ToVar, FromVar), UnifyContext),
+		instmap_delta_from_assoc_list([ToVar - ToVarInst],
+			InstMapDelta)
 	;	
 		% If the cells we are optimizing don't have exactly the same
 		% type, we insert explicit type casts to ensure type
@@ -636,13 +667,12 @@ common__generate_assign(ToVar, FromVar, GoalInfo0, Goal, Info0, Info) :-
 		;
 			error("common__generate_assign: \
 				can't find unsafe_type_cast")
-		)
+		),
+		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta)
 	),
-	set__list_to_set([ToVar, FromVar], NonLocals),
-	instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
 	Goal = GoalExpr - GoalInfo,	
-	common__record_equivalence(ToVar, FromVar, Info1, Info).
+	common__record_equivalence(ToVar, FromVar, Info0, Info).
 
 :- pred common__types_match_exactly((type), (type)).
 :- mode common__types_match_exactly(in, in) is semidet.

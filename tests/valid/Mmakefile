@@ -26,6 +26,7 @@ TYPECLASS_SOURCES= \
 	instance_unconstrained_tvar.m
 
 OTHER_SOURCES= \
+	common_struct_bug.m \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
