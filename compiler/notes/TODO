@@ -1,65 +1,59 @@
 codegen.nl
 ----------
 
-semideterministic and nondeterministic code generation
+- semideterministic and nondeterministic code generation
 
-types with constants only (enumerations) should be handled as ints.
+- types with constants only (enumerations) should be handled as ints.
 
 mercury_to_goedel.nl
 --------------------
-see comments at the start of that file
+
+- see comments at the start of that file
 
 other
 -----
 
-replace all instances of term_functor, term_atom, term_string, term_float,
-term_int, term_variable with term__functor, term__atom, term__string,
-term__float, term__variable respectively.
+- replace all instances of term_functor, term_atom, term_string, term_float,
+  term_int, term_variable with term__functor, term__atom, term__string,
+  term__float, term__variable respectively.
 
-finish type checking (see typecheck.nl for details)
+- finish type checking (see typecheck.nl for details)
 
-mode anaylsis (see ~fjh/thesis/strep/ for details)
+- mode anaylsis (see ~fjh/thesis/strep/ for details)
 
-determinism analysis - we need two passes after the mode analysis for
-	determinism analysis.  The first one infers local determinism,
-	then second infers global determinism.  Version 1 of this
-	pass could just have a very simple algorithm for the first pass,
-	where any disjunction (or any predicate with multiple clauses)
-	is considered non-deterministic.  This could actually be
-	three passes, where the first pass is switch detection,
-	and the two passes described above follow.  This would enable
-	the local determinism pass to use the simple algorithm.
-	(See nac for an example of this.)
-	We'll need files switch.nl, local_det.nl, global_det.nl (or whatever).
+- determinism analysis 
 
-warn about singleton variables
+- warn about singleton variables
 
-implicit quantification; renaming apart of different occurences
-	of the same variable; warning about variables which occur in
-	overlapping scopes.
+- warn about multiple occurrences of variables whose name starts with
+  underscore.
 
-optimization of various sorts
+- implicit quantification; renaming apart of different occurences
+  of the same variable; warning about variables which occur in
+  overlapping scopes.
 
-module system & seperate compilation
+- optimization of various sorts
 
-better error handling
+- module system & seperate compilation
 
-implement user-defined operators:
+- better error handling
+
+- implement user-defined operators:
 	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
 	change prog_io.nl to parse this construct and call io__op
 	accordingly.
 
-fix all the XXX's and %%%'s.
+- fix all the XXX's and %%%'s.
 
-map.nl: reimplement using bintree.nl or array.nl.
+- map.nl: reimplement using bintree.nl or array.nl.
 
-write a pass over hlds to recognize the builtin predicates,
-including arithmetic predicates such as "+" and arithmetic tests
-such as "<", and ensure that codegen outputs the correct code
-for these builtins.
+- write a pass over hlds to recognize the builtin predicates,
+  including arithmetic predicates such as "+" and arithmetic tests
+  such as "<", and ensure that codegen outputs the correct code
+  for these builtins.
 
-generate code for complicated_unify's (there are some comments about
-this in the paper.)
+- generate code for complicated_unify's (there are some comments about
+  this in the paper.)
 
-array.nl: write a predicate to resize arrays.
+- array.nl: write a predicate to resize arrays.
 
