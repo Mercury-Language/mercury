@@ -30,6 +30,8 @@ void modcp_msg(void)
 {
 	printf("\nmodifying choice point for procedure %s\n", cpprednm);
 	printf("redo ip: "); printlabel(cpredoip);
+	if (detaildebug)
+		dumpcpstack();
 }
 
 void succeed_msg(void)
@@ -38,6 +40,7 @@ void succeed_msg(void)
 	printf("curr cp: "); printcpstack(curcp);
 	printf("succ cp: "); printcpstack(cpsucccp);
 	printf("succ ip: "); printlabel(cpsuccip);
+	printregs("registers at success");
 }
 
 void fail_msg(void)
@@ -45,7 +48,7 @@ void fail_msg(void)
 	printf("\nfailing from procedure %s\n", cpprednm);
 	printf("curr cp: "); printcpstack(curcp);
 	printf("fail cp: "); printcpstack(cpprevcp);
-	printf("fail ip: "); printlabel((Code *)cpprevcp[REDOIP]);
+	printf("fail ip: "); printlabel((Code *) cpprevcp[REDOIP]);
 }
 
 void redo_msg(void)
@@ -60,17 +63,20 @@ void call_msg(const Code *proc, const Code *succcont)
 {
 	printf("\ncalling      "); printlabel(proc);
 	printf("continuation "); printlabel(succcont);
+	printregs("registers at call");
 }
 
 void tailcall_msg(const Code *proc)
 {
 	printf("\ntail calling "); printlabel(proc);
 	printf("continuation "); printlabel(succip);
+	printregs("registers at tailcall");
 }
 
 void proceed_msg(void)
 {
 	printf("\nreturning from determinate procedure\n");
+	printregs("registers at proceed");
 }
 
 void cr1_msg(Word val0, const Word *addr)
@@ -134,20 +140,20 @@ void dumpframe(Word *cp)
 	{
 		printf("reclaim frame at ptr %p, offset %3d words\n",
 			cp, cp - cpstackmin);
-		printf("\t predname  %s\n", (const char *)cp[PREDNM]);
-		printf("\t redoip    "); printlabel((Code *)cp[REDOIP]);
-		printf("\t prevcp    "); printcpstack((Word *)cp[PREVCP]);
-		printf("\t savehp    "); printheap((Word *)cp[SAVEHP]);
+		printf("\t predname  %s\n", (const char *) cp[PREDNM]);
+		printf("\t redoip    "); printlabel((Code *) cp[REDOIP]);
+		printf("\t prevcp    "); printcpstack((Word *) cp[PREVCP]);
+		printf("\t savehp    "); printheap((Word *) cp[SAVEHP]);
 	}
 	else
 	{
 		printf("cp frame at ptr %p, offset %3d words\n",
 			cp, cp - cpstackmin);
-		printf("\t predname  %s\n", (const char *)cp[PREDNM]);
-		printf("\t succip    "); printlabel((Code *)cp[SUCCIP]);
-		printf("\t redoip    "); printlabel((Word *)cp[REDOIP]);
-		printf("\t succcp    "); printcpstack((Word *)cp[SUCCCP]);
-		printf("\t prevcp    "); printcpstack((Word *)cp[PREVCP]);
+		printf("\t predname  %s\n", (const char *) cp[PREDNM]);
+		printf("\t succip    "); printlabel((Code *) cp[SUCCIP]);
+		printf("\t redoip    "); printlabel((Word *) cp[REDOIP]);
+		printf("\t succcp    "); printcpstack((Word *) cp[SUCCCP]);
+		printf("\t prevcp    "); printcpstack((Word *) cp[PREVCP]);
 
 		for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
 			printf("\t cpvar(%d)  %d %x\n", i, cp[SAVEVAL-i], cp[SAVEVAL-i]);
