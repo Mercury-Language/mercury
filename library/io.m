@@ -12,7 +12,7 @@
 
 :- module io.
 :- interface.
-:- import_module char, int, float, string, std_util.
+:- import_module char, int, float, string, std_util, list.
 
 % External interface: imported predicate
 
@@ -49,6 +49,14 @@
 :- mode io__write_string(in, in, di, uo).
 %		Writes a string to the specified stream.
 
+:- pred io__write_strings(list(string), io__state, io__state).
+:- mode io__write_strings(in, di, uo).
+%		Writes a string to the current output stream.
+
+:- pred io__write_strings(io__stream, list(string), io__state, io__state).
+:- mode io__write_strings(in, in, di, uo).
+%		Writes a string to the specified stream.
+
 :- pred io__read_char(character, io__result, io__state, io__state).
 :- mode io__read_char(out, out, di, uo).
 %		Reads a character from the current input stream.
@@ -60,6 +68,11 @@
 :- pred io__write_char(character, io__state, io__state).
 :- mode io__write_char(in, di, uo).
 %		Writes a character to the current output stream.
+
+:- pred io__write_escaped_char(character, io__state, io__state).
+:- mode io__write_escaped_char(in, di, uo).
+%		Writes a character to the current output stream.
+%		Any *special* characters are escaped.
 
 :- pred io__read_char(io__stream, character, io__result, io__state, io__state).
 :- mode io__read_char(in, out, out, di, uo).
@@ -264,6 +277,15 @@ io__write_string(String) -->
 	io__output_stream(Stream),
 	io__write_string(Stream, String).
 
+io__write_strings(Strings) -->
+	io__output_stream(Stream),
+	io__write_strings(Stream, Strings).
+
+io__write_strings(_Stream, []) --> [].
+io__write_strings(Stream, [S|Ss]) -->
+	io__write_string(Stream, S),
+	io__write_strings(Stream, Ss).
+
 io__read_char(Char, Result) -->
 	io__input_stream(Stream),
 	io__read_char(Stream, Char, Result).
@@ -275,6 +297,16 @@ io__read_line(String, Result) -->
 io__write_char(Char) -->
 	io__output_stream(Stream),
 	io__write_char(Stream, Char).
+
+io__write_escaped_char(Char) -->
+	(
+		{ char__escape(Char, Chars) }
+	->
+		{ string__to_char_list(Str, Chars) },
+		io__write_string(Str)
+	;
+		io__write_char(Char)
+	).
 
 io__write_float(Float) -->
 	io__output_stream(Stream),

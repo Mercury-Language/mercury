@@ -19,6 +19,8 @@
 :- module char.
 :- interface.
 
+:- import_module list.
+
 %-----------------------------------------------------------------------------%
 
 :- pred char_to_int(character, int).
@@ -64,6 +66,10 @@
 	% lower_upper(Lower, Upper) is true iff
 	% Lower is a lower-case letter and Upper is the corresponding
 	% upper-case letter.
+
+:- pred char__escape(character, list(character)).
+:- mode char__escape(in, out).
+:- mode char__escape(out, in).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -436,5 +442,12 @@ lower_upper('w', 'W').
 lower_upper('x', 'X').
 lower_upper('y', 'Y').
 lower_upper('z', 'Z').
+
+%-----------------------------------------------------------------------------%
+
+char__escape('\n', ['\\','n']).
+char__escape('\t', ['\\','t']).
+char__escape('\f', ['\\','f']).
+char__escape('\r', ['\\','r']).
 
 %-----------------------------------------------------------------------------%

@@ -220,8 +220,6 @@ bintree__delete(tree(K0, V0, Left, Right), K, Tree) :-
 
 %-----------------------------------------------------------------------------%
 
-bintree__remove(empty, _K, _V, empty) :-
-	error("Cannot remove a nonexistant item from bintree,").
 bintree__remove(tree(K0, V0, Left, Right), K, V, Tree) :-
 	compare(Result, K0, K),
 	(

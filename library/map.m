@@ -97,6 +97,9 @@
 :- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
 :- mode map__from_corresponding_lists(in, in, out).
 
+:- pred map__merge(map(K, V), map(K, V), map(K, V)).
+:- mode map__merge(in, in, out).
+
 %-----------------------------------------------------------------------------%
 
 :- import_module bintree.
@@ -189,6 +192,14 @@ assoc_list_member(K, V, [_ | Xs]) :-
 
 map__from_corresponding_lists(Keys, Values, Map) :-
 	bintree__from_corresponding_lists(Keys, Values, Map).
+
+%-----------------------------------------------------------------------------%
+
+map__merge(M0, M1, M) :-
+	map__to_assoc_list(M0, ML0),
+	map__to_assoc_list(M1, ML1),
+	append(ML0, ML1, ML),
+	map__from_assoc_list(ML, M).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
