@@ -18,8 +18,6 @@
 % altogether. We also use io__write_anything, which is a bit dodgy,
 % and is a real hack.
 %
-% XXX Would it be easier to use spaces rather than commas to delimit
-%     items?
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -203,13 +201,16 @@ garbage_out__get_det([L | Ls], Det) :-
 				io__state, io__state).
 :- mode garbage_out__output(in, in, in, di, uo) is det.
 
-garbage_out__output(List, Shapes, _Abs_Exports) --> 
+garbage_out__output(List, Shapes, Abs_Exports) --> 
 	io__write_string("garbage_out(\n[\n"),
 	garbage_out__write_cont_list(List),
 	io__write_string("],\n"),
 	io__write_string("[\n"),
 	garbage_out__write_shape_table(Shapes),
-	io__write_string("],\n").
+	io__write_string("],\n"),
+	{ map__to_assoc_list(Abs_Exports, Abs_Exports_List) },
+	garbage_out__write_abs_exports(Abs_Exports_List),
+	io__write_string(").\n").
 
 %-----------------------------------------------------------------------------%
 % Write the continuation list.
@@ -292,7 +293,7 @@ garbage_out__write_liveinfo_list([live_lvalue(L, S)| Ls]) -->
 garbage_out__write_liveval(hp) --> io__write_string("hp").
 garbage_out__write_liveval(sp) --> io__write_string("sp").
 garbage_out__write_liveval(succip) --> io__write_string("succip").
-	% XXX the next three lines are wrong - they should not
+	% XXX possibly the next three lines are wrong - they should not
 	% ignore the argument of redoip/succfr/prevfr
 garbage_out__write_liveval(redoip(_)) --> io__write_string("redoip").
 garbage_out__write_liveval(succfr(_)) --> io__write_string("succfr").
@@ -473,7 +474,7 @@ garbage_out__write_shape_list([ShapeNum - _ShapeId | Shape_List]) -->
 	garbage_out__write_shape_list(Shape_List).
 
 %-----------------------------------------------------------------------------%
-% 
+% Write a list of integers. 
 %-----------------------------------------------------------------------------%
 :- pred garbage_out__write_int_list(list(shape_num), io__state, io__state).
 :- mode garbage_out__write_int_list(in, di, uo) is det.
@@ -485,7 +486,53 @@ garbage_out__write_int_list([ShapeNum | Shape_List]) -->
 
 
 
+%-----------------------------------------------------------------------------%
+% Write out the abstract export table (all the shapes that are exported from
+% this module that could be abstracts in another module).
+%-----------------------------------------------------------------------------%
+:- pred garbage_out__write_abs_exports(list(pair(type_id, maybe_shape_num)),
+		io__state, io__state).
+:- mode garbage_out__write_abs_exports(in, di, uo) is det.
+garbage_out__write_abs_exports(AE_List) -->
+	io__write_string("["),
+	garbage_out__write_abs_list(AE_List),
+	io__write_string("]").
 
+%-----------------------------------------------------------------------------%
+% Output each item in the abstract exports list.
+%-----------------------------------------------------------------------------%
+:- pred garbage_out__write_abs_list(list(pair(type_id, maybe_shape_num)),
+		io__state, io__state).
+:- mode garbage_out__write_abs_list(in, di, uo) is det.
+garbage_out__write_abs_list([]) --> [].
+garbage_out__write_abs_list([T_Id - M_SN | As]) -->
+	garbage_out__write_type_id(T_Id),
+	(
+		{ M_SN = no(Type) },
+		io__write_string("-no("),
+		garbage_out__write_type(Type)
+	;
+		{ M_SN = yes(S_Num) },
+		io__write_string("-yes("),
+		shapes__write_shape_num(S_Num)
+	),
+	io__write_string(")"),
+	garbage_out__maybe_write_comma_newline(As),
+	garbage_out__write_abs_list(As).
 
-
-
+%-----------------------------------------------------------------------------%
+% Write a type id out.
+%-----------------------------------------------------------------------------%
+:- pred garbage_out__write_type_id(type_id, io__state, io__state).
+:- mode garbage_out__write_type_id(in, di, uo) is det.
+garbage_out__write_type_id(unqualified(TypeName) - Arity) -->
+	io__write_string(TypeName),
+	io__write_string("-"),
+	io__write_int(Arity).
+garbage_out__write_type_id(qualified(Module,TypeName) - Arity) -->
+	io__write_string(Module),
+	io__write_string("-"),
+	io__write_string(TypeName),
+	io__write_string("-"),
+	io__write_int(Arity).
+	
