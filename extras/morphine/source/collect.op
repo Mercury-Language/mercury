@@ -380,9 +380,13 @@ is_collected_type_defined(File) :-
 
 is_collected_type_defined_do(S) :-
 	read_mercury_term(S, Term),
+	term_string(Term, String),
 	(
-	        term_string(Term, String),
-		append_strings(":- type(collected_type", _,  String)
+		append_strings(":- type(--->(collected_type", _,  String),
+		!
+	;
+		append_strings(":- type(collected_type", _,  String),
+		!
 	;
 		Term = end_of_file,
 		!,
