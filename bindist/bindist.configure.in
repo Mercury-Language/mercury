@@ -3,6 +3,15 @@
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
+# bindist.configure.in:
+#	This file is an autoconf script which is used to create the
+#	configure script that gets included with the binary distribution.
+#
+# XXX Much of the code here is duplicated in ../configure.in.
+#     We should abstract it out into macros defined in ../aclocal.m4,
+#     so that the same code can be shared between both ../configure.in and 
+#     this file.
+#-----------------------------------------------------------------------------#
 #
 # Define a macro MERCURY_MSG, similar to AC_MSG_RESULT, for displaying output.
 #
@@ -206,8 +215,23 @@ AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_PROG_CC
 MERCURY_CHECK_CC_NEEDS_TRAD_CPP
-MERCURY_CHECK_LOCAL_C_INCL_DIRS
 AC_SUBST(CC)
+#-----------------------------------------------------------------------------#
+# Make sure we search /usr/local/include and /usr/local/lib for
+# header files and libraries.  GNU C normally searches /usr/local/include
+# by default, but (inconsistently) on some systems, such as Solaris,
+# it does _not_ search /usr/local/lib.
+# The user might also be using a different C compiler that
+# doesn't search either of those by default.
+MERCURY_CHECK_LOCAL_C_INCL_DIRS
+CPPFLAGS="$ALL_LOCAL_C_INCL_DIRS $CPPFLAGS"
+MERCURY_CHECK_LOCAL_C_LIB_DIRS
+for dir in $ALL_LOCAL_C_LIB_DIRS kludge_for_broken_shells
+do
+        if test "$dir" != "kludge_for_broken_shells"; then
+                LIBS="-L$dir $LIBS"
+        fi
+done
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration (the bindist may be installed on a machine
 # that supports .NET even if it was built on a machine that doesn't).
