@@ -76,6 +76,11 @@ case "$BRANCH" in
     "")
         DAY=`date '+%e'`
         case $HOST in
+	    hg)
+		# XXX The release branch doesn't compile on hg due
+		# to problems with the GCC back-end.
+	    	BRANCH=latest
+		;;
 	    murlibobo|taifun|hg|hydra|mars)
 		#
 		# For these hosts:
