@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2002 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -645,9 +645,12 @@ pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
 	Info0 = init_inst_match_info(ModuleInfo),
 	pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
 
-	% pred_inst_matches_2(PredInstA, PredInstB, ModuleInfo, Expansions)
-	%	Same as pred_inst_matches/3, except that inst pairs in
-	%	Expansions are assumed to match_final each other.
+	% pred_inst_matches_2(PredInstA, PredInstB, Info0, Info)
+	%
+	%	Same as pred_inst_matches/3, except that it updates
+	%	the inst_var_sub in the inst_match_info, and that any
+	%	inst pairs in Info0^expansions are assumed to
+	%	match_final each other.
 	%	(This avoids infinite loops when calling inst_matches_final
 	%	on higher-order recursive insts.)
 	%
@@ -662,13 +665,18 @@ pred_inst_matches_2(pred_inst_info(PredOrFunc, ModesA, Det),
 		MaybeTypes) },
 	pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes).
 
-	% pred_inst_matches_argmodes(ModesA, ModesB, ModuleInfo, Expansions):
+	% pred_inst_argmodes_matches(ModesA, ModesB, Info0, Info):
+	%
 	% succeeds if the initial insts of ModesB specify at least as
 	% much information as, and the same binding as, the initial
 	% insts of ModesA; and the final insts of ModesA specify at
 	% least as much information as, and the same binding as, the
-	% final insts of ModesB.  Any inst pairs in Expansions are assumed
-	% to match_final each other.
+	% final insts of ModesB.  Any inst pairs in Inst0^expansions
+	% are assumed to match_final each other.
+	%
+	% (In other words, as far as subtyping goes it is contravariant in
+	% the initial insts, and covariant in the final insts;
+	% as far as binding goes, it is invariant for both.)
 	%
 :- pred pred_inst_argmodes_matches(list(mode), list(mode), list(maybe(type)),
 				inst_match_info, inst_match_info).

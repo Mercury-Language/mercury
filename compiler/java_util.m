@@ -9,7 +9,7 @@
 
 % This module defines utility routines that are used by the
 % Java backend.  Much of the code below is similar to that in c_util.m;
-% changes made to this module may require changes c_util.m. 
+% changes made to this module may require changes to c_util.m. 
 
 %-----------------------------------------------------------------------------%
 
@@ -76,7 +76,6 @@
 
 %-----------------------------------------------------------------------------%
 
-
 	% Tags are not used in the Java back-end, as such, all of the tagging
 	% operators except for `tag' return no-ops. The `tag' case is handled
 	% seperately in mlds_to_java__output_std_unop.
@@ -129,6 +128,7 @@ java_util__binary_infix_op(>, ">").
 java_util__binary_infix_op(<=, "<=").
 
 %------------------------------------------------------------------------------%
+
 java_util__is_keyword("abstract").
 java_util__is_keyword("boolean").
 java_util__is_keyword("break").
