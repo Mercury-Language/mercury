@@ -17,6 +17,7 @@ fi
 LIBDIR="$PREFIX/lib/mercury"
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
+AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
 #-----------------------------------------------------------------------------#
 case "$host" in
@@ -598,12 +599,11 @@ AC_SUBST(GRADE)
 DEFAULT_GRADE=$GRADE
 # For Irix 5.x, shared libraries are incompatible with gcc non-local gotos
 # We prefer to use shared libraries by default
-# --- XXX but shared libaries don't work anyway
-# case "$host" in
-# 	mips-sgi-irix5.*)
-# 		DEFAULT_GRADE=reg.gc
-# 		;;
-# esac
+case "$host" in
+	mips-sgi-irix5.*)
+		DEFAULT_GRADE=reg.gc
+		;;
+esac
 echo "using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications"
 AC_SUBST(DEFAULT_GRADE)
 
@@ -664,13 +664,7 @@ case "$host" in
 		PIC_O=o
 		SO=so
 		;;
-#
-#	Shared libraries are currently not enabled for IRIX 5, since
-#	it turns out that despite what it says in boehm_gc/README,
-#	the conservative garbage collector doesn't work with shared
-#	libraries on IRIX 5.
-#
-	XXX-this-case-disabled-XXX-mips-sgi-irix5.*)
+	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared"
 		PIC=
 		PIC_O=o
