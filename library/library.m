@@ -21,7 +21,7 @@
 :- import_module eqvclass, float, math, getopt, graph, group, int, io.
 :- import_module list, map, pqueue, queue, random, relation, require.
 :- import_module set, set_bbbtree, set_unordlist, stack, std_util, string.
-:- import_module term, term_io, tree234, varset, store, rbtree.
+:- import_module term, term_io, tree234, uniq_array, varset, store, rbtree.
 
 :- import_module parser, lexer, ops.
 
