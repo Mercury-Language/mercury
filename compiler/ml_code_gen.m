@@ -90,14 +90,14 @@
 %		bool succeeded;
 %
 %		<do Goal>
-%		succeeded = TRUE
+%		succeeded = TRUE;
 %	}
 
 %	det goal in nondet context:
 %		<Goal && SUCCEED()>
 %	===>
 %		<do Goal>
-%		SUCCEED()
+%		SUCCEED();
 
 %	semi goal in nondet context:
 %		<Goal && SUCCEED()>
@@ -106,7 +106,7 @@
 %		bool succeeded;
 %	
 %		<succeeded = Goal>
-%		if (succeeded) SUCCEED()
+%		if (succeeded) SUCCEED();
 %	}
 
 %-----------------------------------------------------------------------------%
@@ -564,10 +564,11 @@
 %		- switches
 %		- commits
 % TODO:
-%	- type_infos
-%	- c_code pragmas
+%	- `pragma export'
+%	- RTTI (base_type_functors, base_type_layout)
 %	- typeclass_infos and class method calls
-%	- type declarations for user-defined types
+%	- high level data representation
+%	  (i.e. generate MLDS type declarations for user-defined types)
 %	...
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
