@@ -72,6 +72,15 @@ ifeq ($(FULLARCH),alpha-dec-osf3.2)
 MLFLAGS += --static
 endif
 
+# Compilation of rl_code.c is really slow (about 26 minutes on traveller with
+# --trace deep) at the default level of -O2, due to the C optimizer's use of
+# quadratic algorithms on a couple of 20,000-line functions (the automatically
+# generated index and compare routines on the bytecode type). The code in this
+# module can't really benefit from those algorithms anyway. With -O1, the 26
+# minutes drops to less than 26 seconds.
+
+MGNUCFLAGS-rl_code=-O1
+
 #-----------------------------------------------------------------------------#
 
 # Rules for preprocessing `.pp' files.
