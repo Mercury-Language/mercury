@@ -128,7 +128,7 @@ library.init: $(library.cs)
 library.nu library.nu.debug: $(NU_LIBRARY_NOS)
 library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS)
 
-library.nu.debug: error.no debug.no
+library.nu.debug: error.no debug.no portray.no
 library.sicstus.debug: error.ql
 
 sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) error.ql: sicstus_compile
