@@ -252,7 +252,7 @@ intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 			{ module_info_set_preds(ModuleInfo0, PredTable,
 					ModuleInfo) },
 			intermod_info_get_preds(Preds0),
-			( { pred_info_clause_goal_type(PredInfo) } ->
+			( { pred_info_pragma_goal_type(PredInfo) } ->
 				% The header code must be written since
 				% it could be used by the pragma_foreign_code.
 				intermod_info_set_write_header
